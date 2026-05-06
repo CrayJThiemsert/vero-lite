@@ -1,0 +1,1 @@
+"""vero-lite services namespace."""

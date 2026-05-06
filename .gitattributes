@@ -1,0 +1,28 @@
+# Default: auto-detect text files, normalize to LF on commit
+# This overrides core.autocrlf=true for this repository
+* text=auto eol=lf
+
+# Shell scripts MUST be LF (Linux/CI compatibility, Docker)
+*.sh text eol=lf
+*.bash text eol=lf
+
+# Files where line endings critically matter
+Dockerfile text eol=lf
+*.dockerfile text eol=lf
+
+# Binary files (no conversion)
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg binary
+*.pdf binary
+*.zip binary
+*.tar binary
+*.gz binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.db binary
+*.sqlite binary
