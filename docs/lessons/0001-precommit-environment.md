@@ -8,7 +8,7 @@
 
 ## Summary
 
-Setting up pre-commit on a public repo with multiple contributing tools (Claude Desktop, Claude Code, manual WSL) hit 10 distinct traps. Each is documented below with symptom, root cause, and fix.
+Setting up pre-commit on a public repo with multiple contributing tools (Claude Desktop, Claude Code, manual WSL) hit 11 distinct traps. Each is documented below with symptom, root cause, and fix.
 
 ---
 
@@ -234,6 +234,50 @@ Note `<<'EOF'` (single-quoted delimiter) — disables variable expansion and com
 
 ---
 
+## Trap 11: `pre-commit` not in global PATH after `uv sync`
+
+**Symptom:**
+```
+$ pre-commit run --all-files
+Command 'pre-commit' not found, but can be installed with:
+sudo apt install pre-commit
+```
+Exit code: 127.
+
+**Root cause:** `uv sync --extra dev` installs `pre-commit` into the project's local virtualenv at `.venv/bin/pre-commit`, not into global PATH. Unless you explicitly activate the venv (`source .venv/bin/activate`), the shell can't find the binary.
+
+**Why uv works this way:** uv intentionally keeps tools project-local to avoid version drift between projects. Each project pins its own `pre-commit` version in `pyproject.toml` / `uv.lock`. Polluting global PATH would defeat reproducibility — different projects could need different `pre-commit` versions.
+
+**Fix:**
+```bash
+# Wrong (looks for system pre-commit):
+pre-commit run --all-files
+
+# Right (uses project's pinned version):
+uv run pre-commit run --all-files
+```
+
+`uv run <tool>` resolves the binary inside the project's `.venv/` and runs it with the correct Python interpreter and dependency tree.
+
+**Anti-fix:** ❌ Do NOT `sudo apt install pre-commit`. This installs a system-wide `pre-commit` that:
+- May be a different version from the project's pinned one
+- Will be picked up first by PATH lookup, masking the project version
+- Causes hooks to behave inconsistently across machines (the exact thing pre-commit is supposed to prevent)
+
+**Prevention:** Treat all dev tools installed via `uv sync --extra dev` as project-local. Always invoke through `uv run`:
+- `uv run pre-commit ...`
+- `uv run ruff ...`
+- `uv run mypy ...`
+- `uv run pytest ...`
+
+Update documentation, shell aliases, and CI/CD pipelines accordingly.
+
+**Related traps:** This is the same underlying mechanism as Trap 1 (uv doesn't auto-install dev deps) and Trap 3 (`uv run detect-secrets`). All three stem from uv's project-local philosophy. Once you internalize "uv tools live in `.venv/`, prefix with `uv run`," all three become muscle memory.
+
+**Discovered:** Session 6 (2026-05-07), commit `1789a86`, during PLAN-001 commit 3 Phase D pre-commit dry-run.
+
+---
+
 ## Quick Reference Card
 
 | Trap | One-line fix |
@@ -248,6 +292,7 @@ Note `<<'EOF'` (single-quoted delimiter) — disables variable expansion and com
 | 8 | `git status -s` for porcelain output |
 | 9 | `${PIPESTATUS[0]}` or `set -o pipefail` |
 | 10 | `cat > file <<'EOF'` + `git commit -F file` |
+| 11 | `uv run pre-commit ...` (not global `pre-commit`) |
 
 ---
 
