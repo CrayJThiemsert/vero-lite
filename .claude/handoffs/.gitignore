@@ -1,0 +1,6 @@
+# Default-ignore everything under .claude/handoffs/
+# Handoff files are session-scoped working notes between Claude Code and Claude Chat.
+# Tracked exceptions are listed below.
+*
+!.gitignore
+!README.md
