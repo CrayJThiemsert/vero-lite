@@ -105,15 +105,59 @@ Code tab's reading. Distinguish facts (from output) vs inferences.
 3. **Read** — Chat (or future Code tab session) opens via the `view` tool / file read.
 4. **Respond** — Chat replies inline OR writes a counter-handoff (`from: claude-chat`).
 5. **Close** — When the handoff's `status` reaches `complete`, no further edits. Future references cite the file by path + commit (if archived).
-6. **Cleanup** — End-of-session, the user may run `rm -rf .claude/handoffs/session-NN/` if no longer needed. Or keep for archeology — the dir is gitignored either way.
+6. **Cleanup** — End-of-session, prefer **rotation** (see §6) over deletion. The dir is gitignored either way, so retention has no repo cost.
 
-## 6. Cross-references
+## 6. Handoff rotation policy
+
+To prevent `.claude/handoffs/` from accumulating indefinitely in the active working area while preserving the historical record, handoffs are organised by session and archived at session boundaries.
+
+### Directory structure
+
+```
+.claude/handoffs/
+├── .gitignore               # tracked: default-ignore + exceptions
+├── README.md                # tracked: pointer to this runbook
+├── session-NN/              # current session (active, gitignored)
+│   └── YYYY-MM-DD-HHMM-<title>.md
+└── archive/
+    ├── session-NN-1/        # closed sessions (preserved, gitignored)
+    └── session-NN-2/
+```
+
+### Rotation procedure
+
+At the start of each new session (Step 1 of session execution):
+
+1. Move the previous session's directory into `archive/`:
+   ```bash
+   mv .claude/handoffs/session-NN .claude/handoffs/archive/session-NN
+   ```
+2. Create the new session directory:
+   ```bash
+   mkdir -p .claude/handoffs/session-$((NN+1))
+   ```
+3. No commit needed — entire `.claude/handoffs/` tree (apart from `.gitignore` and `README.md`) is gitignored.
+
+Use plain `mv`, not `git mv` — the contents are not tracked.
+
+### Rationale
+
+- **Bounded active scope** — each session sees only its own handoffs in the working area, reducing context noise.
+- **Historical preservation** — `archive/` retains all prior handoffs for cross-session reference and audit.
+- **Zero git footprint** — gitignored throughout, no commit overhead per rotation.
+- **Symmetric for Code and Chat** — both sides follow the same convention, avoiding drift.
+
+### When to deviate
+
+If a handoff in `session-NN` is referenced heavily across sessions (e.g., becomes a recurring runbook reference), promote it to a proper location under `docs/` and remove from handoffs entirely. Cross-session value belongs in tracked docs, not in gitignored working notes.
+
+## 7. Cross-references
 
 - `CLAUDE.md` § 6 (Working Patterns) — Conversation Hygiene rule (Code tab vs Chat roles). **Proposed amendment:** add a sentence to the "Rule" line: *"For long structured outputs, write to `.claude/handoffs/` instead of copy-pasting — see `docs/runbooks/claude-code-chat-handoff.md`."*
 - `docs/runbooks/claude-code-setup.md` § 4 (Daily Workflow) — describes the two-tool decision; this runbook complements with the file-based bridge.
 - `docs/lessons/0001-precommit-environment.md` Trap 6 — copy-paste fidelity failure (the original symptom this runbook addresses).
 
-## 7. Anti-patterns
+## 8. Anti-patterns
 
 - ❌ Writing handoffs inside an active worktree (`.claude/worktrees/<name>/.claude/handoffs/`). They get lost on worktree removal. **Always main repo path.**
 - ❌ Committing handoff files (other than `README.md`/`.gitignore`). They are session-scoped working notes, not historical record.
