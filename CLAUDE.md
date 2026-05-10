@@ -88,6 +88,18 @@ Hybrid model: Auto Memory (private) + Repository (shared, source of truth).
 - `DATABASE_URL` / `REDIS_URL` must always match `*_HOST_PORT`
 - vero-lite never demands exclusive ownership of vendor-default ports
 
+### Worktree Mode (Code Tab)
+
+Default policy per Lesson #13:
+
+| Scenario | Worktree | Rationale |
+|----------|----------|-----------|
+| Single-task work (ADR draft, doc edit, single commit) | **OFF** | Avoid Family B traps (sandbox ownership cascade); zero isolation benefit |
+| Parallel work (multiple branches in flight, risky refactor) | **ON** | Isolation worth the lifecycle cost; apply Lesson #13 prevention checklist |
+| Buildable code that should fail-isolated in CI | **ON** | PR boundary clarity; explicit pre-flight required |
+
+Apply the [Lesson #13 prevention checklist](docs/lessons/0003-code-tab-worktree-lifecycle-traps.md#prevention-checklist) before any worktree-on session.
+
 ## 7. Git Conventions (compact)
 
 **Format:** Conventional Commits — `<type>(<scope>): <subject>`
@@ -148,4 +160,4 @@ Read in this order at session start:
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-05-07 (Session 5, commit 3)*
+*Last updated: 2026-05-10 (Session 10, ADR-004 + worktree policy)*
