@@ -1,5 +1,11 @@
 # ADR-004: Canonical Author Email for Git Commits
 
+> **Note (Session 10):** This document was authored during the vet clinic
+> vertical (Phase 1 original scope). The vet clinic vertical is now parked
+> as Phase 2 (see ADR-005 in the same Batch 2 push); Phase 1 vertical is
+> now Operational Control Tower. The architectural decisions in this
+> document remain valid and apply to both verticals.
+
 **Status:** Accepted
 **Date:** 2026-05-10
 **Deciders:** Jirachai Thiemsert (founder)

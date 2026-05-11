@@ -1,5 +1,11 @@
 # PLAN-001: Starter Pack Scaffold for vero-lite
 
+> **Note (Session 10):** This document was authored during the vet clinic
+> vertical (Phase 1 original scope). The vet clinic vertical is now parked
+> as Phase 2 (see ADR-005 in the same Batch 2 push); Phase 1 vertical is
+> now Operational Control Tower. The architectural decisions in this
+> document remain valid and apply to both verticals.
+
 **Status:** Ready for execution (Amended Phase E — see note below)
 **Owner:** Claude Code (after human approval)
 **Created:** 2026-05-05 (Session 2)
