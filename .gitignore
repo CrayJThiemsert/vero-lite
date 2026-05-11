@@ -38,6 +38,11 @@ Thumbs.db
 local/
 scratch/
 
+# Strategy (confidential — see ADR-006 D2)
+# Company-specific opportunity analysis, design partner names, deal structure.
+# Public abstract strategy lives in docs/strategy/public/.
+docs/strategy/private/
+
 # Docker
 .docker/
 
