@@ -1,0 +1,10 @@
+# Bootstrap placeholder for docs/strategy/private/
+#
+# This directory is gitignored (.gitignore rule added Session 10 Batch 2 commit #1).
+# Only this .gitkeep file is force-tracked so the directory exists in fresh clones.
+#
+# Drop confidential strategy content here — it will be auto-ignored by git.
+# Verify with: git check-ignore -v docs/strategy/private/your-file.md
+#
+# See docs/strategy/public/README.md for the public/private split rationale.
+# See ADR-006 D2 for architectural justification.
