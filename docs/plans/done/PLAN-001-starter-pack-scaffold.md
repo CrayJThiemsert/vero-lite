@@ -14,6 +14,11 @@
 
 > **📝 Amendment Note (Phase E):** ADR-003 was originally reserved for "custom Postgres image" but Phase E execution discovered a port conflict with the co-existing smb-flow project (which uses 5432-5435 + 8000 + 5050 + 5678 + 5679 + 8501). ADR-003 was emergency-minted for **Service port strategy** (env-overridable host ports for multi-project coexistence on Cray-Legion5Pro). The original "custom Postgres image" plan is renumbered to **ADR-005** (ADR-004 reserved for canonical email decision). See `docs/adr/0003-*.md` and the forward references later in this document.
 
+**Amended 2026-05-12 (Session 10 Batch 2):** ADR-005 has since been
+reused for the strategic pivot (see `docs/adr/0005-strategic-pivot-to-oct.md`).
+The custom Postgres image decision will be renumbered to ≥ ADR-009 — see
+`docs/STATUS.md` In-Flight Discussions.
+
 ---
 
 ## Goal

@@ -49,3 +49,6 @@ docs/strategy/private/
 # Node (future frontend)
 node_modules/
 .next/
+
+# Claude Code local harness config
+.claude/settings.local.json
