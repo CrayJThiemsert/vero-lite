@@ -9,12 +9,18 @@
 ## 1. Project Identity
 
 - **Codename:** vero-lite (Vertical Ontology, Lite Edition)
-- **Vision:** Palantir-like data platform (AIP + Foundry + Apollo style) for Thai SMB market (10–100 employees)
-- **First vertical:** Veterinary clinics (digitize handwritten medical records → AI-assisted workflows)
+- **Vision:** Palantir-like data platform (AIP + Foundry + Apollo style) for distributed asset operations across industries
+- **Phase 1 vertical:** Operational Control Tower (OCT) — three vertical-agnostic features:
+  1. Ontology-driven operational map
+  2. Natural language operational query
+  3. Anomaly detection + suggested action with reasoning trace
+
+  First instantiated on a regional energy operator (primary design partner type); second on an industrial supply chain operator (secondary). See ADR-005.
+- **Phase 2 vertical (parked):** Veterinary clinics (digitize handwritten medical records → AI-assisted workflows). Same engine, swap ontology + data adapter. Park decision: ADR-005. Architectural decisions in ADRs 001–004 remain valid.
 - **Founder:** Jirachai Thiemsert (solo developer, GitHub: `CrayJThiemsert`)
 - **License:** Apache 2.0
 - **Repository:** https://github.com/CrayJThiemsert/vero-lite (Public)
-- **Strategy:** Build the moat first (YAML ontology + code generator) → 2–3 design partners → revenue.
+- **Strategy:** Build the moat first (YAML ontology + code generator + 3 OCT features = vertical plugin architecture per ADR-006) → 2 enterprise design partners → revenue. Template-first multi-vertical (Rule of Three; abstraction extracted only after 3 working verticals).
 
 ## 2. Current Focus
 
@@ -160,4 +166,4 @@ Read in this order at session start:
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-05-10 (Session 10, ADR-004 + worktree policy)*
+*Last updated: 2026-05-12 (Session 10 Batch 2, ADR-005 strategic pivot to OCT + ADR-006 vertical plugin architecture)*
