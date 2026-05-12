@@ -163,3 +163,59 @@ If a handoff in `session-NN` is referenced heavily across sessions (e.g., become
 - ❌ Committing handoff files (other than `README.md`/`.gitignore`). They are session-scoped working notes, not historical record.
 - ❌ Appending to a closed (`status: complete`) file. Write a new one and reference the old.
 - ❌ Skipping the front-matter. The metadata is what makes the file machine-discoverable.
+
+## 9. Project Knowledge as primary handoff transport
+
+**Status:** Standard (validated Session 10 mid-session, 2026-05-11)
+
+### Three-tier mechanism
+
+| Priority | Mechanism | When to use |
+|----------|-----------|-------------|
+| 1 (default) | Project Knowledge upload | Every Chat session boundary |
+| 2 (fallback) | Direct upload into conversation | Project Knowledge sync slow / file urgent / >20MB |
+| 3 (recovery) | `conversation_search` from new Chat | Forgot to upload / file lost |
+
+### Standard workflow
+
+```
+┌─────────────────────────────────────────────────────────┐
+│ END OF CHAT SESSION                                      │
+│   1. Code tab creates handoff file:                      │
+│      .claude/handoffs/session-NN/YYYY-MM-DD-HHMM-*.md    │
+│      (gitignored, persistent on disk)                    │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│ CRAY: Upload file to Project Knowledge                  │
+│   (drag-drop in Project settings; sync < 30s)           │
+└─────────────────────────────────────────────────────────┘
+                            │
+                            ▼
+┌─────────────────────────────────────────────────────────┐
+│ NEW CHAT SESSION                                         │
+│   First prompt: "Project Knowledge มี handoff file ..."  │
+│   → Chat reads via view on /mnt/project/<filename>.md   │
+│   → Confirms strategic state                             │
+│   → Ready to continue                                    │
+└─────────────────────────────────────────────────────────┘
+```
+
+### Validation history
+
+- **Session 10 mid-session handoff (2026-05-11):** File
+  `2026-05-11-0325-chat-conversation-handoff.md` (399 lines) synced cleanly,
+  new Chat instance verified reconstruction matched verbatim.
+- **Pattern proven across all 4 modes (cumulative through Session 10):**
+  Code → Code (Session 9→10), Chat → Code (Session 10 Batch 1),
+  Code → Chat (Session 10 Batch 1 closeout), Chat → Chat (this validation).
+
+### Naming convention
+
+`YYYY-MM-DD-HHMM-<descriptor>.md` (per ADR-004 acceptance / Session 9 closeout).
+
+### Cleanup / rotation
+
+Old handoffs remain in Project Knowledge until disk pressure or noise becomes
+material. They have ongoing value as session archeology. No automatic deletion.
