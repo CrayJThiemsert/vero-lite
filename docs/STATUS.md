@@ -14,7 +14,7 @@ state: stable
 
 ## Current Focus
 
-**Phase 1, Month 1, Session 10 Batch 2** — Strategic pivot landed. Phase 1 vertical = Operational Control Tower (OCT) per ADR-005; vet clinic vertical parked as Phase 2. Vertical plugin architecture codified per ADR-006. Directory scaffolds (`verticals/`, `docs/strategy/`) in place.
+**Phase 1, Month 1, Session 10 Batch 3** — OCT engine contracts (ADR-007) + YAML ontology specification (ADR-008) landed. Phase 1 vertical = Operational Control Tower (OCT) per ADR-005; vet clinic vertical parked as Phase 2. Vertical plugin architecture codified per ADR-006. Directory scaffolds (`verticals/`, `docs/strategy/`) in place. Cowork Tier 0 first deliverable (Palantir Foundry ontology reference brief) cited from ADR-008 §Context.
 
 Active priorities:
 1. Engage 2 enterprise design partners — regional energy operator (primary) + industrial supply chain operator (secondary)
@@ -71,11 +71,10 @@ Active priorities:
 
 ## Next Steps
 
-1. **Session 10 Batch 3** — Draft ADR-007 (OCT architecture detail) + ADR-008 (YAML ontology specification)
-2. **Session 10 Batch 4** — Draft PLAN-003 (Ontology Engine implementation; `energy_v0.yaml` first vertical instantiation)
-3. **Session 10 Batch 5+** — Energy vertical synthetic demo data generator + first design partner conversation prep
-4. **Adjacent** — Mint new ADR number for the parked Postgres image decision (≥ ADR-009, sequence after Batch 3)
-5. **Ongoing** — Continue exercising file-based handoff mechanism (Chat ↔ Code, Project Knowledge transport) across batches; capture any new traps as Lesson #13 amendments or new lessons.
+1. **Session 10 Batch 4** — Draft PLAN-003 (Ontology Engine implementation; `energy_v0.yaml` first vertical instantiation, code generator)
+2. **Session 10 Batch 5+** — Energy vertical synthetic demo data generator + first design partner conversation prep
+3. **Adjacent** — Mint new ADR number for the parked Postgres image decision (≥ ADR-009)
+4. **Ongoing** — Continue exercising file-based handoff mechanism (Chat ↔ Code, Project Knowledge transport) across batches; capture any new traps as Lesson #13 amendments or new lessons.
 
 ## Update Workflow
 
