@@ -1,7 +1,7 @@
 ---
-last_updated: 2026-05-12
+last_updated: 2026-05-13
 session: 10
-batch: 2
+batch: 3
 state: stable
 ---
 
@@ -25,6 +25,7 @@ Active priorities:
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-13 | Cowork Tier 0 first deliverable — Palantir Foundry ontology reference brief for ADR-008 (validates 4-tier model from Batch 2 mid Decision 2) | `docs/research/private/2026-05-13-palantir-ontology-reference.md` |
 | 2026-05-11 | ADR-006 — Vertical Plugin Architecture (D1–D4 + 5 core patterns; template-first multi-vertical) | `docs/adr/0006-vertical-plugin-architecture.md` |
 | 2026-05-11 | ADR-005 — Strategic Pivot from SMB vet clinic to Operational Control Tower (vet clinic parked as Phase 2) | `docs/adr/0005-strategic-pivot-to-oct.md` |
 | 2026-05-10 | ADR-004 closed — GitHub noreply alias as canonical author email (provisional) | `docs/adr/0004-canonical-author-email.md` |
@@ -33,7 +34,7 @@ Active priorities:
 
 ## In-Flight Discussions
 
-- **Batch 3 (ADR-007 + ADR-008):** OCT architecture detail + YAML ontology specification — fills the engine-facing details D1–D4 implied. Forthcoming.
+- **Batch 3 (ADR-007 + ADR-008):** OCT architecture detail + YAML ontology specification — fills the engine-facing details D1–D4 implied. **ADR-008 input ready:** Cowork Tier 0 produced `docs/research/private/2026-05-13-palantir-ontology-reference.md` (Palantir Foundry comparison, §5 decision table, §6 energy YAML sketch, 5 open questions). Chat to draft ADR-008 next.
 - **Batch 4 (PLAN-003):** Ontology Engine implementation steps — first vertical `energy_v0.yaml` + code generator. Forthcoming.
 - **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (see PLAN-001 line 9 forward-reference); ADR-005 has since been reused for the strategic pivot. The Postgres image ADR needs a fresh number (earliest available: ADR-009, post Batch 3's ADR-007/008).
 - **Hook portability across environments:** Lesson #13 A3 documents the workaround; durable fix deferred (would require hook regeneration policy).
@@ -43,6 +44,7 @@ Active priorities:
 
 - [ ] **ADR-007** — OCT architecture detail (core engine contracts) *(Batch 3)*
 - [ ] **ADR-008** — YAML ontology specification (D1 contents) *(Batch 3)*
+- [x] **`.gitignore` extension** — add `docs/research/private/` (Cowork closeout flag #1) *(Session 10 Batch 3-prep)*
 - [ ] **PLAN-003** — Ontology Engine implementation: `verticals/energy/ontology/energy_v0.yaml` (5 entities) + code generator — *the moat* *(Batch 4)*
 - [ ] **ADR-NN (TBD, ≥ ADR-009) + PLAN-002** — Custom Postgres image with extensions (renumbered after ADR-005 reused for strategic pivot)
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
