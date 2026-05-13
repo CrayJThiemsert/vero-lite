@@ -43,6 +43,11 @@ scratch/
 # Public abstract strategy lives in docs/strategy/public/.
 docs/strategy/private/
 
+# Research (working notes — Tier 0 Cowork output, gitignored)
+# Cowork research briefs + closeouts. Code tab may lift edited
+# versions to docs/strategy/public/ in a future batch.
+docs/research/private/
+
 # Docker
 .docker/
 
