@@ -113,7 +113,7 @@ Apply the [Lesson #13 prevention checklist](docs/lessons/0003-code-tab-worktree-
 **Branches:** `main` (protected), `feat/*`, `fix/*`, `docs/*`, `chore/*`
 **Author:** `Jirachai Thiemsert <16893502+CrayJThiemsert@users.noreply.github.com>`
 **AI assistance:** Note in commit body — **NEVER** as `Co-Authored-By`
-**Commit messages:** heredoc → `/tmp/commit-N-message.txt` → `git commit -F` (avoid quote escape)
+**Commit messages:** Write to file → `git commit -F`. Prefer Write tool against WSL UNC path (`\\wsl.localhost\Ubuntu-24.04\tmp\commit-message.txt`) over `wsl bash -c "cat <<'EOF'"` heredoc when message contains backticks, `$var`, or code blocks (per Lesson #14 prevention).
 
 → Full details: [`docs/conventions/git.md`](docs/conventions/git.md) *(future, see STATUS TODO)*
 

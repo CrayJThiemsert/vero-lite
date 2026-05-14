@@ -91,6 +91,17 @@ variables:
       literal value)? Do that
 - [ ] If a loop is unavoidable, pass values as positional args
       (`bash -c 'echo "$1"' _ value`)
+- [ ] Does the commit message contain backticks, dollar-var, or
+      other shell-active characters (code blocks, command examples)?
+      If yes — prefer Write tool against the WSL UNC path
+      \\wsl.localhost\Ubuntu-24.04\tmp\commit-message.txt over
+      "wsl ... bash -c \"cat > file <<'EOF' ...\"". The quoted
+      heredoc EOF protects bash's parse layer only; the outer
+      Windows-to-WSL-to-bash arg-passing layer may shell-expand the
+      body before bash sees the heredoc syntax. Reproduction #6
+      (Mini-Batch 3.5 closeout 2026-05-14) demonstrated this failure
+      mode. Plain-prose commit messages (no backticks, no dollar-var,
+      no code blocks) remain safe with the heredoc approach.
 
 ---
 
@@ -110,8 +121,8 @@ tool → WSL bash, etc.).
 
 ## Recurrence count this session
 
-5 occurrences in Session 10 (Batch 2 + Batch 3). Pattern reliable
-enough to codify.
+6 occurrences in Session 10 (Batch 2 + Batch 3 + Mini-Batch 3.5).
+Pattern reliable enough to codify.
 
 Batch 2 (occurrences 1-3, each documented in Batch 2 closeout
 addendum §6): file-existence checks, vet-grep loop, cherry-pick loop.
@@ -127,3 +138,21 @@ Batch 3 self-validations during own commit work (Batch 3 closeout
    body was stripped/expanded somewhere in the Windows→WSL→bash arg
    pipeline. Lesson #14 file content itself remained intact; only
    the commit message body was cosmetically affected.
+
+Mini-Batch 3.5 self-validation during own commit work (Mini-Batch 3.5
+closeout 2026-05-14, §6 Deviation #2):
+
+6. Outer-layer expansion despite quoted heredoc EOF: the command
+   "wsl -d Ubuntu-24.04 -- bash -c \"cat > /tmp/file <<'EOF' ...body
+   with backticks and dollar-var... EOF\"" mangled the body in
+   transit. Backticked text was executed as command substitution
+   (real git-show output was injected into the heredoc body);
+   dollar-var references were stripped entirely (not even expanded
+   to empty string — backslash plus dollar plus name removed). The
+   quoted heredoc EOF (single-quoted 'EOF') only protects bash's
+   heredoc parse layer (inner). The outer Windows-to-WSL-to-bash
+   arg-passing layer had already shell-expanded the body before bash
+   saw the heredoc syntax. Workaround applied: Write tool against
+   \\wsl.localhost\Ubuntu-24.04\tmp\commit-message.txt — bypasses all
+   shell layers; content arrives literal byte-for-byte. File arrived
+   intact; git commit -F succeeded.
