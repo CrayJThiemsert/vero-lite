@@ -110,5 +110,20 @@ tool → WSL bash, etc.).
 
 ## Recurrence count this session
 
-3 occurrences in Session 10 Batch 2 alone (each documented in Batch 2
-closeout addendum §6). Pattern reliable enough to codify.
+5 occurrences in Session 10 (Batch 2 + Batch 3). Pattern reliable
+enough to codify.
+
+Batch 2 (occurrences 1-3, each documented in Batch 2 closeout
+addendum §6): file-existence checks, vet-grep loop, cherry-pick loop.
+
+Batch 3 self-validations during own commit work (Batch 3 closeout
+2026-05-13, §"Lesson #14 self-validations during Batch 3"):
+
+4. Stat iteration loop: `for h in ... ; do git show --stat $h; done`
+   inside `wsl ... bash -c '...'` printed last hash 4× instead of
+   iterating. Per Lesson #14 prevention, restructured as 4 separate
+   `git show` calls chained with `&&`.
+5. Commit-3 body cosmetic degradation: `\$var` literal in heredoc
+   body was stripped/expanded somewhere in the Windows→WSL→bash arg
+   pipeline. Lesson #14 file content itself remained intact; only
+   the commit message body was cosmetically affected.
