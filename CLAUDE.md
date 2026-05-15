@@ -22,6 +22,18 @@
 - **Repository:** https://github.com/CrayJThiemsert/vero-lite (Public)
 - **Strategy:** Build the moat first (YAML ontology + code generator + 3 OCT features = vertical plugin architecture per ADR-006) → 2 enterprise design partners → revenue. Template-first multi-vertical (Rule of Three; abstraction extracted only after 3 working verticals).
 
+### Precedence (when sources conflict)
+
+When two governance sources appear to disagree, resolve in this order:
+
+1. **Most recent accepted ADR** — architectural decisions are binding
+2. **This file (`CLAUDE.md`)** — constitutional rules
+3. **Tier instruction files** (`docs/conventions/{chat,cowork}_tab_instructions.md`) — tier-specific scope and behavior
+4. **Lessons** (`docs/lessons/`) — advisory; promote to ADR if a lesson must be behavior-binding
+5. **`docs/STATUS.md`** — state, not rules (never wins a rule conflict)
+
+If a tier instruction conflicts with an accepted ADR, the tier instruction is stale — surface to Cray for update. If a lesson is being cited as behavior-binding without ADR backing, raise the question of whether it should be promoted.
+
 ## 2. Current Focus
 
 → See [`docs/STATUS.md`](docs/STATUS.md) for current state, in-flight work, and recent decisions.
@@ -43,13 +55,13 @@ Hybrid model: Auto Memory (private) + Repository (shared, source of truth).
 |------|----------|-------|----------|
 | **0** | `~/.claude/projects/.../memory/` | Private, NOT in repo | Auto Memory CLI v2.1.132 working notes |
 | **1** | In repo (hot) | Read every session | `CLAUDE.md`, `docs/STATUS.md` |
-| **2** | In repo (reference) | Lookup as needed | `docs/{adr,lessons,runbooks,conventions}/` |
+| **2** | In repo (reference) | Lookup as needed | `docs/{adr,lessons,runbooks,conventions}/` including `docs/conventions/{chat,cowork}_tab_instructions.md` (canonical for Claude project tier instructions; sync target = Claude project UI) |
 | **2.5** | In repo (derived) | Curated snippets for cold-start sessions | `docs/for_llm/` |
 | **3** | In repo (archeology) | Historical record | `docs/plans/done/`, git history |
 
 → Full details: [`docs/runbooks/memory-architecture.md`](docs/runbooks/memory-architecture.md)
 
-**Rule:** Repository = single source of truth. Auto Memory complements, never replaces. `for_llm/` snippets are derived — canonicals win on conflict.
+**Rule:** Repository = single source of truth. Auto Memory complements, never replaces. `for_llm/` snippets are derived — canonicals win on conflict. Tier instruction files in `docs/conventions/` are canonical; the Claude project UI Chat tab / Cowork tab "project instructions" field is a sync target that Cray re-pastes when canonical changes.
 
 ## 5. Hardware
 
@@ -60,13 +72,18 @@ Hybrid model: Auto Memory (private) + Repository (shared, source of truth).
 
 ### Conversation Hygiene (CRITICAL)
 
-| Role | Purpose | Output |
-|------|---------|--------|
-| **Claude Chat** (claude.ai) | Thinking partner, ADR drafts | Markdown drafts pasted into repo |
-| **Claude Code** (in repo) | Execution agent, implementation | Code commits |
-| **Repository** | Shared memory between sessions | ADRs, plans, code |
+The project uses four collaboration tiers, each with a distinct artifact-ownership scope:
 
-**Rule:** Never copy-paste long context between Claude Chat and Claude Code. Use the repository.
+| Tier | Role | Purpose | Primary output |
+|------|------|---------|----------------|
+| **Tier 0** — Cowork | Research agent | External knowledge compilation, prior art, library scans | Research files in `docs/research/private/` + own closeout handoffs |
+| **Tier 1** — Chat | Strategy + architecture | ADR drafts, PLAN drafts, code review, handoff drafting | Markdown content (paste-ready) and `chat-` prefixed handoffs |
+| **Tier 2** — Code | Execution agent | Repo writes, git operations, implementation | Code commits, file modifications, `code-` prefixed handoffs |
+| **Tier 3** — Cray | Final authority | Private knowledge, business judgment, routing between tiers | Decisions, dispatch |
+
+Tier instruction files in `docs/conventions/chat_tab_instructions.md` and `docs/conventions/cowork_tab_instructions.md` define detailed read/write scopes, behavioral rules, and handoff conventions per tier. Tier 2 (Code) operational policy lives in §11 below.
+
+**Rule:** Never copy-paste long context between Claude Chat and Claude Code. Use the repository as shared memory.
 
 ### Decision Flow
 
@@ -93,18 +110,6 @@ Hybrid model: Auto Memory (private) + Repository (shared, source of truth).
 - `.env.example` uses vendor defaults; local `.env` overrides per-machine
 - `DATABASE_URL` / `REDIS_URL` must always match `*_HOST_PORT`
 - vero-lite never demands exclusive ownership of vendor-default ports
-
-### Worktree Mode (Code Tab)
-
-Default policy per Lesson #13:
-
-| Scenario | Worktree | Rationale |
-|----------|----------|-----------|
-| Single-task work (ADR draft, doc edit, single commit) | **OFF** | Avoid Family B traps (sandbox ownership cascade); zero isolation benefit |
-| Parallel work (multiple branches in flight, risky refactor) | **ON** | Isolation worth the lifecycle cost; apply Lesson #13 prevention checklist |
-| Buildable code that should fail-isolated in CI | **ON** | PR boundary clarity; explicit pre-flight required |
-
-Apply the [Lesson #13 prevention checklist](docs/lessons/0003-code-tab-worktree-lifecycle-traps.md#prevention-checklist) before any worktree-on session.
 
 ## 7. Git Conventions (compact)
 
@@ -160,10 +165,26 @@ Read in this order at session start:
 | `docs/plans/done/` | Completed plans (archeology) |
 | `docs/lessons/` | Session learnings (durable knowledge) |
 | `docs/runbooks/` | Operational guides |
-| `docs/conventions/` | Tech stack, code style, glossary, etc. |
+| `docs/conventions/` | Tech stack, code style, glossary, tier instructions (canonical) |
 | `docs/for_llm/` | Curated snippets for cold-start LLM sessions (derived from canonicals — see runbook) |
+
+## 11. Tier 2 (Code) Operational Policy
+
+Tactical policy specific to Tier 2 (Code) execution. Other tiers do not need to read this section.
+
+### Worktree Mode
+
+Default policy per Lesson #13:
+
+| Scenario | Worktree | Rationale |
+|----------|----------|-----------|
+| Single-task work (ADR draft, doc edit, single commit) | **OFF** | Avoid Family B traps (sandbox ownership cascade); zero isolation benefit |
+| Parallel work (multiple branches in flight, risky refactor) | **ON** | Isolation worth the lifecycle cost; apply Lesson #13 prevention checklist |
+| Buildable code that should fail-isolated in CI | **ON** | PR boundary clarity; explicit pre-flight required |
+
+Apply the [Lesson #13 prevention checklist](docs/lessons/0003-code-tab-worktree-lifecycle-traps.md#prevention-checklist) before any worktree-on session.
 
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-05-12 (Session 10 Batch 2, ADR-005 strategic pivot to OCT + ADR-006 vertical plugin architecture)*
+*Last updated: 2026-05-15 (Session 10 governance mini-batch — tier-system audit findings 1, 2, 3, 5, 8)*
