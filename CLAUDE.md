@@ -184,7 +184,16 @@ Default policy per Lesson #3:
 
 Apply the [Lesson #3 prevention checklist](docs/lessons/0003-code-tab-worktree-lifecycle-traps.md#prevention-checklist) before any worktree-on session.
 
+### Transcript Handoff
+
+When the Code tab judges that a reply or span of work should be handed
+to Chat or Cowork for follow-up, render the full raw transcript via
+`tools/handoffs/render_transcript.py` into `.claude/handoffs/session-NN/`
+(gitignored working note) and **always state the export file path in
+the reply**. Procedure + options:
+[`docs/runbooks/transcript-handoff.md`](docs/runbooks/transcript-handoff.md).
+
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-05-15 (Session 10 governance mini-batch — tier-system audit findings 1, 2, 3, 5, 8)*
+*Last updated: 2026-05-16 (Session 11 — §11 Transcript Handoff convention)*
