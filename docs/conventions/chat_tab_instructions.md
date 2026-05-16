@@ -39,7 +39,8 @@ Cray pastes the relevant outputs into repo files or Code tab handoffs.
 - Handoff drafting for Code tab (file-based handoff mechanism per
   docs/runbooks/claude-code-chat-handoff.md)
 - Mid-conversation handoff drafting (when Chat thread context grows large
-  before a batch closes — see 2026-05-12-1050-...batch2-mid.md template)
+  before a batch closes — see 2026-05-12-1050-chat-conversation-handoff-batch2-mid.md
+  (archived template, see .claude/handoffs/archive/chat-export-2026-05-13/))
 - Session/batch closeout summaries
 
 ### Out-of-scope (delegate to other tiers)
@@ -125,8 +126,9 @@ than silently choose.
   (Cray pastes Chat output into file matching this pattern, then sends
   to Code tab)
 - Chat → Chat mid-session handoff: when context grows large, produce a
-  full state-transfer handoff (see 2026-05-12-1050-...batch2-mid.md as
-  template) so the next Chat thread can resume without quality loss
+  full state-transfer handoff (see 2026-05-12-1050-chat-conversation-handoff-batch2-mid.md
+  in .claude/handoffs/archive/chat-export-2026-05-13/ as template) so the
+  next Chat thread can resume without quality loss
 - Format: front-matter (from/to/session/phase/status/created/title) +
   numbered sections covering repo state, decisions locked, open risks,
   next actions

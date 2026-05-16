@@ -118,7 +118,7 @@ Tier instruction files in `docs/conventions/chat_tab_instructions.md` and `docs/
 **Branches:** `main` (protected), `feat/*`, `fix/*`, `docs/*`, `chore/*`
 **Author:** `Jirachai Thiemsert <16893502+CrayJThiemsert@users.noreply.github.com>`
 **AI assistance:** Note in commit body — **NEVER** as `Co-Authored-By`
-**Commit messages:** Write to file → `git commit -F`. Prefer Write tool against WSL UNC path (`\\wsl.localhost\Ubuntu-24.04\tmp\commit-message.txt`) over `wsl bash -c "cat <<'EOF'"` heredoc when message contains backticks, `$var`, or code blocks (per Lesson #14 prevention).
+**Commit messages:** Write to file → `git commit -F`. Prefer Write tool against WSL UNC path (`\\wsl.localhost\Ubuntu-24.04\tmp\commit-message.txt`) over `wsl bash -c "cat <<'EOF'"` heredoc when message contains backticks, `$var`, or code blocks (per Lesson #4 prevention).
 
 → Full details: [`docs/conventions/git.md`](docs/conventions/git.md) *(future, see STATUS TODO)*
 
@@ -174,15 +174,15 @@ Tactical policy specific to Tier 2 (Code) execution. Other tiers do not need to 
 
 ### Worktree Mode
 
-Default policy per Lesson #13:
+Default policy per Lesson #3:
 
 | Scenario | Worktree | Rationale |
 |----------|----------|-----------|
 | Single-task work (ADR draft, doc edit, single commit) | **OFF** | Avoid Family B traps (sandbox ownership cascade); zero isolation benefit |
-| Parallel work (multiple branches in flight, risky refactor) | **ON** | Isolation worth the lifecycle cost; apply Lesson #13 prevention checklist |
+| Parallel work (multiple branches in flight, risky refactor) | **ON** | Isolation worth the lifecycle cost; apply Lesson #3 prevention checklist |
 | Buildable code that should fail-isolated in CI | **ON** | PR boundary clarity; explicit pre-flight required |
 
-Apply the [Lesson #13 prevention checklist](docs/lessons/0003-code-tab-worktree-lifecycle-traps.md#prevention-checklist) before any worktree-on session.
+Apply the [Lesson #3 prevention checklist](docs/lessons/0003-code-tab-worktree-lifecycle-traps.md#prevention-checklist) before any worktree-on session.
 
 ---
 
