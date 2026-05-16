@@ -38,7 +38,7 @@ The CLI remains useful for headless/SSH contexts. For the founder's day-to-day W
 | Subscription | Max plan | Required for Code tab access at time of writing. |
 | Git for Windows | 2.45.x or later | The Code tab's Bash tool calls `/mingw64/bin/git`, **not** WSL git. |
 | WSL2 | Ubuntu 24.04 (or any) | Repository lives at `~/work/vero-lite` inside WSL. |
-| `safe.directory` config | `*` (wildcard) | Resolves the dubious ownership trap — see § 8 and Lesson #12. |
+| `safe.directory` config | `*` (wildcard) | Resolves the dubious ownership trap — see § 8 and Lesson #2. |
 | Windows username | Any | UNC paths use the WSL username, not the Windows one. |
 
 **Critical pre-flight check** (run once on the Windows host PowerShell, not inside the worktree):
@@ -50,7 +50,7 @@ git config --global --get-all safe.directory   # verify '*' present
 
 Without this, every git operation inside the Code tab fails with `fatal: detected dubious ownership in repository at '//wsl.localhost/...'`. The wildcard is the only entry that reliably matches every Claude-generated worktree subdirectory (which uses random session names).
 
-For the trade-off analysis (`*` vs exact path vs scoped wildcard), see Lesson #12 (`docs/lessons/0002-claude-code-desktop-wsl-ownership.md`).
+For the trade-off analysis (`*` vs exact path vs scoped wildcard), see Lesson #2 (`docs/lessons/0002-claude-code-desktop-wsl-ownership.md`).
 
 ---
 
@@ -184,7 +184,7 @@ When a prompt instruction conflicts with CLAUDE.md (the canonical example: `Co-A
 ## 8. Limitations & Gotchas
 
 ### 8.1 WSL ownership trap (the big one)
-Documented in detail in Lesson #12. Summary: Git for Windows refuses to operate on WSL UNC paths until `safe.directory '*'` (or an exact match for every worktree subdirectory) is set in the global config. Adding the parent directory or a glob like `.../worktrees/*` does **not** work — `safe.directory` is byte-exact match with no recursion and no glob support.
+Documented in detail in Lesson #2. Summary: Git for Windows refuses to operate on WSL UNC paths until `safe.directory '*'` (or an exact match for every worktree subdirectory) is set in the global config. Adding the parent directory or a glob like `.../worktrees/*` does **not** work — `safe.directory` is byte-exact match with no recursion and no glob support.
 
 ### 8.2 Worktree branch UI bug (cosmetic)
 The Code tab's status bar sometimes shows the main branch name (`main`) even though the worktree is on `claude/<session-name>`. `git branch --show-current` always returns the truth; trust the command, not the UI.
@@ -214,7 +214,7 @@ vero-lite's memory architecture defines five tiers (CLAUDE.md § 4). The Code ta
 |------|-------|--------------------------|
 | 0 (private) | `~/.claude/projects/.../memory/` | `feedback_state_change_outside_worktree.md`, `MEMORY.md` |
 | 1 (hot, repo) | `CLAUDE.md`, `docs/STATUS.md` | Both updated this session |
-| 2 (reference, repo) | `docs/{adr,lessons,runbooks,conventions}/` | This runbook + Lesson #12 added this session |
+| 2 (reference, repo) | `docs/{adr,lessons,runbooks,conventions}/` | This runbook + Lesson #2 added this session |
 | 2.5 (derived) | `docs/for_llm/` | Not touched this session |
 | 3 (archeology) | `docs/plans/done/`, git history | Will receive Session 8 plan once Task 1 closes |
 
@@ -239,6 +239,6 @@ Things deliberately deferred from Session 8 setup, with one-line rationale each:
 - `CLAUDE.md` § 4 — Memory Architecture (Tier 0 = Code tab private memory)
 - `CLAUDE.md` § 6 — Working Patterns (Chat vs Code tab roles)
 - `CLAUDE.md` § 7 — Git Conventions (commit message format, AI assistance note)
-- `docs/lessons/0002-claude-code-desktop-wsl-ownership.md` — Lesson #12 (the safe.directory trap)
+- `docs/lessons/0002-claude-code-desktop-wsl-ownership.md` — Lesson #2 (the safe.directory trap)
 - `docs/runbooks/memory-architecture.md` — Cross-tool memory model
 - Session 8 transcript (Phase B → Phase F) — canonical example of phase-based prompting

@@ -30,7 +30,7 @@ Active priorities:
 | 2026-05-11 | ADR-006 — Vertical Plugin Architecture (D1–D4 + 5 core patterns; template-first multi-vertical) | `docs/adr/0006-vertical-plugin-architecture.md` |
 | 2026-05-11 | ADR-005 — Strategic Pivot from SMB vet clinic to Operational Control Tower (vet clinic parked as Phase 2) | `docs/adr/0005-strategic-pivot-to-oct.md` |
 | 2026-05-10 | ADR-004 closed — GitHub noreply alias as canonical author email (provisional) | `docs/adr/0004-canonical-author-email.md` |
-| 2026-05-10 | Worktree mode policy codified in CLAUDE.md §6 (per Lesson #13) | `CLAUDE.md` §6 |
+| 2026-05-10 | Worktree mode policy codified in CLAUDE.md §6 (per Lesson #3) | `CLAUDE.md` §6 |
 | 2026-05-10 | Handoff rotation policy codified in runbook | `docs/runbooks/claude-code-chat-handoff.md` |
 
 ## In-Flight Discussions
@@ -38,7 +38,7 @@ Active priorities:
 - **Batch 3 (ADR-007 + ADR-008):** Both **Accepted 2026-05-13** — OCT engine contracts + YAML ontology specification (5 base types, JSON Schema validation). Cowork Tier 0 brief at `docs/research/private/2026-05-13-palantir-ontology-reference.md` cited from ADR-008 §Context; 5 open questions in the brief remain candidates for future ADR amendments.
 - **Batch 4 (PLAN-003):** Ontology Engine implementation steps — first vertical `energy_v0.yaml` + code generator. Forthcoming.
 - **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (see PLAN-001 line 9 forward-reference); ADR-005 has since been reused for the strategic pivot. The Postgres image ADR needs a fresh number (earliest available: ADR-009, post Batch 3's ADR-007/008).
-- **Hook portability across environments:** Lesson #13 A3 documents the workaround; durable fix deferred (would require hook regeneration policy).
+- **Hook portability across environments:** Lesson #3 A3 documents the workaround; durable fix deferred (would require hook regeneration policy).
 - **Convention extraction:** `git.md` and `hardware.md` may still be extracted from CLAUDE.md (low priority).
 
 ## Active TODOs
@@ -60,8 +60,8 @@ Active priorities:
 - [x] **Worktree mode policy** — codified in CLAUDE.md §6 *(Session 10)*
 - [x] **Handoff rotation policy** — codified in runbook *(Session 10)*
 - [x] **Phase G** — commit + PR + merge + cleanup *(Session 9)*
-- [x] **Lesson #12 amendment** — Misdiagnosis section *(Session 9)*
-- [x] **Lesson #13** — Code Tab worktree lifecycle traps *(Session 9)*
+- [x] **Lesson #2 amendment** — Misdiagnosis section *(Session 9)*
+- [x] **Lesson #3** — Code Tab worktree lifecycle traps *(Session 9)*
 - [x] **File-based handoff mechanism** — `.claude/handoffs/` live *(Session 9)*
 - [x] **Setup Claude Code on Windows** *(Session 8)*
 - [x] **Cowork Project setup** *(Session 8)*
@@ -74,7 +74,7 @@ Active priorities:
 1. **Session 10 Batch 4** — Draft PLAN-003 (Ontology Engine implementation; `energy_v0.yaml` first vertical instantiation, code generator)
 2. **Session 10 Batch 5+** — Energy vertical synthetic demo data generator + first design partner conversation prep
 3. **Adjacent** — Mint new ADR number for the parked Postgres image decision (≥ ADR-009)
-4. **Ongoing** — Continue exercising file-based handoff mechanism (Chat ↔ Code, Project Knowledge transport) across batches; capture any new traps as Lesson #13 amendments or new lessons.
+4. **Ongoing** — Continue exercising file-based handoff mechanism (Chat ↔ Code, Project Knowledge transport) across batches; capture any new traps as Lesson #3 amendments or new lessons.
 
 ## Update Workflow
 

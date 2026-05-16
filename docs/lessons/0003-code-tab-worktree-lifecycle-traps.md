@@ -10,20 +10,20 @@
 
 A single docs-only PR (3 files, +400/-14 lines) was expected to take 5–10 minutes. It took 90 minutes because the Code-tab-on-WSL setup has **seven distinct traps** distributed across the worktree lifecycle. The traps are not random — they cluster into three root-cause families, each with a unified fix pattern.
 
-This lesson documents the families, the lifecycle stages where each surfaces, and the diagnostic decision tree for distinguishing them. It does not duplicate Lesson #12's coverage of the entry-point dubious-ownership trap; instead, it covers everything that can go wrong **after** you successfully open a worktree.
+This lesson documents the families, the lifecycle stages where each surfaces, and the diagnostic decision tree for distinguishing them. It does not duplicate Lesson #2's coverage of the entry-point dubious-ownership trap; instead, it covers everything that can go wrong **after** you successfully open a worktree.
 
 ---
 
-## How this differs from Lesson #12
+## How this differs from Lesson #2
 
 | Lesson | Scope | Lifecycle stage |
 |--------|-------|-----------------|
-| **Lesson #12** | Entry point: dubious-ownership trap, 2-store gitconfig misdiagnosis, UNC worktree binding | Opening / accessing the worktree |
-| **Lesson #13** (this) | Post-entry lifecycle: commit, push, PR merge, cleanup | Everything after the worktree is open |
+| **Lesson #2** | Entry point: dubious-ownership trap, 2-store gitconfig misdiagnosis, UNC worktree binding | Opening / accessing the worktree |
+| **Lesson #3** (this) | Post-entry lifecycle: commit, push, PR merge, cleanup | Everything after the worktree is open |
 
-Lesson #12 answers: *"Why does `git status` fail in my Code tab worktree?"* Lesson #13 answers: *"My Code tab worktree opens fine — why does my entire commit-push-merge cycle keep breaking?"*
+Lesson #2 answers: *"Why does `git status` fail in my Code tab worktree?"* Lesson #3 answers: *"My Code tab worktree opens fine — why does my entire commit-push-merge cycle keep breaking?"*
 
-The two are complementary. Trap families A1 and A2 below are documented in Lesson #12; this lesson references them for completeness but does not re-derive them.
+The two are complementary. Trap families A1 and A2 below are documented in Lesson #2; this lesson references them for completeness but does not re-derive them.
 
 ---
 
@@ -51,7 +51,7 @@ All seven traps surfaced sequentially in Session 9 Phase G. The reasoning chain 
 
 These are **separate files** that do not synchronise. The word "global" in `--global` means "user-level instead of repo-level", not "host-level".
 
-**Already documented in Lesson #12 Misdiagnosis section + Misconceptions table row "There is one global gitconfig per user."** This entry is here for completeness — see Lesson #12 for the full treatment, file mtimes evidence, and worked diagnostic.
+**Already documented in Lesson #2 Misdiagnosis section + Misconceptions table row "There is one global gitconfig per user."** This entry is here for completeness — see Lesson #2 for the full treatment, file mtimes evidence, and worked diagnostic.
 
 ### A2: UNC worktree gitdir binding
 
@@ -59,7 +59,7 @@ These are **separate files** that do not synchronise. The word "global" in `--gl
 
 **Root cause:** Worktrees created from Code tab register their internal `gitdir` pointer using a UNC path (`//wsl.localhost/ubuntu-24.04/...`). Linux git cannot resolve this — POSIX path parsing collapses the leading `//` and lands on a non-existent `/wsl.localhost/...`.
 
-**Already documented in Lesson #12 Misdiagnosis section.** See Lesson #12 for the worked diagnostic, the three-things-look-wrong-but-only-one-is-real framing, and the cross-environment access options (`git worktree repair` etc.).
+**Already documented in Lesson #2 Misdiagnosis section.** See Lesson #2 for the worked diagnostic, the three-things-look-wrong-but-only-one-is-real framing, and the cross-environment access options (`git worktree repair` etc.).
 
 ### A3: Stale pre-commit hook with hard-coded POSIX paths
 
@@ -254,7 +254,7 @@ Specific commands (memorise this card):
 
 ## Worked example — Phase G timeline (Session 9)
 
-A single docs-only PR (`docs(runbooks): add Claude Code in Desktop setup runbook + Lesson #12`) took 90 minutes due to encountering all 7 traps sequentially.
+A single docs-only PR (`docs(runbooks): add Claude Code in Desktop setup runbook + Lesson #2`) took 90 minutes due to encountering all 7 traps sequentially.
 
 The full timeline — including diagnostic outputs, decision points, and chat-side review — is preserved at:
 
@@ -263,7 +263,7 @@ The full timeline — including diagnostic outputs, decision points, and chat-si
 
 Brief sequence:
 
-1. **Phase G start** — Cray attempts `git status` from WSL native → A1 + A2 trap surfaces (already knew about A1 from Lesson #12, but A2's persistence-loss illusion required Phase 1 diagnostic to disambiguate)
+1. **Phase G start** — Cray attempts `git status` from WSL native → A1 + A2 trap surfaces (already knew about A1 from Lesson #2, but A2's persistence-loss illusion required Phase 1 diagnostic to disambiguate)
 2. **Phase G B.1 first attempt** — `git add` fails with B1 (`index.lock` denied) → chown worktree gitdir → fix
 3. **Phase G B.1 second attempt** — `git commit` fails with A3 (stale POSIX hook) → inline PATH override → fix
 4. **Phase G B.1 third attempt** — `git commit` fails with B2 (ref lock denied) → C3 sweep `.git/` → fix → commit `694f2cf`
@@ -289,7 +289,7 @@ git command fails
 │       └── Verify: find ... -user root | wc -l → 0
 │
 ├── Symptom contains "fatal: not a git repository" or "prunable"
-│   └── Family A2 (UNC binding) — see Lesson #12
+│   └── Family A2 (UNC binding) — see Lesson #2
 │       └── Fix: don't use this worktree from this environment
 │
 ├── Symptom contains "pre-commit not found" / "did you forget your virtualenv"
@@ -302,7 +302,7 @@ git command fails
 │       └── Fix: git push origin --delete <branch>
 │
 └── Symptom is missing safe.directory after a "successful" config add
-    └── Family A1 (2-store gitconfig) — see Lesson #12
+    └── Family A1 (2-store gitconfig) — see Lesson #2
         └── Fix: identify which gitconfig you're in; check both
 ```
 
@@ -334,7 +334,7 @@ For Session 10+ first-time-in-worktree work:
 
 ## Related
 
-- **Lesson #12** (`0002-claude-code-desktop-wsl-ownership.md`) — entry-point traps (dubious-ownership, 2-store gitconfig, UNC binding); this lesson covers the post-entry lifecycle
+- **Lesson #2** (`0002-claude-code-desktop-wsl-ownership.md`) — entry-point traps (dubious-ownership, 2-store gitconfig, UNC binding); this lesson covers the post-entry lifecycle
 - **Lesson #1** (`0001-precommit-environment.md`) Trap 2, Trap 7 — root chown pattern (same conceptual family, different layer)
 - **Lesson #1** Trap 9 — `${PIPESTATUS[0]}`; encountered again in Session 9 when echo-after-command swallowed git commit's exit code
 - **Lesson #1** Trap 10 — heredoc + `git commit -F`; used successfully throughout Phase G

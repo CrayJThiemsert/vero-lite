@@ -3,7 +3,7 @@
 **Captured:** 2026-05-13 (codified from Session 10 Batch 2 observations)
 **Context:** Three occurrences in Session 10 Batch 2 — file-existence checks, vet-grep loop, cherry-pick loop — each producing silent empty-string substitutions
 **Severity:** Medium (causes silent failures; not destructive)
-**Related:** Lesson #1 (pre-commit environment), Lesson #13 (worktree lifecycle)
+**Related:** Lesson #1 (pre-commit environment), Lesson #3 (worktree lifecycle)
 
 ---
 
@@ -105,15 +105,15 @@ variables:
 
 ---
 
-## Why this isn't covered by Lesson #1 or #13
+## Why this isn't covered by Lesson #1 or #3
 
 - **Lesson #1** addresses pre-commit hook PATH issues — different layer
   (hook environment), different symptom (hook fails to find tools)
-- **Lesson #13** addresses worktree lifecycle traps — different
+- **Lesson #3** addresses worktree lifecycle traps — different
   problem class (filesystem state vs shell quoting)
 
 This is its own family: **shell-quoting boundary errors in cross-tool
-invocations**. Could expand to a Lesson #14 family later if other
+invocations**. Could expand to a Lesson #4 family later if other
 shell-quoting issues surface (e.g., PowerShell → WSL, Claude Code Bash
 tool → WSL bash, etc.).
 
@@ -128,15 +128,15 @@ Batch 2 (occurrences 1-3, each documented in Batch 2 closeout
 addendum §6): file-existence checks, vet-grep loop, cherry-pick loop.
 
 Batch 3 self-validations during own commit work (Batch 3 closeout
-2026-05-13, §"Lesson #14 self-validations during Batch 3"):
+2026-05-13, §"Lesson #4 self-validations during Batch 3"):
 
 4. Stat iteration loop: `for h in ... ; do git show --stat $h; done`
    inside `wsl ... bash -c '...'` printed last hash 4× instead of
-   iterating. Per Lesson #14 prevention, restructured as 4 separate
+   iterating. Per Lesson #4 prevention, restructured as 4 separate
    `git show` calls chained with `&&`.
 5. Commit-3 body cosmetic degradation: `\$var` literal in heredoc
    body was stripped/expanded somewhere in the Windows→WSL→bash arg
-   pipeline. Lesson #14 file content itself remained intact; only
+   pipeline. Lesson #4 file content itself remained intact; only
    the commit message body was cosmetically affected.
 
 Mini-Batch 3.5 self-validation during own commit work (Mini-Batch 3.5
