@@ -151,6 +151,51 @@ to `{1,2,3,5,7,8}`, the audit trail would have been clean but Chat
 tab's drafting weakness would have gone uncaught, and similar errors
 would recur.
 
+### Sub-rule: Cray-direct constitutional codification path
+
+**Pattern observed (Session 11, 2026-05-16, commit `dd65d9b`):**
+
+Code tab authored CLAUDE.md §11 "Transcript Handoff" subsection under
+direct Cray (Tier 3) wording approval, codifying an existing runbook
+(`docs/runbooks/transcript-handoff.md`) into constitutional form.
+Normally constitutional content originates from Chat (Tier 1) design
+per §2 above.
+
+**When the path is valid:**
+
+The Cray-direct codification path is acceptable when ALL apply:
+
+1. **Source exists** — the content being codified is already authoritative
+   in a non-constitutional artifact (runbook, lesson, ADR, established
+   convention)
+2. **Codification is thin** — the constitutional text adds invariant
+   wording + pointer, not new design decisions
+3. **Cray initiates explicitly** — direct instruction to Code, not
+   inferred from context
+4. **Post-hoc ratification follows** — Chat reviews the resulting
+   constitutional text + source artifact for fit; ratification is logged
+   (this sub-rule + cross-reference in the relevant lesson body)
+
+**When Chat-first design is still required:**
+
+- Net-new constitutional content (no existing source artifact)
+- Multi-tier policy (affects Tier 0 / Tier 1 boundaries)
+- Conflict with existing precedence rules (§1)
+- Wording that encodes design decisions not yet settled
+
+**Asymmetry with §2 main rule:**
+
+The main rule says "Chat designs / Code executes." This sub-rule does not
+weaken that — design is still Chat's; codification of *already-designed*
+content can be Code's when Cray initiates. The Tier 3 (Cray) authority
+chain remains: Cray sees runbook → Cray instructs Code → Code codifies →
+Chat ratifies. Chat is not bypassed; the cycle is post-hoc instead of
+pre-hoc.
+
+**First instance:** §11 Transcript Handoff promotion (Session 11,
+commit `dd65d9b`, ratified Session 10-continuation via Chat tab on
+2026-05-17).
+
 ### 3. Coordination handoff format needs scope-precision discipline
 
 **Pattern observed:**

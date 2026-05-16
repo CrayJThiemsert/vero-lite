@@ -50,6 +50,16 @@ Chat/Cowork for continuation:
        --out .claude/handoffs/session-NN/<YYYY-MM-DD>-<HHMM>-code-<topic>-transcript.md'
    ```
 
+   **Finding the current session id (optional helper):**
+
+   ```bash
+   wsl -d ubuntu-24.04 -- bash -c \
+     'ls -t /mnt/c/Users/crayj/.claude/projects/--wsl-localhost-ubuntu-24-04-home-crayj-work-vero-lite/*.jsonl | head -1'
+   ```
+
+   Newest `.jsonl` mtime = current Code-tab session. Useful when the
+   session id was not captured at session start.
+
    - Pass the **explicit `.jsonl` path** (most robust across the
      WSL/Windows split). `--project-dir … --latest` also works.
    - Use `--last N` when only the final N turns matter; `--no-thinking`
@@ -83,12 +93,12 @@ Chat/Cowork for continuation:
 
 ## 4. Boundaries
 
-- This is a **Tier 2 operational** convention. It is documented here
-  (runbook = Tier 2 reference, non-constitutional) and is *not* yet
-  binding via CLAUDE.md §11. If it should bind every Code session, it
-  must be promoted into CLAUDE.md §11 / tier instructions through the
-  constitutional flow (Chat drafts → Code applies → restart bridge),
-  per Lesson #5 §1 — surfaced to Cray as an open item.
+- This is a **Tier 2 operational** convention, **binding via CLAUDE.md
+  §11 "Transcript Handoff"** (promoted Session 11, commit `dd65d9b`).
+  Runbook = procedural authority; CLAUDE.md §11 = constitutional trigger
+  + invariant. The constitutional cycle followed Lesson #5 §1
+  (Chat ratification post-hoc via the Cray-direct codification path —
+  see Lesson #5 §2 sub-rule).
 - The script never mutates the source JSONL and has no third-party deps.
 - Quality gate: `tools/handoffs/render_transcript.py` +
   `tests/test_render_transcript.py` are ruff-clean, ruff-formatted, and
