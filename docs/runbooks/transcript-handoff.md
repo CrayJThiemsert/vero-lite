@@ -67,10 +67,10 @@ Chat/Cowork for continuation:
    - Lesson #4: invoke with **literal paths, no `$var`** inside
      `wsl … bash -c '…'`.
 
-2. The output filename follows the locked handoff convention
-   (`code-` actor prefix; `transcript` is an extensible suffix beyond
-   the core enum — see restart-bridge §4 / PLAN-004 Phase A). It lands
-   under `.claude/handoffs/` which is **gitignored by design**
+2. The output filename follows the handoff convention
+   (`code-` actor prefix; `transcript` is a registered extensible
+   suffix — see `docs/conventions/handoff-frontmatter-schema.md`).
+   It lands under `.claude/handoffs/` which is **gitignored by design**
    (Lesson #5 §4) — it is a session-scoped working note, not a
    committed artifact.
 
