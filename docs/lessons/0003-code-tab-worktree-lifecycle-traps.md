@@ -79,10 +79,53 @@ If the hook was installed from a WSL native terminal in a previous session (when
 
 `uv run pre-commit run --all-files` works because `uv run` injects `.venv/Scripts/` into PATH before executing — bypassing the hook script entirely.
 
-**Fix (one-shot, scoped):**
+**Fix (one-shot, scoped) — both-layouts:**
+
 ```bash
-PATH="$PWD/.venv/Scripts:$PATH" git commit -F /tmp/commit-message.txt
+# Detect which layout this venv uses
+if   [ -d ".venv/bin" ];     then VENV_BIN=".venv/bin"
+elif [ -d ".venv/Scripts" ]; then VENV_BIN=".venv/Scripts"
+else echo "no venv layout found at .venv/{bin,Scripts}"; exit 1; fi
+
+# Prepend to PATH for the current shell + commit
+PATH="$PWD/$VENV_BIN:$PATH" git commit -F /tmp/commit-message.txt
+
+# Verify the tool now resolves (optional pre-flight)
+which pre-commit
 ```
+
+This repo (vero-lite, WSL Ubuntu) uses **`.venv/bin/`** (POSIX). Code
+tab sessions opened on Windows Git Bash over UNC paths may expect
+`.venv/Scripts/` from prior cross-platform habits — the detection step
+keeps the card valid on both layouts.
+
+**Fallback when no layout works:** drop to WSL-native commit (decision
+tree Branch 4 below) rather than recreating the venv mid-session.
+
+#### uv from wrong context is DESTRUCTIVE (not merely failing)
+
+Witnessed in Session 11 Lesson #5 apply cycle (closeout
+`2026-05-16-1204-code-lesson5-apply-batch-closeout.md` §5):
+
+- Running `uv run …` from Windows Git Bash (UNC-pathed) against a
+  WSL-Ubuntu-created `.venv/bin/` will **mutate the venv** (delete
+  binaries, leave dangling symlinks) rather than failing cleanly.
+- Recovery required a full WSL-native `uv sync --extra dev` to
+  reinstall the venv from scratch (Cray-approved 8-step recovery —
+  see closeout §5 step list).
+- **No clean failure mode** — outputs may look like success while the
+  venv is being destroyed beneath you.
+
+**Rule:** Always confirm shell context BEFORE any `uv run` / `uv sync`
+/ `uv pip` command:
+
+```bash
+uname -s      # expect Linux (WSL); MINGW64_NT-* = at-risk
+which uv      # expect WSL path under /home/<user>/
+```
+
+If `uname -s` returns `MINGW64_NT-*` or similar, the venv is at risk
+— route through WSL (decision tree Branch 4 below) instead.
 
 **Why not `uv run pre-commit install` to regenerate the hook?**
 The hook lives in the **main repo's** `.git/hooks/`. Re-installing from Code tab would write a Windows-path `INSTALL_PYTHON` — which then breaks `git commit` from WSL native on the main repo. The inline PATH fix is one-shot and affects only the current commit, leaving the main repo's hook untouched.
@@ -245,7 +288,7 @@ Specific commands (memorise this card):
 
 | Stage | Trap | Fix |
 |-------|------|-----|
-| Pre-commit | A3 | `PATH="$PWD/.venv/Scripts:$PATH" git commit ...` |
+| Pre-commit | A3 | Both-layouts detect → `PATH="$PWD/$VENV_BIN:$PATH" git commit ...` (see §A3 Fix block) |
 | `git add`/`commit` | B1, B2 | `wsl -u root -- chown -R crayj:crayj /home/crayj/work/vero-lite/.git` |
 | `gh pr merge` exit 1 | C1 | Verify PR state with `gh pr view --json`; if MERGED, just `git push origin --delete <branch>` |
 | `git worktree remove` permission denied | B3 | Skip; cleanup later with `wsl -u root -- rm -rf <path>` |
@@ -301,10 +344,38 @@ git command fails
 │       └── Verify: gh pr view --json → check state=MERGED
 │       └── Fix: git push origin --delete <branch>
 │
-└── Symptom is missing safe.directory after a "successful" config add
-    └── Family A1 (2-store gitconfig) — see Lesson #2
-        └── Fix: identify which gitconfig you're in; check both
+├── Symptom is missing safe.directory after a "successful" config add
+│   └── Family A1 (2-store gitconfig) — see Lesson #2
+│       └── Fix: identify which gitconfig you're in; check both
+│
+└── .venv layout absent/broken/destroyed → Branch 4 (WSL-native commit fallback below)
 ```
+
+### Branch 4 — WSL-native commit fallback
+
+When `.venv/{bin,Scripts}/` are absent, broken, or in an unknown state,
+**do not attempt recovery mid-session**. Route the commit through WSL
+bash directly:
+
+```bash
+wsl -d ubuntu-24.04 -- bash -c \
+  'cd /home/crayj/work/vero-lite && git add -A && git commit -F /tmp/msg.txt'
+```
+
+This bypasses the host pre-commit hook environment entirely (hooks run
+inside WSL's repo-local context via WSL Git's hook execution). Used as
+the actual fix in the Session 11 `.venv` incident; promoted from
+ad-hoc workaround to documented fallback by this amendment.
+
+**Per Lesson #4:** WSL `bash -c '…'` requires single-quoted body to
+preserve literal `$` and avoid Windows-side expansion.
+
+**When to use Branch 4:**
+
+- A3 both-layouts detection (§A3 Fix block) returns "no layout found"
+- Repeated venv destruction from prior wrong-context `uv` calls
+- Mid-session recovery would consume more time than worth (≥15 min)
+- Working tree is dirty and recovery would risk losing in-flight work
 
 ---
 
@@ -313,6 +384,7 @@ git command fails
 - ❌ **`git commit --no-verify`** — bypasses pre-commit. CLAUDE.md §8 forbids. Real fix is the inline PATH override (A3).
 - ❌ **`rm -rf` to clean up worktree leftover** — destructive, masks ownership root cause. Use `wsl -u root -- rm -rf` only after `git worktree remove` succeeded.
 - ❌ **`uv run pre-commit install` from Code tab to "fix" hook PATH** — overwrites main repo's hook with a Windows path, breaking WSL native git.
+- ❌ **`uv run` / `uv sync` / `uv pip` from the wrong shell context** — DESTRUCTIVE, not merely failing: mutates `.venv` (deletes binaries, leaves dangling symlinks). See §A3 "uv from wrong context is DESTRUCTIVE" subsection for detail + recovery.
 - ❌ **Retry-without-diagnose on permission errors** — hides which layer is root-owned. Use `find -user root` to see scope.
 - ❌ **Targeted chown on `index.lock` only** — works for B1 but misses B2's refs/objects. Sweep the parent.
 - ❌ **Disabling sandbox or WSL UID translation** — massive blast radius for a config-line problem.
@@ -331,6 +403,38 @@ For Session 10+ first-time-in-worktree work:
 - [ ] **Capture long outputs to `/tmp/*.log`** instead of relying on terminal stream — avoids notification truncation (this lesson's Worked Example would not exist without log files)
 
 ---
+
+## Environment is per-session, not guaranteed
+
+**Observation (Session 11):** Bash tool environment surfaced by Code
+tab session-start is not deterministic across sessions. The governance
+mini-batch session opened on WSL-native bash; the Lesson #5 apply
+session opened on Windows Git Bash over UNC paths. The difference is
+invisible from the user side but determines whether `uv`-family
+commands are safe or destructive (see §A3 "uv from wrong context is
+DESTRUCTIVE" subsection).
+
+**Pre-flight context check (recommended at every Code session start):**
+
+```bash
+uname -s      # expect Linux (WSL); MINGW64_NT-* = Windows Git Bash
+which git     # expect /usr/bin/git (WSL) or /mingw64/bin/git (Win Git Bash)
+which uv      # expect WSL-installed path under /home/<user>/
+pwd           # expect /home/<user>/work/vero-lite (WSL) or //wsl.localhost/... (UNC)
+```
+
+**Routing rules from context:**
+
+- WSL-native (`uname -s` = `Linux`, `pwd` under `/home/`): all commands
+  safe in-place.
+- Windows Git Bash over UNC: `uv`-family commands UNSAFE — route to
+  WSL via `wsl -d ubuntu-24.04 -- bash -c '…'` (per Lesson #4 +
+  decision-tree Branch 4 above).
+
+**Long-term:** WSL-native should become the default Code-tab posture
+for this repo. The mechanism by which session-start chooses Bash flavor
+is outside Code's control and is treated as adversarial environment
+input.
 
 ## Related
 

@@ -196,6 +196,89 @@ pre-hoc.
 commit `dd65d9b`, ratified Session 10-continuation via Chat tab on
 2026-05-17).
 
+### Sub-rule: Code-judgment-on-contradiction path
+
+**Pattern observed (Sessions 11–12, 2026-05-16 through 2026-05-18):**
+
+Code tab encountered **internal contradictions** or **dispatch-vs-file-reality
+contradictions** within Chat-authored dispatches, where one resolution
+was physically impossible or semantically wrong while the other honored
+an invariant directive.
+
+**When the Code-judgment path is valid:**
+
+Code may resolve dispatch contradictions on its own judgment when ALL
+apply:
+
+1. **Internal contradiction** — two parts of the same dispatch prescribe
+   incompatible actions (not Chat-vs-runbook, not Chat-vs-prior-batch)
+2. **One resolution is physically impossible OR semantically wrong** —
+   demonstrable from filesystem reality, Git semantics, or established
+   convention (not from preference)
+3. **Code surfaces transparently** — stop-and-ask + closeout §
+   "deviations / surfaces" must record: the contradiction, the chosen
+   resolution, the rejected alternative, and the upstream remediation
+   recommendation
+4. **No design decision is bypassed** — Code resolves contradictions
+   *within* an already-designed batch, not design decisions themselves
+   (those still go back to Chat per §2 main rule)
+
+**When to stop-and-ask instead:**
+
+- Contradiction is **between** the dispatch and an external authoritative
+  source (CLAUDE.md, ADR, prior closeout, **or an external file's
+  actual current state**) — that's Chat-design territory, not
+  Code-judgment territory
+- Both resolutions are physically buildable + semantically defensible —
+  Chat must pick (Code lacks the cross-batch context to choose)
+- Resolution would change scope, file count, or commit shape materially
+  (e.g., turning a 1-commit batch into 2; turning a "lesson edit" into
+  a "constitutional edit")
+
+**Asymmetry with the main rule + Cray-direct path:**
+
+| Sub-rule | Initiator | Designer | Ratifier |
+|---|---|---|---|
+| §2 main rule | Cray | Chat | (none — direct design) |
+| Cray-direct codification | Cray | Code (thin codify) | Chat (post-hoc) |
+| **Code-judgment-on-contradiction (this rule)** | (none — triggered by dispatch flaw) | **Code (resolution)** | **Chat (post-hoc, via deviation review)** |
+
+The pattern preserves Chat-design / Code-executes (§2 main rule) because
+Code's "design" here is *resolving* a Chat design flaw, not authoring
+new design. Chat's review-via-deviation-acceptance restores the
+authority chain post-hoc.
+
+**First three instances (cross-reference):**
+
+1. **Session 11, commit `8d570b4`** — Code added `AI-assisted per project
+   convention.` to commit body per CLAUDE.md §7 despite dispatch §7
+   verbatim omitting it. Surfaced in
+   `2026-05-17-2301-code-section11-ratification-closeout.md` §"Deviation"
+   and ratified by Chat in this lesson cleanup batch.
+
+2. **Session 12, commit `ec38e2b`** — Code resolved schema-mismatch +
+   `head_commit` semantic + empty-match contradictions per
+   `2026-05-18-1202-...` §6.1 / §6.2 / §6.3. Resolved internally per
+   "internal contradiction" branch above.
+
+3. **Session 12, no-commit (dispatch-vs-file-reality family)** — Code
+   applied the "When to stop-and-ask instead" clause **twice consecutively**
+   to the lesson-cleanup dispatch series (v1 → v1-midflight pause; v2 →
+   v2-midflight pause). Both pauses surfaced anchor-mismatch contradictions
+   between dispatch text and external file reality (`docs/STATUS.md`
+   missing the "Field semantics / At each future / Q4 detection" blocks
+   per v1; `docs/lessons/0003-...` L315 bullet text fabricated per v2).
+   Both routed correctly to Chat-design territory (not Code-resolve).
+   Surfaced in `2026-05-18-1450-code-lesson-cleanup-midflight.md` +
+   `2026-05-18-1528-code-lesson-cleanup-v2-midflight.md`; resolved by
+   v3 re-dispatch (this dispatch).
+
+The three instances triggered upstream Chat-side improvements:
+- §3 schema-fidelity discipline (this lesson, §3 amendment below) — including failure modes #4 (annotation) and now #5 (inferred-text)
+- Q4 spec correction (STATUS.md additive subsection, this batch §6)
+- Meta-recursive validation note bumped to "two validations" — the schema-fidelity rule was first validated by Code catching the rule's own codifying dispatch (twice in a row)
+- **Chat-side anchor verification protocol** (this batch §6.5 — new section in chat_tab_instructions.md + new Tier 1 self-check item)
+
 ### 3. Coordination handoff format needs scope-precision discipline
 
 **Pattern observed:**
@@ -240,6 +323,169 @@ When listing scope in coordination handoffs, use this format:
 - File X §M — index/cross-ref update because of primary §N
 - File Z §M — pointer update because of primary
 ```
+
+### Sub-rule: Schema-fidelity discipline for Chat dispatches
+
+**Pattern observed across Sessions 11–12:**
+
+Chat dispatches that prescribe edits to existing files must reference
+the file's **actual current schema/structure**, not a remembered or
+inferred one. Five failure modes seen:
+
+1. **Line-mapping gap (Session 11 apply-batch, Lesson #5 §3 finding 4):**
+   Apply-batch dispatch echoed Code's pre-flight grep line numbers
+   without cross-checking against anchored file content. The `0004-…md`
+   mapping was wrong + incomplete (missed line 108).
+
+2. **Column-count mismatch (Session 12 STATUS staleness execute,
+   deviation 6.1):** Dispatch §4.2 prescribed 4-column row templates
+   for a 3-column live table; the verbatim template would have rendered
+   inconsistently. Code reconciled (merge `detail`+`commit` →
+   `Reference`) honoring the "match existing format" directive.
+
+3. **Empty-match vs ambiguity (Session 12 STATUS staleness execute,
+   deviation 6.3):** Dispatch §4.3 step 1 instructed `[x]`-ing
+   pre-existing TODOs matching given criteria; zero matched (pre-edit
+   STATUS predated all referenced work). Code treated as empty-match
+   (proceed) not ambiguity (stop-and-ask) — correct per scope discipline,
+   but the dispatch should have said "if any" to spare the disambiguation.
+
+4. **Annotation-as-content confusion (Session 12 lesson cleanup v1,
+   midflight pause):** Dispatch v1 §6 instructed "replace" of three
+   blocks in `docs/STATUS.md` Update Workflow that **did not exist in
+   the file at all** — Chat had confused *dispatch-side annotation*
+   ("Field semantics codified here for future closeouts to follow…")
+   from the predecessor execute-dispatch `2026-05-18-1143` §3 with
+   *content actually written into STATUS.md by execute commit `ec38e2b`*.
+   Code surfaced via midflight `2026-05-18-1450-...`; batch paused
+   pre-execution; v2 re-dispatch made the edit *additive* instead of
+   *replace* (Option 6-A).
+
+5. **Inferred-text-as-content (Session 12 lesson cleanup v2, midflight
+   pause):** Dispatch v2 §3.2 Part A quoted a "current bullet at L315"
+   that did not exist in `docs/lessons/0003-...` — Chat had inferred
+   what an "understated `uv run` anti-pattern bullet" would say from
+   mental model, attributed the fabricated text as "verbatim per Code
+   midflight" (which it was not), and would have replaced a valid +
+   unrelated anti-pattern (`uv run pre-commit install` hook-regen) if
+   executed. Code surfaced via midflight `2026-05-18-1528-...`; batch
+   paused pre-execution; v3 re-dispatch made §3.2 Part A *additive*
+   (new bullet in the list, no replace).
+
+**Schema-fidelity rules for Chat:**
+
+1. **Before drafting edits to a structured section** (table, list,
+   frontmatter, schema, or any existing-content "replace"), Chat must
+   either:
+   - have read the file's current state in Project Knowledge or via
+     Code-pasted snippet within the same Chat thread, OR
+   - phrase the dispatch as **directive + adapt** ("locate <anchor>;
+     match its existing structure; apply <semantic change>") rather
+     than verbatim template, OR
+   - frame the edit as **additive** (append new content) rather than
+     **replace** (modify existing content) when current-state knowledge
+     is incomplete.
+
+2. **Conditional matches must be marked.** When instructing Code to
+   "mark/edit/remove pre-existing items matching X", phrase as
+   "if any pre-existing items match X" so zero-match is unambiguously
+   non-blocking (not "ambiguity → stop-and-ask").
+
+3. **Line numbers are advisory, never authoritative.** Anchors are
+   headings, structural landmarks, and unique nearby strings — not
+   line numbers. Line numbers cited in dispatch must be tagged
+   `(approximate)` or `(per closeout X §Y)` so Code knows to verify
+   structurally, not literally.
+
+4. **Templates that disagree with directives lose.** When a verbatim
+   template (reference value) conflicts with an invariant directive
+   ("match existing format", "single commit", "physically buildable"),
+   the invariant directive wins — Code applies the Code-judgment-on-
+   contradiction path (§2 sub-rule above) and surfaces.
+
+5. **Only verified-from-disk text qualifies as "verbatim".** Three
+   sub-rules:
+
+   a. **Annotation is not content.** Dispatch text describing *what a
+      field means* or *how a future ritual works* is annotation for the
+      reader of the dispatch — it is NOT automatically content to be
+      written into the target file. Chat must explicitly state "write
+      this text into the target file at <anchor>" if it is intended as
+      file content. Cross-reference §1 (read-current-state) to verify
+      what is actually in the file vs what is dispatch-side annotation.
+
+   b. **Inferred-text is not content.** If Chat does not have direct
+      file content access (file not in Project Knowledge, not pasted by
+      Code in this thread), Chat MUST NOT construct verbatim "current
+      text" quotes from inference, mental model, or "what an X bullet
+      would probably say". Such inference produces fabricated quotes
+      that may not match disk reality (and may unintentionally target
+      valid unrelated content for destruction). Required: either use
+      Code's actual verbatim quote (from a prior midflight, closeout,
+      or pasted snippet) OR phrase the edit as additive/adapt per
+      rule #1.
+
+   c. **Misattribution check.** When citing a quote as "verbatim per
+      <source>", Chat must verify the source actually quoted that text.
+      Code midflights and closeouts often cite line numbers + structural
+      context without quoting verbatim text; Chat citing those line
+      numbers does not automatically license attaching fabricated
+      verbatim quotes to them.
+
+**Anchor verification protocol (mandatory for Code per dispatch §2):**
+
+Before any edit to an existing file, Code must:
+
+- View the file at the anchor location specified in the dispatch
+- Verify the anchor exists (heading, landmark text, unique string)
+- Verify line numbers (if cited) are within ±5 lines of expected; if
+  more drift, treat as advisory only
+- For "replace" instructions: verify the text being replaced exists
+  verbatim (or with explicit drift tolerance)
+- For "append/insert" instructions: verify the anchor before/after
+  reference is unambiguous
+- If ANY check fails: stop-and-ask, do not silently relocate
+
+This protocol applies equally when the dispatch claims content was
+"added by commit X" or "verbatim per <source>" — the claim is
+advisory, not authoritative; verify against actual file state.
+
+**Why this lives in §3 not §2:**
+
+§2 covers *who designs vs who executes* (cross-tier authority). §3
+covers *how design encodes precise scope* (within-tier precision).
+Schema-fidelity is the latter — a Chat-side authoring discipline that
+makes Code execution unambiguous. The Code-judgment-on-contradiction
+path (§2 sub-rule) is the safety valve for when §3 fails; this §3
+sub-rule is the prevention layer.
+
+**Meta-recursive validation note:**
+
+This sub-rule was **first validated TWICE consecutively by Code catching
+the rule's own codifying dispatch series**:
+
+- **First validation** — v1 lesson cleanup dispatch
+  (`2026-05-18-1440-chat-lesson-cleanup-batch.md`) §6 fell into failure
+  mode #4 above (annotation-as-content confusion). Code applied the
+  rule (in its dispatch-text form, pre-commit) to its own dispatch and
+  correctly identified the violation, paused via midflight
+  `2026-05-18-1450-code-lesson-cleanup-midflight.md`, and forced v2
+  re-dispatch.
+
+- **Second validation** — v2 lesson cleanup dispatch
+  (`2026-05-18-1519-chat-lesson-cleanup-batch-v2.md`) §3.2 Part A fell
+  into failure mode #5 (inferred-text-as-content). Same rule caught
+  same dispatch author (Chat) committing a related-but-distinct failure
+  mode; paused via midflight
+  `2026-05-18-1528-code-lesson-cleanup-v2-midflight.md`; forced v3
+  re-dispatch (this dispatch).
+
+The rule has earned commit-merit on its own merits — twice over.
+
+Pattern of repeat-offense informed the v3 addition of Chat-side
+prevention discipline in `docs/conventions/chat_tab_instructions.md`
+(operational layer); this sub-rule (durable-knowledge layer) +
+operational layer form the two-tier prevention design.
 
 ### 4. Handoff files are gitignored by design — surface clearly
 

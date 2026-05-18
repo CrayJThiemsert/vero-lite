@@ -102,6 +102,56 @@ prefix discipline is already locked in.
 5. **Respect wording discipline** — verify public artifacts free of
    brand names / internal codes before declaring draft complete.
 
+### Chat-side anchor verification protocol (Lesson #5 §3 schema-fidelity, operational layer)
+
+Before drafting any dispatch that instructs **replacing** existing
+content in a file, Chat must verify the target text exists. Three
+acceptable verification paths:
+
+1. **Read-from-PK:** The target file is in Project Knowledge; Chat
+   uses `project_knowledge_search` to retrieve the actual current
+   text before quoting it as "verbatim".
+2. **Code-pasted snippet:** Code (in this Chat thread, via Cray relay)
+   has pasted the verbatim text from disk. Chat references that paste
+   directly.
+3. **Additive-only fallback:** Chat does not have access to current
+   text → dispatch the edit as **additive** (append/insert new content)
+   rather than **replace**. The Lesson #5 §3 sub-rule allows this as
+   the third option when current-state knowledge is incomplete.
+
+**Forbidden in dispatches:**
+
+- Quoting "current text at L<N>" or "current bullet at <anchor>" if
+  Chat has only Code's location reference (line number, structural
+  hint) without Code's verbatim quote — this fabricates content (the
+  Lesson #5 §3 failure mode #5 "inferred-text-as-content").
+- Attributing inferred text as "verbatim per Code midflight" when
+  Code's midflight cited location but did not quote the text.
+- Treating predecessor-dispatch annotation as if it were file content
+  (the Lesson #5 §3 failure mode #4 "annotation-as-content").
+
+**Workflow check:**
+
+When drafting any `replace <old> with <new>` instruction in a dispatch,
+Chat asks itself:
+
+- "Did I read `<old>` from PK or a Code paste within the last few
+  turns of this thread?"
+- If NO: reframe the edit as additive (insert new content at an anchor),
+  OR request Code paste the relevant snippet first, OR explicitly mark
+  the quote as `(Chat speculation — Code: verify against disk and
+  surface any mismatch as schema-fidelity stop-and-ask)`.
+
+This protocol was codified 2026-05-18 after three consecutive Chat-side
+schema-fidelity failures within one batch cycle (lesson cleanup v1 §6
+annotation-as-content, lesson cleanup v2 §3.2A inferred-text-as-content;
+plus the STATUS staleness execute batch's deviations 6.1/6.2/6.3 which
+were dispatch-internal contradictions rather than file-reality
+mismatches). The pattern of repeat-offense within a single batch cycle
+established that durable-knowledge codification (Lesson #5 §3) alone
+was insufficient; this operational-layer protocol provides Chat with
+a concrete pre-draft self-check.
+
 ### Tier 1 self-check (apply before declaring ANY draft complete)
 
 Before saying "draft ready for Cray review", verify ALL of:
@@ -116,6 +166,10 @@ Before saying "draft ready for Cray review", verify ALL of:
       no full brand names)
 - [ ] Cross-references checked: ADR numbers exist, paths resolve,
       no broken internal links
+- [ ] Anchor verification: any "replace existing text" instruction
+      cites either a PK-read source or a Code-pasted verbatim source —
+      no fabricated/inferred quotes (Lesson #5 §3 failure modes #4 + #5;
+      see "Chat-side anchor verification protocol" section above)
 
 Flagging in-scope ambiguity is correct behavior. Surface and pause rather
 than silently choose.
