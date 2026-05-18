@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-19T00:57:00+07:00
+last_updated: 2026-05-19T02:41:00+07:00
 session: 10
-current_batch: lesson-cleanup (DONE 2026-05-18, commit `96bf51b`); no batch in-flight
-current_actor: cray-decision-pending (PLAN-004 Phase A gated on OQ #2/#4)
-blocked_on: nothing (no batch in-flight)
-next_action: PLAN-004 Phase A kickoff (handoff-frontmatter validator + schema + backfill) — gated on Cray Open Questions #2 (actor enum) + #4 (status enum granularity); awaiting Chat dispatch
-head_commit: 1ddd9b6
-recent_commits: [96bf51b, ec38e2b, 8d570b4, dd65d9b, 98e5591, c85a595, 8274a66, ac3baf3]
+current_batch: plan004-batch1-tooling (DONE)
+current_actor: chat (drafting Batch 2 dispatch); code (standby)
+blocked_on: nothing
+next_action: PLAN-004 Phase A Batch 2 retro-migration (~50 handoff files to schema; working-tree only + thin docs/logs/ summary per Lesson #5 §4)
+head_commit: 9afde79
+recent_commits: [9afde79, 1ddd9b6, 3b86257, 5cdd6a1, 9a6aa98, b81817b, 96bf51b, 8d570b4]
 ---
 
 # vero-lite — Project Status
@@ -43,7 +43,7 @@ working-tree only + thin `docs/logs/` tracked summary per Lesson #5 §4).
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-05-19 | PLAN-004 v2 Phase A Batch 1 landed | Schema doc + tools/handoffs/{_schema,validate_handoff,handoff_status}.py + ≥14 tests + runbook cross-link + CLAUDE.md §10 widening (docs/ → docs/ + tools/, Option B per Code midflight) | `<Batch1-last-hash>` |
+| 2026-05-19 | PLAN-004 v2 Phase A Batch 1 landed | Schema doc + tools/handoffs/{_schema,validate_handoff,handoff_status}.py + ≥14 tests + runbook cross-link + CLAUDE.md §10 widening (docs/ → docs/ + tools/, Option B per Code midflight) | `9afde79` |
 | 2026-05-17 | §11 Transcript Handoff ratified — Lesson #5 §2 "Cray-direct constitutional codification path" sub-rule + runbook §4 refresh + runbook §2 helper | `8d570b4` |
 | 2026-05-16 | CLAUDE.md §11 "Transcript Handoff" constitutional subsection promoted — first instance of Cray-direct codification path (Lesson #5 §2 sub-rule) | `dd65d9b` |
 | 2026-05-16 | Transcript tooling + runbook landed — `tools/handoffs/render_transcript.py` (stdlib-only, mypy-strict) + tests + `docs/runbooks/transcript-handoff.md` | `98e5591` |
