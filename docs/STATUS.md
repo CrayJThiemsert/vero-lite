@@ -5,7 +5,7 @@ current_batch: lesson-cleanup (DONE 2026-05-18, commit `96bf51b`); no batch in-f
 current_actor: cray-decision-pending (PLAN-004 Phase A gated on OQ #2/#4)
 blocked_on: nothing (no batch in-flight)
 next_action: PLAN-004 Phase A kickoff (handoff-frontmatter validator + schema + backfill) — gated on Cray Open Questions #2 (actor enum) + #4 (status enum granularity); awaiting Chat dispatch
-head_commit: 96bf51b
+head_commit: 1ddd9b6
 recent_commits: [96bf51b, ec38e2b, 8d570b4, dd65d9b, 98e5591, c85a595, 8274a66, ac3baf3]
 ---
 
@@ -18,23 +18,32 @@ recent_commits: [96bf51b, ec38e2b, 8d570b4, dd65d9b, 98e5591, c85a595, 8274a66, 
 
 ## Current Focus
 
-**Session 10 — audit-cycle batches 1+2 closed; STATUS.md catch-up in flight; Lesson cleanup batch queued next.**
+**Session 10 — PLAN-004 Phase A Batch 1 in flight; Batch 2 retro-migration queued next.**
 
-Recent activity (post Batch 3 closeout 2026-05-13):
+Recent activity (post lesson-cleanup-v3 close 2026-05-18):
 
-- **Governance mini-batch** (`ac3baf3`, 2026-05-15) — CLAUDE.md §1 precedence rule + §6 4-tier table + §11 Tier 2 ops; tier instruction files canonicalized in `docs/conventions/`. Resolved Session 10 audit findings {1, 2, 3, 5, 7, 8}.
-- **Lesson #5 audit baseline applied** (`8274a66`, 2026-05-16) — `docs/lessons/0005-tier-system-audit-2026-05-15.md` landed; in-repo lesson references normalized to file-aligned numbering (`Lesson #5` ↔ `0005-*.md`).
-- **Offset sweep** (`c85a595`, 2026-05-16) — full normalization of `Lesson #12/#13/#14` → `#2/#3/#4` across repo (scope expanded from initial `#13/#14` per Cray decision).
-- **Transcript tooling** (`98e5591`, 2026-05-16) — new `tools/handoffs/render_transcript.py` (stdlib-only) + `tests/test_render_transcript.py` (14 tests, ruff/ruff-format/mypy-strict clean) + `docs/runbooks/transcript-handoff.md`. Renders Claude Code session JSONL to flat Markdown for Chat/Cowork handback.
-- **§11 Transcript Handoff constitutional subsection** (`dd65d9b`, 2026-05-16) — CLAUDE.md §11 Tier 2 Operational Policy gained a "Transcript Handoff" subsection promoted via the Cray-direct codification path. Restart bridge `2026-05-16-1337` consumed/closed.
-- **§11 ratification** (`8d570b4`, 2026-05-17) — Lesson #5 §2 sub-rule "Cray-direct constitutional codification path" added; runbook §4 refreshed to reflect post-promotion binding state; runbook §2 session-id discovery helper added.
+- **Lesson cleanup batch v3** (`96bf51b`, 2026-05-18) — 5-file batch
+  closing the three-dispatch cycle (Lesson #3 amendment, Lesson #5
+  §2/§3 amendment, Lesson #6 new, STATUS Q4 spec, chat_tab_instructions
+  anchor protocol). Codified dual-layer prevention (durable +
+  operational) for schema-fidelity discipline.
+- **STATUS Q4 head_commit semantics** (additive in `96bf51b`) — defined
+  newest substantive commit (excluding `^docs(status):` housekeeping);
+  reader/writer recipes using `git log --invert-grep`.
+- **PLAN-004 Phase A Batch 1 dispatched** (this batch, v2 re-dispatch
+  after v1 Code midflight pause + Cray ratification of §10 Option B) —
+  schema doc + tools (`tools/handoffs/{_schema,validate_handoff,handoff_status}.py`) +
+  tests (≥14) + runbook cross-link + CLAUDE.md §10 widening
+  (`docs/` → `docs/ + tools/`).
 
-Next: Lesson cleanup batch (Lesson #3 amendment for `.venv` incident findings 1-3 + env observation; Lesson #5 §3 amendment for dispatch line-mapping; Lesson #6 new for Code-surface→Chat-redispatch pattern). Then PLAN-004 Phase A (gated on Cray OQs #2 and #4).
+Next: PLAN-004 Phase A Batch 2 (retro-migrate ~50 handoff files to schema,
+working-tree only + thin `docs/logs/` tracked summary per Lesson #5 §4).
 
 ## Recent Decisions (last 5)
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-19 | PLAN-004 v2 Phase A Batch 1 landed | Schema doc + tools/handoffs/{_schema,validate_handoff,handoff_status}.py + ≥14 tests + runbook cross-link + CLAUDE.md §10 widening (docs/ → docs/ + tools/, Option B per Code midflight) | `<Batch1-last-hash>` |
 | 2026-05-17 | §11 Transcript Handoff ratified — Lesson #5 §2 "Cray-direct constitutional codification path" sub-rule + runbook §4 refresh + runbook §2 helper | `8d570b4` |
 | 2026-05-16 | CLAUDE.md §11 "Transcript Handoff" constitutional subsection promoted — first instance of Cray-direct codification path (Lesson #5 §2 sub-rule) | `dd65d9b` |
 | 2026-05-16 | Transcript tooling + runbook landed — `tools/handoffs/render_transcript.py` (stdlib-only, mypy-strict) + tests + `docs/runbooks/transcript-handoff.md` | `98e5591` |

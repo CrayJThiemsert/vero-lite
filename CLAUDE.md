@@ -155,7 +155,7 @@ Read in this order at session start:
 6. `services/api/main.py` + related code
 7. `tests/` — current coverage and patterns
 
-## 10. Index → docs/
+## 10. Index → docs/ + tools/
 
 | Path | Purpose |
 |------|---------|
@@ -165,8 +165,9 @@ Read in this order at session start:
 | `docs/plans/done/` | Completed plans (archeology) |
 | `docs/lessons/` | Session learnings (durable knowledge) |
 | `docs/runbooks/` | Operational guides |
-| `docs/conventions/` | Tech stack, code style, glossary, tier instructions (canonical) |
+| `docs/conventions/` | Tech stack, code style, glossary, tier instructions, handoff frontmatter schema (canonical) |
 | `docs/for_llm/` | Curated snippets for cold-start LLM sessions (derived from canonicals — see runbook) |
+| `tools/handoffs/` | Handoff tooling (transcript rendering, frontmatter validation, dashboard reader) |
 
 ## 11. Tier 2 (Code) Operational Policy
 
