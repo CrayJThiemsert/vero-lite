@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-18T11:43:00+07:00
+last_updated: 2026-05-19T00:57:00+07:00
 session: 10
-current_batch: status-md-staleness-execute (in-progress at dispatch; mark DONE on closeout)
-current_actor: code (executing this batch)
-blocked_on: nothing
-next_action: Lesson cleanup batch (Lesson #3 amendment + Lesson #5 §3 amendment + Lesson #6 new — 3-file batch from .venv incident findings)
-head_commit: 8d570b4
-recent_commits: [8d570b4, dd65d9b, 98e5591, c85a595, 8274a66, ac3baf3]
+current_batch: lesson-cleanup (DONE 2026-05-18, commit `96bf51b`); no batch in-flight
+current_actor: cray-decision-pending (PLAN-004 Phase A gated on OQ #2/#4)
+blocked_on: nothing (no batch in-flight)
+next_action: PLAN-004 Phase A kickoff (handoff-frontmatter validator + schema + backfill) — gated on Cray Open Questions #2 (actor enum) + #4 (status enum granularity); awaiting Chat dispatch
+head_commit: 96bf51b
+recent_commits: [96bf51b, ec38e2b, 8d570b4, dd65d9b, 98e5591, c85a595, 8274a66, ac3baf3]
 ---
 
 # vero-lite — Project Status
