@@ -194,6 +194,70 @@ manifest §4.0 surfaced the harness artifact. The two-layer design
 2026-05-18 anchor-verification dual-layer precedent (Lesson #5 §3 +
 "Chat-side anchor verification protocol" section).
 
+### Dispatch tooling/schema assumption pre-verification (Lesson #8 candidate, operational layer)
+
+Data-transformation dispatches (renames, migrations, ref-graph
+fixups, schema backfills) repeatedly fail when the dispatch *asserts
+how the validator/schema/tooling behaves* without verifying against
+the actual tool. PLAN-004 Batch 2 Step 2b.1 surfaced **5 such gaps in
+one batch** — §3.6.bis (placeholder case uncovered), §3.4.bis
+(semantic role — datum vs pointer — uncovered), PRESERVE-self-reference
+(Code's own surface is a governance record), J4 (`suffix:` enum is
+closed, not the asserted "extensible-suffix policy"), J5
+(`_rename-map.md` filename structurally cannot pass the handoff regex)
+— each a correct Code surface, each a ratification round-trip.
+
+**Forbidden in any data-transformation dispatch:**
+
+- Asserting a schema / enum / filename / policy behaves a certain way
+  ("valid per extensible-suffix policy", "`git mv` works on the
+  gitignored dir", "scan exactly these paths") without having run the
+  actual validator/tool against the relevant template or example
+- An allowlist scan scope where a closed denylist is the correct form
+  (allowlists are structurally incomplete — they recur as "forgot
+  path X" surfaces; cf. J3)
+- A preflight baseline anchored on a non-invariant (e.g. total file
+  count, which grows monotonically) instead of error count + FAIL
+  cohort (cf. J2)
+
+**Required — pre-issue verification:**
+
+Before issuing a data-transformation dispatch, run the actual
+validator/tool against (a) the dispatch's own frontmatter/filename
+templates, (b) each artifact the batch will create or touch, (c) the
+post-state cohort. Fold any gap into the dispatch as a **pre-locked
+rule**, not a post-dispatch midflight.
+
+**Required — mandate the bounded comprehensive pre-flight:**
+
+Every data-transformation dispatch must instruct Code, as its first
+execution step, to validate all bounded artifacts against the actual
+validator and surface ALL findings as ONE consolidated set (proven in
+Step 2b.1 mini-ratification #5 "Decision B": converted an open-ended
+per-gap surface loop into 0 findings + a single-pass finish).
+
+**Workflow check when drafting a data-transformation dispatch:**
+
+- "Does this dispatch assert any tool / schema / filename behavior I
+  have not verified against the actual tool this thread?" → if yes,
+  verify or pre-lock the rule before sending.
+- "Is the scan scope a denylist (closed) or an allowlist (incomplete)?"
+  → prefer denylist.
+- "Is there a first-step bounded comprehensive pre-flight directive?"
+  → if no, add one.
+
+This protocol was codified 2026-05-19 after PLAN-004 Batch 2 Step 2b.1
+surfaced 5 ruleset/tooling-assumption gaps in one batch (closeout
+`2026-05-19-1814-code-plan004-batch2b1-rename-and-refgraph-closeout.md`,
+§3 five-surface ledger). It is the operational layer of the same
+two-layer design as the 2026-05-18 / 2026-05-19 precedents; the
+**durable Lesson #8 mint remains deferred to the post-Phase-A
+retrospective** per Step 2b.1 mini-ratification #5 (Q3=A). This
+operational instruction codifies now (immediate Step 2b.2 benefit);
+the durable lesson's framing is refined after Phase B observation. No
+contradiction — the dual-layer split (fast operational protocol +
+lagging durable lesson) is itself the established precedent.
+
 ### Tier 1 self-check (apply before declaring ANY draft complete)
 
 Before saying "draft ready for Cray review", verify ALL of:
@@ -217,6 +281,12 @@ Before saying "draft ready for Cray review", verify ALL of:
       `main()` return probe, or behavioral side-effect assertion — NOT
       `echo $?` or "expect exit N" (Lesson #7; see "Dispatch
       acceptance-criteria reliable-verification" section above)
+- [ ] Tooling/schema pre-verification: for any data-transformation
+      dispatch, every tool/schema/filename assumption is verified
+      against the actual validator, the scan scope is a denylist (not
+      an allowlist), and a first-step bounded comprehensive pre-flight
+      directive is present (Step 2b.1 dual-layer protocol; see "Dispatch
+      tooling/schema assumption pre-verification" section above)
 
 Flagging in-scope ambiguity is correct behavior. Surface and pause rather
 than silently choose.
