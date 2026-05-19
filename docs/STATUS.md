@@ -1,11 +1,11 @@
 ---
-last_updated: 2026-05-19T02:41:00+07:00
+last_updated: 2026-05-19T14:04:00+07:00
 session: 10
 current_batch: plan004-batch1-tooling (DONE)
 current_actor: chat (drafting Batch 2 dispatch); code (standby)
 blocked_on: nothing
 next_action: PLAN-004 Phase A Batch 2 retro-migration (~50 handoff files to schema; working-tree only + thin docs/logs/ summary per Lesson #5 §4)
-head_commit: 9afde79
+head_commit: 7f5035f
 recent_commits: [9afde79, 1ddd9b6, 3b86257, 5cdd6a1, 9a6aa98, b81817b, 96bf51b, 8d570b4]
 ---
 
