@@ -164,6 +164,7 @@ Read in this order at session start:
 | `docs/plans/` | Active execution plans |
 | `docs/plans/done/` | Completed plans (archeology) |
 | `docs/lessons/` | Session learnings (durable knowledge) |
+| `docs/logs/` | Thin tracked summaries of working-tree events (gitignored-closeout companions; PLAN-004 v2 D6 two-artifact evidence model) |
 | `docs/runbooks/` | Operational guides |
 | `docs/conventions/` | Tech stack, code style, glossary, tier instructions, handoff frontmatter schema (canonical) |
 | `docs/for_llm/` | Curated snippets for cold-start LLM sessions (derived from canonicals — see runbook) |
