@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-19T14:04:00+07:00
+last_updated: 2026-05-20T01:14:00+07:00
 session: 10
-current_batch: plan004-batch1-tooling (DONE)
-current_actor: chat (drafting Batch 2 dispatch); code (standby)
+current_batch: plan004-batch2 (2a + 2b.1 + 2b.2 DONE); pivoting to PLAN-003 (Cray Option-1, 2026-05-20)
+current_actor: chat (PLAN-003 prep); code (standby)
 blocked_on: nothing
-next_action: PLAN-004 Phase A Batch 2 retro-migration (~50 handoff files to schema; working-tree only + thin docs/logs/ summary per Lesson #5 §4)
-head_commit: 7f5035f
-recent_commits: [9afde79, 1ddd9b6, 3b86257, 5cdd6a1, 9a6aa98, b81817b, 96bf51b, 8d570b4]
+next_action: PLAN-003 kickoff — Ontology Engine (verticals/energy/ontology/energy_v0.yaml + code generator; the moat)
+head_commit: ad81e7e
+recent_commits: [ad81e7e, be38bce, 098f8cd, eb68546, 894a1e5, 7f5035f, 9afde79, 1ddd9b6]
 ---
 
 # vero-lite — Project Status
@@ -18,31 +18,36 @@ recent_commits: [9afde79, 1ddd9b6, 3b86257, 5cdd6a1, 9a6aa98, b81817b, 96bf51b, 
 
 ## Current Focus
 
-**Session 10 — PLAN-004 Phase A Batch 1 in flight; Batch 2 retro-migration queued next.**
+**Session 10 — PLAN-004 Phase A Batch 2 COMPLETE (2a + 2b.1 + 2b.2); strategic pivot to PLAN-003 (the moat).**
 
-Recent activity (post lesson-cleanup-v3 close 2026-05-18):
+- **PLAN-004 Batch 2 done:** Step 2a (20 token-bearing files migrated),
+  Step 2b.1 (12 `session10-*` renames + ref-graph fixup; a 5-cycle
+  surface→re-dispatch chain — a clean Lesson #6 instance), Step 2b.2
+  (post-recovery file frontmatter + body refs — single-pass, 0
+  pre-flight findings). **Every dated handoff is now schema-conformant**
+  (handoff-class FAIL = `{}`); only the 2 non-handoff companions
+  (`README.md`, `_rename-map.md`) remain non-conforming by filename —
+  expected per Decision A; Phase B validator-scope exclusion deferred.
+- **Pre-verification protocol codified** (`be38bce`) —
+  `docs/conventions/chat_tab_instructions.md` gained a third
+  operational-layer protocol (data-transformation dispatches must
+  verify tooling/schema assumptions against the actual validator
+  pre-issue + mandate a first-step bounded comprehensive pre-flight).
+  Proven in 2b.2: single-pass, 0 surfaces (vs 5 in 2b.1).
+- **Strategic pivot (Cray Option-1, 2026-05-20):** pause PLAN-004
+  Phase B/C (validator-scope exclusion, Cat G autofix, dashboard) →
+  prioritize **PLAN-003 (Ontology Engine — the moat)**.
 
-- **Lesson cleanup batch v3** (`96bf51b`, 2026-05-18) — 5-file batch
-  closing the three-dispatch cycle (Lesson #3 amendment, Lesson #5
-  §2/§3 amendment, Lesson #6 new, STATUS Q4 spec, chat_tab_instructions
-  anchor protocol). Codified dual-layer prevention (durable +
-  operational) for schema-fidelity discipline.
-- **STATUS Q4 head_commit semantics** (additive in `96bf51b`) — defined
-  newest substantive commit (excluding `^docs(status):` housekeeping);
-  reader/writer recipes using `git log --invert-grep`.
-- **PLAN-004 Phase A Batch 1 dispatched** (this batch, v2 re-dispatch
-  after v1 Code midflight pause + Cray ratification of §10 Option B) —
-  schema doc + tools (`tools/handoffs/{_schema,validate_handoff,handoff_status}.py`) +
-  tests (≥14) + runbook cross-link + CLAUDE.md §10 widening
-  (`docs/` → `docs/ + tools/`).
-
-Next: PLAN-004 Phase A Batch 2 (retro-migrate ~50 handoff files to schema,
-working-tree only + thin `docs/logs/` tracked summary per Lesson #5 §4).
+Next: PLAN-003 kickoff (Ontology Engine —
+`verticals/energy/ontology/energy_v0.yaml` + code generator).
 
 ## Recent Decisions (last 5)
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-20 | PLAN-004 Phase A Batch 2 COMPLETE — Step 2a (20 files) + 2b.1 (12 renames + ref-graph, 5-ratification surface→re-dispatch chain) + 2b.2 (post-recovery, single-pass). Handoff-class schema-FAIL = `{}` | `ad81e7e` (2b.2 anchor), `098f8cd` (2b.1), `7f5035f` (2a) |
+| 2026-05-20 | Strategic pivot — Option-1: pause PLAN-004 Phase B/C, prioritize PLAN-003 (Ontology Engine = the moat) | Cray decision 2026-05-20 |
+| 2026-05-20 | Chat dispatch tooling/schema pre-verification protocol codified (operational layer; durable Lesson #8 mint deferred post-Phase-A per Q3=A) | `be38bce` `docs/conventions/chat_tab_instructions.md` |
 | 2026-05-19 | PLAN-004 v2 Phase A Batch 1 landed | Schema doc + tools/handoffs/{_schema,validate_handoff,handoff_status}.py + ≥14 tests + runbook cross-link + CLAUDE.md §10 widening (docs/ → docs/ + tools/, Option B per Code midflight) | `9afde79` |
 | 2026-05-17 | §11 Transcript Handoff ratified — Lesson #5 §2 "Cray-direct constitutional codification path" sub-rule + runbook §4 refresh + runbook §2 helper | `8d570b4` |
 | 2026-05-16 | CLAUDE.md §11 "Transcript Handoff" constitutional subsection promoted — first instance of Cray-direct codification path (Lesson #5 §2 sub-rule) | `dd65d9b` |
@@ -71,7 +76,8 @@ working-tree only + thin `docs/logs/` tracked summary per Lesson #5 §4).
 - [x] **ADR-007** — OCT engine contracts (DataAdapter, RecommendedAction, three-layer wiring) *(Session 10 Batch 3)*
 - [x] **ADR-008** — YAML ontology specification (5 base types, JSON Schema validation) *(Session 10 Batch 3)*
 - [x] **`.gitignore` extension** — add `docs/research/private/` (Cowork closeout flag #1) *(Session 10 Batch 3-prep)*
-- [ ] **PLAN-003** — Ontology Engine implementation: `verticals/energy/ontology/energy_v0.yaml` (5 entities) + code generator — *the moat* *(Batch 4)*
+- [ ] **PLAN-003** — Ontology Engine implementation: `verticals/energy/ontology/energy_v0.yaml` (5 entities) + code generator — *the moat* ***(NEXT — Cray Option-1 priority, 2026-05-20)***
+- [ ] **PLAN-004 Phase B/C — DEFERRED (backlog, post-PLAN-003):** validator-scope exclusion (`README.md` / `_rename-map.md`, manifest §4.2/§6.1) + Cat G `references_*` autofix + Phase C handoff dashboard + OQ-2 systemic candidate (effective-vs-authored `status:` / archival flag so dead handoffs don't surface as actionable in the dashboard)
 - [ ] **ADR-NN (TBD, ≥ ADR-009) + PLAN-002** — Custom Postgres image with extensions (renumbered after ADR-005 reused for strategic pivot)
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
 - [ ] Extract `docs/conventions/git.md` from CLAUDE.md (low priority)
@@ -93,17 +99,17 @@ working-tree only + thin `docs/logs/` tracked summary per Lesson #5 §4).
 - [x] **PLAN-001** — Starter pack scaffold *(Session 4)*
 - [x] **ADR-003** — Service port strategy *(Session 4)*
 - [x] **Memory architecture implementation** *(Session 5)*
-- [ ] Lesson cleanup batch — Lesson #3 amendment (`.venv` incident findings 1-3 + environment observation), Lesson #5 §3 amendment (dispatch line-mapping gap), Lesson #6 new (Code-surface→Chat-redispatch pattern). Source: closeout `2026-05-16-1204` §6 + Code midflight `2026-05-18-1049` §4 item 2.
-- [ ] PLAN-004 Phase A kickoff — gated on Cray Open Questions #2 (actor enum: include `cray`?) and #4 (status enum granularity 3 vs 5). Should fold `transcript` suffix + restart-bridge lifecycle taxonomy into Phase A spec.
-- [ ] Adopt Q1(b) closeout-template line "STATUS.md updated: yes/no/N/A" — minor convention addition (no constitutional cost). Closeout drafters add the line; honor-system audit.
-- [ ] Adopt Q3(b/c) dedicated `docs(status): …` housekeeping commit at batch close (this batch is the first instance; pattern locked).
+- [x] Lesson cleanup batch — Lesson #3 amendment + Lesson #5 §2/§3 amendment + Lesson #6 new *(done `96bf51b`, 2026-05-18)*
+- [x] **PLAN-004 Phase A** — Batch 1 (schema + tools) + Batch 2 (2a: 20 files / 2b.1: 12 renames + ref-graph / 2b.2: post-recovery) complete *(Session 10, 2026-05-19/20; anchor `ad81e7e`)*
+- [x] Adopt Q1(b) closeout-template line "STATUS.md updated: yes/no/N/A" — adopted (closeouts carry the line)
+- [x] Adopt Q3(b/c) dedicated `docs(status): …` housekeeping commit at batch close — adopted (`894a1e5` first instance; this 2b.2 close repeats)
 
 ## Next Steps
 
-1. **Session 10 next batch — Lesson cleanup** (Lesson #3 amendment + Lesson #5 §3 amendment + Lesson #6 new — 3-file batch from `.venv` incident findings + dispatch line-mapping gap + Code-surface→Chat-redispatch pattern).
-2. **Session 10 then — PLAN-004 Phase A kickoff** (handoff-frontmatter validator + schema + backfill — gated on Cray OQs #2 and #4).
+1. **PLAN-003 kickoff (the moat)** — Ontology Engine: `verticals/energy/ontology/energy_v0.yaml` (5 entities) + code generator. Strategic priority per Cray Option-1 (2026-05-20). *(Sub-steps decomposed at PLAN-003 kickoff — deliberately NOT enumerated here, per Hybrid+ scope; avoids speculative stale content.)*
+2. **Deferred (backlog, post-PLAN-003)** — PLAN-004 Phase B (validator-scope exclusion for `README.md`/`_rename-map.md`; Cat G `references_*` autofix) + Phase C (handoff dashboard) + the OQ-2 systemic candidate (effective-vs-authored `status:` / archival flag).
 3. **Adjacent** — Mint new ADR number for the parked Postgres image decision (≥ ADR-009).
-4. **Ongoing** — Continue exercising file-based handoff mechanism (Chat ↔ Code, Project Knowledge transport) across batches; capture new traps as Lesson amendments or new lessons (Lesson cleanup batch is the next instance).
+4. **Ongoing** — Continue exercising file-based handoff mechanism (Chat ↔ Code) across batches; the new pre-verification protocol governs all future data-transformation dispatches.
 
 ## Update Workflow
 
