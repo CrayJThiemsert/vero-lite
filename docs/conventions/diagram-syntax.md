@@ -137,7 +137,7 @@ repo.
 ## References
 
 - Code tab feedback 2026-05-13 (rationale source):
-  `.claude/handoffs/session-10/2026-05-13-1400-session10-batch3-kickoff.md`
+  `.claude/handoffs/session-10/2026-05-13-1400-chat-session10-batch3-kickoff.md`
   §"Stop-and-ask trigger #3"
 - ADR-007 (first repo artifact using Mermaid per this convention):
   `docs/adr/0007-oct-engine-contracts.md`

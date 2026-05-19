@@ -3,7 +3,7 @@
 **Date:** 2026-05-19
 **Event type:** working-tree migration (gitignored handoffs frontmatter)
 **Commit:** this `docs(logs):` commit (SHA assigned on commit; recorded in the gitignored closeout + STATUS housekeeping commit)
-**Operator-grade detail:** `.claude/handoffs/session-10/2026-05-19-1205-code-plan004-batch2a-bulk-migration-v2-closeout.md` (gitignored)
+**Operator-grade detail:** `.claude/handoffs/session-10/2026-05-19-1405-code-plan004-batch2a-bulk-migration-v2-closeout.md` (gitignored)
 **Supersedes:** Step 2a v0 dispatch (`2026-05-19-1100-chat-plan004-batch2a-bulk-migration.md`) paused per midflight `2026-05-19-1048` (gitignore evidence-model gap; resolved via Cray-ratified Option 1). Executed under v2 (`2026-05-19-1330`) + v2.1 patch (`2026-05-19-1500`, which closed 3 systematic ruleset gaps surfaced by the v2 dry-run midflight `2026-05-19-1143`).
 
 ## Summary
