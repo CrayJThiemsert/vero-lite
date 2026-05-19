@@ -152,6 +152,48 @@ established that durable-knowledge codification (Lesson #5 §3) alone
 was insufficient; this operational-layer protocol provides Chat with
 a concrete pre-draft self-check.
 
+### Dispatch acceptance-criteria reliable-verification (Lesson #7, operational layer)
+
+The `wsl → bash -lc` harness used by Code in the claude.ai environment
+**does not propagate child-process exit codes through `$?`** — all
+`$?` reads return 0 regardless of real exit code. See Lesson #7
+(`docs/lessons/0007-harness-exit-code-artifact.md`) for the underlying
+artifact and the full reliable-method catalogue.
+
+**Forbidden in any dispatch acceptance criterion or closeout PASS/FAIL line:**
+
+- `echo $?` followed by an expected value (e.g. `echo $?  # expect 0`)
+- "Expect exit N" / "Exit code N" / "Returns 0" without specifying HOW
+  the return is observed via a reliable method below
+- "Dog-food: exit 0" as standalone evidence
+- "If exit 0 then PASS" — replace with stderr-based wording
+
+**Required reliable methods (use ≥1 per assertion):**
+
+1. **stderr summary line capture** — many project tools emit a final
+   summary line to stderr (e.g. validator: `OK: N file(s) valid` on
+   pass, `<E> error(s) across <M> file(s)` on fail). Dispatch captures
+   stderr to file and greps for the expected pattern.
+2. **In-process `main()` return probe** — Python tool's `main()`
+   imported and called inside a `python -c "..."`; the return value is
+   printed (`print(f"RET={ret}")`) and grepped from captured stdout.
+3. **Behavioral assertion on side effects** — assert directly on what
+   the tool was supposed to produce (file written, count delta, line
+   present) rather than the runner's exit code.
+
+**Workflow check when drafting dispatch acceptance criteria:**
+
+- "Does any acceptance line reduce to 'exit code N'?" → if yes, rewrite
+  per §1–§3 above before sending.
+- "If Code's closeout PASS depends on `echo $?`, is it actually
+  unreliable here?" → if yes, the dispatch wording is wrong; rewrite.
+
+This protocol was codified 2026-05-19 after PLAN-004 Batch 2 Step 1
+manifest §4.0 surfaced the harness artifact. The two-layer design
+(durable Lesson #7 + this operational instruction) mirrors the
+2026-05-18 anchor-verification dual-layer precedent (Lesson #5 §3 +
+"Chat-side anchor verification protocol" section).
+
 ### Tier 1 self-check (apply before declaring ANY draft complete)
 
 Before saying "draft ready for Cray review", verify ALL of:
@@ -170,6 +212,11 @@ Before saying "draft ready for Cray review", verify ALL of:
       cites either a PK-read source or a Code-pasted verbatim source —
       no fabricated/inferred quotes (Lesson #5 §3 failure modes #4 + #5;
       see "Chat-side anchor verification protocol" section above)
+- [ ] Reliable verification: any dispatch acceptance criterion or
+      closeout PASS/FAIL line uses stderr summary capture, in-process
+      `main()` return probe, or behavioral side-effect assertion — NOT
+      `echo $?` or "expect exit N" (Lesson #7; see "Dispatch
+      acceptance-criteria reliable-verification" section above)
 
 Flagging in-scope ambiguity is correct behavior. Surface and pause rather
 than silently choose.
