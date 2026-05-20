@@ -38,6 +38,9 @@ dev = [
   "types-jsonschema>=4.23.0",
 ]
 
+[project.scripts]
+vero-lite = "services.engine.cli:app"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"

@@ -38,3 +38,11 @@ repos:
       - id: detect-secrets
         args: ['--baseline', '.secrets.baseline']
         exclude: package.lock.json
+
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.29.4
+    hooks:
+      - id: check-jsonschema
+        name: check ontology YAML against ADR-008 D2 schema
+        files: ^verticals/.*/ontology/.*\.yaml$
+        args: ['--schemafile', 'services/engine/ontology_schema.json']

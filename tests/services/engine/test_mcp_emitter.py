@@ -47,7 +47,8 @@ def test_mcp_emitter_get_by_id_input_schema(tmp_path: Path) -> None:
     out = tmp_path / "mcp_tools.json"
     emit_mcp(_doc(), out)
     tools = json.loads(out.read_text())
-    get_asset = next(t for t in tools if t["name"] == "get_asset_by_id")
+    by_name = {t["name"]: t for t in tools}
+    get_asset = by_name["get_asset_by_id"]
     schema = get_asset["inputSchema"]
     assert schema["properties"]["id"] == {"type": "string"}
     assert schema["required"] == ["id"]
