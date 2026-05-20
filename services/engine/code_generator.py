@@ -30,6 +30,7 @@ is the more recent binding spec for Phase 1).
 
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 from typing import Any
@@ -211,18 +212,158 @@ def emit_sql(doc: dict[str, Any], output_path: Path) -> Path:
 
 
 # ---------------------------------------------------------------------------
+# JSON Schema emitter (draft 2020-12)
+# ---------------------------------------------------------------------------
+
+
+def _jsonschema_field(prop_def: dict[str, Any]) -> dict[str, Any]:
+    ptype = prop_def["type"]
+    if ptype == "string":
+        return {"type": "string"}
+    if ptype == "int":
+        return {"type": "integer"}
+    if ptype == "float":
+        return {"type": "number"}
+    if ptype == "bool":
+        return {"type": "boolean"}
+    if ptype == "timestamp":
+        return {"type": "string", "format": "date-time"}
+    if ptype == "date":
+        return {"type": "string", "format": "date"}
+    if ptype == "enum":
+        return {"type": "string", "enum": list(prop_def["values"])}
+    if ptype == "json":
+        return {"type": "object"}
+    # ref
+    return {"type": "string"}
+
+
+def emit_jsonschema(doc: dict[str, Any], output_path: Path) -> Path:
+    """Write per-object JSON Schemas (draft 2020-12) to ``output_path``."""
+    object_types = doc.get("object_types") or {}
+    bundle: dict[str, Any] = {}
+    for obj_name, obj_def in object_types.items():
+        props = obj_def.get("properties") or {}
+        properties = {pn: _jsonschema_field(pd) for pn, pd in props.items()}
+        required = [pn for pn, pd in props.items() if pd.get("required", False)]
+        schema = {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": obj_name,
+            "type": "object",
+            "properties": properties,
+        }
+        if required:
+            schema["required"] = required
+        bundle[obj_name] = schema
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(bundle, indent=2) + "\n")
+    return output_path
+
+
+# ---------------------------------------------------------------------------
+# MCP tool-definition emitter
+# ---------------------------------------------------------------------------
+
+
+def _mcp_tools_for(obj_name: str) -> list[dict[str, Any]]:
+    snake = _snake(obj_name)
+    return [
+        {
+            "name": f"list_{snake}",
+            "description": f"List {obj_name} records.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "limit": {"type": "integer", "default": 100},
+                },
+                "required": [],
+            },
+        },
+        {
+            "name": f"get_{snake}_by_id",
+            "description": f"Fetch a single {obj_name} by primary key.",
+            "inputSchema": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                },
+                "required": ["id"],
+            },
+        },
+    ]
+
+
+def emit_mcp(doc: dict[str, Any], output_path: Path) -> Path:
+    """Write MCP tool definitions to ``output_path``.
+
+    Action-bearing tools (mutations) are deferred to Phase 2 when the
+    `RecommendedAction` runtime lands (PLAN-003 §6.4 + consultation Q8).
+    """
+    object_types = doc.get("object_types") or {}
+    tools: list[dict[str, Any]] = []
+    for obj_name in object_types:
+        tools.extend(_mcp_tools_for(obj_name))
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(json.dumps(tools, indent=2) + "\n")
+    return output_path
+
+
+# ---------------------------------------------------------------------------
+# TypeScript emitter (light path — no tsc compile per PLAN-003 §6.5)
+# ---------------------------------------------------------------------------
+
+_TS_SCALAR_TYPE: dict[str, str] = {
+    "string": "string",
+    "int": "number",
+    "float": "number",
+    "bool": "boolean",
+    "timestamp": "string",
+    "date": "string",
+    "json": "Record<string, unknown>",
+    "ref": "string",
+}
+
+
+def _ts_field_type(prop_def: dict[str, Any]) -> str:
+    ptype = prop_def["type"]
+    if ptype == "enum":
+        return " | ".join(f"'{v}'" for v in prop_def["values"])
+    return _TS_SCALAR_TYPE[ptype]
+
+
+def emit_typescript(doc: dict[str, Any], output_path: Path) -> Path:
+    """Write TS interface declarations to ``output_path``."""
+    object_types = doc.get("object_types") or {}
+    lines: list[str] = [
+        "// Generated TypeScript types from ontology YAML — do not edit by hand.",
+        "",
+    ]
+    for obj_name, obj_def in object_types.items():
+        lines.append(f"export interface {obj_name} {{")
+        for prop_name, prop_def in (obj_def.get("properties") or {}).items():
+            ts_type = _ts_field_type(prop_def)
+            sep = ":" if prop_def.get("required", False) else "?:"
+            lines.append(f"  {prop_name}{sep} {ts_type};")
+        lines.append("}")
+        lines.append("")
+    body = "\n".join(lines).rstrip() + "\n"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(body)
+    return output_path
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
 
 def generate_all(yaml_path: Path, output_dir: Path) -> dict[str, Path]:
-    """Run every emitter against ``yaml_path``; return name -> output path map.
-
-    PLAN-003 commit 4 wires Pydantic + SQL. Commit 5 extends with JSON
-    Schema, MCP, and TypeScript emitters and CLI ``generate`` plumbing.
-    """
+    """Run every emitter against ``yaml_path``; return name -> output path map."""
     doc = load_doc(yaml_path)
     outputs: dict[str, Path] = {}
     outputs["pydantic"] = emit_pydantic(doc, output_dir / "models.py")
     outputs["sql"] = emit_sql(doc, output_dir / "schema.sql")
+    outputs["jsonschema"] = emit_jsonschema(doc, output_dir / "schema.json")
+    outputs["mcp"] = emit_mcp(doc, output_dir / "mcp_tools.json")
+    outputs["typescript"] = emit_typescript(doc, output_dir / "types.ts")
     return outputs
