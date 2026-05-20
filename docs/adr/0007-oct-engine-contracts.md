@@ -231,5 +231,7 @@ flowchart TD
   gitignored working reference; consult if Cowork dispatch
   `2026-05-13-1400-cowork-research-prompt-palantir-ontology.md`
   completed): `docs/research/private/2026-05-13-palantir-ontology-reference.md`
-- Future: ADR-009+ (LLM reasoning hook surface)
-- Future: ADR-010+ (Action approval + audit framework)
+- Future: ADR-010+ (LLM reasoning hook surface) *— note: ADR-009 slot
+  consumed by tier-topology change per ADR-009; downstream future-ADR
+  slots shifted accordingly*
+- Future: ADR-011+ (Action approval + audit framework)
