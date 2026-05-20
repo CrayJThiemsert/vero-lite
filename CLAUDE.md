@@ -72,31 +72,31 @@ Hybrid model: Auto Memory (private) + Repository (shared, source of truth).
 
 ### Conversation Hygiene (CRITICAL)
 
-The project uses four collaboration tiers, each with a distinct artifact-ownership scope:
+The project uses four collaboration tiers (topology amended 2026-05-21 per ADR-009):
 
 | Tier | Role | Purpose | Primary output |
 |------|------|---------|----------------|
-| **Tier 0** — Cowork | Research agent | External knowledge compilation, prior art, library scans | Research files in `docs/research/private/` + own closeout handoffs |
-| **Tier 1** — Chat | Strategy + architecture | ADR drafts, PLAN drafts, code review, handoff drafting | Markdown content (paste-ready) and `chat-` prefixed handoffs |
-| **Tier 2** — Code | Execution agent | Repo writes, git operations, implementation | Code commits, file modifications, `code-` prefixed handoffs |
-| **Tier 3** — Cray | Final authority | Private knowledge, business judgment, routing between tiers | Decisions, dispatch |
+| **Tier 0 + Tier 1** — Cowork (merged per ADR-009 D1) | Research + governance authoring | External knowledge compilation; **dispatch, ADR, PLAN authoring** | Research files in `docs/research/private/`; `cowork-` prefixed handoffs (via outputs scratchpad under K-2 — see Lesson #8); **uncommitted drafts in `docs/adr/` and `docs/plans/`** |
+| **Tier 1 (narrowed)** — Chat | Free-form discussion only (per ADR-009 D5 option b) | Open-ended strategy discussion, sounding-board, informal code review | **Conversation only — no repo-tracked artifacts** |
+| **Tier 2** — Code | Execution agent | Repo writes, git operations, implementation, **all commits** (per ADR-009 D2 "only Code commits" fail-safe) | Code commits, file modifications, `code-` prefixed handoffs |
+| **Tier 3** — Cray | Final authority | Private knowledge, business judgment, routing between tiers | Decisions, dispatch ratification |
 
-Tier instruction files in `docs/conventions/chat_tab_instructions.md` and `docs/conventions/cowork_tab_instructions.md` define detailed read/write scopes, behavioral rules, and handoff conventions per tier. Tier 2 (Code) operational policy lives in §11 below.
+Tier instruction files in `docs/conventions/cowork_tab_instructions.md` (Tier 0 + Tier 1 merged scope) and `docs/conventions/chat_tab_instructions.md` (narrowed Tier 1 free-form scope) define detailed read/write scopes, behavioral rules, and handoff conventions per tier. Tier 2 (Code) operational policy lives in §11 below. The K-1/K-2 Cowork-mode operating workflow is codified durably in [`docs/lessons/0008-cowork-tier1-k1-k2-workflow.md`](docs/lessons/0008-cowork-tier1-k1-k2-workflow.md).
 
 **Rule:** Never copy-paste long context between Claude Chat and Claude Code. Use the repository as shared memory.
 
 ### Decision Flow
 
-1. New decision needed → discuss in Claude Chat
-2. Draft ADR in `docs/adr/NNNN-name.md` (use `0000-template.md`)
-3. Status: `Proposed` → `Accepted` after acceptance
-4. Implementation PRs reference the ADR number in commits
+1. New decision needed → discuss in Claude Chat (free-form mode per ADR-009 D5 b)
+2. **Cowork drafts ADR** in `docs/adr/NNNN-name.md` (use `0000-template.md`) per ADR-009 D1
+3. Status: `Proposed` → `Accepted` after Cray ratification
+4. **Code commits the ADR** per ADR-009 D2; Implementation PRs reference the ADR number in commits
 
 ### Plan Flow
 
-1. New work needed → write a PLAN in `docs/plans/NNNN-name.md` (use `0000-template.md`)
+1. New work needed → discuss requirements (Chat free-form) then **Cowork writes the PLAN** in `docs/plans/NNNN-name.md` (use `0000-template.md`) per ADR-009 D1
 2. Plan must include: Goal, Acceptance Criteria, Out of Scope, Steps
-3. Claude Code executes plan in feature branch
+3. **Code commits the PLAN** per ADR-009 D2, then executes plan in feature branch
 4. After completion, `git mv docs/plans/NNNN-*.md docs/plans/done/`
 
 ### Token Economy
@@ -198,4 +198,4 @@ the reply**. Procedure + options:
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-05-16 (Session 11 — §11 Transcript Handoff convention)*
+*Last updated: 2026-05-21 (Session 10 — §6 4-tier table amended per ADR-009 D1+D5; Cowork-Tier-1 topology ratified)*
