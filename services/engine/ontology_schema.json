@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://vero-lite.local/schemas/ontology_v0.json",
+  "title": "vero-lite ontology v0",
+  "description": "L1 JSON Schema for ADR-008 D2 grammar. Phase 1 (PLAN-003) v0 — only the canonical map-shaped form is accepted; the list-of-dicts illustration in PLAN-003 §8.6 is REJECTED by design (Lesson #5 §3 schema fidelity).",
+  "type": "object",
+  "required": ["version", "namespace", "object_types"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "const": 0,
+      "description": "Ontology grammar version. v0 == ADR-008 D2 grammar."
+    },
+    "namespace": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "description": "Matches verticals/<name>/ directory name."
+    },
+    "object_types": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {"$ref": "#/$defs/objectType"},
+      "propertyNames": {"pattern": "^[A-Z][A-Za-z0-9]*$"}
+    },
+    "link_types": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/linkType"},
+      "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$"}
+    }
+  },
+  "$defs": {
+    "objectType": {
+      "type": "object",
+      "required": ["primary_key", "properties"],
+      "additionalProperties": false,
+      "properties": {
+        "primary_key": {"type": "string", "minLength": 1},
+        "title_key": {"type": "string", "minLength": 1},
+        "description": {"type": "string"},
+        "properties": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {"$ref": "#/$defs/property"},
+          "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$"}
+        }
+      }
+    },
+    "property": {
+      "type": "object",
+      "required": ["type"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "enum": ["string", "int", "float", "bool", "timestamp", "date", "enum", "json", "ref"]
+        },
+        "required": {"type": "boolean", "default": false},
+        "description": {"type": "string"},
+        "constraints": {"type": "object"},
+        "values": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1,
+          "description": "Required when type == enum."
+        },
+        "target": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]*$",
+          "description": "Required when type == ref; names another object_type."
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"type": {"const": "enum"}}, "required": ["type"]},
+          "then": {"required": ["values"]}
+        },
+        {
+          "if": {"properties": {"type": {"const": "ref"}}, "required": ["type"]},
+          "then": {"required": ["target"]}
+        }
+      ]
+    },
+    "linkType": {
+      "type": "object",
+      "required": ["from", "to", "cardinality", "foreign_key"],
+      "additionalProperties": false,
+      "properties": {
+        "from": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$"},
+        "to": {"type": "string", "pattern": "^[A-Z][A-Za-z0-9]*$"},
+        "cardinality": {
+          "enum": ["one_to_one", "one_to_many", "many_to_one"],
+          "description": "many_to_many deferred per ADR-008 D4; model as explicit join object_type."
+        },
+        "foreign_key": {
+          "type": "string",
+          "pattern": "^[A-Z][A-Za-z0-9]*\\.[a-z][a-z0-9_]*\\s*->\\s*[A-Z][A-Za-z0-9]*\\.[a-z][a-z0-9_]*$",
+          "description": "Format: <FromObject>.<from_field> -> <ToObject>.<to_field>"
+        },
+        "description": {"type": "string"}
+      }
+    }
+  }
+}

@@ -1,0 +1,195 @@
+# vero-lite ontology — energy vertical, v0.
+# Conforms to ADR-008 D2 grammar (PLAN-003 dispatch R-K1 binding).
+# Five base entities per ADR-008 D1 + an explicit AlertEventLink join
+# object_type per ADR-008 D4 / PLAN-003 §8.6 (many-to-many deferred).
+
+version: 0
+namespace: energy
+
+object_types:
+  Asset:
+    primary_key: asset_id
+    title_key: name
+    description: A physical operational unit (battery, inverter, meter, etc.).
+    properties:
+      asset_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      asset_type:
+        type: enum
+        values: [battery, inverter, meter, transformer]
+      capacity_kw:
+        type: float
+      status:
+        type: enum
+        values: [active, maintenance, retired]
+      install_date:
+        type: date
+      site_id:
+        type: ref
+        target: Site
+        required: true
+
+  Site:
+    primary_key: site_id
+    title_key: name
+    description: A physical location hosting one or more Assets.
+    properties:
+      site_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      site_type:
+        type: enum
+        values: [substation, microgrid, depot]
+      lat:
+        type: float
+      lng:
+        type: float
+
+  OperationalEvent:
+    primary_key: event_id
+    description: Time-stamped operational signal concerning an Asset or Site.
+    properties:
+      event_id:
+        type: string
+        required: true
+      event_type:
+        type: enum
+        values: [reading, transition, alarm]
+      severity:
+        type: enum
+        values: [info, warn, error, critical]
+      measured_value:
+        type: float
+      unit:
+        type: string
+      description:
+        type: string
+      occurred_at:
+        type: timestamp
+        required: true
+      asset_id:
+        type: ref
+        target: Asset
+      site_id:
+        type: ref
+        target: Site
+
+  Alert:
+    primary_key: alert_id
+    title_key: title
+    description: An actionable notification derived from one or more OperationalEvents.
+    properties:
+      alert_id:
+        type: string
+        required: true
+      title:
+        type: string
+        required: true
+      urgency:
+        type: enum
+        values: [low, medium, high, critical]
+      status:
+        type: enum
+        values: [open, acknowledged, resolved]
+      opened_at:
+        type: timestamp
+        required: true
+      resolved_at:
+        type: timestamp
+      reasoning:
+        type: string
+
+  RecommendedAction:
+    primary_key: action_id
+    description: An AI-proposed action awaiting human approval; mirrors the ADR-007 D2 runtime envelope at Phase 2.
+    properties:
+      action_id:
+        type: string
+        required: true
+      action_type:
+        type: enum
+        values: [restart, isolate, dispatch_technician, escalate]
+      confidence_score:
+        type: float
+      status:
+        type: enum
+        values: [proposed, approved, rejected, executed]
+      parameters:
+        type: json
+      alert_id:
+        type: ref
+        target: Alert
+        required: true
+      target_asset_id:
+        type: ref
+        target: Asset
+
+  AlertEventLink:
+    primary_key: link_id
+    description: Join object linking an Alert to the OperationalEvent(s) that triggered it (N:M via composition per ADR-008 D4).
+    properties:
+      link_id:
+        type: string
+        required: true
+      created_at:
+        type: timestamp
+        required: true
+      alert_id:
+        type: ref
+        target: Alert
+        required: true
+      event_id:
+        type: ref
+        target: OperationalEvent
+        required: true
+
+link_types:
+  asset_hosted_at_site:
+    from: Asset
+    to: Site
+    cardinality: many_to_one
+    foreign_key: Asset.site_id -> Site.site_id
+    description: Each Asset is hosted at exactly one Site.
+
+  event_emitted_by_asset:
+    from: OperationalEvent
+    to: Asset
+    cardinality: many_to_one
+    foreign_key: OperationalEvent.asset_id -> Asset.asset_id
+
+  event_occurred_at_site:
+    from: OperationalEvent
+    to: Site
+    cardinality: many_to_one
+    foreign_key: OperationalEvent.site_id -> Site.site_id
+
+  action_addresses_alert:
+    from: RecommendedAction
+    to: Alert
+    cardinality: many_to_one
+    foreign_key: RecommendedAction.alert_id -> Alert.alert_id
+
+  action_target_asset:
+    from: RecommendedAction
+    to: Asset
+    cardinality: many_to_one
+    foreign_key: RecommendedAction.target_asset_id -> Asset.asset_id
+
+  alert_event_link_to_alert:
+    from: AlertEventLink
+    to: Alert
+    cardinality: many_to_one
+    foreign_key: AlertEventLink.alert_id -> Alert.alert_id
+
+  alert_event_link_to_event:
+    from: AlertEventLink
+    to: OperationalEvent
+    cardinality: many_to_one
+    foreign_key: AlertEventLink.event_id -> OperationalEvent.event_id
