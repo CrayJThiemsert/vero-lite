@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-20T01:14:00+07:00
+last_updated: 2026-05-20T13:25:00+07:00
 session: 10
-current_batch: plan004-batch2 (2a + 2b.1 + 2b.2 DONE); pivoting to PLAN-003 (Cray Option-1, 2026-05-20)
-current_actor: chat (PLAN-003 prep); code (standby)
+current_batch: plan003-doc-dispatch (doc landed; Phase 1 kickoff dispatch pending)
+current_actor: code (closed plan003-doc-dispatch); chat (drafting Phase 1 kickoff next)
 blocked_on: nothing
-next_action: PLAN-003 kickoff — Ontology Engine (verticals/energy/ontology/energy_v0.yaml + code generator; the moat)
-head_commit: ad81e7e
-recent_commits: [ad81e7e, be38bce, 098f8cd, eb68546, 894a1e5, 7f5035f, 9afde79, 1ddd9b6]
+next_action: PLAN-003 Phase 1 kickoff dispatch (engine implementation; worktree ON; per docs/plans/0003-ontology-engine.md)
+head_commit: a7c68a2
+recent_commits: [a7c68a2, ad81e7e, be38bce, 098f8cd, eb68546, 894a1e5, 7f5035f, 9afde79]
 ---
 
 # vero-lite — Project Status
@@ -45,6 +45,7 @@ Next: PLAN-003 kickoff (Ontology Engine —
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-20 | PLAN-003 plan doc landed — `docs/plans/0003-ontology-engine.md` (427 lines); Phase 1 only (5 emitters: Pydantic+SQL+JSON Schema+MCP+TS-light); Typer CLI + ruamel.yaml parser + jsonschema; Alert↔OperationalEvent via explicit join object type (ADR-008 D4 stays; `many_to_many` deferred); coverage ≥70% aspirational (R-8); 3 J-class surfaces logged in dispatch closeout | `a7c68a2` |
 | 2026-05-20 | PLAN-004 Phase A Batch 2 COMPLETE — Step 2a (20 files) + 2b.1 (12 renames + ref-graph, 5-ratification surface→re-dispatch chain) + 2b.2 (post-recovery, single-pass). Handoff-class schema-FAIL = `{}` | `ad81e7e` (2b.2 anchor), `098f8cd` (2b.1), `7f5035f` (2a) |
 | 2026-05-20 | Strategic pivot — Option-1: pause PLAN-004 Phase B/C, prioritize PLAN-003 (Ontology Engine = the moat) | Cray decision 2026-05-20 |
 | 2026-05-20 | Chat dispatch tooling/schema pre-verification protocol codified (operational layer; durable Lesson #8 mint deferred post-Phase-A per Q3=A) | `be38bce` `docs/conventions/chat_tab_instructions.md` |
@@ -66,7 +67,7 @@ Next: PLAN-003 kickoff (Ontology Engine —
 ## In-Flight Discussions
 
 - **Batch 3 (ADR-007 + ADR-008):** Both **Accepted 2026-05-13** — OCT engine contracts + YAML ontology specification (5 base types, JSON Schema validation). Cowork Tier 0 brief at `docs/research/private/2026-05-13-palantir-ontology-reference.md` cited from ADR-008 §Context; 5 open questions in the brief remain candidates for future ADR amendments.
-- **Batch 4 (PLAN-003):** Ontology Engine implementation steps — first vertical `energy_v0.yaml` + code generator. Forthcoming.
+- **Batch 4 (PLAN-003):** Ontology Engine — **Proposed (doc landed `a7c68a2`, Phase 1 kickoff dispatch pending).** Plan doc: `docs/plans/0003-ontology-engine.md`. Phase 1 only (5 emitters + first vertical `energy_v0.yaml` + Typer CLI + tests); Phase 2 (DataAdapter + RecommendedAction runtime + three-layer wiring) deferred to Batch 5+.
 - **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (see PLAN-001 line 9 forward-reference); ADR-005 has since been reused for the strategic pivot. The Postgres image ADR needs a fresh number (earliest available: ADR-009, post Batch 3's ADR-007/008).
 - **Hook portability across environments:** Lesson #3 A3 documents the workaround; durable fix deferred (would require hook regeneration policy).
 - **Convention extraction:** `git.md` and `hardware.md` may still be extracted from CLAUDE.md (low priority).
@@ -76,7 +77,8 @@ Next: PLAN-003 kickoff (Ontology Engine —
 - [x] **ADR-007** — OCT engine contracts (DataAdapter, RecommendedAction, three-layer wiring) *(Session 10 Batch 3)*
 - [x] **ADR-008** — YAML ontology specification (5 base types, JSON Schema validation) *(Session 10 Batch 3)*
 - [x] **`.gitignore` extension** — add `docs/research/private/` (Cowork closeout flag #1) *(Session 10 Batch 3-prep)*
-- [ ] **PLAN-003** — Ontology Engine implementation: `verticals/energy/ontology/energy_v0.yaml` (5 entities) + code generator — *the moat* ***(NEXT — Cray Option-1 priority, 2026-05-20)***
+- [ ] **Phase-enum amendment** — add `consultation` (or equivalent Q&A-round value) to canonical Phase enum (Q15 of `2026-05-20-0245-code-plan003-pre-draft-consultation-reply.md`); requires touching `tools/handoffs/_schema.py` + `docs/conventions/handoff-frontmatter-schema.md` + validator tests; PLAN-004 Phase B adjacent. *(Deferred per R-9, 2026-05-20)*
+- [ ] **Cleanup stale `ontology/README.md`** — 2026-05-05 PLAN-001 artifact; ontology directory canon now lives at `verticals/<name>/ontology/<name>_v0.yaml` per ADR-006 D1 / ADR-008 D5; superseded by PLAN-003. *(Deferred per R-9 cohort, 2026-05-20)*
 - [ ] **PLAN-004 Phase B/C — DEFERRED (backlog, post-PLAN-003):** validator-scope exclusion (`README.md` / `_rename-map.md`, manifest §4.2/§6.1) + Cat G `references_*` autofix + Phase C handoff dashboard + OQ-2 systemic candidate (effective-vs-authored `status:` / archival flag so dead handoffs don't surface as actionable in the dashboard)
 - [ ] **ADR-NN (TBD, ≥ ADR-009) + PLAN-002** — Custom Postgres image with extensions (renumbered after ADR-005 reused for strategic pivot)
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
