@@ -1,23 +1,29 @@
 """vero-lite ontology engine CLI (Typer).
 
-Commit 1 ships command stubs that raise ``NotImplementedError``;
-commit 3 wires ``validate`` against ``ontology_validator.main`` and
-commit 6 wires ``generate`` against ``code_generator.generate_all``.
-The Typer ``app`` object is the entry point declared in
-``pyproject.toml`` ``[project.scripts] vero-lite``.
+``validate`` is wired against ``ontology_validator.main`` here
+(commit 3); ``generate`` lands in commit 6. The Typer ``app`` object
+is the entry point declared in ``pyproject.toml`` ``[project.scripts]
+vero-lite`` (commit 7).
 """
 
 from __future__ import annotations
 
 import typer
 
+from services.engine import ontology_validator
+
 app = typer.Typer(help="vero-lite ontology engine CLI", no_args_is_help=True)
+
+
+def _yaml_path(vertical: str) -> str:
+    return f"verticals/{vertical}/ontology/{vertical}_v0.yaml"
 
 
 @app.command()
 def validate(vertical: str) -> None:
     """Validate ``verticals/<vertical>/ontology/<vertical>_v0.yaml`` (L1 + L2)."""
-    raise NotImplementedError("vero-lite validate is wired in PLAN-003 commit 3")
+    code = ontology_validator.main([_yaml_path(vertical)])
+    raise typer.Exit(code=code)
 
 
 @app.command()
