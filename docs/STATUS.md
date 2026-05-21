@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-21T01:30:00+07:00
+last_updated: 2026-05-21T02:00:00+07:00
 session: 10
-current_batch: adr0009-tier-topology (Cowork-as-Tier-1 ratified; 7-commit atomic PR landing)
-current_actor: code (committing ADR-009 + T2/T3/T4/T5/T6/T7 follow-ons in atomic PR)
+current_batch: adr0009-tier-topology (Cowork-as-Tier-1 ratified; PR #3 merged 08117d5)
+current_actor: code (post-merge STATUS sync + worktree cleanup)
 blocked_on: nothing
-next_action: post-merge — observe Cowork-as-Tier-1 operation across next batches; D6 regression triggers in force
-head_commit: af6f858
-recent_commits: [af6f858, b6bf400, dd9fe76, 6759949, 601cdd4, 7c5c728, b0fc8a7, 30619b8, 81ea262, f7bbacf]
+next_action: observe Cowork-as-Tier-1 operation across next batches; D6 regression triggers in force; Cray re-pastes cowork/chat instructions into Claude Desktop UI
+head_commit: 08117d5
+recent_commits: [08117d5, e9f499b, af6f858, b6bf400, dd9fe76, 6759949, 601cdd4, 7c5c728, b0fc8a7, 30619b8]
 ---
 
 # vero-lite — Project Status
@@ -90,7 +90,7 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-05-21 | **ADR-009 ACCEPTED + 7-commit atomic PR landing** — Cowork becomes Tier-0+1 merged workspace (dispatch/ADR/PLAN authoring), Chat narrows to free-form discussion only (D5 b), commit authority stays Code-exclusive (D2), K-1/K-2 workflow codified durably (Lesson #8). Hypothesis from parent discussion (2026-05-20-1235) supported by round 1 + round 2 trials (PASS / PASS). Branch `feat/adr0009-tier-topology`; commits 7c5c728 (ADR-009) → 601cdd4 (ADR-007 pointer T7) → 6759949 (cowork_tab T3) → dd9fe76 (chat_tab T4) → b6bf400 (Lesson #8 T6) → af6f858 (CLAUDE.md §6 T2) → this STATUS commit T5 | `docs/adr/0009-cowork-tier1-tier-topology.md` |
+| 2026-05-21 | **ADR-009 ACCEPTED + 7-commit atomic PR #3 MERGED (`08117d5`)** — Cowork becomes Tier-0+1 merged workspace (dispatch/ADR/PLAN authoring), Chat narrows to free-form discussion only (D5 b), commit authority stays Code-exclusive (D2), K-1/K-2 workflow codified durably (Lesson #8). Hypothesis from parent discussion (2026-05-20-1235) supported by round 1 + round 2 trials (PASS / PASS). Commits 7c5c728 (ADR-009) → 601cdd4 (ADR-007 pointer T7) → 6759949 (cowork_tab T3) → dd9fe76 (chat_tab T4) → b6bf400 (Lesson #8 T6) → af6f858 (CLAUDE.md §6 T2) → e9f499b (STATUS T5). **Cray TODO:** re-paste cowork/chat tier instructions into Claude Desktop UI (repo canonical, UI sync target per CLAUDE.md §4) | `08117d5` / `docs/adr/0009-cowork-tier1-tier-topology.md` |
 | 2026-05-20 | **PLAN-003 Phase 1 merged** (PR #2) — `services/engine/` package + 5 emitters + `verticals/energy/ontology/energy_v0.yaml` (ADR-008 D2 grammar; 6 object_types + 7 link_types) + L1 commit-time gate + `vero-lite` entry-point; 24 engine tests; coverage 94.06%; ADR-008 D2 binding per dispatch R-K1; PLAN-003 §8.6 list-of-dicts illustration is REJECTED at L1 (schema-fidelity guarantee) | `30619b8` |
 | 2026-05-20 | PLAN-003 Phase 1 kickoff dispatch authored by Cowork-as-Tier-1 (trial test-bed); Code R2 pre-execution PASS; mid-execution C4=0 (no Lesson #6 firings during commits 1-7); trial-protocol §7.3 adjudication queued for Cray | `.claude/handoffs/session-10/2026-05-20-1530-cowork-plan003-phase1-kickoff-dispatch.md` |
 | 2026-05-20 | PLAN-003 plan doc landed — `docs/plans/0003-ontology-engine.md` (427 lines); Phase 1 only (5 emitters: Pydantic+SQL+JSON Schema+MCP+TS-light); Typer CLI + ruamel.yaml parser + jsonschema; Alert↔OperationalEvent via explicit join object type (ADR-008 D4 stays; `many_to_many` deferred); coverage ≥70% aspirational (R-8); 3 J-class surfaces logged in dispatch closeout | `a7c68a2` |
