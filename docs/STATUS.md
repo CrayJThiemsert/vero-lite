@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-20T18:35:00+07:00
+last_updated: 2026-05-21T01:30:00+07:00
 session: 10
-current_batch: plan003-phase1-kickoff (engine implementation merged; closeout + trial-protocol §7.3 adjudication pending)
-current_actor: code (closed plan003-phase1; trial closeout for Cray)
+current_batch: adr0009-tier-topology (Cowork-as-Tier-1 ratified; 7-commit atomic PR landing)
+current_actor: code (committing ADR-009 + T2/T3/T4/T5/T6/T7 follow-ons in atomic PR)
 blocked_on: nothing
-next_action: PLAN-003 Phase 1 closeout handoff with trial-protocol §7.3 (a)/(b)/(c) adjudication input
-head_commit: 30619b8
-recent_commits: [30619b8, 81ea262, f7bbacf, 21308d9, cdde75c, ea5f73e, 08117cf, 0f392ba, 9572b81, a7c68a2]
+next_action: post-merge — observe Cowork-as-Tier-1 operation across next batches; D6 regression triggers in force
+head_commit: af6f858
+recent_commits: [af6f858, b6bf400, dd9fe76, 6759949, 601cdd4, 7c5c728, b0fc8a7, 30619b8, 81ea262, f7bbacf]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,32 @@ recent_commits: [30619b8, 81ea262, f7bbacf, 21308d9, cdde75c, ea5f73e, 08117cf, 
 
 ## Current Focus
 
-**Session 10 — PLAN-003 Phase 1 LANDED (the moat ships; ontology engine + first vertical).**
+**Session 10 — ADR-009 tier topology ratified + 7-commit atomic PR landing (Cowork-as-Tier-1; Chat narrowed to free-form discussion).**
+
+- **ADR-009 ratified 2026-05-21:** Cowork becomes Tier-0 + Tier-1 merged workspace
+  (research + dispatch/ADR/PLAN authoring). Commit authority stays Code-exclusive
+  per ADR-009 D2. K-1 (bash UNC) + K-2 (`.claude/` write block) are documented
+  Anthropic-side constraints; D3 workflow contract substitutes Code's
+  post-receive verification for Cowork's blocked self-validation. D5 ratified
+  option (b) — Chat retained for free-form discussion only, no governance or
+  dispatch authoring.
+- **7-commit atomic PR:** ADR-009 itself (D5 ratified) + ADR-007 References
+  pointer (T7 — earmark shift to ADR-010+/011+) + cowork_tab_instructions.md
+  Tier-0+1 expansion (T3) + chat_tab_instructions.md narrowing per D5(b) (T4)
+  + Lesson #8 K-1/K-2 workflow promotion (T6) + CLAUDE.md §6 4-tier table
+  amendment (T2) + this STATUS entry (T5). Branch
+  `feat/adr0009-tier-topology` — atomic PR; Code commits per D2.
+- **Capability-mismatch hypothesis** (parent discussion 2026-05-20-1235) fully
+  supported: round 1 (concrete dispatch authoring — PLAN-003 Phase 1 kickoff,
+  C1=0/C4=0 PASS) + round 2 (abstract ADR synthesis — ADR-009 itself, C1=0
+  PASS) covered two capability classes.
+- **PLAN-003 Phase 1 LANDED** (carried-forward from 2026-05-20):
+  `services/engine/` engine + 5 emitters + `verticals/energy/ontology/energy_v0.yaml`
+  + `vero-lite` CLI entry-point; 58 tests, coverage 94.06%.
+
+---
+
+## Prior focus (PLAN-003 Phase 1 implementation details, carried-forward)
 
 - **PLAN-003 Phase 1 merged (`30619b8`):** 7 commits on
   `feat/plan003-phase1-ontology-engine`; PR #2 merged to `main`. Lands:
@@ -65,6 +90,7 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-21 | **ADR-009 ACCEPTED + 7-commit atomic PR landing** — Cowork becomes Tier-0+1 merged workspace (dispatch/ADR/PLAN authoring), Chat narrows to free-form discussion only (D5 b), commit authority stays Code-exclusive (D2), K-1/K-2 workflow codified durably (Lesson #8). Hypothesis from parent discussion (2026-05-20-1235) supported by round 1 + round 2 trials (PASS / PASS). Branch `feat/adr0009-tier-topology`; commits 7c5c728 (ADR-009) → 601cdd4 (ADR-007 pointer T7) → 6759949 (cowork_tab T3) → dd9fe76 (chat_tab T4) → b6bf400 (Lesson #8 T6) → af6f858 (CLAUDE.md §6 T2) → this STATUS commit T5 | `docs/adr/0009-cowork-tier1-tier-topology.md` |
 | 2026-05-20 | **PLAN-003 Phase 1 merged** (PR #2) — `services/engine/` package + 5 emitters + `verticals/energy/ontology/energy_v0.yaml` (ADR-008 D2 grammar; 6 object_types + 7 link_types) + L1 commit-time gate + `vero-lite` entry-point; 24 engine tests; coverage 94.06%; ADR-008 D2 binding per dispatch R-K1; PLAN-003 §8.6 list-of-dicts illustration is REJECTED at L1 (schema-fidelity guarantee) | `30619b8` |
 | 2026-05-20 | PLAN-003 Phase 1 kickoff dispatch authored by Cowork-as-Tier-1 (trial test-bed); Code R2 pre-execution PASS; mid-execution C4=0 (no Lesson #6 firings during commits 1-7); trial-protocol §7.3 adjudication queued for Cray | `.claude/handoffs/session-10/2026-05-20-1530-cowork-plan003-phase1-kickoff-dispatch.md` |
 | 2026-05-20 | PLAN-003 plan doc landed — `docs/plans/0003-ontology-engine.md` (427 lines); Phase 1 only (5 emitters: Pydantic+SQL+JSON Schema+MCP+TS-light); Typer CLI + ruamel.yaml parser + jsonschema; Alert↔OperationalEvent via explicit join object type (ADR-008 D4 stays; `many_to_many` deferred); coverage ≥70% aspirational (R-8); 3 J-class surfaces logged in dispatch closeout | `a7c68a2` |
