@@ -73,7 +73,7 @@ def test_pydantic_emitter_required_optionality(tmp_path: Path) -> None:
 def test_pydantic_emitter_passes_ruff(tmp_path: Path) -> None:
     out = tmp_path / "models.py"
     emit_pydantic(_doc(), out)
-    result = subprocess.run(  # noqa: S603
+    result = subprocess.run(
         [sys.executable, "-m", "ruff", "check", str(out)],
         capture_output=True,
         text=True,
