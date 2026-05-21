@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-21T18:00:00+07:00
+last_updated: 2026-05-21T18:30:00+07:00
 session: 10
-current_batch: plan0005-phase2-runtime (8 build commits + 1 chore on feat/plan0005-phase2-runtime; PR pending)
-current_actor: code (PLAN-0005 Phase 2 closeout)
+current_batch: plan0005-phase2-runtime (PLAN-0005 Phase 2 MERGED — PR #4, c646bab)
+current_actor: code (post-merge housekeeping done)
 blocked_on: nothing
-next_action: review + merge the PLAN-0005 Phase 2 PR; post-merge git mv docs/plans/0005-*.md to done/ and sync head_commit
-head_commit: 5f50692
-recent_commits: [3fe691e, 5f50692, 78f28ab, 9d461f2, d3b893c, 226e363, 8d2f03b, f042c10, a01425c, cd5183f]
+next_action: resolve the §4 C-2 Suffix-enum divergence; pick up the PLAN-0005 §8.1 revisit triggers at their batch boundaries
+head_commit: 593c392
+recent_commits: [593c392, c646bab, 3fe691e, 5f50692, 78f28ab, 9d461f2, d3b893c, 226e363, 8d2f03b, f042c10]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,7 @@ recent_commits: [3fe691e, 5f50692, 78f28ab, 9d461f2, d3b893c, 226e363, 8d2f03b, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0005 Phase 2 (OCT Engine Runtime Layer) complete on `feat/plan0005-phase2-runtime`; PR pending.**
+**Session 10 — PLAN-0005 Phase 2 (OCT Engine Runtime Layer) MERGED to main (PR #4, `c646bab`).**
 
 Phase 2 operationalises the Phase 1 ontology engine — Layer 2 of the two-layer
 moat. Eight build commits + one tooling chore on the feature branch; full suite
@@ -98,7 +98,7 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-05-21 | **PLAN-0005 Phase 2 — OCT Engine Runtime Layer COMPLETE** (8 build commits + 1 chore on `feat/plan0005-phase2-runtime`, PR pending) — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (real `postgres:16-alpine`, SQLAlchemy 2.0 async + Alembic) + three-layer API wiring + end-to-end action loop; 109 tests, coverage 95.34%; six §8 OQs honoured; DDL/ORM parity test (C-1/R6) green; PLAN-003 moved to `done/` | `cd5183f`..`3fe691e` / `docs/plans/0005-oct-engine-runtime-layer.md` |
+| 2026-05-21 | **PLAN-0005 Phase 2 — OCT Engine Runtime Layer MERGED** (PR #4, 13 commits) — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (real `postgres:16-alpine`, SQLAlchemy 2.0 async + Alembic) + three-layer API wiring + end-to-end action loop; 109 tests, coverage 95.34%; six §8 OQs honoured; DDL/ORM parity test (C-1/R6) green; PLAN-003 + PLAN-0005 moved to `done/` | `c646bab` (PR #4) / `docs/plans/done/0005-oct-engine-runtime-layer.md` |
 | 2026-05-21 | **ADR-009 ACCEPTED + 7-commit atomic PR #3 MERGED (`08117d5`)** — Cowork becomes Tier-0+1 merged workspace (dispatch/ADR/PLAN authoring), Chat narrows to free-form discussion only (D5 b), commit authority stays Code-exclusive (D2), K-1/K-2 workflow codified durably (Lesson #8). Hypothesis from parent discussion (2026-05-20-1235) supported by round 1 + round 2 trials (PASS / PASS). Commits 7c5c728 (ADR-009) → 601cdd4 (ADR-007 pointer T7) → 6759949 (cowork_tab T3) → dd9fe76 (chat_tab T4) → b6bf400 (Lesson #8 T6) → af6f858 (CLAUDE.md §6 T2) → e9f499b (STATUS T5). **Cray TODO:** re-paste cowork/chat tier instructions into Claude Desktop UI (repo canonical, UI sync target per CLAUDE.md §4) | `08117d5` / `docs/adr/0009-cowork-tier1-tier-topology.md` |
 | 2026-05-20 | **PLAN-003 Phase 1 merged** (PR #2) — `services/engine/` package + 5 emitters + `verticals/energy/ontology/energy_v0.yaml` (ADR-008 D2 grammar; 6 object_types + 7 link_types) + L1 commit-time gate + `vero-lite` entry-point; 24 engine tests; coverage 94.06%; ADR-008 D2 binding per dispatch R-K1; PLAN-003 §8.6 list-of-dicts illustration is REJECTED at L1 (schema-fidelity guarantee) | `30619b8` |
 | 2026-05-20 | PLAN-003 Phase 1 kickoff dispatch authored by Cowork-as-Tier-1 (trial test-bed); Code R2 pre-execution PASS; mid-execution C4=0 (no Lesson #6 firings during commits 1-7); trial-protocol §7.3 adjudication queued for Cray | `.claude/handoffs/session-10/2026-05-20-1530-cowork-plan003-phase1-kickoff-dispatch.md` |
