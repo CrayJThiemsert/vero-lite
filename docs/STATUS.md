@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-21T18:30:00+07:00
+last_updated: 2026-05-21T19:30:00+07:00
 session: 10
-current_batch: plan0005-phase2-runtime (PLAN-0005 Phase 2 MERGED — PR #4, c646bab)
-current_actor: code (post-merge housekeeping done)
+current_batch: plan0005-phase2-closeout (Phase 2 merged + small-backlog cleanup; next = LLM reasoning hook)
+current_actor: code (Phase 2 closeout + STATUS sync done)
 blocked_on: nothing
-next_action: resolve the §4 C-2 Suffix-enum divergence; pick up the PLAN-0005 §8.1 revisit triggers at their batch boundaries
-head_commit: 593c392
-recent_commits: [593c392, c646bab, 3fe691e, 5f50692, 78f28ab, 9d461f2, d3b893c, 226e363, 8d2f03b, f042c10]
+next_action: LLM reasoning hook framing — Chat free-form discussion → Cowork drafts ADR-010 (CLAUDE.md §6)
+head_commit: 9dd1470
+recent_commits: [9dd1470, 5d6df24, 593c392, c646bab, 3fe691e, 5f50692, 78f28ab, 9d461f2, d3b893c, 226e363]
 ---
 
 # vero-lite — Project Status
@@ -48,6 +48,8 @@ type drift. The §8.1 deferred-foundational revisit register is in Active TODOs.
 
 Tooling note: `ruff` + `mypy` are now pinned in `pyproject.toml` to the
 pre-commit gate versions (`9d461f2`) — closes a `.venv`-vs-gate version skew.
+The pre-commit `mypy` hook now also covers `^(services|verticals)/`
+(`9dd1470`), not just `services/` — closes the flagged coverage gap.
 
 ---
 
@@ -98,6 +100,7 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-21 | **mypy pre-commit gate extended to `verticals/`** — the hook now covers `^(services\|verticals)/`, not just `services/`; closes the flagged coverage gap (verified `pre-commit run mypy --all-files`) | `9dd1470` |
 | 2026-05-21 | **PLAN-0005 Phase 2 — OCT Engine Runtime Layer MERGED** (PR #4, 13 commits) — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (real `postgres:16-alpine`, SQLAlchemy 2.0 async + Alembic) + three-layer API wiring + end-to-end action loop; 109 tests, coverage 95.34%; six §8 OQs honoured; DDL/ORM parity test (C-1/R6) green; PLAN-003 + PLAN-0005 moved to `done/` | `c646bab` (PR #4) / `docs/plans/done/0005-oct-engine-runtime-layer.md` |
 | 2026-05-21 | **ADR-009 ACCEPTED + 7-commit atomic PR #3 MERGED (`08117d5`)** — Cowork becomes Tier-0+1 merged workspace (dispatch/ADR/PLAN authoring), Chat narrows to free-form discussion only (D5 b), commit authority stays Code-exclusive (D2), K-1/K-2 workflow codified durably (Lesson #8). Hypothesis from parent discussion (2026-05-20-1235) supported by round 1 + round 2 trials (PASS / PASS). Commits 7c5c728 (ADR-009) → 601cdd4 (ADR-007 pointer T7) → 6759949 (cowork_tab T3) → dd9fe76 (chat_tab T4) → b6bf400 (Lesson #8 T6) → af6f858 (CLAUDE.md §6 T2) → e9f499b (STATUS T5). **Cray TODO:** re-paste cowork/chat tier instructions into Claude Desktop UI (repo canonical, UI sync target per CLAUDE.md §4) | `08117d5` / `docs/adr/0009-cowork-tier1-tier-topology.md` |
 | 2026-05-20 | **PLAN-003 Phase 1 merged** (PR #2) — `services/engine/` package + 5 emitters + `verticals/energy/ontology/energy_v0.yaml` (ADR-008 D2 grammar; 6 object_types + 7 link_types) + L1 commit-time gate + `vero-lite` entry-point; 24 engine tests; coverage 94.06%; ADR-008 D2 binding per dispatch R-K1; PLAN-003 §8.6 list-of-dicts illustration is REJECTED at L1 (schema-fidelity guarantee) | `30619b8` |
@@ -145,7 +148,7 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
 - [ ] Extract `docs/conventions/git.md` from CLAUDE.md (low priority)
 - [ ] Extract `docs/conventions/hardware.md` from CLAUDE.md (low priority)
-- [ ] Filesystem cleanup: `wsl -u root -- rm -rf .claude/worktrees/sad-northcutt-6a48ff/` (cosmetic, no rush)
+- [x] Filesystem cleanup: `.claude/worktrees/sad-northcutt-6a48ff/` removed *(Session 10, 2026-05-21)*
 - [x] **ADR-006** — Vertical Plugin Architecture *(Session 10 Batch 2)*
 - [x] **ADR-005** — Strategic Pivot to OCT (vet clinic parked Phase 2) *(Session 10 Batch 2)*
 - [x] **Directory scaffolds** — `verticals/{_template, energy, supply_chain, vet_clinic}/` + `docs/strategy/{public, private}/` *(Session 10 Batch 2)*
@@ -170,11 +173,13 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 
 ## Next Steps
 
-1. **Merge the PLAN-0005 Phase 2 PR** — review the 8 build commits + 1 chore on `feat/plan0005-phase2-runtime`; on merge, `git mv docs/plans/0005-*.md docs/plans/done/` and sync STATUS `head_commit` to the merge result.
-2. **Resolve the §4 C-2 Suffix-enum divergence** — add the three suffix enum members or amend the cowork instructions (see Active TODOs).
-3. **PLAN-0005 §8.1 revisit register** — pick the six deferred-foundational simplifications back up at their batch boundaries (LLM reasoning hook → ADR-010+, audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002, registry discovery).
-4. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (pgvector + Apache AGE + pg_trgm).
-5. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
+1. **LLM reasoning hook — framing discussion** — PLAN-0005 §8.1 revisit register row 1. Hold the framing discussion in Chat free-form (CLAUDE.md §6 Decision Flow): local LLM (MS-S1 MAX, ADR-002) vs Claude API; structured output for a valid `RecommendedAction` envelope; `kind="llm_inference"` reasoning trace; approval gate as the guardrail boundary; swap surface = `services/engine/recommender.py` `recommend()`. Then Cowork drafts **ADR-010** → **PLAN-0006** → Code executes.
+2. **Cowork Tier-0 research brief** — dispatch "LLM reasoning-hook design for an operational-decision engine" (Ollama/local-LLM patterns, structured output, reasoning-trace design, safety guardrails, Palantir AIP LLM-in-the-loop). Grounds ADR-010. Also hand Cowork §4 C-2 (Suffix-enum divergence — Cowork owns the handoff vocabulary).
+3. **Resolve the §4 C-2 Suffix-enum divergence** — Cowork-authored resolution (expand the enum / restrict the instructions / hybrid), Code commits (see Active TODOs).
+4. **PLAN-0005 §8.1 revisit register** — the remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002, registry discovery).
+5. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (pgvector + Apache AGE + pg_trgm).
+6. **Housekeeping** — delete the two merged remote branches (`feat/plan0005-phase2-runtime`, `feat/plan003-phase1-ontology-engine`) once confirmed.
+7. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
 
 ## Update Workflow
 
