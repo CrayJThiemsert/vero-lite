@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-22T17:00:00+07:00
+last_updated: 2026-05-22T17:30:00+07:00
 session: 10
 current_batch: adr0010-llm-reasoning-hook (ADR-010 Accepted; next = PLAN-0006)
-current_actor: code (ADR-010 committed + STATUS sync done)
+current_actor: code (ADR-010 + handoff validation done; validator bug → PLAN-004 Phase B)
 blocked_on: nothing
 next_action: Cowork drafts PLAN-0006 (ADR-010 T2) on Cray's go; Code executes the LLM-hook swap
 head_commit: 48fe240
-recent_commits: [48fe240, b484f24, 9dd1470, 5d6df24, 593c392, c646bab, 3fe691e, 5f50692, 78f28ab, 9d461f2]
+recent_commits: [cc17a6b, 48fe240, b484f24, 9dd1470, 5d6df24, 593c392, c646bab, 3fe691e, 5f50692, 78f28ab]
 ---
 
 # vero-lite — Project Status
@@ -161,7 +161,7 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 - [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten (full table: PLAN-0005 §8.1): rule-based recommender → **ADR-010 ACCEPTED (2026-05-22) → PLAN-0006 next** (LLM reasoning hook); minimal approval gate → **ADR-011+** (audit framework — trigger: first design-partner data / PDPA review); no mapping layer → **dbt/SQLMesh** (trigger: first non-synthetic source); hand-authored ORM → **"ORM emitter"** Rule-of-Three candidate (trigger: 3rd vertical / DDL↔ORM parity-test drift); base Postgres only → **PLAN-002** (pgvector/AGE — trigger: semantic + graph features); explicit registry → **ADR-006 D3 L2** (trigger: vertical #2/#3 or `new-vertical` generator). *(per Cray note 2026-05-21)*
 - [ ] **Phase-enum amendment** — add `consultation` (or equivalent Q&A-round value) to canonical Phase enum (Q15 of `2026-05-20-0245-code-plan003-pre-draft-consultation-reply.md`); requires touching `tools/handoffs/_schema.py` + `docs/conventions/handoff-frontmatter-schema.md` + validator tests; PLAN-004 Phase B adjacent. *(Deferred per R-9, 2026-05-20)*
 - [ ] **Cleanup stale `ontology/README.md`** — 2026-05-05 PLAN-001 artifact; ontology directory canon now lives at `verticals/<name>/ontology/<name>_v0.yaml` per ADR-006 D1 / ADR-008 D5; superseded by PLAN-003. *(Deferred per R-9 cohort, 2026-05-20)*
-- [ ] **PLAN-004 Phase B/C — DEFERRED (backlog, post-PLAN-003):** validator-scope exclusion (`README.md` / `_rename-map.md`, manifest §4.2/§6.1) + Cat G `references_*` autofix + Phase C handoff dashboard + OQ-2 systemic candidate (effective-vs-authored `status:` / archival flag so dead handoffs don't surface as actionable in the dashboard)
+- [ ] **PLAN-004 Phase B/C — DEFERRED (backlog, post-PLAN-003):** validator-scope exclusion (`README.md` / `_rename-map.md`, manifest §4.2/§6.1) + Cat G `references_*` autofix + Phase C handoff dashboard + OQ-2 systemic candidate (effective-vs-authored `status:` / archival flag so dead handoffs don't surface as actionable in the dashboard) + **validator warning-swallow bug** — `tools/handoffs/_schema.py` `_build()` (lines ~302–306) returns `Frontmatter` and discards its local `errors` list when no hard error exists, so `_check_unknown()` WARNING-severity findings (e.g. unknown field `brief-number`) are unreachable on otherwise-valid files; fix to surface warnings + add a regression test *(found 2026-05-22 dog-fooding the 4 Cowork LLM-hook handoffs; Cray routed → Phase B)*
 - [ ] **ADR-NN (TBD, ≥ ADR-009) + PLAN-002** — Custom Postgres image with extensions (renumbered after ADR-005 reused for strategic pivot)
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
 - [ ] Extract `docs/conventions/git.md` from CLAUDE.md (low priority)
@@ -192,12 +192,11 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 ## Next Steps
 
 1. **PLAN-0006 — LLM reasoning-hook execution plan** — Cowork drafts on Cray's go (ADR-010 T2): Goal / Acceptance Criteria / Out of Scope / Steps for the `recommend()` swap. Must carry ADR-010 IN-1 (Ollama `think`/`format` bug) + IN-2 (prompt-injection containment) + the T3 eval strategy. Then Code executes in a feature branch.
-2. **Validate the 4 Cowork LLM-hook handoffs** — run `validate_handoff.py` over the `cowork-` handoffs once they reach `.claude/handoffs/session-10/` (currently staged in Cowork's K-2 outputs scratchpad — Cray to forward; ADR-009 D3 step 5–6).
-3. **Resolve the §4 C-2 Suffix-enum divergence** — Cowork-authored (α expand-enum / β restrict-instructions / γ codify), Cray adjudicates, Code commits (see Active TODOs).
-4. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002, registry discovery).
-5. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion (engine → design-partner trial sequencing).
-6. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (pgvector + Apache AGE + pg_trgm).
-7. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
+2. **Resolve the §4 C-2 Suffix-enum divergence** — Cowork-authored (α expand-enum / β restrict-instructions / γ codify), Cray adjudicates, Code commits (see Active TODOs).
+3. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002, registry discovery).
+4. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion (engine → design-partner trial sequencing).
+5. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix; validator warning-swallow bug) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (pgvector + Apache AGE + pg_trgm).
+6. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
 
 ## Update Workflow
 
