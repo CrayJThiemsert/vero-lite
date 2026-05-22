@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-22T18:45:00+07:00
+last_updated: 2026-05-22T21:00:00+07:00
 session: 10
-current_batch: c2-suffix-resolution + status-refresh (C-2 alpha committed db9c5ed; next = PLAN-0006)
-current_actor: code (C-2 alpha resolution + STATUS body refresh committed)
+current_batch: plan0006-authoring (PLAN-0006 drafted + committed d3a781e, SD-1..5 adjudicated; next = Phase-1 kickoff dispatch)
+current_actor: code (PLAN-0006 R2-reviewed + committed)
 blocked_on: nothing
-next_action: Cowork drafts PLAN-0006 (ADR-010 T2) on Cray's go
-head_commit: db9c5ed
-recent_commits: [db9c5ed, 4b8ff07, b06de8b, b913eb4, 3d40db5, 24ad28d, 7916b39, 7061265, cc17a6b, 48fe240]
+next_action: Phase-1 kickoff dispatch (Cowork authors, carries PLAN-0006 §8 rulings) then Code executes
+head_commit: d3a781e
+recent_commits: [d3a781e, 710ada9, db9c5ed, 4b8ff07, b06de8b, b913eb4, 3d40db5, 24ad28d, 7916b39, 7061265]
 ---
 
 # vero-lite — Project Status
@@ -34,8 +34,9 @@ Grounded by two Tier-0 research briefs + a readiness-gap analysis (all in
 gitignored `docs/research/private/`): `2026-05-21-llm-reasoning-hook-design.md`,
 `2026-05-22-llm-reasoning-hook-local-models.md`, and
 `2026-05-22-partner-trial-readiness-gaps.md` (an engine→design-partner-trial
-gap analysis, awaiting a dedicated Cray discussion). Next: Cowork drafts
-PLAN-0006 (ADR-010 T2) on Cray's go; Code executes the swap.
+gap analysis, awaiting a dedicated Cray discussion). PLAN-0006 (the
+execution plan) is now drafted + committed (`d3a781e`); next is a Phase-1
+kickoff dispatch carrying the §8 rulings, then Code executes the swap.
 
 **Prior this session — PLAN-0005 Phase 2 (OCT Engine Runtime Layer) MERGED**
 (PR #4, `c646bab`) — the runtime the LLM hook plugs into. **109 passed**,
@@ -83,6 +84,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-22 | **PLAN-0006 (LLM reasoning-hook execution) drafted + committed** — the execution plan for the ADR-010 brain swap; Cowork-authored (Tier 1), Code R2-reviewed (fact-pack verified vs the live repo). Cray adjudicated SD-1..SD-5: async `recommend()` + retry 3, two-call Pattern B trace, gpt-oss-20b primary (provisional, Step-0-gated), raw structured-output (no new dep), seam-only hosted fallback. Next = Phase-1 kickoff dispatch | `d3a781e` / `docs/plans/0006-llm-reasoning-hook-execution.md` |
 | 2026-05-22 | **C-2 Suffix-enum divergence RESOLVED — option α (expand the enum)** — Cray adjudicated α: `tools/handoffs/_schema.py:Suffix` gains `dispatch`/`completion`/`consultation`; PLAN-004 D4 + `handoff-frontmatter-schema.md` register them; 2 regression tests. Closes the schema ↔ `cowork_tab_instructions.md` divergence. `discussion` deliberately excluded (ADR-012 carries it via `phase:`). | `db9c5ed` |
 | 2026-05-22 | **ADR-012 (Cowork second free-form tier) ACCEPTED** — amends ADR-009 D5: Cowork gains a second free-form role (Tier-1b — repo-grounded discussion / thinking-partner / informal code review) alongside Chat, which is **retained** (D5 extended, not revoked). D2 routing: Chat = repo-blind blue-sky, Cowork = repo-grounded. Adopted by Cray as a guarded trial (option α), regression triggers R-FF1..R-FF4 as exit criteria; commit authority stays Code-exclusive. T1 ADR + T2-T6 follow-on amendments (cowork/chat instructions, ADR-009 D5 pointer, CLAUDE.md §6, this STATUS row) committed by Code | `7916b39` / `docs/adr/0012-cowork-second-freeform-tier.md` |
 | 2026-05-22 | **ADR-010 (LLM reasoning-hook surface) ACCEPTED** — five decisions fixing how an LLM replaces the rule recommender: D1 local-LLM-default + Claude-API consent-gated fallback (Cray-ratified), D2 schema-constrained output + retry, D3 hybrid reasoning trace, D4 approval gate = guardrail, D5 `recommend()` LLM-backed under the same signature; ADR-007 D2 envelope unchanged. Drafted by Cowork from two Tier-0 briefs; next = PLAN-0006 | `48fe240` / `docs/adr/0010-llm-reasoning-hook-surface.md` |
@@ -126,7 +128,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 - [x] **`.gitignore` extension** — add `docs/research/private/` (Cowork closeout flag #1) *(Session 10 Batch 3-prep)*
 - [x] **PLAN-0005 Phase 2 — OCT Engine Runtime Layer** — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (postgres:16-alpine, SQLAlchemy/Alembic) + three-layer API wiring + e2e action loop; merged PR #4 (`c646bab`) *(Session 10, 2026-05-21)*
 - [x] **ADR-010 — LLM reasoning-hook surface** — D1 inference backend Cray-ratified (local LLM default + Claude API consent-gated fallback); D2–D5 recommended; ADR-007 D2 envelope unchanged *(Session 10, 2026-05-22; commit `48fe240`)*
-- [ ] **PLAN-0006 — LLM reasoning-hook execution plan** — Cowork drafts on Cray's go (ADR-010 T2); owns the *how* (prompt assembly, parsing, retry wiring, fail-safe). Must carry ADR-010 IN-1 (Ollama `think`/`format` bug #15260) + IN-2 (prompt-injection containment) + T3 eval strategy for a non-deterministic `recommend()`. *(per ADR-010, 2026-05-22)*
+- [ ] **PLAN-0006 — LLM reasoning-hook execution** — plan DRAFTED + committed (`d3a781e`); Cowork-authored, Code R2-reviewed; SD-1..SD-5 adjudicated by Cray 2026-05-22 (§8 rulings inline). Carries ADR-010 IN-1..IN-4 + T3. **Next: Phase-1 kickoff dispatch (Cowork authors) → Code executes Steps 0–8 in a worktree-ON branch.** *(per ADR-010 T2)*
 - [x] **Suffix-enum vs cowork-instruction divergence** (PLAN-0005 §4 C-2) — RESOLVED via option α (expand the enum): `tools/handoffs/_schema.py:Suffix` gained `dispatch`/`completion`/`consultation`; PLAN-004 D4 + `handoff-frontmatter-schema.md` registered them; 2 regression tests in `test_schema.py`. `discussion` deliberately not added (ADR-012 carries it via `phase: discussion`). *(surfaced 2026-05-21; Cray adjudicated α 2026-05-22; `db9c5ed`)*
 - [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten (full table: PLAN-0005 §8.1): rule-based recommender → **ADR-010 ACCEPTED (2026-05-22) → PLAN-0006 next** (LLM reasoning hook); minimal approval gate → **ADR-011+** (audit framework — trigger: first design-partner data / PDPA review); no mapping layer → **dbt/SQLMesh** (trigger: first non-synthetic source); hand-authored ORM → **"ORM emitter"** Rule-of-Three candidate (trigger: 3rd vertical / DDL↔ORM parity-test drift); base Postgres only → **PLAN-002** (pgvector/AGE — trigger: semantic + graph features); explicit registry → **ADR-006 D3 L2** (trigger: vertical #2/#3 or `new-vertical` generator). *(per Cray note 2026-05-21)*
 - [ ] **Phase-enum amendment** — add `consultation` (or equivalent Q&A-round value) to canonical Phase enum (Q15 of `2026-05-20-0245-code-plan003-pre-draft-consultation-reply.md`); requires touching `tools/handoffs/_schema.py` + `docs/conventions/handoff-frontmatter-schema.md` + validator tests; PLAN-004 Phase B adjacent. *(Deferred per R-9, 2026-05-20)*
@@ -161,7 +163,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 ## Next Steps
 
-1. **PLAN-0006 — LLM reasoning-hook execution plan** — Cowork drafts on Cray's go (ADR-010 T2): Goal / Acceptance Criteria / Out of Scope / Steps for the `recommend()` swap. Must carry ADR-010 IN-1 (Ollama `think`/`format` bug) + IN-2 (prompt-injection containment) + the T3 eval strategy. Then Code executes in a feature branch.
+1. **PLAN-0006 — execute the LLM reasoning-hook swap** — PLAN-0006 committed (`d3a781e`), SD-1..SD-5 adjudicated. Next = a Phase-1 kickoff dispatch (Cowork authors, carries the §8 rulings as binding) → Code executes Steps 0–8 (Step 0 = the IN-1 verification gate) in a worktree-ON feature branch.
 2. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002, registry discovery).
 3. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion (engine → design-partner trial sequencing).
 4. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix; validator warning-swallow bug) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (pgvector + Apache AGE + pg_trgm).
