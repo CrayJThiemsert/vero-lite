@@ -6,10 +6,10 @@
 > now Operational Control Tower. The architectural decisions in this
 > document remain valid and apply to both verticals.
 
-**Status:** Accepted
-**Date:** 2026-05-05
+**Status:** Accepted — amended 2026-05-22 (**Amendment 1**: recommender-path model pin — `gpt-oss:20b` + Ollama 0.24.0 supersedes `gemma4:26b` for the ADR-010 recommender path only; see "Amendment 1" below)
+**Date:** 2026-05-05 (Amendment 1: 2026-05-22)
 **Deciders:** Jirachai Thiemsert (founder)
-**Related:** PLAN-001 (starter pack), ADR-002 (network topology)
+**Related:** PLAN-001 (starter pack), ADR-002 (network topology), ADR-010 (LLM reasoning-hook surface — D1/D5/IN-1, the Amendment 1 trigger), PLAN-0006 (LLM reasoning-hook execution — CHECKPOINT-0 + gemma4 viability finding)
 
 ## Context
 
@@ -40,6 +40,8 @@ For **Phase 1** (months 1–6) of vero-lite, the LLM baseline is:
 | **Code agent** | `qwen2.5-coder:32b` | `b92d6a0bd47e` | Code generation, code review, agent workflows via LangGraph |
 | **Cloud fallback** | Anthropic Claude API (Sonnet/Opus, latest) | N/A | High-stakes vision tasks, complex reasoning where local quality is insufficient |
 
+> **Amended 2026-05-22 (Amendment 1):** for the **OCT recommender path** (ADR-010 D5), `gpt-oss:20b` + Ollama 0.24.0 supersedes the `gemma4:26b` row above. gemma4:26b's vision / multimodal role is unchanged (the recommender path is text-only structured generation). See "Amendment 1" below.
+
 **Pinning policy:** All references to local models in code, configs, and tests **must use the digest, not the tag**, when reproducibility matters (e.g., demo recordings, CI tests, locked dependencies).
 
 For day-to-day development convenience, `gemma4:26b` and `qwen2.5-coder:32b` may be referenced by tag, but lock files (`docker-compose.override.yml`, etc.) freeze digests.
@@ -50,6 +52,142 @@ For day-to-day development convenience, `gemma4:26b` and `qwen2.5-coder:32b` may
 1. Quality bar for vision tasks (>90% accuracy on Thai handwritten medical text) is not met by `gemma4:26b` after 4 weeks of testing.
 2. A successor model (e.g., `qwen3-coder`, `gemma5`) becomes available and benchmarks show >15% improvement on representative vero-lite tasks.
 3. VRAM budget changes due to MS-S1 MAX configuration update.
+
+## Amendment 1 — Recommender-path model pin (2026-05-22)
+
+> **Scope of this amendment.** This amends the **Decision** table's *Primary
+> multimodal* row **for the OCT recommender path only** (ADR-010 / PLAN-0006).
+> It does **not** revise ADR-001's general multimodal baseline, the code-agent
+> baseline (`qwen2.5-coder:32b`), or the cloud-fallback posture. Drafted by
+> Cowork (Tier-1, ADR-009 D1) from Code's TODO-A handoff; **Code reviews +
+> commits** (ADR-009 D2). Cray adjudicated the amend-in-place route (vs a new
+> superseding ADR) on 2026-05-22.
+
+### A1.1 Trigger
+
+PLAN-0006 (the LLM reasoning-hook "brain swap" for
+`services/engine/recommender.py::recommend()`, executed — closeout
+`2026-05-22-2355-code-plan0006-kickoff-dispatch-closeout.md`) pins
+**`gpt-oss:20b`** as the model for the recommender's structured-generation
+path. That diverges from this ADR's `gemma4:26b` *Primary multimodal* baseline,
+which ADR-010 IN-1 + PLAN-0006 §7 named a **required** governance follow-on
+(kickoff dispatch §7 TODO-A).
+
+### A1.2 Amended pin (recommender path only)
+
+For the **OCT recommender path** (ADR-010 D5 — the LLM-backed `recommend()`),
+the pinned model is **`gpt-oss:20b`** served on MS-S1 MAX (ADR-002) under
+**Ollama 0.24.0**. `gpt-oss:20b` is a 21B-parameter mixture-of-experts model
+(~3.6B active), ≈14 GB, with a native structured-output path (research brief
+`2026-05-22-llm-reasoning-hook-local-models.md` §3/§5). `gemma4:26b` is
+**superseded for this path**.
+
+| Path | Amended model | Digest | Ollama | Supersedes (this path) | Status |
+|---|---|---|---|---|---|
+| OCT recommender (ADR-010 D5) | `gpt-oss:20b` | `17052f91a42e` | 0.24.0 | `gemma4:26b` | Pinned (PLAN-0006) |
+
+### A1.3 Rationale — two independent grounds
+
+Both verified live on MS-S1 MAX under Ollama 0.24.0 during PLAN-0006 Step 0
+(CHECKPOINT-0) and a Cray-requested follow-up (closeout §3 + §10):
+
+1. **`gemma4:26b` is not viable for the recommender's real schema (decisive,
+   independent of #15260).** With the real `LlmJudgment` structuring schema —
+   which carries a nested `$ref` (`EntityRef`) — `gemma4:26b` does **not
+   complete** the structuring call: it stalls past a 600 s timeout, both with a
+   free-string handler and with an enum-constrained handler. `gpt-oss:20b`
+   completes the same nested-schema call in **41 s**. (The
+   misleadingly-passing CHECKPOINT-0 spike used a *flat* schema, which gemma4
+   handled in 3.6–16 s; the real nested schema is the operative case.)
+2. **The Ollama `think`/`format` interaction (#15260) is still live in 0.24.0 —
+   but does not, by itself, disqualify gemma4.** Setting `think=false` together
+   with a `format` JSON schema silently drops the schema constraint on the
+   **Qwen3.x family** (`qwen3.5:35b`, `qwen3.6:35b` emitted non-JSON prose under
+   `think=false`); it is **absent** for both `gpt-oss:20b` and `gemma4:26b`
+   (both honour `format` in every `think` condition). #15260 therefore rules out
+   the Qwen3.x fallback under a naive config, but ground (1) — not #15260 — is
+   what disqualifies gemma4 for this path.
+
+Net: `gpt-oss:20b` is the only surveyed local model that both honours `format`
+reliably **and** completes the recommender's real nested-schema structuring
+call.
+
+CHECKPOINT-0 verdict grid (`format` honoured under each `think` setting):
+
+| Model | no_think | think=false | think=true |
+|---|---|---|---|
+| `gemma4:26b` | OK | OK | OK |
+| `gpt-oss:20b` | OK | OK | OK |
+| `qwen3.5:35b` | OK | NOT_JSON | OK |
+| `qwen3.6:35b` | OK | NOT_JSON | OK |
+
+(`gemma4:26b` honours `format` here but fails the *separate* nested-schema
+completion test in ground 1.)
+
+### A1.4 What this amendment does NOT change
+
+- **`gemma4:26b`'s general multimodal / vision role is intact.** ADR-001
+  selected `gemma4:26b` primarily for vision + handwriting-OCR (the original
+  Phase-1 driver). The recommender path is **text-only structured generation**,
+  a different capability; superseding gemma4 here says nothing about its
+  multimodal selection.
+- **`qwen2.5-coder:32b` (code-agent baseline) is untouched** — it was not
+  evaluated for the recommender path; the SD-3 survey did not select it.
+- **The cloud-fallback posture** (Claude API, consent-gated, non-PII) is
+  unchanged; ADR-010 D1 re-affirms it.
+- **The structuring call must not pair `think=false` with `format`.** PLAN-0006
+  bakes "omit `think` on the structuring call (Pattern B call 2)" into
+  `services/engine/llm/`. Recorded here so a future model swap re-checks the
+  #15260 interaction (ADR-010 IN-1).
+
+### A1.5 Digest pinning — captured (Code)
+
+This ADR's pinning policy requires a **digest**, not a tag, where
+reproducibility matters. The `gpt-oss:20b` digest was captured live from MS-S1
+MAX at commit time (`curl http://192.168.1.133:11434/api/tags`, 2026-05-22) and
+is recorded here per the digest discipline used for the `gemma4:26b` /
+`qwen2.5-coder:32b` rows above:
+
+- **`gpt-oss:20b`** — digest `17052f91a42e` (12-char short form, per the
+  Decision-table convention above); size 13793441244 bytes (~12.8 GiB); Ollama
+  0.24.0. The full 64-char digest is recoverable via `ollama show gpt-oss:20b`
+  on MS-S1 MAX.
+
+The code pin (`Settings.recommender_model`) references the **tag** `gpt-oss:20b`
+for day-to-day convenience, as the ADR-001 pinning policy permits; the digest
+above is the reproducibility anchor for demo/CI lock-down.
+
+### A1.6 Implementation status
+
+The pin ships as `services/api/config.py::Settings.recommender_model` (default
+`"gpt-oss:20b"`) on the **unmerged** branch `feat/plan0006-llm-reasoning-hook`
+(committed + pushed, no PR). At the time of this draft, `services/api/config.py`
+on `main` still defaults `ollama_default_model = "gemma4:26b"` with no
+`recommender_model` field. This amendment and the code pin therefore land
+together: per Cray's routing decision (2026-05-22) the amendment commit rides
+the `feat/plan0006-llm-reasoning-hook` branch and ships in the PLAN-0006 PR. A
+dedicated `recommender_model` setting (not a change to the general
+`ollama_default_model`) satisfied PLAN-0006 TODO-B.
+
+### A1.7 References (Amendment 1)
+
+- `docs/adr/0010-llm-reasoning-hook-surface.md` — D1 (local-default backend),
+  D5 (LLM-backed `recommend()`), IN-1 (the `think`/`format` verification item
+  this amendment closes)
+- `docs/plans/done/0006-llm-reasoning-hook-execution.md` — §8 SD-3 (model-pin
+  ruling), §7 acceptance (the plan was moved to `done/` on this branch at
+  PLAN-0006 Step 8, per CLAUDE.md §6 Plan Flow)
+- `.claude/handoffs/session-10/2026-05-22-2355-code-plan0006-kickoff-dispatch-closeout.md`
+  — §3 CHECKPOINT-0 verdict grid, §10 `gemma4:26b` nested-schema viability
+  addendum
+- `.claude/handoffs/session-10/2026-05-22-2230-cowork-plan0006-kickoff-dispatch.md`
+  — §7 TODO-A (the amendment trigger), §2 SD-3
+- `docs/research/private/2026-05-22-llm-reasoning-hook-local-models.md` — §3/§5
+  `gpt-oss:20b` profile; §4.1 Ollama issue #15260
+- Ollama issue #15260 — `think=false` + `format` silently drops the schema
+  constraint: https://github.com/ollama/ollama/issues/15260
+- Branch `feat/plan0006-llm-reasoning-hook` (the `recommender_model` config pin
+  lands here)
 
 ## Consequences
 
