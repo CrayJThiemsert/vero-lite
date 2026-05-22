@@ -180,6 +180,13 @@ Cowork-as-Tier-1 evaluation:
 
 ### D5: Chat-tab disposition — RATIFIED option (b)
 
+> **Amended by ADR-012 (2026-05-22):** D5 is extended — Chat is
+> **retained** as a free-form venue (option (b) stands), and Cowork
+> gains a **second** free-form role (Tier-1b, repo-grounded) alongside
+> it. The two are complementary venues; route by ADR-012 D2. ADR-012
+> amends D5 only — ADR-009 D1–D4 and D6 are unchanged. Per CLAUDE.md §1,
+> the more-recent accepted ADR (ADR-012) governs on conflict.
+
 **Ratified 2026-05-21 by Cray:** option **(b)** — Chat retained for
 free-form exploration / strategy discussion only, with **no
 dispatch- or governance-artifact-authoring role**.
