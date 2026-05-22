@@ -77,6 +77,14 @@ Extensible suffixes (registered, additions require PLAN-004 amendment):
 | `transcript` | full raw session transcript (per `docs/runbooks/transcript-handoff.md`) | Session 11, commit `dd65d9b` |
 | `sync` | curated cross-tier sync handoff | Session 11, `2026-05-16-2210-code-chat-sync-transcript-tooling.md` |
 | `restart-bridge` | constitutional-edit restart handoff (Lesson #5 §1) | Session 11, `2026-05-16-1337-code-session11-restart-bridge.md` |
+| `dispatch` | Tier-1 execute / kickoff dispatch to Code (ADR-009 D1) | Session 10, `2026-05-20-1530-cowork-plan003-phase1-kickoff-dispatch.md` |
+| `completion` | Tier-1 governance-artifact completion report (ADR / PLAN draft handed to Code) | Session 10, `2026-05-21-1130-cowork-plan0005-runtime-layer-completion.md` |
+| `consultation` | pre-draft consultation Q&A round | Session 10, `2026-05-20-0215-chat-plan003-pre-draft-consultation.md` |
+
+`dispatch` / `completion` / `consultation` were registered 2026-05-22
+per C-2 resolution α (PLAN-004 D4 amendment). `discussion` is **not** a
+suffix — per ADR-012, discussion handoffs use `phase: discussion` and
+omit `suffix:`.
 
 `phase:` ↔ `suffix:` distinction:
 - `phase:` always present, answers "what stage of the batch?"

@@ -157,3 +157,25 @@ def test_detect_chain_via_summary(tmp_path: Path) -> None:
     assert summary.total == 3
     assert summary.chains
     assert "PAUSED → PAUSED → DONE" in summary.chains[0]
+
+
+def test_extensible_suffixes_registered() -> None:
+    """C-2 resolution, option alpha (PLAN-004 D4 amendment, 2026-05-22):
+    the dispatch / completion / consultation tokens resolve to Suffix
+    enum members, closing the schema-vs-cowork-instruction divergence."""
+    for token in ("dispatch", "completion", "consultation"):
+        assert sch.Suffix(token).value == token
+
+
+def test_completion_suffix_validates_clean(tmp_path: Path) -> None:
+    """A handoff declaring `suffix: completion` with a matching filename
+    token validates with zero findings: the case that surfaced C-2."""
+    text = _VALID.replace(
+        "title: demo handoff\n",
+        "title: demo handoff\nsuffix: completion\n",
+    )
+    p = _write(tmp_path / "2026-05-22-1130-chat-demo-completion.md", text)
+    fm = sch.parse_frontmatter(p)
+    assert isinstance(fm, sch.Frontmatter)
+    assert fm.suffix is sch.Suffix.COMPLETION
+    assert sch.validate_file(p) == []

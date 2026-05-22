@@ -133,14 +133,25 @@ are **registered here**:
 | `transcript` | full raw session transcript (per `transcript-handoff.md`) | extensible | Session 11, `dd65d9b` |
 | `sync` | curated cross-tier sync handoff | extensible | Session 11, `2026-05-16-2210-code-chat-sync-transcript-tooling.md` |
 | `restart-bridge` | constitutional-edit restart handoff (Lesson #5 §1) | extensible | Session 11, `2026-05-16-1337-code-session11-restart-bridge.md` |
+| `dispatch` | Tier-1 execute / kickoff dispatch to Code (ADR-009 D1) | extensible | Session 10, C-2 resolution α (`2026-05-20-1530-cowork-plan003-phase1-kickoff-dispatch.md`) |
+| `completion` | Tier-1 governance-artifact completion report | extensible | Session 10, C-2 resolution α (`2026-05-21-1130-cowork-plan0005-runtime-layer-completion.md`) |
+| `consultation` | pre-draft consultation Q&A round | extensible | Session 10, C-2 resolution α (`2026-05-20-0215-chat-plan003-pre-draft-consultation.md`) |
 
 **Field semantics:** `suffix:` field is OPTIONAL. Files using only core
 lifecycle patterns (kickoff/closeout/midflight folded into `phase:`)
-may omit `suffix:`. Files using extensible suffixes (transcript / sync /
-restart-bridge) MUST declare `suffix:` so validator + reader can
+may omit `suffix:`. Files using extensible suffixes (the extensible
+rows above) MUST declare `suffix:` so validator + reader can
 classify them. Validator enforces filename-token / `suffix:` field
 consistency when both are present. New extensible suffixes added to
 this table require a PLAN-004 amendment (lightweight, single-row edit).
+
+**Amendment (2026-05-22 — C-2 resolution α):** `dispatch`, `completion`,
+and `consultation` registered as extensible suffixes (rows above),
+closing the `tools/handoffs/_schema.py:Suffix` enum ↔
+`docs/conventions/cowork_tab_instructions.md` suffix-list divergence.
+Cray adjudicated option α (expand the enum) on 2026-05-22. `discussion`
+is deliberately **not** added — per ADR-012, discussion handoffs carry
+their role via `phase: discussion` and omit `suffix:`.
 
 The `phase:` ↔ `suffix:` distinction:
 - `phase:` always present, answers "what stage of the batch?"

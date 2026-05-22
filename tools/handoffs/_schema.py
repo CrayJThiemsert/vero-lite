@@ -80,9 +80,9 @@ class Status(Enum):
 
 
 class Suffix(Enum):
-    """Content-type token (D4). Core members are locked; the three
-    extensible members are registered and adding more requires a
-    PLAN-004 amendment."""
+    """Content-type token (D4). Core members are locked; the
+    extensible members are registered here and adding more requires a
+    PLAN-004 D4 amendment."""
 
     CLOSEOUT = "closeout"
     MIDFLIGHT = "midflight"
@@ -93,6 +93,9 @@ class Suffix(Enum):
     TRANSCRIPT = "transcript"
     SYNC = "sync"
     RESTART_BRIDGE = "restart-bridge"
+    DISPATCH = "dispatch"
+    COMPLETION = "completion"
+    CONSULTATION = "consultation"
 
 
 class Severity(Enum):
