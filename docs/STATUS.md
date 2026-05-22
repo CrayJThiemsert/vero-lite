@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-21T19:30:00+07:00
+last_updated: 2026-05-22T17:00:00+07:00
 session: 10
-current_batch: plan0005-phase2-closeout (Phase 2 merged + small-backlog cleanup; next = LLM reasoning hook)
-current_actor: code (Phase 2 closeout + STATUS sync done)
+current_batch: adr0010-llm-reasoning-hook (ADR-010 Accepted; next = PLAN-0006)
+current_actor: code (ADR-010 committed + STATUS sync done)
 blocked_on: nothing
-next_action: LLM reasoning hook framing — Chat free-form discussion → Cowork drafts ADR-010 (CLAUDE.md §6)
-head_commit: 9dd1470
-recent_commits: [9dd1470, 5d6df24, 593c392, c646bab, 3fe691e, 5f50692, 78f28ab, 9d461f2, d3b893c, 226e363]
+next_action: Cowork drafts PLAN-0006 (ADR-010 T2) on Cray's go; Code executes the LLM-hook swap
+head_commit: 48fe240
+recent_commits: [48fe240, b484f24, 9dd1470, 5d6df24, 593c392, c646bab, 3fe691e, 5f50692, 78f28ab, 9d461f2]
 ---
 
 # vero-lite — Project Status
@@ -18,13 +18,28 @@ recent_commits: [9dd1470, 5d6df24, 593c392, c646bab, 3fe691e, 5f50692, 78f28ab, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0005 Phase 2 (OCT Engine Runtime Layer) MERGED to main (PR #4, `c646bab`).**
+**Session 10 — ADR-010 (LLM reasoning-hook surface) ACCEPTED (`48fe240`).** The
+brain swap — replacing the PLAN-0005 rule-based recommender with an LLM — now
+has a settled surface. ADR-010 fixes five decisions: D1 inference backend
+(local LLM on MS-S1 MAX default + Claude API consent-gated fallback —
+Cray-ratified 2026-05-22, option A); D2 JSON-schema-constrained output +
+bounded validate-and-retry; D3 hybrid `llm_inference` + harness-emitted
+reasoning trace; D4 the existing approval gate is the guardrail; D5
+`recommend()` becomes LLM-backed under the same signature. The ADR-007 D2
+`RecommendedAction` envelope does **not** change. Binding Implementation Notes
+IN-1 (Ollama `think`/`format` bug #15260) + IN-2 (prompt-injection containment)
+carry into PLAN-0006 scope.
 
-Phase 2 operationalises the Phase 1 ontology engine — Layer 2 of the two-layer
-moat. Eight build commits + one tooling chore on the feature branch; full suite
-**109 passed**, coverage **95.34%**, `ruff` + `mypy --strict services/` clean.
+Grounded by two Tier-0 research briefs + a readiness-gap analysis (all in
+gitignored `docs/research/private/`): `2026-05-21-llm-reasoning-hook-design.md`,
+`2026-05-22-llm-reasoning-hook-local-models.md`, and
+`2026-05-22-partner-trial-readiness-gaps.md` (an engine→design-partner-trial
+gap analysis, awaiting a dedicated Cray discussion). Next: Cowork drafts
+PLAN-0006 (ADR-010 T2) on Cray's go; Code executes the swap.
 
-Final module / endpoint set (PLAN-0005 §11):
+**Prior this session — PLAN-0005 Phase 2 (OCT Engine Runtime Layer) MERGED**
+(PR #4, `c646bab`) — the runtime the LLM hook plugs into. **109 passed**,
+coverage **95.34%**. Module / endpoint set (PLAN-0005 §11):
 
 - `services/engine/data_adapter.py` — `DataAdapter` Protocol (ADR-007 D1)
 - `services/engine/actions.py` — `RecommendedAction` runtime envelope (ADR-007 D2)
@@ -100,6 +115,7 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-22 | **ADR-010 (LLM reasoning-hook surface) ACCEPTED** — five decisions fixing how an LLM replaces the rule recommender: D1 local-LLM-default + Claude-API consent-gated fallback (Cray-ratified), D2 schema-constrained output + retry, D3 hybrid reasoning trace, D4 approval gate = guardrail, D5 `recommend()` LLM-backed under the same signature; ADR-007 D2 envelope unchanged. Drafted by Cowork from two Tier-0 briefs; next = PLAN-0006 | `48fe240` / `docs/adr/0010-llm-reasoning-hook-surface.md` |
 | 2026-05-21 | **mypy pre-commit gate extended to `verticals/`** — the hook now covers `^(services\|verticals)/`, not just `services/`; closes the flagged coverage gap (verified `pre-commit run mypy --all-files`) | `9dd1470` |
 | 2026-05-21 | **PLAN-0005 Phase 2 — OCT Engine Runtime Layer MERGED** (PR #4, 13 commits) — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (real `postgres:16-alpine`, SQLAlchemy 2.0 async + Alembic) + three-layer API wiring + end-to-end action loop; 109 tests, coverage 95.34%; six §8 OQs honoured; DDL/ORM parity test (C-1/R6) green; PLAN-003 + PLAN-0005 moved to `done/` | `c646bab` (PR #4) / `docs/plans/done/0005-oct-engine-runtime-layer.md` |
 | 2026-05-21 | **ADR-009 ACCEPTED + 7-commit atomic PR #3 MERGED (`08117d5`)** — Cowork becomes Tier-0+1 merged workspace (dispatch/ADR/PLAN authoring), Chat narrows to free-form discussion only (D5 b), commit authority stays Code-exclusive (D2), K-1/K-2 workflow codified durably (Lesson #8). Hypothesis from parent discussion (2026-05-20-1235) supported by round 1 + round 2 trials (PASS / PASS). Commits 7c5c728 (ADR-009) → 601cdd4 (ADR-007 pointer T7) → 6759949 (cowork_tab T3) → dd9fe76 (chat_tab T4) → b6bf400 (Lesson #8 T6) → af6f858 (CLAUDE.md §6 T2) → e9f499b (STATUS T5). **Cray TODO:** re-paste cowork/chat tier instructions into Claude Desktop UI (repo canonical, UI sync target per CLAUDE.md §4) | `08117d5` / `docs/adr/0009-cowork-tier1-tier-topology.md` |
@@ -138,9 +154,11 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 - [x] **ADR-007** — OCT engine contracts (DataAdapter, RecommendedAction, three-layer wiring) *(Session 10 Batch 3)*
 - [x] **ADR-008** — YAML ontology specification (5 base types, JSON Schema validation) *(Session 10 Batch 3)*
 - [x] **`.gitignore` extension** — add `docs/research/private/` (Cowork closeout flag #1) *(Session 10 Batch 3-prep)*
-- [x] **PLAN-0005 Phase 2 — OCT Engine Runtime Layer** — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (postgres:16-alpine, SQLAlchemy/Alembic) + three-layer API wiring + e2e action loop; 8 commits + 1 chore on `feat/plan0005-phase2-runtime`, PR pending *(Session 10, 2026-05-21)*
-- [ ] **Suffix-enum vs cowork-instruction divergence** (PLAN-0005 §4 C-2) — `tools/handoffs/_schema.py:Suffix` lacks `completion` / `dispatch` / `consultation` which the cowork instructions list as valid Tier-1 suffixes; decide (a) add the three enum members (+ schema doc + tests) or (b) amend the cowork instructions to enum-only suffixes. Same class as the deferred `consultation` Phase-enum amendment. *(surfaced 2026-05-21)*
-- [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten (full table: PLAN-0005 §8.1): rule-based recommender → **ADR-010+** (LLM reasoning hook); minimal approval gate → **ADR-011+** (audit framework — trigger: first design-partner data / PDPA review); no mapping layer → **dbt/SQLMesh** (trigger: first non-synthetic source); hand-authored ORM → **"ORM emitter"** Rule-of-Three candidate (trigger: 3rd vertical / DDL↔ORM parity-test drift); base Postgres only → **PLAN-002** (pgvector/AGE — trigger: semantic + graph features); explicit registry → **ADR-006 D3 L2** (trigger: vertical #2/#3 or `new-vertical` generator). *(per Cray note 2026-05-21)*
+- [x] **PLAN-0005 Phase 2 — OCT Engine Runtime Layer** — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (postgres:16-alpine, SQLAlchemy/Alembic) + three-layer API wiring + e2e action loop; merged PR #4 (`c646bab`) *(Session 10, 2026-05-21)*
+- [x] **ADR-010 — LLM reasoning-hook surface** — D1 inference backend Cray-ratified (local LLM default + Claude API consent-gated fallback); D2–D5 recommended; ADR-007 D2 envelope unchanged *(Session 10, 2026-05-22; commit `48fe240`)*
+- [ ] **PLAN-0006 — LLM reasoning-hook execution plan** — Cowork drafts on Cray's go (ADR-010 T2); owns the *how* (prompt assembly, parsing, retry wiring, fail-safe). Must carry ADR-010 IN-1 (Ollama `think`/`format` bug #15260) + IN-2 (prompt-injection containment) + T3 eval strategy for a non-deterministic `recommend()`. *(per ADR-010, 2026-05-22)*
+- [ ] **Suffix-enum vs cowork-instruction divergence** (PLAN-0005 §4 C-2) — `tools/handoffs/_schema.py:Suffix` lacks `completion` / `dispatch` / `consultation` which the cowork instructions list as valid Tier-1 suffixes; decide (a) add the three enum members (+ schema doc + tests) or (b) amend the cowork instructions to enum-only suffixes. Same class as the deferred `consultation` Phase-enum amendment. *(surfaced 2026-05-21; Cowork re-hit it 2026-05-22 on the LLM-hook handoffs — resolution is Cowork-authored α expand-enum / β restrict-instructions / γ codify, Cray adjudicates, Code commits, Code must not silently fix)*
+- [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten (full table: PLAN-0005 §8.1): rule-based recommender → **ADR-010 ACCEPTED (2026-05-22) → PLAN-0006 next** (LLM reasoning hook); minimal approval gate → **ADR-011+** (audit framework — trigger: first design-partner data / PDPA review); no mapping layer → **dbt/SQLMesh** (trigger: first non-synthetic source); hand-authored ORM → **"ORM emitter"** Rule-of-Three candidate (trigger: 3rd vertical / DDL↔ORM parity-test drift); base Postgres only → **PLAN-002** (pgvector/AGE — trigger: semantic + graph features); explicit registry → **ADR-006 D3 L2** (trigger: vertical #2/#3 or `new-vertical` generator). *(per Cray note 2026-05-21)*
 - [ ] **Phase-enum amendment** — add `consultation` (or equivalent Q&A-round value) to canonical Phase enum (Q15 of `2026-05-20-0245-code-plan003-pre-draft-consultation-reply.md`); requires touching `tools/handoffs/_schema.py` + `docs/conventions/handoff-frontmatter-schema.md` + validator tests; PLAN-004 Phase B adjacent. *(Deferred per R-9, 2026-05-20)*
 - [ ] **Cleanup stale `ontology/README.md`** — 2026-05-05 PLAN-001 artifact; ontology directory canon now lives at `verticals/<name>/ontology/<name>_v0.yaml` per ADR-006 D1 / ADR-008 D5; superseded by PLAN-003. *(Deferred per R-9 cohort, 2026-05-20)*
 - [ ] **PLAN-004 Phase B/C — DEFERRED (backlog, post-PLAN-003):** validator-scope exclusion (`README.md` / `_rename-map.md`, manifest §4.2/§6.1) + Cat G `references_*` autofix + Phase C handoff dashboard + OQ-2 systemic candidate (effective-vs-authored `status:` / archival flag so dead handoffs don't surface as actionable in the dashboard)
@@ -173,12 +191,12 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 
 ## Next Steps
 
-1. **LLM reasoning hook — framing discussion** — PLAN-0005 §8.1 revisit register row 1. Hold the framing discussion in Chat free-form (CLAUDE.md §6 Decision Flow): local LLM (MS-S1 MAX, ADR-002) vs Claude API; structured output for a valid `RecommendedAction` envelope; `kind="llm_inference"` reasoning trace; approval gate as the guardrail boundary; swap surface = `services/engine/recommender.py` `recommend()`. Then Cowork drafts **ADR-010** → **PLAN-0006** → Code executes.
-2. **Cowork Tier-0 research brief** — dispatch "LLM reasoning-hook design for an operational-decision engine" (Ollama/local-LLM patterns, structured output, reasoning-trace design, safety guardrails, Palantir AIP LLM-in-the-loop). Grounds ADR-010. Also hand Cowork §4 C-2 (Suffix-enum divergence — Cowork owns the handoff vocabulary).
-3. **Resolve the §4 C-2 Suffix-enum divergence** — Cowork-authored resolution (expand the enum / restrict the instructions / hybrid), Code commits (see Active TODOs).
-4. **PLAN-0005 §8.1 revisit register** — the remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002, registry discovery).
-5. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (pgvector + Apache AGE + pg_trgm).
-6. **Housekeeping** — delete the two merged remote branches (`feat/plan0005-phase2-runtime`, `feat/plan003-phase1-ontology-engine`) once confirmed.
+1. **PLAN-0006 — LLM reasoning-hook execution plan** — Cowork drafts on Cray's go (ADR-010 T2): Goal / Acceptance Criteria / Out of Scope / Steps for the `recommend()` swap. Must carry ADR-010 IN-1 (Ollama `think`/`format` bug) + IN-2 (prompt-injection containment) + the T3 eval strategy. Then Code executes in a feature branch.
+2. **Validate the 4 Cowork LLM-hook handoffs** — run `validate_handoff.py` over the `cowork-` handoffs once they reach `.claude/handoffs/session-10/` (currently staged in Cowork's K-2 outputs scratchpad — Cray to forward; ADR-009 D3 step 5–6).
+3. **Resolve the §4 C-2 Suffix-enum divergence** — Cowork-authored (α expand-enum / β restrict-instructions / γ codify), Cray adjudicates, Code commits (see Active TODOs).
+4. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002, registry discovery).
+5. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion (engine → design-partner trial sequencing).
+6. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (pgvector + Apache AGE + pg_trgm).
 7. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
 
 ## Update Workflow
