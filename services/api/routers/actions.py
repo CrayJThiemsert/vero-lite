@@ -52,7 +52,7 @@ async def _populate_store() -> None:
     """Read reading events from the energy adapter and derive recommendations."""
     adapter = registry.get_adapter(_VERTICAL)
     async for event in adapter.stream_events("reading"):
-        record = recommend(event, _VERTICAL)
+        record = await recommend(event, _VERTICAL)
         if record is not None:
             _action_store[record.action.id] = record
 
