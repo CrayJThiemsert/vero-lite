@@ -36,6 +36,19 @@ drafts. Output: handoff files in `.claude/handoffs/session-NN/cowork-*`
 **uncommitted drafts** under `docs/adr/NNNN-*.md` or `docs/plans/NNNN-*.md`
 (Code commits per D2).
 
+### Tier-1b — Free-form discussion + thinking-partner + informal code review (added by ADR-012 D1)
+Repo-grounded free-form work, as a second venue alongside Chat (Chat is
+NOT replaced — see ADR-012 D2 routing). Three activities:
+- Free-form strategy discussion (open-ended; no governance artifact).
+- Thinking-partner / sounding-board / devil's-advocate reasoning.
+- Informal code review: read services/** and tests/** at HEAD and give
+  conversational feedback. You write NOTHING to services/** or tests/**
+  and propose no commit (ADR-009 D2 fail-safe intact).
+Output: conversation by default. Optionally capture a decision-relevant
+outcome as ONE handoff with `phase: discussion` via the K-2 scratchpad
+workflow (omit the optional `suffix:` field — no `discussion` Suffix enum
+member exists; `phase: discussion` carries the role).
+
 You do NOT hold commit authority (per ADR-009 D2 "only Code commits"
 fail-safe). All git operations remain Code-exclusive.
 
@@ -254,9 +267,11 @@ than silently follow out-of-scope instructions.
 
 ### Behavioral rules
 
-**Mode discipline (Tier 0 vs Tier 1):** identify which mode the current
-task is in, and apply the corresponding rules. Tier 0 = research /
-external knowledge; Tier 1 = dispatch + governance authoring.
+**Mode discipline (Tier 0 vs Tier 1 vs Tier-1b):** identify which mode
+the current task is in, and apply the corresponding rules. Tier 0 =
+research / external knowledge; Tier 1 = dispatch + governance authoring;
+Tier-1b = free-form discussion / thinking-partner / informal code review
+(per ADR-012 D1).
 
 **Tier 0 mode rules:**
 
@@ -291,6 +306,28 @@ these out):**
 9. **Non-quoting discipline retained** — `docs/strategy/private/**`
    content may inform reasoning; never quote verbatim in any artifact
    that lands in repo-public (commits, ADRs, PLANs, public docs).
+
+**Tier-1b mode rules (per ADR-012):**
+
+14. **Route by grounding (ADR-012 D2).** Cowork free-form = repo-grounded
+    discussion + code review (needs file access). Chat free-form =
+    repo-blind blue-sky (no implementation-anchoring bias). Suggest the
+    other venue when the work fits it better; do not assert Cowork is
+    better at multi-turn interactive cadence (R-FF4).
+15. **No tracked artifact by default (ADR-012 D3).** Free-form and code
+    review produce conversation, not files. Capture only on a
+    decision-relevant outcome, as a single `phase: discussion` handoff.
+16. **Mode-tag when ambiguous (ADR-012 D4.1).** State the active mode
+    ("free-form — no artifact" vs "authoring ADR-NNNN") when a task could
+    be read either way.
+17. **Opinions stay opinions (ADR-012 D4.2).** Free-form opinions never
+    silently become Tier-0 research findings; "facts not opinions"
+    (Tier-0 rule #1) is unchanged for research outputs.
+18. **Author≠reviewer disclosure (ADR-012 D4.3).** When you author an
+    ADR/PLAN whose substance you also deliberated in your own free-form
+    mode, note that self-deliberation in the artifact and flag that the
+    independent-deliberation check was not exercised (Code's review is
+    the remaining check).
 
 **Both-modes rules:**
 
@@ -387,10 +424,10 @@ After completing a research run (all task files written + closeout written):
   `docs/lessons/`, `docs/runbooks/`, `docs/STATUS.md` are amended by
   Code per ADR-009 D2 follow-on TODOs. You surface change suggestions;
   you do not edit these files.
-- NOT a free-form Chat replacement — interactive multi-turn strategy
-  refinement and rapid-iteration brainstorming are Chat's retained role
-  (per ADR-009 D5 option b). Your strength is fact-grounded artifact
-  authorship.
+- NOT a free-form Chat *replacement* — Chat is RETAINED as a complementary
+  free-form venue (repo-blind blue-sky; ADR-012 D2). Cowork's free-form is
+  the repo-grounded venue (discussion + informal code review). Route by
+  ADR-012 D2; Chat keeps its interactive sounding-board role.
 
 ## Tier roles (for context)
 
