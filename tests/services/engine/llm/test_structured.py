@@ -47,7 +47,12 @@ class FakeChatClient:
         temperature: float = 0.0,
     ) -> ChatResult:
         self.calls.append(
-            {"think": think, "has_format": response_format is not None, "messages": messages}
+            {
+                "think": think,
+                "has_format": response_format is not None,
+                "response_format": response_format,
+                "messages": messages,
+            }
         )
         if not self._results:
             raise AssertionError("FakeChatClient exhausted its canned results")
@@ -198,6 +203,18 @@ async def test_retry_feeds_validator_error_back() -> None:
     retry_messages = client.calls[2]["messages"]
     joined = " ".join(m["content"] for m in retry_messages)
     assert "failed validation" in joined
+
+
+async def test_suggested_handler_is_enum_constrained_to_registered_handlers() -> None:
+    """The format schema constrains suggested_handler to the registry's handlers."""
+    registry.register_handler("energy", "echo", _noop_handler)
+    registry.register_handler("energy", "notify", _noop_handler)
+    client = FakeChatClient([_result("draft", thinking="r"), _result(_valid_json())])
+
+    await generate_judgment(client, _EVENT, "energy")
+
+    schema = client.calls[1]["response_format"]
+    assert schema["properties"]["suggested_handler"]["enum"] == ["echo", "notify"]
 
 
 async def test_judgment_round_trips() -> None:

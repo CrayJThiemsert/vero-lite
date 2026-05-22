@@ -91,8 +91,21 @@ class LlmJudgment(BaseModel):
     )
 
 
-_JUDGMENT_SCHEMA: dict[str, Any] = LlmJudgment.model_json_schema()
-"""The JSON Schema handed to Ollama ``format`` for constrained generation."""
+def _judgment_schema(handler_names: list[str]) -> dict[str, Any]:
+    """Build the JSON Schema handed to Ollama ``format``.
+
+    When the vertical has registered handlers, ``suggested_handler`` is
+    constrained to that enum, so constrained generation cannot emit an
+    unresolvable handler. A PLAN-0006 Step-7 live capture confirmed that a
+    free-string handler field lets the model invent plausible-but-wrong
+    handler names (e.g. ``"operator"``); the enum closes that. The
+    semantic check in ``_parse_and_check`` remains the backstop (and the
+    only guard when no handler is registered yet).
+    """
+    schema: dict[str, Any] = LlmJudgment.model_json_schema()
+    if handler_names:
+        schema["properties"]["suggested_handler"]["enum"] = list(handler_names)
+    return schema
 
 
 class StructuredOutputError(RuntimeError):
@@ -129,9 +142,11 @@ async def generate_judgment(
     """Run the two-call Pattern B exchange and return a validated judgment.
 
     Call 1 reasons (``think=True``); call 2 emits the constrained envelope
-    against :data:`_JUDGMENT_SCHEMA`. Per the CHECKPOINT-0 contract, call
-    2 OMITS ``think`` (never ``think=False`` with ``format`` — Ollama
-    #15260). A parse / schema / semantic failure feeds the error back as
+    against the :class:`LlmJudgment` schema, with ``suggested_handler``
+    enum-constrained to the vertical's registered handlers. Per the
+    CHECKPOINT-0 contract, call 2 OMITS ``think`` (never ``think=False``
+    with ``format`` — Ollama #15260). A parse / schema / semantic failure
+    feeds the error back as
     labelled-untrusted retry context (PLAN-0006 §6.4 / IN-2 corollary)
     for up to ``retry_budget`` total attempts.
 
@@ -141,6 +156,7 @@ async def generate_judgment(
     fail-safe.
     """
     budget = max(1, retry_budget)
+    schema = _judgment_schema(registry.handler_names(vertical))
     reasoning = await client.chat(build_reasoning_messages(event, vertical), think=True)
 
     feedback: str | None = None
@@ -150,7 +166,7 @@ async def generate_judgment(
             event, vertical, reasoning.content, retry_feedback=feedback
         )
         # call 2: omit `think` (CHECKPOINT-0 contract — never think=False + format)
-        result = await client.chat(messages, response_format=_JUDGMENT_SCHEMA)
+        result = await client.chat(messages, response_format=schema)
         judgment, error = _parse_and_check(result.content, vertical)
         if judgment is not None:
             return JudgmentResult(
