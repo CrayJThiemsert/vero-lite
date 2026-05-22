@@ -36,6 +36,38 @@ class Settings(BaseSettings):
         description="Default LLM model — see ADR-001 (digest 5571076f3d70)",
     )
 
+    # LLM reasoning hook (PLAN-0006 / ADR-010)
+    llm_backend: str = Field(
+        default="local",
+        description=(
+            "Reasoning-hook backend selector — 'local' (Ollama on MS-S1 MAX, "
+            "ADR-010 D1 default) or 'hosted' (Claude API fallback, seam-only / "
+            "stubbed per PLAN-0006 SD-5)"
+        ),
+    )
+    recommender_model: str = Field(
+        default="gpt-oss:20b",
+        description=(
+            "Model for the recommender LLM path — pinned by PLAN-0006 "
+            "CHECKPOINT-0 (ADR-010 IN-1 verification, Ollama 0.24.0); "
+            "supersedes the ADR-001 gemma4:26b baseline for this path "
+            "(see ADR-001 amendment)"
+        ),
+    )
+    llm_retry_budget: int = Field(
+        default=3,
+        ge=1,
+        description=(
+            "Total structured-output attempts on the LLM path — 1 initial "
+            "plus retries (PLAN-0006 SD-1; default 3)"
+        ),
+    )
+    llm_request_timeout_s: float = Field(
+        default=120.0,
+        gt=0.0,
+        description="Per-request timeout for a single Ollama chat call, in seconds",
+    )
+
     # App
     log_level: str = Field(default="INFO", description="Python logging level")
     environment: str = Field(default="development", description="Deployment environment name")
