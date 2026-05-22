@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-22T17:30:00+07:00
+last_updated: 2026-05-22T18:15:00+07:00
 session: 10
-current_batch: adr0010-llm-reasoning-hook (ADR-010 Accepted; next = PLAN-0006)
-current_actor: code (ADR-010 + handoff validation done; validator bug → PLAN-004 Phase B)
+current_batch: adr0012-cowork-second-freeform-tier (ADR-012 Accepted + T2-T6 amendments committed; next = PLAN-0006)
+current_actor: code (ADR-012 + T2-T6 amendments committed; restart-bridge pending per Lesson #5 §1)
 blocked_on: nothing
-next_action: Cowork drafts PLAN-0006 (ADR-010 T2) on Cray's go; Code executes the LLM-hook swap
-head_commit: 48fe240
-recent_commits: [cc17a6b, 48fe240, b484f24, 9dd1470, 5d6df24, 593c392, c646bab, 3fe691e, 5f50692, 78f28ab]
+next_action: Cray restarts Claude Desktop (CLAUDE.md §6 amended — Lesson #5 §1); then Cowork drafts PLAN-0006 (ADR-010 T2) on Cray's go
+head_commit: b06de8b
+recent_commits: [b06de8b, b913eb4, 3d40db5, 24ad28d, 7916b39, 7061265, cc17a6b, 48fe240, b484f24, 9dd1470]
 ---
 
 # vero-lite — Project Status
@@ -115,6 +115,7 @@ runtime + three-layer wiring) is laid out in PLAN-003 §3.3.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-22 | **ADR-012 (Cowork second free-form tier) ACCEPTED** — amends ADR-009 D5: Cowork gains a second free-form role (Tier-1b — repo-grounded discussion / thinking-partner / informal code review) alongside Chat, which is **retained** (D5 extended, not revoked). D2 routing: Chat = repo-blind blue-sky, Cowork = repo-grounded. Adopted by Cray as a guarded trial (option α), regression triggers R-FF1..R-FF4 as exit criteria; commit authority stays Code-exclusive. T1 ADR + T2-T6 follow-on amendments (cowork/chat instructions, ADR-009 D5 pointer, CLAUDE.md §6, this STATUS row) committed by Code | `7916b39` / `docs/adr/0012-cowork-second-freeform-tier.md` |
 | 2026-05-22 | **ADR-010 (LLM reasoning-hook surface) ACCEPTED** — five decisions fixing how an LLM replaces the rule recommender: D1 local-LLM-default + Claude-API consent-gated fallback (Cray-ratified), D2 schema-constrained output + retry, D3 hybrid reasoning trace, D4 approval gate = guardrail, D5 `recommend()` LLM-backed under the same signature; ADR-007 D2 envelope unchanged. Drafted by Cowork from two Tier-0 briefs; next = PLAN-0006 | `48fe240` / `docs/adr/0010-llm-reasoning-hook-surface.md` |
 | 2026-05-21 | **mypy pre-commit gate extended to `verticals/`** — the hook now covers `^(services\|verticals)/`, not just `services/`; closes the flagged coverage gap (verified `pre-commit run mypy --all-files`) | `9dd1470` |
 | 2026-05-21 | **PLAN-0005 Phase 2 — OCT Engine Runtime Layer MERGED** (PR #4, 13 commits) — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (real `postgres:16-alpine`, SQLAlchemy 2.0 async + Alembic) + three-layer API wiring + end-to-end action loop; 109 tests, coverage 95.34%; six §8 OQs honoured; DDL/ORM parity test (C-1/R6) green; PLAN-003 + PLAN-0005 moved to `done/` | `c646bab` (PR #4) / `docs/plans/done/0005-oct-engine-runtime-layer.md` |
