@@ -72,16 +72,16 @@ Hybrid model: Auto Memory (private) + Repository (shared, source of truth).
 
 ### Conversation Hygiene (CRITICAL)
 
-The project uses four collaboration tiers (topology amended 2026-05-21 per ADR-009):
+The project uses four collaboration tiers (topology amended 2026-05-21 per ADR-009; free-form venues amended 2026-05-22 per ADR-012):
 
 | Tier | Role | Purpose | Primary output |
 |------|------|---------|----------------|
-| **Tier 0 + Tier 1** — Cowork (merged per ADR-009 D1) | Research + governance authoring | External knowledge compilation; **dispatch, ADR, PLAN authoring** | Research files in `docs/research/private/`; `cowork-` prefixed handoffs (via outputs scratchpad under K-2 — see Lesson #8); **uncommitted drafts in `docs/adr/` and `docs/plans/`** |
-| **Tier 1 (narrowed)** — Chat | Free-form discussion only (per ADR-009 D5 option b) | Open-ended strategy discussion, sounding-board, informal code review | **Conversation only — no repo-tracked artifacts** |
+| **Tier 0 + Tier 1 + Tier-1b** — Cowork (merged per ADR-009 D1; free-form added per ADR-012 D1) | Research + governance authoring + repo-grounded free-form | External knowledge compilation; **dispatch, ADR, PLAN authoring**; repo-grounded free-form discussion / thinking-partner / informal code review (ADR-012) | Research files in `docs/research/private/`; `cowork-` prefixed handoffs (via outputs scratchpad under K-2 — see Lesson #8); **uncommitted drafts in `docs/adr/` and `docs/plans/`**; free-form = conversation (optional `phase: discussion` capture) |
+| **Tier 1 (narrowed)** — Chat | Free-form discussion — repo-blind, shared with Cowork per ADR-012 (per ADR-009 D5 option b) | Open-ended strategy discussion, sounding-board, blue-sky / conceptual code review | **Conversation only — no repo-tracked artifacts** |
 | **Tier 2** — Code | Execution agent | Repo writes, git operations, implementation, **all commits** (per ADR-009 D2 "only Code commits" fail-safe) | Code commits, file modifications, `code-` prefixed handoffs |
 | **Tier 3** — Cray | Final authority | Private knowledge, business judgment, routing between tiers | Decisions, dispatch ratification |
 
-Tier instruction files in `docs/conventions/cowork_tab_instructions.md` (Tier 0 + Tier 1 merged scope) and `docs/conventions/chat_tab_instructions.md` (narrowed Tier 1 free-form scope) define detailed read/write scopes, behavioral rules, and handoff conventions per tier. Tier 2 (Code) operational policy lives in §11 below. The K-1/K-2 Cowork-mode operating workflow is codified durably in [`docs/lessons/0008-cowork-tier1-k1-k2-workflow.md`](docs/lessons/0008-cowork-tier1-k1-k2-workflow.md).
+Tier instruction files in `docs/conventions/cowork_tab_instructions.md` (Tier 0 + Tier 1 + Tier-1b scope) and `docs/conventions/chat_tab_instructions.md` (narrowed Tier 1 free-form scope) define detailed read/write scopes, behavioral rules, and handoff conventions per tier. Tier 2 (Code) operational policy lives in §11 below. The K-1/K-2 Cowork-mode operating workflow is codified durably in [`docs/lessons/0008-cowork-tier1-k1-k2-workflow.md`](docs/lessons/0008-cowork-tier1-k1-k2-workflow.md).
 
 **Rule:** Never copy-paste long context between Claude Chat and Claude Code. Use the repository as shared memory.
 
@@ -198,4 +198,4 @@ the reply**. Procedure + options:
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-05-21 (Session 10 — §6 4-tier table amended per ADR-009 D1+D5; Cowork-Tier-1 topology ratified)*
+*Last updated: 2026-05-22 (Session 10 — §6 4-tier table amended per ADR-012: Cowork gains Tier-1b repo-grounded free-form, Chat retained as the repo-blind free-form venue; prior 2026-05-21 amendment per ADR-009 D1+D5)*
