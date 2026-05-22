@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-22T21:00:00+07:00
+last_updated: 2026-05-22T23:55:00+07:00
 session: 10
-current_batch: plan0006-authoring (PLAN-0006 drafted + committed d3a781e, SD-1..5 adjudicated; next = Phase-1 kickoff dispatch)
-current_actor: code (PLAN-0006 R2-reviewed + committed)
+current_batch: plan0006-kickoff-dispatch (PLAN-0006 Steps 0-8 executed — LLM reasoning-hook swap done on feat/plan0006-llm-reasoning-hook; branch unmerged)
+current_actor: code (PLAN-0006 executed; awaiting Cray push/PR + TODO-A route)
 blocked_on: nothing
-next_action: Phase-1 kickoff dispatch (Cowork authors, carries PLAN-0006 §8 rulings) then Code executes
-head_commit: d3a781e
-recent_commits: [d3a781e, 710ada9, db9c5ed, 4b8ff07, b06de8b, b913eb4, 3d40db5, 24ad28d, 7916b39, 7061265]
+next_action: Cray ratifies push/PR of feat/plan0006-llm-reasoning-hook; then TODO-A (ADR-001 amendment for the gpt-oss:20b pin)
+head_commit: 2fe1056
+recent_commits: [2fe1056, 8e76bb4, bf90cf0, 1040b51, fbf1301, de20689, 105945a, 4f13b50, 977b689, d3a781e]
 ---
 
 # vero-lite — Project Status
@@ -18,25 +18,38 @@ recent_commits: [d3a781e, 710ada9, db9c5ed, 4b8ff07, b06de8b, b913eb4, 3d40db5, 
 
 ## Current Focus
 
-**Session 10 — ADR-010 (LLM reasoning-hook surface) ACCEPTED (`48fe240`).** The
-brain swap — replacing the PLAN-0005 rule-based recommender with an LLM — now
-has a settled surface. ADR-010 fixes five decisions: D1 inference backend
-(local LLM on MS-S1 MAX default + Claude API consent-gated fallback —
-Cray-ratified 2026-05-22, option A); D2 JSON-schema-constrained output +
-bounded validate-and-retry; D3 hybrid `llm_inference` + harness-emitted
-reasoning trace; D4 the existing approval gate is the guardrail; D5
-`recommend()` becomes LLM-backed under the same signature. The ADR-007 D2
-`RecommendedAction` envelope does **not** change. Binding Implementation Notes
-IN-1 (Ollama `think`/`format` bug #15260) + IN-2 (prompt-injection containment)
-carry into PLAN-0006 scope.
+**Session 10 — PLAN-0006 (LLM reasoning-hook execution) EXECUTED.** The brain
+swap is done: `services/engine/recommender.py::recommend()` is now LLM-backed
+(ADR-010 D5) on `feat/plan0006-llm-reasoning-hook` (8 commits, `4f13b50`..
+`2fe1056`; branch **unmerged** — awaiting Cray push/PR). Steps 0-8 of the
+Phase-1 kickoff dispatch all landed: `ruff` + `mypy --strict` clean,
+**168 passed / 5 skipped** (the 5 are Postgres-dependent — graceful skip),
+coverage **94.56%** (new `services/engine/llm/` modules 92-100%).
 
-Grounded by two Tier-0 research briefs + a readiness-gap analysis (all in
-gitignored `docs/research/private/`): `2026-05-21-llm-reasoning-hook-design.md`,
-`2026-05-22-llm-reasoning-hook-local-models.md`, and
-`2026-05-22-partner-trial-readiness-gaps.md` (an engine→design-partner-trial
-gap analysis, awaiting a dedicated Cray discussion). PLAN-0006 (the
-execution plan) is now drafted + committed (`d3a781e`); next is a Phase-1
-kickoff dispatch carrying the §8 rulings, then Code executes the swap.
+**CHECKPOINT-0 (Step 0 / ADR-010 IN-1)** — verified live on MS-S1 MAX:
+Ollama **0.24.0**, pin **`gpt-oss:20b`** (Cray-adjudicated; gpt-oss:20b and
+gemma4:26b both honour the `format` schema constraint under every `think`
+setting). The Ollama #15260 `think=false`+`format` bug is **still live for
+the Qwen3.x family** but absent for gpt-oss:20b + gemma4:26b. Binding rule:
+the structuring call omits `think` — never `think=false` with `format`.
+
+New module set (PLAN-0006) — `services/engine/llm/`: `client.py` (async
+Ollama wrapper), `prompt.py` (assembly + IN-2 injection containment),
+`structured.py` (constrained generation + validate-and-retry + semantic
+checks + the SC-1 reduced `LlmJudgment` sub-schema), `trace.py` (hybrid
+reasoning trace). `recommender.py` rewired — `async`, with the deterministic
+rule body retained as the fail-safe; `config.py` extended; one `await` at
+the API call site; an eval harness + golden traces under
+`tests/services/engine/eval/`.
+
+**Follow-ons:** **TODO-A** — the pin `gpt-oss:20b` ≠ ADR-001 baseline
+`gemma4:26b`, so an **ADR-001 amendment is required** (Cray picks the route:
+Code authors directly, or Cowork drafts). TODO-B (config default) is
+satisfied — Step 1 added a dedicated `recommender_model` setting. **SC-1**
+resolved by Code: constrained generation targets the reduced `LlmJudgment`
+sub-schema; the harness composes the full (unchanged) ADR-007 D2 envelope.
+A Step-7 live capture surfaced + fixed a `suggested_handler` defect (the
+model invented unregistered handlers — now enum-constrained to the registry).
 
 **Prior this session — PLAN-0005 Phase 2 (OCT Engine Runtime Layer) MERGED**
 (PR #4, `c646bab`) — the runtime the LLM hook plugs into. **109 passed**,
@@ -84,6 +97,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-22 | **PLAN-0006 (LLM reasoning-hook execution) EXECUTED — the brain swap** — `recommend()` is now LLM-backed (two-call Pattern B on `gpt-oss:20b`, fail-safe to the retained rule path). New `services/engine/llm/` package (client/prompt/structured/trace) + eval harness. CHECKPOINT-0 pinned `gpt-oss:20b` on Ollama 0.24.0 (#15260 still live for Qwen3.x). SC-1 resolved (reduced `LlmJudgment` sub-schema; ADR-007 D2 envelope unchanged). A Step-7 live capture surfaced + fixed a `suggested_handler` defect. 8 commits on `feat/plan0006-llm-reasoning-hook` (unmerged); 168 passed / 5 skipped, coverage 94.56%. TODO-A (ADR-001 amendment for the pin) pending Cray | `4f13b50`..`2fe1056` |
 | 2026-05-22 | **PLAN-0006 (LLM reasoning-hook execution) drafted + committed** — the execution plan for the ADR-010 brain swap; Cowork-authored (Tier 1), Code R2-reviewed (fact-pack verified vs the live repo). Cray adjudicated SD-1..SD-5: async `recommend()` + retry 3, two-call Pattern B trace, gpt-oss-20b primary (provisional, Step-0-gated), raw structured-output (no new dep), seam-only hosted fallback. Next = Phase-1 kickoff dispatch | `d3a781e` / `docs/plans/0006-llm-reasoning-hook-execution.md` |
 | 2026-05-22 | **C-2 Suffix-enum divergence RESOLVED — option α (expand the enum)** — Cray adjudicated α: `tools/handoffs/_schema.py:Suffix` gains `dispatch`/`completion`/`consultation`; PLAN-004 D4 + `handoff-frontmatter-schema.md` register them; 2 regression tests. Closes the schema ↔ `cowork_tab_instructions.md` divergence. `discussion` deliberately excluded (ADR-012 carries it via `phase:`). | `db9c5ed` |
 | 2026-05-22 | **ADR-012 (Cowork second free-form tier) ACCEPTED** — amends ADR-009 D5: Cowork gains a second free-form role (Tier-1b — repo-grounded discussion / thinking-partner / informal code review) alongside Chat, which is **retained** (D5 extended, not revoked). D2 routing: Chat = repo-blind blue-sky, Cowork = repo-grounded. Adopted by Cray as a guarded trial (option α), regression triggers R-FF1..R-FF4 as exit criteria; commit authority stays Code-exclusive. T1 ADR + T2-T6 follow-on amendments (cowork/chat instructions, ADR-009 D5 pointer, CLAUDE.md §6, this STATUS row) committed by Code | `7916b39` / `docs/adr/0012-cowork-second-freeform-tier.md` |
@@ -128,7 +142,8 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 - [x] **`.gitignore` extension** — add `docs/research/private/` (Cowork closeout flag #1) *(Session 10 Batch 3-prep)*
 - [x] **PLAN-0005 Phase 2 — OCT Engine Runtime Layer** — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (postgres:16-alpine, SQLAlchemy/Alembic) + three-layer API wiring + e2e action loop; merged PR #4 (`c646bab`) *(Session 10, 2026-05-21)*
 - [x] **ADR-010 — LLM reasoning-hook surface** — D1 inference backend Cray-ratified (local LLM default + Claude API consent-gated fallback); D2–D5 recommended; ADR-007 D2 envelope unchanged *(Session 10, 2026-05-22; commit `48fe240`)*
-- [ ] **PLAN-0006 — LLM reasoning-hook execution** — plan DRAFTED + committed (`d3a781e`); Cowork-authored, Code R2-reviewed; SD-1..SD-5 adjudicated by Cray 2026-05-22 (§8 rulings inline). Carries ADR-010 IN-1..IN-4 + T3. **Next: Phase-1 kickoff dispatch (Cowork authors) → Code executes Steps 0–8 in a worktree-ON branch.** *(per ADR-010 T2)*
+- [x] **PLAN-0006 — LLM reasoning-hook execution** — EXECUTED. Steps 0-8 of the Phase-1 kickoff dispatch done on `feat/plan0006-llm-reasoning-hook` (8 commits `4f13b50`..`2fe1056`, **unmerged**); CHECKPOINT-0 pinned `gpt-oss:20b` / Ollama 0.24.0; new `services/engine/llm/` package + eval harness; `ruff` + `mypy --strict` clean, 168 passed / 5 skipped, coverage 94.56%. Closeout: `.claude/handoffs/session-10/2026-05-22-2355-code-plan0006-kickoff-dispatch-closeout.md`. *(Session 10, 2026-05-22)*
+- [ ] **TODO-A — ADR-001 amendment (PLAN-0006 follow-on)** — CHECKPOINT-0 pinned `gpt-oss:20b` for the recommender path, superseding the ADR-001 `gemma4:26b` baseline for that path. An ADR-001 amendment (or superseding ADR) must record the new model + Ollama 0.24.0 pin + the #15260 rationale. **Cray picks the route** — Code authors directly (ADR-009 D2), or Cowork drafts. *(PLAN-0006 kickoff dispatch §7 TODO-A)*
 - [x] **Suffix-enum vs cowork-instruction divergence** (PLAN-0005 §4 C-2) — RESOLVED via option α (expand the enum): `tools/handoffs/_schema.py:Suffix` gained `dispatch`/`completion`/`consultation`; PLAN-004 D4 + `handoff-frontmatter-schema.md` registered them; 2 regression tests in `test_schema.py`. `discussion` deliberately not added (ADR-012 carries it via `phase: discussion`). *(surfaced 2026-05-21; Cray adjudicated α 2026-05-22; `db9c5ed`)*
 - [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten (full table: PLAN-0005 §8.1): rule-based recommender → **ADR-010 ACCEPTED (2026-05-22) → PLAN-0006 next** (LLM reasoning hook); minimal approval gate → **ADR-011+** (audit framework — trigger: first design-partner data / PDPA review); no mapping layer → **dbt/SQLMesh** (trigger: first non-synthetic source); hand-authored ORM → **"ORM emitter"** Rule-of-Three candidate (trigger: 3rd vertical / DDL↔ORM parity-test drift); base Postgres only → **PLAN-002** (pgvector/AGE — trigger: semantic + graph features); explicit registry → **ADR-006 D3 L2** (trigger: vertical #2/#3 or `new-vertical` generator). *(per Cray note 2026-05-21)*
 - [ ] **Phase-enum amendment** — add `consultation` (or equivalent Q&A-round value) to canonical Phase enum (Q15 of `2026-05-20-0245-code-plan003-pre-draft-consultation-reply.md`); requires touching `tools/handoffs/_schema.py` + `docs/conventions/handoff-frontmatter-schema.md` + validator tests; PLAN-004 Phase B adjacent. *(Deferred per R-9, 2026-05-20)*
@@ -163,7 +178,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 ## Next Steps
 
-1. **PLAN-0006 — execute the LLM reasoning-hook swap** — PLAN-0006 committed (`d3a781e`), SD-1..SD-5 adjudicated. Next = a Phase-1 kickoff dispatch (Cowork authors, carries the §8 rulings as binding) → Code executes Steps 0–8 (Step 0 = the IN-1 verification gate) in a worktree-ON feature branch.
+1. **PLAN-0006 — push / PR + TODO-A** — `feat/plan0006-llm-reasoning-hook` is complete (Steps 0-8, 8 commits, **unmerged**, worktree intact). Awaiting Cray's go to push the branch + open the PR. Then **TODO-A**: the ADR-001 amendment for the `gpt-oss:20b` recommender-path pin (Cray picks route — Code authors / Cowork drafts).
 2. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002, registry discovery).
 3. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion (engine → design-partner trial sequencing).
 4. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix; validator warning-swallow bug) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (pgvector + Apache AGE + pg_trgm).
