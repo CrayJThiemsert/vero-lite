@@ -1,0 +1,23 @@
+{
+  "name": "overtemp-inverter-representative",
+  "source": "representative — a plausible model output covering the stochastic spread",
+  "event": {
+    "event_id": "event-reading-eval-02",
+    "event_type": "reading",
+    "measured_value": 102.0,
+    "unit": "celsius",
+    "asset_id": "asset-inverter-12",
+    "site_id": "substation-07"
+  },
+  "model_output": {
+    "title": "Inverter over-temperature — investigate",
+    "description": "Inverter asset-inverter-12 reported 102.0 celsius, well above safe limits.",
+    "rationale": "A 102 celsius reading indicates a likely cooling fault; escalate for inspection before load is restored.",
+    "confidence": 0.81,
+    "affected_entities": [
+      {"object_type": "Asset", "primary_key": "asset-inverter-12"}
+    ],
+    "suggested_handler": "echo",
+    "handler_payload": {"event_id": "event-reading-eval-02", "priority": "high"}
+  }
+}

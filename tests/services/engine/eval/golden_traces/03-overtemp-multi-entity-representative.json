@@ -1,0 +1,24 @@
+{
+  "name": "overtemp-multi-entity-representative",
+  "source": "representative — covers a multi-entity judgment with lower confidence",
+  "event": {
+    "event_id": "event-reading-eval-03",
+    "event_type": "reading",
+    "measured_value": 94.0,
+    "unit": "celsius",
+    "asset_id": "asset-battery-22",
+    "site_id": "substation-02"
+  },
+  "model_output": {
+    "title": "Battery string over-temperature",
+    "description": "Battery asset-battery-22 at substation-02 crossed the thermal threshold.",
+    "rationale": "Sustained 94 celsius across the string risks degradation; inspect both the cell and the site cooling system.",
+    "confidence": 0.66,
+    "affected_entities": [
+      {"object_type": "Asset", "primary_key": "asset-battery-22"},
+      {"object_type": "Site", "primary_key": "substation-02"}
+    ],
+    "suggested_handler": "echo",
+    "handler_payload": {"event_id": "event-reading-eval-03"}
+  }
+}
