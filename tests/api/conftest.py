@@ -7,6 +7,7 @@ httpx.ASGITransport). client_with_db overrides get_session with a
 per-test NullPool engine and skips when Postgres is unreachable.
 """
 
+import json
 from collections.abc import AsyncIterator, Iterator
 
 import pytest
@@ -20,8 +21,61 @@ from services.api.main import app
 from services.api.routers.actions import reset_action_store
 from services.db.base import Base
 from services.db.session import get_session
+from services.engine.llm.client import ChatResult
 from verticals.energy.data_adapter import register_energy_adapter
 from verticals.energy.handlers import register_energy_handlers
+
+# --- offline LLM (PLAN-0006 Step 6) ---------------------------------------
+
+_STUB_JUDGMENT = json.dumps(
+    {
+        "title": "LLM assessment: thermal excursion on the battery asset",
+        "description": "The reading is above the safe operating temperature threshold.",
+        "rationale": "Sustained over-temperature risks cell damage; escalate for review.",
+        "confidence": 0.88,
+        "affected_entities": [{"object_type": "Asset", "primary_key": "asset-energy-01"}],
+        "suggested_handler": "echo",
+        "handler_payload": {"source": "llm-stub"},
+    }
+)
+
+
+class _StubChatClient:
+    """Deterministic offline LLM — call 1 reasons, call 2 emits a judgment.
+
+    Stateless: it decides by request shape, so one instance serves every
+    recommend() call across a streamed batch of events.
+    """
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        think: bool | None = None,
+        response_format: dict[str, object] | None = None,
+        temperature: float = 0.0,
+    ) -> ChatResult:
+        if response_format is not None:
+            return ChatResult(content=_STUB_JUDGMENT, thinking=None, model="gpt-oss:20b", raw={})
+        return ChatResult(
+            content="draft assessment",
+            thinking="reasoned step by step about the operational event",
+            model="gpt-oss:20b",
+            raw={},
+        )
+
+
+_STUB_CLIENT = _StubChatClient()
+
+
+@pytest.fixture(autouse=True)
+def _offline_llm(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Force recommend() onto the offline faked LLM for every API test.
+
+    Each API test then drives read -> recommend (LLM, faked) -> approve ->
+    execute with no live Ollama call (PLAN-0006 Step 6 / §7.5).
+    """
+    monkeypatch.setattr("services.engine.recommender._build_chat_client", lambda: _STUB_CLIENT)
 
 
 @pytest.fixture

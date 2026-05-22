@@ -1,0 +1,30 @@
+{
+  "name": "overtemp-battery-recorded",
+  "source": "recorded — gpt-oss:20b on Ollama 0.24.0, PLAN-0006 Step 7 live capture (whitespace lightly normalised)",
+  "event": {
+    "event_id": "event-reading-eval-01",
+    "event_type": "reading",
+    "measured_value": 96.5,
+    "unit": "celsius",
+    "asset_id": "asset-battery-07",
+    "site_id": "substation-03"
+  },
+  "model_output": {
+    "title": "Battery Temperature Alert",
+    "description": "Temperature reading for asset-battery-07 at substation-03",
+    "rationale": "The measured temperature of 96.5 degrees celsius exceeds typical safe operating limits for most battery systems. Immediate verification and mitigation are required to prevent thermal runaway.",
+    "confidence": 0.92,
+    "affected_entities": [
+      {"object_type": "asset", "primary_key": "asset-battery-07", "title": "Battery 07"}
+    ],
+    "suggested_handler": "echo",
+    "handler_payload": {
+      "event_id": "event-reading-eval-01",
+      "asset_id": "asset-battery-07",
+      "measured_value": 96.5,
+      "unit": "celsius",
+      "priority": "High",
+      "status": "Pending human review"
+    }
+  }
+}

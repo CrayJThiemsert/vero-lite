@@ -77,6 +77,18 @@ class VerticalRegistry:
         """Return the sorted names of every registered vertical."""
         return sorted(self._verticals)
 
+    def handler_names(self, vertical: str) -> list[str]:
+        """Return the sorted names of every handler registered for ``vertical``.
+
+        Empty when the vertical is unknown or has no handlers. Used to
+        constrain the LLM ``suggested_handler`` to resolvable handlers
+        (PLAN-0006).
+        """
+        entry = self._verticals.get(vertical)
+        if entry is None:
+            return []
+        return sorted(entry.handlers)
+
     def reset(self) -> None:
         """Drop all registrations — mandatory between tests (PLAN-0005 R5)."""
         self._verticals.clear()

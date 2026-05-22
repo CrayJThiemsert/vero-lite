@@ -63,6 +63,16 @@ def test_verticals_lists_registered_sorted() -> None:
     assert registry.verticals() == ["energy", "supply_chain"]
 
 
+def test_handler_names_lists_registered_sorted() -> None:
+    registry.register_handler("energy", "notify", _noop_handler)
+    registry.register_handler("energy", "echo", _noop_handler)
+    assert registry.handler_names("energy") == ["echo", "notify"]
+
+
+def test_handler_names_empty_for_unknown_vertical() -> None:
+    assert registry.handler_names("nonexistent") == []
+
+
 def test_reset_clears_registry() -> None:
     registry.register_adapter(_StubAdapter("energy"))
     registry.reset()
