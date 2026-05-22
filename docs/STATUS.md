@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-23T02:00:00+07:00
+last_updated: 2026-05-23T03:00:00+07:00
 session: 10
-current_batch: plan0006-kickoff-dispatch (PLAN-0006 executed + verified; ADR-001 Amendment 1 committed 30d2c8e; PR #5 open)
-current_actor: code (PLAN-0006 PR #5 opened; ADR-001 amendment committed)
+current_batch: plan0006-kickoff-dispatch (PLAN-0006 MERGED — PR #5, 68053fe; ADR-001 Amendment 1 rode the same PR; worktree + branch cleaned up)
+current_actor: code (PLAN-0006 merged to main; post-merge cleanup done)
 blocked_on: nothing
-next_action: PLAN-0006 PR #5 review/merge; post-merge clean up the worktree (Lesson #3 §B3)
-head_commit: 30d2c8e
-recent_commits: [30d2c8e, 2fe1056, 8e76bb4, bf90cf0, 1040b51, fbf1301, de20689, 105945a, 4f13b50, 977b689]
+next_action: PLAN-0006 batch closed — next batch Cray-routed (PLAN-0005 §8.1 revisit register or partner-trial-readiness discussion)
+head_commit: 68053fe
+recent_commits: [68053fe, 30d2c8e, 2fe1056, 8e76bb4, bf90cf0, 1040b51, fbf1301, de20689, 105945a, 4f13b50]
 ---
 
 # vero-lite — Project Status
@@ -18,13 +18,12 @@ recent_commits: [30d2c8e, 2fe1056, 8e76bb4, bf90cf0, 1040b51, fbf1301, de20689, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0006 (LLM reasoning-hook execution) EXECUTED.** The brain
+**Session 10 — PLAN-0006 (LLM reasoning-hook execution) MERGED.** The brain
 swap is done: `services/engine/recommender.py::recommend()` is now LLM-backed
-(ADR-010 D5) on `feat/plan0006-llm-reasoning-hook` (8 commits, `4f13b50`..
-`2fe1056`; branch **unmerged** — awaiting Cray push/PR). Steps 0-8 of the
-Phase-1 kickoff dispatch all landed: `ruff` + `mypy --strict` clean,
-**168 passed / 5 skipped** (the 5 are Postgres-dependent — graceful skip),
-coverage **94.56%** (new `services/engine/llm/` modules 92-100%).
+(ADR-010 D5) — **merged to `main` via PR #5 (`68053fe`)**, 12 commits incl.
+ADR-001 Amendment 1. Steps 0-8 of the Phase-1 kickoff dispatch all landed:
+`ruff` + `mypy --strict` clean, **173 passed / 0 skipped** (with live
+Postgres), coverage **94.56%** (new `services/engine/llm/` modules 92-100%).
 
 **CHECKPOINT-0 (Step 0 / ADR-010 IN-1)** — verified live on MS-S1 MAX:
 Ollama **0.24.0**, pin **`gpt-oss:20b`** (Cray-adjudicated; gpt-oss:20b and
@@ -97,6 +96,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-22 | **PLAN-0006 (LLM reasoning-hook) MERGED** — PR #5 merged to `main` (`68053fe`): `recommend()` is now LLM-backed (`gpt-oss:20b`, two-call Pattern B, deterministic rule fail-safe retained), new `services/engine/llm/` package + eval harness; ADR-001 Amendment 1 rode the same PR. Code-reviewed, no blockers; 173 passed / 0 skipped, coverage 94.56%. Post-merge: worktree + branch cleaned up | `68053fe` (PR #5) |
 | 2026-05-22 | **ADR-001 Amendment 1 — `gpt-oss:20b` recommender-path pin (PLAN-0006 TODO-A)** — amends ADR-001's Primary-multimodal row for the OCT recommender path only: `gpt-oss:20b` + Ollama 0.24.0 supersedes `gemma4:26b`. Two independent grounds — `gemma4:26b` cannot complete the recommender's real nested-schema structuring call (>600s timeout vs gpt-oss 41s), and the still-live Ollama #15260 `think`/`format` interaction. gemma4's vision/multimodal role + `qwen2.5-coder:32b` untouched; cloud-fallback posture unchanged. Cowork-drafted (ADR-009 D1), Code-reviewed + committed onto the PLAN-0006 branch (Cray's routing call); live digest `17052f91a42e` captured | `30d2c8e` / `docs/adr/0001-llm-model-baseline.md` |
 | 2026-05-22 | **PLAN-0006 (LLM reasoning-hook execution) EXECUTED — the brain swap** — `recommend()` is now LLM-backed (two-call Pattern B on `gpt-oss:20b`, fail-safe to the retained rule path). New `services/engine/llm/` package (client/prompt/structured/trace) + eval harness. CHECKPOINT-0 pinned `gpt-oss:20b` on Ollama 0.24.0 (#15260 still live for Qwen3.x). SC-1 resolved (reduced `LlmJudgment` sub-schema; ADR-007 D2 envelope unchanged). A Step-7 live capture surfaced + fixed a `suggested_handler` defect. 8 commits on `feat/plan0006-llm-reasoning-hook` (unmerged); 168 passed / 5 skipped, coverage 94.56%. TODO-A (ADR-001 amendment for the pin) pending Cray | `4f13b50`..`2fe1056` |
 | 2026-05-22 | **PLAN-0006 (LLM reasoning-hook execution) drafted + committed** — the execution plan for the ADR-010 brain swap; Cowork-authored (Tier 1), Code R2-reviewed (fact-pack verified vs the live repo). Cray adjudicated SD-1..SD-5: async `recommend()` + retry 3, two-call Pattern B trace, gpt-oss-20b primary (provisional, Step-0-gated), raw structured-output (no new dep), seam-only hosted fallback. Next = Phase-1 kickoff dispatch | `d3a781e` / `docs/plans/0006-llm-reasoning-hook-execution.md` |
@@ -129,7 +129,6 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 ## In-Flight Discussions
 
-- **LLM reasoning-hook swap (ADR-010 → PLAN-0006):** ADR-010 fixed the swap *surface* (Accepted, `48fe240`). Next is **PLAN-0006**, the execution plan — Cowork drafts on Cray's go (ADR-010 T2); it owns prompt assembly, structured-output wiring, retry, and fail-safe, and must carry IN-1 (Ollama `think`/`format` bug #15260) + IN-2 (prompt-injection containment) + T3 eval strategy. Code then executes the swap in a feature branch.
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
 - **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (PLAN-001 line 9 forward-reference); ADR-005 was reused for the strategic pivot, so the Postgres-image ADR needs a fresh number (≥ ADR-013 — ADR-011 is earmarked for the audit framework, ADR-012 is taken).
@@ -179,7 +178,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 ## Next Steps
 
-1. **PLAN-0006 — PR #5 open** — `feat/plan0006-llm-reasoning-hook` (Steps 0-8 + ADR-001 Amendment 1, `4f13b50`..`30d2c8e`) is pushed and **[PR #5](https://github.com/CrayJThiemsert/vero-lite/pull/5) is open**; `ruff`/`mypy` clean, 173 passed / 0 skipped with live Postgres. TODO-A is done (ADR-001 Amendment 1, `30d2c8e`). Next: PR review/merge, then post-merge clean up the worktree (Lesson #3 §B3).
+1. **PLAN-0006 — MERGED + closed.** [PR #5](https://github.com/CrayJThiemsert/vero-lite/pull/5) merged to `main` (`68053fe`); worktree + branch cleaned up; plan archived at `docs/plans/done/0006-llm-reasoning-hook-execution.md`. Next batch is Cray-routed — see items 2-3.
 2. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002, registry discovery).
 3. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion (engine → design-partner trial sequencing).
 4. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix; validator warning-swallow bug) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (pgvector + Apache AGE + pg_trgm).
