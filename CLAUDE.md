@@ -72,7 +72,7 @@ Hybrid model: Auto Memory (private) + Repository (shared, source of truth).
 
 ### Conversation Hygiene (CRITICAL)
 
-The project uses four collaboration tiers (topology amended 2026-05-21 per ADR-009; free-form venues amended 2026-05-22 per ADR-012):
+The project uses four collaboration tiers (topology amended 2026-05-21 per ADR-009; free-form venues amended 2026-05-22 per ADR-012; **autonomy axis relocated 2026-05-23 per ADR-013** — see autonomy-axis note below the table):
 
 | Tier | Role | Purpose | Primary output |
 |------|------|---------|----------------|
@@ -82,6 +82,8 @@ The project uses four collaboration tiers (topology amended 2026-05-21 per ADR-0
 | **Tier 3** — Cray | Final authority | Private knowledge, business judgment, routing between tiers | Decisions, dispatch ratification |
 
 Tier instruction files in `docs/conventions/cowork_tab_instructions.md` (Tier 0 + Tier 1 + Tier-1b scope) and `docs/conventions/chat_tab_instructions.md` (narrowed Tier 1 free-form scope) define detailed read/write scopes, behavioral rules, and handoff conventions per tier. Tier 2 (Code) operational policy lives in §11 below. The K-1/K-2 Cowork-mode operating workflow is codified durably in [`docs/lessons/0008-cowork-tier1-k1-k2-workflow.md`](docs/lessons/0008-cowork-tier1-k1-k2-workflow.md).
+
+**Autonomy-axis note (ADR-013, 2026-05-23).** Per ADR-013 D1, the harness *execution-automation* axis (hooks, subagents, MCP transport, headless/`defer` resume) relocates into **Code + subagents (Tier 2)** — the only tier that can run those primitives. Cowork/Chat shift toward an **advisory / second-perspective** role for execution-automation authoring. The relocation is **phased**: until the subagent topology lands (PLAN-0008+, Phase 3), Cowork retains interim governance authoring under ADR-009 D1, and after Phase 3 **Cowork is retained as the advisory drafter of governance artifacts** (ADR-013 OQ-1 resolved). Free-form venues (ADR-012) are **retained**, not revoked (ADR-013 D3). ADR-009 D2 ("only Code commits") is preserved and **reinforced** by a deterministic `PreToolUse deny` hook (ADR-013 D2). Tier instruction files in `docs/conventions/` will be annotated (not deprecated) at the Phase-3 boundary (ADR-013 T4).
 
 **Rule:** Never copy-paste long context between Claude Chat and Claude Code. Use the repository as shared memory.
 
@@ -198,4 +200,4 @@ the reply**. Procedure + options:
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-05-22 (Session 10 — §6 4-tier table amended per ADR-012: Cowork gains Tier-1b repo-grounded free-form, Chat retained as the repo-blind free-form venue; prior 2026-05-21 amendment per ADR-009 D1+D5)*
+*Last updated: 2026-05-23 (Session 10 — §6 amended per ADR-013: autonomy-axis note added; execution-automation axis relocates to Code + subagents, Cowork/Chat advisory for automation, governance authoring stays Cowork as advisory drafter; ADR-009 D2 "only Code commits" preserved + reinforced by deterministic hook; prior 2026-05-22 amendment per ADR-012 and 2026-05-21 per ADR-009 D1+D5)*

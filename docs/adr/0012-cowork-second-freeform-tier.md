@@ -19,6 +19,15 @@
 > by Code (T4) recording that ADR-012 extends it. "Most recent accepted
 > ADR wins" (CLAUDE.md §1) governs the precedence.
 
+> **Extended by ADR-013 (2026-05-23, Accepted).** ADR-013 D3 **extends**
+> this ADR: the two free-form venues (Cowork Tier-1b + Chat) are
+> **retained**, not revoked, by ADR-013. As Cowork/Chat vacate primary
+> execution-automation authoring under ADR-013 D1 (relocation to Code +
+> subagents), their second-perspective / sounding-board role becomes
+> their *primary* contribution. ADR-013 D3 rejects folding free-form into
+> Code subagents (single-harness) precisely to preserve the
+> independent-perspective check this ADR established.
+
 ## Context
 
 ADR-009 D5 (ratified 2026-05-21) chose option **(b)**: Chat retained for

@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-23T03:00:00+07:00
+last_updated: 2026-05-23T15:30:00+07:00
 session: 10
-current_batch: plan0006-kickoff-dispatch (PLAN-0006 MERGED — PR #5, 68053fe; ADR-001 Amendment 1 rode the same PR; worktree + branch cleaned up)
-current_actor: code (PLAN-0006 merged to main; post-merge cleanup done)
+current_batch: harness-autonomy-layer-adr-013-plan-0007 (Phase A governance commits done — ADR-013 Accepted, PLAN-0007 committed, T3–T6 follow-ons committed; Phase B execution next on `feat/plan0007-harness-autonomy-phase1`)
+current_actor: code (Phase A done; Phase B = .claude/ hook layer, telegram bridge, PreToolUse deny, validator hook, autonomy-triggers registry)
 blocked_on: nothing
-next_action: PLAN-0006 batch closed — next batch Cray-routed (PLAN-0005 §8.1 revisit register or partner-trial-readiness discussion)
-head_commit: 68053fe
-recent_commits: [68053fe, 30d2c8e, 2fe1056, 8e76bb4, bf90cf0, 1040b51, fbf1301, de20689, 105945a, 4f13b50]
+next_action: Phase B execution on `feat/plan0007-harness-autonomy-phase1` per PLAN-0007 Steps 1–6 + AC-1/2/3 verification + PR
+head_commit: 8eebe09
+recent_commits: [8eebe09, e64a4d2, c45526b, c00dc98, 770adf5, 68053fe, 30d2c8e, 2fe1056, 8e76bb4, bf90cf0]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,30 @@ recent_commits: [68053fe, 30d2c8e, 2fe1056, 8e76bb4, bf90cf0, 1040b51, fbf1301, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0006 (LLM reasoning-hook execution) MERGED.** The brain
+**Session 10 — Harness autonomy layer batch (ADR-013 + PLAN-0007) Phase A
+governance committed; Phase B execution next.** Cray ratified Direction B
+(autonomy axis relocates to Code + subagents; Cowork/Chat advisory for
+execution-automation; governance authoring stays Cowork as advisory
+drafter per OQ-1) and adjudicated E.1–E.5 + OQ-1/2/3. Branch
+`feat/plan0007-harness-autonomy-phase1` carries six commits:
+ADR-013 (Accepted, `770adf5`), PLAN-0007 (`c00dc98`), T3 CLAUDE.md §6
+autonomy-axis note (`c45526b`, **constitutional — restart-bridge applies
+per Lesson #5 §1**), T4 tier instruction annotations (`e64a4d2`), T5
+ADR-009/012 pointer notes (`8eebe09`), and this T6 STATUS update.
+
+**Next on branch:** Phase B per PLAN-0007 — `.claude/` hook layer
+scaffold, `tools/notify/telegram.sh` (env-var bridge), Notification hook
+(permission_prompt + idle_prompt), PreToolUse deny on `git
+commit|push|merge` from non-Code sessions (bypass-immune; OQ-3 mechanism
+delegated to Code), validate_handoff.py PostToolUse hook, and the
+`.claude/autonomy-triggers.md` registry file. AC-2 bypass-immunity is the
+highest-priority verification. Phase 2–4 (Stop continuation loop, Sonnet
+classifier, stateful loop-detection, subagent topology, MCP bus) are
+deferred to PLAN-0008+.
+
+---
+
+**Prior — PLAN-0006 (LLM reasoning-hook execution) MERGED.** The brain
 swap is done: `services/engine/recommender.py::recommend()` is now LLM-backed
 (ADR-010 D5) — **merged to `main` via PR #5 (`68053fe`)**, 12 commits incl.
 ADR-001 Amendment 1. Steps 0-8 of the Phase-1 kickoff dispatch all landed:
@@ -96,6 +119,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-23 | **ADR-013 (Autonomy axis relocation, Direction B) ACCEPTED + PLAN-0007 committed + T3–T6 follow-ons landed** — Cray ratified Direction B in free-form and adjudicated E.1–E.5 + OQ-1/2/3 (OQ-3 PreToolUse session-identity mechanism delegated to Code). ADR-013 D1 amends ADR-009 D1 (execution-automation axis relocates to Code + subagents; Cowork retained as advisory governance drafter per OQ-1); D2 preserves + reinforces "only Code commits" via deterministic PreToolUse deny hook (bypass-immune); D3 extends ADR-012 (free-form venues retained); D4 classifier=Sonnet + registry `.claude/autonomy-triggers.md`; D5 Telegram `@vero_tg_bot` env-var token. Branch `feat/plan0007-harness-autonomy-phase1` carries 5 governance commits (`770adf5` ADR-013, `c00dc98` PLAN-0007, `c45526b` CLAUDE.md §6 T3, `e64a4d2` tier instructions T4, `8eebe09` ADR-009/012 pointers T5). CLAUDE.md edit (T3) is constitutional — restart-bridge applies (Lesson #5 §1). Cowork-drafted, Code-committed per ADR-009 D2 | `8eebe09` / `docs/adr/0013-autonomy-axis-relocation.md` + `docs/plans/0007-harness-autonomy-layer-phase-1.md` |
 | 2026-05-22 | **PLAN-0006 (LLM reasoning-hook) MERGED** — PR #5 merged to `main` (`68053fe`): `recommend()` is now LLM-backed (`gpt-oss:20b`, two-call Pattern B, deterministic rule fail-safe retained), new `services/engine/llm/` package + eval harness; ADR-001 Amendment 1 rode the same PR. Code-reviewed, no blockers; 173 passed / 0 skipped, coverage 94.56%. Post-merge: worktree + branch cleaned up | `68053fe` (PR #5) |
 | 2026-05-22 | **ADR-001 Amendment 1 — `gpt-oss:20b` recommender-path pin (PLAN-0006 TODO-A)** — amends ADR-001's Primary-multimodal row for the OCT recommender path only: `gpt-oss:20b` + Ollama 0.24.0 supersedes `gemma4:26b`. Two independent grounds — `gemma4:26b` cannot complete the recommender's real nested-schema structuring call (>600s timeout vs gpt-oss 41s), and the still-live Ollama #15260 `think`/`format` interaction. gemma4's vision/multimodal role + `qwen2.5-coder:32b` untouched; cloud-fallback posture unchanged. Cowork-drafted (ADR-009 D1), Code-reviewed + committed onto the PLAN-0006 branch (Cray's routing call); live digest `17052f91a42e` captured | `30d2c8e` / `docs/adr/0001-llm-model-baseline.md` |
 | 2026-05-22 | **PLAN-0006 (LLM reasoning-hook execution) EXECUTED — the brain swap** — `recommend()` is now LLM-backed (two-call Pattern B on `gpt-oss:20b`, fail-safe to the retained rule path). New `services/engine/llm/` package (client/prompt/structured/trace) + eval harness. CHECKPOINT-0 pinned `gpt-oss:20b` on Ollama 0.24.0 (#15260 still live for Qwen3.x). SC-1 resolved (reduced `LlmJudgment` sub-schema; ADR-007 D2 envelope unchanged). A Step-7 live capture surfaced + fixed a `suggested_handler` defect. 8 commits on `feat/plan0006-llm-reasoning-hook` (unmerged); 168 passed / 5 skipped, coverage 94.56%. TODO-A (ADR-001 amendment for the pin) pending Cray | `4f13b50`..`2fe1056` |
@@ -131,7 +155,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
-- **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (PLAN-001 line 9 forward-reference); ADR-005 was reused for the strategic pivot, so the Postgres-image ADR needs a fresh number (≥ ADR-013 — ADR-011 is earmarked for the audit framework, ADR-012 is taken).
+- **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (PLAN-001 line 9 forward-reference); ADR-005 was reused for the strategic pivot, so the Postgres-image ADR needs a fresh number (**≥ ADR-014** — ADR-011 earmarked for the audit framework, ADR-012 taken by Cowork second free-form tier, ADR-013 taken by autonomy axis relocation; floor bumped 2026-05-23 per ADR-013 §Consequences/Neutral + T6).
 - **Hook portability across environments:** Lesson #3 A3 documents the workaround; durable fix deferred (would require hook regeneration policy).
 - **Convention extraction:** `git.md` and `hardware.md` may still be extracted from CLAUDE.md (low priority).
 
@@ -143,13 +167,14 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 - [x] **PLAN-0005 Phase 2 — OCT Engine Runtime Layer** — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (postgres:16-alpine, SQLAlchemy/Alembic) + three-layer API wiring + e2e action loop; merged PR #4 (`c646bab`) *(Session 10, 2026-05-21)*
 - [x] **ADR-010 — LLM reasoning-hook surface** — D1 inference backend Cray-ratified (local LLM default + Claude API consent-gated fallback); D2–D5 recommended; ADR-007 D2 envelope unchanged *(Session 10, 2026-05-22; commit `48fe240`)*
 - [x] **PLAN-0006 — LLM reasoning-hook execution** — EXECUTED. Steps 0-8 of the Phase-1 kickoff dispatch done on `feat/plan0006-llm-reasoning-hook` (8 commits `4f13b50`..`2fe1056`, **unmerged**); CHECKPOINT-0 pinned `gpt-oss:20b` / Ollama 0.24.0; new `services/engine/llm/` package + eval harness; `ruff` + `mypy --strict` clean, 168 passed / 5 skipped, coverage 94.56%. Closeout: `.claude/handoffs/session-10/2026-05-22-2355-code-plan0006-kickoff-dispatch-closeout.md`. *(Session 10, 2026-05-22)*
+- [ ] **PLAN-0007 — Harness autonomy layer Phase 1** — IN PROGRESS on `feat/plan0007-harness-autonomy-phase1`. Phase A governance commits landed (`770adf5` ADR-013 Accepted, `c00dc98` PLAN-0007, `c45526b` CLAUDE.md §6 T3, `e64a4d2` tier instructions T4, `8eebe09` ADR-009/012 pointers T5, plus this STATUS T6 commit). Phase B execution next: Step 1 scaffold `.claude/settings.json` + `.claude/hooks/`, Step 2 `tools/notify/telegram.sh` (env-var only, graceful no-op), Step 3 Notification hook → telegram.sh, Step 4 PreToolUse deny → ADR-009 D2 enforcement (bypass-immune; session-identity mechanism delegated to Code per OQ-3), Step 5 `validate_handoff.py` → PostToolUse hook, Step 6 `.claude/autonomy-triggers.md` registry. AC-2 bypass-immunity is highest-priority verification. Phase 2–4 (Stop continuation loop, Sonnet classifier, stateful loop-detection, subagent topology, MCP bus) deferred to PLAN-0008+. *(Session 10, 2026-05-23)*
 - [x] **TODO-A — ADR-001 amendment (PLAN-0006 follow-on)** — DONE. ADR-001 Amendment 1 pins `gpt-oss:20b` + Ollama 0.24.0 for the recommender path (superseding `gemma4:26b` for that path only; gemma4's multimodal role + `qwen2.5-coder:32b` untouched). Cowork-drafted (ADR-009 D1); Code reviewed against the PLAN-0006 fact-pack + committed (ADR-009 D2) with the live `gpt-oss:20b` digest captured; rides the PLAN-0006 branch / PR #5 per Cray's routing call. *(PLAN-0006 kickoff dispatch §7 TODO-A; commit `30d2c8e`)*
 - [x] **Suffix-enum vs cowork-instruction divergence** (PLAN-0005 §4 C-2) — RESOLVED via option α (expand the enum): `tools/handoffs/_schema.py:Suffix` gained `dispatch`/`completion`/`consultation`; PLAN-004 D4 + `handoff-frontmatter-schema.md` registered them; 2 regression tests in `test_schema.py`. `discussion` deliberately not added (ADR-012 carries it via `phase: discussion`). *(surfaced 2026-05-21; Cray adjudicated α 2026-05-22; `db9c5ed`)*
 - [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten (full table: PLAN-0005 §8.1): rule-based recommender → **ADR-010 ACCEPTED (2026-05-22) → PLAN-0006 next** (LLM reasoning hook); minimal approval gate → **ADR-011+** (audit framework — trigger: first design-partner data / PDPA review); no mapping layer → **dbt/SQLMesh** (trigger: first non-synthetic source); hand-authored ORM → **"ORM emitter"** Rule-of-Three candidate (trigger: 3rd vertical / DDL↔ORM parity-test drift); base Postgres only → **PLAN-002** (pgvector/AGE — trigger: semantic + graph features); explicit registry → **ADR-006 D3 L2** (trigger: vertical #2/#3 or `new-vertical` generator). *(per Cray note 2026-05-21)*
 - [ ] **Phase-enum amendment** — add `consultation` (or equivalent Q&A-round value) to canonical Phase enum (Q15 of `2026-05-20-0245-code-plan003-pre-draft-consultation-reply.md`); requires touching `tools/handoffs/_schema.py` + `docs/conventions/handoff-frontmatter-schema.md` + validator tests; PLAN-004 Phase B adjacent. *(Deferred per R-9, 2026-05-20)*
 - [ ] **Cleanup stale `ontology/README.md`** — 2026-05-05 PLAN-001 artifact; ontology directory canon now lives at `verticals/<name>/ontology/<name>_v0.yaml` per ADR-006 D1 / ADR-008 D5; superseded by PLAN-003. *(Deferred per R-9 cohort, 2026-05-20)*
 - [ ] **PLAN-004 Phase B/C — DEFERRED (backlog, post-PLAN-003):** validator-scope exclusion (`README.md` / `_rename-map.md`, manifest §4.2/§6.1) + Cat G `references_*` autofix + Phase C handoff dashboard + OQ-2 systemic candidate (effective-vs-authored `status:` / archival flag so dead handoffs don't surface as actionable in the dashboard) + **validator warning-swallow bug** — `tools/handoffs/_schema.py` `_build()` (lines ~302–306) returns `Frontmatter` and discards its local `errors` list when no hard error exists, so `_check_unknown()` WARNING-severity findings (e.g. unknown field `brief-number`) are unreachable on otherwise-valid files; fix to surface warnings + add a regression test *(found 2026-05-22 dog-fooding the 4 Cowork LLM-hook handoffs; Cray routed → Phase B)*
-- [ ] **ADR-NN (TBD, ≥ ADR-013) + PLAN-002** — Custom Postgres image with extensions (ADR-011 earmarked for the audit framework, ADR-012 taken; renumbered after ADR-005 reused for strategic pivot)
+- [ ] **ADR-NN (TBD, ≥ ADR-014) + PLAN-002** — Custom Postgres image with extensions (ADR-011 earmarked for the audit framework, ADR-012 taken, ADR-013 taken by autonomy axis relocation; floor bumped from ≥0013 to ≥0014 on 2026-05-23 per ADR-013 T6)
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
 - [ ] Extract `docs/conventions/git.md` from CLAUDE.md (low priority)
 - [ ] Extract `docs/conventions/hardware.md` from CLAUDE.md (low priority)
@@ -178,11 +203,12 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 ## Next Steps
 
-1. **PLAN-0006 — MERGED + closed.** [PR #5](https://github.com/CrayJThiemsert/vero-lite/pull/5) merged to `main` (`68053fe`); worktree + branch cleaned up; plan archived at `docs/plans/done/0006-llm-reasoning-hook-execution.md`. Next batch is Cray-routed — see items 2-3.
-2. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002, registry discovery).
-3. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion (engine → design-partner trial sequencing).
-4. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix; validator warning-swallow bug) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (pgvector + Apache AGE + pg_trgm).
-5. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
+1. **PLAN-0007 — Phase B execution** on `feat/plan0007-harness-autonomy-phase1`: Steps 1–6 (scaffold + telegram bridge + Notification hook + PreToolUse deny + validator PostToolUse hook + autonomy-triggers registry) → AC-1/AC-2/AC-3 verification (AC-2 bypass-immunity highest priority) → PR → code-to-cray closeout. **Constitutional restart-bridge applies** per Lesson #5 §1 (CLAUDE.md §6 edited in T3) — Cray restarts Claude Desktop before Phase B execution so the new session reads amended §6 authoritatively.
+2. **PLAN-0006 — MERGED + closed.** [PR #5](https://github.com/CrayJThiemsert/vero-lite/pull/5) merged to `main` (`68053fe`); plan archived at `docs/plans/done/0006-llm-reasoning-hook-execution.md`.
+3. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002 (≥ADR-014), registry discovery).
+4. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion.
+5. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix; validator warning-swallow bug) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (≥ADR-014).
+6. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
 
 ## Update Workflow
 

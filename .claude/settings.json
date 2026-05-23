@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": "PLAN-0007 Phase 1 — harness autonomy layer. Tracked (shareable convention, no secrets). Token material lives in env vars + .claude/state/ (gitignored). Hook scripts are stdlib-Python for cross-platform robustness (Cray runs Claude Code on Windows; project lives in WSL Ubuntu 24.04 at \\\\wsl.localhost\\ubuntu-24.04\\home\\crayj\\work\\vero-lite).",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/pretooluse_git_deny.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/posttooluse_validate_handoff.py"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "permission_prompt|idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/notification_telegram.py"
+          }
+        ]
+      }
+    ]
+  }
+}

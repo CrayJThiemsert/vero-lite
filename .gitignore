@@ -60,3 +60,7 @@ node_modules/
 
 # Claude Code local harness config
 .claude/settings.local.json
+
+# Claude Code per-machine state (loop counters, session markers, tokens)
+# Phase 1 (PLAN-0007) registers the directory; Phase 2 populates loop-counter.json.
+.claude/state/
