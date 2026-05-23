@@ -92,6 +92,15 @@ specimen.
 
 ### D1: Cowork becomes the Tier-1 dispatch and ADR author
 
+> **Amended by ADR-013 (2026-05-23, Accepted).** ADR-013 D1 relocates the
+> harness *execution-automation* axis (hooks, subagents, MCP transport,
+> defer/headless resume) to Code + subagents (Tier 2). Cowork's
+> governance-authoring role here is **retained as advisory** (ADR-013 OQ-1
+> resolved — not deprecated) and continues under this D1 process during
+> the phased transition until the Plan-subagent topology lands
+> (PLAN-0008+, Phase 3). ADR-013 takes precedence per CLAUDE.md §1
+> (most-recent accepted ADR wins).
+
 Cowork replaces Chat as the Tier-1 author of **dispatches** (kickoff,
 consultation, execute dispatches to Code) and **governance drafts**
 (ADR drafts, PLAN drafts) for strategy/architecture work. The scope of
@@ -113,6 +122,11 @@ commit authority (see D2), and it does not retire Cowork's Tier-0
 research responsibility, which continues unchanged (trial protocol §9).
 
 ### D2: Permission boundary — commit authority stays Code-exclusive
+
+> **Reinforced by ADR-013 D2 (2026-05-23, Accepted).** The "only Code
+> commits" boundary is preserved unchanged and **enforced deterministically**
+> by a `PreToolUse deny` hook (bypass-immune even to `bypassPermissions`)
+> shipped in PLAN-0007 Step 4. The boundary is no longer prose-only.
 
 The trial-scoped permission boundary (trial protocol §3) is ratified as
 the standing boundary for Cowork-as-Tier-1:
