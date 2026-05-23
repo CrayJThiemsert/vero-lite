@@ -25,6 +25,15 @@
 > bias), **Cowork = repo-grounded** (discussion + informal code review
 > that needs live file access). Route by ADR-012 D2. Chat's scope is
 > otherwise unchanged.
+>
+> **Scope-change pointer (2026-05-23, per ADR-013 — phased; brief annotation only):**
+> ADR-013 D1 relocates the harness *execution-automation* axis (hooks,
+> subagents, MCP, defer/headless) to Code + subagents (Tier 2). Chat's
+> free-form / second-perspective role is **retained** (ADR-013 D3 extends
+> ADR-012; free-form venues not revoked). Chat continues as the repo-blind
+> blue-sky venue; routing per ADR-012 D2 is unchanged. **The bulk of this
+> file's advisory-shift annotation is deferred to the Phase-3 boundary**
+> to avoid mid-transition churn — see ADR-013 T4.
 
 ## Disambiguation rule (read first)
 

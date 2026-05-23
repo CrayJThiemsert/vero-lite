@@ -4,6 +4,19 @@
 > **Sync target:** Claude project "vero-lite" Cowork tab → project instructions field.
 > When this file changes, Cray re-pastes content into the Claude project UI.
 > Per CLAUDE.md §4: repo is canonical, UI is derived.
+>
+> **Scope-change pointer (2026-05-23, per ADR-013 — phased; brief annotation only):**
+> ADR-013 D1 **amends ADR-009 D1**: the harness *execution-automation* axis
+> (hooks, subagents, MCP, defer/headless) relocates to Code + subagents
+> (Tier 2). Cowork **retains advisory governance authoring** of ADRs / PLANs
+> / dispatches (OQ-1 resolved — not deprecated) and continues under the
+> interim ADR-009 D1 process until the Plan-subagent topology lands
+> (PLAN-0008+, Phase 3). Free-form (Tier-1b) unchanged — ADR-013 D3
+> extends ADR-012. ADR-009 D2 "only Code commits" preserved + reinforced
+> by a deterministic hook (ADR-013 D2). **The bulk of this file's
+> restructure (advisory-shift framing, end-state authoring rules) is
+> deferred to the Phase-3 boundary** to avoid mid-transition churn — see
+> ADR-013 T4.
 
 ## Disambiguation rule (read first)
 The name "vero-lite" refers to multiple things:
