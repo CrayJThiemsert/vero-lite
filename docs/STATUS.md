@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-23T16:36:00+07:00
+last_updated: 2026-05-24T10:00:00+07:00
 session: 10
-current_batch: harness-autonomy-layer-adr-013-plan-0007 — MERGED via PR #6 (`b2ea9b8`); PLAN-0007 Phase 1 complete (AC-1/2/3 all green incl live Telegram smoke); plan moved to `docs/plans/done/`; Phase 2–4 → PLAN-0008+
+current_batch: research-path-enforcement (C4 hook) — MERGED via PR #7 (`da4f91d`); third deterministic Phase-1 row alongside G5 + H1; N=2 documented-rule-violation pattern promoted to hook reinforcement per ADR-013 D2 precedent
 current_actor: code (post-merge cleanup)
 blocked_on: nothing
 next_action: PLAN-0008+ Phase 2 (Stop continuation loop + Sonnet pause/proceed classifier reading `.claude/autonomy-triggers.md` + stateful loop-detection via `.claude/state/loop-counter.json`) — drafting cadence per Cray
-head_commit: b2ea9b8
-recent_commits: [b2ea9b8, 7c6ae65, 711971c, 28fac01, c048117, 8eebe09, e64a4d2, c45526b, c00dc98, 770adf5]
+head_commit: da4f91d
+recent_commits: [da4f91d, 21f0f7a, 7f00d18, b2ea9b8, 7c6ae65, 711971c, 28fac01, c048117, 8eebe09, e64a4d2]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,27 @@ recent_commits: [b2ea9b8, 7c6ae65, 711971c, 28fac01, c048117, 8eebe09, e64a4d2, 
 
 ## Current Focus
 
-**Session 10 — Harness autonomy layer (ADR-013 + PLAN-0007) Phase 1
+**Session 10 — Research-path enforcement (C4 hook) MERGED.** PR #7
+landed on `main` as `da4f91d` (single `feat(claude)` commit `21f0f7a`
++ merge commit). Third deterministic Phase-1 row in `.claude/autonomy-triggers.md`
+alongside G5 (`pretooluse_git_deny.py`) and H1 (`posttooluse_validate_handoff.py`):
+`.claude/hooks/pretooluse_research_path_deny.py` blocks `Write`/`Edit`
+under `docs/research/` outside `docs/research/private/**`. Motivation
+= N=2 violations of the documented rule (`cowork_tab_instructions.md`
+line 192 + `.gitignore` lines 49-51) in 8 days — Lesson #5 §10.5
+(2026-05-15 audit baseline, `docs/strategy/public/` drop) +
+2026-05-23 `chat_harness_extension_points_analyzed.md` (detected
++ corrected during PLAN-0007 post-merge cleanup). Applies ADR-013 D2
+precedent: when documentation alone fails twice, promote to
+deterministic hook reinforcement. 20 new unit tests (allow private/
++ strategy/, deny public/ + bare research/ + arbitrary subdirs, path
+normalization for Windows UNC both directions, edge cases for non-Write
+tools + malformed stdin); `pytest` 216 pass / 5 skip; `ruff` + `mypy`
++ `detect-secrets` clean. Cowork research workflow unchanged for the
+happy path (private/ writes allowed); only the off-policy writes are
+blocked at the hook layer.
+
+**Prior — Harness autonomy layer (ADR-013 + PLAN-0007) Phase 1
 MERGED.** PR #6 landed on `main` as `b2ea9b8` (9 commits: 6 Phase A
 governance + 3 Phase B execution). The `.claude/` autonomy layer is
 live: deterministic PreToolUse deny on `git commit|push|merge` from
@@ -131,6 +151,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-24 | **Research-path enforcement (C4 hook) MERGED** — PR #7 → `main` (`da4f91d`). New `.claude/hooks/pretooluse_research_path_deny.py` blocks `Write`/`Edit` under `docs/research/` outside `docs/research/private/**`. Third deterministic Phase-1 row in `.claude/autonomy-triggers.md` (C4, alongside G5 git-deny + H1 handoff-validator). Trigger = N=2 violations of the documented rule (`cowork_tab_instructions.md` line 192 + `.gitignore` lines 49-51) in 8 days: Lesson #5 §10.5 (2026-05-15, `docs/strategy/public/` drop) + 2026-05-23 (`chat_harness_extension_points_analyzed.md`, detected during PLAN-0007 post-merge cleanup). Applies ADR-013 D2 precedent (documented-rule violation twice → promote to deterministic hook). 20 new tests (216 pass / 5 skip total, +20 from baseline); Windows-UNC path-normalization robust to host (backslash→forward-slash before pathlib). Closeout: this STATUS row | `da4f91d` (PR #7) / `.claude/hooks/pretooluse_research_path_deny.py` |
 | 2026-05-23 | **PLAN-0007 Phase 1 (Harness autonomy layer) MERGED** — PR #6 → `main` (`b2ea9b8`), 9 commits (6 Phase A + 3 Phase B). All three ACs green incl live: AC-2 bypass-immune commit boundary verified across 16 test cases (inline `CLAUDE_TIER=code` env-spoof attempt, `bash -c`, backtick chains, `git -C path`, env prefix, `&&` chains — all denied; legitimate Code-tier commit allowed); AC-1 AFK Telegram ping verified end-to-end by Cray after token rotation + `WSLENV` setup; AC-3 handoff frontmatter auto-validator blocks on hard errors. OQ-3 resolved by Code: env marker `CLAUDE_TIER=code` (rejected file marker spoofable by `touch && commit`, cwd heuristic too coarse, settings-scope has no per-session distinction). `.claude/autonomy-triggers.md` registry shipped with G1–G5 / C1–C3 / H1 active and L1–L4 loop-detect rows flagged "Phase 2 enforcement". Plan moved to `docs/plans/done/`. Phase 2–4 (Stop continuation loop + Sonnet classifier + stateful loop-detection + subagent topology + MCP bus) → PLAN-0008+ | `b2ea9b8` (PR #6) / `docs/plans/done/0007-harness-autonomy-layer-phase-1.md` |
 | 2026-05-23 | **ADR-013 (Autonomy axis relocation, Direction B) ACCEPTED + PLAN-0007 committed + T3–T6 follow-ons landed** — Cray ratified Direction B in free-form and adjudicated E.1–E.5 + OQ-1/2/3 (OQ-3 PreToolUse session-identity mechanism delegated to Code). ADR-013 D1 amends ADR-009 D1 (execution-automation axis relocates to Code + subagents; Cowork retained as advisory governance drafter per OQ-1); D2 preserves + reinforces "only Code commits" via deterministic PreToolUse deny hook (bypass-immune); D3 extends ADR-012 (free-form venues retained); D4 classifier=Sonnet + registry `.claude/autonomy-triggers.md`; D5 Telegram `@vero_tg_bot` env-var token. Branch `feat/plan0007-harness-autonomy-phase1` carries 5 governance commits (`770adf5` ADR-013, `c00dc98` PLAN-0007, `c45526b` CLAUDE.md §6 T3, `e64a4d2` tier instructions T4, `8eebe09` ADR-009/012 pointers T5). CLAUDE.md edit (T3) is constitutional — restart-bridge applies (Lesson #5 §1). Cowork-drafted, Code-committed per ADR-009 D2 | `8eebe09` / `docs/adr/0013-autonomy-axis-relocation.md` + `docs/plans/0007-harness-autonomy-layer-phase-1.md` |
 | 2026-05-22 | **PLAN-0006 (LLM reasoning-hook) MERGED** — PR #5 merged to `main` (`68053fe`): `recommend()` is now LLM-backed (`gpt-oss:20b`, two-call Pattern B, deterministic rule fail-safe retained), new `services/engine/llm/` package + eval harness; ADR-001 Amendment 1 rode the same PR. Code-reviewed, no blockers; 173 passed / 0 skipped, coverage 94.56%. Post-merge: worktree + branch cleaned up | `68053fe` (PR #5) |
@@ -180,6 +201,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 - [x] **PLAN-0005 Phase 2 — OCT Engine Runtime Layer** — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (postgres:16-alpine, SQLAlchemy/Alembic) + three-layer API wiring + e2e action loop; merged PR #4 (`c646bab`) *(Session 10, 2026-05-21)*
 - [x] **ADR-010 — LLM reasoning-hook surface** — D1 inference backend Cray-ratified (local LLM default + Claude API consent-gated fallback); D2–D5 recommended; ADR-007 D2 envelope unchanged *(Session 10, 2026-05-22; commit `48fe240`)*
 - [x] **PLAN-0006 — LLM reasoning-hook execution** — EXECUTED. Steps 0-8 of the Phase-1 kickoff dispatch done on `feat/plan0006-llm-reasoning-hook` (8 commits `4f13b50`..`2fe1056`, **unmerged**); CHECKPOINT-0 pinned `gpt-oss:20b` / Ollama 0.24.0; new `services/engine/llm/` package + eval harness; `ruff` + `mypy --strict` clean, 168 passed / 5 skipped, coverage 94.56%. Closeout: `.claude/handoffs/session-10/2026-05-22-2355-code-plan0006-kickoff-dispatch-closeout.md`. *(Session 10, 2026-05-22)*
+- [x] **Research-path enforcement (C4 hook)** — MERGED. PR #7 → `main` (`da4f91d`); new `.claude/hooks/pretooluse_research_path_deny.py` deterministically blocks `Write`/`Edit` under `docs/research/` outside `docs/research/private/**`. Registered as C4 in `.claude/autonomy-triggers.md` next to G5 + H1. Trigger = N=2 documented-rule violations (Lesson #5 §10.5 + 2026-05-23 `chat_harness_extension_points_analyzed.md`) applying ADR-013 D2 precedent. 20 new tests; pytest 216 / 5 skip. *(Session 10, 2026-05-24)*
 - [x] **PLAN-0007 — Harness autonomy layer Phase 1** — MERGED. PR #6 → `main` (`b2ea9b8`), 9 commits (6 Phase A governance: `770adf5` ADR-013 Accepted, `c00dc98` PLAN-0007, `c45526b` CLAUDE.md §6 T3, `e64a4d2` tier instructions T4, `8eebe09` ADR-009/012 pointers T5, `c048117` STATUS T6; 3 Phase B execution: `28fac01` telegram.sh, `711971c` settings + hooks + tests, `7c6ae65` autonomy-triggers registry). All ACs green incl live (AC-2: 16/16 bypass-immune tests; AC-1: live Telegram smoke verified by Cray; AC-3: handoff frontmatter auto-validator). OQ-3 resolved (CLAUDE_TIER=code env marker). Plan moved to `docs/plans/done/`. Closeout: `.claude/handoffs/session-10/2026-05-23-1606-code-plan0007-phaseB-closeout.md`. *(Session 10, 2026-05-23)*
 - [x] **TODO-A — ADR-001 amendment (PLAN-0006 follow-on)** — DONE. ADR-001 Amendment 1 pins `gpt-oss:20b` + Ollama 0.24.0 for the recommender path (superseding `gemma4:26b` for that path only; gemma4's multimodal role + `qwen2.5-coder:32b` untouched). Cowork-drafted (ADR-009 D1); Code reviewed against the PLAN-0006 fact-pack + committed (ADR-009 D2) with the live `gpt-oss:20b` digest captured; rides the PLAN-0006 branch / PR #5 per Cray's routing call. *(PLAN-0006 kickoff dispatch §7 TODO-A; commit `30d2c8e`)*
 - [x] **Suffix-enum vs cowork-instruction divergence** (PLAN-0005 §4 C-2) — RESOLVED via option α (expand the enum): `tools/handoffs/_schema.py:Suffix` gained `dispatch`/`completion`/`consultation`; PLAN-004 D4 + `handoff-frontmatter-schema.md` registered them; 2 regression tests in `test_schema.py`. `discussion` deliberately not added (ADR-012 carries it via `phase: discussion`). *(surfaced 2026-05-21; Cray adjudicated α 2026-05-22; `db9c5ed`)*
