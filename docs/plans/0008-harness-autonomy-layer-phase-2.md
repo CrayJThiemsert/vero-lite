@@ -425,6 +425,61 @@ Step 4's `Stop` dispatch and the non-deterministic `PreToolUse` rows
 
 ### Step 7 — Tests
 
+> **Amendment 2026-05-24 (Step 7 closeout — integration reframing).**
+> PLAN as originally drafted prescribed mirror-of-PLAN-0007 unit-test
+> density (~260 pass). Steps 1–5b already ship that density in their
+> per-hook files (`test_loop_counter_state.py` 49, `test_pretooluse_loop_detect.py`
+> 24, `test_posttooluse_progress_observer.py` 31, `test_stop_continuation.py`
+> 18, `test_sonnet_classifier.py` 27 incl 1 live opt-in) and the suite
+> stands at 372 pass / 6 skip on `main` as of [PR #15](https://github.com/CrayJThiemsert/vero-lite/pull/15)
+> (`3d4f98b`) — already exceeds the PLAN target. The session-10 handoff
+> reframed Step 7 as **broader integration tests** (cross-hook contracts
+> + Stop ↔ classifier wiring) rather than additional unit cases.
+>
+> This PR ships:
+>
+> 1. **`tests/handoffs/test_phase2_integration.py`** (15 E2E scenarios)
+>    driving real subprocess invocations of the hook scripts with a
+>    local mock HTTP Sonnet server (ephemeral 127.0.0.1 port,
+>    `$CLAUDE_SONNET_API_URL` override). Coverage: Stop→proceed→block
+>    decision; Stop→pause→no block + chain reset; classifier fail-closed
+>    when env+file missing; `stop_hook_active` re-entry guard
+>    (mock server records zero requests); chain-cap fail-safe
+>    (Telegram `cap reached` + chain reset, classifier short-circuited);
+>    observer→state→PreToolUse deny on L1 + L4 at threshold; L4 reset
+>    on success; L2 inline Telegram on pytest-fail threshold; L1
+>    turn-boundary survive (target in `turn_touched`) vs reset (not in
+>    it); re-entry guard preserves state; chain depth progression
+>    proceed→proceed→pause; Phase 1 regression test files present
+>    (AC-4 cross-reference scaffold). All 15 green.
+>
+> 2. **Pre-commit `mypy` glob extended** from `^(services|verticals)/`
+>    to `^(services|verticals|\.claude/hooks)/`. All 9 hook files pass
+>    `mypy --strict` cleanly; `pre-commit run mypy --all-files` verified.
+>    Closes the Step 1 closeout follow-on noted in the session-10
+>    handoff.
+>
+> 3. **Suite totals:** 372 → 387 pass / 6 skip (+15 integration). `ruff`
+>    + `mypy --strict` + `detect-secrets` clean. The mock HTTP server
+>    uses `socketserver.TCPServer` with port 0; no live network. The
+>    `tmp_path` fixture isolates every test's state file, classifier
+>    fallback path, telegram capture, and chain file.
+>
+> AC-3 (loop-detection fires on L1–L4 patterns and resets on progress)
+> is now demonstrated end-to-end via the integration cases —
+> previously only covered by per-hook unit cases. AC-1 (Stop self-
+> continues on clearly-best paths) is demonstrated for the
+> happy-path proceed flow + chain-depth progression; the "no false-
+> positive auto-continue past a registry-matched pause" cross-check
+> with AC-2 cases is satisfied by the pause-arm tests. AC-2 governance-
+> match cases (G1/C1/C2) are demonstrable via the same mock server
+> harness (canned `pause` + `matched_rows`) — the matched_rows
+> propagation through to the Telegram payload formalization is held
+> for **Step 8 live AC**. AC-4 (Phase 1 regression-free) is scaffolded
+> via the `test_phase1_regression_test_files_present` discoverability
+> test; full bypass-immunity re-run also held for Step 8.
+
+
 Mirror PLAN-0007's testing density (Phase 1 added 28 unit tests + 20
 for C4 = 48 total in `tests/claude_hooks/`).
 

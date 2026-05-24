@@ -32,7 +32,11 @@ repos:
           - jsonschema>=4.23.0
           - types-jsonschema>=4.23.0
         args: [--config-file=pyproject.toml]
-        files: ^(services|verticals)/
+        # PLAN-0008 Step 7: extend coverage to .claude/hooks/** so the
+        # Phase 2 hook scripts (Step 1–5b) are gated at commit time, not
+        # only when a developer remembers to run mypy locally. All 9
+        # current hook files pass --strict cleanly as of 2026-05-24.
+        files: ^(services|verticals|\.claude/hooks)/
 
   - repo: https://github.com/Yelp/detect-secrets
     rev: v1.5.0
