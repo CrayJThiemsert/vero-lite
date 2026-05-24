@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-25T00:30:00+07:00
+last_updated: 2026-05-25T02:00:00+07:00
 session: 10
-current_batch: PLAN-0008 Step 5b (config-file fallback) MERGED via PR #15 (`3d4f98b`); Windows-side key file copied to `C:\Users\crayj\.claude\.anthropic_api_key` (NTFS user-only ACL) + cross-env verified (WSL+Windows Python both resolve key). Then **Step 7 (Phase 2 integration tests + mypy hook coverage extension) IN-FLIGHT** on branch `feat/plan0008-step7-integration-tests` — new `tests/handoffs/test_phase2_integration.py` with 15 E2E scenarios using local mock HTTP Sonnet server (ephemeral 127.0.0.1 port, no live network); pre-commit `mypy` glob extended to `^(services|verticals|\.claude/hooks)/`; +15 tests (372 → 387 pass / 6 skip); all gates clean.
+current_batch: PLAN-0008 Phase 2 COMPLETE — Step 7 MERGED via PR #16 (`9100e65`); then **Step 8 (closeout + AC matrix + PLAN move to done/) IN-FLIGHT** on branch `feat/plan0008-step8-closeout`. AC-2 VERIFIED (Step 5 live proof 5/5), AC-3 VERIFIED (Step 7 + Step 8 integration tests E2E for L1/L2/L3/L4), AC-4 VERIFIED (pytest 389 pass / 6 skip incl. all Phase 1 + C4 test files); AC-1 PENDING Cray-supervised live observation (deferred post-merge — interactive sessions cannot exercise the auto-continue path). +2 tests (387 → 389 pass / 6 skip: L3 trigger + L2 reset E2E). Closeout handoff at `.claude/handoffs/session-10/2026-05-25-0130-code-plan0008-phase2-closeout.md` (local working note per CLAUDE.md §11). PLAN moved to `docs/plans/done/`.
 current_actor: code
-blocked_on: nothing
-next_action: open Step 7 PR + Cray review/merge; then Step 8 (live AC verification matrix + AC-4 Phase-1 regression re-run + closeout handoff + PLAN move to done/)
-head_commit: 3d4f98b
-recent_commits: [3d4f98b, 472a91e, 626ab23, aa64d19, 2ef7163, 3407ae6, ceebc1a, efe3801, b09bf39, 010ae1b]
+blocked_on: nothing (Cray-supervised AC-1 live verification non-blocking — to be amended post-merge)
+next_action: open Step 8 PR + Cray review/merge → Phase 2 fully closed → entry conditions for **PLAN-0009 (Phase 3 — subagent topology, ADR-013 D1 phased end-state)** met; queue PLAN-0009 drafting per next Cray cadence
+head_commit: 9100e65
+recent_commits: [9100e65, d870d76, 3d4f98b, 472a91e, 626ab23, aa64d19, 2ef7163, 3407ae6, ceebc1a, efe3801]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,51 @@ recent_commits: [3d4f98b, 472a91e, 626ab23, aa64d19, 2ef7163, 3407ae6, ceebc1a, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0008 Step 5b MERGED + Step 7 (Phase 2 integration
+**Session 10 — PLAN-0008 Phase 2 COMPLETE.** Step 7 MERGED via [PR #16](https://github.com/CrayJThiemsert/vero-lite/pull/16)
+(`9100e65`). Step 8 (closeout + AC matrix + PLAN move to `done/`)
+IN-FLIGHT on branch `feat/plan0008-step8-closeout`. The 8-step Phase 2
+arc (Steps 1, 2, 3, 4, 5, 5b, 6, 7, 8) leaves the harness autonomy
+layer fully wired and tested:
+
+- **Probabilistic / classifier-mediated**: `Stop` continuation loop
+  + Sonnet pause/proceed classifier + stateful L1–L4 loop-detection
+  + cross-env API key fallback (Step 5b)
+- **Deterministic floor (Phase 1) preserved**: G5 git-deny, H1
+  handoff-validator, C4 research-path-deny — all reachable and
+  reflexively exercised every commit in this session
+- **Suite end-state**: 216 (Phase 1) → **389 pass / 6 skip** (Phase 2,
+  +173 across 5 new test files incl. 17 E2E integration scenarios
+  driving real subprocess hook invocations against a local mock HTTP
+  Sonnet server)
+
+**AC matrix verification (full detail in closeout handoff):**
+
+| AC | Status | Evidence |
+|----|--------|----------|
+| AC-1 (Stop self-continues ≥ 3 auto-continuations) | **PENDING live** | Mechanics verified by Step 7 integration tests + chain-depth progression; live observation deferred — requires unattended Cray-supervised session (interactive sessions cannot exercise the auto-continue path) |
+| AC-2 (classifier pauses on registry matches, no false-positives on routine) | **VERIFIED 2026-05-24** | Step 5 live conservatism proof 5/5 scenarios (G1/G2/C2 paused with correct `matched_rows` + 1 routine proceed); $0.005 total cost; mocked harness in Step 7 confirms wire integrity |
+| AC-3 (L1–L4 fire on trigger + reset on progress) | **VERIFIED 2026-05-25** | Step 7 + Step 8 integration tests cover all 4 patterns + Cray-E.4 Telegram payload assertion; L3 auto-reset deferred per PLAN §Step 4 closeout (multi-tool observation needs schema evolution → PLAN-0009) |
+| AC-4 (Phase 1 + C4 deterministic regression-free) | **VERIFIED 2026-05-25** | pytest 389/6 incl. test_pretooluse_git_deny.py (16 bypass-immune cases), test_posttooluse_validate_handoff.py, test_pretooluse_research_path_deny.py (20 cases) all green; in-session production fires (L1-on-self in PR #15 + H1-on-self in this PR's closeout handoff frontmatter) prove the deterministic + classifier-mediated layer is reachable from real agent activity |
+
+**Closeout handoff** at `.claude/handoffs/session-10/2026-05-25-0130-code-plan0008-phase2-closeout.md`
+(local working note per CLAUDE.md §11 — `.claude/handoffs/.gitignore`
+keeps these out of the repo). Covers all 4 ACs, cost telemetry
+baseline, deferred items carry-over (auto-handoff Code→Cowork, L3
+auto-reset, PreToolUse classifier dispatch — all to PLAN-0009),
+operational findings (Desktop env strip, L1-on-self, cross-env key
+file setup), and Phase 3 entry conditions.
+
+**PLAN move:** `docs/plans/0008-...md` → `docs/plans/done/0008-...md`
+(`git mv`). Archived alongside PLAN-003 / PLAN-0005 / PLAN-004 / PLAN-0006
+/ PLAN-0007.
+
+**Next: PLAN-0009 (Phase 3 — subagent topology, ADR-013 D1 phased
+end-state) entry conditions met.** Recommended outline in closeout
+§6: subagent contract design → Explore subagent → Plan subagent →
+main-agent dispatch protocol → auto-handoff Code→subagent → live
+AC. Cowork-drafted under interim ADR-009 D1 phasing per Cray cadence.
+
+**Prior — PLAN-0008 Step 5b MERGED + Step 7 (Phase 2 integration
 tests + mypy hook coverage extension) IN-FLIGHT.** Step 5b
 (`_sonnet_classifier.py` config-file fallback) merged via [PR #15](https://github.com/CrayJThiemsert/vero-lite/pull/15)
 (`3d4f98b`). Cross-env key file setup completed: Code copied
@@ -449,20 +493,25 @@ The pre-commit `mypy` hook now also covers `^(services|verticals)/`
 
 ## Prior focus (archived)
 
-PLAN-003 Phase 1 (ontology engine + 5 emitters) and PLAN-0005 Phase 2
-(OCT engine runtime layer) are both **merged and moved to
-`docs/plans/done/`**. The Cowork-as-Tier-1 trial that ran as the
-test-bed across those batches **concluded** — ratified permanently by
-**ADR-009** (Cowork = merged Tier 0 + Tier 1 workspace; commits stay
-Code-exclusive). PLAN-004 Phase A (handoff frontmatter schema + tooling)
-also landed; Phase B/C remain deferred (backlog). Full detail lives in
-`docs/plans/done/`, the Recent Decisions table below, and git history.
+PLAN-003 Phase 1 (ontology engine + 5 emitters), PLAN-0005 Phase 2
+(OCT engine runtime layer), PLAN-0006 (LLM reasoning hook),
+PLAN-0007 Phase 1 (harness autonomy layer — deterministic floor),
+and **PLAN-0008 Phase 2 (harness autonomy layer — probabilistic /
+classifier-mediated engine on top of Phase 1)** are all **merged and
+moved to `docs/plans/done/`**. The Cowork-as-Tier-1 trial that ran as
+the test-bed across the earlier batches **concluded** — ratified
+permanently by **ADR-009** (Cowork = merged Tier 0 + Tier 1 workspace;
+commits stay Code-exclusive). PLAN-004 Phase A (handoff frontmatter
+schema + tooling) also landed; Phase B/C remain deferred (backlog).
+Full detail lives in `docs/plans/done/`, the Recent Decisions table
+below, and git history.
 
 ## Recent Decisions (last 5)
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-05-25 | **PLAN-0008 Step 7 (Phase 2 integration tests + mypy hook coverage extension) IN-FLIGHT** — On branch `feat/plan0008-step7-integration-tests`. New `tests/handoffs/test_phase2_integration.py` with 15 E2E scenarios driving real subprocess invocations of all 3 wired Phase 2 hooks with local mock HTTP Sonnet server (ephemeral 127.0.0.1, no live network). Coverage: Stop↔classifier wiring (proceed→block, pause→no-block, fail-closed, re-entry guard); chain-cap fail-safe + Telegram cap_reached payload; observer↔state↔PreToolUse deny on L1+L4; L4 reset on success; L2 inline Telegram on pytest-fail threshold; L1 turn-boundary survive vs reset; chain depth progression. Reframed from PLAN's original "mirror PLAN-0007 unit density" (already exceeded by Steps 1–5b unit suites) per session-10 handoff. Pre-commit `mypy` glob extended from `^(services\|verticals)/` to `^(services\|verticals\|\.claude/hooks)/` — all 9 hook files pass `mypy --strict`. 372 → 387 pass / 6 skip (+15). Ruff + mypy + detect-secrets clean. AC-3 demonstrated E2E for the first time. PR pending Cray review | branch `feat/plan0008-step7-integration-tests` / `tests/handoffs/test_phase2_integration.py` |
+| 2026-05-25 | **PLAN-0008 Phase 2 COMPLETE — Step 8 closeout IN-FLIGHT** — On branch `feat/plan0008-step8-closeout`. Step 7 MERGED (`9100e65`) before this. AC matrix: AC-2 VERIFIED (Step 5 live proof 5/5, $0.005 total cost; mocked harness in Step 7 confirms wire); AC-3 VERIFIED (Step 7 + Step 8 integration tests E2E for L1/L2/L3/L4 with Cray-E.4 Telegram payload assertion; L3 auto-reset deferred to PLAN-0009 per PLAN §Step 4 closeout); AC-4 VERIFIED (pytest 389/6 incl. all Phase 1 + C4 test files; reflexive in-session production fires of G5 + H1 hooks during this very PR's commits); AC-1 PENDING Cray-supervised live observation (deferred — interactive sessions cannot exercise unattended auto-continue path; non-blocking, amend STATUS post-merge when observed). Step 8 deliverables: +2 E2E tests (test_l3_traceback_inline_fires_on_threshold + test_l2_resets_on_pass_for_same_nodeid; 387 → 389 pass / 6 skip); closeout handoff at `.claude/handoffs/session-10/2026-05-25-0130-code-plan0008-phase2-closeout.md` (gitignored local working note per CLAUDE.md §11 — covers all 4 ACs + cost telemetry baseline + deferred items + Phase 3 entry conditions + operational findings); `git mv docs/plans/0008-...md docs/plans/done/`; STATUS final bump. Phase 3 (subagent topology, ADR-013 D1 phased) entry conditions met; PLAN-0009 outline queued for Cowork drafting per next Cray cadence. **Reflexive H1 hook fire on the closeout handoff frontmatter** (`phase: completion` initially invalid; corrected to `phase: closeout` per enum) — N=3 production-validation events this session (L1 in PR #15, L1-attempt in PR #16, H1 in this PR) prove the deterministic + classifier-mediated layer is reachable from real agent activity. PR pending Cray review | branch `feat/plan0008-step8-closeout` / `.claude/handoffs/session-10/2026-05-25-0130-code-plan0008-phase2-closeout.md` + `docs/plans/done/0008-harness-autonomy-layer-phase-2.md` |
+| 2026-05-25 | **PLAN-0008 Step 7 (Phase 2 integration tests + mypy hook coverage extension) MERGED** — PR #16 → `main` (`9100e65`), single `test(claude)` commit `d870d76` + merge. New `tests/handoffs/test_phase2_integration.py` with 15 E2E scenarios driving real subprocess invocations of all 3 wired Phase 2 hooks against a local mock HTTP Sonnet server (ephemeral 127.0.0.1 port via `socketserver.TCPServer` + threading daemon; `$CLAUDE_SONNET_API_URL` override; no live network). Coverage: Stop↔classifier wiring (proceed→block, pause→no-block, fail-closed, re-entry guard — mock receives 0 requests = negative proof); chain-cap fail-safe + cap_reached Telegram; observer→state→PreToolUse deny on L1+L4 + Cray-E.4 payload assertion; L4 reset on success; L2 inline Telegram on pytest-fail threshold; L1 turn-boundary survive vs reset; chain depth progression. Pre-commit `mypy` glob extended `^(services\|verticals)/` → `^(services\|verticals\|\.claude/hooks)/` (closes Step 1 follow-on; all 9 hooks pass `--strict`). 372 → 387 pass / 6 skip (+15). Per-test isolation via `tmp_path` for state + classifier fallback path + telegram capture + chain file. AC-3 demonstrated E2E for the first time | `9100e65` (PR #16) / `tests/handoffs/test_phase2_integration.py` |
 | 2026-05-25 | **Cross-env Anthropic key file setup completed (Step 5b follow-up)** — Code copied WSL `~/.claude/.anthropic_api_key` to Windows `C:\Users\crayj\.claude\.anthropic_api_key` with NTFS ACL tightened to `crayj` user only (SYSTEM + Administrators removed — strictly tighter than chmod 600). Both `Path.home() / ".claude" / ".anthropic_api_key"` resolution paths verified: WSL Python finds at `/home/crayj/.claude/...`, Windows Python finds at `C:\Users\crayj\.claude\...`. Hook firing path (Windows-spawned hooks) and pytest path (WSL-spawned via Bash tool) both unblocked for live Sonnet operations | `C:\Users\crayj\.claude\.anthropic_api_key` (NTFS user-only) |
 | 2026-05-24 | **PLAN-0008 Step 5b (Sonnet classifier config-file fallback) MERGED — defeats Claude Desktop ANTHROPIC_API_KEY strip** — PR #15 → `main` (`3d4f98b`), single `fix(claude)` commit `472a91e` + merge. Diagnosed during Step 6 post-merge env-propagation verification: Claude Desktop on Windows launches `claude.exe` with `ANTHROPIC_API_KEY=""` (intentional OAuth/billing isolation); WSLENV cannot defeat even after full computer restart. Step 5 live proof passed only because Cray ran pytest from a terminal launched outside Desktop. Fix: `_sonnet_classifier.py::_resolve_api_key()` chain → env → `~/.claude/.anthropic_api_key` (chmod 600 POSIX, override via `$CLAUDE_ANTHROPIC_KEY_FILE`) → fail-closed. +10 unit tests (372 pass / 6 skip; also fixed `test_stop_continuation.py` fixture to defang via file path too). `.gitignore` extended. PLAN-0008 §Step 5 + STATUS amended. Auto-memory `project_claude_desktop_strips_anthropic_api_key.md` captured. **Live-verified inside Claude Code session**: empty env → file fallback → real Sonnet 3.04s round-trip → `proceed` decision (proof complete). **Bonus event**: my own L1 loop-detect hook (Step 2) fired on me during the 6 pragma-fix Edits — Cray ratified Bash sed workaround; hook works as designed | `3d4f98b` (PR #15) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-05-24 | **PLAN-0008 Step 6 (Wave 2 completion — autonomy-triggers row flips + PLAN closeout) MERGED** — PR #14 → `main` (`626ab23`), single `docs(claude)` commit `aa64d19` + merge. Docs-only flip of `.claude/autonomy-triggers.md` row labels from placeholder / "Phase 2 spec" wording to **LIVE** with concrete hook attribution: G1/G2/G3/G4/C1/C2/C3 → `_sonnet_classifier.py`; L1–L4 → 3-hook attribution (gate + writer + reset); status banner + "How the classifier reads this file" §flipped to LIVE with conservatism-probe evidence; footer date bumped. PLAN-0008 §Step 6 amendment box rewritten as "Step 6 closeout" with PR #11/#12/#13 lineage. `.claude/settings.json` `_comment` corrected (stub removal happened in PR #13). 362 pass / 6 skip baseline preserved (docs-only; ruff/mypy no scope). Closeout: this STATUS row | `626ab23` (PR #14) / `.claude/autonomy-triggers.md` |
