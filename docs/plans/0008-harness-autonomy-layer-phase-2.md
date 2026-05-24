@@ -226,7 +226,21 @@ hook does not reorder or wrap the deterministic ones.
 - **L2 / L3:** require `PostToolUse` test-result / error-signature
   observation (Step 3) to feed the counter; Step 2 only reads.
 
-### Step 3 — `PostToolUse` progress observer
+### Step 3 — `PostToolUse` progress observer (+ Wave 1 wire)
+
+> **Amendment 2026-05-24 (Cray-approved Option C):** Step 3 PR bundles
+> the **Wave 1** `.claude/settings.json` wire that registers **both**
+> Step 2 (`pretooluse_loop_detect.py`) and Step 3
+> (`posttooluse_progress_observer.py`) — split from the original
+> §"Step 6" single-batch wire. Wave 2 (Step 6 PR) wires Step 4 +
+> Step 5. Rationale: L1/L4 loop-detect is standalone deployable
+> (does not depend on Stop loop + classifier); early activation
+> enables smoke testing against real Claude Code event payloads
+> before Step 4–5 development; matches Phase 1's phased
+> hook-rollout pattern. Cost: 2 `settings.json` edits across Wave 1
+> + Wave 2 instead of 1 — minor append, not load-bearing.
+
+
 
 `.claude/hooks/posttooluse_progress_observer.py` — observes tool outputs
 to feed the loop-counter and trigger resets. Runs **alongside** the
@@ -319,9 +333,14 @@ Step 4's `Stop` dispatch and the non-deterministic `PreToolUse` rows
 
 ### Step 6 — Wire into `.claude/settings.json` + extend `autonomy-triggers.md`
 
-- **Register Steps 2–4 hooks** in `.claude/settings.json` (Phase 1 file
-  already exists from `b2ea9b8`). Step 5 is a helper invoked by Step 4
-  + the PreToolUse classifier dispatch, not a top-level hook entry.
+> **Amendment 2026-05-24 (Cray-approved Option C):** **Wave 2** wire —
+> Step 6 now registers Step 4 (`stop_continuation.py`) + the Step 5
+> classifier dispatch only. Steps 2 + 3 were wired in **Wave 1**
+> (Step 3 PR). See the Step 3 amendment box above for rationale.
+
+- **Register Step 4 hook** in `.claude/settings.json` (Wave 2). Step 5 is
+  a helper invoked by Step 4 + the PreToolUse classifier dispatch, not a
+  top-level hook entry.
 - **Update `.claude/autonomy-triggers.md`:**
   - **L1–L4 rows:** flip "Phase 1 = Manual observation only" →
     "Phase 2 = Enforced via `pretooluse_loop_detect.py` +
