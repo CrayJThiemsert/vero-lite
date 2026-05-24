@@ -59,7 +59,7 @@ def _parse_ddl(ddl: str) -> dict[str, dict[str, str]]:
 
 def _orm_schema() -> dict[str, dict[str, str]]:
     """Build {table: {column: type}} from the hand-authored ORM metadata."""
-    dialect = postgresql.dialect()
+    dialect = postgresql.dialect()  # type: ignore[no-untyped-call]
     return {
         table.name: {
             column.name: _normalize(column.type.compile(dialect=dialect))

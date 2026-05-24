@@ -78,6 +78,15 @@ warn_unused_configs = true
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
 
+# PLAN-0008 Phase 2 hook modules live under .claude/hooks/ and are loaded
+# by their tests via sys.path manipulation (the directory is not on the
+# default mypy/PYTHONPATH search). Suppress import-not-found here so the
+# project-wide `mypy .` stays clean; the hooks themselves are still gated
+# at commit time via the pre-commit mypy hook (files = .claude/hooks/).
+[[tool.mypy.overrides]]
+module = ["_loop_counter", "_sonnet_classifier"]
+ignore_missing_imports = true
+
 [tool.pytest.ini_options]
 minversion = "8.0"
 testpaths = ["tests"]
