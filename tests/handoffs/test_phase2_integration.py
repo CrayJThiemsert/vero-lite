@@ -451,6 +451,85 @@ def test_l2_inline_telegram_fires_on_threshold(
     assert nodeid in captured["target"]
 
 
+def test_l2_resets_on_pass_for_same_nodeid(
+    stub_env: dict[str, str],
+) -> None:
+    """E2E (Step 8 / AC-3 reset semantic): L2 counter accumulates to 3
+    on failures for a nodeid, then a single PASSED observation for the
+    same nodeid zeroes the counter. Demonstrates observer's
+    extract_passed_nodeids → reset flow per PLAN §Step 3.
+    """
+    nodeid = "tests/handoffs/test_dummy.py::test_flaky"
+    fail_payload: Payload = {
+        "tool_name": "Bash",
+        "tool_input": {"command": "pytest tests/handoffs/test_dummy.py"},
+        "tool_response": {
+            "exit_code": 1,
+            "stdout": f"FAILED {nodeid} - AssertionError: still red\n1 failed",
+            "stderr": "",
+        },
+    }
+    pass_payload: Payload = {
+        "tool_name": "Bash",
+        "tool_input": {"command": "pytest tests/handoffs/test_dummy.py"},
+        "tool_response": {
+            "exit_code": 0,
+            "stdout": f"{nodeid} PASSED [100%]\n1 passed",
+            "stderr": "",
+        },
+    }
+    for _ in range(3):
+        _run(POST_OBSERVER_HOOK, fail_payload, stub_env)
+    counter = load_counter(_state(stub_env))
+    assert (
+        get_count(counter, LoopType.TEST_FAIL, nodeid) == 3
+    ), "L2 should have accumulated to 3 before reset"
+
+    _run(POST_OBSERVER_HOOK, pass_payload, stub_env)
+    counter = load_counter(_state(stub_env))
+    assert (
+        get_count(counter, LoopType.TEST_FAIL, nodeid) == 0
+    ), "PASSED observation must zero L2 counter for that nodeid"
+
+
+def test_l3_inline_telegram_fires_on_traceback_signature_threshold(
+    stub_env: dict[str, str],
+) -> None:
+    """E2E (Step 8 / AC-3 trigger): 6 Bash invocations each containing
+    a Python traceback whose last line is the same exception signature
+    → observer hashes the signature, increments L3 counter, and at the
+    6th fires Telegram inline with the L3 payload.
+
+    L3 auto-reset is **deferred** per PLAN-0008 §Step 4 closeout
+    ("signature absent from next 2 tool outputs" needs multi-tool
+    observation — held for PLAN-0009+).
+    """
+    traceback_text = (
+        "Traceback (most recent call last):\n"
+        '  File "x.py", line 10, in <module>\n'
+        "    func()\n"
+        "AssertionError: signature should be stable across attempts"
+    )
+    payload: Payload = {
+        "tool_name": "Bash",
+        "tool_input": {"command": "python x.py"},
+        "tool_response": {
+            "exit_code": 1,
+            "stdout": "",
+            "stderr": traceback_text,
+        },
+    }
+    for _ in range(6):
+        rc = _run(POST_OBSERVER_HOOK, payload, stub_env)[0]
+        assert rc == 0
+    captured = json.loads(_capture(stub_env).read_text(encoding="utf-8"))
+    assert captured["loop_type"] == "L3"
+    # Target is the hashed signature; assert it is non-empty + the
+    # last_6_actions ring buffer is full.
+    assert captured["target"]
+    assert len(captured["last_6_actions"]) == 6
+
+
 # --- E. Stop turn-boundary reset ↔ observer turn_touched ---
 
 
