@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-24T19:30:00+07:00
+last_updated: 2026-05-24T20:30:00+07:00
 session: 10
-current_batch: PLAN-0008 Step 4 (Stop hook + L1 turn-boundary reset, expanded scope) MERGED via PR #12 (`b09bf39`); +26 tests (320 → 346 pass); 🔴 L1 reset gap CLOSED; Stop hook live in `.claude/settings.json` (early Wave-2-partial wire); classifier stubbed (pause-by-default) until Step 5 swaps real Sonnet. Step 5 next.
-current_actor: code (Step 5 starting)
+current_batch: PLAN-0008 Step 5 (Sonnet classifier helper + stub swap) MERGED via PR #13 (`3407ae6`); +16 tests + 1 live opt-in (346 → 362 pass / 5 → 6 skip); stdlib urllib design; fail-closed pause; LIVE smoke + 4-scenario conservatism proof PASSED (G1/G2/C2 trigger pauses + routine work proceeds); WSLENV permanently extended with `ANTHROPIC_API_KEY/u`. Session handoff to new Code session for Step 6 (Wave 2 completion).
+current_actor: code (session handoff — new session takes over for Step 6)
 blocked_on: nothing
-next_action: PLAN-0008 Step 5 — `.claude/hooks/_sonnet_classifier.py` (stdlib urllib + Anthropic Messages API + JSON-in-text response + retry-once + fail-closed pause; pinned `claude-sonnet-4-6` per OQ-B; reads `.claude/autonomy-triggers.md` verbatim) + swap `_classifier_stub` in `stop_continuation.py` for real call + mocked tests + opt-in live via `RUN_LIVE_SONNET_TESTS=1` (per OQ-G) — on branch `feat/plan0008-step5-sonnet-classifier`
-head_commit: b09bf39
-recent_commits: [b09bf39, 010ae1b, b0685e4, 632a22c, 1c2a7b6, 57afff4, 9494f93, ad2c047, 4790939, 2b303a0]
+next_action: NEW SESSION should (1) verify `ANTHROPIC_API_KEY` propagates via permanent WSLENV — `wsl bash -lc '[ -n "$ANTHROPIC_API_KEY" ] && echo SET || echo UNSET'`; then (2) read handoff at `.claude/handoffs/session-10/2026-05-24-2030-code-step5-merged-step6-kickoff.md`; then (3) begin Step 6 (Wave 2 completion: `autonomy-triggers.md` row flips + PLAN-0008 §Step 6 closeout note) on branch `feat/plan0008-step6-wave2-completion`
+head_commit: 3407ae6
+recent_commits: [3407ae6, ceebc1a, efe3801, b09bf39, 010ae1b, b0685e4, 632a22c, 1c2a7b6, 57afff4, 9494f93]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,44 @@ recent_commits: [b09bf39, 010ae1b, b0685e4, 632a22c, 1c2a7b6, 57afff4, 9494f93, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0008 Step 4 (Stop hook + L1 turn-boundary reset)
+**Session 10 — PLAN-0008 Step 5 (Sonnet classifier helper + stub swap)
+MERGED + LIVE conservatism proof PASSED.** PR #13 landed on `main` as
+`3407ae6` (single `feat(claude)` commit `ceebc1a` + merge commit).
+4-piece bundle: (1) new `.claude/hooks/_sonnet_classifier.py` (~225
+lines) — stdlib urllib + Anthropic Messages API + JSON-in-text +
+retry-once + 7 fail-closed pause paths; pin `claude-sonnet-4-6`
+(OQ-B); reads `.claude/autonomy-triggers.md` verbatim. Stdlib-only
+deviation from PLAN's "SDK preferred" rationalized (avoids C2
+chicken-and-egg + matches Phase 1 hooks idiom; retry + markdown-fence
+extractor + fail-closed mitigate the structured-output gap). (2)
+`stop_continuation.py` amendment — `_classifier_stub()` removed;
+`_classify()` wrapper with defensive double-fallback (ImportError +
+final catch-all). (3) `tests/handoffs/test_sonnet_classifier.py`
+(NEW, 17 cases incl 1 live opt-in via `RUN_LIVE_SONNET_TESTS=1` per
+OQ-G). (4) `test_stop_continuation.py` fixture pops
+`ANTHROPIC_API_KEY` for determinism. **LIVE verification (Cray
+2026-05-24, 20:00–20:25):** opt-in smoke + 4-scenario conservatism
+proof passed 5/5 — bare Stop → proceed; G1 (edit Accepted ADR) →
+pause with rows `['G1']`; G2 (consume ADR-014) → pause with `['G2']`;
+C2 (add `anthropic` dep) → pause with `['C2']`; routine work
+(pytest + variable rename) → proceed. Sonnet's plain-English reasons
+are informative and accurate. Total live cost ~$0.005. **WSLENV
+permanently extended** with `ANTHROPIC_API_KEY/u` via PowerShell
+`[Environment]::SetEnvironmentVariable(..., "User")` so fresh Claude
+Code sessions inherit the key without manual workaround. `pytest`
+362 pass / 6 skip (Step 4 baseline 346/5 → 362/6); `ruff` +
+`mypy --strict` + `detect-secrets` clean.
+
+**Session handoff to new Code session.** This session has accumulated
+considerable context across Phase 2 Steps 1–5 (PR #8/9/10/11/12/13)
+plus the L1/L4 ELI-CTO + Wave 1/2 design + classifier conservatism
+validation. Cray-directed handoff to a fresh Code session for **Step
+6 (Wave 2 completion)** to preserve context-window headroom and
+double as a live verification of the permanent WSLENV propagation
+from a clean process tree. Handoff brief:
+`.claude/handoffs/session-10/2026-05-24-2030-code-step5-merged-step6-kickoff.md`.
+
+**Prior — PLAN-0008 Step 4 (Stop hook + L1 turn-boundary reset)
 MERGED with expanded scope.** PR #12 landed on `main` as `b09bf39`
 (single `feat(claude)` commit `010ae1b` + merge commit). 5-piece
 bundle per Cray-ratified scope expansion: (1) new
@@ -310,6 +347,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-24 | **PLAN-0008 Step 5 (Sonnet classifier + stub swap) MERGED + live conservatism proof + WSLENV permanent fix + session handoff to new Code** — PR #13 → `main` (`3407ae6`), single `feat(claude)` commit `ceebc1a` + merge. New `.claude/hooks/_sonnet_classifier.py` (~225 lines, stdlib urllib + 7 fail-closed paths + retry + markdown-fence extractor; pin `claude-sonnet-4-6` per OQ-B). Stop hook stub replaced via lazy-import `_classify()` wrapper with double-fallback. 17 mocked tests + 1 live opt-in (362 pass / 6 skip). **LIVE conservatism proof (Cray 2026-05-24):** bare Stop = proceed; G1/G2/C2 triggered scenarios = pause with correct row IDs; routine work = proceed. Total ~$0.005 cost. **WSLENV permanently extended** with `ANTHROPIC_API_KEY/u` so future sessions inherit the key without workaround. **Session-10 ↔ next-session handoff** at `.claude/handoffs/session-10/2026-05-24-2030-code-step5-merged-step6-kickoff.md` — Cray-directed to preserve context-window headroom + double-test WSLENV propagation from clean process tree. Closeout: this STATUS row | `3407ae6` (PR #13) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-05-24 | **PLAN-0008 Step 4 (Stop hook + L1 turn-boundary reset, expanded scope) MERGED** — PR #12 → `main` (`b09bf39`), single `feat(claude)` commit `010ae1b` + merge. 5-piece bundle: stop_continuation.py (Stop hook with re-entry guard + L1 turn-boundary reset + chain depth + cap-hit policy + classifier stub) + _loop_counter.py amendment (turn_touched field + 3 helpers) + observer amendment (records turn_touched on Write/Edit) + early Wave-2-partial settings.json wire for Stop + 26 new tests. **🔴 L1 reset gap CLOSED** per Cray-ratified scope expansion (AskUserQuestion "Expanded (Recommended)"): Stop hook reads turn_touched and resets L1 counters whose targets were NOT touched this turn, implementing PLAN §Step 1's "untouched on next turn-boundary marker" semantic. Classifier inside Stop hook is stubbed (pause-by-default) until Step 5 lands real Sonnet helper. 346 pass / 5 skip (was 320 / 5; +26: 18 stop + 7 turn_touched + 1 observer). Closeout: this STATUS row | `b09bf39` (PR #12) / `.claude/hooks/stop_continuation.py` |
 | 2026-05-24 | **PLAN-0008 Step 3 (PostToolUse progress observer + Wave 1 wire + PLAN amendment) MERGED + Step 4 prioritization for L1 reset gap** — PR #11 → `main` (`632a22c`), single `feat(claude)` commit `1c2a7b6` + merge. Wave 1 hooks live in `.claude/settings.json` (L1/L4 gate via Step 2 + L2/L3 inline Telegram via Step 3 + L4 increment-on-failure / reset-on-success). PLAN-0008 §Step 3 + §Step 6 amended with Wave 1/2 split rationale. **ELI-CTO review surfaced 🔴 L1 reset gap** (counter grows unbounded within session until Step 4 turn-boundary reset lands; Cray's STATUS.md iterative workflow at risk of false-positive deny — already 4 of 6 edits used pre-merge). Cray prioritized Step 4 with proper turn-boundary reset impl (not just Stop-hook stub). 31 new tests (pytest 320 / 5 skip). Closeout: this STATUS row | `632a22c` (PR #11) / `.claude/hooks/posttooluse_progress_observer.py` |
 | 2026-05-24 | **PLAN-0008 Step 2 (PreToolUse loop-detect hook) MERGED + Wave 1/2 settings.json activation decision (Option C) RECORDED** — PR #10 → `main` (`9494f93`), single `feat(claude)` commit `ad2c047` + merge. New `.claude/hooks/pretooluse_loop_detect.py` (~185 lines) reads Step 1 state, gates L1 (Write/Edit ≥ 6 same file) + L4 (Bash ≥ 6 same tokenized command), fires Cray-E.4 Telegram payload + deny on trigger. L2/L3 explicitly NOT enforced at PreToolUse (2 lock-in tests; routed to Step 3 inline firing). Env-var overrides spoof-immune. 24 new tests with Telegram-stub fixture capturing real payload (pytest 289 / 5 skip). **Wave 1/2 decision (Cray-adjudicated 2026-05-24, Option C):** Step 3 PR wires Step 2 + Step 3 hooks together in `.claude/settings.json`; Step 6 PR wires Step 4 + Step 5 hooks. Rationale: L1/L4 standalone deployable + early smoke catches integration bugs + matches Phase 1 phased pattern. PLAN-0008 §Step 3 + §Step 6 will be amended in the Step 3 commit per documentation option (3). Closeout: this STATUS row | `9494f93` (PR #10) / `.claude/hooks/pretooluse_loop_detect.py` |
@@ -365,6 +403,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 - [x] **PLAN-0005 Phase 2 — OCT Engine Runtime Layer** — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (postgres:16-alpine, SQLAlchemy/Alembic) + three-layer API wiring + e2e action loop; merged PR #4 (`c646bab`) *(Session 10, 2026-05-21)*
 - [x] **ADR-010 — LLM reasoning-hook surface** — D1 inference backend Cray-ratified (local LLM default + Claude API consent-gated fallback); D2–D5 recommended; ADR-007 D2 envelope unchanged *(Session 10, 2026-05-22; commit `48fe240`)*
 - [x] **PLAN-0006 — LLM reasoning-hook execution** — EXECUTED. Steps 0-8 of the Phase-1 kickoff dispatch done on `feat/plan0006-llm-reasoning-hook` (8 commits `4f13b50`..`2fe1056`, **unmerged**); CHECKPOINT-0 pinned `gpt-oss:20b` / Ollama 0.24.0; new `services/engine/llm/` package + eval harness; `ruff` + `mypy --strict` clean, 168 passed / 5 skipped, coverage 94.56%. Closeout: `.claude/handoffs/session-10/2026-05-22-2355-code-plan0006-kickoff-dispatch-closeout.md`. *(Session 10, 2026-05-22)*
+- [x] **PLAN-0008 Step 5 — Sonnet classifier helper + stub swap (MERGED) + LIVE conservatism proof** — PR #13 → `main` (`3407ae6`); 4-piece bundle: new `_sonnet_classifier.py` (~225 lines stdlib urllib + Anthropic Messages API + 7 fail-closed paths + retry + markdown-fence extractor; pin `claude-sonnet-4-6` per OQ-B) + `stop_continuation.py` stub-swap via lazy-import `_classify()` wrapper + 17 mocked tests + opt-in live via `RUN_LIVE_SONNET_TESTS=1` (OQ-G). 362 pass / 6 skip; ruff + mypy --strict + detect-secrets clean. **LIVE verification:** bare Stop = proceed; G1/G2/C2 = pause with correct row IDs; routine work = proceed. Cost ~$0.005. WSLENV permanently extended with `ANTHROPIC_API_KEY/u`. **Step 6 next (Wave 2 completion):** autonomy-triggers row flips + closeout note — on NEW Code session via handoff `.claude/handoffs/session-10/2026-05-24-2030-code-step5-merged-step6-kickoff.md`. *(Session 10, 2026-05-24)*
 - [x] **PLAN-0008 Step 4 — Stop hook + L1 turn-boundary reset, expanded scope (MERGED)** — PR #12 → `main` (`b09bf39`); 5-piece bundle: stop_continuation.py (Stop hook + L1 reset + chain cap + classifier stub) + _loop_counter.py turn_touched primitives + observer amendment + early Wave-2-partial settings.json wire + 26 new tests. **🔴 L1 reset gap CLOSED.** Classifier stub returns pause-by-default; Step 5 swap is single function replacement. 346 pass / 5 skip; ruff + mypy --strict + detect-secrets clean. **Step 5 next:** `_sonnet_classifier.py` (stdlib urllib + Anthropic Messages API + fail-closed pause) on `feat/plan0008-step5-sonnet-classifier`. *(Session 10, 2026-05-24)*
 - [x] **PLAN-0008 Step 3 — PostToolUse progress observer + Wave 1 wire + PLAN amendment (MERGED)** — PR #11 → `main` (`632a22c`); bundle of writer hook (`posttooluse_progress_observer.py`, ~260 lines, `_apply_l2`/`_apply_l3`/`_apply_l4` helpers) + Wave 1 `.claude/settings.json` wire (Phase 1 + Step 2/3 hooks live) + PLAN-0008 §Step 3 + §Step 6 amendment boxes. L2/L3 inline Telegram fire on trigger; L1/L4 let Step 2 gate. Defensive Bash exit-code detection. 31 new tests; pytest 320 pass / 5 skip; ruff + mypy --strict + detect-secrets clean. **ELI-CTO surfaced 🔴 L1 reset gap (real op risk).** **Step 4 next (Cray-prioritized):** stop_continuation.py + L1/L3 turn-boundary reset + early Wave-2-partial Stop-hook wire — scope expansion under Cray surface. *(Session 10, 2026-05-24)*
 - [x] **PLAN-0008 Step 2 — PreToolUse loop-detect hook (MERGED)** — PR #10 → `main` (`9494f93`); new `.claude/hooks/pretooluse_loop_detect.py` reads Step 1 state + gates L1/L4 ≥ 6 + fires Cray-E.4 Telegram payload + deny. Env-var overrides spoof-immune. L2/L3 explicitly deferred to Step 3 inline firing (2 lock-in tests). 24 new tests with Telegram-stub fixture; pytest 289 pass / 5 skip; ruff + mypy --strict + detect-secrets clean. **Wave 1/2 settings.json activation decision (Cray 2026-05-24, Option C):** Step 3 PR wires Step 2+3 hooks; Step 6 PR wires Step 4+5. **Step 3 next:** posttooluse_progress_observer.py + Wave 1 wire + PLAN amendment in one commit on `feat/plan0008-step3-posttooluse-progress-observer`. *(Session 10, 2026-05-24)*
@@ -407,18 +446,19 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 ## Next Steps
 
-1. **PLAN-0008 Phase 2 — Step 5 execution (Sonnet classifier helper + stub swap).** Step 4 (Stop hook + L1 turn-boundary reset) merged (PR #12 `b09bf39`); L1 reset gap closed; classifier stub in stop_continuation.py returns pause-by-default. **Step 5** per PLAN §Step 5: (a) new `.claude/hooks/_sonnet_classifier.py` — calls Anthropic Messages API via **stdlib urllib** (no new Python dep, matches Phase 1 stdlib-only idiom; PLAN noted SDK as "preferred for structured output" but stdlib + JSON-in-text + retry achieves same goal); pin `claude-sonnet-4-6` per OQ-B; reads `.claude/autonomy-triggers.md` verbatim as system prompt; output contract `{decision: proceed|pause, matched_rows: [...], reason: "..."}`; fail-closed → pause on any error (API unreachable, malformed JSON after retry, missing `$ANTHROPIC_API_KEY`); 1024/2048 token budgets per PLAN §Step 5; (b) swap `_classifier_stub()` in `stop_continuation.py` for real call (single function replacement; flow shape unchanged); (c) tests with mocked HTTP via monkeypatch on `urllib.request.urlopen` + opt-in live tests via `RUN_LIVE_SONNET_TESTS=1` per OQ-G. Branch: `feat/plan0008-step5-sonnet-classifier`. Then Step 6 (Wave-2 completion: autonomy-triggers row flips + close out classifier wire) → Steps 7-8.
-2. **PLAN-0008 Step 4 — MERGED.** [PR #12](https://github.com/CrayJThiemsert/vero-lite/pull/12) merged to `main` (`b09bf39`); Stop hook + L1 reset live; classifier stubbed.
-3. **PLAN-0008 Step 3 — MERGED.** [PR #11](https://github.com/CrayJThiemsert/vero-lite/pull/11) merged to `main` (`632a22c`); writer hook + Wave 1 wire live; PLAN-0008 amended with Wave 1/2 split.
-4. **PLAN-0008 Step 2 — MERGED.** [PR #10](https://github.com/CrayJThiemsert/vero-lite/pull/10) merged to `main` (`9494f93`); `pretooluse_loop_detect.py` gate live.
-5. **PLAN-0008 Step 1 — MERGED.** [PR #9](https://github.com/CrayJThiemsert/vero-lite/pull/9) merged to `main` (`2b303a0`); `_loop_counter.py` state primitives live.
-6. **PLAN-0008 — DRAFTED + MERGED.** [PR #8](https://github.com/CrayJThiemsert/vero-lite/pull/8) merged to `main` (`ec5e2ae`); plan lives at `docs/plans/0008-harness-autonomy-layer-phase-2.md` (will move to `done/` after Step 8 closeout).
-7. **PLAN-0007 — MERGED + closed.** [PR #6](https://github.com/CrayJThiemsert/vero-lite/pull/6) merged to `main` (`b2ea9b8`); plan archived at `docs/plans/done/0007-harness-autonomy-layer-phase-1.md`.
-8. **PLAN-0006 — MERGED + closed.** [PR #5](https://github.com/CrayJThiemsert/vero-lite/pull/5) merged to `main` (`68053fe`); plan archived at `docs/plans/done/0006-llm-reasoning-hook-execution.md`.
-9. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002 (≥ADR-014), registry discovery).
-10. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion.
-11. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix; validator warning-swallow bug) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (≥ADR-014).
-12. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
+1. **PLAN-0008 Phase 2 — Step 6 execution (Wave 2 completion) — IN NEW CODE SESSION.** Step 5 (Sonnet classifier + stub swap) merged (PR #13 `3407ae6`) with live conservatism proof PASSED. **Step 6** per PLAN §Step 6: (a) flip the L1–L4 row entries in `.claude/autonomy-triggers.md` from "Phase 2 enforcement" placeholders to "Enforced via [hook name]" (matches the now-live Wave 1 + Wave-2-partial topology); (b) flip the G1/G2/C1/C2 + H1 row entries similarly where Wave 2 enforcement is now live; (c) confirm `.gitignore` carries `.claude/state/` (already done in Phase 1; verify); (d) update the registry footer line referencing classifier liveness; (e) PLAN-0008 §Step 6 closeout note marking Wave 2 complete. Branch: `feat/plan0008-step6-wave2-completion`. **NEW SESSION first action:** verify permanent WSLENV propagation — `wsl bash -lc '[ -n "$ANTHROPIC_API_KEY" ] && echo SET || echo UNSET'` should report SET (was UNSET in current session before today's setx). Then read handoff `.claude/handoffs/session-10/2026-05-24-2030-code-step5-merged-step6-kickoff.md`. Then Steps 7-8 (broader integration tests + live AC verification).
+2. **PLAN-0008 Step 5 — MERGED.** [PR #13](https://github.com/CrayJThiemsert/vero-lite/pull/13) merged to `main` (`3407ae6`); `_sonnet_classifier.py` live; stub swapped; conservatism validated.
+3. **PLAN-0008 Step 4 — MERGED.** [PR #12](https://github.com/CrayJThiemsert/vero-lite/pull/12) merged to `main` (`b09bf39`); Stop hook + L1 reset live; classifier stubbed.
+4. **PLAN-0008 Step 3 — MERGED.** [PR #11](https://github.com/CrayJThiemsert/vero-lite/pull/11) merged to `main` (`632a22c`); writer hook + Wave 1 wire live; PLAN-0008 amended with Wave 1/2 split.
+5. **PLAN-0008 Step 2 — MERGED.** [PR #10](https://github.com/CrayJThiemsert/vero-lite/pull/10) merged to `main` (`9494f93`); `pretooluse_loop_detect.py` gate live.
+6. **PLAN-0008 Step 1 — MERGED.** [PR #9](https://github.com/CrayJThiemsert/vero-lite/pull/9) merged to `main` (`2b303a0`); `_loop_counter.py` state primitives live.
+7. **PLAN-0008 — DRAFTED + MERGED.** [PR #8](https://github.com/CrayJThiemsert/vero-lite/pull/8) merged to `main` (`ec5e2ae`); plan lives at `docs/plans/0008-harness-autonomy-layer-phase-2.md` (will move to `done/` after Step 8 closeout).
+8. **PLAN-0007 — MERGED + closed.** [PR #6](https://github.com/CrayJThiemsert/vero-lite/pull/6) merged to `main` (`b2ea9b8`); plan archived at `docs/plans/done/0007-harness-autonomy-layer-phase-1.md`.
+9. **PLAN-0006 — MERGED + closed.** [PR #5](https://github.com/CrayJThiemsert/vero-lite/pull/5) merged to `main` (`68053fe`); plan archived at `docs/plans/done/0006-llm-reasoning-hook-execution.md`.
+10. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002 (≥ADR-014), registry discovery).
+11. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion.
+12. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix; validator warning-swallow bug) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (≥ADR-014).
+13. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
 
 ## Update Workflow
 
