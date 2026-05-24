@@ -38,6 +38,18 @@ sys.path.insert(0, str(HOOKS_DIR))
 import _sonnet_classifier as sc  # noqa: E402  — sys.path manipulation above
 
 
+@pytest.fixture(autouse=True)
+def isolated_key_file(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Always isolate the key-file path so tests never see a real
+    ``~/.claude/.anthropic_api_key`` that a developer may have populated
+    for Step 5b operation. Tests that need a populated file write to the
+    returned path (and chmod 600 on POSIX).
+    """
+    fake = tmp_path / ".anthropic_api_key"
+    monkeypatch.setenv("CLAUDE_ANTHROPIC_KEY_FILE", str(fake))
+    return fake
+
+
 @pytest.fixture
 def fake_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     p = tmp_path / "autonomy-triggers.md"
@@ -56,6 +68,14 @@ def fake_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
 @pytest.fixture
 def with_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-fake-key")
+
+
+def _write_key_file(path: Path, content: str) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    if os.name == "posix":
+        os.chmod(path, 0o600)
+    return path
 
 
 def _make_response(text: str) -> MagicMock:
@@ -286,6 +306,177 @@ def test_result_always_has_required_keys(
     assert set(result.keys()) >= {"decision", "matched_rows", "reason"}
     assert isinstance(result["matched_rows"], list)
     assert isinstance(result["reason"], str)
+
+
+# --- Step 5b: config-file fallback (defeats Claude Desktop env-strip) ---
+
+
+def test_resolves_key_from_file_when_env_empty(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_key_file: Path,
+    fake_registry: Path,
+) -> None:
+    """Env var absent → reads ``~/.claude/.anthropic_api_key``."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    _write_key_file(isolated_key_file, "sk-from-file-12345\n")
+
+    captured: dict[str, str] = {}
+
+    def fake_urlopen(req: Any, timeout: int) -> Any:
+        captured["api_key"] = req.headers.get("X-api-key", "")
+        return _make_response('{"decision": "proceed", "matched_rows": [], "reason": "ok"}')
+
+    monkeypatch.setattr(sc.urllib.request, "urlopen", fake_urlopen)
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "proceed"
+    assert captured["api_key"] == "sk-from-file-12345"  # pragma: allowlist secret
+
+
+def test_resolves_key_from_file_when_env_is_empty_string(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_key_file: Path,
+    fake_registry: Path,
+) -> None:
+    """Env var present but empty string (Claude Desktop strip pattern)
+    → still falls back to file. This is the Step 5b motivating case.
+    """
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
+    _write_key_file(isolated_key_file, "sk-desktop-strip-defeated\n")
+
+    captured: dict[str, str] = {}
+
+    def fake_urlopen(req: Any, timeout: int) -> Any:
+        captured["api_key"] = req.headers.get("X-api-key", "")
+        return _make_response('{"decision": "proceed", "matched_rows": [], "reason": "ok"}')
+
+    monkeypatch.setattr(sc.urllib.request, "urlopen", fake_urlopen)
+    sc.classify({"event": "Stop"})
+    assert captured["api_key"] == "sk-desktop-strip-defeated"  # pragma: allowlist secret
+
+
+def test_env_key_wins_when_both_present(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_key_file: Path,
+    fake_registry: Path,
+    with_api_key: None,
+) -> None:
+    """Env-resolved key wins over file when both are set."""
+    _write_key_file(isolated_key_file, "sk-from-file-loses\n")
+
+    captured: dict[str, str] = {}
+
+    def fake_urlopen(req: Any, timeout: int) -> Any:
+        captured["api_key"] = req.headers.get("X-api-key", "")
+        return _make_response('{"decision": "proceed", "matched_rows": [], "reason": "ok"}')
+
+    monkeypatch.setattr(sc.urllib.request, "urlopen", fake_urlopen)
+    sc.classify({"event": "Stop"})
+    assert captured["api_key"] == "sk-test-fake-key"  # pragma: allowlist secret — env wins
+
+
+def test_pause_when_env_empty_and_file_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_key_file: Path,
+    fake_registry: Path,
+) -> None:
+    """Both sources unavailable → fail-closed pause with explanatory reason."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    # isolated_key_file points to a path inside tmp_path that we deliberately
+    # do NOT create — the path exists in env but the file does not.
+    assert not isolated_key_file.exists()
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+    assert "ANTHROPIC_API_KEY" in result["reason"]
+    assert "missing" in result["reason"]
+
+
+def test_pause_when_file_is_empty(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_key_file: Path,
+    fake_registry: Path,
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    _write_key_file(isolated_key_file, "   \n\n\t\n")
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+    assert "empty" in result["reason"]
+
+
+def test_pause_when_file_has_unsafe_permissions_posix(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_key_file: Path,
+    fake_registry: Path,
+) -> None:
+    """POSIX-only: file readable by group/other → refuse to use it."""
+    if os.name != "posix":
+        pytest.skip("POSIX permission check; skipped on non-POSIX")
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    isolated_key_file.parent.mkdir(parents=True, exist_ok=True)
+    isolated_key_file.write_text("sk-but-perms-wrong\n", encoding="utf-8")
+    os.chmod(isolated_key_file, 0o644)  # group + other readable
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+    assert "permissions" in result["reason"] or "chmod" in result["reason"]
+
+
+def test_file_strips_whitespace_and_uses_first_nonempty_line(
+    monkeypatch: pytest.MonkeyPatch,
+    isolated_key_file: Path,
+    fake_registry: Path,
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    _write_key_file(isolated_key_file, "\n\n  sk-padded-with-whitespace  \nextra-line\n")
+
+    captured: dict[str, str] = {}
+
+    def fake_urlopen(req: Any, timeout: int) -> Any:
+        captured["api_key"] = req.headers.get("X-api-key", "")
+        return _make_response('{"decision": "proceed", "matched_rows": [], "reason": "ok"}')
+
+    monkeypatch.setattr(sc.urllib.request, "urlopen", fake_urlopen)
+    sc.classify({"event": "Stop"})
+    assert captured["api_key"] == "sk-padded-with-whitespace"  # pragma: allowlist secret
+
+
+def test_key_file_path_override_honored(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    fake_registry: Path,
+) -> None:
+    """``$CLAUDE_ANTHROPIC_KEY_FILE`` redirects the fallback file path."""
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    custom = tmp_path / "subdir" / "my-key-file"
+    _write_key_file(custom, "sk-custom-path\n")
+    monkeypatch.setenv("CLAUDE_ANTHROPIC_KEY_FILE", str(custom))
+
+    captured: dict[str, str] = {}
+
+    def fake_urlopen(req: Any, timeout: int) -> Any:
+        captured["api_key"] = req.headers.get("X-api-key", "")
+        return _make_response('{"decision": "proceed", "matched_rows": [], "reason": "ok"}')
+
+    monkeypatch.setattr(sc.urllib.request, "urlopen", fake_urlopen)
+    sc.classify({"event": "Stop"})
+    assert captured["api_key"] == "sk-custom-path"  # pragma: allowlist secret
+
+
+def test_resolve_api_key_unit_env_wins(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Direct unit-test of the resolver (no network mocking needed)."""
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-env-direct")
+    key, source = sc._resolve_api_key()
+    assert key == "sk-env-direct"
+    assert source == "env"
+
+
+def test_resolve_api_key_unit_file_source_tag(
+    monkeypatch: pytest.MonkeyPatch, isolated_key_file: Path
+) -> None:
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    _write_key_file(isolated_key_file, "sk-file-direct\n")
+    key, source = sc._resolve_api_key()
+    assert key == "sk-file-direct"
+    assert source.startswith("file:")
+    assert str(isolated_key_file) in source
 
 
 # --- Live opt-in (skipped in CI, per OQ-G) ---

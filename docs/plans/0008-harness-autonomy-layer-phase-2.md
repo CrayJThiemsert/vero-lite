@@ -294,6 +294,42 @@ existing Phase 1 `posttooluse_validate_handoff.py` (no reorder).
 
 ### Step 5 — Sonnet pause/proceed classifier
 
+> **Amendment 2026-05-24 (Step 5b — config-file fallback for the API
+> key).** Session-10 follow-up after Step 6 ([PR #14](https://github.com/CrayJThiemsert/vero-lite/pull/14), `626ab23`)
+> merged: a fresh Claude Code session diagnostic surfaced that **Claude
+> Desktop on Windows launches `claude.exe` with `ANTHROPIC_API_KEY=""`**
+> (empty string, not unset) as an intentional auth isolation — the
+> Desktop subscription's OAuth refresh path
+> (`CLAUDE_CODE_SDK_HAS_HOST_AUTH_REFRESH=1`) is the only intended LLM-
+> billing channel; any `ANTHROPIC_API_KEY` inheritance would risk
+> accidentally billing against an API account. WSLENV propagation
+> cannot defeat this — the Desktop wrapper overwrites the value before
+> spawning the CLI regardless of User-scope env settings or full
+> computer restart. The Step 5 live conservatism proof (2026-05-24)
+> only passed because Cray ran `RUN_LIVE_SONNET_TESTS=1 pytest` from a
+> WSL terminal launched outside the Desktop process tree; the in-session
+> hook path (Stop → `_sonnet_classifier.py`) would have fail-closed
+> paused on every invocation.
+>
+> Step 5b extends `_sonnet_classifier.py::_resolve_api_key()` with a
+> chain fallback: `$ANTHROPIC_API_KEY` (truthy after strip) →
+> `~/.claude/.anthropic_api_key` (override via
+> `$CLAUDE_ANTHROPIC_KEY_FILE`; POSIX requires chmod 600; first non-
+> empty line, whitespace stripped) → fail-closed. Live-verified
+> 2026-05-24 inside this Code session: `_resolve_api_key()` returned
+> `(sk-ant..., file:/home/crayj/.claude/.anthropic_api_key)`, real
+> Sonnet round-trip 3.04s, decision `proceed`. +10 unit tests (env-
+> wins, file-fallback, both-empty fail-closed, file-empty, perm-unsafe-
+> POSIX, whitespace strip, path override, 2 resolver unit tests).
+> Cross-env caveat: hooks fire under Windows Python (Path.home() =
+> `C:\Users\<user>\`) while pytest from the Bash tool runs WSL Python
+> (Path.home() = `/home/<user>/`) — maintain a copy in each home, or
+> symlink between them, or set `CLAUDE_ANTHROPIC_KEY_FILE` (this var
+> is not stripped by Desktop) to a single canonical location. Setup
+> notes captured in this PR's body; durable note in `[[project_claude_desktop_strips_anthropic_api_key]]`
+> auto-memory (Session 10).
+
+
 `.claude/hooks/sonnet_classifier.py` — the prompt-hook helper that backs
 Step 4's `Stop` dispatch and the non-deterministic `PreToolUse` rows
 (G1, G2, C1, C2 — see AC-2).

@@ -30,9 +30,21 @@ classifier to default to ``pause`` unless the next action is
 obviously low-risk progress. Cray's stated preference (ELI-CTO
 discussion) is spurious pauses over spurious proceeds.
 
-Auth: ``$ANTHROPIC_API_KEY`` from the hook process env. Propagated
-via ``WSLENV`` on Windows (same pattern as the Telegram bot token,
-PLAN-0007 / ADR-013 D5).
+**Auth (Step 5b — config-file fallback).** Resolution chain:
+
+1. ``$ANTHROPIC_API_KEY`` env (truthy after strip)
+2. ``~/.claude/.anthropic_api_key`` (first non-empty line, whitespace
+   stripped; chmod 600 enforced on POSIX). Override the path via
+   ``$CLAUDE_ANTHROPIC_KEY_FILE``.
+3. → fail-closed pause.
+
+The file fallback exists because **Claude Desktop launches the
+``claude.exe`` CLI with ``ANTHROPIC_API_KEY=""``** (empty, not unset)
+for OAuth-subscription / API-key billing isolation. WSLENV propagation
+cannot defeat this — User-scope env is overwritten by Desktop before
+the CLI spawn. Any hook invoked from inside a Claude Code session
+inherits the empty value. The Telegram-token pattern from PLAN-0007 /
+ADR-013 D5 is unaffected (Desktop strips only Anthropic-auth vars).
 """
 
 from __future__ import annotations
@@ -48,12 +60,14 @@ from typing import Any
 HOOKS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = HOOKS_DIR.parent.parent
 DEFAULT_REGISTRY = REPO_ROOT / ".claude" / "autonomy-triggers.md"
+DEFAULT_KEY_FILE = Path.home() / ".claude" / ".anthropic_api_key"
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
 DEFAULT_API_URL = "https://api.anthropic.com/v1/messages"
 DEFAULT_ANTHROPIC_VERSION = "2023-06-01"
 DEFAULT_MAX_TOKENS = 1024
 API_TIMEOUT_SEC = 20  # Sonnet typical < 5s; padding for cold-start / queue
+KEY_FILE_PERM_MASK = 0o077  # any group/other bit set = unsafe (POSIX)
 
 # Decision contract — single source of truth, used by tests too.
 DECISION_PROCEED = "proceed"
@@ -63,6 +77,61 @@ DECISION_PAUSE = "pause"
 def _registry_path() -> Path:
     override = os.environ.get("CLAUDE_AUTONOMY_REGISTRY_PATH")
     return Path(override) if override else DEFAULT_REGISTRY
+
+
+def _key_file_path() -> Path:
+    override = os.environ.get("CLAUDE_ANTHROPIC_KEY_FILE")
+    return Path(override) if override else DEFAULT_KEY_FILE
+
+
+def _resolve_api_key() -> tuple[str | None, str]:
+    """Resolve the Anthropic API key from env or the fallback key file.
+
+    Returns ``(key, source_or_reason)``. On success ``key`` is the
+    resolved token and ``source_or_reason`` is a short tag (``"env"``
+    or ``"file:<path>"``). On failure ``key`` is ``None`` and
+    ``source_or_reason`` is the fail-closed reason string.
+
+    Chain (Step 5b):
+
+    1. ``$ANTHROPIC_API_KEY`` env if truthy after strip — wins
+    2. ``~/.claude/.anthropic_api_key`` (override via
+       ``$CLAUDE_ANTHROPIC_KEY_FILE``). On POSIX the file must be
+       chmod 600 (no group/other bits) or the read is refused.
+       First non-empty line, whitespace stripped, is the key.
+    3. neither → ``(None, "...")``.
+
+    See the module docstring for the Claude Desktop env-strip rationale.
+    """
+    env_key = os.environ.get("ANTHROPIC_API_KEY", "").strip()
+    if env_key:
+        return env_key, "env"
+
+    path = _key_file_path()
+    if not path.exists():
+        return None, f"ANTHROPIC_API_KEY not set; key file missing at {path}"
+
+    if os.name == "posix":
+        try:
+            mode = path.stat().st_mode
+        except OSError as exc:
+            return None, f"key file {path} stat failed: {exc}"
+        if mode & KEY_FILE_PERM_MASK:
+            return None, (
+                f"key file {path} has unsafe permissions "
+                f"(mode={oct(mode & 0o777)}; require chmod 600)"
+            )
+
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return None, f"key file {path} unreadable: {exc}"
+
+    for line in content.splitlines():
+        candidate = line.strip()
+        if candidate:
+            return candidate, f"file:{path}"
+    return None, f"key file {path} is empty"
 
 
 def _api_url() -> str:
@@ -231,9 +300,9 @@ def classify(payload: dict[str, Any]) -> dict[str, Any]:
 
     Fail-closed: any error → pause with explanatory reason.
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key, source_or_reason = _resolve_api_key()
     if not api_key:
-        return _pause("ANTHROPIC_API_KEY not set")
+        return _pause(source_or_reason)
 
     registry = _load_registry()
     if registry is None:
