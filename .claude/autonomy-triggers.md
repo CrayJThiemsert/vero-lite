@@ -19,6 +19,8 @@
 >   `.claude/hooks/pretooluse_git_deny.py` (CLAUDE_TIER env marker).
 > - `Write|Edit` to `.claude/handoffs/**` with bad frontmatter — enforced
 >   by `.claude/hooks/posttooluse_validate_handoff.py`.
+> - `Write|Edit` to `docs/research/` outside `private/` — enforced by
+>   `.claude/hooks/pretooluse_research_path_deny.py` (row C4 below).
 >
 > Everything else on this list is **advisory / always-pause** in Phase 1
 > (agent judgment), becoming classifier-enforced in Phase 2.
@@ -46,6 +48,7 @@ the matching event type fires) or surface via handoff, and wait.
 | C1 | Model pin / version bump (ADR-001 Amendment 1 precedent) | Advisory | Classifier pause |
 | C2 | New external dependency added to `pyproject.toml`, `package.json`, or any lockfile | Advisory | Classifier pause |
 | C3 | Public ↔ private wording boundary crossing in `docs/strategy/{public,private}/**` | Advisory | Classifier pause |
+| C4 | `Write` / `Edit` under `docs/research/` outside `docs/research/private/**` (Cowork research landing-zone rule, `cowork_tab_instructions.md` line 192 + `.gitignore` lines 49-51) | **Deterministic** (`pretooluse_research_path_deny.py`; N=2 incident pattern — Lesson #5 §10.5 + 2026-05-23 `chat_harness_extension_points_analyzed.md` → ADR-013 D2 precedent applied) | Deterministic + classifier mirror |
 
 ### Handoff hygiene — from PLAN-004 / Lesson #7 / direction-b §8
 
@@ -98,4 +101,4 @@ Phase 2.
 
 ---
 
-*Last updated: 2026-05-23 (Session 10 — PLAN-0007 Phase 1 initial registry; loop-detect rows registered + flagged Phase 2 enforcement).*
+*Last updated: 2026-05-24 (Session 10 — row C4 added: deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*
