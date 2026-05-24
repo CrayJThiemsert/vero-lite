@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-24T20:30:00+07:00
+last_updated: 2026-05-24T22:30:00+07:00
 session: 10
-current_batch: PLAN-0008 Step 5 (Sonnet classifier helper + stub swap) MERGED via PR #13 (`3407ae6`); +16 tests + 1 live opt-in (346 → 362 pass / 5 → 6 skip); stdlib urllib design; fail-closed pause; LIVE smoke + 4-scenario conservatism proof PASSED (G1/G2/C2 trigger pauses + routine work proceeds); WSLENV permanently extended with `ANTHROPIC_API_KEY/u`. Session handoff to new Code session for Step 6 (Wave 2 completion).
-current_actor: code (session handoff — new session takes over for Step 6)
+current_batch: PLAN-0008 Step 6 (Wave 2 completion — autonomy-triggers row flips + PLAN closeout) MERGED via PR #14 (`626ab23`); then **Step 5b (config-file fallback for ANTHROPIC_API_KEY) IN-FLIGHT** on branch `feat/plan0008-step5b-classifier-config-fallback` — diagnosed Claude Desktop intentionally strips `ANTHROPIC_API_KEY=""` for OAuth/API billing isolation (WSLENV cannot defeat); `_sonnet_classifier.py::_resolve_api_key()` extended with env → `~/.claude/.anthropic_api_key` (chmod 600 POSIX) → fail-closed chain; +10 tests (362 → 372 pass / 6 skip); **live-verified inside Claude Code session** (empty env → file fallback → real Sonnet 3.04s round-trip → `proceed`).
+current_actor: code
 blocked_on: nothing
-next_action: NEW SESSION should (1) verify `ANTHROPIC_API_KEY` propagates via permanent WSLENV — `wsl bash -lc '[ -n "$ANTHROPIC_API_KEY" ] && echo SET || echo UNSET'`; then (2) read handoff at `.claude/handoffs/session-10/2026-05-24-2030-code-step5-merged-step6-kickoff.md`; then (3) begin Step 6 (Wave 2 completion: `autonomy-triggers.md` row flips + PLAN-0008 §Step 6 closeout note) on branch `feat/plan0008-step6-wave2-completion`
-head_commit: 3407ae6
-recent_commits: [3407ae6, ceebc1a, efe3801, b09bf39, 010ae1b, b0685e4, 632a22c, 1c2a7b6, 57afff4, 9494f93]
+next_action: open Step 5b PR + Cray review/merge; then begin Step 7 (broader integration tests). For new sessions: `~/.claude/.anthropic_api_key` (chmod 600) on both WSL home (pytest/Bash tool path) AND Windows `%USERPROFILE%\.claude\.anthropic_api_key` (hook path) — or symlink; or set `$CLAUDE_ANTHROPIC_KEY_FILE` (this var is not Desktop-stripped) to a single canonical location
+head_commit: 626ab23
+recent_commits: [626ab23, aa64d19, 2ef7163, 3407ae6, ceebc1a, efe3801, b09bf39, 010ae1b, b0685e4, 632a22c]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,70 @@ recent_commits: [3407ae6, ceebc1a, efe3801, b09bf39, 010ae1b, b0685e4, 632a22c, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0008 Step 5 (Sonnet classifier helper + stub swap)
+**Session 10 — PLAN-0008 Step 6 MERGED + Step 5b (Anthropic API key
+config-file fallback) IN-FLIGHT.** Step 6 (Wave 2 completion —
+`autonomy-triggers.md` row flips + PLAN closeout amendment) merged via
+[PR #14](https://github.com/CrayJThiemsert/vero-lite/pull/14)
+(`626ab23`). Immediately after, env-propagation diagnostic on the new
+session surfaced a **Claude Desktop platform behavior**: on Windows
+the Desktop wrapper launches `claude.exe` with `ANTHROPIC_API_KEY=""`
+(empty, not unset) as deliberate OAuth-subscription / API-key billing
+isolation. WSLENV propagation cannot defeat this — User-scope env is
+overwritten before the CLI spawn, even after full computer restart.
+The Step 5 live conservatism proof (2026-05-24) only passed because
+Cray ran the live pytest from a WSL terminal **outside** the Desktop
+process tree; any in-session hook invocation of `_sonnet_classifier.py`
+would have fail-closed paused on every Stop event due to the empty key.
+
+**Step 5b fix on branch `feat/plan0008-step5b-classifier-config-fallback`.**
+`_sonnet_classifier.py::_resolve_api_key()` extended with a chain
+fallback: `$ANTHROPIC_API_KEY` (truthy after strip) →
+`~/.claude/.anthropic_api_key` (override via
+`$CLAUDE_ANTHROPIC_KEY_FILE`; POSIX requires chmod 600; first non-empty
+line, whitespace stripped) → fail-closed pause. **+10 unit tests** added
+(`test_sonnet_classifier.py` 17 → 27; full suite 362 → 372 pass / 6
+skip), all green. autouse `isolated_key_file` fixture prevents tests
+from picking up Cray's real key file. `.gitignore` extended with
+`.claude/.anthropic_api_key` (belt-and-suspenders; canonical location
+is `~/.claude/.anthropic_api_key` outside repo). PLAN-0008 §Step 5
+gains the Step 5b amendment box; auto-memory finding saved at
+`project_claude_desktop_strips_anthropic_api_key.md` for future
+sessions.
+
+**Live verification PASSED inside this Claude Code session
+(2026-05-24).** Direct invocation of `sc.classify()` from a Bash tool
+call: env `ANTHROPIC_API_KEY=""` (Desktop strip confirmed) →
+`_resolve_api_key()` returned `(sk-ant..., file:/home/crayj/.claude/.anthropic_api_key)`
+→ real Sonnet round-trip 3.04s → `{decision: "proceed", matched_rows:
+[], reason: "..test/verification Stop event with no pending tool
+actions.."}`. The same call pre-Step-5b would have returned fail-closed
+pause. Proof complete that the fix defeats the Desktop strip.
+
+**Cross-env caveat.** Hooks fire under Windows Python (`Path.home() =
+C:\Users\crayj\`); pytest invoked via the Bash tool runs WSL Python
+(`Path.home() = /home/crayj/`). Cray must either (a) maintain a copy
+of the key file at both paths, (b) symlink one to the other, or (c)
+set `$CLAUDE_ANTHROPIC_KEY_FILE` (this var is **not** Desktop-stripped
+— verified via `CLAUDE_TIER` + `TELEGRAM_*` propagating intact) to a
+single canonical location via WSLENV. Recommendation documented in
+the Step 5b PR body.
+
+**Prior — PLAN-0008 Step 6 (Wave 2 completion — autonomy-triggers row
+flips) MERGED.** PR #14 landed on `main` as `626ab23` (single `docs(claude)`
+commit `aa64d19` + merge commit). Docs-only flip of registry row labels
+in `.claude/autonomy-triggers.md` from placeholder / "Phase 2 spec"
+wording to **LIVE** with concrete hook attribution: G1/G2/G3/G4 +
+C1/C2/C3 → `_sonnet_classifier.py`; L1–L4 → three-hook attribution
+(`pretooluse_loop_detect.py` gate + `posttooluse_progress_observer.py`
+writer + `stop_continuation.py` reset); "How the classifier reads this
+file" §flipped from spec to LIVE with conservatism-probe evidence;
+status banner + footer date updated. PLAN-0008 §Step 6 gained the
+"Step 6 closeout — Wave 2 completion" amendment with PR #11/#12/#13
+lineage. `.claude/settings.json` `_comment` corrected (stub removal
+happened in PR #13, not Step 6). 362 pass / 6 skip baseline preserved
+(docs-only).
+
+**Prior — PLAN-0008 Step 5 (Sonnet classifier helper + stub swap)
 MERGED + LIVE conservatism proof PASSED.** PR #13 landed on `main` as
 `3407ae6` (single `feat(claude)` commit `ceebc1a` + merge commit).
 4-piece bundle: (1) new `.claude/hooks/_sonnet_classifier.py` (~225
@@ -347,6 +410,8 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-24 | **PLAN-0008 Step 5b (Sonnet classifier config-file fallback) IN-FLIGHT — defeats Claude Desktop ANTHROPIC_API_KEY strip** — Diagnosed during Step 6 post-merge env-propagation verification: Claude Desktop on Windows launches `claude.exe` with `ANTHROPIC_API_KEY=""` (intentional OAuth/billing isolation); WSLENV propagation cannot defeat this even after full computer restart. Step 5 live proof passed only because Cray ran pytest from a terminal launched outside Desktop. Fix: `_sonnet_classifier.py::_resolve_api_key()` chain → env → `~/.claude/.anthropic_api_key` (chmod 600 POSIX, override via `$CLAUDE_ANTHROPIC_KEY_FILE`) → fail-closed. +10 unit tests (362 → 372 pass / 6 skip). `.gitignore` extended. PLAN-0008 §Step 5 + STATUS amended. Auto-memory `project_claude_desktop_strips_anthropic_api_key.md` captured for future sessions. **Live-verified inside Claude Code session**: empty env → file fallback → real Sonnet 3.04s round-trip → `proceed` decision (proof complete). Cross-env caveat: Windows-Python hooks vs WSL-Python pytest see different `Path.home()`; maintain at both / symlink / set `$CLAUDE_ANTHROPIC_KEY_FILE` (not Desktop-stripped). On branch `feat/plan0008-step5b-classifier-config-fallback`; PR pending Cray review | branch `feat/plan0008-step5b-classifier-config-fallback` / `.claude/hooks/_sonnet_classifier.py` |
+| 2026-05-24 | **PLAN-0008 Step 6 (Wave 2 completion — autonomy-triggers row flips + PLAN closeout) MERGED** — PR #14 → `main` (`626ab23`), single `docs(claude)` commit `aa64d19` + merge. Docs-only flip of `.claude/autonomy-triggers.md` row labels from placeholder / "Phase 2 spec" wording to **LIVE** with concrete hook attribution: G1/G2/G3/G4/C1/C2/C3 → `_sonnet_classifier.py`; L1–L4 → 3-hook attribution (gate + writer + reset); status banner + "How the classifier reads this file" §flipped to LIVE with conservatism-probe evidence; footer date bumped. PLAN-0008 §Step 6 amendment box rewritten as "Step 6 closeout" with PR #11/#12/#13 lineage. `.claude/settings.json` `_comment` corrected (stub removal happened in PR #13). 362 pass / 6 skip baseline preserved (docs-only; ruff/mypy no scope). Closeout: this STATUS row | `626ab23` (PR #14) / `.claude/autonomy-triggers.md` |
 | 2026-05-24 | **PLAN-0008 Step 5 (Sonnet classifier + stub swap) MERGED + live conservatism proof + WSLENV permanent fix + session handoff to new Code** — PR #13 → `main` (`3407ae6`), single `feat(claude)` commit `ceebc1a` + merge. New `.claude/hooks/_sonnet_classifier.py` (~225 lines, stdlib urllib + 7 fail-closed paths + retry + markdown-fence extractor; pin `claude-sonnet-4-6` per OQ-B). Stop hook stub replaced via lazy-import `_classify()` wrapper with double-fallback. 17 mocked tests + 1 live opt-in (362 pass / 6 skip). **LIVE conservatism proof (Cray 2026-05-24):** bare Stop = proceed; G1/G2/C2 triggered scenarios = pause with correct row IDs; routine work = proceed. Total ~$0.005 cost. **WSLENV permanently extended** with `ANTHROPIC_API_KEY/u` so future sessions inherit the key without workaround. **Session-10 ↔ next-session handoff** at `.claude/handoffs/session-10/2026-05-24-2030-code-step5-merged-step6-kickoff.md` — Cray-directed to preserve context-window headroom + double-test WSLENV propagation from clean process tree. Closeout: this STATUS row | `3407ae6` (PR #13) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-05-24 | **PLAN-0008 Step 4 (Stop hook + L1 turn-boundary reset, expanded scope) MERGED** — PR #12 → `main` (`b09bf39`), single `feat(claude)` commit `010ae1b` + merge. 5-piece bundle: stop_continuation.py (Stop hook with re-entry guard + L1 turn-boundary reset + chain depth + cap-hit policy + classifier stub) + _loop_counter.py amendment (turn_touched field + 3 helpers) + observer amendment (records turn_touched on Write/Edit) + early Wave-2-partial settings.json wire for Stop + 26 new tests. **🔴 L1 reset gap CLOSED** per Cray-ratified scope expansion (AskUserQuestion "Expanded (Recommended)"): Stop hook reads turn_touched and resets L1 counters whose targets were NOT touched this turn, implementing PLAN §Step 1's "untouched on next turn-boundary marker" semantic. Classifier inside Stop hook is stubbed (pause-by-default) until Step 5 lands real Sonnet helper. 346 pass / 5 skip (was 320 / 5; +26: 18 stop + 7 turn_touched + 1 observer). Closeout: this STATUS row | `b09bf39` (PR #12) / `.claude/hooks/stop_continuation.py` |
 | 2026-05-24 | **PLAN-0008 Step 3 (PostToolUse progress observer + Wave 1 wire + PLAN amendment) MERGED + Step 4 prioritization for L1 reset gap** — PR #11 → `main` (`632a22c`), single `feat(claude)` commit `1c2a7b6` + merge. Wave 1 hooks live in `.claude/settings.json` (L1/L4 gate via Step 2 + L2/L3 inline Telegram via Step 3 + L4 increment-on-failure / reset-on-success). PLAN-0008 §Step 3 + §Step 6 amended with Wave 1/2 split rationale. **ELI-CTO review surfaced 🔴 L1 reset gap** (counter grows unbounded within session until Step 4 turn-boundary reset lands; Cray's STATUS.md iterative workflow at risk of false-positive deny — already 4 of 6 edits used pre-merge). Cray prioritized Step 4 with proper turn-boundary reset impl (not just Stop-hook stub). 31 new tests (pytest 320 / 5 skip). Closeout: this STATUS row | `632a22c` (PR #11) / `.claude/hooks/posttooluse_progress_observer.py` |

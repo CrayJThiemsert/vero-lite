@@ -64,3 +64,8 @@ node_modules/
 # Claude Code per-machine state (loop counters, session markers, tokens)
 # Phase 1 (PLAN-0007) registers the directory; Phase 2 populates loop-counter.json.
 .claude/state/
+
+# Step 5b config-file fallback for the Sonnet classifier — belt-and-suspenders.
+# The canonical location is ~/.claude/.anthropic_api_key (outside repo); this
+# project-local entry blocks accidental commits if a developer places it inside.
+.claude/.anthropic_api_key
