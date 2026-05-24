@@ -333,10 +333,44 @@ Step 4's `Stop` dispatch and the non-deterministic `PreToolUse` rows
 
 ### Step 6 — Wire into `.claude/settings.json` + extend `autonomy-triggers.md`
 
-> **Amendment 2026-05-24 (Cray-approved Option C):** **Wave 2** wire —
-> Step 6 now registers Step 4 (`stop_continuation.py`) + the Step 5
-> classifier dispatch only. Steps 2 + 3 were wired in **Wave 1**
-> (Step 3 PR). See the Step 3 amendment box above for rationale.
+> **Amendment 2026-05-24 (Step 6 closeout — Wave 2 completion).** Wave
+> sequencing landed cleanly per Option C (Cray-ratified 2026-05-24):
+>
+> - **Wave 1** ([PR #11](https://github.com/CrayJThiemsert/vero-lite/pull/11), `632a22c`) wired Step 2 (`pretooluse_loop_detect.py`)
+>   + Step 3 (`posttooluse_progress_observer.py`) into
+>   `.claude/settings.json` so L1/L4 loop-detect went live ahead of the
+>   Stop loop + classifier.
+> - **Wave-2-partial** ([PR #12](https://github.com/CrayJThiemsert/vero-lite/pull/12), `b09bf39`) wired Step 4
+>   (`stop_continuation.py`) early — required to close the L1
+>   turn-boundary reset gap surfaced by the L1/L4 asymmetry ELI-CTO
+>   review. Classifier inside Stop hook was a `_classifier_stub()`
+>   pause-by-default until Step 5 landed.
+> - **Step 5** ([PR #13](https://github.com/CrayJThiemsert/vero-lite/pull/13), `3407ae6`) shipped
+>   `.claude/hooks/_sonnet_classifier.py` (stdlib urllib + Anthropic
+>   Messages API + 7 fail-closed paths + retry; pin `claude-sonnet-4-6`)
+>   and the lazy-import `_classify()` wrapper in `stop_continuation.py`
+>   with double-fallback. Live conservatism probe (Cray 2026-05-24,
+>   ~$0.005 total): bare Stop = proceed; G1 (edit Accepted ADR) / G2
+>   (consume ADR-014) / C2 (add `anthropic` dep) = pause with correct
+>   `matched_rows`; routine work (pytest + variable rename) = proceed
+>   (5/5).
+> - **Wave 2 completion** (this PR) is docs-only: `autonomy-triggers.md`
+>   row labels flipped from "Phase 2 enforcement = Classifier pause"
+>   placeholder to **Live — `_sonnet_classifier.py`** (G1, G2, G3, G4,
+>   C1, C2, C3); L1–L4 rows flipped to **Live — `pretooluse_loop_detect.py`
+>   / `posttooluse_progress_observer.py` / `stop_continuation.py`** per
+>   hook role; "How the classifier reads this file" §flipped from "spec,
+>   not Phase 1" to **LIVE** with conservatism-probe evidence. No new
+>   hooks; no `.claude/settings.json` change in this PR (Stop wire
+>   landed in Wave-2-partial; classifier swap landed in Step 5).
+>
+> **All L1–L4 + G1/G2/G3/G4/C1/C2/C3 are now enforced** (deterministic
+> for L1–L4 counters + Stop reset; classifier-mediated for governance
+> rows). G5 (`pretooluse_git_deny.py`), H1
+> (`posttooluse_validate_handoff.py`), C4 (`pretooluse_research_path_deny.py`)
+> remain unchanged Phase-1 deterministic guarantees per ADR-013 D2.
+> Steps 7 (broader integration tests) + 8 (live AC verification matrix
+> incl AC-4 Phase-1 regression-free) carry into subsequent PRs.
 
 - **Register Step 4 hook** in `.claude/settings.json` (Wave 2). Step 5 is
   a helper invoked by Step 4 + the PreToolUse classifier dispatch, not a
