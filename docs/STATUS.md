@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-25T03:30:00+07:00
+last_updated: 2026-05-25T04:30:00+07:00
 session: 10
-current_batch: PLAN-0008 Phase 2 FULLY CLOSED — Step 8 MERGED via PR #17 (`79fe373`); **AC-1 VERIFIED 2026-05-25** in Cray-supervised live session (task `"ตรวจ ruff + mypy ทั้ง project, แก้ warning ถ้ามี, commit"`; ≥ 5 consecutive auto-continues observed before agent paused at the push boundary; 0 Telegram pings — no cap_reached, no L1–L4 false-positives). Side effect: that AC-1 session surfaced 21 project-wide mypy errors in `tools/` + `tests/` (outside the pre-commit gate scope `^(services|verticals|\.claude/hooks)/`) and shipped a cleanup commit `8fef3a5` on branch `chore/mypy-tools-tests-clean` (PR #18 open). This PR ships the STATUS amendment recording AC-1 VERIFIED + the AC-1 evidence in the closeout handoff §1.
+current_batch: PLAN-0008 Phase 2 FULLY CLOSED + AC-1 corroborated. **AC-1 evidence corpus = 2 independent live runs.** Run 1 (Accept edits / main, 2026-05-25 ~03:00): task `"ตรวจ ruff + mypy ทั้ง project, แก้, commit"`, ≥ 5 auto-continues, 1 Mode-side permission prompt (UNC path), 0 Telegram, terminal pause @ git push boundary. Run 2 (**Auto mode / worktree**, 2026-05-25 00:30–00:32): task `"สร้าง docs/CHANGELOG.md สรุป Phase 2 PRs #9-#17, commit บน branch ใหม่, ไม่ต้อง push"`, **≥ 4 auto-continues, 0 permission prompts** (Auto mode skipped them), 0 Telegram, terminal pause @ commit done (followed explicit "ไม่ต้อง push"). **Layer orthogonality confirmed**: Mode (PreToolUse) ↔ PLAN-0008 (Stop) operate independently; switching Mode = Auto eliminates per-tool prompts without changing Stop-continuation decisions. **PRs #18 + #19 MERGED** (`3c93781` + `d33b9d8`) — main fully clean, Phase 2 audited + project-wide mypy clean.
 current_actor: code
 blocked_on: nothing
-next_action: merge PR #18 (cleanup) + PR #19 (this AC-1 amendment) → Phase 2 fully audited → **PLAN-0009 (Phase 3 — subagent topology, ADR-013 D1 phased end-state)** drafting per next Cray cadence
-head_commit: 79fe373
-recent_commits: [79fe373, b3657d5, 9100e65, d870d76, 3d4f98b, 472a91e, 626ab23, aa64d19, 2ef7163, 3407ae6]
+next_action: merge this AC-1 corroboration amendment (PR #20) → **PLAN-0009 (Phase 3 — subagent topology, ADR-013 D1 phased end-state)** drafting per next Cray cadence
+head_commit: d33b9d8
+recent_commits: [d33b9d8, 16ef098, 3c93781, 8fef3a5, 79fe373, b3657d5, 9100e65, d870d76, 3d4f98b, 472a91e]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,50 @@ recent_commits: [79fe373, b3657d5, 9100e65, d870d76, 3d4f98b, 472a91e, 626ab23, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0008 Phase 2 FULLY AUDITED (all 4 ACs verified).**
+**Session 10 — PLAN-0008 Phase 2 CORROBORATED via 2 independent
+AC-1 live runs.** Phase 2 was already AUDITED + closed (Step 8 + AC-1
+verified amendment PR #19 merged); a follow-on Auto mode run gives a
+second independent data point that strengthens AC-1 evidence + adds
+layer-orthogonality confirmation:
+
+### AC-1 evidence corpus — 2 independent runs
+
+| Aspect | Run 1 (Accept edits, main repo, 2026-05-25 ~03:00) | **Run 2 (Auto mode, worktree, 2026-05-25 00:30–00:32)** |
+|--------|----------------------------------------------------|---------------------------------------------------------|
+| Task | "ตรวจ ruff + mypy ทั้ง project, แก้, commit" | **"สร้าง docs/CHANGELOG.md สรุป Phase 2 PRs #9-#17, commit บน branch ใหม่, ไม่ต้อง push"** |
+| Cray paste | Single, then unattended | Single, then unattended |
+| Auto-continues observed | ≥ 5 | **≥ 4** (Read STATUS → Write CHANGELOG → Write commit-msg → git commit → summary) |
+| Per-tool permission prompts | 1 (UNC path file edit) | **0** (Auto mode skipped them all) |
+| Telegram pings (cap / L1-4) | 0 | **0** |
+| Terminal pause point | `git push` boundary (memory-aware classifier pause) | **commit done — followed explicit "ไม่ต้อง push"** (no over-step) |
+| Commit produced | `8fef3a5` (mypy cleanup, side effect) | **`6dc808c` on `chore/phase2-changelog`** (the CHANGELOG) |
+
+### Layer orthogonality CONFIRMED in production
+
+Mode (PreToolUse permission gate, Anthropic harness layer) and PLAN-
+0008 (Stop continuation classifier, our layer) operate independently:
+
+- **Switching Mode = Auto eliminates per-tool prompts** (1 → 0) without
+  changing Stop-continuation decisions (≥ 5 → ≥ 4 auto-continues both
+  satisfy AC-1 spec).
+- **PLAN-0008 classifier honors explicit user instructions** ("ไม่ต้อง
+  push" → agent stopped at commit, didn't attempt push despite Auto
+  mode permitting it).
+- **No false-positive triggers in either run** — 0 Telegram pings
+  across both = the L1–L4 loop-detect + chain-cap fail-safe correctly
+  stayed silent on routine multi-step work.
+
+### Minor finding for PLAN-0009 carry-over
+
+Run 2's L1 counter key showed `.claude/worktrees/busy-bose-eedc8f/docs/CHANGELOG.md`
+instead of the cleaner `docs/CHANGELOG.md`. The `_loop_counter._normalize_file_path()`
+strips the main repo prefix but does not collapse the worktree path
+suffix — works correctly within a worktree session but creates ugly
+keys that don't share state across worktrees. Already a non-blocker
+(per-session isolation is by design). Carry-over as a small refinement
+for PLAN-0009 if the schema is touched anyway.
+
+**Prior — PLAN-0008 Phase 2 FULLY AUDITED (all 4 ACs verified).**
 AC-1 was the only PENDING AC after Step 8 merge (`79fe373`); Cray
 ran a Cray-supervised live session 2026-05-25 and the autonomy layer
 exercised the auto-continue path as designed.
@@ -544,6 +587,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-25 | **PLAN-0008 AC-1 CORROBORATED via Auto mode bonus run + layer orthogonality CONFIRMED in production** — A second AC-1 live verification run (2026-05-25 00:30–00:32) using **Mode = Auto** in a fresh worktree session: task `"สร้าง docs/CHANGELOG.md สรุป Phase 2 PRs #9-#17, commit บน branch ใหม่, ไม่ต้อง push"`, single Cray paste, no further input. Result: **≥ 4 auto-continues, 0 permission prompts (Auto mode skipped them all), 0 Telegram pings, terminal pause at commit done** (followed explicit "ไม่ต้อง push" instruction — no over-step). Commit `6dc808c` on branch `chore/phase2-changelog` (unpushed per instruction). **Layer orthogonality confirmed**: Mode (PreToolUse harness layer) ↔ PLAN-0008 (Stop classifier layer) operate independently — Auto mode eliminates per-tool prompts without changing Stop-continuation decisions. **Minor finding for PLAN-0009 carry-over**: `_loop_counter._normalize_file_path()` strips main-repo prefix but does not collapse worktree path suffix (L1 counter key showed `.claude/worktrees/busy-bose-eedc8f/docs/CHANGELOG.md` instead of `docs/CHANGELOG.md`). Non-blocking; per-session isolation works correctly. Both AC-1 evidence runs documented in Current Focus comparison table. Cost: ~$0.004 (4 classifier calls × ~$0.001) | PR #20 amendment / `docs/STATUS.md` |
 | 2026-05-25 | **PLAN-0008 AC-1 VERIFIED — Phase 2 fully audited** — Cray ran the live AC-1 task in a fresh Code session (task: *"ตรวจ ruff + mypy ทั้ง project, แก้ warning ถ้ามี, commit"*, single Cray paste, no further input). Agent self-continued **≥ 5 consecutive turns** without Cray paste (initial scan → file inspection → plan → branch creation → 5 file fixes → re-verify → tests → commit), then paused at the `git push` boundary asking permission — classifier correctly identified push as state change outside worktree per `feedback_state_change_outside_worktree.md` memory pattern. **0 Telegram pings** (no `cap_reached`, no L1–L4 false-positives). `stop-chain.json` `depth: 0` at end (consistent with terminal pause resetting chain). Side effect: the session surfaced 21 project-wide mypy errors in `tools/` + `tests/` (outside the pre-commit gate scope) and shipped a cleanup commit `8fef3a5` — PR #18 follows separately. Confirms classifier conservatism bias (spurious pauses > spurious proceeds, per OQ-B) works in production. Phase 2 all 4 ACs now VERIFIED; entry conditions for PLAN-0009 (Phase 3 — subagent topology) met | PR #19 amendment / `docs/STATUS.md` + closeout handoff §1 |
 | 2026-05-25 | **PLAN-0008 Phase 2 COMPLETE — Step 8 closeout MERGED** — PR #17 → `main` (`79fe373`), single `feat(claude)` commit `b3657d5` + merge. AC matrix at merge time: AC-2/AC-3/AC-4 VERIFIED; AC-1 deferred to live Cray-supervised observation (subsequent AC-1 row above closes this). Step 8 deliverables: +2 E2E tests (test_l3_traceback_inline_fires_on_threshold + test_l2_resets_on_pass_for_same_nodeid; 387 → 389 pass / 6 skip); closeout handoff at `.claude/handoffs/session-10/2026-05-25-0130-code-plan0008-phase2-closeout.md` (gitignored local working note per CLAUDE.md §11); `git mv docs/plans/0008-...md docs/plans/done/`; STATUS final bump. Phase 3 (subagent topology, ADR-013 D1 phased) entry conditions met. **Reflexive H1 hook fire on the closeout handoff frontmatter** (`phase: completion` initially invalid; corrected to `phase: closeout` per enum) — N=3 production-validation events through this session (L1 in PR #15, L1-attempt in PR #16, H1 in this PR) prove the deterministic + classifier-mediated layer is reachable from real agent activity | `79fe373` (PR #17) / `docs/plans/done/0008-harness-autonomy-layer-phase-2.md` |
 | 2026-05-25 | **PLAN-0008 Step 7 (Phase 2 integration tests + mypy hook coverage extension) MERGED** — PR #16 → `main` (`9100e65`), single `test(claude)` commit `d870d76` + merge. New `tests/handoffs/test_phase2_integration.py` with 15 E2E scenarios driving real subprocess invocations of all 3 wired Phase 2 hooks against a local mock HTTP Sonnet server (ephemeral 127.0.0.1 port via `socketserver.TCPServer` + threading daemon; `$CLAUDE_SONNET_API_URL` override; no live network). Coverage: Stop↔classifier wiring (proceed→block, pause→no-block, fail-closed, re-entry guard — mock receives 0 requests = negative proof); chain-cap fail-safe + cap_reached Telegram; observer→state→PreToolUse deny on L1+L4 + Cray-E.4 payload assertion; L4 reset on success; L2 inline Telegram on pytest-fail threshold; L1 turn-boundary survive vs reset; chain depth progression. Pre-commit `mypy` glob extended `^(services\|verticals)/` → `^(services\|verticals\|\.claude/hooks)/` (closes Step 1 follow-on; all 9 hooks pass `--strict`). 372 → 387 pass / 6 skip (+15). Per-test isolation via `tmp_path` for state + classifier fallback path + telegram capture + chain file. AC-3 demonstrated E2E for the first time | `9100e65` (PR #16) / `tests/handoffs/test_phase2_integration.py` |
