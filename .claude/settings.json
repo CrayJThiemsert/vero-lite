@@ -11,6 +11,15 @@
             "command": "python .claude/hooks/pretooluse_git_deny.py"
           }
         ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/pretooluse_research_path_deny.py"
+          }
+        ]
       }
     ],
     "PostToolUse": [
