@@ -60,6 +60,9 @@ def stub_env(tmp_path: Path) -> dict[str, str]:
     env.pop("TELEGRAM_BOT_TOKEN", None)
     env.pop("TELEGRAM_CHAT_ID", None)
     env.pop("CLAUDE_CODE_STOP_HOOK_BLOCK_CAP", None)
+    # Defang Step 5 classifier so tests are deterministic — fail-closed
+    # pause kicks in without ANTHROPIC_API_KEY (no real API call).
+    env.pop("ANTHROPIC_API_KEY", None)
     return env
 
 

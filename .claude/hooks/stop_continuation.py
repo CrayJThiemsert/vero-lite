@@ -18,12 +18,12 @@ Fires on every ``Stop`` event. Two responsibilities:
    ``"cap reached"`` per OQ-E option (b), and resets the chain.
    Re-entry guarded by the harness ``stop_hook_active`` flag.
 
-The Sonnet pause/proceed classifier (PLAN §Step 5) is dispatched
-via a **stub** that returns ``"pause"`` by default — until Step 5
-lands the classifier helper, the conservative default keeps the
-agent in human-supervised mode. When Step 5 lands, replace
-``_classifier_stub`` with the real Sonnet call without changing
-this hook's flow.
+The Sonnet pause/proceed classifier is invoked via
+``_sonnet_classifier.classify`` (PLAN §Step 5). The classifier
+reads ``.claude/autonomy-triggers.md`` verbatim, calls the Anthropic
+Messages API (stdlib urllib), parses JSON, and is fail-closed:
+any infrastructure failure returns ``pause``. The hook flow here
+therefore never mis-proceeds because of an API outage.
 
 State file paths and Telegram script honor the env-var overrides
 shared with Step 2/3 for testability
@@ -162,23 +162,31 @@ def _apply_turn_boundary_reset() -> list[str]:
     return reset_targets
 
 
-def _classifier_stub() -> dict[str, str]:
-    """Sonnet pause/proceed classifier — STUBBED.
+def _classify(payload: dict[str, Any]) -> dict[str, Any]:
+    """Dispatch to the Sonnet classifier with fail-closed pause.
 
-    Step 5 (`sonnet_classifier.py`) will replace this with the real
-    Sonnet call that reads `.claude/autonomy-triggers.md`. Until then,
-    the conservative default is **pause** so the agent yields to Cray
-    at every stop — preserving the pre-Phase-2 human-supervised
-    cadence while the deterministic L1 reset benefit lands.
+    Imports lazily so a missing ``_sonnet_classifier`` module (unlikely
+    in production, but defensive) does not break the hook flow. Any
+    transport or schema error inside ``classify()`` is already
+    converted to a pause by the helper — this wrapper adds a final
+    catch-all so the Stop hook can never raise into the harness.
     """
-    return {
-        "decision": "pause",
-        "reason": (
-            "Sonnet classifier not yet wired (Step 5 pending). "
-            "Defaulting to pause — agent yields to Cray. Step 4 L1 "
-            "reset has already run."
-        ),
-    }
+    try:
+        from _sonnet_classifier import classify  # local import: tolerant to absence
+    except ImportError as exc:
+        return {
+            "decision": "pause",
+            "matched_rows": [],
+            "reason": f"classifier helper unavailable: {exc}",
+        }
+    try:
+        return classify(payload)
+    except Exception as exc:  # final safety net; helper should already fail-closed
+        return {
+            "decision": "pause",
+            "matched_rows": [],
+            "reason": f"classifier raised unexpectedly: {exc}",
+        }
 
 
 def _proceed_block(reason: str) -> dict[str, Any]:
@@ -232,8 +240,8 @@ def main() -> int:
         _reset_chain()
         return 0  # do not block; let Cray see the stop event
 
-    # Classifier dispatch (stub for now — Step 5 replaces).
-    decision = _classifier_stub()
+    # Classifier dispatch (real Sonnet via _sonnet_classifier, fail-closed pause).
+    decision = _classify(payload)
     if decision.get("decision") == "proceed":
         chain["depth"] += 1
         chain["last_proceed_ts"] = _now_iso()
