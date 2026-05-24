@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "_comment": "PLAN-0007 Phase 1 + PLAN-0008 Phase 2 (Wave 1) — harness autonomy layer. Tracked (shareable convention, no secrets). Token material lives in env vars + .claude/state/ (gitignored). Hook scripts are stdlib-Python for cross-platform robustness (Cray runs Claude Code on Windows; project lives in WSL Ubuntu 24.04 at \\\\wsl.localhost\\ubuntu-24.04\\home\\crayj\\work\\vero-lite). Wave 1 (Step 3 PR) wired Step 2 (pretooluse_loop_detect) + Step 3 (posttooluse_progress_observer); Wave 2 (Step 6 PR) will wire Step 4 (stop_continuation) + Step 5 (sonnet_classifier).",
+  "_comment": "PLAN-0007 Phase 1 + PLAN-0008 Phase 2 (Wave 1 + Wave-2-partial Stop hook) — harness autonomy layer. Tracked (shareable convention, no secrets). Token material lives in env vars + .claude/state/ (gitignored). Hook scripts are stdlib-Python for cross-platform robustness (Cray runs Claude Code on Windows; project lives in WSL Ubuntu 24.04 at \\\\wsl.localhost\\ubuntu-24.04\\home\\crayj\\work\\vero-lite). Wave 1 (Step 3 PR) wired Step 2 (pretooluse_loop_detect) + Step 3 (posttooluse_progress_observer). Wave-2-partial (Step 4 PR, expanded scope) wires Step 4 (stop_continuation) early to close the L1 reset gap surfaced in the L1/L4 asymmetry ELI-CTO; classifier inside stop_continuation is stubbed until Step 5 PR lands the real Sonnet helper. Wave 2 completion (Step 6 PR) will wire registry row flips + remove the classifier stub.",
   "hooks": {
     "PreToolUse": [
       {
@@ -61,6 +61,17 @@
           {
             "type": "command",
             "command": "python .claude/hooks/notification_telegram.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/stop_continuation.py"
           }
         ]
       }

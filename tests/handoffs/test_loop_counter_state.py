@@ -31,6 +31,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     CounterEntry,
     LoopCounter,
     LoopType,
+    clear_turn_touched,
     counter_key,
     get_count,
     has_triggered,
@@ -40,7 +41,9 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     normalize_error_signature,
     normalize_file_path,
     normalize_pytest_nodeid,
+    record_turn_touched,
     reset,
+    reset_untouched_l1,
     resolve_session_id,
     save_counter,
     tokenize_bash_command,
@@ -425,6 +428,86 @@ def test_save_atomic_no_partial_read(tmp_path: Path) -> None:
     assert failures == [], f"reader saw partial writes: {failures}"
     final = load_counter(state_path)
     assert final.session_id == "s"  # something landed; canonical file readable
+
+
+# --- turn_touched primitives (Step 4) ---
+
+
+def test_record_turn_touched_dedup() -> None:
+    c = new_counter("s")
+    record_turn_touched(c, "x.py")
+    record_turn_touched(c, "x.py")
+    record_turn_touched(c, "y.py")
+    assert c.turn_touched == ["x.py", "y.py"]
+
+
+def test_record_turn_touched_ignores_empty() -> None:
+    c = new_counter("s")
+    record_turn_touched(c, "")
+    assert c.turn_touched == []
+
+
+def test_clear_turn_touched() -> None:
+    c = new_counter("s")
+    record_turn_touched(c, "x.py")
+    record_turn_touched(c, "y.py")
+    clear_turn_touched(c)
+    assert c.turn_touched == []
+
+
+def test_reset_untouched_l1_clears_untouched_only() -> None:
+    c = new_counter("s")
+    increment(c, LoopType.FILE_EDIT, "a.py")
+    increment(c, LoopType.FILE_EDIT, "b.py")
+    increment(c, LoopType.FILE_EDIT, "c.py")
+    record_turn_touched(c, "a.py")
+    record_turn_touched(c, "c.py")
+    reset_targets = reset_untouched_l1(c)
+    assert reset_targets == ["b.py"]
+    assert counter_key(LoopType.FILE_EDIT, "a.py") in c.counters
+    assert counter_key(LoopType.FILE_EDIT, "b.py") not in c.counters
+    assert counter_key(LoopType.FILE_EDIT, "c.py") in c.counters
+
+
+def test_reset_untouched_l1_leaves_other_loop_types() -> None:
+    c = new_counter("s")
+    increment(c, LoopType.FILE_EDIT, "untouched.py")
+    increment(c, LoopType.TEST_FAIL, "tests/foo.py::test_bar")
+    increment(c, LoopType.BASH_PATTERN, "pytest <arg>")
+    increment(c, LoopType.ERROR_SIGNATURE, "RuntimeError: foo")
+    # No turn_touched → L1 should reset, others survive
+    reset_untouched_l1(c)
+    assert counter_key(LoopType.FILE_EDIT, "untouched.py") not in c.counters
+    assert counter_key(LoopType.TEST_FAIL, "tests/foo.py::test_bar") in c.counters
+    assert counter_key(LoopType.BASH_PATTERN, "pytest <arg>") in c.counters
+    assert counter_key(LoopType.ERROR_SIGNATURE, "RuntimeError: foo") in c.counters
+
+
+def test_turn_touched_round_trips_json(tmp_path: Path) -> None:
+    state_path = tmp_path / "loop-counter.json"
+    c = new_counter("s")
+    record_turn_touched(c, "docs/STATUS.md")
+    record_turn_touched(c, "x.py")
+    save_counter(c, state_path)
+    loaded = load_counter(state_path)
+    assert loaded.turn_touched == ["docs/STATUS.md", "x.py"]
+
+
+def test_turn_touched_back_compat_old_state_without_field(tmp_path: Path) -> None:
+    """An old state file written before Step 4 has no turn_touched field;
+    LoopCounter.from_json must default it to empty list, not raise.
+    """
+    state_path = tmp_path / "loop-counter.json"
+    raw = {
+        "session_id": "s",
+        "started_at": "t",
+        "counters": {"L1:x.py": {"count": 1, "last_6_actions": [], "last_updated": "t"}},
+        # NOTE: no turn_touched field
+    }
+    state_path.write_text(json.dumps(raw), encoding="utf-8")
+    loaded = load_counter(state_path)
+    assert loaded.turn_touched == []
+    assert get_count(loaded, LoopType.FILE_EDIT, "x.py") == 1
 
 
 def test_save_serializes_sorted_keys(tmp_path: Path) -> None:

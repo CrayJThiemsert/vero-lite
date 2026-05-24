@@ -152,6 +152,17 @@ def test_l1_ignores_missing_file_path(stub_env: dict[str, str]) -> None:
     assert c.counters == {}
 
 
+def test_l1_records_turn_touched(stub_env: dict[str, str]) -> None:
+    """Step 4 dependency: every Write/Edit records the normalized target
+    in turn_touched so Stop hook can reset untouched L1 counters.
+    """
+    _run(_write("docs/STATUS.md"), stub_env)
+    _run(_edit("docs/STATUS.md"), stub_env)  # dedup
+    _run(_write("x.py"), stub_env)
+    c = load_counter(_state(stub_env))
+    assert c.turn_touched == ["docs/STATUS.md", "x.py"]
+
+
 # --- L4: Bash command pattern ---
 
 

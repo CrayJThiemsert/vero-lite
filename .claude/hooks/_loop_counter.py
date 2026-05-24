@@ -129,17 +129,28 @@ class CounterEntry:
 
 @dataclass
 class LoopCounter:
-    """Top-level state document (``.claude/state/loop-counter.json``)."""
+    """Top-level state document (``.claude/state/loop-counter.json``).
+
+    ``turn_touched`` tracks normalized file paths Written/Edited in the
+    **current turn** (between two ``Stop`` events). Step 4's
+    ``stop_continuation.py`` consumes this on every ``Stop`` event to
+    reset L1 counters whose targets were NOT touched this turn — i.e.,
+    the "target untouched on next turn-boundary marker" rule from PLAN
+    §Step 1 / §Step 3. List rather than set so JSON round-trip is
+    trivial; deduplication happens on append.
+    """
 
     session_id: str
     started_at: str
     counters: dict[str, CounterEntry] = field(default_factory=dict)
+    turn_touched: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
         return {
             "session_id": self.session_id,
             "started_at": self.started_at,
             "counters": {k: v.to_json() for k, v in self.counters.items()},
+            "turn_touched": list(self.turn_touched),
         }
 
     @classmethod
@@ -150,10 +161,15 @@ class LoopCounter:
             for k, v in counters_raw.items():
                 if isinstance(v, dict):
                     counters[str(k)] = CounterEntry.from_json(v)
+        touched_raw = data.get("turn_touched") or []
+        touched: list[str] = []
+        if isinstance(touched_raw, list):
+            touched = [str(t) for t in touched_raw if isinstance(t, str)]
         return cls(
             session_id=str(data.get("session_id", "")),
             started_at=str(data.get("started_at", "")),
             counters=counters,
+            turn_touched=touched,
         )
 
 
@@ -389,3 +405,45 @@ def has_triggered(
 ) -> bool:
     """True iff the counter has reached the Cray-E.4 trigger threshold."""
     return get_count(counter, loop_type, target_normalized) >= threshold
+
+
+def record_turn_touched(counter: LoopCounter, target_normalized: str) -> None:
+    """Mark a file as touched in the current turn (PostToolUse Write/Edit).
+
+    Deduplicated — the same file touched multiple times within a turn is
+    recorded once. The ``Stop`` hook (Step 4) reads this list to decide
+    which L1 counters survive vs reset at the turn boundary.
+    """
+    if not target_normalized:
+        return
+    if target_normalized not in counter.turn_touched:
+        counter.turn_touched.append(target_normalized)
+
+
+def reset_untouched_l1(counter: LoopCounter) -> list[str]:
+    """Reset L1 counters whose targets are NOT in ``turn_touched``.
+
+    Called on every ``Stop`` event by Step 4. Returns the list of
+    targets that were reset (for logging / Telegram debug). Implements
+    the "target file untouched on the next turn-boundary marker" reset
+    semantic from PLAN §Step 1.
+    """
+    reset_targets: list[str] = []
+    touched = set(counter.turn_touched)
+    l1_prefix = f"{LoopType.FILE_EDIT.value}:"
+    # Snapshot keys before mutation
+    for key in list(counter.counters):
+        if not key.startswith(l1_prefix):
+            continue
+        target = key[len(l1_prefix) :]
+        if target not in touched:
+            del counter.counters[key]
+            reset_targets.append(target)
+    return reset_targets
+
+
+def clear_turn_touched(counter: LoopCounter) -> None:
+    """Empty the turn-touched list. Called by Step 4 after L1 reset
+    so the next turn starts with a clean slate.
+    """
+    counter.turn_touched = []

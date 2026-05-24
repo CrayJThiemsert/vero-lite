@@ -65,6 +65,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     normalize_error_signature,
     normalize_file_path,
     normalize_pytest_nodeid,
+    record_turn_touched,
     reset,
     save_counter,
     tokenize_bash_command,
@@ -228,7 +229,15 @@ def _extract_traceback_signature(text: str) -> str | None:
 
 
 def _handle_write_or_edit(payload: dict[str, Any]) -> None:
-    """L1: increment per Write/Edit of the same normalized file_path."""
+    """L1: increment per Write/Edit + record the target as touched this turn.
+
+    The turn-touched marker is consumed by Step 4's ``stop_continuation.py``
+    on every Stop event to reset L1 counters whose targets were NOT
+    touched this turn — the "target untouched on the next turn-boundary
+    marker" rule from PLAN §Step 1. Without this, L1 counters grow
+    unbounded across legitimate iterative editing (Cray's STATUS workflow
+    risk surfaced in the L1/L4 asymmetry ELI-CTO).
+    """
     tool_input = payload.get("tool_input") or {}
     if not isinstance(tool_input, dict):
         return
@@ -246,6 +255,7 @@ def _handle_write_or_edit(payload: dict[str, Any]) -> None:
         target,
         _now_action(payload.get("tool_name", "Edit"), target),
     )
+    record_turn_touched(counter, target)
     # L1 trigger is gated by Step 2 on the NEXT Write/Edit — we do not fire
     # Telegram inline here (Step 2 is the gate).
     save_counter(counter, _state_path())
