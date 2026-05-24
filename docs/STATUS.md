@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-24T17:30:00+07:00
+last_updated: 2026-05-24T18:30:00+07:00
 session: 10
-current_batch: PLAN-0008 Step 2 (PreToolUse loop-detect hook) MERGED via PR #10 (`9494f93`); +24 tests (265 → 289 pass); read-only gate on L1/L4 ≥6, fires Telegram with Cray-E.4 payload + deny; bypass-immune env-var overrides; L2/L3 explicitly NOT enforced at PreToolUse (Step 3 responsibility). Wave 1/2 settings.json activation decision RECORDED (Option C, Cray 2026-05-24): Step 3 PR wires Step 2+3 hooks; Step 6 PR wires Step 4+5. Step 3 next.
-current_actor: code (Step 3 starting)
-blocked_on: nothing
-next_action: PLAN-0008 Step 3 — `.claude/hooks/posttooluse_progress_observer.py` (writer side; L1 inc on Write/Edit; L4 inc on Bash exit≠0 + reset on exit=0; L2 parse pytest output + fire Telegram inline on trigger; L3 hash tracebacks + fire Telegram inline on trigger) **+ Wave 1 wire** in `.claude/settings.json` (register Step 2 + Step 3 hooks) **+ PLAN-0008 amendment** (Wave 1/2 split notes in §Step 3 + §Step 6) — all in one commit per Option C — on branch `feat/plan0008-step3-posttooluse-progress-observer`
-head_commit: 9494f93
-recent_commits: [9494f93, ad2c047, 4790939, 2b303a0, e20a6f3, 473f07b, ec5e2ae, 5a34ab0, b53763d, a65f5d6]
+current_batch: PLAN-0008 Step 3 (PostToolUse progress observer + Wave 1 wire + PLAN amendment) MERGED via PR #11 (`632a22c`); +31 tests (289 → 320 pass); Wave 1 hooks now live in `.claude/settings.json` (L1/L4 gate + L2/L3 inline Telegram on trigger). Cray-prioritized Step 4 (turn-boundary reset closes L1 reset gap identified during L1/L4 asymmetry ELI-CTO review). Step 4 scope expansion under design — see In-Flight Discussions.
+current_actor: code (Step 4 design surfacing)
+blocked_on: Cray confirm — Step 4 scope expansion (turn-boundary reset bundle + early Wave-2-partial Stop-hook wire). See In-Flight.
+next_action: Pending Cray confirm on Step 4 scope, then implement on branch `feat/plan0008-step4-stop-continuation`
+head_commit: 632a22c
+recent_commits: [632a22c, 1c2a7b6, 57afff4, 9494f93, ad2c047, 4790939, 2b303a0, e20a6f3, 473f07b, ec5e2ae]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,45 @@ recent_commits: [9494f93, ad2c047, 4790939, 2b303a0, e20a6f3, 473f07b, ec5e2ae, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0008 Step 2 (PreToolUse loop-detect hook) MERGED.**
+**Session 10 — PLAN-0008 Step 3 (PostToolUse progress observer + Wave 1
+wire + PLAN amendment) MERGED.** PR #11 landed on `main` as `632a22c`
+(single `feat(claude)` commit `1c2a7b6` + merge commit). 4 things
+bundled per Option C + documentation option (3): (1) new
+`.claude/hooks/posttooluse_progress_observer.py` (~260 lines,
+refactored into `_apply_l2`/`_apply_l3`/`_apply_l4` helpers) — the
+writer side that feeds the loop-counter from `Bash`/`Write`/`Edit`
+outcomes; never blocks; L2/L3 fire Telegram **inline on trigger**
+(PreToolUse can't predict nodeid/signature pre-execution) while L1/L4
+let Step 2's PreToolUse gate fire on next attempt; defensive Bash
+exit-code detection (`interrupted` → explicit `exit_code` →
+`is_error` → stderr-with-error-marker → heuristic) so ambiguous
+outcomes are no-op (not spurious increment). (2) 31 new tests with
+Telegram-stub fixture capturing real Cray-E.4 payload + 2 lock-in
+tests for L1/L4 asymmetry. (3) **Wave 1 wire** in
+`.claude/settings.json` — registers `pretooluse_loop_detect.py`
+alongside `pretooluse_git_deny.py` (Bash) and
+`pretooluse_research_path_deny.py` (Write|Edit); registers
+`posttooluse_progress_observer.py` alongside
+`posttooluse_validate_handoff.py` (Write|Edit) + new PostToolUse Bash
+matcher. (4) PLAN-0008 amendment boxes in §Step 3 + §Step 6 codifying
+the Wave 1/2 split. `pytest` 320 pass / 5 skip (Step 2 baseline 289 →
+320); `ruff` + `mypy --strict` + `detect-secrets` clean.
+
+**L1/L4 asymmetry ELI-CTO + Step 4 prioritization (Cray 2026-05-24).**
+During PR #11 review Cray asked for an ELI-CTO breakdown of the L1/L4
+asymmetry (Step 3 increments → Step 2 gates on next attempt vs L2/L3
+fire inline). Code's analysis: 🟢 the off-by-one + abandoned-loop +
+spec-matching are by-design and not problems; 🟡 the L2/L3 vs L1/L4
+fire timing is a minor UX inconsistency (deferrable to Step 8); 🔴
+**L1 missing reset until Step 4 lands is a real op risk** — Cray's
+actual iterative workflow on STATUS.md (already 4 of 6 edits used in
+this session before PR #11 merge) would false-positive-deny without
+turn-boundary reset. Cray ratified the recommendation: merge PR #11 +
+**prioritize Step 4** with proper L1 reset implementation (not just a
+Stop-hook stub). Step 4 scope expansion under surface — see
+In-Flight Discussions.
+
+**Prior — PLAN-0008 Step 2 (PreToolUse loop-detect hook) MERGED.**
 PR #10 landed on `main` as `9494f93` (single `feat(claude)` commit
 `ad2c047` + merge commit). New
 `.claude/hooks/pretooluse_loop_detect.py` (~185 lines) reads the Step 1
@@ -245,6 +283,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-24 | **PLAN-0008 Step 3 (PostToolUse progress observer + Wave 1 wire + PLAN amendment) MERGED + Step 4 prioritization for L1 reset gap** — PR #11 → `main` (`632a22c`), single `feat(claude)` commit `1c2a7b6` + merge. Wave 1 hooks live in `.claude/settings.json` (L1/L4 gate via Step 2 + L2/L3 inline Telegram via Step 3 + L4 increment-on-failure / reset-on-success). PLAN-0008 §Step 3 + §Step 6 amended with Wave 1/2 split rationale. **ELI-CTO review surfaced 🔴 L1 reset gap** (counter grows unbounded within session until Step 4 turn-boundary reset lands; Cray's STATUS.md iterative workflow at risk of false-positive deny — already 4 of 6 edits used pre-merge). Cray prioritized Step 4 with proper turn-boundary reset impl (not just Stop-hook stub). 31 new tests (pytest 320 / 5 skip). Closeout: this STATUS row | `632a22c` (PR #11) / `.claude/hooks/posttooluse_progress_observer.py` |
 | 2026-05-24 | **PLAN-0008 Step 2 (PreToolUse loop-detect hook) MERGED + Wave 1/2 settings.json activation decision (Option C) RECORDED** — PR #10 → `main` (`9494f93`), single `feat(claude)` commit `ad2c047` + merge. New `.claude/hooks/pretooluse_loop_detect.py` (~185 lines) reads Step 1 state, gates L1 (Write/Edit ≥ 6 same file) + L4 (Bash ≥ 6 same tokenized command), fires Cray-E.4 Telegram payload + deny on trigger. L2/L3 explicitly NOT enforced at PreToolUse (2 lock-in tests; routed to Step 3 inline firing). Env-var overrides spoof-immune. 24 new tests with Telegram-stub fixture capturing real payload (pytest 289 / 5 skip). **Wave 1/2 decision (Cray-adjudicated 2026-05-24, Option C):** Step 3 PR wires Step 2 + Step 3 hooks together in `.claude/settings.json`; Step 6 PR wires Step 4 + Step 5 hooks. Rationale: L1/L4 standalone deployable + early smoke catches integration bugs + matches Phase 1 phased pattern. PLAN-0008 §Step 3 + §Step 6 will be amended in the Step 3 commit per documentation option (3). Closeout: this STATUS row | `9494f93` (PR #10) / `.claude/hooks/pretooluse_loop_detect.py` |
 | 2026-05-24 | **PLAN-0008 Step 1 (loop-counter state module) MERGED** — PR #9 → `main` (`2b303a0`), single `feat(claude)` commit `e20a6f3` + merge. New `.claude/hooks/_loop_counter.py` (~340 lines, stdlib-only) ships the schema + atomic I/O + 4 normalization helpers (file path / pytest nodeid / error signature / bash command) + session-ID resolution per **OQ-A** + counter ops with `last_6_actions` ring buffer per Cray E.4 payload contract. Step 2 (PreToolUse loop-detect hook) READS this module's state; Step 3 (PostToolUse progress observer) WRITES it. 49 new tests (`tests/handoffs/test_loop_counter_state.py`) incl concurrent-write race; pytest 265 pass / 5 skip (was 216 / 5); ruff + mypy --strict + detect-secrets clean. Closeout: this STATUS row | `2b303a0` (PR #9) / `.claude/hooks/_loop_counter.py` |
 | 2026-05-24 | **PLAN-0008 (Phase 2 harness autonomy layer) DRAFTED + MERGED** — PR #8 → `main` (`ec5e2ae`), 3 commits (`b53763d` draft + `5a34ab0` OQ resolutions + merge). Phase 2 layers probabilistic / classifier-mediated engine on top of Phase 1 deterministic hooks: `Stop` continuation loop (`stop_hook_active` + `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=8`) + Sonnet pause/proceed classifier (fail-closed, pin `claude-sonnet-4-6`, reads `.claude/autonomy-triggers.md` verbatim) + stateful loop-detection L1–L4 via `.claude/state/loop-counter.json` (gitignored; payload `{loop_type, target, last_6_actions}` per Cray E.4). 4 ACs incl **AC-4 Phase 1 regression-free** (16-case bypass-immune commit-deny + handoff-validator + C4 stay green). All 7 OQs adjudicated by Cray (A/B/C/E/F/G approve Code recommendations; **D auto-handoff Code→Cowork DEFERRED to PLAN-0009** — K-1/K-2 forcing fact blocks Cowork read-side so auto-draft does not reduce the human-relay bottleneck ADR-013 §Context targets; Plan subagent = right author per ADR-013 D1; surface bloat = step-sized design comparable to classifier). Status: Ready for execution. Step 1 (`.claude/state/` design + loop-counter schema) next on `feat/plan0008-step1-state-design`. Cowork-drafted under interim ADR-009 D1 (ADR-013 D1 phasing); Code committed per ADR-009 D2 | `ec5e2ae` (PR #8) / `docs/plans/0008-harness-autonomy-layer-phase-2.md` |
@@ -284,6 +323,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 ## In-Flight Discussions
 
+- **Step 4 scope expansion (under Cray surface 2026-05-24).** PLAN-0008 §Step 4 originally specified Stop continuation loop (`stop_hook_active` + `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=8` + cap-hit pause-Telegram per OQ-E + Sonnet classifier dispatch from Step 5). The L1/L4 ELI-CTO review surfaced that **L1 reset is also a Step 4 concern** (PLAN §Step 1 said "L1 reset: target file untouched on the next turn-boundary marker"; Stop hook is the natural turn-boundary observer). Cray-prioritized Step 4 needs to ship the **turn-boundary reset** alongside the Stop hook scaffold to close the L1 false-positive risk. Code-proposed Step 4 bundle: (a) `stop_continuation.py` with stop-active guard + chain cap + cap-hit policy; (b) **turn-touched tracking in state** (sibling key in loop-counter.json or new `stop-chain.json`); (c) **L1/L3 reset on Stop event** for counters NOT touched this turn; (d) classifier dispatch = **stub** (returns `pause` by default; Step 5 PR wires real Sonnet); (e) **early Wave-2-partial wire** in `.claude/settings.json` for Stop hook (since L1 reset only works if hook fires). Touches `_loop_counter.py` (new turn-touched primitives) + `posttooluse_progress_observer.py` (record turn-touched on Write/Edit). Awaits Cray confirm before implementation.
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
 - **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (PLAN-001 line 9 forward-reference); ADR-005 was reused for the strategic pivot, so the Postgres-image ADR needs a fresh number (**≥ ADR-014** — ADR-011 earmarked for the audit framework, ADR-012 taken by Cowork second free-form tier, ADR-013 taken by autonomy axis relocation; floor bumped 2026-05-23 per ADR-013 §Consequences/Neutral + T6).
@@ -298,6 +338,7 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 - [x] **PLAN-0005 Phase 2 — OCT Engine Runtime Layer** — DataAdapter Protocol + RecommendedAction envelope + vertical registry + rule-based recommender/approval gate + energy synthetic adapter + persistence (postgres:16-alpine, SQLAlchemy/Alembic) + three-layer API wiring + e2e action loop; merged PR #4 (`c646bab`) *(Session 10, 2026-05-21)*
 - [x] **ADR-010 — LLM reasoning-hook surface** — D1 inference backend Cray-ratified (local LLM default + Claude API consent-gated fallback); D2–D5 recommended; ADR-007 D2 envelope unchanged *(Session 10, 2026-05-22; commit `48fe240`)*
 - [x] **PLAN-0006 — LLM reasoning-hook execution** — EXECUTED. Steps 0-8 of the Phase-1 kickoff dispatch done on `feat/plan0006-llm-reasoning-hook` (8 commits `4f13b50`..`2fe1056`, **unmerged**); CHECKPOINT-0 pinned `gpt-oss:20b` / Ollama 0.24.0; new `services/engine/llm/` package + eval harness; `ruff` + `mypy --strict` clean, 168 passed / 5 skipped, coverage 94.56%. Closeout: `.claude/handoffs/session-10/2026-05-22-2355-code-plan0006-kickoff-dispatch-closeout.md`. *(Session 10, 2026-05-22)*
+- [x] **PLAN-0008 Step 3 — PostToolUse progress observer + Wave 1 wire + PLAN amendment (MERGED)** — PR #11 → `main` (`632a22c`); bundle of writer hook (`posttooluse_progress_observer.py`, ~260 lines, `_apply_l2`/`_apply_l3`/`_apply_l4` helpers) + Wave 1 `.claude/settings.json` wire (Phase 1 + Step 2/3 hooks live) + PLAN-0008 §Step 3 + §Step 6 amendment boxes. L2/L3 inline Telegram fire on trigger; L1/L4 let Step 2 gate. Defensive Bash exit-code detection. 31 new tests; pytest 320 pass / 5 skip; ruff + mypy --strict + detect-secrets clean. **ELI-CTO surfaced 🔴 L1 reset gap (real op risk).** **Step 4 next (Cray-prioritized):** stop_continuation.py + L1/L3 turn-boundary reset + early Wave-2-partial Stop-hook wire — scope expansion under Cray surface. *(Session 10, 2026-05-24)*
 - [x] **PLAN-0008 Step 2 — PreToolUse loop-detect hook (MERGED)** — PR #10 → `main` (`9494f93`); new `.claude/hooks/pretooluse_loop_detect.py` reads Step 1 state + gates L1/L4 ≥ 6 + fires Cray-E.4 Telegram payload + deny. Env-var overrides spoof-immune. L2/L3 explicitly deferred to Step 3 inline firing (2 lock-in tests). 24 new tests with Telegram-stub fixture; pytest 289 pass / 5 skip; ruff + mypy --strict + detect-secrets clean. **Wave 1/2 settings.json activation decision (Cray 2026-05-24, Option C):** Step 3 PR wires Step 2+3 hooks; Step 6 PR wires Step 4+5. **Step 3 next:** posttooluse_progress_observer.py + Wave 1 wire + PLAN amendment in one commit on `feat/plan0008-step3-posttooluse-progress-observer`. *(Session 10, 2026-05-24)*
 - [x] **PLAN-0008 Step 1 — loop-counter state module (MERGED)** — PR #9 → `main` (`2b303a0`); new `.claude/hooks/_loop_counter.py` ships stdlib-only schema + atomic I/O + 4 normalization helpers (L1–L4) + session-ID resolution per OQ-A + counter ops with `last_6_actions` ring buffer. 49 new tests; pytest 265 pass / 5 skip; ruff + mypy --strict + detect-secrets clean. **Step 2 next:** `.claude/hooks/pretooluse_loop_detect.py` on `feat/plan0008-step2-pretooluse-loop-detect`. *(Session 10, 2026-05-24)*
 - [x] **PLAN-0008 — Harness autonomy layer Phase 2 (DRAFT MERGED)** — PR #8 → `main` (`ec5e2ae`), 3 commits (`b53763d` draft + `5a34ab0` OQ resolutions + merge). Phase 2 scope: `Stop` continuation loop + Sonnet pause/proceed classifier reading `.claude/autonomy-triggers.md` verbatim + stateful loop-detection L1–L4 via `.claude/state/loop-counter.json`. 4 ACs incl AC-4 Phase 1 regression-free. All 7 OQs (A–G) adjudicated by Cray 2026-05-24 (Code recommendations approved; **OQ-D auto-handoff DEFERRED to PLAN-0009** per K-1/K-2 forcing fact + Plan subagent role + surface bloat). Status: Ready for execution. **Step 1 next:** `.claude/state/` design + `loop-counter.json` schema + `.gitignore` extension + atomic-write tests on `feat/plan0008-step1-state-design`. *(Session 10, 2026-05-24)*
@@ -338,16 +379,17 @@ also landed; Phase B/C remain deferred (backlog). Full detail lives in
 
 ## Next Steps
 
-1. **PLAN-0008 Phase 2 — Step 3 execution (Wave 1 activation).** Step 2 (PreToolUse loop-detect hook) merged (PR #10 `9494f93`). **Step 3** = `.claude/hooks/posttooluse_progress_observer.py` — the writer side that observes `Bash`/`Write`/`Edit` outcomes and feeds the loop-counter: L1 incremented per Write/Edit (per turn target-tracking for next-turn reset signal); L4 incremented on Bash non-zero exit + reset on exit 0; L2 parses pytest output, increments for failing nodeids + resets for passing + **fires Telegram inline on trigger** (≥ 6 same nodeid failing); L3 hashes traceback first-line, increments + **fires Telegram inline on trigger**. Never blocks (observation-only). Bundled in the same commit: **Wave 1 wire** in `.claude/settings.json` (register Step 2 + Step 3 hooks per Option C ratified 2026-05-24) + **PLAN-0008 amendment** in §Step 3 + §Step 6 (note Wave 1/2 split per documentation option (3)). Branch: `feat/plan0008-step3-posttooluse-progress-observer`. Then Steps 4–8 (Stop continuation → Sonnet classifier helper → Wave 2 wire + autonomy-triggers row flips → broader tests → live verification).
-2. **PLAN-0008 Step 2 — MERGED.** [PR #10](https://github.com/CrayJThiemsert/vero-lite/pull/10) merged to `main` (`9494f93`); `pretooluse_loop_detect.py` gate live (not yet wired in `.claude/settings.json` — Wave 1 lands in Step 3 PR).
-3. **PLAN-0008 Step 1 — MERGED.** [PR #9](https://github.com/CrayJThiemsert/vero-lite/pull/9) merged to `main` (`2b303a0`); `_loop_counter.py` state primitives live.
-4. **PLAN-0008 — DRAFTED + MERGED.** [PR #8](https://github.com/CrayJThiemsert/vero-lite/pull/8) merged to `main` (`ec5e2ae`); plan lives at `docs/plans/0008-harness-autonomy-layer-phase-2.md` (will move to `done/` after Step 8 closeout).
-5. **PLAN-0007 — MERGED + closed.** [PR #6](https://github.com/CrayJThiemsert/vero-lite/pull/6) merged to `main` (`b2ea9b8`); plan archived at `docs/plans/done/0007-harness-autonomy-layer-phase-1.md`.
-6. **PLAN-0006 — MERGED + closed.** [PR #5](https://github.com/CrayJThiemsert/vero-lite/pull/5) merged to `main` (`68053fe`); plan archived at `docs/plans/done/0006-llm-reasoning-hook-execution.md`.
-7. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002 (≥ADR-014), registry discovery).
-8. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion.
-9. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix; validator warning-swallow bug) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (≥ADR-014).
-10. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
+1. **PLAN-0008 Phase 2 — Step 4 execution (Cray-prioritized; scope expansion under surface).** Step 3 (PostToolUse progress observer + Wave 1 wire) merged (PR #11 `632a22c`). **Step 4** per PLAN §Step 4 + ELI-CTO-driven expansion: (a) `.claude/hooks/stop_continuation.py` — `stop_hook_active` re-entry guard + `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP=8` chain cap (tracked in `.claude/state/stop-chain.json`); on cap-hit emit pause + Telegram "cap reached" (OQ-E option b); on under-cap defer to Sonnet classifier (Step 5) — **stubbed to "pause" by default** since Step 5 lands separately; (b) **L1/L3 turn-boundary reset** (closes the L1 reset gap surfaced by ELI-CTO) — Stop hook reads `turn_touched` markers (recorded by amended `posttooluse_progress_observer.py` on Write/Edit) and resets L1 counters not in current turn; L3 reset on Stop similarly; (c) **early Wave-2-partial wire** in `.claude/settings.json` for the Stop hook (required for L1 reset to work); (d) new turn-touched primitives in `_loop_counter.py`. Branch: `feat/plan0008-step4-stop-continuation`. **Awaits Cray confirm on scope expansion** (see In-Flight Discussions). Then Step 5 (Sonnet classifier helper, wires the stub) → Step 6 (Wave-2 completion: classifier dispatch + autonomy-triggers row flips) → Steps 7-8.
+2. **PLAN-0008 Step 3 — MERGED.** [PR #11](https://github.com/CrayJThiemsert/vero-lite/pull/11) merged to `main` (`632a22c`); writer hook + Wave 1 wire live; PLAN-0008 amended with Wave 1/2 split.
+3. **PLAN-0008 Step 2 — MERGED.** [PR #10](https://github.com/CrayJThiemsert/vero-lite/pull/10) merged to `main` (`9494f93`); `pretooluse_loop_detect.py` gate live.
+4. **PLAN-0008 Step 1 — MERGED.** [PR #9](https://github.com/CrayJThiemsert/vero-lite/pull/9) merged to `main` (`2b303a0`); `_loop_counter.py` state primitives live.
+5. **PLAN-0008 — DRAFTED + MERGED.** [PR #8](https://github.com/CrayJThiemsert/vero-lite/pull/8) merged to `main` (`ec5e2ae`); plan lives at `docs/plans/0008-harness-autonomy-layer-phase-2.md` (will move to `done/` after Step 8 closeout).
+6. **PLAN-0007 — MERGED + closed.** [PR #6](https://github.com/CrayJThiemsert/vero-lite/pull/6) merged to `main` (`b2ea9b8`); plan archived at `docs/plans/done/0007-harness-autonomy-layer-phase-1.md`.
+7. **PLAN-0006 — MERGED + closed.** [PR #5](https://github.com/CrayJThiemsert/vero-lite/pull/5) merged to `main` (`68053fe`); plan archived at `docs/plans/done/0006-llm-reasoning-hook-execution.md`.
+8. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002 (≥ADR-014), registry discovery).
+9. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion.
+10. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix; validator warning-swallow bug) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (≥ADR-014).
+11. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
 
 ## Update Workflow
 
