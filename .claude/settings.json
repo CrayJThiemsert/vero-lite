@@ -1,6 +1,6 @@
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
-  "_comment": "PLAN-0007 Phase 1 — harness autonomy layer. Tracked (shareable convention, no secrets). Token material lives in env vars + .claude/state/ (gitignored). Hook scripts are stdlib-Python for cross-platform robustness (Cray runs Claude Code on Windows; project lives in WSL Ubuntu 24.04 at \\\\wsl.localhost\\ubuntu-24.04\\home\\crayj\\work\\vero-lite).",
+  "_comment": "PLAN-0007 Phase 1 + PLAN-0008 Phase 2 (Wave 1) — harness autonomy layer. Tracked (shareable convention, no secrets). Token material lives in env vars + .claude/state/ (gitignored). Hook scripts are stdlib-Python for cross-platform robustness (Cray runs Claude Code on Windows; project lives in WSL Ubuntu 24.04 at \\\\wsl.localhost\\ubuntu-24.04\\home\\crayj\\work\\vero-lite). Wave 1 (Step 3 PR) wired Step 2 (pretooluse_loop_detect) + Step 3 (posttooluse_progress_observer); Wave 2 (Step 6 PR) will wire Step 4 (stop_continuation) + Step 5 (sonnet_classifier).",
   "hooks": {
     "PreToolUse": [
       {
@@ -9,6 +9,10 @@
           {
             "type": "command",
             "command": "python .claude/hooks/pretooluse_git_deny.py"
+          },
+          {
+            "type": "command",
+            "command": "python .claude/hooks/pretooluse_loop_detect.py"
           }
         ]
       },
@@ -18,6 +22,10 @@
           {
             "type": "command",
             "command": "python .claude/hooks/pretooluse_research_path_deny.py"
+          },
+          {
+            "type": "command",
+            "command": "python .claude/hooks/pretooluse_loop_detect.py"
           }
         ]
       }
@@ -29,6 +37,19 @@
           {
             "type": "command",
             "command": "python .claude/hooks/posttooluse_validate_handoff.py"
+          },
+          {
+            "type": "command",
+            "command": "python .claude/hooks/posttooluse_progress_observer.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/posttooluse_progress_observer.py"
           }
         ]
       }
