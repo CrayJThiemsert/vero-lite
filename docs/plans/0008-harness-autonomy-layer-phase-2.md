@@ -1,6 +1,6 @@
 # PLAN-0008: Harness Autonomy Layer — Phase 2 Execution
 
-**Status:** Draft
+**Status:** Ready for execution
 **Owner:** Claude Code (Tier 2 — autonomy primitives are Code-exclusive per ADR-013 D1)
 **Created:** 2026-05-24
 **Related ADRs:** ADR-013 (autonomy axis relocation — **gates this plan**; Phase 2 executes ADR-013 D4 + Cray E.4), ADR-009 (D2 "only Code commits" preserved by carrying the G5 hook through unchanged), ADR-006 (core vs vertical infrastructure — autonomy = core)
@@ -400,66 +400,73 @@ Maps 1:1 to AC-1 through AC-4 above. Repo-health gate:
 
 ## Notes / surfaces for Cray
 
-> Drafting surfaces that Cray adjudicates before / at Code-commit time.
-> None of these are drafting blockers; Code can begin Step 1 immediately
-> on Cray ratification and surface the resolved decision in the closeout.
+> **All 7 OQs adjudicated by Cray on 2026-05-24** (in [PR #8](https://github.com/CrayJThiemsert/vero-lite/pull/8)
+> review). Resolutions recorded inline below for audit trail. Status
+> flipped Draft → Ready for execution in the same commit.
 
-- **OQ-A — Session-ID source for `.claude/state/`.** The Phase 1
-  `CLAUDE_TIER=code` env marker identifies *tier*, not session.
-  Loop-counter + stop-chain state need a session scope. Options:
-  (a) `$CLAUDE_SESSION_ID` if the harness exposes one (Code to verify
-  at execution time);
-  (b) PID of the launching shell;
-  (c) per-session `.claude/state/<UUID>/` directory minted on first
-  hook invocation.
-  **Recommendation:** (a) → (c) fallback. Code analyzes + decides at
-  execution; record in closeout. *Drafting blocker?* No.
+- **OQ-A — Session-ID source for `.claude/state/`. RESOLVED
+  (Cray 2026-05-24 — approved Code recommendation).** Mechanism:
+  `$CLAUDE_SESSION_ID` if exposed by the harness → PID of the launching
+  shell as fallback → per-session `.claude/state/<UUID>/` directory
+  minted on first hook invocation as last-resort fallback. Code verifies
+  at execution time + records the chosen path in the closeout.
 
-- **OQ-B — Sonnet model pin.** Step 5 pins `claude-sonnet-4-6`.
-  CLAUDE.md says "default to the latest and most capable Claude
-  models." If a newer Sonnet (4.7+) is GA at merge time, bump in the
-  same PR. Cray confirms the pin at commit-review time.
+- **OQ-B — Sonnet model pin. RESOLVED (Cray 2026-05-24 — approved
+  Code recommendation).** Pin `claude-sonnet-4-6` in `.claude/settings.json`.
+  If a newer Sonnet (4.7+) is GA at merge time, bump in the same PR
+  (single-line change). CLAUDE.md "default to latest and most capable"
+  guidance applies.
 
-- **OQ-C — Classifier-output schema vs registry drift.** The
-  registry's row IDs (G1–G5, C1–C4, H1, L1–L4) are the natural enum for
-  `matched_rows`. Step 5 specifies this; if the registry grows new
-  rows *during* Phase 2 execution, the classifier prompt must be
-  regenerated. Mitigation: the registry path is referenced (not
-  inlined), so adding rows is a registry-only edit. Note in commit body.
+- **OQ-C — Classifier-output schema vs registry drift. RESOLVED
+  (Cray 2026-05-24 — approved Code recommendation).** The registry's row
+  IDs (G1–G5, C1–C4, H1, L1–L4) are the natural enum for `matched_rows`.
+  The system prompt references the registry path verbatim (not inlined),
+  so adding rows during Phase 2 execution is a registry-only edit — the
+  classifier picks them up on the next invocation without a hook change.
+  ADR-013 D4 DRY rationale preserved.
 
-- **OQ-D — Auto-handoff Code → Cowork/Chat is deliberately deferred.**
-  Phase 2 ships the `Stop` `proceed` arm but not the
-  "pause + auto-draft a Cowork dispatch" arm — so on every classifier
-  `pause`, Cray still pastes the resulting handoff. Reasonable for
-  Phase 2; the subagent topology in PLAN-0009 is the right place for
-  the Plan subagent to auto-draft. **Flag if Cray wants it brought
-  into Phase 2.**
+- **OQ-D — Auto-handoff Code → Cowork/Chat. RESOLVED: DEFER to
+  PLAN-0009 (Cray 2026-05-24, confirming Code analysis).** Three
+  load-bearing reasons:
+  1. **K-1/K-2 forcing fact still blocks** — Cowork/Chat desktop
+     sandboxes cannot read `.claude/handoffs/` (re-confirmed live in
+     session 10), so Cray still pastes after any auto-draft. The
+     human-relay bottleneck ADR-013 §Context targets is *not* reduced by
+     auto-drafting; it is reduced only when the destination is a
+     subagent in the same Code harness — that is PLAN-0009 scope by
+     construction.
+  2. **Author = Plan subagent (right role).** ADR-013 D1 topology
+     pairs Plan subagent = drafter, main agent = executor. Having the
+     main agent draft a dispatch for itself violates separation;
+     wiring auto-handoff *after* Plan subagent lands is the clean fit.
+  3. **Surface bloat.** Auto-draft policy needs a template, a
+     context-window policy, trigger→handoff-type mapping, and an H1
+     validator round-trip with retry — roughly a step's worth of
+     design comparable to the classifier itself. Phase 2 is already
+     dense (8 steps / 4 ACs / ~260 tests).
+  Carried explicitly to PLAN-0009 (subagent topology) as a Step item.
 
-- **OQ-E — `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` policy on hit.** Step 4
-  alternatives at cap:
-  - **(a) silent release** — proceed normally, let the stop fire (the
-    agent simply stops mid-flow)
-  - **(b) pause + Telegram with `"cap reached"`** — explicit signal to
-    Cray
-  **Recommendation: (b).** Silent release is a footgun; the agent
-  stops with no explanation, and Cray has to reconstruct why. Cray
-  confirms.
+- **OQ-E — `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` policy on hit. RESOLVED
+  (Cray 2026-05-24 — approved Code recommendation):** option **(b)
+  pause + Telegram with `"cap reached"`**. Silent release is a footgun
+  (agent stops mid-flow without explanation, Cray must reconstruct why);
+  the explicit Telegram signal preserves the AFK-channel contract from
+  Phase 1 AC-1. Step 4 implements (b).
 
-- **OQ-F — Deterministic pre-filter for the classifier.** Step 5's
-  cost rationale assumes the classifier fires on every `Stop` event.
-  If session-cost monitoring (the §Verification telemetry) shows the
-  per-session cost climbing past acceptable bounds, the fallback is to
-  add a deterministic pre-filter (e.g., only invoke the classifier if
-  the next action touches `docs/adr/**`, `docs/plans/**`,
-  `pyproject.toml`, lockfiles, or a registry-flagged path). **Not
-  Phase 2 scope**, but flagged here so the telemetry has a destination.
+- **OQ-F — Deterministic pre-filter for the classifier. RESOLVED
+  (Cray 2026-05-24 — approved Code recommendation): not Phase 2 scope.**
+  The §Verification cost-telemetry baseline is the trigger; if per-session
+  cost climbs past acceptable bounds, a future plan adds a path-based
+  pre-filter (e.g., invoke only if the next action touches `docs/adr/**`,
+  `docs/plans/**`, `pyproject.toml`, lockfiles, or a registry-flagged
+  path). Phase 2 ships the telemetry destination; the pre-filter decision
+  follows the data.
 
-- **OQ-G — Mock vs live classifier in CI.** Step 7 mocks Sonnet in CI.
-  An end-to-end test that calls the live API and asserts JSON-contract
-  shape would give higher confidence but introduces an API dependency
-  in CI. **Recommendation: keep CI mocked; provide an opt-in live
-  smoke test via `RUN_LIVE_SONNET_TESTS=1` env** that Cray runs locally
-  before merge.
+- **OQ-G — Mock vs live classifier in CI. RESOLVED (Cray 2026-05-24 —
+  approved Code recommendation):** CI mocks Sonnet (no API dependency in
+  CI, no `$ANTHROPIC_API_KEY` leak risk in test logs); an opt-in live
+  smoke test gated by `RUN_LIVE_SONNET_TESTS=1` env runs locally before
+  merge. Step 7 implements both layers (~10 mocked + 2 skipped live).
 
 - **No CLAUDE.md edit required.** ADR-013 already amended §6 for the
   autonomy-axis relocation; PLAN-0008 implements ADR-013 without
