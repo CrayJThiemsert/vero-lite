@@ -22,7 +22,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeGuard
 
 import pytest
 
@@ -81,7 +81,7 @@ def _run(payload: Payload, env: dict[str, str]) -> tuple[int, Parsed]:
     return result.returncode, parsed
 
 
-def _is_deny(parsed: Parsed) -> bool:
+def _is_deny(parsed: Parsed) -> TypeGuard[dict[str, Any]]:
     if not parsed:
         return False
     decision = parsed.get("hookSpecificOutput", {}).get("permissionDecision")

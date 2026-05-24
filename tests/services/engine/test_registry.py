@@ -5,11 +5,12 @@ test a clean registry; these cases exercise registration, lookup,
 duplicate rejection, and explicit reset in-process.
 """
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
 from services.engine.actions import RecommendedAction
+from services.engine.data_adapter import DataAdapter
 from services.engine.registry import RegistryError, VerticalRegistry, registry
 
 
@@ -20,20 +21,25 @@ class _StubAdapter:
         self.vertical_name = vertical_name
 
 
+def _stub(name: str) -> DataAdapter:
+    """Duck-typed stub cast to satisfy mypy; registry only touches vertical_name."""
+    return cast(DataAdapter, _StubAdapter(name))
+
+
 async def _noop_handler(action: RecommendedAction) -> dict[str, Any]:
     return {"handled": action.id}
 
 
 def test_register_and_get_adapter() -> None:
-    adapter = _StubAdapter("energy")
+    adapter = _stub("energy")
     registry.register_adapter(adapter)
     assert registry.get_adapter("energy") is adapter
 
 
 def test_duplicate_adapter_raises() -> None:
-    registry.register_adapter(_StubAdapter("energy"))
+    registry.register_adapter(_stub("energy"))
     with pytest.raises(RegistryError):
-        registry.register_adapter(_StubAdapter("energy"))
+        registry.register_adapter(_stub("energy"))
 
 
 def test_get_unknown_adapter_raises() -> None:
@@ -59,7 +65,7 @@ def test_get_unknown_handler_raises() -> None:
 
 def test_verticals_lists_registered_sorted() -> None:
     registry.register_handler("supply_chain", "noop", _noop_handler)
-    registry.register_adapter(_StubAdapter("energy"))
+    registry.register_adapter(_stub("energy"))
     assert registry.verticals() == ["energy", "supply_chain"]
 
 
@@ -74,13 +80,13 @@ def test_handler_names_empty_for_unknown_vertical() -> None:
 
 
 def test_reset_clears_registry() -> None:
-    registry.register_adapter(_StubAdapter("energy"))
+    registry.register_adapter(_stub("energy"))
     registry.reset()
     assert registry.verticals() == []
 
 
 def test_isolated_instance_independent_of_singleton() -> None:
     local = VerticalRegistry()
-    local.register_adapter(_StubAdapter("energy"))
+    local.register_adapter(_stub("energy"))
     assert local.verticals() == ["energy"]
     assert registry.verticals() == []

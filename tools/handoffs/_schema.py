@@ -24,6 +24,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from pathlib import Path
+from typing import TypeVar
+
+_E = TypeVar("_E", bound=Enum)
 
 REQUIRED_FIELDS: tuple[str, ...] = (
     "from",
@@ -229,12 +232,12 @@ def _parse_block(block: str) -> dict[str, object]:
     return data
 
 
-def _coerce_enum[E: Enum](
-    enum_cls: type[E],
+def _coerce_enum(
+    enum_cls: type[_E],
     value: object,
     name: str,
     errors: list[ValidationError],
-) -> E | None:
+) -> _E | None:
     if not isinstance(value, str) or not value:
         errors.append(ValidationError(name, _as_str(value), f"required field {name} missing"))
         return None
