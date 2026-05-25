@@ -590,6 +590,47 @@ Maps 1:1 to AC-1 through AC-4 above. Repo-health gate:
      dense (8 steps / 4 ACs / ~260 tests).
   Carried explicitly to PLAN-0009 (subagent topology) as a Step item.
 
+  **Post-archival amendment 2026-05-25 (Phase 3.5 smoke setup +
+  PLAN-0009 dispatch round reconciliation).** Wording in reason 1
+  above was imprecise; the actual K-1/K-2 constraint shape is sharper.
+  Substantive deferral verdict is unchanged — this amendment only
+  aligns the OQ-D shorthand with Lesson #8's precise primitive-level
+  description:
+
+  - **K-1 is specifically `mcp__workspace__bash` UNC refusal on WSL-
+    rooted projects.** Confirmed live in **both** interactive Cowork
+    (Lesson #8 §K-1) **and Cowork scheduled-task context** (Phase 3.5
+    smoke 2026-05-25 finding F1 in
+    `docs/research/private/phase3.5-smoke/findings.md`; Cowork
+    heartbeat task v1 prompt failed at `date` / `pwd` with "UNC paths
+    are not supported: `\\wsl.localhost\ubuntu-24.04\home\crayj\work\vero-lite`").
+    It is bash-specifically — not a general "Cowork can't operate"
+    gate.
+  - **K-2 is `.claude/` write-block, NOT a read-block.** PLAN-0009
+    dispatch round (2026-05-25, research-note §6 reconciliation)
+    showed Cowork CAN `Read` files under `.claude/`; the prior
+    shorthand "cannot read `.claude/handoffs/`" in reason 1
+    over-stated the constraint. The actual block is on Cowork's
+    `Write` tool resolving `.claude/<*>` paths. Lesson #8 §K-2 already
+    stated this correctly verbatim; this amendment aligns the OQ-D
+    shorthand with Lesson #8's precision.
+  - **Cowork's `Write` tool works on non-`.claude/` UNC paths** —
+    independent path-resolution layer from `mcp__workspace__bash`
+    (Phase 3.5 smoke finding F2 confirmed live in scheduled-task
+    context; Lesson #8 §K-1 closing paragraph already covered this
+    for interactive Cowork).
+
+  Deferral verdict intact: OQ-D still defers to PLAN-0009 because
+  (a) the human-relay bottleneck reduces only when the destination is
+  a co-located subagent (reason 2 author=Plan-subagent argument
+  intact); (b) Cowork still can't run `validate_handoff.py` from the
+  project repo (K-1 bash refusal is the load-bearing forcing fact,
+  not a Cowork read-block); (c) reason 3 surface bloat is unaffected.
+  The sharper wording does not change the decision — it gives future
+  readers (next OQ-D consumer in PLAN-0009 + the Phase 3.5 smoke
+  verdict roll-up + any future ADR/PLAN citing OQ-D) the correct
+  primitive-shape mental model.
+
 - **OQ-E — `CLAUDE_CODE_STOP_HOOK_BLOCK_CAP` policy on hit. RESOLVED
   (Cray 2026-05-24 — approved Code recommendation):** option **(b)
   pause + Telegram with `"cap reached"`**. Silent release is a footgun
