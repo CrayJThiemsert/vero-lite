@@ -148,10 +148,38 @@ advisory drafter.
 
 ## Steps
 
-### Step 1 — Subagent contract design (+ state-schema touch)
+### Step 1a — Subagent primitive survey (research spike)
 
-Design the contract before any subagent lands. Output is a spec doc
-section + a schema the dispatch protocol validates against.
+> **Sub-step split rationale (Code, 2026-05-25 post-cross-check).** Before
+> locking the contract design, verify the Anthropic Claude Code subagent
+> primitive surface area. The plan-as-written assumes the primitive
+> exposes everything required (tool-allowlist enforcement at harness
+> layer, cwd boundary, identity signal, write-path allowlist, result
+> reduction). Today's research-note cross-check (see STATUS Current Focus
+> 2026-05-25 PLAN-0009 ratification entry) found that 3 of 4 vendor docs
+> had at least one Cowork-research diff vs current docs — including
+> undocumented APIs and stale cap numbers. Verifying live before design
+> is the cheapest insurance and matches the PLAN-0008 fact-pack-first
+> discipline.
+
+Time-box: 1–2 hours. If the primitive surface is materially different
+from the plan's assumption, raise via Cray ratification before Step 1b
+proceeds.
+
+- **Verification matrix:**
+  - **Tool-allowlist enforcement layer:** harness-native deny (load-bearing for AC-2/AC-3 negative tests) vs prompt-only model discipline (insufficient).
+  - **cwd boundary:** does the primitive accept a per-subagent working-directory restriction at spawn?
+  - **Identity signal:** how does a hook (G5 git-deny) distinguish a subagent invocation from a main-agent invocation? Candidates: `CLAUDE_TIER` env-var inheritance / non-inheritance, settings-scope marker, subagent metadata in `tool_input`, harness-provided subagent name in the hook environment.
+  - **Result reduction model:** what is returned to the main agent vs what stays in the subagent transcript? Is the reduction bounded (e.g., explicit max tokens) or free-form?
+  - **Write-path allowlist for Plan subagent:** does the primitive accept per-subagent write-path restrictions, or does a `PreToolUse` hook need to enforce (extending the C4 pattern)?
+- **Output:** `docs/research/private/YYYY-MM-DD-subagent-primitive-survey.md` (Tier-0 research note, gitignored per CLAUDE.md §10 + `.gitignore` line for `docs/research/private/`). Feeds Step 1b design choices.
+- **Sequencing:** Step 1a can run in parallel with the Phase 3.5 smoke test observation period (1–2 day window) — both unblock Step 1b independently.
+
+### Step 1b — Subagent contract design (+ state-schema touch)
+
+Design the contract before any subagent lands, **based on Step 1a survey
+findings**. Output is a spec doc section + a schema the dispatch protocol
+validates against.
 
 - **Per-type contract fields:** `name`, `tool_allowlist` (explicit, not
   wildcard), `cwd_boundary` (project-relative root the subagent may
