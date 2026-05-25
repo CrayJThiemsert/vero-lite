@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-25T13:00:00+07:00
+last_updated: 2026-05-25T17:00:00+07:00
 session: 10
-current_batch: **PLAN-0009 (Phase 3 — subagent topology) RATIFIED + Ready for execution + COMMITTED** on `feat/plan0009-subagent-topology` (`d10073e`). Cowork drafted under interim ADR-009 D1 phasing; Cray adjudicated all 4 OQs (OQ-1…OQ-4) 2026-05-25 (WebFetch for Explore; no new ADR — execute ADR-013 D1; subagent identity folds with ADR-013 OQ-3 in Step 1; PLAN status vocabulary). Cowork → Code dispatch handoff at `.claude/handoffs/session-10/2026-05-25-1240-cowork-plan0009-review-dispatch.md` `validate_handoff.py` clean (K-1 / ADR-009 D3 substitute — 9 fields, actor=cowork / phase=dispatch / status=READY / suffix=dispatch). Code R2/fact-pack review clean (9 citations). Status flipped Draft → Ready for execution in commit. **2 reconciliation findings folded into project memory:** (1) `.claude/` readability — K-2 is write-block NOT read-block (research-note §6); OQ-D load-bearing forcing fact remains K-1 (Cowork can't run `validate_handoff.py`), substantive deferral stands. (2) Working-tree divergence — git worktree sees neither uncommitted new files nor gitignored paths (research-note §6.1, reproduced live this session); not K-1/K-2 but checkout-resolution mismatch; design implication for any Phase 3.5 producer/consumer loop. Phase 3 execution gated on PR merge. **HOLD Phase 3.5** (research-note §7.5 local scheduled-task poller option SURFACED but not decided).
+current_batch: **PLAN-0009 Step 1 split MERGED + Step 1a research spike DONE + Phase 3.5 smoke observation RUNNING**. PR #22 (PLAN-0009 base, `fddcf2e`) + PR #23 (Step 1 split into 1a research spike / 1b contract design, `0fb83fb`) merged to main. Step 1a survey artifact at `docs/research/private/2026-05-25-subagent-primitive-survey.md` — 8/8 questions high-confidence; **identity mechanism CLARIFIED** (G5 = `agent_id` hook stdin + `CLAUDE_TIER` env composed, not single signal); built-in `Plan`/`Explore` name collision → Step 1b use `plan-drafter`/`explore-research`; no native cwd-narrow or write-path-allowlist → AC-3 needs new `pretooluse_plan_subagent_write_deny.py` hook extending C4 pattern. Phase 3.5 smoke setup complete (2 Anthropic scheduled tasks: Cowork hourly Write-only writer + Code Desktop hourly bash reader); 4/4 load-bearing questions answered favorably in run 1 (`tier=code` ✅ `bash=ok` ✅ cross-task visibility ✅ Cowork Write on UNC ✅); 24-48h observation period started 2026-05-25T16:03 +07. NEW finding F7 (**Auto mode requires Sonnet-tier model** — not in any Anthropic doc surveyed) + 8 other findings captured in `docs/research/private/phase3.5-smoke/findings.md`.
 current_actor: code
 blocked_on: nothing
-next_action: push `feat/plan0009-subagent-topology` + open PR for PLAN-0009 → Phase 3 execution begins after merge (Step 1 — subagent contract design + state-schema touch folding ADR-013 OQ-3 + L3 reset + worktree path normalization). Phase 3.5 remains HELD pending Cray adjudication.
-head_commit: d10073e
-recent_commits: [d10073e, c1ce7a2, 8428fa7, 6dc808c, d33b9d8, 16ef098, 3c93781, 8fef3a5, 79fe373, b3657d5]
+next_action: Phase 3.5 smoke verdict (~2026-05-26/27 +07 after 24-48h observation) → GO opens PLAN-0010 (Phase 3.5 scheduled-task autonomy loop); NO-GO pivots to MCP `vero-bridge` roadmap. Phase 3 execution remains HELD pending smoke verdict. Step 1a survey findings ready to fold into Step 1b when Phase 3 execution begins (gated on smoke).
+head_commit: 0fb83fb
+recent_commits: [0fb83fb, 624882d, fddcf2e, 93e5df7, d10073e, c1ce7a2, 8428fa7, 6dc808c, d33b9d8, 16ef098]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,99 @@ recent_commits: [d10073e, c1ce7a2, 8428fa7, 6dc808c, d33b9d8, 16ef098, 3c93781, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0009 (Phase 3 — subagent topology) RATIFIED + Ready
+**Session 10 — PLAN-0009 Step 1 split MERGED + Step 1a survey DONE +
+Phase 3.5 smoke observation RUNNING.** Three-track day:
+
+1. **PR #22 (PLAN-0009 Phase 3, `fddcf2e`) + PR #23 (Step 1 split,
+   `0fb83fb`) MERGED to main.** HEAD `0fb83fb`. PR #23 splits §Step 1
+   into Step 1a (research spike, 1–2 hr) + Step 1b (contract design,
+   day-scale). Rationale: Code post-merge cross-check of 4 Anthropic
+   docs (Cowork Scheduled / Live Artifacts / CC Routines / Desktop
+   scheduled tasks) found 3-of-4 had at least one substantive diff vs
+   the Cowork research note that informed PLAN-0009 — including
+   undocumented `window.cowork.*` JS APIs, stale daily-run-cap numbers,
+   and `CLAUDE_TIER` env-var inheritance that was unverified at draft
+   time. Verifying live before contract design lock-in matches the
+   PLAN-0008 fact-pack-first discipline + Cray's verification-rigor
+   directive (PLAN-0009 §Step 6 + Verification).
+
+2. **Step 1a research spike DONE** — background general-purpose subagent
+   (8 min, 95k tokens, 17 tool calls — Code's first parallel-agent
+   demonstration this project) wrote
+   `docs/research/private/2026-05-25-subagent-primitive-survey.md`
+   (Tier-0 research note, gitignored) with 8/8 questions high-
+   confidence. Verbatim quotes + 5 Anthropic source URLs. Key findings:
+
+   - **Identity signal = `agent_id` + `agent_type` JSON fields in hook
+     PreToolUse/PostToolUse stdin** (Q3, load-bearing for AC-3/AC-6).
+     **NOT env vars.** G5 `pretooluse_git_deny.py` final design composes
+     2 signals into 1 check for 4 identity cases:
+     - `agent_id` PRESENT in stdin → subagent invocation → deny commit
+     - `agent_id` ABSENT + `CLAUDE_TIER=code` env → main Code
+       (interactive OR Phase-3.5 scheduled) → allow commit
+     - `agent_id` ABSENT + `CLAUDE_TIER` not `code` → non-Code → deny
+       Resolves ADR-013 OQ-3 unification mechanism via documented harness
+     primitive (no env-var gymnastics needed).
+   - **Tool allowlist enforced at harness layer** (Q1): `tools` /
+     `disallowedTools` frontmatter fields gated by harness before
+     dispatch. AC-2 negative tests feasible as written.
+   - **No native cwd-narrow or write-path-allowlist primitive** (Q2, Q5).
+     AC-3's "Plan writes only under `docs/{adr,plans}/`" = new
+     `PreToolUse` hook `pretooluse_plan_subagent_write_deny.py`
+     extending the C4 `pretooluse_research_path_deny.py` pattern.
+     Preferably in Plan subagent's frontmatter `hooks:` field (subagent-
+     scoped, auto-cleanup on subagent exit).
+   - **Result reduction = "final message verbatim"** (Q4). No hard
+     byte/token bound — "bounded summary" output contract must be
+     encoded in subagent system prompt. Residual risk: verbose subagent
+     leaks final message into main context.
+   - **Built-in `Plan` and `Explore` reserve those exact names** (Q6).
+     Step 1b custom subagents must pick non-colliding names; recommend
+     `plan-drafter` + `explore-research`.
+   - **`isolation: worktree`** frontmatter field gives the subagent a
+     fresh checkout — conflicts with CLAUDE.md §11 worktree-OFF default
+     for single-doc work. Step 1b: omit `isolation` by default for Plan
+     (writes to parent cwd; main agent commits).
+   - Bonus primitives discovered: `maxTurns` (loop fail-safe),
+     `SubagentStart` / `SubagentStop` hook events (clean wire for AC-5
+     completion notify), documented subagent transcript path
+     (`~/.claude/projects/<project>/<sessionId>/subagents/agent-<id>.jsonl`
+     — useful for AC-6 audit trail). All 8 questions answered without
+     live verification needed.
+
+3. **Phase 3.5 smoke observation RUNNING** (started 2026-05-25T16:03 →
+   +24-48h). Setup complete with 2 Anthropic scheduled tasks (Cowork
+   hourly Write-only producer + Code Desktop hourly bash reader/observer;
+   both pinned to MAIN checkout via
+   `\\wsl.localhost\Ubuntu-24.04\home\crayj\work\vero-lite` UNC path).
+   Run 1 answered 4 of 4 load-bearing questions favorably:
+
+   - `tier=code` ✅ — `CLAUDE_TIER` env var propagates into Code Desktop
+     scheduled session (load-bearing for OQ-1 ↔ OQ-3 unification + G5
+     gate; combines cleanly with Q3 stdin signal above)
+   - `bash=ok` ✅ — Code Desktop scheduled task has working bash on UNC
+     paths (NOT the broken `mcp__workspace__bash` Cowork uses; different
+     sandbox/layer)
+   - `inbox=1` + cross-task file visibility ✅ — Code Desktop reader saw
+     Cowork's Write-tool output (same UNC mount, both sides)
+   - Cowork `Write` tool works on UNC ✅ — K-1 (`mcp__workspace__bash`
+     UNC refusal) confirmed live in scheduled-task context but does NOT
+     gate Cowork's Write subsystem (separate path-resolution layer)
+
+   9 findings (F1–F9) captured durably in
+   `docs/research/private/phase3.5-smoke/findings.md` (gitignored
+   working note). F7 (**Auto mode requires Sonnet-tier model** — Mode
+   dropdown greys out "Auto" with label "Not available for the selected
+   model" when Haiku 4.5 is selected; becomes selectable on Sonnet 4.6)
+   is candidate for promotion to `docs/lessons/` (general Anthropic
+   Claude Code primitive behavior, not in any doc surveyed). Observation
+   continues 24-48h; daily check ~2026-05-26 +07 → GO / NO-GO decision.
+   GO opens PLAN-0010 (Phase 3.5 scheduled-task autonomy loop) + Step
+   1b contract design + Phase 3 execution. NO-GO pivots to MCP
+   `vero-bridge` roadmap (Phase 3 still proceeds; no scheduled-task
+   layer).
+
+**Prior — PLAN-0009 (Phase 3 — subagent topology) RATIFIED + Ready
 for execution + COMMITTED.** Cowork drafted under interim ADR-009 D1
 phasing; Cray adjudicated all 4 OQs (OQ-1…OQ-4) on 2026-05-25 (WebFetch
 for Explore; no new ADR — execute ADR-013 D1; subagent identity folds
