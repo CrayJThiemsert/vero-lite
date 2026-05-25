@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-25T04:30:00+07:00
+last_updated: 2026-05-25T13:00:00+07:00
 session: 10
-current_batch: PLAN-0008 Phase 2 FULLY CLOSED + AC-1 corroborated. **AC-1 evidence corpus = 2 independent live runs.** Run 1 (Accept edits / main, 2026-05-25 ~03:00): task `"ตรวจ ruff + mypy ทั้ง project, แก้, commit"`, ≥ 5 auto-continues, 1 Mode-side permission prompt (UNC path), 0 Telegram, terminal pause @ git push boundary. Run 2 (**Auto mode / worktree**, 2026-05-25 00:30–00:32): task `"สร้าง docs/CHANGELOG.md สรุป Phase 2 PRs #9-#17, commit บน branch ใหม่, ไม่ต้อง push"`, **≥ 4 auto-continues, 0 permission prompts** (Auto mode skipped them), 0 Telegram, terminal pause @ commit done (followed explicit "ไม่ต้อง push"). **Layer orthogonality confirmed**: Mode (PreToolUse) ↔ PLAN-0008 (Stop) operate independently; switching Mode = Auto eliminates per-tool prompts without changing Stop-continuation decisions. **PRs #18 + #19 MERGED** (`3c93781` + `d33b9d8`) — main fully clean, Phase 2 audited + project-wide mypy clean.
+current_batch: **PLAN-0009 (Phase 3 — subagent topology) RATIFIED + Ready for execution + COMMITTED** on `feat/plan0009-subagent-topology` (`d10073e`). Cowork drafted under interim ADR-009 D1 phasing; Cray adjudicated all 4 OQs (OQ-1…OQ-4) 2026-05-25 (WebFetch for Explore; no new ADR — execute ADR-013 D1; subagent identity folds with ADR-013 OQ-3 in Step 1; PLAN status vocabulary). Cowork → Code dispatch handoff at `.claude/handoffs/session-10/2026-05-25-1240-cowork-plan0009-review-dispatch.md` `validate_handoff.py` clean (K-1 / ADR-009 D3 substitute — 9 fields, actor=cowork / phase=dispatch / status=READY / suffix=dispatch). Code R2/fact-pack review clean (9 citations). Status flipped Draft → Ready for execution in commit. **2 reconciliation findings folded into project memory:** (1) `.claude/` readability — K-2 is write-block NOT read-block (research-note §6); OQ-D load-bearing forcing fact remains K-1 (Cowork can't run `validate_handoff.py`), substantive deferral stands. (2) Working-tree divergence — git worktree sees neither uncommitted new files nor gitignored paths (research-note §6.1, reproduced live this session); not K-1/K-2 but checkout-resolution mismatch; design implication for any Phase 3.5 producer/consumer loop. Phase 3 execution gated on PR merge. **HOLD Phase 3.5** (research-note §7.5 local scheduled-task poller option SURFACED but not decided).
 current_actor: code
 blocked_on: nothing
-next_action: merge this AC-1 corroboration amendment (PR #20) → **PLAN-0009 (Phase 3 — subagent topology, ADR-013 D1 phased end-state)** drafting per next Cray cadence
-head_commit: d33b9d8
-recent_commits: [d33b9d8, 16ef098, 3c93781, 8fef3a5, 79fe373, b3657d5, 9100e65, d870d76, 3d4f98b, 472a91e]
+next_action: push `feat/plan0009-subagent-topology` + open PR for PLAN-0009 → Phase 3 execution begins after merge (Step 1 — subagent contract design + state-schema touch folding ADR-013 OQ-3 + L3 reset + worktree path normalization). Phase 3.5 remains HELD pending Cray adjudication.
+head_commit: d10073e
+recent_commits: [d10073e, c1ce7a2, 8428fa7, 6dc808c, d33b9d8, 16ef098, 3c93781, 8fef3a5, 79fe373, b3657d5]
 ---
 
 # vero-lite — Project Status
@@ -18,11 +18,89 @@ recent_commits: [d33b9d8, 16ef098, 3c93781, 8fef3a5, 79fe373, b3657d5, 9100e65, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0008 Phase 2 CORROBORATED via 2 independent
-AC-1 live runs.** Phase 2 was already AUDITED + closed (Step 8 + AC-1
-verified amendment PR #19 merged); a follow-on Auto mode run gives a
-second independent data point that strengthens AC-1 evidence + adds
-layer-orthogonality confirmation:
+**Session 10 — PLAN-0009 (Phase 3 — subagent topology) RATIFIED + Ready
+for execution + COMMITTED.** Cowork drafted under interim ADR-009 D1
+phasing; Cray adjudicated all 4 OQs (OQ-1…OQ-4) on 2026-05-25 (WebFetch
+for Explore; no new ADR — execute ADR-013 D1; subagent identity folds
+with ADR-013 OQ-3 in Step 1; PLAN status vocabulary). Code fact-pack /
+R2 review clean across 9 citations (0009 next free; ADR-013 D1/OQ-1/OQ-3
+quoted verbatim; PLAN-0008 carry-overs accurate; PLAN template structure
+intact; Cray verification-rigor directive present); flipped Status Draft
+→ Ready for execution; committed `d10073e` on `feat/plan0009-subagent-topology`
+(single-doc, worktree-OFF per CLAUDE.md §11). Phase 3 execution gated on
+PR merge.
+
+### Cowork → Code dispatch handoff dog-fooded (K-1 / ADR-009 D3 substitute)
+
+`.claude/handoffs/session-10/2026-05-25-1240-cowork-plan0009-review-dispatch.md`
+`validate_handoff.py` clean (9 required fields; actor=cowork / phase=dispatch
+/ status=READY / suffix=dispatch; ISO-8601 +07:00; filename matches
+`_FILENAME_RE`). Cowork could not run the validator (K-1 UNC-bash refusal);
+Code ran post-receive — the standing D3 substitute. Gitignored working
+note per CLAUDE.md §11 (the `.claude/handoffs/.gitignore` `*` rule).
+
+### Two reconciliation findings folded into project memory
+
+1. **`.claude/` readability vs PLAN-0008 OQ-D (research-note §6).** Cowork
+   successfully Read `.claude/autonomy-triggers.md` this session,
+   contradicting PLAN-0008 OQ-D's "sandboxes cannot read
+   `.claude/handoffs/`" wording. Reconciled: **K-2 is a write block, NOT a
+   read block** (Reads are proxied through the Windows Desktop client).
+   The load-bearing forcing fact for OQ-D's deferral remains **K-1**
+   (Cowork cannot run `validate_handoff.py` or any bash via UNC), which
+   is unchanged. OQ-D's substantive deferral stands; only its prose
+   mildly conflates the two axes. **No archived-PLAN amendment** —
+   surfaced here for project memory + forward-looking guidance ("keep
+   any cross-tier inbox outside `.claude/`" still applies, as
+   belt-and-suspenders).
+2. **Working-tree divergence (research-note §6.1; reproduced live this
+   session).** A Code session running from a git worktree sees **neither**
+   uncommitted new files in main tree (`docs/plans/0009-subagent-topology.md`
+   initial draft) **nor** gitignored paths (`docs/research/private/`). Both
+   are present in `~/work/vero-lite` (main checkout). This is **not**
+   K-1/K-2 — it is a `git worktree` checkout-resolution mismatch
+   (worktrees check out tracked-only files; both uncommitted new files
+   and gitignored paths are filtered out by definition). **Design
+   implication** for any future producer/consumer loop (relevant to
+   Phase 3.5 if approved): inbox must be a tracked path consumed from
+   the main tree, OR committed before hand-off. Folds neatly with the
+   PLAN-0009 Step 1 worktree-path normalization carry-over.
+
+### CLAUDE_TIER / session-identity unification (PLAN-0009 OQ-1 ↔ ADR-013 OQ-3)
+
+Confirmed correctly folded in PLAN-0009 Step 1. One mechanism must
+distinguish **3 identity cases**:
+
+| Identity | G5 commit authority | Tool/path scope |
+|---|---|---|
+| Main interactive Code agent | ✅ may commit | full main-agent allowlist |
+| Plan / Explore subagent | ❌ must NOT commit | Plan: `docs/{adr,plans}/`; Explore: read-only + WebFetch |
+| Scheduled Local Code session (Phase 3.5 — HELD) | ✅ may commit (if approved) | same as main agent |
+
+Existing prose mechanism = `CLAUDE_TIER=code` env-var (this commit used
+it); ADR-013 D2 promotes it to deterministic via the G5 hook. PLAN-0009
+Step 1's design will wire all three identity cases through one
+mechanism — the load-bearing deliverable for AC-3 + AC-6.
+
+### Phase 3.5 — SURFACED, HELD
+
+Research-note §7.5 surfaces a "**Phase 3.5: local scheduled-task poller
+experiment**" — Cowork Local scheduled task + Code Local Desktop task
+over a repo inbox; appears to deliver most of the auto-handoff value at
+lower cost/risk than the MCP `vero-bridge` bridge. Operator constraints
+(machine-left-on acceptable, 1h cadence acceptable, avoid cloud)
+strongly favor this. **HOLD per Cray** — option SURFACED, not decided.
+PLAN-0009 Step 6 + Verification verification-rigor directive
+(exhaustive case-coverage matrix; "confident it works" not "tests
+pass"; mirrors PLAN-0007 G5 16-case precedent) explicitly binds Phase
+3.5 if ratified.
+
+### Prior — PLAN-0008 Phase 2 CORROBORATED via 2 independent AC-1 live runs
+
+Phase 2 was already AUDITED + closed (Step 8 + AC-1 verified amendment
+PR #19 merged); a follow-on Auto mode run gives a second independent
+data point that strengthens AC-1 evidence + adds layer-orthogonality
+confirmation:
 
 ### AC-1 evidence corpus — 2 independent runs
 
@@ -587,6 +665,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-25 | **PLAN-0009 (Phase 3 — subagent topology) RATIFIED + Ready for execution + COMMITTED** — Cowork drafted under interim ADR-009 D1 phasing; Cray adjudicated all 4 OQs (OQ-1…OQ-4) 2026-05-25 (WebFetch for Explore; no new ADR — execute ADR-013 D1; subagent identity folds with ADR-013 OQ-3 in Step 1; PLAN status vocabulary). Cowork → Code dispatch handoff at `.claude/handoffs/session-10/2026-05-25-1240-cowork-plan0009-review-dispatch.md` `validate_handoff.py` clean (K-1 / ADR-009 D3 substitute — 9 required fields, actor=cowork / phase=dispatch / status=READY / suffix=dispatch, ISO-8601 +07:00, filename matches `_FILENAME_RE`). Code fact-pack / R2 review clean across 9 citations (0009 next free; ADR-013 D1/OQ-1/OQ-3 quoted verbatim; PLAN-0008 4 carry-overs accurate; PLAN template structure intact; Cray verification-rigor directive present in Step 6 + Verification). Status flipped Draft → Ready for execution in commit `d10073e` on `feat/plan0009-subagent-topology` (single-doc, worktree-OFF per CLAUDE.md §11). **2 reconciliation findings folded** into Current Focus: (1) `.claude/` readability — K-2 is write-block NOT read-block (research-note §6); OQ-D load-bearing forcing fact remains K-1 (Cowork can't run `validate_handoff.py`), substantive deferral stands. (2) Working-tree divergence — git worktree sees neither uncommitted new files nor gitignored paths (research-note §6.1, reproduced live this session); not K-1/K-2 but checkout-resolution mismatch; design implication for Phase 3.5 if approved. **CLAUDE_TIER / session-identity unification** confirmed correctly folded in PLAN-0009 Step 1 (one mechanism, 3 identity cases: main Code may commit, Plan/Explore subagent must NOT, scheduled Local Code session may [Phase 3.5 HELD]). **Phase 3 execution gated on PR merge. HOLD Phase 3.5** (research-note §7.5 local scheduled-task poller option SURFACED, not decided) | `d10073e` / `docs/plans/0009-subagent-topology.md` + `.claude/handoffs/session-10/2026-05-25-1240-cowork-plan0009-review-dispatch.md` |
 | 2026-05-25 | **PLAN-0008 AC-1 CORROBORATED via Auto mode bonus run + layer orthogonality CONFIRMED in production** — A second AC-1 live verification run (2026-05-25 00:30–00:32) using **Mode = Auto** in a fresh worktree session: task `"สร้าง docs/CHANGELOG.md สรุป Phase 2 PRs #9-#17, commit บน branch ใหม่, ไม่ต้อง push"`, single Cray paste, no further input. Result: **≥ 4 auto-continues, 0 permission prompts (Auto mode skipped them all), 0 Telegram pings, terminal pause at commit done** (followed explicit "ไม่ต้อง push" instruction — no over-step). Commit `6dc808c` on branch `chore/phase2-changelog` (unpushed per instruction). **Layer orthogonality confirmed**: Mode (PreToolUse harness layer) ↔ PLAN-0008 (Stop classifier layer) operate independently — Auto mode eliminates per-tool prompts without changing Stop-continuation decisions. **Minor finding for PLAN-0009 carry-over**: `_loop_counter._normalize_file_path()` strips main-repo prefix but does not collapse worktree path suffix (L1 counter key showed `.claude/worktrees/busy-bose-eedc8f/docs/CHANGELOG.md` instead of `docs/CHANGELOG.md`). Non-blocking; per-session isolation works correctly. Both AC-1 evidence runs documented in Current Focus comparison table. Cost: ~$0.004 (4 classifier calls × ~$0.001) | PR #20 amendment / `docs/STATUS.md` |
 | 2026-05-25 | **PLAN-0008 AC-1 VERIFIED — Phase 2 fully audited** — Cray ran the live AC-1 task in a fresh Code session (task: *"ตรวจ ruff + mypy ทั้ง project, แก้ warning ถ้ามี, commit"*, single Cray paste, no further input). Agent self-continued **≥ 5 consecutive turns** without Cray paste (initial scan → file inspection → plan → branch creation → 5 file fixes → re-verify → tests → commit), then paused at the `git push` boundary asking permission — classifier correctly identified push as state change outside worktree per `feedback_state_change_outside_worktree.md` memory pattern. **0 Telegram pings** (no `cap_reached`, no L1–L4 false-positives). `stop-chain.json` `depth: 0` at end (consistent with terminal pause resetting chain). Side effect: the session surfaced 21 project-wide mypy errors in `tools/` + `tests/` (outside the pre-commit gate scope) and shipped a cleanup commit `8fef3a5` — PR #18 follows separately. Confirms classifier conservatism bias (spurious pauses > spurious proceeds, per OQ-B) works in production. Phase 2 all 4 ACs now VERIFIED; entry conditions for PLAN-0009 (Phase 3 — subagent topology) met | PR #19 amendment / `docs/STATUS.md` + closeout handoff §1 |
 | 2026-05-25 | **PLAN-0008 Phase 2 COMPLETE — Step 8 closeout MERGED** — PR #17 → `main` (`79fe373`), single `feat(claude)` commit `b3657d5` + merge. AC matrix at merge time: AC-2/AC-3/AC-4 VERIFIED; AC-1 deferred to live Cray-supervised observation (subsequent AC-1 row above closes this). Step 8 deliverables: +2 E2E tests (test_l3_traceback_inline_fires_on_threshold + test_l2_resets_on_pass_for_same_nodeid; 387 → 389 pass / 6 skip); closeout handoff at `.claude/handoffs/session-10/2026-05-25-0130-code-plan0008-phase2-closeout.md` (gitignored local working note per CLAUDE.md §11); `git mv docs/plans/0008-...md docs/plans/done/`; STATUS final bump. Phase 3 (subagent topology, ADR-013 D1 phased) entry conditions met. **Reflexive H1 hook fire on the closeout handoff frontmatter** (`phase: completion` initially invalid; corrected to `phase: closeout` per enum) — N=3 production-validation events through this session (L1 in PR #15, L1-attempt in PR #16, H1 in this PR) prove the deterministic + classifier-mediated layer is reachable from real agent activity | `79fe373` (PR #17) / `docs/plans/done/0008-harness-autonomy-layer-phase-2.md` |
