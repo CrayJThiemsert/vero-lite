@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-26T17:30:00+07:00
-session: 12
-current_batch: **Session 12 mega-batch — 13 PRs landed (#29–#40; #40 in flight). Step 5 split: 5a (composed G5) + 5b (SubagentStop notify) DONE; 5c (auto-handoff dispatch) deferred to session 13 per Cray routing (cognitive-load + Phase 2 invasiveness).** PR #38 (`f1d440e`) landed Step 5a — composed G5 4-case identity gate (28/28 tests, +12 new subagent cases); PR #39 (`a1f5a71`) landed Step 5b — `.claude/hooks/subagentstop_notify.py` (15/15 tests; frozenset allowlist; defense-in-depth filter; settings.json wiring). All Phase 3 + Phase 3.5 deliverables shipped EXCEPT Step 5c (auto-handoff) + Step 6 (verification matrices). This PR (closeout #2) updates STATUS + writes new session-12 → session-13 handoff.
+last_updated: 2026-05-26T19:45:00+07:00
+session: 13
+current_batch: **Session 13 — Phase 3 Step 5 COMPLETE (all 4 arms shipped). 5 PRs landed (#41 + #42 + this closeout #43; #38 + #39 from session 12 also contribute to the Step 5 completion).** Step 5c-1 (PR #41 `830c3a7`) landed Stop-side auto-handoff dispatch (3rd classifier decision `dispatch` + stop_continuation arm + autonomy-triggers D-rows; 30 new tests). Step 5c-2 (PR #42 `d4e4dc4`) landed PreToolUse classifier dispatch for G1/G2 (new `pretooluse_classifier_dispatch.py` + `_build_user_message` event-agnostic + on-disk Status read defeats spoofing; 34 new tests; PLAN-0008 carry-over closed). Phase 3 Step 5 (all 4 arms = 5a/5b/5c-1/5c-2) now COMPLETE. Only Step 6 (combined verification matrices + sign-off residual risks + Phase 3 + 3.5 closeout) remains.
 current_actor: code
-blocked_on: nothing — session 12 pausing here; session 13 resumes with Step 5c then Step 6
-next_action: **Session 13 path A (Code-tab, recommended first):** Step 5c — auto-handoff dispatch. Extend `.claude/hooks/stop_continuation.py` + `.claude/hooks/_sonnet_classifier.py` to classify "governance-drafting need" → spawn `plan-drafter` via Step 4 §1 R4 routing instead of pausing for Cray paste; also add the PreToolUse classifier dispatch arm for G1/G2 rows (PLAN-0008 carry-over). **Session 13 path B (after 5c):** Step 6 combined closeout — live AC verification matrices for PLAN-0009 (AC-3/AC-4/AC-5/AC-6 18-case bypass-immune G5) + PLAN-0010 (AC-Step1-2/3/4 lifecycle/mtime/retention with live producer evidence). **Still awaiting Cray review:** SD-Step1-1 through SD-Step1-4 (PLAN-0010 Step 1 sub-decisions); none blocking; Code-recommended defaults are working in production (PR #34 + #35 + live PR #38 + Cowork producer firing hourly).
-head_commit: a1f5a71
-recent_commits: [a1f5a71, 79b921d, f1d440e, 05a110a, b29d789, f8c401f, 5cbce8a, b2083f7, 02a0a25, a6baf05]
+blocked_on: nothing — session 13 pausing here; session 14 resumes with Step 6
+next_action: **Session 14 path (Code-tab, single path):** Step 6 — combined closeout. Two halves: (a) unit-test verification matrix fill-in for PLAN-0009 (AC-3/AC-4/AC-5/AC-6 — most rows already covered by PRs #30/#38/#39/#41/#42 unit tests; Step 6 maps each row to its test name + flags uncovered rows as residual risk per Cray verification-rigor directive); (b) live-AC verification matrix runs that need real classifier API calls + real subagent spawns (~6-10 scenarios; some Cray-driven to trigger the right event types). Also: PLAN-0010 verification matrix fill-in (parser + dispatcher PRs #34/#35 already covered; Step 6 adds live producer evidence — already accumulating, see `loop/processed/` 2 archived messages). Closeout output: STATUS update + final session-14 handoff + `git mv docs/plans/0009-*.md docs/plans/done/` archive step. **Still awaiting Cray review (non-blocking):** SD-Step1-1 through SD-Step1-4 (PLAN-0010 Step 1 sub-decisions). **Awaiting Cray Cowork-tab action (non-blocking):** Cowork producer wrote 19:05 fire to repo root instead of `loop/inbox/` (manual move done; 18:05 fire landed correctly — suggests intermittent producer config drift, possibly cwd-resolution-related). Fix requires Cowork-tab editor edit (Code Desktop cannot reach Cowork's task config per K-1/K-2).
+head_commit: fac9e81
+recent_commits: [fac9e81, d4e4dc4, 7e07da1, 830c3a7, 3776480, 23d6fed, a1f5a71, 79b921d, f1d440e, 05a110a]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,87 @@ recent_commits: [a1f5a71, 79b921d, f1d440e, 05a110a, b29d789, f8c401f, 5cbce8a, 
 ---
 
 ## Current Focus
+
+**Session 13 close — Phase 3 Step 5 COMPLETE (all 4 arms shipped).
+3 PRs landed (#41 + #42 + #43 closeout). 5c-1 (Stop-side auto-handoff
+dispatch) + 5c-2 (PreToolUse classifier dispatch for G1/G2) both
+durable on `main`. Only Step 6 (combined verification matrices +
+sign-off + Phase 3 + 3.5 closeout) remains before Phase 3 + Phase 3.5
+fully close.**
+
+### 2026-05-26 19:45 +07 — Step 5c-1 + 5c-2 shipped (Code-tab)
+
+After session 13 §0 env verify (clean main @ `3776480`; classifier
+API key file-source `sk-ant`; `CLAUDE_TIER=code`), opened Code-tab
+Step 5c work in two PRs:
+
+| PR | Commit | Change |
+|----|--------|--------|
+| **#41** | `830c3a7` | **Step 5c-1 — Stop-side auto-handoff dispatch.** Extended `_sonnet_classifier.py` with 3rd decision value `dispatch` (+ `DISPATCH_ALLOWED_SUBAGENTS={"plan-drafter"}` + `DISPATCH_ALLOWED_ARTIFACT_KINDS={"adr","plan"}` + `_validate_dispatch_metadata` strict schema). Extended `stop_continuation.py` with `_build_dispatch_instruction` helper that emits `block` with Step 4 §1 R4 routing + §5 budget reminder template + override clause. Added "Auto-handoff triggers" section with D1/D2 rows to `.claude/autonomy-triggers.md`. 30 new tests (16 classifier dispatch + 14 stop_continuation dispatch arm). |
+| **#42** | `d4e4dc4` | **Step 5c-2 — PreToolUse classifier dispatch for G1/G2 (PLAN-0008 carry-over closed).** New `.claude/hooks/pretooluse_classifier_dispatch.py` (~315 LOC) with cheap deterministic pre-filter (path pattern + on-disk Status read defeats spoofing) → invoke classifier only on hit → map proceed/pause/dispatch to allow/deny/deny-with-spawn-redirect. Also made `_build_user_message` event-agnostic (was hardcoded "Stop event"). 34 new tests (15 pre-filter unit + 16 in-process decision mapping + 4 e2e subprocess). |
+
+### Phase 3 Step 5 sub-step ledger (now COMPLETE)
+
+| Sub-step | PR | Commit | Status |
+|---|---|---|---|
+| 5a — composed G5 4-case identity gate | [#38](https://github.com/CrayJThiemsert/vero-lite/pull/38) | `f1d440e` | ✅ session 12 |
+| 5b — SubagentStop Telegram notify | [#39](https://github.com/CrayJThiemsert/vero-lite/pull/39) | `79b921d` | ✅ session 12 |
+| 5c-1 — Stop-side auto-handoff dispatch | [#41](https://github.com/CrayJThiemsert/vero-lite/pull/41) | `830c3a7` | ✅ session 13 |
+| 5c-2 — PreToolUse classifier dispatch (G1/G2) | [#42](https://github.com/CrayJThiemsert/vero-lite/pull/42) | `d4e4dc4` | ✅ session 13 |
+
+**Cumulative impact:** ~1.9k LOC + 64 new tests across 4 PRs covering
+the entire Step 5 surface. Phase 2 + Phase 3 classifier surfaces now
+unified (3-decision contract `proceed | pause | dispatch` used by both
+Stop hook + PreToolUse hook). Phase 1 deterministic G5 preserved +
+extended (composed 4-case identity). SubagentStop wired to Telegram
+for AC-5 in-harness arm.
+
+### Deferred to session 14 — Step 6 (combined closeout)
+
+**Half (a) — unit-test verification matrix fill-in (Code-driven):**
+- PLAN-0009 §Step 1b §8 — 30-cell matrix (AC-1/2/3/4/5/6 × happy/boundary/fail-closed/adversarial/concurrency). Most rows already have unit tests in PRs #30 (`plan-drafter` H2) + #38 (composed G5) + #39 (SubagentStop notify) + #41 (Stop dispatch arm) + #42 (PreToolUse dispatch arm). Step 6 maps each row to its specific test name + flags any uncovered row as residual risk per Cray verification-rigor directive ("we are confident it does what we intend").
+- PLAN-0010 §Step 1 §8 — 20-cell matrix. PRs #34 (parser) + #35 (dispatcher) cover most rows. Step 6 adds live producer evidence (already accumulating: `loop/processed/` has 2 archived messages from session 13 fires).
+
+**Half (b) — live AC verification matrix (some Cray-driven):**
+- Real classifier API call on a Stop event matching D1/D2 → spawn `plan-drafter` end-to-end → draft → Telegram fires (SubagentStop) → main agent commits via PR (AC-5 full chain)
+- Real classifier API call on a PreToolUse Edit of an Accepted ADR → deny with G1 citation (AC-3 negative; PreToolUse arm of 5c-2)
+- Real classifier API call on a PreToolUse Write of fresh PLAN-NNNN → deny with G2 + dispatch redirect (AC-3 + AC-5)
+- bypassPermissions × subagent commit attempt → still denied (AC-6 negative)
+- 18-case bypass-immune G5 matrix re-run with subagent rows (AC-6)
+
+**Closeout output:** STATUS update + final session-14 handoff +
+`git mv docs/plans/0009-*.md docs/plans/done/` archive step (Phase 3
++ Phase 3.5 jointly close once both verification matrices sign off).
+
+### Awaiting Cray Cowork-tab action (non-blocking)
+
+During session 13, the Cowork producer (`phase35-smoke-cowork-heartbeat`)
+fired twice:
+
+| Fire time | Filename | Landed where | Status |
+|---|---|---|---|
+| ~18:05 +07 | `cowork-smoke-heartbeat-20260526T070000Z.msg.md` | `loop/inbox/` ✓ | dispatched + archived |
+| ~19:05 +07 | `cowork-smoke-heartbeat-20260526T120000Z.msg.md` | **repo root** ✗ | manually moved to inbox; idempotent-skip on dispatch (matching prior archive) |
+
+The 18:05 fire landed correctly; the 19:05 fire landed at repo root.
+Pattern suggests intermittent producer config drift, possibly
+cwd-resolution-related. The fix is a Cowork-tab editor edit to the
+producer prompt — Code Desktop cannot reach Cowork's task config per
+K-1/K-2 boundary. Surfaced for Cray review; non-blocking (dispatcher
++ manual move both handled the recovery).
+
+### Session-13 → session-14 handoff document
+
+Full handoff at
+[`.claude/handoffs/session-13/2026-05-26-1945-code-session14-kickoff.md`](.claude/handoffs/session-13/2026-05-26-1945-code-session14-kickoff.md)
+(gitignored local working note per CLAUDE.md §11). Covers §0 env verify,
+§1 state of main, §2 complete/queued, §3 Step 6 plan (half a + half b),
+§4 operational notes, §5 deferred items (incl Cowork producer path bug),
+§6 first-30-min plan, §7 reference files, §8 predecessor handoff trail.
+
+---
+
+### Prior — Session 12 mega-batch close (demoted for archeology)
 
 **Session 12 mega-batch close — 13 PRs landed (#29–#40; #40 in flight).
 Phase 3 Steps 2/3/4 + PLAN-0010 Steps 1+2+3 all DONE; PLAN-0010 cycle
