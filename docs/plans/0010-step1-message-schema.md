@@ -276,12 +276,76 @@ Mirrors PLAN-0009 Step 1b §8 + PLAN-0010 §Verification. Per the binding direct
 | **AC-Step1-3 mtime ordering** | 3 messages with mtimes 1s/2s/3s → processed in 1→2→3 order | Two messages with identical mtime_ns → tiebreak by filename lexicographic | Filesystem with no mtime support (FAT) → consumer refuses to start (Step 3 mount-check) | Producer fakes mtime (touch -t) → §2 still authoritative (mtime is filesystem-owned) | Producer writes during consumer scan → next scan picks it up (no missed-message hazard) |
 | **AC-Step1-4 retention** | 30-day-old entries pruned; <30-day kept | Exactly-30-day entries pruned (boundary inclusive); N=200 floor preserved | Disk full mid-prune → consumer recovers next run; bad mtime stat → skip (don't crash) | Symlink in processed/ → resolved, not followed (Step 3 implementation detail) | Prune during inbox processing → no race (different directories) |
 
+### §8.1 — Test mapping (Step 6 Phase 1, session 14)
+
+For each (AC, case) coordinate the matrix above defines, this section maps to the
+existing unit test(s) that cover it. Legend:
+
+- **`tests/...`** — concrete unit test path (one or more `pytest` IDs)
+- **(L)** — verifiable only via Phase 2 live AC (live producer fire across a clock-cycle, real cross-process consumer race); primitive is not unit-testable
+- **(RR)** — uncovered cell, flagged as residual risk for sign-off
+
+#### AC-Step1-1 schema parse
+- **Happy** — well-formed parses cleanly: [`tests/loop/test_schema.py`](../../tests/loop/test_schema.py) — `test_minimal_well_formed_parses`, `test_all_message_types_parse`, `test_all_canonical_actions_parse`
+- **Boundary** — optional fields all-absent + all-present: `test_minimal_well_formed_parses` (absent), `test_all_optional_fields_present` (present), `test_subject_exactly_120_chars_clean`, `test_action_requested_with_backticks_stripped`
+- **Fail-closed** — missing required / `schema_version != 1` / unknown enum / missing body section / malformed time:
+  - Required-field rejection: `test_missing_producer_id_rejected`, `test_time_authority_missing_rejected`, `test_missing_body_subject_rejected`, `test_missing_body_action_rejected`, `test_missing_frontmatter_block_rejected`
+  - Schema-version rejection (Step 1 §3 binding fail-closed): `test_schema_version_zero_rejected`, `test_schema_version_two_rejected`
+  - Enum rejection: `test_unknown_message_type_rejected`, `test_time_authority_wrong_literal_rejected`
+  - Time-format rejection: `test_claimed_time_without_timezone_rejected`, `test_claimed_time_malformed_rejected`, `test_expires_after_without_timezone_rejected`
+  - Cross-check: `test_producer_id_mismatch_with_filename_rejected` (defends against post-write filename forgery)
+- **Adversarial** — extra unknown keys / oversized subject / free-form action / section ordering / `.gitkeep`-shadow:
+  - Forward-compat: `test_extra_frontmatter_keys_warn_only`
+  - Lenient: `test_oversized_subject_warns_not_errors`, `test_action_requested_free_form_accepted`
+  - Section ordering: `test_section_ordering_insensitive` — **NOTE spec drift** (see residual risk #5 below)
+  - Filename grammar (`.gitkeep` shadow defense, residual #4 from current §): `test_filename_gitkeep_does_not_parse_as_message`, `test_filename_gitkeep_with_msg_md_suffix_does_not_parse`, `test_filename_short_producer_id_rejected`, `test_filename_uppercase_producer_rejected`, `test_filename_underscore_in_producer_rejected`, `test_filename_malformed_nonce_rejected`, `test_filename_wrong_extension_rejected`, `test_filename_rand_wrong_charset_rejected`, `test_filename_rand_wrong_length_rejected`
+- **Concurrency** — N/A per spec (parser is a pure function); no test required
+
+#### AC-Step1-2 lifecycle
+- **Happy** — `inbox/<msg>` → `processed/<msg>` in a single consumer run: [`tests/loop/test_dispatcher.py::test_happy_message_archived`](../../tests/loop/test_dispatcher.py)
+- **Boundary** — empty inbox → no-op; single-message → process exactly once; recover-after-flake clears state: `test_empty_inbox_noop`, `test_happy_message_archived`, `test_recover_after_partial_failures_clears_state`
+- **Fail-closed** — crash mid-mv (idempotent skip), pre-existing processed copy, parse failure, expired, dispatch failure, poison threshold:
+  - Idempotency: `test_idempotent_skips_when_processed_exists`
+  - Parse-failure sibling log: `test_parse_failure_archives_with_sibling_log`
+  - Expired sibling log: `test_expired_message_archives_with_sibling_log` (plus `test_not_yet_expired_dispatches_normally` as negative)
+  - Dispatch failure left in inbox: `test_dispatch_failure_leaves_in_inbox_first_time`
+  - Poison-threshold archive + alert (PLAN-0008 L1–L4 spirit): `test_poison_threshold_archives_and_alerts`
+  - Same-fs invariant: `test_run_once_aborts_when_same_fs_check_fails`, `test_cli_aborts_when_same_fs_check_fails`, `test_same_filesystem_true_when_both_under_tmp`, `test_same_filesystem_false_when_inbox_missing`
+  - Failure-state persistence: `test_failure_state_load_missing_returns_empty`, `test_failure_state_load_corrupt_returns_empty`, `test_failure_state_roundtrip`, `test_failure_state_clear`
+- **Adversarial** — producer rewrites same filename twice (§2 rand suffix collision avoidance) → **(RR)** producer-side concern; consumer trusts filename uniqueness. Mitigated by producer prompt, not consumer code. Residual risk #2 below already names this.
+- **Concurrency** — two consumers on same inbox, atomic-mv wins → **(RR)** structurally cross-process; no unit test exercises two simultaneous dispatcher processes. Single-process atomic-mv invariant verified above; cross-process race is a Step 3 documented assumption that POSIX `rename(2)` is atomic within the same FS.
+
+#### AC-Step1-3 mtime ordering
+- **Happy** — 3 messages mtime 1s/2s/3s → processed in order: [`tests/loop/test_dispatcher.py::test_mtime_order_three_messages`](../../tests/loop/test_dispatcher.py)
+- **Boundary** — identical mtime, tiebreak by filename lex: `test_mtime_tiebreak_by_filename_lex`; plus inbox scanner skips non-`*.msg.md`: `test_scan_inbox_skips_non_msg_md`, `test_scan_inbox_missing_dir_returns_empty`, `test_iter_inbox_filenames_helper`
+- **Fail-closed** — FS without mtime support → consumer refuses to start: the *spec* says mount-support check; the *implementation* enforces **same-filesystem** check (stronger). Same-fs tests already cited under AC-Step1-2 fail-closed. Pure mtime-FS check **(RR)** — no FAT-mount unit test (rare in dev/prod environments).
+- **Adversarial** — producer fakes mtime via `touch -t`: **(RR)** mtime is filesystem-owned per spec §2; the consumer trusts FS-reported mtime regardless of producer fakery. No unit test exercises this (it would require post-hoc `os.utime` after consumer scan window — which the mtime-ordering tests do exercise, indirectly establishing trust in `os.utime`-set mtimes).
+- **Concurrency** — producer writes during consumer scan → next scan picks it up: **(RR)** partial coverage via `test_scan_inbox_skips_non_msg_md` (sentinel handling). Full cross-process race is **(L)** in Phase 2; cheap to verify with a live producer fire mid-`run_once`.
+
+#### AC-Step1-4 retention
+- **Happy** — 30-day-old pruned; <30-day kept: [`tests/loop/test_dispatcher.py`](../../tests/loop/test_dispatcher.py) — `test_retention_no_op_when_all_fresh`, `test_retention_prunes_old_entries_by_age`
+- **Boundary** — N=200 floor preserved even when over-age; integrated into `run_once`: `test_retention_floor_preserves_recent`, `test_retention_integrated_into_run_once`; constants surface: `test_defaults_are_sensible`; size-driven prune: `test_retention_size_threshold_prunes_oldest`
+- **Fail-closed** — disk full mid-prune → recover next run; bad mtime stat → skip; missing dir → no-op: `test_retention_missing_dir_no_op` covers missing-dir; disk-full and bad-stat **(RR)** — not unit-tested (would require fault injection); the implementation uses defensive `try/except` per Step 1 §6.
+- **Adversarial** — symlink in `processed/` → resolved, not followed: **(RR)** implementation detail per Step 1 §8 — not unit-tested; rare/improbable in practice (producer doesn't create symlinks).
+- **Concurrency** — prune during inbox processing: `test_retention_integrated_into_run_once` (single-process integration); cross-process **(L)** in Phase 2
+
+#### Auxiliary tests (regression guards, not AC-row-mapped)
+- DispatchResult enum surface: `test_dispatch_result_string_values`
+- Scan-cycle summary line: `test_scan_cycle_summary_log_line`, `test_scan_cycle_summary_no_prune_omits_freed`
+- Stderr alert JSON envelope: `test_stderr_alert_emits_json`
+- CLI smoke: `test_cli_with_empty_inbox_exits_zero`
+- ValidationError surface: `test_validation_error_render`, `test_validation_error_warning_severity`
+- parse_message_file roundtrip: `test_parse_message_file_missing_file_returns_error`, `test_parse_message_file_roundtrip`
+
 ### Residual risks (named for sign-off)
 
 1. **Atomic-mv assumption** — POSIX guarantees atomic `rename(2)` only within the same filesystem. If `loop/inbox/` and `loop/processed/` ever land on different mounts, the lifecycle invariant breaks. Step 3 must include a same-fs check at consumer startup; failure to verify aborts.
 2. **Filename-keyed idempotency** — content changes that re-use a filename (producer bug) would be silently skipped by the `processed/<name>` check. Mitigated by §2 `mtime-nonce` (collisions across same-second require explicit `<rand>` suffix). Residual: a producer with a genuinely buggy filename generator could still mask updates.
 3. **Schema-version rejection is fail-closed** — a v2 producer ahead of a v1 consumer drops messages silently into `processed/` with a warning. Operator must monitor consumer logs to notice. Mitigation: Step 3 emits a `loop_drop_count` metric per scan; observability dashboard (future) alerts on non-zero.
-4. **`.gitkeep` sentinel collision** — a future producer accidentally writing `loop/inbox/.gitkeep.msg.md` would shadow the sentinel. Mitigated by the `^[a-z]` producer-id constraint (`.` is not lowercase letter), but worth a Step 3 unit test that names `.gitkeep` does NOT parse as a valid filename.
+4. **`.gitkeep` sentinel collision** — a future producer accidentally writing `loop/inbox/.gitkeep.msg.md` would shadow the sentinel. Mitigated by the `^[a-z]` producer-id constraint (`.` is not lowercase letter), but worth a Step 3 unit test that names `.gitkeep` does NOT parse as a valid filename. **Verified by `test_filename_gitkeep_does_not_parse_as_message` + `test_filename_gitkeep_with_msg_md_suffix_does_not_parse` (Step 6 Phase 1, session 14).**
+5. **Spec drift — body section ordering** (new in Step 6 Phase 1) — Step 1 §4 says "body section ordering swapped → reject (consumers split-zip)" but the parser implementation is order-INsensitive (`test_section_ordering_insensitive` confirms). The order-insensitive parser is **strictly more robust** than the spec's pessimistic case; this is a *documented spec drift, not a correctness bug*. Recommendation: update §4 to declare the parser order-insensitive on next plan touch. Cray adjudicates at PR review.
+6. **Producer-side filename-collision race not unit-testable from consumer side** (new in Step 6 Phase 1) — AC-Step1-2 Adversarial cell ("producer rewrites same filename twice"). The consumer trusts filename uniqueness; the §2 `mtime-nonce` + `<rand>` suffix discipline is the producer prompt's responsibility. No consumer unit test verifies producer-side collision avoidance. Sign-off must name this division of responsibility explicitly.
+7. **Cross-process race coverage** (new in Step 6 Phase 1) — AC-Step1-2 Concurrency, AC-Step1-3 Concurrency, AC-Step1-4 Concurrency: all rely on single-process atomic-`rename(2)` + same-fs invariant. No unit test exercises two simultaneous dispatcher processes. POSIX guarantees the atomic-mv property, but a documented test-coverage gap. Phase 2 live AC can verify by firing a manual `python -m tools.loop.dispatcher` mid-Cowork-producer write.
 
 ## §9 — Deferred to Step 2/3 execution
 
