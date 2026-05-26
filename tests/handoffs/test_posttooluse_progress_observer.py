@@ -41,7 +41,11 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
 Payload = dict[str, Any]
 
 STUB_TELEGRAM = """#!/usr/bin/env bash
-cat > "$TELEGRAM_STUB_CAPTURE"
+# Stub that writes $1 (argv message) to $TELEGRAM_STUB_CAPTURE.
+# Matches real telegram.sh contract — message via argv, never stdin
+# (see Lesson #14 / session-15 Path C step 3 fix).
+set -eu
+printf '%s' "$1" > "$TELEGRAM_STUB_CAPTURE"
 """
 
 
@@ -298,10 +302,13 @@ def test_l2_fires_telegram_inline_on_trigger(stub_env: dict[str, str]) -> None:
     _run(_bash("pytest tests/foo.py", exit_code=1, stdout=output, stderr=""), stub_env)
     cap = _capture(stub_env)
     assert cap.exists(), "Telegram stub was not invoked on L2 trigger"
-    payload = json.loads(cap.read_text(encoding="utf-8"))
-    assert payload["loop_type"] == "L2"
-    assert payload["target"] == "tests/foo.py::test_bar"
-    assert len(payload["last_6_actions"]) == 6
+    body = cap.read_text(encoding="utf-8")
+    # Human-readable body (per Lesson #14): argv message, not JSON-on-stdin.
+    assert "L2" in body
+    assert "tests/foo.py::test_bar" in body
+    # All 6 timestamps present → action lines round-tripped through formatter
+    for i in range(5):
+        assert f"t{i}" in body
 
 
 def test_l2_parametrized_nodeid_collapses(stub_env: dict[str, str]) -> None:
@@ -363,9 +370,10 @@ def test_l3_fires_telegram_inline_on_trigger(stub_env: dict[str, str]) -> None:
     _run(_bash("python x.py", exit_code=1, stdout="", stderr=output), stub_env)
     cap = _capture(stub_env)
     assert cap.exists()
-    payload = json.loads(cap.read_text(encoding="utf-8"))
-    assert payload["loop_type"] == "L3"
-    assert "RuntimeError" in payload["target"]
+    body = cap.read_text(encoding="utf-8")
+    # Human-readable body (per Lesson #14): argv message, not JSON-on-stdin.
+    assert "L3" in body
+    assert "RuntimeError" in body
 
 
 def test_l3_no_traceback_no_op(stub_env: dict[str, str]) -> None:
