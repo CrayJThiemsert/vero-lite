@@ -213,6 +213,16 @@ validates against.
   problem: the hook must distinguish *main Code agent* (may commit) from
   *Plan/Explore subagent* (must not). One mechanism serves both.
 
+> **Step 1b DONE 2026-05-26.** Design output:
+> [`docs/plans/0009-step1b-contract-design.md`](0009-step1b-contract-design.md).
+> Cray ratified 5 contract decisions (SD1b-1 … SD1b-5) in the session-11
+> thread; design covers the composed G5 identity gate (§1), custom subagent
+> names `explore-research` / `plan-drafter` (§2), per-subagent contracts
+> (§3/§4), hook architecture (§5), result-reduction contract (§6),
+> state-schema touch decision (§7 — omit), verification matrix (§8), and
+> the Step 2–6 consumption map (§9). Steps 2–6 of this PLAN consume
+> contracts defined in that file.
+
 ### Step 2 — Explore subagent (read-only)
 
 `.claude/agents/explore.*` (final path/format per Step 1 contract).
