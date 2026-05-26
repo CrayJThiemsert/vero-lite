@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-26T14:30:00+07:00
+last_updated: 2026-05-26T15:30:00+07:00
 session: 12
-current_batch: **Session 12 productive close — 3 PRs landed (#29/#30/#31); all 3 paths from session-11 kickoff shipped in one session.** PR #29 (`32adee3`) landed PLAN-0009 Phase 3 Step 2 — `.claude/agents/explore-research.md` (read-only research subagent; 144 lines; output schema encoded in prompt body per Step 1b §3+§6). PR #30 (`6af33d8`) landed PLAN-0009 Phase 3 Step 3 — `.claude/agents/plan-drafter.md` + new H2 hook `.claude/hooks/pretooluse_plan_subagent_write_deny.py` + 30/30-green test suite (writer subagent with subagent-scoped H2 PreToolUse wiring; **fail-CLOSED** discipline differs from C4 fail-OPEN — load-bearing for AC-3 + ADR-013 D2). PR #31 (`b952ad9`) landed PLAN-0010 Step 1 message schema + lifecycle + `loop/` directory skeleton (SD-3 resolved as `loop/` at repo top; 4 sub-decisions SD-Step1-1…4 surfaced for Cray PR review; 308-line design doc). Closeout chore PR (this) adds Lesson #11 (`gh pr` body-file backtick trap) + CLAUDE.md §7 amendment.
+current_batch: **Session 12 productive close — 7 PRs landed (#29–#35) + closeout (#36 this PR).** Three Cray-directed sequential paths shipped: (a) PR #29/#30/#31 = session-11 kickoff trio (explore-research / plan-drafter+H2 / PLAN-0010 Step 1 schema); (b) PR #33 = PLAN-0009 Phase 3 Step 4 dispatch protocol (doc-only, 239 lines, AC-4 6-case routing matrix); (c) PR #34+#35 = PLAN-0010 Step 3 Code consumer (parser 38 tests + dispatcher 34 tests, 72/72 green, ~1k+1.2k LOC). Plus chore #32 = Lesson #11 (gh pr body-file backtick trap) + CLAUDE.md §7 amendment. This closeout PR updates STATUS + creates session-12 → session-13 handoff.
 current_actor: code
-blocked_on: nothing
-next_action: **Phase 3 mid-flight — Step 4 next.** With Step 2 (explore-research) + Step 3 (plan-drafter + H2) merged, **Step 4 (dispatch protocol)** is now unblocked: document the spawn-vs-inline decision per Step 1b §9, context-propagation discipline, result-reduction, and boundary enforcement at spawn. Step 5 (G5 extension + SubagentStop + auto-handoff) requires Step 4 first; Step 6 (tests + live AC + closeout) requires Steps 4+5. **Independently:** PLAN-0010 Step 2 (Cowork-side producer) + Step 3 (Code-side consumer) consume the now-merged §1 directory layout + §2 filename pattern + §3 frontmatter + §4 body schema; they can ship in parallel with Phase 3 Step 4. **Awaiting Cray:** SD-Step1-1 (nonce format) / SD-Step1-2 (`expires_after` default) / SD-Step1-3 (retention defaults) / SD-Step1-4 (parse-error siblings) — any flip is a follow-up `chore(loop):` PR before PLAN-0010 Step 2 starts.
-head_commit: b952ad9
-recent_commits: [b952ad9, 132036d, 6af33d8, 815477a, 32adee3, 3d492f6, 2528480, 3720e8c, 06f8296, a40bc17]
+blocked_on: cowork-side-only — PLAN-0010 Step 2 (Cowork producer) is Cray-tab work; Code-tab cannot advance further on the PLAN-0010 arc until producer messages exist to dispatch against
+next_action: **Cray-side:** open Cowork tab + author the Step 2 producer scheduled-task per `docs/plans/0010-phase3-5-scheduled-task-autonomy-loop.md` §Step 2 (Haiku 4.5 + Act-without-asking + Hourly; producer-id `cowork-smoke-heartbeat`; resume Paused smoke scheduled tasks). Optional pre-flight: resolve Lesson #9 OQ-9.2 by toggling Cowork model Haiku ↔ Sonnet to confirm "Act without asking" stays available on Haiku (smoke evidence ~85% reliability already corroborates). **Code-tab session 13:** PLAN-0009 Phase 3 Step 5 (G5 composed-check extension + `SubagentStop` notification wiring + auto-handoff Code→plan-drafter) per Step 1b §1 + §5 spec + Step 4 routing. Then Step 6 (verification matrix live runs) closes both arcs. **Still awaiting Cray review:** SD-Step1-1 nonce format / SD-Step1-2 `expires_after` default / SD-Step1-3 retention defaults / SD-Step1-4 parse-error siblings — none blocking; Code-recommended defaults already shipped via the parser + dispatcher.
+head_commit: a6baf05
+recent_commits: [a6baf05, 98f7fda, b8df44b, f88bae0, 34cb50d, 76d8f37, 48c9df9, 92777fd, b952ad9, 132036d]
 ---
 
 # vero-lite — Project Status
@@ -18,62 +18,73 @@ recent_commits: [b952ad9, 132036d, 6af33d8, 815477a, 32adee3, 3d492f6, 2528480, 
 
 ## Current Focus
 
-**Session 12 productive close (2026-05-26) — 3 PRs landed (#29 / #30 /
-#31); all 3 paths from session-11 kickoff shipped in one session.
-Phase 3 Step 2 + Step 3 DONE; PLAN-0010 Step 1 DONE; Lesson #11
-captured; CLAUDE.md §7 amended.**
+**Session 12 mega-batch close (2026-05-26) — 8 PRs landed (#29–#36);
+both Phase 3 (mid-flight Steps 2/3/4 DONE) and PLAN-0010 (Steps 1
++ 3 Code-side DONE) advanced significantly in one session per Cray's
+sequential-#1→#5 directive. Cowork-side Step 2 of PLAN-0010 is the
+only remaining unblock for live AC verification.**
 
-Three PRs merged to main this session, in path order (1 → 2 → 3) per
-Cray's directive to ship sequentially while capturing any operational
-findings along the way:
+Eight PRs merged to main this session, in execution order. PRs #29–#32
+were the session-11 kickoff trio + closeout; PRs #33–#36 were the
+sequential-#1→#5 follow-on directive (#1 Phase 3 Step 4, #2 PLAN-0010
+Step 3 split as #34+#35, and this closeout).
+
+### Session-11-kickoff trio + Lesson capture (PRs #29–#32)
 
 | PR | Commit | Change |
 |----|--------|--------|
-| **#29** | `32adee3` | **PLAN-0009 Phase 3 Step 2** — `.claude/agents/explore-research.md` (144 lines). First custom subagent in this project. Read-only (`tools=[Read, Grep, Glob, WebFetch]`, `disallowedTools=[Write, Edit, Bash, Agent]`, `model=inherit`, `maxTurns=50`). System prompt body encodes the output schema (bounded summary + file/line citations + URL list + residual gaps) because the Anthropic primitive does not enforce final-message size caps (Step 1b §6 residual risk). No new hooks; composed G5 extension is Step 5's deliverable. |
-| **#30** | `6af33d8` | **PLAN-0009 Phase 3 Step 3** — `.claude/agents/plan-drafter.md` (writer subagent, `Write/Edit` allowed only under `docs/{adr,plans}/*.md`) + `.claude/hooks/pretooluse_plan_subagent_write_deny.py` (new H2 hook) + `tests/handoffs/test_pretooluse_plan_subagent_write_deny.py` (30/30 green). H2 is **fail-CLOSED** on malformed input — differs from the C4 sibling's fail-OPEN; this is load-bearing for AC-3 + ADR-013 D2. Subagent-scoped hook wiring per Step 1a Q5 (cleaner than project-level `agent_type` matcher). Plan-drafter system prompt encodes author≠reviewer disclosure stamp + surfaced-decisions discipline + no-commit / no-shell / no-fetch / no-nested-spawn prohibitions. |
-| **#31** | `b952ad9` | **PLAN-0010 Step 1** — `docs/plans/0010-step1-message-schema.md` (308-line design doc, mirrors PLAN-0009 Step 1b's design-only PR pattern) + `loop/inbox/.gitkeep` + `loop/processed/.gitkeep` + `.gitignore` entries (sentinel-tracked dirs; `*.msg.md` ignored). **SD-3 resolved** as `loop/` at repo top (Code-picked at execution per Cray ratification 2026-05-26; rationale: mirrors `.claude/handoffs/` (data) ↔ `tools/handoffs/` (code) split). 4 sub-decisions surfaced for Cray (SD-Step1-1 nonce format / SD-Step1-2 `expires_after` default / SD-Step1-3 retention defaults / SD-Step1-4 parse-error siblings). |
+| **#29** | `32adee3` | **PLAN-0009 Phase 3 Step 2** — `.claude/agents/explore-research.md` (144 lines). Read-only subagent (Read/Grep/Glob/WebFetch; Write/Edit/Bash/Agent denied). |
+| **#30** | `6af33d8` | **PLAN-0009 Phase 3 Step 3** — `plan-drafter` subagent + new H2 hook + 30/30 tests. H2 is **fail-CLOSED** (differs from C4 fail-OPEN; load-bearing for AC-3 + ADR-013 D2). |
+| **#31** | `b952ad9` | **PLAN-0010 Step 1** — 308-line design doc + `loop/` skeleton + `.gitignore` entries. SD-3 resolved as `loop/` at repo top. 4 sub-decisions (SD-Step1-1…4) surfaced for Cray. |
+| **#32** | `48c9df9` | **Closeout #1**: Lesson #11 (`gh pr` body-file backtick trap) + CLAUDE.md §7 "PR / issue / release bodies" amendment + STATUS update. |
 
-**Mid-session finding → Lesson #11 (this closeout PR captures it):**
-`gh pr create --body "$(cat /tmp/pr.md)"` corrupted PR #29's body —
-backticks in markdown inline code triggered command substitution inside
-the double-quoted shell arg, silently eviscerating every backtick
-segment. Recovery: `gh api --method PATCH /repos/.../pulls/29 -F
-body=@/tmp/pr.md`. Fix: use `gh pr create --body-file PATH` always
-(CLAUDE.md §7 amendment in this PR). Same class as Lesson #4 (WSL
-`bash -c` variable expansion) — different mechanism, same diagnostic
-shape ("shell ate your content between you and the destination tool").
+### Sequential-#1→#5 follow-on (PRs #33–#36)
 
-**Next paths now open (Cray picks priority next session):**
+| PR | Commit | Change |
+|----|--------|--------|
+| **#33** | `34cb50d` | **#1 = PLAN-0009 Phase 3 Step 4** — `docs/plans/0009-step4-dispatch-protocol.md` (239 lines). Spawn-vs-inline decision procedure + 6-case routing matrix (3 spawn + 3 inline, AC-4 ≥ 4-cases bar satisfied) + context-propagation discipline + caller-side result reduction (observability rule: flag > 4k token replies) + boundary-enforcement table + budget-reminder injection templates. Doc-only; mirrors Step 1b pattern. |
+| **#34** | `b8df44b` | **#2a = PLAN-0010 Step 3 parser** — `tools/loop/_schema.py` + `tools/loop/__init__.py` + 38/38 tests. Mirrors `tools/handoffs/_schema.py` discipline (stdlib YAML subset, dataclass-typed output). Fail-closed on schema_version!=1, time_authority!="mtime", unknown message_type, producer_id/filename mismatch. Section-ordering-insensitive parser (strictly more robust than Step 1 §4 hint). |
+| **#35** | `a6baf05` | **#2b = PLAN-0010 Step 3 dispatcher** — `tools/loop/dispatcher.py` + 34/34 tests. End-to-end consumer loop: scan → parse → dispatch → atomically archive → prune. Poison detection (default 3 consecutive failures → archive + alert + clear from inbox) is the dispatcher-local analog of PLAN-0008 L3/L4 (different state mechanism: dispatcher runs as standalone process tree, not in harness). Same-fs check at startup (Step 1 §8 residual risk #1). Telegram alert via existing `tools/notify/telegram.sh`; graceful no-op when env unset. CLI: `python -m tools.loop.dispatcher`. |
+| **#36** | (this PR) | **Closeout #2** = STATUS update + session-12 → session-13 handoff. |
 
-1. **Phase 3 Step 4 — dispatch protocol.** Unblocked by Steps 2+3
-   landing. Document spawn-vs-inline decision, context-propagation
-   discipline, result-reduction, boundary enforcement at spawn (Step 1b
-   §9 spec).
-2. **PLAN-0010 Step 2 — Cowork-side producer.** Unblocked by Step 1's
-   filename pattern + frontmatter schema + body schema. Independent of
-   Phase 3 (parallel-safe per SD-2 ratification).
-3. **PLAN-0010 Step 3 — Code-side consumer.** Unblocked by Step 1's
-   lifecycle + retention + idempotency rules. Implements
-   `tools/loop/_schema.py` parser + `tools/loop/dispatcher.py` poller +
-   PLAN-0008 L1–L4 loop-detect integration. Independent of Phase 3.
+### What is now usable end-to-end (Code-side)
 
-Phase 3 Step 5 (G5 extension + `SubagentStop` notification + auto-handoff)
-still requires Step 4 first; Step 6 (tests + live AC + closeout) still
-requires Steps 4+5.
+- `explore-research` + `plan-drafter` subagent files are on disk; `claude /agents` should list both after merge
+- H2 hook enforces `plan-drafter` write-path allowlist (30/30 tests)
+- Dispatch protocol is documented for the main Code agent to follow when interacting with either subagent
+- Consumer loop (`tools/loop/dispatcher.py`) is fully implemented + tested — it just needs a real producer feeding `loop/inbox/`
 
-**Awaiting Cray adjudication (PLAN-0010 Step 1 SDs):**
-SD-Step1-1 / SD-Step1-2 / SD-Step1-3 / SD-Step1-4. Any flip becomes a
-follow-up `chore(loop):` PR to `docs/plans/0010-step1-message-schema.md`
-before PLAN-0010 Step 2 starts. None are blocking — Step 2 can begin
-against the Code-recommended defaults if Cray prefers to defer the SDs.
+### What is NOT yet usable end-to-end
 
-**Smoke scheduled tasks remain Paused.** Same status as session 11
-closeout. PLAN-0010 Step 3 execution will resume them for live AC
-verification.
+- **PLAN-0010 Step 2 (Cowork producer)** — Cray-tab work; producer prompt + scheduled-task setup must happen in Cowork. Until producer messages exist, the dispatcher idles (and that idling is the AC-Step1-2 "empty inbox no-op" path, which already passes a unit test, but live evidence needs real producer fires).
+- **Phase 3 Step 5 (composed G5 + `SubagentStop` wiring)** — Code-tab work; extends `pretooluse_git_deny.py` for the 4-case identity gate (Step 1b §1) and wires `subagentstop_notify.py` for Cray Telegram alerts on `plan-drafter` completion (Step 1b §5). Until Step 5 lands, subagent commit-deny relies on `disallowedTools=[Bash]` only (sufficient because no Bash = no git reach, but G5 extension is the defense-in-depth deliverable).
+- **Phase 3 Step 6 + PLAN-0010 Step 6 verification** — both need Steps 2 + 5 first.
 
-**Next action:** Cray picks priority among Phase 3 Step 4, PLAN-0010
-Step 2, PLAN-0010 Step 3 (any order, any combination across sessions).
-No blockers.
+### Mid-session lesson captured
+
+**Lesson #11** (PR #32) — `gh pr create --body "$(cat /tmp/pr.md)"` corrupted PR #29's body via bash backtick command substitution; fix is `--body-file PATH`. CLAUDE.md §7 amended. From PR #30 onward all PRs used `--body-file` correctly.
+
+### Next path forward (cross-session)
+
+**Cray-side next (Cowork tab):** PLAN-0010 Step 2 producer setup.
+
+**Code-tab session 13 next:** Phase 3 Step 5 (G5 extension + `SubagentStop`) — does NOT block on Cowork; can ship in parallel with Cray's Step 2 work.
+
+**Combined Step 6 closeout (later):** runs once Step 2 + Step 5 both land — live-verify the AC matrices of both arcs against real producer messages + real subagent dispatches.
+
+### Awaiting Cray adjudication
+
+SD-Step1-1 / SD-Step1-2 / SD-Step1-3 / SD-Step1-4 (PLAN-0010 Step 1 sub-decisions). The parser + dispatcher were built against the Code-recommended defaults; any flip would be a small `chore(loop):` PR to `docs/plans/0010-step1-message-schema.md` + a corresponding adjustment if it touches behavior (only SD-Step1-1 nonce format would; the others are policy values).
+
+### Smoke scheduled tasks
+
+Still **Paused** (same status as session 11 closeout). PLAN-0010 Step 2 work in Cowork will resume the producer task; the consumer dispatcher then has live data.
+
+### Session-12 → session-13 handoff document
+
+Full handoff at [`.claude/handoffs/session-12/2026-05-26-1530-code-session13-kickoff.md`](.claude/handoffs/session-12/2026-05-26-1530-code-session13-kickoff.md).
+
+**Next action:** Cowork (Cray-side) + Code-tab session 13 (Step 5). Both are unblocked and parallel-safe.
 
 ---
 
