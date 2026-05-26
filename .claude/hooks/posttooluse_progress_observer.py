@@ -46,6 +46,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -73,6 +74,8 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
 
 DEFAULT_TELEGRAM_SCRIPT = REPO_ROOT / "tools" / "notify" / "telegram.sh"
 TELEGRAM_TIMEOUT_SEC = 5
+
+_FORWARDED_ENV = ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")
 
 # pytest "FAILED" / "PASSED" markers — covers both the short-summary section
 # ("FAILED tests/foo.py::test_bar - reason") and verbose mode line endings
@@ -118,28 +121,77 @@ def _telegram_script() -> Path:
     return DEFAULT_TELEGRAM_SCRIPT
 
 
+def _wsl_path(win_path: Path) -> str:
+    """Translate ``\\\\wsl.localhost\\<distro>\\...`` to a WSL path."""
+    s = str(win_path)
+    if not s.lower().startswith("\\\\wsl"):
+        return s.replace("\\", "/")
+    parts = s.split("\\")
+    try:
+        idx = next(i for i, p in enumerate(parts) if p.startswith("ubuntu") or p.lower() == "wsl$")
+    except StopIteration:
+        return s.replace("\\", "/")
+    return "/" + "/".join(parts[idx + 1 :])
+
+
+def _forwarded_env() -> dict[str, str]:
+    env = os.environ.copy()
+    if sys.platform == "win32":
+        wslenv = env.get("WSLENV", "")
+        existing = {item.split("/", 1)[0] for item in wslenv.split(":") if item}
+        additions = [f"{k}/u" for k in _FORWARDED_ENV if k not in existing]
+        if additions:
+            env["WSLENV"] = ":".join(filter(None, [wslenv, *additions]))
+    return env
+
+
+def _format_message(loop_type: LoopType, target: str, last_6_actions: list[dict[str, Any]]) -> str:
+    """Build the human-readable Telegram body from the Cray-E.4 payload contract.
+
+    Mirrors Step 2's formatter so both inline (L2/L3 here) and gated
+    (L1/L4 in Step 2) alerts present a consistent shape to Cray.
+    """
+    actions_block = (
+        "\n".join(
+            f"  {a.get('ts', '?')} {a.get('tool', '?')} {a.get('target', '?')[:60]}"
+            f"{(' [' + a['result'] + ']') if a.get('result') else ''}"
+            for a in last_6_actions
+        )
+        or "  (none)"
+    )
+    return (
+        f"[vero-lite/loop-detect] {loop_type.value} triggered\n"
+        f"target: {target}\n"
+        f"last 6 actions:\n{actions_block}\n"
+        f"Cray: pause + reassess — see .claude/autonomy-triggers.md row {loop_type.value}"
+    )
+
+
 def _ping_telegram(loop_type: LoopType, target: str, last_6_actions: list[dict[str, Any]]) -> None:
     """Fire Telegram alert with the Cray-E.4 payload contract.
 
     Graceful no-op if the script is missing or fails — observer never
-    blocks. Matches Step 2's ``_ping_telegram`` so the Telegram-stub
-    fixture in the test suite is reusable.
+    blocks. Cross-platform bridge mirrors Step 2's ``_ping_telegram`` so
+    the same test-stub idiom works for both hooks.
     """
     script = _telegram_script()
     if not script.exists():
         return
-    payload = json.dumps(
-        {
-            "loop_type": loop_type.value,
-            "target": target,
-            "last_6_actions": last_6_actions,
-        }
-    )
+    message = _format_message(loop_type, target, last_6_actions)
+
+    if sys.platform == "win32" and shutil.which("wsl.exe"):
+        wsl_script = _wsl_path(script)
+        cmd = ["wsl.exe", "--exec", "bash", wsl_script, message]
+    else:
+        cmd = ["bash", str(script), message]
+
     try:
-        # S603/S607 carry the same Phase 1 idiom justification as Step 2.
+        # S603: cmd elements come from hook-controlled script path
+        # (constant or env-override) + the formatted message; no shell
+        # interpolation. Same bridge idiom as notification_telegram.py.
         subprocess.run(  # noqa: S603
-            ["bash", str(script)],  # noqa: S607
-            input=payload,
+            cmd,
+            env=_forwarded_env(),
             text=True,
             capture_output=True,
             check=False,

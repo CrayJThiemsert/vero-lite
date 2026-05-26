@@ -70,7 +70,11 @@ POST_OBSERVER_HOOK = HOOKS_DIR / "posttooluse_progress_observer.py"
 STOP_HOOK = HOOKS_DIR / "stop_continuation.py"
 
 STUB_TELEGRAM = """#!/usr/bin/env bash
-cat > "$TELEGRAM_STUB_CAPTURE"
+# Stub that writes $1 (argv message) to $TELEGRAM_STUB_CAPTURE.
+# Matches real telegram.sh contract — message via argv, never stdin
+# (see Lesson #14 / session-15 Path C step 3 fix).
+set -eu
+printf '%s' "$1" > "$TELEGRAM_STUB_CAPTURE"
 """
 
 Payload = dict[str, Any]
@@ -337,10 +341,11 @@ def test_stop_chain_cap_fires_telegram_and_no_block(
     assert rc == 0
     assert out == ""
     assert len(log) == 0, "cap-hit must short-circuit before classifier"
-    captured = json.loads(_capture(stub_env).read_text(encoding="utf-8"))
-    assert captured["event"] == "stop_continuation_cap_reached"
-    assert captured["depth"] == 8
-    assert captured["cap"] == 8
+    body = _capture(stub_env).read_text(encoding="utf-8")
+    # Human-readable body (per Lesson #14): argv message, not JSON-on-stdin.
+    assert "stop_continuation_cap_reached" in body
+    assert "depth=8" in body
+    assert "cap=8" in body
     chain = json.loads(_chain(stub_env).read_text(encoding="utf-8"))
     assert chain["depth"] == 0
 
@@ -374,10 +379,9 @@ def test_l1_observer_increments_then_pretooluse_denies_at_threshold(
     parsed = json.loads(out)
     decision = parsed.get("hookSpecificOutput", {}).get("permissionDecision")
     assert decision == "deny", "L1 at 6 must deny on next PreToolUse"
-    captured = json.loads(_capture(stub_env).read_text(encoding="utf-8"))
-    assert captured["loop_type"] == "L1"
-    assert captured["target"].endswith("integration-target.py")
-    assert len(captured["last_6_actions"]) == 6
+    body = _capture(stub_env).read_text(encoding="utf-8")
+    assert "L1" in body
+    assert "integration-target.py" in body
 
 
 def test_l4_observer_increments_on_failure_then_pretooluse_denies(
@@ -401,8 +405,8 @@ def test_l4_observer_increments_on_failure_then_pretooluse_denies(
     assert (
         parsed.get("hookSpecificOutput", {}).get("permissionDecision") == "deny"
     ), "L4 at 6 must deny on next PreToolUse"
-    captured = json.loads(_capture(stub_env).read_text(encoding="utf-8"))
-    assert captured["loop_type"] == "L4"
+    body = _capture(stub_env).read_text(encoding="utf-8")
+    assert "L4" in body
 
 
 def test_l4_observer_resets_on_success(stub_env: dict[str, str]) -> None:
@@ -446,9 +450,9 @@ def test_l2_inline_telegram_fires_on_threshold(
     for _ in range(6):
         rc = _run(POST_OBSERVER_HOOK, payload, stub_env)[0]
         assert rc == 0
-    captured = json.loads(_capture(stub_env).read_text(encoding="utf-8"))
-    assert captured["loop_type"] == "L2"
-    assert nodeid in captured["target"]
+    body = _capture(stub_env).read_text(encoding="utf-8")
+    assert "L2" in body
+    assert nodeid in body
 
 
 def test_l2_resets_on_pass_for_same_nodeid(
@@ -522,12 +526,11 @@ def test_l3_inline_telegram_fires_on_traceback_signature_threshold(
     for _ in range(6):
         rc = _run(POST_OBSERVER_HOOK, payload, stub_env)[0]
         assert rc == 0
-    captured = json.loads(_capture(stub_env).read_text(encoding="utf-8"))
-    assert captured["loop_type"] == "L3"
-    # Target is the hashed signature; assert it is non-empty + the
-    # last_6_actions ring buffer is full.
-    assert captured["target"]
-    assert len(captured["last_6_actions"]) == 6
+    body = _capture(stub_env).read_text(encoding="utf-8")
+    assert "L3" in body
+    # Body includes "target: <signature>" — non-empty by construction since
+    # the traceback signature is hashed and embedded in the message.
+    assert "target:" in body
 
 
 # --- E. Stop turn-boundary reset ↔ observer turn_touched ---

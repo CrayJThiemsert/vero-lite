@@ -40,7 +40,11 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
 )
 
 STUB_TELEGRAM = """#!/usr/bin/env bash
-cat > "$TELEGRAM_STUB_CAPTURE"
+# Stub that writes $1 (argv message) to $TELEGRAM_STUB_CAPTURE.
+# Matches real telegram.sh contract — message via argv, never stdin
+# (see Lesson #14 / session-15 Path C step 3 fix).
+set -eu
+printf '%s' "$1" > "$TELEGRAM_STUB_CAPTURE"
 """
 
 
@@ -222,10 +226,11 @@ def test_cap_hit_pings_telegram_and_does_not_block(stub_env: dict[str, str]) -> 
 
     cap = _capture(stub_env)
     assert cap.exists(), "Telegram cap-reached payload not written"
-    payload = json.loads(cap.read_text(encoding="utf-8"))
-    assert payload["event"] == "stop_continuation_cap_reached"
-    assert payload["depth"] == 8
-    assert payload["cap"] == 8
+    body = cap.read_text(encoding="utf-8")
+    # Human-readable body (per Lesson #14): argv message, not JSON-on-stdin.
+    assert "stop_continuation_cap_reached" in body
+    assert "depth=8" in body
+    assert "cap=8" in body
 
 
 def test_cap_hit_resets_chain(stub_env: dict[str, str]) -> None:

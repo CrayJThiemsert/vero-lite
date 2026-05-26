@@ -43,8 +43,11 @@ Payload = dict[str, Any]
 Parsed = dict[str, Any] | None
 
 STUB_TELEGRAM = """#!/usr/bin/env bash
-# Stub that writes its stdin to $TELEGRAM_STUB_CAPTURE.
-cat > "$TELEGRAM_STUB_CAPTURE"
+# Stub that writes $1 (argv message) to $TELEGRAM_STUB_CAPTURE.
+# Matches real telegram.sh contract — message via argv, never stdin
+# (see Lesson #14 / session-15 Path C step 3 fix).
+set -eu
+printf '%s' "$1" > "$TELEGRAM_STUB_CAPTURE"
 """
 
 
@@ -262,11 +265,15 @@ def test_deny_fires_telegram_with_payload(stub_env: dict[str, str], tmp_path: Pa
 
     capture = Path(stub_env["TELEGRAM_STUB_CAPTURE"])
     assert capture.exists(), "stub telegram script was not invoked"
-    payload = json.loads(capture.read_text(encoding="utf-8"))
-    assert payload["loop_type"] == "L1"
-    assert payload["target"] == "docs/STATUS.md"
-    assert len(payload["last_6_actions"]) == 6
-    assert payload["last_6_actions"][-1]["result"] == "attempt-5"
+    body = capture.read_text(encoding="utf-8")
+    # Human-readable body (per Lesson #14): argv message, not JSON-on-stdin.
+    assert "L1" in body
+    assert "docs/STATUS.md" in body
+    assert "attempt-5" in body  # newest action present
+    assert "attempt-0" in body  # oldest of the 6 still in window
+    # All 6 timestamps present → action lines round-tripped through formatter
+    for i in range(6):
+        assert f"t{i}" in body
 
 
 def test_deny_still_fires_when_telegram_script_missing(stub_env: dict[str, str]) -> None:
