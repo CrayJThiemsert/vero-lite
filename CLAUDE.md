@@ -122,6 +122,7 @@ Tier instruction files in `docs/conventions/cowork_tab_instructions.md` (Tier 0 
 **Author:** `Jirachai Thiemsert <16893502+CrayJThiemsert@users.noreply.github.com>`
 **AI assistance:** Note in commit body — **NEVER** as `Co-Authored-By`
 **Commit messages:** Write to file → `git commit -F`. Prefer Write tool against WSL UNC path (`\\wsl.localhost\Ubuntu-24.04\tmp\commit-message.txt`) over `wsl bash -c "cat <<'EOF'"` heredoc when message contains backticks, `$var`, or code blocks (per Lesson #4 prevention).
+**PR / issue / release bodies:** Same hygiene as commit messages. Use `gh pr create --body-file PATH` (and the equivalent `--notes-file` / `--body-file` flags on `gh issue create` / `gh release create` / `gh pr edit` / `gh pr comment`), never `--body "$(cat PATH)"`. Backticks in markdown bodies trigger command substitution inside the double-quoted shell arg and silently corrupt the submitted content (per Lesson #11). Recovery for an already-corrupted PR: `gh api --method PATCH /repos/<owner>/<repo>/pulls/<N> -F body=@PATH`.
 **Commit + push hygiene:** When the push target is a non-`main` branch, `git commit -F … && git push -u origin <branch>` chained is fine. When landing on `main` via PR, never chain commit with a push to `main` — always commit on a branch first, then PR-flow. Avoids the rework hazard of a chained command being denied as a whole (per Lesson #10).
 
 → Full details: [`docs/conventions/git.md`](docs/conventions/git.md) *(future, see STATUS TODO)*
@@ -202,4 +203,4 @@ the reply**. Procedure + options:
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-05-26 (§7 clarified: all commits to `main` land via PR — no direct-push exceptions, even for single-file `docs(status):` / `docs(constitution):` edits; Workflow + Commit-push-hygiene lines added; Lesson #10 referenced as the prevention source. Prior 2026-05-23 amendment per ADR-013 — §6 autonomy-axis note; prior 2026-05-22 per ADR-012; prior 2026-05-21 per ADR-009 D1+D5.)*
+*Last updated: 2026-05-26 (§7 amended: new "PR / issue / release bodies" line — use `gh pr create --body-file PATH`, never `--body "$(cat PATH)"` (backticks in markdown bodies trigger command substitution + silent body corruption); Lesson #11 referenced. Prior same-day amendment: §7 all-commits-to-main-via-PR rule + Lesson #10. Prior 2026-05-23 amendment per ADR-013 — §6 autonomy-axis note; prior 2026-05-22 per ADR-012; prior 2026-05-21 per ADR-009 D1+D5.)*

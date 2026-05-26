@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-26T14:00:00+07:00
-session: 11
-current_batch: **Session 11 productive close — 4 PRs landed (#24/#25/#26/#27); PLAN-0009 Step 1b DONE + PLAN-0010 Ready for execution + CLAUDE.md §7 PR-only rule codified + Lesson #10 captured.** PR #24 (`b5d2489`) landed PLAN-0010 draft (Cowork-drafted + Code-reviewed + Cray-ratified SD-1/2/3). PR #26 (`5cfce0e`) clarified CLAUDE.md §7: **all commits to main via PR, no direct-push exceptions** — closes the auto-mode classifier friction loop hit mid-session; Lesson #10 captures root cause + chain-rejection footgun + rejected alternatives. PR #27 (`06f8296`) landed PLAN-0009 Step 1b design (`docs/plans/0009-step1b-contract-design.md` — 333 lines, 9 sections, 30-cell verification matrix, composed G5 4-case identity gate shared with PLAN-0010 AC-4); Cray ratified 5 contract decisions (SD1b-1…SD1b-5, all = Code recs). Phase 3 Step 2 (write `explore-research` subagent file) now unblocked.
+last_updated: 2026-05-26T14:30:00+07:00
+session: 12
+current_batch: **Session 12 productive close — 3 PRs landed (#29/#30/#31); all 3 paths from session-11 kickoff shipped in one session.** PR #29 (`32adee3`) landed PLAN-0009 Phase 3 Step 2 — `.claude/agents/explore-research.md` (read-only research subagent; 144 lines; output schema encoded in prompt body per Step 1b §3+§6). PR #30 (`6af33d8`) landed PLAN-0009 Phase 3 Step 3 — `.claude/agents/plan-drafter.md` + new H2 hook `.claude/hooks/pretooluse_plan_subagent_write_deny.py` + 30/30-green test suite (writer subagent with subagent-scoped H2 PreToolUse wiring; **fail-CLOSED** discipline differs from C4 fail-OPEN — load-bearing for AC-3 + ADR-013 D2). PR #31 (`b952ad9`) landed PLAN-0010 Step 1 message schema + lifecycle + `loop/` directory skeleton (SD-3 resolved as `loop/` at repo top; 4 sub-decisions SD-Step1-1…4 surfaced for Cray PR review; 308-line design doc). Closeout chore PR (this) adds Lesson #11 (`gh pr` body-file backtick trap) + CLAUDE.md §7 amendment.
 current_actor: code
 blocked_on: nothing
-next_action: **Three execution paths now open** — Cray picks priority next session (any combination; they don't interfere): (1) **PLAN-0009 Phase 3 Step 2** — write `.claude/agents/explore-research.md` per `docs/plans/0009-step1b-contract-design.md` §3 contract. (2) **PLAN-0009 Phase 3 Step 3** — write `.claude/agents/plan-drafter.md` + new H2 hook `.claude/hooks/pretooluse_plan_subagent_write_deny.py` per §4 + §5. (3) **PLAN-0010 Step 1 execution** — message schema + lifecycle (incl SD-3 loop-root path choice). Step 2 and Step 3 can run sequentially (Step 3 depends on §5 hook spec but not on Step 2 subagent); PLAN-0010 Step 1 is independent of Phase 3. Phase 3 Step 4 (dispatch protocol) requires Steps 2+3 first. Smoke scheduled tasks remain Paused (Phase 3.5 cleanup deferred until PLAN-0010 captures findings).
-head_commit: 06f8296
-recent_commits: [06f8296, a40bc17, 5cfce0e, 007021a, 8171927, 0f6fbd3, b5d2489, daaa394, 5768a62, 414e564]
+next_action: **Phase 3 mid-flight — Step 4 next.** With Step 2 (explore-research) + Step 3 (plan-drafter + H2) merged, **Step 4 (dispatch protocol)** is now unblocked: document the spawn-vs-inline decision per Step 1b §9, context-propagation discipline, result-reduction, and boundary enforcement at spawn. Step 5 (G5 extension + SubagentStop + auto-handoff) requires Step 4 first; Step 6 (tests + live AC + closeout) requires Steps 4+5. **Independently:** PLAN-0010 Step 2 (Cowork-side producer) + Step 3 (Code-side consumer) consume the now-merged §1 directory layout + §2 filename pattern + §3 frontmatter + §4 body schema; they can ship in parallel with Phase 3 Step 4. **Awaiting Cray:** SD-Step1-1 (nonce format) / SD-Step1-2 (`expires_after` default) / SD-Step1-3 (retention defaults) / SD-Step1-4 (parse-error siblings) — any flip is a follow-up `chore(loop):` PR before PLAN-0010 Step 2 starts.
+head_commit: b952ad9
+recent_commits: [b952ad9, 132036d, 6af33d8, 815477a, 32adee3, 3d492f6, 2528480, 3720e8c, 06f8296, a40bc17]
 ---
 
 # vero-lite — Project Status
@@ -18,9 +18,69 @@ recent_commits: [06f8296, a40bc17, 5cfce0e, 007021a, 8171927, 0f6fbd3, b5d2489, 
 
 ## Current Focus
 
-**Session 11 productive close (2026-05-26) — 4 PRs landed; PLAN-0009
-Step 1b DONE + PLAN-0010 Ready for execution + CLAUDE.md §7 PR-only
-rule codified + Lesson #10 captured; Phase 3 Step 2 unblocked.**
+**Session 12 productive close (2026-05-26) — 3 PRs landed (#29 / #30 /
+#31); all 3 paths from session-11 kickoff shipped in one session.
+Phase 3 Step 2 + Step 3 DONE; PLAN-0010 Step 1 DONE; Lesson #11
+captured; CLAUDE.md §7 amended.**
+
+Three PRs merged to main this session, in path order (1 → 2 → 3) per
+Cray's directive to ship sequentially while capturing any operational
+findings along the way:
+
+| PR | Commit | Change |
+|----|--------|--------|
+| **#29** | `32adee3` | **PLAN-0009 Phase 3 Step 2** — `.claude/agents/explore-research.md` (144 lines). First custom subagent in this project. Read-only (`tools=[Read, Grep, Glob, WebFetch]`, `disallowedTools=[Write, Edit, Bash, Agent]`, `model=inherit`, `maxTurns=50`). System prompt body encodes the output schema (bounded summary + file/line citations + URL list + residual gaps) because the Anthropic primitive does not enforce final-message size caps (Step 1b §6 residual risk). No new hooks; composed G5 extension is Step 5's deliverable. |
+| **#30** | `6af33d8` | **PLAN-0009 Phase 3 Step 3** — `.claude/agents/plan-drafter.md` (writer subagent, `Write/Edit` allowed only under `docs/{adr,plans}/*.md`) + `.claude/hooks/pretooluse_plan_subagent_write_deny.py` (new H2 hook) + `tests/handoffs/test_pretooluse_plan_subagent_write_deny.py` (30/30 green). H2 is **fail-CLOSED** on malformed input — differs from the C4 sibling's fail-OPEN; this is load-bearing for AC-3 + ADR-013 D2. Subagent-scoped hook wiring per Step 1a Q5 (cleaner than project-level `agent_type` matcher). Plan-drafter system prompt encodes author≠reviewer disclosure stamp + surfaced-decisions discipline + no-commit / no-shell / no-fetch / no-nested-spawn prohibitions. |
+| **#31** | `b952ad9` | **PLAN-0010 Step 1** — `docs/plans/0010-step1-message-schema.md` (308-line design doc, mirrors PLAN-0009 Step 1b's design-only PR pattern) + `loop/inbox/.gitkeep` + `loop/processed/.gitkeep` + `.gitignore` entries (sentinel-tracked dirs; `*.msg.md` ignored). **SD-3 resolved** as `loop/` at repo top (Code-picked at execution per Cray ratification 2026-05-26; rationale: mirrors `.claude/handoffs/` (data) ↔ `tools/handoffs/` (code) split). 4 sub-decisions surfaced for Cray (SD-Step1-1 nonce format / SD-Step1-2 `expires_after` default / SD-Step1-3 retention defaults / SD-Step1-4 parse-error siblings). |
+
+**Mid-session finding → Lesson #11 (this closeout PR captures it):**
+`gh pr create --body "$(cat /tmp/pr.md)"` corrupted PR #29's body —
+backticks in markdown inline code triggered command substitution inside
+the double-quoted shell arg, silently eviscerating every backtick
+segment. Recovery: `gh api --method PATCH /repos/.../pulls/29 -F
+body=@/tmp/pr.md`. Fix: use `gh pr create --body-file PATH` always
+(CLAUDE.md §7 amendment in this PR). Same class as Lesson #4 (WSL
+`bash -c` variable expansion) — different mechanism, same diagnostic
+shape ("shell ate your content between you and the destination tool").
+
+**Next paths now open (Cray picks priority next session):**
+
+1. **Phase 3 Step 4 — dispatch protocol.** Unblocked by Steps 2+3
+   landing. Document spawn-vs-inline decision, context-propagation
+   discipline, result-reduction, boundary enforcement at spawn (Step 1b
+   §9 spec).
+2. **PLAN-0010 Step 2 — Cowork-side producer.** Unblocked by Step 1's
+   filename pattern + frontmatter schema + body schema. Independent of
+   Phase 3 (parallel-safe per SD-2 ratification).
+3. **PLAN-0010 Step 3 — Code-side consumer.** Unblocked by Step 1's
+   lifecycle + retention + idempotency rules. Implements
+   `tools/loop/_schema.py` parser + `tools/loop/dispatcher.py` poller +
+   PLAN-0008 L1–L4 loop-detect integration. Independent of Phase 3.
+
+Phase 3 Step 5 (G5 extension + `SubagentStop` notification + auto-handoff)
+still requires Step 4 first; Step 6 (tests + live AC + closeout) still
+requires Steps 4+5.
+
+**Awaiting Cray adjudication (PLAN-0010 Step 1 SDs):**
+SD-Step1-1 / SD-Step1-2 / SD-Step1-3 / SD-Step1-4. Any flip becomes a
+follow-up `chore(loop):` PR to `docs/plans/0010-step1-message-schema.md`
+before PLAN-0010 Step 2 starts. None are blocking — Step 2 can begin
+against the Code-recommended defaults if Cray prefers to defer the SDs.
+
+**Smoke scheduled tasks remain Paused.** Same status as session 11
+closeout. PLAN-0010 Step 3 execution will resume them for live AC
+verification.
+
+**Next action:** Cray picks priority among Phase 3 Step 4, PLAN-0010
+Step 2, PLAN-0010 Step 3 (any order, any combination across sessions).
+No blockers.
+
+---
+
+**Prior — Session 11 productive close (2026-05-26) — 4 PRs landed
+(#24/#25/#26/#27); PLAN-0009 Step 1b DONE + PLAN-0010 Ready for
+execution + CLAUDE.md §7 PR-only rule codified + Lesson #10 captured;
+Phase 3 Step 2 unblocked.**
 
 Four PRs merged to main this session, chained:
 
