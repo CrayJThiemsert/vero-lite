@@ -187,3 +187,23 @@ def test_deny_reason_cites_authoritative_sources() -> None:
     assert "cowork_tab_instructions" in reason
     assert "private" in reason
     assert "autonomy-triggers" in reason
+
+
+# --- ADR-013 D2 bypass-immunity regression guard (Step 6 Phase 1.5) ---
+
+
+def test_bypass_permissions_still_denies_research_public() -> None:
+    """ADR-013 D2 binding: ``PreToolUse deny`` is deterministic and bypass-immune.
+
+    Adding ``permission_mode: bypassPermissions`` to the payload must not
+    short-circuit C4's research-path allowlist. Cheap insurance against a
+    future hook implementation that accidentally short-circuits on bypass.
+    Uncovered until session-14 Step 6 Phase 1.5 closeout.
+    """
+    payload = {
+        "tool_name": "Write",
+        "tool_input": {"file_path": "docs/research/public/x.md", "content": "x"},
+        "permission_mode": "bypassPermissions",
+    }
+    _, out = _run(payload)
+    assert _is_deny(out)

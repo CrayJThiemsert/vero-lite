@@ -299,12 +299,101 @@ Mirrors PLAN-0009 §Step 6 + PLAN-0010 §Verification. Per the binding directive
 | **AC-5 OQ-D auto-handoff in-harness** | Stop classifier → spawn `plan-drafter` → draft → main commits → Telegram fires | `SubagentStop` notification fires for `agent_type=plan-drafter` only | Telegram env unset → graceful no-op | Stop classifier mis-fires → main agent inline-handles (no false spawn) | Two governance triggers near-simultaneous → ordered dispatch |
 | **AC-6 Phase 1+2 regression** | 18-case G5 matrix green; H1/C4 green; L1–L4 green; Stop loop + classifier green | Each prior boundary preserved | Each prior fail-closed preserved | `bypassPermissions` × every guarded op | Concurrent main-agent + scheduled task + subagent — all gates compose |
 
+### §8.1 — Test mapping (Step 6 Phase 1, session 14)
+
+For each (AC, case) coordinate the matrix above defines, this section maps to the
+existing unit test(s) that cover it. Legend:
+
+- **`tests/...`** — concrete unit test path (one or more `pytest` IDs)
+- **(L)** — verifiable only via Phase 2 live AC (real subagent spawn / real
+  Anthropic API / cross-process concurrency); primitive is not unit-testable
+- **(RR)** — uncovered cell, flagged as residual risk for sign-off
+
+#### AC-1 contract
+- **Happy** (L) — main → spawn → reduced result requires real subagent
+- **Boundary** (L) — `maxTurns` is primitive-controlled (Anthropic harness)
+- **Fail-closed** (L) — spawn-time schema rejection lives in the harness
+- **Adversarial** (RR) — final-message > 4k tokens; observability alert not yet wired (§6 named risk #1; preserved in residual-risk list below)
+- **Concurrency** (L) — parallel-spawn merge correctness primitive-controlled
+
+#### AC-2 `explore-research` read-only
+- **Happy** (L) — real Read/Grep/Glob/WebFetch from inside subagent
+- **Boundary** (L) — `maxTurns: 50` reached during a live research sweep
+- **Fail-closed** (L) — harness-allowlist deny of Write/Edit/Bash inside subagent (Step 1a Q1 documented behavior)
+- **Adversarial** (L) — prompt-injection asking for Write still denied at harness allowlist
+- **Concurrency** (L) — two `explore-research` spawned in parallel, no cwd interference
+
+#### AC-3 `plan-drafter` write-scope + no-commit
+- **Happy** (L) — draft appears at `docs/plans/0011-foo.md` after live spawn
+- **Boundary** (L) — `maxTurns: 30` reached during a live draft
+- **Fail-closed** — H2 + G5 + harness allowlist; **20 tests:**
+  - H2 write-deny: [`tests/handoffs/test_pretooluse_plan_subagent_write_deny.py`](../../tests/handoffs/test_pretooluse_plan_subagent_write_deny.py) — `test_services_write_denied`, `test_tests_write_denied`, `test_status_md_write_denied`, `test_claude_md_write_denied`, `test_lessons_write_denied`, `test_runbooks_write_denied`, `test_non_md_extension_denied`, `test_no_extension_denied`, `test_md_outside_allowed_dirs_denied`, `test_edit_outside_allowed_dirs_denied`, `test_absolute_repo_path_services_denied`, `test_windows_unc_services_denied`, plus fail-closed parsing (`test_malformed_stdin_denies`, `test_missing_tool_input_denies`, `test_non_object_tool_input_denies`, `test_missing_file_path_denies`, `test_non_string_file_path_denies`, `test_empty_file_path_denies`)
+  - G5 subagent commit deny: [`tests/handoffs/test_pretooluse_git_deny.py`](../../tests/handoffs/test_pretooluse_git_deny.py) — `test_subagent_plan_drafter_commit_denied_even_with_code_tier`, `test_subagent_explore_research_push_denied`, `test_subagent_denied_regardless_of_tier_value`
+  - Bash → `disallowedTools` (L) — harness-enforced at spawn-time
+- **Adversarial** — `bypassPermissions` × `plan-drafter`:
+  - G5 case covered: [`test_pretooluse_git_deny.py::test_subagent_bypass_permissions_still_denied`](../../tests/handoffs/test_pretooluse_git_deny.py)
+  - H2 case covered (closed in session-14 Step 6 Phase 1.5): [`test_pretooluse_plan_subagent_write_deny.py::test_bypass_permissions_still_denies_outside_allowlist`](../../tests/handoffs/test_pretooluse_plan_subagent_write_deny.py)
+- **Concurrency** (L) — two `plan-drafter`s with different `target_number`s, no NNNN collision (caller-enumerates discipline)
+
+#### AC-4 dispatch protocol
+- **Happy** — 4 routing cases (2 spawn / 2 inline):
+  - Stop-side dispatch arm: [`tests/handoffs/test_stop_continuation.py`](../../tests/handoffs/test_stop_continuation.py) — `test_dispatch_plan_emits_block_with_instruction`, `test_dispatch_adr_routes_to_docs_adr`, `test_proceed_verdict_still_emits_block_with_reason`, `test_pause_verdict_still_emits_nothing`
+  - PreToolUse-side dispatch arm: [`tests/handoffs/test_pretooluse_classifier_dispatch.py`](../../tests/handoffs/test_pretooluse_classifier_dispatch.py) — `test_dispatch_denies_with_spawn_redirect`, `test_dispatch_adr_redirects_to_docs_adr`, `test_proceed_allows_g1_edit`, `test_proceed_allows_g2_write`, `test_pause_denies_g1`, `test_pause_denies_g2`
+- **Boundary** — budget reminder + Step 4 §1/§3/§4 propagation: [`test_stop_continuation.py::test_dispatch_instruction_includes_step4_references`](../../tests/handoffs/test_stop_continuation.py), `test_dispatch_instruction_includes_scoped_context_discipline`, plus inline asserts inside `test_dispatch_plan_emits_block_with_instruction` (`OUTPUT BUDGET REMINDER`, `≤ 1k tokens`, `disclosure stamp`, `target_number`/`NNNN`)
+- **Fail-closed** — malformed dispatch metadata → demote:
+  - Stop-side: [`test_stop_continuation.py`](../../tests/handoffs/test_stop_continuation.py) — `test_dispatch_with_missing_dispatch_field_demotes_to_pause`, `test_dispatch_with_non_dict_dispatch_field_demotes_to_pause`, `test_dispatch_demoted_to_pause_resets_chain`, `test_unknown_verdict_treated_as_pause`
+  - PreToolUse-side: [`test_pretooluse_classifier_dispatch.py`](../../tests/handoffs/test_pretooluse_classifier_dispatch.py) — `test_dispatch_malformed_metadata_demotes_to_pause_deny`, `test_dispatch_non_dict_metadata_demotes_to_pause_deny`, `test_unknown_verdict_denies`
+  - Classifier-side schema validation: [`tests/handoffs/test_sonnet_classifier.py`](../../tests/handoffs/test_sonnet_classifier.py) — `test_pause_when_dispatch_field_missing`, `test_pause_when_dispatch_subagent_not_allowed`, `test_pause_when_dispatch_subagent_unknown`, `test_pause_when_dispatch_artifact_kind_invalid`, `test_pause_when_dispatch_task_summary_empty`, `test_pause_when_dispatch_task_summary_whitespace_only`, `test_pause_when_dispatch_field_not_an_object`, `test_pause_when_dispatch_subagent_not_a_string`, `test_dispatch_task_summary_over_max_falls_to_pause`
+- **Adversarial** — crafted `scoped_context` with hidden instructions; tests cover the instruction-template hardening:
+  - `test_stop_continuation.py::test_dispatch_instruction_includes_scoped_context_discipline` (asserts the spawn template tells the agent "do NOT inline" parent payload)
+  - `test_sonnet_classifier.py::test_dispatch_extracts_from_markdown_fence` (markdown-fence injection)
+  - End-to-end "subagent ignores its system prompt" is **(L)** in Phase 2
+- **Concurrency** (L) — concurrent main-spawned dispatches (Step 4 §3 post-spawn discipline lives in main agent, not hook layer)
+
+#### AC-5 OQ-D auto-handoff in-harness
+- **Happy** — end-to-end Stop → classifier → spawn → draft → main commits → Telegram; component-tested:
+  - Classifier dispatch arm: [`test_sonnet_classifier.py`](../../tests/handoffs/test_sonnet_classifier.py) — `test_successful_dispatch_with_valid_metadata`, `test_dispatch_artifact_kind_adr`, `test_dispatch_extracts_from_markdown_fence`, `test_dispatch_task_summary_at_max_length_passes`, `test_dispatch_task_summary_stripped`, `test_dispatch_retry_succeeds_after_first_malformed`
+  - Stop instruction emission: [`test_stop_continuation.py`](../../tests/handoffs/test_stop_continuation.py) — `test_dispatch_plan_emits_block_with_instruction`, `test_dispatch_adr_routes_to_docs_adr`, `test_dispatch_increments_chain_depth`
+  - SubagentStop Telegram fire: [`tests/handoffs/test_subagentstop_notify.py`](../../tests/handoffs/test_subagentstop_notify.py) — `test_plan_drafter_triggers`, `test_telegram_invoked_for_plan_drafter`, `test_message_format_directly`, `test_wsl_path_translates_unc`, `test_wsl_path_passes_through_linux_path`
+  - End-to-end string-of-pearls assembly **(L)** in Phase 2
+- **Boundary** — agent_type allowlist (plan-drafter only): [`test_subagentstop_notify.py`](../../tests/handoffs/test_subagentstop_notify.py) — `test_should_notify_allowlist_directly`, `test_notify_allowlist_is_frozen_constant`, `test_explore_research_does_not_trigger`, `test_unknown_agent_type_does_not_trigger`, `test_builtin_explore_type_does_not_trigger`, `test_builtin_plan_type_does_not_trigger`
+- **Fail-closed** — Telegram env unset → graceful no-op:
+  - [`test_subagentstop_notify.py::test_plan_drafter_triggers`](../../tests/handoffs/test_subagentstop_notify.py) (env stripped; rc==0)
+  - Classifier failures already cataloged under AC-4 fail-closed above; plus the upstream fail-closed-pause battery in [`test_sonnet_classifier.py`](../../tests/handoffs/test_sonnet_classifier.py) (`test_pause_when_api_key_missing`, `test_pause_when_registry_missing`, `test_pause_on_url_error`, `test_pause_on_http_error`, `test_pause_on_timeout`, `test_pause_on_malformed_wire`, `test_pause_when_retry_also_fails`)
+  - Cap-hit short-circuit: [`test_stop_continuation.py`](../../tests/handoffs/test_stop_continuation.py) — `test_cap_hit_pings_telegram_and_does_not_block`, `test_cap_hit_resets_chain`, `test_cap_respects_env_override`, `test_dispatch_respects_chain_cap`
+- **Adversarial** — classifier mis-fires (demoted-to-pause battery already cited under AC-4 fail-closed); plus malformed-stdin parsing:
+  - [`test_subagentstop_notify.py`](../../tests/handoffs/test_subagentstop_notify.py) — `test_malformed_json_stdin_no_op`, `test_non_dict_payload_no_op`, `test_missing_agent_type_no_op`, `test_non_string_agent_type_no_op`
+  - Re-entry guard: [`test_stop_continuation.py::test_reentry_guard_short_circuits`](../../tests/handoffs/test_stop_continuation.py), `test_dispatch_skipped_under_reentry_guard`
+- **Concurrency** (L) — two governance triggers near-simultaneous; ordered dispatch is main-agent discipline
+
+#### AC-6 Phase 1+2 regression
+- **Happy** — full prior-phase suites green; concrete entry points:
+  - G5 18-case identity matrix: [`tests/handoffs/test_pretooluse_git_deny.py`](../../tests/handoffs/test_pretooluse_git_deny.py) — all ~25 tests (original PLAN-0007 16-case set + 9 PLAN-0009 Step 5a additions for the 4-case composed identity)
+  - C4 research-path deny: [`tests/handoffs/test_pretooluse_research_path_deny.py`](../../tests/handoffs/test_pretooluse_research_path_deny.py) — 20 tests
+  - H1 handoff validator: [`tests/handoffs/test_validate_handoff.py`](../../tests/handoffs/test_validate_handoff.py) (5 tests) + [`tests/handoffs/test_posttooluse_validate_handoff.py`](../../tests/handoffs/test_posttooluse_validate_handoff.py) (7 tests)
+  - L1–L4 loop-detect: [`tests/handoffs/test_pretooluse_loop_detect.py`](../../tests/handoffs/test_pretooluse_loop_detect.py) (24 tests) + counter state [`tests/handoffs/test_loop_counter_state.py`](../../tests/handoffs/test_loop_counter_state.py) (56 tests)
+  - Stop loop + classifier (excluding Step 5c-1 dispatch arm already under AC-5): [`test_stop_continuation.py`](../../tests/handoffs/test_stop_continuation.py) re-entry/turn-touched/L1-reset block, [`test_sonnet_classifier.py`](../../tests/handoffs/test_sonnet_classifier.py) full schema-contract + retry battery
+  - Progress observer + status hook (orthogonal but in the regression sweep): [`tests/handoffs/test_posttooluse_progress_observer.py`](../../tests/handoffs/test_posttooluse_progress_observer.py), [`tests/handoffs/test_handoff_status.py`](../../tests/handoffs/test_handoff_status.py)
+  - Notification: [`tests/handoffs/test_notification_telegram.py`](../../tests/handoffs/test_notification_telegram.py)
+  - Phase 2 integration: [`tests/handoffs/test_phase2_integration.py`](../../tests/handoffs/test_phase2_integration.py)
+  - Schema regression: [`tests/handoffs/test_schema.py`](../../tests/handoffs/test_schema.py)
+- **Boundary** — same suites; boundary cases live inside each file
+- **Fail-closed** — same suites; fail-closed cases live inside each file
+- **Adversarial** — `bypassPermissions` × every guarded op:
+  - G5: covered ([`test_pretooluse_git_deny.py::test_subagent_bypass_permissions_still_denied`](../../tests/handoffs/test_pretooluse_git_deny.py))
+  - H2: covered (Step 6 Phase 1.5) — [`test_pretooluse_plan_subagent_write_deny.py::test_bypass_permissions_still_denies_outside_allowlist`](../../tests/handoffs/test_pretooluse_plan_subagent_write_deny.py)
+  - C4: covered (Step 6 Phase 1.5) — [`test_pretooluse_research_path_deny.py::test_bypass_permissions_still_denies_research_public`](../../tests/handoffs/test_pretooluse_research_path_deny.py)
+  - L1–L4: covered (Step 6 Phase 1.5) — [`test_pretooluse_loop_detect.py::test_bypass_permissions_still_denies_at_threshold`](../../tests/handoffs/test_pretooluse_loop_detect.py)
+  - H1 (PostToolUse handoff validator): **N/A** — H1 fires PostToolUse, not PreToolUse, so the ADR-013 D2 "PreToolUse deny is bypass-immune" property does not bind. PostToolUse hooks always run after the tool executes regardless of `permission_mode`; H1's role is observation (warning emission), not deny.
+- **Concurrency** (L) — concurrent main-agent + scheduled task + subagent all gates composing; structurally cross-process, not unit-testable
+
 ### Residual risks (named for sign-off)
 
 1. **Final-message size unbounded by primitive** (§6) — observability alert is the only post-hoc safety net; runaway message could blow main context before alert fires
 2. **Author≠reviewer separation for `plan-drafter`** — Plan subagent shares main harness's framing/context (Step 1a Q4) → no in-harness independent-deliberation check; ADR-013 OQ-1 mitigation (Cowork retained as external advisory drafter) is preserved by *policy*, not enforced by *primitive*
 3. **`maxTurns` + L1–L4 loop-detect overlap** — both are loop-bounds; cheap insurance but could mask which one fired in postmortem; logging must record both signals
 4. **Subagent transcript persistence** (`~/.claude/projects/.../subagents/`) is **outside repo + outside `.claude/state/`** — audit trail lives on the local machine only; cross-machine forensics impossible without manual copy
+5. **~~`bypassPermissions` unit-coverage gap on H2 / C4 / L1–L4 / H1~~** (raised in Step 6 Phase 1; **closed in Step 6 Phase 1.5, session 14**) — Added 3 explicit `bypassPermissions` × deny regression tests for the PreToolUse trio (H2, C4, L1–L4); see §8.1 AC-6 Adversarial. H1 is PostToolUse so ADR-013 D2's PreToolUse-deny guarantee does not bind (PostToolUse hooks always run regardless of `permission_mode`; H1 emits warnings, not denies). Residual narrowed to: *PostToolUse hooks are out-of-scope for the ADR-013 D2 bypass-immunity property by definition.*
 
 ## §9 — Deferred to Step 2–6 execution
 
@@ -331,3 +420,47 @@ Cray ratified the 5 contract decisions (SD1b-1 … SD1b-5) on 2026-05-26 in the 
 - **SD1b-5** = omit `isolation: worktree` for `plan-drafter` (§4)
 
 AI assistance: drafted by Code (Claude Code, Opus 4.7). AI-assistance noted in commit body per CLAUDE.md §7; never `Co-Authored-By`.
+
+---
+
+## Sign-off (Step 6, session 14)
+
+**Date:** 2026-05-26
+**Author:** Claude Code (Tier 2) — Opus 4.7, session 14
+**Reviewer:** Cray (at PR merge)
+**Verification-rigor bar:** "We are confident it does what we intend, not just tests pass."
+
+### Confidence per residual risk
+
+| # | Residual | Confidence | One-sentence why |
+|---|---|---|---|
+| 1 | Final-message size unbounded by primitive | **Medium** | Hard cap absent by Anthropic primitive design; mitigated by `maxTurns` + dispatch-instruction budget reminder + subagent system-prompt schema — but observability alert for runaway-message events is not yet wired and is the only post-hoc safety net. |
+| 2 | Author≠reviewer for `plan-drafter` | **Medium** | Subagent shares main harness framing per Step 1a Q4 — no in-harness independent-deliberation check; ADR-013 OQ-1 policy mitigation (Cowork retained as external advisory drafter) is binding by policy not by primitive, accepted for Phase 3 scope. |
+| 3 | `maxTurns` + L1–L4 loop-detect overlap | **High** | Both bounds intentional; `_loop_counter` + classifier `matched_rows` + reason field log which signal fired — postmortem clarity is preserved by existing instrumentation. |
+| 4 | Subagent transcript persistence outside repo/`.claude/state/` | **High for Phase 3 scope / Medium operationally** | Audit trail lives in `~/.claude/projects/<project>/<sessionId>/subagents/` — local-only is acceptable for solo-founder operations; revisit when team grows or external compliance audit binds (PDPA forward-looking note in CLAUDE.md §8). |
+| 5 | ~~`bypassPermissions` unit-coverage gap~~ | **CLOSED Phase 1.5** | 3 new bypass-immunity tests landed for H2/C4/L1–L4 (commit `6573ae7`); H1 is PostToolUse so the ADR-013 D2 PreToolUse-deny guarantee does not bind by definition. |
+
+### AC §8 coverage breakdown (30 cells across 6 ACs)
+
+| Class | Approx. cell count | Examples |
+|---|---|---|
+| Unit-tested + Phase 2 live-verified | ~3 cells | AC-6 Happy (L1–L4 fired live during Phase 2 doc-thrash — bonus organic trigger; see `docs/research/private/step6-live-ac/scenarioL1-bonus-loop-detect-live-trigger.md`) |
+| Unit-tested only (extensive — fail-closed/boundary/schema paths) | ~15 cells | AC-3 fail-closed (20+ H2 + G5 tests); AC-4 dispatch fail-closed (10+ classifier validation tests); AC-5 fail-closed (component tests for classifier + Stop instruction + SubagentStop allowlist); AC-6 bypass-immunity (4 hooks covered after Phase 1.5) |
+| Live primitive-controlled — deferred to Cray-driven AC | ~10 cells | AC-1 contract (all 5 cells — primitive-controlled); AC-2 `explore-research` (all 5 cells); AC-3 Happy + Boundary + Concurrency (real subagent spawn); AC-4 Adversarial + Concurrency (real cross-process); AC-5 Happy end-to-end (Stop classifier → spawn → draft → Telegram full chain — handoff scenario 3); AC-6 Concurrency |
+| Residual risk — explicitly named | ~2 cells | AC-1 Adversarial (final-message size — risk #1); AC-3 Adversarial via H1 PostToolUse (risk #5 narrowed scope) |
+
+### Cray-driven AC scenarios pending (handoff scenarios 3 + 4 + 5)
+
+Phase 2 (session 14) ran Code-only scenarios + 1 bonus organic L1 trigger. The following remain for Cray to drive at PR review time or post-merge:
+
+- **AC-3 positive G1 (handoff scenario 4):** Cray attempts Edit on an existing accepted ADR → expects classifier pause/dispatch → PreToolUse `pretooluse_classifier_dispatch.py` denies with G1 citation
+- **AC-3 positive G2 (handoff scenario 5):** Cray attempts Write to fresh `docs/plans/0011-*.md` → expects classifier dispatch → deny with spawn-redirect to `plan-drafter`
+- **AC-5 in-harness end-to-end (handoff scenario 3):** Cray engineers a Stop event the classifier matches a D-row on → observes spawn → draft → Telegram full chain
+
+If any of these surfaces a new bug, post-merge hardening PR is the recommended recovery path (similar shape to the Phase 1.5 mini-iteration); plan stays archived in `docs/plans/done/`.
+
+### Overall verdict
+
+PLAN-0009 Step 1b **meets the verification-rigor bar** with the 4 named residual risks (5 was closed in Phase 1.5). Composed G5 check covers all 4 identity cases by design + by test; H2 + G5 + harness allowlist form a 3-layer defense for subagent commit/write boundary; SubagentStop + Telegram wiring closes the AC-5 in-harness arm partially (full end-to-end is Cray-driven). The plan is **ready to archive** to `docs/plans/done/` pending Cray's PR-merge ratification.
+
+**Cray ratification:** [pending at PR merge — sign here at merge time]

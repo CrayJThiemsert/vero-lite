@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-26T19:45:00+07:00
-session: 13
-current_batch: **Session 13 — Phase 3 Step 5 COMPLETE (all 4 arms shipped). 5 PRs landed (#41 + #42 + this closeout #43; #38 + #39 from session 12 also contribute to the Step 5 completion).** Step 5c-1 (PR #41 `830c3a7`) landed Stop-side auto-handoff dispatch (3rd classifier decision `dispatch` + stop_continuation arm + autonomy-triggers D-rows; 30 new tests). Step 5c-2 (PR #42 `d4e4dc4`) landed PreToolUse classifier dispatch for G1/G2 (new `pretooluse_classifier_dispatch.py` + `_build_user_message` event-agnostic + on-disk Status read defeats spoofing; 34 new tests; PLAN-0008 carry-over closed). Phase 3 Step 5 (all 4 arms = 5a/5b/5c-1/5c-2) now COMPLETE. Only Step 6 (combined verification matrices + sign-off residual risks + Phase 3 + 3.5 closeout) remains.
+last_updated: 2026-05-26T22:30:00+07:00
+session: 14
+current_batch: **Session 14 — Phase 3 Step 6 CLOSE (PLAN-0009 entirely + PLAN-0010 Step 1).** Five phases shipped on `chore/plan0009-plan0010-step6-closeout` branch: (1) verification matrix test mapping for both plans §8.1; (1.5) closed 3 new residual risks surfaced during Phase 1 — 3 `bypassPermissions` regression tests added for H2/C4/L1–L4 + Plan-0010 §4 spec drift fix + cross-process race documentation; (2) Phase 2 live AC scenarios — #7 PLAN-0010 lifecycle live verified, #3b cross-process consumer race verified filesystem invariant + **discovered new bug** in `save_failure_state` shared-tmp path, bonus organic L1 loop-detect trigger captured AC-6 regression live; (3) sign-off with confidence statements per residual risk; (4) archived 4 plans to `docs/plans/done/`. Phase 3 + Phase 3.5 Step 1 now CLOSED. PLAN-0010 parent stays active for Phase 4 scheduled-task wiring (when scheduled task lands, 2 dispatcher fixes documented in §5 must ship — `_archive` FileNotFoundError recovery + `save_failure_state` per-process unique tmp path).
 current_actor: code
-blocked_on: nothing — session 13 pausing here; session 14 resumes with Step 6
-next_action: **Session 14 path (Code-tab, single path):** Step 6 — combined closeout. Two halves: (a) unit-test verification matrix fill-in for PLAN-0009 (AC-3/AC-4/AC-5/AC-6 — most rows already covered by PRs #30/#38/#39/#41/#42 unit tests; Step 6 maps each row to its test name + flags uncovered rows as residual risk per Cray verification-rigor directive); (b) live-AC verification matrix runs that need real classifier API calls + real subagent spawns (~6-10 scenarios; some Cray-driven to trigger the right event types). Also: PLAN-0010 verification matrix fill-in (parser + dispatcher PRs #34/#35 already covered; Step 6 adds live producer evidence — already accumulating, see `loop/processed/` 2 archived messages). Closeout output: STATUS update + final session-14 handoff + `git mv docs/plans/0009-*.md docs/plans/done/` archive step. **Still awaiting Cray review (non-blocking):** SD-Step1-1 through SD-Step1-4 (PLAN-0010 Step 1 sub-decisions). **Awaiting Cray Cowork-tab action (non-blocking):** Cowork producer wrote 19:05 fire to repo root instead of `loop/inbox/` (manual move done; 18:05 fire landed correctly — suggests intermittent producer config drift, possibly cwd-resolution-related). Fix requires Cowork-tab editor edit (Code Desktop cannot reach Cowork's task config per K-1/K-2).
-head_commit: fac9e81
-recent_commits: [fac9e81, d4e4dc4, 7e07da1, 830c3a7, 3776480, 23d6fed, a1f5a71, 79b921d, f1d440e, 05a110a]
+blocked_on: nothing — session 14 close PR ready to open; session 15 resumes with Phase 4 scheduled-task wiring (if Cray queues) or Cray-driven AC scenarios 3/4/5 (G1/G2 PreToolUse + AC-5 full chain)
+next_action: **Session 15 paths (multiple):** (a) **Cray-driven AC scenarios 3/4/5** — handoff §3 Phase 2 listed 3 scenarios deferred to Cray-driven Stop dispatch / G1 PreToolUse / G2 PreToolUse triggers; can run any time post-merge; bug discovery is recoverable via post-merge hardening PR; (b) **PLAN-0010 Phase 4 — scheduled-task wiring** — Code Desktop scheduled task setup + 2 dispatcher fixes (~30–45 min mechanical work); criteria explicit in PLAN-0010 §5 "Cross-process consumer safety"; (c) **investigate Telegram ping failure** — L1 hook fired live during session 14 but Cray did not receive Telegram ping despite env vars confirmed SET; non-blocking; debug via direct `tools/notify/telegram.sh` invocation; (d) **promote Lesson #12 candidate** — "Loop-detect L1 vs governance-doc fillup passes — batch or surgical-reset, don't full-reset" (pattern surfaced during Phase 2 doc thrash, see L1 bonus evidence file).
+head_commit: e04f0f0
+recent_commits: [e04f0f0, 9d86d13, 6573ae7, db9bbb4, cbe47b9, 5854e3f, fac9e81, d4e4dc4, 7e07da1, 830c3a7]
 ---
 
 # vero-lite — Project Status
@@ -18,12 +18,69 @@ recent_commits: [fac9e81, d4e4dc4, 7e07da1, 830c3a7, 3776480, 23d6fed, a1f5a71, 
 
 ## Current Focus
 
-**Session 13 close — Phase 3 Step 5 COMPLETE (all 4 arms shipped).
-3 PRs landed (#41 + #42 + #43 closeout). 5c-1 (Stop-side auto-handoff
-dispatch) + 5c-2 (PreToolUse classifier dispatch for G1/G2) both
-durable on `main`. Only Step 6 (combined verification matrices +
-sign-off + Phase 3 + 3.5 closeout) remains before Phase 3 + Phase 3.5
-fully close.**
+**Session 14 close — Phase 3 Step 6 COMPLETE.** PLAN-0009 (subagent
+topology + Step 1b contract + Step 4 dispatch protocol) and PLAN-0010
+Step 1 (message schema + lifecycle) **archived to `docs/plans/done/`**.
+Phase 3 entirely closed; Phase 3.5 Step 1 closed; PLAN-0010 parent
+stays active for Phase 4 scheduled-task wiring. Branch
+`chore/plan0009-plan0010-step6-closeout` has 4 commits + this STATUS
+update + handoff (pending Phase 4 commit) ready for close PR.
+
+### 2026-05-26 22:30 +07 — Step 6 close (Code-tab session 14)
+
+After session 14 §0 env verify (clean main @ `cbe47b9`; classifier
+API key file-source `sk-ant`; `CLAUDE_TIER=code`), opened Code-tab
+Step 6 closeout work in 4 sequential commits on a single branch:
+
+| Phase | Commit | Change |
+|-------|--------|--------|
+| **Phase 1** | `db9bbb4` | **§8.1 verification matrix test mapping.** Added per-AC test-mapping sub-sections to both PLAN-0009 Step 1b §8 (30 cells, 6 ACs) and PLAN-0010 Step 1 §8 (20 cells, 4 ACs). Mapped each (AC, case) coordinate to concrete `tests/handoffs/test_*.py::test_*` / `tests/loop/test_*.py::test_*` paths, with `(L)` tags for primitive-controlled live cells and `(RR)` for uncovered cells flagged as residual risk. Surfaced 3 new residual risks for Phase 1.5: bypassPermissions coverage gap on H2/C4/L1–L4/H1; PLAN-0010 §4 spec drift; cross-process race coverage. |
+| **Phase 1.5** | `6573ae7` | **Closed 3 new residual risks** before Phase 2. (a) 3 bypassPermissions × deny regression tests added — `test_bypass_permissions_still_denies_outside_allowlist` (H2), `test_bypass_permissions_still_denies_research_public` (C4), `test_bypass_permissions_still_denies_at_threshold` (L1–L4); H1 N/A (PostToolUse — ADR-013 D2 PreToolUse-deny semantics don't bind). (b) PLAN-0010 §4 amended: parser is order-insensitive (strictly more robust than original split-zip spec); earlier text preserved for archeology. (c) PLAN-0010 §5 new "Cross-process consumer safety" sub-section documents Phase 4 unblock criteria; §8.1 cells + residual lists updated. 441 tests pass (was 438; +3). |
+| **Phase 2** | `9d86d13` | **Live AC verification updates.** Phase 2 ran 2 Code-only scenarios + 1 bonus organic trigger. Evidence files in `docs/research/private/step6-live-ac/` (gitignored). **#7 PLAN-0010 lifecycle:** 4 archived messages survive across cowork producer fires; filename embedded claimed-time diverges from mtime by +4–13h — strongest possible live evidence of §2 mtime-authoritative binding. **#3b cross-process race:** 2 dispatcher processes on 1-message inbox → filesystem invariant held (1 in processed, 0 in inbox) + **NEW BUG DISCOVERED** in `save_failure_state` shared-tmp path; Phase 4 unblock criteria expanded from 1 fix to 2 fixes. **Bonus L1 trigger:** L1 loop-detect fired live at threshold=6 during Phase 2 doc thrash on Plan-0010; L2 + L3 captured below-threshold; AC-6 regression live-verified. **Cray-driven scenarios 3/4/5 deferred** (handoff §3) — covered by unit tests + layered defense reasoning. |
+| **Phase 3** | `e04f0f0` | **Sign-off with confidence statements.** Added "Sign-off (Step 6, session 14)" section to both plans per Cray verification-rigor directive ("we are confident it does what we intend, not just tests pass"). PLAN-0009: 4 open residuals (2 High, 2 Medium); ~30 cells classified (~3 live + ~15 unit + ~10 deferred + ~2 RR). PLAN-0010: 6 open residuals (2 High, 4 Medium); ~20 cells classified (~5 live + ~12 unit + ~3 RR). Overall verdict: both plans meet verification-rigor bar; ready to archive pending Cray PR-merge ratification. |
+| **Phase 4** | *(this commit)* | **Archive + STATUS + handoff.** `git mv` 4 plan files to `docs/plans/done/`: `0009-subagent-topology.md`, `0009-step1b-contract-design.md`, `0009-step4-dispatch-protocol.md`, `0010-step1-message-schema.md`. STATUS updated; session-14 → session-15 handoff written. Close PR ready to open. |
+
+### Phase 3 Step 6 sub-phase ledger (now COMPLETE)
+
+| Sub-phase | Commit | Status |
+|---|---|---|
+| Phase 1 — §8.1 matrix mapping | `db9bbb4` | ✅ session 14 |
+| Phase 1.5 — close 3 new residuals | `6573ae7` | ✅ session 14 |
+| Phase 2 — live AC verification | `9d86d13` | ✅ session 14 (2 scenarios + L1 bonus + 1 bug surfaced) |
+| Phase 3 — sign-off | `e04f0f0` | ✅ session 14 |
+| Phase 4 — archive + STATUS + handoff + PR | *(this commit)* | ✅ session 14 |
+
+**Cumulative session 14 impact:** +325 LOC across 5 commits (3 new tests + 2 plan doc sign-offs + 4 archive moves + STATUS + handoff). Suite: **441 passing**, 1 skipped (live API gated).
+
+### Plans archived this session
+
+- [`docs/plans/done/0009-subagent-topology.md`](plans/done/0009-subagent-topology.md) — Phase 3 parent
+- [`docs/plans/done/0009-step1b-contract-design.md`](plans/done/0009-step1b-contract-design.md) — subagent contracts (composed G5, H2, SubagentStop)
+- [`docs/plans/done/0009-step4-dispatch-protocol.md`](plans/done/0009-step4-dispatch-protocol.md) — dispatch protocol
+- [`docs/plans/done/0010-step1-message-schema.md`](plans/done/0010-step1-message-schema.md) — Phase 3.5 message schema + lifecycle
+
+**Still active:** `docs/plans/0010-phase3-5-scheduled-task-autonomy-loop.md` (parent — Phase 4 scheduled-task wiring remains).
+
+### Phase 4 unblock criteria for scheduled-task wiring (documented in archived PLAN-0010 §5)
+
+When Cray queues PLAN-0010 Phase 4 (Code Desktop scheduled task), **2 dispatcher fixes must land first** (~30–45 min, mechanical):
+
+1. **`_archive` FileNotFoundError recovery** (~5 LOC at `tools/loop/dispatcher.py:421-426` + 1 multiprocessing test) — original Phase 1 finding
+2. **`save_failure_state` per-process unique tmp path** (~1 LOC at line 216 + 1 test) — **discovered live in Phase 2 #3b cross-process race scenario**
+
+### Cray-driven AC scenarios pending (handoff scenarios 3/4/5)
+
+Non-blocking; can run anytime post-merge:
+
+- **Scenario 3 — AC-5 in-harness end-to-end:** Cray engineers a Stop event the classifier matches a D-row on → observes spawn → draft → Telegram
+- **Scenario 4 — AC-3 positive G1:** Cray attempts Edit on accepted ADR → classifier pause/dispatch → deny
+- **Scenario 5 — AC-3 positive G2:** Cray attempts Write to fresh `docs/plans/0011-*.md` → classifier dispatch → deny with spawn-redirect
+
+If any scenario surfaces a new bug, recovery = post-merge hardening PR (same shape as Phase 1.5 mini-iteration). Per Cray's session-14 Option-A choice ("close now, iterate on findings").
+
+### Telegram ping investigation (non-blocking session 15 follow-up)
+
+L1 loop-detect fired live during session 14 Phase 2; `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` confirmed SET in WSL env at fire time. Cray reports NOT receiving Telegram ping. Possible causes: telegram.sh ran but failed silently; bot blocked; network issue; missed message. Debug via direct invocation of `tools/notify/telegram.sh` with a test payload; non-blocking for Step 6 close.
 
 ### 2026-05-26 19:45 +07 — Step 5c-1 + 5c-2 shipped (Code-tab)
 

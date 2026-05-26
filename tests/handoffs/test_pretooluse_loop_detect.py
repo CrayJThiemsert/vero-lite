@@ -352,3 +352,26 @@ def test_deny_reason_includes_target_and_count_and_registry_pointer(
     assert "7" in reason
     assert ".claude/autonomy-triggers.md" in reason
     assert "Cray E.4" in reason or "threshold" in reason
+
+
+# --- ADR-013 D2 bypass-immunity regression guard (Step 6 Phase 1.5) ---
+
+
+def test_bypass_permissions_still_denies_at_threshold(stub_env: dict[str, str]) -> None:
+    """ADR-013 D2 binding: ``PreToolUse deny`` is deterministic and bypass-immune.
+
+    Adding ``permission_mode: bypassPermissions`` to the payload must not
+    short-circuit the L1 loop-detect deny once the counter is at threshold.
+    Cheap insurance against a future hook implementation that accidentally
+    short-circuits on bypass. Uncovered until session-14 Step 6 Phase 1.5
+    closeout.
+    """
+    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, "docs/STATUS.md", 6)
+    payload = {
+        "tool_name": "Write",
+        "tool_input": {"file_path": "docs/STATUS.md", "content": "x"},
+        "permission_mode": "bypassPermissions",
+    }
+    rc, out = _run(payload, stub_env)
+    assert rc == 0
+    assert _is_deny(out)
