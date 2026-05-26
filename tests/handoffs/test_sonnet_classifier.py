@@ -479,6 +479,301 @@ def test_resolve_api_key_unit_file_source_tag(
     assert str(isolated_key_file) in source
 
 
+# --- PLAN-0009 Step 5c-1: dispatch decision arm ---
+
+
+def _dispatch_body(
+    *,
+    subagent: str = "plan-drafter",
+    artifact_kind: str = "plan",
+    task_summary: str = "Draft PLAN-0011 for cross-machine coordination spike",
+    matched: list[str] | None = None,
+    include_dispatch_field: bool = True,
+    extra: dict[str, Any] | None = None,
+) -> str:
+    """Helper: build a dispatch-decision classifier response JSON body."""
+    body: dict[str, Any] = {
+        "decision": "dispatch",
+        "matched_rows": matched if matched is not None else ["D2"],
+        "reason": "governance drafting need; agreed plan needs structuring",
+    }
+    if include_dispatch_field:
+        body["dispatch"] = {
+            "subagent": subagent,
+            "artifact_kind": artifact_kind,
+            "task_summary": task_summary,
+        }
+    if extra is not None:
+        body.update(extra)
+    return json.dumps(body)
+
+
+def test_successful_dispatch_with_valid_metadata(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    monkeypatch.setattr(
+        sc.urllib.request,
+        "urlopen",
+        lambda req, timeout: _make_response(_dispatch_body()),
+    )
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "dispatch"
+    assert result["matched_rows"] == ["D2"]
+    assert "dispatch" in result
+    assert result["dispatch"]["subagent"] == "plan-drafter"
+    assert result["dispatch"]["artifact_kind"] == "plan"
+    assert "PLAN-0011" in result["dispatch"]["task_summary"]
+
+
+def test_dispatch_artifact_kind_adr(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    monkeypatch.setattr(
+        sc.urllib.request,
+        "urlopen",
+        lambda req, timeout: _make_response(_dispatch_body(artifact_kind="adr", matched=["D1"])),
+    )
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "dispatch"
+    assert result["dispatch"]["artifact_kind"] == "adr"
+    assert result["matched_rows"] == ["D1"]
+
+
+def test_dispatch_task_summary_at_max_length_passes(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """Boundary: task_summary at exactly DISPATCH_TASK_SUMMARY_MAX_CHARS."""
+    summary = "x" * sc.DISPATCH_TASK_SUMMARY_MAX_CHARS
+    monkeypatch.setattr(
+        sc.urllib.request,
+        "urlopen",
+        lambda req, timeout: _make_response(_dispatch_body(task_summary=summary)),
+    )
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "dispatch"
+    assert len(result["dispatch"]["task_summary"]) == sc.DISPATCH_TASK_SUMMARY_MAX_CHARS
+
+
+def test_dispatch_task_summary_over_max_falls_to_pause(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """Boundary fail: > DISPATCH_TASK_SUMMARY_MAX_CHARS → first parse fails →
+    retry returns same body → unparseable → pause (fail-closed).
+    """
+    summary = "x" * (sc.DISPATCH_TASK_SUMMARY_MAX_CHARS + 1)
+    monkeypatch.setattr(
+        sc.urllib.request,
+        "urlopen",
+        lambda req, timeout: _make_response(_dispatch_body(task_summary=summary)),
+    )
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+
+
+def test_pause_when_dispatch_field_missing(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """Fail-closed: decision=dispatch but no dispatch field → pause."""
+    body = _dispatch_body(include_dispatch_field=False)
+    monkeypatch.setattr(sc.urllib.request, "urlopen", lambda req, timeout: _make_response(body))
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+
+
+def test_pause_when_dispatch_subagent_not_allowed(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """Fail-closed: subagent != plan-drafter → pause (explore-research
+    auto-handoff is NOT in scope for Step 5c-1; main agent routes manually
+    per Step 4 §1 R2/R5).
+    """
+    monkeypatch.setattr(
+        sc.urllib.request,
+        "urlopen",
+        lambda req, timeout: _make_response(_dispatch_body(subagent="explore-research")),
+    )
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+
+
+def test_pause_when_dispatch_subagent_unknown(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """Fail-closed: subagent is a hallucinated name → pause."""
+    monkeypatch.setattr(
+        sc.urllib.request,
+        "urlopen",
+        lambda req, timeout: _make_response(_dispatch_body(subagent="random-agent")),
+    )
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+
+
+def test_pause_when_dispatch_artifact_kind_invalid(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """Fail-closed: artifact_kind outside {adr, plan} → pause."""
+    monkeypatch.setattr(
+        sc.urllib.request,
+        "urlopen",
+        lambda req, timeout: _make_response(_dispatch_body(artifact_kind="lesson")),
+    )
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+
+
+def test_pause_when_dispatch_task_summary_empty(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """Fail-closed: empty task_summary → pause."""
+    monkeypatch.setattr(
+        sc.urllib.request,
+        "urlopen",
+        lambda req, timeout: _make_response(_dispatch_body(task_summary="")),
+    )
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+
+
+def test_pause_when_dispatch_task_summary_whitespace_only(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    monkeypatch.setattr(
+        sc.urllib.request,
+        "urlopen",
+        lambda req, timeout: _make_response(_dispatch_body(task_summary="   \t\n  ")),
+    )
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+
+
+def test_pause_when_dispatch_field_not_an_object(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """Fail-closed: dispatch field is a string instead of an object → pause."""
+    body = json.dumps(
+        {
+            "decision": "dispatch",
+            "matched_rows": ["D1"],
+            "reason": "x",
+            "dispatch": "not an object",
+        }
+    )
+    monkeypatch.setattr(sc.urllib.request, "urlopen", lambda req, timeout: _make_response(body))
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+
+
+def test_pause_when_dispatch_subagent_not_a_string(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    body = json.dumps(
+        {
+            "decision": "dispatch",
+            "matched_rows": ["D1"],
+            "reason": "x",
+            "dispatch": {
+                "subagent": 42,
+                "artifact_kind": "adr",
+                "task_summary": "draft",
+            },
+        }
+    )
+    monkeypatch.setattr(sc.urllib.request, "urlopen", lambda req, timeout: _make_response(body))
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+
+
+def test_proceed_with_extra_dispatch_field_ignored(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """Adversarial: classifier emits a dispatch field with decision=proceed.
+    The dispatch field is silently ignored (NOT validated) — decision=proceed
+    flows normally. Forgiving design: only validate dispatch metadata when
+    decision == dispatch.
+    """
+    body = json.dumps(
+        {
+            "decision": "proceed",
+            "matched_rows": [],
+            "reason": "tests pass",
+            "dispatch": {"subagent": "bogus", "artifact_kind": "x", "task_summary": ""},
+        }
+    )
+    monkeypatch.setattr(sc.urllib.request, "urlopen", lambda req, timeout: _make_response(body))
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "proceed"
+    assert "dispatch" not in result  # not surfaced for proceed/pause
+
+
+def test_dispatch_extracts_from_markdown_fence(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """Adversarial: model wraps dispatch JSON in ```json fences."""
+    inner = _dispatch_body()
+    body = f"Here is the dispatch decision:\n\n```json\n{inner}\n```\n\nDone."
+    monkeypatch.setattr(sc.urllib.request, "urlopen", lambda req, timeout: _make_response(body))
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "dispatch"
+    assert result["dispatch"]["subagent"] == "plan-drafter"
+
+
+def test_dispatch_task_summary_stripped(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """task_summary leading/trailing whitespace is stripped on validation."""
+    monkeypatch.setattr(
+        sc.urllib.request,
+        "urlopen",
+        lambda req, timeout: _make_response(
+            _dispatch_body(task_summary="   Draft ADR-0015 for X   \n")
+        ),
+    )
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "dispatch"
+    assert result["dispatch"]["task_summary"] == "Draft ADR-0015 for X"
+
+
+def test_dispatch_retry_succeeds_after_first_malformed(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path, with_api_key: None
+) -> None:
+    """First response has invalid dispatch metadata → retry → valid → dispatch."""
+    call_count = {"n": 0}
+
+    def fake_urlopen(req: Any, timeout: int) -> Any:
+        call_count["n"] += 1
+        if call_count["n"] == 1:
+            return _make_response(_dispatch_body(artifact_kind="invalid"))
+        return _make_response(_dispatch_body())
+
+    monkeypatch.setattr(sc.urllib.request, "urlopen", fake_urlopen)
+    result = sc.classify({"event": "Stop"})
+    assert call_count["n"] == 2
+    assert result["decision"] == "dispatch"
+
+
+# --- Decision contract sanity ---
+
+
+def test_decision_dispatch_constant_exposed() -> None:
+    """Constant available for import (tests + hook code rely on it)."""
+    assert sc.DECISION_DISPATCH == "dispatch"
+    assert sc.DECISION_DISPATCH in sc._VALID_DECISIONS
+    assert sc.DECISION_PROCEED in sc._VALID_DECISIONS
+    assert sc.DECISION_PAUSE in sc._VALID_DECISIONS
+
+
+def test_dispatch_allowed_subagents_locked_to_plan_drafter() -> None:
+    """Step 5c-1 scope: only plan-drafter. Adding new types is a deliberate
+    contract extension (this test guards against accidental loosening).
+    """
+    assert sc.DISPATCH_ALLOWED_SUBAGENTS == frozenset({"plan-drafter"})
+
+
+def test_dispatch_allowed_artifact_kinds_locked() -> None:
+    assert sc.DISPATCH_ALLOWED_ARTIFACT_KINDS == frozenset({"adr", "plan"})
+
+
 # --- Live opt-in (skipped in CI, per OQ-G) ---
 
 

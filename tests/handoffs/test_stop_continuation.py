@@ -319,3 +319,355 @@ def test_chain_state_recovers_from_empty(stub_env: dict[str, str]) -> None:
     _chain(stub_env).write_text("", encoding="utf-8")
     rc, _ = _run({"hook_event_name": "Stop"}, stub_env)
     assert rc == 0
+
+
+# ---------------------------------------------------------------------------
+# PLAN-0009 Step 5c-1: auto-handoff dispatch arm
+#
+# These tests are in-process (not subprocess) because the dispatch arm
+# requires mocking the Sonnet classifier's return value — the existing
+# subprocess pattern defangs the classifier by removing the API key, which
+# is the right pattern for non-dispatch tests but cannot exercise the
+# dispatch decision path. We import stop_continuation + _sonnet_classifier
+# directly and monkey-patch classify() to return canned verdicts.
+# ---------------------------------------------------------------------------
+
+
+import importlib  # noqa: E402  — placed after subprocess-test section deliberately
+import io  # noqa: E402
+
+import _sonnet_classifier as _sc  # noqa: E402  — sys.path was set above
+import stop_continuation as _stop  # noqa: E402
+
+
+@pytest.fixture
+def inproc_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Path]:
+    """In-process fixture: redirect state paths via env, neutralize Telegram,
+    reset stop_continuation module-level state. Returns paths for assertion.
+    """
+    state_path = tmp_path / "loop-counter.json"
+    chain_path = tmp_path / "stop-chain.json"
+    # Point telegram at a nonexistent script so _ping_telegram is a no-op
+    # (it short-circuits on missing script per _ping_telegram impl).
+    telegram_script = tmp_path / "nonexistent-telegram.sh"
+    monkeypatch.setenv("CLAUDE_LOOP_COUNTER_PATH", str(state_path))
+    monkeypatch.setenv("CLAUDE_STOP_CHAIN_PATH", str(chain_path))
+    monkeypatch.setenv("CLAUDE_TELEGRAM_SCRIPT", str(telegram_script))
+    monkeypatch.delenv("CLAUDE_CODE_STOP_HOOK_BLOCK_CAP", raising=False)
+    # Reload the hook to refresh any module-level cached paths/cap (defensive —
+    # current impl reads via _state_path()/_chain_path()/_cap() helpers, which
+    # query env at call time, but reload guarantees test isolation).
+    importlib.reload(_stop)
+    return {
+        "state": state_path,
+        "chain": chain_path,
+        "telegram": telegram_script,
+    }
+
+
+def _patch_classify(monkeypatch: pytest.MonkeyPatch, verdict: dict[str, Any]) -> None:
+    """Monkey-patch the classifier to return the canned verdict."""
+    monkeypatch.setattr(_sc, "classify", lambda payload: verdict)
+
+
+def _run_inproc(monkeypatch: pytest.MonkeyPatch, payload: dict[str, Any]) -> tuple[int, str]:
+    """Invoke stop_continuation.main() in-process with stdin/stdout patched."""
+    stdin = io.StringIO(json.dumps(payload))
+    stdout = io.StringIO()
+    monkeypatch.setattr("sys.stdin", stdin)
+    monkeypatch.setattr("sys.stdout", stdout)
+    rc = _stop.main()
+    return rc, stdout.getvalue().strip()
+
+
+def _dispatch_verdict(
+    *,
+    subagent: str = "plan-drafter",
+    artifact_kind: str = "plan",
+    task_summary: str = "Draft PLAN-0011 for cross-machine coordination spike",
+    matched_rows: list[str] | None = None,
+    reason: str = "governance drafting need; agreed plan needs structuring",
+) -> dict[str, Any]:
+    return {
+        "decision": "dispatch",
+        "matched_rows": matched_rows if matched_rows is not None else ["D2"],
+        "reason": reason,
+        "dispatch": {
+            "subagent": subagent,
+            "artifact_kind": artifact_kind,
+            "task_summary": task_summary,
+        },
+    }
+
+
+# --- Happy: dispatch emits block with instruction ---
+
+
+def test_dispatch_plan_emits_block_with_instruction(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    _patch_classify(monkeypatch, _dispatch_verdict())
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    parsed = json.loads(out)
+    assert parsed["decision"] == "block"
+    assert parsed["hookSpecificOutput"]["hookEventName"] == "Stop"
+    reason = parsed["reason"]
+    # Instruction header references the auto-handoff system + spec
+    assert "AUTO-HANDOFF DISPATCH" in reason
+    assert "PLAN-0009 Step 5c" in reason
+    # Cited classifier match + reason
+    assert "D2" in reason
+    assert "agreed plan needs structuring" in reason
+    # Routing detail
+    assert "plan-drafter" in reason
+    assert "artifact_kind: plan" in reason
+    assert "PLAN-0011" in reason  # task_summary surfaced
+    # Pre-spawn discipline (Step 4 §4)
+    assert "docs/plans" in reason  # artifact dir resolved correctly
+    assert "target_number" in reason or "NNNN" in reason
+    # Budget reminder (Step 4 §5)
+    assert "OUTPUT BUDGET REMINDER" in reason
+    assert "≤ 1k tokens" in reason
+    assert "disclosure stamp" in reason
+    # Commit boundary reminder
+    assert "G5" in reason or "composed" in reason or "cannot commit" in reason
+    assert "PR" in reason
+    # Override clause
+    assert "Override" in reason or "override" in reason
+    assert "misroute" in reason or "spurious" in reason
+
+
+def test_dispatch_adr_routes_to_docs_adr(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    _patch_classify(
+        monkeypatch,
+        _dispatch_verdict(
+            artifact_kind="adr",
+            matched_rows=["D1"],
+            task_summary="Draft ADR-0015 for cross-tab transport decision",
+        ),
+    )
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    parsed = json.loads(out)
+    reason = parsed["reason"]
+    assert "artifact_kind: adr" in reason
+    assert "docs/adr" in reason
+    assert "D1" in reason
+    assert "ADR-0015" in reason
+
+
+# --- Chain-cap interaction: dispatch counts as proceed ---
+
+
+def test_dispatch_increments_chain_depth(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    # Seed chain at depth 3
+    inproc_env["chain"].write_text(
+        json.dumps({"depth": 3, "last_proceed_ts": ""}), encoding="utf-8"
+    )
+    _patch_classify(monkeypatch, _dispatch_verdict())
+    _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    chain = json.loads(inproc_env["chain"].read_text(encoding="utf-8"))
+    assert chain["depth"] == 4
+    assert chain["last_proceed_ts"]  # timestamp recorded
+
+
+def test_dispatch_respects_chain_cap(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """At cap-hit, classifier is never consulted — cap-fail-safe wins."""
+    inproc_env["chain"].write_text(
+        json.dumps({"depth": 8, "last_proceed_ts": ""}), encoding="utf-8"
+    )
+    classifier_called = {"n": 0}
+
+    def spying_classify(payload: dict[str, Any]) -> dict[str, Any]:
+        classifier_called["n"] += 1
+        return _dispatch_verdict()
+
+    monkeypatch.setattr(_sc, "classify", spying_classify)
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    assert out == ""  # cap-hit emits no block (lets stop fire)
+    assert classifier_called["n"] == 0
+    chain = json.loads(inproc_env["chain"].read_text(encoding="utf-8"))
+    assert chain["depth"] == 0  # cap-hit resets
+
+
+# --- Fail-closed: malformed dispatch metadata ---
+
+
+def test_dispatch_with_missing_dispatch_field_demotes_to_pause(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """Defensive: if a malformed dispatch verdict reaches the hook (classifier
+    bug bypassing its own validation), the hook demotes to pause locally.
+    """
+    bad_verdict = {
+        "decision": "dispatch",
+        "matched_rows": ["D1"],
+        "reason": "broken",
+        # dispatch field missing entirely
+    }
+    _patch_classify(monkeypatch, bad_verdict)
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    assert out == ""  # demoted to pause behavior
+
+
+def test_dispatch_with_non_dict_dispatch_field_demotes_to_pause(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    bad_verdict = {
+        "decision": "dispatch",
+        "matched_rows": ["D1"],
+        "reason": "broken",
+        "dispatch": "this should be an object",
+    }
+    _patch_classify(monkeypatch, bad_verdict)
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    assert out == ""
+
+
+def test_dispatch_demoted_to_pause_resets_chain(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """Demoted-dispatch behaves like pause: chain reset, no chain increment."""
+    inproc_env["chain"].write_text(
+        json.dumps({"depth": 4, "last_proceed_ts": ""}), encoding="utf-8"
+    )
+    bad_verdict = {
+        "decision": "dispatch",
+        "matched_rows": [],
+        "reason": "broken",
+    }
+    _patch_classify(monkeypatch, bad_verdict)
+    _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    chain = json.loads(inproc_env["chain"].read_text(encoding="utf-8"))
+    assert chain["depth"] == 0
+
+
+# --- Pre-existing behaviors unchanged by dispatch arm ---
+
+
+def test_proceed_verdict_still_emits_block_with_reason(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """Regression guard: the proceed arm still works after Step 5c-1 wiring."""
+    proceed_verdict = {
+        "decision": "proceed",
+        "matched_rows": [],
+        "reason": "tests pass, safe to continue",
+    }
+    _patch_classify(monkeypatch, proceed_verdict)
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    parsed = json.loads(out)
+    assert parsed["decision"] == "block"
+    assert parsed["reason"] == "tests pass, safe to continue"
+
+
+def test_pause_verdict_still_emits_nothing(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    pause_verdict = {
+        "decision": "pause",
+        "matched_rows": ["G1"],
+        "reason": "about to edit accepted ADR",
+    }
+    _patch_classify(monkeypatch, pause_verdict)
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    assert out == ""
+
+
+def test_unknown_verdict_treated_as_pause(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """Defense in depth: unknown decision values are treated as pause
+    (fail-closed). The classifier should never emit these, but a future
+    contract drift must not silently miss-fire as a proceed/dispatch.
+    """
+    weird_verdict = {
+        "decision": "maybe-later",
+        "matched_rows": [],
+        "reason": "x",
+    }
+    _patch_classify(monkeypatch, weird_verdict)
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    assert out == ""
+
+
+# --- Adversarial: dispatch with empty matched_rows still works ---
+
+
+def test_dispatch_with_empty_matched_rows_still_dispatches(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """Classifier emits dispatch without citing a D-row (unlikely but allowed
+    by contract since reason is the citation fallback). Hook still emits the
+    block with the matched_rows section showing (none cited).
+    """
+    _patch_classify(monkeypatch, _dispatch_verdict(matched_rows=[]))
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    parsed = json.loads(out)
+    assert parsed["decision"] == "block"
+    assert "(none cited)" in parsed["reason"]
+
+
+# --- Re-entry guard still applies to dispatch arm ---
+
+
+def test_dispatch_skipped_under_reentry_guard(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """When stop_hook_active=True, even a dispatch verdict is not produced
+    (classifier is never consulted; nothing is emitted).
+    """
+    classifier_called = {"n": 0}
+
+    def spying_classify(payload: dict[str, Any]) -> dict[str, Any]:
+        classifier_called["n"] += 1
+        return _dispatch_verdict()
+
+    monkeypatch.setattr(_sc, "classify", spying_classify)
+    rc, out = _run_inproc(
+        monkeypatch,
+        {"hook_event_name": "Stop", "stop_hook_active": True},
+    )
+    assert rc == 0
+    assert out == ""
+    assert classifier_called["n"] == 0
+
+
+# --- Instruction template structure sanity ---
+
+
+def test_dispatch_instruction_includes_step4_references(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """Instruction cites Step 4 sections so the main agent can cross-reference."""
+    _patch_classify(monkeypatch, _dispatch_verdict())
+    _, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    reason = json.loads(out)["reason"]
+    assert "Step 4 §1" in reason  # routing
+    assert "Step 4 §4" in reason  # pre-spawn discipline
+    assert "Step 4 §3" in reason  # post-spawn discipline
+
+
+def test_dispatch_instruction_includes_scoped_context_discipline(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """Instruction tells the agent not to inline file contents (Step 4 §2)."""
+    _patch_classify(monkeypatch, _dispatch_verdict())
+    _, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    reason = json.loads(out)["reason"]
+    assert "scoped_context" in reason
+    assert "do NOT inline" in reason or "do not inline" in reason.lower()

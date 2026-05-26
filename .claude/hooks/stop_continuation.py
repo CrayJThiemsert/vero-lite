@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Stop hook — turn-boundary L1 reset + chain-cap fail-safe (PLAN-0008 Step 4).
+"""Stop hook — turn-boundary L1 reset + chain-cap fail-safe + auto-handoff
+dispatch (PLAN-0008 Step 4 + PLAN-0009 Step 5c-1).
 
-Fires on every ``Stop`` event. Two responsibilities:
+Fires on every ``Stop`` event. Three responsibilities:
 
 1. **Turn-boundary reset (priority).** Reads ``turn_touched`` from the
    loop-counter state file (recorded by Step 3's
@@ -12,18 +13,29 @@ Fires on every ``Stop`` event. Two responsibilities:
    the L1/L4 asymmetry ELI-CTO (Cray's iterative STATUS-editing
    workflow would otherwise false-positive at 6 edits per session).
 2. **Chain-cap fail-safe (PLAN §Step 4).** Tracks consecutive
-   ``proceed`` decisions in ``.claude/state/stop-chain.json`` against
-   ``$CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`` (default 8). On cap-hit:
+   ``proceed`` / ``dispatch`` decisions in ``.claude/state/stop-chain.json``
+   against ``$CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`` (default 8). On cap-hit:
    emits no block (lets the stop fire), pings Telegram with
    ``"cap reached"`` per OQ-E option (b), and resets the chain.
    Re-entry guarded by the harness ``stop_hook_active`` flag.
+3. **Auto-handoff dispatch (PLAN-0009 Step 5c-1).** When the Sonnet
+   classifier returns ``decision == "dispatch"`` (governance-drafting
+   need matching a D-row in the registry), the hook emits a ``block``
+   directive whose ``reason`` instructs the main Code agent to spawn
+   the ``plan-drafter`` subagent via the Step 4 §1 R4 routing + §5
+   budget reminder template. The main agent invokes the ``Agent`` tool
+   on its next turn (the hook itself cannot spawn — only the main
+   agent in its own loop can). Counts toward chain-cap same as
+   ``proceed`` (a dispatch is semantically a continuation + instruction).
 
-The Sonnet pause/proceed classifier is invoked via
-``_sonnet_classifier.classify`` (PLAN §Step 5). The classifier
-reads ``.claude/autonomy-triggers.md`` verbatim, calls the Anthropic
-Messages API (stdlib urllib), parses JSON, and is fail-closed:
-any infrastructure failure returns ``pause``. The hook flow here
-therefore never mis-proceeds because of an API outage.
+The Sonnet pause/proceed/dispatch classifier is invoked via
+``_sonnet_classifier.classify`` (PLAN §Step 5 + PLAN-0009 Step 5c-1).
+The classifier reads ``.claude/autonomy-triggers.md`` verbatim, calls
+the Anthropic Messages API (stdlib urllib), parses JSON, and is
+fail-closed: any infrastructure failure returns ``pause``. The hook
+flow here therefore never mis-proceeds because of an API outage, and
+never mis-dispatches on malformed dispatch metadata (the classifier
+demotes a bad dispatch to ``pause`` before returning).
 
 State file paths and Telegram script honor the env-var overrides
 shared with Step 2/3 for testability
@@ -200,6 +212,77 @@ def _proceed_block(reason: str) -> dict[str, Any]:
     }
 
 
+# PLAN-0009 Step 4 §5 budget reminder template (verbatim) — kept in this
+# module so the dispatch instruction is self-contained. If Step 4 §5 is
+# ever edited, mirror the change here AND update test_stop_continuation
+# fixtures asserting the template content.
+_PLAN_DRAFTER_BUDGET_REMINDER = (
+    "OUTPUT BUDGET REMINDER: per the plan-drafter output schema, your "
+    "final message should be ≤ 1k tokens total — use the artifact-path-"
+    "only pattern (cite the path you wrote; do NOT inline the artifact "
+    "body). The disclosure stamp and surfaced-decisions section are "
+    "mandatory; do not silently downgrade either."
+)
+
+
+def _build_dispatch_instruction(
+    dispatch: dict[str, str],
+    matched_rows: list[str],
+    classifier_reason: str,
+) -> str:
+    """Build the continuation instruction the main agent reads on its next turn.
+
+    The instruction encodes:
+    * **Why** dispatch fired (matched D-rows + classifier reason)
+    * **What** subagent to spawn + artifact_kind + task_summary
+    * **Pre-spawn** discipline (enumerate ``docs/{adr,plans}/`` first
+      to pick a free ``NNNN``) per Step 4 §4 "Pre-spawn validation"
+    * **Budget reminder** verbatim from Step 4 §5
+    * **Commit boundary** reminder: subagent cannot commit; main agent
+      handles PR-flow per CLAUDE.md §7
+    * **Override** clause: if the agent's judgment differs from the
+      classifier (e.g., the dispatch is misrouted), fall back to a
+      plain pause (do NOT spawn) — the classifier is conservative-by-
+      default but the main agent owns the final routing call.
+    """
+    subagent = dispatch["subagent"]
+    artifact_kind = dispatch["artifact_kind"]
+    task_summary = dispatch["task_summary"]
+    matched_str = ", ".join(matched_rows) if matched_rows else "(none cited)"
+    artifact_dir = "docs/adr" if artifact_kind == "adr" else "docs/plans"
+
+    return (
+        f"AUTO-HANDOFF DISPATCH (PLAN-0009 Step 5c). The classifier "
+        f"matched {matched_str} and identified a governance-drafting need:\n"
+        f'  "{classifier_reason}"\n\n'
+        f"Per Step 4 §1 R4 routing, spawn the `{subagent}` subagent via "
+        f"the Agent tool with the following parameters:\n"
+        f"  - subagent_type: {subagent}\n"
+        f"  - artifact_kind: {artifact_kind}\n"
+        f"  - task_summary: {task_summary}\n\n"
+        f"Pre-spawn discipline (Step 4 §4):\n"
+        f"  1. Enumerate `{artifact_dir}/` to pick the next free NNNN; pass "
+        f"it down as target_number (subagent does NOT enumerate).\n"
+        f"  2. Construct scoped_context from prior explore-research findings "
+        f"or facts already in your context — do NOT inline full file contents "
+        f"(the subagent has Read).\n"
+        f"  3. Include the budget reminder verbatim in the dispatch payload:\n\n"
+        f"{_PLAN_DRAFTER_BUDGET_REMINDER}\n\n"
+        f"Post-spawn discipline (Step 4 §3):\n"
+        f"  - The subagent returns a final message with the artifact path + "
+        f"a bounded summary. Reference the path in your reply; do NOT echo "
+        f"the artifact body.\n"
+        f"  - YOU commit the draft via PR per CLAUDE.md §7. The subagent "
+        f"cannot commit (G5 binds — composed identity gate denies any git "
+        f"op from a subagent regardless of CLAUDE_TIER inheritance).\n\n"
+        f"Override clause: if you believe the classifier misrouted this "
+        f"(e.g., the task is not actually governance-drafting, or no D-row "
+        f"actually fits), do NOT spawn — instead, surface the misroute in a "
+        f"short reply so Cray can review the trigger. Spurious dispatches "
+        f"are worse than spurious pauses (they consume a subagent spawn)."
+    )
+
+
 def _cap_reached_payload(depth: int, cap: int) -> dict[str, Any]:
     return {
         "event": "stop_continuation_cap_reached",
@@ -242,14 +325,41 @@ def main() -> int:
 
     # Classifier dispatch (real Sonnet via _sonnet_classifier, fail-closed pause).
     decision = _classify(payload)
-    if decision.get("decision") == "proceed":
+    verdict = decision.get("decision")
+
+    if verdict == "proceed":
         chain["depth"] += 1
         chain["last_proceed_ts"] = _now_iso()
         _save_chain(chain)
         print(json.dumps(_proceed_block(decision.get("reason", "continue"))))
         return 0
 
-    # "pause" → no block; reset the chain so the next session starts fresh.
+    if verdict == "dispatch":
+        # PLAN-0009 Step 5c-1 auto-handoff arm. Defensive: the classifier
+        # already validates dispatch metadata + fails closed to pause on any
+        # schema violation, but if a malformed dispatch reaches here (e.g.,
+        # future classifier-helper regression), demote to pause locally so
+        # the hook never emits a malformed instruction.
+        dispatch_meta = decision.get("dispatch")
+        if not isinstance(dispatch_meta, dict):
+            _reset_chain()
+            return 0
+        matched_rows_raw = decision.get("matched_rows") or []
+        matched_rows = [str(r) for r in matched_rows_raw if isinstance(matched_rows_raw, list)]
+        classifier_reason = decision.get("reason", "")
+        instruction = _build_dispatch_instruction(
+            dispatch_meta,
+            matched_rows,
+            str(classifier_reason),
+        )
+        chain["depth"] += 1
+        chain["last_proceed_ts"] = _now_iso()
+        _save_chain(chain)
+        print(json.dumps(_proceed_block(instruction)))
+        return 0
+
+    # "pause" (or any unrecognized verdict, fail-closed) → no block; reset the
+    # chain so the next session starts fresh.
     _reset_chain()
     return 0
 

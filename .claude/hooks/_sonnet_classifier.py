@@ -1,13 +1,16 @@
-"""Sonnet pause/proceed classifier helper (PLAN-0008 Step 5).
+"""Sonnet pause/proceed/dispatch classifier helper (PLAN-0008 Step 5 +
+PLAN-0009 Step 5c-1).
 
 Called by ``.claude/hooks/stop_continuation.py`` (Step 4) on every
 ``Stop`` event under the chain cap. Decides whether the agent should
-*proceed* (keep iterating without Cray) or *pause* (yield to Cray).
+*proceed* (keep iterating without Cray), *pause* (yield to Cray), or
+*dispatch* (auto-handoff to a co-located subagent — PLAN-0009 Step 5c).
 
 Reads ``.claude/autonomy-triggers.md`` verbatim as the decision
 registry, calls the Anthropic Messages API with Sonnet 4.6 (pin per
 PLAN-0008 OQ-B), parses a JSON response, and returns
-``{decision, matched_rows, reason}``.
+``{decision, matched_rows, reason}`` (plus ``dispatch`` metadata when
+decision == "dispatch").
 
 **Stdlib-only by design.** PLAN §Step 5 noted the Anthropic SDK as
 "preferred for structured output via format constraint", but
@@ -72,6 +75,18 @@ KEY_FILE_PERM_MASK = 0o077  # any group/other bit set = unsafe (POSIX)
 # Decision contract — single source of truth, used by tests too.
 DECISION_PROCEED = "proceed"
 DECISION_PAUSE = "pause"
+DECISION_DISPATCH = "dispatch"  # PLAN-0009 Step 5c-1 — auto-handoff arm
+_VALID_DECISIONS = frozenset({DECISION_PROCEED, DECISION_PAUSE, DECISION_DISPATCH})
+
+# Dispatch metadata constraints — keep tight per Step 4 §1 R4 (governance
+# drafting is the only auto-handoff use case in Phase 3; explore-research
+# is a main-agent routing decision per Step 4 §1 R2/R5, not auto-handoff).
+DISPATCH_ALLOWED_SUBAGENTS = frozenset({"plan-drafter"})
+DISPATCH_ALLOWED_ARTIFACT_KINDS = frozenset({"adr", "plan"})
+# Loose cap on task_summary length; classifier-emitted strings should be
+# imperative one-liners per the system prompt, but we cap defensively so
+# the dispatch instruction template stays bounded.
+DISPATCH_TASK_SUMMARY_MAX_CHARS = 500
 
 
 def _registry_path() -> Path:
@@ -163,27 +178,46 @@ def _load_registry() -> str | None:
 
 def _build_system_prompt(registry: str, *, strict: bool = False) -> str:
     base = (
-        "You are the Phase 2 autonomy classifier for vero-lite Claude "
-        "Code sessions.\n\n"
+        "You are the Phase 2 + Phase 3 autonomy classifier for vero-lite "
+        "Claude Code sessions.\n\n"
         "Your job: given the agent's recent activity (in the user "
         "message), decide whether the agent should\n"
-        "  (a) PROCEED — keep iterating without Cray's input, or\n"
-        "  (b) PAUSE  — yield to Cray and wait for human review.\n\n"
+        "  (a) PROCEED  — keep iterating without Cray's input,\n"
+        "  (b) PAUSE    — yield to Cray and wait for human review, or\n"
+        "  (c) DISPATCH — auto-handoff to a co-located subagent for a\n"
+        "      governance-drafting task that the agent should NOT pause\n"
+        "      for, because the work is bounded + structured + a Plan\n"
+        "      subagent can produce a PR-ready draft without Cray paste.\n"
+        "      (PLAN-0009 Step 5c-1; D-rows in the registry below.)\n\n"
         "Decision criteria are in this registry. Read it literally; "
         "scan the agent's recent activity against the rows. If the "
-        "next likely action matches an always-pause row, return PAUSE "
-        "and cite the row ID.\n\n"
+        "next likely action matches an always-pause row (G/C/H/L), "
+        "return PAUSE and cite the row ID. If it matches an auto-handoff "
+        "row (D-rows), return DISPATCH and cite the D-row + emit "
+        "dispatch metadata.\n\n"
         "--- REGISTRY START ---\n"
         f"{registry}\n"
         "--- REGISTRY END ---\n\n"
         "Default to PAUSE unless the next action is obviously low-risk "
         "progress (e.g., committing tests that just passed, running a "
-        "known-safe read-only command). Conservative bias is "
-        "intentional: spurious pauses are preferred over spurious "
-        "proceeds.\n\n"
+        "known-safe read-only command) OR clearly matches a D-row "
+        "auto-handoff trigger. Conservative bias is intentional: "
+        "spurious pauses are preferred over spurious proceeds. "
+        "Spurious dispatches are worse than spurious pauses (they "
+        "consume a subagent spawn) — when in doubt between PAUSE and "
+        "DISPATCH, choose PAUSE.\n\n"
         "Respond with ONLY a JSON object matching this schema:\n"
-        '  {"decision": "proceed" | "pause", "matched_rows": '
-        '[<row IDs like "G1", "L3">], "reason": "<one short sentence>"}\n'
+        '  {"decision": "proceed" | "pause" | "dispatch",\n'
+        '   "matched_rows": [<row IDs like "G1", "L3", "D1">],\n'
+        '   "reason": "<one short sentence>",\n'
+        '   "dispatch": {                       // REQUIRED iff decision == "dispatch"\n'
+        '     "subagent": "plan-drafter",       // only allowed value today\n'
+        '     "artifact_kind": "adr" | "plan",  // matches the D-row\n'
+        '     "task_summary": "<imperative one-liner ≤ 200 chars>"\n'
+        "   }}\n\n"
+        "Omit the dispatch field when decision is proceed or pause. "
+        "If you cannot supply valid dispatch metadata, fall back to "
+        "PAUSE instead — the dispatch arm is fail-closed.\n"
     )
     if strict:
         base += (
@@ -259,6 +293,48 @@ def _call_api(
 _JSON_OBJECT_RE = re.compile(r"\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}", re.DOTALL)
 
 
+def _validate_dispatch_metadata(raw_dispatch: Any) -> dict[str, str]:
+    """Validate the ``dispatch`` field structure when decision == "dispatch".
+
+    PLAN-0009 Step 5c-1 dispatch contract. Returns a normalized dict with
+    the three required keys; raises ``ValueError`` on any schema violation
+    so the caller can fail-closed to PAUSE per the design discipline
+    ("spurious dispatches are worse than spurious pauses").
+    """
+    if not isinstance(raw_dispatch, dict):
+        raise ValueError("dispatch field must be an object")
+
+    subagent = raw_dispatch.get("subagent")
+    if not isinstance(subagent, str) or subagent not in DISPATCH_ALLOWED_SUBAGENTS:
+        raise ValueError(
+            f"dispatch.subagent must be one of {sorted(DISPATCH_ALLOWED_SUBAGENTS)}; "
+            f"got {subagent!r}"
+        )
+
+    artifact_kind = raw_dispatch.get("artifact_kind")
+    if not isinstance(artifact_kind, str) or artifact_kind not in DISPATCH_ALLOWED_ARTIFACT_KINDS:
+        raise ValueError(
+            f"dispatch.artifact_kind must be one of "
+            f"{sorted(DISPATCH_ALLOWED_ARTIFACT_KINDS)}; got {artifact_kind!r}"
+        )
+
+    task_summary = raw_dispatch.get("task_summary")
+    if not isinstance(task_summary, str) or not task_summary.strip():
+        raise ValueError("dispatch.task_summary must be a non-empty string")
+    task_summary = task_summary.strip()
+    if len(task_summary) > DISPATCH_TASK_SUMMARY_MAX_CHARS:
+        raise ValueError(
+            f"dispatch.task_summary exceeds {DISPATCH_TASK_SUMMARY_MAX_CHARS} chars "
+            f"({len(task_summary)} given)"
+        )
+
+    return {
+        "subagent": subagent,
+        "artifact_kind": artifact_kind,
+        "task_summary": task_summary,
+    }
+
+
 def _parse_response(text: str) -> dict[str, Any]:
     """Parse the classifier's text reply into the decision dict.
 
@@ -266,6 +342,10 @@ def _parse_response(text: str) -> dict[str, Any]:
     first balanced JSON object (model may wrap in markdown despite
     instructions). Raises ``ValueError`` on no-parse or
     schema-violation; caller catches and triggers retry or fail-closed.
+
+    PLAN-0009 Step 5c-1: also handles ``decision == "dispatch"`` with
+    the required ``dispatch`` metadata sub-object; any dispatch schema
+    violation raises ``ValueError`` so the caller fails closed to PAUSE.
     """
     stripped = text.strip()
     raw: Any
@@ -280,7 +360,7 @@ def _parse_response(text: str) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise ValueError("classifier response not a JSON object")
     decision = raw.get("decision")
-    if decision not in (DECISION_PROCEED, DECISION_PAUSE):
+    if decision not in _VALID_DECISIONS:
         raise ValueError(f"invalid decision value: {decision!r}")
     matched = raw.get("matched_rows") or []
     if not isinstance(matched, list):
@@ -288,11 +368,21 @@ def _parse_response(text: str) -> dict[str, Any]:
     reason = raw.get("reason") or ""
     if not isinstance(reason, str):
         raise ValueError("reason not a string")
-    return {
+
+    result: dict[str, Any] = {
         "decision": decision,
         "matched_rows": [str(r) for r in matched],
         "reason": reason,
     }
+
+    if decision == DECISION_DISPATCH:
+        # Required iff decision == dispatch. Missing or malformed → ValueError →
+        # caller's retry-then-pause flow (fail-closed).
+        if "dispatch" not in raw:
+            raise ValueError("decision=dispatch requires a 'dispatch' field")
+        result["dispatch"] = _validate_dispatch_metadata(raw["dispatch"])
+
+    return result
 
 
 def classify(payload: dict[str, Any]) -> dict[str, Any]:
