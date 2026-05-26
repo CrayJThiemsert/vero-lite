@@ -258,3 +258,26 @@ def test_deny_reason_cites_adr_authority() -> None:
     assert out is not None
     reason = out["hookSpecificOutput"]["permissionDecisionReason"]
     assert "ADR-013" in reason or "ADR-012" in reason
+
+
+# --- ADR-013 D2 bypass-immunity regression guard (Step 6 Phase 1.5) ---
+
+
+def test_bypass_permissions_still_denies_outside_allowlist() -> None:
+    """ADR-013 D2 binding: ``PreToolUse deny`` is deterministic and bypass-immune.
+
+    The harness ``permission_mode: bypassPermissions`` flag must NOT short-circuit
+    this hook's allowlist decision. Asserts the hook reads its own logic
+    (file_path vs allowlist) and ignores permission_mode entirely — this is
+    cheap insurance against a future implementation that accidentally
+    short-circuits on bypass. The G5 sibling carries the same guard
+    (`test_pretooluse_git_deny.py::test_subagent_bypass_permissions_still_denied`);
+    H2 was uncovered until session-14 Step 6 Phase 1.5 closeout.
+    """
+    payload = {
+        "tool_name": "Write",
+        "tool_input": {"file_path": "services/api/main.py", "content": "x"},
+        "permission_mode": "bypassPermissions",
+    }
+    _, out = _run(payload)
+    assert _is_deny(out)

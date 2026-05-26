@@ -332,7 +332,7 @@ existing unit test(s) that cover it. Legend:
   - Bash → `disallowedTools` (L) — harness-enforced at spawn-time
 - **Adversarial** — `bypassPermissions` × `plan-drafter`:
   - G5 case covered: [`test_pretooluse_git_deny.py::test_subagent_bypass_permissions_still_denied`](../../tests/handoffs/test_pretooluse_git_deny.py)
-  - H2 case **(RR)** — no `bypassPermissions` × H2 unit test; deterministic deny per ADR-013 D2 but not regression-guarded. Add in a future hardening pass or live-verify in Phase 2.
+  - H2 case covered (closed in session-14 Step 6 Phase 1.5): [`test_pretooluse_plan_subagent_write_deny.py::test_bypass_permissions_still_denies_outside_allowlist`](../../tests/handoffs/test_pretooluse_plan_subagent_write_deny.py)
 - **Concurrency** (L) — two `plan-drafter`s with different `target_number`s, no NNNN collision (caller-enumerates discipline)
 
 #### AC-4 dispatch protocol
@@ -381,7 +381,10 @@ existing unit test(s) that cover it. Legend:
 - **Fail-closed** — same suites; fail-closed cases live inside each file
 - **Adversarial** — `bypassPermissions` × every guarded op:
   - G5: covered ([`test_pretooluse_git_deny.py::test_subagent_bypass_permissions_still_denied`](../../tests/handoffs/test_pretooluse_git_deny.py))
-  - H2 / C4 / L1–L4 / H1: **(RR)** — no `bypassPermissions` unit tests for these hooks; ADR-013 D2 deterministic-deny applies by `PreToolUse deny` semantics but is not regression-guarded. Sign-off must name this gap explicitly.
+  - H2: covered (Step 6 Phase 1.5) — [`test_pretooluse_plan_subagent_write_deny.py::test_bypass_permissions_still_denies_outside_allowlist`](../../tests/handoffs/test_pretooluse_plan_subagent_write_deny.py)
+  - C4: covered (Step 6 Phase 1.5) — [`test_pretooluse_research_path_deny.py::test_bypass_permissions_still_denies_research_public`](../../tests/handoffs/test_pretooluse_research_path_deny.py)
+  - L1–L4: covered (Step 6 Phase 1.5) — [`test_pretooluse_loop_detect.py::test_bypass_permissions_still_denies_at_threshold`](../../tests/handoffs/test_pretooluse_loop_detect.py)
+  - H1 (PostToolUse handoff validator): **N/A** — H1 fires PostToolUse, not PreToolUse, so the ADR-013 D2 "PreToolUse deny is bypass-immune" property does not bind. PostToolUse hooks always run after the tool executes regardless of `permission_mode`; H1's role is observation (warning emission), not deny.
 - **Concurrency** (L) — concurrent main-agent + scheduled task + subagent all gates composing; structurally cross-process, not unit-testable
 
 ### Residual risks (named for sign-off)
@@ -390,7 +393,7 @@ existing unit test(s) that cover it. Legend:
 2. **Author≠reviewer separation for `plan-drafter`** — Plan subagent shares main harness's framing/context (Step 1a Q4) → no in-harness independent-deliberation check; ADR-013 OQ-1 mitigation (Cowork retained as external advisory drafter) is preserved by *policy*, not enforced by *primitive*
 3. **`maxTurns` + L1–L4 loop-detect overlap** — both are loop-bounds; cheap insurance but could mask which one fired in postmortem; logging must record both signals
 4. **Subagent transcript persistence** (`~/.claude/projects/.../subagents/`) is **outside repo + outside `.claude/state/`** — audit trail lives on the local machine only; cross-machine forensics impossible without manual copy
-5. **`bypassPermissions` unit-coverage gap on H2 / C4 / L1–L4 / H1** (new in Step 6 Phase 1) — only G5 has an explicit `bypassPermissions` × subagent regression test. The other four hooks rely on ADR-013 D2's "`PreToolUse deny` is deterministic and bypass-immune" property by primitive design, but no unit test currently asserts it. Add a 4-hook bypass-immunity sweep in a future hardening pass; meanwhile flag as residual.
+5. **~~`bypassPermissions` unit-coverage gap on H2 / C4 / L1–L4 / H1~~** (raised in Step 6 Phase 1; **closed in Step 6 Phase 1.5, session 14**) — Added 3 explicit `bypassPermissions` × deny regression tests for the PreToolUse trio (H2, C4, L1–L4); see §8.1 AC-6 Adversarial. H1 is PostToolUse so ADR-013 D2's PreToolUse-deny guarantee does not bind (PostToolUse hooks always run regardless of `permission_mode`; H1 emits warnings, not denies). Residual narrowed to: *PostToolUse hooks are out-of-scope for the ADR-013 D2 bypass-immunity property by definition.*
 
 ## §9 — Deferred to Step 2–6 execution
 

@@ -139,7 +139,11 @@ Consumer rejects unknown `message_type` values (fail-closed; archive to `process
 
 ## §4 — Payload body schema
 
-The body is markdown beneath the frontmatter. Use H2 sections; consumers parse by section heading. Required section ordering matters — consumers can `split("\n## ")` and zip to keys.
+The body is markdown beneath the frontmatter. Use H2 sections; consumers parse by section heading.
+
+**Section ordering is insensitive** (amended 2026-05-26, session 14 Step 6 Phase 1.5 spec-drift fix). The parser uses a `{heading: content}` dict keyed on the section header (`tests/loop/test_schema.py::test_section_ordering_insensitive`), which is strictly more robust than the earlier draft's `split("\n## ").zip` approach. Producers should still emit sections in the canonical order below for human readability + diff stability, but the consumer does not enforce order at parse time.
+
+*Earlier draft text (preserved for archeology):* "Required section ordering matters — consumers can `split('\n## ')` and zip to keys."
 
 ### Required sections
 
@@ -212,6 +216,20 @@ The atomic `mv` is the commit boundary. Either `inbox/<name>` exists or `process
 - **Parse failure** (malformed YAML, missing required field, unknown `message_type`, `schema_version != 1`) → archive to `processed/` immediately with a `loop/processed/<name>.parse-error.log` sibling containing the error reason. Do NOT retry — the message will not parse differently on retry.
 - **Dispatch failure** (downstream handler raises) → leave message in `inbox/`; integrate PLAN-0008 L1–L4 loop-detect so repeated dispatch failure on the same message trips the loop fail-safe and pauses + Telegram-alerts rather than thrashing.
 - **Expired message** (`now > expires_after`) → archive to `processed/` with a `loop/processed/<name>.expired.log` marker; do not dispatch.
+
+### Cross-process consumer safety (binding assumption)
+
+*Documented 2026-05-26, session 14 Step 6 Phase 1.5; mitigates §8 residual risks #6 + #7.*
+
+Phase 3.5 ships with **single-consumer-process topology** — only one `python -m tools.loop.dispatcher` runs at a time (Cray invokes manually; the Code Desktop scheduled-task wiring is deferred to Phase 4). The lifecycle invariant ("message exists in inbox/ OR processed/, never both, never neither") rests on POSIX `rename(2)` atomicity within a single filesystem (verified by the same-fs check at consumer startup).
+
+**If two consumers ever run concurrently** (anticipated when Phase 4 wires the scheduled task and Cray simultaneously runs a manual dispatch):
+
+1. POSIX `rename(2)` guarantees exactly one process wins the move; the loser's `Path.replace()` raises `FileNotFoundError`. The current dispatcher (`tools/loop/dispatcher.py`) does **NOT** catch this exception, so the losing process exits with a traceback (non-zero return code). Filesystem invariant remains intact (loser does not create a duplicate); only the process-level exit code is dirty.
+2. Phase 4 unblock criteria for scheduled-task wiring: **add `FileNotFoundError` recovery to `_archive` call sites** so the loser returns `SKIPPED_IDEMPOTENT` cleanly instead of crashing. This is a focused dispatcher PR (~5 LOC + 1 unit test using `multiprocessing.Process`) that should land *before* the scheduled task fires for the first time.
+3. Step 6 Phase 2 (session 14, this session) live-AC verification will exercise the race manually with two terminals; observed behavior feeds into the Phase 4 unblock PR.
+
+**Why deferred (not fixed in Phase 3.5):** YAGNI — the feature requiring concurrent consumers (scheduled-task wiring) is itself Phase 4. Fixing now would add untested code for a hypothetical scenario; fixing alongside the feature ensures the fix is exercised by the same PR that makes it load-bearing. (Originally evaluated at session-14 Step 6 Phase 1.5 with a 30-min cost estimate; actual cost ~90 min including dispatcher code change + multiprocessing test infrastructure — recommendation revised to defer.)
 
 ## §6 — Retention policy
 
@@ -313,7 +331,7 @@ existing unit test(s) that cover it. Legend:
   - Same-fs invariant: `test_run_once_aborts_when_same_fs_check_fails`, `test_cli_aborts_when_same_fs_check_fails`, `test_same_filesystem_true_when_both_under_tmp`, `test_same_filesystem_false_when_inbox_missing`
   - Failure-state persistence: `test_failure_state_load_missing_returns_empty`, `test_failure_state_load_corrupt_returns_empty`, `test_failure_state_roundtrip`, `test_failure_state_clear`
 - **Adversarial** — producer rewrites same filename twice (§2 rand suffix collision avoidance) → **(RR)** producer-side concern; consumer trusts filename uniqueness. Mitigated by producer prompt, not consumer code. Residual risk #2 below already names this.
-- **Concurrency** — two consumers on same inbox, atomic-mv wins → **(RR)** structurally cross-process; no unit test exercises two simultaneous dispatcher processes. Single-process atomic-mv invariant verified above; cross-process race is a Step 3 documented assumption that POSIX `rename(2)` is atomic within the same FS.
+- **Concurrency** — two consumers on same inbox, atomic-mv wins → **(RR-documented)** see §5 "Cross-process consumer safety" subsection (added Step 6 Phase 1.5, session 14). Phase 3.5 ships single-consumer topology; cross-process scenario is Phase 4 territory with explicit unblock criteria. Single-process atomic-mv invariant verified by tests above; cross-process documented as binding assumption, not unit-tested.
 
 #### AC-Step1-3 mtime ordering
 - **Happy** — 3 messages mtime 1s/2s/3s → processed in order: [`tests/loop/test_dispatcher.py::test_mtime_order_three_messages`](../../tests/loop/test_dispatcher.py)
@@ -343,9 +361,9 @@ existing unit test(s) that cover it. Legend:
 2. **Filename-keyed idempotency** — content changes that re-use a filename (producer bug) would be silently skipped by the `processed/<name>` check. Mitigated by §2 `mtime-nonce` (collisions across same-second require explicit `<rand>` suffix). Residual: a producer with a genuinely buggy filename generator could still mask updates.
 3. **Schema-version rejection is fail-closed** — a v2 producer ahead of a v1 consumer drops messages silently into `processed/` with a warning. Operator must monitor consumer logs to notice. Mitigation: Step 3 emits a `loop_drop_count` metric per scan; observability dashboard (future) alerts on non-zero.
 4. **`.gitkeep` sentinel collision** — a future producer accidentally writing `loop/inbox/.gitkeep.msg.md` would shadow the sentinel. Mitigated by the `^[a-z]` producer-id constraint (`.` is not lowercase letter), but worth a Step 3 unit test that names `.gitkeep` does NOT parse as a valid filename. **Verified by `test_filename_gitkeep_does_not_parse_as_message` + `test_filename_gitkeep_with_msg_md_suffix_does_not_parse` (Step 6 Phase 1, session 14).**
-5. **Spec drift — body section ordering** (new in Step 6 Phase 1) — Step 1 §4 says "body section ordering swapped → reject (consumers split-zip)" but the parser implementation is order-INsensitive (`test_section_ordering_insensitive` confirms). The order-insensitive parser is **strictly more robust** than the spec's pessimistic case; this is a *documented spec drift, not a correctness bug*. Recommendation: update §4 to declare the parser order-insensitive on next plan touch. Cray adjudicates at PR review.
+5. **~~Spec drift — body section ordering~~** (raised in Step 6 Phase 1; **closed in Step 6 Phase 1.5, session 14**) — §4 amended to declare the parser order-insensitive and preserve the earlier draft text for archeology. Cray's PR review ratifies the direction (order-insensitive is strictly more robust than the original split-zip approach; `test_section_ordering_insensitive` confirms).
 6. **Producer-side filename-collision race not unit-testable from consumer side** (new in Step 6 Phase 1) — AC-Step1-2 Adversarial cell ("producer rewrites same filename twice"). The consumer trusts filename uniqueness; the §2 `mtime-nonce` + `<rand>` suffix discipline is the producer prompt's responsibility. No consumer unit test verifies producer-side collision avoidance. Sign-off must name this division of responsibility explicitly.
-7. **Cross-process race coverage** (new in Step 6 Phase 1) — AC-Step1-2 Concurrency, AC-Step1-3 Concurrency, AC-Step1-4 Concurrency: all rely on single-process atomic-`rename(2)` + same-fs invariant. No unit test exercises two simultaneous dispatcher processes. POSIX guarantees the atomic-mv property, but a documented test-coverage gap. Phase 2 live AC can verify by firing a manual `python -m tools.loop.dispatcher` mid-Cowork-producer write.
+7. **Cross-process race coverage** (raised in Step 6 Phase 1; **mitigation documented in Step 6 Phase 1.5, session 14** — see §5 "Cross-process consumer safety") — AC-Step1-2/3/4 Concurrency cells rely on single-process atomic-`rename(2)` + same-fs invariant. Phase 3.5 ships single-consumer-process topology (manual dispatch only); the concurrent-consumer scenario is **Phase 4 territory** (when the Code Desktop scheduled task wires). §5 documents the binding assumption and the Phase 4 unblock criterion: add `FileNotFoundError` recovery to `_archive` call sites + a `multiprocessing.Process` unit test before the scheduled task fires for the first time. Phase 2 live AC verification (session 14) will exercise the race manually with 2 terminals; observed behavior feeds the Phase 4 unblock PR.
 
 ## §9 — Deferred to Step 2/3 execution
 
