@@ -1,10 +1,10 @@
 ---
-last_updated: 2026-05-25T17:00:00+07:00
+last_updated: 2026-05-26T10:15:00+07:00
 session: 10
-current_batch: **PLAN-0009 Step 1 split MERGED + Step 1a research spike DONE + Phase 3.5 smoke observation RUNNING**. PR #22 (PLAN-0009 base, `fddcf2e`) + PR #23 (Step 1 split into 1a research spike / 1b contract design, `0fb83fb`) merged to main. Step 1a survey artifact at `docs/research/private/2026-05-25-subagent-primitive-survey.md` — 8/8 questions high-confidence; **identity mechanism CLARIFIED** (G5 = `agent_id` hook stdin + `CLAUDE_TIER` env composed, not single signal); built-in `Plan`/`Explore` name collision → Step 1b use `plan-drafter`/`explore-research`; no native cwd-narrow or write-path-allowlist → AC-3 needs new `pretooluse_plan_subagent_write_deny.py` hook extending C4 pattern. Phase 3.5 smoke setup complete (2 Anthropic scheduled tasks: Cowork hourly Write-only writer + Code Desktop hourly bash reader); 4/4 load-bearing questions answered favorably in run 1 (`tier=code` ✅ `bash=ok` ✅ cross-task visibility ✅ Cowork Write on UNC ✅); 24-48h observation period started 2026-05-25T16:03 +07. NEW finding F7 (**Auto mode requires Sonnet-tier model** — not in any Anthropic doc surveyed) + 8 other findings captured in `docs/research/private/phase3.5-smoke/findings.md`.
+current_batch: **Phase 3.5 smoke verdict = GO (early, Cray-ratified 2026-05-26T10:10 +07)**. Smoke ran ~18h wall-clock / ~8h awake-time with 8 Code Desktop runs (100% awake-reliability) + 11+ Cowork attempts visible in history (~85% awake-reliability). All 5 load-bearing questions answered ✅ (primitive mechanics; `tier=code` env propagation; cross-task visibility on UNC mount; `bash=ok` Code Desktop side; sleep-recovery clean live-verified ~10h overnight sleep → catch-up). 2 minor caveats characterized as design notes (NOT blockers): (1) Cowork agent time-awareness drifts ±5h → use filesystem `mtime` as authoritative fire-time not Cowork-claimed timestamp (F-OBSERVED-3); (2) Cowork "peak hours" usage warning ~7 PM – 2 AM Bangkok local → schedule heavy/batch tasks off-peak Bangkok daytime (NEW finding F10). Heartbeat-class workloads fine in any window. Findings F1–F10 + F-OBSERVED-1..4 durable in `docs/research/private/phase3.5-smoke/findings.md` (gitignored, local). Smoke scheduled tasks left running for extra reliability data points (low cost); cleanup deferred until PLAN-0010 captures all needed findings.
 current_actor: code
 blocked_on: nothing
-next_action: Phase 3.5 smoke verdict (~2026-05-26/27 +07 after 24-48h observation) → GO opens PLAN-0010 (Phase 3.5 scheduled-task autonomy loop); NO-GO pivots to MCP `vero-bridge` roadmap. Phase 3 execution remains HELD pending smoke verdict. Step 1a survey findings ready to fold into Step 1b when Phase 3 execution begins (gated on smoke).
+next_action: Compose Cowork dispatch block for **PLAN-0010 (Phase 3.5 scheduled-task autonomy loop)** drafting per ADR-009 D1 interim phasing (same pattern as PLAN-0009). PLAN-0010 scope ≈ 2-poller design (Cowork best-effort producer + Code Desktop reliable consumer, both pinned MAIN tree UNC path, filesystem mtime as authoritative timestamp, off-peak scheduling for any non-heartbeat workload). Phase 3 execution (Step 1b contract design + onward) remains HELD pending Cray sequencing decision: PLAN-0010 drafting in parallel with Phase 3 Step 1b, or strictly serial.
 head_commit: 0fb83fb
 recent_commits: [0fb83fb, 624882d, fddcf2e, 93e5df7, d10073e, c1ce7a2, 8428fa7, 6dc808c, d33b9d8, 16ef098]
 ---
@@ -18,7 +18,51 @@ recent_commits: [0fb83fb, 624882d, fddcf2e, 93e5df7, d10073e, c1ce7a2, 8428fa7, 
 
 ## Current Focus
 
-**Session 10 — PLAN-0009 Step 1 split MERGED + Step 1a survey DONE +
+**Session 10 — Phase 3.5 smoke verdict = GO (early, Cray-ratified
+2026-05-26T10:10 +07).** Smoke ran ~18h wall-clock / ~8h awake-time
+(observation cut short of nominal 24h plan because all 5 load-bearing
+questions answered with high confidence + 2 minor caveats characterized,
+per Cray's pragmatic call: "ถ้าเกิด Extra data หลังจากเรา GO ก็น่าจะ
+เป็นอะไรที่เราช่วยกันแก้ไขได้").
+
+**Data summary:**
+
+| Side | Runs | Awake-reliability | Notes |
+|------|------|-------------------|-------|
+| Code Desktop scheduled task (`phase35-smoke-code-reader`, Sonnet 4.6 + Auto) | 8 of 8 expected during ~8h awake | **100%** | Stable `tier=code` across all runs; `bash=ok` all runs; clean ~10h overnight sleep → 1 catch-up run on wake (per Anthropic harness "catch-up latest missed" semantic, live-verified) |
+| Cowork scheduled task (`phase35-smoke-cowork-heartbeat`, Haiku 4.5 + Act-without-asking, Write-only) | 11+ successful of 13+ visible attempts (per Cowork history page) | **~85%** | 2 explicit "Skipped" entries (one initial-setup, one sleep-transition); Cowork inbox has 7 files because Cowork agent time-awareness drift causes filename collisions (overwrite), NOT missed fires |
+
+**5 load-bearing questions all ✅:**
+
+1. Primitive mechanics — both sides fire and write expected files
+2. `tier=code` env propagates into scheduled Code session (Phase 3.5 G5 commit gate viable; combines cleanly with PLAN-0009 Step 1a Q3 hook-stdin `agent_id` mechanism for unified 4-case identity composition)
+3. Cross-task visibility on UNC mount — Code reader sees all Cowork writes
+4. Code Desktop bash works on UNC paths (unlike Cowork's broken `mcp__workspace__bash`)
+5. Sleep-recovery clean — ~10h overnight machine sleep → wake → both sides resume + 1 catch-up run each (older missed runs silently dropped per research-note caveat #4, confirmed live)
+
+**2 minor caveats encoded for PLAN-0010 design:**
+
+- **Use filesystem `mtime` as authoritative fire-time** — never trust Cowork agent's claimed timestamp. Drift evidence: Cowork's claimed times in inbox filenames vs actual file mtime show errors from -3h 34m (claimed earlier) to +5h 17m (claimed later) across 7 fires. Filename collisions from this drift caused inbox count (7) to under-represent fire count (~11 successful). Filename should include mtime-derived nonce or process-random suffix for collision resistance.
+- **Schedule heavy/batch tasks off-peak Bangkok daytime** — NEW finding F10: Cowork scheduled-task detail page surfaces peak-hours warning verbatim "*This task runs during peak hours (weekdays 5:00 AM-11:00 AM PT, 7:00 PM-1:00 AM local time) and will consume your session usage limits faster.*" Translated for Asia/Bangkok: peak ≈ 7 PM – 2 AM Bangkok; off-peak ≈ 7 AM – 6 PM Bangkok. Heartbeat-class workloads (~1k token/run × hourly) negligible in any window; future high-volume Phase 3.5 work (batch operations, long-context tasks) should be scheduled off-peak. Not surfaced in any of 5 Anthropic docs surveyed during Step 1a research spike + 4 docs cross-checked for Step 1 split — UI-only warning. Candidate for `docs/lessons/` promotion if pattern reproduces elsewhere (Code Routines cloud, Mobile, etc.); for now scoped to F10 in findings file + PLAN-0010 design notes.
+
+**Stagger / cadence observations (F-OBSERVED-4):** Both primitives use **per-task deterministic stagger** (not per-fire random delay). Code Desktop = consistent +5min past hour offset across all 8 runs; Cowork = ~+4min past hour offset across visible attempts. PLAN-0010 implication: co-scheduled tasks must plan stagger offsets if coordination needed (or accept near-same-minute fire times).
+
+**Findings durability:** F1–F10 + F-OBSERVED-1..4 fully captured in `docs/research/private/phase3.5-smoke/findings.md` (gitignored, local-durable on Cray's machine). PLAN-0010 drafting references this file as source-of-truth. Smoke scheduled tasks left running post-verdict for extra reliability data points (low cost — Code Sonnet ~$0.07/day, Cowork heartbeat negligible); cleanup deferred until PLAN-0010 captures all needed findings and Cray approves teardown.
+
+**Identity unification across all 4 cases (final design, combining Step 1a Q3 + Phase 3.5 F5):**
+
+| Identity case | `agent_id` in hook stdin | `CLAUDE_TIER` env | G5 verdict |
+|---|---|---|---|
+| Main Code interactive | absent | `code` | ✅ allow commit |
+| **Main Code scheduled (Phase 3.5)** | **absent** | **`code` (verified live)** | **✅ allow commit** |
+| Plan/Explore subagent (Phase 3) | PRESENT | (inherited) | ❌ deny commit |
+| Cowork (impossible reach) | absent | empty/other | ❌ deny commit |
+
+One combined check, four cases covered — beautifully unified primitive-native design.
+
+**Next action:** Compose Cowork dispatch block for PLAN-0010 drafting per ADR-009 D1 interim phasing (same pattern as PLAN-0009). Phase 3 execution remains HELD pending Cray sequencing decision (parallel-with-PLAN-0010 vs strictly-serial).
+
+**Prior — PLAN-0009 Step 1 split MERGED + Step 1a survey DONE +
 Phase 3.5 smoke observation RUNNING.** Three-track day:
 
 1. **PR #22 (PLAN-0009 Phase 3, `fddcf2e`) + PR #23 (Step 1 split,
