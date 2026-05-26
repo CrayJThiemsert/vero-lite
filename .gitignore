@@ -69,3 +69,11 @@ node_modules/
 # The canonical location is ~/.claude/.anthropic_api_key (outside repo); this
 # project-local entry blocks accidental commits if a developer places it inside.
 .claude/.anthropic_api_key
+
+# PLAN-0010 loop — messages are uncommitted by design (producer has no git
+# per K-1; consumer processes in place then archives to processed/).
+# Directory layout + schema specced in docs/plans/0010-step1-message-schema.md.
+loop/inbox/*
+loop/processed/*
+!loop/inbox/.gitkeep
+!loop/processed/.gitkeep
