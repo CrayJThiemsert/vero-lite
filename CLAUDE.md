@@ -117,10 +117,12 @@ Tier instruction files in `docs/conventions/cowork_tab_instructions.md` (Tier 0 
 
 **Format:** Conventional Commits — `<type>(<scope>): <subject>`
 **Types:** `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`, `style`
-**Branches:** `main` (protected), `feat/*`, `fix/*`, `docs/*`, `chore/*`
+**Branches:** `main` (protected — **no direct push, no exceptions**), `feat/*`, `fix/*`, `docs/*`, `chore/*`
+**Workflow to `main`:** **All commits land via feature / `chore/*` / `docs/*` branch + PR + merge — no exceptions.** This includes single-file `docs(status):`, `docs(constitution):`, `docs(plans):`, `docs(lessons):`, and `docs(adr):` updates. Even one-line edits use a small `chore/*` or `docs/*` PR. Rationale: classifier-friendly (auto-mode guards direct push to default branch unconditionally — see Lesson #10), consistent history (every change has an explicit boundary + reviewable diff), trivially-revertable, and reinforces ADR-009 D2 "only Code commits" boundary.
 **Author:** `Jirachai Thiemsert <16893502+CrayJThiemsert@users.noreply.github.com>`
 **AI assistance:** Note in commit body — **NEVER** as `Co-Authored-By`
 **Commit messages:** Write to file → `git commit -F`. Prefer Write tool against WSL UNC path (`\\wsl.localhost\Ubuntu-24.04\tmp\commit-message.txt`) over `wsl bash -c "cat <<'EOF'"` heredoc when message contains backticks, `$var`, or code blocks (per Lesson #4 prevention).
+**Commit + push hygiene:** When the push target is a non-`main` branch, `git commit -F … && git push -u origin <branch>` chained is fine. When landing on `main` via PR, never chain commit with a push to `main` — always commit on a branch first, then PR-flow. Avoids the rework hazard of a chained command being denied as a whole (per Lesson #10).
 
 → Full details: [`docs/conventions/git.md`](docs/conventions/git.md) *(future, see STATUS TODO)*
 
@@ -200,4 +202,4 @@ the reply**. Procedure + options:
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-05-23 (Session 10 — §6 amended per ADR-013: autonomy-axis note added; execution-automation axis relocates to Code + subagents, Cowork/Chat advisory for automation, governance authoring stays Cowork as advisory drafter; ADR-009 D2 "only Code commits" preserved + reinforced by deterministic hook; prior 2026-05-22 amendment per ADR-012 and 2026-05-21 per ADR-009 D1+D5)*
+*Last updated: 2026-05-26 (§7 clarified: all commits to `main` land via PR — no direct-push exceptions, even for single-file `docs(status):` / `docs(constitution):` edits; Workflow + Commit-push-hygiene lines added; Lesson #10 referenced as the prevention source. Prior 2026-05-23 amendment per ADR-013 — §6 autonomy-axis note; prior 2026-05-22 per ADR-012; prior 2026-05-21 per ADR-009 D1+D5.)*
