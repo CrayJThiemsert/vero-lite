@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-26T11:30:00+07:00
-session: 10
-current_batch: **PR #24 merged (`b5d2489`) — PLAN-0010 (Phase 3.5 scheduled-task autonomy loop) Ready for execution.** Cowork drafted under interim ADR-009 D1 authority (dispatch 2026-05-26-1020-code-plan0010-cowork-dispatch.md; completion 2026-05-26-1100-cowork-plan0010-draft-completion.md); Code R2-reviewed and Cray ratified all three Cowork-surfaced decisions 2026-05-26: **SD-1 = (b) smoke regression** as first-ship use case; **SD-2 = parallel** with PLAN-0009 Phase 3 (resolves session-10 kickoff §4 sequencing question — Step 1b unblocked to proceed in parallel); **SD-3 = Code picks loop root path** at Step 1 execution. Plan commit `daaa394`, 398 insertions; pre-commit clean (detect-secrets passed); `validate_handoff.py` green on Cowork completion handoff (K-1 trust-but-verify flag closed in-process before commit). Author≠reviewer separation INTACT (ADR-012 D4.3).
+last_updated: 2026-05-26T14:00:00+07:00
+session: 11
+current_batch: **Session 11 productive close — 4 PRs landed (#24/#25/#26/#27); PLAN-0009 Step 1b DONE + PLAN-0010 Ready for execution + CLAUDE.md §7 PR-only rule codified + Lesson #10 captured.** PR #24 (`b5d2489`) landed PLAN-0010 draft (Cowork-drafted + Code-reviewed + Cray-ratified SD-1/2/3). PR #26 (`5cfce0e`) clarified CLAUDE.md §7: **all commits to main via PR, no direct-push exceptions** — closes the auto-mode classifier friction loop hit mid-session; Lesson #10 captures root cause + chain-rejection footgun + rejected alternatives. PR #27 (`06f8296`) landed PLAN-0009 Step 1b design (`docs/plans/0009-step1b-contract-design.md` — 333 lines, 9 sections, 30-cell verification matrix, composed G5 4-case identity gate shared with PLAN-0010 AC-4); Cray ratified 5 contract decisions (SD1b-1…SD1b-5, all = Code recs). Phase 3 Step 2 (write `explore-research` subagent file) now unblocked.
 current_actor: code
 blocked_on: nothing
-next_action: Two paths now open in parallel (per ratified SD-2): (1) **PLAN-0010 execution path** — Step 1 (message schema + lifecycle, incl SD-3 loop-root choice); will be a multi-session arc like Phase 2 was. (2) **PLAN-0009 Step 1b path** — subagent topology contract design, informed by Step 1a survey (`docs/research/private/2026-05-25-subagent-primitive-survey.md`, 8/8 high-confidence). Cray picks which to open first next session (or both in parallel sessions). Smoke scheduled tasks remain Paused; safe to resume any time PLAN-0010 Step 6 verification needs live data; cleanup deferred until execution captures findings + Cray approves teardown.
-head_commit: b5d2489
-recent_commits: [b5d2489, daaa394, 5768a62, 414e564, b71d95a, 04820be, 0fb83fb, 624882d, fddcf2e, 93e5df7]
+next_action: **Three execution paths now open** — Cray picks priority next session (any combination; they don't interfere): (1) **PLAN-0009 Phase 3 Step 2** — write `.claude/agents/explore-research.md` per `docs/plans/0009-step1b-contract-design.md` §3 contract. (2) **PLAN-0009 Phase 3 Step 3** — write `.claude/agents/plan-drafter.md` + new H2 hook `.claude/hooks/pretooluse_plan_subagent_write_deny.py` per §4 + §5. (3) **PLAN-0010 Step 1 execution** — message schema + lifecycle (incl SD-3 loop-root path choice). Step 2 and Step 3 can run sequentially (Step 3 depends on §5 hook spec but not on Step 2 subagent); PLAN-0010 Step 1 is independent of Phase 3. Phase 3 Step 4 (dispatch protocol) requires Steps 2+3 first. Smoke scheduled tasks remain Paused (Phase 3.5 cleanup deferred until PLAN-0010 captures findings).
+head_commit: 06f8296
+recent_commits: [06f8296, a40bc17, 5cfce0e, 007021a, 8171927, 0f6fbd3, b5d2489, daaa394, 5768a62, 414e564]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,54 @@ recent_commits: [b5d2489, daaa394, 5768a62, 414e564, b71d95a, 04820be, 0fb83fb, 
 
 ## Current Focus
 
-**Session 10 — PR #24 merged (`b5d2489`) — PLAN-0010 (Phase 3.5
+**Session 11 productive close (2026-05-26) — 4 PRs landed; PLAN-0009
+Step 1b DONE + PLAN-0010 Ready for execution + CLAUDE.md §7 PR-only
+rule codified + Lesson #10 captured; Phase 3 Step 2 unblocked.**
+
+Four PRs merged to main this session, chained:
+
+| PR | Commit | Change |
+|----|--------|--------|
+| **#24** | `b5d2489` | PLAN-0010 (Phase 3.5 scheduled-task autonomy loop) — Cowork-drafted under ADR-009 D1 interim; Code-R2-reviewed; Cray ratified SD-1=(b) smoke regression / SD-2=parallel / SD-3=Code-picks-loop-root → Status Draft→Ready for execution |
+| **#25** | `8171927` | STATUS update after PR #24 (separate PR per established pattern at the time) |
+| **#26** | `5cfce0e` | **CLAUDE.md §7 amendment** — `main` is "protected — no direct push, no exceptions"; new Workflow line ("all commits via PR including single-file `docs(status):` updates"); new Commit + push hygiene line ("never chain commit && push when targeting main"). **Lesson #10** (`docs/lessons/0010-classifier-blocks-direct-push-to-main.md`) — captures the Auto-mode classifier denial that triggered the rule, the chain-rejection footgun, and the 2 rejected alternatives (broad permission rule = unscoped guard relaxation; ask-per-occurrence = accumulating friction). Cray ratified Option 1 (PR-everything) on 2026-05-26. **This very STATUS update is the 3rd test of the new rule** (PRs #25, #27, and this one all PR-flowed STATUS) — rule operates correctly |
+| **#27** | `06f8296` | **PLAN-0009 Step 1b — subagent contract design** (`docs/plans/0009-step1b-contract-design.md`, 333 lines, 9 sections). Composed G5 4-case identity gate (§1, shared with PLAN-0010 AC-4) + custom subagent names `explore-research` / `plan-drafter` (§2, avoids built-in shadowing) + per-subagent contracts (§3/§4) + hook architecture (§5: G5 extension + new H2 + `SubagentStop` notification) + result-reduction contract (§6) + state-schema touch decision (§7=omit) + 30-cell verification matrix (§8) + 4 named residual risks + Step 2–6 consumption map (§9). Cray ratified 5 contract decisions (SD1b-1…SD1b-5) — all = Code recommendations |
+
+**Identity unification — final design (composed G5 check, shared
+PLAN-0009 §1 + PLAN-0010 AC-4):**
+
+```python
+allow_commit = (agent_id is None) and (CLAUDE_TIER == "code")
+```
+
+Four cases resolved by one check: main interactive ✅ / main scheduled ✅
+(Phase 3.5) / Plan/Explore subagent ❌ (Phase 3) / Cowork ❌. This is the
+load-bearing safety primitive Phase 3 + Phase 3.5 both rely on.
+
+**Three execution paths now open (parallel-safe — they don't
+interfere; Cray picks priority next session):**
+
+1. **Phase 3 Step 2** — write `.claude/agents/explore-research.md` per Step 1b §3 contract (read-only research subagent, `tools: Read/Grep/Glob/WebFetch`, `maxTurns: 50`, `model: inherit`). Single-session scope.
+2. **Phase 3 Step 3** — write `.claude/agents/plan-drafter.md` + new H2 hook `.claude/hooks/pretooluse_plan_subagent_write_deny.py` per Step 1b §4 + §5. Single-session scope. Depends on §5 hook spec (in Step 1b) but not on Step 2's subagent.
+3. **PLAN-0010 Step 1 execution** — message schema + lifecycle (incl SD-3 loop-root path choice). Multi-session arc like Phase 2. Independent of Phase 3.
+
+Phase 3 Step 4 (dispatch protocol) requires Steps 2+3 first; Phase 3
+Step 5 (auto-handoff + G5 extension + `SubagentStop` notification)
+requires Steps 2+3+4; Phase 3 Step 6 (tests + live AC + closeout)
+requires all prior steps.
+
+**Smoke scheduled tasks remain Paused.** Safe to resume any time
+PLAN-0010 Step 6 verification needs live data; cleanup deferred until
+execution captures findings + Cray approves teardown (per session-11
+kickoff §5.4 OQ list).
+
+**Next action:** Cray picks priority (Phase 3 Step 2, Phase 3 Step 3,
+PLAN-0010 Step 1 — any one, any combination in separate sessions).
+No external dependencies. Both Phase 3 + Phase 3.5 unblocked.
+
+---
+
+**Prior — PR #24 merged (`b5d2489`) — PLAN-0010 (Phase 3.5
 scheduled-task autonomy loop) Ready for execution; two execution paths
 now open in parallel.**
 
