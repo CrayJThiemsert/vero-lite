@@ -420,3 +420,47 @@ Cray ratified the 5 contract decisions (SD1b-1 … SD1b-5) on 2026-05-26 in the 
 - **SD1b-5** = omit `isolation: worktree` for `plan-drafter` (§4)
 
 AI assistance: drafted by Code (Claude Code, Opus 4.7). AI-assistance noted in commit body per CLAUDE.md §7; never `Co-Authored-By`.
+
+---
+
+## Sign-off (Step 6, session 14)
+
+**Date:** 2026-05-26
+**Author:** Claude Code (Tier 2) — Opus 4.7, session 14
+**Reviewer:** Cray (at PR merge)
+**Verification-rigor bar:** "We are confident it does what we intend, not just tests pass."
+
+### Confidence per residual risk
+
+| # | Residual | Confidence | One-sentence why |
+|---|---|---|---|
+| 1 | Final-message size unbounded by primitive | **Medium** | Hard cap absent by Anthropic primitive design; mitigated by `maxTurns` + dispatch-instruction budget reminder + subagent system-prompt schema — but observability alert for runaway-message events is not yet wired and is the only post-hoc safety net. |
+| 2 | Author≠reviewer for `plan-drafter` | **Medium** | Subagent shares main harness framing per Step 1a Q4 — no in-harness independent-deliberation check; ADR-013 OQ-1 policy mitigation (Cowork retained as external advisory drafter) is binding by policy not by primitive, accepted for Phase 3 scope. |
+| 3 | `maxTurns` + L1–L4 loop-detect overlap | **High** | Both bounds intentional; `_loop_counter` + classifier `matched_rows` + reason field log which signal fired — postmortem clarity is preserved by existing instrumentation. |
+| 4 | Subagent transcript persistence outside repo/`.claude/state/` | **High for Phase 3 scope / Medium operationally** | Audit trail lives in `~/.claude/projects/<project>/<sessionId>/subagents/` — local-only is acceptable for solo-founder operations; revisit when team grows or external compliance audit binds (PDPA forward-looking note in CLAUDE.md §8). |
+| 5 | ~~`bypassPermissions` unit-coverage gap~~ | **CLOSED Phase 1.5** | 3 new bypass-immunity tests landed for H2/C4/L1–L4 (commit `6573ae7`); H1 is PostToolUse so the ADR-013 D2 PreToolUse-deny guarantee does not bind by definition. |
+
+### AC §8 coverage breakdown (30 cells across 6 ACs)
+
+| Class | Approx. cell count | Examples |
+|---|---|---|
+| Unit-tested + Phase 2 live-verified | ~3 cells | AC-6 Happy (L1–L4 fired live during Phase 2 doc-thrash — bonus organic trigger; see `docs/research/private/step6-live-ac/scenarioL1-bonus-loop-detect-live-trigger.md`) |
+| Unit-tested only (extensive — fail-closed/boundary/schema paths) | ~15 cells | AC-3 fail-closed (20+ H2 + G5 tests); AC-4 dispatch fail-closed (10+ classifier validation tests); AC-5 fail-closed (component tests for classifier + Stop instruction + SubagentStop allowlist); AC-6 bypass-immunity (4 hooks covered after Phase 1.5) |
+| Live primitive-controlled — deferred to Cray-driven AC | ~10 cells | AC-1 contract (all 5 cells — primitive-controlled); AC-2 `explore-research` (all 5 cells); AC-3 Happy + Boundary + Concurrency (real subagent spawn); AC-4 Adversarial + Concurrency (real cross-process); AC-5 Happy end-to-end (Stop classifier → spawn → draft → Telegram full chain — handoff scenario 3); AC-6 Concurrency |
+| Residual risk — explicitly named | ~2 cells | AC-1 Adversarial (final-message size — risk #1); AC-3 Adversarial via H1 PostToolUse (risk #5 narrowed scope) |
+
+### Cray-driven AC scenarios pending (handoff scenarios 3 + 4 + 5)
+
+Phase 2 (session 14) ran Code-only scenarios + 1 bonus organic L1 trigger. The following remain for Cray to drive at PR review time or post-merge:
+
+- **AC-3 positive G1 (handoff scenario 4):** Cray attempts Edit on an existing accepted ADR → expects classifier pause/dispatch → PreToolUse `pretooluse_classifier_dispatch.py` denies with G1 citation
+- **AC-3 positive G2 (handoff scenario 5):** Cray attempts Write to fresh `docs/plans/0011-*.md` → expects classifier dispatch → deny with spawn-redirect to `plan-drafter`
+- **AC-5 in-harness end-to-end (handoff scenario 3):** Cray engineers a Stop event the classifier matches a D-row on → observes spawn → draft → Telegram full chain
+
+If any of these surfaces a new bug, post-merge hardening PR is the recommended recovery path (similar shape to the Phase 1.5 mini-iteration); plan stays archived in `docs/plans/done/`.
+
+### Overall verdict
+
+PLAN-0009 Step 1b **meets the verification-rigor bar** with the 4 named residual risks (5 was closed in Phase 1.5). Composed G5 check covers all 4 identity cases by design + by test; H2 + G5 + harness allowlist form a 3-layer defense for subagent commit/write boundary; SubagentStop + Telegram wiring closes the AC-5 in-harness arm partially (full end-to-end is Cray-driven). The plan is **ready to archive** to `docs/plans/done/` pending Cray's PR-merge ratification.
+
+**Cray ratification:** [pending at PR merge — sign here at merge time]

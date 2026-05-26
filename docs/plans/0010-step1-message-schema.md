@@ -390,3 +390,45 @@ Drafted by Code (Tier 2, Claude Code Opus 4.7) in session 12 (2026-05-26). Per A
 The author≠reviewer separation for *this* artifact is held by **Cray's review at PR merge**, not by drafter/reviewer tier distinction. Disclosure: **INTACT** — Cray reviews; AI drafts; outline derives from the Cowork-drafted parent PLAN-0010 + this session's Code-side execution-time decision (SD-3 ratification + 4 sub-decisions surfaced in §7).
 
 AI assistance: drafted by Code (Claude Code, Opus 4.7). AI-assistance noted in commit body per CLAUDE.md §7; never `Co-Authored-By`.
+
+---
+
+## Sign-off (Step 6, session 14)
+
+**Date:** 2026-05-26
+**Author:** Claude Code (Tier 2) — Opus 4.7, session 14
+**Reviewer:** Cray (at PR merge)
+**Verification-rigor bar:** "We are confident it does what we intend, not just tests pass."
+
+### Confidence per residual risk
+
+| # | Residual | Confidence | One-sentence why |
+|---|---|---|---|
+| 1 | Atomic-mv assumption (same-fs) | **High** | Same-fs check at consumer startup aborts run if violated; POSIX `rename(2)` atomicity is the load-bearing primitive — **Phase 2 live verified**: 2 concurrent dispatchers on 1-message inbox → exactly 1 in `processed/`, 0 in `inbox/`. |
+| 2 | Filename-keyed idempotency (producer rewrites same name) | **Medium** | §2 `mtime-nonce` + `<rand>` suffix discipline is the producer's responsibility; no consumer-side defense; acceptable because (a) only 1 producer (Cowork) writes today, (b) 4 archived messages in production show no collision pattern, (c) consumer-side cross-check (frontmatter `producer_id` must match filename — `test_producer_id_mismatch_with_filename_rejected`) catches the most likely failure mode. |
+| 3 | Schema-version rejection is fail-closed | **Medium** | v2 producer ahead of v1 consumer drops messages silently into `processed/` with parse-error sibling log; consumer logs are operator-visible but not alerted-on — recommend `loop_drop_count` metric ships before v2 producer rollout (no v2 planned in Phase 3.5). |
+| 4 | `.gitkeep` sentinel collision | **High** | Verified by Phase 1 unit tests (`test_filename_gitkeep_does_not_parse_as_message` + `test_filename_gitkeep_with_msg_md_suffix_does_not_parse`); producer-id grammar `^[a-z][a-z0-9-]{2,63}$` excludes `.` start. |
+| 5 | ~~Spec drift — body section ordering~~ | **CLOSED Phase 1.5** | §4 amended to declare parser order-insensitive (commit `6573ae7`); `test_section_ordering_insensitive` confirms behavior; earlier draft text preserved for archeology. |
+| 6 | Producer-side filename-collision race (consumer-untestable) | **Low operationally / acceptable for Phase 3.5** | Producer prompt discipline binding; consumer trusts filename uniqueness. Recommend producer-side unit test when a second producer ships (today only `cowork-smoke-heartbeat` exists). |
+| 7 | Cross-process race coverage | **Medium + roadmap-bound** | Single-process invariant + same-fs check verified by unit + Phase 2 live AC; cross-process scenario is Phase 4 territory. Phase 4 unblock criteria explicit (§5): 2 fixes required — (a) `_archive` FileNotFoundError recovery, (b) `save_failure_state` per-process unique tmp path (**bug discovered live Phase 2** — see evidence). ~10 LOC + 2 tests, must land alongside scheduled-task wiring before first concurrent consumer scenario. |
+
+### AC §8 coverage breakdown (20 cells across 4 ACs)
+
+| Class | Approx. cell count | Examples |
+|---|---|---|
+| Unit-tested + Phase 2 live-verified | ~5 cells | AC-Step1-1 Happy (4 cowork producer fires parsed cleanly in production); AC-Step1-2 Happy + Concurrency (live race held filesystem invariant); AC-Step1-3 Happy (mtime ordering verified with filename-claimed-time divergence — strongest possible evidence of §2 binding) |
+| Unit-tested only | ~12 cells | AC-Step1-1 Fail-closed (25+ schema-rejection tests); AC-Step1-2 Fail-closed (idempotency, parse-error sibling, expired sibling, dispatch-failure, poison-threshold); AC-Step1-3 Boundary (mtime tiebreak); AC-Step1-4 Happy + Boundary (retention age/size/floor) |
+| RR-documented or live-untestable | ~3 cells | AC-Step1-3 Adversarial (mtime fakery — FS-owned, not consumer-defendable); AC-Step1-4 Fail-closed (disk-full / bad-stat — fault injection out of scope); AC-Step1-4 Adversarial (symlink resolution — implementation detail) |
+
+### Phase 2 live AC outcomes summary
+
+- **Scenarios run (Code-only):** #7 (lifecycle), #3b (cross-process race) + bonus L1 organic trigger
+- **Scenarios deferred to Cray-driven AC (handoff scenarios 3/4/5):** none for PLAN-0010 specifically (those are PLAN-0009-scoped)
+- **Bugs surfaced:** 1 (cross-process `save_failure_state` shared-tmp path; documented + Phase 4 unblock criterion added)
+- **Evidence durable in:** `docs/research/private/step6-live-ac/` (gitignored, local)
+
+### Overall verdict
+
+PLAN-0010 Step 1 **meets the verification-rigor bar** with the 6 named residual risks (5 was closed in Phase 1.5). Parser + dispatcher cover all 4 ACs at the unit level extensively (60+ tests in `tests/loop/`); Phase 2 live AC verified the load-bearing claims (`mtime` authoritative, atomic-mv invariant, lifecycle) using real production traffic + a controlled cross-process race that surfaced 1 new bug fed forward to Phase 4 unblock criteria. The plan is **ready to archive** to `docs/plans/done/` pending Cray's PR-merge ratification.
+
+**Cray ratification:** [pending at PR merge — sign here at merge time]
