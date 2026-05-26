@@ -153,11 +153,16 @@ If a future Claude Code session reports "I can't see Auto mode" or
   Sonnet 3.5 family vs Sonnet 4.x family? Haiku 4.5 vs Haiku 3.5? Not
   enough evidence as of 2026-05-25 — only Haiku 4.5 (off) and Sonnet 4.6
   (on) verified.
-- **OQ-9.2 — Cowork parallel.** Does Cowork's "Act without asking" have
-  an analogous model gate? Cowork's mode appears tool-list-scoped
-  (Connectors panel + per-conversation toggle) rather than classifier-
-  gated; needs deeper research if Phase 4 ever uses Cowork for sustained
-  autonomy. Not load-bearing for current Phase 3 / Phase 3.5 design.
+- **OQ-9.2 — Cowork parallel. ✅ RESOLVED 2026-05-26 — NO Sonnet floor
+  on Cowork.** Live confirmation via Cowork scheduled-task editor:
+  toggling **Model** between Haiku 4.5 ↔ Sonnet 4.6 leaves
+  **"Act without asking"** mode available on both. Combined with the
+  same-day end-to-end producer→consumer→archive proof on a
+  `phase35-smoke-cowork-heartbeat` task running Haiku 4.5 + Act-without-
+  asking + Hourly, this confirms Cowork's "Act without asking" is its
+  own permission abstraction (tool-list-scoped — Connectors panel +
+  per-conversation toggle), NOT a classifier-gated analog of Code Auto
+  mode. PLAN-0010 §Step 2 Haiku 4.5 spec validated.
 - **OQ-9.3 — Subagent inheritance.** A subagent spawned with
   `permissionMode: auto` inherits the parent's model unless `model:` is
   set in the agent file. If the parent is Sonnet and the subagent
