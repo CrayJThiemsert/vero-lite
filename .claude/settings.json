@@ -26,6 +26,10 @@
           {
             "type": "command",
             "command": "python .claude/hooks/pretooluse_loop_detect.py"
+          },
+          {
+            "type": "command",
+            "command": "python .claude/hooks/pretooluse_classifier_dispatch.py"
           }
         ]
       }

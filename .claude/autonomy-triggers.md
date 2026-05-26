@@ -38,13 +38,13 @@ the matching event type fires) or surface via handoff, and wait.
 
 ### Governance boundaries — from ADR-013 / direction-b §5
 
-| # | Trigger | Phase 1 enforcement | Phase 2 enforcement |
+| # | Trigger | Phase 1 enforcement | Phase 2 + 3 enforcement |
 |---|---------|---------------------|---------------------|
-| G1 | Mutate any ADR with `Status: Accepted` | Advisory (agent judgment) | **Live** — `_sonnet_classifier.py` (Sonnet @ `Stop` via `stop_continuation.py`) |
-| G2 | Consume / earmark an ADR or PLAN number | Advisory | **Live** — `_sonnet_classifier.py` |
-| G3 | Read / touch `docs/strategy/private/**` | Advisory + gitignored at FS layer | **Live** — `_sonnet_classifier.py` |
-| G4 | Scope override past ratified tier boundaries (Tier 0/1/1b/2 per ADR-009) | Advisory | **Live** — `_sonnet_classifier.py` |
-| G5 | `git commit` / `git push` / `git merge` | **Deterministic** (`pretooluse_git_deny.py`, ADR-009 D2 / ADR-013 D2) | Deterministic + classifier mirror |
+| G1 | Mutate any ADR with `Status: Accepted` | Advisory (agent judgment) | **Live** — `_sonnet_classifier.py` (Sonnet @ `Stop` via `stop_continuation.py`; **also @ `PreToolUse`** via `pretooluse_classifier_dispatch.py` per PLAN-0009 Step 5c-2) |
+| G2 | Consume / earmark an ADR or PLAN number | Advisory | **Live** — `_sonnet_classifier.py` (Stop + **PreToolUse** per Step 5c-2) |
+| G3 | Read / touch `docs/strategy/private/**` | Advisory + gitignored at FS layer | **Live** — `_sonnet_classifier.py` (Stop only — no Pre-tool signature) |
+| G4 | Scope override past ratified tier boundaries (Tier 0/1/1b/2 per ADR-009) | Advisory | **Live** — `_sonnet_classifier.py` (Stop only) |
+| G5 | `git commit` / `git push` / `git merge` | **Deterministic** (`pretooluse_git_deny.py`, ADR-009 D2 / ADR-013 D2) | Deterministic + classifier mirror (composed identity gate per PLAN-0009 Step 5a) |
 
 ### Config / dependency / wording boundaries — from Chat additions
 
@@ -152,11 +152,21 @@ ADR-013 OQ-1).
   allowed `artifact_kind` values: `adr` / `plan`. Schema violations in
   the dispatch metadata fail-closed to `pause` per the conservative
   policy. See the Auto-handoff triggers section above for the D-rows.
-- The `PreToolUse` classifier dispatch (for non-G5 rows that can be
-  classified pre-tool, e.g., G1 ADR mutation via `Edit`, G2 number
-  consumption via filename creation) is **deferred to PLAN-0009 Step
-  5c-2** (separate PR following 5c-1). Phase 2 + Step 5c-1 ship the
-  `Stop`-side dispatch only.
+- **PreToolUse classifier dispatch (PLAN-0009 Step 5c-2, LIVE):**
+  `.claude/hooks/pretooluse_classifier_dispatch.py` invokes the same
+  classifier from the `PreToolUse` hook for `Write|Edit` events whose
+  signature matches G1 (Edit on existing ADR/PLAN with
+  `Status: Accepted`) or G2 (Write of a fresh
+  `docs/(adr|plans)/NNNN-*.md`). A cheap deterministic pre-filter
+  detects the signature before the API call so the classifier only
+  fires on candidates. Decision mapping: `proceed` → allow (classifier
+  overruled the pre-filter, legitimate context); `pause` → `deny`
+  with citation; `dispatch` → `deny` with a spawn-redirect reason
+  pointing at `plan-drafter` (the Pre-arm equivalent of the Stop-arm
+  continuation instruction). Bypass-immune (PreToolUse `deny` fires
+  regardless of `permissionMode` per ADR-013 D2 precedent). The
+  on-disk file read defeats in-payload spoofing (the hook reads the
+  real file, not the `tool_input`).
 - Updates to this file **must** stay machine-readable: leading `#`/`|`
   table rows, no embedded HTML, no inline-code list-items inside table
   cells. The classifier reads it as plain text — content edits propagate
@@ -174,4 +184,4 @@ ADR-013 OQ-1).
 
 ---
 
-*Last updated: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-1: added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" § with the 3rd decision value `dispatch`; PreToolUse classifier dispatch deferred to Step 5c-2. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*
+*Last updated: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-2: PreToolUse classifier dispatch LIVE via `pretooluse_classifier_dispatch.py`; G1/G2 enforcement rows expanded with PreToolUse arm citation; "How the classifier reads this file" §flipped from "deferred to 5c-2" to "LIVE in 5c-2". Same-session: Step 5c-1 added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" §with the 3rd decision value `dispatch`. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*

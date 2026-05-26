@@ -228,18 +228,23 @@ def _build_system_prompt(registry: str, *, strict: bool = False) -> str:
 
 
 def _build_user_message(payload: dict[str, Any]) -> str:
-    """Render the Stop event payload as the classifier's user message.
+    """Render the hook event payload as the classifier's user message.
 
-    The Stop event payload shape from Claude Code is not formally
-    specced; we just JSON-dump whatever came in so the classifier sees
-    the same context the harness has. A future Step 6 refinement can
-    add structured "recent N actions" summary here.
+    The classifier is called from both ``Stop`` (PLAN-0008 Step 4) and
+    ``PreToolUse`` (PLAN-0009 Step 5c-2) hooks. The user message stays
+    generic — the payload's ``hook_event_name`` / ``event`` field tells
+    the model which event fired; the JSON dump includes everything else.
+    A future refinement can add a structured "recent N actions" summary
+    above the JSON dump.
     """
     safe = json.dumps(payload, indent=2, sort_keys=True, default=str)
+    event_hint = payload.get("hook_event_name") or payload.get("event") or "<unknown>"
     return (
-        "The agent has just emitted a Stop event. The raw event "
-        "payload follows. Decide whether to PROCEED (continue the "
-        "agent loop) or PAUSE (yield to Cray).\n\n"
+        f"The agent has just emitted a `{event_hint}` hook event. The raw "
+        "event payload follows. Decide whether to PROCEED (continue / "
+        "allow the action), PAUSE (yield to Cray and deny / wait for "
+        "review), or DISPATCH (auto-handoff a governance-drafting task "
+        "to a co-located subagent).\n\n"
         f"```\n{safe}\n```"
     )
 
