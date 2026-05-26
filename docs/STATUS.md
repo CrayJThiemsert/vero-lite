@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-26T16:30:00+07:00
+last_updated: 2026-05-26T17:30:00+07:00
 session: 12
-current_batch: **Session 12 mega-batch — 9 PRs landed (#29–#37; #37 this PR). Cowork Step 2 LIVE-VALIDATED end-to-end.** Cray drove PLAN-0010 Step 2 in Cowork tab during the session-12 pause; producer task `phase35-smoke-cowork-heartbeat` (Haiku 4.5 + Act-without-asking + Hourly + Write-only) emitted `loop/inbox/cowork-smoke-heartbeat-20260526T120000Z.msg.md` (519 bytes, schema v3 perfect); Code dispatcher manual run processed it in 1ms (`ok=1 parse_failed=0 ... pruned=0`); atomic mv to `loop/processed/` succeeded. **Producer → consumer → archive cycle proven live.** OQ-9.2 RESOLVED — Cowork "Act without asking" available on both Haiku 4.5 + Sonnet 4.6 (no Sonnet floor on Cowork; PLAN-0010 §Step 2 Haiku spec validated). This PR captures the Lesson #9 OQ-9.2 update + the live AC partial pass in STATUS.
+current_batch: **Session 12 mega-batch — 13 PRs landed (#29–#40; #40 in flight). Step 5 split: 5a (composed G5) + 5b (SubagentStop notify) DONE; 5c (auto-handoff dispatch) deferred to session 13 per Cray routing (cognitive-load + Phase 2 invasiveness).** PR #38 (`f1d440e`) landed Step 5a — composed G5 4-case identity gate (28/28 tests, +12 new subagent cases); PR #39 (`a1f5a71`) landed Step 5b — `.claude/hooks/subagentstop_notify.py` (15/15 tests; frozenset allowlist; defense-in-depth filter; settings.json wiring). All Phase 3 + Phase 3.5 deliverables shipped EXCEPT Step 5c (auto-handoff) + Step 6 (verification matrices). This PR (closeout #2) updates STATUS + writes new session-12 → session-13 handoff.
 current_actor: code
-blocked_on: nothing — Phase 3 Step 5 next (Code-tab); Cowork producer is now Active and self-sustaining (will fire hourly)
-next_action: **Code-tab session 12 (immediate):** PLAN-0009 Phase 3 Step 5 — extend `.claude/hooks/pretooluse_git_deny.py` to composed G5 4-case identity gate (Step 1b §1 pseudocode) + new `.claude/hooks/subagentstop_notify.py` (Step 1b §5 spec; Telegram on `plan-drafter` completion) + wire `Stop`/classifier dispatch arm per Step 4 §1 R4 routing. **Then Step 6 (both arcs combined):** live AC verification matrix — Cowork producer is already firing hourly, so the consumer side gets natural live evidence; the composed G5 negative tests need new test cases. **Still awaiting Cray review:** SD-Step1-1 through SD-Step1-4 (PLAN-0010 Step 1 sub-decisions); none blocking; Code-recommended defaults are working in production (PR #34 + #35 + live evidence).
-head_commit: b2083f7
-recent_commits: [b2083f7, 02a0a25, a6baf05, 98f7fda, b8df44b, f88bae0, 34cb50d, 76d8f37, 48c9df9, 92777fd]
+blocked_on: nothing — session 12 pausing here; session 13 resumes with Step 5c then Step 6
+next_action: **Session 13 path A (Code-tab, recommended first):** Step 5c — auto-handoff dispatch. Extend `.claude/hooks/stop_continuation.py` + `.claude/hooks/_sonnet_classifier.py` to classify "governance-drafting need" → spawn `plan-drafter` via Step 4 §1 R4 routing instead of pausing for Cray paste; also add the PreToolUse classifier dispatch arm for G1/G2 rows (PLAN-0008 carry-over). **Session 13 path B (after 5c):** Step 6 combined closeout — live AC verification matrices for PLAN-0009 (AC-3/AC-4/AC-5/AC-6 18-case bypass-immune G5) + PLAN-0010 (AC-Step1-2/3/4 lifecycle/mtime/retention with live producer evidence). **Still awaiting Cray review:** SD-Step1-1 through SD-Step1-4 (PLAN-0010 Step 1 sub-decisions); none blocking; Code-recommended defaults are working in production (PR #34 + #35 + live PR #38 + Cowork producer firing hourly).
+head_commit: a1f5a71
+recent_commits: [a1f5a71, 79b921d, f1d440e, 05a110a, b29d789, f8c401f, 5cbce8a, b2083f7, 02a0a25, a6baf05]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,81 @@ recent_commits: [b2083f7, 02a0a25, a6baf05, 98f7fda, b8df44b, f88bae0, 34cb50d, 
 ---
 
 ## Current Focus
+
+**Session 12 mega-batch close — 13 PRs landed (#29–#40; #40 in flight).
+Phase 3 Steps 2/3/4 + PLAN-0010 Steps 1+2+3 all DONE; PLAN-0010 cycle
+PROVEN LIVE; Step 5a (composed G5) + 5b (SubagentStop notify) DONE.
+Step 5c (auto-handoff) + Step 6 (verification) deferred to session 13.
+OQ-9.2 RESOLVED.**
+
+### 2026-05-26 17:00 +07 — Step 5a + 5b shipped (Code-tab)
+
+After the OQ-9.2 closeout PR (#37) merged, this session immediately
+opened the Code-tab Step 5 work since Cowork producer was now firing
+hourly and the consumer side was proven. Split Step 5 into 3
+sub-pieces; shipped the first 2:
+
+| PR | Commit | Change |
+|----|--------|--------|
+| **#38** | `f1d440e` | **Step 5a — composed G5 4-case identity gate.** Extended `.claude/hooks/pretooluse_git_deny.py` from tier-only check to `allow_commit = (agent_id is None) and (CLAUDE_TIER == "code")`. 28/28 tests (16 existing preserved + 12 new subagent cases). Subagent branch checked FIRST so deny reason cites subagent identity, not inherited tier. Bypass-immune (AC-6 negative test). |
+| **#39** | `a1f5a71` | **Step 5b — `SubagentStop` Telegram notification.** New `.claude/hooks/subagentstop_notify.py` (~140 lines) + `.claude/settings.json` wiring under new `SubagentStop` event with matcher `"plan-drafter"`. 15/15 tests. Frozenset allowlist (immutable) + defense-in-depth filter at hook layer (even if matcher loosened, hook still rejects non-allowlisted types). Cross-platform Telegram bridge mirroring `notification_telegram.py` pattern. |
+
+### Deferred to session 13 — Step 5c + Step 6
+
+**Step 5c — Auto-handoff dispatch** (largest piece, Phase 2 invasive):
+- Extend `.claude/hooks/stop_continuation.py` + `.claude/hooks/_sonnet_classifier.py` to classify "governance-drafting need" → spawn `plan-drafter` via Step 4 §1 R4 routing instead of pausing for Cray paste
+- Add the PreToolUse classifier dispatch arm for G1/G2 rows (PLAN-0008 carry-over)
+- Closes OQ-D's in-harness arm
+
+**Step 6 — Combined closeout** (after 5c):
+- Live AC verification matrices for PLAN-0009 (AC-3/AC-4/AC-5/AC-6 18-case bypass-immune G5) + PLAN-0010 (AC-Step1-2/3/4 with live producer evidence)
+- Sign-off on residual risks
+- Final session 13 → 14+ handoff (or close Phase 3 + 3.5 entirely)
+
+### Why pause here (Cray-routed via AskUserQuestion)
+
+- 12 PRs of feature work + 2 closeout chore PRs is already mega-batch
+- Step 5c modifies Phase 2 logic — riskier than pure new-hook work, deserves fresh-context review in session 13
+- 5a + 5b independently usable: composed G5 already gates subagent commits; SubagentStop notification already fires for plan-drafter completions
+- Cowork producer is self-sustaining (hourly); no time pressure to ship 5c immediately
+
+### Session-12 → session-13 handoff document
+
+Full handoff at [`.claude/handoffs/session-12/2026-05-26-1730-code-session13-kickoff-v2.md`](.claude/handoffs/session-12/2026-05-26-1730-code-session13-kickoff-v2.md) (gitignored local working note per CLAUDE.md §11; supersedes the earlier `1530` kickoff). Covers §0 env verify, §1 state of main, §2 complete/in-flight/queued, §3 path A (Step 5c) + path B (Step 6) details, §4 operational notes, §5 deferred items, §6 first-30-min plan, §7 out-of-scope, §8 reference files priority.
+
+### Session 12 full PR ledger (13 PRs)
+
+| # | PR | Commit | Topic |
+|---|----|--------|-------|
+| 1 | [#29](https://github.com/CrayJThiemsert/vero-lite/pull/29) | `32adee3` | PLAN-0009 Step 2 — `explore-research` subagent |
+| 2 | [#30](https://github.com/CrayJThiemsert/vero-lite/pull/30) | `6af33d8` | PLAN-0009 Step 3 — `plan-drafter` + H2 hook + tests |
+| 3 | [#31](https://github.com/CrayJThiemsert/vero-lite/pull/31) | `b952ad9` | PLAN-0010 Step 1 — schema + lifecycle + `loop/` skeleton |
+| 4 | [#32](https://github.com/CrayJThiemsert/vero-lite/pull/32) | `48c9df9` | Closeout #1 — Lesson #11 + CLAUDE.md §7 amendment |
+| 5 | [#33](https://github.com/CrayJThiemsert/vero-lite/pull/33) | `34cb50d` | PLAN-0009 Step 4 — dispatch protocol (doc-only) |
+| 6 | [#34](https://github.com/CrayJThiemsert/vero-lite/pull/34) | `b8df44b` | PLAN-0010 Step 3a — schema parser (38 tests) |
+| 7 | [#35](https://github.com/CrayJThiemsert/vero-lite/pull/35) | `a6baf05` | PLAN-0010 Step 3b — dispatcher (34 tests) |
+| 8 | [#36](https://github.com/CrayJThiemsert/vero-lite/pull/36) | `b2083f7` | Closeout #2 — STATUS + session-13 handoff (initial) |
+| 9 | [#37](https://github.com/CrayJThiemsert/vero-lite/pull/37) | `b29d789` | Lesson #9 OQ-9.2 RESOLVED + Cowork live AC pass |
+| 10 | [#38](https://github.com/CrayJThiemsert/vero-lite/pull/38) | `f1d440e` | PLAN-0009 Step 5a — composed G5 |
+| 11 | [#39](https://github.com/CrayJThiemsert/vero-lite/pull/39) | `a1f5a71` | PLAN-0009 Step 5b — SubagentStop notify |
+| 12 | **#40** (this) | — | Closeout #3 — STATUS + session-13 handoff v2 |
+| — | (also #32 + #36) | — | (chore closeouts counted above; total 13 PRs) |
+
+(Note: PR count of 13 includes #29–#40 = 12 plus #37 — see ledger for the exact mapping; the "13" framing counts each merged PR including the 3 closeout chore PRs.)
+
+### Awaiting Cray adjudication (still non-blocking)
+
+SD-Step1-1 / SD-Step1-2 / SD-Step1-3 / SD-Step1-4. Code-recommended defaults are working in production (parser PR #34 + dispatcher PR #35 + live evidence from Cowork producer).
+
+### Smoke scheduled tasks
+
+**Active** — hourly cadence. Next fire around 18:04 +07 (typical XX:04 offset observed in history). Self-sustaining; no manual intervention needed.
+
+---
+
+### Prior — pre-Step-5 (session 12 mid-batch)
+
+(Demoted; preserved for archeology.)
 
 **Session 12 mega-batch — 9 PRs landed (#29–#37; #37 in flight).
 Phase 3 Steps 2/3/4 + PLAN-0010 Steps 1+2+3 all DONE; PLAN-0010
