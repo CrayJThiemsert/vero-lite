@@ -77,3 +77,6 @@ loop/inbox/*
 loop/processed/*
 !loop/inbox/.gitkeep
 !loop/processed/.gitkeep
+# Dispatcher local state (failure counts per message; regenerates on each run).
+loop/.failures.json
+loop/.failures.json.tmp

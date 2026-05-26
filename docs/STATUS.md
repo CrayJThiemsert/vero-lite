@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-26T15:30:00+07:00
+last_updated: 2026-05-26T16:30:00+07:00
 session: 12
-current_batch: **Session 12 productive close — 7 PRs landed (#29–#35) + closeout (#36 this PR).** Three Cray-directed sequential paths shipped: (a) PR #29/#30/#31 = session-11 kickoff trio (explore-research / plan-drafter+H2 / PLAN-0010 Step 1 schema); (b) PR #33 = PLAN-0009 Phase 3 Step 4 dispatch protocol (doc-only, 239 lines, AC-4 6-case routing matrix); (c) PR #34+#35 = PLAN-0010 Step 3 Code consumer (parser 38 tests + dispatcher 34 tests, 72/72 green, ~1k+1.2k LOC). Plus chore #32 = Lesson #11 (gh pr body-file backtick trap) + CLAUDE.md §7 amendment. This closeout PR updates STATUS + creates session-12 → session-13 handoff.
+current_batch: **Session 12 mega-batch — 9 PRs landed (#29–#37; #37 this PR). Cowork Step 2 LIVE-VALIDATED end-to-end.** Cray drove PLAN-0010 Step 2 in Cowork tab during the session-12 pause; producer task `phase35-smoke-cowork-heartbeat` (Haiku 4.5 + Act-without-asking + Hourly + Write-only) emitted `loop/inbox/cowork-smoke-heartbeat-20260526T120000Z.msg.md` (519 bytes, schema v3 perfect); Code dispatcher manual run processed it in 1ms (`ok=1 parse_failed=0 ... pruned=0`); atomic mv to `loop/processed/` succeeded. **Producer → consumer → archive cycle proven live.** OQ-9.2 RESOLVED — Cowork "Act without asking" available on both Haiku 4.5 + Sonnet 4.6 (no Sonnet floor on Cowork; PLAN-0010 §Step 2 Haiku spec validated). This PR captures the Lesson #9 OQ-9.2 update + the live AC partial pass in STATUS.
 current_actor: code
-blocked_on: cowork-side-only — PLAN-0010 Step 2 (Cowork producer) is Cray-tab work; Code-tab cannot advance further on the PLAN-0010 arc until producer messages exist to dispatch against
-next_action: **Cray-side:** open Cowork tab + author the Step 2 producer scheduled-task per `docs/plans/0010-phase3-5-scheduled-task-autonomy-loop.md` §Step 2 (Haiku 4.5 + Act-without-asking + Hourly; producer-id `cowork-smoke-heartbeat`; resume Paused smoke scheduled tasks). Optional pre-flight: resolve Lesson #9 OQ-9.2 by toggling Cowork model Haiku ↔ Sonnet to confirm "Act without asking" stays available on Haiku (smoke evidence ~85% reliability already corroborates). **Code-tab session 13:** PLAN-0009 Phase 3 Step 5 (G5 composed-check extension + `SubagentStop` notification wiring + auto-handoff Code→plan-drafter) per Step 1b §1 + §5 spec + Step 4 routing. Then Step 6 (verification matrix live runs) closes both arcs. **Still awaiting Cray review:** SD-Step1-1 nonce format / SD-Step1-2 `expires_after` default / SD-Step1-3 retention defaults / SD-Step1-4 parse-error siblings — none blocking; Code-recommended defaults already shipped via the parser + dispatcher.
-head_commit: a6baf05
-recent_commits: [a6baf05, 98f7fda, b8df44b, f88bae0, 34cb50d, 76d8f37, 48c9df9, 92777fd, b952ad9, 132036d]
+blocked_on: nothing — Phase 3 Step 5 next (Code-tab); Cowork producer is now Active and self-sustaining (will fire hourly)
+next_action: **Code-tab session 12 (immediate):** PLAN-0009 Phase 3 Step 5 — extend `.claude/hooks/pretooluse_git_deny.py` to composed G5 4-case identity gate (Step 1b §1 pseudocode) + new `.claude/hooks/subagentstop_notify.py` (Step 1b §5 spec; Telegram on `plan-drafter` completion) + wire `Stop`/classifier dispatch arm per Step 4 §1 R4 routing. **Then Step 6 (both arcs combined):** live AC verification matrix — Cowork producer is already firing hourly, so the consumer side gets natural live evidence; the composed G5 negative tests need new test cases. **Still awaiting Cray review:** SD-Step1-1 through SD-Step1-4 (PLAN-0010 Step 1 sub-decisions); none blocking; Code-recommended defaults are working in production (PR #34 + #35 + live evidence).
+head_commit: b2083f7
+recent_commits: [b2083f7, 02a0a25, a6baf05, 98f7fda, b8df44b, f88bae0, 34cb50d, 76d8f37, 48c9df9, 92777fd]
 ---
 
 # vero-lite — Project Status
@@ -18,10 +18,68 @@ recent_commits: [a6baf05, 98f7fda, b8df44b, f88bae0, 34cb50d, 76d8f37, 48c9df9, 
 
 ## Current Focus
 
+**Session 12 mega-batch — 9 PRs landed (#29–#37; #37 in flight).
+Phase 3 Steps 2/3/4 + PLAN-0010 Steps 1+2+3 all DONE; PLAN-0010
+end-to-end producer→consumer→archive cycle PROVEN LIVE 2026-05-26
+16:13 Bangkok. OQ-9.2 RESOLVED (no Sonnet floor on Cowork). Only
+Phase 3 Step 5 + combined Step 6 remain.**
+
+### 2026-05-26 16:13 +07 — Live AC partial pass (Cowork Step 2)
+
+Cray drove PLAN-0010 Step 2 in Cowork tab during the session-12 pause
+(per the AskUserQuestion routing). Producer task
+`phase35-smoke-cowork-heartbeat` was edited per the session-12 v3
+prompt spec (Haiku 4.5 + Act-without-asking + Hourly + Write-only,
+Connectors panel empty) and resumed Active. First fire produced:
+
+```
+loop/inbox/cowork-smoke-heartbeat-20260526T120000Z.msg.md  (519 bytes)
+```
+
+Schema validation (Code-side manual `python -m tools.loop.dispatcher`):
+
+```
+scan_cycle: ok=1 parse_failed=0 expired=0 dispatch_failed=0 poison=0 skipped_idempotent=0 pruned=0 elapsed_ms=1
+```
+
+Atomic mv lifecycle confirmed: `inbox/` empty (only `.gitkeep`),
+`processed/` contains the archived message with preserved mtime.
+
+**Drift evidence (consistent with prior smoke F2-F4):**
+- `claimed_time` in frontmatter: `2026-05-26T12:00:00Z` (= 19:00 Bangkok)
+- fs `mtime` actual: 16:13 Bangkok = 09:13 UTC
+- **Drift: +2h47m positive** (agent's clock perception ahead of reality)
+- **Does not affect dispatching** — the parser accepts the claimed_time
+  as informational; the dispatcher orders by fs mtime per Step 1 §2
+  binding. This is *exactly* why the design made mtime authoritative.
+  Live-validated.
+
+**OQ-9.2 RESOLVED (this PR updates Lesson #9 §7):**
+- Toggling Cowork model Haiku 4.5 ↔ Sonnet 4.6 in the task editor
+  leaves "Act without asking" mode available on both
+- No Sonnet floor on Cowork — Haiku is fine for sustained scheduled
+  task autonomy (separate from Code Auto mode's Sonnet-classifier
+  floor)
+- PLAN-0010 §Step 2 Haiku 4.5 spec validated
+
+### What remains before Phase 3 + 3.5 are fully closed
+
+| Item | Owner | Blocks |
+|---|---|---|
+| Phase 3 Step 5 — composed G5 + `SubagentStop` + auto-handoff wiring | Code-tab (session 12 continuing) | Step 6 |
+| Combined Step 6 — live AC verification matrices + sign-off | Code-tab (after Step 5) | Phase 3 + 3.5 closeout |
+| Cray adjudication SD-Step1-1…4 | Cray review | nothing (Code-recommended defaults already shipped + working live) |
+
+---
+
+### Session 12 batch recap (prior — historical reference)
+
+8 prior PRs (before this OQ-9.2/STATUS chore) — see [PR #36 closeout](https://github.com/CrayJThiemsert/vero-lite/pull/36) for the full per-PR table. Pre-Cowork-validation context preserved below.
+
 **Session 12 mega-batch close (2026-05-26) — 8 PRs landed (#29–#36);
 both Phase 3 (mid-flight Steps 2/3/4 DONE) and PLAN-0010 (Steps 1
 + 3 Code-side DONE) advanced significantly in one session per Cray's
-sequential-#1→#5 directive. Cowork-side Step 2 of PLAN-0010 is the
+sequential-#1→#5 directive. Cowork-side Step 2 of PLAN-0010 was the
 only remaining unblock for live AC verification.**
 
 Eight PRs merged to main this session, in execution order. PRs #29–#32
