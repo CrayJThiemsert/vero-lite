@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-26T10:15:00+07:00
+last_updated: 2026-05-26T11:30:00+07:00
 session: 10
-current_batch: **Phase 3.5 smoke verdict = GO (early, Cray-ratified 2026-05-26T10:10 +07)**. Smoke ran ~18h wall-clock / ~8h awake-time with 8 Code Desktop runs (100% awake-reliability) + 11+ Cowork attempts visible in history (~85% awake-reliability). All 5 load-bearing questions answered ✅ (primitive mechanics; `tier=code` env propagation; cross-task visibility on UNC mount; `bash=ok` Code Desktop side; sleep-recovery clean live-verified ~10h overnight sleep → catch-up). 2 minor caveats characterized as design notes (NOT blockers): (1) Cowork agent time-awareness drifts ±5h → use filesystem `mtime` as authoritative fire-time not Cowork-claimed timestamp (F-OBSERVED-3); (2) Cowork "peak hours" usage warning ~7 PM – 2 AM Bangkok local → schedule heavy/batch tasks off-peak Bangkok daytime (NEW finding F10). Heartbeat-class workloads fine in any window. Findings F1–F10 + F-OBSERVED-1..4 durable in `docs/research/private/phase3.5-smoke/findings.md` (gitignored, local). Smoke scheduled tasks left running for extra reliability data points (low cost); cleanup deferred until PLAN-0010 captures all needed findings.
+current_batch: **PR #24 merged (`b5d2489`) — PLAN-0010 (Phase 3.5 scheduled-task autonomy loop) Ready for execution.** Cowork drafted under interim ADR-009 D1 authority (dispatch 2026-05-26-1020-code-plan0010-cowork-dispatch.md; completion 2026-05-26-1100-cowork-plan0010-draft-completion.md); Code R2-reviewed and Cray ratified all three Cowork-surfaced decisions 2026-05-26: **SD-1 = (b) smoke regression** as first-ship use case; **SD-2 = parallel** with PLAN-0009 Phase 3 (resolves session-10 kickoff §4 sequencing question — Step 1b unblocked to proceed in parallel); **SD-3 = Code picks loop root path** at Step 1 execution. Plan commit `daaa394`, 398 insertions; pre-commit clean (detect-secrets passed); `validate_handoff.py` green on Cowork completion handoff (K-1 trust-but-verify flag closed in-process before commit). Author≠reviewer separation INTACT (ADR-012 D4.3).
 current_actor: code
 blocked_on: nothing
-next_action: Compose Cowork dispatch block for **PLAN-0010 (Phase 3.5 scheduled-task autonomy loop)** drafting per ADR-009 D1 interim phasing (same pattern as PLAN-0009). PLAN-0010 scope ≈ 2-poller design (Cowork best-effort producer + Code Desktop reliable consumer, both pinned MAIN tree UNC path, filesystem mtime as authoritative timestamp, off-peak scheduling for any non-heartbeat workload). Phase 3 execution (Step 1b contract design + onward) remains HELD pending Cray sequencing decision: PLAN-0010 drafting in parallel with Phase 3 Step 1b, or strictly serial.
-head_commit: 0fb83fb
-recent_commits: [0fb83fb, 624882d, fddcf2e, 93e5df7, d10073e, c1ce7a2, 8428fa7, 6dc808c, d33b9d8, 16ef098]
+next_action: Two paths now open in parallel (per ratified SD-2): (1) **PLAN-0010 execution path** — Step 1 (message schema + lifecycle, incl SD-3 loop-root choice); will be a multi-session arc like Phase 2 was. (2) **PLAN-0009 Step 1b path** — subagent topology contract design, informed by Step 1a survey (`docs/research/private/2026-05-25-subagent-primitive-survey.md`, 8/8 high-confidence). Cray picks which to open first next session (or both in parallel sessions). Smoke scheduled tasks remain Paused; safe to resume any time PLAN-0010 Step 6 verification needs live data; cleanup deferred until execution captures findings + Cray approves teardown.
+head_commit: b5d2489
+recent_commits: [b5d2489, daaa394, 5768a62, 414e564, b71d95a, 04820be, 0fb83fb, 624882d, fddcf2e, 93e5df7]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,79 @@ recent_commits: [0fb83fb, 624882d, fddcf2e, 93e5df7, d10073e, c1ce7a2, 8428fa7, 
 
 ## Current Focus
 
-**Session 10 — Phase 3.5 smoke verdict = GO (early, Cray-ratified
+**Session 10 — PR #24 merged (`b5d2489`) — PLAN-0010 (Phase 3.5
+scheduled-task autonomy loop) Ready for execution; two execution paths
+now open in parallel.**
+
+Cowork drafted PLAN-0010 under interim ADR-009 D1 authority (Tier-1
+governance authoring, Claude Sonnet 4.6 in Cowork tab — dispatch
+`.claude/handoffs/session-10/2026-05-26-1020-code-plan0010-cowork-dispatch.md`;
+completion `.claude/handoffs/session-10/2026-05-26-1100-cowork-plan0010-draft-completion.md`).
+Code R2-reviewed against the dispatch contract + session-11 kickoff §3
+/ §5 caveats; all citations resolve (ADR-009 D1/D2, ADR-013 D1/D2/D5,
+ADR-012 D4.3, PLAN-0007/0008/0009, Lesson #8/#9); composed G5 4-case
+identity table encoded at AC-4 + Step 3; smoke caveats (filesystem
+`mtime` as authoritative fire-time, off-peak Bangkok scheduling guard)
+folded into Step 1 + Step 2 + Step 5 + Step 6; Verification ships full
+case-coverage matrix (happy / boundary / fail-closed / adversarial /
+concurrency) per Cray verification-rigor directive.
+
+**Cray ratified all three Cowork-surfaced decisions 2026-05-26
+(in PR #24):**
+
+- **SD-1 = (b) smoke regression** as Phase 3.5 first-ship use case.
+  Rationale: directly extends the smoke scaffold (currently Paused;
+  resumable), exercises full producer→consumer→alert path, output
+  (a reliability number) is the cheapest signal that the loop itself
+  is healthy before any higher-value workload rides on it. Candidates
+  (a) hourly STATUS digest / (c) governance reminder / (d) deferred-OQ
+  rotation all deferred beyond Phase 3.5.
+- **SD-2 = parallel** with PLAN-0009 Phase 3 execution. Resolves the
+  Phase 3 Step 1b sequencing question carried in session-11 kickoff §4
+  — Step 1b (subagent topology contract design) may proceed in parallel
+  with PLAN-0010 execution without blocking. The two design spaces
+  overlap only at the Step 5 use-case integration layer (deferred
+  to "after Phase 3 lands"), so independent progress is safe; identity
+  gate composes cleanly with subagents when they arrive.
+- **SD-3 = Code picks loop root path** at Step 1 execution (e.g.
+  `loop/` at repo top vs `tools/loop/` data dir vs other). K-2 +
+  worktree constraints from Step 1 binding regardless.
+
+**Provenance + integrity:**
+
+| Item | Result |
+|------|--------|
+| PR #24 | https://github.com/CrayJThiemsert/vero-lite/pull/24 — merged via merge commit `b5d2489` |
+| Plan commit | `daaa394` — 1 file, 398 insertions; `docs(plans):` Conventional Commits; AI-assistance noted in body (NOT `Co-Authored-By` per CLAUDE.md §7) |
+| Pre-commit | detect-secrets passed; ruff/mypy/YAML skipped (no code files in PR) |
+| K-1 validator gap | Closed in-process — `validate_handoff.py` green on Cowork completion handoff before commit |
+| Author≠reviewer (ADR-012 D4.3) | INTACT — drafter (Cowork) distinct from outline originator (Code dispatch + Cray smoke GO); R2 review = independent check |
+
+**Two execution paths now open in parallel (per ratified SD-2):**
+
+1. **PLAN-0010 execution path** — Step 1 (message schema + lifecycle,
+   incl SD-3 loop-root path choice). Will be a multi-session arc like
+   Phase 2 was. AC-1…AC-6 + 4 named residual risks all live.
+2. **PLAN-0009 Step 1b path** — subagent topology contract design,
+   informed by Step 1a survey
+   (`docs/research/private/2026-05-25-subagent-primitive-survey.md`,
+   8/8 high-confidence answers; key bonus primitives — `isolation`,
+   `maxTurns`, `SubagentStart/Stop` hooks, transcript path,
+   Plan/Explore name-reservation, result-reduction caveat — all noted
+   in session-11 kickoff §5.2 for fold-in).
+
+**Smoke scheduled tasks (Paused):** still safe to resume any time if
+PLAN-0010 Step 6 verification needs live data; cleanup deferred until
+execution captures findings + Cray approves teardown (per session-11
+kickoff §5.4 OQ list).
+
+**Next action:** Cray picks which of the 2 paths to open first next
+session (or both in parallel sessions — they don't interfere). Both
+are unblocked. No external dependencies in flight.
+
+---
+
+**Prior — Phase 3.5 smoke verdict = GO (early, Cray-ratified
 2026-05-26T10:10 +07).** Smoke ran ~18h wall-clock / ~8h awake-time
 (observation cut short of nominal 24h plan because all 5 load-bearing
 questions answered with high confidence + 2 minor caveats characterized,
