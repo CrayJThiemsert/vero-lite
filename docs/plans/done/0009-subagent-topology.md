@@ -119,6 +119,8 @@ advisory drafter.
   machine-to-machine bus that would let surfaces signal each other
   directly. Build only after subagents prove out. Carry to PLAN-0010.
 
+  > **Post-execution annotation 2026-05-27 (re-anchored from PLAN-0010 to PLAN-0012):** PLAN-0010 became the Phase-3.5 scheduled-task autonomy loop (a different surface entirely), so the `vero-bridge` earmark above floated orphaned. Cray resolved ADR-014 OQ-A on 2026-05-27 in favor of **PLAN-0012 `vero-bridge`** under already-Accepted [ADR-013 D1](../../adr/0013-autonomy-axis-relocation.md) — per the OQ-3 "no new ADR" precedent below. The earmark is therefore **re-anchored to PLAN-0012** (name `vero-bridge` honored). The take-1/2/3 ADR draft pipeline is tombstoned at [`docs/adr/0014-WITHDRAWN.md`](../../adr/0014-WITHDRAWN.md); deep archeology preserved at `chore/adr-0014-cross-tab-mcp-transport` commit `2fde9eb`. OQ-C (Cowork MCP-client execution locus — desktop-proxy vs sandbox-VM) to be run as a ~10-min empirical experiment by Cray + Cowork **before** PLAN-0012 commits any v1 wiring.
+
 - ❌ **Phase 4 — plugin bundle.** Packaging the autonomy layer as an
   installable plugin/marketplace bundle. Carry to PLAN-0010.
 
