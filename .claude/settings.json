@@ -28,9 +28,8 @@
             "command": "python .claude/hooks/pretooluse_loop_detect.py"
           },
           {
-            "_comment": "Routed via wsl.exe to avoid Windows Python urllib SSL chain failure on api.anthropic.com (see Lesson #14 + chore/route-classifier-hooks-via-wsl). The hook makes an outbound HTTPS call to Sonnet; Git-for-Windows / Windows Python CA bundle fails 'Basic Constraints of CA cert not marked critical' while WSL Python's certs work. --cd /home/crayj/work/vero-lite is hardcoded (single-developer project; relocate via settings.local.json if multi-machine).",
             "type": "command",
-            "command": "wsl --cd /home/crayj/work/vero-lite --exec python3 .claude/hooks/pretooluse_classifier_dispatch.py"
+            "command": "python .claude/hooks/pretooluse_classifier_dispatch.py"
           }
         ]
       }
@@ -75,9 +74,8 @@
         "matcher": "*",
         "hooks": [
           {
-            "_comment": "Routed via wsl.exe — same rationale as pretooluse_classifier_dispatch (calls _sonnet_classifier which makes outbound HTTPS). See Lesson #14 + chore/route-classifier-hooks-via-wsl.",
             "type": "command",
-            "command": "wsl --cd /home/crayj/work/vero-lite --exec python3 .claude/hooks/stop_continuation.py"
+            "command": "python .claude/hooks/stop_continuation.py"
           }
         ]
       }
