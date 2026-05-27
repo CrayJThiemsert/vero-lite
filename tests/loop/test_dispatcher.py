@@ -480,6 +480,243 @@ def test_failure_state_clear(tmp_path: Path) -> None:
     assert state.last_error_signatures == {}
 
 
+# --- PLAN-0010 Phase 4 Fix 1: _archive FileNotFoundError recovery ---
+
+
+def test_archive_returns_none_when_race_loser(tmp_path: Path) -> None:
+    """Simulate the cross-process race: another dispatcher already moved
+    ``source → processed/<name>`` and removed ``source``. The race
+    loser's ``_archive`` call must return ``None`` (idempotent skip)
+    instead of crashing with ``FileNotFoundError``.
+
+    PLAN-0010 Phase 4 Fix 1 regression guard.
+    """
+    from tools.loop.dispatcher import _archive
+
+    inbox = tmp_path / "inbox"
+    processed = tmp_path / "processed"
+    inbox.mkdir()
+    processed.mkdir()
+
+    source = inbox / "cowork-smoke-heartbeat-20260527T120000Z.msg.md"
+    source.write_text("body", encoding="utf-8")
+
+    # Simulate "winner already moved it": target exists, source is gone.
+    (processed / source.name).write_text("body", encoding="utf-8")
+    source.unlink()
+
+    result = _archive(source, processed)
+    assert result is None, (
+        f"expected None (idempotent skip), got {result!r} — " "race-loser handling regressed"
+    )
+    # Filesystem invariant: target still exists, source still gone
+    assert (processed / "cowork-smoke-heartbeat-20260527T120000Z.msg.md").exists()
+    assert not source.exists()
+
+
+def test_archive_reraises_when_source_missing_and_no_target(tmp_path: Path) -> None:
+    """If source is gone AND target does not exist, the FileNotFoundError
+    is genuine (something other than a race ate the source) and must
+    bubble up loud — do not swallow real errors under the race-recovery
+    branch."""
+    from tools.loop.dispatcher import _archive
+
+    inbox = tmp_path / "inbox"
+    processed = tmp_path / "processed"
+    inbox.mkdir()
+    processed.mkdir()
+
+    source = inbox / "ghost.msg.md"  # never created
+    with pytest.raises(FileNotFoundError):
+        _archive(source, processed)
+
+
+def test_archive_returns_target_on_normal_path(tmp_path: Path) -> None:
+    """Sanity: _archive still returns the target Path on the happy path
+    (no race, source exists, target does not). Guards against the
+    Fix-1 refactor accidentally changing the OK return type."""
+    from tools.loop.dispatcher import _archive
+
+    inbox = tmp_path / "inbox"
+    processed = tmp_path / "processed"
+    inbox.mkdir()
+    processed.mkdir()
+
+    source = inbox / "msg.msg.md"
+    source.write_text("body", encoding="utf-8")
+
+    result = _archive(source, processed)
+    assert result == processed / "msg.msg.md"
+    assert result is not None and result.exists()
+    assert not source.exists()
+
+
+def test_process_one_race_loser_reports_skipped_idempotent(tmp_path: Path) -> None:
+    """End-to-end: when ``_archive`` returns None inside ``_process_one``
+    (because a parallel process won the rename), the dispatcher reports
+    ``SKIPPED_IDEMPOTENT`` and does NOT crash, double-archive, or write
+    a sibling log on top of the winner's."""
+    from tools.loop.dispatcher import DispatchResult, FailureState
+
+    disp = _new_dispatcher(tmp_path)
+
+    # Set up: an inbox message that would normally trigger a parse-error
+    # path, but mid-way through (between idempotency-check and _archive),
+    # a parallel process moves source → processed and removes source.
+    source = _make_inbox_message(
+        disp.inbox,
+        filename="cowork-smoke-heartbeat-20260527T130000Z.msg.md",
+        text="not a valid YAML/markdown message body",
+    )
+
+    # Simulate the parallel-win race AFTER the idempotency-check at the
+    # top of _process_one passes (target does not yet exist), but
+    # BEFORE _archive's source.replace runs (target gets created +
+    # source removed by the parallel process).
+    parallel_target = disp.processed / source.name
+    parallel_target.write_text(source.read_text(encoding="utf-8"), encoding="utf-8")
+    source.unlink()
+
+    failures = FailureState()
+    result = disp._process_one(source, failures)
+    assert result == DispatchResult.SKIPPED_IDEMPOTENT
+    # No sibling parse-error.log on top of the winner's archive
+    sibling = parallel_target.with_suffix(parallel_target.suffix + ".parse-error.log")
+    assert (
+        not sibling.exists()
+    ), "race loser must not write a sibling log on top of the winner's archive"
+
+
+# --- PLAN-0010 Phase 4 Fix 2: save_failure_state per-process unique tmp path ---
+
+
+def test_save_failure_state_uses_pid_unique_tmp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The tmp path used by ``save_failure_state`` must include the
+    process pid so concurrent dispatchers don't race on a shared tmp
+    name. Spy on ``Path.write_text`` to capture the tmp path used.
+
+    PLAN-0010 Phase 4 Fix 2 regression guard.
+    """
+    from tools.loop.dispatcher import FailureState, save_failure_state
+
+    written_paths: list[str] = []
+    real_write_text = Path.write_text
+
+    def spy_write_text(self: Path, *args: object, **kwargs: object) -> int:
+        written_paths.append(str(self))
+        return real_write_text(self, *args, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(Path, "write_text", spy_write_text)
+
+    target = tmp_path / "loop" / ".failures.json"
+    save_failure_state(target, FailureState())
+
+    pid_str = str(os.getpid())
+    tmp_writes = [p for p in written_paths if p.endswith(".tmp")]
+    assert tmp_writes, f"expected a *.tmp write, got {written_paths}"
+    assert all(
+        pid_str in p for p in tmp_writes
+    ), f"expected pid {pid_str} in every tmp path; got {tmp_writes}"
+    # And the final file still lands at the canonical target.
+    assert target.exists()
+
+
+def _save_failure_worker(
+    path_str: str,
+    msg_id: str,
+    ready_path: str,
+    go_path: str,
+    error_path: str,
+) -> None:
+    """Module-level worker for ``test_save_failure_state_cross_process_no_crash``.
+
+    Uses filesystem signals instead of multiprocessing primitives so the
+    test is portable across fork/spawn start methods.
+    """
+    import sys as _sys
+    from pathlib import Path as _Path
+
+    _sys.path.insert(0, "/home/crayj/work/vero-lite")
+    from tools.loop.dispatcher import FailureState, save_failure_state
+
+    try:
+        state = FailureState()
+        for i in range(20):
+            state.increment(f"{msg_id}-{i}.msg.md", "TypeError: boom")
+        # Signal readiness
+        _Path(ready_path).write_text("ready", encoding="utf-8")
+        # Wait for "go"
+        for _ in range(100):
+            if _Path(go_path).exists():
+                break
+            time.sleep(0.05)
+        for _ in range(15):
+            save_failure_state(_Path(path_str), state)
+    except Exception as exc:
+        _Path(error_path).write_text(f"{type(exc).__name__}: {exc}", encoding="utf-8")
+
+
+def test_save_failure_state_cross_process_no_crash(tmp_path: Path) -> None:
+    """Two real subprocesses race on ``save_failure_state``; neither must
+    crash with FileNotFoundError under the pid-unique tmp scheme.
+
+    Authentic reproduction of the session-14 Phase 2 §3b live finding.
+    """
+    import multiprocessing as mp
+
+    state_path = tmp_path / "loop" / ".failures.json"
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    ready_a = tmp_path / "ready_a"
+    ready_b = tmp_path / "ready_b"
+    go = tmp_path / "go"
+    err_a = tmp_path / "err_a"
+    err_b = tmp_path / "err_b"
+
+    ctx = mp.get_context("fork") if "fork" in mp.get_all_start_methods() else mp.get_context()
+    pa = ctx.Process(
+        target=_save_failure_worker,
+        args=(str(state_path), "alpha", str(ready_a), str(go), str(err_a)),
+    )
+    pb = ctx.Process(
+        target=_save_failure_worker,
+        args=(str(state_path), "beta", str(ready_b), str(go), str(err_b)),
+    )
+    pa.start()
+    pb.start()
+
+    # Wait for both workers to be ready
+    for _ in range(100):
+        if ready_a.exists() and ready_b.exists():
+            break
+        time.sleep(0.05)
+    assert ready_a.exists() and ready_b.exists(), "workers did not signal ready in time"
+
+    # Fire the starting gun
+    go.write_text("go", encoding="utf-8")
+
+    pa.join(timeout=20)
+    pb.join(timeout=20)
+
+    err_a_text = err_a.read_text(encoding="utf-8") if err_a.exists() else "<no err file>"
+    err_b_text = err_b.read_text(encoding="utf-8") if err_b.exists() else "<no err file>"
+    assert pa.exitcode == 0, f"worker A crashed (exit {pa.exitcode}); error: {err_a_text}"
+    assert pb.exitcode == 0, f"worker B crashed (exit {pb.exitcode}); error: {err_b_text}"
+    assert not err_a.exists(), f"worker A reported error: {err_a.read_text(encoding='utf-8')}"
+    assert not err_b.exists(), f"worker B reported error: {err_b.read_text(encoding='utf-8')}"
+
+    # Final state file must exist and parse cleanly (last writer wins;
+    # we don't assert specific contents).
+    assert state_path.exists()
+    final = load_failure_state(state_path)
+    assert isinstance(final.counts, dict)
+
+    # No leftover tmp files from either worker.
+    leftovers = list(state_path.parent.glob("*.tmp"))
+    assert not leftovers, f"leftover tmp files after race: {leftovers}"
+
+
 # --- Alert callbacks ---
 
 
