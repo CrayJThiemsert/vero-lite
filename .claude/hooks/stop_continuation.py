@@ -47,7 +47,6 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -67,6 +66,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     reset_untouched_l1,
     save_counter,
 )
+from _wsl_bridge import bash_argv, env_with_wslenv_passthrough  # noqa: E402
 
 DEFAULT_TELEGRAM_SCRIPT = REPO_ROOT / "tools" / "notify" / "telegram.sh"
 DEFAULT_CHAIN_PATH = STATE_DIR / "stop-chain.json"
@@ -144,30 +144,6 @@ def _reset_chain() -> None:
     _save_chain({"depth": 0, "last_proceed_ts": ""})
 
 
-def _wsl_path(win_path: Path) -> str:
-    """Translate ``\\\\wsl.localhost\\<distro>\\...`` to a WSL path."""
-    s = str(win_path)
-    if not s.lower().startswith("\\\\wsl"):
-        return s.replace("\\", "/")
-    parts = s.split("\\")
-    try:
-        idx = next(i for i, p in enumerate(parts) if p.startswith("ubuntu") or p.lower() == "wsl$")
-    except StopIteration:
-        return s.replace("\\", "/")
-    return "/" + "/".join(parts[idx + 1 :])
-
-
-def _forwarded_env() -> dict[str, str]:
-    env = os.environ.copy()
-    if sys.platform == "win32":
-        wslenv = env.get("WSLENV", "")
-        existing = {item.split("/", 1)[0] for item in wslenv.split(":") if item}
-        additions = [f"{k}/u" for k in _FORWARDED_ENV if k not in existing]
-        if additions:
-            env["WSLENV"] = ":".join(filter(None, [wslenv, *additions]))
-    return env
-
-
 def _format_cap_message(payload: dict[str, Any]) -> str:
     """Build the human-readable Telegram body from the cap-reached payload."""
     event = str(payload.get("event") or "stop_continuation_event")
@@ -181,29 +157,24 @@ def _format_cap_message(payload: dict[str, Any]) -> str:
 def _ping_telegram(message: dict[str, Any]) -> None:
     """Best-effort Telegram ping. Never raises; the hook flow continues.
 
-    Cross-platform bridge mirrors ``notification_telegram._invoke_telegram``:
-    on Windows we re-shell via ``wsl.exe`` and propagate ``TELEGRAM_*``
-    through ``WSLENV``; the formatted message is delivered as a single
-    argv element (per ``telegram.sh`` contract — argv, never stdin).
+    Cross-platform invocation + WSLENV passthrough delegated to
+    :mod:`_wsl_bridge` (Pattern A). The formatted message is delivered as a
+    single argv element (per ``telegram.sh`` contract — argv, never stdin).
     """
     script = _telegram_script()
     if not script.exists():
         return
     body = _format_cap_message(message)
-
-    if sys.platform == "win32" and shutil.which("wsl.exe"):
-        wsl_script = _wsl_path(script)
-        cmd = ["wsl.exe", "--exec", "bash", wsl_script, body]
-    else:
-        cmd = ["bash", str(script), body]
+    cmd = bash_argv(script, body)
+    env = env_with_wslenv_passthrough(_FORWARDED_ENV)
 
     try:
         # S603: cmd elements come from hook-controlled script path
         # (constant or env-override) + the formatted message; no shell
-        # interpolation. Same bridge idiom as notification_telegram.py.
+        # interpolation.
         subprocess.run(  # noqa: S603
             cmd,
-            env=_forwarded_env(),
+            env=env,
             text=True,
             capture_output=True,
             check=False,

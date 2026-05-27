@@ -46,7 +46,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -71,6 +70,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     save_counter,
     tokenize_bash_command,
 )
+from _wsl_bridge import bash_argv, env_with_wslenv_passthrough  # noqa: E402
 
 DEFAULT_TELEGRAM_SCRIPT = REPO_ROOT / "tools" / "notify" / "telegram.sh"
 TELEGRAM_TIMEOUT_SEC = 5
@@ -121,30 +121,6 @@ def _telegram_script() -> Path:
     return DEFAULT_TELEGRAM_SCRIPT
 
 
-def _wsl_path(win_path: Path) -> str:
-    """Translate ``\\\\wsl.localhost\\<distro>\\...`` to a WSL path."""
-    s = str(win_path)
-    if not s.lower().startswith("\\\\wsl"):
-        return s.replace("\\", "/")
-    parts = s.split("\\")
-    try:
-        idx = next(i for i, p in enumerate(parts) if p.startswith("ubuntu") or p.lower() == "wsl$")
-    except StopIteration:
-        return s.replace("\\", "/")
-    return "/" + "/".join(parts[idx + 1 :])
-
-
-def _forwarded_env() -> dict[str, str]:
-    env = os.environ.copy()
-    if sys.platform == "win32":
-        wslenv = env.get("WSLENV", "")
-        existing = {item.split("/", 1)[0] for item in wslenv.split(":") if item}
-        additions = [f"{k}/u" for k in _FORWARDED_ENV if k not in existing]
-        if additions:
-            env["WSLENV"] = ":".join(filter(None, [wslenv, *additions]))
-    return env
-
-
 def _format_message(loop_type: LoopType, target: str, last_6_actions: list[dict[str, Any]]) -> str:
     """Build the human-readable Telegram body from the Cray-E.4 payload contract.
 
@@ -171,27 +147,24 @@ def _ping_telegram(loop_type: LoopType, target: str, last_6_actions: list[dict[s
     """Fire Telegram alert with the Cray-E.4 payload contract.
 
     Graceful no-op if the script is missing or fails — observer never
-    blocks. Cross-platform bridge mirrors Step 2's ``_ping_telegram`` so
-    the same test-stub idiom works for both hooks.
+    blocks. Cross-platform invocation + WSLENV passthrough delegated to
+    :mod:`_wsl_bridge` (Pattern A) — same idiom as Step 2's
+    ``_ping_telegram`` so the same test-stub plays for both hooks.
     """
     script = _telegram_script()
     if not script.exists():
         return
     message = _format_message(loop_type, target, last_6_actions)
-
-    if sys.platform == "win32" and shutil.which("wsl.exe"):
-        wsl_script = _wsl_path(script)
-        cmd = ["wsl.exe", "--exec", "bash", wsl_script, message]
-    else:
-        cmd = ["bash", str(script), message]
+    cmd = bash_argv(script, message)
+    env = env_with_wslenv_passthrough(_FORWARDED_ENV)
 
     try:
         # S603: cmd elements come from hook-controlled script path
         # (constant or env-override) + the formatted message; no shell
-        # interpolation. Same bridge idiom as notification_telegram.py.
+        # interpolation.
         subprocess.run(  # noqa: S603
             cmd,
-            env=_forwarded_env(),
+            env=env,
             text=True,
             capture_output=True,
             check=False,
