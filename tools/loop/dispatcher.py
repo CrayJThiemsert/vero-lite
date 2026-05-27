@@ -211,9 +211,17 @@ def load_failure_state(path: Path) -> FailureState:
 
 
 def save_failure_state(path: Path, state: FailureState) -> None:
-    """Persist failure state atomically (write to tmp + rename)."""
+    """Persist failure state atomically (write to tmp + rename).
+
+    The tmp path is **per-process unique** (``<name>.<pid>.tmp``) so two
+    dispatcher processes scanning the same loop directory don't race on
+    a shared tmp file — without the pid suffix the race loser crashes
+    with ``FileNotFoundError`` because the winner already renamed the
+    tmp out from under it (live-discovered in session-14 Step 6 Phase 2
+    cross-process test). PLAN-0010 Phase 4 Fix 2.
+    """
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp = path.with_suffix(f".{os.getpid()}.tmp")
     tmp.write_text(json.dumps(state.to_json(), indent=2, sort_keys=True), encoding="utf-8")
     tmp.replace(path)
 
@@ -418,11 +426,33 @@ def prune_processed(
 # --- Per-message processing ---
 
 
-def _archive(source: Path, processed: Path) -> Path:
-    """Atomically move a message from inbox/ to processed/."""
+def _archive(source: Path, processed: Path) -> Path | None:
+    """Atomically move a message from inbox/ to processed/.
+
+    Returns the archived path on success. Returns ``None`` when another
+    process won a concurrent rename race for the same name (POSIX
+    ``rename(2)`` guarantees exactly one process wins; the loser's
+    ``Path.replace`` raises ``FileNotFoundError``). In that case the
+    filesystem invariant is intact (the winner already moved it) and
+    the caller should treat the situation as
+    :class:`DispatchResult.SKIPPED_IDEMPOTENT` — no log siblings to
+    write, no double-archival, no crash. Any other ``OSError`` is
+    re-raised so genuine IO failures stay visible.
+
+    PLAN-0010 Phase 4 Fix 1 (per
+    `docs/plans/done/0010-step1-message-schema.md` §5 #2.1).
+    """
     processed.mkdir(parents=True, exist_ok=True)
     target = processed / source.name
-    source.replace(target)  # POSIX atomic on same fs
+    try:
+        source.replace(target)  # POSIX atomic on same fs
+    except FileNotFoundError:
+        # Race loser: another process already won the rename for this
+        # name. If the target now exists we're idempotent-done; otherwise
+        # something else removed the source and we should fail loud.
+        if target.exists():
+            return None
+        raise
     return target
 
 
@@ -459,7 +489,13 @@ class Dispatcher:
     retention_floor: int = DEFAULT_RETENTION_FLOOR
     now_fn: Callable[[], datetime] = _now_utc
 
-    def _process_one(self, path: Path, failures: FailureState) -> DispatchResult:
+    def _process_one(self, path: Path, failures: FailureState) -> DispatchResult:  # noqa: C901
+        # NOTE on cyclomatic complexity: the branch count comes from
+        # genuine safety-path forks (idempotency check, parse-fail,
+        # expired, dispatch exception, poison threshold, success) each
+        # paired with an `_archive` race-loser None-check (PLAN-0010
+        # Phase 4 Fix 1). Splitting further would obscure the linear
+        # disposition flow Step 1 §5 specifies. Keep readable.
         # Idempotency check first — Step 1 §5 binding.
         archived_target = self.processed / path.name
         if archived_target.exists():
@@ -474,12 +510,19 @@ class Dispatcher:
         parsed = parse_message_file(path)
         if isinstance(parsed, list):
             archived = _archive(path, self.processed)
+            if archived is None:
+                # Race loser; winner already wrote its parse-error log.
+                failures.clear(path.name)
+                return DispatchResult.SKIPPED_IDEMPOTENT
             _write_sibling_log(archived, "parse-error", _format_validation_errors(parsed))
             failures.clear(path.name)
             return DispatchResult.PARSE_FAILED
 
         if parsed.expires_after is not None and self.now_fn() > parsed.expires_after:
             archived = _archive(path, self.processed)
+            if archived is None:
+                failures.clear(path.name)
+                return DispatchResult.SKIPPED_IDEMPOTENT
             _write_sibling_log(
                 archived,
                 "expired",
@@ -497,6 +540,12 @@ class Dispatcher:
             count = failures.increment(path.name, signature)
             if count >= self.poison_threshold:
                 archived = _archive(path, self.processed)
+                if archived is None:
+                    # Race loser: winner archived as poison (or some other
+                    # disposition). Drop our failure counter and fall back
+                    # to SKIPPED_IDEMPOTENT — same filesystem outcome.
+                    failures.clear(path.name)
+                    return DispatchResult.SKIPPED_IDEMPOTENT
                 _write_sibling_log(
                     archived,
                     "poison",
@@ -522,7 +571,14 @@ class Dispatcher:
             )
             return DispatchResult.DISPATCH_FAILED
 
-        _archive(path, self.processed)
+        archived = _archive(path, self.processed)
+        if archived is None:
+            # Race loser on a successful-dispatch archive: another
+            # process also processed + archived the same message. OK
+            # outcome filesystem-wise; report as SKIPPED_IDEMPOTENT so
+            # the summary doesn't double-count the OK.
+            failures.clear(path.name)
+            return DispatchResult.SKIPPED_IDEMPOTENT
         failures.clear(path.name)
         return DispatchResult.OK
 
