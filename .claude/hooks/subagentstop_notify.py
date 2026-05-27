@@ -19,26 +19,24 @@ Why notify on plan-drafter:
   ``notification_telegram.py`` (idle_prompt / permission_prompt) and
   Phase 2 ``pretooluse_loop_detect.py`` (loop-detect deny).
 
-Implementation pattern mirrors ``notification_telegram.py``:
+Cross-platform invocation + WSLENV passthrough is delegated to
+:mod:`_wsl_bridge` (Pattern A — rule-of-three extraction shared with
+``notification_telegram.py`` and the classifier's HTTPS bridge).
 
-* Cross-platform: on Windows, re-shell via ``wsl.exe`` and propagate
-  ``TELEGRAM_BOT_TOKEN`` + ``TELEGRAM_CHAT_ID`` through ``WSLENV``
-* Best-effort: missing env vars, missing script, network errors all
-  yield graceful no-ops (the hook never blocks the event loop)
-* Defensive parsing: malformed JSON stdin returns 0 silently
-* Filter at the hook layer too: even if the settings.json matcher is
-  loose, this hook checks ``agent_type`` and only fires for the
-  allowlisted types (currently: ``plan-drafter``)
+Defensive parsing: malformed JSON stdin returns 0 silently. Filter at the
+hook layer too: even if the settings.json matcher is loose, this hook
+checks ``agent_type`` and only fires for the allowlisted types (currently:
+``plan-drafter``).
 """
 
 from __future__ import annotations
 
 import json
-import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+from _wsl_bridge import bash_argv, env_with_wslenv_passthrough
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 TELEGRAM_SH_POSIX = "tools/notify/telegram.sh"
@@ -76,45 +74,15 @@ def _build_message(payload: dict[str, object]) -> str:
     )
 
 
-def _wsl_path(win_path: Path) -> str:
-    """Translate Windows ``\\\\wsl.localhost\\<distro>\\...`` to a WSL path."""
-    s = str(win_path)
-    if not s.lower().startswith("\\\\wsl"):
-        return s.replace("\\", "/")
-    parts = s.split("\\")
-    try:
-        idx = next(i for i, p in enumerate(parts) if p.startswith("ubuntu") or p.lower() == "wsl$")
-    except StopIteration:
-        return s.replace("\\", "/")
-    return "/" + "/".join(parts[idx + 1 :])
-
-
-def _forwarded_env() -> dict[str, str]:
-    env = os.environ.copy()
-    if sys.platform == "win32":
-        wslenv = env.get("WSLENV", "")
-        existing = {item.split("/", 1)[0] for item in wslenv.split(":") if item}
-        additions = [f"{k}/u" for k in _FORWARDED_ENV if k not in existing]
-        if additions:
-            env["WSLENV"] = ":".join(filter(None, [wslenv, *additions]))
-    return env
-
-
 def _invoke_telegram(message: str) -> None:
-    if sys.platform == "win32" and shutil.which("wsl.exe"):
-        script = _wsl_path(REPO_ROOT) + "/" + TELEGRAM_SH_POSIX
-        cmd = ["wsl.exe", "--exec", "bash", script, message]
-    else:
-        script = str(REPO_ROOT / TELEGRAM_SH_POSIX)
-        cmd = ["bash", script, message]
-
+    cmd = bash_argv(REPO_ROOT / TELEGRAM_SH_POSIX, message)
+    env = env_with_wslenv_passthrough(_FORWARDED_ENV)
     try:
-        # S603: cmd elements come from REPO_ROOT-derived constants + the
-        # formatted alert message; no shell interpolation. Same idiom as
-        # notification_telegram.py.
+        # S603: argv built from REPO_ROOT-derived constants + formatted alert
+        # message; no shell interpolation. Same idiom as notification_telegram.
         subprocess.run(  # noqa: S603
             cmd,
-            env=_forwarded_env(),
+            env=env,
             timeout=15,
             check=False,
             capture_output=True,

@@ -238,34 +238,6 @@ def test_notify_allowlist_is_frozen_constant() -> None:
     assert module.NOTIFY_AGENT_TYPES == frozenset({"plan-drafter"})
 
 
-# --- WSL path translation helper (regression guard) ---
-
-
-def test_wsl_path_translates_unc() -> None:
-    """The _wsl_path helper translates Windows UNC paths to POSIX."""
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("subagentstop_notify", HOOK)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    unc = Path(r"\\wsl.localhost\ubuntu-24.04\home\crayj\work\vero-lite")
-    result = module._wsl_path(unc)
-    assert result == "/home/crayj/work/vero-lite"
-
-
-def test_wsl_path_passes_through_linux_path() -> None:
-    """A POSIX path passes through unchanged."""
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location("subagentstop_notify", HOOK)
-    assert spec is not None
-    assert spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-
-    p = Path("/home/crayj/work/vero-lite")
-    result = module._wsl_path(p)
-    assert result == "/home/crayj/work/vero-lite"
+# WSL path translation tests moved to tests/handoffs/test_wsl_bridge.py
+# after _wsl_path was extracted to .claude/hooks/_wsl_bridge.py
+# (rule-of-three refactor, shared with notification_telegram + _sonnet_classifier).
