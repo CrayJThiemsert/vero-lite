@@ -52,17 +52,15 @@ ADR-013 D5 is unaffected (Desktop strips only Anthropic-auth vars).
 
 from __future__ import annotations
 
-import email.message
 import json
 import os
 import re
-import shutil
-import subprocess
-import sys
 import urllib.error
 import urllib.request
 from pathlib import Path
 from typing import Any
+
+from _wsl_bridge import http_post_via_wsl_bridge, should_use_wsl_https_bridge
 
 HOOKS_DIR = Path(__file__).resolve().parent
 REPO_ROOT = HOOKS_DIR.parent.parent
@@ -439,166 +437,11 @@ def _build_user_message(payload: dict[str, Any]) -> str:
 
 
 # --- WSL bridge for outbound HTTPS (Lesson #14 sibling — bug #4 of root-cause family) -------------
-#
-# Background: when this hook runs under Windows Python (the default
-# interpreter Claude Code spawns via ``"command": "python .claude/hooks/X.py"``),
-# stdlib ``urllib.request.urlopen`` uses the Windows CA bundle. That bundle
-# fails chain validation against ``api.anthropic.com`` with
-# ``SSL: CERTIFICATE_VERIFY_FAILED — Basic Constraints of CA cert not marked
-# critical (_ssl.c:1028)``. The hook then fails closed to pause/deny (safe
-# but blind — classifier cannot make positive proceed/dispatch decisions).
-#
-# Mitigation: when running on Windows with ``wsl.exe`` available, spawn a
-# small WSL python3 subprocess and have IT make the HTTPS POST (WSL Python's
-# CA chain works). The bridge contract is pure-stdin/stdout JSON — no env
-# forwarding needed because the API key travels inside the headers spec.
-#
-# Why bridge inside this module (vs settings.json ``wsl --exec`` routing —
-# PR #48 attempt): Claude Code's hook spawn mechanism on Windows funnels
-# through cmd /c, which doesn't survive UNC cwd + stdin piping to wsl.exe
-# (proven by the post-PR-48 smoke regression). Spawning wsl.exe from Windows
-# Python via ``subprocess.run`` gives full control over stdin/stdout byte
-# forwarding — the same proven idiom used by ``notification_telegram.py`` +
-# ``subagentstop_notify.py`` (PR #45). This makes ``_sonnet_classifier`` the
-# third hook on this pattern → opportunistic ``_wsl_bridge.py`` extraction
-# becomes justified (deferred follow-up).
-#
-# Opt-out: set ``$CLAUDE_CLASSIFIER_FORCE_DIRECT=1`` to skip the bridge (used
-# by tests + Linux CI where urllib already works).
-
-_WSL_BRIDGE_SCRIPT = r"""
-import sys, json, urllib.request, urllib.error
-try:
-    spec = json.loads(sys.stdin.read())
-    req = urllib.request.Request(
-        spec["url"],
-        data=spec["body"].encode("utf-8"),
-        headers=spec["headers"],
-        method="POST",
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=spec["timeout"]) as resp:
-            sys.stdout.write(json.dumps({
-                "ok": True,
-                "status": resp.status,
-                "body": resp.read().decode("utf-8"),
-            }))
-    except urllib.error.HTTPError as e:
-        body = ""
-        try:
-            body = e.read().decode("utf-8")
-        except Exception:
-            pass
-        sys.stdout.write(json.dumps({
-            "ok": False, "kind": "HTTPError",
-            "status": e.code, "body": body,
-        }))
-    except urllib.error.URLError as e:
-        sys.stdout.write(json.dumps({
-            "ok": False, "kind": "URLError",
-            "reason": str(e.reason),
-        }))
-    except TimeoutError as e:
-        sys.stdout.write(json.dumps({
-            "ok": False, "kind": "TimeoutError",
-            "reason": str(e),
-        }))
-except Exception as e:
-    sys.stdout.write(json.dumps({
-        "ok": False, "kind": "BridgeError",
-        "reason": f"{type(e).__name__}: {e}",
-    }))
-"""
-
-
-def _should_use_wsl_bridge() -> bool:
-    """Whether to bridge HTTPS via ``wsl.exe`` subprocess.
-
-    True iff: Windows host AND wsl.exe on PATH AND user has not opted out
-    via ``$CLAUDE_CLASSIFIER_FORCE_DIRECT``. The opt-out exists for tests
-    + Linux CI where the direct urllib path already works.
-    """
-    if os.environ.get("CLAUDE_CLASSIFIER_FORCE_DIRECT", "").strip():
-        return False
-    return sys.platform == "win32" and shutil.which("wsl.exe") is not None
-
-
-def _http_post_via_wsl_bridge(
-    url: str,
-    body: bytes,
-    headers: dict[str, str],
-    timeout: int,
-) -> str:
-    """Bridge an HTTPS POST through ``wsl.exe python3``; return body text.
-
-    Raises ``urllib.error.URLError`` / ``urllib.error.HTTPError`` on
-    failure so callers don't need to know the transport — the
-    fail-closed pause path catches both unchanged.
-    """
-    spec = {
-        "url": url,
-        "body": body.decode("utf-8"),
-        "headers": dict(headers),
-        "timeout": timeout,
-    }
-    spec_json = json.dumps(spec)
-    try:
-        # S603/S607: wsl.exe is a hook-controlled invocation; argv is
-        # constant ``["wsl.exe", "--exec", "python3", "-c", <constant
-        # bridge script>]`` — no shell, no user-controlled args. Same
-        # idiom as notification_telegram._invoke_telegram.
-        result = subprocess.run(  # noqa: S603
-            ["wsl.exe", "--exec", "python3", "-c", _WSL_BRIDGE_SCRIPT],  # noqa: S607
-            input=spec_json,
-            text=True,
-            capture_output=True,
-            timeout=timeout + 5,
-            check=False,
-        )
-    except FileNotFoundError as exc:
-        raise urllib.error.URLError(f"wsl.exe not found: {exc}") from exc
-    except subprocess.TimeoutExpired as exc:
-        raise urllib.error.URLError(
-            f"wsl bridge subprocess timed out after {timeout + 5}s: {exc}"
-        ) from exc
-
-    if result.returncode != 0:
-        raise urllib.error.URLError(
-            f"wsl bridge subprocess failed "
-            f"(rc={result.returncode}, stderr={result.stderr[:200]!r})"
-        )
-
-    try:
-        response = json.loads(result.stdout)
-    except json.JSONDecodeError as exc:
-        raise urllib.error.URLError(
-            f"wsl bridge returned non-JSON stdout: {result.stdout[:200]!r}"
-        ) from exc
-
-    if not isinstance(response, dict):
-        raise urllib.error.URLError(f"wsl bridge returned non-dict JSON: {result.stdout[:200]!r}")
-
-    if response.get("ok"):
-        body_text = response.get("body", "")
-        if not isinstance(body_text, str):
-            raise urllib.error.URLError("wsl bridge response body not a string")
-        return body_text
-
-    kind = response.get("kind", "unknown")
-    if kind == "HTTPError":
-        status = response.get("status", 500)
-        err_body = response.get("body", "")
-        # Re-raise as HTTPError so caller's fail-closed catches it as
-        # the same shape as a direct urllib call would.
-        raise urllib.error.HTTPError(
-            url,
-            int(status) if isinstance(status, int) else 500,
-            f"HTTP {status}: {err_body[:200]}",
-            email.message.Message(),
-            None,
-        )
-    reason = response.get("reason", "(no reason given)")
-    raise urllib.error.URLError(f"wsl bridge {kind}: {reason}")
+# Extracted to :mod:`_wsl_bridge` (rule-of-three; see that module's docstring
+# for the Windows-Python CA-bundle root cause + bridge architecture). The
+# opt-out env ``$CLAUDE_CLASSIFIER_FORCE_DIRECT`` is the default for
+# ``should_use_wsl_https_bridge`` and exists for tests + Linux CI where the
+# direct urllib path already works.
 
 
 def _call_api(
@@ -608,12 +451,13 @@ def _call_api(
 ) -> str:
     """POST to Anthropic Messages API; return the assistant text content.
 
-    On Windows: bridges via ``wsl.exe`` because the Windows Python CA
-    bundle fails on ``api.anthropic.com`` (see ``_WSL_BRIDGE_SCRIPT``
-    block above). On Linux/macOS: direct ``urllib.request.urlopen``.
-    Either path raises ``urllib.error.URLError`` on network/HTTP
-    failure, ``TimeoutError`` on timeout, ``ValueError`` on malformed
-    wire response; caller handles these as fail-closed pause.
+    On Windows: bridges via :func:`_wsl_bridge.http_post_via_wsl_bridge`
+    because the Windows Python CA bundle fails on ``api.anthropic.com``
+    (see :mod:`_wsl_bridge` docstring). On Linux/macOS: direct
+    ``urllib.request.urlopen``. Either path raises
+    ``urllib.error.URLError`` on network/HTTP failure, ``TimeoutError``
+    on timeout, ``ValueError`` on malformed wire response; caller
+    handles these as fail-closed pause.
     """
     body = json.dumps(
         {
@@ -629,8 +473,8 @@ def _call_api(
         "content-type": "application/json",
     }
 
-    if _should_use_wsl_bridge():
-        response_text = _http_post_via_wsl_bridge(_api_url(), body, headers, API_TIMEOUT_SEC)
+    if should_use_wsl_https_bridge():
+        response_text = http_post_via_wsl_bridge(_api_url(), body, headers, API_TIMEOUT_SEC)
     else:
         # S310: the URL is a fixed Anthropic Messages endpoint (or an
         # explicit test override via $CLAUDE_SONNET_API_URL) — not user-
