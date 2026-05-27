@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-27T10:50:00+07:00
-session: 16
-current_batch: **Sessions 15 + 16 — Path A close (partial) + 5 PRs.** Session 15: PR #45 Telegram fix (argv contract + WSL bridge for 3 hooks — Lesson #14), PR #46 Lesson #14 capture, PR #47 Lessons #12 + #13 (closed numbering gap), PR #48 Option 3b classifier routing (superseded), PR #49 Option 2 WSL bridge for classifier HTTPS (the working fix). Session 16: Path A Smoke 1 (G1 PreToolUse Edit-Accepted-ADR) **PASSED** with real Sonnet judgment under PR #49 bridge — first live evidence the classifier's PreToolUse arm works end-to-end. Smoke 2 (D1 Stop dispatch) surfaced **structural finding** — `_sonnet_classifier._build_user_message()` doesn't read `transcript_path`, so Sonnet sees only 5 metadata fields on Stop events and correctly defaults to `proceed`. **Lesson #15 codified.** Telegram fail-safe (PR #45) end-to-end validated via manual plan-drafter spawn — message reached Cray's phone with matching agent_id. ADR-0014 draft (cross-tab MCP transport) produced as Smoke 2 artifact (untracked; Cray-routed separately). Path A closed **partial**: PreToolUse arm live-verified, Stop arm structurally blocked pending the `_build_user_message` transcript-load fix (deferred to follow-up PR / PLAN, session 17+).
+last_updated: 2026-05-27T15:00:00+07:00
+session: 17
+current_batch: **Session 17 — PLAN-0011 (Lesson #15 fix) shipped + PLAN-0010 Phase 4 (in PR) + ADR-0014 take 2 in advisory loop.** 3 PRs merged to main: PR #53 PLAN-0011 fix (classifier transcript-load — `_summarize_transcript` + `_build_user_message` excerpt; 18 new tests; gated live smoke PASS against real Sonnet for D1 dispatch); PR #54 PLAN-0011 closeout (Status → Complete, `git mv` to `done/`); this PR docs reconciliation (PLAN-0011 §Out-of-Scope + Lesson #15 §4 + STATUS post-execution annotations). PR #55 open + MERGEABLE/CLEAN — PLAN-0010 Phase 4 (2 cross-process race fixes + Code Desktop scheduled-task SKILL.md + runbook). ADR-0014 work #4: draft recovered from Claude Desktop session JSONL after session-pivot loss; Cowork advisory round 1 (2026-05-27 1145 +07) surfaced C1/C2/C3/C4 + 3 missing OQs → plan-drafter take 2 (727 lines, 5 OQs blocking); Cowork take-2 verification round (1330 +07) confirmed Focus-1 fixes hold + flagged this-PR N1/N2 documentation lag + Focus-4 attribution refinement. Cumulative session-17 test count: 588 → 612 (+24, no regressions); ruff + mypy clean. 3 lessons codified to auto-memory (live-test-trigger freshness; working-tree pre-smoke hygiene; parallel-session executor handoff).
 current_actor: code
-blocked_on: nothing — session 16 close PR ready (Lesson #15 + STATUS update on `docs/lesson-0015-and-status-closeout` branch)
-next_action: **Session 17 candidate paths:** (a) **`_build_user_message` transcript-load fix** — implement Lesson #15 §4 fix (read + summarize transcript before rendering; add 1 mock-input assertion + 1 gated live-API smoke; re-run Smokes 2 + 3 live); (b) **ADR-0014 ratification + commit** — Cray decides whether to route the uncommitted `docs/adr/0014-cross-tab-mcp-transport.md` through a Cowork advisory pass before status flip Proposed → Accepted, or accept the bootstrap exception (author≠reviewer disclosure §Implementation Notes); (c) **PLAN-0010 Phase 4 wiring** — 2 dispatcher fixes (`_archive` FileNotFoundError recovery + `save_failure_state` per-process unique tmp path) before scheduled-task setup; (d) **`_wsl_bridge.py` extraction** — opportunistic 3rd-instance refactor (rule of three: `notification_telegram` + `subagentstop_notify` + `_sonnet_classifier` now share the wsl.exe-subprocess pattern).
-head_commit: 168baff
-recent_commits: [168baff, 3f9e20c, 885581a, c401ace, 8440924, b35bc87, 6dee4bd, e9a09de, e04f0f0, 9d86d13]
+blocked_on: ADR-0014 take-3 edits pending — this docs-reconcile PR unblocks N1/N2 framing first per Cowork take-2 verification; then ADR-014 take-3 with Cowork-take-2 Focus-2/3/4 fixes folded; then ratify + flip Proposed → Accepted. Concurrent: PR #55 review pending Cray green-light (parallel-safe, orthogonal codepath).
+next_action: **Active session 17 sequence (post-this-PR):** (a) **ADR-0014 take 3 + commit** — Code applies Cowork take-2 N1 (point at PR #53), OQ-A/B/C dimension fixes, Focus-4 attribution refinement (ADR-013 OQ-1 attribution + cite take-2 + 1330 handoff); commit on `chore/adr-0014-cross-tab-mcp-transport` branch + PR; Cray ratifies OQ-A (ADR-vs-PLAN governance) in review; (b) **Merge PR #55** PLAN-0010 Phase 4 + Cray executes Desktop UI one-time setup per `docs/runbooks/loop-dispatcher-scheduled-task.md`; (c) **`_wsl_bridge.py` extraction** — session-17 work #3 queued (~1 hr); (d) **AC-3/AC-7 fresh-trigger live re-run** for PLAN-0011 (deferred per PR #53 body §AC-3, meta-awareness contamination); (e) STATUS-side: session 17 → session 18 handoff when work above clears.
+head_commit: 38a7407
+recent_commits: [38a7407, ec47b32, 8d421fc, 17eecc7, 12cf619, 0a43013, 7f288af, 52ba89c, 9e55554, 84c637e]
 ---
 
 # vero-lite — Project Status
@@ -18,23 +18,38 @@ recent_commits: [168baff, 3f9e20c, 885581a, c401ace, 8440924, b35bc87, 6dee4bd, 
 
 ## Current Focus
 
-**Sessions 15 + 16 close — Path A partial + Lesson #15.** 5 PRs landed
-on `main` (session 15: #45 Telegram fix + #46/47 Lessons #12-14 +
-#48-superseded + #49 Option-2 WSL classifier bridge). Session 16
-executed Path A smokes against the now-working classifier: **Smoke 1
-(G1 PreToolUse Edit-Accepted-ADR) PASSED** with real Sonnet judgment;
-**Smoke 2 (D1 Stop dispatch) BLOCKED** by structural finding —
-classifier's `_build_user_message` never reads `transcript_path`, so
-Sonnet sees only 5 metadata fields on Stop events and defaults to
-`proceed`. **Lesson #15** codifies the finding; the
-`_build_user_message` transcript-load fix is deferred to a follow-up
-PR / PLAN (session 17+). **Telegram fail-safe (PR #45) end-to-end
-validated** via manual `plan-drafter` subagent spawn — SubagentStop →
-wsl.exe bridge → telegram.sh → bot → Cray's phone, full chain live
-with matching `agent_id`. ADR-0014 draft (cross-tab MCP transport)
-produced as Smoke 2 artifact; left uncommitted pending Cray's routing
-decision (Cowork advisory pass vs bootstrap exception, per draft's
-§Implementation Notes author≠reviewer disclosure).
+**Session 17 — Path A closed (Lesson #15 fix shipped) + Phase 4 in
+PR + ADR-0014 in Cowork advisory loop.** PLAN-0011 (the classifier
+transcript-load fix, Lesson #15 §4) **shipped end-to-end** in PR #53
+(commit `8d421fc`) + closed out in PR #54 (`ec47b32`, `git mv` to
+`done/`). Gated live API smoke (`test_classifier_live_smoke.py`,
+`RUN_LIVE_CLASSIFIER_TESTS=1`) PASSED against real Sonnet — `decision:
+dispatch, matched_rows: ["D1"]`. AC-3 verbatim in-session Smoke 2/3
+**reframed** → deferred-with-fresh-trigger per documented
+meta-awareness contamination (agent reads scenario file → recognizes
+test prompt). PR #55 (PLAN-0010 Phase 4 — 2 dispatcher concurrency
+fixes + Code Desktop scheduled-task SKILL.md + 162-line runbook) open
++ MERGEABLE/CLEAN; awaiting Cray green-light. ADR-0014 work #4:
+draft was lost when a contaminated session was closed; recovered
+verbatim from Claude Desktop session JSONL; Cowork advisory pass round
+1 (1145 +07) surfaced C1-C4 + 3 missing OQs; plan-drafter take 2 (727
+lines) folded them; Cowork take-2 verification round (1330 +07) hit
+Focus-1 PASS but flagged real **documentation lag** — PLAN-0011
+§Out-of-Scope + Lesson #15 §4 + this STATUS hadn't been updated
+post-PR-53/54. **This PR is that docs-reconcile fix**; ADR-0014 take 3
+follows. Cumulative session-17 tests: 588 → 612 (+24); ruff + mypy
+clean. 3 auto-memory lessons codified (live-test-trigger freshness;
+working-tree pre-smoke hygiene; parallel-session executor handoff).
+
+### 2026-05-27 ~14:50 +07 — Session 17 ledger
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **PLAN-0011 fix** | [#53](https://github.com/CrayJThiemsert/vero-lite/pull/53) (`17eecc7` → merge `8d421fc`) | **Lesson #15 §4 SHIPPED.** `.claude/hooks/_sonnet_classifier.py` +191 LOC: `_summarize_transcript` + `_render_transcript_turn` + `_extract_content_parts` + `_read_transcript_turns` + `_render_content_block` helpers; `## Recent conversation excerpt` section inserted between framing + raw payload JSON dump in `_build_user_message`. 18 new tests (15 summarizer + 4 build-message regression + 2 AC-4 mock-input assertions in `test_stop_continuation.py` + `test_pretooluse_classifier_dispatch.py`) + 1 gated live-API smoke (`test_classifier_live_smoke.py` + `tests/fixtures/transcript_smoke_d1.jsonl`). Live smoke vs real Sonnet: `decision: dispatch, matched_rows: ["D1"]` PASS. AC-3 reframed → fresh-trigger live re-run deferred (meta-awareness contamination per PR body). |
+| **PLAN-0011 closeout** | [#54](https://github.com/CrayJThiemsert/vero-lite/pull/54) (`ec47b32` → merge `38a7407`) | Status `Ready for execution` → `Complete`; added `Shipped:` field linking PR #53 + `8d421fc`; `git mv docs/plans/0011-classifier-transcript-load.md docs/plans/done/`. Per PLAN-0011 §Step 6 final bullet. |
+| **PLAN-0010 Phase 4** | [#55](https://github.com/CrayJThiemsert/vero-lite/pull/55) (`e1e0395`) — **OPEN, MERGEABLE/CLEAN** | **2 cross-process race fixes + scheduled-task wiring.** Fix 1: `_archive` FileNotFoundError recovery (race-loser returns `None` = `SKIPPED_IDEMPOTENT`; caller doesn't crash, doesn't write log on top of winner's). Fix 2: `save_failure_state` per-pid tmp path (`path.with_suffix(f".{os.getpid()}.tmp")`). 6 new tests (4 `_archive` deterministic + 1 `_process_one` end-to-end + 1 multiprocessing×2 cross-process). New `~/.claude/scheduled-tasks/loop-dispatcher/SKILL.md` carries the dispatcher prompt; new 162-line `docs/runbooks/loop-dispatcher-scheduled-task.md` documents the Cray-side Desktop UI one-time setup + verification + observability + recovery. Manual smoke: 6 inbox → 0, 4 processed → 8 (`ok=4 skipped_idempotent=2 elapsed_ms=2`). |
+| **Docs reconcile** *(this PR)* | `docs/plans/done/0011-*.md` §Out-of-Scope + `docs/lessons/0015-*.md` §4 + this STATUS | **N1/N2 lag from Cowork ADR-0014 take-2 verification.** PLAN-0011 §Out-of-Scope's "writing fix code is out of scope — session 17+ branch" language was preserved verbatim through PR #54 closeout (reflects original Draft state) — now annotated as **factually superseded by PR #53's diff**. Lesson #15 §4 "deferred to follow-up chore PR / PLAN — session 17+" annotated as **SHIPPED in PR #53**; original §4 framing preserved as archeology. STATUS Current Focus + frontmatter rewritten for session 17. |
+| **ADR-0014 take 2** *(uncommitted)* | `docs/adr/0014-cross-tab-mcp-transport.md` + `.claude/handoffs/session-16/2026-05-27-1145-cowork-adr0014-advisory-pass.md` + `2026-05-27-1330-cowork-adr0014-take2-verification.md` | **Cowork advisory loop in flight.** Take 1 (685 lines) was lost when a contaminated session was closed; recovered from Claude Desktop session JSONL via `de88e2c7-*.jsonl` Read-tool output. Cowork advisory round 1 (1145 +07) flagged C1 (stale Phase-3 premise, PLAN-0009 actually DONE), C2 (D3 localhost-only feasibility gap, Cowork is cloud VM), C3 (slot inventory wrong), C4 (commit attribution wrong), 3 missing OQs (vero-bridge naming + ADR-vs-PLAN governance; Lesson #15 dependency; Cowork client execution locus). Plan-drafter take 2 (727 lines, 5 OQs blocking, L1 loop-detect halt at 6th Edit). Cowork take-2 verification (1330 +07): Focus-1 (C1-C4 fixes) PASS; Focus-3 surfaced N1 (this docs lag) + N2 (PLAN-0011 internal contradiction); Focus-2 OQ A/B/C dimension refinements; Focus-4 attribution should be ADR-013 OQ-1 not ADR-012 D4.3. **Take 3 follows this docs PR.** |
 
 ### 2026-05-27 10:50 +07 — Session 15 + 16 closeout (Code-tab session 16)
 
@@ -60,12 +75,13 @@ decision (Cowork advisory pass vs bootstrap exception, per draft's
 | **#5 — C2 add dependency** (Smoke 3 bonus) | (not run live — inferred BLOCKED by #3 finding) | ⏸️ **DEFERRED** (re-run post-fix) | `scenario5-cray-driven-c2-add-dependency.md` |
 | **Telegram fail-safe (PR #45 E2E)** | Manual `plan-drafter` spawn after Smoke 2 BLOCKED | ✅ **PASS** | covered in `scenario3` §Telegram fail-safe end-to-end validation |
 
-### Deferred to session 17+ (or later)
+### Deferred queue (session 17 reconciled)
 
-- **Lesson #15 fix — `_build_user_message` transcript-load.** Mechanical (~50 LOC + tests); add transcript summarizer + 1 mock-input assertion per test + 1 gated live-API smoke. Re-run Smokes 2 + 3 live as the fix's validation. Will be opened as a chore PR or PLAN-NNNN (Cray to decide framing).
-- **ADR-0014 ratification.** Cray adjudicates Cowork advisory pass vs bootstrap exception per the draft's §Implementation Notes; flip Proposed → Accepted; address 5 OQs + 6 T-commits as separate work.
-- **PLAN-0010 Phase 4 wiring** (carried from session 14). 2 dispatcher fixes documented in archived PLAN-0010 §5; scheduled-task setup follows.
-- **`_wsl_bridge.py` extraction.** Rule-of-three threshold hit: `notification_telegram` + `subagentstop_notify` + `_sonnet_classifier` now share the `subprocess.run(["wsl.exe", "--exec", ...])` idiom. Opportunistic; not blocking.
+- ~~**Lesson #15 fix — `_build_user_message` transcript-load.**~~ **✅ SHIPPED** in PR #53 / `8d421fc` (session 17). See ledger row above + `docs/plans/done/0011-classifier-transcript-load.md`.
+- **ADR-0014 ratification.** **IN FLIGHT** — Cowork advisory rounds 1 + 2 done; plan-drafter take 2 in working tree; Code take-3 edits (folding Cowork take-2 feedback) follows this docs-reconcile PR; then commit + PR + Cray ratifies in review (OQ-A ADR-vs-PLAN governance is the load-bearing decision).
+- ~~**PLAN-0010 Phase 4 wiring**~~ **✅ IN PR** #55 (`e1e0395`); 2 dispatcher race fixes + scheduled-task SKILL.md + runbook all landed in chore branch; awaiting Cray green-light merge.
+- **`_wsl_bridge.py` extraction.** Rule-of-three threshold hit: `notification_telegram` + `subagentstop_notify` + `_sonnet_classifier` now share the `subprocess.run(["wsl.exe", "--exec", ...])` idiom. Session-17 work #3 queued (~1 hr); not blocking.
+- **AC-3/AC-7 fresh-trigger live re-run** (PLAN-0011 follow-up). Per PR #53 body: verbatim Smoke 2/3 from `scenario3-*.md` / `scenario5-*.md` is contaminated by agent meta-awareness (agent reads scenario file → recognizes test trigger → behaves cautiously → classifier sees wrong context). Re-run with a **fresh trigger** (not documented in any tracked file) in a future session; capture Telegram `message_id` + Sonnet verdict; flip evidence files BLOCKED → PASS.
 
 ### 2026-05-26 22:30 +07 — Step 6 close (Code-tab session 14)
 

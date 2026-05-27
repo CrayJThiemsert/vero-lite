@@ -36,6 +36,8 @@ Eliminate classifier payload starvation on `Stop` hook events by loading and sum
 - ❌ **ADR-0014 ratification.** Cray's separate decision per its `§Implementation Notes` author≠reviewer disclosure; not part of this fix.
 - ❌ **Writing the fix code as part of this PLAN.** This is the *plan* for the fix, not the fix itself; implementation lives in the session 17+ branch.
 
+> **Post-execution annotation (2026-05-27, session 17 — added at archive-to-`done/` reconciliation).** The §Out-of-Scope bullet above reflects this PLAN's *original Draft state* — when the file was minted as a placeholder (PR [#51](https://github.com/CrayJThiemsert/vero-lite/pull/51)) and ratified Ready for execution (PR [#52](https://github.com/CrayJThiemsert/vero-lite/pull/52)), the fix code had not yet been written. Execution then landed in **PR [#53](https://github.com/CrayJThiemsert/vero-lite/pull/53) (merge commit `8d421fc`)** — see this file's header `Shipped:` field. The classifier transcript-load fix (`_summarize_transcript` helper + `_build_user_message` excerpt insertion in `.claude/hooks/_sonnet_classifier.py`) + 18 new tests + the gated live-API smoke (real Sonnet PASS for D1 dispatch) are all in main. The §Out-of-Scope language is preserved verbatim for archeology — it captures the Ready-state framing accurately — but is **factually superseded** by PR #53's diff. A future reader scanning §Out-of-Scope should treat it as historical context, not current scope.
+
 ## Steps
 
 ### Step 1: Implement `_summarize_transcript(path) -> str` helper

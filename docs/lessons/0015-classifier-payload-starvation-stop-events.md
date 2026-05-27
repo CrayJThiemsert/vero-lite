@@ -113,7 +113,13 @@ task to a co-located subagent).
 
 That is everything Sonnet sees. The receiver's job is "look at what the agent just did and decide what to do next." The receiver gets five metadata fields and a path string. The right answer to give the receiver — given only that — is `proceed`.
 
-## 4. The fix (deferred to follow-up chore PR / PLAN — session 17+)
+## 4. The fix (SHIPPED in PR #53 / session 17 — original §4 framing preserved below)
+
+> **Status update (2026-05-27, session 17).** The fix described in this section is **SHIPPED** — landed in **[PR #53](https://github.com/CrayJThiemsert/vero-lite/pull/53) (merge commit `8d421fc`)**, implementing PLAN-0011 in full. Concretely on main: `_summarize_transcript` helper (+ `_render_content_block` + `_render_transcript_turn` + `_extract_content_parts` + `_read_transcript_turns` helpers) in `.claude/hooks/_sonnet_classifier.py`; `## Recent conversation excerpt` section inserted into `_build_user_message`; 15 new summarizer tests + 4 `_build_user_message` regression tests + 2 AC-4 mock-input assertions in `test_stop_continuation.py` / `test_pretooluse_classifier_dispatch.py` + 1 gated live-API smoke (`tests/handoffs/test_classifier_live_smoke.py`) with `RUN_LIVE_CLASSIFIER_TESTS=1` opt-in. Live smoke against real Sonnet returned `decision: dispatch, matched_rows: ["D1"]` — AC-3/AC-5 equivalence achieved for the gated path; verbatim in-session Smoke 2/3 reframed → deferred-with-fresh-trigger per meta-awareness contamination findings (see PR #53 body §AC-3). PLAN-0011 closeout (Status `Ready for execution` → `Complete`, move to `docs/plans/done/`) landed in [PR #54](https://github.com/CrayJThiemsert/vero-lite/pull/54).
+>
+> The §4 framing below is preserved verbatim because the fix shape Cray ratified at lesson-codification time matches the shipped diff almost exactly (minor: `_summarize_transcript` ended up using `max_turns=8, max_bytes=3072` instead of the un-quantified "last N turns / ~2-4 KB cap" sketched here — these are the named constants `TRANSCRIPT_DEFAULT_MAX_TURNS` / `TRANSCRIPT_DEFAULT_MAX_BYTES`). Treat §4 as historical design context, not a future TODO.
+
+### §4 (original framing, 2026-05-27 codification — preserved for archeology)
 
 `_build_user_message` must **read + summarize the transcript** before rendering. Minimal viable shape:
 
@@ -142,7 +148,9 @@ Companion tests must:
 
 This is similar in shape to PR #45's Lesson #14 fix (real end-to-end smoke alongside the unit tests).
 
-**Why deferred:** Cray ratified Option 2 (defer fix; close Path A partial) on 2026-05-27 to preserve session-16 closeout scope. The fix is mechanical (~50 LOC + tests) but introduces transcript-parsing surface area + needs an integration-test gating decision that's worth its own PLAN. Tracked as the Step-D follow-up (placeholder PR or PLAN-NNNN to be opened next).
+**Why deferred (at codification time):** Cray ratified Option 2 (defer fix; close Path A partial) on 2026-05-27 morning to preserve session-16 closeout scope. The fix is mechanical (~50 LOC + tests) but introduces transcript-parsing surface area + needs an integration-test gating decision that's worth its own PLAN. Tracked as the Step-D follow-up (placeholder PR or PLAN-NNNN to be opened next).
+
+> **Actual outcome (session 17 afternoon).** The deferral lasted ~7 hours. PLAN-0011 was minted as the placeholder PLAN (PR #51), flipped to Ready for execution (PR #52), executed in PR #53 (which shipped the §4 fix code + tests + gated live smoke + the AC-3 reframing to fresh-trigger deferral), and closed out in PR #54 (Status → Complete, move to `done/`). Total session-17 cumulative test count delta: 588 → 612 (+24 across PLAN-0011 + PLAN-0010 Phase 4 PRs). See `docs/plans/done/0011-classifier-transcript-load.md` `Shipped:` field and §Out-of-Scope post-execution annotation for the full PLAN-side audit trail.
 
 ## 5. Prevention checklist (for future LLM-integration code)
 
