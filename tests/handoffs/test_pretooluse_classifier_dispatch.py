@@ -630,3 +630,73 @@ def test_subprocess_bash_tool_not_gated(
     )
     assert rc == 0
     assert out == ""
+
+
+# ---------------------------------------------------------------------------
+# PLAN-0011 / Lesson #15 §5 — AC-4 mock-input assertion
+#
+# The dispatch-arm tests above patch ``classify()`` for determinism, which
+# bypasses ``_build_user_message`` — the very surface PLAN-0011 just modified.
+# This test runs through the REAL classify() path with ``_call_api`` mocked
+# to capture the rendered prompt, then asserts the prompt surfaces the
+# PreToolUse payload's ``tool_name`` + ``tool_input`` fragments. Catches a
+# Lesson #15-class regression on the PreToolUse arm (additive enrichment
+# regression guard for AC-2).
+# ---------------------------------------------------------------------------
+
+
+def test_classifier_user_message_includes_tool_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    inproc: dict[str, Any],
+    tmp_path: Path,
+) -> None:
+    """AC-4 prevention — PreToolUse event's user_message contains the
+    fixture tool_name + tool_input semantic content. If this regresses,
+    Sonnet would be starved of the action it's supposed to gate."""
+    registry = tmp_path / "autonomy-triggers.md"
+    registry.write_text(
+        "# fixture registry\n\n| # | Trigger | Phase 2 |\n"
+        "|---|---------|---------|\n| G1 | example | pause |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CLAUDE_AUTONOMY_REGISTRY_PATH", str(registry))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-fake-key")
+    monkeypatch.setenv("CLAUDE_CLASSIFIER_FORCE_DIRECT", "1")
+
+    captured: dict[str, str] = {}
+
+    def fake_call_api(api_key: str, system_prompt: str, user_message: str) -> str:
+        captured["user_message"] = user_message
+        return json.dumps(
+            {
+                "decision": "pause",
+                "matched_rows": ["G1"],
+                "reason": "fixture pause",
+            }
+        )
+
+    monkeypatch.setattr(_sc, "_call_api", fake_call_api)
+
+    # Use the fake_repo's Accepted ADR fixture so the G1 pre-filter fires
+    # and the classifier is actually consulted.
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Edit",
+        "tool_input": {
+            "file_path": "docs/adr/0009-accepted.md",
+            "old_string": "Status: Accepted",
+            "new_string": "Status: Proposed",
+        },
+    }
+    rc, _out = _run_inproc(monkeypatch, payload)
+    assert rc == 0
+
+    user_message = captured["user_message"]
+    # Excerpt section emitted, but PreToolUse has no transcript_path → fallback
+    assert "## Recent conversation excerpt" in user_message
+    assert _sc.TRANSCRIPT_UNAVAILABLE in user_message
+    # The semantic content the classifier MUST see lives in the JSON dump
+    assert "## Raw payload" in user_message
+    assert '"tool_name": "Edit"' in user_message
+    assert "0009-accepted.md" in user_message
+    assert "Status: Accepted" in user_message

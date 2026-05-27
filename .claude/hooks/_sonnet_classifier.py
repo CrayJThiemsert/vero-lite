@@ -92,6 +92,19 @@ DISPATCH_ALLOWED_ARTIFACT_KINDS = frozenset({"adr", "plan"})
 # the dispatch instruction template stays bounded.
 DISPATCH_TASK_SUMMARY_MAX_CHARS = 500
 
+# PLAN-0011 transcript-excerpt summarizer tuning (Lesson #15 §4 fix).
+# max_turns/max_bytes keep the excerpt within Sonnet's prompt budget without
+# crowding the system-prompt registry; the per-turn cap stops one runaway
+# message (e.g. a paste-bombed user turn) from monopolizing the window;
+# the tool-input cap keeps tool-call previews single-line.
+TRANSCRIPT_DEFAULT_MAX_TURNS = 8
+TRANSCRIPT_DEFAULT_MAX_BYTES = 3072
+TRANSCRIPT_PER_TURN_CHAR_CAP = 600
+TRANSCRIPT_TOOL_INPUT_CHAR_CAP = 200
+TRANSCRIPT_UNAVAILABLE = "(no transcript available)"
+TRANSCRIPT_UNREADABLE = "(transcript unreadable)"
+TRANSCRIPT_ELIDED_PREFIX = "[earlier turns elided]\n"
+
 
 def _registry_path() -> Path:
     override = os.environ.get("CLAUDE_AUTONOMY_REGISTRY_PATH")
@@ -231,6 +244,169 @@ def _build_system_prompt(registry: str, *, strict: bool = False) -> str:
     return base
 
 
+def _render_content_block(block: dict[str, Any]) -> str | None:
+    """Render one content block (text/tool_use/tool_result/thinking/...).
+
+    Returns the rendered fragment, or ``None`` if the block should be
+    skipped (thinking, unknown types, empty text). Splitting this out
+    keeps ``_render_transcript_turn`` under the project's complexity
+    budget.
+    """
+    btype = block.get("type")
+    if btype == "text":
+        text = block.get("text") or ""
+        if isinstance(text, str) and text.strip():
+            return text
+        return None
+    if btype == "tool_use":
+        name = block.get("name") or "?"
+        inp = block.get("input")
+        if inp is None:
+            inp = {}
+        try:
+            preview = json.dumps(inp, default=str)
+        except (TypeError, ValueError):
+            preview = str(inp)
+        if len(preview) > TRANSCRIPT_TOOL_INPUT_CHAR_CAP:
+            preview = preview[: TRANSCRIPT_TOOL_INPUT_CHAR_CAP - 3] + "..."
+        return f"[tool: {name}({preview})]"
+    if btype == "tool_result":
+        return "[tool_result (omitted)]"
+    # ``thinking`` and unknown future kinds are intentionally skipped.
+    return None
+
+
+def _extract_content_parts(content: Any) -> list[str]:
+    """Flatten a message's ``content`` (str OR list-of-blocks) into a list
+    of rendered fragments. Empty/skipped fragments are dropped.
+    """
+    if isinstance(content, str):
+        return [content] if content.strip() else []
+    if not isinstance(content, list):
+        return []
+    parts: list[str] = []
+    for block in content:
+        if not isinstance(block, dict):
+            continue
+        rendered = _render_content_block(block)
+        if rendered:
+            parts.append(rendered)
+    return parts
+
+
+def _render_transcript_turn(ev: dict[str, Any]) -> str:
+    """Render a single ``user``/``assistant`` JSONL event into a one-block
+    markdown excerpt. Returns ``""`` when the event has no surfacable
+    content (all blocks were ``thinking`` / unknown types / empty text).
+
+    Per PLAN-0011 §Step 1: ``text`` blocks render verbatim (capped at
+    ``TRANSCRIPT_PER_TURN_CHAR_CAP``); ``tool_use`` blocks render as
+    ``[tool: NAME(<input preview>)]`` with the input JSON-serialized and
+    capped at ``TRANSCRIPT_TOOL_INPUT_CHAR_CAP``; ``tool_result`` blocks
+    render as ``[tool_result (omitted)]`` (we want the classifier to see
+    that a tool ran, not the full output which can be huge);
+    ``thinking`` blocks are skipped entirely (private chain-of-thought).
+    """
+    msg = ev.get("message")
+    if not isinstance(msg, dict):
+        return ""
+    role = msg.get("role") or ev.get("type") or "?"
+    parts = _extract_content_parts(msg.get("content"))
+    if not parts:
+        return ""
+    body = "\n".join(parts).strip()
+    if not body:
+        return ""
+    if len(body) > TRANSCRIPT_PER_TURN_CHAR_CAP:
+        body = body[: TRANSCRIPT_PER_TURN_CHAR_CAP - 3] + "..."
+    return f"**{role}**: {body}"
+
+
+def _read_transcript_turns(path: Path) -> list[str]:
+    """Read a transcript JSONL file and return a list of rendered turns.
+
+    Skips malformed lines, non-dict events, and events whose ``type`` is
+    not ``user`` / ``assistant``. Raises ``OSError`` on read failure
+    (caller handles); other exceptions are caller's responsibility.
+    """
+    turns: list[str] = []
+    with path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            stripped = line.strip()
+            if not stripped:
+                continue
+            try:
+                ev = json.loads(stripped)
+            except json.JSONDecodeError:
+                continue  # malformed line — skip, do not raise
+            if not isinstance(ev, dict):
+                continue
+            if ev.get("type") not in ("user", "assistant"):
+                continue
+            rendered = _render_transcript_turn(ev)
+            if rendered:
+                turns.append(rendered)
+    return turns
+
+
+def _summarize_transcript(
+    path: str | None,
+    *,
+    max_turns: int = TRANSCRIPT_DEFAULT_MAX_TURNS,
+    max_bytes: int = TRANSCRIPT_DEFAULT_MAX_BYTES,
+) -> str:
+    """Render the last ``max_turns`` user/assistant turns from a Claude
+    Code transcript JSONL as a bounded markdown excerpt.
+
+    PLAN-0011 §Step 1 - fixes the Lesson #15 payload-starvation finding
+    for ``Stop`` events. Without this excerpt, the classifier's user
+    message contains only five metadata fields (no recent conversation,
+    no agent turn-1) and Sonnet correctly defaults to ``proceed``,
+    defeating the D1/D2/C1-C4 auto-dispatch arms.
+
+    **Fail-safe:** never raises. Returns ``TRANSCRIPT_UNAVAILABLE`` when
+    ``path`` is falsy or the file does not exist;
+    ``TRANSCRIPT_UNREADABLE`` on any IO / parse / shape error. Truncates
+    from the front with ``TRANSCRIPT_ELIDED_PREFIX`` when the rendered
+    excerpt exceeds ``max_bytes``.
+
+    JSONL shape (Claude Code Desktop, observed 2026-05-27): each line
+    is one event. ``type`` values include ``permission-mode``,
+    ``file-history-snapshot``, ``attachment``, ``ai-title``, ``summary``,
+    ``user``, ``assistant``. Only ``user`` and ``assistant`` carry a
+    ``message`` dict with classifier-relevant content; everything else
+    is skipped.
+    """
+    if not path:
+        return TRANSCRIPT_UNAVAILABLE
+    try:
+        p = Path(path)
+    except (TypeError, ValueError):
+        return TRANSCRIPT_UNAVAILABLE
+    if not p.exists():
+        return TRANSCRIPT_UNAVAILABLE
+
+    try:
+        turns = _read_transcript_turns(p)
+    except OSError:
+        return TRANSCRIPT_UNREADABLE
+    except Exception:
+        # Fail-safe contract: never raise into the hook flow. Any
+        # unexpected shape/parse error collapses to UNREADABLE.
+        return TRANSCRIPT_UNREADABLE
+
+    if not turns:
+        return TRANSCRIPT_UNAVAILABLE
+
+    recent = turns[-max_turns:]
+    body = "\n\n".join(recent)
+    body_bytes = body.encode("utf-8")
+    if len(body_bytes) > max_bytes:
+        kept = body_bytes[-max_bytes:].decode("utf-8", errors="ignore")
+        return TRANSCRIPT_ELIDED_PREFIX + kept
+    return body
+
+
 def _build_user_message(payload: dict[str, Any]) -> str:
     """Render the hook event payload as the classifier's user message.
 
@@ -238,18 +414,27 @@ def _build_user_message(payload: dict[str, Any]) -> str:
     ``PreToolUse`` (PLAN-0009 Step 5c-2) hooks. The user message stays
     generic — the payload's ``hook_event_name`` / ``event`` field tells
     the model which event fired; the JSON dump includes everything else.
-    A future refinement can add a structured "recent N actions" summary
-    above the JSON dump.
+
+    PLAN-0011: a ``## Recent conversation excerpt`` section is now
+    inserted between the framing paragraph and the raw payload dump,
+    surfacing the last N transcript turns via
+    ``_summarize_transcript(payload["transcript_path"])``. Eliminates
+    the Lesson #15 payload-starvation finding for ``Stop`` events
+    (PreToolUse payloads typically omit ``transcript_path`` and render
+    ``(no transcript available)`` in that section — additive enrichment
+    only; the JSON dump still carries the PreToolUse semantic content).
     """
     safe = json.dumps(payload, indent=2, sort_keys=True, default=str)
     event_hint = payload.get("hook_event_name") or payload.get("event") or "<unknown>"
+    transcript_excerpt = _summarize_transcript(payload.get("transcript_path"))
     return (
         f"The agent has just emitted a `{event_hint}` hook event. The raw "
         "event payload follows. Decide whether to PROCEED (continue / "
         "allow the action), PAUSE (yield to Cray and deny / wait for "
         "review), or DISPATCH (auto-handoff a governance-drafting task "
         "to a co-located subagent).\n\n"
-        f"```\n{safe}\n```"
+        f"## Recent conversation excerpt\n{transcript_excerpt}\n\n"
+        f"## Raw payload\n```\n{safe}\n```"
     )
 
 

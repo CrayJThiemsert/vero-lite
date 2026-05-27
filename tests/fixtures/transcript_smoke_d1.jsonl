@@ -1,0 +1,6 @@
+{"type": "permission-mode", "sessionId": "smoke-d1-fixture", "permissionMode": "default"}
+{"type": "user", "message": {"role": "user", "content": "Cray ratified the decision to add a new ADR-0014 covering cross-tab MCP transport (MCP-based communication between Code, Cowork, Chat tabs without paste-relay, per ADR-013 OQ-1 deferral). Please draft the ADR per the standard template (scope, decisions, alternatives, residuals, sign-off block) — start it now."}}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "รับทราบ — จะ draft ADR-0014 สำหรับ cross-tab MCP transport. ก่อนเริ่ม จะอ่าน docs/adr/0000-template.md และ ADR-0013 เพื่อ pattern context."}]}}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "tool_use", "name": "Read", "input": {"file_path": "docs/adr/0000-template.md"}}]}}
+{"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": "abc", "content": "[ADR template body — many lines]"}]}}
+{"type": "assistant", "message": {"role": "assistant", "content": [{"type": "text", "text": "อ่าน template เสร็จ — โครงสร้างชัดเจน (scope / decisions / alternatives / residuals / sign-off). พร้อม draft ADR-0014 cross-tab MCP transport ในเทิร์นถัดไป."}]}}
