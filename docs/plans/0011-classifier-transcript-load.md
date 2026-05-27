@@ -1,6 +1,6 @@
 # PLAN-0011: Classifier transcript-load fix — eliminate Stop-event payload starvation
 
-**Status:** Draft
+**Status:** Ready for execution
 **Owner:** Claude Code
 **Created:** 2026-05-27
 **Related ADRs:** ADR-013 (autonomy axis relocation — autonomy primitives in Code Tier 2)
