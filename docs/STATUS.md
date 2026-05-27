@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-26T22:30:00+07:00
-session: 14
-current_batch: **Session 14 — Phase 3 Step 6 CLOSE (PLAN-0009 entirely + PLAN-0010 Step 1).** Five phases shipped on `chore/plan0009-plan0010-step6-closeout` branch: (1) verification matrix test mapping for both plans §8.1; (1.5) closed 3 new residual risks surfaced during Phase 1 — 3 `bypassPermissions` regression tests added for H2/C4/L1–L4 + Plan-0010 §4 spec drift fix + cross-process race documentation; (2) Phase 2 live AC scenarios — #7 PLAN-0010 lifecycle live verified, #3b cross-process consumer race verified filesystem invariant + **discovered new bug** in `save_failure_state` shared-tmp path, bonus organic L1 loop-detect trigger captured AC-6 regression live; (3) sign-off with confidence statements per residual risk; (4) archived 4 plans to `docs/plans/done/`. Phase 3 + Phase 3.5 Step 1 now CLOSED. PLAN-0010 parent stays active for Phase 4 scheduled-task wiring (when scheduled task lands, 2 dispatcher fixes documented in §5 must ship — `_archive` FileNotFoundError recovery + `save_failure_state` per-process unique tmp path).
+last_updated: 2026-05-27T10:50:00+07:00
+session: 16
+current_batch: **Sessions 15 + 16 — Path A close (partial) + 5 PRs.** Session 15: PR #45 Telegram fix (argv contract + WSL bridge for 3 hooks — Lesson #14), PR #46 Lesson #14 capture, PR #47 Lessons #12 + #13 (closed numbering gap), PR #48 Option 3b classifier routing (superseded), PR #49 Option 2 WSL bridge for classifier HTTPS (the working fix). Session 16: Path A Smoke 1 (G1 PreToolUse Edit-Accepted-ADR) **PASSED** with real Sonnet judgment under PR #49 bridge — first live evidence the classifier's PreToolUse arm works end-to-end. Smoke 2 (D1 Stop dispatch) surfaced **structural finding** — `_sonnet_classifier._build_user_message()` doesn't read `transcript_path`, so Sonnet sees only 5 metadata fields on Stop events and correctly defaults to `proceed`. **Lesson #15 codified.** Telegram fail-safe (PR #45) end-to-end validated via manual plan-drafter spawn — message reached Cray's phone with matching agent_id. ADR-0014 draft (cross-tab MCP transport) produced as Smoke 2 artifact (untracked; Cray-routed separately). Path A closed **partial**: PreToolUse arm live-verified, Stop arm structurally blocked pending the `_build_user_message` transcript-load fix (deferred to follow-up PR / PLAN, session 17+).
 current_actor: code
-blocked_on: nothing — session 14 close PR ready to open; session 15 resumes with Phase 4 scheduled-task wiring (if Cray queues) or Cray-driven AC scenarios 3/4/5 (G1/G2 PreToolUse + AC-5 full chain)
-next_action: **Session 15 paths (multiple):** (a) **Cray-driven AC scenarios 3/4/5** — handoff §3 Phase 2 listed 3 scenarios deferred to Cray-driven Stop dispatch / G1 PreToolUse / G2 PreToolUse triggers; can run any time post-merge; bug discovery is recoverable via post-merge hardening PR; (b) **PLAN-0010 Phase 4 — scheduled-task wiring** — Code Desktop scheduled task setup + 2 dispatcher fixes (~30–45 min mechanical work); criteria explicit in PLAN-0010 §5 "Cross-process consumer safety"; (c) **investigate Telegram ping failure** — L1 hook fired live during session 14 but Cray did not receive Telegram ping despite env vars confirmed SET; non-blocking; debug via direct `tools/notify/telegram.sh` invocation; (d) **promote Lesson #12 candidate** — "Loop-detect L1 vs governance-doc fillup passes — batch or surgical-reset, don't full-reset" (pattern surfaced during Phase 2 doc thrash, see L1 bonus evidence file).
-head_commit: e04f0f0
-recent_commits: [e04f0f0, 9d86d13, 6573ae7, db9bbb4, cbe47b9, 5854e3f, fac9e81, d4e4dc4, 7e07da1, 830c3a7]
+blocked_on: nothing — session 16 close PR ready (Lesson #15 + STATUS update on `docs/lesson-0015-and-status-closeout` branch)
+next_action: **Session 17 candidate paths:** (a) **`_build_user_message` transcript-load fix** — implement Lesson #15 §4 fix (read + summarize transcript before rendering; add 1 mock-input assertion + 1 gated live-API smoke; re-run Smokes 2 + 3 live); (b) **ADR-0014 ratification + commit** — Cray decides whether to route the uncommitted `docs/adr/0014-cross-tab-mcp-transport.md` through a Cowork advisory pass before status flip Proposed → Accepted, or accept the bootstrap exception (author≠reviewer disclosure §Implementation Notes); (c) **PLAN-0010 Phase 4 wiring** — 2 dispatcher fixes (`_archive` FileNotFoundError recovery + `save_failure_state` per-process unique tmp path) before scheduled-task setup; (d) **`_wsl_bridge.py` extraction** — opportunistic 3rd-instance refactor (rule of three: `notification_telegram` + `subagentstop_notify` + `_sonnet_classifier` now share the wsl.exe-subprocess pattern).
+head_commit: 168baff
+recent_commits: [168baff, 3f9e20c, 885581a, c401ace, 8440924, b35bc87, 6dee4bd, e9a09de, e04f0f0, 9d86d13]
 ---
 
 # vero-lite — Project Status
@@ -18,13 +18,54 @@ recent_commits: [e04f0f0, 9d86d13, 6573ae7, db9bbb4, cbe47b9, 5854e3f, fac9e81, 
 
 ## Current Focus
 
-**Session 14 close — Phase 3 Step 6 COMPLETE.** PLAN-0009 (subagent
-topology + Step 1b contract + Step 4 dispatch protocol) and PLAN-0010
-Step 1 (message schema + lifecycle) **archived to `docs/plans/done/`**.
-Phase 3 entirely closed; Phase 3.5 Step 1 closed; PLAN-0010 parent
-stays active for Phase 4 scheduled-task wiring. Branch
-`chore/plan0009-plan0010-step6-closeout` has 4 commits + this STATUS
-update + handoff (pending Phase 4 commit) ready for close PR.
+**Sessions 15 + 16 close — Path A partial + Lesson #15.** 5 PRs landed
+on `main` (session 15: #45 Telegram fix + #46/47 Lessons #12-14 +
+#48-superseded + #49 Option-2 WSL classifier bridge). Session 16
+executed Path A smokes against the now-working classifier: **Smoke 1
+(G1 PreToolUse Edit-Accepted-ADR) PASSED** with real Sonnet judgment;
+**Smoke 2 (D1 Stop dispatch) BLOCKED** by structural finding —
+classifier's `_build_user_message` never reads `transcript_path`, so
+Sonnet sees only 5 metadata fields on Stop events and defaults to
+`proceed`. **Lesson #15** codifies the finding; the
+`_build_user_message` transcript-load fix is deferred to a follow-up
+PR / PLAN (session 17+). **Telegram fail-safe (PR #45) end-to-end
+validated** via manual `plan-drafter` subagent spawn — SubagentStop →
+wsl.exe bridge → telegram.sh → bot → Cray's phone, full chain live
+with matching `agent_id`. ADR-0014 draft (cross-tab MCP transport)
+produced as Smoke 2 artifact; left uncommitted pending Cray's routing
+decision (Cowork advisory pass vs bootstrap exception, per draft's
+§Implementation Notes author≠reviewer disclosure).
+
+### 2026-05-27 10:50 +07 — Session 15 + 16 closeout (Code-tab session 16)
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **Path C step 3** (session 15a) | [#45](https://github.com/CrayJThiemsert/vero-lite/pull/45) (`1a5fd68`) | **Argv contract + WSL bridge for 3 Telegram-emitting hooks** (`pretooluse_loop_detect`, `posttooluse_progress_observer`, `stop_continuation`). Stubs ported from "read stdin (impl)" to "read `$1` argv (real `telegram.sh`)." AFK fail-safe restored. 4 test files updated. |
+| **Lesson capture** (session 15a) | [#46](https://github.com/CrayJThiemsert/vero-lite/pull/46) (`6dee4bd`) | **Lesson #14** — argv vs stdin contract drift between impl + test stub. Sibling lesson family; auto-memory `feedback-coding-careful-pre-ship-checklist` derived from this. |
+| **Lessons capture** (session 15a) | [#47](https://github.com/CrayJThiemsert/vero-lite/pull/47) (`8440924`) | **Lesson #12** (loop-detect L1 vs governance-doc fillup passes — batch or surgical-reset, don't full-reset) + **Lesson #13** (Claude Desktop process-env cache + secret rotation). Closed 0012/0013 numbering gap. |
+| **Path A-pre attempt** (session 15b) | [#48](https://github.com/CrayJThiemsert/vero-lite/pull/48) (`885581a`) | *(SUPERSEDED)* Option 3b — route classifier hooks via `.claude/settings.json` `wsl --cd --exec`. Pilot-tested via WSL bash + PowerShell direct; **didn't survive Claude Code's `cmd /c` spawn** under UNC cwd + stdin piping. Regression caught post-restart. |
+| **Path A unblock** (session 15b) | **[#49](https://github.com/CrayJThiemsert/vero-lite/pull/49)** (`168baff`) | **Option 2 WSL bridge for classifier HTTPS.** Reverted #48's settings routing; added bridge **inside** `_sonnet_classifier.py` — Windows Python hook spawns `wsl.exe --exec python3 -c BRIDGE_SCRIPT` subprocess for the HTTPS call only (same proven idiom as PR #45's `notification_telegram`). 6 grep hits in `_sonnet_classifier.py` cover the constant + 2 helpers + 1 branch in `_call_api`. |
+| **Smoke 1 PASS** (session 15b/16) | evidence file | **G1 Edit-Accepted-ADR.** Cray triggered Edit on ADR-013 §1 (typo fix); classifier denied with real Sonnet reason "ADR-013 อยู่ในสถานะ Accepted (G1 trigger ใน .claude/autonomy-triggers.md)". **First live evidence the PreToolUse classifier arm works end-to-end under the bridge.** |
+| **Smoke 2 BLOCKED + finding** (session 16) | evidence file + Lesson #15 | **D1 Stop dispatch — structural finding.** Two attempts (with + without in-flight Reads in turn 1) both returned classifier `proceed`. Direct in-process diagnostic confirmed `_build_user_message` doesn't read `transcript_path`; Sonnet sees only 5 metadata fields on Stop events. **Lesson #15 codified** — sibling antipattern to Lesson #14 one layer up the stack (test stubs mock `_call_api`, never read what the model receives). |
+| **Telegram fail-safe E2E** (session 16) | evidence + Telegram message | **PR #45 end-to-end validated** via manual `plan-drafter` Agent spawn (since auto-dispatch arm blocked by Lesson #15). SubagentStop fired → `subagentstop_notify.py` → wsl.exe bridge → `telegram.sh` → bot `@vero_tg_bot` → Cray's phone at 10:36 +07. Telegram `agent_id=ac7d6aac` matches subagent return value. Full chain live. |
+| **ADR-0014 artifact** (session 16) | `docs/adr/0014-cross-tab-mcp-transport.md` | Cross-tab MCP transport ADR — 685 lines, Status `Proposed`, **uncommitted**. Produced by `plan-drafter` subagent; author≠reviewer disclosure flags chicken-and-egg ("the cross-tab MCP transport that would make a Cowork advisory pass cheap is the very thing this ADR proposes"); 5 open questions for Cray + 6 follow-on commits T1–T6. Routing decision deferred to Cray. |
+| **Lesson + STATUS** *(this PR)* | `0015-classifier-payload-starvation-stop-events.md` + this section | **Lesson #15 codified.** Auto-memory `feedback_coding_careful_pre_ship_checklist` extended with 5th point (payload semantic content / LLM-integration extension). STATUS Current Focus + ledger updated. |
+
+### Session 16 Path A scenarios — final ledger
+
+| Scenario | Trigger | Verdict | Evidence file |
+|---|---|---|---|
+| **#4 — G1 Edit Accepted ADR** (Smoke 1) | Cray typo-fix request on ADR-013 §1 | ✅ **PASS** | `scenario4-cray-driven-g1-edit-accepted-adr.md` |
+| **#3 — D1 Stop dispatch** (Smoke 2) | Cray ADR-0014 ratification | ❌ **BLOCKED + finding** | `scenario3-cray-driven-d1-stop-dispatch.md` (+ `…-attempt1-failed.md` forensic) |
+| **#5 — C2 add dependency** (Smoke 3 bonus) | (not run live — inferred BLOCKED by #3 finding) | ⏸️ **DEFERRED** (re-run post-fix) | `scenario5-cray-driven-c2-add-dependency.md` |
+| **Telegram fail-safe (PR #45 E2E)** | Manual `plan-drafter` spawn after Smoke 2 BLOCKED | ✅ **PASS** | covered in `scenario3` §Telegram fail-safe end-to-end validation |
+
+### Deferred to session 17+ (or later)
+
+- **Lesson #15 fix — `_build_user_message` transcript-load.** Mechanical (~50 LOC + tests); add transcript summarizer + 1 mock-input assertion per test + 1 gated live-API smoke. Re-run Smokes 2 + 3 live as the fix's validation. Will be opened as a chore PR or PLAN-NNNN (Cray to decide framing).
+- **ADR-0014 ratification.** Cray adjudicates Cowork advisory pass vs bootstrap exception per the draft's §Implementation Notes; flip Proposed → Accepted; address 5 OQs + 6 T-commits as separate work.
+- **PLAN-0010 Phase 4 wiring** (carried from session 14). 2 dispatcher fixes documented in archived PLAN-0010 §5; scheduled-task setup follows.
+- **`_wsl_bridge.py` extraction.** Rule-of-three threshold hit: `notification_telegram` + `subagentstop_notify` + `_sonnet_classifier` now share the `subprocess.run(["wsl.exe", "--exec", ...])` idiom. Opportunistic; not blocking.
 
 ### 2026-05-26 22:30 +07 — Step 6 close (Code-tab session 14)
 
