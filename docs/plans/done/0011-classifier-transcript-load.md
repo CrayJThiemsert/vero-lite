@@ -1,8 +1,9 @@
 # PLAN-0011: Classifier transcript-load fix — eliminate Stop-event payload starvation
 
-**Status:** Ready for execution
+**Status:** Complete
 **Owner:** Claude Code
 **Created:** 2026-05-27
+**Shipped:** 2026-05-27 (PR [#53](https://github.com/CrayJThiemsert/vero-lite/pull/53), merge commit `8d421fc`)
 **Related ADRs:** ADR-013 (autonomy axis relocation — autonomy primitives in Code Tier 2)
 **Related Lessons:** [#15](../lessons/0015-classifier-payload-starvation-stop-events.md) (rationale — direct sibling); [#14](../lessons/0014-argv-vs-stdin-contract-drift.md) (sibling antipattern one layer down the stack — same fix-eating-mock family)
 **Related Plans:** PLAN-0009 (subagent topology — Steps 5c-1 + 5c-2 shipped the bug); PLAN-0008 (Step 4 stop-continuation invoked the bug site)
