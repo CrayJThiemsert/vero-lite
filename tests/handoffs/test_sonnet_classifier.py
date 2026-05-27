@@ -774,6 +774,251 @@ def test_dispatch_allowed_artifact_kinds_locked() -> None:
     assert sc.DISPATCH_ALLOWED_ARTIFACT_KINDS == frozenset({"adr", "plan"})
 
 
+# --- PLAN-0011 / Lesson #15: transcript summarizer + _build_user_message excerpt ---
+
+
+def _write_jsonl(path: Path, events: list[dict[str, Any]]) -> Path:
+    path.write_text("\n".join(json.dumps(e) for e in events) + "\n", encoding="utf-8")
+    return path
+
+
+def _user_event(text: str) -> dict[str, Any]:
+    return {"type": "user", "message": {"role": "user", "content": text}}
+
+
+def _assistant_text_event(text: str) -> dict[str, Any]:
+    return {
+        "type": "assistant",
+        "message": {"role": "assistant", "content": [{"type": "text", "text": text}]},
+    }
+
+
+def _assistant_tool_use_event(name: str, inp: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "type": "assistant",
+        "message": {
+            "role": "assistant",
+            "content": [{"type": "tool_use", "name": name, "input": inp}],
+        },
+    }
+
+
+def test_summarize_transcript_missing_path() -> None:
+    assert sc._summarize_transcript(None) == sc.TRANSCRIPT_UNAVAILABLE
+    assert sc._summarize_transcript("") == sc.TRANSCRIPT_UNAVAILABLE
+
+
+def test_summarize_transcript_nonexistent_path(tmp_path: Path) -> None:
+    bogus = tmp_path / "does-not-exist.jsonl"
+    assert sc._summarize_transcript(str(bogus)) == sc.TRANSCRIPT_UNAVAILABLE
+
+
+def test_summarize_transcript_valid_fixture(tmp_path: Path) -> None:
+    path = _write_jsonl(
+        tmp_path / "t.jsonl",
+        [
+            {"type": "permission-mode", "sessionId": "x"},  # skipped
+            _user_event("Please draft ADR-0099 about widget routing."),
+            _assistant_text_event("On it. I'll start the draft now."),
+            _assistant_tool_use_event("Read", {"file_path": "/foo/bar.md"}),
+            {  # tool_result is referenced but body omitted
+                "type": "user",
+                "message": {
+                    "role": "user",
+                    "content": [
+                        {"type": "tool_result", "tool_use_id": "x", "content": "huge..."},
+                    ],
+                },
+            },
+            _assistant_text_event("Found the file. Drafting ADR-0099 now."),
+        ],
+    )
+    excerpt = sc._summarize_transcript(str(path))
+    assert "Please draft ADR-0099 about widget routing." in excerpt
+    assert "I'll start the draft now." in excerpt
+    assert "[tool: Read(" in excerpt
+    assert "/foo/bar.md" in excerpt
+    assert "[tool_result (omitted)]" in excerpt
+    assert "huge..." not in excerpt  # full tool output must NOT leak in
+
+
+def test_summarize_transcript_skips_thinking_blocks(tmp_path: Path) -> None:
+    """``thinking`` blocks are private chain-of-thought; never surface them."""
+    path = _write_jsonl(
+        tmp_path / "t.jsonl",
+        [
+            _user_event("Question?"),
+            {
+                "type": "assistant",
+                "message": {
+                    "role": "assistant",
+                    "content": [
+                        {"type": "thinking", "thinking": "private deliberation"},
+                        {"type": "text", "text": "Public answer."},
+                    ],
+                },
+            },
+        ],
+    )
+    excerpt = sc._summarize_transcript(str(path))
+    assert "private deliberation" not in excerpt
+    assert "Public answer." in excerpt
+
+
+def test_summarize_transcript_skips_meta_event_types(tmp_path: Path) -> None:
+    """``file-history-snapshot``, ``attachment``, ``ai-title`` etc. are noise."""
+    path = _write_jsonl(
+        tmp_path / "t.jsonl",
+        [
+            {"type": "file-history-snapshot", "messageId": "abc"},
+            {"type": "attachment", "attachment": {"path": "/foo"}},
+            {"type": "ai-title", "aiTitle": "session title"},
+            _user_event("only this should appear"),
+        ],
+    )
+    excerpt = sc._summarize_transcript(str(path))
+    assert "only this should appear" in excerpt
+    assert "file-history-snapshot" not in excerpt
+    assert "session title" not in excerpt
+
+
+def test_summarize_transcript_budget_cap(tmp_path: Path) -> None:
+    long_chunk = "x" * 500
+    events = [_user_event(f"turn {i}: {long_chunk}") for i in range(50)]
+    path = _write_jsonl(tmp_path / "t.jsonl", events)
+    excerpt = sc._summarize_transcript(str(path), max_turns=50, max_bytes=1024)
+    assert excerpt.startswith(sc.TRANSCRIPT_ELIDED_PREFIX)
+    # Allow some slack: prefix + truncation margin
+    assert len(excerpt.encode("utf-8")) <= 1024 + len(sc.TRANSCRIPT_ELIDED_PREFIX) + 8
+
+
+def test_summarize_transcript_malformed_lines(tmp_path: Path) -> None:
+    path = tmp_path / "t.jsonl"
+    valid_user = json.dumps(_user_event("valid turn"))
+    valid_asst = json.dumps(_assistant_text_event("also valid"))
+    path.write_text(
+        "\n".join(
+            [
+                "{ this is not json",
+                valid_user,
+                "{{ also broken",
+                valid_asst,
+                "",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    excerpt = sc._summarize_transcript(str(path))
+    assert "valid turn" in excerpt
+    assert "also valid" in excerpt
+    # Malformed input must not poison the output
+    assert "this is not json" not in excerpt
+
+
+def test_summarize_transcript_max_turns_keeps_last_n(tmp_path: Path) -> None:
+    events = [_user_event(f"turn-{i}") for i in range(10)]
+    path = _write_jsonl(tmp_path / "t.jsonl", events)
+    excerpt = sc._summarize_transcript(str(path), max_turns=3, max_bytes=8192)
+    assert "turn-9" in excerpt
+    assert "turn-8" in excerpt
+    assert "turn-7" in excerpt
+    assert "turn-6" not in excerpt
+    assert "turn-0" not in excerpt
+
+
+def test_summarize_transcript_empty_file(tmp_path: Path) -> None:
+    path = tmp_path / "empty.jsonl"
+    path.write_text("", encoding="utf-8")
+    assert sc._summarize_transcript(str(path)) == sc.TRANSCRIPT_UNAVAILABLE
+
+
+def test_summarize_transcript_only_meta_events(tmp_path: Path) -> None:
+    path = _write_jsonl(
+        tmp_path / "t.jsonl",
+        [
+            {"type": "permission-mode", "sessionId": "x"},
+            {"type": "file-history-snapshot", "messageId": "y"},
+        ],
+    )
+    # No user/assistant events → unavailable, not unreadable.
+    assert sc._summarize_transcript(str(path)) == sc.TRANSCRIPT_UNAVAILABLE
+
+
+def test_summarize_transcript_per_turn_cap(tmp_path: Path) -> None:
+    big = "z" * 5000
+    path = _write_jsonl(tmp_path / "t.jsonl", [_user_event(big)])
+    excerpt = sc._summarize_transcript(str(path), max_bytes=8192)
+    # Per-turn cap should clip well before max_bytes kicks in.
+    assert len(excerpt) <= sc.TRANSCRIPT_PER_TURN_CHAR_CAP + 32
+    assert excerpt.endswith("...")
+
+
+def test_build_user_message_stop_includes_excerpt(tmp_path: Path) -> None:
+    """AC-1: Stop payload with valid transcript_path → user message
+    contains both the conversation excerpt AND the raw payload dump."""
+    path = _write_jsonl(
+        tmp_path / "t.jsonl",
+        [
+            _user_event("CRAY-FIXTURE-USER-TEXT please draft ADR"),
+            _assistant_text_event("CRAY-FIXTURE-ASSISTANT-ACK on it now"),
+        ],
+    )
+    payload = {
+        "hook_event_name": "Stop",
+        "transcript_path": str(path),
+        "session_id": "abc-123",
+    }
+    msg = sc._build_user_message(payload)
+    assert "## Recent conversation excerpt" in msg
+    assert "CRAY-FIXTURE-USER-TEXT" in msg
+    assert "CRAY-FIXTURE-ASSISTANT-ACK" in msg
+    assert "## Raw payload" in msg
+    assert '"hook_event_name": "Stop"' in msg
+    assert '"session_id": "abc-123"' in msg
+
+
+def test_build_user_message_pretooluse_preserves_tool_payload() -> None:
+    """AC-2: PreToolUse payload (no transcript_path) — excerpt section
+    shows ``(no transcript available)``, JSON dump still contains
+    tool_name + tool_input semantic content (regression guard)."""
+    payload = {
+        "hook_event_name": "PreToolUse",
+        "tool_name": "Edit",
+        "tool_input": {
+            "file_path": "/repo/docs/adr/0001-accepted.md",
+            "old_string": "Status: Accepted",
+            "new_string": "Status: Proposed",
+        },
+    }
+    msg = sc._build_user_message(payload)
+    assert "## Recent conversation excerpt" in msg
+    assert sc.TRANSCRIPT_UNAVAILABLE in msg
+    assert "## Raw payload" in msg
+    assert '"tool_name": "Edit"' in msg
+    assert "0001-accepted.md" in msg
+    assert "Status: Accepted" in msg
+
+
+def test_build_user_message_stop_missing_transcript_path() -> None:
+    """Stop event without transcript_path key still renders safely."""
+    msg = sc._build_user_message({"hook_event_name": "Stop"})
+    assert sc.TRANSCRIPT_UNAVAILABLE in msg
+    assert "## Recent conversation excerpt" in msg
+
+
+def test_build_user_message_stop_unreadable_transcript(tmp_path: Path) -> None:
+    """Bad transcript path doesn't blow up _build_user_message."""
+    msg = sc._build_user_message(
+        {
+            "hook_event_name": "Stop",
+            "transcript_path": str(tmp_path / "nope.jsonl"),
+        }
+    )
+    # Missing file → UNAVAILABLE (not UNREADABLE — UNREADABLE is for IO errors)
+    assert sc.TRANSCRIPT_UNAVAILABLE in msg
+
+
 # --- Live opt-in (skipped in CI, per OQ-G) ---
 
 

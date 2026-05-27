@@ -676,3 +676,97 @@ def test_dispatch_instruction_includes_scoped_context_discipline(
     reason = json.loads(out)["reason"]
     assert "scoped_context" in reason
     assert "do NOT inline" in reason or "do not inline" in reason.lower()
+
+
+# ---------------------------------------------------------------------------
+# PLAN-0011 / Lesson #15 §5 — AC-4 mock-input assertion
+#
+# Most dispatch-arm tests above short-circuit at ``classify()`` to keep them
+# deterministic. That pattern is correct for dispatch decision-mapping tests
+# but cannot catch the Lesson #15 bug class (rendered user_message starved
+# of transcript content). This test threads through the REAL classify() path
+# with ``_call_api`` mocked to capture the rendered prompt, then asserts the
+# prompt contains a verbatim fragment of the fixture transcript's user turn
+# + assistant turn — the canary that proves _build_user_message is wiring
+# transcript_path into the prompt, not just dropping it.
+# ---------------------------------------------------------------------------
+
+
+def test_classifier_user_message_includes_transcript_excerpt(
+    monkeypatch: pytest.MonkeyPatch,
+    inproc_env: dict[str, Path],
+    tmp_path: Path,
+) -> None:
+    """AC-4 prevention — Stop event with a real transcript_path produces
+    a user_message that surfaces the fixture's recent turns. If this
+    test fails, the Lesson #15 starvation bug has regressed."""
+    transcript = tmp_path / "ac4-stop-transcript.jsonl"
+    transcript.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "type": "user",
+                        "message": {
+                            "role": "user",
+                            "content": "AC4-STOP-FIXTURE-USER please draft ADR-0099",
+                        },
+                    }
+                ),
+                json.dumps(
+                    {
+                        "type": "assistant",
+                        "message": {
+                            "role": "assistant",
+                            "content": [
+                                {
+                                    "type": "text",
+                                    "text": "AC4-STOP-FIXTURE-ASSISTANT acknowledged, drafting now",
+                                }
+                            ],
+                        },
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    registry = tmp_path / "autonomy-triggers.md"
+    registry.write_text(
+        "# fixture registry\n\n| # | Trigger | Phase 2 |\n"
+        "|---|---------|---------|\n| G1 | example | pause |\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("CLAUDE_AUTONOMY_REGISTRY_PATH", str(registry))
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-fake-key")
+    monkeypatch.setenv("CLAUDE_CLASSIFIER_FORCE_DIRECT", "1")  # never bridge in tests
+
+    captured: dict[str, str] = {}
+
+    def fake_call_api(api_key: str, system_prompt: str, user_message: str) -> str:
+        captured["user_message"] = user_message
+        captured["system_prompt"] = system_prompt
+        return json.dumps({"decision": "pause", "matched_rows": ["G1"], "reason": "fixture pause"})
+
+    monkeypatch.setattr(_sc, "_call_api", fake_call_api)
+
+    payload = {
+        "hook_event_name": "Stop",
+        "transcript_path": str(transcript),
+        "session_id": "ac4-stop",
+    }
+    rc, _out = _run_inproc(monkeypatch, payload)
+    assert rc == 0
+
+    user_message = captured["user_message"]
+    # Header proves the new section is emitted
+    assert "## Recent conversation excerpt" in user_message
+    # Verbatim fixture fragments prove _summarize_transcript ran with payload's path
+    assert "AC4-STOP-FIXTURE-USER" in user_message
+    assert "AC4-STOP-FIXTURE-ASSISTANT" in user_message
+    # The "(no transcript available)" fallback must NOT have fired
+    assert _sc.TRANSCRIPT_UNAVAILABLE not in user_message
+    # Raw JSON payload still present (back-compat with PreToolUse callers)
+    assert "## Raw payload" in user_message
+    assert '"hook_event_name": "Stop"' in user_message
