@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-28T09:00:00+07:00
-session: 19
-current_batch: **Session 18 + 19 — ADR-0014 OQ-A resolved (rolled back to PLAN-0012 `vero-bridge` under ADR-013 D1); `_wsl_bridge.py` rule-of-three extraction COMPLETE end-to-end; OQ-C empirical experiment RATIFIED.** Session 18 shipped 3 PRs end-to-end (no Cowork rounds — OQ-A was a single Cray-decision question): PR #58 ADR-0014 WITHDRAWN tombstone + PLAN-0009 `vero-bridge` earmark re-anchor (PLAN-0010 → PLAN-0012); PR #59 `_wsl_bridge.py` extraction (~274 LOC, 6-function API, named 3 hooks migrated + 22 new tests); PR #60 Pattern-A batch-2 migration (3 more hooks — no inline WSL-bridge duplication remains in `.claude/hooks/`). Session 19 ran the OQ-C empirical experiment (Cowork outbound-network locus): Cowork-executed (3× K-1 UNC abort reproduced; `web_fetch` functional but remote-egress; Chrome unconnected); Cray's HTTP echo server logged ZERO inbound hits during the Cowork run window; scenario (i) desktop-proxy ruled out HIGH confidence. Conclusion lifted to `docs/runbooks/cowork-network-locus.md` in PR #61; v1 PLAN-0012 implication locked (drop Cowork-client from v1; defer to v2 once tunneled rendezvous designed + (ii-a) re-test runs). Cumulative session 18+19 tests: 612 → 634 (+22, no regressions); ruff + mypy clean. This PR is session-19 work #2 (STATUS-reconcile chore per session 18→19 handoff §3).
+last_updated: 2026-05-28T15:30:00+07:00
+session: 21
+current_batch: **Session 20 + 21 — PLAN-0012 `vero-bridge` minted Draft (Cowork-drafted, OQ-A pre-decided A1 stdio-MCP) + v1 scope expanded to Code↔(Chat+Cowork) under A1 + 4 OQs resolved (OQ-A RATIFIED A1 stdio-MCP / OQ-B RESOLVED YES UWP-sandbox-confirmed / OQ-T3 RESOLVED Option I capability-by-tool-design / OQ-V1 RESOLVED uniform-safe-tool-scope) + 2 OQs surfaced (OQ-T4 cross-client concurrency, OQ-V2 wire-format version negotiation) + 2 Lessons minted (#0016 Claude Desktop UWP sandbox config path / #0017 cross-tab MCP visibility + empirical-probe meta-pattern — with §3+§5 self-correction landing under PR #66 = meta-recursion "lesson eats itself" precedent for future OQ resolutions).** Session 20 (earlier today) shipped PR #63 minting PLAN-0012 (Cowork-drafted Status `Draft`, OQ-A pre-decided A1). Session 21 (today PM) shipped 4 PRs end-to-end (#64–#67): #64 OQ-B RESOLVED YES + Lesson #0016 (UWP sandbox path gotcha — prerequisite for any Phase 1 deployment instruction); #65 Lesson #0017 mint (cross-tab MCP visibility + 5-step empirical-probe checklist); #66 Lesson #0017 §3+§5 empirical correction (tab-group routing — Chat alone on instance A; Code+Cowork share instance B — corrected via `ps aux` after initial inference-based draft was wrong; §5 added 5th step "link system-level state to protocol-level evidence"); #67 PLAN-0012 v1 expand Cowork-drafted (Code↔(Chat+Cowork) under A1, OQ-T3 RESOLVED Option I + OQ-V1 RESOLVED + OQ-T4/V2 surfaced + AC-8 capability inventory draft in completion handoff). Empirical probe `tools/probes/vero_bridge_probe.py` (gitignored, with `bridge_ping` + `bridge_whoami` MCP tools) still live with 2 server instances spawned via Desktop `mcpServers.vero-bridge-probe` config — forward-looking Phase 1 design probe. New auto-memory `feedback_empirical_probe_before_trivial_oq.md` codifies "probe before infer" rule for future tab sessions. **PLAN-0012 still Status `Draft`** — awaits Cray ratification to flip → `Ready for execution`; Phase 1 Step 1 (wire format + capability inventory) is gated on Cray adjudicating 2 open OQs (OQ-T1 transport failure contract + OQ-T4 cross-client concurrency). No code/test/settings touched this PR (STATUS-reconcile chore).
 current_actor: code
-blocked_on: PLAN-0012 `vero-bridge` minting awaits Cowork-drafter or plan-drafter subagent authoring round (session-19 work #3, load-bearing). Cray-driven AC-3/AC-7 fresh-trigger live re-run for PLAN-0011 + Cray Desktop UI loop-dispatcher one-time setup (work #4/#5) are Cray-side and independent.
-next_action: **Session 19 sequence (post-this-PR):** (a) **Mint PLAN-0012 `vero-bridge`** — OQ-C input now locked (cowork-network-locus runbook §3); Cowork-drafter or plan-drafter subagent authors `docs/plans/0012-vero-bridge.md` with v1 Cowork-client = option (a) drop-and-defer-to-v2; (b) **Cray-side AC-3/AC-7 fresh-trigger re-run** (PLAN-0011 evidence flip BLOCKED → PASS); (c) **Cray-side loop-dispatcher Desktop UI one-time setup** per `docs/runbooks/loop-dispatcher-scheduled-task.md` §"One-time setup (Cray)"; (d) session 19 → session 20 handoff after PLAN-0012 minted.
-head_commit: 23b18c2
-recent_commits: [23b18c2, aab8c84, d1f3393, 48ab90a, d75e446, 59797e0, 5bf161b, df70f83, 979fb74, e5a1703]
+blocked_on: PLAN-0012 Phase 1 Step 1 implementation awaits (a) Cray ratification of PLAN-0012 Status `Draft` → `Ready for execution`; (b) Cray adjudication of OQ-T1 (transport failure error contract — fail-closed / bounded-retry / surface-to-Cray); (c) Cray adjudication of OQ-T4 (cross-client concurrency — serial-per-instance / concurrent-per-call / serial-per-tool hybrid). OQ-V2 (wire-format version negotiation) is safe to defer past Phase 1 until client-codepath divergence becomes load-bearing. Earlier session-19 Cray-driven work (AC-3/AC-7 fresh-trigger re-run for PLAN-0011, loop-dispatcher Desktop UI one-time setup) remains queued and independent of PLAN-0012.
+next_action: **Session 22 sequence (post-this-PR):** (a) **Cray ratifies PLAN-0012** Status `Draft` → `Ready for execution` (single-paragraph in next STATUS PR or a dedicated `docs(plans): PLAN-0012 ratified` PR); (b) **Cray adjudicates OQ-T1** — Code recommends `fail-closed` for Phase 1 (aligns with ADR-013 D2 deterministic-deny posture; bounded-retry as Phase 2 option; surface-to-Cray premature without UI surface); (c) **Cray adjudicates OQ-T4** — Code recommends `serial-per-instance` for Phase 1 (simplest contract for AC-5 concurrency tests; concurrent-per-call as Phase 2 optimization once contention evidence exists); (d) **Phase 1 Step 1 implementation** — wire format contract + schema + capability inventory materialization (single substantial PR on `feat/plan-0012-step1-wire-format`; gated on (b)+(c)); (e) OQ-V2 adjudication deferred until client-codepath divergence becomes load-bearing (post-Phase-1); (f) ADR-013 amendment for A1 soft-violation deferred until Phase 1 Step 2 ships (more accurate after living with the soft-violation in production code).
+head_commit: b3a6070
+recent_commits: [b3a6070, 0bbb149, c785d90, cd670b3, 8971074, ee36ede, 23b18c2, aab8c84, d1f3393, 48ab90a]
 ---
 
 # vero-lite — Project Status
@@ -18,59 +18,113 @@ recent_commits: [23b18c2, aab8c84, d1f3393, 48ab90a, d75e446, 59797e0, 5bf161b, 
 
 ## Current Focus
 
-**Session 18 + 19 — ADR-0014 OQ-A resolved (rolled back to
-PLAN-0012 `vero-bridge` under ADR-013 D1); `_wsl_bridge.py`
-rule-of-three extraction COMPLETE end-to-end; OQ-C empirical
-experiment RATIFIED.** Session 18 ran ~3 hours and shipped 3 PRs
-end-to-end with no Cowork rounds (OQ-A was a single Cray-decision
-question via AskUserQuestion, not an architectural-review question):
-PR #58 (`5bf161b`) replaced ADR-0014 with a 50-line WITHDRAWN tombstone
-+ re-anchored the `vero-bridge` Phase-4 earmark from PLAN-0010 →
-PLAN-0012 in `docs/plans/done/0009-subagent-topology.md` §Out-of-Scope
-(take-3 draft retained on remote branch `chore/adr-0014-cross-tab-mcp-transport`
-commit `2fde9eb` for archeology; PR #57 closed without merge by Cray
-at 2026-05-27T10:01:21Z during review); PR #59 (`d75e446`) extracted
-`.claude/hooks/_wsl_bridge.py` (~274 LOC, 6-function API — Pattern A
-`is_windows_with_wsl`/`wsl_path`/`env_with_wslenv_passthrough`/`bash_argv`
-+ Pattern B `should_use_wsl_https_bridge`/`http_post_via_wsl_bridge`;
-migrated `notification_telegram` + `subagentstop_notify` +
-`_sonnet_classifier`); +22 new tests in `tests/handoffs/test_wsl_bridge.py`
-(fake-subprocess injection — no real `wsl.exe`/network); PR #60
-(`d1f3393`) migrated batch-2 (`stop_continuation` +
-`pretooluse_loop_detect` + `posttooluse_progress_observer` `_ping_telegram`
-sites) — **no inline WSL-bridge duplication remains** in `.claude/hooks/`.
-Session 19 ran the **OQ-C empirical experiment** (Cowork outbound-network
-execution locus — load-bearing input for PLAN-0012's Cowork-client
-section): Cowork-executed honestly (`mcp__workspace__bash` K-1 UNC
-abort 3× reproduced; `mcp__workspace__web_fetch` functional for public
-URLs but returned no body/token for any of 4 local URLs;
-`mcp__Claude_in_Chrome__*` present but no connected browser); Cray's
-HTTP echo server logged **zero inbound hits** for the entire Cowork
-run window — server-side corroboration. **Scenario (i) desktop-proxy
-locus ruled out HIGH confidence.** Conclusion lifted to
-[`docs/runbooks/cowork-network-locus.md`](runbooks/cowork-network-locus.md)
-in PR #61 (`23b18c2`); v1 PLAN-0012 implication locked: **drop the
-Cowork-client from v1; defer to v2** once a tunneled rendezvous
-(ngrok/cloudflared/WAN+port-forward) is designed + the (ii-a) public-IP
-reachability re-test runs (URL D in this experiment used the WSL2
-vNIC `172.22.59.116` — RFC-1918 private, can't discriminate (ii-a)
-from (ii-b); deferred to PLAN-0012 v2 design work). **This PR is
-session-19 work #2** (STATUS-reconcile chore per session 18→19 handoff
-§3 work item #2); minting PLAN-0012 `vero-bridge` (work #3, load-bearing)
-follows. Cumulative session 18+19 tests: 612 → **634** (+22, no
-regressions); ruff + mypy clean; **zero new auto-memory lessons
-codified** (the patterns sessions 18+19 encountered — G2 PreToolUse
-classifier pause on ADR-slot consumption, branch-first commit hygiene,
-Cowork anti-fabrication discipline — were already in memory).
+**Session 20 + 21 — PLAN-0012 `vero-bridge` minted Draft
+(Cowork-drafted) + v1 scope expanded to Code↔(Chat+Cowork) under
+A1 stdio-MCP transport + 4 OQs resolved (OQ-A / OQ-B / OQ-T3 / OQ-V1)
++ 2 OQs surfaced (OQ-T4 / OQ-V2) + 2 Lessons minted (#0016 / #0017,
+with §3+§5 self-correction landing under PR #66 = meta-recursion
+"lesson eats itself" precedent).** Session 20 (earlier 2026-05-28)
+shipped a single PR #63 (`04e9e01`, commit `8971074`) minting
+`docs/plans/0012-vero-bridge.md` — Cowork-drafted under ADR-009 D1
+interim phasing (ADR-013 OQ-1); OQ-A pre-decided A1 stdio-MCP transport
+(MCP servers wired via `mcpServers` entry in
+`claude_desktop_config.json`); 8 ACs; Phase 1 implementable. Session 21
+(2026-05-28 PM, this PR's predecessor batch) shipped 4 PRs end-to-end
+in tight sequence:
 
-### 2026-05-28 ~09:00 +07 — Session 19 ledger (in progress)
+- **PR #64** (`5be0ec9`, commit `cd670b3`) — **OQ-B RESOLVED YES**
+  (Claude Desktop CAN spawn additional MCP servers via
+  `mcpServers` config under the UWP sandbox) **+ Lesson #0016 minted**
+  (`docs/lessons/0016-claude-desktop-uwp-sandbox-config-path.md` —
+  UWP Microsoft Store install config path gotcha:
+  `C:\Users\<u>\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json`,
+  NOT the win32-tradition `%APPDATA%\Claude\claude_desktop_config.json`;
+  prerequisite for any Phase 1 deployment instruction). Audit-trail
+  research note `docs/research/private/2026-05-28-oq-b-chat-mcp-spawn-probe.md`
+  §1–§7 (gitignored) carries the OQ-B probe matrix T1–T7.
+
+- **PR #65** (`c785d90`) — **Lesson #0017 minted** initial draft
+  (`docs/lessons/0017-mcp-cross-tab-visibility-empirical-probe.md`):
+  cross-tab MCP visibility model + 5-step empirical-probe checklist
+  ("probe before infer"). This was the first draft, inference-based
+  on protocol shape.
+
+- **PR #66** (`98214fc`, commit `0bbb149`) — **Lesson #0017 §3 + §5
+  empirical correction** (the meta-recursion: lesson eats itself).
+  Initial §3 inference ("each tab gets its own MCP server instance")
+  was empirically falsified via `ps aux` probe after Cray surfaced an
+  OQ that could only be answered by checking system-level state.
+  Corrected model: **tab-group routing** — Chat alone on instance A
+  (PID 613); Code + Cowork share instance B (PID 2092). Server cannot
+  discriminate Code from Cowork — by design accepted under Option I
+  (see OQ-T3 below). §5 added 5th step: "link system-level state to
+  protocol-level evidence" — a rule extracted from the meta-recursion
+  itself. New auto-memory `feedback_empirical_probe_before_trivial_oq.md`
+  codifies the "probe before infer" rule for future tab sessions.
+
+- **PR #67** (`4ee8987`, commit `b3a6070`) — **PLAN-0012 v1 scope
+  expand Cowork-drafted** (Code↔(Chat+Cowork) under A1 stdio-MCP, not
+  Code↔Chat-only). Resolves **OQ-T3 Option I** (capability-by-tool-design:
+  `claimed_tag` = audit-only, not authorization; bridge surface =
+  tab-tier-safe operations only; dangerous ops not-on-bridge — accepts
+  that the server cannot cryptographically discriminate Code from Cowork
+  under the empirically-corrected tab-group routing model). Resolves
+  **OQ-V1** (uniform safe-tool scope for Phase 1). Surfaces 2 new OQs:
+  **OQ-T4** (cross-client concurrency / ordering — must adjudicate
+  before Step 4/5 AC-5 tests) and **OQ-V2** (wire-format version
+  negotiation — safe to defer past Phase 1). Cowork's completion handoff
+  §3 also drafted the AC-8 capability inventory (7 safe-for-all tools
+  + 8 not-on-bridge ops) — to be materialized as a tracked file
+  (`docs/conventions/vero-bridge-capability-inventory.md` likely)
+  under Phase 1 Step 1 execution, NOT pre-materialized (per PR #67
+  dispatch constraint).
+
+**Forward-looking probe still alive.** The probe
+`tools/probes/vero_bridge_probe.py` (gitignored, ~MCP-stdio Python
+server) ships 2 tools — `bridge_ping` (echo) + `bridge_whoami`
+(reports `claimed_tag` + PID + server-internal identity for the
+empirical probe). Desktop config `mcpServers.vero-bridge-probe` is
+LIVE; 2 server instances spawned across the Desktop session per
+tab-group routing. Probe is forward-looking infrastructure for Phase 1
+design iteration (Cray opted-in to keep it alive; restore-from-backup
+is post-Phase-1 cleanup, not now).
+
+**PLAN-0012 still Status `Draft`.** This PR (STATUS reconcile)
+proposes Cray flip PLAN-0012 Status `Draft` → `Ready for execution`
+for Phase 1 implementation green-light. Cray ratifies the flip in
+review or in a dedicated follow-on PR. Phase 1 Step 1 (wire format +
+capability inventory) is additionally gated on Cray adjudicating
+OQ-T1 (transport failure contract — Code recommends fail-closed) and
+OQ-T4 (cross-client concurrency — Code recommends serial-per-instance).
+OQ-V2 is safe to defer past Phase 1.
+
+**This PR is session-21 closeout** (STATUS-reconcile chore per
+session-21 → session-22 kickoff handoff §4 Action 1; high-priority
+"close the loop" item). No code/test/settings touched. Cumulative
+session 20+21 tests: 634 (unchanged — all 5 PRs in sessions 20+21
+were docs/plans/lessons only).
+
+### 2026-05-28 ~15:30 +07 — Session 20 + 21 ledger (closed)
 
 | Phase | PR / artifact | Change |
 |-------|--------------|--------|
-| **OQ-C experiment + runbook** | [#61](https://github.com/CrayJThiemsert/vero-lite/pull/61) (`aab8c84` → merge `23b18c2`) | **PLAN-0012 v1 input locked.** New [`docs/runbooks/cowork-network-locus.md`](runbooks/cowork-network-locus.md) (82 lines, tracked + citable) lifts ratified conclusion from gitignored audit-trail research note `docs/research/private/2026-05-28-oq-c-cowork-mcp-locus-experiment.md`. **Cowork-executed honestly**: `mcp__workspace__bash` → K-1 UNC abort 3× reproduced (deterministic, not a transient boot state); `mcp__workspace__web_fetch` → functional for public URLs (control `https://example.com` returned full body same session) but ALL 4 local URLs (`127.0.0.1`, `localhost`, `host.docker.internal`, `172.22.59.116`) returned no body/status/token; `mcp__Claude_in_Chrome__*` → present but `list_connected_browsers` empty (unexercisable). **Cray-side decisive evidence**: HTTP echo server logged ZERO inbound hits for the entire Cowork run window — server-side corroboration that no Cowork request reached Cray's loopback or WSL bind. **Scenario (i) desktop-proxy ruled out HIGH confidence**. PLAN-0012 v1 implication: drop Cowork-client; defer to v2 once tunneled rendezvous (ngrok/cloudflared/WAN+port-forward) designed + (ii-a) reachability re-test runs. **Open**: (ii-a) public-IP-reachable vs (ii-b) no-inbound-path — deferred to PLAN-0012 v2 design work (URL D in this experiment was the WSL2 vNIC, an RFC-1918 private address — can't discriminate from a remote-egress perspective). Code-Tier-2 + Chat-Tier-1 MCP clients unaffected by this finding (they have their own MCP primitives). |
-| **STATUS reconcile** *(this PR)* | this PR | **Session 18 + 19 ledger entries added.** Updates Current Focus narrative + frontmatter (`last_updated`, `session`, `head_commit`, `recent_commits`) per session 18→19 handoff §3 work item #2. Brings STATUS current from session 17 → session 19. No code/test/settings touched. |
-| **Queued — load-bearing** | TBD | **#3** Mint PLAN-0012 `vero-bridge` — OQ-C input is now locked; ready for Cowork-drafter or plan-drafter subagent authoring round; v1 Cowork-client section uses option (a) drop-and-defer per OQ-C ratification (cowork-network-locus runbook §3). |
-| **Deferred — Cray-driven** | session 18→19 handoff §3 #4 + #5 | **#4** AC-3/AC-7 fresh-trigger live re-run for PLAN-0011 (~30 min Cray-driven; meta-awareness contamination per PR #53 §AC-3 — use a NEW trigger not in `scenario3-*.md`/`scenario5-*.md`); capture Telegram `message_id` + Sonnet verdict in evidence files; flip BLOCKED → PASS. **#5** Cray Desktop UI one-time setup for `loop-dispatcher` scheduled task per [`docs/runbooks/loop-dispatcher-scheduled-task.md`](runbooks/loop-dispatcher-scheduled-task.md) §"One-time setup (Cray)" (~5 min). Both independent of PLAN-0012 minting. |
+| **PLAN-0012 mint** (session 20) | [#63](https://github.com/CrayJThiemsert/vero-lite/pull/63) (`8971074` → merge `04e9e01`) | **PLAN-0012 `vero-bridge` minted Status `Draft`.** Cowork-drafted under ADR-009 D1 interim phasing (ADR-013 OQ-1). OQ-A pre-decided **A1 stdio-MCP transport** (MCP servers wired via `mcpServers` entry in `claude_desktop_config.json`; soft-violation of ADR-013 D1 acknowledged — under A1 the server is owned by Desktop, not by Code; ADR-013 amendment deferred until Phase 1 Step 2 lives in production code). 8 ACs; Phase 1 implementable. v1 scope at mint time = Code↔Chat-only (Cowork-client dropped per OQ-C `cowork-network-locus` ratification — later expanded to Code↔(Chat+Cowork) in PR #67 once OQ-B confirmed Desktop spawn capability under UWP sandbox + OQ-T3 Option I accepted the empirically-corrected tab-group routing model). |
+| **OQ-B + Lesson #0016** (session 21) | [#64](https://github.com/CrayJThiemsert/vero-lite/pull/64) (`cd670b3` → merge `5be0ec9`) | **OQ-B RESOLVED YES (FULL).** Claude Desktop CAN spawn additional MCP servers via `mcpServers` config under the UWP Microsoft Store sandbox. **Lesson #0016 minted** ([`docs/lessons/0016-claude-desktop-uwp-sandbox-config-path.md`](lessons/0016-claude-desktop-uwp-sandbox-config-path.md)) — UWP install config path gotcha: `C:\Users\<u>\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json`, NOT the win32-tradition `%APPDATA%\Claude\claude_desktop_config.json` (Microsoft Store install redirects under UWP virtualization). Prerequisite for any Phase 1 deployment instruction. Audit trail in gitignored `docs/research/private/2026-05-28-oq-b-chat-mcp-spawn-probe.md` §1–§7 (probe matrix T1–T7). |
+| **Lesson #0017 mint** (session 21) | [#65](https://github.com/CrayJThiemsert/vero-lite/pull/65) (`c785d90`) | **Lesson #0017 initial draft** ([`docs/lessons/0017-mcp-cross-tab-visibility-empirical-probe.md`](lessons/0017-mcp-cross-tab-visibility-empirical-probe.md)) — cross-tab MCP visibility model + 5-step empirical-probe checklist ("probe before infer"). Initial §3 was inference-based on MCP protocol shape ("each tab gets its own MCP server instance"). Subsequently empirically falsified — see PR #66 below (meta-recursion: this lesson ate itself). |
+| **Lesson #0017 §3+§5 empirical correction** (session 21) | [#66](https://github.com/CrayJThiemsert/vero-lite/pull/66) (`0bbb149` → merge `98214fc`) | **Meta-recursion: lesson eats itself.** Initial §3 inference ("each tab gets its own MCP server instance") falsified via `ps aux` probe after Cray surfaced an OQ that could only be answered by system-level state. **Corrected model: tab-group routing** — Chat alone on instance A (PID 613); Code + Cowork share instance B (PID 2092). Server cannot cryptographically discriminate Code from Cowork — by design accepted under OQ-T3 Option I (capability-by-tool-design). **§5 added 5th step**: "link system-level state to protocol-level evidence" — extracted from the meta-recursion itself. **New auto-memory `feedback_empirical_probe_before_trivial_oq.md`** codifies "probe before infer" for future tab sessions (session-20 OQ-T3 trivial-wrong, session-21 `ps aux` corrected — Lesson #0017 §5). |
+| **PLAN-0012 v1 expand** (session 21) | [#67](https://github.com/CrayJThiemsert/vero-lite/pull/67) (`b3a6070` → merge `4ee8987`) | **PLAN-0012 v1 scope expand** Cowork-drafted: Code↔(Chat+Cowork) under A1 stdio-MCP (not Code↔Chat-only). **OQ-T3 RESOLVED Option I** (capability-by-tool-design): `claimed_tag` = audit-only (not authorization); bridge surface = tab-tier-safe operations only; dangerous ops not-on-bridge; accepts that the server cannot discriminate Code from Cowork under tab-group routing. **OQ-V1 RESOLVED** (uniform safe-tool scope for Phase 1). **2 new OQs surfaced**: **OQ-T4** (cross-client concurrency — must adjudicate before Step 4/5 AC-5 tests; options: serial-per-instance / concurrent-per-call / serial-per-tool hybrid; Code recommends serial-per-instance for Phase 1) + **OQ-V2** (wire-format version negotiation — safe to defer past Phase 1; options: per-session / per-call / per-tab). Cowork completion handoff §3 drafted AC-8 capability inventory (7 safe-for-all tools — `echo`, `bridge_status`, `bridge_whoami`, `read_repo_path`, `validate_handoff_frontmatter`, `lint_status`, `dispatch_receive`; + 8 not-on-bridge ops — git writes, dispatch_bind_on_cray, write_file, run_shell, all git_*, set_status, modify_settings, kill/restart_server). Inventory to be materialized under Phase 1 Step 1 execution, NOT pre-materialized. |
+| **STATUS reconcile** *(this PR)* | this PR | **Session 20 + 21 ledger entries added.** Updates Current Focus narrative + frontmatter (`last_updated`, `session`, `head_commit`, `recent_commits`, `current_batch`, `blocked_on`, `next_action`) per session-21 → session-22 kickoff handoff §4 Action 1. Brings STATUS current from session 19 → session 21. **Proposes Cray ratification of PLAN-0012 Status `Draft` → `Ready for execution`** (governance decision, not a Code action — Cray ratifies in review or follow-on PR). No code/test/settings touched. |
+| **Queued — Cray adjudication** | session 22 handoff §4 Actions 2+3 | **Pre-Phase-1-Step-1 gate (2 OQs).** **OQ-T1** (transport failure error contract; Code recommends fail-closed; bounded-retry / surface-to-Cray as Phase 2 options) — shapes wire format error codes in AC-1. **OQ-T4** (cross-client concurrency; Code recommends serial-per-instance; concurrent-per-call as Phase 2 optimization) — shapes concurrency dimension in AC-5 tests. Both must adjudicate before Phase 1 Step 1 implementation starts (locking the wire format prematurely would force a Cray-unratified design). |
+| **Queued — Phase 1 Step 1** | session 22 handoff §4 Action 4 | **Wire format contract + schema + capability inventory** (gated on OQ-T1 + OQ-T4 above). Single substantial PR on `feat/plan-0012-step1-wire-format`. Deliverables: (1) wire format contract document (inline in PLAN-0012 if small; sub-PLAN `0012-step1-wire-format.md` if large) — message framing, types (≥ `echo`; room for `signal`/`dispatch_receive`), error codes per OQ-T1, version field, `claimed_tag` audit field; (2) schema definition (stdlib-only Python, dataclass-typed, fail-closed on unknown type / version mismatch — mirrors `tools/handoffs/_schema.py` discipline); (3) capability inventory document materialized (likely `docs/conventions/vero-bridge-capability-inventory.md`) with per-tool arg/return schema + classification rationale + sequencing notes. |
+| **Deferred (carry-over from session 19)** | session 18→19 handoff §3 #4 + #5 | **AC-3/AC-7 fresh-trigger live re-run for PLAN-0011** (~30 min Cray-driven; meta-awareness contamination per PR #53 §AC-3 — use a NEW trigger not in `scenario3-*.md`/`scenario5-*.md`); capture Telegram `message_id` + Sonnet verdict; flip BLOCKED → PASS. **Cray Desktop UI one-time setup for `loop-dispatcher`** per [`docs/runbooks/loop-dispatcher-scheduled-task.md`](runbooks/loop-dispatcher-scheduled-task.md) §"One-time setup (Cray)" (~5 min). Both independent of PLAN-0012 work. |
+| **Deferred (low-value)** | session 22 handoff §4 Actions 5+6 | **ADR-013 amendment for A1 soft-violation** (formalize the "server owned by Desktop not Code" exception under A1 stdio-MCP) — defer until Phase 1 Step 2 ships (server lifecycle implementation); pre-amending risks under-specifying. **`references_artifacts` schema registration** in `tools/handoffs/_schema.py` OPTIONAL_FIELDS (Cowork's PR #67 completion handoff used the field; validator emitted non-fatal warning) — defer; current behavior doesn't block any work. |
+
+### 2026-05-28 ~09:00 +07 — Session 19 ledger (closed)
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **OQ-C experiment + runbook** | [#61](https://github.com/CrayJThiemsert/vero-lite/pull/61) (`aab8c84` → merge `23b18c2`) | **PLAN-0012 v1 input locked.** New [`docs/runbooks/cowork-network-locus.md`](runbooks/cowork-network-locus.md) (82 lines, tracked + citable) lifts ratified conclusion from gitignored audit-trail research note `docs/research/private/2026-05-28-oq-c-cowork-mcp-locus-experiment.md`. **Cowork-executed honestly**: `mcp__workspace__bash` → K-1 UNC abort 3× reproduced (deterministic, not a transient boot state); `mcp__workspace__web_fetch` → functional for public URLs (control `https://example.com` returned full body same session) but ALL 4 local URLs (`127.0.0.1`, `localhost`, `host.docker.internal`, `172.22.59.116`) returned no body/status/token; `mcp__Claude_in_Chrome__*` → present but `list_connected_browsers` empty (unexercisable). **Cray-side decisive evidence**: HTTP echo server logged ZERO inbound hits for the entire Cowork run window — server-side corroboration that no Cowork request reached Cray's loopback or WSL bind. **Scenario (i) desktop-proxy ruled out HIGH confidence**. PLAN-0012 v1 implication (at the time): drop Cowork-client; defer to v2 once tunneled rendezvous (ngrok/cloudflared/WAN+port-forward) designed + (ii-a) reachability re-test runs. **Note (session 21 amendment):** the v1-Cowork-drop conclusion was **superseded** by PR #67 (PLAN-0012 v1 expand) — once OQ-B confirmed Desktop CAN spawn extra MCP servers under UWP sandbox + Lesson #0017 §3 corrected the tab-group routing model + OQ-T3 Option I accepted capability-by-tool-design, Cowork-client became viable under A1 stdio-MCP (Cowork uses the same Desktop-spawned server instance B as Code). The `cowork-network-locus` runbook still stands as the load-bearing evidence that Cowork has no outbound IP path — A1 stdio-MCP doesn't need IP. |
+| **STATUS reconcile** (session 19) | [#62](https://github.com/CrayJThiemsert/vero-lite/pull/62) (`ee36ede` → merge `4e3a536`) | **Session 18 + 19 ledger entries added.** Frontmatter + Current Focus + 2 new ledger sub-sections. Brought STATUS current from session 17 → session 19. |
 
 ### 2026-05-28 ~06:30 +07 — Session 18 ledger (closed)
 
