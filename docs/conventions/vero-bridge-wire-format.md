@@ -352,6 +352,43 @@ appears (the "third instance" under the Rule of Three) — at which point
 it would be a Code-internal convenience, still leaving the tab-facing
 surface as raw `mcp__vero-bridge__*` calls.
 
+### 7.5 Cowork tab (Step 3b)
+
+The Cowork tab invokes the bridge **identically** to the Chat tab
+(§7.1–§7.3) — the only intended difference is `claimed_tag="cowork"`:
+
+```
+mcp__vero-bridge__echo(version=1, claimed_tag="cowork", name="<round-trip token>")
+mcp__vero-bridge__bridge_status(version=1, claimed_tag="cowork")
+mcp__vero-bridge__bridge_whoami(version=1, claimed_tag="cowork")
+```
+
+This identical surface **is** the AC-7 cross-client parity guarantee, and
+it is exactly what the Raw-over-wrapper choice (§7.4) protects: with no
+per-tab transform layer, there is nothing that could drift one client's
+wire format away from the other's. Parity is asserted in
+[`tests/vero_bridge/test_cowork_client.py`](../../tests/vero_bridge/test_cowork_client.py),
+which compares the Chat-path and Cowork-path responses for the same
+logical call and requires them to be identical except for fields that
+are *meant* to vary — the echoed `claimed_tag` (reflects the caller) and
+per-call / per-process observables (`ts_ns`, `uptime_s`,
+`last_call_ts_ns`, `pid`, `ppid`, `stdin_fd`, `stdout_fd`).
+
+Two Cowork-specific facts worth recording:
+
+- **Why the bridge matters for Cowork.** Cowork cannot run repo tooling
+  locally (Lesson #8 §1/§3 — UNC abort on `mcp__workspace__bash`; no
+  local `pytest`). The bridge is the one execution channel Cowork has;
+  OQ-B T6+T7 confirmed Cowork reaches `mcp__vero-bridge__*` end-to-end.
+- **Cowork is transport-indistinguishable from Code.** Under tab-group
+  routing (§1; Lesson #0017 §3.1), Cowork shares **instance B** with
+  Code — same PID, ppid, stdin_fd, stdout_fd, env. The server cannot
+  tell a Cowork call from a Code call at the transport layer; only the
+  audit-only `claimed_tag` separates them, and that is spoofable (§2.2).
+  This is the load-bearing fact behind the Step 5 adversarial anti-spoof
+  matrix (AC-4 (c)): the audit log can prove Chat-vs-(Code∪Cowork) via
+  PID, but **not** Code-vs-Cowork.
+
 ## 8. Change log
 
 - **2026-05-28** — Initial Phase 1 v1 contract committed
@@ -363,3 +400,9 @@ surface as raw `mcp__vero-bridge__*` calls.
   Phase 1 Step 3a). Raw `mcp__vero-bridge__*` invocation + doc-rot guard
   ratified over a Python client wrapper; `message_type`-is-server-side
   clarified. Contract test: `tests/vero_bridge/test_chat_client.py`.
+- **2026-05-29** — Added §7.5 "Cowork tab" (PLAN-0012 Phase 1 Step 3b).
+  Cowork invocation is identical to Chat bar `claimed_tag="cowork"`;
+  records the AC-7 parity definition, why the bridge is Cowork's one
+  execution channel (Lesson #8), and the Code∪Cowork transport-
+  indistinguishability behind the AC-4 (c) spoof matrix (Lesson #0017
+  §3.1). Parity test: `tests/vero_bridge/test_cowork_client.py`.
