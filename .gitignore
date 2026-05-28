@@ -80,3 +80,7 @@ loop/processed/*
 # Dispatcher local state (failure counts per message; regenerates on each run).
 loop/.failures.json
 loop/.failures.json.tmp
+
+# Probe code (PLAN-0012 OQ-B probe — capability-restricted by contract;
+# DO NOT promote to production; remove from tree after probe cleanup).
+tools/probes/

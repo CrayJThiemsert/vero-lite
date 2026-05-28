@@ -302,26 +302,67 @@ pass."
 > (not "OQ-C") to avoid collision with the runbook, per the authoring
 > dispatch. Each OQ is a decision the reader must make.
 
-- **OQ-A — Code-side transport mechanism.** ADR-013 D1 places MCP
-  transport in Code (Tier 2) but does **not** pin *how* (stdio-MCP vs
-  HTTP-loopback vs other); the cowork-network-locus runbook addresses only
-  Cowork's egress, not the Code↔Chat mechanism. *Options:* (1) stdio-MCP —
-  native MCP framing, simplest lifecycle binding to the harness process;
-  (2) HTTP-loopback — easier multi-client fan-out (Code server, multiple
-  tab clients) but adds a bound port + identity surface; (3) other (named
-  pipe, Unix socket). *Recommendation (Cray/Code adjudicates):* stdio-MCP
-  for v1 (Code↔Chat, two parties, simplest lifecycle), revisit for v2
-  multi-client. **This determines Step 1 framing + Step 2; do not select
-  silently.**
+> **Resolution batch 2026-05-28 (Code session 21).** OQ-A pre-decided
+> (Cray), OQ-B probed and RESOLVED YES, OQ-T3 refined. Evidence:
+> `docs/research/private/2026-05-28-oq-b-chat-mcp-spawn-probe.md`
+> (gitignored research note; full verbatim probe matrix T1–T7) +
+> `docs/lessons/0016-claude-desktop-uwp-sandbox-config-path.md` (the
+> UWP config-path discovery that made the probe possible). Code-drafted
+> from research evidence (not Cowork-drafted) — author≠reviewer holds
+> because Cowork drafted the original OQs and the resolutions lift research
+> findings, not new governance.
 
-- **OQ-B — Chat-side MCP-client primitive availability.** Does the Chat
-  tab actually have a `mcp__*` connector primitive that can *initiate* a
-  client connection to a Code-side server? Lesson #8 documents only the
-  Cowork-side primitives; Chat's initiating capability is **unverified**.
-  *Decision needed:* verify (a trivial Chat-tab connection probe, like the
-  OQ-C experiment did for Cowork) before committing Step 3. If Chat lacks
-  an initiating primitive, v1's client side needs rethinking before any
-  code lands.
+- **OQ-A — Code-side transport mechanism. PRE-DECIDED 2026-05-28 (Cray):
+  A1 = stdio-MCP.** ADR-013 D1 places MCP transport in Code (Tier 2) but
+  does **not** pin *how* (stdio-MCP vs HTTP-loopback vs other); the
+  cowork-network-locus runbook addresses only Cowork's egress, not the
+  Code↔Chat mechanism. *Options considered:* (1) stdio-MCP — native MCP
+  framing, simplest lifecycle binding to the harness process; (2)
+  HTTP-loopback — easier multi-client fan-out (Code server, multiple tab
+  clients) but adds a bound port + identity surface; (3) other (named
+  pipe, Unix socket). *Cray's selection (pre-decision recorded session 20,
+  ratified pending OQ-B):* **stdio-MCP for v1** (Code↔Chat, two parties,
+  simplest lifecycle). The selection is contingent on OQ-B RESOLVED YES
+  (now resolved — see below). **Soft-violation of ADR-013 D1
+  acknowledged:** under stdio-MCP, the server process is owned by the
+  client process (Chat spawns the server via Desktop's `mcpServers`
+  config), not by Code. Mitigation: capability restriction (no shell, git,
+  network, state in the server) + future ADR-013 amendment to formalize
+  the exception + AC-4 spell-out. D2 (PreToolUse commit-deny) is unchanged
+  and remains deterministic regardless of transport. **Ready to ratify
+  jointly with OQ-B in this PR's `STATUS.md` reconcile.**
+
+- **OQ-B — Chat-side (and Cowork-side) MCP-client primitive availability.
+  RESOLVED YES (FULL) 2026-05-28 (Code session 21).** All three tabs
+  (Chat, Code, Cowork) surface `mcpServers`-configured user-MCP tools in
+  their deferred lists and successfully invoke them end-to-end. Evidence:
+  probe matrix T1 (Chat list), T2 (Chat invoke), T4 (Chat liveness Δ
+  +31s), T3 (Code invoke), T6 (Cowork list), T7 (Cowork invoke) — all
+  PASS; raw responses captured verbatim in research note §3.2–§3.8. The
+  earlier Lesson #8 §1 table (Chat sees only `mcp-registry` +
+  `Claude in Chrome`) was a snapshot **before** any user-MCP was
+  configured; when `mcpServers` is provisioned, all three tabs surface the
+  user-MCP tools uniformly alongside their tab-specific platform MCP
+  stacks. *Implications:* (a) v1 (Chat-client) is viable as designed; (b)
+  v2 (Cowork-client) is also viable via the same `mcpServers` channel,
+  **separately from the OQ-C network-locus question** — see "Cross-finding
+  note" below; (c) `vero-bridge-probe` does **not** appear in the public
+  `mcp-registry` directory (T5) — that's expected, because user-MCP
+  (config-provisioned) and registry-MCP (public connector directory) are
+  separate subsystems; PLAN-0012 v1 does not need registry registration.
+
+  **Cross-finding note (Goal/v2 reframing candidate).** The Goal section
+  (lines 30–42) currently defers Cowork-client to v2 citing OQ-C ("Cowork's
+  outbound `web_fetch` does not exit Cray's machine, so a v1 loopback bus
+  is unreachable from the Cowork sandbox"). That deferral logic assumed a
+  loopback-HTTP transport, which is no longer the v1 mechanism (OQ-A
+  pre-decision = stdio-MCP, which sidesteps network egress entirely).
+  Under stdio-MCP, Cowork's MCP-client primitive connects to a
+  Desktop-spawned local server via Desktop's MCP infrastructure (not
+  network), and T6+T7 prove this works. **The Cowork-client deferral may
+  no longer be technically necessary** — this question is flagged for
+  Cowork's governance review and a possible Goal-section reframe in a
+  follow-up PR (not addressed in this resolution PR to keep scope narrow).
 
 - **OQ-T1 — Transport-failure error contract.** What is the defined
   behavior on connection drop, timeout, malformed frame, and
@@ -342,17 +383,33 @@ pass."
   further decision needed.** Preserved here for historical record of the
   reconciliation.
 
-- **OQ-T3 — Per-client identity / authentication.** When more than one
-  tab can connect (v2, or even v1 if HTTP-loopback under OQ-A), how does
-  the Code server distinguish which client is Cowork vs Chat vs a rogue
-  connector, and how does that interact with the ADR-013 OQ-3
-  `session != Code` commit-deny identity signal (delegated to Code,
-  resolved in PLAN-0009 Step 1b)? *Decision needed:* the identity
-  mechanism for transport clients, and confirmation it cannot be spoofed
-  into the committing identity (AC-4). This was first surfaced as the
-  per-tab-identity concern in the ADR-0014 take-2 Cowork advisory pass
+- **OQ-T3 — Per-client identity / authentication. REFINED 2026-05-28
+  (Code session 21) — not trivially resolved by A1 selection.** Earlier
+  reasoning (session 20) held that stdio-MCP under A1 made OQ-T3 trivial
+  ("one client per stdio session"). The OQ-B probe revealed this
+  assumption is **wrong**: `ps aux` after all three tabs connected showed
+  **2 server instance pairs** (4 processes total, on ptys `pts/4` and
+  `pts/5`) — the same PIDs persisted across all three tab probes (Chat,
+  Code, Cowork). Hypothesis: Claude Desktop spawns a fixed number of MCP
+  host processes (likely 1 per Desktop panel/window), and tabs within a
+  panel share those instances. **Implication:** under A1 stdio-MCP, the
+  *same* server process serves multiple logical client sessions, so
+  per-client identification still requires either (a) a `caller_tag`
+  argument convention at the tool-call level (the way `bridge_ping(name)`
+  in the probe lets each caller self-identify), or (b) MCP-level session
+  metadata if/when exposed by the protocol. *Decision needed:* (i) pin
+  the identity mechanism for v1 (likely `caller_tag` per tool call,
+  validated server-side against an allowlist tied to AC-4 capability
+  scope); (ii) confirm it cannot be spoofed into the committing identity
+  (AC-4 — committing identity is `session != Code` per ADR-013 OQ-3, not
+  `caller_tag`, so spoofing the tag does not unlock commits); (iii)
+  document the shared-server-process model in the wire-format contract
+  (Step 1) so future Code maintainers don't assume 1-client-per-process.
+  This was first surfaced as the per-tab-identity concern in the
+  ADR-0014 take-2 Cowork advisory pass
   (`.claude/handoffs/session-16/2026-05-27-1330-cowork-adr0014-take2-verification.md`
-  Focus-2 OQ-C addition (b)).
+  Focus-2 OQ-C addition (b)); the OQ-B probe sharpened the model
+  (shared-process, not per-tab-process).
 
 ## Implementation Notes
 
