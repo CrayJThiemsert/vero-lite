@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-28T15:30:00+07:00
-session: 21
-current_batch: **Session 20 + 21 — PLAN-0012 `vero-bridge` minted Draft (Cowork-drafted, OQ-A pre-decided A1 stdio-MCP) + v1 scope expanded to Code↔(Chat+Cowork) under A1 + 4 OQs resolved (OQ-A RATIFIED A1 stdio-MCP / OQ-B RESOLVED YES UWP-sandbox-confirmed / OQ-T3 RESOLVED Option I capability-by-tool-design / OQ-V1 RESOLVED uniform-safe-tool-scope) + 2 OQs surfaced (OQ-T4 cross-client concurrency, OQ-V2 wire-format version negotiation) + 2 Lessons minted (#0016 Claude Desktop UWP sandbox config path / #0017 cross-tab MCP visibility + empirical-probe meta-pattern — with §3+§5 self-correction landing under PR #66 = meta-recursion "lesson eats itself" precedent for future OQ resolutions).** Session 20 (earlier today) shipped PR #63 minting PLAN-0012 (Cowork-drafted Status `Draft`, OQ-A pre-decided A1). Session 21 (today PM) shipped 4 PRs end-to-end (#64–#67): #64 OQ-B RESOLVED YES + Lesson #0016 (UWP sandbox path gotcha — prerequisite for any Phase 1 deployment instruction); #65 Lesson #0017 mint (cross-tab MCP visibility + 5-step empirical-probe checklist); #66 Lesson #0017 §3+§5 empirical correction (tab-group routing — Chat alone on instance A; Code+Cowork share instance B — corrected via `ps aux` after initial inference-based draft was wrong; §5 added 5th step "link system-level state to protocol-level evidence"); #67 PLAN-0012 v1 expand Cowork-drafted (Code↔(Chat+Cowork) under A1, OQ-T3 RESOLVED Option I + OQ-V1 RESOLVED + OQ-T4/V2 surfaced + AC-8 capability inventory draft in completion handoff). Empirical probe `tools/probes/vero_bridge_probe.py` (gitignored, with `bridge_ping` + `bridge_whoami` MCP tools) still live with 2 server instances spawned via Desktop `mcpServers.vero-bridge-probe` config — forward-looking Phase 1 design probe. New auto-memory `feedback_empirical_probe_before_trivial_oq.md` codifies "probe before infer" rule for future tab sessions. **PLAN-0012 still Status `Draft`** — awaits Cray ratification to flip → `Ready for execution`; Phase 1 Step 1 (wire format + capability inventory) is gated on Cray adjudicating 2 open OQs (OQ-T1 transport failure contract + OQ-T4 cross-client concurrency). No code/test/settings touched this PR (STATUS-reconcile chore).
+last_updated: 2026-05-28T17:30:00+07:00
+session: 22
+current_batch: **Session 22 — PLAN-0012 ratified Ready-for-execution + 3 OQs resolved (OQ-T1 fail-closed / OQ-T4 serial-per-instance / OQ-V2 deferred-with-version-stub) + Phase 1 Step 1 (wire format contract + schema + capability inventory) + Phase 1 Step 2 (stdio-MCP server + audit log + 3 introspection tools).** Session 22 shipped 4 PRs end-to-end (#68–#71) in a single Code session. PR #68 reconciled STATUS from session 19 → session 21 ledger and proposed Cray ratification. PR #69 materialized Cray's 4-decision adjudication (Status flip Draft → Ready for execution + OQ-T1/T4/V2 resolutions). PR #70 shipped Phase 1 Step 1 deliverables: machine-checkable wire-format schema (`tools/vero_bridge/_schema.py` — stdlib-only, dataclass-typed, fail-closed; mirrors `tools/handoffs/_schema.py` discipline) + human-readable wire-format contract document (`docs/conventions/vero-bridge-wire-format.md`) + capability inventory document (`docs/conventions/vero-bridge-capability-inventory.md` — 7 safe-for-all + 8 not-on-bridge); 66 schema tests; AC-1 + AC-8 (docs portion) DONE. PR #71 shipped Phase 1 Step 2 (focused-scope per session-22 split decision): FastMCP stdio-MCP server (`tools/vero_bridge/server.py`) with 3 introspection tools (`echo` / `bridge_status` / `bridge_whoami`) + JSONL audit log writer (`tools/vero_bridge/_audit_log.py`) per AC-4 (b); 55 server+audit tests; AC-2 + AC-4 (a)/(b) DONE + AC-3 chain UNBLOCKED. **Cumulative session-22 test deltas:** 634 → 700 (+66 from Step 1) → 755 (+55 from Step 2); ruff + mypy --strict clean. No code regressions. **Step 2b deferred** (4 integration tools: `read_repo_path` / `validate_handoff_frontmatter` / `lint_status` / `dispatch_receive`) — each has its own design surface; one substantial PR per tool keeps review tractable. No new auto-memory lessons codified in session 22 (patterns encountered were already in memory: stdlib-only schema discipline, fail-closed parsing, mypy `--explicit-package-bases` for tools/ root). No code/test/settings touched in this PR (STATUS-reconcile chore).
 current_actor: code
-blocked_on: PLAN-0012 Phase 1 Step 1 implementation awaits (a) Cray ratification of PLAN-0012 Status `Draft` → `Ready for execution`; (b) Cray adjudication of OQ-T1 (transport failure error contract — fail-closed / bounded-retry / surface-to-Cray); (c) Cray adjudication of OQ-T4 (cross-client concurrency — serial-per-instance / concurrent-per-call / serial-per-tool hybrid). OQ-V2 (wire-format version negotiation) is safe to defer past Phase 1 until client-codepath divergence becomes load-bearing. Earlier session-19 Cray-driven work (AC-3/AC-7 fresh-trigger re-run for PLAN-0011, loop-dispatcher Desktop UI one-time setup) remains queued and independent of PLAN-0012.
-next_action: **Session 22 sequence (post-this-PR):** (a) **Cray ratifies PLAN-0012** Status `Draft` → `Ready for execution` (single-paragraph in next STATUS PR or a dedicated `docs(plans): PLAN-0012 ratified` PR); (b) **Cray adjudicates OQ-T1** — Code recommends `fail-closed` for Phase 1 (aligns with ADR-013 D2 deterministic-deny posture; bounded-retry as Phase 2 option; surface-to-Cray premature without UI surface); (c) **Cray adjudicates OQ-T4** — Code recommends `serial-per-instance` for Phase 1 (simplest contract for AC-5 concurrency tests; concurrent-per-call as Phase 2 optimization once contention evidence exists); (d) **Phase 1 Step 1 implementation** — wire format contract + schema + capability inventory materialization (single substantial PR on `feat/plan-0012-step1-wire-format`; gated on (b)+(c)); (e) OQ-V2 adjudication deferred until client-codepath divergence becomes load-bearing (post-Phase-1); (f) ADR-013 amendment for A1 soft-violation deferred until Phase 1 Step 2 ships (more accurate after living with the soft-violation in production code).
-head_commit: b3a6070
-recent_commits: [b3a6070, 0bbb149, c785d90, cd670b3, 8971074, ee36ede, 23b18c2, aab8c84, d1f3393, 48ab90a]
+blocked_on: PLAN-0012 Phase 1 forward progress is **unblocked** — Step 2 server runs against the Step 1 contract; AC-3 cross-client live evidence is ready to capture once Cray spawns the production server via Desktop config (`mcpServers.vero-bridge` entry — Cray-side one-time setup analogous to the existing `mcpServers.vero-bridge-probe`). No new Cray adjudications gate Phase 1 Step 3+. Carry-over (independent of PLAN-0012): AC-3/AC-7 fresh-trigger re-run for PLAN-0011 + loop-dispatcher Desktop UI one-time setup — both still queued from session-18→19 handoff §3.
+next_action: **Session 23 sequence (post-this-PR):** (a) **Cray Desktop UI one-time setup** — add `mcpServers.vero-bridge` entry to `claude_desktop_config.json` (UWP path per Lesson #0016) pointing to `wsl.exe ... uv run --extra dev python -m tools.vero_bridge.server`; mirror the existing `mcpServers.vero-bridge-probe` pattern. Once Desktop restarts, the production `vero-bridge` server becomes available alongside the gitignored probe; (b) **Phase 1 Step 3a + 3b** — Chat-side + Cowork-side client wrappers against the Step 1 wire format (per OQ-V1 RESOLVED uniform safe-tool scope; cross-client parity per AC-7); (c) **Phase 1 Step 2b** — 4 integration tools as separate PRs (each tractable independently); (d) **Phase 1 Step 4** — cross-client round-trip echo matrix + live evidence capture under `docs/research/private/` (AC-3 + AC-6); (e) **Phase 1 Step 5** — full AC-5 cross-client + adversarial anti-spoof matrix + AC-8 negative test; (f) **Carry-over Cray work** — AC-3/AC-7 fresh-trigger re-run + loop-dispatcher Desktop UI setup (independent of PLAN-0012).
+head_commit: 99a908f
+recent_commits: [99a908f, 61d93fe, 7a22066, 202cfa1, b3a6070, 0bbb149, c785d90, cd670b3, 8971074, ee36ede]
 ---
 
 # vero-lite — Project Status
@@ -18,19 +18,124 @@ recent_commits: [b3a6070, 0bbb149, c785d90, cd670b3, 8971074, ee36ede, 23b18c2, 
 
 ## Current Focus
 
-**Session 20 + 21 — PLAN-0012 `vero-bridge` minted Draft
-(Cowork-drafted) + v1 scope expanded to Code↔(Chat+Cowork) under
-A1 stdio-MCP transport + 4 OQs resolved (OQ-A / OQ-B / OQ-T3 / OQ-V1)
-+ 2 OQs surfaced (OQ-T4 / OQ-V2) + 2 Lessons minted (#0016 / #0017,
-with §3+§5 self-correction landing under PR #66 = meta-recursion
-"lesson eats itself" precedent).** Session 20 (earlier 2026-05-28)
-shipped a single PR #63 (`04e9e01`, commit `8971074`) minting
-`docs/plans/0012-vero-bridge.md` — Cowork-drafted under ADR-009 D1
-interim phasing (ADR-013 OQ-1); OQ-A pre-decided A1 stdio-MCP transport
-(MCP servers wired via `mcpServers` entry in
-`claude_desktop_config.json`); 8 ACs; Phase 1 implementable. Session 21
-(2026-05-28 PM, this PR's predecessor batch) shipped 4 PRs end-to-end
-in tight sequence:
+**Session 22 — PLAN-0012 ratified Ready-for-execution + 3 OQs resolved
+(OQ-T1 / OQ-T4 / OQ-V2) + Phase 1 Step 1 (wire format contract +
+schema + capability inventory) + Phase 1 Step 2 (stdio-MCP server +
+audit log + 3 introspection tools).** Session 22 (this session,
+2026-05-28 PM late) shipped **4 PRs end-to-end** (#68–#71) in a single
+Code-side push that took PLAN-0012 from "Draft awaiting ratification +
+2 open OQs" to "Ready for execution + 5 of 8 ACs DONE or DONE-in-docs
++ Step 3+ unblocked":
+
+- **PR #68** (`43370cc`, commit `202cfa1`) — **STATUS reconcile session
+  20+21** ledger entries + Current Focus narrative + frontmatter update.
+  No code/test/settings touched. Proposed Cray ratification of
+  PLAN-0012 Status `Draft` → `Ready for execution` for Phase 1
+  green-light.
+
+- **PR #69** (`e2fda26`, commit `7a22066`) — **PLAN-0012 ratified +
+  3 OQs resolved.** Cray adjudicated 4 governance decisions in a
+  single session-22 routing turn after reviewing PR #68's proposal:
+  (1) **PLAN-0012 Status flip `Draft` → `Ready for execution`**;
+  (2) **OQ-T1 RESOLVED `fail-closed`** — on connection-drop/timeout/
+  malformed-frame/version-mismatch, server drops + logs + does NOT
+  retry; no silent degradation; aligns with ADR-013 D2 deterministic
+  posture; (3) **OQ-T4 RESOLVED `serial-per-instance`** — server
+  queues incoming calls + processes one-at-a-time per instance; Code
+  and Cowork (sharing instance B under tab-group routing per Lesson
+  #0017 §3.1) get serialized handling; deterministic audit-log
+  ordering; (4) **OQ-V2 DEFERRED with `version: int` stub directive**
+  — every wire frame carries mandatory `version: int`; Phase 1
+  accepts only `version: 1`; full negotiation policy (per-session vs
+  per-call vs per-tab) decided when client codepath divergence
+  becomes load-bearing.
+
+- **PR #70** (`35f59ad`, commit `61d93fe`) — **Phase 1 Step 1**
+  (wire format contract + schema + capability inventory). 4 new
+  files; +1,197 LOC; +66 tests (634 → 700, regression-free). New
+  modules `tools/vero_bridge/{__init__,_schema}.py` (stdlib-only
+  envelope schema mirroring `tools/handoffs/_schema.py` discipline:
+  `Envelope` frozen dataclass + `MessageType` enum + `ErrorCode` enum
+  + `BridgeError` hierarchy + `parse_envelope()` + `format_error_response()`).
+  New convention docs `docs/conventions/vero-bridge-wire-format.md`
+  (the human-readable counterpart to the schema) +
+  `docs/conventions/vero-bridge-capability-inventory.md` (canonical
+  "what is exposed where" — 7 safe-for-all tools + 8 not-on-bridge
+  ops materialized from PR #67 Cowork completion handoff §3).
+  Coverage: **AC-1 DONE** (transport contract documented +
+  machine-checkable) + **AC-8 DONE for docs portion** (capability
+  inventory canonicalized; negative test in Step 5).
+
+- **PR #71** (`438e3c5`, commit `99a908f`) — **Phase 1 Step 2**
+  (stdio-MCP server + audit log + 3 introspection tools, focused
+  scope). 4 new files; +1,147 LOC; +55 tests (700 → 755,
+  regression-free). New modules `tools/vero_bridge/server.py`
+  (FastMCP `"vero-bridge"` server with `echo` + `bridge_status` +
+  `bridge_whoami` tools, each `parse_envelope()` + audit-log + return)
+  + `tools/vero_bridge/_audit_log.py` (JSONL append-only writer with
+  per-process monotonic counter, malformed-input-safe rendering for
+  AC-4 (c) anti-spoof matrix prereq, swallow-OSError-into-record for
+  audit-log lossless guarantee). Coverage: **AC-2 DONE** (server
+  lifecycle bound to Desktop session under A1 stdio-MCP) + **AC-3
+  UNBLOCKED** (`echo` tool ready for Steps 3a + 3b + 4 cross-client
+  round-trip matrix) + **AC-4 (a) PRESERVED** (no git path on the 3
+  shipped tools; ADR-013 D2 stays binding) + **AC-4 (b) DONE** (full
+  audit-log per record; observable signals captured) + **AC-4 (c)
+  PREREQ MET** (`bridge_whoami` response signals match audit record
+  byte-for-byte — clients can self-audit how the server saw them).
+
+**Phase 1 AC scoreboard (after session 22):**
+
+| AC | Status |
+|---|---|
+| AC-1 Transport contract documented | ✅ DONE (Step 1) |
+| AC-2 Server lifecycle | ✅ DONE (Step 2) |
+| AC-3 Cross-client live evidence | 🟢 UNBLOCKED — Steps 3a + 3b + 4 |
+| AC-4 (a) G5 stays green | ✅ PRESERVED |
+| AC-4 (b) Audit log | ✅ DONE (Step 2) |
+| AC-4 (c) Anti-spoof matrix | 🟢 PREREQ MET; full matrix in Step 5 |
+| AC-5 Test coverage | 🟡 121 unit tests; full cross-client + adversarial in Step 5 |
+| AC-6 Live evidence captured | ⏳ Step 4 |
+| AC-7 Cross-client parity | ⏳ Step 4 + Step 5 |
+| AC-8 Capability-by-tool-design | ✅ DONE for docs (Step 1); negative test in Step 5 |
+
+**Deferred to Step 2b** (per session-22 split decision — each integration
+tool has its own design surface, one substantial PR per tool keeps review
+tractable): `read_repo_path` (path sandbox / allowlist) +
+`validate_handoff_frontmatter` (schema import from `tools.handoffs`) +
+`lint_status` (git subprocess + STATUS frontmatter parse) +
+`dispatch_receive` (receive-queue lifecycle).
+
+**Forward-looking probe `tools/probes/vero_bridge_probe.py`**
+(gitignored) still LIVE alongside the new production
+`tools.vero_bridge.server` — both can coexist via separate `mcpServers`
+entries. Desktop config `mcpServers.vero-bridge-probe` was load-bearing
+for OQ-B + OQ-T3 empirical resolution; once `mcpServers.vero-bridge`
+production entry lands (Cray-side one-time setup, next session), the
+probe stays alive as a forward-looking infrastructure for Phase 2+
+design iteration. Restore-from-backup of pre-probe config is post-
+Phase-1 cleanup, not now.
+
+**This PR is session-22 closeout** (STATUS-reconcile chore before
+session-22 → session-23 handoff). Brings STATUS current from session 21
+→ session 22. No code/test/settings touched.
+
+### Context: how session 22 built on sessions 20 + 21
+
+Session 20 minted PLAN-0012 (PR #63 — Cowork-drafted; OQ-A pre-decided
+A1 stdio-MCP). Session 21 ran the empirical-probe arc (PRs #64–#67)
+that landed OQ-B + OQ-T3 + OQ-V1 + Lessons #0016/#0017 (with the
+meta-recursion §3+§5 self-correction precedent). Session 22 picked up
+at "PLAN minted + 4 OQs resolved + 2 OQs open" and closed the loop:
+ratified the PLAN + adjudicated the 2 remaining OQs + implemented
+Phase 1 Steps 1 + 2 against the now-pinned contract. Three sessions
+back-to-back compressed what could have been a 5–7 session arc into
+1 day — the empirical-probe discipline (Lesson #0017 §5 "link
+system-level state to protocol-level evidence") + the schema-mirror
+pattern (Lesson #5 §4 — `tools/handoffs/_schema.py` as template) +
+the OQ-resolution-batching discipline (one Cray turn → 4 decisions)
+made it possible. See the session-20+21 ledger below for the
+empirical-probe arc detail.
 
 - **PR #64** (`5be0ec9`, commit `cd670b3`) — **OQ-B RESOLVED YES**
   (Claude Desktop CAN spawn additional MCP servers via
@@ -104,6 +209,23 @@ session-21 → session-22 kickoff handoff §4 Action 1; high-priority
 session 20+21 tests: 634 (unchanged — all 5 PRs in sessions 20+21
 were docs/plans/lessons only).
 
+### 2026-05-28 ~17:30 +07 — Session 22 ledger (closed)
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **STATUS reconcile (session 20+21)** | [#68](https://github.com/CrayJThiemsert/vero-lite/pull/68) (`202cfa1` → merge `43370cc`) | **Session 20 + 21 ledger entries added.** Frontmatter (`last_updated`, `session` → 21, `head_commit` → `b3a6070`, `recent_commits`, `current_batch`, `blocked_on`, `next_action`) + Current Focus narrative + 2 new ledger sub-sections (session 20+21 closed + session 19 closed reframe with supersession annotation). Brought STATUS current from session 19 → session 21. **Proposed Cray ratification** of PLAN-0012 Status `Draft` → `Ready for execution`. No code/test/settings touched. |
+| **PLAN-0012 ratified + OQ-T1/T4/V2 resolved** | [#69](https://github.com/CrayJThiemsert/vero-lite/pull/69) (`7a22066` → merge `e2fda26`) | **Cray adjudicated 4 governance decisions** in a single session-22 routing turn after PR #68 review: (1) **PLAN-0012 Status flipped `Draft` → `Ready for execution`** (header line 3 + Status-vocabulary reconciliation blockquote updated); (2) **OQ-T1 RESOLVED `fail-closed`** — server drops + logs + does NOT retry on transport failure; aligns with ADR-013 D2 deterministic-deny posture; bounded-retry / surface-to-Cray deferred to Phase 2; (3) **OQ-T4 RESOLVED `serial-per-instance`** — server queues incoming calls + processes one-at-a-time per instance; deterministic audit-log ordering; concurrent-per-call deferred to Phase 2 once contention pressure evidence exists; (4) **OQ-V2 DEFERRED with `version: int` stub directive** — every wire frame carries mandatory `version: int`; Phase 1 accepts only `v1`; full negotiation policy (per-session / per-call / per-tab) decided when client codepaths diverge. Single-file edit; +121 / −65; no code/test/settings touched. |
+| **Phase 1 Step 1 — wire format + schema + inventory** | [#70](https://github.com/CrayJThiemsert/vero-lite/pull/70) (`61d93fe` → merge `35f59ad`) | **AC-1 + AC-8 (docs portion) DONE.** 4 new files; +1,197 LOC; +66 tests (634 → 700). [`tools/vero_bridge/_schema.py`](../tools/vero_bridge/_schema.py) — stdlib-only envelope schema mirroring `tools/handoffs/_schema.py` discipline: `Envelope` frozen dataclass + `MessageType` enum (ECHO active; SIGNAL + DISPATCH_RECEIVE placeholders for Phase 2+) + `ErrorCode` enum (6 codes per OQ-T1 fail-closed surface) + `BridgeError` hierarchy + `parse_envelope()` (fail-closed first-failure-wins; ordering: version → claimed_tag → message_type → payload) + `format_error_response()` (the only allowed `BridgeError` → client path). [`tools/vero_bridge/__init__.py`](../tools/vero_bridge/__init__.py) — public re-exports. [`docs/conventions/vero-bridge-wire-format.md`](conventions/vero-bridge-wire-format.md) — human-readable counterpart to the schema; transport assumptions (A1 stdio-MCP + tab-group routing per Lesson #0017 §3.1), envelope fields, validation order + failure semantics (OQ-T1), error code catalog, concurrency model (OQ-T4 serial-per-instance), implementation discipline, versioning policy (OQ-V2 deferred). [`docs/conventions/vero-bridge-capability-inventory.md`](conventions/vero-bridge-capability-inventory.md) — canonical "what is exposed where" reference materialized from PR #67 Cowork completion handoff §3: 7 safe-for-all tools (`echo`, `bridge_status`, `bridge_whoami`, `read_repo_path`, `validate_handoff_frontmatter`, `lint_status`, `dispatch_receive`) with per-tool args/returns/side-effects/classification rationale + 8 not-on-bridge ops with the mechanism that handles them instead + AC-8 negative test contract for Step 5. ruff + ruff format + mypy --strict --explicit-package-bases (4 source files) clean. |
+| **Phase 1 Step 2 — server + audit log + 3 introspection tools** | [#71](https://github.com/CrayJThiemsert/vero-lite/pull/71) (`99a908f` → merge `438e3c5`) | **AC-2 + AC-4 (a)/(b) DONE + AC-3 chain UNBLOCKED + AC-4 (c) prereq met.** 4 new files; +1,147 LOC; +55 tests (700 → 755). [`tools/vero_bridge/server.py`](../tools/vero_bridge/server.py) — FastMCP `"vero-bridge"` server with 3 introspection tools: `echo(version, claimed_tag, name)` (AC-3 round-trip carrier) + `bridge_status(version, claimed_tag)` (operational state: uptime/pid/last_call_ts_ns) + `bridge_whoami(version, claimed_tag)` (audit fingerprint: PID, ppid, stdin_fd, stdout_fd, ts_ns, env_keys_seen). Each tool: `parse_envelope()` → on `BridgeError`, log + return `format_error_response()`; on success, log + execute. `SERVER_START_TS` captured at module import; `_last_call_ts_ns` module-global updated only on `outcome=="ok"`. `main()` entry-point for `python -m tools.vero_bridge.server` (Desktop spawn target). [`tools/vero_bridge/_audit_log.py`](../tools/vero_bridge/_audit_log.py) — JSONL append-only writer with per-process monotonic counter, malformed-input-safe rendering (`_safe_claimed_tag` + `_safe_version` — audit log captures spoof attempts with structurally-invalid envelope fields), OSError-into-`audit_io_error`-key swallowing (audit-log lossless guarantee — AC-4 (c) anti-spoof matrix depends on it). Default log path `docs/research/private/vero-bridge-audit.jsonl` (gitignored). ruff + ruff format + mypy --strict (8 source files) clean. **Step 2b deferred** (4 integration tools: `read_repo_path` / `validate_handoff_frontmatter` / `lint_status` / `dispatch_receive`) — each has its own design surface; one substantial PR per tool keeps review tractable. |
+| **STATUS reconcile (session 22)** *(this PR)* | this PR | **Session 22 ledger entries added.** Frontmatter (`last_updated`, `session` → 22, `head_commit` → `99a908f`, `recent_commits`, `current_batch`, `blocked_on`, `next_action`) + Current Focus narrative covering 4 PRs (#68–#71) + new session 22 ledger sub-section. Brings STATUS current from session 21 → session 22 before session 22 closes. No code/test/settings touched. |
+| **Queued — Cray-side one-time setup** | session 23 next_action (a) | **Add `mcpServers.vero-bridge` entry** to `claude_desktop_config.json` (UWP path per Lesson #0016 — `C:\Users\<u>\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Roaming\Claude\claude_desktop_config.json`) pointing to `wsl.exe -d Ubuntu-24.04 -- bash -lc 'cd ~/work/vero-lite && uv run --extra dev python -m tools.vero_bridge.server'`. Mirror the existing `mcpServers.vero-bridge-probe` pattern (both can coexist). After Desktop restart, production server is available alongside the gitignored probe. |
+| **Queued — Phase 1 Step 3a + 3b** | session 23 next_action (b) | **Chat-side + Cowork-side client wrappers** against the Step 1 wire format. Per OQ-V1 RESOLVED uniform safe-tool scope (same tool set for all tabs in Phase 1). Cross-client parity per AC-7. Each client invokes `mcp__vero-bridge__<tool>` from its deferred list (loaded via ToolSearch) — identical primitive shape across Chat + Cowork. |
+| **Queued — Phase 1 Step 2b** | session 23 next_action (c) | **4 integration tools** as separate PRs (one substantial PR per tool — review tractability): `read_repo_path` (path sandbox/allowlist + symlink resolution + size limit) + `validate_handoff_frontmatter` (schema import from `tools.handoffs`) + `lint_status` (git subprocess + STATUS frontmatter parse) + `dispatch_receive` (gitignored receive-queue path + lifecycle). |
+| **Queued — Phase 1 Step 4** | session 23 next_action (d) | **Cross-client round-trip echo matrix** — Chat→Code→Chat + Cowork→Code→Cowork; capture live evidence to a named file under `docs/research/private/` (AC-3 + AC-6). |
+| **Queued — Phase 1 Step 5** | session 23 next_action (e) | **Full AC-5 cross-client + adversarial matrix + AC-8 negative test** — adversarial cross-tab anti-spoof matrix (AC-4 (c)) + AC-8 not-on-bridge tool-call returns `tool-not-found` (negative test) + case-coverage matrix per the Cray verification-rigor directive. |
+| **Deferred (carry-over from session 19)** | session 18→19 handoff §3 #4 + #5 | **AC-3/AC-7 fresh-trigger live re-run for PLAN-0011** (~30 min Cray-driven; meta-awareness contamination per PR #53 §AC-3 — use a NEW trigger not in `scenario3-*.md`/`scenario5-*.md`); capture Telegram `message_id` + Sonnet verdict; flip BLOCKED → PASS. **Cray Desktop UI one-time setup for `loop-dispatcher`** per [`runbooks/loop-dispatcher-scheduled-task.md`](runbooks/loop-dispatcher-scheduled-task.md) §"One-time setup (Cray)" (~5 min). Both independent of PLAN-0012 work. |
+| **Deferred (low-value)** | session 22 handoff §4 Actions 5+6 | **ADR-013 amendment for A1 soft-violation** — defer until Phase 1 Step 2b ships (more accurate after living with the soft-violation across the full server surface, not just the introspection arm). **`references_artifacts` schema registration** in `tools/handoffs/_schema.py` OPTIONAL_FIELDS — defer; current non-fatal warning behavior doesn't block any work. |
+
 ### 2026-05-28 ~15:30 +07 — Session 20 + 21 ledger (closed)
 
 | Phase | PR / artifact | Change |
@@ -113,11 +235,7 @@ were docs/plans/lessons only).
 | **Lesson #0017 mint** (session 21) | [#65](https://github.com/CrayJThiemsert/vero-lite/pull/65) (`c785d90`) | **Lesson #0017 initial draft** ([`docs/lessons/0017-mcp-cross-tab-visibility-empirical-probe.md`](lessons/0017-mcp-cross-tab-visibility-empirical-probe.md)) — cross-tab MCP visibility model + 5-step empirical-probe checklist ("probe before infer"). Initial §3 was inference-based on MCP protocol shape ("each tab gets its own MCP server instance"). Subsequently empirically falsified — see PR #66 below (meta-recursion: this lesson ate itself). |
 | **Lesson #0017 §3+§5 empirical correction** (session 21) | [#66](https://github.com/CrayJThiemsert/vero-lite/pull/66) (`0bbb149` → merge `98214fc`) | **Meta-recursion: lesson eats itself.** Initial §3 inference ("each tab gets its own MCP server instance") falsified via `ps aux` probe after Cray surfaced an OQ that could only be answered by system-level state. **Corrected model: tab-group routing** — Chat alone on instance A (PID 613); Code + Cowork share instance B (PID 2092). Server cannot cryptographically discriminate Code from Cowork — by design accepted under OQ-T3 Option I (capability-by-tool-design). **§5 added 5th step**: "link system-level state to protocol-level evidence" — extracted from the meta-recursion itself. **New auto-memory `feedback_empirical_probe_before_trivial_oq.md`** codifies "probe before infer" for future tab sessions (session-20 OQ-T3 trivial-wrong, session-21 `ps aux` corrected — Lesson #0017 §5). |
 | **PLAN-0012 v1 expand** (session 21) | [#67](https://github.com/CrayJThiemsert/vero-lite/pull/67) (`b3a6070` → merge `4ee8987`) | **PLAN-0012 v1 scope expand** Cowork-drafted: Code↔(Chat+Cowork) under A1 stdio-MCP (not Code↔Chat-only). **OQ-T3 RESOLVED Option I** (capability-by-tool-design): `claimed_tag` = audit-only (not authorization); bridge surface = tab-tier-safe operations only; dangerous ops not-on-bridge; accepts that the server cannot discriminate Code from Cowork under tab-group routing. **OQ-V1 RESOLVED** (uniform safe-tool scope for Phase 1). **2 new OQs surfaced**: **OQ-T4** (cross-client concurrency — must adjudicate before Step 4/5 AC-5 tests; options: serial-per-instance / concurrent-per-call / serial-per-tool hybrid; Code recommends serial-per-instance for Phase 1) + **OQ-V2** (wire-format version negotiation — safe to defer past Phase 1; options: per-session / per-call / per-tab). Cowork completion handoff §3 drafted AC-8 capability inventory (7 safe-for-all tools — `echo`, `bridge_status`, `bridge_whoami`, `read_repo_path`, `validate_handoff_frontmatter`, `lint_status`, `dispatch_receive`; + 8 not-on-bridge ops — git writes, dispatch_bind_on_cray, write_file, run_shell, all git_*, set_status, modify_settings, kill/restart_server). Inventory to be materialized under Phase 1 Step 1 execution, NOT pre-materialized. |
-| **STATUS reconcile** *(this PR)* | this PR | **Session 20 + 21 ledger entries added.** Updates Current Focus narrative + frontmatter (`last_updated`, `session`, `head_commit`, `recent_commits`, `current_batch`, `blocked_on`, `next_action`) per session-21 → session-22 kickoff handoff §4 Action 1. Brings STATUS current from session 19 → session 21. **Proposes Cray ratification of PLAN-0012 Status `Draft` → `Ready for execution`** (governance decision, not a Code action — Cray ratifies in review or follow-on PR). No code/test/settings touched. |
-| **Queued — Cray adjudication** | session 22 handoff §4 Actions 2+3 | **Pre-Phase-1-Step-1 gate (2 OQs).** **OQ-T1** (transport failure error contract; Code recommends fail-closed; bounded-retry / surface-to-Cray as Phase 2 options) — shapes wire format error codes in AC-1. **OQ-T4** (cross-client concurrency; Code recommends serial-per-instance; concurrent-per-call as Phase 2 optimization) — shapes concurrency dimension in AC-5 tests. Both must adjudicate before Phase 1 Step 1 implementation starts (locking the wire format prematurely would force a Cray-unratified design). |
-| **Queued — Phase 1 Step 1** | session 22 handoff §4 Action 4 | **Wire format contract + schema + capability inventory** (gated on OQ-T1 + OQ-T4 above). Single substantial PR on `feat/plan-0012-step1-wire-format`. Deliverables: (1) wire format contract document (inline in PLAN-0012 if small; sub-PLAN `0012-step1-wire-format.md` if large) — message framing, types (≥ `echo`; room for `signal`/`dispatch_receive`), error codes per OQ-T1, version field, `claimed_tag` audit field; (2) schema definition (stdlib-only Python, dataclass-typed, fail-closed on unknown type / version mismatch — mirrors `tools/handoffs/_schema.py` discipline); (3) capability inventory document materialized (likely `docs/conventions/vero-bridge-capability-inventory.md`) with per-tool arg/return schema + classification rationale + sequencing notes. |
-| **Deferred (carry-over from session 19)** | session 18→19 handoff §3 #4 + #5 | **AC-3/AC-7 fresh-trigger live re-run for PLAN-0011** (~30 min Cray-driven; meta-awareness contamination per PR #53 §AC-3 — use a NEW trigger not in `scenario3-*.md`/`scenario5-*.md`); capture Telegram `message_id` + Sonnet verdict; flip BLOCKED → PASS. **Cray Desktop UI one-time setup for `loop-dispatcher`** per [`docs/runbooks/loop-dispatcher-scheduled-task.md`](runbooks/loop-dispatcher-scheduled-task.md) §"One-time setup (Cray)" (~5 min). Both independent of PLAN-0012 work. |
-| **Deferred (low-value)** | session 22 handoff §4 Actions 5+6 | **ADR-013 amendment for A1 soft-violation** (formalize the "server owned by Desktop not Code" exception under A1 stdio-MCP) — defer until Phase 1 Step 2 ships (server lifecycle implementation); pre-amending risks under-specifying. **`references_artifacts` schema registration** in `tools/handoffs/_schema.py` OPTIONAL_FIELDS (Cowork's PR #67 completion handoff used the field; validator emitted non-fatal warning) — defer; current behavior doesn't block any work. |
+| **STATUS reconcile** (session 21) | [#68](https://github.com/CrayJThiemsert/vero-lite/pull/68) (`202cfa1` → merge `43370cc`) | **Session 20 + 21 ledger entries added.** Frontmatter + Current Focus + 2 new ledger sub-sections (session 20+21 closed + session 19 reframe). Brought STATUS current from session 19 → session 21. **Proposed Cray ratification of PLAN-0012 Status `Draft` → `Ready for execution`** — Cray adjudicated 4 governance decisions in PR #69 (next session-22 row above). |
 
 ### 2026-05-28 ~09:00 +07 — Session 19 ledger (closed)
 
