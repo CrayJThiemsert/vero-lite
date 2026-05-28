@@ -1,6 +1,6 @@
 # PLAN-0012: vero-bridge — MCP transport operationalizing ADR-013 D1
 
-**Status:** Draft
+**Status:** Ready for execution
 **Owner:** Claude Code + Cowork (advisory drafter)
 **Created:** 2026-05-28
 **Related ADRs:** ADR-013 (D1 — MCP-transport-in-Code-Tier-2; OQ-1 — Cowork retained as advisory governance drafter)
@@ -16,9 +16,11 @@
 > Cowork's recommendation: flipped **`Proposed` → `Draft`** to honor
 > PLAN-0009 OQ-4 + template convention. The dispatch's `Proposed` was
 > a wording error (ADR-vocabulary leak from the withdrawn ADR-014's
-> drafting context); the correct mint status is `Draft`. After Cray
-> ratification, Status flips to `Ready for execution`. See §Open
-> Questions OQ-T2 for historical record.
+> drafting context); the correct mint status is `Draft`. **Cray
+> ratified 2026-05-28 PM late (session-22 routing turn that also
+> resolved OQ-T1 + OQ-T4 + OQ-V2); Status flipped `Draft` → `Ready
+> for execution` in this PR.** See §Open Questions OQ-T2 for historical
+> record.
 
 ## Goal
 
@@ -515,7 +517,7 @@ capability-by-tool-design (AC-8) compensating control.
 > per the authoring dispatch. Each OQ is a decision the reader must
 > make.
 
-> **Resolution batch 2026-05-28 (PM, this PR — Code-Cowork joint).**
+> **Resolution batch 2026-05-28 (PM, PR #67 — Code-Cowork joint).**
 > OQ-A RATIFIED, OQ-B already RESOLVED YES (PR #64), OQ-T3 RESOLVED
 > (Option I), OQ-V1 RESOLVED (new). Evidence:
 > `docs/research/private/2026-05-28-oq-b-chat-mcp-spawn-probe.md` §3–§5
@@ -525,9 +527,23 @@ capability-by-tool-design (AC-8) compensating control.
 > config-path lesson) + `docs/lessons/0017-mcp-cross-tab-visibility-empirical-probe.md`
 > §3 corrected (tab-group routing — Chat alone on instance A;
 > Code+Cowork share instance B). Code authored the §Open Questions
-> update in PR #64 from research; Cowork authored this multi-section
-> redraft (this PR) per ADR-013 OQ-1 (Cowork retained as advisory
+> update in PR #64 from research; Cowork authored the multi-section
+> redraft (PR #67) per ADR-013 OQ-1 (Cowork retained as advisory
 > governance drafter) — author≠reviewer holds across the two PRs.
+
+> **Ratification + resolution batch 2026-05-28 (PM late, this PR — Code).**
+> **PLAN Status flipped `Draft` → `Ready for execution`** (Cray ratified
+> 2026-05-28 in the STATUS-reconcile review of PR #68). **OQ-T1
+> RESOLVED `fail-closed`**, **OQ-T4 RESOLVED `serial-per-instance`**,
+> **OQ-V2 DEFERRED with `version: int` stub directive** (include
+> `version` field in wire format; server accepts only `v1`; full
+> negotiation policy decided when client-codepath divergence becomes
+> load-bearing). All four decisions adjudicated by Cray in a single
+> session-22 routing turn; Code committed the PLAN edits per ADR-009
+> D2. Phase 1 Step 1 (wire format + capability inventory) is now
+> green-lit — gating on OQ-T1 + OQ-T4 satisfied; Step 1 wire-format
+> contract uses fail-closed error semantics + serial-per-instance
+> concurrency model + `version: int` field with `v1`-only acceptance.
 
 - **OQ-A — Code-side transport mechanism. RATIFIED 2026-05-28
   (Code-Cowork joint PR — this PR): A1 = stdio-MCP.** ADR-013 D1 places
@@ -573,15 +589,27 @@ capability-by-tool-design (AC-8) compensating control.
   matrix). **OQ-B is no longer a gate for any Phase 1 step** — Steps 3a
   and 3b are unblocked.
 
-- **OQ-T1 — Transport-failure error contract.** What is the defined
-  behavior on connection drop, timeout, malformed frame, and
-  version-mismatch? *Decision needed:* fail-closed (drop + log + no
-  retry) vs bounded-retry vs surface-to-Cray; and whether a transport
-  failure must never silently degrade a safety boundary (it must not —
-  ADR-013 D2 is deterministic regardless). Pin this before Step 4/Step 5
-  so the error tests (AC-5) assert against a defined contract, not
-  ad-hoc behavior. **Still open.** Sequence after Step 4 in Phase 1;
-  resolution feeds AC-5 error-contract tests.
+- **OQ-T1 — Transport-failure error contract. RESOLVED 2026-05-28 PM
+  late (Cray-adjudicated, this PR): `fail-closed` for Phase 1.** On
+  connection drop / timeout / malformed frame / version-mismatch, the
+  server **drops the call + logs the failure + does NOT retry**. No
+  silent degradation; no fallback path. *Options considered:*
+  (a) **fail-closed** (selected) — safest under autonomy-adjacent
+  infrastructure; aligns with ADR-013 D2 deterministic-deny posture;
+  simplest AC-5 error-contract tests; (b) bounded-retry (N retries
+  with backoff then drop) — Phase 2 option if transient failures
+  observed in production; adds AC-5 surface; (c) surface-to-Cray
+  (server emits "transport degraded" UI signal) — premature without
+  a UI surface in Phase 1. *Implementation mapping:* AC-1 wire-format
+  error codes (Step 1) MUST encode the 4 failure modes (drop, timeout,
+  malformed, version-mismatch) as distinct codes; AC-5 error-contract
+  tests assert fail-closed semantics on each. *Code recommendation
+  carried (session-22 handoff §4 Action 2 Recommendation):* bounded-
+  retry reconsidered for Phase 2 if evidence of transient-failure
+  pressure emerges; surface-to-Cray reconsidered if/when a UI surface
+  exists. ADR-013 D2 PreToolUse commit-deny remains deterministic
+  regardless of transport state — a transport failure cannot weaken
+  the safety boundary.
 
 - **OQ-T2 — PLAN status vocabulary (`Proposed` vs `Draft`). RESOLVED at
   commit (PR #63).** The original authoring dispatch said
@@ -671,55 +699,83 @@ capability-by-tool-design (AC-8) compensating control.
   identity mechanism, not an attempt to discriminate at the bridge
   layer.
 
-- **OQ-T4 — Cross-client concurrency / ordering. Still open. Cray
-  adjudicates separately.** Surfaced by Cowork during this PR's redraft
-  (completion handoff §4) and lifted into the PLAN per Cray's 2026-05-28
-  PM decision so it stays visible after the gitignored handoff. Under
-  A1 stdio-MCP with the empirical tab-group routing (Lesson #0017 §3.1
-  corrected: Code + Cowork share instance B), if Code and Cowork both
-  issue a `bridge_status()` or `echo(payload)` concurrently to the same
-  server instance, what is the expected ordering / interleaving
-  guarantee? The MCP stdio protocol is JSON-RPC; concurrent in-flight
-  requests to the same process are protocol-permitted (request `id`
-  field disambiguates responses). But for `dispatch_receive(envelope)`
-  where two payloads land near-simultaneously, the server's processing
-  order is implementation-defined.
+- **OQ-T4 — Cross-client concurrency / ordering. RESOLVED 2026-05-28
+  PM late (Cray-adjudicated, this PR): `serial-per-instance` for
+  Phase 1.** Surfaced by Cowork during PR #67's redraft (completion
+  handoff §4) and lifted into the PLAN per Cray's 2026-05-28 PM
+  decision; adjudicated by Cray in the same session-22 routing turn
+  that ratified the PLAN. Under A1 stdio-MCP with the empirical
+  tab-group routing (Lesson #0017 §3.1 corrected: Code + Cowork share
+  instance B), if Code and Cowork both issue a `bridge_status()` or
+  `echo(payload)` concurrently to the same server instance, the server
+  **queues incoming calls and processes one-at-a-time per instance**.
+  The MCP stdio protocol is JSON-RPC and protocol-permits concurrent
+  in-flight requests (request `id` field disambiguates responses), but
+  the server-side handler does NOT exploit that — it serializes.
 
-  *Decision needed:* (a) **serial-per-instance** — server queues
-  incoming calls and processes one-at-a-time per instance (simpler
-  reasoning, worse latency under contention); (b) **concurrent-per-call**
-  — server may process multiple calls in parallel where the tool is
-  pure-function (better latency, harder to reason about audit-log
-  ordering); (c) **serial-per-tool, concurrent-across-tools** —
-  compromise (pure-function tools like `echo` go concurrent;
-  state-touching tools like `dispatch_receive` go serial).
+  *Selection:* **(a) serial-per-instance.** Simplest contract for AC-5
+  concurrency-dimension tests; deterministic audit-log ordering;
+  acceptable latency profile for Phase 1's safe-tool surface (no
+  long-running tools — `echo`, `bridge_status`, `bridge_whoami`,
+  `read_repo_path`, `validate_handoff_frontmatter`, `lint_status`,
+  `dispatch_receive` are all sub-second). *Options not selected:*
+  (b) concurrent-per-call (better latency, harder audit-log
+  reasoning) — Phase 2 optimization if/once contention-pressure
+  evidence exists; (c) serial-per-tool / concurrent-across-tools
+  (compromise) — most expressive, most complex, premature for Phase 1.
 
-  **Pin before Step 4/Step 5** so AC-5 concurrency dimension tests
-  against a defined contract, not ad-hoc behavior.
+  *Implementation mapping:* AC-5 concurrency tests (Step 5 §6 §matrix)
+  assert serial-per-instance ordering on near-simultaneous calls from
+  Code + Cowork to instance B; audit-log assertion that two concurrent
+  `dispatch_receive(envelope)` payloads land in a defined order (the
+  one with earlier server-side receive timestamp wins). *Code
+  recommendation carried (session-22 handoff §4 Action 3
+  Recommendation):* concurrent-per-call reconsidered for Phase 2 once
+  evidence of contention pressure emerges.
 
-- **OQ-V2 — Wire-format version negotiation across clients. Still open.
-  Cray adjudicates when load-bearing.** Surfaced by Cowork during this
-  PR's redraft (completion handoff §4) and lifted into the PLAN per
-  Cray's 2026-05-28 PM decision so it stays visible after the
-  gitignored handoff. If Chat-client and Cowork-client wrapper code
-  diverges over time (separate codepaths in the future, different
-  release cadences), does the server enforce a single wire-format
-  `version` per Desktop session, or per-call? Phase 1 is safe to defer
-  (both clients controlled by this project; same wire format
-  byte-by-byte per AC-7); flag for Phase 2 if client codepaths
-  diverge.
+- **OQ-V2 — Wire-format version negotiation across clients. DEFERRED
+  2026-05-28 PM late (Cray-adjudicated, this PR): include `version: int`
+  field in the wire format; Phase 1 server accepts only `v1`; full
+  negotiation policy (per-session / per-call / per-tab) decided when
+  client-codepath divergence becomes load-bearing.** Surfaced by Cowork
+  during PR #67's redraft (completion handoff §4) and lifted into the
+  PLAN per Cray's 2026-05-28 PM decision; deferral confirmed by Cray
+  in the same session-22 routing turn that ratified the PLAN.
 
-  *Decision needed:* (a) **per-session** — server pins the version on
-  first call from a connecting client and rejects subsequent calls with
-  mismatched version on the same session (strict; surfaces drift
-  immediately); (b) **per-call** — server accepts any supported version
-  on any call (permissive; allows incremental client upgrade);
-  (c) **per-tab** — server allows different versions on different
-  instance routes (Chat-instance can be vN while Code+Cowork-instance
-  is vN+1).
+  *Phase 1 wire-format directive (binding, applies to Step 1):*
 
-  **Pin before any client-codepath divergence** (not before Phase 1,
-  since Phase 1 has a single shared wrapper).
+  - Every wire frame carries a `version: int` field (mandatory; not
+    optional; not defaultable).
+  - Phase 1 server accepts **only `version: 1`**. Any frame with
+    `version != 1` is rejected per OQ-T1 fail-closed semantics
+    (transport-failure error contract → `version-mismatch` error
+    code).
+  - Clients (Chat + Cowork wrappers) emit `version: 1` byte-for-byte
+    identically per AC-7 cross-client parity.
+
+  *Policy decision deferred.* The choice between (a) **per-session**
+  (server pins version on first call from a connecting client and
+  rejects mismatched-version subsequent calls on the same session —
+  strict, surfaces drift immediately), (b) **per-call** (server
+  accepts any supported version on any call — permissive, allows
+  incremental client upgrade), and (c) **per-tab** (server allows
+  different versions on different instance routes — Chat-instance vN,
+  Code+Cowork-instance vN+1) is deferred until client codepaths
+  diverge. Rationale: in Phase 1 both clients are controlled by this
+  project and share a single wrapper / wire format; no divergence
+  pressure exists. The `version: int` field is the **forward-
+  compatibility stub** that lets us defer the policy decision without
+  baking in a wire-format breaking change later.
+
+  *Pin trigger:* policy decision required before any Phase 2+ change
+  that bumps the wire format to `v2` (e.g. adding new tool types,
+  changing envelope schema, adding authority-bearing operations per
+  OQ-V1 Phase 2 reconsideration).
+
+  *Implementation mapping:* AC-1 (Step 1 wire format) — `version: int`
+  field mandatory in message framing; AC-5 (Step 5 tests) — assert
+  `version: 0` and `version: 2` both rejected with `version-mismatch`
+  error per OQ-T1 fail-closed.
 
 ## Implementation Notes
 
