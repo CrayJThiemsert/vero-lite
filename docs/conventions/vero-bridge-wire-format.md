@@ -267,10 +267,99 @@ per-session-pinned upgrade, per-call permissive accept, or per-tab
 divergence) is a Phase 2 design decision — at which point this section
 gets a follow-up subsection.
 
-## 7. Change log
+## 7. Client invocation from Chat tab
+
+> **Scope:** PLAN-0012 §Phase 1 Step 3a (Chat) — and, byte-for-byte
+> identical, Step 3b (Cowork). The invocation pattern below applies to
+> **any** tab (Chat, Cowork, Code); §7.4 records why no per-tab client
+> wrapper exists.
+
+### 7.1 How a tab reaches the bridge
+
+A tab does not import any Python module to call the bridge. It invokes
+the bridge tools **directly as MCP tools** from its own deferred-tool
+list. Under A1 stdio-MCP (§1), the `mcpServers.vero-bridge` entry makes
+the server's tools available to every connected tab; each tab loads
+their schemas on demand via `ToolSearch`:
+
+```
+ToolSearch query: select:mcp__vero-bridge__echo,mcp__vero-bridge__bridge_status,mcp__vero-bridge__bridge_whoami
+```
+
+After the schemas load, the tab calls them like any other tool.
+
+### 7.2 The Phase 1 invocation surface
+
+The three Phase 1 introspection tools are invoked with these exact
+keyword arguments (the authoritative source is the registered FastMCP
+tool surface in [`tools/vero_bridge/server.py`](../../tools/vero_bridge/server.py);
+the [contract test](../../tests/vero_bridge/test_chat_client.py) fails
+if this table and that surface diverge):
+
+| Tool (MCP name) | Required kwargs | Returns (shape — see [capability inventory](vero-bridge-capability-inventory.md) §2) |
+|---|---|---|
+| `mcp__vero-bridge__echo` | `version: int`, `claimed_tag: str`, `name: str` | `{"ok": True, "echoed": <name>, "ts_ns": <int>}` |
+| `mcp__vero-bridge__bridge_status` | `version: int`, `claimed_tag: str` | `{"ok": True, "protocol_version": 1, "uptime_s": <int>, "pid": <int>, "ppid": <int>, "last_call_ts_ns": <int \| None>}` |
+| `mcp__vero-bridge__bridge_whoami` | `version: int`, `claimed_tag: str` | `{"ok": True, "claimed_tag": <verbatim>, "pid": <int>, "ppid": <int>, "stdin_fd": <str>, "stdout_fd": <str>, "ts_ns": <int>, "env_keys_seen": [<str>, ...]}` |
+
+A Chat-tab call looks like:
+
+```
+mcp__vero-bridge__echo(version=1, claimed_tag="chat", name="<round-trip token>")
+mcp__vero-bridge__bridge_status(version=1, claimed_tag="chat")
+mcp__vero-bridge__bridge_whoami(version=1, claimed_tag="chat")
+```
+
+### 7.3 `message_type` is supplied server-side, not by the tab
+
+The §2 envelope carries four fields, but a tab passes only **three of
+them as kwargs**: `version`, `claimed_tag`, and the per-tool payload
+kwargs (`name` for `echo`; none for `bridge_status` / `bridge_whoami`).
+The fourth envelope field, `message_type`, is **fixed by the tool the
+tab chose to call** — the server's handler supplies it before
+`parse_envelope` runs (`echo` → `MessageType.ECHO`; `bridge_status` /
+`bridge_whoami` → `MessageType.SIGNAL`). A tab therefore selects a
+`message_type` implicitly, by choosing a tool name; it never passes a
+`message_type` kwarg. Doing so would be a wrong-arity call rejected by
+MCP before the envelope is parsed.
+
+`claimed_tag` is the tab's own self-asserted identity (`"chat"` from the
+Chat tab, `"cowork"` from Cowork). It is **audit-only** (§2.2, OQ-T3
+Option I): the server logs it verbatim but never authorizes against it.
+
+### 7.4 Why raw invocation, not a Python client wrapper
+
+Step 3a ships **no** `tools/vero_bridge/clients/` module. A wrapper
+would have exactly one real caller — Code's own smoke tests — because
+Chat and Cowork tabs cannot import a Python module into their context;
+they can only call `mcp__vero-bridge__*` directly. A one-caller wrapper
+is a premature abstraction (CLAUDE.md "Rule of Three"), and a transform
+layer between the tab and the server would weaken the AC-7 byte-for-byte
+cross-client parity guarantee (there would be something to drift). Raw
+invocation keeps the surface minimal, keeps `server.py` the single
+source of truth, and makes AC-7 parity trivially provable.
+
+Raw invocation's one weakness — this doc rotting out of sync with
+`server.py` — is closed by the contract test in
+[`tests/vero_bridge/test_chat_client.py`](../../tests/vero_bridge/test_chat_client.py):
+it asserts the §7.2 table matches the live registered tool surface and
+that every documented tool + kwarg name appears in this section, so a
+`server.py` signature change turns the test red until this doc is
+updated to match.
+
+A Python wrapper is deferred until a real multi-tool-sequence need
+appears (the "third instance" under the Rule of Three) — at which point
+it would be a Code-internal convenience, still leaving the tab-facing
+surface as raw `mcp__vero-bridge__*` calls.
+
+## 8. Change log
 
 - **2026-05-28** — Initial Phase 1 v1 contract committed
   (PR for Step 1; codifies AC-1 + AC-8 partial, sets up AC-5 test
   surface). Schema discipline mirrors `tools/handoffs/_schema.py`
   (Lesson #5 §4) and `tools/loop/_schema.py` (PLAN-0010 §Step 3).
   OQ-T1 / OQ-T4 / OQ-V2 resolutions baked in from PR #69 ratifications.
+- **2026-05-29** — Added §7 "Client invocation from Chat tab" (PLAN-0012
+  Phase 1 Step 3a). Raw `mcp__vero-bridge__*` invocation + doc-rot guard
+  ratified over a Python client wrapper; `message_type`-is-server-side
+  clarified. Contract test: `tests/vero_bridge/test_chat_client.py`.
