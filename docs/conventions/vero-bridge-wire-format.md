@@ -1,0 +1,276 @@
+# vero-bridge wire format (v1)
+
+> **Status:** Phase 1, frozen.
+> **Codified in:** [`tools/vero_bridge/_schema.py`](../../tools/vero_bridge/_schema.py)
+> **Plan:** [PLAN-0012 §AC-1](../plans/0012-vero-bridge.md) — "Transport contract is documented"
+> **OQs resolved here:** OQ-T1 (fail-closed), OQ-T4 (serial-per-instance), OQ-V2 (`version: int` stub, v1-only)
+
+This file is the **human-readable counterpart** to
+[`tools/vero_bridge/_schema.py`](../../tools/vero_bridge/_schema.py).
+The schema module is the **machine-checkable counterpart** to this
+file. If they disagree, **the schema wins** (it is what the running
+server enforces); update this file to match in the same PR.
+
+## 1. Transport assumptions
+
+Under **OQ-A RATIFIED A1 = stdio-MCP** (PLAN-0012 §Open Questions OQ-A;
+session 21 PR #67), the vero-bridge server is a stdio-MCP server
+spawned by Claude Desktop via the `mcpServers` entry in
+`claude_desktop_config.json` (UWP path per
+[Lesson #0016](../lessons/0016-claude-desktop-uwp-sandbox-config-path.md)).
+
+The wire format documented here lives **inside** MCP's native JSON-RPC
+framing — MCP/JSON-RPC handles the byte-level transport (delimiters,
+request/response correlation via `id`); vero-bridge's wire format
+defines the **payload envelope** carried inside each tool-call's
+arguments.
+
+**Tab-group routing (empirical, Lesson #0017 §3.1 corrected).** Under A1
+stdio-MCP, Claude Desktop spawns 2 server instance pairs per
+`mcpServers` entry on fresh launch:
+
+- **Instance A** — Chat alone (PID varies per spawn cycle).
+- **Instance B** — Code + Cowork share (PID varies per spawn cycle).
+
+The server **cannot** discriminate Code from Cowork via transport-level
+signals (they share PID, ppid, stdin_fd, stdout_fd, env). It **can**
+discriminate Chat-vs-(Code∪Cowork) via PID. This shapes
+[`claimed_tag`](#23-claimed_tag-string-non-empty-audit-only) and the
+[AC-4 audit log](#52-audit-log-discipline-ac-4-b) design.
+
+## 2. Envelope
+
+Every bridge tool call carries a four-field envelope, decomposed across
+the tool's keyword arguments:
+
+```python
+tool(
+    version=1,                # required, int, MUST equal PROTOCOL_VERSION
+    claimed_tag="<tag>",      # required, non-empty str, audit-only
+    message_type="<type>",    # required, str matching MessageType
+    payload={...},            # optional, dict[str, Any] or None
+)
+```
+
+`version` + `claimed_tag` + `message_type` are envelope fields; the
+remaining kwargs are the per-tool payload. Tools may split the payload
+across named kwargs for ergonomics; the schema treats the full
+remainder as a single dict.
+
+### 2.1 `version` (int, required)
+
+The wire format version. **Phase 1 server accepts only
+`version: 1`.** Any other value raises `VersionMismatchError` with
+`ErrorCode.VERSION_MISMATCH`.
+
+`bool` is **not accepted** as `int` here even though `bool ⊆ int` in
+Python — booleans are categorically not version numbers, and silently
+coercing `True → 1` would defeat the OQ-V2 stub's intent (the field
+must be a deliberate version assertion, not an accidental truthy
+value).
+
+**OQ-V2 deferral.** The `version: int` field is the
+forward-compatibility stub for the deferred version-negotiation policy
+(per-session vs per-call vs per-tab). Full policy is pinned when client
+codepaths diverge or when a wire format v2 lands; until then, the field
+is mandatory and v1-only.
+
+### 2.2 `claimed_tag` (str, non-empty, audit-only)
+
+The caller's self-asserted tab identity (typical values: `code`,
+`chat`, `cowork`, `cray`, or any string the operator wants logged).
+**Audit-only per OQ-T3 Option I** — the server does NOT verify this
+against any observable signal; spoofing is always possible (empirical
+T10/T11/T12 in the OQ-B probe research note §8.4).
+
+The schema rejects only **structural** problems:
+
+- Non-string types → `MalformedFrameError`.
+- Empty string → `MalformedFrameError`.
+
+It does **not** reject any value-based pattern. Server-side handlers
+log the value as-is alongside observable transport facts (PID, ppid,
+stdin_fd, stdout_fd, ts_ns) for the
+[AC-4 (b) audit log](#52-audit-log-discipline-ac-4-b).
+
+### 2.3 `message_type` (str, MessageType member)
+
+The envelope's declared type, drives dispatch inside the server's
+per-tool handler. The closed set is defined by the `MessageType` enum:
+
+| `MessageType` | `.value` | Phase 1 status |
+|---|---|---|
+| `MessageType.ECHO` | `"echo"` | **Active** — required for AC-3 cross-client live evidence. |
+| `MessageType.SIGNAL` | `"signal"` | **Reserved placeholder** for Phase 2+ ADR-013 D1 autonomy signal carriers. |
+| `MessageType.DISPATCH_RECEIVE` | `"dispatch_receive"` | **Reserved placeholder** for Phase 2+ dispatch-without-authority handoff carriers. |
+
+Unknown values raise `UnknownTypeError` with `ErrorCode.UNKNOWN_TYPE`.
+The enum carries placeholders so that adding `signal` or
+`dispatch_receive` in Phase 2 is a server-side handler change, not a
+wire-format-breaking change.
+
+### 2.4 `payload` (dict or None, optional)
+
+Per-tool payload data. Empty dict by default. The schema validates:
+
+- Type must be `dict` (or `None`, which is coerced to empty dict).
+- All keys must be strings (JSON-shaped — non-string keys are an
+  upstream parser mistake we surface fail-closed rather than coerce).
+
+The schema does **not** validate payload contents — per-tool schema
+lives in the tool handler (per the
+[capability inventory](vero-bridge-capability-inventory.md) Phase 1
+seven safe-for-all tools). Parsed envelopes carry the payload as a
+`MappingProxyType` read-only view of a **defensive copy**, so input
+aliasing is impossible.
+
+## 3. Validation order and failure semantics (OQ-T1)
+
+`parse_envelope()` validates fields in declaration order:
+
+```
+1. version       →  MalformedFrameError | VersionMismatchError
+2. claimed_tag   →  MalformedFrameError
+3. message_type  →  MalformedFrameError | UnknownTypeError
+4. payload       →  MalformedFrameError
+```
+
+The **first failure raises immediately** — subsequent fields are not
+validated (fail-closed per OQ-T1). This is observable in tests:
+
+- `test_version_rejected_before_other_fields` — bad version + bad
+  `claimed_tag` + bad `message_type` + bad `payload` all in one call;
+  only `VersionMismatchError` is raised.
+- `test_claimed_tag_rejected_before_message_type` — empty
+  `claimed_tag` + unknown `message_type`; only `MalformedFrameError`
+  (claimed_tag) is raised.
+
+This ordering is part of the wire-format contract: clients can rely on
+the first-error semantics to debug rejected calls. If the server
+silently accumulated multiple errors and reported them as a batch, a
+malicious client could probe the server's validation logic by counting
+errors — instead, the server reports exactly one and stops.
+
+### 3.1 Error response shape
+
+`format_error_response(error)` produces the canonical wire-format error
+payload returned to the client when a `BridgeError` is raised:
+
+```python
+{
+    "ok": False,
+    "error_code": "<ErrorCode value>",   # e.g. "version-mismatch"
+    "error_message": "<human detail>",   # e.g. "version 2 unsupported (supported: 1)"
+}
+```
+
+This is the **only** path a server-side handler should use to surface a
+`BridgeError` to the client. Direct exception propagation across the
+MCP boundary is **not allowed** — it would leak Python tracebacks into
+the response and bypass the OQ-T1 fail-closed contract.
+
+### 3.2 Error code catalog (OQ-T1)
+
+| `ErrorCode` | Wire value | Raised when |
+|---|---|---|
+| `MALFORMED_FRAME` | `"malformed-frame"` | Field has wrong type or shape (missing, wrong primitive, non-string payload keys, etc.). |
+| `VERSION_MISMATCH` | `"version-mismatch"` | `version` is the wrong int (any value ≠ `PROTOCOL_VERSION`). |
+| `UNKNOWN_TYPE` | `"unknown-type"` | `message_type` is a `str` but does not match any `MessageType` member. |
+| `CONNECTION_DROP` | `"connection-drop"` | Reserved for server-side transport layer (lost connection, peer hung up before response). Raised by the server in Step 2, not by `parse_envelope()`. |
+| `TIMEOUT` | `"timeout"` | Reserved for server-side transport layer (call exceeded the bounded latency budget). Raised by the server in Step 2, not by `parse_envelope()`. |
+| `TOOL_NOT_FOUND` | `"tool-not-found"` | The tool name on the call is not in the [AC-8 capability inventory](vero-bridge-capability-inventory.md). Raised by the server in Step 2 (the AC-8 negative test under AC-5 asserts this), not by `parse_envelope()`. |
+
+Wire-value strings are stable across versions for a given
+`ErrorCode` — a rename would be a wire-format breaking change
+requiring a `version` bump.
+
+## 4. Concurrency (OQ-T4)
+
+The schema module is **concurrency-agnostic by design** — it owns no
+state across calls; `parse_envelope()` is a pure function of its
+kwargs. Concurrency discipline is enforced one layer up, in the
+stdio-MCP server's per-instance call queue (Step 2 implementation):
+
+- **Serial-per-instance.** The server queues incoming calls and
+  processes one-at-a-time per instance (per Cray's OQ-T4 resolution
+  2026-05-28 PM late, PR #69). Code + Cowork sharing instance B get
+  serialized handling; audit-log ordering is deterministic (the
+  earlier-server-side-receive-timestamp call wins).
+- **No per-call parallelism in Phase 1.** Even pure-function tools
+  (`echo`, `bridge_status`, `bridge_whoami`) are processed serially.
+  The MCP/JSON-RPC protocol permits concurrent in-flight requests via
+  `id` correlation, but the server does not exploit that in Phase 1.
+- **Phase 2 reconsideration.** Concurrent-per-call becomes an option
+  when evidence of contention pressure exists. Pre-Phase-2, no
+  concurrency-related state is stored (deliberately — adding it would
+  be premature optimization that constrains future design).
+
+## 5. Implementation discipline
+
+### 5.1 Stateless + stdlib-only
+
+The schema module imports nothing outside the stdlib (`dataclasses`,
+`enum`, `types`, `typing`). It owns no module-level state beyond the
+`PROTOCOL_VERSION` constant. This mirrors the
+[`tools/handoffs/_schema.py`](../../tools/handoffs/_schema.py)
+discipline (Lesson #5 §4, PLAN-004 D1).
+
+### 5.2 Audit log discipline (AC-4 (b))
+
+The schema does not write audit logs — that is the **server's**
+responsibility (Step 2). Per AC-4 (b), the server MUST log every
+accepted call's `claimed_tag` alongside observable transport facts:
+
+- `pid` — server process id
+- `ppid` — parent process id (the `uv run` wrapper)
+- `stdin_fd` — `readlink /proc/self/fd/0` (per-connection pipe inode)
+- `stdout_fd` — `readlink /proc/self/fd/1`
+- `ts_ns` — monotonic timestamp (the OQ-T4 serial-per-instance
+  ordering primary key)
+- `env_keys_seen` — list of `CLAUDE_*` keys visible to the server
+  (empirically `[]` per `bridge_whoami` probe — Desktop strips env)
+
+Phase 1 audit log destination = appended JSONL under
+`docs/research/private/` (gitignored). Phase 2+ may relocate this to a
+tracked-but-redacted destination when authority operations land on the
+bridge.
+
+### 5.3 What this schema does NOT validate
+
+- **Per-tool payload contracts.** Each tool in the
+  [capability inventory](vero-bridge-capability-inventory.md) defines
+  its own arg/return schema. The envelope is decoupled from payload.
+- **Authority / authorization.** `claimed_tag` is audit-only. The
+  bridge surface is restricted to tab-tier-safe operations per AC-8;
+  authority-bearing operations are not on the bridge at all (they live
+  under Code's internal mechanisms + ADR-013 D2 deterministic deny
+  hook for the commit boundary).
+- **JSON-RPC framing.** That is MCP's responsibility. If a frame is
+  malformed at the JSON-RPC level, MCP rejects it before
+  `parse_envelope()` ever sees it.
+
+## 6. Versioning policy (OQ-V2)
+
+Per OQ-V2 DEFERRED (Cray ratified 2026-05-28 PM late, PR #69), the
+**negotiation policy** (per-session vs per-call vs per-tab) is decided
+when client codepaths diverge. Until then, Phase 1 binds:
+
+- Every wire frame carries `version: int` (mandatory; not optional).
+- Phase 1 server accepts only `version: 1` (PROTOCOL_VERSION).
+- Frames with any other value are rejected per the OQ-T1 fail-closed
+  contract (`VersionMismatchError` → wire `error_code: "version-mismatch"`).
+
+The `version` field is the **forward-compatibility stub** that lets
+us defer the policy decision without baking in a wire-format breaking
+change later. Adding `version: 2` support (whether as a
+per-session-pinned upgrade, per-call permissive accept, or per-tab
+divergence) is a Phase 2 design decision — at which point this section
+gets a follow-up subsection.
+
+## 7. Change log
+
+- **2026-05-28** — Initial Phase 1 v1 contract committed
+  (PR for Step 1; codifies AC-1 + AC-8 partial, sets up AC-5 test
+  surface). Schema discipline mirrors `tools/handoffs/_schema.py`
+  (Lesson #5 §4) and `tools/loop/_schema.py` (PLAN-0010 §Step 3).
+  OQ-T1 / OQ-T4 / OQ-V2 resolutions baked in from PR #69 ratifications.
