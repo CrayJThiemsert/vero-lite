@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-27T15:00:00+07:00
-session: 17
-current_batch: **Session 17 — PLAN-0011 (Lesson #15 fix) shipped + PLAN-0010 Phase 4 (in PR) + ADR-0014 take 2 in advisory loop.** 3 PRs merged to main: PR #53 PLAN-0011 fix (classifier transcript-load — `_summarize_transcript` + `_build_user_message` excerpt; 18 new tests; gated live smoke PASS against real Sonnet for D1 dispatch); PR #54 PLAN-0011 closeout (Status → Complete, `git mv` to `done/`); this PR docs reconciliation (PLAN-0011 §Out-of-Scope + Lesson #15 §4 + STATUS post-execution annotations). PR #55 open + MERGEABLE/CLEAN — PLAN-0010 Phase 4 (2 cross-process race fixes + Code Desktop scheduled-task SKILL.md + runbook). ADR-0014 work #4: draft recovered from Claude Desktop session JSONL after session-pivot loss; Cowork advisory round 1 (2026-05-27 1145 +07) surfaced C1/C2/C3/C4 + 3 missing OQs → plan-drafter take 2 (727 lines, 5 OQs blocking); Cowork take-2 verification round (1330 +07) confirmed Focus-1 fixes hold + flagged this-PR N1/N2 documentation lag + Focus-4 attribution refinement. Cumulative session-17 test count: 588 → 612 (+24, no regressions); ruff + mypy clean. 3 lessons codified to auto-memory (live-test-trigger freshness; working-tree pre-smoke hygiene; parallel-session executor handoff).
+last_updated: 2026-05-28T09:00:00+07:00
+session: 19
+current_batch: **Session 18 + 19 — ADR-0014 OQ-A resolved (rolled back to PLAN-0012 `vero-bridge` under ADR-013 D1); `_wsl_bridge.py` rule-of-three extraction COMPLETE end-to-end; OQ-C empirical experiment RATIFIED.** Session 18 shipped 3 PRs end-to-end (no Cowork rounds — OQ-A was a single Cray-decision question): PR #58 ADR-0014 WITHDRAWN tombstone + PLAN-0009 `vero-bridge` earmark re-anchor (PLAN-0010 → PLAN-0012); PR #59 `_wsl_bridge.py` extraction (~274 LOC, 6-function API, named 3 hooks migrated + 22 new tests); PR #60 Pattern-A batch-2 migration (3 more hooks — no inline WSL-bridge duplication remains in `.claude/hooks/`). Session 19 ran the OQ-C empirical experiment (Cowork outbound-network locus): Cowork-executed (3× K-1 UNC abort reproduced; `web_fetch` functional but remote-egress; Chrome unconnected); Cray's HTTP echo server logged ZERO inbound hits during the Cowork run window; scenario (i) desktop-proxy ruled out HIGH confidence. Conclusion lifted to `docs/runbooks/cowork-network-locus.md` in PR #61; v1 PLAN-0012 implication locked (drop Cowork-client from v1; defer to v2 once tunneled rendezvous designed + (ii-a) re-test runs). Cumulative session 18+19 tests: 612 → 634 (+22, no regressions); ruff + mypy clean. This PR is session-19 work #2 (STATUS-reconcile chore per session 18→19 handoff §3).
 current_actor: code
-blocked_on: ADR-0014 take-3 edits pending — this docs-reconcile PR unblocks N1/N2 framing first per Cowork take-2 verification; then ADR-014 take-3 with Cowork-take-2 Focus-2/3/4 fixes folded; then ratify + flip Proposed → Accepted. Concurrent: PR #55 review pending Cray green-light (parallel-safe, orthogonal codepath).
-next_action: **Active session 17 sequence (post-this-PR):** (a) **ADR-0014 take 3 + commit** — Code applies Cowork take-2 N1 (point at PR #53), OQ-A/B/C dimension fixes, Focus-4 attribution refinement (ADR-013 OQ-1 attribution + cite take-2 + 1330 handoff); commit on `chore/adr-0014-cross-tab-mcp-transport` branch + PR; Cray ratifies OQ-A (ADR-vs-PLAN governance) in review; (b) **Merge PR #55** PLAN-0010 Phase 4 + Cray executes Desktop UI one-time setup per `docs/runbooks/loop-dispatcher-scheduled-task.md`; (c) **`_wsl_bridge.py` extraction** — session-17 work #3 queued (~1 hr); (d) **AC-3/AC-7 fresh-trigger live re-run** for PLAN-0011 (deferred per PR #53 body §AC-3, meta-awareness contamination); (e) STATUS-side: session 17 → session 18 handoff when work above clears.
-head_commit: 38a7407
-recent_commits: [38a7407, ec47b32, 8d421fc, 17eecc7, 12cf619, 0a43013, 7f288af, 52ba89c, 9e55554, 84c637e]
+blocked_on: PLAN-0012 `vero-bridge` minting awaits Cowork-drafter or plan-drafter subagent authoring round (session-19 work #3, load-bearing). Cray-driven AC-3/AC-7 fresh-trigger live re-run for PLAN-0011 + Cray Desktop UI loop-dispatcher one-time setup (work #4/#5) are Cray-side and independent.
+next_action: **Session 19 sequence (post-this-PR):** (a) **Mint PLAN-0012 `vero-bridge`** — OQ-C input now locked (cowork-network-locus runbook §3); Cowork-drafter or plan-drafter subagent authors `docs/plans/0012-vero-bridge.md` with v1 Cowork-client = option (a) drop-and-defer-to-v2; (b) **Cray-side AC-3/AC-7 fresh-trigger re-run** (PLAN-0011 evidence flip BLOCKED → PASS); (c) **Cray-side loop-dispatcher Desktop UI one-time setup** per `docs/runbooks/loop-dispatcher-scheduled-task.md` §"One-time setup (Cray)"; (d) session 19 → session 20 handoff after PLAN-0012 minted.
+head_commit: 23b18c2
+recent_commits: [23b18c2, aab8c84, d1f3393, 48ab90a, d75e446, 59797e0, 5bf161b, df70f83, 979fb74, e5a1703]
 ---
 
 # vero-lite — Project Status
@@ -18,28 +18,77 @@ recent_commits: [38a7407, ec47b32, 8d421fc, 17eecc7, 12cf619, 0a43013, 7f288af, 
 
 ## Current Focus
 
-**Session 17 — Path A closed (Lesson #15 fix shipped) + Phase 4 in
-PR + ADR-0014 in Cowork advisory loop.** PLAN-0011 (the classifier
-transcript-load fix, Lesson #15 §4) **shipped end-to-end** in PR #53
-(commit `8d421fc`) + closed out in PR #54 (`ec47b32`, `git mv` to
-`done/`). Gated live API smoke (`test_classifier_live_smoke.py`,
-`RUN_LIVE_CLASSIFIER_TESTS=1`) PASSED against real Sonnet — `decision:
-dispatch, matched_rows: ["D1"]`. AC-3 verbatim in-session Smoke 2/3
-**reframed** → deferred-with-fresh-trigger per documented
-meta-awareness contamination (agent reads scenario file → recognizes
-test prompt). PR #55 (PLAN-0010 Phase 4 — 2 dispatcher concurrency
-fixes + Code Desktop scheduled-task SKILL.md + 162-line runbook) open
-+ MERGEABLE/CLEAN; awaiting Cray green-light. ADR-0014 work #4:
-draft was lost when a contaminated session was closed; recovered
-verbatim from Claude Desktop session JSONL; Cowork advisory pass round
-1 (1145 +07) surfaced C1-C4 + 3 missing OQs; plan-drafter take 2 (727
-lines) folded them; Cowork take-2 verification round (1330 +07) hit
-Focus-1 PASS but flagged real **documentation lag** — PLAN-0011
-§Out-of-Scope + Lesson #15 §4 + this STATUS hadn't been updated
-post-PR-53/54. **This PR is that docs-reconcile fix**; ADR-0014 take 3
-follows. Cumulative session-17 tests: 588 → 612 (+24); ruff + mypy
-clean. 3 auto-memory lessons codified (live-test-trigger freshness;
-working-tree pre-smoke hygiene; parallel-session executor handoff).
+**Session 18 + 19 — ADR-0014 OQ-A resolved (rolled back to
+PLAN-0012 `vero-bridge` under ADR-013 D1); `_wsl_bridge.py`
+rule-of-three extraction COMPLETE end-to-end; OQ-C empirical
+experiment RATIFIED.** Session 18 ran ~3 hours and shipped 3 PRs
+end-to-end with no Cowork rounds (OQ-A was a single Cray-decision
+question via AskUserQuestion, not an architectural-review question):
+PR #58 (`5bf161b`) replaced ADR-0014 with a 50-line WITHDRAWN tombstone
++ re-anchored the `vero-bridge` Phase-4 earmark from PLAN-0010 →
+PLAN-0012 in `docs/plans/done/0009-subagent-topology.md` §Out-of-Scope
+(take-3 draft retained on remote branch `chore/adr-0014-cross-tab-mcp-transport`
+commit `2fde9eb` for archeology; PR #57 closed without merge by Cray
+at 2026-05-27T10:01:21Z during review); PR #59 (`d75e446`) extracted
+`.claude/hooks/_wsl_bridge.py` (~274 LOC, 6-function API — Pattern A
+`is_windows_with_wsl`/`wsl_path`/`env_with_wslenv_passthrough`/`bash_argv`
++ Pattern B `should_use_wsl_https_bridge`/`http_post_via_wsl_bridge`;
+migrated `notification_telegram` + `subagentstop_notify` +
+`_sonnet_classifier`); +22 new tests in `tests/handoffs/test_wsl_bridge.py`
+(fake-subprocess injection — no real `wsl.exe`/network); PR #60
+(`d1f3393`) migrated batch-2 (`stop_continuation` +
+`pretooluse_loop_detect` + `posttooluse_progress_observer` `_ping_telegram`
+sites) — **no inline WSL-bridge duplication remains** in `.claude/hooks/`.
+Session 19 ran the **OQ-C empirical experiment** (Cowork outbound-network
+execution locus — load-bearing input for PLAN-0012's Cowork-client
+section): Cowork-executed honestly (`mcp__workspace__bash` K-1 UNC
+abort 3× reproduced; `mcp__workspace__web_fetch` functional for public
+URLs but returned no body/token for any of 4 local URLs;
+`mcp__Claude_in_Chrome__*` present but no connected browser); Cray's
+HTTP echo server logged **zero inbound hits** for the entire Cowork
+run window — server-side corroboration. **Scenario (i) desktop-proxy
+locus ruled out HIGH confidence.** Conclusion lifted to
+[`docs/runbooks/cowork-network-locus.md`](runbooks/cowork-network-locus.md)
+in PR #61 (`23b18c2`); v1 PLAN-0012 implication locked: **drop the
+Cowork-client from v1; defer to v2** once a tunneled rendezvous
+(ngrok/cloudflared/WAN+port-forward) is designed + the (ii-a) public-IP
+reachability re-test runs (URL D in this experiment used the WSL2
+vNIC `172.22.59.116` — RFC-1918 private, can't discriminate (ii-a)
+from (ii-b); deferred to PLAN-0012 v2 design work). **This PR is
+session-19 work #2** (STATUS-reconcile chore per session 18→19 handoff
+§3 work item #2); minting PLAN-0012 `vero-bridge` (work #3, load-bearing)
+follows. Cumulative session 18+19 tests: 612 → **634** (+22, no
+regressions); ruff + mypy clean; **zero new auto-memory lessons
+codified** (the patterns sessions 18+19 encountered — G2 PreToolUse
+classifier pause on ADR-slot consumption, branch-first commit hygiene,
+Cowork anti-fabrication discipline — were already in memory).
+
+### 2026-05-28 ~09:00 +07 — Session 19 ledger (in progress)
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **OQ-C experiment + runbook** | [#61](https://github.com/CrayJThiemsert/vero-lite/pull/61) (`aab8c84` → merge `23b18c2`) | **PLAN-0012 v1 input locked.** New [`docs/runbooks/cowork-network-locus.md`](runbooks/cowork-network-locus.md) (82 lines, tracked + citable) lifts ratified conclusion from gitignored audit-trail research note `docs/research/private/2026-05-28-oq-c-cowork-mcp-locus-experiment.md`. **Cowork-executed honestly**: `mcp__workspace__bash` → K-1 UNC abort 3× reproduced (deterministic, not a transient boot state); `mcp__workspace__web_fetch` → functional for public URLs (control `https://example.com` returned full body same session) but ALL 4 local URLs (`127.0.0.1`, `localhost`, `host.docker.internal`, `172.22.59.116`) returned no body/status/token; `mcp__Claude_in_Chrome__*` → present but `list_connected_browsers` empty (unexercisable). **Cray-side decisive evidence**: HTTP echo server logged ZERO inbound hits for the entire Cowork run window — server-side corroboration that no Cowork request reached Cray's loopback or WSL bind. **Scenario (i) desktop-proxy ruled out HIGH confidence**. PLAN-0012 v1 implication: drop Cowork-client; defer to v2 once tunneled rendezvous (ngrok/cloudflared/WAN+port-forward) designed + (ii-a) reachability re-test runs. **Open**: (ii-a) public-IP-reachable vs (ii-b) no-inbound-path — deferred to PLAN-0012 v2 design work (URL D in this experiment was the WSL2 vNIC, an RFC-1918 private address — can't discriminate from a remote-egress perspective). Code-Tier-2 + Chat-Tier-1 MCP clients unaffected by this finding (they have their own MCP primitives). |
+| **STATUS reconcile** *(this PR)* | this PR | **Session 18 + 19 ledger entries added.** Updates Current Focus narrative + frontmatter (`last_updated`, `session`, `head_commit`, `recent_commits`) per session 18→19 handoff §3 work item #2. Brings STATUS current from session 17 → session 19. No code/test/settings touched. |
+| **Queued — load-bearing** | TBD | **#3** Mint PLAN-0012 `vero-bridge` — OQ-C input is now locked; ready for Cowork-drafter or plan-drafter subagent authoring round; v1 Cowork-client section uses option (a) drop-and-defer per OQ-C ratification (cowork-network-locus runbook §3). |
+| **Deferred — Cray-driven** | session 18→19 handoff §3 #4 + #5 | **#4** AC-3/AC-7 fresh-trigger live re-run for PLAN-0011 (~30 min Cray-driven; meta-awareness contamination per PR #53 §AC-3 — use a NEW trigger not in `scenario3-*.md`/`scenario5-*.md`); capture Telegram `message_id` + Sonnet verdict in evidence files; flip BLOCKED → PASS. **#5** Cray Desktop UI one-time setup for `loop-dispatcher` scheduled task per [`docs/runbooks/loop-dispatcher-scheduled-task.md`](runbooks/loop-dispatcher-scheduled-task.md) §"One-time setup (Cray)" (~5 min). Both independent of PLAN-0012 minting. |
+
+### 2026-05-28 ~06:30 +07 — Session 18 ledger (closed)
+
+Session 18 ran ~3 hours (2026-05-27 evening → 2026-05-28 ~06:30 +07);
+**3 PRs merged end-to-end + 1 PR closed without merge + 0 Cowork
+rounds + 0 open PRs at session close + 0 new auto-memory lessons
+codified**. OQ-A resolution was a single Cray-decision question via
+AskUserQuestion (not architectural-review), so no Cowork advisory
+round was needed. Cumulative session-18 tests: 612 → 634 (+22 from
+`test_wsl_bridge.py`; batch-2 added 0 since it deleted only duplication
+already covered).
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **ADR-0014 OQ-A resolution** | [#58](https://github.com/CrayJThiemsert/vero-lite/pull/58) (`df70f83` → merge `5bf161b`) | **OQ-A "ADR-014 vs PLAN-0012-under-ADR-013" resolved.** Cray ratified PLAN-0012-under-ADR-013 per PLAN-0009 OQ-3 precedent ("no new ADR; mint ADR only if a genuinely architecture-level choice surfaces"). New `docs/adr/0014-WITHDRAWN.md` (50-line tombstone: rationale + 4-step author≠reviewer pipeline citation + backlinks to ADR-013 D1, PLAN-0009 §Out-of-Scope, PR #57, both Cowork advisory handoffs, Lessons #8/#15) replaces the take-3 draft (837 lines). PR #57 closed without merge by Cray at 2026-05-27T10:01:21Z during review; take-3 retained on remote branch `chore/adr-0014-cross-tab-mcp-transport` commit `2fde9eb` for archeology (closure comment on PR #57 cites that SHA). `docs/plans/done/0009-subagent-topology.md` §Out-of-Scope annotated per PR #56 preserve-original-fenced-blockquote-supersedes pattern to re-anchor `vero-bridge` Phase-4 earmark from PLAN-0010 → **PLAN-0012**. |
+| **`_wsl_bridge.py` extraction** | [#59](https://github.com/CrayJThiemsert/vero-lite/pull/59) (`59797e0` → merge `d75e446`) | **Rule-of-three closed for named 3 hooks.** New `.claude/hooks/_wsl_bridge.py` (~274 LOC) 6-function API: **Pattern A** (`is_windows_with_wsl`, `wsl_path`, `env_with_wslenv_passthrough`, `bash_argv`) + **Pattern B** (`should_use_wsl_https_bridge`, `http_post_via_wsl_bridge`). Migrated `notification_telegram.py` (Pattern A), `subagentstop_notify.py` (Pattern A), `_sonnet_classifier.py` (Pattern B — removed `_WSL_BRIDGE_SCRIPT` constant + `_should_use_wsl_bridge` + `_http_post_via_wsl_bridge` + unused imports `email.message`/`shutil`/`subprocess`/`sys`). 22 new tests in `tests/handoffs/test_wsl_bridge.py` (fake-subprocess injection — no real `wsl.exe` or network). Old `_wsl_path` tests in `test_subagentstop_notify.py` removed (moved to new file). Net diff: +659 / −292 (−85% LOC in touched hook regions). |
+| **Pattern-A batch-2 migration** | [#60](https://github.com/CrayJThiemsert/vero-lite/pull/60) (`48ab90a` → merge `d1f3393`) | **Rule-of-three closed for the bonus 3 Pattern-A sites.** Migrated `stop_continuation.py` (`_ping_telegram`), `pretooluse_loop_detect.py` (`_ping_telegram`), `posttooluse_progress_observer.py` (`_ping_telegram`) to use `bash_argv` + `env_with_wslenv_passthrough` from `_wsl_bridge`. Removed inline `_wsl_path` + `_forwarded_env` + `import shutil` from each. Net diff: +23 / −108 across 3 files (−85% in touched regions). No new tests — deletes only duplication already covered by `test_wsl_bridge.py`. **After this PR, no inline WSL-bridge duplication remains in `.claude/hooks/`** — any future hook needing the bridge imports from `_wsl_bridge.py`. |
+| **ADR-014 take 3 (PR #57)** | closed without merge | Take-3 draft (837 lines) opened as PR #57 at session 17 close after Cowork take-2 verification round folded fixes. Cray closed at 2026-05-27T10:01:21Z during review when OQ-A resolution was reached. Closure comment cites PR #58 merge + take-3 archeology branch commit `2fde9eb`. Cowork advisory rounds 1 + 2 (session 16 handoffs) contributed Focus-1 fixes that the take-3 draft folded — context still relevant for future PLAN-0012 drafting per session 18→19 handoff §3 references. |
 
 ### 2026-05-27 ~14:50 +07 — Session 17 ledger
 
