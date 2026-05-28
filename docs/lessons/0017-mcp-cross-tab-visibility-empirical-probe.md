@@ -31,27 +31,57 @@ PLAN-0012 OQ-B probe (T1–T7, 2026-05-28) empirically established that user-MCP
 
 **Anti-pattern:** "Search the registry to confirm my project-bridge is registered." A project-bridge will never be in the public registry; that's not its purpose. Confirm via direct invocation from a tab instead (Lesson #16 §4 step 4 sanity-check).
 
-## 3. The server-process model (shared instances, not per-tab)
+## 3. The server-process model (tab-group routing, not all-shared)
 
-Claude Desktop spawns MCP server processes **at Desktop startup time** based on `mcpServers` config. The observed pattern (PLAN-0012 OQ-B, single config entry, fresh Desktop launch):
+> **2026-05-28 PM correction.** The original §3 (committed in PR #65, drafted from OQ-B probe alone) said the server is "shared across all tabs". Empirical OQ-T3 follow-on probe (T8–T12 in research note `docs/research/private/2026-05-28-oq-b-chat-mcp-spawn-probe.md` §8) **refined** the model: tabs share instances **in groups** based on Desktop-internal routing, not uniformly. Original §3 wording is preserved at end of section for archeology; the corrected model is canonical. This correction is itself a meta-example of §5 (empirical-probe-before-trivial-resolution) — the original §3 was an under-specified inference from probe data that didn't include per-call PID evidence.
+
+Claude Desktop spawns MCP server processes **at Desktop startup time** based on `mcpServers` config. The observed pattern (PLAN-0012 OQ-B + OQ-T3, single config entry, fresh Desktop launch):
 
 ```
 $ ps aux | grep vero_bridge_probe | grep -v grep
-crayj  572  pts/4  uv run --extra dev python tools/probes/vero_bridge_probe.py
-crayj  580  pts/4  /home/crayj/work/vero-lite/.venv/bin/python3 tools/probes/vero_bridge_probe.py
-crayj 1625  pts/5  uv run --extra dev python tools/probes/vero_bridge_probe.py
-crayj 1648  pts/5  /home/crayj/work/vero-lite/.venv/bin/python3 tools/probes/vero_bridge_probe.py
+crayj  605  pts/4  uv run --extra dev python tools/probes/vero_bridge_probe.py
+crayj  613  pts/4  /home/crayj/work/vero-lite/.venv/bin/python3 tools/probes/vero_bridge_probe.py
+crayj 2065  pts/5  uv run --extra dev python tools/probes/vero_bridge_probe.py
+crayj 2092  pts/5  /home/crayj/work/vero-lite/.venv/bin/python3 tools/probes/vero_bridge_probe.py
 ```
 
-**2 server instance pairs** for **1** config entry. Each pair = parent `uv run` + child `python3` from the spawn command. The same PIDs **persisted across all 3 tab probes** (Chat T2/T4, Code T3, Cowork T7) — no new instance spawned when a tab connected.
+**2 server instance pairs** for **1** config entry. Each pair = parent `uv run` (the spawn wrapper) + child `python3` (the actual server). The instances are **routed to tabs in groups** by Desktop-internal logic, not uniformly shared.
 
-**Working hypothesis (not yet verified — promote to OQ if PLAN-0012 Phase 1 needs it):** Claude Desktop spawns N instances per `mcpServers` entry where N = number of Desktop panels/windows open at launch (or maybe N = 2 always, for warm-start fanout). Tabs within a panel share an instance.
+### 3.1 Tab-group routing pattern (empirical, OQ-T3 T8–T12)
 
-**Why this matters:**
+When each tab invoked `bridge_whoami(claimed_tag)` (which returns the server's own PID):
 
-- **Per-client identity is not free.** Under stdio-MCP, the "1 client per stdio session" assumption is **wrong** — the same server process serves multiple logical clients (Chat + Code + Cowork in the same window). Per-client identification at the server requires an explicit `caller_tag` argument convention at the tool-call level (or MCP-level session metadata if the protocol exposes it). PLAN-0012 OQ-T3 has been refined accordingly.
+| Tab | claimed_tag | PID returned | stdin_fd | Instance |
+|---|---|---|---|---|
+| Chat (T8) | `chat` | **613** | `pipe:[45615]` | A (pts/4) |
+| Chat (T10 spoof) | `cowork` | **613** | `pipe:[45615]` | A — same instance |
+| Cowork (T9) | `cowork` | **2092** | `pipe:[52773]` | B (pts/5) |
+| Cowork (T11 spoof) | `chat` | **2092** | `pipe:[52773]` | B — same instance |
+| Code (T12) | `code` | **2092** | `pipe:[52773]` | B — same as Cowork! |
+
+**Refined model:**
+- **Chat → instance A (alone)**
+- **Code + Cowork → instance B (share)**
+
+The routing rule is Desktop-internal — likely based on tab grouping (window? panel? tab-type?). It is **not externally controllable** and may differ across Desktop versions / install formats / window configurations.
+
+### 3.2 Why this matters
+
+- **Per-client identity has tiers of discriminability.** Under stdio-MCP, the server can discriminate **Chat vs (Code∪Cowork)** via PID/pipe-fd because they're on different instances. The server **cannot** discriminate **Code vs Cowork** via any transport-level signal (they share PID, ppid, stdin_fd, stdout_fd). And `claimed_tag` is fully spoofable — server echoes it verbatim with no native verify mechanism (T10, T11 empirical proof). PLAN-0012 OQ-T3 was RESOLVED 2026-05-28 PM with **Option I (capability-by-tool-design)** — `claimed_tag` retained as audit-only, tool surface restricted to tab-tier-safe operations, dangerous operations not exposed on bridge.
+
+- **`env_keys_seen` is empty under Desktop spawn.** Desktop strips Claude-injected environment variables (CLAUDE_*, ANTHROPIC_*, MCP_*) when spawning the server via `wsl bash -lc '...'`. The probe sanity-check from CLI showed CLAUDE_TIER + ANTHROPIC_API_KEY in env, but T8–T12 from actual Desktop spawn showed `env_keys_seen: []`. **No env-based per-client discriminator is available.** This rules out the obvious "set per-tab env var" identity mechanism.
+
 - **State accumulates across the entire Desktop session.** Server is long-lived (Desktop lifetime). Server processes should be **stateless** by design — any per-call state belongs in arguments or returned values, not server memory. State in server memory persists across tab switches and across hours of Desktop uptime.
-- **Crash recovery is your problem.** No auto-respawn observed in OQ-B (server long-lived, no chaos test yet). PLAN-0012 OQ-T1 (failure mode) should pin fail-closed semantics — if server crashes, Cray notices, not a silent partial-degradation.
+
+- **Crash recovery is your problem.** No auto-respawn observed (server long-lived, no chaos test yet). PLAN-0012 OQ-T1 (failure mode) should pin fail-closed semantics — if server crashes, Cray notices, not a silent partial-degradation.
+
+### 3.3 Archeology — original §3 wording (pre-2026-05-28-PM correction)
+
+For provenance, the original §3 wording (PR #65 drafted from OQ-B `bridge_ping` evidence alone, before OQ-T3 follow-on probe):
+
+> "*2 server instance pairs* for *1* config entry. … *the same PIDs persisted across all 3 tab probes (Chat T2/T4, Code T3, Cowork T7)* — no new instance spawned when a tab connected. … Per-client identity is not free. Under stdio-MCP, the '1 client per stdio session' assumption is **wrong** — the same server process serves multiple logical clients (Chat + Code + Cowork in the same window)."
+
+The wording was correct that PIDs persisted across probe calls (server is long-lived) but **wrong** in inferring "same server process serves all clients" — `bridge_ping` returned no PID, so the inference was from ps aux state stability (which only told us the set of PIDs was constant, not which PID answered which call). The OQ-T3 follow-on probe added per-call PID evidence and revealed the tab-group routing pattern. **The lesson that codified empirical-probe discipline was itself drafted on insufficient empirical evidence** — see §5 5th-step refinement below.
 
 ## 4. Diagnostic recipes — verify before drafting transport details
 
@@ -105,8 +135,9 @@ In session 20, OQ-T3 (per-client identity under A1 stdio-MCP) was trivially-reso
 2. **Has another tab/session already observed the same property?** Search `docs/research/private/` and `.claude/handoffs/` for prior probes. If yes, you may inherit their finding with a citation. If no, you need to probe.
 3. **Does the claim depend on documented Anthropic platform behavior?** If yes, the platform docs are advisory only — many behaviors (UWP config path, sandbox bash UNC, Desktop env caching, mcpServers process model) are not documented or are documented inconsistently. Treat platform docs as a hypothesis, not a fact.
 4. **Is the claim about your own code?** If yes, trivial-resolution is more defensible (you wrote it, you know its shape). Even then, an end-to-end smoke catches more than a code reading.
+5. **Does your probe capture per-call evidence that links system-level state to protocol-level behavior?** (Added 2026-05-28 PM after the OQ-T3 episode — see below.) If your probe relies on system-level introspection (ps aux, tasklist, ls), the probe should also capture per-call evidence (a tool that returns the answering server's PID, fd, or other state) that proves which system-level entity answered each protocol-level call. `ps aux` tells you what processes exist; only the protocol can tell you which process answered your call. Skipping this distinction produced the original §3 mis-inference: "PIDs persisted across probes" was read as "same process serves all tabs" when in fact different tabs hit different processes from the persistent set.
 
-The session-20 → session-21 OQ-T3 episode is a clean example of failing step 1 and 3 simultaneously: the claim was observable (`ps aux`) and depended on undocumented Desktop spawn-model behavior, but was resolved by inference instead.
+The session-20 → session-21 OQ-T3 episode (and its 2026-05-28 PM correction documented in §3.3) is a clean cascading example: step 1 + step 3 + step 5 all failed. The claim was observable (`ps aux` + `bridge_whoami` could have caught it), depended on undocumented Desktop spawn-model behavior, and the original probe used only system-level introspection without the per-call protocol-level link. The correction itself required a new probe (`bridge_whoami` returning the answering server's PID) — proving that even **the lesson that codified empirical-probe discipline was itself drafted on insufficient empirical evidence**. The corrected §3 documents the true tab-group routing pattern; the corrected §5 documents the 5th-step refinement that surfaces this kind of inference gap before it lands in a tracked artifact.
 
 ## 6. How to update this lesson when the model changes
 
