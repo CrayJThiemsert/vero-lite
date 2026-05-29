@@ -187,20 +187,34 @@ There is no path #4 (silent expose without inventory entry).
 
 Step 5's AC-5 test suite contains an AC-8 negative case: a transport
 call to a tool name that is **on the not-on-bridge list** (e.g.
-`commit_to_main`, `write_file`, `run_shell`) MUST return:
+`commit_to_main`, `write_file`, `run_shell`, `git_commit`) is **refused
+at the FastMCP framework layer** with:
 
-```python
-{
-    "ok": False,
-    "error_code": "tool-not-found",  # ErrorCode.TOOL_NOT_FOUND
-    "error_message": "<tool name> is not exposed on this bridge",
-}
+```text
+mcp.server.fastmcp.exceptions.ToolError: Unknown tool: <tool name>
 ```
 
-…and NOT, e.g., bypass G5 / C4 / classifier dispatch by surfacing the
-operation via a side channel. The error is a transport-layer rejection;
-it does NOT escalate to the PreToolUse deny hook (because the tool was
-never dispatched to a real implementation).
+**FINDING-3 (Step 5, 2026-05-29) — contract corrected.** This section
+originally specified a server-emitted JSON body
+(`{"ok": False, "error_code": "tool-not-found", "error_message": "…"}`).
+The actual Phase-1 architecture registers tools via FastMCP
+`@mcp.tool()` decorators and has **no generic dispatcher** to receive an
+arbitrary tool name and emit that body — an unregistered name is rejected
+by the framework with a `ToolError` **before any server code runs**. That
+is a strictly **stronger** boundary: the operation never reaches an
+implementation, so there is no side channel and no tier-bypass surface
+(it does NOT escalate to the PreToolUse deny hook because nothing is ever
+dispatched). `ErrorCode.TOOL_NOT_FOUND` remains reserved in
+`tools/vero_bridge/_schema.py` for a hypothetical future
+generic-dispatcher surface (Phase 2+); Phase 1 enforces not-on-bridge
+**structurally** (the dangerous op is simply never registered).
+
+The AC-8 negative test
+(`tests/vero_bridge/test_server_adversarial.py`) therefore asserts:
+(1) `await mcp.list_tools()` returns **exactly** the safe-for-all set,
+and (2) each not-on-bridge op raises `ToolError("Unknown tool: …")`.
+Evidence:
+`docs/research/private/2026-05-29-vero-bridge-step5-spoof-matrix.md` §5.
 
 ## 5. Phase 2 reconsideration trail
 
@@ -222,3 +236,9 @@ without leaking authority to an unintended tab.
   Seven safe-for-all + eight not-on-bridge entries. Classification
   rationale + Phase 2 reconsideration trail added per AC-8 / PLAN-0012
   Cowork-handoff guidance.
+- **2026-05-29** — §4 AC-8 negative contract corrected (FINDING-3,
+  Step 5). The not-on-bridge enforcement is a FastMCP framework
+  `ToolError` ("Unknown tool: …"), not a server-emitted
+  `tool-not-found` JSON body — the decorator architecture has no generic
+  dispatcher. Structural (never-registered) enforcement; stronger than
+  the original spec. `ErrorCode.TOOL_NOT_FOUND` reserved for Phase 2+.
