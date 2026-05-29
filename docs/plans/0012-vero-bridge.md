@@ -130,7 +130,7 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
   `docs/research/private/2026-05-29-vero-bridge-step4-cross-client-evidence.md`
   + runbook `docs/runbooks/vero-bridge-cross-client-evidence.md`.
 
-- [ ] **AC-4 — Safety boundary preserved (ADR-013 D2 not weakened) +
+- [x] **AC-4 — Safety boundary preserved (ADR-013 D2 not weakened) +
   audit log + adversarial anti-spoof matrix.** Three sub-criteria:
   - **(a) G5 bypass-immune matrix re-run stays green.** No transport
     path lets any connecting client induce a commit. The
@@ -159,13 +159,21 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
     and observable signals. Evidence: the audit-log file at a named path
     under `docs/research/private/` with the spoof attempts captured plus
     analysis showing Chat-vs-(Code∪Cowork) is discriminable while
-    Code-vs-Cowork is not. **Basis live-proven 2026-05-29 (Step 4, not
-    full AC-4(c)):** Code+Cowork same-instance non-discriminability
-    observed in two epochs (pre-fix pid 62929, post-fix pid 1189; shared
-    pid/ppid/stdin_fd/stdout_fd, counter 1→2) — see Step 4 evidence §6 /
-    runbook §2.2. The **full** cross-tab spoof matrix remains Step 5.
+    Code-vs-Cowork is not. **DONE 2026-05-29 (Step 5):** live spoof
+    matrix captured — Code self-spoof (claiming chat/cowork, epoch A pid
+    30773) + Cowork spoof (claiming chat/code) with a Code witness
+    (epoch B, all on pid 1138, shared fds) prove the server accepts
+    spoofed tags (Option I), the audit log captures the discrepancy, and
+    Code-vs-Cowork is transport-indistinguishable; Chat routes to a
+    separate instance (discriminable). **FINDING-4:** the cooperative
+    "Chat claiming cowork" cell was substituted — Chat (conversation-only
+    tier) correctly refused to self-spoof; Cray ratified closing on the
+    Code+Cowork live evidence + 26 unit tests
+    (`tests/vero_bridge/test_server_adversarial.py`). See Step 5 evidence
+    `docs/research/private/2026-05-29-vero-bridge-step5-spoof-matrix.md` +
+    runbook §5. Governance OQ-T5 surfaced (Chat-as-bridge-client).
 
-- [ ] **AC-5 — Test coverage for transport parse / dispatch / error
+- [x] **AC-5 — Test coverage for transport parse / dispatch / error
   paths (cross-client matrix + adversarial + AC-8 negative).** Unit +
   integration tests cover, **from both client paths** (Chat and Cowork):
   well-formed message parse; malformed / truncated message rejection;
@@ -180,7 +188,14 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
   and AC-8 negative); `ruff` + `mypy` clean (mirror PLAN-0011 AC-6
   discipline); case-coverage matrix attached (happy / boundary /
   fail-closed / adversarial / concurrency) per the Cray
-  verification-rigor directive (PLAN-0009 §Verification).
+  verification-rigor directive (PLAN-0009 §Verification). **DONE
+  2026-05-29 (Step 5):** `tests/vero_bridge/test_server_adversarial.py`
+  (26 tests: adversarial spoof-acceptance + signals-independent-of-tag +
+  audit-discrepancy + AC-8 not-on-bridge ToolError + git-over-transport
+  negative + boundary/encoding); full suite **813 passed / 7 skipped**;
+  ruff + mypy clean; G5 deny suite green. Case-coverage matrix in runbook
+  §5.2 (residual risks named: FINDING-4 cooperative-spoof gap +
+  no true-concurrency race test).
 
 - [x] **AC-6 — Live evidence captured (both clients, live not mocked).**
   v1's round-trip is exercised in a real Code↔Chat session **and** a
@@ -212,7 +227,7 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
   `name`) and receive identical `{ok, echoed, ts_ns:string}` shape — see
   evidence §2.1 / runbook §2.1.
 
-- [ ] **AC-8 — Capability-by-tool-design discipline (Option I identity
+- [x] **AC-8 — Capability-by-tool-design discipline (Option I identity
   model enforcement).** The bridge's tool surface is restricted to
   **tab-tier-safe operations** — operations that are safe for any tab
   (Chat, Cowork, Code) to invoke without violating the operating tier
@@ -228,7 +243,17 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
   to invoke a not-on-bridge operation via the transport returns a
   transport-layer "tool not found" error (not a tier-bypass). The
   inventory is the canonical "what is exposed where" reference for Phase
-  1 reviews + future Phase 2 differentiation decisions.
+  1 reviews + future Phase 2 differentiation decisions. **DONE 2026-05-29
+  (Step 5):** `await mcp.list_tools()` asserted to equal exactly the
+  three safe-for-all introspection tools; every not-on-bridge op
+  (`commit_to_main`, `git_commit`, `git_push`, `write_file`, `run_shell`,
+  `dispatch_bind_on_cray`, `set_status`, `modify_settings`, `kill_server`,
+  `restart_server`) raises a framework `ToolError("Unknown tool")` before
+  any handler runs. **FINDING-3:** the enforcement is a framework
+  `ToolError`, not a server-emitted `tool-not-found` JSON body (no generic
+  dispatcher; structural non-registration is a stronger boundary);
+  capability-inventory §4 amended; `ErrorCode.TOOL_NOT_FOUND` reserved for
+  Phase 2+. Tests: `tests/vero_bridge/test_server_adversarial.py`.
 
 ## Out of Scope
 
