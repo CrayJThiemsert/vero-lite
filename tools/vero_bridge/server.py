@@ -40,12 +40,12 @@ Safety boundaries preserved:
   event-loop dispatch. Concurrency-related state is deliberately
   absent (would constrain Phase 2 reconsideration).
 
-Step 2b adds the first integration tool — ``read_repo_path`` — a
-path-sandboxed, read-only repo-file reader (git-tracked allowlist; see
-:mod:`tools.vero_bridge._repo_read`). Still deferred to follow-ons:
+Step 2b adds the integration tools. Shipped: ``read_repo_path`` (a
+path-sandboxed, read-only repo-file reader; git-tracked allowlist, see
+:mod:`tools.vero_bridge._repo_read`) and ``validate_handoff_frontmatter``
+(in-process handoff-frontmatter validation via
+:mod:`tools.vero_bridge._handoff_validate`). Still deferred to follow-ons:
 
-- ``validate_handoff_frontmatter`` — needs schema import from
-  ``tools.handoffs`` (Step 2b).
 - ``lint_status`` — needs git subprocess + STATUS frontmatter parse
   (Step 2b).
 - ``dispatch_receive`` — needs gitignored receive-queue path (Step 2b
@@ -71,6 +71,7 @@ from tools.vero_bridge._audit_log import (
     _read_proc_fd,
     log_call,
 )
+from tools.vero_bridge._handoff_validate import validate_frontmatter_content
 from tools.vero_bridge._repo_read import read_repo_file
 from tools.vero_bridge._schema import (
     BridgeError,
@@ -351,6 +352,87 @@ def read_repo_path(version: int, claimed_tag: str, path: str) -> dict[str, Any]:
     ADR-013 D2).
     """
     return _handle_read_repo_path(version=version, claimed_tag=claimed_tag, path=path)
+
+
+# ---------------------------------------------------------------------------
+# Tool: validate_handoff_frontmatter
+# ---------------------------------------------------------------------------
+
+
+def _handle_validate_handoff_frontmatter(
+    version: int, claimed_tag: str, content: str
+) -> dict[str, Any]:
+    """Plain-function implementation of :func:`validate_handoff_frontmatter`.
+
+    Note the two distinct success notions: ``ok`` is *transport* success
+    (the call was well-formed and ran); ``valid`` is *content* validity (the
+    frontmatter passed the schema). An invalid handoff is ``ok=True,
+    valid=False`` — validation findings are a successful result, not an error.
+    A non-str ``content`` is the only payload-level malformation
+    (``MALFORMED_FRAME``); an *empty* string is a valid input that simply
+    reports ``valid=False`` (missing frontmatter block).
+    """
+    try:
+        env = parse_envelope(
+            version=version,
+            claimed_tag=claimed_tag,
+            message_type=MessageType.SIGNAL.value,
+            payload={"content": content},
+        )
+    except BridgeError as err:
+        record = log_call(
+            tool_name="validate_handoff_frontmatter",
+            claimed_tag=claimed_tag,
+            version=version,
+            outcome="error",
+            error_code=err.code.value,
+        )
+        _update_last_call_ts(record)
+        return format_error_response(err)
+
+    try:
+        received = env.payload["content"]
+        if not isinstance(received, str):
+            raise MalformedFrameError("content must be a str")
+    except BridgeError as err:
+        record = log_call(
+            tool_name="validate_handoff_frontmatter",
+            claimed_tag=env.claimed_tag,
+            version=env.version,
+            outcome="error",
+            error_code=err.code.value,
+        )
+        _update_last_call_ts(record)
+        return format_error_response(err)
+
+    valid, errors = validate_frontmatter_content(received)
+    record = log_call(
+        tool_name="validate_handoff_frontmatter",
+        claimed_tag=env.claimed_tag,
+        version=env.version,
+        outcome="ok",
+    )
+    _update_last_call_ts(record)
+    return {"ok": True, "valid": valid, "errors": errors}
+
+
+@mcp.tool()
+def validate_handoff_frontmatter(version: int, claimed_tag: str, content: str) -> dict[str, Any]:
+    """Validate a handoff frontmatter body against the committed schema.
+
+    Runs ``tools/handoffs/_schema.py`` validation **in-process** (capability
+    inventory §2.5) — the same logic the ``validate_handoff.py`` CLI uses —
+    so Cowork can validate handoffs it authors without Code brokering the run
+    (Lesson #8 K-1). Pure validation: no filesystem write, no state mutation.
+
+    Returns ``{"ok": True, "valid": <bool>, "errors": [{field, value,
+    message, severity}, ...]}``. ``ok`` is transport success; ``valid`` is
+    content validity (no error-severity finding). An invalid handoff is
+    ``ok=True, valid=False`` with the findings.
+    """
+    return _handle_validate_handoff_frontmatter(
+        version=version, claimed_tag=claimed_tag, content=content
+    )
 
 
 # ---------------------------------------------------------------------------

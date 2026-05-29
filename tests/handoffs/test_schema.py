@@ -93,6 +93,37 @@ def test_missing_frontmatter_block(tmp_path: Path) -> None:
     assert result[0].field == "<frontmatter>"
 
 
+def test_parse_text_happy_path() -> None:
+    """parse_frontmatter_text parses raw content (no file) into a typed
+    Frontmatter — the in-process entry point used by the vero-bridge tool."""
+    fm = sch.parse_frontmatter_text(_VALID)
+    assert isinstance(fm, sch.Frontmatter)
+    assert fm.actor is sch.Actor.CHAT
+    assert fm.session == 10
+
+
+def test_parse_text_missing_block() -> None:
+    """No '---' fence → a single structural finding, same as the path API."""
+    result = sch.parse_frontmatter_text("no frontmatter here\n")
+    assert isinstance(result, list)
+    assert result[0].field == "<frontmatter>"
+
+
+def test_parse_text_matches_path_based(tmp_path: Path) -> None:
+    """The content-based and path-based entry points agree on the typed
+    result for identical content (parse_frontmatter delegates to the text
+    form) — differing only in the recorded ``source``."""
+    p = _write(tmp_path / "2026-05-19-0200-chat-demo.md", _VALID)
+    from_path = sch.parse_frontmatter(p)
+    from_text = sch.parse_frontmatter_text(_VALID)
+    assert isinstance(from_path, sch.Frontmatter)
+    assert isinstance(from_text, sch.Frontmatter)
+    assert from_text.actor == from_path.actor
+    assert from_text.session == from_path.session
+    assert from_text.status == from_path.status
+    assert from_text.created == from_path.created
+
+
 def test_validate_filename_prefix_match(tmp_path: Path) -> None:
     """A filename whose actor token matches the actor passes."""
     p = tmp_path / "2026-05-19-0200-chat-demo.md"
