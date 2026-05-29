@@ -10,7 +10,14 @@ Counter ops by loop type:
 - **L1 (Write/Edit)** — increment on every Write/Edit of the same
   normalized ``file_path``. Reset on "target untouched next turn" is
   **deferred to Step 4** (the Stop hook is the natural turn-boundary
-  observer; PostToolUse cannot see turn boundaries).
+  observer; PostToolUse cannot see turn boundaries). **Commit-boundary
+  reset (follow-up, 2026-05-29):** a successful ``git commit`` observed in
+  the Bash path resets the L1 counters for the files in the new HEAD commit
+  — a commit is unambiguous observable progress and a reliable reset point
+  independent of the Stop-hook turn boundary (which, across a long-lived
+  multi-PR session, was empirically not catching legitimate repeated edits
+  to the same file across separate PRs). Resets ONLY the committed files,
+  so an unrelated in-flight edit loop is not masked.
 - **L2 (pytest)** — parses Bash output for ``FAILED``/``PASSED`` lines
   (pytest "short test summary" + verbose mode). Increments L2 per
   failing nodeid; resets L2 per passing nodeid. **Fires Telegram inline
@@ -46,6 +53,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -59,6 +67,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     DEFAULT_COUNTER_PATH,
     ActionRecord,
     LoopType,
+    get_count,
     has_triggered,
     increment,
     load_counter,
@@ -74,6 +83,16 @@ from _wsl_bridge import bash_argv, env_with_wslenv_passthrough  # noqa: E402
 
 DEFAULT_TELEGRAM_SCRIPT = REPO_ROOT / "tools" / "notify" / "telegram.sh"
 TELEGRAM_TIMEOUT_SEC = 5
+
+#: Resolved ``git`` executable (absolute path; avoids a partial-path argv).
+#: Falls back to the bare name — a missing git surfaces as an OSError in
+#: :func:`_committed_files`, which fails closed (no reset).
+_GIT = shutil.which("git") or "git"
+
+#: Matches a ``git commit`` invocation anywhere in a (possibly chained /
+#: wsl-wrapped) Bash command, excluding ``git commit-tree`` / ``commit-graph``
+#: via the negative-lookahead on word-char / hyphen.
+_GIT_COMMIT_RE = re.compile(r"\bgit\s+commit(?![\w-])")
 
 _FORWARDED_ENV = ("TELEGRAM_BOT_TOKEN", "TELEGRAM_CHAT_ID")
 
@@ -334,6 +353,58 @@ def _apply_l2(counter: Any, combined_output: str) -> bool:
     return changed
 
 
+def _is_git_commit(command: str) -> bool:
+    """True iff the Bash command invokes ``git commit`` (not ``commit-tree``)."""
+    return bool(_GIT_COMMIT_RE.search(command))
+
+
+def _committed_files(repo_root: Path) -> list[str]:
+    """Repo-relative paths in the current HEAD commit (the just-made commit).
+
+    Read-only ``git diff-tree`` query. Fails closed to ``[]`` on any git error
+    (missing binary, not a repo, timeout) or an empty/merge commit — a missing
+    file list simply means no reset.
+    """
+    try:
+        # S603: fixed argv, no shell; read-only query against HEAD.
+        result = subprocess.run(  # noqa: S603
+            [_GIT, "diff-tree", "--no-commit-id", "--name-only", "-r", "HEAD"],
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return []
+    if result.returncode != 0:
+        return []
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def _apply_commit_reset(counter: Any, command: str, tool_response: dict[str, Any]) -> bool:
+    """Commit-boundary L1 reset. Returns True if any counter changed.
+
+    A successful ``git commit`` is unambiguous observable progress: the
+    committed files reached a persisted boundary, so their L1 edit counters
+    reset. Independent of (and more robust than) the Stop-hook turn-boundary
+    reset — it fires in the PostToolUse Bash path, which runs reliably on every
+    Bash call. Resets ONLY the files in the new HEAD commit, so an unrelated
+    in-flight edit loop is not masked. A failed/ambiguous commit does not reset.
+    """
+    if not _is_git_commit(command):
+        return False
+    if _bash_outcome(tool_response) != "success":
+        return False
+    changed = False
+    for path in _committed_files(REPO_ROOT):
+        target = normalize_file_path(path)
+        if target and get_count(counter, LoopType.FILE_EDIT, target) > 0:
+            reset(counter, LoopType.FILE_EDIT, target)
+            changed = True
+    return changed
+
+
 def _apply_l3(counter: Any, combined_output: str) -> bool:
     """L3: traceback signature. Fires Telegram inline on trigger."""
     sig_raw = _extract_traceback_signature(combined_output)
@@ -371,6 +442,7 @@ def _handle_bash(payload: dict[str, Any]) -> None:
     changed |= _apply_l4(counter, command, tool_response)
     changed |= _apply_l2(counter, combined)
     changed |= _apply_l3(counter, combined)
+    changed |= _apply_commit_reset(counter, command, tool_response)
     if changed:
         save_counter(counter, _state_path())
 
