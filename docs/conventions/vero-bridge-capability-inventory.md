@@ -111,11 +111,11 @@ the run.
 
 | | |
 |---|---|
-| `message_type` | `signal` (subkind `validate_handoff`) — confirmed Step 2 |
+| `message_type` | `signal` (`MessageType.SIGNAL`; subkind `validate_handoff` is implicit in the tool name) |
 | Phase 1 args | `version: int`, `claimed_tag: str`, `content: str` (the handoff file body, including frontmatter) |
-| Phase 1 returns | `{"ok": True, "valid": <bool>, "errors": [{"field": <str>, "value": <str>, "message": <str>, "severity": "error" \| "warning"}, ...]}` |
-| Server side-effects | Audit-log entry per AC-4 (b). Invokes `tools/handoffs/_schema.py::parse_frontmatter` in-process. No filesystem write. |
-| Classification rationale | Pure validation against the committed schema. No state mutation; no privileged information. Validation logic is the same code already in repo + already runnable by Code. |
+| Phase 1 returns | `{"ok": True, "valid": <bool>, "errors": [{"field": <str>, "value": <str>, "message": <str>, "severity": "error" \| "warning"}, ...]}`. **`ok` is transport success; `valid` is content validity** — an invalid handoff is `ok=True, valid=False` (validation findings are a successful result, not a transport error). `valid` is `False` iff any finding is error-severity (`ValidationError.is_error()`). |
+| Server side-effects | Audit-log entry per AC-4 (b) (accepted **and** rejected). Invokes `tools/handoffs/_schema.py::parse_frontmatter_text` (a content-based entry point added alongside this tool; same validation as the path-based `parse_frontmatter` the CLI uses) in-process via [`tools/vero_bridge/_handoff_validate.py`](../../tools/vero_bridge/_handoff_validate.py). **No filesystem write.** |
+| Classification rationale | Pure validation against the committed schema. No state mutation; no privileged information. The validation logic is the same code already in repo + already runnable by Code; the bridge only changes *who* can invoke it. No new `ErrorCode` — only a non-str `content` is `MALFORMED_FRAME`. **Warning-surfacing nuance** (mirrors `parse_frontmatter`): a warning is returned only when the block *also* has a blocking error; a block whose only issue is advisory parses cleanly and reports `valid=True` with no findings. AC-5 cases ([`tests/vero_bridge/test_validate_handoff_frontmatter.py`](../../tests/vero_bridge/test_validate_handoff_frontmatter.py)): valid body, missing-required, invalid-enum, missing-fence, mixed error+warning, empty content. |
 
 ### 2.6 `lint_status`
 
@@ -252,3 +252,13 @@ without leaking authority to an unintended tab.
   safe-for-all registered surface grows from 3 → 4 tools; the AC-8
   tripwire (`tests/vero_bridge/test_server_adversarial.py`
   `SAFE_FOR_ALL_TOOLS`) updated accordingly.
+- **2026-05-29** — **Step 2b: §2.5 `validate_handoff_frontmatter` realized +
+  registered** (second integration tool). Runs the committed
+  handoff-frontmatter schema in-process via a new content-based entry point
+  `tools/handoffs/_schema.py::parse_frontmatter_text` (path-based
+  `parse_frontmatter` refactored to call it — behavior-preserving) through
+  the bridge adapter
+  ([`tools/vero_bridge/_handoff_validate.py`](../../tools/vero_bridge/_handoff_validate.py)).
+  No new `ErrorCode`. Safe-for-all registered surface grows 4 → 5; AC-8
+  tripwire + wire-format §7 invocation surface updated. Closes the Lesson #8
+  K-1 forcing fact (Cowork can now validate handoffs it authors).

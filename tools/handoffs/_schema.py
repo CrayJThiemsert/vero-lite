@@ -329,6 +329,28 @@ def _build(path: Path, raw: dict[str, object]) -> Frontmatter | list[ValidationE
     )
 
 
+def parse_frontmatter_text(
+    content: str, source: Path | None = None
+) -> Frontmatter | list[ValidationError]:
+    """Parse + type a handoff frontmatter block from raw *text*.
+
+    Identical to :func:`parse_frontmatter` but takes the file content
+    directly instead of reading from disk — for in-process callers that
+    hold the text but no file path (e.g. the vero-bridge
+    ``validate_handoff_frontmatter`` tool, which receives the handoff body
+    over the wire). ``source`` is recorded on the resulting
+    :class:`Frontmatter` (a ``<text>`` placeholder by default); it does not
+    affect validation. No filesystem access.
+
+    Returns a :class:`Frontmatter` on success, or a non-empty list of
+    :class:`ValidationError` describing every schema violation.
+    """
+    block = _split_frontmatter(content)
+    if block is None:
+        return [ValidationError("<frontmatter>", "", "missing '---' frontmatter block")]
+    return _build(source if source is not None else Path("<text>"), _parse_block(block))
+
+
 def parse_frontmatter(path: Path) -> Frontmatter | list[ValidationError]:
     """Parse + type one handoff file.
 
@@ -339,10 +361,7 @@ def parse_frontmatter(path: Path) -> Frontmatter | list[ValidationError]:
         text = path.read_text(encoding="utf-8")
     except OSError as exc:
         return [ValidationError("<file>", str(path), f"cannot read file: {exc}")]
-    block = _split_frontmatter(text)
-    if block is None:
-        return [ValidationError("<frontmatter>", "", "missing '---' frontmatter block")]
-    return _build(path, _parse_block(block))
+    return parse_frontmatter_text(text, source=path)
 
 
 def validate_filename_prefix(path: Path, actor: Actor) -> ValidationError | None:
