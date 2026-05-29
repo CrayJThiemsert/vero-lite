@@ -37,6 +37,16 @@ can connect as an MCP client to a Code-side server. This PLAN delivers a
 clients of a single shared Code-side stdio-MCP server in v1, **not** a
 Code↔Chat-only transport.
 
+> **OQ-T5 framing correction (2026-05-30, Cray-adjudicated).** Of the two
+> non-Code tabs, **Cowork is the live operating client**; **Chat is
+> capability-probe-verified (OQ-B) but is *not* a sanctioned operating
+> client.** Chat's repo-blind role (ADR-012 D2) has no need for the
+> repo-grounded bridge surface, and the Step-4 Chat round-trip (AC-3
+> record 7) was a **replay**, never a fresh cooperative call. Read
+> "first-class clients" above as **Code + Cowork operating; Chat
+> capability-probed only**. Tier files reconciled accordingly; no new ADR
+> (PLAN-0009 OQ-3). See AC-3 + AC-4(c) OQ-T5.
+
 **Why both clients in v1 (path-C decision, 2026-05-28 PM).** The earlier
 single-client framing deferred the Cowork-client to v2 citing the
 [cowork-network-locus runbook](../runbooks/cowork-network-locus.md) §3
@@ -124,9 +134,13 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
   `docs/research/private/`, both within bounded latency, both with
   matching tokens. **OQ-B = RESOLVED YES (FULL)** (Chat + Cowork
   MCP-client primitives both verified — research note §3.2–§3.8) — was a
-  gate for Step 3; now unblocked. **DONE 2026-05-29 (Step 4):** Chat
-  (record 7) + Cowork (record 9) round-trips captured live (Code record 8
-  as a third path); evidence
+  gate for Step 3; now unblocked. **DONE 2026-05-29 (Step 4):** Cowork
+  (record 9) + Code (record 8) round-trips captured live as **fresh
+  cooperative** calls; the Chat path (record 7) was a **replay**, not a
+  fresh cooperative call (step5-spoof-matrix §3.2 anti-replay contrast).
+  Per **OQ-T5 RESOLVED** (see AC-4(c)), the Chat-client operating path is
+  **capability-probe-verified (OQ-B) but never live-exercised** — Code +
+  Cowork are the operating clients. Evidence
   `docs/research/private/2026-05-29-vero-bridge-step4-cross-client-evidence.md`
   + runbook `docs/runbooks/vero-bridge-cross-client-evidence.md`.
 
@@ -171,7 +185,15 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
     Code+Cowork live evidence + 26 unit tests
     (`tests/vero_bridge/test_server_adversarial.py`). See Step 5 evidence
     `docs/research/private/2026-05-29-vero-bridge-step5-spoof-matrix.md` +
-    runbook §5. Governance OQ-T5 surfaced (Chat-as-bridge-client).
+    runbook §5. **Governance OQ-T5 RESOLVED 2026-05-30 (Cray-adjudicated):**
+    Chat is **not** a sanctioned bridge client — operationally no demand
+    (the Step-4 Chat cell was a replay, never live) + Chat's repo-blind
+    role (ADR-012 D2); the repo-grounded bridge surface belongs to the
+    repo-grounded venues (Code + Cowork). Tier files reconciled
+    (`chat_tab_instructions.md` = not-a-client + spoof-refusal codified;
+    `cowork_tab_instructions.md` = sanctioned client). FINDING-4
+    (refusal-to-spoof) codified as correct for every tab. No new ADR
+    (PLAN-0009 OQ-3 precedent). See session-26 STATUS + Lesson #0019.
 
 - [x] **AC-5 — Test coverage for transport parse / dispatch / error
   paths (cross-client matrix + adversarial + AC-8 negative).** Unit +
