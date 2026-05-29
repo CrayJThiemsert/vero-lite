@@ -225,6 +225,31 @@ def test_binary_file_is_forbidden() -> None:
     assert "UTF-8" in str(excinfo.value)
 
 
+def test_nul_byte_path_is_forbidden() -> None:
+    """Fail-closed (wire-format §3.1): a NUL byte would raise ValueError
+    from the os layer downstream — caught structurally as PATH_FORBIDDEN
+    rather than leaked as a raw exception across the MCP boundary."""
+    with pytest.raises(PathForbiddenError) as excinfo:
+        read_repo_file("READ\x00ME.md")
+    assert excinfo.value.code is ErrorCode.PATH_FORBIDDEN
+    assert "NUL" in str(excinfo.value)
+
+
+def test_unreadable_file_is_forbidden(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fail-closed: an OSError during the read (perms / vanished mid-call)
+    on an otherwise-valid tracked file becomes PATH_FORBIDDEN, never a raw
+    exception across the boundary."""
+
+    def _boom(*_args: object, **_kwargs: object) -> str:
+        raise PermissionError("simulated unreadable file")
+
+    monkeypatch.setattr(Path, "read_text", _boom)
+    with pytest.raises(PathForbiddenError) as excinfo:
+        read_repo_file("README.md")
+    assert excinfo.value.code is ErrorCode.PATH_FORBIDDEN
+    assert "could not be read" in str(excinfo.value)
+
+
 def test_rejected_read_creates_no_file(fake_repo: Path) -> None:
     """No-write guarantee: a forbidden read never materializes the path."""
     with pytest.raises(PathForbiddenError):

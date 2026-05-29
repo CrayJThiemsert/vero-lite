@@ -91,6 +91,11 @@ def resolve_repo_path(path: str, repo_root: Path | None = None) -> Path:
     root = (repo_root if repo_root is not None else REPO_ROOT).resolve()
 
     # 1. Structural — reject before touching the filesystem.
+    # A NUL byte would raise ``ValueError`` from the os layer downstream
+    # (``stat``/``resolve``); catch it here so every rejection is a clean
+    # ``PathForbiddenError`` envelope rather than a leaked raw exception.
+    if "\x00" in path:
+        raise PathForbiddenError(path, "path contains a NUL byte")
     if Path(path).is_absolute() or path.startswith("/"):
         raise PathForbiddenError(path, "absolute paths are not allowed")
     parts = Path(path).parts
@@ -127,15 +132,19 @@ def read_repo_file(path: str, repo_root: Path | None = None) -> tuple[str, int, 
     """
     candidate = resolve_repo_path(path, repo_root=repo_root)
 
-    # 5b. Size guard — stat before read so a huge file never hits memory.
-    size = candidate.stat().st_size
-    if size > MAX_READ_BYTES:
-        raise PathForbiddenError(path, f"file exceeds max read size ({MAX_READ_BYTES} bytes)")
-
-    # 5c. UTF-8 text only — a binary file is refused, not returned mangled.
     try:
+        # 5b. Size guard — stat before read so a huge file never hits memory.
+        size = candidate.stat().st_size
+        if size > MAX_READ_BYTES:
+            raise PathForbiddenError(path, f"file exceeds max read size ({MAX_READ_BYTES} bytes)")
+        # 5c. UTF-8 text only — a binary file is refused, not returned mangled.
         content = candidate.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         raise PathForbiddenError(path, "file is not valid UTF-8 text") from None
+    except OSError as exc:
+        # A tracked, in-tree regular file should be readable, but stay
+        # fail-closed if the read fails (perms / vanished mid-call) rather
+        # than leak a raw exception across the MCP boundary (wire-format §3.1).
+        raise PathForbiddenError(path, f"file could not be read ({type(exc).__name__})") from None
 
     return path, size, content
