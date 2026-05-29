@@ -42,12 +42,12 @@ Safety boundaries preserved:
 
 Step 2b adds the integration tools. Shipped: ``read_repo_path`` (a
 path-sandboxed, read-only repo-file reader; git-tracked allowlist, see
-:mod:`tools.vero_bridge._repo_read`) and ``validate_handoff_frontmatter``
+:mod:`tools.vero_bridge._repo_read`), ``validate_handoff_frontmatter``
 (in-process handoff-frontmatter validation via
-:mod:`tools.vero_bridge._handoff_validate`). Still deferred to follow-ons:
+:mod:`tools.vero_bridge._handoff_validate`), and ``lint_status``
+(``docs/STATUS.md`` freshness vs local ``main`` via
+:mod:`tools.vero_bridge._status_lint`). Still deferred to follow-ons:
 
-- ``lint_status`` — needs git subprocess + STATUS frontmatter parse
-  (Step 2b).
 - ``dispatch_receive`` — needs gitignored receive-queue path (Step 2b
   or Step 5 alongside the dispatch flow integration).
 
@@ -80,6 +80,7 @@ from tools.vero_bridge._schema import (
     format_error_response,
     parse_envelope,
 )
+from tools.vero_bridge._status_lint import compute_status_freshness
 
 #: Server start timestamp (epoch seconds, integer). Used by
 #: :func:`bridge_status` to report uptime. Captured at module import
@@ -433,6 +434,61 @@ def validate_handoff_frontmatter(version: int, claimed_tag: str, content: str) -
     return _handle_validate_handoff_frontmatter(
         version=version, claimed_tag=claimed_tag, content=content
     )
+
+
+# ---------------------------------------------------------------------------
+# Tool: lint_status
+# ---------------------------------------------------------------------------
+
+
+def _handle_lint_status(version: int, claimed_tag: str) -> dict[str, Any]:
+    """Plain-function implementation of :func:`lint_status`.
+
+    Read-only freshness check; no payload. The freshness computation is
+    itself fail-closed (see :mod:`tools.vero_bridge._status_lint`) — it never
+    raises, so the only error path here is envelope rejection.
+    """
+    try:
+        env = parse_envelope(
+            version=version,
+            claimed_tag=claimed_tag,
+            message_type=MessageType.SIGNAL.value,
+        )
+    except BridgeError as err:
+        record = log_call(
+            tool_name="lint_status",
+            claimed_tag=claimed_tag,
+            version=version,
+            outcome="error",
+            error_code=err.code.value,
+        )
+        _update_last_call_ts(record)
+        return format_error_response(err)
+
+    freshness = compute_status_freshness()
+    record = log_call(
+        tool_name="lint_status",
+        claimed_tag=env.claimed_tag,
+        version=env.version,
+        outcome="ok",
+    )
+    _update_last_call_ts(record)
+    return {"ok": True, **freshness}
+
+
+@mcp.tool()
+def lint_status(version: int, claimed_tag: str) -> dict[str, Any]:
+    """Report whether ``docs/STATUS.md`` is fresh vs the local ``main`` branch.
+
+    Capability inventory §2.6. Reads STATUS's ``head_commit`` and compares it
+    to the newest *substantive* commit on ``main`` (excluding merge commits
+    and ``docs(status):`` reconciles). Returns ``{"ok": True, "fresh": <bool>,
+    "status_head_commit": <sha|None>, "newest_substantive_sha": <sha|None>,
+    "drift_commits": [<sha>, ...]}``. Read-only — one file read + read-only
+    ``git log`` queries, no write. Fail-closed: any unreadable STATUS or git
+    failure reports ``fresh=False``.
+    """
+    return _handle_lint_status(version=version, claimed_tag=claimed_tag)
 
 
 # ---------------------------------------------------------------------------

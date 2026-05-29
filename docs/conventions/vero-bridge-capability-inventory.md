@@ -126,11 +126,12 @@ stale before authoring a session-reconcile).
 
 | | |
 |---|---|
-| `message_type` | `signal` (subkind `lint_status`) — confirmed Step 2 |
+| `message_type` | `signal` (`MessageType.SIGNAL`; no payload — `version` + `claimed_tag` only) |
 | Phase 1 args | `version: int`, `claimed_tag: str` |
-| Phase 1 returns | `{"ok": True, "fresh": <bool>, "status_head_commit": <short_sha>, "newest_substantive_sha": <short_sha>, "drift_commits": [<sha>, ...]}` |
-| Server side-effects | Audit-log entry per AC-4 (b). Reads `docs/STATUS.md` frontmatter + invokes `git log -1 --format=%h --invert-grep --grep='^docs(status):' origin/main`. **No write.** |
-| Classification rationale | Read-only repo introspection + read-only git query. The check is already documented + already runnable from CLI; bridge-exposure is ergonomics, not capability extension. |
+| Phase 1 returns | `{"ok": True, "fresh": <bool>, "status_head_commit": <short_sha \| None>, "newest_substantive_sha": <short_sha \| None>, "drift_commits": [<sha>, ...]}` |
+| Server side-effects | Audit-log entry per AC-4 (b). Reads `docs/STATUS.md` frontmatter (`head_commit`) + read-only `git log` queries against **local `main`**. **No write.** |
+| Classification rationale | Read-only repo introspection + read-only git query. Realized in [`tools/vero_bridge/_status_lint.py`](../../tools/vero_bridge/_status_lint.py). **Baseline ref = local `main`, not `origin/main`** (spec said `origin/main`): "fresh" means "STATUS reflects what landed", and the landed line is `main`; `HEAD` would count feature-branch WIP, and `origin/main` is a remote-tracking ref that only refreshes on `git fetch` (stale/unqueryable offline; the WSL-local bridge server has no guaranteed network), whereas local `main` is refreshed by `gh`'s pull on every PR merge from this machine. Drift query is `git log <head>..main --no-merges --invert-grep --grep='^docs(status):' --format=%h`: `--invert-grep` drops STATUS-reconcile commits, and **`--no-merges` is required** under this repo's merge-commit PR workflow (a STATUS-reconcile PR's merge commit subject — "Merge pull request #N …" — does not match `^docs(status):` and would otherwise show as false drift right after a reconcile). Fail-closed: unreadable STATUS / missing `head_commit` / git failure → `fresh=False`. No new `ErrorCode`; only envelope problems are transport errors. AC-5 cases ([`tests/vero_bridge/test_lint_status.py`](../../tests/vero_bridge/test_lint_status.py)): fresh, stale-with-drift, docs(status)-excluded, merge-excluded, missing-head, bogus-head. |
+| Phase 2 note | If PRs start merging via the GitHub web UI (not `gh` from this machine), local `main` lags until a `git pull`; a Phase-2 opt-in `fetch`-before-check (network-gated, fail-closed) would close that. |
 
 ### 2.7 `dispatch_receive`
 
@@ -262,3 +263,13 @@ without leaking authority to an unintended tab.
   No new `ErrorCode`. Safe-for-all registered surface grows 4 → 5; AC-8
   tripwire + wire-format §7 invocation surface updated. Closes the Lesson #8
   K-1 forcing fact (Cowork can now validate handoffs it authors).
+- **2026-05-29** — **Step 2b: §2.6 `lint_status` realized + registered**
+  (third integration tool). `message_type`, returns, side-effects, and
+  classification updated spec → as-built
+  ([`tools/vero_bridge/_status_lint.py`](../../tools/vero_bridge/_status_lint.py)).
+  **Baseline ref corrected `origin/main` → local `main`** (real-operation
+  smoothness; WSL-local server, no guaranteed network) and **`--no-merges`
+  added** (required for the merge-commit PR workflow — without it a
+  STATUS-reconcile PR's merge commit reads as false drift). Fail-closed
+  (`fresh=False` on any compute failure); no new `ErrorCode`. Safe-for-all
+  registered surface grows 5 → 6; AC-8 tripwire + wire-format §7 updated.
