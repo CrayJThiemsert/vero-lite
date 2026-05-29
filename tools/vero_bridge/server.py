@@ -1,7 +1,9 @@
-"""vero-bridge stdio-MCP server (production) — Phase 1 Step 2.
+"""vero-bridge stdio-MCP server (production) — Phase 1 Steps 2 + 2b.
 
-Implements the AC-2 lifecycle + AC-4 (b) audit log + the 3 introspection
-tools (``echo`` / ``bridge_status`` / ``bridge_whoami``) from the Phase 1
+Implements the AC-2 lifecycle + AC-4 (b) audit log + the three
+introspection tools (``echo`` / ``bridge_status`` / ``bridge_whoami``,
+Step 2) and the first integration tool (``read_repo_path``, Step 2b) from
+the Phase 1
 :doc:`capability inventory <docs/conventions/vero-bridge-capability-inventory>`.
 
 Under OQ-A RATIFIED A1 stdio-MCP, this server is spawned by Claude
@@ -38,9 +40,10 @@ Safety boundaries preserved:
   event-loop dispatch. Concurrency-related state is deliberately
   absent (would constrain Phase 2 reconsideration).
 
-Deferred to follow-ons (per session-22 Step-2 scope decision):
+Step 2b adds the first integration tool — ``read_repo_path`` — a
+path-sandboxed, read-only repo-file reader (git-tracked allowlist; see
+:mod:`tools.vero_bridge._repo_read`). Still deferred to follow-ons:
 
-- ``read_repo_path`` — needs path sandbox / allowlist (Step 2b).
 - ``validate_handoff_frontmatter`` — needs schema import from
   ``tools.handoffs`` (Step 2b).
 - ``lint_status`` — needs git subprocess + STATUS frontmatter parse
@@ -68,8 +71,10 @@ from tools.vero_bridge._audit_log import (
     _read_proc_fd,
     log_call,
 )
+from tools.vero_bridge._repo_read import read_repo_file
 from tools.vero_bridge._schema import (
     BridgeError,
+    MalformedFrameError,
     MessageType,
     format_error_response,
     parse_envelope,
@@ -272,6 +277,80 @@ def bridge_whoami(version: int, claimed_tag: str) -> dict[str, Any]:
     assert the per-call observable fingerprint.
     """
     return _handle_bridge_whoami(version=version, claimed_tag=claimed_tag)
+
+
+# ---------------------------------------------------------------------------
+# Tool: read_repo_path
+# ---------------------------------------------------------------------------
+
+
+def _handle_read_repo_path(version: int, claimed_tag: str, path: str) -> dict[str, Any]:
+    """Plain-function implementation of :func:`read_repo_path`.
+
+    Two rejection layers, both surfaced via :func:`format_error_response`
+    and both audit-logged:
+
+    - **Envelope** (``parse_envelope``) — version / claimed_tag / type.
+    - **Tool policy** — an empty/non-str ``path`` is ``MALFORMED_FRAME``; a
+      sandbox violation is ``PATH_FORBIDDEN`` (raised by
+      :func:`tools.vero_bridge._repo_read.read_repo_file`).
+    """
+    try:
+        env = parse_envelope(
+            version=version,
+            claimed_tag=claimed_tag,
+            message_type=MessageType.SIGNAL.value,
+            payload={"path": path},
+        )
+    except BridgeError as err:
+        record = log_call(
+            tool_name="read_repo_path",
+            claimed_tag=claimed_tag,
+            version=version,
+            outcome="error",
+            error_code=err.code.value,
+        )
+        _update_last_call_ts(record)
+        return format_error_response(err)
+
+    try:
+        requested = env.payload["path"]
+        if not isinstance(requested, str) or not requested:
+            raise MalformedFrameError("path must be a non-empty str")
+        rel, size, content = read_repo_file(requested)
+    except BridgeError as err:
+        record = log_call(
+            tool_name="read_repo_path",
+            claimed_tag=env.claimed_tag,
+            version=env.version,
+            outcome="error",
+            error_code=err.code.value,
+        )
+        _update_last_call_ts(record)
+        return format_error_response(err)
+
+    record = log_call(
+        tool_name="read_repo_path",
+        claimed_tag=env.claimed_tag,
+        version=env.version,
+        outcome="ok",
+    )
+    _update_last_call_ts(record)
+    return {"ok": True, "path": rel, "size": size, "content": content}
+
+
+@mcp.tool()
+def read_repo_path(version: int, claimed_tag: str, path: str) -> dict[str, Any]:
+    """Read a repo-tracked file under the repo root and return its content.
+
+    Phase-1 read-only sandbox (capability inventory §2.4): ``path`` must be
+    relative, free of ``..``, inside the repo after symlink resolution, not
+    under ``.git/``, **git-tracked**, a regular file, ≤2 MiB, and valid
+    UTF-8. Any violation returns a ``path-forbidden`` error envelope (AC-5).
+    No write path exists — this tool cannot mutate repo state (AC-8 /
+    ADR-013 D2).
+    """
+    return _handle_read_repo_path(version=version, claimed_tag=claimed_tag, path=path)
 
 
 # ---------------------------------------------------------------------------

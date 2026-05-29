@@ -59,6 +59,7 @@ DOCUMENTED_TOOL_CONTRACT: dict[str, set[str]] = {
     "echo": {"version", "claimed_tag", "name"},
     "bridge_status": {"version", "claimed_tag"},
     "bridge_whoami": {"version", "claimed_tag"},
+    "read_repo_path": {"version", "claimed_tag", "path"},
 }
 
 #: Envelope fields a tab MUST NOT pass as kwargs — they are supplied

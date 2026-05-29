@@ -34,6 +34,7 @@ from tools.vero_bridge import (
     ErrorCode,
     MalformedFrameError,
     MessageType,
+    PathForbiddenError,
     UnknownTypeError,
     VersionMismatchError,
     format_error_response,
@@ -69,6 +70,7 @@ def test_error_code_members_are_stable() -> None:
         "version-mismatch",
         "unknown-type",
         "tool-not-found",
+        "path-forbidden",
     }
     assert {c.value for c in ErrorCode} == expected
 
@@ -358,6 +360,17 @@ def test_format_error_response_for_unknown_type() -> None:
     assert "not-a-type" in response["error_message"]
 
 
+def test_format_error_response_for_path_forbidden() -> None:
+    """``PathForbiddenError`` is a tool-policy rejection that still uses the
+    uniform §3.1 error envelope so the client sees one consistent shape."""
+    err = PathForbiddenError("../../etc/passwd", "parent-directory traversal ('..') is not allowed")
+    response = format_error_response(err)
+    assert response["ok"] is False
+    assert response["error_code"] == "path-forbidden"
+    assert "../../etc/passwd" in response["error_message"]
+    assert err.requested == "../../etc/passwd"
+
+
 def test_bridge_error_subclasses_carry_correct_code() -> None:
     """Each subclass binds its :class:`ErrorCode` at construction
     (never None, never wrong) — guard against accidental refactor that
@@ -365,6 +378,7 @@ def test_bridge_error_subclasses_carry_correct_code() -> None:
     assert MalformedFrameError("x").code is ErrorCode.MALFORMED_FRAME
     assert VersionMismatchError(got=99, supported=1).code is ErrorCode.VERSION_MISMATCH
     assert UnknownTypeError("x").code is ErrorCode.UNKNOWN_TYPE
+    assert PathForbiddenError("x", "reason").code is ErrorCode.PATH_FORBIDDEN
 
 
 def test_bridge_error_is_subclass_of_exception() -> None:
@@ -375,3 +389,4 @@ def test_bridge_error_is_subclass_of_exception() -> None:
     assert issubclass(MalformedFrameError, BridgeError)
     assert issubclass(VersionMismatchError, BridgeError)
     assert issubclass(UnknownTypeError, BridgeError)
+    assert issubclass(PathForbiddenError, BridgeError)
