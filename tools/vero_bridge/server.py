@@ -46,10 +46,10 @@ path-sandboxed, read-only repo-file reader; git-tracked allowlist, see
 (in-process handoff-frontmatter validation via
 :mod:`tools.vero_bridge._handoff_validate`), and ``lint_status``
 (``docs/STATUS.md`` freshness vs local ``main`` via
-:mod:`tools.vero_bridge._status_lint`). Still deferred to follow-ons:
-
-- ``dispatch_receive`` — needs gitignored receive-queue path (Step 2b
-  or Step 5 alongside the dispatch flow integration).
+:mod:`tools.vero_bridge._status_lint`), and ``dispatch_receive``
+(receive-only dispatch inbox to a gitignored queue, no authority, via
+:mod:`tools.vero_bridge._dispatch_queue`). This completes the Phase 1
+safe-for-all tool surface (capability inventory §2).
 
 Run via Desktop spawn (see ``mcpServers.vero-bridge`` config) or
 manually for local testing::
@@ -59,6 +59,7 @@ manually for local testing::
 
 from __future__ import annotations
 
+import json
 import os
 import time
 from typing import Any
@@ -71,6 +72,7 @@ from tools.vero_bridge._audit_log import (
     _read_proc_fd,
     log_call,
 )
+from tools.vero_bridge._dispatch_queue import enqueue_dispatch
 from tools.vero_bridge._handoff_validate import validate_frontmatter_content
 from tools.vero_bridge._repo_read import read_repo_file
 from tools.vero_bridge._schema import (
@@ -489,6 +491,92 @@ def lint_status(version: int, claimed_tag: str) -> dict[str, Any]:
     failure reports ``fresh=False``.
     """
     return _handle_lint_status(version=version, claimed_tag=claimed_tag)
+
+
+# ---------------------------------------------------------------------------
+# Tool: dispatch_receive
+# ---------------------------------------------------------------------------
+
+
+def _handle_dispatch_receive(
+    version: int, claimed_tag: str, envelope: dict[str, Any]
+) -> dict[str, Any]:
+    """Plain-function implementation of :func:`dispatch_receive`.
+
+    Receive-only: validates the wire envelope, then appends the dispatch
+    ``envelope`` to the gitignored receive-queue
+    (:mod:`tools.vero_bridge._dispatch_queue`) and returns its
+    content-addressed ``received_id`` + ``ts_ns``. **No commit, no
+    bind-on-Cray** — the envelope is informational. A non-dict or
+    non-JSON-serializable ``envelope`` is ``MALFORMED_FRAME``.
+    """
+    try:
+        env = parse_envelope(
+            version=version,
+            claimed_tag=claimed_tag,
+            message_type=MessageType.DISPATCH_RECEIVE.value,
+            payload={"envelope": envelope},
+        )
+    except BridgeError as err:
+        record = log_call(
+            tool_name="dispatch_receive",
+            claimed_tag=claimed_tag,
+            version=version,
+            outcome="error",
+            error_code=err.code.value,
+        )
+        _update_last_call_ts(record)
+        return format_error_response(err)
+
+    try:
+        received = env.payload["envelope"]
+        if not isinstance(received, dict):
+            raise MalformedFrameError("envelope must be a dict")
+        try:
+            json.dumps(received, sort_keys=True)
+        except (TypeError, ValueError) as exc:
+            raise MalformedFrameError(
+                "envelope must be JSON-serializable with string keys"
+            ) from exc
+    except BridgeError as err:
+        record = log_call(
+            tool_name="dispatch_receive",
+            claimed_tag=env.claimed_tag,
+            version=env.version,
+            outcome="error",
+            error_code=err.code.value,
+        )
+        _update_last_call_ts(record)
+        return format_error_response(err)
+
+    record = log_call(
+        tool_name="dispatch_receive",
+        claimed_tag=env.claimed_tag,
+        version=env.version,
+        outcome="ok",
+    )
+    _update_last_call_ts(record)
+    received_id = enqueue_dispatch(received, claimed_tag=env.claimed_tag, ts_ns=record["ts_ns"])
+    return {
+        "ok": True,
+        "received_id": received_id,
+        # int64 ns → decimal string (FINDING-2; same rationale as echo's ts_ns).
+        "ts_ns": str(record["ts_ns"]),
+    }
+
+
+@mcp.tool()
+def dispatch_receive(version: int, claimed_tag: str, envelope: dict[str, Any]) -> dict[str, Any]:
+    """Receive a dispatch handoff envelope (receive-only; no authority).
+
+    Capability inventory §2.7. Appends ``envelope`` to a gitignored
+    receive-queue as an informational, durable record and returns
+    ``{"ok": True, "received_id": <content-hash>, "ts_ns": <decimal str>}``.
+    **No commit, no bind-on-Cray** — a binding dispatch is ratified only
+    through Code's internal mechanism (AC-8 / ADR-013 D2). The queue write is
+    best-effort (mirrors the audit log).
+    """
+    return _handle_dispatch_receive(version=version, claimed_tag=claimed_tag, envelope=envelope)
 
 
 # ---------------------------------------------------------------------------

@@ -100,9 +100,9 @@ per-tool handler. The closed set is defined by the `MessageType` enum:
 
 | `MessageType` | `.value` | Phase 1 status |
 |---|---|---|
-| `MessageType.ECHO` | `"echo"` | **Active** — required for AC-3 cross-client live evidence. |
-| `MessageType.SIGNAL` | `"signal"` | **Reserved placeholder** for Phase 2+ ADR-013 D1 autonomy signal carriers. |
-| `MessageType.DISPATCH_RECEIVE` | `"dispatch_receive"` | **Reserved placeholder** for Phase 2+ dispatch-without-authority handoff carriers. |
+| `MessageType.ECHO` | `"echo"` | **Active** — `echo` (AC-3 cross-client live evidence). |
+| `MessageType.SIGNAL` | `"signal"` | **Active** — `bridge_status` / `bridge_whoami` / `read_repo_path` / `validate_handoff_frontmatter` / `lint_status` (the introspection + read/validate integration tools). |
+| `MessageType.DISPATCH_RECEIVE` | `"dispatch_receive"` | **Active** — `dispatch_receive` (receive-only, no-authority handoff carrier; Step 2b §2.7). |
 
 Unknown values raise `UnknownTypeError` with `ErrorCode.UNKNOWN_TYPE`.
 The enum carries placeholders so that adding `signal` or
@@ -297,7 +297,7 @@ the server's tools available to every connected tab; each tab loads
 their schemas on demand via `ToolSearch`:
 
 ```
-ToolSearch query: select:mcp__vero-bridge__echo,mcp__vero-bridge__bridge_status,mcp__vero-bridge__bridge_whoami,mcp__vero-bridge__read_repo_path,mcp__vero-bridge__validate_handoff_frontmatter,mcp__vero-bridge__lint_status
+ToolSearch query: select:mcp__vero-bridge__echo,mcp__vero-bridge__bridge_status,mcp__vero-bridge__bridge_whoami,mcp__vero-bridge__read_repo_path,mcp__vero-bridge__validate_handoff_frontmatter,mcp__vero-bridge__lint_status,mcp__vero-bridge__dispatch_receive
 ```
 
 After the schemas load, the tab calls them like any other tool.
@@ -318,6 +318,7 @@ table and that surface diverge):
 | `mcp__vero-bridge__read_repo_path` | `version: int`, `claimed_tag: str`, `path: str` | `{"ok": True, "path": <str>, "size": <int>, "content": <str>}` — or a `path-forbidden` error envelope (§3.1) when the path is outside the §2.4 read sandbox |
 | `mcp__vero-bridge__validate_handoff_frontmatter` | `version: int`, `claimed_tag: str`, `content: str` | `{"ok": True, "valid": <bool>, "errors": [{"field": <str>, "value": <str>, "message": <str>, "severity": "error" \| "warning"}, ...]}` — `ok` is transport success, `valid` is content validity; an invalid handoff is `ok=True, valid=False` |
 | `mcp__vero-bridge__lint_status` | `version: int`, `claimed_tag: str` | `{"ok": True, "fresh": <bool>, "status_head_commit": <sha \| None>, "newest_substantive_sha": <sha \| None>, "drift_commits": [<sha>, ...]}` — freshness of `docs/STATUS.md` vs local `main` (§2.6); `fresh=False` also signals a fail-closed inability to compute |
+| `mcp__vero-bridge__dispatch_receive` | `version: int`, `claimed_tag: str`, `envelope: dict` | `{"ok": True, "received_id": <str>, "ts_ns": <decimal str>}` — receive-only inbox (§2.7); appends the envelope to a gitignored queue, **no commit / no bind**. `received_id` is the content hash of the envelope; a non-dict / non-JSON `envelope` is a `malformed-frame` error |
 
 **`ts_ns` / `last_call_ts_ns` are decimal strings, not numbers (FINDING-2).**
 These are int64 nanosecond stamps (~1.78×10¹⁸) that exceed `2**53`, the
@@ -344,12 +345,14 @@ mcp__vero-bridge__bridge_whoami(version=1, claimed_tag="chat")
 The §2 envelope carries four fields, but a tab passes only **three of
 them as kwargs**: `version`, `claimed_tag`, and the per-tool payload
 kwargs (`name` for `echo`; `path` for `read_repo_path`; `content` for
-`validate_handoff_frontmatter`; none for `bridge_status` / `bridge_whoami` /
-`lint_status`). The fourth envelope field, `message_type`, is **fixed by
-the tool the tab chose to call** — the server's handler supplies it before
-`parse_envelope` runs (`echo` → `MessageType.ECHO`; `bridge_status` /
-`bridge_whoami` / `read_repo_path` / `validate_handoff_frontmatter` /
-`lint_status` → `MessageType.SIGNAL`). A tab therefore selects a `message_type`
+`validate_handoff_frontmatter`; `envelope` for `dispatch_receive`; none for
+`bridge_status` / `bridge_whoami` / `lint_status`). The fourth envelope field,
+`message_type`, is **fixed by the tool the tab chose to call** — the server's
+handler supplies it before `parse_envelope` runs (`echo` → `MessageType.ECHO`;
+`bridge_status` / `bridge_whoami` / `read_repo_path` /
+`validate_handoff_frontmatter` / `lint_status` → `MessageType.SIGNAL`;
+`dispatch_receive` → `MessageType.DISPATCH_RECEIVE`). A tab therefore selects a
+`message_type`
 implicitly, by choosing a tool name; it never passes a `message_type`
 kwarg. Doing so would be a wrong-arity call rejected by MCP before the
 envelope is parsed.
@@ -475,3 +478,14 @@ Two Cowork-specific facts worth recording:
   No new `ErrorCode`: the result `{fresh, status_head_commit,
   newest_substantive_sha, drift_commits}` is fail-closed (`fresh=False` when
   it cannot be computed); only envelope problems are transport errors.
+- **2026-05-29** — **Step 2b: integration tool `dispatch_receive` (completes
+  the Phase 1 surface).** §7.1–§7.3 + §7.2 table add the
+  `mcp__vero-bridge__dispatch_receive` invocation surface (`version`,
+  `claimed_tag`, `envelope: dict`; `MessageType.DISPATCH_RECEIVE` — §2.3 now
+  marks SIGNAL + DISPATCH_RECEIVE **Active**, correcting the earlier
+  "reserved placeholder" labels). Receive-only inbox: appends the envelope to
+  a gitignored queue (`tools/vero_bridge/_dispatch_queue.py`, same write-class
+  as the audit log, best-effort) and returns `{ok, received_id (content
+  hash), ts_ns (decimal str)}`. **No commit, no bind-on-Cray** (authority
+  stays not-on-bridge). No new `ErrorCode`; only a non-dict / non-JSON
+  `envelope` is `MALFORMED_FRAME`.
