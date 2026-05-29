@@ -145,11 +145,11 @@ the dispatch flow is wired in a follow-up step.
 
 | | |
 |---|---|
-| `message_type` | `dispatch_receive` |
+| `message_type` | `dispatch_receive` (`MessageType.DISPATCH_RECEIVE`) |
 | Phase 1 args | `version: int`, `claimed_tag: str`, `envelope: dict` (handoff envelope per [`docs/conventions/handoff-frontmatter-schema.md`](handoff-frontmatter-schema.md)) |
-| Phase 1 returns | `{"ok": True, "received_id": <str>, "ts_ns": <int>}` |
-| Server side-effects | Audit-log entry per AC-4 (b). May write to a gitignored receive-queue file under `docs/research/private/`. **No commit, no bind-on-Cray.** |
-| Classification rationale | Receive-side only. Does not carry authority — the envelope is informational. Authority-bearing operations (commit, bind-on-Cray) remain not-on-bridge. |
+| Phase 1 returns | `{"ok": True, "received_id": <str>, "ts_ns": <decimal str>}`. `received_id` is `rcv-<sha256(canonical envelope)[:16]>` (deterministic, content-addressed). `ts_ns` is a decimal string (FINDING-2; the queue record keeps the int). |
+| Server side-effects | Audit-log entry per AC-4 (b). Appends the envelope to a gitignored receive-queue (`docs/research/private/vero-bridge-dispatch-queue.jsonl`) via [`tools/vero_bridge/_dispatch_queue.py`](../../tools/vero_bridge/_dispatch_queue.py) — same write-class as the audit log, **best-effort** (OSError swallowed). **No commit, no bind-on-Cray.** |
+| Classification rationale | Receive-side only. Does not carry authority — the envelope is informational; a binding dispatch is ratified only through Code's internal mechanism. Authority-bearing operations (commit, bind-on-Cray) remain not-on-bridge. The gitignored queue write is the same already-sanctioned write-class as the AC-4 (b) audit log (not a tracked-file/authority write). No new `ErrorCode`; only a non-dict / non-JSON-serializable `envelope` is `MALFORMED_FRAME`. **Scope decision (Cray, 2026-05-29):** ship the functional queue (durable inbox) rather than a no-op surface. AC-5 cases ([`tests/vero_bridge/test_dispatch_receive.py`](../../tests/vero_bridge/test_dispatch_receive.py)): happy enqueue, deterministic received_id, non-dict / non-JSON rejection, write-failure resilience, AC-7 parity. |
 
 ## 3. Not-on-bridge (the exclusion list)
 
@@ -273,3 +273,14 @@ without leaking authority to an unintended tab.
   STATUS-reconcile PR's merge commit reads as false drift). Fail-closed
   (`fresh=False` on any compute failure); no new `ErrorCode`. Safe-for-all
   registered surface grows 5 → 6; AC-8 tripwire + wire-format §7 updated.
+- **2026-05-29** — **Step 2b: §2.7 `dispatch_receive` realized + registered**
+  (fourth integration tool — **Phase 1 safe-for-all surface now complete,
+  7/7**). Shipped as a **functional receive-queue** (Cray scope decision) not
+  a no-op: appends the envelope to a gitignored queue
+  ([`tools/vero_bridge/_dispatch_queue.py`](../../tools/vero_bridge/_dispatch_queue.py),
+  best-effort, same write-class as the audit log) and returns a
+  content-addressed `received_id` + decimal-string `ts_ns` (FINDING-2). No
+  commit / no bind-on-Cray (authority stays not-on-bridge). No new
+  `ErrorCode`. Wire-format §2.3 SIGNAL + DISPATCH_RECEIVE relabelled
+  **Active**. Safe-for-all registered surface grows 6 → 7; AC-8 tripwire +
+  wire-format §7 updated.

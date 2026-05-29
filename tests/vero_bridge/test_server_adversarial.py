@@ -55,12 +55,10 @@ from tools.vero_bridge import _audit_log
 from tools.vero_bridge._audit_log import reset_counter_for_test
 from tools.vero_bridge.server import _handle_bridge_whoami, _handle_echo, mcp
 
-#: The safe-for-all tools currently registered — a growing subset of the
-#: capability inventory §2 planned surface (§2.1-§2.3 introspection +
-#: §2.4 ``read_repo_path`` + §2.5 ``validate_handoff_frontmatter`` + §2.6
-#: ``lint_status``, added in Step 2b). Any drift here is a capability-surface
-#: change that MUST go through the inventory's "Rule" gate (§3) — this test is
-#: the tripwire.
+#: The complete Phase 1 safe-for-all tool surface (capability inventory §2):
+#: §2.1-§2.3 introspection + the four §2.4-§2.7 integration tools added in
+#: Step 2b. Any drift here is a capability-surface change that MUST go through
+#: the inventory's "Rule" gate (§3) — this test is the tripwire.
 SAFE_FOR_ALL_TOOLS = {
     "echo",
     "bridge_status",
@@ -68,6 +66,7 @@ SAFE_FOR_ALL_TOOLS = {
     "read_repo_path",
     "validate_handoff_frontmatter",
     "lint_status",
+    "dispatch_receive",
 }
 
 #: Representative not-on-bridge operations per the capability inventory
