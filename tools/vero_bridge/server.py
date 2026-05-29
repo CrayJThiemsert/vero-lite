@@ -140,7 +140,13 @@ def _handle_echo(version: int, claimed_tag: str, name: str) -> dict[str, Any]:
     return {
         "ok": True,
         "echoed": env.payload["name"],
-        "ts_ns": record["ts_ns"],
+        # ts_ns is an int64 nanosecond stamp (~1.78e18) that exceeds 2^53,
+        # so it cannot survive a JSON-number-as-IEEE-754-double client
+        # (FINDING-2, Step 4 live evidence). Returned as a decimal STRING so
+        # every client — text-content *and* structuredContent consumers —
+        # round-trips it losslessly. The audit log keeps the int (source of
+        # truth; Python-read, no double).
+        "ts_ns": str(record["ts_ns"]),
     }
 
 
@@ -194,7 +200,9 @@ def _handle_bridge_status(version: int, claimed_tag: str) -> dict[str, Any]:
         "uptime_s": uptime_s,
         "pid": os.getpid(),
         "ppid": os.getppid(),
-        "last_call_ts_ns": _last_call_ts_ns,
+        # int64 ns → decimal string (or None when no call has landed yet).
+        # Same 2^53 / JSON-double rationale as echo's ts_ns (FINDING-2).
+        "last_call_ts_ns": str(_last_call_ts_ns) if _last_call_ts_ns is not None else None,
     }
 
 
@@ -247,7 +255,8 @@ def _handle_bridge_whoami(version: int, claimed_tag: str) -> dict[str, Any]:
         "ppid": os.getppid(),
         "stdin_fd": _read_proc_fd(0),
         "stdout_fd": _read_proc_fd(1),
-        "ts_ns": record["ts_ns"],
+        # int64 ns → decimal string (FINDING-2; same rationale as echo).
+        "ts_ns": str(record["ts_ns"]),
         "env_keys_seen": sorted(k for k in os.environ if k.startswith(_OBSERVABLE_ENV_PREFIXES)),
     }
 
