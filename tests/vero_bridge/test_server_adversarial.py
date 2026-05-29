@@ -18,10 +18,11 @@ case-coverage matrix:
   not unit tests — a single pytest process cannot reproduce the tab-group
   routing.
 - **AC-8 negative (capability-by-tool-design).** The registered MCP tool
-  surface is exactly the three safe-for-all introspection tools. Every
-  not-on-bridge operation (commit_to_main, write_file, run_shell, …) is
-  refused at the FastMCP framework layer with ``ToolError: Unknown tool``
-  — the call never reaches a handler, so there is no tier-bypass surface.
+  surface is exactly the safe-for-all set (the §2.1-§2.3 introspection
+  tools plus §2.4 ``read_repo_path``). Every not-on-bridge operation
+  (commit_to_main, write_file, run_shell, …) is refused at the FastMCP
+  framework layer with ``ToolError: Unknown tool`` — the call never
+  reaches a handler, so there is no tier-bypass surface.
 
   **FINDING-3 (AC-8 contract accuracy).** The capability inventory §4
   originally described the negative result as a server-emitted
@@ -54,10 +55,12 @@ from tools.vero_bridge import _audit_log
 from tools.vero_bridge._audit_log import reset_counter_for_test
 from tools.vero_bridge.server import _handle_bridge_whoami, _handle_echo, mcp
 
-#: The three safe-for-all tools per the capability inventory §2. Any
-#: drift here is a capability-surface change that MUST go through the
-#: inventory's "Rule" gate (§3) — this test is the tripwire.
-SAFE_FOR_ALL_TOOLS = {"echo", "bridge_status", "bridge_whoami"}
+#: The safe-for-all tools currently registered — a growing subset of the
+#: capability inventory §2 planned surface (§2.1-§2.3 introspection +
+#: §2.4 ``read_repo_path``, added in Step 2b). Any drift here is a
+#: capability-surface change that MUST go through the inventory's "Rule"
+#: gate (§3) — this test is the tripwire.
+SAFE_FOR_ALL_TOOLS = {"echo", "bridge_status", "bridge_whoami", "read_repo_path"}
 
 #: Representative not-on-bridge operations per the capability inventory
 #: §3 exclusion list. Each MUST be unregistered (calling it raises
@@ -169,9 +172,10 @@ def test_echo_accepts_spoofed_tag_too(audit_log_path: Path) -> None:
 
 
 async def test_registered_tool_surface_is_exactly_safe_for_all() -> None:
-    """The exposed MCP tool surface is EXACTLY the three safe-for-all
-    introspection tools (capability inventory §2). A new tool appearing
-    here without an inventory entry is a capability-surface regression."""
+    """The exposed MCP tool surface is EXACTLY the safe-for-all set
+    (capability inventory §2 — introspection §2.1-§2.3 + ``read_repo_path``
+    §2.4). A new tool appearing here without an inventory entry is a
+    capability-surface regression."""
     tools = await mcp.list_tools()
     assert {t.name for t in tools} == SAFE_FOR_ALL_TOOLS
 

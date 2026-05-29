@@ -64,13 +64,19 @@ class MessageType(Enum):
 
 
 class ErrorCode(Enum):
-    """Closed set of transport error codes (OQ-T1 fail-closed contract).
+    """Closed set of wire-format error codes (OQ-T1 fail-closed contract).
 
     Every :class:`BridgeError` carries exactly one of these. The
     ``ErrorCode.value`` strings are the canonical wire-format error
     identifiers and are stable across versions for a given code (a
     rename would be a wire-format breaking change requiring a version
     bump).
+
+    Most codes are *envelope/transport* level (raised by
+    :func:`parse_envelope`). ``PATH_FORBIDDEN`` is the one *tool-policy*
+    code in Phase 1 — raised by the ``read_repo_path`` sandbox
+    (:mod:`tools.vero_bridge._repo_read`) so that a payload-level rejection
+    reuses the same uniform error envelope as an envelope rejection.
     """
 
     CONNECTION_DROP = "connection-drop"
@@ -79,6 +85,7 @@ class ErrorCode(Enum):
     VERSION_MISMATCH = "version-mismatch"
     UNKNOWN_TYPE = "unknown-type"
     TOOL_NOT_FOUND = "tool-not-found"
+    PATH_FORBIDDEN = "path-forbidden"
 
 
 class BridgeError(Exception):
@@ -131,6 +138,30 @@ class UnknownTypeError(BridgeError):
             f"unknown message_type: {got!r}; allowed: {allowed}",
         )
         self.got = got
+
+
+class PathForbiddenError(BridgeError):
+    """A tool payload requested a path outside the Phase-1 read sandbox.
+
+    Unlike the other :class:`BridgeError` subclasses (which are *envelope*
+    rejections raised by :func:`parse_envelope`), this is a **tool-level
+    policy** rejection raised by the ``read_repo_path`` sandbox
+    (:mod:`tools.vero_bridge._repo_read`) — e.g. ``..`` traversal, an
+    out-of-tree symlink target, a ``.git/`` path, a non-git-tracked path,
+    a non-regular file, an oversize file, or non-UTF-8 content. It reuses
+    the uniform transport-error envelope (``ErrorCode.PATH_FORBIDDEN`` →
+    :func:`format_error_response`) so the client sees one consistent error
+    shape regardless of which layer rejected the call.
+    """
+
+    requested: str
+
+    def __init__(self, requested: str, reason: str) -> None:
+        super().__init__(
+            ErrorCode.PATH_FORBIDDEN,
+            f"path {requested!r} rejected: {reason}",
+        )
+        self.requested = requested
 
 
 @dataclass(frozen=True)

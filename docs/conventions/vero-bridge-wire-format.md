@@ -178,7 +178,8 @@ the response and bypass the OQ-T1 fail-closed contract.
 | `UNKNOWN_TYPE` | `"unknown-type"` | `message_type` is a `str` but does not match any `MessageType` member. |
 | `CONNECTION_DROP` | `"connection-drop"` | Reserved for server-side transport layer (lost connection, peer hung up before response). Raised by the server in Step 2, not by `parse_envelope()`. |
 | `TIMEOUT` | `"timeout"` | Reserved for server-side transport layer (call exceeded the bounded latency budget). Raised by the server in Step 2, not by `parse_envelope()`. |
-| `TOOL_NOT_FOUND` | `"tool-not-found"` | The tool name on the call is not in the [AC-8 capability inventory](vero-bridge-capability-inventory.md). Raised by the server in Step 2 (the AC-8 negative test under AC-5 asserts this), not by `parse_envelope()`. |
+| `TOOL_NOT_FOUND` | `"tool-not-found"` | The tool name on the call is not in the [AC-8 capability inventory](vero-bridge-capability-inventory.md). **Reserved** — Phase 1 enforces not-on-bridge structurally (an unregistered tool raises a FastMCP `ToolError` before any handler runs; see [inventory §4 FINDING-3](vero-bridge-capability-inventory.md#4-ac-8-negative-test-asserted-by-step-5)), so no server code emits this code yet; it is held for a hypothetical future generic-dispatcher surface. |
+| `PATH_FORBIDDEN` | `"path-forbidden"` | A `read_repo_path` payload targets a path outside the Phase-1 read sandbox (absolute / `..` traversal / out-of-tree symlink / `.git/` / not git-tracked / not a regular file / oversize / non-UTF-8). The **one tool-policy code** — raised by the `read_repo_path` sandbox ([capability inventory §2.4](vero-bridge-capability-inventory.md#24-read_repo_path)), not by `parse_envelope()`; it reuses the §3.1 error envelope so payload rejections look identical to envelope rejections. |
 
 Wire-value strings are stable across versions for a given
 `ErrorCode` — a rename would be a wire-format breaking change
@@ -296,24 +297,25 @@ the server's tools available to every connected tab; each tab loads
 their schemas on demand via `ToolSearch`:
 
 ```
-ToolSearch query: select:mcp__vero-bridge__echo,mcp__vero-bridge__bridge_status,mcp__vero-bridge__bridge_whoami
+ToolSearch query: select:mcp__vero-bridge__echo,mcp__vero-bridge__bridge_status,mcp__vero-bridge__bridge_whoami,mcp__vero-bridge__read_repo_path
 ```
 
 After the schemas load, the tab calls them like any other tool.
 
 ### 7.2 The Phase 1 invocation surface
 
-The three Phase 1 introspection tools are invoked with these exact
-keyword arguments (the authoritative source is the registered FastMCP
-tool surface in [`tools/vero_bridge/server.py`](../../tools/vero_bridge/server.py);
-the [contract test](../../tests/vero_bridge/test_chat_client.py) fails
-if this table and that surface diverge):
+The Phase 1 tools are invoked with these exact keyword arguments (the
+authoritative source is the registered FastMCP tool surface in
+[`tools/vero_bridge/server.py`](../../tools/vero_bridge/server.py); the
+[contract test](../../tests/vero_bridge/test_chat_client.py) fails if this
+table and that surface diverge):
 
 | Tool (MCP name) | Required kwargs | Returns (shape — see [capability inventory](vero-bridge-capability-inventory.md) §2) |
 |---|---|---|
 | `mcp__vero-bridge__echo` | `version: int`, `claimed_tag: str`, `name: str` | `{"ok": True, "echoed": <name>, "ts_ns": <decimal str>}` |
 | `mcp__vero-bridge__bridge_status` | `version: int`, `claimed_tag: str` | `{"ok": True, "protocol_version": 1, "uptime_s": <int>, "pid": <int>, "ppid": <int>, "last_call_ts_ns": <decimal str \| None>}` |
 | `mcp__vero-bridge__bridge_whoami` | `version: int`, `claimed_tag: str` | `{"ok": True, "claimed_tag": <verbatim>, "pid": <int>, "ppid": <int>, "stdin_fd": <str>, "stdout_fd": <str>, "ts_ns": <decimal str>, "env_keys_seen": [<str>, ...]}` |
+| `mcp__vero-bridge__read_repo_path` | `version: int`, `claimed_tag: str`, `path: str` | `{"ok": True, "path": <str>, "size": <int>, "content": <str>}` — or a `path-forbidden` error envelope (§3.1) when the path is outside the §2.4 read sandbox |
 
 **`ts_ns` / `last_call_ts_ns` are decimal strings, not numbers (FINDING-2).**
 These are int64 nanosecond stamps (~1.78×10¹⁸) that exceed `2**53`, the
@@ -339,14 +341,15 @@ mcp__vero-bridge__bridge_whoami(version=1, claimed_tag="chat")
 
 The §2 envelope carries four fields, but a tab passes only **three of
 them as kwargs**: `version`, `claimed_tag`, and the per-tool payload
-kwargs (`name` for `echo`; none for `bridge_status` / `bridge_whoami`).
-The fourth envelope field, `message_type`, is **fixed by the tool the
-tab chose to call** — the server's handler supplies it before
-`parse_envelope` runs (`echo` → `MessageType.ECHO`; `bridge_status` /
-`bridge_whoami` → `MessageType.SIGNAL`). A tab therefore selects a
-`message_type` implicitly, by choosing a tool name; it never passes a
-`message_type` kwarg. Doing so would be a wrong-arity call rejected by
-MCP before the envelope is parsed.
+kwargs (`name` for `echo`; `path` for `read_repo_path`; none for
+`bridge_status` / `bridge_whoami`). The fourth envelope field,
+`message_type`, is **fixed by the tool the tab chose to call** — the
+server's handler supplies it before `parse_envelope` runs (`echo` →
+`MessageType.ECHO`; `bridge_status` / `bridge_whoami` / `read_repo_path`
+→ `MessageType.SIGNAL`). A tab therefore selects a `message_type`
+implicitly, by choosing a tool name; it never passes a `message_type`
+kwarg. Doing so would be a wrong-arity call rejected by MCP before the
+envelope is parsed.
 
 `claimed_tag` is the tab's own self-asserted identity (`"chat"` from the
 Chat tab, `"cowork"` from Cowork). It is **audit-only** (§2.2, OQ-T3
@@ -441,3 +444,13 @@ Two Cowork-specific facts worth recording:
   via the text-content channel. Audit log keeps the int. Server +
   unit-test changes land in the same PR; root cause: FastMCP dual-channel
   output (text vs `structuredContent`).
+- **2026-05-29** — **Step 2b: first integration tool `read_repo_path`.**
+  §7.1–§7.3 + §7.2 table add the `mcp__vero-bridge__read_repo_path`
+  invocation surface (`version`, `claimed_tag`, `path`; `MessageType.SIGNAL`).
+  §3.2 adds `ErrorCode.PATH_FORBIDDEN` (`"path-forbidden"`) — the one
+  tool-policy code, raised by the read sandbox
+  (`tools/vero_bridge/_repo_read.py`) and reusing the §3.1 error envelope.
+  `TOOL_NOT_FOUND` reclassified as **reserved** (structural FastMCP
+  enforcement per inventory §4 FINDING-3 — no server code emits it). Path
+  sandbox = relative + no `..` + in-tree-after-symlink-resolve + not
+  `.git/` + git-tracked allowlist + regular file + ≤2 MiB + UTF-8.

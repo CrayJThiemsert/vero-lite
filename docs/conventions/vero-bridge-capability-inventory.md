@@ -93,12 +93,12 @@ contract reasoning + governance review.
 
 | | |
 |---|---|
-| `message_type` | `signal` (subkind `read_repo`) — or dedicated type, confirmed in Step 2 |
+| `message_type` | `signal` (`MessageType.SIGNAL`; subkind `read_repo` is implicit in the tool name — the schema enum carries no subkind) |
 | Phase 1 args | `version: int`, `claimed_tag: str`, `path: str` (relative to repo root) |
-| Phase 1 returns | `{"ok": True, "path": <str>, "size": <int>, "content": <str>}` |
-| Server side-effects | Audit-log entry per AC-4 (b). Reads one file from disk. **No write.** |
-| Classification rationale | **Read-only.** Restricted to the repo working tree (no `..` traversal, no symlink follow outside repo, no access to `.git/`, `.claude/state/`, or any gitignored sensitive path). Path-restriction list to be finalized in Step 2; AC-5 negative tests assert the rejection of out-of-tree paths and sensitive paths. |
-| Phase 2 question | Authoritative path-allowlist vs path-blocklist. Phase 1 starts with conservative allowlist (repo-tracked files only). |
+| Phase 1 returns | `{"ok": True, "path": <str>, "size": <int_bytes>, "content": <utf-8 str>}` on success; a `path-forbidden` error envelope (`{"ok": False, "error_code": "path-forbidden", "error_message": <str>}`, wire-format §3.1) on any sandbox violation |
+| Server side-effects | Audit-log entry per AC-4 (b) (accepted **and** rejected). Reads one file from disk + one read-only `git ls-files` query (tracked-status check). **No write.** |
+| Classification rationale | **Read-only.** Realized Phase-1 sandbox ([`tools/vero_bridge/_repo_read.py`](../../tools/vero_bridge/_repo_read.py)): the path must be (1) relative with no `..` component, (2) not under `.git/`, (3) inside the repo root after symlink resolution (a tracked symlink whose target escapes the tree is rejected), (4) **git-tracked** — the load-bearing allowlist rule, which by construction excludes every gitignored sensitive path (`.env`, `.claude/state/`, `docs/research/private/` audit logs, `docs/strategy/private/`) without a hand-curated denylist, (5) a regular file ≤ 2 MiB whose bytes decode as UTF-8. Every violation → `ErrorCode.PATH_FORBIDDEN`. AC-5 negatives ([`tests/vero_bridge/test_read_repo_path.py`](../../tests/vero_bridge/test_read_repo_path.py)) assert rejection of absolute / `..` / out-of-tree-symlink / `.git/` / gitignored / untracked / directory / oversize / binary paths. |
+| Phase 2 question | Authoritative path-allowlist vs path-blocklist. **Phase 1 realized the conservative allowlist (git-tracked files only).** A future widening (e.g. read of a generated-but-untracked artifact) would revisit this with an explicit, reviewed allowlist extension. |
 
 ### 2.5 `validate_handoff_frontmatter`
 
@@ -242,3 +242,13 @@ without leaking authority to an unintended tab.
   `tool-not-found` JSON body — the decorator architecture has no generic
   dispatcher. Structural (never-registered) enforcement; stronger than
   the original spec. `ErrorCode.TOOL_NOT_FOUND` reserved for Phase 2+.
+- **2026-05-29** — **Step 2b: §2.4 `read_repo_path` realized + registered**
+  (first integration tool). `message_type`, returns, side-effects, and
+  classification rationale updated from spec to the as-built sandbox
+  ([`tools/vero_bridge/_repo_read.py`](../../tools/vero_bridge/_repo_read.py)):
+  git-tracked allowlist + `..`/absolute/symlink-escape/`.git`/non-regular/
+  oversize/non-UTF-8 rejection, all surfaced as the new
+  `ErrorCode.PATH_FORBIDDEN` (`"path-forbidden"`; wire-format §3.2). The
+  safe-for-all registered surface grows from 3 → 4 tools; the AC-8
+  tripwire (`tests/vero_bridge/test_server_adversarial.py`
+  `SAFE_FOR_ALL_TOOLS`) updated accordingly.
