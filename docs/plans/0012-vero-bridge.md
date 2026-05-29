@@ -115,7 +115,7 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
   `mcpServers` config), not by Code (OQ-A §Open Questions). Mitigation:
   capability restriction (AC-8) + future ADR-013 amendment.
 
-- [ ] **AC-3 — Both clients connect and exchange a round-trip echo
+- [x] **AC-3 — Both clients connect and exchange a round-trip echo
   (cross-client live evidence).** v1 captures **two** live round-trip
   paths — **Chat→Code→Chat** and **Cowork→Code→Cowork** — each with a
   known payload, Code server echoes a per-session token, the client
@@ -124,7 +124,11 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
   `docs/research/private/`, both within bounded latency, both with
   matching tokens. **OQ-B = RESOLVED YES (FULL)** (Chat + Cowork
   MCP-client primitives both verified — research note §3.2–§3.8) — was a
-  gate for Step 3; now unblocked.
+  gate for Step 3; now unblocked. **DONE 2026-05-29 (Step 4):** Chat
+  (record 7) + Cowork (record 9) round-trips captured live (Code record 8
+  as a third path); evidence
+  `docs/research/private/2026-05-29-vero-bridge-step4-cross-client-evidence.md`
+  + runbook `docs/runbooks/vero-bridge-cross-client-evidence.md`.
 
 - [ ] **AC-4 — Safety boundary preserved (ADR-013 D2 not weakened) +
   audit log + adversarial anti-spoof matrix.** Three sub-criteria:
@@ -155,7 +159,11 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
     and observable signals. Evidence: the audit-log file at a named path
     under `docs/research/private/` with the spoof attempts captured plus
     analysis showing Chat-vs-(Code∪Cowork) is discriminable while
-    Code-vs-Cowork is not.
+    Code-vs-Cowork is not. **Basis live-proven 2026-05-29 (Step 4, not
+    full AC-4(c)):** Code+Cowork same-instance non-discriminability
+    observed in two epochs (pre-fix pid 62929, post-fix pid 1189; shared
+    pid/ppid/stdin_fd/stdout_fd, counter 1→2) — see Step 4 evidence §6 /
+    runbook §2.2. The **full** cross-tab spoof matrix remains Step 5.
 
 - [ ] **AC-5 — Test coverage for transport parse / dispatch / error
   paths (cross-client matrix + adversarial + AC-8 negative).** Unit +
@@ -174,7 +182,7 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
   fail-closed / adversarial / concurrency) per the Cray
   verification-rigor directive (PLAN-0009 §Verification).
 
-- [ ] **AC-6 — Live evidence captured (both clients, live not mocked).**
+- [x] **AC-6 — Live evidence captured (both clients, live not mocked).**
   v1's round-trip is exercised in a real Code↔Chat session **and** a
   real Code↔Cowork session (not only mocked), and the verbatim evidence
   (payload, echoed token, latency, any error text) for **both** is
@@ -184,9 +192,13 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
   matrix + the AC-4 (c) adversarial spoof matrix both count toward this
   live-evidence requirement. Live evidence for the round-trip is **not
   gated** on the PLAN-0011 fresh-trigger re-run; that gate applies only
-  to future Phase-2 auto-dispatch wiring (if/when minted).
+  to future Phase-2 auto-dispatch wiring (if/when minted). **DONE
+  2026-05-29 (Step 4):** named live-evidence file
+  `docs/research/private/2026-05-29-vero-bridge-step4-cross-client-evidence.md`
+  carries the verbatim pre-fix matrix (records 1–5) + post-fix re-smoke
+  (records 7–9); all cells are real cross-tab invocations, not mocked.
 
-- [ ] **AC-7 — Cross-client wire-format + capability parity.** Both
+- [x] **AC-7 — Cross-client wire-format + capability parity.** Both
   Chat-client and Cowork-client exercise the **same wire format**
   byte-by-byte for the same logical operation, and the **same tool
   surface** with the same Phase-1 capability scope (per OQ-V1 RESOLVED:
@@ -195,7 +207,10 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
   (AC-3 + AC-4 (c)) showing identical wire-format bytes for the same
   logical operation invoked from both clients, and identical capability
   scope (capability inventory per AC-8 lists tools accessible from each
-  client → Phase 1: same set).
+  client → Phase 1: same set). **DONE 2026-05-29 (Step 4):** all three
+  clients invoke identical `echo` envelope (`version=1`, `claimed_tag`,
+  `name`) and receive identical `{ok, echoed, ts_ns:string}` shape — see
+  evidence §2.1 / runbook §2.1.
 
 - [ ] **AC-8 — Capability-by-tool-design discipline (Option I identity
   model enforcement).** The bridge's tool surface is restricted to
