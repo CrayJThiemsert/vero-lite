@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-29T13:00:00+07:00
-session: 24
-current_batch: **Session 23 + 24 — PLAN-0012 Phase 1 client surface complete (Steps 3a/3b) + ts_ns precision fix (FINDING-1/2) + cross-client live evidence (Step 4) + /eli-cray command.** Sessions 23 (2026-05-29 AM) + 24 (this session, 2026-05-29 ~12:00 +07, post-Desktop-restart) shipped 4 PRs (#73–#76). #73 Step 3a Chat-tab client (`69b33ff` → merge `7cd56d1`, +356/−1; `tests/vero_bridge/test_chat_client.py`). #74 Step 3b Cowork-tab client + AC-7 cross-client parity (`ec22162` → merge `69d3be0`, +243/−0; `tests/vero_bridge/test_cowork_client.py`). #75 ts_ns fix (`b90442d` → merge `476e9c7`, +100/−32): FINDING-2 (ts_ns > 2^53 corrupted by JSON-double clients via FastMCP structuredContent → string-typed `server.py:149` returns `str(record["ts_ns"])`; audit log keeps the int) + FINDING-1 (ts_ns is epoch ns not monotonic; ordering key = per-process monotonic_counter, resets per respawn — docstring corrected). #76 Step 4 cross-client live evidence (`0e60300` → merge `35759cd`, +151/−7): **AC-3 / AC-6 / AC-7 DONE**, AC-4(c) basis live-proven (full matrix = Step 5); new tracked runbook `docs/runbooks/vero-bridge-cross-client-evidence.md` + plan AC marks; verbatim evidence in gitignored `docs/research/private/2026-05-29-vero-bridge-step4-cross-client-evidence.md`. Cray-side Action 0 (session 23): added production `mcpServers.vero-bridge` entry + Desktop restart, enabling the live cross-client evidence. Post-fix re-smoke (session 24): all 3 clients round-trip ts_ns string byte-exact (Chat …624177 / Code …448359 / Cowork …125591); Code+Cowork share pid 1189 counter 1→2 (same-instance routing reconfirmed in a 2nd epoch — AC-4(c) basis). Tooling (session 24): created user-level `/eli-cray` slash command (`~/.claude/commands/eli-cray.md`) + auto-memory `feedback_verify_relayed_responses_vs_audit_log` (catch replays in Cray-relayed tab responses via audit-log cross-check). **Cumulative test delta:** 755 → 794 (+39 from #73/#74/#75; #76 docs-only); ruff + mypy clean, no regressions. This PR = session 23+24 STATUS reconcile (no code/test/settings touched). **Step 5 then landed (PR #78, `a6f43d3` → merge `55a4cf3`, +411/−52):** adversarial spoof matrix + AC-8 negative — **AC-4(c)/5/8 DONE → all 8 Phase 1 ACs COMPLETE.** FINDING-3 (AC-8 enforced by a framework `ToolError`, not a `tool-not-found` JSON body; inventory §4 amended) + FINDING-4 (Chat refused to self-spoof, Cowork complied → governance **OQ-T5** surfaced for Cray). Test suite 794 → **820** (+26 adversarial; 813 passed / 7 skipped). **Remaining Phase 1: Step 2b (4 integration tools) + OQ-T5 adjudication.** This reconcile = session-24 closeout before the Step 2b handoff.
+last_updated: 2026-05-29T22:30:00+07:00
+session: 25
+current_batch: **Session 25 — PLAN-0012 Step 2b COMPLETE (all 4 integration tools) + L1 loop-detect commit-boundary fix + 2 lessons.** Autonomous Code-side session shipped 6 PRs (#80–#85). Step 2b integration tools, one PR each: #80 `read_repo_path` (`b8a1c09`+`4e0c254` → merge `abf453e`; path-sandbox, git-tracked allowlist + fail-closed NUL/OSError hardening caught in review) — #81 `validate_handoff_frontmatter` (`5bfd487` → merge `af94735`; in-process `tools/handoffs/_schema.py::parse_frontmatter_text`, closes the Lesson #8 K-1 forcing fact) — #82 `lint_status` (`eb10fc3` → merge `e98aa83`; STATUS freshness vs **local `main`** + `--no-merges`, a real-operation divergence from the `origin/main` spec) — #83 `dispatch_receive` (`b3e3d3c` → merge `1b52e3a`; receive-only gitignored queue, content-addressed `received_id`, no commit/no bind). **Phase 1 safe-for-all tool surface now 7/7** (3 introspection + 4 integration). #84 loop-detect commit-boundary reset (`3ea2ac1` → merge `c7d5896`): a successful `git commit` resets the committed files' L1 counters in the PostToolUse Bash observer — fixes a real false positive (6 legit cross-PR edits to `server.py` hard-blocked the 5th handler). #85 lessons (`1840d3f` → merge `1ec53b0`): amended Lesson #12 (cross-PR/cross-session L1 accumulation + #84 fix + verify-claimed-mitigation + chat-ack-doesn't-unblock-a-hook) + new Lesson #18 (`git log --grep` needs `--no-merges` under a merge-commit workflow). **Test suite 820 → 920 passed / 7 skipped** (+100 across the session); ruff + mypy clean throughout. All 8 Phase 1 ACs remain COMPLETE (Step 2b adds tools beyond the AC set). This PR = session-25 STATUS reconcile (no code/test/settings touched).
 current_actor: code
-blocked_on: PLAN-0012 Phase 1 forward progress **unblocked** — client surface (Steps 3a/3b) live; ts_ns fix verified across all 3 clients (Step 4 / PR #76). Remaining Phase 1: Step 5 (adversarial cross-tab spoof matrix — **Cray-interactive relay**, like the Step-4 re-smoke; closes AC-4(c)/5/8) + Step 2b (4 integration tools — autonomous Code-side, one PR each). Carry-over independent of PLAN-0012: AC-3/AC-7 fresh-trigger re-run for PLAN-0011 (flip classifier dispatch BLOCKED → PASS) + loop-dispatcher Desktop UI setup (PLAN-0010 — verify PR #55 status, plan still `Ready for execution`). No new Cray adjudications gate Phase 1.
-next_action: **PLAN-0012 Phase 1 COMPLETE (8/8 ACs). Session-24 closeout.** Next: (a) **Step 2b in a NEW session** — 4 integration tools (`read_repo_path` / `validate_handoff_frontmatter` / `lint_status` / `dispatch_receive`), one substantial PR per tool, autonomous Code-side; handoff prepared at `.claude/handoffs/session-24/2026-05-29-1430-code-step2b-kickoff.md`; (b) **OQ-T5 adjudication** (Chat-as-bridge-client vs `chat_tab_instructions.md`) — Cray governance decision; (c) **Carry-over** — PLAN-0011 fresh-trigger re-run + loop-dispatcher Desktop setup (both independent of PLAN-0012).
-head_commit: 55a4cf3
-recent_commits: [55a4cf3, a6f43d3, 35759cd, 0e60300, 476e9c7, b90442d, 69d3be0, 7cd56d1, ec22162, 69b33ff]
+blocked_on: Nothing gates forward progress — PLAN-0012 Phase 1 (8/8 ACs) + Step 2b (4/4 integration tools; 7/7 safe-for-all surface) COMPLETE. Remaining items are non-blocking: **OQ-T5** governance adjudication (Chat-as-bridge-client vs `chat_tab_instructions.md` — Cowork/Cray per ADR-009 D1) + carry-overs independent of PLAN-0012 (PLAN-0011 AC-3/AC-7 fresh-trigger re-run; PLAN-0010 loop-dispatcher Desktop setup — verify PR #55). No new Cray adjudications gate any in-flight work.
+next_action: **PLAN-0012 Phase 1 COMPLETE (8/8 ACs) + Step 2b COMPLETE (7/7 tool surface).** Next: (a) **OQ-T5 adjudication** (Chat-as-bridge-client vs `chat_tab_instructions.md`) — Cray/Cowork governance decision (Code did not mint it into the plan — author boundary, ADR-009 D1); (b) **Carry-over** independent of PLAN-0012 — PLAN-0011 AC-3/AC-7 fresh-trigger re-run + PLAN-0010 loop-dispatcher Desktop setup (verify PR #55); (c) **PLAN-0012 Phase 2** when a concrete not-on-bridge / safe-for-some capability need lands (per capability-inventory §5 mint condition).
+head_commit: 1ec53b0
+recent_commits: [1ec53b0, 1840d3f, c7d5896, 3ea2ac1, 1b52e3a, b3e3d3c, e98aa83, eb10fc3, af94735, 5bfd487]
 ---
 
 # vero-lite — Project Status
@@ -18,10 +18,75 @@ recent_commits: [55a4cf3, a6f43d3, 35759cd, 0e60300, 476e9c7, b90442d, 69d3be0, 
 
 ## Current Focus
 
-> **Session 24 (current).** Sessions 23 + 24 closed the AC-3 cross-client
-> live-evidence arc. The session-22 narrative + earlier history are retained
-> below (and in the ledger) for archeology; the AC scoreboard immediately
-> below is kept current.
+> **Session 25 (current).** Step 2b (the four integration tools) is COMPLETE —
+> PLAN-0012 Phase 1's full safe-for-all tool surface (7/7) is now live, plus an
+> L1 loop-detect hardening fix and two lessons. The session 23+24 / 22 / 20+21
+> narratives below are retained for archeology; this section + the AC scoreboard
+> (still 8/8 from session 24) are current.
+
+### Session 25 — PLAN-0012 Step 2b COMPLETE (4 integration tools) + loop-detect fix + lessons
+
+Autonomous Code-side session; **6 PRs (#80–#85)**, suite **820 → 920 passed /
+7 skipped**, ruff + mypy clean throughout. Step 2b adds the four *integration*
+tools beyond the three introspection tools — **one substantial PR per tool**
+(session-22 review-tractability decision) — completing the Phase 1
+safe-for-all surface at **7/7**.
+
+- **PR #80** (`abf453e`) — **`read_repo_path` (§2.4).** Path-sandboxed,
+  read-only repo-file reader. The whole design surface is the sandbox
+  (`tools/vero_bridge/_repo_read.py`): relative + no `..` + in-tree after
+  symlink resolution + not `.git/` + **git-tracked allowlist** (auto-excludes
+  every gitignored sensitive path) + regular file ≤2 MiB + UTF-8 → new
+  `ErrorCode.PATH_FORBIDDEN`. A review pass added two fail-closed guards
+  (NUL-byte path, OSError on read) so no raw exception crosses the MCP
+  boundary (`4e0c254`).
+- **PR #81** (`af94735`) — **`validate_handoff_frontmatter` (§2.5).** Runs the
+  committed handoff schema **in-process** via a new content-based entry point
+  `tools/handoffs/_schema.py::parse_frontmatter_text` (path-based
+  `parse_frontmatter` refactored to delegate — behaviour-preserving). Closes
+  the Lesson #8 K-1 forcing fact (Cowork can now validate handoffs it authors).
+  `ok` = transport success, `valid` = content validity; no new `ErrorCode`.
+- **PR #82** (`e98aa83`) — **`lint_status` (§2.6).** `docs/STATUS.md` freshness
+  vs **local `main`** (real-operation divergence from the `origin/main` spec —
+  WSL-local server, no guaranteed network) with **`--no-merges`** (required
+  under the merge-commit PR workflow, else a reconcile PR's merge commit reads
+  as false drift). Fail-closed. (This very tool reported the drift that
+  prompted this reconcile — see Lesson #18.)
+- **PR #83** (`1b52e3a`) — **`dispatch_receive` (§2.7).** Receive-only inbox:
+  appends the dispatch envelope to a gitignored queue (same write-class as the
+  audit log, best-effort) and returns a content-addressed `received_id`.
+  **No commit, no bind-on-Cray** — authority stays not-on-bridge.
+
+**Loop-detect hardening — PR #84** (`c7d5896`): the L1 counter accumulated 6
+legitimate cross-PR edits to `server.py` and hard-blocked the 5th handler (a
+false positive). Fix: `posttooluse_progress_observer.py` now resets a file's
+L1 counter on a successful `git commit` (only the committed files; in the
+reliable PostToolUse Bash path). See Lesson #12 §7.
+
+**Lessons — PR #85** (`1ec53b0`): amended **Lesson #12** (cross-PR/cross-session
+L1 accumulation + the #84 fix + two meta-lessons: verify a handoff's claimed
+mitigation against real state/hook; a chat ack does not unblock a deterministic
+hook) + new **Lesson #18** (`git log --grep` needs `--no-merges` under a
+merge-commit workflow; + the spec→as-built `origin/main`→local-`main` norm).
+
+**Step 2b tool-surface scoreboard (7/7 — Phase 1 complete):**
+
+| Tool | § | Class | PR |
+|---|---|---|---|
+| `echo` / `bridge_status` / `bridge_whoami` | 2.1–2.3 | introspection | (Step 2, #71) |
+| `read_repo_path` | 2.4 | read (sandboxed) | ✅ #80 |
+| `validate_handoff_frontmatter` | 2.5 | validate (in-process) | ✅ #81 |
+| `lint_status` | 2.6 | read (git query) | ✅ #82 |
+| `dispatch_receive` | 2.7 | receive-only (no authority) | ✅ #83 |
+
+**Remaining (non-blocking, out-of-tool):** OQ-T5 governance adjudication
+(Cowork/Cray) + carry-overs (PLAN-0011 fresh-trigger re-run, PLAN-0010
+loop-dispatcher Desktop setup). **This PR = session-25 STATUS reconcile** (no
+code/test/settings touched).
+
+---
+
+#### Prior context — Session 23 + 24 (retained for archeology)
 
 ### Session 23 + 24 — Phase 1 client surface + ts_ns fix + cross-client evidence
 
@@ -289,6 +354,18 @@ session-21 → session-22 kickoff handoff §4 Action 1; high-priority
 "close the loop" item). No code/test/settings touched. Cumulative
 session 20+21 tests: 634 (unchanged — all 5 PRs in sessions 20+21
 were docs/plans/lessons only).
+
+### 2026-05-29 — Session 25 ledger (Step 2b + follow-ups, closed)
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **Step 2b tool 1/4 — `read_repo_path`** | [#80](https://github.com/CrayJThiemsert/vero-lite/pull/80) (`b8a1c09`+`4e0c254` → merge `abf453e`) | **§2.4 path-sandboxed read-only repo-file reader.** New `tools/vero_bridge/_repo_read.py`: relative + no `..` + in-tree-after-symlink-resolve + not `.git/` + **git-tracked allowlist** + regular file ≤2 MiB + UTF-8 → new `ErrorCode.PATH_FORBIDDEN`. Review pass added 2 fail-closed guards (NUL-byte path, OSError on read; `4e0c254`). +36 tests. Surface 3→4. |
+| **Step 2b tool 2/4 — `validate_handoff_frontmatter`** | [#81](https://github.com/CrayJThiemsert/vero-lite/pull/81) (`5bfd487` → merge `af94735`) | **§2.5 in-process handoff-schema validation.** New content-based entry point `tools/handoffs/_schema.py::parse_frontmatter_text` (path-based `parse_frontmatter` refactored to delegate — behaviour-preserving) + bridge adapter `_handoff_validate.py`. Closes Lesson #8 K-1. `ok`=transport, `valid`=content; no new `ErrorCode`. +24/+3 tests. Surface 4→5. |
+| **Step 2b tool 3/4 — `lint_status`** | [#82](https://github.com/CrayJThiemsert/vero-lite/pull/82) (`eb10fc3` → merge `e98aa83`) | **§2.6 STATUS freshness vs local `main`.** New `tools/vero_bridge/_status_lint.py`. Real-operation divergences from spec: baseline = **local `main`** (not `origin/main` — WSL-local, no network) + **`--no-merges`** (merge-commit workflow — see Lesson #18). Fail-closed (`fresh=False`). +12 tests. Surface 5→6. |
+| **Step 2b tool 4/4 — `dispatch_receive`** | [#83](https://github.com/CrayJThiemsert/vero-lite/pull/83) (`b3e3d3c` → merge `1b52e3a`) | **§2.7 receive-only dispatch inbox.** New `tools/vero_bridge/_dispatch_queue.py`: appends envelope to a gitignored queue (same write-class as the audit log, best-effort) + content-addressed `received_id`; `ts_ns` decimal string (FINDING-2). **No commit, no bind-on-Cray.** +11 tests. **Surface 6→7 — Phase 1 safe-for-all tool surface COMPLETE.** |
+| **Loop-detect commit-boundary reset** | [#84](https://github.com/CrayJThiemsert/vero-lite/pull/84) (`3ea2ac1` → merge `c7d5896`) | **L1 false-positive fix.** `posttooluse_progress_observer.py` resets a file's L1 counter on a successful `git commit` (only the committed files; reliable PostToolUse Bash path). Fixes the 6-legit-cross-PR-edits-to-`server.py` hard-block. Precise (per-file) + fail-closed; no change to the deny gate/threshold. +8 tests. See Lesson #12 §7. |
+| **Lessons #12 (amend) + #18 (new)** | [#85](https://github.com/CrayJThiemsert/vero-lite/pull/85) (`1840d3f` → merge `1ec53b0`) | **Lesson #12 §7** (cross-PR/cross-session L1 accumulation + #84 fix + 2 meta-lessons: verify a handoff's claimed mitigation against real state/hook; a chat ack does not unblock a deterministic hook). **Lesson #18** (`git log --grep` needs `--no-merges` under a merge-commit workflow; + spec→as-built `origin/main`→local-`main` norm). Docs-only. |
+| **STATUS reconcile (session-25)** *(this PR)* | this PR | **Session 25 ledger + Current Focus narrative + Step-2b 7/7 scoreboard.** Frontmatter (`session` → 25, `head_commit` → `1ec53b0`, `recent_commits`, `current_batch`, `blocked_on`, `next_action`). Brings STATUS current from session 24 → 25 (the drift `lint_status` itself reported). No code/test/settings touched. |
 
 ### 2026-05-29 — Session 23 + 24 ledger (closed)
 
