@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-28T17:30:00+07:00
-session: 22
-current_batch: **Session 22 — PLAN-0012 ratified Ready-for-execution + 3 OQs resolved (OQ-T1 fail-closed / OQ-T4 serial-per-instance / OQ-V2 deferred-with-version-stub) + Phase 1 Step 1 (wire format contract + schema + capability inventory) + Phase 1 Step 2 (stdio-MCP server + audit log + 3 introspection tools).** Session 22 shipped 4 PRs end-to-end (#68–#71) in a single Code session. PR #68 reconciled STATUS from session 19 → session 21 ledger and proposed Cray ratification. PR #69 materialized Cray's 4-decision adjudication (Status flip Draft → Ready for execution + OQ-T1/T4/V2 resolutions). PR #70 shipped Phase 1 Step 1 deliverables: machine-checkable wire-format schema (`tools/vero_bridge/_schema.py` — stdlib-only, dataclass-typed, fail-closed; mirrors `tools/handoffs/_schema.py` discipline) + human-readable wire-format contract document (`docs/conventions/vero-bridge-wire-format.md`) + capability inventory document (`docs/conventions/vero-bridge-capability-inventory.md` — 7 safe-for-all + 8 not-on-bridge); 66 schema tests; AC-1 + AC-8 (docs portion) DONE. PR #71 shipped Phase 1 Step 2 (focused-scope per session-22 split decision): FastMCP stdio-MCP server (`tools/vero_bridge/server.py`) with 3 introspection tools (`echo` / `bridge_status` / `bridge_whoami`) + JSONL audit log writer (`tools/vero_bridge/_audit_log.py`) per AC-4 (b); 55 server+audit tests; AC-2 + AC-4 (a)/(b) DONE + AC-3 chain UNBLOCKED. **Cumulative session-22 test deltas:** 634 → 700 (+66 from Step 1) → 755 (+55 from Step 2); ruff + mypy --strict clean. No code regressions. **Step 2b deferred** (4 integration tools: `read_repo_path` / `validate_handoff_frontmatter` / `lint_status` / `dispatch_receive`) — each has its own design surface; one substantial PR per tool keeps review tractable. No new auto-memory lessons codified in session 22 (patterns encountered were already in memory: stdlib-only schema discipline, fail-closed parsing, mypy `--explicit-package-bases` for tools/ root). No code/test/settings touched in this PR (STATUS-reconcile chore).
+last_updated: 2026-05-29T13:00:00+07:00
+session: 24
+current_batch: **Session 23 + 24 — PLAN-0012 Phase 1 client surface complete (Steps 3a/3b) + ts_ns precision fix (FINDING-1/2) + cross-client live evidence (Step 4) + /eli-cray command.** Sessions 23 (2026-05-29 AM) + 24 (this session, 2026-05-29 ~12:00 +07, post-Desktop-restart) shipped 4 PRs (#73–#76). #73 Step 3a Chat-tab client (`69b33ff` → merge `7cd56d1`, +356/−1; `tests/vero_bridge/test_chat_client.py`). #74 Step 3b Cowork-tab client + AC-7 cross-client parity (`ec22162` → merge `69d3be0`, +243/−0; `tests/vero_bridge/test_cowork_client.py`). #75 ts_ns fix (`b90442d` → merge `476e9c7`, +100/−32): FINDING-2 (ts_ns > 2^53 corrupted by JSON-double clients via FastMCP structuredContent → string-typed `server.py:149` returns `str(record["ts_ns"])`; audit log keeps the int) + FINDING-1 (ts_ns is epoch ns not monotonic; ordering key = per-process monotonic_counter, resets per respawn — docstring corrected). #76 Step 4 cross-client live evidence (`0e60300` → merge `35759cd`, +151/−7): **AC-3 / AC-6 / AC-7 DONE**, AC-4(c) basis live-proven (full matrix = Step 5); new tracked runbook `docs/runbooks/vero-bridge-cross-client-evidence.md` + plan AC marks; verbatim evidence in gitignored `docs/research/private/2026-05-29-vero-bridge-step4-cross-client-evidence.md`. Cray-side Action 0 (session 23): added production `mcpServers.vero-bridge` entry + Desktop restart, enabling the live cross-client evidence. Post-fix re-smoke (session 24): all 3 clients round-trip ts_ns string byte-exact (Chat …624177 / Code …448359 / Cowork …125591); Code+Cowork share pid 1189 counter 1→2 (same-instance routing reconfirmed in a 2nd epoch — AC-4(c) basis). Tooling (session 24): created user-level `/eli-cray` slash command (`~/.claude/commands/eli-cray.md`) + auto-memory `feedback_verify_relayed_responses_vs_audit_log` (catch replays in Cray-relayed tab responses via audit-log cross-check). **Cumulative test delta:** 755 → 794 (+39 from #73/#74/#75; #76 docs-only); ruff + mypy clean, no regressions. This PR = session 23+24 STATUS reconcile (no code/test/settings touched). **Phase 1 AC scoreboard: 7 of 8 ACs DONE/PRESERVED; remaining = Step 5 (AC-4(c) full + AC-5 + AC-8 negative) + Step 2b (4 integration tools).**
 current_actor: code
-blocked_on: PLAN-0012 Phase 1 forward progress is **unblocked** — Step 2 server runs against the Step 1 contract; AC-3 cross-client live evidence is ready to capture once Cray spawns the production server via Desktop config (`mcpServers.vero-bridge` entry — Cray-side one-time setup analogous to the existing `mcpServers.vero-bridge-probe`). No new Cray adjudications gate Phase 1 Step 3+. Carry-over (independent of PLAN-0012): AC-3/AC-7 fresh-trigger re-run for PLAN-0011 + loop-dispatcher Desktop UI one-time setup — both still queued from session-18→19 handoff §3.
-next_action: **Session 23 sequence (post-this-PR):** (a) **Cray Desktop UI one-time setup** — add `mcpServers.vero-bridge` entry to `claude_desktop_config.json` (UWP path per Lesson #0016) pointing to `wsl.exe ... uv run --extra dev python -m tools.vero_bridge.server`; mirror the existing `mcpServers.vero-bridge-probe` pattern. Once Desktop restarts, the production `vero-bridge` server becomes available alongside the gitignored probe; (b) **Phase 1 Step 3a + 3b** — Chat-side + Cowork-side client wrappers against the Step 1 wire format (per OQ-V1 RESOLVED uniform safe-tool scope; cross-client parity per AC-7); (c) **Phase 1 Step 2b** — 4 integration tools as separate PRs (each tractable independently); (d) **Phase 1 Step 4** — cross-client round-trip echo matrix + live evidence capture under `docs/research/private/` (AC-3 + AC-6); (e) **Phase 1 Step 5** — full AC-5 cross-client + adversarial anti-spoof matrix + AC-8 negative test; (f) **Carry-over Cray work** — AC-3/AC-7 fresh-trigger re-run + loop-dispatcher Desktop UI setup (independent of PLAN-0012).
-head_commit: 99a908f
-recent_commits: [99a908f, 61d93fe, 7a22066, 202cfa1, b3a6070, 0bbb149, c785d90, cd670b3, 8971074, ee36ede]
+blocked_on: PLAN-0012 Phase 1 forward progress **unblocked** — client surface (Steps 3a/3b) live; ts_ns fix verified across all 3 clients (Step 4 / PR #76). Remaining Phase 1: Step 5 (adversarial cross-tab spoof matrix — **Cray-interactive relay**, like the Step-4 re-smoke; closes AC-4(c)/5/8) + Step 2b (4 integration tools — autonomous Code-side, one PR each). Carry-over independent of PLAN-0012: AC-3/AC-7 fresh-trigger re-run for PLAN-0011 (flip classifier dispatch BLOCKED → PASS) + loop-dispatcher Desktop UI setup (PLAN-0010 — verify PR #55 status, plan still `Ready for execution`). No new Cray adjudications gate Phase 1.
+next_action: **Session 24+ sequence:** (a) *(this PR)* **STATUS reconcile session 23+24** — bring STATUS current from session 22 (Cray-routed first per the session-24 next-work turn); (b) **Phase 1 Step 5 OR Step 2b** — Cray to pick: Step 5 = adversarial spoof matrix (Cray-interactive, servers warm) closing AC-4(c)/5/8; Step 2b = 4 integration tools (`read_repo_path` / `validate_handoff_frontmatter` / `lint_status` / `dispatch_receive`, autonomous, one PR each); (c) **Carry-over Cray work** — PLAN-0011 fresh-trigger re-run + loop-dispatcher Desktop setup (independent of PLAN-0012).
+head_commit: 35759cd
+recent_commits: [35759cd, 0e60300, 476e9c7, b90442d, 69d3be0, 7cd56d1, ec22162, 69b33ff, 0511f20, 3beed0e]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,87 @@ recent_commits: [99a908f, 61d93fe, 7a22066, 202cfa1, b3a6070, 0bbb149, c785d90, 
 ---
 
 ## Current Focus
+
+> **Session 24 (current).** Sessions 23 + 24 closed the AC-3 cross-client
+> live-evidence arc. The session-22 narrative + earlier history are retained
+> below (and in the ledger) for archeology; the AC scoreboard immediately
+> below is kept current.
+
+### Session 23 + 24 — Phase 1 client surface + ts_ns fix + cross-client evidence
+
+Sessions 23 (2026-05-29 AM) + 24 (this session, post-Desktop-restart) shipped
+**4 PRs (#73–#76)** that took PLAN-0012 Phase 1 from "server + contract live,
+AC-3 unblocked" to "client surface complete + ts_ns precision fixed +
+cross-client live evidence captured (AC-3/6/7 DONE)":
+
+- **PR #73** (`69b33ff` → merge `7cd56d1`) — **Step 3a Chat-tab client.**
+  Chat invokes `mcp__vero-bridge__echo` from its deferred list against the
+  Step 1 wire format (raw + doc-rot guard). +356/−1.
+- **PR #74** (`ec22162` → merge `69d3be0`) — **Step 3b Cowork-tab client +
+  AC-7 cross-client parity.** Identical wire format + tool surface as Step 3a.
+  +243/−0.
+- **PR #75** (`b90442d` → merge `476e9c7`) — **ts_ns precision fix
+  (FINDING-1/2).** FINDING-2: `ts_ns` (int64 ≈ 1.78×10¹⁸ > 2⁵³) was corrupted
+  by structuredContent-consuming clients (Code, Cowork) through an IEEE-754
+  double → string-typed (`server.py:149` returns `str(record["ts_ns"])`; audit
+  log keeps the int as source of truth). FINDING-1: `ts_ns` is wall-clock epoch
+  ns, **not** monotonic; ordering key is the per-process `monotonic_counter`
+  (resets per respawn) — docstring corrected. +100/−32.
+- **PR #76** (`0e60300` → merge `35759cd`) — **Step 4 cross-client live
+  evidence. AC-3 / AC-6 / AC-7 DONE**; AC-4(c) basis live-proven (full matrix =
+  Step 5). New tracked runbook
+  [`docs/runbooks/vero-bridge-cross-client-evidence.md`](runbooks/vero-bridge-cross-client-evidence.md)
+  + plan AC marks; verbatim per-cell evidence in the gitignored
+  `docs/research/private/2026-05-29-vero-bridge-step4-cross-client-evidence.md`.
+  +151/−7.
+
+**Cray-side Action 0 (session 23):** added the production
+`mcpServers.vero-bridge` entry to `claude_desktop_config.json` + Desktop
+restart — this is what made the live cross-client evidence capturable (the
+server now spawns alongside the gitignored probe).
+
+**Post-fix re-smoke (session 24, the AC-3/6/7 proof):** every client's `ts_ns`
+round-trips **byte-exact** as a decimal string against the audit int — Chat
+`…624177`, Code `…448359`, Cowork `…125591` (Code + Cowork rounded pre-fix;
+Chat was already exact via the text-content path). Code + Cowork share server
+`pid 1189` with `monotonic_counter` 1→2 — same-instance routing reconfirmed in
+a 2nd Desktop epoch (the AC-4(c) basis; full spoof matrix is Step 5).
+
+**Tooling (session 24):** created the user-level `/eli-cray` slash command
+(`~/.claude/commands/eli-cray.md` — pull an ELI-CTO explanation of the last
+work batch, Thai) + new auto-memory
+`feedback_verify_relayed_responses_vs_audit_log` (cross-check Cray-relayed
+Chat/Cowork tab responses against the audit log to catch stale replays vs
+fresh calls — surfaced when a relayed Chat response turned out to be a replay
+of an earlier capture).
+
+**Cumulative test delta (sessions 23+24):** 755 → **794** (+39 from
+#73/#74/#75; #76 is docs-only). ruff + mypy clean; no regressions.
+
+**Remaining PLAN-0012 Phase 1:** **Step 5** (full adversarial cross-tab spoof
+matrix + AC-8 negative test + case-coverage → closes AC-4(c)/5/8;
+Cray-interactive relay) + **Step 2b** (4 integration tools, one PR each;
+autonomous). **This PR = session 23+24 STATUS reconcile** (no
+code/test/settings touched).
+
+**Phase 1 AC scoreboard (after session 24):**
+
+| AC | Status |
+|---|---|
+| AC-1 Transport contract documented | ✅ DONE (Step 1) |
+| AC-2 Server lifecycle | ✅ DONE (Step 2) |
+| AC-3 Cross-client live evidence | ✅ DONE (Step 4 / PR #76) |
+| AC-4 (a) G5 stays green | ✅ PRESERVED |
+| AC-4 (b) Audit log | ✅ DONE (Step 2) |
+| AC-4 (c) Anti-spoof matrix | 🟢 basis live-proven (PR #76); full matrix in Step 5 |
+| AC-5 Test coverage | 🟡 794 tests; full cross-client + adversarial in Step 5 |
+| AC-6 Live evidence captured | ✅ DONE (Step 4 / PR #76) |
+| AC-7 Cross-client parity | ✅ DONE (Step 4 / PR #76) |
+| AC-8 Capability-by-tool-design | ✅ DONE for docs (Step 1); negative test in Step 5 |
+
+---
+
+#### Prior context — Session 22 (retained for archeology)
 
 **Session 22 — PLAN-0012 ratified Ready-for-execution + 3 OQs resolved
 (OQ-T1 / OQ-T4 / OQ-V2) + Phase 1 Step 1 (wire format contract +
@@ -84,7 +165,7 @@ Code-side push that took PLAN-0012 from "Draft awaiting ratification +
   PREREQ MET** (`bridge_whoami` response signals match audit record
   byte-for-byte — clients can self-audit how the server saw them).
 
-**Phase 1 AC scoreboard (after session 22):**
+**Phase 1 AC scoreboard (session 22 snapshot — superseded by the "after session 24" scoreboard above):**
 
 | AC | Status |
 |---|---|
@@ -208,6 +289,21 @@ session-21 → session-22 kickoff handoff §4 Action 1; high-priority
 "close the loop" item). No code/test/settings touched. Cumulative
 session 20+21 tests: 634 (unchanged — all 5 PRs in sessions 20+21
 were docs/plans/lessons only).
+
+### 2026-05-29 — Session 23 + 24 ledger (closed)
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **Cray-side Action 0** (session 23) | `claude_desktop_config.json` (UWP path, Lesson #0016) | **Production `mcpServers.vero-bridge` entry added + Desktop restart.** Points to `wsl.exe ... uv run --extra dev python -m tools.vero_bridge.server`; mirrors the existing `mcpServers.vero-bridge-probe`. Both coexist. This unblocked the live cross-client evidence (Steps 3a/3b/4). |
+| **Phase 1 Step 3a — Chat client** | [#73](https://github.com/CrayJThiemsert/vero-lite/pull/73) (`69b33ff` → merge `7cd56d1`) | **Chat-tab client invocation** against the Step 1 wire format (raw + doc-rot guard). Chat loads `mcp__vero-bridge__echo` via ToolSearch from its deferred list. +356/−1. New `tests/vero_bridge/test_chat_client.py`; `docs/conventions/vero-bridge-wire-format.md` updated. |
+| **Phase 1 Step 3b — Cowork client + AC-7 parity** | [#74](https://github.com/CrayJThiemsert/vero-lite/pull/74) (`ec22162` → merge `69d3be0`) | **Cowork-tab client**, same wire format + tool surface as Step 3a (**AC-7 cross-client parity**). +243/−0. New `tests/vero_bridge/test_cowork_client.py`; wire-format doc updated. |
+| **ts_ns precision fix (FINDING-1/2)** | [#75](https://github.com/CrayJThiemsert/vero-lite/pull/75) (`b90442d` → merge `476e9c7`) | **FINDING-2:** `ts_ns` (int64 ≈ 1.78×10¹⁸ > 2⁵³) corrupted by structuredContent-consuming clients (Code, Cowork) via IEEE-754 double → `server.py:149` returns `str(record["ts_ns"])`; audit log keeps the int (source of truth, Python-read). **FINDING-1:** `ts_ns` is wall-clock epoch ns, not monotonic; ordering key = per-process `monotonic_counter` (resets per respawn) — docstring corrected. +100/−32. Touched `server.py`, `_audit_log.py`, `test_server.py`, `test_chat_client.py`, `test_cowork_client.py`, capability-inventory + wire-format docs. |
+| **Phase 1 Step 4 — cross-client live evidence** | [#76](https://github.com/CrayJThiemsert/vero-lite/pull/76) (`0e60300` → merge `35759cd`) | **AC-3 / AC-6 / AC-7 DONE; AC-4(c) basis live-proven (full matrix = Step 5).** Post-fix re-smoke: all 3 clients round-trip ts_ns string byte-exact (Chat `…624177`, Code `…448359`, Cowork `…125591`); Code+Cowork share `pid 1189` counter 1→2 (same-instance, 2nd epoch). +151/−7. New tracked runbook [`docs/runbooks/vero-bridge-cross-client-evidence.md`](runbooks/vero-bridge-cross-client-evidence.md) + plan AC marks; verbatim evidence in gitignored `docs/research/private/2026-05-29-vero-bridge-step4-cross-client-evidence.md` (split per PR #61 precedent). |
+| **Tooling — /eli-cray + auto-memory** (session 24) | user-level command + auto-memory | Created `~/.claude/commands/eli-cray.md` (`/eli-cray` — pull an ELI-CTO explanation of the last work batch, Thai; optional focus arg). New auto-memory `feedback_verify_relayed_responses_vs_audit_log` (cross-check Cray-relayed Chat/Cowork tab responses against the audit log to catch replays vs fresh calls). No repo files touched. |
+| **STATUS reconcile (session 23+24)** *(this PR)* | this PR | **Session 23 + 24 ledger entries added.** Frontmatter (`last_updated`, `session` → 24, `head_commit` → `35759cd`, `recent_commits`, `current_batch`, `blocked_on`, `next_action`) + Current Focus narrative (session 23+24 + current AC scoreboard) + this ledger sub-section. Brings STATUS current from session 22 → session 24. No code/test/settings touched. |
+| **Queued — Phase 1 Step 5** | next_action (b) | **Full adversarial cross-tab spoof matrix (AC-4(c)) + AC-8 negative test + case-coverage matrix.** Cray-interactive relay (each tab claims each other tab's identity; server accepts per Option I, audit log captures discrepancy). Closes AC-4(c) / AC-5 / AC-8 negative. |
+| **Queued — Phase 1 Step 2b** | next_action (b) | **4 integration tools as separate PRs** (autonomous Code-side): `read_repo_path` (path sandbox/allowlist) + `validate_handoff_frontmatter` (schema import from `tools.handoffs`) + `lint_status` (git subprocess + STATUS frontmatter parse) + `dispatch_receive` (receive-queue lifecycle). |
+| **Carry-over (independent of PLAN-0012)** | session 18→19 handoff §3 | **PLAN-0011 AC-3/AC-7 fresh-trigger re-run** (~30 min Cray-driven; flip classifier dispatch BLOCKED → PASS with a fresh trigger not in any tracked file) + **loop-dispatcher Desktop UI one-time setup** (PLAN-0010 — verify PR #55 status; plan still `Ready for execution`). |
 
 ### 2026-05-28 ~17:30 +07 — Session 22 ledger (closed)
 
