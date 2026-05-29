@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -28,6 +29,7 @@ HOOK = REPO_ROOT / ".claude" / "hooks" / "posttooluse_progress_observer.py"
 HOOKS_DIR = REPO_ROOT / ".claude" / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
+import posttooluse_progress_observer as obs  # noqa: E402  — sys.path manipulation above
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     ActionRecord,
     LoopType,
@@ -39,6 +41,29 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
 )
 
 Payload = dict[str, Any]
+
+_GIT = shutil.which("git") or "git"
+
+
+def _git(repo: Path, *args: str) -> str:
+    result = subprocess.run([_GIT, *args], cwd=repo, capture_output=True, text=True, check=True)
+    return result.stdout.strip()
+
+
+def _init_repo(repo: Path) -> None:
+    repo.mkdir(parents=True, exist_ok=True)
+    _git(repo, "init", "-q", "-b", "main")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+
+
+def _commit_file(repo: Path, relpath: str, content: str, msg: str) -> None:
+    path = repo / relpath
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    _git(repo, "add", relpath)
+    _git(repo, "commit", "-q", "-m", msg)
+
 
 STUB_TELEGRAM = """#!/usr/bin/env bash
 # Stub that writes $1 (argv message) to $TELEGRAM_STUB_CAPTURE.
@@ -456,3 +481,109 @@ def test_state_file_no_leftover_tmp(stub_env: dict[str, str], tmp_path: Path) ->
     _run(_write("docs/STATUS.md"), stub_env)
     leftovers = list(tmp_path.glob("*.tmp"))
     assert leftovers == []
+
+
+# --- Commit-boundary L1 reset (follow-up, 2026-05-29) ---
+
+
+@pytest.mark.parametrize(
+    "command",
+    [
+        "git commit",
+        "git commit -F /tmp/m.txt",
+        "cd ~/work/vero-lite && git commit -m y",
+        'wsl bash -lc "cd ~/work/vero-lite && git commit -F /tmp/commit-message.txt"',
+    ],
+)
+def test_is_git_commit_positive(command: str) -> None:
+    assert obs._is_git_commit(command) is True
+
+
+@pytest.mark.parametrize(
+    "command",
+    ["git commit-tree abc123", "git status", "git log --grep=commit", "git add ."],
+)
+def test_is_git_commit_negative(command: str) -> None:
+    assert obs._is_git_commit(command) is False
+
+
+def test_committed_files_lists_head_commit_files(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    _init_repo(repo)
+    _commit_file(repo, "README.md", "base\n", "feat: base")  # parent so diff-tree works
+    _commit_file(repo, "tools/foo.py", "x\n", "feat: add foo")
+    assert obs._committed_files(repo) == ["tools/foo.py"]
+
+
+def test_committed_files_fails_closed_outside_repo(tmp_path: Path) -> None:
+    """A non-git directory yields [] (fail-closed), never raises."""
+    assert obs._committed_files(tmp_path) == []
+
+
+def test_git_commit_resets_only_committed_file_l1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A successful git commit resets the L1 counter for the committed file
+    but leaves an unrelated file's counter untouched (no masking)."""
+    repo = tmp_path / "repo"
+    _init_repo(repo)
+    _commit_file(repo, "README.md", "base\n", "feat: base")
+    _commit_file(repo, "tools/foo.py", "x\n", "feat: add foo")  # HEAD touches tools/foo.py
+    monkeypatch.setattr(obs, "REPO_ROOT", repo)
+
+    state_path = tmp_path / "loop-counter.json"
+    monkeypatch.setenv("CLAUDE_LOOP_COUNTER_PATH", str(state_path))
+    counter = new_counter()
+    for _ in range(6):
+        increment(counter, LoopType.FILE_EDIT, "tools/foo.py")
+    for _ in range(3):
+        increment(counter, LoopType.FILE_EDIT, "tools/bar.py")
+    save_counter(counter, state_path)
+
+    obs._handle_bash(_bash("git commit -m 'feat: add foo'", exit_code=0))
+
+    after = load_counter(state_path)
+    assert get_count(after, LoopType.FILE_EDIT, "tools/foo.py") == 0  # reset (committed)
+    assert get_count(after, LoopType.FILE_EDIT, "tools/bar.py") == 3  # untouched
+
+
+def test_failed_git_commit_does_not_reset_l1(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    repo = tmp_path / "repo"
+    _init_repo(repo)
+    _commit_file(repo, "README.md", "base\n", "feat: base")
+    _commit_file(repo, "tools/foo.py", "x\n", "feat: add foo")
+    monkeypatch.setattr(obs, "REPO_ROOT", repo)
+
+    state_path = tmp_path / "loop-counter.json"
+    monkeypatch.setenv("CLAUDE_LOOP_COUNTER_PATH", str(state_path))
+    counter = new_counter()
+    for _ in range(6):
+        increment(counter, LoopType.FILE_EDIT, "tools/foo.py")
+    save_counter(counter, state_path)
+
+    obs._handle_bash(_bash("git commit -m x", exit_code=1))  # failed commit
+
+    after = load_counter(state_path)
+    assert get_count(after, LoopType.FILE_EDIT, "tools/foo.py") == 6  # NOT reset
+
+
+def test_non_commit_bash_does_not_reset_l1(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    repo = tmp_path / "repo"
+    _init_repo(repo)
+    _commit_file(repo, "README.md", "base\n", "feat: base")
+    _commit_file(repo, "tools/foo.py", "x\n", "feat: add foo")
+    monkeypatch.setattr(obs, "REPO_ROOT", repo)
+
+    state_path = tmp_path / "loop-counter.json"
+    monkeypatch.setenv("CLAUDE_LOOP_COUNTER_PATH", str(state_path))
+    counter = new_counter()
+    for _ in range(6):
+        increment(counter, LoopType.FILE_EDIT, "tools/foo.py")
+    save_counter(counter, state_path)
+
+    obs._handle_bash(_bash("git status", exit_code=0))
+
+    after = load_counter(state_path)
+    assert get_count(after, LoopType.FILE_EDIT, "tools/foo.py") == 6  # NOT reset
