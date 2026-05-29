@@ -47,7 +47,7 @@ clients.
 |---|---|
 | `message_type` | `echo` |
 | Phase 1 args | `version: int`, `claimed_tag: str`, `name: str` (the payload) |
-| Phase 1 returns | `{"ok": True, "echoed": <name>, "ts_ns": <monotonic ns>}` |
+| Phase 1 returns | `{"ok": True, "echoed": <name>, "ts_ns": <decimal str>}` (ts_ns is epoch ns as a decimal string — wire-format §7.2 / FINDING-2) |
 | Server side-effects | Audit-log entry per AC-4 (b). No state, no I/O outside log. |
 | Classification rationale | Pure-function; no repo state read; no operation outside echo + timestamp + audit log. Cannot violate any tier boundary by design. |
 
@@ -61,7 +61,7 @@ liveness checks and the AC-3 cross-client smoke matrix.
 |---|---|
 | `message_type` | `signal` (subkind `status`) — or a dedicated message type to be confirmed in Step 2 |
 | Phase 1 args | `version: int`, `claimed_tag: str` |
-| Phase 1 returns | `{"ok": True, "protocol_version": 1, "uptime_s": <int>, "pid": <int>, "ppid": <int>, "last_call_ts_ns": <int \| None>}` |
+| Phase 1 returns | `{"ok": True, "protocol_version": 1, "uptime_s": <int>, "pid": <int>, "ppid": <int>, "last_call_ts_ns": <decimal str \| None>}` (last_call_ts_ns is a decimal string — FINDING-2) |
 | Server side-effects | Audit-log entry per AC-4 (b). Reads server-process state (PID, ppid, uptime counter). No repo state read; no filesystem write. |
 | Classification rationale | Reports observable server-process facts that are already public via `ps aux`. No repo state surfaced; no privileged information leaked. |
 
@@ -78,7 +78,7 @@ matches the expected instance routing.
 |---|---|
 | `message_type` | `signal` (subkind `whoami`) — or a dedicated message type to be confirmed in Step 2 |
 | Phase 1 args | `version: int`, `claimed_tag: str` |
-| Phase 1 returns | `{"ok": True, "claimed_tag": <verbatim>, "pid": <int>, "ppid": <int>, "stdin_fd": <str>, "stdout_fd": <str>, "ts_ns": <int>, "env_keys_seen": [<str>, ...]}` |
+| Phase 1 returns | `{"ok": True, "claimed_tag": <verbatim>, "pid": <int>, "ppid": <int>, "stdin_fd": <str>, "stdout_fd": <str>, "ts_ns": <decimal str>, "env_keys_seen": [<str>, ...]}` (ts_ns is a decimal string — FINDING-2) |
 | Server side-effects | Audit-log entry per AC-4 (b). Reads `/proc/self/fd/{0,1}` + `os.environ` for `CLAUDE_*` keys. No repo state read; no filesystem write. |
 | Classification rationale | Returns server-process introspection. Per OQ-T3 empirical evidence (research note §8.2 T8–T12), this is the AC-4 (c) anti-spoof audit primitive — and it's safe-for-all because the values are already self-observable via `ps aux` + `os.environ` from any process that can read `/proc`. |
 

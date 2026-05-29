@@ -4,11 +4,15 @@ Append-only JSONL audit log for every server-accepted *and* server-rejected
 call. Captured signals per PLAN-0012 AC-4 (b) +
 `docs/conventions/vero-bridge-wire-format.md` §5.2:
 
-- ``ts_ns`` — high-res monotonic timestamp (the OQ-T4 serial-per-instance
-  ordering primary key)
+- ``ts_ns`` — epoch / wall-clock nanoseconds (``time.time_ns()``); **not
+  monotonic** (FINDING-1, Step 4) — correlates with ``ts_iso`` and is NOT
+  the ordering key. Stored here as an int (full precision); client-facing
+  responses stringify it (FINDING-2 — int64 ns exceeds 2**53; see
+  ``server.py`` + wire-format §7.2)
 - ``ts_iso`` — ISO-8601 wall-clock timestamp (human-readable secondary)
-- ``monotonic_counter`` — per-server-process call counter (resolves ts_ns
-  ties; survives across calls within one server process)
+- ``monotonic_counter`` — per-server-process call counter; the *actual*
+  OQ-T4 serial-per-instance ordering key. Resets to 1 on each (re)spawn,
+  so it orders calls within one process, not across the shared file
 - ``tool_name`` — the bridge tool that received the call
 - ``claimed_tag`` — caller's self-asserted identity (verbatim or ``repr``
   if malformed); audit-only per OQ-T3 Option I

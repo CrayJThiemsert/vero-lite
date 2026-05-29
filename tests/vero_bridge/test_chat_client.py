@@ -192,7 +192,8 @@ def test_chat_echo_round_trip_matches_documented_shape(audit_log_path: Path) -> 
         "echoed": token,
         "ts_ns": response["ts_ns"],
     }
-    assert isinstance(response["ts_ns"], int) and response["ts_ns"] > 0
+    # ts_ns is a decimal string (FINDING-2) so it survives JSON-double clients.
+    assert isinstance(response["ts_ns"], str) and int(response["ts_ns"]) > 0
 
 
 def test_chat_claimed_tag_logged_verbatim(audit_log_path: Path) -> None:

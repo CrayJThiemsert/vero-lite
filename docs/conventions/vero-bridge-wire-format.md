@@ -194,8 +194,9 @@ stdio-MCP server's per-instance call queue (Step 2 implementation):
 - **Serial-per-instance.** The server queues incoming calls and
   processes one-at-a-time per instance (per Cray's OQ-T4 resolution
   2026-05-28 PM late, PR #69). Code + Cowork sharing instance B get
-  serialized handling; audit-log ordering is deterministic (the
-  earlier-server-side-receive-timestamp call wins).
+  serialized handling; within that instance the audit-log ordering is
+  deterministic via the per-process `monotonic_counter` (§5.2) — not
+  `ts_ns`, which is wall-clock.
 - **No per-call parallelism in Phase 1.** Even pure-function tools
   (`echo`, `bridge_status`, `bridge_whoami`) are processed serially.
   The MCP/JSON-RPC protocol permits concurrent in-flight requests via
@@ -225,8 +226,20 @@ accepted call's `claimed_tag` alongside observable transport facts:
 - `ppid` — parent process id (the `uv run` wrapper)
 - `stdin_fd` — `readlink /proc/self/fd/0` (per-connection pipe inode)
 - `stdout_fd` — `readlink /proc/self/fd/1`
-- `ts_ns` — monotonic timestamp (the OQ-T4 serial-per-instance
-  ordering primary key)
+- `ts_ns` — **epoch / wall-clock** nanoseconds (`time.time_ns()`).
+  **Not monotonic** (FINDING-1, Step 4): it tracks wall time (can skew on
+  NTP adjustment), correlates with `ts_iso`, and is **not** the ordering
+  key. In the audit log it is an int (full precision); in client-facing
+  responses it is a decimal string (§7.2, FINDING-2).
+- `ts_iso` — ISO-8601 wall-clock timestamp (human-readable secondary).
+- `monotonic_counter` — **per-process** call counter; the *actual*
+  OQ-T4 serial-per-instance ordering key. It increments per call within
+  one server process and **resets to 1 on each (re)spawn**, so it orders
+  calls *within* an instance, not across the shared audit file. Step 4
+  live evidence: Chat→instance-A and Cowork→instance-B each logged
+  `monotonic_counter: 1` for their first call (independent per-process
+  counters); a later Code+Cowork pair landing on the *same* re-spawned
+  instance logged `1` then `2`.
 - `env_keys_seen` — list of `CLAUDE_*` keys visible to the server
   (empirically `[]` per `bridge_whoami` probe — Desktop strips env)
 
@@ -298,9 +311,21 @@ if this table and that surface diverge):
 
 | Tool (MCP name) | Required kwargs | Returns (shape — see [capability inventory](vero-bridge-capability-inventory.md) §2) |
 |---|---|---|
-| `mcp__vero-bridge__echo` | `version: int`, `claimed_tag: str`, `name: str` | `{"ok": True, "echoed": <name>, "ts_ns": <int>}` |
-| `mcp__vero-bridge__bridge_status` | `version: int`, `claimed_tag: str` | `{"ok": True, "protocol_version": 1, "uptime_s": <int>, "pid": <int>, "ppid": <int>, "last_call_ts_ns": <int \| None>}` |
-| `mcp__vero-bridge__bridge_whoami` | `version: int`, `claimed_tag: str` | `{"ok": True, "claimed_tag": <verbatim>, "pid": <int>, "ppid": <int>, "stdin_fd": <str>, "stdout_fd": <str>, "ts_ns": <int>, "env_keys_seen": [<str>, ...]}` |
+| `mcp__vero-bridge__echo` | `version: int`, `claimed_tag: str`, `name: str` | `{"ok": True, "echoed": <name>, "ts_ns": <decimal str>}` |
+| `mcp__vero-bridge__bridge_status` | `version: int`, `claimed_tag: str` | `{"ok": True, "protocol_version": 1, "uptime_s": <int>, "pid": <int>, "ppid": <int>, "last_call_ts_ns": <decimal str \| None>}` |
+| `mcp__vero-bridge__bridge_whoami` | `version: int`, `claimed_tag: str` | `{"ok": True, "claimed_tag": <verbatim>, "pid": <int>, "ppid": <int>, "stdin_fd": <str>, "stdout_fd": <str>, "ts_ns": <decimal str>, "env_keys_seen": [<str>, ...]}` |
+
+**`ts_ns` / `last_call_ts_ns` are decimal strings, not numbers (FINDING-2).**
+These are int64 nanosecond stamps (~1.78×10¹⁸) that exceed `2**53`, the
+largest integer an IEEE-754 double represents exactly. A client that
+parses JSON numbers as doubles (most JS-based MCP clients — empirically
+Cowork + the Code harness in the Step 4 live matrix) would silently
+round them; only a big-int-aware client (empirically the Chat tab, which
+surfaces FastMCP's text-content channel) preserved the exact value. To
+make the round-trip lossless for **every** client, the server emits these
+fields as decimal strings (`"1780022667682239521"`), so neither FastMCP
+content channel (text *or* `structuredContent`) carries a JSON number for
+them. The audit log keeps the int form (source of truth; §5.2).
 
 A Chat-tab call looks like:
 
@@ -406,3 +431,13 @@ Two Cowork-specific facts worth recording:
   execution channel (Lesson #8), and the Code∪Cowork transport-
   indistinguishability behind the AC-4 (c) spoof matrix (Lesson #0017
   §3.1). Parity test: `tests/vero_bridge/test_cowork_client.py`.
+- **2026-05-29** — **Step 4 live-evidence fixes (FINDING-1 + FINDING-2).**
+  (1) §5.2/§4: `ts_ns` is **epoch wall-clock** ns, **not monotonic**; the
+  OQ-T4 ordering key is the per-process `monotonic_counter` (resets per
+  re-spawn). (2) §7.2: client-facing `ts_ns` + `last_call_ts_ns` are now
+  **decimal strings** (`echo`/`bridge_whoami`/`bridge_status`) — int64 ns
+  exceeds `2**53` and was being silently rounded by JSON-number-as-double
+  clients (Cowork + Code harness) in the Step 4 matrix; Chat preserved it
+  via the text-content channel. Audit log keeps the int. Server +
+  unit-test changes land in the same PR; root cause: FastMCP dual-channel
+  output (text vs `structuredContent`).

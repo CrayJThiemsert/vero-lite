@@ -69,7 +69,22 @@ def test_echo_happy_returns_ok_response(audit_log_path: Path) -> None:
     response = _handle_echo(version=1, claimed_tag="code", name="hello")
     assert response["ok"] is True
     assert response["echoed"] == "hello"
-    assert isinstance(response["ts_ns"], int) and response["ts_ns"] > 0
+    # ts_ns is returned as a decimal string (FINDING-2 / Step 4) so it
+    # survives JSON-number-as-double clients.
+    assert isinstance(response["ts_ns"], str) and int(response["ts_ns"]) > 0
+
+
+def test_echo_ts_ns_is_decimal_string_exceeding_2_53(audit_log_path: Path) -> None:
+    """FINDING-2 (Step 4) regression guard: ts_ns is an int64 nanosecond
+    stamp (~1.78e18, well above 2**53), returned as a decimal STRING so a
+    JSON-number-as-IEEE-754-double client cannot silently round it. Guards
+    both the string type and that the value really is in the unsafe range
+    (a smaller value would not exercise the precision-loss path)."""
+    response = _handle_echo(version=1, claimed_tag="code", name="x")
+    ts = response["ts_ns"]
+    assert isinstance(ts, str)
+    assert ts.isdigit()
+    assert int(ts) > 2**53
 
 
 def test_echo_happy_writes_one_audit_record_with_outcome_ok(audit_log_path: Path) -> None:
@@ -83,12 +98,13 @@ def test_echo_happy_writes_one_audit_record_with_outcome_ok(audit_log_path: Path
 
 
 def test_echo_response_ts_ns_matches_audit_record(audit_log_path: Path) -> None:
-    """AC-3 chain prerequisite: the ts_ns returned to the client matches
-    the audit log record's ts_ns. Step 4 uses this for round-trip
-    ordering assertion."""
+    """AC-3 chain prerequisite: the ts_ns returned to the client is the
+    decimal-string form of the audit log record's int ts_ns. Step 4 uses
+    this for round-trip ordering assertion. The client sees a string
+    (FINDING-2); the audit log keeps the int (source of truth)."""
     response = _handle_echo(version=1, claimed_tag="code", name="hello")
     records = _read_audit_lines(audit_log_path)
-    assert response["ts_ns"] == records[0]["ts_ns"]
+    assert response["ts_ns"] == str(records[0]["ts_ns"])
 
 
 @pytest.mark.parametrize("tag", ["code", "chat", "cowork", "cray"])
@@ -152,13 +168,14 @@ def test_bridge_status_happy_returns_operational_state(audit_log_path: Path) -> 
     assert response["ppid"] == os.getppid()
 
 
-def test_bridge_status_last_call_ts_ns_initial_is_none_or_int(audit_log_path: Path) -> None:
+def test_bridge_status_last_call_ts_ns_initial_is_none_or_str(audit_log_path: Path) -> None:
     """Module-global state: ``_last_call_ts_ns`` may be None (no prior
-    call yet in this Python process) or an int (a prior accepted call
-    landed). Both are valid; the field is informational."""
+    call yet in this Python process) or a decimal string (a prior accepted
+    call landed; stringified per FINDING-2). Both are valid; the field is
+    informational."""
     response = _handle_bridge_status(version=1, claimed_tag="code")
     last = response["last_call_ts_ns"]
-    assert last is None or isinstance(last, int)
+    assert last is None or isinstance(last, str)
 
 
 def test_bridge_status_writes_audit_record(audit_log_path: Path) -> None:
@@ -174,10 +191,11 @@ def test_bridge_status_after_echo_reports_last_call_ts(audit_log_path: Path) -> 
     should be ≥ the echo's ts_ns."""
     echo_response = _handle_echo(version=1, claimed_tag="code", name="x")
     status_response = _handle_bridge_status(version=1, claimed_tag="code")
-    assert isinstance(echo_response["ts_ns"], int)
+    assert isinstance(echo_response["ts_ns"], str)
     last = status_response["last_call_ts_ns"]
-    assert isinstance(last, int)
-    assert last >= echo_response["ts_ns"]
+    assert isinstance(last, str)
+    # Compare numerically — both are decimal strings (FINDING-2).
+    assert int(last) >= int(echo_response["ts_ns"])
 
 
 def test_server_start_ts_is_set() -> None:
@@ -218,7 +236,7 @@ def test_bridge_whoami_happy_returns_observable_signals(audit_log_path: Path) ->
     assert response["ppid"] == os.getppid()
     assert isinstance(response["stdin_fd"], str)
     assert isinstance(response["stdout_fd"], str)
-    assert isinstance(response["ts_ns"], int)
+    assert isinstance(response["ts_ns"], str)  # decimal string per FINDING-2
     assert isinstance(response["env_keys_seen"], list)
 
 
