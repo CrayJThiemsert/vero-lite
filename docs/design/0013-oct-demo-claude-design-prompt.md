@@ -32,11 +32,11 @@
 ═══════════════════════════════ PROMPT ═══════════════════════════════
 
 Build a single-page **Operational Control Tower (OCT)** web UI for a distributed
-asset-operations platform. It is a **stakeholder demo**: an operator (energy or
-supply-chain) must look at it and *instantly* grasp how their existing
-operational data becomes tangible, governed decisions. Tone: a professional
-**control-tower** product — dense, glanceable, calm, trustworthy. Not playful, not
-a toy dashboard.
+asset-operations platform. This is a **stakeholder demo**: within the first ten
+seconds, an operator — energy or supply-chain — should see their *own* operational
+data turn into decisions they can trust and act on. Tone: a professional
+**control-tower** product the way a working operator expects one to feel — dense,
+glanceable, calm under load, trustworthy. Not playful, not a toy dashboard.
 
 **Deliverable:** one self-contained, standalone HTML page (vanilla HTML/CSS/JS, or
 a single CDN-loaded framework — no build step, no bundler). It will be served
@@ -74,6 +74,9 @@ selectable from the top bar (or a left rail):
 
 ### View A — Operational Map
 
+*The "where, and in what state" view — every site and asset on one canvas, each
+reading its status at a glance.*
+
 Source: `GET /meta` + `GET /objects/{object_type}` for each object type.
 
 - Plot every object that has geographic coordinates (properties whose values
@@ -90,6 +93,9 @@ Source: `GET /meta` + `GET /objects/{object_type}` for each object type.
 
 ### View B — Anomaly & Decision  ← the headline "show me WHY" moment
 
+*This is where the platform earns trust. It doesn't just flag a problem — it shows
+its work, then waits for a human to sign off before anything happens.*
+
 Source: `GET /recommendations`, then `POST /recommendations/{action_id}/approve`
 and `POST /recommendations/{action_id}/execute`.
 
@@ -103,8 +109,10 @@ For each recommendation render a **decision card**:
 - **THE REASONING TRACE** — render `reasoning_trace[]` as an ordered, vertical
   stepper. Each step: a `kind` badge (e.g. `rule_check`, `llm_inference`,
   `ontology_query`), the `summary` line, and an expandable `detail` (key/value
-  dump of the `detail` object). This is the credibility centerpiece — make it
-  prominent and readable, not a footnote.
+  dump of the `detail` object). This is the credibility centerpiece: an operator
+  should be able to read it top to bottom and follow the system's reasoning the way
+  a colleague would walk them through it. Make it prominent and readable, never a
+  footnote.
 - **Actions:** an **Approve** button (calls approve; on success the card moves to
   `approved` and reveals **Execute**) and an **Execute** button (calls execute; on
   success show `status: executed` and the returned `handler_receipt`). A **Reject**
@@ -112,10 +120,14 @@ For each recommendation render a **decision card**:
   v1 — Approve→Execute is the live round-trip).
 
 The seed scenario has exactly one recommendation: an over-temperature action on a
-battery asset (96.5 °C ≥ 90 °C threshold). It must read as the demo's punchline:
-*anomaly detected → here is the reasoning → a human approves → it executes.*
+battery asset (96.5 °C ≥ 90 °C threshold). It should land as the demo's punchline —
+the whole story in one card: *anomaly detected → here is the reasoning → a human
+approves → it executes.*
 
 ### View C — Ask (natural-language operational query)
+
+*Ask the system a question in plain language — and see exactly which records
+produced the answer.*
 
 Source: `POST /query` with body `{"question": "<text>"}`.
 
@@ -131,12 +143,16 @@ is the trust feature, do not hide it:
   invented"* badge. **This is the anti-hallucination guarantee made visible: the
   system returns 'no data' instead of making something up.**
 
-Offer 4–5 **example-question chips** to seed the conversation, e.g. "How many
-assets are there?", "Which sites do we operate?", "Any temperature readings above
-90 °C?", "Which assets are in maintenance?". (Phrase chips generically; they are
+Offer 4–5 **example-question chips** to seed the conversation, phrased the way an
+operator on shift would actually ask: e.g. "How many assets are we running?",
+"Which sites do we operate?", "Any readings above 90 °C?", "Which assets are active
+right now?", "What's currently in maintenance?". (Phrase chips generically; they are
 example content, not hard-coded logic.)
 
 ### View D — Data → Decision Flow
+
+*The whole journey on one screen — raw data on the left, a decision someone can
+stand behind on the right — so a stakeholder sees how one becomes the other.*
 
 Source: reuse `GET /objects/...` + the `GET /recommendations` payload — **no new
 endpoint**. A horizontal 4-stage pipeline with connecting arrows, each stage a
@@ -152,18 +168,21 @@ card showing the *real artifact* at that stage:
 4. **Result** — the `RecommendedAction` (title + status) with the approve/execute
    control.
 
-It unifies the automatic anomaly path (View B) and the interactive query path
-(View C) into one "your data → a governed decision" story a stakeholder can follow
-end to end. The four stage names are generic — content is ontology-driven.
+It draws the automatic anomaly path (View B) and the interactive query path
+(View C) together into a single "your data → a governed decision" story a
+stakeholder can follow end to end. The four stage names are generic — content is
+ontology-driven.
 
 ### Visual / theme direction
 
 Defer the exact palette, typography, and any branding to the **attached theme
-images**. Guardrails: a control-tower aesthetic — high information density without
-clutter, strong visual hierarchy, semantic status colors (a calm/ok state, a
-warning state, an error/critical state; reuse for both event severities and entity
-statuses), legible monospace for ids/values, generous use of cards and subtle
-dividers. Responsive to a laptop screen; a single operator at a desk is the user.
+images**. Guardrails for the control-tower feel: high information density without
+clutter, and a clear visual hierarchy that tells the operator where to look first.
+Use semantic status colors consistently — a calm/ok state, a warning state, an
+error/critical state — and reuse the same set for both event severities and entity
+statuses. Legible monospace for ids and values; cards and subtle dividers that
+organize rather than decorate. Built for a single operator at a desk; responsive to
+a laptop screen.
 
 ### Data contracts (exact response shapes — bind to these field names)
 
@@ -239,13 +258,14 @@ that query." (render the not-found/not-invented state).
 ### Acceptance checklist (the design should satisfy)
 
 - [ ] Nothing domain-specific is hard-coded — type names, labels, enums, and
-      relationships all come from `/meta`. Swapping `/meta` would re-skin the UI.
-- [ ] View B shows the reasoning trace prominently and supports Approve → Execute.
-- [ ] View C shows the structured query + source ids, and a visible
+      relationships all come from `/meta`. Swapping `/meta` alone would re-skin the UI.
+- [ ] View B makes the reasoning trace the centerpiece and supports the live
+      Approve → Execute round-trip.
+- [ ] View C surfaces the structured query + source ids, with a clearly visible
       grounded-vs-not-found state.
-- [ ] View D shows the 4-stage Ingest→Condition→Process→Result flow over live data.
-- [ ] Graceful loading + error states; works on a laptop screen; standalone (no
-      build step); fetches only relative URLs.
+- [ ] View D walks the 4-stage Ingest→Condition→Process→Result flow over live data.
+- [ ] Loading and error states are handled gracefully; works on a laptop screen;
+      standalone (no build step); fetches only relative URLs.
 
 ═════════════════════════════ END PROMPT ═════════════════════════════
 
