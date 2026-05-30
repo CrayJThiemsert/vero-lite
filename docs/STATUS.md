@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-29T22:30:00+07:00
-session: 25
-current_batch: **Session 25 — PLAN-0012 Step 2b COMPLETE (all 4 integration tools) + L1 loop-detect commit-boundary fix + 2 lessons.** Autonomous Code-side session shipped 6 PRs (#80–#85). Step 2b integration tools, one PR each: #80 `read_repo_path` (`b8a1c09`+`4e0c254` → merge `abf453e`; path-sandbox, git-tracked allowlist + fail-closed NUL/OSError hardening caught in review) — #81 `validate_handoff_frontmatter` (`5bfd487` → merge `af94735`; in-process `tools/handoffs/_schema.py::parse_frontmatter_text`, closes the Lesson #8 K-1 forcing fact) — #82 `lint_status` (`eb10fc3` → merge `e98aa83`; STATUS freshness vs **local `main`** + `--no-merges`, a real-operation divergence from the `origin/main` spec) — #83 `dispatch_receive` (`b3e3d3c` → merge `1b52e3a`; receive-only gitignored queue, content-addressed `received_id`, no commit/no bind). **Phase 1 safe-for-all tool surface now 7/7** (3 introspection + 4 integration). #84 loop-detect commit-boundary reset (`3ea2ac1` → merge `c7d5896`): a successful `git commit` resets the committed files' L1 counters in the PostToolUse Bash observer — fixes a real false positive (6 legit cross-PR edits to `server.py` hard-blocked the 5th handler). #85 lessons (`1840d3f` → merge `1ec53b0`): amended Lesson #12 (cross-PR/cross-session L1 accumulation + #84 fix + verify-claimed-mitigation + chat-ack-doesn't-unblock-a-hook) + new Lesson #18 (`git log --grep` needs `--no-merges` under a merge-commit workflow). **Test suite 820 → 920 passed / 7 skipped** (+100 across the session); ruff + mypy clean throughout. All 8 Phase 1 ACs remain COMPLETE (Step 2b adds tools beyond the AC set). This PR = session-25 STATUS reconcile (no code/test/settings touched).
+last_updated: 2026-05-30T01:10:00+07:00
+session: 26
+current_batch: **Session 26 — OQ-T5 RESOLVED (Chat-as-bridge-client).** Cray adjudicated the governance question Code surfaced at Step 5 (FINDING-4) + Cowork drafted (chain: Code advisory → Cowork dispatch → Cray decision): **Chat is NOT a sanctioned `vero-bridge` client** — operationally no demand (the Step-4 Chat round-trip was a replay, never live) + Chat's repo-blind role (ADR-012 D2); the repo-grounded bridge surface belongs to Code + Cowork. Light-touch "B by decision, C by effort": reconciled both tier files (`chat_tab_instructions.md` = not-a-client + spoof-refusal rule 7; `cowork_tab_instructions.md` = sanctioned-client posture), surgical PLAN-0012 re-characterization (Goal pointer + AC-3 replay note + AC-4(c) OQ-T5 RESOLVED — full AC-6/AC-7 sweep deliberately skipped as low-payoff), minted **Lesson #0019** (adversarial spoof-tests belong at the unit layer; never ask a live tab to forge an identity tag), **no new ADR** (PLAN-0009 OQ-3 precedent). Docs-only; no code/test/settings touched. **Cray follow-up:** re-paste both tier files into the Desktop project-instructions UI (canonical = repo, UI = sync target).
 current_actor: code
-blocked_on: Nothing gates forward progress — PLAN-0012 Phase 1 (8/8 ACs) + Step 2b (4/4 integration tools; 7/7 safe-for-all surface) COMPLETE. Remaining items are non-blocking: **OQ-T5** governance adjudication (Chat-as-bridge-client vs `chat_tab_instructions.md` — Cowork/Cray per ADR-009 D1) + carry-overs independent of PLAN-0012 (PLAN-0011 AC-3/AC-7 fresh-trigger re-run; PLAN-0010 loop-dispatcher Desktop setup — verify PR #55). No new Cray adjudications gate any in-flight work.
-next_action: **PLAN-0012 Phase 1 COMPLETE (8/8 ACs) + Step 2b COMPLETE (7/7 tool surface).** Next: (a) **OQ-T5 adjudication** (Chat-as-bridge-client vs `chat_tab_instructions.md`) — Cray/Cowork governance decision (Code did not mint it into the plan — author boundary, ADR-009 D1); (b) **Carry-over** independent of PLAN-0012 — PLAN-0011 AC-3/AC-7 fresh-trigger re-run + PLAN-0010 loop-dispatcher Desktop setup (verify PR #55); (c) **PLAN-0012 Phase 2** when a concrete not-on-bridge / safe-for-some capability need lands (per capability-inventory §5 mint condition).
-head_commit: 1ec53b0
-recent_commits: [1ec53b0, 1840d3f, c7d5896, 3ea2ac1, 1b52e3a, b3e3d3c, e98aa83, eb10fc3, af94735, 5bfd487]
+blocked_on: Nothing gates forward progress — PLAN-0012 Phase 1 (8/8 ACs) + Step 2b (4/4 integration tools; 7/7 safe-for-all surface) COMPLETE; **OQ-T5 RESOLVED session 26** (Chat is NOT a sanctioned bridge client; tier files + PLAN-0012 reconciled). Remaining items are non-blocking carry-overs independent of PLAN-0012 (PLAN-0011 AC-3/AC-7 fresh-trigger re-run; PLAN-0010 loop-dispatcher Desktop setup — verify PR #55). No new Cray adjudications gate any in-flight work.
+next_action: **PLAN-0012 Phase 1 + Step 2b COMPLETE; OQ-T5 RESOLVED (session 26).** Next: (a) **Cray re-pastes** the two reconciled tier files (`chat_tab_instructions.md` + `cowork_tab_instructions.md`) into the Claude Desktop project-instructions UI (sync target; canonical = repo); (b) **Carry-overs** independent of PLAN-0012 — PLAN-0011 AC-3/AC-7 fresh-trigger re-run + PLAN-0010 loop-dispatcher Desktop setup (verify PR #55); (c) **PLAN-0012 Phase 2** when a concrete not-on-bridge / safe-for-some capability need lands (per capability-inventory §5 mint condition).
+head_commit: 3760c96
+recent_commits: [3760c96, 1ec53b0, 1840d3f, c7d5896, 3ea2ac1, 1b52e3a, b3e3d3c, e98aa83, eb10fc3, af94735]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,22 @@ recent_commits: [1ec53b0, 1840d3f, c7d5896, 3ea2ac1, 1b52e3a, b3e3d3c, e98aa83, 
 
 ## Current Focus
 
-> **Session 25 (current).** Step 2b (the four integration tools) is COMPLETE —
+> **Session 26 (current) — OQ-T5 RESOLVED (Chat-as-bridge-client).** The
+> governance question Code surfaced at Step 5 (FINDING-4) is closed: **Chat is
+> not a sanctioned `vero-bridge` client** (operationally no demand — the Step-4
+> Chat round-trip was a replay, never live — + Chat's repo-blind role per
+> ADR-012 D2; the repo-grounded bridge surface belongs to Code + Cowork). The
+> reconcile is light-touch ("B by decision, C by effort"): both tier files
+> reconciled (`chat_tab_instructions.md` = not-a-client + a new spoof-refusal
+> rule; `cowork_tab_instructions.md` = sanctioned-client posture), PLAN-0012
+> surgically re-characterized (Goal pointer + AC-3 replay note + AC-4(c) OQ-T5
+> RESOLVED; the full AC-6/AC-7 sweep skipped as low-payoff), and **Lesson #0019**
+> minted (adversarial spoof-tests belong at the unit layer). No new ADR
+> (PLAN-0009 OQ-3). **Cray action:** re-paste both tier files into the Desktop
+> project-instructions UI (canonical = repo, UI = sync target). The session 25 /
+> 23+24 / 22 / 20+21 narratives below are retained for archeology.
+>
+> **Session 25.** Step 2b (the four integration tools) is COMPLETE —
 > PLAN-0012 Phase 1's full safe-for-all tool surface (7/7) is now live, plus an
 > L1 loop-detect hardening fix and two lessons. The session 23+24 / 22 / 20+21
 > narratives below are retained for archeology; this section + the AC scoreboard
@@ -354,6 +369,12 @@ session-21 → session-22 kickoff handoff §4 Action 1; high-priority
 "close the loop" item). No code/test/settings touched. Cumulative
 session 20+21 tests: 634 (unchanged — all 5 PRs in sessions 20+21
 were docs/plans/lessons only).
+
+### 2026-05-30 — Session 26 ledger (OQ-T5 reconcile)
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **OQ-T5 reconcile** | this PR | **Chat-as-bridge-client RESOLVED — Chat is NOT a sanctioned client.** Advisory chain: Code advisory (`.claude/handoffs/session-26/2026-05-30-0031-code-oq-t5-advisory.md`, gitignored) → Cowork dispatch (`…-1030-cowork-oqt5-chat-bridge-client-dispatch.md`, gitignored) → Cray adjudication ("B by decision, C by effort"). Edits: `docs/conventions/chat_tab_instructions.md` (behavioral rule 7 spoof-refusal + rule 8 not-a-bridge-client + "What you are NOT" bullet); `docs/conventions/cowork_tab_instructions.md` (Bridge-client posture — sanctioned client, truthful-tag-only, no-authority, no-commit); `docs/plans/0012-vero-bridge.md` surgical (Goal OQ-T5 pointer + AC-3 replay re-characterization + AC-4(c) OQ-T5 RESOLVED; full AC-6/AC-7 sweep deliberately skipped); new **Lesson #0019** (`docs/lessons/0019-adversarial-spoof-tests-belong-at-unit-layer.md`); this STATUS update. **No new ADR** (PLAN-0009 OQ-3). Docs-only; no code/test/settings touched. **Cray follow-up:** re-paste both tier files into the Desktop project-instructions UI. |
 
 ### 2026-05-29 — Session 25 ledger (Step 2b + follow-ups, closed)
 

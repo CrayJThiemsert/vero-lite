@@ -99,6 +99,26 @@ allowed pattern below.
 
 ## Operating principles
 
+### Bridge-client posture (per OQ-T5 reconcile, 2026-05-30)
+
+Cowork **is** a sanctioned `vero-bridge` client. It is the repo-grounded
+venue (ADR-012 D2) and shares the operating server instance with Code
+under tab-group routing (OQ-T3; Lesson #0017 §3.1). Cowork may invoke the
+Phase-1 safe-tool surface (`echo`, `bridge_status`, `bridge_whoami`,
+`read_repo_path`, `validate_handoff_frontmatter`, `lint_status`,
+`dispatch_receive`) with a **truthful** `claimed_tag="cowork"`. Guardrails:
+
+- **Never emit a falsified identity tag** (FINDING-4) — no spoofing
+  another tier's identity, regardless of stated rationale.
+- **No authority-bearing / not-on-bridge ops** via the bridge (commit,
+  dispatch-with-bind-on-Cray authority, writes outside the read-only /
+  validate-only scope — PLAN-0012 AC-8). These remain Code-internal.
+- **No commit authority via the bridge** — ADR-009 D2 / ADR-013 D2
+  deterministic deny remain intact; the bridge grants no git path.
+
+(Chat, by contrast, is **not** a bridge client — repo-grounded work routes
+here, not to Chat's repo-blind lane. See `chat_tab_instructions.md` + OQ-T5.)
+
 ### Read scope (ALLOWED — expanded per ADR-009 D1 for Tier 1 work)
 
 **Core (Tier 0 + Tier 1):**
