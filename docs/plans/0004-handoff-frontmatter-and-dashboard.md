@@ -1,9 +1,23 @@
 # PLAN-004: Handoff Frontmatter and Dashboard
 
-**Status:** Proposed (v2 — amended pre-dispatch)
+**Status:** Ready for execution — **Phase A COMPLETE** (shipped); Phases B + C forward-declared
 **Date:** 2026-05-19
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-006 (vertical plugin), Lesson #5 (tier-system audit) §1 + §2 + §3 + §4, Lesson #6 (Code surface → Chat re-dispatch pattern), `docs/runbooks/claude-code-chat-handoff.md`, `docs/runbooks/transcript-handoff.md`, `docs/conventions/chat_tab_instructions.md`, `docs/conventions/cowork_tab_instructions.md`, `tools/handoffs/render_transcript.py` (precedent, commit `98e5591`)
+
+> **Status reconciliation (2026-05-30, session 26).** Phase A (Batch 1
+> tooling + Batch 2 retro-migration) is **shipped and in active use** —
+> `tools/handoffs/{_schema,validate_handoff,handoff_status}.py`,
+> `docs/conventions/handoff-frontmatter-schema.md`, and the `docs/logs/`
+> two-artifact summaries (`2026-05-19-plan004-batch2a/2b-migration.md`)
+> all exist and are exercised every session. The plan is **kept active**
+> (Cray-adjudicated, session 26 — not archived) as the tracker for the
+> forward-declared **Phase B** (automation: pre-commit wiring, `--watch`,
+> per-session `INDEX.md`) and **Phase C** (optional polish), each of which
+> becomes a future PLAN-004 amendment or a separate plan when picked up.
+> **Status vocabulary corrected** from `Proposed` — an ADR-vocabulary leak;
+> this PLAN predates PLAN-0009 OQ-4 (ratified 2026-05-25) which fixed PLANs
+> to use `Draft` → `Ready for execution`, not `Proposed`/`Accepted`.
 
 ## Context
 
