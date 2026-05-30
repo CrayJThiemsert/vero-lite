@@ -80,6 +80,11 @@
     try {
       await O.loadMeta();
       renderMetaChips();
+      // The connection listener only fires on a CHANGE, and the app starts
+      // 'live', so the happy path never repaints the strip off "CONNECTING…".
+      // Paint it explicitly after the first successful load (the mock fallback
+      // flips to 'degraded' on its own via setConnection).
+      if (!O.State.usingMock) stripState('live', 'LIVE · SAME-ORIGIN');
     } catch (e) {
       stripState('down', 'BACKEND UNREACHABLE');
     }
