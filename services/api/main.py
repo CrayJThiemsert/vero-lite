@@ -8,6 +8,7 @@ from fastapi import FastAPI
 
 from services.api.models.health import HealthResponse
 from services.api.routers.actions import router as actions_router
+from services.api.routers.query import router as query_router
 from verticals.energy.data_adapter import register_energy_adapter
 from verticals.energy.handlers import register_energy_handlers
 
@@ -27,6 +28,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 app.include_router(actions_router)
+app.include_router(query_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["infrastructure"])
