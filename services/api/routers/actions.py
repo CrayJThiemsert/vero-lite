@@ -20,6 +20,7 @@ from services.api.models.actions import (
 )
 from services.db.persistence import persist_executed_action
 from services.db.session import get_session
+from services.engine.ontology_meta import OntologyMeta, load_ontology_meta
 from services.engine.recommender import ActionRecord, ApprovalError, approve, execute, recommend
 from services.engine.registry import registry
 
@@ -45,6 +46,8 @@ def _to_response(record: ActionRecord) -> RecommendationResponse:
         confidence=action.confidence,
         requires_approval=action.requires_approval,
         suggested_handler=action.suggested_handler,
+        reasoning_trace=action.reasoning_trace,
+        affected_entities=action.affected_entities,
     )
 
 
@@ -70,6 +73,12 @@ async def list_objects(object_type: str) -> ObjectListResponse:
     adapter = registry.get_adapter(_VERTICAL)
     objects = await adapter.fetch_objects(object_type)
     return ObjectListResponse(object_type=object_type, count=len(objects), objects=objects)
+
+
+@router.get("/meta", response_model=OntologyMeta)
+async def get_meta() -> OntologyMeta:
+    """Return the active vertical's ontology metadata (drives the ontology-driven UI)."""
+    return load_ontology_meta(_VERTICAL)
 
 
 @router.get("/recommendations", response_model=RecommendationListResponse)

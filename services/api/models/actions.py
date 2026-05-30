@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from services.engine.actions import EntityRef, ReasoningStep
+
 
 class ObjectListResponse(BaseModel):
     """A page of raw objects from a vertical DataAdapter."""
@@ -24,6 +26,12 @@ class RecommendationResponse(BaseModel):
     confidence: float = Field(..., description="Recommender confidence in [0.0, 1.0]")
     requires_approval: bool = Field(..., description="Whether the action needs approval")
     suggested_handler: str = Field(..., description="Registered handler name for execution")
+    reasoning_trace: list[ReasoningStep] = Field(
+        default_factory=list, description="The recommender's reasoning steps (the 'why')"
+    )
+    affected_entities: list[EntityRef] = Field(
+        default_factory=list, description="Ontology entities the action concerns"
+    )
 
 
 class RecommendationListResponse(BaseModel):

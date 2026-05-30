@@ -76,3 +76,35 @@ async def test_openapi_lists_action_routes(client: AsyncClient) -> None:
     assert "/recommendations" in paths
     assert "/recommendations/{action_id}/approve" in paths
     assert "/recommendations/{action_id}/execute" in paths
+
+
+async def test_recommendations_carry_reasoning_trace_and_entities(client: AsyncClient) -> None:
+    """PLAN-0013 1a: /recommendations exposes the reasoning trace + affected entities."""
+    body = (await client.get("/recommendations")).json()
+    rec = body["recommendations"][0]
+    assert isinstance(rec["reasoning_trace"], list) and len(rec["reasoning_trace"]) >= 1
+    assert {"step_id", "kind", "summary"} <= set(rec["reasoning_trace"][0])
+    assert isinstance(rec["affected_entities"], list) and len(rec["affected_entities"]) >= 1
+    assert {"object_type", "primary_key"} <= set(rec["affected_entities"][0])
+
+
+async def test_meta_returns_ontology_driven_types(client: AsyncClient) -> None:
+    """PLAN-0013 1b: GET /meta serves ontology metadata (types/title_key/enums/links)."""
+    body = (await client.get("/meta")).json()
+    assert body["vertical"] == "energy"
+    types = {t["name"]: t for t in body["object_types"]}
+    assert {"Asset", "Site"} <= set(types)
+    asset = types["Asset"]
+    assert asset["title_key"] == "name"
+    assert asset["primary_key"] == "asset_id"
+    props = {p["name"]: p for p in asset["properties"]}
+    assert props["asset_type"]["enum"] == ["battery", "inverter", "meter", "transformer"]
+    assert any(
+        link["from_type"] == "Asset" and link["to_type"] == "Site" for link in body["link_types"]
+    )
+
+
+async def test_meta_advertised_in_openapi(client: AsyncClient) -> None:
+    """GET /openapi.json advertises the new /meta route."""
+    paths = (await client.get("/openapi.json")).json()["paths"]
+    assert "/meta" in paths
