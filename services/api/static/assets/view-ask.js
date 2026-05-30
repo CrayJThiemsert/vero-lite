@@ -149,7 +149,7 @@
     return receipt;
   }
 
-  function opSym(op) { return { eq: '=', gt: '>', lt: '<', gte: '≥', lte: '≤', neq: '≠' }[op] || op; }
+  function opSym(op) { return { eq: '=', ne: '≠', neq: '≠', gt: '>', lt: '<', gte: '≥', lte: '≤', contains: '∋' }[op] || op; }
 
   function openSource(type, id) {
     if (!type) return;
