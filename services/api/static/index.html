@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OCT · Operational Control Tower</title>
+  <meta name="description" content="Operational Control Tower — an ontology-driven operations console: see your assets, understand a flagged anomaly, approve a governed action, and ask grounded questions of your own data." />
+  <link rel="stylesheet" href="assets/theme.css" />
+  <link rel="stylesheet" href="assets/views.css" />
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- thumbnail used by the offline bundler (icon splash / no-JS fallback) -->
+  <template id="__bundler_thumbnail">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <rect width="100" height="100" fill="#0d1119"/>
+      <g fill="none" stroke="#4d8df0" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="30" y="30" width="18" height="18" rx="3"/>
+        <rect x="52" y="30" width="18" height="18" rx="3"/>
+        <rect x="30" y="52" width="18" height="18" rx="3"/>
+        <rect x="52" y="52" width="18" height="18" rx="3"/>
+      </g>
+      <circle cx="70" cy="30" r="6" fill="#46b377"/>
+    </svg>
+  </template>
+
+  <!-- data + logic (order matters) -->
+  <script src="assets/mock.js"></script>
+  <script src="assets/api.js"></script>
+  <script src="assets/components.js"></script>
+  <script src="assets/view-map.js"></script>
+  <script src="assets/view-anomaly.js"></script>
+  <script src="assets/view-ask.js"></script>
+  <script src="assets/view-flow.js"></script>
+  <script src="assets/app.js"></script>
+</body>
+</html>

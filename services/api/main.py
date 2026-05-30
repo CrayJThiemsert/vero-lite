@@ -3,14 +3,18 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
+from pathlib import Path
 
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 
 from services.api.models.health import HealthResponse
 from services.api.routers.actions import router as actions_router
 from services.api.routers.query import router as query_router
 from verticals.energy.data_adapter import register_energy_adapter
 from verticals.energy.handlers import register_energy_handlers
+
+_STATIC_DIR = Path(__file__).parent / "static"
 
 
 @asynccontextmanager
@@ -39,3 +43,11 @@ async def health() -> HealthResponse:
         timestamp=datetime.now(UTC),
         version="0.1.0",
     )
+
+
+# Serve the Claude-Design OCT demo UI (PLAN-0013 Step 5, OQ-4: one process, one
+# URL, same-origin, no CORS). Mounted LAST so the API routes above take
+# precedence; this catch-all serves index.html at "/" and the assets/ bundle.
+# The UI fetches the relative API paths (/meta, /objects, /recommendations,
+# /query) which resolve to the routers above.
+app.mount("/", StaticFiles(directory=_STATIC_DIR, html=True), name="ui")
