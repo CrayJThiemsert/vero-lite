@@ -38,7 +38,7 @@ from typing import Any
 
 from services.api.config import settings
 from services.engine.actions import AuditMetadata, EntityRef, ReasoningStep, RecommendedAction
-from services.engine.llm.client import OllamaClient
+from services.engine.llm.client import OllamaClient, OllamaUnreachableError
 from services.engine.llm.structured import ChatClient, JudgmentResult, generate_judgment
 from services.engine.llm.trace import build_llm_audit_metadata, build_llm_reasoning_trace
 from services.engine.registry import registry
@@ -168,6 +168,12 @@ async def recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
         )
         return _compose_llm_record(event, vertical, result)
     except Exception as exc:  # fail-safe must catch everything — §6.6 / ADR-010 IN-4
+        if isinstance(exc, OllamaUnreachableError):
+            # PLAN-0014: MS-S1 is unreachable — best-effort ping (never raises),
+            # then continue to the deterministic fail-safe below, unchanged.
+            from services.notify.telegram import notify_llm_unreachable
+
+            await notify_llm_unreachable()
         logger.warning(
             "LLM recommend() path failed for vertical '%s'; falling back to the "
             "deterministic rule path: %s",

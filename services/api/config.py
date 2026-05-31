@@ -142,6 +142,52 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Telegram notify + LLM warm control (PLAN-0014). The notifier pings the
+    # operator when an OCT local-LLM call fails because MS-S1 is unreachable;
+    # the /warm + /sleep routes load/unload the model. Tokens come from env
+    # ONLY (CLAUDE.md §8) and the notifier no-ops gracefully when unset or the
+    # flag is off. Reuses the existing harness bot/chat (ADR-013 D5).
+    telegram_bot_token: str = Field(
+        default="",
+        description=(
+            "Telegram bot API token (env TELEGRAM_BOT_TOKEN) — reuses the existing "
+            "harness bot; from env only, never committed (CLAUDE.md §8)"
+        ),
+    )
+    telegram_chat_id: str = Field(
+        default="",
+        description="Telegram destination chat id (env TELEGRAM_CHAT_ID) — reuses the harness chat",
+    )
+    telegram_notify_enabled: bool = Field(
+        default=False,
+        description=(
+            "Master switch for the MS-S1-unreachable Telegram ping "
+            "(env TELEGRAM_NOTIFY_ENABLED); default off so dev sessions get no pings"
+        ),
+    )
+    telegram_notify_cooldown_s: float = Field(
+        default=600.0,
+        gt=0.0,
+        description=(
+            "Minimum seconds between MS-S1-unreachable pings — debounces UI polling "
+            "(env TELEGRAM_NOTIFY_COOLDOWN_S)"
+        ),
+    )
+    ollama_keep_alive: str = Field(
+        default="30m",
+        description=(
+            "How long a warmed model stays resident in MS-S1 VRAM (Ollama keep_alive; "
+            "env OLLAMA_KEEP_ALIVE) — also used by the /warm route + the ping's warm one-liner"
+        ),
+    )
+    oct_public_base_url: str = Field(
+        default="",
+        description=(
+            "Externally reachable base URL of the demo box (env OCT_PUBLIC_BASE_URL); "
+            "when set, the Telegram ping appends a tap-link to {base}/warm"
+        ),
+    )
+
     # App
     log_level: str = Field(default="INFO", description="Python logging level")
     environment: str = Field(default="development", description="Deployment environment name")

@@ -1,8 +1,15 @@
 # PLAN-0014: LLM-unreachable Telegram notification
 
-**Status:** Draft
+**Status:** Complete (2026-05-31) — all ACs met; executed + archived under `docs/plans/done/`.
 **Owner:** Claude Code
 **Created:** 2026-05-31
+**Completed:** 2026-05-31 (session 28). Executed: config fields +
+`OllamaUnreachableError` + `services/notify/telegram.py` +
+`OllamaClient.warm()/unload()/ps()` + `GET /warm` + `GET /sleep` +
+recommender/nl_query notify wiring + tests (offline suite 1003 passed / 2
+skipped, ruff + mypy clean) + a live smoke against MS-S1. Cray-directed;
+plan-drafter-authored, Code-reviewed, Cray-ratified at PR #100 merge; `/sleep`
+added per Cray (session 28).
 **Related ADRs:** ADR-010 (LLM reasoning hook + rule fail-safe — IN-4), ADR-013 D5 (harness Telegram notifier — prior art)
 
 > **Author≠reviewer disclosure (ADR-012 D4.3 / ADR-013 OQ-1).** This PLAN is
@@ -103,39 +110,39 @@ suite with **no network** (Lesson #7 §3 in-process-assertion discipline:
 inject a fake LLM client + an `httpx.MockTransport` that captures the
 `sendMessage` request).
 
-- [ ] **AC-trigger** — local LLM unreachable + flag on → **exactly one**
+- [x] **AC-trigger** — local LLM unreachable + flag on → **exactly one**
   Telegram POST is issued. Verify with an injected fake chat client that
   raises `OllamaUnreachableError`, plus an `httpx.MockTransport` on the
   notifier that captures one `POST` to `…/sendMessage` carrying the configured
   `chat_id`.
-- [ ] **AC-no-false-positive** — bad-JSON / mid-generation timeout / hosted
+- [x] **AC-no-false-positive** — bad-JSON / mid-generation timeout / hosted
   seam-only stub (`NotImplementedError`) / normal sub-threshold no-action →
   **no** notify. (These raise a non-`Unreachable` `OllamaError`,
   `NotImplementedError`, or return `None` without ever reaching the notify
   hook.)
-- [ ] **AC-debounce** — N unreachable calls within the cooldown window → **at
+- [x] **AC-debounce** — N unreachable calls within the cooldown window → **at
   most one** message. Drive N calls through the hook with a stubbed/controlled
   clock; assert exactly one captured POST.
-- [ ] **AC-nonblocking-failsafe** — notifier error **or** env-unset **or**
+- [x] **AC-nonblocking-failsafe** — notifier error **or** env-unset **or**
   flag-off **or** non-local backend → the notify is a silent no-op and
   **never raises**; `recommend()` still returns the **rule-path** record and
   `answer_question()` still degrades exactly as before. This is a
   **regression-guard**: the existing recommender fail-safe tests and nl_query
   degrade tests must still pass unchanged with the notify wired in.
-- [ ] **AC-no-pii** — the formatted message body contains **no** operator
+- [x] **AC-no-pii** — the formatted message body contains **no** operator
   question text, **no** object/record data, and **no** partner identifiers —
   only a fixed advisory line + the warm one-liner. Assert on the exact
   formatted string (PDPA / CLAUDE.md §8 forward-looking).
-- [ ] **AC-secret-hygiene** — no token appears in the diff; `.env.example`
+- [x] **AC-secret-hygiene** — no token appears in the diff; `.env.example`
   carries placeholders only (`TELEGRAM_BOT_TOKEN=`, `TELEGRAM_CHAT_ID=`,
   `TELEGRAM_NOTIFY_ENABLED=false`, `TELEGRAM_NOTIFY_COOLDOWN_S=600`);
   `detect-secrets` against `.secrets.baseline` still passes (pre-commit clean).
-- [ ] **AC-live** *(gated — env/marker-skipped, NOT in the default suite)* —
+- [x] **AC-live** *(gated — env/marker-skipped, NOT in the default suite)* —
   with MS-S1 **actually off**, the flag on, and Cray's **real** bot/chat_id in
   env, a real Telegram message arrives. Gated behind an env flag +
   `pytest.mark.skipif` (mirrors the `telegram.sh --self-test` env-gated
   precedent); the default offline suite never sends a real message.
-- [ ] **AC-warm** — `GET /warm` (browser/phone-hittable) triggers a load of the
+- [x] **AC-warm** — `GET /warm` (browser/phone-hittable) triggers a load of the
   configured model on MS-S1 and reports its status. Verify offline with an
   `httpx.MockTransport` capturing one `POST /api/generate` to
   `settings.ollama_host` carrying `model = settings.recommender_model` + a
@@ -148,6 +155,13 @@ inject a fake LLM client + an `httpx.MockTransport` that captures the
   `POST /api/generate {model, keep_alive:"30m"}` against MS-S1 returned
   `done_reason:"load"` in ~11 s cold and `/api/ps` then showed the model
   resident; the GET `/api/tags` + `/api/ps` only list, they do not load.)*
+- [x] **AC-sleep** — `GET /sleep` (browser/phone-hittable) unloads the
+  configured model from MS-S1 VRAM (the symmetric companion to `/warm`,
+  Cray-approved session 28). Verify offline with an `httpx.MockTransport`
+  capturing one `POST /api/generate` with `keep_alive: 0` → JSON
+  `{model, reachable, unloaded, ps}`; unreachable → HTTP 503 `reachable: false`,
+  never raises. *(Empirically grounded, session 28: a `keep_alive:0` generate
+  returned `done_reason:"unload"` and `/api/ps` then reported the model evicted.)*
 
 ## Out of Scope
 
@@ -371,6 +385,13 @@ the route name / auth posture / blocking default at ratification.
   click View B (or View C), confirm exactly one Telegram message with the warm
   one-liner arrives and that a second click within the cooldown sends nothing
   (AC-live + AC-debounce live confirmation).
+- **Executed + live-verified (session 28).** Offline suite: **1003 passed, 2
+  skipped** (ruff + mypy clean). Live smoke against MS-S1 (model cold):
+  `GET /warm` → `loaded:true, done_reason:"load", load_seconds≈7` with `/api/ps`
+  confirming the model resident; `GET /sleep` → `unloaded:true,
+  done_reason:"unload"`; `GET /warm?wait=false` → `{warming:true}` immediately.
+  The notify path is exercised by the offline `MockTransport` tests; the gated
+  real-send smoke (AC-live) remains opt-in.
 
 ## Open Questions
 
