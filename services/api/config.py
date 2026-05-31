@@ -1,7 +1,27 @@
 """Application configuration via environment variables."""
 
-from pydantic import Field
+from typing import Self
+
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
+
+
+def _derive_test_database_url(database_url: str) -> str:
+    """Derive a sibling ``<db>_test`` URL from the main database URL.
+
+    Only the database name changes — same driver / host / port /
+    credentials — so the test DB lands on the same Postgres server the dev
+    DB uses (ADR-003 port hygiene) while never pointing at the dev DB
+    itself. The disposable test suite owns ``<db>_test`` exclusively, so its
+    create_all / drop_all teardown can never wipe the dev/demo schema (see
+    project memory ``project_test_suite_drops_demo_db``).
+    """
+    url = make_url(database_url)
+    base_name = url.database or "vero_lite"
+    # render_as_string(hide_password=False): str(URL) masks the password as
+    # "***", which would corrupt the connection string for the test engine.
+    return url.set(database=f"{base_name}_test").render_as_string(hide_password=False)
 
 
 class Settings(BaseSettings):
@@ -18,6 +38,15 @@ class Settings(BaseSettings):
     database_url: str = Field(
         default="postgresql+asyncpg://vero:vero@localhost:5432/vero_lite",
         description="PostgreSQL connection string (asyncpg driver)",
+    )
+    test_database_url: str = Field(
+        default="",
+        description=(
+            "Disposable database the test suite owns exclusively. Left blank "
+            "it is derived as <db>_test from database_url; set TEST_DATABASE_URL "
+            "to override. Must never equal database_url — the suite drops its "
+            "schema on teardown (project memory project_test_suite_drops_demo_db)."
+        ),
     )
 
     # Redis
@@ -71,6 +100,13 @@ class Settings(BaseSettings):
     # App
     log_level: str = Field(default="INFO", description="Python logging level")
     environment: str = Field(default="development", description="Deployment environment name")
+
+    @model_validator(mode="after")
+    def _fill_test_database_url(self) -> Self:
+        """Default test_database_url to the derived ``<db>_test`` when blank."""
+        if not self.test_database_url:
+            self.test_database_url = _derive_test_database_url(self.database_url)
+        return self
 
 
 settings = Settings()

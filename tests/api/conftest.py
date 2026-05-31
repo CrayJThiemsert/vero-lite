@@ -13,15 +13,14 @@ from collections.abc import AsyncIterator, Iterator
 import pytest
 import sqlalchemy as sa
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import NullPool
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from services.api.config import settings
 from services.api.main import app
 from services.api.routers.actions import reset_action_store
 from services.db.base import Base
 from services.db.session import get_session
 from services.engine.llm.client import ChatResult
+from tests.db_support import create_test_engine
 from verticals.energy.data_adapter import register_energy_adapter
 from verticals.energy.handlers import register_energy_handlers
 
@@ -98,14 +97,12 @@ async def client(energy_vertical: None) -> AsyncIterator[AsyncClient]:
 
 @pytest.fixture
 async def client_with_db(energy_vertical: None) -> AsyncIterator[AsyncClient]:
-    """An httpx client with get_session overridden by a per-test engine."""
-    eng = create_async_engine(settings.database_url, poolclass=NullPool)
-    try:
-        async with eng.connect() as conn:
-            await conn.execute(sa.text("SELECT 1"))
-    except Exception:
-        await eng.dispose()
-        pytest.skip("Postgres not reachable — start docker compose / set DATABASE_URL")
+    """An httpx client with get_session overridden by a per-test engine.
+
+    Binds to the disposable test DB (settings.test_database_url), never the
+    dev/demo DB — the create_all/drop_all round-trip below owns its schema.
+    """
+    eng = await create_test_engine()
     async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     maker = async_sessionmaker(eng, expire_on_commit=False)

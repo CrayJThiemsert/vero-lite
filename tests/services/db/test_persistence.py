@@ -11,6 +11,7 @@ pytest-asyncio's per-test event loops.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from collections.abc import AsyncIterator
@@ -19,17 +20,16 @@ from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
-from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import (
     AsyncEngine,
     AsyncSession,
     async_sessionmaker,
-    create_async_engine,
 )
 
 from services.api.config import settings
 from services.db.base import Base
 from services.db.models import Alert, RecommendedAction
+from tests.db_support import create_test_engine
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 _EXPECTED_TABLES = {
@@ -51,14 +51,13 @@ async def _drop_everything(eng: AsyncEngine) -> None:
 
 @pytest.fixture
 async def db_engine() -> AsyncIterator[AsyncEngine]:
-    """A fresh NullPool engine per test; skip when Postgres is unreachable."""
-    eng = create_async_engine(settings.database_url, poolclass=NullPool)
-    try:
-        async with eng.connect() as conn:
-            await conn.execute(sa.text("SELECT 1"))
-    except Exception:
-        await eng.dispose()
-        pytest.skip("Postgres not reachable — start docker compose / set DATABASE_URL")
+    """A fresh NullPool engine per test, bound to the disposable test DB.
+
+    Targets settings.test_database_url (a sibling <db>_test), never the
+    dev/demo DB; skips when Postgres is unreachable so the suite stays green
+    without Docker.
+    """
+    eng = await create_test_engine()
     yield eng
     await eng.dispose()
 
@@ -77,9 +76,13 @@ async def db_session(db_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
 async def test_alembic_upgrade_creates_energy_tables(db_engine: AsyncEngine) -> None:
     """§7.6: `alembic upgrade head` materialises the six energy tables."""
     await _drop_everything(db_engine)
+    # Override DATABASE_URL so alembic/env.py (which reads settings.database_url)
+    # migrates the disposable test DB, not the dev/demo DB. Env vars take
+    # precedence over .env in pydantic-settings.
     result = subprocess.run(
         [sys.executable, "-m", "alembic", "upgrade", "head"],
         cwd=_REPO_ROOT,
+        env={**os.environ, "DATABASE_URL": settings.test_database_url},
         capture_output=True,
         text=True,
         check=False,
