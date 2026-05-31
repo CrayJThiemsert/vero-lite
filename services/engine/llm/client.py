@@ -38,6 +38,19 @@ class OllamaError(RuntimeError):
     """
 
 
+class OllamaUnreachableError(OllamaError):
+    """The Ollama host could not be reached — connection refused / connect
+    timeout (i.e. MS-S1 MAX is powered off / unreachable), as distinct from a
+    reachable host that returned bad JSON or timed out mid-generation.
+
+    It **is an** :class:`OllamaError`, so every existing ``except OllamaError``
+    site (the recommender fail-safe, the nl_query translate-catch) keeps
+    working unchanged — this is purely additive to the hierarchy. PLAN-0014
+    uses the narrower type to drive the "power MS-S1 on" Telegram notification
+    while preserving the fail-safe (ADR-010 IN-4).
+    """
+
+
 @dataclass(frozen=True)
 class ChatResult:
     """The parsed result of one Ollama chat call.
@@ -111,21 +124,66 @@ class OllamaClient:
         if response_format is not None:
             body["format"] = response_format
 
+        payload = await self._request_json("POST", "/api/chat", json=body)
+        return _parse_chat_payload(payload, self._model)
+
+    async def _request_json(
+        self, method: str, path: str, *, json: dict[str, Any] | None = None
+    ) -> Any:
+        """Issue one request to the Ollama host and return the parsed JSON body.
+
+        Connection failures (host down / connect timeout) map to
+        :class:`OllamaUnreachableError`; every other transport, HTTP-status, or
+        JSON failure maps to :class:`OllamaError`. Callers can therefore tell
+        "MS-S1 is unreachable" (PLAN-0014 notify) apart from "reachable but
+        errored", while the single ``except OllamaError`` contract still holds.
+        """
         try:
             async with httpx.AsyncClient(
                 base_url=self._base_url,
                 timeout=self._timeout,
                 transport=self._transport,
             ) as client:
-                response = await client.post("/api/chat", json=body)
+                response = await client.request(method, path, json=json)
                 response.raise_for_status()
-                payload: Any = response.json()
+                return response.json()
+        except (httpx.ConnectError, httpx.ConnectTimeout) as exc:
+            raise OllamaUnreachableError(
+                f"Ollama host {self._base_url!r} is unreachable: {exc}"
+            ) from exc
         except httpx.HTTPError as exc:
-            raise OllamaError(f"Ollama chat call failed: {exc}") from exc
+            raise OllamaError(f"Ollama call to {path} failed: {exc}") from exc
         except ValueError as exc:  # json.JSONDecodeError is a ValueError
             raise OllamaError(f"Ollama returned a non-JSON body: {exc}") from exc
 
-        return _parse_chat_payload(payload, self._model)
+    async def warm(self, *, keep_alive: str | int) -> dict[str, Any]:
+        """Load the model into memory via ``/api/generate`` with no prompt.
+
+        Ollama loads the model and returns immediately (``done_reason="load"``)
+        without generating; ``keep_alive`` sets how long it stays resident.
+        Raises :class:`OllamaUnreachableError` when the host is unreachable.
+        """
+        payload = await self._request_json(
+            "POST", "/api/generate", json={"model": self._model, "keep_alive": keep_alive}
+        )
+        return payload if isinstance(payload, dict) else {}
+
+    async def unload(self) -> dict[str, Any]:
+        """Evict the model from memory immediately (``keep_alive=0``).
+
+        Ollama returns ``done_reason="unload"``. Raises
+        :class:`OllamaUnreachableError` when the host is unreachable.
+        """
+        payload = await self._request_json(
+            "POST", "/api/generate", json={"model": self._model, "keep_alive": 0}
+        )
+        return payload if isinstance(payload, dict) else {}
+
+    async def ps(self) -> list[dict[str, Any]]:
+        """Return the models currently resident in memory (``GET /api/ps``)."""
+        payload = await self._request_json("GET", "/api/ps")
+        models = payload.get("models") if isinstance(payload, dict) else None
+        return models if isinstance(models, list) else []
 
 
 def _parse_chat_payload(payload: Any, model: str) -> ChatResult:

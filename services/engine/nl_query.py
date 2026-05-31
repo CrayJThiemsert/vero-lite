@@ -40,7 +40,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, ValidationError
 
 from services.api.config import settings
-from services.engine.llm.client import OllamaClient, OllamaError
+from services.engine.llm.client import OllamaClient, OllamaError, OllamaUnreachableError
 from services.engine.llm.prompt import render_untrusted_block
 from services.engine.llm.structured import ChatClient
 from services.engine.ontology_meta import ObjectTypeMeta, OntologyMeta, load_ontology_meta
@@ -458,6 +458,12 @@ async def answer_question(
     try:
         query = await _translate(chat, question, vertical, meta, type_index, retry_budget=budget)
     except (QueryTranslationError, OllamaError, NotImplementedError) as exc:
+        if isinstance(exc, OllamaUnreachableError):
+            # PLAN-0014: MS-S1 unreachable — best-effort ping (never raises),
+            # then degrade to the ungrounded answer below, unchanged.
+            from services.notify.telegram import notify_llm_unreachable
+
+            await notify_llm_unreachable()
         logger.warning("NL-query translation failed for '%s': %s", vertical, exc)
         return _ungrounded(
             question,
