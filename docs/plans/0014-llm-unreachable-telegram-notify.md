@@ -135,6 +135,19 @@ inject a fake LLM client + an `httpx.MockTransport` that captures the
   env, a real Telegram message arrives. Gated behind an env flag +
   `pytest.mark.skipif` (mirrors the `telegram.sh --self-test` env-gated
   precedent); the default offline suite never sends a real message.
+- [ ] **AC-warm** — `GET /warm` (browser/phone-hittable) triggers a load of the
+  configured model on MS-S1 and reports its status. Verify offline with an
+  `httpx.MockTransport` capturing one `POST /api/generate` to
+  `settings.ollama_host` carrying `model = settings.recommender_model` + a
+  `keep_alive`, returning JSON `{model, reachable, loaded, load_seconds, ps}`.
+  When the box is unreachable, `/warm` returns `reachable: false` (HTTP 503) and
+  **never raises**, and it does **not** itself fire the Telegram notify (the
+  operator is already hands-on). When `OCT_PUBLIC_BASE_URL` is set, the Telegram
+  body (Step 3) links to this endpoint, closing the recovery loop **notify →
+  tap link → warmed**. *(Empirically grounded, session 28: a no-prompt
+  `POST /api/generate {model, keep_alive:"30m"}` against MS-S1 returned
+  `done_reason:"load"` in ~11 s cold and `/api/ps` then showed the model
+  resident; the GET `/api/tags` + `/api/ps` only list, they do not load.)*
 
 ## Out of Scope
 
@@ -290,6 +303,60 @@ manual procedure: with MS-S1 **off**, the flag on, and real bot/chat_id in env,
 trigger a View-B/View-C call and confirm one real Telegram message arrives.
 Mirrors the `telegram.sh --self-test` env-gated precedent; never part of the
 default suite (it sends a real message + depends on MS-S1 being off).
+
+### Step 8: Companion — browser/phone-tappable `GET /warm` (Cray-approved, session 28)
+
+A small endpoint so that, **after** a ping, Cray can warm the model from a
+browser or phone with one tap — closing the recovery loop **notify → tap →
+warmed**. Empirically verified (session 28, against MS-S1): a no-prompt
+`POST /api/generate {"model": <model>, "keep_alive": "30m"}` loads the model
+(`done_reason: "load"`, ~11 s cold) and `/api/ps` then shows it resident.
+Ollama's GET endpoints (`/api/tags`, `/api/ps`) only *list* — they never load —
+so a browser address bar cannot warm directly; `/warm` is the GET→POST bridge.
+
+**Augments Step 1 config** — add two fields to `Settings`:
+- `ollama_keep_alive: str = "30m"` → env `OLLAMA_KEEP_ALIVE` (how long a warmed
+  model stays resident; also used by the warm one-liner in the message).
+- `oct_public_base_url: str = ""` → env `OCT_PUBLIC_BASE_URL` (the externally
+  reachable base URL of the demo box, e.g. `http://192.168.1.x:8096`). When set,
+  the Telegram body (Step 3) appends a tap-link `"{base}/warm"`; when blank, the
+  message keeps only the curl one-liner.
+
+**Client (`services/engine/llm/client.py`)** — add `OllamaClient.warm()`: a
+`POST /api/generate` with `{"model": self._model, "keep_alive": <keep_alive>}`
+and **no prompt**, parsing `{done_reason, total_duration}`. Reuses the same
+transport-injection seam (`MockTransport` in tests). A transport failure raises
+`OllamaUnreachableError` (Step 2), so `/warm` can report `reachable: false`.
+
+**Route (`GET /warm`)** — a new route on the FastAPI app returning JSON
+`{model, ollama_host, reachable, loaded, load_seconds, ps}`:
+- Default **blocking**: awaits `OllamaClient(model=settings.recommender_model,
+  base_url=settings.ollama_host, ...).warm()` (instant if already resident,
+  ~11 s cold) and reports `load_seconds`.
+- Optional `?wait=false`: fire-and-forget (schedule the warm, return
+  `{"warming": true}` immediately) for a snappy tap when Cray needn't watch the
+  load finish.
+- On `OllamaUnreachableError`: return HTTP 503 + `{reachable: false}`; **never
+  raise**. Does **not** fire the notify (operator is hands-on).
+- Phase-2 demo endpoint: **no auth** (LAN/localhost demo box), consistent with
+  the other unauthenticated demo routes; flagged here for transparency.
+
+**Message integration (augments Step 3)** — when `oct_public_base_url` is set,
+the Telegram body appends `"Or tap to warm: {base}/warm"`; the curl one-liner
+stays as the always-present fallback. No PII added (only the host URL).
+
+**Tests** — `OllamaClient.warm()` (MockTransport: one `POST /api/generate` with
+the model + keep_alive, parses the load result; `ConnectError` →
+`OllamaUnreachableError`); `GET /warm` (MockTransport): reachable → JSON with
+`load_seconds`; `?wait=false` → immediate `{"warming": true}`; unreachable → 503
+`{reachable: false}` with no exception escaping.
+
+**SD-5 — `/warm` shape (resolved at Code review, session 28).** Blocking `GET`
+(default) + `?wait=false`; warming via a new `OllamaClient.warm()`; no auth
+(Phase-2 demo). Accepted: `GET` is intentional (browser/phone address-bar use is
+the whole point) despite the mild GET-side-effect REST smell — warming is
+effectively idempotent (a re-load just resets `keep_alive`). Cray may override
+the route name / auth posture / blocking default at ratification.
 
 ## Verification
 
