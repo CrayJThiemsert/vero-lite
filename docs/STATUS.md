@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-05-30T01:10:00+07:00
-session: 26
-current_batch: **Session 26 — OQ-T5 RESOLVED (Chat-as-bridge-client).** Cray adjudicated the governance question Code surfaced at Step 5 (FINDING-4) + Cowork drafted (chain: Code advisory → Cowork dispatch → Cray decision): **Chat is NOT a sanctioned `vero-bridge` client** — operationally no demand (the Step-4 Chat round-trip was a replay, never live) + Chat's repo-blind role (ADR-012 D2); the repo-grounded bridge surface belongs to Code + Cowork. Light-touch "B by decision, C by effort": reconciled both tier files (`chat_tab_instructions.md` = not-a-client + spoof-refusal rule 7; `cowork_tab_instructions.md` = sanctioned-client posture), surgical PLAN-0012 re-characterization (Goal pointer + AC-3 replay note + AC-4(c) OQ-T5 RESOLVED — full AC-6/AC-7 sweep deliberately skipped as low-payoff), minted **Lesson #0019** (adversarial spoof-tests belong at the unit layer; never ask a live tab to forge an identity tag), **no new ADR** (PLAN-0009 OQ-3 precedent). Docs-only; no code/test/settings touched. **Cray follow-up:** re-paste both tier files into the Desktop project-instructions UI (canonical = repo, UI = sync target).
+last_updated: 2026-06-01T00:30:00+07:00
+session: 28
+current_batch: **Sessions 27 + 28 — OCT stakeholder demo SHIPPED on 2 verticals (PLAN-0013, 7/7 ACs) + PLAN-0014 LLM-unreachable recovery loop; both merged + archived to `done/`.** This PR = the overdue STATUS reconcile — sessions 27 + 28 skipped their end-of-arc reconcile, leaving STATUS stale at session 26 (the drift the `lint_status` bridge tool flags). **Session 27** (the long one): minted PLAN-0013 (#90) + built Steps 1–6 live on the **energy** vertical (ontology-driven UI: map / anomaly+trace+approve→execute→DB-persist / grounded NL query / data-flow view) + alembic FK-index drift fix (#97) + disposable-test-DB isolation (#98) → 6.5/7 ACs; plus 2 prerequisite docs PRs (#88 PLAN-004 reconcile, #89 STRATEGIC_CONTEXT_AIP north-star). **Session 28**: closed AC-template via the **`supply_chain`** 2nd vertical (#99 — full A/B/C/D re-skin, `OCT_VERTICAL` config, zero UI-code change) → PLAN-0013 7/7 + `done/`; then drafted (#100, `plan-drafter`-authored) + executed (#101) PLAN-0014 — `OllamaUnreachableError` + Telegram notify + `GET /warm` + `GET /sleep`, live-smoked against MS-S1 — → `done/`. Suite **1003 passed / 2 skipped**; ruff + `mypy services` clean; 0 open PRs; main @ `27ea292`. Moat phase ~complete (2 verticals + 3 OCT features + proven template architecture). Docs-only PR; no code/test/settings touched.
 current_actor: code
-blocked_on: Nothing gates forward progress — PLAN-0012 Phase 1 (8/8 ACs) + Step 2b (4/4 integration tools; 7/7 safe-for-all surface) COMPLETE; **OQ-T5 RESOLVED session 26** (Chat is NOT a sanctioned bridge client; tier files + PLAN-0012 reconciled). Remaining items are non-blocking carry-overs independent of PLAN-0012 (PLAN-0011 AC-3/AC-7 fresh-trigger re-run; PLAN-0010 loop-dispatcher Desktop setup — verify PR #55). No new Cray adjudications gate any in-flight work.
-next_action: **PLAN-0012 Phase 1 + Step 2b COMPLETE; OQ-T5 RESOLVED (session 26).** Next: (a) **Cray re-pastes** the two reconciled tier files (`chat_tab_instructions.md` + `cowork_tab_instructions.md`) into the Claude Desktop project-instructions UI (sync target; canonical = repo); (b) **Carry-overs** independent of PLAN-0012 — PLAN-0011 AC-3/AC-7 fresh-trigger re-run + PLAN-0010 loop-dispatcher Desktop setup (verify PR #55); (c) **PLAN-0012 Phase 2** when a concrete not-on-bridge / safe-for-some capability need lands (per capability-inventory §5 mint condition).
-head_commit: 3760c96
-recent_commits: [3760c96, 1ec53b0, 1840d3f, c7d5896, 3ea2ac1, 1b52e3a, b3e3d3c, e98aa83, eb10fc3, af94735]
+blocked_on: Nothing gates forward progress. PLAN-0013 (7/7 ACs) + PLAN-0014 both COMPLETE + merged + archived to `done/`; 0 open PRs; main clean @ `27ea292`. The session-26 carry-over "PLAN-0011 AC-3/AC-7 fresh-trigger re-run" is **RESOLVED** (PLAN-0011 now Status: Complete, in `done/`). Remaining items are non-gating: Cray-action setup (re-paste both tier files; PLAN-0010 loop-dispatcher Desktop one-time setup + verify PR #55; arm PLAN-0014 on the demo box) + not-yet-triggered active plans (PLAN-0010 consumer side, PLAN-004 Phases B/C, PLAN-0012 Phase 2).
+next_action: **Sessions 27 + 28 reconciled; STATUS current at session 28 (head `27ea292`).** Backlog: (a) **Cray-action (human)** — re-paste `chat_tab_instructions.md` + `cowork_tab_instructions.md` into the Desktop project-instructions UI (OQ-T5 sync; canonical = repo); PLAN-0010 loop-dispatcher Desktop one-time setup (~5 min, runbook) + verify PR #55; arm PLAN-0014 on the demo box (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` + `TELEGRAM_NOTIFY_ENABLED=true` + `OCT_PUBLIC_BASE_URL`); (b) **Code-executable active plans** — PLAN-0010 (Phase 3.5 scheduled-task autonomy loop; consumer side gated on the Cray Desktop setup), PLAN-004 Phases B+C (handoff dashboard, low priority), PLAN-0012 Phase 2 (vero-bridge — only when a concrete not-on-bridge / safe-for-some capability need lands); (c) **Strategic (Cray business action, not a repo task)** — take the shipped 2-vertical demo to design partners.
+head_commit: 27ea292
+recent_commits: [27ea292, d6ef9cb, f9f6835, bfe6137, e6a1130, 99bee59, d4bc0a6, 1fa0d53, f646277, a673c6a]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,37 @@ recent_commits: [3760c96, 1ec53b0, 1840d3f, c7d5896, 3ea2ac1, 1b52e3a, b3e3d3c, 
 
 ## Current Focus
 
-> **Session 26 (current) — OQ-T5 RESOLVED (Chat-as-bridge-client).** The
+> **Sessions 27 + 28 (current) — OCT stakeholder demo SHIPPED on 2 verticals
+> (PLAN-0013, 7/7 ACs) + PLAN-0014 LLM-unreachable recovery loop. Moat phase
+> ~complete.** Two long execution sessions closed the demo arc end-to-end, both
+> merged + archived to `done/`. **Session 27** (the long one) minted PLAN-0013
+> (#90), built Steps 1–6 live on the **energy** vertical (ontology-driven UI —
+> operational map / anomaly + reasoning-trace + approve→execute→DB-persist /
+> grounded NL query / data→decision flow view), fixed an alembic FK-index drift
+> (#97), and switched the test suite to a disposable `vero_lite_test` DB so it no
+> longer wipes the demo DB (#98) — leaving PLAN-0013 at 6.5/7 ACs. It also landed
+> 2 prerequisite docs PRs: PLAN-004 status reconcile (#88) and the
+> `STRATEGIC_CONTEXT_AIP` north-star reference (#89). **Session 28** closed the
+> final AC — **AC-template** — via a **`supply_chain` (cold-chain) 2nd vertical**
+> (#99): a full A/B/C/D re-skin proving the *same UI build* renders a different
+> ontology with **zero UI-code change**, driven by a new `OCT_VERTICAL` config +
+> generalized recommender/trace/static coupling (data-driven 2nd instance, no new
+> abstraction — Rule-of-Three preserved). PLAN-0013 → 7/7, `done/`. Session 28
+> then shipped **PLAN-0014** (drafted #100 by the `plan-drafter` subagent,
+> executed #101): an `OllamaUnreachableError` path + best-effort Telegram notify
+> (cooldown) when MS-S1 is powered off, plus browser/phone-tappable `GET /warm`
+> (blocking + `?wait=false`) and `GET /sleep` endpoints; live-smoked against
+> MS-S1. Suite **1003 passed / 2 skipped**; ruff + `mypy services` clean; **0 open
+> PRs; main @ `27ea292`**. **This PR = the overdue STATUS reconcile** (sessions 27
+> + 28 skipped their end-of-arc reconcile — the drift the `lint_status` bridge
+> tool flags). **Carry-over resolved:** PLAN-0011 is now `Complete` (in `done/`),
+> so the session-26 "AC-3/AC-7 fresh-trigger re-run" item is closed.
+> **Cray-action backlog:** re-paste both tier files into the Desktop UI; PLAN-0010
+> loop-dispatcher Desktop one-time setup (verify PR #55); arm PLAN-0014 on the
+> demo box. The session 26 / 25 / 23+24 / 22 / 20+21 narratives below are retained
+> for archeology.
+>
+> **Session 26 — OQ-T5 RESOLVED (Chat-as-bridge-client).** The
 > governance question Code surfaced at Step 5 (FINDING-4) is closed: **Chat is
 > not a sanctioned `vero-bridge` client** (operationally no demand — the Step-4
 > Chat round-trip was a replay, never live — + Chat's repo-blind role per
@@ -369,6 +399,48 @@ session-21 → session-22 kickoff handoff §4 Action 1; high-priority
 "close the loop" item). No code/test/settings touched. Cumulative
 session 20+21 tests: 634 (unchanged — all 5 PRs in sessions 20+21
 were docs/plans/lessons only).
+
+### 2026-06-01 — Session 28 ledger (AC-template → PLAN-0013 done; PLAN-0014 shipped; reconciled)
+
+AC-template (the last PLAN-0013 AC) closed via a 2nd vertical; PLAN-0013 → 7/7,
+archived. Then PLAN-0014 (LLM-unreachable recovery loop) drafted + executed +
+archived. Suite 954 → **1003 passed / 2 skipped** (+23 #99, +26 #101); ruff +
+`mypy services` clean.
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **AC-template — `supply_chain` 2nd vertical** | [#99](https://github.com/CrayJThiemsert/vero-lite/pull/99) (`1fa0d53` + `d4bc0a6` → merge `99bee59`) | **PLAN-0013 AC-template DONE → 7/7; closed to `done/`.** Adds the `supply_chain` (cold-chain logistics) vertical + a configurable `OCT_VERTICAL` (default `energy`) + `OCT_RECOMMEND_*` config; generalizes the residual energy-specific coupling in the recommender + `trace.py` + 4 `static/` spots so the diff is vertical-agnostic. Full A/B/C/D re-skin live-captured (all 4 views + approve→execute→DB-persist + grounded NL query) — proves the *same UI build* (`services/api/static/`) renders a different ontology with **zero UI-code change**. Data-driven 2nd instance, no new abstraction (Rule-of-Three preserved). +23 tests. |
+| **PLAN-0014 mint (Draft) + `/warm`** | [#100](https://github.com/CrayJThiemsert/vero-lite/pull/100) (`e6a1130` + `bfe6137` → merge `f9f6835`) | **PLAN-0014 (LLM-unreachable Telegram notify) minted Status `Draft`.** `plan-drafter` subagent-authored, Code-reviewed, Cray-ratified at merge (author≠reviewer INTACT per ADR-012 D4.3). Adds a `GET /warm` companion endpoint (Cray-approved) to the plan scope. Docs-only. |
+| **PLAN-0014 execution** | [#101](https://github.com/CrayJThiemsert/vero-lite/pull/101) (`d6ef9cb` → merge `27ea292`) | **PLAN-0014 executed → `done/`.** `OllamaUnreachableError` + `services/notify/telegram.py` (best-effort, cooldown) fired when MS-S1 is powered off; `OllamaClient.warm()/unload()/ps()`; browser/phone-tappable `GET /warm` (blocking + `?wait=false`) + `GET /sleep`; recommender + `nl_query` notify wiring. Reuses the existing `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` (ADR-013 D5 — no new bot). Live-smoked `/warm` + `/sleep` against MS-S1. +26 tests (977 → 1003). |
+| **STATUS reconcile (sessions 27 + 28)** *(this PR)* | this PR | **Sessions 27 + 28 ledger entries + Current Focus narrative + frontmatter** (`session` → 28, `head_commit` → `27ea292`, `recent_commits`, `current_batch`, `blocked_on`, `next_action`). Brings STATUS current from session 26 → session 28 — the overdue end-of-arc reconcile (the drift `lint_status` reports). Also records the session-26 carry-over PLAN-0011 fresh-trigger re-run as **RESOLVED** (PLAN-0011 now `Complete`, in `done/`). No code/test/settings touched. |
+| **Backlog — Cray-action (human)** | next_action (a) | Re-paste both tier files into the Desktop UI (OQ-T5 sync); PLAN-0010 loop-dispatcher Desktop one-time setup + verify PR #55; arm PLAN-0014 on the demo box (`TELEGRAM_*` + `TELEGRAM_NOTIFY_ENABLED=true` + `OCT_PUBLIC_BASE_URL`). |
+| **Backlog — Code-executable (active plans)** | next_action (b) | PLAN-0010 (Phase 3.5 scheduled-task autonomy loop — consumer side gated on the Cray Desktop setup); PLAN-004 Phases B + C (handoff dashboard, low priority); PLAN-0012 Phase 2 (vero-bridge — when a concrete capability need lands). |
+
+### 2026-05-31 — Session 27 ledger (PLAN-0013 build → 6.5/7 ACs; closed)
+
+The long session (2026-05-30 → 2026-05-31): PLAN-0013 minted + Steps 1–6 built
+live on the **energy** vertical + the alembic/test-DB hardening, leaving the demo
+at 6.5/7 ACs (AC-template the only remainder). Plus 2 prerequisite docs PRs.
+Suite 794 → **954 passed / 2 skipped** across the arc; ruff + `mypy services`
+clean.
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **PLAN-004 status reconcile** | [#88](https://github.com/CrayJThiemsert/vero-lite/pull/88) (`2daaa74` → merge `5ac77cb`) | Reconcile PLAN-004: **Phase A COMPLETE** (handoff frontmatter + schema + dashboard reader shipped), keep the plan active for forward-declared Phases B + C. Docs-only (+15/−1). |
+| **STRATEGIC_CONTEXT_AIP north-star** | [#89](https://github.com/CrayJThiemsert/vero-lite/pull/89) (`5faf086` → merge `cc25515`) | Track `docs/strategy/public/STRATEGIC_CONTEXT_AIP.md` (462 lines) — long-term "operational intelligence platform, not a chatbot" architectural context for future LLM / ADR / planning sessions (per ADR-009 OQ-1). New tracked reference doc. |
+| **PLAN-0013 mint** | [#90](https://github.com/CrayJThiemsert/vero-lite/pull/90) (`160a0a2` → merge `6440d11`) | **PLAN-0013 (OCT Stakeholder Demo) minted Status `Draft`.** Cowork-drafted cold from Code's verified dispatch (ADR-009 D1 / ADR-013 OQ-1); 3 OCT features (map / anomaly+trace / NL query) on the energy vertical, ontology-driven UI. 7 ACs incl. AC-template + the Code-authored Screen D (data→decision flow) + AC-flow (Cray-ratified). |
+| **Step 1 — backend tweaks** | [#91](https://github.com/CrayJThiemsert/vero-lite/pull/91) (`3686f9c` → merge `2aab473`) | Expose the reasoning trace on recommendations + add a `/meta` endpoint (OntologyMeta — legend + status enums the UI binds to). |
+| **Step 2 — grounded NL query** | [#92](https://github.com/CrayJThiemsert/vero-lite/pull/92) (`f27cdef` → merge `e1c1256`) | `POST /query` — grounded natural-language operational query (`{question}` → `{answer, grounded, structured_query, source_object_ids, result_count}`); "not invented" no-data path. |
+| **Step 3 — design prompt + tone** | [#93](https://github.com/CrayJThiemsert/vero-lite/pull/93) (`5e18920` → merge `733d5c4`) + [#94](https://github.com/CrayJThiemsert/vero-lite/pull/94) (`2df57db` → merge `1c28e7f`) | Claude Design prompt for the OCT demo UI (#93) + a Cowork operator-voice tone pass (#94). Cray then ran Claude Design (Step 4) to produce the static UI. Docs/design-only. |
+| **Step 5 — serve the UI** | [#95](https://github.com/CrayJThiemsert/vero-lite/pull/95) (`ba6b5af` → merge `23d595f`) | Serve the Claude-Design OCT UI static from FastAPI (`app.mount("/", StaticFiles, html=True)`) — one process, one URL (:8096), same-origin. |
+| **Step 6 — UI polish** | [#96](https://github.com/CrayJThiemsert/vero-lite/pull/96) (`aff0abb` → merge `214b97b`) | OCT UI polish — strip the "LIVE" strip text + query operator symbols. |
+| **alembic FK-index drift fix** | [#97](https://github.com/CrayJThiemsert/vero-lite/pull/97) (`2523418` → merge `23338fa`) | Declare FK indexes in the ORM models to match the migration + DDL (`alembic check` clean) + a regression test. |
+| **test-DB isolation (sustainable)** | [#98](https://github.com/CrayJThiemsert/vero-lite/pull/98) (`a673c6a` → merge `f646277`) | Target a disposable `vero_lite_test` DB via `TEST_DATABASE_URL` so the full `pytest` run never wipes the dev/demo DB. Closes the "tests wipe the demo DB" gotcha (memory `project_test_suite_drops_demo_db` = FIXED). |
+
+> **Note on the 26/27 boundary.** PRs #88–#90 merged the morning of 2026-05-30,
+> bridging the session-26 OQ-T5 close (#87) into the PLAN-0013 build; grouped here
+> with session 27 as one continuous demo-build arc. Session 27 filed no separate
+> STATUS reconcile — folded into this sessions-27+28 reconcile.
 
 ### 2026-05-30 — Session 26 ledger (OQ-T5 reconcile)
 
