@@ -8,6 +8,7 @@ drift risk PLAN-0005 R6 flags. DB-free — pure metadata + text compare.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from sqlalchemy.dialects import postgresql
@@ -99,3 +100,38 @@ def test_orm_column_types_match_generated_ddl(tmp_path: Path) -> None:
         if orm[table][col] != ddl_type
     ]
     assert mismatches == []
+
+
+_INDEX_RE = re.compile(r"CREATE INDEX (\w+) ON (\w+)\(([^)]+)\);")
+
+
+def _parse_indexes(ddl: str) -> dict[str, tuple[str, tuple[str, ...]]]:
+    """Parse generated CREATE INDEX statements into {name: (table, columns)}."""
+    return {
+        m.group(1): (m.group(2), tuple(c.strip() for c in m.group(3).split(",")))
+        for m in _INDEX_RE.finditer(ddl)
+    }
+
+
+def _generated_indexes(tmp_path: Path) -> dict[str, tuple[str, tuple[str, ...]]]:
+    out = tmp_path / "schema.sql"
+    emit_sql(load_doc(_ENERGY_YAML), out)
+    return _parse_indexes(out.read_text(encoding="utf-8"))
+
+
+def _orm_indexes() -> dict[str, tuple[str, tuple[str, ...]]]:
+    """Build {name: (table, columns)} from the hand-authored ORM metadata."""
+    return {
+        index.name: (table.name, tuple(col.name for col in index.columns))
+        for table in Base.metadata.tables.values()
+        for index in table.indexes
+        if index.name is not None
+    }
+
+
+def test_orm_indexes_match_generated_ddl(tmp_path: Path) -> None:
+    """ORM-declared indexes match the generated DDL — guards the models<->DDL
+    (and transitively models<->migration) index drift that ``alembic check``
+    caught: the migration created 7 FK indexes the ORM had not declared.
+    """
+    assert _orm_indexes() == _generated_indexes(tmp_path)
