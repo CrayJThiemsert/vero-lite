@@ -62,8 +62,9 @@ async def test_full_action_loop_read_recommend_approve_execute(
     assert body["status"] == "executed"
     assert body["handler_receipt"]["executed"] is True
 
-    # the persisted row reflects the executed action (OQ-4)
-    engine = create_async_engine(settings.database_url, poolclass=NullPool)
+    # the persisted row reflects the executed action (OQ-4). Read the test DB
+    # (settings.test_database_url) — the same disposable DB client_with_db wrote to.
+    engine = create_async_engine(settings.test_database_url, poolclass=NullPool)
     try:
         async with engine.connect() as conn:
             result = await conn.execute(
