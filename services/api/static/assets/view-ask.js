@@ -11,13 +11,29 @@
   let root, transcriptEl, inputEl, sendBtn;
   let busy = false;
 
-  const EXAMPLES = [
-    'How many assets are we running?',
-    'Which sites do we operate?',
-    'Any readings above 90 °C?',
-    'Which assets are active right now?',
-    "What's currently in maintenance?"
-  ];
+  // Example questions are derived from /meta so the chips re-skin per vertical
+  // (no hard-coded energy questions). Each phrasing maps cleanly to the
+  // structured query the NL engine builds (object type + status filter).
+  function examples() {
+    const m = O.State.meta;
+    if (!m || !(m.object_types || []).length) return ['How many records are there?'];
+    const types = m.object_types;
+    const geo = types.filter(t => O.Onto.geoProps(t.name));
+    // the monitored "unit" — a non-geo type that references a geo type (Asset/Shipment)
+    const unit = types.find(t => O.Onto.refs(t.name).some(r => geo.some(g => g.name === r.target))) || types[0];
+    const out = [];
+    if (unit) out.push('How many ' + unit.name.toLowerCase() + 's are there?');
+    if (geo.length) out.push('Which ' + geo[0].name.toLowerCase() + 's do we operate?');
+    if (unit) {
+      const sp = O.Onto.statusProp(unit.name);
+      if (sp && sp.enum && sp.enum.length) {
+        out.push('Show ' + unit.name.toLowerCase() + 's with status "' + sp.enum[0] + '"');
+        const attn = sp.enum.find(v => /delay|held|hold|maint|pending|warn|fault|critical|excursion|breach/i.test(v));
+        if (attn && attn !== sp.enum[0]) out.push('How many ' + unit.name.toLowerCase() + 's are "' + attn + '"?');
+      }
+    }
+    return out.length ? out.slice(0, 5) : ['How many records are there?'];
+  }
 
   function build() {
     root = h('div', { class: 'view-inner askview' });
@@ -50,7 +66,7 @@
       h('div', { class: 'aw-icon' }, icon('spark', { width: 22, height: 22 })),
       h('div', { class: 'aw-title' }, 'Grounded answers only'),
       h('div', { class: 'aw-sub muted' }, 'Every answer shows the structured query it ran and the exact records it came from. When nothing matches, you get an explicit “no data” — never an invention.'),
-      h('div', { class: 'aw-chips' }, EXAMPLES.map(q =>
+      h('div', { class: 'aw-chips' }, examples().map(q =>
         h('button', { class: 'q-chip', onClick: () => { inputEl.value = q; submit(); } }, q)
       ))
     ]));

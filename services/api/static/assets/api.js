@@ -112,10 +112,10 @@
     // map an enum value to a semantic status class (shared by severities + statuses)
     statusClass(value) {
       const v = String(value || '').toLowerCase();
-      if (/(critical|error|fault|alarm|offline|failed|fail|rejected|breach)/.test(v)) return 's-crit';
-      if (/(warn|maintenance|pending|degraded|proposed|caution)/.test(v)) return 's-warn';
-      if (/(active|ok|online|nominal|healthy|live|executed|approved\b)/.test(v)) return 's-ok';
-      if (/(info|approved|reading|transition|paired)/.test(v)) return 's-info';
+      if (/(critical|error|fault|alarm|offline|failed|fail|rejected|breach|excursion)/.test(v)) return 's-crit';
+      if (/(warn|maintenance|pending|degraded|proposed|caution|delayed|held|hold|open)/.test(v)) return 's-warn';
+      if (/(active|ok|online|nominal|healthy|live|executed|approved\b|delivered|resolved|closed|completed)/.test(v)) return 's-ok';
+      if (/(info|approved|reading|transition|paired|transit|acknowledged|scheduled|staged|at_facility)/.test(v)) return 's-info';
       if (/(retired|inactive|disabled|archived|unknown|n\/a)/.test(v)) return 's-neutral';
       return 's-neutral';
     }

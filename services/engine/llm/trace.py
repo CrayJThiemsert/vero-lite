@@ -68,16 +68,18 @@ def build_llm_audit_metadata(model: str) -> AuditMetadata:
 
 
 def _ontology_query_step(event: Mapping[str, Any], vertical: str) -> ReasoningStep:
-    """Harness-emitted: the evidence the engine actually ingested."""
+    """Harness-emitted: the evidence the engine actually ingested.
+
+    Vertical-agnostic: the summary names only the event id (the full event
+    dict — whatever entity refs it carries — is preserved in ``detail``),
+    so the step reads correctly for any ontology, not just energy's
+    ``asset_id`` shape (PLAN-0013 AC-template).
+    """
     event_id = str(event.get("event_id", "unknown"))
-    asset_id = str(event.get("asset_id", "unknown"))
     return ReasoningStep(
         step_id="ontology-query",
         kind="ontology_query",
-        summary=(
-            f"Ingested operational event '{event_id}' for asset '{asset_id}' "
-            f"from the {vertical} data adapter"
-        ),
+        summary=f"Ingested operational event '{event_id}' from the {vertical} data adapter",
         detail={"vertical": vertical, "event": dict(event)},
     )
 

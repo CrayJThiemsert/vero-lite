@@ -24,6 +24,16 @@
 > independent check is **Cray's ratification** (the addition was Cray-originated
 > and explicitly approved). Flagged for transparency per ADR-012 D4.3.
 
+> **Session-28 scope expansion (2026-05-31, Cray-ratified).** AC-template was
+> expanded from a minimal "smoke swap" to a **full A/B/C/D second-vertical story**
+> on `supply_chain` (cold-chain logistics), per Cray's decision in the session-28
+> kickoff. Delivered by Code (config-driven `OCT_VERTICAL` + the supply_chain
+> ontology/adapter/handlers + a one-time generalization of the residual
+> energy-specific coupling). Author = committer for this increment; the
+> independent check is **Cray's explicit ratification** of the expanded scope
+> (ADR-012 D4.3). Rule-of-Three guard preserved — a **data-driven 2nd instance**,
+> no new abstraction layer.
+
 ## Goal
 
 Ship a **stakeholder-facing demo** of the Operational Control Tower (OCT) on
@@ -180,12 +190,19 @@ evidence captured at Step 6.
       the RecommendedAction + approval). Evidence: the served flow view rendered
       from **live API payloads** for the over-temp scenario — no new backend, no
       hard-coded energy labels.
-- [ ] **AC-template (B-readiness proof)** — the UI consumes entity types /
-      fields / enums from `/meta`; **swapping the ontology + adapter yields a
-      working UI with zero UI-code change.** Evidence: a smoke swap (e.g., the
-      `_template`/`supply_chain` ontology stub, or a minimal second ontology)
-      rendered through the *same* UI build — proving generic-by-construction even
-      though the production 2nd vertical ships fast-follow.
+- [x] **AC-template (B-readiness proof)** — ✅ **MET (session 28, Cray-ratified
+      scope expansion).** The UI consumes entity types / fields / enums from
+      `/meta`; **swapping the ontology + adapter (via `OCT_VERTICAL`) yields a
+      working UI with zero per-vertical UI-code change.** Originally scoped as a
+      minimal smoke swap; **expanded by Cray (session 28) to a full A/B/C/D
+      second-vertical story** — `supply_chain` (cold-chain logistics), shipped as
+      a **data-driven 2nd instance** (NOT a meta-framework — Rule-of-Three guard
+      intact). The residual energy-specific coupling (the recommender trigger
+      threshold + fail-safe wording via `OCT_RECOMMEND_*`, the LLM trace's
+      entity phrasing, and three UI strings in Views B/D + C) was generalized
+      **once** to be ontology/config-driven; thereafter a new vertical is "swap
+      the ontology + adapter + set `OCT_*` env, no engine/UI code change."
+      Evidence: see Verification → Template proof (live, all four screens).
 - [ ] **AC-safety** — the demo uses **synthetic data only** (no real partner
       data; no partner identifiers/brand codes anywhere), and the **rule
       fail-safe keeps it robust offline** (the over-temp action and Screen B flow
@@ -199,11 +216,18 @@ evidence captured at Step 6.
 ## Out of Scope
 
 - ❌ **Real partner data** — synthetic scenario only (AC-safety).
-- ❌ **The 2nd vertical itself** — supply-chain ontology + adapter is a
-      *fast-follow*, not v1 (AC-template proves readiness via a smoke swap, not a
-      shipped vertical).
+- ⚠️ **The 2nd vertical itself** — ~~supply-chain ontology + adapter is a
+      *fast-follow*, not v1~~ **SUPERSEDED (session 28, Cray-ratified):** the
+      `supply_chain` (cold-chain) ontology + adapter **is** shipped here as the
+      AC-template proof (full A/B/C/D re-skin). It remains a **data-driven 2nd
+      instance**, not a new abstraction layer — the Rule-of-Three guard below is
+      preserved (no meta-framework introduced).
 - ❌ **Any premature meta-framework / new abstraction layer** — Rule-of-Three
-      guard; v1 consumes the existing ontology abstraction, full stop.
+      guard; v1 consumes the existing ontology abstraction, full stop. (Still
+      enforced: the supply_chain vertical added in session 28 is a 2nd concrete
+      instance — ontology YAML + synthetic adapter + handlers + env-driven
+      policy — **not** an extracted abstraction. The `_template/` skeleton stays
+      empty until a 3rd vertical exists.)
 - ❌ **Agentic tool-calling NL query (option B)** over `mcp_tools.json` —
       deferred to v2 (OQ-3); v1 is engine A only.
 - ❌ **A separate frontend dev server / SPA build pipeline** — deferred (OQ-4).
@@ -264,8 +288,26 @@ the evidence must come from the live app.
 - **Grounding proof (NL query).** For ≥2 of the ≥5 NL answers, record the
   structured query + source object IDs that produced the answer, and show one
   "no data → no invented fact" case.
-- **Template proof.** The AC-template smoke swap renders through the *same* UI
-  build with zero UI-code change.
+- **Template proof (session 28, live).** `OCT_VERTICAL=supply_chain` renders the
+  **same UI build** across all four screens with **zero per-vertical UI-code
+  change** (the `services/api/static/` diff is vertical-agnostic — generalizations
+  only, no `supply_chain`/`energy` branching). Live evidence captured via Claude
+  Preview against the running app on :8098 (Lesson #15):
+  - **View A (map):** 2 Facilities plotted by lat/lng with Shipment satellites;
+    LEGEND + STATUS ENUMS from `/meta` (IN_TRANSIT / DELAYED / HELD / COLD_STORAGE
+    / …); the breaching shipment ringed red.
+  - **View B (anomaly):** live LLM `RecommendedAction` "Temperature Breach
+    Response" (conf 0.92, handler `echo`), affected SHIPMENT + FACILITY, a
+    cold-chain reasoning trace, and a full **proposed → approved → executed**
+    round-trip + handler receipt; persisted to Postgres (`recommended_action`
+    status=executed conf 0.92 action=quarantine + `alert` rows) via the same
+    vertical-neutral persistence (no schema/migration change).
+  - **View C (NL query):** "How many shipments are there?" → grounded answer
+    (`COUNT Shipment` → 4) with source-object-id chips; example chips derived
+    from `/meta`.
+  - **View D (flow):** the 4-stage Ingest → Condition → Process → Result pipeline
+    over supply_chain data (THRESHOLD BREACH on shipment-pharma-01 → trace →
+    executed action).
 - **Offline robustness.** Reproduce the over-temp action with the LLM path forced
   off (rule fail-safe), proving the demo survives MS-S1/Ollama being down.
 

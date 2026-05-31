@@ -1,0 +1,199 @@
+# vero-lite ontology — supply_chain vertical, v0.
+# Second concrete OCT vertical (ADR-005 secondary; ADR-006 vertical plugin).
+# Domain: temperature-controlled (cold-chain) logistics — pharma / perishable
+# shipments moving between cold-storage facilities, monitored for cold-chain
+# temperature excursions. Conforms to the SAME ADR-008 D2 grammar as
+# energy_v0.yaml (six object_types: five base entities + an explicit
+# AlertEventLink join per ADR-008 D4). PLAN-0013 AC-template: this proves the
+# ontology-driven UI re-skins onto a different domain with zero UI-code change.
+
+version: 0
+namespace: supply_chain
+
+object_types:
+  Shipment:
+    primary_key: shipment_id
+    title_key: reference
+    description: A temperature-controlled consignment moving through the cold chain.
+    properties:
+      shipment_id:
+        type: string
+        required: true
+      reference:
+        type: string
+        required: true
+      cargo_type:
+        type: enum
+        values: [pharma, produce, frozen, biologic]
+      payload_kg:
+        type: float
+      status:
+        type: enum
+        values: [in_transit, at_facility, delayed, held, delivered]
+      dispatched_date:
+        type: date
+      facility_id:
+        type: ref
+        target: Facility
+        required: true
+
+  Facility:
+    primary_key: facility_id
+    title_key: name
+    description: A physical cold-chain node — cold storage, distribution center, or port.
+    properties:
+      facility_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      facility_type:
+        type: enum
+        values: [cold_storage, distribution_center, port, cross_dock]
+      lat:
+        type: float
+      lng:
+        type: float
+
+  OperationalEvent:
+    primary_key: event_id
+    description: Time-stamped operational signal concerning a Shipment or Facility.
+    properties:
+      event_id:
+        type: string
+        required: true
+      event_type:
+        type: enum
+        values: [reading, transition, alarm]
+      severity:
+        type: enum
+        values: [info, warn, error, critical]
+      measured_value:
+        type: float
+      unit:
+        type: string
+      description:
+        type: string
+      occurred_at:
+        type: timestamp
+        required: true
+      shipment_id:
+        type: ref
+        target: Shipment
+      facility_id:
+        type: ref
+        target: Facility
+
+  Alert:
+    primary_key: alert_id
+    title_key: title
+    description: An actionable notification derived from one or more OperationalEvents.
+    properties:
+      alert_id:
+        type: string
+        required: true
+      title:
+        type: string
+        required: true
+      urgency:
+        type: enum
+        values: [low, medium, high, critical]
+      status:
+        type: enum
+        values: [open, acknowledged, resolved]
+      opened_at:
+        type: timestamp
+        required: true
+      resolved_at:
+        type: timestamp
+      reasoning:
+        type: string
+
+  RecommendedAction:
+    primary_key: action_id
+    description: An AI-proposed action awaiting human approval; mirrors the ADR-007 D2 runtime envelope at Phase 2.
+    properties:
+      action_id:
+        type: string
+        required: true
+      action_type:
+        type: enum
+        values: [reroute, expedite, hold, inspect, escalate]
+      confidence_score:
+        type: float
+      status:
+        type: enum
+        values: [proposed, approved, rejected, executed]
+      parameters:
+        type: json
+      alert_id:
+        type: ref
+        target: Alert
+        required: true
+      target_shipment_id:
+        type: ref
+        target: Shipment
+
+  AlertEventLink:
+    primary_key: link_id
+    description: Join object linking an Alert to the OperationalEvent(s) that triggered it (N:M via composition per ADR-008 D4).
+    properties:
+      link_id:
+        type: string
+        required: true
+      created_at:
+        type: timestamp
+        required: true
+      alert_id:
+        type: ref
+        target: Alert
+        required: true
+      event_id:
+        type: ref
+        target: OperationalEvent
+        required: true
+
+link_types:
+  shipment_handled_at_facility:
+    from: Shipment
+    to: Facility
+    cardinality: many_to_one
+    foreign_key: Shipment.facility_id -> Facility.facility_id
+    description: Each Shipment is currently handled at exactly one Facility.
+
+  event_concerns_shipment:
+    from: OperationalEvent
+    to: Shipment
+    cardinality: many_to_one
+    foreign_key: OperationalEvent.shipment_id -> Shipment.shipment_id
+
+  event_occurred_at_facility:
+    from: OperationalEvent
+    to: Facility
+    cardinality: many_to_one
+    foreign_key: OperationalEvent.facility_id -> Facility.facility_id
+
+  action_addresses_alert:
+    from: RecommendedAction
+    to: Alert
+    cardinality: many_to_one
+    foreign_key: RecommendedAction.alert_id -> Alert.alert_id
+
+  action_target_shipment:
+    from: RecommendedAction
+    to: Shipment
+    cardinality: many_to_one
+    foreign_key: RecommendedAction.target_shipment_id -> Shipment.shipment_id
+
+  alert_event_link_to_alert:
+    from: AlertEventLink
+    to: Alert
+    cardinality: many_to_one
+    foreign_key: AlertEventLink.alert_id -> Alert.alert_id
+
+  alert_event_link_to_event:
+    from: AlertEventLink
+    to: OperationalEvent
+    cardinality: many_to_one
+    foreign_key: AlertEventLink.event_id -> OperationalEvent.event_id

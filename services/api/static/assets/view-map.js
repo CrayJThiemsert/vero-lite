@@ -242,10 +242,12 @@
   }
 
   function renderHint() {
+    const n = anomalyAssetIds.length;
+    const anomNote = n ? (' ' + (n === 1 ? 'One record is' : n + ' records are') + ' reporting an anomaly — ringed in red.') : '';
     sideEl.appendChild(h('div', { class: 'card map-hint' }, [
       h('div', { class: 'mh-icon' }, icon('pin', { width: 20, height: 20 })),
       h('div', { class: 'mh-title' }, 'Select a node'),
-      h('div', { class: 'muted', style: { fontSize: '12.5px' } }, 'Click any site or asset on the canvas to inspect its full record. One asset is reporting an anomaly — it is ringed in red.')
+      h('div', { class: 'muted', style: { fontSize: '12.5px' } }, 'Click any node on the canvas to inspect its full record.' + anomNote)
     ]));
   }
 

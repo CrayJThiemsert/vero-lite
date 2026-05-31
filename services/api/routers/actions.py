@@ -12,6 +12,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from services.api.config import settings
 from services.api.models.actions import (
     ExecuteResponse,
     ObjectListResponse,
@@ -26,7 +27,6 @@ from services.engine.registry import registry
 
 router = APIRouter(tags=["action-loop"])
 
-_VERTICAL = "energy"
 _action_store: dict[str, ActionRecord] = {}
 
 
@@ -52,10 +52,11 @@ def _to_response(record: ActionRecord) -> RecommendationResponse:
 
 
 async def _populate_store() -> None:
-    """Read reading events from the energy adapter and derive recommendations."""
-    adapter = registry.get_adapter(_VERTICAL)
+    """Read reading events from the active vertical's adapter and derive recommendations."""
+    vertical = settings.oct_vertical
+    adapter = registry.get_adapter(vertical)
     async for event in adapter.stream_events("reading"):
-        record = await recommend(event, _VERTICAL)
+        record = await recommend(event, vertical)
         if record is not None:
             _action_store[record.action.id] = record
 
@@ -69,8 +70,8 @@ def _get_record(action_id: str) -> ActionRecord:
 
 @router.get("/objects/{object_type}", response_model=ObjectListResponse)
 async def list_objects(object_type: str) -> ObjectListResponse:
-    """List raw objects of one type from the energy DataAdapter (ingress layer)."""
-    adapter = registry.get_adapter(_VERTICAL)
+    """List raw objects of one type from the active vertical's DataAdapter (ingress layer)."""
+    adapter = registry.get_adapter(settings.oct_vertical)
     objects = await adapter.fetch_objects(object_type)
     return ObjectListResponse(object_type=object_type, count=len(objects), objects=objects)
 
@@ -78,7 +79,7 @@ async def list_objects(object_type: str) -> ObjectListResponse:
 @router.get("/meta", response_model=OntologyMeta)
 async def get_meta() -> OntologyMeta:
     """Return the active vertical's ontology metadata (drives the ontology-driven UI)."""
-    return load_ontology_meta(_VERTICAL)
+    return load_ontology_meta(settings.oct_vertical)
 
 
 @router.get("/recommendations", response_model=RecommendationListResponse)

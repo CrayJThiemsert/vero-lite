@@ -9,12 +9,11 @@ flow; this router maps its :class:`NlAnswer` to the API response model.
 
 from fastapi import APIRouter
 
+from services.api.config import settings
 from services.api.models.query import NlQueryRequest, NlQueryResponse
 from services.engine.nl_query import NlAnswer, answer_question
 
 router = APIRouter(tags=["nl-query"])
-
-_VERTICAL = "energy"
 
 
 def _to_response(answer: NlAnswer) -> NlQueryResponse:
@@ -33,5 +32,5 @@ def _to_response(answer: NlAnswer) -> NlQueryResponse:
 @router.post("/query", response_model=NlQueryResponse)
 async def nl_query(request: NlQueryRequest) -> NlQueryResponse:
     """Answer a plain-language operational question, grounded in ontology data."""
-    answer = await answer_question(request.question, _VERTICAL)
+    answer = await answer_question(request.question, settings.oct_vertical)
     return _to_response(answer)

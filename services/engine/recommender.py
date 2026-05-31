@@ -46,7 +46,10 @@ from services.engine.registry import registry
 logger = logging.getLogger(__name__)
 
 OVERTEMP_THRESHOLD_CELSIUS = 90.0
-"""Reading value at or above which the engine escalates to a RecommendedAction."""
+"""Energy default for the escalation threshold — the value ``settings.oct_recommend_threshold``
+defaults to. The runtime trigger reads the (per-vertical, env-driven) setting so a
+second vertical can escalate at its own threshold (PLAN-0013 AC-template); this
+constant is retained as the documented energy baseline."""
 
 RULE_CONFIDENCE = 0.8
 """Fixed confidence for rule-based (fail-safe) recommendations — no model inference."""
@@ -81,13 +84,14 @@ def _is_recommendation_trigger(event: dict[str, Any]) -> bool:
     """Return True when an event warrants engaging the recommender.
 
     The deterministic detector — a reading whose ``measured_value`` is at
-    or above ``OVERTEMP_THRESHOLD_CELSIUS``. Shares its intent with the
-    retained rule body's guards (``_rule_recommend``).
+    or above the active vertical's ``settings.oct_recommend_threshold``
+    (energy default 90 °C). Shares its intent with the retained rule body's
+    guards (``_rule_recommend``).
     """
     if event.get("event_type") != "reading":
         return False
     measured = event.get("measured_value")
-    return measured is not None and measured >= OVERTEMP_THRESHOLD_CELSIUS
+    return measured is not None and measured >= settings.oct_recommend_threshold
 
 
 def _build_chat_client() -> ChatClient:
@@ -177,27 +181,35 @@ def _rule_recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
     """Deterministic threshold rule — the retained fail-safe (ADR-010 IN-4).
 
     Returns a proposed ActionRecord when the event is a reading whose
-    measured_value is at or above OVERTEMP_THRESHOLD_CELSIUS, else None.
-    The record carries ``actor_kind="engine"`` and a rule_check-only
-    trace, so the audit record shows the path actually taken.
+    measured_value is at or above ``settings.oct_recommend_threshold``,
+    else None. The affected-entity object_type, its event key, and the
+    anomaly label are read from the active vertical's
+    ``settings.oct_recommend_*`` policy (energy defaults reproduce the
+    original over-temperature wording), so the offline fail-safe stays
+    coherent across verticals (PLAN-0013 AC-template). The record carries
+    ``actor_kind="engine"`` and a rule_check-only trace, so the audit
+    record shows the path actually taken.
     """
     if event.get("event_type") != "reading":
         return None
     measured = event.get("measured_value")
-    if measured is None or measured < OVERTEMP_THRESHOLD_CELSIUS:
+    threshold = settings.oct_recommend_threshold
+    if measured is None or measured < threshold:
         return None
 
-    asset_id = str(event.get("asset_id", "unknown"))
+    entity_type = settings.oct_recommend_entity_type
+    label = settings.oct_recommend_label
+    subject_id = str(event.get(settings.oct_recommend_entity_id_field, "unknown"))
     event_id = str(event.get("event_id", "unknown"))
     unit = str(event.get("unit", ""))
     trace = [
         ReasoningStep(
             step_id="threshold-check",
             kind="rule_check",
-            summary=f"measured_value {measured} {unit} >= threshold {OVERTEMP_THRESHOLD_CELSIUS}",
+            summary=f"measured_value {measured} {unit} >= threshold {threshold}",
             detail={
                 "measured_value": measured,
-                "threshold": OVERTEMP_THRESHOLD_CELSIUS,
+                "threshold": threshold,
                 "unit": unit,
                 "crossed": True,
             },
@@ -205,23 +217,23 @@ def _rule_recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
         ReasoningStep(
             step_id="alert-derivation",
             kind="rule_check",
-            summary=f"Derived over-temperature alert for asset {asset_id}",
-            detail={"event_id": event_id, "asset_id": asset_id},
+            summary=f"Derived {label} alert for {entity_type.lower()} {subject_id}",
+            detail={"event_id": event_id, "entity_type": entity_type, "entity_id": subject_id},
         ),
     ]
     action = RecommendedAction(
         id=f"action-{event_id}",
-        title=f"Investigate over-temperature on {asset_id}",
+        title=f"Investigate {label} on {subject_id}",
         description=(
-            f"Reading {measured} {unit} on asset {asset_id} crossed the "
-            f"{OVERTEMP_THRESHOLD_CELSIUS} {unit} threshold."
+            f"Reading {measured} {unit} on {entity_type} {subject_id} crossed the "
+            f"{threshold} {unit} threshold."
         ),
         vertical=vertical,
         reasoning_trace=trace,
         confidence=RULE_CONFIDENCE,
-        affected_entities=[EntityRef(object_type="Asset", primary_key=asset_id)],
+        affected_entities=[EntityRef(object_type=entity_type, primary_key=subject_id)],
         suggested_handler="echo",
-        handler_payload={"event_id": event_id, "asset_id": asset_id, "measured_value": measured},
+        handler_payload={"event_id": event_id, "entity_id": subject_id, "measured_value": measured},
         audit_metadata=AuditMetadata(actor="engine", actor_kind="engine"),
         created_at=datetime.now(UTC),
     )

@@ -97,6 +97,51 @@ class Settings(BaseSettings):
         description="Per-request timeout for a single Ollama chat call, in seconds",
     )
 
+    # OCT demo — active vertical + recommender policy (PLAN-0013 AC-template).
+    # Only ONE vertical runs per process, so the policy is a flat set of
+    # env-driven settings, NOT a per-vertical map or framework (Rule-of-Three:
+    # a data-driven 2nd instance, not premature abstraction — CLAUDE.md §1).
+    # Every default reproduces the energy vertical exactly, so swapping
+    # OCT_VERTICAL (+ a few OCT_RECOMMEND_* values) is the only change needed to
+    # re-skin the demo onto a different ontology with zero UI-code change.
+    oct_vertical: str = Field(
+        default="energy",
+        description=(
+            "Active OCT vertical — the adapter + handlers registered on startup "
+            "and the vertical the routers serve (e.g. 'energy' | 'supply_chain')"
+        ),
+    )
+    oct_recommend_threshold: float = Field(
+        default=90.0,
+        description=(
+            "measured_value at or above which a 'reading' event escalates to a "
+            "RecommendedAction (energy over-temp = 90 °C; a cold-chain breach is "
+            "lower). Supersedes the energy-only OVERTEMP_THRESHOLD_CELSIUS at runtime."
+        ),
+    )
+    oct_recommend_entity_type: str = Field(
+        default="Asset",
+        description=(
+            "Ontology object_type the deterministic fail-safe rule names as the "
+            "affected entity (energy 'Asset'; supply_chain e.g. 'Shipment')"
+        ),
+    )
+    oct_recommend_entity_id_field: str = Field(
+        default="asset_id",
+        description=(
+            "Event field holding the affected entity's primary key, read by the "
+            "fail-safe rule (energy 'asset_id'; supply_chain e.g. 'shipment_id')"
+        ),
+    )
+    oct_recommend_label: str = Field(
+        default="over-temperature",
+        description=(
+            "Short anomaly label used in the deterministic fail-safe rule's "
+            "title/description (energy 'over-temperature'; supply_chain e.g. "
+            "'cold-chain temperature breach')"
+        ),
+    )
+
     # App
     log_level: str = Field(default="INFO", description="Python logging level")
     environment: str = Field(default="development", description="Deployment environment name")
