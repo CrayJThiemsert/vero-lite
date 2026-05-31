@@ -42,16 +42,34 @@
   function connector() { return h('div', { class: 'flow-arrow' }, icon('arrow', { width: 22, height: 22 })); }
 
   function findAnomalyEvent(rec) {
-    // pull the breaching reading out of the trace, else search events
-    let measured = null, unit = null, threshold = null, assetId = null;
+    // pull the breaching reading out of the trace (rule path carries it)
+    let measured = null, unit = null, threshold = null;
     (rec.reasoning_trace || []).forEach(s => {
       const d = s.detail || {};
       if (d.measured_value != null) { measured = d.measured_value; unit = d.unit || unit; }
       if (d.threshold != null) threshold = d.threshold;
-      if (d.asset_id) assetId = d.asset_id;
     });
-    if (!assetId && rec.affected_entities) { const a = rec.affected_entities.find(e => e.object_type === 'Asset'); if (a) assetId = a.primary_key; }
-    return { measured, unit, threshold, assetId };
+    // entity is ontology-driven: the recommendation's first affected entity,
+    // whatever its object_type (Asset, Shipment, …) — no hard-coded type
+    const ent = (rec.affected_entities || [])[0] || null;
+    return { measured, unit, threshold, entityType: ent ? ent.object_type : null, entityId: ent ? ent.primary_key : null };
+  }
+
+  // A grounded, domain-driven question to seed View C — derived from the
+  // condition: the breaching threshold when the trace carries it, else a
+  // status query over the monitored entity type (both ground in /objects data).
+  function conditionQuestion(cond) {
+    if (cond.threshold != null) return 'Any readings above ' + cond.threshold + (cond.unit ? ' ' + cond.unit : '') + '?';
+    const et = cond.entityType;
+    if (et && O.State.meta) {
+      const sp = O.Onto.statusProp(et);
+      if (sp && sp.enum && sp.enum.length) {
+        const attn = sp.enum.find(v => /delay|held|hold|maint|pending|warn|fault|critical|excursion|breach/i.test(v)) || sp.enum[sp.enum.length - 1];
+        return 'Show ' + et.toLowerCase() + 's with status "' + attn + '"';
+      }
+      return 'How many ' + et.toLowerCase() + 's are there?';
+    }
+    return 'What needs attention right now?';
   }
 
   function render() {
@@ -76,27 +94,32 @@
 
     // -------- Stage 2: Condition --------
     const cond = findAnomalyEvent(rec || { reasoning_trace: [] });
-    const asset = cond.assetId ? (O.State.objects.Asset || { objects: [] }).objects.find(a => a.asset_id === cond.assetId) : null;
+    const entityType = cond.entityType;
+    const entPk = entityType ? O.Onto.pk(entityType) : null;
+    const entityObj = (entityType && entPk)
+      ? ((O.State.objects[entityType] || { objects: [] }).objects.find(o => o[entPk] === cond.entityId) || null)
+      : null;
+    const askQ = conditionQuestion(cond);
     const condBody = h('div', null, [
       h('div', { class: 'cond-card' }, [
         h('div', { class: 'cond-top' }, [
-          h('span', { class: 'badge s-crit' }, [h('span', { class: 'led' }), 'over-temperature']),
-          asset ? O.typeTag('Asset') : null
+          h('span', { class: 'badge s-crit' }, [h('span', { class: 'led' }), 'threshold breach']),
+          entityType ? O.typeTag(entityType) : null
         ]),
         h('div', { class: 'cond-reading' }, [
           h('span', { class: 'cond-val mono' }, cond.measured != null ? cond.measured : '—'),
           h('span', { class: 'cond-unit mono' }, cond.unit || '')
         ]),
         h('div', { class: 'cond-thr mono muted' }, cond.threshold != null ? ('threshold ' + cond.threshold + ' ' + (cond.unit || '')) : ''),
-        asset ? h('div', { class: 'cond-asset' }, [
-          h('span', { class: 'muted' }, 'on '), h('b', null, O.Onto.label('Asset', asset)),
-          h('span', { class: 'faint mono', style: { marginLeft: '6px' } }, asset.asset_id)
+        (entityType && cond.entityId) ? h('div', { class: 'cond-asset' }, [
+          h('span', { class: 'muted' }, 'on '), h('b', null, entityObj ? O.Onto.label(entityType, entityObj) : cond.entityId),
+          h('span', { class: 'faint mono', style: { marginLeft: '6px' } }, cond.entityId)
         ]) : null
       ]),
       h('div', { class: 'cond-or' }, [h('span', { class: 'line' }), h('span', { class: 'or-txt mono' }, 'OR ASK A QUESTION'), h('span', { class: 'line' })]),
-      h('button', { class: 'cond-ask', onClick: () => document.dispatchEvent(new CustomEvent('oct:goto', { detail: { view: 'C', ask: 'Any readings above 90 °C?' } })) }, [
+      h('button', { class: 'cond-ask', onClick: () => document.dispatchEvent(new CustomEvent('oct:goto', { detail: { view: 'C', ask: askQ } })) }, [
         icon('ask', { width: 14, height: 14 }),
-        h('span', null, '"Any readings above 90 °C?"'),
+        h('span', null, '"' + askQ + '"'),
         icon('arrow', { width: 13, height: 13 })
       ])
     ]);

@@ -1,6 +1,6 @@
 """FastAPI entry point for vero-lite."""
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -8,20 +8,40 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
+from services.api.config import settings
 from services.api.models.health import HealthResponse
 from services.api.routers.actions import router as actions_router
 from services.api.routers.query import router as query_router
 from verticals.energy.data_adapter import register_energy_adapter
 from verticals.energy.handlers import register_energy_handlers
+from verticals.supply_chain.data_adapter import register_supply_chain_adapter
+from verticals.supply_chain.handlers import register_supply_chain_handlers
 
 _STATIC_DIR = Path(__file__).parent / "static"
+
+# Explicit vertical registry (OQ-6: no import-scan discovery). Each entry
+# registers that vertical's adapter + handlers; lifespan wires up the one
+# named by OCT_VERTICAL. Adding a vertical = swap the ontology + adapter and
+# add a row here — no engine or UI change (PLAN-0013 AC-template).
+_VERTICAL_REGISTRARS: dict[str, tuple[Callable[[], object], Callable[[], None]]] = {
+    "energy": (register_energy_adapter, register_energy_handlers),
+    "supply_chain": (register_supply_chain_adapter, register_supply_chain_handlers),
+}
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Register the energy vertical (adapter + handlers) on startup."""
-    register_energy_adapter()
-    register_energy_handlers()
+    """Register the OCT_VERTICAL-selected vertical (adapter + handlers) on startup."""
+    vertical = settings.oct_vertical
+    registrars = _VERTICAL_REGISTRARS.get(vertical)
+    if registrars is None:
+        known = ", ".join(sorted(_VERTICAL_REGISTRARS)) or "(none)"
+        raise RuntimeError(
+            f"OCT_VERTICAL={vertical!r} is not a registered vertical; known: {known}"
+        )
+    register_adapter, register_handlers = registrars
+    register_adapter()
+    register_handlers()
     yield
 
 
