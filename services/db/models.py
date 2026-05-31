@@ -19,7 +19,7 @@ parity test covers column types, not constraints.
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import Date, DateTime, Double, ForeignKey, Text
+from sqlalchemy import Date, DateTime, Double, ForeignKey, Index, Text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -42,6 +42,7 @@ class Asset(Base):
     """Energy ontology entity: a physical operational unit."""
 
     __tablename__ = "asset"
+    __table_args__ = (Index("idx_asset_site_id", "site_id"),)
 
     asset_id: Mapped[str] = mapped_column(Text, primary_key=True)
     name: Mapped[str] = mapped_column(Text, nullable=False)
@@ -56,6 +57,10 @@ class OperationalEvent(Base):
     """Energy ontology entity: a time-stamped operational signal."""
 
     __tablename__ = "operational_event"
+    __table_args__ = (
+        Index("idx_operational_event_asset_id", "asset_id"),
+        Index("idx_operational_event_site_id", "site_id"),
+    )
 
     event_id: Mapped[str] = mapped_column(Text, primary_key=True)
     event_type: Mapped[str | None] = mapped_column(Text)
@@ -86,6 +91,10 @@ class RecommendedAction(Base):
     """Energy ontology entity: the persisted projection of a RecommendedAction envelope (OQ-1)."""
 
     __tablename__ = "recommended_action"
+    __table_args__ = (
+        Index("idx_recommended_action_alert_id", "alert_id"),
+        Index("idx_recommended_action_target_asset_id", "target_asset_id"),
+    )
 
     action_id: Mapped[str] = mapped_column(Text, primary_key=True)
     action_type: Mapped[str | None] = mapped_column(Text)
@@ -100,6 +109,10 @@ class AlertEventLink(Base):
     """Energy ontology entity: a join row linking an Alert to an OperationalEvent."""
 
     __tablename__ = "alert_event_link"
+    __table_args__ = (
+        Index("idx_alert_event_link_alert_id", "alert_id"),
+        Index("idx_alert_event_link_event_id", "event_id"),
+    )
 
     link_id: Mapped[str] = mapped_column(Text, primary_key=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
