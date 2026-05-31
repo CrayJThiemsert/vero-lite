@@ -1,8 +1,12 @@
 # PLAN-0013: OCT Stakeholder Demo (v1 — 3 OCT features on the energy vertical, ontology-driven UI)
 
-**Status:** Draft
+**Status:** Complete (2026-05-31) — all 7 ACs met; archived under `docs/plans/done/`.
 **Owner:** Claude Code (executor) + Cowork (advisory drafter, ADR-009 D1 / ADR-013 OQ-1)
 **Created:** 2026-05-30
+**Completed:** 2026-05-31 (session 28). AC-template — the last AC — met via the
+`supply_chain` second vertical (PR #99). ACs 1–6 verified on energy across
+sessions 26–27 (merged via PRs #96/#97/#98); the engine + endpoints + UI were
+re-confirmed live on `supply_chain` in session 28.
 **Related ADRs:** ADR-005 (OCT pivot — energy first), ADR-006 (vertical plugin architecture / template-first), ADR-007 (RecommendedAction envelope + action loop), ADR-008 (ontology `object_type`), ADR-010 (LLM brain-swap — recommender LLM-backed + rule fail-safe)
 **Related Plans:** PLAN-0005 (OCT engine runtime — read→recommend→approve→execute loop, done), PLAN-0006 (LLM reasoning hook, done)
 **Related docs:** `docs/strategy/public/STRATEGIC_CONTEXT_AIP.md` (north-star, tracked per OQ-1 / PR #89)
@@ -163,26 +167,26 @@ this **to the UI layer**:
 Per-AC evidence style — each AC is satisfied by named, live (not mocked)
 evidence captured at Step 6.
 
-- [ ] **AC-map** — Screen A renders Sites (plotted by lat/lng) + Assets with
+- [x] **AC-map** — ✅ (energy, session 27). Screen A renders Sites (plotted by lat/lng) + Assets with
       status, sourced from `/meta` (entity types / fields) + `/objects` (data).
       Evidence: the map is driven by `/meta` + `/objects` responses, **not**
       hard-coded energy labels (open the served page; show it rendering from the
       API payloads).
-- [ ] **AC-anomaly (killer moment)** — Screen B shows the over-temp
+- [x] **AC-anomaly (killer moment)** — ✅ (energy, session 27; same round-trip re-confirmed on supply_chain, session 28). Screen B shows the over-temp
       RecommendedAction with **its reasoning-trace steps** and the affected
       asset, and completes an **Approve → Execute round-trip live** against the
       running app (`/recommendations` → `/recommendations/{id}/approve` →
       `/recommendations/{id}/execute`, ending `status: executed` with a handler
       receipt). Evidence: captured request/response flow of the full round-trip,
       trace visible in the UI.
-- [ ] **AC-nlquery (grounded, no canned)** — Screen C answers **≥ 5**
+- [x] **AC-nlquery (grounded, no canned)** — ✅ (energy, session 27; grounding re-confirmed on supply_chain, session 28). Screen C answers **≥ 5**
       plain-language questions by translating NL → a structured query over the
       ontology and returning facts drawn from **real `/objects` data**. Every
       answer is traceable to the structured query it ran + the source objects it
       read; **a question with no supporting data returns "not found / no data,"
       never an invented fact.** Evidence: the ≥5 Q/A transcript +, for ≥2
       answers, the structured query + source object IDs that grounded them.
-- [ ] **AC-flow (Code-authored addition — see Provenance)** — the demo presents
+- [x] **AC-flow (Code-authored addition — see Provenance)** — ✅ (energy, session 27; re-confirmed on supply_chain, session 28). the demo presents
       the **data → condition → process → result** journey as a single visible
       flow (Screen D) a stakeholder can follow end-to-end, each stage showing the
       **real artifact** at that stage (live data counts from `/objects`; the
@@ -203,12 +207,12 @@ evidence captured at Step 6.
       **once** to be ontology/config-driven; thereafter a new vertical is "swap
       the ontology + adapter + set `OCT_*` env, no engine/UI code change."
       Evidence: see Verification → Template proof (live, all four screens).
-- [ ] **AC-safety** — the demo uses **synthetic data only** (no real partner
+- [x] **AC-safety** — ✅ (energy offline rule fail-safe, session 27; supply_chain is synthetic + the fail-safe is now per-vertical-coherent, session 28). the demo uses **synthetic data only** (no real partner
       data; no partner identifiers/brand codes anywhere), and the **rule
       fail-safe keeps it robust offline** (the over-temp action and Screen B flow
       work with `LLM_BACKEND` forcing the deterministic path / MS-S1 down).
       Evidence: an offline run reproducing the over-temp action.
-- [ ] **AC-delivery** — the whole demo runs as a **single FastAPI process
+- [x] **AC-delivery** — ✅ (session 27/28; one process, one URL, same-origin). the whole demo runs as a **single FastAPI process
       serving the Claude-Design standalone HTML as static** — one URL, no CORS,
       no separate frontend dev server. Evidence: start one process, open one URL,
       all three screens functional.
