@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-01T00:30:00+07:00
-session: 28
-current_batch: **Sessions 27 + 28 — OCT stakeholder demo SHIPPED on 2 verticals (PLAN-0013, 7/7 ACs) + PLAN-0014 LLM-unreachable recovery loop; both merged + archived to `done/`.** This PR = the overdue STATUS reconcile — sessions 27 + 28 skipped their end-of-arc reconcile, leaving STATUS stale at session 26 (the drift the `lint_status` bridge tool flags). **Session 27** (the long one): minted PLAN-0013 (#90) + built Steps 1–6 live on the **energy** vertical (ontology-driven UI: map / anomaly+trace+approve→execute→DB-persist / grounded NL query / data-flow view) + alembic FK-index drift fix (#97) + disposable-test-DB isolation (#98) → 6.5/7 ACs; plus 2 prerequisite docs PRs (#88 PLAN-004 reconcile, #89 STRATEGIC_CONTEXT_AIP north-star). **Session 28**: closed AC-template via the **`supply_chain`** 2nd vertical (#99 — full A/B/C/D re-skin, `OCT_VERTICAL` config, zero UI-code change) → PLAN-0013 7/7 + `done/`; then drafted (#100, `plan-drafter`-authored) + executed (#101) PLAN-0014 — `OllamaUnreachableError` + Telegram notify + `GET /warm` + `GET /sleep`, live-smoked against MS-S1 — → `done/`. Suite **1003 passed / 2 skipped**; ruff + `mypy services` clean; 0 open PRs; main @ `27ea292`. Moat phase ~complete (2 verticals + 3 OCT features + proven template architecture). Docs-only PR; no code/test/settings touched.
+last_updated: 2026-06-01T18:02:42+07:00
+session: 29
+current_batch: **Session 29 — STATUS reconcile (sessions 27+28, PR #102) + PLAN-0010 autonomy loop CLOSED.** Opened by reconciling the 2-session STATUS drift (PR #102). Then a live PLAN-0010 loop session: disambiguated the three Desktop routines — the Cowork **producer** (`phase35-smoke-cowork-heartbeat` → writes `loop/inbox/`), the deprecated gen-1 observe-only **reader** (`phase35-smoke-code-reader`, old `docs/research/private/phase3.5-smoke/inbox/` path, left paused), and the gen-2 commit-capable **consumer** (`loop-dispatcher`). One-shot-drained 30 stranded inbox messages (30→0; one valid-body/bad-filename `parse_failed`), then shipped **PR #103** (`feat(loop)` — a `cycle_failures` Telegram summary ping so `parse_failed`/`dispatch_failed` are no longer silently quarantined; +4 tests → 1007 passed; live-verified). Cray then **registered `loop-dispatcher`** in Desktop Routines (Local · Hourly · Sonnet 4.6 · Worktree OFF · branch `main`); first live run verified clean (`tier=code branch=main`, inbox 1→0, no error). The autonomy loop now runs producer↔consumer with no human in the dispatch path. **Forward note:** the smoke producer omits the schema's optional `-<rand>` filename suffix → same-hour/drifted-clock fires can collide (the session's `skipped_idempotent` came from this); benign dedup for smoke, but real PLAN-0010 Step-5 producers MUST adopt `-<rand>` to avoid silent payload loss. This PR = session-29 STATUS reconcile. Suite **1007 passed / 2 skipped**; ruff + `mypy services` clean.
 current_actor: code
-blocked_on: Nothing gates forward progress. PLAN-0013 (7/7 ACs) + PLAN-0014 both COMPLETE + merged + archived to `done/`; 0 open PRs; main clean @ `27ea292`. The session-26 carry-over "PLAN-0011 AC-3/AC-7 fresh-trigger re-run" is **RESOLVED** (PLAN-0011 now Status: Complete, in `done/`). Remaining items are non-gating: Cray-action setup (re-paste both tier files; PLAN-0010 loop-dispatcher Desktop one-time setup + verify PR #55; arm PLAN-0014 on the demo box) + not-yet-triggered active plans (PLAN-0010 consumer side, PLAN-004 Phases B/C, PLAN-0012 Phase 2).
-next_action: **Sessions 27 + 28 reconciled; STATUS current at session 28 (head `27ea292`).** Backlog: (a) **Cray-action (human)** — re-paste `chat_tab_instructions.md` + `cowork_tab_instructions.md` into the Desktop project-instructions UI (OQ-T5 sync; canonical = repo); PLAN-0010 loop-dispatcher Desktop one-time setup (~5 min, runbook) + verify PR #55; arm PLAN-0014 on the demo box (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` + `TELEGRAM_NOTIFY_ENABLED=true` + `OCT_PUBLIC_BASE_URL`); (b) **Code-executable active plans** — PLAN-0010 (Phase 3.5 scheduled-task autonomy loop; consumer side gated on the Cray Desktop setup), PLAN-004 Phases B+C (handoff dashboard, low priority), PLAN-0012 Phase 2 (vero-bridge — only when a concrete not-on-bridge / safe-for-some capability need lands); (c) **Strategic (Cray business action, not a repo task)** — take the shipped 2-vertical demo to design partners.
-head_commit: 27ea292
-recent_commits: [27ea292, d6ef9cb, f9f6835, bfe6137, e6a1130, 99bee59, d4bc0a6, 1fa0d53, f646277, a673c6a]
+blocked_on: Nothing gates forward progress. main clean @ `9f07818`; 0 open PRs. **PLAN-0010 autonomy loop is now LIVE** (loop-dispatcher registered + first run verified). Cray-action backlog items 1 (re-paste tier files) + 2 (loop-dispatcher Desktop setup; PR #55 was already merged) are **DONE**; only item 3 (arm PLAN-0014 on the demo box) remains and is non-gating. Active plans (PLAN-0010 Step-5 real handlers, PLAN-004 B/C, PLAN-0012 Phase 2) are not-yet-triggered.
+next_action: **Session 29 reconciled; STATUS current at session 29 (head `9f07818`); PLAN-0010 loop live.** Backlog: (a) **Cray-action** — arm PLAN-0014 on the demo box (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` + `TELEGRAM_NOTIFY_ENABLED=true` + `OCT_PUBLIC_BASE_URL`) [tier-file re-paste + loop-dispatcher setup now DONE]; (b) **Code-executable** — PLAN-0010 Step-5 real message-type handlers (UNBLOCKED — loop running; real producers must adopt the `-<rand>` filename suffix per the session-29 collision finding), PLAN-004 Phases B+C (handoff dashboard, low priority), PLAN-0012 Phase 2 (vero-bridge — when a concrete capability need lands); (c) **Test-coverage exploration** (Cray-requested 2026-06-01) — identify non-disruptive test cases to add; (d) **Strategic** — take the shipped 2-vertical demo to design partners (Cray business action).
+head_commit: 9f07818
+recent_commits: [9f07818, 9f9f929, d80d1e0, 304c6b4, 27ea292, d6ef9cb, f9f6835, bfe6137, e6a1130, 99bee59]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,29 @@ recent_commits: [27ea292, d6ef9cb, f9f6835, bfe6137, e6a1130, 99bee59, d4bc0a6, 
 
 ## Current Focus
 
-> **Sessions 27 + 28 (current) — OCT stakeholder demo SHIPPED on 2 verticals
+> **Session 29 (current) — STATUS reconcile (PR #102) + PLAN-0010 autonomy loop
+> CLOSED.** Reconciled the 2-session STATUS drift (sessions 27+28 → PR #102),
+> then ran a live PLAN-0010 loop session. Disambiguated the three Desktop
+> routines — the Cowork **producer** (`phase35-smoke-cowork-heartbeat` → writes
+> `loop/inbox/`), the deprecated gen-1 observe-only **reader**
+> (`phase35-smoke-code-reader`, old `docs/research/private/phase3.5-smoke/inbox/`
+> path, left paused), and the gen-2 commit-capable **consumer**
+> (`loop-dispatcher`). One-shot-drained 30 stranded inbox messages (30→0; one
+> valid-body / bad-filename `parse_failed`), then shipped **PR #103**
+> (`feat(loop)` — a `cycle_failures` Telegram summary ping so
+> `parse_failed`/`dispatch_failed` are no longer silently quarantined; +4 tests,
+> suite 1007; live-verified). Cray then **registered `loop-dispatcher`** in
+> Desktop Routines (Local · Hourly · Sonnet 4.6 · Worktree OFF · branch `main`)
+> and the first live run verified clean (inbox 1→0, `tier=code branch=main`, no
+> error). The autonomy loop now runs producer↔consumer with no human in the
+> dispatch path. **Forward note:** the smoke producer omits the schema's optional
+> `-<rand>` filename suffix → same-hour / drifted-clock fires can collide; benign
+> dedup for smoke, but real PLAN-0010 Step-5 producers MUST use `-<rand>` to avoid
+> silent payload loss. Next: test-coverage exploration (Cray-requested). The
+> sessions 27+28 / 26 / 25 / 23+24 / 22 / 20+21 narratives below are retained for
+> archeology.
+>
+> **Sessions 27 + 28 — OCT stakeholder demo SHIPPED on 2 verticals
 > (PLAN-0013, 7/7 ACs) + PLAN-0014 LLM-unreachable recovery loop. Moat phase
 > ~complete.** Two long execution sessions closed the demo arc end-to-end, both
 > merged + archived to `done/`. **Session 27** (the long one) minted PLAN-0013
@@ -399,6 +421,22 @@ session-21 → session-22 kickoff handoff §4 Action 1; high-priority
 "close the loop" item). No code/test/settings touched. Cumulative
 session 20+21 tests: 634 (unchanged — all 5 PRs in sessions 20+21
 were docs/plans/lessons only).
+
+### 2026-06-01 (PM) — Session 29 ledger (STATUS reconcile + PLAN-0010 loop closed)
+
+Reconciled the 2-session STATUS drift, then closed the PLAN-0010 autonomy loop
+end-to-end (one-shot drain → observability fix → Cray registers the consumer →
+live verify). Suite 1003 → **1007 passed / 2 skipped**; ruff + `mypy services`
+clean.
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **STATUS reconcile (sessions 27+28)** | [#102](https://github.com/CrayJThiemsert/vero-lite/pull/102) (`304c6b4` → merge `d80d1e0`) | Brought STATUS current from session 26 → 28 (the PLAN-0013 + PLAN-0014 arc; #88–#101). Docs-only; recorded PLAN-0011 carry-over as RESOLVED. |
+| **PLAN-0010 live loop diagnosis** | one-shot drain (no commit) | Disambiguated the 3 Desktop routines — producer `phase35-smoke-cowork-heartbeat` (writes `loop/inbox/`), gen-1 observe-only `phase35-smoke-code-reader` (old `docs/research/private/phase3.5-smoke/inbox/` path, left paused), gen-2 consumer `loop-dispatcher`. Ran `loop-dispatcher` one-shot → drained `loop/inbox/` 30→0 (`scan_cycle: ok=27 parse_failed=1 skipped_idempotent=2`). The `parse_failed` = a stray `heartbeat.msg.md` (valid body, bad filename) — exposed that non-poison failures had no Telegram signal. |
+| **`cycle_failures` alert** | [#103](https://github.com/CrayJThiemsert/vero-lite/pull/103) (`9f9f929` → merge `9f07818`) | **`feat(loop)`** — one aggregate `cycle_failures` Telegram ping per cycle when `parse_failed > 0` or `dispatch_failed > 0` (poison keeps its own per-message alert; `expired` benign → excluded). Reuses the existing `alert_callback` (Telegram + stderr + graceful no-op). +4 tests (1003→1007); runbook documents the 3 alert reasons. Live-verified (stderr `{"alert":"cycle_failures",...}` fired on a synthetic bad-filename message, no real Telegram sent). |
+| **loop-dispatcher registered (Cray-action)** | Desktop Routines | **PLAN-0010 autonomy loop CLOSED.** Cray registered `loop-dispatcher` (Local · Hourly · Sonnet 4.6 · Worktree OFF · branch `main`; SKILL.md description + Instructions pasted from `~/.claude/scheduled-tasks/loop-dispatcher/SKILL.md`); first live run verified (`tier=code branch=main`, inbox 1→0, no error/ALERT). **Backlog items 1 (tier-file re-paste) + 2 (loop-dispatcher setup; PR #55 was already merged) now DONE.** |
+| **Forward note — producer NONCE collision** | session finding | The smoke producer omits the schema's optional `-<rand>` filename suffix → same-hour / drifted-clock fires collide (the session's `skipped_idempotent=1` came from this; producer clock drift +4–13h is documented). Benign dedup for smoke heartbeats; **real PLAN-0010 Step-5 producers MUST adopt `-<rand>`** (AC-2 collision-resistance) to avoid silent payload loss. |
+| **STATUS reconcile (session 29)** *(this PR)* | this PR | Session 29 ledger + Current Focus narrative + frontmatter (`session` → 29, `head_commit` → `9f07818`, `recent_commits`, `current_batch`, `blocked_on`, `next_action`). Captures PR #102/#103 + the loop-dispatcher register milestone. No code/test/settings touched. |
 
 ### 2026-06-01 — Session 28 ledger (AC-template → PLAN-0013 done; PLAN-0014 shipped; reconciled)
 
