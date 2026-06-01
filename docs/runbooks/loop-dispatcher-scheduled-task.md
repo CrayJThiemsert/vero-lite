@@ -26,7 +26,19 @@
 5. Prunes `loop/processed/` per the §6 retention policy (30-day age,
    100 MB size cap, 200-entry floor)
 6. Surfaces failures via Telegram (`tools/notify/telegram.sh`) if
-   `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` are set
+   `TELEGRAM_BOT_TOKEN` / `TELEGRAM_CHAT_ID` are set. Three alert reasons:
+   - `poison_message` — per message, after `poison_threshold` (default 3)
+     repeated dispatch failures on the same message.
+   - `cycle_failures` — **one aggregate ping per cycle** when `parse_failed > 0`
+     or `dispatch_failed > 0`, so a single malformed message (bad filename /
+     bad frontmatter) is not silently quarantined with no push signal. Added
+     after the session-29 live-drain finding (a valid-body / bad-filename
+     message parse-failed with no alert under the poison-only policy).
+   - `same_fs_check_failed` — fatal: inbox + processed on different
+     filesystems → the scan aborts (the atomic-mv invariant cannot hold).
+
+   `expired` is a benign TTL lifecycle outcome and is deliberately **not**
+   alerted.
 
 ## One-time setup (Cray)
 
@@ -82,7 +94,7 @@ scan_cycle: ok=N parse_failed=N expired=N dispatch_failed=N poison=N skipped_ide
 |---|---|
 | Per-run summary | scheduled-task report message (Desktop UI Run history) |
 | Per-run stdout | scheduled-task transcript (Desktop UI Run history) |
-| Failure alerts | Telegram (if env vars set), stderr otherwise |
+| Failure alerts | Telegram (if env vars set), stderr otherwise — reasons: `poison_message`, `cycle_failures`, `same_fs_check_failed` |
 | Archived messages | `loop/processed/<name>.msg.md` (gitignored) |
 | Sibling logs | `loop/processed/<name>.msg.md.{parse-error\|expired\|poison}.log` |
 | Failure-counter state | `loop/.failures.json` (gitignored; per-process tmp suffix per Fix 2) |
