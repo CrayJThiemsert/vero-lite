@@ -250,3 +250,178 @@ link_types:
     assert ret == 1
     assert "error(s) across" in captured.err
     assert "site_id" in captured.err
+
+
+def test_l2_malformed_foreign_key_string(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """foreign_key that fails the ``<Obj>.<f> -> <Obj>.<f>`` grammar →
+    SemanticValidationError with the canonical ``does not match`` message."""
+    body = """\
+version: 0
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    properties:
+      asset_id:
+        type: string
+  Site:
+    primary_key: site_id
+    properties:
+      site_id:
+        type: string
+link_types:
+  asset_hosted_at_site:
+    from: Asset
+    to: Site
+    cardinality: many_to_one
+    foreign_key: Asset.asset_id Site.site_id
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert _LINE_COL_RE.search(captured.err)
+    assert "does not match" in captured.err
+
+
+def test_l2_enum_with_empty_values_list(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """enum property with an empty ``values`` list → SemanticValidationError
+    ('requires non-empty values list')."""
+    body = """\
+version: 0
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    properties:
+      asset_id:
+        type: string
+      status:
+        type: enum
+        values: []
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert "requires non-empty values list" in captured.err
+
+
+def test_malformed_yaml_reports_parse_failure(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """Unparseable YAML → graceful 'YAML parse failed' SchemaValidationError,
+    not an uncaught exception."""
+    body = "object_types: [unterminated\n"
+    yaml_path = _write(tmp_path, "broken.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert "YAML parse failed" in captured.err
+
+
+def test_top_level_yaml_not_a_mapping(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """A top-level YAML sequence (not a mapping) → 'top-level YAML must be a
+    mapping' SchemaValidationError."""
+    body = """\
+- version: 0
+- namespace: energy
+"""
+    yaml_path = _write(tmp_path, "list.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert "top-level YAML must be a mapping" in captured.err
+
+
+def test_l2_non_dict_link_def_skipped_gracefully(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """A ``link_types`` entry whose value is not a mapping is skipped by L2
+    (no crash); L1 still reports the schema mismatch."""
+    body = """\
+version: 0
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    properties:
+      asset_id:
+        type: string
+link_types:
+  asset_hosted_at_site: just_a_string
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+
+
+def test_l2_non_dict_object_def_skipped_gracefully(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An ``object_types`` entry whose value is not a mapping is skipped by L2
+    (no crash); L1 still reports the schema mismatch."""
+    body = """\
+version: 0
+namespace: energy
+object_types:
+  Asset: just_a_string
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+
+
+def test_l1_error_nested_in_link_types_derives_context(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """An L1 schema error under ``link_types`` derives a
+    ``<link>.<field>`` context via ``_ctx_from_path``."""
+    body = """\
+version: 0
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    properties:
+      asset_id:
+        type: string
+  Site:
+    primary_key: site_id
+    properties:
+      site_id:
+        type: string
+link_types:
+  asset_hosted_at_site:
+    from: Asset
+    to: Site
+    cardinality: many_to_many
+    foreign_key: Asset.asset_id -> Site.site_id
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert _LINE_COL_RE.search(captured.err)
+    assert "asset_hosted_at_site.cardinality" in captured.err
+
+
+def test_cli_no_args_prints_usage_and_returns_1(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """``main([])`` with no file arguments → usage line on stderr, return 1."""
+    ret = main([])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "usage:" in captured.err
