@@ -626,6 +626,26 @@ class Dispatcher:
         summary.pruned_freed_bytes = freed
         summary.pruned_oldest = oldest
 
+        # Surface non-poison failures that otherwise leave no push signal.
+        # parse_failed is terminal on first occurrence (archived + sibling
+        # .parse-error.log, never retried) and dispatch_failed retries until
+        # the poison_threshold; neither fires the per-message poison alert.
+        # Without this, an unattended hourly run would quarantine malformed
+        # messages silently — only visible by reading the Desktop Run history.
+        # One aggregate ping per cycle (not per message) keeps the signal
+        # low-noise. poison keeps its own per-message alert and is excluded
+        # here, so the poison cycle (dispatch_failed resets to 0) does not
+        # double-alert.
+        if summary.parse_failed or summary.dispatch_failed:
+            self.alert_callback(
+                "cycle_failures",
+                {
+                    "parse_failed": summary.parse_failed,
+                    "dispatch_failed": summary.dispatch_failed,
+                    "ok": summary.ok,
+                },
+            )
+
         return summary
 
 

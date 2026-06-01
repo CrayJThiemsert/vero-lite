@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from collections.abc import Callable
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -240,10 +241,15 @@ def test_poison_threshold_archives_and_alerts(tmp_path: Path) -> None:
             assert "poison_threshold=3" in poison_log.read_text(encoding="utf-8")
             assert "RuntimeError" in poison_log.read_text(encoding="utf-8")
 
-    assert len(alerts) == 1
-    reason, payload = alerts[0]
-    assert reason == "poison_message"
-    assert payload["count"] == 3
+    poison_alerts = [a for a in alerts if a[0] == "poison_message"]
+    assert len(poison_alerts) == 1
+    _, poison_payload = poison_alerts[0]
+    assert poison_payload["count"] == 3
+    # Cycles 1 + 2 each had dispatch_failed=1 → one cycle_failures ping each;
+    # the poison cycle (3) resets dispatch_failed to 0 → no double-alert there.
+    cycle_alerts = [a for a in alerts if a[0] == "cycle_failures"]
+    assert len(cycle_alerts) == 2
+    assert all(a[1]["dispatch_failed"] == 1 for a in cycle_alerts)
 
 
 def test_recover_after_partial_failures_clears_state(tmp_path: Path) -> None:
@@ -266,6 +272,78 @@ def test_recover_after_partial_failures_clears_state(tmp_path: Path) -> None:
     s2 = d.run_once()
     assert s2.ok == 1
     assert load_failure_state(d.failure_state_path).counts == {}
+
+
+# --- cycle_failures alert: non-poison failures get one aggregate ping ---
+
+
+def _alert_capture() -> (
+    tuple[list[tuple[str, dict[str, Any]]], Callable[[str, dict[str, Any]], None]]
+):
+    """Return ``(alerts_list, capture_callback)`` for asserting alert calls."""
+    alerts: list[tuple[str, dict[str, Any]]] = []
+
+    def capture(reason: str, payload: dict[str, Any]) -> None:
+        alerts.append((reason, payload))
+
+    return alerts, capture
+
+
+def test_parse_failed_fires_cycle_failures_alert(tmp_path: Path) -> None:
+    alerts, capture = _alert_capture()
+    d = _new_dispatcher(tmp_path, alert_callback=capture)
+    bad_text = (
+        "---\n"
+        "producer_id: cowork-smoke-heartbeat\n"
+        "schema_version: 2\n"  # fail-closed: schema_version != 1
+        "message_type: smoke_heartbeat\n"
+        "claimed_time: 2026-05-26T08:59:45Z\n"
+        "time_authority: mtime\n"
+        "---\n"
+        "## Subject\n\ns\n## Body\n\nb\n## Action requested\n\nnone\n"
+    )
+    _make_inbox_message(d.inbox, text=bad_text)
+    summary = d.run_once()
+    assert summary.parse_failed == 1
+    cycle_alerts = [a for a in alerts if a[0] == "cycle_failures"]
+    assert len(cycle_alerts) == 1
+    assert cycle_alerts[0][1]["parse_failed"] == 1
+    assert cycle_alerts[0][1]["dispatch_failed"] == 0
+
+
+def test_dispatch_failed_fires_cycle_failures_alert(tmp_path: Path) -> None:
+    alerts, capture = _alert_capture()
+    d = _new_dispatcher(tmp_path, alert_callback=capture, poison_threshold=3)
+    d.handlers[MessageType.SMOKE_HEARTBEAT] = _raising_handler
+    _make_inbox_message(d.inbox)
+    summary = d.run_once()
+    assert summary.dispatch_failed == 1
+    assert summary.poison == 0
+    cycle_alerts = [a for a in alerts if a[0] == "cycle_failures"]
+    assert len(cycle_alerts) == 1
+    assert cycle_alerts[0][1]["dispatch_failed"] == 1
+    # Too early for poison — only the cycle_failures ping should have fired.
+    assert [a for a in alerts if a[0] == "poison_message"] == []
+
+
+def test_clean_cycle_fires_no_cycle_failures_alert(tmp_path: Path) -> None:
+    alerts, capture = _alert_capture()
+    d = _new_dispatcher(tmp_path, alert_callback=capture)
+    _make_inbox_message(d.inbox)
+    summary = d.run_once()
+    assert summary.ok == 1
+    assert [a for a in alerts if a[0] == "cycle_failures"] == []
+
+
+def test_expired_only_cycle_fires_no_cycle_failures_alert(tmp_path: Path) -> None:
+    # expired is a benign TTL lifecycle outcome — deliberately NOT alerted.
+    alerts, capture = _alert_capture()
+    fixed_now = datetime(2026, 5, 28, 0, 0, 0, tzinfo=UTC)
+    d = _new_dispatcher(tmp_path, alert_callback=capture, now_fn=lambda: fixed_now)
+    _make_inbox_message(d.inbox, expires_after="2026-05-27T00:00:00Z")
+    summary = d.run_once()
+    assert summary.expired == 1
+    assert [a for a in alerts if a[0] == "cycle_failures"] == []
 
 
 # --- AC-Step1-3 MTIME ORDERING ---
