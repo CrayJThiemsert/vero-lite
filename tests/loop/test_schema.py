@@ -481,3 +481,126 @@ def test_validation_error_warning_severity() -> None:
     err = ValidationError("x", "y", "z", Severity.WARNING)
     assert err.is_error() is False
     assert "warning" in err.render()
+
+
+# --- AC-Step1-1 coverage: frontmatter / list / quote edges via public seam ---
+# All cases drive the public parse_message_text / parse_filename seam (never a
+# private helper) so they survive internal parser refactors.
+
+
+def test_quoted_scalar_value_is_unquoted() -> None:
+    """A quoted frontmatter scalar is stripped of its surrounding quotes."""
+    result = _parse(correlation_id='"smoke-batch-3"')
+    assert isinstance(result, LoopMessage)
+    assert result.correlation_id == "smoke-batch-3"
+
+
+def test_frontmatter_without_closing_fence_rejected() -> None:
+    """An opening '---' with no closing fence → treated as missing frontmatter."""
+    path = Path("loop/inbox/cowork-smoke-heartbeat-20260526T085945Z.msg.md")
+    text = (
+        "---\n"
+        "producer_id: cowork-smoke-heartbeat\n"
+        "schema_version: 1\n"
+        "## Subject\n\ns\n"  # no closing '---' fence
+    )
+    errors = _errors(parse_message_text(path, text))
+    assert any(e.field == "<frontmatter>" for e in errors)
+
+
+def test_list_field_followed_by_more_frontmatter_keys() -> None:
+    """A list field, a blank line, then another key: the list parser stops at
+    the next key (break) and the trailing key still parses."""
+    path = Path("loop/inbox/cowork-smoke-heartbeat-20260526T085945Z.msg.md")
+    text = (
+        "---\n"
+        "producer_id: cowork-smoke-heartbeat\n"
+        "schema_version: 1\n"
+        "message_type: smoke_heartbeat\n"
+        "claimed_time: 2026-05-26T08:59:45Z\n"
+        "time_authority: mtime\n"
+        "references:\n"
+        "  - docs/STATUS.md\n"
+        "\n"
+        "correlation_id: batch-9\n"
+        "---\n"
+        "## Subject\n\ns\n## Body\n\nb\n## Action requested\n\nnone\n"
+    )
+    result = parse_message_text(path, text)
+    assert isinstance(result, LoopMessage)
+    assert result.references == ("docs/STATUS.md",)
+    assert result.correlation_id == "batch-9"
+
+
+def test_frontmatter_tolerates_comment_blank_and_nonkey_lines() -> None:
+    """Comment lines, blank lines, and lines with no 'key:' pair are skipped."""
+    path = Path("loop/inbox/cowork-smoke-heartbeat-20260526T085945Z.msg.md")
+    text = (
+        "---\n"
+        "# a comment line\n"
+        "\n"
+        "producer_id: cowork-smoke-heartbeat\n"
+        "this line has no key value pair\n"
+        "schema_version: 1\n"
+        "message_type: smoke_heartbeat\n"
+        "claimed_time: 2026-05-26T08:59:45Z\n"
+        "time_authority: mtime\n"
+        "---\n"
+        "## Subject\n\ns\n## Body\n\nb\n## Action requested\n\nnone\n"
+    )
+    result = parse_message_text(path, text)
+    assert isinstance(result, LoopMessage)
+    assert result.producer_id == "cowork-smoke-heartbeat"
+
+
+def test_missing_message_type_rejected() -> None:
+    """message_type absent → fail-closed (required-field + enum-coercion), no crash."""
+    path = Path("loop/inbox/cowork-smoke-heartbeat-20260526T085945Z.msg.md")
+    text = (
+        "---\n"
+        "producer_id: cowork-smoke-heartbeat\n"
+        "schema_version: 1\n"
+        "claimed_time: 2026-05-26T08:59:45Z\n"
+        "time_authority: mtime\n"
+        "---\n"
+        "## Subject\n\ns\n## Body\n\nb\n## Action requested\n\nnone\n"
+    )
+    errors = _errors(parse_message_text(path, text))
+    assert _has_error_for(errors, "message_type")
+
+
+def test_non_integer_schema_version_rejected() -> None:
+    """A non-numeric schema_version fails coercion with an 'integer' error."""
+    errors = _errors(_parse(schema_version="abc"))
+    assert _has_error_for(errors, "schema_version")
+    reason = next(e.message for e in errors if e.field == "schema_version")
+    assert "integer" in reason
+
+
+def test_references_as_scalar_string_coerced_to_single_tuple() -> None:
+    """references as an inline scalar (not a '- item' list) → one-element tuple."""
+    path = Path("loop/inbox/cowork-smoke-heartbeat-20260526T085945Z.msg.md")
+    text = (
+        "---\n"
+        "producer_id: cowork-smoke-heartbeat\n"
+        "schema_version: 1\n"
+        "message_type: smoke_heartbeat\n"
+        "claimed_time: 2026-05-26T08:59:45Z\n"
+        "time_authority: mtime\n"
+        "references: docs/STATUS.md\n"
+        "---\n"
+        "## Subject\n\ns\n## Body\n\nb\n## Action requested\n\nnone\n"
+    )
+    result = parse_message_text(path, text)
+    assert isinstance(result, LoopMessage)
+    assert result.references == ("docs/STATUS.md",)
+
+
+def test_parse_message_text_rejects_malformed_filename() -> None:
+    """parse_message_text short-circuits to a single filename error when the
+    filename is malformed (the producer_id cross-check cannot run)."""
+    path = Path("loop/inbox/not a valid filename.txt")
+    _, text = _make_message()
+    errors = _errors(parse_message_text(path, text))
+    assert len(errors) == 1
+    assert errors[0].field == "filename"
