@@ -30,6 +30,7 @@ from tools.loop.dispatcher import (
     check_same_filesystem,
     iter_inbox_filenames,
     load_failure_state,
+    make_telegram_alert,
     prune_processed,
     save_failure_state,
     scan_inbox_mtime_ordered,
@@ -805,6 +806,65 @@ def test_stderr_alert_emits_json(capsys: pytest.CaptureFixture[str]) -> None:
     assert payload["alert"] == "test_reason"
     assert payload["foo"] == "bar"
     assert "ts" in payload
+
+
+def test_telegram_alert_uses_argv_not_stdin(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Regression guard for Lesson #0014: the alert message reaches telegram.sh
+    as ``argv[1]``, NOT stdin.
+
+    Before the fix ``make_telegram_alert`` passed the JSON body via ``input=``
+    with no argv, so telegram.sh hit ``[ "$#" -lt 1 ]`` → exit 2, silently
+    swallowed by ``check=False``. Every poison_message / cycle_failures alert
+    was a no-op even with TELEGRAM_BOT_TOKEN/CHAT_ID set. Mirrors
+    ``tests/loop/test_status_digest.py::test_send_telegram_uses_argv_not_stdin``.
+    """
+    import tools.loop.dispatcher as dispatcher_mod
+
+    script = tmp_path / "telegram.sh"
+    script.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+    captured: dict[str, Any] = {}
+
+    class _Done:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    def _fake_run(*args: Any, **kwargs: Any) -> _Done:
+        captured["argv"] = args[0]
+        captured["kwargs"] = kwargs
+        return _Done()
+
+    monkeypatch.setattr(dispatcher_mod.subprocess, "run", _fake_run)
+
+    alert = make_telegram_alert(script)
+    alert("poison_message", {"message": "cowork-x.msg.md", "count": 3})
+
+    # argv shape: ["bash", <script>, <message>] — message is the 3rd element.
+    assert captured["argv"][0] == "bash"
+    assert captured["argv"][1] == str(script)
+    assert len(captured["argv"]) == 3
+    assert "input" not in captured["kwargs"]  # NOT passed on stdin
+    # The body is a human-readable line (reason + key=value), not a raw-JSON blob.
+    message = captured["argv"][2]
+    assert "poison_message" in message
+    assert "count=3" in message
+    assert not message.lstrip().startswith("{")
+
+
+def test_telegram_alert_noop_when_script_missing(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """No script on disk → never shells out (still logs to stderr via stderr_alert)."""
+    import tools.loop.dispatcher as dispatcher_mod
+
+    def _explode(*_args: Any, **_kwargs: Any) -> Any:
+        raise AssertionError("subprocess.run must not be called when script is absent")
+
+    monkeypatch.setattr(dispatcher_mod.subprocess, "run", _explode)
+    alert = make_telegram_alert(tmp_path / "nonexistent" / "telegram.sh")
+    alert("cycle_failures", {"parse_failed": 1, "dispatch_failed": 0})  # must not raise
 
 
 # --- Scan cycle summary ---

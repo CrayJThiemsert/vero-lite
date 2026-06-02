@@ -241,6 +241,19 @@ def stderr_alert(reason: str, payload: dict[str, Any]) -> None:
     print(json.dumps(record), file=sys.stderr)
 
 
+def _format_alert_message(reason: str, payload: dict[str, Any]) -> str:
+    """Render a human-readable one-line alert body for ``telegram.sh`` argv[1].
+
+    ``telegram.sh`` forwards its ``$1`` verbatim as the Telegram message
+    ``text``; a raw-JSON blob is lock-screen-hostile, so emit a short prefix
+    plus ``key=value`` pairs instead (mirrors the ``_format_message`` style
+    established for the Phase 1 notifier hooks per Lesson #0014 §4).
+    """
+    details = " ".join(f"{k}={v}" for k, v in payload.items())
+    prefix = f"\U0001f501 vero-lite loop dispatcher: {reason}"
+    return f"{prefix} — {details}" if details else prefix
+
+
 def make_telegram_alert(script_path: Path) -> Callable[[str, dict[str, Any]], None]:
     """Build an alert callback that fires ``tools/notify/telegram.sh``.
 
@@ -248,22 +261,28 @@ def make_telegram_alert(script_path: Path) -> Callable[[str, dict[str, Any]], No
     still archives the poison message + logs to stderr. The Phase 1
     telegram.sh itself no-ops when ``$TELEGRAM_BOT_TOKEN`` /
     ``$TELEGRAM_CHAT_ID`` are unset, so tests do not need to stub it.
+
+    The message is passed as ``argv[1]`` — NOT on stdin. ``telegram.sh``
+    reads the message from ``$1`` and exits 2 (usage note to stderr) when
+    invoked with no argv; passing the payload on stdin made every alert a
+    silent no-op (Lesson #0014 argv-vs-stdin contract drift). Mirrors the
+    correct pattern in :func:`tools.loop._status_digest._send_telegram`.
     """
 
     def alert(reason: str, payload: dict[str, Any]) -> None:
         stderr_alert(reason, payload)  # always log to stderr too
         if not script_path.exists():
             return
-        body = json.dumps({"reason": reason, **payload})
+        message = _format_alert_message(reason, payload)
         try:
-            # S603: argv elements are a hook-controlled script path + a JSON
-            # payload we built; no shell interpolation. S607: "bash" relies on
-            # PATH (same idiom as pretooluse_loop_detect.py).
+            # S603: fixed argv, no shell — the script path is hook-controlled
+            # and the message is a string we built. S607: "bash" via PATH (same
+            # idiom as _status_digest._send_telegram + pretooluse_loop_detect.py).
+            # Message is argv[1], NOT stdin (Lesson #0014).
             subprocess.run(  # noqa: S603
-                ["bash", str(script_path)],  # noqa: S607
-                input=body,
-                text=True,
+                ["bash", str(script_path), message],  # noqa: S607
                 capture_output=True,
+                text=True,
                 check=False,
                 timeout=TELEGRAM_TIMEOUT_SEC,
             )
