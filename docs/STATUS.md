@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-02T20:19:43+07:00
-session: 30
-current_batch: **Session 30 — coverage-hardening arc (PR #107/#109/#110) + #5 arming runbook (#112) + the loop's first real job: status_digest (#113).** After the 3-PR coverage arc (validator 89→96%, `_schema.py` 94→100%, `nl_query.py` 89→100%), worked the backlog from a grounded review: (a) **PR #112** — `docs/runbooks/arm-plan-0014-telegram.md`, the verification-backed runbook for Cray to arm the MS-S1-unreachable Telegram ping on the demo box (the only Cray-action before design-partner outreach); (b) **PR #113** — **`feat(loop)` `status_digest` handler**: the live autonomy loop's first beyond-heartbeat job, automating the STATUS-reconcile toil. v1 = **detect-and-nudge** (Cray-ratified): consumer computes `docs/STATUS.md` freshness (reusing `compute_status_freshness` — single source of truth) and, only on drift, sends a no-PII Telegram nudge; never edits/commits STATUS (auto-draft is deferred v2); message body never read (no injection); argv Telegram contract (Lesson #0014); best-effort never-raises (cannot poison the loop). 18 tests = full case-coverage matrix, module 100%. Also **found + flagged** a latent bug: the dispatcher's `make_telegram_alert` pipes its payload to stdin but `telegram.sh` reads argv[1] → poison/cycle_failures alerts never reach Telegram (spawn-task chip; Lesson #0014 drift). Suite **1010 → 1058 passed / 2 skipped**; ruff + `mypy services`/`mypy tools/loop` clean. Then **PR #115** (`fix(loop)`) closed the flagged dispatcher bug — a **spawned session** (from the PR-#113 spawn-task chip) fixed `make_telegram_alert` to pass the alert as `argv[1]` (not stdin) via a new human-readable `_format_alert_message`, with regression tests; Code reviewed the diff vs the chip spec (read-only) and confirmed full coverage — nothing to graft. This PR = reconcile (folds #115; docs-only).
+last_updated: 2026-06-02T22:40:13+07:00
+session: 31
+current_batch: **Session 31 — run-oct-demo runbook (#117).** A focused docs session that fills a real gap: PLAN-0013 (the demo build) is archived under `done/`, so there was no standalone "how to run the demo" reference. Added `docs/runbooks/run-oct-demo.md` — a verification-backed guide to bring up the OCT stakeholder demo on either vertical (energy or supply_chain) via the `OCT_VERTICAL` config swap, and drive all three OCT features. Documents the two run modes (offline rule fail-safe — features A/B/D; vs MS-S1-on grounded NL query — feature C), preconditions, per-vertical run commands with known-good baselines (object counts; the over-temp / cold-chain killer moment; the Approve->Execute round-trip), WSL2 localhost browser access, enabling NL query (`GET /warm`), the per-screen design-partner narrative, cleanup + troubleshooting. Every command + expected value was run live on main `508aa90` (session 31) with MS-S1 off; the NL-query grounded path cites PLAN-0013 session-28 evidence (requires MS-S1). Docs-only — no code/test/settings touched; suite unchanged. This PR = the session-31 STATUS reconcile (head `f18da9b` -> `9648493`).
 current_actor: code
-blocked_on: Nothing gates forward progress. main clean @ `f18da9b`; 0 open PRs. **PLAN-0010 autonomy loop is LIVE + hardened**; the dispatcher Telegram alert bug is now FIXED (#115), so poison/cycle_failures + status_digest nudges use the correct argv contract. status_digest runs end-to-end once Cray registers a Cowork producer routine + live-verifies (non-gating Cray-actions). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
-next_action: **Session 30 — status_digest handler (#113) + dispatcher Telegram argv fix (#115) shipped; STATUS current at session 30 (head `f18da9b`).** The moat phase is ~complete; highest *business* leverage is the design-partner move, not more Code. Backlog: (a) **Cray-action** — arm PLAN-0014 on the demo box (follow `docs/runbooks/arm-plan-0014-telegram.md`); register a Cowork `status_digest` producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify the loop over wall-clock; (b) **Code-executable** — `status_digest` v2 auto-draft (deferred); other loop handlers (`governance_reminder`, `deferred_oq_rotation`); PLAN-004 Phases B+C (low priority); PLAN-0012 Phase 2 (gated); (c) **Strategic** — take the shipped 2-vertical demo to design partners (Cray business action).
-head_commit: f18da9b
-recent_commits: [f18da9b, e55c3f3, 1d1f396, 05de6d9, 8786be4, 442d180, 4896188, 2a3f942, 9f07818, 9f9f929]
+blocked_on: Nothing gates forward progress. main clean @ `9648493`; 0 open PRs. The 2-vertical demo is verified-runnable (energy + supply_chain) per the new `run-oct-demo` runbook. **PLAN-0010 autonomy loop is LIVE + hardened.** Highest leverage remains Cray-side (arm PLAN-0014; register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach with the shipped 2-vertical demo). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
+next_action: **Session 31 — run-oct-demo runbook shipped (#117); STATUS current at session 31 (head `9648493`).** No gating Code work. Backlog: (a) **Cray-action** — rehearse the demo via `docs/runbooks/run-oct-demo.md` (power on MS-S1 for the NL-query feature), then take the 2-vertical demo to design partners; arm PLAN-0014 (`docs/runbooks/arm-plan-0014-telegram.md`); register a Cowork status_digest producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable (optional)** — loop handlers (`governance_reminder`, `deferred_oq_rotation`), `status_digest` v2 auto-draft (deferred), PLAN-004 Phases B+C (low priority), PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach (Cray business action, highest leverage).
+head_commit: 9648493
+recent_commits: [9648493, 665c189, 508aa90, f18da9b, e55c3f3, 1d1f396, 05de6d9, 8786be4, 442d180, 4896188]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,25 @@ recent_commits: [f18da9b, e55c3f3, 1d1f396, 05de6d9, 8786be4, 442d180, 4896188, 
 
 ## Current Focus
 
-> **Session 30 (current) — coverage-hardening arc (#107/#109/#110) → backlog
+> **Session 31 (current) — run-oct-demo runbook (#117).** A focused docs
+> session that fills a real gap: PLAN-0013 (the demo build) is archived under
+> `done/`, so there was no standalone "how to run the demo" reference. Added
+> `docs/runbooks/run-oct-demo.md` — a verification-backed guide to bring up the
+> OCT stakeholder demo on **either vertical** (energy or supply_chain) via the
+> `OCT_VERTICAL` config swap, and drive all three OCT features. It documents the
+> **two run modes** (offline rule fail-safe — features A/B/D; vs MS-S1-on
+> grounded NL query — feature C), preconditions, per-vertical run commands with
+> **known-good baselines** (object counts; the over-temp / cold-chain killer
+> moment; the Approve->Execute round-trip), WSL2 localhost browser access,
+> enabling NL query (`GET /warm`), the per-screen design-partner narrative,
+> cleanup, and troubleshooting. **Every command + expected value was run live on
+> `main` `508aa90` (session 31) with MS-S1 off**; the NL-query grounded path
+> cites PLAN-0013 session-28 evidence (requires MS-S1). Docs-only — no
+> code/test/settings touched; suite unchanged. This PR = the session-31 STATUS
+> reconcile (head `f18da9b` -> `9648493`). The session 30 / 29 / 27+28 / …
+> narratives below are retained for archeology.
+>
+> **Session 30 — coverage-hardening arc (#107/#109/#110) → backlog
 > work: #5 arming runbook (#112) + the loop's first real job, status_digest
 > (#113).** After the coverage arc, a grounded backlog discussion routed the work:
 > (1) **PR #112** shipped `docs/runbooks/arm-plan-0014-telegram.md` — the
