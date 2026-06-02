@@ -14,16 +14,23 @@ from typing import Any
 
 import pytest
 
-from services.engine.llm.client import ChatResult, OllamaError
+from services.api.config import settings
+from services.engine.llm.client import ChatResult, OllamaClient, OllamaError
 from services.engine.nl_query import (
     QueryFilter,
     QueryTranslationError,
+    _build_chat_client,
     _filter_matches,
     _matches,
+    _object_id,
+    _object_title,
+    _parse_query,
+    _scalar_equal,
+    _to_number,
     _translate,
     answer_question,
 )
-from services.engine.ontology_meta import load_ontology_meta
+from services.engine.ontology_meta import ObjectTypeMeta, load_ontology_meta
 from verticals.energy.data_adapter import register_energy_adapter
 
 
@@ -242,3 +249,123 @@ async def test_translate_exhausts_budget_and_raises() -> None:
     with pytest.raises(QueryTranslationError):
         await _translate(client, "q", "energy", meta, type_index, retry_budget=2)
     assert client.translate_calls == 2
+
+
+# --- backend selection (config-driven; construction touches no network) ----
+
+
+def test_build_chat_client_selects_local_backend(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "llm_backend", "local")
+    client = _build_chat_client()
+    assert isinstance(client, OllamaClient)
+
+
+def test_build_chat_client_hosted_backend_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "llm_backend", "hosted")
+    with pytest.raises(NotImplementedError):
+        _build_chat_client()
+
+
+def test_build_chat_client_unknown_backend_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(settings, "llm_backend", "wat")
+    with pytest.raises(ValueError, match="unknown llm_backend"):
+        _build_chat_client()
+
+
+# --- translate response parsing (deterministic) ----------------------------
+
+
+def test_parse_query_rejects_non_json() -> None:
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    query, error = _parse_query("not json {", type_index)
+    assert query is None
+    assert "not valid JSON" in error
+
+
+def test_parse_query_rejects_schema_violation() -> None:
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    # Valid JSON but missing the required object_type field.
+    query, error = _parse_query('{"operation": "list"}', type_index)
+    assert query is None
+    assert "did not satisfy the schema" in error
+
+
+# --- numeric coercion + comparison helpers ---------------------------------
+
+
+def test_to_number_rejects_bool() -> None:
+    """bool is an int subclass; it must never coerce to a filter number."""
+    assert _to_number(True) is None
+    assert _to_number(False) is None
+
+
+def test_scalar_equal_numeric_path() -> None:
+    assert _scalar_equal(90, "90") is True
+    assert _scalar_equal(90, "91") is False
+
+
+def test_filter_matches_numeric_operator_edges() -> None:
+    assert _filter_matches({"v": 10}, QueryFilter(property="v", op="gt", value="5"))
+    assert _filter_matches({"v": 5}, QueryFilter(property="v", op="lte", value="5"))
+    # a non-numeric actual against a numeric operator never matches
+    assert not _filter_matches({"v": "abc"}, QueryFilter(property="v", op="gt", value="5"))
+
+
+# --- object id / title display fallbacks -----------------------------------
+
+
+def _asset_meta() -> ObjectTypeMeta:
+    return ObjectTypeMeta(name="Asset", primary_key="asset_id", title_key="label", properties=[])
+
+
+def test_object_id_falls_back_to_title_key() -> None:
+    # primary_key absent on the object → fall back to title_key
+    assert _object_id({"label": "Battery 1"}, _asset_meta()) == "Battery 1"
+
+
+def test_object_id_empty_when_no_key_present() -> None:
+    assert _object_id({}, _asset_meta()) == ""
+    assert _object_id({"asset_id": "x"}, None) == ""
+
+
+def test_object_title_falls_back_to_primary_key() -> None:
+    # title_key absent on the object → fall back to primary_key
+    assert _object_title({"asset_id": "asset-01"}, _asset_meta()) == "asset-01"
+
+
+def test_object_title_empty_when_no_key_present() -> None:
+    assert _object_title({}, _asset_meta()) == ""
+    assert _object_title({"label": "x"}, None) == ""
+
+
+# --- orchestrator degrade paths (real answer_question behavior) ------------
+
+
+async def test_count_query_phrase_failure_falls_back(energy_adapter: None) -> None:
+    """A count query whose phrasing LLM fails still returns a grounded,
+    deterministic count answer (the _fallback_answer count branch)."""
+    client = _StubQueryClient(
+        query={"object_type": "Asset", "operation": "count"}, raise_on="phrase"
+    )
+    answer = await answer_question("how many assets?", "energy", client=client)
+    assert answer.grounded is True
+    assert "Asset record(s) match that query" in answer.answer
+
+
+async def test_retrieval_failure_is_ungrounded_but_keeps_query(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """If the data adapter raises during retrieval, the answer degrades to
+    ungrounded while preserving the translated query (never a 500)."""
+
+    def _boom(_vertical: str) -> Any:
+        raise RuntimeError("adapter exploded")
+
+    monkeypatch.setattr("services.engine.nl_query.registry.get_adapter", _boom)
+    client = _StubQueryClient(query={"object_type": "Asset", "operation": "list"})
+    answer = await answer_question("which assets?", "energy", client=client)
+    assert answer.grounded is False
+    assert answer.query is not None
+    assert "retrieve" in answer.answer.lower()
