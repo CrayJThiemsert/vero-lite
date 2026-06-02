@@ -67,6 +67,7 @@ from tools.loop._schema import (
     ValidationError,
     parse_message_file,
 )
+from tools.loop._status_digest import make_status_digest_handler
 
 LOGGER = logging.getLogger("tools.loop.dispatcher")
 
@@ -677,10 +678,20 @@ def _build_default_dispatcher() -> Dispatcher:
         make_telegram_alert(telegram_script) if telegram_script.exists() else stderr_alert
     )
 
+    # Override the default no-op status_digest handler with the real
+    # detect-and-nudge handler (PLAN-0010 deferred Step-4 use-case). Wired here
+    # (not in module-level DEFAULT_HANDLERS) because it closes over the Telegram
+    # script path; a directly-constructed Dispatcher keeps the no-op default.
+    handlers = dict(DEFAULT_HANDLERS)
+    handlers[MessageType.STATUS_DIGEST] = make_status_digest_handler(
+        telegram_script=telegram_script
+    )
+
     return Dispatcher(
         inbox=inbox,
         processed=processed,
         failure_state_path=failure_state_path,
+        handlers=handlers,
         alert_callback=alert_callback,
     )
 
