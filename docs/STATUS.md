@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-02T14:53:30+07:00
+last_updated: 2026-06-02T20:19:43+07:00
 session: 30
-current_batch: **Session 30 — coverage-hardening arc (PR #107/#109/#110) + #5 arming runbook (#112) + the loop's first real job: status_digest (#113).** After the 3-PR coverage arc (validator 89→96%, `_schema.py` 94→100%, `nl_query.py` 89→100%), worked the backlog from a grounded review: (a) **PR #112** — `docs/runbooks/arm-plan-0014-telegram.md`, the verification-backed runbook for Cray to arm the MS-S1-unreachable Telegram ping on the demo box (the only Cray-action before design-partner outreach); (b) **PR #113** — **`feat(loop)` `status_digest` handler**: the live autonomy loop's first beyond-heartbeat job, automating the STATUS-reconcile toil. v1 = **detect-and-nudge** (Cray-ratified): consumer computes `docs/STATUS.md` freshness (reusing `compute_status_freshness` — single source of truth) and, only on drift, sends a no-PII Telegram nudge; never edits/commits STATUS (auto-draft is deferred v2); message body never read (no injection); argv Telegram contract (Lesson #0014); best-effort never-raises (cannot poison the loop). 18 tests = full case-coverage matrix, module 100%. Also **found + flagged** a latent bug: the dispatcher's `make_telegram_alert` pipes its payload to stdin but `telegram.sh` reads argv[1] → poison/cycle_failures alerts never reach Telegram (spawn-task chip; Lesson #0014 drift). Suite **1010 → 1058 passed / 2 skipped**; ruff + `mypy services`/`mypy tools/loop` clean. This PR = reconcile (folds #112 + #113; docs-only).
+current_batch: **Session 30 — coverage-hardening arc (PR #107/#109/#110) + #5 arming runbook (#112) + the loop's first real job: status_digest (#113).** After the 3-PR coverage arc (validator 89→96%, `_schema.py` 94→100%, `nl_query.py` 89→100%), worked the backlog from a grounded review: (a) **PR #112** — `docs/runbooks/arm-plan-0014-telegram.md`, the verification-backed runbook for Cray to arm the MS-S1-unreachable Telegram ping on the demo box (the only Cray-action before design-partner outreach); (b) **PR #113** — **`feat(loop)` `status_digest` handler**: the live autonomy loop's first beyond-heartbeat job, automating the STATUS-reconcile toil. v1 = **detect-and-nudge** (Cray-ratified): consumer computes `docs/STATUS.md` freshness (reusing `compute_status_freshness` — single source of truth) and, only on drift, sends a no-PII Telegram nudge; never edits/commits STATUS (auto-draft is deferred v2); message body never read (no injection); argv Telegram contract (Lesson #0014); best-effort never-raises (cannot poison the loop). 18 tests = full case-coverage matrix, module 100%. Also **found + flagged** a latent bug: the dispatcher's `make_telegram_alert` pipes its payload to stdin but `telegram.sh` reads argv[1] → poison/cycle_failures alerts never reach Telegram (spawn-task chip; Lesson #0014 drift). Suite **1010 → 1058 passed / 2 skipped**; ruff + `mypy services`/`mypy tools/loop` clean. Then **PR #115** (`fix(loop)`) closed the flagged dispatcher bug — a **spawned session** (from the PR-#113 spawn-task chip) fixed `make_telegram_alert` to pass the alert as `argv[1]` (not stdin) via a new human-readable `_format_alert_message`, with regression tests; Code reviewed the diff vs the chip spec (read-only) and confirmed full coverage — nothing to graft. This PR = reconcile (folds #115; docs-only).
 current_actor: code
-blocked_on: Nothing gates forward progress. main clean @ `e55c3f3`; 0 open PRs. **PLAN-0010 autonomy loop is LIVE + hardened**; the `status_digest` handler ships the loop's first real job (Code-side), but it only runs end-to-end once Cray registers a Cowork producer routine + live-verifies (both non-gating Cray-actions). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
-next_action: **Session 30 — status_digest handler shipped (#113); arming runbook shipped (#112); STATUS current at session 30 (head `e55c3f3`).** The moat phase is ~complete; highest *business* leverage is the design-partner move, not more Code. Backlog: (a) **Cray-action** — arm PLAN-0014 on the demo box (follow `docs/runbooks/arm-plan-0014-telegram.md`); register a Cowork `status_digest` producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify the loop over wall-clock; (b) **Code-executable** — fix the dispatcher `make_telegram_alert` argv/stdin bug (spawn-task chip; Lesson #0014); `status_digest` v2 auto-draft (deferred); other loop handlers (`governance_reminder`, `deferred_oq_rotation`); PLAN-004 Phases B+C (low priority); PLAN-0012 Phase 2 (gated); (c) **Strategic** — take the shipped 2-vertical demo to design partners (Cray business action).
-head_commit: e55c3f3
-recent_commits: [e55c3f3, 1d1f396, 05de6d9, 8786be4, 442d180, 4896188, 2a3f942, 9f07818, 9f9f929, d80d1e0]
+blocked_on: Nothing gates forward progress. main clean @ `f18da9b`; 0 open PRs. **PLAN-0010 autonomy loop is LIVE + hardened**; the dispatcher Telegram alert bug is now FIXED (#115), so poison/cycle_failures + status_digest nudges use the correct argv contract. status_digest runs end-to-end once Cray registers a Cowork producer routine + live-verifies (non-gating Cray-actions). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
+next_action: **Session 30 — status_digest handler (#113) + dispatcher Telegram argv fix (#115) shipped; STATUS current at session 30 (head `f18da9b`).** The moat phase is ~complete; highest *business* leverage is the design-partner move, not more Code. Backlog: (a) **Cray-action** — arm PLAN-0014 on the demo box (follow `docs/runbooks/arm-plan-0014-telegram.md`); register a Cowork `status_digest` producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify the loop over wall-clock; (b) **Code-executable** — `status_digest` v2 auto-draft (deferred); other loop handlers (`governance_reminder`, `deferred_oq_rotation`); PLAN-004 Phases B+C (low priority); PLAN-0012 Phase 2 (gated); (c) **Strategic** — take the shipped 2-vertical demo to design partners (Cray business action).
+head_commit: f18da9b
+recent_commits: [f18da9b, e55c3f3, 1d1f396, 05de6d9, 8786be4, 442d180, 4896188, 2a3f942, 9f07818, 9f9f929]
 ---
 
 # vero-lite — Project Status
@@ -39,7 +39,14 @@ recent_commits: [e55c3f3, 1d1f396, 05de6d9, 8786be4, 442d180, 4896188, 2a3f942, 
 > alerts never reach Telegram (flagged via a spawn-task chip; the new handler
 > uses the correct argv contract). status_digest runs end-to-end once Cray
 > registers a Cowork producer routine + live-verifies (non-gating Cray-actions).
-> Suite **1040 → 1058 passed / 2 skipped**; ruff + mypy clean.
+> Suite **1040 → 1058 passed / 2 skipped**; ruff + mypy clean. **PR #115**
+> (`fix(loop)`) then closed that flagged bug: a **spawned session** (from the
+> PR-#113 chip) fixed `make_telegram_alert` to pass the alert as `argv[1]` (not
+> stdin) via a human-readable `_format_alert_message` + regression tests; Code
+> reviewed the diff vs the chip spec (read-only) → full coverage, nothing to
+> graft. Process note: that session ran in the **shared** main checkout (not an
+> isolated worktree) — a concurrency hazard (shared HEAD/index; surfaced an
+> `index.lock` race), so future spawned work should use a separate worktree.
 >
 > **Session 30 (coverage arc) — 3 additive-test PRs
 > (#107, #109, #110), zero production-code change.** Started from the parked
@@ -478,9 +485,10 @@ were docs/plans/lessons only).
 Started from the parked session-29 coverage item, then ran a grounded backlog
 review (Explore sweep over the 3 active plans + per-line triage) and worked the
 backlog in priority order: the 3-PR coverage arc (#107/#109/#110), then the
-PLAN-0014 arming runbook (#112), then the loop's first real job — the
-`status_digest` handler (#113). Suite **1010 → 1058 passed / 2 skipped**; ruff +
-`mypy services`/`mypy tools/loop` clean throughout.
+PLAN-0014 arming runbook (#112), the loop's first real job — the `status_digest`
+handler (#113) — and a spawned-session fix for the dispatcher Telegram argv bug
+that #113 surfaced (#115, Code-reviewed before merge). Suite **1010 → 1060
+passed / 2 skipped**; ruff + `mypy services`/`mypy tools/loop` clean throughout.
 
 | Phase | PR / artifact | Change |
 |-------|--------------|--------|
@@ -491,7 +499,9 @@ PLAN-0014 arming runbook (#112), then the loop's first real job — the
 | **Session-30 coverage reconcile** | [#111](https://github.com/CrayJThiemsert/vero-lite/pull/111) (merge `443ada7`) | Folded #109 + #110 into the ledger; `head_commit` → `05de6d9`. `lint_status` verified `fresh:true`. Docs-only. |
 | **PLAN-0014 arming runbook** | [#112](https://github.com/CrayJThiemsert/vero-lite/pull/112) (`9b1010a` → merge `1d1f396`) | **`docs(runbooks)`** — `docs/runbooks/arm-plan-0014-telegram.md`: the verification-backed runbook for Cray to arm the MS-S1-unreachable Telegram ping on the demo box (this WSL machine, bare uvicorn + `.env` + tmux). Grounded in the code (4-condition gate, exact env vars, `/warm`+`/sleep`, `POST /query` trigger); covers the WSL tap-link networking fix + a verification ladder + disarm + no-PII notes. Flags the open port question (README `:8000` vs handoff `:8096`). |
 | **status_digest loop handler** | [#113](https://github.com/CrayJThiemsert/vero-lite/pull/113) (`75e1219` → merge `e55c3f3`) | **`feat(loop)`** — PLAN-0010 deferred Step-4 use-case (a). The loop's first beyond-heartbeat job: detect `docs/STATUS.md` drift → no-PII Telegram nudge (v1 = detect-and-nudge, Cray-ratified; no auto-edit/commit). New `tools/loop/_status_digest.py` (reuses `compute_status_freshness` = single source of truth; argv Telegram contract per Lesson #0014; best-effort never-raises); wired into `_build_default_dispatcher`. 18 tests (full case-coverage matrix), module **100%**, +18 (1040→1058). **Found + flagged** (spawn-task chip): `make_telegram_alert` pipes to stdin but `telegram.sh` reads argv[1] → poison/cycle_failures alerts never reach Telegram (Lesson #0014 drift). |
-| **Session-30 status_digest reconcile** *(this PR)* | this PR | Folds #112 + #113 into the ledger; frontmatter (`head_commit` → `e55c3f3`, `recent_commits`, `current_batch`, `blocked_on`, `next_action`) + Current Focus blurb. Docs-only. |
+| **Session-30 status_digest reconcile** | [#114](https://github.com/CrayJThiemsert/vero-lite/pull/114) (merge `654c65e`) | Folded #112 + #113 into the ledger; `head_commit` → `e55c3f3`. Docs-only. |
+| **Dispatcher Telegram argv fix** | [#115](https://github.com/CrayJThiemsert/vero-lite/pull/115) (`f10cc58` → merge `f18da9b`) | **`fix(loop)`** — resolves the bug flagged in #113: `make_telegram_alert` passed its payload on stdin but `telegram.sh` reads `argv[1]`, so poison/cycle_failures alerts never reached Telegram (Lesson #0014 argv-vs-stdin drift). Now passes the alert as `argv[1]` via a human-readable `_format_alert_message` (mirrors `_status_digest._send_telegram`); +2 regression tests in `test_dispatcher.py`. **Authored by a spawned session** (from the PR-#113 chip), running in the shared main checkout; **Code reviewed the diff vs the chip spec (read-only) → full coverage, nothing to graft** then merged it. Process note: the shared-checkout run was a concurrency hazard (shared HEAD/index; an `index.lock` race) — future spawned work should use an isolated worktree. |
+| **Session-30 telegram-fix reconcile** *(this PR)* | this PR | Folds #115 into the ledger; frontmatter (`head_commit` → `f18da9b`, `recent_commits`, `current_batch`, `blocked_on`, `next_action`) + Current Focus blurb. Docs-only. |
 
 ### 2026-06-01 (PM) — Session 29 ledger (STATUS reconcile + PLAN-0010 loop closed)
 
