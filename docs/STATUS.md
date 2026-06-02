@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-01T19:19:54+07:00
-session: 29
-current_batch: **Session 29 — STATUS reconciles (PR #102/#104) + PLAN-0010 autonomy loop CLOSED, live-tested, and hardened.** (1) Reconciled the 2-session STATUS drift (PR #102). (2) Closed the PLAN-0010 loop: disambiguated the 3 Desktop routines (Cowork producer `phase35-smoke-cowork-heartbeat`; deprecated gen-1 reader `phase35-smoke-code-reader`, left paused; gen-2 consumer `loop-dispatcher`), one-shot-drained 30 stranded inbox messages, shipped **PR #103** (`feat(loop)` `cycle_failures` Telegram ping), and Cray **registered `loop-dispatcher`** (Local · Hourly · Sonnet 4.6 · Worktree OFF · branch `main`) — loop now runs producer↔consumer with no human in the path. (3) **Tested the loop** (Cray-requested): **PR #105** (`test(loop)` round-trip + NONCE-collision regression + `-<rand>` fix validation; suite → 1010), then a **live smoke** of both routines that processed a unique control message clean (`ok=1`) AND **reproduced the NONCE collision in production** — the Haiku producer guessed `07:00 UTC`, hit an archived name, and its fresh heartbeat was silently deduped. (4) Minted **Lesson #0020** (agent-claimed timestamps are an unreliable uniqueness key) and Cray applied the producer `-<rand>` fix in the Desktop UI. This PR = session-29 close (Lesson #0020 + reconcile). Suite **1010 passed / 2 skipped**; ruff + `mypy services` clean; 0 open PRs.
+last_updated: 2026-06-02T09:51:50+07:00
+session: 30
+current_batch: **Session 30 — ontology-validator negative-test batch SHIPPED (PR #107).** Picked up the parked session-29 coverage item: added **8 additive negative tests** to `tests/services/engine/test_ontology_validator.py` hardening the validator's *rejection* paths (the gatekeeper for new verticals). No production-code change; deterministic; in-process `main()` + `capsys` (Lesson #7 §3.2). Cases cover malformed `foreign_key` (L180), empty enum `values` (L277), unparseable YAML (L312–313), non-mapping top-level (L324), non-dict link/object defs skipped gracefully (L298/L303), L1-error-under-`link_types` context derivation (L115–117), and CLI no-args usage (L343–344). Validator coverage **89% → 96%**; suite **1010 → 1018 passed / 2 skipped**; ruff + `mypy services` clean. This PR = the session-30 STATUS reconcile (docs-only).
 current_actor: code
-blocked_on: Nothing gates forward progress. main clean @ `4896188`; 0 open PRs. **PLAN-0010 autonomy loop is LIVE, live-tested, and hardened** (loop-dispatcher registered + verified; producer `-<rand>` fix applied; round-trip + collision regression tests in CI). Cray-action items 1 (tier-file re-paste) + 2 (loop-dispatcher setup) DONE; only item 3 (arm PLAN-0014) remains, non-gating. Active plans (PLAN-0010 Step-5 real handlers, PLAN-004 B/C, PLAN-0012 Phase 2) + the deferred ontology-validator negative-test batch are not-yet-triggered.
-next_action: **Session 29 closed; STATUS current at session 29 (head `4896188`); PLAN-0010 loop live + tested + hardened.** Backlog: (a) **Cray-action** — arm PLAN-0014 on the demo box (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` + `TELEGRAM_NOTIFY_ENABLED=true` + `OCT_PUBLIC_BASE_URL`); (b) **Code-executable** — the deferred **ontology-validator negative-test batch** (session-29 coverage exploration; ~8 additive tests, parked by Cray for after the loop work), PLAN-0010 Step-5 real handlers (real producers must use `-<rand>` per Lesson #0020), PLAN-004 Phases B+C (low priority), PLAN-0012 Phase 2 (when a concrete capability need lands); (c) **Strategic** — take the shipped 2-vertical demo to design partners (Cray business action).
-head_commit: 4896188
-recent_commits: [4896188, 2a3f942, 9f07818, 9f9f929, d80d1e0, 304c6b4, 27ea292, d6ef9cb, f9f6835, bfe6137]
+blocked_on: Nothing gates forward progress. main clean @ `442d180`; 0 open PRs. **PLAN-0010 autonomy loop is LIVE, live-tested, and hardened** (loop-dispatcher registered + verified; producer `-<rand>` fix applied; round-trip + collision regression tests in CI). Cray-action items 1 (tier-file re-paste) + 2 (loop-dispatcher setup) DONE; only item 3 (arm PLAN-0014) remains, non-gating. Active plans (PLAN-0010 Step-5 real handlers, PLAN-004 B/C, PLAN-0012 Phase 2) are not-yet-triggered.
+next_action: **Session 30 — validator negative-test batch shipped (PR #107); STATUS current at session 30 (head `442d180`).** Backlog: (a) **Cray-action** — arm PLAN-0014 on the demo box (`TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID` + `TELEGRAM_NOTIFY_ENABLED=true` + `OCT_PUBLIC_BASE_URL`); (b) **Code-executable** — more coverage from the session-29 exploration (`nl_query.py` 89% — verify deterministic vs LLM-mock branches first; `tools/loop/_schema.py` 94% — filename/frontmatter edges), PLAN-0010 Step-5 real handlers (real producers must use `-<rand>` per Lesson #0020), PLAN-004 Phases B+C (low priority), PLAN-0012 Phase 2 (when a concrete capability need lands); (c) **Strategic** — take the shipped 2-vertical demo to design partners (Cray business action).
+head_commit: 442d180
+recent_commits: [442d180, 4896188, 2a3f942, 9f07818, 9f9f929, d80d1e0, 304c6b4, 27ea292, d6ef9cb, f9f6835]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,22 @@ recent_commits: [4896188, 2a3f942, 9f07818, 9f9f929, d80d1e0, 304c6b4, 27ea292, 
 
 ## Current Focus
 
-> **Session 29 (current) — STATUS reconcile (PR #102) + PLAN-0010 autonomy loop
+> **Session 30 (current) — ontology-validator negative-test batch SHIPPED
+> (PR #107).** Picked up the parked session-29 coverage item: added **8 additive
+> negative tests** to `tests/services/engine/test_ontology_validator.py`
+> hardening the validator's *rejection* paths (the gatekeeper for new verticals
+> per ADR-008). No production-code change; deterministic; in-process `main()` +
+> `capsys` (Lesson #7 §3.2). The 8 cases pin previously-uncovered rejection
+> branches — malformed `foreign_key`, empty enum `values`, unparseable YAML,
+> non-mapping top-level, non-dict link/object defs (graceful skip), an L1 error
+> nested under `link_types` (context derivation), and the CLI no-args usage path.
+> Validator coverage **89% → 96%**; suite **1010 → 1018 passed / 2 skipped**;
+> ruff + `mypy services` clean. This was the clean ready-pickup from the
+> session-29 test-coverage exploration; nothing was in-flight at kickoff. The
+> session 29 / 27+28 / 26 / 25 / 23+24 / 22 / 20+21 narratives below are retained
+> for archeology.
+>
+> **Session 29 — STATUS reconcile (PR #102) + PLAN-0010 autonomy loop
 > CLOSED.** Reconciled the 2-session STATUS drift (sessions 27+28 → PR #102),
 > then ran a live PLAN-0010 loop session. Disambiguated the three Desktop
 > routines — the Cowork **producer** (`phase35-smoke-cowork-heartbeat` → writes
@@ -424,6 +439,18 @@ session-21 → session-22 kickoff handoff §4 Action 1; high-priority
 "close the loop" item). No code/test/settings touched. Cumulative
 session 20+21 tests: 634 (unchanged — all 5 PRs in sessions 20+21
 were docs/plans/lessons only).
+
+### 2026-06-02 — Session 30 ledger (ontology-validator negative-test batch)
+
+Picked up the parked session-29 coverage item — the highest-value,
+fully-non-disruptive target from the test-coverage exploration. Additive
+negative tests only; no production-code change. Suite **1010 → 1018 passed / 2
+skipped**; ruff + `mypy services` clean.
+
+| Phase | PR / artifact | Change |
+|-------|--------------|--------|
+| **Validator negative-test batch** | [#107](https://github.com/CrayJThiemsert/vero-lite/pull/107) (`352ba68` → merge `442d180`) | **`test(engine)`** — 8 additive negative tests in `tests/services/engine/test_ontology_validator.py` covering the validator's rejection paths: malformed `foreign_key` (L180), empty enum `values` (L277), unparseable YAML (L312–313), non-mapping top-level (L324), non-dict `link_def`/`object_def` graceful skip (L298/L303), L1 error under `link_types` → `_ctx_from_path` context (L115–117), CLI `main([])` usage + return 1 (L343–344). Reuses the existing in-process `main()` + `capsys` pattern (Lesson #7 §3.2). Validator coverage **89% → 96%** (remaining misses are out-of-scope `_value_lc`/`_walk_lc` edges + `__main__`). +8 tests (1010→1018). |
+| **Session-30 reconcile** *(this PR)* | this PR | Brings STATUS current from session 29 → 30; frontmatter (`head_commit` → `442d180`, `recent_commits`, `current_batch`, `blocked_on`, `next_action`) + Current Focus blurb + this ledger entry. Docs-only. |
 
 ### 2026-06-01 (PM) — Session 29 ledger (STATUS reconcile + PLAN-0010 loop closed)
 
