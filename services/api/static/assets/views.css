@@ -63,6 +63,12 @@
 .map-axislabel.br { bottom: 12px; right: 14px; }
 
 .map-side { min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: 14px; padding-right: 2px; }
+/* Keep each card at its natural height: .detail-card has overflow:hidden, whose
+   flex `min-height: auto` resolves to 0, so a default flex-shrink:1 would let the
+   column squeeze the card and clip its own content (the grouped-assets list)
+   instead of overflowing — which suppressed the .map-side scroll. flex-shrink:0
+   makes the column overflow + scroll, with every card shown in full. */
+.map-side > .card { flex-shrink: 0; }
 
 /* map nodes */
 .mnode .halo { animation: haloPulse 1.8s ease-out infinite; transform-origin: center; transform-box: fill-box; }
