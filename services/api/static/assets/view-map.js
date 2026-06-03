@@ -120,17 +120,14 @@
       h('div', { class: 'map-axislabel br mono' }, meta.namespace ? (meta.vertical + ' · ' + meta.namespace) : meta.vertical)
     ]));
 
-    // When a node is selected, the inspected record is the primary focus —
-    // render its detail above the legend (reference) so its full record incl.
-    // grouped children is visible first, not below the tall legend. The side
-    // column scrolls (views.css .map-side) so the legend stays reachable below.
-    if (selected) {
-      renderDetail(selected.type, selected.id);
-      renderLegend();
-    } else {
-      renderLegend();
-      renderHint();
-    }
+    // The contextual panel — the selected record's detail, or the "select a node"
+    // hint — is always the top slot (primary focus / reading order), with the
+    // legend a stable reference anchored BELOW in both states. Keeping the legend
+    // fixed at the bottom avoids the top/bottom swap between idle and selected.
+    // The side column scrolls (views.css .map-side) so the legend stays reachable.
+    if (selected) renderDetail(selected.type, selected.id);
+    else renderHint();
+    renderLegend();
   }
 
   function assetsForSite(siteId) {
