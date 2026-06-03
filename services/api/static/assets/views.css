@@ -355,7 +355,16 @@
   .flow-rail-label { display: none; }
 }
 @media (max-width: 980px) {
-  .map-body { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
-  .map-side { flex-direction: row; overflow-x: auto; }
-  .map-side > .card { min-width: 280px; }
+  /* The desktop two-column split is a fixed-height grid; at a narrow width the
+     `auto` side row collapsed to 0 and the detail/legend panel vanished. Below
+     980px, drop the fixed-height flex/grid entirely and let the map view flow as
+     a normal scrolling block: a fixed-height map, then the side cards stacked
+     full-width, then the timeline — the view scrolls vertically. */
+  .view[data-view="A"] { overflow-y: auto; }
+  .view-inner.mapview { display: block; height: auto; min-height: 100%; }
+  .map-body { display: block; padding-bottom: 16px; }
+  .map-canvas-wrap { height: 56vh; min-height: 340px; margin-bottom: 16px; }
+  .map-side { display: block; overflow: visible; min-height: 0; }
+  .map-side > .card { margin-bottom: 14px; }
+  .view-head-meta .counts { flex-wrap: wrap; }
 }
