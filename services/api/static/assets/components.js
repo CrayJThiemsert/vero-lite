@@ -87,11 +87,23 @@
     ]);
   }
 
+  /* ---- timestamp formatting (UTC, demo-friendly: "HH:MM UTC · D Mon YYYY") ---- */
+  const _MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function fmtTimestamp(val) {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return String(val);
+    const hh = String(d.getUTCHours()).padStart(2, '0');
+    const mm = String(d.getUTCMinutes()).padStart(2, '0');
+    return hh + ':' + mm + ' UTC · ' + d.getUTCDate() + ' ' + _MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+  }
+
   /* ---- value formatting for detail rows ---- */
   function fmtValue(type, prop, obj) {
     const val = obj[prop.name];
     if (val == null || val === '') return h('span', { class: 'faint' }, '—');
     if (prop.type === 'enum') return badge(val);
+    if (prop.type === 'timestamp' || prop.type === 'datetime')
+      return h('span', { class: 'mono', style: { fontSize: '12px' } }, fmtTimestamp(val));
     if (prop.type === 'ref') {
       const r = Onto().resolveRef(type, prop.name, obj);
       const label = r && r.obj ? Onto().label(prop.target, r.obj) : val;
@@ -194,7 +206,7 @@
 
   window.OCT = window.OCT || {};
   Object.assign(window.OCT, {
-    h, clear, icon, badge, typeTag, entityChip, fmtValue, detailRows,
+    h, clear, icon, badge, typeTag, entityChip, fmtValue, fmtTimestamp, detailRows,
     reasoningTrace, kvDump, loadingState, errorState
   });
 })();

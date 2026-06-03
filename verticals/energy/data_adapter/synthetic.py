@@ -6,8 +6,14 @@ demos and tests are reproducible. All identifiers are abstract (the
 internal codes appear here (PLAN-0005 PD-5 / §7.2).
 
 Shapes match ``verticals/energy/ontology/energy_v0.yaml``: Site, Asset,
-and OperationalEvent. The reading events include one battery
-over-temperature crossing the rule-based recommender escalates.
+and OperationalEvent. The events trace a single morning thermal incident on
+Battery Bank A — a baseline, a rising temperature trend (info → warn →
+critical), the over-temperature breach the rule-based recommender escalates,
+a concurrent inverter alarm, and a post-mitigation recovery reading — so the
+demo timeline reads as build-up → climax → resolution. **Only the breach**
+trips an action: the recommender escalates any reading whose ``measured_value``
+is ≥ the threshold *regardless of unit*, so every non-breach reading is kept
+below it (the 50.0 Hz inverter reading is a deliberate sub-threshold value).
 """
 
 from __future__ import annotations
@@ -82,8 +88,36 @@ def assets() -> list[dict[str, Any]]:
 
 
 def operational_events() -> list[dict[str, Any]]:
-    """Return the synthetic OperationalEvent records (readings + one alarm)."""
+    """Return the synthetic OperationalEvent records, in chronological order.
+
+    One morning thermal incident on Battery Bank A: a discharge-cycle
+    transition, a baseline, a rising temperature trend, the over-temperature
+    breach (``event-reading-03``, ≥ threshold → drives the recommender), a
+    concurrent inverter alarm, and a post-mitigation recovery reading. Every
+    non-breach reading is < the recommender threshold so only the breach
+    escalates (see module docstring).
+    """
     return [
+        {
+            "event_id": "event-transition-01",
+            "event_type": "transition",
+            "severity": "info",
+            "description": "Battery Bank A switched to discharge cycle.",
+            "occurred_at": datetime(2026, 5, 21, 6, 30, tzinfo=UTC),
+            "asset_id": "asset-battery-01",
+            "site_id": "site-substation-01",
+        },
+        {
+            "event_id": "event-reading-04",
+            "event_type": "reading",
+            "severity": "info",
+            "measured_value": 50.0,
+            "unit": "hz",
+            "description": "Inverter Unit A grid-synced at 50.0 Hz.",
+            "occurred_at": datetime(2026, 5, 21, 7, 55, tzinfo=UTC),
+            "asset_id": "asset-inverter-01",
+            "site_id": "site-substation-01",
+        },
         {
             "event_id": "event-reading-01",
             "event_type": "reading",
@@ -107,9 +141,31 @@ def operational_events() -> list[dict[str, Any]]:
             "site_id": "site-microgrid-01",
         },
         {
-            "event_id": "event-reading-03",
+            "event_id": "event-reading-05",
+            "event_type": "reading",
+            "severity": "info",
+            "measured_value": 61.5,
+            "unit": "celsius",
+            "description": "Battery Bank A temperature rising under load.",
+            "occurred_at": datetime(2026, 5, 21, 8, 7, tzinfo=UTC),
+            "asset_id": "asset-battery-01",
+            "site_id": "site-substation-01",
+        },
+        {
+            "event_id": "event-reading-06",
             "event_type": "reading",
             "severity": "warn",
+            "measured_value": 84.2,
+            "unit": "celsius",
+            "description": "Battery Bank A temperature approaching the safe operating limit.",
+            "occurred_at": datetime(2026, 5, 21, 8, 9, tzinfo=UTC),
+            "asset_id": "asset-battery-01",
+            "site_id": "site-substation-01",
+        },
+        {
+            "event_id": "event-reading-03",
+            "event_type": "reading",
+            "severity": "critical",
             "measured_value": OVERTEMP_READING_CELSIUS,
             "unit": "celsius",
             "description": "Battery Bank A temperature above the safe operating range.",
@@ -124,6 +180,17 @@ def operational_events() -> list[dict[str, Any]]:
             "description": "Inverter Unit A communication loss.",
             "occurred_at": datetime(2026, 5, 21, 8, 12, tzinfo=UTC),
             "asset_id": "asset-inverter-01",
+            "site_id": "site-substation-01",
+        },
+        {
+            "event_id": "event-reading-08",
+            "event_type": "reading",
+            "severity": "info",
+            "measured_value": 58.0,
+            "unit": "celsius",
+            "description": "Battery Bank A temperature returning to the safe range.",
+            "occurred_at": datetime(2026, 5, 21, 8, 30, tzinfo=UTC),
+            "asset_id": "asset-battery-01",
             "site_id": "site-substation-01",
         },
     ]
