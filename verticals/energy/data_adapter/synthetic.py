@@ -9,11 +9,14 @@ Shapes match ``verticals/energy/ontology/energy_v0.yaml``: Site, Asset,
 and OperationalEvent. The events trace a single morning thermal incident on
 Battery Bank A — a baseline, a rising temperature trend (info → warn →
 critical), the over-temperature breach the rule-based recommender escalates,
-a concurrent inverter alarm, and a post-mitigation recovery reading — so the
-demo timeline reads as build-up → climax → resolution. **Only the breach**
-trips an action: the recommender escalates any reading whose ``measured_value``
-is ≥ the threshold *regardless of unit*, so every non-breach reading is kept
-below it (the 50.0 Hz inverter reading is a deliberate sub-threshold value).
+and a concurrent inverter alarm — so the demo timeline reads as build-up →
+climax. The post-mitigation **recovery** reading is no longer pre-baked here:
+it is injected as the effect of executing the decision (PLAN-0015 D2, real
+execute-time) so the timeline only resolves after the operator acts. **Only
+the breach** trips an action: the recommender escalates any reading whose
+``measured_value`` is ≥ the threshold *regardless of unit*, so every non-breach
+reading is kept below it (the 50.0 Hz inverter reading is a deliberate
+sub-threshold value).
 """
 
 from __future__ import annotations
@@ -92,10 +95,10 @@ def operational_events() -> list[dict[str, Any]]:
 
     One morning thermal incident on Battery Bank A: a discharge-cycle
     transition, a baseline, a rising temperature trend, the over-temperature
-    breach (``event-reading-03``, ≥ threshold → drives the recommender), a
-    concurrent inverter alarm, and a post-mitigation recovery reading. Every
-    non-breach reading is < the recommender threshold so only the breach
-    escalates (see module docstring).
+    breach (``event-reading-03``, ≥ threshold → drives the recommender), and a
+    concurrent inverter alarm. The recovery reading is injected on execute
+    (PLAN-0015 D2), not returned here. Every non-breach reading is < the
+    recommender threshold so only the breach escalates (see module docstring).
     """
     return [
         {
@@ -217,15 +220,8 @@ def operational_events() -> list[dict[str, Any]]:
             "asset_id": "asset-inverter-01",
             "site_id": "site-substation-01",
         },
-        {
-            "event_id": "event-reading-08",
-            "event_type": "reading",
-            "severity": "info",
-            "measured_value": 58.0,
-            "unit": "celsius",
-            "description": "Battery Bank A temperature returning to the safe range.",
-            "occurred_at": datetime(2026, 5, 21, 8, 30, tzinfo=UTC),
-            "asset_id": "asset-battery-01",
-            "site_id": "site-substation-01",
-        },
+        # The post-mitigation recovery reading is NOT pre-baked here (PLAN-0015
+        # D2): it is injected as the effect of executing the decision, at real
+        # execute-time, so the timeline only resolves after the operator acts.
+        # See services/engine/demo_events.inject_recovery + the /execute route.
     ]

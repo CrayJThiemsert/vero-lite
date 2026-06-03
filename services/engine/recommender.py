@@ -251,6 +251,7 @@ def approve(record: ActionRecord) -> ActionRecord:
     if record.status is not ActionStatus.PROPOSED:
         raise ApprovalError(f"cannot approve an action in status '{record.status.value}'")
     record.status = ActionStatus.APPROVED
+    record.action.approved_at = datetime.now(UTC)  # PLAN-0015 D3
     return record
 
 
@@ -278,4 +279,5 @@ async def execute(record: ActionRecord) -> dict[str, Any]:
     handler = registry.get_handler(action.vertical, action.suggested_handler)
     receipt = await handler(action)
     record.status = ActionStatus.EXECUTED
+    action.executed_at = datetime.now(UTC)  # PLAN-0015 D3
     return receipt

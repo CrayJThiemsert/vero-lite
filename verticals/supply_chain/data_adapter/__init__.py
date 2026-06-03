@@ -20,13 +20,27 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any
 
+from services.engine import demo_events
 from services.engine.registry import registry
 from verticals.supply_chain.data_adapter import synthetic
+
+_VERTICAL = "supply_chain"
+
+
+def _operational_events() -> list[dict[str, Any]]:
+    """The per-process live OperationalEvent view (PLAN-0015 D1/D2).
+
+    Routes the synthetic events through ``demo_events`` so real-time anchoring
+    and the execute-time recovery reading apply; with the anchor flag off and no
+    execution it equals ``synthetic.operational_events()`` (deterministic).
+    """
+    return demo_events.events(_VERTICAL, synthetic.operational_events)
+
 
 _OBJECT_SOURCES = {
     "Shipment": synthetic.shipments,
     "Facility": synthetic.facilities,
-    "OperationalEvent": synthetic.operational_events,
+    "OperationalEvent": _operational_events,
 }
 
 
@@ -80,7 +94,7 @@ class SupplyChainSyntheticAdapter:
         When ``since`` (a timezone-aware datetime) is given, only events
         at or after it are yielded.
         """
-        for event in synthetic.operational_events():
+        for event in _operational_events():
             if event["event_type"] != event_type:
                 continue
             if since is not None and event["occurred_at"] < since:

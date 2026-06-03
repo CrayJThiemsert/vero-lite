@@ -5,6 +5,7 @@ from collections.abc import Iterator
 import pytest
 
 from services.api.config import settings
+from services.engine import demo_events
 from services.engine.registry import registry
 
 
@@ -18,6 +19,19 @@ def _reset_registry() -> Iterator[None]:
     registry.reset()
     yield
     registry.reset()
+
+
+@pytest.fixture(autouse=True)
+def _reset_demo_events() -> Iterator[None]:
+    """Reset the per-process live OperationalEvent view around every test.
+
+    PLAN-0015: the demo_events store holds the anchored event list + any
+    execute-time recovery reading per process. autouse so an execute in one test
+    cannot leak an injected recovery (or a stale anchor) into another.
+    """
+    demo_events.reset()
+    yield
+    demo_events.reset()
 
 
 @pytest.fixture(autouse=True)
