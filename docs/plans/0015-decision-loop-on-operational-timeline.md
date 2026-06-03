@@ -1,6 +1,6 @@
 # PLAN-0015: Wire the decision loop onto the Operational Timeline (live-time demo)
 
-**Status:** Draft
+**Status:** Ready for execution — Cray green-lit (session 32, 2026-06-03: "Flip → Ready แล้วลุย")
 **Owner:** Claude Code (executor) — design ratified interactively by Cray (session 31)
 **Created:** 2026-06-03
 **Related ADRs:** ADR-005 (OCT), ADR-006 (vertical plugin), ADR-007 (RecommendedAction + recommend→approve→execute loop), ADR-010 (LLM brain-swap + rule fail-safe)
