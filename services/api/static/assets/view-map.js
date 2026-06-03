@@ -10,8 +10,9 @@
   const { h, clear, icon, badge } = O;
 
   let root, mapEl, sideEl, tlEl;
-  let selected = null;       // { type, id }
-  let anomalyAssetIds = [];  // primary keys flagged by recommendations
+  let selected = null;        // { type, id }
+  let anomalyAssetIds = [];   // primary keys flagged by recommendations
+  let resolvedAssetIds = [];  // flagged keys whose decision is executed (resolved)
 
   function geoColor(i) {
     const hues = [210, 150, 35, 280, 0];
@@ -62,9 +63,20 @@
   async function ensureData() {
     if (!O.State.meta) await O.loadMeta();
     if (Object.keys(O.State.objects).length < O.State.meta.object_types.length) await O.loadAllObjects();
-    if (!O.State.recommendations.length) { try { await O.loadRecommendations(); } catch (e) {} }
-    anomalyAssetIds = [];
-    O.State.recommendations.forEach(r => (r.affected_entities || []).forEach(e => anomalyAssetIds.push(e.primary_key)));
+    // PLAN-0015 D4: refresh the decision-sensitive data on every mount so a
+    // decision taken in Screen B — the status + approved_at/executed_at, and the
+    // execute-time recovery reading — is reflected on return to Screen A.
+    try { await O.loadRecommendations(); } catch (e) {}
+    try { await O.loadObjects('OperationalEvent'); } catch (e) {}
+    recomputeFlags();
+  }
+
+  function recomputeFlags() {
+    anomalyAssetIds = []; resolvedAssetIds = [];
+    O.State.recommendations.forEach(r => (r.affected_entities || []).forEach(e => {
+      anomalyAssetIds.push(e.primary_key);
+      if (r.status === 'executed') resolvedAssetIds.push(e.primary_key);
+    }));
   }
 
   function render() {
@@ -161,6 +173,7 @@
       const aId = a[O.Onto.pk(assetType)];
       const sp = O.Onto.statusProp(assetType);
       const flagged = anomalyAssetIds.includes(aId);
+      const resolved = resolvedAssetIds.includes(aId);
       // tether
       const ln = document.createElementNS(NS, 'line');
       ln.setAttribute('x1', p.x); ln.setAttribute('y1', p.y);
@@ -169,15 +182,17 @@
       layerLinks.appendChild(ln);
       // satellite group
       const gg = document.createElementNS(NS, 'g');
-      gg.setAttribute('class', 'mnode asset' + (flagged ? ' flagged' : '') + (isSel(assetType, aId) ? ' sel' : ''));
+      gg.setAttribute('class', 'mnode asset' + (flagged ? ' flagged' : '') + (resolved ? ' resolved' : '') + (isSel(assetType, aId) ? ' sel' : ''));
       gg.style.cursor = 'pointer';
       const statusCls = sp ? O.Onto.statusClass(a[sp.name]) : 's-neutral';
       const col = statusVar(statusCls);
       if (flagged) {
+        // The anomaly ring: pulsing red while active, a static green ring once
+        // the decision is executed (PLAN-0015 D4 — the map node "resolves").
         const halo = document.createElementNS(NS, 'circle');
         halo.setAttribute('cx', ax); halo.setAttribute('cy', ay); halo.setAttribute('r', 9);
-        halo.setAttribute('class', 'halo'); halo.setAttribute('fill', 'none');
-        halo.setAttribute('stroke', 'var(--crit)'); halo.setAttribute('stroke-width', '1.5');
+        halo.setAttribute('class', 'halo' + (resolved ? ' resolved' : '')); halo.setAttribute('fill', 'none');
+        halo.setAttribute('stroke', resolved ? 'var(--ok)' : 'var(--crit)'); halo.setAttribute('stroke-width', '1.5');
         gg.appendChild(halo);
       }
       const c = document.createElementNS(NS, 'circle');
@@ -279,13 +294,24 @@
 
     if (flagged) {
       const rec = O.State.recommendations.find(r => (r.affected_entities || []).some(e => e.primary_key === id));
-      card.appendChild(h('div', { class: 'anomaly-banner' }, [
-        h('div', { class: 'ab-top' }, [icon('anomaly', { width: 16, height: 16 }), h('b', null, 'Anomaly on this record')]),
+      const status = rec ? rec.status : 'proposed';
+      const resolved = status === 'executed';
+      // The recorded decision times (PLAN-0015 D3) — shown once present.
+      const times = [];
+      if (rec && rec.approved_at) times.push(h('div', { class: 'dt-row' }, [h('span', { class: 'dt-k' }, 'Approved'), h('span', { class: 'dt-v mono' }, O.fmtTimestamp(rec.approved_at))]));
+      if (rec && rec.executed_at) times.push(h('div', { class: 'dt-row' }, [h('span', { class: 'dt-k' }, 'Executed'), h('span', { class: 'dt-v mono' }, O.fmtTimestamp(rec.executed_at))]));
+      card.appendChild(h('div', { class: 'anomaly-banner' + (resolved ? ' resolved' : '') }, [
+        h('div', { class: 'ab-top' }, [
+          icon(resolved ? 'check' : 'anomaly', { width: 16, height: 16 }),
+          h('b', null, resolved ? 'Resolved — action executed' : 'Anomaly on this record'),
+          rec ? O.badge(status, { solid: true }) : null
+        ].filter(Boolean)),
         h('div', { class: 'muted', style: { fontSize: '12px', margin: '2px 0 10px' } }, rec ? rec.title : 'Flagged by the decision engine.'),
-        h('button', { class: 'btn ok sm', onClick: () => document.dispatchEvent(new CustomEvent('oct:goto', { detail: { view: 'B', action: rec && rec.action_id } })) }, [
+        times.length ? h('div', { class: 'decision-times' }, times) : null,
+        resolved ? null : h('button', { class: 'btn ok sm', onClick: () => document.dispatchEvent(new CustomEvent('oct:goto', { detail: { view: 'B', action: rec && rec.action_id } })) }, [
           'Investigate in Anomaly & Decision', icon('arrow', { width: 14, height: 14 })
         ])
-      ]));
+      ].filter(Boolean)));
     }
 
     card.appendChild(h('div', { class: 'detail-body' }, O.detailRows(type, obj)));
@@ -351,41 +377,89 @@
       }
     }
 
-    const n = events.length;
-    // Even chronological spacing (4%..96%) so every beat is legible and the
-    // climax never overlaps; the per-marker time labels carry the real timing.
-    const xOf = (i) => (n <= 1 ? 50 : 4 + (i / (n - 1)) * 92);
     // The pulsing "breach" hero is the single most-severe reading (severity
     // 'critical'); an alarm (severity 'error') stays red but does not pulse.
     const isCrit = (e) => sevProp && String(e[sevProp]).toLowerCase() === 'critical';
 
+    // Decision beats for an in-scope incident (PLAN-0015 D4): the operator's
+    // approve / execute clicks, recorded server-side (approved_at/executed_at),
+    // laid on the SAME time axis as the events. A recommendation is in scope when
+    // its affected entity appears among the scoped events' *_id fields (generic
+    // over asset_id / shipment_id — AC-template). On 'executed' the incident
+    // resolves: the breach marker + map node turn green/✓.
+    const scopedIds = new Set();
+    events.forEach(e => Object.keys(e).forEach(k => { if (/_id$/.test(k) && e[k] != null) scopedIds.add(e[k]); }));
+    let incidentStatus = null;
+    const decisions = [];
+    (O.State.recommendations || []).forEach(r => {
+      if (!(r.affected_entities || []).some(e => scopedIds.has(e.primary_key))) return;
+      incidentStatus = r.status;
+      if (r.approved_at) decisions.push({ ts: r.approved_at, kind: 'approved', rec: r });
+      if (r.executed_at) decisions.push({ ts: r.executed_at, kind: 'executed', rec: r });
+    });
+    const resolved = incidentStatus === 'executed';
+
+    // Unified, time-sorted beats: operational events + decision beats. Even
+    // chronological spacing (4%..96%) so every beat is legible and the climax
+    // never overlaps; the per-marker time labels carry the real timing.
+    const beats = events.map(e => ({ ts: e[tsProp], kind: 'event', e: e }))
+      .concat(decisions)
+      .filter(b => b.ts)
+      .sort((a, b) => new Date(a.ts) - new Date(b.ts));
+    const n = beats.length;
+    const xOf = (i) => (n <= 1 ? 50 : 4 + (i / (n - 1)) * 92);
+
     tlEl.appendChild(h('div', { class: 'tl-head' }, [
       h('span', { class: 'eyebrow' }, 'Operational timeline'),
       h('span', { class: 'faint mono', style: { fontSize: '10.5px' } }, tlDate(events[0][tsProp]) + ' · ' + scopeLabel),
+      incidentStatus ? h('span', { class: 'tl-status ' + O.Onto.statusClass(incidentStatus) }, [
+        icon(resolved ? 'check' : 'anomaly', { width: 12, height: 12 }),
+        resolved ? 'Resolved' : incidentStatus
+      ]) : null,
       h('div', { class: 'tl-legend' }, [
         h('span', { class: 'tl-leg s-info' }, [h('i'), 'normal']),
         h('span', { class: 'tl-leg s-warn' }, [h('i'), 'warning']),
         h('span', { class: 'tl-leg s-crit' }, [h('i'), 'critical']),
       ]),
-    ]));
+    ].filter(Boolean)));
 
     const track = h('div', { class: 'tl-track' }, h('div', { class: 'tl-axis' }));
     const scale = h('div', { class: 'tl-scale' });
-    events.forEach((e, i) => {
-      const id = e[pkE];
-      const cls = sevProp ? O.Onto.statusClass(e[sevProp]) : 's-neutral';
-      const breach = isCrit(e);
+    beats.forEach((b, i) => {
       const left = xOf(i) + '%';
-      track.appendChild(h('button', {
-        class: 'tl-marker ' + cls + (breach ? ' breach' : '') + (isSel(evType, id) ? ' sel' : ''),
-        style: { left: left },
-        title: tlHHMM(e[tsProp]) + ' · ' + (e.description || e.event_type || id),
-        onClick: (ev) => { ev.stopPropagation(); select(evType, id); },
-      }, [breach ? h('span', { class: 'tl-pulse' }) : null, h('span', { class: 'tl-dot' })].filter(Boolean)));
-      scale.appendChild(h('span', {
-        class: 'tl-tick' + (breach ? ' breach' : ''),
-        style: { left: left },
-      }, tlHHMM(e[tsProp])));
+      if (b.kind === 'event') {
+        const e = b.e;
+        const id = e[pkE];
+        const cls = sevProp ? O.Onto.statusClass(e[sevProp]) : 's-neutral';
+        const breach = isCrit(e);
+        const breachResolved = breach && resolved;
+        track.appendChild(h('button', {
+          class: 'tl-marker ' + (breachResolved ? 's-ok' : cls) + (breach ? ' breach' : '') + (breachResolved ? ' resolved' : '') + (isSel(evType, id) ? ' sel' : ''),
+          style: { left: left },
+          title: tlHHMM(e[tsProp]) + ' · ' + (e.description || e.event_type || id),
+          onClick: (ev) => { ev.stopPropagation(); select(evType, id); },
+        }, [
+          (breach && !breachResolved) ? h('span', { class: 'tl-pulse' }) : null,
+          breachResolved ? icon('check', { width: 13, height: 13, class: 'tl-check' }) : h('span', { class: 'tl-dot' })
+        ].filter(Boolean)));
+        scale.appendChild(h('span', {
+          class: 'tl-tick' + (breach ? ' breach' : '') + (breachResolved ? ' resolved' : ''),
+          style: { left: left },
+        }, tlHHMM(e[tsProp])));
+      } else {
+        // decision beat — approve (intermediate, info) / execute (resolves, ok)
+        const isExec = b.kind === 'executed';
+        track.appendChild(h('button', {
+          class: 'tl-marker tl-decision ' + (isExec ? 's-ok' : 's-info'),
+          style: { left: left },
+          title: (isExec ? 'Decision executed · ' : 'Decision approved · ') + O.fmtTimestamp(b.ts),
+          onClick: (ev) => { ev.stopPropagation(); document.dispatchEvent(new CustomEvent('oct:goto', { detail: { view: 'B', action: b.rec && b.rec.action_id } })); },
+        }, h('span', { class: 'tl-decision-dot' }, icon('check', { width: 10, height: 10 }))));
+        scale.appendChild(h('span', {
+          class: 'tl-tick tl-decision-tick ' + (isExec ? 's-ok' : 's-info'),
+          style: { left: left },
+        }, (isExec ? 'exec' : 'appr') + ' ' + tlHHMM(b.ts)));
+      }
     });
     tlEl.appendChild(track);
     tlEl.appendChild(scale);

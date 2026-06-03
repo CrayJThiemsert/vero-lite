@@ -14,6 +14,7 @@ from services.api.models.health import HealthResponse
 from services.api.routers.actions import router as actions_router
 from services.api.routers.admin import router as admin_router
 from services.api.routers.query import router as query_router
+from services.engine.registry import registry
 from services.notify.telegram import describe_arm_state
 from verticals.energy.data_adapter import register_energy_adapter
 from verticals.energy.handlers import register_energy_handlers
@@ -51,6 +52,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     register_adapter, register_handlers = registrars
     register_adapter()
     register_handlers()
+    # PLAN-0015 D1: warm the per-process live OperationalEvent view so the
+    # real-time anchor base = server start (the breach is anchored to "now").
+    # Reads raw object dicts only (no LLM call), so it is safe even when MS-S1 is
+    # warming; a no-op beyond a fixed-datetime copy when OCT_DEMO_TIME_ANCHOR off.
+    await registry.get_adapter(vertical).fetch_objects("OperationalEvent")
     # One-shot boot diagnostic: makes a mis-armed PLAN-0014 notifier (e.g. the
     # enable flag left off — otherwise a silent per-call no-op) visible at startup.
     _boot_logger.info(

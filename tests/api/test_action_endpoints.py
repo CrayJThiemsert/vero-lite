@@ -6,7 +6,11 @@ httpx.ASGITransport — never a shell exit code.
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from httpx import AsyncClient
+
+from services.api.config import settings
 
 
 async def test_health_still_ok(client: AsyncClient) -> None:
@@ -67,6 +71,51 @@ async def test_execute_transitions_to_executed(client_with_db: AsyncClient) -> N
     body = response.json()
     assert body["status"] == "executed"
     assert body["handler_receipt"]["executed"] is True
+
+
+async def test_recommendations_start_without_decision_timestamps(client: AsyncClient) -> None:
+    """PLAN-0015 D3: a proposed recommendation has no approved/executed time yet."""
+    rec = (await client.get("/recommendations")).json()["recommendations"][0]
+    assert rec["approved_at"] is None
+    assert rec["executed_at"] is None
+
+
+async def test_decision_timestamps_recorded_on_approve_execute(
+    client_with_db: AsyncClient,
+) -> None:
+    """PLAN-0015 AC-decision-time: approve + execute stamp real, ordered times."""
+    recs = (await client_with_db.get("/recommendations")).json()["recommendations"]
+    action_id = recs[0]["action_id"]
+    await client_with_db.post(f"/recommendations/{action_id}/approve")
+    await client_with_db.post(f"/recommendations/{action_id}/execute")
+
+    after = (await client_with_db.get("/recommendations")).json()["recommendations"]
+    rec = next(r for r in after if r["action_id"] == action_id)
+    assert rec["status"] == "executed"
+    assert rec["approved_at"] is not None
+    assert rec["executed_at"] is not None
+    approved = datetime.fromisoformat(rec["approved_at"])
+    executed = datetime.fromisoformat(rec["executed_at"])
+    assert approved <= executed
+
+
+async def test_recovery_reading_injected_on_execute(client_with_db: AsyncClient) -> None:
+    """PLAN-0015 AC-recovery-on-execute: no recovery before, present after."""
+    before = (await client_with_db.get("/objects/OperationalEvent")).json()["objects"]
+    assert all(e.get("event_id") != "event-recovery-01" for e in before)
+
+    recs = (await client_with_db.get("/recommendations")).json()["recommendations"]
+    action_id = recs[0]["action_id"]
+    await client_with_db.post(f"/recommendations/{action_id}/approve")
+    await client_with_db.post(f"/recommendations/{action_id}/execute")
+
+    after = (await client_with_db.get("/objects/OperationalEvent")).json()["objects"]
+    recovery = [e for e in after if e.get("event_id") == "event-recovery-01"]
+    assert len(recovery) == 1
+    assert recovery[0]["measured_value"] == settings.oct_recovery_value
+    assert recovery[0]["severity"] == "info"
+    # the recovery lands on the breach event's asset (energy: Battery Bank A)
+    assert recovery[0]["asset_id"] == "asset-battery-01"
 
 
 async def test_openapi_lists_action_routes(client: AsyncClient) -> None:

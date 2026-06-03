@@ -57,3 +57,7 @@ class RecommendedAction(BaseModel):
     audit_metadata: AuditMetadata
     created_at: datetime
     expires_at: datetime | None = None
+    # Real, server-side decision timestamps (PLAN-0015 D3) — set by the approval
+    # gate when the human approves / executes; None until then.
+    approved_at: datetime | None = None
+    executed_at: datetime | None = None

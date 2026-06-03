@@ -1,5 +1,6 @@
 """Response models for the action-loop API (PLAN-0005 §6.7)."""
 
+from datetime import datetime
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -31,6 +32,12 @@ class RecommendationResponse(BaseModel):
     )
     affected_entities: list[EntityRef] = Field(
         default_factory=list, description="Ontology entities the action concerns"
+    )
+    approved_at: datetime | None = Field(
+        default=None, description="Server-side time the action was approved (PLAN-0015 D3)"
+    )
+    executed_at: datetime | None = Field(
+        default=None, description="Server-side time the action was executed (PLAN-0015 D3)"
     )
 
 

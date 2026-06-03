@@ -142,6 +142,37 @@ class Settings(BaseSettings):
         ),
     )
 
+    # OCT live-time demo loop (PLAN-0015). The anchor flag is OFF by default so
+    # synthetic.py stays deterministic for tests (D5); the demo box sets
+    # OCT_DEMO_TIME_ANCHOR=true so each uvicorn run anchors the incident to real
+    # time (breach ~= server start). The recovery value/description are the
+    # safe-range reading injected as the effect of Execute (D2) — energy
+    # defaults; a second vertical overrides them via env (PLAN-0013 AC-template).
+    oct_demo_time_anchor: bool = Field(
+        default=False,
+        description=(
+            "When True (env OCT_DEMO_TIME_ANCHOR), shift the active vertical's "
+            "OperationalEvent timestamps each server run so the breach ~= server "
+            "start, preserving relative spacing (PLAN-0015 D1). Default off keeps "
+            "the fixed synthetic datetimes so tests stay deterministic (D5)."
+        ),
+    )
+    oct_recovery_value: float = Field(
+        default=58.0,
+        description=(
+            "Safe-range measured_value for the recovery reading injected as the "
+            "effect of Execute (PLAN-0015 D2; env OCT_RECOVERY_VALUE). Energy "
+            "58 °C; a cold-chain vertical sets e.g. 4.0."
+        ),
+    )
+    oct_recovery_description: str = Field(
+        default="Battery Bank A temperature returning to the safe range.",
+        description=(
+            "Description on the injected recovery reading (PLAN-0015 D2; env "
+            "OCT_RECOVERY_DESCRIPTION). Energy default; overridden per vertical."
+        ),
+    )
+
     # Telegram notify + LLM warm control (PLAN-0014). The notifier pings the
     # operator when an OCT local-LLM call fails because MS-S1 is unreachable;
     # the /warm + /sleep routes load/unload the model. Tokens come from env

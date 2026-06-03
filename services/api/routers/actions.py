@@ -7,6 +7,7 @@ process-local store keyed by action_id; executing an action also
 persists it (the OQ-1 projection) via services/db/persistence.py.
 """
 
+from datetime import UTC, datetime
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -21,6 +22,7 @@ from services.api.models.actions import (
 )
 from services.db.persistence import persist_executed_action
 from services.db.session import get_session
+from services.engine import demo_events
 from services.engine.ontology_meta import OntologyMeta, load_ontology_meta
 from services.engine.recommender import ActionRecord, ApprovalError, approve, execute, recommend
 from services.engine.registry import registry
@@ -48,6 +50,8 @@ def _to_response(record: ActionRecord) -> RecommendationResponse:
         suggested_handler=action.suggested_handler,
         reasoning_trace=action.reasoning_trace,
         affected_entities=action.affected_entities,
+        approved_at=action.approved_at,
+        executed_at=action.executed_at,
     )
 
 
@@ -114,6 +118,17 @@ async def execute_recommendation(
     except ApprovalError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     await persist_executed_action(session, record)
+    # PLAN-0015 D2: the recovery reading is the modeled effect of Execute —
+    # injected into the live OperationalEvent view at real execute-time, on the
+    # breach's asset, so Screen A resolves only after the operator acts. The
+    # action id is ``action-<breach_event_id>`` (both LLM + rule paths), so the
+    # breach event is identified without coupling to the handler payload shape.
+    breach_event_id = record.action.id.removeprefix("action-")
+    demo_events.inject_recovery(
+        settings.oct_vertical,
+        breach_event_id=breach_event_id,
+        occurred_at=datetime.now(UTC),
+    )
     return ExecuteResponse(
         action_id=record.action.id,
         status=record.status.value,
