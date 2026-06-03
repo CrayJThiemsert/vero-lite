@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-03T12:40:35+07:00
+last_updated: 2026-06-03T14:24:51+07:00
 session: 31
-current_batch: **Session 31 — run-oct-demo runbook (#117) + PLAN-0014 arm-state boot log (#119) + Telegram test-isolation (#121) + map inspector overflow + UX (#123/#125/#127).** Session driven by Cray rehearsing the demo. #117 added `docs/runbooks/run-oct-demo.md`. #119 (`feat(notify)`): startup log printing ARMED / DISARMED -- <reason>. #121 (`test`): autouse `_no_real_telegram` fixture so a pytest run on an armed box no longer leaks real dispatcher alerts. #123/#125/#127 (`fix(ui)`): the Operational Map inspector clipped its grouped-assets list + would not scroll; #123 bounded the grid row, #125 added `.map-side > .card { flex-shrink:0 }` (the detail card's overflow:hidden made its flex min-height resolve to 0 -> squeezed + clipped instead of scrolling), #127 made the panel order consistent (contextual panel always top, legend anchored below -- no idle/selected swap). All UI fixes verified live via Claude Preview. PLAN-0014 confirmed working live. Suite 1060 -> 1065; ruff + mypy clean. This PR = the session-31 reconcile (head `2f0e8aa` -> `cecc028`).
+current_batch: **Session 31 — demo-rehearsal-driven polish + the map storytelling feature.** A long Cray-interactive session refining the OCT demo: #117 run-oct-demo runbook; #119 (`feat(notify)`) ARMED/DISARMED startup log; #121 (`test`) autouse `_no_real_telegram` fixture (armed box no longer leaks pings from pytest); #123/#125/#127 (`fix(ui)`) the Operational Map inspector overflow/scroll/clip + consistent panel order; **#129 + #130 (`feat`) the map incident-timeline feature** — #129 expanded energy events 4→9 into a thermal incident arc (transition→baselines→rising info/warn/critical breach→alarm→recovery; all 3 types + 4 severities; only the 96.5°C breach ≥ threshold so the recommender + NL >=90 stay singular) + `OCT.fmtTimestamp` in the detail panel; #130 added the full-width Incident timeline rail (one marker per OperationalEvent, severity-colored, critical breach pulsing, even spacing + per-marker HH:MM, click→select; ontology-driven). All UI verified live via Claude Preview DOM. Suite 1065 passed / 2 skipped; ruff + mypy clean. PLAN-0014 confirmed working live earlier. This PR = the session-31 reconcile (head `cecc028` → `d9f7928`).
 current_actor: code
-blocked_on: Nothing gates forward progress. main clean @ `cecc028`; 0 open PRs. The 2-vertical demo is verified-runnable + visually polished (inspector scrolls, no clip, consistent panel order), PLAN-0014 is confirmed working live, and the suite no longer leaks real Telegram pings. **PLAN-0010 autonomy loop is LIVE + hardened.** Highest leverage remains Cray-side (register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach with the shipped 2-vertical demo). Known UI follow-up (pre-existing, out of scope): the <980px responsive map layout collapses the side row to 0 (desktop-only demo). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
-next_action: **Session 31 — runbook (#117) + arm-state boot log (#119) + Telegram test-isolation (#121) + map inspector overflow/UX (#123/#125/#127) shipped; STATUS current at session 31 (head `cecc028`).** No gating Code work. Backlog: (a) **Cray-action** — continue demo rehearsal / take the 2-vertical demo to design partners (hard-refresh the browser to pick up the static UI fixes; power on MS-S1 for NL query); register a Cowork status_digest producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable (optional)** — the <980px responsive map fix; loop handlers (`governance_reminder`, `deferred_oq_rotation`); `status_digest` v2 auto-draft (deferred); PLAN-004 Phases B+C (low priority); PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach (highest leverage).
-head_commit: cecc028
-recent_commits: [cecc028, 6479a44, 2f0e8aa, 0141ea9, 4c9151a, 0c7008e, 5cec863, 4102910, e11dc56, 3684096]
+blocked_on: Nothing gates forward progress. main clean @ `d9f7928`; 0 open PRs. The 2-vertical demo is verified-runnable, visually polished (inspector scrolls + consistent panel order), and now tells a time-ordered incident story on the map (timeline rail); PLAN-0014 is confirmed working live; the suite no longer leaks real Telegram pings. **PLAN-0010 autonomy loop is LIVE + hardened.** Highest leverage remains Cray-side (register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach). Known UI follow-ups (out of scope): the <980px responsive map collapses the side row to 0; the timeline could tie the live recommendation's proposed→executed states as end-of-rail markers (v2). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
+next_action: **Session 31 — runbook + arm-state log + telegram test-isolation + map inspector fixes + map timeline feature (#117/#119/#121/#123/#125/#127/#129/#130) shipped; STATUS current at session 31 (head `d9f7928`).** No gating Code work. Backlog: (a) **Cray-action** — continue demo rehearsal / take the 2-vertical demo to design partners (hard-refresh to pick up the static UI; power on MS-S1 for NL query); register a Cowork status_digest producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable (optional)** — eyeball the timeline rail + tune; the <980px responsive map fix; timeline v2 (live decision markers); loop handlers (`governance_reminder`, `deferred_oq_rotation`); `status_digest` v2; PLAN-004 B+C; PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach.
+head_commit: d9f7928
+recent_commits: [d9f7928, c277e1e, 9ee5328, 81f4e40, e39bc05, cecc028, 6479a44, 2f0e8aa, 0141ea9, 4c9151a]
 ---
 
 # vero-lite — Project Status
@@ -69,9 +69,24 @@ recent_commits: [cecc028, 6479a44, 2f0e8aa, 0141ea9, 4c9151a, 0c7008e, 5cec863, 
 > a side-effect of #123's reorder; made consistent (Cray's choice) — the
 > contextual panel (detail/hint) is always the top slot, legend anchored below
 > in both states (live Preview: idle [map-hint, legend], selected
-> [detail-card, legend]). This PR = the session-31 reconcile (head `2f0e8aa` →
-> `cecc028`). The session 30 / 29 / 27+28 / … narratives below are retained for
-> archeology.
+> [detail-card, legend]). **(7) PR #129 + #130** (`feat`) — gave the
+> demo map a story (Cray's ask). #129 expanded the energy synthetic events 4 →
+> 9 into a morning thermal-incident arc on Battery Bank A (transition →
+> baselines → rising temp info→warn→critical breach → inverter alarm →
+> recovery; all 3 event_types + 4 severities; only the 96.5 °C breach is ≥ the
+> recommender threshold so the action + NL “≥90” stay singular) and formatted
+> timestamp properties in the detail panel (`OCT.fmtTimestamp`). #130 added the
+> headline **Incident timeline** rail below the map: one marker per
+> OperationalEvent, severity-coloured, the critical breach pulsing, even
+> chronological spacing with per-marker HH:MM labels (Cray-chosen over a
+> proportional axis that collapsed the incident into 68 % dead space + an
+> overlapping climax), click→select the event; ontology-driven (timestamp +
+> severity from /meta). An L1 loop-detect fired on the 6th view-map.js edit
+> mid-build → paused + reassessed the layout with Cray per the guardrail,
+> committed to reset, then continued. Verified live via Claude Preview DOM
+> (screenshot blocked — MS-S1 on, /recommendations hangs warming the LLM).
+> This PR = the session-31 reconcile (head `cecc028` → `d9f7928`). The session
+> 30 / 29 / 27+28 / … narratives below are retained for archeology.
 >
 > **Session 30 — coverage-hardening arc (#107/#109/#110) → backlog
 > work: #5 arming runbook (#112) + the loop's first real job, status_digest
