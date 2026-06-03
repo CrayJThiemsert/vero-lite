@@ -330,11 +330,14 @@
     const events = store.objects.filter(e => e[tsProp]).slice()
       .sort((a, b) => new Date(a[tsProp]) - new Date(b[tsProp]));
     if (!events.length) return;
-    const t0 = new Date(events[0][tsProp]).getTime();
-    const span = (new Date(events[events.length - 1][tsProp]).getTime() - t0) || 1;
-    // inset to 2..98% so edge markers are not clipped by the track bounds
-    const xOf = (v) => 2 + ((new Date(v).getTime() - t0) / span) * 96;
-    // the pulsing "breach" hero is the single most-severe reading (severity
+    const n = events.length;
+    // Even chronological spacing (4%..96%) so every beat is legible and the
+    // climax never overlaps; the per-marker time labels below carry the real
+    // timing (an honest proportional axis collapses this incident — a quiet
+    // pre-dawn transition then a dense ~30-min escalation — into a clipped
+    // cluster). Markers stay strictly time-ordered.
+    const xOf = (i) => (n <= 1 ? 50 : 4 + (i / (n - 1)) * 92);
+    // The pulsing "breach" hero is the single most-severe reading (severity
     // 'critical'); an alarm (severity 'error') stays red but does not pulse.
     const isCrit = (e) => sevProp && String(e[sevProp]).toLowerCase() === 'critical';
 
@@ -349,25 +352,25 @@
     ]));
 
     const track = h('div', { class: 'tl-track' }, h('div', { class: 'tl-axis' }));
-    events.forEach((e) => {
+    const scale = h('div', { class: 'tl-scale' });
+    events.forEach((e, i) => {
       const id = e[pkE];
       const cls = sevProp ? O.Onto.statusClass(e[sevProp]) : 's-neutral';
       const breach = isCrit(e);
+      const left = xOf(i) + '%';
       track.appendChild(h('button', {
         class: 'tl-marker ' + cls + (breach ? ' breach' : '') + (isSel(evType, id) ? ' sel' : ''),
-        style: { left: xOf(e[tsProp]) + '%' },
+        style: { left: left },
         title: tlHHMM(e[tsProp]) + ' · ' + (e.description || e.event_type || id),
         onClick: (ev) => { ev.stopPropagation(); select(evType, id); },
       }, [breach ? h('span', { class: 'tl-pulse' }) : null, h('span', { class: 'tl-dot' })].filter(Boolean)));
+      scale.appendChild(h('span', {
+        class: 'tl-tick' + (breach ? ' breach' : ''),
+        style: { left: left },
+      }, tlHHMM(e[tsProp])));
     });
     tlEl.appendChild(track);
-
-    const ticks = [{ x: xOf(events[0][tsProp]), label: tlHHMM(events[0][tsProp]) }];
-    const breachEv = events.find(isCrit);
-    if (breachEv) ticks.push({ x: xOf(breachEv[tsProp]), label: tlHHMM(breachEv[tsProp]) + ' breach', breach: true });
-    ticks.push({ x: xOf(events[events.length - 1][tsProp]), label: tlHHMM(events[events.length - 1][tsProp]) });
-    tlEl.appendChild(h('div', { class: 'tl-scale' }, ticks.map(t =>
-      h('span', { class: 'tl-tick' + (t.breach ? ' breach' : ''), style: { left: t.x + '%' } }, t.label))));
+    tlEl.appendChild(scale);
   }
 
   /* ---------- lifecycle ---------- */
