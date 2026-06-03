@@ -9,7 +9,7 @@
   const O = window.OCT;
   const { h, clear, icon, badge } = O;
 
-  let root, mapEl, sideEl;
+  let root, mapEl, sideEl, tlEl;
   let selected = null;       // { type, id }
   let anomalyAssetIds = [];  // primary keys flagged by recommendations
 
@@ -52,6 +52,10 @@
     body.appendChild(mapEl);
     body.appendChild(sideEl);
     root.appendChild(body);
+
+    // incident timeline rail (full width, below the map + side)
+    tlEl = h('div', { class: 'map-timeline card' });
+    root.appendChild(tlEl);
     return root;
   }
 
@@ -64,7 +68,7 @@
   }
 
   function render() {
-    clear(mapEl); clear(sideEl);
+    clear(mapEl); clear(sideEl); if (tlEl) clear(tlEl);
     const meta = O.State.meta;
     const geoTypes = O.Onto.geoTypes();
     if (!geoTypes.length) { mapEl.appendChild(O.errorState('No mappable objects', 'No object type in /meta exposes coordinates.')); return; }
@@ -128,6 +132,8 @@
     if (selected) renderDetail(selected.type, selected.id);
     else renderHint();
     renderLegend();
+
+    renderTimeline();
   }
 
   function assetsForSite(siteId) {
@@ -301,6 +307,67 @@
       ]));
     }
     sideEl.appendChild(card);
+  }
+
+  /* ---------- incident timeline rail ---------- */
+  function tlPad(n) { return String(n).padStart(2, '0'); }
+  function tlHHMM(val) { const d = new Date(val); return tlPad(d.getUTCHours()) + ':' + tlPad(d.getUTCMinutes()); }
+  function tlDate(val) {
+    const M = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const d = new Date(val);
+    return d.getUTCDate() + ' ' + M[d.getUTCMonth()] + ' ' + d.getUTCFullYear();
+  }
+  function renderTimeline() {
+    if (!tlEl) return;
+    const evType = 'OperationalEvent';
+    const store = O.State.objects[evType];
+    const td = O.Onto.typeDef(evType);
+    if (!store || !store.objects.length || !td) return;
+    const tsProp = (td.properties.find(p => p.type === 'timestamp' || p.type === 'datetime') || {}).name;
+    if (!tsProp) return;
+    const sevProp = (O.Onto.statusProp(evType) || {}).name;
+    const pkE = O.Onto.pk(evType);
+    const events = store.objects.filter(e => e[tsProp]).slice()
+      .sort((a, b) => new Date(a[tsProp]) - new Date(b[tsProp]));
+    if (!events.length) return;
+    const t0 = new Date(events[0][tsProp]).getTime();
+    const span = (new Date(events[events.length - 1][tsProp]).getTime() - t0) || 1;
+    // inset to 2..98% so edge markers are not clipped by the track bounds
+    const xOf = (v) => 2 + ((new Date(v).getTime() - t0) / span) * 96;
+    // the pulsing "breach" hero is the single most-severe reading (severity
+    // 'critical'); an alarm (severity 'error') stays red but does not pulse.
+    const isCrit = (e) => sevProp && String(e[sevProp]).toLowerCase() === 'critical';
+
+    tlEl.appendChild(h('div', { class: 'tl-head' }, [
+      h('span', { class: 'eyebrow' }, 'Incident timeline'),
+      h('span', { class: 'faint mono', style: { fontSize: '10.5px' } }, tlDate(events[0][tsProp])),
+      h('div', { class: 'tl-legend' }, [
+        h('span', { class: 'tl-leg s-info' }, [h('i'), 'normal']),
+        h('span', { class: 'tl-leg s-warn' }, [h('i'), 'warning']),
+        h('span', { class: 'tl-leg s-crit' }, [h('i'), 'critical']),
+      ]),
+    ]));
+
+    const track = h('div', { class: 'tl-track' }, h('div', { class: 'tl-axis' }));
+    events.forEach((e) => {
+      const id = e[pkE];
+      const cls = sevProp ? O.Onto.statusClass(e[sevProp]) : 's-neutral';
+      const breach = isCrit(e);
+      track.appendChild(h('button', {
+        class: 'tl-marker ' + cls + (breach ? ' breach' : '') + (isSel(evType, id) ? ' sel' : ''),
+        style: { left: xOf(e[tsProp]) + '%' },
+        title: tlHHMM(e[tsProp]) + ' · ' + (e.description || e.event_type || id),
+        onClick: (ev) => { ev.stopPropagation(); select(evType, id); },
+      }, [breach ? h('span', { class: 'tl-pulse' }) : null, h('span', { class: 'tl-dot' })].filter(Boolean)));
+    });
+    tlEl.appendChild(track);
+
+    const ticks = [{ x: xOf(events[0][tsProp]), label: tlHHMM(events[0][tsProp]) }];
+    const breachEv = events.find(isCrit);
+    if (breachEv) ticks.push({ x: xOf(breachEv[tsProp]), label: tlHHMM(breachEv[tsProp]) + ' breach', breach: true });
+    ticks.push({ x: xOf(events[events.length - 1][tsProp]), label: tlHHMM(events[events.length - 1][tsProp]) });
+    tlEl.appendChild(h('div', { class: 'tl-scale' }, ticks.map(t =>
+      h('span', { class: 'tl-tick' + (t.breach ? ' breach' : ''), style: { left: t.x + '%' } }, t.label))));
   }
 
   /* ---------- lifecycle ---------- */
