@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-03T19:30:05+07:00
+last_updated: 2026-06-03T20:11:47+07:00
 session: 32
-current_batch: **Session 32 — PLAN-0015 shipped: the live-time decision loop on the Operational Timeline.** On Cray's session-32 green-light, flipped PLAN-0015 Draft→Ready (#136) then executed all 4 steps (#137, merge `be470a4`): (D1/D5) real-time event anchoring gated by `OCT_DEMO_TIME_ANCHOR` — each run shifts events so the breach ≈ server start (threshold-aware breach selection, generic across verticals), default **off** so `synthetic.py` stays deterministic for tests; (D3) server-side `approved_at`/`executed_at` decision timestamps on the action + `/recommendations`; (D2) the recovery reading as the **effect of Execute** — removed from the energy base events, injected on `/execute` at real time on the breach's asset; (D4) Screen A's timeline + map resolve green/✓ on executed, with approve/execute markers at their real click-times on the rail + a Resolved chip + the recovery marker + a resolved detail banner. New `services/engine/demo_events.py` = the per-process live event view both synthetic adapters share (zero per-vertical divergence — AC-template). All 7 ACs met; verified **live** (energy Preview DOM: proposed/pulsing → approve → execute → resolved; supply_chain API probe, anchor on). Suite **1065 → 1076** passed / 2 skipped; ruff + mypy clean. PLAN-0015 git mv'd to `done/`; runbook §9 + launch.json document the flag. Session-32 closeout reconcile (head `f8d2e64` → `9af3fe0`).
+current_batch: **Session 32 — PLAN-0015 shipped: the live-time decision loop on the Operational Timeline.** On Cray's session-32 green-light, flipped PLAN-0015 Draft→Ready (#136) then executed all 4 steps (#137, merge `be470a4`): (D1/D5) real-time event anchoring gated by `OCT_DEMO_TIME_ANCHOR` — each run shifts events so the breach ≈ server start (threshold-aware breach selection, generic across verticals), default **off** so `synthetic.py` stays deterministic for tests; (D3) server-side `approved_at`/`executed_at` decision timestamps on the action + `/recommendations`; (D2) the recovery reading as the **effect of Execute** — removed from the energy base events, injected on `/execute` at real time on the breach's asset; (D4) Screen A's timeline + map resolve green/✓ on executed, with approve/execute markers at their real click-times on the rail + a Resolved chip + the recovery marker + a resolved detail banner. New `services/engine/demo_events.py` = the per-process live event view both synthetic adapters share (zero per-vertical divergence — AC-template). All 7 ACs met; verified **live** (energy Preview DOM: proposed/pulsing → approve → execute → resolved; supply_chain API probe, anchor on). Suite **1065 → 1076** passed / 2 skipped; ruff + mypy clean. PLAN-0015 git mv'd to `done/`; runbook §9 + launch.json document the flag. Then **#140** (`fix(ui)`) — the pre-existing `<980px` responsive map bug: the side panel (detail card + legend) collapsed to 0px and vanished on a narrow viewport; below 980px View A now flows as a scrolling block (fixed-height map → full-width side cards → timeline), verified live at 900/375/1280px. Session-32 reconciles (head `f8d2e64` → `9af3fe0` → `bbe980c`).
 current_actor: code
 blocked_on: Nothing gates shipped work. main clean @ `be470a4`; 0 open PRs (this closeout reconcile PR pending). **PLAN-0015 is done + verified-live** — the 2-vertical demo now plays the full incident → human decision → resolution loop in real time on Screen A's timeline. **PLAN-0010 autonomy loop is LIVE + hardened**; PLAN-0014 confirmed working live. Highest leverage is now Cray-side (run the live-time demo for design partners; register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach). To run the live-time demo: `OCT_DEMO_TIME_ANCHOR=true` (launch.json already sets it) + **MS-S1 off** for a clean first render; a restart resets + re-anchors the incident. Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
 next_action: **Session 32 — PLAN-0015 (live-time decision loop) executed, verified live, + archived to `done/`; STATUS current at session 32 (head `be470a4`).** Backlog: (a) **Cray-action** — run the live-time 2-vertical demo for design partners (`OCT_DEMO_TIME_ANCHOR=true`, MS-S1 off for a clean capture); register a Cowork status_digest producer routine (`-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable** — the <980px responsive map side-row collapse; loop handlers (`governance_reminder`, `deferred_oq_rotation`); `status_digest` v2; PLAN-004 B+C; PLAN-0012 Phase 2 (gated); a possible fast-follow if the anchored later-events on the *all-sites* timeline read oddly in a live demo (the incident-scope story is clean); (c) **Strategic** — design-partner outreach (highest leverage).
-head_commit: 9af3fe0
-recent_commits: [9af3fe0, be470a4, ec77c39, 3f8eb40, 5cfa2ed, d8f7b66, e7fec22, d4b6e05, 9d02253, f8d2e64]
+head_commit: bbe980c
+recent_commits: [bbe980c, 906fbd3, ac59706, 1decd4b, 9af3fe0, 3977b42, be470a4, ec77c39, 3f8eb40, 5cfa2ed]
 ---
 
 # vero-lite — Project Status
@@ -52,6 +52,16 @@ recent_commits: [9af3fe0, be470a4, ec77c39, 3f8eb40, 5cfa2ed, d8f7b66, e7fec22, 
 > Known minor artifact: anchoring on the breach leaves later unrelated events
 > (alarm +2 min, Riverside steady) slightly in the future on the *all-sites*
 > view; within the incident scope the story is clean.
+>
+> **Then #140 (`fix(ui)`)** — knocked out the pre-existing `<980px` responsive map
+> bug from the backlog: the side panel (detail card + legend) collapsed to 0px
+> and vanished on a narrow viewport (the `<=980px` media query stacked into one
+> grid column but `grid-template-rows: 1fr auto` gave the side row 0 height).
+> Below 980px View A now flows as a normal scrolling block — a fixed-height map
+> (`56vh`), the side cards stacked full-width beneath, then the timeline, with
+> the view scrolling vertically + the counts chips wrapping. Verified live at
+> 900 / 375 (mobile) / 1280px (desktop 2-column intact); CSS-only, desktop
+> untouched.
 
 > **Session 31 — run-oct-demo runbook (#117) + a PLAN-0014
 > arm-state boot log (#119).** A short session driven by Cray rehearsing the
