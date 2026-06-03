@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-03T11:11:22+07:00
+last_updated: 2026-06-03T12:01:23+07:00
 session: 31
-current_batch: **Session 31 — run-oct-demo runbook (#117) + PLAN-0014 arm-state boot log (#119) + Telegram test-isolation (#121).** Short session driven by Cray rehearsing the demo. #117 added `docs/runbooks/run-oct-demo.md` (verification-backed run guide for both verticals). #119 (`feat(notify)`): a one-shot startup log printing ARMED / DISARMED -- <reason> (via the `uvicorn.error` logger; app INFO is otherwise dropped) after rehearsing surfaced a silent disarmed gate. #121 (`test`): once Cray armed the box, a pytest run made `test_cli_aborts_when_same_fs_check_fails` shell out to the real `telegram.sh` and deliver a stray dispatcher alert; fixed with an autouse `_no_real_telegram` fixture neutralizing both notify paths for every test + a contract test. PLAN-0014 confirmed working end-to-end live (armed + no-PII ping received). Suite 1060 -> 1065; ruff + mypy clean. This PR = the session-31 reconcile (head `e11dc56` -> `5cec863`).
+current_batch: **Session 31 — run-oct-demo runbook (#117) + PLAN-0014 arm-state boot log (#119) + Telegram test-isolation (#121) + map inspector overflow fix (#123).** Session driven by Cray rehearsing the demo. #117 added `docs/runbooks/run-oct-demo.md`. #119 (`feat(notify)`): startup log printing ARMED / DISARMED -- <reason>. #121 (`test`): autouse `_no_real_telegram` fixture so a pytest run on an armed box no longer leaks real dispatcher alerts. #123 (`fix(ui)`): the Operational Map inspector clipped the grouped-assets list at 100% zoom (`.map-side` overflow never engaged — the `.map-body` grid had no row track); fixed with `grid-template-rows: minmax(0,1fr)` + `.map-side min-height:0` (scrolls), detail-card-above-legend reading order, + missing `overflow-y` on Views B/C; verified live via Claude Preview. PLAN-0014 confirmed working end-to-end live. Suite 1060 -> 1065; ruff + mypy clean. This PR = the session-31 reconcile (head `5cec863` -> `4c9151a`).
 current_actor: code
-blocked_on: Nothing gates forward progress. main clean @ `5cec863`; 0 open PRs. The 2-vertical demo is verified-runnable (run-oct-demo runbook), PLAN-0014 is confirmed working live (arm-state visible at boot), and the suite no longer leaks real Telegram pings on an armed box. **PLAN-0010 autonomy loop is LIVE + hardened.** Highest leverage remains Cray-side (register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach with the shipped 2-vertical demo). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
-next_action: **Session 31 — runbook (#117) + arm-state boot log (#119) + Telegram test-isolation (#121) shipped; STATUS current at session 31 (head `5cec863`).** No gating Code work. Backlog: (a) **Cray-action** — continue demo rehearsal / take the 2-vertical demo to design partners; power on MS-S1 for the NL-query feature (warm via `GET /warm`); register a Cowork status_digest producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable (optional)** — loop handlers (`governance_reminder`, `deferred_oq_rotation`), `status_digest` v2 auto-draft (deferred), PLAN-004 Phases B+C (low priority), PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach (highest leverage).
-head_commit: 5cec863
-recent_commits: [5cec863, 4102910, e11dc56, 3684096, 9648493, 665c189, 508aa90, f18da9b, e55c3f3, 1d1f396]
+blocked_on: Nothing gates forward progress. main clean @ `4c9151a`; 0 open PRs. The 2-vertical demo is verified-runnable + visually polished (inspector no longer clips), PLAN-0014 is confirmed working live, and the suite no longer leaks real Telegram pings. **PLAN-0010 autonomy loop is LIVE + hardened.** Highest leverage remains Cray-side (register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach with the shipped 2-vertical demo). Known UI follow-up (pre-existing, out of scope): the <980px responsive map layout collapses the side row to 0 (desktop-only demo). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
+next_action: **Session 31 — runbook (#117) + arm-state boot log (#119) + Telegram test-isolation (#121) + map inspector overflow fix (#123) shipped; STATUS current at session 31 (head `4c9151a`).** No gating Code work. Backlog: (a) **Cray-action** — continue demo rehearsal / take the 2-vertical demo to design partners (hard-refresh the browser to pick up the static UI fix; power on MS-S1 for NL query); register a Cowork status_digest producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable (optional)** — the <980px responsive map fix; loop handlers (`governance_reminder`, `deferred_oq_rotation`); `status_digest` v2 auto-draft (deferred); PLAN-004 Phases B+C (low priority); PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach (highest leverage).
+head_commit: 4c9151a
+recent_commits: [4c9151a, 0c7008e, 5cec863, 4102910, e11dc56, 3684096, 9648493, 665c189, 508aa90, f18da9b]
 ---
 
 # vero-lite — Project Status
@@ -48,8 +48,18 @@ recent_commits: [5cec863, 4102910, e11dc56, 3684096, 9648493, 665c189, 508aa90, 
 > autouse `_no_real_telegram` fixture that neutralizes both notify paths for
 > every test (delenv the OS creds → telegram.sh no-ops; close the in-app
 > gate) + a contract test proven to hold even with creds exported. Suite
-> 1064 → 1065. This PR = the session-31 reconcile (head `e11dc56` →
-> `5cec863`). The session 30 / 29 / 27+28 / … narratives below are retained
+> 1064 → 1065. **(4) PR #123** (`fix(ui)`) — Cray's rehearsal also surfaced
+> a UI bug: the Operational Map inspector panel clipped its bottom (the grouped
+> “ASSETS AT THIS SITE” list) at 100% zoom — `.map-side` had `overflow:auto`
+> but the `.map-body` grid had no row track, so the column grew to content
+> height and was clipped by `.view{overflow:hidden}` instead of scrolling.
+> Fix (static assets only — served from disk, no restart): bound the grid row
+> (`grid-template-rows: minmax(0,1fr)`) + `min-height:0` on `.map-side` so it
+> scrolls; render the selected detail card above the legend (inspected record =
+> primary reading order); + the missing `overflow-y:auto` on Views B/C.
+> Verified live via Claude Preview (scrolls + assets reachable at a short
+> viewport; no clip). This PR = the session-31 reconcile (head `5cec863` →
+> `4c9151a`). The session 30 / 29 / 27+28 / … narratives below are retained
 > for archeology.
 >
 > **Session 30 — coverage-hardening arc (#107/#109/#110) → backlog
