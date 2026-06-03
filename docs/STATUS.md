@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-03T10:54:59+07:00
+last_updated: 2026-06-03T11:11:22+07:00
 session: 31
-current_batch: **Session 31 — run-oct-demo runbook (#117) + PLAN-0014 arm-state boot log (#119).** Short session driven by Cray rehearsing the demo. #117 added `docs/runbooks/run-oct-demo.md` (verification-backed: bring up the OCT demo on either vertical via `OCT_VERTICAL`; the two run modes offline/MS-S1-on; run commands + known-good baselines; `GET /warm`; design-partner narrative; every value run live on `508aa90` with MS-S1 off). #119 (`feat(notify)`): rehearsing surfaced that the MS-S1-unreachable Telegram ping did not fire (`TELEGRAM_NOTIFY_ENABLED` left false -> closed gate -> silent no-op); fix adds `telegram.describe_arm_state()` + a one-shot startup log (via the `uvicorn.error` logger; the repo applies no logging config so app INFO is otherwise dropped) printing ARMED / DISARMED -- <reason> at boot. 4 new tests (incl. a no-token-leak assertion); live-verified both branches; suite 1060 -> 1064; ruff + mypy clean. PLAN-0014 itself is confirmed working end-to-end live (Cray armed it + received the no-PII ping). This PR = the session-31 reconcile (head `9648493` -> `e11dc56`).
+current_batch: **Session 31 — run-oct-demo runbook (#117) + PLAN-0014 arm-state boot log (#119) + Telegram test-isolation (#121).** Short session driven by Cray rehearsing the demo. #117 added `docs/runbooks/run-oct-demo.md` (verification-backed run guide for both verticals). #119 (`feat(notify)`): a one-shot startup log printing ARMED / DISARMED -- <reason> (via the `uvicorn.error` logger; app INFO is otherwise dropped) after rehearsing surfaced a silent disarmed gate. #121 (`test`): once Cray armed the box, a pytest run made `test_cli_aborts_when_same_fs_check_fails` shell out to the real `telegram.sh` and deliver a stray dispatcher alert; fixed with an autouse `_no_real_telegram` fixture neutralizing both notify paths for every test + a contract test. PLAN-0014 confirmed working end-to-end live (armed + no-PII ping received). Suite 1060 -> 1065; ruff + mypy clean. This PR = the session-31 reconcile (head `e11dc56` -> `5cec863`).
 current_actor: code
-blocked_on: Nothing gates forward progress. main clean @ `e11dc56`; 0 open PRs. The 2-vertical demo is verified-runnable (run-oct-demo runbook) and PLAN-0014 is confirmed working live (arm-state now visible at boot). **PLAN-0010 autonomy loop is LIVE + hardened.** Highest leverage remains Cray-side (register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach with the shipped 2-vertical demo). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
-next_action: **Session 31 — run-oct-demo runbook (#117) + PLAN-0014 arm-state boot log (#119) shipped; STATUS current at session 31 (head `e11dc56`).** No gating Code work. Backlog: (a) **Cray-action** — continue demo rehearsal / take the 2-vertical demo to design partners; power on MS-S1 for the NL-query feature (warm via `GET /warm`); register a Cowork status_digest producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable (optional)** — loop handlers (`governance_reminder`, `deferred_oq_rotation`), `status_digest` v2 auto-draft (deferred), PLAN-004 Phases B+C (low priority), PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach (highest leverage).
-head_commit: e11dc56
-recent_commits: [e11dc56, 3684096, 9648493, 665c189, 508aa90, f18da9b, e55c3f3, 1d1f396, 05de6d9, 8786be4]
+blocked_on: Nothing gates forward progress. main clean @ `5cec863`; 0 open PRs. The 2-vertical demo is verified-runnable (run-oct-demo runbook), PLAN-0014 is confirmed working live (arm-state visible at boot), and the suite no longer leaks real Telegram pings on an armed box. **PLAN-0010 autonomy loop is LIVE + hardened.** Highest leverage remains Cray-side (register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach with the shipped 2-vertical demo). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
+next_action: **Session 31 — runbook (#117) + arm-state boot log (#119) + Telegram test-isolation (#121) shipped; STATUS current at session 31 (head `5cec863`).** No gating Code work. Backlog: (a) **Cray-action** — continue demo rehearsal / take the 2-vertical demo to design partners; power on MS-S1 for the NL-query feature (warm via `GET /warm`); register a Cowork status_digest producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable (optional)** — loop handlers (`governance_reminder`, `deferred_oq_rotation`), `status_digest` v2 auto-draft (deferred), PLAN-004 Phases B+C (low priority), PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach (highest leverage).
+head_commit: 5cec863
+recent_commits: [5cec863, 4102910, e11dc56, 3684096, 9648493, 665c189, 508aa90, f18da9b, e55c3f3, 1d1f396]
 ---
 
 # vero-lite — Project Status
@@ -41,8 +41,16 @@ recent_commits: [e11dc56, 3684096, 9648493, 665c189, 508aa90, f18da9b, e55c3f3, 
 > assertion + 1 startup integration); verified live under uvicorn for both
 > branches. Suite **1060 → 1064**; ruff + mypy clean. PLAN-0014 itself is now
 > confirmed working end-to-end live (Cray armed it + received the no-PII ping).
-> This PR = the session-31 reconcile (head `9648493` → `e11dc56`). The session
-> 30 / 29 / 27+28 / … narratives below are retained for archeology.
+> **(3) PR #121** (`test`) — that same suite run, now that the box is armed,
+> made `test_cli_aborts_when_same_fs_check_fails` shell out to the real
+> `telegram.sh` and deliver a stray dispatcher alert to Cray's Telegram (the
+> dispatcher tests assumed an unset env — false once armed). Fixed with an
+> autouse `_no_real_telegram` fixture that neutralizes both notify paths for
+> every test (delenv the OS creds → telegram.sh no-ops; close the in-app
+> gate) + a contract test proven to hold even with creds exported. Suite
+> 1064 → 1065. This PR = the session-31 reconcile (head `e11dc56` →
+> `5cec863`). The session 30 / 29 / 27+28 / … narratives below are retained
+> for archeology.
 >
 > **Session 30 — coverage-hardening arc (#107/#109/#110) → backlog
 > work: #5 arming runbook (#112) + the loop's first real job, status_digest
