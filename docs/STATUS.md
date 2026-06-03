@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-02T22:40:13+07:00
+last_updated: 2026-06-03T10:54:59+07:00
 session: 31
-current_batch: **Session 31 — run-oct-demo runbook (#117).** A focused docs session that fills a real gap: PLAN-0013 (the demo build) is archived under `done/`, so there was no standalone "how to run the demo" reference. Added `docs/runbooks/run-oct-demo.md` — a verification-backed guide to bring up the OCT stakeholder demo on either vertical (energy or supply_chain) via the `OCT_VERTICAL` config swap, and drive all three OCT features. Documents the two run modes (offline rule fail-safe — features A/B/D; vs MS-S1-on grounded NL query — feature C), preconditions, per-vertical run commands with known-good baselines (object counts; the over-temp / cold-chain killer moment; the Approve->Execute round-trip), WSL2 localhost browser access, enabling NL query (`GET /warm`), the per-screen design-partner narrative, cleanup + troubleshooting. Every command + expected value was run live on main `508aa90` (session 31) with MS-S1 off; the NL-query grounded path cites PLAN-0013 session-28 evidence (requires MS-S1). Docs-only — no code/test/settings touched; suite unchanged. This PR = the session-31 STATUS reconcile (head `f18da9b` -> `9648493`).
+current_batch: **Session 31 — run-oct-demo runbook (#117) + PLAN-0014 arm-state boot log (#119).** Short session driven by Cray rehearsing the demo. #117 added `docs/runbooks/run-oct-demo.md` (verification-backed: bring up the OCT demo on either vertical via `OCT_VERTICAL`; the two run modes offline/MS-S1-on; run commands + known-good baselines; `GET /warm`; design-partner narrative; every value run live on `508aa90` with MS-S1 off). #119 (`feat(notify)`): rehearsing surfaced that the MS-S1-unreachable Telegram ping did not fire (`TELEGRAM_NOTIFY_ENABLED` left false -> closed gate -> silent no-op); fix adds `telegram.describe_arm_state()` + a one-shot startup log (via the `uvicorn.error` logger; the repo applies no logging config so app INFO is otherwise dropped) printing ARMED / DISARMED -- <reason> at boot. 4 new tests (incl. a no-token-leak assertion); live-verified both branches; suite 1060 -> 1064; ruff + mypy clean. PLAN-0014 itself is confirmed working end-to-end live (Cray armed it + received the no-PII ping). This PR = the session-31 reconcile (head `9648493` -> `e11dc56`).
 current_actor: code
-blocked_on: Nothing gates forward progress. main clean @ `9648493`; 0 open PRs. The 2-vertical demo is verified-runnable (energy + supply_chain) per the new `run-oct-demo` runbook. **PLAN-0010 autonomy loop is LIVE + hardened.** Highest leverage remains Cray-side (arm PLAN-0014; register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach with the shipped 2-vertical demo). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
-next_action: **Session 31 — run-oct-demo runbook shipped (#117); STATUS current at session 31 (head `9648493`).** No gating Code work. Backlog: (a) **Cray-action** — rehearse the demo via `docs/runbooks/run-oct-demo.md` (power on MS-S1 for the NL-query feature), then take the 2-vertical demo to design partners; arm PLAN-0014 (`docs/runbooks/arm-plan-0014-telegram.md`); register a Cowork status_digest producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable (optional)** — loop handlers (`governance_reminder`, `deferred_oq_rotation`), `status_digest` v2 auto-draft (deferred), PLAN-004 Phases B+C (low priority), PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach (Cray business action, highest leverage).
-head_commit: 9648493
-recent_commits: [9648493, 665c189, 508aa90, f18da9b, e55c3f3, 1d1f396, 05de6d9, 8786be4, 442d180, 4896188]
+blocked_on: Nothing gates forward progress. main clean @ `e11dc56`; 0 open PRs. The 2-vertical demo is verified-runnable (run-oct-demo runbook) and PLAN-0014 is confirmed working live (arm-state now visible at boot). **PLAN-0010 autonomy loop is LIVE + hardened.** Highest leverage remains Cray-side (register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach with the shipped 2-vertical demo). Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
+next_action: **Session 31 — run-oct-demo runbook (#117) + PLAN-0014 arm-state boot log (#119) shipped; STATUS current at session 31 (head `e11dc56`).** No gating Code work. Backlog: (a) **Cray-action** — continue demo rehearsal / take the 2-vertical demo to design partners; power on MS-S1 for the NL-query feature (warm via `GET /warm`); register a Cowork status_digest producer routine (daily off-peak, `-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable (optional)** — loop handlers (`governance_reminder`, `deferred_oq_rotation`), `status_digest` v2 auto-draft (deferred), PLAN-004 Phases B+C (low priority), PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach (highest leverage).
+head_commit: e11dc56
+recent_commits: [e11dc56, 3684096, 9648493, 665c189, 508aa90, f18da9b, e55c3f3, 1d1f396, 05de6d9, 8786be4]
 ---
 
 # vero-lite — Project Status
@@ -18,23 +18,31 @@ recent_commits: [9648493, 665c189, 508aa90, f18da9b, e55c3f3, 1d1f396, 05de6d9, 
 
 ## Current Focus
 
-> **Session 31 (current) — run-oct-demo runbook (#117).** A focused docs
-> session that fills a real gap: PLAN-0013 (the demo build) is archived under
-> `done/`, so there was no standalone "how to run the demo" reference. Added
-> `docs/runbooks/run-oct-demo.md` — a verification-backed guide to bring up the
-> OCT stakeholder demo on **either vertical** (energy or supply_chain) via the
-> `OCT_VERTICAL` config swap, and drive all three OCT features. It documents the
-> **two run modes** (offline rule fail-safe — features A/B/D; vs MS-S1-on
-> grounded NL query — feature C), preconditions, per-vertical run commands with
-> **known-good baselines** (object counts; the over-temp / cold-chain killer
-> moment; the Approve->Execute round-trip), WSL2 localhost browser access,
-> enabling NL query (`GET /warm`), the per-screen design-partner narrative,
-> cleanup, and troubleshooting. **Every command + expected value was run live on
-> `main` `508aa90` (session 31) with MS-S1 off**; the NL-query grounded path
-> cites PLAN-0013 session-28 evidence (requires MS-S1). Docs-only — no
-> code/test/settings touched; suite unchanged. This PR = the session-31 STATUS
-> reconcile (head `f18da9b` -> `9648493`). The session 30 / 29 / 27+28 / …
-> narratives below are retained for archeology.
+> **Session 31 (current) — run-oct-demo runbook (#117) + a PLAN-0014
+> arm-state boot log (#119).** A short session driven by Cray rehearsing the
+> demo. **(1) PR #117** added `docs/runbooks/run-oct-demo.md` — a
+> verification-backed guide to bring up the OCT demo on **either vertical**
+> (energy or supply_chain) via the `OCT_VERTICAL` config swap and drive all
+> three OCT features; it documents the **two run modes** (offline rule
+> fail-safe — features A/B/D; vs MS-S1-on grounded NL query — feature C),
+> preconditions, per-vertical run commands with known-good baselines, WSL2
+> localhost browser access, `GET /warm`, the per-screen design-partner
+> narrative, and troubleshooting. Every command + value was run live on `main`
+> `508aa90` with MS-S1 off (the NL-query grounded path cites PLAN-0013
+> session-28 evidence). **(2) PR #119** (`feat(notify)`) — while rehearsing,
+> the MS-S1-unreachable Telegram ping did not fire even though the token + chat
+> were set, because `TELEGRAM_NOTIFY_ENABLED` was left `false` and a closed
+> gate makes `notify_llm_unreachable()` a **silent** per-call no-op. Root cause
+> found by probing the gate booleans (no token exposed); the fix adds
+> `telegram.describe_arm_state()` + a one-shot **startup log** (via the
+> `uvicorn.error` logger, since the repo applies no logging config so app INFO
+> is otherwise dropped) printing `ARMED` / `DISARMED — <reason>` at boot,
+> making a mis-arm self-evident. 4 new tests (3 unit incl. a no-token-leak
+> assertion + 1 startup integration); verified live under uvicorn for both
+> branches. Suite **1060 → 1064**; ruff + mypy clean. PLAN-0014 itself is now
+> confirmed working end-to-end live (Cray armed it + received the no-PII ping).
+> This PR = the session-31 reconcile (head `9648493` → `e11dc56`). The session
+> 30 / 29 / 27+28 / … narratives below are retained for archeology.
 >
 > **Session 30 — coverage-hardening arc (#107/#109/#110) → backlog
 > work: #5 arming runbook (#112) + the loop's first real job, status_digest
