@@ -1,5 +1,6 @@
 """FastAPI entry point for vero-lite."""
 
+import logging
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -13,10 +14,17 @@ from services.api.models.health import HealthResponse
 from services.api.routers.actions import router as actions_router
 from services.api.routers.admin import router as admin_router
 from services.api.routers.query import router as query_router
+from services.notify.telegram import describe_arm_state
 from verticals.energy.data_adapter import register_energy_adapter
 from verticals.energy.handlers import register_energy_handlers
 from verticals.supply_chain.data_adapter import register_supply_chain_adapter
 from verticals.supply_chain.handlers import register_supply_chain_handlers
+
+# uvicorn configures its "uvicorn.error" logger (the startup banner) at INFO with
+# a console handler, while leaving the root logger at WARNING — so a plain
+# app-module INFO log is dropped from the server console. Boot diagnostics go
+# through this logger so they appear alongside the uvicorn startup lines.
+_boot_logger = logging.getLogger("uvicorn.error")
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
@@ -43,6 +51,13 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     register_adapter, register_handlers = registrars
     register_adapter()
     register_handlers()
+    # One-shot boot diagnostic: makes a mis-armed PLAN-0014 notifier (e.g. the
+    # enable flag left off — otherwise a silent per-call no-op) visible at startup.
+    _boot_logger.info(
+        "vertical %r registered; PLAN-0014 Telegram notify: %s",
+        vertical,
+        describe_arm_state(),
+    )
     yield
 
 

@@ -70,6 +70,29 @@ def _gates_open() -> bool:
     )
 
 
+def describe_arm_state() -> str:
+    """Human-readable arm state for the startup log — booleans only, never the token.
+
+    Returns ``"ARMED"`` when every gate is open, else
+    ``"DISARMED — <reason>[, <reason>...]"`` naming each closed gate. Logged once
+    at app startup so a mis-arm (e.g. the enable flag left off — the silent gate
+    that returns no per-call log) is self-evident at boot without exposing
+    ``telegram_bot_token`` (only its set/unset state is reported).
+    """
+    if _gates_open():
+        return "ARMED"
+    reasons: list[str] = []
+    if not settings.telegram_notify_enabled:
+        reasons.append("TELEGRAM_NOTIFY_ENABLED=false")
+    if settings.llm_backend != "local":
+        reasons.append(f"llm_backend={settings.llm_backend!r} (need 'local')")
+    if not settings.telegram_bot_token:
+        reasons.append("TELEGRAM_BOT_TOKEN unset")
+    if not settings.telegram_chat_id:
+        reasons.append("TELEGRAM_CHAT_ID unset")
+    return "DISARMED — " + ", ".join(reasons)
+
+
 def reset_cooldown() -> None:
     """Reset the process-local cooldown anchor (used by tests)."""
     global _last_send_monotonic

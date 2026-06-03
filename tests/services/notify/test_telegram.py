@@ -93,6 +93,36 @@ async def test_cooldown_debounces_second_send(monkeypatch: pytest.MonkeyPatch) -
     assert count["n"] == 2
 
 
+def test_describe_arm_state_armed(monkeypatch: pytest.MonkeyPatch) -> None:
+    _arm(monkeypatch)
+    assert telegram.describe_arm_state() == "ARMED"
+
+
+def test_describe_arm_state_flag_off_names_the_reason(monkeypatch: pytest.MonkeyPatch) -> None:
+    _arm(monkeypatch)
+    monkeypatch.setattr(settings, "telegram_notify_enabled", False)
+    state = telegram.describe_arm_state()
+    assert state.startswith("DISARMED")
+    assert "TELEGRAM_NOTIFY_ENABLED=false" in state
+
+
+def test_describe_arm_state_lists_all_closed_gates_without_leaking_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _arm(monkeypatch)
+    monkeypatch.setattr(settings, "telegram_notify_enabled", False)
+    monkeypatch.setattr(settings, "llm_backend", "hosted")
+    monkeypatch.setattr(settings, "telegram_bot_token", "SECRET-TOKEN")
+    monkeypatch.setattr(settings, "telegram_chat_id", "")
+    state = telegram.describe_arm_state()
+    assert "TELEGRAM_NOTIFY_ENABLED=false" in state
+    assert "llm_backend='hosted'" in state
+    assert "TELEGRAM_CHAT_ID unset" in state
+    # token is set here, so it is not a reason — and its value must never appear
+    assert "TELEGRAM_BOT_TOKEN unset" not in state
+    assert "SECRET-TOKEN" not in state
+
+
 async def test_never_raises_on_transport_error(monkeypatch: pytest.MonkeyPatch) -> None:
     _arm(monkeypatch)
 
