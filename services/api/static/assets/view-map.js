@@ -443,7 +443,7 @@
           breachResolved ? icon('check', { width: 13, height: 13, class: 'tl-check' }) : h('span', { class: 'tl-dot' })
         ].filter(Boolean)));
         scale.appendChild(h('span', {
-          class: 'tl-tick' + (breach ? ' breach' : ''),
+          class: 'tl-tick' + (breach ? ' breach' : '') + (breachResolved ? ' resolved' : ''),
           style: { left: left },
         }, tlHHMM(e[tsProp])));
       } else {
