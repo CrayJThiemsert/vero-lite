@@ -120,9 +120,17 @@
       h('div', { class: 'map-axislabel br mono' }, meta.namespace ? (meta.vertical + ' · ' + meta.namespace) : meta.vertical)
     ]));
 
-    renderLegend();
-    if (selected) renderDetail(selected.type, selected.id);
-    else renderHint();
+    // When a node is selected, the inspected record is the primary focus —
+    // render its detail above the legend (reference) so its full record incl.
+    // grouped children is visible first, not below the tall legend. The side
+    // column scrolls (views.css .map-side) so the legend stays reachable below.
+    if (selected) {
+      renderDetail(selected.type, selected.id);
+      renderLegend();
+    } else {
+      renderLegend();
+      renderHint();
+    }
   }
 
   function assetsForSite(siteId) {
