@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-03T18:01:17+07:00
-session: 31
-current_batch: **Session 31 — demo-rehearsal-driven polish + the map storytelling feature + PLAN-0015 minted.** A long Cray-interactive session refining the OCT demo: #117 run-oct-demo runbook; #119 (`feat(notify)`) ARMED/DISARMED startup log; #121 (`test`) autouse `_no_real_telegram` fixture; #123/#125/#127 (`fix(ui)`) inspector overflow/scroll/clip + consistent panel order; #129/#130/#132 (`feat`) the map operational-timeline feature (9→12-event incident arc, severity-coloured rail with pulsing breach + per-marker HH:MM, scoped to the selected site/asset, + selected-node glow; ontology-driven; all verified via Claude Preview DOM). **#134 then minted PLAN-0015 (Draft)** — wire the Screen B Approve/Execute decision loop onto Screen A's timeline with real-time event anchoring (breach ≈ server-run now), recovery as the effect of Execute, server-side decision timestamps, and a resolved breach/map state; D1–D5 Cray-ratified interactively, awaiting the Ready-for-execution green-light. Suite 1065 passed / 2 skipped; ruff + mypy clean. This PR = the session-31 reconcile (head `d150d75` → `f8d2e64`).
+last_updated: 2026-06-03T19:26:06+07:00
+session: 32
+current_batch: **Session 32 — PLAN-0015 shipped: the live-time decision loop on the Operational Timeline.** On Cray's session-32 green-light, flipped PLAN-0015 Draft→Ready (#136) then executed all 4 steps (#137, merge `be470a4`): (D1/D5) real-time event anchoring gated by `OCT_DEMO_TIME_ANCHOR` — each run shifts events so the breach ≈ server start (threshold-aware breach selection, generic across verticals), default **off** so `synthetic.py` stays deterministic for tests; (D3) server-side `approved_at`/`executed_at` decision timestamps on the action + `/recommendations`; (D2) the recovery reading as the **effect of Execute** — removed from the energy base events, injected on `/execute` at real time on the breach's asset; (D4) Screen A's timeline + map resolve green/✓ on executed, with approve/execute markers at their real click-times on the rail + a Resolved chip + the recovery marker + a resolved detail banner. New `services/engine/demo_events.py` = the per-process live event view both synthetic adapters share (zero per-vertical divergence — AC-template). All 7 ACs met; verified **live** (energy Preview DOM: proposed/pulsing → approve → execute → resolved; supply_chain API probe, anchor on). Suite **1065 → 1076** passed / 2 skipped; ruff + mypy clean. PLAN-0015 git mv'd to `done/`; runbook §9 + launch.json document the flag. This PR = the session-32 closeout reconcile (head `f8d2e64` → `be470a4`).
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `f8d2e64`; 0 open PRs. The 2-vertical demo is verified-runnable, visually polished, and tells a per-site Operational timeline story; PLAN-0014 confirmed working live; the suite no longer leaks real Telegram pings. **PLAN-0010 autonomy loop is LIVE + hardened.** **PLAN-0015 is the next build target — Draft, awaiting Cray's Ready-for-execution** (live-time decision loop on the timeline). Highest non-code leverage remains Cray-side (register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach). Reminder: the demo uvicorn must be **restarted** to pick up #129/#132 event-data changes. Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
-next_action: **Session 31 — runbook + arm-state log + telegram test-isolation + map inspector fixes + map operational-timeline feature shipped; PLAN-0015 minted (Draft); STATUS current at session 31 (head `f8d2e64`).** Backlog: (a) **Cray-action** — ratify PLAN-0015 (Draft → Ready) to unblock execution; restart the demo uvicorn (+ hard-refresh) to see the 12-event timeline; take the 2-vertical demo to design partners; register a Cowork status_digest producer routine (`-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable** — **execute PLAN-0015** (the headline next build) once ratified; the <980px responsive map fix; loop handlers (`governance_reminder`, `deferred_oq_rotation`); `status_digest` v2; PLAN-004 B+C; PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach (highest leverage).
-head_commit: f8d2e64
-recent_commits: [f8d2e64, d512e7f, d150d75, f632042, d9f7928, c277e1e, 9ee5328, 81f4e40, e39bc05, cecc028]
+blocked_on: Nothing gates shipped work. main clean @ `be470a4`; 0 open PRs (this closeout reconcile PR pending). **PLAN-0015 is done + verified-live** — the 2-vertical demo now plays the full incident → human decision → resolution loop in real time on Screen A's timeline. **PLAN-0010 autonomy loop is LIVE + hardened**; PLAN-0014 confirmed working live. Highest leverage is now Cray-side (run the live-time demo for design partners; register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach). To run the live-time demo: `OCT_DEMO_TIME_ANCHOR=true` (launch.json already sets it) + **MS-S1 off** for a clean first render; a restart resets + re-anchors the incident. Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
+next_action: **Session 32 — PLAN-0015 (live-time decision loop) executed, verified live, + archived to `done/`; STATUS current at session 32 (head `be470a4`).** Backlog: (a) **Cray-action** — run the live-time 2-vertical demo for design partners (`OCT_DEMO_TIME_ANCHOR=true`, MS-S1 off for a clean capture); register a Cowork status_digest producer routine (`-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable** — the <980px responsive map side-row collapse; loop handlers (`governance_reminder`, `deferred_oq_rotation`); `status_digest` v2; PLAN-004 B+C; PLAN-0012 Phase 2 (gated); a possible fast-follow if the anchored later-events on the *all-sites* timeline read oddly in a live demo (the incident-scope story is clean); (c) **Strategic** — design-partner outreach (highest leverage).
+head_commit: be470a4
+recent_commits: [be470a4, ec77c39, 3f8eb40, 5cfa2ed, d8f7b66, e7fec22, d4b6e05, 9d02253, f8d2e64, d512e7f]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,42 @@ recent_commits: [f8d2e64, d512e7f, d150d75, f632042, d9f7928, c277e1e, 9ee5328, 
 
 ## Current Focus
 
-> **Session 31 (current) — run-oct-demo runbook (#117) + a PLAN-0014
+> **Session 32 (current) — PLAN-0015 shipped: the live-time decision loop.**
+> Cray green-lit execution ("Flip → Ready แล้วลุย"); flipped PLAN-0015
+> Draft→Ready (#136) and executed all 4 steps (#137, merge `be470a4`). The OCT
+> demo now plays as **live incident → human decision → resolution** end-to-end
+> on Screen A's Operational Timeline. **(1) Real-time anchoring (D1/D5)** — a new
+> `services/engine/demo_events.py` is the per-process live `OperationalEvent`
+> view both synthetic adapters serve through; with `OCT_DEMO_TIME_ANCHOR=true`
+> it shifts every event so the **breach ≈ server start** (the breach = the
+> latest reading crossing `oct_recommend_threshold`, so it is generic — a
+> `warn`-severity cold-chain breach anchors too, not just `critical`), spacing
+> preserved; default **off** so the fixed synthetic datetimes (and the whole
+> suite) are unchanged. The lifespan warms the view so the base = server start
+> (raw read, no LLM call). **(2) Decision timestamps (D3)** —
+> `RecommendedAction.approved_at`/`executed_at`, set in `approve()`/`execute()`,
+> surfaced on `/recommendations`. **(3) Recovery as the effect of Execute (D2)**
+> — the pre-baked 58 °C reading was removed from the energy base events;
+> `/execute` injects a recovery reading (safe value, severity `info`, on the
+> breach event's asset, `occurred_at` = real execute-time), idempotent. **(4)
+> Frontend (D4)** — `view-map.js` `ensureData` re-fetches the decision-sensitive
+> data per mount, so returning to Screen A reflects the decision; `renderTimeline`
+> merges approve/execute decision beats onto the event time axis and resolves the
+> breach marker green/✓ (pulse stops) with a decision-status chip; the map node's
+> anomaly ring goes static-green + green glow; the detail banner resolves with the
+> recorded Approved/Executed times. **Verified live** — energy via Claude Preview
+> DOM (proposed/pulsing → approve → execute → resolved, with the recovery +
+> approve/execute markers on the rail) and supply_chain via API probe (cold-chain
+> breach anchored ≈ now, recovery injected on `shipment-pharma-01` at env-override
+> value 4.2) — proving **zero per-vertical UI/engine code** (AC-template). New
+> tests: `test_demo_events.py` + decision-time / recovery-on-execute endpoint
+> tests. Suite **1065 → 1076**; ruff + mypy clean. PLAN-0015 archived to `done/`;
+> runbook §9 + `.claude/launch.json` document the `OCT_DEMO_TIME_ANCHOR` flag.
+> Known minor artifact: anchoring on the breach leaves later unrelated events
+> (alarm +2 min, Riverside steady) slightly in the future on the *all-sites*
+> view; within the incident scope the story is clean.
+
+> **Session 31 — run-oct-demo runbook (#117) + a PLAN-0014
 > arm-state boot log (#119).** A short session driven by Cray rehearsing the
 > demo. **(1) PR #117** added `docs/runbooks/run-oct-demo.md` — a
 > verification-backed guide to bring up the OCT demo on **either vertical**

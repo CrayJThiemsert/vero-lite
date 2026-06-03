@@ -65,7 +65,9 @@ are behind: `uv run alembic upgrade head`.
 
 ```bash
 cd ~/work/vero-lite
-OCT_VERTICAL=energy uv run uvicorn services.api.main:app --port 8000
+# OCT_DEMO_TIME_ANCHOR=true is the PLAN-0015 live-time loop (breach ≈ now,
+# Approve→Execute resolves the incident on Screen A). Off by default; see §9.
+OCT_VERTICAL=energy OCT_DEMO_TIME_ANCHOR=true uv run uvicorn services.api.main:app --port 8000
 ```
 
 Then open **http://localhost:8000** (see §4 for why localhost works from
@@ -100,8 +102,16 @@ OCT_RECOMMEND_THRESHOLD=8 \
 OCT_RECOMMEND_ENTITY_TYPE=Shipment \
 OCT_RECOMMEND_ENTITY_ID_FIELD=shipment_id \
 OCT_RECOMMEND_LABEL="cold-chain temperature breach" \
+OCT_DEMO_TIME_ANCHOR=true \
+OCT_RECOVERY_VALUE=4.2 \
+OCT_RECOVERY_DESCRIPTION="Vaccine Lot VX-1188 temperature back within the 2-8 °C range." \
 uv run uvicorn services.api.main:app --port 8098
 ```
+
+> The last three lines are the PLAN-0015 live-time loop (§9): the anchor flag +
+> the cold-chain recovery override (the recovery reading is energy-worded by
+> default — `OCT_RECOVERY_VALUE`/`OCT_RECOVERY_DESCRIPTION` re-skin it per
+> vertical, the same config-swap pattern as `OCT_RECOMMEND_*`).
 
 Then open **http://localhost:8098**.
 
@@ -196,6 +206,10 @@ identical UI build, two different operations, zero per-vertical UI code.
   served from the synthetic adapter, so the demo content is unchanged on the next
   start, and `/recommendations` regenerates the action fresh **per process
   start**.
+- With `OCT_DEMO_TIME_ANCHOR=true` (§9), the anchored timestamps and the
+  execute-time recovery reading are **per-process** too: a **restart resets** the
+  incident to unresolved and re-anchors it to the new start. So to re-rehearse
+  the loop from the top, just restart uvicorn (no DB cleanup needed).
 
 ---
 
@@ -215,6 +229,49 @@ identical UI build, two different operations, zero per-vertical UI code.
 - **DB errors on Execute.** Run `uv run alembic upgrade head` (§1). The test suite
   uses a disposable `<db>_test` DB and never touches the demo DB (memory
   `project_test_suite_drops_demo_db`).
+
+---
+
+## 9. The live-time decision loop (PLAN-0015)
+
+`OCT_DEMO_TIME_ANCHOR=true` turns the static incident into a **live** one so the
+demo plays as *incident → human decision → resolution* in real time. Off by
+default (so `synthetic.py` stays deterministic for tests); the demo box runs it
+**on**. `.claude/launch.json` already sets it for every demo config.
+
+**What changes with the flag on:**
+
+1. **Anchored to now.** Each `uvicorn` run shifts the `OperationalEvent`
+   timestamps so the **breach ≈ server start** (relative spacing preserved). The
+   timeline reads as "this is happening now," not a fixed May date. Re-anchors
+   every run.
+2. **The loop closes on Screen A.** Approve then Execute the recommendation in
+   **Screen B**; return to **Screen A** and the Operational Timeline now shows:
+   - the breach marker turned **green / ✓** (the red pulse stops) + a **Resolved**
+     chip in the timeline head;
+   - **approve / execute** markers at their real click-times on the rail;
+   - a **recovery reading** (the safe-range value) that lands as the *visible
+     effect of Execute* — it isn't pre-baked, it appears only after you act;
+   - the map node's anomaly ring goes **static green**, and the detail panel
+     banner resolves with the recorded Approved / Executed times.
+   Approve alone is the **intermediate** state (still unresolved); **Execute** is
+   what resolves.
+
+**Clean capture tip.** For a screenshot/recording, run with **MS-S1 off** (rule
+fail-safe path, confidence 0.8) so the first `GET /recommendations` answers
+instantly — with MS-S1 on, that first call warms the LLM and the map's first
+render waits on it (memory: *MS-S1-on blocks the map's first render*). The
+anchor + resolution behaviour is identical on both paths.
+
+**Per-vertical recovery wording.** The injected recovery reading is energy-worded
+by default; `OCT_RECOVERY_VALUE` + `OCT_RECOVERY_DESCRIPTION` re-skin it for a
+second vertical (see the supply_chain command in §3) — config swap, no code.
+
+**Determinism.** With the flag **off**, timestamps are the fixed synthetic values
+and no recovery is injected until an Execute — so the full test suite is
+unaffected. Field reference: `services/api/config.py`
+(`oct_demo_time_anchor`, `oct_recovery_value`, `oct_recovery_description`);
+mechanism: `services/engine/demo_events.py`.
 
 ---
 

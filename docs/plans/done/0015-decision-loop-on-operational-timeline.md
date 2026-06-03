@@ -1,6 +1,6 @@
 # PLAN-0015: Wire the decision loop onto the Operational Timeline (live-time demo)
 
-**Status:** Ready for execution — Cray green-lit (session 32, 2026-06-03: "Flip → Ready แล้วลุย")
+**Status:** Done — shipped session 32 (2026-06-03), PRs #136 (Ready flip) + #137 (impl, merge `be470a4`). All 7 ACs met; verified live (energy browser DOM + supply_chain API probe, `OCT_DEMO_TIME_ANCHOR=true`). Suite 1076 passed / 2 skipped.
 **Owner:** Claude Code (executor) — design ratified interactively by Cray (session 31)
 **Created:** 2026-06-03
 **Related ADRs:** ADR-005 (OCT), ADR-006 (vertical plugin), ADR-007 (RecommendedAction + recommend→approve→execute loop), ADR-010 (LLM brain-swap + rule fail-safe)
@@ -36,30 +36,30 @@ loop close in real time.
 
 ## Acceptance Criteria
 
-- [ ] **AC-anchor** — with `OCT_DEMO_TIME_ANCHOR=true`, a fresh `uvicorn` run serves
+- [x] **AC-anchor** — with `OCT_DEMO_TIME_ANCHOR=true`, a fresh `uvicorn` run serves
       `OperationalEvent.occurred_at` shifted so the breach ≈ the run's start time
       (±1 min), with the original relative spacing preserved; a second run shifts
       again (anchored to the new start). With the flag off, timestamps are the
       fixed 2026-05-21 values (tests unchanged).
-- [ ] **AC-decision-time** — after `POST /approve` then `/execute`,
+- [x] **AC-decision-time** — after `POST /approve` then `/execute`,
       `/recommendations` returns the action with `status: executed`, a real
       `approved_at`, and a real `executed_at` (both ≈ click time, ordered).
-- [ ] **AC-recovery-on-execute** — before execute, `/objects/OperationalEvent`
+- [x] **AC-recovery-on-execute** — before execute, `/objects/OperationalEvent`
       contains **no** recovery reading and the breach is unresolved; after execute,
       a recovery reading (safe-range value, occurred_at ≈ execute-time, affected
       asset) is present.
-- [ ] **AC-resolved** — after execute, returning to Screen A shows the breach
+- [x] **AC-resolved** — after execute, returning to Screen A shows the breach
       marker + the map node as **resolved** (not pulsing red), the
       decision-status badge reads `executed`, and the recovery marker + the
       `approved`/`executed` markers appear at their real times on the rail.
-- [ ] **AC-approve-intermediate** — after Approve (no Execute), Screen A shows the
+- [x] **AC-approve-intermediate** — after Approve (no Execute), Screen A shows the
       decision as `approved` (intermediate), the breach **not** yet resolved, no
       recovery reading.
-- [ ] **AC-template** — the anchoring + decision-time wiring is ontology/config
+- [x] **AC-template** — the anchoring + decision-time wiring is ontology/config
       driven (timestamp + severity from `/meta`; the recovery value/asset from the
       `OCT_RECOMMEND_*` policy), so `OCT_VERTICAL=supply_chain` behaves the same
       with zero per-vertical UI code.
-- [ ] **AC-tests** — full suite green with the flag off (deterministic); new tests
+- [x] **AC-tests** — full suite green with the flag off (deterministic); new tests
       cover the anchor shift, the decision timestamps, and the recovery injection.
 
 ## Out of Scope
@@ -114,5 +114,59 @@ reading (Step 3) appears on the rail naturally once present.
 
 ---
 
+## Closeout — what shipped (session 32, 2026-06-03)
+
+**PRs.** #136 (Draft→Ready flip) → #137 (implementation, merge `be470a4`).
+
+**Backend.**
+- New `services/engine/demo_events.py` — the per-process live `OperationalEvent`
+  view both synthetic adapters serve through. D1 anchoring (gated by
+  `oct_demo_time_anchor`) shifts events so the breach (the latest reading
+  crossing `oct_recommend_threshold` — generic, **not** severity-based, so a
+  `warn`-severity cold-chain breach anchors too) lands at the captured base time;
+  D2 `inject_recovery` appends the recovery reading, inheriting the breach
+  event's asset/site/unit. Reset per process; autouse `demo_events.reset()` in
+  tests.
+- `config.py` — `oct_demo_time_anchor` (default off), `oct_recovery_value`,
+  `oct_recovery_description`.
+- `main.py` lifespan warms the view so the anchor base = server start (raw read,
+  no LLM call — safe while MS-S1 warms).
+- energy + supply_chain adapters route `OperationalEvent` through `demo_events`
+  (identical change — AC-template).
+- `RecommendedAction.approved_at/executed_at` (set in `approve()`/`execute()`),
+  surfaced on `RecommendationResponse` + `/recommendations`.
+- energy `synthetic.py` — pre-baked 58 °C recovery removed; `/execute` injects it.
+
+**Frontend.** `view-map.js` — `ensureData` re-fetches `/recommendations` +
+`/objects/OperationalEvent` per mount; `renderTimeline` merges approve/execute
+decision beats onto the event time axis, resolves the breach marker green/✓
+(stops the pulse), adds a decision-status chip; `drawSite` static-green anomaly
+ring + green node glow on resolve; `renderDetail` resolved banner + recorded
+decision times. `views.css` — the new marker/chip/glow/banner styles.
+
+**Tests.** `tests/services/engine/test_demo_events.py` (anchor on/off
+determinism, threshold-aware breach, recovery injection, idempotency,
+noop-before-build) + `test_action_endpoints.py` (decision timestamps,
+recovery-on-execute). **Suite: 1076 passed, 2 skipped.** ruff + mypy clean.
+
+**Live verification.** Energy via Claude Preview (DOM): proposed/pulsing →
+approve → execute → resolved with the recovery + approve/execute markers on the
+rail, "Resolved" chip, green map glow, resolved detail banner. Supply_chain via
+API probe (port 8099): cold-chain breach (14.6 °C, `warn`) anchored ≈ server
+start; recovery injected on `shipment-pharma-01` at value `4.2` (env override),
+decision timestamps real — **zero per-vertical UI/engine code**.
+
+**Demo flag.** `.claude/launch.json` (local, untracked) demo configs now pass
+`OCT_DEMO_TIME_ANCHOR=true` (+ supply_chain `OCT_RECOVERY_VALUE`/`_DESCRIPTION`).
+Runbook §9 documents the flag + the live-time narrative.
+
+**Known minor artifact.** Anchoring on the breach leaves later, unrelated events
+(the inverter alarm +2 min, the Riverside steady reading) slightly in the
+future on the *all-sites* view; within the incident scope (Battery Bank A /
+North Substation) the story is clean. A possible fast-follow if it reads oddly
+in a live demo.
+
+---
+
 *Code-drafted from the session-31 interactive design (Cray-ratified D1–D5);
-uncommitted Draft until Code commits per ADR-009 D2. Synthetic data only.*
+shipped session 32 per ADR-009 D2. Synthetic data only.*
