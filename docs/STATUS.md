@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-04T00:05:45+07:00
-session: 33
-current_batch: **Session 33 — `status-scribe` STATUS-reconciliation subagent shipped (#142, merge `29361c0`).** A meta question (how many agents/workflows has this project used) turned into infra work. Analyzed the 4-day work pattern — dominant UI iteration on the OCT map/timeline, a ~1:1-per-PR `docs(status):` reconcile toil, recurring coverage tests — against the remaining backlog and the two existing drafter subagents (`plan-drafter`, `explore-research`, both PLAN-0009). The gap: execution/maintenance toil is unagented. Shipped the highest-leverage fit — **`status-scribe`**, a third Tier-2 drafter modeled exactly on `plan-drafter` (PLAN-0009 Step 3): it reconciles `docs/STATUS.md` from a caller-supplied git fact-pack (`head_commit`/`recent_commits`/`now_iso`/`session`/`merged_pr`/`what_shipped`) and returns a proposed `docs(status):` subject. **Drafter-not-committer** — no Bash/git/commit path — so **only-Code-commits** (ADR-009 D2 / ADR-013 D2) holds. Files: `.claude/agents/status-scribe.md` (house mold: model inherit; Read/Grep/Glob/Write/Edit; disallow Bash/WebFetch/Agent; maxTurns 30; PreToolUse `Write|Edit` hook), `.claude/hooks/pretooluse_status_scribe_write_deny.py` (allowlist = exactly `docs/STATUS.md`, fail-closed, bypass-immune, mirrors the H2 normalization), `tests/handoffs/test_pretooluse_status_scribe_write_deny.py` (35 tests). pytest 35 passed; ruff + mypy clean. **No new PLAN/ADR** — operationalizes ADR-013 D1 + PLAN-0009 topology (precedent: PLAN-0012; PLAN-0009 OQ-3); the PLAN-0016 mint hit the **G2 guardrail** (consuming a PLAN number needs Cray ratification) and per Cray's call shipped without a separate PLAN — the dispatch contract lives in the agent file. This PR = the session-33 reconcile (head `bbe980c` → `ae1c38c`).
+last_updated: 2026-06-04T00:51:35+07:00
+session: 34
+current_batch: **Session 34 — PLAN-0015 fast-follow: the breach is now the tail beat of the OCT operational timeline (#144, content `cba80dc`).** Closes the "known minor artifact" recorded at PLAN-0015 closeout. With `OCT_DEMO_TIME_ANCHOR=true`, real-time anchoring shifts every synthetic `OperationalEvent` so the breach lands at server-start "now"; but both verticals had events occurring *after* the breach, so those markers anchored into the future and showed future HH:MM labels on the all-sites Operational Timeline. Fix re-times both synthetic datasets so the breach is the **latest** event: energy — inverter alarm `8:12 → 8:08` (now a precursor symptom before the thermal climax) + Riverside "steady" reading `8:20 → 8:06`; supply_chain — reefer door-open alarm `8:12 → 8:08`. Only `occurred_at` moved — measured values, asset/shipment ids, units, severities unchanged — so the singular-breach recommender contract holds. Docstrings updated to record the breach is deliberately the final beat. Synthetic data only; no production-code/schema change. **Verified:** full suite **1111 passed / 2 skipped** (unchanged), `mypy services verticals` clean, `ruff` clean on the diff (the lone E501 is in a gitignored generated file); an anchor-path probe over the **real** `demo_events` anchoring confirmed **0 events in the future** after anchoring for both verticals (breach == max `occurred_at` == now). **Process / meta note:** this reconcile is the **first live dispatch of the `status-scribe` subagent** — the session-33 reconcile (#143) was hand-authored, and PLAN-0015's first-live-use of status-scribe was the next-action validation item. So this STATUS entry both records the fast-follow AND validates the status-scribe dispatch contract end-to-end (Code supplies the fact-pack → status-scribe drafts the edit + a `docs(status):` subject → Code commits via a `docs/*` PR). This PR = the session-34 reconcile (head `ae1c38c` → `cba80dc`).
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `ae1c38c` (merge `29361c0`); 0 open PRs after this reconcile lands. **`status-scribe` is live** as a dispatchable Tier-2 drafter subagent (#142) — Code supplies a git fact-pack, it drafts the `docs/STATUS.md` edit + a `docs(status):` subject, Code commits via PR; not yet exercised on a real reconcile (this reconcile was hand-authored). **PLAN-0015 done + verified-live** — the 2-vertical demo plays the full incident → human decision → resolution loop in real time. **PLAN-0010 autonomy loop is LIVE + hardened**; PLAN-0014 confirmed working live. Highest leverage stays Cray-side (run the live-time demo for design partners; register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach). To run the live-time demo: `OCT_DEMO_TIME_ANCHOR=true` (launch.json already sets it) + **MS-S1 off** for a clean first render. Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
-next_action: **Session 33 — `status-scribe` subagent shipped + merged (#142); STATUS reconciled to head `ae1c38c`.** Backlog: (a) **Cray-action** — run the live-time 2-vertical demo for design partners (`OCT_DEMO_TIME_ANCHOR=true`, MS-S1 off for a clean capture); register a Cowork status_digest producer routine (`-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable** — first live use of `status-scribe` on a real reconcile (validate the dispatch contract end-to-end); PLAN-0010 loop handlers (`governance_reminder`, `deferred_oq_rotation`); `status_digest` v2 (candidate: wire `status-scribe` as the autonomous drafter — separately ratified); PLAN-004 B+C; PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach (highest leverage). Note: session number 33 assumed (next after 32) — Cray to correct if mis-numbered.
-head_commit: ae1c38c
-recent_commits: [29361c0, ae1c38c, f6e9117, 0f7ad95, 906fbd3, bbe980c, ac59706, 1decd4b, 3977b42, 9af3fe0]
+blocked_on: Nothing gates shipped work. main clean @ `cba80dc` (content commit of #144; merge `3d0c3a6`); 0 open PRs after this reconcile lands. **`status-scribe` dispatch contract validated end-to-end** — this reconcile is its first live dispatch (Code supplied the fact-pack, status-scribe drafted the edit + a `docs(status):` subject, Code commits via PR). **PLAN-0015 done + fast-follow shipped** — the 2-vertical demo's all-sites Operational Timeline no longer shows future markers; the breach is the latest beat under `OCT_DEMO_TIME_ANCHOR=true`. **PLAN-0010 autonomy loop is LIVE + hardened**; PLAN-0014 confirmed working live. Highest leverage stays Cray-side (run the live-time demo for design partners; register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach). To run the live-time demo: `OCT_DEMO_TIME_ANCHOR=true` (launch.json already sets it) + **MS-S1 off** for a clean first render. Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
+next_action: **Session 34 — PLAN-0015 fast-follow shipped + merged (#144, content `cba80dc`); STATUS reconciled to `cba80dc` via the first live `status-scribe` dispatch (dispatch contract now validated end-to-end).** Backlog: (a) **Code-executable** — PLAN-004 Phase B (handoff tooling: pre-commit validate-frontmatter wiring + `--watch` + auto per-session `INDEX.md`); PLAN-0010 loop handlers (`governance_reminder`, `deferred_oq_rotation`, gated on loop soak); `status_digest` v2 (candidate: wire `status-scribe` as the autonomous drafter — separately ratified); PLAN-0012 Phase 2 (gated); (b) **Cray-action** — run the live-time 2-vertical demo for design partners (`OCT_DEMO_TIME_ANCHOR=true`, MS-S1 off for a clean first render); register a Cowork `status_digest` producer routine (`-<rand>` per Lesson #0020) + live-verify; (c) **Strategic** — design-partner outreach (highest leverage).
+head_commit: cba80dc
+recent_commits: [3d0c3a6, cba80dc, 2c7ac12, 9a287d5, 29361c0, ae1c38c, f6e9117, 0f7ad95, 906fbd3, bbe980c]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,36 @@ recent_commits: [29361c0, ae1c38c, f6e9117, 0f7ad95, 906fbd3, bbe980c, ac59706, 
 
 ## Current Focus
 
-> **Session 33 (current) — `status-scribe` STATUS-reconciliation subagent
+> **Session 34 (current) — PLAN-0015 fast-follow: the breach is now the
+> tail beat of the OCT operational timeline (#144, content `cba80dc`).**
+> Closes the "known minor artifact" recorded at PLAN-0015 closeout. With
+> `OCT_DEMO_TIME_ANCHOR=true`, real-time anchoring shifts every synthetic
+> `OperationalEvent` so the breach lands at server-start "now" — but both
+> verticals had events occurring *after* the breach, so those markers
+> anchored into the future and showed future HH:MM labels on the all-sites
+> Operational Timeline. Fix re-times both synthetic datasets so the breach
+> is the **latest** event: energy — inverter alarm `8:12 → 8:08` (now a
+> precursor symptom before the thermal climax) + Riverside "steady" reading
+> `8:20 → 8:06`; supply_chain — reefer door-open alarm `8:12 → 8:08`. Only
+> `occurred_at` moved — measured values, asset/shipment ids, units,
+> severities unchanged — so the singular-breach recommender contract holds.
+> Docstrings updated to record the breach is deliberately the final beat.
+> Synthetic data only; no production-code/schema change. **Verified:** full
+> suite **1111 passed / 2 skipped** (unchanged), `mypy services verticals`
+> clean, `ruff` clean on the diff (the lone E501 is in a gitignored generated
+> file); an anchor-path probe over the **real** `demo_events` anchoring
+> confirmed **0 events in the future** after anchoring for both verticals
+> (breach == max `occurred_at` == now). **Process / meta note:** this
+> reconcile is the **first live dispatch of the `status-scribe` subagent** —
+> the session-33 reconcile (#143) was hand-authored, and PLAN-0015's
+> first-live-use of status-scribe was the next-action validation item. So
+> this STATUS entry both records the fast-follow AND validates the
+> status-scribe dispatch contract end-to-end (Code supplies the fact-pack →
+> status-scribe drafts the edit + a `docs(status):` subject → Code commits
+> via a `docs/*` PR). This PR = the session-34 reconcile (head `ae1c38c` →
+> `cba80dc`).
+>
+> **Session 33 — `status-scribe` STATUS-reconciliation subagent
 > shipped (#142).** A meta question — how many agents/workflows has this
 > project used — turned into infra work. Established that the project has
 > two custom drafter subagents (`plan-drafter`, `explore-research`, both
