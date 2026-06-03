@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-03T20:11:47+07:00
-session: 32
-current_batch: **Session 32 — PLAN-0015 shipped: the live-time decision loop on the Operational Timeline.** On Cray's session-32 green-light, flipped PLAN-0015 Draft→Ready (#136) then executed all 4 steps (#137, merge `be470a4`): (D1/D5) real-time event anchoring gated by `OCT_DEMO_TIME_ANCHOR` — each run shifts events so the breach ≈ server start (threshold-aware breach selection, generic across verticals), default **off** so `synthetic.py` stays deterministic for tests; (D3) server-side `approved_at`/`executed_at` decision timestamps on the action + `/recommendations`; (D2) the recovery reading as the **effect of Execute** — removed from the energy base events, injected on `/execute` at real time on the breach's asset; (D4) Screen A's timeline + map resolve green/✓ on executed, with approve/execute markers at their real click-times on the rail + a Resolved chip + the recovery marker + a resolved detail banner. New `services/engine/demo_events.py` = the per-process live event view both synthetic adapters share (zero per-vertical divergence — AC-template). All 7 ACs met; verified **live** (energy Preview DOM: proposed/pulsing → approve → execute → resolved; supply_chain API probe, anchor on). Suite **1065 → 1076** passed / 2 skipped; ruff + mypy clean. PLAN-0015 git mv'd to `done/`; runbook §9 + launch.json document the flag. Then **#140** (`fix(ui)`) — the pre-existing `<980px` responsive map bug: the side panel (detail card + legend) collapsed to 0px and vanished on a narrow viewport; below 980px View A now flows as a scrolling block (fixed-height map → full-width side cards → timeline), verified live at 900/375/1280px. Session-32 reconciles (head `f8d2e64` → `9af3fe0` → `bbe980c`).
+last_updated: 2026-06-04T00:05:45+07:00
+session: 33
+current_batch: **Session 33 — `status-scribe` STATUS-reconciliation subagent shipped (#142, merge `29361c0`).** A meta question (how many agents/workflows has this project used) turned into infra work. Analyzed the 4-day work pattern — dominant UI iteration on the OCT map/timeline, a ~1:1-per-PR `docs(status):` reconcile toil, recurring coverage tests — against the remaining backlog and the two existing drafter subagents (`plan-drafter`, `explore-research`, both PLAN-0009). The gap: execution/maintenance toil is unagented. Shipped the highest-leverage fit — **`status-scribe`**, a third Tier-2 drafter modeled exactly on `plan-drafter` (PLAN-0009 Step 3): it reconciles `docs/STATUS.md` from a caller-supplied git fact-pack (`head_commit`/`recent_commits`/`now_iso`/`session`/`merged_pr`/`what_shipped`) and returns a proposed `docs(status):` subject. **Drafter-not-committer** — no Bash/git/commit path — so **only-Code-commits** (ADR-009 D2 / ADR-013 D2) holds. Files: `.claude/agents/status-scribe.md` (house mold: model inherit; Read/Grep/Glob/Write/Edit; disallow Bash/WebFetch/Agent; maxTurns 30; PreToolUse `Write|Edit` hook), `.claude/hooks/pretooluse_status_scribe_write_deny.py` (allowlist = exactly `docs/STATUS.md`, fail-closed, bypass-immune, mirrors the H2 normalization), `tests/handoffs/test_pretooluse_status_scribe_write_deny.py` (35 tests). pytest 35 passed; ruff + mypy clean. **No new PLAN/ADR** — operationalizes ADR-013 D1 + PLAN-0009 topology (precedent: PLAN-0012; PLAN-0009 OQ-3); the PLAN-0016 mint hit the **G2 guardrail** (consuming a PLAN number needs Cray ratification) and per Cray's call shipped without a separate PLAN — the dispatch contract lives in the agent file. This PR = the session-33 reconcile (head `bbe980c` → `ae1c38c`).
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `be470a4`; 0 open PRs (this closeout reconcile PR pending). **PLAN-0015 is done + verified-live** — the 2-vertical demo now plays the full incident → human decision → resolution loop in real time on Screen A's timeline. **PLAN-0010 autonomy loop is LIVE + hardened**; PLAN-0014 confirmed working live. Highest leverage is now Cray-side (run the live-time demo for design partners; register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach). To run the live-time demo: `OCT_DEMO_TIME_ANCHOR=true` (launch.json already sets it) + **MS-S1 off** for a clean first render; a restart resets + re-anchors the incident. Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
-next_action: **Session 32 — PLAN-0015 (live-time decision loop) executed, verified live, + archived to `done/`; STATUS current at session 32 (head `be470a4`).** Backlog: (a) **Cray-action** — run the live-time 2-vertical demo for design partners (`OCT_DEMO_TIME_ANCHOR=true`, MS-S1 off for a clean capture); register a Cowork status_digest producer routine (`-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable** — the <980px responsive map side-row collapse; loop handlers (`governance_reminder`, `deferred_oq_rotation`); `status_digest` v2; PLAN-004 B+C; PLAN-0012 Phase 2 (gated); a possible fast-follow if the anchored later-events on the *all-sites* timeline read oddly in a live demo (the incident-scope story is clean); (c) **Strategic** — design-partner outreach (highest leverage).
-head_commit: bbe980c
-recent_commits: [bbe980c, 906fbd3, ac59706, 1decd4b, 9af3fe0, 3977b42, be470a4, ec77c39, 3f8eb40, 5cfa2ed]
+blocked_on: Nothing gates shipped work. main clean @ `ae1c38c` (merge `29361c0`); 0 open PRs after this reconcile lands. **`status-scribe` is live** as a dispatchable Tier-2 drafter subagent (#142) — Code supplies a git fact-pack, it drafts the `docs/STATUS.md` edit + a `docs(status):` subject, Code commits via PR; not yet exercised on a real reconcile (this reconcile was hand-authored). **PLAN-0015 done + verified-live** — the 2-vertical demo plays the full incident → human decision → resolution loop in real time. **PLAN-0010 autonomy loop is LIVE + hardened**; PLAN-0014 confirmed working live. Highest leverage stays Cray-side (run the live-time demo for design partners; register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach). To run the live-time demo: `OCT_DEMO_TIME_ANCHOR=true` (launch.json already sets it) + **MS-S1 off** for a clean first render. Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
+next_action: **Session 33 — `status-scribe` subagent shipped + merged (#142); STATUS reconciled to head `ae1c38c`.** Backlog: (a) **Cray-action** — run the live-time 2-vertical demo for design partners (`OCT_DEMO_TIME_ANCHOR=true`, MS-S1 off for a clean capture); register a Cowork status_digest producer routine (`-<rand>` per Lesson #0020) + live-verify; (b) **Code-executable** — first live use of `status-scribe` on a real reconcile (validate the dispatch contract end-to-end); PLAN-0010 loop handlers (`governance_reminder`, `deferred_oq_rotation`); `status_digest` v2 (candidate: wire `status-scribe` as the autonomous drafter — separately ratified); PLAN-004 B+C; PLAN-0012 Phase 2 (gated); (c) **Strategic** — design-partner outreach (highest leverage). Note: session number 33 assumed (next after 32) — Cray to correct if mis-numbered.
+head_commit: ae1c38c
+recent_commits: [29361c0, ae1c38c, f6e9117, 0f7ad95, 906fbd3, bbe980c, ac59706, 1decd4b, 3977b42, 9af3fe0]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,42 @@ recent_commits: [bbe980c, 906fbd3, ac59706, 1decd4b, 9af3fe0, 3977b42, be470a4, 
 
 ## Current Focus
 
-> **Session 32 (current) — PLAN-0015 shipped: the live-time decision loop.**
+> **Session 33 (current) — `status-scribe` STATUS-reconciliation subagent
+> shipped (#142).** A meta question — how many agents/workflows has this
+> project used — turned into infra work. Established that the project has
+> two custom drafter subagents (`plan-drafter`, `explore-research`, both
+> PLAN-0009) and that **Workflow has never been invoked** (0 `wf_` runIds
+> across 129 transcripts). Analyzed the 4-day work pattern — dominant UI
+> iteration on the OCT map/timeline, a **~1:1-per-PR `docs(status):`
+> reconcile toil**, recurring coverage tests — against the remaining
+> backlog. The gap: the two existing agents cover *design + research*
+> (upstream); execution/maintenance toil is unagented. Shipped the
+> highest-leverage fit — **`status-scribe`**, a third Tier-2 drafter
+> modeled exactly on `plan-drafter` (PLAN-0009 Step 3): it reconciles
+> `docs/STATUS.md` from a caller-supplied git fact-pack (`head_commit` /
+> `recent_commits` / `now_iso` / `session` / `merged_pr` / `what_shipped`,
+> optional `next_action`) and returns a proposed `docs(status):` subject.
+> **Drafter-not-committer** — no Bash/git/commit path, cannot `git mv` to
+> `done/`, cannot spawn nested subagents — so **only-Code-commits**
+> (ADR-009 D2 / ADR-013 D2) holds. Three files: `.claude/agents/status-scribe.md`
+> (house mold; dispatch contract + output schema + adversarial hardening +
+> single-file serialization note), `.claude/hooks/pretooluse_status_scribe_write_deny.py`
+> (write-scope hook — allowlist = exactly `docs/STATUS.md`, fail-closed,
+> bypass-immune, mirrors the H2 normalization), and
+> `tests/handoffs/test_pretooluse_status_scribe_write_deny.py` (35 tests:
+> allow/deny incl. the plan-drafter surface *denied* + near-miss cases,
+> fail-closed, pass-through, bypass-immunity both directions, reason
+> citations). pytest 35 passed; ruff + mypy clean. **No new PLAN/ADR** —
+> operationalizes ADR-013 D1 + PLAN-0009 (precedent: PLAN-0012; PLAN-0009
+> OQ-3). The PLAN-0016 mint hit the **G2 guardrail** (consuming a PLAN
+> number needs Cray ratification — first 529-transient, then the real
+> structural verdict); per Cray's call it shipped **without** a separate
+> PLAN, the dispatch contract living in the agent file. Process note: this
+> very reconcile was **hand-authored** (status-scribe not yet exercised on
+> a live reconcile — that is the next-action validation). This PR = the
+> session-33 reconcile (head `bbe980c` → `ae1c38c`).
+>
+> **Session 32 — PLAN-0015 shipped: the live-time decision loop.**
 > Cray green-lit execution ("Flip → Ready แล้วลุย"); flipped PLAN-0015
 > Draft→Ready (#136) and executed all 4 steps (#137, merge `be470a4`). The OCT
 > demo now plays as **live incident → human decision → resolution** end-to-end
