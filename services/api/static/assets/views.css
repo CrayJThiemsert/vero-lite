@@ -73,7 +73,17 @@
 /* map nodes */
 .mnode .halo { animation: haloPulse 1.8s ease-out infinite; transform-origin: center; transform-box: fill-box; }
 @keyframes haloPulse { 0% { opacity: .9; r: 9; } 70% { opacity: 0; r: 17; } 100% { opacity: 0; r: 9; } }
-.mnode.sel circle:first-of-type { filter: drop-shadow(0 0 6px var(--accent)); }
+/* selected site/asset node — a pulsing glow so the active focus is obvious */
+.mnode.sel circle:first-of-type { animation: nodeGlow 1.9s ease-in-out infinite; }
+@keyframes nodeGlow {
+  0%, 100% { filter: drop-shadow(0 0 3px var(--accent)); }
+  50% { filter: drop-shadow(0 0 11px var(--accent)) drop-shadow(0 0 5px var(--accent)); }
+}
+.mnode.sel.flagged circle:first-of-type { animation-name: nodeGlowCrit; }
+@keyframes nodeGlowCrit {
+  0%, 100% { filter: drop-shadow(0 0 3px var(--crit)); }
+  50% { filter: drop-shadow(0 0 11px var(--crit)) drop-shadow(0 0 5px var(--crit)); }
+}
 .mnode:hover { filter: brightness(1.15); }
 
 /* site label plate (foreignObject) */

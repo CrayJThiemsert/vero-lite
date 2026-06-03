@@ -327,23 +327,41 @@
     if (!tsProp) return;
     const sevProp = (O.Onto.statusProp(evType) || {}).name;
     const pkE = O.Onto.pk(evType);
-    const events = store.objects.filter(e => e[tsProp]).slice()
+    let events = store.objects.filter(e => e[tsProp]).slice()
       .sort((a, b) => new Date(a[tsProp]) - new Date(b[tsProp]));
     if (!events.length) return;
+
+    // Scope the rail to the selected site / asset so it reflects what the
+    // operator is inspecting (a selected event scopes to its own site); with
+    // nothing selected it shows every site's events. This makes it an
+    // operational timeline, not a single stuck incident.
+    let scopeLabel = 'all sites';
+    if (selected) {
+      let filterId = selected.id, labelType = selected.type, labelId = selected.id;
+      if (selected.type === evType) {
+        const ev = store.objects.find(e => e[pkE] === selected.id);
+        if (ev && ev.site_id) { filterId = ev.site_id; labelType = null; labelId = ev.site_id; }
+      }
+      const inScope = events.filter(e => e.asset_id === filterId || e.site_id === filterId);
+      if (inScope.length) {
+        events = inScope;
+        const lt = labelType || (O.Onto.geoTypes()[0] || {}).name;
+        const lo = lt ? (O.State.objects[lt] || { objects: [] }).objects.find(o => o[O.Onto.pk(lt)] === labelId) : null;
+        scopeLabel = lo ? O.Onto.label(lt, lo) : String(labelId);
+      }
+    }
+
     const n = events.length;
     // Even chronological spacing (4%..96%) so every beat is legible and the
-    // climax never overlaps; the per-marker time labels below carry the real
-    // timing (an honest proportional axis collapses this incident — a quiet
-    // pre-dawn transition then a dense ~30-min escalation — into a clipped
-    // cluster). Markers stay strictly time-ordered.
+    // climax never overlaps; the per-marker time labels carry the real timing.
     const xOf = (i) => (n <= 1 ? 50 : 4 + (i / (n - 1)) * 92);
     // The pulsing "breach" hero is the single most-severe reading (severity
     // 'critical'); an alarm (severity 'error') stays red but does not pulse.
     const isCrit = (e) => sevProp && String(e[sevProp]).toLowerCase() === 'critical';
 
     tlEl.appendChild(h('div', { class: 'tl-head' }, [
-      h('span', { class: 'eyebrow' }, 'Incident timeline'),
-      h('span', { class: 'faint mono', style: { fontSize: '10.5px' } }, tlDate(events[0][tsProp])),
+      h('span', { class: 'eyebrow' }, 'Operational timeline'),
+      h('span', { class: 'faint mono', style: { fontSize: '10.5px' } }, tlDate(events[0][tsProp]) + ' · ' + scopeLabel),
       h('div', { class: 'tl-legend' }, [
         h('span', { class: 'tl-leg s-info' }, [h('i'), 'normal']),
         h('span', { class: 'tl-leg s-warn' }, [h('i'), 'warning']),
