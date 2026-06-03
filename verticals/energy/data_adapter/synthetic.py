@@ -8,9 +8,11 @@ internal codes appear here (PLAN-0005 PD-5 / §7.2).
 Shapes match ``verticals/energy/ontology/energy_v0.yaml``: Site, Asset,
 and OperationalEvent. The events trace a single morning thermal incident on
 Battery Bank A — a baseline, a rising temperature trend (info → warn →
-critical), the over-temperature breach the rule-based recommender escalates,
-and a concurrent inverter alarm — so the demo timeline reads as build-up →
-climax. The post-mitigation **recovery** reading is no longer pre-baked here:
+critical), a concurrent inverter alarm, and — as the timeline's final beat —
+the over-temperature breach the rule-based recommender escalates, so the demo
+reads as build-up → climax. The breach is deliberately the **latest** event so
+real-time anchoring (PLAN-0015 D1) leaves nothing dangling in the future on the
+all-sites view. The post-mitigation **recovery** reading is no longer pre-baked here:
 it is injected as the effect of executing the decision (PLAN-0015 D2, real
 execute-time) so the timeline only resolves after the operator acts. **Only
 the breach** trips an action: the recommender escalates any reading whose
@@ -94,11 +96,13 @@ def operational_events() -> list[dict[str, Any]]:
     """Return the synthetic OperationalEvent records, in chronological order.
 
     One morning thermal incident on Battery Bank A: a discharge-cycle
-    transition, a baseline, a rising temperature trend, the over-temperature
-    breach (``event-reading-03``, ≥ threshold → drives the recommender), and a
-    concurrent inverter alarm. The recovery reading is injected on execute
-    (PLAN-0015 D2), not returned here. Every non-breach reading is < the
-    recommender threshold so only the breach escalates (see module docstring).
+    transition, a baseline, a rising temperature trend, a concurrent inverter
+    alarm, and — last — the over-temperature breach (``event-reading-03``,
+    ≥ threshold → drives the recommender). The breach is the final beat so
+    real-time anchoring (PLAN-0015 D1) leaves no event in the future. The
+    recovery reading is injected on execute (PLAN-0015 D2), not returned here.
+    Every non-breach reading is < the recommender threshold so only the breach
+    escalates (see module docstring).
     """
     return [
         {
@@ -174,7 +178,7 @@ def operational_events() -> list[dict[str, Any]]:
             "measured_value": 43.2,
             "unit": "celsius",
             "description": "Battery Bank B temperature steady.",
-            "occurred_at": datetime(2026, 5, 21, 8, 20, tzinfo=UTC),
+            "occurred_at": datetime(2026, 5, 21, 8, 6, tzinfo=UTC),
             "asset_id": "asset-battery-02",
             "site_id": "site-microgrid-01",
         },
@@ -201,6 +205,15 @@ def operational_events() -> list[dict[str, Any]]:
             "site_id": "site-substation-01",
         },
         {
+            "event_id": "event-alarm-01",
+            "event_type": "alarm",
+            "severity": "error",
+            "description": "Inverter Unit A communication loss.",
+            "occurred_at": datetime(2026, 5, 21, 8, 8, tzinfo=UTC),
+            "asset_id": "asset-inverter-01",
+            "site_id": "site-substation-01",
+        },
+        {
             "event_id": "event-reading-03",
             "event_type": "reading",
             "severity": "critical",
@@ -209,15 +222,6 @@ def operational_events() -> list[dict[str, Any]]:
             "description": "Battery Bank A temperature above the safe operating range.",
             "occurred_at": datetime(2026, 5, 21, 8, 10, tzinfo=UTC),
             "asset_id": "asset-battery-01",
-            "site_id": "site-substation-01",
-        },
-        {
-            "event_id": "event-alarm-01",
-            "event_type": "alarm",
-            "severity": "error",
-            "description": "Inverter Unit A communication loss.",
-            "occurred_at": datetime(2026, 5, 21, 8, 12, tzinfo=UTC),
-            "asset_id": "asset-inverter-01",
             "site_id": "site-substation-01",
         },
         # The post-mitigation recovery reading is NOT pre-baked here (PLAN-0015

@@ -7,9 +7,11 @@ codes appear here (PLAN-0005 PD-5 / §7.2; PLAN-0013 AC-safety).
 
 Shapes match ``verticals/supply_chain/ontology/supply_chain_v0.yaml``:
 Facility, Shipment, and OperationalEvent. The reading events include one
-pharma shipment whose temperature crosses the cold-chain limit — the beat
-the recommender escalates (mirrors the energy over-temp scenario, swapped to
-the cold-chain domain). The active vertical's escalation threshold is
+pharma shipment whose temperature crosses the cold-chain limit — the breach
+the recommender escalates, kept as the timeline's **final beat** so real-time
+anchoring (PLAN-0015 D1) leaves nothing dangling in the future (mirrors the
+energy over-temp scenario, swapped to the cold-chain domain). The active
+vertical's escalation threshold is
 configured via ``OCT_RECOMMEND_THRESHOLD`` (8 °C for the demo); this dataset
 stays decoupled from it by breaching well above any sane cold-chain limit.
 """
@@ -88,7 +90,11 @@ def shipments() -> list[dict[str, Any]]:
 
 
 def operational_events() -> list[dict[str, Any]]:
-    """Return the synthetic OperationalEvent records (readings + one alarm)."""
+    """Return the synthetic OperationalEvent records (readings + one alarm).
+
+    The door-open alarm precedes the cold-chain breach (``event-reading-03``),
+    which is the last beat so real-time anchoring leaves no event in the future.
+    """
     return [
         {
             "event_id": "event-reading-01",
@@ -113,6 +119,15 @@ def operational_events() -> list[dict[str, Any]]:
             "facility_id": "facility-dc-01",
         },
         {
+            "event_id": "event-alarm-01",
+            "event_type": "alarm",
+            "severity": "error",
+            "description": "Reefer door-open alarm on Frozen Goods FZ-77.",
+            "occurred_at": datetime(2026, 5, 31, 8, 8, tzinfo=UTC),
+            "shipment_id": "shipment-frozen-01",
+            "facility_id": "facility-dc-01",
+        },
+        {
             "event_id": "event-reading-03",
             "event_type": "reading",
             "severity": "warn",
@@ -122,14 +137,5 @@ def operational_events() -> list[dict[str, Any]]:
             "occurred_at": datetime(2026, 5, 31, 8, 10, tzinfo=UTC),
             "shipment_id": "shipment-pharma-01",
             "facility_id": "facility-coldhub-01",
-        },
-        {
-            "event_id": "event-alarm-01",
-            "event_type": "alarm",
-            "severity": "error",
-            "description": "Reefer door-open alarm on Frozen Goods FZ-77.",
-            "occurred_at": datetime(2026, 5, 31, 8, 12, tzinfo=UTC),
-            "shipment_id": "shipment-frozen-01",
-            "facility_id": "facility-dc-01",
         },
     ]
