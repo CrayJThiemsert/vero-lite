@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-04T16:25:15+07:00
+last_updated: 2026-06-04T16:50:26+07:00
 session: 36
-current_batch: **Session 36 — Task (B) of the design-partner demo-generator track shipped: ADR-0015 + PLAN-0016 (two PRs, #150 + #151).** Both Cowork-drafted (ADR-009 D1), Code-committed via PR (ADR-009 D2). **ADR-0015 (Proposed; content `4fac30c`, #150)** — "Assisted/Self-Serve Vertical Onboarding as a 2-Tier Pitch Artifact": Tier-1 synthetic "Mirror demo" (build first) + gated Tier-2 real-data POC (design = task C); D5 adopts (ii) live co-creation (showcase pre-built aquaculture vertical #3, then build the stakeholder's vertical #4 LIVE via guided/conversational intake) with an engine/intake-face two-layer split; D4 pick locked to SE-Asian aquaculture; OQ-1/OQ-3/OQ-4 carried for Cray. **PLAN-0016 (Draft; content `6b1b42f`, #151)** — "`vero-lite new-vertical` scaffolding — Tier-1 Mirror-demo generator": the engine layer of D5, proven end-to-end on the aquaculture pick (3rd vertical, Rule-of-Three on-pattern); carries a ⭐ REQUIRED Step 0 engine prereq `OCT_RECOMMEND_DIRECTION ∈ {above, below}` (default `above`, no regression) so a below-threshold breach fires the recommender (a Cowork review caught a third direction-hardcoded site beyond the dispatch's two). Earlier this session: vertical-#3 pick research (Cowork) selected aquaculture from a 5-candidate gated shortlist (research file gitignored).
+current_batch: Session 36 — design-partner demo-generator track: Task (B) drafts shipped (ADR-0015 #150 + PLAN-0016 #151), **ADR-0015 ratified → Accepted (#153)**, and **PLAN-0016 Step 0 `OCT_RECOMMEND_DIRECTION` shipped (#154, suite 1136/2)**. Phase 0 vertical-#3 pick research (aquaculture) done earlier. Remaining design-partner-track work handed off to a new session.
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `c74ecb0` (merge of #151); 0 open PRs. **ADR-0015 is Proposed** — awaiting Cray ratification to flip to Accepted (does not block; recorded as a proposed decision). PLAN-0016 is Draft (engine layer of ADR-0015 D5; Step 0 independently PR-able). **PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.** Active plans (PLAN-0010 other handlers, PLAN-004 Phase C, PLAN-0012 Phase 2) not-yet-triggered. Highest leverage stays Cray-side (run the live-time demo; design-partner outreach).
-next_action: (1) **Cray to ratify ADR-0015** (Proposed → Accepted); Code applies the flip + commits (ADR-009 D2 / CLAUDE.md §6). (2) **Dispatch PLAN-0017** (live-co-creation intake face — A2 guided-form / A3 conversational / hybrid per OQ-4, with the mandatory human review/edit of the LLM-drafted ontology) drafting — after ADR-0015 acceptance; decide **PLAN-0018** (demo-shell `GET /llm/status` + in-UI MS-S1 warm/sleep) standalone vs fold-into-0017 at that dispatch. (3) **PLAN-0016 Step 0** (`OCT_RECOMMEND_DIRECTION`) is the standout independently-PR-able implementation start. (4) **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — deferred until (B) landed per Cray, now ready. (5) Backlog unchanged: PLAN-0010 loop handlers (`governance_reminder`/`deferred_oq_rotation`, soak-gated), `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). Highest leverage stays Cray-side (run the live-time demo; design-partner outreach).
-head_commit: 6b1b42f
-recent_commits: [c74ecb0, 6b1b42f, a1e7320, 4fac30c, fbbf129, 7a180d9, 900449e, e8bc6c2, 7161ee3, 70f3d78]
+blocked_on: Nothing gates shipped work. main clean @ `0548334` (merge of #154); 0 open PRs. **ADR-0015 is Accepted; PLAN-0016 Step 0 shipped** (the below-threshold engine fix); PLAN-0016 Steps 1–6 remain. PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
+next_action: This session did #1 (ratify ADR-0015) + #2 (PLAN-0016 Step 0); the rest is **handed off to a new session**. Remaining: (1) **Dispatch PLAN-0017** (live-co-creation intake face — A2 guided-form / A3 conversational / hybrid per ADR-015 OQ-4, with the mandatory human review/edit of the LLM-drafted ontology) drafting to Cowork — now UNBLOCKED (ADR-0015 Accepted). (2) Decide **PLAN-0018** (demo-shell `GET /llm/status` + in-UI MS-S1 warm/sleep) standalone vs fold-into-0017. (3) **PLAN-0016 Steps 1–6** — the `vero-lite new-vertical` scaffolding command itself (command skeleton → LLM-gen synthetic adapter → templated boilerplate → registration code-mod → aquaculture end-to-end instance → docs), Step 0 already shipped. (4) **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion). (5) Backlog unchanged: PLAN-0010 loop handlers (soak-gated), `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). Highest leverage stays Cray-side (run the live-time demo; design-partner outreach).
+head_commit: 94c1078
+recent_commits: [0548334, 94c1078, d66001c, 5fed749, a0d9a09, af01a89, c74ecb0, 6b1b42f, a1e7320, 4fac30c]
 ---
 
 # vero-lite — Project Status
@@ -48,11 +48,31 @@ recent_commits: [c74ecb0, 6b1b42f, a1e7320, 4fac30c, fbbf129, 7a180d9, 900449e, 
 > fires the recommender — threaded through `recommender.py` (`94`, `199-204`,
 > `215`, `233-235`) + `demo_events.py` (`43-64`, the third direction-hardcoded
 > site a Cowork review caught beyond the dispatch's two). Step 0 is PR-able
-> independently of the scaffolding work. **Earlier this session — Phase 0
+> independently of the scaffolding work.
+> **Then this session also ratified the ADR + shipped that Step 0.**
+> **ADR-0015 ratified → Accepted (#153, content `5fed749`)** — Cray ratified in
+> session 36; Status flipped **Proposed → Accepted** (ADR-009 D2 / CLAUDE.md
+> §6). This unblocks the PLAN-0017 intake-face drafting dispatch.
+> **PLAN-0016 Step 0 shipped (#154, content `94c1078`, `feat(engine)`)** — the
+> **⭐ REQUIRED** engine prerequisite: the new
+> **`OCT_RECOMMEND_DIRECTION ∈ {above, below}`** env knob (default `above`,
+> normalized + fail-safe) + a single
+> `crosses_threshold(measured, threshold, direction)` helper threaded through
+> `recommender._is_recommendation_trigger`, `recommender._rule_recommend`
+> (guard + the trace-summary operator `>=`/`<=` + the description verb "rose
+> above"/"fell below"), and `demo_events._breach_event` (the
+> `OCT_DEMO_TIME_ANCHOR` breach/anchor selector — the third
+> direction-hardcoded site the Cowork review caught beyond the dispatch's two).
+> So a **below-threshold** breach (the aquaculture DO crash, 3.2 < 4 mg/L) now
+> fires the recommender — including the demo's clean-render rule path (MS-S1
+> off). **Verified:** +9 tests; full suite **1136 passed / 2 skipped**; ruff +
+> mypy clean. PLAN-0016 Steps 1–6 (the scaffolding command itself) remain; the
+> rest of the design-partner-track work is handed off to a new session.
+> **Earlier this session — Phase 0
 > vertical-#3 pick research (Cowork)** selected aquaculture from a 5-candidate
 > gated shortlist scored on a 2026 competitive-whitespace lens; the research
 > file is gitignored (`docs/research/private/`). This PR = the session-36
-> reconcile (head `e8bc6c2` → `6b1b42f`).
+> reconcile (head `6b1b42f` → `94c1078`).
 >
 > **Session 35 — PLAN-004 Phase B shipped: handoff
 > tooling automation (#148, content `e8bc6c2`).** Landed the three
