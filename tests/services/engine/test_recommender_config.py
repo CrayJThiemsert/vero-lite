@@ -19,6 +19,7 @@ from services.engine.recommender import (
     RULE_CONFIDENCE,
     _is_recommendation_trigger,
     _rule_recommend,
+    crosses_threshold,
 )
 
 
@@ -81,3 +82,89 @@ def test_failsafe_energy_defaults_unchanged() -> None:
     assert action.affected_entities[0].primary_key == "asset-battery-01"
     assert "over-temperature" in action.title
     assert action.confidence == RULE_CONFIDENCE
+
+
+# --- PLAN-0016 Step 0: threshold direction (below-breach support) ---
+
+
+def _do_crash_event() -> dict[str, Any]:
+    """An aquaculture dissolved-oxygen crash — breaches BELOW threshold."""
+    return {
+        "event_id": "event-reading-07",
+        "event_type": "reading",
+        "measured_value": 3.2,
+        "unit": "mg/L",
+        "pond_id": "POND-07",
+    }
+
+
+def test_crosses_threshold_above_default() -> None:
+    """Default 'above': at-or-above the threshold crosses (energy over-temp)."""
+    assert crosses_threshold(96.5, 90.0, "above") is True
+    assert crosses_threshold(90.0, 90.0, "above") is True  # inclusive
+    assert crosses_threshold(58.0, 90.0, "above") is False
+
+
+def test_crosses_threshold_below() -> None:
+    """'below': at-or-below the threshold crosses (DO crash)."""
+    assert crosses_threshold(3.2, 4.0, "below") is True
+    assert crosses_threshold(4.0, 4.0, "below") is True  # inclusive
+    assert crosses_threshold(6.5, 4.0, "below") is False
+
+
+def test_crosses_threshold_normalizes_and_fails_safe() -> None:
+    """Case/space-insensitive; anything but 'below' means 'above' (fail-safe)."""
+    assert crosses_threshold(3.2, 4.0, " Below ") is True
+    assert crosses_threshold(96.5, 90.0, "garbage") is True  # != 'below' → 'above'
+    assert crosses_threshold(3.2, 4.0, "above") is False
+
+
+def test_below_direction_trigger(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Direction 'below': a DO crash below threshold fires; a healthy reading does not."""
+    monkeypatch.setattr(settings, "oct_recommend_threshold", 4.0)
+    monkeypatch.setattr(settings, "oct_recommend_direction", "below")
+    assert _is_recommendation_trigger(_do_crash_event()) is True
+
+    healthy = _do_crash_event()
+    healthy["measured_value"] = 6.5
+    assert _is_recommendation_trigger(healthy) is False
+
+
+def test_below_direction_failsafe_wording(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fail-safe fires below threshold; trace/description read 'below', never '>='."""
+    monkeypatch.setattr(settings, "oct_recommend_threshold", 4.0)
+    monkeypatch.setattr(settings, "oct_recommend_direction", "below")
+    monkeypatch.setattr(settings, "oct_recommend_entity_type", "Pond")
+    monkeypatch.setattr(settings, "oct_recommend_entity_id_field", "pond_id")
+    monkeypatch.setattr(settings, "oct_recommend_label", "dissolved-oxygen crash")
+
+    record = _rule_recommend(_do_crash_event(), "aquaculture")
+
+    assert record is not None
+    action = record.action
+    assert action.affected_entities[0].object_type == "Pond"
+    assert action.affected_entities[0].primary_key == "POND-07"
+    assert "dissolved-oxygen crash" in action.title
+    summary = action.reasoning_trace[0].summary
+    assert "<=" in summary and ">=" not in summary
+    assert "fell below" in action.description
+    assert "rose above" not in action.description
+
+
+def test_below_direction_silent_above(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Symmetry guard: under 'below', a reading ABOVE threshold must NOT fire."""
+    monkeypatch.setattr(settings, "oct_recommend_threshold", 4.0)
+    monkeypatch.setattr(settings, "oct_recommend_direction", "below")
+    healthy = _do_crash_event()
+    healthy["measured_value"] = 7.0
+    assert _is_recommendation_trigger(healthy) is False
+    assert _rule_recommend(healthy, "aquaculture") is None
+
+
+def test_above_default_wording_unchanged() -> None:
+    """Default 'above' direction keeps direction-correct wording ('rose above', '>=')."""
+    record = _rule_recommend(_energy_overtemp_event(), "energy")
+    assert record is not None
+    action = record.action
+    assert ">=" in action.reasoning_trace[0].summary
+    assert "rose above" in action.description

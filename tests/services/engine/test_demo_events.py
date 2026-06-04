@@ -153,3 +153,70 @@ def test_inject_recovery_noop_before_build() -> None:
         "never-built", breach_event_id="e-2", occurred_at=datetime.now(UTC)
     )
     assert out is None
+
+
+# --- PLAN-0016 Step 0: below-direction anchoring (aquaculture DO crash) ---
+
+
+def _aqua_base() -> list[dict[str, Any]]:
+    """A 3-beat aquaculture incident: healthy DO, DO crash (breach, below 4), alarm."""
+    return [
+        {
+            "event_id": "e-1",
+            "event_type": "reading",
+            "severity": "info",
+            "measured_value": 6.8,
+            "unit": "mg/L",
+            "occurred_at": datetime(2026, 5, 21, 1, 0, tzinfo=UTC),
+            "pond_id": "POND-07",
+            "site_id": "farm-1",
+        },
+        {
+            "event_id": "e-2",
+            "event_type": "reading",
+            "severity": "critical",
+            "measured_value": 3.2,
+            "unit": "mg/L",
+            "occurred_at": datetime(2026, 5, 21, 2, 0, tzinfo=UTC),
+            "pond_id": "POND-07",
+            "site_id": "farm-1",
+        },
+        {
+            "event_id": "e-3",
+            "event_type": "alarm",
+            "severity": "error",
+            "occurred_at": datetime(2026, 5, 21, 2, 2, tzinfo=UTC),
+            "pond_id": "POND-07",
+            "site_id": "farm-1",
+        },
+    ]
+
+
+def test_below_direction_anchors_on_do_crash(monkeypatch: pytest.MonkeyPatch) -> None:
+    """With direction 'below', the DO crash (3.2 <= 4) is the breach anchored to now —
+    the healthy 6.8 reading is NOT selected (PLAN-0016 Step 0)."""
+    monkeypatch.setattr(settings, "oct_demo_time_anchor", True)
+    monkeypatch.setattr(settings, "oct_recommend_threshold", 4.0)
+    monkeypatch.setattr(settings, "oct_recommend_direction", "below")
+    demo_events.reset()
+    before = datetime.now(UTC)
+    out = demo_events.events("aqua", _aqua_base)
+    after = datetime.now(UTC)
+
+    by_id = {e["event_id"]: e["occurred_at"] for e in out}
+    assert before - timedelta(seconds=2) <= by_id["e-2"] <= after + timedelta(seconds=2)
+    # relative spacing preserved (e-1 one hour before, e-3 two minutes after)
+    assert by_id["e-2"] - by_id["e-1"] == timedelta(hours=1)
+    assert by_id["e-3"] - by_id["e-2"] == timedelta(minutes=2)
+
+
+def test_below_direction_ignores_healthy_readings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Under 'below', readings above threshold are not breaches → no anchor (base survives)."""
+    monkeypatch.setattr(settings, "oct_demo_time_anchor", True)
+    monkeypatch.setattr(settings, "oct_recommend_threshold", 4.0)
+    monkeypatch.setattr(settings, "oct_recommend_direction", "below")
+    demo_events.reset()
+    healthy = _aqua_base()
+    healthy[1]["measured_value"] = 5.5  # DO never drops below 4 → nothing crosses
+    out = demo_events.events("aqua2", lambda: healthy)
+    assert [e["occurred_at"] for e in out] == [e["occurred_at"] for e in healthy]

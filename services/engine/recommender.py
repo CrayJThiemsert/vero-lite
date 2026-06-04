@@ -55,6 +55,23 @@ RULE_CONFIDENCE = 0.8
 """Fixed confidence for rule-based (fail-safe) recommendations — no model inference."""
 
 
+def crosses_threshold(measured: float, threshold: float, direction: str) -> bool:
+    """True when ``measured`` breaches ``threshold`` in the configured direction.
+
+    ``direction='above'`` (default): ``measured >= threshold`` — the energy
+    over-temperature semantics. ``direction='below'``: ``measured <= threshold``
+    — e.g. an aquaculture dissolved-oxygen crash (PLAN-0016 Step 0). Normalized
+    case/space-insensitively; anything other than ``'below'`` means ``'above'``,
+    so an unset/garbled ``OCT_RECOMMEND_DIRECTION`` fails safe to the historical
+    behavior. The single source of truth shared by the trigger
+    (``_is_recommendation_trigger``), the fail-safe rule (``_rule_recommend``),
+    and the demo-anchor breach selector (``demo_events._breach_event``).
+    """
+    if direction.strip().lower() == "below":
+        return measured <= threshold
+    return measured >= threshold
+
+
 class ActionStatus(StrEnum):
     """Lifecycle status — mirrors the ontology RecommendedAction.status enum."""
 
@@ -91,7 +108,9 @@ def _is_recommendation_trigger(event: dict[str, Any]) -> bool:
     if event.get("event_type") != "reading":
         return False
     measured = event.get("measured_value")
-    return measured is not None and measured >= settings.oct_recommend_threshold
+    return measured is not None and crosses_threshold(
+        measured, settings.oct_recommend_threshold, settings.oct_recommend_direction
+    )
 
 
 def _build_chat_client() -> ChatClient:
@@ -200,7 +219,9 @@ def _rule_recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
         return None
     measured = event.get("measured_value")
     threshold = settings.oct_recommend_threshold
-    if measured is None or measured < threshold:
+    if measured is None or not crosses_threshold(
+        measured, threshold, settings.oct_recommend_direction
+    ):
         return None
 
     entity_type = settings.oct_recommend_entity_type
@@ -208,15 +229,19 @@ def _rule_recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
     subject_id = str(event.get(settings.oct_recommend_entity_id_field, "unknown"))
     event_id = str(event.get("event_id", "unknown"))
     unit = str(event.get("unit", ""))
+    below = settings.oct_recommend_direction.strip().lower() == "below"
+    op = "<=" if below else ">="
+    verb = "fell below" if below else "rose above"
     trace = [
         ReasoningStep(
             step_id="threshold-check",
             kind="rule_check",
-            summary=f"measured_value {measured} {unit} >= threshold {threshold}",
+            summary=f"measured_value {measured} {unit} {op} threshold {threshold}",
             detail={
                 "measured_value": measured,
                 "threshold": threshold,
                 "unit": unit,
+                "direction": "below" if below else "above",
                 "crossed": True,
             },
         ),
@@ -231,7 +256,7 @@ def _rule_recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
         id=f"action-{event_id}",
         title=f"Investigate {label} on {subject_id}",
         description=(
-            f"Reading {measured} {unit} on {entity_type} {subject_id} crossed the "
+            f"Reading {measured} {unit} on {entity_type} {subject_id} {verb} the "
             f"{threshold} {unit} threshold."
         ),
         vertical=vertical,

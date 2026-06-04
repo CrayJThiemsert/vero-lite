@@ -141,6 +141,17 @@ class Settings(BaseSettings):
             "'cold-chain temperature breach')"
         ),
     )
+    oct_recommend_direction: str = Field(
+        default="above",
+        description=(
+            "Direction a 'reading' must breach oct_recommend_threshold to escalate: "
+            "'above' (measured >= threshold — energy over-temp, the default) or "
+            "'below' (measured <= threshold — e.g. an aquaculture dissolved-oxygen "
+            "crash). Read by the recommender trigger, the fail-safe rule, and the "
+            "demo-anchor breach selector (PLAN-0016 Step 0). Default 'above' "
+            "preserves the energy + supply_chain verticals exactly."
+        ),
+    )
 
     # OCT live-time demo loop (PLAN-0015). The anchor flag is OFF by default so
     # synthetic.py stays deterministic for tests (D5); the demo box sets
