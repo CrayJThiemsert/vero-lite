@@ -1,6 +1,6 @@
 # ADR-015: Assisted / Self-Serve Vertical Onboarding as a 2-Tier Pitch Artifact
 
-**Status:** Proposed
+**Status:** Accepted (ratified by Cray — 2026-06-04, session 36)
 **Date:** 2026-06-04
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-005 (vertical roster / vet park — see OQ-1), ADR-006 (vertical plugin architecture; D4 Rule of Three; L2 `new-vertical` forward-declaration), ADR-008 (YAML ontology contract; D1 five base types; D3 geo deferral), ADR-009 (D1 Cowork drafts / D2 Code commits), ADR-010 (LLM reasoning hook; IN-4 rule fail-safe), ADR-013 (phased advisory relocation — interim authoring applies). Companion builds: **PLAN-0016** (engine), **PLAN-0017** (intake face — forward-declared, see D5), **PLAN-0018** (demo-shell LLM status — forward-declared, see Consequences). Source artifacts: `docs/research/private/2026-06-04-vertical3-pick.md` (pick + partner-input package), `.claude/handoffs/session-35/2026-06-04-0944-code-design-partner-demo-gen-feasibility.md` (feasibility fact-pack), `.claude/handoffs/session-36/2026-06-04-1438-code-cowork-taskB-adr-plan-dispatch.md` (authoring dispatch), `.claude/handoffs/session-36/2026-06-04-1521-code-cowork-taskB-live-co-creation-addendum.md` (live-co-creation addendum).
