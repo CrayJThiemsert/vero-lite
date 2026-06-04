@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-04T08:08:08+07:00
+last_updated: 2026-06-04T11:28:24+07:00
 session: 35
-current_batch: **Session 35 — runbook reconcile: note the PLAN-0015 tail-beat re-time in run-oct-demo (#146, content `6f84bd2`).** A small docs-only follow-up to the session-34 fast-follow (#144, `cba80dc`): added a provenance addendum + a tail-beat note to `docs/runbooks/run-oct-demo.md` so the runbook reflects that the synthetic `occurred_at`s on both verticals were re-timed to make the breach the timeline's tail beat (→ 0 events anchored into the future under `OCT_DEMO_TIME_ANCHOR=true`). The note records that **only timestamps moved** — measured values, ids, units, severities, counts unchanged — so every expected value the runbook already documents still holds. Single PR, 16-line addition; no code/test/schema change. This PR = the session-35 reconcile (head `cba80dc` → `6f84bd2`).
+current_batch: **Session 35 — PLAN-004 Phase B shipped: handoff tooling automation (#148, content `e8bc6c2`).** Landed the three forward-declared Phase B deliverables — a `repo: local` `handoff-frontmatter` pre-commit hook (latest session-NN only, **blocking** on error-severity), `handoff_status.py --watch [--interval N]` live re-render, and an idempotent per-session `INDEX.md` auto-table (`--index` + the hook). The open latest-only-vs-legacy + block-vs-warn design fork was Cray-ratified this session (latest-only + blocking). 16 new tests; full suite **1127 passed / 2 skipped**; mypy + ruff clean; hook dogfooded green in this PR's own commits. PLAN-004 stays active as the Phase C tracker. Earlier this session: the run-oct-demo runbook tail-beat note (#146, `6f84bd2`).
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `6f84bd2` (content commit of #146); 0 open PRs after this reconcile lands. **PLAN-0015 done + fast-follow shipped + now documented** — the run-oct-demo runbook reflects the tail-beat re-time; the 2-vertical demo's all-sites Operational Timeline shows the breach as the latest beat under `OCT_DEMO_TIME_ANCHOR=true` with 0 future markers. **`status-scribe` dispatch contract validated end-to-end** (first live dispatch was the #144 session-34 reconcile). **PLAN-0010 autonomy loop is LIVE + hardened**; PLAN-0014 confirmed working live. Highest leverage stays Cray-side (run the live-time demo for design partners; register a Cowork status_digest producer + live-verify) + strategic (design-partner outreach). To run the live-time demo: `OCT_DEMO_TIME_ANCHOR=true` (launch.json already sets it) + **MS-S1 off** for a clean first render. Active plans (PLAN-0010 other handlers, PLAN-004 B/C, PLAN-0012 Phase 2) not-yet-triggered.
-next_action: **Session 35 — runbook reconcile shipped + merged (#146, content `6f84bd2`); STATUS reconciled to `6f84bd2`.** Backlog (pick the next item): (a) **Code-executable** — PLAN-004 Phase B (handoff tooling: pre-commit validate-frontmatter wiring + `--watch` + auto per-session `INDEX.md`); PLAN-0010 loop handlers (`governance_reminder`, `deferred_oq_rotation`, still soak-gated); `status_digest` v2 (candidate: wire `status-scribe` as the autonomous drafter — needs separate ratification); PLAN-0012 Phase 2 (gated); (b) **Cray-action** — run the live-time 2-vertical demo for design partners (`OCT_DEMO_TIME_ANCHOR=true`, MS-S1 off for a clean first render); register a Cowork `status_digest` producer routine (`-<rand>` per Lesson #0020) + live-verify; (c) **Strategic** — design-partner outreach (highest leverage).
-head_commit: 6f84bd2
-recent_commits: [614209b, 6f84bd2, d153b34, 253671a, 3d0c3a6, cba80dc, 2c7ac12, 9a287d5, 29361c0, ae1c38c]
+blocked_on: Nothing gates shipped work. main clean @ `e8bc6c2` (content commit of #148); 0 open PRs after this reconcile lands. **PLAN-004 Phase B done** — handoff tooling now has a blocking frontmatter pre-commit hook (latest-session-NN), `--watch` live re-render, and an idempotent per-session `INDEX.md`; PLAN-004 carries on as the Phase C tracker. **PLAN-0015 done + fast-follow shipped + documented** — the run-oct-demo runbook reflects the tail-beat re-time; the 2-vertical demo's all-sites Operational Timeline shows the breach as the latest beat under `OCT_DEMO_TIME_ANCHOR=true` with 0 future markers. **`status-scribe` dispatch contract validated end-to-end**. **PLAN-0010 autonomy loop is LIVE + hardened**; PLAN-0014 confirmed working live. Two strategic tasks (design-partner demo generator ADR/PLAN; Tier-2 real-data deep-research) were scoped this session + **deferred to a new session per Cray** (feasibility findings in `.claude/handoffs/session-35/2026-06-04-0944-code-design-partner-demo-gen-feasibility.md`). Highest leverage stays Cray-side (run the live-time demo for design partners; design-partner outreach). To run the live-time demo: `OCT_DEMO_TIME_ANCHOR=true` (launch.json already sets it) + **MS-S1 off** for a clean first render. Active plans (PLAN-0010 other handlers, PLAN-004 Phase C, PLAN-0012 Phase 2) not-yet-triggered.
+next_action: **Session 35 — PLAN-004 Phase B shipped + merged (#148, content `e8bc6c2`); STATUS reconciled to `e8bc6c2`.** Backlog (pick the next item): (a) **New-session strategic (deferred per Cray; findings in `.claude/handoffs/session-35/2026-06-04-0944-code-design-partner-demo-gen-feasibility.md`)** — (B) draft an ADR + PLAN for a "design-partner demo generator" (assisted/self-serve vertical onboarding as a 2-tier pitch artifact: Tier-1 synthetic "mirror demo" first, Tier-2 real-data POC later — verdict YES/feasible, engine ~80% there); (C) deep-research the Tier-2 real-data path (real `DataAdapter` impls, dbt/SQLMesh mapping layer, PDPA-safe ingestion). (b) **Code-executable** — PLAN-0010 loop handlers (`governance_reminder`, `deferred_oq_rotation`, still soak-gated); `status_digest` v2 (candidate: wire `status-scribe` as the autonomous drafter — needs separate ratification); PLAN-004 Phase C; PLAN-0012 Phase 2 (gated). (c) **Cray-action** — design-partner demo + outreach (highest leverage); run the live-time 2-vertical demo (`OCT_DEMO_TIME_ANCHOR=true`, MS-S1 off for a clean first render).
+head_commit: e8bc6c2
+recent_commits: [900449e, e8bc6c2, 7161ee3, 70f3d78, 94ddf27, 614209b, 6f84bd2, d153b34, 253671a, 3d0c3a6]
 ---
 
 # vero-lite — Project Status
@@ -18,17 +18,40 @@ recent_commits: [614209b, 6f84bd2, d153b34, 253671a, 3d0c3a6, cba80dc, 2c7ac12, 
 
 ## Current Focus
 
-> **Session 35 (current) — runbook reconcile: note the PLAN-0015 tail-beat
-> re-time in run-oct-demo (#146, content `6f84bd2`).** A small docs-only
-> follow-up to the session-34 fast-follow (#144, `cba80dc`). Added a
-> provenance addendum + a tail-beat note to `docs/runbooks/run-oct-demo.md`
-> so the runbook reflects that the synthetic `occurred_at`s on both verticals
-> were re-timed to make the breach the timeline's **tail beat** (→ 0 events
-> anchored into the future under `OCT_DEMO_TIME_ANCHOR=true`). The note
-> records that **only timestamps moved** — measured values, ids, units,
-> severities, counts unchanged — so every expected value the runbook already
-> documents still holds. Single PR, 16-line addition; no code/test/schema
-> change. This PR = the session-35 reconcile (head `cba80dc` → `6f84bd2`).
+> **Session 35 (current) — PLAN-004 Phase B shipped: handoff
+> tooling automation (#148, content `e8bc6c2`).** Landed the three
+> forward-declared Phase B deliverables. **(1)** A `repo: local`
+> `handoff-frontmatter` **pre-commit hook**
+> (`tools/handoffs/precommit_handoffs.py`) that validates the **latest
+> session-NN only** against the working tree (handoffs are gitignored → never
+> staged) and **blocks** on an error-severity finding. The open design fork —
+> latest-only-vs-legacy-drag and block-vs-warn — was resolved Cray-ratified
+> this session: latest-only + blocking, no legacy drag. **(2)**
+> `handoff_status.py --watch [--interval N]` live re-render. **(3)** An
+> idempotent per-session `INDEX.md` auto-table (via `--index` + the hook).
+> Shared helpers (`latest_session_dir`, `render_index`, `write_index`,
+> `session_md_files`) added to `_schema.py`; `INDEX.md` excluded from all
+> handoff walks. **Verified:** 16 new tests; full suite **1127 passed / 2
+> skipped**; mypy + ruff clean; the hook was **dogfooded green** in this PR's
+> own commits. PLAN-004 stays active as the **Phase C** tracker. Two strategic
+> tasks were scoped + captured this session (feasibility findings in
+> `.claude/handoffs/session-35/2026-06-04-0944-code-design-partner-demo-gen-feasibility.md`)
+> and **deferred to a new session per Cray**: (B) draft an ADR + PLAN for a
+> "design-partner demo generator" (assisted/self-serve vertical onboarding as
+> a 2-tier pitch artifact — Tier-1 synthetic "mirror demo" first, Tier-2
+> real-data POC later; verdict YES/feasible, the engine is ~80% there); (C)
+> deep-research the Tier-2 real-data path (real `DataAdapter` impls,
+> dbt/SQLMesh mapping layer, PDPA-safe ingestion). This PR = the session-35
+> Phase B reconcile (head `6f84bd2` → `e8bc6c2`).
+> **Earlier this session — runbook tail-beat note (#146, content
+> `6f84bd2`).** A small docs-only follow-up to the session-34 fast-follow
+> (#144, `cba80dc`): added a provenance addendum + a tail-beat note to
+> `docs/runbooks/run-oct-demo.md` so the runbook reflects that the synthetic
+> `occurred_at`s on both verticals were re-timed to make the breach the
+> timeline's **tail beat** (→ 0 events anchored into the future under
+> `OCT_DEMO_TIME_ANCHOR=true`). Only timestamps moved — measured values, ids,
+> units, severities, counts unchanged — so every expected value the runbook
+> already documents still holds. 16-line addition; no code/test/schema change.
 >
 > **Session 34 — PLAN-0015 fast-follow: the breach is now the
 > tail beat of the OCT operational timeline (#144, content `cba80dc`).**
