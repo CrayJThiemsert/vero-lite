@@ -1,6 +1,6 @@
 # PLAN-0016: `vero-lite new-vertical` Scaffolding — Tier-1 Mirror-Demo Generator
 
-**Status:** Draft
+**Status:** Done (2026-06-04, session 37 — see Completion below)
 **Owner:** Claude Code (Tier 2 executes; Cowork drafted per ADR-009 D1)
 **Created:** 2026-06-04
 **Related ADRs:** ADR-015 (2-tier onboarding posture — merge before this plan's implementation PR), ADR-006 (plugin architecture; L2 `new-vertical` forward-declaration; D4 Rule of Three), ADR-008 (YAML contract; D1 five base types; D3 geo = lat/lng floats), ADR-010 (IN-4 rule fail-safe — the path the demo uses with MS-S1 off)
@@ -172,6 +172,33 @@ entry for the aquaculture walkthrough, STATUS update, `git mv` this plan to
 - **AC-5:** diff shows no `code_generator.py` feature changes.
 - **AC-6:** `ruff` + `mypy` clean; pre-commit (incl. L1 `check-jsonschema`
   on `verticals/aquaculture/ontology/*.yaml`) passes.
+
+## Completion (2026-06-04, session 37)
+
+All steps shipped; the `vero-lite new-vertical` engine is live and proven
+end-to-end on the aquaculture pick.
+
+| Step | PR | Notes |
+|---|---|---|
+| **0** — recommender threshold direction | #154 | `OCT_RECOMMEND_DIRECTION ∈ {above, below}`, threaded + tested (session 36) |
+| **1, 3, 4** — command skeleton + templated boilerplate + registration code-mod | #156 | `services/engine/scaffold.py` + the `new-vertical` Typer command; role detection (Site = geo-bearing; Asset = the other event ref target); idempotent `_VERTICAL_REGISTRARS` code-mod; clobber guard |
+| **2** — synthetic adapter | #156 (deterministic) + #160 (LLM) | **Sequencing call:** a deterministic, minimal-but-runnable `synthetic.py` ships first (the command always produces a runnable vertical, CI stays deterministic); the **opt-in `--llm`** MS-S1 draft (richer records, semantically validated, deterministic fallback) layers on top — live-verified against `qwen3.6:35b`. Both render through one shared renderer. |
+| **5** — aquaculture end-to-end (AC-1) | #159 | `verticals/aquaculture/` authored + scaffolded by the command; the DO-crash timeline human-reviewed (POND-07 DO 3.2 mg/L, below-direction). AC-1 proven by unit/integration tests **and** a live HTTP smoke (`GET /recommendations` → the pond-07 below-direction recommendation). |
+| **6** — docs + closeout | this PR | `verticals/aquaculture/README.md` (generated), the run-oct-demo §3a aquaculture walkthrough, STATUS reconcile, and this `git mv` to `done/`. |
+
+**Acceptance criteria:** AC-1 (aquaculture end-to-end) ✅ live; AC-2 (no
+regression, default `above`) ✅; AC-3 (direction tests) ✅; AC-4 (demo anchor)
+✅ (Step 0); AC-5 (generator untouched — `validate`/`generate` invoked
+unchanged) ✅; AC-6 (scaffold completeness; ruff + mypy + tests) ✅. Full suite
+**1162 passed / 2 skipped**.
+
+**`statusClass()` note (Out-of-Scope item):** no aquaculture extension was
+needed — `fallow`/`harvested` render `s-neutral`, the accepted fallback for
+benign non-active states (ADR-0015 risk note).
+
+**Forward:** the live-co-creation intake face that calls this engine is
+**PLAN-0017** (drafted, OQ-4 = hybrid ratified); the demo-shell MS-S1 status
+surface is **PLAN-0018** (forward-declared, standalone).
 
 ---
 
