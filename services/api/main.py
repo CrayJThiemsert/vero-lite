@@ -16,6 +16,8 @@ from services.api.routers.admin import router as admin_router
 from services.api.routers.query import router as query_router
 from services.engine.registry import registry
 from services.notify.telegram import describe_arm_state
+from verticals.aquaculture.data_adapter import register_aquaculture_adapter
+from verticals.aquaculture.handlers import register_aquaculture_handlers
 from verticals.energy.data_adapter import register_energy_adapter
 from verticals.energy.handlers import register_energy_handlers
 from verticals.supply_chain.data_adapter import register_supply_chain_adapter
@@ -36,6 +38,7 @@ _STATIC_DIR = Path(__file__).parent / "static"
 _VERTICAL_REGISTRARS: dict[str, tuple[Callable[[], object], Callable[[], None]]] = {
     "energy": (register_energy_adapter, register_energy_handlers),
     "supply_chain": (register_supply_chain_adapter, register_supply_chain_handlers),
+    "aquaculture": (register_aquaculture_adapter, register_aquaculture_handlers),
 }
 
 
