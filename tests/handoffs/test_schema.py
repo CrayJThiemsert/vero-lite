@@ -210,3 +210,68 @@ def test_completion_suffix_validates_clean(tmp_path: Path) -> None:
     assert isinstance(fm, sch.Frontmatter)
     assert fm.suffix is sch.Suffix.COMPLETION
     assert sch.validate_file(p) == []
+
+
+# --- PLAN-004 Phase B: session discovery + INDEX.md generation ---
+
+
+def _session(tmp_path: Path, name: str) -> Path:
+    d = tmp_path / name
+    d.mkdir()
+    return d
+
+
+def test_latest_session_dir_numeric_not_lexicographic(tmp_path: Path) -> None:
+    """session-10 beats session-9 (numeric sort, not string sort)."""
+    _session(tmp_path, "session-9")
+    _session(tmp_path, "session-10")
+    _session(tmp_path, "session-2")
+    latest = sch.latest_session_dir(tmp_path)
+    assert latest is not None
+    assert latest.name == "session-10"
+
+
+def test_latest_session_dir_none_when_absent(tmp_path: Path) -> None:
+    """No session-* dir (or a missing root) → None; non-session dirs ignored."""
+    assert sch.latest_session_dir(tmp_path / "nope") is None
+    (tmp_path / "archive").mkdir()
+    assert sch.latest_session_dir(tmp_path) is None
+
+
+def test_render_index_is_idempotent(tmp_path: Path) -> None:
+    """Two renders over an unchanged dir are byte-identical (no timestamp)."""
+    d = _session(tmp_path, "session-10")
+    _write(d / "2026-05-19-0200-chat-demo.md", _VALID)
+    assert sch.render_index(d) == sch.render_index(d)
+
+
+def test_render_index_contains_row_and_header(tmp_path: Path) -> None:
+    """The index has the session header, the count line, and a table row."""
+    d = _session(tmp_path, "session-10")
+    _write(d / "2026-05-19-0200-chat-demo.md", _VALID)
+    text = sch.render_index(d)
+    assert "# session-10 — handoff index" in text
+    assert "Total:** 1" in text
+    assert "2026-05-19-0200-chat-demo.md" in text
+    assert "| chat | dispatch | READY |" in text
+
+
+def test_write_index_excluded_from_subsequent_walks(tmp_path: Path) -> None:
+    """A generated INDEX.md is not counted/parsed as a handoff afterwards."""
+    d = _session(tmp_path, "session-10")
+    _write(d / "2026-05-19-0200-chat-demo.md", _VALID)
+    target = sch.write_index(d)
+    assert target.name == sch.INDEX_FILENAME
+    # session_md_files excludes it; the re-render still sees exactly 1 handoff
+    assert [p.name for p in sch.session_md_files(d)] == ["2026-05-19-0200-chat-demo.md"]
+    assert "Total:** 1" in sch.render_index(d)
+
+
+def test_validate_directory_skips_index(tmp_path: Path) -> None:
+    """validate_directory ignores INDEX.md (which has no frontmatter)."""
+    d = _session(tmp_path, "session-10")
+    _write(d / "2026-05-19-0200-chat-demo.md", _VALID)
+    sch.write_index(d)
+    names = {p.name for p in sch.validate_directory(tmp_path)}
+    assert sch.INDEX_FILENAME not in names
+    assert "2026-05-19-0200-chat-demo.md" in names

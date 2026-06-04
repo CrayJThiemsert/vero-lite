@@ -173,7 +173,7 @@ Read in this order at session start:
 | `docs/runbooks/` | Operational guides |
 | `docs/conventions/` | Tech stack, code style, glossary, tier instructions, handoff frontmatter schema (canonical) |
 | `docs/for_llm/` | Curated snippets for cold-start LLM sessions (derived from canonicals — see runbook) |
-| `tools/handoffs/` | Handoff tooling (transcript rendering, frontmatter validation, dashboard reader) |
+| `tools/handoffs/` | Handoff tooling — transcript rendering, frontmatter validation (+ `handoff-frontmatter` pre-commit hook, PLAN-004 Phase B), dashboard reader (`--watch` live view, `--index` per-session `INDEX.md`) |
 
 ## 11. Tier 2 (Code) Operational Policy
 

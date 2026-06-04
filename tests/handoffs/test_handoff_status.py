@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
+import io
 import json
 import sys
 from pathlib import Path
@@ -125,3 +126,59 @@ def test_no_selector_exit_2(capsys: pytest.CaptureFixture[str]) -> None:
     """Neither a session selector nor --all is an invocation error."""
     assert hs.main([]) == 2
     assert "error:" in capsys.readouterr().err
+
+
+# --- PLAN-004 Phase B: --index and --watch ---
+
+
+def test_index_flag_writes_index_file(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """--index writes INDEX.md listing the session's handoffs."""
+    d = _session(tmp_path)
+    _write(d / "2026-05-19-0200-chat-a.md", _VALID)
+    assert hs.main(["10", "--root", str(tmp_path), "--index"]) == 0
+    index = d / "INDEX.md"
+    assert index.exists()
+    assert "2026-05-19-0200-chat-a.md" in index.read_text(encoding="utf-8")
+    assert "wrote" in capsys.readouterr().out
+
+
+def test_index_flag_idempotent(tmp_path: Path) -> None:
+    """Two --index runs over an unchanged session produce identical bytes."""
+    d = _session(tmp_path)
+    _write(d / "2026-05-19-0200-chat-a.md", _VALID)
+    assert hs.main(["10", "--root", str(tmp_path), "--index"]) == 0
+    first = (d / "INDEX.md").read_text(encoding="utf-8")
+    assert hs.main(["10", "--root", str(tmp_path), "--index"]) == 0
+    assert (d / "INDEX.md").read_text(encoding="utf-8") == first
+
+
+def test_index_excluded_from_counts(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """After INDEX.md exists, the summary still counts only real handoffs."""
+    d = _session(tmp_path)
+    _write(d / "2026-05-19-0200-chat-a.md", _VALID)
+    hs.main(["10", "--root", str(tmp_path), "--index"])
+    capsys.readouterr()  # drain the --index output
+    assert hs.main(["10", "--root", str(tmp_path)]) == 0
+    assert "Total handoffs: 1" in capsys.readouterr().out
+
+
+def test_index_missing_session_dir_exit_2(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """--index against a non-existent session dir is an invocation error."""
+    assert hs.main(["99", "--root", str(tmp_path), "--index"]) == 2
+    assert "error:" in capsys.readouterr().err
+
+
+def test_watch_runs_bounded_ticks(tmp_path: Path) -> None:
+    """run_watch renders `ticks` frames with an injected sleep (no hang)."""
+    d = _session(tmp_path)
+    _write(d / "2026-05-19-0200-chat-a.md", _VALID)
+    args = hs.build_arg_parser().parse_args(
+        ["10", "--root", str(tmp_path), "--watch", "--interval", "0.01"]
+    )
+    sleeps: list[float] = []
+    buf = io.StringIO()
+    assert hs.run_watch(args, ticks=3, sleep_fn=sleeps.append, out=buf) == 0
+    assert buf.getvalue().count("Total handoffs: 1") == 3
+    assert len(sleeps) == 2  # 3 frames → 2 inter-frame sleeps

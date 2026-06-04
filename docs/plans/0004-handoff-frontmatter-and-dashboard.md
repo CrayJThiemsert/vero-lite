@@ -1,6 +1,6 @@
 # PLAN-004: Handoff Frontmatter and Dashboard
 
-**Status:** Ready for execution — **Phase A COMPLETE** (shipped); Phases B + C forward-declared
+**Status:** Ready for execution — **Phases A + B COMPLETE** (shipped); Phase C forward-declared
 **Date:** 2026-05-19
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-006 (vertical plugin), Lesson #5 (tier-system audit) §1 + §2 + §3 + §4, Lesson #6 (Code surface → Chat re-dispatch pattern), `docs/runbooks/claude-code-chat-handoff.md`, `docs/runbooks/transcript-handoff.md`, `docs/conventions/chat_tab_instructions.md`, `docs/conventions/cowork_tab_instructions.md`, `tools/handoffs/render_transcript.py` (precedent, commit `98e5591`)
@@ -403,19 +403,32 @@ Scope: D1–D6 above. Acceptance:
   `.claude/handoffs/` tree; gitignored closeout + git-tracked summary
   both produced; single commit for the tracked summary
 
-### Phase B — Automation (forward-declared)
+### Phase B — Automation (✅ COMPLETE — session 35, 2026-06-04)
 
-- Wire validator into `.pre-commit-config.yaml` so new handoffs are
-  checked at commit time (this requires either un-gitignoring at least
-  the validator's check, or running validator in a way that doesn't
-  depend on staging — open design question for Phase B)
-- Add `tools/handoffs/handoff_status.py --watch` for live session
-  monitoring during long sessions
-- Generate `.claude/handoffs/session-NN/INDEX.md` auto-table per
-  session (gitignored output, idempotent regeneration)
+- [x] **Pre-commit wiring** — `repo: local` hook `handoff-frontmatter`
+  (`always_run: true`, `pass_filenames: false`) runs
+  `tools/handoffs/precommit_handoffs.py` against the **working tree**
+  (handoffs are gitignored → never staged → a staged-files hook would
+  never see them). The **open design question** is resolved (Cray-ratified,
+  session 35): validate the **latest `session-NN` only** (highest N,
+  numeric) and **block** the commit on an error-severity finding — strict
+  for the actively-authored session without legacy drag from old malformed
+  handoffs.
+- [x] **`--watch` mode** — `tools/handoffs/handoff_status.py --watch
+  [--interval N]` re-renders the summary on an interval until Ctrl-C
+  (testable `run_watch(..., ticks=, sleep_fn=)`).
+- [x] **Auto `INDEX.md`** — `handoff_status.py --index` (and the pre-commit
+  hook) write a deterministic, **idempotent** per-session
+  `.claude/handoffs/session-NN/INDEX.md` table (gitignored output; no
+  generation timestamp so repeated renders are byte-identical). The hook
+  folds INDEX refresh + validation into one pass (Cray-ratified, session 35).
 
-Out of scope for Phase A. Drafted as a future PLAN-004 amendment or
-separate plan when Phase A has soaked for ≥1 session.
+Shared helpers (`latest_session_dir`, `render_index`, `write_index`,
+`session_md_files`, the `INDEX.md` glob-skip) live in
+`tools/handoffs/_schema.py`; new tests in `tests/handoffs/test_schema.py`,
+`test_handoff_status.py`, and `test_precommit_handoffs.py` (16 added; full
+suite 1127 passed / 2 skipped, `mypy` + `ruff` clean). PLAN-004 stays active
+as the tracker for Phase C.
 
 ### Phase C — Optional polish (forward-declared)
 
