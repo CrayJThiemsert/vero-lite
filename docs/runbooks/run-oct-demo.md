@@ -1,4 +1,4 @@
-# Runbook — Run the OCT stakeholder demo (energy + supply_chain)
+# Runbook — Run the OCT stakeholder demo (energy · supply_chain · aquaculture)
 
 > **Goal.** Bring up the Operational Control Tower (OCT) demo locally and drive
 > all three OCT features on **either vertical** — `energy` or `supply_chain` —
@@ -142,6 +142,51 @@ Then open **http://localhost:8098**.
 
 ---
 
+## 3a. Run the **aquaculture** vertical — the first *below*-threshold breach
+
+The third vertical (ADR-0015 D4 pick) was **scaffolded by `vero-lite new-vertical`**
+(PLAN-0016 — the demo generator's own output), not hand-built. It is the first
+vertical whose breach is a **crash**: a dissolved-oxygen reading *falls below* the
+safe threshold (3.2 < 4 mg/L), so it runs with `OCT_RECOMMEND_DIRECTION=below`
+(PLAN-0016 Step 0). Use a third port to lay it beside the others.
+
+```bash
+cd ~/work/vero-lite
+OCT_VERTICAL=aquaculture \
+OCT_RECOMMEND_THRESHOLD=4 \
+OCT_RECOMMEND_DIRECTION=below \
+OCT_RECOMMEND_ENTITY_TYPE=Pond \
+OCT_RECOMMEND_ENTITY_ID_FIELD=pond_id \
+OCT_RECOMMEND_LABEL="dissolved-oxygen crash" \
+OCT_DEMO_TIME_ANCHOR=true \
+OCT_RECOVERY_VALUE=5.5 \
+OCT_RECOVERY_DESCRIPTION="Pond POND-07 DO recovered above the 4 mg/L safe threshold after emergency aeration." \
+uv run uvicorn services.api.main:app --port 8099
+```
+
+Then open **http://localhost:8099**.
+
+**Known-good baseline (verified live this session, session 37, via the HTTP API):**
+
+- `GET /objects/Farm` → **2** farms with lat/lng: `Bayfront Shrimp Farm` (13.52,
+  100.27), `Riverside Tilapia Farm` (14.21, 100.58).
+- `GET /objects/Pond` → **4** ponds (3 `active`, 1 `fallow` — pond-05).
+- `GET /recommendations` → **1** action:
+  `Investigate dissolved-oxygen crash on pond-07`, confidence **0.8**, handler
+  `echo`, 2-step **below-direction** trace
+  (`measured_value 3.2 mg/L <= threshold 4.0`, `direction: below`), affected
+  entity `Pond / pond-07`.
+- Approve → Execute → `status: executed` + receipt; the recovery reading lands at
+  DO **5.5 mg/L** (back above the 4 mg/L safe line).
+
+> **The env block is the command's own output.** `vero-lite new-vertical
+> aquaculture …` prints exactly this `OCT_*` block in its run checklist — the
+> generator hands you the run recipe. The `--direction below` knob is what makes a
+> *crash* (not an overrun) fire the recommender; an above-direction vertical
+> (energy/supply_chain) omits it (default `above`).
+
+---
+
 ## 4. Open it in a browser
 
 uvicorn binds `127.0.0.1` by default. **WSL2 forwards `localhost` to Windows**,
@@ -151,6 +196,7 @@ extra setup. The UI is served at `/`; it fetches the relative API paths
 
 - energy → http://localhost:8000
 - supply_chain → http://localhost:8098
+- aquaculture → http://localhost:8099
 
 > Only need the **Windows LAN IP** / `--host 0.0.0.0` when a **phone** must reach
 > it (e.g. the PLAN-0014 tap-link). For desktop browsing, `localhost` is enough.
@@ -232,8 +278,9 @@ identical UI build, two different operations, zero per-vertical UI code.
   seam-only stub; the demo path is `local`.)
 - **Port already in use.** Pick another `--port`; check with
   `ss -ltnp | grep :8000`.
-- **`OCT_VERTICAL=... is not a registered vertical`.** Only `energy` and
-  `supply_chain` are registered (`services/api/main.py` `_VERTICAL_REGISTRARS`).
+- **`OCT_VERTICAL=... is not a registered vertical`.** `energy`, `supply_chain`,
+  and `aquaculture` are registered (`services/api/main.py` `_VERTICAL_REGISTRARS`);
+  `vero-lite new-vertical` code-mods that dict to add more.
 - **DB errors on Execute.** Run `uv run alembic upgrade head` (§1). The test suite
   uses a disposable `<db>_test` DB and never touches the demo DB (memory
   `project_test_suite_drops_demo_db`).
@@ -304,8 +351,10 @@ mechanism: `services/engine/demo_events.py`.
   `RULE_CONFIDENCE = 0.8`).
 - NL query engine: `services/engine/nl_query.py` (`answer_question`).
 - Ontologies + synthetic scenarios:
-  `verticals/{energy,supply_chain}/ontology/*.yaml` +
-  `verticals/{energy,supply_chain}/data_adapter/synthetic.py`.
+  `verticals/{energy,supply_chain,aquaculture}/ontology/*.yaml` +
+  `verticals/{energy,supply_chain,aquaculture}/data_adapter/synthetic.py`.
+- Scaffolding the next vertical: `vero-lite new-vertical <ns>` (PLAN-0016,
+  `services/engine/scaffold.py`); aquaculture is its end-to-end instance.
 - MS-S1 reachability: memory `project_ms_s1_ollama_reachability` (IP
   `192.168.1.133`, not hostname).
 - Arming the MS-S1-unreachable Telegram ping + phone tap-link / WSL networking:
