@@ -23,13 +23,20 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections.abc import Sequence
+import time
+from collections.abc import Callable, Sequence
 from dataclasses import asdict
 from pathlib import Path
+from typing import TextIO
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from _schema import SessionSummary, summarize_paths
+from _schema import (
+    SessionSummary,
+    session_md_files,
+    summarize_paths,
+    write_index,
+)
 
 DEFAULT_ROOT = Path(".claude/handoffs")
 
@@ -57,6 +64,22 @@ def build_arg_parser() -> argparse.ArgumentParser:
         help=f"Handoffs root (default: {DEFAULT_ROOT}).",
     )
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
+    parser.add_argument(
+        "--index",
+        action="store_true",
+        help="Write/refresh INDEX.md for the selected session(s) instead of printing.",
+    )
+    parser.add_argument(
+        "--watch",
+        action="store_true",
+        help="Re-render the summary on an interval until interrupted (Ctrl-C).",
+    )
+    parser.add_argument(
+        "--interval",
+        type=float,
+        default=5.0,
+        help="Seconds between refreshes in --watch mode (default: 5.0).",
+    )
     return parser
 
 
@@ -69,12 +92,16 @@ def _session_dir(root: Path, selector: str) -> Path:
     return root / f"session-{selector}"
 
 
-def _summaries(args: argparse.Namespace) -> list[SessionSummary]:
+def _selected_dirs(args: argparse.Namespace) -> list[Path]:
+    """Resolve the session directories the invocation targets."""
     if args.all:
-        dirs = sorted(p for p in args.root.glob("session-*") if p.is_dir())
-        return [summarize_paths(list(d.glob("*.md")), d.name) for d in dirs]
-    target = _session_dir(args.root, args.session)
-    return [summarize_paths(list(target.glob("*.md")), target.name)]
+        return sorted(p for p in args.root.glob("session-*") if p.is_dir())
+    return [_session_dir(args.root, args.session)]
+
+
+def _summaries(args: argparse.Namespace) -> list[SessionSummary]:
+    # session_md_files() excludes the generated INDEX.md so it is never counted.
+    return [summarize_paths(session_md_files(d), d.name) for d in _selected_dirs(args)]
 
 
 def _render_text(summary: SessionSummary) -> str:
@@ -98,6 +125,49 @@ def _render_text(summary: SessionSummary) -> str:
     return "\n".join(lines)
 
 
+def _write_indexes(args: argparse.Namespace) -> int:
+    """Write/refresh INDEX.md for each selected, existing session dir."""
+    exit_code = 0
+    for session_dir in _selected_dirs(args):
+        if not session_dir.is_dir():
+            print(f"error: session dir not found: {session_dir}", file=sys.stderr)
+            exit_code = 2
+            continue
+        target = write_index(session_dir)
+        print(f"wrote {target}")
+    return exit_code
+
+
+def run_watch(
+    args: argparse.Namespace,
+    *,
+    ticks: int | None = None,
+    sleep_fn: Callable[[float], None] = time.sleep,
+    out: TextIO | None = None,
+) -> int:
+    """Re-render the summary every ``args.interval`` seconds until Ctrl-C.
+
+    ``ticks`` bounds the loop for tests; ``sleep_fn`` / ``out`` are
+    injectable so a test can run a fixed number of frames against a buffer
+    without a real terminal or a wall-clock wait.
+    """
+    stream = out if out is not None else sys.stdout
+    count = 0
+    try:
+        while ticks is None or count < ticks:
+            stream.write("\033[2J\033[H")  # clear screen + cursor home
+            stream.write("\n\n".join(_render_text(s) for s in _summaries(args)))
+            stream.write("\n")
+            stream.flush()
+            count += 1
+            if ticks is not None and count >= ticks:
+                break
+            sleep_fn(args.interval)
+    except KeyboardInterrupt:
+        pass
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """CLI entry point. Returns a process exit code."""
     parser = build_arg_parser()
@@ -109,6 +179,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not args.root.is_dir():
         print(f"error: root not found: {args.root}", file=sys.stderr)
         return 2
+
+    if args.index:
+        return _write_indexes(args)
+    if args.watch:
+        return run_watch(args)
 
     summaries = _summaries(args)
 
