@@ -15,6 +15,14 @@
 > `main` `508aa90` (session 31, 2026-06-02) with **MS-S1 powered off**, except
 > the NL-query *grounded* path (§5) — that requires MS-S1 and its known-good
 > evidence is from PLAN-0013 session 28 (`docs/plans/done/0013-oct-stakeholder-demo.md`).
+>
+> **Since then (PLAN-0015 fast-follow, #144, session 34, `cba80dc`):** the
+> synthetic `occurred_at`s on **both** verticals were re-timed so the breach is
+> the timeline's **tail beat** (see the tail-beat note in §9). This moved **only
+> timestamps** — measured values, asset/shipment ids, units, severities, and
+> counts are unchanged — so every **expected value** below (counts, `measured_value`,
+> confidence) still holds; only the relative *ordering* of events on the timeline
+> changed.
 
 ---
 
@@ -245,6 +253,14 @@ default (so `synthetic.py` stays deterministic for tests); the demo box runs it
    timestamps so the **breach ≈ server start** (relative spacing preserved). The
    timeline reads as "this is happening now," not a fixed May date. Re-anchors
    every run.
+   > **Tail-beat note (PLAN-0015 fast-follow, #144).** The breach is deliberately
+   > the **final** beat in each synthetic timeline — earlier events (e.g. the
+   > energy inverter alarm, the supply_chain reefer door-open alarm) read as
+   > *precursors* leading up to it. Anchoring the breach to "now" therefore leaves
+   > **0 events in the future** on either vertical. Before #144 both datasets had
+   > events *after* the breach, which anchored into the future and showed up as
+   > future HH:MM labels on the all-sites Operational Timeline; that artifact is
+   > now gone.
 2. **The loop closes on Screen A.** Approve then Execute the recommendation in
    **Screen B**; return to **Screen A** and the Operational Timeline now shows:
    - the breach marker turned **green / ✓** (the red pulse stops) + a **Resolved**
