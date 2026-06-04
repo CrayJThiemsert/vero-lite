@@ -69,6 +69,9 @@ def new_vertical(
     problem: str = typer.Option("", help="Problem statement (for the README / future LLM)."),
     decision: str = typer.Option("", help="Corrective action (for the README / future LLM)."),
     force: bool = typer.Option(False, help="Overwrite existing scaffold files."),
+    llm: bool = typer.Option(
+        False, help="Draft synthetic.py via the MS-S1 LLM (falls back to deterministic)."
+    ),
 ) -> None:
     """Scaffold a Tier-1 Mirror-demo vertical from its ontology (ADR-0015 D2).
 
@@ -88,7 +91,7 @@ def new_vertical(
         decision=decision,
     )
     try:
-        result = scaffold.scaffold_vertical(namespace, config, force=force)
+        result = scaffold.scaffold_vertical(namespace, config, force=force, llm=llm)
     except scaffold.ScaffoldError as exc:
         sys.stderr.write(f"ERROR: {exc}\n")
         raise typer.Exit(code=1) from exc
