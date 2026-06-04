@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-04T16:50:26+07:00
-session: 36
-current_batch: Session 36 — design-partner demo-generator track: Task (B) drafts shipped (ADR-0015 #150 + PLAN-0016 #151), **ADR-0015 ratified → Accepted (#153)**, and **PLAN-0016 Step 0 `OCT_RECOMMEND_DIRECTION` shipped (#154, suite 1136/2)**. Phase 0 vertical-#3 pick research (aquaculture) done earlier. Remaining design-partner-track work handed off to a new session.
+last_updated: 2026-06-04T22:22:55+07:00
+session: 37
+current_batch: Session 37 — design-partner demo-generator track, Phase 1 engine **fully shipped**: PLAN-0016 (`vero-lite new-vertical` scaffolding engine) Steps 0–6 done + `git mv`'d to `done/` (6 PRs, #156–#161). Aquaculture vertical #3 (first **below**-threshold breach, DO crash 3.2 < 4 mg/L) dogfooded through the engine + live-smoked; opt-in `--llm` MS-S1 synthetic draft with deterministic fallback. Also PLAN-0017 intake-face committed (#157) with OQ-4 ratified = **HYBRID** (#158). Suite **1162/2**; ruff + mypy clean.
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `0548334` (merge of #154); 0 open PRs. **ADR-0015 is Accepted; PLAN-0016 Step 0 shipped** (the below-threshold engine fix); PLAN-0016 Steps 1–6 remain. PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
-next_action: This session did #1 (ratify ADR-0015) + #2 (PLAN-0016 Step 0); the rest is **handed off to a new session**. Remaining: (1) **Dispatch PLAN-0017** (live-co-creation intake face — A2 guided-form / A3 conversational / hybrid per ADR-015 OQ-4, with the mandatory human review/edit of the LLM-drafted ontology) drafting to Cowork — now UNBLOCKED (ADR-0015 Accepted). (2) Decide **PLAN-0018** (demo-shell `GET /llm/status` + in-UI MS-S1 warm/sleep) standalone vs fold-into-0017. (3) **PLAN-0016 Steps 1–6** — the `vero-lite new-vertical` scaffolding command itself (command skeleton → LLM-gen synthetic adapter → templated boilerplate → registration code-mod → aquaculture end-to-end instance → docs), Step 0 already shipped. (4) **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion). (5) Backlog unchanged: PLAN-0010 loop handlers (soak-gated), `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). Highest leverage stays Cray-side (run the live-time demo; design-partner outreach).
-head_commit: 94c1078
-recent_commits: [0548334, 94c1078, d66001c, 5fed749, a0d9a09, af01a89, c74ecb0, 6b1b42f, a1e7320, 4fac30c]
+blocked_on: Nothing gates shipped work. main clean @ `6f1f5c8` (merge of #161); 0 open PRs. **PLAN-0016 Done** (in `done/`); **PLAN-0017 Draft** (OQ-4 = hybrid ratified; implementation no longer engine-gated — the `new-vertical` engine it calls now exists). PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
+next_action: The design-partner demo generator's **engine** is complete and the **face** is governance-ready. Remaining: (1) **PLAN-0017 implementation** — now UNBLOCKED (the `new-vertical` engine it calls exists); the hybrid intake face (A3 free-text capture → A2 structured review/edit gate) + the mandatory ontology review gate → live vertical #4. (2) **PLAN-0018** (forward-declared, standalone) — the demo-shell read-only `GET /llm/status` + in-UI MS-S1 warm/sleep for the demo operator. (3) **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — heavy token spend → Cray green-lights. (4) Non-blocking ADR-0015 errata pass (the "research §7" citation points at the Sources list; the human-review-risk substance is fact-pack §6 / ADR-0015 Consequences). Backlog unchanged: PLAN-0010 loop handlers (soak-gated), `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). Highest leverage stays Cray-side (run the live demo; design-partner outreach).
+head_commit: 1dbd202
+recent_commits: [6f1f5c8, 1dbd202, 42da7a2, 860cc58, 00284f6, 5156098, a67dba0, 03820e3, 0950994, d68711e, b8835ed, 3b4083f]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,63 @@ recent_commits: [0548334, 94c1078, d66001c, 5fed749, a0d9a09, af01a89, c74ecb0, 
 
 ## Current Focus
 
-> **Session 36 (current) — Task (B) of the design-partner
+> **Session 37 (current) — design-partner demo-generator track, Phase 1
+> engine FULLY SHIPPED: PLAN-0016 (`vero-lite new-vertical` scaffolding
+> engine) Steps 0–6 done + archived to `done/` (6 PRs, #156–#161).** The
+> **engine layer** of ADR-0015 D5 — the substrate the PLAN-0017 intake face
+> calls — is complete and dogfooded.
+> **#156 (`3b4083f`, `feat(engine)`) — Steps 1+3+4:** the `new-vertical <ns>`
+> Typer command + `services/engine/scaffold.py`. Role detection from the
+> ontology (Site = the geo-bearing `lat`+`lng` object type; Asset = the other
+> `OperationalEvent` ref target — proven against the domain-renamed
+> `supply_chain` = Shipment/Facility), a **deterministic minimal-but-runnable**
+> `synthetic.py` draft (baseline + the direction-aware breach), templated
+> boilerplate (adapter/handlers/README/env block), an **idempotent
+> `_VERTICAL_REGISTRARS` code-mod** of `services/api/main.py`, a clobber guard
+> (`--force`). Sequencing call: deterministic synthetic ships first (the
+> command always produces a runnable vertical, CI stays deterministic); the LLM
+> layer is #160.
+> **#159 (`5156098`, `feat(verticals)`) — Step 5 / AC-1:** the **aquaculture**
+> vertical #3 (the ratified ADR-0015 D4 pick) — the **first *below*-threshold
+> breach** vertical (a dissolved-oxygen crash, 3.2 < 4 mg/L,
+> `OCT_RECOMMEND_DIRECTION=below`). Authored the ontology (Pond/Farm/…; geo on
+> Farm), **dogfooded `vero-lite new-vertical`** to scaffold it, then
+> **human-reviewed** (ADR-0015 D5) the draft `synthetic.py` into the POND-07
+> DO-crash timeline. **AC-1 proven end-to-end** by unit/integration tests **and
+> a live HTTP smoke** (`OCT_VERTICAL=aquaculture`, rule path:
+> `GET /recommendations` → exactly one proposed action, "Reading 3.2 mg/L on
+> Pond pond-07 fell below the 4.0 mg/L threshold", `<=`/direction=below trace,
+> pond-07). Bundled a scaffold-adapter-template mypy fix (drop the over-broad
+> `_OBJECT_SOURCES: dict[str, Any]` annotation). `statusClass()` needed no
+> extension (fallow/harvested → s-neutral, the accepted fallback).
+> **#160 (`860cc58`, `feat(engine)`) — Step 2:** an opt-in **`--llm`** MS-S1
+> LLM draft of `synthetic.py` (domain-plausible records from the ontology +
+> problem statement), **semantically validated** (PKs/refs/enums + exactly one
+> breaching reading that is the latest event), with a **deterministic fallback**
+> on any failure (transport/JSON/invariant/non-local backend) so enrichment
+> never breaks scaffolding. Extraction is MS-S1-local only (CLAUDE.md §8).
+> **Live-verified against `qwen3.6:35b`** (2 sites/3 assets/7 events with a
+> below-direction breach passing every check).
+> **#161 (`1dbd202`, `docs(plans)`) — Step 6 closeout:** PLAN-0016 → `done/`
+> (Status: Done + a per-step→PR completion table), the run-oct-demo runbook
+> **§3a aquaculture** walkthrough (env block + the DO-crash below-direction
+> known-good baseline), and this STATUS reconcile.
+> **Also this session — the PLAN-0017 intake-face governance (the ADR-0015 D5
+> *face* layer): #157 (`d68711e`, `docs(plans)`)** committed **PLAN-0017**
+> (Cowork-drafted uncommitted per ADR-009 D1; Code-committed per D2) — the
+> live-co-creation intake face: capture a live human domain description → MS-S1
+> LLM extraction of the partner-input package → a **mandatory human review/edit
+> gate** → invoke the PLAN-0016 engine → live vertical #4. Implementation
+> **gates on the engine** (now shipped). Dispatched by Code, relayed by Cray to
+> Cowork, drafted in parallel with the engine build. **#158 (`03820e3`,
+> `docs(plans)`) — OQ-4 ratified = HYBRID** (Cray, 2026-06-04): the intake
+> mechanism = A3 free-text capture → A2 structured review/edit gate (runner-up
+> pure-A2 embedded as the manual-entry fallback; voice out of scope).
+> **Verified:** full suite **1162 passed / 2 skipped**; ruff + `mypy services`
+> clean throughout. PLAN-0016 is **Done**; PLAN-0017 implementation is now
+> UNBLOCKED. This PR = the session-37 reconcile (head `94c1078` → `1dbd202`).
+>
+> **Session 36 — Task (B) of the design-partner
 > demo-generator track shipped: ADR-0015 + PLAN-0016 (two PRs, #150 + #151).**
 > Both Cowork-drafted (ADR-009 D1), Code-committed via PR (ADR-009 D2).
 > **ADR-0015 (Status: Proposed; content `4fac30c`, #150)** — "Assisted/
