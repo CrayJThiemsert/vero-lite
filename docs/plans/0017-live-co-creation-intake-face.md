@@ -47,10 +47,11 @@ three OCT features — the live "show #3 → build #4" moment that manufactures
 decision urgency (research §5 hook). The face is a **caller**: it produces
 the package and invokes `new-vertical`; it generates nothing itself.
 
-## OQ-4 resolution — intake mechanism (recommend-with-rationale; **Cray ratifies**)
+## OQ-4 resolution — intake mechanism (HYBRID — **ratified by Cray 2026-06-04**)
 
-**Recommendation: HYBRID** — A3-style **free-text capture** feeding MS-S1
-LLM extraction, surfacing into an A2-style **structured review/edit gate**.
+**Decision: HYBRID** (ratified by Cray, 2026-06-04) — A3-style **free-text
+capture** feeding MS-S1 LLM extraction, surfacing into an A2-style
+**structured review/edit gate**.
 
 | Lens | Pure A2 (guided form) | Pure A3 (conversational) | **Hybrid (recommended)** |
 |---|---|---|---|
@@ -71,9 +72,9 @@ within the hybrid as its fallback). Voice capture is **out of scope**
 (typed free text only — browser speech-to-text adds live failure surface
 for marginal wow).
 
-> **Adjudication transparency.** This concurs with Code's advisory lean in
+> **Adjudication transparency.** This concurred with Code's advisory lean in
 > the dispatch (input, not a decision). Since Code is also the PR reviewer,
-> **Cray's ratification is the independent check on OQ-4**, not Code review.
+> **Cray was the independent check on OQ-4** — ratified HYBRID on 2026-06-04.
 
 ## Acceptance Criteria
 
