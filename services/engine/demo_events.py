@@ -30,6 +30,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from services.api.config import settings
+from services.engine.recommender import crosses_threshold
 
 Event = dict[str, Any]
 EventSource = Callable[[], list[Event]]
@@ -44,19 +45,21 @@ def _breach_event(events: list[Event]) -> Event | None:
     """Return the breach event used as the anchor reference (PLAN-0015 D1).
 
     The breach is the recommender trigger — a ``reading`` whose
-    ``measured_value`` is at or above the active vertical's
-    ``settings.oct_recommend_threshold`` — generalised across verticals (energy
-    over-temp 96.5 °C, supply_chain cold-chain 14.6 °C both qualify). When
-    several cross, the latest one (the climax) is chosen. ``None`` when no event
-    crosses (no incident to anchor on).
+    ``measured_value`` breaches ``settings.oct_recommend_threshold`` in the
+    configured ``settings.oct_recommend_direction`` (``above`` = at or above:
+    energy over-temp 96.5 °C, supply_chain cold-chain 14.6 °C; ``below`` = at or
+    below: e.g. an aquaculture dissolved-oxygen crash 3.2 mg/L — PLAN-0016
+    Step 0). When several cross, the latest one (the climax) is chosen. ``None``
+    when no event crosses (no incident to anchor on).
     """
     threshold = settings.oct_recommend_threshold
+    direction = settings.oct_recommend_direction
     crossing = [
         e
         for e in events
         if e.get("event_type") == "reading"
         and isinstance(e.get("measured_value"), int | float)
-        and e["measured_value"] >= threshold
+        and crosses_threshold(e["measured_value"], threshold, direction)
         and isinstance(e.get("occurred_at"), datetime)
     ]
     if not crossing:
