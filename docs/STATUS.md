@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-04T11:28:24+07:00
-session: 35
-current_batch: **Session 35 — PLAN-004 Phase B shipped: handoff tooling automation (#148, content `e8bc6c2`).** Landed the three forward-declared Phase B deliverables — a `repo: local` `handoff-frontmatter` pre-commit hook (latest session-NN only, **blocking** on error-severity), `handoff_status.py --watch [--interval N]` live re-render, and an idempotent per-session `INDEX.md` auto-table (`--index` + the hook). The open latest-only-vs-legacy + block-vs-warn design fork was Cray-ratified this session (latest-only + blocking). 16 new tests; full suite **1127 passed / 2 skipped**; mypy + ruff clean; hook dogfooded green in this PR's own commits. PLAN-004 stays active as the Phase C tracker. Earlier this session: the run-oct-demo runbook tail-beat note (#146, `6f84bd2`).
+last_updated: 2026-06-04T16:25:15+07:00
+session: 36
+current_batch: **Session 36 — Task (B) of the design-partner demo-generator track shipped: ADR-0015 + PLAN-0016 (two PRs, #150 + #151).** Both Cowork-drafted (ADR-009 D1), Code-committed via PR (ADR-009 D2). **ADR-0015 (Proposed; content `4fac30c`, #150)** — "Assisted/Self-Serve Vertical Onboarding as a 2-Tier Pitch Artifact": Tier-1 synthetic "Mirror demo" (build first) + gated Tier-2 real-data POC (design = task C); D5 adopts (ii) live co-creation (showcase pre-built aquaculture vertical #3, then build the stakeholder's vertical #4 LIVE via guided/conversational intake) with an engine/intake-face two-layer split; D4 pick locked to SE-Asian aquaculture; OQ-1/OQ-3/OQ-4 carried for Cray. **PLAN-0016 (Draft; content `6b1b42f`, #151)** — "`vero-lite new-vertical` scaffolding — Tier-1 Mirror-demo generator": the engine layer of D5, proven end-to-end on the aquaculture pick (3rd vertical, Rule-of-Three on-pattern); carries a ⭐ REQUIRED Step 0 engine prereq `OCT_RECOMMEND_DIRECTION ∈ {above, below}` (default `above`, no regression) so a below-threshold breach fires the recommender (a Cowork review caught a third direction-hardcoded site beyond the dispatch's two). Earlier this session: vertical-#3 pick research (Cowork) selected aquaculture from a 5-candidate gated shortlist (research file gitignored).
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `e8bc6c2` (content commit of #148); 0 open PRs after this reconcile lands. **PLAN-004 Phase B done** — handoff tooling now has a blocking frontmatter pre-commit hook (latest-session-NN), `--watch` live re-render, and an idempotent per-session `INDEX.md`; PLAN-004 carries on as the Phase C tracker. **PLAN-0015 done + fast-follow shipped + documented** — the run-oct-demo runbook reflects the tail-beat re-time; the 2-vertical demo's all-sites Operational Timeline shows the breach as the latest beat under `OCT_DEMO_TIME_ANCHOR=true` with 0 future markers. **`status-scribe` dispatch contract validated end-to-end**. **PLAN-0010 autonomy loop is LIVE + hardened**; PLAN-0014 confirmed working live. Two strategic tasks (design-partner demo generator ADR/PLAN; Tier-2 real-data deep-research) were scoped this session + **deferred to a new session per Cray** (feasibility findings in `.claude/handoffs/session-35/2026-06-04-0944-code-design-partner-demo-gen-feasibility.md`). Highest leverage stays Cray-side (run the live-time demo for design partners; design-partner outreach). To run the live-time demo: `OCT_DEMO_TIME_ANCHOR=true` (launch.json already sets it) + **MS-S1 off** for a clean first render. Active plans (PLAN-0010 other handlers, PLAN-004 Phase C, PLAN-0012 Phase 2) not-yet-triggered.
-next_action: **Session 35 — PLAN-004 Phase B shipped + merged (#148, content `e8bc6c2`); STATUS reconciled to `e8bc6c2`.** Backlog (pick the next item): (a) **New-session strategic (deferred per Cray; findings in `.claude/handoffs/session-35/2026-06-04-0944-code-design-partner-demo-gen-feasibility.md`)** — (B) draft an ADR + PLAN for a "design-partner demo generator" (assisted/self-serve vertical onboarding as a 2-tier pitch artifact: Tier-1 synthetic "mirror demo" first, Tier-2 real-data POC later — verdict YES/feasible, engine ~80% there); (C) deep-research the Tier-2 real-data path (real `DataAdapter` impls, dbt/SQLMesh mapping layer, PDPA-safe ingestion). (b) **Code-executable** — PLAN-0010 loop handlers (`governance_reminder`, `deferred_oq_rotation`, still soak-gated); `status_digest` v2 (candidate: wire `status-scribe` as the autonomous drafter — needs separate ratification); PLAN-004 Phase C; PLAN-0012 Phase 2 (gated). (c) **Cray-action** — design-partner demo + outreach (highest leverage); run the live-time 2-vertical demo (`OCT_DEMO_TIME_ANCHOR=true`, MS-S1 off for a clean first render).
-head_commit: e8bc6c2
-recent_commits: [900449e, e8bc6c2, 7161ee3, 70f3d78, 94ddf27, 614209b, 6f84bd2, d153b34, 253671a, 3d0c3a6]
+blocked_on: Nothing gates shipped work. main clean @ `c74ecb0` (merge of #151); 0 open PRs. **ADR-0015 is Proposed** — awaiting Cray ratification to flip to Accepted (does not block; recorded as a proposed decision). PLAN-0016 is Draft (engine layer of ADR-0015 D5; Step 0 independently PR-able). **PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.** Active plans (PLAN-0010 other handlers, PLAN-004 Phase C, PLAN-0012 Phase 2) not-yet-triggered. Highest leverage stays Cray-side (run the live-time demo; design-partner outreach).
+next_action: (1) **Cray to ratify ADR-0015** (Proposed → Accepted); Code applies the flip + commits (ADR-009 D2 / CLAUDE.md §6). (2) **Dispatch PLAN-0017** (live-co-creation intake face — A2 guided-form / A3 conversational / hybrid per OQ-4, with the mandatory human review/edit of the LLM-drafted ontology) drafting — after ADR-0015 acceptance; decide **PLAN-0018** (demo-shell `GET /llm/status` + in-UI MS-S1 warm/sleep) standalone vs fold-into-0017 at that dispatch. (3) **PLAN-0016 Step 0** (`OCT_RECOMMEND_DIRECTION`) is the standout independently-PR-able implementation start. (4) **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — deferred until (B) landed per Cray, now ready. (5) Backlog unchanged: PLAN-0010 loop handlers (`governance_reminder`/`deferred_oq_rotation`, soak-gated), `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). Highest leverage stays Cray-side (run the live-time demo; design-partner outreach).
+head_commit: 6b1b42f
+recent_commits: [c74ecb0, 6b1b42f, a1e7320, 4fac30c, fbbf129, 7a180d9, 900449e, e8bc6c2, 7161ee3, 70f3d78]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,43 @@ recent_commits: [900449e, e8bc6c2, 7161ee3, 70f3d78, 94ddf27, 614209b, 6f84bd2, 
 
 ## Current Focus
 
-> **Session 35 (current) — PLAN-004 Phase B shipped: handoff
+> **Session 36 (current) — Task (B) of the design-partner
+> demo-generator track shipped: ADR-0015 + PLAN-0016 (two PRs, #150 + #151).**
+> Both Cowork-drafted (ADR-009 D1), Code-committed via PR (ADR-009 D2).
+> **ADR-0015 (Status: Proposed; content `4fac30c`, #150)** — "Assisted/
+> Self-Serve Vertical Onboarding as a 2-Tier Pitch Artifact." Productizes
+> onboarding: a **Tier-1 synthetic "Mirror demo"** (build first) + a **Tier-2
+> real-data POC** (gated; design = task C). **D5** adopts **(ii) live
+> co-creation** as the demo strategy — showcase the pre-built aquaculture
+> vertical #3, then build the stakeholder's vertical #4 LIVE via a guided/
+> conversational intake (manufactures decision urgency) — with an **engine /
+> intake-face two-layer split**. **D3** ICP = right-sized mid-market beachhead
+> (disrupt-from-below). **D4** first showcase audience + pick **locked to
+> SE-Asian aquaculture** (fuel-retail wetstock recorded as the
+> audience-dependent alternate, not rejected). **OQ-1** (aquaculture as a
+> non-PII "biological-asset cousin" of the parked vet vertical) carried
+> unresolved for Cray; **OQ-3** (recommender-direction as env-knob vs contract)
+> + **OQ-4** (intake A2/A3/hybrid) opened. eFishery (public-record 2026 fraud
+> collapse) cited as the whitespace rationale (sources in the gitignored
+> private research file).
+> **PLAN-0016 (Status: Draft; content `6b1b42f`, #151)** —
+> "`vero-lite new-vertical` scaffolding — Tier-1 Mirror-demo generator." The
+> **engine layer** of ADR-0015 D5 (the substrate the PLAN-0017 intake face will
+> call). Stitches the BUILD steps around the existing AUTO generator; proven
+> end-to-end on the aquaculture pick (the 3rd vertical, Rule-of-Three
+> on-pattern). Carries a **⭐ REQUIRED Step 0 engine prerequisite**:
+> `OCT_RECOMMEND_DIRECTION ∈ {above, below}` (default `above`, no regression)
+> so a **below-threshold** breach (the aquaculture DO crash, 3.2 < 4 mg/L)
+> fires the recommender — threaded through `recommender.py` (`94`, `199-204`,
+> `215`, `233-235`) + `demo_events.py` (`43-64`, the third direction-hardcoded
+> site a Cowork review caught beyond the dispatch's two). Step 0 is PR-able
+> independently of the scaffolding work. **Earlier this session — Phase 0
+> vertical-#3 pick research (Cowork)** selected aquaculture from a 5-candidate
+> gated shortlist scored on a 2026 competitive-whitespace lens; the research
+> file is gitignored (`docs/research/private/`). This PR = the session-36
+> reconcile (head `e8bc6c2` → `6b1b42f`).
+>
+> **Session 35 — PLAN-004 Phase B shipped: handoff
 > tooling automation (#148, content `e8bc6c2`).** Landed the three
 > forward-declared Phase B deliverables. **(1)** A `repo: local`
 > `handoff-frontmatter` **pre-commit hook**
