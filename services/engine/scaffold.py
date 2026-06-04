@@ -463,7 +463,7 @@ def render_adapter_init(roles: VerticalRoles) -> str:
         "    the execute-time recovery reading apply; with the anchor flag off and no\n"
         '    execution it equals ``synthetic.operational_events()`` (deterministic).\n    """\n'
         "    return demo_events.events(_VERTICAL, synthetic.operational_events)\n\n\n"
-        "_OBJECT_SOURCES: dict[str, Any] = {\n"
+        "_OBJECT_SOURCES = {\n"
         "    **synthetic.OBJECT_SOURCES,\n"
         '    "OperationalEvent": _operational_events,\n'
         "}\n\n\n"
