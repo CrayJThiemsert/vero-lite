@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-04T22:22:55+07:00
-session: 37
-current_batch: Session 37 — design-partner demo-generator track, Phase 1 engine **fully shipped**: PLAN-0016 (`vero-lite new-vertical` scaffolding engine) Steps 0–6 done + `git mv`'d to `done/` (6 PRs, #156–#161). Aquaculture vertical #3 (first **below**-threshold breach, DO crash 3.2 < 4 mg/L) dogfooded through the engine + live-smoked; opt-in `--llm` MS-S1 synthetic draft with deterministic fallback. Also PLAN-0017 intake-face committed (#157) with OQ-4 ratified = **HYBRID** (#158). Suite **1162/2**; ruff + mypy clean.
+last_updated: 2026-06-05T13:48:37+07:00
+session: 38
+current_batch: Session 38 — committed **PLAN-0018 (Draft)** — the demo-shell LLM control plan: a read-only, pollable `GET /llm/status` (MS-S1 reachability + `gpt-oss:20b` residency, **without the poll ever loading the model**) + an in-UI warm/sleep affordance composed from `GET /warm` / `GET /sleep` (PLAN-0014) + the status poll. Cowork-drafted (ADR-009 D1), Code-reviewed-on-receive (Lesson #8 K-1/K-2; validator-passed, R2 veto clean) + committed (ADR-009 D2; #164). Two test-proven invariants — INV-1 poll never warms, INV-2 read-only. Ships before PLAN-0017 so the intake face builds once against the real status route. Suite unchanged (plan-only PR).
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `6f1f5c8` (merge of #161); 0 open PRs. **PLAN-0016 Done** (in `done/`); **PLAN-0017 Draft** (OQ-4 = hybrid ratified; implementation no longer engine-gated — the `new-vertical` engine it calls now exists). PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
-next_action: The design-partner demo generator's **engine** is complete and the **face** is governance-ready. Remaining: (1) **PLAN-0017 implementation** — now UNBLOCKED (the `new-vertical` engine it calls exists); the hybrid intake face (A3 free-text capture → A2 structured review/edit gate) + the mandatory ontology review gate → live vertical #4. (2) **PLAN-0018** (forward-declared, standalone) — the demo-shell read-only `GET /llm/status` + in-UI MS-S1 warm/sleep for the demo operator. (3) **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — heavy token spend → Cray green-lights. (4) Non-blocking ADR-0015 errata pass (the "research §7" citation points at the Sources list; the human-review-risk substance is fact-pack §6 / ADR-0015 Consequences). Backlog unchanged: PLAN-0010 loop handlers (soak-gated), `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). Highest leverage stays Cray-side (run the live demo; design-partner outreach).
-head_commit: 1dbd202
-recent_commits: [6f1f5c8, 1dbd202, 42da7a2, 860cc58, 00284f6, 5156098, a67dba0, 03820e3, 0950994, d68711e, b8835ed, 3b4083f]
+blocked_on: Nothing gates shipped work. main clean @ `5630d45` (merge of #164); 0 open PRs. **PLAN-0016 Done** (in `done/`); **PLAN-0017 Draft** (UNBLOCKED — engine shipped; now also builds against the PLAN-0018 status route); **PLAN-0018 Draft** (committed; implementation = Code's next lane). PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
+next_action: PLAN-0018 **implementation** (Code's lane, now): **Step 1** the read-only `GET /llm/status` backend (state machine — unreachable / cold / resident / warming / error; right-model residency for `gpt-oss:20b`; short dedicated probe timeout; INV-1/INV-2 test-proven via `httpx.MockTransport` request-recording), **Step 2** the demo-shell residency indicator + warm(`?wait=false`)/guarded-sleep affordance, **Step 3** runbook pre-warm-checklist + closeout (`git mv` to `done/`). Then **PLAN-0017** (the intake face — UNBLOCKED, builds against the shipped status route). Backlog unchanged: **Task (C)** deep-research Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — heavy spend → Cray green-lights; PLAN-0010 loop handlers (soak-gated); ADR-0015 §7 citation errata (J-class, non-blocking); `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). Highest leverage stays Cray-side (run the live demo; design-partner outreach).
+head_commit: 0f4d341
+recent_commits: [5630d45, 0f4d341, afb8c2f, 9718c5f, e53b93e, ef47433, 6f1f5c8, 1dbd202, 42da7a2, 860cc58, 00284f6, 5156098]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,37 @@ recent_commits: [6f1f5c8, 1dbd202, 42da7a2, 860cc58, 00284f6, 5156098, a67dba0, 
 
 ## Current Focus
 
-> **Session 37 (current) — design-partner demo-generator track, Phase 1
+> **Session 38 (current) — committed PLAN-0018 (Draft): the demo-shell
+> LLM control plan (#164, content `0f4d341`, `docs(plans)`).** The
+> forward-declared, standalone deliverable from the session-37 next-action.
+> PLAN-0018 specifies a **read-only, pollable `GET /llm/status`** — surfacing
+> MS-S1 reachability + the residency of the pinned recommender `gpt-oss:20b`
+> (ADR-0001) **without the poll ever loading the model** — plus an **in-UI
+> warm/sleep affordance** for the demo operator, composed from the existing
+> `GET /warm` / `GET /sleep` (PLAN-0014) plus the new status poll. Two
+> non-negotiable, **test-proven invariants** anchor the contract: **INV-1** the
+> poll **never warms** (it may hit `GET /api/ps` only, never `/api/generate`);
+> **INV-2** read-only / non-destructive. The session-38 dispatch's grounded
+> risk register **R1–R10** folds into **AC-1…AC-9** plus two explicit
+> **delegated decisions** — **D-1** (poll cache-TTL vs. interval) and **D-2**
+> (route shape / field names / enum literals / probe timeout number / UI-CSS)
+> — contract specified, implementation left to Code's follow-up PR.
+> **Cowork-drafted** (ADR-009 D1), **Code-reviewed on receive** per Lesson #8
+> K-1/K-2 (completion-handoff validator-passed; R2 veto clean — every cited
+> path resolves at HEAD, the `config.py` line claims verified, risk-register
+> coverage **complete**), and **committed** per ADR-009 D2. **Standalone +
+> forward-declared** (ADR-0015 Consequences §Neutral); deliberately **ships
+> before PLAN-0017** (Cray-ratified) so the intake face builds **once** against
+> the real status route — the status contract is exactly PLAN-0017 AC-4's
+> "clear, non-silent state" degradation substrate. A drafter erratum was
+> corrected in-plan: the warm/sleep recovery substrate is **PLAN-0014** (the
+> ADR-0014 slot is the withdrawn tombstone). Plan-only PR — no code/test/schema
+> change, suite count unchanged. PLAN-0016 stays **Done**; PLAN-0017 stays
+> **Draft** (now also unblocked against the status route); PLAN-0018 is **Draft
+> (committed)** with implementation as Code's next lane. This PR = the
+> session-38 reconcile (head `1dbd202` → `0f4d341`).
+>
+> **Session 37 — design-partner demo-generator track, Phase 1
 > engine FULLY SHIPPED: PLAN-0016 (`vero-lite new-vertical` scaffolding
 > engine) Steps 0–6 done + archived to `done/` (6 PRs, #156–#161).** The
 > **engine layer** of ADR-0015 D5 — the substrate the PLAN-0017 intake face
