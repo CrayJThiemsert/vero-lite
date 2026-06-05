@@ -23,6 +23,12 @@
 > counts are unchanged — so every **expected value** below (counts, `measured_value`,
 > confidence) still holds; only the relative *ordering* of events on the timeline
 > changed.
+>
+> **Verticals since (lineage).** The **aquaculture** vertical (§3a) was scaffolded
+> by `vero-lite new-vertical` — the demo generator's own output (PLAN-0016, session
+> 37) — not hand-built; the **"Build a Vertical" live co-creation face** (§5b)
+> shipped in PLAN-0017 (#170–#173, session 39). Both ride the same engine + UI,
+> driven only by ontology/config — no per-vertical UI code.
 
 ---
 
@@ -299,8 +305,14 @@ depends on extraction succeeding.
    OCT_RECOVERY_VALUE=6 \
    OCT_RECOVERY_DESCRIPTION="Boiler steam pressure restored above the 4 bar safe minimum." \
    OCT_DEMO_TIME_ANCHOR=true \
-   uv run uvicorn services.api.main:app --port 8099
+   uv run uvicorn services.api.main:app --port 8100
    ```
+
+   > **Port choice — avoid a collision.** Use a *free* port for #4 (`8100` here).
+   > `8099` is the §3a aquaculture showcase, so reusing it collides with the very
+   > vertical you keep up *beside* #4. (The session-39 live run used 8099 only
+   > because no other demo was up then.)
+
    Open the new port → vertical #4 runs all three OCT features: the map renders from
    the Site-role geo, NL query answers (MS-S1), and the breach fires
    breach → recommend → approve → execute. (Session-39 live: `BoilerPlant 01` +
@@ -323,7 +335,7 @@ Out-of-Scope: no intake history store) — to discard it after the demo:
 ```bash
 git checkout -- services/api/main.py && rm -rf verticals/<ns>
 ```
-(Stop the #4 uvicorn first — Ctrl-C, or `pkill -f "uvicorn services.api.main:app --port 8099"`.)
+(Stop the #4 uvicorn first — Ctrl-C, or `pkill -f "uvicorn services.api.main:app --port 8100"`.)
 
 ---
 
@@ -377,6 +389,12 @@ identical UI build, two different operations, zero per-vertical UI code.
 - **`OCT_VERTICAL=... is not a registered vertical`.** `energy`, `supply_chain`,
   and `aquaculture` are registered (`services/api/main.py` `_VERTICAL_REGISTRARS`);
   `vero-lite new-vertical` code-mods that dict to add more.
+- **Live co-creation (§5b): `POST /intake/generate` returns 409.** The namespace
+  already exists on disk — you built this domain in an earlier rehearsal and did
+  not clean it up. Pick a new namespace, or discard the previous build first (the
+  §5b cleanup block: `git checkout -- services/api/main.py && rm -rf verticals/<ns>`).
+  `force=true` overwrites but is deliberately **not** the demo default (it would
+  clobber an existing vertical silently — AC-5).
 - **DB errors on Execute.** Run `uv run alembic upgrade head` (§1). The test suite
   uses a disposable `<db>_test` DB and never touches the demo DB (memory
   `project_test_suite_drops_demo_db`).
@@ -441,8 +459,10 @@ mechanism: `services/engine/demo_events.py`.
 - Entry point + vertical registry: `services/api/main.py`.
 - Config / env fields: `services/api/config.py` (`oct_vertical`, `oct_recommend_*`,
   `ollama_host`, `llm_backend`).
-- Routes: `services/api/routers/{actions,query,admin}.py`
-  (`/recommendations` + approve/execute, `POST /query`, `GET /warm` + `/sleep`).
+- Routes: `services/api/routers/{actions,query,admin,intake}.py`
+  (`/recommendations` + approve/execute, `POST /query`, `GET /warm` + `/sleep`;
+  the live co-creation face = `POST /intake/extract`, `GET /intake/defaults`,
+  `POST /intake/generate` — PLAN-0017).
 - Recommender + fail-safe: `services/engine/recommender.py` (`_rule_recommend`,
   `RULE_CONFIDENCE = 0.8`).
 - NL query engine: `services/engine/nl_query.py` (`answer_question`).
