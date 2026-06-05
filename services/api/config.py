@@ -96,6 +96,16 @@ class Settings(BaseSettings):
         gt=0.0,
         description="Per-request timeout for a single Ollama chat call, in seconds",
     )
+    llm_status_timeout_s: float = Field(
+        default=3.0,
+        gt=0.0,
+        description=(
+            "Short, dedicated timeout for the read-only GET /llm/status residency "
+            "probe (PLAN-0018 AC-5) — decoupled from llm_request_timeout_s so a "
+            "slow/half-down MS-S1 degrades the poll fast instead of hanging for a "
+            "generation-length window per poll"
+        ),
+    )
 
     # OCT demo — active vertical + recommender policy (PLAN-0013 AC-template).
     # Only ONE vertical runs per process, so the policy is a flat set of
