@@ -1,0 +1,31 @@
+{
+  "namespace": "solar_farm",
+  "domain_label": "solar inverter thermal monitoring",
+  "asset_role": {
+    "type_name": "Inverter",
+    "properties": [
+      { "name": "rated_kw", "type": "float" },
+      { "name": "inverter_type", "type": "enum", "values": ["string", "central", "microinverter"] },
+      { "name": "status", "type": "enum", "values": ["online", "derating", "offline"] }
+    ]
+  },
+  "site_role": {
+    "type_name": "SolarArray",
+    "properties": [
+      { "name": "array_type", "type": "enum", "values": ["rooftop", "ground_mount", "tracker"] }
+    ]
+  },
+  "metric": {
+    "label": "inverter over-temperature",
+    "unit": "C",
+    "threshold": 75.0,
+    "direction": "above"
+  },
+  "action_types": ["dispatch_technician", "reduce_load", "shutdown_string", "escalate"],
+  "problem": "An inverter over-temperature overrun derates output and risks hardware failure if it climbs unchecked.",
+  "decision": "Dispatch a technician and reduce load to bring the inverter temperature back into the safe range.",
+  "recovery_value": 55.0,
+  "recovery_description": "Inverter temperature returning to the safe operating range.",
+  "source": "prebaked_default",
+  "confidence": 1.0
+}

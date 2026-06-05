@@ -1,0 +1,31 @@
+{
+  "namespace": "water_utility",
+  "domain_label": "municipal water reservoir level monitoring",
+  "asset_role": {
+    "type_name": "Reservoir",
+    "properties": [
+      { "name": "capacity_m3", "type": "float" },
+      { "name": "reservoir_type", "type": "enum", "values": ["elevated", "ground", "buffer"] },
+      { "name": "status", "type": "enum", "values": ["active", "maintenance", "offline"] }
+    ]
+  },
+  "site_role": {
+    "type_name": "District",
+    "properties": [
+      { "name": "district_type", "type": "enum", "values": ["urban", "suburban", "rural"] }
+    ]
+  },
+  "metric": {
+    "label": "reservoir low-level",
+    "unit": "m",
+    "threshold": 2.0,
+    "direction": "below"
+  },
+  "action_types": ["start_backup_pump", "dispatch_crew", "issue_advisory", "escalate"],
+  "problem": "A reservoir level crash below the safe minimum risks supply loss and pump damage within hours.",
+  "decision": "Start the backup pump and dispatch a crew to restore the level above the safe minimum.",
+  "recovery_value": 3.5,
+  "recovery_description": "Reservoir level recovering above the safe minimum.",
+  "source": "prebaked_default",
+  "confidence": 1.0
+}
