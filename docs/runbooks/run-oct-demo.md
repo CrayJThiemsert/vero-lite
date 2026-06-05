@@ -354,9 +354,216 @@ git checkout -- services/api/main.py && rm -rf verticals/<ns>
 - **Screen D (flow).** Ingest → Condition → Process → Result as one visible
   pipeline. Pitch: *"the data you already have → a governed decision, end to
   end."*
+- **Screen E (Build a Vertical).** Not a view of the running vertical — the
+  **live co-creation** tab: the stakeholder describes a *new* operation in plain
+  language and a Mirror demo of it is generated on the spot (engine + the human
+  review/edit gate + boot). Pitch: *"…and that's **your** operation — let's build
+  it right now."* Full mechanics: §5b · narrative + show-sequence: §6b.
 
-Running **both ports side by side** (§2 + §3) makes the core thesis concrete:
-identical UI build, two different operations, zero per-vertical UI code.
+Running **the ports side by side** (§2 + §3 + §3a) makes the core thesis
+concrete: identical UI build, different operations, zero per-vertical UI code.
+
+> **How to actually narrate it.** §6 above is the per-screen reference; the
+> story to *tell a stakeholder* — scene → screens → the number — lives in
+> **§6a (per-vertical scripts, ไทย/EN)** and **§6b (the Screen-E co-creation
+> moment)**.
+
+---
+
+## 6a. Per-vertical narratives — the story to tell (ไทย / EN)
+
+> **Tell the pain before the feature.** Every pre-built vertical follows the same
+> 4-beat arc — **the scene → Screen A (map) → Screen B (the killer moment) →
+> Screens C/D → the number** — only the domain changes. Open with the 2-a.m.
+> failure, *then* let the screens be the answer. Don't open with "this is our
+> ontology engine." Below is a script per vertical, grounded in the exact
+> on-screen values (§2 / §3 / §3a), in **English** and **ไทย**. The fourth
+> "vertical" — the one you build live — is **§6b**.
+>
+> เล่า **"ความเจ็บปวด" ก่อน "ฟีเจอร์"** เสมอ — ทุก vertical ใช้โครงเดียวกัน:
+> **ฉาก → Screen A → Screen B (จุดพีค) → Screen C/D → ตัวเลข** เปลี่ยนแค่ domain.
+
+### 1 · Energy — regional energy operator (§2)
+
+**English**
+- **Scene —** a battery-storage fleet across substations and microgrids. A
+  battery bank starts overheating at night; left unchecked, thermal runaway means
+  fire and a forced outage. Operators watch SCADA and tribal know-how — no single
+  live map, no auditable record of who acted and why.
+- **On screen** (verified §2): two sites — *North Substation*, *Riverside
+  Microgrid* — and four assets. The flagged action is **over-temperature on
+  `asset-battery-01`**, reasoning trace `measured_value 96.5 °C ≥ threshold 90.0`
+  (an **above** breach), confidence 0.8; the inverter alarm was the precursor.
+  Approve → Execute resolves it.
+- **Say:** *"The map already understands your grid — you just gave us the
+  ontology. Every automated call is explainable and gated: the operator approves,
+  the system acts, and it's all on the record."*
+
+**ไทย**
+- **ฉาก —** ฟลีตแบตเตอรี่กักเก็บพลังงานกระจายตามสถานีไฟฟ้าย่อย/ไมโครกริด คืนหนึ่ง
+  แบงก์แบตเตอรี่เริ่มร้อนเกิน ถ้าปล่อยไว้ thermal runaway = ไฟไหม้ + ไฟดับทั้งโซน
+  วันนี้คนคุมดู SCADA กับความเก๋า ไม่มีแผนที่รวมสักจอ ไม่มีบันทึกว่าใครทำอะไรเพราะอะไร
+- **บนจอ** (verified §2): 2 ไซต์ — *North Substation*, *Riverside Microgrid* — กับ
+  4 asset เหตุที่ถูกชูคือ **over-temperature ที่ `asset-battery-01`** trace
+  `วัดได้ 96.5 °C ≥ เกณฑ์ 90.0` (breach แบบ **above** ค่าพุ่งเกิน) confidence 0.8;
+  มี inverter alarm เป็นสัญญาณนำ กด Approve → Execute เพื่อปิดเหตุ
+- **พูดว่า:** *"แผนที่เข้าใจกริดของคุณอยู่แล้ว คุณแค่ให้ ontology มา ทุกการตัดสินใจ
+  อธิบายได้และมีด่านมนุษย์กั้น — operator อนุมัติ ระบบลงมือ และทุกอย่างถูกบันทึกไว้"*
+
+### 2 · Supply chain — industrial cold-chain operator (§3)
+
+**English**
+- **Scene —** refrigerated shipments (vaccines, produce, frozen, biologics)
+  moving between cold hubs. A reefer door is left ajar; cargo temperature climbs
+  past the safe 2–8 °C band; a vaccine load worth a fortune spoils in transit,
+  with regulatory fallout. Today: spreadsheets and phone calls — found out too
+  late.
+- **On screen** (verified §3): two facilities — *Central Cold Hub*, *Northern
+  Distribution Center* — and four shipments. The flagged action is **cold-chain
+  temperature breach on `shipment-pharma-01`**, trace `measured_value 14.6 °C ≥
+  threshold 8.0` (an **above** breach), confidence 0.8; the door-open alarm was
+  the precursor. Execute lands the recovery reading at **4.2 °C** (back inside
+  2–8 °C).
+- **Say:** *"Same console, a completely different operation — a shipment instead
+  of a battery, zero UI code changed. Catch the excursion in transit, reroute or
+  hold before the cargo is lost, and keep an audit trail the regulator accepts."*
+
+**ไทย**
+- **ฉาก —** ตู้แช่เย็นขนส่ง (วัคซีน/ผัก/ของแช่แข็ง/ชีววัตถุ) วิ่งระหว่างฮับความเย็น
+  ประตู reefer ถูกเปิดค้าง อุณหภูมิสินค้าไต่เกินช่วงปลอดภัย 2–8 °C วัคซีนล็อตเป็นล้าน
+  เสียกลางทาง พ่วงปัญหา compliance วันนี้ใช้ spreadsheet กับโทรศัพท์ รู้ตอนสายไปแล้ว
+- **บนจอ** (verified §3): 2 facility — *Central Cold Hub*, *Northern Distribution
+  Center* — กับ 4 shipment เหตุที่ถูกชูคือ **cold-chain temperature breach ที่
+  `shipment-pharma-01`** trace `วัดได้ 14.6 °C ≥ เกณฑ์ 8.0` (breach แบบ **above**)
+  confidence 0.8; มี door-open alarm เป็นสัญญาณนำ กด Execute แล้วค่า recovery ลงมาที่
+  **4.2 °C** (กลับเข้าช่วง 2–8 °C)
+- **พูดว่า:** *"คอนโซลเดียวกัน แต่คนละการดำเนินงาน — เป็น shipment แทนแบตเตอรี่ โดยไม่
+  แตะ UI code เลย จับ excursion ได้กลางทาง รีบ reroute หรือ hold ก่อนของเสีย แล้วมี
+  audit trail ที่ผู้คุมกฎยอมรับ"*
+
+### 3 · Aquaculture — SE-Asian shrimp/finfish farm (§3a) · the headline #3
+
+**English**
+- **Scene —** a mid-market shrimp farm, dozens of ponds. Dissolved oxygen swings
+  hardest at night and after feeding; an aerator fails unnoticed at 2 a.m. and an
+  entire pond's crop dies within 1–2 hours — a five-figure loss per pond per
+  cycle. Today: manual DO meters and night-watch instinct.
+- **On screen** (verified §3a): two farms — *Bayfront Shrimp*, *Riverside
+  Tilapia* — and four ponds (3 active, *pond-05* fallow). The flagged action is
+  **dissolved-oxygen crash on `pond-07`**, trace `measured_value 3.2 mg/L ≤
+  threshold 4.0 · direction: below` — the **first below-threshold breach** (a
+  *crash*: the value falls, not an overrun). Execute lands recovery at **5.5
+  mg/L** (back above the 4 mg/L line). The real-world action it represents: start
+  the emergency aerator (dispatch a technician if the aerator itself failed).
+- **Why this one leads (2026):** after the eFishery collapse (founder sentenced;
+  ~US$600M inflated revenue) the sector's trust is shattered — a
+  reasoning-trace-first, auditable, mid-market product is the *anti-eFishery*, and
+  the founder is in-region (SE Asia / Thailand) to sanity-check it.
+- **Say:** *"A living operational map, a plain-language 'which ponds are low on DO
+  right now?', and an AI recommendation you can see the reasoning behind — not
+  hype, an audit trail."*
+
+**ไทย**
+- **ฉาก —** ฟาร์มกุ้ง mid-market บ่อเป็นสิบ DO แกว่งแรงสุดตอนกลางคืน + หลังให้อาหาร
+  aerator พังตอนตี 2 โดยไม่มีใครรู้ ทั้งบ่อตายใน 1–2 ชม. = เสียหลักหมื่น–แสนต่อบ่อ
+  ต่อรอบ วันนี้ใช้เครื่องวัด DO มือถือ + สัญชาตญาณคนเฝ้ายาม
+- **บนจอ** (verified §3a): 2 ฟาร์ม — *Bayfront Shrimp*, *Riverside Tilapia* — กับ
+  4 บ่อ (3 active, *pond-05* fallow) เหตุที่ถูกชูคือ **dissolved-oxygen crash ที่
+  `pond-07`** trace `วัดได้ 3.2 mg/L ≤ เกณฑ์ 4.0 · direction: below` —
+  **breach แบบต่ำกว่าเกณฑ์ตัวแรก** (เป็น crash ค่าตก ไม่ใช่ค่าพุ่ง) กด Execute แล้ว
+  recovery ขึ้นมา **5.5 mg/L** (เหนือเส้น 4) การแก้ที่มันแทน: เปิด emergency aerator
+  (ส่งช่างถ้า aerator เองพัง)
+- **ทำไมตัวนี้นำ (2026):** หลัง eFishery ล่ม (ผู้ก่อตั้งโดนตัดสิน รายได้ปลอม ~600
+  ล้าน$) วงการขาดความเชื่อใจ — product ที่ reasoning-trace-first + auditable +
+  ขนาดพอดี mid-market คือ "ตรงข้าม eFishery" และผู้ก่อตั้งอยู่ในภูมิภาค (อาเซียน/ไทย)
+  sanity-check ได้
+- **พูดว่า:** *"แผนที่ปฏิบัติการที่มีชีวิต ถามเป็นภาษาคนว่า 'บ่อไหน DO ต่ำตอนนี้?'
+  และคำแนะนำ AI ที่เห็น reasoning เบื้องหลัง — ไม่ใช่การปั่น แต่เป็น audit trail"*
+
+> **Why aquaculture is the *below*-breach showcase.** Energy + supply_chain both
+> breach **above** (something gets too hot). Aquaculture breaches **below**
+> (oxygen crashes) — showing it proves the engine handles *both* alert directions
+> from config alone (`OCT_RECOMMEND_DIRECTION`), the cleanest "your domain, not
+> ours" proof before you hand the stakeholder Screen E.
+
+---
+
+## 6b. Screen E · Build a Vertical — the live co-creation moment (the closer)
+
+> Screens A–D show a vertical **you** pre-built. **Screen E builds the
+> stakeholder's *own* vertical, live.** It is the demo's closer — it converts
+> "nice product" into "that's **my** operation." The mechanics (warm, extract,
+> gate, confirm, boot, clean up) are in **§5b**; this section is the **narrative +
+> where it sits in the show**.
+>
+> Screen A–D โชว์ vertical ที่ **คุณ** build ไว้ก่อน **Screen E สร้าง vertical ของ
+> stakeholder เองสดๆ** — เป็นไม้ปิดของ demo เปลี่ยนจาก "product ดีนะ" เป็น "นี่มัน
+> งานของฉันนี่" กลไกอยู่ใน **§5b** ตรงนี้คือ **เรื่องเล่า + ตำแหน่งในการโชว์**
+
+### The show sequence — where Screen E fits in the #3 demo
+
+**English**
+1. Run the headline vertical #3 (aquaculture, §3a) and walk Screens **A → B → C →
+   D** — the full §6a story. Land the killer moment (the `pond-07` crash,
+   Approve → Execute → recovery 5.5 mg/L).
+2. **Pause and pivot — the golden question:** *"That's a shrimp farm… and what's
+   **your** operation? What value, when it crosses a line, costs you money?"* Let
+   them answer out loud.
+3. **Switch to the `E · Build a Vertical` tab** (top of the demo shell). Confirm
+   the MS-S1 hint reads *"resident — extraction ready"* (warm it first via §5a —
+   this is the pre-demo checklist; if cold, use a fallback, step 6).
+4. Type *their* domain in plain language — assets + where they sit, what breaks
+   and why it hurts, the metric + threshold + **direction** (crash = value
+   falling / overrun = value rising), the corrective action. Click **Extract
+   draft (MS-S1)**.
+5. **Narrate the review/edit gate out loud — it's a feature, not a delay:** *"the
+   AI proposed this ontology; nothing generates until you confirm it, and you can
+   correct any slot."* Point at the source badge (`MS-S1 EXTRACTION`). This is the
+   mandatory human gate (AC-2) — the anti-"black box" promise made literal.
+6. Click **Confirm & build vertical #4** → show the result (env block, scaffold
+   written, boot checklist). *Fallback if MS-S1 is cold or the draft looks wrong:*
+   **Use a starter** (`solar_farm` / `water_utility`) or **Enter manually** — both
+   land in the same gate; the demo never stalls (§5b Fallbacks).
+7. **Boot #4 on a free port (8100)** and open it beside #3 — now *their*
+   operation runs the same **A → B → C → D**. *"You described it sixty seconds
+   ago; here it is, live — same engine, your assets."*
+8. After the demo, revert the ephemeral #4 (§5b cleanup).
+
+**ไทย**
+1. รัน vertical #3 (aquaculture, §3a) แล้วเดิน Screen **A → B → C → D** ครบตาม
+   เรื่อง §6a ปิดด้วยจุดพีค (crash ที่ `pond-07`, Approve → Execute → recovery
+   5.5 mg/L)
+2. **หยุดแล้วหันมา — ประโยคทอง:** *"นี่คือฟาร์มกุ้ง… แล้ว **'งานของคุณ'** คืออะไร
+   ล่ะครับ? ค่าอะไรที่พอข้ามเส้นแล้วทำให้คุณเสียเงิน?"* ให้เขาตอบออกมาดังๆ
+3. **สลับไปแท็บ `E · Build a Vertical`** (บนสุดของ demo shell) เช็คว่า hint MS-S1
+   ขึ้น *"resident — extraction ready"* (warm ก่อนตาม §5a — เป็น checklist ก่อน
+   demo; ถ้า cold ใช้ fallback ข้อ 6)
+4. พิมพ์ domain ของ *เขา* เป็นภาษาคน — asset + อยู่ที่ไหน, อะไรพังและเจ็บยังไง,
+   metric + threshold + **direction** (crash = ค่าตก / overrun = ค่าพุ่ง), และ
+   action ที่ใช้แก้ กด **Extract draft (MS-S1)**
+5. **เล่า review/edit gate ออกมาดังๆ — นี่คือฟีเจอร์ ไม่ใช่ความช้า:** *"AI เสนอ
+   ontology นี้ ระบบจะยังไม่สร้างจนกว่าคุณจะยืนยัน และคุณแก้ได้ทุกช่อง"* ชี้ที่
+   source badge (`MS-S1 EXTRACTION`) นี่คือด่านมนุษย์บังคับ (AC-2) — คำมั่น
+   "ไม่ใช่กล่องดำ" ที่จับต้องได้
+6. กด **Confirm & build vertical #4** → โชว์ผลลัพธ์ (env block, scaffold, boot
+   checklist) *Fallback ถ้า MS-S1 cold หรือ draft ผิด:* **Use a starter**
+   (`solar_farm` / `water_utility`) หรือ **Enter manually** — ลงที่ gate เดียวกัน
+   demo ไม่มีวันค้าง (§5b Fallbacks)
+7. **Boot #4 ที่ port ว่าง (8100)** เปิดวางข้าง #3 — ตอนนี้งานของ *เขา* รันครบ
+   **A → B → C → D** *"คุณเพิ่งพูดเมื่อหกสิบวินาทีที่แล้ว นี่ไงครับ — engine เดียวกัน
+   สินทรัพย์ของคุณ"*
+8. หลัง demo ค่อย revert #4 ที่เป็น ephemeral (§5b cleanup)
+
+### The closing line
+
+- **EN:** *"Every other vendor shows you their demo. We just built **yours** — in
+  the room, in a minute, with you correcting the AI as it went."*
+- **ไทย:** *"เจ้าอื่นโชว์ demo ของเขา เราเพิ่งสร้าง demo ของ **คุณ** — ในห้องนี้
+  ในหนึ่งนาที โดยคุณเป็นคนแก้ AI ไปด้วยกัน"*
+
+> **One-line how-to (cross-ref §5b):** warm MS-S1 (§5a) → `E` tab → describe →
+> **Extract** → review/edit gate → **Confirm & build** → boot on **8100** → §5b
+> cleanup. Never skip the gate; never reuse port 8099 (that's the §3a showcase).
 
 ---
 
