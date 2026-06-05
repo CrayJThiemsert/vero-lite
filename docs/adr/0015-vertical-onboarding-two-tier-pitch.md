@@ -133,7 +133,7 @@ mechanism — **A2 guided form vs A3 conversational vs hybrid — is a design
 choice recorded as OQ-4**, with one hard requirement either way: a **human
 review/edit step of the LLM-drafted ontology before generation**. The
 intake must *show* the proposed ontology and let the operator correct it —
-never silently auto-generate (SOTA consensus; research §7 risk).
+never silently auto-generate (SOTA consensus; fact-pack §6).
 
 **Scope boundaries (Cray's phasing):**
 
