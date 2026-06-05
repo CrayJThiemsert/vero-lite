@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-05T14:34:12+07:00
-session: 38
-current_batch: Session 38 — **PLAN-0018 (demo-shell LLM control) shipped end-to-end and is now Done** (in `done/`), across three PRs. **#166 (`d0c2e5d`, `feat(api)`) Step 1** — a read-only, pollable `GET /llm/status` (MS-S1 reachability + `gpt-oss:20b` residency via `OllamaClient.ps()` / `GET /api/ps` **only** — the poll never loads the model, INV-1; non-destructive, INV-2); state machine unreachable/cold/resident/error, tolerant tag match, short dedicated `llm_status_timeout_s` (3.0 s), expiry honesty, typed Pydantic response; **15 offline tests** prove INV-1/INV-2 (httpx.MockTransport request-recording — path set is exactly `{GET /api/ps}`) + AC-3…AC-6; suite **1177 passed / 2 skipped**. **#167 (`71e6c2d`, `feat(ui)`) Step 2** — in-header MS-S1 control (`assets/llm-control.js`): a 5 s residency indicator (D-1 client interval, mock-fallback bypassed), a non-blocking Warm (`?wait=false` → WARMING… overlay → poll-to-resident), a guarded two-click Sleep; **live-verified via Claude Preview against the real MS-S1** (RESIDENT → guarded-sleep → COLD → warm → RESIDENT, right-model match while `qwen3.6:35b` also resident, 0 console errors). **#168 (`612601b`, `docs(plans)`) Step 3** — PLAN-0018 → `done/` (per-step→PR table) + run-oct-demo runbook **§5a** pre-warm checklist. ruff + mypy clean throughout.
+last_updated: 2026-06-05T16:41:07+07:00
+session: 39
+current_batch: Session 39 — **PLAN-0017 (the live co-creation intake FACE) shipped end-to-end and is now Done** (in `done/`), across four PRs (#170–#173) — the headline next-action from session 38. The face turns a live free-text domain description into a runnable "Mirror demo" vertical #4: a **caller** that drafts a partner-input package, gates it behind a **mandatory human review/edit** (AC-2 no-bypass), then invokes the PLAN-0016 `vero-lite new-vertical` engine **unchanged** (AC-5). **#170 (`81792e4`, `feat(engine)`) Step 1** — `intake_assembler.py` (the `IntakePackage` contract + a deterministic **constrained-slot → canonical six-type OCT ontology YAML** assembler, valid by construction — guarantees the three `scaffold.detect_roles` invariants, templated off `aquaculture_v0.yaml`) + `llm/intake.py` `extract_package` (mirrors `structured.py`; MS-S1-local `gpt-oss:20b` only, never the hosted API per §8/AC-4; UNTRUSTED stakeholder text injection-contained per ADR-010 D4/IN-2; omits `think` per CHECKPOINT-0) + two source-tagged prebaked starters (`solar_farm`/`water_utility`) as the AC-4 fallback; **20 tests**. **#171 (`7090775`, `feat(api)`) Step 2** — `routers/intake.py`: `POST /intake/extract` (graceful non-silent degradation), `GET /intake/defaults`, `POST /intake/generate` — the **server-enforced human gate** that refuses any package not explicitly `confirmed` (AC-2 no-bypass; extract & generate are separate, generate never calls extract); **11 tests** incl. AC-2 no-bypass + edit-propagation, AC-3 below-direction, AC-5 clobber-guard. **#172 (`a2a9fda`, `feat(ui)`) Step 3** — View E "Build a Vertical" (`assets/intake-view.js` + the `Intake` helper, no mock fallback): capture (free-text + MS-S1 residency hint via `GET /llm/status`) → source-badged review/edit gate (`MS-S1 EXTRACTION`/`PREBAKED STARTER`/`MANUAL ENTRY`) → the single explicit "Confirm & build vertical #4" → result; live-verified via Claude Preview. **#173 (`7314dc4`, `docs(plans)`) Step 6** — PLAN-0017 → `done/` (Status: Done, 6/6 ACs) + run-oct-demo runbook **§5b** (the live co-creation walkthrough + AC-4 fallbacks + ephemeral-#4 cleanup). Live AC-1 verified MS-S1-resident: district-heating free text → `gpt-oss:20b` correctly inferred `direction=below` → a gate `recovery_value` edit propagated into the generated env block (live AC-2) → Confirm → vertical #4 (`BoilerPlant`/`Neighborhood`) booted on a separate port (map geo, grounded NL, below-breach recommend→approve→execute trace). Full suite **1208 passed / 2 skipped**; ruff + mypy clean throughout.
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `70698e3` (merge of #168); 0 open PRs. **PLAN-0016 Done** (in `done/`); **PLAN-0018 Done** (in `done/`); **PLAN-0017 Draft** (UNBLOCKED — engine shipped; now also builds against the shipped `GET /llm/status` route — its AC-4 non-silent-state + Step 5 warm/status substrate). PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
-next_action: **PLAN-0017 — the live co-creation intake FACE** (the headline; UNBLOCKED, now also builds against the shipped `GET /llm/status` route, PLAN-0018 being its AC-4 "non-silent state" + Step 5 warm/status substrate): hybrid free-text capture → MS-S1 (`gpt-oss:20b`) extraction → the **MANDATORY** human review/edit gate (AC-2, no bypass) → invoke `vero-lite new-vertical` → live vertical #4. Then: **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — heavy spend → Cray green-lights; ADR-0015 §7 citation errata (J-class, non-blocking); PLAN-0010 loop handlers (soak-gated); `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). Highest leverage stays Cray-side (run the live demo; design-partner outreach).
-head_commit: 612601b
-recent_commits: [70698e3, 612601b, 87cbdc5, 71e6c2d, 350376f, d0c2e5d, 235344e, e2154c2, 5630d45, 0f4d341, afb8c2f, 9718c5f]
+blocked_on: Nothing gates shipped work. main clean @ `470ee25` (merge of #173); 0 open PRs. **PLAN-0016 Done**, **PLAN-0018 Done**, and **PLAN-0017 Done** (all in `done/`). PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
+next_action: With PLAN-0017 shipped, the OCT Tier-1 Mirror-demo capability (ADR-0015 D5 — engine + intake face + the three OCT features + the live "show #3 → build #4" moment) is **complete**. Next candidates (Cray routes): **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — heavy spend → Cray green-lights; plus the standing backlog — ADR-0015 §7 citation errata (J-class, non-blocking), PLAN-0010 loop handlers (soak-gated), `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). **Highest leverage stays Cray-side: run the live "build your own vertical" demo for a design partner (runbook §5b), and design-partner outreach.**
+head_commit: 7314dc4
+recent_commits: [470ee25, 7314dc4, 9be8a86, a2a9fda, 3b9fe6e, 7090775, 3ab9259, 81792e4, 5099aa4, 1a1aca6, 70698e3, 612601b]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,66 @@ recent_commits: [70698e3, 612601b, 87cbdc5, 71e6c2d, 350376f, d0c2e5d, 235344e, 
 
 ## Current Focus
 
-> **Session 38 (current) — PLAN-0018 (demo-shell LLM control) SHIPPED
+> **Session 39 (current) — PLAN-0017 (the live co-creation intake FACE)
+> SHIPPED end-to-end and is now Done (in `done/`), across four PRs
+> (#170–#173).** The headline next-action from session 38 — the *face* layer
+> of ADR-0015 D5 — went from Draft → implemented → archived this session. The
+> face turns a live free-text domain description into a runnable "Mirror demo"
+> **vertical #4**: it is a **caller** that drafts a partner-input package,
+> gates it behind a **mandatory human review/edit**, and invokes the PLAN-0016
+> `vero-lite new-vertical` engine **unchanged** (**AC-5**). **#170 (`81792e4`,
+> `feat(engine)`) — Step 1:** `services/engine/intake_assembler.py` — the
+> `IntakePackage` contract + a deterministic **constrained-slot → canonical
+> six-type OCT ontology YAML** assembler (valid by construction — guarantees
+> the three `scaffold.detect_roles` invariants, templated off
+> `aquaculture_v0.yaml`); `services/engine/llm/intake.py` `extract_package`
+> mirroring `structured.py` (MS-S1-local `gpt-oss:20b` **only**, never the
+> hosted API — CLAUDE.md §8 / **AC-4**; the stakeholder's **UNTRUSTED** text is
+> injection-contained per ADR-010 D4 / **IN-2**; omits `think` per
+> **CHECKPOINT-0**); plus two **source-tagged prebaked starter** packages
+> (`solar_farm` overrun / `water_utility` crash) as the AC-4 fallback. **20
+> tests.** **#171 (`7090775`, `feat(api)`) — Step 2:**
+> `services/api/routers/intake.py` — `POST /intake/extract` (graceful,
+> non-silent degradation), `GET /intake/defaults`, and `POST /intake/generate`,
+> the **server-enforced human gate** that refuses any package not explicitly
+> `confirmed` (**AC-2** no-bypass — extract and generate are separate;
+> generate never calls extract). **11 tests** incl. the safety-critical **AC-2
+> no-bypass + edit-propagation** (a gate edit provably reaches the generated
+> artifacts), AC-3 below-direction, AC-5 clobber-guard. **#172 (`a2a9fda`,
+> `feat(ui)`) — Step 3:** **View E "Build a Vertical"** in the demo shell
+> (`assets/intake-view.js` + the `Intake` api helper, **no mock fallback**) —
+> capture (free-text + MS-S1 residency hint consuming `GET /llm/status`) → the
+> **source-badged review/edit gate** (`MS-S1 EXTRACTION` / `PREBAKED STARTER`
+> / `MANUAL ENTRY`) → the single explicit **"Confirm & build vertical #4"** →
+> result. Live-verified via Claude Preview. **#173 (`7314dc4`, `docs(plans)`)
+> — Step 6 closeout:** PLAN-0017 → `done/` (Status: Done, all **6 ACs**
+> checked) + run-oct-demo runbook **§5b** (the live co-creation walkthrough:
+> the separate-port #4 boot mechanics + the AC-4 fallbacks + the ephemeral-#4
+> cleanup).
+> **Design decisions (this session, Cray-ratified):** (1) **constrained-slot
+> extraction** (the LLM fills bounded domain slots; the face assembles the OCT
+> skeleton deterministically) over free-form YAML emission — far more robust +
+> makes AC-2 edit-propagation provable; (2) a **prebaked-default fallback**
+> added as an AC-4 enrichment that holds the §8 no-hosted-extraction line (own
+> fixtures, nothing leaves the box).
+> **Live AC-1 verification (session 39, MS-S1 resident):** a free-text
+> district-heating description → live `gpt-oss:20b` extraction that
+> **correctly inferred `direction=below`** for the pressure crash → a
+> `recovery_value` edit made in the gate **propagated into the generated env
+> block** (live **AC-2** edit-propagation) → Confirm → `vero-lite new-vertical`
+> → vertical #4 (`BoilerPlant` / `Neighborhood`) booted on a **separate port**:
+> map geo loaded, NL query answered grounded (*"There is one boiler plant:
+> BoilerPlant 01"*), and the below-breach fired recommend → approve → execute
+> (the `ontology_query → llm_inference → rule_check` trace). #4 was
+> **ephemeral** (reverted after — PLAN-0017 out-of-scope "no intake history
+> store"). Full suite **1208 passed / 2 skipped**; ruff + `mypy services`
+> clean throughout. With PLAN-0017 shipped, the OCT **Tier-1 Mirror-demo
+> capability** (ADR-0015 D5 — engine + intake face + the three OCT features +
+> the live "show #3 → build #4" moment) is **complete**. **PLAN-0016 stays
+> Done; PLAN-0018 stays Done; PLAN-0017 is now Done** (all in `done/`). This PR
+> = the session-39 reconcile (head `612601b` → `7314dc4`).
+>
+> **Session 38 — PLAN-0018 (demo-shell LLM control) SHIPPED
 > end-to-end and is now Done (in `done/`), across three PRs (#166–#168).**
 > The forward-declared, standalone deliverable from the session-37 next-action
 > went from Draft → implemented → archived this session. **#166 (`d0c2e5d`,
