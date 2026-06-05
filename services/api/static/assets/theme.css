@@ -165,6 +165,32 @@ body { overflow: hidden; }
 .chip .lbl { color: var(--tx-2); font-size: 10px; letter-spacing: .08em; text-transform: uppercase; }
 .chip.mono b { font-family: var(--mono); font-size: 11px; }
 
+/* ---- MS-S1 LLM control (PLAN-0018): residency indicator + warm/sleep ---- */
+.llmctl { display: inline-flex; align-items: center; gap: 4px; margin-right: 4px; }
+.llm-ind {
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 22px; padding: 0 9px; border-radius: 11px;
+  font-family: var(--mono); font-size: 10px; font-weight: 600;
+  letter-spacing: .06em; text-transform: uppercase; white-space: nowrap;
+  border: 1px solid var(--neutral-line); background: var(--neutral-bg); color: var(--neutral);
+}
+.llm-ind svg { width: 12px; height: 12px; opacity: .8; }
+.llm-ind .led { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.llm-ind .llm-tag { opacity: .7; }
+.llm-ind.s-ok   { color: var(--ok);   background: var(--ok-bg);   border-color: var(--ok-line); }
+.llm-ind.s-info { color: var(--info); background: var(--info-bg); border-color: var(--info-line); }
+.llm-ind.s-warn { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-line); }
+.llm-ind.s-crit { color: var(--crit); background: var(--crit-bg); border-color: var(--crit-line); }
+.llm-ind.s-neutral { color: var(--neutral); background: var(--neutral-bg); border-color: var(--neutral-line); }
+.llm-ind.is-warming .led { animation: pulse-led 1.1s ease-out infinite; }
+@keyframes pulse-led {
+  0%   { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+  70%  { box-shadow: 0 0 0 4px transparent; opacity: .45; }
+  100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+}
+/* guarded sleep: distinct danger styling once armed (AC-7) */
+.llm-sleep.armed { color: var(--crit); background: var(--crit-bg); border: 1px solid var(--crit-line); }
+
 /* ============================================================
    Main / views
    ============================================================ */

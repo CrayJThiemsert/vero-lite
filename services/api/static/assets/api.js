@@ -65,6 +65,28 @@
     query: (question) => request('POST', '/query', { question })
   };
 
+  /* ---- LLM control (PLAN-0018): MS-S1 status + warm/sleep ----
+     These talk to the REAL backend only — NO mock fallback. A mocked
+     "resident" would lie about MS-S1, and GET /llm/status already returns a
+     truthful unreachable/cold/resident/error body (HTTP 200) of its own, so we
+     never want request()'s mock path here. Returns {ok, status, body}. */
+  async function llmCall(method, path) {
+    try {
+      const res = await fetch(path, { method });
+      const ct = res.headers.get('content-type') || '';
+      const body = ct.includes('json') ? await res.json().catch(() => null) : null;
+      return { ok: res.ok, status: res.status, body: body };
+    } catch (err) {
+      // demo backend itself unreachable (network) — distinct from MS-S1 down
+      return { ok: false, status: 0, body: null, networkError: true };
+    }
+  }
+  const Llm = {
+    status: () => llmCall('GET', '/llm/status'),     // read-only; never warms (INV-1)
+    warm: () => llmCall('GET', '/warm?wait=false'),  // non-blocking warm (AC-8)
+    sleep: () => llmCall('GET', '/sleep')
+  };
+
   /* ---- ontology helpers (everything domain-specific comes from here) ---- */
   const Onto = {
     typeDef(name) { return State.meta ? State.meta.object_types.find(t => t.name === name) : null; },
@@ -141,7 +163,7 @@
 
   window.OCT = window.OCT || {};
   Object.assign(window.OCT, {
-    State, API, Onto, onConnection, setConnection,
+    State, API, Llm, Onto, onConnection, setConnection,
     loadMeta, loadObjects, loadAllObjects, loadRecommendations
   });
 })();
