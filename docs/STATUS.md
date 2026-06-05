@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-05T13:48:37+07:00
+last_updated: 2026-06-05T14:34:12+07:00
 session: 38
-current_batch: Session 38 — committed **PLAN-0018 (Draft)** — the demo-shell LLM control plan: a read-only, pollable `GET /llm/status` (MS-S1 reachability + `gpt-oss:20b` residency, **without the poll ever loading the model**) + an in-UI warm/sleep affordance composed from `GET /warm` / `GET /sleep` (PLAN-0014) + the status poll. Cowork-drafted (ADR-009 D1), Code-reviewed-on-receive (Lesson #8 K-1/K-2; validator-passed, R2 veto clean) + committed (ADR-009 D2; #164). Two test-proven invariants — INV-1 poll never warms, INV-2 read-only. Ships before PLAN-0017 so the intake face builds once against the real status route. Suite unchanged (plan-only PR).
+current_batch: Session 38 — **PLAN-0018 (demo-shell LLM control) shipped end-to-end and is now Done** (in `done/`), across three PRs. **#166 (`d0c2e5d`, `feat(api)`) Step 1** — a read-only, pollable `GET /llm/status` (MS-S1 reachability + `gpt-oss:20b` residency via `OllamaClient.ps()` / `GET /api/ps` **only** — the poll never loads the model, INV-1; non-destructive, INV-2); state machine unreachable/cold/resident/error, tolerant tag match, short dedicated `llm_status_timeout_s` (3.0 s), expiry honesty, typed Pydantic response; **15 offline tests** prove INV-1/INV-2 (httpx.MockTransport request-recording — path set is exactly `{GET /api/ps}`) + AC-3…AC-6; suite **1177 passed / 2 skipped**. **#167 (`71e6c2d`, `feat(ui)`) Step 2** — in-header MS-S1 control (`assets/llm-control.js`): a 5 s residency indicator (D-1 client interval, mock-fallback bypassed), a non-blocking Warm (`?wait=false` → WARMING… overlay → poll-to-resident), a guarded two-click Sleep; **live-verified via Claude Preview against the real MS-S1** (RESIDENT → guarded-sleep → COLD → warm → RESIDENT, right-model match while `qwen3.6:35b` also resident, 0 console errors). **#168 (`612601b`, `docs(plans)`) Step 3** — PLAN-0018 → `done/` (per-step→PR table) + run-oct-demo runbook **§5a** pre-warm checklist. ruff + mypy clean throughout.
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `5630d45` (merge of #164); 0 open PRs. **PLAN-0016 Done** (in `done/`); **PLAN-0017 Draft** (UNBLOCKED — engine shipped; now also builds against the PLAN-0018 status route); **PLAN-0018 Draft** (committed; implementation = Code's next lane). PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
-next_action: PLAN-0018 **implementation** (Code's lane, now): **Step 1** the read-only `GET /llm/status` backend (state machine — unreachable / cold / resident / warming / error; right-model residency for `gpt-oss:20b`; short dedicated probe timeout; INV-1/INV-2 test-proven via `httpx.MockTransport` request-recording), **Step 2** the demo-shell residency indicator + warm(`?wait=false`)/guarded-sleep affordance, **Step 3** runbook pre-warm-checklist + closeout (`git mv` to `done/`). Then **PLAN-0017** (the intake face — UNBLOCKED, builds against the shipped status route). Backlog unchanged: **Task (C)** deep-research Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — heavy spend → Cray green-lights; PLAN-0010 loop handlers (soak-gated); ADR-0015 §7 citation errata (J-class, non-blocking); `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). Highest leverage stays Cray-side (run the live demo; design-partner outreach).
-head_commit: 0f4d341
-recent_commits: [5630d45, 0f4d341, afb8c2f, 9718c5f, e53b93e, ef47433, 6f1f5c8, 1dbd202, 42da7a2, 860cc58, 00284f6, 5156098]
+blocked_on: Nothing gates shipped work. main clean @ `70698e3` (merge of #168); 0 open PRs. **PLAN-0016 Done** (in `done/`); **PLAN-0018 Done** (in `done/`); **PLAN-0017 Draft** (UNBLOCKED — engine shipped; now also builds against the shipped `GET /llm/status` route — its AC-4 non-silent-state + Step 5 warm/status substrate). PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
+next_action: **PLAN-0017 — the live co-creation intake FACE** (the headline; UNBLOCKED, now also builds against the shipped `GET /llm/status` route, PLAN-0018 being its AC-4 "non-silent state" + Step 5 warm/status substrate): hybrid free-text capture → MS-S1 (`gpt-oss:20b`) extraction → the **MANDATORY** human review/edit gate (AC-2, no bypass) → invoke `vero-lite new-vertical` → live vertical #4. Then: **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — heavy spend → Cray green-lights; ADR-0015 §7 citation errata (J-class, non-blocking); PLAN-0010 loop handlers (soak-gated); `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). Highest leverage stays Cray-side (run the live demo; design-partner outreach).
+head_commit: 612601b
+recent_commits: [70698e3, 612601b, 87cbdc5, 71e6c2d, 350376f, d0c2e5d, 235344e, e2154c2, 5630d45, 0f4d341, afb8c2f, 9718c5f]
 ---
 
 # vero-lite — Project Status
@@ -18,8 +18,45 @@ recent_commits: [5630d45, 0f4d341, afb8c2f, 9718c5f, e53b93e, ef47433, 6f1f5c8, 
 
 ## Current Focus
 
-> **Session 38 (current) — committed PLAN-0018 (Draft): the demo-shell
-> LLM control plan (#164, content `0f4d341`, `docs(plans)`).** The
+> **Session 38 (current) — PLAN-0018 (demo-shell LLM control) SHIPPED
+> end-to-end and is now Done (in `done/`), across three PRs (#166–#168).**
+> The forward-declared, standalone deliverable from the session-37 next-action
+> went from Draft → implemented → archived this session. **#166 (`d0c2e5d`,
+> `feat(api)`) — Step 1 backend:** the read-only, pollable **`GET /llm/status`**
+> reporting MS-S1 reachability + residency of the pinned recommender
+> `gpt-oss:20b` (ADR-0001), built on `OllamaClient.ps()` (`GET /api/ps`) **only**
+> — the poll never loads the model (**INV-1**) and is non-destructive (**INV-2**).
+> State machine **unreachable / cold / resident / error** (a reachable-but-errored
+> host is never a false `cold`); right-model residency with tolerant tag matching;
+> a short dedicated `llm_status_timeout_s` (3.0 s) decoupled from the ~120 s
+> generation timeout; expiry honesty (an expired `expires_at` → `cold`,
+> remaining-time surfaced); a typed Pydantic response model. **15 offline tests**
+> prove INV-1/INV-2 via `httpx.MockTransport` request-recording — the requested
+> path set is **exactly `{GET /api/ps}`**, never `/api/generate` — plus AC-3…AC-6.
+> Suite **1177 passed / 2 skipped**. **#167 (`71e6c2d`, `feat(ui)`) — Step 2
+> demo-shell affordance:** an in-header MS-S1 control (`assets/llm-control.js`) —
+> a residency indicator polling `/llm/status` every 5 s (**D-1**: documented
+> client interval, no server cache; the LLM calls bypass the api.js mock fallback
+> so a mocked "resident" can't lie), a **non-blocking Warm** (`GET /warm?wait=false`
+> → instant WARMING… overlay → poll-to-resident, never the ~11 s page freeze), and
+> a **guarded two-click Sleep** (arm → "Confirm?" → confirm, auto-disarms).
+> **Verified live via Claude Preview against the real MS-S1** (`gpt-oss:20b`): the
+> full operator cycle RESIDENT → guarded-sleep → COLD → warm (WARMING…) →
+> RESIDENT, right-model match proven while `qwen3.6:35b` was *also* resident, a
+> real nanosecond `expires_at` parsed, 0 console errors. **#168 (`612601b`,
+> `docs(plans)`) — Step 3 closeout:** PLAN-0018 → `done/` with a per-step→PR
+> completion table, plus run-oct-demo runbook **§5a** (the in-UI MS-S1 pre-warm
+> checklist — the PLAN-0017 Step 6 seam). The session-38 dispatch's risk register
+> **R1–R10** + INV-1/INV-2 all landed as test-proven ACs or resolved delegated
+> decisions. ruff + `mypy services` clean throughout. **PLAN-0016 stays Done;
+> PLAN-0018 is now Done (in `done/`); PLAN-0017 stays Draft** — now UNBLOCKED and
+> also building against the shipped `GET /llm/status` route (its AC-4 "non-silent
+> state" + Step 5 warm/status substrate). This PR = the session-38 reconcile (head
+> `0f4d341` → `612601b`).
+> Earlier this session the plan itself was committed as a Draft (the authoring
+> beat now superseded by the implementation above).
+> **Session 38 (plan-authoring beat) — committed PLAN-0018 (Draft): the
+> demo-shell LLM control plan (#164, content `0f4d341`, `docs(plans)`).** The
 > forward-declared, standalone deliverable from the session-37 next-action.
 > PLAN-0018 specifies a **read-only, pollable `GET /llm/status`** — surfacing
 > MS-S1 reachability + the residency of the pinned recommender `gpt-oss:20b`
