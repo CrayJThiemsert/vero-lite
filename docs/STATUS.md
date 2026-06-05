@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-05T22:25:32+07:00
+last_updated: 2026-06-05T23:21:20+07:00
 session: 40
-current_batch: Session 40 — first item off the session-40 backlog menu shipped: the standing **ADR-0015 §7 citation errata** (J-class, non-blocking) landed as **#175 (`45012de`, `docs(adr):`)** — ADR-0015 Decision **D5**'s human-review citation `research §7 risk` → `fact-pack §6` (research §7 is the Sources URL list, not a risk; the SOTA-consensus human-review substance lives in the session-35 feasibility fact-pack §6, which ADR-0015's own Consequences already cites correctly). One line changed; no decision/substance touched. **G1 always-pause (mutate an Accepted ADR) was explicitly Cray-approved for the exact diff before the edit.** Context (carried from session 39, unchanged): **PLAN-0017 — the OCT Tier-1 Mirror-demo / live co-creation intake FACE — stays Done** (in `done/`), so the Mirror-demo capability is complete. Also session 40: **run-oct-demo §5b reviewed + fixed** (#177, `2219da1`, `docs(runbook):`) — a code-grounded review of the live co-creation walkthrough surfaced one real bug + three completeness notes (**F1** the §5b worked example booted vertical #4 on port 8099, the §3a aquaculture showcase's own port → live-demo collision; moved to free port 8100; **F2** a §8 409-clobber-guard troubleshooting entry; **F3** the `/intake/*` routes added to References; **F4** a header PLAN-0016/0017 lineage note). The live-demo runbook is now collision-free. Plus a UI polish (#179, `7c9c1f2`, `feat(ui)`): surfaced from a live aquaculture-demo log showing repeated `GET /favicon.ico 404` (the harmless browser default-icon probe — StaticFiles at `/` had no favicon), added an OCT favicon (`static/assets/favicon.svg`, reusing the blue operational-grid + green-status-dot shell identity) + a `<link rel="icon">` so modern browsers use it and stop probing `/favicon.ico`; the partner-facing tab now shows a real OCT mark.
+current_batch: Session 40 — first item off the session-40 backlog menu shipped: the standing **ADR-0015 §7 citation errata** (J-class, non-blocking) landed as **#175 (`45012de`, `docs(adr):`)** — ADR-0015 Decision **D5**'s human-review citation `research §7 risk` → `fact-pack §6` (research §7 is the Sources URL list, not a risk; the SOTA-consensus human-review substance lives in the session-35 feasibility fact-pack §6, which ADR-0015's own Consequences already cites correctly). One line changed; no decision/substance touched. **G1 always-pause (mutate an Accepted ADR) was explicitly Cray-approved for the exact diff before the edit.** Context (carried from session 39, unchanged): **PLAN-0017 — the OCT Tier-1 Mirror-demo / live co-creation intake FACE — stays Done** (in `done/`), so the Mirror-demo capability is complete. Also session 40: **run-oct-demo §5b reviewed + fixed** (#177, `2219da1`, `docs(runbook):`) — a code-grounded review of the live co-creation walkthrough surfaced one real bug + three completeness notes (**F1** the §5b worked example booted vertical #4 on port 8099, the §3a aquaculture showcase's own port → live-demo collision; moved to free port 8100; **F2** a §8 409-clobber-guard troubleshooting entry; **F3** the `/intake/*` routes added to References; **F4** a header PLAN-0016/0017 lineage note). The live-demo runbook is now collision-free. Plus a UI polish (#179, `7c9c1f2`, `feat(ui)`): surfaced from a live aquaculture-demo log showing repeated `GET /favicon.ico 404` (the harmless browser default-icon probe — StaticFiles at `/` had no favicon), added an OCT favicon (`static/assets/favicon.svg`, reusing the blue operational-grid + green-status-dot shell identity) + a `<link rel="icon">` so modern browsers use it and stop probing `/favicon.ico`; the partner-facing tab now shows a real OCT mark. Then a demo-prep docs add (#181, `3653d13`, `docs(runbook):`): bilingual (ไทย/EN) per-vertical demo narratives for all three pre-built verticals (§6a — scene→A→B→C→D→number, grounded in the verified on-screen values) + a new **§6b Screen E "Build a Vertical"** section (the missing 4th-vertical / live-co-creation narrative — the 8-step show-sequence within the #3 demo, the golden pivot question, the human-gate-as-feature framing, boot #4 on 8100, fallbacks, closing line); §6 also gained the missing Screen E bullet.
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `f754bc4` (merge of #179); 0 open PRs. **PLAN-0016 Done**, **PLAN-0018 Done**, and **PLAN-0017 Done** (all in `done/`). PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
+blocked_on: Nothing gates shipped work. main clean @ `7d9f0d2` (merge of #181); 0 open PRs. **PLAN-0016 Done**, **PLAN-0018 Done**, and **PLAN-0017 Done** (all in `done/`). PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
 next_action: Next candidates (Cray routes): **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — heavy spend → Cray green-lights; plus the standing backlog — PLAN-0010 loop handlers (soak-gated), `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). **Highest leverage stays Cray-side: run the live "build your own vertical" demo for a design partner (runbook §5b), and design-partner outreach.**
-head_commit: 7c9c1f2
-recent_commits: [f754bc4, 7c9c1f2, c94e10c, 2219da1, cd7832d, ef82ef6, d94c13b, 45012de, aa6cf58, 0f33ca7, 470ee25, 7314dc4]
+head_commit: 3653d13
+recent_commits: [7d9f0d2, 3653d13, f754bc4, 7c9c1f2, c94e10c, 2219da1, cd7832d, ef82ef6, d94c13b, 45012de, aa6cf58, 0f33ca7]
 ---
 
 # vero-lite — Project Status
@@ -52,6 +52,17 @@ recent_commits: [f754bc4, 7c9c1f2, c94e10c, 2219da1, cd7832d, ef82ef6, d94c13b, 
 > modern browsers now use it and stop probing `/favicon.ico`, and the
 > partner-facing tab shows a real OCT mark. No logic change; verified
 > offline (well-formed SVG; serves via the proven `assets/*` static path).
+>
+> **Also session 40 — demo-prep narratives (#181, `3653d13`,
+> `docs(runbook):`).** The runbook had per-screen pitch notes (§6, Screens
+> A–D) but no per-vertical *story to tell* and no Screen E coverage. Added
+> **§6a** — bilingual (ไทย/EN) scripts for all three pre-built verticals
+> (energy / supply_chain / aquaculture), each scene → A → B → C → D → number,
+> grounded in the verified on-screen values — and **§6b** — the missing
+> **Screen E "Build a Vertical"** narrative: the 8-step show-sequence (where
+> the live co-creation moment fits in the #3 demo, the golden pivot question,
+> the human-gate-as-feature framing, boot #4 on 8100, fallbacks, closing
+> line). §6 gained the missing Screen E bullet.
 >
 > **Session 39 — PLAN-0017 (the live co-creation intake FACE)
 > SHIPPED end-to-end and is now Done (in `done/`), across four PRs
