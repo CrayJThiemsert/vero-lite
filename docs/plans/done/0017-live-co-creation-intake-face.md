@@ -1,6 +1,6 @@
 # PLAN-0017: Live Co-Creation Intake Face — "Describe Your Operation" → Mirror Demo
 
-**Status:** Draft
+**Status:** Done (shipped session 39 — PRs #170/#171/#172; live AC-1 verified end-to-end)
 **Owner:** Claude Code (Tier 2 executes; Cowork drafted per ADR-009 D1)
 **Created:** 2026-06-04
 **Related ADRs:** ADR-015 (D5 live co-creation two-layer split — this is the
@@ -78,7 +78,7 @@ for marginal wow).
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 (headline — live #4 end-to-end):** starting from the pre-built
+- [x] **AC-1 (headline — live #4 end-to-end):** starting from the pre-built
       aquaculture #3 showcase, a **live free-text domain description** of a
       *different* distributed-asset operation produces — through capture →
       MS-S1 extraction → **human review/confirm** → invoke — a runnable
@@ -87,20 +87,20 @@ for marginal wow).
       triggers the recommender with a direction-correct trace on the
       **deterministic rule path** (ADR-010 IN-4) and approve → execute
       (echo) completes the lifecycle.
-- [ ] **AC-2 (the human gate is real):** generation **cannot** proceed
+- [x] **AC-2 (the human gate is real):** generation **cannot** proceed
       without an explicit human confirm of the reviewed ontology +
       threshold/direction — there is no code path from extraction to
       `new-vertical` that bypasses the gate. **An edit made in the gate is
       provably reflected in the generated vertical** (test the edit path,
       not just the happy path: e.g. rename a property / change an enum in
       the gate → assert the generated artifacts carry it).
-- [ ] **AC-3 (direction inferred + confirmable):** the gate surfaces
+- [x] **AC-3 (direction inferred + confirmable):** the gate surfaces
       `OCT_RECOMMEND_DIRECTION` as an editable field; a **below-breach
       domain** (a crash, not an overrun — e.g. pressure/oxygen/level falling)
       is captured correctly end-to-end and the recommender **fires** (leans
       on PLAN-0016 Step 0, shipped #154). Wrong direction = the recommender
       silently never fires, so this is gate-critical, not cosmetic.
-- [ ] **AC-4 (MS-S1 extraction + graceful degradation):** extraction runs on
+- [x] **AC-4 (MS-S1 extraction + graceful degradation):** extraction runs on
       **MS-S1 (local)** — never the hosted API (CLAUDE.md §8 posture: the
       stakeholder's domain description is treated as theirs). If MS-S1 is
       cold/unreachable or extraction is low-confidence/unparseable, the
@@ -108,11 +108,11 @@ for marginal wow).
       status affordance) and can fall back to **manual entry directly in the
       gate fields** — a silently wrong ontology is never pushed to
       generation.
-- [ ] **AC-5 (engine untouched):** the face invokes `vero-lite new-vertical`
+- [x] **AC-5 (engine untouched):** the face invokes `vero-lite new-vertical`
       **unchanged** — no new engine/generator features (mirrors PLAN-0016
       AC-5; the face is a caller). The engine's refuse-to-clobber guard is
       honored and surfaced, not bypassed.
-- [ ] **AC-6 (quality bar):** new endpoints carry Pydantic request/response
+- [x] **AC-6 (quality bar):** new endpoints carry Pydantic request/response
       models with `Field(description=...)`; type hints + tests + ruff clean
       + mypy clean (CLAUDE.md §8).
 
@@ -237,3 +237,39 @@ ADR-009 D2).
 0004/0010/0012/0016, `done/` tops at 0015 → **0017 free**, no collision
 (matches the ADR-015 D5 forward-declaration). Dispatch:
 `.claude/handoffs/session-37/2026-06-04-2022-code-plan0017-intake-face-dispatch.md`.*
+
+---
+
+## Closeout (session 39, 2026-06-05)
+
+Shipped in three commit-per-step PRs (constrained-slot extraction ratified by
+Cray; prebaked-default fallback added as an AC-4 enrichment that holds the
+CLAUDE.md §8 no-hosted-extraction line):
+
+- **#170** `feat(engine)` — `services/engine/intake_assembler.py` (the
+  `IntakePackage` contract + the deterministic constrained-slot → canonical
+  six-type OCT YAML assembler, valid by construction) + `services/engine/llm/intake.py`
+  (`extract_package`, MS-S1-local only, injection-contained) + the prebaked
+  starters (`solar_farm` overrun / `water_utility` crash). 20 tests.
+- **#171** `feat(api)` — `services/api/routers/intake.py`: `POST /intake/extract`
+  (graceful degradation), `GET /intake/defaults`, `POST /intake/generate` (the
+  **server-enforced** human gate — refuses an unconfirmed package). 11 tests
+  incl. the AC-2 no-bypass + edit-propagation core.
+- **#172** `feat(ui)` — View E ("Build a Vertical") in the demo shell: capture →
+  the source-tagged review/edit gate → confirm → result, with the prebaked /
+  manual fallbacks. Live-verified via Claude Preview.
+
+**Live AC-1 verification (session 39, MS-S1 resident).** A free-text
+district-heating description → live `gpt-oss:20b` extraction (correctly inferred
+`direction=below` for the pressure crash) → the gate (a `recovery_value` edit
+made here propagated into the generated env block — live AC-2 edit-propagation) →
+Confirm → `vero-lite new-vertical` → vertical #4 (`BoilerPlant`/`Neighborhood`)
+booted on a separate port, where the map geo loaded, NL query answered grounded
+(*"There is one boiler plant: BoilerPlant 01"*), and the below-breach fired
+recommend → approve → execute. #4 was ephemeral (reverted after, per the
+out-of-scope "no intake history store"). Runbook walkthrough: `run-oct-demo.md`
+§5b.
+
+AC-1…AC-6 all met (offline tests + the live run above). The face invoked the
+PLAN-0016 engine **unchanged** (AC-5 — no `services/engine/scaffold.py` behaviour
+change).*

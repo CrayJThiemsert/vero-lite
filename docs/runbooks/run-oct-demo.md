@@ -1,4 +1,4 @@
-# Runbook — Run the OCT stakeholder demo (energy · supply_chain · aquaculture)
+# Runbook — Run the OCT stakeholder demo (energy · supply_chain · aquaculture · build your own, live)
 
 > **Goal.** Bring up the Operational Control Tower (OCT) demo locally and drive
 > all three OCT features on **either vertical** — `energy` or `supply_chain` —
@@ -251,9 +251,79 @@ without leaving the demo — the **pre-demo warm checklist**:
 4. **`Sleep`** frees the VRAM — **guarded**: one click arms (`Confirm?`), a
    second within 4 s executes (a stray single click can't unload mid-demo).
 
-> This affordance is the **PLAN-0017 Step 6 seam**: the live co-creation flow
+> This affordance is the **PLAN-0017 seam**: the live co-creation flow (§5b)
 > reuses this same status poll + warm control to confirm MS-S1 is resident
 > before the stakeholder describes their operation.
+
+### 5b. Live co-creation — build vertical #4 from a stakeholder's description (PLAN-0017)
+
+The headline moment: after showing a pre-built vertical (e.g. aquaculture #3, §3a),
+ask the stakeholder *"…and what's **your** operation?"* and build a runnable Mirror
+demo of **their** domain on the spot — via the **"Build a Vertical" (E)** tab in the
+demo shell. The face is a *caller*: a local LLM drafts a partner-input package, a
+**mandatory human review/edit gate** lets the operator correct it, and it invokes
+`vero-lite new-vertical` **unchanged** (the same engine as §3a).
+
+**Prereq:** MS-S1 resident (§5 / §5a) for the live extraction. If it is cold or
+unreachable the flow degrades gracefully (see *Fallbacks* below) — the demo never
+depends on extraction succeeding.
+
+1. Open any running demo (e.g. energy on 8000) and click the **E · Build a Vertical**
+   tab. The capture screen shows an **MS-S1 hint** — confirm it reads
+   *"resident — extraction ready"* (else warm it via §5a, or use a fallback).
+2. Type the stakeholder's domain in plain language — assets + where they sit, what
+   breaks and why it hurts, what reading crosses what threshold (a **crash** = value
+   falling, or an **overrun** = value rising), and the corrective action. Click
+   **Extract draft (MS-S1)**.
+3. **Review the gate** (the one non-negotiable). Every slot is editable — namespace,
+   the metric + threshold + **breach direction**, the Asset/Site roles and their
+   properties/enums, the action vocabulary, and the **recovery value** (set it on the
+   *safe* side of the threshold so Execute visibly recovers the incident — e.g. for a
+   `below` crash at 4, a recovery above 4). The **source badge** always shows which
+   dataset is in play: `MS-S1 EXTRACTION` / `PREBAKED STARTER` / `MANUAL ENTRY`.
+4. Click **Confirm & build vertical #4** — the only path to generation (there is no
+   auto-confirm). The face assembles the OCT ontology, invokes the engine, and shows
+   the result: the **env block**, the scaffold written, and the boot checklist.
+5. **Boot #4 on a separate port** so the showcase vertical stays up beside it — the
+   same pattern as §3/§3a. Paste the result's env block into a uvicorn run on a fresh
+   port. Worked example (verified live, session 39 — a district-heating *below*-crash
+   built from free text):
+   ```bash
+   cd ~/work/vero-lite
+   OCT_VERTICAL=district_heating \
+   OCT_RECOMMEND_THRESHOLD=4 \
+   OCT_RECOMMEND_DIRECTION=below \
+   OCT_RECOMMEND_ENTITY_TYPE=BoilerPlant \
+   OCT_RECOMMEND_ENTITY_ID_FIELD=boiler_plant_id \
+   OCT_RECOMMEND_LABEL="steam_pressure" \
+   OCT_RECOVERY_VALUE=6 \
+   OCT_RECOVERY_DESCRIPTION="Boiler steam pressure restored above the 4 bar safe minimum." \
+   OCT_DEMO_TIME_ANCHOR=true \
+   uv run uvicorn services.api.main:app --port 8099
+   ```
+   Open the new port → vertical #4 runs all three OCT features: the map renders from
+   the Site-role geo, NL query answers (MS-S1), and the breach fires
+   breach → recommend → approve → execute. (Session-39 live: `BoilerPlant 01` +
+   `Neighborhood 01`, 1 recommendation `proposed` from the 3.2 < 4 bar crash with an
+   `ontology_query → llm_inference → rule_check` trace, NL query *"There is one boiler
+   plant: BoilerPlant 01"* grounded, Approve → Execute → `executed`.)
+
+**Fallbacks (AC-4 — the demo never stalls).** If MS-S1 is cold/unreachable or the
+extraction looks wrong:
+- **Use a starter** — pick a prebaked, source-tagged package (`solar_farm` overrun /
+  `water_utility` crash) and edit from there.
+- **Enter manually** — a blank gate you fill in directly (the pure-form path).
+Both land in the *same* editable gate; the source badge flips to `PREBAKED STARTER` /
+`MANUAL ENTRY` so it is always clear the package is not a live extraction.
+
+**Cleanup (ephemeral #4).** Generation writes `verticals/<ns>/` and code-mods
+`services/api/main.py` (one registrar row; `verticals/<ns>/generated/` is gitignored).
+The built vertical is a **demo output**, not a committed artifact (PLAN-0017
+Out-of-Scope: no intake history store) — to discard it after the demo:
+```bash
+git checkout -- services/api/main.py && rm -rf verticals/<ns>
+```
+(Stop the #4 uvicorn first — Ctrl-C, or `pkill -f "uvicorn services.api.main:app --port 8099"`.)
 
 ---
 
