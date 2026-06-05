@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-05T16:41:07+07:00
-session: 39
-current_batch: Session 39 — **PLAN-0017 (the live co-creation intake FACE) shipped end-to-end and is now Done** (in `done/`), across four PRs (#170–#173) — the headline next-action from session 38. The face turns a live free-text domain description into a runnable "Mirror demo" vertical #4: a **caller** that drafts a partner-input package, gates it behind a **mandatory human review/edit** (AC-2 no-bypass), then invokes the PLAN-0016 `vero-lite new-vertical` engine **unchanged** (AC-5). **#170 (`81792e4`, `feat(engine)`) Step 1** — `intake_assembler.py` (the `IntakePackage` contract + a deterministic **constrained-slot → canonical six-type OCT ontology YAML** assembler, valid by construction — guarantees the three `scaffold.detect_roles` invariants, templated off `aquaculture_v0.yaml`) + `llm/intake.py` `extract_package` (mirrors `structured.py`; MS-S1-local `gpt-oss:20b` only, never the hosted API per §8/AC-4; UNTRUSTED stakeholder text injection-contained per ADR-010 D4/IN-2; omits `think` per CHECKPOINT-0) + two source-tagged prebaked starters (`solar_farm`/`water_utility`) as the AC-4 fallback; **20 tests**. **#171 (`7090775`, `feat(api)`) Step 2** — `routers/intake.py`: `POST /intake/extract` (graceful non-silent degradation), `GET /intake/defaults`, `POST /intake/generate` — the **server-enforced human gate** that refuses any package not explicitly `confirmed` (AC-2 no-bypass; extract & generate are separate, generate never calls extract); **11 tests** incl. AC-2 no-bypass + edit-propagation, AC-3 below-direction, AC-5 clobber-guard. **#172 (`a2a9fda`, `feat(ui)`) Step 3** — View E "Build a Vertical" (`assets/intake-view.js` + the `Intake` helper, no mock fallback): capture (free-text + MS-S1 residency hint via `GET /llm/status`) → source-badged review/edit gate (`MS-S1 EXTRACTION`/`PREBAKED STARTER`/`MANUAL ENTRY`) → the single explicit "Confirm & build vertical #4" → result; live-verified via Claude Preview. **#173 (`7314dc4`, `docs(plans)`) Step 6** — PLAN-0017 → `done/` (Status: Done, 6/6 ACs) + run-oct-demo runbook **§5b** (the live co-creation walkthrough + AC-4 fallbacks + ephemeral-#4 cleanup). Live AC-1 verified MS-S1-resident: district-heating free text → `gpt-oss:20b` correctly inferred `direction=below` → a gate `recovery_value` edit propagated into the generated env block (live AC-2) → Confirm → vertical #4 (`BoilerPlant`/`Neighborhood`) booted on a separate port (map geo, grounded NL, below-breach recommend→approve→execute trace). Full suite **1208 passed / 2 skipped**; ruff + mypy clean throughout.
+last_updated: 2026-06-05T21:28:51+07:00
+session: 40
+current_batch: Session 40 — first item off the session-40 backlog menu shipped: the standing **ADR-0015 §7 citation errata** (J-class, non-blocking) landed as **#175 (`45012de`, `docs(adr):`)** — ADR-0015 Decision **D5**'s human-review citation `research §7 risk` → `fact-pack §6` (research §7 is the Sources URL list, not a risk; the SOTA-consensus human-review substance lives in the session-35 feasibility fact-pack §6, which ADR-0015's own Consequences already cites correctly). One line changed; no decision/substance touched. **G1 always-pause (mutate an Accepted ADR) was explicitly Cray-approved for the exact diff before the edit.** Context (carried from session 39, unchanged): **PLAN-0017 — the OCT Tier-1 Mirror-demo / live co-creation intake FACE — stays Done** (in `done/`), so the Mirror-demo capability is complete.
 current_actor: code
-blocked_on: Nothing gates shipped work. main clean @ `470ee25` (merge of #173); 0 open PRs. **PLAN-0016 Done**, **PLAN-0018 Done**, and **PLAN-0017 Done** (all in `done/`). PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
-next_action: With PLAN-0017 shipped, the OCT Tier-1 Mirror-demo capability (ADR-0015 D5 — engine + intake face + the three OCT features + the live "show #3 → build #4" moment) is **complete**. Next candidates (Cray routes): **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — heavy spend → Cray green-lights; plus the standing backlog — ADR-0015 §7 citation errata (J-class, non-blocking), PLAN-0010 loop handlers (soak-gated), `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). **Highest leverage stays Cray-side: run the live "build your own vertical" demo for a design partner (runbook §5b), and design-partner outreach.**
-head_commit: 7314dc4
-recent_commits: [470ee25, 7314dc4, 9be8a86, a2a9fda, 3b9fe6e, 7090775, 3ab9259, 81792e4, 5099aa4, 1a1aca6, 70698e3, 612601b]
+blocked_on: Nothing gates shipped work. main clean @ `d94c13b` (merge of #175); 0 open PRs. **PLAN-0016 Done**, **PLAN-0018 Done**, and **PLAN-0017 Done** (all in `done/`). PLAN-0010 autonomy loop LIVE; PLAN-0014 confirmed live.
+next_action: Next candidates (Cray routes): **Task (C)** deep-research the Tier-2 real-data path (real `DataAdapter` CSV/DB/API, dbt/SQLMesh mapping layer, PDPA-safe local-LLM-only ingestion) — heavy spend → Cray green-lights; plus the standing backlog — PLAN-0010 loop handlers (soak-gated), `status_digest` v2, PLAN-004 Phase C, PLAN-0012 Phase 2 (gated). **Highest leverage stays Cray-side: run the live "build your own vertical" demo for a design partner (runbook §5b), and design-partner outreach.**
+head_commit: 45012de
+recent_commits: [d94c13b, 45012de, aa6cf58, 0f33ca7, 470ee25, 7314dc4, 9be8a86, a2a9fda, 3b9fe6e, 7090775, 3ab9259, 81792e4]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,19 @@ recent_commits: [470ee25, 7314dc4, 9be8a86, a2a9fda, 3b9fe6e, 7090775, 3ab9259, 
 
 ## Current Focus
 
-> **Session 39 (current) — PLAN-0017 (the live co-creation intake FACE)
+> **Session 40 (current) — ADR-0015 §7 citation errata shipped (J-class,
+> non-blocking) as #175 (`45012de`, `docs(adr):`).** A one-line fix: ADR-0015
+> Decision **D5**'s human-review citation `research §7 risk` → `fact-pack §6`
+> — research §7 is the Sources URL list, not a risk; the SOTA-consensus
+> human-review substance is in the session-35 feasibility fact-pack §6, which
+> ADR-0015's own Consequences already cites correctly. No decision or
+> substance touched. **G1 always-pause (mutating an Accepted ADR) was
+> explicitly Cray-approved for the exact diff before the edit.** This is the
+> first item off the session-40 backlog menu; the OCT **Tier-1 Mirror-demo
+> capability** (PLAN-0017) stays **Done** from session 39. This PR = the
+> session-40 reconcile (head `7314dc4` → `45012de`; merge `d94c13b`).
+>
+> **Session 39 — PLAN-0017 (the live co-creation intake FACE)
 > SHIPPED end-to-end and is now Done (in `done/`), across four PRs
 > (#170–#173).** The headline next-action from session 38 — the *face* layer
 > of ADR-0015 D5 — went from Draft → implemented → archived this session. The
