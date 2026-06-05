@@ -53,8 +53,12 @@ recent_commits: [6f1f5c8, 1dbd202, 42da7a2, 860cc58, 00284f6, 5156098, a67dba0, 
 > breaching reading that is the latest event), with a **deterministic fallback**
 > on any failure (transport/JSON/invariant/non-local backend) so enrichment
 > never breaks scaffolding. Extraction is MS-S1-local only (CLAUDE.md §8).
-> **Live-verified against `qwen3.6:35b`** (2 sites/3 assets/7 events with a
-> below-direction breach passing every check).
+> **Live-verified against the pinned `gpt-oss:20b`** (ADR-0001 — the local model
+> that reliably honours the `format` JSON-schema constraint; 2 sites/4 assets/7
+> events, a below-direction breach, every semantic check passing). *(Provenance
+> correction: the first session-37 smoke mistakenly used `qwen3.6:35b` — which
+> ADR-0001 flags `NOT_JSON` under `think=false` — off a truncated `/api/tags`
+> read; the shipped code always pinned `gpt-oss:20b`, re-verified clean.)*
 > **#161 (`1dbd202`, `docs(plans)`) — Step 6 closeout:** PLAN-0016 → `done/`
 > (Status: Done + a per-step→PR completion table), the run-oct-demo runbook
 > **§3a aquaculture** walkthrough (env block + the DO-crash below-direction
