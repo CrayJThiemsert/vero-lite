@@ -39,9 +39,13 @@
     tabsEl = h('div', { class: 'tabs' });
     header.appendChild(tabsEl);
     header.appendChild(h('div', { class: 'spacer' }));
-    header.appendChild(h('div', { class: 'right' }, [
+    const rightEl = h('div', { class: 'right' });
+    // MS-S1 LLM control (PLAN-0018): residency indicator + warm/sleep, before Refresh.
+    if (O.LlmControl && O.LlmControl.mount) O.LlmControl.mount(rightEl);
+    rightEl.appendChild(
       h('button', { class: 'iconbtn', id: 'globalRefresh', onClick: globalRefresh }, [icon('refresh'), 'Refresh'])
-    ]));
+    );
+    header.appendChild(rightEl);
     app.appendChild(header);
 
     // ---- main / view containers ----
