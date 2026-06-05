@@ -1,6 +1,6 @@
 # PLAN-0018: Demo-Shell LLM Control — read-only `GET /llm/status` + MS-S1 warm/sleep affordance
 
-**Status:** Draft
+**Status:** Done (shipped 2026-06-05, session 38 — Steps 1–3; see Completion)
 **Owner:** Claude Code (Tier 2 executes; Cowork drafted per ADR-009 D1)
 **Created:** 2026-06-05
 **Related ADRs:** ADR-0015 (Consequences §Neutral — this PLAN's
@@ -13,6 +13,29 @@ Step 5 + AC-4 consume this affordance, building none of it),
 **PLAN-0014** (done/ — minted `GET /warm` / `GET /sleep` + the
 `OllamaUnreachableError` taxonomy this PLAN builds on), PLAN-0013 (the OCT
 demo shell this UI lands in)
+
+## Completion (2026-06-05, session 38)
+
+**Shipped** — all acceptance criteria met; the backend is test-proven and the UI
+was verified **live via Claude Preview against the real MS-S1** (`gpt-oss:20b`).
+
+| Step | Deliverable | PR | Evidence |
+|---|---|---|---|
+| 1 | read-only `GET /llm/status` backend + typed model | **#166** (`d0c2e5d`) | 15 tests (INV-1/INV-2 mock-transport proof + AC-3…AC-6); suite 1177/2; ruff+mypy clean |
+| 2 | demo-shell residency indicator + warm/sleep affordance | **#167** (`71e6c2d`) | live Preview cycle RESIDENT→guarded-sleep→COLD→warm(WARMING…)→RESIDENT; 0 console errors |
+| 3 | runbook pre-warm checklist + STATUS + `git mv` to `done/` | this PR | runbook §5a; STATUS reconcile |
+
+**AC outcomes.** INV-1 / INV-2 (poll-never-warms / read-only) + AC-1/AC-2
+(mock-transport request-recording), AC-3 (states; a reachable-but-errored host
+is never a false `cold`), AC-4 (right-model match — proven **live** while
+`qwen3.6:35b` was *also* resident), AC-5 (short dedicated probe timeout), AC-6
+(expiry honesty — a real nanosecond `expires_at` parsed, remaining-time
+surfaced), AC-7 (guarded two-click sleep + auto-disarm — live), AC-8
+(non-blocking warm + observable WARMING…→RESIDENT — live), AC-9 (typed Pydantic +
+ruff/mypy/tests). **Delegated decisions resolved:** D-1 = a documented 5 s client
+poll interval (no server-side cache); D-2 = route `GET /llm/status` on the admin
+router, state enum `resident/cold/unreachable/error`, probe timeout =
+`llm_status_timeout_s` (3.0 s), `warming` as a UI overlay.
 
 > **Standalone + sequencing.** Independently PR-able: depends on neither
 > the OQ-4 resolution nor PLAN-0017. **0018 ships before 0017**

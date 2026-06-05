@@ -229,6 +229,32 @@ NL query needs the local LLM. With MS-S1 off it returns the ungrounded
 > If MS-S1 is off and you want a ping-to-warm reminder wired up, that is the
 > separate PLAN-0014 arming step — `docs/runbooks/arm-plan-0014-telegram.md`.
 
+### 5a. In-UI MS-S1 control — the demo-shell affordance (PLAN-0018)
+
+Steps 1–4 are the address-bar path. The demo shell also carries an **in-header
+MS-S1 control** (top-right, beside Refresh) so the operator manages the LLM
+without leaving the demo — the **pre-demo warm checklist**:
+
+1. **Watch the `MS-S1` indicator.** It polls `GET /llm/status` every 5 s
+   (read-only — the poll **never** warms the model) and shows the residency of
+   the pinned recommender (`gpt-oss:20b`):
+   - **RESIDENT** (green) — loaded; hover for the keep_alive remaining-time.
+   - **COLD** (amber) — host reachable, model not loaded → click **Warm**.
+   - **OFFLINE** (red) — MS-S1 unreachable (power it on — step 1 above).
+   - **ERROR** (red) — reachable but erroring (never shown as a false COLD).
+   - **—** (grey) — the demo backend itself isn't answering `/llm/status`.
+2. **Click `Warm`** — fires `GET /warm?wait=false` and shows a pulsing
+   **WARMING…** state (non-blocking — no ~11 s page freeze), flipping to
+   **RESIDENT** when the model lands (~13 s from cold).
+3. **Confirm RESIDENT before the stakeholder types** — NL query (§5) and the
+   PLAN-0017 live co-creation extraction both need the model resident.
+4. **`Sleep`** frees the VRAM — **guarded**: one click arms (`Confirm?`), a
+   second within 4 s executes (a stray single click can't unload mid-demo).
+
+> This affordance is the **PLAN-0017 Step 6 seam**: the live co-creation flow
+> reuses this same status poll + warm control to confirm MS-S1 is resident
+> before the stakeholder describes their operation.
+
 ---
 
 ## 6. What each screen shows — the design-partner narrative
