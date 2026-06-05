@@ -145,21 +145,30 @@ body { overflow: hidden; }
    right edge. The vertical-context chips give way first (see .meta-chips). */
 .header .right { display: flex; align-items: center; gap: 4px; padding-right: 12px; flex: 0 0 auto; }
 
-/* The header is dense (brand + A–E nav + MS-S1 status). Below the widths where
-   everything fits, shed by IMPORTANCE so the nav and the MS-S1 status never clip
-   off the right edge (that status gates NL query + Build-a-Vertical during a live
-   demo): first the low-value vertical-context chips, then the Refresh label
-   (icon-only), and — only on small screens — the tab labels collapse to their
-   A–E keys. */
+/* The header is dense (brand + A–E nav + the always-on VERTICAL identity chip +
+   MS-S1 status). Two things are protected at EVERY width: the VERTICAL chip
+   (multiple verticals run side-by-side on different ports — it must always be
+   clear which one this window is) and the MS-S1 status (it gates NL query +
+   Build-a-Vertical during a live demo). Below the widths where everything fits,
+   shed by IMPORTANCE: drop the redundant NS / version chips + the brand subtitle
+   + the Refresh label; then collapse the NON-active tab labels to their A–E keys
+   (the active screen keeps its label); then — only on very small screens — the
+   active label too. The VERTICAL chip is the give-zone of last resort
+   (min-width:0; overflow:hidden on .meta-chips) so the MS-S1 status never clips. */
 @media (max-width: 1499px) {
-  .header .meta-chips { display: none; }
+  .header .meta-chips .chip.mono { display: none; }          /* keep VERTICAL; drop NS + version */
+  .brand .wordmark span { display: none; }                   /* brand → "OCT" (drop the subtitle) */
   #globalRefresh { font-size: 0; gap: 0; padding: 0 8px; }   /* Refresh → icon-only */
   #globalRefresh svg { width: 14px; height: 14px; }
-  .tab { padding: 0 11px; }                                  /* nav stays labelled, a touch tighter */
+  .tab { padding: 0 11px; }
 }
-@media (max-width: 1200px) {
-  .tab > span:not(.key):not(.badge-dot) { display: none; }   /* tabs → A–E keys only */
-  .tab { padding: 0 10px; gap: 0; }
+@media (max-width: 1360px) {
+  .tab:not(.active) > span:not(.key):not(.badge-dot) { display: none; }  /* inactive tabs → keys */
+  .tab:not(.active) { padding: 0 10px; gap: 0; }
+}
+@media (max-width: 1080px) {
+  .tab.active > span:not(.key):not(.badge-dot) { display: none; }        /* all tabs → keys */
+  .tab.active { padding: 0 10px; gap: 0; }
 }
 
 /* generic icon button */
