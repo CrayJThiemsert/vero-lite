@@ -87,6 +87,33 @@
     sleep: () => llmCall('GET', '/sleep')
   };
 
+  /* ---- intake face (PLAN-0017): live co-creation -> vertical #4 ----
+     REAL backend only — NO mock fallback (a mocked extraction/generate would
+     lie about what was built). extract is MS-S1-local; generate ALWAYS sends
+     confirmed:true because the ONLY caller is the operator's explicit gate
+     Confirm click (the UI has no auto-confirm path — AC-2). Returns
+     {ok, status, body}. */
+  async function intakeCall(method, path, body) {
+    try {
+      const opts = { method, headers: {} };
+      if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
+      const res = await fetch(path, opts);
+      const ct = res.headers.get('content-type') || '';
+      const parsed = ct.includes('json') ? await res.json().catch(() => null) : null;
+      return { ok: res.ok, status: res.status, body: parsed };
+    } catch (err) {
+      return { ok: false, status: 0, body: null, networkError: true };
+    }
+  }
+  const Intake = {
+    extract: (description, namespaceHint) =>
+      intakeCall('POST', '/intake/extract', { description, namespace_hint: namespaceHint || null }),
+    defaults: () => intakeCall('GET', '/intake/defaults'),
+    // confirmed is hard-true: only the explicit gate Confirm button calls this.
+    generate: (pkg, force) =>
+      intakeCall('POST', '/intake/generate', { package: pkg, confirmed: true, force: !!force })
+  };
+
   /* ---- ontology helpers (everything domain-specific comes from here) ---- */
   const Onto = {
     typeDef(name) { return State.meta ? State.meta.object_types.find(t => t.name === name) : null; },
@@ -163,7 +190,7 @@
 
   window.OCT = window.OCT || {};
   Object.assign(window.OCT, {
-    State, API, Llm, Onto, onConnection, setConnection,
+    State, API, Llm, Intake, Onto, onConnection, setConnection,
     loadMeta, loadObjects, loadAllObjects, loadRecommendations
   });
 })();
