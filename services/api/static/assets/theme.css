@@ -102,7 +102,7 @@ body { overflow: hidden; }
   background: var(--bg-1); border-bottom: 1px solid var(--line);
   padding-left: 14px;
 }
-.brand { display: flex; align-items: center; gap: 11px; padding-right: 18px; }
+.brand { display: flex; align-items: center; gap: 11px; padding-right: 14px; flex: 0 0 auto; }
 .brand .mark {
   width: 28px; height: 28px; border-radius: var(--r-sm);
   display: grid; place-items: center; flex: 0 0 auto;
@@ -114,13 +114,13 @@ body { overflow: hidden; }
 .brand .wordmark b { font-size: 13px; font-weight: 600; letter-spacing: .02em; }
 .brand .wordmark span { font-size: 9.5px; letter-spacing: .18em; text-transform: uppercase; color: var(--tx-2); }
 
-.header .meta-chips { display: flex; align-items: center; gap: 7px; padding: 0 4px; }
+.header .meta-chips { display: flex; align-items: center; gap: 7px; padding: 0 4px; flex: 0 1 auto; min-width: 0; overflow: hidden; }
 
 /* view tabs */
-.tabs { display: flex; align-items: stretch; margin-left: 6px; }
+.tabs { display: flex; align-items: stretch; margin-left: 6px; flex: 0 0 auto; }
 .tab {
   position: relative; display: flex; align-items: center; gap: 9px;
-  padding: 0 16px; cursor: pointer; border: none; background: none;
+  padding: 0 13px; cursor: pointer; border: none; background: none;
   color: var(--tx-1); font-family: var(--sans); font-size: 13px; font-weight: 500;
   letter-spacing: .01em; white-space: nowrap;
 }
@@ -139,8 +139,28 @@ body { overflow: hidden; }
 }
 .tab .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--crit); box-shadow: 0 0 0 3px var(--crit-bg); }
 
-.header .spacer { flex: 1; }
-.header .right { display: flex; align-items: center; gap: 4px; padding-right: 12px; }
+.header .spacer { flex: 1 1 auto; min-width: 8px; }
+/* status zone (MS-S1 + Refresh) is operationally critical during the live demo
+   — it gates NL query + Build-a-Vertical — so it never shrinks or clips off the
+   right edge. The vertical-context chips give way first (see .meta-chips). */
+.header .right { display: flex; align-items: center; gap: 4px; padding-right: 12px; flex: 0 0 auto; }
+
+/* The header is dense (brand + A–E nav + MS-S1 status). Below the widths where
+   everything fits, shed by IMPORTANCE so the nav and the MS-S1 status never clip
+   off the right edge (that status gates NL query + Build-a-Vertical during a live
+   demo): first the low-value vertical-context chips, then the Refresh label
+   (icon-only), and — only on small screens — the tab labels collapse to their
+   A–E keys. */
+@media (max-width: 1499px) {
+  .header .meta-chips { display: none; }
+  #globalRefresh { font-size: 0; gap: 0; padding: 0 8px; }   /* Refresh → icon-only */
+  #globalRefresh svg { width: 14px; height: 14px; }
+  .tab { padding: 0 11px; }                                  /* nav stays labelled, a touch tighter */
+}
+@media (max-width: 1200px) {
+  .tab > span:not(.key):not(.badge-dot) { display: none; }   /* tabs → A–E keys only */
+  .tab { padding: 0 10px; gap: 0; }
+}
 
 /* generic icon button */
 .iconbtn {
