@@ -13,11 +13,29 @@ from pathlib import Path
 
 from sqlalchemy.dialects import postgresql
 
-from services.db import models as _models  # noqa: F401  (registers tables on Base.metadata)
+from services.db import models as _models
 from services.db.base import Base
 from services.engine.code_generator import emit_sql, load_doc
 
 _ENERGY_YAML = Path("verticals/energy/ontology/energy_v0.yaml")
+
+
+def _energy_table_names() -> set[str]:
+    """Table names of the energy ontology ORM (the classes in services/db/models.py).
+
+    The Procedure-engine run tables (``pipeline_runs`` / ``step_results``) share the
+    same ``Base.metadata`` — ``services/db/base.py``: "shared by every vero-lite ORM
+    model" — but are cross-vertical engine infra with their own migration, NOT a
+    generated vertical ontology, so they fall outside this DDL<->ORM parity guard
+    (PLAN-0019 SD-A2). Scoping to the energy module keeps the guard firing for any
+    genuinely-new energy ORM table while ignoring the engine-infra tables.
+    """
+    return {
+        str(mapper.class_.__tablename__)
+        for mapper in Base.registry.mappers
+        if mapper.class_.__module__ == _models.__name__
+    }
+
 
 _TYPE_ALIASES = {
     "TEXT": "text",
@@ -61,12 +79,14 @@ def _parse_ddl(ddl: str) -> dict[str, dict[str, str]]:
 def _orm_schema() -> dict[str, dict[str, str]]:
     """Build {table: {column: type}} from the hand-authored ORM metadata."""
     dialect = postgresql.dialect()  # type: ignore[no-untyped-call]
+    energy = _energy_table_names()
     return {
         table.name: {
             column.name: _normalize(column.type.compile(dialect=dialect))
             for column in table.columns
         }
         for table in Base.metadata.tables.values()
+        if table.name in energy
     }
 
 
@@ -121,9 +141,11 @@ def _generated_indexes(tmp_path: Path) -> dict[str, tuple[str, tuple[str, ...]]]
 
 def _orm_indexes() -> dict[str, tuple[str, tuple[str, ...]]]:
     """Build {name: (table, columns)} from the hand-authored ORM metadata."""
+    energy = _energy_table_names()
     return {
         index.name: (table.name, tuple(col.name for col in index.columns))
         for table in Base.metadata.tables.values()
+        if table.name in energy
         for index in table.indexes
         if index.name is not None
     }
