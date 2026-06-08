@@ -112,6 +112,16 @@ def test_non_action_step_rejects_explicit_autonomy() -> None:
         Step(step_id="q", name="Q", kind=StepKind.QUERY, autonomy=Autonomy.GATED)
 
 
+def test_action_step_accepts_handler() -> None:
+    step = Step(step_id="a", name="A", kind=StepKind.ACTION, handler="echo")
+    assert step.handler == "echo"
+
+
+def test_non_action_step_rejects_handler() -> None:
+    with pytest.raises(ValidationError, match="handler applies to action steps only"):
+        Step(step_id="q", name="Q", kind=StepKind.QUERY, handler="echo")
+
+
 def test_run_by_must_resolve(tmp_path: Path) -> None:
     bad = _VALID_YAML.replace("run_by: round_agent", "run_by: ghost_agent")
     with pytest.raises(ValidationError, match="run_by 'ghost_agent' is not a"):

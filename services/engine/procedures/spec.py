@@ -83,23 +83,33 @@ class Step(BaseModel):
         default=None, description="prior-step output reference + optional filter predicate"
     )
     output: str | None = Field(default=None, description="produced object set / artifact name")
+    handler: str | None = Field(
+        default=None,
+        description="registered action-handler to invoke; action steps only (allowlist-checked).",
+    )
 
     @model_validator(mode="after")
-    def _resolve_autonomy(self) -> Self:
-        """Enforce the D3 invariant: autonomy is an axis of ``action`` steps only.
+    def _validate_step(self) -> Self:
+        """Enforce the D3 step invariants: ``autonomy`` and ``handler`` are axes of
+        ``action`` steps only.
 
-        ``action`` defaults to ``gated`` (safe-by-default). A non-action step that
-        carries an explicit autonomy is malformed — ``query`` / ``evaluate``
-        always run auto and ``human_task`` is inherently human, so none of them
-        take an autonomy level.
+        ``action`` defaults to ``gated`` (safe-by-default). A non-action step must
+        not carry either — ``query`` / ``evaluate`` always run auto, ``human_task``
+        is inherently human, and none of them invoke an action handler.
         """
         if self.kind is StepKind.ACTION:
             if self.autonomy is None:
                 self.autonomy = Autonomy.GATED
-        elif self.autonomy is not None:
+            return self
+        if self.autonomy is not None:
             raise ValueError(
                 f"step '{self.step_id}': autonomy applies to action steps only "
                 f"(kind '{self.kind.value}' must not set autonomy) — ADR-016 D3"
+            )
+        if self.handler is not None:
+            raise ValueError(
+                f"step '{self.step_id}': handler applies to action steps only "
+                f"(kind '{self.kind.value}' must not set handler) — ADR-016 D3"
             )
         return self
 

@@ -1,0 +1,267 @@
+"""PLAN-0019 Part A — the Procedure orchestrator control plane (ADR-016 D2/D3/D4).
+
+Pure-Python (no DB, no LLM): fake :class:`StepExecutor`s drive the orchestrator so
+the control plane is asserted in isolation — sequencing + set-valued threading
+(A-3), the autonomy model + agent allowlist / ceiling (A-4), fail-and-divert
+(A-6), the gated/human_task suspend, and the per-step telemetry seam. Concrete
+executors (the real ADR-007 action path, query via adapter) are separate steps.
+"""
+
+from __future__ import annotations
+
+from typing import Any
+
+import pytest
+
+from services.engine.procedures.orchestrator import (
+    ProcedureError,
+    RunContext,
+    StepExecutor,
+    StepOutcome,
+    run_procedure,
+    validate_runnable,
+)
+from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
+from services.engine.procedures.spec import (
+    Agent,
+    AgentAllowed,
+    Autonomy,
+    OnFailure,
+    Procedure,
+    Step,
+    StepKind,
+    Trigger,
+)
+
+
+class _RecordingExecutor:
+    """Records each (step_id, input_set) it is called with; returns a fixed set."""
+
+    def __init__(self, output: list[Any] | None = None) -> None:
+        self.output = output if output is not None else []
+        self.calls: list[tuple[str, list[Any]]] = []
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        self.calls.append((step.step_id, list(input_set)))
+        return StepOutcome(
+            output=self.output,
+            reasoning_trace=[{"kind": step.kind.value, "summary": f"ran {step.step_id}"}],
+            audit={"actor": "exec", "actor_kind": "engine"},
+        )
+
+
+class _RaisingExecutor:
+    """Always raises — exercises D4 fail-and-divert."""
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        raise RuntimeError("boom")
+
+
+class _MalformedExecutor:
+    """Returns the wrong type — must be diverted, never crash the orchestrator."""
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        return None  # type: ignore[return-value]
+
+
+def _agent(
+    *,
+    ceiling: Autonomy = Autonomy.GATED,
+    kinds: list[StepKind] | None = None,
+    handlers: list[str] | None = None,
+) -> Agent:
+    return Agent(
+        agent_id="a1",
+        name="Agent One",
+        autonomy_ceiling=ceiling,
+        allowed=AgentAllowed(step_kinds=kinds or [], action_handlers=handlers or []),
+    )
+
+
+def _proc(steps: list[Step], *, trigger: Trigger = Trigger.MANUAL) -> Procedure:
+    return Procedure(procedure_id="p1", title="P", run_by="a1", trigger=trigger, steps=steps)
+
+
+async def test_happy_path_completes_and_threads_sets() -> None:
+    query = _RecordingExecutor(output=[{"pond": "p3"}, {"pond": "p7"}])
+    evaluate = _RecordingExecutor(output=[{"pond": "p7", "verdict": "breach"}])
+    action = _RecordingExecutor(output=[{"action": "aerate"}])
+    executors = {
+        StepKind.QUERY: query,
+        StepKind.EVALUATE: evaluate,
+        StepKind.ACTION: action,
+    }
+    proc = _proc(
+        [
+            Step(step_id="read", name="Read DO", kind=StepKind.QUERY),
+            Step(step_id="judge", name="Judge", kind=StepKind.EVALUATE),
+            Step(
+                step_id="summary",
+                name="Summary",
+                kind=StepKind.ACTION,
+                autonomy=Autonomy.AUTO,
+                handler="echo",
+            ),
+        ]
+    )
+    agent = _agent(ceiling=Autonomy.AUTO, handlers=["echo"])
+
+    result = await run_procedure(proc, agent, executors, vertical="v", run_id="run-1")
+
+    assert result.run.status == PipelineRunStatus.COMPLETED.value
+    assert [s.step_id for s in result.step_results] == ["read", "judge", "summary"]
+    assert all(s.status == StepResultStatus.COMPLETE.value for s in result.step_results)
+    # set-valued threading: each step's input is the prior step's output set.
+    assert evaluate.calls[0][1] == [{"pond": "p3"}, {"pond": "p7"}]
+    assert action.calls[0][1] == [{"pond": "p7", "verdict": "breach"}]
+    # telemetry seam: every StepResult carries duration_ms + trace + audit + artifact.
+    for sr in result.step_results:
+        assert sr.duration_ms is not None and sr.duration_ms >= 0
+        assert sr.reasoning_trace
+        assert sr.audit == {"actor": "exec", "actor_kind": "engine"}
+        assert sr.artifact is not None and "output_set" in sr.artifact
+
+
+async def test_gated_action_suspends_and_halts_remainder() -> None:
+    executors = {
+        StepKind.QUERY: _RecordingExecutor(output=[{"x": 1}]),
+        StepKind.ACTION: _RecordingExecutor(output=[{"done": 1}]),
+    }
+    proc = _proc(
+        [
+            Step(step_id="read", name="Read", kind=StepKind.QUERY),
+            Step(step_id="aerate", name="Aerate", kind=StepKind.ACTION, handler="echo"),  # gated
+            Step(step_id="after", name="After", kind=StepKind.QUERY),  # must NOT run
+        ]
+    )
+    agent = _agent(handlers=["echo"])  # ceiling gated by default
+
+    result = await run_procedure(proc, agent, executors, vertical="v", run_id="run-2")
+
+    assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    assert [s.step_id for s in result.step_results] == ["read", "aerate"]
+    assert result.step_results[-1].status == StepResultStatus.WAITING_HUMAN.value
+
+
+async def test_human_task_suspends() -> None:
+    executors = {
+        StepKind.HUMAN_TASK: _RecordingExecutor(),
+        StepKind.QUERY: _RecordingExecutor(),
+    }
+    proc = _proc(
+        [
+            Step(step_id="visual", name="Visual check", kind=StepKind.HUMAN_TASK),
+            Step(step_id="after", name="After", kind=StepKind.QUERY),  # must NOT run
+        ]
+    )
+    result = await run_procedure(proc, _agent(), executors, vertical="v", run_id="run-3")
+
+    assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    assert [s.step_id for s in result.step_results] == ["visual"]
+
+
+async def test_fail_and_divert_aborts_run() -> None:
+    executors: dict[StepKind, StepExecutor] = {
+        StepKind.QUERY: _RaisingExecutor(),
+        StepKind.EVALUATE: _RecordingExecutor(),
+    }
+    proc = _proc(
+        [
+            Step(step_id="read", name="Read", kind=StepKind.QUERY, on_failure=OnFailure.FAIL),
+            Step(step_id="judge", name="Judge", kind=StepKind.EVALUATE),  # must NOT run
+        ]
+    )
+    result = await run_procedure(proc, _agent(), executors, vertical="v", run_id="run-4")
+
+    assert result.run.status == PipelineRunStatus.FAILED.value
+    assert [s.step_id for s in result.step_results] == ["read"]
+    assert result.step_results[0].status == StepResultStatus.FAILED.value
+    trace = result.step_results[0].reasoning_trace
+    assert trace is not None and trace[0]["kind"] == "error"
+    assert "RuntimeError" in trace[0]["summary"]  # error type retained for observability
+
+
+async def test_malformed_executor_output_is_diverted_not_crashed() -> None:
+    proc = _proc([Step(step_id="read", name="Read", kind=StepKind.QUERY)])
+    # A wrong-type return must NOT crash the run loop — it diverts like any failure.
+    result = await run_procedure(
+        proc, _agent(), {StepKind.QUERY: _MalformedExecutor()}, vertical="v", run_id="run-6"
+    )
+    assert result.run.status == PipelineRunStatus.FAILED.value
+    trace = result.step_results[0].reasoning_trace
+    assert trace is not None and "StepOutcome" in trace[0]["summary"]
+
+
+async def test_escalate_to_human_diverts_instead_of_failing() -> None:
+    executors = {StepKind.QUERY: _RaisingExecutor()}
+    proc = _proc(
+        [
+            Step(
+                step_id="read",
+                name="Read",
+                kind=StepKind.QUERY,
+                on_failure=OnFailure.ESCALATE_TO_HUMAN,
+            )
+        ]
+    )
+    result = await run_procedure(proc, _agent(), executors, vertical="v", run_id="run-5")
+
+    assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    # D4: the step is routed to waiting_human, not failed.
+    assert result.step_results[0].status == StepResultStatus.WAITING_HUMAN.value
+
+
+async def test_schedule_trigger_is_not_runnable() -> None:
+    proc = _proc([Step(step_id="read", name="Read", kind=StepKind.QUERY)], trigger=Trigger.SCHEDULE)
+    with pytest.raises(ProcedureError, match="runnable in Phase 1"):
+        await run_procedure(
+            proc, _agent(), {StepKind.QUERY: _RecordingExecutor()}, vertical="v", run_id="x"
+        )
+
+
+async def test_missing_executor_for_kind_raises() -> None:
+    proc = _proc([Step(step_id="read", name="Read", kind=StepKind.QUERY)])
+    with pytest.raises(ProcedureError, match="no executor registered"):
+        await run_procedure(proc, _agent(), {}, vertical="v", run_id="x")
+
+
+def test_validate_rejects_kind_outside_allowlist() -> None:
+    proc = _proc([Step(step_id="act", name="Act", kind=StepKind.ACTION, handler="echo")])
+    agent = _agent(kinds=[StepKind.QUERY, StepKind.EVALUATE], handlers=["echo"])
+    with pytest.raises(ProcedureError, match="outside agent"):
+        validate_runnable(proc, agent)
+
+
+def test_validate_rejects_autonomy_above_ceiling() -> None:
+    proc = _proc(
+        [
+            Step(
+                step_id="act",
+                name="Act",
+                kind=StepKind.ACTION,
+                autonomy=Autonomy.AUTO,
+                handler="echo",
+            )
+        ]
+    )
+    agent = _agent(ceiling=Autonomy.GATED, handlers=["echo"])
+    with pytest.raises(ProcedureError, match="exceeds agent"):
+        validate_runnable(proc, agent)
+
+
+def test_validate_rejects_handler_outside_allowlist() -> None:
+    proc = _proc([Step(step_id="act", name="Act", kind=StepKind.ACTION, handler="danger")])
+    agent = _agent(ceiling=Autonomy.GATED, handlers=["echo"])
+    with pytest.raises(ProcedureError, match="outside agent"):
+        validate_runnable(proc, agent)
+
+
+def test_validate_empty_step_kinds_is_unconstrained() -> None:
+    proc = _proc(
+        [
+            Step(step_id="read", name="Read", kind=StepKind.QUERY),
+            Step(step_id="act", name="Act", kind=StepKind.ACTION, handler="echo"),
+        ]
+    )
+    # empty step_kinds = unconstrained; the action handler is still allowlisted.
+    validate_runnable(proc, _agent(kinds=[], handlers=["echo"]))
