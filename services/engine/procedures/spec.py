@@ -65,6 +65,31 @@ class Trigger(StrEnum):
     SCHEDULE = "schedule"
 
 
+class StepInput(BaseModel):
+    """A step's input source (ADR-016 D4; PLAN-0019 A-ζ-prep named-input).
+
+    ``from`` names the prior step whose output set feeds this step (default = the
+    immediately preceding step). ``where`` is a field-equality filter that narrows
+    that set — an entity is kept iff ``entity[field] == value`` for **every** pair,
+    so the set-valued breach/watch/ok fan-out is just ``where: {verdict: breach}``
+    on the evaluate step's output. A non-mapping entity never matches a ``where``
+    (it has no fields). Linear-only: ``from`` must name an EARLIER step
+    (forward / unknown references are rejected at pre-flight by ``validate_runnable``).
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    from_step: str | None = Field(
+        default=None,
+        alias="from",
+        description="step_id whose output feeds this step; default = the immediately prior step",
+    )
+    where: dict[str, Any] | None = Field(
+        default=None,
+        description="field-equality filter: keep entities where entity[field] == value (all pairs)",
+    )
+
+
 class Step(BaseModel):
     """One step of a Procedure (ADR-016 D2)."""
 
@@ -79,8 +104,9 @@ class Step(BaseModel):
         description="action steps ONLY; default gated. Must be unset for non-action kinds (D3).",
     )
     on_failure: OnFailure = OnFailure.FAIL
-    input: str | None = Field(
-        default=None, description="prior-step output reference + optional filter predicate"
+    input: StepInput | None = Field(
+        default=None,
+        description="input source: a named prior step + optional field-equality filter (D4)",
     )
     output: str | None = Field(default=None, description="produced object set / artifact name")
     handler: str | None = Field(

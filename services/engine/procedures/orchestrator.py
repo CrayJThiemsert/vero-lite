@@ -127,7 +127,18 @@ def validate_runnable(procedure: Procedure, agent: Agent) -> None:
         )
     allowed_kinds = set(agent.allowed.step_kinds)
     ceiling = _AUTONOMY_RANK[agent.autonomy_ceiling]
+    seen_ids: set[str] = set()
     for step in procedure.steps:
+        # Named-input references must be LINEAR — a step may only consume the output
+        # of an EARLIER step (no forward / unknown references). Caught at pre-flight
+        # so a bad reference fails the run before it starts, not mid-execution.
+        if step.input is not None and step.input.from_step is not None:
+            if step.input.from_step not in seen_ids:
+                raise ProcedureError(
+                    f"step '{step.step_id}': input.from '{step.input.from_step}' is not an "
+                    "earlier step (named-input references must be linear / backward)"
+                )
+        seen_ids.add(step.step_id)
         if allowed_kinds and step.kind not in allowed_kinds:
             raise ProcedureError(
                 f"step '{step.step_id}': kind '{step.kind.value}' is outside agent "
@@ -160,6 +171,38 @@ def _suspends(step: Step) -> bool:
     if step.kind is StepKind.HUMAN_TASK:
         return True
     return step.kind is StepKind.ACTION and step.autonomy is Autonomy.GATED
+
+
+def _matches(entity: Any, where: Mapping[str, Any]) -> bool:
+    """True iff ``entity`` is a mapping with ``entity[field] == value`` for EVERY
+    pair in ``where`` (the field-equality fan-out filter). A non-mapping entity
+    has no fields, so it never matches."""
+    if not isinstance(entity, Mapping):
+        return False
+    return all(entity.get(field) == value for field, value in where.items())
+
+
+def _resolve_input(
+    step: Step, outputs: Mapping[str, list[Any]], prev_step_id: str | None
+) -> list[Any]:
+    """Resolve a step's input set from the named-output bag (PLAN-0019 A-ζ-prep).
+
+    ``input.from`` names the source step (default = the immediately prior step,
+    ``prev_step_id``); ``input.where`` narrows it by field-equality. A reference to
+    a step with no recorded output (it suspended / failed before producing one)
+    resolves to the empty set. References are pre-validated linear by
+    :func:`validate_runnable`, so ``from`` always names an earlier step.
+    """
+    spec_input = step.input
+    if spec_input is not None and spec_input.from_step is not None:
+        base: list[Any] = list(outputs.get(spec_input.from_step, []))
+    elif prev_step_id is not None:
+        base = list(outputs.get(prev_step_id, []))
+    else:
+        base = []
+    if spec_input is not None and spec_input.where:
+        base = [entity for entity in base if _matches(entity, spec_input.where)]
+    return base
 
 
 def _make_step_result(
@@ -242,20 +285,25 @@ async def execute_steps(
     ctx: RunContext,
     run_id: str,
     *,
-    input_set: list[Any] | None = None,
+    prior_outputs: Mapping[str, list[Any]] | None = None,
     start_index: int = 0,
 ) -> tuple[list[StepResult], PipelineRunStatus]:
-    """Run ``steps[start_index:]`` over ``executors``, threading ``input_set`` forward.
+    """Run ``steps[start_index:]`` over ``executors`` against a named-output bag.
 
-    The shared control-plane core used by both :func:`run_procedure` (from step 0)
-    and resume (from the step after a suspended one). Returns the new
-    ``StepResult``s + the resulting run status; it does NOT create or persist the
-    ``PipelineRun`` (the caller owns the run record).
+    The shared control-plane core used by both :func:`run_procedure` (from step 0,
+    empty bag) and resume (from a given index with the bag rebuilt from the DB).
+    Each step's input set is resolved from the bag via its ``input`` spec
+    (:func:`_resolve_input`) — a named prior step (default: the immediately prior
+    one) narrowed by an optional field-equality ``where`` filter — and each step's
+    output is recorded back into the bag under its ``step_id`` so a LATER step can
+    reference it (the breach/watch/ok fan-out). Returns the new ``StepResult``s +
+    the resulting run status; it does NOT create or persist the ``PipelineRun``.
     """
     engine_audit: dict[str, Any] = {"actor": ctx.agent.agent_id, "actor_kind": "engine"}
     step_results: list[StepResult] = []
-    current: list[Any] = list(input_set) if input_set is not None else []
+    outputs: dict[str, list[Any]] = dict(prior_outputs) if prior_outputs else {}
     final_status = PipelineRunStatus.COMPLETED
+    prev_step_id = steps[start_index - 1].step_id if start_index > 0 else None
 
     for step in steps[start_index:]:
         executor = executors.get(step.kind)
@@ -263,10 +311,11 @@ async def execute_steps(
             raise ProcedureError(
                 f"step '{step.step_id}': no executor registered for kind '{step.kind.value}'"
             )
+        input_set = _resolve_input(step, outputs, prev_step_id)
         started_at = datetime.now(UTC)
         t0 = time.perf_counter()
         try:
-            outcome = await executor.execute(step, current, ctx)
+            outcome = await executor.execute(step, input_set, ctx)
             if not isinstance(outcome, StepOutcome):
                 # A misbehaving executor (wrong return type) is diverted, not
                 # crashed: the orchestrator never lets one executor take down the
@@ -308,9 +357,10 @@ async def execute_steps(
                 audit=outcome.audit or engine_audit,
             )
         )
+        outputs[step.step_id] = outcome.output
         if suspends:
             final_status = PipelineRunStatus.WAITING_HUMAN
             break
-        current = outcome.output
+        prev_step_id = step.step_id
 
     return step_results, final_status

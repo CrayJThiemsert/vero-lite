@@ -33,6 +33,7 @@ from services.engine.procedures.spec import (
     OnFailure,
     Procedure,
     Step,
+    StepInput,
     StepKind,
 )
 from tests.db_support import create_test_engine
@@ -49,10 +50,12 @@ class _Exec:
         self.output = output
         self.calls = 0
         self.goals: list[str | None] = []
+        self.inputs: list[list[Any]] = []
 
     async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
         self.calls += 1
         self.goals.append(ctx.goal)
+        self.inputs.append(list(input_set))
         return StepOutcome(
             output=self.output,
             reasoning_trace=[{"kind": step.kind.value, "summary": step.step_id}],
@@ -240,6 +243,53 @@ async def test_resume_reruns_an_escalated_failed_step(db_engine: AsyncEngine) ->
     read_row = next(sr for sr in reloaded.step_results if sr.step_id == "read")
     assert read_row.status == StepResultStatus.COMPLETE.value
     assert read_row.artifact == {"output_set": [{"pond": "p7"}]}
+
+
+async def test_resume_named_input_references_an_early_step(db_engine: AsyncEngine) -> None:
+    """A post-suspend step can reference an EARLIER named step — the named-output bag
+    is rebuilt from the DB on resume, so the reference survives the process restart."""
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    procedure = Procedure(
+        procedure_id="named_round",
+        title="Named Round",
+        run_by="pond_agent",
+        steps=[
+            Step(step_id="read", name="Read", kind=StepKind.QUERY),
+            Step(step_id="gate", name="Gate", kind=StepKind.ACTION, handler="echo"),  # gated
+            Step(
+                step_id="final",
+                name="Final",
+                kind=StepKind.ACTION,
+                autonomy=Autonomy.AUTO,
+                handler="echo",
+                input=StepInput(from_step="read"),  # references READ, not the immediate prior GATE
+            ),
+        ],
+    )
+    execs: dict[StepKind, StepExecutor] = {
+        StepKind.QUERY: _Exec([{"pond": "p7", "tag": "src"}]),
+        StepKind.ACTION: _Exec([{"x": 1}]),
+    }
+    result = await run_procedure(
+        procedure, _agent(), execs, vertical="aquaculture", run_id="run-named"
+    )
+    assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    async with maker() as session:
+        await persist_run(session, result)
+
+    # Fresh process: resume; 'final' must receive READ's output from the rebuilt bag.
+    fresh = _Exec([{"x": 1}])
+    fresh_execs: dict[StepKind, StepExecutor] = {
+        StepKind.QUERY: _Exec([{"pond": "p7", "tag": "src"}]),
+        StepKind.ACTION: fresh,
+    }
+    async with maker() as session:
+        resumed = await resume_run(
+            session, procedure, _agent(), fresh_execs, "run-named", vertical="aquaculture"
+        )
+    assert resumed.run.status == PipelineRunStatus.COMPLETED.value
+    # final saw READ's output across the restart (rebuilt bag), not GATE's.
+    assert fresh.inputs == [[{"pond": "p7", "tag": "src"}]]
 
 
 async def test_resume_missing_run_raises(db_engine: AsyncEngine) -> None:
