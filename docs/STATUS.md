@@ -18,7 +18,75 @@ recent_commits: [5af7271, 5b2c189, d0a7b10, 0326979, cdfe922, 42739b8, c301273, 
 
 ## Current Focus
 
-> **Session 42 (current) — PLAN-0019 Part A build STARTED: the first build PR
+> **Session 44 (current) — PLAN-0019 Part A COMPLETE → the HARD GATE.**
+> The two final Part-A steps landed via **#208 (`5b2c189`, `feat(engine):`)**.
+> **A-ζ** authored the three example `procedures.yaml` (config only, no new
+> executors): the aquaculture **"Morning Pond Health Round"** headline
+> (`read_do` query → `judge` evaluate → `aerate` **gated** action over the
+> breach subset via the named-input fan-out `input: {from: judge, where:
+> {verdict: breach}}` → `visual` **human_task** over the watch subset →
+> `summary` **auto** action over the whole verdict set), plus energy
+> **"Substation Health Sweep"** and supply_chain **"Cold-Chain Excursion
+> Sweep"** (each a `query → evaluate → gated action` path). Every action routes
+> through the `echo` handler (the only one registered; the intended
+> `start_emergency_aerator` / `restart` / `hold` `action_type`s are noted in the
+> specs but deferred to demo polish, per the session-43 fork). A new pure-Python
+> load test (`test_example_procedures.py`, 10 cases) asserts all three load +
+> validate (cross-refs resolve, named-input references are linear/backward,
+> handlers are allowlisted). **A-η** added the headline end-to-end integration
+> test (`tests/services/db/test_procedure_headline.py`, DB-gated): it drives the
+> **real shipped** aquaculture headline manually with FAKE `query` / `evaluate`
+> / `human_task` executors + the **REAL** `ActionStepExecutor` (mock
+> `ChatClient`, no live LLM) and asserts behaviourally (Lesson #7 §3) — the
+> breach/watch fan-out, the durable suspend → `resolve_gated_step(approve)` →
+> resume lifecycle (`echo` fires once per breach pond; the run reaches
+> `completed`), the auto summary over the whole set, the telemetry seam on every
+> `StepResult`, and **reject = continue + record** (a rejected breach never
+> fires its handler, yet the run still completes). Purely additive — no engine
+> code touched. Verified (**AC A-12**): ruff + ruff-format + mypy --strict clean
+> (47 files); full suite **1276 passed / 2 skipped** (+12; DB tests run live).
+> **Part A (A-1…A-12) is DONE and the engine is demo-able → the HARD GATE is
+> reached.** Cray reviewed + merged #208; Code landed the frontmatter STATUS
+> reconcile (#209). This block = the session-44 reconcile (head `5b2c189`;
+> merges `5af7271` / `2548479`).
+>
+> **Next (gated by the HARD GATE).** Part B (the benchmark) does **not** start
+> until **SD-B1** thresholds (candidate `evaluate`-accuracy ≥ 85%, p95 step
+> latency ≤ 8 s on `gpt-oss:20b`) are **Cray-ratified** first (anti
+> moving-target). The text-to-SQL + RAG comparison is **REPORTED, not gated**;
+> below-threshold = a logged finding → a follow-up tuning PLAN that must not
+> reopen ADR-0016's shape (ring-fence; closes G-3). **SD-B2** (synthetic dataset
+> ~30/vertical) + **SD-B3** (G-2 build-cost, lean DEFER) also stay open. Part B
+> lands via a `test/*` PR. Sequencing remains **Cray's call**. See the handoff
+> `.claude/handoffs/session-44/2026-06-08-1434-code-session44-procedure-engine-a-zeta-eta.md`.
+>
+> **Session 43 — PLAN-0019 Part A engine FEATURE-COMPLETE: A-ε (A-7 + A-8) +
+> the named-input fan-out.** Three `feat(engine)` PRs, each Cray-reviewed +
+> merged with a STATUS reconcile. **A-8 goal injection (#202, `e857c14`)** —
+> `Procedure.goal` (a trusted authored directive, ADR-016 D5) is threaded into
+> the LLM system prompt for `evaluate` + action reasoning (both Pattern-B calls)
+> and onto `RunContext.goal`; the `goal=None` default keeps the reactive path
+> byte-identical. **A-7 action-step adapter (#204, `56ab5f3`)** — the real
+> `action` `StepExecutor` (`services/engine/procedures/action_step.py`): per
+> entity it builds an ADR-007 `RecommendedAction` (envelope UNCHANGED;
+> `suggested_handler = step.handler`, allowlist-bounded) with reasoning via the
+> mockable `generate_judgment`, and routes through the shipped
+> `approve()` → `execute()` gate **verbatim**. **Option 2 (external gate):**
+> `gated` actions only PROPOSE → suspend; `resolve_gated_step` applies the
+> human's approve/reject, rewrites the step `output_set`, persists; a plain
+> `resume_run` continues. **Reject = continue + record** (the handler never
+> fires, the rejection is recorded in the trace, the run reaches `completed` not
+> `failed`); `auto` actions approve + execute inline. **A-ζ-prep named-input
+> (#206, `42739b8`)** — the orchestrator keeps a NAMED-OUTPUT BAG (each step's
+> output keyed by `step_id`); `Step.input` became structured `StepInput {from,
+> where}` (`from` = a named prior step, default = the immediately prior one;
+> `where` = a field-equality filter), enabling the breach/watch/ok fan-out, and
+> `resume_run` rebuilds the bag from the DB across a restart. Three genuine
+> design forks were each decided **with Cray** (AskUserQuestion) before
+> building: the Option-2 external gate, reject = continue + record (grounded in
+> a Palantir staged-Action research pass), and named-input over pass-through.
+>
+> **Session 42 — PLAN-0019 Part A build STARTED: the first build PR
 > landed (#195, `6ef3a57`, `feat(engine):`) — the Procedure spec layer
 > (Step A-α) + run-record persistence (Step A-β).** ADR-0016 Phase 1 is now in
 > execution. This PR delivered the `Procedure / Step / Agent` Pydantic **SPEC**
