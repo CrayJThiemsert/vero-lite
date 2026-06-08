@@ -29,6 +29,7 @@ from services.engine.procedures.spec import (
     OnFailure,
     Procedure,
     Step,
+    StepInput,
     StepKind,
     Trigger,
 )
@@ -302,3 +303,160 @@ def test_validate_empty_step_kinds_is_unconstrained() -> None:
     )
     # empty step_kinds = unconstrained; the action handler is still allowlisted.
     validate_runnable(proc, _agent(kinds=[], handlers=["echo"]))
+
+
+# --- A-ζ-prep: named-input + field-equality filter -------------------------------
+
+
+def test_step_input_from_alias_parses() -> None:
+    """The YAML key `from` maps onto StepInput.from_step (alias)."""
+    step = Step(
+        step_id="x",
+        name="X",
+        kind=StepKind.QUERY,
+        input={"from": "judge", "where": {"verdict": "breach"}},
+    )
+    assert step.input is not None
+    assert step.input.from_step == "judge"
+    assert step.input.where == {"verdict": "breach"}
+
+
+async def test_named_input_references_an_earlier_step() -> None:
+    """`input.from` pulls a NAMED earlier step's output, not the immediate prior."""
+    read = _RecordingExecutor(output=[{"id": "a"}])
+    judge = _RecordingExecutor(output=[{"id": "b"}])
+    act = _RecordingExecutor(output=[])
+    executors = {StepKind.QUERY: read, StepKind.EVALUATE: judge, StepKind.ACTION: act}
+    proc = _proc(
+        [
+            Step(step_id="read", name="Read", kind=StepKind.QUERY),
+            Step(step_id="judge", name="Judge", kind=StepKind.EVALUATE),
+            Step(
+                step_id="act",
+                name="Act",
+                kind=StepKind.ACTION,
+                autonomy=Autonomy.AUTO,
+                handler="echo",
+                input=StepInput(from_step="read"),  # references READ, skipping JUDGE
+            ),
+        ]
+    )
+    await run_procedure(
+        proc,
+        _agent(ceiling=Autonomy.AUTO, handlers=["echo"]),
+        executors,
+        vertical="v",
+        run_id="r-named",
+    )
+
+    assert act.calls[0][1] == [{"id": "a"}], "act must see READ's output, not JUDGE's"
+
+
+async def test_where_filter_narrows_to_subset() -> None:
+    """`input.where` keeps only entities matching every field-equality pair."""
+    judge = _RecordingExecutor(
+        output=[
+            {"pond": "p1", "verdict": "breach"},
+            {"pond": "p2", "verdict": "ok"},
+            {"pond": "p3", "verdict": "breach"},
+        ]
+    )
+    act = _RecordingExecutor(output=[])
+    executors = {StepKind.QUERY: judge, StepKind.ACTION: act}
+    proc = _proc(
+        [
+            Step(step_id="judge", name="Judge", kind=StepKind.QUERY),
+            Step(
+                step_id="act",
+                name="Act",
+                kind=StepKind.ACTION,
+                autonomy=Autonomy.AUTO,
+                handler="echo",
+                input=StepInput(where={"verdict": "breach"}),  # immediate prior + filter
+            ),
+        ]
+    )
+    await run_procedure(
+        proc,
+        _agent(ceiling=Autonomy.AUTO, handlers=["echo"]),
+        executors,
+        vertical="v",
+        run_id="r-where",
+    )
+
+    assert act.calls[0][1] == [
+        {"pond": "p1", "verdict": "breach"},
+        {"pond": "p3", "verdict": "breach"},
+    ]
+
+
+async def test_fan_out_breach_and_watch_from_one_evaluate() -> None:
+    """The headline pattern: one evaluate set fans out to a breach action + a watch
+    human_task, each pulling its subset from `judge` via named-input + where."""
+    judge = _RecordingExecutor(
+        output=[
+            {"pond": "p1", "verdict": "breach"},
+            {"pond": "p2", "verdict": "watch"},
+            {"pond": "p3", "verdict": "ok"},
+        ]
+    )
+    action = _RecordingExecutor(output=[])
+    human = _RecordingExecutor(output=[])
+    executors = {
+        StepKind.EVALUATE: judge,
+        StepKind.ACTION: action,
+        StepKind.HUMAN_TASK: human,
+    }
+    proc = _proc(
+        [
+            Step(step_id="judge", name="Judge", kind=StepKind.EVALUATE),
+            Step(
+                step_id="aerate",
+                name="Aerate",
+                kind=StepKind.ACTION,
+                autonomy=Autonomy.AUTO,
+                handler="echo",
+                input=StepInput(from_step="judge", where={"verdict": "breach"}),
+            ),
+            Step(
+                step_id="visual",
+                name="Visual check",
+                kind=StepKind.HUMAN_TASK,
+                input=StepInput(from_step="judge", where={"verdict": "watch"}),
+            ),
+        ]
+    )
+    result = await run_procedure(
+        proc,
+        _agent(ceiling=Autonomy.AUTO, handlers=["echo"]),
+        executors,
+        vertical="v",
+        run_id="r-fan",
+    )
+
+    assert action.calls[0][1] == [{"pond": "p1", "verdict": "breach"}]
+    assert human.calls[0][1] == [{"pond": "p2", "verdict": "watch"}]
+    # the human_task suspends the run (still pulled its watch subset from judge).
+    assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
+
+
+def test_validate_rejects_forward_reference() -> None:
+    proc = _proc(
+        [
+            Step(step_id="a", name="A", kind=StepKind.QUERY, input=StepInput(from_step="b")),
+            Step(step_id="b", name="B", kind=StepKind.QUERY),  # 'b' is LATER than 'a'
+        ]
+    )
+    with pytest.raises(ProcedureError, match="not an earlier step"):
+        validate_runnable(proc, _agent())
+
+
+def test_validate_rejects_unknown_reference() -> None:
+    proc = _proc(
+        [
+            Step(step_id="a", name="A", kind=StepKind.QUERY),
+            Step(step_id="b", name="B", kind=StepKind.QUERY, input=StepInput(from_step="ghost")),
+        ]
+    )
+    with pytest.raises(ProcedureError, match="not an earlier step"):
+        validate_runnable(proc, _agent())

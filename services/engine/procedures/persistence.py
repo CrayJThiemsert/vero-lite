@@ -62,19 +62,6 @@ async def load_run(session: AsyncSession, run_id: str) -> RunResult | None:
     return RunResult(run=run, step_results=list(rows.scalars().all()))
 
 
-def _prior_output(step_results: list[StepResult]) -> list[Any]:
-    """The output set that fed the last (failed) step — the step before it, or ``[]``.
-
-    Used to re-run an escalated-failure step from its original input; the failed
-    step itself recorded no artifact (the failure path stores ``artifact=None``).
-    """
-    if len(step_results) < 2:
-        return []
-    artifact = step_results[-2].artifact or {}
-    output: list[Any] = artifact.get("output_set", [])
-    return output
-
-
 async def resume_run(
     session: AsyncSession,
     procedure: Procedure,
@@ -127,25 +114,34 @@ async def resume_run(
         trigger_context=run.trigger_context,
         goal=procedure.goal or None,
     )
-    artifact = suspended.artifact
-    input_set: list[Any]
-    if artifact is None:
-        # Escalated failure: re-run the failed step from its original input
-        # (the prior step's output); drop the stale failed record (the re-run,
-        # sharing its step_result_id, overwrites it on merge).
+    # Rebuild the named-output bag from every completed step that recorded an
+    # output, so a resumed step can reference ANY earlier named step (the
+    # breach/watch/ok fan-out), not just the one immediately before it.
+    prior_outputs: dict[str, list[Any]] = {
+        sr.step_id: sr.artifact["output_set"]
+        for sr in loaded.step_results
+        if sr.artifact and "output_set" in sr.artifact
+    }
+
+    if suspended.artifact is None:
+        # Escalated failure (no artifact): re-run the failed step from its resolved
+        # input; the stale failed record (same step_result_id) is overwritten on merge.
         prior_results = loaded.step_results[:-1]
-        input_set = _prior_output(loaded.step_results)
         start_index = index
     else:
-        # Gated action / human_task suspend: the human resolved it — mark complete,
-        # thread its output forward, and continue from the NEXT step.
+        # Gated action / human_task suspend: the human resolved it — mark complete
+        # (its output is already in the bag) and continue from the NEXT step.
         suspended.status = StepResultStatus.COMPLETE.value
         prior_results = loaded.step_results
-        input_set = artifact.get("output_set", [])
         start_index = index + 1
 
     new_results, final_status = await execute_steps(
-        procedure.steps, executors, ctx, run_id, input_set=input_set, start_index=start_index
+        procedure.steps,
+        executors,
+        ctx,
+        run_id,
+        prior_outputs=prior_outputs,
+        start_index=start_index,
     )
     run.status = final_status.value
     run.updated_at = datetime.now(UTC)
