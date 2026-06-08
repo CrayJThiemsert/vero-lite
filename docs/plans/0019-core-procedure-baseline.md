@@ -228,9 +228,12 @@ local-LLM model selection).
 - [ ] **B-2 Pre-registered ABSOLUTE thresholds ratified BEFORE running.** The
   concrete threshold numbers (§8 **SD-B1**) are **locked in this Acceptance
   Criteria section and Cray-ratified before any Part B run** (anti
-  moving-target). A below-threshold measurement = a **logged finding → a
-  follow-up tuning PLAN**, NOT a build failure and NOT a reason to move the
-  threshold.
+  moving-target) — and the numbers are ratified **together with their SD-B1
+  operational definitions** of what `accuracy` and `latency` measure, so neither
+  the threshold nor the meaning of the measured quantity can be silently
+  re-scoped after the run (same anti-moving-target rationale). A below-threshold
+  measurement = a **logged finding → a follow-up tuning PLAN**, NOT a build
+  failure and NOT a reason to move the threshold.
 - [ ] **B-3 Comparison vs raw text-to-SQL + a RAG baseline — REPORTED, NOT a
   gate.** The harness runs the **same synthetic questions** through (a) the
   vero-lite governed-procedure stack, (b) a raw text-to-SQL baseline, and (c) a
@@ -240,10 +243,11 @@ local-LLM model selection).
   loss is a **finding**, not a build failure. *(Load-bearing guardrail — state
   it in the report header.)*
 - [ ] **B-4 Per-procedure local-LLM model-selection benchmark → closes G-3.**
-  For each example procedure, measure `evaluate`-step accuracy + p95 per-step
-  latency across the candidate local model(s) bound per `Agent`, and record the
-  selection rationale. This **closes evidence-gap G-3** (ADR-016 established
-  only **bindability** per `Agent`, default `gpt-oss:20b`).
+  For each example procedure, measure **procedure-recommendation accuracy (per
+  SD-B1)** + **p95 per-LLM-call latency** across the candidate local model(s)
+  bound per `Agent`, and record the selection rationale. This **closes
+  evidence-gap G-3** (ADR-016 established only **bindability** per `Agent`,
+  default `gpt-oss:20b`).
 - [ ] **B-5 Report committed.** A benchmark report (numbers vs the pre-registered
   thresholds, failure-mode taxonomy, the B-3 comparison, the B-4 model
   selection, and an explicit "below-threshold → follow-up tuning PLAN" note)
@@ -362,6 +366,31 @@ verification and commits; the drafter holds no execution or commit authority.
   guardrail; if they are not ratified **before** the run, the benchmark is not
   pre-registered. They are deliberately conservative starting points — Cray
   should set the bar Cray is willing to hold.
+
+  *Operational definitions (lock these WITH the numbers — same anti-moving-target
+  discipline).* The two numbers above are fine, but their measurement targets
+  must be pinned in the same ratification so the dataset/harness is not built
+  against an ambiguous bar:
+  - **What `accuracy` grades.** NOT the deterministic threshold arithmetic of the
+    `evaluate` verdict rule — in the shipped engine that verdict is
+    `crosses_threshold(do, 4.0, "below")` (`services/engine/recommender.py`),
+    tagging `verdict ∈ {breach, watch, ok}` in the aquaculture `judge` step, so it
+    is exact-by-construction (~100%, not informative). `accuracy` is
+    **procedure-recommendation correctness**: per the synthetic ground-truth key,
+    did the LLM-backed judgment path (the `action`-step reasoning,
+    `generate_judgment` → the two-call Pattern B in
+    `services/engine/llm/structured.py`) produce the right disposition — the
+    breach/watch/ok classification **AND** the correct proposed `action` per
+    affected entity — i.e. the part where the bound local model can actually be
+    *wrong*. (An LLM-backed `evaluate` executor is **NOT** required for Phase-1
+    acceptance; this defines the graded unit against the path that exists.)
+  - **What `latency` measures.** p95 per **LLM call** (equivalently per affected
+    entity = **2 Pattern-B calls**: a reasoning draft + a structured judgment),
+    NOT per set-valued step. A step over N entities = 2N sequential calls, so
+    "per-step" conflates model speed with input-set cardinality — wrong unit for a
+    model-selection bar. Measured **warm-first** (the `gpt-oss:20b` cold-load
+    ~13 s is excluded — p95 is steady-state) on an **otherwise-quiesced** MS-S1
+    (concurrent load inflates p95).
 
 - **SD-B2 (synthetic-dataset size / coverage).** *Recommendation:* ~30 questions
   per vertical (~90 total), covering each example procedure's `query` +
