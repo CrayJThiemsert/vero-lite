@@ -148,24 +148,49 @@ synthetic questions: accuracy / failure-mode / latency. **TODO — own step (B-�
 
 ## B-4 / G-3 model-selection sweep
 
-Same dataset, alternative local models — headline accuracy + p95 per-LLM-call
-latency — to inform the latency-tuning finding above. Cray-scoped to two
-additional models (`qwen3.6:35b`, `gemma4:26b`) for a first read; each is checked
-for **structured-output viability** first (qwen3.x has historically returned
-non-JSON under Ollama `format`).
+Same dataset + harness, alternative local models — Cray-scoped to two for a first
+read (`qwen3.6:35b`, `gemma4:26b`). Runs were serialized (one model at a time) so
+MS-S1 stayed quiesced. The pin ran the full 84 breach items; the two candidates
+ran a **9-item breach subset** (cost control — they are slow). Each candidate was
+**re-warmed first** (qwen3.6 cold-loads >150 s).
 
-| model | structured-output | headline accuracy | p95 latency/call | note |
-|---|---|---|---|---|
-| `gpt-oss:20b` | ✅ | ~98–100% | 19.23 s | the ADR-0001 pin (baseline) |
-| `qwen3.6:35b` | _pending_ | _pending_ | _pending_ | 35B; cold-loads >150 s |
-| `gemma4:26b` | _pending_ | _pending_ | _pending_ | 26B |
+| model | size | structured output | accuracy (n) | mean / p95 latency per call | SD-B1 ≤ 8 s |
+|---|---|---|---|---|---|
+| **`gpt-oss:20b`** (pin) | 20 B | ✅ reliable | **~98–100%** (84) | 13.0 s / **19.2 s** | ❌ over |
+| `qwen3.6:35b` | 35 B | ✅ works | ~87.5% (7/8; 1 timeout) | 46.9 s / **120 s\*** | ❌ over (far) |
+| `gemma4:26b` | 26 B | ⚠️ unreliable | **not measurable** (8/9 errored) | 51.7 s / **120 s\*** | ❌ over (far) |
 
-Sweep sample: a fixed breach subset run under the same harness; **pending the
-serialized runs** (one model at a time so MS-S1 stays quiesced for a clean p95).
+\* p95 = the **120 s per-call timeout ceiling** (clipped) — at least one call hit
+it; means are over the calls that completed.
+
+**Notes per candidate.**
+- **`qwen3.6:35b`** — structured output *works* (correcting the prior "qwen3.x =
+  NOT_JSON" note for this build); accuracy is acceptable (~87.5% on the subset,
+  one failure was a transport timeout not a wrong answer), but it is **~3.6× slower
+  than the pin** (47 s mean/call) and tripped the 120 s timeout. Being **larger**
+  than the pin, it is the wrong direction for the latency problem.
+- **`gemma4:26b`** — **not viable in this run**: 8 of 9 items errored — 7 transport
+  timeouts + 1 malformed JSON (`Unterminated string`) — so accuracy is unmeasurable
+  here. The constrained `format` generation appears to run long and hit the timeout
+  (possibly compounded by load-warmup). High variance (p50 27 s, p95 = ceiling).
+
+**G-3 conclusion (closes the evidence gap).** Of the three available
+structured-output-capable local models, **the ADR-0001 pin `gpt-oss:20b` is the
+best on BOTH axes** — highest accuracy *and* lowest latency. **Neither larger
+candidate improves latency** (both are far worse). So the latency finding
+(p95 19.2 s > 8 s) is **not solvable by swapping to these alternatives**; the
+tuning levers live elsewhere — a *smaller* fast model (none such is currently on
+MS-S1), trimming the `think=True` reasoning pass, request batching, or revisiting
+the 8 s bar — all for the follow-up tuning PLAN. **The pin holds.**
+
+*Sweep caveat: the candidate numbers are a 9-item directional read (wide CIs),
+not an external-grade measurement; the timeout-clipped p95 understates their true
+latency. The qualitative conclusion (pin is best; bigger ≠ faster) is robust.*
 
 ---
 
-*PLAN-0019 Part B (B-β). Headline + sanity filled from the Cray-approved live run
-(`gpt-oss:20b`, MS-S1, 2026-06-08). B-3 baselines + B-4/B-δ model & latency sweep
-remain TODO. Per the ring-fence, this REPORTS — it does not gate — and the 100%
-is read with the load-bearing caveat above.*
+*PLAN-0019 Part B. **B-β headline** + sanity + **B-δ latency + B-4/G-3 model
+sweep** filled from Cray-approved live runs (`gpt-oss:20b` / `qwen3.6:35b` /
+`gemma4:26b` on MS-S1, 2026-06-08/09). **B-3 baselines** (text-to-SQL + RAG)
+remain TODO. Per the ring-fence this REPORTS — it does not gate; the headline 100%
+and the latency miss are both read with the caveats above.*

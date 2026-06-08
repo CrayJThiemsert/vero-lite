@@ -29,7 +29,7 @@ from benchmarks.procedure_baseline.schema import (
     Expected,
     Scenario,
 )
-from services.engine.llm.client import ChatResult
+from services.engine.llm.client import ChatResult, OllamaError
 from services.engine.registry import registry
 
 _VERTICAL = "aquaculture"
@@ -172,6 +172,30 @@ async def test_non_breach_item_is_not_graded_and_never_calls_the_model() -> None
     assert result.graded is False
     assert result.proposal_correct is None
     assert client.calls == [], "watch/ok items must not invoke the LLM"
+
+
+async def test_transport_error_is_recorded_not_raised() -> None:
+    """A slow/flaky model (OllamaError) is recorded as an errored proposal so a
+    multi-model sweep completes rather than crashing mid-run (B-δ robustness)."""
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+
+    class _Boom:
+        async def chat(
+            self,
+            messages: list[dict[str, str]],
+            *,
+            think: bool | None = None,
+            response_format: dict[str, Any] | None = None,
+            temperature: float = 0.0,
+        ) -> ChatResult:
+            raise OllamaError("call to /api/chat failed: timeout")
+
+    result = await evaluate_item(_breach_item(), _Boom(), vertical=_VERTICAL)
+
+    assert result.graded is True
+    assert result.proposal_correct is False
+    assert result.grade is None
+    assert result.error is not None and "timeout" in result.error
 
 
 async def test_structured_output_failure_is_an_incorrect_proposal() -> None:

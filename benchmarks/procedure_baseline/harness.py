@@ -26,7 +26,7 @@ from typing import Any
 
 from benchmarks.procedure_baseline.grader import GradeResult, classify_disposition, grade_proposal
 from benchmarks.procedure_baseline.schema import BenchmarkItem, Disposition, Scenario
-from services.engine.llm.client import ChatResult
+from services.engine.llm.client import ChatResult, OllamaError
 from services.engine.llm.structured import (
     ChatClient,
     StructuredOutputError,
@@ -94,10 +94,12 @@ async def evaluate_item(
     live LLM proposal.
 
     ``reading_parameter`` (the dataset's domain parameter) is injected into the
-    event so the model knows the domain (B-β calibration). Transport failures
-    (``OllamaError``) are intentionally NOT swallowed — they bubble to the live
-    runner. A :class:`StructuredOutputError` (the model never produced a valid
-    judgment within the retry budget) is recorded as an incorrect proposal.
+    event so the model knows the domain (B-β calibration). Both a
+    :class:`StructuredOutputError` (the model never produced a valid judgment
+    within the retry budget) and an ``OllamaError`` (a transport failure — e.g. a
+    slow model exceeding the per-call timeout) are recorded as an incorrect,
+    ``error``-tagged proposal so a multi-model sweep over a slow/flaky model
+    completes and reports rather than crashing mid-run (B-δ robustness).
     """
     actual = classify_disposition(item.scenario)
     disposition_correct = actual == item.expected.disposition
@@ -121,7 +123,7 @@ async def evaluate_item(
         result = await generate_judgment(
             client, event, vertical, retry_budget=retry_budget, goal=goal
         )
-    except StructuredOutputError as exc:
+    except (StructuredOutputError, OllamaError) as exc:
         return ItemResult(
             item_id=item.id,
             vertical=vertical,
