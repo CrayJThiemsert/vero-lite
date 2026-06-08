@@ -67,13 +67,24 @@ Stateful loop-detection is live via the `.claude/state/loop-counter.json`
 file (gitignored), the PreToolUse gate
 (`pretooluse_loop_detect.py`), the PostToolUse writer
 (`posttooluse_progress_observer.py`), and the `Stop`-hook L1
-turn-boundary reset (`stop_continuation.py`). Threshold ≥ 6 attempts
+turn-boundary reset (`stop_continuation.py`). Base threshold ≥ 6 attempts
 per `(loop_type, target)`; on trigger the Telegram payload contract is
 `{loop_type, target, last_6_actions}` per ADR-013 / Cray E.4.
 
+**L1 path-class threshold (Cray E.4 refinement, 2026-06-08).** L1 (file
+edits) uses a path-class threshold via `_loop_counter.l1_threshold_for`:
+**6 for code paths** (the `edit → test → fail → edit` thrash the guard
+targets) and **15 for prose / doc paths** (`*.md` anywhere or under
+`docs/`). Multi-section governance authoring (PLAN / ADR / STATUS / lessons
+/ handoffs) legitimately makes many small sequential edits to ONE file in a
+turn — that is the work, not a loop — and has no test/build feedback loop to
+drive a directionless one; L2/L3/L4 cover the code feedback loop more
+directly. The doc bar is raised but **finite**, so a genuinely stuck doc
+loop still trips. Cray-approved self-modification (per-diff) on 2026-06-08.
+
 | # | Trigger (same `(tool, target)` ≥ 6 attempts in one session) | Phase 1 | Phase 2 |
 |---|--------------------------------------------------------------|---------|---------|
-| L1 | Same file edited ≥ 6 times in one turn | Manual observation only | **Live** — `pretooluse_loop_detect.py` (gate) + `posttooluse_progress_observer.py` (writer) + `stop_continuation.py` (turn-boundary reset) |
+| L1 | Same file edited ≥ threshold times in one turn — **path-class threshold** (6 code / 15 prose-doc; see note above) | Manual observation only | **Live** — `pretooluse_loop_detect.py` (gate, `l1_threshold_for`) + `posttooluse_progress_observer.py` (writer + **subagent-completion reset**) + `stop_continuation.py` (turn-boundary reset) |
 | L2 | Same test fails ≥ 6 times consecutively | Manual | **Live** — `posttooluse_progress_observer.py` (inline Telegram fire on trigger) |
 | L3 | Same error signature ≥ 6 times | Manual | **Live** — `posttooluse_progress_observer.py` (inline fire; auto-reset deferred — see PLAN-0008 §Step 8) |
 | L4 | Same Bash command pattern fails ≥ 6 times | Manual | **Live** — `pretooluse_loop_detect.py` (gate) + `posttooluse_progress_observer.py` (writer) |
@@ -81,9 +92,15 @@ per `(loop_type, target)`; on trigger the Telegram payload contract is
 **Payload contract (Phase 2):** when a loop trigger fires, the Telegram
 ping carries `{loop_type, target, last_6_actions}`. State storage:
 `.claude/state/loop-counter.json` (gitignored — see `.gitignore`).
-Reset on observable progress (test passes; target untouched the next
-turn). Loop-type taxonomy above is Cowork-scoped; Code refines in
-Phase 2.
+**L1 reset on observable progress** happens at any of: (a) a `Stop`
+turn boundary where the target was NOT touched that turn
+(`stop_continuation.reset_untouched_l1`); (b) a successful `git commit`
+of the file (`posttooluse_progress_observer._apply_commit_reset`); or
+(c) a subagent (`Agent`/`Task`) tool completing — its edits reset the
+turn's touched-file L1 counters so a drafter subagent's edits do not
+pre-spend the main agent's budget (`_handle_agent_completion`). L2 resets
+on a passing nodeid; L4 on a successful command. Loop-type taxonomy above
+is Cowork-scoped; Code refines in Phase 2.
 
 ## Auto-handoff triggers (Phase 3 — LIVE per PLAN-0009 Step 5c-1)
 
@@ -184,4 +201,4 @@ ADR-013 OQ-1).
 
 ---
 
-*Last updated: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-2: PreToolUse classifier dispatch LIVE via `pretooluse_classifier_dispatch.py`; G1/G2 enforcement rows expanded with PreToolUse arm citation; "How the classifier reads this file" §flipped from "deferred to 5c-2" to "LIVE in 5c-2". Same-session: Step 5c-1 added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" §with the 3rd decision value `dispatch`. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*
+*Last updated: 2026-06-08 (Session 45 — L1 path-class threshold refinement: `l1_threshold_for` (6 code / 15 prose-doc) + subagent-completion L1 reset (`_handle_agent_completion`), after L1 false-fired on multi-section governance authoring; Cray-approved per-diff self-modification. See `docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md`. Previous: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-2: PreToolUse classifier dispatch LIVE via `pretooluse_classifier_dispatch.py`; G1/G2 enforcement rows expanded with PreToolUse arm citation; "How the classifier reads this file" §flipped from "deferred to 5c-2" to "LIVE in 5c-2". Same-session: Step 5c-1 added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" §with the 3rd decision value `dispatch`. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*
