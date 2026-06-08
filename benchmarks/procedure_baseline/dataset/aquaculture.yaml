@@ -1,0 +1,136 @@
+# Procedure-baseline ground truth — aquaculture (PLAN-0019 B-β seed slice).
+#
+# Headline vertical: the "Morning Pond Health Round". Dissolved oxygen (DO) is a
+# CRASH signal — it breaches BELOW the floor (OCT_RECOMMEND_DIRECTION=below;
+# crosses_threshold => measured <= 4.0 is a breach). Verdict bands (judge step):
+#   breach: DO <= 4.0 mg/L   watch: 4.0 < DO <= 5.0   ok: DO > 5.0
+# Threshold 4.0 mg/L + watch_margin 1.0 are grounded in aquaculture_v0.yaml +
+# verticals/aquaculture/procedures.yaml. This is the SCAFFOLD seed (~7 items);
+# the FILL PR grows it to ~50-60, weighted to breach + the 4.0 boundary edge.
+#
+# Graded fields (LLM proposal): affected_primary_key (right pond), valid_handlers
+# ([echo] today — the only registered handler), action_keywords (the 'aerate'
+# action class). payload_contains is exercised on ONE item (aqua-001); the exact
+# payload KEY the live model emits is calibrated during FILL against real output.
+
+vertical: aquaculture
+procedure: morning_pond_health_round
+threshold_note: >-
+  DO 4.0 mg/L, breach BELOW (crosses_threshold direction=below); watch band 1.0
+  (4.0-5.0). Grounded in aquaculture_v0.yaml + procedures.yaml judge step.
+
+items:
+  - id: aqua-001
+    description: DO 2.1 mg/L — severe crash, clear breach.
+    scenario:
+      event_id: aqua-evt-001
+      entity_type: Pond
+      primary_key: pond-A1
+      measured_value: 2.1
+      unit: mg/L
+      threshold: 4.0
+      direction: below
+      watch_margin: 1.0
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: pond-A1
+      valid_handlers: [echo]
+      payload_contains: {pond_id: pond-A1}
+      action_keywords: [aerat]
+
+  - id: aqua-002
+    description: DO 3.2 mg/L — breach (the demo-anchor crash reading).
+    scenario:
+      event_id: aqua-evt-002
+      entity_type: Pond
+      primary_key: pond-A2
+      measured_value: 3.2
+      unit: mg/L
+      threshold: 4.0
+      direction: below
+      watch_margin: 1.0
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: pond-A2
+      valid_handlers: [echo]
+      action_keywords: [aerat]
+
+  - id: aqua-003
+    description: DO 4.0 mg/L — boundary; inclusive breach (measured <= threshold).
+    scenario:
+      event_id: aqua-evt-003
+      entity_type: Pond
+      primary_key: pond-A3
+      measured_value: 4.0
+      unit: mg/L
+      threshold: 4.0
+      direction: below
+      watch_margin: 1.0
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: pond-A3
+      valid_handlers: [echo]
+      action_keywords: [aerat]
+
+  - id: aqua-004
+    description: DO 4.5 mg/L — watch (just inside the floor; technician visual check).
+    scenario:
+      event_id: aqua-evt-004
+      entity_type: Pond
+      primary_key: pond-A4
+      measured_value: 4.5
+      unit: mg/L
+      threshold: 4.0
+      direction: below
+      watch_margin: 1.0
+    expected:
+      disposition: watch
+      action_expected: false
+
+  - id: aqua-005
+    description: DO 5.0 mg/L — watch boundary (upper edge of the watch band).
+    scenario:
+      event_id: aqua-evt-005
+      entity_type: Pond
+      primary_key: pond-A5
+      measured_value: 5.0
+      unit: mg/L
+      threshold: 4.0
+      direction: below
+      watch_margin: 1.0
+    expected:
+      disposition: watch
+      action_expected: false
+
+  - id: aqua-006
+    description: DO 6.5 mg/L — healthy, ok (no action; false-positive guard).
+    scenario:
+      event_id: aqua-evt-006
+      entity_type: Pond
+      primary_key: pond-A6
+      measured_value: 6.5
+      unit: mg/L
+      threshold: 4.0
+      direction: below
+      watch_margin: 1.0
+    expected:
+      disposition: ok
+      action_expected: false
+
+  - id: aqua-007
+    description: DO 7.8 mg/L — well-oxygenated, ok.
+    scenario:
+      event_id: aqua-evt-007
+      entity_type: Pond
+      primary_key: pond-A7
+      measured_value: 7.8
+      unit: mg/L
+      threshold: 4.0
+      direction: below
+      watch_margin: 1.0
+    expected:
+      disposition: ok
+      action_expected: false

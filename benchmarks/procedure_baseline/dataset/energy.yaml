@@ -1,0 +1,134 @@
+# Procedure-baseline ground truth — energy (PLAN-0019 B-β seed slice).
+#
+# "Substation Health Sweep": asset temperature breaches ABOVE the ceiling
+# (OCT_RECOMMEND_DIRECTION=above; crosses_threshold => measured >= 90.0 is a
+# breach). Verdict bands (judge step):
+#   breach: temp >= 90.0 C   watch: 85.0 <= temp < 90.0   ok: temp < 85.0
+# The 90.0 C ceiling + watch_margin 5.0 are provisional SCAFFOLD values (the
+# energy ontology carries no numeric threshold — it lives in demo/env config);
+# the FILL PR pins the exact ceiling against energy_v0.yaml + the demo config and
+# grows the set to ~50-60, weighted to breach + the boundary edge.
+#
+# Graded fields (LLM proposal): affected_primary_key (right asset), valid_handlers
+# ([echo] today), action_keywords (the 'restart' action class).
+
+vertical: energy
+procedure: substation_health_sweep
+threshold_note: >-
+  PROVISIONAL 90.0 C over-temperature ceiling, breach ABOVE; watch band 5.0
+  (85.0-90.0). Exact ceiling pinned during FILL against energy_v0.yaml + demo config.
+
+items:
+  - id: energy-001
+    description: 102.0 C — severe over-temperature, clear breach.
+    scenario:
+      event_id: energy-evt-001
+      entity_type: Asset
+      primary_key: asset-T1
+      measured_value: 102.0
+      unit: celsius
+      threshold: 90.0
+      direction: above
+      watch_margin: 5.0
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: asset-T1
+      valid_handlers: [echo]
+      action_keywords: [restart]
+
+  - id: energy-002
+    description: 96.5 C — breach (the structured-output fixture reading).
+    scenario:
+      event_id: energy-evt-002
+      entity_type: Asset
+      primary_key: asset-T2
+      measured_value: 96.5
+      unit: celsius
+      threshold: 90.0
+      direction: above
+      watch_margin: 5.0
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: asset-T2
+      valid_handlers: [echo]
+      action_keywords: [restart]
+
+  - id: energy-003
+    description: 90.0 C — boundary; inclusive breach (measured >= threshold).
+    scenario:
+      event_id: energy-evt-003
+      entity_type: Asset
+      primary_key: asset-T3
+      measured_value: 90.0
+      unit: celsius
+      threshold: 90.0
+      direction: above
+      watch_margin: 5.0
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: asset-T3
+      valid_handlers: [echo]
+      action_keywords: [restart]
+
+  - id: energy-004
+    description: 88.5 C — watch (within 5 C of the ceiling).
+    scenario:
+      event_id: energy-evt-004
+      entity_type: Asset
+      primary_key: asset-T4
+      measured_value: 88.5
+      unit: celsius
+      threshold: 90.0
+      direction: above
+      watch_margin: 5.0
+    expected:
+      disposition: watch
+      action_expected: false
+
+  - id: energy-005
+    description: 85.0 C — watch boundary (lower edge of the watch band).
+    scenario:
+      event_id: energy-evt-005
+      entity_type: Asset
+      primary_key: asset-T5
+      measured_value: 85.0
+      unit: celsius
+      threshold: 90.0
+      direction: above
+      watch_margin: 5.0
+    expected:
+      disposition: watch
+      action_expected: false
+
+  - id: energy-006
+    description: 72.0 C — nominal, ok (no action).
+    scenario:
+      event_id: energy-evt-006
+      entity_type: Asset
+      primary_key: asset-T6
+      measured_value: 72.0
+      unit: celsius
+      threshold: 90.0
+      direction: above
+      watch_margin: 5.0
+    expected:
+      disposition: ok
+      action_expected: false
+
+  - id: energy-007
+    description: 65.0 C — cool, ok.
+    scenario:
+      event_id: energy-evt-007
+      entity_type: Asset
+      primary_key: asset-T7
+      measured_value: 65.0
+      unit: celsius
+      threshold: 90.0
+      direction: above
+      watch_margin: 5.0
+    expected:
+      disposition: ok
+      action_expected: false
