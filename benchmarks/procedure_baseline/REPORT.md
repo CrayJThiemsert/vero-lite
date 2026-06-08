@@ -148,49 +148,57 @@ synthetic questions: accuracy / failure-mode / latency. **TODO — own step (B-�
 
 ## B-4 / G-3 model-selection sweep
 
-Same dataset + harness, alternative local models — Cray-scoped to two for a first
-read (`qwen3.6:35b`, `gemma4:26b`). Runs were serialized (one model at a time) so
-MS-S1 stayed quiesced. The pin ran the full 84 breach items; the two candidates
-ran a **9-item breach subset** (cost control — they are slow). Each candidate was
-**re-warmed first** (qwen3.6 cold-loads >150 s).
+Same dataset + harness, alternative local models — Cray-scoped to three candidates
+(`qwen3.6:35b`, `gemma4:26b`, then `gemma4:12b` added after MS-S1's Ollama was
+updated to 0.30.6). Runs were serialized (one model at a time) so MS-S1 stayed
+quiesced. The pin ran the full 84 breach items; each candidate ran a **9-item
+breach subset** (cost control) and was **re-warmed first**. Rows sorted by latency.
 
 | model | size | structured output | accuracy (n) | mean / p95 latency per call | SD-B1 ≤ 8 s |
 |---|---|---|---|---|---|
-| **`gpt-oss:20b`** (pin) | 20 B | ✅ reliable | **~98–100%** (84) | 13.0 s / **19.2 s** | ❌ over |
+| **`gpt-oss:20b`** (pin) | 20 B | ✅ reliable | **~98–100%** (84) | **13.0 s** / **19.2 s** | ❌ over (~2.4×) |
+| `gemma4:12b` | 12 B | ✅ reliable | **100%** (9/9) | 45.9 s / 81.1 s | ❌ over (far) |
 | `qwen3.6:35b` | 35 B | ✅ works | ~87.5% (7/8; 1 timeout) | 46.9 s / **120 s\*** | ❌ over (far) |
-| `gemma4:26b` | 26 B | ⚠️ unreliable | **not measurable** (8/9 errored) | 51.7 s / **120 s\*** | ❌ over (far) |
+| `gemma4:26b` | 26 B | ⚠️ unreliable | not measurable (8/9 errored) | 51.7 s / **120 s\*** | ❌ over (far) |
 
-\* p95 = the **120 s per-call timeout ceiling** (clipped) — at least one call hit
-it; means are over the calls that completed.
+\* p95 = the **120 s per-call timeout ceiling** (clipped); means are over completed
+calls. `gemma4:12b` did **not** hit the ceiling (max 81 s) — its mean is a clean,
+real latency.
 
 **Notes per candidate.**
+- **`gemma4:12b`** (the *smaller-than-pin* test) — **reliable + perfectly accurate**
+  on the subset (9/9, valid JSON every call, zero errors), but **~3.5× SLOWER than
+  the pin** (45.9 s mean/call, clean/un-clipped). The key surprise: **fewer
+  parameters did NOT mean faster** — gemma generates a long output per call, so
+  per-call latency is dominated by generated-token count + architecture/quant, not
+  param count. `gpt-oss:20b`'s MXFP4 build is simply much faster here.
 - **`qwen3.6:35b`** — structured output *works* (correcting the prior "qwen3.x =
-  NOT_JSON" note for this build); accuracy is acceptable (~87.5% on the subset,
-  one failure was a transport timeout not a wrong answer), but it is **~3.6× slower
-  than the pin** (47 s mean/call) and tripped the 120 s timeout. Being **larger**
-  than the pin, it is the wrong direction for the latency problem.
-- **`gemma4:26b`** — **not viable in this run**: 8 of 9 items errored — 7 transport
-  timeouts + 1 malformed JSON (`Unterminated string`) — so accuracy is unmeasurable
-  here. The constrained `format` generation appears to run long and hit the timeout
-  (possibly compounded by load-warmup). High variance (p50 27 s, p95 = ceiling).
+  NOT_JSON" note for this build); accuracy acceptable (one failure was a transport
+  timeout, not a wrong answer); ~3.6× slower than the pin; tripped the 120 s timeout.
+- **`gemma4:26b`** — **not viable in this run**: 8/9 errored (7 timeouts + 1
+  malformed JSON). Same gemma slowness as 12b but bigger, so it hits the 120 s
+  ceiling and fails rather than just running slow.
 
-**G-3 conclusion (closes the evidence gap).** Of the three available
-structured-output-capable local models, **the ADR-0001 pin `gpt-oss:20b` is the
-best on BOTH axes** — highest accuracy *and* lowest latency. **Neither larger
-candidate improves latency** (both are far worse). So the latency finding
-(p95 19.2 s > 8 s) is **not solvable by swapping to these alternatives**; the
-tuning levers live elsewhere — a *smaller* fast model (none such is currently on
-MS-S1), trimming the `think=True` reasoning pass, request batching, or revisiting
-the 8 s bar — all for the follow-up tuning PLAN. **The pin holds.**
+**G-3 conclusion (closes the evidence gap).** Across four
+structured-output-capable local models spanning 12 B–35 B, **the ADR-0001 pin
+`gpt-oss:20b` is the best on BOTH axes** — highest accuracy *and*, by a wide
+margin (≈3.5×), the lowest latency. Crucially, **going smaller did not help**:
+`gemma4:12b` is reliable and accurate but far slower, so the latency problem is
+**not a param-count problem** and is **not solved by any available alternative**.
+The tuning levers therefore live elsewhere — trimming the `think=True` reasoning
+pass (the dominant per-call cost), request batching, a faster-architecture small
+model not yet on MS-S1, or revisiting the 8 s bar — all for the follow-up tuning
+PLAN. **The pin holds.**
 
-*Sweep caveat: the candidate numbers are a 9-item directional read (wide CIs),
-not an external-grade measurement; the timeout-clipped p95 understates their true
-latency. The qualitative conclusion (pin is best; bigger ≠ faster) is robust.*
+*Sweep caveat: candidate numbers are a 9-item directional read (wide CIs), not an
+external-grade measurement; timeout-clipped p95s understate true latency. The
+qualitative conclusions (pin is best by far; smaller ≠ faster) are robust.*
 
 ---
 
 *PLAN-0019 Part B. **B-β headline** + sanity + **B-δ latency + B-4/G-3 model
-sweep** filled from Cray-approved live runs (`gpt-oss:20b` / `qwen3.6:35b` /
-`gemma4:26b` on MS-S1, 2026-06-08/09). **B-3 baselines** (text-to-SQL + RAG)
-remain TODO. Per the ring-fence this REPORTS — it does not gate; the headline 100%
-and the latency miss are both read with the caveats above.*
+sweep** filled from Cray-approved live runs (`gpt-oss:20b` / `gemma4:12b` /
+`qwen3.6:35b` / `gemma4:26b` on MS-S1, Ollama 0.30.6, 2026-06-08/09). **B-3
+baselines** (text-to-SQL + RAG) remain TODO. Per the ring-fence this REPORTS — it
+does not gate; the headline 100% and the latency miss are both read with the
+caveats above.*
