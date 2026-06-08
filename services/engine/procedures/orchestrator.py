@@ -141,7 +141,15 @@ def validate_runnable(procedure: Procedure, agent: Agent) -> None:
 
 
 def _suspends(step: Step) -> bool:
-    """A ``gated`` action (the human go/no-go) or a ``human_task`` suspends the run."""
+    """Whether this step suspends the run at ``waiting_human`` — a ``gated`` action
+    (the human go/no-go) or a ``human_task``.
+
+    SAFETY: for a ``gated`` action the executor must only *propose* (produce the
+    ``RecommendedAction`` at status ``proposed``) and must NOT perform the
+    irreversible write before approval. That invariant is enforced by the ADR-007
+    approve->execute gate (``execute`` requires ``approved``), not by the
+    orchestrator; the write runs on resume after a human approves.
+    """
     if step.kind is StepKind.HUMAN_TASK:
         return True
     return step.kind is StepKind.ACTION and step.autonomy is Autonomy.GATED
@@ -188,6 +196,14 @@ async def run_procedure(
     returns; a raising executor triggers D4 fail-and-divert (the run aborts —
     ``failed``, or ``waiting_human`` when ``on_failure = escalate_to_human``).
     Every step records a ``StepResult`` carrying the telemetry seam.
+
+    The orchestrator threads the FULL prior output set into the next step; a
+    step's ``input`` / ``output`` are executor-interpreted hints (any per-entity
+    narrowing — e.g. the breach subset — is the executor's job, not the engine's).
+    On suspend, the suspended step's output set is preserved in
+    ``StepResult.artifact["output_set"]`` so a later resume can thread it forward.
+    A misbehaving executor (raising, or returning a non-``StepOutcome``) is
+    diverted via fail-and-divert, never crashing the run loop.
     """
     validate_runnable(procedure, agent)
 
@@ -218,6 +234,13 @@ async def run_procedure(
         t0 = time.perf_counter()
         try:
             outcome = await executor.execute(step, input_set, ctx)
+            if not isinstance(outcome, StepOutcome):
+                # A misbehaving executor (wrong return type) is diverted, not
+                # crashed: the orchestrator never lets one executor take down the
+                # whole run loop. Funnel it into the same fail-and-divert path.
+                raise TypeError(
+                    f"step executor returned {type(outcome).__name__}, expected StepOutcome"
+                )
         except Exception as exc:  # fail-and-divert catches ANY step failure (D4)
             duration_ms = int((time.perf_counter() - t0) * 1000)
             # D4: escalate_to_human routes the STEP (and the run) to waiting_human
@@ -231,7 +254,7 @@ async def run_procedure(
                     started_at,
                     duration_ms,
                     artifact=None,
-                    reasoning_trace=[{"kind": "error", "summary": str(exc)}],
+                    reasoning_trace=[{"kind": "error", "summary": f"{type(exc).__name__}: {exc}"}],
                     audit=engine_audit,
                 )
             )

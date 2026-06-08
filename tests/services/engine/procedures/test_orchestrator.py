@@ -57,6 +57,13 @@ class _RaisingExecutor:
         raise RuntimeError("boom")
 
 
+class _MalformedExecutor:
+    """Returns the wrong type — must be diverted, never crash the orchestrator."""
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        return None  # type: ignore[return-value]
+
+
 def _agent(
     *,
     ceiling: Autonomy = Autonomy.GATED,
@@ -171,6 +178,18 @@ async def test_fail_and_divert_aborts_run() -> None:
     assert result.step_results[0].status == StepResultStatus.FAILED.value
     trace = result.step_results[0].reasoning_trace
     assert trace is not None and trace[0]["kind"] == "error"
+    assert "RuntimeError" in trace[0]["summary"]  # error type retained for observability
+
+
+async def test_malformed_executor_output_is_diverted_not_crashed() -> None:
+    proc = _proc([Step(step_id="read", name="Read", kind=StepKind.QUERY)])
+    # A wrong-type return must NOT crash the run loop — it diverts like any failure.
+    result = await run_procedure(
+        proc, _agent(), {StepKind.QUERY: _MalformedExecutor()}, vertical="v", run_id="run-6"
+    )
+    assert result.run.status == PipelineRunStatus.FAILED.value
+    trace = result.step_results[0].reasoning_trace
+    assert trace is not None and "StepOutcome" in trace[0]["summary"]
 
 
 async def test_escalate_to_human_diverts_instead_of_failing() -> None:
