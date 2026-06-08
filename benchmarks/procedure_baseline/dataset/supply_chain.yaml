@@ -1,0 +1,134 @@
+# Procedure-baseline ground truth — supply_chain (PLAN-0019 B-β seed slice).
+#
+# "Cold-Chain Excursion Sweep": a shipment temperature breaches ABOVE the
+# cold-chain ceiling (OCT_RECOMMEND_DIRECTION=above; crosses_threshold =>
+# measured >= 8.0 is a breach). Verdict bands (judge step):
+#   breach: temp >= 8.0 C   watch: 6.5 <= temp < 8.0   ok: temp < 6.5
+# The 8.0 C ceiling + watch_margin 1.5 are provisional SCAFFOLD values (the
+# supply_chain ontology carries no numeric threshold — it lives in demo/env
+# config); the FILL PR pins the exact ceiling against supply_chain_v0.yaml + the
+# demo config and grows the set to ~50-60, weighted to breach + the boundary edge.
+#
+# Graded fields (LLM proposal): affected_primary_key (right shipment),
+# valid_handlers ([echo] today), action_keywords (the 'hold' action class).
+
+vertical: supply_chain
+procedure: cold_chain_excursion_sweep
+threshold_note: >-
+  PROVISIONAL 8.0 C cold-chain ceiling, breach ABOVE; watch band 1.5 (6.5-8.0).
+  Exact ceiling pinned during FILL against supply_chain_v0.yaml + demo config.
+
+items:
+  - id: supply-001
+    description: 12.0 C — gross excursion, clear breach.
+    scenario:
+      event_id: supply-evt-001
+      entity_type: Shipment
+      primary_key: ship-S1
+      measured_value: 12.0
+      unit: celsius
+      threshold: 8.0
+      direction: above
+      watch_margin: 1.5
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: ship-S1
+      valid_handlers: [echo]
+      action_keywords: [hold]
+
+  - id: supply-002
+    description: 10.5 C — breach (cold-chain ceiling crossed).
+    scenario:
+      event_id: supply-evt-002
+      entity_type: Shipment
+      primary_key: ship-S2
+      measured_value: 10.5
+      unit: celsius
+      threshold: 8.0
+      direction: above
+      watch_margin: 1.5
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: ship-S2
+      valid_handlers: [echo]
+      action_keywords: [hold]
+
+  - id: supply-003
+    description: 8.0 C — boundary; inclusive breach (measured >= threshold).
+    scenario:
+      event_id: supply-evt-003
+      entity_type: Shipment
+      primary_key: ship-S3
+      measured_value: 8.0
+      unit: celsius
+      threshold: 8.0
+      direction: above
+      watch_margin: 1.5
+    expected:
+      disposition: breach
+      action_expected: true
+      affected_primary_key: ship-S3
+      valid_handlers: [echo]
+      action_keywords: [hold]
+
+  - id: supply-004
+    description: 7.5 C — watch (within 1.5 C of the ceiling).
+    scenario:
+      event_id: supply-evt-004
+      entity_type: Shipment
+      primary_key: ship-S4
+      measured_value: 7.5
+      unit: celsius
+      threshold: 8.0
+      direction: above
+      watch_margin: 1.5
+    expected:
+      disposition: watch
+      action_expected: false
+
+  - id: supply-005
+    description: 6.5 C — watch boundary (lower edge of the watch band).
+    scenario:
+      event_id: supply-evt-005
+      entity_type: Shipment
+      primary_key: ship-S5
+      measured_value: 6.5
+      unit: celsius
+      threshold: 8.0
+      direction: above
+      watch_margin: 1.5
+    expected:
+      disposition: watch
+      action_expected: false
+
+  - id: supply-006
+    description: 4.0 C — nominal cold-chain, ok (no action).
+    scenario:
+      event_id: supply-evt-006
+      entity_type: Shipment
+      primary_key: ship-S6
+      measured_value: 4.0
+      unit: celsius
+      threshold: 8.0
+      direction: above
+      watch_margin: 1.5
+    expected:
+      disposition: ok
+      action_expected: false
+
+  - id: supply-007
+    description: 2.0 C — well within range, ok.
+    scenario:
+      event_id: supply-evt-007
+      entity_type: Shipment
+      primary_key: ship-S7
+      measured_value: 2.0
+      unit: celsius
+      threshold: 8.0
+      direction: above
+      watch_margin: 1.5
+    expected:
+      disposition: ok
+      action_expected: false
