@@ -32,18 +32,27 @@ stack wins" is the *thesis under test*, not an acceptance condition.
 
 ## Results — headline (LLM action-proposal correctness)
 
+Denominators are fixed by the dataset (28 breach items/vertical, 84 total);
+`correct` / `accuracy` are filled by the run.
+
 | vertical | graded breach items | correct | accuracy | vs ≥85% |
 |---|---|---|---|---|
-| aquaculture | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| energy | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| supply_chain | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
-| **overall** | _TBD_ | _TBD_ | _TBD_ | _TBD_ |
+| aquaculture | 28 | _TBD_ | _TBD_ | _TBD_ |
+| energy | 28 | _TBD_ | _TBD_ | _TBD_ |
+| supply_chain | 28 | _TBD_ | _TBD_ | _TBD_ |
+| **overall** | **84** | _TBD_ | _TBD_ | _TBD_ |
 
 ## Results — deterministic disposition (sanity, ~100% expected)
 
+Denominators fixed by the dataset (54 items/vertical: 28 breach / 13 watch /
+13 ok; 162 total).
+
 | vertical | items | correct | accuracy |
 |---|---|---|---|
-| _TBD_ | | | |
+| aquaculture | 54 | _TBD_ | _TBD_ |
+| energy | 54 | _TBD_ | _TBD_ |
+| supply_chain | 54 | _TBD_ | _TBD_ |
+| **overall** | **162** | _TBD_ | _TBD_ |
 
 ## Failure-mode taxonomy
 
