@@ -587,3 +587,63 @@ def test_non_commit_bash_does_not_reset_l1(tmp_path: Path, monkeypatch: pytest.M
 
     after = load_counter(state_path)
     assert get_count(after, LoopType.FILE_EDIT, "tools/foo.py") == 6  # NOT reset
+
+
+# --- Subagent (Agent/Task) completion L1 reset (Cray E.4 refinement 2026-06-08) ---
+
+
+def _agent(tool_name: str = "Task") -> Payload:
+    return {"tool_name": tool_name, "tool_input": {}, "tool_response": {}}
+
+
+def _seed_l1_with_turn_touched(state_path: Path, targets: dict[str, int]) -> None:
+    c = new_counter("s")
+    for target, count in targets.items():
+        for _ in range(count):
+            increment(c, LoopType.FILE_EDIT, target, ActionRecord("t", "Edit", target))
+        c.turn_touched.append(target)
+    save_counter(c, state_path)
+
+
+@pytest.mark.parametrize("tool_name", ["Task", "Agent"])
+def test_agent_completion_resets_l1_for_touched(stub_env: dict[str, str], tool_name: str) -> None:
+    """A subagent's edits must not pre-spend the main agent's L1 budget: when the
+    Agent/Task tool returns, L1 counters for files touched this turn reset
+    (symmetric with the commit-boundary + Stop turn-boundary resets).
+    """
+    state = _state(stub_env)
+    _seed_l1_with_turn_touched(state, {"docs/plans/0019-x.md": 6, "services/x.py": 4})
+    _run(_agent(tool_name), stub_env)
+    c = load_counter(state)
+    assert get_count(c, LoopType.FILE_EDIT, "docs/plans/0019-x.md") == 0
+    assert get_count(c, LoopType.FILE_EDIT, "services/x.py") == 0
+
+
+def test_agent_completion_leaves_untouched_l1_alone(stub_env: dict[str, str]) -> None:
+    """Only files in turn_touched reset; an L1 counter for a file NOT touched
+    this turn is not masked (no over-broad reset).
+    """
+    state = _state(stub_env)
+    c = new_counter("s")
+    for _ in range(6):
+        increment(c, LoopType.FILE_EDIT, "docs/plans/touched.md", ActionRecord("t", "Edit", "x"))
+    c.turn_touched.append("docs/plans/touched.md")
+    for _ in range(5):
+        increment(c, LoopType.FILE_EDIT, "services/untouched.py", ActionRecord("t", "Edit", "y"))
+    # services/untouched.py deliberately NOT in turn_touched
+    save_counter(c, state)
+    _run(_agent("Task"), stub_env)
+    after = load_counter(state)
+    assert get_count(after, LoopType.FILE_EDIT, "docs/plans/touched.md") == 0
+    assert get_count(after, LoopType.FILE_EDIT, "services/untouched.py") == 5
+
+
+def test_agent_completion_no_turn_touched_is_noop(stub_env: dict[str, str]) -> None:
+    state = _state(stub_env)
+    c = new_counter("s")
+    for _ in range(3):
+        increment(c, LoopType.FILE_EDIT, "services/x.py", ActionRecord("t", "Edit", "x"))
+    save_counter(c, state)  # turn_touched left empty
+    _run(_agent("Agent"), stub_env)
+    after = load_counter(state)
+    assert get_count(after, LoopType.FILE_EDIT, "services/x.py") == 3  # unchanged

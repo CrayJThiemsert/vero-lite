@@ -25,6 +25,7 @@ HOOKS_DIR = Path(__file__).resolve().parents[2] / ".claude" / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
+    L1_DOC_THRESHOLD,
     LOOP_TRIGGER_THRESHOLD,
     MAX_RECENT_ACTIONS,
     ActionRecord,
@@ -36,6 +37,8 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     get_count,
     has_triggered,
     increment,
+    is_doc_target,
+    l1_threshold_for,
     load_counter,
     new_counter,
     normalize_error_signature,
@@ -43,6 +46,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     normalize_pytest_nodeid,
     record_turn_touched,
     reset,
+    reset_l1_for_targets,
     reset_untouched_l1,
     resolve_session_id,
     save_counter,
@@ -519,3 +523,81 @@ def test_save_serializes_sorted_keys(tmp_path: Path) -> None:
     raw = json.loads(state_path.read_text(encoding="utf-8"))
     keys = list(raw["counters"].keys())
     assert keys == sorted(keys), "keys must be deterministically ordered for diff-friendliness"
+
+
+# --- L1 path-class threshold (Cray E.4 refinement 2026-06-08) ---
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "docs/STATUS.md",
+        "docs/plans/0019-core-procedure-baseline.md",
+        "docs/adr/0016-governed-procedure-engine.md",
+        "README.md",  # markdown anywhere is doc-class
+        ".claude/handoffs/session-45/x.md",
+        "DOCS/Foo.MD",  # case-insensitive
+    ],
+)
+def test_is_doc_target_true(target: str) -> None:
+    assert is_doc_target(target) is True
+
+
+@pytest.mark.parametrize(
+    "target",
+    [
+        "services/api/main.py",
+        ".claude/hooks/_loop_counter.py",
+        "tests/handoffs/test_x.py",
+        "verticals/aquaculture/procedures.yaml",
+        "docsomething/notreally.py",  # 'docs' as a prefix of a dir name, not 'docs/'
+    ],
+)
+def test_is_doc_target_false(target: str) -> None:
+    assert is_doc_target(target) is False
+
+
+def test_l1_threshold_doc_vs_code() -> None:
+    assert l1_threshold_for("docs/STATUS.md") == L1_DOC_THRESHOLD
+    assert l1_threshold_for("README.md") == L1_DOC_THRESHOLD
+    assert l1_threshold_for("services/api/main.py") == LOOP_TRIGGER_THRESHOLD
+    assert l1_threshold_for(".claude/hooks/_loop_counter.py") == LOOP_TRIGGER_THRESHOLD
+
+
+def test_l1_doc_threshold_is_higher_and_finite() -> None:
+    """Doc bar is raised (fewer false positives) but FINITE (a stuck doc loop
+    still trips eventually).
+    """
+    assert L1_DOC_THRESHOLD > LOOP_TRIGGER_THRESHOLD
+    assert L1_DOC_THRESHOLD < 1000
+
+
+# --- reset_l1_for_targets (subagent-completion boundary) ---
+
+
+def test_reset_l1_for_targets_clears_listed_only() -> None:
+    c = new_counter("s")
+    increment(c, LoopType.FILE_EDIT, "docs/plans/x.md")
+    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    increment(c, LoopType.FILE_EDIT, "services/keep.py")
+    cleared = reset_l1_for_targets(c, ["docs/plans/x.md", "services/x.py"])
+    assert sorted(cleared) == ["docs/plans/x.md", "services/x.py"]
+    assert counter_key(LoopType.FILE_EDIT, "docs/plans/x.md") not in c.counters
+    assert counter_key(LoopType.FILE_EDIT, "services/x.py") not in c.counters
+    assert counter_key(LoopType.FILE_EDIT, "services/keep.py") in c.counters
+
+
+def test_reset_l1_for_targets_only_touches_l1() -> None:
+    c = new_counter("s")
+    increment(c, LoopType.FILE_EDIT, "shared.py")
+    increment(c, LoopType.TEST_FAIL, "shared.py")
+    cleared = reset_l1_for_targets(c, ["shared.py"])
+    assert cleared == ["shared.py"]
+    assert counter_key(LoopType.FILE_EDIT, "shared.py") not in c.counters
+    assert counter_key(LoopType.TEST_FAIL, "shared.py") in c.counters  # L2 untouched
+
+
+def test_reset_l1_for_targets_missing_is_noop() -> None:
+    c = new_counter("s")
+    cleared = reset_l1_for_targets(c, ["never-there.py"])
+    assert cleared == []

@@ -41,9 +41,11 @@ sys.path.insert(0, str(HOOKS_DIR))
 
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     DEFAULT_COUNTER_PATH,
+    LOOP_TRIGGER_THRESHOLD,
     LoopType,
     counter_key,
     has_triggered,
+    l1_threshold_for,
     load_counter,
     normalize_file_path,
     tokenize_bash_command,
@@ -129,13 +131,16 @@ def _deny_decision(
     loop_type: LoopType,
     target: str,
     count: int,
+    threshold: int = LOOP_TRIGGER_THRESHOLD,
 ) -> dict[str, Any]:
     reason = (
         f"Loop-detect ({loop_type.value}) triggered: same target `{target}` "
-        f"hit {count} times in this session (Cray E.4 threshold = 6). "
-        f"Last 6 actions captured in the Telegram payload. Pause and "
-        f"reassess the approach with Cray before retrying — see "
-        f".claude/autonomy-triggers.md row {loop_type.value}."
+        f"hit {count} times in this turn (Cray E.4 threshold = {threshold}). "
+        f"Last 6 actions captured in the Telegram payload. The counter resets "
+        f"at the turn boundary (a fresh turn that does not touch this target), "
+        f"on git commit of it, or — for a subagent's edits — when the Agent "
+        f"tool returns. Pause and reassess the approach with Cray before "
+        f"retrying — see .claude/autonomy-triggers.md row {loop_type.value}."
     )
     return {
         "hookSpecificOutput": {
@@ -189,7 +194,10 @@ def main() -> int:
 
     loop_type, target = match
     counter = load_counter(_state_path())
-    if not has_triggered(counter, loop_type, target):
+    threshold = (
+        l1_threshold_for(target) if loop_type is LoopType.FILE_EDIT else LOOP_TRIGGER_THRESHOLD
+    )
+    if not has_triggered(counter, loop_type, target, threshold):
         return 0
 
     key = counter_key(loop_type, target)
@@ -199,7 +207,7 @@ def main() -> int:
 
     last_6 = [a.to_json() for a in entry.last_6_actions]
     _ping_telegram(loop_type, target, last_6)
-    print(json.dumps(_deny_decision(loop_type, target, entry.count)))
+    print(json.dumps(_deny_decision(loop_type, target, entry.count, threshold)))
     return 0
 
 

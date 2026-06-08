@@ -76,6 +76,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     normalize_pytest_nodeid,
     record_turn_touched,
     reset,
+    reset_l1_for_targets,
     save_counter,
     tokenize_bash_command,
 )
@@ -305,6 +306,25 @@ def _handle_write_or_edit(payload: dict[str, Any]) -> None:
     save_counter(counter, _state_path())
 
 
+def _handle_agent_completion(payload: dict[str, Any]) -> None:
+    """Subagent (Agent/Task) completion = an L1 reset boundary.
+
+    A subagent's ``Write``/``Edit`` calls increment the SAME loop-counter as the
+    main agent (they run in the parent session, sharing the state file). Without
+    this, a subagent that makes several edits to one file pre-exhausts the main
+    agent's L1 budget for that file (observed 2026-06-08: a ``plan-drafter``
+    subagent made 6 edits to a PLAN and the main agent could then not add even
+    one). On the Agent/Task tool completing, reset the L1 counters for the files
+    touched so far this turn — symmetric with the commit-boundary and Stop
+    turn-boundary resets. ``turn_touched`` is left intact so the Stop hook still
+    tracks any main-agent edits made afterwards.
+    """
+    counter = load_counter(_state_path())
+    cleared = reset_l1_for_targets(counter, list(counter.turn_touched))
+    if cleared:
+        save_counter(counter, _state_path())
+
+
 def _apply_l4(counter: Any, command: str, tool_response: dict[str, Any]) -> bool:
     """L4: Bash command pattern. Returns True if counter changed.
 
@@ -459,6 +479,8 @@ def main() -> int:
             _handle_write_or_edit(payload)
         elif tool_name == "Bash":
             _handle_bash(payload)
+        elif tool_name in ("Task", "Agent"):
+            _handle_agent_completion(payload)
     except Exception as exc:  # observer must never block on internal error
         print(f"posttooluse_progress_observer: internal error: {exc}", file=sys.stderr)
     return 0
