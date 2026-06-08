@@ -124,6 +124,13 @@ class Dataset(BaseModel):
 
     vertical: str = Field(..., min_length=1)
     procedure: str = Field(..., min_length=1, description="The procedure_id this dataset exercises")
+    reading_parameter: str = Field(
+        ...,
+        min_length=1,
+        description="The domain parameter the reading measures (e.g. dissolved_oxygen / "
+        "temperature). Fed into the event so the model knows the domain — faithful to what "
+        "a real ontology-projected event carries (B-β calibration, Cray-ratified 2026-06-08).",
+    )
     threshold_note: str | None = Field(
         default=None, description="Provenance of the threshold/direction (grounding for review)"
     )

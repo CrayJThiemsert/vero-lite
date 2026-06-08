@@ -24,6 +24,7 @@ def test_load_all_returns_the_three_example_verticals() -> None:
     assert {dataset.vertical for dataset in datasets} == {"aquaculture", "energy", "supply_chain"}
     for dataset in datasets:
         assert dataset.items, f"{dataset.vertical}: dataset is empty"
+        assert dataset.reading_parameter, f"{dataset.vertical}: no reading_parameter declared"
 
 
 def test_dataset_dir_is_the_packaged_dataset_folder() -> None:
@@ -78,7 +79,7 @@ def test_unknown_field_is_rejected(tmp_path: Path) -> None:
     """extra='forbid' catches a typo'd key instead of silently dropping it."""
     bad = tmp_path / "extra.yaml"
     bad.write_text(
-        "vertical: x\nprocedure: p\nitems:\n"
+        "vertical: x\nprocedure: p\nreading_parameter: dissolved_oxygen\nitems:\n"
         "  - id: i1\n    description: d\n    surprise: oops\n"
         "    scenario: {event_id: e, entity_type: Pond, primary_key: p, "
         "measured_value: 1.0, unit: mg/L, threshold: 4.0, direction: below}\n"

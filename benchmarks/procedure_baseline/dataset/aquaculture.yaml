@@ -17,6 +17,7 @@
 
 vertical: aquaculture
 procedure: morning_pond_health_round
+reading_parameter: dissolved_oxygen
 threshold_note: >-
   DO 4.0 mg/L, breach BELOW (crosses_threshold direction=below); watch band 1.0
   (4.0-5.0). Grounded in aquaculture_v0.yaml + procedures.yaml judge step.
@@ -26,115 +27,115 @@ items:
   - id: aqua-001
     description: DO 2.1 mg/L — severe crash; clear breach (also exercises payload_contains).
     scenario: {event_id: aqua-evt-001, entity_type: Pond, primary_key: pond-A01, measured_value: 2.1, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A01, valid_handlers: [echo], action_keywords: [aerat], payload_contains: {pond_id: pond-A01}}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A01, valid_handlers: [echo], action_keywords: [aerat, oxygenat], payload_contains: {pond_id: pond-A01}}
   - id: aqua-002
     description: DO 0.6 mg/L — near-anoxic; breach.
     scenario: {event_id: aqua-evt-002, entity_type: Pond, primary_key: pond-A02, measured_value: 0.6, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A02, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A02, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-003
     description: DO 0.9 mg/L — critical crash; breach.
     scenario: {event_id: aqua-evt-003, entity_type: Pond, primary_key: pond-A03, measured_value: 0.9, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A03, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A03, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-004
     description: DO 1.2 mg/L — severe crash; breach.
     scenario: {event_id: aqua-evt-004, entity_type: Pond, primary_key: pond-A04, measured_value: 1.2, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A04, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A04, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-005
     description: DO 1.5 mg/L — breach.
     scenario: {event_id: aqua-evt-005, entity_type: Pond, primary_key: pond-A05, measured_value: 1.5, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A05, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A05, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-006
     description: DO 1.8 mg/L — breach.
     scenario: {event_id: aqua-evt-006, entity_type: Pond, primary_key: pond-A06, measured_value: 1.8, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A06, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A06, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-007
     description: DO 2.0 mg/L — breach.
     scenario: {event_id: aqua-evt-007, entity_type: Pond, primary_key: pond-A07, measured_value: 2.0, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A07, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A07, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-008
     description: DO 2.3 mg/L — breach.
     scenario: {event_id: aqua-evt-008, entity_type: Pond, primary_key: pond-A08, measured_value: 2.3, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A08, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A08, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-009
     description: DO 2.5 mg/L — breach.
     scenario: {event_id: aqua-evt-009, entity_type: Pond, primary_key: pond-A09, measured_value: 2.5, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A09, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A09, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-010
     description: DO 2.7 mg/L — breach.
     scenario: {event_id: aqua-evt-010, entity_type: Pond, primary_key: pond-A10, measured_value: 2.7, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A10, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A10, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-011
     description: DO 2.9 mg/L — breach.
     scenario: {event_id: aqua-evt-011, entity_type: Pond, primary_key: pond-A11, measured_value: 2.9, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A11, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A11, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-012
     description: DO 3.0 mg/L — breach.
     scenario: {event_id: aqua-evt-012, entity_type: Pond, primary_key: pond-A12, measured_value: 3.0, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A12, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A12, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-013
     description: DO 3.1 mg/L — breach.
     scenario: {event_id: aqua-evt-013, entity_type: Pond, primary_key: pond-A13, measured_value: 3.1, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A13, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A13, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-014
     description: DO 3.2 mg/L — the demo-anchor crash reading; breach.
     scenario: {event_id: aqua-evt-014, entity_type: Pond, primary_key: pond-A14, measured_value: 3.2, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A14, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A14, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-015
     description: DO 3.3 mg/L — breach.
     scenario: {event_id: aqua-evt-015, entity_type: Pond, primary_key: pond-A15, measured_value: 3.3, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A15, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A15, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-016
     description: DO 3.4 mg/L — breach.
     scenario: {event_id: aqua-evt-016, entity_type: Pond, primary_key: pond-A16, measured_value: 3.4, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A16, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A16, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-017
     description: DO 3.5 mg/L — breach.
     scenario: {event_id: aqua-evt-017, entity_type: Pond, primary_key: pond-A17, measured_value: 3.5, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A17, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A17, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-018
     description: DO 3.6 mg/L — breach.
     scenario: {event_id: aqua-evt-018, entity_type: Pond, primary_key: pond-A18, measured_value: 3.6, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A18, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A18, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-019
     description: DO 3.7 mg/L — breach (approaching the floor).
     scenario: {event_id: aqua-evt-019, entity_type: Pond, primary_key: pond-A19, measured_value: 3.7, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A19, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A19, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-020
     description: DO 3.75 mg/L — breach.
     scenario: {event_id: aqua-evt-020, entity_type: Pond, primary_key: pond-A20, measured_value: 3.75, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A20, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A20, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-021
     description: DO 3.8 mg/L — boundary-adjacent breach.
     scenario: {event_id: aqua-evt-021, entity_type: Pond, primary_key: pond-A21, measured_value: 3.8, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A21, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A21, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-022
     description: DO 3.85 mg/L — boundary-adjacent breach.
     scenario: {event_id: aqua-evt-022, entity_type: Pond, primary_key: pond-A22, measured_value: 3.85, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A22, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A22, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-023
     description: DO 3.9 mg/L — just below the floor; breach.
     scenario: {event_id: aqua-evt-023, entity_type: Pond, primary_key: pond-A23, measured_value: 3.9, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A23, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A23, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-024
     description: DO 3.92 mg/L — just below the floor; breach.
     scenario: {event_id: aqua-evt-024, entity_type: Pond, primary_key: pond-A24, measured_value: 3.92, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A24, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A24, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-025
     description: DO 3.95 mg/L — just below the floor; breach.
     scenario: {event_id: aqua-evt-025, entity_type: Pond, primary_key: pond-A25, measured_value: 3.95, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A25, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A25, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-026
     description: DO 3.97 mg/L — a whisker below the floor; breach.
     scenario: {event_id: aqua-evt-026, entity_type: Pond, primary_key: pond-A26, measured_value: 3.97, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A26, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A26, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-027
     description: DO 3.99 mg/L — a hair below the floor; breach.
     scenario: {event_id: aqua-evt-027, entity_type: Pond, primary_key: pond-A27, measured_value: 3.99, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A27, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A27, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
   - id: aqua-028
     description: DO 4.0 mg/L — boundary; inclusive breach (measured <= threshold).
     scenario: {event_id: aqua-evt-028, entity_type: Pond, primary_key: pond-A28, measured_value: 4.0, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A28, valid_handlers: [echo], action_keywords: [aerat]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A28, valid_handlers: [echo], action_keywords: [aerat, oxygenat]}
 
   # --- watch (4.0 < DO <= 5.0; technician visual check; no action) -------------
   - id: aqua-029

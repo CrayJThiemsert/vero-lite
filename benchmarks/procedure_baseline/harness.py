@@ -31,11 +31,17 @@ from services.engine.llm.structured import (
 )
 
 
-def scenario_to_event(scenario: Scenario) -> dict[str, Any]:
+def scenario_to_event(scenario: Scenario, reading_parameter: str | None = None) -> dict[str, Any]:
     """Project a :class:`Scenario` into the event mapping ``generate_judgment``
     consumes — the entity + reading + threshold context, plus any extra
-    ``context`` fields verbatim."""
-    return {
+    ``context`` fields verbatim.
+
+    ``reading_parameter`` (the dataset's domain parameter, e.g. ``dissolved_oxygen``)
+    is injected as a ``parameter`` field so the model knows WHAT is being measured —
+    faithful to a real ontology-projected event (B-β calibration). Omitted when
+    ``None`` (keeps the event minimal for callers that don't supply it).
+    """
+    event: dict[str, Any] = {
         "event_id": scenario.event_id,
         "event_type": "reading",
         "object_type": scenario.entity_type,
@@ -44,8 +50,11 @@ def scenario_to_event(scenario: Scenario) -> dict[str, Any]:
         "unit": scenario.unit,
         "threshold": scenario.threshold,
         "direction": scenario.direction,
-        **scenario.context,
     }
+    if reading_parameter is not None:
+        event["parameter"] = reading_parameter
+    event.update(scenario.context)
+    return event
 
 
 @dataclass(frozen=True)
@@ -75,15 +84,17 @@ async def evaluate_item(
     *,
     vertical: str,
     goal: str | None = None,
+    reading_parameter: str | None = None,
     retry_budget: int = 3,
 ) -> ItemResult:
     """Evaluate one item: deterministic disposition, then (on breach) grade the
     live LLM proposal.
 
-    Transport failures (``OllamaError``) are intentionally NOT swallowed — they
-    bubble to the live runner. A :class:`StructuredOutputError` (the model never
-    produced a valid judgment within the retry budget) is recorded as an incorrect
-    proposal.
+    ``reading_parameter`` (the dataset's domain parameter) is injected into the
+    event so the model knows the domain (B-β calibration). Transport failures
+    (``OllamaError``) are intentionally NOT swallowed — they bubble to the live
+    runner. A :class:`StructuredOutputError` (the model never produced a valid
+    judgment within the retry budget) is recorded as an incorrect proposal.
     """
     actual = classify_disposition(item.scenario)
     disposition_correct = actual == item.expected.disposition
@@ -102,7 +113,7 @@ async def evaluate_item(
             grade=None,
         )
 
-    event = scenario_to_event(item.scenario)
+    event = scenario_to_event(item.scenario, reading_parameter)
     try:
         result = await generate_judgment(
             client, event, vertical, retry_budget=retry_budget, goal=goal
