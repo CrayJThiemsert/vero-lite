@@ -1,0 +1,59 @@
+# vero-lite procedure spec — energy vertical, v0 (PLAN-0019 A-ζ / AC A-10).
+# A routine over the energy ontology (energy_v0.yaml: Asset / Site / OperationalEvent)
+# demonstrating the minimal query -> evaluate -> gated action path. A distinct spec
+# layer from the ADR-008 ontology (object_types untouched). `agents` / `procedures`
+# are MAPS keyed by id; the `vertical` is the dir name, not in the file.
+#
+# Phase-1 scope (PLAN-0019 L-1): only `trigger: manual` is RUNNABLE. The single
+# registered handler today is `echo` (verticals/energy/handlers.py); the intended
+# action_type `restart` (ontology RecommendedAction.action_type ∈ {restart, isolate,
+# dispatch_technician, escalate}) routes through `echo` until the real grid-control
+# handler ships with the design partner.
+
+namespace: energy
+version: 0
+
+agents:
+  grid_agent:
+    name: Grid Operations Agent
+    llm_model: gpt-oss:20b          # ADR-001 default local model
+    # ceiling = gated: the only action here is a gated restart (human go/no-go).
+    autonomy_ceiling: gated
+    allowed:
+      step_kinds: [query, evaluate, action]
+      action_handlers: [echo]       # only `echo` is registered today
+
+procedures:
+  substation_health_sweep:
+    title: Substation Health Sweep
+    goal: >-
+      Read each active asset's latest temperature reading, judge it against the
+      over-temperature threshold, and restart the assets that breach after a human
+      go/no-go.
+    run_by: grid_agent
+    trigger: manual                 # L-1: only manual runs in Phase 1
+    steps:
+      - step_id: read_readings
+        name: Read latest asset readings
+        description: Latest temperature reading per active Asset.
+        kind: query
+      - step_id: judge
+        name: Judge vs over-temperature threshold
+        description: >-
+          Tag each asset's verdict vs the over-temperature threshold —
+          breach (over the ceiling) vs ok. OCT_RECOMMEND_DIRECTION=above semantics.
+        kind: evaluate
+      - step_id: restart_breaches
+        name: Restart the breaching assets
+        description: >-
+          Propose a restart action (ADR-007 envelope) per breaching asset; human
+          approve -> execute. Intended action_type `restart`; routed through `echo`
+          until the real handler ships.
+        kind: action
+        autonomy: gated             # the human go/no-go on an irreversible write
+        handler: echo
+        input:
+          from: judge               # the named-input fan-out: only the breach subset
+          where:
+            verdict: breach
+    terminal: restart_breaches
