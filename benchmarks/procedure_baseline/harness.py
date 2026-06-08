@@ -18,12 +18,15 @@ bypassed to isolate the LLM variable).
 
 from __future__ import annotations
 
+import math
+import time
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from benchmarks.procedure_baseline.grader import GradeResult, classify_disposition, grade_proposal
 from benchmarks.procedure_baseline.schema import BenchmarkItem, Disposition, Scenario
+from services.engine.llm.client import ChatResult
 from services.engine.llm.structured import (
     ChatClient,
     StructuredOutputError,
@@ -181,4 +184,84 @@ def summarize(results: Sequence[ItemResult]) -> Summary:
         deterministic_correct=deterministic_correct,
         deterministic_accuracy=(deterministic_correct / total) if total else 0.0,
         by_disposition=by_disposition,
+    )
+
+
+# --- Latency (SD-B1 ≤ 8 s p95 per LLM call; B-δ) -----------------------------
+
+
+@dataclass
+class LatencyRecorder:
+    """Accumulates per-LLM-call wall-clock durations (seconds) for one run."""
+
+    durations: list[float] = field(default_factory=list)
+
+    def record(self, seconds: float) -> None:
+        self.durations.append(seconds)
+
+
+class TimingChatClient:
+    """A :class:`ChatClient` decorator that times each ``chat`` call into a
+    :class:`LatencyRecorder` — the SD-B1 unit is **per LLM call** (a breach item =
+    2 Pattern-B calls), so timing wraps the client, not the per-item flow. The
+    duration is recorded even when the inner call raises (the call still cost time).
+    """
+
+    def __init__(self, inner: ChatClient, recorder: LatencyRecorder) -> None:
+        self._inner = inner
+        self._recorder = recorder
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        think: bool | None = None,
+        response_format: dict[str, Any] | None = None,
+        temperature: float = 0.0,
+    ) -> ChatResult:
+        start = time.perf_counter()
+        try:
+            return await self._inner.chat(
+                messages, think=think, response_format=response_format, temperature=temperature
+            )
+        finally:
+            self._recorder.record(time.perf_counter() - start)
+
+
+def percentile(values: Sequence[float], pct: float) -> float:
+    """The ``pct``-th percentile (0-100) by the nearest-rank method on sorted
+    values. Empty input -> 0.0. Simple + defensible for a p95 latency bar."""
+    if not values:
+        return 0.0
+    ordered = sorted(values)
+    rank = max(1, math.ceil(pct / 100.0 * len(ordered)))
+    return ordered[rank - 1]
+
+
+@dataclass(frozen=True)
+class LatencySummary:
+    """Per-LLM-call latency aggregate for one model's run (SD-B1 p95 ≤ threshold)."""
+
+    calls: int
+    mean_s: float
+    p50_s: float
+    p95_s: float
+    max_s: float
+    threshold_s: float
+    within_threshold: bool
+
+
+def summarize_latency(durations: Sequence[float], *, threshold_s: float = 8.0) -> LatencySummary:
+    """Aggregate per-call durations into the SD-B1 latency report (p95 vs the bar)."""
+    if not durations:
+        return LatencySummary(0, 0.0, 0.0, 0.0, 0.0, threshold_s, True)
+    p95 = percentile(durations, 95.0)
+    return LatencySummary(
+        calls=len(durations),
+        mean_s=sum(durations) / len(durations),
+        p50_s=percentile(durations, 50.0),
+        p95_s=p95,
+        max_s=max(durations),
+        threshold_s=threshold_s,
+        within_threshold=p95 <= threshold_s,
     )

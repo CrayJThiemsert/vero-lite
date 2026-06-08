@@ -15,9 +15,13 @@ from typing import Any
 from benchmarks.procedure_baseline.grader import GradeResult, classify_disposition
 from benchmarks.procedure_baseline.harness import (
     ItemResult,
+    LatencyRecorder,
+    TimingChatClient,
     evaluate_item,
+    percentile,
     scenario_to_event,
     summarize,
+    summarize_latency,
 )
 from benchmarks.procedure_baseline.schema import (
     BenchmarkItem,
@@ -221,3 +225,43 @@ def test_dataset_scenarios_classify_as_authored() -> None:
     """Sanity bridge: the harness's classifier and the schema agree on a known item."""
     item = _breach_item()
     assert classify_disposition(item.scenario) is item.expected.disposition
+
+
+# --- latency (B-δ) -----------------------------------------------------------
+
+
+def test_percentile_nearest_rank() -> None:
+    values = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+    assert percentile(values, 50.0) == 5.0
+    assert percentile(values, 95.0) == 10.0
+    assert percentile(values, 100.0) == 10.0
+    assert percentile([], 95.0) == 0.0  # empty -> 0.0
+
+
+def test_summarize_latency_reports_p95_vs_threshold() -> None:
+    durations = [1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0, 5.0, 20.0]
+    summary = summarize_latency(durations, threshold_s=8.0)
+    assert summary.calls == 10
+    assert summary.p95_s == 20.0  # the slow tail surfaces in p95
+    assert summary.max_s == 20.0
+    assert not summary.within_threshold  # 20s > 8s bar
+
+
+def test_summarize_latency_within_threshold() -> None:
+    summary = summarize_latency([2.0, 3.0, 4.0], threshold_s=8.0)
+    assert summary.within_threshold
+    assert summary.p95_s <= 8.0
+
+
+async def test_timing_chat_client_records_each_call() -> None:
+    """The timing decorator records one duration per chat call and passes results through."""
+    recorder = LatencyRecorder()
+    inner = FakeChatClient([_result("a"), _result("b")])
+    client = TimingChatClient(inner, recorder)
+
+    first = await client.chat([{"role": "user", "content": "x"}])
+    await client.chat([{"role": "user", "content": "y"}])
+
+    assert first.content == "a"  # pass-through
+    assert len(recorder.durations) == 2
+    assert all(d >= 0.0 for d in recorder.durations)

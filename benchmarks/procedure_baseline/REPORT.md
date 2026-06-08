@@ -85,10 +85,17 @@ been scoring as failures despite a correct "Aeration" recommendation.
 
 ## Failure-mode taxonomy
 
-**Zero graded failures** (84/84 breach proposals passed; 0 `StructuredOutputError`).
-For every breach scenario — including the inclusive-boundary cases (aquaculture DO
-4.0, energy 90.0 °C, supply_chain 8.0 °C) — the model named the right entity and
-the right action class.
+The headline is **run-to-run non-deterministic** (sampling on the local model):
+the first scored run (#220) was **100% (84/84)**; a second warm run (the B-δ
+latency run) was **97.6% (82/84)**. Both clear ≥ 85%; the honest read is
+**~98–100%**.
+
+The two misses in the second run were **both inclusive-boundary breaches**
+(`aqua-028` DO = 4.0 mg/L, `energy-002` = 90.0 °C) — i.e. the model occasionally
+hedges the action *exactly at the threshold*, where the reading is a breach by the
+`<=` / `>=` rule but reads as "borderline" in prose. **Boundary cases are the
+failure mode**; clear breaches (well inside the band) passed every time. No
+`StructuredOutputError` in either run.
 
 ## Interpretation — what the 100% does and does NOT say (load-bearing caveat)
 
@@ -114,21 +121,47 @@ The headline **clears ≥ 85%**, but read it precisely — the number reflects a
   then, treat 100% as "the well-posed path works end-to-end," not "the model is
   infallible."
 
-## Latency (SD-B1 ≤ 8 s p95 per LLM call)
+## Latency (B-δ — SD-B1 ≤ 8 s p95 per LLM call)
 
-**Not measured by this run** — the runner is not yet instrumented for per-call
-timing. Rigorous p95-per-LLM-call latency (warm, quiesced MS-S1) is the **B-δ**
-step. (Wall-clock context only: the 168-call run completed in roughly ~10–15 min.)
+Measured per **LLM call** (a breach item = 2 Pattern-B calls) via the runner's
+`TimingChatClient`, **warm-first** on MS-S1.
+
+| model | n calls | mean | p50 | p95 | max | SD-B1 p95 ≤ 8 s |
+|---|---|---|---|---|---|---|
+| `gpt-oss:20b` (ADR-0001 pin) | 168 | 13.01 s | 12.12 s | **19.23 s** | 22.52 s | ❌ **OVER (~2.4×)** |
+
+**Finding (NOT a build failure — B-6 ring-fence).** The pinned `gpt-oss:20b` is
+**accurate but far over the latency bar** (p95 19.23 s vs the 8 s target; ~13 s
+mean/call). The two-call Pattern-B exchange with `think=True` on call 1 generates
+a large reasoning trace, which dominates per-call time on the MS-S1 hardware. Per
+the ring-fence this is a **logged finding → a tuning PLAN** (candidate levers:
+a faster/smaller bound model — the B-4/G-3 sweep; trimming the reasoning pass;
+batching) and **does NOT move the 8 s bar or reopen ADR-016**.
+
+The **B-4 / G-3 model-selection sweep** (below) collects the same accuracy +
+per-call latency for alternative local models to inform that tuning.
 
 ## B-3 comparison (REPORTED, not a gate)
 
 vero-lite governed-procedure stack vs (b) raw text-to-SQL vs (c) RAG, on the same
 synthetic questions: accuracy / failure-mode / latency. **TODO — own step (B-γ).**
 
-## B-4 per-procedure model selection (closes G-3)
+## B-4 / G-3 model-selection sweep
 
-Per-procedure accuracy + p95 per-LLM-call latency across the candidate local
-model(s) bound per `Agent`; selection rationale. **TODO — own step (B-δ).**
+Same dataset, alternative local models — headline accuracy + p95 per-LLM-call
+latency — to inform the latency-tuning finding above. Cray-scoped to two
+additional models (`qwen3.6:35b`, `gemma4:26b`) for a first read; each is checked
+for **structured-output viability** first (qwen3.x has historically returned
+non-JSON under Ollama `format`).
+
+| model | structured-output | headline accuracy | p95 latency/call | note |
+|---|---|---|---|---|
+| `gpt-oss:20b` | ✅ | ~98–100% | 19.23 s | the ADR-0001 pin (baseline) |
+| `qwen3.6:35b` | _pending_ | _pending_ | _pending_ | 35B; cold-loads >150 s |
+| `gemma4:26b` | _pending_ | _pending_ | _pending_ | 26B |
+
+Sweep sample: a fixed breach subset run under the same harness; **pending the
+serialized runs** (one model at a time so MS-S1 stays quiesced for a clean p95).
 
 ---
 
