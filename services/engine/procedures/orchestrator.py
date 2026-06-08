@@ -73,11 +73,18 @@ class StepOutcome:
 
 @dataclass(frozen=True)
 class RunContext:
-    """Read-only context handed to every executor for one run."""
+    """Read-only context handed to every executor for one run.
+
+    ``goal`` is the running ``Procedure``'s trusted directive (ADR-016 D5;
+    PLAN-0019 A-8) — an LLM-backed executor (``evaluate`` / ``action`` reasoning)
+    passes it to :func:`generate_judgment` so it steers the system prompt. It is
+    ``None`` when the procedure declares no goal.
+    """
 
     agent: Agent
     vertical: str
     trigger_context: dict[str, Any] | None = None
+    goal: str | None = None
 
 
 class StepExecutor(Protocol):
@@ -217,7 +224,12 @@ async def run_procedure(
         started_at=opened,
         updated_at=opened,
     )
-    ctx = RunContext(agent=agent, vertical=vertical, trigger_context=trigger_context)
+    ctx = RunContext(
+        agent=agent,
+        vertical=vertical,
+        trigger_context=trigger_context,
+        goal=procedure.goal or None,
+    )
     step_results, final_status = await execute_steps(procedure.steps, executors, ctx, run_id)
     run.status = final_status.value
     run.updated_at = datetime.now(UTC)

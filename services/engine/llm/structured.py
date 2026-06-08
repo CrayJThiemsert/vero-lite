@@ -138,6 +138,7 @@ async def generate_judgment(
     vertical: str,
     *,
     retry_budget: int = 3,
+    goal: str | None = None,
 ) -> JudgmentResult:
     """Run the two-call Pattern B exchange and return a validated judgment.
 
@@ -150,6 +151,10 @@ async def generate_judgment(
     labelled-untrusted retry context (PLAN-0006 §6.4 / IN-2 corollary)
     for up to ``retry_budget`` total attempts.
 
+    ``goal`` (ADR-016 D5; PLAN-0019 A-8) is the running ``Procedure``'s trusted
+    directive, threaded into the system instruction of BOTH calls; it is ``None``
+    on the reactive Pipeline-v0 path (system prompt unchanged).
+
     Raises :class:`StructuredOutputError` when the budget is exhausted.
     Transport failures surface as ``OllamaError`` from ``client.chat`` and
     are intentionally NOT retried here — they go straight to the Step 5
@@ -157,13 +162,13 @@ async def generate_judgment(
     """
     budget = max(1, retry_budget)
     schema = _judgment_schema(registry.handler_names(vertical))
-    reasoning = await client.chat(build_reasoning_messages(event, vertical), think=True)
+    reasoning = await client.chat(build_reasoning_messages(event, vertical, goal), think=True)
 
     feedback: str | None = None
     last_error = "no attempt was made"
     for attempt in range(1, budget + 1):
         messages = build_structuring_messages(
-            event, vertical, reasoning.content, retry_feedback=feedback
+            event, vertical, reasoning.content, retry_feedback=feedback, goal=goal
         )
         # call 2: omit `think` (CHECKPOINT-0 contract — never think=False + format)
         result = await client.chat(messages, response_format=schema)

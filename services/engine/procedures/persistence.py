@@ -121,7 +121,12 @@ async def resume_run(
             f"procedure '{procedure.procedure_id}'"
         )
 
-    ctx = RunContext(agent=agent, vertical=vertical, trigger_context=run.trigger_context)
+    ctx = RunContext(
+        agent=agent,
+        vertical=vertical,
+        trigger_context=run.trigger_context,
+        goal=procedure.goal or None,
+    )
     artifact = suspended.artifact
     input_set: list[Any]
     if artifact is None:

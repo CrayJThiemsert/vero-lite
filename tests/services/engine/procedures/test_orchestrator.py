@@ -50,6 +50,17 @@ class _RecordingExecutor:
         )
 
 
+class _ContextCapturingExecutor:
+    """Records the RunContext it was handed — used to assert goal threading (A-8)."""
+
+    def __init__(self) -> None:
+        self.contexts: list[RunContext] = []
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        self.contexts.append(ctx)
+        return StepOutcome(output=[])
+
+
 class _RaisingExecutor:
     """Always raises — exercises D4 fail-and-divert."""
 
@@ -209,6 +220,32 @@ async def test_escalate_to_human_diverts_instead_of_failing() -> None:
     assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
     # D4: the step is routed to waiting_human, not failed.
     assert result.step_results[0].status == StepResultStatus.WAITING_HUMAN.value
+
+
+async def test_run_context_carries_procedure_goal() -> None:
+    """A-8: run_procedure threads Procedure.goal onto RunContext for every executor."""
+    capture = _ContextCapturingExecutor()
+    proc = Procedure(
+        procedure_id="p1",
+        title="P",
+        goal="Run the morning pond health round.",
+        run_by="a1",
+        steps=[Step(step_id="read", name="Read", kind=StepKind.QUERY)],
+    )
+    await run_procedure(proc, _agent(), {StepKind.QUERY: capture}, vertical="v", run_id="run-goal")
+
+    assert capture.contexts[0].goal == "Run the morning pond health round."
+
+
+async def test_run_context_goal_is_none_when_procedure_has_no_goal() -> None:
+    """A-8: an empty goal normalises to None (the reactive prompt path)."""
+    capture = _ContextCapturingExecutor()
+    proc = _proc([Step(step_id="read", name="Read", kind=StepKind.QUERY)])  # goal defaults ""
+    await run_procedure(
+        proc, _agent(), {StepKind.QUERY: capture}, vertical="v", run_id="run-nogoal"
+    )
+
+    assert capture.contexts[0].goal is None
 
 
 async def test_schedule_trigger_is_not_runnable() -> None:
