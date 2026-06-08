@@ -100,6 +100,9 @@ def test_all_declared_fields_pass() -> None:
         "payload_contains",
         "action_keywords",
     }
+    # payload_contains is advisory — recorded but not a headline gate.
+    payload_check = next(c for c in grade.checks if c.name == "payload_contains")
+    assert payload_check.advisory is True
 
 
 def test_wrong_entity_pk_fails() -> None:
@@ -120,25 +123,35 @@ def test_handler_outside_allowlist_fails() -> None:
     assert not grade.passed
 
 
-def test_payload_subset_match_passes_with_extra_keys() -> None:
-    """A subset match tolerates extra payload keys the model adds."""
+def test_payload_subset_match_is_advisory_only() -> None:
+    """A payload subset match is recorded as a PASSED advisory check — but, being
+    advisory, it does NOT by itself make the headline grade pass (no scoring field)."""
     expected = Expected(
         disposition=Disposition.BREACH,
         action_expected=True,
         payload_contains={"pond_id": "pond-A1"},
     )
     judgment = _judgment(handler_payload={"pond_id": "pond-A1", "severity": "high"})
-    assert grade_proposal(judgment, expected).passed
+    grade = grade_proposal(judgment, expected)
+    check = next(c for c in grade.checks if c.name == "payload_contains")
+    assert check.advisory and check.passed
+    assert not grade.passed  # advisory-only: no scoring field declared
 
 
-def test_payload_value_mismatch_fails() -> None:
+def test_payload_value_mismatch_does_not_fail_the_headline() -> None:
+    """A payload mismatch is an advisory miss — it must NOT drag down a proposal
+    that passes its scoring fields (free-form payload keys are not a fair gate)."""
     expected = Expected(
         disposition=Disposition.BREACH,
         action_expected=True,
+        affected_primary_key="pond-A1",
         payload_contains={"pond_id": "pond-A1"},
     )
     judgment = _judgment(handler_payload={"pond_id": "pond-Z9"})
-    assert not grade_proposal(judgment, expected).passed
+    grade = grade_proposal(judgment, expected)
+    payload_check = next(c for c in grade.checks if c.name == "payload_contains")
+    assert payload_check.advisory and not payload_check.passed
+    assert grade.passed  # the scoring field (affected_primary_key) carries it
 
 
 def test_action_keywords_match_is_case_insensitive_substring() -> None:
@@ -149,7 +162,22 @@ def test_action_keywords_match_is_case_insensitive_substring() -> None:
     expected_miss = Expected(
         disposition=Disposition.BREACH, action_expected=True, action_keywords=["restart"]
     )
-    assert not grade_proposal(_judgment(title="Aerate", description="oxygen"), expected_miss).passed
+    judgment = _judgment(title="Aerate", description="oxygen", rationale="add oxygen now")
+    assert not grade_proposal(judgment, expected_miss).passed
+
+
+def test_action_keywords_match_in_rationale() -> None:
+    """The action verb often lands in the rationale field — it must be searched
+    (B-β calibration: title/description can be generic while rationale carries the act)."""
+    expected = Expected(
+        disposition=Disposition.BREACH, action_expected=True, action_keywords=["aerat"]
+    )
+    judgment = _judgment(
+        title="Pond DO Breach Response",
+        description="Recommendation for the event",
+        rationale="Aeration is the mandated response after human approval.",
+    )
+    assert grade_proposal(judgment, expected).passed
 
 
 def test_no_declared_field_grades_false() -> None:

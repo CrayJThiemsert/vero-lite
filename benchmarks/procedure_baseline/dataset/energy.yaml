@@ -15,6 +15,7 @@
 
 vertical: energy
 procedure: substation_health_sweep
+reading_parameter: temperature
 threshold_note: >-
   PROVISIONAL 90.0 C over-temperature ceiling, breach ABOVE; watch band 5.0
   (85.0-90.0). Pin the exact ceiling against energy_v0.yaml + demo config.
@@ -24,115 +25,115 @@ items:
   - id: energy-001
     description: 96.5 C — over-temperature (the structured-output fixture reading); breach.
     scenario: {event_id: energy-evt-001, entity_type: Asset, primary_key: asset-E01, measured_value: 96.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E01, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E01, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-002
     description: 90.0 C — boundary; inclusive breach (measured >= threshold).
     scenario: {event_id: energy-evt-002, entity_type: Asset, primary_key: asset-E02, measured_value: 90.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E02, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E02, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-003
     description: 90.1 C — a hair over the ceiling; breach.
     scenario: {event_id: energy-evt-003, entity_type: Asset, primary_key: asset-E03, measured_value: 90.1, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E03, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E03, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-004
     description: 90.3 C — just over the ceiling; breach.
     scenario: {event_id: energy-evt-004, entity_type: Asset, primary_key: asset-E04, measured_value: 90.3, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E04, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E04, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-005
     description: 90.5 C — boundary-adjacent breach.
     scenario: {event_id: energy-evt-005, entity_type: Asset, primary_key: asset-E05, measured_value: 90.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E05, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E05, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-006
     description: 90.8 C — boundary-adjacent breach.
     scenario: {event_id: energy-evt-006, entity_type: Asset, primary_key: asset-E06, measured_value: 90.8, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E06, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E06, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-007
     description: 91.0 C — breach.
     scenario: {event_id: energy-evt-007, entity_type: Asset, primary_key: asset-E07, measured_value: 91.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E07, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E07, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-008
     description: 91.5 C — breach.
     scenario: {event_id: energy-evt-008, entity_type: Asset, primary_key: asset-E08, measured_value: 91.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E08, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E08, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-009
     description: 92.0 C — breach.
     scenario: {event_id: energy-evt-009, entity_type: Asset, primary_key: asset-E09, measured_value: 92.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E09, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E09, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-010
     description: 92.5 C — breach.
     scenario: {event_id: energy-evt-010, entity_type: Asset, primary_key: asset-E10, measured_value: 92.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E10, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E10, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-011
     description: 93.0 C — breach.
     scenario: {event_id: energy-evt-011, entity_type: Asset, primary_key: asset-E11, measured_value: 93.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E11, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E11, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-012
     description: 94.0 C — breach.
     scenario: {event_id: energy-evt-012, entity_type: Asset, primary_key: asset-E12, measured_value: 94.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E12, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E12, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-013
     description: 95.0 C — breach.
     scenario: {event_id: energy-evt-013, entity_type: Asset, primary_key: asset-E13, measured_value: 95.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E13, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E13, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-014
     description: 98.0 C — breach.
     scenario: {event_id: energy-evt-014, entity_type: Asset, primary_key: asset-E14, measured_value: 98.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E14, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E14, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-015
     description: 99.0 C — breach.
     scenario: {event_id: energy-evt-015, entity_type: Asset, primary_key: asset-E15, measured_value: 99.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E15, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E15, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-016
     description: 100.0 C — breach.
     scenario: {event_id: energy-evt-016, entity_type: Asset, primary_key: asset-E16, measured_value: 100.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E16, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E16, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-017
     description: 101.5 C — breach.
     scenario: {event_id: energy-evt-017, entity_type: Asset, primary_key: asset-E17, measured_value: 101.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E17, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E17, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-018
     description: 102.0 C — severe over-temperature; breach.
     scenario: {event_id: energy-evt-018, entity_type: Asset, primary_key: asset-E18, measured_value: 102.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E18, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E18, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-019
     description: 104.0 C — breach.
     scenario: {event_id: energy-evt-019, entity_type: Asset, primary_key: asset-E19, measured_value: 104.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E19, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E19, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-020
     description: 106.0 C — breach.
     scenario: {event_id: energy-evt-020, entity_type: Asset, primary_key: asset-E20, measured_value: 106.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E20, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E20, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-021
     description: 108.0 C — breach.
     scenario: {event_id: energy-evt-021, entity_type: Asset, primary_key: asset-E21, measured_value: 108.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E21, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E21, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-022
     description: 110.0 C — breach.
     scenario: {event_id: energy-evt-022, entity_type: Asset, primary_key: asset-E22, measured_value: 110.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E22, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E22, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-023
     description: 112.0 C — breach.
     scenario: {event_id: energy-evt-023, entity_type: Asset, primary_key: asset-E23, measured_value: 112.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E23, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E23, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-024
     description: 115.0 C — breach.
     scenario: {event_id: energy-evt-024, entity_type: Asset, primary_key: asset-E24, measured_value: 115.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E24, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E24, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-025
     description: 118.0 C — breach.
     scenario: {event_id: energy-evt-025, entity_type: Asset, primary_key: asset-E25, measured_value: 118.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E25, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E25, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-026
     description: 120.0 C — breach.
     scenario: {event_id: energy-evt-026, entity_type: Asset, primary_key: asset-E26, measured_value: 120.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E26, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E26, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-027
     description: 125.0 C — extreme over-temperature; breach.
     scenario: {event_id: energy-evt-027, entity_type: Asset, primary_key: asset-E27, measured_value: 125.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E27, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E27, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
   - id: energy-028
     description: 130.0 C — extreme over-temperature; breach.
     scenario: {event_id: energy-evt-028, entity_type: Asset, primary_key: asset-E28, measured_value: 130.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E28, valid_handlers: [echo], action_keywords: [restart]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E28, valid_handlers: [echo], action_keywords: [restart, reset, reboot]}
 
   # --- watch (85.0 <= temp < 90.0; near the ceiling; no action) ----------------
   - id: energy-029

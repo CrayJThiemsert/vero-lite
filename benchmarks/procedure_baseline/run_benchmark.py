@@ -74,7 +74,13 @@ async def run_dataset(
     items = dataset.items[:limit] if limit is not None else dataset.items
     results: list[ItemResult] = []
     for item in items:
-        result = await evaluate_item(item, client, vertical=dataset.vertical, goal=goal)
+        result = await evaluate_item(
+            item,
+            client,
+            vertical=dataset.vertical,
+            goal=goal,
+            reading_parameter=dataset.reading_parameter,
+        )
         results.append(result)
         _print_item(result)
     return results

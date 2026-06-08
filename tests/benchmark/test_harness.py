@@ -124,6 +124,13 @@ def test_scenario_to_event_carries_entity_and_reading() -> None:
     assert event["primary_key"] == "pond-A1"
     assert event["measured_value"] == 2.1
     assert event["threshold"] == 4.0
+    assert "parameter" not in event  # omitted when no reading_parameter supplied
+
+
+def test_scenario_to_event_injects_reading_parameter() -> None:
+    """The domain parameter is injected so the model knows WHAT is measured."""
+    event = scenario_to_event(_breach_item().scenario, "dissolved_oxygen")
+    assert event["parameter"] == "dissolved_oxygen"
 
 
 async def test_breach_item_runs_the_llm_and_grades_pass() -> None:

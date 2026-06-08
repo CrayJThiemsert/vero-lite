@@ -47,20 +47,27 @@ def classify_disposition(scenario: Scenario) -> Disposition:
 
 @dataclass(frozen=True)
 class FieldCheck:
-    """One graded objective field — its name, pass/fail, and a human-readable detail."""
+    """One graded objective field — its name, pass/fail, and a human-readable detail.
+
+    ``advisory`` checks are recorded + reported but do NOT drive ``GradeResult.passed``
+    (e.g. ``payload_contains``: the live model's payload KEY shape is free-form, so a
+    payload subset is informative but not a fair headline gate — B-β calibration,
+    Cray-ratified 2026-06-08).
+    """
 
     name: str
     passed: bool
     detail: str
+    advisory: bool = False
 
 
 @dataclass(frozen=True)
 class GradeResult:
     """The outcome of grading one LLM proposal against its expected key.
 
-    ``passed`` is the conjunction of every declared :class:`FieldCheck`; an item
-    that declares no graded field grades ``False`` (a breach item must declare at
-    least one objective check — enforced by the dataset-consistency test).
+    ``passed`` is the conjunction of every declared **non-advisory** :class:`FieldCheck`;
+    an item that declares no scoring field grades ``False`` (a breach item must declare
+    at least one scoring check — enforced by the dataset-consistency test).
     """
 
     passed: bool
@@ -94,14 +101,19 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
             for key, value in expected.payload_contains.items()
             if judgment.handler_payload.get(key) != value
         }
-        checks.append(
-            FieldCheck("payload_contains", not mismatched, f"missing/mismatched: {mismatched}")
-        )
+        # ADVISORY: payload keys are free-form, so this is informative, not a gate.
+        detail = f"missing/mismatched: {mismatched}"
+        checks.append(FieldCheck("payload_contains", not mismatched, detail, advisory=True))
 
     if expected.action_keywords is not None:
-        haystack = f"{judgment.title}\n{judgment.description}".lower()
+        # Search ALL three free-text fields — the model legitimately places its
+        # proposed action in any of title / description / rationale (empirically it
+        # often lands in rationale). B-β calibration, Cray-ratified 2026-06-08.
+        haystack = f"{judgment.title}\n{judgment.description}\n{judgment.rationale}".lower()
         passed = any(keyword.lower() in haystack for keyword in expected.action_keywords)
-        detail = f"any of {expected.action_keywords} in title/description"
+        detail = f"any of {expected.action_keywords} in title/description/rationale"
         checks.append(FieldCheck("action_keywords", passed, detail))
 
-    return GradeResult(passed=bool(checks) and all(check.passed for check in checks), checks=checks)
+    scoring = [check for check in checks if not check.advisory]
+    passed = bool(scoring) and all(check.passed for check in scoring)
+    return GradeResult(passed=passed, checks=checks)
