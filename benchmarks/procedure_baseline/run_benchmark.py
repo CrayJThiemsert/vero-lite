@@ -24,7 +24,16 @@ import argparse
 import asyncio
 from pathlib import Path
 
-from benchmarks.procedure_baseline.harness import ItemResult, Summary, evaluate_item, summarize
+from benchmarks.procedure_baseline.harness import (
+    ItemResult,
+    LatencyRecorder,
+    LatencySummary,
+    Summary,
+    TimingChatClient,
+    evaluate_item,
+    summarize,
+    summarize_latency,
+)
 from benchmarks.procedure_baseline.loader import DATASET_DIR, load_all
 from benchmarks.procedure_baseline.schema import Dataset
 from services.api.config import settings
@@ -63,14 +72,24 @@ def _resolve_goal_and_model(dataset: Dataset) -> tuple[str | None, str]:
 
 
 async def run_dataset(
-    dataset: Dataset, *, model_override: str | None, host: str, warm: bool, limit: int | None
+    dataset: Dataset,
+    *,
+    model_override: str | None,
+    host: str,
+    warm: bool,
+    limit: int | None,
+    recorder: LatencyRecorder,
 ) -> list[ItemResult]:
-    """Evaluate every item in one vertical's dataset against the live model."""
+    """Evaluate every item in one vertical's dataset against the live model.
+
+    The client is wrapped in a :class:`TimingChatClient` so every LLM call's
+    wall-clock duration lands in the shared ``recorder`` (B-δ p95 latency)."""
     goal, agent_model = _resolve_goal_and_model(dataset)
     model = model_override or agent_model
-    client = OllamaClient(base_url=host, model=model, timeout=settings.llm_request_timeout_s)
+    base = OllamaClient(base_url=host, model=model, timeout=settings.llm_request_timeout_s)
     if warm:
-        await client.warm(keep_alive=_DEFAULT_KEEP_ALIVE)
+        await base.warm(keep_alive=_DEFAULT_KEEP_ALIVE)
+    client = TimingChatClient(base, recorder)
     items = dataset.items[:limit] if limit is not None else dataset.items
     results: list[ItemResult] = []
     for item in items:
@@ -112,9 +131,20 @@ def _print_summary(label: str, summary: Summary) -> None:
     )
 
 
+def _print_latency(model: str, latency: LatencySummary) -> None:
+    verdict = "PASS" if latency.within_threshold else "OVER"
+    print(
+        f"\nLATENCY [{model}] per LLM call: "
+        f"n={latency.calls} mean={latency.mean_s:.2f}s p50={latency.p50_s:.2f}s "
+        f"p95={latency.p95_s:.2f}s max={latency.max_s:.2f}s | "
+        f"SD-B1 p95 <= {latency.threshold_s:.0f}s -> {verdict}"
+    )
+
+
 async def _main(args: argparse.Namespace) -> None:
     _register_all_handlers()
     datasets = load_all(args.dataset_dir)
+    recorder = LatencyRecorder()
     all_results: list[ItemResult] = []
     for dataset in datasets:
         print(f"\n=== {dataset.vertical} ({dataset.procedure}) ===")
@@ -124,14 +154,17 @@ async def _main(args: argparse.Namespace) -> None:
             host=args.ollama_host,
             warm=args.warm,
             limit=args.limit,
+            recorder=recorder,
         )
         all_results.extend(results)
         _print_summary(dataset.vertical, summarize(results))
     _print_summary("OVERALL", summarize(all_results))
+    latency = summarize_latency(recorder.durations, threshold_s=args.latency_threshold)
+    _print_latency(args.model or "per-agent", latency)
     print(
         "\nNOTE: SD-B1 headline = LLM action-proposal correctness on breach items; "
         "deterministic disposition is a separate ~100% sanity number (NOT folded in). "
-        "B-gamma (text-to-SQL + RAG baselines) and B-delta (latency sweep) are TODO."
+        "Latency = p95 per LLM call (B-δ). B-gamma (text-to-SQL + RAG baselines) is TODO."
     )
 
 
@@ -142,6 +175,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--ollama-host", default=settings.ollama_host, help="MS-S1 Ollama URL.")
     parser.add_argument("--warm", action="store_true", help="Warm the model first (MS-S1 note).")
     parser.add_argument("--limit", type=int, default=None, help="Cap items per vertical (smoke).")
+    parser.add_argument(
+        "--latency-threshold", type=float, default=8.0, help="SD-B1 p95 per-call bar (seconds)."
+    )
     return parser.parse_args()
 
 

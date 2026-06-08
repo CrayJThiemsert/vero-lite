@@ -85,10 +85,17 @@ been scoring as failures despite a correct "Aeration" recommendation.
 
 ## Failure-mode taxonomy
 
-**Zero graded failures** (84/84 breach proposals passed; 0 `StructuredOutputError`).
-For every breach scenario — including the inclusive-boundary cases (aquaculture DO
-4.0, energy 90.0 °C, supply_chain 8.0 °C) — the model named the right entity and
-the right action class.
+The headline is **run-to-run non-deterministic** (sampling on the local model):
+the first scored run (#220) was **100% (84/84)**; a second warm run (the B-δ
+latency run) was **97.6% (82/84)**. Both clear ≥ 85%; the honest read is
+**~98–100%**.
+
+The two misses in the second run were **both inclusive-boundary breaches**
+(`aqua-028` DO = 4.0 mg/L, `energy-002` = 90.0 °C) — i.e. the model occasionally
+hedges the action *exactly at the threshold*, where the reading is a breach by the
+`<=` / `>=` rule but reads as "borderline" in prose. **Boundary cases are the
+failure mode**; clear breaches (well inside the band) passed every time. No
+`StructuredOutputError` in either run.
 
 ## Interpretation — what the 100% does and does NOT say (load-bearing caveat)
 
@@ -114,25 +121,84 @@ The headline **clears ≥ 85%**, but read it precisely — the number reflects a
   then, treat 100% as "the well-posed path works end-to-end," not "the model is
   infallible."
 
-## Latency (SD-B1 ≤ 8 s p95 per LLM call)
+## Latency (B-δ — SD-B1 ≤ 8 s p95 per LLM call)
 
-**Not measured by this run** — the runner is not yet instrumented for per-call
-timing. Rigorous p95-per-LLM-call latency (warm, quiesced MS-S1) is the **B-δ**
-step. (Wall-clock context only: the 168-call run completed in roughly ~10–15 min.)
+Measured per **LLM call** (a breach item = 2 Pattern-B calls) via the runner's
+`TimingChatClient`, **warm-first** on MS-S1.
+
+| model | n calls | mean | p50 | p95 | max | SD-B1 p95 ≤ 8 s |
+|---|---|---|---|---|---|---|
+| `gpt-oss:20b` (ADR-0001 pin) | 168 | 13.01 s | 12.12 s | **19.23 s** | 22.52 s | ❌ **OVER (~2.4×)** |
+
+**Finding (NOT a build failure — B-6 ring-fence).** The pinned `gpt-oss:20b` is
+**accurate but far over the latency bar** (p95 19.23 s vs the 8 s target; ~13 s
+mean/call). The two-call Pattern-B exchange with `think=True` on call 1 generates
+a large reasoning trace, which dominates per-call time on the MS-S1 hardware. Per
+the ring-fence this is a **logged finding → a tuning PLAN** (candidate levers:
+a faster/smaller bound model — the B-4/G-3 sweep; trimming the reasoning pass;
+batching) and **does NOT move the 8 s bar or reopen ADR-016**.
+
+The **B-4 / G-3 model-selection sweep** (below) collects the same accuracy +
+per-call latency for alternative local models to inform that tuning.
 
 ## B-3 comparison (REPORTED, not a gate)
 
 vero-lite governed-procedure stack vs (b) raw text-to-SQL vs (c) RAG, on the same
 synthetic questions: accuracy / failure-mode / latency. **TODO — own step (B-γ).**
 
-## B-4 per-procedure model selection (closes G-3)
+## B-4 / G-3 model-selection sweep
 
-Per-procedure accuracy + p95 per-LLM-call latency across the candidate local
-model(s) bound per `Agent`; selection rationale. **TODO — own step (B-δ).**
+Same dataset + harness, alternative local models — Cray-scoped to three candidates
+(`qwen3.6:35b`, `gemma4:26b`, then `gemma4:12b` added after MS-S1's Ollama was
+updated to 0.30.6). Runs were serialized (one model at a time) so MS-S1 stayed
+quiesced. The pin ran the full 84 breach items; each candidate ran a **9-item
+breach subset** (cost control) and was **re-warmed first**. Rows sorted by latency.
+
+| model | size | structured output | accuracy (n) | mean / p95 latency per call | SD-B1 ≤ 8 s |
+|---|---|---|---|---|---|
+| **`gpt-oss:20b`** (pin) | 20 B | ✅ reliable | **~98–100%** (84) | **13.0 s** / **19.2 s** | ❌ over (~2.4×) |
+| `gemma4:12b` | 12 B | ✅ reliable | **100%** (9/9) | 45.9 s / 81.1 s | ❌ over (far) |
+| `qwen3.6:35b` | 35 B | ✅ works | ~87.5% (7/8; 1 timeout) | 46.9 s / **120 s\*** | ❌ over (far) |
+| `gemma4:26b` | 26 B | ⚠️ unreliable | not measurable (8/9 errored) | 51.7 s / **120 s\*** | ❌ over (far) |
+
+\* p95 = the **120 s per-call timeout ceiling** (clipped); means are over completed
+calls. `gemma4:12b` did **not** hit the ceiling (max 81 s) — its mean is a clean,
+real latency.
+
+**Notes per candidate.**
+- **`gemma4:12b`** (the *smaller-than-pin* test) — **reliable + perfectly accurate**
+  on the subset (9/9, valid JSON every call, zero errors), but **~3.5× SLOWER than
+  the pin** (45.9 s mean/call, clean/un-clipped). The key surprise: **fewer
+  parameters did NOT mean faster** — gemma generates a long output per call, so
+  per-call latency is dominated by generated-token count + architecture/quant, not
+  param count. `gpt-oss:20b`'s MXFP4 build is simply much faster here.
+- **`qwen3.6:35b`** — structured output *works* (correcting the prior "qwen3.x =
+  NOT_JSON" note for this build); accuracy acceptable (one failure was a transport
+  timeout, not a wrong answer); ~3.6× slower than the pin; tripped the 120 s timeout.
+- **`gemma4:26b`** — **not viable in this run**: 8/9 errored (7 timeouts + 1
+  malformed JSON). Same gemma slowness as 12b but bigger, so it hits the 120 s
+  ceiling and fails rather than just running slow.
+
+**G-3 conclusion (closes the evidence gap).** Across four
+structured-output-capable local models spanning 12 B–35 B, **the ADR-0001 pin
+`gpt-oss:20b` is the best on BOTH axes** — highest accuracy *and*, by a wide
+margin (≈3.5×), the lowest latency. Crucially, **going smaller did not help**:
+`gemma4:12b` is reliable and accurate but far slower, so the latency problem is
+**not a param-count problem** and is **not solved by any available alternative**.
+The tuning levers therefore live elsewhere — trimming the `think=True` reasoning
+pass (the dominant per-call cost), request batching, a faster-architecture small
+model not yet on MS-S1, or revisiting the 8 s bar — all for the follow-up tuning
+PLAN. **The pin holds.**
+
+*Sweep caveat: candidate numbers are a 9-item directional read (wide CIs), not an
+external-grade measurement; timeout-clipped p95s understate true latency. The
+qualitative conclusions (pin is best by far; smaller ≠ faster) are robust.*
 
 ---
 
-*PLAN-0019 Part B (B-β). Headline + sanity filled from the Cray-approved live run
-(`gpt-oss:20b`, MS-S1, 2026-06-08). B-3 baselines + B-4/B-δ model & latency sweep
-remain TODO. Per the ring-fence, this REPORTS — it does not gate — and the 100%
-is read with the load-bearing caveat above.*
+*PLAN-0019 Part B. **B-β headline** + sanity + **B-δ latency + B-4/G-3 model
+sweep** filled from Cray-approved live runs (`gpt-oss:20b` / `gemma4:12b` /
+`qwen3.6:35b` / `gemma4:26b` on MS-S1, Ollama 0.30.6, 2026-06-08/09). **B-3
+baselines** (text-to-SQL + RAG) remain TODO. Per the ring-fence this REPORTS — it
+does not gate; the headline 100% and the latency miss are both read with the
+caveats above.*

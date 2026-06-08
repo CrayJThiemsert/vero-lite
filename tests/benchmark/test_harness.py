@@ -15,9 +15,13 @@ from typing import Any
 from benchmarks.procedure_baseline.grader import GradeResult, classify_disposition
 from benchmarks.procedure_baseline.harness import (
     ItemResult,
+    LatencyRecorder,
+    TimingChatClient,
     evaluate_item,
+    percentile,
     scenario_to_event,
     summarize,
+    summarize_latency,
 )
 from benchmarks.procedure_baseline.schema import (
     BenchmarkItem,
@@ -25,7 +29,7 @@ from benchmarks.procedure_baseline.schema import (
     Expected,
     Scenario,
 )
-from services.engine.llm.client import ChatResult
+from services.engine.llm.client import ChatResult, OllamaError
 from services.engine.registry import registry
 
 _VERTICAL = "aquaculture"
@@ -170,6 +174,30 @@ async def test_non_breach_item_is_not_graded_and_never_calls_the_model() -> None
     assert client.calls == [], "watch/ok items must not invoke the LLM"
 
 
+async def test_transport_error_is_recorded_not_raised() -> None:
+    """A slow/flaky model (OllamaError) is recorded as an errored proposal so a
+    multi-model sweep completes rather than crashing mid-run (B-δ robustness)."""
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+
+    class _Boom:
+        async def chat(
+            self,
+            messages: list[dict[str, str]],
+            *,
+            think: bool | None = None,
+            response_format: dict[str, Any] | None = None,
+            temperature: float = 0.0,
+        ) -> ChatResult:
+            raise OllamaError("call to /api/chat failed: timeout")
+
+    result = await evaluate_item(_breach_item(), _Boom(), vertical=_VERTICAL)
+
+    assert result.graded is True
+    assert result.proposal_correct is False
+    assert result.grade is None
+    assert result.error is not None and "timeout" in result.error
+
+
 async def test_structured_output_failure_is_an_incorrect_proposal() -> None:
     registry.register_handler(_VERTICAL, "echo", _noop_handler)
     # one reasoning draft + 3 un-parseable structuring attempts exhausts the budget
@@ -221,3 +249,43 @@ def test_dataset_scenarios_classify_as_authored() -> None:
     """Sanity bridge: the harness's classifier and the schema agree on a known item."""
     item = _breach_item()
     assert classify_disposition(item.scenario) is item.expected.disposition
+
+
+# --- latency (B-δ) -----------------------------------------------------------
+
+
+def test_percentile_nearest_rank() -> None:
+    values = [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]
+    assert percentile(values, 50.0) == 5.0
+    assert percentile(values, 95.0) == 10.0
+    assert percentile(values, 100.0) == 10.0
+    assert percentile([], 95.0) == 0.0  # empty -> 0.0
+
+
+def test_summarize_latency_reports_p95_vs_threshold() -> None:
+    durations = [1.0, 1.0, 2.0, 2.0, 3.0, 3.0, 4.0, 4.0, 5.0, 20.0]
+    summary = summarize_latency(durations, threshold_s=8.0)
+    assert summary.calls == 10
+    assert summary.p95_s == 20.0  # the slow tail surfaces in p95
+    assert summary.max_s == 20.0
+    assert not summary.within_threshold  # 20s > 8s bar
+
+
+def test_summarize_latency_within_threshold() -> None:
+    summary = summarize_latency([2.0, 3.0, 4.0], threshold_s=8.0)
+    assert summary.within_threshold
+    assert summary.p95_s <= 8.0
+
+
+async def test_timing_chat_client_records_each_call() -> None:
+    """The timing decorator records one duration per chat call and passes results through."""
+    recorder = LatencyRecorder()
+    inner = FakeChatClient([_result("a"), _result("b")])
+    client = TimingChatClient(inner, recorder)
+
+    first = await client.chat([{"role": "user", "content": "x"}])
+    await client.chat([{"role": "user", "content": "y"}])
+
+    assert first.content == "a"  # pass-through
+    assert len(recorder.durations) == 2
+    assert all(d >= 0.0 for d in recorder.durations)
