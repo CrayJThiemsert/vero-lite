@@ -218,13 +218,34 @@ async def run_procedure(
         updated_at=opened,
     )
     ctx = RunContext(agent=agent, vertical=vertical, trigger_context=trigger_context)
-    engine_audit: dict[str, Any] = {"actor": agent.agent_id, "actor_kind": "engine"}
+    step_results, final_status = await execute_steps(procedure.steps, executors, ctx, run_id)
+    run.status = final_status.value
+    run.updated_at = datetime.now(UTC)
+    return RunResult(run=run, step_results=step_results)
 
+
+async def execute_steps(
+    steps: list[Step],
+    executors: Mapping[StepKind, StepExecutor],
+    ctx: RunContext,
+    run_id: str,
+    *,
+    input_set: list[Any] | None = None,
+    start_index: int = 0,
+) -> tuple[list[StepResult], PipelineRunStatus]:
+    """Run ``steps[start_index:]`` over ``executors``, threading ``input_set`` forward.
+
+    The shared control-plane core used by both :func:`run_procedure` (from step 0)
+    and resume (from the step after a suspended one). Returns the new
+    ``StepResult``s + the resulting run status; it does NOT create or persist the
+    ``PipelineRun`` (the caller owns the run record).
+    """
+    engine_audit: dict[str, Any] = {"actor": ctx.agent.agent_id, "actor_kind": "engine"}
     step_results: list[StepResult] = []
-    input_set: list[Any] = []
+    current: list[Any] = list(input_set) if input_set is not None else []
     final_status = PipelineRunStatus.COMPLETED
 
-    for step in procedure.steps:
+    for step in steps[start_index:]:
         executor = executors.get(step.kind)
         if executor is None:
             raise ProcedureError(
@@ -233,7 +254,7 @@ async def run_procedure(
         started_at = datetime.now(UTC)
         t0 = time.perf_counter()
         try:
-            outcome = await executor.execute(step, input_set, ctx)
+            outcome = await executor.execute(step, current, ctx)
             if not isinstance(outcome, StepOutcome):
                 # A misbehaving executor (wrong return type) is diverted, not
                 # crashed: the orchestrator never lets one executor take down the
@@ -278,8 +299,6 @@ async def run_procedure(
         if suspends:
             final_status = PipelineRunStatus.WAITING_HUMAN
             break
-        input_set = outcome.output
+        current = outcome.output
 
-    run.status = final_status.value
-    run.updated_at = datetime.now(UTC)
-    return RunResult(run=run, step_results=step_results)
+    return step_results, final_status
