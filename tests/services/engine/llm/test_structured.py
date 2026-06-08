@@ -217,6 +217,30 @@ async def test_suggested_handler_is_enum_constrained_to_registered_handlers() ->
     assert schema["properties"]["suggested_handler"]["enum"] == ["echo", "notify"]
 
 
+async def test_goal_threads_into_both_calls_system_messages() -> None:
+    """A8: the Procedure.goal steers the system prompt of call 1 AND call 2."""
+    registry.register_handler("energy", "echo", _noop_handler)
+    goal = "Run the morning round; judge each reading against its threshold."
+    client = FakeChatClient([_result("draft", thinking="r"), _result(_valid_json())])
+
+    await generate_judgment(client, _EVENT, "energy", goal=goal)
+
+    call1_system = client.calls[0]["messages"][0]
+    call2_system = client.calls[1]["messages"][0]
+    assert call1_system["role"] == "system" and goal in call1_system["content"]
+    assert call2_system["role"] == "system" and goal in call2_system["content"]
+
+
+async def test_no_goal_leaves_system_prompt_ungoverned() -> None:
+    """A8: omitting goal keeps the reactive system prompt free of a goal directive."""
+    registry.register_handler("energy", "echo", _noop_handler)
+    client = FakeChatClient([_result("draft", thinking="r"), _result(_valid_json())])
+
+    await generate_judgment(client, _EVENT, "energy")
+
+    assert "PROCEDURE GOAL" not in client.calls[0]["messages"][0]["content"]
+
+
 async def test_judgment_round_trips() -> None:
     """§7.2: the judgment survives model_validate(model_dump())."""
     registry.register_handler("energy", "echo", _noop_handler)

@@ -39,14 +39,20 @@ from tests.db_support import create_test_engine
 
 
 class _Exec:
-    """A fixed-output executor + a call counter (proves no re-execution on resume)."""
+    """A fixed-output executor + a call counter (proves no re-execution on resume).
+
+    Also records the goal it saw on its RunContext, so resume's goal threading
+    (A-8) can be asserted across a fresh process.
+    """
 
     def __init__(self, output: list[Any]) -> None:
         self.output = output
         self.calls = 0
+        self.goals: list[str | None] = []
 
     async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
         self.calls += 1
+        self.goals.append(ctx.goal)
         return StepOutcome(
             output=self.output,
             reasoning_trace=[{"kind": step.kind.value, "summary": step.step_id}],
@@ -85,6 +91,7 @@ def _gated_procedure() -> Procedure:
     return Procedure(
         procedure_id="morning_round",
         title="Morning Round",
+        goal="Run the morning pond health round; act on DO breaches.",
         run_by="pond_agent",
         steps=[
             Step(step_id="read", name="Read DO", kind=StepKind.QUERY),
@@ -158,6 +165,10 @@ async def test_resume_across_fresh_session_completes(db_engine: AsyncEngine) -> 
     # only the post-suspend step ran in the fresh process — the prefix was NOT re-executed.
     assert fresh_executors[StepKind.QUERY].calls == 0  # type: ignore[attr-defined]
     assert fresh_executors[StepKind.ACTION].calls == 1  # type: ignore[attr-defined]
+    # A-8: resume threads Procedure.goal onto the RunContext of the resumed step.
+    assert fresh_executors[StepKind.ACTION].goals == [  # type: ignore[attr-defined]
+        "Run the morning pond health round; act on DO breaches."
+    ]
 
     # durably persisted: a third session sees the completed 3-step run.
     async with maker() as third:
