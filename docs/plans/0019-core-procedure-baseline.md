@@ -1,7 +1,7 @@
 ---
 plan: PLAN-0019
 title: Core Procedure baseline (Phase 1) — Procedure/Step/PipelineRun/Agent runtime + linear set-valued orchestrator + 3 example procedures + folded empirical benchmark
-status: Draft
+status: In execution
 owner: Claude Code
 created: 2026-06-07
 related_adrs:
@@ -52,9 +52,11 @@ authored_by: plan-drafter subagent (in-harness; ADR-009 D1 interim authoring und
 LOCKED scope decisions below (L-1/L-2/L-3) **and** the two **architectural**
 surfaced decisions **SD-A1 (Postgres schema) + SD-A2 (engine home path)** are
 **Cray-ratified this session** (2026-06-07) and are recorded, not re-opened.
-The remaining **B-side** surfaced decisions (SD-B1 thresholds, SD-B2 dataset,
-SD-B3 G-2) stay open and are resolved at their execution step — **SD-B1 MUST
-be ratified before any Part B run** (anti moving-target).
+The **B-side** surfaced decisions are now **all Cray-ratified** (2026-06-08):
+SD-B1 (#211) thresholds **and** their operational definitions, SD-B2 dataset
+size (~50–60 questions per vertical, ~150–180 total), and SD-B3 G-2 **DEFER**.
+The full Part B pre-registration is therefore **locked** and Part B is
+**unblocked** — recorded, not re-opened (anti moving-target).
 
 ### 1.1 LOCKED scope decisions (recorded — do NOT re-open)
 
@@ -223,8 +225,8 @@ local-LLM model selection).
 
 - [ ] **B-1 Harness + synthetic ground-truth dataset.** A benchmark harness +
   a **synthetic ground-truth dataset** (questions whose correct answers we
-  control) over the three verticals. Size/coverage is **§8 SD-B3** (proposed,
-  to ratify).
+  control) over the three verticals. Size/coverage is **§8 SD-B2** (ratified —
+  ~50–60/vertical, ~150–180 total).
 - [ ] **B-2 Pre-registered ABSOLUTE thresholds ratified BEFORE running.** The
   concrete threshold numbers (§8 **SD-B1**) are **locked in this Acceptance
   Criteria section and Cray-ratified before any Part B run** (anti
@@ -304,7 +306,7 @@ local-LLM model selection).
 
 - **Step B-α — Threshold pre-registration.** Lock the §8 SD-B1 numbers into §4
   Part B and get Cray ratification **before any run**. *(AC B-2.)*
-- **Step B-β — Synthetic dataset.** Author the ground-truth dataset (§8 SD-B3
+- **Step B-β — Synthetic dataset.** Author the ground-truth dataset (§8 SD-B2
   size/coverage). *(AC B-1.)*
 - **Step B-γ — Harness + baselines.** Build the harness; wire the raw
   text-to-SQL + RAG comparison baselines on the **same** questions. *(AC B-3.)*
@@ -326,8 +328,11 @@ verification and commits; the drafter holds no execution or commit authority.
 
 ## 8. Surfaced decisions (for Cray — do NOT silently resolve)
 
-> Recommendations below are load-bearing in the draft but **contingent on Cray's
-> ratification**. Numbers in SD-B1 / SD-B3 MUST be ratified before any Part B run.
+> The B-side surfaced decisions below (SD-B1 thresholds + their operational
+> definitions, SD-B2 dataset size, SD-B3 G-2 disposition) are **all
+> Cray-ratified (2026-06-08)** — the Part B pre-registration is locked (anti
+> moving-target). The architectural SD-A1/SD-A2 were ratified earlier
+> (2026-06-07).
 
 - **SD-1 (confirm L-1 = ADR-016 OQ-2 for Phase-1).** *Recommendation:* confirm
   **manual-only** trigger for Phase-1, orchestrator trigger-agnostic, `schedule`
@@ -358,8 +363,8 @@ verification and commits; the drafter holds no execution or commit authority.
   ratification:* a layout choice that sets the import surface for Phase 2/3;
   cheap to pick now, annoying to move later.
 
-- **SD-B1 (pre-registered ABSOLUTE thresholds — ratify BEFORE any Part B run).**
-  *Recommendation (candidate numbers, propose-not-blank):* (i) `evaluate`-step
+- **SD-B1 (pre-registered ABSOLUTE thresholds) — ✅ RATIFIED (Cray, 2026-06-08, #211).**
+  *Decision (numbers — locked):* (i) `evaluate`-step
   accuracy **≥ 85%** on the synthetic set; (ii) p95 per-step latency **≤ 8 s**
   on `gpt-oss:20b` (the model warms ~13 s cold per the MS-S1 note — warm first;
   p95 is steady-state). *Why a Cray decision:* these are the anti-moving-target
@@ -392,20 +397,21 @@ verification and commits; the drafter holds no execution or commit authority.
     ~13 s is excluded — p95 is steady-state) on an **otherwise-quiesced** MS-S1
     (concurrent load inflates p95).
 
-- **SD-B2 (synthetic-dataset size / coverage).** *Recommendation:* ~30 questions
-  per vertical (~90 total), covering each example procedure's `query` +
-  `evaluate` paths and the breach / watch / ok verdict boundaries (esp.
-  aquaculture DO at the 4 mg/L threshold edge). *Alternative:* a larger set for
-  tighter CIs (more authoring cost). *Why a Cray decision:* size sets the
-  statistical weight of the G-3 / comparison findings and the authoring budget.
+- **SD-B2 (synthetic-dataset size / coverage) — ✅ RATIFIED (Cray, 2026-06-08).**
+  *Decision:* **~50–60 questions per vertical (~150–180 total)**, covering each
+  example procedure's `query` + `evaluate` paths and the breach / watch / ok
+  verdict boundaries (esp. aquaculture DO at the 4 mg/L threshold edge).
+  *Rationale:* Cray chose the larger set over the draft's ~30/vertical so the
+  ≥ 85% accuracy number is **statistically defensible if cited externally** to a
+  design partner — ~30/vertical carries a ±~13pp binomial CI, too wide for an
+  external-grade claim. Trade accepted: higher authoring cost for tighter CIs.
 
-- **SD-B3 (G-2 "build-cost via the `new-vertical` generator" — IN Part B or
-  deferred?).** *Recommendation:* **surface as OPTIONAL / lean DEFER.** G-2
-  (cost to onboard a new vertical via the ADR-006 D3 generator) is more tangential
-  to *engine quality* than G-1 / G-3 / G-4; the `new-vertical` generator is itself
-  not yet built (PLAN-0005 §3.4 forward reference). *Why a Cray decision:*
-  whether to widen Part B's scope to a build-cost measure vs keep Part B focused
-  on output quality is a scope/priority call, not a Code judgment.
+- **SD-B3 (G-2 "build-cost via the `new-vertical` generator") — ✅ RATIFIED: DEFER (Cray, 2026-06-08).**
+  *Decision:* G-2 (cost to onboard a new vertical via the ADR-006 D3 generator)
+  stays **OUT of Part B**. The `new-vertical` generator is itself not yet built
+  (PLAN-0005 §3.4 forward reference) and G-2 is tangential to *engine quality*
+  relative to G-1 / G-3 / G-4; Part B stays focused on output quality. G-2
+  remains available as a future scope item if a build-cost number is later needed.
 
 ## 9. References
 
