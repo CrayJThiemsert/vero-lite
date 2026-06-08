@@ -1,0 +1,59 @@
+# vero-lite procedure spec — supply_chain vertical, v0 (PLAN-0019 A-ζ / AC A-10).
+# A routine over the cold-chain ontology (supply_chain_v0.yaml: Shipment / Facility /
+# OperationalEvent) demonstrating the minimal query -> evaluate -> gated action path.
+# A distinct spec layer from the ADR-008 ontology (object_types untouched). `agents` /
+# `procedures` are MAPS keyed by id; the `vertical` is the dir name, not in the file.
+#
+# Phase-1 scope (PLAN-0019 L-1): only `trigger: manual` is RUNNABLE. The single
+# registered handler today is `echo` (verticals/supply_chain/handlers.py); the intended
+# action_type `hold` (ontology RecommendedAction.action_type ∈ {reroute, expedite, hold,
+# inspect, escalate}) routes through `echo` until the real carrier/hold handler ships
+# with the design partner.
+
+namespace: supply_chain
+version: 0
+
+agents:
+  cold_chain_agent:
+    name: Cold-Chain Control Agent
+    llm_model: gpt-oss:20b          # ADR-001 default local model
+    # ceiling = gated: the only action here is a gated hold (human go/no-go).
+    autonomy_ceiling: gated
+    allowed:
+      step_kinds: [query, evaluate, action]
+      action_handlers: [echo]       # only `echo` is registered today
+
+procedures:
+  cold_chain_excursion_sweep:
+    title: Cold-Chain Excursion Sweep
+    goal: >-
+      Read each in-transit shipment's latest temperature reading, judge it against the
+      cold-chain ceiling, and hold the shipments that breach for inspection after a
+      human go/no-go.
+    run_by: cold_chain_agent
+    trigger: manual                 # L-1: only manual runs in Phase 1
+    steps:
+      - step_id: read_temps
+        name: Read latest shipment temperatures
+        description: Latest temperature reading per in-transit Shipment.
+        kind: query
+      - step_id: judge
+        name: Judge vs cold-chain ceiling
+        description: >-
+          Tag each shipment's verdict vs the cold-chain temperature ceiling —
+          breach (over the ceiling) vs ok. OCT_RECOMMEND_DIRECTION=above semantics.
+        kind: evaluate
+      - step_id: hold_breaches
+        name: Hold the breaching shipments
+        description: >-
+          Propose a hold action (ADR-007 envelope) per breaching shipment; human
+          approve -> execute. Intended action_type `hold`; routed through `echo`
+          until the real handler ships.
+        kind: action
+        autonomy: gated             # the human go/no-go on an irreversible write
+        handler: echo
+        input:
+          from: judge               # the named-input fan-out: only the breach subset
+          where:
+            verdict: breach
+    terminal: hold_breaches

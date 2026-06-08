@@ -1,0 +1,77 @@
+# vero-lite procedure spec — aquaculture vertical, v0 (PLAN-0019 A-ζ / AC A-10).
+# The ADR-016 worked example, the "Morning Pond Health Round" headline. A distinct
+# spec layer from the ADR-008 ontology (aquaculture_v0.yaml is untouched): agents +
+# procedures, NOT object_types. `agents` / `procedures` are MAPS keyed by id (house
+# YAML style, cf. object_types). The `vertical` is the dir name, not in the file.
+#
+# Phase-1 scope (PLAN-0019 L-1): only `trigger: manual` is RUNNABLE — the headline's
+# 06:00 schedule is deferred (a PLAN-0010 scheduler reuse). The single registered
+# handler today is `echo` (verticals/aquaculture/handlers.py); start_emergency_aerator
+# (the ontology RecommendedAction.action_type) lands as demo polish with the design
+# partner, so every action step routes through `echo` for now.
+
+namespace: aquaculture
+version: 0
+
+agents:
+  pond_agent:
+    name: Pond Round Agent
+    llm_model: gpt-oss:20b          # ADR-001 default local model
+    # ceiling = auto: the summary step is an `auto` action, so the agent must be
+    # permitted to act un-gated (autonomy_ceiling is the MAX any step may exercise).
+    autonomy_ceiling: auto
+    allowed:
+      step_kinds: [query, evaluate, action, human_task]
+      action_handlers: [echo]       # only `echo` is registered today
+
+procedures:
+  morning_pond_health_round:
+    title: Morning Pond Health Round
+    goal: >-
+      Read each active pond's latest dissolved-oxygen reading, judge it against the
+      4 mg/L breach threshold (DO is a crash signal — it breaches BELOW the floor),
+      aerate the breach set after a human go/no-go, send the borderline watch set for
+      a technician visual check, and write a round summary over every pond.
+    run_by: pond_agent
+    trigger: manual                 # L-1: only manual runs in Phase 1 (06:00 deferred)
+    steps:
+      - step_id: read_do
+        name: Read dissolved oxygen
+        description: Latest DO reading per active Pond.
+        kind: query
+      - step_id: judge
+        name: Judge vs threshold
+        description: >-
+          Tag each pond's verdict vs the 4 mg/L floor — breach (< 4), watch (4–5),
+          ok (> 5). OCT_RECOMMEND_DIRECTION=below crash semantics.
+        kind: evaluate
+      - step_id: aerate
+        name: Aerate the breach set
+        description: >-
+          Propose an emergency-aerator action (ADR-007 envelope) per breaching pond;
+          human approve -> execute. Intended action_type start_emergency_aerator;
+          routed through `echo` until the real handler ships.
+        kind: action
+        autonomy: gated             # the human go/no-go on an irreversible write
+        handler: echo
+        input:
+          from: judge               # the named-input fan-out: only the breach subset
+          where:
+            verdict: breach
+      - step_id: visual
+        name: Technician visual check (watch set)
+        description: Borderline ponds get a human visual check before any action.
+        kind: human_task
+        input:
+          from: judge
+          where:
+            verdict: watch
+      - step_id: summary
+        name: Round summary
+        description: Auto round-summary terminal artifact over the whole verdict set.
+        kind: action
+        autonomy: auto
+        handler: echo
+        input:
+          from: judge               # no `where` -> the whole verdict set
+    terminal: summary
