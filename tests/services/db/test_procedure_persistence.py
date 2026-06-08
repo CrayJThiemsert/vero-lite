@@ -30,6 +30,7 @@ from services.engine.procedures.spec import (
     Agent,
     AgentAllowed,
     Autonomy,
+    OnFailure,
     Procedure,
     Step,
     StepKind,
@@ -50,6 +51,17 @@ class _Exec:
             output=self.output,
             reasoning_trace=[{"kind": step.kind.value, "summary": step.step_id}],
         )
+
+
+class _RaisingExec:
+    """Always raises — simulates a step failure (the cause a human later fixes)."""
+
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        self.calls += 1
+        raise RuntimeError("transient failure")
 
 
 def _agent() -> Agent:
@@ -153,6 +165,70 @@ async def test_resume_across_fresh_session_completes(db_engine: AsyncEngine) -> 
     assert reloaded is not None
     assert reloaded.run.status == PipelineRunStatus.COMPLETED.value
     assert len(reloaded.step_results) == 3
+
+
+async def test_resume_reruns_an_escalated_failed_step(db_engine: AsyncEngine) -> None:
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    procedure = Procedure(
+        procedure_id="escalating_round",
+        title="Escalating",
+        run_by="pond_agent",
+        steps=[
+            Step(
+                step_id="read",
+                name="Read",
+                kind=StepKind.QUERY,
+                on_failure=OnFailure.ESCALATE_TO_HUMAN,
+            ),
+            Step(
+                step_id="act",
+                name="Act",
+                kind=StepKind.ACTION,
+                autonomy=Autonomy.AUTO,
+                handler="echo",
+            ),
+        ],
+    )
+    # First process: the query step fails -> escalate_to_human -> waiting_human.
+    failing: dict[StepKind, StepExecutor] = {
+        StepKind.QUERY: _RaisingExec(),
+        StepKind.ACTION: _Exec([{"act": 1}]),
+    }
+    result = await run_procedure(
+        procedure, _agent(), failing, vertical="aquaculture", run_id="run-esc"
+    )
+    assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    suspended = result.step_results[-1]
+    assert suspended.step_id == "read"
+    assert suspended.status == StepResultStatus.WAITING_HUMAN.value
+    assert suspended.artifact is None  # the failure path records no artifact
+    async with maker() as session:
+        await persist_run(session, result)
+
+    # Fresh process: the human fixed the cause -> a WORKING query executor; resume.
+    fixed: dict[StepKind, StepExecutor] = {
+        StepKind.QUERY: _Exec([{"pond": "p7"}]),
+        StepKind.ACTION: _Exec([{"act": 1}]),
+    }
+    async with maker() as fresh:
+        resumed = await resume_run(
+            fresh, procedure, _agent(), fixed, "run-esc", vertical="aquaculture"
+        )
+    assert resumed.run.status == PipelineRunStatus.COMPLETED.value
+    statuses = {sr.step_id: sr.status for sr in resumed.step_results}
+    assert statuses["read"] == StepResultStatus.COMPLETE.value  # the failed step RE-RAN + succeeded
+    assert statuses["act"] == StepResultStatus.COMPLETE.value
+    assert fixed[StepKind.QUERY].calls == 1  # type: ignore[attr-defined]  # the read re-ran
+
+    # the re-run OVERWROTE the stale failed record — no duplicate read row.
+    async with maker() as third:
+        reloaded = await load_run(third, "run-esc")
+    assert reloaded is not None
+    assert reloaded.run.status == PipelineRunStatus.COMPLETED.value
+    assert len(reloaded.step_results) == 2
+    read_row = next(sr for sr in reloaded.step_results if sr.step_id == "read")
+    assert read_row.status == StepResultStatus.COMPLETE.value
+    assert read_row.artifact == {"output_set": [{"pond": "p7"}]}
 
 
 async def test_resume_missing_run_raises(db_engine: AsyncEngine) -> None:

@@ -62,6 +62,19 @@ async def load_run(session: AsyncSession, run_id: str) -> RunResult | None:
     return RunResult(run=run, step_results=list(rows.scalars().all()))
 
 
+def _prior_output(step_results: list[StepResult]) -> list[Any]:
+    """The output set that fed the last (failed) step — the step before it, or ``[]``.
+
+    Used to re-run an escalated-failure step from its original input; the failed
+    step itself recorded no artifact (the failure path stores ``artifact=None``).
+    """
+    if len(step_results) < 2:
+        return []
+    artifact = step_results[-2].artifact or {}
+    output: list[Any] = artifact.get("output_set", [])
+    return output
+
+
 async def resume_run(
     session: AsyncSession,
     procedure: Procedure,
@@ -71,13 +84,22 @@ async def resume_run(
     *,
     vertical: str,
 ) -> RunResult:
-    """Resume a ``waiting_human`` run from the step AFTER its suspended one.
+    """Resume a ``waiting_human`` run, reconstructing state purely from the DB.
 
-    Reconstructs state from the DB (a fresh process can resume), marks the
-    suspended step ``complete`` (the human acted), threads its persisted
-    ``artifact["output_set"]`` forward, runs the remaining steps, and persists the
-    updated run + new step results. Raises :class:`ProcedureError` if the run is
-    absent, not ``waiting_human``, or its suspended step is not in ``procedure``.
+    Two cases, distinguished by whether the suspended step recorded an artifact:
+
+    * **Gated action / human_task suspend** (artifact present): the step is
+      resolved by the human — mark it ``complete``, thread its persisted
+      ``artifact["output_set"]`` forward, and continue from the NEXT step (the
+      completed prefix is never re-executed).
+    * **Escalated failure** (``on_failure = escalate_to_human``; no artifact): the
+      step failed and a human took over — **re-run that step** from its original
+      input (the prior step's output), overwriting the stale failed record, so a
+      human can fix the cause and retry without rewinding the whole run.
+
+    Persists the updated run + the new step results. Raises :class:`ProcedureError`
+    if the run is absent, not ``waiting_human``, or its suspended step is not in
+    ``procedure``.
     """
     validate_runnable(procedure, agent)
     loaded = await load_run(session, run_id)
@@ -99,18 +121,30 @@ async def resume_run(
             f"procedure '{procedure.procedure_id}'"
         )
 
-    # The human resolved the suspended step; thread its output set forward and
-    # continue from the NEXT step (the completed prefix is never re-executed).
-    suspended.status = StepResultStatus.COMPLETE.value
-    artifact: dict[str, Any] = suspended.artifact or {}
-    input_set: list[Any] = artifact.get("output_set", [])
     ctx = RunContext(agent=agent, vertical=vertical, trigger_context=run.trigger_context)
+    artifact = suspended.artifact
+    input_set: list[Any]
+    if artifact is None:
+        # Escalated failure: re-run the failed step from its original input
+        # (the prior step's output); drop the stale failed record (the re-run,
+        # sharing its step_result_id, overwrites it on merge).
+        prior_results = loaded.step_results[:-1]
+        input_set = _prior_output(loaded.step_results)
+        start_index = index
+    else:
+        # Gated action / human_task suspend: the human resolved it — mark complete,
+        # thread its output forward, and continue from the NEXT step.
+        suspended.status = StepResultStatus.COMPLETE.value
+        prior_results = loaded.step_results
+        input_set = artifact.get("output_set", [])
+        start_index = index + 1
+
     new_results, final_status = await execute_steps(
-        procedure.steps, executors, ctx, run_id, input_set=input_set, start_index=index + 1
+        procedure.steps, executors, ctx, run_id, input_set=input_set, start_index=start_index
     )
     run.status = final_status.value
     run.updated_at = datetime.now(UTC)
     for step_result in new_results:
-        session.add(step_result)
+        await session.merge(step_result)
     await session.commit()
-    return RunResult(run=run, step_results=loaded.step_results + new_results)
+    return RunResult(run=run, step_results=prior_results + new_results)
