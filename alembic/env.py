@@ -17,6 +17,7 @@ from alembic import context
 from services.api.config import settings
 from services.db import models as _models  # noqa: F401  (registers tables on Base.metadata)
 from services.db.base import Base
+from services.engine.procedures import runs as _procedure_runs  # noqa: F401  (registers run tables)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
