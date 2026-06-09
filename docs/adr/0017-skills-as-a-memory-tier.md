@@ -1,6 +1,6 @@
 # ADR-0017: Skills as a Memory Tier — formalize `.claude/skills/` in the memory architecture
 
-**Status:** Proposed
+**Status:** Accepted (ratified 2026-06-09 via PR #236)
 **Date:** 2026-06-09
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-009 (Cowork drafts / Code commits — **this ADR is authored under its D1 interim process**), ADR-013 (autonomy-axis relocation — skills are a harness primitive → Code authors, per D1; **this ADR applies that boundary**), ADR-006 (vertical-plugin architecture — Rule of Three + engine-vs-config; the forward-link for harness-as-plugin packaging, OQ-7 / D7), CLAUDE.md §1 (precedence — amended by T2), §4 (memory architecture — amended by T1), §10 (index — amended by T3), §11 (Tier 2 operational policy — already points at the two exemplar skills), `docs/runbooks/memory-architecture.md` (the full Tier model — amended by T4), `docs/for_llm/README.md` (Tier 2.5 derived-snippet rule, mirrored here). Predecessor: PR #234 (`471bcb5`, branch `docs/slim-claude-md-skills`, open — the slimming this ADR completes the governance half of). Authoring dispatch: `.claude/handoffs/session-49/2026-06-09-2140-code-skills-memory-tier-adr-dispatch.md`.
