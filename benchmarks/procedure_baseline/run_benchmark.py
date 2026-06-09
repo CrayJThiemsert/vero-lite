@@ -22,7 +22,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import json
 from pathlib import Path
+from typing import Any
 
 from benchmarks.procedure_baseline.harness import (
     ItemResult,
@@ -134,6 +136,40 @@ def _print_summary(label: str, summary: Summary) -> None:
     )
 
 
+def _item_record(result: ItemResult) -> dict[str, Any]:
+    """One JSONL record for ``--dump-json``: the item's verdicts, the per-field check
+    breakdown (name / passed / detail / lane), and the raw model judgment — the
+    evidence to VERIFY a score is a real model verdict, not a grader artifact (the
+    session-46 ``44% -> 100%`` mis-calibration lesson). The ``detail`` strings already
+    name the offenders (e.g. ``"decoy(s) named: [pond-A102]"``, ``"'inspect' in
+    ['hold']"``); the raw ``judgment`` lets a reviewer read the actual title / rationale."""
+    checks = (
+        [
+            {
+                "name": check.name,
+                "passed": check.passed,
+                "detail": check.detail,
+                "advisory": check.advisory,
+                "probe": check.probe,
+            }
+            for check in result.grade.checks
+        ]
+        if result.grade is not None
+        else None
+    )
+    return {
+        "item_id": result.item_id,
+        "vertical": result.vertical,
+        "disposition_expected": result.disposition_expected.value,
+        "graded": result.graded,
+        "proposal_correct": result.proposal_correct,
+        "probe_correct": result.probe_correct,
+        "error": result.error,
+        "checks": checks,
+        "judgment": result.judgment.model_dump() if result.judgment is not None else None,
+    }
+
+
 def _print_latency(model: str, latency: LatencySummary) -> None:
     verdict = "PASS" if latency.within_threshold else "OVER"
     print(
@@ -164,6 +200,10 @@ async def _main(args: argparse.Namespace) -> None:
     _print_summary("OVERALL", summarize(all_results))
     latency = summarize_latency(recorder.durations, threshold_s=args.latency_threshold)
     _print_latency(args.model or "per-agent", latency)
+    if args.dump_json is not None:
+        lines = [json.dumps(_item_record(result)) for result in all_results]
+        args.dump_json.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        print(f"\nDUMP: wrote {len(lines)} item records -> {args.dump_json}")
     print(
         "\nNOTE: β headline = LLM action-proposal correctness (affected entity + action "
         "class) on breach items; α handler-probe = reactive-path handler-selection "
@@ -183,6 +223,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--limit", type=int, default=None, help="Cap items per vertical (smoke).")
     parser.add_argument(
         "--latency-threshold", type=float, default=8.0, help="SD-B1 p95 per-call bar (seconds)."
+    )
+    parser.add_argument(
+        "--dump-json",
+        type=Path,
+        default=None,
+        help="Write per-item JSONL (verdicts + check details + raw judgment) for offline VERIFY.",
     )
     return parser.parse_args()
 

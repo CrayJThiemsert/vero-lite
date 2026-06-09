@@ -1,8 +1,9 @@
 # Procedure-baseline benchmark — REPORT (PLAN-0019 B-5)
 
-> **Status: Part-B hardening PR1 + PR2 landed (offline); a hardened re-run is the
-> next step.** The filled result tables below are the **pre-hardening baseline** (run
-> 2026-06-08/09, `gpt-oss:20b` on MS-S1, Cray-approved): they were scored under the
+> **Status: Part-B hardening COMPLETE — the hardened re-run landed 2026-06-09.** The
+> headline numbers are now in **[Results — HARDENED run (2026-06-09)](#results--hardened-run-2026-06-09--the-discriminating-numbers)**
+> below; the **pre-hardening baseline** tables further down are RETAINED for comparison
+> (run 2026-06-08/09, `gpt-oss:20b` on MS-S1, Cray-approved) — they were scored under the
 > OLD scheme — `echo`-only handler, `valid_handler` folded into the headline,
 > well-posed single-entity scenarios. **PR1** ships the real ontology `action_type`
 > handler vocabulary ((C) product-complete: the procedures fix `step.handler` to
@@ -12,8 +13,10 @@
 > **precision** checks (`forbidden_primary_keys` / `forbidden_keywords`) that give the
 > β headline real discriminating power. The harness is now fully hardened; the β
 > headline (on the hard scenarios) + the α handler-probe (on the real menu) are
-> filled by the **next Cray-approved RUN** (a host-state change — ASK first). Every
-> hardening step's methodology was ratified BEFORE its scored run (anti-moving-target).
+> **filled below from the 2026-06-09 hardened run** (Cray-approved host-state run;
+> the runner's `--dump-json` captured every per-item judgment so each score was
+> VERIFIED against real model output, not inferred). Every hardening step's methodology
+> was ratified BEFORE its scored run (anti-moving-target).
 
 ## Ring-fence (B-6 — binding, anti moving-target)
 
@@ -66,6 +69,103 @@ the **procedure** path, which discards the handler guess. So grading the handler
 goes to the **α probe** lane (reactive-path / future-autonomy signal), and the β
 headline keeps only the entity + action-class the procedure path actually consumes.
 
+## Results — HARDENED run (2026-06-09) — the discriminating numbers
+
+The first scored run on the **fully-hardened** harness (real `action_type` menu + hard
+multi-entity / near-miss scenarios + `forbidden_*` precision checks). `gpt-oss:20b` on
+MS-S1 (`192.168.1.133:11434`, Ollama 0.30.6), Cray-approved host-state run, warm-first.
+**198 items** (120 graded breach + 39 watch + 39 ok); **240 LLM calls** (120 breach × 2
+Pattern-B calls); **0 `StructuredOutputError`** (every call schema-valid). Every per-item
+judgment + per-check verdict was captured via the runner's `--dump-json`, and the scores
+below were VERIFIED against the raw output — the session-46 "verify, don't infer" lesson:
+a low score must be confirmed a real model verdict, not a grader artifact.
+
+### β headline (entity + action-class; SD-B1 ≥ 85%)
+
+| vertical | graded breach | correct | accuracy | vs ≥85% |
+|---|---|---|---|---|
+| aquaculture | 40 | 24 | **60.0%** | ❌ below |
+| energy | 40 | 39 | **97.5%** | ✅ pass |
+| supply_chain | 40 | 40 | **100.0%** | ✅ pass |
+| **overall** | **120** | **103** | **85.8%** | ✅ **pass (≥ 85%)** |
+
+The hardened β **discriminates** (the whole point of the hardening): it fell from the
+pre-hardening 100%, driven almost entirely by **aquaculture** (its 12 hard items all
+failed this run, plus 4 easy boundary items). A companion warm run (without the dump) read
+**89.2%** overall — so the honest overall β is **~86–89%**, clearing the bar but no longer
+a ceiling-less 100%.
+
+**aquaculture β failure modes** (VERIFIED from the dump — 16 fails, 18 check-failures, 2
+items failing both):
+- **11 × `forbidden_primary_keys`** — under multi-entity input the model frames the
+  proposal as a *"DO Monitoring Summary"* and lists **all** ponds in `affected_entities`,
+  including the SAFE decoy siblings (e.g. `aqua-h01`: named the breached `pond-A101`
+  **and** the safe `pond-A102` / `pond-A103` at DO 4.4 / 4.8). A genuine entity-precision
+  weakness when distractors are present.
+- **7 × `action_keywords`** — the same "summary / assessment" framing describes the
+  situation but never states the *aerate / oxygenate* action verb in any free-text field.
+- energy & supply_chain show **no** over-naming — energy's `forbidden_primary_keys` passed
+  on every hard item, so it handles multi-entity input markedly better than aquaculture (a
+  real cross-vertical signal). energy's lone β fail (`energy-h03`) is the same "Event"
+  framing omitting the *restart* verb; its entity + handler + precision all passed.
+
+### α handler-probe (reactive-path handler-selection; own lane, NOT the headline)
+
+| vertical | graded breach | correct | accuracy |
+|---|---|---|---|
+| aquaculture | 40 | 31 | **77.5%** |
+| energy | 40 | 40 | **100.0%** |
+| supply_chain | 40 | 13 | **32.5%** |
+| **overall** | **120** | **84** | **70.0%** |
+
+The genuinely NEW signal (handler-selection on a real 4–5 option menu), read on its own
+lane — in the procedure path the executed handler is fixed by `step.handler` (ADR-016), so
+α is a reactive-path / future-autonomy measure, never the product's handler decision.
+
+**supply_chain α = 32.5% is a BENIGN divergence, not a model error** (VERIFIED): the model
+picks **`inspect`** (21/28 easy, 6/12 hard) where the dataset pins the single correct
+handler `hold`. Inspecting a shipment after a cold-chain excursion is a defensible first
+action — and crucially the model does **not** pick the dangerous near-misses `expedite` /
+`reroute` (which would keep a possibly-spoiled load moving). β stays 100% because
+`action_keywords` admits `inspect` / `hold` / `quarantine` / `divert` as the same action
+class. **Finding → tuning PLAN:** the α `valid_handlers` for supply_chain is plausibly too
+narrow (a cold-chain breach arguably accepts `[hold, inspect]`); whether to widen the α
+expected-set is a tuning-PLAN question, **not** a grader change here (methodology is
+ratified / fixed). aquaculture's 9 α misses are likewise mostly the benign
+`increase_water_exchange` (7 — a real DO remedy), plus one `dispatch_technician` and one
+`echo`.
+
+### Deterministic disposition (sanity / false-positive guard, ~100% expected)
+
+| vertical | items | correct | accuracy |
+|---|---|---|---|
+| aquaculture | 66 | 66 | 100.0% |
+| energy | 66 | 66 | 100.0% |
+| supply_chain | 66 | 66 | 100.0% |
+| **overall** | **198** | **198** | **100.0%** |
+
+### Latency (B-δ — SD-B1 ≤ 8 s p95 per LLM call)
+
+| model | n calls | mean | p50 | p95 | max | SD-B1 p95 ≤ 8 s |
+|---|---|---|---|---|---|---|
+| `gpt-oss:20b` (hardened, 2026-06-09) | 240 | 15.02 s | 14.02 s | **22.64 s** | 31.46 s | ❌ **OVER (~2.8×)** |
+
+Consistent with — and slightly above — the pre-hardening 19.23 s p95: the hard scenarios
+carry extra `other_readings` context, so generations run a little longer. Same ring-fenced
+B-δ finding (a tuning-PLAN input — **not** a build failure, **not** a bar move, **not** an
+ADR-016 reopen).
+
+### What the hardened run says (headline read)
+
+`gpt-oss:20b` on the governed procedure path **clears the β ≥ 85% bar (85.8% / ~86–89%)
+while the benchmark now genuinely discriminates**: aquaculture's hard multi-entity
+scenarios pull β below 100% by surfacing a real entity-precision weakness (over-naming
+safe siblings) and an action-verb-omission framing habit; the α probe surfaces a real but
+**benign** handler-selection divergence (the model prefers `inspect` for cold-chain, not
+the dangerous near-misses). Both feed the follow-up tuning PLAN under the B-6 ring-fence;
+neither moves a bar or reopens ADR-016. The per-item `--dump-json` capture is the evidence
+trail behind every number above.
+
 ## Calibration log (pre-scored-run; Cray-ratified 2026-06-08)
 
 A pre-run smoke against the live model surfaced that the *harness*, not the model,
@@ -106,8 +206,9 @@ been scoring as failures despite a correct "Aeration" recommendation.
 > **Pre-hardening baseline (echo-only, `valid_handler` in headline).** Under the
 > PR1 β/α split this table corresponds to the **β headline** (entity + action class)
 > — those two checks were already in this number, and the trivial `valid_handler`
-> check did not move it (echo was the only enum choice). A hardened re-run with the
-> α probe on the real `action_type` menu is the next step.
+> check did not move it (echo was the only enum choice). The hardened re-run is now
+> DONE — see **Results — HARDENED run (2026-06-09)** above; this table is RETAINED as
+> the pre-hardening baseline (well-posed, single-entity) for comparison.
 
 | vertical | graded breach items | correct | accuracy | vs ≥85% |
 |---|---|---|---|---|
@@ -190,7 +291,9 @@ procedure path — instead of the trivial single-entity / single-handler path.
 ## Latency (B-δ — SD-B1 ≤ 8 s p95 per LLM call)
 
 Measured per **LLM call** (a breach item = 2 Pattern-B calls) via the runner's
-`TimingChatClient`, **warm-first** on MS-S1.
+`TimingChatClient`, **warm-first** on MS-S1. *(Pre-hardening 84-breach run; the hardened
+120-breach latency — p95 22.64 s, same OVER finding — is in the
+[2026-06-09 section](#latency-b-δ--sd-b1--8-s-p95-per-llm-call) above.)*
 
 | model | n calls | mean | p50 | p95 | max | SD-B1 p95 ≤ 8 s |
 |---|---|---|---|---|---|---|
@@ -262,9 +365,11 @@ qualitative conclusions (pin is best by far; smaller ≠ faster) are robust.*
 
 ---
 
-*PLAN-0019 Part B. **B-β headline** + sanity + **B-δ latency + B-4/G-3 model
-sweep** filled from Cray-approved live runs (`gpt-oss:20b` / `gemma4:12b` /
-`qwen3.6:35b` / `gemma4:26b` on MS-S1, Ollama 0.30.6, 2026-06-08/09). **B-3
-baselines** (text-to-SQL + RAG) remain TODO. Per the ring-fence this REPORTS — it
-does not gate; the headline 100% and the latency miss are both read with the
-caveats above.*
+*PLAN-0019 Part B. **B-β headline** + **α probe** + sanity + **B-δ latency + B-4/G-3
+model sweep** filled from Cray-approved live runs (`gpt-oss:20b` / `gemma4:12b` /
+`qwen3.6:35b` / `gemma4:26b` on MS-S1, Ollama 0.30.6, 2026-06-08/09), plus the
+**HARDENED re-run 2026-06-09** (real menu + hard scenarios; β 85.8% / ~86–89%, α 70.0%,
+latency p95 22.64 s, every score `--dump-json`-VERIFIED). **B-3 baselines** (text-to-SQL
++ RAG) remain TODO. Per the ring-fence this REPORTS — it does not gate; the hardened
+headline, the benign α divergence, and the latency miss are all read with the caveats
+above and feed the follow-up tuning PLAN.*
