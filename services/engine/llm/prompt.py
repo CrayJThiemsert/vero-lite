@@ -108,7 +108,11 @@ def build_reasoning_messages(
     """
     user = (
         "Assess the following operational event and explain, step by step, "
-        "what action a human operator should consider.\n\n"
+        "what action a human operator should consider. Identify the SINGLE entity "
+        "whose reading actually breaches its threshold and base your recommendation "
+        "on that entity alone — any other readings are context, not affected "
+        "entities, so never treat a safe reading as affected. Name the recommended "
+        "action by its imperative verb.\n\n"
         f"{render_untrusted_block('operational event', format_event(event))}"
     )
     return [
@@ -141,7 +145,10 @@ def build_structuring_messages(
             "role": "user",
             "content": (
                 "Produce the final recommendation as a single JSON object "
-                "conforming to the provided schema. Output only the JSON object."
+                "conforming to the provided schema. Output only the JSON object. "
+                "List ONLY the breaching entity in affected_entities — never a safe "
+                "context reading — and make sure the recommended action's verb "
+                "appears in the title."
             ),
         }
     )
