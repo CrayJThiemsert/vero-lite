@@ -65,9 +65,11 @@ class ItemResult:
     """The graded outcome of one item.
 
     ``disposition_correct`` is the deterministic sanity result (all items);
-    ``proposal_correct`` is the headline LLM grade (breach items only — ``None``
-    for the non-breach false-positive guard). ``error`` is set when the judgment
-    path raised (a failed proposal = incorrect).
+    ``proposal_correct`` is the **β headline** LLM grade (breach items only —
+    ``None`` for the non-breach false-positive guard); ``probe_correct`` is the **α
+    handler-selection probe** (``None`` when not graded or the item declares no
+    probe field). ``error`` is set when the judgment path raised (a failed proposal
+    = incorrect; the probe is ``None`` since no judgment exists to score).
     """
 
     item_id: str
@@ -79,6 +81,7 @@ class ItemResult:
     proposal_correct: bool | None
     grade: GradeResult | None
     error: str | None = None
+    probe_correct: bool | None = None
 
 
 async def evaluate_item(
@@ -146,6 +149,7 @@ async def evaluate_item(
         graded=True,
         proposal_correct=grade.passed,
         grade=grade,
+        probe_correct=grade.probe_passed,
     )
 
 
@@ -153,25 +157,36 @@ async def evaluate_item(
 class Summary:
     """Aggregate over a run.
 
-    ``headline_accuracy`` (over graded breach items) is the SD-B1 ≥ 85% headline;
-    ``deterministic_accuracy`` (over all items) is the separately-reported ~100%
-    sanity number — the two are NOT combined.
+    Three independent metrics, never combined:
+
+    * ``headline_accuracy`` (over graded breach items) — the SD-B1 ≥ 85% **β
+      headline** (entity + action class);
+    * ``probe_accuracy`` (over graded breach items that declare a handler probe) —
+      the **α** reactive-path handler-selection signal, reported on its own lane
+      (``None`` when no item declared a probe field);
+    * ``deterministic_accuracy`` (over all items) — the separately-reported ~100%
+      sanity number.
     """
 
     total: int
     graded: int
     headline_correct: int
     headline_accuracy: float | None
+    probe_graded: int
+    probe_correct: int
+    probe_accuracy: float | None
     deterministic_correct: int
     deterministic_accuracy: float
     by_disposition: dict[str, int]
 
 
 def summarize(results: Sequence[ItemResult]) -> Summary:
-    """Aggregate per-item results into the two separately-reported metrics."""
+    """Aggregate per-item results into the separately-reported metrics (β / α / sanity)."""
     total = len(results)
     graded = [result for result in results if result.graded]
     headline_correct = sum(1 for result in graded if result.proposal_correct)
+    probed = [result for result in graded if result.probe_correct is not None]
+    probe_correct = sum(1 for result in probed if result.probe_correct)
     deterministic_correct = sum(1 for result in results if result.disposition_correct)
 
     by_disposition: dict[str, int] = {disposition.value: 0 for disposition in Disposition}
@@ -183,6 +198,9 @@ def summarize(results: Sequence[ItemResult]) -> Summary:
         graded=len(graded),
         headline_correct=headline_correct,
         headline_accuracy=(headline_correct / len(graded)) if graded else None,
+        probe_graded=len(probed),
+        probe_correct=probe_correct,
+        probe_accuracy=(probe_correct / len(probed)) if probed else None,
         deterministic_correct=deterministic_correct,
         deterministic_accuracy=(deterministic_correct / total) if total else 0.0,
         by_disposition=by_disposition,

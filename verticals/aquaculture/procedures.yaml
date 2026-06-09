@@ -5,10 +5,12 @@
 # YAML style, cf. object_types). The `vertical` is the dir name, not in the file.
 #
 # Phase-1 scope (PLAN-0019 L-1): only `trigger: manual` is RUNNABLE — the headline's
-# 06:00 schedule is deferred (a PLAN-0010 scheduler reuse). The single registered
-# handler today is `echo` (verticals/aquaculture/handlers.py); start_emergency_aerator
-# (the ontology RecommendedAction.action_type) lands as demo polish with the design
-# partner, so every action step routes through `echo` for now.
+# 06:00 schedule is deferred (a PLAN-0010 scheduler reuse). The handlers
+# (verticals/aquaculture/handlers.py) are the ontology RecommendedAction.action_type
+# vocabulary {start_emergency_aerator, dispatch_technician, increase_water_exchange,
+# escalate} + `echo`, each a no-op receipt today (real aerator I/O ships with the
+# design partner). The breach action step fixes its handler to
+# `start_emergency_aerator` (PLAN-0019 Part B); the no-op `summary` step keeps `echo`.
 
 namespace: aquaculture
 version: 0
@@ -22,7 +24,9 @@ agents:
     autonomy_ceiling: auto
     allowed:
       step_kinds: [query, evaluate, action, human_task]
-      action_handlers: [echo]       # only `echo` is registered today
+      # `start_emergency_aerator` for the gated breach action; `echo` for the auto
+      # round-summary terminal (a no-op artifact, not an operational action).
+      action_handlers: [echo, start_emergency_aerator]
 
 procedures:
   morning_pond_health_round:
@@ -49,11 +53,11 @@ procedures:
         name: Aerate the breach set
         description: >-
           Propose an emergency-aerator action (ADR-007 envelope) per breaching pond;
-          human approve -> execute. Intended action_type start_emergency_aerator;
-          routed through `echo` until the real handler ships.
+          human approve -> execute. action_type start_emergency_aerator (a no-op
+          receipt stub until the real aerator handler ships with the design partner).
         kind: action
         autonomy: gated             # the human go/no-go on an irreversible write
-        handler: echo
+        handler: start_emergency_aerator
         input:
           from: judge               # the named-input fan-out: only the breach subset
           where:

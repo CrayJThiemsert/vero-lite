@@ -11,8 +11,12 @@ The two halves are graded differently (SD-B1):
 * ``Scenario.{measured_value, threshold, direction, watch_margin}`` drive the
   **deterministic** breach/watch/ok disposition (``crosses_threshold`` — the
   ~100% sanity check, reported separately).
-* ``Expected.{affected_primary_key, valid_handlers, payload_contains,
-  action_keywords}`` are the **LLM-graded** objective fields — the headline.
+* ``Expected.{affected_primary_key, action_keywords}`` are the **β headline**
+  scoring fields (the entity + action class the model owns in the procedure path);
+  ``valid_handlers`` is the **α probe** (reactive-path handler-selection, reported
+  on its own lane — see :mod:`benchmarks.procedure_baseline.grader`);
+  ``payload_contains`` is **advisory**. The three lanes never contaminate each
+  other (PLAN-0019 Part B hardening, Cray-ratified 2026-06-09).
 """
 
 from __future__ import annotations
@@ -78,8 +82,10 @@ class Expected(BaseModel):
 
     ``disposition`` + ``action_expected`` are the deterministic sanity fields
     (must agree with :func:`grader.classify_disposition`); the remaining fields
-    are the LLM-graded objective checks, each scored only when present (an item
-    grades on exactly the fields it declares).
+    are the LLM-graded checks, each scored only when present (an item grades on
+    exactly the fields it declares). A breach item must declare at least one
+    **headline scoring** field (``affected_primary_key`` and/or ``action_keywords``)
+    — the α ``valid_handlers`` probe alone does not make a breach item gradable.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -90,19 +96,22 @@ class Expected(BaseModel):
     )
     affected_primary_key: str | None = Field(
         default=None,
-        description="LLM-graded: a proposed affected_entities[*].primary_key must match",
+        description="β HEADLINE: a proposed affected_entities[*].primary_key must match",
     )
     valid_handlers: list[str] | None = Field(
         default=None,
-        description="LLM-graded: suggested_handler must be one of these (today: [echo])",
+        description="α PROBE (not a headline gate): suggested_handler must be one of these — "
+        "the correct ontology action_type(s) for the breach, e.g. [restart] / "
+        "[start_emergency_aerator] / [hold]",
     )
     payload_contains: dict[str, Any] | None = Field(
         default=None,
-        description="LLM-graded: handler_payload must contain each key/value (subset match)",
+        description="ADVISORY: handler_payload must contain each key/value (subset match)",
     )
     action_keywords: list[str] | None = Field(
         default=None,
-        description="LLM-graded 'action class': >=1 keyword must appear in title/description",
+        description="β HEADLINE 'action class': >=1 keyword must appear in "
+        "title/description/rationale",
     )
 
 

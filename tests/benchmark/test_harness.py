@@ -233,6 +233,56 @@ def test_summarize_separates_headline_from_deterministic_sanity() -> None:
     assert summary.deterministic_correct == 4
     assert summary.deterministic_accuracy == 1.0
     assert summary.by_disposition == {"breach": 2, "watch": 1, "ok": 1}
+    assert summary.probe_accuracy is None  # no item declared a handler probe
+
+
+def test_summarize_aggregates_the_alpha_probe_separately() -> None:
+    """The α handler-probe aggregates over graded breach items that declared a probe,
+    independent of the β headline — a FAILED probe must not move the headline, and an
+    item with no probe is excluded from the probe denominator (PLAN-0019 Part B)."""
+    results = [
+        # headline pass, probe pass
+        ItemResult(
+            "a",
+            _VERTICAL,
+            Disposition.BREACH,
+            Disposition.BREACH,
+            True,
+            True,
+            True,
+            None,
+            probe_correct=True,
+        ),
+        # headline pass, probe FAIL (wrong handler pick)
+        ItemResult(
+            "b",
+            _VERTICAL,
+            Disposition.BREACH,
+            Disposition.BREACH,
+            True,
+            True,
+            True,
+            None,
+            probe_correct=False,
+        ),
+        # headline graded, NO probe declared -> excluded from the probe denominator
+        ItemResult(
+            "c",
+            _VERTICAL,
+            Disposition.BREACH,
+            Disposition.BREACH,
+            True,
+            True,
+            True,
+            None,
+            probe_correct=None,
+        ),
+    ]
+    summary = summarize(results)
+    assert summary.headline_accuracy == 1.0  # all three headline-correct
+    assert summary.probe_graded == 2  # only a + b declared a probe
+    assert summary.probe_correct == 1  # only a's probe passed
+    assert summary.probe_accuracy == 0.5
 
 
 def test_summarize_handles_no_graded_items() -> None:
@@ -242,6 +292,7 @@ def test_summarize_handles_no_graded_items() -> None:
     summary = summarize(results)
     assert summary.graded == 0
     assert summary.headline_accuracy is None
+    assert summary.probe_accuracy is None
     assert summary.deterministic_accuracy == 1.0
 
 

@@ -100,9 +100,12 @@ def test_all_declared_fields_pass() -> None:
         "payload_contains",
         "action_keywords",
     }
-    # payload_contains is advisory — recorded but not a headline gate.
+    # payload_contains is advisory; valid_handler is the α probe — neither gates the headline.
     payload_check = next(c for c in grade.checks if c.name == "payload_contains")
     assert payload_check.advisory is True
+    handler_check = next(c for c in grade.checks if c.name == "valid_handler")
+    assert handler_check.probe is True
+    assert grade.probe_passed is True  # suggested_handler 'echo' in valid_handlers ['echo']
 
 
 def test_wrong_entity_pk_fails() -> None:
@@ -115,12 +118,45 @@ def test_wrong_entity_pk_fails() -> None:
     assert grade.checks[0].name == "affected_primary_key" and not grade.checks[0].passed
 
 
-def test_handler_outside_allowlist_fails() -> None:
+def test_valid_handler_is_an_alpha_probe_not_a_headline_gate() -> None:
+    """A wrong handler pick FAILS the α probe but must NOT drag down the β headline —
+    in the procedure path the executed handler is fixed by step.handler (ADR-016), so
+    the model's handler guess is a reactive-path signal, scored on its own lane."""
+    expected = Expected(
+        disposition=Disposition.BREACH,
+        action_expected=True,
+        affected_primary_key="pond-A1",  # a scoring field carries the headline
+        valid_handlers=["start_emergency_aerator"],
+    )
+    # right entity, WRONG handler (a near-miss action_type)
+    grade = grade_proposal(_judgment(suggested_handler="escalate"), expected)
+    assert grade.passed  # headline carried by the entity scoring field
+    handler_check = next(c for c in grade.checks if c.name == "valid_handler")
+    assert handler_check.probe and not handler_check.passed
+    assert grade.probe_passed is False
+
+
+def test_valid_handler_probe_passes_on_the_correct_action_type() -> None:
+    expected = Expected(
+        disposition=Disposition.BREACH,
+        action_expected=True,
+        affected_primary_key="pond-A1",
+        valid_handlers=["start_emergency_aerator"],
+    )
+    grade = grade_proposal(_judgment(suggested_handler="start_emergency_aerator"), expected)
+    assert grade.passed and grade.probe_passed is True
+
+
+def test_probe_only_breach_item_has_no_headline_grade() -> None:
+    """valid_handlers alone is a probe, not a scoring field — a breach item that
+    declares ONLY it cannot pass the headline even when the probe passes (the
+    dataset-consistency guard forbids such items)."""
     expected = Expected(
         disposition=Disposition.BREACH, action_expected=True, valid_handlers=["echo"]
     )
-    grade = grade_proposal(_judgment(suggested_handler="rogue"), expected)
-    assert not grade.passed
+    grade = grade_proposal(_judgment(suggested_handler="echo"), expected)
+    assert not grade.passed  # no scoring field declared
+    assert grade.probe_passed is True  # but the probe itself passed
 
 
 def test_payload_subset_match_is_advisory_only() -> None:

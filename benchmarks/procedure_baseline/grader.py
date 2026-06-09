@@ -7,10 +7,21 @@ Two pure scoring functions:
   as the single source of truth for the breach decision, then layers the watch
   band. This is the ~100% sanity check, reported separately (SD-B1 excludes the
   deterministic rule from the headline).
-* :func:`grade_proposal` — the **LLM-graded** headline: objective field checks on
-  the model's :class:`LlmJudgment` (the part the model can get wrong). Each field
-  is scored only when the item declares it; the proposal passes iff every declared
-  check passes.
+* :func:`grade_proposal` — the **LLM-graded** headline (SD-B1 graded unit A, "β"):
+  objective field checks on the model's :class:`LlmJudgment` (the part the model
+  can get wrong). The headline scores the fields the model genuinely OWNS in the
+  governed **procedure** path — the affected entity (``affected_primary_key``) and
+  the action class (``action_keywords``). Each field is scored only when the item
+  declares it; the proposal passes iff every declared **scoring** check passes.
+
+The model's ``suggested_handler`` (``valid_handlers``) is graded as a separate **α
+probe**, NOT a headline gate: in the procedure path the executed handler is
+deterministically fixed by the author's ``step.handler`` (ADR-016), so the model's
+handler *guess* is overridden and is not the product's handler decision. The probe
+measures handler-selection as it would matter on the **reactive** path
+(``recommender._compose_llm_record``, which DOES use the guess) — a
+forward-looking signal, reported on its own lane. ``payload_contains`` stays an
+**advisory** signal. Headline / probe / advisory are aggregated separately.
 """
 
 from __future__ import annotations
@@ -49,38 +60,52 @@ def classify_disposition(scenario: Scenario) -> Disposition:
 class FieldCheck:
     """One graded objective field — its name, pass/fail, and a human-readable detail.
 
-    ``advisory`` checks are recorded + reported but do NOT drive ``GradeResult.passed``
-    (e.g. ``payload_contains``: the live model's payload KEY shape is free-form, so a
-    payload subset is informative but not a fair headline gate — B-β calibration,
-    Cray-ratified 2026-06-08).
+    Three lanes, set by the two flags (a check is in exactly one):
+
+    * **scoring** (both flags False) — drives ``GradeResult.passed`` (the β headline:
+      ``affected_primary_key``, ``action_keywords``).
+    * ``advisory`` — recorded + reported but does NOT drive ``passed`` (e.g.
+      ``payload_contains``: the live model's payload KEY shape is free-form, so a
+      payload subset is informative but not a fair headline gate — B-β calibration,
+      Cray-ratified 2026-06-08).
+    * ``probe`` — the **α** reactive-path handler-selection signal (``valid_handler``):
+      recorded + aggregated on its OWN lane, NOT a headline gate, because the
+      procedure path overrides the model's handler guess with ``step.handler``
+      (ADR-016) — PLAN-0019 Part B hardening, Cray-ratified 2026-06-09.
     """
 
     name: str
     passed: bool
     detail: str
     advisory: bool = False
+    probe: bool = False
 
 
 @dataclass(frozen=True)
 class GradeResult:
     """The outcome of grading one LLM proposal against its expected key.
 
-    ``passed`` is the conjunction of every declared **non-advisory** :class:`FieldCheck`;
-    an item that declares no scoring field grades ``False`` (a breach item must declare
-    at least one scoring check — enforced by the dataset-consistency test).
+    ``passed`` (the β headline) is the conjunction of every declared **scoring**
+    :class:`FieldCheck` (neither ``advisory`` nor ``probe``); an item that declares no
+    scoring field grades ``False`` (a breach item must declare at least one scoring
+    check — enforced by the dataset-consistency test). ``probe_passed`` is the α
+    handler-selection outcome (``None`` when the item declares no probe field), tracked
+    separately so the headline and the probe never contaminate each other.
     """
 
     passed: bool
     checks: list[FieldCheck]
+    probe_passed: bool | None = None
 
 
 def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
     """Score an :class:`LlmJudgment` against the item's expected key.
 
     Grades exactly the fields ``expected`` declares (each ``None`` field is
-    skipped): the affected-entity PK (the model named the right entity), the
-    handler (within the registered allowlist), the handler-payload subset, and the
-    'action class' keywords. All objective — no fuzzy/semantic scoring.
+    skipped): the affected-entity PK + the 'action class' keywords (the β headline
+    **scoring** fields the model owns in the procedure path), the handler (the **α
+    probe** — recorded, not a gate), and the handler-payload subset (**advisory**).
+    All objective — no fuzzy/semantic scoring.
     """
     checks: list[FieldCheck] = []
 
@@ -91,9 +116,12 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
         checks.append(FieldCheck("affected_primary_key", passed, detail))
 
     if expected.valid_handlers is not None:
+        # α PROBE: the model's free handler guess vs the correct action(s). NOT a
+        # headline gate — the procedure path fixes the executed handler via
+        # step.handler (ADR-016), so this measures the reactive-path handler choice.
         passed = judgment.suggested_handler in expected.valid_handlers
         detail = f"{judgment.suggested_handler!r} in {expected.valid_handlers}"
-        checks.append(FieldCheck("valid_handler", passed, detail))
+        checks.append(FieldCheck("valid_handler", passed, detail, probe=True))
 
     if expected.payload_contains is not None:
         mismatched = {
@@ -114,6 +142,8 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
         detail = f"any of {expected.action_keywords} in title/description/rationale"
         checks.append(FieldCheck("action_keywords", passed, detail))
 
-    scoring = [check for check in checks if not check.advisory]
+    scoring = [check for check in checks if not check.advisory and not check.probe]
     passed = bool(scoring) and all(check.passed for check in scoring)
-    return GradeResult(passed=passed, checks=checks)
+    probe_checks = [check for check in checks if check.probe]
+    probe_passed = all(check.passed for check in probe_checks) if probe_checks else None
+    return GradeResult(passed=passed, checks=checks, probe_passed=probe_passed)

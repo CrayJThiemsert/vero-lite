@@ -4,11 +4,12 @@
 # A distinct spec layer from the ADR-008 ontology (object_types untouched). `agents` /
 # `procedures` are MAPS keyed by id; the `vertical` is the dir name, not in the file.
 #
-# Phase-1 scope (PLAN-0019 L-1): only `trigger: manual` is RUNNABLE. The single
-# registered handler today is `echo` (verticals/supply_chain/handlers.py); the intended
-# action_type `hold` (ontology RecommendedAction.action_type ∈ {reroute, expedite, hold,
-# inspect, escalate}) routes through `echo` until the real carrier/hold handler ships
-# with the design partner.
+# Phase-1 scope (PLAN-0019 L-1): only `trigger: manual` is RUNNABLE. The handlers
+# (verticals/supply_chain/handlers.py) are the ontology RecommendedAction.action_type
+# vocabulary {reroute, expedite, hold, inspect, escalate} + `echo`, each a no-op
+# receipt today (real carrier/hold I/O ships with the design partner). The cold-chain
+# excursion action step fixes its handler to `hold` (PLAN-0019 Part B); the LLM's
+# wider proposal menu is graded separately (the α probe).
 
 namespace: supply_chain
 version: 0
@@ -21,7 +22,7 @@ agents:
     autonomy_ceiling: gated
     allowed:
       step_kinds: [query, evaluate, action]
-      action_handlers: [echo]       # only `echo` is registered today
+      action_handlers: [hold]       # the cold-chain hold handler (no-op stub today)
 
 procedures:
   cold_chain_excursion_sweep:
@@ -47,11 +48,11 @@ procedures:
         name: Hold the breaching shipments
         description: >-
           Propose a hold action (ADR-007 envelope) per breaching shipment; human
-          approve -> execute. Intended action_type `hold`; routed through `echo`
-          until the real handler ships.
+          approve -> execute. action_type `hold` (a no-op receipt stub until the
+          real carrier/hold handler ships with the design partner).
         kind: action
         autonomy: gated             # the human go/no-go on an irreversible write
-        handler: echo
+        handler: hold
         input:
           from: judge               # the named-input fan-out: only the breach subset
           where:
