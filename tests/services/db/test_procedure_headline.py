@@ -175,7 +175,10 @@ async def test_headline_end_to_end_approve(db_engine: AsyncEngine) -> None:
     over the watch set -> auto summary over the whole verdict set -> completed."""
     maker = async_sessionmaker(db_engine, expire_on_commit=False)
     spy = _SpyHandler()
+    # The gated aerate step now fixes handler=start_emergency_aerator (PLAN-0019 B);
+    # the auto summary step keeps echo. Bind the spy to BOTH so it records the gate.
     registry.register_handler("aquaculture", "echo", spy)
+    registry.register_handler("aquaculture", "start_emergency_aerator", spy)
     procedure, agent = _headline()
     human = _HumanTask()
     executors = _executors(human)
@@ -193,7 +196,7 @@ async def test_headline_end_to_end_approve(db_engine: AsyncEngine) -> None:
     async with maker() as session:
         await persist_run(session, result)
 
-    # 2. External gate: approve both breaches -> the echo handler fires once per pond.
+    # 2. External gate: approve both breaches -> the aerator handler fires once per pond.
     async with maker() as session:
         resolved = await resolve_gated_step(
             session, "hl-ap", "aerate", {"action-e1": "approve", "action-e2": "approve"}
@@ -235,7 +238,10 @@ async def test_headline_reject_breach_continues(db_engine: AsyncEngine) -> None:
     yet the run still continues through the watch human_task to completion."""
     maker = async_sessionmaker(db_engine, expire_on_commit=False)
     spy = _SpyHandler()
+    # The gated aerate step now fixes handler=start_emergency_aerator (PLAN-0019 B);
+    # the auto summary step keeps echo. Bind the spy to BOTH so it records the gate.
     registry.register_handler("aquaculture", "echo", spy)
+    registry.register_handler("aquaculture", "start_emergency_aerator", spy)
     procedure, agent = _headline()
     human = _HumanTask()
     executors = _executors(human)

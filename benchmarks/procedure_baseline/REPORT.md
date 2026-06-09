@@ -1,10 +1,16 @@
 # Procedure-baseline benchmark — REPORT (PLAN-0019 B-5)
 
-> **Status: results pending the run.** Numbers are filled by the live RUN
-> (`run_benchmark.py` against `gpt-oss:20b` on MS-S1, Cray-warmed + Cray-approved
-> 2026-06-08). The grading methodology below was **calibrated and Cray-ratified
-> BEFORE the scored run** (see the Calibration log) — the anti-moving-target
-> discipline: the harness spec is fixed before the headline number exists.
+> **Status: PR1 of the Part-B hardening landed; a hardened re-run is pending.** The
+> filled result tables below are the **pre-hardening baseline** (run 2026-06-08/09,
+> `gpt-oss:20b` on MS-S1, Cray-approved): they were scored under the OLD scheme —
+> `echo`-only handler, `valid_handler` folded into the headline. PR1 (this change)
+> **ships the real ontology `action_type` handler vocabulary** ((C) product-complete:
+> the procedures now fix `step.handler` to `restart` / `start_emergency_aerator` /
+> `hold`) and **splits grading into the β headline + α probe** (above). The new α
+> handler-probe + the β headline on the real menu are filled by the **next
+> Cray-approved RUN** (a host-state change — ASK first). The methodology was
+> ratified BEFORE the scored run (anti-moving-target); each hardening step is
+> likewise ratified before its re-run.
 
 ## Ring-fence (B-6 — binding, anti moving-target)
 
@@ -14,21 +20,45 @@ reopen ADR-016's primitive shape (Accepted/fixed) and is **never** a reason to
 move the threshold. The benchmark **reports** — it does not gate (B-3). "Our
 stack wins" is the *thesis under test*, not an acceptance condition.
 
-## What is graded (SD-B1 graded unit A)
+## What is graded (SD-B1 graded unit A) — β headline + α probe
 
-- **Headline = LLM action-proposal correctness** on the **breach** subset: per the
-  ground-truth key, did the two-call judgment path (`generate_judgment` →
-  `LlmJudgment`) name the right entity (`affected_primary_key`), a valid handler
-  (`valid_handlers`, today `[echo]`), and the right action class (`action_keywords`
-  — searched across `title` / `description` / `rationale`)? A proposal passes iff
-  **every scoring field** passes. `handler_payload` is recorded as an **advisory**
-  signal, not a gate (see the Calibration log). Threshold: **≥ 85% accuracy** (SD-B1).
+Three independent lanes (PLAN-0019 Part B hardening, Cray-ratified 2026-06-09 — see
+the **Handler-determinism finding** below for why handler-selection is split out):
+
+- **β headline = LLM action-proposal correctness** on the **breach** subset, scored
+  on the fields the model genuinely OWNS in the governed procedure path: did the
+  two-call judgment path (`generate_judgment` → `LlmJudgment`) name the right entity
+  (`affected_primary_key`) and the right action class (`action_keywords` — searched
+  across `title` / `description` / `rationale`)? A proposal passes iff **every
+  scoring field** passes. Threshold: **≥ 85% accuracy** (SD-B1).
+- **α probe = handler-selection** (`suggested_handler` vs the correct ontology
+  `action_type`, e.g. `restart` / `start_emergency_aerator` / `hold` against the
+  isolate/dispatch/reroute/… near-misses). Reported on its **own lane, NOT folded
+  into the β headline** — in the procedure path the executed handler is fixed
+  deterministically by the author's `step.handler` (ADR-016), so the model's handler
+  *guess* is not the product's handler decision. The probe measures it as it would
+  matter on the **reactive** path (`recommender._compose_llm_record`, which DOES use
+  the guess) — a forward-looking signal.
+- **`handler_payload`** is recorded as an **advisory** signal, not a gate.
 - **Deterministic disposition** (breach/watch/ok via `crosses_threshold`) is a
   **separately-reported ~100% sanity check** — NOT folded into the headline. It is
   the false-positive guard: watch/ok items assert the engine does NOT fire.
 - **Latency** (B-δ): p95 **per LLM call** (= per affected entity = 2 Pattern-B
   calls), measured **warm-first** on an otherwise-quiesced MS-S1. Threshold:
   **≤ 8 s** (SD-B1).
+
+### Handler-determinism finding (the reason for the β/α split)
+
+vero-lite has **two** action paths with **different** handler semantics. The
+**reactive** Pipeline-v0 (`recommender._compose_llm_record`) uses the model's
+`suggested_handler` guess and `execute()` invokes it. The **procedure** orchestrator
+(ADR-016, `action_step._compose_action`) **overrides** the guess with the author's
+`step.handler` — a deterministic, allowlist-bounded blast-radius bound. The benchmark
+grades the raw `LlmJudgment` (faithful to the reactive path), but PLAN-0019 validates
+the **procedure** path, which discards the handler guess. So grading the handler as a
+*headline* would measure a field the procedure product overrides. Hence: handler
+goes to the **α probe** lane (reactive-path / future-autonomy signal), and the β
+headline keeps only the entity + action-class the procedure path actually consumes.
 
 ## Calibration log (pre-scored-run; Cray-ratified 2026-06-08)
 
@@ -67,6 +97,12 @@ been scoring as failures despite a correct "Aeration" recommendation.
 
 ## Results — headline (LLM action-proposal correctness)
 
+> **Pre-hardening baseline (echo-only, `valid_handler` in headline).** Under the
+> PR1 β/α split this table corresponds to the **β headline** (entity + action class)
+> — those two checks were already in this number, and the trivial `valid_handler`
+> check did not move it (echo was the only enum choice). A hardened re-run with the
+> α probe on the real `action_type` menu is the next step.
+
 | vertical | graded breach items | correct | accuracy | vs ≥85% |
 |---|---|---|---|---|
 | aquaculture | 28 | 28 | **100.0%** | ✅ PASS |
@@ -102,24 +138,27 @@ failure mode**; clear breaches (well inside the band) passed every time. No
 The headline **clears ≥ 85%**, but read it precisely — the number reflects an
 **easy-by-construction** task, so it is a floor, not a ceiling:
 
-- **`valid_handler` is trivially satisfied.** Every vertical registers only the
-  `echo` handler today (the real `start_emergency_aerator` / `restart` / `hold`
-  action types are deferred), so `suggested_handler` is enum-constrained to one
-  choice and cannot discriminate. The headline effectively measures **right entity
-  + right action verb in the model's free text**, not a structured action-type
-  choice.
-- **Scenarios are well-posed.** Single-entity breach readings, with the domain
-  parameter + the procedure goal injected, no ambiguity / multi-entity / distractor
-  rows. A competent local model handles these reliably.
-- **Therefore the claim is:** *"gpt-oss:20b reliably identifies the affected entity
-  and names the correct action on clearly-posed breach scenarios across three
-  verticals (84/84)."* It is **NOT** a claim about hard, ambiguous, or
-  adversarial cases.
-- **To give the headline discriminating power** (future work): ship real, distinct
-  action handlers (so `suggested_handler` becomes a meaningful graded choice), and
-  add harder scenarios (multi-entity sets, distractors, near-miss actions). Until
-  then, treat 100% as "the well-posed path works end-to-end," not "the model is
-  infallible."
+- **`valid_handler` *was* trivially satisfied (pre-hardening).** The baseline ran
+  with only `echo` registered, so `suggested_handler` was enum-constrained to one
+  choice. **PR1 fixes this**: each vertical now registers its real ontology
+  `action_type` vocabulary (the model picks from a 4–5 option menu), and the
+  handler-determinism finding reassigns that check to the **α probe** — the β
+  headline never claimed to measure handler choice. The hardened re-run will show
+  whether the model picks the right `action_type` from the real menu (α).
+- **Scenarios are still well-posed (PR2 work).** Single-entity breach readings, with
+  the domain parameter + the procedure goal injected, no ambiguity / multi-entity /
+  distractor rows. A competent local model handles these reliably — so the **β
+  headline's** discriminating power awaits the harder scenarios.
+- **Therefore the baseline claim is:** *"gpt-oss:20b reliably identifies the affected
+  entity and names the correct action on clearly-posed breach scenarios across three
+  verticals (84/84)."* It is **NOT** a claim about hard, ambiguous, or adversarial
+  cases.
+- **Discriminating-power roadmap (PLAN-0019 Part B hardening).** **PR1 (done):**
+  ship the real, distinct action handlers (β/α split + the real `action_type` menu).
+  **PR2 (next):** harder scenarios — multi-entity sets, distractors, near-miss
+  actions — to give the **β headline** real discriminating power; then a hardened
+  re-run. Until then, treat 100% as "the well-posed path works end-to-end," not "the
+  model is infallible."
 
 ## Latency (B-δ — SD-B1 ≤ 8 s p95 per LLM call)
 

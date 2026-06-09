@@ -122,9 +122,12 @@ def _print_summary(label: str, summary: Summary) -> None:
     headline = (
         f"{summary.headline_accuracy:.1%}" if summary.headline_accuracy is not None else "n/a"
     )
+    probe = f"{summary.probe_accuracy:.1%}" if summary.probe_accuracy is not None else "n/a"
     print(
-        f"\n{label}: headline {headline} "
+        f"\n{label}: β headline {headline} "
         f"({summary.headline_correct}/{summary.graded} graded breach proposals) | "
+        f"α handler-probe {probe} "
+        f"({summary.probe_correct}/{summary.probe_graded} reactive-path handler picks) | "
         f"deterministic {summary.deterministic_accuracy:.1%} "
         f"({summary.deterministic_correct}/{summary.total} dispositions) | "
         f"by-disposition {summary.by_disposition}"
@@ -162,9 +165,12 @@ async def _main(args: argparse.Namespace) -> None:
     latency = summarize_latency(recorder.durations, threshold_s=args.latency_threshold)
     _print_latency(args.model or "per-agent", latency)
     print(
-        "\nNOTE: SD-B1 headline = LLM action-proposal correctness on breach items; "
-        "deterministic disposition is a separate ~100% sanity number (NOT folded in). "
-        "Latency = p95 per LLM call (B-δ). B-gamma (text-to-SQL + RAG baselines) is TODO."
+        "\nNOTE: β headline = LLM action-proposal correctness (affected entity + action "
+        "class) on breach items; α handler-probe = reactive-path handler-selection "
+        "(suggested_handler vs the correct action_type — NOT a procedure-path decision, "
+        "ADR-016 fixes that via step.handler); deterministic disposition is a separate "
+        "~100% sanity number. The three are NOT folded together. Latency = p95 per LLM "
+        "call (B-δ). B-gamma (text-to-SQL + RAG baselines) is TODO."
     )
 
 

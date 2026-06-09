@@ -87,7 +87,7 @@ def test_aquaculture_headline_fan_out_shape() -> None:
     aerate = by_id["aerate"]
     assert aerate.kind is StepKind.ACTION
     assert aerate.autonomy is Autonomy.GATED
-    assert aerate.handler == "echo"
+    assert aerate.handler == "start_emergency_aerator"  # PLAN-0019 B: the real action_type
     assert aerate.input is not None
     assert aerate.input.from_step == "judge"
     assert aerate.input.where == {"verdict": "breach"}
