@@ -1,16 +1,19 @@
 # Procedure-baseline benchmark — REPORT (PLAN-0019 B-5)
 
-> **Status: PR1 of the Part-B hardening landed; a hardened re-run is pending.** The
-> filled result tables below are the **pre-hardening baseline** (run 2026-06-08/09,
-> `gpt-oss:20b` on MS-S1, Cray-approved): they were scored under the OLD scheme —
-> `echo`-only handler, `valid_handler` folded into the headline. PR1 (this change)
-> **ships the real ontology `action_type` handler vocabulary** ((C) product-complete:
-> the procedures now fix `step.handler` to `restart` / `start_emergency_aerator` /
-> `hold`) and **splits grading into the β headline + α probe** (above). The new α
-> handler-probe + the β headline on the real menu are filled by the **next
-> Cray-approved RUN** (a host-state change — ASK first). The methodology was
-> ratified BEFORE the scored run (anti-moving-target); each hardening step is
-> likewise ratified before its re-run.
+> **Status: Part-B hardening PR1 + PR2 landed (offline); a hardened re-run is the
+> next step.** The filled result tables below are the **pre-hardening baseline** (run
+> 2026-06-08/09, `gpt-oss:20b` on MS-S1, Cray-approved): they were scored under the
+> OLD scheme — `echo`-only handler, `valid_handler` folded into the headline,
+> well-posed single-entity scenarios. **PR1** ships the real ontology `action_type`
+> handler vocabulary ((C) product-complete: the procedures fix `step.handler` to
+> `restart` / `start_emergency_aerator` / `hold`) and splits grading into the **β
+> headline + α probe**. **PR2** adds the **hard scenarios** (12 multi-entity /
+> distractor / near-miss breach items per vertical, ids `*-h01..h12`) + the two β
+> **precision** checks (`forbidden_primary_keys` / `forbidden_keywords`) that give the
+> β headline real discriminating power. The harness is now fully hardened; the β
+> headline (on the hard scenarios) + the α handler-probe (on the real menu) are
+> filled by the **next Cray-approved RUN** (a host-state change — ASK first). Every
+> hardening step's methodology was ratified BEFORE its scored run (anti-moving-target).
 
 ## Ring-fence (B-6 — binding, anti moving-target)
 
@@ -29,8 +32,11 @@ the **Handler-determinism finding** below for why handler-selection is split out
   on the fields the model genuinely OWNS in the governed procedure path: did the
   two-call judgment path (`generate_judgment` → `LlmJudgment`) name the right entity
   (`affected_primary_key`) and the right action class (`action_keywords` — searched
-  across `title` / `description` / `rationale`)? A proposal passes iff **every
-  scoring field** passes. Threshold: **≥ 85% accuracy** (SD-B1).
+  across `title` / `description` / `rationale`)? PR2 adds two **precision** checks for
+  the harder scenarios: `forbidden_primary_keys` (the model must NOT also name a decoy
+  sibling entity) and `forbidden_keywords` (the near-miss action verb must NOT be the
+  recommended action — checked in the proposal **title**). A proposal passes iff
+  **every scoring field** passes. Threshold: **≥ 85% accuracy** (SD-B1).
 - **α probe = handler-selection** (`suggested_handler` vs the correct ontology
   `action_type`, e.g. `restart` / `start_emergency_aerator` / `hold` against the
   isolate/dispatch/reroute/… near-misses). Reported on its **own lane, NOT folded
@@ -155,10 +161,31 @@ The headline **clears ≥ 85%**, but read it precisely — the number reflects a
   cases.
 - **Discriminating-power roadmap (PLAN-0019 Part B hardening).** **PR1 (done):**
   ship the real, distinct action handlers (β/α split + the real `action_type` menu).
-  **PR2 (next):** harder scenarios — multi-entity sets, distractors, near-miss
-  actions — to give the **β headline** real discriminating power; then a hardened
-  re-run. Until then, treat 100% as "the well-posed path works end-to-end," not "the
-  model is infallible."
+  **PR2 (done):** the hard scenarios + precision checks (below). **Next:** the
+  hardened re-run (host-state — ASK Cray). Until that run lands, the pre-hardening
+  100% means "the well-posed path works end-to-end," not "the model is infallible."
+
+### PR2 hard scenarios + precision checks (the β-headline discriminator)
+
+Each vertical augments its 28 boundary-cluster breach items with **12 HARD breach
+items** (`*-h01..h12`; the easy items stay as the floor baseline), each combining:
+
+- **Multi-entity decoys** — the breached entity is presented amid 1–3 **safe** sibling
+  readings (injected into the event as `other_readings`, most in the watch band so
+  they read as "borderline"). The model must name the breach **and not** the decoys —
+  graded by `affected_primary_key` (right entity) + `forbidden_primary_keys` (no decoy
+  named). A dataset guard asserts every decoy is genuinely non-breaching and that
+  `forbidden_primary_keys` exactly matches the scenario's distractor set.
+- **Near-miss action** — a plausible-but-wrong action class the model must avoid
+  recommending: aquaculture `feed` (feeding during an O₂ crash), energy
+  `monitor`/`schedule` (deferring an acute over-temp), supply_chain `expedite`/`reroute`
+  (keeping a possibly-spoiled load moving). Graded by `action_keywords` (right verb
+  present) + `forbidden_keywords` (decoy verb absent from the **title** — the body may
+  legitimately rule it out).
+
+So the hardened β headline tests **entity-ID precision under distractors** and **action
+selection against near-misses** — the two things the model actually owns in the
+procedure path — instead of the trivial single-entity / single-handler path.
 
 ## Latency (B-δ — SD-B1 ≤ 8 s p95 per LLM call)
 

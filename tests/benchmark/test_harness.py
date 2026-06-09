@@ -28,6 +28,7 @@ from benchmarks.procedure_baseline.schema import (
     Disposition,
     Expected,
     Scenario,
+    SiblingReading,
 )
 from services.engine.llm.client import ChatResult, OllamaError
 from services.engine.registry import registry
@@ -135,6 +136,28 @@ def test_scenario_to_event_injects_reading_parameter() -> None:
     """The domain parameter is injected so the model knows WHAT is measured."""
     event = scenario_to_event(_breach_item().scenario, "dissolved_oxygen")
     assert event["parameter"] == "dissolved_oxygen"
+
+
+def test_scenario_to_event_injects_distractor_readings() -> None:
+    """PR2: sibling decoy readings ride in the event as `other_readings` so the model
+    sees the multi-entity context and must pick the breached entity."""
+    scenario = _breach_item().scenario.model_copy(
+        update={
+            "distractors": [
+                SiblingReading(primary_key="pond-A2", measured_value=4.4),
+                SiblingReading(primary_key="pond-A3", measured_value=4.8),
+            ]
+        }
+    )
+    event = scenario_to_event(scenario)
+    assert event["other_readings"] == [
+        {"primary_key": "pond-A2", "measured_value": 4.4},
+        {"primary_key": "pond-A3", "measured_value": 4.8},
+    ]
+
+
+def test_scenario_to_event_omits_other_readings_without_distractors() -> None:
+    assert "other_readings" not in scenario_to_event(_breach_item().scenario)
 
 
 async def test_breach_item_runs_the_llm_and_grades_pass() -> None:

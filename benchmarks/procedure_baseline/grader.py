@@ -102,9 +102,11 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
     """Score an :class:`LlmJudgment` against the item's expected key.
 
     Grades exactly the fields ``expected`` declares (each ``None`` field is
-    skipped): the affected-entity PK + the 'action class' keywords (the β headline
-    **scoring** fields the model owns in the procedure path), the handler (the **α
-    probe** — recorded, not a gate), and the handler-payload subset (**advisory**).
+    skipped): the affected-entity PK + the 'action class' keywords, plus the PR2
+    precision add-ons — ``forbidden_primary_keys`` (no decoy sibling named) and
+    ``forbidden_keywords`` (no near-miss verb in the title) — together the β headline
+    **scoring** fields the model owns in the procedure path; the handler (the **α
+    probe** — recorded, not a gate); and the handler-payload subset (**advisory**).
     All objective — no fuzzy/semantic scoring.
     """
     checks: list[FieldCheck] = []
@@ -114,6 +116,14 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
         passed = expected.affected_primary_key in keys
         detail = f"expected {expected.affected_primary_key!r} in {keys}"
         checks.append(FieldCheck("affected_primary_key", passed, detail))
+
+    if expected.forbidden_primary_keys is not None:
+        # β HEADLINE precision (PR2): the model must NOT name a decoy sibling entity.
+        named = {entity.primary_key for entity in judgment.affected_entities}
+        offenders = sorted(named & set(expected.forbidden_primary_keys))
+        passed = not offenders
+        detail = f"decoy(s) named: {offenders}" if offenders else "no decoy entity named"
+        checks.append(FieldCheck("forbidden_primary_keys", passed, detail))
 
     if expected.valid_handlers is not None:
         # α PROBE: the model's free handler guess vs the correct action(s). NOT a
@@ -141,6 +151,16 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
         passed = any(keyword.lower() in haystack for keyword in expected.action_keywords)
         detail = f"any of {expected.action_keywords} in title/description/rationale"
         checks.append(FieldCheck("action_keywords", passed, detail))
+
+    if expected.forbidden_keywords is not None:
+        # β HEADLINE precision (PR2): the near-miss action verb must NOT be the
+        # RECOMMENDED action — checked in the TITLE (the imperative action line),
+        # not the body (where the model may legitimately rule the decoy out).
+        title = judgment.title.lower()
+        hits = sorted({kw for kw in expected.forbidden_keywords if kw.lower() in title})
+        passed = not hits
+        detail = f"decoy action verb in title: {hits}" if hits else "no decoy action verb in title"
+        checks.append(FieldCheck("forbidden_keywords", passed, detail))
 
     scoring = [check for check in checks if not check.advisory and not check.probe]
     passed = bool(scoring) and all(check.passed for check in scoring)

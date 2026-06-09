@@ -68,6 +68,28 @@ def test_item_ids_are_globally_unique() -> None:
     assert len(ids) == len(set(ids)), "duplicate item id across datasets"
 
 
+def test_distractors_are_non_breaching_and_match_forbidden_keys() -> None:
+    """PR2 authoring guard: every injected distractor sits on the SAFE side of the
+    threshold (a genuine decoy, not an accidental breach), and an item's declared
+    ``forbidden_primary_keys`` set is exactly its scenario's distractor PKs (so the
+    grader's decoy-discrimination check can never be won or lost by construction)."""
+    for dataset in load_all():
+        for item in dataset.items:
+            scenario = item.scenario
+            decoy_pks = {sibling.primary_key for sibling in scenario.distractors}
+            for sibling in scenario.distractors:
+                probe = scenario.model_copy(update={"measured_value": sibling.measured_value})
+                assert classify_disposition(probe) is not Disposition.BREACH, (
+                    f"{item.id}: distractor {sibling.primary_key} @ {sibling.measured_value} "
+                    "is itself a breach — not a safe decoy"
+                )
+            forbidden = set(item.expected.forbidden_primary_keys or [])
+            assert forbidden == decoy_pks, (
+                f"{item.id}: forbidden_primary_keys {sorted(forbidden)} must equal the scenario "
+                f"distractor PKs {sorted(decoy_pks)}"
+            )
+
+
 def test_alpha_probe_handlers_are_registered_for_their_vertical() -> None:
     """Every α-probe ``valid_handlers`` entry must be a handler actually registered
     for its vertical — otherwise the live ``suggested_handler`` enum could never

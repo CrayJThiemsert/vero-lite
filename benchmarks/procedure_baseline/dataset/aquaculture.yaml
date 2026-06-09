@@ -5,8 +5,9 @@
 # crosses_threshold => measured <= 4.0 is a breach). Verdict bands (judge step):
 #   breach: DO <= 4.0 mg/L   watch: 4.0 < DO <= 5.0   ok: DO > 5.0
 # Threshold 4.0 mg/L + watch_margin 1.0 are grounded in aquaculture_v0.yaml +
-# verticals/aquaculture/procedures.yaml. 54 items: breach-weighted (28 breach with
-# a dense boundary cluster near 4.0 — the LLM-graded mass), 13 watch, 13 ok.
+# verticals/aquaculture/procedures.yaml. 66 items: 40 breach (28 boundary cluster
+# near 4.0 + 12 PR2 HARD multi-entity decoy / near-miss items, ids aqua-h01..h12 —
+# the discriminating mass), 13 watch, 13 ok.
 #
 # Graded fields (LLM proposal): β headline = affected_primary_key (right pond) +
 # action_keywords (the 'aerate' action class); α probe = valid_handlers
@@ -138,6 +139,61 @@ items:
     description: DO 4.0 mg/L — boundary; inclusive breach (measured <= threshold).
     scenario: {event_id: aqua-evt-028, entity_type: Pond, primary_key: pond-A28, measured_value: 4.0, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
     expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A28, valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat]}
+
+  # --- HARD breach (PR2 hardening: multi-entity decoys + near-miss action) ------
+  # Each: a clear DO crash among low-but-SAFE sibling ponds (the model must name
+  # ONLY the crashed pond, not the decoys → forbidden_primary_keys) + a near-miss
+  # action — feeding is the wrong response to an acute oxygen crash; the model must
+  # recommend aeration (forbidden_keywords [feed]). Decoys all > 4.0 (safe), most in
+  # the 4.0–5.0 watch band so they read as "low-ish oxygen" and tempt over-naming.
+  - id: aqua-h01
+    description: DO 2.3 crash among two watch-band ponds (4.4/4.8); aerate the crash only.
+    scenario: {event_id: aqua-evt-h01, entity_type: Pond, primary_key: pond-A101, measured_value: 2.3, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A102, measured_value: 4.4}, {primary_key: pond-A103, measured_value: 4.8}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A101, forbidden_primary_keys: [pond-A102, pond-A103], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
+  - id: aqua-h02
+    description: DO 1.9 severe crash among three safe ponds (4.2/4.6/4.9).
+    scenario: {event_id: aqua-evt-h02, entity_type: Pond, primary_key: pond-A104, measured_value: 1.9, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A105, measured_value: 4.2}, {primary_key: pond-A106, measured_value: 4.6}, {primary_key: pond-A107, measured_value: 4.9}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A104, forbidden_primary_keys: [pond-A105, pond-A106, pond-A107], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
+  - id: aqua-h03
+    description: DO 3.5 crash (close to the floor) with two watch decoys (4.1/4.5).
+    scenario: {event_id: aqua-evt-h03, entity_type: Pond, primary_key: pond-A108, measured_value: 3.5, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A109, measured_value: 4.1}, {primary_key: pond-A110, measured_value: 4.5}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A108, forbidden_primary_keys: [pond-A109, pond-A110], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
+  - id: aqua-h04
+    description: DO 1.5 severe crash beside one VERY close decoy (4.1).
+    scenario: {event_id: aqua-evt-h04, entity_type: Pond, primary_key: pond-A111, measured_value: 1.5, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A112, measured_value: 4.1}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A111, forbidden_primary_keys: [pond-A112], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
+  - id: aqua-h05
+    description: DO 2.8 crash among two safe ponds (4.3/4.7).
+    scenario: {event_id: aqua-evt-h05, entity_type: Pond, primary_key: pond-A113, measured_value: 2.8, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A114, measured_value: 4.3}, {primary_key: pond-A115, measured_value: 4.7}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A113, forbidden_primary_keys: [pond-A114, pond-A115], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
+  - id: aqua-h06
+    description: DO 2.0 crash with a watch decoy (4.4) and an ok decoy (5.4).
+    scenario: {event_id: aqua-evt-h06, entity_type: Pond, primary_key: pond-A116, measured_value: 2.0, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A117, measured_value: 4.4}, {primary_key: pond-A118, measured_value: 5.4}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A116, forbidden_primary_keys: [pond-A117, pond-A118], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
+  - id: aqua-h07
+    description: DO 3.8 crash (a hair under the floor) among three near-floor decoys (4.1/4.3/4.7).
+    scenario: {event_id: aqua-evt-h07, entity_type: Pond, primary_key: pond-A119, measured_value: 3.8, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A120, measured_value: 4.1}, {primary_key: pond-A121, measured_value: 4.3}, {primary_key: pond-A122, measured_value: 4.7}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A119, forbidden_primary_keys: [pond-A120, pond-A121, pond-A122], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
+  - id: aqua-h08
+    description: DO 2.5 crash with two watch-band decoys (4.2/4.6).
+    scenario: {event_id: aqua-evt-h08, entity_type: Pond, primary_key: pond-A123, measured_value: 2.5, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A124, measured_value: 4.2}, {primary_key: pond-A125, measured_value: 4.6}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A123, forbidden_primary_keys: [pond-A124, pond-A125], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
+  - id: aqua-h09
+    description: DO 3.0 crash beside a single watch decoy (4.5).
+    scenario: {event_id: aqua-evt-h09, entity_type: Pond, primary_key: pond-A126, measured_value: 3.0, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A127, measured_value: 4.5}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A126, forbidden_primary_keys: [pond-A127], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
+  - id: aqua-h10
+    description: DO 1.7 crash among three siblings spanning the watch band (4.1/4.4/4.8).
+    scenario: {event_id: aqua-evt-h10, entity_type: Pond, primary_key: pond-A128, measured_value: 1.7, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A129, measured_value: 4.1}, {primary_key: pond-A130, measured_value: 4.4}, {primary_key: pond-A131, measured_value: 4.8}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A128, forbidden_primary_keys: [pond-A129, pond-A130, pond-A131], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
+  - id: aqua-h11
+    description: DO 3.2 crash with a very-close decoy (4.1) and a mid-watch decoy (4.7).
+    scenario: {event_id: aqua-evt-h11, entity_type: Pond, primary_key: pond-A132, measured_value: 3.2, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A133, measured_value: 4.1}, {primary_key: pond-A134, measured_value: 4.7}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A132, forbidden_primary_keys: [pond-A133, pond-A134], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
+  - id: aqua-h12
+    description: DO 2.1 crash amid two watch-band ponds (4.3/4.7).
+    scenario: {event_id: aqua-evt-h12, entity_type: Pond, primary_key: pond-A135, measured_value: 2.1, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0, distractors: [{primary_key: pond-A136, measured_value: 4.3}, {primary_key: pond-A137, measured_value: 4.7}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: pond-A135, forbidden_primary_keys: [pond-A136, pond-A137], valid_handlers: [start_emergency_aerator], action_keywords: [aerat, oxygenat], forbidden_keywords: [feed]}
 
   # --- watch (4.0 < DO <= 5.0; technician visual check; no action) -------------
   - id: aqua-029
