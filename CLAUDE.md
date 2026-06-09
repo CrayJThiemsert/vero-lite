@@ -121,11 +121,11 @@ Tier instruction files in `docs/conventions/cowork_tab_instructions.md` (Tier 0 
 **Workflow to `main`:** **All commits land via feature / `chore/*` / `docs/*` branch + PR + merge — no exceptions.** This includes single-file `docs(status):`, `docs(constitution):`, `docs(plans):`, `docs(lessons):`, and `docs(adr):` updates. Even one-line edits use a small `chore/*` or `docs/*` PR. Rationale: classifier-friendly (auto-mode guards direct push to default branch unconditionally — see Lesson #10), consistent history (every change has an explicit boundary + reviewable diff), trivially-revertable, and reinforces ADR-009 D2 "only Code commits" boundary.
 **Author:** `Jirachai Thiemsert <16893502+CrayJThiemsert@users.noreply.github.com>`
 **AI assistance:** Note in commit body — **NEVER** as `Co-Authored-By`
-**Commit messages:** Write to file → `git commit -F`. Prefer Write tool against WSL UNC path (`\\wsl.localhost\Ubuntu-24.04\tmp\commit-message.txt`) over `wsl bash -c "cat <<'EOF'"` heredoc when message contains backticks, `$var`, or code blocks (per Lesson #4 prevention).
-**PR / issue / release bodies:** Same hygiene as commit messages. Use `gh pr create --body-file PATH` (and the equivalent `--notes-file` / `--body-file` flags on `gh issue create` / `gh release create` / `gh pr edit` / `gh pr comment`), never `--body "$(cat PATH)"`. Backticks in markdown bodies trigger command substitution inside the double-quoted shell arg and silently corrupt the submitted content (per Lesson #11). Recovery for an already-corrupted PR: `gh api --method PATCH /repos/<owner>/<repo>/pulls/<N> -F body=@PATH`.
-**Commit + push hygiene:** When the push target is a non-`main` branch, `git commit -F … && git push -u origin <branch>` chained is fine. When landing on `main` via PR, never chain commit with a push to `main` — always commit on a branch first, then PR-flow. Avoids the rework hazard of a chained command being denied as a whole (per Lesson #10).
+**Commit messages:** Write to a file → `git commit -F` (never an inline backtick/`$var`/code-block heredoc).
+**PR / issue / release bodies:** Use `--body-file` / `--notes-file`, **never** `--body "$(cat PATH)"` (backticks trigger command substitution + silently corrupt the body).
+**Commit + push hygiene:** Never chain commit with a push to `main` — commit on a branch first, then PR-flow.
 
-→ Full details: [`docs/conventions/git.md`](docs/conventions/git.md) *(future, see STATUS TODO)*
+→ Mechanics + rationale + recovery (WSL UNC path, `gh api PATCH` body fix, `gh pr edit` caveat, Lessons #4/#10/#11): **`git-workflow` skill** (`.claude/skills/git-workflow/`, loads on demand). Future canonical: [`docs/conventions/git.md`](docs/conventions/git.md) *(see STATUS TODO)*.
 
 ## 8. Constraints (DO NOT VIOLATE)
 
@@ -174,33 +174,20 @@ Read in this order at session start:
 | `docs/conventions/` | Tech stack, code style, glossary, tier instructions, handoff frontmatter schema (canonical) |
 | `docs/for_llm/` | Curated snippets for cold-start LLM sessions (derived from canonicals — see runbook) |
 | `tools/handoffs/` | Handoff tooling — transcript rendering, frontmatter validation (+ `handoff-frontmatter` pre-commit hook, PLAN-004 Phase B), dashboard reader (`--watch` live view, `--index` per-session `INDEX.md`) |
+| `.claude/skills/` | On-demand procedure skills for Code (`git-workflow`, `code-operational-policy`); auto-loaded by relevance so detailed how-to stays out of always-on context. Formalizing Skills as a memory tier (§4 + runbook) is a pending governance follow-up |
 
 ## 11. Tier 2 (Code) Operational Policy
 
 Tactical policy specific to Tier 2 (Code) execution. Other tiers do not need to read this section.
 
-### Worktree Mode
-
-Default policy per Lesson #3:
-
-| Scenario | Worktree | Rationale |
-|----------|----------|-----------|
-| Single-task work (ADR draft, doc edit, single commit) | **OFF** | Avoid Family B traps (sandbox ownership cascade); zero isolation benefit |
-| Parallel work (multiple branches in flight, risky refactor) | **ON** | Isolation worth the lifecycle cost; apply Lesson #3 prevention checklist |
-| Buildable code that should fail-isolated in CI | **ON** | PR boundary clarity; explicit pre-flight required |
-
-Apply the [Lesson #3 prevention checklist](docs/lessons/0003-code-tab-worktree-lifecycle-traps.md#prevention-checklist) before any worktree-on session.
-
-### Transcript Handoff
-
-When the Code tab judges that a reply or span of work should be handed
-to Chat or Cowork for follow-up, render the full raw transcript via
-`tools/handoffs/render_transcript.py` into `.claude/handoffs/session-NN/`
-(gitignored working note) and **always state the export file path in
-the reply**. Procedure + options:
+The worktree-mode decision table (when isolation is ON vs OFF, per Lesson #3) and
+the transcript-handoff procedure (`tools/handoffs/render_transcript.py` → always
+state the export path in the reply) now live in the **`code-operational-policy`
+skill** (`.claude/skills/code-operational-policy/`), loaded on demand when
+deciding worktree isolation or rendering a handoff. Sources: Lesson #3,
 [`docs/runbooks/transcript-handoff.md`](docs/runbooks/transcript-handoff.md).
 
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-05-26 (§7 amended: new "PR / issue / release bodies" line — use `gh pr create --body-file PATH`, never `--body "$(cat PATH)"` (backticks in markdown bodies trigger command substitution + silent body corruption); Lesson #11 referenced. Prior same-day amendment: §7 all-commits-to-main-via-PR rule + Lesson #10. Prior 2026-05-23 amendment per ADR-013 — §6 autonomy-axis note; prior 2026-05-22 per ADR-012; prior 2026-05-21 per ADR-009 D1+D5.)*
+*Last updated: 2026-06-09 (slimmed to on-demand Skills: §7 git mechanics → `git-workflow` skill, §11 worktree + transcript-handoff procedure → `code-operational-policy` skill; binding rules retained in-file, how-to/rationale extracted; §10 index gains `.claude/skills/` row. Formalizing Skills as a memory tier (§4 + runbook + ADR) is a pending governance follow-up. Prior 2026-05-26 (§7 PR/issue/release body-file line, Lesson #11; all-commits-to-main-via-PR + Lesson #10); 2026-05-23 per ADR-013 (§6 autonomy-axis note); 2026-05-22 per ADR-012; 2026-05-21 per ADR-009 D1+D5.)*
