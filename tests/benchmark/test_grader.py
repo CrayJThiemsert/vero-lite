@@ -216,6 +216,71 @@ def test_action_keywords_match_in_rationale() -> None:
     assert grade_proposal(judgment, expected).passed
 
 
+def test_forbidden_primary_keys_fails_when_a_decoy_is_named() -> None:
+    """PR2 precision: naming a decoy sibling fails the headline (over-inclusion)."""
+    expected = Expected(
+        disposition=Disposition.BREACH,
+        action_expected=True,
+        affected_primary_key="pond-A1",
+        forbidden_primary_keys=["pond-A2", "pond-A3"],
+    )
+    judgment = _judgment(
+        affected_entities=[
+            {"object_type": "Pond", "primary_key": "pond-A1"},
+            {"object_type": "Pond", "primary_key": "pond-A2"},  # a decoy
+        ]
+    )
+    grade = grade_proposal(judgment, expected)
+    assert not grade.passed
+    check = next(c for c in grade.checks if c.name == "forbidden_primary_keys")
+    assert not check.passed and not check.advisory and not check.probe
+
+
+def test_forbidden_primary_keys_passes_when_only_the_breach_is_named() -> None:
+    expected = Expected(
+        disposition=Disposition.BREACH,
+        action_expected=True,
+        affected_primary_key="pond-A1",
+        forbidden_primary_keys=["pond-A2", "pond-A3"],
+    )
+    grade = grade_proposal(_judgment(), expected)  # default names only pond-A1
+    assert grade.passed
+    assert next(c for c in grade.checks if c.name == "forbidden_primary_keys").passed
+
+
+def test_forbidden_keywords_fails_when_the_decoy_verb_is_the_title_action() -> None:
+    """PR2 precision: recommending the near-miss action (verb in the TITLE) fails."""
+    expected = Expected(
+        disposition=Disposition.BREACH,
+        action_expected=True,
+        affected_primary_key="pond-A1",
+        forbidden_keywords=["feed"],
+    )
+    grade = grade_proposal(_judgment(title="Adjust feeding schedule for pond-A1"), expected)
+    assert not grade.passed
+    assert not next(c for c in grade.checks if c.name == "forbidden_keywords").passed
+
+
+def test_forbidden_keywords_passes_when_the_decoy_verb_only_appears_in_the_body() -> None:
+    """The decoy verb may appear in description/rationale (the model ruling it out) —
+    only the TITLE (the recommended action) is checked."""
+    expected = Expected(
+        disposition=Disposition.BREACH,
+        action_expected=True,
+        affected_primary_key="pond-A1",
+        action_keywords=["aerat"],
+        forbidden_keywords=["feed"],
+    )
+    judgment = _judgment(
+        title="Start emergency aerator on pond-A1",
+        description="Aerate now; do NOT feed during the oxygen crash.",
+        rationale="Feeding would worsen the crash, so hold feed and aerate.",
+    )
+    grade = grade_proposal(judgment, expected)
+    assert grade.passed  # 'feed' is in the body, not the title
+    assert next(c for c in grade.checks if c.name == "forbidden_keywords").passed
+
+
 def test_no_declared_field_grades_false() -> None:
     """A breach item that declares no objective check cannot pass (authoring guard)."""
     expected = Expected(disposition=Disposition.BREACH, action_expected=True)

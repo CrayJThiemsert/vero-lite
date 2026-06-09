@@ -7,8 +7,9 @@
 # The 90.0 C ceiling + watch_margin 5.0 are provisional values (the energy
 # ontology carries no numeric threshold — it lives in demo/env config); pin the
 # exact ceiling against energy_v0.yaml + the demo config before the external-grade
-# RUN. 54 items: breach-weighted (28 breach with a dense boundary cluster near
-# 90.0 — the LLM-graded mass), 13 watch, 13 ok.
+# RUN. 66 items: 40 breach (28 boundary cluster near 90.0 + 12 PR2 HARD multi-entity
+# decoy / near-miss items, ids energy-h01..h12 — the discriminating mass), 13 watch,
+# 13 ok.
 #
 # Graded fields (LLM proposal): β headline = affected_primary_key (right asset) +
 # action_keywords (the 'restart' action class); α probe = valid_handlers ([restart],
@@ -135,6 +136,61 @@ items:
     description: 130.0 C — extreme over-temperature; breach.
     scenario: {event_id: energy-evt-028, entity_type: Asset, primary_key: asset-E28, measured_value: 130.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
     expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E28, valid_handlers: [restart], action_keywords: [restart, reset, reboot]}
+
+  # --- HARD breach (PR2 hardening: multi-entity decoys + near-miss action) ------
+  # Each: a clear over-temp breach among near-ceiling SAFE siblings (the model must
+  # name ONLY the breach, not the decoys → forbidden_primary_keys) + a near-miss
+  # action — monitor/schedule = passive deferral of an ACUTE breach; the model must
+  # recommend `restart` instead (forbidden_keywords). Decoys all < 90.0 (safe), most
+  # in the 85–90 watch band so they are maximally tempting.
+  - id: energy-h01
+    description: 98.0 C breach amid two near-ceiling safe assets (88.0/86.5); restart, don't defer.
+    scenario: {event_id: energy-evt-h01, entity_type: Asset, primary_key: asset-E101, measured_value: 98.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E102, measured_value: 88.0}, {primary_key: asset-E103, measured_value: 86.5}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E101, forbidden_primary_keys: [asset-E102, asset-E103], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
+  - id: energy-h02
+    description: 105.0 C breach among three watch-band siblings (89.0/87.0/85.5).
+    scenario: {event_id: energy-evt-h02, entity_type: Asset, primary_key: asset-E104, measured_value: 105.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E105, measured_value: 89.0}, {primary_key: asset-E106, measured_value: 87.0}, {primary_key: asset-E107, measured_value: 85.5}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E104, forbidden_primary_keys: [asset-E105, asset-E106, asset-E107], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
+  - id: energy-h03
+    description: 92.0 C breach (close to the ceiling) with two sub-ceiling decoys (89.5/88.0).
+    scenario: {event_id: energy-evt-h03, entity_type: Asset, primary_key: asset-E108, measured_value: 92.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E109, measured_value: 89.5}, {primary_key: asset-E110, measured_value: 88.0}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E108, forbidden_primary_keys: [asset-E109, asset-E110], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
+  - id: energy-h04
+    description: 120.0 C severe breach beside one VERY close decoy (89.9, a hair under).
+    scenario: {event_id: energy-evt-h04, entity_type: Asset, primary_key: asset-E111, measured_value: 120.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E112, measured_value: 89.9}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E111, forbidden_primary_keys: [asset-E112], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
+  - id: energy-h05
+    description: 95.5 C breach amid two safe siblings (87.5/86.0).
+    scenario: {event_id: energy-evt-h05, entity_type: Asset, primary_key: asset-E113, measured_value: 95.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E114, measured_value: 87.5}, {primary_key: asset-E115, measured_value: 86.0}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E113, forbidden_primary_keys: [asset-E114, asset-E115], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
+  - id: energy-h06
+    description: 110.0 C breach with a watch decoy (88.8) and an ok decoy (85.0).
+    scenario: {event_id: energy-evt-h06, entity_type: Asset, primary_key: asset-E116, measured_value: 110.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E117, measured_value: 88.8}, {primary_key: asset-E118, measured_value: 85.0}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E116, forbidden_primary_keys: [asset-E117, asset-E118], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
+  - id: energy-h07
+    description: 91.0 C boundary-adjacent breach among three near-ceiling decoys (89.0/88.5/86.0).
+    scenario: {event_id: energy-evt-h07, entity_type: Asset, primary_key: asset-E119, measured_value: 91.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E120, measured_value: 89.0}, {primary_key: asset-E121, measured_value: 88.5}, {primary_key: asset-E122, measured_value: 86.0}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E119, forbidden_primary_keys: [asset-E120, asset-E121, asset-E122], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
+  - id: energy-h08
+    description: 102.0 C breach with two watch-band decoys (89.2/87.8).
+    scenario: {event_id: energy-evt-h08, entity_type: Asset, primary_key: asset-E123, measured_value: 102.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E124, measured_value: 89.2}, {primary_key: asset-E125, measured_value: 87.8}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E123, forbidden_primary_keys: [asset-E124, asset-E125], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
+  - id: energy-h09
+    description: 99.0 C breach beside a single ok decoy (86.5).
+    scenario: {event_id: energy-evt-h09, entity_type: Asset, primary_key: asset-E126, measured_value: 99.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E127, measured_value: 86.5}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E126, forbidden_primary_keys: [asset-E127], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
+  - id: energy-h10
+    description: 115.0 C breach among three siblings spanning the watch band (89.5/88.0/85.5).
+    scenario: {event_id: energy-evt-h10, entity_type: Asset, primary_key: asset-E128, measured_value: 115.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E129, measured_value: 89.5}, {primary_key: asset-E130, measured_value: 88.0}, {primary_key: asset-E131, measured_value: 85.5}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E128, forbidden_primary_keys: [asset-E129, asset-E130, asset-E131], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
+  - id: energy-h11
+    description: 93.5 C breach with a very-close decoy (89.7) and a mid-watch decoy (87.0).
+    scenario: {event_id: energy-evt-h11, entity_type: Asset, primary_key: asset-E132, measured_value: 93.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E133, measured_value: 89.7}, {primary_key: asset-E134, measured_value: 87.0}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E132, forbidden_primary_keys: [asset-E133, asset-E134], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
+  - id: energy-h12
+    description: 125.0 C extreme breach amid two safe siblings (88.0/86.0).
+    scenario: {event_id: energy-evt-h12, entity_type: Asset, primary_key: asset-E135, measured_value: 125.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0, distractors: [{primary_key: asset-E136, measured_value: 88.0}, {primary_key: asset-E137, measured_value: 86.0}]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: asset-E135, forbidden_primary_keys: [asset-E136, asset-E137], valid_handlers: [restart], action_keywords: [restart, reset, reboot], forbidden_keywords: [monitor, schedule]}
 
   # --- watch (85.0 <= temp < 90.0; near the ceiling; no action) ----------------
   - id: energy-029

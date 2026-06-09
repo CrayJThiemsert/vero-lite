@@ -56,6 +56,14 @@ def scenario_to_event(scenario: Scenario, reading_parameter: str | None = None) 
     }
     if reading_parameter is not None:
         event["parameter"] = reading_parameter
+    if scenario.distractors:
+        # PR2 multi-entity hardening: sibling readings the model must NOT name as
+        # affected (they sit on the safe side of the threshold). Injected as event
+        # context so they reach the model inside the untrusted block.
+        event["other_readings"] = [
+            {"primary_key": sibling.primary_key, "measured_value": sibling.measured_value}
+            for sibling in scenario.distractors
+        ]
     event.update(scenario.context)
     return event
 
