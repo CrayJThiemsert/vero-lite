@@ -46,7 +46,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.config import settings
-from services.engine.actions import RecommendedAction
+from services.engine.actions import EntityRef, RecommendedAction
 from services.engine.llm.client import OllamaClient
 from services.engine.llm.structured import ChatClient, JudgmentResult, generate_judgment
 from services.engine.llm.trace import build_llm_audit_metadata, build_llm_reasoning_trace
@@ -89,6 +89,27 @@ def _default_client_factory(model: str) -> ChatClient:
     )
 
 
+def _loop_entity_ref(event: Mapping[str, Any]) -> EntityRef:
+    """The single, deterministically-scoped entity this action-step loop iteration
+    is processing — sourced from the loop ``event``, NOT the model's
+    ``affected_entities`` guess (which, under multi-entity input, over-names SAFE
+    sibling entities — the PLAN-0019 Part B aquaculture over-naming finding). Mirrors
+    the ``step.handler`` override: one envelope field sourced deterministically while
+    the ADR-007 D2 ``RecommendedAction`` envelope CLASS stays unchanged.
+
+    HEDGE (PLAN-0020 Phase 1, entity-key fork): assumes the event carries the
+    faithful ontology-projected keys ``object_type`` + ``primary_key`` (the shape
+    ``benchmarks/procedure_baseline/harness.scenario_to_event`` emits). The defensive
+    ``.get(..., fallback)`` chain mirrors ``recommender._rule_recommend`` so a
+    minimal/stub event degrades gracefully rather than raising. If the Tier-2
+    real-data event standardises on different entity keys, revisit this getter.
+    """
+    return EntityRef(
+        object_type=str(event.get("object_type", "unknown")),
+        primary_key=str(event.get("primary_key", event.get("event_id", "unknown"))),
+    )
+
+
 def _compose_action(
     event: Mapping[str, Any],
     vertical: str,
@@ -97,9 +118,13 @@ def _compose_action(
     handler: str,
 ) -> RecommendedAction:
     """Compose the ADR-007 D2 envelope from an LLM judgment, mirroring
-    ``recommender._compose_llm_record`` — EXCEPT ``suggested_handler`` is the
-    procedure author's declared ``step.handler`` (deterministic + allowlist-
-    bounded), not the model's guess. The model owns the judgment fields; the
+    ``recommender._compose_llm_record`` — EXCEPT two fields are sourced
+    deterministically, not from the model's guess: ``suggested_handler`` is the
+    procedure author's declared ``step.handler`` (allowlist-bounded), and
+    ``affected_entities`` is the single loop ``event`` entity (PLAN-0020 Phase 1 —
+    the model over-names safe sibling entities under multi-entity input; the executed
+    handler already fires per-deterministic-entity, so this closes the envelope's
+    over-naming metadata/UX leak). The model owns the remaining judgment fields; the
     harness owns id / vertical / created_at / audit + the hybrid trace.
     """
     judgment = result.judgment
@@ -111,7 +136,7 @@ def _compose_action(
         vertical=vertical,
         reasoning_trace=build_llm_reasoning_trace(event, vertical, result),
         confidence=judgment.confidence,
-        affected_entities=judgment.affected_entities,
+        affected_entities=[_loop_entity_ref(event)],
         suggested_handler=handler,
         handler_payload=judgment.handler_payload,
         audit_metadata=build_llm_audit_metadata(result.model),

@@ -152,6 +152,36 @@ async def test_suggested_handler_is_step_handler_not_llm_guess() -> None:
     assert outcome.output[0]["action"]["suggested_handler"] == "aerate"
 
 
+async def test_affected_entities_is_loop_entity_not_llm_overnaming() -> None:
+    """fix #2 (PLAN-0020 Phase 1): the composed envelope names ONLY the loop entity,
+    even when the model over-names safe sibling decoys in its judgment (the Part B
+    multi-entity over-naming weakness). The override is deterministic — it does NOT
+    depend on the model getting affected_entities right (Lesson #7 §3: assert the
+    composed return value, not the prompt)."""
+    registry.register_handler("aquaculture", "aerate", SpyHandler())
+    # the model over-names: the breach pond PLUS two SAFE sibling decoys ...
+    over_naming = _judgment_results(
+        1,
+        affected_entities=[
+            {"object_type": "Pond", "primary_key": "pond-A101"},  # the breach
+            {"object_type": "Pond", "primary_key": "pond-A102"},  # safe decoy
+            {"object_type": "Pond", "primary_key": "pond-A103"},  # safe decoy
+        ],
+    )
+    executor = ActionStepExecutor(client_factory=lambda _m: FakeChatClient(over_naming))
+
+    # ... but the loop entity is the single breach pond — the deterministic scope wins.
+    outcome = await executor.execute(
+        _action_step(autonomy=Autonomy.GATED),
+        [{"object_type": "Pond", "primary_key": "pond-A101", "event_id": "evt-h01"}],
+        _ctx(),
+    )
+
+    affected = outcome.output[0]["action"]["affected_entities"]
+    named = {entity["primary_key"] for entity in affected}
+    assert named == {"pond-A101"}, "only the loop entity may be named, not the decoys"
+
+
 async def test_set_valued_one_action_per_entity() -> None:
     """Set semantics: one RecommendedAction per entity in the input set (no loop)."""
     registry.register_handler("aquaculture", "aerate", SpyHandler())
