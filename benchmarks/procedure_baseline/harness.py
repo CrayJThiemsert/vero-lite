@@ -29,6 +29,7 @@ from benchmarks.procedure_baseline.schema import BenchmarkItem, Disposition, Sce
 from services.engine.llm.client import ChatResult, OllamaError
 from services.engine.llm.structured import (
     ChatClient,
+    LlmJudgment,
     StructuredOutputError,
     generate_judgment,
 )
@@ -78,6 +79,10 @@ class ItemResult:
     handler-selection probe** (``None`` when not graded or the item declares no
     probe field). ``error`` is set when the judgment path raised (a failed proposal
     = incorrect; the probe is ``None`` since no judgment exists to score).
+    ``judgment`` is the raw :class:`LlmJudgment` the proposal was graded against
+    (``None`` for the non-breach guard or an errored call), carried so a run can
+    persist it (``--dump-json``) for offline VERIFY — confirming a score is a real
+    model verdict, not a grader artifact.
     """
 
     item_id: str
@@ -90,6 +95,7 @@ class ItemResult:
     grade: GradeResult | None
     error: str | None = None
     probe_correct: bool | None = None
+    judgment: LlmJudgment | None = None
 
 
 async def evaluate_item(
@@ -158,6 +164,7 @@ async def evaluate_item(
         proposal_correct=grade.passed,
         grade=grade,
         probe_correct=grade.probe_passed,
+        judgment=result.judgment,
     )
 
 
