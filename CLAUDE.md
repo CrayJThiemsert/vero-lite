@@ -34,6 +34,8 @@ When two governance sources appear to disagree, resolve in this order:
 
 If a tier instruction conflicts with an accepted ADR, the tier instruction is stale — surface to Cray for update. If a lesson is being cited as behavior-binding without ADR backing, raise the question of whether it should be promoted.
 
+**Derived artifacts** — Tier 2.5 (`docs/for_llm/`) and Tier 2.6 (`.claude/skills/`) — carry **no independent precedence** (ADR-0017 D6). On any conflict with `CLAUDE.md`, an ADR, a convention, or a lesson, the **canonical wins** and the derived artifact is corrected.
+
 ## 2. Current Focus
 
 → See [`docs/STATUS.md`](docs/STATUS.md) for current state, in-flight work, and recent decisions.
@@ -57,11 +59,14 @@ Hybrid model: Auto Memory (private) + Repository (shared, source of truth).
 | **1** | In repo (hot) | Read every session | `CLAUDE.md`, `docs/STATUS.md` |
 | **2** | In repo (reference) | Lookup as needed | `docs/{adr,lessons,runbooks,conventions}/` including `docs/conventions/{chat,cowork}_tab_instructions.md` (canonical for Claude project tier instructions; sync target = Claude project UI) |
 | **2.5** | In repo (derived) | Curated snippets for cold-start sessions | `docs/for_llm/` |
+| **2.6** | In repo (derived) | On-demand procedural skills — git-tracked, **auto-loaded by description match** (not read every session, not deliberately pulled) | `.claude/skills/` (`git-workflow`, `code-operational-policy`) |
 | **3** | In repo (archeology) | Historical record | `docs/plans/done/`, git history |
 
 → Full details: [`docs/runbooks/memory-architecture.md`](docs/runbooks/memory-architecture.md)
 
-**Rule:** Repository = single source of truth. Auto Memory complements, never replaces. `for_llm/` snippets are derived — canonicals win on conflict. Tier instruction files in `docs/conventions/` are canonical; the Claude project UI Chat tab / Cowork tab "project instructions" field is a sync target that Cray re-pastes when canonical changes.
+**Rule:** Repository = single source of truth. Auto Memory complements, never replaces. `for_llm/` (2.5) and `.claude/skills/` (2.6) snippets are derived — canonicals win on conflict (ADR-0017 D3/D6). Tier instruction files in `docs/conventions/` are canonical; the Claude project UI Chat tab / Cowork tab "project instructions" field is a sync target that Cray re-pastes when canonical changes.
+
+**Where new knowledge goes** (the ADR-0017 D5 routing rule): a **binding rule** the agent must always obey → `CLAUDE.md` (keep it short); a **durable learning** → `docs/lessons/` (advisory); a **canonical reference / standard** you look up deliberately → `docs/conventions/` (or `docs/runbooks/` for operational how-to); a **task-triggered procedure** best surfaced automatically at the moment of need → a **Skill** (`.claude/skills/`). Bright line: a binding rule never moves into a skill (a skill that fails to trigger would silently drop it) — `CLAUDE.md` holds the rule, the skill holds the how-to. Full rule + skill-authoring conventions: [`docs/runbooks/memory-architecture.md`](docs/runbooks/memory-architecture.md).
 
 ## 5. Hardware
 
@@ -174,7 +179,7 @@ Read in this order at session start:
 | `docs/conventions/` | Tech stack, code style, glossary, tier instructions, handoff frontmatter schema (canonical) |
 | `docs/for_llm/` | Curated snippets for cold-start LLM sessions (derived from canonicals — see runbook) |
 | `tools/handoffs/` | Handoff tooling — transcript rendering, frontmatter validation (+ `handoff-frontmatter` pre-commit hook, PLAN-004 Phase B), dashboard reader (`--watch` live view, `--index` per-session `INDEX.md`) |
-| `.claude/skills/` | On-demand procedure skills for Code (`git-workflow`, `code-operational-policy`); auto-loaded by relevance so detailed how-to stays out of always-on context. Formalizing Skills as a memory tier (§4 + runbook) is a pending governance follow-up |
+| `.claude/skills/` | On-demand procedure skills for Code (`git-workflow`, `code-operational-policy`); auto-loaded by relevance so detailed how-to stays out of always-on context. **Tier 2.6** in the memory model — formalized by ADR-0017 (see §4 + the memory-architecture runbook for placement, the knowledge-placement decision rule, and authoring conventions) |
 
 ## 11. Tier 2 (Code) Operational Policy
 
@@ -190,4 +195,4 @@ deciding worktree isolation or rendering a handoff. Sources: Lesson #3,
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-06-09 (slimmed to on-demand Skills: §7 git mechanics → `git-workflow` skill, §11 worktree + transcript-handoff procedure → `code-operational-policy` skill; binding rules retained in-file, how-to/rationale extracted; §10 index gains `.claude/skills/` row. Formalizing Skills as a memory tier (§4 + runbook + ADR) is a pending governance follow-up. Prior 2026-05-26 (§7 PR/issue/release body-file line, Lesson #11; all-commits-to-main-via-PR + Lesson #10); 2026-05-23 per ADR-013 (§6 autonomy-axis note); 2026-05-22 per ADR-012; 2026-05-21 per ADR-009 D1+D5.)*
+*Last updated: 2026-06-09 (ADR-0017 "Skills as a memory tier" alignment, T2–T4: §1 derived-artifacts precedence line [D6], §4 Tier 2.6 row + the D5 knowledge-placement decision rule, §10 skills row cites ADR-0017 [pending-follow-up note resolved]; full Tier 2.6 conventions + decision rule live in the memory-architecture runbook [T5]. Prior same-day: slimmed to on-demand Skills — §7 git mechanics → `git-workflow` skill, §11 worktree + transcript-handoff → `code-operational-policy` skill; binding rules retained in-file, how-to/rationale extracted; §10 gains `.claude/skills/` row. Prior 2026-05-26 (§7 PR/issue/release body-file line, Lesson #11; all-commits-to-main-via-PR + Lesson #10); 2026-05-23 per ADR-013 (§6 autonomy-axis note); 2026-05-22 per ADR-012; 2026-05-21 per ADR-009 D1+D5.)*
