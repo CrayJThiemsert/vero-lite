@@ -127,6 +127,38 @@ The skill conventions are codified as a new **section in `docs/runbooks/memory-a
 - **Rationale (location):** one new section beside the Tier model is lower-cost than a new convention file and keeps "what a skill is" next to "where skills sit in memory"; the runbook is already the §4 detail home.
 - **Alternative considered — a dedicated `docs/conventions/skills.md`:** *Rejected for now* — viable if the conventions grow, but premature for two skills; promotable later (OQ-8).
 
+### D7 Errata (2026-06-10 — OQ-B resolved, restart-confirmed)
+
+OQ-B (the skill-loader tie-break this ADR delegated to Code) was probed
+empirically (Session 50) and **restart-confirmed** (Session 51, ~99% confidence,
+harness-reported base dirs as ground truth). Two D7 statements are corrected; the
+D7 **authority rule stands**.
+
+- **Tie-break mechanics (corrects the "project-local context wins" premise).**
+  Empirically the loader does the **opposite**: on a same-bare-name collision the
+  **global/user skill WINS over the project skill** — confirmed order
+  `C:\Users\crayj\.claude\skills\` **>** `<repo>/.claude/skills/`. The **WSL**
+  `~/.claude/skills/` root is **not scanned at all** (harness HOME = Windows side;
+  a populated WSL skills dir never surfaced). **Plugin** skills are
+  namespace-qualified (`plugin:skill`) and never bare-name-collide. The D7 *intent*
+  ("project should govern project work") is a fair preference but **the loader does
+  not enforce it** — authors must not rely on a project skill shadowing a
+  same-named global one.
+- **Factual premise corrections.** (1) `eli-cray`, cited in D7 as "the personal
+  `eli-cray` skill" at `~/.claude/skills/`, is a **command** at
+  `C:\Users\crayj\.claude\commands\eli-cray.md`, not a skill. (2) No global
+  `~/.claude/skills/` directory existed on either root before the probe; the
+  example implied a pre-existing populated global skills root that did not exist.
+- **What still stands.** The D7 **authority rule** — global/plugin skills *must not
+  encode project-binding rules* (those belong in `CLAUDE.md` / ADRs) — is
+  **unchanged and reinforced**: since a personal global skill can silently outrank a
+  project skill, a project could never safely lock a binding rule into a project
+  skill anyway.
+- **Durable home:** [`Lesson #22`](../lessons/0022-skill-loader-precedence.md)
+  (full precedence ladder + probe method + authoring guard);
+  `docs/runbooks/memory-architecture.md` §"Skill Conventions" carries the same
+  resolution order. OQ-B below is marked resolved.
+
 ## Required follow-on edits (TODOs for Code — separate commits; the AC-2 diff plan)
 
 This ADR is a Cowork draft; Code commits it and applies the edits below (ADR-009 D2 — Cowork has no write access to `CLAUDE.md`, `docs/conventions/`, or `docs/runbooks/`). **Dependency:** the §4 / §10 line context below assumes the **post-PR-#234 slimmed** `CLAUDE.md`; apply after #234 merges (this ADR may land before or after #234, but these edits reference post-#234 text — constraint per dispatch §5).
@@ -175,7 +207,7 @@ Fully reversible. The tier is documentation (§4 row + runbook section) and the 
 ## Open Questions
 
 - **OQ-A — Migration backlog (resolves dispatch OQ-8; non-binding list).** Next extraction candidates from always-on context into skills / their right homes: the `CLAUDE.md` §6 autonomy-axis archaeology note (long prose → candidate skill or lesson pointer); the §4 tier-table prose; the transcript-handoff runbook detail already pointed at by `code-operational-policy`; and **whether `for_llm/` content folds into / is retired in favor of skills** (revisit if `for_llm/` stays empty — D2). None binding; each is its own future PR.
-- **OQ-B — Skill loader tie-break (delegated to Code).** The exact harness resolution order when a project skill, a global skill (`~/.claude/skills/`), and a plugin skill share a name is loader behavior this ADR does not assert (D7). Code to confirm empirically and record (a lesson or a runbook note); this ADR fixes only the authority rule (global/plugin skills must not encode project-binding rules).
+- **OQ-B — Skill loader tie-break (delegated to Code) — RESOLVED 2026-06-10** (Session 50 probe, Session 51 restart-confirm; see **D7 Errata** above + [`Lesson #22`](../lessons/0022-skill-loader-precedence.md)). Empirical resolution order: **global/user (`C:\Users\crayj\.claude\skills\`) > project (`<repo>/.claude/skills/`)**; WSL `~/.claude/skills/` not scanned; plugin skills namespaced. This **contradicts** the D7 "project-local context wins" premise (corrected in the errata) but leaves the D7 authority rule intact.
 - **OQ-C — Skills as a formal memory tier in an ADR vs runbook-only (settled here, flagged for revisit).** This ADR formalizes the tier; if the harness-as-plugin packaging (D7 forward link) is pursued, the tier definition may need to move/duplicate into the plugin's own docs — revisit at that point.
 
 ## Alternatives Considered
