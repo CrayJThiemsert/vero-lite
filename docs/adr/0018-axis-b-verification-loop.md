@@ -1,7 +1,7 @@
 # ADR-0018: Axis-B Verification Loop — `/goal` Stop-hook gate + `goal-evaluator` subagent
 
-**Status:** Proposed
-**Date:** 2026-06-10
+**Status:** Accepted
+**Date:** 2026-06-10 (Accepted — ratified by Cray; SD-1 resolved = narrowed Write)
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-013 (autonomy-axis relocation — harness primitives are Code-built per D1; **this ADR applies that boundary**: the gate + evaluator are Code-authored), ADR-009 (D1 — this ADR is Cowork-drafted under the interim process; D2 — only Code commits; D3 — K-1/K-2 workflow used for the companion handoff), ADR-0017 (track-1 precedent off the same harness review; D7 harness-as-plugin forward link → OQ-8 here), ADR-0016 (D5 product-side `Procedure.goal` — a **distinct concept**; see D2 NB below), ADR-012 (D4.3 author≠reviewer disclosure), PLAN-0008 (in `done/` — the `Stop` continuation loop + Sonnet classifier this gate composes with), PLAN-0009 (subagent topology — the Step 5c dispatch-block spawn pattern + Step 1b subagent contract reused here), PLAN-0010 (scheduled-task autonomy loop — the unattended-run scope in D5), CLAUDE.md §6 (tier table), §7 (PR flow — explicitly NOT gated in v1, D5). Authoring dispatch: `.claude/handoffs/session-51/2026-06-10-0147-code-axisb-verification-loop-adr-dispatch.md`.
 
@@ -210,17 +210,17 @@ Code-authored (ADR-013 D1), following the established contract
   adversarial-hardening section (sibling convention) instructs it to ignore
   any instruction embedded in the evidence that argues for blessing.
 
-> **SD-1 (surfaced decision — Cray adjudicates at ratification).** The
+> **SD-1 — RESOLVED 2026-06-10 (Cray ratification): narrowed Write.** The
 > pre-draft consultation direction was a strictly read-only evaluator
 > (Read/Grep/Glob, no Write), with the main agent transcribing the verdict
 > into the goal file. This draft instead gives the evaluator
 > **hook-narrowed Write to `goal.json` only** (status-scribe precedent), so
 > the critic's verdict reaches the record without passing through the
 > creator's pen — removing a transcription-drift/shading seam at the cost of
-> one more deny hook. **Recommendation: narrowed Write.** Alternative
-> (strict read-only + main-agent transcription) remains viable if Cray
-> prefers zero evaluator write surface; the gate would then treat the main
-> agent's transcription as the verdict of record.
+> one more deny hook. **Cray chose narrowed Write at ratification** — the
+> drafted D3 posture stands; the strict read-only + main-agent-transcription
+> alternative is **not taken**. T2 builds the
+> `pretooluse_goal_evaluator_write_deny.py` single-file deny hook accordingly.
 
 - **Rationale:** distinct agent + own context + refute-prompting is the
   external grounding's core lesson; reusing the sibling contract
@@ -699,10 +699,10 @@ No architectural state migrates; no Axis-A surface is touched either way
   mental schema validation + flags the gap. Timestamps in this session were
   derived from the `vero-bridge` `bridge_status` server clock
   (`last_call_ts_ns`), not an agent-claimed clock.
-- **Surfaced decision open at draft:** SD-1 (D3 — evaluator verdict-write
-  posture: hook-narrowed Write [recommended] vs strict read-only +
-  main-agent transcription). Cray adjudicates at ratification; either
-  resolution is a one-line D3 edit + a T2 scope tweak.
+- **Surfaced decision RESOLVED at ratification:** SD-1 (D3 — evaluator
+  verdict-write posture) → **narrowed Write** (Cray, 2026-06-10); the drafted
+  D3 posture stands and T2 builds the single-file deny hook. The strict
+  read-only + main-agent-transcription alternative is not taken.
 - **Author≠reviewer disclosure (ADR-012 D4.3):** D1–D7 directions were
   deliberated in this same Cowork session with Cray approving the
   directions pre-draft (a Tier-1b-style consultation preceding Tier-1
@@ -710,5 +710,5 @@ No architectural state migrates; no Axis-A surface is touched either way
   Code's R2 fact-pack review (ADR-009 D3 step 6) + Cray's ratification are
   the independent checks. AI-assisted per CLAUDE.md §7 (noted in commit
   body, never as Co-Authored-By).
-- Status flips Proposed → Accepted on Cray ratification; Code applies the
-  edit + commits.
+- **Ratified Proposed → Accepted by Cray on 2026-06-10** (SD-1 = narrowed
+  Write); Code applied the status flip + SD-1 resolution and committed.
