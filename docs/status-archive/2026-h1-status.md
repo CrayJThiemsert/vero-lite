@@ -12,6 +12,81 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+> **Session 48 — PLAN-0019 Part B hardened re-run is COMPLETE (#228,
+> `ec073a4`, `feat(benchmark):`): the hardened benchmark now DISCRIMINATES as
+> designed, on live `gpt-oss:20b` (MS-S1, Cray-approved host-state run).** One
+> `feat(benchmark)` PR landed this turn (`feat(benchmark): hardened re-run
+> results + --dump-json verify tooling (PLAN-0019 B)`), Cray-reviewed + merged
+> via merge commit `838f0ab`. This block = the session-48 #228 reconcile
+> (head_commit `ec073a4` — the newest substantive commit per `lint_status`; the
+> #228 merge commit `838f0ab` is lint-excluded). Touched only `benchmarks/`
+> (REPORT.md, harness.py, run_benchmark.py) — **no product code.**
+>
+> **Verify, don't infer (the session-46 lesson, operationalized).** Added
+> `--dump-json` to the runner — per-item JSONL emitting verdicts + per-check
+> details + the raw `LlmJudgment` (`harness.py` `ItemResult` now carries the raw
+> judgment) — so **every score was VERIFIED against real model output, not
+> inferred.** `REPORT.md` gains a "Results — HARDENED run (2026-06-09)" section;
+> the pre-hardening baseline is retained for comparison. Raw evidence dump kept
+> as a gitignored working note under `.claude/benchmark-results/`.
+>
+> **Hardened results (2026-06-09 run; 198 items / 240 LLM calls / 0
+> StructuredOutputError).**
+> - **β headline (SD-B1 ≥ 85%):** aquaculture 60.0% (24/40), energy 97.5%
+>   (39/40), supply_chain 100% (40/40) → **overall 85.8% (103/120) — CLEARS
+>   ≥85%** (a companion warm run read 89.2% → honest β ~86–89%). β fell from a
+>   pre-hardening 100% to ~86–89% — the hard scenarios gave the headline real
+>   discriminating power, exactly as PR2 intended.
+> - **α handler-probe (own lane, NOT the headline):** aquaculture 77.5%
+>   (31/40), energy 100% (40/40), supply_chain 32.5% (13/40) → overall 70.0%
+>   (84/120).
+> - **deterministic sanity:** 100% (198/198).
+> - **latency (B-δ):** p95 22.64 s, mean 15.02 s (240 calls) → OVER the 8 s bar
+>   (~2.8×) — the same ring-fenced finding (NOT a build failure, NOT a bar move,
+>   NOT an ADR-016 reopen).
+>
+> **Verified failure modes (from the `--dump-json` capture — the discriminating
+> signal).**
+> - **aquaculture β=60% — two REAL model weaknesses:** 11× `forbidden_primary_keys`
+>   (under multi-entity input the model frames a "DO Monitoring Summary" and
+>   over-names SAFE decoy sibling ponds — e.g. `aqua-h01` names breached
+>   `pond-A101` AND safe `pond-A102`/`pond-A103`) + 7× `action_keywords`
+>   (assessment framing omits the aerate/oxygenate verb). Energy & supply_chain
+>   show NO over-naming — energy's `forbidden_primary_keys` passed on every hard
+>   item, so it handles multi-entity input markedly better (a real cross-vertical
+>   signal).
+> - **supply_chain α=32.5% is a BENIGN divergence, not a model error:** the model
+>   picks `inspect` (a defensible cold-chain action; 21/28 easy, 6/12 hard) where
+>   the dataset pins single `hold`, and crucially NEVER the dangerous near-misses
+>   `expedite`/`reroute`. β stays 100% (action_keywords admits
+>   inspect/hold/quarantine/divert). **Finding → tuning PLAN:** the α
+>   `valid_handlers` for supply_chain is plausibly too narrow (arguably
+>   `[hold, inspect]`) — a tuning-PLAN question, NOT a grader change (methodology
+>   ratified). aquaculture's α misses are likewise mostly the benign
+>   `increase_water_exchange`.
+>
+> **Bottom line.** Part B's empirical core is now closed end-to-end: the
+> hardened benchmark **discriminates** (β ~86–89%, driven by aquaculture's hard
+> scenarios surfacing real entity-precision + action-verb weaknesses), the α
+> probe surfaces a real but **benign** handler divergence, sanity stays 100%,
+> and latency is the known over-bar B-δ finding. All below-bar reads are logged
+> findings → the follow-up tuning PLAN under the B-6 ring-fence; none moves a bar
+> or reopens ADR-016.
+>
+> **Next — remaining Part B, Cray sequences.** **(1) Latency tuning PLAN** from
+> the B-δ finding (p95 22.6 s > 8 s) — OFFLINE, authored via `plan-drafter`;
+> levers: trim the `think=True` call-1 pass / batching / a faster-arch small
+> model not yet on MS-S1 / revisit the 8 s bar; **incorporate the supply-α
+> `valid_handlers`-too-narrow observation** as a candidate methodology tweak.
+> **Must NOT reopen ADR-016's primitive shape (ring-fence).** **(2) B-3
+> baselines** — raw text-to-SQL + a RAG baseline on the same questions
+> (REPORTED, not gated; acceptance = a comparison run + measures recorded) — the
+> heaviest remaining sub-step; hits MS-S1 (host-state). **(3) B-5 report
+> finalize + B-6 ring-fence wrap.** Standing backlog beyond Part B unchanged:
+> Task (C) Tier-2 real-data path (heavy-spend → Cray green-lights), PLAN-0010
+> loop handlers (soak-gated), `status_digest` v2, PLAN-004 Phase C. Sequencing
+> remains **Cray's call**.
+
 > **Session 47 — PLAN-0019 Part B hardening is COMPLETE (PR1 #224 +
 > PR2 #226): the benchmark now has the real action vocabulary, the β/α grading
 > split, AND the hard multi-entity / near-miss scenarios + precision checks.
@@ -152,6 +227,7 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-24 | **PLAN-0008 Step 5b (Sonnet classifier config-file fallback) MERGED — defeats Claude Desktop ANTHROPIC_API_KEY strip** — PR #15 → `main` (`3d4f98b`), single `fix(claude)` commit `472a91e` + merge. Diagnosed during Step 6 post-merge env-propagation verification: Claude Desktop on Windows launches `claude.exe` with `ANTHROPIC_API_KEY=""` (intentional OAuth/billing isolation); WSLENV cannot defeat even after full computer restart. Step 5 live proof passed only because Cray ran pytest from a terminal launched outside Desktop. Fix: `_sonnet_classifier.py::_resolve_api_key()` chain → env → `~/.claude/.anthropic_api_key` (chmod 600 POSIX, override via `$CLAUDE_ANTHROPIC_KEY_FILE`) → fail-closed. +10 unit tests (372 pass / 6 skip; also fixed `test_stop_continuation.py` fixture to defang via file path too). `.gitignore` extended. PLAN-0008 §Step 5 + STATUS amended. Auto-memory `project_claude_desktop_strips_anthropic_api_key.md` captured. **Live-verified inside Claude Code session**: empty env → file fallback → real Sonnet 3.04s round-trip → `proceed` decision (proof complete). **Bonus event**: my own L1 loop-detect hook (Step 2) fired on me during the 6 pragma-fix Edits — Cray ratified Bash sed workaround; hook works as designed | `3d4f98b` (PR #15) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-05-24 | **PLAN-0008 Step 6 (Wave 2 completion — autonomy-triggers row flips + PLAN closeout) MERGED** — PR #14 → `main` (`626ab23`), single `docs(claude)` commit `aa64d19` + merge. Docs-only flip of `.claude/autonomy-triggers.md` row labels from placeholder / "Phase 2 spec" wording to **LIVE** with concrete hook attribution: G1/G2/G3/G4/C1/C2/C3 → `_sonnet_classifier.py`; L1–L4 → 3-hook attribution (gate + writer + reset); status banner + "How the classifier reads this file" §flipped to LIVE with conservatism-probe evidence; footer date bumped. PLAN-0008 §Step 6 amendment box rewritten as "Step 6 closeout" with PR #11/#12/#13 lineage. `.claude/settings.json` `_comment` corrected (stub removal happened in PR #13). 362 pass / 6 skip baseline preserved (docs-only; ruff/mypy no scope). Closeout: this STATUS row | `626ab23` (PR #14) / `.claude/autonomy-triggers.md` |
 | 2026-05-24 | **PLAN-0008 Step 5 (Sonnet classifier + stub swap) MERGED + live conservatism proof + WSLENV permanent fix + session handoff to new Code** — PR #13 → `main` (`3407ae6`), single `feat(claude)` commit `ceebc1a` + merge. New `.claude/hooks/_sonnet_classifier.py` (~225 lines, stdlib urllib + 7 fail-closed paths + retry + markdown-fence extractor; pin `claude-sonnet-4-6` per OQ-B). Stop hook stub replaced via lazy-import `_classify()` wrapper with double-fallback. 17 mocked tests + 1 live opt-in (362 pass / 6 skip). **LIVE conservatism proof (Cray 2026-05-24):** bare Stop = proceed; G1/G2/C2 triggered scenarios = pause with correct row IDs; routine work = proceed. Total ~$0.005 cost. **WSLENV permanently extended** with `ANTHROPIC_API_KEY/u` so future sessions inherit the key without workaround. **Session-10 ↔ next-session handoff** at `.claude/handoffs/session-10/2026-05-24-2030-code-step5-merged-step6-kickoff.md` — Cray-directed to preserve context-window headroom + double-test WSLENV propagation from clean process tree. Closeout: this STATUS row | `3407ae6` (PR #13) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-05-24 | **PLAN-0008 Step 4 (Stop hook + L1 turn-boundary reset, expanded scope) MERGED** — PR #12 → `main` (`b09bf39`), single `feat(claude)` commit `010ae1b` + merge. 5-piece bundle: stop_continuation.py (Stop hook with re-entry guard + L1 turn-boundary reset + chain depth + cap-hit policy + classifier stub) + _loop_counter.py amendment (turn_touched field + 3 helpers) + observer amendment (records turn_touched on Write/Edit) + early Wave-2-partial settings.json wire for Stop + 26 new tests. **🔴 L1 reset gap CLOSED** per Cray-ratified scope expansion (AskUserQuestion "Expanded (Recommended)"): Stop hook reads turn_touched and resets L1 counters whose targets were NOT touched this turn, implementing PLAN §Step 1's "untouched on next turn-boundary marker" semantic. Classifier inside Stop hook is stubbed (pause-by-default) until Step 5 lands real Sonnet helper. 346 pass / 5 skip (was 320 / 5; +26: 18 stop + 7 turn_touched + 1 observer). Closeout: this STATUS row | `b09bf39` (PR #12) / `.claude/hooks/stop_continuation.py` |
