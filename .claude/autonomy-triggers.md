@@ -149,6 +149,26 @@ review, it just removes the Cray-paste relay step (resolves PLAN-0008
 OQ-D in-harness arm; cross-tab arm remains blocked by K-1/K-2 per
 ADR-013 OQ-1).
 
+## Verification-loop triggers (Axis B — ADR-0018; gate-emitted, NOT classifier-mediated)
+
+The V-row class is distinct from G/C/L/H (always-pause) and D (classifier
+dispatch) rows: the dispatch below is emitted **deterministically by
+`_goal_gate.py`** inside `stop_continuation.py` — the Sonnet classifier never
+returns it (allowed classifier `subagent` values are unchanged). Listed here
+so the classifier prompt + human review share one source of truth (the same
+belt-and-suspenders posture as the deterministic G5/H1/C4 rows). Fail
+semantics: FAIL-OPEN, loudly (ADR-0018 D4) — on LLM unavailability the goal
+records `released-unevaluated` + Telegram and the stop fires.
+
+| # | Trigger | Emitter | Subagent | Output |
+|---|---------|---------|----------|--------|
+| V1 | Active `.claude/state/goal.json` with unresolved `judge` criteria AND work-since-last-evaluation (fingerprint mismatch) at a `Stop` event | `_goal_gate.py` (deterministic) | goal-evaluator | Verdict appended to `evaluations[]` in `goal.json` (evaluator's hook-narrowed Write) |
+
+**Chain-cap interaction:** a V1 dispatch counts toward the same stop-chain
+cap-8 as classifier proceeds/dispatches — the cap remains the single loop
+bound. **Warn-only v1 (ADR-0018 D5):** a FAIL verdict never blocks a stop;
+Telegram + the verdict trail are the channel of record.
+
 ## How the classifier reads this file (LIVE in Phase 2)
 
 - The `Stop` hook (`stop_continuation.py`) reads this file path verbatim
@@ -201,4 +221,4 @@ ADR-013 OQ-1).
 
 ---
 
-*Last updated: 2026-06-08 (Session 45 — L1 path-class threshold refinement: `l1_threshold_for` (6 code / 15 prose-doc) + subagent-completion L1 reset (`_handle_agent_completion`), after L1 false-fired on multi-section governance authoring; Cray-approved per-diff self-modification. See `docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md`. Previous: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-2: PreToolUse classifier dispatch LIVE via `pretooluse_classifier_dispatch.py`; G1/G2 enforcement rows expanded with PreToolUse arm citation; "How the classifier reads this file" §flipped from "deferred to 5c-2" to "LIVE in 5c-2". Same-session: Step 5c-1 added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" §with the 3rd decision value `dispatch`. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*
+*Last updated: 2026-06-10 (Session 51 — PLAN-0021 Step 5 / ADR-0018 T3: added the **Verification-loop triggers** section with the V1 row — gate-emitted deterministic dispatch by `_goal_gate.py`, NOT classifier-mediated; classifier `subagent` values unchanged; chain-cap shared; warn-only v1. Previous: 2026-06-08 (Session 45 — L1 path-class threshold refinement: `l1_threshold_for` (6 code / 15 prose-doc) + subagent-completion L1 reset (`_handle_agent_completion`), after L1 false-fired on multi-section governance authoring; Cray-approved per-diff self-modification. See `docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md`. Previous: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-2: PreToolUse classifier dispatch LIVE via `pretooluse_classifier_dispatch.py`; G1/G2 enforcement rows expanded with PreToolUse arm citation; "How the classifier reads this file" §flipped from "deferred to 5c-2" to "LIVE in 5c-2". Same-session: Step 5c-1 added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" §with the 3rd decision value `dispatch`. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*

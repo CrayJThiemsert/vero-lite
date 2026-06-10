@@ -71,6 +71,11 @@ def stub_env(tmp_path: Path) -> dict[str, str]:
     # classifier into a live API call here.
     env.pop("ANTHROPIC_API_KEY", None)
     env["CLAUDE_ANTHROPIC_KEY_FILE"] = str(tmp_path / "nope.anthropic_api_key")
+    # PLAN-0021 M2 hermeticity: point the goal gate at a per-test (absent)
+    # goal file so a developer's live .claude/state/goal.json can never leak
+    # into these cases. Absent file = no active goal = the gate falls through
+    # — semantically identical to the pre-gate behavior for every prior case.
+    env["CLAUDE_GOAL_PATH"] = str(tmp_path / "goal.json")
     return env
 
 
@@ -770,3 +775,126 @@ def test_classifier_user_message_includes_transcript_excerpt(
     # Raw JSON payload still present (back-compat with PreToolUse callers)
     assert "## Raw payload" in user_message
     assert '"hook_event_name": "Stop"' in user_message
+
+
+# ---------------------------------------------------------------------------
+# PLAN-0021 M2 — goal-gate integration rows (ADR-0018 D4; additive only).
+# The pre-existing cases above are UNCHANGED (AC-2): with no goal.json the
+# gate falls through and the hook is byte-for-byte its pre-gate self.
+# ---------------------------------------------------------------------------
+
+GOAL_CHECK_OK = f'"{sys.executable}" -c "import sys; sys.exit(0)"'
+
+
+def _seed_goal(env: dict[str, str], criteria: list[dict[str, Any]]) -> Path:
+    goal_file = Path(env["CLAUDE_GOAL_PATH"])
+    goal_file.parent.mkdir(parents=True, exist_ok=True)
+    goal_file.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "goal": "m2 integration goal",
+                "session": 51,
+                "created": "2026-06-10T04:00:00+0000",
+                "status": "active",
+                "criteria": criteria,
+                "evaluations": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+    return goal_file
+
+
+def test_goalless_gate_is_byte_for_byte_todays_behavior(stub_env: dict[str, str]) -> None:
+    """AC-2 (the load-bearing non-interference row): with the gate present but
+    no goal file, the classifier-pause flow emits EXACTLY the pre-gate
+    contract — empty stdout, exit 0, chain reset."""
+    assert not Path(stub_env["CLAUDE_GOAL_PATH"]).exists()
+    rc, out = _run({"hook_event_name": "Stop"}, stub_env)
+    assert (rc, out) == (0, "")
+    chain = json.loads(_chain(stub_env).read_text(encoding="utf-8"))
+    assert chain["depth"] == 0
+
+
+def test_gate_dispatch_emits_block_and_counts_toward_chain(stub_env: dict[str, str]) -> None:
+    """Matrix dispatch row (e2e): active goal, green check + unresolved judge
+    -> the hook prints the GOAL-GATE DISPATCH block and depth++ (the same
+    chain-cap the classifier uses)."""
+    _seed_goal(
+        stub_env,
+        [
+            {"id": "C1", "kind": "check", "cmd": GOAL_CHECK_OK, "timeout_s": 30},
+            {"id": "J1", "kind": "judge", "desc": "judged residue"},
+        ],
+    )
+    rc, out = _run({"hook_event_name": "Stop"}, stub_env)
+    assert rc == 0
+    block = json.loads(out)
+    assert block["decision"] == "block"
+    assert "GOAL-GATE DISPATCH" in block["reason"]
+    assert "goal-evaluator" in block["reason"]
+    chain = json.loads(_chain(stub_env).read_text(encoding="utf-8"))
+    assert chain["depth"] == 1
+
+
+def test_cap_fires_before_gate_with_active_goal(stub_env: dict[str, str]) -> None:
+    """boundary-2 row: at cap depth the chain-cap releases BEFORE the gate can
+    dispatch — the cap stays the single loop bound (ADR-0018 D4)."""
+    _seed_goal(
+        stub_env,
+        [
+            {"id": "C1", "kind": "check", "cmd": GOAL_CHECK_OK, "timeout_s": 30},
+            {"id": "J1", "kind": "judge", "desc": "judged residue"},
+        ],
+    )
+    _seed_chain(stub_env, depth=8)
+    rc, out = _run({"hook_event_name": "Stop"}, stub_env)
+    assert (rc, out) == (0, "")  # cap released; no gate block
+    chain = json.loads(_chain(stub_env).read_text(encoding="utf-8"))
+    assert chain["depth"] == 0  # cap reset
+    capture = _capture(stub_env)
+    assert capture.exists()
+    assert "cap" in capture.read_text(encoding="utf-8")
+
+
+def test_fail_open_e2e_unanswered_dispatch_releases(stub_env: dict[str, str]) -> None:
+    """fail-open row (e2e): Stop #1 dispatches; nothing answers (no evaluator
+    in a subprocess test) and no work changes; Stop #2 releases the goal
+    unevaluated and the stop FIRES (empty stdout) — never a wedge.
+
+    NOTE: relies on the repo work-fingerprint being stable across the two
+    runs (this test writes only under tmp_path, never inside the repo)."""
+    goal_file = _seed_goal(
+        stub_env,
+        [
+            {"id": "C1", "kind": "check", "cmd": GOAL_CHECK_OK, "timeout_s": 30},
+            {"id": "J1", "kind": "judge", "desc": "judged residue"},
+        ],
+    )
+    rc1, out1 = _run({"hook_event_name": "Stop"}, stub_env)
+    assert rc1 == 0
+    assert "GOAL-GATE DISPATCH" in json.loads(out1)["reason"]
+    rc2, out2 = _run({"hook_event_name": "Stop"}, stub_env)
+    assert (rc2, out2) == (0, "")  # the stop fires — fail-open, no wedge
+    goal_doc = json.loads(goal_file.read_text(encoding="utf-8"))
+    assert goal_doc["status"] == "released-unevaluated"
+    capture = _capture(stub_env)
+    assert capture.exists()
+    assert "WITHOUT evaluation" in capture.read_text(encoding="utf-8")
+
+
+def test_passed_goal_stands_down_classifier_flow_unchanged(stub_env: dict[str, str]) -> None:
+    """happy-1 row (e2e, check-only): all checks green -> goal passes, then
+    the classifier pause flow proceeds unchanged (empty stdout, exit 0)."""
+    goal_file = _seed_goal(
+        stub_env,
+        [{"id": "C1", "kind": "check", "cmd": GOAL_CHECK_OK, "timeout_s": 30}],
+    )
+    rc, out = _run({"hook_event_name": "Stop"}, stub_env)
+    assert (rc, out) == (0, "")
+    goal_doc = json.loads(goal_file.read_text(encoding="utf-8"))
+    assert goal_doc["status"] == "passed"
+    capture = _capture(stub_env)
+    assert capture.exists()
+    assert "goal_gate_passed" in capture.read_text(encoding="utf-8")

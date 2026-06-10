@@ -225,6 +225,27 @@ def _classify(payload: dict[str, Any]) -> dict[str, Any]:
         }
 
 
+def _run_goal_gate(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """PLAN-0021 / ADR-0018 D4 goal gate — lazy-import wrapper.
+
+    Mirrors :func:`_classify`'s tolerance posture: a missing ``_goal_gate``
+    module or any unexpected raise inside it degrades to ``None`` (fall
+    through to the classifier flow unchanged) so the Stop hook can never
+    break on the verification layer. With no active ``goal.json`` the gate
+    itself returns ``None`` immediately (AC-2 — goal-less sessions are
+    byte-for-byte unchanged).
+    """
+    try:
+        from _goal_gate import run_goal_gate  # local import: tolerant to absence
+    except ImportError:
+        return None
+    try:
+        return run_goal_gate(payload)
+    except Exception as exc:  # never raise into the harness (D4 posture)
+        print(f"stop_continuation: goal gate raised unexpectedly: {exc}", file=sys.stderr)
+        return None
+
+
 def _proceed_block(reason: str) -> dict[str, Any]:
     """`decision: block` on Stop = continuation loop (per Anthropic
     stop-hook docs: blocking returns the agent to the loop).
@@ -346,6 +367,18 @@ def main() -> int:
         _ping_telegram(_cap_reached_payload(chain["depth"], cap))
         _reset_chain()
         return 0  # do not block; let Cray see the stop event
+
+    # Goal gate (PLAN-0021 / ADR-0018 D4) — after chain-cap, before the
+    # classifier. A dispatch directive counts toward the same chain-cap as
+    # classifier proceeds/dispatches (the cap stays the single loop bound);
+    # None = no active goal / warn-only outcome -> classifier flow unchanged.
+    gate_directive = _run_goal_gate(payload)
+    if gate_directive is not None:
+        chain["depth"] += 1
+        chain["last_proceed_ts"] = _now_iso()
+        _save_chain(chain)
+        print(json.dumps(gate_directive))
+        return 0
 
     # Classifier dispatch (real Sonnet via _sonnet_classifier, fail-closed pause).
     decision = _classify(payload)
