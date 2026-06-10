@@ -1,7 +1,7 @@
 ---
 plan: PLAN-0021
 title: Axis-B verification loop — build (goal gate + goal-evaluator; ADR-0018 T2)
-status: Draft
+status: Ready for execution
 owner: Claude Code
 created: 2026-06-10
 related_adrs:
@@ -351,16 +351,16 @@ confidence explicitly.
 
 ## Surfaced decisions (Cray adjudicates — per Cowork rule #8)
 
-- **SD-1 — `SubagentStop` Telegram notify for `goal-evaluator`?** Adding it
-  requires a `settings.json` entry **plus** `goal-evaluator` in
-  `NOTIFY_AGENT_TYPES` (`subagentstop_notify.py`) — two more modified existing
-  files beyond ADR-0018 §spec 4's statement. **Recommendation: NO for v1** —
-  the gate already Telegrams every outcome class (passed / warn /
+- **SD-1 — `SubagentStop` Telegram notify for `goal-evaluator`? — RESOLVED
+  2026-06-10 (Cray ratification): NO for v1.** Adding it would require a
+  `settings.json` entry **plus** `goal-evaluator` in `NOTIFY_AGENT_TYPES`
+  (`subagentstop_notify.py`) — two more modified existing files beyond
+  ADR-0018 §spec 4's statement. Cray adopted the recommendation: the gate
+  already Telegrams every outcome class (passed / warn /
   released-unevaluated) at the next Stop, so a completion ping is redundant;
   keeping `settings.json` untouched preserves the minimal modified surface
-  (F-1). Why Cray's call: it trades notification latency (one Stop cycle)
-  against modified-surface size — an operator-preference judgment, not
-  derivable from the ADR.
+  (F-1). The modified-existing-files diff therefore stays exactly M1–M3.
+  Revisitable with v1 operational data (OQ-8 class).
 
 ## References
 
