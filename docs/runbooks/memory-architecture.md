@@ -202,14 +202,122 @@ Three tools, one source of truth:
 ❌ **Don't:** Treat `docs/for_llm/` snippets as canonical when they conflict with CLAUDE.md or docs/
 ✅ **Do:** Update the canonical first, then regenerate the snippet
 
+❌ **Don't:** Let an always-read Tier-1 file retain content "for archeology" — retention without a size budget is monotonic growth (STATUS hit 393 KB and broke the Read tool, Lesson #23)
+✅ **Do:** Keep STATUS within the rotation policy (≤64 KB hard / 48 KB soft); archeology lives in `docs/status-archive/` + git history (Tier 3)
+
 ❌ **Don't:** Put a binding rule in a skill (a skill that fails to trigger silently drops it), or let a skill originate governance content
 ✅ **Do:** Keep binding rules in `CLAUDE.md`; a skill references the canonical and holds only how-to (ADR-0017 D3/D4)
+
+## STATUS.md Rotation Policy (Lesson #23)
+
+`docs/STATUS.md` is Tier-1 **volatile state** — always-read, never an archive.
+After it grew to 393 KB / >25k tokens and broke the Read tool + looped the
+`status-scribe` subagent (Lesson #23, PR #243), the following rules are
+**binding**. The empirically binding limit is the Read tool's **25k-token
+whole-file cap** (hit at ~83 KB for this file's ~3.3 bytes/token density —
+measured 2026-06-10), not the 256 KB byte cap.
+
+### R1 — Size budget (hard ceiling)
+
+- **Hard ceiling: 64 KB** (≈19.6k tokens at measured density; ~78% of the
+  25k-token cap). **Soft target: 48 KB.**
+- Enforcement is split by capability:
+  - **Pre-commit size guard** (deterministic, fail-closed at >64 KB) — Code
+    scopes as a follow-up; the authoritative check.
+  - **Main Code agent** — `stat` after each reconcile; >48 KB = prune harder
+    next reconcile, >64 KB = fix before commit.
+  - **`status-scribe`** — has no Bash, so it cannot byte-check; it enforces the
+    *structural* rules (R2/R3) whose counts are Grep-countable.
+
+### R2 — Rolling window
+
+- **Current Focus:** keep blocks from the **4 most-recent sessions**, capped at
+  **8 blocks** total (blocks ≠ sessions — session 49 had 3 blocks; the session
+  window carries narrative continuity, the block cap bounds multi-block
+  sessions). Older blocks rotate to the archive (R4).
+- **Recent Decisions:** keep the **newest 10 rows**; fix the header to
+  **"(last 10)"**. New rows are **pointers, not narratives: ≤ ~600 chars** —
+  full detail lives in the referenced ADR/PLAN/PR, which every row already
+  links. (The row-terseness rule is what bends the size curve long-term.)
+- **Ratified extension (Cray, 2026-06-10):** *Active TODOs* — delete `[x]`
+  items older than the session window (each is already recorded in Recent
+  Decisions and/or git history; drop, no archive needed). *Next Steps* —
+  delete superseded "MERGED"-history entries. Both sections carried
+  session-4-era content and were the next-largest bloat source after the
+  decisions table.
+
+### R3 — Frontmatter terseness (binding)
+
+`current_batch` / `next_action` / `blocked_on` are **current-session-only**:
+single-line YAML scalars, **≤ ~200 chars each**, **no `Prior:` chains, ever**.
+Narrative lives in the Current Focus body, never in frontmatter. (A 48 KB
+one-line scalar was the acute killer — one long line defeats windowed Reads
+entirely; see Lesson #23 §3.)
+
+### R4 — Archive, don't drop (move-only, never silent-delete)
+
+- Rotated content is **moved** to `docs/status-archive/` — the provisional
+  path from #243 is **ratified**. Rationale over drop-to-git-history: Current
+  Focus blocks are edited across reconciles, so reconstructing "the block as it
+  last stood" from git means spelunking many `docs(status):` commits; a flat,
+  greppable, tracked archive costs one paste at rotation time and keeps Tier-3
+  lookup cheap. (Git history remains the ultimate Tier-3 record either way —
+  nothing is ever lost by rotation.)
+- **File cadence:** the existing `2026-h1-current-focus.md` is ratified as-is.
+  From 2026 H2: one file per half-year, `docs/status-archive/<YYYY>-h<N>-status.md`,
+  carrying TWO sections — rotated Current Focus blocks AND rotated Recent
+  Decisions rows (newest at top, each tagged with its rotation date).
+- **Archive size escape:** archives are Tier-3 (grep + windowed reads only,
+  never whole-file Read), but stay under the 256 KB byte cap for sanity: if a
+  half-year file would exceed **~192 KB**, start a `-b` continuation file.
+- Deleting STATUS content **without** archiving remains forbidden (the
+  `status-scribe` adversarial-hardening posture is amended to "rotation per
+  this policy is the sanctioned path", not abandoned).
+
+### R5 — Surgical reads for `status-scribe` (binding agent rule)
+
+The scribe **never whole-file Reads `docs/STATUS.md`**. Discipline:
+
+1. Frontmatter via `Read(offset=1, limit≈30)`.
+2. Structure map via `Grep -n` on anchors (`^## `, `^> \*\*Session`).
+3. Edit-target windows of **≤ 60 lines** (empirical at 83 KB: a 170-line
+   window Read failed, a 45-line window succeeded).
+4. `Edit` with exact-match strings; never `Write` a full-file rewrite.
+
+### R6 — When rotation runs
+
+**Every reconcile** (recommended in the dispatch; adopted): each
+`status-scribe` run = prepend the new block + prune to the R2 window + emit the
+rotated content for the main agent to append to the archive file. STATUS is
+thereby self-limiting; no periodic sweep, no extra process. If a single
+reconcile cannot reach the soft target without pruning *below* the R2 window
+(e.g. one giant new block), the scribe surfaces an SD rather than over-pruning.
+
+### Responsibility matrix
+
+| Rule | status-scribe | Main Code agent | Pre-commit guard |
+|---|---|---|---|
+| R1 ceiling | — (no Bash) | `stat` check | **fail >64 KB** |
+| R2 window | **prunes every reconcile** | reviews diff | — |
+| R3 frontmatter | **writes terse** | reviews diff | — |
+| R4 archive | emits rotated text | **appends to archive file + commits** | — |
+| R5 surgical reads | **binding contract** | — | — |
+| R6 cadence | per-reconcile | serializes spawns | — |
+
+### When to deviate
+
+A block with live cross-session load-bearing content (e.g. an unresolved SD a
+future session must see) may be retained one extra window-cycle — flag it
+explicitly in the block. If STATUS repeatedly cannot fit the window under the
+soft target, that is a signal the *narrative voice* has drifted archival again;
+fix the voice (terser blocks), don't raise the ceiling.
 
 ## Maintenance Schedule
 
 | Cadence | Action |
 |---------|--------|
 | Per session | Update `docs/STATUS.md` front-matter + sections |
+| Per STATUS reconcile | `status-scribe` prunes STATUS.md to the rotation window (R2) + rotates older blocks/rows to `docs/status-archive/` (R4); pre-commit guard enforces the 64 KB ceiling (R1) |
 | Per commit | Update `docs/STATUS.md` "Recent Decisions" if applicable |
 | Weekly | Review Auto Memory for promotion candidates |
 | Per major decision | Mint ADR in `docs/adr/` |
@@ -223,4 +331,5 @@ Three tools, one source of truth:
 - ADR-003 — Service port strategy (example of Tier 2 ADR)
 - `docs/for_llm/README.md` — Tier 2.5 conventions
 - `.claude/skills/git-workflow/SKILL.md`, `.claude/skills/code-operational-policy/SKILL.md` — Tier 2.6 skill exemplars
+- `docs/lessons/0023-status-md-rotation.md` — STATUS.md bloat incident + the size-budget principle behind the rotation policy
 - Session 4 research — Original investigation (Tier 0 Auto Memory archive)
