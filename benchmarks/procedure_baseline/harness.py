@@ -106,6 +106,7 @@ async def evaluate_item(
     goal: str | None = None,
     reading_parameter: str | None = None,
     retry_budget: int = 3,
+    judgment_recorder: LatencyRecorder | None = None,
 ) -> ItemResult:
     """Evaluate one item: deterministic disposition, then (on breach) grade the
     live LLM proposal.
@@ -117,13 +118,23 @@ async def evaluate_item(
     slow model exceeding the per-call timeout) are recorded as an incorrect,
     ``error``-tagged proposal so a multi-model sweep over a slow/flaky model
     completes and reports rather than crashing mid-run (B-δ robustness).
+
+    ``judgment_recorder`` (PLAN-0020 SD-2) records the **per-judgment** wall-clock
+    — the full ``generate_judgment`` exchange (both Pattern-B calls + any retries),
+    which is the end-to-end latency a human waits on and the unit of the
+    re-ratified **≤ 30 s p95 per-judgment** acceptance bar. It is recorded on
+    BOTH the success and the error path (a failed judgment still cost wall-clock),
+    and ONLY for breach items (non-breach items make no LLM call). It is distinct
+    from the per-LLM-call timing the :class:`TimingChatClient` records (retained as
+    a lever diagnostic).
     """
     actual = classify_disposition(item.scenario)
     disposition_correct = actual == item.expected.disposition
 
     if item.expected.disposition is not Disposition.BREACH:
         # Non-breach: the engine must NOT fire an action. Deterministic guard only;
-        # no LLM call (the LLM proposal path does not run for watch/ok).
+        # no LLM call (the LLM proposal path does not run for watch/ok) — and so no
+        # per-judgment latency to record.
         return ItemResult(
             item_id=item.id,
             vertical=vertical,
@@ -136,6 +147,7 @@ async def evaluate_item(
         )
 
     event = scenario_to_event(item.scenario, reading_parameter)
+    start = time.perf_counter()
     try:
         result = await generate_judgment(
             client, event, vertical, retry_budget=retry_budget, goal=goal
@@ -152,6 +164,12 @@ async def evaluate_item(
             grade=None,
             error=str(exc),
         )
+    finally:
+        # Record the per-judgment wall-clock on every breach item — success OR
+        # error (the ``return`` in ``except`` still runs this ``finally`` first).
+        # Placed so it times only the LLM exchange, not the local grading below.
+        if judgment_recorder is not None:
+            judgment_recorder.record(time.perf_counter() - start)
 
     grade = grade_proposal(result.judgment, item.expected)
     return ItemResult(
