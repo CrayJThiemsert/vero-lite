@@ -149,6 +149,26 @@ review, it just removes the Cray-paste relay step (resolves PLAN-0008
 OQ-D in-harness arm; cross-tab arm remains blocked by K-1/K-2 per
 ADR-013 OQ-1).
 
+## Verification-loop triggers (Axis B — ADR-0018; gate-emitted, NOT classifier-mediated)
+
+The V-row class is distinct from G/C/L/H (always-pause) and D (classifier
+dispatch) rows: the dispatch below is emitted **deterministically by
+`_goal_gate.py`** inside `stop_continuation.py` — the Sonnet classifier never
+returns it (allowed classifier `subagent` values are unchanged). Listed here
+so the classifier prompt + human review share one source of truth (the same
+belt-and-suspenders posture as the deterministic G5/H1/C4 rows). Fail
+semantics: FAIL-OPEN, loudly (ADR-0018 D4) — on LLM unavailability the goal
+records `released-unevaluated` + Telegram and the stop fires.
+
+| # | Trigger | Emitter | Subagent | Output |
+|---|---------|---------|----------|--------|
+| V1 | Active `.claude/state/goal.json` with unresolved `judge` criteria AND work-since-last-evaluation (fingerprint mismatch) at a `Stop` event | `_goal_gate.py` (deterministic) | goal-evaluator | Verdict appended to `evaluations[]` in `goal.json` (evaluator's hook-narrowed Write) |
+
+**Chain-cap interaction:** a V1 dispatch counts toward the same stop-chain
+cap-8 as classifier proceeds/dispatches — the cap remains the single loop
+bound. **Warn-only v1 (ADR-0018 D5):** a FAIL verdict never blocks a stop;
+Telegram + the verdict trail are the channel of record.
+
 ## How the classifier reads this file (LIVE in Phase 2)
 
 - The `Stop` hook (`stop_continuation.py`) reads this file path verbatim
