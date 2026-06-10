@@ -66,3 +66,13 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+
+      # Rotation policy R1 (Lesson #23): docs/STATUS.md hard ceiling 64 KB /
+      # soft 48 KB. The authoritative deterministic check — the status-scribe
+      # has no Bash and can only enforce structural counts (R2/R3).
+      - id: status-size-guard
+        name: STATUS.md size guard (R1 — 64 KB hard ceiling)
+        entry: uv run python tools/check_status_size.py
+        language: system
+        files: ^docs/STATUS\.md$
+        pass_filenames: false
