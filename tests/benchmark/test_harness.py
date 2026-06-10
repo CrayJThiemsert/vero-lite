@@ -363,3 +363,56 @@ async def test_timing_chat_client_records_each_call() -> None:
     assert first.content == "a"  # pass-through
     assert len(recorder.durations) == 2
     assert all(d >= 0.0 for d in recorder.durations)
+
+
+# --- per-judgment latency (PLAN-0020 SD-2 — the ≤ 30 s p95 acceptance bar) ----
+
+
+async def test_evaluate_item_records_one_per_judgment_latency_on_breach() -> None:
+    """A breach item records exactly ONE per-judgment duration (the full two-call
+    exchange), distinct from the two per-call timings — the SD-2 per-judgment unit."""
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    recorder = LatencyRecorder()
+    client = FakeChatClient([_result("draft", thinking="r"), _result(_judgment_json())])
+
+    await evaluate_item(_breach_item(), client, vertical=_VERTICAL, judgment_recorder=recorder)
+
+    assert len(recorder.durations) == 1  # one JUDGMENT, not the two underlying calls
+    assert recorder.durations[0] >= 0.0
+    assert len(client.calls) == 2  # ...the exchange itself was still two Pattern-B calls
+
+
+async def test_evaluate_item_records_per_judgment_latency_on_error() -> None:
+    """A failed judgment still cost wall-clock — the per-judgment recorder gets its
+    duration on the error path too (the ``finally`` runs before the ``except`` returns),
+    so a slow/timing-out item is not silently dropped from the latency report."""
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    recorder = LatencyRecorder()
+
+    class _Boom:
+        async def chat(
+            self,
+            messages: list[dict[str, str]],
+            *,
+            think: bool | None = None,
+            response_format: dict[str, Any] | None = None,
+            temperature: float = 0.0,
+        ) -> ChatResult:
+            raise OllamaError("call to /api/chat failed: timeout")
+
+    result = await evaluate_item(
+        _breach_item(), _Boom(), vertical=_VERTICAL, judgment_recorder=recorder
+    )
+
+    assert result.error is not None  # errored proposal
+    assert len(recorder.durations) == 1  # ...but the wall-clock was still recorded
+
+
+async def test_evaluate_item_records_no_per_judgment_latency_for_non_breach() -> None:
+    """Watch/ok items make no LLM call, so there is no per-judgment latency to record."""
+    recorder = LatencyRecorder()
+    client = FakeChatClient([])  # would raise on any chat() call
+
+    await evaluate_item(_watch_item(), client, vertical=_VERTICAL, judgment_recorder=recorder)
+
+    assert recorder.durations == []

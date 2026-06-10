@@ -81,11 +81,15 @@ async def run_dataset(
     warm: bool,
     limit: int | None,
     recorder: LatencyRecorder,
+    judgment_recorder: LatencyRecorder,
 ) -> list[ItemResult]:
     """Evaluate every item in one vertical's dataset against the live model.
 
     The client is wrapped in a :class:`TimingChatClient` so every LLM call's
-    wall-clock duration lands in the shared ``recorder`` (B-δ p95 latency)."""
+    wall-clock duration lands in the shared ``recorder`` (B-δ per-call latency,
+    retained as a lever diagnostic). The full per-judgment exchange wall-clock
+    lands in ``judgment_recorder`` — the unit of the re-ratified SD-2
+    ≤ 30 s p95 per-judgment acceptance bar (PLAN-0020)."""
     goal, agent_model = _resolve_goal_and_model(dataset)
     model = model_override or agent_model
     base = OllamaClient(base_url=host, model=model, timeout=settings.llm_request_timeout_s)
@@ -101,6 +105,7 @@ async def run_dataset(
             vertical=dataset.vertical,
             goal=goal,
             reading_parameter=dataset.reading_parameter,
+            judgment_recorder=judgment_recorder,
         )
         results.append(result)
         _print_item(result)
@@ -171,12 +176,26 @@ def _item_record(result: ItemResult) -> dict[str, Any]:
 
 
 def _print_latency(model: str, latency: LatencySummary) -> None:
+    """Per-LLM-call latency — now a lever DIAGNOSTIC (the SD-B1 8 s-per-call bar
+    was superseded by the SD-2 per-judgment bar; this number still localises which
+    call dominates)."""
+    print(
+        f"\nLATENCY [{model}] per LLM call (lever diagnostic): "
+        f"n={latency.calls} mean={latency.mean_s:.2f}s p50={latency.p50_s:.2f}s "
+        f"p95={latency.p95_s:.2f}s max={latency.max_s:.2f}s"
+    )
+
+
+def _print_judgment_latency(latency: LatencySummary) -> None:
+    """Per-JUDGMENT latency — the re-ratified SD-2 acceptance bar (PLAN-0020): the
+    end-to-end two-call exchange wall-clock a human waits on, p95 ≤ 30 s.
+    Reports-not-gates: a p95 over the bar is a logged finding, never a build fail."""
     verdict = "PASS" if latency.within_threshold else "OVER"
     print(
-        f"\nLATENCY [{model}] per LLM call: "
+        f"\nLATENCY per JUDGMENT (end-to-end 2-call exchange — SD-2 acceptance bar): "
         f"n={latency.calls} mean={latency.mean_s:.2f}s p50={latency.p50_s:.2f}s "
         f"p95={latency.p95_s:.2f}s max={latency.max_s:.2f}s | "
-        f"SD-B1 p95 <= {latency.threshold_s:.0f}s -> {verdict}"
+        f"SD-2 p95 <= {latency.threshold_s:.0f}s -> {verdict}"
     )
 
 
@@ -184,6 +203,7 @@ async def _main(args: argparse.Namespace) -> None:
     _register_all_handlers()
     datasets = load_all(args.dataset_dir)
     recorder = LatencyRecorder()
+    judgment_recorder = LatencyRecorder()
     all_results: list[ItemResult] = []
     for dataset in datasets:
         print(f"\n=== {dataset.vertical} ({dataset.procedure}) ===")
@@ -194,12 +214,17 @@ async def _main(args: argparse.Namespace) -> None:
             warm=args.warm,
             limit=args.limit,
             recorder=recorder,
+            judgment_recorder=judgment_recorder,
         )
         all_results.extend(results)
         _print_summary(dataset.vertical, summarize(results))
     _print_summary("OVERALL", summarize(all_results))
     latency = summarize_latency(recorder.durations, threshold_s=args.latency_threshold)
     _print_latency(args.model or "per-agent", latency)
+    judgment_latency = summarize_latency(
+        judgment_recorder.durations, threshold_s=args.judgment_latency_threshold
+    )
+    _print_judgment_latency(judgment_latency)
     if args.dump_json is not None:
         lines = [json.dumps(_item_record(result)) for result in all_results]
         args.dump_json.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -209,8 +234,10 @@ async def _main(args: argparse.Namespace) -> None:
         "class) on breach items; α handler-probe = reactive-path handler-selection "
         "(suggested_handler vs the correct action_type — NOT a procedure-path decision, "
         "ADR-016 fixes that via step.handler); deterministic disposition is a separate "
-        "~100% sanity number. The three are NOT folded together. Latency = p95 per LLM "
-        "call (B-δ). B-gamma (text-to-SQL + RAG baselines) is TODO."
+        "~100% sanity number. The three are NOT folded together. Latency: per-judgment "
+        "p95 is the SD-2 acceptance bar (<= 30 s; end-to-end 2-call exchange the human "
+        "waits on); per-call p95 is retained as a lever diagnostic. B-gamma (text-to-SQL "
+        "+ RAG baselines) is TODO."
     )
 
 
@@ -222,7 +249,16 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--warm", action="store_true", help="Warm the model first (MS-S1 note).")
     parser.add_argument("--limit", type=int, default=None, help="Cap items per vertical (smoke).")
     parser.add_argument(
-        "--latency-threshold", type=float, default=8.0, help="SD-B1 p95 per-call bar (seconds)."
+        "--latency-threshold",
+        type=float,
+        default=8.0,
+        help="Per-call p95 lever diagnostic (seconds; was the superseded SD-B1 bar).",
+    )
+    parser.add_argument(
+        "--judgment-latency-threshold",
+        type=float,
+        default=30.0,
+        help="SD-2 p95 per-judgment acceptance bar (seconds; PLAN-0020 re-ratified).",
     )
     parser.add_argument(
         "--dump-json",
