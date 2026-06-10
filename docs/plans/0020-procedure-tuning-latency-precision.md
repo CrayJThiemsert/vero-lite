@@ -1,7 +1,7 @@
 ---
 plan: PLAN-0020
 title: Procedure-path tuning — latency levers + precision findings (the PLAN-0019 B-6 ring-fence follow-up)
-status: Draft
+status: Accepted
 owner: Claude Code
 created: 2026-06-09
 related_adrs:
@@ -46,13 +46,23 @@ authored_by: plan-drafter subagent (in-harness; ADR-009 D1 interim authoring und
 
 ## 1. Status
 
-**Draft** — authored 2026-06-09 by the `plan-drafter` subagent. Moves to
-**Proposed** then **Accepted** on Cray ratification. The number (**0020**) and
-the four-item scope below were **G2-approved by Cray on 2026-06-09**; this draft
-records that approval, it does not re-open it. The one item that requires a
-*further, separate* Cray decision before any edit — **item #4** (a
-benchmark-methodology change) — is **gated** and is surfaced as **SD-1** below;
-the PLAN proposes + analyzes it, it does **not** pre-authorize it.
+**Accepted** — ratified by Cray on **2026-06-11** (Draft → Accepted; the
+intermediate Proposed step was collapsed into ratification). Authored 2026-06-09
+by the `plan-drafter` subagent. The number (**0020**) and the four-item scope
+below were **G2-approved by Cray on 2026-06-09**. At ratification Cray also
+resolved **both** surfaced decisions (§8):
+
+- **SD-1 = WIDEN** the supply_chain α expected-set `[hold]` → `[hold, inspect]`.
+  The gated methodology change is now **authorized**, with the approval recorded
+  **before** any dataset/grader edit (AC-4b anti-moving-target). Step 9 makes the
+  edit + re-runs + records the α delta.
+- **SD-2 = MOVE the latency acceptance bar** from SD-B1's **8 s p95 per-call** to
+  **≤ 30 s p95 per-judgment** (end-to-end two-call wall-clock), **reports-not-gates**,
+  superseding SD-B1's latency bar (β ≥ 85% unchanged).
+
+Both resolutions are recorded verbatim in §8. The bar move (SD-2) is the
+explicit Cray re-ratification that AC-X1 / §5 require — the ring-fence is
+honored, not breached.
 
 ## 2. Context — the evidence this PLAN acts on
 
@@ -165,8 +175,10 @@ does not gate.
   whether **8 s p95** is the right bar for a **two-call** reasoning exchange on
   MS-S1 hardware (it is a *per-call* bar; a two-call judgment = 2× wall-clock the
   human waits). A bar-**review** is allowed as a reported analysis; **actually
-  CHANGING the bar requires Cray re-ratification** (surfaced as SD-2) — this PLAN
-  does not move it.
+  CHANGING the bar requires Cray re-ratification** (surfaced as SD-2). **SD-2
+  RESOLVED at ratification (2026-06-11): the bar IS moved to ≤ 30 s p95
+  per-judgment** — this AC-1d analysis now documents that move's rationale
+  (per-call vs per-judgment wall-clock; why 30 s/judgment is the right unit).
 - [ ] **AC-1e — Recommendation emerges.** REPORT.md states a clear
   recommendation: which lever(s) to adopt, or "8 s bar revisited" with the
   re-ratification ask, grounded in the measured deltas above.
@@ -220,8 +232,10 @@ does not gate.
 ### Cross-cutting
 
 - [ ] **AC-X1 — Ring-fence honored.** Every below-bar result remains a **logged
-  finding**; **no bar is moved** (8 s p95, β ≥ 85%) without explicit Cray
-  re-ratification; **ADR-016's primitive shape is untouched**; no silent
+  finding**; **no bar is moved** (β ≥ 85% unchanged; the latency bar was
+  re-ratified by Cray via SD-2 on 2026-06-11 from 8 s p95 per-call to ≤ 30 s p95
+  per-judgment — an explicit re-ratification, not a silent move) without explicit
+  Cray re-ratification; **ADR-016's primitive shape is untouched**; no silent
   grader / dataset / methodology change.
 
 ## 5. Out of Scope / ring-fence (state explicitly)
@@ -232,7 +246,9 @@ does not gate.
 - ❌ **NO moving the pre-registered bars** (SD-B1 **8 s p95**, **β ≥ 85%**)
   without explicit Cray re-ratification. The benchmark **REPORTS**, it does not
   gate. A bar *review* (AC-1d) is allowed as reported analysis; a bar *change* is
-  SD-2 (Cray).
+  SD-2 (Cray). **SD-2 RESOLVED 2026-06-11: the latency bar is re-ratified by Cray
+  to ≤ 30 s p95 per-judgment (β ≥ 85% unchanged)** — the explicit re-ratification
+  this line requires; the ring-fence is honored, not breached.
 - ❌ **NO silent grader / dataset / methodology change.** Item #4 is **gated**
   behind explicit Cray re-ratification (SD-1); it is proposed + analyzed here, not
   pre-authorized.
@@ -345,6 +361,11 @@ execution or commit authority. Host-state runs are **Cray-gated** (ASK Cray).
   ring-fence + the PLAN-0019 "ratify methodology BEFORE the scored run" discipline
   guard against. It MUST be Cray-re-ratified **before** any edit; this PLAN only
   proposes + analyzes it.
+  **→ RESOLVED — Cray APPROVED (2026-06-11): WIDEN to `[hold, inspect]`.** The
+  gated methodology change is authorized; this approval is recorded **here,
+  before** any dataset/grader edit (AC-4b anti-moving-target — the approval
+  pre-dates the edit in the record, not the reverse). Step 9 makes the α
+  expected-set edit + re-runs + records the α delta in REPORT.md.
 
 - **SD-2 (item #1d — is the 8 s p95 the right bar for a TWO-CALL exchange?) —
   REVIEW allowed here; a bar CHANGE needs Cray re-ratification.**
@@ -360,6 +381,17 @@ execution or commit authority. Host-state runs are **Cray-gated** (ASK Cray).
   *Why a Cray decision:* SD-B1 is a Cray-ratified pre-registered bar; reviewing it
   is fine, **changing** it (the number OR its operational definition) is a Cray
   re-ratification, never a Code judgment call.
+  **→ RESOLVED — Cray (2026-06-11): bar MOVED to ≤ 30 s p95 per-judgment.** The
+  acceptance bar changes from SD-B1's **8 s p95 per-call** to **≤ 30 s p95
+  per-judgment** (end-to-end two-call wall-clock — the unit the human waits on).
+  **Reports-not-gates:** < 30 s = gain; > 30 s = a logged finding with a
+  task-complexity rationale. The per-call number is retained as a lever
+  diagnostic. This **supersedes SD-B1's latency bar**; **β ≥ 85% is unchanged**.
+  Operationally requires a small offline harness add (a per-judgment latency
+  timer; today the recorder times per-call). Unit chosen per-judgment (not
+  per-call) specifically to avoid a moving target: at 30 s per-call the current
+  22.6 s would pass purely by the bar move, whereas 30 s per-judgment keeps the
+  levers load-bearing.
 
 ## 9. References
 
