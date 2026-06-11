@@ -54,7 +54,8 @@ the **Handler-determinism finding** below for why handler-selection is split out
   the false-positive guard: watch/ok items assert the engine does NOT fire.
 - **Latency** (B-δ): p95 **per LLM call** (= per affected entity = 2 Pattern-B
   calls), measured **warm-first** on an otherwise-quiesced MS-S1. Threshold:
-  **≤ 8 s** (SD-B1).
+  **≤ 8 s** (SD-B1) — **superseded 2026-06-11 by SD-2: ≤ 30 s p95 per-judgment**
+  (end-to-end; see [Results — PLAN-0020 tuning](#results--plan-0020-tuning-2026-06-11--the-nudge-effect--the-latency-lever)).
 
 ### Handler-determinism finding (the reason for the β/α split)
 
@@ -165,6 +166,150 @@ safe siblings) and an action-verb-omission framing habit; the α probe surfaces 
 the dangerous near-misses). Both feed the follow-up tuning PLAN under the B-6 ring-fence;
 neither moves a bar or reopens ADR-016. The per-item `--dump-json` capture is the evidence
 trail behind every number above.
+
+## Results — PLAN-0020 tuning (2026-06-11) — the nudge effect + the latency lever
+
+The PLAN-0020 host-state runs (`gpt-oss:20b` on MS-S1 `192.168.1.133:11434`,
+Cray-approved, warm-first, instrumented; every per-item judgment
+`--dump-json`-VERIFIED). These are the **first measurements WITH the Phase-1
+aquaculture prompt nudge** (PR #232) live — its β effect was UNMEASURED until now.
+Three full runs over all 198 items (120 graded breach × the Pattern-B exchange),
+one per `reasoning_mode` (the AC-1a think-trim lever).
+
+> **Latency bar = SD-2 (re-ratified 2026-06-11): ≤ 30 s p95 PER-JUDGMENT** (the
+> end-to-end two-call wall-clock the human waits on), superseding SD-B1's 8 s
+> per-call bar. Reports-not-gates. The per-call number is retained as a lever
+> diagnostic. See AC-1d below for the analysis behind the unit change.
+
+### The Phase-1 prompt nudge worked — dramatically (R1 = full mode = the measured nudge effect)
+
+| metric | hardened baseline (2026-06-09, pre-nudge) | R1 full (2026-06-11, with nudge) |
+|---|---|---|
+| β overall | 85.8% | **100.0%** (120/120) |
+| β aquaculture | 60.0% | **100.0%** (40/40) |
+| α overall | 70.0% | **100.0%** (120/120) |
+| α supply_chain | 32.5% | **100.0%** (40/40) |
+| latency p95 per call | 22.64 s | 16.50 s |
+
+**VERIFIED from the dump** (a suspiciously-uniform 100% demands the session-46
+"confirm, don't infer" check — applied in reverse, to a *high* score): 0
+`proposal_correct:false`, 0 `probe_correct:false`; supply_chain 40/40 `hold` and
+**0 `inspect`**; **0 `forbidden_primary_keys` failures** (no over-naming on any
+item, incl. the hard `*-h01..h12`); aquaculture/energy 80 canonical handlers, 0
+`increase_water_exchange`. The grader is the SAME one that scored 60% / 32.5%
+pre-nudge — it still discriminates (R2a/R2b below both drop below 100% on α), so
+the jump is a real model improvement, **not a grader artifact**.
+
+The nudge targeted aquaculture over-naming + verb-omission; two of its effects
+were unplanned:
+- **aquaculture over-naming** (11× `forbidden_primary_keys` → **0**) + **verb-
+  omission** (7× `action_keywords` → 0): aqua β 60% → 100%.
+- **supply_chain handler selection** (unplanned): "state the action verb in the
+  title" pushed the model from `inspect` (the benign 32.5% α divergence) to the
+  canonical `hold` (**0 `inspect`**) → supply α 32.5% → 100%. *(See SD-1 note.)*
+- **latency** (unplanned): shorter, more-focused generations → per-call p95
+  22.64 s → 16.50 s.
+
+### Latency levers (AC-1a / AC-1e) — the think-trim sweep
+
+One full 120-breach run per mode. Per-judgment latency = the end-to-end wall-clock
+the human waits on (the SD-2 unit).
+
+| `reasoning_mode` | calls / judgment | β overall | α overall | **per-judgment p95** | per-call p95 | vs SD-2 ≤ 30 s |
+|---|---|---|---|---|---|---|
+| `full` (shipped) | 2 | 100.0% | 100.0% | **31.80 s** | 16.50 s | ❌ OVER (by 1.8 s) |
+| `think_off` | 2 | 98.3% | 98.3% | **40.96 s** | 22.51 s | ❌ OVER (*slower*) |
+| **`skip`** | **1** | **100.0%** | 98.3% | **21.62 s** | 21.62 s | ✅ **PASS** |
+
+**`think_off` is a dead lever.** `think=False` on call-1 did NOT reduce latency —
+it was *slower* than `full` (per-judgment p95 40.96 s vs 31.80 s; the per-call
+*median* p50 was also slower, 13.37 s vs 10.83 s, so it is not a tail-outlier
+artifact). gpt-oss:20b generates a full structured draft on call-1 regardless of
+the `think` flag, so dropping the reasoning *block* saves no generation cost. It
+also cost ~1.7 % β (2 items, both explainable below). **Discard.**
+
+**`skip` is the latency lever — a strict win on the procedure path.** Dropping
+call-1 entirely (a single structured call from the event) cut per-judgment p95 to
+**21.62 s, under the 30 s bar**, while **β stayed 100 %** (0 `proposal_correct:
+false`; 40/40 `hold`, 0 over-naming — the same quality as `full`). The reasoning
+pass adds **nothing** to the β headline given the nudged prompt; it was purely a
+latency tax. The only cost is α (the reactive-path handler *guess*): 2 aquaculture
+items (`aqua-014`, `aqua-h05`) picked `dispatch_technician` over
+`start_emergency_aerator` → α 98.3 %. **This does not touch the procedure
+product**, which overrides the handler deterministically with the author's
+`step.handler` (ADR-016 D3) — the α probe is a reactive-path / future-autonomy
+signal only.
+
+### AC-1d — the 8 s-bar review (the analysis behind SD-2)
+
+SD-B1 was **8 s p95 per LLM call**, but a procedure judgment is a **two-call**
+Pattern-B exchange, so the human waits ~2× per affected entity. The
+operationally-meaningful unit is therefore **per-judgment** (end-to-end), not
+per-call. Empirically:
+- per-**call** p95 ranged 16.5–22.5 s across the three runs — **noisy**:
+  local-model latency varies run-to-run (`full` and `think_off` share the 2-call
+  shape yet measured 31.80 s vs 40.96 s per-judgment, ~±10 s of noise).
+- per-**judgment** ≈ 2× per-call for the 2-call modes (~30–41 s), ≈ 1× for `skip`
+  (~22 s).
+- The 8 s per-call bar implied a ~16 s end-to-end floor the pinned model never
+  approached. **30 s per-judgment** is the real human wait and the unit Cray
+  re-ratified (**SD-2**). Under it, `skip` PASSES and `full` is marginally OVER.
+
+### AC-1e — recommendation
+
+**Adopt `reasoning_mode="skip"` on the procedure path.** It is the only lever
+that clears the SD-2 30 s per-judgment bar (21.62 s) and it does so at **zero β
+cost** (the reasoning pass is redundant given the nudged prompt). `think_off` is
+discarded (slower).
+
+**One trade-off for a separate design call (NOT decided here):** `skip` removes
+the call-1 reasoning narrative (`thinking` / `draft`) from the ADR-010 hybrid
+audit trail — the model-asserted `rationale` survives (it is an `LlmJudgment`
+field), but the step-by-step reasoning narrative does not. Whether human-review /
+audit needs that narrative, or the rationale suffices, is a Cray / ADR-010
+decision. **Wiring `skip` into the product** (`Agent` / `action_step`) is a
+follow-up, not part of this measure-and-report PLAN.
+
+### AC-1b — request batching (negative finding)
+
+Batching the per-step entity judgments on a single quiesced MS-S1 yields **no
+per-judgment wall-clock benefit**: one Ollama instance on one GPU serializes
+concurrent generations, so N concurrent judgments take ~N× the time regardless.
+And `skip` already reduces each judgment to one call, so the 2N→N call-count
+motivation is largely moot. **Recorded as infeasible-without-benefit on the
+current single-host topology** (a valid negative per AC-1b); a multi-GPU /
+multi-replica MS-S1 would change this.
+
+### AC-1c — faster-architecture model (deferred; pin holds)
+
+No new genuinely-faster-architecture candidate was evaluated this round. The G-3
+sweep already established the pin is best on both axes among 12 B–35 B local
+models, and a **Cowork research dispatch** (why gpt-oss:20b wins → a
+model-selection rubric) is in flight to pre-screen future candidates *before*
+spending an MS-S1 warm cycle. **The ADR-001 pin HOLDS**; candidate screening is
+delegated to that rubric (a future swap, gated on ADR-001 re-ratification).
+
+### SD-1 implication — the supply_chain α divergence has DISAPPEARED
+
+SD-1 (widen supply_chain α `valid_handlers` `[hold]` → `[hold, inspect]`) was
+motivated by the model picking `inspect`. **With the nudge the model now picks
+`hold` (0 `inspect` across all 40 supply items in every 2026-06-11 run).** The
+divergence that justified widening the expected-set is gone, so **SD-1's
+empirical motivation is moot** — widening would be harmless but no longer corrects
+a real mis-report. Surfaced at Step 9 for the gated decision.
+
+### Caveats
+
+- **One run per mode** (local model is non-deterministic). An earlier 2-item
+  smoke showed aquaculture α can vary (an item picked `increase_water_exchange`);
+  a companion run would establish the honest range. The β / latency *directions*
+  are robust (skip's single-call structural halving; the nudge's over-naming fix
+  is 0/40 across runs).
+- **Two observed failure modes** (reports-not-gates findings, not addressed
+  here): `aqua-028` hedges "WATCH" at the inclusive boundary (DO = 4.0 exactly) —
+  consistent across runs; `energy-027` emitted a non-breaking hyphen
+  (`asset‑E27`, U+2011) in the entity key, breaking exact-match (a future grader
+  could normalize hyphens).
 
 ## Calibration log (pre-scored-run; Cray-ratified 2026-06-08)
 
