@@ -416,3 +416,16 @@ async def test_evaluate_item_records_no_per_judgment_latency_for_non_breach() ->
     await evaluate_item(_watch_item(), client, vertical=_VERTICAL, judgment_recorder=recorder)
 
     assert recorder.durations == []
+
+
+async def test_evaluate_item_threads_reasoning_mode_skip_to_single_call() -> None:
+    """PLAN-0020 lever: ``reasoning_mode`` is threaded into ``generate_judgment`` —
+    ``skip`` runs a single (structured) call instead of the two-call exchange."""
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    client = FakeChatClient([_result(_judgment_json())])  # only ONE canned result
+
+    result = await evaluate_item(_breach_item(), client, vertical=_VERTICAL, reasoning_mode="skip")
+
+    assert result.proposal_correct is True
+    assert len(client.calls) == 1  # skip -> single structured call (no reasoning call)
+    assert client.calls[0]["has_format"] is True

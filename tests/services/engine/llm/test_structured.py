@@ -100,6 +100,50 @@ async def test_valid_json_first_try() -> None:
     assert out.model == "gpt-oss:20b"
 
 
+async def test_reasoning_mode_full_is_two_calls_with_think_on() -> None:
+    """PLAN-0020 lever, default `full`: call 1 reasons (think=True), call 2 structures."""
+    registry.register_handler("energy", "echo", _noop_handler)
+    client = FakeChatClient([_result("draft", thinking="r"), _result(_valid_json())])
+
+    out = await generate_judgment(client, _EVENT, "energy", reasoning_mode="full")
+
+    assert len(client.calls) == 2
+    assert client.calls[0]["think"] is True  # call 1 reasons with extended thinking
+    assert client.calls[0]["has_format"] is False
+    assert client.calls[1]["has_format"] is True  # call 2 is the constrained emit
+    assert out.draft == "draft" and out.thinking == "r"
+
+
+async def test_reasoning_mode_think_off_keeps_two_calls_but_call1_think_false() -> None:
+    """`think_off`: the two-call shape is retained, but call 1 drops extended thinking
+    (think=False) — and call 1 has no format, so Ollama #15260 does not apply."""
+    registry.register_handler("energy", "echo", _noop_handler)
+    client = FakeChatClient([_result("draft", thinking=None), _result(_valid_json())])
+
+    out = await generate_judgment(client, _EVENT, "energy", reasoning_mode="think_off")
+
+    assert len(client.calls) == 2
+    assert client.calls[0]["think"] is False  # call 1 reasons WITHOUT extended thinking
+    assert client.calls[0]["has_format"] is False
+    assert client.calls[1]["has_format"] is True
+    assert out.draft == "draft"
+
+
+async def test_reasoning_mode_skip_is_a_single_structured_call() -> None:
+    """`skip`: call 1 is omitted entirely — exactly one (structured) call, and the
+    returned draft/thinking are empty since no reasoning output existed."""
+    registry.register_handler("energy", "echo", _noop_handler)
+    client = FakeChatClient([_result(_valid_json())])  # only ONE canned result
+
+    out = await generate_judgment(client, _EVENT, "energy", reasoning_mode="skip")
+
+    assert len(client.calls) == 1
+    assert client.calls[0]["has_format"] is True  # the lone call is the constrained emit
+    assert client.calls[0]["think"] is None  # the structured call never sets think
+    assert out.draft == "" and out.thinking is None
+    assert out.judgment.suggested_handler == "echo"  # still a valid judgment
+
+
 async def test_malformed_then_valid_recovers_within_budget() -> None:
     """§7.2: malformed-then-valid recovers; the retry count is asserted."""
     registry.register_handler("energy", "echo", _noop_handler)

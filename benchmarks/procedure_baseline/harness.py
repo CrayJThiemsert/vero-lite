@@ -30,6 +30,7 @@ from services.engine.llm.client import ChatResult, OllamaError
 from services.engine.llm.structured import (
     ChatClient,
     LlmJudgment,
+    ReasoningMode,
     StructuredOutputError,
     generate_judgment,
 )
@@ -107,6 +108,7 @@ async def evaluate_item(
     reading_parameter: str | None = None,
     retry_budget: int = 3,
     judgment_recorder: LatencyRecorder | None = None,
+    reasoning_mode: ReasoningMode = "full",
 ) -> ItemResult:
     """Evaluate one item: deterministic disposition, then (on breach) grade the
     live LLM proposal.
@@ -150,7 +152,12 @@ async def evaluate_item(
     start = time.perf_counter()
     try:
         result = await generate_judgment(
-            client, event, vertical, retry_budget=retry_budget, goal=goal
+            client,
+            event,
+            vertical,
+            retry_budget=retry_budget,
+            goal=goal,
+            reasoning_mode=reasoning_mode,
         )
     except (StructuredOutputError, OllamaError) as exc:
         return ItemResult(
