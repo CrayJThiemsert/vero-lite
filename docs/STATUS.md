@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-11T17:40:07+07:00
+last_updated: 2026-06-11T22:08:48+07:00
 session: 54
-current_batch: 'Session 54 — PLAN-0022 (tiered decision routing) RATIFIED Draft→Ready for execution (#261, 46061b7): Cowork-drafted (#259), Code R2-reviewed (FP-1/FP-2 re-verified vs HEAD), Cray accepted SD-1..SD-7 per rec + S-1 keep ammonia; § Execution Order added (Phase 0 ADR-016 amendment → Phase 1 taxonomy∥config → Phase 2 evaluate executor→watch→gated → Phase 3 scoring). Build-Vertical narratives + gpt-oss rubric received as gitignored research.'
+current_batch: 'Session 54 — PLAN-0022 Phase 0 DONE: ADR-0019 (watch→gated-proposal routing) ACCEPTED + merged (#263, 137766c) — the CLAUDE.md §8 gate for PLAN-0022. Cray chose OQ-1 form (b) = follow-on ADR; Cowork-authored (after G1/G2 PreToolUse gates correctly blocked Code authoring the ADR — ADR-009 D1), Code R2-verified verbatim + committed. PLAN-0022 itself ratified Ready (#261). Next = Phase 1 (grader taxonomy ∥ config).'
 current_actor: code
 blocked_on: 'Nothing gates shipped work. No open PRs.'
-next_action: 'Implement PLAN-0022 per § Execution Order — Phase 0: author + land the ADR-016 D3 amendment FIRST (CLAUDE.md §8 gate, blocks only the engine work); then Phase 1 (Step 1 grader taxonomy ∥ Step 3 config — define the tier taxonomy + watch-band math once), Phase 2 (the deterministic evaluate executor → watch→gated routing), Phase 3 (escalation scoring). Also HELD: an R3-adjacent MS-S1 warm-cycle (pin vs 3 nemotron-3-nano + U-1 MXFP4-vs-Q4_K_M) when a maintenance window opens — no eval yet, no ADR-0001 change.'
-head_commit: 46061b7
-recent_commits: [46061b7, f5eba1b, a6125c1, 4968f51, ac56653, bef462f, a3a6f54, 19706eb]
+next_action: 'Implement PLAN-0022 Phase 1 — now UNBLOCKED (Phase 0 ADR-016/ADR-0019 §8 gate landed #263): Step 1 grader taxonomy ∥ Step 3 config (define the tier taxonomy + watch-band math once) → Phase 2 (the deterministic evaluate executor → watch→gated routing) → Phase 3 (escalation scoring). Process note: NEW ADRs/PLANs are Cowork-authored → Code commits (G1/G2 gate Code''s direct ADR Write/Edit). Also HELD: an R3-adjacent MS-S1 warm-cycle (pin vs 3 nemotron-3-nano + U-1 MXFP4-vs-Q4_K_M) when a window opens — no eval yet, no ADR-0001 change.'
+head_commit: 137766c
+recent_commits: [137766c, 46061b7, f5eba1b, a6125c1, 4968f51, ac56653, bef462f, a3a6f54]
 ---
 
 # vero-lite — Project Status
@@ -48,11 +48,17 @@ recent_commits: [46061b7, f5eba1b, a6125c1, 4968f51, ac56653, bef462f, a3a6f54, 
 > deterministic watch band only, no ADR-010 reopen; SD-4=a reuse
 > `forbidden_keywords`; SD-5=a fields on the `Step`; SD-6=a evaluate executor in
 > the impl PR) + **S-1 keep ammonia**; status flipped Draft → Ready for
-> execution + a **§ Execution Order** (dependency-sequenced) added. **NEXT
-> (implementation, later PR):** **Phase 0** lands the **ADR-016 D3 amendment**
-> first (CLAUDE.md §8) → Phase 1 grader taxonomy ∥ config (define once) → Phase 2
-> the deterministic `evaluate` executor → `watch→gated` → Phase 3 escalation
-> scoring. Trigger = engine watch band, never `confidence` (ADR-010 IN-3).
+> execution + a **§ Execution Order** (dependency-sequenced) added. **Phase 0 DONE**
+> (#263, `137766c`): **ADR-0019** (`watch→gated`-proposal routing) ratified
+> **Accepted** + merged — the CLAUDE.md §8 gate. Cowork authored the **option-(b)**
+> follow-on ADR (Cray's OQ-1 pick) after the **G1/G2 PreToolUse gates correctly
+> blocked Code's direct ADR write** (ADR-009 D1: Cowork authors, Code commits);
+> Code R2-verified verbatim + committed. *(A transient classifier-bridge timeout
+> first fail-closed the gate with a misleading "policy" deny — diagnosed, bridge
+> confirmed healthy; memory updated.)* **NEXT (implementation):** Phase 1 grader
+> taxonomy ∥ config (define once) → Phase 2 the deterministic `evaluate` executor →
+> `watch→gated` → Phase 3 escalation scoring. Trigger = engine watch band, never
+> `confidence` (ADR-010 IN-3).
 > AI-assisted (Claude Code, session 54); no `Co-Authored-By` per CLAUDE.md §7.
 >
 > **Session 53 — PLAN-0020 (Procedure-path tuning) is COMPLETE
@@ -341,6 +347,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-11 | **ADR-0019 (`watch → gated`-proposal routing) ACCEPTED + merged (#263, `137766c`, session 54)** — PLAN-0022 **Phase 0** governance gate (CLAUDE.md §8; merges before the impl PR). Cray chose **OQ-1 form (b)** = a follow-on ADR over an in-place ADR-016 amendment. Sanctions routing the deterministic `watch` set → a `gated` `action` proposal (LLM proposes → human decides via `resolve_gated_step`); **extends ADR-016 D3** — no primitive / auto-gated / ceiling / allowlist change; trigger = engine verdict, never `confidence` (ADR-010 IN-3). **Authored by Cowork** — the G1/G2 PreToolUse gates correctly blocked Code's *direct* ADR Write/Edit (ADR-009 D1: Cowork authors, Code commits); Code R2-verified verbatim + committed. Includes an ADR-016 forward pointer + the Morning-Pond Step 4 row (`human_task` → gated proposal, SD-1=a). *(A transient classifier-bridge timeout first fail-closed the gate; diagnosed + healthy.)* | `137766c` (#263) / `docs/adr/0019-watch-gated-proposal-routing.md` + `docs/adr/0016-*` |
 | 2026-06-11 | **PLAN-0022 (tiered decision routing) RATIFIED Draft → Ready for execution (#261, `46061b7`, session 54)** — Cowork-drafted (ADR-009 D1, #259); Code R2-reviewed, re-verifying the two load-bearing fact-pack catches vs HEAD (**FP-2/SD-6:** no deterministic `evaluate` executor in `services/engine/procedures/` — only `ActionStepExecutor`; a real prerequisite for `watch→gated`; **FP-1/SD-7:** aquaculture `procedures.yaml` routes `watch→human_task`, an *upgrade* target not silence). Cray accepted **SD-1..SD-7 per recommendation** (SD-1=a gated replaces human_task; SD-2=a deterministic watch band only, no ADR-010 reopen; SD-4=a reuse `forbidden_keywords`; SD-5=a fields on the `Step`; SD-6=a evaluate executor in the impl PR) + **S-1 keep ammonia**. Added **§ Execution Order**: Phase 0 ADR-016 D3 amendment first (CLAUDE.md §8) → Phase 1 grader taxonomy ∥ config (define once) → Phase 2 `evaluate` executor → `watch→gated` → Phase 3 escalation scoring. Trigger = engine watch band, never `confidence` (ADR-010 IN-3). Impl = later separate PR. Also received (gitignored research): 3 Build-Vertical narratives + the gpt-oss rubric R1–R6 | `46061b7` (#261) / `docs/plans/0022-tiered-decision-routing.md` |
 | 2026-06-11 | **PLAN-0020 (Procedure-path tuning) COMPLETE + archived to done/ (#251–#256, `a6125c1`, session 53)** — the PLAN-0019 B-6 ring-fence follow-up. All `--dump-json`-VERIFIED on `gpt-oss:20b`/MS-S1: the Phase-1 aqua prompt nudge (PR #232, prev. UNMEASURED) worked dramatically — overall β `85.8%→100%`, aqua β `60%→100%`, overall α `70%→100%` (supply α `32.5%→100%`: model now picks `hold` not `inspect`). Latency lever: new `reasoning_mode=skip` (drop call-1 reasoning) cuts p95 `31.80s→21.62s` UNDER the 30s bar at **zero β cost** (`think_off` = dead lever). **SD-1** (widen supply-α) authorized at ratify but **SKIPPED at Step 9** — nudge made the divergence moot (0 `inspect`); anti-moving-target honored, no grader change. Also: per-judgment latency timer (#252), think-trim lever (#253), `ms-s1-ollama` skill (#254, `warm.sh` live-tested), tuning report (#255). Next: future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring `skip` into product path is an open audit trade-off | `a6125c1` (#251–#256) / `docs/plans/done/0020-procedure-tuning-latency-precision.md` + `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-11 | **PLAN-0020 ratified Draft→Accepted (#251, `19706eb`, session 53)** — SD-1 = widen supply-α `valid_handlers` `[hold]`→`[hold, inspect]` (later skipped at Step 9, see close row); SD-2 = re-ratify the latency bar from **8 s/per-call → ≤30 s p95 per-judgment** (reports-not-gates). Unblocked the gated MS-S1 tuning campaign | `19706eb` (#251) / `docs/plans/done/0020-procedure-path-tuning.md` |
