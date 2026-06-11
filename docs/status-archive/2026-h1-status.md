@@ -12,6 +12,72 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-11 (session 53 reconcile):_
+
+> **Session 49 (earlier) — PLAN-0020 Phase 1 (OFFLINE) is COMPLETE + merged
+> (#232, `8324cba`, `feat(engine):`): two complementary, INDEPENDENT product-code
+> changes addressing the session-48 PLAN-0019 Part B aquaculture over-naming
+> finding.** One `feat(engine)` PR landed this turn (`feat(engine): deterministic
+> affected_entities override + aqua precision prompt nudge (PLAN-0020 Phase 1)`),
+> Cray-reviewed + merged via merge commit `f46f29c` (#232). This block = the
+> session-49 #232 reconcile (head_commit `8324cba` — the newest substantive
+> commit per `lint_status`; the #232 merge commit `f46f29c` is lint-excluded).
+>
+> **The two changes (both product code, independent).**
+> - **fix #2 — deterministic `affected_entities` override (PRODUCT path).**
+>   `services/engine/procedures/action_step.py` `_compose_action` now sources
+>   `affected_entities` from the single loop `event` entity (a new
+>   `_loop_entity_ref`), NOT the model's guess — mirroring the existing
+>   `step.handler` override. This closes the envelope's over-naming metadata/UX
+>   leak; the ADR-007 D2 `RecommendedAction` envelope CLASS is **unchanged** (one
+>   field is now sourced deterministically).
+> - **aqua prompt nudge (the benchmark β lever).** `services/engine/llm/prompt.py`
+>   `build_reasoning_messages` / `build_structuring_messages` now instruct the
+>   model to (a) name ONLY the breaching entity, (b) put the action verb in the
+>   title. Vertical-agnostic wording (energy/supply already pass these checks → no
+>   regression expected).
+>
+> **The key finding this session — why the two changes DON'T overlap.** The
+> benchmark grades the **RAW `LlmJudgment`** (`harness.evaluate_item` bypasses
+> `_compose_action` entirely), so **fix #2 is INVISIBLE to the benchmark β/α
+> score** — it is validated instead by a dedicated **offline unit test**
+> (`test_affected_entities_is_loop_entity_not_llm_overnaming`: an over-naming
+> judgment → asserts the composed envelope names only the single loop entity,
+> Lesson #7 §3 behavioural). The **prompt nudge** is what moves β — to be measured
+> later in a **GATED host-state delta re-run** (NOT run this session).
+>
+> **The entity-key fork, RESOLVED.** `_loop_entity_ref` assumes the faithful
+> ontology-projected event keys `object_type` + `primary_key`, with defensive
+> `.get(..., fallback)` mirroring `recommender._rule_recommend` (degrades to
+> `event_id`/`"unknown"` on a stub event, **never raises**). The procedure-path
+> event shape is not yet standardised — this was surfaced for **merge-review per
+> a two-way-door call** (reversible, offline, no production consumer today since
+> Tier-2 real-data is parked); **Cray confirmed NO Tier-2 event-key contract in
+> mind**, so the defensive getter STANDS. The HEDGE is documented in the
+> `_loop_entity_ref` docstring + the commit body + the PR body.
+>
+> **Verification.** `ruff` + `mypy --strict` (services) green; `pytest` **71**
+> (action_step + prompt + DB procedure + benchmark) + **104** (llm + eval
+> golden-trace + recommender) green → confirms the reactive Pipeline-v0 path + the
+> eval golden traces do NOT regress from the shared `prompt.py` edit.
+>
+> **PLAN-0020 stays status Draft.** SD-1 (widen supply-α `valid_handlers`
+> `[hold]`→`[hold, inspect]`; needs Cray re-ratify BEFORE any dataset/grader edit)
+> + SD-2 (8 s-bar review) remain **pending Cray ratification**; Code did NOT touch
+> the grader/dataset this session.
+>
+> **Next — remaining Part B, Cray sequences (host-state — ASK before warming/
+> running MS-S1).** ONE batched campaign: **B-3 baselines** (text-to-SQL + RAG,
+> REPORTED not gated — the heaviest remaining sub-step + the conviction artifact)
+> + **PLAN-0020 latency levers** + the **aqua prompt-nudge delta re-run** (re-run
+> aqua β with the Step-1 nudge; confirm energy/supply did not regress). Cray must
+> ratify SD-1 + SD-2 BEFORE the relevant gated step; Code does NOT touch the
+> grader/dataset until SD-1 is ratified. THEN **B-5** report finalize + **B-6**
+> ring-fence wrap (closes Part B). Sequencing = **Cray's call.** Standing backlog
+> beyond Part B unchanged: Task (C) Tier-2 real-data path (gate on a design
+> partner, not engineering readiness), PLAN-0010 loop handlers (soak-gated),
+> `status_digest` v2, PLAN-004 Phase C.
+
 > **Session 48 — PLAN-0019 Part B hardened re-run is COMPLETE (#228,
 > `ec073a4`, `feat(benchmark):`): the hardened benchmark now DISCRIMINATES as
 > designed, on live `gpt-oss:20b` (MS-S1, Cray-approved host-state run).** One
@@ -227,6 +293,7 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-25 | **Cross-env Anthropic key file setup completed (Step 5b follow-up)** _(rotated 2026-06-11, session 53)_ — Code copied WSL `~/.claude/.anthropic_api_key` to Windows `C:\Users\crayj\.claude\.anthropic_api_key` with NTFS ACL tightened to `crayj` user only (SYSTEM + Administrators removed — strictly tighter than chmod 600). Both `Path.home() / ".claude" / ".anthropic_api_key"` resolution paths verified: WSL Python finds at `/home/crayj/.claude/...`, Windows Python finds at `C:\Users\crayj\.claude\...`. Hook firing path (Windows-spawned hooks) and pytest path (WSL-spawned via Bash tool) both unblocked for live Sonnet operations | `C:\Users\crayj\.claude\.anthropic_api_key` (NTFS user-only) |
 | 2026-05-24 | **PLAN-0008 Step 5b (Sonnet classifier config-file fallback) MERGED — defeats Claude Desktop ANTHROPIC_API_KEY strip** — PR #15 → `main` (`3d4f98b`), single `fix(claude)` commit `472a91e` + merge. Diagnosed during Step 6 post-merge env-propagation verification: Claude Desktop on Windows launches `claude.exe` with `ANTHROPIC_API_KEY=""` (intentional OAuth/billing isolation); WSLENV cannot defeat even after full computer restart. Step 5 live proof passed only because Cray ran pytest from a terminal launched outside Desktop. Fix: `_sonnet_classifier.py::_resolve_api_key()` chain → env → `~/.claude/.anthropic_api_key` (chmod 600 POSIX, override via `$CLAUDE_ANTHROPIC_KEY_FILE`) → fail-closed. +10 unit tests (372 pass / 6 skip; also fixed `test_stop_continuation.py` fixture to defang via file path too). `.gitignore` extended. PLAN-0008 §Step 5 + STATUS amended. Auto-memory `project_claude_desktop_strips_anthropic_api_key.md` captured. **Live-verified inside Claude Code session**: empty env → file fallback → real Sonnet 3.04s round-trip → `proceed` decision (proof complete). **Bonus event**: my own L1 loop-detect hook (Step 2) fired on me during the 6 pragma-fix Edits — Cray ratified Bash sed workaround; hook works as designed | `3d4f98b` (PR #15) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-05-24 | **PLAN-0008 Step 6 (Wave 2 completion — autonomy-triggers row flips + PLAN closeout) MERGED** — PR #14 → `main` (`626ab23`), single `docs(claude)` commit `aa64d19` + merge. Docs-only flip of `.claude/autonomy-triggers.md` row labels from placeholder / "Phase 2 spec" wording to **LIVE** with concrete hook attribution: G1/G2/G3/G4/C1/C2/C3 → `_sonnet_classifier.py`; L1–L4 → 3-hook attribution (gate + writer + reset); status banner + "How the classifier reads this file" §flipped to LIVE with conservatism-probe evidence; footer date bumped. PLAN-0008 §Step 6 amendment box rewritten as "Step 6 closeout" with PR #11/#12/#13 lineage. `.claude/settings.json` `_comment` corrected (stub removal happened in PR #13). 362 pass / 6 skip baseline preserved (docs-only; ruff/mypy no scope). Closeout: this STATUS row | `626ab23` (PR #14) / `.claude/autonomy-triggers.md` |
 | 2026-05-24 | **PLAN-0008 Step 5 (Sonnet classifier + stub swap) MERGED + live conservatism proof + WSLENV permanent fix + session handoff to new Code** — PR #13 → `main` (`3407ae6`), single `feat(claude)` commit `ceebc1a` + merge. New `.claude/hooks/_sonnet_classifier.py` (~225 lines, stdlib urllib + 7 fail-closed paths + retry + markdown-fence extractor; pin `claude-sonnet-4-6` per OQ-B). Stop hook stub replaced via lazy-import `_classify()` wrapper with double-fallback. 17 mocked tests + 1 live opt-in (362 pass / 6 skip). **LIVE conservatism proof (Cray 2026-05-24):** bare Stop = proceed; G1/G2/C2 triggered scenarios = pause with correct row IDs; routine work = proceed. Total ~$0.005 cost. **WSLENV permanently extended** with `ANTHROPIC_API_KEY/u` so future sessions inherit the key without workaround. **Session-10 ↔ next-session handoff** at `.claude/handoffs/session-10/2026-05-24-2030-code-step5-merged-step6-kickoff.md` — Cray-directed to preserve context-window headroom + double-test WSLENV propagation from clean process tree. Closeout: this STATUS row | `3407ae6` (PR #13) / `.claude/hooks/_sonnet_classifier.py` |

@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-10T14:59:33+07:00
-session: 51
-current_batch: 'Session 51 — PLAN-0021 shipped (#249): Axis-B verification loop LIVE (gate + evaluator + /goal); archived to done/. Both harness-review tracks complete.'
+last_updated: 2026-06-11T12:56:44+07:00
+session: 53
+current_batch: 'Session 53 — PLAN-0020 (Procedure-path tuning) COMPLETE + archived to done/ (#251-#256): nudge worked (β/α →100%), skip lever cuts p95 31.80→21.62s under the 30s bar at zero β cost; SD-1 skipped, ring-fence honored.'
 current_actor: code
-blocked_on: 'Nothing gates shipped work. No open PRs (this closeout PR pending).'
-next_action: 'OQ-8 backlog non-binding (blocking-mode promotion needs v1 false-positive data; MS-S1 local evaluator; plugin packaging; auto-declared goals). No governance thread in flight.'
-head_commit: 7d6d713
-recent_commits: [7d6d713, 83f179d, 3dc586a, 5437630, 42f4482, 1b7a16b, 0d5da08, b6c859f]
+blocked_on: 'Nothing gates shipped work. No open PRs.'
+next_action: 'Future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring skip into product procedure path is an open audit trade-off design call. Both deferred for discussion.'
+head_commit: a6125c1
+recent_commits: [a6125c1, 4968f51, ac56653, bef462f, a3a6f54, 19706eb, 60e88fe, fa368e2]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,46 @@ recent_commits: [7d6d713, 83f179d, 3dc586a, 5437630, 42f4482, 1b7a16b, 0d5da08, 
 
 ## Current Focus
 
-> **Session 51 (current) — PLAN-0021 EXECUTED + MERGED (#249, branch tip
+> **Session 53 (current) — PLAN-0020 (Procedure-path tuning) is COMPLETE
+> + archived to `docs/plans/done/` (#251–#256, branch-tip `a6125c1` =
+> head_commit, the `docs(plans):` close-mv riding #256; merge `02d3e46`;
+> the PLAN-0019 B-6 ring-fence follow-up).** Headline results (all
+> `--dump-json`-VERIFIED, `gpt-oss:20b` on MS-S1): the Phase-1 aquaculture
+> prompt nudge (PR #232, previously UNMEASURED) worked **dramatically** —
+> overall β `85.8%→100%`, aquaculture β `60%→100%`, overall α `70%→100%`
+> (supply_chain α `32.5%→100%`: the model now picks `hold`, not `inspect`).
+> **The latency lever:** a new `reasoning_mode` lever showed `skip` (drop the
+> call-1 reasoning pass) cuts per-judgment p95 `31.80s→21.62s` — UNDER the
+> re-ratified SD-2 bar — at **ZERO β cost** (the reasoning pass is redundant
+> given the nudged prompt); `think_off` is a **dead lever** (slower).
+> **SD-2 re-ratified** the latency bar from 8 s/per-call to **≤30 s p95
+> per-judgment** (reports-not-gates). **SD-1** (widen supply-α `valid_handlers`)
+> was authorized at ratification but **SKIPPED at Step 9** — the nudge made the
+> divergence moot (0 `inspect`); anti-moving-target honored, **no grader
+> change**. Also shipped: a per-judgment latency timer (#252), the think-trim
+> lever (`feat(engine)`, #253, PLAN-0020 AC-1a), and the **`ms-s1-ollama`
+> skill** (#254, `warm.sh` live-tested). PR lineage: #251 ratify Draft→Accepted
+> (`19706eb`, SD-1 widen-α + SD-2 →30 s/judgment) → #252 latency timer
+> (`a3a6f54`) → #253 think-trim lever (`bef462f`) → #254 skill (`ac56653`) →
+> #255 tuning report (`4968f51`, `docs(report):`) → #256 close-mv to done/
+> (`a6125c1`, `docs(plans):` = head_commit, the newest substantive per
+> `lint_status` — only `docs(status):` is excluded).
+> **Session 52 was non-committing** (an Axis-B verification-loop LIVE demo +
+> a backlog-prioritization pass that ranked PLAN-0020 priority #1) — no repo
+> state changed, so the jump is session 51 → 53.
+> **Next.** A follow-up PLAN for **tiered handler grading**
+> (canonical / acceptable / forbidden) is surfaced by Cray's production-fidelity
+> review — the α metric is too coarse to self-distinguish a benign alternative
+> (`inspect`) from a dangerous pick (`expedite`/`reroute`); deferred to a future
+> session for discussion. Separately, **wiring `skip` into the product
+> procedure path** is an open design call (audit trade-off: `skip` drops the
+> ADR-010 reasoning narrative; the model-asserted `rationale` survives). A
+> gitignored Cowork research dispatch (why `gpt-oss:20b` wins → a
+> model-selection rubric, feeds the deferred R3 faster-arch eval) was persisted
+> to `docs/research/private/`.
+> AI-assisted (Claude Code, session 53); no `Co-Authored-By` per CLAUDE.md §7.
+>
+> **Session 51 — PLAN-0021 EXECUTED + MERGED (#249, branch tip
 > `3dc586a`; merge `83f179d`; head_commit `7d6d713` = the `docs(plans):`
 > archive-mv riding this closeout PR, the newest substantive per
 > `lint_status` — only `docs(status):` is excluded): the Axis-B
@@ -236,71 +275,6 @@ recent_commits: [7d6d713, 83f179d, 3dc586a, 5437630, 42f4482, 1b7a16b, 0d5da08, 
 > `Proposed` → Cray ratifies. Separately/optionally: begin the Axis-B
 > verification-loop prototype (an evaluator subagent + a `/goal` Stop-hook gate).
 >
-> **Session 49 (earlier) — PLAN-0020 Phase 1 (OFFLINE) is COMPLETE + merged
-> (#232, `8324cba`, `feat(engine):`): two complementary, INDEPENDENT product-code
-> changes addressing the session-48 PLAN-0019 Part B aquaculture over-naming
-> finding.** One `feat(engine)` PR landed this turn (`feat(engine): deterministic
-> affected_entities override + aqua precision prompt nudge (PLAN-0020 Phase 1)`),
-> Cray-reviewed + merged via merge commit `f46f29c` (#232). This block = the
-> session-49 #232 reconcile (head_commit `8324cba` — the newest substantive
-> commit per `lint_status`; the #232 merge commit `f46f29c` is lint-excluded).
->
-> **The two changes (both product code, independent).**
-> - **fix #2 — deterministic `affected_entities` override (PRODUCT path).**
->   `services/engine/procedures/action_step.py` `_compose_action` now sources
->   `affected_entities` from the single loop `event` entity (a new
->   `_loop_entity_ref`), NOT the model's guess — mirroring the existing
->   `step.handler` override. This closes the envelope's over-naming metadata/UX
->   leak; the ADR-007 D2 `RecommendedAction` envelope CLASS is **unchanged** (one
->   field is now sourced deterministically).
-> - **aqua prompt nudge (the benchmark β lever).** `services/engine/llm/prompt.py`
->   `build_reasoning_messages` / `build_structuring_messages` now instruct the
->   model to (a) name ONLY the breaching entity, (b) put the action verb in the
->   title. Vertical-agnostic wording (energy/supply already pass these checks → no
->   regression expected).
->
-> **The key finding this session — why the two changes DON'T overlap.** The
-> benchmark grades the **RAW `LlmJudgment`** (`harness.evaluate_item` bypasses
-> `_compose_action` entirely), so **fix #2 is INVISIBLE to the benchmark β/α
-> score** — it is validated instead by a dedicated **offline unit test**
-> (`test_affected_entities_is_loop_entity_not_llm_overnaming`: an over-naming
-> judgment → asserts the composed envelope names only the single loop entity,
-> Lesson #7 §3 behavioural). The **prompt nudge** is what moves β — to be measured
-> later in a **GATED host-state delta re-run** (NOT run this session).
->
-> **The entity-key fork, RESOLVED.** `_loop_entity_ref` assumes the faithful
-> ontology-projected event keys `object_type` + `primary_key`, with defensive
-> `.get(..., fallback)` mirroring `recommender._rule_recommend` (degrades to
-> `event_id`/`"unknown"` on a stub event, **never raises**). The procedure-path
-> event shape is not yet standardised — this was surfaced for **merge-review per
-> a two-way-door call** (reversible, offline, no production consumer today since
-> Tier-2 real-data is parked); **Cray confirmed NO Tier-2 event-key contract in
-> mind**, so the defensive getter STANDS. The HEDGE is documented in the
-> `_loop_entity_ref` docstring + the commit body + the PR body.
->
-> **Verification.** `ruff` + `mypy --strict` (services) green; `pytest` **71**
-> (action_step + prompt + DB procedure + benchmark) + **104** (llm + eval
-> golden-trace + recommender) green → confirms the reactive Pipeline-v0 path + the
-> eval golden traces do NOT regress from the shared `prompt.py` edit.
->
-> **PLAN-0020 stays status Draft.** SD-1 (widen supply-α `valid_handlers`
-> `[hold]`→`[hold, inspect]`; needs Cray re-ratify BEFORE any dataset/grader edit)
-> + SD-2 (8 s-bar review) remain **pending Cray ratification**; Code did NOT touch
-> the grader/dataset this session.
->
-> **Next — remaining Part B, Cray sequences (host-state — ASK before warming/
-> running MS-S1).** ONE batched campaign: **B-3 baselines** (text-to-SQL + RAG,
-> REPORTED not gated — the heaviest remaining sub-step + the conviction artifact)
-> + **PLAN-0020 latency levers** + the **aqua prompt-nudge delta re-run** (re-run
-> aqua β with the Step-1 nudge; confirm energy/supply did not regress). Cray must
-> ratify SD-1 + SD-2 BEFORE the relevant gated step; Code does NOT touch the
-> grader/dataset until SD-1 is ratified. THEN **B-5** report finalize + **B-6**
-> ring-fence wrap (closes Part B). Sequencing = **Cray's call.** Standing backlog
-> beyond Part B unchanged: Task (C) Tier-2 real-data path (gate on a design
-> partner, not engineering readiness), PLAN-0010 loop handlers (soak-gated),
-> `status_digest` v2, PLAN-004 Phase C.
->
->
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
 ## Prior focus (archived)
@@ -322,6 +296,8 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-11 | **PLAN-0020 (Procedure-path tuning) COMPLETE + archived to done/ (#251–#256, `a6125c1`, session 53)** — the PLAN-0019 B-6 ring-fence follow-up. All `--dump-json`-VERIFIED on `gpt-oss:20b`/MS-S1: the Phase-1 aqua prompt nudge (PR #232, prev. UNMEASURED) worked dramatically — overall β `85.8%→100%`, aqua β `60%→100%`, overall α `70%→100%` (supply α `32.5%→100%`: model now picks `hold` not `inspect`). Latency lever: new `reasoning_mode=skip` (drop call-1 reasoning) cuts p95 `31.80s→21.62s` UNDER the 30s bar at **zero β cost** (`think_off` = dead lever). **SD-1** (widen supply-α) authorized at ratify but **SKIPPED at Step 9** — nudge made the divergence moot (0 `inspect`); anti-moving-target honored, no grader change. Also: per-judgment latency timer (#252), think-trim lever (#253), `ms-s1-ollama` skill (#254, `warm.sh` live-tested), tuning report (#255). Next: future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring `skip` into product path is an open audit trade-off | `a6125c1` (#251–#256) / `docs/plans/done/0020-procedure-tuning-latency-precision.md` + `benchmarks/procedure_baseline/REPORT.md` |
+| 2026-06-11 | **PLAN-0020 ratified Draft→Accepted (#251, `19706eb`, session 53)** — SD-1 = widen supply-α `valid_handlers` `[hold]`→`[hold, inspect]` (later skipped at Step 9, see close row); SD-2 = re-ratify the latency bar from **8 s/per-call → ≤30 s p95 per-judgment** (reports-not-gates). Unblocked the gated MS-S1 tuning campaign | `19706eb` (#251) / `docs/plans/done/0020-procedure-path-tuning.md` |
 | 2026-06-10 | **PLAN-0021 SHIPPED (#249, `3dc586a`, session 51) — the Axis-B verification loop is LIVE; both harness-review tracks complete** — goal gate (`_goal_gate.py` at the D4 seam inside `stop_continuation.py`, fail-open per ADR-0018 D4) + `goal-evaluator` 4th subagent + `/goal` (the repo's first project command) + the SD-1 narrowed-Write deny hook; +64 tests (suite 1398 passed / 22 skipped, zero regression); 7/10 case-matrix rows proven LIVE incl. the fail-open probe (`released-unevaluated` + LOUD Telegram, no wedge). F-L1: verdict→flip lands at the next non-chained Stop (OQ-8 blocking-mode promotion must account). Archived to done/ (`7d6d713`, same PR) | `3dc586a` (#249) / `docs/plans/done/0021-axis-b-verification-loop-build.md` |
 | 2026-06-10 | **PLAN-0021 "Axis-B verification loop — build" landed as Draft (#247, `78b8659`, session 51)** — Cowork-drafted per ADR-009 D1, Code R2-reviewed + committed per D2/D3; renders Accepted ADR-0018 into a build plan: 6 new files (incl. the repo's first project command `.claude/commands/goal.md`, the `goal-evaluator` 4th subagent, the SD-1 narrowed-Write deny hook), exactly 3 modified files at the D4 seam, 10 ACs incl. AC-2 byte-for-byte non-interference, 10-row case matrix, VX-1..3 resolved, OQ-8 Out of Scope. R2 **F-1**: the deny hook wires via agent frontmatter, not `settings.json`. Gates on Cray ratification (SD-1: Cowork recommends NO for v1) | `78b8659` (#247) / `docs/plans/0021-axis-b-verification-loop-build.md` |
 | 2026-06-10 | **ADR-0018 "Axis-B Verification Loop" ACCEPTED (Cray-ratified, session 51) — opens harness-review track 2 (the evaluator loop) on top of the at-frontier Axis-A governance layer.** A `/goal` Stop-hook gate + a `goal-evaluator` subagent that judges whether a run achieved its declared goal. **Decisions:** D1 hybrid deterministic-check + LLM-judge; D2 a `.claude/state/goal.json` run-goal artifact; D3 a 4th subagent sibling that **REFUTES not blesses** (structural guard against reasoning-blindness); D4 `_goal_gate.py` inside `stop_continuation.py`, **FAIL-OPEN** (broken/absent evaluator never blocks Stop); D5 session-Stop **warn-only v1**; D6 structural reasoning-blindness rationale; D7 formalize + augment the manual AC ritual. **SD-1 resolved = narrowed Write** (the evaluator's Write is hook-narrowed to `goal.json` only — same author-bounded pattern as `plan-drafter`/`status-scribe`). **Lineage:** #241 (`5f8073c`, `docs(adr):`) added ADR-0018 `Proposed` → **#242 (`1be60f7`, `docs(adr):`, head_commit) ratified it Proposed→Accepted** + carries the T4 STATUS reconcile (record ADR-0018 here + clear the Current-Focus Axis-B "deferred" earmark). **NEXT = T2:** Code dispatches the Axis-B build PLAN to Cowork (ADR-009 D1) → T3 (autonomy-triggers V-row) → build. OQ-8 (plugin packaging, MS-S1 local evaluator, blocking-mode promotion, PR-merge gating, auto-declared goals) + VX-1..3 stay non-binding / verify-at-execution | `1be60f7` (#241 + #242) / `docs/adr/0018-axis-b-verification-loop.md` |
@@ -331,7 +307,6 @@ below, and git history.
 | 2026-05-25 | **PLAN-0008 AC-1 VERIFIED — Phase 2 fully audited** — Cray ran the live AC-1 task in a fresh Code session (task: *"ตรวจ ruff + mypy ทั้ง project, แก้ warning ถ้ามี, commit"*, single Cray paste, no further input). Agent self-continued **≥ 5 consecutive turns** without Cray paste (initial scan → file inspection → plan → branch creation → 5 file fixes → re-verify → tests → commit), then paused at the `git push` boundary asking permission — classifier correctly identified push as state change outside worktree per `feedback_state_change_outside_worktree.md` memory pattern. **0 Telegram pings** (no `cap_reached`, no L1–L4 false-positives). `stop-chain.json` `depth: 0` at end (consistent with terminal pause resetting chain). Side effect: the session surfaced 21 project-wide mypy errors in `tools/` + `tests/` (outside the pre-commit gate scope) and shipped a cleanup commit `8fef3a5` — PR #18 follows separately. Confirms classifier conservatism bias (spurious pauses > spurious proceeds, per OQ-B) works in production. Phase 2 all 4 ACs now VERIFIED; entry conditions for PLAN-0009 (Phase 3 — subagent topology) met | PR #19 amendment / `docs/STATUS.md` + closeout handoff §1 |
 | 2026-05-25 | **PLAN-0008 Phase 2 COMPLETE — Step 8 closeout MERGED** — PR #17 → `main` (`79fe373`), single `feat(claude)` commit `b3657d5` + merge. AC matrix at merge time: AC-2/AC-3/AC-4 VERIFIED; AC-1 deferred to live Cray-supervised observation (subsequent AC-1 row above closes this). Step 8 deliverables: +2 E2E tests (test_l3_traceback_inline_fires_on_threshold + test_l2_resets_on_pass_for_same_nodeid; 387 → 389 pass / 6 skip); closeout handoff at `.claude/handoffs/session-10/2026-05-25-0130-code-plan0008-phase2-closeout.md` (gitignored local working note per CLAUDE.md §11); `git mv docs/plans/0008-...md docs/plans/done/`; STATUS final bump. Phase 3 (subagent topology, ADR-013 D1 phased) entry conditions met. **Reflexive H1 hook fire on the closeout handoff frontmatter** (`phase: completion` initially invalid; corrected to `phase: closeout` per enum) — N=3 production-validation events through this session (L1 in PR #15, L1-attempt in PR #16, H1 in this PR) prove the deterministic + classifier-mediated layer is reachable from real agent activity | `79fe373` (PR #17) / `docs/plans/done/0008-harness-autonomy-layer-phase-2.md` |
 | 2026-05-25 | **PLAN-0008 Step 7 (Phase 2 integration tests + mypy hook coverage extension) MERGED** — PR #16 → `main` (`9100e65`), single `test(claude)` commit `d870d76` + merge. New `tests/handoffs/test_phase2_integration.py` with 15 E2E scenarios driving real subprocess invocations of all 3 wired Phase 2 hooks against a local mock HTTP Sonnet server (ephemeral 127.0.0.1 port via `socketserver.TCPServer` + threading daemon; `$CLAUDE_SONNET_API_URL` override; no live network). Coverage: Stop↔classifier wiring (proceed→block, pause→no-block, fail-closed, re-entry guard — mock receives 0 requests = negative proof); chain-cap fail-safe + cap_reached Telegram; observer→state→PreToolUse deny on L1+L4 + Cray-E.4 payload assertion; L4 reset on success; L2 inline Telegram on pytest-fail threshold; L1 turn-boundary survive vs reset; chain depth progression. Pre-commit `mypy` glob extended `^(services\|verticals)/` → `^(services\|verticals\|\.claude/hooks)/` (closes Step 1 follow-on; all 9 hooks pass `--strict`). 372 → 387 pass / 6 skip (+15). Per-test isolation via `tmp_path` for state + classifier fallback path + telegram capture + chain file. AC-3 demonstrated E2E for the first time | `9100e65` (PR #16) / `tests/handoffs/test_phase2_integration.py` |
-| 2026-05-25 | **Cross-env Anthropic key file setup completed (Step 5b follow-up)** — Code copied WSL `~/.claude/.anthropic_api_key` to Windows `C:\Users\crayj\.claude\.anthropic_api_key` with NTFS ACL tightened to `crayj` user only (SYSTEM + Administrators removed — strictly tighter than chmod 600). Both `Path.home() / ".claude" / ".anthropic_api_key"` resolution paths verified: WSL Python finds at `/home/crayj/.claude/...`, Windows Python finds at `C:\Users\crayj\.claude\...`. Hook firing path (Windows-spawned hooks) and pytest path (WSL-spawned via Bash tool) both unblocked for live Sonnet operations | `C:\Users\crayj\.claude\.anthropic_api_key` (NTFS user-only) |
 
 ## In-Flight Discussions
 
