@@ -1,6 +1,6 @@
 # PLAN-0022: Tiered Decision Routing — tier the grader + wire the deterministic `watch` band to a `gated` human-escalation
 
-**Status:** Draft *(uncommitted; awaiting Cray ratification → Ready for execution. The session-54 dispatch framed the gate as `Proposed → Accepted`; this PLAN uses the template's `Draft → Ready for execution` vocabulary — see Governance note. Number `0022` + scope "Full decision-routing" are Cray G2-approved, 2026-06-11.)*
+**Status:** Ready for execution *(Cray-ratified 2026-06-11; SD-1..SD-7 accepted per recommendation, S-1 = keep ammonia — see § Ratification. Number `0022` + scope "Full decision-routing" G2-approved 2026-06-11. Implementation is a later, separate PR that references this PLAN; the ADR-016 D3 amendment lands first per CLAUDE.md §8 — see § Execution Order.)*
 **Owner:** Claude Code (execution) — drafted by Cowork (Tier-1, ADR-009 D1); Code commits (ADR-009 D2)
 **Created:** 2026-06-11
 **Related ADRs:** ADR-016 (governed procedure engine — D3 autonomy `auto`/`gated`; `resolve_gated_step`; `step.handler` allowlist — **amended by Step 4**), ADR-010 (LLM reasoning-hook surface — IN-3 confidence advisory; D4 the human-approval gate — **flagged as a POSSIBLE reopen only, Step 4 / SD-2**), ADR-005 (OCT feature-3 / design-partner verticals), ADR-009 (Cowork Tier-1 authoring + commit boundary), ADR-012 (Cowork free-form — D4.3 disclosure at foot)
@@ -151,6 +151,41 @@ The five design-seed open questions (seed §5) are the backbone. Each carries a 
 | **SD-5** | Per-procedure config: do the tiers + `watch_margin` need new YAML fields, and where? | (a) add optional `threshold`/`watch_margin`/`tiers` to the `Step` (beside `handler`); (b) put them on `Agent.allowed`; (c) a new `procedures.yaml` block | **(a)** — co-locate with the `evaluate`/`action` step; keep optional for byte-for-byte back-compat (AC-9). Ontology stays untouched (ADR-016 D2). |
 | **SD-6** *(newly surfaced)* | The deterministic `evaluate`/`judge` executor does not exist in the engine yet (fact 2) — it is a **prerequisite** for any `watch → gated` wiring. Build it in this work or as a pre-step? | (a) include the evaluate executor in the same implementation PR; (b) split it into a predecessor PR | **(a)** — it is small and tightly coupled to the watch-band config (Step 3); splitting adds a handoff with little benefit. Flag the dependency clearly in the impl PR. |
 | **SD-7** *(newly surfaced — fact-pack correction)* | The design seed says "today `watch` = silent / no action," but the procedure path routes `watch → human_task` (fact 3). Confirm the framing so the impl PR targets the right baseline. | n/a — a clarification | Treat "silent / no action" as accurate for the **reactive + benchmark** path only; the **procedure** baseline is a bare `human_task`, and the change is an **upgrade** to a `gated` proposal. Recorded so Code doesn't implement against the wrong baseline. |
+
+### Ratification (Cray, 2026-06-11)
+
+PLAN-0022 ratified **Draft → Ready for execution**. All Surfaced Decisions **accepted per the recommended option**:
+
+- **SD-1 = (a)** — the `gated` proposal **replaces** the `human_task` for v1; "augment" (propose *and* still queue a visual check) stays a per-procedure authoring option.
+- **SD-2 = (a)** — trigger is the **deterministic `watch` band only**. A deterministic data-quality / dwell co-gate (SD-2 b; cf. the narratives' `dwell_minutes`, S-3) is a clean future extension that **stays deterministic ⇒ no ADR-010 reopen**. A model-derived signal (c) is **not taken**.
+- **SD-3 = adopt** — the three-way escalation scoring (Step 5) on its own watch-tier lane.
+- **SD-4 = (a)** — reuse `forbidden_keywords` / `forbidden_primary_keys`; no new grader tier (make it explicit in reporting only).
+- **SD-5 = (a)** — the `threshold` / `watch_margin` / `tiers` fields live on the `Step` (beside `handler`), **optional** for byte-for-byte back-compat (AC-9).
+- **SD-6 = (a)** — build the deterministic `evaluate` executor in the **same** implementation PR (flag the dependency).
+- **SD-7** — baseline confirmed: the procedure-path baseline is `watch → human_task` (an **upgrade** target), not silence.
+- **S-1** (narrative fixture) — keep aquaculture **ammonia** (NH3-N); a DO/aerate variant C′ is available on request.
+
+## Execution Order (dependency-sequenced)
+
+The five Steps group logically; for **implementation** they sequence by dependency so each phase's output feeds the next — one shared definition, no rework.
+
+**Phase 0 — governance gate (precedes engine code).** Land the **ADR-016 D3 amendment** (Step 4 — add the `watch → gated`-proposal path). CLAUDE.md §8 forbids the implementation PR before its ADR merges. *Blocks only the engine work (Step 2).*
+
+**Phase 1 — define the shared contracts (parallelizable).**
+- **Step 1 (tier the grader)** — benchmark-only, **not ADR-blocked** → can start in parallel with Phase 0. Establishes the canonical / acceptable / forbidden **taxonomy**.
+- **Step 3 (config surface)** — `threshold` / `watch_margin` / `tiers` on the `Step`; defines the **watch-band math once**.
+
+*Feeds:* Step 1's taxonomy → Step 3's `tiers`; Step 3's band math is the **single shared definition** reused by Phase 2 and the benchmark.
+
+**Phase 2 — the engine change (Step 2; needs Phase 0 + Phase 1 config).**
+- **2a** build the deterministic **`evaluate` executor** (SD-6 prerequisite) — reads Phase-1 config, reuses `crosses_threshold`.
+- **2b** route the `watch` subset → a `gated` proposal (reuse `resolve_gated_step`) + the `waiting_human` UX.
+
+**Phase 3 — scoring (Step 5; needs Phase 1 taxonomy + Phase 2 routing).** Add the escalation-correctness lane (scores proposed handler ∈ {canonical, acceptable}). Ring-fenced methodology, ratified before any scored run (B-6).
+
+Throughout: **AC-8** (determinism test — escalation independent of `confidence`) + **AC-9** (breach-path non-regression).
+
+**Efficiency rationale:** (1) Step 1 is not ADR-blocked → run it in parallel, don't serialize; (2) define the tier taxonomy (Step 1) + watch-band math (Step 3) **once** so Phases 2 and 3 reuse a single source of truth instead of re-deriving it; (3) the `evaluate` executor (Phase 2a) is the one hard prerequisite the design seed missed (SD-6).
 
 ---
 
