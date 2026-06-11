@@ -76,13 +76,19 @@ def test_example_action_handlers_within_allowlist(vertical: str) -> None:
 
 def test_aquaculture_headline_fan_out_shape() -> None:
     """The headline 'Morning Pond Health Round' carries the breach/watch named-input
-    fan-out: gated aerate over the breach set, human_task visual over the watch set,
-    auto summary over the whole verdict set."""
+    fan-out: gated aerate over the breach set, a gated escalation proposal over the
+    watch set (ADR-0019 / PLAN-0022 SD-1=a — replaced the pre-amendment visual-check
+    human_task), auto summary over the whole verdict set."""
     spec = load_procedures("aquaculture")
     proc = next(p for p in spec.procedures if p.procedure_id == "morning_pond_health_round")
     assert proc.trigger is Trigger.MANUAL  # only manual is runnable in Phase 1 (L-1)
     assert proc.terminal == "summary"
     by_id = {s.step_id: s for s in proc.steps}
+
+    judge = by_id["judge"]
+    assert judge.kind is StepKind.EVALUATE
+    # PLAN-0022 Step 3: the authored band the deterministic evaluate executor reads.
+    assert (judge.threshold, judge.direction, judge.watch_margin) == (4.0, "below", 1.0)
 
     aerate = by_id["aerate"]
     assert aerate.kind is StepKind.ACTION
@@ -92,11 +98,13 @@ def test_aquaculture_headline_fan_out_shape() -> None:
     assert aerate.input.from_step == "judge"
     assert aerate.input.where == {"verdict": "breach"}
 
-    visual = by_id["visual"]
-    assert visual.kind is StepKind.HUMAN_TASK
-    assert visual.input is not None
-    assert visual.input.from_step == "judge"
-    assert visual.input.where == {"verdict": "watch"}
+    escalate = by_id["escalate_watch"]
+    assert escalate.kind is StepKind.ACTION
+    assert escalate.autonomy is Autonomy.GATED  # the human decides on the ambiguous band
+    assert escalate.handler == "increase_water_exchange"  # the author's precautionary handler
+    assert escalate.input is not None
+    assert escalate.input.from_step == "judge"
+    assert escalate.input.where == {"verdict": "watch"}
 
     summary = by_id["summary"]
     assert summary.kind is StepKind.ACTION
