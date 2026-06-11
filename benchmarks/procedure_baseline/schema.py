@@ -14,10 +14,12 @@ The two halves are graded differently (SD-B1):
 * ``Expected.{affected_primary_key, action_keywords}`` (+ the PR2 precision add-ons
   ``forbidden_primary_keys`` / ``forbidden_keywords``) are the **β headline** scoring
   fields (the entity + action class the model owns in the procedure path);
-  ``valid_handlers`` is the **α probe** (reactive-path handler-selection, reported
-  on its own lane — see :mod:`benchmarks.procedure_baseline.grader`);
-  ``payload_contains`` is **advisory**. The three lanes never contaminate each
-  other (PLAN-0019 Part B hardening, Cray-ratified 2026-06-09).
+  ``canonical_handler`` + ``acceptable_handlers`` drive the **tiered α probe**
+  (reactive-path handler-selection classified canonical / acceptable /
+  forbidden-or-other — PLAN-0022 Step 1, replacing the flat ``valid_handlers``;
+  see :mod:`benchmarks.procedure_baseline.grader`); ``payload_contains`` is
+  **advisory**. The three lanes never contaminate each other (PLAN-0019 Part B
+  hardening, Cray-ratified 2026-06-09).
 """
 
 from __future__ import annotations
@@ -37,7 +39,11 @@ fail-safe for an unset/garbled direction."""
 class Disposition(StrEnum):
     """The three-way verdict a ``judge`` (``evaluate``) step assigns. ``breach``
     is the only disposition that fires an ``action`` (and thus the only one whose
-    LLM proposal is graded); ``watch`` routes to a human task; ``ok`` is a no-op.
+    LLM proposal is graded); ``watch`` routes to human review (a bare
+    ``human_task`` today; a ``gated`` proposal per ADR-0019 once PLAN-0022
+    Phase 2 lands); ``ok`` is a no-op. Same values as the engine's
+    ``services.engine.procedures.verdict.Verdict`` — the band math is delegated
+    there (the PLAN-0022 single shared definition).
     """
 
     BREACH = "breach"
@@ -105,7 +111,7 @@ class Expected(BaseModel):
     are the LLM-graded checks, each scored only when present (an item grades on
     exactly the fields it declares). A breach item must declare at least one
     **headline scoring** field (``affected_primary_key`` and/or ``action_keywords``)
-    — the α ``valid_handlers`` probe alone does not make a breach item gradable. The
+    — the α handler-tier probe alone does not make a breach item gradable. The
     ``forbidden_*`` fields are β-headline **precision** add-ons (PR2 hardening): they
     sharpen the entity + action-class checks on multi-entity / near-miss scenarios.
     """
@@ -125,11 +131,18 @@ class Expected(BaseModel):
         description="β HEADLINE precision (PR2): NONE of these distractor PKs may appear in the "
         "model's affected_entities — the multi-entity decoy-discrimination check",
     )
-    valid_handlers: list[str] | None = Field(
+    canonical_handler: str | None = Field(
         default=None,
-        description="α PROBE (not a headline gate): suggested_handler must be one of these — "
-        "the correct ontology action_type(s) for the breach, e.g. [restart] / "
-        "[start_emergency_aerator] / [hold]",
+        description="α PROBE tier 1 (not a headline gate): the single correct ontology "
+        "action_type for the breach, e.g. start_emergency_aerator / restart / hold "
+        "(PLAN-0022 Step 1, replacing the flat valid_handlers)",
+    )
+    acceptable_handlers: list[str] | None = Field(
+        default=None,
+        description="α PROBE tier 2: benign defensible alternative handlers — not wrong, "
+        "just not canonical (e.g. inspect for a cold-chain excursion, "
+        "increase_water_exchange for a DO crash — the PLAN-0020 REPORT-verified benign "
+        "divergences). forbidden stays expressed by forbidden_keywords (SD-4=a)",
     )
     payload_contains: dict[str, Any] | None = Field(
         default=None,

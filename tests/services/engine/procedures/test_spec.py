@@ -19,7 +19,9 @@ from services.engine.procedures.spec import (
     Procedure,
     Step,
     StepKind,
+    StepTiers,
     Trigger,
+    load_procedures,
     load_procedures_file,
     procedures_path,
 )
@@ -120,6 +122,94 @@ def test_action_step_accepts_handler() -> None:
 def test_non_action_step_rejects_handler() -> None:
     with pytest.raises(ValidationError, match="handler applies to action steps only"):
         Step(step_id="q", name="Q", kind=StepKind.QUERY, handler="echo")
+
+
+# --- PLAN-0022 Step 3 (SD-5=a): the authored band + handler-tier taxonomy -----
+
+
+def test_evaluate_step_accepts_the_authored_band() -> None:
+    step = Step(
+        step_id="judge",
+        name="Judge",
+        kind=StepKind.EVALUATE,
+        threshold=4.0,
+        direction="below",
+        watch_margin=1.0,
+    )
+    assert step.threshold == 4.0
+    assert step.direction == "below"
+    assert step.watch_margin == 1.0
+
+
+def test_band_fields_are_optional_on_evaluate() -> None:
+    """AC-9: a band-less evaluate step (today's specs) still loads unchanged."""
+    step = Step(step_id="judge", name="Judge", kind=StepKind.EVALUATE)
+    assert step.threshold is None and step.direction is None and step.watch_margin is None
+
+
+@pytest.mark.parametrize("field", ["threshold", "direction", "watch_margin"])
+@pytest.mark.parametrize("kind", [StepKind.QUERY, StepKind.ACTION, StepKind.HUMAN_TASK])
+def test_non_evaluate_step_rejects_band_fields(field: str, kind: StepKind) -> None:
+    value: float | str = "below" if field == "direction" else 4.0
+    raw = {"step_id": "s", "name": "S", "kind": kind.value, field: value}
+    with pytest.raises(ValidationError, match=f"{field} applies to evaluate steps only"):
+        Step.model_validate(raw)
+
+
+def test_watch_margin_without_threshold_rejected() -> None:
+    with pytest.raises(ValidationError, match="require a threshold"):
+        Step(step_id="judge", name="Judge", kind=StepKind.EVALUATE, watch_margin=1.0)
+
+
+def test_direction_without_threshold_rejected() -> None:
+    with pytest.raises(ValidationError, match="require a threshold"):
+        Step(step_id="judge", name="Judge", kind=StepKind.EVALUATE, direction="below")
+
+
+def test_negative_watch_margin_rejected() -> None:
+    with pytest.raises(ValidationError):
+        Step(
+            step_id="judge",
+            name="Judge",
+            kind=StepKind.EVALUATE,
+            threshold=4.0,
+            watch_margin=-0.5,
+        )
+
+
+def test_action_step_accepts_tiers() -> None:
+    step = Step(
+        step_id="aerate",
+        name="Aerate",
+        kind=StepKind.ACTION,
+        handler="start_emergency_aerator",
+        tiers=StepTiers(
+            canonical="start_emergency_aerator", acceptable=["increase_water_exchange"]
+        ),
+    )
+    assert step.tiers is not None
+    assert step.tiers.canonical == "start_emergency_aerator"
+    assert step.tiers.acceptable == ["increase_water_exchange"]
+    assert step.tiers.forbidden == []  # optional; defaults empty
+
+
+@pytest.mark.parametrize("kind", [StepKind.QUERY, StepKind.EVALUATE, StepKind.HUMAN_TASK])
+def test_non_action_step_rejects_tiers(kind: StepKind) -> None:
+    with pytest.raises(ValidationError, match="tiers applies to action steps only"):
+        Step(step_id="s", name="S", kind=kind, tiers=StepTiers(canonical="echo"))
+
+
+def test_aquaculture_worked_example_loads_with_band_and_tiers() -> None:
+    """The PLAN-0022 Step 3 worked example: the real aquaculture spec authors the
+    judge step's deterministic band and the aerate step's tier taxonomy."""
+    spec = load_procedures("aquaculture")
+    procedure = next(p for p in spec.procedures if p.procedure_id == "morning_pond_health_round")
+    judge = next(s for s in procedure.steps if s.step_id == "judge")
+    assert (judge.threshold, judge.direction, judge.watch_margin) == (4.0, "below", 1.0)
+    aerate = next(s for s in procedure.steps if s.step_id == "aerate")
+    assert aerate.tiers is not None
+    assert aerate.tiers.canonical == "start_emergency_aerator"
+    assert aerate.tiers.acceptable == ["increase_water_exchange"]
 
 
 def test_run_by_must_resolve(tmp_path: Path) -> None:

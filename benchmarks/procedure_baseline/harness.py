@@ -24,7 +24,12 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any
 
-from benchmarks.procedure_baseline.grader import GradeResult, classify_disposition, grade_proposal
+from benchmarks.procedure_baseline.grader import (
+    GradeResult,
+    HandlerTier,
+    classify_disposition,
+    grade_proposal,
+)
 from benchmarks.procedure_baseline.schema import BenchmarkItem, Disposition, Scenario
 from services.engine.llm.client import ChatResult, OllamaError
 from services.engine.llm.structured import (
@@ -78,8 +83,10 @@ class ItemResult:
     ``proposal_correct`` is the **β headline** LLM grade (breach items only —
     ``None`` for the non-breach false-positive guard); ``probe_correct`` is the **α
     handler-selection probe** (``None`` when not graded or the item declares no
-    probe field). ``error`` is set when the judgment path raised (a failed proposal
-    = incorrect; the probe is ``None`` since no judgment exists to score).
+    probe field) and ``probe_tier`` its three-way classification (canonical /
+    acceptable / forbidden-or-other — PLAN-0022 Step 1; ``None`` exactly when
+    ``probe_correct`` is). ``error`` is set when the judgment path raised (a failed
+    proposal = incorrect; the probe is ``None`` since no judgment exists to score).
     ``judgment`` is the raw :class:`LlmJudgment` the proposal was graded against
     (``None`` for the non-breach guard or an errored call), carried so a run can
     persist it (``--dump-json``) for offline VERIFY — confirming a score is a real
@@ -96,6 +103,7 @@ class ItemResult:
     grade: GradeResult | None
     error: str | None = None
     probe_correct: bool | None = None
+    probe_tier: HandlerTier | None = None
     judgment: LlmJudgment | None = None
 
 
@@ -189,6 +197,7 @@ async def evaluate_item(
         proposal_correct=grade.passed,
         grade=grade,
         probe_correct=grade.probe_passed,
+        probe_tier=grade.handler_tier,
         judgment=result.judgment,
     )
 
@@ -203,7 +212,11 @@ class Summary:
       headline** (entity + action class);
     * ``probe_accuracy`` (over graded breach items that declare a handler probe) —
       the **α** reactive-path handler-selection signal, reported on its own lane
-      (``None`` when no item declared a probe field);
+      (``None`` when no item declared a probe field). ``probe_tiers`` breaks the
+      probed items down by their three-way classification (PLAN-0022 Step 1):
+      counts keyed by :class:`HandlerTier` value, with ``forbidden`` split from
+      ``other`` so a dangerous pick is named explicitly (SD-4=a reporting);
+      pass = ``canonical`` + ``acceptable``;
     * ``deterministic_accuracy`` (over all items) — the separately-reported ~100%
       sanity number.
     """
@@ -215,6 +228,7 @@ class Summary:
     probe_graded: int
     probe_correct: int
     probe_accuracy: float | None
+    probe_tiers: dict[str, int]
     deterministic_correct: int
     deterministic_accuracy: float
     by_disposition: dict[str, int]
@@ -233,6 +247,11 @@ def summarize(results: Sequence[ItemResult]) -> Summary:
     for result in results:
         by_disposition[result.disposition_expected.value] += 1
 
+    probe_tiers: dict[str, int] = {tier.value: 0 for tier in HandlerTier}
+    for result in probed:
+        if result.probe_tier is not None:
+            probe_tiers[result.probe_tier.value] += 1
+
     return Summary(
         total=total,
         graded=len(graded),
@@ -241,6 +260,7 @@ def summarize(results: Sequence[ItemResult]) -> Summary:
         probe_graded=len(probed),
         probe_correct=probe_correct,
         probe_accuracy=(probe_correct / len(probed)) if probed else None,
+        probe_tiers=probe_tiers,
         deterministic_correct=deterministic_correct,
         deterministic_accuracy=(deterministic_correct / total) if total else 0.0,
         by_disposition=by_disposition,

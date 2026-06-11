@@ -20,8 +20,8 @@ from verticals.aquaculture.handlers import register_aquaculture_handlers
 from verticals.energy.handlers import register_energy_handlers
 from verticals.supply_chain.handlers import register_supply_chain_handlers
 
-# The β-headline SCORING fields — a breach item must declare at least one (the α
-# valid_handlers probe and the advisory payload_contains do NOT make an item gradable).
+# The β-headline SCORING fields — a breach item must declare at least one (the tiered
+# α handler probe and the advisory payload_contains do NOT make an item gradable).
 _HEADLINE_FIELDS = ("affected_primary_key", "action_keywords")
 
 
@@ -91,9 +91,11 @@ def test_distractors_are_non_breaching_and_match_forbidden_keys() -> None:
 
 
 def test_alpha_probe_handlers_are_registered_for_their_vertical() -> None:
-    """Every α-probe ``valid_handlers`` entry must be a handler actually registered
-    for its vertical — otherwise the live ``suggested_handler`` enum could never
-    offer it and the probe would be un-winnable by construction (PLAN-0019 Part B)."""
+    """Every α-probe handler entry — the ``canonical_handler`` and every
+    ``acceptable_handlers`` member (PLAN-0022 Step 1) — must be a handler actually
+    registered for its vertical; otherwise the live ``suggested_handler`` enum could
+    never offer it and the tier would be unreachable by construction (PLAN-0019
+    Part B)."""
     register_aquaculture_handlers()
     register_energy_handlers()
     register_supply_chain_handlers()
@@ -101,11 +103,28 @@ def test_alpha_probe_handlers_are_registered_for_their_vertical() -> None:
         registered = set(registry.handler_names(dataset.vertical))
         assert registered, f"{dataset.vertical}: no handlers registered"
         for item in dataset.items:
-            for handler in item.expected.valid_handlers or []:
+            declared = list(item.expected.acceptable_handlers or [])
+            if item.expected.canonical_handler is not None:
+                declared.append(item.expected.canonical_handler)
+            for handler in declared:
                 assert handler in registered, (
                     f"{item.id}: α-probe handler '{handler}' is not registered for vertical "
                     f"'{dataset.vertical}' (registered: {sorted(registered)})"
                 )
+
+
+def test_acceptable_handlers_never_duplicate_the_canonical() -> None:
+    """Authoring guard (PLAN-0022 Step 1): the canonical pick must not be re-listed
+    as acceptable — the tiers are disjoint by construction so the three-way counts
+    are unambiguous."""
+    for dataset in load_all():
+        for item in dataset.items:
+            canonical = item.expected.canonical_handler
+            acceptable = item.expected.acceptable_handlers or []
+            assert canonical is None or canonical not in acceptable, (
+                f"{item.id}: canonical_handler '{canonical}' duplicated in "
+                f"acceptable_handlers {acceptable}"
+            )
 
 
 def test_every_dataset_covers_all_three_dispositions() -> None:
@@ -130,8 +149,25 @@ def test_unknown_field_is_rejected(tmp_path: Path) -> None:
         "  - id: i1\n    description: d\n    surprise: oops\n"
         "    scenario: {event_id: e, entity_type: Pond, primary_key: p, "
         "measured_value: 1.0, unit: mg/L, threshold: 4.0, direction: below}\n"
-        "    expected: {disposition: breach, action_expected: true, valid_handlers: [echo]}\n",
+        "    expected: {disposition: breach, action_expected: true, canonical_handler: echo}\n",
         encoding="utf-8",
     )
     with pytest.raises(ValidationError):
         load_dataset(bad)
+
+
+def test_removed_valid_handlers_field_is_rejected(tmp_path: Path) -> None:
+    """Migration guard (PLAN-0022 Step 1): the flat ``valid_handlers`` was replaced
+    by ``canonical_handler`` + ``acceptable_handlers``; an unmigrated dataset fails
+    loudly via extra='forbid' instead of silently dropping its probe."""
+    stale = tmp_path / "stale.yaml"
+    stale.write_text(
+        "vertical: x\nprocedure: p\nreading_parameter: dissolved_oxygen\nitems:\n"
+        "  - id: i1\n    description: d\n"
+        "    scenario: {event_id: e, entity_type: Pond, primary_key: p, "
+        "measured_value: 1.0, unit: mg/L, threshold: 4.0, direction: below}\n"
+        "    expected: {disposition: breach, action_expected: true, valid_handlers: [echo]}\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(ValidationError):
+        load_dataset(stale)

@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from benchmarks.procedure_baseline.grader import GradeResult, classify_disposition
+from benchmarks.procedure_baseline.grader import GradeResult, HandlerTier, classify_disposition
 from benchmarks.procedure_baseline.harness import (
     ItemResult,
     LatencyRecorder,
@@ -84,7 +84,7 @@ def _breach_item(**expected_overrides: Any) -> BenchmarkItem:
         "disposition": "breach",
         "action_expected": True,
         "affected_primary_key": "pond-A1",
-        "valid_handlers": ["echo"],
+        "canonical_handler": "echo",
         "action_keywords": ["aerat"],
     }
     expected.update(expected_overrides)
@@ -171,6 +171,9 @@ async def test_breach_item_runs_the_llm_and_grades_pass() -> None:
     assert result.graded is True
     assert result.proposal_correct is True
     assert isinstance(result.grade, GradeResult) and result.grade.passed
+    # suggested 'echo' == the declared canonical_handler -> tiered α probe passes
+    assert result.probe_correct is True
+    assert result.probe_tier is HandlerTier.CANONICAL
     assert len(client.calls) == 2  # two-call Pattern B ran
 
 
@@ -257,14 +260,17 @@ def test_summarize_separates_headline_from_deterministic_sanity() -> None:
     assert summary.deterministic_accuracy == 1.0
     assert summary.by_disposition == {"breach": 2, "watch": 1, "ok": 1}
     assert summary.probe_accuracy is None  # no item declared a handler probe
+    assert summary.probe_tiers == {"canonical": 0, "acceptable": 0, "forbidden": 0, "other": 0}
 
 
 def test_summarize_aggregates_the_alpha_probe_separately() -> None:
     """The α handler-probe aggregates over graded breach items that declared a probe,
     independent of the β headline — a FAILED probe must not move the headline, and an
-    item with no probe is excluded from the probe denominator (PLAN-0019 Part B)."""
+    item with no probe is excluded from the probe denominator (PLAN-0019 Part B).
+    The per-tier counts (PLAN-0022 Step 1) break the same probed set down by
+    classification."""
     results = [
-        # headline pass, probe pass
+        # headline pass, probe pass (the canonical pick)
         ItemResult(
             "a",
             _VERTICAL,
@@ -275,8 +281,22 @@ def test_summarize_aggregates_the_alpha_probe_separately() -> None:
             True,
             None,
             probe_correct=True,
+            probe_tier=HandlerTier.CANONICAL,
         ),
-        # headline pass, probe FAIL (wrong handler pick)
+        # headline pass, probe pass (a benign acceptable alternative)
+        ItemResult(
+            "a2",
+            _VERTICAL,
+            Disposition.BREACH,
+            Disposition.BREACH,
+            True,
+            True,
+            True,
+            None,
+            probe_correct=True,
+            probe_tier=HandlerTier.ACCEPTABLE,
+        ),
+        # headline pass, probe FAIL (wrong handler pick — neither tier)
         ItemResult(
             "b",
             _VERTICAL,
@@ -287,6 +307,7 @@ def test_summarize_aggregates_the_alpha_probe_separately() -> None:
             True,
             None,
             probe_correct=False,
+            probe_tier=HandlerTier.OTHER,
         ),
         # headline graded, NO probe declared -> excluded from the probe denominator
         ItemResult(
@@ -302,10 +323,11 @@ def test_summarize_aggregates_the_alpha_probe_separately() -> None:
         ),
     ]
     summary = summarize(results)
-    assert summary.headline_accuracy == 1.0  # all three headline-correct
-    assert summary.probe_graded == 2  # only a + b declared a probe
-    assert summary.probe_correct == 1  # only a's probe passed
-    assert summary.probe_accuracy == 0.5
+    assert summary.headline_accuracy == 1.0  # all four headline-correct
+    assert summary.probe_graded == 3  # a + a2 + b declared a probe
+    assert summary.probe_correct == 2  # canonical + acceptable pass
+    assert summary.probe_accuracy == 2 / 3
+    assert summary.probe_tiers == {"canonical": 1, "acceptable": 1, "forbidden": 0, "other": 1}
 
 
 def test_summarize_handles_no_graded_items() -> None:

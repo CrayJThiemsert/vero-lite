@@ -11,6 +11,12 @@
 # escalate} + `echo`, each a no-op receipt today (real aerator I/O ships with the
 # design partner). The breach action step fixes its handler to
 # `start_emergency_aerator` (PLAN-0019 Part B); the no-op `summary` step keeps `echo`.
+#
+# PLAN-0022 Step 3 (worked example): the `judge` step authors its deterministic
+# band (threshold/direction/watch_margin — values grounded in aquaculture_v0.yaml
+# + the benchmark dataset) and the `aerate` step declares its handler-tier
+# taxonomy (`tiers`). Both are unconsumed until the Phase-2 evaluate executor
+# lands; today's behaviour is unchanged (AC-9).
 
 namespace: aquaculture
 version: 0
@@ -49,6 +55,13 @@ procedures:
           Tag each pond's verdict vs the 4 mg/L floor — breach (< 4), watch (4–5),
           ok (> 5). OCT_RECOMMEND_DIRECTION=below crash semantics.
         kind: evaluate
+        # PLAN-0022 Step 3 (SD-5=a): the authored deterministic band the evaluate
+        # executor (Phase 2a) computes per-entity verdicts from. The watch band is
+        # the ADR-0019 escalate-to-human zone; all three fields are optional —
+        # absent, the band stays NL-only and behaviour is unchanged (AC-9).
+        threshold: 4.0
+        direction: below
+        watch_margin: 1.0
       - step_id: aerate
         name: Aerate the breach set
         description: >-
@@ -58,6 +71,13 @@ procedures:
         kind: action
         autonomy: gated             # the human go/no-go on an irreversible write
         handler: start_emergency_aerator
+        # PLAN-0022 Step 3 (SD-5=a): the handler-tier taxonomy, mirroring the
+        # benchmark grader's canonical/acceptable tiers (one source of truth).
+        # A taxonomy declaration, NOT an execution allowlist — what the agent may
+        # invoke stays bounded by agents.pond_agent.allowed.action_handlers.
+        tiers:
+          canonical: start_emergency_aerator
+          acceptable: [increase_water_exchange]
         input:
           from: judge               # the named-input fan-out: only the breach subset
           where:
