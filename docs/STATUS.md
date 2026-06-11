@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-11T15:51:02+07:00
-session: 53
-current_batch: 'Session 53 — PLAN-0020 (Procedure-path tuning) COMPLETE + archived to done/ (#251-#256): nudge worked (β/α →100%), skip lever cuts p95 31.80→21.62s under the 30s bar at zero β cost; SD-1 skipped, ring-fence honored.'
+last_updated: 2026-06-11T16:24:25+07:00
+session: 54
+current_batch: 'Session 54 — PLAN-0022 (tiered decision routing) Draft landed (#259, f5eba1b): Cowork-authored (ADR-009 D1), Code ran the D3 receive (validate clean + R2 fact-pack re-verifying FP-1/FP-2 vs HEAD); 5 dispatch areas, SD-1..SD-7. Build-Vertical narratives (3, one per vertical) + gpt-oss rubric received as gitignored research. Cray adjudicates SD-1..SD-7 to ratify Draft→Ready.'
 current_actor: code
-blocked_on: 'Nothing gates shipped work. No open PRs.'
-next_action: 'Future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring skip into product procedure path is an open audit trade-off design call. Both deferred for discussion. Also HELD: an R3-adjacent MS-S1 warm-cycle (pin vs 3 nemotron-3-nano variants, ideally paired with the U-1 MXFP4-vs-Q4_K_M check) when a maintenance window opens — no eval yet, no ADR-0001 change.'
-head_commit: a6125c1
-recent_commits: [a6125c1, 4968f51, ac56653, bef462f, a3a6f54, 19706eb, 60e88fe, fa368e2]
+blocked_on: 'Nothing gates shipped work. PLAN-0022 Draft awaits Cray SD-1..SD-7 adjudication (ratify, not a blocker).'
+next_action: 'Cray adjudicates PLAN-0022 SD-1..SD-7 (esp. SD-1 replace-vs-augment human_task, SD-2 trigger scope, SD-5 field placement) → ratify Draft→Ready for execution; then the ADR-016 D3 amendment (add the watch→gated path) lands before the impl PR (CLAUDE.md §8). Also HELD: an R3-adjacent MS-S1 warm-cycle (pin vs 3 nemotron-3-nano variants, ideally paired with the U-1 MXFP4-vs-Q4_K_M check) when a maintenance window opens — no eval yet, no ADR-0001 change.'
+head_commit: f5eba1b
+recent_commits: [f5eba1b, a6125c1, 4968f51, ac56653, bef462f, a3a6f54, 19706eb, 60e88fe]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,39 @@ recent_commits: [a6125c1, 4968f51, ac56653, bef462f, a3a6f54, 19706eb, 60e88fe, 
 
 ## Current Focus
 
-> **Session 53 (current) — PLAN-0020 (Procedure-path tuning) is COMPLETE
+> **Session 54 (current) — PLAN-0022 "tiered decision routing" landed as
+> Draft (#259, head_commit `f5eba1b`, `docs(plans):`); the deferred
+> tiered-handler-grading follow-up is now a committed plan.** Cowork drafted it
+> (ADR-009 D1) off the session-54 Code dispatch + the design seed; Code ran the
+> ADR-009 D3 receive sequence — `validate_handoff.py` **clean** on the companion
+> handoff, plus an **R2 fact-pack review that re-verified Cowork's two
+> load-bearing catches against HEAD**: **FP-2/SD-6** — `services/engine/procedures/`
+> ships exactly one concrete `StepExecutor` (`ActionStepExecutor`); `StepKind.EVALUATE`
+> exists but executors are caller-provided and **no `watch_margin` lives under
+> `services/`** (benchmark-only), so a deterministic `evaluate` executor is a real
+> **prerequisite** for `watch→gated` wiring; **FP-1/SD-7** — aquaculture
+> `procedures.yaml` routes `verdict: watch → human_task` (a bare visual check),
+> **not** silence, so the change is an *upgrade* (bare "go look" → a `gated`
+> proposal). The PLAN renders Cray's two-axis reframe (threshold clear × data
+> clear/ambiguous) into (1) tier the benchmark grader
+> (canonical/acceptable/forbidden) and (2) wire the deterministic `watch` band →
+> a `gated` human-escalation — trigger = the engine watch band, **never**
+> `confidence` (ADR-010 IN-3, load-bearing AC-3). Covers all 5 dispatch areas;
+> SD-1..SD-5 = the design-seed OQs, **SD-6/SD-7 newly surfaced**. **Also received**
+> (gitignored research, no commit): **3 Build-Vertical narratives** (one each
+> energy/supply_chain/aquaculture — each carries a clear breach + a borderline
+> `watch`, so they double as PLAN-0022 routing fixtures; **S-1** = aquaculture
+> uses ammonia not the benchmark's DO/aerate, Cowork recommends KEEP; **S-3** =
+> a deterministic `dwell_minutes` co-gate candidate that escalates `watch`
+> **without** an ADR-010 reopen), and the **gpt-oss model-selection rubric
+> R1–R6** (recorded in #258). **NEXT:** Cray adjudicates PLAN-0022
+> **SD-1..SD-7** → ratify Draft → Ready for execution; the **ADR-016 D3
+> amendment** (add the `watch→gated` path) merges before any implementation PR
+> (CLAUDE.md §8). The full Recent-Decisions row + any CF rotation land at that
+> ratification reconcile.
+> AI-assisted (Claude Code, session 54); no `Co-Authored-By` per CLAUDE.md §7.
+>
+> **Session 53 — PLAN-0020 (Procedure-path tuning) is COMPLETE
 > + archived to `docs/plans/done/` (#251–#256, branch-tip `a6125c1` =
 > head_commit, the `docs(plans):` close-mv riding #256; merge `02d3e46`;
 > the PLAN-0019 B-6 ring-fence follow-up).** Headline results (all
