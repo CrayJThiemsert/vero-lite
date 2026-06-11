@@ -115,6 +115,15 @@ def test_structuring_messages_carry_draft_and_emit_instruction() -> None:
     assert "json object" in messages[3]["content"].lower()
 
 
+def test_structuring_messages_without_draft_omit_the_assistant_turn() -> None:
+    """PLAN-0020 skip mode: with draft=None there is no call-1 output to carry, so the
+    assistant draft turn is dropped and this is a single-call structured prompt — the
+    system + event-user turn + the emit instruction remain."""
+    messages = build_structuring_messages(_event(), "energy", draft=None)
+    assert [m["role"] for m in messages] == ["system", "user", "user"]
+    assert "json object" in messages[-1]["content"].lower()
+
+
 def test_structuring_without_retry_has_no_extra_message() -> None:
     messages = build_structuring_messages(_event(), "energy", draft="draft")
     assert len(messages) == 4

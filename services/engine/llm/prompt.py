@@ -124,7 +124,7 @@ def build_reasoning_messages(
 def build_structuring_messages(
     event: Mapping[str, Any],
     vertical: str,
-    draft: str,
+    draft: str | None = None,
     *,
     retry_feedback: str | None = None,
     goal: str | None = None,
@@ -137,9 +137,15 @@ def build_structuring_messages(
     appended inside an untrusted block, never with system authority
     (IN-2 corollary, PLAN-0006 §6.4). ``goal`` (PLAN-0019 A-8) threads into the
     trusted system instruction, identically to call 1.
+
+    ``draft`` is ``None`` only on the PLAN-0020 ``skip`` think-trim path
+    (AC-1a): there is no call-1 output to carry, so the assistant draft turn is
+    omitted and this becomes a single-call structured prompt (the system + event
+    user turn still set the task; the emit instruction still constrains output).
     """
     messages = build_reasoning_messages(event, vertical, goal)
-    messages.append({"role": "assistant", "content": draft})
+    if draft is not None:
+        messages.append({"role": "assistant", "content": draft})
     messages.append(
         {
             "role": "user",

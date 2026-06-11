@@ -30,7 +30,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from pydantic import BaseModel, Field, ValidationError
 
@@ -38,6 +38,23 @@ from services.engine.actions import EntityRef
 from services.engine.llm.client import ChatResult
 from services.engine.llm.prompt import build_reasoning_messages, build_structuring_messages
 from services.engine.registry import RegistryError, registry
+
+ReasoningMode = Literal["full", "think_off", "skip"]
+"""PLAN-0020 think-trim lever (AC-1a) — controls the call-1 reasoning pass, the
+dominant per-call latency cost.
+
+* ``full`` — the shipped two-call path: call 1 reasons (``think=True``), call 2
+  structures from that draft. **Default — byte-identical to the shipped behaviour.**
+* ``think_off`` — keeps the two-call shape but call 1 runs with ``think=False``
+  (a plain draft, no extended reasoning trace). Moderate latency cut. (Call 1 has
+  no ``format``, so the Ollama #15260 ``think=False``+``format`` hazard does not
+  apply here — only call 2 carries ``format``, and it never sets ``think``.)
+* ``skip`` — omits call 1 entirely; call 2 structures from the event alone
+  (single call). Largest latency cut, largest accuracy risk.
+
+The accuracy/latency deltas per mode are measured on the procedure path under
+PLAN-0020 R2 (host-state); this lever only makes the pass selectable. The
+reactive and procedure product paths pass ``full`` (unchanged)."""
 
 
 class ChatClient(Protocol):
@@ -139,8 +156,9 @@ async def generate_judgment(
     *,
     retry_budget: int = 3,
     goal: str | None = None,
+    reasoning_mode: ReasoningMode = "full",
 ) -> JudgmentResult:
-    """Run the two-call Pattern B exchange and return a validated judgment.
+    """Run the Pattern B exchange and return a validated judgment.
 
     Call 1 reasons (``think=True``); call 2 emits the constrained envelope
     against the :class:`LlmJudgment` schema, with ``suggested_handler``
@@ -155,6 +173,12 @@ async def generate_judgment(
     directive, threaded into the system instruction of BOTH calls; it is ``None``
     on the reactive Pipeline-v0 path (system prompt unchanged).
 
+    ``reasoning_mode`` (PLAN-0020 AC-1a think-trim lever, default ``"full"``)
+    selects the call-1 reasoning pass: ``full`` = call 1 ``think=True`` (shipped);
+    ``think_off`` = call 1 ``think=False``; ``skip`` = no call 1 (call 2 structures
+    from the event alone). On ``skip`` the returned ``draft`` is ``""`` and
+    ``thinking`` is ``None`` (no reasoning output existed). See :data:`ReasoningMode`.
+
     Raises :class:`StructuredOutputError` when the budget is exhausted.
     Transport failures surface as ``OllamaError`` from ``client.chat`` and
     are intentionally NOT retried here — they go straight to the Step 5
@@ -162,13 +186,27 @@ async def generate_judgment(
     """
     budget = max(1, retry_budget)
     schema = _judgment_schema(registry.handler_names(vertical))
-    reasoning = await client.chat(build_reasoning_messages(event, vertical, goal), think=True)
+
+    # PLAN-0020 think-trim lever: `skip` omits call 1; `full`/`think_off` run it
+    # with think on/off. `draft`/`thinking` feed the hybrid trace (empty on skip).
+    draft: str | None
+    thinking: str | None
+    if reasoning_mode == "skip":
+        draft = None
+        thinking = None
+    else:
+        reasoning = await client.chat(
+            build_reasoning_messages(event, vertical, goal),
+            think=(reasoning_mode == "full"),
+        )
+        draft = reasoning.content
+        thinking = reasoning.thinking
 
     feedback: str | None = None
     last_error = "no attempt was made"
     for attempt in range(1, budget + 1):
         messages = build_structuring_messages(
-            event, vertical, reasoning.content, retry_feedback=feedback, goal=goal
+            event, vertical, draft, retry_feedback=feedback, goal=goal
         )
         # call 2: omit `think` (CHECKPOINT-0 contract — never think=False + format)
         result = await client.chat(messages, response_format=schema)
@@ -176,8 +214,8 @@ async def generate_judgment(
         if judgment is not None:
             return JudgmentResult(
                 judgment=judgment,
-                thinking=reasoning.thinking,
-                draft=reasoning.content,
+                thinking=thinking,
+                draft=draft if draft is not None else "",
                 model=result.model,
                 attempts=attempt,
             )

@@ -40,6 +40,7 @@ from benchmarks.procedure_baseline.loader import DATASET_DIR, load_all
 from benchmarks.procedure_baseline.schema import Dataset
 from services.api.config import settings
 from services.engine.llm.client import OllamaClient
+from services.engine.llm.structured import ReasoningMode
 from services.engine.procedures.spec import Procedure, load_procedures
 from verticals.aquaculture.handlers import register_aquaculture_handlers
 from verticals.energy.handlers import register_energy_handlers
@@ -82,6 +83,7 @@ async def run_dataset(
     limit: int | None,
     recorder: LatencyRecorder,
     judgment_recorder: LatencyRecorder,
+    reasoning_mode: ReasoningMode,
 ) -> list[ItemResult]:
     """Evaluate every item in one vertical's dataset against the live model.
 
@@ -106,6 +108,7 @@ async def run_dataset(
             goal=goal,
             reading_parameter=dataset.reading_parameter,
             judgment_recorder=judgment_recorder,
+            reasoning_mode=reasoning_mode,
         )
         results.append(result)
         _print_item(result)
@@ -205,6 +208,7 @@ async def _main(args: argparse.Namespace) -> None:
     recorder = LatencyRecorder()
     judgment_recorder = LatencyRecorder()
     all_results: list[ItemResult] = []
+    print(f"REASONING MODE (PLAN-0020 think-trim lever): {args.reasoning_mode}")
     for dataset in datasets:
         print(f"\n=== {dataset.vertical} ({dataset.procedure}) ===")
         results = await run_dataset(
@@ -215,6 +219,7 @@ async def _main(args: argparse.Namespace) -> None:
             limit=args.limit,
             recorder=recorder,
             judgment_recorder=judgment_recorder,
+            reasoning_mode=args.reasoning_mode,
         )
         all_results.extend(results)
         _print_summary(dataset.vertical, summarize(results))
@@ -259,6 +264,12 @@ def _parse_args() -> argparse.Namespace:
         type=float,
         default=30.0,
         help="SD-2 p95 per-judgment acceptance bar (seconds; PLAN-0020 re-ratified).",
+    )
+    parser.add_argument(
+        "--reasoning-mode",
+        choices=["full", "think_off", "skip"],
+        default="full",
+        help="PLAN-0020 think-trim lever (AC-1a): full (shipped) | think_off | skip.",
     )
     parser.add_argument(
         "--dump-json",
