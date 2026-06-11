@@ -1,18 +1,21 @@
 """PLAN-0019 A-11 — the aquaculture "Morning Pond Health Round" headline, end-to-end.
 
 Drives the REAL shipped ``verticals/aquaculture/procedures.yaml`` headline (A-ζ)
-manually, DB-backed (skips without Postgres), with FAKE ``query`` / ``evaluate`` /
-``human_task`` executors + the **REAL** ``ActionStepExecutor`` (mock ``ChatClient`` —
-no live LLM; Lesson #7 §3 behavioural assertions). Proves the ENGINE orchestrates
-the named-input fan-out + the durable suspend/resolve/resume lifecycle:
+manually, DB-backed (skips without Postgres), with a FAKE ``query`` executor + the
+**REAL** ``EvaluateStepExecutor`` (PLAN-0022 Phase 2a — reading the REAL authored
+band) + the **REAL** ``ActionStepExecutor`` (mock ``ChatClient`` — no live LLM;
+Lesson #7 §3 behavioural assertions). Proves the ENGINE orchestrates the
+named-input fan-out + the durable suspend/resolve/resume lifecycle, including the
+ADR-0019 ``watch -> gated`` escalation (PLAN-0022 Phase 2b, SD-1=a):
 
-  read_do -> judge -> aerate (gated, breach subset) SUSPEND
+  read_do -> judge (deterministic verdicts) -> aerate (gated, breach subset) SUSPEND
     -> resolve_gated_step(approve) -> resume
-    -> visual (human_task, watch subset) SUSPEND -> resume
+    -> escalate_watch (gated proposal, watch subset) SUSPEND
+    -> resolve_gated_step(approve) -> resume
     -> summary (auto action, whole verdict set) -> COMPLETED
 
-A second case asserts **reject = continue + record**: a rejected breach action never
-fires its handler, yet the run still continues to completion.
+A second case asserts **reject = continue + record** on BOTH gates: rejected breach
+and watch proposals never fire their handlers, yet the run still completes.
 """
 
 from __future__ import annotations
@@ -28,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 from services.db.base import Base
 from services.engine.llm.client import ChatResult
 from services.engine.procedures.action_step import ActionStepExecutor, resolve_gated_step
+from services.engine.procedures.evaluate_step import EvaluateStepExecutor
 from services.engine.procedures.orchestrator import (
     RunContext,
     StepExecutor,
@@ -37,28 +41,19 @@ from services.engine.procedures.orchestrator import (
 from services.engine.procedures.persistence import load_run, persist_run, resume_run
 from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
 from services.engine.procedures.spec import Agent, Step, StepKind, load_procedures
-from services.engine.recommender import crosses_threshold
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
 
-# Canned pond set: two breaches (DO crashed below 4 mg/L), one watch (4-5), one ok.
+# Canned pond set: two breaches (DO crashed below 4 mg/L), one watch (4-5), one ok —
+# `measured_value` is the reading field the REAL EvaluateStepExecutor judges.
 PONDS: list[dict[str, Any]] = [
-    {"pond_id": "p1", "event_id": "e1", "do": 3.2},  # breach
-    {"pond_id": "p2", "event_id": "e2", "do": 2.8},  # breach
-    {"pond_id": "p3", "event_id": "e3", "do": 4.5},  # watch
-    {"pond_id": "p4", "event_id": "e4", "do": 6.1},  # ok
+    {"pond_id": "p1", "event_id": "e1", "measured_value": 3.2},  # breach
+    {"pond_id": "p2", "event_id": "e2", "measured_value": 2.8},  # breach
+    {"pond_id": "p3", "event_id": "e3", "measured_value": 4.5},  # watch
+    {"pond_id": "p4", "event_id": "e4", "measured_value": 6.1},  # ok
 ]
 BREACH_IDS = {"action-e1", "action-e2"}
-
-
-def _verdict(do: float) -> str:
-    """The 4 mg/L breach rule, reusing the shipped threshold helper (below = a crash):
-    breach (<= 4), watch (4 < do <= 5), ok (> 5)."""
-    if crosses_threshold(do, 4.0, "below"):  # do <= 4.0 — a DO crash below the floor
-        return "breach"
-    if crosses_threshold(do, 5.0, "below"):  # 4 < do <= 5 — borderline
-        return "watch"
-    return "ok"
+WATCH_ID = "action-e3"
 
 
 class _CyclingChat:
@@ -117,30 +112,6 @@ class _Query:
         )
 
 
-class _Evaluate:
-    """FAKE ``judge``: tags each entity's ``verdict`` via the 4 mg/L rule."""
-
-    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
-        tagged = [{**e, "verdict": _verdict(e["do"])} for e in input_set]
-        return StepOutcome(
-            output=tagged, reasoning_trace=[{"kind": "evaluate", "summary": "tagged verdicts"}]
-        )
-
-
-class _HumanTask:
-    """FAKE ``human_task``: records the set it received and echoes it as its output."""
-
-    def __init__(self) -> None:
-        self.received: list[list[Any]] = []
-
-    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
-        self.received.append(list(input_set))
-        return StepOutcome(
-            output=list(input_set),
-            reasoning_trace=[{"kind": "human_task", "summary": "visual check queued"}],
-        )
-
-
 def _headline() -> tuple[Any, Agent]:
     """Load the REAL shipped aquaculture headline procedure + its agent."""
     spec = load_procedures("aquaculture")
@@ -149,12 +120,20 @@ def _headline() -> tuple[Any, Agent]:
     return proc, agent
 
 
-def _executors(human: _HumanTask) -> dict[StepKind, StepExecutor]:
+def _outputs(sr: Any) -> list[dict[str, Any]]:
+    """A StepResult's recorded ``output_set`` (asserts the artifact exists)."""
+    assert sr.artifact is not None, f"{sr.step_id}: no artifact recorded"
+    out: list[dict[str, Any]] = sr.artifact["output_set"]
+    return out
+
+
+def _executors() -> dict[StepKind, StepExecutor]:
+    """The REAL judge (deterministic, reads the authored band from the spec) + the
+    REAL action executor; only the query is canned."""
     return {
         StepKind.QUERY: _Query(PONDS),
-        StepKind.EVALUATE: _Evaluate(),
+        StepKind.EVALUATE: EvaluateStepExecutor(),
         StepKind.ACTION: ActionStepExecutor(client_factory=lambda _m: _CyclingChat()),
-        StepKind.HUMAN_TASK: human,
     }
 
 
@@ -171,25 +150,35 @@ async def db_engine() -> AsyncIterator[AsyncEngine]:
 
 
 async def test_headline_end_to_end_approve(db_engine: AsyncEngine) -> None:
-    """The full headline: gated aerate over the breach set -> approve -> human_task
-    over the watch set -> auto summary over the whole verdict set -> completed."""
+    """The full headline: gated aerate over the breach set -> approve -> gated
+    escalation proposal over the watch set (ADR-0019) -> approve -> auto summary
+    over the whole verdict set -> completed."""
     maker = async_sessionmaker(db_engine, expire_on_commit=False)
     spy = _SpyHandler()
-    # The gated aerate step now fixes handler=start_emergency_aerator (PLAN-0019 B);
-    # the auto summary step keeps echo. Bind the spy to BOTH so it records the gate.
+    # The gated aerate step fixes handler=start_emergency_aerator (PLAN-0019 B); the
+    # watch escalation fixes increase_water_exchange (PLAN-0022 2b); the auto summary
+    # keeps echo. Bind the spy to ALL so it records every gate firing.
     registry.register_handler("aquaculture", "echo", spy)
     registry.register_handler("aquaculture", "start_emergency_aerator", spy)
+    registry.register_handler("aquaculture", "increase_water_exchange", spy)
     procedure, agent = _headline()
-    human = _HumanTask()
-    executors = _executors(human)
+    executors = _executors()
 
-    # 1. Run -> aerate (gated) PROPOSES on the breach subset only -> SUSPEND.
+    # 1. Run -> the REAL judge tags verdicts -> aerate (gated) PROPOSES on the
+    #    breach subset only -> SUSPEND.
     result = await run_procedure(
         procedure, agent, executors, vertical="aquaculture", run_id="hl-ap"
     )
     assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    judge_sr = next(sr for sr in result.step_results if sr.step_id == "judge")
+    assert [e["verdict"] for e in _outputs(judge_sr)] == [
+        "breach",
+        "breach",
+        "watch",
+        "ok",
+    ], "the REAL deterministic judge tagged the authored band's verdicts"
     aerate_sr = next(sr for sr in result.step_results if sr.step_id == "aerate")
-    proposals = aerate_sr.artifact["output_set"]
+    proposals = _outputs(aerate_sr)
     assert {p["action_id"] for p in proposals} == BREACH_IDS, "fan-out: only the breach subset"
     assert all(p["status"] == "proposed" for p in proposals)
     assert spy.calls == [], "a gated action must not execute before human approval"
@@ -202,17 +191,28 @@ async def test_headline_end_to_end_approve(db_engine: AsyncEngine) -> None:
             session, "hl-ap", "aerate", {"action-e1": "approve", "action-e2": "approve"}
         )
     assert len(spy.calls) == 2, "approve must execute the handler once per breach pond"
-    assert all(e["status"] == "executed" for e in resolved.artifact["output_set"])
+    assert all(e["status"] == "executed" for e in _outputs(resolved))
 
-    # 3. Resume -> visual (human_task) over the WATCH subset -> SUSPEND again.
+    # 3. Resume -> escalate_watch (gated proposal, ADR-0019) over the WATCH subset
+    #    -> SUSPEND again with a CONCRETE recommendation (not a bare "go look").
     async with maker() as fresh:
-        after_visual = await resume_run(
+        after_escalate = await resume_run(
             fresh, procedure, agent, executors, "hl-ap", vertical="aquaculture"
         )
-    assert after_visual.run.status == PipelineRunStatus.WAITING_HUMAN.value
-    assert human.received == [[{**PONDS[2], "verdict": "watch"}]], "fan-out: only the watch subset"
+    assert after_escalate.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    escalate_sr = next(sr for sr in after_escalate.step_results if sr.step_id == "escalate_watch")
+    watch_proposals = _outputs(escalate_sr)
+    assert [p["action_id"] for p in watch_proposals] == [WATCH_ID], "only the watch subset"
+    assert watch_proposals[0]["status"] == "proposed"
+    assert watch_proposals[0]["action"]["suggested_handler"] == "increase_water_exchange"
+    assert len(spy.calls) == 2, "the watch proposal must not execute before approval"
 
-    # 4. Resume -> summary (auto action) over the WHOLE verdict set -> COMPLETED.
+    # 4. External gate: approve the watch proposal -> the water-exchange handler fires.
+    async with maker() as session:
+        await resolve_gated_step(session, "hl-ap", "escalate_watch", {WATCH_ID: "approve"})
+    assert len(spy.calls) == 3, "approving the escalation executes its handler"
+
+    # 5. Resume -> summary (auto action) over the WHOLE verdict set -> COMPLETED.
     async with maker() as fresh:
         done = await resume_run(fresh, procedure, agent, executors, "hl-ap", vertical="aquaculture")
     assert done.run.status == PipelineRunStatus.COMPLETED.value
@@ -224,8 +224,8 @@ async def test_headline_end_to_end_approve(db_engine: AsyncEngine) -> None:
     # The terminal auto summary ran over all four ponds and executed each.
     summary = by_id["summary"]
     assert summary.status == StepResultStatus.COMPLETE.value
-    assert len(summary.artifact["output_set"]) == len(PONDS)
-    assert all(e["status"] == "executed" for e in summary.artifact["output_set"])
+    assert len(_outputs(summary)) == len(PONDS)
+    assert all(e["status"] == "executed" for e in _outputs(summary))
     # Telemetry seam (AC A-9): every step carries duration_ms + a trace + an audit record.
     for sr in reloaded.step_results:
         assert sr.duration_ms is not None, f"{sr.step_id}: duration_ms"
@@ -234,17 +234,15 @@ async def test_headline_end_to_end_approve(db_engine: AsyncEngine) -> None:
 
 
 async def test_headline_reject_breach_continues(db_engine: AsyncEngine) -> None:
-    """Reject = continue + record: a rejected breach action never fires its handler,
-    yet the run still continues through the watch human_task to completion."""
+    """Reject = continue + record on BOTH gates: rejected breach AND watch proposals
+    never fire their handlers, yet the run still continues to completion."""
     maker = async_sessionmaker(db_engine, expire_on_commit=False)
     spy = _SpyHandler()
-    # The gated aerate step now fixes handler=start_emergency_aerator (PLAN-0019 B);
-    # the auto summary step keeps echo. Bind the spy to BOTH so it records the gate.
     registry.register_handler("aquaculture", "echo", spy)
     registry.register_handler("aquaculture", "start_emergency_aerator", spy)
+    registry.register_handler("aquaculture", "increase_water_exchange", spy)
     procedure, agent = _headline()
-    human = _HumanTask()
-    executors = _executors(human)
+    executors = _executors()
 
     result = await run_procedure(
         procedure, agent, executors, vertical="aquaculture", run_id="hl-rej"
@@ -259,16 +257,21 @@ async def test_headline_reject_breach_continues(db_engine: AsyncEngine) -> None:
             session, "hl-rej", "aerate", {"action-e1": "reject", "action-e2": "reject"}
         )
     assert spy.calls == [], "a rejected breach action must never execute its handler"
-    assert resolved.artifact["output_set"] == [], "nothing executed -> nothing threaded forward"
-    assert sum(1 for t in resolved.reasoning_trace if t["kind"] == "action_rejected") == 2
+    assert _outputs(resolved) == [], "nothing executed -> nothing threaded forward"
+    assert sum(1 for t in resolved.reasoning_trace or [] if t["kind"] == "action_rejected") == 2
 
-    # Resume past the rejected step -> visual (watch) suspends -> resume -> completed.
+    # Resume past the rejected step -> escalate_watch (gated proposal) suspends;
+    # reject it too -> its handler must NOT fire either (reject = continue + record).
     async with maker() as fresh:
-        after_visual = await resume_run(
+        after_escalate = await resume_run(
             fresh, procedure, agent, executors, "hl-rej", vertical="aquaculture"
         )
-    assert after_visual.run.status == PipelineRunStatus.WAITING_HUMAN.value
-    assert human.received == [[{**PONDS[2], "verdict": "watch"}]]
+    assert after_escalate.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    escalate_sr = next(sr for sr in after_escalate.step_results if sr.step_id == "escalate_watch")
+    assert [p["action_id"] for p in _outputs(escalate_sr)] == [WATCH_ID]
+    async with maker() as session:
+        await resolve_gated_step(session, "hl-rej", "escalate_watch", {WATCH_ID: "reject"})
+    assert spy.calls == [], "a rejected watch proposal must never execute its handler"
 
     async with maker() as fresh:
         done = await resume_run(

@@ -14,9 +14,15 @@
 #
 # PLAN-0022 Step 3 (worked example): the `judge` step authors its deterministic
 # band (threshold/direction/watch_margin — values grounded in aquaculture_v0.yaml
-# + the benchmark dataset) and the `aerate` step declares its handler-tier
-# taxonomy (`tiers`). Both are unconsumed until the Phase-2 evaluate executor
-# lands; today's behaviour is unchanged (AC-9).
+# + the benchmark dataset; consumed by the engine's EvaluateStepExecutor, Phase
+# 2a) and the `aerate` step declares its handler-tier taxonomy (`tiers`).
+#
+# PLAN-0022 Phase 2b (ADR-0019, SD-1=a): the watch set routes to a GATED
+# `increase_water_exchange` proposal (`escalate_watch`) — the human decides on a
+# concrete machine recommendation — replacing the pre-amendment bare visual-check
+# `human_task` (ADR-016 "Morning Pond Health Round" step-4 row, amended
+# 2026-06-11). "Augment" (propose AND queue a visual check) remains a
+# per-procedure authoring option.
 
 namespace: aquaculture
 version: 0
@@ -31,8 +37,10 @@ agents:
     allowed:
       step_kinds: [query, evaluate, action, human_task]
       # `start_emergency_aerator` for the gated breach action; `echo` for the auto
-      # round-summary terminal (a no-op artifact, not an operational action).
-      action_handlers: [echo, start_emergency_aerator]
+      # round-summary terminal (a no-op artifact, not an operational action);
+      # `increase_water_exchange` for the gated watch escalation (ADR-0019 /
+      # PLAN-0022 Phase 2b — the precautionary handler the author allowlists).
+      action_handlers: [echo, start_emergency_aerator, increase_water_exchange]
 
 procedures:
   morning_pond_health_round:
@@ -40,8 +48,9 @@ procedures:
     goal: >-
       Read each active pond's latest dissolved-oxygen reading, judge it against the
       4 mg/L breach threshold (DO is a crash signal — it breaches BELOW the floor),
-      aerate the breach set after a human go/no-go, send the borderline watch set for
-      a technician visual check, and write a round summary over every pond.
+      aerate the breach set after a human go/no-go, escalate the borderline watch
+      set as a precautionary water-exchange proposal for technician approve/reject,
+      and write a round summary over every pond.
     run_by: pond_agent
     trigger: manual                 # L-1: only manual runs in Phase 1 (06:00 deferred)
     steps:
@@ -82,10 +91,19 @@ procedures:
           from: judge               # the named-input fan-out: only the breach subset
           where:
             verdict: breach
-      - step_id: visual
-        name: Technician visual check (watch set)
-        description: Borderline ponds get a human visual check before any action.
-        kind: human_task
+      - step_id: escalate_watch
+        name: Escalate the watch set (gated proposal)
+        description: >-
+          Propose a precautionary water-exchange action per borderline pond
+          (ADR-0019 watch->gated routing; PLAN-0022 SD-1=a — replaces the bare
+          visual-check human_task): the LLM recommends, the run suspends at
+          waiting_human, and the technician approves/rejects a CONCRETE
+          recommendation instead of being told only "go look". The routing
+          trigger is the judge step's deterministic verdict, never confidence
+          (ADR-010 IN-3).
+        kind: action
+        autonomy: gated             # human decides on the ambiguous band (ADR-0019)
+        handler: increase_water_exchange
         input:
           from: judge
           where:
