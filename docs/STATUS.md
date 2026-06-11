@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-11T23:00:15+07:00
+last_updated: 2026-06-12T00:06:04+07:00
 session: 55
-current_batch: 'Session 55 — PLAN-0022 Phase 1 SHIPPED (#265, a68a114): tiered grader (canonical/acceptable/forbidden-or-other; SD-4=a) + Step band/tiers config (SD-5=a) + engine-owned classify_verdict. Suite 1445 passed; AC-9 back-compat held.'
+current_batch: 'Session 55 — PLAN-0022 Phase 2 SHIPPED (#267, 6870f87): deterministic evaluate executor (SD-6, no LLM) + watch→gated escalate_watch routing (SD-1=a); AC-8 landed, AC-9 held; suite 1459 (+14).'
 current_actor: code
 blocked_on: 'Nothing gates shipped work. No open PRs.'
-next_action: 'PLAN-0022 Phase 2 — (2a) deterministic evaluate executor (SD-6; consumes Step band config + classify_verdict), then (2b) watch→gated via resolve_gated_step (SD-1=a) + AC-8 determinism test; Phase 3 stays behind the B-6 ring-fence.'
-head_commit: a68a114
-recent_commits: [a68a114, 137766c, 46061b7, f5eba1b, a6125c1, 4968f51, ac56653, bef462f, a3a6f54]
+next_action: 'PLAN-0022 Phase 3 (final phase) — escalation-correctness scoring lane (Step 5); B-6 ring-fenced: draft the scoring methodology for Cray ratification BEFORE any scored run; then plan → done/.'
+head_commit: 6870f87
+recent_commits: [6870f87, a68a114, 137766c, 46061b7, f5eba1b, a6125c1, 4968f51, ac56653, bef462f]
 ---
 
 # vero-lite — Project Status
@@ -18,11 +18,37 @@ recent_commits: [a68a114, 137766c, 46061b7, f5eba1b, a6125c1, 4968f51, ac56653, 
 
 ## Current Focus
 
-> **Session 55 (current) — PLAN-0022 Phase 1 SHIPPED (#265, head_commit
-> `a68a114`, `feat(engine):`; merge `6b1bdd5`): the benchmark grader's α
-> probe is now TIERED and the `Step` spec gains the band/tiers config
-> surface — the first Phase-1 implementation PR under PLAN-0022 (Phase 0 =
-> ADR-0019, #263, prior session).** **Step 1 (grader tiering, SD-4=a):**
+> **Session 55 (current) — PLAN-0022 Phase 2 SHIPPED (#267, head_commit
+> `6870f87`, `feat(engine):`; merge `9072fda`) — the session's SECOND impl
+> merge: the deterministic `evaluate` executor + the `watch → gated` routing
+> (ADR-0019) are LIVE.** **Phase 2a (SD-6, the evaluate executor):** NEW
+> `services/engine/procedures/evaluate_step.py` — an engine-owned judge
+> computing `breach / watch / ok` from the Step-authored band via
+> `classify_verdict`, **no LLM call** — the ADR-0019 determinism invariant
+> holds by construction. **Phase 2b (SD-1=a, watch→gated):** the aquaculture
+> `watch` set now routes to a gated `increase_water_exchange` proposal
+> `escalate_watch`, replacing the bare visual-check `human_task`; the
+> existing `resolve_gated_step` / suspend / resume machinery is reused
+> verbatim. **AC-8 named test landed** — escalation byte-for-byte identical
+> under confidence 0.05 vs 0.99 (trigger = the engine watch band, never
+> `confidence`; ADR-010 IN-3) — and **AC-9 held** (breach path + reject =
+> continue+record proven on both gates). Full suite **1459 passed** (+14);
+> ruff + mypy clean. **NEXT = Phase 3, the only remaining phase:** the
+> escalation-correctness scoring lane (Step 5 — scores "escalated
+> correctly" vs "should have acted" vs "should have stayed silent" on its
+> own watch-tier lane), **B-6 ring-fenced: the scoring methodology must be
+> Cray-ratified BEFORE any scored benchmark run** — Code drafts/surfaces
+> the methodology for ratification, runs nothing scored. After Phase 3,
+> PLAN-0022 archives to done/. Held items carry unchanged (nemotron MXFP4
+> warm-cycle hold; bridge-resilience option B parked). *Rotation note:* per
+> Cray (2026-06-11) the five session-51 CF blocks rotate at the NEXT
+> reconcile; this pass added no new block (Phase 2 extends this block), so
+> they are kept one more pass.
+>
+> *Earlier this session — Phase 1 SHIPPED (#265, `a68a114`, `feat(engine):`;
+> merge `6b1bdd5`): the benchmark grader's α probe TIERED + the `Step`
+> band/tiers config surface (Phase 0 = ADR-0019, #263, prior session).*
+> **Step 1 (grader tiering, SD-4=a):**
 > `Expected.valid_handlers` → `canonical_handler` + `acceptable_handlers`;
 > dispositions are now `canonical / acceptable / forbidden-or-other`; all
 > datasets migrated. Acceptable sets are grounded in PLAN-0020 REPORT
@@ -35,15 +61,8 @@ recent_commits: [a68a114, 137766c, 46061b7, f5eba1b, a6125c1, 4968f51, ac56653, 
 > now DELEGATES to it (watch-band math defined once, per the ratified
 > § Execution Order); aquaculture `procedures.yaml` carries the worked
 > example. Full suite **1445 passed**; **AC-9 byte-for-byte back-compat
-> held**. **NEXT = Phase 2:** (2a) the deterministic `evaluate` executor
-> (the SD-6 prerequisite — consumes the new Step band config +
-> `classify_verdict`) → (2b) route the `watch` subset → a `gated` proposal
-> reusing `resolve_gated_step` (SD-1=a replace), with the AC-8 determinism
-> test; trigger = the engine watch band, never `confidence` (ADR-010 IN-3).
-> Phase 3 (escalation-correctness scoring) stays behind the B-6 ring-fence —
-> methodology Cray-ratified before any scored run. Held items carry
-> unchanged: the nemotron MXFP4 warm-cycle hold; bridge-resilience option B
-> parked.
+> held**. (The Phase-2 items formerly listed as NEXT here shipped later
+> this session — superseded by the lead of this block.)
 > AI-assisted (Claude Code, session 55); no `Co-Authored-By` per CLAUDE.md §7.
 >
 > **Session 54 — PLAN-0022 "tiered decision routing" landed as
