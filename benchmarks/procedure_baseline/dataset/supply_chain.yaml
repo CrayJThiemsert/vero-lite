@@ -12,8 +12,10 @@
 # discriminating mass), 13 watch, 13 ok.
 #
 # Graded fields (LLM proposal): β headline = affected_primary_key (right shipment)
-# + action_keywords (the 'hold' action class); α probe = valid_handlers ([hold], the
-# correct ontology action_type vs the reroute/expedite/inspect/escalate near-misses).
+# + action_keywords (the 'hold' action class); tiered α probe (PLAN-0022 Step 1) =
+# canonical_handler hold + acceptable_handlers [inspect] (the PLAN-0020
+# REPORT-verified benign divergence — a defensible first response; the dangerous
+# reroute/expedite near-misses classify forbidden via forbidden_keywords, SD-4=a).
 
 vertical: supply_chain
 procedure: cold_chain_excursion_sweep
@@ -27,115 +29,115 @@ items:
   - id: supply-001
     description: 10.5 C — cold-chain excursion; breach.
     scenario: {event_id: supply-evt-001, entity_type: Shipment, primary_key: ship-S01, measured_value: 10.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S01, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S01, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-002
     description: 8.0 C — boundary; inclusive breach (measured >= threshold).
     scenario: {event_id: supply-evt-002, entity_type: Shipment, primary_key: ship-S02, measured_value: 8.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S02, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S02, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-003
     description: 8.1 C — a hair over the ceiling; breach.
     scenario: {event_id: supply-evt-003, entity_type: Shipment, primary_key: ship-S03, measured_value: 8.1, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S03, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S03, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-004
     description: 8.2 C — just over the ceiling; breach.
     scenario: {event_id: supply-evt-004, entity_type: Shipment, primary_key: ship-S04, measured_value: 8.2, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S04, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S04, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-005
     description: 8.3 C — boundary-adjacent breach.
     scenario: {event_id: supply-evt-005, entity_type: Shipment, primary_key: ship-S05, measured_value: 8.3, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S05, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S05, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-006
     description: 8.5 C — boundary-adjacent breach.
     scenario: {event_id: supply-evt-006, entity_type: Shipment, primary_key: ship-S06, measured_value: 8.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S06, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S06, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-007
     description: 8.7 C — breach.
     scenario: {event_id: supply-evt-007, entity_type: Shipment, primary_key: ship-S07, measured_value: 8.7, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S07, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S07, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-008
     description: 9.0 C — breach.
     scenario: {event_id: supply-evt-008, entity_type: Shipment, primary_key: ship-S08, measured_value: 9.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S08, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S08, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-009
     description: 9.3 C — breach.
     scenario: {event_id: supply-evt-009, entity_type: Shipment, primary_key: ship-S09, measured_value: 9.3, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S09, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S09, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-010
     description: 9.5 C — breach.
     scenario: {event_id: supply-evt-010, entity_type: Shipment, primary_key: ship-S10, measured_value: 9.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S10, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S10, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-011
     description: 9.8 C — breach.
     scenario: {event_id: supply-evt-011, entity_type: Shipment, primary_key: ship-S11, measured_value: 9.8, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S11, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S11, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-012
     description: 10.0 C — breach.
     scenario: {event_id: supply-evt-012, entity_type: Shipment, primary_key: ship-S12, measured_value: 10.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S12, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S12, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-013
     description: 11.0 C — breach.
     scenario: {event_id: supply-evt-013, entity_type: Shipment, primary_key: ship-S13, measured_value: 11.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S13, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S13, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-014
     description: 11.5 C — breach.
     scenario: {event_id: supply-evt-014, entity_type: Shipment, primary_key: ship-S14, measured_value: 11.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S14, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S14, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-015
     description: 12.0 C — gross excursion; breach.
     scenario: {event_id: supply-evt-015, entity_type: Shipment, primary_key: ship-S15, measured_value: 12.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S15, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S15, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-016
     description: 12.5 C — breach.
     scenario: {event_id: supply-evt-016, entity_type: Shipment, primary_key: ship-S16, measured_value: 12.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S16, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S16, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-017
     description: 13.0 C — breach.
     scenario: {event_id: supply-evt-017, entity_type: Shipment, primary_key: ship-S17, measured_value: 13.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S17, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S17, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-018
     description: 13.5 C — breach.
     scenario: {event_id: supply-evt-018, entity_type: Shipment, primary_key: ship-S18, measured_value: 13.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S18, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S18, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-019
     description: 14.0 C — breach.
     scenario: {event_id: supply-evt-019, entity_type: Shipment, primary_key: ship-S19, measured_value: 14.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S19, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S19, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-020
     description: 14.5 C — breach.
     scenario: {event_id: supply-evt-020, entity_type: Shipment, primary_key: ship-S20, measured_value: 14.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S20, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S20, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-021
     description: 15.0 C — breach.
     scenario: {event_id: supply-evt-021, entity_type: Shipment, primary_key: ship-S21, measured_value: 15.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S21, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S21, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-022
     description: 16.0 C — breach.
     scenario: {event_id: supply-evt-022, entity_type: Shipment, primary_key: ship-S22, measured_value: 16.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S22, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S22, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-023
     description: 17.0 C — breach.
     scenario: {event_id: supply-evt-023, entity_type: Shipment, primary_key: ship-S23, measured_value: 17.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S23, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S23, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-024
     description: 18.0 C — breach.
     scenario: {event_id: supply-evt-024, entity_type: Shipment, primary_key: ship-S24, measured_value: 18.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S24, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S24, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-025
     description: 19.0 C — breach.
     scenario: {event_id: supply-evt-025, entity_type: Shipment, primary_key: ship-S25, measured_value: 19.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S25, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S25, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-026
     description: 20.0 C — gross excursion; breach.
     scenario: {event_id: supply-evt-026, entity_type: Shipment, primary_key: ship-S26, measured_value: 20.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S26, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S26, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-027
     description: 22.0 C — breach.
     scenario: {event_id: supply-evt-027, entity_type: Shipment, primary_key: ship-S27, measured_value: 22.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S27, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S27, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
   - id: supply-028
     description: 25.0 C — ambient-exposed; breach.
     scenario: {event_id: supply-evt-028, entity_type: Shipment, primary_key: ship-S28, measured_value: 25.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S28, valid_handlers: [hold], action_keywords: [hold, inspect, quarantine, divert]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S28, canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine, divert]}
 
   # --- HARD breach (PR2 hardening: multi-entity decoys + near-miss action) ------
   # Each: a clear cold-chain excursion among near-ceiling SAFE sibling shipments
@@ -147,51 +149,51 @@ items:
   - id: supply-h01
     description: 10.5 C excursion among two watch-band shipments (7.5/7.0); hold the breach only.
     scenario: {event_id: supply-evt-h01, entity_type: Shipment, primary_key: ship-S101, measured_value: 10.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S102, measured_value: 7.5}, {primary_key: ship-S103, measured_value: 7.0}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S101, forbidden_primary_keys: [ship-S102, ship-S103], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S101, forbidden_primary_keys: [ship-S102, ship-S103], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
   - id: supply-h02
     description: 12.0 C severe excursion among three safe shipments (7.8/7.2/6.8).
     scenario: {event_id: supply-evt-h02, entity_type: Shipment, primary_key: ship-S104, measured_value: 12.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S105, measured_value: 7.8}, {primary_key: ship-S106, measured_value: 7.2}, {primary_key: ship-S107, measured_value: 6.8}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S104, forbidden_primary_keys: [ship-S105, ship-S106, ship-S107], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S104, forbidden_primary_keys: [ship-S105, ship-S106, ship-S107], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
   - id: supply-h03
     description: 8.3 C excursion (close to the ceiling) with two sub-ceiling decoys (7.9/7.4).
     scenario: {event_id: supply-evt-h03, entity_type: Shipment, primary_key: ship-S108, measured_value: 8.3, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S109, measured_value: 7.9}, {primary_key: ship-S110, measured_value: 7.4}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S108, forbidden_primary_keys: [ship-S109, ship-S110], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S108, forbidden_primary_keys: [ship-S109, ship-S110], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
   - id: supply-h04
     description: 14.0 C severe excursion beside one VERY close decoy (7.9).
     scenario: {event_id: supply-evt-h04, entity_type: Shipment, primary_key: ship-S111, measured_value: 14.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S112, measured_value: 7.9}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S111, forbidden_primary_keys: [ship-S112], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S111, forbidden_primary_keys: [ship-S112], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
   - id: supply-h05
     description: 9.5 C excursion among two safe shipments (7.6/7.1).
     scenario: {event_id: supply-evt-h05, entity_type: Shipment, primary_key: ship-S113, measured_value: 9.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S114, measured_value: 7.6}, {primary_key: ship-S115, measured_value: 7.1}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S113, forbidden_primary_keys: [ship-S114, ship-S115], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S113, forbidden_primary_keys: [ship-S114, ship-S115], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
   - id: supply-h06
     description: 11.0 C excursion with a watch decoy (7.7) and a watch-edge decoy (6.5).
     scenario: {event_id: supply-evt-h06, entity_type: Shipment, primary_key: ship-S116, measured_value: 11.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S117, measured_value: 7.7}, {primary_key: ship-S118, measured_value: 6.5}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S116, forbidden_primary_keys: [ship-S117, ship-S118], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S116, forbidden_primary_keys: [ship-S117, ship-S118], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
   - id: supply-h07
     description: 8.1 C boundary-adjacent excursion among three near-ceiling decoys (7.8/7.5/6.9).
     scenario: {event_id: supply-evt-h07, entity_type: Shipment, primary_key: ship-S119, measured_value: 8.1, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S120, measured_value: 7.8}, {primary_key: ship-S121, measured_value: 7.5}, {primary_key: ship-S122, measured_value: 6.9}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S119, forbidden_primary_keys: [ship-S120, ship-S121, ship-S122], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S119, forbidden_primary_keys: [ship-S120, ship-S121, ship-S122], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
   - id: supply-h08
     description: 10.0 C excursion with two watch-band decoys (7.9/7.3).
     scenario: {event_id: supply-evt-h08, entity_type: Shipment, primary_key: ship-S123, measured_value: 10.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S124, measured_value: 7.9}, {primary_key: ship-S125, measured_value: 7.3}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S123, forbidden_primary_keys: [ship-S124, ship-S125], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S123, forbidden_primary_keys: [ship-S124, ship-S125], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
   - id: supply-h09
     description: 9.0 C excursion beside a single safe decoy (7.0).
     scenario: {event_id: supply-evt-h09, entity_type: Shipment, primary_key: ship-S126, measured_value: 9.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S127, measured_value: 7.0}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S126, forbidden_primary_keys: [ship-S127], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S126, forbidden_primary_keys: [ship-S127], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
   - id: supply-h10
     description: 13.0 C excursion among three siblings spanning the watch band (7.8/7.4/6.7).
     scenario: {event_id: supply-evt-h10, entity_type: Shipment, primary_key: ship-S128, measured_value: 13.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S129, measured_value: 7.8}, {primary_key: ship-S130, measured_value: 7.4}, {primary_key: ship-S131, measured_value: 6.7}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S128, forbidden_primary_keys: [ship-S129, ship-S130, ship-S131], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S128, forbidden_primary_keys: [ship-S129, ship-S130, ship-S131], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
   - id: supply-h11
     description: 8.7 C excursion with a very-close decoy (7.9) and a mid-watch decoy (7.2).
     scenario: {event_id: supply-evt-h11, entity_type: Shipment, primary_key: ship-S132, measured_value: 8.7, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S133, measured_value: 7.9}, {primary_key: ship-S134, measured_value: 7.2}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S132, forbidden_primary_keys: [ship-S133, ship-S134], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S132, forbidden_primary_keys: [ship-S133, ship-S134], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
   - id: supply-h12
     description: 11.5 C excursion amid two watch-band shipments (7.6/7.0).
     scenario: {event_id: supply-evt-h12, entity_type: Shipment, primary_key: ship-S135, measured_value: 11.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5, distractors: [{primary_key: ship-S136, measured_value: 7.6}, {primary_key: ship-S137, measured_value: 7.0}]}
-    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S135, forbidden_primary_keys: [ship-S136, ship-S137], valid_handlers: [hold], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
+    expected: {disposition: breach, action_expected: true, affected_primary_key: ship-S135, forbidden_primary_keys: [ship-S136, ship-S137], canonical_handler: hold, acceptable_handlers: [inspect], action_keywords: [hold, inspect, quarantine], forbidden_keywords: [expedite, reroute]}
 
   # --- watch (6.5 <= temp < 8.0; near the ceiling; no action) ------------------
   - id: supply-029

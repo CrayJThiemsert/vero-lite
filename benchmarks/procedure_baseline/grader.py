@@ -14,46 +14,86 @@ Two pure scoring functions:
   the action class (``action_keywords``). Each field is scored only when the item
   declares it; the proposal passes iff every declared **scoring** check passes.
 
-The model's ``suggested_handler`` (``valid_handlers``) is graded as a separate **α
-probe**, NOT a headline gate: in the procedure path the executed handler is
-deterministically fixed by the author's ``step.handler`` (ADR-016), so the model's
-handler *guess* is overridden and is not the product's handler decision. The probe
-measures handler-selection as it would matter on the **reactive** path
+The model's ``suggested_handler`` is graded as a separate **tiered α probe**, NOT
+a headline gate: in the procedure path the executed handler is deterministically
+fixed by the author's ``step.handler`` (ADR-016), so the model's handler *guess*
+is overridden and is not the product's handler decision. The probe measures
+handler-selection as it would matter on the **reactive** path
 (``recommender._compose_llm_record``, which DOES use the guess) — a
-forward-looking signal, reported on its own lane. ``payload_contains`` stays an
-**advisory** signal. Headline / probe / advisory are aggregated separately.
+forward-looking signal, reported on its own lane. PLAN-0022 Step 1 tiers the
+probe (:func:`classify_handler_tier`): **canonical** (the single correct
+``canonical_handler``) / **acceptable** (a benign defensible alternative in
+``acceptable_handlers``) / **forbidden-or-other** (everything else — with a
+``forbidden_keywords`` hit flagged explicitly in reporting per SD-4=a, never a
+new dataset tier). ``payload_contains`` stays an **advisory** signal. Headline /
+probe / advisory are aggregated separately.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 from benchmarks.procedure_baseline.schema import Disposition, Expected, Scenario
 from services.engine.llm.structured import LlmJudgment
-from services.engine.recommender import crosses_threshold
+from services.engine.procedures.verdict import classify_verdict
 
 
 def classify_disposition(scenario: Scenario) -> Disposition:
     """Deterministic breach/watch/ok verdict for a scenario.
 
-    ``breach`` is delegated to ``crosses_threshold`` (the exact engine semantics:
-    ``below`` -> ``measured <= threshold``, else ``measured >= threshold``). A
-    not-breach reading is ``watch`` when it sits within ``watch_margin`` of the
-    breach floor (on the safe side), else ``ok``. With no ``watch_margin`` the
-    watch band collapses and not-breach is always ``ok``.
+    Delegates to the engine's ``classify_verdict`` — the PLAN-0022 single shared
+    definition of the band math (``crosses_threshold`` breach edge + the watch
+    band on the safe side; a ``None`` ``watch_margin`` collapses the band), so
+    the dataset's dispositions and the engine semantics can never silently drift.
     """
-    if crosses_threshold(scenario.measured_value, scenario.threshold, scenario.direction):
-        return Disposition.BREACH
-    margin = scenario.watch_margin
-    if margin is not None:
-        if scenario.direction == "below":
-            # safe side is ABOVE the floor; watch = floor < value <= floor + margin
-            if scenario.measured_value <= scenario.threshold + margin:
-                return Disposition.WATCH
-        elif scenario.measured_value >= scenario.threshold - margin:
-            # safe side is BELOW the ceiling; watch = ceiling - margin <= value < ceiling
-            return Disposition.WATCH
-    return Disposition.OK
+    verdict = classify_verdict(
+        scenario.measured_value,
+        scenario.threshold,
+        scenario.direction,
+        scenario.watch_margin,
+    )
+    return Disposition(verdict.value)
+
+
+class HandlerTier(StrEnum):
+    """The tiered α-probe classification of one ``suggested_handler``
+    (PLAN-0022 Step 1).
+
+    Three tiers: ``canonical`` and ``acceptable`` pass the probe;
+    ``forbidden``/``other`` together are the failing tier. ``forbidden`` is NOT
+    a separate dataset tier (SD-4=a — it derives from the existing
+    ``forbidden_keywords``); it is split out here only so reporting names a
+    dangerous pick explicitly instead of lumping it with a merely-non-canonical
+    one.
+    """
+
+    CANONICAL = "canonical"
+    ACCEPTABLE = "acceptable"
+    FORBIDDEN = "forbidden"
+    OTHER = "other"
+
+
+def classify_handler_tier(suggested_handler: str, expected: Expected) -> HandlerTier:
+    """Classify the model's handler guess against the item's tiered expectation.
+
+    ``canonical`` — exactly the declared ``canonical_handler``; ``acceptable`` —
+    in ``acceptable_handlers`` (a benign defensible alternative); otherwise
+    ``forbidden`` when the handler name contains a ``forbidden_keywords`` entry
+    (the dangerous near-miss, e.g. ``expedite``/``reroute``), else ``other``.
+    Shared by the α probe and (Phase 3) the escalation-correctness lane — the
+    taxonomy is defined once.
+    """
+    if expected.canonical_handler is not None and suggested_handler == expected.canonical_handler:
+        return HandlerTier.CANONICAL
+    if expected.acceptable_handlers is not None and suggested_handler in (
+        expected.acceptable_handlers
+    ):
+        return HandlerTier.ACCEPTABLE
+    handler = suggested_handler.lower()
+    if any(keyword.lower() in handler for keyword in expected.forbidden_keywords or []):
+        return HandlerTier.FORBIDDEN
+    return HandlerTier.OTHER
 
 
 @dataclass(frozen=True)
@@ -68,10 +108,12 @@ class FieldCheck:
       ``payload_contains``: the live model's payload KEY shape is free-form, so a
       payload subset is informative but not a fair headline gate — B-β calibration,
       Cray-ratified 2026-06-08).
-    * ``probe`` — the **α** reactive-path handler-selection signal (``valid_handler``):
-      recorded + aggregated on its OWN lane, NOT a headline gate, because the
-      procedure path overrides the model's handler guess with ``step.handler``
-      (ADR-016) — PLAN-0019 Part B hardening, Cray-ratified 2026-06-09.
+    * ``probe`` — the **α** reactive-path handler-selection signal
+      (``handler_tier``): recorded + aggregated on its OWN lane, NOT a headline
+      gate, because the procedure path overrides the model's handler guess with
+      ``step.handler`` (ADR-016) — PLAN-0019 Part B hardening, Cray-ratified
+      2026-06-09; tiered canonical/acceptable/forbidden-or-other by PLAN-0022
+      Step 1 (``passed`` = canonical or acceptable).
     """
 
     name: str
@@ -91,11 +133,15 @@ class GradeResult:
     check — enforced by the dataset-consistency test). ``probe_passed`` is the α
     handler-selection outcome (``None`` when the item declares no probe field), tracked
     separately so the headline and the probe never contaminate each other.
+    ``handler_tier`` is the three-way α classification behind ``probe_passed``
+    (PLAN-0022 Step 1; ``None`` when no probe field is declared) — ``passed`` =
+    canonical or acceptable.
     """
 
     passed: bool
     checks: list[FieldCheck]
     probe_passed: bool | None = None
+    handler_tier: HandlerTier | None = None
 
 
 def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
@@ -105,11 +151,13 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
     skipped): the affected-entity PK + the 'action class' keywords, plus the PR2
     precision add-ons — ``forbidden_primary_keys`` (no decoy sibling named) and
     ``forbidden_keywords`` (no near-miss verb in the title) — together the β headline
-    **scoring** fields the model owns in the procedure path; the handler (the **α
-    probe** — recorded, not a gate); and the handler-payload subset (**advisory**).
-    All objective — no fuzzy/semantic scoring.
+    **scoring** fields the model owns in the procedure path; the tiered handler
+    classification (the **α probe** — recorded, not a gate; PLAN-0022 Step 1); and
+    the handler-payload subset (**advisory**). All objective — no fuzzy/semantic
+    scoring.
     """
     checks: list[FieldCheck] = []
+    handler_tier: HandlerTier | None = None
 
     if expected.affected_primary_key is not None:
         keys = sorted({entity.primary_key for entity in judgment.affected_entities})
@@ -125,13 +173,19 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
         detail = f"decoy(s) named: {offenders}" if offenders else "no decoy entity named"
         checks.append(FieldCheck("forbidden_primary_keys", passed, detail))
 
-    if expected.valid_handlers is not None:
-        # α PROBE: the model's free handler guess vs the correct action(s). NOT a
-        # headline gate — the procedure path fixes the executed handler via
-        # step.handler (ADR-016), so this measures the reactive-path handler choice.
-        passed = judgment.suggested_handler in expected.valid_handlers
-        detail = f"{judgment.suggested_handler!r} in {expected.valid_handlers}"
-        checks.append(FieldCheck("valid_handler", passed, detail, probe=True))
+    if expected.canonical_handler is not None or expected.acceptable_handlers is not None:
+        # α PROBE: the model's free handler guess, tiered canonical / acceptable /
+        # forbidden-or-other (PLAN-0022 Step 1). NOT a headline gate — the procedure
+        # path fixes the executed handler via step.handler (ADR-016), so this
+        # measures the reactive-path handler choice. Pass = canonical or acceptable.
+        handler_tier = classify_handler_tier(judgment.suggested_handler, expected)
+        passed = handler_tier in (HandlerTier.CANONICAL, HandlerTier.ACCEPTABLE)
+        detail = (
+            f"{judgment.suggested_handler!r} -> {handler_tier.value} "
+            f"(canonical {expected.canonical_handler!r}, "
+            f"acceptable {expected.acceptable_handlers or []})"
+        )
+        checks.append(FieldCheck("handler_tier", passed, detail, probe=True))
 
     if expected.payload_contains is not None:
         mismatched = {
@@ -166,4 +220,6 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
     passed = bool(scoring) and all(check.passed for check in scoring)
     probe_checks = [check for check in checks if check.probe]
     probe_passed = all(check.passed for check in probe_checks) if probe_checks else None
-    return GradeResult(passed=passed, checks=checks, probe_passed=probe_passed)
+    return GradeResult(
+        passed=passed, checks=checks, probe_passed=probe_passed, handler_tier=handler_tier
+    )

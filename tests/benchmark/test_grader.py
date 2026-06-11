@@ -1,16 +1,23 @@
-"""Grader unit tests (PLAN-0019 B-β) — pure, offline.
+"""Grader unit tests (PLAN-0019 B-β; tiered α probe per PLAN-0022 Step 1) — pure,
+offline.
 
 Covers the deterministic disposition (breach/watch/ok across both directions, the
-inclusive boundary, and the no-watch-band case) and the objective LLM-proposal
-field checks (entity PK, handler allowlist, payload subset, action-class keywords,
-and the no-declared-field guard).
+inclusive boundary, and the no-watch-band case — delegated to the engine's
+``classify_verdict``, asserted here as non-regression) and the objective
+LLM-proposal field checks (entity PK, the tiered handler probe, payload subset,
+action-class keywords, and the no-declared-field guard).
 """
 
 from __future__ import annotations
 
 from typing import Any
 
-from benchmarks.procedure_baseline.grader import classify_disposition, grade_proposal
+from benchmarks.procedure_baseline.grader import (
+    HandlerTier,
+    classify_disposition,
+    classify_handler_tier,
+    grade_proposal,
+)
 from benchmarks.procedure_baseline.schema import Disposition, Expected, Scenario
 from services.engine.llm.structured import LlmJudgment
 
@@ -88,7 +95,7 @@ def test_all_declared_fields_pass() -> None:
         disposition=Disposition.BREACH,
         action_expected=True,
         affected_primary_key="pond-A1",
-        valid_handlers=["echo"],
+        canonical_handler="echo",
         payload_contains={"pond_id": "pond-A1"},
         action_keywords=["aerat"],
     )
@@ -96,16 +103,17 @@ def test_all_declared_fields_pass() -> None:
     assert grade.passed
     assert {c.name for c in grade.checks} == {
         "affected_primary_key",
-        "valid_handler",
+        "handler_tier",
         "payload_contains",
         "action_keywords",
     }
-    # payload_contains is advisory; valid_handler is the α probe — neither gates the headline.
+    # payload_contains is advisory; handler_tier is the α probe — neither gates the headline.
     payload_check = next(c for c in grade.checks if c.name == "payload_contains")
     assert payload_check.advisory is True
-    handler_check = next(c for c in grade.checks if c.name == "valid_handler")
+    handler_check = next(c for c in grade.checks if c.name == "handler_tier")
     assert handler_check.probe is True
-    assert grade.probe_passed is True  # suggested_handler 'echo' in valid_handlers ['echo']
+    assert grade.probe_passed is True  # suggested_handler 'echo' == canonical_handler
+    assert grade.handler_tier is HandlerTier.CANONICAL
 
 
 def test_wrong_entity_pk_fails() -> None:
@@ -118,7 +126,7 @@ def test_wrong_entity_pk_fails() -> None:
     assert grade.checks[0].name == "affected_primary_key" and not grade.checks[0].passed
 
 
-def test_valid_handler_is_an_alpha_probe_not_a_headline_gate() -> None:
+def test_handler_tier_is_an_alpha_probe_not_a_headline_gate() -> None:
     """A wrong handler pick FAILS the α probe but must NOT drag down the β headline —
     in the procedure path the executed handler is fixed by step.handler (ADR-016), so
     the model's handler guess is a reactive-path signal, scored on its own lane."""
@@ -126,37 +134,112 @@ def test_valid_handler_is_an_alpha_probe_not_a_headline_gate() -> None:
         disposition=Disposition.BREACH,
         action_expected=True,
         affected_primary_key="pond-A1",  # a scoring field carries the headline
-        valid_handlers=["start_emergency_aerator"],
+        canonical_handler="start_emergency_aerator",
     )
-    # right entity, WRONG handler (a near-miss action_type)
+    # right entity, WRONG handler (a near-miss action_type, neither canonical nor acceptable)
     grade = grade_proposal(_judgment(suggested_handler="escalate"), expected)
     assert grade.passed  # headline carried by the entity scoring field
-    handler_check = next(c for c in grade.checks if c.name == "valid_handler")
+    handler_check = next(c for c in grade.checks if c.name == "handler_tier")
     assert handler_check.probe and not handler_check.passed
     assert grade.probe_passed is False
+    assert grade.handler_tier is HandlerTier.OTHER
 
 
-def test_valid_handler_probe_passes_on_the_correct_action_type() -> None:
+def test_handler_tier_probe_passes_on_the_canonical_action_type() -> None:
     expected = Expected(
         disposition=Disposition.BREACH,
         action_expected=True,
         affected_primary_key="pond-A1",
-        valid_handlers=["start_emergency_aerator"],
+        canonical_handler="start_emergency_aerator",
     )
     grade = grade_proposal(_judgment(suggested_handler="start_emergency_aerator"), expected)
     assert grade.passed and grade.probe_passed is True
+    assert grade.handler_tier is HandlerTier.CANONICAL
+
+
+def test_handler_tier_probe_passes_on_an_acceptable_alternative() -> None:
+    """PLAN-0022 Step 1: a benign defensible alternative passes the probe as
+    'acceptable' — distinguished from canonical in the tier, identical in
+    pass/fail (the PLAN-0020 SD-1 'inspect is benign' finding made first-class)."""
+    expected = Expected(
+        disposition=Disposition.BREACH,
+        action_expected=True,
+        affected_primary_key="pond-A1",
+        canonical_handler="start_emergency_aerator",
+        acceptable_handlers=["increase_water_exchange"],
+    )
+    grade = grade_proposal(_judgment(suggested_handler="increase_water_exchange"), expected)
+    assert grade.passed and grade.probe_passed is True
+    assert grade.handler_tier is HandlerTier.ACCEPTABLE
+
+
+def test_handler_tier_flags_a_forbidden_pick_explicitly() -> None:
+    """A handler guess containing a forbidden_keywords near-miss classifies
+    'forbidden' (fails the probe, named explicitly in reporting — SD-4=a: derived
+    from the existing keywords, not a new dataset tier)."""
+    expected = Expected(
+        disposition=Disposition.BREACH,
+        action_expected=True,
+        affected_primary_key="pond-A1",
+        canonical_handler="hold",
+        acceptable_handlers=["inspect"],
+        forbidden_keywords=["expedite", "reroute"],
+    )
+    grade = grade_proposal(_judgment(suggested_handler="expedite_shipment"), expected)
+    handler_check = next(c for c in grade.checks if c.name == "handler_tier")
+    assert handler_check.probe and not handler_check.passed
+    assert grade.probe_passed is False
+    assert grade.handler_tier is HandlerTier.FORBIDDEN
+
+
+def test_classify_handler_tier_prefers_canonical_over_acceptable() -> None:
+    """Tier precedence: an exact canonical match classifies canonical even if the
+    same handler is (mis-)listed under acceptable_handlers."""
+    expected = Expected(
+        disposition=Disposition.BREACH,
+        action_expected=True,
+        canonical_handler="hold",
+        acceptable_handlers=["hold", "inspect"],
+    )
+    assert classify_handler_tier("hold", expected) is HandlerTier.CANONICAL
+
+
+def test_classify_handler_tier_with_acceptable_only() -> None:
+    """An item may declare only acceptable_handlers (no single canonical pick);
+    the probe still grades, with no canonical tier reachable."""
+    expected = Expected(
+        disposition=Disposition.BREACH,
+        action_expected=True,
+        affected_primary_key="pond-A1",
+        acceptable_handlers=["inspect", "hold"],
+    )
+    assert classify_handler_tier("inspect", expected) is HandlerTier.ACCEPTABLE
+    assert classify_handler_tier("restart", expected) is HandlerTier.OTHER
+    grade = grade_proposal(_judgment(suggested_handler="inspect"), expected)
+    assert grade.probe_passed is True and grade.handler_tier is HandlerTier.ACCEPTABLE
 
 
 def test_probe_only_breach_item_has_no_headline_grade() -> None:
-    """valid_handlers alone is a probe, not a scoring field — a breach item that
+    """The handler tier alone is a probe, not a scoring field — a breach item that
     declares ONLY it cannot pass the headline even when the probe passes (the
     dataset-consistency guard forbids such items)."""
     expected = Expected(
-        disposition=Disposition.BREACH, action_expected=True, valid_handlers=["echo"]
+        disposition=Disposition.BREACH, action_expected=True, canonical_handler="echo"
     )
     grade = grade_proposal(_judgment(suggested_handler="echo"), expected)
     assert not grade.passed  # no scoring field declared
     assert grade.probe_passed is True  # but the probe itself passed
+
+
+def test_no_probe_field_means_no_handler_tier() -> None:
+    """An item that declares neither canonical_handler nor acceptable_handlers has
+    no probe lane: probe_passed and handler_tier are both None."""
+    expected = Expected(
+        disposition=Disposition.BREACH, action_expected=True, affected_primary_key="pond-A1"
+    )
+    grade = grade_proposal(_judgment(), expected)
+    assert grade.probe_passed is None
+    assert grade.handler_tier is None
 
 
 def test_payload_subset_match_is_advisory_only() -> None:

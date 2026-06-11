@@ -133,11 +133,14 @@ def _print_summary(label: str, summary: Summary) -> None:
         f"{summary.headline_accuracy:.1%}" if summary.headline_accuracy is not None else "n/a"
     )
     probe = f"{summary.probe_accuracy:.1%}" if summary.probe_accuracy is not None else "n/a"
+    tiers = summary.probe_tiers
     print(
         f"\n{label}: β headline {headline} "
         f"({summary.headline_correct}/{summary.graded} graded breach proposals) | "
         f"α handler-probe {probe} "
-        f"({summary.probe_correct}/{summary.probe_graded} reactive-path handler picks) | "
+        f"({summary.probe_correct}/{summary.probe_graded} reactive-path handler picks: "
+        f"canonical {tiers['canonical']} / acceptable {tiers['acceptable']} / "
+        f"forbidden {tiers['forbidden']} + other {tiers['other']}) | "
         f"deterministic {summary.deterministic_accuracy:.1%} "
         f"({summary.deterministic_correct}/{summary.total} dispositions) | "
         f"by-disposition {summary.by_disposition}"
@@ -172,6 +175,7 @@ def _item_record(result: ItemResult) -> dict[str, Any]:
         "graded": result.graded,
         "proposal_correct": result.proposal_correct,
         "probe_correct": result.probe_correct,
+        "probe_tier": result.probe_tier.value if result.probe_tier is not None else None,
         "error": result.error,
         "checks": checks,
         "judgment": result.judgment.model_dump() if result.judgment is not None else None,
@@ -237,12 +241,13 @@ async def _main(args: argparse.Namespace) -> None:
     print(
         "\nNOTE: β headline = LLM action-proposal correctness (affected entity + action "
         "class) on breach items; α handler-probe = reactive-path handler-selection "
-        "(suggested_handler vs the correct action_type — NOT a procedure-path decision, "
-        "ADR-016 fixes that via step.handler); deterministic disposition is a separate "
-        "~100% sanity number. The three are NOT folded together. Latency: per-judgment "
-        "p95 is the SD-2 acceptance bar (<= 30 s; end-to-end 2-call exchange the human "
-        "waits on); per-call p95 is retained as a lever diagnostic. B-gamma (text-to-SQL "
-        "+ RAG baselines) is TODO."
+        "(suggested_handler tiered canonical / acceptable / forbidden-or-other, "
+        "PLAN-0022 Step 1; pass = canonical or acceptable — NOT a procedure-path "
+        "decision, ADR-016 fixes that via step.handler); deterministic disposition is "
+        "a separate ~100% sanity number. The three are NOT folded together. Latency: "
+        "per-judgment p95 is the SD-2 acceptance bar (<= 30 s; end-to-end 2-call "
+        "exchange the human waits on); per-call p95 is retained as a lever diagnostic. "
+        "B-gamma (text-to-SQL + RAG baselines) is TODO."
     )
 
 

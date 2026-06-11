@@ -11,7 +11,11 @@ The shapes are the ADR-016 D2 contract:
   runs it (``run_by``), a ``trigger``, and a LINEAR, set-valued list of ``Step``s.
 * ``Step`` — its ``kind`` of work and, for ``action`` steps ONLY, an ``autonomy``
   (default ``gated``; D3 safe-by-default). ``query`` / ``evaluate`` never gate;
-  ``human_task`` is inherently human.
+  ``human_task`` is inherently human. An ``evaluate`` step MAY author its
+  deterministic band (``threshold`` / ``direction`` / ``watch_margin``) and an
+  ``action`` step MAY declare a handler-tier taxonomy (``tiers``) — all optional,
+  added by PLAN-0022 Step 3 (SD-5=a); absent fields preserve today's behaviour
+  byte-for-byte (AC-9).
 * ``Agent`` — the actor: a bound local LLM model (default ``gpt-oss:20b``,
   ADR-001), an ``autonomy_ceiling``, and an ``allowed`` allowlist that bounds
   blast radius (D3).
@@ -29,10 +33,16 @@ from __future__ import annotations
 
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from ruamel.yaml import YAML
+
+ThresholdDirection = Literal["below", "above"]
+"""Breach direction for an ``evaluate`` step's authored threshold, mirroring
+``recommender.crosses_threshold``: ``below`` = ``measured <= threshold`` (an
+aquaculture DO crash); ``above`` = ``measured >= threshold`` (an energy /
+cold-chain over-temperature). PLAN-0022 Step 3 (SD-5=a)."""
 
 
 class StepKind(StrEnum):
@@ -90,8 +100,34 @@ class StepInput(BaseModel):
     )
 
 
+class StepTiers(BaseModel):
+    """Canonical / acceptable / forbidden handler tiers for an ``action`` step
+    (PLAN-0022 Step 3; SD-5=a).
+
+    Mirrors the benchmark grader's tier taxonomy (PLAN-0022 Step 1) so product
+    config and benchmark ground truth share one source of truth: ``canonical``
+    is the single correct handler for the step's situation; ``acceptable`` are
+    benign defensible alternatives; ``forbidden`` are handlers that must never
+    be the recommendation. This is a TAXONOMY declaration, not an execution
+    allowlist — what an agent may actually invoke stays bounded by
+    ``Agent.allowed.action_handlers`` (ADR-016 D3, unchanged per ADR-0019).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    canonical: str | None = Field(
+        default=None, description="the single correct handler for this step's situation"
+    )
+    acceptable: list[str] = Field(
+        default_factory=list, description="benign defensible alternative handlers"
+    )
+    forbidden: list[str] = Field(
+        default_factory=list, description="handlers that must never be the recommendation"
+    )
+
+
 class Step(BaseModel):
-    """One step of a Procedure (ADR-016 D2)."""
+    """One step of a Procedure (ADR-016 D2; threshold/tier config per PLAN-0022 Step 3)."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -113,16 +149,55 @@ class Step(BaseModel):
         default=None,
         description="registered action-handler to invoke; action steps only (allowlist-checked).",
     )
+    threshold: float | None = Field(
+        default=None,
+        description="authored breach floor/ceiling; evaluate steps only (PLAN-0022 Step 3). "
+        "Optional — absent keeps the step's band NL-only as today (AC-9).",
+    )
+    direction: ThresholdDirection | None = Field(
+        default=None,
+        description="breach direction for `threshold` (crosses_threshold semantics); "
+        "evaluate steps only, requires threshold.",
+    )
+    watch_margin: float | None = Field(
+        default=None,
+        ge=0.0,
+        description="width of the ambiguity band just inside the safe side of the breach "
+        "floor — the escalate-to-human zone (ADR-0019). Evaluate steps only, requires "
+        "threshold. Absent collapses the watch band (preserves today's behaviour, AC-9).",
+    )
+    tiers: StepTiers | None = Field(
+        default=None,
+        description="canonical/acceptable/forbidden handler-tier taxonomy; action steps "
+        "only (PLAN-0022 Step 3, SD-5=a). A taxonomy mirror, not an execution allowlist.",
+    )
 
     @model_validator(mode="after")
     def _validate_step(self) -> Self:
-        """Enforce the D3 step invariants: ``autonomy`` and ``handler`` are axes of
-        ``action`` steps only.
+        """Enforce the per-kind field invariants: ``autonomy`` / ``handler`` / ``tiers``
+        are axes of ``action`` steps only (ADR-016 D3; PLAN-0022 SD-5=a), and the
+        authored band (``threshold`` / ``direction`` / ``watch_margin``) belongs to
+        ``evaluate`` steps only (PLAN-0022 Step 3).
 
-        ``action`` defaults to ``gated`` (safe-by-default). A non-action step must
-        not carry either — ``query`` / ``evaluate`` always run auto, ``human_task``
-        is inherently human, and none of them invoke an action handler.
+        ``action`` defaults to ``gated`` (safe-by-default). ``query`` / ``evaluate``
+        always run auto; ``human_task`` is inherently human. ``direction`` and
+        ``watch_margin`` are meaningless without a ``threshold`` to band around, so
+        a margin-without-floor spec fails loudly at load, not mid-run.
         """
+        if self.kind is not StepKind.EVALUATE:
+            for field_name in ("threshold", "direction", "watch_margin"):
+                if getattr(self, field_name) is not None:
+                    raise ValueError(
+                        f"step '{self.step_id}': {field_name} applies to evaluate steps only "
+                        f"(kind '{self.kind.value}' must not set it) — PLAN-0022 Step 3"
+                    )
+        elif (self.direction is not None or self.watch_margin is not None) and (
+            self.threshold is None
+        ):
+            raise ValueError(
+                f"step '{self.step_id}': direction/watch_margin require a threshold "
+                f"to band around — PLAN-0022 Step 3"
+            )
         if self.kind is StepKind.ACTION:
             if self.autonomy is None:
                 self.autonomy = Autonomy.GATED
@@ -136,6 +211,11 @@ class Step(BaseModel):
             raise ValueError(
                 f"step '{self.step_id}': handler applies to action steps only "
                 f"(kind '{self.kind.value}' must not set handler) — ADR-016 D3"
+            )
+        if self.tiers is not None:
+            raise ValueError(
+                f"step '{self.step_id}': tiers applies to action steps only "
+                f"(kind '{self.kind.value}' must not set tiers) — PLAN-0022 SD-5"
             )
         return self
 
