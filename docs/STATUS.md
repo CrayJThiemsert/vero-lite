@@ -1,10 +1,10 @@
 ---
-last_updated: 2026-06-11T12:56:44+07:00
+last_updated: 2026-06-11T15:51:02+07:00
 session: 53
 current_batch: 'Session 53 — PLAN-0020 (Procedure-path tuning) COMPLETE + archived to done/ (#251-#256): nudge worked (β/α →100%), skip lever cuts p95 31.80→21.62s under the 30s bar at zero β cost; SD-1 skipped, ring-fence honored.'
 current_actor: code
 blocked_on: 'Nothing gates shipped work. No open PRs.'
-next_action: 'Future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring skip into product procedure path is an open audit trade-off design call. Both deferred for discussion.'
+next_action: 'Future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring skip into product procedure path is an open audit trade-off design call. Both deferred for discussion. Also HELD: an R3-adjacent MS-S1 warm-cycle (pin vs 3 nemotron-3-nano variants, ideally paired with the U-1 MXFP4-vs-Q4_K_M check) when a maintenance window opens — no eval yet, no ADR-0001 change.'
 head_commit: a6125c1
 recent_commits: [a6125c1, 4968f51, ac56653, bef462f, a3a6f54, 19706eb, 60e88fe, fa368e2]
 ---
@@ -51,10 +51,18 @@ recent_commits: [a6125c1, 4968f51, ac56653, bef462f, a3a6f54, 19706eb, 60e88fe, 
 > (`inspect`) from a dangerous pick (`expedite`/`reroute`); deferred to a future
 > session for discussion. Separately, **wiring `skip` into the product
 > procedure path** is an open design call (audit trade-off: `skip` drops the
-> ADR-010 reasoning narrative; the model-asserted `rationale` survives). A
-> gitignored Cowork research dispatch (why `gpt-oss:20b` wins → a
-> model-selection rubric, feeds the deferred R3 faster-arch eval) was persisted
-> to `docs/research/private/`.
+> ADR-010 reasoning narrative; the model-asserted `rationale` survives). The
+> gitignored Cowork research (why `gpt-oss:20b` wins) is now **DONE** —
+> delivering a 6-criterion model-selection **screening rubric (R1–R6)** + a
+> warm-cycle gate (`docs/research/private/2026-06-11-gpt-oss-20b-winning-properties.md`),
+> the paper pre-filter for the deferred R3 faster-arch eval. **Held for a future
+> R3-adjacent warm-cycle:** Cray pulled **3 `nemotron-3-nano` variants** to
+> MS-S1 (`30b-a3b-q4_K_M`, `30b-a3b-q8_0`, `4b`) — **no eval run yet, no
+> ADR-0001 change**; intent is pin vs these in one maintenance-window warm-cycle,
+> ideally paired with the U-1 `MXFP4`-vs-`Q4_K_M` tok/s check + U-2 `eval_count`
+> logging. **Caveat:** they ship `q4_K_M`/`q8_0`/`fp16` (not `MXFP4`), so they
+> exercise rubric R1/R5 now but a fair **R2 bandwidth** comparison needs an
+> `MXFP4` build.
 > AI-assisted (Claude Code, session 53); no `Co-Authored-By` per CLAUDE.md §7.
 >
 > **Session 51 — PLAN-0021 EXECUTED + MERGED (#249, branch tip
