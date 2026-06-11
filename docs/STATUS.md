@@ -1,10 +1,10 @@
 ---
-last_updated: 2026-06-12T00:06:04+07:00
+last_updated: 2026-06-12T00:39:06+07:00
 session: 55
 current_batch: 'Session 55 — PLAN-0022 Phase 2 SHIPPED (#267, 6870f87): deterministic evaluate executor (SD-6, no LLM) + watch→gated escalate_watch routing (SD-1=a); AC-8 landed, AC-9 held; suite 1459 (+14).'
 current_actor: code
 blocked_on: 'Nothing gates shipped work. No open PRs.'
-next_action: 'PLAN-0022 Phase 3 (final phase) — escalation-correctness scoring lane (Step 5); B-6 ring-fenced: draft the scoring methodology for Cray ratification BEFORE any scored run; then plan → done/.'
+next_action: 'PLAN-0022 Phase 3 — IMPLEMENT per the Cray-ratified methodology (2026-06-12: M-1 watch-tier lane, M-2=b calibration-first, M-3 structural, M-4 no bar moves); scored run needs a separate go (host-state); then plan → done/.'
 head_commit: 6870f87
 recent_commits: [6870f87, a68a114, 137766c, 46061b7, f5eba1b, a6125c1, 4968f51, ac56653, bef462f]
 ---
@@ -37,9 +37,22 @@ recent_commits: [6870f87, a68a114, 137766c, 46061b7, f5eba1b, a6125c1, 4968f51, 
 > escalation-correctness scoring lane (Step 5 — scores "escalated
 > correctly" vs "should have acted" vs "should have stayed silent" on its
 > own watch-tier lane), **B-6 ring-fenced: the scoring methodology must be
-> Cray-ratified BEFORE any scored benchmark run** — Code drafts/surfaces
-> the methodology for ratification, runs nothing scored. After Phase 3,
-> PLAN-0022 archives to done/. Held items carry unchanged (nemotron MXFP4
+> Cray-ratified BEFORE any scored benchmark run**. *Methodology RATIFIED
+> (Cray, 2026-06-12, in-session):* **M-1** watch items run the LLM judgment,
+> graded on a NEW watch-tier lane (pass = handler ∈ {canonical, acceptable};
+> forbidden named explicitly per SD-4=a; never folded into β); **M-2 = (b)
+> CALIBRATION-FIRST** — watch ground truth is NOT authored yet (no REPORT
+> evidence); the first run reports the suggested-handler distribution only
+> (no pass/fail pinned), ground truth pinned from that evidence (mirrors the
+> B-β calibration precedent); **M-3** deterministic mis-routing is
+> structurally impossible in the harness — reported as structural, no fake
+> failure surface; **M-4** watch-judgment latency = its own diagnostic, the
+> SD-2 ≤30s bar stays breach-scoped — **no bar moves**. A scored run still
+> needs a separate Cray go (MS-S1 host-state). Spec + ratification record in
+> the session-55→56 kickoff handoff
+> (`.claude/handoffs/session-55/2026-06-12-0039-...-phase3-kickoff.md`).
+> After Phase 3, PLAN-0022 archives to done/. Held items carry unchanged
+> (nemotron MXFP4
 > warm-cycle hold; bridge-resilience option B parked). *Rotation note:* per
 > Cray (2026-06-11) the five session-51 CF blocks rotate at the NEXT
 > reconcile; this pass added no new block (Phase 2 extends this block), so
