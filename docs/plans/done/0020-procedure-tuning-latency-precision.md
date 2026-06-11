@@ -46,16 +46,20 @@ authored_by: plan-drafter subagent (in-harness; ADR-009 D1 interim authoring und
 
 ## 1. Status
 
-**Accepted** — ratified by Cray on **2026-06-11** (Draft → Accepted; the
-intermediate Proposed step was collapsed into ratification). Authored 2026-06-09
-by the `plan-drafter` subagent. The number (**0020**) and the four-item scope
-below were **G2-approved by Cray on 2026-06-09**. At ratification Cray also
-resolved **both** surfaced decisions (§8):
+**Accepted → CLOSED (2026-06-11).** Ratified by Cray on 2026-06-11 (Draft →
+Accepted); all §4 acceptance criteria landed and the PLAN is moved to `done/`
+(Step 10). **AC-X1 ring-fence CONFIRMED:** the only bar moved (latency) had Cray's
+explicit SD-2 re-ratification; ADR-016's primitive shape is untouched; no silent
+grader / dataset / methodology change (SD-1 was SKIPPED). Authored 2026-06-09 by
+the `plan-drafter` subagent; number **0020** + scope G2-approved 2026-06-09. At
+ratification Cray resolved **both** surfaced decisions (§8):
 
-- **SD-1 = WIDEN** the supply_chain α expected-set `[hold]` → `[hold, inspect]`.
-  The gated methodology change is now **authorized**, with the approval recorded
-  **before** any dataset/grader edit (AC-4b anti-moving-target). Step 9 makes the
-  edit + re-runs + records the α delta.
+- **SD-1 = WIDEN (ratification) → SKIP (Step 9 final).** Cray authorized widening
+  the supply_chain α expected-set `[hold]` → `[hold, inspect]` at ratification, but
+  the host-state runs (R1/R2) showed the Phase-1 nudge **eliminated** the `inspect`
+  divergence (0 `inspect`; supply α = 100%), so the motivation went moot. **Cray's
+  Step-9 final call: SKIP — no grader/dataset edit;** the analysis stands as a
+  logged finding (REPORT). The richer fix (tiered handler grading) → follow-up PLAN.
 - **SD-2 = MOVE the latency acceptance bar** from SD-B1's **8 s p95 per-call** to
   **≤ 30 s p95 per-judgment** (end-to-end two-call wall-clock), **reports-not-gates**,
   superseding SD-B1's latency bar (β ≥ 85% unchanged).
@@ -361,11 +365,17 @@ execution or commit authority. Host-state runs are **Cray-gated** (ASK Cray).
   ring-fence + the PLAN-0019 "ratify methodology BEFORE the scored run" discipline
   guard against. It MUST be Cray-re-ratified **before** any edit; this PLAN only
   proposes + analyzes it.
-  **→ RESOLVED — Cray APPROVED (2026-06-11): WIDEN to `[hold, inspect]`.** The
-  gated methodology change is authorized; this approval is recorded **here,
-  before** any dataset/grader edit (AC-4b anti-moving-target — the approval
-  pre-dates the edit in the record, not the reverse). Step 9 makes the α
-  expected-set edit + re-runs + records the α delta in REPORT.md.
+  **→ RESOLVED — Cray (2026-06-11): WIDEN authorized at ratification, then SKIPPED
+  at Step 9.** Cray approved widening to `[hold, inspect]` at ratification (recorded
+  before any edit, AC-4b). But the host-state runs (R1/R2) VERIFIED the Phase-1
+  nudge **eliminated** the divergence — the model now picks `hold` (0 `inspect`
+  across all 40 supply items every run; α supply = 100%), so widening's motivation
+  went moot. **Cray's Step-9 final call: SKIP — make NO grader/dataset edit.** The
+  analysis stands as a logged finding (REPORT § "SD-1 implication"); anti-moving-
+  target honored (no change made). The richer fix Cray's production-fidelity review
+  surfaced — **tiered handler grading** (canonical / acceptable / forbidden, so the
+  α metric self-distinguishes a benign alternative from a dangerous pick) — is
+  deferred to a **follow-up PLAN**.
 
 - **SD-2 (item #1d — is the 8 s p95 the right bar for a TWO-CALL exchange?) —
   REVIEW allowed here; a bar CHANGE needs Cray re-ratification.**

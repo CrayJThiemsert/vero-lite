@@ -296,7 +296,12 @@ motivated by the model picking `inspect`. **With the nudge the model now picks
 `hold` (0 `inspect` across all 40 supply items in every 2026-06-11 run).** The
 divergence that justified widening the expected-set is gone, so **SD-1's
 empirical motivation is moot** — widening would be harmless but no longer corrects
-a real mis-report. Surfaced at Step 9 for the gated decision.
+a real mis-report. **Step-9 decision (Cray, 2026-06-11): SKIP** — no grader /
+dataset edit; this analysis is the logged finding. The richer fix surfaced by
+Cray's production-fidelity review — a **tiered handler grading** (canonical /
+acceptable / forbidden, so the α metric itself distinguishes a benign alternative
+like `inspect` from a dangerous pick like `expedite` / `reroute`, instead of a
+human reading the dump) — is deferred to a **follow-up PLAN**.
 
 ### Caveats
 
