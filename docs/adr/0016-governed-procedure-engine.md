@@ -216,6 +216,20 @@ upgrade the OCT monitor (D7, Phase 3) consumes.
   autonomy posture and CLAUDE.md §8 ("AI outputs are assistive — never
   auto-...").
 
+### D3 Amendment (2026-06-11): `watch` → `gated`-proposal routing path → see ADR-0019
+
+D3 is **extended** (not reversed, superseded, or renumbered) by **ADR-0019 —
+`watch → gated`-proposal routing path** (Accepted, Cray-ratified 2026-06-11): the
+deterministic `watch` (ambiguous-data) object set MAY route to a **`gated`
+`action` proposal** (an LLM proposes a `RecommendedAction` → the run suspends at
+`waiting_human` (D4) → a human approves/rejects via the existing gate) as a
+**sanctioned alternative** to a bare `human_task`. The routing trigger is the
+engine-computed deterministic verdict (`breach`/`watch`/`ok`), **never** the LLM's
+`confidence` (ADR-010 IN-3). No new primitive; the `auto`/`gated` model,
+`autonomy_ceiling`, and handler allowlist are unchanged. Consuming plan:
+PLAN-0022 (Ready), § Execution Order Phase 0 (the CLAUDE.md §8 gate that ADR-0019
+satisfies). **See ADR-0019 for the full decision.**
+
 ### D4: Linear + set-valued steps; durable, resumable runs
 
 - **Linear.** Phase-1 steps are a **linear** ordered list — no branch / no
@@ -287,7 +301,7 @@ bound to `gpt-oss:20b`:
 | 1 | `query` / auto | Latest dissolved-oxygen reading per active `Pond` — `OperationalEvent` with `event_type = reading`, `measured_value` in mg/L. Output = a set of (pond, DO) pairs. |
 | 2 | `evaluate` / auto | Verdict per pond vs threshold: DO < 4 = **breach**, 4–5 = **watch**, > 5 = **ok**. Output = three pond subsets. |
 | 3 | `action` / **gated** | For the **breach** SET, propose `RecommendedAction(action_type = start_emergency_aerator, target_pond_id = …)` → **human approve → execute**. Reuses the ADR-007 D2 envelope + the existing gate verbatim. |
-| 4 | `human_task` | For the **watch** SET, assign a technician an offline visual-check task (`waiting_human` → done). |
+| 4 | `human_task` → **`gated` `action` proposal** *(amended 2026-06-11 — see **ADR-0019**; PLAN-0022 SD-1=a replaces the `human_task` for v1)* | For the **watch** SET: propose a precautionary `RecommendedAction` → suspend at `waiting_human` → technician approves/rejects a concrete recommendation. *(Pre-amendment: a bare offline visual-check `human_task`.)* |
 | 5 | `action` / auto | Write a round-summary **terminal** artifact. |
 
 **Note the reframing in action:** step 3 **is** the existing `anomaly→action`
