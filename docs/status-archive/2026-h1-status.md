@@ -287,12 +287,103 @@ _Addendum — rotated 2026-06-11 (session 53 reconcile):_
 > finalize + **B-6** ring-fence wrap. All via `test/*` (or `feat/*` where product
 > code) PR(s). Sequencing remains **Cray's call**.
 
+_Addendum — rotated 2026-06-11 (session 55 reconcile):_
+
+> **Session 49 — ADR-0017 "Skills as a memory tier" is ACCEPTED; the
+> skills-as-memory-tier governance arc is COMPLETE (#236 + #237, head_commit
+> `8b18b3a`, `docs(constitution):`).** Two PRs landed since the #235 reconcile,
+> so this single reconcile advances head_commit past BOTH (it was stale at
+> `471bcb5`). #236 (`docs(adr):`, `7bf9d38`) added ADR-0017 `Proposed` —
+> Cowork-drafted, Code-reviewed via the ADR-009 D3 receive sequence; #237
+> (`docs(constitution):`, `8b18b3a`) ratified it (status flipped
+> Proposed→Accepted) and applied the alignment. head_commit = `8b18b3a` (the
+> newest *substantive* commit per `lint_status`; `8b18b3a` is
+> `docs(constitution):` = substantive → it sets head_commit; the #236/#237
+> merge commits `c04787b`/`7bf9d38`'s merge and the `docs(status):` reconciles
+> are lint-excluded). This block is **T6** (STATUS reconcile) of the ADR-0017
+> follow-on plan.
+>
+> **The arc, end to end.** PR #234 added the `.claude/skills/` **mechanism**
+> (two on-demand skills + CLAUDE.md slimming) → #236 added the **ADR** (the
+> governance rationale + decisions) → #237 applied the **alignment** (T1–T5).
+> The skills-as-memory-tier arc is now governance-complete.
+>
+> **What #237 aligned (T1–T5).**
+> - `.claude/skills/` is now **Tier 2.6** in the memory model (`CLAUDE.md` §4 +
+>   the memory-architecture runbook) — git-tracked, auto-loaded by description
+>   match.
+> - The **D5 knowledge-placement decision rule** — binding rule→`CLAUDE.md`;
+>   durable learning→`docs/lessons/`; canonical reference→`conventions`/
+>   `runbooks`; task-triggered how-to→a **Skill** — and the **D7
+>   skill-authoring conventions** are codified in the runbook (compact form +
+>   a pointer from §4).
+> - `CLAUDE.md` §1 gained the **D6** line (derived artifacts 2.5 + 2.6 carry no
+>   independent precedence; canonical wins on conflict); the §10 skills row now
+>   cites ADR-0017.
+>
+> **T6 housekeeping (this reconcile).** ADR-0017 (Accepted) recorded in Recent
+> Decisions; the §50/§57 "next: draft ADR-017" earmark is **cleared** (the ADR
+> now exists and is Accepted); the PR #234 skills follow-up is marked
+> **governance-complete**.
+>
+> **Next.** The arc is closed. Open threads: (1) **OQ-B** — skill loader
+> tie-break (same-named project vs global vs plugin skill) is delegated to Code
+> but needs Cray approval for a probe touching global `~/.claude/skills/` (host
+> state); (2) the deferred **Axis-B verification-loop** track (evaluator
+> subagent + `/goal` Stop-hook gate) from the harness-engineering review. A
+> **restart-bridge handoff is due this session** because #237 edited
+> constitutional `CLAUDE.md` (Lesson #5 §1).
+
+> **Session 49 (#234 — predecessor in this same arc) — CLAUDE.md slimmed: git +
+> Code-ops procedures extracted to on-demand project skills (#234, `471bcb5`,
+> `docs(constitution):`).** One
+> `docs(constitution)` PR landed this turn (`docs(constitution): slim CLAUDE.md —
+> extract git + Code-ops procedures to on-demand skills`), Cray-reviewed + merged
+> via merge commit `d556421` (#234). This block = the session-49 #234 reconcile
+> (head_commit `471bcb5` — the newest substantive commit per `lint_status`;
+> `docs(constitution):` IS substantive, so it sets head_commit; the #234 merge
+> commit `d556421` is lint-excluded).
+>
+> **What shipped.** The always-loaded constitution shrank `206→193 lines /
+> 2050→1908 words` by extracting git mechanics + the Tier-2 Code-ops procedure
+> into TWO new on-demand project skills under `.claude/skills/` —
+> **`git-workflow`** and **`code-operational-policy`** — with **all binding rules
+> retained in `CLAUDE.md`** (only the step-by-step procedure moved). This
+> establishes `.claude/skills/` as the project's on-demand procedure layer,
+> adopting Anthropic's Agent-Skills pattern: a bloated always-on `CLAUDE.md`
+> causes rules to be ignored, so procedure belongs in on-demand skills that load
+> only when relevant.
+>
+> **Genesis (the two-axis harness-engineering review, 2026-06-09).** A review of
+> vero-lite against Anthropic's public harness guidance reached a two-axis
+> verdict: **Axis A (governance / safety)** = vero-lite is at the frontier — its
+> deterministic-hooks + Sonnet-classifier hybrid independently mirrors Anthropic
+> *auto mode*, and `chain-cap=8` matches Claude Code's own default; **Axis B
+> (task-completion / verification — the evaluator loop)** = thin, deferred as a
+> separate, higher-leverage track. PR #234 is the **low-risk FIRST move** Cray
+> chose off that review (Skills adoption + CLAUDE.md slimming).
+>
+> **Follow-up already DISPATCHED to Cowork.** Cowork is to draft an ADR (next free
+> number, likely **ADR-017**) titled **"Skills as a memory tier"** — handoff
+> (gitignored) at `.claude/handoffs/session-49/2026-06-09-2140-code-skills-memory-tier-adr-dispatch.md`.
+> Code commits the resulting `Proposed` ADR per ADR-009 D2. The dispatch carries
+> 8 OQs to resolve: tier placement, `for_llm/` overlap, the canonical-vs-derived
+> rule, authoring ownership, the knowledge-placement decision rule, the precedence
+> ladder, conventions, and the migration backlog.
+>
+> **Next.** Cowork drafts ADR-017 "Skills as a memory tier" → Code commits
+> `Proposed` → Cray ratifies. Separately/optionally: begin the Axis-B
+> verification-loop prototype (an evaluator subagent + a `/goal` Stop-hook gate).
+
 ---
 
 ## Rotated Recent Decisions rows (rotated 2026-06-10)
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-25 | **PLAN-0008 AC-1 VERIFIED — Phase 2 fully audited** _(rotated 2026-06-11, session 55)_ — Cray ran the live AC-1 task in a fresh Code session (task: *"ตรวจ ruff + mypy ทั้ง project, แก้ warning ถ้ามี, commit"*, single Cray paste, no further input). Agent self-continued **≥ 5 consecutive turns** without Cray paste (initial scan → file inspection → plan → branch creation → 5 file fixes → re-verify → tests → commit), then paused at the `git push` boundary asking permission — classifier correctly identified push as state change outside worktree per `feedback_state_change_outside_worktree.md` memory pattern. **0 Telegram pings** (no `cap_reached`, no L1–L4 false-positives). `stop-chain.json` `depth: 0` at end (consistent with terminal pause resetting chain). Side effect: the session surfaced 21 project-wide mypy errors in `tools/` + `tests/` (outside the pre-commit gate scope) and shipped a cleanup commit `8fef3a5` — PR #18 follows separately. Confirms classifier conservatism bias (spurious pauses > spurious proceeds, per OQ-B) works in production. Phase 2 all 4 ACs now VERIFIED; entry conditions for PLAN-0009 (Phase 3 — subagent topology) met | PR #19 amendment / `docs/STATUS.md` + closeout handoff §1 |
+| 2026-05-25 | **PLAN-0008 Phase 2 COMPLETE — Step 8 closeout MERGED** _(rotated 2026-06-11, session 55)_ — PR #17 → `main` (`79fe373`), single `feat(claude)` commit `b3657d5` + merge. AC matrix at merge time: AC-2/AC-3/AC-4 VERIFIED; AC-1 deferred to live Cray-supervised observation (subsequent AC-1 row above closes this). Step 8 deliverables: +2 E2E tests (test_l3_traceback_inline_fires_on_threshold + test_l2_resets_on_pass_for_same_nodeid; 387 → 389 pass / 6 skip); closeout handoff at `.claude/handoffs/session-10/2026-05-25-0130-code-plan0008-phase2-closeout.md` (gitignored local working note per CLAUDE.md §11); `git mv docs/plans/0008-...md docs/plans/done/`; STATUS final bump. Phase 3 (subagent topology, ADR-013 D1 phased) entry conditions met. **Reflexive H1 hook fire on the closeout handoff frontmatter** (`phase: completion` initially invalid; corrected to `phase: closeout` per enum) — N=3 production-validation events through this session (L1 in PR #15, L1-attempt in PR #16, H1 in this PR) prove the deterministic + classifier-mediated layer is reachable from real agent activity | `79fe373` (PR #17) / `docs/plans/done/0008-harness-autonomy-layer-phase-2.md` |
+| 2026-05-25 | **PLAN-0008 Step 7 (Phase 2 integration tests + mypy hook coverage extension) MERGED** _(rotated 2026-06-11, session 55)_ — PR #16 → `main` (`9100e65`), single `test(claude)` commit `d870d76` + merge. New `tests/handoffs/test_phase2_integration.py` with 15 E2E scenarios driving real subprocess invocations of all 3 wired Phase 2 hooks against a local mock HTTP Sonnet server (ephemeral 127.0.0.1 port via `socketserver.TCPServer` + threading daemon; `$CLAUDE_SONNET_API_URL` override; no live network). Coverage: Stop↔classifier wiring (proceed→block, pause→no-block, fail-closed, re-entry guard — mock receives 0 requests = negative proof); chain-cap fail-safe + cap_reached Telegram; observer→state→PreToolUse deny on L1+L4 + Cray-E.4 payload assertion; L4 reset on success; L2 inline Telegram on pytest-fail threshold; L1 turn-boundary survive vs reset; chain depth progression. Pre-commit `mypy` glob extended `^(services\|verticals)/` → `^(services\|verticals\|\.claude/hooks)/` (closes Step 1 follow-on; all 9 hooks pass `--strict`). 372 → 387 pass / 6 skip (+15). Per-test isolation via `tmp_path` for state + classifier fallback path + telegram capture + chain file. AC-3 demonstrated E2E for the first time | `9100e65` (PR #16) / `tests/handoffs/test_phase2_integration.py` |
 | 2026-05-25 | **Cross-env Anthropic key file setup completed (Step 5b follow-up)** _(rotated 2026-06-11, session 53)_ — Code copied WSL `~/.claude/.anthropic_api_key` to Windows `C:\Users\crayj\.claude\.anthropic_api_key` with NTFS ACL tightened to `crayj` user only (SYSTEM + Administrators removed — strictly tighter than chmod 600). Both `Path.home() / ".claude" / ".anthropic_api_key"` resolution paths verified: WSL Python finds at `/home/crayj/.claude/...`, Windows Python finds at `C:\Users\crayj\.claude\...`. Hook firing path (Windows-spawned hooks) and pytest path (WSL-spawned via Bash tool) both unblocked for live Sonnet operations | `C:\Users\crayj\.claude\.anthropic_api_key` (NTFS user-only) |
 | 2026-05-24 | **PLAN-0008 Step 5b (Sonnet classifier config-file fallback) MERGED — defeats Claude Desktop ANTHROPIC_API_KEY strip** — PR #15 → `main` (`3d4f98b`), single `fix(claude)` commit `472a91e` + merge. Diagnosed during Step 6 post-merge env-propagation verification: Claude Desktop on Windows launches `claude.exe` with `ANTHROPIC_API_KEY=""` (intentional OAuth/billing isolation); WSLENV cannot defeat even after full computer restart. Step 5 live proof passed only because Cray ran pytest from a terminal launched outside Desktop. Fix: `_sonnet_classifier.py::_resolve_api_key()` chain → env → `~/.claude/.anthropic_api_key` (chmod 600 POSIX, override via `$CLAUDE_ANTHROPIC_KEY_FILE`) → fail-closed. +10 unit tests (372 pass / 6 skip; also fixed `test_stop_continuation.py` fixture to defang via file path too). `.gitignore` extended. PLAN-0008 §Step 5 + STATUS amended. Auto-memory `project_claude_desktop_strips_anthropic_api_key.md` captured. **Live-verified inside Claude Code session**: empty env → file fallback → real Sonnet 3.04s round-trip → `proceed` decision (proof complete). **Bonus event**: my own L1 loop-detect hook (Step 2) fired on me during the 6 pragma-fix Edits — Cray ratified Bash sed workaround; hook works as designed | `3d4f98b` (PR #15) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-05-24 | **PLAN-0008 Step 6 (Wave 2 completion — autonomy-triggers row flips + PLAN closeout) MERGED** — PR #14 → `main` (`626ab23`), single `docs(claude)` commit `aa64d19` + merge. Docs-only flip of `.claude/autonomy-triggers.md` row labels from placeholder / "Phase 2 spec" wording to **LIVE** with concrete hook attribution: G1/G2/G3/G4/C1/C2/C3 → `_sonnet_classifier.py`; L1–L4 → 3-hook attribution (gate + writer + reset); status banner + "How the classifier reads this file" §flipped to LIVE with conservatism-probe evidence; footer date bumped. PLAN-0008 §Step 6 amendment box rewritten as "Step 6 closeout" with PR #11/#12/#13 lineage. `.claude/settings.json` `_comment` corrected (stub removal happened in PR #13). 362 pass / 6 skip baseline preserved (docs-only; ruff/mypy no scope). Closeout: this STATUS row | `626ab23` (PR #14) / `.claude/autonomy-triggers.md` |
