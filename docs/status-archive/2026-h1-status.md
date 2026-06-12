@@ -665,6 +665,37 @@ _Addendum — rotated 2026-06-12 (session-57 second reconcile #288) — the sess
 > this session — superseded by the lead of this block.)
 > AI-assisted (Claude Code, session 55); no `Co-Authored-By` per CLAUDE.md §7.
 
+_Addendum — rotated 2026-06-12 (session-57 third reconcile #290) — the session-56 Phase-3 block (R2 8-block cap):_
+
+> **Session 56 — PLAN-0022 Phase 3 SHIPPED (#270, `1723981`,
+> `feat(benchmark):`; merge `93d0b67`) + PLAN-0022 CLOSED OUT to
+> `docs/plans/done/` (#271, head_commit `b41a138`, `docs(plans):` = the
+> newest substantive per `lint_status`; merge `f15115c`) — ALL FOUR PHASES
+> COMPLETE (#263 ADR-0019 → #265 Phase 1 → #267 Phase 2 → #270 Phase 3).**
+> Phase 3 implements the Cray-ratified methodology M-1..M-4 verbatim.
+> **M-1:** watch items now RUN `generate_judgment` and grade on a new
+> ISOLATED watch-tier lane via the shared `classify_handler_tier` taxonomy
+> (pass = handler ∈ {canonical, acceptable}; forbidden explicit per SD-4=a)
+> — never folded into β. **M-2 = b (calibration-first):** dataset YAMLs are
+> UNCHANGED (no watch ground truth authored yet); the lane reports the
+> suggested-handler DISTRIBUTION unscored until ground truth is pinned from
+> run evidence (mirrors the B-β calibration precedent). **M-3:**
+> deterministic mis-routing columns are STRUCTURAL (the harness makes
+> mis-routing impossible — no fake failure surface). **M-4:** watch-judgment
+> latency is its OWN diagnostic; the SD-2 ≤30s bar stays breach-scoped —
+> **no bar moves**. The REPORT.md methodology section was recorded BEFORE
+> any scored run (B-6 honored); module docstring aligned (`7bf7240`). Full
+> suite **1469 passed / 22 skipped** (+10); ruff + mypy clean. **NO scored
+> run has happened yet** — the first calibration-only run still needs a
+> separate explicit Cray go (MS-S1 host-state; warm via the `ms-s1-ollama`
+> skill, pinned `gpt-oss:20b`); AFTER it, the M-2=b follow-up authors the
+> watch canonical/acceptable handlers from the distribution evidence. Held
+> items carry unchanged (nemotron MXFP4 warm-cycle hold; bridge-resilience
+> option B parked). *Rotation note:* executed Cray's standing 2026-06-11
+> decision — the five session-51 CF blocks rotated to
+> `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
+> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
+
 ---
 
 ## Rotated Recent Decisions rows (rotated 2026-06-10)
