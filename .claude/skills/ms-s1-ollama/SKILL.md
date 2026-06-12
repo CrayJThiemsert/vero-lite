@@ -75,23 +75,36 @@ it before running anything (session-37 lesson).
 
 ## Running the procedure-baseline benchmark
 
-After `warm.sh` reports OK (and Cray's go):
+After `warm.sh` reports OK (and Cray's go) — launch via the **carrier-proof
+detached launcher** (probe-verified + offline-smoked 2026-06-12):
 
 ```bash
-PYTHONUNBUFFERED=1 uv run python -m benchmarks.procedure_baseline.run_benchmark \
-  --ollama-host http://192.168.1.133:11434 --warm \
-  --reasoning-mode full --dump-json .claude/benchmark-results/<run>.jsonl \
-  > .claude/benchmark-results/<run>.log 2>&1
+bash .claude/skills/ms-s1-ollama/run_detached.sh <run-name> --reasoning-mode full
+# artifacts: .claude/benchmark-results/<run-name>.{log,jsonl,wrap,done}
+# watch:     systemctl --user status bench-<run-name> | tail <run-name>.log
+# done iff:  <run-name>.done exists — "<rc> <ISO-ts>", written as the job's LAST act
 ```
+
+It wraps `run_benchmark` in a `systemd-run --user` unit (parented to the user
+manager, NOT the launching wsl.exe), exports the `~/.local/bin` PATH for `uv`,
+and writes a **sentinel `<run>.done`** as the final act — completion truth is
+an atomic file check, independent of any harness task status. **ETA rule:**
+after launching, note the expected duration (full 198-item run ≈ 65–70 min);
+if no completion signal by ETA + ~10 min, check the sentinel/log directly —
+never sit waiting on a notification. *(Linger caveat: `loginctl` Linger=no —
+the unit lives while any crayj WSL session exists; the harness's constant wsl
+usage holds this in practice. Enabling linger = host-state, ask Cray.)*
 
 - `PYTHONUNBUFFERED=1` — a SIGKILL on a buffered run loses stdout (process-check
   lesson). Run long sweeps in the **background** and read the log/dump after.
-- **Long runs need a HELD wsl.exe — `setsid`/`nohup` detach does NOT survive
-  here.** A ~50-min sweep must keep a wsl.exe attached for its whole duration:
-  launch it via the harness `run_in_background` (which holds one). A
-  `setsid nohup … &` started from a foreground call is killed the instant that
-  call's wsl.exe exits — empirically the detached children never even wrote their
-  first log line. **Instrument every long run**: embed a heartbeat (timestamp +
+- **Detach mechanics (history → current).** `setsid`/`nohup` detach does NOT
+  survive here — children die the instant their launching wsl.exe exits
+  (empirically they never wrote a first log line). The old workaround (hold a
+  wsl.exe via harness `run_in_background` for the whole run) was itself killed
+  by the carrier-death gotcha below. **Current answer: `run_detached.sh`
+  (above)** — a `systemd-run --user` unit was probe-verified (2026-06-12) to
+  keep running and complete after its launcher's wsl.exe exited, where
+  setsid/nohup did not. **Instrument every long run**: embed a heartbeat (timestamp +
   items-done + free-MB) and `[wrap] START` / `[wrap] EXIT=<rc>` markers + a signal
   trap, so a death yields the exact time, the memory trend, and any catchable
   signal. The benchmark has **no resume** and writes `--dump-json` + the latency
@@ -119,7 +132,10 @@ PYTHONUNBUFFERED=1 uv run python -m benchmarks.procedure_baseline.run_benchmark 
   (4) `TaskStop <id>` returning "No task found" confirms the harness handle is
   already gone (the chip is display-only at that point). After diagnosing a
   carrier death, verify/clear the harness task state immediately — don't leave
-  a stale "running" chip for Cray to find.
+  a stale "running" chip for Cray to find. **Both failure modes (dead run /
+  lost notification) are structurally closed by `run_detached.sh`** — the unit
+  doesn't share the carrier's fate, and the `.done` sentinel makes completion a
+  fact on disk rather than an event you can miss.
 - `--reasoning-mode {full,think_off,skip}` — PLAN-0020 think-trim lever.
 - `--judgment-latency-threshold` defaults **30 s** (SD-2 per-judgment acceptance
   bar); `--latency-threshold` (per-call) is a lever diagnostic only.
