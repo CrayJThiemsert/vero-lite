@@ -221,10 +221,20 @@ def _build_system_prompt(registry: str, *, strict: bool = False) -> str:
         "Spurious dispatches are worse than spurious pauses (they "
         "consume a subagent spawn) — when in doubt between PAUSE and "
         "DISPATCH, choose PAUSE.\n\n"
+        "PROCEED means the agent has CONCRETE remaining work to do "
+        "RIGHT NOW — your reason must name that next action. If the "
+        "recent activity shows the work is COMPLETE (task finished, "
+        "PRs merged, working tree clean, or the only next step is "
+        "waiting on Cray's input or decision), return PAUSE: a "
+        "finished turn is a NATURAL stop, not a spurious one — "
+        "blocking it burns a turn for nothing. Decision and reason "
+        "must AGREE: never return PROCEED with a reason that "
+        "describes completion, a natural stop, or the absence of a "
+        "next action.\n\n"
         "Respond with ONLY a JSON object matching this schema:\n"
         '  {"decision": "proceed" | "pause" | "dispatch",\n'
         '   "matched_rows": [<row IDs like "G1", "L3", "D1">],\n'
-        '   "reason": "<one short sentence>",\n'
+        '   "reason": "<one short sentence; for proceed, name the next action>",\n'
         '   "dispatch": {                       // REQUIRED iff decision == "dispatch"\n'
         '     "subagent": "plan-drafter",       // only allowed value today\n'
         '     "artifact_kind": "adr" | "plan",  // matches the D-row\n'
