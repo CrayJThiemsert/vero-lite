@@ -16,6 +16,8 @@
 # canonical_handler restart, no acceptable_handlers authored (the PLAN-0020 REPORT
 # records no benign energy divergence — isolate/dispatch/escalate stay 'other'
 # until evidence says otherwise).
+# Watch-tier ground truth (M-2=b pinning, Cray-adjudicated 2026-06-12): canonical
+# restart + acceptable [dispatch_technician, escalate] (isolate stays 'other').
 
 vertical: energy
 procedure: substation_health_sweep
@@ -198,55 +200,55 @@ items:
   - id: energy-029
     description: 85.0 C — watch boundary (lower edge of the watch band).
     scenario: {event_id: energy-evt-029, entity_type: Asset, primary_key: asset-E29, measured_value: 85.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-030
     description: 85.5 C — watch.
     scenario: {event_id: energy-evt-030, entity_type: Asset, primary_key: asset-E30, measured_value: 85.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-031
     description: 86.0 C — watch.
     scenario: {event_id: energy-evt-031, entity_type: Asset, primary_key: asset-E31, measured_value: 86.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-032
     description: 86.5 C — watch.
     scenario: {event_id: energy-evt-032, entity_type: Asset, primary_key: asset-E32, measured_value: 86.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-033
     description: 87.0 C — watch.
     scenario: {event_id: energy-evt-033, entity_type: Asset, primary_key: asset-E33, measured_value: 87.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-034
     description: 87.5 C — watch.
     scenario: {event_id: energy-evt-034, entity_type: Asset, primary_key: asset-E34, measured_value: 87.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-035
     description: 88.0 C — watch.
     scenario: {event_id: energy-evt-035, entity_type: Asset, primary_key: asset-E35, measured_value: 88.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-036
     description: 88.5 C — watch.
     scenario: {event_id: energy-evt-036, entity_type: Asset, primary_key: asset-E36, measured_value: 88.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-037
     description: 89.0 C — watch.
     scenario: {event_id: energy-evt-037, entity_type: Asset, primary_key: asset-E37, measured_value: 89.0, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-038
     description: 89.3 C — watch (approaching the ceiling).
     scenario: {event_id: energy-evt-038, entity_type: Asset, primary_key: asset-E38, measured_value: 89.3, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-039
     description: 89.5 C — watch.
     scenario: {event_id: energy-evt-039, entity_type: Asset, primary_key: asset-E39, measured_value: 89.5, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-040
     description: 89.7 C — watch.
     scenario: {event_id: energy-evt-040, entity_type: Asset, primary_key: asset-E40, measured_value: 89.7, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
   - id: energy-041
     description: 89.9 C — watch (a hair below the ceiling).
     scenario: {event_id: energy-evt-041, entity_type: Asset, primary_key: asset-E41, measured_value: 89.9, unit: celsius, threshold: 90.0, direction: above, watch_margin: 5.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: restart, acceptable_handlers: [dispatch_technician, escalate]}
 
   # --- ok (temp < 85.0; nominal; false-positive guard) ------------------------
   - id: energy-042
