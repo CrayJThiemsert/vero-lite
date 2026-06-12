@@ -696,12 +696,40 @@ _Addendum — rotated 2026-06-12 (session-57 third reconcile #290) — the sessi
 > `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
 > AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
 
+_Addendum — rotated 2026-06-12 (session-57 fourth-batch reconcile #294/#295) — the session-56 second-batch block (R2 8-block cap):_
+
+> **Session 56 (second batch) — the FIRST watch-lane scored run
+> (calibration-only per M-2=b; explicit Cray go 2026-06-12) RAN on MS-S1 and
+> its results are RECORDED in `benchmarks/procedure_baseline/REPORT.md`
+> (#273, head_commit `489b695`, `docs(benchmark):` = the newest substantive
+> per `lint_status`; merge `d0f8af8`).** Run: pinned `gpt-oss:20b`, full 198
+> items, `reasoning_mode=full`, 319 LLM calls, 0 errors — all numbers
+> `--dump-json`-VERIFIED. **Watch suggested-handler distribution (unscored
+> per M-2=b):** aquaculture 13/13 `start_emergency_aerator`, energy 13/13
+> `restart`, supply_chain `hold` 5 / `inspect` 5 / **`reroute` 3 — the
+> lane's first real safety signal**: "Continue"/"Proceed" titles at
+> confidence 1.0 on borderline excursions; under a `{hold, inspect}` pinning
+> these classify FORBIDDEN. **Companion lanes:** β 98.3% (118/120; both
+> misses verified — aqua-028 boundary hedger + energy-007 U+2011
+> non-breaking hyphen → a standing grader-calibration candidate awaiting
+> ratification), α 100%, deterministic 198/198. **Latency:**
+> per-breach-judgment p95 28.73s = the first SD-2 PASS in full mode (read
+> within the ±10s noise band); per-watch-judgment mean 32.12s / p95 54.21s
+> recorded as the M-4 own-lane diagnostic (notably slower than breach; no
+> bar). **No bar moves (B-6).** Run artifacts gitignored at
+> `.claude/benchmark-results/2026-06-12-plan0022-phase3-calibration.{log,jsonl}`.
+> Next: Cray adjudicates the watch ground-truth pinning (per-item
+> canonical/acceptable from this distribution evidence) → dataset PR → the
+> first SCORED watch-lane run.
+> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
+
 ---
 
 ## Rotated Recent Decisions rows (rotated 2026-06-10)
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-11 | **PLAN-0022 (tiered decision routing) RATIFIED Draft → Ready for execution (#261, `46061b7`, session 54)** _(rotated 2026-06-12, session 57)_ — Cowork-drafted (ADR-009 D1, #259); Code R2-reviewed, re-verifying the two load-bearing fact-pack catches vs HEAD (**FP-2/SD-6:** no deterministic `evaluate` executor in `services/engine/procedures/` — only `ActionStepExecutor`; a real prerequisite for `watch→gated`; **FP-1/SD-7:** aquaculture `procedures.yaml` routes `watch→human_task`, an *upgrade* target not silence). Cray accepted **SD-1..SD-7 per recommendation** (SD-1=a gated replaces human_task; SD-2=a deterministic watch band only, no ADR-010 reopen; SD-4=a reuse `forbidden_keywords`; SD-5=a fields on the `Step`; SD-6=a evaluate executor in the impl PR) + **S-1 keep ammonia**. Added **§ Execution Order**: Phase 0 ADR-016 D3 amendment first (CLAUDE.md §8) → Phase 1 grader taxonomy ∥ config (define once) → Phase 2 `evaluate` executor → `watch→gated` → Phase 3 escalation scoring. Trigger = engine watch band, never `confidence` (ADR-010 IN-3). Impl = later separate PR. Also received (gitignored research): 3 Build-Vertical narratives + the gpt-oss rubric R1–R6 | `46061b7` (#261) / `docs/plans/0022-tiered-decision-routing.md` |
 | 2026-06-11 | **PLAN-0020 (Procedure-path tuning) COMPLETE + archived to done/ (#251–#256, `a6125c1`, session 53)** _(rotated 2026-06-12, session 57)_ — the PLAN-0019 B-6 ring-fence follow-up. All `--dump-json`-VERIFIED on `gpt-oss:20b`/MS-S1: the Phase-1 aqua prompt nudge (PR #232, prev. UNMEASURED) worked dramatically — overall β `85.8%→100%`, aqua β `60%→100%`, overall α `70%→100%` (supply α `32.5%→100%`: model now picks `hold` not `inspect`). Latency lever: new `reasoning_mode=skip` (drop call-1 reasoning) cuts p95 `31.80s→21.62s` UNDER the 30s bar at **zero β cost** (`think_off` = dead lever). **SD-1** (widen supply-α) authorized at ratify but **SKIPPED at Step 9** — nudge made the divergence moot (0 `inspect`); anti-moving-target honored, no grader change. Also: per-judgment latency timer (#252), think-trim lever (#253), `ms-s1-ollama` skill (#254, `warm.sh` live-tested), tuning report (#255). Next: future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring `skip` into product path is an open audit trade-off | `a6125c1` (#251–#256) / `docs/plans/done/0020-procedure-tuning-latency-precision.md` + `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-11 | **PLAN-0020 ratified Draft→Accepted (#251, `19706eb`, session 53)** _(rotated 2026-06-12, session 57)_ — SD-1 = widen supply-α `valid_handlers` `[hold]`→`[hold, inspect]` (later skipped at Step 9, see close row); SD-2 = re-ratify the latency bar from **8 s/per-call → ≤30 s p95 per-judgment** (reports-not-gates). Unblocked the gated MS-S1 tuning campaign | `19706eb` (#251) / `docs/plans/done/0020-procedure-path-tuning.md` |
 | 2026-06-10 | **PLAN-0021 SHIPPED (#249, `3dc586a`, session 51) — the Axis-B verification loop is LIVE; both harness-review tracks complete** _(rotated 2026-06-12, session 56)_ — goal gate (`_goal_gate.py` at the D4 seam inside `stop_continuation.py`, fail-open per ADR-0018 D4) + `goal-evaluator` 4th subagent + `/goal` (the repo's first project command) + the SD-1 narrowed-Write deny hook; +64 tests (suite 1398 passed / 22 skipped, zero regression); 7/10 case-matrix rows proven LIVE incl. the fail-open probe (`released-unevaluated` + LOUD Telegram, no wedge). F-L1: verdict→flip lands at the next non-chained Stop (OQ-8 blocking-mode promotion must account). Archived to done/ (`7d6d713`, same PR) | `3dc586a` (#249) / `docs/plans/done/0021-axis-b-verification-loop-build.md` |
