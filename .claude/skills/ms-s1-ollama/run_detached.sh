@@ -11,7 +11,7 @@
 # Artifacts (all under .claude/benchmark-results/):
 #   <run-name>.log    full runner stdout/stderr (content-based truth source)
 #   <run-name>.jsonl  --dump-json per-item records
-#   <run-name>.wrap   [wrap] START / EXIT=<rc> markers
+#   <run-name>.wrap   [wrap] START / EXIT=<rc> / PING markers
 #   <run-name>.done   SENTINEL: "<rc> <ISO-timestamp>" — written as the job's
 #                     LAST act. Its existence is the ONLY authoritative
 #                     completion signal; never trust harness task status.
