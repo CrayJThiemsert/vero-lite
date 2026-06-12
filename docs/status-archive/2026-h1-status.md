@@ -558,12 +558,58 @@ _Addendum — rotated 2026-06-12 (session-56 reconcile #284) — the session-53 
 > `MXFP4` build.
 > AI-assisted (Claude Code, session 53); no `Co-Authored-By` per CLAUDE.md §7.
 
+_Addendum — rotated 2026-06-12 (session-57 reconcile #286) — the session-54 block (R2 8-block cap):_
+
+> **Session 54 — PLAN-0022 "tiered decision routing" landed as
+> Draft (#259, head_commit `f5eba1b`, `docs(plans):`); the deferred
+> tiered-handler-grading follow-up is now a committed plan.** Cowork drafted it
+> (ADR-009 D1) off the session-54 Code dispatch + the design seed; Code ran the
+> ADR-009 D3 receive sequence — `validate_handoff.py` **clean** on the companion
+> handoff, plus an **R2 fact-pack review that re-verified Cowork's two
+> load-bearing catches against HEAD**: **FP-2/SD-6** — `services/engine/procedures/`
+> ships exactly one concrete `StepExecutor` (`ActionStepExecutor`); `StepKind.EVALUATE`
+> exists but executors are caller-provided and **no `watch_margin` lives under
+> `services/`** (benchmark-only), so a deterministic `evaluate` executor is a real
+> **prerequisite** for `watch→gated` wiring; **FP-1/SD-7** — aquaculture
+> `procedures.yaml` routes `verdict: watch → human_task` (a bare visual check),
+> **not** silence, so the change is an *upgrade* (bare "go look" → a `gated`
+> proposal). The PLAN renders Cray's two-axis reframe (threshold clear × data
+> clear/ambiguous) into (1) tier the benchmark grader
+> (canonical/acceptable/forbidden) and (2) wire the deterministic `watch` band →
+> a `gated` human-escalation — trigger = the engine watch band, **never**
+> `confidence` (ADR-010 IN-3, load-bearing AC-3). Covers all 5 dispatch areas;
+> SD-1..SD-5 = the design-seed OQs, **SD-6/SD-7 newly surfaced**. **Also received**
+> (gitignored research, no commit): **3 Build-Vertical narratives** (one each
+> energy/supply_chain/aquaculture — each carries a clear breach + a borderline
+> `watch`, so they double as PLAN-0022 routing fixtures; **S-1** = aquaculture
+> uses ammonia not the benchmark's DO/aerate, Cowork recommends KEEP; **S-3** =
+> a deterministic `dwell_minutes` co-gate candidate that escalates `watch`
+> **without** an ADR-010 reopen), and the **gpt-oss model-selection rubric
+> R1–R6** (recorded in #258). **RATIFIED (#261, `46061b7`):** Cray accepted
+> **SD-1..SD-7 per recommendation** (SD-1=a gated *replaces* human_task; SD-2=a
+> deterministic watch band only, no ADR-010 reopen; SD-4=a reuse
+> `forbidden_keywords`; SD-5=a fields on the `Step`; SD-6=a evaluate executor in
+> the impl PR) + **S-1 keep ammonia**; status flipped Draft → Ready for
+> execution + a **§ Execution Order** (dependency-sequenced) added. **Phase 0 DONE**
+> (#263, `137766c`): **ADR-0019** (`watch→gated`-proposal routing) ratified
+> **Accepted** + merged — the CLAUDE.md §8 gate. Cowork authored the **option-(b)**
+> follow-on ADR (Cray's OQ-1 pick) after the **G1/G2 PreToolUse gates correctly
+> blocked Code's direct ADR write** (ADR-009 D1: Cowork authors, Code commits);
+> Code R2-verified verbatim + committed. *(A transient classifier-bridge timeout
+> first fail-closed the gate with a misleading "policy" deny — diagnosed, bridge
+> confirmed healthy; memory updated.)* **NEXT (implementation):** Phase 1 grader
+> taxonomy ∥ config (define once) → Phase 2 the deterministic `evaluate` executor →
+> `watch→gated` → Phase 3 escalation scoring. Trigger = engine watch band, never
+> `confidence` (ADR-010 IN-3).
+> AI-assisted (Claude Code, session 54); no `Co-Authored-By` per CLAUDE.md §7.
+
 ---
 
 ## Rotated Recent Decisions rows (rotated 2026-06-10)
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-11 | **PLAN-0020 ratified Draft→Accepted (#251, `19706eb`, session 53)** _(rotated 2026-06-12, session 57)_ — SD-1 = widen supply-α `valid_handlers` `[hold]`→`[hold, inspect]` (later skipped at Step 9, see close row); SD-2 = re-ratify the latency bar from **8 s/per-call → ≤30 s p95 per-judgment** (reports-not-gates). Unblocked the gated MS-S1 tuning campaign | `19706eb` (#251) / `docs/plans/done/0020-procedure-path-tuning.md` |
 | 2026-06-10 | **PLAN-0021 SHIPPED (#249, `3dc586a`, session 51) — the Axis-B verification loop is LIVE; both harness-review tracks complete** _(rotated 2026-06-12, session 56)_ — goal gate (`_goal_gate.py` at the D4 seam inside `stop_continuation.py`, fail-open per ADR-0018 D4) + `goal-evaluator` 4th subagent + `/goal` (the repo's first project command) + the SD-1 narrowed-Write deny hook; +64 tests (suite 1398 passed / 22 skipped, zero regression); 7/10 case-matrix rows proven LIVE incl. the fail-open probe (`released-unevaluated` + LOUD Telegram, no wedge). F-L1: verdict→flip lands at the next non-chained Stop (OQ-8 blocking-mode promotion must account). Archived to done/ (`7d6d713`, same PR) | `3dc586a` (#249) / `docs/plans/done/0021-axis-b-verification-loop-build.md` |
 | 2026-06-10 | **PLAN-0021 "Axis-B verification loop — build" landed as Draft (#247, `78b8659`, session 51)** _(rotated 2026-06-12, session 56)_ — Cowork-drafted per ADR-009 D1, Code R2-reviewed + committed per D2/D3; renders Accepted ADR-0018 into a build plan: 6 new files (incl. the repo's first project command `.claude/commands/goal.md`, the `goal-evaluator` 4th subagent, the SD-1 narrowed-Write deny hook), exactly 3 modified files at the D4 seam, 10 ACs incl. AC-2 byte-for-byte non-interference, 10-row case matrix, VX-1..3 resolved, OQ-8 Out of Scope. R2 **F-1**: the deny hook wires via agent frontmatter, not `settings.json`. Gates on Cray ratification (SD-1: Cowork recommends NO for v1) | `78b8659` (#247) / `docs/plans/0021-axis-b-verification-loop-build.md` |
 | 2026-06-10 | **ADR-0018 "Axis-B Verification Loop" ACCEPTED (Cray-ratified, session 51) — opens harness-review track 2 (the evaluator loop) on top of the at-frontier Axis-A governance layer.** _(rotated 2026-06-12, session 56)_ A `/goal` Stop-hook gate + a `goal-evaluator` subagent that judges whether a run achieved its declared goal. **Decisions:** D1 hybrid deterministic-check + LLM-judge; D2 a `.claude/state/goal.json` run-goal artifact; D3 a 4th subagent sibling that **REFUTES not blesses** (structural guard against reasoning-blindness); D4 `_goal_gate.py` inside `stop_continuation.py`, **FAIL-OPEN** (broken/absent evaluator never blocks Stop); D5 session-Stop **warn-only v1**; D6 structural reasoning-blindness rationale; D7 formalize + augment the manual AC ritual. **SD-1 resolved = narrowed Write** (the evaluator's Write is hook-narrowed to `goal.json` only — same author-bounded pattern as `plan-drafter`/`status-scribe`). **Lineage:** #241 (`5f8073c`, `docs(adr):`) added ADR-0018 `Proposed` → **#242 (`1be60f7`, `docs(adr):`, head_commit) ratified it Proposed→Accepted** + carries the T4 STATUS reconcile (record ADR-0018 here + clear the Current-Focus Axis-B "deferred" earmark). **NEXT = T2:** Code dispatches the Axis-B build PLAN to Cowork (ADR-009 D1) → T3 (autonomy-triggers V-row) → build. OQ-8 (plugin packaging, MS-S1 local evaluator, blocking-mode promotion, PR-merge gating, auto-declared goals) + VX-1..3 stay non-binding / verify-at-execution | `1be60f7` (#241 + #242) / `docs/adr/0018-axis-b-verification-loop.md` |
