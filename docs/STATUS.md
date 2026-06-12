@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-12T20:08:44+07:00
+last_updated: 2026-06-12T22:05:14+07:00
 session: 57
-current_batch: 'session-57 watch-lane ground truth pinned (#286)'
+current_batch: 'session-57 scored watch run recorded (#288)'
 current_actor: code
-blocked_on: 'First SCORED watch run awaits a separate Cray go; hyphen-normalization grader ratify (B-6) also pending. No open PRs.'
-next_action: 'On Cray go: launch first SCORED watch run ONLY via bash .claude/skills/ms-s1-ollama/run_detached.sh <name> --reasoning-mode full (done iff <name>.done; ETA ~65–70 min).'
-head_commit: 1bd6328
-recent_commits: [1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, c84264e, aecf1bd, cbe6d05, 3a8a175, f7cb82a]
+blocked_on: 'Hyphen-normalization grader ratify (B-6) awaits explicit Cray ratification (now 3 data points). No open PRs. No run in flight.'
+next_action: 'M-2=b arc COMPLETE (watch lane scored 97.4%). Next: B-6 hyphen-normalization grader adjudication — explicit Cray ratification required before any grader edit.'
+head_commit: 4c46a92
+recent_commits: [4c46a92, 1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, c84264e, aecf1bd, cbe6d05, 3a8a175]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,46 @@ recent_commits: [1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, c84264e, aecf1bd, 
 
 ## Current Focus
 
-> **Session 57 (current) — watch-lane GROUND TRUTH PINNED on all 39
+> **Session 57 (second batch, current) — first SCORED watch-lane run
+> RECORDED (#288; head_commit `4c46a92`, `docs(benchmark):`; merge
+> `adb1bc5`) — watch lane 97.4% (38/39); the M-2=b arc is COMPLETE.**
+> Cray gave the go; the run executed in ~67 min via `run_detached.sh`
+> (its first production full run): `gpt-oss:20b` on MS-S1, all 198
+> items, `reasoning_mode=full`, 318 LLM calls, 0 errors; the sentinel
+> `0 2026-06-12T21:25:22+07:00` was written as designed. The
+> harness-side watcher Monitor died silently (lost-notification class)
+> and also fired one false alarm earlier (a single-read empty
+> `systemctl --user is-active` → declared dead while the unit was
+> active); completion truth was recovered via the content-based test
+> (sentinel + `DUMP: wrote 198` + empty pgrep). All numbers
+> dump-VERIFIED (39/39 `watch_graded:true`). **Watch lane (first
+> scored):** aquaculture 100% (13/13 canonical
+> `start_emergency_aerator`); energy 100% (13/13 canonical `restart`);
+> supply_chain 92.3% (12/13: inspect 6 canonical / hold 6 acceptable /
+> reroute 1 forbidden). The single FAIL = supply-040 — "Proceed — no
+> breach detected" + `reroute` at confidence 1.0 on a 7.8 °C in-spec
+> reading → scored forbidden via the declared `forbidden_keywords` =
+> the lane discriminating exactly as designed (1/13 this run vs 3/13
+> in calibration — intermittent but real). **Companion lanes:** β
+> 98.3% (118/120) — the misses are the SAME two known items: aqua-028
+> hedger + energy-007 U+2011 hyphen (THIRD occurrence across runs —
+> strengthens the pending B-6 hyphen-normalization adjudication); α
+> 100%; deterministic 100%. **Latency:** SD-2 p95 30.18s → nominally
+> OVER by 0.18s; recorded with two readings, no bar moved (B-6): (1)
+> within the documented ±10s straddle band (31.80 → 28.73 → 30.18
+> across full-mode runs); (2) run-unique contamination — the
+> session-57 local Stop classifier shares MS-S1 and generated during
+> the measured window; clean-verdict option = rerun quiesced or with
+> `CLAUDE_CLASSIFIER_BACKEND=sonnet`. **Local-classifier first-flight
+> tally** (for the closeout): 2 false-continue Stop verdicts this
+> session (one "completion-consistency"-shaped, one blocking turn-end
+> while a background monitor was armed) — annoying, never dangerous.
+> **NEXT:** the B-6 hyphen-normalization grader adjudication (now 3
+> data points) awaits explicit Cray ratification before any grader
+> edit. No open PRs; no run in flight.
+> AI-assisted (Claude Code, session 57); no `Co-Authored-By` per CLAUDE.md §7.
+>
+> **Session 57 — watch-lane GROUND TRUTH PINNED on all 39
 > watch items (#286; head_commit `1bd6328`, `feat(benchmark):`; merge
 > `6585bfc`).** The M-2=b
 > calibration-first follow-up: Cray adjudicated the pinning from the #273
@@ -182,66 +221,6 @@ recent_commits: [1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, c84264e, aecf1bd, 
 > `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
 > AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
 >
-> **Session 55 — PLAN-0022 Phase 2 SHIPPED (#267, head_commit
-> `6870f87`, `feat(engine):`; merge `9072fda`) — the session's SECOND impl
-> merge: the deterministic `evaluate` executor + the `watch → gated` routing
-> (ADR-0019) are LIVE.** **Phase 2a (SD-6, the evaluate executor):** NEW
-> `services/engine/procedures/evaluate_step.py` — an engine-owned judge
-> computing `breach / watch / ok` from the Step-authored band via
-> `classify_verdict`, **no LLM call** — the ADR-0019 determinism invariant
-> holds by construction. **Phase 2b (SD-1=a, watch→gated):** the aquaculture
-> `watch` set now routes to a gated `increase_water_exchange` proposal
-> `escalate_watch`, replacing the bare visual-check `human_task`; the
-> existing `resolve_gated_step` / suspend / resume machinery is reused
-> verbatim. **AC-8 named test landed** — escalation byte-for-byte identical
-> under confidence 0.05 vs 0.99 (trigger = the engine watch band, never
-> `confidence`; ADR-010 IN-3) — and **AC-9 held** (breach path + reject =
-> continue+record proven on both gates). Full suite **1459 passed** (+14);
-> ruff + mypy clean. **NEXT = Phase 3, the only remaining phase:** the
-> escalation-correctness scoring lane (Step 5 — scores "escalated
-> correctly" vs "should have acted" vs "should have stayed silent" on its
-> own watch-tier lane), **B-6 ring-fenced: the scoring methodology must be
-> Cray-ratified BEFORE any scored benchmark run**. *Methodology RATIFIED
-> (Cray, 2026-06-12, in-session):* **M-1** watch items run the LLM judgment,
-> graded on a NEW watch-tier lane (pass = handler ∈ {canonical, acceptable};
-> forbidden named explicitly per SD-4=a; never folded into β); **M-2 = (b)
-> CALIBRATION-FIRST** — watch ground truth is NOT authored yet (no REPORT
-> evidence); the first run reports the suggested-handler distribution only
-> (no pass/fail pinned), ground truth pinned from that evidence (mirrors the
-> B-β calibration precedent); **M-3** deterministic mis-routing is
-> structurally impossible in the harness — reported as structural, no fake
-> failure surface; **M-4** watch-judgment latency = its own diagnostic, the
-> SD-2 ≤30s bar stays breach-scoped — **no bar moves**. A scored run still
-> needs a separate Cray go (MS-S1 host-state). Spec + ratification record in
-> the session-55→56 kickoff handoff
-> (`.claude/handoffs/session-55/2026-06-12-0039-...-phase3-kickoff.md`).
-> After Phase 3, PLAN-0022 archives to done/. Held items carry unchanged
-> (nemotron MXFP4
-> warm-cycle hold; bridge-resilience option B parked). *Rotation note:* per
-> Cray (2026-06-11) the five session-51 CF blocks rotate at the NEXT
-> reconcile; this pass added no new block (Phase 2 extends this block), so
-> they are kept one more pass.
->
-> *Earlier this session — Phase 1 SHIPPED (#265, `a68a114`, `feat(engine):`;
-> merge `6b1bdd5`): the benchmark grader's α probe TIERED + the `Step`
-> band/tiers config surface (Phase 0 = ADR-0019, #263, prior session).*
-> **Step 1 (grader tiering, SD-4=a):**
-> `Expected.valid_handlers` → `canonical_handler` + `acceptable_handlers`;
-> dispositions are now `canonical / acceptable / forbidden-or-other`; all
-> datasets migrated. Acceptable sets are grounded in PLAN-0020 REPORT
-> evidence — supply_chain `[inspect]`, aquaculture
-> `[increase_water_exchange]`, energy none (no recorded benign divergence).
-> **Step 3 (config surface, SD-5=a):** the `Step` spec gains optional
-> `threshold` / `direction` / `watch_margin` + `tiers`, and the NEW
-> engine-owned `classify_verdict` (`services/engine/procedures/verdict.py`)
-> is the single shared watch-band definition — `grader.classify_disposition`
-> now DELEGATES to it (watch-band math defined once, per the ratified
-> § Execution Order); aquaculture `procedures.yaml` carries the worked
-> example. Full suite **1445 passed**; **AC-9 byte-for-byte back-compat
-> held**. (The Phase-2 items formerly listed as NEXT here shipped later
-> this session — superseded by the lead of this block.)
-> AI-assisted (Claude Code, session 55); no `Co-Authored-By` per CLAUDE.md §7.
->
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
 ## Prior focus (archived)
@@ -263,6 +242,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-12 | **First SCORED watch-lane run RECORDED — watch 97.4% (38/39); M-2=b arc COMPLETE (#288, `4c46a92`, session 57)** — `gpt-oss:20b`/MS-S1, 198 items, 318 calls, 0 errors, dump-VERIFIED (39/39 `watch_graded:true`); first production `run_detached.sh` run (sentinel as designed; watcher Monitor died silently + one false alarm — truth via content-based test). Aqua + energy 13/13; supply 12/13 — sole FAIL supply-040 (reroute @1.0 on an in-spec 7.8 °C) = `forbidden_keywords` discriminating as designed. β 98.3% (same two known misses; energy-007 U+2011 now ×3 → strengthens B-6). SD-2 p95 30.18s = +0.18s nominal, within the ±10s straddle band + classifier-contaminated; no bar moves (B-6) | `4c46a92` (#288) / `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-12 | **Watch-lane ground truth PINNED — all 39 watch items (#286, `1bd6328`, session 57)** — Cray adjudicated the M-2=b pinning from the #273 calibration distribution: aqua canonical `start_emergency_aerator` + acceptable `[dispatch_technician, increase_water_exchange, escalate]`; energy canonical `restart` + acceptable `[dispatch_technician, escalate]` (`isolate` excluded → 'other'); supply_chain canonical `inspect` + acceptable `[hold, escalate]` + `forbidden_keywords [expedite, reroute]` declared (3/13 observed reroutes → forbidden). Dataset-only; the watch lane auto-flips unscored→scored; first SCORED run gated on a separate Cray go | `1bd6328` (#286) / `benchmarks/procedure_baseline/dataset/` |
 | 2026-06-12 | **Lessons #24 + #25 RECORDED (#284, `4b0e306`, session 56)** — Cray-approved coda to the classifier calibration arc. **#24:** rules must live where the enforcer looks — a binding rule placed only in prose is invisible to a machine enforcer reading a different surface (C5 registry-gap finding generalized; adds an enforcement dimension to the ADR-0017 D5 placement rule). **#25:** an LLM judge's `{verdict, reason}` needs verdict-by-observable definitions + an explicit cross-field agreement contract, pinned by a prompt contract test + gold case (generalizes to the ADR-0018 goal-evaluator) | `4b0e306` (#284) / `docs/lessons/0024-rules-must-live-where-the-enforcer-looks.md` + `docs/lessons/0025-llm-judge-verdict-must-bind-to-its-own-reasoning.md` |
 | 2026-06-12 | **Stop classifier SWITCHED to local `gpt-oss:20b` (#282, `3375778`, session 56)** — Cray picked **(b)** on the calibration evidence (8–30s latency acceptable). Default backend = MS-S1 Ollama (format-constrained `/api/chat`, temp 0, keep_alive 10m, 75s timeout; no API key / no WSL bridge); Anthropic API retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`. Fail-closed pause + legacy reason strings byte-identical; legacy suite pinned to sonnet + 4 new ollama-backend tests (571 passed / 2 skipped; mypy --strict clean); LIVE-verified from the prod hook runtime: 7.9s → pause | `3375778` (#282) / `.claude/hooks/_sonnet_classifier.py` |
@@ -272,7 +252,8 @@ below, and git history.
 | 2026-06-12 | **PLAN-0022 COMPLETE — Phase 3 watch-tier escalation lane SHIPPED (#270, `1723981`, session 56) + plan archived to done/ (#271, `b41a138`)** — implements the Cray-ratified M-1..M-4 methodology (M-2=b calibration-first: watch items run the LLM judgment, unscored distribution reporting until ground truth is pinned from run evidence; M-4 watch latency = own diagnostic, SD-2 bar stays breach-scoped; REPORT methodology recorded BEFORE any scored run). All four phases done (#263/#265/#267/#270). Suite 1469; first calibration run gated on a separate Cray go | `b41a138` (#270 + #271) / `docs/plans/done/0022-tiered-decision-routing.md` + `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-11 | **ADR-0019 (`watch → gated`-proposal routing) ACCEPTED + merged (#263, `137766c`, session 54)** — PLAN-0022 **Phase 0** governance gate (CLAUDE.md §8; merges before the impl PR). Cray chose **OQ-1 form (b)** = a follow-on ADR over an in-place ADR-016 amendment. Sanctions routing the deterministic `watch` set → a `gated` `action` proposal (LLM proposes → human decides via `resolve_gated_step`); **extends ADR-016 D3** — no primitive / auto-gated / ceiling / allowlist change; trigger = engine verdict, never `confidence` (ADR-010 IN-3). **Authored by Cowork** — the G1/G2 PreToolUse gates correctly blocked Code's *direct* ADR Write/Edit (ADR-009 D1: Cowork authors, Code commits); Code R2-verified verbatim + committed. Includes an ADR-016 forward pointer + the Morning-Pond Step 4 row (`human_task` → gated proposal, SD-1=a). *(A transient classifier-bridge timeout first fail-closed the gate; diagnosed + healthy.)* | `137766c` (#263) / `docs/adr/0019-watch-gated-proposal-routing.md` + `docs/adr/0016-*` |
 | 2026-06-11 | **PLAN-0022 (tiered decision routing) RATIFIED Draft → Ready for execution (#261, `46061b7`, session 54)** — Cowork-drafted (ADR-009 D1, #259); Code R2-reviewed, re-verifying the two load-bearing fact-pack catches vs HEAD (**FP-2/SD-6:** no deterministic `evaluate` executor in `services/engine/procedures/` — only `ActionStepExecutor`; a real prerequisite for `watch→gated`; **FP-1/SD-7:** aquaculture `procedures.yaml` routes `watch→human_task`, an *upgrade* target not silence). Cray accepted **SD-1..SD-7 per recommendation** (SD-1=a gated replaces human_task; SD-2=a deterministic watch band only, no ADR-010 reopen; SD-4=a reuse `forbidden_keywords`; SD-5=a fields on the `Step`; SD-6=a evaluate executor in the impl PR) + **S-1 keep ammonia**. Added **§ Execution Order**: Phase 0 ADR-016 D3 amendment first (CLAUDE.md §8) → Phase 1 grader taxonomy ∥ config (define once) → Phase 2 `evaluate` executor → `watch→gated` → Phase 3 escalation scoring. Trigger = engine watch band, never `confidence` (ADR-010 IN-3). Impl = later separate PR. Also received (gitignored research): 3 Build-Vertical narratives + the gpt-oss rubric R1–R6 | `46061b7` (#261) / `docs/plans/0022-tiered-decision-routing.md` |
-| 2026-06-11 | **PLAN-0020 (Procedure-path tuning) COMPLETE + archived to done/ (#251–#256, `a6125c1`, session 53)** — the PLAN-0019 B-6 ring-fence follow-up. All `--dump-json`-VERIFIED on `gpt-oss:20b`/MS-S1: the Phase-1 aqua prompt nudge (PR #232, prev. UNMEASURED) worked dramatically — overall β `85.8%→100%`, aqua β `60%→100%`, overall α `70%→100%` (supply α `32.5%→100%`: model now picks `hold` not `inspect`). Latency lever: new `reasoning_mode=skip` (drop call-1 reasoning) cuts p95 `31.80s→21.62s` UNDER the 30s bar at **zero β cost** (`think_off` = dead lever). **SD-1** (widen supply-α) authorized at ratify but **SKIPPED at Step 9** — nudge made the divergence moot (0 `inspect`); anti-moving-target honored, no grader change. Also: per-judgment latency timer (#252), think-trim lever (#253), `ms-s1-ollama` skill (#254, `warm.sh` live-tested), tuning report (#255). Next: future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring `skip` into product path is an open audit trade-off | `a6125c1` (#251–#256) / `docs/plans/done/0020-procedure-tuning-latency-precision.md` + `benchmarks/procedure_baseline/REPORT.md` |## In-Flight Discussions
+
+## In-Flight Discussions
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
