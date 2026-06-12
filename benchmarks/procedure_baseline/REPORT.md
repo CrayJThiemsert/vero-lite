@@ -79,8 +79,10 @@ headline keeps only the entity + action-class the procedure path actually consum
 > **Provenance.** Methodology M-1..M-4 was **Cray-ratified 2026-06-12** (session 55,
 > quoted: "M-2: เลือก (b) + เห็นชอบ M-1/3/4"), per the B-6 anti-moving-target
 > discipline: the scoring scheme below is fixed **before** the first scored run that
-> exercises it. No scored watch-lane run has happened yet; the first one is
-> calibration-only by design (M-2=b). PLAN-0022 Step 5 / SD-3 is the design source.
+> exercises it. The first run — calibration-only by design (M-2=b) — ran later the
+> same day (Cray go, session 56): see
+> [Results — watch-lane CALIBRATION run](#results--watch-lane-calibration-run-2026-06-12)
+> below. PLAN-0022 Step 5 / SD-3 is the design source.
 
 - **M-1 — the lane (per SD-3 / SD-4=a).** Watch items now RUN the LLM judgment
   (previously the harness made no LLM call for non-breach) and are graded on a
@@ -114,6 +116,95 @@ headline keeps only the entity + action-class the procedure path actually consum
 The determinism invariant holds throughout (AC-3 / ADR-0019): the watch lane grades
 the model's *proposal* on items the **deterministic** watch band routed; `confidence`
 never routes (advisory display only, ADR-010 IN-3).
+
+## Results — watch-lane CALIBRATION run (2026-06-12)
+
+The first scored run exercising the watch-tier lane (Cray go 2026-06-12, session
+56). `gpt-oss:20b` (ADR-0001 pin) on MS-S1 (`192.168.1.133:11434`), warm-first
+(cold load 25 s), full 198 items, `reasoning_mode=full` (the shipped default),
+**319 LLM calls** (120 breach + 39 watch, ×2 Pattern-B calls, +1 in-budget retry),
+**0 `StructuredOutputError`**, **0 watch-lane errors**. Every number below was
+**VERIFIED against the `--dump-json` records** (the session-46 "confirm, don't
+infer" discipline): all 39 watch records carry `watch_pass: null` /
+`watch_tier: null` (unscored — the M-2=b calibration state, exactly as designed)
+and a real model judgment.
+
+### The calibration evidence — suggested-handler distribution per vertical (M-2=b)
+
+Counts only — **no pass/fail pinned, no bar** (the methodology above). This table
+is the evidence base from which the watch ground truth
+(`canonical_handler`/`acceptable_handlers` per watch item) gets pinned in the
+follow-up; **Cray adjudicates the pinning**.
+
+| vertical | watch items judged | suggested-handler distribution |
+|---|---|---|
+| aquaculture | 13 | `start_emergency_aerator` **13** |
+| energy | 13 | `restart` **13** |
+| supply_chain | 13 | `hold` **5** / `inspect` **5** / **`reroute` 3** |
+
+**Reading.** aquaculture and energy are **unanimous**: on the ambiguous watch
+band the model proposes the same canonical handler the breach path executes —
+the escalation proposal is "do the breach remedy, pending human approval."
+supply_chain **splits** — and surfaces the lane's first real safety signal: in
+**3/13** watch judgments the model proposed **`reroute`** (titles VERIFIED from
+the dump: *"Continue"*, *"Proceed with shipment ship-S33"*, *"Proceed"* — each at
+`confidence` 1.0). On a borderline cold-chain excursion the model's instinct is
+to *keep the possibly-compromised load moving* — precisely the dangerous
+near-miss class (`expedite`/`reroute`) the breach-path β precision checks exist
+for, now observed on the watch band where no check yet scores it. **Pinning
+implication (for the follow-up, not decided here):** if the supply_chain watch
+ground truth pins around `{hold, inspect}` with the existing
+`forbidden_keywords` (`expedite`/`reroute`), those three picks classify
+**forbidden** and the lane discriminates exactly as intended. Per the B-6
+ring-fence this is a logged finding feeding the pinning follow-up — no bar, no
+grader change here.
+
+### Companion lanes (same run) — β / α / sanity
+
+| lane | result | note |
+|---|---|---|
+| β headline | **98.3%** (118/120) — ✅ ≥ 85% | aqua 39/40, energy 39/40, supply 40/40 |
+| α handler-probe | **100.0%** (120/120: canonical 117 / acceptable 3 / forbidden 0 / other 0) | own lane |
+| deterministic | **100.0%** (198/198) | the M-3 structural columns are covered here |
+
+The two β misses, **VERIFIED from the dump as real model verdicts**:
+
+- `aqua-028` — the **known inclusive-boundary hedger** (DO = 4.0 exactly;
+  consistent across runs since 2026-06-08). This run it proposed
+  *"Exchange-Water for Pond A28"* — a real DO remedy, but no `aerat`/`oxygenat`
+  lemma in any free-text field → `action_keywords` miss.
+- `energy-007` — the **non-breaking-hyphen failure mode again** (same class as
+  `energy-027` in the 2026-06-11 runs): the model named the correct entity as
+  `asset‑E07` (U+2011) where the dataset expects `asset-E07` (ASCII) →
+  exact-match miss on `affected_primary_key`. Two occurrences across runs make
+  hyphen normalization a **standing grader-calibration candidate** — a
+  measurement-correctness fix in the spirit of the 2026-06-08 calibration log,
+  but it touches ratified methodology, so it waits for Cray ratification (B-6).
+
+### Latency (same run)
+
+| unit | n | mean | p50 | p95 | max | bar |
+|---|---|---|---|---|---|---|
+| per **breach** judgment (SD-2) | 120 | 21.67 s | 21.02 s | **28.73 s** | 57.08 s | ✅ **PASS ≤ 30 s** |
+| per **watch** judgment (M-4 diagnostic) | 39 | 32.12 s | 29.78 s | **54.21 s** | 55.55 s | — (no bar, by design) |
+| per LLM call (lever diagnostic) | 319 | 12.08 s | 10.91 s | 21.10 s | 43.69 s | — |
+
+**First SD-2 PASS in `full` mode** (the 2026-06-11 `full` run read 31.80 s —
+within the documented ±10 s run-to-run noise band, so read this as "full mode
+straddles the bar," not "full mode got faster"; `skip` remains the ratified
+under-the-bar lever at 21.62 s). The **watch judgments run notably slower than
+breach** (mean 32.12 s vs 21.67 s; p95 54.21 s vs 28.73 s) — recorded as the M-4
+diagnostic; if watch escalation latency ever matters operationally, that is a
+new conversation (and a new bar proposal), not a silent fold into SD-2.
+
+### Run provenance / integrity
+
+- Artifacts: `.claude/benchmark-results/2026-06-12-plan0022-phase3-calibration.{log,jsonl}`
+  (198/198 item records; gitignored working artifacts, retained locally).
+- The run wrapper hit the known **one-off background reap** (~59 min in, heartbeat
+  stopped, no `[wrap] EXIT` marker) but the benchmark process itself completed and
+  wrote the full log + dump — artifacts intact, integrity unaffected (matches the
+  documented one-off pattern; not a TTL).
 
 ## Results — HARDENED run (2026-06-09) — the discriminating numbers
 
@@ -564,7 +655,11 @@ qualitative conclusions (pin is best by far; smaller ≠ faster) are robust.*
 model sweep** filled from Cray-approved live runs (`gpt-oss:20b` / `gemma4:12b` /
 `qwen3.6:35b` / `gemma4:26b` on MS-S1, Ollama 0.30.6, 2026-06-08/09), plus the
 **HARDENED re-run 2026-06-09** (real menu + hard scenarios; β 85.8% / ~86–89%, α 70.0%,
-latency p95 22.64 s, every score `--dump-json`-VERIFIED). **B-3 baselines** (text-to-SQL
-+ RAG) remain TODO. Per the ring-fence this REPORTS — it does not gate; the hardened
-headline, the benign α divergence, and the latency miss are all read with the caveats
-above and feed the follow-up tuning PLAN.*
+latency p95 22.64 s, every score `--dump-json`-VERIFIED), the **PLAN-0020 tuning runs
+2026-06-11** (nudge effect + the `skip` lever), and the **watch-lane CALIBRATION run
+2026-06-12** (PLAN-0022 Phase 3 / M-2=b: the per-vertical suggested-handler
+distribution incl. the supply_chain `reroute` 3/13 safety signal; β 98.3%, first SD-2
+PASS in `full` mode; watch-judgment latency M-4 diagnostic). **B-3 baselines**
+(text-to-SQL + RAG) remain TODO. Per the ring-fence this REPORTS — it does not gate;
+every finding above feeds its follow-up (the watch ground-truth pinning, the hyphen
+normalization candidate, the tuning PLAN) and moves no bar.*
