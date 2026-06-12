@@ -308,6 +308,22 @@ def test_result_always_has_required_keys(
     assert isinstance(result["reason"], str)
 
 
+def test_system_prompt_carries_the_completion_consistency_rule() -> None:
+    """The session-56 calibration fix: the prompt must (a) define PROCEED as
+    'has concrete remaining work' — not merely 'safe to continue' — and (b)
+    forbid a PROCEED verdict whose reason describes completion / a natural
+    stop. Without this rule the classifier was observed returning proceed
+    with reasons like 'Session is cleanly complete... natural stop', burning
+    a continuation turn on finished work. Contract test so the rule never
+    silently regresses out of the prompt."""
+    prompt = sc._build_system_prompt("registry text here")
+    assert "CONCRETE remaining work" in prompt
+    assert "Decision and reason" in prompt and "AGREE" in prompt
+    assert "NATURAL stop" in prompt
+    # The conservative bias stays intact alongside the new rule.
+    assert "spurious pauses are preferred over spurious proceeds" in prompt
+
+
 # --- Step 5b: config-file fallback (defeats Claude Desktop env-strip) ---
 
 
