@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-12T22:05:14+07:00
+last_updated: 2026-06-12T22:37:24+07:00
 session: 57
-current_batch: 'session-57 scored watch run recorded (#288)'
+current_batch: 'session-57 unit-side completion ping (#290)'
 current_actor: code
-blocked_on: 'Hyphen-normalization grader ratify (B-6) awaits explicit Cray ratification (now 3 data points). No open PRs. No run in flight.'
-next_action: 'M-2=b arc COMPLETE (watch lane scored 97.4%). Next: B-6 hyphen-normalization grader adjudication — explicit Cray ratification required before any grader edit.'
-head_commit: 4c46a92
-recent_commits: [4c46a92, 1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, c84264e, aecf1bd, cbe6d05, 3a8a175]
+blocked_on: 'B-6 hyphen-normalization grader ratify (3 data points) + cosmetic run_detached.sh header-comment edit (classifier-denied) both await Cray. No open PRs. No run in flight.'
+next_action: 'B-6 hyphen-normalization grader adjudication (now 3 data points) — explicit Cray ratification before any grader edit. Then: cosmetic run_detached.sh header edit (awaits per-diff approval).'
+head_commit: 3c25d94
+recent_commits: [3c25d94, 4c46a92, 1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, c84264e, aecf1bd, cbe6d05]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,38 @@ recent_commits: [4c46a92, 1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, c84264e, 
 
 ## Current Focus
 
-> **Session 57 (second batch, current) — first SCORED watch-lane run
+> **Session 57 (third batch, current) — unit-side completion PING +
+> no-Monitor rule SHIPPED (#290; head_commit `3c25d94`,
+> `feat(skills):`; merge `6a47d89`).** Coda to the scored run's watcher
+> death: Cray asked why the WSL issue recurred after the systemd
+> switch — answer: systemd protected the *workload*, but the
+> notify-back channel (harness Monitor = `wsl.exe` carrier) stayed
+> WSL-bound; it false-alarmed once and died silently during the scored
+> run. Fix: `_run_detached_body.sh` now sends a best-effort unit-side
+> Telegram ping (`tools/notify/telegram.sh`; a subshell sources the
+> gitignored `.env` since the systemd user env lacks `TELEGRAM_*`)
+> immediately AFTER writing the `.done` sentinel — the sentinel stays
+> the authoritative signal; outcome recorded as `[wrap] PING
+> ok|failed|skipped`; a ping failure can never touch the sentinel or
+> rc. SKILL.md codifies the rule: never arm a harness Monitor/watcher
+> on the sentinel — completion truth = sentinel + the ETA rule.
+> Verified: `bash -n` clean; the ping block (verbatim copy) smoked
+> inside a real `systemd --user` unit → `[wrap] PING ok` (HTTP 200,
+> delivered to the project Telegram). Classifier first-flight log (now
+> 3 events): the auto-mode classifier allowed the body + SKILL.md
+> edits but DENIED a cosmetic one-line header-comment edit in
+> `run_detached.sh` (self-modification gate — "diagnostic question ≠
+> authorization"); deferred pending explicit per-diff Cray approval
+> (cosmetic only: the `.wrap` artifact description doesn't yet mention
+> the PING markers). *Rotation note:* the oldest CF block (session 56,
+> PLAN-0022 Phase 3 + closeout, #270/#271) rotated to
+> `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
+> **NEXT:** B-6 hyphen-normalization grader adjudication (3 data
+> points) awaits explicit Cray ratification before any grader edit. No
+> open PRs; no run in flight.
+> AI-assisted (Claude Code, session 57); no `Co-Authored-By` per CLAUDE.md §7.
+>
+> **Session 57 (second batch) — first SCORED watch-lane run
 > RECORDED (#288; head_commit `4c46a92`, `docs(benchmark):`; merge
 > `adb1bc5`) — watch lane 97.4% (38/39); the M-2=b arc is COMPLETE.**
 > Cray gave the go; the run executed in ~67 min via `run_detached.sh`
@@ -190,35 +221,6 @@ recent_commits: [4c46a92, 1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, c84264e, 
 > Next: Cray adjudicates the watch ground-truth pinning (per-item
 > canonical/acceptable from this distribution evidence) → dataset PR → the
 > first SCORED watch-lane run.
-> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
->
-> **Session 56 — PLAN-0022 Phase 3 SHIPPED (#270, `1723981`,
-> `feat(benchmark):`; merge `93d0b67`) + PLAN-0022 CLOSED OUT to
-> `docs/plans/done/` (#271, head_commit `b41a138`, `docs(plans):` = the
-> newest substantive per `lint_status`; merge `f15115c`) — ALL FOUR PHASES
-> COMPLETE (#263 ADR-0019 → #265 Phase 1 → #267 Phase 2 → #270 Phase 3).**
-> Phase 3 implements the Cray-ratified methodology M-1..M-4 verbatim.
-> **M-1:** watch items now RUN `generate_judgment` and grade on a new
-> ISOLATED watch-tier lane via the shared `classify_handler_tier` taxonomy
-> (pass = handler ∈ {canonical, acceptable}; forbidden explicit per SD-4=a)
-> — never folded into β. **M-2 = b (calibration-first):** dataset YAMLs are
-> UNCHANGED (no watch ground truth authored yet); the lane reports the
-> suggested-handler DISTRIBUTION unscored until ground truth is pinned from
-> run evidence (mirrors the B-β calibration precedent). **M-3:**
-> deterministic mis-routing columns are STRUCTURAL (the harness makes
-> mis-routing impossible — no fake failure surface). **M-4:** watch-judgment
-> latency is its OWN diagnostic; the SD-2 ≤30s bar stays breach-scoped —
-> **no bar moves**. The REPORT.md methodology section was recorded BEFORE
-> any scored run (B-6 honored); module docstring aligned (`7bf7240`). Full
-> suite **1469 passed / 22 skipped** (+10); ruff + mypy clean. **NO scored
-> run has happened yet** — the first calibration-only run still needs a
-> separate explicit Cray go (MS-S1 host-state; warm via the `ms-s1-ollama`
-> skill, pinned `gpt-oss:20b`); AFTER it, the M-2=b follow-up authors the
-> watch canonical/acceptable handlers from the distribution evidence. Held
-> items carry unchanged (nemotron MXFP4 warm-cycle hold; bridge-resilience
-> option B parked). *Rotation note:* executed Cray's standing 2026-06-11
-> decision — the five session-51 CF blocks rotated to
-> `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
 > AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
 >
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
