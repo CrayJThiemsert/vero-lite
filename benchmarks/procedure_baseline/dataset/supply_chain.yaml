@@ -16,6 +16,9 @@
 # canonical_handler hold + acceptable_handlers [inspect] (the PLAN-0020
 # REPORT-verified benign divergence — a defensible first response; the dangerous
 # reroute/expedite near-misses classify forbidden via forbidden_keywords, SD-4=a).
+# Watch-tier ground truth (M-2=b pinning, Cray-adjudicated 2026-06-12): canonical
+# inspect + acceptable [hold, escalate]; forbidden_keywords [expedite, reroute]
+# DECLARED on watch items so the observed reroute proposals classify forbidden.
 
 vertical: supply_chain
 procedure: cold_chain_excursion_sweep
@@ -199,55 +202,55 @@ items:
   - id: supply-029
     description: 6.5 C — watch boundary (lower edge of the watch band).
     scenario: {event_id: supply-evt-029, entity_type: Shipment, primary_key: ship-S29, measured_value: 6.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-030
     description: 6.6 C — watch.
     scenario: {event_id: supply-evt-030, entity_type: Shipment, primary_key: ship-S30, measured_value: 6.6, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-031
     description: 6.8 C — watch.
     scenario: {event_id: supply-evt-031, entity_type: Shipment, primary_key: ship-S31, measured_value: 6.8, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-032
     description: 6.9 C — watch.
     scenario: {event_id: supply-evt-032, entity_type: Shipment, primary_key: ship-S32, measured_value: 6.9, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-033
     description: 7.0 C — watch.
     scenario: {event_id: supply-evt-033, entity_type: Shipment, primary_key: ship-S33, measured_value: 7.0, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-034
     description: 7.1 C — watch.
     scenario: {event_id: supply-evt-034, entity_type: Shipment, primary_key: ship-S34, measured_value: 7.1, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-035
     description: 7.2 C — watch.
     scenario: {event_id: supply-evt-035, entity_type: Shipment, primary_key: ship-S35, measured_value: 7.2, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-036
     description: 7.3 C — watch.
     scenario: {event_id: supply-evt-036, entity_type: Shipment, primary_key: ship-S36, measured_value: 7.3, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-037
     description: 7.5 C — watch.
     scenario: {event_id: supply-evt-037, entity_type: Shipment, primary_key: ship-S37, measured_value: 7.5, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-038
     description: 7.6 C — watch.
     scenario: {event_id: supply-evt-038, entity_type: Shipment, primary_key: ship-S38, measured_value: 7.6, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-039
     description: 7.7 C — watch.
     scenario: {event_id: supply-evt-039, entity_type: Shipment, primary_key: ship-S39, measured_value: 7.7, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-040
     description: 7.8 C — watch.
     scenario: {event_id: supply-evt-040, entity_type: Shipment, primary_key: ship-S40, measured_value: 7.8, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
   - id: supply-041
     description: 7.9 C — watch (a hair below the ceiling).
     scenario: {event_id: supply-evt-041, entity_type: Shipment, primary_key: ship-S41, measured_value: 7.9, unit: celsius, threshold: 8.0, direction: above, watch_margin: 1.5}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: inspect, acceptable_handlers: [hold, escalate], forbidden_keywords: [expedite, reroute]}
 
   # --- ok (temp < 6.5; nominal cold-chain; false-positive guard) --------------
   - id: supply-042

@@ -16,6 +16,9 @@
 # benign divergence; dispatch/escalate stay 'other'). payload_contains is exercised
 # on ONE item (aqua-001) as an advisory signal; the exact payload KEY the live
 # model emits is calibrated against real output during the RUN.
+# Watch-tier ground truth (M-2=b pinning, Cray-adjudicated 2026-06-12 from the
+# REPORT calibration distribution): canonical start_emergency_aerator +
+# acceptable [dispatch_technician, increase_water_exchange, escalate].
 # Item style: block list; scenario/expected as compact flow mappings (reviewable).
 # Self-consistency (declared disposition == classify_disposition) is CI-asserted.
 
@@ -200,55 +203,55 @@ items:
   - id: aqua-029
     description: DO 4.02 mg/L — just above the floor; watch.
     scenario: {event_id: aqua-evt-029, entity_type: Pond, primary_key: pond-A29, measured_value: 4.02, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-030
     description: DO 4.05 mg/L — watch.
     scenario: {event_id: aqua-evt-030, entity_type: Pond, primary_key: pond-A30, measured_value: 4.05, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-031
     description: DO 4.1 mg/L — watch.
     scenario: {event_id: aqua-evt-031, entity_type: Pond, primary_key: pond-A31, measured_value: 4.1, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-032
     description: DO 4.2 mg/L — watch.
     scenario: {event_id: aqua-evt-032, entity_type: Pond, primary_key: pond-A32, measured_value: 4.2, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-033
     description: DO 4.3 mg/L — watch.
     scenario: {event_id: aqua-evt-033, entity_type: Pond, primary_key: pond-A33, measured_value: 4.3, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-034
     description: DO 4.4 mg/L — watch.
     scenario: {event_id: aqua-evt-034, entity_type: Pond, primary_key: pond-A34, measured_value: 4.4, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-035
     description: DO 4.5 mg/L — borderline; watch.
     scenario: {event_id: aqua-evt-035, entity_type: Pond, primary_key: pond-A35, measured_value: 4.5, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-036
     description: DO 4.6 mg/L — watch.
     scenario: {event_id: aqua-evt-036, entity_type: Pond, primary_key: pond-A36, measured_value: 4.6, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-037
     description: DO 4.7 mg/L — watch.
     scenario: {event_id: aqua-evt-037, entity_type: Pond, primary_key: pond-A37, measured_value: 4.7, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-038
     description: DO 4.8 mg/L — watch.
     scenario: {event_id: aqua-evt-038, entity_type: Pond, primary_key: pond-A38, measured_value: 4.8, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-039
     description: DO 4.9 mg/L — watch.
     scenario: {event_id: aqua-evt-039, entity_type: Pond, primary_key: pond-A39, measured_value: 4.9, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-040
     description: DO 4.95 mg/L — watch (near the upper edge).
     scenario: {event_id: aqua-evt-040, entity_type: Pond, primary_key: pond-A40, measured_value: 4.95, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
   - id: aqua-041
     description: DO 5.0 mg/L — watch boundary (upper edge of the watch band).
     scenario: {event_id: aqua-evt-041, entity_type: Pond, primary_key: pond-A41, measured_value: 5.0, unit: mg/L, threshold: 4.0, direction: below, watch_margin: 1.0}
-    expected: {disposition: watch, action_expected: false}
+    expected: {disposition: watch, action_expected: false, canonical_handler: start_emergency_aerator, acceptable_handlers: [dispatch_technician, increase_water_exchange, escalate]}
 
   # --- ok (DO > 5.0; healthy; false-positive guard) ---------------------------
   - id: aqua-042
