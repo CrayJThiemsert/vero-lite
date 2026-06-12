@@ -64,6 +64,25 @@ def classify_disposition(scenario: Scenario) -> Disposition:
     return Disposition(verdict.value)
 
 
+_UNICODE_HYPHENS = dict.fromkeys((0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2212), "-")
+"""Unicode hyphen/dash variants (U+2010..U+2014, U+2212) mapped to ASCII ``-``."""
+
+
+def normalize_primary_key(key: str) -> str:
+    """Map Unicode hyphen/dash variants to ASCII ``-`` before key comparison.
+
+    B-6 grader calibration, Cray-ratified 2026-06-12: the model intermittently
+    emits U+2011 NON-BREAKING HYPHEN inside otherwise-correct entity keys
+    (``asset-E07`` emitted with U+2011 in place of the ASCII hyphen — three
+    dump-verified occurrences across runs: energy-007 twice, energy-027 once).
+    An entity-identity miss on a glyph variant is a grader artifact, not a
+    model error, so primary-KEY comparisons normalize the hyphen family on
+    both sides. Free-text matching (``action_keywords``/``forbidden_keywords``)
+    is deliberately NOT normalized — no evidence of need.
+    """
+    return key.translate(_UNICODE_HYPHENS)
+
+
 class HandlerTier(StrEnum):
     """The tiered α-probe classification of one ``suggested_handler``
     (PLAN-0022 Step 1).
@@ -171,21 +190,26 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
     **scoring** fields the model owns in the procedure path; the tiered handler
     classification (the **α probe** — recorded, not a gate; PLAN-0022 Step 1); and
     the handler-payload subset (**advisory**). All objective — no fuzzy/semantic
-    scoring.
+    scoring. Primary-KEY comparisons normalize Unicode hyphen variants to ASCII
+    via :func:`normalize_primary_key` (B-6 calibration, Cray-ratified 2026-06-12).
     """
     checks: list[FieldCheck] = []
     handler_tier: HandlerTier | None = None
 
     if expected.affected_primary_key is not None:
-        keys = sorted({entity.primary_key for entity in judgment.affected_entities})
-        passed = expected.affected_primary_key in keys
+        keys = sorted(
+            {normalize_primary_key(entity.primary_key) for entity in judgment.affected_entities}
+        )
+        passed = normalize_primary_key(expected.affected_primary_key) in keys
         detail = f"expected {expected.affected_primary_key!r} in {keys}"
         checks.append(FieldCheck("affected_primary_key", passed, detail))
 
     if expected.forbidden_primary_keys is not None:
         # β HEADLINE precision (PR2): the model must NOT name a decoy sibling entity.
-        named = {entity.primary_key for entity in judgment.affected_entities}
-        offenders = sorted(named & set(expected.forbidden_primary_keys))
+        named = {normalize_primary_key(entity.primary_key) for entity in judgment.affected_entities}
+        offenders = sorted(
+            named & {normalize_primary_key(key) for key in expected.forbidden_primary_keys}
+        )
         passed = not offenders
         detail = f"decoy(s) named: {offenders}" if offenders else "no decoy entity named"
         checks.append(FieldCheck("forbidden_primary_keys", passed, detail))

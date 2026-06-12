@@ -559,6 +559,23 @@ Smoke trajectory (18 breach items) as the fixes landed: **44% → 61%** (items 1
 the `rationale` fix (item 4) recovered the aquaculture proposals the grader had
 been scoring as failures despite a correct "Aeration" recommendation.
 
+**Addendum — hyphen normalization (Cray-ratified 2026-06-12).** The model
+intermittently emits **U+2011 NON-BREAKING HYPHEN** inside otherwise-correct
+entity keys (`asset‑E07` vs the dataset's ASCII `asset-E07`) — three
+dump-verified occurrences across runs (energy-007 ×2: the 2026-06-11 full run +
+the 2026-06-12 scored run; energy-027 ×1: 2026-06-11). Same
+measurement-correctness class as items 1–4: an entity-identity miss on a glyph
+variant is a grader artifact, not a model error. Fix: primary-KEY comparisons
+(`affected_primary_key` / `forbidden_primary_keys`) normalize the Unicode
+hyphen/dash family (U+2010..U+2014, U+2212) to ASCII `-` on **both** sides
+(`normalize_primary_key`); free-text matching (`action_keywords` /
+`forbidden_keywords`) is deliberately untouched — no evidence of need. No bar
+moves; the known aqua-028 hedger miss is NOT in this class and remains a real
+model miss. Effect verified by re-grading the stored 2026-06-12 scored-run dump
+offline: energy-007 flips to PASS (β would read 119/120 = 99.2%); the published
+run tables stay **as-run** — recorded numbers are never rewritten retroactively
+(anti moving-target).
+
 ## Run provenance
 
 - **Model:** `gpt-oss:20b` (ADR-0001 pin), live on MS-S1 (`192.168.1.133:11434`),
