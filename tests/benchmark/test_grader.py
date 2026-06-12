@@ -128,6 +128,58 @@ def test_wrong_entity_pk_fails() -> None:
     assert grade.checks[0].name == "affected_primary_key" and not grade.checks[0].passed
 
 
+def test_unicode_hyphen_in_entity_pk_normalizes_to_a_match() -> None:
+    """The energy-007 gold case (B-6 calibration, Cray-ratified 2026-06-12): the
+    model emitted the dataset key 'asset-E07' with U+2011 NON-BREAKING HYPHEN in
+    place of the ASCII hyphen — three dump-verified occurrences across runs. A
+    glyph variant is not an entity-identity error: key comparison normalizes
+    the Unicode hyphen family to ASCII '-'."""
+    expected = Expected(
+        disposition=Disposition.BREACH, action_expected=True, affected_primary_key="asset-E07"
+    )
+    judgment = _judgment(
+        affected_entities=[{"object_type": "Asset", "primary_key": "asset" + chr(0x2011) + "E07"}]
+    )
+    grade = grade_proposal(judgment, expected)
+    assert grade.passed
+    check = next(c for c in grade.checks if c.name == "affected_primary_key")
+    assert check.passed
+
+
+def test_unicode_hyphen_does_not_mask_a_real_pk_mismatch() -> None:
+    """Normalization fixes the glyph, not the identity — a wrong key with a
+    Unicode hyphen still fails."""
+    expected = Expected(
+        disposition=Disposition.BREACH, action_expected=True, affected_primary_key="asset-E07"
+    )
+    judgment = _judgment(
+        affected_entities=[{"object_type": "Asset", "primary_key": "asset" + chr(0x2011) + "E08"}]
+    )
+    grade = grade_proposal(judgment, expected)
+    assert not grade.passed
+
+
+def test_unicode_hyphen_decoy_still_trips_the_precision_check() -> None:
+    """Normalization applies to forbidden_primary_keys too: naming a decoy
+    sibling with a Unicode hyphen still counts as naming the decoy."""
+    expected = Expected(
+        disposition=Disposition.BREACH,
+        action_expected=True,
+        affected_primary_key="asset-E07",
+        forbidden_primary_keys=["asset-E08"],
+    )
+    judgment = _judgment(
+        affected_entities=[
+            {"object_type": "Asset", "primary_key": "asset-E07"},
+            {"object_type": "Asset", "primary_key": "asset" + chr(0x2011) + "E08"},
+        ]
+    )
+    grade = grade_proposal(judgment, expected)
+    assert not grade.passed
+    check = next(c for c in grade.checks if c.name == "forbidden_primary_keys")
+    assert not check.passed
+
+
 def test_handler_tier_is_an_alpha_probe_not_a_headline_gate() -> None:
     """A wrong handler pick FAILS the α probe but must NOT drag down the β headline —
     in the procedure path the executed handler is fixed by step.handler (ADR-016), so
