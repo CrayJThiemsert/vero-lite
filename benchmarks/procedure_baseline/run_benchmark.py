@@ -6,11 +6,13 @@ change: per the handoff, **ASK Cray before warming / running**. The grader /
 loader / harness this drives are unit-tested offline under ``tests/benchmark/``
 with a mock ``ChatClient``; this module only binds the real client.
 
-Scope (skeleton): it runs the SD-B1 graded unit A — deterministic disposition
-(~100% sanity) + the headline LLM action-proposal grade on the breach subset —
-over the authored dataset and prints the two separately-reported metrics. The
-B-gamma comparison baselines (raw text-to-SQL + RAG) and the B-delta per-model
-latency sweep are deliberately TODO here; they land in their own steps.
+Scope: it runs the SD-B1 graded unit A — deterministic disposition (~100%
+sanity) + the headline LLM action-proposal grade on the breach subset — plus
+the PLAN-0022 Phase-3 watch-tier lane (escalation correctness on the watch
+subset; calibration-only distribution under M-2=b) — over the authored dataset
+and prints the separately-reported metrics. The B-gamma comparison baselines
+(raw text-to-SQL + RAG) and the B-delta per-model latency sweep are
+deliberately TODO here; they land in their own steps.
 
 Usage (after Cray go-ahead; warm first per the MS-S1 note)::
 
