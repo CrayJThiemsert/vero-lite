@@ -95,6 +95,18 @@ never sit waiting on a notification. *(Linger caveat: `loginctl` Linger=no —
 the unit lives while any crayj WSL session exists; the harness's constant wsl
 usage holds this in practice. Enabling linger = host-state, ask Cray.)*
 
+**Do NOT arm a harness Monitor/watcher on the sentinel.** Any harness-side
+waiter is itself a wsl.exe carrier — it reintroduces the carrier-death class
+as pure noise (2026-06-12, first production run: the watcher false-alarmed
+once on a single empty `systemctl --user is-active` read, then died silently
+while the unit completed fine — no DONE event ever fired; truth was recovered
+via the content-based test). Proactive notification is the **unit's** job:
+the body sends a best-effort Telegram ping (`tools/notify/telegram.sh`,
+sourcing the gitignored `.env` in-unit) immediately AFTER writing `.done`
+(the sentinel stays the authoritative signal); the outcome is recorded as a
+`[wrap] PING ok|failed|skipped` marker in `<run>.wrap`. Completion truth
+remains sentinel + ETA rule — the ping is convenience, never load-bearing.
+
 - `PYTHONUNBUFFERED=1` — a SIGKILL on a buffered run loses stdout (process-check
   lesson). Run long sweeps in the **background** and read the log/dump after.
 - **Detach mechanics (history → current).** `setsid`/`nohup` detach does NOT
