@@ -54,6 +54,7 @@ the matching event type fires) or surface via handoff, and wait.
 | C2 | New external dependency added to `pyproject.toml`, `package.json`, or any lockfile | Advisory | **Live** — `_sonnet_classifier.py` (verified live 2026-05-24 conservatism probe) |
 | C3 | Public ↔ private wording boundary crossing in `docs/strategy/{public,private}/**` | Advisory | **Live** — `_sonnet_classifier.py` |
 | C4 | `Write` / `Edit` under `docs/research/` outside `docs/research/private/**` (Cowork research landing-zone rule, `cowork_tab_instructions.md` line 192 + `.gitignore` lines 49-51) | **Deterministic** (`pretooluse_research_path_deny.py`; N=2 incident pattern — Lesson #5 §10.5 + 2026-05-23 `chat_harness_extension_points_analyzed.md` → ADR-013 D2 precedent applied) | Deterministic + classifier mirror |
+| C5 | **Host-state change on shared infrastructure** without an explicit in-session Cray go: warming / running / pulling a model on MS-S1 (`192.168.1.133`, incl. benchmark sweeps), `loginctl enable-linger`, host service restarts, global (`~/.claude`, Windows-side) config edits. The go must be visible in the recent activity — "it's just a benchmark/measurement" does NOT waive it (gap found 2026-06-12: all four eval models incl. prod Sonnet proceeded on a warm+sweep case; the rule lived only in PLANs/handoffs/skill, invisible to the classifier) | Advisory | **Live** — `_sonnet_classifier.py` (Stop + PreToolUse) |
 
 ### Handoff hygiene — from PLAN-004 / Lesson #7 / direction-b §8
 
