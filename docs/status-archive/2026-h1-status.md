@@ -509,12 +509,62 @@ _Addendum — rotated 2026-06-12 (session 56 reconcile) — five session-51 bloc
 > and **OQ-C** (revisit the tier definition only if harness-as-plugin packaging
 > is pursued). No governance thread is currently blocked or in-flight.
 
+_Addendum — rotated 2026-06-12 (session-56 reconcile #284) — the session-53 block (first rotation forced by the R2 8-block cap):_
+
+> **Session 53 — PLAN-0020 (Procedure-path tuning) is COMPLETE
+> + archived to `docs/plans/done/` (#251–#256, branch-tip `a6125c1` =
+> head_commit, the `docs(plans):` close-mv riding #256; merge `02d3e46`;
+> the PLAN-0019 B-6 ring-fence follow-up).** Headline results (all
+> `--dump-json`-VERIFIED, `gpt-oss:20b` on MS-S1): the Phase-1 aquaculture
+> prompt nudge (PR #232, previously UNMEASURED) worked **dramatically** —
+> overall β `85.8%→100%`, aquaculture β `60%→100%`, overall α `70%→100%`
+> (supply_chain α `32.5%→100%`: the model now picks `hold`, not `inspect`).
+> **The latency lever:** a new `reasoning_mode` lever showed `skip` (drop the
+> call-1 reasoning pass) cuts per-judgment p95 `31.80s→21.62s` — UNDER the
+> re-ratified SD-2 bar — at **ZERO β cost** (the reasoning pass is redundant
+> given the nudged prompt); `think_off` is a **dead lever** (slower).
+> **SD-2 re-ratified** the latency bar from 8 s/per-call to **≤30 s p95
+> per-judgment** (reports-not-gates). **SD-1** (widen supply-α `valid_handlers`)
+> was authorized at ratification but **SKIPPED at Step 9** — the nudge made the
+> divergence moot (0 `inspect`); anti-moving-target honored, **no grader
+> change**. Also shipped: a per-judgment latency timer (#252), the think-trim
+> lever (`feat(engine)`, #253, PLAN-0020 AC-1a), and the **`ms-s1-ollama`
+> skill** (#254, `warm.sh` live-tested). PR lineage: #251 ratify Draft→Accepted
+> (`19706eb`, SD-1 widen-α + SD-2 →30 s/judgment) → #252 latency timer
+> (`a3a6f54`) → #253 think-trim lever (`bef462f`) → #254 skill (`ac56653`) →
+> #255 tuning report (`4968f51`, `docs(report):`) → #256 close-mv to done/
+> (`a6125c1`, `docs(plans):` = head_commit, the newest substantive per
+> `lint_status` — only `docs(status):` is excluded).
+> **Session 52 was non-committing** (an Axis-B verification-loop LIVE demo +
+> a backlog-prioritization pass that ranked PLAN-0020 priority #1) — no repo
+> state changed, so the jump is session 51 → 53.
+> **Next.** A follow-up PLAN for **tiered handler grading**
+> (canonical / acceptable / forbidden) is surfaced by Cray's production-fidelity
+> review — the α metric is too coarse to self-distinguish a benign alternative
+> (`inspect`) from a dangerous pick (`expedite`/`reroute`); deferred to a future
+> session for discussion. Separately, **wiring `skip` into the product
+> procedure path** is an open design call (audit trade-off: `skip` drops the
+> ADR-010 reasoning narrative; the model-asserted `rationale` survives). The
+> gitignored Cowork research (why `gpt-oss:20b` wins) is now **DONE** —
+> delivering a 6-criterion model-selection **screening rubric (R1–R6)** + a
+> warm-cycle gate (`docs/research/private/2026-06-11-gpt-oss-20b-winning-properties.md`),
+> the paper pre-filter for the deferred R3 faster-arch eval. **Held for a future
+> R3-adjacent warm-cycle:** Cray pulled **3 `nemotron-3-nano` variants** to
+> MS-S1 (`30b-a3b-q4_K_M`, `30b-a3b-q8_0`, `4b`) — **no eval run yet, no
+> ADR-0001 change**; intent is pin vs these in one maintenance-window warm-cycle,
+> ideally paired with the U-1 `MXFP4`-vs-`Q4_K_M` tok/s check + U-2 `eval_count`
+> logging. **Caveat:** they ship `q4_K_M`/`q8_0`/`fp16` (not `MXFP4`), so they
+> exercise rubric R1/R5 now but a fair **R2 bandwidth** comparison needs an
+> `MXFP4` build.
+> AI-assisted (Claude Code, session 53); no `Co-Authored-By` per CLAUDE.md §7.
+
 ---
 
 ## Rotated Recent Decisions rows (rotated 2026-06-10)
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-10 | **PLAN-0021 SHIPPED (#249, `3dc586a`, session 51) — the Axis-B verification loop is LIVE; both harness-review tracks complete** _(rotated 2026-06-12, session 56)_ — goal gate (`_goal_gate.py` at the D4 seam inside `stop_continuation.py`, fail-open per ADR-0018 D4) + `goal-evaluator` 4th subagent + `/goal` (the repo's first project command) + the SD-1 narrowed-Write deny hook; +64 tests (suite 1398 passed / 22 skipped, zero regression); 7/10 case-matrix rows proven LIVE incl. the fail-open probe (`released-unevaluated` + LOUD Telegram, no wedge). F-L1: verdict→flip lands at the next non-chained Stop (OQ-8 blocking-mode promotion must account). Archived to done/ (`7d6d713`, same PR) | `3dc586a` (#249) / `docs/plans/done/0021-axis-b-verification-loop-build.md` |
 | 2026-06-10 | **PLAN-0021 "Axis-B verification loop — build" landed as Draft (#247, `78b8659`, session 51)** _(rotated 2026-06-12, session 56)_ — Cowork-drafted per ADR-009 D1, Code R2-reviewed + committed per D2/D3; renders Accepted ADR-0018 into a build plan: 6 new files (incl. the repo's first project command `.claude/commands/goal.md`, the `goal-evaluator` 4th subagent, the SD-1 narrowed-Write deny hook), exactly 3 modified files at the D4 seam, 10 ACs incl. AC-2 byte-for-byte non-interference, 10-row case matrix, VX-1..3 resolved, OQ-8 Out of Scope. R2 **F-1**: the deny hook wires via agent frontmatter, not `settings.json`. Gates on Cray ratification (SD-1: Cowork recommends NO for v1) | `78b8659` (#247) / `docs/plans/0021-axis-b-verification-loop-build.md` |
 | 2026-06-10 | **ADR-0018 "Axis-B Verification Loop" ACCEPTED (Cray-ratified, session 51) — opens harness-review track 2 (the evaluator loop) on top of the at-frontier Axis-A governance layer.** _(rotated 2026-06-12, session 56)_ A `/goal` Stop-hook gate + a `goal-evaluator` subagent that judges whether a run achieved its declared goal. **Decisions:** D1 hybrid deterministic-check + LLM-judge; D2 a `.claude/state/goal.json` run-goal artifact; D3 a 4th subagent sibling that **REFUTES not blesses** (structural guard against reasoning-blindness); D4 `_goal_gate.py` inside `stop_continuation.py`, **FAIL-OPEN** (broken/absent evaluator never blocks Stop); D5 session-Stop **warn-only v1**; D6 structural reasoning-blindness rationale; D7 formalize + augment the manual AC ritual. **SD-1 resolved = narrowed Write** (the evaluator's Write is hook-narrowed to `goal.json` only — same author-bounded pattern as `plan-drafter`/`status-scribe`). **Lineage:** #241 (`5f8073c`, `docs(adr):`) added ADR-0018 `Proposed` → **#242 (`1be60f7`, `docs(adr):`, head_commit) ratified it Proposed→Accepted** + carries the T4 STATUS reconcile (record ADR-0018 here + clear the Current-Focus Axis-B "deferred" earmark). **NEXT = T2:** Code dispatches the Axis-B build PLAN to Cowork (ADR-009 D1) → T3 (autonomy-triggers V-row) → build. OQ-8 (plugin packaging, MS-S1 local evaluator, blocking-mode promotion, PR-merge gating, auto-declared goals) + VX-1..3 stay non-binding / verify-at-execution | `1be60f7` (#241 + #242) / `docs/adr/0018-axis-b-verification-loop.md` |
 | 2026-06-09 | **ADR-0017 "Skills as a memory tier" ACCEPTED — the skills-as-memory-tier governance arc is COMPLETE** _(rotated 2026-06-12, session 56)_ — #236 (`docs(adr):`, `7bf9d38`) added ADR-0017 `Proposed` (Cowork-drafted, Code-reviewed via the ADR-009 D3 receive sequence); #237 (`docs(constitution):`, `8b18b3a`, head_commit) ratified it (Proposed→Accepted) + applied the alignment (T1–T5). `.claude/skills/` is now **Tier 2.6** in the memory model (`CLAUDE.md` §4 + the memory-architecture runbook), git-tracked + auto-loaded by description match; the **D5 knowledge-placement decision rule** (binding→CLAUDE.md; durable learning→lessons; canonical reference→conventions/runbooks; task-triggered how-to→a Skill) + **D7 skill-authoring conventions** codified in the runbook; §1 gained the **D6** derived-precedence line (2.5+2.6 carry no independent precedence; canonical wins); §10 skills row cites ADR-0017. **Arc lineage:** PR #234 (`471bcb5`) added the `.claude/skills/` *mechanism* → #236 the *ADR* → #237 the *alignment*. This (T6) reconcile records the Accepted ADR, clears the §50/§57 "draft ADR-017" earmark, and marks the PR #234 skills follow-up governance-complete. Open threads: **OQ-B** skill-loader tie-break (delegated to Code; Cray-gated probe of global `~/.claude/skills/` host state) + the deferred **Axis-B verification-loop** track. Restart-bridge handoff due (#237 edited constitutional `CLAUDE.md`, Lesson #5 §1) | `8b18b3a` (#236 + #237) / `docs/adr/0017-skills-as-a-memory-tier.md` + `CLAUDE.md` §1/§4/§10 + `docs/runbooks/memory-architecture.md` |
