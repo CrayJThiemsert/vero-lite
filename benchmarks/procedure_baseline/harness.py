@@ -8,12 +8,19 @@ client; only the live RUN binds a real ``gpt-oss:20b`` (``run_benchmark.py``).
 Per item:
 
 1. deterministic :func:`grader.classify_disposition` -> the ~100% sanity verdict;
-2. if (and only if) the item is a **breach**, run the live ``generate_judgment``
-   two-call path and grade the :class:`LlmJudgment` proposal (the headline);
-   non-breach items are the deterministic false-positive guard (no LLM call).
+2. if the item is a **breach**, run the live ``generate_judgment`` two-call path
+   and grade the :class:`LlmJudgment` proposal (the β headline + α probe);
+3. if the item is a **watch**, run the SAME ``generate_judgment`` path and grade
+   it on the **watch-tier lane** (PLAN-0022 Phase 3, M-1 — escalation
+   correctness: proposed handler ∈ {canonical, acceptable}; unscored
+   distribution under M-2=b while no watch ground truth is authored). Its
+   per-judgment latency lands in its OWN recorder (M-4) — the SD-2 ≤ 30 s p95
+   bar stays breach-scoped;
+4. **ok** items stay the deterministic false-positive guard (no LLM call).
 
-A scenario is fed to the model as a plain event mapping (the DB/orchestrator are
-bypassed to isolate the LLM variable).
+The watch lane never contaminates β (``graded``/``proposal_correct`` stay the
+breach-only headline) or α. A scenario is fed to the model as a plain event
+mapping (the DB/orchestrator are bypassed to isolate the LLM variable).
 """
 
 from __future__ import annotations
@@ -28,7 +35,9 @@ from benchmarks.procedure_baseline.grader import (
     GradeResult,
     HandlerTier,
     classify_disposition,
+    declares_handler_tiers,
     grade_proposal,
+    grade_watch_proposal,
 )
 from benchmarks.procedure_baseline.schema import BenchmarkItem, Disposition, Scenario
 from services.engine.llm.client import ChatResult, OllamaError
@@ -87,8 +96,16 @@ class ItemResult:
     acceptable / forbidden-or-other — PLAN-0022 Step 1; ``None`` exactly when
     ``probe_correct`` is). ``error`` is set when the judgment path raised (a failed
     proposal = incorrect; the probe is ``None`` since no judgment exists to score).
+    The ``watch_*`` fields are the PLAN-0022 Phase-3 **watch-tier lane** (M-1),
+    populated only for watch items: ``watch_graded`` marks that the LLM judgment
+    ran; ``watch_handler`` is the model's proposed handler (the M-2=b
+    distribution evidence); ``watch_tier`` / ``watch_pass`` are the scored
+    classification — ``None`` when the item declares no handler tiers (unscored
+    calibration) or the judgment errored. They never feed ``proposal_correct``
+    (β) or ``probe_correct`` (α) — lane isolation.
+
     ``judgment`` is the raw :class:`LlmJudgment` the proposal was graded against
-    (``None`` for the non-breach guard or an errored call), carried so a run can
+    (``None`` for the ok guard or an errored call), carried so a run can
     persist it (``--dump-json``) for offline VERIFY — confirming a score is a real
     model verdict, not a grader artifact.
     """
@@ -105,57 +122,37 @@ class ItemResult:
     probe_correct: bool | None = None
     probe_tier: HandlerTier | None = None
     judgment: LlmJudgment | None = None
+    watch_graded: bool = False
+    watch_pass: bool | None = None
+    watch_tier: HandlerTier | None = None
+    watch_handler: str | None = None
 
 
-async def evaluate_item(
+async def _run_judgment(
     item: BenchmarkItem,
     client: ChatClient,
     *,
     vertical: str,
-    goal: str | None = None,
-    reading_parameter: str | None = None,
-    retry_budget: int = 3,
-    judgment_recorder: LatencyRecorder | None = None,
-    reasoning_mode: ReasoningMode = "full",
-) -> ItemResult:
-    """Evaluate one item: deterministic disposition, then (on breach) grade the
-    live LLM proposal.
+    goal: str | None,
+    reading_parameter: str | None,
+    retry_budget: int,
+    recorder: LatencyRecorder | None,
+    reasoning_mode: ReasoningMode,
+) -> tuple[LlmJudgment | None, str | None]:
+    """Run the live ``generate_judgment`` exchange for one item and return
+    ``(judgment, error)`` — exactly one of the two is ``None``.
 
-    ``reading_parameter`` (the dataset's domain parameter) is injected into the
-    event so the model knows the domain (B-β calibration). Both a
-    :class:`StructuredOutputError` (the model never produced a valid judgment
-    within the retry budget) and an ``OllamaError`` (a transport failure — e.g. a
-    slow model exceeding the per-call timeout) are recorded as an incorrect,
-    ``error``-tagged proposal so a multi-model sweep over a slow/flaky model
-    completes and reports rather than crashing mid-run (B-δ robustness).
-
-    ``judgment_recorder`` (PLAN-0020 SD-2) records the **per-judgment** wall-clock
-    — the full ``generate_judgment`` exchange (both Pattern-B calls + any retries),
-    which is the end-to-end latency a human waits on and the unit of the
-    re-ratified **≤ 30 s p95 per-judgment** acceptance bar. It is recorded on
-    BOTH the success and the error path (a failed judgment still cost wall-clock),
-    and ONLY for breach items (non-breach items make no LLM call). It is distinct
-    from the per-LLM-call timing the :class:`TimingChatClient` records (retained as
-    a lever diagnostic).
+    Both a :class:`StructuredOutputError` (the model never produced a valid
+    judgment within the retry budget) and an ``OllamaError`` (a transport failure
+    — e.g. a slow model exceeding the per-call timeout) are returned as the
+    ``error`` string so a sweep over a slow/flaky model completes and reports
+    rather than crashing mid-run (B-δ robustness). The per-judgment wall-clock —
+    the full exchange (both Pattern-B calls + any retries), the end-to-end
+    latency a human waits on — is recorded into ``recorder`` on BOTH the success
+    and the error path (a failed judgment still cost wall-clock), and times only
+    the LLM exchange, never the local grading. Shared by the breach (β) and
+    watch (M-1) lanes; each passes its OWN recorder (M-4 lane separation).
     """
-    actual = classify_disposition(item.scenario)
-    disposition_correct = actual == item.expected.disposition
-
-    if item.expected.disposition is not Disposition.BREACH:
-        # Non-breach: the engine must NOT fire an action. Deterministic guard only;
-        # no LLM call (the LLM proposal path does not run for watch/ok) — and so no
-        # per-judgment latency to record.
-        return ItemResult(
-            item_id=item.id,
-            vertical=vertical,
-            disposition_expected=item.expected.disposition,
-            disposition_actual=actual,
-            disposition_correct=disposition_correct,
-            graded=False,
-            proposal_correct=None,
-            grade=None,
-        )
-
     event = scenario_to_event(item.scenario, reading_parameter)
     start = time.perf_counter()
     try:
@@ -168,6 +165,119 @@ async def evaluate_item(
             reasoning_mode=reasoning_mode,
         )
     except (StructuredOutputError, OllamaError) as exc:
+        return None, str(exc)
+    finally:
+        # The ``return`` in ``except`` still runs this ``finally`` first.
+        if recorder is not None:
+            recorder.record(time.perf_counter() - start)
+    return result.judgment, None
+
+
+async def evaluate_item(
+    item: BenchmarkItem,
+    client: ChatClient,
+    *,
+    vertical: str,
+    goal: str | None = None,
+    reading_parameter: str | None = None,
+    retry_budget: int = 3,
+    judgment_recorder: LatencyRecorder | None = None,
+    watch_judgment_recorder: LatencyRecorder | None = None,
+    reasoning_mode: ReasoningMode = "full",
+) -> ItemResult:
+    """Evaluate one item: deterministic disposition, then grade the live LLM
+    proposal on the lane the item's disposition selects — **breach** -> the β
+    headline + α probe; **watch** -> the watch-tier lane (PLAN-0022 Phase 3,
+    M-1); **ok** -> deterministic guard only, no LLM call.
+
+    ``reading_parameter`` (the dataset's domain parameter) is injected into the
+    event so the model knows the domain (B-β calibration).
+
+    ``judgment_recorder`` (PLAN-0020 SD-2) records the **per-judgment** wall-clock
+    for BREACH items only — the unit of the re-ratified **≤ 30 s p95
+    per-judgment** acceptance bar, which stays breach-scoped (M-4).
+    ``watch_judgment_recorder`` records watch items' judgment wall-clock as its
+    OWN diagnostic (M-4) — never folded into the SD-2 bar. Both are distinct
+    from the per-LLM-call timing the :class:`TimingChatClient` records (retained
+    as a lever diagnostic).
+    """
+    actual = classify_disposition(item.scenario)
+    disposition_correct = actual == item.expected.disposition
+
+    if item.expected.disposition is Disposition.OK:
+        # ok: the engine must NOT fire. Deterministic guard only; no LLM call —
+        # and so no per-judgment latency to record.
+        return ItemResult(
+            item_id=item.id,
+            vertical=vertical,
+            disposition_expected=item.expected.disposition,
+            disposition_actual=actual,
+            disposition_correct=disposition_correct,
+            graded=False,
+            proposal_correct=None,
+            grade=None,
+        )
+
+    if item.expected.disposition is Disposition.WATCH:
+        # watch (PLAN-0022 Phase 3, M-1): the LLM judgment RUNS — the escalation
+        # path's proposal — and is graded on the watch-tier lane, never β/α.
+        # The deterministic disposition stays the routing truth (AC-3): this lane
+        # grades WHAT the model proposed on an item the watch band routed, not
+        # whether to route (M-3 — mis-routing is structurally impossible here).
+        judgment, error = await _run_judgment(
+            item,
+            client,
+            vertical=vertical,
+            goal=goal,
+            reading_parameter=reading_parameter,
+            retry_budget=retry_budget,
+            recorder=watch_judgment_recorder,
+            reasoning_mode=reasoning_mode,
+        )
+        if judgment is None:
+            # A failed judgment is loud: scored items fail the lane; unscored
+            # (M-2=b calibration) items carry the error with no pass/fail to pin.
+            return ItemResult(
+                item_id=item.id,
+                vertical=vertical,
+                disposition_expected=item.expected.disposition,
+                disposition_actual=actual,
+                disposition_correct=disposition_correct,
+                graded=False,
+                proposal_correct=None,
+                grade=None,
+                error=error,
+                watch_graded=True,
+                watch_pass=False if declares_handler_tiers(item.expected) else None,
+            )
+        watch = grade_watch_proposal(judgment, item.expected)
+        return ItemResult(
+            item_id=item.id,
+            vertical=vertical,
+            disposition_expected=item.expected.disposition,
+            disposition_actual=actual,
+            disposition_correct=disposition_correct,
+            graded=False,
+            proposal_correct=None,
+            grade=None,
+            judgment=judgment,
+            watch_graded=True,
+            watch_pass=watch.passed,
+            watch_tier=watch.tier,
+            watch_handler=watch.handler,
+        )
+
+    judgment, error = await _run_judgment(
+        item,
+        client,
+        vertical=vertical,
+        goal=goal,
+        reading_parameter=reading_parameter,
+        retry_budget=retry_budget,
+        recorder=judgment_recorder,
+        reasoning_mode=reasoning_mode,
+    )
+    if judgment is None:
         return ItemResult(
             item_id=item.id,
             vertical=vertical,
@@ -177,16 +287,10 @@ async def evaluate_item(
             graded=True,
             proposal_correct=False,
             grade=None,
-            error=str(exc),
+            error=error,
         )
-    finally:
-        # Record the per-judgment wall-clock on every breach item — success OR
-        # error (the ``return`` in ``except`` still runs this ``finally`` first).
-        # Placed so it times only the LLM exchange, not the local grading below.
-        if judgment_recorder is not None:
-            judgment_recorder.record(time.perf_counter() - start)
 
-    grade = grade_proposal(result.judgment, item.expected)
+    grade = grade_proposal(judgment, item.expected)
     return ItemResult(
         item_id=item.id,
         vertical=vertical,
@@ -198,7 +302,7 @@ async def evaluate_item(
         grade=grade,
         probe_correct=grade.probe_passed,
         probe_tier=grade.handler_tier,
-        judgment=result.judgment,
+        judgment=judgment,
     )
 
 
@@ -206,7 +310,7 @@ async def evaluate_item(
 class Summary:
     """Aggregate over a run.
 
-    Three independent metrics, never combined:
+    Four independent metrics, never combined:
 
     * ``headline_accuracy`` (over graded breach items) — the SD-B1 ≥ 85% **β
       headline** (entity + action class);
@@ -217,6 +321,15 @@ class Summary:
       counts keyed by :class:`HandlerTier` value, with ``forbidden`` split from
       ``other`` so a dangerous pick is named explicitly (SD-4=a reporting);
       pass = ``canonical`` + ``acceptable``;
+    * the **watch-tier lane** (PLAN-0022 Phase 3, M-1 — escalation correctness):
+      ``watch_graded`` watch items ran the LLM judgment; of those,
+      ``watch_scored`` declare handler tiers and grade pass/fail
+      (``watch_correct`` / ``watch_accuracy``; ``watch_tiers`` are their tier
+      counts — errored items carry no tier). ``watch_accuracy`` is ``None``
+      while nothing is scored — the M-2=b calibration state, where
+      ``watch_handlers`` (suggested-handler counts over the successfully-judged
+      watch items) is the reported evidence and ``watch_errors`` names the
+      failed judgments. Never folded into β, α, or any bar (B-3/B-6);
     * ``deterministic_accuracy`` (over all items) — the separately-reported ~100%
       sanity number.
     """
@@ -229,13 +342,21 @@ class Summary:
     probe_correct: int
     probe_accuracy: float | None
     probe_tiers: dict[str, int]
+    watch_graded: int
+    watch_scored: int
+    watch_correct: int
+    watch_accuracy: float | None
+    watch_tiers: dict[str, int]
+    watch_handlers: dict[str, int]
+    watch_errors: int
     deterministic_correct: int
     deterministic_accuracy: float
     by_disposition: dict[str, int]
 
 
 def summarize(results: Sequence[ItemResult]) -> Summary:
-    """Aggregate per-item results into the separately-reported metrics (β / α / sanity)."""
+    """Aggregate per-item results into the separately-reported metrics
+    (β / α / watch lane / sanity)."""
     total = len(results)
     graded = [result for result in results if result.graded]
     headline_correct = sum(1 for result in graded if result.proposal_correct)
@@ -252,6 +373,19 @@ def summarize(results: Sequence[ItemResult]) -> Summary:
         if result.probe_tier is not None:
             probe_tiers[result.probe_tier.value] += 1
 
+    watch_results = [result for result in results if result.watch_graded]
+    watch_scored = [result for result in watch_results if result.watch_pass is not None]
+    watch_correct = sum(1 for result in watch_scored if result.watch_pass)
+    watch_tiers: dict[str, int] = {tier.value: 0 for tier in HandlerTier}
+    for result in watch_scored:
+        if result.watch_tier is not None:
+            watch_tiers[result.watch_tier.value] += 1
+    watch_handlers: dict[str, int] = {}
+    for result in watch_results:
+        if result.watch_handler is not None:
+            watch_handlers[result.watch_handler] = watch_handlers.get(result.watch_handler, 0) + 1
+    watch_errors = sum(1 for result in watch_results if result.error is not None)
+
     return Summary(
         total=total,
         graded=len(graded),
@@ -261,6 +395,13 @@ def summarize(results: Sequence[ItemResult]) -> Summary:
         probe_correct=probe_correct,
         probe_accuracy=(probe_correct / len(probed)) if probed else None,
         probe_tiers=probe_tiers,
+        watch_graded=len(watch_results),
+        watch_scored=len(watch_scored),
+        watch_correct=watch_correct,
+        watch_accuracy=(watch_correct / len(watch_scored)) if watch_scored else None,
+        watch_tiers=watch_tiers,
+        watch_handlers=watch_handlers,
+        watch_errors=watch_errors,
         deterministic_correct=deterministic_correct,
         deterministic_accuracy=(deterministic_correct / total) if total else 0.0,
         by_disposition=by_disposition,

@@ -38,10 +38,11 @@ fail-safe for an unset/garbled direction."""
 
 class Disposition(StrEnum):
     """The three-way verdict a ``judge`` (``evaluate``) step assigns. ``breach``
-    is the only disposition that fires an ``action`` (and thus the only one whose
-    LLM proposal is graded); ``watch`` routes to human review (a bare
-    ``human_task`` today; a ``gated`` proposal per ADR-0019 once PLAN-0022
-    Phase 2 lands); ``ok`` is a no-op. Same values as the engine's
+    fires an ``action`` (its LLM proposal is graded on the β headline);
+    ``watch`` routes to a ``gated`` human-approved proposal (ADR-0019 /
+    PLAN-0022 Phase 2 — shipped) and its LLM proposal is graded on the
+    watch-tier lane (Phase 3, M-1); ``ok`` is a no-op (the deterministic
+    false-positive guard, no LLM call). Same values as the engine's
     ``services.engine.procedures.verdict.Verdict`` — the band math is delegated
     there (the PLAN-0022 single shared definition).
     """

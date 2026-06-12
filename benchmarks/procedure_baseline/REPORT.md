@@ -52,6 +52,10 @@ the **Handler-determinism finding** below for why handler-selection is split out
 - **Deterministic disposition** (breach/watch/ok via `crosses_threshold`) is a
   **separately-reported ~100% sanity check** — NOT folded into the headline. It is
   the false-positive guard: watch/ok items assert the engine does NOT fire.
+  *(Since PLAN-0022 Phase 3, watch items additionally run the LLM judgment and are
+  graded on the **watch-tier lane** — see the methodology section below; their
+  deterministic disposition stays this sanity check, and `ok` items still make no
+  LLM call.)*
 - **Latency** (B-δ): p95 **per LLM call** (= per affected entity = 2 Pattern-B
   calls), measured **warm-first** on an otherwise-quiesced MS-S1. Threshold:
   **≤ 8 s** (SD-B1) — **superseded 2026-06-11 by SD-2: ≤ 30 s p95 per-judgment**
@@ -69,6 +73,47 @@ the **procedure** path, which discards the handler guess. So grading the handler
 *headline* would measure a field the procedure product overrides. Hence: handler
 goes to the **α probe** lane (reactive-path / future-autonomy signal), and the β
 headline keeps only the entity + action-class the procedure path actually consumes.
+
+## Watch-tier lane methodology (PLAN-0022 Phase 3 — ratified BEFORE any scored run)
+
+> **Provenance.** Methodology M-1..M-4 was **Cray-ratified 2026-06-12** (session 55,
+> quoted: "M-2: เลือก (b) + เห็นชอบ M-1/3/4"), per the B-6 anti-moving-target
+> discipline: the scoring scheme below is fixed **before** the first scored run that
+> exercises it. No scored watch-lane run has happened yet; the first one is
+> calibration-only by design (M-2=b). PLAN-0022 Step 5 / SD-3 is the design source.
+
+- **M-1 — the lane (per SD-3 / SD-4=a).** Watch items now RUN the LLM judgment
+  (previously the harness made no LLM call for non-breach) and are graded on a
+  **new watch-tier lane**, never folded into β. Item lane-pass = proposed handler ∈
+  {`canonical`, `acceptable`}; a `forbidden_keywords` hit is named explicitly via
+  the shared `classify_handler_tier` — the same taxonomy as the α probe, defined
+  once. The lane mirrors α's isolation discipline: own fields, own aggregation, own
+  print segment, own dump keys.
+- **M-2 = (b) — calibration-first (the load-bearing choice).** Watch items'
+  ground-truth `canonical_handler` / `acceptable_handlers` are **not authored
+  yet** — no REPORT evidence exists, because the watch path never ran an LLM. The
+  first scored run therefore treats the watch lane as **calibration-only**: it
+  reports the suggested-handler **distribution per vertical** (counts; no pass/fail
+  pinned, no bar). Ground truth gets pinned from that evidence in a follow-up —
+  mirroring the B-β calibration precedent (Cray-ratified 2026-06-08, "Calibration
+  log" below). Implementation consequence: a watch item that declares no handler
+  tiers grades **unscored** (distribution evidence), never a fail.
+- **M-3 — mis-routing columns are structural.** "Acted deterministically on a
+  watch item" / "escalated a breach item" / "fired on ok" are **structurally
+  impossible in this harness**: the dataset disposition and the lane selection both
+  derive from the same `classify_verdict` (the single shared band definition), so
+  the existing deterministic sanity lane covers them. They are reported as
+  structural — no fake failure surface is invented. (In the *product*, AC-8's named
+  determinism test — identical routing under varied `confidence` — covers the
+  equivalent invariant.)
+- **M-4 — latency stays breach-scoped.** Watch-item judgment latency is recorded
+  as its **own diagnostic** (n / mean / p50 / p95 / max; no bar). The SD-2
+  **≤ 30 s p95 per-judgment** acceptance bar remains **breach-scoped**. **No bar
+  moves** (B-3/B-6).
+
+The determinism invariant holds throughout (AC-3 / ADR-0019): the watch lane grades
+the model's *proposal* on items the **deterministic** watch band routed; `confidence`
+never routes (advisory display only, ADR-010 IN-3).
 
 ## Results — HARDENED run (2026-06-09) — the discriminating numbers
 
