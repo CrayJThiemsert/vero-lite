@@ -525,6 +525,12 @@ def subprocess_env(tmp_path: Path) -> dict[str, str]:
     env = os.environ.copy()
     env.pop("ANTHROPIC_API_KEY", None)
     env["CLAUDE_ANTHROPIC_KEY_FILE"] = str(tmp_path / "nope.anthropic_api_key")
+    # Pin the sonnet backend: defang-by-no-key only neuters the API path. The
+    # production default is local Ollama (Cray pick (b), 2026-06-12), which
+    # needs no key — without this pin these subprocess tests silently hit the
+    # real MS-S1 network (the test_stop_continuation.py 17-timeout incident,
+    # 2026-06-12).
+    env["CLAUDE_CLASSIFIER_BACKEND"] = "sonnet"
     # Use the real registry so the classifier helper has SOMETHING to load
     # before it discovers no API key — even though it fails-closed earlier.
     return env
