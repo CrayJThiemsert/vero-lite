@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-12T13:38:09+07:00
+last_updated: 2026-06-12T14:26:52+07:00
 session: 56
-current_batch: 'session-56 stop-classifier calibration (#278, #279, #280)'
+current_batch: 'session-56 classifier local backend switch (#282)'
 current_actor: code
-blocked_on: 'M-2=b watch ground-truth pinning awaits Cray adjudication; stop-classifier transport pick (local gpt-oss:20b vs API Sonnet) awaits Cray on the eval evidence. No open PRs.'
-next_action: 'Cray adjudicates M-2=b watch pinning → dataset PR + first SCORED watch run; Cray picks stop-classifier transport (gpt-oss:20b vs API Sonnet) from RESULTS; hyphen-normalization ratify pending.'
-head_commit: 246ee0a
-recent_commits: [246ee0a, c84264e, aecf1bd, cbe6d05, 3a8a175, f7cb82a, 489b695, b41a138, 7bf7240]
+blocked_on: 'M-2=b watch ground-truth pinning awaits Cray adjudication. No open PRs.'
+next_action: 'Cray adjudicates M-2=b watch pinning → dataset PR + first SCORED watch run; hyphen-normalization ratify pending.'
+head_commit: 3375778
+recent_commits: [3375778, 246ee0a, c84264e, aecf1bd, cbe6d05, 3a8a175, f7cb82a, 489b695, b41a138]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,29 @@ recent_commits: [246ee0a, c84264e, aecf1bd, cbe6d05, 3a8a175, f7cb82a, 489b695, 
 
 ## Current Focus
 
-> **Session 56 (current, fourth batch) — stop-classifier calibration arc
+> **Session 56 (current, fifth batch) — stop classifier SWITCHED to
+> local `gpt-oss:20b` on MS-S1 (#282; head_commit `3375778`,
+> `feat(claude):` = the newest substantive per `lint_status`; merge
+> `03f81ec`).** The implementation of the fourth-batch decision: Cray
+> picked **(b)** on the eval evidence ("latency 8s–30s acceptable") and
+> the switch shipped same-day. `_sonnet_classifier.py`'s DEFAULT backend
+> is now local `gpt-oss:20b` on MS-S1 Ollama (format-constrained
+> `/api/chat`, temperature 0, `keep_alive` 10m, 75s timeout; no API key
+> and no WSL bridge on this path); the Anthropic-API transport is
+> retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`.
+> `classify()` refactored around a backend-independent `_run_with_retry`
+> keeping fail-closed-pause + the legacy reason strings byte-identical
+> (unreachable MS-S1 pauses, never proceeds). `settings.json` hook
+> timeouts → 180s (cold-load headroom); registry gains the backend note.
+> Tests: the legacy suite pinned to the sonnet backend + 4 new
+> ollama-backend tests (571 passed / 2 skipped; `mypy --strict` clean).
+> LIVE-verified from the production hook runtime (Windows Python →
+> 192.168.1.133): 7.9s → pause; Windows reachability pre-flight 0.09s.
+> The next real Stop event in the working session is the production
+> validation.
+> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
+>
+> **Session 56 (fourth batch) — stop-classifier calibration arc
 > SHIPPED (#278 + #279 + #280; head_commit `246ee0a`, `feat(claude):` = the
 > newest substantive per `lint_status`; merge `9fde2d7`).** Cray-approved
 > hook improvement + Cray-directed local-model eval. **#278** (`cbe6d05`):
@@ -286,6 +308,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-12 | **Stop classifier SWITCHED to local `gpt-oss:20b` (#282, `3375778`, session 56)** — Cray picked **(b)** on the calibration evidence (8–30s latency acceptable). Default backend = MS-S1 Ollama (format-constrained `/api/chat`, temp 0, keep_alive 10m, 75s timeout; no API key / no WSL bridge); Anthropic API retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`. Fail-closed pause + legacy reason strings byte-identical; legacy suite pinned to sonnet + 4 new ollama-backend tests (571 passed / 2 skipped; mypy --strict clean); LIVE-verified from the prod hook runtime: 7.9s → pause | `3375778` (#282) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-06-12 | **Stop-classifier calibration arc SHIPPED (#278 + #279 + #280, `246ee0a`, session 56)** — #278 completion-consistency rule (PROCEED needs concrete remaining work; decision↔reason agreement; contract-test-pinned). #279 20-case safety-weighted eval harness (full prod-prompt fidelity; gold incl. Thai); MS-S1 sweep 4×20 (80 dump-verified): `gpt-oss:20b` 19/20, recall 100%, p95 21.6s vs sonnet(prod) 17+2/20, recall 75%, p95 3.5s; nemotron-4b safety-DQ. #280 HEADLINE = registry gap not model gap → registry row C5 (host-state gate), re-verified live; transport pick (local vs API Sonnet) = Cray's | `246ee0a` (#278–#280) / `benchmarks/stop_classifier/RESULTS.md` |
 | 2026-06-12 | **Carrier-death incident → ops hardening SHIPPED (#275 + #276, `3a8a175`, session 56)** — the calibration run's carrier (held `wsl.exe` + wrapper) was reaped at ~59 min; the orphaned python completed silently (stale "running" task chip, no completion event; truth established content-based). #275 records the gotcha + content-based truth test in the `ms-s1-ollama` skill; #276 adds `run_detached.sh` — long MS-S1 runs launch under `systemd-run --user` (carrier-proof, PROBE-VERIFIED 2026-06-12; `.done` sentinel "rc ISO-ts"; ETA + ~10 min → check sentinel; `Linger=no` = host-state, ask Cray) | `3a8a175` (#275 + #276) / `.claude/skills/ms-s1-ollama/` |
 | 2026-06-12 | **First watch-lane calibration run RECORDED (#273, `489b695`, session 56)** — M-2=b evidence on MS-S1 (`gpt-oss:20b`, 198 items, 319 calls, 0 errors, `--dump-json`-verified). Watch distribution: aqua 13/13 aerator, energy 13/13 restart, supply_chain hold 5 / inspect 5 / **reroute 3 = the lane's first real safety signal** (forbidden under a `{hold, inspect}` pinning). β 98.3% (2 verified misses incl. the U+2011 hyphen grader-calibration candidate), α 100%, deterministic 198/198. Breach p95 28.73s = first SD-2 PASS in full mode (±10s noise band); watch latency = M-4 own diagnostic. No bar moves (B-6) | `489b695` (#273) / `benchmarks/procedure_baseline/REPORT.md` |
@@ -295,8 +318,6 @@ below, and git history.
 | 2026-06-11 | **PLAN-0020 (Procedure-path tuning) COMPLETE + archived to done/ (#251–#256, `a6125c1`, session 53)** — the PLAN-0019 B-6 ring-fence follow-up. All `--dump-json`-VERIFIED on `gpt-oss:20b`/MS-S1: the Phase-1 aqua prompt nudge (PR #232, prev. UNMEASURED) worked dramatically — overall β `85.8%→100%`, aqua β `60%→100%`, overall α `70%→100%` (supply α `32.5%→100%`: model now picks `hold` not `inspect`). Latency lever: new `reasoning_mode=skip` (drop call-1 reasoning) cuts p95 `31.80s→21.62s` UNDER the 30s bar at **zero β cost** (`think_off` = dead lever). **SD-1** (widen supply-α) authorized at ratify but **SKIPPED at Step 9** — nudge made the divergence moot (0 `inspect`); anti-moving-target honored, no grader change. Also: per-judgment latency timer (#252), think-trim lever (#253), `ms-s1-ollama` skill (#254, `warm.sh` live-tested), tuning report (#255). Next: future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring `skip` into product path is an open audit trade-off | `a6125c1` (#251–#256) / `docs/plans/done/0020-procedure-tuning-latency-precision.md` + `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-11 | **PLAN-0020 ratified Draft→Accepted (#251, `19706eb`, session 53)** — SD-1 = widen supply-α `valid_handlers` `[hold]`→`[hold, inspect]` (later skipped at Step 9, see close row); SD-2 = re-ratify the latency bar from **8 s/per-call → ≤30 s p95 per-judgment** (reports-not-gates). Unblocked the gated MS-S1 tuning campaign | `19706eb` (#251) / `docs/plans/done/0020-procedure-path-tuning.md` |
 | 2026-06-10 | **PLAN-0021 SHIPPED (#249, `3dc586a`, session 51) — the Axis-B verification loop is LIVE; both harness-review tracks complete** — goal gate (`_goal_gate.py` at the D4 seam inside `stop_continuation.py`, fail-open per ADR-0018 D4) + `goal-evaluator` 4th subagent + `/goal` (the repo's first project command) + the SD-1 narrowed-Write deny hook; +64 tests (suite 1398 passed / 22 skipped, zero regression); 7/10 case-matrix rows proven LIVE incl. the fail-open probe (`released-unevaluated` + LOUD Telegram, no wedge). F-L1: verdict→flip lands at the next non-chained Stop (OQ-8 blocking-mode promotion must account). Archived to done/ (`7d6d713`, same PR) | `3dc586a` (#249) / `docs/plans/done/0021-axis-b-verification-loop-build.md` |
-| 2026-06-10 | **PLAN-0021 "Axis-B verification loop — build" landed as Draft (#247, `78b8659`, session 51)** — Cowork-drafted per ADR-009 D1, Code R2-reviewed + committed per D2/D3; renders Accepted ADR-0018 into a build plan: 6 new files (incl. the repo's first project command `.claude/commands/goal.md`, the `goal-evaluator` 4th subagent, the SD-1 narrowed-Write deny hook), exactly 3 modified files at the D4 seam, 10 ACs incl. AC-2 byte-for-byte non-interference, 10-row case matrix, VX-1..3 resolved, OQ-8 Out of Scope. R2 **F-1**: the deny hook wires via agent frontmatter, not `settings.json`. Gates on Cray ratification (SD-1: Cowork recommends NO for v1) | `78b8659` (#247) / `docs/plans/0021-axis-b-verification-loop-build.md` |
-
 ## In-Flight Discussions
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
