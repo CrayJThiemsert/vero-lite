@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-12T22:37:24+07:00
+last_updated: 2026-06-12T23:08:43+07:00
 session: 57
-current_batch: 'session-57 unit-side completion ping (#290)'
+current_batch: 'session-57 deferred header fix landed (#292)'
 current_actor: code
-blocked_on: 'B-6 hyphen-normalization grader ratify (3 data points) + cosmetic run_detached.sh header-comment edit (classifier-denied) both await Cray. No open PRs. No run in flight.'
-next_action: 'B-6 hyphen-normalization grader adjudication (now 3 data points) — explicit Cray ratification before any grader edit. Then: cosmetic run_detached.sh header edit (awaits per-diff approval).'
-head_commit: 3c25d94
-recent_commits: [3c25d94, 4c46a92, 1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, c84264e, aecf1bd, cbe6d05]
+blocked_on: 'B-6 hyphen-normalization grader ratify (3 data points) awaits explicit Cray ratification. No open PRs. No run in flight.'
+next_action: 'B-6 hyphen-normalization grader adjudication (3 data points) — explicit Cray ratification before any grader edit.'
+head_commit: f1cf3b4
+recent_commits: [f1cf3b4, 3c25d94, 4c46a92, 1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, c84264e, aecf1bd]
 ---
 
 # vero-lite — Project Status
@@ -19,8 +19,9 @@ recent_commits: [3c25d94, 4c46a92, 1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, 
 ## Current Focus
 
 > **Session 57 (third batch, current) — unit-side completion PING +
-> no-Monitor rule SHIPPED (#290; head_commit `3c25d94`,
-> `feat(skills):`; merge `6a47d89`).** Coda to the scored run's watcher
+> no-Monitor rule SHIPPED (#290; `feat(skills):` `3c25d94`; merge
+> `6a47d89`) + deferred header line LANDED (#292; head_commit
+> `f1cf3b4`, `chore(skills):`; merge `f2184f6`).** Coda to the scored run's watcher
 > death: Cray asked why the WSL issue recurred after the systemd
 > switch — answer: systemd protected the *workload*, but the
 > notify-back channel (harness Monitor = `wsl.exe` carrier) stayed
@@ -40,8 +41,12 @@ recent_commits: [3c25d94, 4c46a92, 1bd6328, bdf7166, 4b0e306, 3375778, 246ee0a, 
 > edits but DENIED a cosmetic one-line header-comment edit in
 > `run_detached.sh` (self-modification gate — "diagnostic question ≠
 > authorization"); deferred pending explicit per-diff Cray approval
-> (cosmetic only: the `.wrap` artifact description doesn't yet mention
-> the PING markers). *Rotation note:* the oldest CF block (session 56,
+> (cosmetic only: the `.wrap` artifact description didn't yet mention
+> the PING markers). *Coda (#292):* that deferred header line landed
+> via `f1cf3b4` (`chore(skills):`; merge `f2184f6`) after Cray's
+> explicit per-diff approval — the retry passed (the documented
+> per-diff override path); the classifier-denied edit thread is
+> CLOSED. *Rotation note:* the oldest CF block (session 56,
 > PLAN-0022 Phase 3 + closeout, #270/#271) rotated to
 > `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
 > **NEXT:** B-6 hyphen-normalization grader adjudication (3 data
