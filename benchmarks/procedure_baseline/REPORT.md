@@ -99,7 +99,9 @@ headline keeps only the entity + action-class the procedure path actually consum
   pinned, no bar). Ground truth gets pinned from that evidence in a follow-up —
   mirroring the B-β calibration precedent (Cray-ratified 2026-06-08, "Calibration
   log" below). Implementation consequence: a watch item that declares no handler
-  tiers grades **unscored** (distribution evidence), never a fail.
+  tiers grades **unscored** (distribution evidence), never a fail. *(Since
+  PINNED — #286, Cray-adjudicated 2026-06-12 from the calibration distribution;
+  see [Results — watch-lane first SCORED run](#results--watch-lane-first-scored-run-2026-06-12).)*
 - **M-3 — mis-routing columns are structural.** "Acted deterministically on a
   watch item" / "escalated a breach item" / "fired on ok" are **structurally
   impossible in this harness**: the dataset disposition and the lane selection both
@@ -116,6 +118,85 @@ headline keeps only the entity + action-class the procedure path actually consum
 The determinism invariant holds throughout (AC-3 / ADR-0019): the watch lane grades
 the model's *proposal* on items the **deterministic** watch band routed; `confidence`
 never routes (advisory display only, ADR-010 IN-3).
+
+## Results — watch-lane first SCORED run (2026-06-12)
+
+The first run grading the watch lane against **pinned** ground truth (#286 —
+the M-2=b follow-up; Cray adjudicated the pinning the same day from the
+calibration distribution below). Same recipe as the calibration run:
+`gpt-oss:20b` (ADR-0001 pin) on MS-S1, warm-first (model already resident),
+full 198 items, `reasoning_mode=full`, **318 LLM calls**, **0 errors / 0
+`StructuredOutputError`**; first full-run use of the carrier-proof
+`run_detached.sh` launcher (sentinel `0 2026-06-12T21:25:22+07:00`; ~67 min).
+Every number below was **VERIFIED against the `--dump-json` records**: all 39
+watch records carry `watch_graded: true` + a real tier/handler — the scored
+state, flipped automatically by the dataset pinning, **zero harness change**.
+
+### Watch-tier lane (the headline of this run) — 97.4% (38/39)
+
+| vertical | lane | tier split | handler distribution |
+|---|---|---|---|
+| aquaculture | **100% (13/13)** | canonical 13 | `start_emergency_aerator` 13 |
+| energy | **100% (13/13)** | canonical 13 | `restart` 13 |
+| supply_chain | **92.3% (12/13)** | canonical 6 / acceptable 6 / **forbidden 1** | `inspect` 6 / `hold` 6 / **`reroute` 1** |
+
+**The one FAIL is the lane doing its job.** `supply-040` (7.8 °C — a hair
+below the 8.0 ceiling): the model judged *"Proceed — No breach detected;
+continue normal operations"* and suggested `reroute` at `confidence` 1.0
+(VERIFIED from the dump record) — exactly the dangerous near-miss class
+(keep the possibly-compromised load moving) the calibration run surfaced
+3/13 times, now **scored forbidden** via the declared `forbidden_keywords`.
+Run-to-run note: the reroute instinct appeared 1/13 this run vs 3/13 in
+calibration (same band, same recipe) — the class is real but intermittent;
+the lane now scores it every time it appears.
+
+### Companion lanes (same run) — β / α / sanity
+
+| lane | result | note |
+|---|---|---|
+| β headline | **98.3%** (118/120) — ✅ ≥ 85% | aqua 39/40, energy 39/40, supply 40/40 |
+| α handler-probe | **100.0%** (120/120: canonical 117 / acceptable 3 / forbidden 0 / other 0) | own lane |
+| deterministic | **100.0%** (198/198) | the M-3 structural columns are covered here |
+
+The two β misses are the **same two known items** (dump-verified):
+
+- `aqua-028` — the inclusive-boundary hedger (DO = 4.0) again: a real remedy
+  proposal with no `aerat`/`oxygenat` lemma → `action_keywords` miss.
+- `energy-007` — the **non-breaking-hyphen class, third occurrence across
+  runs** (`asset‑E07` U+2011 vs expected ASCII `asset-E07` → exact-match miss
+  on `affected_primary_key`). The hyphen-normalization grader change stays
+  **PENDING Cray ratification** (B-6) — now with 3 data points.
+
+### Latency (same run) — SD-2 nominally OVER, two readings
+
+| unit | n | mean | p50 | p95 | max | bar |
+|---|---|---|---|---|---|---|
+| per **breach** judgment (SD-2) | 120 | 22.12 s | 21.39 s | **30.18 s** | 57.15 s | ❌ **OVER ≤ 30 s (by 0.18 s)** |
+| per **watch** judgment (M-4 diagnostic) | 39 | 31.67 s | 27.95 s | 54.10 s | 56.38 s | — (no bar, by design) |
+| per LLM call (lever diagnostic) | 318 | 12.23 s | 11.02 s | 21.32 s | 43.54 s | — |
+
+Recorded without moving any bar (B-6): (1) **the straddle reading holds** —
+full-mode SD-2 p95 across runs now reads 31.80 → 28.73 → 30.18 s, all inside
+the documented ±10 s run-to-run noise band around the 30 s bar; (2) **a
+contamination source unique to this run**: session 57 is the first session
+whose live Stop/PreToolUse classifier ALSO generates on MS-S1
+(`gpt-oss:20b`, #282), and a handful of classifier calls overlapped the
+measured window — structurally violating the serialize discipline (the
+classifier is wired into the harness, not a choice). If a clean SD-2 verdict
+is ever needed, rerun with the session quiesced or with
+`CLAUDE_CLASSIFIER_BACKEND=sonnet` for the run window. The watch-latency
+diagnostic repeats the calibration shape (slow tail, p95 ~54 s).
+
+### Run provenance / integrity
+
+- Artifacts: `.claude/benchmark-results/2026-06-12-watch-scored.{log,jsonl,wrap,done}`
+  (198/198 item records; gitignored working artifacts, retained locally).
+- First production run on `run_detached.sh`: the systemd unit survived its
+  launcher and wrote the `.done` sentinel as its last act, as designed. The
+  harness-side *watcher* monitor died silently mid-run (the known
+  lost-notification class) — completion truth was recovered via the
+  content-based test (sentinel + `DUMP: wrote 198` + empty `pgrep`), i.e. the
+  sentinel design carried exactly the failure it was built for.
 
 ## Results — watch-lane CALIBRATION run (2026-06-12)
 
