@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-12T12:28:48+07:00
+last_updated: 2026-06-12T13:38:09+07:00
 session: 56
-current_batch: 'session-56 carrier-death hardening (#275, #276)'
+current_batch: 'session-56 stop-classifier calibration (#278, #279, #280)'
 current_actor: code
-blocked_on: 'M-2=b watch ground-truth pinning awaits Cray adjudication of the distribution evidence. Nothing else gates shipped work. No open PRs.'
-next_action: 'Cray adjudicates watch ground-truth pinning from the distribution evidence → dataset PR + first SCORED watch-lane run; hyphen-normalization grader-calibration candidate also awaits ratification.'
-head_commit: 3a8a175
-recent_commits: [3a8a175, f7cb82a, 489b695, b41a138, 7bf7240, 1723981, 6870f87, a68a114, 137766c]
+blocked_on: 'M-2=b watch ground-truth pinning awaits Cray adjudication; stop-classifier transport pick (local gpt-oss:20b vs API Sonnet) awaits Cray on the eval evidence. No open PRs.'
+next_action: 'Cray adjudicates M-2=b watch pinning → dataset PR + first SCORED watch run; Cray picks stop-classifier transport (gpt-oss:20b vs API Sonnet) from RESULTS; hyphen-normalization ratify pending.'
+head_commit: 246ee0a
+recent_commits: [246ee0a, c84264e, aecf1bd, cbe6d05, 3a8a175, f7cb82a, 489b695, b41a138, 7bf7240]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,29 @@ recent_commits: [3a8a175, f7cb82a, 489b695, b41a138, 7bf7240, 1723981, 6870f87, 
 
 ## Current Focus
 
-> **Session 56 (current, third batch) — post-calibration carrier-death
+> **Session 56 (current, fourth batch) — stop-classifier calibration arc
+> SHIPPED (#278 + #279 + #280; head_commit `246ee0a`, `feat(claude):` = the
+> newest substantive per `lint_status`; merge `9fde2d7`).** Cray-approved
+> hook improvement + Cray-directed local-model eval. **#278** (`cbe6d05`):
+> the classifier prompt gains the completion-consistency rule — PROCEED
+> requires concrete remaining work and the decision must agree with its
+> reason (fixes the observed over-continue on completed work; contract test
+> pins it). **#279** (`aecf1bd` + `c84264e`): a 20-case safety-weighted
+> eval harness at `benchmarks/stop_classifier/` with full prompt fidelity
+> to the production hook (gold incl. Thai turns; offline tests). MS-S1
+> sweep (4 models × 20 cases, 80 dump-verified records, 13:21–13:33):
+> `gpt-oss:20b` 19/20, proceed-recall 100%, p50 7.1s / p95 21.6s vs
+> sonnet(prod) 17+2/20, recall 75%, p50 2.5s / p95 3.5s; nemotron-4b
+> DISQUALIFIED on safety (proceeds on dropdb); nemotron-30b out. **#280**
+> (`246ee0a`) — the HEADLINE is a **registry gap, not a model gap**: ALL
+> models incl. prod Sonnet proceeded on warm-MS-S1-without-a-go → new
+> registry row **C5 (host-state gate)**, re-verified LIVE (both
+> `gpt-oss:20b` and sonnet(prod) now flip to pause). RESULTS.md records the
+> comparison + recommendation; the transport decision (local `gpt-oss:20b`
+> vs API Sonnet) is **Cray's, on this evidence**.
+> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
+>
+> **Session 56 (third batch) — post-calibration carrier-death
 > incident HARDENED (#275 merge `97d132c`, #276 merge `09750af`;
 > head_commit `3a8a175`, `feat(skills):` = the newest substantive per
 > `lint_status`).** The calibration run's carrier (held `wsl.exe` + wrapper)
@@ -264,6 +286,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-12 | **Stop-classifier calibration arc SHIPPED (#278 + #279 + #280, `246ee0a`, session 56)** — #278 completion-consistency rule (PROCEED needs concrete remaining work; decision↔reason agreement; contract-test-pinned). #279 20-case safety-weighted eval harness (full prod-prompt fidelity; gold incl. Thai); MS-S1 sweep 4×20 (80 dump-verified): `gpt-oss:20b` 19/20, recall 100%, p95 21.6s vs sonnet(prod) 17+2/20, recall 75%, p95 3.5s; nemotron-4b safety-DQ. #280 HEADLINE = registry gap not model gap → registry row C5 (host-state gate), re-verified live; transport pick (local vs API Sonnet) = Cray's | `246ee0a` (#278–#280) / `benchmarks/stop_classifier/RESULTS.md` |
 | 2026-06-12 | **Carrier-death incident → ops hardening SHIPPED (#275 + #276, `3a8a175`, session 56)** — the calibration run's carrier (held `wsl.exe` + wrapper) was reaped at ~59 min; the orphaned python completed silently (stale "running" task chip, no completion event; truth established content-based). #275 records the gotcha + content-based truth test in the `ms-s1-ollama` skill; #276 adds `run_detached.sh` — long MS-S1 runs launch under `systemd-run --user` (carrier-proof, PROBE-VERIFIED 2026-06-12; `.done` sentinel "rc ISO-ts"; ETA + ~10 min → check sentinel; `Linger=no` = host-state, ask Cray) | `3a8a175` (#275 + #276) / `.claude/skills/ms-s1-ollama/` |
 | 2026-06-12 | **First watch-lane calibration run RECORDED (#273, `489b695`, session 56)** — M-2=b evidence on MS-S1 (`gpt-oss:20b`, 198 items, 319 calls, 0 errors, `--dump-json`-verified). Watch distribution: aqua 13/13 aerator, energy 13/13 restart, supply_chain hold 5 / inspect 5 / **reroute 3 = the lane's first real safety signal** (forbidden under a `{hold, inspect}` pinning). β 98.3% (2 verified misses incl. the U+2011 hyphen grader-calibration candidate), α 100%, deterministic 198/198. Breach p95 28.73s = first SD-2 PASS in full mode (±10s noise band); watch latency = M-4 own diagnostic. No bar moves (B-6) | `489b695` (#273) / `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-12 | **PLAN-0022 COMPLETE — Phase 3 watch-tier escalation lane SHIPPED (#270, `1723981`, session 56) + plan archived to done/ (#271, `b41a138`)** — implements the Cray-ratified M-1..M-4 methodology (M-2=b calibration-first: watch items run the LLM judgment, unscored distribution reporting until ground truth is pinned from run evidence; M-4 watch latency = own diagnostic, SD-2 bar stays breach-scoped; REPORT methodology recorded BEFORE any scored run). All four phases done (#263/#265/#267/#270). Suite 1469; first calibration run gated on a separate Cray go | `b41a138` (#270 + #271) / `docs/plans/done/0022-tiered-decision-routing.md` + `benchmarks/procedure_baseline/REPORT.md` |
@@ -273,7 +296,8 @@ below, and git history.
 | 2026-06-11 | **PLAN-0020 ratified Draft→Accepted (#251, `19706eb`, session 53)** — SD-1 = widen supply-α `valid_handlers` `[hold]`→`[hold, inspect]` (later skipped at Step 9, see close row); SD-2 = re-ratify the latency bar from **8 s/per-call → ≤30 s p95 per-judgment** (reports-not-gates). Unblocked the gated MS-S1 tuning campaign | `19706eb` (#251) / `docs/plans/done/0020-procedure-path-tuning.md` |
 | 2026-06-10 | **PLAN-0021 SHIPPED (#249, `3dc586a`, session 51) — the Axis-B verification loop is LIVE; both harness-review tracks complete** — goal gate (`_goal_gate.py` at the D4 seam inside `stop_continuation.py`, fail-open per ADR-0018 D4) + `goal-evaluator` 4th subagent + `/goal` (the repo's first project command) + the SD-1 narrowed-Write deny hook; +64 tests (suite 1398 passed / 22 skipped, zero regression); 7/10 case-matrix rows proven LIVE incl. the fail-open probe (`released-unevaluated` + LOUD Telegram, no wedge). F-L1: verdict→flip lands at the next non-chained Stop (OQ-8 blocking-mode promotion must account). Archived to done/ (`7d6d713`, same PR) | `3dc586a` (#249) / `docs/plans/done/0021-axis-b-verification-loop-build.md` |
 | 2026-06-10 | **PLAN-0021 "Axis-B verification loop — build" landed as Draft (#247, `78b8659`, session 51)** — Cowork-drafted per ADR-009 D1, Code R2-reviewed + committed per D2/D3; renders Accepted ADR-0018 into a build plan: 6 new files (incl. the repo's first project command `.claude/commands/goal.md`, the `goal-evaluator` 4th subagent, the SD-1 narrowed-Write deny hook), exactly 3 modified files at the D4 seam, 10 ACs incl. AC-2 byte-for-byte non-interference, 10-row case matrix, VX-1..3 resolved, OQ-8 Out of Scope. R2 **F-1**: the deny hook wires via agent frontmatter, not `settings.json`. Gates on Cray ratification (SD-1: Cowork recommends NO for v1) | `78b8659` (#247) / `docs/plans/0021-axis-b-verification-loop-build.md` |
-| 2026-06-10 | **ADR-0018 "Axis-B Verification Loop" ACCEPTED (Cray-ratified, session 51) — opens harness-review track 2 (the evaluator loop) on top of the at-frontier Axis-A governance layer.** A `/goal` Stop-hook gate + a `goal-evaluator` subagent that judges whether a run achieved its declared goal. **Decisions:** D1 hybrid deterministic-check + LLM-judge; D2 a `.claude/state/goal.json` run-goal artifact; D3 a 4th subagent sibling that **REFUTES not blesses** (structural guard against reasoning-blindness); D4 `_goal_gate.py` inside `stop_continuation.py`, **FAIL-OPEN** (broken/absent evaluator never blocks Stop); D5 session-Stop **warn-only v1**; D6 structural reasoning-blindness rationale; D7 formalize + augment the manual AC ritual. **SD-1 resolved = narrowed Write** (the evaluator's Write is hook-narrowed to `goal.json` only — same author-bounded pattern as `plan-drafter`/`status-scribe`). **Lineage:** #241 (`5f8073c`, `docs(adr):`) added ADR-0018 `Proposed` → **#242 (`1be60f7`, `docs(adr):`, head_commit) ratified it Proposed→Accepted** + carries the T4 STATUS reconcile (record ADR-0018 here + clear the Current-Focus Axis-B "deferred" earmark). **NEXT = T2:** Code dispatches the Axis-B build PLAN to Cowork (ADR-009 D1) → T3 (autonomy-triggers V-row) → build. OQ-8 (plugin packaging, MS-S1 local evaluator, blocking-mode promotion, PR-merge gating, auto-declared goals) + VX-1..3 stay non-binding / verify-at-execution | `1be60f7` (#241 + #242) / `docs/adr/0018-axis-b-verification-loop.md` |## In-Flight Discussions
+
+## In-Flight Discussions
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
