@@ -29,7 +29,8 @@
           },
           {
             "type": "command",
-            "command": "python .claude/hooks/pretooluse_classifier_dispatch.py"
+            "command": "python .claude/hooks/pretooluse_classifier_dispatch.py",
+            "timeout": 180
           }
         ]
       }
@@ -75,7 +76,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python .claude/hooks/stop_continuation.py"
+            "command": "python .claude/hooks/stop_continuation.py",
+            "timeout": 180
           }
         ]
       }

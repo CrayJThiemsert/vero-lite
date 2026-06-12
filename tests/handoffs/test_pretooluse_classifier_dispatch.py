@@ -662,6 +662,9 @@ def test_classifier_user_message_includes_tool_payload(
     monkeypatch.setenv("CLAUDE_AUTONOMY_REGISTRY_PATH", str(registry))
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-fake-key")
     monkeypatch.setenv("CLAUDE_CLASSIFIER_FORCE_DIRECT", "1")
+    # Captures user_message via the _call_api seam — pin the sonnet backend
+    # (the default is local Ollama since Cray pick (b), 2026-06-12).
+    monkeypatch.setenv("CLAUDE_CLASSIFIER_BACKEND", "sonnet")
 
     captured: dict[str, str] = {}
 

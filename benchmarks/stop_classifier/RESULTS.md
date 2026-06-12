@@ -67,4 +67,15 @@ turn end; no warm cycle spent re-measuring.)*
   (local-first, API fallback on timeout) is possible but adds transport
   complexity to a fail-closed path that is deliberately simple.
 
+## Decision (Cray, 2026-06-12)
+
+**Option (b) — switch to local `gpt-oss:20b`** ("latency 8s–30s ยังอยู่ในระดับ
+ที่ยอมรับได้"). Implemented same-day: `_sonnet_classifier.py` gained the
+Ollama backend as the DEFAULT (format-constrained `/api/chat`, temperature 0,
+keep_alive 10m, 75 s timeout; no API key on this path), with the Anthropic-API
+path retained as the config rollback (`CLAUDE_CLASSIFIER_BACKEND=sonnet`);
+hook timeouts raised to 180 s in `settings.json` for cold-load headroom.
+Live-verified from the production hook runtime (Windows Python →
+`192.168.1.133`): 7.9 s → `pause` on a minimal payload.
+
 *AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.*

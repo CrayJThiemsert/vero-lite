@@ -48,6 +48,19 @@ cannot defeat this — User-scope env is overwritten by Desktop before
 the CLI spawn. Any hook invoked from inside a Claude Code session
 inherits the empty value. The Telegram-token pattern from PLAN-0007 /
 ADR-013 D5 is unaffected (Desktop strips only Anthropic-auth vars).
+
+**Backend (2026-06-12 — Cray pick (b) on the eval evidence).** The
+transport is now **local-first**: ``gpt-oss:20b`` on MS-S1 Ollama
+(``http://192.168.1.133:11434``, plain-HTTP ``/api/chat`` with a
+``format``-constrained JSON schema — no API key and no WSL bridge on
+this path; Windows-Python reachability verified 0.09 s). Eval:
+``benchmarks/stop_classifier/RESULTS.md`` — 19/20 vs prod Sonnet's
+17+2/20, proceed-recall 100% vs 75%; latency p50 ~7 s / p95 ~22 s
+explicitly accepted by Cray. The original Anthropic-API path is
+retained as a config rollback: ``CLAUDE_CLASSIFIER_BACKEND=sonnet``.
+Auth resolution above applies to the sonnet backend only. All
+fail-closed semantics are backend-independent — an unreachable MS-S1
+pauses, never proceeds.
 """
 
 from __future__ import annotations
@@ -73,6 +86,34 @@ DEFAULT_ANTHROPIC_VERSION = "2023-06-01"
 DEFAULT_MAX_TOKENS = 1024
 API_TIMEOUT_SEC = 20  # Sonnet typical < 5s; padding for cold-start / queue
 KEY_FILE_PERM_MASK = 0o077  # any group/other bit set = unsafe (POSIX)
+
+# --- Ollama backend (Cray pick (b), 2026-06-12 — see RESULTS.md) -------------
+DEFAULT_OLLAMA_URL = "http://192.168.1.133:11434"  # MS-S1; reach by IP (no WSL DNS)
+DEFAULT_OLLAMA_MODEL = "gpt-oss:20b"  # the eval winner (19/20, recall 100%)
+OLLAMA_TIMEOUT_SEC = 75  # warm p95 ~22s; headroom for a ~25s cold load + generation
+
+#: ``format`` schema for constrained generation on the Ollama backend —
+#: mirrors the prompt's reply schema. The dispatch metadata is OPTIONAL here;
+#: the conditional requirement (present iff decision == "dispatch") is
+#: enforced by ``_parse_response``, identically for both backends.
+OLLAMA_DECISION_FORMAT: dict[str, Any] = {
+    "type": "object",
+    "properties": {
+        "decision": {"type": "string", "enum": ["proceed", "pause", "dispatch"]},
+        "matched_rows": {"type": "array", "items": {"type": "string"}},
+        "reason": {"type": "string"},
+        "dispatch": {
+            "type": "object",
+            "properties": {
+                "subagent": {"type": "string"},
+                "artifact_kind": {"type": "string", "enum": ["adr", "plan"]},
+                "task_summary": {"type": "string"},
+            },
+            "required": ["subagent", "artifact_kind", "task_summary"],
+        },
+    },
+    "required": ["decision", "matched_rows", "reason"],
+}
 
 # Decision contract — single source of truth, used by tests too.
 DECISION_PROCEED = "proceed"
@@ -606,24 +647,70 @@ def _parse_response(text: str) -> dict[str, Any]:
     return result
 
 
-def classify(payload: dict[str, Any]) -> dict[str, Any]:
-    """Public entry point. Always returns a dict matching the contract.
+def _backend() -> str:
+    """Transport backend: ``"ollama"`` (default — local ``gpt-oss:20b`` on
+    MS-S1, Cray pick (b) 2026-06-12) or ``"sonnet"`` (the original
+    Anthropic-API path, the config rollback). Any value other than
+    ``sonnet`` resolves to the default — deterministic, never raises."""
+    value = os.environ.get("CLAUDE_CLASSIFIER_BACKEND", "").strip().lower()
+    return "sonnet" if value == "sonnet" else "ollama"
 
-    Fail-closed: any error → pause with explanatory reason.
+
+def _ollama_url() -> str:
+    return os.environ.get("CLAUDE_CLASSIFIER_OLLAMA_URL", DEFAULT_OLLAMA_URL).strip().rstrip("/")
+
+
+def _ollama_model() -> str:
+    return os.environ.get("CLAUDE_CLASSIFIER_OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL).strip()
+
+
+def _call_ollama(system_prompt: str, user_message: str) -> str:
+    """POST to the MS-S1 Ollama ``/api/chat`` (``format``-constrained,
+    ``temperature`` 0, ``keep_alive`` 10m so consecutive Stop events stay
+    warm); return the assistant text. Plain HTTP on the LAN — works
+    identically from Windows Python and Linux (no WSL bridge, no API key).
+    Raises ``urllib.error.URLError`` / ``TimeoutError`` on transport failure
+    and ``ValueError`` on a malformed envelope; caller fails closed to pause.
     """
-    api_key, source_or_reason = _resolve_api_key()
-    if not api_key:
-        return _pause(source_or_reason)
+    body = json.dumps(
+        {
+            "model": _ollama_model(),
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_message},
+            ],
+            "stream": False,
+            "format": OLLAMA_DECISION_FORMAT,
+            "options": {"temperature": 0},
+            "keep_alive": "10m",
+        }
+    ).encode("utf-8")
+    req = urllib.request.Request(  # noqa: S310 — fixed http:// LAN host (MS-S1), not user input
+        f"{_ollama_url()}/api/chat",
+        data=body,
+        headers={"content-type": "application/json"},
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=OLLAMA_TIMEOUT_SEC) as resp:  # noqa: S310
+        data = json.loads(resp.read().decode("utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError("Ollama response is not a JSON object")
+    message = data.get("message")
+    content = message.get("content") if isinstance(message, dict) else None
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("Ollama envelope missing message.content")
+    return content
 
-    registry = _load_registry()
-    if registry is None:
-        return _pause("autonomy registry missing or empty")
 
-    user_message = _build_user_message(payload)
-
+def _run_with_retry(transport: Any) -> dict[str, Any]:
+    """Drive one classify exchange through ``transport(strict: bool) -> str``:
+    attempt → parse → retry once with the stricter prompt → fail-closed pause.
+    Backend-independent — both ``_call_api`` and ``_call_ollama`` raise the
+    same exception families (``URLError``/``TimeoutError``/``ValueError``).
+    """
     # First attempt — normal prompt.
     try:
-        text = _call_api(api_key, _build_system_prompt(registry), user_message)
+        text = str(transport(strict=False))
     except (urllib.error.URLError, TimeoutError) as exc:
         return _pause(f"API unreachable: {exc}")
     except ValueError as exc:
@@ -638,11 +725,7 @@ def classify(payload: dict[str, Any]) -> dict[str, Any]:
 
     # Retry once with stricter prompt.
     try:
-        text2 = _call_api(
-            api_key,
-            _build_system_prompt(registry, strict=True),
-            user_message,
-        )
+        text2 = str(transport(strict=True))
     except (urllib.error.URLError, TimeoutError) as exc:
         return _pause(f"retry unreachable: {exc}")
     except Exception as exc:
@@ -652,3 +735,35 @@ def classify(payload: dict[str, Any]) -> dict[str, Any]:
         return _parse_response(text2)
     except ValueError as exc:
         return _pause(f"classifier response unparseable after retry: {exc}")
+
+
+def classify(payload: dict[str, Any]) -> dict[str, Any]:
+    """Public entry point. Always returns a dict matching the contract.
+
+    Fail-closed: any error → pause with explanatory reason. The transport
+    backend (local Ollama by default; Sonnet API via
+    ``CLAUDE_CLASSIFIER_BACKEND=sonnet``) only changes who answers — the
+    prompt, parse/validation, retry-once-stricter flow, and every
+    fail-closed path are backend-independent.
+    """
+    backend = _backend()
+    api_key = ""
+    if backend == "sonnet":
+        resolved_key, source_or_reason = _resolve_api_key()
+        if not resolved_key:
+            return _pause(source_or_reason)
+        api_key = resolved_key
+
+    registry = _load_registry()
+    if registry is None:
+        return _pause("autonomy registry missing or empty")
+
+    user_message = _build_user_message(payload)
+
+    def _transport(*, strict: bool) -> str:
+        system = _build_system_prompt(registry, strict=strict)
+        if backend == "sonnet":
+            return _call_api(api_key, system, user_message)
+        return _call_ollama(system, user_message)
+
+    return _run_with_retry(_transport)
