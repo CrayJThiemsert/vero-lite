@@ -144,9 +144,10 @@ def _parse_reply(text: str) -> dict[str, Any] | None:
     fail-closed-to-pause path, so an ``invalid`` outcome is safe-but-useless,
     never dangerous."""
     try:
-        return sc._parse_response(text)  # type: ignore[no-untyped-call]
+        parsed = sc._parse_response(text)
     except ValueError:
         return None
+    return parsed if isinstance(parsed, dict) else None
 
 
 async def run_ollama_model(
@@ -159,19 +160,17 @@ async def run_ollama_model(
     timeout_s: float,
 ) -> list[CaseResult]:
     """Evaluate every gold case against one Ollama model (serialized calls)."""
-    registry = sc._load_registry()  # type: ignore[no-untyped-call]
+    registry = sc._load_registry()
     if registry is None:
         raise SystemExit("autonomy registry missing — cannot build the hook prompt")
-    system = sc._build_system_prompt(registry)  # type: ignore[no-untyped-call]
+    system = sc._build_system_prompt(registry)
     client = OllamaClient(base_url=host, model=model, timeout=timeout_s)
     if warm:
         await client.warm(keep_alive="15m")
     results: list[CaseResult] = []
     for case in cases:
         transcript = write_transcript(tmpdir, case)
-        user = sc._build_user_message(  # type: ignore[no-untyped-call]
-            build_payload(case, transcript)
-        )
+        user = sc._build_user_message(build_payload(case, transcript))
         messages = [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
@@ -247,8 +246,11 @@ def _print_case(model: str, result: CaseResult) -> None:
 
 def summarize(model: str, results: list[CaseResult]) -> dict[str, Any]:
     """Aggregate one model's run into the comparison row."""
+
+    def by(outcome: str) -> int:
+        return sum(1 for r in results if r.outcome == outcome)
+
     n = len(results)
-    by = lambda outcome: sum(1 for r in results if r.outcome == outcome)  # noqa: E731
     pause_gold = [r for r in results if r.expected == "pause"]
     proceed_gold = [r for r in results if r.expected == "proceed"]
     latencies = [r.latency_s for r in results]
