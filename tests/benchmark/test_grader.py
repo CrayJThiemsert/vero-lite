@@ -16,7 +16,9 @@ from benchmarks.procedure_baseline.grader import (
     HandlerTier,
     classify_disposition,
     classify_handler_tier,
+    declares_handler_tiers,
     grade_proposal,
+    grade_watch_proposal,
 )
 from benchmarks.procedure_baseline.schema import Disposition, Expected, Scenario
 from services.engine.llm.structured import LlmJudgment
@@ -370,3 +372,54 @@ def test_no_declared_field_grades_false() -> None:
     grade = grade_proposal(_judgment(), expected)
     assert not grade.passed
     assert grade.checks == []
+
+
+# --- grade_watch_proposal (PLAN-0022 Phase-3 watch-tier lane — M-1/M-2) -------
+
+
+def test_watch_grade_unscored_when_no_tiers_declared() -> None:
+    """M-2=b calibration-first: a watch item with no handler ground truth grades
+    UNSCORED — the handler is recorded for the distribution report, tier/passed
+    stay None (report-don't-fail)."""
+    expected = Expected(disposition=Disposition.WATCH, action_expected=False)
+    assert not declares_handler_tiers(expected)
+    grade = grade_watch_proposal(_judgment(suggested_handler="inspect"), expected)
+    assert grade.handler == "inspect"
+    assert grade.tier is None
+    assert grade.passed is None
+
+
+def test_watch_grade_scored_canonical_and_acceptable_pass() -> None:
+    """M-1: lane-pass = proposed handler ∈ {canonical, acceptable}, via the SAME
+    classify_handler_tier as the α probe (the taxonomy is defined once). The
+    schema permits the tier fields on a watch item today — only authoring waits
+    on calibration evidence (M-2=b)."""
+    expected = Expected(
+        disposition=Disposition.WATCH,
+        action_expected=False,
+        canonical_handler="increase_water_exchange",
+        acceptable_handlers=["inspect"],
+    )
+    assert declares_handler_tiers(expected)
+    canonical = grade_watch_proposal(
+        _judgment(suggested_handler="increase_water_exchange"), expected
+    )
+    assert canonical.passed is True and canonical.tier is HandlerTier.CANONICAL
+    acceptable = grade_watch_proposal(_judgment(suggested_handler="inspect"), expected)
+    assert acceptable.passed is True and acceptable.tier is HandlerTier.ACCEPTABLE
+
+
+def test_watch_grade_names_a_forbidden_pick_and_fails_other() -> None:
+    """M-1 / SD-4=a: a forbidden_keywords hit on the proposed handler is named
+    explicitly (FORBIDDEN), distinct from a merely-non-canonical OTHER — both
+    fail the scored lane."""
+    expected = Expected(
+        disposition=Disposition.WATCH,
+        action_expected=False,
+        acceptable_handlers=["inspect"],
+        forbidden_keywords=["expedite", "reroute"],
+    )
+    forbidden = grade_watch_proposal(_judgment(suggested_handler="expedite_shipment"), expected)
+    assert forbidden.passed is False and forbidden.tier is HandlerTier.FORBIDDEN
+    other = grade_watch_proposal(_judgment(suggested_handler="hold"), expected)
+    assert other.passed is False and other.tier is HandlerTier.OTHER

@@ -27,6 +27,14 @@ probe (:func:`classify_handler_tier`): **canonical** (the single correct
 ``forbidden_keywords`` hit flagged explicitly in reporting per SD-4=a, never a
 new dataset tier). ``payload_contains`` stays an **advisory** signal. Headline /
 probe / advisory are aggregated separately.
+
+:func:`grade_watch_proposal` is the PLAN-0022 Phase-3 **watch-tier lane**
+(escalation correctness — M-1, Cray-ratified 2026-06-12): on a deterministic
+``watch`` disposition the LLM's proposed handler is classified with the SAME
+tier helper (the taxonomy is defined once); lane-pass = canonical or acceptable.
+Under M-2=b (calibration-first) a watch item that declares no handler tiers
+grades **unscored** — the handler is recorded for the per-vertical distribution
+report, never failed. The lane is reported on its own; it never touches β or α.
 """
 
 from __future__ import annotations
@@ -94,6 +102,15 @@ def classify_handler_tier(suggested_handler: str, expected: Expected) -> Handler
     if any(keyword.lower() in handler for keyword in expected.forbidden_keywords or []):
         return HandlerTier.FORBIDDEN
     return HandlerTier.OTHER
+
+
+def declares_handler_tiers(expected: Expected) -> bool:
+    """True when the item pins handler ground truth (``canonical_handler`` and/or
+    ``acceptable_handlers``) — the condition for the α probe and for a SCORED
+    watch-lane grade. Under M-2=b (calibration-first) watch items declare neither
+    yet, so the watch lane reports a distribution instead of pass/fail.
+    """
+    return expected.canonical_handler is not None or expected.acceptable_handlers is not None
 
 
 @dataclass(frozen=True)
@@ -223,3 +240,41 @@ def grade_proposal(judgment: LlmJudgment, expected: Expected) -> GradeResult:
     return GradeResult(
         passed=passed, checks=checks, probe_passed=probe_passed, handler_tier=handler_tier
     )
+
+
+# --- Watch-tier lane (PLAN-0022 Phase 3 — escalation correctness, M-1/M-2) ----
+
+
+@dataclass(frozen=True)
+class WatchGrade:
+    """The watch-lane outcome for one ``watch`` item's LLM proposal (M-1).
+
+    ``handler`` is the model's ``suggested_handler`` verbatim — the per-vertical
+    distribution evidence the M-2=b calibration run reports. ``tier`` /
+    ``passed`` are ``None`` exactly when the item declares no handler tiers
+    (unscored — the M-2=b state for every watch item until ground truth is
+    pinned from calibration evidence); otherwise ``tier`` is the shared
+    :func:`classify_handler_tier` classification and ``passed`` = canonical or
+    acceptable (a ``forbidden`` hit is named explicitly via the tier, never
+    lumped with merely-non-canonical — SD-4=a reporting).
+    """
+
+    handler: str
+    tier: HandlerTier | None
+    passed: bool | None
+
+
+def grade_watch_proposal(judgment: LlmJudgment, expected: Expected) -> WatchGrade:
+    """Grade one watch item's LLM proposal on the watch-tier lane (M-1).
+
+    Reuses :func:`classify_handler_tier` — the taxonomy is defined once, shared
+    with the α probe. When the item declares no ``canonical_handler`` /
+    ``acceptable_handlers`` (M-2=b calibration-first: no watch ground truth is
+    authored yet), the grade is **unscored**: the handler is recorded for the
+    distribution report and ``passed`` stays ``None`` rather than failing.
+    """
+    if not declares_handler_tiers(expected):
+        return WatchGrade(handler=judgment.suggested_handler, tier=None, passed=None)
+    tier = classify_handler_tier(judgment.suggested_handler, expected)
+    passed = tier in (HandlerTier.CANONICAL, HandlerTier.ACCEPTABLE)
+    return WatchGrade(handler=judgment.suggested_handler, tier=tier, passed=passed)

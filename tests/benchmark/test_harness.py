@@ -1,10 +1,12 @@
 """Harness end-to-end unit tests (PLAN-0019 B-β) — offline, mock ``ChatClient``.
 
 The thin slice that proves the whole design works without MS-S1: a breach item
-runs the two-call judgment path (mocked) and is graded; a watch/ok item is the
-deterministic guard and never calls the model; a judgment that never validates is
-recorded as an incorrect proposal; and ``summarize`` keeps the headline and the
-deterministic sanity number separate (SD-B1).
+runs the two-call judgment path (mocked) and is graded; a watch item runs the
+SAME judgment path and is graded on the watch-tier lane (PLAN-0022 Phase 3,
+M-1 — unscored distribution under M-2=b until ground truth is pinned); an ok
+item is the deterministic guard and never calls the model; a judgment that
+never validates is recorded loudly; and ``summarize`` keeps the headline, the
+α probe, the watch lane, and the deterministic sanity number separate (SD-B1).
 """
 
 from __future__ import annotations
@@ -105,7 +107,9 @@ def _breach_item(**expected_overrides: Any) -> BenchmarkItem:
     )
 
 
-def _watch_item() -> BenchmarkItem:
+def _watch_item(**expected_overrides: Any) -> BenchmarkItem:
+    expected: dict[str, Any] = {"disposition": "watch", "action_expected": False}
+    expected.update(expected_overrides)
     return BenchmarkItem(
         id="t-watch",
         description="DO 4.5 — watch",
@@ -119,7 +123,25 @@ def _watch_item() -> BenchmarkItem:
             direction="below",
             watch_margin=1.0,
         ),
-        expected=Expected(disposition=Disposition.WATCH, action_expected=False),
+        expected=Expected.model_validate(expected),
+    )
+
+
+def _ok_item() -> BenchmarkItem:
+    return BenchmarkItem(
+        id="t-ok",
+        description="DO 5.5 — ok",
+        scenario=Scenario(
+            event_id="evt-3",
+            entity_type="Pond",
+            primary_key="pond-A5",
+            measured_value=5.5,
+            unit="mg/L",
+            threshold=4.0,
+            direction="below",
+            watch_margin=1.0,
+        ),
+        expected=Expected(disposition=Disposition.OK, action_expected=False),
     )
 
 
@@ -188,16 +210,108 @@ async def test_breach_item_with_wrong_entity_grades_fail() -> None:
     assert result.proposal_correct is False
 
 
-async def test_non_breach_item_is_not_graded_and_never_calls_the_model() -> None:
+async def test_ok_item_is_not_graded_and_never_calls_the_model() -> None:
     client = FakeChatClient([])  # would raise on any chat() call
+
+    result = await evaluate_item(_ok_item(), client, vertical=_VERTICAL)
+
+    assert result.disposition_actual is Disposition.OK
+    assert result.disposition_correct is True
+    assert result.graded is False
+    assert result.proposal_correct is None
+    assert result.watch_graded is False
+    assert client.calls == [], "ok items must not invoke the LLM"
+
+
+# --- watch-tier lane (PLAN-0022 Phase 3 — M-1 escalation correctness) ---------
+
+
+async def test_watch_item_runs_the_llm_and_is_unscored_without_tiers() -> None:
+    """M-1: a watch item now RUNS the judgment path (the escalation proposal);
+    M-2=b: with no handler tiers declared (the calibration state) it grades
+    UNSCORED — the handler is recorded for the distribution report, never failed
+    — and the β/α lanes stay untouched (lane isolation)."""
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    client = FakeChatClient([_result("draft", thinking="r"), _result(_judgment_json())])
 
     result = await evaluate_item(_watch_item(), client, vertical=_VERTICAL)
 
     assert result.disposition_actual is Disposition.WATCH
     assert result.disposition_correct is True
-    assert result.graded is False
+    assert result.watch_graded is True
+    assert result.graded is False  # β lane isolation
     assert result.proposal_correct is None
-    assert client.calls == [], "watch/ok items must not invoke the LLM"
+    assert result.probe_correct is None  # α lane isolation
+    assert result.watch_pass is None  # unscored (M-2=b calibration)
+    assert result.watch_tier is None
+    assert result.watch_handler == "echo"
+    assert result.judgment is not None  # carried for --dump-json VERIFY
+    assert len(client.calls) == 2  # the same two-call Pattern-B exchange
+
+
+async def test_watch_item_with_declared_tiers_is_scored() -> None:
+    """Post-calibration: a watch item that pins handler ground truth (the schema
+    permits the tier fields on watch items today) grades pass/fail via the SAME
+    tier taxonomy as the α probe — canonical passes the lane."""
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    client = FakeChatClient([_result("draft", thinking="r"), _result(_judgment_json())])
+
+    result = await evaluate_item(_watch_item(canonical_handler="echo"), client, vertical=_VERTICAL)
+
+    assert result.watch_graded is True
+    assert result.watch_pass is True
+    assert result.watch_tier is HandlerTier.CANONICAL
+    assert result.watch_handler == "echo"
+    assert result.graded is False  # still never β
+
+
+async def test_watch_item_forbidden_pick_is_named_explicitly() -> None:
+    """M-1 / SD-4=a: a proposed handler containing a forbidden_keywords near-miss
+    classifies FORBIDDEN (named explicitly, never lumped with merely-non-canonical)
+    and fails the scored lane."""
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    registry.register_handler(_VERTICAL, "expedite_shipment", _noop_handler)
+    judgment = _judgment_json(suggested_handler="expedite_shipment")
+    client = FakeChatClient([_result("draft", thinking="r"), _result(judgment)])
+
+    result = await evaluate_item(
+        _watch_item(acceptable_handlers=["inspect"], forbidden_keywords=["expedite"]),
+        client,
+        vertical=_VERTICAL,
+    )
+
+    assert result.watch_graded is True
+    assert result.watch_pass is False
+    assert result.watch_tier is HandlerTier.FORBIDDEN
+    assert result.watch_handler == "expedite_shipment"
+
+
+async def test_watch_item_error_is_recorded_not_raised() -> None:
+    """A failed watch judgment is loud but never crashes the run: an unscored
+    (M-2=b) item carries the error with no pass/fail to pin; a scored item fails
+    the lane."""
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+
+    class _Boom:
+        async def chat(
+            self,
+            messages: list[dict[str, str]],
+            *,
+            think: bool | None = None,
+            response_format: dict[str, Any] | None = None,
+            temperature: float = 0.0,
+        ) -> ChatResult:
+            raise OllamaError("call to /api/chat failed: timeout")
+
+    unscored = await evaluate_item(_watch_item(), _Boom(), vertical=_VERTICAL)
+    assert unscored.watch_graded is True
+    assert unscored.error is not None and "timeout" in unscored.error
+    assert unscored.watch_pass is None  # calibration: nothing to pin
+    assert unscored.watch_handler is None
+
+    scored = await evaluate_item(_watch_item(canonical_handler="echo"), _Boom(), vertical=_VERTICAL)
+    assert scored.watch_graded is True
+    assert scored.watch_pass is False  # a pinned item fails loudly on error
 
 
 async def test_transport_error_is_recorded_not_raised() -> None:
@@ -330,6 +444,147 @@ def test_summarize_aggregates_the_alpha_probe_separately() -> None:
     assert summary.probe_tiers == {"canonical": 1, "acceptable": 1, "forbidden": 0, "other": 1}
 
 
+def test_summarize_watch_lane_calibration_distribution() -> None:
+    """M-2=b: with no scored watch items the lane reports a handler DISTRIBUTION
+    (counts; accuracy None — nothing pinned, no bar) and errors are named — and
+    the watch lane never moves β / α / deterministic (lane isolation)."""
+    results = [
+        ItemResult("a", _VERTICAL, Disposition.BREACH, Disposition.BREACH, True, True, True, None),
+        ItemResult(
+            "w1",
+            _VERTICAL,
+            Disposition.WATCH,
+            Disposition.WATCH,
+            True,
+            False,
+            None,
+            None,
+            watch_graded=True,
+            watch_handler="inspect",
+        ),
+        ItemResult(
+            "w2",
+            _VERTICAL,
+            Disposition.WATCH,
+            Disposition.WATCH,
+            True,
+            False,
+            None,
+            None,
+            watch_graded=True,
+            watch_handler="inspect",
+        ),
+        ItemResult(
+            "w3",
+            _VERTICAL,
+            Disposition.WATCH,
+            Disposition.WATCH,
+            True,
+            False,
+            None,
+            None,
+            watch_graded=True,
+            watch_handler="echo",
+        ),
+        ItemResult(
+            "w4",
+            _VERTICAL,
+            Disposition.WATCH,
+            Disposition.WATCH,
+            True,
+            False,
+            None,
+            None,
+            error="timeout",
+            watch_graded=True,
+        ),
+    ]
+
+    summary = summarize(results)
+
+    assert summary.watch_graded == 4
+    assert summary.watch_scored == 0
+    assert summary.watch_accuracy is None  # calibration: no pass/fail pinned
+    assert summary.watch_handlers == {"inspect": 2, "echo": 1}
+    assert summary.watch_errors == 1
+    assert summary.watch_tiers == {"canonical": 0, "acceptable": 0, "forbidden": 0, "other": 0}
+    assert summary.headline_accuracy == 1.0  # β untouched by the watch lane
+    assert summary.probe_accuracy is None  # α untouched
+    assert summary.deterministic_accuracy == 1.0
+
+
+def test_summarize_watch_lane_scored_accuracy_and_tiers() -> None:
+    """Post-calibration: scored watch items aggregate accuracy + per-tier counts
+    on their own lane; an unscored item still rides only the distribution."""
+    results = [
+        ItemResult(
+            "w1",
+            _VERTICAL,
+            Disposition.WATCH,
+            Disposition.WATCH,
+            True,
+            False,
+            None,
+            None,
+            watch_graded=True,
+            watch_pass=True,
+            watch_tier=HandlerTier.CANONICAL,
+            watch_handler="echo",
+        ),
+        ItemResult(
+            "w2",
+            _VERTICAL,
+            Disposition.WATCH,
+            Disposition.WATCH,
+            True,
+            False,
+            None,
+            None,
+            watch_graded=True,
+            watch_pass=True,
+            watch_tier=HandlerTier.ACCEPTABLE,
+            watch_handler="inspect",
+        ),
+        ItemResult(
+            "w3",
+            _VERTICAL,
+            Disposition.WATCH,
+            Disposition.WATCH,
+            True,
+            False,
+            None,
+            None,
+            watch_graded=True,
+            watch_pass=False,
+            watch_tier=HandlerTier.FORBIDDEN,
+            watch_handler="expedite_shipment",
+        ),
+        ItemResult(
+            "w4",
+            _VERTICAL,
+            Disposition.WATCH,
+            Disposition.WATCH,
+            True,
+            False,
+            None,
+            None,
+            watch_graded=True,
+            watch_handler="hold",  # unscored: no tiers declared on this item
+        ),
+    ]
+
+    summary = summarize(results)
+
+    assert summary.watch_graded == 4
+    assert summary.watch_scored == 3
+    assert summary.watch_correct == 2
+    assert summary.watch_accuracy == 2 / 3
+    assert summary.watch_tiers == {"canonical": 1, "acceptable": 1, "forbidden": 1, "other": 0}
+    assert summary.watch_handlers == {"echo": 1, "inspect": 1, "expedite_shipment": 1, "hold": 1}
+    assert summary.graded == 0  # no breach item — β denominator untouched
+    assert summary.headline_accuracy is None
+
+
 def test_summarize_handles_no_graded_items() -> None:
     results = [
         ItemResult("c", _VERTICAL, Disposition.OK, Disposition.OK, True, False, None, None),
@@ -430,14 +685,44 @@ async def test_evaluate_item_records_per_judgment_latency_on_error() -> None:
     assert len(recorder.durations) == 1  # ...but the wall-clock was still recorded
 
 
-async def test_evaluate_item_records_no_per_judgment_latency_for_non_breach() -> None:
-    """Watch/ok items make no LLM call, so there is no per-judgment latency to record."""
+async def test_evaluate_item_records_no_per_judgment_latency_for_ok() -> None:
+    """ok items make no LLM call, so there is no per-judgment latency to record
+    on either recorder."""
     recorder = LatencyRecorder()
+    watch_recorder = LatencyRecorder()
     client = FakeChatClient([])  # would raise on any chat() call
 
-    await evaluate_item(_watch_item(), client, vertical=_VERTICAL, judgment_recorder=recorder)
+    await evaluate_item(
+        _ok_item(),
+        client,
+        vertical=_VERTICAL,
+        judgment_recorder=recorder,
+        watch_judgment_recorder=watch_recorder,
+    )
 
     assert recorder.durations == []
+    assert watch_recorder.durations == []
+
+
+async def test_watch_judgment_latency_lands_in_its_own_recorder() -> None:
+    """M-4: a watch item's judgment wall-clock is its OWN diagnostic — recorded
+    in the watch recorder, NEVER in the SD-2 breach-scoped per-judgment recorder
+    (the ≤ 30 s p95 bar stays breach-scoped; no bar moves)."""
+    registry.register_handler(_VERTICAL, "echo", _noop_handler)
+    breach_recorder = LatencyRecorder()
+    watch_recorder = LatencyRecorder()
+    client = FakeChatClient([_result("draft", thinking="r"), _result(_judgment_json())])
+
+    await evaluate_item(
+        _watch_item(),
+        client,
+        vertical=_VERTICAL,
+        judgment_recorder=breach_recorder,
+        watch_judgment_recorder=watch_recorder,
+    )
+
+    assert breach_recorder.durations == []  # the SD-2 unit is untouched
+    assert len(watch_recorder.durations) == 1  # one watch judgment, one duration
 
 
 async def test_evaluate_item_threads_reasoning_mode_skip_to_single_call() -> None:
