@@ -105,6 +105,21 @@ PYTHONUNBUFFERED=1 uv run python -m benchmarks.procedure_baseline.run_benchmark 
   instrumented anyway so any future one-off is diagnosable, and if you do hit a
   kill, just relaunch (the dump/latency are END-only, so a fresh full run is the
   recovery — there is no resume).
+- **Carrier death ≠ benchmark death (observed 2026-06-12).** A one-off reap can
+  kill only the **carrier** (the held wsl.exe + wrapper bash): the heartbeat
+  subshell dies on SIGPIPE at its next echo and `[wrap] EXIT` never gets
+  written — but the python benchmark, whose stdout is redirected to a **file**,
+  survives as an orphan and finishes normally. Consequences: **no harness
+  completion notification fires**, and the background-task chip can show
+  **"running" stale** though nothing is running. Truth test is
+  **content-based, never task-status-based**: (1) the log's final
+  `DUMP: wrote N item records` + NOTE block are `_main()`'s LAST statements —
+  their presence proves every prior item/summary completed; (2) the
+  `--dump-json` record count matches; (3) `pgrep -af run_benchmark` is empty;
+  (4) `TaskStop <id>` returning "No task found" confirms the harness handle is
+  already gone (the chip is display-only at that point). After diagnosing a
+  carrier death, verify/clear the harness task state immediately — don't leave
+  a stale "running" chip for Cray to find.
 - `--reasoning-mode {full,think_off,skip}` — PLAN-0020 think-trim lever.
 - `--judgment-latency-threshold` defaults **30 s** (SD-2 per-judgment acceptance
   bar); `--latency-threshold` (per-call) is a lever diagnostic only.
