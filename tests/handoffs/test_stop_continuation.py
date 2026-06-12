@@ -71,6 +71,12 @@ def stub_env(tmp_path: Path) -> dict[str, str]:
     # classifier into a live API call here.
     env.pop("ANTHROPIC_API_KEY", None)
     env["CLAUDE_ANTHROPIC_KEY_FILE"] = str(tmp_path / "nope.anthropic_api_key")
+    # Pin the sonnet backend: defang-by-no-key only neuters the API path. The
+    # production default is local Ollama (Cray pick (b), 2026-06-12), which
+    # needs no key — without this pin these subprocess tests silently hit the
+    # real MS-S1 network and pass only while the model is warm (17 cold-load
+    # timeouts on 2026-06-12 exposed this).
+    env["CLAUDE_CLASSIFIER_BACKEND"] = "sonnet"
     # PLAN-0021 M2 hermeticity: point the goal gate at a per-test (absent)
     # goal file so a developer's live .claude/state/goal.json can never leak
     # into these cases. Absent file = no active goal = the gate falls through
