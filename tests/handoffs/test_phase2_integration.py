@@ -175,6 +175,11 @@ def stub_env(tmp_path: Path) -> dict[str, str]:
     env.pop("CLAUDE_CODE_STOP_HOOK_BLOCK_CAP", None)
     env.pop("ANTHROPIC_API_KEY", None)
     env["CLAUDE_ANTHROPIC_KEY_FILE"] = str(tmp_path / "nope.anthropic_api_key")
+    # Pin the sonnet backend: this suite drives a mock Anthropic-shaped server
+    # via CLAUDE_SONNET_API_URL; the production default is now the local
+    # Ollama backend (Cray pick (b), 2026-06-12 — unit-tested in
+    # test_sonnet_classifier.py), which would bypass the mock entirely.
+    env["CLAUDE_CLASSIFIER_BACKEND"] = "sonnet"
     return env
 
 

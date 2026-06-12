@@ -30,6 +30,14 @@
 > proceed dispatch on `Stop` events; no deterministic hook covers them
 > (intentional — they require judgment the classifier supplies).
 
+> **Classifier backend (2026-06-12, Cray pick (b)):** the judgment calls below
+> are served by **local `gpt-oss:20b` on MS-S1 Ollama** by default (eval:
+> `benchmarks/stop_classifier/RESULTS.md` — 19/20, recall 100%, p50 ~7 s
+> accepted). "Sonnet" in row annotations names the role/mechanism
+> (`_sonnet_classifier.py`), not the serving model; the Anthropic-API path
+> remains the rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`. Fail-closed
+> pause is backend-independent (an unreachable MS-S1 pauses, never proceeds).
+
 ## Always-pause triggers
 
 When ANY of the rows below matches an agent's intended next action, the

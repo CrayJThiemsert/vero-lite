@@ -65,6 +65,15 @@ def fake_registry(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return p
 
 
+@pytest.fixture(autouse=True)
+def force_sonnet_backend(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Pin the legacy suite to the sonnet backend. These tests exercise the
+    Anthropic-API transport + auth chain, which since Cray pick (b)
+    (2026-06-12) is the ROLLBACK path — the default backend is local Ollama.
+    The Ollama-backend section below overrides this env per-test."""
+    monkeypatch.setenv("CLAUDE_CLASSIFIER_BACKEND", "sonnet")
+
+
 @pytest.fixture
 def with_api_key(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test-fake-key")
@@ -306,6 +315,105 @@ def test_result_always_has_required_keys(
     assert set(result.keys()) >= {"decision", "matched_rows", "reason"}
     assert isinstance(result["matched_rows"], list)
     assert isinstance(result["reason"], str)
+
+
+# --- Ollama backend (the DEFAULT since Cray pick (b), 2026-06-12) ------------
+
+
+def _make_ollama_response(text: str) -> MagicMock:
+    """Context-manager mock mimicking urlopen against Ollama /api/chat."""
+    wire = {"message": {"role": "assistant", "content": text}}
+    raw = json.dumps(wire).encode("utf-8")
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = raw
+    mock_resp.__enter__.return_value = mock_resp
+    mock_resp.__exit__.return_value = False
+    return mock_resp
+
+
+def test_default_backend_is_ollama_and_needs_no_api_key(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path
+) -> None:
+    """With the env unset the classifier goes to MS-S1 Ollama — no API key in
+    the chain at all (the auth requirement is sonnet-backend-only), with the
+    format-constrained, temperature-0, keep-alive request shape."""
+    monkeypatch.delenv("CLAUDE_CLASSIFIER_BACKEND", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    seen: dict[str, Any] = {}
+
+    def fake_urlopen(req: Any, timeout: float) -> MagicMock:
+        seen["url"] = req.full_url
+        seen["timeout"] = timeout
+        seen["body"] = json.loads(req.data.decode("utf-8"))
+        return _make_ollama_response('{"decision": "proceed", "matched_rows": [], "reason": "ok"}')
+
+    monkeypatch.setattr(sc.urllib.request, "urlopen", fake_urlopen)
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "proceed"
+    assert seen["url"] == "http://192.168.1.133:11434/api/chat"
+    assert seen["timeout"] == sc.OLLAMA_TIMEOUT_SEC
+    body = seen["body"]
+    assert body["model"] == "gpt-oss:20b"
+    assert body["stream"] is False
+    assert body["options"] == {"temperature": 0}
+    assert body["keep_alive"] == "10m"
+    assert body["format"]["properties"]["decision"]["enum"] == [
+        "proceed",
+        "pause",
+        "dispatch",
+    ]
+    assert body["messages"][0]["role"] == "system"
+    assert "REGISTRY START" in body["messages"][0]["content"]
+
+
+def test_ollama_env_overrides_url_and_model(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path
+) -> None:
+    monkeypatch.delenv("CLAUDE_CLASSIFIER_BACKEND", raising=False)
+    monkeypatch.setenv("CLAUDE_CLASSIFIER_OLLAMA_URL", "http://127.0.0.1:9999/")
+    monkeypatch.setenv("CLAUDE_CLASSIFIER_OLLAMA_MODEL", "custom-model:1b")
+    seen: dict[str, Any] = {}
+
+    def fake_urlopen(req: Any, timeout: float) -> MagicMock:
+        seen["url"] = req.full_url
+        seen["body"] = json.loads(req.data.decode("utf-8"))
+        return _make_ollama_response('{"decision": "pause", "matched_rows": [], "reason": "ok"}')
+
+    monkeypatch.setattr(sc.urllib.request, "urlopen", fake_urlopen)
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+    assert seen["url"] == "http://127.0.0.1:9999/api/chat"  # trailing slash stripped
+    assert seen["body"]["model"] == "custom-model:1b"
+
+
+def test_ollama_unreachable_fails_closed_to_pause(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path
+) -> None:
+    """An MS-S1 outage must pause, never proceed (backend-independent
+    fail-closed contract)."""
+    monkeypatch.delenv("CLAUDE_CLASSIFIER_BACKEND", raising=False)
+
+    def boom(req: Any, timeout: float) -> MagicMock:
+        raise urllib.error.URLError("connection refused")
+
+    monkeypatch.setattr(sc.urllib.request, "urlopen", boom)
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+    assert "unreachable" in result["reason"]
+
+
+def test_ollama_malformed_envelope_fails_closed_to_pause(
+    monkeypatch: pytest.MonkeyPatch, fake_registry: Path
+) -> None:
+    monkeypatch.delenv("CLAUDE_CLASSIFIER_BACKEND", raising=False)
+    mock_resp = MagicMock()
+    mock_resp.read.return_value = json.dumps({"no": "message"}).encode("utf-8")
+    mock_resp.__enter__.return_value = mock_resp
+    mock_resp.__exit__.return_value = False
+    monkeypatch.setattr(sc.urllib.request, "urlopen", lambda req, timeout: mock_resp)
+    result = sc.classify({"event": "Stop"})
+    assert result["decision"] == "pause"
+    assert "malformed" in result["reason"]
 
 
 def test_system_prompt_carries_the_completion_consistency_rule() -> None:
