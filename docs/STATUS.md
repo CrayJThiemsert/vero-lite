@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-12T14:26:52+07:00
+last_updated: 2026-06-12T15:10:23+07:00
 session: 56
-current_batch: 'session-56 classifier local backend switch (#282)'
+current_batch: 'session-56 lessons #24+#25 (#284)'
 current_actor: code
 blocked_on: 'M-2=b watch ground-truth pinning awaits Cray adjudication. No open PRs.'
 next_action: 'Cray adjudicates M-2=b watch pinning → dataset PR + first SCORED watch run; hyphen-normalization ratify pending.'
-head_commit: 3375778
-recent_commits: [3375778, 246ee0a, c84264e, aecf1bd, cbe6d05, 3a8a175, f7cb82a, 489b695, b41a138]
+head_commit: 4b0e306
+recent_commits: [4b0e306, 3375778, 246ee0a, c84264e, aecf1bd, cbe6d05, 3a8a175, f7cb82a, 489b695]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,18 @@ recent_commits: [3375778, 246ee0a, c84264e, aecf1bd, cbe6d05, 3a8a175, f7cb82a, 
 
 ## Current Focus
 
-> **Session 56 (current, fifth batch) — stop classifier SWITCHED to
+> **Session 56 (current, sixth batch) — Lessons #24 + #25 RECORDED (#284;
+> head_commit `4b0e306`, `docs(lessons):` = the newest substantive per
+> `lint_status`; merge `c2da9b5`).** Cray-approved docs-capture coda to the
+> calibration arc: **#24** — rules must live where the enforcer looks (the C5
+> registry-gap finding generalized; adds an enforcement dimension to the
+> ADR-0017 D5 placement rule). **#25** — an LLM judge's `{verdict, reason}`
+> needs verdict-by-observable definitions + an explicit cross-field agreement
+> contract, pinned by a prompt contract test + gold case (generalizes to the
+> ADR-0018 goal-evaluator).
+> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
+>
+> **Session 56 (fifth batch) — stop classifier SWITCHED to
 > local `gpt-oss:20b` on MS-S1 (#282; head_commit `3375778`,
 > `feat(claude):` = the newest substantive per `lint_status`; merge
 > `03f81ec`).** The implementation of the fourth-batch decision: Cray
@@ -240,53 +251,6 @@ recent_commits: [3375778, 246ee0a, c84264e, aecf1bd, cbe6d05, 3a8a175, f7cb82a, 
 > `confidence` (ADR-010 IN-3).
 > AI-assisted (Claude Code, session 54); no `Co-Authored-By` per CLAUDE.md §7.
 >
-> **Session 53 — PLAN-0020 (Procedure-path tuning) is COMPLETE
-> + archived to `docs/plans/done/` (#251–#256, branch-tip `a6125c1` =
-> head_commit, the `docs(plans):` close-mv riding #256; merge `02d3e46`;
-> the PLAN-0019 B-6 ring-fence follow-up).** Headline results (all
-> `--dump-json`-VERIFIED, `gpt-oss:20b` on MS-S1): the Phase-1 aquaculture
-> prompt nudge (PR #232, previously UNMEASURED) worked **dramatically** —
-> overall β `85.8%→100%`, aquaculture β `60%→100%`, overall α `70%→100%`
-> (supply_chain α `32.5%→100%`: the model now picks `hold`, not `inspect`).
-> **The latency lever:** a new `reasoning_mode` lever showed `skip` (drop the
-> call-1 reasoning pass) cuts per-judgment p95 `31.80s→21.62s` — UNDER the
-> re-ratified SD-2 bar — at **ZERO β cost** (the reasoning pass is redundant
-> given the nudged prompt); `think_off` is a **dead lever** (slower).
-> **SD-2 re-ratified** the latency bar from 8 s/per-call to **≤30 s p95
-> per-judgment** (reports-not-gates). **SD-1** (widen supply-α `valid_handlers`)
-> was authorized at ratification but **SKIPPED at Step 9** — the nudge made the
-> divergence moot (0 `inspect`); anti-moving-target honored, **no grader
-> change**. Also shipped: a per-judgment latency timer (#252), the think-trim
-> lever (`feat(engine)`, #253, PLAN-0020 AC-1a), and the **`ms-s1-ollama`
-> skill** (#254, `warm.sh` live-tested). PR lineage: #251 ratify Draft→Accepted
-> (`19706eb`, SD-1 widen-α + SD-2 →30 s/judgment) → #252 latency timer
-> (`a3a6f54`) → #253 think-trim lever (`bef462f`) → #254 skill (`ac56653`) →
-> #255 tuning report (`4968f51`, `docs(report):`) → #256 close-mv to done/
-> (`a6125c1`, `docs(plans):` = head_commit, the newest substantive per
-> `lint_status` — only `docs(status):` is excluded).
-> **Session 52 was non-committing** (an Axis-B verification-loop LIVE demo +
-> a backlog-prioritization pass that ranked PLAN-0020 priority #1) — no repo
-> state changed, so the jump is session 51 → 53.
-> **Next.** A follow-up PLAN for **tiered handler grading**
-> (canonical / acceptable / forbidden) is surfaced by Cray's production-fidelity
-> review — the α metric is too coarse to self-distinguish a benign alternative
-> (`inspect`) from a dangerous pick (`expedite`/`reroute`); deferred to a future
-> session for discussion. Separately, **wiring `skip` into the product
-> procedure path** is an open design call (audit trade-off: `skip` drops the
-> ADR-010 reasoning narrative; the model-asserted `rationale` survives). The
-> gitignored Cowork research (why `gpt-oss:20b` wins) is now **DONE** —
-> delivering a 6-criterion model-selection **screening rubric (R1–R6)** + a
-> warm-cycle gate (`docs/research/private/2026-06-11-gpt-oss-20b-winning-properties.md`),
-> the paper pre-filter for the deferred R3 faster-arch eval. **Held for a future
-> R3-adjacent warm-cycle:** Cray pulled **3 `nemotron-3-nano` variants** to
-> MS-S1 (`30b-a3b-q4_K_M`, `30b-a3b-q8_0`, `4b`) — **no eval run yet, no
-> ADR-0001 change**; intent is pin vs these in one maintenance-window warm-cycle,
-> ideally paired with the U-1 `MXFP4`-vs-`Q4_K_M` tok/s check + U-2 `eval_count`
-> logging. **Caveat:** they ship `q4_K_M`/`q8_0`/`fp16` (not `MXFP4`), so they
-> exercise rubric R1/R5 now but a fair **R2 bandwidth** comparison needs an
-> `MXFP4` build.
-> AI-assisted (Claude Code, session 53); no `Co-Authored-By` per CLAUDE.md §7.
->
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
 ## Prior focus (archived)
@@ -308,6 +272,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-12 | **Lessons #24 + #25 RECORDED (#284, `4b0e306`, session 56)** — Cray-approved coda to the classifier calibration arc. **#24:** rules must live where the enforcer looks — a binding rule placed only in prose is invisible to a machine enforcer reading a different surface (C5 registry-gap finding generalized; adds an enforcement dimension to the ADR-0017 D5 placement rule). **#25:** an LLM judge's `{verdict, reason}` needs verdict-by-observable definitions + an explicit cross-field agreement contract, pinned by a prompt contract test + gold case (generalizes to the ADR-0018 goal-evaluator) | `4b0e306` (#284) / `docs/lessons/0024-rules-must-live-where-the-enforcer-looks.md` + `docs/lessons/0025-llm-judge-verdict-must-bind-to-its-own-reasoning.md` |
 | 2026-06-12 | **Stop classifier SWITCHED to local `gpt-oss:20b` (#282, `3375778`, session 56)** — Cray picked **(b)** on the calibration evidence (8–30s latency acceptable). Default backend = MS-S1 Ollama (format-constrained `/api/chat`, temp 0, keep_alive 10m, 75s timeout; no API key / no WSL bridge); Anthropic API retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`. Fail-closed pause + legacy reason strings byte-identical; legacy suite pinned to sonnet + 4 new ollama-backend tests (571 passed / 2 skipped; mypy --strict clean); LIVE-verified from the prod hook runtime: 7.9s → pause | `3375778` (#282) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-06-12 | **Stop-classifier calibration arc SHIPPED (#278 + #279 + #280, `246ee0a`, session 56)** — #278 completion-consistency rule (PROCEED needs concrete remaining work; decision↔reason agreement; contract-test-pinned). #279 20-case safety-weighted eval harness (full prod-prompt fidelity; gold incl. Thai); MS-S1 sweep 4×20 (80 dump-verified): `gpt-oss:20b` 19/20, recall 100%, p95 21.6s vs sonnet(prod) 17+2/20, recall 75%, p95 3.5s; nemotron-4b safety-DQ. #280 HEADLINE = registry gap not model gap → registry row C5 (host-state gate), re-verified live; transport pick (local vs API Sonnet) = Cray's | `246ee0a` (#278–#280) / `benchmarks/stop_classifier/RESULTS.md` |
 | 2026-06-12 | **Carrier-death incident → ops hardening SHIPPED (#275 + #276, `3a8a175`, session 56)** — the calibration run's carrier (held `wsl.exe` + wrapper) was reaped at ~59 min; the orphaned python completed silently (stale "running" task chip, no completion event; truth established content-based). #275 records the gotcha + content-based truth test in the `ms-s1-ollama` skill; #276 adds `run_detached.sh` — long MS-S1 runs launch under `systemd-run --user` (carrier-proof, PROBE-VERIFIED 2026-06-12; `.done` sentinel "rc ISO-ts"; ETA + ~10 min → check sentinel; `Linger=no` = host-state, ask Cray) | `3a8a175` (#275 + #276) / `.claude/skills/ms-s1-ollama/` |
@@ -317,7 +282,6 @@ below, and git history.
 | 2026-06-11 | **PLAN-0022 (tiered decision routing) RATIFIED Draft → Ready for execution (#261, `46061b7`, session 54)** — Cowork-drafted (ADR-009 D1, #259); Code R2-reviewed, re-verifying the two load-bearing fact-pack catches vs HEAD (**FP-2/SD-6:** no deterministic `evaluate` executor in `services/engine/procedures/` — only `ActionStepExecutor`; a real prerequisite for `watch→gated`; **FP-1/SD-7:** aquaculture `procedures.yaml` routes `watch→human_task`, an *upgrade* target not silence). Cray accepted **SD-1..SD-7 per recommendation** (SD-1=a gated replaces human_task; SD-2=a deterministic watch band only, no ADR-010 reopen; SD-4=a reuse `forbidden_keywords`; SD-5=a fields on the `Step`; SD-6=a evaluate executor in the impl PR) + **S-1 keep ammonia**. Added **§ Execution Order**: Phase 0 ADR-016 D3 amendment first (CLAUDE.md §8) → Phase 1 grader taxonomy ∥ config (define once) → Phase 2 `evaluate` executor → `watch→gated` → Phase 3 escalation scoring. Trigger = engine watch band, never `confidence` (ADR-010 IN-3). Impl = later separate PR. Also received (gitignored research): 3 Build-Vertical narratives + the gpt-oss rubric R1–R6 | `46061b7` (#261) / `docs/plans/0022-tiered-decision-routing.md` |
 | 2026-06-11 | **PLAN-0020 (Procedure-path tuning) COMPLETE + archived to done/ (#251–#256, `a6125c1`, session 53)** — the PLAN-0019 B-6 ring-fence follow-up. All `--dump-json`-VERIFIED on `gpt-oss:20b`/MS-S1: the Phase-1 aqua prompt nudge (PR #232, prev. UNMEASURED) worked dramatically — overall β `85.8%→100%`, aqua β `60%→100%`, overall α `70%→100%` (supply α `32.5%→100%`: model now picks `hold` not `inspect`). Latency lever: new `reasoning_mode=skip` (drop call-1 reasoning) cuts p95 `31.80s→21.62s` UNDER the 30s bar at **zero β cost** (`think_off` = dead lever). **SD-1** (widen supply-α) authorized at ratify but **SKIPPED at Step 9** — nudge made the divergence moot (0 `inspect`); anti-moving-target honored, no grader change. Also: per-judgment latency timer (#252), think-trim lever (#253), `ms-s1-ollama` skill (#254, `warm.sh` live-tested), tuning report (#255). Next: future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring `skip` into product path is an open audit trade-off | `a6125c1` (#251–#256) / `docs/plans/done/0020-procedure-tuning-latency-precision.md` + `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-11 | **PLAN-0020 ratified Draft→Accepted (#251, `19706eb`, session 53)** — SD-1 = widen supply-α `valid_handlers` `[hold]`→`[hold, inspect]` (later skipped at Step 9, see close row); SD-2 = re-ratify the latency bar from **8 s/per-call → ≤30 s p95 per-judgment** (reports-not-gates). Unblocked the gated MS-S1 tuning campaign | `19706eb` (#251) / `docs/plans/done/0020-procedure-path-tuning.md` |
-| 2026-06-10 | **PLAN-0021 SHIPPED (#249, `3dc586a`, session 51) — the Axis-B verification loop is LIVE; both harness-review tracks complete** — goal gate (`_goal_gate.py` at the D4 seam inside `stop_continuation.py`, fail-open per ADR-0018 D4) + `goal-evaluator` 4th subagent + `/goal` (the repo's first project command) + the SD-1 narrowed-Write deny hook; +64 tests (suite 1398 passed / 22 skipped, zero regression); 7/10 case-matrix rows proven LIVE incl. the fail-open probe (`released-unevaluated` + LOUD Telegram, no wedge). F-L1: verdict→flip lands at the next non-chained Stop (OQ-8 blocking-mode promotion must account). Archived to done/ (`7d6d713`, same PR) | `3dc586a` (#249) / `docs/plans/done/0021-axis-b-verification-loop-build.md` |
 ## In-Flight Discussions
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
