@@ -375,12 +375,147 @@ _Addendum — rotated 2026-06-11 (session 55 reconcile):_
 > `Proposed` → Cray ratifies. Separately/optionally: begin the Axis-B
 > verification-loop prototype (an evaluator subagent + a `/goal` Stop-hook gate).
 
+_Addendum — rotated 2026-06-12 (session 56 reconcile) — five session-51 blocks, newest first:_
+
+> **Session 51 — PLAN-0021 EXECUTED + MERGED (#249, branch tip
+> `3dc586a`; merge `83f179d`; head_commit `7d6d713` = the `docs(plans):`
+> archive-mv riding this closeout PR, the newest substantive per
+> `lint_status` — only `docs(status):` is excluded): the Axis-B
+> verification loop is LIVE.** 2,125 insertions: 6 new files
+> (`_goal_state.py`; `_goal_gate.py` at the D4 seam inside
+> `stop_continuation.py`; the `/goal` project command — the repo's first,
+> discovered mid-session; `goal-evaluator` as 4th subagent sibling; the
+> SD-1 narrowed-Write deny hook; +64 tests across 3 new test modules + M2
+> rows), exactly 3 modified files, `settings.json` untouched (F-1). All 10
+> ACs closed; the 10-row case-coverage matrix fully implemented as named
+> tests AND 7 rows proven LIVE in the session's own Stop hooks: real
+> dispatch ×2 (D6 pointers-only template; Windows-side check subprocess +
+> UNC git fingerprint worked), live evaluator spawn (J1=PASS
+> file:line-cited; appended its verdict through the SD-1 hook; caught a
+> real registry-footer gap on its first run), happy flip
+> (`_goal_gate:passed` + Telegram info), and the fail-open probe
+> (deliberately unanswered dispatch → `released-unevaluated` + LOUD
+> Telegram + stop fired, NO wedge — D4's asymmetry held in production;
+> both Telegrams Cray-screenshot-confirmed, timestamps matching the
+> trail). Full suite 1398 passed / 22 skipped, zero regression. Key
+> finding **F-L1**: verdict→flip lands at the next non-chained Stop (the
+> re-entry guard short-circuits block-continuation Stops — a PLAN-0008
+> invariant, 3 consistent observations; OQ-8 blocking-mode promotion must
+> account for it). PLAN-0021 archived to done/ (`7d6d713`, same PR as
+> this reconcile). Closeout handoff:
+> `.claude/handoffs/session-51/2026-06-10-1450-code-plan0021-build-closeout.md`.
+> AI-assisted (Claude Code, session 51); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 51 (earlier) — PLAN-0021 "Axis-B verification loop — build"
+> landed as Draft (#247, head_commit `78b8659`, `docs(plans):`).** Cowork
+> drafted it per ADR-009 D1 off the session-51 T2 dispatch; Code R2-reviewed
+> + committed per D2/D3. The PLAN renders Accepted ADR-0018 into a build
+> plan: 6 new files (`_goal_state.py`, `_goal_gate.py`,
+> `.claude/commands/goal.md` — the repo's FIRST project command, net-new
+> dir; `goal-evaluator.md` as 4th subagent sibling;
+> `pretooluse_goal_evaluator_write_deny.py` SD-1 narrowed-Write hook; 3
+> test modules) + exactly 3 modified files (M1 `stop_continuation.py` one
+> insertion at the D4 seam, M2 its tests, M3 `autonomy-triggers.md` V-row).
+> 10 ACs incl. AC-2 goal-less byte-for-byte non-interference; a 10-row
+> case-coverage matrix, each row mapped to a named test; VX-1..3 resolved;
+> OQ-8 pinned Out of Scope. Key R2 item **F-1**: Cowork caught the
+> dispatch's wrong premise — status-scribe's deny hook wires via agent
+> frontmatter ONLY, not `settings.json` — so the PLAN keeps `settings.json`
+> untouched and ADR-0018 §spec 4 stays literally true. **NEXT:** Cray
+> ratifies PLAN-0021 (incl. SD-1: SubagentStop notify for goal-evaluator —
+> Cowork recommends NO for v1) → Code executes Steps 1-6 in a feature
+> branch.
+> AI-assisted (Claude Code, session 51); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 51 (earlier) — STATUS rotation arc COMPLETE: Lesson #23 +
+> rotation policy R1-R6 (#244), status-scribe hardened (#245), FIRST
+> ROTATION under the policy + 64 KB pre-commit guard (this PR).** Root
+> cause of the 393 KB bloat was the scribe's own retention rule ("never
+> delete history" with no size counterweight — Lesson #23 §2); the policy
+> pairs retention with a budget: hard 64 KB / soft 48 KB (R1), window =
+> 4 newest sessions / <=8 CF blocks + 10 RD rows (R2), terse single-line
+> frontmatter (R3), archive-don't-drop to `docs/status-archive/` (R4),
+> surgical reads only for the scribe (R5), prune every reconcile (R6).
+> **This rotation:** session-47 CF block + 39 RD rows -> archive
+> (`2026-h1-status.md` — new file; the ratified h1 current-focus file is
+> 242 KB, past the ~192 KB R4 split bar, so appending would breach the
+> 256 KB Read cap — flagged, not silent); F-6 prune dropped all [x]
+> Active TODOs older than the window + Next Steps items 1-9 (superseded
+> MERGED history; recorded in RD/git). head_commit `25af97b` (#245
+> `chore(agents):` = newest substantive; #244's `e22ab18`/`311761c`
+> precede it). R2 review note: Code-harness tokenizer measures ~2.2 B/tok
+> on this file (38.6k tok at 83 KB) vs Cowork's ~3.3 — 64 KB may still
+> exceed a whole-file Read in some harnesses; R5 surgical reads are the
+> structural protection, the byte ceiling is the enforcement proxy.
+> **NEXT = Axis-B T2** (dispatch ready, awaiting Cray relay to Cowork).
+> AI-assisted (Claude Code, session 51); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 51 (earlier) — ADR-0018 "Axis-B Verification Loop" is RATIFIED
+> Accepted (#242, head_commit `1be60f7`, `docs(adr):`); the deferred Axis-B
+> verification-loop track is no longer deferred — it is now Accepted and
+> entering its build phase.** ADR-0018 opens harness-review **track 2** (the
+> evaluator loop) on top of the already-at-frontier Axis-A governance layer:
+> a `/goal` Stop-hook gate + a `goal-evaluator` subagent that judges whether a
+> run actually achieved its declared goal. **Decisions:** D1 hybrid
+> deterministic-check + LLM-judge; D2 a `.claude/state/goal.json` run-goal
+> artifact; D3 a **4th subagent sibling that REFUTES rather than blesses**
+> (the structural guard against reasoning-blindness); D4 a `_goal_gate.py`
+> living inside `stop_continuation.py`, **FAIL-OPEN** (a broken/absent
+> evaluator never blocks Stop); D5 a session-Stop **warn-only v1**; D6 the
+> structural reasoning-blindness rationale; D7 formalize + augment the manual
+> AC ritual. **SD-1 resolved = narrowed Write** — the evaluator's `Write` is
+> hook-narrowed to `goal.json` only (the same author-bounded pattern that
+> governs `plan-drafter` and `status-scribe`). **Lineage:** PR #241 added the
+> ADR `Proposed` (`5f8073c`) → **#242 ratified it Proposed→Accepted (Cray,
+> session 51)** and carries this **T4** STATUS reconcile (the ADR §"Required
+> follow-on" T4 task: record ADR-0018 in Recent Decisions + clear the
+> Current-Focus Axis-B "deferred" earmark). head_commit = `1be60f7` (the
+> ratification `docs(adr):` commit = the newest *substantive* commit per
+> `lint_status`; this `docs(status):` reconcile does NOT count). **NEXT = T2:**
+> Code dispatches the Axis-B **build PLAN** to Cowork (ADR-009 D1) — covering
+> `_goal_gate.py` + the `stop_continuation.py` insertion, the `goal.json`
+> schema + tests, the `/goal` command, the `goal-evaluator` agent + the SD-1
+> write-deny hook, Telegram wiring, and a verification-rigor case-coverage
+> matrix; after draft + Cray ratify → T3 (autonomy-triggers **V-row**) →
+> build. **OQ-8** (plugin packaging, MS-S1 local evaluator, blocking-mode
+> promotion, PR-merge gating, auto-declared goals) and **VX-1..3** stay
+> non-binding / verify-at-execution — none blocks T2. This session also
+> earlier resolved ADR-0017 OQ-B (#239/#240), already recorded below.
+> AI-assisted (Claude Code, session 51); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 51 (earlier) — ADR-0017 OQ-B is RESOLVED; the skills-as-memory-tier
+> arc's last open thread is CLOSED (#239, head_commit `c512cf9`,
+> `docs(adr):`).** OQ-B (skill-loader tie-break on a same-bare-name collision)
+> was the one "delegated to Code" empirical item left after the arc body landed
+> in session 49 (#234/#236/#237/#238). Empirical finding, restart-confirmed at a
+> clean session-51 startup (~99% confidence): on a same-name collision the
+> **GLOBAL/user skill (`C:\Users\crayj\.claude\skills\`) WINS over the project
+> skill** (`<repo>/.claude/skills/`) — the OPPOSITE of ADR-0017 D7's
+> "project-local context wins" premise; the WSL `~/.claude/skills/` path is not
+> scanned, and plugin skills are namespaced (so they don't collide). Recorded
+> three ways: (1) ADR-0017 gains a **"D7 Errata (2026-06-10)"** subsection +
+> OQ-B flipped Open→RESOLVED (errata applied with Cray's explicit per-diff
+> approval through the G1 Accepted-ADR gate); (2) new
+> `docs/lessons/0022-skill-loader-precedence.md`; (3) a fill of the
+> `docs/runbooks/memory-architecture.md` §"Skill Conventions" OQ-B placeholder.
+> The D7 **authority rule** (global/plugin skills must not encode
+> project-binding rules) is UNCHANGED and *reinforced* — only the loader
+> tie-break mechanics and an incidental `eli-cray` example (it's a command, not
+> a global skill) were corrected. The throwaway probe artifacts (host state on
+> three skill roots) were cleaned up after merge — working tree restored to
+> clean. AI-assisted (Claude Code, session 51); probe ran with Cray's approval;
+> no `Co-Authored-By` per CLAUDE.md §7. Two ADR-0017 OQs remain, both
+> non-blocking: **OQ-A** (migration backlog — non-binding future-PR candidates)
+> and **OQ-C** (revisit the tier definition only if harness-as-plugin packaging
+> is pursued). No governance thread is currently blocked or in-flight.
+
 ---
 
 ## Rotated Recent Decisions rows (rotated 2026-06-10)
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-05-25 | **PLAN-0008 AC-1 CORROBORATED via Auto mode bonus run + layer orthogonality CONFIRMED in production** _(rotated 2026-06-12, session 56)_ — A second AC-1 live verification run (2026-05-25 00:30–00:32) using **Mode = Auto** in a fresh worktree session: task `"สร้าง docs/CHANGELOG.md สรุป Phase 2 PRs #9-#17, commit บน branch ใหม่, ไม่ต้อง push"`, single Cray paste, no further input. Result: **≥ 4 auto-continues, 0 permission prompts (Auto mode skipped them all), 0 Telegram pings, terminal pause at commit done** (followed explicit "ไม่ต้อง push" instruction — no over-step). Commit `6dc808c` on branch `chore/phase2-changelog` (unpushed per instruction). **Layer orthogonality confirmed**: Mode (PreToolUse harness layer) ↔ PLAN-0008 (Stop classifier layer) operate independently — Auto mode eliminates per-tool prompts without changing Stop-continuation decisions. **Minor finding for PLAN-0009 carry-over**: `_loop_counter._normalize_file_path()` strips main-repo prefix but does not collapse worktree path suffix (L1 counter key showed `.claude/worktrees/busy-bose-eedc8f/docs/CHANGELOG.md` instead of `docs/CHANGELOG.md`). Non-blocking; per-session isolation works correctly. Both AC-1 evidence runs documented in Current Focus comparison table. Cost: ~$0.004 (4 classifier calls × ~$0.001) | PR #20 amendment / `docs/STATUS.md` |
 | 2026-05-25 | **PLAN-0008 AC-1 VERIFIED — Phase 2 fully audited** _(rotated 2026-06-11, session 55)_ — Cray ran the live AC-1 task in a fresh Code session (task: *"ตรวจ ruff + mypy ทั้ง project, แก้ warning ถ้ามี, commit"*, single Cray paste, no further input). Agent self-continued **≥ 5 consecutive turns** without Cray paste (initial scan → file inspection → plan → branch creation → 5 file fixes → re-verify → tests → commit), then paused at the `git push` boundary asking permission — classifier correctly identified push as state change outside worktree per `feedback_state_change_outside_worktree.md` memory pattern. **0 Telegram pings** (no `cap_reached`, no L1–L4 false-positives). `stop-chain.json` `depth: 0` at end (consistent with terminal pause resetting chain). Side effect: the session surfaced 21 project-wide mypy errors in `tools/` + `tests/` (outside the pre-commit gate scope) and shipped a cleanup commit `8fef3a5` — PR #18 follows separately. Confirms classifier conservatism bias (spurious pauses > spurious proceeds, per OQ-B) works in production. Phase 2 all 4 ACs now VERIFIED; entry conditions for PLAN-0009 (Phase 3 — subagent topology) met | PR #19 amendment / `docs/STATUS.md` + closeout handoff §1 |
 | 2026-05-25 | **PLAN-0008 Phase 2 COMPLETE — Step 8 closeout MERGED** _(rotated 2026-06-11, session 55)_ — PR #17 → `main` (`79fe373`), single `feat(claude)` commit `b3657d5` + merge. AC matrix at merge time: AC-2/AC-3/AC-4 VERIFIED; AC-1 deferred to live Cray-supervised observation (subsequent AC-1 row above closes this). Step 8 deliverables: +2 E2E tests (test_l3_traceback_inline_fires_on_threshold + test_l2_resets_on_pass_for_same_nodeid; 387 → 389 pass / 6 skip); closeout handoff at `.claude/handoffs/session-10/2026-05-25-0130-code-plan0008-phase2-closeout.md` (gitignored local working note per CLAUDE.md §11); `git mv docs/plans/0008-...md docs/plans/done/`; STATUS final bump. Phase 3 (subagent topology, ADR-013 D1 phased) entry conditions met. **Reflexive H1 hook fire on the closeout handoff frontmatter** (`phase: completion` initially invalid; corrected to `phase: closeout` per enum) — N=3 production-validation events through this session (L1 in PR #15, L1-attempt in PR #16, H1 in this PR) prove the deterministic + classifier-mediated layer is reachable from real agent activity | `79fe373` (PR #17) / `docs/plans/done/0008-harness-autonomy-layer-phase-2.md` |
 | 2026-05-25 | **PLAN-0008 Step 7 (Phase 2 integration tests + mypy hook coverage extension) MERGED** _(rotated 2026-06-11, session 55)_ — PR #16 → `main` (`9100e65`), single `test(claude)` commit `d870d76` + merge. New `tests/handoffs/test_phase2_integration.py` with 15 E2E scenarios driving real subprocess invocations of all 3 wired Phase 2 hooks against a local mock HTTP Sonnet server (ephemeral 127.0.0.1 port via `socketserver.TCPServer` + threading daemon; `$CLAUDE_SONNET_API_URL` override; no live network). Coverage: Stop↔classifier wiring (proceed→block, pause→no-block, fail-closed, re-entry guard — mock receives 0 requests = negative proof); chain-cap fail-safe + cap_reached Telegram; observer→state→PreToolUse deny on L1+L4 + Cray-E.4 payload assertion; L4 reset on success; L2 inline Telegram on pytest-fail threshold; L1 turn-boundary survive vs reset; chain depth progression. Pre-commit `mypy` glob extended `^(services\|verticals)/` → `^(services\|verticals\|\.claude/hooks)/` (closes Step 1 follow-on; all 9 hooks pass `--strict`). 372 → 387 pass / 6 skip (+15). Per-test isolation via `tmp_path` for state + classifier fallback path + telegram capture + chain file. AC-3 demonstrated E2E for the first time | `9100e65` (PR #16) / `tests/handoffs/test_phase2_integration.py` |

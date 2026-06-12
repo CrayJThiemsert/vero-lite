@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-12T00:39:06+07:00
-session: 55
-current_batch: 'Session 55 — PLAN-0022 Phase 2 SHIPPED (#267, 6870f87): deterministic evaluate executor (SD-6, no LLM) + watch→gated escalate_watch routing (SD-1=a); AC-8 landed, AC-9 held; suite 1459 (+14).'
+last_updated: 2026-06-12T08:21:41+07:00
+session: 56
+current_batch: 'session-56 plan0022-phase3-watch-lane + closeout'
 current_actor: code
-blocked_on: 'Nothing gates shipped work. No open PRs.'
-next_action: 'PLAN-0022 Phase 3 — IMPLEMENT per the Cray-ratified methodology (2026-06-12: M-1 watch-tier lane, M-2=b calibration-first, M-3 structural, M-4 no bar moves); scored run needs a separate go (host-state); then plan → done/.'
-head_commit: 6870f87
-recent_commits: [6870f87, a68a114, 137766c, 46061b7, f5eba1b, a6125c1, 4968f51, ac56653, bef462f]
+blocked_on: 'First calibration-only scored run awaits an explicit Cray go (MS-S1 host-state). Nothing else gates shipped work. No open PRs.'
+next_action: 'Calibration-only scored run after explicit Cray go (warm via ms-s1-ollama, pinned gpt-oss:20b); then pin watch ground truth from the distribution evidence (M-2=b follow-up).'
+head_commit: b41a138
+recent_commits: [b41a138, 7bf7240, 1723981, 6870f87, a68a114, 137766c, 46061b7, f5eba1b, a6125c1]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,36 @@ recent_commits: [6870f87, a68a114, 137766c, 46061b7, f5eba1b, a6125c1, 4968f51, 
 
 ## Current Focus
 
-> **Session 55 (current) — PLAN-0022 Phase 2 SHIPPED (#267, head_commit
+> **Session 56 (current) — PLAN-0022 Phase 3 SHIPPED (#270, `1723981`,
+> `feat(benchmark):`; merge `93d0b67`) + PLAN-0022 CLOSED OUT to
+> `docs/plans/done/` (#271, head_commit `b41a138`, `docs(plans):` = the
+> newest substantive per `lint_status`; merge `f15115c`) — ALL FOUR PHASES
+> COMPLETE (#263 ADR-0019 → #265 Phase 1 → #267 Phase 2 → #270 Phase 3).**
+> Phase 3 implements the Cray-ratified methodology M-1..M-4 verbatim.
+> **M-1:** watch items now RUN `generate_judgment` and grade on a new
+> ISOLATED watch-tier lane via the shared `classify_handler_tier` taxonomy
+> (pass = handler ∈ {canonical, acceptable}; forbidden explicit per SD-4=a)
+> — never folded into β. **M-2 = b (calibration-first):** dataset YAMLs are
+> UNCHANGED (no watch ground truth authored yet); the lane reports the
+> suggested-handler DISTRIBUTION unscored until ground truth is pinned from
+> run evidence (mirrors the B-β calibration precedent). **M-3:**
+> deterministic mis-routing columns are STRUCTURAL (the harness makes
+> mis-routing impossible — no fake failure surface). **M-4:** watch-judgment
+> latency is its OWN diagnostic; the SD-2 ≤30s bar stays breach-scoped —
+> **no bar moves**. The REPORT.md methodology section was recorded BEFORE
+> any scored run (B-6 honored); module docstring aligned (`7bf7240`). Full
+> suite **1469 passed / 22 skipped** (+10); ruff + mypy clean. **NO scored
+> run has happened yet** — the first calibration-only run still needs a
+> separate explicit Cray go (MS-S1 host-state; warm via the `ms-s1-ollama`
+> skill, pinned `gpt-oss:20b`); AFTER it, the M-2=b follow-up authors the
+> watch canonical/acceptable handlers from the distribution evidence. Held
+> items carry unchanged (nemotron MXFP4 warm-cycle hold; bridge-resilience
+> option B parked). *Rotation note:* executed Cray's standing 2026-06-11
+> decision — the five session-51 CF blocks rotated to
+> `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
+> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
+>
+> **Session 55 — PLAN-0022 Phase 2 SHIPPED (#267, head_commit
 > `6870f87`, `feat(engine):`; merge `9072fda`) — the session's SECOND impl
 > merge: the deterministic `evaluate` executor + the `watch → gated` routing
 > (ADR-0019) are LIVE.** **Phase 2a (SD-6, the evaluate executor):** NEW
@@ -168,138 +197,6 @@ recent_commits: [6870f87, a68a114, 137766c, 46061b7, f5eba1b, a6125c1, 4968f51, 
 > `MXFP4` build.
 > AI-assisted (Claude Code, session 53); no `Co-Authored-By` per CLAUDE.md §7.
 >
-> **Session 51 — PLAN-0021 EXECUTED + MERGED (#249, branch tip
-> `3dc586a`; merge `83f179d`; head_commit `7d6d713` = the `docs(plans):`
-> archive-mv riding this closeout PR, the newest substantive per
-> `lint_status` — only `docs(status):` is excluded): the Axis-B
-> verification loop is LIVE.** 2,125 insertions: 6 new files
-> (`_goal_state.py`; `_goal_gate.py` at the D4 seam inside
-> `stop_continuation.py`; the `/goal` project command — the repo's first,
-> discovered mid-session; `goal-evaluator` as 4th subagent sibling; the
-> SD-1 narrowed-Write deny hook; +64 tests across 3 new test modules + M2
-> rows), exactly 3 modified files, `settings.json` untouched (F-1). All 10
-> ACs closed; the 10-row case-coverage matrix fully implemented as named
-> tests AND 7 rows proven LIVE in the session's own Stop hooks: real
-> dispatch ×2 (D6 pointers-only template; Windows-side check subprocess +
-> UNC git fingerprint worked), live evaluator spawn (J1=PASS
-> file:line-cited; appended its verdict through the SD-1 hook; caught a
-> real registry-footer gap on its first run), happy flip
-> (`_goal_gate:passed` + Telegram info), and the fail-open probe
-> (deliberately unanswered dispatch → `released-unevaluated` + LOUD
-> Telegram + stop fired, NO wedge — D4's asymmetry held in production;
-> both Telegrams Cray-screenshot-confirmed, timestamps matching the
-> trail). Full suite 1398 passed / 22 skipped, zero regression. Key
-> finding **F-L1**: verdict→flip lands at the next non-chained Stop (the
-> re-entry guard short-circuits block-continuation Stops — a PLAN-0008
-> invariant, 3 consistent observations; OQ-8 blocking-mode promotion must
-> account for it). PLAN-0021 archived to done/ (`7d6d713`, same PR as
-> this reconcile). Closeout handoff:
-> `.claude/handoffs/session-51/2026-06-10-1450-code-plan0021-build-closeout.md`.
-> AI-assisted (Claude Code, session 51); no `Co-Authored-By` per CLAUDE.md §7.
->
-> **Session 51 (earlier) — PLAN-0021 "Axis-B verification loop — build"
-> landed as Draft (#247, head_commit `78b8659`, `docs(plans):`).** Cowork
-> drafted it per ADR-009 D1 off the session-51 T2 dispatch; Code R2-reviewed
-> + committed per D2/D3. The PLAN renders Accepted ADR-0018 into a build
-> plan: 6 new files (`_goal_state.py`, `_goal_gate.py`,
-> `.claude/commands/goal.md` — the repo's FIRST project command, net-new
-> dir; `goal-evaluator.md` as 4th subagent sibling;
-> `pretooluse_goal_evaluator_write_deny.py` SD-1 narrowed-Write hook; 3
-> test modules) + exactly 3 modified files (M1 `stop_continuation.py` one
-> insertion at the D4 seam, M2 its tests, M3 `autonomy-triggers.md` V-row).
-> 10 ACs incl. AC-2 goal-less byte-for-byte non-interference; a 10-row
-> case-coverage matrix, each row mapped to a named test; VX-1..3 resolved;
-> OQ-8 pinned Out of Scope. Key R2 item **F-1**: Cowork caught the
-> dispatch's wrong premise — status-scribe's deny hook wires via agent
-> frontmatter ONLY, not `settings.json` — so the PLAN keeps `settings.json`
-> untouched and ADR-0018 §spec 4 stays literally true. **NEXT:** Cray
-> ratifies PLAN-0021 (incl. SD-1: SubagentStop notify for goal-evaluator —
-> Cowork recommends NO for v1) → Code executes Steps 1-6 in a feature
-> branch.
-> AI-assisted (Claude Code, session 51); no `Co-Authored-By` per CLAUDE.md §7.
->
-> **Session 51 (earlier) — STATUS rotation arc COMPLETE: Lesson #23 +
-> rotation policy R1-R6 (#244), status-scribe hardened (#245), FIRST
-> ROTATION under the policy + 64 KB pre-commit guard (this PR).** Root
-> cause of the 393 KB bloat was the scribe's own retention rule ("never
-> delete history" with no size counterweight — Lesson #23 §2); the policy
-> pairs retention with a budget: hard 64 KB / soft 48 KB (R1), window =
-> 4 newest sessions / <=8 CF blocks + 10 RD rows (R2), terse single-line
-> frontmatter (R3), archive-don't-drop to `docs/status-archive/` (R4),
-> surgical reads only for the scribe (R5), prune every reconcile (R6).
-> **This rotation:** session-47 CF block + 39 RD rows -> archive
-> (`2026-h1-status.md` — new file; the ratified h1 current-focus file is
-> 242 KB, past the ~192 KB R4 split bar, so appending would breach the
-> 256 KB Read cap — flagged, not silent); F-6 prune dropped all [x]
-> Active TODOs older than the window + Next Steps items 1-9 (superseded
-> MERGED history; recorded in RD/git). head_commit `25af97b` (#245
-> `chore(agents):` = newest substantive; #244's `e22ab18`/`311761c`
-> precede it). R2 review note: Code-harness tokenizer measures ~2.2 B/tok
-> on this file (38.6k tok at 83 KB) vs Cowork's ~3.3 — 64 KB may still
-> exceed a whole-file Read in some harnesses; R5 surgical reads are the
-> structural protection, the byte ceiling is the enforcement proxy.
-> **NEXT = Axis-B T2** (dispatch ready, awaiting Cray relay to Cowork).
-> AI-assisted (Claude Code, session 51); no `Co-Authored-By` per CLAUDE.md §7.
->
-> **Session 51 (earlier) — ADR-0018 "Axis-B Verification Loop" is RATIFIED
-> Accepted (#242, head_commit `1be60f7`, `docs(adr):`); the deferred Axis-B
-> verification-loop track is no longer deferred — it is now Accepted and
-> entering its build phase.** ADR-0018 opens harness-review **track 2** (the
-> evaluator loop) on top of the already-at-frontier Axis-A governance layer:
-> a `/goal` Stop-hook gate + a `goal-evaluator` subagent that judges whether a
-> run actually achieved its declared goal. **Decisions:** D1 hybrid
-> deterministic-check + LLM-judge; D2 a `.claude/state/goal.json` run-goal
-> artifact; D3 a **4th subagent sibling that REFUTES rather than blesses**
-> (the structural guard against reasoning-blindness); D4 a `_goal_gate.py`
-> living inside `stop_continuation.py`, **FAIL-OPEN** (a broken/absent
-> evaluator never blocks Stop); D5 a session-Stop **warn-only v1**; D6 the
-> structural reasoning-blindness rationale; D7 formalize + augment the manual
-> AC ritual. **SD-1 resolved = narrowed Write** — the evaluator's `Write` is
-> hook-narrowed to `goal.json` only (the same author-bounded pattern that
-> governs `plan-drafter` and `status-scribe`). **Lineage:** PR #241 added the
-> ADR `Proposed` (`5f8073c`) → **#242 ratified it Proposed→Accepted (Cray,
-> session 51)** and carries this **T4** STATUS reconcile (the ADR §"Required
-> follow-on" T4 task: record ADR-0018 in Recent Decisions + clear the
-> Current-Focus Axis-B "deferred" earmark). head_commit = `1be60f7` (the
-> ratification `docs(adr):` commit = the newest *substantive* commit per
-> `lint_status`; this `docs(status):` reconcile does NOT count). **NEXT = T2:**
-> Code dispatches the Axis-B **build PLAN** to Cowork (ADR-009 D1) — covering
-> `_goal_gate.py` + the `stop_continuation.py` insertion, the `goal.json`
-> schema + tests, the `/goal` command, the `goal-evaluator` agent + the SD-1
-> write-deny hook, Telegram wiring, and a verification-rigor case-coverage
-> matrix; after draft + Cray ratify → T3 (autonomy-triggers **V-row**) →
-> build. **OQ-8** (plugin packaging, MS-S1 local evaluator, blocking-mode
-> promotion, PR-merge gating, auto-declared goals) and **VX-1..3** stay
-> non-binding / verify-at-execution — none blocks T2. This session also
-> earlier resolved ADR-0017 OQ-B (#239/#240), already recorded below.
-> AI-assisted (Claude Code, session 51); no `Co-Authored-By` per CLAUDE.md §7.
->
-> **Session 51 (earlier) — ADR-0017 OQ-B is RESOLVED; the skills-as-memory-tier
-> arc's last open thread is CLOSED (#239, head_commit `c512cf9`,
-> `docs(adr):`).** OQ-B (skill-loader tie-break on a same-bare-name collision)
-> was the one "delegated to Code" empirical item left after the arc body landed
-> in session 49 (#234/#236/#237/#238). Empirical finding, restart-confirmed at a
-> clean session-51 startup (~99% confidence): on a same-name collision the
-> **GLOBAL/user skill (`C:\Users\crayj\.claude\skills\`) WINS over the project
-> skill** (`<repo>/.claude/skills/`) — the OPPOSITE of ADR-0017 D7's
-> "project-local context wins" premise; the WSL `~/.claude/skills/` path is not
-> scanned, and plugin skills are namespaced (so they don't collide). Recorded
-> three ways: (1) ADR-0017 gains a **"D7 Errata (2026-06-10)"** subsection +
-> OQ-B flipped Open→RESOLVED (errata applied with Cray's explicit per-diff
-> approval through the G1 Accepted-ADR gate); (2) new
-> `docs/lessons/0022-skill-loader-precedence.md`; (3) a fill of the
-> `docs/runbooks/memory-architecture.md` §"Skill Conventions" OQ-B placeholder.
-> The D7 **authority rule** (global/plugin skills must not encode
-> project-binding rules) is UNCHANGED and *reinforced* — only the loader
-> tie-break mechanics and an incidental `eli-cray` example (it's a command, not
-> a global skill) were corrected. The throwaway probe artifacts (host state on
-> three skill roots) were cleaned up after merge — working tree restored to
-> clean. AI-assisted (Claude Code, session 51); probe ran with Cray's approval;
-> no `Co-Authored-By` per CLAUDE.md §7. Two ADR-0017 OQs remain, both
-> non-blocking: **OQ-A** (migration backlog — non-binding future-PR candidates)
-> and **OQ-C** (revisit the tier definition only if harness-as-plugin packaging
-> is pursued). No governance thread is currently blocked or in-flight.
->
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
 ## Prior focus (archived)
@@ -321,6 +218,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-12 | **PLAN-0022 COMPLETE — Phase 3 watch-tier escalation lane SHIPPED (#270, `1723981`, session 56) + plan archived to done/ (#271, `b41a138`)** — implements the Cray-ratified M-1..M-4 methodology (M-2=b calibration-first: watch items run the LLM judgment, unscored distribution reporting until ground truth is pinned from run evidence; M-4 watch latency = own diagnostic, SD-2 bar stays breach-scoped; REPORT methodology recorded BEFORE any scored run). All four phases done (#263/#265/#267/#270). Suite 1469; first calibration run gated on a separate Cray go | `b41a138` (#270 + #271) / `docs/plans/done/0022-tiered-decision-routing.md` + `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-11 | **ADR-0019 (`watch → gated`-proposal routing) ACCEPTED + merged (#263, `137766c`, session 54)** — PLAN-0022 **Phase 0** governance gate (CLAUDE.md §8; merges before the impl PR). Cray chose **OQ-1 form (b)** = a follow-on ADR over an in-place ADR-016 amendment. Sanctions routing the deterministic `watch` set → a `gated` `action` proposal (LLM proposes → human decides via `resolve_gated_step`); **extends ADR-016 D3** — no primitive / auto-gated / ceiling / allowlist change; trigger = engine verdict, never `confidence` (ADR-010 IN-3). **Authored by Cowork** — the G1/G2 PreToolUse gates correctly blocked Code's *direct* ADR Write/Edit (ADR-009 D1: Cowork authors, Code commits); Code R2-verified verbatim + committed. Includes an ADR-016 forward pointer + the Morning-Pond Step 4 row (`human_task` → gated proposal, SD-1=a). *(A transient classifier-bridge timeout first fail-closed the gate; diagnosed + healthy.)* | `137766c` (#263) / `docs/adr/0019-watch-gated-proposal-routing.md` + `docs/adr/0016-*` |
 | 2026-06-11 | **PLAN-0022 (tiered decision routing) RATIFIED Draft → Ready for execution (#261, `46061b7`, session 54)** — Cowork-drafted (ADR-009 D1, #259); Code R2-reviewed, re-verifying the two load-bearing fact-pack catches vs HEAD (**FP-2/SD-6:** no deterministic `evaluate` executor in `services/engine/procedures/` — only `ActionStepExecutor`; a real prerequisite for `watch→gated`; **FP-1/SD-7:** aquaculture `procedures.yaml` routes `watch→human_task`, an *upgrade* target not silence). Cray accepted **SD-1..SD-7 per recommendation** (SD-1=a gated replaces human_task; SD-2=a deterministic watch band only, no ADR-010 reopen; SD-4=a reuse `forbidden_keywords`; SD-5=a fields on the `Step`; SD-6=a evaluate executor in the impl PR) + **S-1 keep ammonia**. Added **§ Execution Order**: Phase 0 ADR-016 D3 amendment first (CLAUDE.md §8) → Phase 1 grader taxonomy ∥ config (define once) → Phase 2 `evaluate` executor → `watch→gated` → Phase 3 escalation scoring. Trigger = engine watch band, never `confidence` (ADR-010 IN-3). Impl = later separate PR. Also received (gitignored research): 3 Build-Vertical narratives + the gpt-oss rubric R1–R6 | `46061b7` (#261) / `docs/plans/0022-tiered-decision-routing.md` |
 | 2026-06-11 | **PLAN-0020 (Procedure-path tuning) COMPLETE + archived to done/ (#251–#256, `a6125c1`, session 53)** — the PLAN-0019 B-6 ring-fence follow-up. All `--dump-json`-VERIFIED on `gpt-oss:20b`/MS-S1: the Phase-1 aqua prompt nudge (PR #232, prev. UNMEASURED) worked dramatically — overall β `85.8%→100%`, aqua β `60%→100%`, overall α `70%→100%` (supply α `32.5%→100%`: model now picks `hold` not `inspect`). Latency lever: new `reasoning_mode=skip` (drop call-1 reasoning) cuts p95 `31.80s→21.62s` UNDER the 30s bar at **zero β cost** (`think_off` = dead lever). **SD-1** (widen supply-α) authorized at ratify but **SKIPPED at Step 9** — nudge made the divergence moot (0 `inspect`); anti-moving-target honored, no grader change. Also: per-judgment latency timer (#252), think-trim lever (#253), `ms-s1-ollama` skill (#254, `warm.sh` live-tested), tuning report (#255). Next: future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring `skip` into product path is an open audit trade-off | `a6125c1` (#251–#256) / `docs/plans/done/0020-procedure-tuning-latency-precision.md` + `benchmarks/procedure_baseline/REPORT.md` |
@@ -330,7 +228,6 @@ below, and git history.
 | 2026-06-10 | **ADR-0018 "Axis-B Verification Loop" ACCEPTED (Cray-ratified, session 51) — opens harness-review track 2 (the evaluator loop) on top of the at-frontier Axis-A governance layer.** A `/goal` Stop-hook gate + a `goal-evaluator` subagent that judges whether a run achieved its declared goal. **Decisions:** D1 hybrid deterministic-check + LLM-judge; D2 a `.claude/state/goal.json` run-goal artifact; D3 a 4th subagent sibling that **REFUTES not blesses** (structural guard against reasoning-blindness); D4 `_goal_gate.py` inside `stop_continuation.py`, **FAIL-OPEN** (broken/absent evaluator never blocks Stop); D5 session-Stop **warn-only v1**; D6 structural reasoning-blindness rationale; D7 formalize + augment the manual AC ritual. **SD-1 resolved = narrowed Write** (the evaluator's Write is hook-narrowed to `goal.json` only — same author-bounded pattern as `plan-drafter`/`status-scribe`). **Lineage:** #241 (`5f8073c`, `docs(adr):`) added ADR-0018 `Proposed` → **#242 (`1be60f7`, `docs(adr):`, head_commit) ratified it Proposed→Accepted** + carries the T4 STATUS reconcile (record ADR-0018 here + clear the Current-Focus Axis-B "deferred" earmark). **NEXT = T2:** Code dispatches the Axis-B build PLAN to Cowork (ADR-009 D1) → T3 (autonomy-triggers V-row) → build. OQ-8 (plugin packaging, MS-S1 local evaluator, blocking-mode promotion, PR-merge gating, auto-declared goals) + VX-1..3 stay non-binding / verify-at-execution | `1be60f7` (#241 + #242) / `docs/adr/0018-axis-b-verification-loop.md` |
 | 2026-06-09 | **ADR-0017 "Skills as a memory tier" ACCEPTED — the skills-as-memory-tier governance arc is COMPLETE** — #236 (`docs(adr):`, `7bf9d38`) added ADR-0017 `Proposed` (Cowork-drafted, Code-reviewed via the ADR-009 D3 receive sequence); #237 (`docs(constitution):`, `8b18b3a`, head_commit) ratified it (Proposed→Accepted) + applied the alignment (T1–T5). `.claude/skills/` is now **Tier 2.6** in the memory model (`CLAUDE.md` §4 + the memory-architecture runbook), git-tracked + auto-loaded by description match; the **D5 knowledge-placement decision rule** (binding→CLAUDE.md; durable learning→lessons; canonical reference→conventions/runbooks; task-triggered how-to→a Skill) + **D7 skill-authoring conventions** codified in the runbook; §1 gained the **D6** derived-precedence line (2.5+2.6 carry no independent precedence; canonical wins); §10 skills row cites ADR-0017. **Arc lineage:** PR #234 (`471bcb5`) added the `.claude/skills/` *mechanism* → #236 the *ADR* → #237 the *alignment*. This (T6) reconcile records the Accepted ADR, clears the §50/§57 "draft ADR-017" earmark, and marks the PR #234 skills follow-up governance-complete. Open threads: **OQ-B** skill-loader tie-break (delegated to Code; Cray-gated probe of global `~/.claude/skills/` host state) + the deferred **Axis-B verification-loop** track. Restart-bridge handoff due (#237 edited constitutional `CLAUDE.md`, Lesson #5 §1) | `8b18b3a` (#236 + #237) / `docs/adr/0017-skills-as-a-memory-tier.md` + `CLAUDE.md` §1/§4/§10 + `docs/runbooks/memory-architecture.md` |
 | 2026-05-25 | **PLAN-0009 (Phase 3 — subagent topology) RATIFIED + Ready for execution + COMMITTED** — Cowork drafted under interim ADR-009 D1 phasing; Cray adjudicated all 4 OQs (OQ-1…OQ-4) 2026-05-25 (WebFetch for Explore; no new ADR — execute ADR-013 D1; subagent identity folds with ADR-013 OQ-3 in Step 1; PLAN status vocabulary). Cowork → Code dispatch handoff at `.claude/handoffs/session-10/2026-05-25-1240-cowork-plan0009-review-dispatch.md` `validate_handoff.py` clean (K-1 / ADR-009 D3 substitute — 9 required fields, actor=cowork / phase=dispatch / status=READY / suffix=dispatch, ISO-8601 +07:00, filename matches `_FILENAME_RE`). Code fact-pack / R2 review clean across 9 citations (0009 next free; ADR-013 D1/OQ-1/OQ-3 quoted verbatim; PLAN-0008 4 carry-overs accurate; PLAN template structure intact; Cray verification-rigor directive present in Step 6 + Verification). Status flipped Draft → Ready for execution in commit `d10073e` on `feat/plan0009-subagent-topology` (single-doc, worktree-OFF per CLAUDE.md §11). **2 reconciliation findings folded** into Current Focus: (1) `.claude/` readability — K-2 is write-block NOT read-block (research-note §6); OQ-D load-bearing forcing fact remains K-1 (Cowork can't run `validate_handoff.py`), substantive deferral stands. (2) Working-tree divergence — git worktree sees neither uncommitted new files nor gitignored paths (research-note §6.1, reproduced live this session); not K-1/K-2 but checkout-resolution mismatch; design implication for Phase 3.5 if approved. **CLAUDE_TIER / session-identity unification** confirmed correctly folded in PLAN-0009 Step 1 (one mechanism, 3 identity cases: main Code may commit, Plan/Explore subagent must NOT, scheduled Local Code session may [Phase 3.5 HELD]). **Phase 3 execution gated on PR merge. HOLD Phase 3.5** (research-note §7.5 local scheduled-task poller option SURFACED, not decided) | `d10073e` / `docs/plans/0009-subagent-topology.md` + `.claude/handoffs/session-10/2026-05-25-1240-cowork-plan0009-review-dispatch.md` |
-| 2026-05-25 | **PLAN-0008 AC-1 CORROBORATED via Auto mode bonus run + layer orthogonality CONFIRMED in production** — A second AC-1 live verification run (2026-05-25 00:30–00:32) using **Mode = Auto** in a fresh worktree session: task `"สร้าง docs/CHANGELOG.md สรุป Phase 2 PRs #9-#17, commit บน branch ใหม่, ไม่ต้อง push"`, single Cray paste, no further input. Result: **≥ 4 auto-continues, 0 permission prompts (Auto mode skipped them all), 0 Telegram pings, terminal pause at commit done** (followed explicit "ไม่ต้อง push" instruction — no over-step). Commit `6dc808c` on branch `chore/phase2-changelog` (unpushed per instruction). **Layer orthogonality confirmed**: Mode (PreToolUse harness layer) ↔ PLAN-0008 (Stop classifier layer) operate independently — Auto mode eliminates per-tool prompts without changing Stop-continuation decisions. **Minor finding for PLAN-0009 carry-over**: `_loop_counter._normalize_file_path()` strips main-repo prefix but does not collapse worktree path suffix (L1 counter key showed `.claude/worktrees/busy-bose-eedc8f/docs/CHANGELOG.md` instead of `docs/CHANGELOG.md`). Non-blocking; per-session isolation works correctly. Both AC-1 evidence runs documented in Current Focus comparison table. Cost: ~$0.004 (4 classifier calls × ~$0.001) | PR #20 amendment / `docs/STATUS.md` |
 ## In-Flight Discussions
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
