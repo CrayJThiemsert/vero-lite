@@ -3,13 +3,30 @@
 **Status:** Proposed
 **Date:** 2026-06-13
 **Deciders:** Jirachai Thiemsert (founder)
-**Related:** ADR-009 (tier topology — partner-sim sits **outside** these tiers), ADR-012 (venue-via-ADR *guarded-trial* pattern this ADR mirrors), ADR-013 (advisory-drafter framing; "only Code commits" reinforced), ADR-005 (energy = primary / supply chain = secondary partner type), ADR-011 (earmarked audit framework — partner-sim's R3 means its output does **not** trip ADR-011's "first real partner data" gate), PLAN-0005 §8.1 (deferred-foundational ladder — triggers unchanged), PLAN-0022 (M-2=b calibration-first precedent — ground truth must not be authored by the system under test), seed instruments `docs/research/private/2026-06-13-first-dataset-requirements.md` + `docs/research/private/2026-06-13-pdpa-review-checklist.md`, authoring dispatch `.claude/handoffs/session-57/2026-06-13-0853-code-partnersim-cowork-dispatch.md`
+**Related:** ADR-009 (tier topology — partner-sim sits **outside** these tiers), ADR-012 (venue-via-ADR *guarded-trial* pattern this ADR mirrors), ADR-013 (advisory-drafter framing; "only Code commits" reinforced), ADR-005 (energy = primary / supply chain = secondary partner type), ADR-011 (earmarked audit framework — partner-sim's R3 means its output does **not** trip ADR-011's "first real partner data" gate), PLAN-0005 §8.1 (deferred-foundational ladder — triggers unchanged), PLAN-0022 (M-2=b calibration-first precedent — ground truth must not be authored by the system under test), seed instruments `docs/research/private/2026-06-13-partnersim-seed-r1clean.md` (R1-clean partner-sim input — D2/R1) + `docs/research/private/2026-06-13-first-dataset-requirements.md` (partner-facing one-pager, not pasted to partner-sim) + `docs/research/private/2026-06-13-pdpa-review-checklist.md`, authoring dispatch `.claude/handoffs/session-57/2026-06-13-0853-code-partnersim-cowork-dispatch.md`, errata dispatch `.claude/handoffs/session-57/2026-06-13-1009-code-r1cleanseed-cowork-dispatch.md`
 
 > **Status note.** Ships **Proposed**. Cray gave an in-session go to *build
 > the package* (2026-06-13, "ดำเนินการ (a) ได้ เพราะเราเห็นด้วย"); ratification
 > to **Accepted** (and SD-1..SD-4 adjudication) is a separate step before the
 > project goes live. Cowork drafts; Code reviews + commits (ADR-009 D2 /
 > ADR-013 D2).
+>
+> **Amendment — 2026-06-13 (pre-ratification; status still Proposed).** An R2
+> verification pass before ratification found a self-contradiction. R1 said
+> partner-sim is never given our action vocabulary, yet the document the run
+> procedure pasted every run — the **partner-facing first-dataset one-pager**
+> (`2026-06-13-first-dataset-requirements.md`) — carries our 3-band verdict
+> taxonomy *and* action vocabulary, so R1 was defeated **at the paste step**
+> (normal procedure, not an oversight), and Consequences/Positive actually
+> *relied* on that leak. Three coupled fixes applied here (status unchanged —
+> Cray ratifies the corrected draft): **(1)** R1 now requires a **dedicated
+> R1-clean seed** (`2026-06-13-partnersim-seed-r1clean.md`) as the only
+> first-dataset document cleared for the paste, and states that "no repo mount"
+> insulates against repo reads but not against a leaky paste; **(2)**
+> Consequences/Positive no longer claims the seed pre-bakes the verdict bands —
+> Code maps them on receive; **(3)** R-PS1 records the named breach vector
+> (one-pager-instead-of-seed paste). Authored by Cowork per ADR-009 D1; Code
+> reviews + commits.
 
 ## Context
 
@@ -74,15 +91,23 @@ an untrusted external party by construction — which is the point.
 
 ### D2 — The three anti-circularity rules (BINDING)
 
-- **R1 — feed questions, not schema.** partner-sim's inputs are the
-  first-dataset one-pager, the PDPA checklist, and a business-type brief
-  (D3). It is **never** given our ontology YAML, `services/**` engine
-  internals, benchmark expectations, or the canonical/acceptable/forbidden
-  action vocabulary. Schema mismatch must be free to emerge — that mismatch
-  is the discovery value (same trap-class as M-2 pinning circularity,
-  PLAN-0022). Enforced structurally: the project has **no repo mount** (it
-  can read only what Cray pastes), so contamination requires an active paste,
-  not an oversight.
+- **R1 — feed questions, not schema; and the inputs are themselves
+  R1-screened.** partner-sim's inputs are a **dedicated R1-clean seed**
+  (`docs/research/private/2026-06-13-partnersim-seed-r1clean.md`), the PDPA
+  checklist, and a business-type brief (D3). It is **never** given our ontology
+  YAML, `services/**` engine internals, benchmark expectations, or the
+  canonical/acceptable/forbidden action vocabulary. **The seed pasted to
+  partner-sim is NOT the partner-facing first-dataset one-pager**
+  (`docs/research/private/2026-06-13-first-dataset-requirements.md`): that
+  one-pager carries our verdict taxonomy and action vocabulary for the *real*
+  partner conversation, and pasting it would hand partner-sim the very schema
+  R1 withholds. Schema mismatch must be free to emerge — that mismatch is the
+  discovery value (same trap-class as M-2 pinning circularity, PLAN-0022).
+  Enforced **structurally and procedurally**: the project has **no repo mount**
+  (it can read only what Cray pastes), which insulates against repo *reads* —
+  but it does **not** insulate against a leaky *paste*. The R1-clean seed is
+  the procedural half of the control: the only first-dataset document cleared
+  for the partner-sim paste.
 - **R2 — forced messiness.** The persona must produce realistically flawed
   material: missing values, unit inconsistencies, hand-maintained
   spreadsheets, legacy-system constraints, "ต้องไปถามทีม IT ก่อน"
@@ -100,8 +125,9 @@ an untrusted external party by construction — which is the point.
 ### D3 — I/O protocol
 
 - **Input:** a business type plus parameters — size / region /
-  digital-maturity (vocabulary = SD-3) — together with the two seed
-  instruments, all pasted by Cray at run start.
+  digital-maturity (vocabulary = SD-3) — together with the **R1-clean seed**
+  (`2026-06-13-partnersim-seed-r1clean.md`, **not** the partner-facing
+  one-pager — R1) and the PDPA checklist, all pasted by Cray at run start.
 - **Output:** a **partner profile package** returned as a standard
   **completion handoff** — `actor: cowork`, `batch: partnersim-<type>`,
   `phase: closeout`, `suffix: completion` — using the **existing** validator
@@ -120,7 +146,11 @@ Pre-declared triggers (any one re-opens this decision — mirrors ADR-012 D5):
 
 - **R-PS1 — circularity leak.** Output mirrors our schema/action vocabulary,
   implying R1 was breached by an input paste; the intake test becomes
-  non-informative.
+  non-informative. **Known breach vector (named 2026-06-13):** pasting the
+  partner-facing first-dataset one-pager instead of the R1-clean seed — the
+  one-pager carries our verdict taxonomy and action vocabulary. If output
+  mirrors our schema, **screen the pasted inputs first**: confirm the R1-clean
+  seed (not the one-pager) was the document pasted at run start.
 - **R-PS2 — provenance leak.** A SYNTHETIC artifact appears unlabeled in a
   benchmark / REPORT / ADR-011 trigger context (R3 breach).
 - **R-PS3 — insufficient messiness.** Output is too clean to exercise the
@@ -167,9 +197,12 @@ expansion.
 
 - Rehearses the intake / mapping / PDPA path **weeks before** a real partner,
   surfacing schema mismatch early and cheaply rather than at first-real-data.
-- Produces realistic operational fixtures spanning breach / watch / ok (seed
-  one-pager item 3 doubles them as ground truth) — **but SYNTHETIC**, so they
-  inform without being scored as real.
+- Produces realistic operational fixtures spanning **problem / near-problem /
+  normal situations as the partner describes them** — **but SYNTHETIC**, so
+  they inform without being scored as real. **Code maps them to our internal
+  verdict bands on receive**; that mapping is itself part of the rehearsal
+  value and is **not** pre-baked into the seed (R1 — the R1-clean seed never
+  hands partner-sim our verdict taxonomy or any "ground truth").
 - Builds the partner-trust narrative (RoPA-lite, residency story, refusal
   handling) as concrete artifacts before the meeting.
 
@@ -263,7 +296,11 @@ and cannot write `docs/conventions/**`. None of these edits are made here:
 - **PLAN-0022** (`docs/plans/done/0022-tiered-decision-routing.md`) — M-2=b
   calibration-first: ground truth must not be authored by the system under test
 - **Seed instruments:**
-  `docs/research/private/2026-06-13-first-dataset-requirements.md`,
+  `docs/research/private/2026-06-13-partnersim-seed-r1clean.md` (the
+  **R1-clean partner-sim input** — D2/R1; the only first-dataset document
+  cleared for the partner-sim paste),
+  `docs/research/private/2026-06-13-first-dataset-requirements.md` (the
+  partner-facing one-pager — **NOT** pasted to partner-sim),
   `docs/research/private/2026-06-13-pdpa-review-checklist.md`
 - **Lesson #24** (`docs/lessons/0024-rules-must-live-where-the-enforcer-looks.md`)
   — why R3 lives at ADR level
@@ -273,6 +310,10 @@ and cannot write `docs/conventions/**`. None of these edits are made here:
 - **CLAUDE.md** §8 (PDPA / residency / assistive-only)
 - **Authoring dispatch:**
   `.claude/handoffs/session-57/2026-06-13-0853-code-partnersim-cowork-dispatch.md`
+- **Errata dispatch (R1-clean seed + this pre-ratification fix):**
+  `.claude/handoffs/session-57/2026-06-13-1009-code-r1cleanseed-cowork-dispatch.md`
+- **R1-clean seed (partner-sim input):**
+  `docs/research/private/2026-06-13-partnersim-seed-r1clean.md`
 
 ## Implementation Notes
 

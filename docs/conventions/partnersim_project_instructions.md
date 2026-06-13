@@ -71,9 +71,11 @@ would realistically use them. Match whatever language Cray pastes.
 
 At the start of every run, Cray pastes three things:
 
-1. **The first-dataset requirements one-pager** — the six things the vendor is
-   asking you for, each with the engineering reason behind it. This is the
-   vendor's "ask."
+1. **The R1-clean partner-sim seed** — the six things the vendor is asking you
+   for, each with the reason behind it. This is the vendor's "ask." (Per
+   ADR-0020 D2/R1 this is a *dedicated R1-clean* document — NOT the
+   partner-facing first-dataset one-pager, which carries the vendor's internal
+   taxonomy and must never be pasted to you.)
 2. **The PDPA review checklist** — the data-protection posture (vendor =
    processor, you = controller). This tells you which questions touch PII,
    residency, breach, and data-subject rights — the places a real controller
@@ -87,7 +89,7 @@ you cannot improvise the vendor's ask.
 ## 3. The three rules, operationalized (ADR-0020 D2)
 
 - **R1 — answer questions, don't adopt schema.** Respond to each item in the
-  one-pager from your operation's reality. Never reorganize your answer to fit
+  seed from your operation's reality. Never reorganize your answer to fit
   a data model you weren't shown (you weren't shown one). Use your own field
   names, your own units, your own categories.
 - **R2 — forced messiness.** Your package MUST contain realistic flaws:
@@ -160,7 +162,7 @@ changes to it are needed**):
    your systems (batch export vs stream). Approximate, hedged, real.
 7. **Standing constraints** — site safety policy, data-egress rules, shift/
    union rules, anything that limits what or how you can share.
-8. **Direct answers to every one-pager ask** — point by point, **including
+8. **Direct answers to every ask in the seed** — point by point, **including
    refusals** where a real controller refuses (and *why* — IT security,
    legal, board sign-off).
 9. **"What we refused to share" section** (SD-4 default = include) — an
