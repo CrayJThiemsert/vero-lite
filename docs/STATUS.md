@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-13T22:08:25+07:00
+last_updated: 2026-06-13T22:52:34+07:00
 session: 57
-current_batch: 'session-57 partner-sim run-1 received + operation runbook (#304)'
+current_batch: 'session-57 partner-sim step-1 mapping rehearsal -> intake form v2 (#306)'
 current_actor: code
-blocked_on: 'Nothing blocks Code (run-1 received; runbook committed). Open-for-Cray items (auditprep SD-4/SD-5/OQ-A; ADR-011) are in the CF block / In-Flight.'
-next_action: 'Prepare step-1: mapping-layer rehearsal against the run-1 package (derive the real-partner intake form); then step-2 PDPA RoPA-lite after.'
-head_commit: 6e8c603
-recent_commits: [6e8c603, 4d1347b, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 4c46a92, 1bd6328]
+blocked_on: 'Nothing blocks Code (step-1 shipped). Open-for-Cray items (auditprep SD-4/SD-5/OQ-A; ADR-011) are in the CF block / In-Flight.'
+next_action: 'step-2 (PDPA RoPA-lite) — Cray will discuss the approach after reviewing step-1 results; held auditprep SD-4/SD-5/OQ-A + ADR-011 still open for Cray.'
+head_commit: e09af9b
+recent_commits: [e09af9b, 6e8c603, 4d1347b, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 4c46a92]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,7 @@ recent_commits: [6e8c603, 4d1347b, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 
 
 ## Current Focus
 
-> **Session 57 (fifth batch, current) — AUDIT-FRAMEWORK PREP arc:
+> **Session 57 (fifth batch, current; head_commit `e09af9b`) — AUDIT-FRAMEWORK PREP arc:
 > partner-sim venue ADR-0020 committed Proposed (#297, `e25281d`,
 > `docs(adr):`) + its project system instruction LANDED (#298,
 > `e387a63`, `docs(conventions):`; merge `e10f589`), then a
@@ -138,6 +138,22 @@ recent_commits: [6e8c603, 4d1347b, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 
 > the sim's outputs stay synthetic + gitignored). Next: step-1
 > mapping-layer rehearsal against the run-1 package (derive the real
 > intake form), then step-2 PDPA RoPA-lite.
+> **(coda — partner-sim STEP-1 mapping rehearsal SHIPPED, #306,
+> head_commit `e09af9b`):** step-1 (lightweight, energy-first, both
+> deliverables tracked per Cray's scoping) landed — a mapping rehearsal
+> of the run-1 package against the canonical energy model produced two
+> tracked artifacts: the real-partner intake form v2
+> (`docs/conventions/partner-intake-form.md`) + the mapping-gap analysis
+> (`docs/strategy/public/partner-sim-run1-mapping-analysis.md`).
+> 5 headline gaps drove intake form v2: per-parameter reading spec (the
+> core fix — our single-parameter-procedure vs NPD's multi-parameter
+> operation), action-meaning, status-vocab→numeric-rule,
+> asset-taxonomy enumeration, identity/lineage (the last feeding
+> ADR-011). SYNTHETIC provenance unchanged — the run-1 package INFORMS
+> these but does NOT trigger ADR-011 / PLAN-0005 §8.1 first-real-data.
+> The C4 hook routed the analysis to `docs/strategy/public/` because
+> `docs/research/` writes are private-only. Next: step-2 (PDPA RoPA-lite)
+> — Cray will discuss the approach after reviewing step-1 results.
 > *Rotation note:* the oldest CF block (session 56 third batch,
 > carrier-death hardening, #275/#276) rotated to
 > `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
