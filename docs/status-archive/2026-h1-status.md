@@ -723,12 +723,36 @@ _Addendum — rotated 2026-06-12 (session-57 fourth-batch reconcile #294/#295) �
 > first SCORED watch-lane run.
 > AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
 
+_Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the session-56 third-batch block (carrier-death hardening; R2 8-block cap):_
+
+> **Session 56 (third batch) — post-calibration carrier-death
+> incident HARDENED (#275 merge `97d132c`, #276 merge `09750af`;
+> head_commit `3a8a175`, `feat(skills):` = the newest substantive per
+> `lint_status`).** The calibration run's carrier (held `wsl.exe` + wrapper)
+> was one-off-reaped at ~59 min while the file-redirected python survived as
+> an orphan and COMPLETED — no harness completion notification fired and the
+> background-task chip stayed "running" stale; truth was established
+> content-based (final DUMP/NOTE lines + 198/198 dump records + `pgrep`
+> empty + TaskStop "No task found"). Shipped: **#275** (`f7cb82a`) records
+> the gotcha + the content-based truth test in the `ms-s1-ollama` skill;
+> **#276** (`3a8a175`) adds `run_detached.sh` + `_run_detached_body.sh` —
+> long MS-S1 runs now launch under `systemd-run --user` (unit parented to
+> the user manager, not the carrier; PROBE-VERIFIED 2026-06-12: a unit
+> launched from a foreground `wsl` call — the exact condition that kills
+> `setsid`/`nohup` children — kept writing and completed; offline
+> end-to-end smoke validated uv-under-systemd + `[wrap]` markers + the
+> `.done` SENTINEL "rc ISO-ts" written as the job's last act). SKILL.md
+> launch recipe rewritten (ETA rule: ETA + ~10 min → check the sentinel;
+> `Linger=no` caveat — enabling linger = host-state, ask Cray).
+> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
+
 ---
 
 ## Rotated Recent Decisions rows (rotated 2026-06-10)
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-11 | **ADR-0019 (`watch → gated`-proposal routing) ACCEPTED + merged (#263, `137766c`, session 54)** _(rotated 2026-06-13, session 57)_ — PLAN-0022 **Phase 0** governance gate (CLAUDE.md §8; merges before the impl PR). Cray chose **OQ-1 form (b)** = a follow-on ADR over an in-place ADR-016 amendment. Sanctions routing the deterministic `watch` set → a `gated` `action` proposal (LLM proposes → human decides via `resolve_gated_step`); **extends ADR-016 D3** — no primitive / auto-gated / ceiling / allowlist change; trigger = engine verdict, never `confidence` (ADR-010 IN-3). **Authored by Cowork** — the G1/G2 PreToolUse gates correctly blocked Code's *direct* ADR Write/Edit (ADR-009 D1: Cowork authors, Code commits); Code R2-verified verbatim + committed. Includes an ADR-016 forward pointer + the Morning-Pond Step 4 row (`human_task` → gated proposal, SD-1=a). *(A transient classifier-bridge timeout first fail-closed the gate; diagnosed + healthy.)* | `137766c` (#263) / `docs/adr/0019-watch-gated-proposal-routing.md` + `docs/adr/0016-*` |
 | 2026-06-11 | **PLAN-0022 (tiered decision routing) RATIFIED Draft → Ready for execution (#261, `46061b7`, session 54)** _(rotated 2026-06-12, session 57)_ — Cowork-drafted (ADR-009 D1, #259); Code R2-reviewed, re-verifying the two load-bearing fact-pack catches vs HEAD (**FP-2/SD-6:** no deterministic `evaluate` executor in `services/engine/procedures/` — only `ActionStepExecutor`; a real prerequisite for `watch→gated`; **FP-1/SD-7:** aquaculture `procedures.yaml` routes `watch→human_task`, an *upgrade* target not silence). Cray accepted **SD-1..SD-7 per recommendation** (SD-1=a gated replaces human_task; SD-2=a deterministic watch band only, no ADR-010 reopen; SD-4=a reuse `forbidden_keywords`; SD-5=a fields on the `Step`; SD-6=a evaluate executor in the impl PR) + **S-1 keep ammonia**. Added **§ Execution Order**: Phase 0 ADR-016 D3 amendment first (CLAUDE.md §8) → Phase 1 grader taxonomy ∥ config (define once) → Phase 2 `evaluate` executor → `watch→gated` → Phase 3 escalation scoring. Trigger = engine watch band, never `confidence` (ADR-010 IN-3). Impl = later separate PR. Also received (gitignored research): 3 Build-Vertical narratives + the gpt-oss rubric R1–R6 | `46061b7` (#261) / `docs/plans/0022-tiered-decision-routing.md` |
 | 2026-06-11 | **PLAN-0020 (Procedure-path tuning) COMPLETE + archived to done/ (#251–#256, `a6125c1`, session 53)** _(rotated 2026-06-12, session 57)_ — the PLAN-0019 B-6 ring-fence follow-up. All `--dump-json`-VERIFIED on `gpt-oss:20b`/MS-S1: the Phase-1 aqua prompt nudge (PR #232, prev. UNMEASURED) worked dramatically — overall β `85.8%→100%`, aqua β `60%→100%`, overall α `70%→100%` (supply α `32.5%→100%`: model now picks `hold` not `inspect`). Latency lever: new `reasoning_mode=skip` (drop call-1 reasoning) cuts p95 `31.80s→21.62s` UNDER the 30s bar at **zero β cost** (`think_off` = dead lever). **SD-1** (widen supply-α) authorized at ratify but **SKIPPED at Step 9** — nudge made the divergence moot (0 `inspect`); anti-moving-target honored, no grader change. Also: per-judgment latency timer (#252), think-trim lever (#253), `ms-s1-ollama` skill (#254, `warm.sh` live-tested), tuning report (#255). Next: future PLAN for tiered handler grading (canonical/acceptable/forbidden — α too coarse); wiring `skip` into product path is an open audit trade-off | `a6125c1` (#251–#256) / `docs/plans/done/0020-procedure-tuning-latency-precision.md` + `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-11 | **PLAN-0020 ratified Draft→Accepted (#251, `19706eb`, session 53)** _(rotated 2026-06-12, session 57)_ — SD-1 = widen supply-α `valid_handlers` `[hold]`→`[hold, inspect]` (later skipped at Step 9, see close row); SD-2 = re-ratify the latency bar from **8 s/per-call → ≤30 s p95 per-judgment** (reports-not-gates). Unblocked the gated MS-S1 tuning campaign | `19706eb` (#251) / `docs/plans/done/0020-procedure-path-tuning.md` |
