@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-13T09:23:50+07:00
+last_updated: 2026-06-13T11:27:49+07:00
 session: 57
-current_batch: 'session-57 partner-sim venue ADR-0020 Proposed + project instruction (#297+#298)'
+current_batch: 'session-57 ADR-0020 R1 errata + instruction align (#300)'
 current_actor: code
-blocked_on: 'ADR-0020 awaits Cray ratification (Proposed->Accepted + SD-1..SD-4); auditprep SD-4/SD-5/OQ-A also await Cray. No open PRs, no run in flight.'
-next_action: 'Cray ratifies ADR-0020 -> then ADR-0020 T3 (flip Accepted + fold SDs + STATUS); ADR-011 stays gated on a partner conversation.'
-head_commit: e387a63
-recent_commits: [e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 4c46a92, 1bd6328, bdf7166, 4b0e306]
+blocked_on: 'ADR-0020 (now self-consistent) awaits Cray ratification (Proposed->Accepted + SD-1..SD-4 + dispatch-SD-1); auditprep SD-4/SD-5/OQ-A also await Cray. No open PRs, no run in flight.'
+next_action: 'Cray ratifies ADR-0020 -> then ADR-0020 T3 + run-1 uses the R1-clean seed (NOT the one-pager); ADR-011 stays gated on a partner conversation.'
+head_commit: 655344d
+recent_commits: [655344d, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 4c46a92, 1bd6328, bdf7166]
 ---
 
 # vero-lite — Project Status
@@ -21,9 +21,11 @@ recent_commits: [e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 4c46a92, 
 > **Session 57 (fifth batch, current) — AUDIT-FRAMEWORK PREP arc:
 > partner-sim venue ADR-0020 committed Proposed (#297, `e25281d`,
 > `docs(adr):`) + its project system instruction LANDED (#298,
-> head_commit `e387a63`, `docs(conventions):`; merge `e10f589`) — the
-> arc's second deliverable; awaits Cray ratification before the
-> project goes live.** Two sub-batches both done this session.
+> `e387a63`, `docs(conventions):`; merge `e10f589`), then a
+> pre-ratification R1 errata + instruction align (#300, head_commit
+> `655344d`, `docs(adr):`; merge `b466802`) — the arc's second
+> deliverable; awaits Cray ratification before the project goes
+> live.** Two sub-batches both done this session.
 > **(1) auditprep:** Cowork drafted two seed instruments (first-dataset
 > requirements one-pager + PDPA review checklist); Code receive-verified
 > (validator clean, re-stamped); both gitignored under
@@ -70,6 +72,36 @@ recent_commits: [e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 4c46a92, 
 > could Write `.claude/handoffs/` directly (block did not fire) while
 > the outputs scratchpad was unreachable — inverted vs Lesson #8; needs
 > a stability check across sessions before any workflow-doc change.
+> **(coda — pre-ratification R1 errata, #300, `655344d`):** Cray asked
+> "anything to worry about before ratifying ADR-0020?" and Code's R2
+> verification pass found a VERIFIED R1 self-contradiction — the
+> partner-facing first-dataset one-pager (which the run procedure
+> pasted EVERY run) carried our 3-band verdict taxonomy
+> (breach/watch/ok) AND action vocabulary, including the M-2=b
+> reroute/expedite watch design built this session, so R1
+> ("never feed our schema") was defeated AT THE PASTE STEP and
+> Consequences/Positive actually relied on the leak. Fix (#300,
+> dispatched to Cowork, Code R2-reviewed + committed; ADR-0020 stays
+> PROPOSED): (a) ADR-0020 errata — R1 now requires a dedicated
+> R1-clean seed (`docs/research/private/2026-06-13-partnersim-seed-r1clean.md`,
+> gitignored) as the ONLY first-dataset doc cleared for the paste;
+> D3/References repoint; Consequences reworded (Code maps to verdict
+> bands on receive, not pre-baked); R-PS1 records the named breach
+> vector; dated amendment note. (b) The committed instruction file
+> (#298) still told Cray to paste "the one-pager" in 3 places — Code
+> aligned §2/§3/§4.2 to the R1-clean seed (Code-amends-conventions,
+> ADR-009 D2), else the leak persists in practice. Receive: completion
+> handoff validator-clean + re-stamped (1055→1123, K-1); the D1 seed
+> AC-1 grep-clean (zero forbidden tokens EN+TH) + content R2 (six asks
+> intact, redaction faithful, engine-internal "Why" abstraction
+> stands); D1 gitignored, NOT committed. *Don't-trust-piped-exit-codes
+> catch:* the AC-1 grep first returned a contradictory signal (EXIT=0
+> "hits found" yet zero lines from the WSL wrapper) — Code did NOT sign
+> off on the ambiguous result, re-ran cleanly → "NO MATCHES" confirmed
+> the seed is clean. Open for Cray (added by this errata): dispatch-SD-1
+> (trim the real one-pager's internal note); ratification now folds
+> SD-1..SD-4 + dispatch-SD-1, and run-1 uses the R1-clean seed, NOT the
+> one-pager.
 > *Rotation note:* the oldest CF block (session 56 third batch,
 > carrier-death hardening, #275/#276) rotated to
 > `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
