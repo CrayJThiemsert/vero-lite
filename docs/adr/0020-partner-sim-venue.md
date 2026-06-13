@@ -1,15 +1,24 @@
 # ADR-0020: Synthetic Design-Partner Simulation Venue (partner-sim)
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-06-13
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-009 (tier topology — partner-sim sits **outside** these tiers), ADR-012 (venue-via-ADR *guarded-trial* pattern this ADR mirrors), ADR-013 (advisory-drafter framing; "only Code commits" reinforced), ADR-005 (energy = primary / supply chain = secondary partner type), ADR-011 (earmarked audit framework — partner-sim's R3 means its output does **not** trip ADR-011's "first real partner data" gate), PLAN-0005 §8.1 (deferred-foundational ladder — triggers unchanged), PLAN-0022 (M-2=b calibration-first precedent — ground truth must not be authored by the system under test), seed instruments `docs/research/private/2026-06-13-partnersim-seed-r1clean.md` (R1-clean partner-sim input — D2/R1) + `docs/research/private/2026-06-13-first-dataset-requirements.md` (partner-facing one-pager, not pasted to partner-sim) + `docs/research/private/2026-06-13-pdpa-review-checklist.md`, authoring dispatch `.claude/handoffs/session-57/2026-06-13-0853-code-partnersim-cowork-dispatch.md`, errata dispatch `.claude/handoffs/session-57/2026-06-13-1009-code-r1cleanseed-cowork-dispatch.md`
 
-> **Status note.** Ships **Proposed**. Cray gave an in-session go to *build
-> the package* (2026-06-13, "ดำเนินการ (a) ได้ เพราะเราเห็นด้วย"); ratification
-> to **Accepted** (and SD-1..SD-4 adjudication) is a separate step before the
-> project goes live. Cowork drafts; Code reviews + commits (ADR-009 D2 /
-> ADR-013 D2).
+> **Ratified — 2026-06-13 (Accepted).** Cray ratified in-session ("เอาตาม
+> Cowork ทุกข้อ"): **Proposed → Accepted**, accepting **all four** venue SD
+> recommendations (SD-1..SD-4) verbatim **and** dispatch-SD-1 (trim the real
+> one-pager). The four SD adjudications are folded into D2/D3/D4 below and
+> recorded in the "Ratified 2026-06-13" record (formerly "Surfaced for Cray").
+> **No R1/R2/R3 substance changed at ratification** — the 2026-06-13 errata
+> already settled those; this step only resolves the four open SDs. Cowork
+> authored the fold (ADR-009 D1, retained as advisory per ADR-013); Code
+> reviews + commits and runs the STATUS T3 reconcile (ADR-009 D2 / ADR-013 D2).
+>
+> **Drafting history (pre-ratification).** Shipped **Proposed** on an in-session
+> go to *build the package* (2026-06-13, "ดำเนินการ (a) ได้ เพราะเราเห็นด้วย");
+> ratification to Accepted was held as a separate step (now done, per the note
+> above).
 >
 > **Amendment — 2026-06-13 (pre-ratification; status still Proposed).** An R2
 > verification pass before ratification found a self-contradiction. R1 said
@@ -111,9 +120,9 @@ an untrusted external party by construction — which is the point.
 - **R2 — forced messiness.** The persona must produce realistically flawed
   material: missing values, unit inconsistencies, hand-maintained
   spreadsheets, legacy-system constraints, "ต้องไปถามทีม IT ก่อน"
-  non-answers, and **at least N unsolicited inconvenient facts per round**
-  (N = SD-1). Clean, schema-shaped output is a trial failure (R-PS3), not a
-  success — we already have clean fixtures.
+  non-answers, and **at least 3 unsolicited inconvenient facts per round**
+  (N = 3, ratified 2026-06-13 per SD-1). Clean, schema-shaped output is a
+  trial failure (R-PS3), not a success — we already have clean fixtures.
 - **R3 — SYNTHETIC provenance.** Every artifact carries a SYNTHETIC banner
   (verbatim text in the system instruction). partner-sim output **never
   satisfies any "first real partner data" trigger** — PLAN-0005 §8.1 ladder
@@ -124,25 +133,42 @@ an untrusted external party by construction — which is the point.
 
 ### D3 — I/O protocol
 
-- **Input:** a business type plus parameters — size / region /
-  digital-maturity (vocabulary = SD-3) — together with the **R1-clean seed**
+- **Input:** a business type plus parameters — **size / region /
+  digital-maturity** (vocabulary ratified 2026-06-13 per SD-3:
+  `size ∈ {small <50 assets, mid 50–500, large >500}`;
+  `region ∈ {th-central, th-regional, multi-site-sea}`;
+  `digital_maturity ∈ {paper-first, spreadsheet-first, mixed-legacy, modern-stack}`)
+  — together with the **R1-clean seed**
   (`2026-06-13-partnersim-seed-r1clean.md`, **not** the partner-facing
   one-pager — R1) and the PDPA checklist, all pasted by Cray at run start.
+  **Run-1 default (ratified per SD-3): energy / mid / th-regional /
+  mixed-legacy** (`mixed-legacy` maximizes the R2 messiness we want to
+  exercise).
 - **Output:** a **partner profile package** returned as a standard
   **completion handoff** — `actor: cowork`, `batch: partnersim-<type>`,
   `phase: closeout`, `suffix: completion` — using the **existing** validator
   and schema. **No enum changes** are required (`Actor` already includes
   `cowork`; the completion shape reuses the auditprep precedent of
-  `phase: closeout` + `suffix: completion`). partner-sim has no repo mount and
-  cannot write to disk, so it **emits the handoff as text**; Cray relays it;
-  Code re-stamps the `created`/filename timestamp on receive (K-1) and lands
-  the package.
+  `phase: closeout` + `suffix: completion`). The package **must include a
+  "what we refused to share" section** (ratified-required 2026-06-13 per
+  SD-4): modeling refusal — IT-security policy, data-egress rules, "legal
+  hasn't cleared this" — is exactly the PDPA-processor-boundary / DPA-scope
+  friction the intake pipeline must handle, and it pressure-tests the
+  DSR/lineage assumptions when a field is withheld (PDPA checklist §5/§3).
+  partner-sim has no repo mount and cannot write to disk, so it **emits the
+  handoff as text**; Cray relays it; Code re-stamps the `created`/filename
+  timestamp on receive (K-1) and lands the package.
 
 ### D4 — Lifecycle (guarded trial) + regression/exit triggers
 
 First run is scoped as an experiment on **energy operator** (ADR-005 primary
-partner type). **Review after run 1 before any second business type.**
-Pre-declared triggers (any one re-opens this decision — mirrors ADR-012 D5):
+partner type). **Topology ratified 2026-06-13 (per SD-2): one project per
+business type** — a fresh project per type so the energy run cannot leak into
+a later supply-chain run (context bleed = R-PS4); projects are cheap (seeds
+are pasted fresh each run regardless). With only energy scoped for run 1, this
+first bites at the second business type. **Review after run 1 before any
+second business type.** Pre-declared triggers (any one re-opens this decision —
+mirrors ADR-012 D5):
 
 - **R-PS1 — circularity leak.** Output mirrors our schema/action vocabulary,
   implying R1 was breached by an input paste; the intake test becomes
@@ -156,40 +182,49 @@ Pre-declared triggers (any one re-opens this decision — mirrors ADR-012 D5):
 - **R-PS3 — insufficient messiness.** Output is too clean to exercise the
   mapping/PDPA path; partner-sim degenerates into a clean-fixture generator
   we already have (Build-Vertical narratives).
-- **R-PS4 — context bleed** (bites only if one shared project, SD-2). A later
-  business-type run inherits the prior run's specifics, collapsing
-  run-to-run independence.
+- **R-PS4 — context bleed** (SD-2 ratified one-project-per-type pre-empts this
+  by construction; retained as a guard against a project being reused across
+  types). A later business-type run inherits the prior run's specifics,
+  collapsing run-to-run independence.
 
-If a trigger fires, the de-scope target is **one-project-per-type** (if
-R-PS4) or retirement to a one-off fixture generator (if R-PS3) — not
-expansion.
+If a trigger fires, the de-scope target is **strict one-project-per-type
+enforcement** (if R-PS4 — already the ratified baseline per SD-2) or
+retirement to a one-off fixture generator (if R-PS3) — not expansion.
 
-## Surfaced for Cray (positions taken, not decided — rule #8)
+## Ratified 2026-06-13 (per Cray — all four SDs accepted per Cowork rec)
 
-- **SD-1 — N unsolicited inconvenient facts per round.** *Recommend N = 3.*
-  Three guarantees coverage of the project's three friction surfaces
+Cray ratified all four venue SDs verbatim ("เอาตาม Cowork ทุกข้อ"); each is
+folded into the binding decision noted and recorded here for provenance.
+
+- **SD-1 — N unsolicited inconvenient facts per round = 3** (folded into
+  D2/R2). Three guarantees coverage of the project's three friction surfaces
   (people / data / process) and matches the "rule of three" already used as
   a discovery threshold; fewer than three risks a single, easily-dismissed
-  fact; many more per round buries the signal in noise. **Cray decides.**
-- **SD-2 — one shared project vs one project per business type.** *Recommend
-  one project per type.* Context bleed between runs is a real circularity
-  risk (R-PS4); a fresh project guarantees the energy run cannot leak into a
-  later supply-chain run, and projects are cheap (seeds are pasted fresh each
-  run regardless). With only energy scoped for run 1, this only bites at the
-  second type. **Cray decides.**
-- **SD-3 — parameter vocabulary for the business-type brief.** *Proposed
-  enums:* `size ∈ {small <50 assets, mid 50–500, large >500}`;
+  fact; many more per round buries the signal in noise. **Ratified N = 3.**
+- **SD-2 — one project per business type** (folded into D4). Context bleed
+  between runs is a real circularity risk (R-PS4); a fresh project guarantees
+  the energy run cannot leak into a later supply-chain run, and projects are
+  cheap (seeds are pasted fresh each run regardless). With only energy scoped
+  for run 1, this first bites at the second type. **Ratified one-per-type.**
+- **SD-3 — parameter vocabulary for the business-type brief** (folded into D3).
+  *Ratified enums:* `size ∈ {small <50 assets, mid 50–500, large >500}`;
   `region ∈ {th-central, th-regional, multi-site-sea}`;
   `digital_maturity ∈ {paper-first, spreadsheet-first, mixed-legacy, modern-stack}`.
-  *Recommended run-1 defaults:* energy / mid / th-regional / mixed-legacy
+  *Ratified run-1 default:* energy / mid / th-regional / mixed-legacy
   (most realistic for the primary partner type; `mixed-legacy` maximizes the
-  R2 messiness we want to exercise). **Cray decides.**
-- **SD-4 — include a "what we refused to share" section?** *Recommend yes.*
-  A real partner refuses things — IT-security policy, data-egress rules,
-  "legal hasn't cleared this." Modeling refusal is exactly the
-  PDPA-processor-boundary and DPA-scope friction the intake pipeline must
-  handle, and it pressure-tests our DSR/lineage assumptions when a field is
-  withheld (PDPA checklist §5/§3). **Cray decides.**
+  R2 messiness we want to exercise). **Ratified.**
+- **SD-4 — include a "what we refused to share" section: yes** (folded into D3
+  output, ratified-required). A real partner refuses things — IT-security
+  policy, data-egress rules, "legal hasn't cleared this." Modeling refusal is
+  exactly the PDPA-processor-boundary and DPA-scope friction the intake
+  pipeline must handle, and it pressure-tests our DSR/lineage assumptions when
+  a field is withheld (PDPA checklist §5/§3). **Ratified yes.**
+
+**dispatch-SD-1 (separate series) — trim the real partner-facing one-pager:**
+ratified; done in this batch. The `…-first-dataset-requirements.md` sector
+callout's forbidden-action `หมายเหตุระบบ` (reroute/expedite-ต้องห้าม +
+benchmark structure) is removed and the legitimate near-limit-rationale ask is
+retained; the R1-clean seed (`…-partnersim-seed-r1clean.md`) is untouched.
 
 ## Consequences
 
@@ -238,10 +273,14 @@ and cannot write `docs/conventions/**`. None of these edits are made here:
    (Code-amends-conventions per ADR-009 D2) and commits. Sync target =
    the new Cowork project's "project instructions" field (same
    canonical-in-repo / paste-to-UI model as `{chat,cowork}_tab_instructions.md`).
-3. **T3 — On ratification:** flip this ADR Proposed → **Accepted**, fold the
-   SD-1..SD-4 adjudications into D2/D3/D4, and record the topology addition in
-   `docs/STATUS.md` (Recent Decisions + In-Flight Discussions; this venue is a
-   guarded trial like ADR-012).
+3. **T3 — Ratification (status flip + SD fold APPLIED 2026-06-13 by Cowork in
+   this revision):** ADR flipped Proposed → **Accepted**; SD-1..SD-4 folded
+   into D2/D3/D4; the "Surfaced for Cray" section converted to the dated
+   "Ratified 2026-06-13" record. **Remaining for Code:** record the topology
+   addition in `docs/STATUS.md` (Recent Decisions + In-Flight Discussions —
+   this venue is a guarded trial like ADR-012), reconcile the instruction
+   file's SD-finalization language to "ratified", and commit. Cowork has no
+   STATUS / commit authority (ADR-009 D2 / ADR-013 D2).
 4. **T4 — ADR number:** **0020** verified free at HEAD `2331ffb` (0000–0019
    exist incl. `0014-WITHDRAWN`; `0011` stays earmarked for the audit
    framework; `0019` is newest). No renumber needed.

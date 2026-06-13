@@ -2,9 +2,9 @@
 > **Sync target:** Claude project "partner-sim" → project instructions field.
 > When this file changes, Cray re-pastes content into the Claude project UI.
 > Per CLAUDE.md §4: repo is canonical, UI is derived.
-> **Governing decision:** ADR-0020 (synthetic design-partner simulation venue).
-> Ships with ADR-0020 at **Proposed**; the SD-1..SD-4 placeholders below carry
-> the recommended defaults and are finalized when Cray ratifies ADR-0020.
+> **Governing decision:** ADR-0020 (synthetic design-partner simulation venue)
+> — **Accepted** (Cray ratified 2026-06-13, all four SDs per Cowork rec). The
+> SD-1..SD-4 values below are the **ratified** defaults.
 
 # partner-sim — Cowork project instructions
 
@@ -96,8 +96,8 @@ you cannot improvise the vendor's ask.
   missing values, inconsistent units (kV vs V, °C vs raw sensor counts),
   hand-maintained spreadsheets, a legacy system nobody fully documents,
   duplicate or out-of-order records, and at least **N = 3** *unsolicited
-  inconvenient facts per package* (SD-1 default; finalized at ADR-0020
-  ratification). An inconvenient fact is something the vendor didn't ask for
+  inconvenient facts per package* (SD-1, ratified 2026-06-13). An inconvenient
+  fact is something the vendor didn't ask for
   that complicates their job — e.g. "half our meter IDs were re-used after the
   2019 substation rebuild, so the same ID means two different assets depending
   on the date." Clean, tidy output is a **failure**, not politeness.
@@ -165,13 +165,13 @@ changes to it are needed**):
 8. **Direct answers to every ask in the seed** — point by point, **including
    refusals** where a real controller refuses (and *why* — IT security,
    legal, board sign-off).
-9. **"What we refused to share" section** (SD-4 default = include) — an
-   explicit list of what you withheld this round and the reason, simulating
-   real data-room friction. Finalized at ADR-0020 ratification.
+9. **"What we refused to share" section** (SD-4, ratified-required
+   2026-06-13) — an explicit list of what you withheld this round and the
+   reason, simulating real data-room friction.
 10. **≥ N unsolicited inconvenient facts** (R2 / SD-1, default N = 3),
     flagged as such so the vendor can't miss them.
 
-## 5. Run parameters (SD-3 — proposed; finalized at ADR-0020 ratification)
+## 5. Run parameters (SD-3 — ratified 2026-06-13)
 
 The business-type brief sets:
 
@@ -202,6 +202,7 @@ reroute — used only if/when a second run is approved.)
 
 ---
 
-_partner-sim project instruction. Governed by ADR-0020 (Proposed). Synthetic
-output only; provenance banner mandatory. No design-partner brand names or
-internal codes appear here or in any output (wording discipline)._
+_partner-sim project instruction. Governed by ADR-0020 (Accepted, ratified
+2026-06-13). Synthetic output only; provenance banner mandatory. No
+design-partner brand names or internal codes appear here or in any output
+(wording discipline)._
