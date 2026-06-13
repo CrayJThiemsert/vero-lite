@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-13T11:27:49+07:00
+last_updated: 2026-06-13T12:19:00+07:00
 session: 57
-current_batch: 'session-57 ADR-0020 R1 errata + instruction align (#300)'
+current_batch: 'session-57 ADR-0020 ratified Accepted (#302)'
 current_actor: code
-blocked_on: 'ADR-0020 (now self-consistent) awaits Cray ratification (Proposed->Accepted + SD-1..SD-4 + dispatch-SD-1); auditprep SD-4/SD-5/OQ-A also await Cray. No open PRs, no run in flight.'
-next_action: 'Cray ratifies ADR-0020 -> then ADR-0020 T3 + run-1 uses the R1-clean seed (NOT the one-pager); ADR-011 stays gated on a partner conversation.'
-head_commit: 655344d
-recent_commits: [655344d, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 4c46a92, 1bd6328, bdf7166]
+blocked_on: 'Nothing blocks Code (no open PRs, no run in flight). Live action is Cray''s: launch partner-sim run-1 (paste the R1-clean seed + PDPA checklist + business-type brief). Other open-for-Cray items (auditprep SD-4/SD-5/OQ-A; ADR-011) are in the CF block / In-Flight.'
+next_action: 'Cray launches partner-sim run-1 (energy; paste the R1-clean seed NOT the one-pager) -> Code receives the partner-profile-package completion handoff.'
+head_commit: 4d1347b
+recent_commits: [4d1347b, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 4c46a92, 1bd6328, bdf7166]
 ---
 
 # vero-lite — Project Status
@@ -22,10 +22,11 @@ recent_commits: [655344d, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 
 > partner-sim venue ADR-0020 committed Proposed (#297, `e25281d`,
 > `docs(adr):`) + its project system instruction LANDED (#298,
 > `e387a63`, `docs(conventions):`; merge `e10f589`), then a
-> pre-ratification R1 errata + instruction align (#300, head_commit
-> `655344d`, `docs(adr):`; merge `b466802`) — the arc's second
-> deliverable; awaits Cray ratification before the project goes
-> live.** Two sub-batches both done this session.
+> pre-ratification R1 errata + instruction align (#300,
+> `655344d`, `docs(adr):`; merge `b466802`), then RATIFIED
+> Proposed→Accepted (#302, head_commit `4d1347b`, `docs(adr):`;
+> merge `d8c7c11`) — the venue is now ACCEPTED and live-able.**
+> Two sub-batches both done this session.
 > **(1) auditprep:** Cowork drafted two seed instruments (first-dataset
 > requirements one-pager + PDPA review checklist); Code receive-verified
 > (validator clean, re-stamped); both gitignored under
@@ -102,6 +103,30 @@ recent_commits: [655344d, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 
 > (trim the real one-pager's internal note); ratification now folds
 > SD-1..SD-4 + dispatch-SD-1, and run-1 uses the R1-clean seed, NOT the
 > one-pager.
+> **(coda — RATIFIED Accepted, #302, `4d1347b`):** Cray ratified
+> in-session ("เอาตาม Cowork ทุกข้อ") — ADR-0020 flipped
+> Proposed→Accepted (Cowork-authored fold per ADR-009 D1, Code
+> R2-reviewed + committed). All four venue SDs + dispatch-SD-1
+> accepted per Cowork rec: SD-1 N=3 (→D2/R2); SD-2
+> one-project-per-business-type (→D4; R-PS4 reframed as a guard);
+> SD-3 size/region/maturity enums + run-1 default
+> energy·mid·th-regional·mixed-legacy (→D3 input); SD-4 "what we
+> refused to share" ratified-required (→D3 output). R1/R2/R3
+> substance unchanged (the #300 errata already settled those). Code
+> also reconciled the instruction file (6 ratification-pending
+> markers Proposed/finalized-at-ratification → ratified;
+> Code-amends-conventions, ADR-009 D2, same PR #302). dispatch-SD-1
+> (gitignored, not committed): the real one-pager's sector-callout
+> forbidden-action note (reroute/expedite-ต้องห้าม + benchmark
+> structure) trimmed; near-limit-rationale ask retained; R1-clean
+> seed untouched (R2-verified). Receive: completion handoff
+> (`2026-06-13-1215-cowork-adr0020-ratify-completion.md`)
+> validator-clean + re-stamped (K-1); **K-2 did NOT fire (3rd data
+> point — Cowork could write `.claude/` directly again).** Venue
+> status now ACCEPTED guarded-trial under observation (R-PS1..R-PS4
+> exit criteria); the live action is now Cray's (create the Claude
+> partner-sim project, paste the R1-clean seed + PDPA checklist +
+> business-type brief, launch energy run-1).
 > *Rotation note:* the oldest CF block (session 56 third batch,
 > carrier-death hardening, #275/#276) rotated to
 > `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
@@ -333,6 +358,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-13 | **ADR-0020 (partner-sim venue) RATIFIED Proposed→Accepted (#302, `4d1347b`, session 57)** — Cray ratified in-session ("เอาตาม Cowork ทุกข้อ"); all four venue SDs + dispatch-SD-1 accepted per Cowork rec (Cowork-authored fold per ADR-009 D1, Code R2-reviewed + committed). SD-1 N=3 (→D2/R2); SD-2 one-project-per-business-type (→D4; R-PS4 reframed as a guard); SD-3 size/region/maturity enums + run-1 default energy·mid·th-regional·mixed-legacy (→D3 input); SD-4 "what we refused to share" ratified-required (→D3 output). R1/R2/R3 substance unchanged (#300 errata settled those). Instruction file reconciled same PR (6 ratification-pending markers → ratified; Code-amends-conventions, ADR-009 D2). dispatch-SD-1 (gitignored): one-pager sector-callout forbidden-action note trimmed, R1-clean seed untouched. Venue now ACCEPTED guarded-trial (R-PS1..R-PS4) — live action is Cray's (launch energy run-1) | `4d1347b` (#302) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 | 2026-06-13 | **ADR-0020 (synthetic design-partner simulation venue, partner-sim) committed Proposed (#297, `e25281d`, session 57) + project system instruction landed (#298, `e387a63`)** — a specialist Cowork project that role-plays a Thai operator + emits a "partner profile package" so the intake+PDPA pipeline is rehearsed before a real partner. D1 venue OUTSIDE governance tiers (no commits / no repo mount / enters via Code receive); D2 three BINDING anti-circularity rules (R1 feed-questions-not-schema, R2 forced messiness, R3 SYNTHETIC provenance — never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger); D3 reuses completion-handoff schema (no enum change); D4 guarded-trial (mirrors ADR-012 D5) + R-PS1..R-PS4. SD-1..SD-4 recommendations only. **Awaits Cray ratification (Proposed→Accepted + SD-1..SD-4) before the project goes live (ADR-0020 T3).** Author≠reviewer (ADR-012 D4.3): Cowork authored, Code R2-reviewed + committed both | `e25281d` (#297) + `e387a63` (#298) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 | 2026-06-12 | **B-6 hyphen-normalization grader change RATIFIED + SHIPPED (#295, `2331ffb`, session 57)** — Cray ratified in-session; `grader.py` `normalize_primary_key()` folds the Unicode hyphen/dash family (U+2010–U+2014, U+2212) → ASCII `-` on both sides of the two primary-KEY comparisons only; free-text untouched. Offline dump replay vs the 2026-06-12 scored run: β 118/120 → 119/120, EXACTLY one flip (energy-007, zero collateral); aqua-028 still fails. Same measurement-correctness class as the 2026-06-08 items; no bar moves; REPORT.md dated addendum | `2331ffb` (#295) / `benchmarks/procedure_baseline/grader.py` |
 | 2026-06-12 | **First SCORED watch-lane run RECORDED — watch 97.4% (38/39); M-2=b arc COMPLETE (#288, `4c46a92`, session 57)** — `gpt-oss:20b`/MS-S1, 198 items, 318 calls, 0 errors, dump-VERIFIED (39/39 `watch_graded:true`); first production `run_detached.sh` run (sentinel as designed; watcher Monitor died silently + one false alarm — truth via content-based test). Aqua + energy 13/13; supply 12/13 — sole FAIL supply-040 (reroute @1.0 on an in-spec 7.8 °C) = `forbidden_keywords` discriminating as designed. β 98.3% (same two known misses; energy-007 U+2011 now ×3 → strengthens B-6). SD-2 p95 30.18s = +0.18s nominal, within the ±10s straddle band + classifier-contaminated; no bar moves (B-6) | `4c46a92` (#288) / `benchmarks/procedure_baseline/REPORT.md` |
@@ -342,12 +368,11 @@ below, and git history.
 | 2026-06-12 | **Stop-classifier calibration arc SHIPPED (#278 + #279 + #280, `246ee0a`, session 56)** — #278 completion-consistency rule (PROCEED needs concrete remaining work; decision↔reason agreement; contract-test-pinned). #279 20-case safety-weighted eval harness (full prod-prompt fidelity; gold incl. Thai); MS-S1 sweep 4×20 (80 dump-verified): `gpt-oss:20b` 19/20, recall 100%, p95 21.6s vs sonnet(prod) 17+2/20, recall 75%, p95 3.5s; nemotron-4b safety-DQ. #280 HEADLINE = registry gap not model gap → registry row C5 (host-state gate), re-verified live; transport pick (local vs API Sonnet) = Cray's | `246ee0a` (#278–#280) / `benchmarks/stop_classifier/RESULTS.md` |
 | 2026-06-12 | **Carrier-death incident → ops hardening SHIPPED (#275 + #276, `3a8a175`, session 56)** — the calibration run's carrier (held `wsl.exe` + wrapper) was reaped at ~59 min; the orphaned python completed silently (stale "running" task chip, no completion event; truth established content-based). #275 records the gotcha + content-based truth test in the `ms-s1-ollama` skill; #276 adds `run_detached.sh` — long MS-S1 runs launch under `systemd-run --user` (carrier-proof, PROBE-VERIFIED 2026-06-12; `.done` sentinel "rc ISO-ts"; ETA + ~10 min → check sentinel; `Linger=no` = host-state, ask Cray) | `3a8a175` (#275 + #276) / `.claude/skills/ms-s1-ollama/` |
 | 2026-06-12 | **First watch-lane calibration run RECORDED (#273, `489b695`, session 56)** — M-2=b evidence on MS-S1 (`gpt-oss:20b`, 198 items, 319 calls, 0 errors, `--dump-json`-verified). Watch distribution: aqua 13/13 aerator, energy 13/13 restart, supply_chain hold 5 / inspect 5 / **reroute 3 = the lane's first real safety signal** (forbidden under a `{hold, inspect}` pinning). β 98.3% (2 verified misses incl. the U+2011 hyphen grader-calibration candidate), α 100%, deterministic 198/198. Breach p95 28.73s = first SD-2 PASS in full mode (±10s noise band); watch latency = M-4 own diagnostic. No bar moves (B-6) | `489b695` (#273) / `benchmarks/procedure_baseline/REPORT.md` |
-| 2026-06-12 | **PLAN-0022 COMPLETE — Phase 3 watch-tier escalation lane SHIPPED (#270, `1723981`, session 56) + plan archived to done/ (#271, `b41a138`)** — implements the Cray-ratified M-1..M-4 methodology (M-2=b calibration-first: watch items run the LLM judgment, unscored distribution reporting until ground truth is pinned from run evidence; M-4 watch latency = own diagnostic, SD-2 bar stays breach-scoped; REPORT methodology recorded BEFORE any scored run). All four phases done (#263/#265/#267/#270). Suite 1469; first calibration run gated on a separate Cray go | `b41a138` (#270 + #271) / `docs/plans/done/0022-tiered-decision-routing.md` + `benchmarks/procedure_baseline/REPORT.md` |
 
 ## In-Flight Discussions
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
-- **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** committed Proposed 2026-06-13 (`e25281d`, #297) + project system instruction landed (`e387a63`, #298). A specialist Cowork project role-plays a Thai operator and emits a "partner profile package" to rehearse the intake+PDPA pipeline before a real partner; venue OUTSIDE the governance tiers (no commits / no repo mount / enters via Code receive). Three BINDING anti-circularity rules R1/R2/R3 (R3 SYNTHETIC provenance → never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger). D4 guarded-trial mirrors ADR-012 D5; regression triggers R-PS1..R-PS4 are the exit criteria; run 1 = energy operator (ADR-005 primary). **Awaits Cray ratification (Proposed→Accepted + SD-1..SD-4 adjudication) before the project goes live (ADR-0020 T3); ADR-011 audit framework stays gated on a partner conversation — the synthetic run INFORMS but never TRIGGERS it.**
+- **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** Accepted 2026-06-13 (ratified `4d1347b`, #302; committed Proposed `e25281d`, #297 + instruction `e387a63`, #298 + R1 errata `655344d`, #300) — guarded trial under observation (parallel to ADR-012). A specialist Cowork project role-plays a Thai operator and emits a "partner profile package" to rehearse the intake+PDPA pipeline before a real partner; venue OUTSIDE the governance tiers (no commits / no repo mount / enters via Code receive). Three BINDING anti-circularity rules R1/R2/R3 (R3 SYNTHETIC provenance → never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger). All four venue SDs + dispatch-SD-1 ratified per Cowork rec (SD-1 N=3; SD-2 one-project-per-business-type; SD-3 size/region/maturity enums w/ energy·mid·th-regional·mixed-legacy default; SD-4 "what we refused to share" now required). D4 guarded-trial mirrors ADR-012 D5; regression triggers R-PS1..R-PS4 are the exit criteria; run 1 = energy operator (ADR-005 primary). **Now live-able: Cray launches run-1 (paste the R1-clean seed NOT the one-pager); ADR-011 audit framework stays gated on a partner conversation — the synthetic run INFORMS but never TRIGGERS it.**
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
 - **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (PLAN-001 line 9 forward-reference); ADR-005 was reused for the strategic pivot, so the Postgres-image ADR needs a fresh number (**≥ ADR-014** — ADR-011 earmarked for the audit framework, ADR-012 taken by Cowork second free-form tier, ADR-013 taken by autonomy axis relocation; floor bumped 2026-05-23 per ADR-013 §Consequences/Neutral + T6).
 - **Hook portability across environments:** Lesson #3 A3 documents the workaround; durable fix deferred (would require hook regeneration policy).
