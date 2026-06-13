@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-13T12:19:00+07:00
+last_updated: 2026-06-13T22:08:25+07:00
 session: 57
-current_batch: 'session-57 ADR-0020 ratified Accepted (#302)'
+current_batch: 'session-57 partner-sim run-1 received + operation runbook (#304)'
 current_actor: code
-blocked_on: 'Nothing blocks Code (no open PRs, no run in flight). Live action is Cray''s: launch partner-sim run-1 (paste the R1-clean seed + PDPA checklist + business-type brief). Other open-for-Cray items (auditprep SD-4/SD-5/OQ-A; ADR-011) are in the CF block / In-Flight.'
-next_action: 'Cray launches partner-sim run-1 (energy; paste the R1-clean seed NOT the one-pager) -> Code receives the partner-profile-package completion handoff.'
-head_commit: 4d1347b
-recent_commits: [4d1347b, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 4c46a92, 1bd6328, bdf7166]
+blocked_on: 'Nothing blocks Code (run-1 received; runbook committed). Open-for-Cray items (auditprep SD-4/SD-5/OQ-A; ADR-011) are in the CF block / In-Flight.'
+next_action: 'Prepare step-1: mapping-layer rehearsal against the run-1 package (derive the real-partner intake form); then step-2 PDPA RoPA-lite after.'
+head_commit: 6e8c603
+recent_commits: [6e8c603, 4d1347b, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 4c46a92, 1bd6328]
 ---
 
 # vero-lite — Project Status
@@ -127,6 +127,17 @@ recent_commits: [4d1347b, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 
 > exit criteria); the live action is now Cray's (create the Claude
 > partner-sim project, paste the R1-clean seed + PDPA checklist +
 > business-type brief, launch energy run-1).
+> **(coda — partner-sim RUN-1 RECEIVED + operation runbook, #304,
+> head_commit `6e8c603`):** partner-sim run-1 (energy/NPD) was
+> received — **R2 PASS** (rich R1 mismatch / R2 messiness / SD-4 +
+> 5 SD-1 facts), completion handoff re-stamped, landed gitignored
+> at `docs/research/private/`; D4 regression triggers R-PS1..R-PS4
+> all CLEAR (no real-data trigger; output is SYNTHETIC per R3). The
+> operating method was then captured as a tracked runbook
+> `docs/runbooks/partner-sim-operation.md` (#304, `docs(runbook):`;
+> the sim's outputs stay synthetic + gitignored). Next: step-1
+> mapping-layer rehearsal against the run-1 package (derive the real
+> intake form), then step-2 PDPA RoPA-lite.
 > *Rotation note:* the oldest CF block (session 56 third batch,
 > carrier-death hardening, #275/#276) rotated to
 > `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
