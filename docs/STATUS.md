@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-14T09:28:25+07:00
+last_updated: 2026-06-14T11:58:04+07:00
 session: 58
-current_batch: 'session-58 backlog quick-wins (Code-solo) — stop-classifier gold cases #2/#3 (#311) + handoff-validator warning-swallow fix (#312)'
+current_batch: 'session-58 NL-query feasibility spike (engine-A + text-to-SQL, #314) → partner-trial fork RESOLVED: T2 (NL-query) chosen'
 current_actor: code
-blocked_on: 'Nothing blocks Code (quick-wins shipped). Open-for-Cray: strategic sequencing fork (partner-trial roadmap vs B-γ baselines); auditprep SD-4/SD-5/OQ-A + ADR-011 (gated on a real partner) are in the CF coda / In-Flight.'
-next_action: 'Teed up for Cray: sequence the partner-trial roadmap fork (NL-query vs real-data) vs the B-γ benchmark baselines — which order yields higher quality. Held: PLAN-002, partner-trial gaps, auditprep SD-4/SD-5/OQ-A, ADR-011 (real-partner gated).'
-head_commit: 9595d3e
-recent_commits: [6f46277, 9595d3e, 48a2da0, f2ee579, c818695, afea6b3, 8f9a36d, d4fe7fc, effad05, b37bb1b]
+blocked_on: 'Nothing blocks Code (spike shipped, fork resolved). Open-for-Cray: held items (B-γ baselines, PLAN-002); auditprep SD-4/SD-5/OQ-A + ADR-011 (gated on a real partner) are in the CF coda / In-Flight.'
+next_action: 'The T2 build (fork resolved → NL-query): enrich StructuredQuery (join+aggregate, grounded-execute safety preserved) + translate-prompt filter fix + UI shell (readiness T1); likely a PLAN (Cowork drafts per ADR-009 D1). Held: B-γ, PLAN-002, auditprep SD-4/SD-5/OQ-A, ADR-011 (real-partner gated).'
+head_commit: 987c2be
+recent_commits: [c3a48b4, 987c2be, ff5bab8, 6f46277, 9595d3e, 48a2da0, f2ee579, c818695, afea6b3, 8f9a36d]
 ---
 
 # vero-lite — Project Status
@@ -18,6 +18,38 @@ recent_commits: [6f46277, 9595d3e, 48a2da0, f2ee579, c818695, afea6b3, 8f9a36d, 
 
 ## Current Focus
 
+> **Session 58 (third batch, current; head_commit `987c2be`) — NL-QUERY
+> FEASIBILITY SPIKE SHIPPED (#314) → PARTNER-TRIAL ROADMAP FORK RESOLVED: T2
+> (NL-query) CHOSEN.** The headline is the FORK RESOLUTION, not just a
+> benchmark. The partner-trial roadmap fork (T2 NL-query "wow demo" vs T3
+> real-data "show me MY data"; readiness doc §4) needed its engineering half
+> de-risked before Cray's go-to-market call. The spike (`benchmarks/nl_query_feasibility/`,
+> `feat(benchmark):`, two commits — `ff5bab8` engine-A arm + `987c2be`
+> text-to-SQL arm = the newest substantive per `lint_status`; merge `c3a48b4`)
+> PIVOTED on a verified finding: from a hypothetical NL→MCP-tool-call to
+> benchmarking the **shipped** engine-A path (`services/engine/nl_query.py`,
+> PLAN-0013 — T2 was MORE built than the 2026-05-22 readiness doc said).
+> **engine-A arm (gpt-oss:20b @ MS-S1):** 8/12 structured (~10/12
+> operator-answer), latency p50 11s / p95 32s, and **anti-hallucination 12/12
+> (zero invented facts)**. Dominant gap = translate filter-omission
+> (whole-table fetch, phrase-rescued on toy data); join-by-name is a hard
+> ceiling that fails *safely* (honest no-data). **text-to-SQL arm (same 12
+> Qs):** 11/12, p50 5.6s / p95 12s — cleared every join/aggregate, applied
+> WHERE every time, BUT **lost the anti-hallucination guard** (nl-12:
+> improvised `SELECT … event_type='alarm'` for a no-data "alerts" question →
+> returned an alarm as an alert). **The comparison answered the question:**
+> the **ceiling is ARCHITECTURE** (StructuredQuery expressiveness — text-to-SQL
+> cleared it, the model is capable), the **filter-omission is PROMPT** (the
+> same model wrote WHERE under SQL framing). Both engine-A weaknesses are
+> FIXABLE, not model limits. **Cray decision (fork resolved): T2 (NL-query)
+> chosen** as the wedge — evidence-backed build path = enrich `StructuredQuery`
+> with join + aggregate ops while KEEPING the grounded-execute safety (NOT a
+> switch to raw text-to-SQL, which loses anti-hallucination) + fix the
+> translate prompt (require the filter) + a UI shell (readiness T1 A1/A2).
+> Process: Code-direct spike (like step-1); each AskUserQuestion decision was
+> Cray-ratified inline.
+> AI-assisted (Claude Code, session 58); no `Co-Authored-By` per CLAUDE.md §7.
+>
 > **Session 58 (second batch, current; head_commit `9595d3e`) — TWO BACKLOG
 > QUICK-WINS (Code-solo, #311 + #312), cleared after the audit-framework arc
 > closed.** A genuinely separate small batch (harness tooling, not the partner
@@ -389,28 +421,6 @@ recent_commits: [6f46277, 9595d3e, 48a2da0, f2ee579, c818695, afea6b3, 8f9a36d, 
 > needs verdict-by-observable definitions + an explicit cross-field agreement
 > contract, pinned by a prompt contract test + gold case (generalizes to the
 > ADR-0018 goal-evaluator).
-> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
->
-> **Session 56 (fifth batch) — stop classifier SWITCHED to
-> local `gpt-oss:20b` on MS-S1 (#282; head_commit `3375778`,
-> `feat(claude):` = the newest substantive per `lint_status`; merge
-> `03f81ec`).** The implementation of the fourth-batch decision: Cray
-> picked **(b)** on the eval evidence ("latency 8s–30s acceptable") and
-> the switch shipped same-day. `_sonnet_classifier.py`'s DEFAULT backend
-> is now local `gpt-oss:20b` on MS-S1 Ollama (format-constrained
-> `/api/chat`, temperature 0, `keep_alive` 10m, 75s timeout; no API key
-> and no WSL bridge on this path); the Anthropic-API transport is
-> retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`.
-> `classify()` refactored around a backend-independent `_run_with_retry`
-> keeping fail-closed-pause + the legacy reason strings byte-identical
-> (unreachable MS-S1 pauses, never proceeds). `settings.json` hook
-> timeouts → 180s (cold-load headroom); registry gains the backend note.
-> Tests: the legacy suite pinned to the sonnet backend + 4 new
-> ollama-backend tests (571 passed / 2 skipped; `mypy --strict` clean).
-> LIVE-verified from the production hook runtime (Windows Python →
-> 192.168.1.133): 7.9s → pause; Windows reachability pre-flight 0.09s.
-> The next real Stop event in the working session is the production
-> validation.
 > AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
 >
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
