@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-13T22:52:34+07:00
-session: 57
-current_batch: 'session-57 partner-sim step-1 mapping rehearsal -> intake form v2 (#306)'
+last_updated: 2026-06-14T08:48:24+07:00
+session: 58
+current_batch: 'session-58 PLAN-0023 step-2 PDPA RoPA-lite shipped (template + NPD example, #308/#309)'
 current_actor: code
-blocked_on: 'Nothing blocks Code (step-1 shipped). Open-for-Cray items (auditprep SD-4/SD-5/OQ-A; ADR-011) are in the CF block / In-Flight.'
-next_action: 'step-2 (PDPA RoPA-lite) — Cray will discuss the approach after reviewing step-1 results; held auditprep SD-4/SD-5/OQ-A + ADR-011 still open for Cray.'
-head_commit: e09af9b
-recent_commits: [e09af9b, 6e8c603, 4d1347b, e387a63, e25281d, 2331ffb, 5330dfb, f1cf3b4, 3c25d94, 4c46a92]
+blocked_on: 'Nothing blocks Code (step-2 shipped). Open-for-Cray items (auditprep SD-4/SD-5/OQ-A; ADR-011 gated on a real partner) are in the CF coda / In-Flight.'
+next_action: 'step-2 done → audit-framework-prep arc idle pending a real partner conversation (the ADR-011 gate); open for Cray = SD-4/SD-5/OQ-A; backlog quick-wins (stop-classifier gold cases incl. this session legit-vs-spurious dispatch contrast).'
+head_commit: afea6b3
+recent_commits: [c818695, afea6b3, 8f9a36d, d4fe7fc, effad05, b37bb1b, e09af9b, 6e8c603, 4d1347b, e387a63]
 ---
 
 # vero-lite — Project Status
@@ -154,10 +154,41 @@ recent_commits: [e09af9b, 6e8c603, 4d1347b, e387a63, e25281d, 2331ffb, 5330dfb, 
 > The C4 hook routed the analysis to `docs/strategy/public/` because
 > `docs/research/` writes are private-only. Next: step-2 (PDPA RoPA-lite)
 > — Cray will discuss the approach after reviewing step-1 results.
+> **(coda — PLAN-0023 PDPA RoPA-lite STEP-2 SHIPPED, session 58, #308/#309,
+> head_commit `afea6b3`):** step-2 of the audit-framework-prep arc landed —
+> two tracked deliverables: a reusable RoPA-lite **template**
+> (`docs/conventions/partner-ropa-lite.md`, canonical) + an **NPD synthetic
+> example** (`docs/strategy/public/partner-sim-run1-ropa-example.md`,
+> SYNTHETIC). Each RoPA slot is annotated with a data-quality/lineage hook;
+> the example carries a DSR/lineage→ADR-011 design-driver section mapping
+> 4 gaps→implications (PII-in-free-text → log-by-reference; scattered actor
+> identity → actor unification; PK reuse + NTP drift → lineage/valid-from +
+> ordering; under-recording → completeness-not-assumed). **Governance chain
+> (clean author≠reviewer):** Cray ratified PLAN formality (3 decisions —
+> template+example scope / PLAN / DSR-lineage-as-ADR-011-driver angle); Code
+> wrote a self-contained drafting brief → the in-harness `plan-drafter`
+> subagent authored PLAN-0023 (ADR-013 D1) → Code committed it (#308,
+> ADR-009 D2) → Cray reviewed at merge → Code executed the two deliverables
+> directly (Code-direct, same as step-1) (#309); PLAN archived to `done/`.
+> SD-1 surfaced + kept: AC-6 (post-merge STATUS reconcile) retained as an
+> in-PLAN acceptance criterion (drafter rec; Cray did not flip). **Stop-hook
+> AUTO-HANDOFF DISPATCH fired for the PLAN-0023 drafting and was LEGIT this
+> time** (contrast the 4 spurious dispatches in session 57): it fired only
+> AFTER Cray ratified PLAN formality via the decision prompt, so the drafting
+> need was real — a positive gold-case counterpoint to session 57's
+> premature-dispatch-on-a-surfaced-decision cases. Carried open (unchanged):
+> SD-4 residency scope, SD-5 erasure vs append-only, OQ-A Thai PDPA lawyer
+> review; **ADR-011 still gated on a real partner** — the synthetic run
+> INFORMS/feeds it (ADR-0020 R3) but never triggers PLAN-0005 §8.1. Next:
+> audit-framework-prep arc now idle pending a real partner conversation (the
+> ADR-011 gate); backlog quick-wins available (stop-classifier gold cases,
+> incl. this session's legit-vs-spurious dispatch contrast).
 > *Rotation note:* the oldest CF block (session 56 third batch,
 > carrier-death hardening, #275/#276) rotated to
 > `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4).
-> AI-assisted (Claude Code, session 57); no `Co-Authored-By` per CLAUDE.md §7.
+> No CF block rotated this reconcile — step-2 added as a coda on this
+> (fifth-batch AUDIT-FRAMEWORK PREP) arc, keeping the count flat at 8.
+> AI-assisted (Claude Code, session 58); no `Co-Authored-By` per CLAUDE.md §7.
 >
 > **Session 57 (fourth batch) — B-6 hyphen normalization
 > SHIPPED (#295; head_commit `2331ffb`, `fix(benchmark):`; merge
@@ -385,6 +416,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-14 | **PLAN-0023 (PDPA RoPA-lite, step-2 of audit-framework-prep) SHIPPED (#308 PLAN + #309 deliverables, `afea6b3`, session 58)** — two tracked deliverables: reusable RoPA-lite template (`docs/conventions/partner-ropa-lite.md`, canonical) + NPD synthetic example (`docs/strategy/public/partner-sim-run1-ropa-example.md`, SYNTHETIC), each RoPA slot annotated with a data-quality/lineage hook; example's DSR/lineage→ADR-011 section maps 4 gaps→implications (PII-in-free-text→log-by-reference; scattered actor identity→actor unification; PK reuse + NTP drift→lineage/valid-from + ordering; under-recording→completeness-not-assumed). Governance: Cray ratified PLAN formality (3 decisions) → `plan-drafter` subagent authored PLAN-0023 (ADR-013 D1) → Code committed (#308, ADR-009 D2) → Code executed deliverables Code-direct (#309); PLAN archived to `done/`. SD-1 kept (AC-6 in-PLAN). ADR-011 still gated on a real partner — synthetic run INFORMS but never triggers PLAN-0005 §8.1 (ADR-0020 R3). Carried open: SD-4/SD-5/OQ-A | `afea6b3` (#308/#309) / `docs/conventions/partner-ropa-lite.md` + `docs/strategy/public/partner-sim-run1-ropa-example.md` |
 | 2026-06-13 | **ADR-0020 (partner-sim venue) RATIFIED Proposed→Accepted (#302, `4d1347b`, session 57)** — Cray ratified in-session ("เอาตาม Cowork ทุกข้อ"); all four venue SDs + dispatch-SD-1 accepted per Cowork rec (Cowork-authored fold per ADR-009 D1, Code R2-reviewed + committed). SD-1 N=3 (→D2/R2); SD-2 one-project-per-business-type (→D4; R-PS4 reframed as a guard); SD-3 size/region/maturity enums + run-1 default energy·mid·th-regional·mixed-legacy (→D3 input); SD-4 "what we refused to share" ratified-required (→D3 output). R1/R2/R3 substance unchanged (#300 errata settled those). Instruction file reconciled same PR (6 ratification-pending markers → ratified; Code-amends-conventions, ADR-009 D2). dispatch-SD-1 (gitignored): one-pager sector-callout forbidden-action note trimmed, R1-clean seed untouched. Venue now ACCEPTED guarded-trial (R-PS1..R-PS4) — live action is Cray's (launch energy run-1) | `4d1347b` (#302) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 | 2026-06-13 | **ADR-0020 (synthetic design-partner simulation venue, partner-sim) committed Proposed (#297, `e25281d`, session 57) + project system instruction landed (#298, `e387a63`)** — a specialist Cowork project that role-plays a Thai operator + emits a "partner profile package" so the intake+PDPA pipeline is rehearsed before a real partner. D1 venue OUTSIDE governance tiers (no commits / no repo mount / enters via Code receive); D2 three BINDING anti-circularity rules (R1 feed-questions-not-schema, R2 forced messiness, R3 SYNTHETIC provenance — never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger); D3 reuses completion-handoff schema (no enum change); D4 guarded-trial (mirrors ADR-012 D5) + R-PS1..R-PS4. SD-1..SD-4 recommendations only. **Awaits Cray ratification (Proposed→Accepted + SD-1..SD-4) before the project goes live (ADR-0020 T3).** Author≠reviewer (ADR-012 D4.3): Cowork authored, Code R2-reviewed + committed both | `e25281d` (#297) + `e387a63` (#298) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 | 2026-06-12 | **B-6 hyphen-normalization grader change RATIFIED + SHIPPED (#295, `2331ffb`, session 57)** — Cray ratified in-session; `grader.py` `normalize_primary_key()` folds the Unicode hyphen/dash family (U+2010–U+2014, U+2212) → ASCII `-` on both sides of the two primary-KEY comparisons only; free-text untouched. Offline dump replay vs the 2026-06-12 scored run: β 118/120 → 119/120, EXACTLY one flip (energy-007, zero collateral); aqua-028 still fails. Same measurement-correctness class as the 2026-06-08 items; no bar moves; REPORT.md dated addendum | `2331ffb` (#295) / `benchmarks/procedure_baseline/grader.py` |
@@ -394,7 +426,6 @@ below, and git history.
 | 2026-06-12 | **Stop classifier SWITCHED to local `gpt-oss:20b` (#282, `3375778`, session 56)** — Cray picked **(b)** on the calibration evidence (8–30s latency acceptable). Default backend = MS-S1 Ollama (format-constrained `/api/chat`, temp 0, keep_alive 10m, 75s timeout; no API key / no WSL bridge); Anthropic API retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`. Fail-closed pause + legacy reason strings byte-identical; legacy suite pinned to sonnet + 4 new ollama-backend tests (571 passed / 2 skipped; mypy --strict clean); LIVE-verified from the prod hook runtime: 7.9s → pause | `3375778` (#282) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-06-12 | **Stop-classifier calibration arc SHIPPED (#278 + #279 + #280, `246ee0a`, session 56)** — #278 completion-consistency rule (PROCEED needs concrete remaining work; decision↔reason agreement; contract-test-pinned). #279 20-case safety-weighted eval harness (full prod-prompt fidelity; gold incl. Thai); MS-S1 sweep 4×20 (80 dump-verified): `gpt-oss:20b` 19/20, recall 100%, p95 21.6s vs sonnet(prod) 17+2/20, recall 75%, p95 3.5s; nemotron-4b safety-DQ. #280 HEADLINE = registry gap not model gap → registry row C5 (host-state gate), re-verified live; transport pick (local vs API Sonnet) = Cray's | `246ee0a` (#278–#280) / `benchmarks/stop_classifier/RESULTS.md` |
 | 2026-06-12 | **Carrier-death incident → ops hardening SHIPPED (#275 + #276, `3a8a175`, session 56)** — the calibration run's carrier (held `wsl.exe` + wrapper) was reaped at ~59 min; the orphaned python completed silently (stale "running" task chip, no completion event; truth established content-based). #275 records the gotcha + content-based truth test in the `ms-s1-ollama` skill; #276 adds `run_detached.sh` — long MS-S1 runs launch under `systemd-run --user` (carrier-proof, PROBE-VERIFIED 2026-06-12; `.done` sentinel "rc ISO-ts"; ETA + ~10 min → check sentinel; `Linger=no` = host-state, ask Cray) | `3a8a175` (#275 + #276) / `.claude/skills/ms-s1-ollama/` |
-| 2026-06-12 | **First watch-lane calibration run RECORDED (#273, `489b695`, session 56)** — M-2=b evidence on MS-S1 (`gpt-oss:20b`, 198 items, 319 calls, 0 errors, `--dump-json`-verified). Watch distribution: aqua 13/13 aerator, energy 13/13 restart, supply_chain hold 5 / inspect 5 / **reroute 3 = the lane's first real safety signal** (forbidden under a `{hold, inspect}` pinning). β 98.3% (2 verified misses incl. the U+2011 hyphen grader-calibration candidate), α 100%, deterministic 198/198. Breach p95 28.73s = first SD-2 PASS in full mode (±10s noise band); watch latency = M-4 own diagnostic. No bar moves (B-6) | `489b695` (#273) / `benchmarks/procedure_baseline/REPORT.md` |
 
 ## In-Flight Discussions
 
