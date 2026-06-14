@@ -101,15 +101,61 @@ T3) is therefore **genuinely open** and should be made on partner psychology
 - Consider an explicit **"fetch-broad + phrase-aggregate" mode** for
   superlative/average — the phrase rescue already works when fed a superset.
 
-## Next: the text-to-SQL comparison (Cray's conditional, now warranted)
+## text-to-SQL comparison arm (the architecture-vs-discipline answer)
 
-The ceiling-hits are concrete (joins nl-09/nl-11; aggregates). **text-to-SQL
-would clear the *expressiveness* ones natively** (JOIN, MAX/AVG, GROUP BY). But
-the **filter-omission** is a *model-discipline* failure (the model under-
-specifying) that would likely persist in text-to-SQL (`SELECT *` with no
-`WHERE`). A text-to-SQL run on the same 12 questions would cleanly separate
-**"ceiling = architecture (StructuredQuery expressiveness)"** from
-**"filter-omission = model discipline"** — the exact question Cray asked. Run it
-only if the fork leans T2.
+Same 12 questions, same model, run as **NL→SQL** — the LLM writes a read-only
+SQLite SELECT over the same synthetic data, which is executed and scored
+(`text_to_sql.py` + `run_text_to_sql.py`; in-memory DB built from the same
+`synthetic.py`, so the arms are directly comparable). Recorded at
+`.claude/benchmark-results/2026-06-14-nl-query-text-to-sql.jsonl`.
+
+**Result: 11/12 correct · latency p50 5.6 s / p95 12.1 s** (one call, no phrase step).
+
+| dimension | engine-A (NL→StructuredQuery) | text-to-SQL |
+|---|---|---|
+| accuracy | 8/12 structured (~10/12 answer) | **11/12** |
+| ceiling: joins / aggregates | fails or brittle phrase-rescue | **clears natively** (JOIN, AVG, MAX) |
+| filter-omission (whole-table fetch) | present | **absent** — wrote `WHERE` every time |
+| **anti-hallucination** | **12/12 (perfect)** | **11/12 — LOST IT** (nl-12) |
+| latency | p50 11 s / p95 32 s (2 calls) | **p50 5.6 s / p95 12 s (1 call)** |
+| attack surface | bounded (no free-form SQL) | arbitrary SQL (here behind a SELECT-only guard) |
+
+**The answer this arm was for:**
+- **The ceiling is ARCHITECTURE, not the model.** text-to-SQL cleared every
+  join/aggregate the StructuredQuery layer couldn't express — incl. the two
+  engine-A *failed* (nl-09 join-count, nl-11 entity-superlative). → enriching
+  `StructuredQuery` with join + aggregate ops closes the ceiling; the local
+  model is capable.
+- **The filter-omission is PROMPT, not the model.** Under the SQL framing the
+  same model applied a `WHERE` on every expressible question (incl. nl-01 /
+  nl-07, the two engine-A botched). → engine-A's whole-table fetch is a
+  translate-prompt fix, not a capability wall.
+
+**But text-to-SQL paid for it in safety (the load-bearing caveat).** On nl-12
+("list all open alerts" — no alert data), engine-A returned the honest
+deterministic "No Alert records" (grounded=false); text-to-SQL **improvised**
+`SELECT * FROM operational_event WHERE event_type='alarm'` and handed back an
+*alarm* event as if it were the requested *alert* — a quiet
+hallucination-by-substitution. Raw NL→SQL has no grounded-execute guard, so the
+model fills the gap by confidently answering a *different* question.
+
+## Read → the refined T2 verdict
+
+The two arms together say **T2 is more viable than the engine-A run alone
+showed**, and they point at the right architecture:
+
+- engine-A's weaknesses (ceiling, filter-omission) are **both fixable** —
+  architecture (add join/aggregate ops to `StructuredQuery`) + prompt (require
+  the filter) — not model limits.
+- text-to-SQL's expressiveness is **not worth its safety cost** for an
+  operational tool: an operator who's been burned wants "I don't have that,"
+  not a confident answer to a question they didn't ask.
+- **The target T2 = engine-A's grounded-execute safety + a richer
+  `StructuredQuery`** (joins + aggregates), NOT a switch to raw text-to-SQL —
+  keeping the 12/12 anti-hallucination *and* clearing the ceiling.
+
+So for the **T2-vs-T3 fork**: T2 is a real, de-riskable option with a clear,
+bounded build path. The wedge call stays Cray's (partner psychology); the
+engineering half is now evidence-backed — **viable, with a known architecture.**
 
 *AI-assisted (Claude Code, session 58); no `Co-Authored-By` per CLAUDE.md §7.*
