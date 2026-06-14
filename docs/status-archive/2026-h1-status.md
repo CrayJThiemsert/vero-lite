@@ -12,6 +12,30 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-14 (session 58 third-batch reconcile):_
+
+> **Session 56 (fifth batch) — stop classifier SWITCHED to
+> local `gpt-oss:20b` on MS-S1 (#282; head_commit `3375778`,
+> `feat(claude):` = the newest substantive per `lint_status`; merge
+> `03f81ec`).** The implementation of the fourth-batch decision: Cray
+> picked **(b)** on the eval evidence ("latency 8s–30s acceptable") and
+> the switch shipped same-day. `_sonnet_classifier.py`'s DEFAULT backend
+> is now local `gpt-oss:20b` on MS-S1 Ollama (format-constrained
+> `/api/chat`, temperature 0, `keep_alive` 10m, 75s timeout; no API key
+> and no WSL bridge on this path); the Anthropic-API transport is
+> retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`.
+> `classify()` refactored around a backend-independent `_run_with_retry`
+> keeping fail-closed-pause + the legacy reason strings byte-identical
+> (unreachable MS-S1 pauses, never proceeds). `settings.json` hook
+> timeouts → 180s (cold-load headroom); registry gains the backend note.
+> Tests: the legacy suite pinned to the sonnet backend + 4 new
+> ollama-backend tests (571 passed / 2 skipped; `mypy --strict` clean).
+> LIVE-verified from the production hook runtime (Windows Python →
+> 192.168.1.133): 7.9s → pause; Windows reachability pre-flight 0.09s.
+> The next real Stop event in the working session is the production
+> validation.
+> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-14 (session 58 reconcile):_
 
 > **Session 56 (fourth batch) — stop-classifier calibration arc
