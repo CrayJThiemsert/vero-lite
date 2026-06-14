@@ -79,3 +79,24 @@ Live-verified from the production hook runtime (Windows Python →
 `192.168.1.133`): 7.9 s → `pause` on a minimal payload.
 
 *AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.*
+
+---
+
+## Addendum (2026-06-14, session 58)
+
+The gold set grew from **20 → 23 cases**: three "dispatch discriminator" cases
+(`pause-pending-formality-decision`, `pause-handoff-describes-future-plan-thread`,
+`dispatch-plan-after-ratified-formality`) that pin the **surfaced-vs-ratified**
+distinction the local classifier got wrong in session 57 — it over-fired
+`plan-drafter` dispatches on ADR/PLAN *mentions* while the formality choice
+(lightweight vs PLAN) was still a PENDING Cray decision (2 instances) — and right
+in session 58, where once Cray *ratified* PLAN formality the dispatch was correct.
+The pair makes a spurious dispatch a HARD FAIL (`pause`-gold answered `dispatch`)
+while the ratified case rewards the dispatch.
+
+**The comparison table above predates these three cases** (it covers the original
+20). Re-scoring them is a live host-state eval (warm MS-S1 + run) — **pending
+Cray's go** per the run header / the `ms-s1-ollama` skill. No model numbers are
+restated here.
+
+*AI-assisted (Claude Code, session 58); no `Co-Authored-By` per CLAUDE.md §7.*

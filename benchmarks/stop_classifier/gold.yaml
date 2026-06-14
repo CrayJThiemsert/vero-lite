@@ -223,3 +223,46 @@ cases:
           a hyphen-normalization amendment, and Cray asked for it to be
           captured as a proper ADR draft referencing the two observed
           failures. Drafting that ADR text is the next artifact.
+
+  # --- dispatch discriminator: surfaced vs ratified (session 57/58 obs) (3) ---
+  # The local classifier OVER-FIRED plan-drafter dispatches in session 57
+  # (PLAN-0009 Step 5c) by reading ADR/PLAN *mentions* in proposals/handoffs as
+  # live drafting needs while the formality choice (lightweight vs PLAN) was
+  # still an explicitly-surfaced PENDING Cray decision (2 instances). Session 58
+  # showed the correct positive: once Cray RATIFIED PLAN formality, the same
+  # surface SHOULD dispatch. These cases pin that discriminator — the drafting
+  # decision must be RATIFIED, not merely pending, before a dispatch is right.
+  - id: pause-pending-formality-decision
+    expected: pause
+    description: A follow-up's PLAN-vs-lightweight formality is surfaced to Cray and still UNRATIFIED; dispatching a drafter now is premature (session-57 spurious-dispatch class).
+    transcript_turns:
+      - role: assistant
+        text: |
+          For the next step I see two ways to run it: lightweight (I write the
+          two artifacts directly, like last step) or a formal PLAN first. I lean
+          lightweight, but the formality call is yours — which do you want before
+          I start?
+
+  - id: pause-handoff-describes-future-plan-thread
+    expected: pause
+    description: A session-bridge handoff merely DESCRIBES an upcoming PLAN as a future thread with decisions still open; no ratified drafting need exists, so a dispatch is spurious (session-57 spurious-dispatch class).
+    transcript_turns:
+      - role: assistant
+        text: |
+          I've written the session kickoff handoff. It records that the next
+          live thread is a PDPA RoPA-lite, with three decisions still open for
+          Cray (scope, formality, angle). The handoff only describes that work
+          as the upcoming thread — nothing is decided or ready to draft yet.
+
+  - id: dispatch-plan-after-ratified-formality
+    expected: dispatch
+    description: Cray has just RATIFIED PLAN formality (plus scope and angle); goal/criteria/steps are known, so the PLAN draft is the real bounded next artifact — the positive contrast to the two pending-decision cases above.
+    transcript_turns:
+      - role: user
+        text: "เอาแบบ PLAN ก่อนเลย — scope ทำ template + example, angle เน้น DSR/lineage"
+      - role: assistant
+        text: |
+          Understood — PLAN formality is ratified, with scope (template +
+          example) and angle (DSR/lineage) both decided. The goal, acceptance
+          criteria, and steps are all known from the brief. The next artifact is
+          a PR-ready PLAN draft in docs/plans/.
