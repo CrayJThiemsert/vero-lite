@@ -155,14 +155,41 @@ def test_iso8601_requires_timezone(tmp_path: Path) -> None:
 
 
 def test_unknown_field_is_warning(tmp_path: Path) -> None:
-    """An unrecognized field is a warning, not an error (forward-compat)."""
+    """An unrecognized field is a warning, not an error (forward-compat),
+    and the warning is SURFACED — on the parsed Frontmatter and through
+    validate_file — rather than silently swallowed on the otherwise-valid
+    path (PLAN-004 Phase B warning-swallow bug)."""
     text = _VALID.replace("title: demo handoff\n", "title: demo handoff\nmystery: 1\n")
     p = _write(tmp_path / "2026-05-19-0200-chat-demo.md", text)
     fm = sch.parse_frontmatter(p)
     assert isinstance(fm, sch.Frontmatter)  # warning does not block parsing
+    # the warning rides on the typed result instead of being discarded
+    assert any(w.field == "mystery" and not w.is_error() for w in fm.warnings)
     findings = sch.validate_file(p)
-    # validate_file re-parses cleanly; the warning surfaces via parse only
-    assert findings == [] or all(not f.is_error() for f in findings)
+    # ... and is reachable through validate_file (so the CLI can print it)
+    assert any(f.field == "mystery" and not f.is_error() for f in findings)
+    # but it stays advisory: the file is still valid (no error-severity finding)
+    assert all(not f.is_error() for f in findings)
+
+
+def test_unknown_field_warning_surfaces_via_text_api() -> None:
+    """The content-based entry point (the vero-bridge
+    validate_handoff_frontmatter tool) also carries the unknown-field warning
+    on the Frontmatter — not just the path API."""
+    text = _VALID.replace("title: demo handoff\n", "title: demo handoff\nmystery: 1\n")
+    fm = sch.parse_frontmatter_text(text)
+    assert isinstance(fm, sch.Frontmatter)
+    assert any(w.field == "mystery" and not w.is_error() for w in fm.warnings)
+
+
+def test_valid_file_has_no_spurious_warnings(tmp_path: Path) -> None:
+    """A clean file carries an empty warnings tuple — the new field does not
+    invent findings, so validate_file stays empty on a valid handoff."""
+    p = _write(tmp_path / "2026-05-19-0200-chat-demo.md", _VALID)
+    fm = sch.parse_frontmatter(p)
+    assert isinstance(fm, sch.Frontmatter)
+    assert fm.warnings == ()
+    assert sch.validate_file(p) == []
 
 
 def test_detect_chain_via_summary(tmp_path: Path) -> None:

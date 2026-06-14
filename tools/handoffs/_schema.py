@@ -150,6 +150,11 @@ class Frontmatter:
     references_predecessor_handoffs: tuple[str, ...] = ()
     references_session_batches_completed: tuple[str, ...] = ()
     references_commits: tuple[str, ...] = ()
+    #: Advisory (non-error) findings collected during parse — e.g. unknown
+    #: fields. Carried here so ``validate_file`` can surface them instead of
+    #: discarding them on the otherwise-valid path; they never make the file
+    #: invalid (every entry has ``is_error()`` False).
+    warnings: tuple[ValidationError, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -332,6 +337,7 @@ def _build(path: Path, raw: dict[str, object]) -> Frontmatter | list[ValidationE
             raw.get("references_session_batches_completed")
         ),
         references_commits=_as_tuple(raw.get("references_commits")),
+        warnings=tuple(e for e in errors if not e.is_error()),
     )
 
 
@@ -398,7 +404,7 @@ def validate_file(path: Path) -> list[ValidationError]:
     result = parse_frontmatter(path)
     if isinstance(result, list):
         return result
-    errors: list[ValidationError] = []
+    errors: list[ValidationError] = list(result.warnings)
     prefix_error = validate_filename_prefix(path, result.actor)
     if prefix_error is not None:
         errors.append(prefix_error)
