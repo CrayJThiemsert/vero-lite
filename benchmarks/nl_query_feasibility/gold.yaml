@@ -122,45 +122,61 @@ cases:
     expected_count: 1
     expected_grounded: true
 
-  # --- ceiling: needs superlative / join / aggregate-beyond-count (5) --------
-  # Scored on answer_ok (phrase-step rescue). The "true answer" is hand-derived
-  # from the synthetic data; expected_answer_substrings are the load-bearing
-  # facts that must appear in a correct phrased answer.
+  # --- now expressible by the enriched StructuredQuery (PLAN-0024, 4) --------
+  # Aggregates (max/min/avg/sum + group-by) and cross-type name->id resolve
+  # moved these OFF the ceiling/phrase-rescue lane onto the deterministic
+  # structured-result lens: scored on the executed result (count/ids) PLUS the
+  # deterministically-computed aggregate (expected_aggregate: value within
+  # tolerance, top = the extreme group). Invariant to how the answer is phrased.
   - id: nl-08
     text: "What is the highest temperature reading, and on which battery?"
     category: superlative
-    ceiling: true
-    # No max/sort in StructuredQuery. A correct answer needs the phrase step to
-    # pick the max over retrieved celsius readings. True: 96.5 C on Battery Bank A.
-    expected_answer_substrings: ["96.5", "Battery Bank A"]
+    ceiling: false
+    # group_by asset_id over the 7 celsius readings -> max per battery; True: 96.5
+    # C, hottest = Battery Bank A.
+    expected_object_type: OperationalEvent
+    expected_operation: max
+    expected_count: 7
+    expected_aggregate: {value: 96.5, top: Battery Bank A}
     expected_grounded: true
 
   - id: nl-09
     text: "How many events are recorded for Battery Bank A?"
     category: join-count
-    ceiling: true
-    # Cross-type join: name "Battery Bank A" -> asset_id -> events. True: 5
-    # (event-transition-01, event-reading-01, event-reading-05, event-reading-06,
-    # event-reading-03 all carry asset_id=asset-battery-01).
-    expected_answer_substrings: ["5"]
+    ceiling: false
+    # Cross-type resolve: name "Battery Bank A" -> asset_id -> count events. True: 5.
+    expected_object_type: OperationalEvent
+    expected_operation: count
+    expected_count: 5
+    expected_ids:
+      - event-transition-01
+      - event-reading-01
+      - event-reading-05
+      - event-reading-06
+      - event-reading-03
     expected_grounded: true
 
   - id: nl-10
     text: "What is the average temperature across Battery Bank B's readings?"
     category: join-aggregate
-    ceiling: true
-    # Join + avg (no avg in StructuredQuery). Battery Bank B celsius readings:
-    # 41.7, 39.0, 43.2 -> mean 41.3.
-    expected_answer_substrings: ["41.3"]
+    ceiling: false
+    # Resolve Battery Bank B + avg over its 3 celsius readings (41.7, 39.0, 43.2)
+    # -> mean 41.3.
+    expected_object_type: OperationalEvent
+    expected_operation: avg
+    expected_count: 3
+    expected_aggregate: {value: 41.3}
     expected_grounded: true
 
   - id: nl-11
     text: "Which battery is running the hottest right now?"
     category: entity-superlative
-    ceiling: true
-    # Join + max-by-entity. Battery Bank A peaks at 96.5 C vs Battery Bank B's
-    # 43.2 C -> Battery Bank A.
-    expected_answer_substrings: ["Battery Bank A"]
+    ceiling: false
+    # group_by asset_id + max -> Battery Bank A peaks at 96.5 vs Battery Bank B 43.2.
+    expected_object_type: OperationalEvent
+    expected_operation: max
+    expected_count: 7
+    expected_aggregate: {top: Battery Bank A}
     expected_grounded: true
 
   - id: nl-12
