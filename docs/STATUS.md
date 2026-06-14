@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-14T08:48:24+07:00
+last_updated: 2026-06-14T09:28:25+07:00
 session: 58
-current_batch: 'session-58 PLAN-0023 step-2 PDPA RoPA-lite shipped (template + NPD example, #308/#309)'
+current_batch: 'session-58 backlog quick-wins (Code-solo) — stop-classifier gold cases #2/#3 (#311) + handoff-validator warning-swallow fix (#312)'
 current_actor: code
-blocked_on: 'Nothing blocks Code (step-2 shipped). Open-for-Cray items (auditprep SD-4/SD-5/OQ-A; ADR-011 gated on a real partner) are in the CF coda / In-Flight.'
-next_action: 'step-2 done → audit-framework-prep arc idle pending a real partner conversation (the ADR-011 gate); open for Cray = SD-4/SD-5/OQ-A; backlog quick-wins (stop-classifier gold cases incl. this session legit-vs-spurious dispatch contrast).'
-head_commit: afea6b3
-recent_commits: [c818695, afea6b3, 8f9a36d, d4fe7fc, effad05, b37bb1b, e09af9b, 6e8c603, 4d1347b, e387a63]
+blocked_on: 'Nothing blocks Code (quick-wins shipped). Open-for-Cray: strategic sequencing fork (partner-trial roadmap vs B-γ baselines); auditprep SD-4/SD-5/OQ-A + ADR-011 (gated on a real partner) are in the CF coda / In-Flight.'
+next_action: 'Teed up for Cray: sequence the partner-trial roadmap fork (NL-query vs real-data) vs the B-γ benchmark baselines — which order yields higher quality. Held: PLAN-002, partner-trial gaps, auditprep SD-4/SD-5/OQ-A, ADR-011 (real-partner gated).'
+head_commit: 9595d3e
+recent_commits: [6f46277, 9595d3e, 48a2da0, f2ee579, c818695, afea6b3, 8f9a36d, d4fe7fc, effad05, b37bb1b]
 ---
 
 # vero-lite — Project Status
@@ -18,6 +18,46 @@ recent_commits: [c818695, afea6b3, 8f9a36d, d4fe7fc, effad05, b37bb1b, e09af9b, 
 
 ## Current Focus
 
+> **Session 58 (second batch, current; head_commit `9595d3e`) — TWO BACKLOG
+> QUICK-WINS (Code-solo, #311 + #312), cleared after the audit-framework arc
+> closed.** A genuinely separate small batch (harness tooling, not the partner
+> arc): two long-standing backlog items shipped back-to-back. **(1)
+> stop-classifier gold cases #311 (`f2ee579`, `test(stop-classifier):`):**
+> added 3 "dispatch discriminator" cases to `benchmarks/stop_classifier/gold.yaml`
+> (20→23) pinning the surfaced-vs-ratified distinction the local classifier got
+> WRONG in session 57 (it OVER-FIRED `plan-drafter` dispatches on ADR/PLAN
+> *mentions* while the formality choice was a PENDING Cray decision — 2 instances)
+> and RIGHT in session 58 (once Cray RATIFIED PLAN formality, the dispatch was
+> correct). Two `pause` negatives + one `dispatch` positive; safety-weighted
+> scoring makes a spurious dispatch a HARD FAIL. Offline test
+> (`tests/benchmark/test_stop_classifier_gold.py`) green (4 passed); the live
+> re-score (warm MS-S1) is a host-state eval — **pending Cray's go**; RESULTS.md
+> got an addendum noting the recorded 2026-06-12 run predates the 3 cases (no
+> model numbers fabricated). **(2) handoff-validator warning-swallow bug FIXED
+> #312 (`9595d3e`, `fix(handoffs):`; PLAN-004 Phase B backlog):**
+> `tools/handoffs/_schema.py::_build()` returned the typed `Frontmatter` on the
+> otherwise-valid path and discarded its local `errors` list, so
+> `_check_unknown()` WARNING findings (e.g. unknown field `brief-number`) were
+> unreachable on any file without a hard error — contradicting `validate_file`'s
+> own docstring. Fix: `Frontmatter` gains a `warnings` field; `_build()` fills
+> it on the success path; `validate_file()` surfaces it; the `validate_handoff.py`
+> CLI now prints the warning; precommit unchanged (still gates/prints only
+> `is_error()`). Regression tests strengthened (the OLD test passed on the bug)
+> + text-API + clean-file guards; `tests/handoffs/` 573 passed / 2 skipped;
+> ruff + mypy clean. **Next:** quick-wins #2/#3 done → a strategic discussion is
+> teed up for Cray — sequence the partner-trial roadmap fork (NL-query-first vs
+> real-data-first) vs the B-γ benchmark baselines (do the fork first and feed
+> B-γ, or B-γ first to inform the fork). Other backlog held: B-γ, PLAN-002
+> (≥ADR-021), partner-trial gaps + audit-framework SD-4/SD-5/OQ-A + ADR-011
+> (gated on a real partner).
+> *Rotation note:* a new Session-58 (second batch) CF block was added (separate
+> subject — harness tooling, not the partner arc), taking the count to 9 > the
+> 8-block soft cap; per R2 the oldest CF block (session 56 fourth batch,
+> stop-classifier calibration arc, #278/#279/#280) rotated to
+> `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4), keeping the
+> count at 8.
+> AI-assisted (Claude Code, session 58); no `Co-Authored-By` per CLAUDE.md §7.
+>
 > **Session 57 (fifth batch, current; head_commit `e09af9b`) — AUDIT-FRAMEWORK PREP arc:
 > partner-sim venue ADR-0020 committed Proposed (#297, `e25281d`,
 > `docs(adr):`) + its project system instruction LANDED (#298,
@@ -373,28 +413,6 @@ recent_commits: [c818695, afea6b3, 8f9a36d, d4fe7fc, effad05, b37bb1b, e09af9b, 
 > validation.
 > AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
 >
-> **Session 56 (fourth batch) — stop-classifier calibration arc
-> SHIPPED (#278 + #279 + #280; head_commit `246ee0a`, `feat(claude):` = the
-> newest substantive per `lint_status`; merge `9fde2d7`).** Cray-approved
-> hook improvement + Cray-directed local-model eval. **#278** (`cbe6d05`):
-> the classifier prompt gains the completion-consistency rule — PROCEED
-> requires concrete remaining work and the decision must agree with its
-> reason (fixes the observed over-continue on completed work; contract test
-> pins it). **#279** (`aecf1bd` + `c84264e`): a 20-case safety-weighted
-> eval harness at `benchmarks/stop_classifier/` with full prompt fidelity
-> to the production hook (gold incl. Thai turns; offline tests). MS-S1
-> sweep (4 models × 20 cases, 80 dump-verified records, 13:21–13:33):
-> `gpt-oss:20b` 19/20, proceed-recall 100%, p50 7.1s / p95 21.6s vs
-> sonnet(prod) 17+2/20, recall 75%, p50 2.5s / p95 3.5s; nemotron-4b
-> DISQUALIFIED on safety (proceeds on dropdb); nemotron-30b out. **#280**
-> (`246ee0a`) — the HEADLINE is a **registry gap, not a model gap**: ALL
-> models incl. prod Sonnet proceeded on warm-MS-S1-without-a-go → new
-> registry row **C5 (host-state gate)**, re-verified LIVE (both
-> `gpt-oss:20b` and sonnet(prod) now flip to pause). RESULTS.md records the
-> comparison + recommendation; the transport decision (local `gpt-oss:20b`
-> vs API Sonnet) is **Cray's, on this evidence**.
-> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
->
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
 ## Prior focus (archived)
@@ -416,6 +434,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-14 | **Two backlog quick-wins SHIPPED (Code-solo, #311 + #312, `9595d3e`, session 58)** — cleared after the audit-framework arc closed; a separate small harness-tooling batch. **#311** (`f2ee579`, `test(stop-classifier):`): 3 "dispatch discriminator" gold cases added to `benchmarks/stop_classifier/gold.yaml` (20→23) pinning the surfaced-vs-ratified distinction the local classifier got wrong in s57 (over-fired `plan-drafter` on ADR/PLAN mentions while formality was a PENDING Cray decision — 2 cases) and right in s58 (post-ratification dispatch correct); 2 `pause` negatives + 1 `dispatch` positive, safety-weighted (spurious dispatch = HARD FAIL); offline test green (4 passed); live re-score pending Cray go; RESULTS.md addendum (recorded 2026-06-12 run predates the cases). **#312** (`9595d3e`, `fix(handoffs):`, PLAN-004 Phase B): handoff-validator warning-swallow bug fixed — `_schema.py::_build()` discarded its `errors` list on the otherwise-valid path so `_check_unknown()` WARNINGs were unreachable; `Frontmatter` gains `warnings`, `validate_file()` surfaces it, CLI prints it (precommit unchanged); regression tests strengthened; `tests/handoffs/` 573 passed / 2 skipped; ruff + mypy clean | `9595d3e` (#311/#312) / `benchmarks/stop_classifier/gold.yaml` + `tools/handoffs/_schema.py` |
 | 2026-06-14 | **PLAN-0023 (PDPA RoPA-lite, step-2 of audit-framework-prep) SHIPPED (#308 PLAN + #309 deliverables, `afea6b3`, session 58)** — two tracked deliverables: reusable RoPA-lite template (`docs/conventions/partner-ropa-lite.md`, canonical) + NPD synthetic example (`docs/strategy/public/partner-sim-run1-ropa-example.md`, SYNTHETIC), each RoPA slot annotated with a data-quality/lineage hook; example's DSR/lineage→ADR-011 section maps 4 gaps→implications (PII-in-free-text→log-by-reference; scattered actor identity→actor unification; PK reuse + NTP drift→lineage/valid-from + ordering; under-recording→completeness-not-assumed). Governance: Cray ratified PLAN formality (3 decisions) → `plan-drafter` subagent authored PLAN-0023 (ADR-013 D1) → Code committed (#308, ADR-009 D2) → Code executed deliverables Code-direct (#309); PLAN archived to `done/`. SD-1 kept (AC-6 in-PLAN). ADR-011 still gated on a real partner — synthetic run INFORMS but never triggers PLAN-0005 §8.1 (ADR-0020 R3). Carried open: SD-4/SD-5/OQ-A | `afea6b3` (#308/#309) / `docs/conventions/partner-ropa-lite.md` + `docs/strategy/public/partner-sim-run1-ropa-example.md` |
 | 2026-06-13 | **ADR-0020 (partner-sim venue) RATIFIED Proposed→Accepted (#302, `4d1347b`, session 57)** — Cray ratified in-session ("เอาตาม Cowork ทุกข้อ"); all four venue SDs + dispatch-SD-1 accepted per Cowork rec (Cowork-authored fold per ADR-009 D1, Code R2-reviewed + committed). SD-1 N=3 (→D2/R2); SD-2 one-project-per-business-type (→D4; R-PS4 reframed as a guard); SD-3 size/region/maturity enums + run-1 default energy·mid·th-regional·mixed-legacy (→D3 input); SD-4 "what we refused to share" ratified-required (→D3 output). R1/R2/R3 substance unchanged (#300 errata settled those). Instruction file reconciled same PR (6 ratification-pending markers → ratified; Code-amends-conventions, ADR-009 D2). dispatch-SD-1 (gitignored): one-pager sector-callout forbidden-action note trimmed, R1-clean seed untouched. Venue now ACCEPTED guarded-trial (R-PS1..R-PS4) — live action is Cray's (launch energy run-1) | `4d1347b` (#302) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 | 2026-06-13 | **ADR-0020 (synthetic design-partner simulation venue, partner-sim) committed Proposed (#297, `e25281d`, session 57) + project system instruction landed (#298, `e387a63`)** — a specialist Cowork project that role-plays a Thai operator + emits a "partner profile package" so the intake+PDPA pipeline is rehearsed before a real partner. D1 venue OUTSIDE governance tiers (no commits / no repo mount / enters via Code receive); D2 three BINDING anti-circularity rules (R1 feed-questions-not-schema, R2 forced messiness, R3 SYNTHETIC provenance — never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger); D3 reuses completion-handoff schema (no enum change); D4 guarded-trial (mirrors ADR-012 D5) + R-PS1..R-PS4. SD-1..SD-4 recommendations only. **Awaits Cray ratification (Proposed→Accepted + SD-1..SD-4) before the project goes live (ADR-0020 T3).** Author≠reviewer (ADR-012 D4.3): Cowork authored, Code R2-reviewed + committed both | `e25281d` (#297) + `e387a63` (#298) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
@@ -425,7 +444,6 @@ below, and git history.
 | 2026-06-12 | **Lessons #24 + #25 RECORDED (#284, `4b0e306`, session 56)** — Cray-approved coda to the classifier calibration arc. **#24:** rules must live where the enforcer looks — a binding rule placed only in prose is invisible to a machine enforcer reading a different surface (C5 registry-gap finding generalized; adds an enforcement dimension to the ADR-0017 D5 placement rule). **#25:** an LLM judge's `{verdict, reason}` needs verdict-by-observable definitions + an explicit cross-field agreement contract, pinned by a prompt contract test + gold case (generalizes to the ADR-0018 goal-evaluator) | `4b0e306` (#284) / `docs/lessons/0024-rules-must-live-where-the-enforcer-looks.md` + `docs/lessons/0025-llm-judge-verdict-must-bind-to-its-own-reasoning.md` |
 | 2026-06-12 | **Stop classifier SWITCHED to local `gpt-oss:20b` (#282, `3375778`, session 56)** — Cray picked **(b)** on the calibration evidence (8–30s latency acceptable). Default backend = MS-S1 Ollama (format-constrained `/api/chat`, temp 0, keep_alive 10m, 75s timeout; no API key / no WSL bridge); Anthropic API retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`. Fail-closed pause + legacy reason strings byte-identical; legacy suite pinned to sonnet + 4 new ollama-backend tests (571 passed / 2 skipped; mypy --strict clean); LIVE-verified from the prod hook runtime: 7.9s → pause | `3375778` (#282) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-06-12 | **Stop-classifier calibration arc SHIPPED (#278 + #279 + #280, `246ee0a`, session 56)** — #278 completion-consistency rule (PROCEED needs concrete remaining work; decision↔reason agreement; contract-test-pinned). #279 20-case safety-weighted eval harness (full prod-prompt fidelity; gold incl. Thai); MS-S1 sweep 4×20 (80 dump-verified): `gpt-oss:20b` 19/20, recall 100%, p95 21.6s vs sonnet(prod) 17+2/20, recall 75%, p95 3.5s; nemotron-4b safety-DQ. #280 HEADLINE = registry gap not model gap → registry row C5 (host-state gate), re-verified live; transport pick (local vs API Sonnet) = Cray's | `246ee0a` (#278–#280) / `benchmarks/stop_classifier/RESULTS.md` |
-| 2026-06-12 | **Carrier-death incident → ops hardening SHIPPED (#275 + #276, `3a8a175`, session 56)** — the calibration run's carrier (held `wsl.exe` + wrapper) was reaped at ~59 min; the orphaned python completed silently (stale "running" task chip, no completion event; truth established content-based). #275 records the gotcha + content-based truth test in the `ms-s1-ollama` skill; #276 adds `run_detached.sh` — long MS-S1 runs launch under `systemd-run --user` (carrier-proof, PROBE-VERIFIED 2026-06-12; `.done` sentinel "rc ISO-ts"; ETA + ~10 min → check sentinel; `Linger=no` = host-state, ask Cray) | `3a8a175` (#275 + #276) / `.claude/skills/ms-s1-ollama/` |
 
 ## In-Flight Discussions
 

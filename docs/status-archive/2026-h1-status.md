@@ -12,6 +12,30 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-14 (session 58 reconcile):_
+
+> **Session 56 (fourth batch) — stop-classifier calibration arc
+> SHIPPED (#278 + #279 + #280; head_commit `246ee0a`, `feat(claude):` = the
+> newest substantive per `lint_status`; merge `9fde2d7`).** Cray-approved
+> hook improvement + Cray-directed local-model eval. **#278** (`cbe6d05`):
+> the classifier prompt gains the completion-consistency rule — PROCEED
+> requires concrete remaining work and the decision must agree with its
+> reason (fixes the observed over-continue on completed work; contract test
+> pins it). **#279** (`aecf1bd` + `c84264e`): a 20-case safety-weighted
+> eval harness at `benchmarks/stop_classifier/` with full prompt fidelity
+> to the production hook (gold incl. Thai turns; offline tests). MS-S1
+> sweep (4 models × 20 cases, 80 dump-verified records, 13:21–13:33):
+> `gpt-oss:20b` 19/20, proceed-recall 100%, p50 7.1s / p95 21.6s vs
+> sonnet(prod) 17+2/20, recall 75%, p50 2.5s / p95 3.5s; nemotron-4b
+> DISQUALIFIED on safety (proceeds on dropdb); nemotron-30b out. **#280**
+> (`246ee0a`) — the HEADLINE is a **registry gap, not a model gap**: ALL
+> models incl. prod Sonnet proceeded on warm-MS-S1-without-a-go → new
+> registry row **C5 (host-state gate)**, re-verified LIVE (both
+> `gpt-oss:20b` and sonnet(prod) now flip to pause). RESULTS.md records the
+> comparison + recommendation; the transport decision (local `gpt-oss:20b`
+> vs API Sonnet) is **Cray's, on this evidence**.
+> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-11 (session 53 reconcile):_
 
 > **Session 49 (earlier) — PLAN-0020 Phase 1 (OFFLINE) is COMPLETE + merged
@@ -752,6 +776,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-12 | **Carrier-death incident → ops hardening SHIPPED (#275 + #276, `3a8a175`, session 56)** _(rotated 2026-06-14, session 58)_ — the calibration run's carrier (held `wsl.exe` + wrapper) was reaped at ~59 min; the orphaned python completed silently (stale "running" task chip, no completion event; truth established content-based). #275 records the gotcha + content-based truth test in the `ms-s1-ollama` skill; #276 adds `run_detached.sh` — long MS-S1 runs launch under `systemd-run --user` (carrier-proof, PROBE-VERIFIED 2026-06-12; `.done` sentinel "rc ISO-ts"; ETA + ~10 min → check sentinel; `Linger=no` = host-state, ask Cray) | `3a8a175` (#275 + #276) / `.claude/skills/ms-s1-ollama/` |
 | 2026-06-12 | **First watch-lane calibration run RECORDED (#273, `489b695`, session 56)** _(rotated 2026-06-14, session 58)_ — M-2=b evidence on MS-S1 (`gpt-oss:20b`, 198 items, 319 calls, 0 errors, `--dump-json`-verified). Watch distribution: aqua 13/13 aerator, energy 13/13 restart, supply_chain hold 5 / inspect 5 / **reroute 3 = the lane's first real safety signal** (forbidden under a `{hold, inspect}` pinning). β 98.3% (2 verified misses incl. the U+2011 hyphen grader-calibration candidate), α 100%, deterministic 198/198. Breach p95 28.73s = first SD-2 PASS in full mode (±10s noise band); watch latency = M-4 own diagnostic. No bar moves (B-6) | `489b695` (#273) / `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-12 | **PLAN-0022 COMPLETE — Phase 3 watch-tier escalation lane SHIPPED (#270, `1723981`, session 56) + plan archived to done/ (#271, `b41a138`)** _(rotated 2026-06-13, session 57)_ — implements the Cray-ratified M-1..M-4 methodology (M-2=b calibration-first: watch items run the LLM judgment, unscored distribution reporting until ground truth is pinned from run evidence; M-4 watch latency = own diagnostic, SD-2 bar stays breach-scoped; REPORT methodology recorded BEFORE any scored run). All four phases done (#263/#265/#267/#270). Suite 1469; first calibration run gated on a separate Cray go | `b41a138` (#270 + #271) / `docs/plans/done/0022-tiered-decision-routing.md` + `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-11 | **ADR-0019 (`watch → gated`-proposal routing) ACCEPTED + merged (#263, `137766c`, session 54)** _(rotated 2026-06-13, session 57)_ — PLAN-0022 **Phase 0** governance gate (CLAUDE.md §8; merges before the impl PR). Cray chose **OQ-1 form (b)** = a follow-on ADR over an in-place ADR-016 amendment. Sanctions routing the deterministic `watch` set → a `gated` `action` proposal (LLM proposes → human decides via `resolve_gated_step`); **extends ADR-016 D3** — no primitive / auto-gated / ceiling / allowlist change; trigger = engine verdict, never `confidence` (ADR-010 IN-3). **Authored by Cowork** — the G1/G2 PreToolUse gates correctly blocked Code's *direct* ADR Write/Edit (ADR-009 D1: Cowork authors, Code commits); Code R2-verified verbatim + committed. Includes an ADR-016 forward pointer + the Morning-Pond Step 4 row (`human_task` → gated proposal, SD-1=a). *(A transient classifier-bridge timeout first fail-closed the gate; diagnosed + healthy.)* | `137766c` (#263) / `docs/adr/0019-watch-gated-proposal-routing.md` + `docs/adr/0016-*` |
