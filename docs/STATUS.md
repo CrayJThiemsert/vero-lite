@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-15T13:41:08+07:00
-session: 60
-current_batch: 'session-60 PLAN-0026 (NL-query aggregate metric-semantics) authored+ratified+merged (#321) then Phase B deterministic rewrite seam merged (#322, `19eeb21`) — closes the filter-omission-on-aggregate-superlative gap PLAN-0024 left open (nl-08/nl-11); group_by inference + heterogeneous-aggregate coherence rewrite + clarify guard + NlAnswer.outcome enum; offline oracle green; suite 1527/22'
+last_updated: 2026-06-15T15:02:32+07:00
+session: 61
+current_batch: 'session-61 — PR #323 (PLAN-0026 eval tooling + 2026-06-15 RESULTS.md addendum) merged (e93320f) → PLAN-0026 RESULTS.md citation resolves on main; then fixed a latent handoff-validator commit-blocker — session_md_files now exempts raw *-transcript.md renders (no frontmatter by design) that falsely blocked every commit when a transcript predates it (#325, ea08d88); 29 handoff tests (2 new), ruff+mypy clean'
 current_actor: code
-blocked_on: 'Nothing blocks Code (Phase B shipped). Open-for-Cray: merge PR #323 (eval tooling + RESULTS.md addendum — the dangling evidence base PLAN-0026 cites); Phase A (`measured_kind`) GATED on the T2-vs-T3 roadmap call + SD-2 ADR (amend ADR-008 vs new ADR-0021). Held: B-γ baselines, PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial.'
-next_action: 'Merge PR #323 (eval tooling + 2026-06-15 RESULTS.md addendum) to resolve PLAN-0026''s dangling reference on main. Then Phase A (`measured_kind` ontology enum, the principled fix for kind-word disambiguation) — GATED on Cray''s T2-vs-T3 roadmap call AND SD-2''s ADR (route Cowork to author; leaned new ADR-0021) Accepted before its impl PR (§8). Optional: AC-9 live MS-S1 re-verify (host-state; offline oracle is the gate). Held: B-γ, PLAN-002, auditprep, ADR-011 (real-partner gated).'
-head_commit: 19eeb21
-recent_commits: [6e0cb56, 19eeb21, fd799bc, abcd64f, 99fdd98, 1b05703, 2c5ac32, a472371, 7f09f75, 907b606]
+blocked_on: 'Nothing blocks Code (Phase B shipped; #323 merged → PLAN-0026 RESULTS.md citation resolves on main; #325 unblocked commits). Open-for-Cray: Phase A (`measured_kind`) GATED on the T2-vs-T3 roadmap call + SD-2 ADR (amend ADR-008 vs new ADR-0021). Held: B-γ baselines, PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial.'
+next_action: 'Phase A (`measured_kind` ontology enum, the principled fix for kind-word disambiguation) — GATED on Cray''s T2-vs-T3 roadmap call AND SD-2''s ADR (route Cowork to author; leaned new ADR-0021) Accepted before its impl PR (§8). Optional: AC-9 live MS-S1 re-verify (host-state; offline oracle is the gate). Held: B-γ, PLAN-002, auditprep, ADR-011 (real-partner gated).'
+head_commit: ea08d88
+recent_commits: [ea08d88, 1a796fb, e93320f, e5af0d5, f6894a7, 6e0cb56, 19eeb21, fd799bc, abcd64f, 99fdd98]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,30 @@ recent_commits: [6e0cb56, 19eeb21, fd799bc, abcd64f, 99fdd98, 1b05703, 2c5ac32, 
 
 ## Current Focus
 
-> **Session 60 (current; head_commit `19eeb21`) — PLAN-0026 (NL-QUERY AGGREGATE
+> **Session 61 (current; head_commit `ea08d88`) — #323 MERGED + HANDOFF-VALIDATOR
+> TRANSCRIPT-BLOCKER FIX (#325).** Confirmed Cray's merge of **PR #323** (`e93320f`,
+> PLAN-0026 eval tooling + the 2026-06-15 RESULTS.md addendum) → PLAN-0026's
+> `benchmarks/nl_query_feasibility/RESULTS.md` citation **no longer dangles on
+> main**. Then fixed a **latent commit-blocker** surfaced while reconciling STATUS:
+> `precommit_handoffs.py` → `session_md_files` validated *every* `*.md` in the
+> latest session dir for frontmatter, but raw transcripts (`render_transcript.py`
+> output) carry a `# Transcript —` preamble and **never** frontmatter by design.
+> Transcripts were historically written *after* a session's last commit so the
+> latest-session-scoped hook never saw them; session 60's transcript predated this
+> session's commits → it falsely blocked **every commit** ("missing `---`
+> frontmatter block"). **Fix (#325, `ea08d88`):** exempt `-transcript.md` renders
+> (`RAW_TRANSCRIPT_SUFFIX` ← `Suffix.TRANSCRIPT`) at the single `session_md_files`
+> chokepoint (feeds the hook + INDEX.md generator + dashboard); a handoff that
+> merely *mentions* transcripts in its name (`…-transcript-tooling.md`) does not
+> end in `-transcript.md` and stays validated. Cray chose this (Option A) over a
+> per-file workaround — the good handoff frontmatter format stays enforced, the
+> frontmatter-less render is correctly exempted. **29 handoff tests (2 new
+> regression tests); ruff + ruff-format + mypy clean; the real hook now exits 0
+> against session-60.** **Frontier unchanged:** Phase A (`measured_kind`) still
+> GATED on the T2-vs-T3 roadmap call + SD-2 ADR. AI-assisted (Claude Code,
+> session 61); no `Co-Authored-By` per CLAUDE.md §7.
+>
+> **Session 60 (head_commit `19eeb21`) — PLAN-0026 (NL-QUERY AGGREGATE
 > METRIC-SEMANTICS) AUTHORED + RATIFIED + MERGED (#321), THEN PHASE B
 > (DETERMINISTIC REWRITE SEAM) MERGED (#322).** Closes the one residual NL-query
 > failure PLAN-0024 left open: **filter-omission on aggregate superlatives** (the
@@ -58,8 +81,9 @@ recent_commits: [6e0cb56, 19eeb21, fd799bc, abcd64f, 99fdd98, 1b05703, 2c5ac32, 
 > dominant) but wouldn't distinguish "highest frequency"; **Phase A
 > (`measured_kind`) is the principled fix** (gated). PLAN-0026 stays ACTIVE (not
 > `git mv`'d to `done/`) — Phase A is still pending. **Open threads:** PR #323
-> OPEN (eval tooling + the 2026-06-15 RESULTS.md addendum — the evidence base
-> PLAN-0026 cites; currently dangling on main, merge resolves it); SD-2 ADR (amend
+> MERGED (`e93320f`; eval tooling + the 2026-06-15 RESULTS.md addendum — the
+> evidence base PLAN-0026 cites; the dangling-on-main reference is now resolved);
+> SD-2 ADR (amend
 > ADR-008 vs new ADR-0021 — Cowork leaned new; route Cowork to author) gates Phase
 > A impl; SD-3 (benchmark scoring) closed = no gold reclassification needed (gold
 > already carried the structured expectations Phase B now lands); AC-9 optional
