@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-14T11:58:04+07:00
-session: 58
-current_batch: 'session-58 NL-query feasibility spike (engine-A + text-to-SQL, #314) → partner-trial fork RESOLVED: T2 (NL-query) chosen'
+last_updated: 2026-06-15T07:55:27+07:00
+session: 59
+current_batch: 'session-59 PLAN-0024 NL-query T2 engine enrichment SHIPPED (#316 plan / #317 engine, `f4aa7fe`) — deterministic aggregates + cross-type name→id resolution in StructuredQuery + translate-prompt filter/enum fix; anti-hallucination 12/12 guard preserved; suite 1511/22'
 current_actor: code
-blocked_on: 'Nothing blocks Code (spike shipped, fork resolved). Open-for-Cray: held items (B-γ baselines, PLAN-002); auditprep SD-4/SD-5/OQ-A + ADR-011 (gated on a real partner) are in the CF coda / In-Flight.'
-next_action: 'The T2 build (fork resolved → NL-query): enrich StructuredQuery (join+aggregate, grounded-execute safety preserved) + translate-prompt filter fix + UI shell (readiness T1); likely a PLAN (Cowork drafts per ADR-009 D1). Held: B-γ, PLAN-002, auditprep SD-4/SD-5/OQ-A, ADR-011 (real-partner gated).'
-head_commit: 987c2be
-recent_commits: [c3a48b4, 987c2be, ff5bab8, 6f46277, 9595d3e, 48a2da0, f2ee579, c818695, afea6b3, 8f9a36d]
+blocked_on: 'Nothing blocks Code (PLAN-0024 engine shipped). Open-for-Cray: the T2 UI shell (PLAN-0025, OQ-1 in-house-vs-existing-tool open); optional AC-8 live MS-S1 re-verify (host-state, offered). Held: B-γ baselines, PLAN-002, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated).'
+next_action: 'T2 wedge — engine half done (PLAN-0024); remaining = the UI shell → PLAN-0025 (OQ-1: build in-house vs drive demo through an existing tool — Cray-deferred). Optional now: AC-8 live 12-question harness on MS-S1 gpt-oss:20b (confirms structured lens > 8/12 + anti-hallucination 12/12; host-state, not a CI gate). Held: B-γ, PLAN-002, auditprep, ADR-011 (real-partner gated).'
+head_commit: f4aa7fe
+recent_commits: [933f6b5, f4aa7fe, f973f9c, 1c4ae5d, 15975e9, dc5c83d, c3a48b4, 987c2be, ff5bab8, 6f46277]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,48 @@ recent_commits: [c3a48b4, 987c2be, ff5bab8, 6f46277, 9595d3e, 48a2da0, f2ee579, 
 
 ## Current Focus
 
-> **Session 58 (third batch, current; head_commit `987c2be`) — NL-QUERY
+> **Session 59 (current; head_commit `f4aa7fe`) — PLAN-0024 (NL-QUERY T2 ENGINE
+> ENRICHMENT) DRAFTED + COMMITTED + EXECUTED (#316 plan / #317 engine).** The
+> engine half of the Cray-ratified T2 (NL-query) wedge: the session-58 spike
+> resolved the partner-trial fork to T2 and named the build; session 59 built
+> it. Engine-only — UI deferred to PLAN-0025. Two pieces:
+> **(1) `StructuredQuery` enrichment** (`services/engine/nl_query.py`): `operation`
+> gains `max/min/avg/sum` (+ optional `group_by`), computed in the
+> **deterministic execute stage** (like `count`) and carried in a new
+> `NlAnswer.aggregate` grounding receipt — **never** delegated to the phrase LLM
+> (the spike showed phrase-rescue is brittle). nl-08 (max 96.5) / nl-10 (avg 41.3)
+> now pass via deterministic compute. A `NameResolve` descriptor adds cross-type
+> name→id resolution (resolve-then-filter; `object_type` stays single +
+> enum-constrained) so "events for Battery Bank A" works (nl-09 = 5; nl-11 hottest
+> = Battery Bank A); group keys are relabelled id→title so the answer names the
+> entity. **(2) Translate prompt fix**: require the implied filter (kills the
+> whole-table fetch — the #1 spike error) + exact enum/value grounding ("celsius"
+> not "C"). **Anti-hallucination (AC-5, the hard gate) preserved:** empty match,
+> aggregate-over-no-numeric, and unresolved-name all short-circuit to the
+> deterministic no-records answer (phrase LLM never called). The gold set's 4
+> ceiling cases (nl-08/09/10/11) moved off phrase-rescue onto the deterministic
+> **structured-result lens** (executed result + `expected_aggregate`); harness
+> `score_case` gained `_aggregate_ok`. **11 new offline tests; full suite 1511
+> passed / 22 skipped (was 1481/22, +30); ruff + mypy clean.**
+> **Governance chain (clean):** Cray scoped the build (engine-only; SD-1 deferred;
+> UI→PLAN-0025) via AskUserQuestion → the in-harness `plan-drafter` authored
+> PLAN-0024 (ADR-013 D1) → the **ungated Cowork tier placed the PLAN file** after
+> the G2 PreToolUse gate denied every in-harness Code write (subagent ×2 + main
+> agent ×1, even with explicit approval — the "Cowork authors, Code commits" path)
+> → Code committed it (#316, ADR-009 D2) → Cray reviewed + merged → Code executed
+> Steps 1-6 (#317). **SD-1** (name→id mechanism) implemented as the recommended
+> **pre-step** (Cray deferred the decision to execution). Execution hit an L1
+> loop-detect (6 edits to one file = the code threshold) — resolved by collapsing
+> the remainder into one full-file Write after a Cray-approved counter reset; no
+> Bash circumvention.
+> AI-assisted (Claude Code, session 59); no `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note: this reconcile rotated the oldest Current Focus block (Session 56
+> sixth batch — Lessons #24 + #25, head_commit `4b0e306`) and the oldest Recent
+> Decisions row (2026-06-12 Stop-classifier calibration arc, `246ee0a`) to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) per
+> the STATUS.md Rotation Policy (R2/R4)._
+>
+> **Session 58 (third batch; head_commit `987c2be`) — NL-QUERY
 > FEASIBILITY SPIKE SHIPPED (#314) → PARTNER-TRIAL ROADMAP FORK RESOLVED: T2
 > (NL-query) CHOSEN.** The headline is the FORK RESOLUTION, not just a
 > benchmark. The partner-trial roadmap fork (T2 NL-query "wow demo" vs T3
@@ -412,17 +453,6 @@ recent_commits: [c3a48b4, 987c2be, ff5bab8, 6f46277, 9595d3e, 48a2da0, f2ee579, 
 > ratification before any grader edit (B-6).
 > AI-assisted (Claude Code, session 57); no `Co-Authored-By` per CLAUDE.md §7.
 >
-> **Session 56 (sixth batch) — Lessons #24 + #25 RECORDED (#284;
-> head_commit `4b0e306`, `docs(lessons):` = the newest substantive per
-> `lint_status`; merge `c2da9b5`).** Cray-approved docs-capture coda to the
-> calibration arc: **#24** — rules must live where the enforcer looks (the C5
-> registry-gap finding generalized; adds an enforcement dimension to the
-> ADR-0017 D5 placement rule). **#25** — an LLM judge's `{verdict, reason}`
-> needs verdict-by-observable definitions + an explicit cross-field agreement
-> contract, pinned by a prompt contract test + gold case (generalizes to the
-> ADR-0018 goal-evaluator).
-> AI-assisted (Claude Code, session 56); no `Co-Authored-By` per CLAUDE.md §7.
->
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
 ## Prior focus (archived)
@@ -444,6 +474,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-15 | **PLAN-0024 (NL-query T2 engine enrichment) SHIPPED — engine half of the T2 wedge (#316 plan / #317 engine, `f4aa7fe`, session 59)** — `StructuredQuery` gains `max/min/avg/sum` (+ optional `group_by`) computed in the deterministic execute stage + a new `NlAnswer.aggregate` grounding receipt (never the phrase LLM), plus a `NameResolve` cross-type name→id descriptor (resolve-then-filter; `object_type` stays single/enum-constrained, group keys relabelled id→title); translate prompt now requires the implied filter + exact enum grounding. Gold ceiling cases nl-08/09/10/11 moved onto the deterministic structured-result lens (`_aggregate_ok`). Anti-hallucination AC-5 preserved (empty/no-numeric/unresolved short-circuit to no-records). 11 new offline tests; suite 1511/22 (+30); ruff+mypy clean. Governance: Cray scoped engine-only (UI→PLAN-0025, SD-1 deferred) → `plan-drafter` authored PLAN-0024 → ungated Cowork placed the file (G2 denied all in-harness Code writes) → Code committed #316 → merged → Code executed #317; SD-1 done as the recommended pre-step; one L1 loop-detect resolved by a Cray-approved counter reset, no Bash | `f4aa7fe` (#316/#317) / `services/engine/nl_query.py` + `docs/plans/done/0024-nl-query-t2-engine-enrichment.md` |
 | 2026-06-14 | **Two backlog quick-wins SHIPPED (Code-solo, #311 + #312, `9595d3e`, session 58)** — cleared after the audit-framework arc closed; a separate small harness-tooling batch. **#311** (`f2ee579`, `test(stop-classifier):`): 3 "dispatch discriminator" gold cases added to `benchmarks/stop_classifier/gold.yaml` (20→23) pinning the surfaced-vs-ratified distinction the local classifier got wrong in s57 (over-fired `plan-drafter` on ADR/PLAN mentions while formality was a PENDING Cray decision — 2 cases) and right in s58 (post-ratification dispatch correct); 2 `pause` negatives + 1 `dispatch` positive, safety-weighted (spurious dispatch = HARD FAIL); offline test green (4 passed); live re-score pending Cray go; RESULTS.md addendum (recorded 2026-06-12 run predates the cases). **#312** (`9595d3e`, `fix(handoffs):`, PLAN-004 Phase B): handoff-validator warning-swallow bug fixed — `_schema.py::_build()` discarded its `errors` list on the otherwise-valid path so `_check_unknown()` WARNINGs were unreachable; `Frontmatter` gains `warnings`, `validate_file()` surfaces it, CLI prints it (precommit unchanged); regression tests strengthened; `tests/handoffs/` 573 passed / 2 skipped; ruff + mypy clean | `9595d3e` (#311/#312) / `benchmarks/stop_classifier/gold.yaml` + `tools/handoffs/_schema.py` |
 | 2026-06-14 | **PLAN-0023 (PDPA RoPA-lite, step-2 of audit-framework-prep) SHIPPED (#308 PLAN + #309 deliverables, `afea6b3`, session 58)** — two tracked deliverables: reusable RoPA-lite template (`docs/conventions/partner-ropa-lite.md`, canonical) + NPD synthetic example (`docs/strategy/public/partner-sim-run1-ropa-example.md`, SYNTHETIC), each RoPA slot annotated with a data-quality/lineage hook; example's DSR/lineage→ADR-011 section maps 4 gaps→implications (PII-in-free-text→log-by-reference; scattered actor identity→actor unification; PK reuse + NTP drift→lineage/valid-from + ordering; under-recording→completeness-not-assumed). Governance: Cray ratified PLAN formality (3 decisions) → `plan-drafter` subagent authored PLAN-0023 (ADR-013 D1) → Code committed (#308, ADR-009 D2) → Code executed deliverables Code-direct (#309); PLAN archived to `done/`. SD-1 kept (AC-6 in-PLAN). ADR-011 still gated on a real partner — synthetic run INFORMS but never triggers PLAN-0005 §8.1 (ADR-0020 R3). Carried open: SD-4/SD-5/OQ-A | `afea6b3` (#308/#309) / `docs/conventions/partner-ropa-lite.md` + `docs/strategy/public/partner-sim-run1-ropa-example.md` |
 | 2026-06-13 | **ADR-0020 (partner-sim venue) RATIFIED Proposed→Accepted (#302, `4d1347b`, session 57)** — Cray ratified in-session ("เอาตาม Cowork ทุกข้อ"); all four venue SDs + dispatch-SD-1 accepted per Cowork rec (Cowork-authored fold per ADR-009 D1, Code R2-reviewed + committed). SD-1 N=3 (→D2/R2); SD-2 one-project-per-business-type (→D4; R-PS4 reframed as a guard); SD-3 size/region/maturity enums + run-1 default energy·mid·th-regional·mixed-legacy (→D3 input); SD-4 "what we refused to share" ratified-required (→D3 output). R1/R2/R3 substance unchanged (#300 errata settled those). Instruction file reconciled same PR (6 ratification-pending markers → ratified; Code-amends-conventions, ADR-009 D2). dispatch-SD-1 (gitignored): one-pager sector-callout forbidden-action note trimmed, R1-clean seed untouched. Venue now ACCEPTED guarded-trial (R-PS1..R-PS4) — live action is Cray's (launch energy run-1) | `4d1347b` (#302) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
@@ -453,7 +484,6 @@ below, and git history.
 | 2026-06-12 | **Watch-lane ground truth PINNED — all 39 watch items (#286, `1bd6328`, session 57)** — Cray adjudicated the M-2=b pinning from the #273 calibration distribution: aqua canonical `start_emergency_aerator` + acceptable `[dispatch_technician, increase_water_exchange, escalate]`; energy canonical `restart` + acceptable `[dispatch_technician, escalate]` (`isolate` excluded → 'other'); supply_chain canonical `inspect` + acceptable `[hold, escalate]` + `forbidden_keywords [expedite, reroute]` declared (3/13 observed reroutes → forbidden). Dataset-only; the watch lane auto-flips unscored→scored; first SCORED run gated on a separate Cray go | `1bd6328` (#286) / `benchmarks/procedure_baseline/dataset/` |
 | 2026-06-12 | **Lessons #24 + #25 RECORDED (#284, `4b0e306`, session 56)** — Cray-approved coda to the classifier calibration arc. **#24:** rules must live where the enforcer looks — a binding rule placed only in prose is invisible to a machine enforcer reading a different surface (C5 registry-gap finding generalized; adds an enforcement dimension to the ADR-0017 D5 placement rule). **#25:** an LLM judge's `{verdict, reason}` needs verdict-by-observable definitions + an explicit cross-field agreement contract, pinned by a prompt contract test + gold case (generalizes to the ADR-0018 goal-evaluator) | `4b0e306` (#284) / `docs/lessons/0024-rules-must-live-where-the-enforcer-looks.md` + `docs/lessons/0025-llm-judge-verdict-must-bind-to-its-own-reasoning.md` |
 | 2026-06-12 | **Stop classifier SWITCHED to local `gpt-oss:20b` (#282, `3375778`, session 56)** — Cray picked **(b)** on the calibration evidence (8–30s latency acceptable). Default backend = MS-S1 Ollama (format-constrained `/api/chat`, temp 0, keep_alive 10m, 75s timeout; no API key / no WSL bridge); Anthropic API retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`. Fail-closed pause + legacy reason strings byte-identical; legacy suite pinned to sonnet + 4 new ollama-backend tests (571 passed / 2 skipped; mypy --strict clean); LIVE-verified from the prod hook runtime: 7.9s → pause | `3375778` (#282) / `.claude/hooks/_sonnet_classifier.py` |
-| 2026-06-12 | **Stop-classifier calibration arc SHIPPED (#278 + #279 + #280, `246ee0a`, session 56)** — #278 completion-consistency rule (PROCEED needs concrete remaining work; decision↔reason agreement; contract-test-pinned). #279 20-case safety-weighted eval harness (full prod-prompt fidelity; gold incl. Thai); MS-S1 sweep 4×20 (80 dump-verified): `gpt-oss:20b` 19/20, recall 100%, p95 21.6s vs sonnet(prod) 17+2/20, recall 75%, p95 3.5s; nemotron-4b safety-DQ. #280 HEADLINE = registry gap not model gap → registry row C5 (host-state gate), re-verified live; transport pick (local vs API Sonnet) = Cray's | `246ee0a` (#278–#280) / `benchmarks/stop_classifier/RESULTS.md` |
 
 ## In-Flight Discussions
 
