@@ -65,8 +65,27 @@ def _print_summary(row: dict[str, Any]) -> None:
     )
 
 
+def _filter_cases(cases: list[dict[str, Any]], only: str | None) -> list[dict[str, Any]]:
+    """Keep only the cases whose id is in the comma-separated ``only`` list.
+
+    Lets a focused subset (e.g. ``--only nl-08,nl-11``) be run against MS-S1
+    while iterating on a single failure mode, instead of paying for all 12
+    questions (+ each model's warm) every probe. Unknown ids raise so a typo
+    never silently runs the full set.
+    """
+    if not only:
+        return cases
+    wanted = [c.strip() for c in only.split(",") if c.strip()]
+    by_id = {str(case["id"]): case for case in cases}
+    unknown = [qid for qid in wanted if qid not in by_id]
+    if unknown:
+        raise SystemExit(f"--only: unknown case id(s) {unknown}; known: {sorted(by_id)}")
+    return [by_id[qid] for qid in wanted]
+
+
 async def _main(args: argparse.Namespace) -> None:
     vertical, cases = load_gold(args.gold)
+    cases = _filter_cases(cases, args.only)
     register_energy_adapter()
     client = OllamaClient(base_url=args.ollama_host, model=args.model, timeout=args.timeout)
     print(f"NL-query feasibility spike: {len(cases)} questions, vertical '{vertical}'")
@@ -108,6 +127,11 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--ollama-host", default="http://192.168.1.133:11434")
     parser.add_argument("--warm", action="store_true", help="Warm the model first.")
     parser.add_argument("--timeout", type=float, default=120.0, help="Per-call Ollama timeout (s).")
+    parser.add_argument(
+        "--only",
+        default=None,
+        help="Comma-separated case ids to run (e.g. 'nl-08,nl-11'); default runs all.",
+    )
     parser.add_argument("--dump-json", type=Path, default=None)
     args = parser.parse_args()
     if args.gold is None:
