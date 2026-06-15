@@ -23,9 +23,12 @@ from services.engine.nl_query import (
     QueryTranslationError,
     StructuredQuery,
     _build_chat_client,
+    _Coherence,
+    _coherence_rewrite,
     _compute_aggregate,
     _filter_matches,
     _fmt_num,
+    _infer_group_by,
     _matches,
     _object_id,
     _object_title,
@@ -663,3 +666,196 @@ async def test_list_still_honors_limit(energy_adapter: None) -> None:
     assert answer.grounded is True
     assert answer.result_count == 11  # the true match count is preserved
     assert len(answer.source_object_ids) == 2  # but only `limit` objects are returned
+
+
+# --- PLAN-0026 Phase B: deterministic rewrite seam --------------------------
+#
+# The decisive offline oracle: feed the model's KNOWN-BAD superlative output
+# (filters:[], operation:max, group_by:null — what every model family emitted,
+# RESULTS.md 2026-06-15) and assert the deterministic seam rewrites it to the
+# right structured result, NOT a phrase-rescue (phrasing is forced to fail).
+
+_BAD_SUPERLATIVE_QUERY = {
+    "object_type": "OperationalEvent",
+    "operation": "max",
+    "aggregate_property": "measured_value",
+    "filters": [],
+    "group_by": None,
+}
+
+
+async def test_phaseb_oracle_nl08_rewrites_to_celsius_max(energy_adapter: None) -> None:
+    """AC-1/AC-7 (nl-08): the known-bad max output is rewritten to the 7 celsius
+    readings, max 96.5 on Battery Bank A — in the structured receipt, not the prose."""
+    client = _StubQueryClient(query=dict(_BAD_SUPERLATIVE_QUERY), raise_on="phrase")
+    answer = await answer_question(
+        "What is the highest temperature reading, and on which battery?",
+        "energy",
+        client=client,
+    )
+    assert answer.outcome == "answered"
+    assert answer.grounded is True
+    assert answer.result_count == 7  # the celsius subset, not the over-broad 11
+    assert answer.aggregate is not None
+    assert answer.aggregate.value == 96.5
+    assert answer.aggregate.groups == {"Battery Bank A": 96.5, "Battery Bank B": 43.2}
+    # the rewrite is auditable in the receipt: composed unit filter + inferred group_by
+    assert answer.query is not None
+    assert answer.query.group_by == "asset_id"
+    assert any(f.property == "unit" and f.value == "celsius" for f in answer.query.filters)
+    assert client.phrase_calls == 0  # structured aggregate, not phrase-rescued
+
+
+async def test_phaseb_oracle_nl11_which_battery_rewrites(energy_adapter: None) -> None:
+    """AC-1 (nl-11): 'which battery is hottest' → same rewrite → top Battery Bank A."""
+    client = _StubQueryClient(query=dict(_BAD_SUPERLATIVE_QUERY), raise_on="phrase")
+    answer = await answer_question(
+        "Which battery is running the hottest right now?", "energy", client=client
+    )
+    assert answer.outcome == "answered"
+    assert answer.result_count == 7
+    assert answer.aggregate is not None
+    assert answer.aggregate.value == 96.5
+    groups = answer.aggregate.groups
+    top = max(groups, key=lambda k: groups[k])
+    assert top == "Battery Bank A"
+
+
+def test_infer_group_by_sets_ref_for_which_entity() -> None:
+    """AC-2: 'which battery' maps to the asset_id ref via Asset.asset_type enum."""
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    obj_meta = type_index["OperationalEvent"]
+    query = StructuredQuery(
+        object_type="OperationalEvent", operation="max", aggregate_property="measured_value"
+    )
+    inferred = _infer_group_by("which battery is hottest?", query, obj_meta, type_index)
+    assert inferred.group_by == "asset_id"
+
+
+def test_infer_group_by_noop_without_which_entity() -> None:
+    """AC-2: no 'which <entity>' interrogative → group_by left untouched (no guess)."""
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    obj_meta = type_index["OperationalEvent"]
+    query = StructuredQuery(
+        object_type="OperationalEvent", operation="max", aggregate_property="measured_value"
+    )
+    inferred = _infer_group_by(
+        "what is the highest temperature reading?", query, obj_meta, type_index
+    )
+    assert inferred.group_by is None
+
+
+def _event_meta() -> ObjectTypeMeta:
+    return {t.name: t for t in load_ontology_meta("energy").object_types}["OperationalEvent"]
+
+
+def test_coherence_rewrite_picks_dominant_unit() -> None:
+    """AC-3: a unit-heterogeneous aggregate composes the dominant-unit filter."""
+    query = StructuredQuery(
+        object_type="OperationalEvent", operation="max", aggregate_property="measured_value"
+    )
+    matched = [
+        {"measured_value": 32.4, "unit": "celsius"},
+        {"measured_value": 96.5, "unit": "celsius"},
+        {"measured_value": 50.0, "unit": "hz"},
+    ]
+    decision = _coherence_rewrite(query, matched, _event_meta())
+    assert decision.clarify is False
+    assert decision.filter is not None
+    assert decision.filter.property == "unit" and decision.filter.value == "celsius"
+    assert len(decision.matched) == 2  # only the celsius rows
+
+
+def test_coherence_rewrite_noop_when_homogeneous() -> None:
+    """AC-3: a single-unit set is already coherent → no rewrite."""
+    query = StructuredQuery(
+        object_type="OperationalEvent", operation="max", aggregate_property="measured_value"
+    )
+    matched = [
+        {"measured_value": 1.0, "unit": "celsius"},
+        {"measured_value": 2.0, "unit": "celsius"},
+    ]
+    decision = _coherence_rewrite(query, matched, _event_meta())
+    assert decision.filter is None and decision.clarify is False
+
+
+def test_coherence_rewrite_clarifies_on_unit_tie() -> None:
+    """AC-4: no single dominant unit → ambiguous → clarify (no filter composed)."""
+    query = StructuredQuery(
+        object_type="OperationalEvent", operation="max", aggregate_property="measured_value"
+    )
+    matched = [
+        {"measured_value": 1.0, "unit": "celsius"},
+        {"measured_value": 2.0, "unit": "celsius"},
+        {"measured_value": 3.0, "unit": "hz"},
+        {"measured_value": 4.0, "unit": "hz"},
+    ]
+    decision = _coherence_rewrite(query, matched, _event_meta())
+    assert decision.clarify is True
+    assert decision.filter is None
+    assert set(decision.units) == {"celsius", "hz"}
+
+
+async def test_clarify_path_asks_and_never_fabricates(
+    energy_adapter: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC-4/AC-5: an ambiguous coherence rewrite returns outcome='clarify',
+    grounded False, no aggregate, and never reaches the phrasing LLM (so it cannot
+    invent a number) — a clarify is NOT silently conflated with no-data."""
+
+    def _ambiguous(
+        query: StructuredQuery, matched: list[dict[str, Any]], obj_meta: Any
+    ) -> _Coherence:
+        return _Coherence(clarify=True, units=("celsius", "hz"))
+
+    monkeypatch.setattr("services.engine.nl_query._coherence_rewrite", _ambiguous)
+    client = _StubQueryClient(
+        query={
+            "object_type": "OperationalEvent",
+            "operation": "max",
+            "aggregate_property": "measured_value",
+            "filters": [],
+        }
+    )
+    answer = await answer_question("highest reading across the grid?", "energy", client=client)
+    assert answer.outcome == "clarify"
+    assert answer.grounded is False
+    assert answer.aggregate is None
+    assert "unit" in answer.answer.lower()
+    assert client.phrase_calls == 0  # the LLM got no chance to invent a number
+
+
+async def test_no_data_carries_no_data_outcome(energy_adapter: None) -> None:
+    """SD-1: an honest no-records answer is outcome='no_data', distinct from clarify."""
+    client = _StubQueryClient(
+        query={
+            "object_type": "Asset",
+            "operation": "list",
+            "filters": [{"property": "status", "op": "eq", "value": "maintenance"}],
+        }
+    )
+    answer = await answer_question("which assets are in maintenance?", "energy", client=client)
+    assert answer.outcome == "no_data"
+    assert answer.grounded is False
+
+
+async def test_correct_query_unaffected_by_seam(energy_adapter: None) -> None:
+    """AC-6: when the model already emits the right query (unit filter + group_by),
+    the seam is a no-op — homogeneous set, group_by present → unchanged result."""
+    client = _StubQueryClient(
+        query={
+            "object_type": "OperationalEvent",
+            "operation": "max",
+            "aggregate_property": "measured_value",
+            "group_by": "asset_id",
+            "filters": [{"property": "unit", "op": "eq", "value": "celsius"}],
+        },
+        raise_on="phrase",
+    )
+    answer = await answer_question("which battery is hottest?", "energy", client=client)
+    assert answer.outcome == "answered"
+    assert answer.result_count == 7
+    assert answer.aggregate is not None
+    assert answer.aggregate.groups == {"Battery Bank A": 96.5, "Battery Bank B": 43.2}

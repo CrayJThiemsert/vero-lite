@@ -782,6 +782,29 @@ def _clarify_nlanswer(question: str, query: StructuredQuery, units: tuple[str, .
     )
 
 
+def _apply_coherence(
+    question: str,
+    query: StructuredQuery,
+    matched: list[dict[str, Any]],
+    obj_meta: ObjectTypeMeta | None,
+) -> tuple[StructuredQuery, list[dict[str, Any]], NlAnswer | None]:
+    """Apply the heterogeneous-aggregate coherence rewrite in the orchestrator.
+
+    Returns the (possibly rewritten) query + matched set, plus a clarify answer to
+    short-circuit on (``None`` when the query answers normally). A non-aggregate or
+    a homogeneous set passes through unchanged. Split out of ``answer_question`` to
+    keep that orchestrator readable (one seam, one responsibility)."""
+    if query.operation not in _AGGREGATE_OPS or not query.aggregate_property:
+        return query, matched, None
+    coherence = _coherence_rewrite(query, matched, obj_meta)
+    if coherence.clarify:
+        return query, matched, _clarify_nlanswer(question, query, coherence.units)
+    if coherence.filter is not None:
+        query = query.model_copy(update={"filters": [*query.filters, coherence.filter]})
+        matched = coherence.matched
+    return query, matched, None
+
+
 # --- phrase (LLM, grounded; deterministic fallback) ------------------------
 
 
@@ -925,7 +948,12 @@ def _no_data_nlanswer(question: str, query: StructuredQuery) -> NlAnswer:
     )
 
 
-async def answer_question(
+# answer_question is the NL-query orchestrator: it sequences translate -> the
+# deterministic rewrite seam -> execute -> phrase, each delegated to a named
+# helper (_translate / _infer_group_by / _apply_coherence / _compute_aggregate /
+# _phrase). The branch count is inherent to that linear coordination, so the
+# McCabe complexity check is suppressed here rather than fragmenting the flow.
+async def answer_question(  # noqa: C901
     question: str,
     vertical: str,
     *,
@@ -965,6 +993,9 @@ async def answer_question(
         )
 
     obj_meta = type_index.get(query.object_type)
+    # Post-translate rewrite seam (PLAN-0026 Phase B): infer a dropped group_by for
+    # an entity superlative before retrieval (pure — needs no data, never empties).
+    query = _infer_group_by(question, query, obj_meta, type_index)
     try:
         adapter = registry.get_adapter(vertical)
         effective_filters = list(query.filters)
@@ -986,6 +1017,14 @@ async def answer_question(
     matched = [obj for obj in objects if _matches(obj, effective_filters)]
     if not matched:
         return _no_data_nlanswer(question, query)
+
+    # Heterogeneous-aggregate coherence rewrite (PLAN-0026 Phase B AC-3/AC-4):
+    # compose the dominant-unit filter so the aggregate runs over a single coherent
+    # unit, or clarify when ambiguous (never a silent over-filtered no-data).
+    # nl-08/nl-11 resolve to the 7 celsius readings here.
+    query, matched, clarify = _apply_coherence(question, query, matched, obj_meta)
+    if clarify is not None:
+        return clarify
 
     # Aggregate operations compute deterministically (no LLM). An aggregate over
     # no numeric value short-circuits to the no-data answer — it never invents a
@@ -1016,4 +1055,5 @@ async def answer_question(
         source_objects=source_objects,
         result_count=len(matched),
         aggregate=aggregate,
+        outcome="answered",
     )
