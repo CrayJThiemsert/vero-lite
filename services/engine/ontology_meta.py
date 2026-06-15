@@ -32,6 +32,13 @@ class PropertyMeta(BaseModel):
     )
 
 
+class QuantityBinding(BaseModel):
+    """ADR-0021 construct (b): one declared quantity-kind ⟂ unit binding."""
+
+    kind: str = Field(..., description="A measured_kind enum value")
+    unit: str = Field(..., description="The coherent unit bound to this kind")
+
+
 class ObjectTypeMeta(BaseModel):
     """One ontology object type and its display + property metadata."""
 
@@ -42,6 +49,10 @@ class ObjectTypeMeta(BaseModel):
     )
     description: str | None = None
     properties: list[PropertyMeta]
+    quantity_bindings: list[QuantityBinding] = Field(
+        default_factory=list,
+        description="ADR-0021: declared quantity-kind -> unit bindings for this type",
+    )
 
 
 class LinkTypeMeta(BaseModel):
@@ -96,6 +107,11 @@ def load_ontology_meta(vertical: str) -> OntologyMeta:
         obj = raw or {}
         props_raw = obj.get("properties") or {}
         properties = [_property_meta(str(pn), pd or {}) for pn, pd in props_raw.items()]
+        bindings = [
+            QuantityBinding(kind=str(b.get("kind", "")), unit=str(b.get("unit", "")))
+            for b in (obj.get("quantity_bindings") or [])
+            if isinstance(b, dict)
+        ]
         object_types.append(
             ObjectTypeMeta(
                 name=str(name),
@@ -103,6 +119,7 @@ def load_ontology_meta(vertical: str) -> OntologyMeta:
                 title_key=obj.get("title_key"),
                 description=obj.get("description"),
                 properties=properties,
+                quantity_bindings=bindings,
             )
         )
 

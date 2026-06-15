@@ -43,6 +43,12 @@
           "minProperties": 1,
           "additionalProperties": {"$ref": "#/$defs/property"},
           "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$"}
+        },
+        "quantity_bindings": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/quantityBinding"},
+          "minItems": 1,
+          "description": "ADR-0021 construct (b): declared quantity-kind <-> unit bindings. Each binds a measured_kind enum value to its coherent unit; the engine reads it from ontology meta."
         }
       }
     },
@@ -79,6 +85,15 @@
           "then": {"required": ["target"]}
         }
       ]
+    },
+    "quantityBinding": {
+      "type": "object",
+      "required": ["kind", "unit"],
+      "additionalProperties": false,
+      "properties": {
+        "kind": {"type": "string", "minLength": 1, "description": "A measured_kind enum value (checked against the enum in L2)."},
+        "unit": {"type": "string", "minLength": 1, "description": "The coherent unit bound to this kind."}
+      }
     },
     "linkType": {
       "type": "object",

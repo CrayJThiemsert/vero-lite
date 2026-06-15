@@ -798,6 +798,102 @@ def test_coherence_rewrite_clarifies_on_unit_tie() -> None:
     assert set(decision.units) == {"celsius", "hz"}
 
 
+# --- PLAN-0026 Phase A (ADR-0021): classified measured_kind -> bound-unit synthesis ---
+#
+# The re-pointed oracle: the model CLASSIFIES measured_kind (a bounded enum pick it is
+# reliable at) instead of synthesizing a unit filter; the engine composes the PRECISE
+# unit from the declared quantity_bindings — superseding Phase B's best-effort dominant
+# unit and distinguishing 'frequency' from 'temperature'.
+
+_CLASSIFIED_SUPERLATIVE_QUERY = {
+    "object_type": "OperationalEvent",
+    "operation": "max",
+    "aggregate_property": "measured_value",
+    "filters": [],
+    "group_by": None,
+    "measured_kind": "temperature",
+}
+
+
+async def test_phasea_oracle_classified_kind_synthesizes_unit(energy_adapter: None) -> None:
+    """ADR-0021: the model classifies measured_kind='temperature' (no unit filter); the
+    engine synthesizes the celsius filter from the binding -> the 7 celsius readings,
+    max 96.5 on Battery Bank A. Principled, not the Phase-B best-effort."""
+    client = _StubQueryClient(query=dict(_CLASSIFIED_SUPERLATIVE_QUERY), raise_on="phrase")
+    answer = await answer_question(
+        "What is the highest temperature reading, and on which battery?",
+        "energy",
+        client=client,
+    )
+    assert answer.outcome == "answered"
+    assert answer.result_count == 7
+    assert answer.aggregate is not None
+    assert answer.aggregate.value == 96.5
+    assert answer.aggregate.groups == {"Battery Bank A": 96.5, "Battery Bank B": 43.2}
+    assert answer.query is not None
+    assert any(f.property == "unit" and f.value == "celsius" for f in answer.query.filters)
+    assert client.phrase_calls == 0
+
+
+def test_coherence_rewrite_bound_unit_overrides_dominant() -> None:
+    """ADR-0021: a classified kind composes its BOUND unit even when that unit is the
+    minority in the matched set — the distinction Phase B's dominant heuristic could
+    not make."""
+    query = StructuredQuery(
+        object_type="OperationalEvent",
+        operation="max",
+        aggregate_property="measured_value",
+        measured_kind="temperature",
+    )
+    matched = [
+        {"measured_value": 96.5, "unit": "celsius"},  # bound unit, the minority
+        {"measured_value": 50.0, "unit": "hz"},
+        {"measured_value": 50.0, "unit": "hz"},  # hz is dominant
+    ]
+    decision = _coherence_rewrite(query, matched, _event_meta())
+    assert decision.clarify is False
+    assert decision.filter is not None and decision.filter.value == "celsius"
+    assert len(decision.matched) == 1
+
+
+def test_coherence_rewrite_distinguishes_frequency() -> None:
+    """ADR-0021: measured_kind='frequency' composes the hz filter where Phase B's
+    dominant heuristic would have wrongly picked celsius."""
+    query = StructuredQuery(
+        object_type="OperationalEvent",
+        operation="max",
+        aggregate_property="measured_value",
+        measured_kind="frequency",
+    )
+    matched = [
+        {"measured_value": 96.5, "unit": "celsius"},
+        {"measured_value": 41.7, "unit": "celsius"},  # celsius dominant
+        {"measured_value": 50.0, "unit": "hz"},
+    ]
+    decision = _coherence_rewrite(query, matched, _event_meta())
+    assert decision.filter is not None and decision.filter.value == "hz"
+    assert len(decision.matched) == 1
+
+
+def test_coherence_rewrite_clarifies_when_bound_unit_absent() -> None:
+    """ADR-0021/AC-4: a classified kind whose bound unit is absent in the match ->
+    clarify, never fabricate and never silently fall back to a different unit."""
+    query = StructuredQuery(
+        object_type="OperationalEvent",
+        operation="max",
+        aggregate_property="measured_value",
+        measured_kind="frequency",
+    )
+    matched = [
+        {"measured_value": 96.5, "unit": "celsius"},
+        {"measured_value": 41.7, "unit": "celsius"},
+        {"measured_value": 12.0, "unit": "volt"},  # heterogeneous, but no hz
+    ]
+    decision = _coherence_rewrite(query, matched, _event_meta())
+    assert decision.clarify is True
+    assert decision.filter is None
+
+
 async def test_clarify_path_asks_and_never_fabricates(
     energy_adapter: None, monkeypatch: pytest.MonkeyPatch
 ) -> None:
