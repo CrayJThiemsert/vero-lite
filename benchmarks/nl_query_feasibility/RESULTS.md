@@ -216,8 +216,8 @@ Cray-directed follow-up to the AC-8 residual (nl-08/nl-11). Goal: close the
 aggregate-superlative **filter-omission** gap. Two candidate levers were tested
 **live** on MS-S1 (host-state, with Cray's go). **Both came back negative.**
 Dumps (gitignored): `.claude/benchmark-results/2026-06-15-nl-prompt-variants.jsonl`,
-`…-nl-model-nemotron-q8.jsonl`, `…-nl-model-qwen36.jsonl`. Focus subset run via the
-new `run_benchmark.py --only` filter; prompt variants via
+`…-nl-model-nemotron-q8.jsonl`, `…-nl-model-qwen36.jsonl`, `…-nl-model-gemma4-26b.jsonl`.
+Focus subset run via the new `run_benchmark.py --only` filter; prompt variants via
 `experiment_prompt_variants.py` (monkeypatches `_translate_messages`, real engine path).
 
 ### Corrected diagnosis (raw-dump verified)
@@ -239,22 +239,29 @@ aggregate is still correct (top = Battery Bank A)" — true for the *prose*, not
 
 ### Item 1 — model sweep (no viable replacement)
 
-3 model families, focus probe (nl-08 / nl-11 / nl-10 control):
+4 model families, focus probe (nl-08 / nl-11 / nl-10 control):
 
 | model | family | nl-08 | nl-11 | latency/case |
 |---|---|---|---|---|
 | `gpt-oss:20b` (pin) | gptoss | `filters:[]`, group_by `null` → n=11 ✗ | `filters:[]`, group_by `null` → n=11 ✗ | **~30 s** |
 | `nemotron-3-nano:30b-a3b-q8_0` | nemotron_h_moe | `filters:[]`, group_by `asset_id` → n=11 ✗ | `filters:[]`, group_by `null` → n=11 ✗ | 68–180 s |
 | `qwen3.6:35b` | qwen35moe | `filters:[]`, group_by `asset_id` → n=11 ✗ | `filters:[]`, group_by `asset_id` → n=11 ✗ | 53–143 s |
+| `gemma4:26b` | gemma4 (dense) | `filters:[]`, group_by `null` → n=11 ✗ | invented `resolve:"Battery Bank A"` (un-named entity) + `operation:list` + limit:1 → wrong ✗ | 66–158 s |
 
-- **The implied filter was dropped 6/6** (3 families × 2 cases) → the omission is
-  **model-class-general**, not a `gpt-oss` quirk.
-- `group_by` is **flaky across families** (qwen both / nemotron half / gpt-oss
-  neither) → structured `top` is unreliable, especially on the pin.
+- **The implied filter was dropped on all 4 families** on the superlatives → the
+  omission is **model-class-general**, not a `gpt-oss` quirk.
+- `group_by` is **flaky across families** (qwen both / nemotron half / gpt-oss &
+  gemma neither) → structured `top` is unreliable, especially on the pin.
 - The larger models are **2.5–6× slower** → a non-starter for a snappy operator
   tool regardless of accuracy. nl-10 (named-entity join-aggregate via `resolve`)
-  stayed correct on all three. (`gemma4:26b` untested — the 3-family + latency
-  evidence already settles "no replacement".)
+  stayed correct on gpt-oss / nemotron / qwen.
+- **`gemma4:26b` is the worst of the four** (added 2026-06-15 as a 4th-family
+  reference data point): it drops the filter like the rest, *invents* a `resolve`
+  to an entity the question never named on nl-11 (then truncates to 1 row and
+  answers "no temperature data"), and on nl-10 **failed translation after 3
+  retries** (kept emitting `operation:list` with `aggregate_property`, the exact
+  incoherence the guard rejects). It also has no structured-output advantage and
+  is slow. Confirms the conclusion rather than challenging it.
 
 ### Item 2 — prompt escalation on the pin (can't close it cleanly)
 
