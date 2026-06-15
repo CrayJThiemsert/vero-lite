@@ -1,8 +1,8 @@
 # ADR-0021: Metric-kind as typed ontology semantics ("classify, don't synthesize")
 
-**Status:** Proposed
+**Status:** Accepted (ratified 2026-06-15 — construct **(b)** confirmed over (c); (c) recorded as a *triggered successor*, see Alternative 2)
 **Date:** 2026-06-15
-**Deciders:** Jirachai Thiemsert (founder) — construct choice (D2) confirmed at ratification
+**Deciders:** Jirachai Thiemsert (founder) — construct (b) confirmed at ratification (2026-06-15)
 **Related:** ADR-008 (YAML ontology specification — D3 grammar, D5 generator, D6 validation; this ADR amends D3), ADR-006 (vertical plugin architecture / Rule of Three), ADR-005 (OCT pivot — energy first), ADR-007 (OCT engine contracts), PLAN-0026 (steps 6–7, AC-8, SD-2, IN-1 — the gated implementation), PLAN-0024 (deterministic aggregates + `resolve` join — its residual this closes), `benchmarks/nl_query_feasibility/RESULTS.md` (2026-06-15 addendum — the proven-negative evidence), `docs/research/private/2026-06-15-ontology-metric-semantics-pattern.md` (the moat argument + external citations), CLAUDE.md §1 (semantic layer = the moat), ADR-009 D1/D2 (Cowork drafts, Code commits), ADR-012 D4.3 (author≠reviewer disclosure)
 
 > **Authoring disclosure (ADR-012 D4.3).** Drafted by Cowork (Tier-1, ADR-009 D1)
@@ -14,11 +14,11 @@
 > **Code's review at PR merge + Cray's ratification are the remaining independent
 > checks.** Separation noted, not asserted.
 
-> **Construct choice is a lean, not final (D2).** Cray leans option (b) (a
-> QUDT-style quantity-kind ⟂ unit typed pair). This is drafted as the **Proposed**
-> construct; (a) and (c) are recorded as considered alternatives. **The construct
-> choice is the load-bearing decision Cray confirms at ratification** (the
-> Proposed → Accepted step). Until then it is tentative.
+> **Construct choice — CONFIRMED (b) at ratification (2026-06-15).** Cray confirmed
+> option (b) (a QUDT-style quantity-kind ⟂ unit typed pair) over (a) and (c). (a)
+> remains a recorded alternative; **(c) is the intended triggered successor** (see
+> Alternative 2 — revisit when the ADR-016 procedure/trigger engine needs first-class
+> measurements AND ≥3 verticals exercise the path). (b) reuses entirely into (c).
 
 ## Context
 
@@ -137,8 +137,8 @@ object_types:
         unit: volt
 ```
 
-**This is the load-bearing decision Cray confirms at ratification** (lean, not
-final — see the header note). Rationale for leaning (b): it is the closest fit to
+**This is the load-bearing decision — CONFIRMED (b) at ratification (2026-06-15)**
+(see the header note; (c) is the triggered successor in Alternative 2). Rationale for (b): it is the closest fit to
 the **real comparative-measurement pipeline task** (metrics compared to drive
 operational decisions), it matches the QUDT quantity-kind-vs-unit separation and
 the Foundry value-type precedent argued in the pattern article, and it **extends
@@ -254,6 +254,14 @@ A composite value type bundling value + kind + unit into a single typed property
   Three, ADR-006 / ADR-008 Alternative 4 "Palantir-lite not Palantir-full").
 - **Why not chosen (now):** over-scope for v0. (b) is the **stepping stone** —
   ADR-0021's typed pair extends to (c) later without re-deciding the model.
+- **Successor with a trigger condition — not a dead alternative (confirmed at
+  ratification 2026-06-15).** (c) is the intended *evolution* of (b). Revisit (c)
+  when **both** hold: (i) the governed procedure/trigger engine (**ADR-016**) needs
+  measurements as first-class values passed between procedure steps — where an atomic
+  value+kind+unit prevents desync across many producers/consumers — **and** (ii) **≥3
+  verticals** exercise the metric-semantics path (Rule of Three, ADR-006 / ADR-008 D3
+  v1-defer). Until both, (b)'s typed pair fully serves NL-query precision at lower
+  grammar/storage cost and **reuses entirely into (c)** — nothing is thrown away.
 
 ### Alternative 3: Amend ADR-008 in place (no new ADR)
 
@@ -329,9 +337,8 @@ Replace the bounded `StructuredQuery` with free-form LLM-generated SQL.
 - **Governance gate:** Phase A's impl PR (PLAN-0026 steps 6–7) is gated on this ADR
   being **Accepted before** the PR (CLAUDE.md §8) **and** the T2-vs-T3 roadmap go
   (PLAN-0026 OQ-1).
-- **Ratification action:** the construct choice (D2) is the decision Cray confirms
-  at Proposed → Accepted. If (a) is preferred over (b) at ratification, D2 and the
-  ADR-008 D3 amendment scope narrow accordingly (a per-enum-value attribute map is
-  a smaller grammar delta); D1, D3, D4 are unaffected by the (a)/(b) choice.
+- **Ratification outcome (2026-06-15):** construct **(b) confirmed** over (a)/(c). (c)
+  is recorded as a triggered successor (Alternative 2). D1/D3/D4 unchanged; the
+  ADR-008 D3 amendment proceeds with the (b) `quantity_bindings` construct.
 - Drafted by Cowork (Tier-1, ADR-009 D1); uncommitted. Code reviews + commits via a
   `docs/*` PR (ADR-009 D2). AI-assisted (Claude); no `Co-Authored-By` per CLAUDE.md §7.
