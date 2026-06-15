@@ -69,6 +69,9 @@ object_types:
         type: float
       unit:
         type: string
+      measured_kind:
+        type: enum
+        values: [temperature, frequency]
       description:
         type: string
       occurred_at:
@@ -80,6 +83,11 @@ object_types:
       site_id:
         type: ref
         target: Site
+    quantity_bindings:
+      - kind: temperature
+        unit: celsius
+      - kind: frequency
+        unit: hz
 
   Alert:
     primary_key: alert_id
