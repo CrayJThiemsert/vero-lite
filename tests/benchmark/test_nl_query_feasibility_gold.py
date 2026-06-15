@@ -11,7 +11,7 @@ from __future__ import annotations
 from typing import Any
 
 from benchmarks.nl_query_feasibility.harness import load_gold, score_case
-from services.engine.nl_query import NlAnswer, StructuredQuery
+from services.engine.nl_query import AggregateResult, NlAnswer, StructuredQuery
 
 
 def _answer(
@@ -21,6 +21,7 @@ def _answer(
     count: int = 0,
     answer: str = "",
     object_type: str = "OperationalEvent",
+    agg: AggregateResult | None = None,
 ) -> NlAnswer:
     """Build an NlAnswer with just the fields score_case reads."""
     ids = ids or []
@@ -33,6 +34,7 @@ def _answer(
         source_object_ids=ids,
         source_objects=[],
         result_count=count,
+        aggregate=agg,
     )
 
 
@@ -108,3 +110,32 @@ def test_score_honesty_no_data_probe() -> None:
     invented = _answer(grounded=True, count=2, answer="There are 2 open alerts.")
     assert score_case(case, honest) == "correct"
     assert score_case(case, invented) == "wrong"  # grounded mismatch
+
+
+def test_score_aggregate_value_match() -> None:
+    """A ceiling=false aggregate case is scored on the computed value (tolerant)."""
+    case = _case(expected_count=3, expected_grounded=True, expected_aggregate={"value": 41.3})
+    agg = AggregateResult(operation="avg", property="measured_value", value=123.9 / 3)
+    assert score_case(case, _answer(count=3, agg=agg)) == "correct"  # 41.3 within tolerance
+    off = AggregateResult(operation="avg", property="measured_value", value=99.0)
+    assert score_case(case, _answer(count=3, agg=off)) == "wrong"
+    assert score_case(case, _answer(count=3, agg=None)) == "wrong"  # no aggregate computed
+
+
+def test_score_aggregate_top_group_match() -> None:
+    """A group-by superlative is scored on which group carries the extreme value."""
+    case = _case(
+        expected_count=7,
+        expected_grounded=True,
+        expected_aggregate={"top": "Battery Bank A"},
+    )
+    groups = {"Battery Bank A": 96.5, "Battery Bank B": 43.2}
+    hot = AggregateResult(operation="max", property="measured_value", value=96.5, groups=groups)
+    assert score_case(case, _answer(count=7, agg=hot)) == "correct"
+    flipped = AggregateResult(
+        operation="max",
+        property="measured_value",
+        value=43.2,
+        groups={"Battery Bank A": 10.0, "Battery Bank B": 43.2},
+    )
+    assert score_case(case, _answer(count=7, agg=flipped)) == "wrong"

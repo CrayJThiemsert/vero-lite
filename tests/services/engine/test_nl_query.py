@@ -17,10 +17,15 @@ import pytest
 from services.api.config import settings
 from services.engine.llm.client import ChatResult, OllamaClient, OllamaError
 from services.engine.nl_query import (
+    AggregateResult,
     QueryFilter,
+    QueryOperation,
     QueryTranslationError,
+    StructuredQuery,
     _build_chat_client,
+    _compute_aggregate,
     _filter_matches,
+    _fmt_num,
     _matches,
     _object_id,
     _object_title,
@@ -369,3 +374,194 @@ async def test_retrieval_failure_is_ungrounded_but_keeps_query(
     assert answer.grounded is False
     assert answer.query is not None
     assert "retrieve" in answer.answer.lower()
+
+
+# --- aggregates: deterministic execute-stage compute (PLAN-0024 AC-1) -------
+
+
+def test_compute_aggregate_reduces_min_max_avg_sum() -> None:
+    rows = [{"v": 10}, {"v": 20}, {"v": 30}]
+
+    def value_for(operation: QueryOperation) -> float | None:
+        query = StructuredQuery(object_type="X", operation=operation, aggregate_property="v")
+        result = _compute_aggregate(query, rows)
+        return result.value if result is not None else None
+
+    assert value_for("max") == 30
+    assert value_for("min") == 10
+    assert value_for("sum") == 60
+    assert value_for("avg") == 20
+
+
+def test_compute_aggregate_over_no_numeric_is_none() -> None:
+    """No numeric value for the property -> None (caller degrades to no-data)."""
+    query = StructuredQuery(object_type="X", operation="max", aggregate_property="v")
+    assert _compute_aggregate(query, [{"other": 1}, {"v": "n/a"}]) is None
+
+
+def test_compute_aggregate_groups_by_property() -> None:
+    rows = [{"g": "a", "v": 1}, {"g": "a", "v": 9}, {"g": "b", "v": 5}]
+    query = StructuredQuery(object_type="X", operation="max", aggregate_property="v", group_by="g")
+    result = _compute_aggregate(query, rows)
+    assert isinstance(result, AggregateResult)
+    assert result.value == 9
+    assert result.groups == {"a": 9, "b": 5}
+
+
+def test_fmt_num_strips_float_noise() -> None:
+    assert _fmt_num(96.5) == "96.5"
+    assert _fmt_num(250.0) == "250"
+    assert _fmt_num(123.9 / 3) == "41.3"
+    assert _fmt_num(None) == "n/a"
+
+
+# --- aggregates end-to-end (answer_question; PLAN-0024 nl-08/09/10/11) ------
+
+
+async def test_avg_with_name_resolve_grounds_to_battery_b_mean(energy_adapter: None) -> None:
+    """nl-10: avg of Battery Bank B's celsius readings = 41.3 (resolve + avg)."""
+    client = _StubQueryClient(
+        query={
+            "object_type": "OperationalEvent",
+            "operation": "avg",
+            "aggregate_property": "measured_value",
+            "filters": [{"property": "unit", "op": "eq", "value": "celsius"}],
+            "resolve": {
+                "name": "Battery Bank B",
+                "target_type": "Asset",
+                "filter_property": "asset_id",
+            },
+        },
+        raise_on="phrase",  # exercise the deterministic aggregate phrasing
+    )
+    answer = await answer_question(
+        "average temperature of Battery Bank B?", "energy", client=client
+    )
+    assert answer.grounded is True
+    assert answer.result_count == 3
+    assert answer.aggregate is not None
+    assert answer.aggregate.operation == "avg"
+    assert answer.aggregate.value == pytest.approx(41.3)
+    assert "41.3" in answer.answer
+
+
+async def test_max_groupby_relabels_id_to_entity_name(energy_adapter: None) -> None:
+    """nl-08/nl-11: hottest battery -> Battery Bank A at 96.5 (group_by + relabel)."""
+    client = _StubQueryClient(
+        query={
+            "object_type": "OperationalEvent",
+            "operation": "max",
+            "aggregate_property": "measured_value",
+            "group_by": "asset_id",
+            "filters": [{"property": "unit", "op": "eq", "value": "celsius"}],
+        },
+        raise_on="phrase",
+    )
+    answer = await answer_question("which battery is hottest?", "energy", client=client)
+    assert answer.grounded is True
+    assert answer.result_count == 7  # all celsius readings across both batteries
+    assert answer.aggregate is not None
+    assert answer.aggregate.value == 96.5
+    # group keys relabelled from asset_id -> the Asset's title (name)
+    assert answer.aggregate.groups == {"Battery Bank A": 96.5, "Battery Bank B": 43.2}
+    assert "Battery Bank A" in answer.answer
+    assert "96.5" in answer.answer
+
+
+async def test_count_with_name_resolve_grounds_to_five_events(energy_adapter: None) -> None:
+    """nl-09: events for Battery Bank A = 5 (cross-type name->id resolve)."""
+    client = _StubQueryClient(
+        query={
+            "object_type": "OperationalEvent",
+            "operation": "count",
+            "resolve": {
+                "name": "Battery Bank A",
+                "target_type": "Asset",
+                "filter_property": "asset_id",
+            },
+        }
+    )
+    answer = await answer_question("how many events for Battery Bank A?", "energy", client=client)
+    assert answer.grounded is True
+    assert answer.result_count == 5
+    assert set(answer.source_object_ids) == {
+        "event-transition-01",
+        "event-reading-01",
+        "event-reading-05",
+        "event-reading-06",
+        "event-reading-03",
+    }
+
+
+# --- aggregates + resolve preserve the anti-hallucination guard (AC-5) ------
+
+
+async def test_aggregate_over_no_numeric_match_is_no_invention(energy_adapter: None) -> None:
+    """max over a property the matched rows lack -> deterministic no-data, no LLM."""
+    client = _StubQueryClient(
+        query={
+            "object_type": "OperationalEvent",
+            "operation": "max",
+            "aggregate_property": "measured_value",
+            "filters": [{"property": "event_type", "op": "eq", "value": "alarm"}],
+        }
+    )
+    answer = await answer_question("highest value among alarms?", "energy", client=client)
+    assert answer.grounded is False
+    assert answer.aggregate is None
+    assert "No OperationalEvent records" in answer.answer
+    assert client.phrase_calls == 0  # the LLM got no chance to invent a number
+
+
+async def test_name_resolve_miss_is_no_invention(energy_adapter: None) -> None:
+    """A name that resolves to nothing -> honest no-records, never a fabricated match."""
+    client = _StubQueryClient(
+        query={
+            "object_type": "OperationalEvent",
+            "operation": "count",
+            "resolve": {
+                "name": "Battery Bank Z",
+                "target_type": "Asset",
+                "filter_property": "asset_id",
+            },
+        }
+    )
+    answer = await answer_question("events for Battery Bank Z?", "energy", client=client)
+    assert answer.grounded is False
+    assert answer.result_count == 0
+    assert "No OperationalEvent records" in answer.answer
+    assert client.phrase_calls == 0
+
+
+# --- aggregate validation feeds the translate retry loop (PLAN-0024 AC-1) ---
+
+
+async def test_aggregate_without_property_is_rejected_then_retried() -> None:
+    """An aggregate op missing aggregate_property is invalid; the retry corrects it."""
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    bad = json.dumps({"object_type": "OperationalEvent", "operation": "max"})
+    good = json.dumps(
+        {
+            "object_type": "OperationalEvent",
+            "operation": "max",
+            "aggregate_property": "measured_value",
+        }
+    )
+    client = _StubQueryClient(translate_outputs=[bad, good])
+    query = await _translate(client, "q", "energy", meta, type_index, retry_budget=3)
+    assert query.operation == "max"
+    assert query.aggregate_property == "measured_value"
+    assert client.translate_calls == 2
+
+
+async def test_non_numeric_aggregate_property_is_rejected() -> None:
+    """aggregate_property must be numeric; a string property exhausts the budget."""
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    bad = json.dumps(
+        {"object_type": "OperationalEvent", "operation": "avg", "aggregate_property": "unit"}
+    )
+    client = _StubQueryClient(translate_outputs=[bad])
+    with pytest.raises(QueryTranslationError):
+        await _translate(client, "q", "energy", meta, type_index, retry_budget=2)

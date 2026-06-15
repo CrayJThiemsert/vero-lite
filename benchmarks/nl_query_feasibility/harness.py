@@ -16,7 +16,7 @@ from ruamel.yaml import YAML
 
 from benchmarks.procedure_baseline.harness import percentile
 from services.engine.llm.structured import ChatClient
-from services.engine.nl_query import NlAnswer, answer_question
+from services.engine.nl_query import AggregateResult, NlAnswer, answer_question
 
 GOLD_PATH = Path(__file__).parent / "gold.yaml"
 
@@ -80,7 +80,32 @@ def score_case(case: dict[str, Any], ans: NlAnswer) -> str:
     expected_ids = set(case.get("expected_ids", []) or [])
     if expected_ids and set(ans.source_object_ids) != expected_ids:
         return "wrong"
+    expected_agg = case.get("expected_aggregate")
+    if expected_agg is not None and not _aggregate_ok(expected_agg, ans.aggregate):
+        return "wrong"
     return "correct"
+
+
+def _aggregate_ok(expected: dict[str, Any], agg: AggregateResult | None) -> bool:
+    """Check a deterministically-computed aggregate against gold expectations.
+
+    Supports ``{value: X}`` (overall aggregate, within tolerance) and
+    ``{top: name}`` (the group carrying the extreme value for a max/min).
+    """
+    if agg is None:
+        return False
+    if "value" in expected and (
+        agg.value is None or abs(agg.value - float(expected["value"])) > 0.05
+    ):
+        return False
+    if "top" in expected:
+        if not agg.groups:
+            return False
+        chooser = min if agg.operation == "min" else max
+        top = chooser(agg.groups, key=lambda k: agg.groups[k])
+        if top != expected["top"]:
+            return False
+    return True
 
 
 async def run_case(case: dict[str, Any], vertical: str, client: ChatClient) -> CaseResult:
