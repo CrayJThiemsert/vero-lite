@@ -311,6 +311,63 @@ object_types:
     assert "requires non-empty values list" in captured.err
 
 
+def test_l2_quantity_binding_kind_not_in_enum(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ADR-0021 (D6): a quantity_bindings kind absent from the measured_kind enum →
+    SemanticValidationError ('is not a value of the measured_kind enum')."""
+    body = """\
+version: 0
+namespace: energy
+object_types:
+  OperationalEvent:
+    primary_key: event_id
+    properties:
+      event_id:
+        type: string
+      measured_kind:
+        type: enum
+        values: [temperature]
+    quantity_bindings:
+      - kind: pressure
+        unit: bar
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "is not a value of the measured_kind enum" in captured.err
+
+
+def test_l2_quantity_binding_duplicate_kind(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ADR-0021 (D6): a kind bound more than once → SemanticValidationError."""
+    body = """\
+version: 0
+namespace: energy
+object_types:
+  OperationalEvent:
+    primary_key: event_id
+    properties:
+      event_id:
+        type: string
+      measured_kind:
+        type: enum
+        values: [temperature, frequency]
+    quantity_bindings:
+      - kind: temperature
+        unit: celsius
+      - kind: temperature
+        unit: fahrenheit
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "more than once" in captured.err
+
+
 def test_malformed_yaml_reports_parse_failure(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:

@@ -144,6 +144,15 @@ class StructuredQuery(BaseModel):
             "distinct value of this property (e.g. group readings by 'asset_id')."
         ),
     )
+    measured_kind: str | None = Field(
+        default=None,
+        description=(
+            "ADR-0021: for an aggregate over a measurement, the CLASSIFIED metric "
+            "kind (a measured_kind enum value, e.g. 'temperature'). The engine "
+            "synthesizes the coherent unit filter from it — do not add a unit filter "
+            "yourself. Null when the question is not about a specific metric kind."
+        ),
+    )
     resolve: NameResolve | None = Field(
         default=None,
         description=(
@@ -281,6 +290,12 @@ def _translate_messages(
         "VALUES: map each value to the EXACT value the data uses — the exact enum value "
         "shown in parentheses, and the exact unit/text spelling (e.g. 'celsius', not "
         "'C'). Never invent property names or values.\n"
+        "METRIC KIND: when the question aggregates a measurement (e.g. measured_value) "
+        "and the type has a measured_kind enum, CLASSIFY the kind the question asks "
+        "about and set measured_kind to that exact enum value (e.g. 'highest "
+        "temperature' -> measured_kind 'temperature'). The engine composes the coherent "
+        "unit filter from it — do NOT add a unit filter for that. Leave measured_kind "
+        "null when the question is not about a specific metric kind.\n"
         "CROSS-TYPE NAMES: to filter by a referenced entity's NAME (a property shown as "
         "ref->Type), do NOT put the name into the id filter. Instead set "
         "resolve = {name: <the name>, target_type: <the referenced Type>, "
@@ -724,6 +739,19 @@ class _Coherence:
     units: tuple[str, ...] = ()
 
 
+def _bound_unit_for_kind(kind: str | None, obj_meta: ObjectTypeMeta | None) -> str | None:
+    """ADR-0021: the unit declared for a classified ``measured_kind``, or None.
+
+    Looks up the object type's ``quantity_bindings`` (construct b). None when the
+    kind is unset/unknown — the caller then falls back to the Phase-B dominant unit."""
+    if not kind or obj_meta is None:
+        return None
+    for binding in obj_meta.quantity_bindings:
+        if binding.kind == kind:
+            return binding.unit
+    return None
+
+
 def _coherence_rewrite(
     query: StructuredQuery, matched: list[dict[str, Any]], obj_meta: ObjectTypeMeta | None
 ) -> _Coherence:
@@ -731,8 +759,10 @@ def _coherence_rewrite(
 
     When the aggregate target spans more than one unit over the matched set,
     aggregating across them is incoherent (max of celsius-and-hz has no meaning).
-    The engine restricts to the DOMINANT unit deterministically — the model never
-    re-supplies the filter. A tie (no single dominant unit), or a rewrite that
+    The engine restricts to the unit bound to the classified ``measured_kind``
+    (ADR-0021), or — absent a classified kind — the DOMINANT unit (Phase-B
+    best-effort); the model never re-supplies it. A tie (no single dominant unit),
+    or a rewrite that
     would empty the set, is ambiguous -> clarify (AC-4): never fabricate, never
     silently over-filter. A homogeneous set (incl. when the model already filtered)
     needs no rewrite."""
@@ -751,11 +781,19 @@ def _coherence_rewrite(
     if len(counts) <= 1:
         return _Coherence()  # homogeneous (or unit-less) — already coherent
     units = tuple(sorted(counts))
-    top = max(counts.values())
-    dominant = sorted(u for u, c in counts.items() if c == top)
-    if len(dominant) > 1:
-        return _Coherence(clarify=True, units=units)  # tie -> ambiguous
-    coherence_filter = QueryFilter(property=_UNIT_PROPERTY, op="eq", value=dominant[0])
+    # PHASE A (ADR-0021): if translate classified measured_kind and the type declares
+    # a binding, synthesize the PRECISE coherent unit from it (distinguishes
+    # 'frequency' from 'temperature'); else fall back to the Phase-B dominant unit.
+    bound = _bound_unit_for_kind(query.measured_kind, obj_meta)
+    if bound is not None:
+        chosen: str | None = bound if bound in counts else None
+    else:
+        top = max(counts.values())
+        dominant = sorted(u for u, c in counts.items() if c == top)
+        chosen = dominant[0] if len(dominant) == 1 else None
+    if chosen is None:
+        return _Coherence(clarify=True, units=units)  # ambiguous / unbound -> ask
+    coherence_filter = QueryFilter(property=_UNIT_PROPERTY, op="eq", value=chosen)
     coherent = [obj for obj in matched if _filter_matches(obj, coherence_filter)]
     if not coherent:
         return _Coherence(clarify=True, units=units)  # would empty -> ask

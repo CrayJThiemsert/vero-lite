@@ -67,6 +67,7 @@ class OperationalEvent(Base):
     severity: Mapped[str | None] = mapped_column(Text)
     measured_value: Mapped[float | None] = mapped_column(Double)
     unit: Mapped[str | None] = mapped_column(Text)
+    measured_kind: Mapped[str | None] = mapped_column(Text)
     description: Mapped[str | None] = mapped_column(Text)
     occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     asset_id: Mapped[str | None] = mapped_column(Text, ForeignKey("asset.asset_id"))

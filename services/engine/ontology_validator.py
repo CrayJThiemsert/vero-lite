@@ -243,6 +243,7 @@ def _check_object_type(
             )
     for prop_name, prop_def in props.items():
         findings.extend(_check_property(file, obj_name, prop_name, prop_def, object_types))
+    findings.extend(_check_quantity_bindings(file, obj_name, obj_def))
     return findings
 
 
@@ -284,6 +285,54 @@ def _check_property(
                     message=f"enum property {prop_name!r} requires non-empty values list",
                 )
             )
+    return findings
+
+
+def _check_quantity_bindings(
+    file: str, obj_name: str, obj_def: dict[str, Any]
+) -> list[OntologyError]:
+    """ADR-0021 (D6 L2): each ``quantity_bindings`` kind must be a value of the
+    type's ``measured_kind`` enum, and no kind may be bound more than once."""
+    bindings = obj_def.get("quantity_bindings")
+    if not isinstance(bindings, list):
+        return []
+    line, col = _node_lc(obj_def)
+    props = _props_of(obj_def)
+    mk = props.get("measured_kind")
+    enum_values = mk.get("values") if isinstance(mk, dict) else None
+    valid_kinds = {str(v) for v in enum_values} if isinstance(enum_values, list) else set()
+    findings: list[OntologyError] = []
+    seen: set[str] = set()
+    for binding in bindings:
+        if not isinstance(binding, dict):
+            continue
+        kind = str(binding.get("kind", ""))
+        if valid_kinds and kind not in valid_kinds:
+            findings.append(
+                SemanticValidationError(
+                    file=file,
+                    object_type=obj_name,
+                    property="quantity_bindings",
+                    yaml_line=line,
+                    yaml_col=col,
+                    message=(
+                        f"quantity_bindings kind {kind!r} is not a value of the "
+                        f"measured_kind enum {sorted(valid_kinds)}"
+                    ),
+                )
+            )
+        if kind in seen:
+            findings.append(
+                SemanticValidationError(
+                    file=file,
+                    object_type=obj_name,
+                    property="quantity_bindings",
+                    yaml_line=line,
+                    yaml_col=col,
+                    message=f"quantity_bindings binds kind {kind!r} more than once",
+                )
+            )
+        seen.add(kind)
     return findings
 
 
