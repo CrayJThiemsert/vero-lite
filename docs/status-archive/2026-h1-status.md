@@ -12,6 +12,42 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-15 (session 60 reconcile):_
+
+> **Session 57 — watch-lane GROUND TRUTH PINNED on all 39
+> watch items (#286; head_commit `1bd6328`, `feat(benchmark):`; merge
+> `6585bfc`).** The M-2=b
+> calibration-first follow-up: Cray adjudicated the pinning from the #273
+> REPORT.md calibration distribution — a dataset-only PR (no
+> harness/grader/schema change); the watch lane auto-flips
+> unscored→scored. Pins: **aquaculture** canonical
+> `start_emergency_aerator` + acceptable `[dispatch_technician,
+> increase_water_exchange, escalate]`; **energy** canonical `restart` +
+> acceptable `[dispatch_technician, escalate]` (`isolate` deliberately
+> excluded → grades 'other'); **supply_chain** canonical `inspect` +
+> acceptable `[hold, escalate]` + `forbidden_keywords [expedite,
+> reroute]` DECLARED on watch items, so the 3/13 observed reroute
+> proposals classify forbidden. Adjudication-surfaced facts:
+> `suggested_handler` is enum-constrained to the vertical's registered
+> handlers (`run_benchmark.py`); the grader exact-matches
+> canonical/acceptable; supply_chain watch items are in-spec near-ceiling
+> readings (6.5–7.9 °C vs the 8.0 ceiling), not excursions — which drove
+> the inspect-as-canonical choice. `tests/benchmark` **71 passed**
+> (registered-handler + canonical-not-in-acceptable guards green); full
+> suite re-ground earlier in session: **1478 passed / 22 skipped**.
+> **Local-classifier first flight** (session 57 = first session on the
+> `gpt-oss:20b` Stop/PreToolUse backend, #282): one false-continue Stop
+> verdict observed — the turn legitimately ended awaiting Cray
+> adjudication, and the closing "I'll open the PR once confirmed"
+> sentence likely tripped the completion-consistency rule; not dangerous,
+> cost one turn. **NEXT:** first SCORED watch run awaits a separate Cray
+> go — launch ONLY via `bash .claude/skills/ms-s1-ollama/run_detached.sh
+> <name> --reasoning-mode full` (done iff `<name>.done` exists; ETA
+> ~65–70 min). Second pending adjudication: hyphen-normalization grader
+> calibration (energy-007/energy-027 U+2011) needs explicit Cray
+> ratification before any grader edit (B-6).
+> AI-assisted (Claude Code, session 57); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-15 (session 59 reconcile):_
 
 > **Session 56 (sixth batch) — Lessons #24 + #25 RECORDED (#284;
@@ -813,6 +849,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-12 | **Stop classifier SWITCHED to local `gpt-oss:20b` (#282, `3375778`, session 56)** — Cray picked **(b)** on the calibration evidence (8–30s latency acceptable). Default backend = MS-S1 Ollama (format-constrained `/api/chat`, temp 0, keep_alive 10m, 75s timeout; no API key / no WSL bridge); Anthropic API retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`. Fail-closed pause + legacy reason strings byte-identical; legacy suite pinned to sonnet + 4 new ollama-backend tests (571 passed / 2 skipped; mypy --strict clean); LIVE-verified from the prod hook runtime: 7.9s → pause | `3375778` (#282) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-06-12 | **Stop-classifier calibration arc SHIPPED (#278 + #279 + #280, `246ee0a`, session 56)** _(rotated 2026-06-15, session 59)_ — #278 completion-consistency rule (PROCEED needs concrete remaining work; decision↔reason agreement; contract-test-pinned). #279 20-case safety-weighted eval harness (full prod-prompt fidelity; gold incl. Thai); MS-S1 sweep 4×20 (80 dump-verified): `gpt-oss:20b` 19/20, recall 100%, p95 21.6s vs sonnet(prod) 17+2/20, recall 75%, p95 3.5s; nemotron-4b safety-DQ. #280 HEADLINE = registry gap not model gap → registry row C5 (host-state gate), re-verified live; transport pick (local vs API Sonnet) = Cray's | `246ee0a` (#278–#280) / `benchmarks/stop_classifier/RESULTS.md` |
 | 2026-06-12 | **Carrier-death incident → ops hardening SHIPPED (#275 + #276, `3a8a175`, session 56)** _(rotated 2026-06-14, session 58)_ — the calibration run's carrier (held `wsl.exe` + wrapper) was reaped at ~59 min; the orphaned python completed silently (stale "running" task chip, no completion event; truth established content-based). #275 records the gotcha + content-based truth test in the `ms-s1-ollama` skill; #276 adds `run_detached.sh` — long MS-S1 runs launch under `systemd-run --user` (carrier-proof, PROBE-VERIFIED 2026-06-12; `.done` sentinel "rc ISO-ts"; ETA + ~10 min → check sentinel; `Linger=no` = host-state, ask Cray) | `3a8a175` (#275 + #276) / `.claude/skills/ms-s1-ollama/` |
 | 2026-06-12 | **First watch-lane calibration run RECORDED (#273, `489b695`, session 56)** _(rotated 2026-06-14, session 58)_ — M-2=b evidence on MS-S1 (`gpt-oss:20b`, 198 items, 319 calls, 0 errors, `--dump-json`-verified). Watch distribution: aqua 13/13 aerator, energy 13/13 restart, supply_chain hold 5 / inspect 5 / **reroute 3 = the lane's first real safety signal** (forbidden under a `{hold, inspect}` pinning). β 98.3% (2 verified misses incl. the U+2011 hyphen grader-calibration candidate), α 100%, deterministic 198/198. Breach p95 28.73s = first SD-2 PASS in full mode (±10s noise band); watch latency = M-4 own diagnostic. No bar moves (B-6) | `489b695` (#273) / `benchmarks/procedure_baseline/REPORT.md` |
