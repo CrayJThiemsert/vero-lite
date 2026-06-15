@@ -12,6 +12,72 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-15 (session 61 reconcile): all four Session-57 CF blocks
+(fifth/fourth/third/second batches) rotated as session 57 fell outside the
+4-newest-sessions window {61,60,59,58}._
+
+> **Session 57 (fifth batch, current; head_commit `e09af9b`) — AUDIT-FRAMEWORK PREP arc:
+> partner-sim venue ADR-0020 committed Proposed (#297, `e25281d`, `docs(adr):`) + its
+> project system instruction LANDED (#298, `e387a63`, `docs(conventions):`; merge
+> `e10f589`), then a pre-ratification R1 errata + instruction align (#300, `655344d`,
+> `docs(adr):`; merge `b466802`), then RATIFIED Proposed→Accepted (#302, head_commit
+> `4d1347b`, `docs(adr):`; merge `d8c7c11`) — the venue is now ACCEPTED and live-able.**
+> Two sub-batches both done this session. **(1) auditprep:** Cowork drafted two seed
+> instruments (first-dataset requirements one-pager + PDPA review checklist); Code
+> receive-verified; both gitignored under `docs/research/private/`, NOT committed. Open
+> for Cray: SD-4 residency scope, SD-5 erasure vs append-only, OQ-A Thai PDPA lawyer
+> review. **(2) partnersim:** ADR-0020 = a specialist Cowork project that role-plays a
+> Thai operator and emits a "partner profile package" so the intake+PDPA pipeline is
+> rehearsed before a real partner; D1 venue OUTSIDE the governance tiers; D2 three
+> anti-circularity rules (R1 feed-questions-not-schema, R2 forced messiness, R3 SYNTHETIC
+> provenance); D4 guarded-trial. Ratified in-session ("เอาตาม Cowork ทุกข้อ") with all
+> venue SDs accepted. **Codas:** pre-ratification R1 errata (#300) caught a VERIFIED R1
+> self-contradiction (the one-pager leaked our verdict taxonomy at the paste step) →
+> dedicated R1-clean seed; RUN-1 received (#304, R2 PASS) + operation runbook; STEP-1
+> mapping rehearsal shipped (#306, intake form v2 + mapping-gap analysis). ADR-011 still
+> gated on a real partner — the synthetic run INFORMS but never TRIGGERS it.
+> AI-assisted (Claude Code, sessions 57–58); no `Co-Authored-By` per CLAUDE.md §7.
+> _(condensed at session-61 rotation; full verbatim in git history at STATUS.md pre-`b53e631`.)_
+
+> **Session 57 (fourth batch) — B-6 hyphen normalization SHIPPED (#295; head_commit
+> `2331ffb`, `fix(benchmark):`; merge `7374f52`) + post-#282 test-hermeticity gap FIXED
+> en route (#294; `5330dfb`, `fix(tests):`).** `grader.py` gains
+> `normalize_primary_key()`: the Unicode hyphen/dash family (U+2010–U+2014, U+2212) folds
+> to ASCII `-` on both sides of the two primary-KEY comparisons; free-text matching
+> untouched. 3 new tests. VERIFIED by offline dump replay: β re-grades 118/120 → 119/120
+> with exactly one flip (energy-007 False→True, zero collateral). En-route (#294): the B-6
+> regression check hit 17 timeouts in `test_stop_continuation.py` — post-#282 the
+> subprocess fixtures' defang-by-no-key only neutered the SONNET path; the new
+> local-Ollama default made REAL MS-S1 calls; pinned `CLAUDE_CLASSIFIER_BACKEND=sonnet`.
+> Full suite 1481 passed / 22 skipped.
+> AI-assisted (Claude Code, session 57); no `Co-Authored-By` per CLAUDE.md §7.
+> _(condensed at session-61 rotation; full verbatim in git history.)_
+
+> **Session 57 (third batch) — unit-side completion PING + no-Monitor rule SHIPPED (#290;
+> `feat(skills):` `3c25d94`; merge `6a47d89`) + deferred header line LANDED (#292;
+> head_commit `f1cf3b4`, `chore(skills):`; merge `f2184f6`).** `_run_detached_body.sh` now
+> sends a best-effort unit-side Telegram ping immediately AFTER writing the `.done`
+> sentinel — the sentinel stays the authoritative signal; a ping failure can never touch
+> the sentinel or rc. SKILL.md codifies: never arm a harness Monitor on the sentinel.
+> Verified `[wrap] PING ok` inside a real `systemd --user` unit. Classifier denied a
+> cosmetic header edit (self-modification gate); the deferred line later landed (#292)
+> after explicit per-diff Cray approval.
+> AI-assisted (Claude Code, session 57); no `Co-Authored-By` per CLAUDE.md §7.
+> _(condensed at session-61 rotation; full verbatim in git history.)_
+
+> **Session 57 (second batch) — first SCORED watch-lane run RECORDED (#288; head_commit
+> `4c46a92`, `docs(benchmark):`; merge `adb1bc5`) — watch lane 97.4% (38/39); the M-2=b
+> arc is COMPLETE.** ~67 min via `run_detached.sh` (first production full run):
+> `gpt-oss:20b` on MS-S1, 198 items, 318 LLM calls, 0 errors. Watch lane: aquaculture
+> 100% / energy 100% / supply_chain 92.3% (1/13 fail = supply-040 forbidden `reroute` on
+> an in-spec reading = the lane discriminating as designed). Companion lanes: β 98.3%
+> (same two known misses incl. the energy-007 U+2011 hyphen → B-6), α 100%, deterministic
+> 100%. SD-2 p95 30.18s (0.18s over; within the ±10s straddle band + run-unique
+> classifier contamination). The harness watcher Monitor died silently; completion
+> recovered via the sentinel + content test.
+> AI-assisted (Claude Code, session 57); no `Co-Authored-By` per CLAUDE.md §7.
+> _(condensed at session-61 rotation; full verbatim in git history.)_
+
 _Addendum — rotated 2026-06-15 (session 60 reconcile):_
 
 > **Session 57 — watch-lane GROUND TRUTH PINNED on all 39
@@ -849,6 +915,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-12 | **Lessons #24 + #25 RECORDED (#284, `4b0e306`, session 56)** _(rotated 2026-06-15, session 61)_ — Cray-approved coda to the classifier calibration arc. **#24:** rules must live where the enforcer looks — a binding rule placed only in prose is invisible to a machine enforcer reading a different surface (C5 registry-gap finding generalized; adds an enforcement dimension to the ADR-0017 D5 placement rule). **#25:** an LLM judge's `{verdict, reason}` needs verdict-by-observable definitions + an explicit cross-field agreement contract, pinned by a prompt contract test + gold case (generalizes to the ADR-0018 goal-evaluator) | `4b0e306` (#284) / `docs/lessons/0024-rules-must-live-where-the-enforcer-looks.md` + `docs/lessons/0025-llm-judge-verdict-must-bind-to-its-own-reasoning.md` |
 | 2026-06-12 | **Stop classifier SWITCHED to local `gpt-oss:20b` (#282, `3375778`, session 56)** — Cray picked **(b)** on the calibration evidence (8–30s latency acceptable). Default backend = MS-S1 Ollama (format-constrained `/api/chat`, temp 0, keep_alive 10m, 75s timeout; no API key / no WSL bridge); Anthropic API retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`. Fail-closed pause + legacy reason strings byte-identical; legacy suite pinned to sonnet + 4 new ollama-backend tests (571 passed / 2 skipped; mypy --strict clean); LIVE-verified from the prod hook runtime: 7.9s → pause | `3375778` (#282) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-06-12 | **Stop-classifier calibration arc SHIPPED (#278 + #279 + #280, `246ee0a`, session 56)** _(rotated 2026-06-15, session 59)_ — #278 completion-consistency rule (PROCEED needs concrete remaining work; decision↔reason agreement; contract-test-pinned). #279 20-case safety-weighted eval harness (full prod-prompt fidelity; gold incl. Thai); MS-S1 sweep 4×20 (80 dump-verified): `gpt-oss:20b` 19/20, recall 100%, p95 21.6s vs sonnet(prod) 17+2/20, recall 75%, p95 3.5s; nemotron-4b safety-DQ. #280 HEADLINE = registry gap not model gap → registry row C5 (host-state gate), re-verified live; transport pick (local vs API Sonnet) = Cray's | `246ee0a` (#278–#280) / `benchmarks/stop_classifier/RESULTS.md` |
 | 2026-06-12 | **Carrier-death incident → ops hardening SHIPPED (#275 + #276, `3a8a175`, session 56)** _(rotated 2026-06-14, session 58)_ — the calibration run's carrier (held `wsl.exe` + wrapper) was reaped at ~59 min; the orphaned python completed silently (stale "running" task chip, no completion event; truth established content-based). #275 records the gotcha + content-based truth test in the `ms-s1-ollama` skill; #276 adds `run_detached.sh` — long MS-S1 runs launch under `systemd-run --user` (carrier-proof, PROBE-VERIFIED 2026-06-12; `.done` sentinel "rc ISO-ts"; ETA + ~10 min → check sentinel; `Linger=no` = host-state, ask Cray) | `3a8a175` (#275 + #276) / `.claude/skills/ms-s1-ollama/` |
