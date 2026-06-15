@@ -159,3 +159,51 @@ bounded build path. The wedge call stays Cray's (partner psychology); the
 engineering half is now evidence-backed — **viable, with a known architecture.**
 
 *AI-assisted (Claude Code, session 58); no `Co-Authored-By` per CLAUDE.md §7.*
+
+---
+
+## Addendum — PLAN-0024 AC-8 live re-verify (2026-06-15, session 59)
+
+After PLAN-0024 enriched `StructuredQuery` (deterministic `max/min/avg/sum` +
+group-by, plus cross-type name→id `resolve`) and the translate prompt, the same
+12-question harness was re-run **live** (`gpt-oss:20b` @ MS-S1,
+`run_benchmark.py`) against the updated `gold.yaml` — where nl-08/09/10/11 now
+score on the deterministic **structured-result lens** (`expected_aggregate`),
+NOT phrase-rescue. Dump: `.claude/benchmark-results/2026-06-15-nl-query-ac8.jsonl`.
+
+**Result: 10/12 correct (was 8/12 in the spike) · anti-hallucination 12/12
+(HELD) · latency p50 10.1 s / p95 65 s.**
+
+- **Improved (8→10) — the enrichment works end-to-end live:** nl-09 (join-count
+  via `resolve` → 5) and **nl-10** (join-aggregate: `resolve` Battery Bank B +
+  `avg` → **41.3 °C, computed deterministically in the execute stage**, not
+  phrase-rescued) now pass on the structured lens.
+- **Anti-hallucination 12/12 HELD — zero invented facts.** nl-08 and nl-12 both
+  returned the honest deterministic "No records" answer (grounded=false); every
+  other answer cited only real values.
+- **Two residual misses (nl-08, nl-11) are a TRANSLATE-PROMPT gap, not an engine
+  bug — and they fail SAFELY:**
+  - **nl-08** (superlative): the model set `aggregate_property`/`group_by` but
+    kept `operation:"list"` (so no aggregate computed) AND invented a `resolve`
+    placeholder name `"battery_name_placeholder"` for the un-named battery →
+    resolve matched nothing → honest no-data (grounded=false). The guard caught
+    the placeholder; no fabrication.
+  - **nl-11** (entity-superlative): same `operation:"list"` (not `max`) with
+    `group_by` set-but-ignored + `limit:1` truncation → no aggregate; the phrase
+    step named the right entity (Battery Bank A) but over a 1-row set, so the
+    cited temperature (32.4 °C) was a real-but-wrong value. Scored wrong (no
+    aggregate), but **no invented fact**.
+  - **Root cause + fixable lever:** the model conflates "set `aggregate_property`"
+    with `operation:"list"` instead of `operation:max`, and invents a `resolve`
+    placeholder for un-named-entity superlatives. Both are the same
+    **translate-prompt** lever PLAN-0024 used — a follow-up prompt tweak (require
+    `operation:max/min` when `aggregate_property` is set; never `resolve` without
+    a real named entity; don't set `limit:1` on an aggregate) would likely close
+    them. Engine capability is proven (nl-10's avg was computed correctly).
+
+**Verdict: AC-8 PASS** — the structured lens improved (8 → 10) and
+anti-hallucination held (12/12). The two misses are a known-class,
+safe-failing translate-prompt-tuning follow-up (candidate backlog item), not a
+defect in the deterministic engine.
+
+*AI-assisted (Claude Code, session 59); no `Co-Authored-By` per CLAUDE.md §7.*
