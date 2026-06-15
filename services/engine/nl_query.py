@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
@@ -63,6 +64,12 @@ QueryOperation = Literal["list", "count", "max", "min", "avg", "sum"]
 
 _AGGREGATE_OPS: frozenset[str] = frozenset({"max", "min", "avg", "sum"})
 """Operations whose result is a number computed in the deterministic execute stage."""
+
+QueryOutcome = Literal["answered", "no_data", "clarify"]
+"""Terminal state of a query (PLAN-0026 SD-1): a grounded answer, an honest
+no-data short-circuit, or a clarification request when a coherence rewrite is
+ambiguous. Distinct from ``grounded`` so a 'clarify' is never silently conflated
+with 'no records' (the silent-no-data failure PLAN-0026 removes)."""
 
 _PHRASE_FACT_CAP = 25
 """Max records handed to the phrasing call, to bound token cost."""
@@ -184,6 +191,7 @@ class NlAnswer:
     source_objects: list[dict[str, Any]] = field(default_factory=list)
     result_count: int = 0
     aggregate: AggregateResult | None = None
+    outcome: QueryOutcome = "answered"
 
 
 class QueryTranslationError(RuntimeError):
@@ -642,6 +650,161 @@ async def _relabel_groups(
     )
 
 
+# --- post-translate rewrite seam (PLAN-0026 Phase B — deterministic, no LLM) -
+#
+# The translate model reliably picks the operation + aggregate property but drops
+# two things on un-named-entity superlatives: the implied unit filter (so it
+# aggregates a unit-heterogeneous column) and group_by. Both obvious levers
+# (bigger model, harder prompt) are empirically falsified (RESULTS.md 2026-06-15),
+# so the engine COMPOSES what the model dropped instead of asking it to re-supply
+# (the v2 prompt escalation regressed when nudged). "Classify, don't synthesize":
+# the LLM picks the shape; deterministic code fills the implied detail.
+
+_UNIT_PROPERTY = "unit"
+"""The companion property naming a measurement's unit (energy-ontology convention).
+Phase B detects unit-heterogeneity through it; PLAN-0026 Phase A (a declared
+``measured_kind``) supersedes this best-effort determination."""
+
+_ENTITY_SUPERLATIVE_RE = re.compile(r"\b(?:on\s+)?which\s+(\w+)", re.IGNORECASE)
+"""Matches a 'which / on-which <entity>' superlative and captures the entity noun."""
+
+
+def _match_ref_property(
+    noun: str, obj_meta: ObjectTypeMeta, type_index: dict[str, ObjectTypeMeta]
+) -> str | None:
+    """Map an entity noun (e.g. 'battery') to a ref property to group by.
+
+    A ref property matches when the noun is the referenced type's name (e.g.
+    'site' -> Site) or one of that type's enum values (e.g. 'battery' is an
+    ``asset_type`` value -> the ``asset_id`` ref). Returns None when nothing maps
+    (the caller then leaves group_by alone — never guesses)."""
+    for prop in obj_meta.properties:
+        if prop.type != "ref" or not prop.target:
+            continue
+        target = type_index.get(prop.target)
+        if target is None:
+            continue
+        if noun == prop.target.lower():
+            return prop.name
+        for tprop in target.properties:
+            if tprop.type == "enum" and tprop.enum and noun in {v.lower() for v in tprop.enum}:
+                return prop.name
+    return None
+
+
+def _infer_group_by(
+    question: str,
+    query: StructuredQuery,
+    obj_meta: ObjectTypeMeta | None,
+    type_index: dict[str, ObjectTypeMeta],
+) -> StructuredQuery:
+    """Infer group_by for a 'which/on-which <entity>' superlative (AC-2).
+
+    SAFE by construction: a group_by only reshapes the aggregate's bucketing — it
+    never changes the matched set — so this can never cause a false no-data. Only
+    fires for max/min (entity superlatives) when the model left group_by null."""
+    if query.operation not in ("max", "min") or query.group_by is not None or obj_meta is None:
+        return query
+    match = _ENTITY_SUPERLATIVE_RE.search(question)
+    if match is None:
+        return query
+    ref_prop = _match_ref_property(match.group(1).lower(), obj_meta, type_index)
+    if ref_prop is None:
+        return query
+    return query.model_copy(update={"group_by": ref_prop})
+
+
+@dataclass(frozen=True)
+class _Coherence:
+    """Outcome of the heterogeneous-aggregate coherence check (AC-3/AC-4)."""
+
+    filter: QueryFilter | None = None
+    matched: list[dict[str, Any]] = field(default_factory=list)
+    clarify: bool = False
+    units: tuple[str, ...] = ()
+
+
+def _coherence_rewrite(
+    query: StructuredQuery, matched: list[dict[str, Any]], obj_meta: ObjectTypeMeta | None
+) -> _Coherence:
+    """Compose the implied unit filter for a unit-heterogeneous aggregate (AC-3).
+
+    When the aggregate target spans more than one unit over the matched set,
+    aggregating across them is incoherent (max of celsius-and-hz has no meaning).
+    The engine restricts to the DOMINANT unit deterministically — the model never
+    re-supplies the filter. A tie (no single dominant unit), or a rewrite that
+    would empty the set, is ambiguous -> clarify (AC-4): never fabricate, never
+    silently over-filter. A homogeneous set (incl. when the model already filtered)
+    needs no rewrite."""
+    prop = query.aggregate_property
+    if prop is None or obj_meta is None:
+        return _Coherence()
+    if not any(p.name == _UNIT_PROPERTY for p in obj_meta.properties):
+        return _Coherence()  # this type has no unit dimension — nothing to make coherent
+    counts: dict[str, int] = {}
+    for obj in matched:
+        if _to_number(obj.get(prop)) is None:
+            continue
+        unit = obj.get(_UNIT_PROPERTY)
+        if unit is not None:
+            counts[str(unit)] = counts.get(str(unit), 0) + 1
+    if len(counts) <= 1:
+        return _Coherence()  # homogeneous (or unit-less) — already coherent
+    units = tuple(sorted(counts))
+    top = max(counts.values())
+    dominant = sorted(u for u, c in counts.items() if c == top)
+    if len(dominant) > 1:
+        return _Coherence(clarify=True, units=units)  # tie -> ambiguous
+    coherence_filter = QueryFilter(property=_UNIT_PROPERTY, op="eq", value=dominant[0])
+    coherent = [obj for obj in matched if _filter_matches(obj, coherence_filter)]
+    if not coherent:
+        return _Coherence(clarify=True, units=units)  # would empty -> ask
+    return _Coherence(filter=coherence_filter, matched=coherent, units=units)
+
+
+def _clarify_nlanswer(question: str, query: StructuredQuery, units: tuple[str, ...]) -> NlAnswer:
+    """Ambiguous coherence rewrite -> ask the operator, never fabricate (AC-4)."""
+    listed = ", ".join(units)
+    answer = (
+        f"Those {query.object_type} readings span more than one unit ({listed}); "
+        "aggregating across them isn't meaningful. Which unit did you mean?"
+    )
+    return NlAnswer(
+        question=question,
+        answer=answer,
+        grounded=False,
+        query=query,
+        source_object_type=query.object_type,
+        source_object_ids=[],
+        source_objects=[],
+        result_count=0,
+        outcome="clarify",
+    )
+
+
+def _apply_coherence(
+    question: str,
+    query: StructuredQuery,
+    matched: list[dict[str, Any]],
+    obj_meta: ObjectTypeMeta | None,
+) -> tuple[StructuredQuery, list[dict[str, Any]], NlAnswer | None]:
+    """Apply the heterogeneous-aggregate coherence rewrite in the orchestrator.
+
+    Returns the (possibly rewritten) query + matched set, plus a clarify answer to
+    short-circuit on (``None`` when the query answers normally). A non-aggregate or
+    a homogeneous set passes through unchanged. Split out of ``answer_question`` to
+    keep that orchestrator readable (one seam, one responsibility)."""
+    if query.operation not in _AGGREGATE_OPS or not query.aggregate_property:
+        return query, matched, None
+    coherence = _coherence_rewrite(query, matched, obj_meta)
+    if coherence.clarify:
+        return query, matched, _clarify_nlanswer(question, query, coherence.units)
+    if coherence.filter is not None:
+        query = query.model_copy(update={"filters": [*query.filters, coherence.filter]})
+        matched = coherence.matched
+    return query, matched, None
+
+
 # --- phrase (LLM, grounded; deterministic fallback) ------------------------
 
 
@@ -766,6 +929,7 @@ def _ungrounded(question: str, answer: str, query: StructuredQuery | None = None
         source_object_ids=[],
         source_objects=[],
         result_count=0,
+        outcome="no_data",
     )
 
 
@@ -780,10 +944,16 @@ def _no_data_nlanswer(question: str, query: StructuredQuery) -> NlAnswer:
         source_object_ids=[],
         source_objects=[],
         result_count=0,
+        outcome="no_data",
     )
 
 
-async def answer_question(
+# answer_question is the NL-query orchestrator: it sequences translate -> the
+# deterministic rewrite seam -> execute -> phrase, each delegated to a named
+# helper (_translate / _infer_group_by / _apply_coherence / _compute_aggregate /
+# _phrase). The branch count is inherent to that linear coordination, so the
+# McCabe complexity check is suppressed here rather than fragmenting the flow.
+async def answer_question(  # noqa: C901
     question: str,
     vertical: str,
     *,
@@ -823,6 +993,9 @@ async def answer_question(
         )
 
     obj_meta = type_index.get(query.object_type)
+    # Post-translate rewrite seam (PLAN-0026 Phase B): infer a dropped group_by for
+    # an entity superlative before retrieval (pure — needs no data, never empties).
+    query = _infer_group_by(question, query, obj_meta, type_index)
     try:
         adapter = registry.get_adapter(vertical)
         effective_filters = list(query.filters)
@@ -844,6 +1017,14 @@ async def answer_question(
     matched = [obj for obj in objects if _matches(obj, effective_filters)]
     if not matched:
         return _no_data_nlanswer(question, query)
+
+    # Heterogeneous-aggregate coherence rewrite (PLAN-0026 Phase B AC-3/AC-4):
+    # compose the dominant-unit filter so the aggregate runs over a single coherent
+    # unit, or clarify when ambiguous (never a silent over-filtered no-data).
+    # nl-08/nl-11 resolve to the 7 celsius readings here.
+    query, matched, clarify = _apply_coherence(question, query, matched, obj_meta)
+    if clarify is not None:
+        return clarify
 
     # Aggregate operations compute deterministically (no LLM). An aggregate over
     # no numeric value short-circuits to the no-data answer — it never invents a
@@ -874,4 +1055,5 @@ async def answer_question(
         source_objects=source_objects,
         result_count=len(matched),
         aggregate=aggregate,
+        outcome="answered",
     )
