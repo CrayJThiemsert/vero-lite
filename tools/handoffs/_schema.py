@@ -482,14 +482,28 @@ def summarize_paths(paths: Sequence[Path], session: str) -> SessionSummary:
 
 # --- Session discovery + INDEX.md generation (PLAN-004 Phase B) ---
 
+# Raw transcripts rendered by ``render_transcript.py`` carry a ``# Transcript —``
+# preamble, never YAML frontmatter — they are flat JSONL renders, not authored
+# handoffs. The render tool names them ``*-transcript.md``. Exclude them from
+# handoff schema validation (and from the INDEX/dashboard counts) so a transcript
+# sitting in the latest session dir at commit time does not falsely block the
+# commit. A handoff that only *mentions* transcripts in its name (e.g.
+# ``…-transcript-tooling.md``) does not end in ``-transcript.md`` and stays validated.
+RAW_TRANSCRIPT_SUFFIX = f"-{Suffix.TRANSCRIPT.value}.md"
+
 
 def session_md_files(session_dir: Path) -> list[Path]:
     """Return a session dir's handoff ``*.md`` files, sorted by name.
 
-    Excludes the generated :data:`INDEX_FILENAME` so it is never counted
-    or parsed as a handoff.
+    Excludes the generated :data:`INDEX_FILENAME` and raw ``*-transcript.md``
+    renders (:data:`RAW_TRANSCRIPT_SUFFIX`) so neither is counted or parsed as
+    a frontmatter-bearing handoff.
     """
-    return sorted(p for p in session_dir.glob("*.md") if p.name != INDEX_FILENAME)
+    return sorted(
+        p
+        for p in session_dir.glob("*.md")
+        if p.name != INDEX_FILENAME and not p.name.endswith(RAW_TRANSCRIPT_SUFFIX)
+    )
 
 
 def latest_session_dir(root: Path) -> Path | None:

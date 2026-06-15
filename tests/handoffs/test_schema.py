@@ -302,3 +302,20 @@ def test_validate_directory_skips_index(tmp_path: Path) -> None:
     names = {p.name for p in sch.validate_directory(tmp_path)}
     assert sch.INDEX_FILENAME not in names
     assert "2026-05-19-0200-chat-demo.md" in names
+
+
+_RAW_TRANSCRIPT = "# Transcript — session `abc`\n\n- Source: x\n\n---\n\nbody\n"
+
+
+def test_session_md_files_excludes_raw_transcript(tmp_path: Path) -> None:
+    """A raw ``*-transcript.md`` render (no frontmatter) is not treated as a
+    handoff; a ``*-transcript-tooling.md`` handoff (with frontmatter) still is."""
+    assert sch.RAW_TRANSCRIPT_SUFFIX == "-transcript.md"
+    d = _session(tmp_path, "session-60")
+    _write(d / "2026-06-15-1353-code-foo-handoff.md", _VALID)
+    _write(d / "2026-06-15-1353-code-foo-transcript.md", _RAW_TRANSCRIPT)  # raw render
+    _write(d / "2026-06-15-1353-code-transcript-tooling.md", _VALID)  # not -transcript.md
+    names = [p.name for p in sch.session_md_files(d)]
+    assert "2026-06-15-1353-code-foo-transcript.md" not in names  # raw render excluded
+    assert "2026-06-15-1353-code-foo-handoff.md" in names
+    assert "2026-06-15-1353-code-transcript-tooling.md" in names  # still validated

@@ -101,3 +101,17 @@ def test_generated_index_not_itself_flagged(tmp_path: Path) -> None:
     assert pc.main([str(tmp_path)]) == 0  # creates INDEX.md
     assert (d / "INDEX.md").exists()
     assert pc.main([str(tmp_path)]) == 0  # second run still clean (INDEX skipped)
+
+
+def test_raw_transcript_does_not_block(tmp_path: Path) -> None:
+    """A raw ``*-transcript.md`` render (no frontmatter) in the latest session
+    does not fail the commit — it is not a frontmatter-bearing handoff. Without
+    the session_md_files exemption this would be a missing-frontmatter error."""
+    d = _session(tmp_path, "session-60")
+    _write(d / "2026-06-15-1353-code-a-handoff.md", _VALID)
+    _write(
+        d / "2026-06-15-1353-code-a-transcript.md",
+        "# Transcript — session `abc`\n\n- Source: x\n\n---\n\nbody\n",
+    )
+    assert pc.main([str(tmp_path)]) == 0
+    assert (d / "INDEX.md").exists()
