@@ -33,6 +33,7 @@ from services.engine.nl_query import (
     _scalar_equal,
     _to_number,
     _translate,
+    _validate_query,
     answer_question,
 )
 from services.engine.ontology_meta import ObjectTypeMeta, load_ontology_meta
@@ -565,3 +566,71 @@ async def test_non_numeric_aggregate_property_is_rejected() -> None:
     client = _StubQueryClient(translate_outputs=[bad])
     with pytest.raises(QueryTranslationError):
         await _translate(client, "q", "energy", meta, type_index, retry_budget=2)
+
+
+# --- aggregate-intent / non-aggregate-operation coherence guard (nl-08/nl-11) ---
+
+
+def test_aggregate_property_with_list_operation_is_rejected() -> None:
+    """aggregate_property set with operation 'list' is the nl-08/nl-11 translate gap:
+    the aggregate would never be computed. The guard rejects it so the retry loop
+    nudges the model to an aggregate op."""
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    query = StructuredQuery(
+        object_type="OperationalEvent", operation="list", aggregate_property="measured_value"
+    )
+    errors = _validate_query(query, type_index)
+    assert any("aggregate_property" in e and "max" in e for e in errors)
+
+
+def test_group_by_with_count_operation_is_rejected() -> None:
+    """group_by with a non-aggregate operation ('count') is the superlative miss
+    (group_by set, operation not an aggregate) — rejected for retry."""
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    query = StructuredQuery(object_type="OperationalEvent", operation="count", group_by="asset_id")
+    errors = _validate_query(query, type_index)
+    assert any("group_by" in e and "max" in e for e in errors)
+
+
+def test_aggregate_op_with_property_and_group_by_is_accepted() -> None:
+    """The coherent combo (operation 'max' + aggregate_property + group_by) passes."""
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    query = StructuredQuery(
+        object_type="OperationalEvent",
+        operation="max",
+        aggregate_property="measured_value",
+        group_by="asset_id",
+    )
+    assert _validate_query(query, type_index) == []
+
+
+async def test_list_with_aggregate_intent_is_rejected_then_retried() -> None:
+    """The nl-11 pattern end-to-end: 'list' + group_by + aggregate_property is
+    rejected; the retry corrects operation to 'max' and is accepted."""
+    meta = load_ontology_meta("energy")
+    type_index = {t.name: t for t in meta.object_types}
+    bad = json.dumps(
+        {
+            "object_type": "OperationalEvent",
+            "operation": "list",
+            "aggregate_property": "measured_value",
+            "group_by": "asset_id",
+            "limit": 1,
+        }
+    )
+    good = json.dumps(
+        {
+            "object_type": "OperationalEvent",
+            "operation": "max",
+            "aggregate_property": "measured_value",
+            "group_by": "asset_id",
+        }
+    )
+    client = _StubQueryClient(translate_outputs=[bad, good])
+    query = await _translate(client, "q", "energy", meta, type_index, retry_budget=3)
+    assert query.operation == "max"
+    assert query.group_by == "asset_id"
+    assert client.translate_calls == 2
