@@ -1,6 +1,6 @@
 # PLAN-0026: NL-query aggregate metric-semantics (two-layer fix — Phase B deterministic rewrite, ships first; Phase A ontology `measured_kind`, gated)
 
-**Status:** Proposed
+**Status:** Accepted (ratified by Cray 2026-06-15; SD-1 resolved → add the `outcome` enum)
 **Owner:** both (Cowork/plan-drafter authors this PLAN; Code commits + executes per ADR-009 D2)
 **Created:** 2026-06-15
 **Related ADRs:** ADR-008 (YAML ontology specification — the `measured_kind` home; SD-2); ADR-001 + Amendment 1 (`gpt-oss:20b` recommender-path pin — **stays**); ADR-010 (LLM reasoning-hook surface — D1 local backend, D4 untrusted-block containment); ADR-005 (OCT pivot — energy first); ADR-006 (vertical plugin architecture / template-first, Rule of Three); ADR-009 D1/D2 (Cowork drafts, Code commits); ADR-012 D4.3 (author≠reviewer disclosure)
