@@ -207,3 +207,85 @@ safe-failing translate-prompt-tuning follow-up (candidate backlog item), not a
 defect in the deterministic engine.
 
 *AI-assisted (Claude Code, session 59); no `Co-Authored-By` per CLAUDE.md §7.*
+
+---
+
+## Addendum — filter-omission follow-up: model sweep + prompt escalation (2026-06-15)
+
+Cray-directed follow-up to the AC-8 residual (nl-08/nl-11). Goal: close the
+aggregate-superlative **filter-omission** gap. Two candidate levers were tested
+**live** on MS-S1 (host-state, with Cray's go). **Both came back negative.**
+Dumps (gitignored): `.claude/benchmark-results/2026-06-15-nl-prompt-variants.jsonl`,
+`…-nl-model-nemotron-q8.jsonl`, `…-nl-model-qwen36.jsonl`. Focus subset run via the
+new `run_benchmark.py --only` filter; prompt variants via
+`experiment_prompt_variants.py` (monkeypatches `_translate_messages`, real engine path).
+
+### Corrected diagnosis (raw-dump verified)
+
+The residual is **not only** a dropped filter. On the un-named-entity superlatives
+the model drops **two** things:
+
+1. **the implied `unit='celsius'` filter** — matches all 11 OperationalEvents
+   instead of the 7 celsius readings → `result_count 11 ≠ gold 7`;
+2. **`group_by:asset_id`** (emitted inconsistently) — so the structured aggregate's
+   `top` is often uncomputable. The `top = Battery Bank A` seen in the answer is the
+   **PHRASE step's prose, not the structured aggregate**.
+
+`value = 96.5` is correct only because the two `hz` readings (50.0) sit below it.
+Anti-hallucination held throughout (every miss was an over-broad set or an honest
+no-data, never a fabrication). This corrects the AC-8 addendum's "the computed
+aggregate is still correct (top = Battery Bank A)" — true for the *prose*, not the
+*structured* aggregate.
+
+### Item 1 — model sweep (no viable replacement)
+
+3 model families, focus probe (nl-08 / nl-11 / nl-10 control):
+
+| model | family | nl-08 | nl-11 | latency/case |
+|---|---|---|---|---|
+| `gpt-oss:20b` (pin) | gptoss | `filters:[]`, group_by `null` → n=11 ✗ | `filters:[]`, group_by `null` → n=11 ✗ | **~30 s** |
+| `nemotron-3-nano:30b-a3b-q8_0` | nemotron_h_moe | `filters:[]`, group_by `asset_id` → n=11 ✗ | `filters:[]`, group_by `null` → n=11 ✗ | 68–180 s |
+| `qwen3.6:35b` | qwen35moe | `filters:[]`, group_by `asset_id` → n=11 ✗ | `filters:[]`, group_by `asset_id` → n=11 ✗ | 53–143 s |
+
+- **The implied filter was dropped 6/6** (3 families × 2 cases) → the omission is
+  **model-class-general**, not a `gpt-oss` quirk.
+- `group_by` is **flaky across families** (qwen both / nemotron half / gpt-oss
+  neither) → structured `top` is unreliable, especially on the pin.
+- The larger models are **2.5–6× slower** → a non-starter for a snappy operator
+  tool regardless of accuracy. nl-10 (named-entity join-aggregate via `resolve`)
+  stayed correct on all three. (`gemma4:26b` untested — the 3-family + latency
+  evidence already settles "no replacement".)
+
+### Item 2 — prompt escalation on the pin (can't close it cleanly)
+
+Each variant appends to the BASELINE system prompt (differs by only the added text):
+
+| variant | added instruction | nl-08 | nl-11 | verdict |
+|---|---|---|---|---|
+| `v1_general` | "an aggregate STILL needs its implied filter" (general) | `filters:[]` ✗ | `filters:[]` ✗ | **no effect** — identical to baseline |
+| `v2_units` | v1 + "don't aggregate across mixed units" | `filters:[]` ✗ | emits filter **but invents `resolve:<battery name>`** → n=0, grounded=false ✗ | **regression** (no-data) |
+| `v3_fewshot` | v2 + a near-answer sibling few-shot (`highest frequency`→`unit=hz`) | emits `unit=celsius`+group_by → n=7 ✓ | emits filter but **drops group_by** → ✗ | **half-works + teaching-to-test** |
+
+Only the near-answer hint (v3) moved the model at all, and even then flakily
+(1/2) — and it is gold-shaped prompting, not a generalizable fix. With the 4 prior
+AC-8 runs this is **5+ live runs**: filter-omission on aggregate superlatives is
+**intrinsic to the model's aggregate framing**, not a prompt-length or model-choice
+artifact.
+
+### Proposed resolution (PENDING Cray's decision — benchmark-integrity is Tier 3)
+
+With model-swap and prompt-fix both empirically ruled out, and a deterministic
+engine "filter+group_by inference" rejected (brittle keyword→value mapping +
+hallucination/over-filter risk), the recommended close is:
+
+- **Recommended — reclassify nl-08/nl-11 as `ceiling: true`** (the phrase-rescue
+  lens, scored on `expected_answer_substrings` + `grounded`). Honest per this
+  file's own taxonomy ("ceiling:true = NOT cleanly expressible by StructuredQuery
+  … needs a superlative"); the phrase answer is reliably correct across all three
+  models; requires **no engine change** (zero hallucination risk). PLAN-0024 closed
+  the **named-entity** joins (nl-09/nl-10 via `resolve`) but not the
+  **un-named-entity** superlatives — this records that boundary truthfully.
+- **Conservative alternative — catalogue** nl-08/nl-11 as a documented model-class
+  limitation, leaving them scored as misses ("10/12 + 2 known").
+
+*AI-assisted (Claude Code, 2026-06-15); no `Co-Authored-By` per CLAUDE.md §7.*
