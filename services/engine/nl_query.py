@@ -268,8 +268,9 @@ def _translate_messages(
         "one of 'max'/'min'/'avg'/'sum' — NEVER 'list' or 'count'. A 'which <entity> is "
         "most/highest/largest?' question is 'max' over the numeric property with group_by "
         "set to the entity ref; 'lowest/least' is 'min'; 'average' is 'avg'; 'total' is "
-        "'sum'. Do NOT set limit on an aggregate — it is computed over the whole matched "
-        "set, so limiting it (e.g. limit 1) truncates the answer.\n"
+        "'sum'. An aggregate STILL needs the filter the question implies (apply it exactly "
+        "as a list query would) — e.g. 'highest temperature' filters unit='celsius' before "
+        "aggregating.\n"
         "FILTERS: express the question as conjunctive filters using the EXACT property "
         "names below; give every value as a string. ALWAYS include the filter the "
         "question implies — never return a whole-type read when the question names a "
@@ -860,7 +861,13 @@ async def answer_question(
             return _no_data_nlanswer(question, query)
         aggregate = await _relabel_groups(aggregate, query, obj_meta, type_index, adapter)
 
-    source_objects = matched[: query.limit]
+    # `limit` bounds a LIST query's returned objects only (per the field's own
+    # contract: "Max objects to return for a list query"). A count/aggregate's
+    # grounding receipt is the FULL matched set — truncating it (e.g. the model
+    # emitting limit 1 on a count) corrupts the receipt AND makes the phrase step
+    # undercount (AC-8 nl-02: phrase saw one record and answered "one" when 11
+    # matched). The aggregate is already computed over `matched`, never this slice.
+    source_objects = matched[: query.limit] if query.operation == "list" else matched
     source_ids = [_object_id(obj, obj_meta) for obj in source_objects]
     answer = await _phrase(chat, question, vertical, query, source_objects, obj_meta, aggregate)
     return NlAnswer(

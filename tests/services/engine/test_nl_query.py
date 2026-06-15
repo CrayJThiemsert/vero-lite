@@ -634,3 +634,32 @@ async def test_list_with_aggregate_intent_is_rejected_then_retried() -> None:
     assert query.operation == "max"
     assert query.group_by == "asset_id"
     assert client.translate_calls == 2
+
+
+# --- limit applies only to list; count/aggregate keep the full receipt (AC-8 nl-02) ---
+
+
+async def test_count_with_limit_one_keeps_full_id_receipt(energy_adapter: None) -> None:
+    """A 'limit 1' on a count must NOT truncate the grounding receipt — the count
+    is over the whole matched set, so all matched ids are returned (AC-8 nl-02:
+    limit 1 truncated the phrase input to one record → confidently-wrong 'one')."""
+    client = _StubQueryClient(
+        query={"object_type": "OperationalEvent", "operation": "count", "limit": 1},
+        raise_on="phrase",  # deterministic count fallback, no live phrasing
+    )
+    answer = await answer_question("how many events?", "energy", client=client)
+    assert answer.grounded is True
+    assert answer.result_count == 11
+    assert len(answer.source_object_ids) == 11  # NOT truncated to the limit
+
+
+async def test_list_still_honors_limit(energy_adapter: None) -> None:
+    """limit still bounds a list query's returned objects (per the field contract)."""
+    client = _StubQueryClient(
+        query={"object_type": "OperationalEvent", "operation": "list", "limit": 2},
+        raise_on="phrase",
+    )
+    answer = await answer_question("list events", "energy", client=client)
+    assert answer.grounded is True
+    assert answer.result_count == 11  # the true match count is preserved
+    assert len(answer.source_object_ids) == 2  # but only `limit` objects are returned
