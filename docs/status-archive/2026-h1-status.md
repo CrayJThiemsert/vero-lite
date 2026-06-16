@@ -12,6 +12,49 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-16 (session 63 reconcile): the Session-59 CF block (session 59 fell outside the 4-newest-sessions window {63,62,61,60})._
+
+> **Session 59 (head_commit `f4aa7fe`) — PLAN-0024 (NL-QUERY T2 ENGINE
+> ENRICHMENT) DRAFTED + COMMITTED + EXECUTED (#316 plan / #317 engine).** The
+> engine half of the Cray-ratified T2 (NL-query) wedge: the session-58 spike
+> resolved the partner-trial fork to T2 and named the build; session 59 built
+> it. Engine-only — UI deferred to PLAN-0025. Two pieces:
+> **(1) `StructuredQuery` enrichment** (`services/engine/nl_query.py`): `operation`
+> gains `max/min/avg/sum` (+ optional `group_by`), computed in the
+> **deterministic execute stage** (like `count`) and carried in a new
+> `NlAnswer.aggregate` grounding receipt — **never** delegated to the phrase LLM
+> (the spike showed phrase-rescue is brittle). nl-08 (max 96.5) / nl-10 (avg 41.3)
+> now pass via deterministic compute. A `NameResolve` descriptor adds cross-type
+> name→id resolution (resolve-then-filter; `object_type` stays single +
+> enum-constrained) so "events for Battery Bank A" works (nl-09 = 5; nl-11 hottest
+> = Battery Bank A); group keys are relabelled id→title so the answer names the
+> entity. **(2) Translate prompt fix**: require the implied filter (kills the
+> whole-table fetch — the #1 spike error) + exact enum/value grounding ("celsius"
+> not "C"). **Anti-hallucination (AC-5, the hard gate) preserved:** empty match,
+> aggregate-over-no-numeric, and unresolved-name all short-circuit to the
+> deterministic no-records answer (phrase LLM never called). The gold set's 4
+> ceiling cases (nl-08/09/10/11) moved off phrase-rescue onto the deterministic
+> **structured-result lens** (executed result + `expected_aggregate`); harness
+> `score_case` gained `_aggregate_ok`. **11 new offline tests; full suite 1511
+> passed / 22 skipped (was 1481/22, +30); ruff + mypy clean.**
+> **Governance chain (clean):** Cray scoped the build (engine-only; SD-1 deferred;
+> UI→PLAN-0025) via AskUserQuestion → the in-harness `plan-drafter` authored
+> PLAN-0024 (ADR-013 D1) → the **ungated Cowork tier placed the PLAN file** after
+> the G2 PreToolUse gate denied every in-harness Code write (subagent ×2 + main
+> agent ×1, even with explicit approval — the "Cowork authors, Code commits" path)
+> → Code committed it (#316, ADR-009 D2) → Cray reviewed + merged → Code executed
+> Steps 1-6 (#317). **SD-1** (name→id mechanism) implemented as the recommended
+> **pre-step** (Cray deferred the decision to execution). Execution hit an L1
+> loop-detect (6 edits to one file = the code threshold) — resolved by collapsing
+> the remainder into one full-file Write after a Cray-approved counter reset; no
+> Bash circumvention.
+> AI-assisted (Claude Code, session 59); no `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note: this reconcile rotated the oldest Current Focus block (Session 56
+> sixth batch — Lessons #24 + #25, head_commit `4b0e306`) and the oldest Recent
+> Decisions row (2026-06-12 Stop-classifier calibration arc, `246ee0a`) to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) per
+> the STATUS.md Rotation Policy (R2/R4)._
+
 _Addendum — rotated 2026-06-16 (session 62 reconcile): both Session-58 CF blocks
 (third/second batches) rotated as session 58 fell outside the 4-newest-sessions
 window {62,61,60,59}._
@@ -991,6 +1034,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-12 | **First SCORED watch-lane run RECORDED — watch 97.4% (38/39); M-2=b arc COMPLETE (#288, `4c46a92`, session 57)** _(rotated 2026-06-16, session 63)_ — `gpt-oss:20b`/MS-S1, 198 items, 318 calls, 0 errors, dump-VERIFIED (39/39 `watch_graded:true`); first production `run_detached.sh` run (sentinel as designed; watcher Monitor died silently + one false alarm — truth via content-based test). Aqua + energy 13/13; supply 12/13 — sole FAIL supply-040 (reroute @1.0 on an in-spec 7.8 °C) = `forbidden_keywords` discriminating as designed. β 98.3% (same two known misses; energy-007 U+2011 now ×3 → strengthens B-6). SD-2 p95 30.18s = +0.18s nominal, within the ±10s straddle band + classifier-contaminated; no bar moves (B-6) | `4c46a92` (#288) / `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-12 | **Watch-lane ground truth PINNED — all 39 watch items (#286, `1bd6328`, session 57)** _(rotated 2026-06-16, session 62)_ — Cray adjudicated the M-2=b pinning from the #273 calibration distribution: aqua canonical `start_emergency_aerator` + acceptable `[dispatch_technician, increase_water_exchange, escalate]`; energy canonical `restart` + acceptable `[dispatch_technician, escalate]` (`isolate` excluded → 'other'); supply_chain canonical `inspect` + acceptable `[hold, escalate]` + `forbidden_keywords [expedite, reroute]` declared (3/13 observed reroutes → forbidden). Dataset-only; the watch lane auto-flips unscored→scored; first SCORED run gated on a separate Cray go | `1bd6328` (#286) / `benchmarks/procedure_baseline/dataset/` |
 | 2026-06-12 | **Lessons #24 + #25 RECORDED (#284, `4b0e306`, session 56)** _(rotated 2026-06-15, session 61)_ — Cray-approved coda to the classifier calibration arc. **#24:** rules must live where the enforcer looks — a binding rule placed only in prose is invisible to a machine enforcer reading a different surface (C5 registry-gap finding generalized; adds an enforcement dimension to the ADR-0017 D5 placement rule). **#25:** an LLM judge's `{verdict, reason}` needs verdict-by-observable definitions + an explicit cross-field agreement contract, pinned by a prompt contract test + gold case (generalizes to the ADR-0018 goal-evaluator) | `4b0e306` (#284) / `docs/lessons/0024-rules-must-live-where-the-enforcer-looks.md` + `docs/lessons/0025-llm-judge-verdict-must-bind-to-its-own-reasoning.md` |
 | 2026-06-12 | **Stop classifier SWITCHED to local `gpt-oss:20b` (#282, `3375778`, session 56)** — Cray picked **(b)** on the calibration evidence (8–30s latency acceptable). Default backend = MS-S1 Ollama (format-constrained `/api/chat`, temp 0, keep_alive 10m, 75s timeout; no API key / no WSL bridge); Anthropic API retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`. Fail-closed pause + legacy reason strings byte-identical; legacy suite pinned to sonnet + 4 new ollama-backend tests (571 passed / 2 skipped; mypy --strict clean); LIVE-verified from the prod hook runtime: 7.9s → pause | `3375778` (#282) / `.claude/hooks/_sonnet_classifier.py` |
