@@ -296,3 +296,78 @@ hallucination/over-filter risk), the recommended close is:
   limitation, leaving them scored as misses ("10/12 + 2 known").
 
 *AI-assisted (Claude Code, 2026-06-15); no `Co-Authored-By` per CLAUDE.md §7.*
+
+---
+
+## Addendum — PLAN-0026 AC-9 live re-verify (2026-06-16, session 62)
+
+PLAN-0026 shipped end-to-end (ADR-0021 Accepted + Phase A `measured_kind` /
+`quantity_bindings` — the deterministic post-translate rewrite seam, "classify,
+don't synthesize"). AC-9 is the **optional, host-state** live confirmation; the
+offline oracle (`tests/services/engine/test_nl_query.py` +
+`tests/benchmark/test_nl_query_feasibility_gold.py`) is the CI **gate** — 65
+passed immediately before this run. The same 12-question harness was re-run
+**live** (`gpt-oss:20b` @ MS-S1 `192.168.1.133:11434`, `run_benchmark.py --warm`)
+against the current `gold.yaml`, where nl-08/nl-11 score on the deterministic
+**structured-result lens** (`expected_aggregate`, `count == 7`), NOT phrase-rescue.
+Dump (gitignored): `.claude/benchmark-results/2026-06-16-nl-query-ac9.jsonl`.
+Cray-authorized run.
+
+**Result: 11/12 correct (was 10/12 in AC-8) · anti-hallucination 12/12 (HELD) ·
+latency p50 15.5 s / p95 39.0 s / max 39.0 s.**
+
+### The headline — nl-08 + nl-11 are on the structured lens live (AC-1 PASS)
+
+Both AC-8 residual misses flipped to **correct on the deterministic structured
+lens** — the principled fix lands live:
+
+| id | AC-8 (session 59) | AC-9 (this run) | the query the model emitted |
+|---|---|---|---|
+| **nl-08** (superlative) | wrong — `operation:list` + invented `resolve` placeholder → no-data | **correct** — `result_count 7`, max **96.5 °C**, top **Battery Bank A** | `max` · `unit=celsius` · `aggregate_property=measured_value` · `group_by=asset_id` |
+| **nl-11** (entity-superlative) | wrong — `operation:list`, 1-row phrase-rescue | **correct** — `result_count 7`, top **Battery Bank A** | `max` · `unit=celsius` · `aggregate_property=measured_value` · `group_by=asset_id` |
+
+Both AC-8 failure modes are gone live: the model now emits `operation:max` (the
+Phase-A prompt forbids `list` when `aggregate_property`/`group_by` is set) and does
+**not** invent a `resolve` placeholder for the un-named-entity superlative (the
+prompt forbids it). The aggregate value + group `top` come from the
+**deterministic execute stage** (`AggregateResult` in the grounding receipt), not
+the phrase prose.
+
+### Anti-hallucination 12/12 HELD — zero invented facts
+
+Every answer cites only real values; every miss is an over-broad set the phrase
+step narrowed correctly, or an honest no-data. nl-12 ("list all open alerts", no
+Alert data) returned the deterministic "No Alert records match that query."
+(grounded=false). No fabrication anywhere.
+
+### Two honest observations (recorded, not papered over)
+
+1. **The lone miss is nl-01 — not a target, and it is the known
+   filter-omission nondeterminism, not a Phase-A regression.** The model emitted
+   `Asset` with `filters:[]` (dropped `asset_type=battery`) → 4 assets (structured
+   wrong vs gold 2), but the phrase answer named **exactly the 2 real batteries**
+   — answer-correct, zero fabrication. This is Finding 1's whole-table-fetch gap
+   (the spike's nl-01 was wrong too; AC-8 happened to get it right) — run-to-run
+   LLM variance on a **simple list**, explicitly **out of PLAN-0026's scope** (the
+   PLAN targets aggregate-superlative kind disambiguation; model-swap / prompt-
+   tuning for filter-omission is PROVEN NEGATIVE / Out of Scope). The simple-list
+   engine path is unchanged and nl-01's **offline gold test stays green** — so this
+   is not an engine regression (AC-6 holds at the engine / offline level).
+2. **This run reached the right result via the model's own `unit=celsius` filter,
+   not the Phase-A classify→synthesize route.** On both nl-08/nl-11 the model
+   emitted `measured_kind:null` but supplied `unit=celsius` directly, so the
+   matched set was already homogeneous and the coherence seam had nothing to
+   rewrite. The deterministic seam (which **composes** the unit filter when the
+   model drops it — and which Phase A drives from the *classified* kind) is the
+   **safety net proven by the offline oracle** (AC-7), not exercised here because
+   the model didn't drop the filter. Live confirms end-to-end correctness; the
+   seam's robustness is the offline guarantee. Both routes yield the identical
+   grounded result (count 7, 96.5 °C, Battery Bank A).
+
+**Verdict: AC-9 PASS** — nl-08/nl-11 moved onto the structured lens live (11/12,
+up from AC-8's 10/12) and anti-hallucination held 12/12. The lone miss (nl-01) is
+known, out-of-scope, safe-failing filter-omission variance, not a defect in the
+PLAN-0026 engine or ontology change. AC-9 is a verification step, **not a CI
+gate** — the offline oracle (65 passed) is the gate (Lesson #15 live-vs-mock).
+
+*AI-assisted (Claude Code, session 62); no `Co-Authored-By` per CLAUDE.md §7.*
