@@ -1,0 +1,77 @@
+# SD-1 lean energy RAG corpus for B-γ arm (c) (PLAN-0027 D-4 / SD-5).
+#
+# A small STATIC fixture (deterministic; no network): the energy ontology
+# over-temperature threshold rule + action-playbook snippets for the energy
+# action vocabulary {restart, isolate, dispatch_technician, escalate}. It is the
+# ONLY fairness lever for arm (c) under the D-6 contamination guard (corpus
+# richness + the SD-2 prompt — no procedure/ontology/verify layer).
+#
+# JOINT SD-1 ↔ SD-2 BINDING (Cray-ratified 2026-06-16; Step 2 MUST honor it):
+#   1. The snippets share surface vocabulary (entity-type word "asset", the
+#      reading parameter "temperature", the verbs "restart"/"reset"/"reboot",
+#      "above"/"ceiling"/"breach") with the SD-2 question template, so the
+#      deterministic lexical retriever can surface the relevant snippet.
+#   2. Every breach item's expected action_keywords lemma — energy is uniformly
+#      [restart, reset, reboot] — is covered by >=1 snippet (see
+#      `playbook-restart`, `playbook-restart-why`, `action-vocab`). Otherwise an
+#      arm (c) miss would be a *retrieval artifact*, not a naive-RAG limit.
+#
+# NOT included (SD-1 ratified recommendation, NOT the alternatives): event/reading
+# ROWS — including them would blur "retrieval" with "data lookup"; the readings
+# reach arm (c) through the SD-2 question, not the corpus.
+
+snippets:
+  - id: threshold-overtemp
+    text: >-
+      Over-temperature rule: when an asset's temperature reading is at or above
+      the 90 degrees Celsius over-temperature ceiling, the reading is a breach
+      and requires an operator action. A reading between 85 and 90 degrees
+      Celsius is a watch (no action yet); below 85 is ok.
+  - id: entity-asset
+    text: >-
+      An asset is a physical operational unit (a battery, inverter, meter, or
+      transformer) hosted at a site. Its temperature is reported in degrees
+      Celsius on the asset's latest operational reading.
+  - id: playbook-restart
+    text: >-
+      Playbook for an over-temperature breach: restart the affected asset. The
+      canonical recovery action when an asset's temperature is above the ceiling
+      is to restart (also called reset, or reboot) the breaching asset after a
+      human go/no-go, then confirm the temperature returns below the ceiling.
+  - id: playbook-restart-why
+    text: >-
+      Restarting (resetting or rebooting) an over-temperature asset clears the
+      fault state and lets the unit re-initialise its thermal management. Prefer
+      a restart over passive deferral — do not merely monitor or schedule — when
+      the temperature breach is acute (above the 90 degrees Celsius ceiling).
+  - id: playbook-isolate
+    text: >-
+      Isolate: if an over-temperature asset cannot be safely restarted, isolate
+      it from the grid to contain the fault. Isolation is a containment step, not
+      the first-line recovery for a routine over-temperature breach.
+  - id: playbook-dispatch
+    text: >-
+      Dispatch a technician: send a field technician when an asset needs
+      physical inspection, or when the fault persists after a restart. A dispatch
+      is a follow-up step, not the immediate action on a fresh over-temperature
+      reading.
+  - id: playbook-escalate
+    text: >-
+      Escalate: raise the incident to a supervisor when the temperature breach is
+      severe, repeated, or the restart did not recover the asset. Escalation is a
+      governance step, not the first recovery action.
+  - id: watch-guidance
+    text: >-
+      Watch-band guidance: an asset whose temperature sits between 85 and 90
+      degrees Celsius is approaching the ceiling but has not breached. Keep it
+      under watch; do not restart a watch-band asset.
+  - id: action-vocab
+    text: >-
+      The energy action vocabulary is restart, isolate, dispatch_technician, and
+      escalate. On an over-temperature breach the recommended action class is to
+      restart (reset / reboot) the affected asset.
+  - id: false-positive
+    text: >-
+      Do not propose an action on a nominal asset. An asset reading below 85
+      degrees Celsius is ok and needs no restart, isolation, dispatch, or
+      escalation.
