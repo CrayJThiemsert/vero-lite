@@ -12,6 +12,65 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-16 (session 64 reconcile): the Session-60 CF block (session 60 fell outside the 4-newest-sessions window {64,63,62,61})._
+
+> **Session 60 (head_commit `19eeb21`) — PLAN-0026 (NL-QUERY AGGREGATE
+> METRIC-SEMANTICS) AUTHORED + RATIFIED + MERGED (#321), THEN PHASE B
+> (DETERMINISTIC REWRITE SEAM) MERGED (#322).** Closes the one residual NL-query
+> failure PLAN-0024 left open: **filter-omission on aggregate superlatives** (the
+> spike's nl-08 / nl-11). **Diagnosis (Cray-directed):** two MS-S1 host-state
+> experiments both came back NEGATIVE — a **4-model sweep** (gpt-oss:20b /
+> nemotron-3-nano:30b / qwen3.6:35b / gemma4:26b all dropped the implied filter;
+> larger models 2.5–6× slower, gemma4 worst) and a **3-variant prompt escalation**
+> (general rule no-op; units rule regressed; near-answer few-shot = teaching-to-test).
+> Corrected diagnosis: the model drops the implied `unit=celsius` filter AND
+> `group_by`; `value 96.5` was right only by luck (hz readings < 96.5); "top" was
+> phrase prose, not the structured aggregate. Two external LLMs (Cray-consulted)
+> independently converged: this is a **typed-query-on-untyped-metric / data-model
+> problem**, not a model/prompt problem. **PLAN-0026 (two-layer, phased).**
+> Governance chain (clean): Cray chose "governed-first" → the in-harness
+> `plan-drafter` Write was G2-denied → **Cowork (Tier-1, ungated) authored the
+> PLAN** → Code committed it (#321, ADR-009 D2) → Cray ratified Proposed→Accepted
+> (SD-1 resolved = add the outcome enum). **Phase B (engine, deterministic,
+> offline-validatable) ships first; Phase A (ontology `measured_kind` enum) is
+> GATED** on the T2-vs-T3 roadmap call + its ADR (SD-2). **Phase B (#322,
+> `19eeb21`):** a post-translate **rewrite seam** in `services/engine/nl_query.py`
+> — `group_by` inference for "which/on-which <entity>" superlatives (AC-2,
+> reshape-only → never a false no-data) + a **heterogeneous-aggregate coherence
+> rewrite** that composes the dominant-unit filter in the engine (AC-3; the model
+> never re-supplies it = the v2 regression) + a **clarify-not-silent-no-data
+> guard** (AC-4) + **`NlAnswer.outcome: Literal["answered","no_data","clarify"]`**
+> (SD-1, Cray-approved). The decisive **offline oracle** feeds the model's
+> known-bad `{filters:[], operation:max, group_by:null}` and asserts the seam
+> rewrites to `result_count==7`, aggregate `value 96.5`, `top "Battery Bank A"`
+> (nl-08 + nl-11) in the structured receipt, NOT phrase-rescued. **Full suite 1527
+> passed / 22 skipped; ruff + mypy clean; anti-hallucination 12/12 preserved
+> (AC-5).** An L1 loop-detect was hit twice during the multi-edit implementation;
+> resolved via a WIP-scaffolding commit (counter reset, not a Bash circumvention)
+> + a justified `# noqa: C901` on `answer_question` (orchestrator; each stage is a
+> named helper) when the edit-cap left no room to extract further. **Honest
+> limitation (Phase B):** the coherent-unit pick is the **dominant unit in the
+> matched data**, not the question's kind word — passes nl-08/nl-11 (temperature =
+> dominant) but wouldn't distinguish "highest frequency"; **Phase A
+> (`measured_kind`) is the principled fix** (gated). PLAN-0026 stays ACTIVE (not
+> `git mv`'d to `done/`) — Phase A is still pending. **Open threads:** PR #323
+> MERGED (`e93320f`; eval tooling + the 2026-06-15 RESULTS.md addendum — the
+> evidence base PLAN-0026 cites; the dangling-on-main reference is now resolved);
+> SD-2 ADR (amend
+> ADR-008 vs new ADR-0021 — Cowork leaned new; route Cowork to author) gates Phase
+> A impl; SD-3 (benchmark scoring) closed = no gold reclassification needed (gold
+> already carried the structured expectations Phase B now lands); AC-9 optional
+> live MS-S1 re-verify available on Cray's go; a Cowork pattern article
+> (gitignored `docs/research/private/2026-06-15-ontology-metric-semantics-pattern.md`,
+> "the typed semantic layer is the moat") exists untracked (Cray may decide).
+> AI-assisted (Claude Code, session 60); no `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note: this reconcile rotated the oldest Current Focus block (Session 57
+> "watch-lane GROUND TRUTH PINNED on all 39 watch items", head_commit `1bd6328`)
+> and the oldest Recent Decisions row (2026-06-12 Stop classifier switched to local
+> `gpt-oss:20b`, `3375778`) to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) per
+> the STATUS.md Rotation Policy (R2/R4)._
+
 _Addendum — rotated 2026-06-16 (session 63 reconcile): the Session-59 CF block (session 59 fell outside the 4-newest-sessions window {63,62,61,60})._
 
 > **Session 59 (head_commit `f4aa7fe`) — PLAN-0024 (NL-QUERY T2 ENGINE
@@ -1034,6 +1093,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-12 | **B-6 hyphen-normalization grader change RATIFIED + SHIPPED (#295, `2331ffb`, session 57)** _(rotated 2026-06-16, session 64)_ — Cray ratified in-session; `grader.py` `normalize_primary_key()` folds the Unicode hyphen/dash family (U+2010–U+2014, U+2212) → ASCII `-` on both sides of the two primary-KEY comparisons only; free-text untouched. Offline dump replay vs the 2026-06-12 scored run: β 118/120 → 119/120, EXACTLY one flip (energy-007, zero collateral); aqua-028 still fails. Same measurement-correctness class as the 2026-06-08 items; no bar moves; REPORT.md dated addendum | `2331ffb` (#295) / `benchmarks/procedure_baseline/grader.py` |
 | 2026-06-12 | **First SCORED watch-lane run RECORDED — watch 97.4% (38/39); M-2=b arc COMPLETE (#288, `4c46a92`, session 57)** _(rotated 2026-06-16, session 63)_ — `gpt-oss:20b`/MS-S1, 198 items, 318 calls, 0 errors, dump-VERIFIED (39/39 `watch_graded:true`); first production `run_detached.sh` run (sentinel as designed; watcher Monitor died silently + one false alarm — truth via content-based test). Aqua + energy 13/13; supply 12/13 — sole FAIL supply-040 (reroute @1.0 on an in-spec 7.8 °C) = `forbidden_keywords` discriminating as designed. β 98.3% (same two known misses; energy-007 U+2011 now ×3 → strengthens B-6). SD-2 p95 30.18s = +0.18s nominal, within the ±10s straddle band + classifier-contaminated; no bar moves (B-6) | `4c46a92` (#288) / `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-12 | **Watch-lane ground truth PINNED — all 39 watch items (#286, `1bd6328`, session 57)** _(rotated 2026-06-16, session 62)_ — Cray adjudicated the M-2=b pinning from the #273 calibration distribution: aqua canonical `start_emergency_aerator` + acceptable `[dispatch_technician, increase_water_exchange, escalate]`; energy canonical `restart` + acceptable `[dispatch_technician, escalate]` (`isolate` excluded → 'other'); supply_chain canonical `inspect` + acceptable `[hold, escalate]` + `forbidden_keywords [expedite, reroute]` declared (3/13 observed reroutes → forbidden). Dataset-only; the watch lane auto-flips unscored→scored; first SCORED run gated on a separate Cray go | `1bd6328` (#286) / `benchmarks/procedure_baseline/dataset/` |
 | 2026-06-12 | **Lessons #24 + #25 RECORDED (#284, `4b0e306`, session 56)** _(rotated 2026-06-15, session 61)_ — Cray-approved coda to the classifier calibration arc. **#24:** rules must live where the enforcer looks — a binding rule placed only in prose is invisible to a machine enforcer reading a different surface (C5 registry-gap finding generalized; adds an enforcement dimension to the ADR-0017 D5 placement rule). **#25:** an LLM judge's `{verdict, reason}` needs verdict-by-observable definitions + an explicit cross-field agreement contract, pinned by a prompt contract test + gold case (generalizes to the ADR-0018 goal-evaluator) | `4b0e306` (#284) / `docs/lessons/0024-rules-must-live-where-the-enforcer-looks.md` + `docs/lessons/0025-llm-judge-verdict-must-bind-to-its-own-reasoning.md` |
