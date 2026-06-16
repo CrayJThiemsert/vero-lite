@@ -180,6 +180,12 @@ def stub_env(tmp_path: Path) -> dict[str, str]:
     # Ollama backend (Cray pick (b), 2026-06-12 — unit-tested in
     # test_sonnet_classifier.py), which would bypass the mock entirely.
     env["CLAUDE_CLASSIFIER_BACKEND"] = "sonnet"
+    # PLAN-0021 M2 hermeticity: point the Axis-B goal gate (added to
+    # stop_continuation.py AFTER this fixture was written) at a per-test
+    # (absent) goal file so a developer's live .claude/state/goal.json can
+    # never leak into these cases. Absent file = no active goal = the gate
+    # falls through — semantically identical to the pre-gate Stop behavior.
+    env["CLAUDE_GOAL_PATH"] = str(tmp_path / "goal.json")
     return env
 
 
