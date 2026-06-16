@@ -153,6 +153,16 @@ Tier instruction files in `docs/conventions/cowork_tab_instructions.md` (Tier 0 
 - **Data residency** — Local LLM on MS-S1 MAX is default; Claude API only with consent + non-PII
 - **Medical liability** — All AI outputs are "assistive" — never auto-diagnostic
 
+### Host-State Actions
+
+- Warming or running a model on **MS-S1** (`192.168.1.133:11434`), or any change
+  to global / host configuration outside the worktree, is a **host-state change**
+  — get **explicit Cray go before it**, and **minimize live runs**. A live
+  verification is *evidence*, not a CI gate; the offline oracle is the gate.
+- This binding rule lives here so it survives when no PLAN is active (it
+  previously lived only in the active PLAN / handoff). Mechanics — reach by IP,
+  warm, verify-the-right-model — are in the `ms-s1-ollama` skill.
+
 ## 9. File Reading Priority for Claude Code
 
 Read in this order at session start:
@@ -192,7 +202,13 @@ skill** (`.claude/skills/code-operational-policy/`), loaded on demand when
 deciding worktree isolation or rendering a handoff. Sources: Lesson #3,
 [`docs/runbooks/transcript-handoff.md`](docs/runbooks/transcript-handoff.md).
 
+The **plan-first discipline** for costly / host-state / irreversible /
+multi-step execution — read the result-producing code first, stage a plan with a
+pre-committed pass/fail read, run the cheapest gate first, run once, verify via
+the Read tool, and declare a `/goal` for verification tasks — also lives in that
+skill (Lesson #0026; host-state gate = §8 above).
+
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-06-09 (ADR-0017 "Skills as a memory tier" alignment, T2–T4: §1 derived-artifacts precedence line [D6], §4 Tier 2.6 row + the D5 knowledge-placement decision rule, §10 skills row cites ADR-0017 [pending-follow-up note resolved]; full Tier 2.6 conventions + decision rule live in the memory-architecture runbook [T5]. Prior same-day: slimmed to on-demand Skills — §7 git mechanics → `git-workflow` skill, §11 worktree + transcript-handoff → `code-operational-policy` skill; binding rules retained in-file, how-to/rationale extracted; §10 gains `.claude/skills/` row. Prior 2026-05-26 (§7 PR/issue/release body-file line, Lesson #11; all-commits-to-main-via-PR + Lesson #10); 2026-05-23 per ADR-013 (§6 autonomy-axis note); 2026-05-22 per ADR-012; 2026-05-21 per ADR-009 D1+D5.)*
+*Last updated: 2026-06-16 (session 62, Cray-direct constitutional codification — Lesson #5 §2: §8 new "Host-State Actions" subsection homing the host-state ASK-Cray binding rule [previously only in transient PLANs/handoffs]; §11 plan-first-discipline pointer to the `code-operational-policy` skill + Lesson #0026. Source artifacts pre-existed [the `ms-s1-ollama` skill caveat + the just-merged skill section, #334]; restart-bridge filed). Prior 2026-06-09 (ADR-0017 "Skills as a memory tier" alignment, T2–T4: §1 derived-artifacts precedence line [D6], §4 Tier 2.6 row + the D5 knowledge-placement decision rule, §10 skills row cites ADR-0017 [pending-follow-up note resolved]; full Tier 2.6 conventions + decision rule live in the memory-architecture runbook [T5]. Prior same-day: slimmed to on-demand Skills — §7 git mechanics → `git-workflow` skill, §11 worktree + transcript-handoff → `code-operational-policy` skill; binding rules retained in-file, how-to/rationale extracted; §10 gains `.claude/skills/` row. Prior 2026-05-26 (§7 PR/issue/release body-file line, Lesson #11; all-commits-to-main-via-PR + Lesson #10); 2026-05-23 per ADR-013 (§6 autonomy-axis note); 2026-05-22 per ADR-012; 2026-05-21 per ADR-009 D1+D5.)*
