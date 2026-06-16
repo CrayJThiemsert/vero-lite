@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-16T07:31:44+07:00
+last_updated: 2026-06-16T08:12:26+07:00
 session: 62
-current_batch: 'session-62 — PLAN-0026 AC-9 optional live MS-S1 re-verify PASS: nl-08/nl-11 flipped correct on the deterministic structured lens, 11/12 correct, anti-hallucination 12/12 HELD, p50 15.5s / p95 39.0s; recorded as a RESULTS.md addendum (#332, dc65425/c16778d). PLAN-0026 now fully closed incl. the optional live re-verify.'
+current_batch: 'session-62 (second batch) — HARNESS IMPROVEMENT: the AC-9 "plan-first then execute" pattern distilled into durable discipline. code-operational-policy skill gains a plan-first section + /goal-for-verification habit; Lesson #0026 (interpret-before-run); CLAUDE.md §8 "Host-State Actions" + §11 pointer codified Cray-direct (Lesson #5 §2); restart-bridge filed (#334 ba66561, #335 cf958d3). First batch = PLAN-0026 AC-9 live re-verify PASS (#332).'
 current_actor: code
-blocked_on: 'Nothing blocks Code (PLAN-0026 complete — Phase A shipped + AC-9 live re-verify PASS). Held: B-γ baselines, PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial.'
-next_action: 'AC-9 done; PLAN-0026 fully closed incl. the optional live re-verify. ADR-0021 (c) remains a future triggered successor (ADR-016 procedure engine + ≥3 verticals). Then the held items: B-γ, PLAN-002, auditprep, ADR-011 (real-partner gated).'
-head_commit: c16778d
-recent_commits: [c16778d, dc65425, 8de6be0, 703b1ce, b53e631, 0a1427e, 37f62a7, 7f72181, bcbb62d, 4423a22]
+blocked_on: 'Nothing blocks Code (PLAN-0026 complete + AC-9 PASS; session-62 harness-improvement batch closed). Held: B-γ baselines, PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial.'
+next_action: 'Session-62 harness-improvement batch closed (plan-first discipline skill + Lesson #0026 + host-state rule codified in CLAUDE.md §8). Held (Cray-gated): B-γ baselines, PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial. ADR-0021 (c) = future triggered successor.'
+head_commit: cf958d3
+recent_commits: [cf958d3, ff687f6, ba66561, fd49c42, affdfb4, cf63ebb, c16778d, dc65425, 8de6be0, 703b1ce]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,35 @@ recent_commits: [c16778d, dc65425, 8de6be0, 703b1ce, b53e631, 0a1427e, 37f62a7, 
 
 ## Current Focus
 
-> **Session 62 (current; head_commit `c16778d`) — PLAN-0026 AC-9 OPTIONAL LIVE
+> **Session 62 (second batch, current; head_commit `cf958d3`) — HARNESS
+> IMPROVEMENT: the AC-9 "plan-first then execute" pattern distilled into durable
+> harness discipline (Cray-directed retrospective).** Cray observed the AC-9
+> session went well largely because the prompt said *"plan carefully, then if
+> ready, begin"* — but that quality depended on Cray re-typing it, not on the
+> harness. Cray selected all four proposed improvements (cost ~0, advisory-first,
+> reusing existing machinery — **no new always-on hook**, per the classifier-billing
+> / L1-friction lessons). **(1+2+4 — #334 `ba66561`, `docs:`):** the
+> `code-operational-policy` skill gains a *"Plan-first for costly / host-state /
+> irreversible / multi-step work"* section (read the result-producing code first →
+> staged plan + pre-committed pass/fail read → cheapest gate first → run once →
+> verify via the Read tool) + a *"use the Axis-B `/goal` loop for verification
+> tasks"* sub-section (reuses ADR-0018, no new hook); **Lesson #0026
+> (interpret-before-run)** — pre-commit what each outcome MEANS (pass /
+> known-acceptable-miss / real failure) before running, generalising the
+> green-against-the-wrong-thing failure class (the AC-9 nl-01 false-alarm +
+> nl-08/11 false-confidence near-misses it avoided). **(3 + §11 pointer — #335
+> `cf958d3`, `docs(constitution):`):** Cray-direct constitutional codification
+> (Lesson #5 §2): CLAUDE.md §8 gains a **"Host-State Actions"** subsection homing
+> the host-state ASK-Cray binding rule that previously lived only in transient
+> PLANs/handoffs (orphaned once PLAN-0026 archived), and §11 gains a plan-first
+> pointer to the skill. **Restart-bridge filed** (Lesson #5 §1, gitignored,
+> validated OK). The meta-move: turn a good *per-prompt instruction* into a harness
+> default so future sessions keep the quality sustainably. **Frontier:**
+> harness-improvement batch closed; held items remain (B-γ, PLAN-002 ≥ADR-014,
+> auditprep + ADR-011 real-partner-gated, partner-sim). Nothing blocks Code.
+> AI-assisted (Claude Code, session 62); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 62 (first batch; head_commit `c16778d`) — PLAN-0026 AC-9 OPTIONAL LIVE
 > MS-S1 RE-VERIFY RAN AND PASSED: nl-08/nl-11 CONFIRMED CORRECT ON THE
 > DETERMINISTIC STRUCTURED LENS, LIVE.** Cray-authorized host-state run closing
 > the one remaining PLAN-0026 open item (the optional live re-verify; the
