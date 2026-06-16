@@ -67,11 +67,12 @@ select = [
 ignore = [
   "S101",             # asserts ok in tests
 ]
-# The project labels PLAN steps + benchmark metrics with Greek letters (B-β / B-δ
-# and the β-headline / α-probe metrics, PLAN-0019 Part B). `β` is not a Latin
-# confusable, but `α` (≈ `a`) is — allow both so the established notation stays in
+# The project labels PLAN steps + benchmark metrics with Greek letters (B-β / B-γ /
+# B-δ and the β-headline / α-probe metrics, PLAN-0019 Part B). `β` is not a Latin
+# confusable, but `α` (≈ `a`) and `γ` (≈ `y`) are — allow them so the established
+# notation (incl. the B-γ comparison step, PLAN-0027) stays in
 # docstrings/comments/output without per-line noqa.
-allowed-confusables = ["α", "β"]
+allowed-confusables = ["α", "β", "γ"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106", "S603"]
