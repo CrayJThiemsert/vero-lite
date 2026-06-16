@@ -694,10 +694,111 @@ batching) and **does NOT move the 8 s bar or reopen ADR-016**.
 The **B-4 / G-3 model-selection sweep** (below) collects the same accuracy +
 per-call latency for alternative local models to inform that tuning.
 
-## B-3 comparison (REPORTED, not a gate)
+## B-3 comparison (REPORTED, not a gate) — the three-arm baseline (B-γ)
 
-vero-lite governed-procedure stack vs (b) raw text-to-SQL vs (c) RAG, on the same
-synthetic questions: accuracy / failure-mode / latency. **TODO — own step (B-γ).**
+> **Reports-not-gates (B-3/B-6).** "Our stack wins" is the **thesis under test**,
+> NOT an acceptance condition. A baseline matching or beating arm (a) is a
+> **finding**, never a build failure, and moves no bar / reopens no ADR-016 shape.
+> The methodology was pre-registered + Cray-ratified BEFORE this scored run
+> (PLAN-0027 §3–§4); one measurement-correctness calibration (the arm-(c)
+> free-text case/hyphen normalization) was ratified from the pre-run smoke, also
+> before the run. As-run numbers are never rewritten retroactively.
+
+**The comparison (PLAN-0027).** The vero-lite governed-procedure stack (arm a) vs
+two baselines — (b) raw text-to-SQL, (c) lean-but-real RAG — on the **energy
+breach subset** (40 items), graded on the **common sub-task** (D-1: name the
+affected entity + the correct action class, reusing `grade_proposal`). Arm (a) is
+**reused** from the runs above (D-2 — NOT re-run). Scored run: `gpt-oss:20b`
+(ADR-0001 pin) on MS-S1, 2026-06-16, warm-first; **0 errors / 0 invalid SQL**;
+every per-item score VERIFIED from `--dump-json` with the Read tool (session-46
+confirm-don't-infer).
+
+### Results — per-arm accuracy / failure-mode / latency
+
+| arm | entity-ID | action-class | entity **+** action (common sub-task) | latency / item | failure-mode |
+|---|---|---|---|---|---|
+| **(a) governed-procedure stack** (reused, D-2) | — | — | **97.5–100%** (39–40/40) | p95 **~28.7–31.8 s** (2-call judgment) | the known boundary/glyph misses (above) |
+| **(b) raw text-to-SQL** | **100%** (40/40) | **structurally N/A** (D-3) | **incomplete** — SQL returns data, not an action | p95 **10.2 s** (1 SQL-gen call) | 0 invalid, 0 wrong; **0 action proposals possible** |
+| **(c) lean RAG** | **97.5%** (39/40) | **100%** (40/40) | **97.5%** (39/40) | p95 **3.21 s** (1 freeform call) | 1 entity miss (`energy-h05`: model abbreviated `asset-E113` → `E113`) |
+
+*(arm b latency p50 8.16 s / max 12.05 s; arm c p50 2.25 s / max 4.17 s; arm a per the SD-2 rows above.)*
+
+**Reading — three honest findings:**
+
+1. **Raw entity+action accuracy does NOT separate the governed stack from lean
+   RAG.** Arm (c) scored **97.5%** on the common sub-task — level with arm (a)'s
+   97.5% (hardened) / 100% (nudged). On *this* measure a naive
+   retrieval-augmented baseline is as accurate as the governed path. Per the
+   ring-fence this is a **finding, not a failure** — and it is the load-bearing
+   one: it relocates the moat claim OFF "raw NL→action accuracy" (where RAG ties)
+   and ONTO the governance layer (§3.4 below), which the comparison was designed
+   to isolate.
+2. **Raw SQL cannot propose an action at all (D-3, structural).** Arm (b) nailed
+   entity-ID (40/40 — every query wrote the correct `WHERE measured_value >= 90`
+   threshold join and returned the breach asset), but text-to-SQL **returns data,
+   not an action proposal**, so it is *structurally* unable to produce the
+   action-class half of the operator's question. The 100% entity number is only
+   half the sub-task — recorded as the structural finding, never scored wrong.
+3. **The baselines are 3–15× faster** (arm c p95 3.2 s, arm b 10.2 s vs arm a's
+   ~30 s per judgment). The governed stack's two-call reason→structure exchange
+   costs latency the single-call baselines do not — a logged finding
+   (reports-not-gates), consistent with the B-δ latency findings above.
+
+### What the comparison is designed to show (§3.4 narrative — Cray-directed)
+
+The qualitative differentiator between arm (a) and arm (c) is a **governed
+inter-step contract layer**, NOT raw accuracy on this sub-task (where they tie).
+vero-lite's procedure engine can (i) **verify** an LLM step's output for
+*semantic* consistency against that step's requirement and (ii) **reshape** the
+output to fit the next step's input contract. A naive RAG baseline structurally
+lacks this — no deterministic disposition (breach/watch/ok), no handler
+allowlist, no audit trail, no inter-step contract glue. Two concrete tells
+surfaced in THIS run even where the headline tied:
+
+- arm (c)'s sole miss (`energy-h05`) is an **output-fidelity** failure the
+  governed path cannot make: the model identified the right physical unit but
+  emitted a **non-canonical reference** (`E113` instead of the ontology key
+  `asset-E113`). The governed stack emits the schema-constrained PK by
+  construction — a downstream system can act on it; the RAG string cannot be
+  trusted to be canonical.
+- arm (c) has **no disposition / allowlist / audit** — it will equally
+  confidently "restart" whatever a prompt frames as a breach, with no
+  deterministic false-positive guard and no bounded handler set. The headline
+  parity is on *accuracy*; the gap is on *governability*.
+
+So the arm(a)–arm(c) parity on raw accuracy, read with these tells, IS the
+evidence: the moat is the governance layer over and above retrieval-augmented
+generation, not a raw-accuracy edge.
+
+> **Forward-pointer / future-work (OUT OF SCOPE for B-γ).** The **verify +
+> reshape** layer above is a **separate, future procedure-engine enhancement**
+> (ADR-016 area) — NOT built or measured in B-γ (measurement-only). The engine
+> **today** already has structured-output **schema** validation
+> (`StructuredOutputError`, `services/engine/llm/structured.py`); the enhancement
+> would extend that from schema-validation to **semantic-verify + inter-step
+> reshape**. Recorded as a forward-pointer for a future PLAN/ADR; it is NOT added
+> to arm (c) (D-6 contamination guard).
+
+### Run provenance / integrity
+
+- **Model:** `gpt-oss:20b` (ADR-0001 pin), live on MS-S1 (`192.168.1.133:11434`),
+  Cray-approved host-state run 2026-06-16, warm-first.
+- **Scope:** 40 energy breach items × arms (b) + (c) = 80 LLM calls (1 per
+  arm-item); arm (a) reused (D-2). 0 errors / 0 invalid SQL.
+- **Calibration (ratified before the run — B-6):** the arm-(c) free-text entity
+  match is case- + hyphen-normalized (a measurement-correctness fix surfaced by
+  the pre-run smoke — `energy-001`'s `Asset‑E01`, capital + U+2011; the free-text
+  analogue of the grader's `normalize_primary_key` hyphen calibration). It only
+  *recovers* a correctly-named entity, never invents one — it helps the baseline,
+  so the arm(a)–arm(c) parity is if anything conservative for the thesis. Lands
+  with this REPORT's companion engineering PR; the offline mock gate stays the
+  oracle.
+- **Artifacts:** `.claude/benchmark-results/2026-06-16-bgamma-scored.{log,jsonl}`
+  (40/40 item records; gitignored working artifacts, retained locally). Every
+  number above VERIFIED against the `--dump-json` records.
+- **Harness:** `benchmarks/procedure_comparison/` (PLAN-0027); the offline mock
+  gate (ruff / mypy --strict / pytest) is green and is the oracle — this live run
+  is evidence, not the gate.
 
 ## B-4 / G-3 model-selection sweep
 
@@ -757,7 +858,11 @@ latency p95 22.64 s, every score `--dump-json`-VERIFIED), the **PLAN-0020 tuning
 2026-06-11** (nudge effect + the `skip` lever), and the **watch-lane CALIBRATION run
 2026-06-12** (PLAN-0022 Phase 3 / M-2=b: the per-vertical suggested-handler
 distribution incl. the supply_chain `reroute` 3/13 safety signal; β 98.3%, first SD-2
-PASS in `full` mode; watch-judgment latency M-4 diagnostic). **B-3 baselines**
-(text-to-SQL + RAG) remain TODO. Per the ring-fence this REPORTS — it does not gate;
-every finding above feeds its follow-up (the watch ground-truth pinning, the hyphen
-normalization candidate, the tuning PLAN) and moves no bar.*
+PASS in `full` mode; watch-judgment latency M-4 diagnostic), and the **B-3
+three-arm comparison (B-γ) 2026-06-16** (PLAN-0027: arm (b) raw text-to-SQL
+100% entity-ID but structurally no action — D-3; arm (c) lean RAG 97.5% entity
++ action, level with arm (a) — the finding that relocates the moat from raw
+accuracy to the governance layer). Per the ring-fence this REPORTS — it does not
+gate; every finding above feeds its follow-up (the watch ground-truth pinning,
+the hyphen normalization candidate, the tuning PLAN, the verify+reshape
+forward-pointer) and moves no bar.*
