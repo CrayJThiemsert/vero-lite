@@ -12,6 +12,82 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-16 (session 62 reconcile): both Session-58 CF blocks
+(third/second batches) rotated as session 58 fell outside the 4-newest-sessions
+window {62,61,60,59}._
+
+> **Session 58 (third batch; head_commit `987c2be`) — NL-QUERY
+> FEASIBILITY SPIKE SHIPPED (#314) → PARTNER-TRIAL ROADMAP FORK RESOLVED: T2
+> (NL-query) CHOSEN.** The headline is the FORK RESOLUTION, not just a
+> benchmark. The partner-trial roadmap fork (T2 NL-query "wow demo" vs T3
+> real-data "show me MY data"; readiness doc §4) needed its engineering half
+> de-risked before Cray's go-to-market call. The spike (`benchmarks/nl_query_feasibility/`,
+> `feat(benchmark):`, two commits — `ff5bab8` engine-A arm + `987c2be`
+> text-to-SQL arm = the newest substantive per `lint_status`; merge `c3a48b4`)
+> PIVOTED on a verified finding: from a hypothetical NL→MCP-tool-call to
+> benchmarking the **shipped** engine-A path (`services/engine/nl_query.py`,
+> PLAN-0013 — T2 was MORE built than the 2026-05-22 readiness doc said).
+> **engine-A arm (gpt-oss:20b @ MS-S1):** 8/12 structured (~10/12
+> operator-answer), latency p50 11s / p95 32s, and **anti-hallucination 12/12
+> (zero invented facts)**. Dominant gap = translate filter-omission
+> (whole-table fetch, phrase-rescued on toy data); join-by-name is a hard
+> ceiling that fails *safely* (honest no-data). **text-to-SQL arm (same 12
+> Qs):** 11/12, p50 5.6s / p95 12s — cleared every join/aggregate, applied
+> WHERE every time, BUT **lost the anti-hallucination guard** (nl-12:
+> improvised `SELECT … event_type='alarm'` for a no-data "alerts" question →
+> returned an alarm as an alert). **The comparison answered the question:**
+> the **ceiling is ARCHITECTURE** (StructuredQuery expressiveness — text-to-SQL
+> cleared it, the model is capable), the **filter-omission is PROMPT** (the
+> same model wrote WHERE under SQL framing). Both engine-A weaknesses are
+> FIXABLE, not model limits. **Cray decision (fork resolved): T2 (NL-query)
+> chosen** as the wedge — evidence-backed build path = enrich `StructuredQuery`
+> with join + aggregate ops while KEEPING the grounded-execute safety (NOT a
+> switch to raw text-to-SQL, which loses anti-hallucination) + fix the
+> translate prompt (require the filter) + a UI shell (readiness T1 A1/A2).
+> Process: Code-direct spike (like step-1); each AskUserQuestion decision was
+> Cray-ratified inline.
+> AI-assisted (Claude Code, session 58); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 58 (second batch, current; head_commit `9595d3e`) — TWO BACKLOG
+> QUICK-WINS (Code-solo, #311 + #312), cleared after the audit-framework arc
+> closed.** A genuinely separate small batch (harness tooling, not the partner
+> arc): two long-standing backlog items shipped back-to-back. **(1)
+> stop-classifier gold cases #311 (`f2ee579`, `test(stop-classifier):`):**
+> added 3 "dispatch discriminator" cases to `benchmarks/stop_classifier/gold.yaml`
+> (20→23) pinning the surfaced-vs-ratified distinction the local classifier got
+> WRONG in session 57 (it OVER-FIRED `plan-drafter` dispatches on ADR/PLAN
+> *mentions* while the formality choice was a PENDING Cray decision — 2 instances)
+> and RIGHT in session 58 (once Cray RATIFIED PLAN formality, the dispatch was
+> correct). Two `pause` negatives + one `dispatch` positive; safety-weighted
+> scoring makes a spurious dispatch a HARD FAIL. Offline test
+> (`tests/benchmark/test_stop_classifier_gold.py`) green (4 passed); the live
+> re-score (warm MS-S1) is a host-state eval — **pending Cray's go**; RESULTS.md
+> got an addendum noting the recorded 2026-06-12 run predates the 3 cases (no
+> model numbers fabricated). **(2) handoff-validator warning-swallow bug FIXED
+> #312 (`9595d3e`, `fix(handoffs):`; PLAN-004 Phase B backlog):**
+> `tools/handoffs/_schema.py::_build()` returned the typed `Frontmatter` on the
+> otherwise-valid path and discarded its local `errors` list, so
+> `_check_unknown()` WARNING findings (e.g. unknown field `brief-number`) were
+> unreachable on any file without a hard error — contradicting `validate_file`'s
+> own docstring. Fix: `Frontmatter` gains a `warnings` field; `_build()` fills
+> it on the success path; `validate_file()` surfaces it; the `validate_handoff.py`
+> CLI now prints the warning; precommit unchanged (still gates/prints only
+> `is_error()`). Regression tests strengthened (the OLD test passed on the bug)
+> + text-API + clean-file guards; `tests/handoffs/` 573 passed / 2 skipped;
+> ruff + mypy clean. **Next:** quick-wins #2/#3 done → a strategic discussion is
+> teed up for Cray — sequence the partner-trial roadmap fork (NL-query-first vs
+> real-data-first) vs the B-γ benchmark baselines (do the fork first and feed
+> B-γ, or B-γ first to inform the fork). Other backlog held: B-γ, PLAN-002
+> (≥ADR-021), partner-trial gaps + audit-framework SD-4/SD-5/OQ-A + ADR-011
+> (gated on a real partner).
+> *Rotation note:* a new Session-58 (second batch) CF block was added (separate
+> subject — harness tooling, not the partner arc), taking the count to 9 > the
+> 8-block soft cap; per R2 the oldest CF block (session 56 fourth batch,
+> stop-classifier calibration arc, #278/#279/#280) rotated to
+> `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4), keeping the
+> count at 8.
+> AI-assisted (Claude Code, session 58); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-15 (session 61 reconcile): all four Session-57 CF blocks
 (fifth/fourth/third/second batches) rotated as session 57 fell outside the
 4-newest-sessions window {61,60,59,58}._
@@ -915,6 +991,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-12 | **Watch-lane ground truth PINNED — all 39 watch items (#286, `1bd6328`, session 57)** _(rotated 2026-06-16, session 62)_ — Cray adjudicated the M-2=b pinning from the #273 calibration distribution: aqua canonical `start_emergency_aerator` + acceptable `[dispatch_technician, increase_water_exchange, escalate]`; energy canonical `restart` + acceptable `[dispatch_technician, escalate]` (`isolate` excluded → 'other'); supply_chain canonical `inspect` + acceptable `[hold, escalate]` + `forbidden_keywords [expedite, reroute]` declared (3/13 observed reroutes → forbidden). Dataset-only; the watch lane auto-flips unscored→scored; first SCORED run gated on a separate Cray go | `1bd6328` (#286) / `benchmarks/procedure_baseline/dataset/` |
 | 2026-06-12 | **Lessons #24 + #25 RECORDED (#284, `4b0e306`, session 56)** _(rotated 2026-06-15, session 61)_ — Cray-approved coda to the classifier calibration arc. **#24:** rules must live where the enforcer looks — a binding rule placed only in prose is invisible to a machine enforcer reading a different surface (C5 registry-gap finding generalized; adds an enforcement dimension to the ADR-0017 D5 placement rule). **#25:** an LLM judge's `{verdict, reason}` needs verdict-by-observable definitions + an explicit cross-field agreement contract, pinned by a prompt contract test + gold case (generalizes to the ADR-0018 goal-evaluator) | `4b0e306` (#284) / `docs/lessons/0024-rules-must-live-where-the-enforcer-looks.md` + `docs/lessons/0025-llm-judge-verdict-must-bind-to-its-own-reasoning.md` |
 | 2026-06-12 | **Stop classifier SWITCHED to local `gpt-oss:20b` (#282, `3375778`, session 56)** — Cray picked **(b)** on the calibration evidence (8–30s latency acceptable). Default backend = MS-S1 Ollama (format-constrained `/api/chat`, temp 0, keep_alive 10m, 75s timeout; no API key / no WSL bridge); Anthropic API retained as rollback via `CLAUDE_CLASSIFIER_BACKEND=sonnet`. Fail-closed pause + legacy reason strings byte-identical; legacy suite pinned to sonnet + 4 new ollama-backend tests (571 passed / 2 skipped; mypy --strict clean); LIVE-verified from the prod hook runtime: 7.9s → pause | `3375778` (#282) / `.claude/hooks/_sonnet_classifier.py` |
 | 2026-06-12 | **Stop-classifier calibration arc SHIPPED (#278 + #279 + #280, `246ee0a`, session 56)** _(rotated 2026-06-15, session 59)_ — #278 completion-consistency rule (PROCEED needs concrete remaining work; decision↔reason agreement; contract-test-pinned). #279 20-case safety-weighted eval harness (full prod-prompt fidelity; gold incl. Thai); MS-S1 sweep 4×20 (80 dump-verified): `gpt-oss:20b` 19/20, recall 100%, p95 21.6s vs sonnet(prod) 17+2/20, recall 75%, p95 3.5s; nemotron-4b safety-DQ. #280 HEADLINE = registry gap not model gap → registry row C5 (host-state gate), re-verified live; transport pick (local vs API Sonnet) = Cray's | `246ee0a` (#278–#280) / `benchmarks/stop_classifier/RESULTS.md` |

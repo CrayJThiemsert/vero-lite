@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-15T17:34:22+07:00
-session: 61
-current_batch: 'session-61 — PLAN-0026 COMPLETE: ADR-0021 (metric-kind typed ontology semantics, construct (b)) authored→Accepted (#327/#328, a102b9d/4423a22), then Phase A (measured_kind enum + quantity_bindings + "classify, don''t synthesize") shipped (#329, 37f62a7); PLAN-0026 archived to done/ (#330, b53e631). Suite 1535/22; ruff+ruff-format+mypy clean; 12/12 anti-hallucination preserved'
+last_updated: 2026-06-16T07:31:44+07:00
+session: 62
+current_batch: 'session-62 — PLAN-0026 AC-9 optional live MS-S1 re-verify PASS: nl-08/nl-11 flipped correct on the deterministic structured lens, 11/12 correct, anti-hallucination 12/12 HELD, p50 15.5s / p95 39.0s; recorded as a RESULTS.md addendum (#332, dc65425/c16778d). PLAN-0026 now fully closed incl. the optional live re-verify.'
 current_actor: code
-blocked_on: 'Nothing blocks Code (PLAN-0026 complete — Phase A shipped). Open-for-Cray: AC-9 optional live MS-S1 re-verify (offline oracle is the gate). Held: B-γ baselines, PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial.'
-next_action: 'PLAN-0026 done; no gated NL-query work remains. Optional AC-9 live MS-S1 re-verify (host-state; Cray''s go). ADR-0021 (c) is a future triggered successor (ADR-016 procedure engine + ≥3 verticals). Then the held items: B-γ, PLAN-002, auditprep, ADR-011 (real-partner gated).'
-head_commit: b53e631
-recent_commits: [b53e631, 0a1427e, 37f62a7, 7f72181, bcbb62d, 4423a22, 66b8c7f, a102b9d, 2b9a7eb, 25f8c08]
+blocked_on: 'Nothing blocks Code (PLAN-0026 complete — Phase A shipped + AC-9 live re-verify PASS). Held: B-γ baselines, PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial.'
+next_action: 'AC-9 done; PLAN-0026 fully closed incl. the optional live re-verify. ADR-0021 (c) remains a future triggered successor (ADR-016 procedure engine + ≥3 verticals). Then the held items: B-γ, PLAN-002, auditprep, ADR-011 (real-partner gated).'
+head_commit: c16778d
+recent_commits: [c16778d, dc65425, 8de6be0, 703b1ce, b53e631, 0a1427e, 37f62a7, 7f72181, bcbb62d, 4423a22]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,48 @@ recent_commits: [b53e631, 0a1427e, 37f62a7, 7f72181, bcbb62d, 4423a22, 66b8c7f, 
 
 ## Current Focus
 
-> **Session 61 (current; head_commit `b53e631`) — PLAN-0026 COMPLETE: ADR-0021
+> **Session 62 (current; head_commit `c16778d`) — PLAN-0026 AC-9 OPTIONAL LIVE
+> MS-S1 RE-VERIFY RAN AND PASSED: nl-08/nl-11 CONFIRMED CORRECT ON THE
+> DETERMINISTIC STRUCTURED LENS, LIVE.** Cray-authorized host-state run closing
+> the one remaining PLAN-0026 open item (the optional live re-verify; the
+> offline oracle stays the CI **gate**, AC-9 is **verification, not a gate** —
+> Lesson #15 live-vs-mock). The 12-question NL-query harness ran live against
+> `gpt-oss:20b` @ MS-S1 (`run_benchmark.py --warm`); the offline oracle
+> (`tests/services/engine/test_nl_query.py` + `tests/benchmark/test_nl_query_feasibility_gold.py`)
+> was **65 passed** immediately before the run. **Result: 11/12 correct (was
+> 10/12 in AC-8) · anti-hallucination 12/12 HELD · latency p50 15.5s / p95 39.0s.**
+> **Headline (AC-1 confirmed live):** nl-08 + nl-11 both flipped to **correct on
+> the deterministic structured lens** — `result_count 7`, max `96.5 °C`, top
+> `Battery Bank A` read from the execute-stage `AggregateResult` (not phrase
+> prose). Both AC-8 failure modes are gone live: the model emits `operation:max`
+> (not `list`) and does **not** invent a `resolve` placeholder. **Two honest
+> notes (kept, not dropped):** (1) the lone miss is **nl-01** — *not* an AC-9
+> target — a known filter-omission nondeterminism on a *simple list*; the phrase
+> named the 2 real batteries (zero fabrication), it is **out of PLAN-0026 scope**,
+> and its offline gold test is green → **not a Phase-A regression**. (2) This run
+> reached the right result via the model's own `unit=celsius` filter
+> (`measured_kind:null`), so the coherence seam had nothing to rewrite — the
+> deterministic seam is the **safety net proven by the offline oracle (AC-7)**,
+> not exercised this particular run; both routes yield the identical grounded
+> result. **Verdict: AC-9 PASS.** Recorded as an addendum in
+> `benchmarks/nl_query_feasibility/RESULTS.md` (#332, `dc65425`; merge `c16778d`);
+> the `--dump-json` evidence is gitignored at
+> `.claude/benchmark-results/2026-06-16-nl-query-ac9.jsonl`. **Frontier:** AC-9
+> done → PLAN-0026 fully closed incl. the optional live re-verify; no gated
+> NL-query work remains; ADR-0021 (c) remains a future triggered successor
+> (ADR-016 procedure engine + ≥3 verticals); held items (B-γ, PLAN-002,
+> auditprep, ADR-011) unchanged. AI-assisted (Claude Code, session 62); no
+> `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note: this reconcile rotated both Session-58 Current Focus blocks
+> (third batch — NL-query feasibility spike / fork-resolution, head_commit
+> `987c2be`; second batch — two backlog quick-wins, head_commit `9595d3e`;
+> session 58 falls outside the 4-newest-sessions window {62,61,60,59}) plus the
+> oldest Recent Decisions row (2026-06-12 watch-lane ground truth PINNED,
+> `1bd6328`) to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md)
+> per the STATUS.md Rotation Policy (R2/R4)._
+>
+> **Session 61 (head_commit `b53e631`) — PLAN-0026 COMPLETE: ADR-0021
 > (METRIC-KIND TYPED ONTOLOGY SEMANTICS) AUTHORED→ACCEPTED, THEN PHASE A
 > (`measured_kind` enum + `quantity_bindings` + "classify, don't synthesize")
 > SHIPPED; PLAN-0026 ARCHIVED to `done/`.** The session opened with #323 MERGED
@@ -173,78 +214,6 @@ recent_commits: [b53e631, 0a1427e, 37f62a7, 7f72181, bcbb62d, 4423a22, 66b8c7f, 
 > [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) per
 > the STATUS.md Rotation Policy (R2/R4)._
 >
-> **Session 58 (third batch; head_commit `987c2be`) — NL-QUERY
-> FEASIBILITY SPIKE SHIPPED (#314) → PARTNER-TRIAL ROADMAP FORK RESOLVED: T2
-> (NL-query) CHOSEN.** The headline is the FORK RESOLUTION, not just a
-> benchmark. The partner-trial roadmap fork (T2 NL-query "wow demo" vs T3
-> real-data "show me MY data"; readiness doc §4) needed its engineering half
-> de-risked before Cray's go-to-market call. The spike (`benchmarks/nl_query_feasibility/`,
-> `feat(benchmark):`, two commits — `ff5bab8` engine-A arm + `987c2be`
-> text-to-SQL arm = the newest substantive per `lint_status`; merge `c3a48b4`)
-> PIVOTED on a verified finding: from a hypothetical NL→MCP-tool-call to
-> benchmarking the **shipped** engine-A path (`services/engine/nl_query.py`,
-> PLAN-0013 — T2 was MORE built than the 2026-05-22 readiness doc said).
-> **engine-A arm (gpt-oss:20b @ MS-S1):** 8/12 structured (~10/12
-> operator-answer), latency p50 11s / p95 32s, and **anti-hallucination 12/12
-> (zero invented facts)**. Dominant gap = translate filter-omission
-> (whole-table fetch, phrase-rescued on toy data); join-by-name is a hard
-> ceiling that fails *safely* (honest no-data). **text-to-SQL arm (same 12
-> Qs):** 11/12, p50 5.6s / p95 12s — cleared every join/aggregate, applied
-> WHERE every time, BUT **lost the anti-hallucination guard** (nl-12:
-> improvised `SELECT … event_type='alarm'` for a no-data "alerts" question →
-> returned an alarm as an alert). **The comparison answered the question:**
-> the **ceiling is ARCHITECTURE** (StructuredQuery expressiveness — text-to-SQL
-> cleared it, the model is capable), the **filter-omission is PROMPT** (the
-> same model wrote WHERE under SQL framing). Both engine-A weaknesses are
-> FIXABLE, not model limits. **Cray decision (fork resolved): T2 (NL-query)
-> chosen** as the wedge — evidence-backed build path = enrich `StructuredQuery`
-> with join + aggregate ops while KEEPING the grounded-execute safety (NOT a
-> switch to raw text-to-SQL, which loses anti-hallucination) + fix the
-> translate prompt (require the filter) + a UI shell (readiness T1 A1/A2).
-> Process: Code-direct spike (like step-1); each AskUserQuestion decision was
-> Cray-ratified inline.
-> AI-assisted (Claude Code, session 58); no `Co-Authored-By` per CLAUDE.md §7.
->
-> **Session 58 (second batch, current; head_commit `9595d3e`) — TWO BACKLOG
-> QUICK-WINS (Code-solo, #311 + #312), cleared after the audit-framework arc
-> closed.** A genuinely separate small batch (harness tooling, not the partner
-> arc): two long-standing backlog items shipped back-to-back. **(1)
-> stop-classifier gold cases #311 (`f2ee579`, `test(stop-classifier):`):**
-> added 3 "dispatch discriminator" cases to `benchmarks/stop_classifier/gold.yaml`
-> (20→23) pinning the surfaced-vs-ratified distinction the local classifier got
-> WRONG in session 57 (it OVER-FIRED `plan-drafter` dispatches on ADR/PLAN
-> *mentions* while the formality choice was a PENDING Cray decision — 2 instances)
-> and RIGHT in session 58 (once Cray RATIFIED PLAN formality, the dispatch was
-> correct). Two `pause` negatives + one `dispatch` positive; safety-weighted
-> scoring makes a spurious dispatch a HARD FAIL. Offline test
-> (`tests/benchmark/test_stop_classifier_gold.py`) green (4 passed); the live
-> re-score (warm MS-S1) is a host-state eval — **pending Cray's go**; RESULTS.md
-> got an addendum noting the recorded 2026-06-12 run predates the 3 cases (no
-> model numbers fabricated). **(2) handoff-validator warning-swallow bug FIXED
-> #312 (`9595d3e`, `fix(handoffs):`; PLAN-004 Phase B backlog):**
-> `tools/handoffs/_schema.py::_build()` returned the typed `Frontmatter` on the
-> otherwise-valid path and discarded its local `errors` list, so
-> `_check_unknown()` WARNING findings (e.g. unknown field `brief-number`) were
-> unreachable on any file without a hard error — contradicting `validate_file`'s
-> own docstring. Fix: `Frontmatter` gains a `warnings` field; `_build()` fills
-> it on the success path; `validate_file()` surfaces it; the `validate_handoff.py`
-> CLI now prints the warning; precommit unchanged (still gates/prints only
-> `is_error()`). Regression tests strengthened (the OLD test passed on the bug)
-> + text-API + clean-file guards; `tests/handoffs/` 573 passed / 2 skipped;
-> ruff + mypy clean. **Next:** quick-wins #2/#3 done → a strategic discussion is
-> teed up for Cray — sequence the partner-trial roadmap fork (NL-query-first vs
-> real-data-first) vs the B-γ benchmark baselines (do the fork first and feed
-> B-γ, or B-γ first to inform the fork). Other backlog held: B-γ, PLAN-002
-> (≥ADR-021), partner-trial gaps + audit-framework SD-4/SD-5/OQ-A + ADR-011
-> (gated on a real partner).
-> *Rotation note:* a new Session-58 (second batch) CF block was added (separate
-> subject — harness tooling, not the partner arc), taking the count to 9 > the
-> 8-block soft cap; per R2 the oldest CF block (session 56 fourth batch,
-> stop-classifier calibration arc, #278/#279/#280) rotated to
-> `docs/status-archive/2026-h1-status.md` this reconcile (R2/R4), keeping the
-> count at 8.
-> AI-assisted (Claude Code, session 58); no `Co-Authored-By` per CLAUDE.md §7.
->
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
 ## Prior focus (archived)
@@ -266,6 +235,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-16 | **PLAN-0026 AC-9 optional live MS-S1 re-verify RAN + PASSED (#332, `dc65425`/`c16778d`, session 62)** — Cray-authorized host-state run closing the last PLAN-0026 open item; offline oracle stays the CI gate, AC-9 is verification-not-gate (Lesson #15). 12-Q NL-query harness vs `gpt-oss:20b` @ MS-S1 (`run_benchmark.py --warm`), offline oracle 65 passed immediately prior. **Result: 11/12 correct (was 10/12 in AC-8) · anti-hallucination 12/12 HELD · p50 15.5s / p95 39.0s.** Headline (AC-1 live): nl-08 + nl-11 both flipped correct on the deterministic structured lens (`result_count 7`, max `96.5 °C`, top `Battery Bank A` from the execute-stage `AggregateResult`, not phrase prose) — model emits `operation:max` not `list` and invents no `resolve` placeholder. Two honest notes: (1) lone miss = nl-01 (not an AC-9 target) — known simple-list filter-omission nondeterminism, zero fabrication, out of PLAN-0026 scope, offline gold green → not a Phase-A regression; (2) this run hit the right result via the model's own `unit=celsius` filter (`measured_kind:null`) so the coherence seam had nothing to rewrite — the seam is the safety net proven by the offline oracle (AC-7), both routes yield the identical grounded result. **Verdict: AC-9 PASS.** Recorded as a RESULTS.md addendum; `--dump-json` evidence gitignored at `.claude/benchmark-results/2026-06-16-nl-query-ac9.jsonl`. PLAN-0026 now fully closed incl. the optional live re-verify | `c16778d` (#332, content `dc65425`) / `benchmarks/nl_query_feasibility/RESULTS.md` |
 | 2026-06-15 | **PLAN-0026 COMPLETE — ADR-0021 (metric-kind typed ontology semantics) AUTHORED→ACCEPTED then Phase A (`measured_kind`) SHIPPED; PLAN archived to `done/` (#327–#330, `b53e631`, session 61)** — closes PLAN-0026 end-to-end (the principled fix Phase B could only approximate). Cray decisions: Gate-1 = **T2** (NL-query is the moat wedge), Gate-2/SD-2 = **Path B** (kind↔unit binding in the ontology → a new ADR); cross-check confirmed **(b) over (c)** ((c) over-scope now per Rule of Three + ADR-008 D3, and (b) reuses entirely into (c)). **ADR-0021 ("classify, don't synthesize"):** Cowork-authored (ADR-009 D1) → Code committed Proposed (#327, `a102b9d`) → Cray ratified Accepted (#328, `4423a22`); construct **(b)** QUDT-style quantity-kind ⟂ unit typed pair (`quantity_bindings`) over (a) per-enum-value map and (c) composite; (c) is a **triggered successor** (ADR-016 procedure engine + ≥3 verticals); amends ADR-008 D3. **Phase A (steps 6–7, #329 `37f62a7`; `bcbb62d`+`7f72181`):** step 6 — `measured_kind` enum (temperature|frequency) + object-level `quantity_bindings` on OperationalEvent, admitted by `ontology_schema.json` + parsed into `ontology_meta`, synthetic data tagged (7/2/2), emitted across all 5 artifacts, D6 L2 validator check, ORM + Alembic `0003` column (DB↔DDL parity via `test_schema_parity`); step 7 — `StructuredQuery.measured_kind` (translate LLM **classifies** the kind, the coherence seam **synthesizes** the precise `unit` from the binding, **superseding** Phase B dominant-unit per IN-1; no kind → dominant fallback, classified-but-absent → clarify, never fabricate). Distinguishes "highest frequency" from "highest temperature". Suite 1535/22; ruff+ruff-format+mypy clean; 12/12 anti-hallucination preserved; offline oracle re-pointed to a classified `measured_kind`; 6 new tests (4 engine + 2 validator). PLAN-0026 → `done/` (#330, `0a1427e`/`b53e631`). No gated NL-query work remains | `b53e631` (#327/#328/#329/#330) / `docs/adr/0021-metric-kind-typed-ontology-semantics.md` + `services/engine/nl_query.py` + `docs/plans/done/0026-nl-query-aggregate-metric-semantics.md` |
 | 2026-06-15 | **PLAN-0026 (NL-query aggregate metric-semantics) AUTHORED+RATIFIED+MERGED (#321) then Phase B (deterministic rewrite seam) MERGED (#322, `19eeb21`, session 60)** — closes the filter-omission-on-aggregate-superlative gap PLAN-0024 left open (nl-08/nl-11). Diagnosis (Cray-directed): a 4-model MS-S1 sweep + a 3-variant prompt escalation both NEGATIVE → it's a typed-query-on-untyped-metric data-model problem, not model/prompt (two external LLMs concurred). Phase B = a post-translate rewrite seam in `nl_query.py`: `group_by` inference for "which <entity>" superlatives (AC-2, reshape-only) + a heterogeneous-aggregate coherence rewrite composing the dominant-unit filter in the engine (AC-3, model never re-supplies it = v2-regression-proof) + a clarify-not-silent-no-data guard (AC-4) + `NlAnswer.outcome: Literal["answered","no_data","clarify"]` (SD-1, Cray-approved). Offline oracle feeds the model's known-bad `{filters:[], operation:max, group_by:null}` and asserts the seam → `result_count==7`, value 96.5, top "Battery Bank A" structurally (not phrase-rescued). Suite 1527/22; ruff+mypy clean; anti-hallucination 12/12 preserved (AC-5); one `# noqa: C901` justified on the orchestrator. Governance: Cray "governed-first" → `plan-drafter` G2-denied → Cowork (ungated) authored → Code committed #321 → Cray ratified Proposed→Accepted → Phase B #322. Phase A (`measured_kind` ontology enum, the principled kind-word fix) GATED on the T2-vs-T3 roadmap call + SD-2's ADR; PLAN stays ACTIVE (not `done/`) | `19eeb21` (#321/#322) / `services/engine/nl_query.py` + `docs/plans/0026-nl-query-aggregate-metric-semantics.md` |
 | 2026-06-15 | **PLAN-0024 (NL-query T2 engine enrichment) SHIPPED — engine half of the T2 wedge (#316 plan / #317 engine, `f4aa7fe`, session 59)** — `StructuredQuery` gains `max/min/avg/sum` (+ optional `group_by`) computed in the deterministic execute stage + a new `NlAnswer.aggregate` grounding receipt (never the phrase LLM), plus a `NameResolve` cross-type name→id descriptor (resolve-then-filter; `object_type` stays single/enum-constrained, group keys relabelled id→title); translate prompt now requires the implied filter + exact enum grounding. Gold ceiling cases nl-08/09/10/11 moved onto the deterministic structured-result lens (`_aggregate_ok`). Anti-hallucination AC-5 preserved (empty/no-numeric/unresolved short-circuit to no-records). 11 new offline tests; suite 1511/22 (+30); ruff+mypy clean. Governance: Cray scoped engine-only (UI→PLAN-0025, SD-1 deferred) → `plan-drafter` authored PLAN-0024 → ungated Cowork placed the file (G2 denied all in-harness Code writes) → Code committed #316 → merged → Code executed #317; SD-1 done as the recommended pre-step; one L1 loop-detect resolved by a Cray-approved counter reset, no Bash | `f4aa7fe` (#316/#317) / `services/engine/nl_query.py` + `docs/plans/done/0024-nl-query-t2-engine-enrichment.md` |
@@ -275,7 +245,6 @@ below, and git history.
 | 2026-06-13 | **ADR-0020 (synthetic design-partner simulation venue, partner-sim) committed Proposed (#297, `e25281d`, session 57) + project system instruction landed (#298, `e387a63`)** — a specialist Cowork project that role-plays a Thai operator + emits a "partner profile package" so the intake+PDPA pipeline is rehearsed before a real partner. D1 venue OUTSIDE governance tiers (no commits / no repo mount / enters via Code receive); D2 three BINDING anti-circularity rules (R1 feed-questions-not-schema, R2 forced messiness, R3 SYNTHETIC provenance — never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger); D3 reuses completion-handoff schema (no enum change); D4 guarded-trial (mirrors ADR-012 D5) + R-PS1..R-PS4. SD-1..SD-4 recommendations only. **Awaits Cray ratification (Proposed→Accepted + SD-1..SD-4) before the project goes live (ADR-0020 T3).** Author≠reviewer (ADR-012 D4.3): Cowork authored, Code R2-reviewed + committed both | `e25281d` (#297) + `e387a63` (#298) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 | 2026-06-12 | **B-6 hyphen-normalization grader change RATIFIED + SHIPPED (#295, `2331ffb`, session 57)** — Cray ratified in-session; `grader.py` `normalize_primary_key()` folds the Unicode hyphen/dash family (U+2010–U+2014, U+2212) → ASCII `-` on both sides of the two primary-KEY comparisons only; free-text untouched. Offline dump replay vs the 2026-06-12 scored run: β 118/120 → 119/120, EXACTLY one flip (energy-007, zero collateral); aqua-028 still fails. Same measurement-correctness class as the 2026-06-08 items; no bar moves; REPORT.md dated addendum | `2331ffb` (#295) / `benchmarks/procedure_baseline/grader.py` |
 | 2026-06-12 | **First SCORED watch-lane run RECORDED — watch 97.4% (38/39); M-2=b arc COMPLETE (#288, `4c46a92`, session 57)** — `gpt-oss:20b`/MS-S1, 198 items, 318 calls, 0 errors, dump-VERIFIED (39/39 `watch_graded:true`); first production `run_detached.sh` run (sentinel as designed; watcher Monitor died silently + one false alarm — truth via content-based test). Aqua + energy 13/13; supply 12/13 — sole FAIL supply-040 (reroute @1.0 on an in-spec 7.8 °C) = `forbidden_keywords` discriminating as designed. β 98.3% (same two known misses; energy-007 U+2011 now ×3 → strengthens B-6). SD-2 p95 30.18s = +0.18s nominal, within the ±10s straddle band + classifier-contaminated; no bar moves (B-6) | `4c46a92` (#288) / `benchmarks/procedure_baseline/REPORT.md` |
-| 2026-06-12 | **Watch-lane ground truth PINNED — all 39 watch items (#286, `1bd6328`, session 57)** — Cray adjudicated the M-2=b pinning from the #273 calibration distribution: aqua canonical `start_emergency_aerator` + acceptable `[dispatch_technician, increase_water_exchange, escalate]`; energy canonical `restart` + acceptable `[dispatch_technician, escalate]` (`isolate` excluded → 'other'); supply_chain canonical `inspect` + acceptable `[hold, escalate]` + `forbidden_keywords [expedite, reroute]` declared (3/13 observed reroutes → forbidden). Dataset-only; the watch lane auto-flips unscored→scored; first SCORED run gated on a separate Cray go | `1bd6328` (#286) / `benchmarks/procedure_baseline/dataset/` |
 
 ## In-Flight Discussions
 
