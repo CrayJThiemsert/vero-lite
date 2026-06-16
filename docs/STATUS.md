@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-16T18:46:41+07:00
-session: 64
-current_batch: 'session-64 — B-γ executed end-to-end: PLAN-0027 Steps 2–5 (offline arms #339, ONE Cray-approved scored host-state run, B-3 REPORT #342) + goal-path test isolation #340 + arm-c case calibration #341. PLAN-0027 complete; PLAN-0019 Step B-γ / AC B-3 = DONE.'
+last_updated: 2026-06-16T21:08:33+07:00
+session: 65
+current_batch: 'session-65 — quick-wins backlog audit: shipped #344 (chore: remove stale PLAN-001 ontology/ scaffold; canon = verticals/<name>/ontology/ per ADR-006 D1 / ADR-008 D5). Audit found the other two "quick-wins" already resolved, not pending: PLAN-004 Phase B COMPLETE (session 35) + its warning-swallow bug fixed #312 (s58); phase-enum consultation plausibly satisfied by Phase.DISCUSSION (ADR-012). Active TODOs reconciled. Frontier (B-γ extension / verify+reshape) still Cray-routed.'
 current_actor: code
 blocked_on: 'Nothing blocks Code — no in-flight Code obligation. Held (unchanged): PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial, ADR-0021(c) future-triggered.'
-next_action: 'B-γ extension to aquaculture+supply_chain (D-5) OR verify+reshape forward-pointer (future ADR-016 area) — both Cray-routed/gated; no in-flight Code obligation.'
-head_commit: 0aee4eb
-recent_commits: [0aee4eb, cf645f7, 099d55b, 01370e5, 7d8a716, e41806a, 17863ef, a394342, aabddf2, b53c936]
+next_action: 'Pick frontier — B-γ extension to aquaculture+supply_chain (D-5) OR verify+reshape forward-pointer (future ADR-016 area); both Cray-routed/gated. Quick-wins backlog audited + reconciled this session (#344 shipped; remainder stale-not-pending).'
+head_commit: 4b08870
+recent_commits: [4b08870, 74a2a1d, 7d1cd33, c435b89, 0aee4eb, cf645f7, 099d55b, 01370e5, 7d8a716, e41806a]
 ---
 
 # vero-lite — Project Status
@@ -268,9 +268,8 @@ below, and git history.
 ## Active TODOs
 
 - [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten (full table: PLAN-0005 §8.1): rule-based recommender → **ADR-010 ACCEPTED (2026-05-22) → PLAN-0006 next** (LLM reasoning hook); minimal approval gate → **ADR-011+** (audit framework — trigger: first design-partner data / PDPA review); no mapping layer → **dbt/SQLMesh** (trigger: first non-synthetic source); hand-authored ORM → **"ORM emitter"** Rule-of-Three candidate (trigger: 3rd vertical / DDL↔ORM parity-test drift); base Postgres only → **PLAN-002** (pgvector/AGE — trigger: semantic + graph features); explicit registry → **ADR-006 D3 L2** (trigger: vertical #2/#3 or `new-vertical` generator). *(per Cray note 2026-05-21)*
-- [ ] **Phase-enum amendment** — add `consultation` (or equivalent Q&A-round value) to canonical Phase enum (Q15 of `2026-05-20-0245-code-plan003-pre-draft-consultation-reply.md`); requires touching `tools/handoffs/_schema.py` + `docs/conventions/handoff-frontmatter-schema.md` + validator tests; PLAN-004 Phase B adjacent. *(Deferred per R-9, 2026-05-20)*
-- [ ] **Cleanup stale `ontology/README.md`** — 2026-05-05 PLAN-001 artifact; ontology directory canon now lives at `verticals/<name>/ontology/<name>_v0.yaml` per ADR-006 D1 / ADR-008 D5; superseded by PLAN-003. *(Deferred per R-9 cohort, 2026-05-20)*
-- [ ] **PLAN-004 Phase B/C — DEFERRED (backlog, post-PLAN-003):** validator-scope exclusion (`README.md` / `_rename-map.md`, manifest §4.2/§6.1) + Cat G `references_*` autofix + Phase C handoff dashboard + OQ-2 systemic candidate (effective-vs-authored `status:` / archival flag so dead handoffs don't surface as actionable in the dashboard) + **validator warning-swallow bug** — `tools/handoffs/_schema.py` `_build()` (lines ~302–306) returns `Frontmatter` and discards its local `errors` list when no hard error exists, so `_check_unknown()` WARNING-severity findings (e.g. unknown field `brief-number`) are unreachable on otherwise-valid files; fix to surface warnings + add a regression test *(found 2026-05-22 dog-fooding the 4 Cowork LLM-hook handoffs; Cray routed → Phase B)*
+- [ ] **Phase-enum amendment — CANDIDATE FOR CLOSURE (session-65 audit):** the Q15 ask was to add `consultation` *(or equivalent Q&A-round value)* to the canonical `Phase` enum. `Phase.DISCUSSION` was since added (ADR-012 free-form capture) and plausibly **is** that equivalent value → likely already satisfied; note `Suffix.CONSULTATION` already exists (the *filename* token, a different axis). **Close pending a one-line Cray confirm** that `DISCUSSION` covers the consultation/Q&A-round lifecycle role — else add `Phase.CONSULTATION` (touches `tools/handoffs/_schema.py` + `docs/conventions/handoff-frontmatter-schema.md` + validator tests). *(Originally deferred per R-9, 2026-05-20; audited 2026-06-16 s65)*
+- [ ] **PLAN-004 Phase C — OPTIONAL POLISH (forward-declared; "may never land"):** HTML/markdown handoff dashboard under `docs/` + references-graph (mermaid dispatch chains) + `render_transcript.py` unified session export (PLAN-0004 §"Phase C"). *(Phase A + B both COMPLETE — session 35; the prior TODO's validator **warning-swallow bug was FIXED #312**, s58. Minor never-formally-scoped sub-ideas — README/`_rename-map` walk-exclusion, Cat G `references_*` autofix, OQ-2 effective-vs-authored `status:` dashboard flag — fold in only if Phase C lands. Reconciled 2026-06-16 s65 audit.)*
 - [ ] **ADR-NN (TBD, ≥ ADR-014) + PLAN-002** — Custom Postgres image with extensions (ADR-011 earmarked for the audit framework, ADR-012 taken, ADR-013 taken by autonomy axis relocation; floor bumped from ≥0013 to ≥0014 on 2026-05-23 per ADR-013 T6)
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
 - [ ] Extract `docs/conventions/git.md` from CLAUDE.md (low priority)
@@ -280,7 +279,7 @@ below, and git history.
 
 1. **PLAN-0005 §8.1 revisit register** — remaining deferred-foundational simplifications at their batch boundaries (audit framework → ADR-011+, mapping layer, ORM emitter, base-Postgres → PLAN-002 (≥ADR-014), registry discovery).
 2. **Partner-trial readiness gaps** — `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` awaits a dedicated Cray discussion.
-3. **Deferred (backlog)** — PLAN-004 Phase B (validator-scope exclusion; Cat G `references_*` autofix; validator warning-swallow bug) + Phase C (handoff dashboard); PLAN-002 custom Postgres image (≥ADR-014).
+3. **Deferred (backlog)** — PLAN-004 Phase C only (optional polish: handoff dashboard / references-graph / unified export — Phase B complete s35, warning-swallow fixed #312); PLAN-002 custom Postgres image (≥ADR-014).
 4. **Ongoing** — Continue exercising the file-based handoff mechanism (Chat ↔ Code ↔ Cowork) across batches.
 
 ## Update Workflow
