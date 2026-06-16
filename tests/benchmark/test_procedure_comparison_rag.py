@@ -165,6 +165,29 @@ def test_answer_to_judgment_falls_back_when_no_entity_named() -> None:
     assert judgment.affected_entities[0].primary_key == "∅"  # graded as an entity miss
 
 
+def test_answer_to_judgment_is_case_and_hyphen_insensitive() -> None:
+    """Measurement-correctness calibration (Cray-ratified 2026-06-16): a naive-RAG
+    answer that re-cases the key (capital ``Asset-``) and/or uses the U+2011
+    non-breaking hyphen still identified the right entity — the match normalizes
+    case + hyphen on both sides (the verbatim energy-001 smoke artifact)."""
+    # the verbatim energy-001 smoke artifact: capital "Asset" + the U+2011
+    # non-breaking hyphen (built via chr() so it is not a ruff confusable literal)
+    nbh = chr(0x2011)
+    artifact = f"**Asset{nbh}E01** breached; Restart (reset/reboot) Asset{nbh}E01 immediately."
+    judgment = answer_to_judgment(artifact, ["asset-E01", "asset-E02"])
+    keys = {entity.primary_key for entity in judgment.affected_entities}
+    assert keys == {"asset-E01"}  # recovered despite capital A + U+2011 hyphen
+
+
+def test_answer_to_judgment_case_norm_recovers_the_same_key_not_a_different_one() -> None:
+    """The normalization recovers the key the answer NAMED, never invents a
+    different one: naming only a decoy must still miss the expected entity (no
+    cross-entity false match from lowercasing)."""
+    judgment = answer_to_judgment("Asset-E02 looks fine.", ["asset-E01", "asset-E02"])
+    keys = {entity.primary_key for entity in judgment.affected_entities}
+    assert keys == {"asset-E02"}  # matched the decoy it named, NOT asset-E01
+
+
 async def test_correct_answer_grades_pass() -> None:
     client = _RagClient("Restart asset-E101 (reset / reboot) the affected asset.")
 

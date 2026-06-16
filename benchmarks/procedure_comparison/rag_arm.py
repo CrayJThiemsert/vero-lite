@@ -141,9 +141,19 @@ def answer_to_judgment(answer: str, candidate_keys: list[str]) -> LlmJudgment:
     universe that appear in the answer (the entity check), and the answer text as
     the action-keyword haystack. Reuses ``grade_proposal`` unchanged — never forks
     grading. A placeholder entity is used when the answer named none, so a vague
-    answer grades as an entity miss (not a validation error)."""
-    normalized = normalize_primary_key(answer)
-    found = [key for key in candidate_keys if normalize_primary_key(key) in normalized]
+    answer grades as an entity miss (not a validation error).
+
+    The free-text entity match is **hyphen- and case-normalized** on both sides: a
+    naive-RAG answer legitimately re-cases the key (``Asset-E01`` at the start of a
+    label) and emits the U+2011 non-breaking hyphen — neither is a model error
+    identifying the wrong entity. This is a measurement-correctness calibration
+    (Cray-ratified before the scored run, 2026-06-16), the free-text analogue of
+    the procedure-baseline grader's ``normalize_primary_key`` hyphen calibration;
+    it only governs how arm (c)'s text is adapted, never the shared
+    ``grade_proposal`` logic, and it tightens nothing in the baseline's favour
+    (it can only *recover* a correctly-named entity, never invent one)."""
+    normalized = normalize_primary_key(answer).lower()
+    found = [key for key in candidate_keys if normalize_primary_key(key).lower() in normalized]
     entities = [EntityRef(object_type="Asset", primary_key=key) for key in found]
     if not entities:
         entities = [EntityRef(object_type="Asset", primary_key=_NO_ENTITY)]
