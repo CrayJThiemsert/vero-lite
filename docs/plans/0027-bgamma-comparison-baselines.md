@@ -1,7 +1,7 @@
 ---
 plan: PLAN-0027
 title: B-γ comparison methodology pre-registration + offline build plan — governed-procedure stack vs raw text-to-SQL vs lean RAG (PLAN-0019 Step B-γ / AC B-3)
-status: Draft — pre-registration awaiting Cray ratification
+status: Ready for execution — §3–§4 ratified (Cray, 2026-06-16)
 owner: Claude Code
 created: 2026-06-16
 related_plans:
@@ -48,7 +48,7 @@ authored_by: plan-drafter subagent (in-harness; ADR-009 D1 interim authoring und
 
 ## 1. Status
 
-**Draft — pre-registration awaiting Cray ratification.** Per PLAN-0019 B-6
+**Ready for execution — §3–§4 ratified by Cray (2026-06-16); SD-1…SD-4 resolved (§8).** Per PLAN-0019 B-6
 (anti moving-target), the methodology in §3–§4 below must be **Cray-ratified
 BEFORE the scored host-state run** (Step 4). The build (Step 2) and the offline
 mock gate (Step 3) may proceed once the pre-registration is ratified; the live
@@ -336,9 +336,18 @@ drafter holds no execution or commit authority.
 
 ## 8. Surfaced decisions (for Cray — do NOT silently resolve)
 
-> SD-5 is **RESOLVED/RATIFIED** (recorded below as resolved, not open) — it
-> carries the binding D-6 contamination guard. SD-1..SD-4 are open and
-> adjudicated at the §3–§4 ratification (Step 1), BEFORE the scored run (B-6).
+> **ALL SDs RESOLVED/RATIFIED (Cray, 2026-06-16 — §3–§4 ratification, Step 1).**
+> SD-1…SD-4 are ratified **per the recommendations as written below** (SD-5 was
+> already resolved). **Joint binding (SD-1 ↔ SD-2 — Cowork advisory, Cray-ratified):**
+> under the locked lexical retriever (D-4, no embeddings) arm (c) is bounded by the
+> lexical overlap between the SD-2 question template and the SD-1 corpus snippet, so
+> SD-1 and SD-2 are ratified as **ONE joint item** — the corpus snippets MUST share
+> surface vocabulary (entity-type words + action verbs) with the question template,
+> AND every breach item's expected `action_keywords` lemma MUST be covered by ≥1
+> corpus snippet. Otherwise an arm (c) miss is a *retrieval artifact* (externally
+> rebuttable), not a naive-RAG-paradigm limit. This is arm (c)'s fairness guarantee
+> for the comparison's external defensibility; it stays within the corpus + prompt
+> levers (D-6 intact). **Step 2 build MUST honor it.** Recorded — not re-opened (B-6).
 
 - **SD-1 — RAG corpus content + size (arm c).** *Recommendation:* **~8–15 short
   snippets** — the energy `energy_v0.yaml` threshold rule + playbook entries for
