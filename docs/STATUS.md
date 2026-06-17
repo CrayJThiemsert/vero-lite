@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-17T08:43:09+07:00
+last_updated: 2026-06-17T09:28:51+07:00
 session: 65
-current_batch: 'session-65 — PLAN-0028 (B-γ extension) §8 Cray-RATIFIED: OQ-3 nudged 100% (+ report 60→100 range); OQ-1 R-OQ1-1..4 + OQ-2/4/5 per rec. Methodology delta now FIXED (B-6). Step 2 (offline build: aquaculture+supply_chain corpora over+under + 3 parameterizations [persona/unit/threshold-noun] + per-vertical mock tests) is UNGATED — Code executing. PLAN minted #347 (plan-drafter body → Cowork OQ-1 re-look + materialize → Code R2-review + commit). (PLAN-file status-flip to Accepted routes to Cowork — G1-gated for Code self-edit.) Earlier: quick-wins audit (#344/#345/#346).'
+current_batch: 'session-65 — PLAN-0028 (B-γ extension) Step 2 + Step 3 SHIPPED (#350, 244e484): data-driven harness (Cray-approved — derive every vertical-term from Scenario/Dataset so vertical #4+ needs no template change; energy byte-identical by derivation) + aquaculture_v0 + supply_chain_v0 corpora (joint binding over+under, parity disambiguation) + ARM_A_AQUACULTURE/SUPPLY_CHAIN reused per D-2/OQ-3 + per-vertical mock tests. OFFLINE GATE GREEN: ruff + mypy --strict clean; full suite 1591 passed / 22 skipped; energy regression byte-identical. AC-2/3/4/5 done offline. §8 ratified earlier (#349); PLAN minted #347. Awaiting Cray host-state go for Step 5.'
 current_actor: code
-blocked_on: 'Step 2/3 (offline build + gate) UNGATED (§8 ratified). Step 5 host-state scored run (ONE combined sweep, gpt-oss:20b, §8) needs a SEPARATE Cray go. PLAN-0028 file status-flip to Accepted → Cowork (G1-gated for Code). Held (unchanged): PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial, ADR-0021(c) future-triggered.'
-next_action: 'Code: execute PLAN-0028 Step 2 (offline build — aquaculture_v0.yaml + supply_chain_v0.yaml honoring the joint binding over+under; parameterize questions.py persona/unit/threshold-noun; per-vertical mock-ChatClient tests) → Step 3 offline gate (energy regression byte-identical) → request Cray host-state go for the ONE combined scored run (Step 5, §8).'
-head_commit: 7ed2ebb
-recent_commits: [7ed2ebb, 4a9af81, 235ee9f, 89eab42, 38de3aa, 86561e5, 4b08870, 74a2a1d, 7d1cd33, c435b89]
+blocked_on: 'PLAN-0028 Step 5 — the ONE combined host-state scored sweep (gpt-oss:20b on MS-S1, warm-first, §8) needs a SEPARATE explicit Cray go; Code is HOLDING at the host-state gate (offline gate already green). PLAN-0028 file status-flip to Accepted → Cowork (G1). Held (unchanged): PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial, ADR-0021(c) future-triggered.'
+next_action: 'Cray: host-state go for PLAN-0028 Step 5 (ONE combined scored sweep — aquaculture + supply_chain breach subsets, gpt-oss:20b @ MS-S1, warm-first, --dump-json). Then Code runs Step 5 → VERIFY every score from --dump-json via the Read tool → Step 6 REPORT B-3 per-vertical extension (test/* PR).'
+head_commit: 244e484
+recent_commits: [244e484, 9f29872, e3c0910, b5dffb1, 6dd3186, 436065c, 7ed2ebb, 4a9af81, 235ee9f, 89eab42]
 ---
 
 # vero-lite — Project Status
