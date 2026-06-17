@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-17T15:27:05+07:00
+last_updated: 2026-06-17T16:13:14+07:00
 session: 67
-current_batch: 'session-67 Phase 1 (#2 ratify-flips) — PLAN-0028 (B-γ extension aquaculture + supply_chain) and PLAN-0029 (entity-key whitespace calibration + offline re-grade) flipped Proposed (draft) → Accepted (Cray ratified in-session 2026-06-17) + git mv to docs/plans/done/. Cowork applied the status-flip + ratification record (ADR-009 D1, G1-clean on Desktop); Code committed per ADR-009 D2 (#357, 1cda40f / flip 3d5e2af). Both PLANs document already-complete, already-Cray-approved work — a formal flip, not new work. Closes the PLAN-0028/0029 governance loop; both moats'' source PLANs are now archived.'
+current_batch: 'session-67 Phase 1 (#2 ratify-flips) — PLAN-0028 (B-γ extension aquaculture + supply_chain) and PLAN-0029 (entity-key whitespace calibration + offline re-grade) flipped Proposed (draft) → Accepted (Cray ratified in-session 2026-06-17) + git mv to docs/plans/done/. Cowork applied the status-flip + ratification record (ADR-009 D1, G1-clean on Desktop); Code committed per ADR-009 D2 (#357, 1cda40f / flip 3d5e2af). Both PLANs document already-complete, already-Cray-approved work — a formal flip, not new work. Closes the PLAN-0028/0029 governance loop; both moats'' source PLANs are now archived. Phase 2 kicked off: ADR-0022 (governed entity resolution — resolve a model-emitted EntityRef.primary_key against the declared object universe; the universality lever PLAN-0029 routed out) authored by Cowork + committed Proposed (#359, 9ce1289), design-first with the design fork left OPEN (Fork 3 = D-6 guard binding) — awaits Cray ratification, then a separate PLAN-0030.'
 current_actor: code
-blocked_on: 'Nothing blocks Code. PLAN-0028 + PLAN-0029 now Accepted + archived (#357). Remaining backlog is all Cowork-routed / Cray-gated — see next_action.'
-next_action: 'Session-67 Phase 2 — the universality track (per the session-66 closeout handoff …1405…): (1) Cowork drafts the governed-entity-resolution ADR (resolve LLM-emitted EntityRef against the declared object universe) design-first — Cray ratifies the construct + design-fork BEFORE any PLAN-0030 build (mirror the ADR-0021(b) flow); scope it together with Group-A A1 (verify+reshape) as ONE ADR-016-area construct. (2) Cowork research scopes vertical #3 (high semantic distance, Rule-of-Three) in parallel — gates Group B. Then Phase 3 = Group A (A1 + A2). All Cowork-routed / Cray-gated.'
-head_commit: 1cda40f
-recent_commits: [1cda40f, 3d5e2af, d3e8daf, 8c89be6, 7275a69, d48b770, dd50dd0, 1eb6856, e5f9774, 1ada20d]
+blocked_on: 'Nothing blocks Code. ADR-0022 (governed entity resolution) committed Proposed (#359, 9ce1289) — awaits Cray ratification (resolves the design fork: universe source + non-resolving-PK behaviour). PLAN-0028 + PLAN-0029 Accepted + archived (#357). Remaining backlog all Cowork-routed / Cray-gated — see next_action.'
+next_action: 'Session-67 Phase 2 — the universality track (per the session-66 closeout handoff …1405…): (1) ADR-0022 (governed entity resolution) is now Proposed on main (#359) — Cray ratifies Proposed→Accepted, resolving the design fork (Fork 1 universe source: event-candidates / DB-ontology-lookup / deterministic-subject; Fork 2 non-resolving-PK: drop / flag / fall-back / reject; Fork 3 D-6 guard is binding) + the D3 framing (α one-construct recommended) → then a separate Cowork dispatch authors PLAN-0030 to build the entity-resolution slice. (2) Cowork research scopes vertical #3 (high semantic distance, Rule-of-Three) in parallel — gates Group B. Then Phase 3 = Group A (A1 + A2). All Cowork-routed / Cray-gated.'
+head_commit: 9ce1289
+recent_commits: [9ce1289, a258739, d966f38, d84422a, 1cda40f, 3d5e2af, d3e8daf, 8c89be6, 7275a69, d48b770]
 ---
 
 # vero-lite — Project Status
@@ -37,10 +37,13 @@ recent_commits: [1cda40f, 3d5e2af, d3e8daf, 8c89be6, 7275a69, d48b770, dd50dd0, 
 > **status-flip on existing complete PLANs**, not new-plan drafting; Code
 > declined per the hook's override clause (reinforces the parked
 > G2-drafting-friction root-fix — now a durable Active TODO). **Frontier:**
-> Phase 2 = the universality track (the governed-entity-resolution ADR scoped
-> together with Group-A A1, plus vertical-#3 research) — all **Cowork-routed /
-> Cray-gated**. Nothing blocks Code. AI-assisted (Claude Code, session 67); no
-> `Co-Authored-By` per CLAUDE.md §7.
+> Phase 2 kicked off — **ADR-0022 (governed entity resolution) authored by Cowork
+> + committed Proposed (#359, `9ce1289`)**, design-first with the §Design fork left
+> OPEN (Fork 3 = D-6 guard binding); scoped as one ADR-016-area construct also
+> housing Group-A A1 (verify+reshape). **Awaits Cray ratification** (resolves the
+> fork) → then a separate Cowork dispatch authors PLAN-0030; vertical-#3 research
+> runs in parallel — all **Cowork-routed / Cray-gated**. Nothing blocks Code.
+> AI-assisted (Claude Code, session 67); no `Co-Authored-By` per CLAUDE.md §7.
 
 > **Session 66 (current; head_commit `e5f9774`) — PLAN-0028 Step 5 RAN + VERIFIED;
 > PLAN-0029 (entity-key whitespace calibration) minted + implemented; canonical B-γ
