@@ -159,6 +159,37 @@ def test_unicode_hyphen_does_not_mask_a_real_pk_mismatch() -> None:
     assert not grade.passed
 
 
+def test_unicode_whitespace_separator_in_entity_pk_normalizes_to_a_match() -> None:
+    """The B-γ scored-run aqua-h06 case (PLAN-0029 calibration, Cray-ratified
+    2026-06-17): the model named the right pond 'pond-A116' but with a U+202F
+    NARROW NO-BREAK SPACE in place of the hyphen. A separator-glyph variant is
+    not an entity-identity error: key comparison folds the whitespace-separator
+    family to ASCII '-'."""
+    expected = Expected(
+        disposition=Disposition.BREACH, action_expected=True, affected_primary_key="pond-A116"
+    )
+    judgment = _judgment(
+        affected_entities=[{"object_type": "Pond", "primary_key": "pond" + chr(0x202F) + "A116"}]
+    )
+    grade = grade_proposal(judgment, expected)
+    assert grade.passed
+    check = next(c for c in grade.checks if c.name == "affected_primary_key")
+    assert check.passed
+
+
+def test_unicode_whitespace_separator_does_not_mask_a_real_pk_mismatch() -> None:
+    """The fold fixes the separator glyph, not the identity — a wrong key with a
+    whitespace separator still fails (recover-only / never-invent)."""
+    expected = Expected(
+        disposition=Disposition.BREACH, action_expected=True, affected_primary_key="pond-A116"
+    )
+    judgment = _judgment(
+        affected_entities=[{"object_type": "Pond", "primary_key": "pond" + chr(0x202F) + "A117"}]
+    )
+    grade = grade_proposal(judgment, expected)
+    assert not grade.passed
+
+
 def test_unicode_hyphen_decoy_still_trips_the_precision_check() -> None:
     """Normalization applies to forbidden_primary_keys too: naming a decoy
     sibling with a Unicode hyphen still counts as naming the decoy."""

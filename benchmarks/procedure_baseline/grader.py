@@ -67,20 +67,39 @@ def classify_disposition(scenario: Scenario) -> Disposition:
 _UNICODE_HYPHENS = dict.fromkeys((0x2010, 0x2011, 0x2012, 0x2013, 0x2014, 0x2212), "-")
 """Unicode hyphen/dash variants (U+2010..U+2014, U+2212) mapped to ASCII ``-``."""
 
+_UNICODE_KEY_SEPARATORS = dict.fromkeys((0x0020, 0x00A0, 0x2007, 0x202F, 0x2060), "-")
+"""Whitespace-as-separator variants mapped to ASCII ``-``: ASCII SPACE (U+0020),
+NO-BREAK SPACE (U+00A0), FIGURE SPACE (U+2007), NARROW NO-BREAK SPACE (U+202F),
+WORD JOINER (U+2060)."""
+
+_KEY_NORMALIZE = {**_UNICODE_HYPHENS, **_UNICODE_KEY_SEPARATORS}
+"""Combined KEY-comparison fold: the hyphen family + the whitespace-separator
+family, both folded to ASCII ``-``."""
+
 
 def normalize_primary_key(key: str) -> str:
-    """Map Unicode hyphen/dash variants to ASCII ``-`` before key comparison.
+    """Fold Unicode hyphen/dash AND whitespace-as-separator variants to ASCII ``-``
+    before primary-KEY comparison. Recover-only: it can only recover a
+    correctly-named entity, never invent a different one.
 
     B-6 grader calibration, Cray-ratified 2026-06-12: the model intermittently
     emits U+2011 NON-BREAKING HYPHEN inside otherwise-correct entity keys
     (``asset-E07`` emitted with U+2011 in place of the ASCII hyphen — three
     dump-verified occurrences across runs: energy-007 twice, energy-027 once).
-    An entity-identity miss on a glyph variant is a grader artifact, not a
-    model error, so primary-KEY comparisons normalize the hyphen family on
-    both sides. Free-text matching (``action_keywords``/``forbidden_keywords``)
-    is deliberately NOT normalized — no evidence of need.
+
+    PLAN-0029 extension, Cray-ratified 2026-06-17: the model also emits a
+    *whitespace* separator where the key has a hyphen — dump-verified on the B-γ
+    scored run, aqua-h06 (``pond-A116`` named with a U+202F NARROW NO-BREAK SPACE
+    in place of the hyphen), which the hyphen-only fold missed (graded an entity
+    miss on a correctly-named pond). The whitespace-separator family (U+0020,
+    U+00A0, U+2007, U+202F, U+2060) folds to ASCII ``-`` too — same standard: a
+    separator-glyph variant is a grader artifact, not an entity-identity error.
+
+    Applies to primary-KEY comparison on both sides. Free-text matching
+    (``action_keywords``/``forbidden_keywords``) is deliberately NOT normalized —
+    no evidence of need.
     """
-    return key.translate(_UNICODE_HYPHENS)
+    return key.translate(_KEY_NORMALIZE)
 
 
 class HandlerTier(StrEnum):

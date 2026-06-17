@@ -188,6 +188,28 @@ def test_answer_to_judgment_case_norm_recovers_the_same_key_not_a_different_one(
     assert keys == {"asset-E02"}  # matched the decoy it named, NOT asset-E01
 
 
+def test_answer_to_judgment_recovers_a_whitespace_separated_key() -> None:
+    """The B-γ scored-run aqua-h06 case (PLAN-0029 calibration, Cray-ratified
+    2026-06-17): a freeform RAG answer named the right pond 'pond-A116' but wrote
+    it 'Pond<U+202F>A116' (NARROW NO-BREAK SPACE separator), which the hyphen-only
+    fold missed. The whitespace-separator family folds to '-' for key matching."""
+    nnbsp = chr(0x202F)
+    artifact = f"**Affected pond:** Pond{nnbsp}A116\n**Recommended action:** aerate immediately."
+    judgment = answer_to_judgment(artifact, ["pond-A116", "pond-A117", "pond-A118"])
+    keys = {entity.primary_key for entity in judgment.affected_entities}
+    assert keys == {"pond-A116"}  # recovered despite the U+202F separator
+
+
+def test_answer_to_judgment_whitespace_norm_recovers_named_key_not_a_different_one() -> None:
+    """The whitespace fold recovers the key the answer NAMED, never invents a
+    different one: naming only a decoy (with a whitespace separator) must still
+    miss the expected entity."""
+    nnbsp = chr(0x202F)
+    judgment = answer_to_judgment(f"Pond{nnbsp}A117 looks fine.", ["pond-A116", "pond-A117"])
+    keys = {entity.primary_key for entity in judgment.affected_entities}
+    assert keys == {"pond-A117"}  # matched the decoy it named, NOT pond-A116
+
+
 async def test_correct_answer_grades_pass() -> None:
     client = _RagClient("Restart asset-E101 (reset / reboot) the affected asset.")
 
