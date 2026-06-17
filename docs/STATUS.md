@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-16T21:08:33+07:00
+last_updated: 2026-06-17T08:00:00+07:00
 session: 65
-current_batch: 'session-65 — quick-wins backlog audit: shipped #344 (chore: remove stale PLAN-001 ontology/ scaffold; canon = verticals/<name>/ontology/ per ADR-006 D1 / ADR-008 D5). Audit found the other two "quick-wins" already resolved, not pending: PLAN-004 Phase B COMPLETE (session 35) + its warning-swallow bug fixed #312 (s58); phase-enum consultation plausibly satisfied by Phase.DISCUSSION (ADR-012). Active TODOs reconciled. Frontier (B-γ extension / verify+reshape) still Cray-routed.'
+current_batch: 'session-65 — PLAN-0028 (B-γ extension to aquaculture+supply_chain) MINTED as Proposed draft (#347, 7ed2ebb): plan-drafter authored the body → Cowork led the OQ-1 external-grade RAG-fairness re-look (R-OQ1-1..4, within corpus+prompt levers, D-6 intact) + materialized → Code R2-reviewed (verified the "ceiling" template-neutrality fix + the _reduced_expected looser-grade disclosure live) + committed per ADR-009 D2. Awaits Cray ratify §8 before Step 2. Earlier this session: quick-wins audit (#344 ontology cleanup, #345 STATUS reconcile, #346 phase-enum close).'
 current_actor: code
-blocked_on: 'Nothing blocks Code — no in-flight Code obligation. Held (unchanged): PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial, ADR-0021(c) future-triggered.'
-next_action: 'Pick frontier — B-γ extension to aquaculture+supply_chain (D-5) OR verify+reshape forward-pointer (future ADR-016 area); both Cray-routed/gated. Quick-wins backlog audited + reconciled this session (#344 shipped; remainder stale-not-pending).'
-head_commit: 4b08870
-recent_commits: [4b08870, 74a2a1d, 7d1cd33, c435b89, 0aee4eb, cf645f7, 099d55b, 01370e5, 7d8a716, e41806a]
+blocked_on: 'Code is at the PLAN-0028 ratify gate — Step 2 (offline build) is GATED on Cray ratifying the methodology delta (§8 / AC-1 / B-6: the two corpora + three parameterizations); Step 5 host-state run needs a separate Cray go (§8). Held (unchanged): PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial, ADR-0021(c) future-triggered.'
+next_action: 'Cray: ratify PLAN-0028 §8 — the OQ-1 re-look outcome (R-OQ1-1..4) + OQ-2/3/4/5 — fixing the methodology delta BEFORE any build (B-6). Then Code executes Step 2 (offline build, ungated) → Step 3 offline gate → ONE Cray-gated scored run (Step 5, §8).'
+head_commit: 7ed2ebb
+recent_commits: [7ed2ebb, 4a9af81, 235ee9f, 89eab42, 38de3aa, 86561e5, 4b08870, 74a2a1d, 7d1cd33, c435b89]
 ---
 
 # vero-lite — Project Status
