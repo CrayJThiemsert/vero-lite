@@ -1,0 +1,90 @@
+# SD-1 lean supply_chain RAG corpus for B-γ arm (c) (PLAN-0027 D-4 / SD-5; PLAN-0028).
+#
+# A small STATIC fixture (deterministic; no network): the supply_chain ontology
+# cold-chain over-temperature threshold rule + action-playbook snippets for the
+# supply_chain action vocabulary {hold, inspect, escalate} (with quarantine / divert as
+# breach dispositions). It is the ONLY fairness lever for arm (c) under the D-6
+# contamination guard (corpus richness + the SD-2 prompt — no procedure/ontology/verify
+# layer). Structural parity with corpus/energy_v0.yaml (R-OQ1-1): same snippet KINDS,
+# sized to the supply_chain action vocabulary.
+#
+# A shipment temperature breaches ABOVE the 8.0 degrees Celsius cold-chain ceiling
+# (direction=above) — the same shape as energy's over-temperature breach.
+#
+# JOINT SD-1 ↔ SD-2 BINDING (Cray-ratified 2026-06-16; PLAN-0028 §3.2/§3.5, honored):
+#   1. UNDER-cover: the snippets share surface vocabulary (entity word "shipment", the
+#      reading parameter "temperature", the verbs "hold"/"inspect"/"quarantine"/"divert",
+#      "above"/"ceiling"/"breach"/"excursion") with the SD-2 question template, so the
+#      deterministic lexical retriever surfaces the relevant snippet; every breach item's
+#      action_keywords lemma — supply_chain is [hold, inspect, quarantine, divert] — is
+#      covered by >=1 snippet (the consolidated `playbook-hold`). Otherwise an arm (c)
+#      miss would be a *retrieval artifact*, not a naive-RAG limit.
+#   2. OVER-cover guard (R-OQ1-4): NO snippet names a dataset entity key (ship-S##) or
+#      hands the model the per-item answer — snippets state the RULE / playbook, so arm
+#      (c) must still pick the breached shipment from the readings AND map the breach to
+#      the action class.
+#   Parity disambiguation (R-OQ1-4): the dangerous near-miss for a cold-chain excursion
+#   is REROUTE / EXPEDITE (the datasets' forbidden_keywords [reroute, expedite]) —
+#   keeping a possibly-spoiled load moving — `near-miss-reroute` marks it the wrong
+#   action, mirroring energy's isolate/escalate "not the first-line action"
+#   disambiguation (NOT over-help — it names no entity and no per-item answer).
+#
+# NOT included (SD-1 ratified recommendation): event/reading ROWS — the readings reach
+# arm (c) through the SD-2 question, not the corpus.
+
+snippets:
+  - id: threshold-overtemp
+    text: >-
+      Cold-chain over-temperature rule: when a shipment's temperature reading is at or
+      above the 8.0 degrees Celsius cold-chain ceiling, the reading is a breach (a
+      cold-chain excursion) and requires an operator action. A reading between 6.5 and
+      8.0 degrees Celsius is a watch (no action yet); below 6.5 is ok.
+  - id: entity-shipment
+    text: >-
+      A shipment is a temperature-controlled consignment moving through the cold chain.
+      Its temperature is reported in degrees Celsius on the shipment's latest reading; a
+      high reading means the load has warmed past its safe limit.
+  - id: playbook-hold
+    text: >-
+      Playbook for a cold-chain over-temperature breach (a cold-chain excursion): hold
+      the affected shipment. The canonical recovery action when a shipment's temperature
+      is above the ceiling is to hold (stop) the breached shipment and inspect it, then
+      quarantine or divert the load after a human go/no-go — never let a possibly-spoiled
+      shipment continue.
+  - id: playbook-hold-why
+    text: >-
+      Holding and inspecting an over-temperature shipment contains the risk: a load that
+      breached the cold-chain ceiling may be spoiled, so quarantining or diverting it
+      protects downstream consignees. Prefer a hold over passively forwarding the
+      shipment when the temperature breach is acute (above the 8.0 degrees Celsius ceiling).
+  - id: playbook-inspect
+    text: >-
+      Inspect: check the breached shipment's condition and temperature log to decide
+      whether to quarantine or divert the load. Inspection is part of the hold response,
+      not a substitute for stopping an over-temperature shipment.
+  - id: playbook-escalate
+    text: >-
+      Escalate: raise the incident to a supervisor when the cold-chain excursion is
+      severe, repeated, or the hold did not contain the load. Escalation is a governance
+      step, not the first recovery action.
+  - id: watch-guidance
+    text: >-
+      Watch-band guidance: a shipment whose temperature sits between 6.5 and 8.0 degrees
+      Celsius is approaching the ceiling but has not breached. Keep it under watch; do
+      not hold a watch-band shipment.
+  - id: action-vocab
+    text: >-
+      The supply_chain action vocabulary is hold, inspect, quarantine, divert, and
+      escalate. On a cold-chain over-temperature breach the recommended action class is
+      to hold (and inspect, quarantine, or divert) the affected shipment.
+  - id: false-positive
+    text: >-
+      Do not propose an action on a nominal shipment. A shipment reading below 6.5
+      degrees Celsius is ok and needs no hold, inspection, quarantine, divert, or
+      escalation.
+  - id: near-miss-reroute
+    text: >-
+      Rerouting or expediting is not the response to a cold-chain excursion: speeding up
+      or re-routing a possibly-spoiled shipment keeps a bad load moving toward
+      consignees. On a breach, hold and inspect the shipment — do not reroute or expedite
+      it.

@@ -41,6 +41,15 @@ def _edge(direction: str) -> str:
     return "at or above" if direction == "above" else "at or below"
 
 
+def _threshold_noun(direction: str) -> str:
+    """The threshold's noun, **derived from the breach direction** (not a per-vertical
+    hardcode): an ``above`` breach crosses a *ceiling*, a ``below`` breach a *floor*.
+    Data-driven so a new vertical needs no template change — energy/supply_chain are
+    ``above`` (→ "ceiling", byte-identical to the pre-data-driven renderer); aquaculture
+    is ``below`` (→ "floor", the R-OQ1-3 template-neutrality fix)."""
+    return "ceiling" if direction == "above" else "floor"
+
+
 def render_sql_question(scenario: Scenario, reading_parameter: str) -> str:
     """Arm (b) discovery question — the model must FIND the breached entity via SQL.
 
@@ -51,7 +60,8 @@ def render_sql_question(scenario: Scenario, reading_parameter: str) -> str:
     entity = scenario.entity_type.lower()
     return (
         f"Which {entity} has a {reading_parameter} reading {_edge(scenario.direction)} "
-        f"the {_fmt_number(scenario.threshold)} {_unit_phrase(scenario.unit)} ceiling? "
+        f"the {_fmt_number(scenario.threshold)} {_unit_phrase(scenario.unit)} "
+        f"{_threshold_noun(scenario.direction)}? "
         f"Return the affected {entity}."
     )
 
@@ -63,13 +73,14 @@ def render_rag_question(scenario: Scenario, reading_parameter: str) -> str:
     """
     entity = scenario.entity_type.lower()
     unit = _unit_phrase(scenario.unit)
+    noun = _threshold_noun(scenario.direction)
     readings: list[tuple[str, float]] = [(scenario.primary_key, scenario.measured_value)]
     readings += [(decoy.primary_key, decoy.measured_value) for decoy in scenario.distractors]
     reading_list = "; ".join(f"{pk} = {_fmt_number(value)} {unit}" for pk, value in readings)
     return (
         f"{entity.capitalize()} {reading_parameter} readings — {reading_list}. The "
-        f"{reading_parameter} ceiling is {_fmt_number(scenario.threshold)} {unit} (a "
-        f"breach is a reading {_edge(scenario.direction)} the ceiling). Which {entity} "
+        f"{reading_parameter} {noun} is {_fmt_number(scenario.threshold)} {unit} (a "
+        f"breach is a reading {_edge(scenario.direction)} the {noun}). Which {entity} "
         f"has a {reading_parameter} breach, and what should we do about it?"
     )
 

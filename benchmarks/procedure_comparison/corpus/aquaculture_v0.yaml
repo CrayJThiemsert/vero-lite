@@ -1,0 +1,94 @@
+# SD-1 lean aquaculture RAG corpus for B-γ arm (c) (PLAN-0027 D-4 / SD-5; PLAN-0028).
+#
+# A small STATIC fixture (deterministic; no network): the aquaculture ontology
+# low-dissolved-oxygen (DO) threshold rule + action-playbook snippets for the
+# aquaculture action vocabulary {start_emergency_aerator, increase_water_exchange,
+# dispatch_technician, escalate}. It is the ONLY fairness lever for arm (c) under the
+# D-6 contamination guard (corpus richness + the SD-2 prompt — no procedure/ontology/
+# verify layer). Structural parity with corpus/energy_v0.yaml (R-OQ1-1): same snippet
+# KINDS, sized to the aquaculture action vocabulary.
+#
+# DO is a CRASH signal: it breaches BELOW the 4.0 mg/L floor (direction=below) — the
+# one substantive domain difference from energy/supply_chain's above-ceiling breach.
+#
+# JOINT SD-1 ↔ SD-2 BINDING (Cray-ratified 2026-06-16; PLAN-0028 §3.2/§3.5, honored):
+#   1. UNDER-cover: the snippets share surface vocabulary (entity word "pond", the
+#      reading parameter "dissolved oxygen", the verbs "aerate"/"aeration"/"oxygenate",
+#      "below"/"floor"/"breach") with the SD-2 question template, so the deterministic
+#      lexical retriever surfaces the relevant snippet; every breach item's
+#      action_keywords lemma — aquaculture is [aerat, oxygenat] — is covered by >=1
+#      snippet (the consolidated `playbook-aerate`). Otherwise an arm (c) miss would be
+#      a *retrieval artifact*, not a naive-RAG limit.
+#   2. OVER-cover guard (R-OQ1-4): NO snippet names a dataset entity key (pond-A##) or
+#      hands the model the per-item answer — snippets state the RULE / playbook, so arm
+#      (c) must still pick the crashed pond from the readings AND map the breach to the
+#      action class.
+#   Parity disambiguation (R-OQ1-4): the dangerous near-miss for a DO crash is FEEDING
+#   (the datasets' forbidden_keywords [feed]) — `near-miss-feed` marks it the wrong
+#   action, mirroring energy's isolate/escalate "not the first-line action"
+#   disambiguation (NOT over-help — it names no entity and no per-item answer).
+#
+# NOT included (SD-1 ratified recommendation): event/reading ROWS — the readings reach
+# arm (c) through the SD-2 question, not the corpus.
+
+snippets:
+  - id: threshold-low-do
+    text: >-
+      Low-dissolved-oxygen rule: when a pond's dissolved oxygen reading is at or below
+      the 4.0 mg/L floor, the reading is a breach (an oxygen crash) and requires an
+      operator action. A reading between 4.0 and 5.0 mg/L is a watch (no action yet);
+      above 5.0 mg/L is ok.
+  - id: entity-pond
+    text: >-
+      A pond is a physical aquaculture grow-out unit stocked with animals. Its
+      dissolved oxygen is reported in mg/L on the pond's latest water-quality reading;
+      a low reading means the water is starved of oxygen.
+  - id: playbook-aerate
+    text: >-
+      Playbook for a dissolved-oxygen breach (an oxygen crash): aerate the affected
+      pond. The canonical recovery action when a pond's dissolved oxygen is below the
+      floor is to start emergency aeration (aerate, also called oxygenate) of the
+      breached pond after a human go/no-go, then confirm the dissolved oxygen returns
+      above the floor.
+  - id: playbook-aerate-why
+    text: >-
+      Aerating (oxygenating) a crashed pond drives oxygen back into the water and stops
+      the animals suffocating. Prefer emergency aeration over passive deferral — do not
+      merely monitor or schedule — when the dissolved-oxygen breach is acute (below the
+      4.0 mg/L floor).
+  - id: playbook-water-exchange
+    text: >-
+      Increase water exchange: exchanging the pond's water with fresh oxygen-bearing
+      water is an acceptable secondary remedy for a dissolved-oxygen crash, alongside
+      emergency aeration. It is a supporting action, not a replacement for aerating an
+      acute crash.
+  - id: playbook-dispatch
+    text: >-
+      Dispatch a technician: send a field technician when a pond needs physical
+      inspection, or when the oxygen crash persists after aeration. A dispatch is a
+      follow-up step, not the immediate action on a fresh dissolved-oxygen crash.
+  - id: playbook-escalate
+    text: >-
+      Escalate: raise the incident to a supervisor when the oxygen crash is severe,
+      repeated, or aeration did not recover the pond. Escalation is a governance step,
+      not the first recovery action.
+  - id: watch-guidance
+    text: >-
+      Watch-band guidance: a pond whose dissolved oxygen sits between 4.0 and 5.0 mg/L
+      is low but has not crashed. Keep it under watch; do not start emergency aeration
+      on a watch-band pond.
+  - id: action-vocab
+    text: >-
+      The aquaculture action vocabulary is start_emergency_aerator,
+      increase_water_exchange, dispatch_technician, and escalate. On a dissolved-oxygen
+      crash the recommended action class is to aerate (oxygenate) the affected pond.
+  - id: false-positive
+    text: >-
+      Do not propose an action on a healthy pond. A pond reading above 5.0 mg/L of
+      dissolved oxygen is ok and needs no aeration, water exchange, dispatch, or
+      escalation.
+  - id: near-miss-feed
+    text: >-
+      Feeding is not the response to an oxygen crash: adding feed raises the oxygen
+      demand and makes a dissolved-oxygen breach worse. On a crash, aerate the pond —
+      do not feed it.
