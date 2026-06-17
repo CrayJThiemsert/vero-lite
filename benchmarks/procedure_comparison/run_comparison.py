@@ -25,7 +25,8 @@ from pathlib import Path
 
 from benchmarks.procedure_baseline.loader import DATASET_DIR, load_dataset
 from benchmarks.procedure_comparison.comparison import (
-    ARM_A_ENERGY,
+    ARM_A_BY_VERTICAL,
+    ArmAReference,
     ArmBSummary,
     ArmCSummary,
     breach_items,
@@ -70,13 +71,13 @@ def _print_arm_c(summary: ArmCSummary) -> None:
     )
 
 
-def _print_arm_a() -> None:
+def _print_arm_a(arm_a: ArmAReference) -> None:
     print(
         f"\narm (a) governed-procedure stack (REUSED from REPORT — D-2, NOT re-run): "
-        f"{ARM_A_ENERGY.headline_label}\n"
-        f"        headline: {ARM_A_ENERGY.headline_note}\n"
-        f"        latency:  {ARM_A_ENERGY.latency_note}\n"
-        f"        source:   {ARM_A_ENERGY.source}"
+        f"{arm_a.headline_label}\n"
+        f"        headline: {arm_a.headline_note}\n"
+        f"        latency:  {arm_a.latency_note}\n"
+        f"        source:   {arm_a.source}"
     )
 
 
@@ -87,7 +88,7 @@ async def _main(args: argparse.Namespace) -> None:
         items = items[: args.limit]
     corpus = load_corpus(args.corpus)
     print(
-        f"=== B-γ comparison (energy breach subset) — {len(items)} items, "
+        f"=== B-γ comparison ({dataset.vertical} breach subset) — {len(items)} items, "
         f"top-k={args.k}, corpus={args.corpus.name} ({len(corpus)} snippets) ==="
     )
 
@@ -98,9 +99,15 @@ async def _main(args: argparse.Namespace) -> None:
         await base.warm(keep_alive=_DEFAULT_KEEP_ALIVE)
 
     arm_b = await run_arm_b(items, base, dataset.reading_parameter)
-    arm_c = await run_arm_c(items, base, corpus, dataset.reading_parameter, k=args.k)
+    arm_c = await run_arm_c(
+        items, base, corpus, dataset.reading_parameter, k=args.k, vertical=dataset.vertical
+    )
 
-    _print_arm_a()
+    arm_a_ref = ARM_A_BY_VERTICAL.get(dataset.vertical)
+    if arm_a_ref is not None:
+        _print_arm_a(arm_a_ref)
+    else:
+        print(f"\narm (a): no reused REPORT baseline for vertical '{dataset.vertical}' (D-2 N/A)")
     _print_arm_b(summarize_arm_b(arm_b))
     _print_arm_c(summarize_arm_c(arm_c))
 

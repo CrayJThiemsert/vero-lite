@@ -120,13 +120,38 @@ def retrieve(question: str, corpus: list[Snippet], k: int = DEFAULT_TOP_K) -> li
     return [snippet for _index, snippet in ranked[:k]]
 
 
-def build_rag_messages(question: str, retrieved: list[Snippet]) -> list[dict[str, str]]:
+_VOWELS = frozenset("aeiou")
+DEFAULT_PERSONA = "an energy operations assistant"
+DEFAULT_ENTITY_WORD = "asset"
+
+
+def persona_for(vertical: str) -> str:
+    """The RAG system-prompt persona, **derived from the vertical** (no per-vertical
+    hardcoded map — data-driven so a new vertical needs no template change). The
+    article is chosen from the domain's first sound. ``energy`` reproduces the
+    pre-data-driven literal "an energy operations assistant" (byte-identical)."""
+    domain = vertical.replace("_", " ")
+    article = "an" if domain[:1].lower() in _VOWELS else "a"
+    return f"{article} {domain} operations assistant"
+
+
+def build_rag_messages(
+    question: str,
+    retrieved: list[Snippet],
+    *,
+    persona: str = DEFAULT_PERSONA,
+    entity_word: str = DEFAULT_ENTITY_WORD,
+) -> list[dict[str, str]]:
     """Compose the single freeform RAG prompt — retrieved snippets as context +
-    the operator question. NO ``response_format`` (the honest naive-RAG shape)."""
+    the operator question. NO ``response_format`` (the honest naive-RAG shape).
+
+    ``persona`` + ``entity_word`` are **derived from the dataset/scenario** by the
+    caller (``persona_for(vertical)`` + ``scenario.entity_type``), not hardcoded —
+    the defaults reproduce the energy prompt byte-identically."""
     context = "\n".join(f"- {snippet.text}" for snippet in retrieved)
     system = (
-        "You are an energy operations assistant. Use ONLY the context snippets "
-        "below to answer the operator. Name the specific affected asset and state "
+        f"You are {persona}. Use ONLY the context snippets "
+        f"below to answer the operator. Name the specific affected {entity_word} and state "
         "the single recommended action.\n\nContext:\n" + context
     )
     return [
@@ -213,15 +238,24 @@ async def run_item_c(
     reading_parameter: str,
     *,
     k: int = DEFAULT_TOP_K,
+    vertical: str = "energy",
 ) -> ArmCResult:
     """Retrieve → prompt → ONE freeform answer → grade one breach item.
 
     Exactly ONE ``client.chat`` call per item (D-6: no second "verify" call). A
-    transport failure is recorded, never raised, so a sweep completes."""
+    transport failure is recorded, never raised, so a sweep completes. The prompt's
+    persona + entity word are **derived from data** (``vertical`` + the scenario's
+    ``entity_type``), not hardcoded — ``vertical="energy"`` is byte-identical to the
+    pre-data-driven prompt."""
     scenario = item.scenario
     question = render_rag_question(scenario, reading_parameter)
     retrieved = retrieve(question, corpus, k)
-    messages = build_rag_messages(question, retrieved)
+    messages = build_rag_messages(
+        question,
+        retrieved,
+        persona=persona_for(vertical),
+        entity_word=scenario.entity_type.lower(),
+    )
     retrieved_ids = [snippet.id for snippet in retrieved]
     start = time.perf_counter()
     try:
@@ -258,12 +292,15 @@ async def run_item_c(
 
 __all__ = [
     "DEFAULT_CORPUS",
+    "DEFAULT_ENTITY_WORD",
+    "DEFAULT_PERSONA",
     "DEFAULT_TOP_K",
     "ArmCResult",
     "Snippet",
     "answer_to_judgment",
     "build_rag_messages",
     "load_corpus",
+    "persona_for",
     "retrieve",
     "run_item_c",
 ]

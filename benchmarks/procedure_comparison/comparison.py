@@ -54,6 +54,12 @@ class ArmAReference:
     source: str
 
 
+_ARM_A_LATENCY_NOTE = (
+    "SD-2 per-judgment p95 ≈ 28.7 to 31.8 s (full mode, aggregate across verticals) / "
+    "21.6 s (skip lever); reports-not-gates."
+)
+
+
 ARM_A_ENERGY = ArmAReference(
     headline_label="97.5% to 100% (energy breach, 39-40 / 40)",
     headline_note=(
@@ -61,12 +67,42 @@ ARM_A_ENERGY = ArmAReference(
         "hardened run (2026-06-09); 40/40 = 100% with the Phase-1 prompt nudge "
         "(PLAN-0020 R1, 2026-06-11). gpt-oss:20b on MS-S1."
     ),
-    latency_note=(
-        "SD-2 per-judgment p95 ≈ 28.7 to 31.8 s (full mode) / 21.6 s (skip lever); "
-        "reports-not-gates."
-    ),
+    latency_note="SD-2 per-judgment p95 ≈ 28.7 to 31.8 s (full mode) / 21.6 s (skip lever); "
+    "reports-not-gates.",
     source="benchmarks/procedure_baseline/REPORT.md",
 )
+
+
+ARM_A_AQUACULTURE = ArmAReference(
+    headline_label="100% (aquaculture breach, 40/40; hardened 24/40 = 60.0%)",
+    headline_note=(
+        "entity + action-class on the aquaculture breach subset: 24/40 = 60.0% on the "
+        "hardened run (2026-06-09); 40/40 = 100% with the Phase-1 prompt nudge (PLAN-0020 "
+        "R1, 2026-06-11). The OQ-3-ratified headline reads the nudged 100% AND reports the "
+        "60 to 100 range + nudge dependency (PLAN-0028 §1.2). gpt-oss:20b on MS-S1."
+    ),
+    latency_note=_ARM_A_LATENCY_NOTE,
+    source="benchmarks/procedure_baseline/REPORT.md",
+)
+
+
+ARM_A_SUPPLY_CHAIN = ArmAReference(
+    headline_label="100% (supply_chain breach, 40/40)",
+    headline_note=(
+        "entity + action-class on the supply_chain breach subset: 40/40 = 100% on BOTH "
+        "the hardened run (2026-06-09) and the nudged run (PLAN-0020 R1, 2026-06-11). "
+        "gpt-oss:20b on MS-S1."
+    ),
+    latency_note=_ARM_A_LATENCY_NOTE,
+    source="benchmarks/procedure_baseline/REPORT.md",
+)
+
+
+ARM_A_BY_VERTICAL: dict[str, ArmAReference] = {
+    "energy": ARM_A_ENERGY,
+    "aquaculture": ARM_A_AQUACULTURE,
+    "supply_chain": ARM_A_SUPPLY_CHAIN,
+}
 
 
 # --- per-arm summaries -------------------------------------------------------
@@ -170,9 +206,17 @@ async def run_arm_c(
     reading_parameter: str,
     *,
     k: int,
+    vertical: str = "energy",
 ) -> list[ArmCResult]:
-    """Run arm (c) over the breach items (sequential — one MS-S1 GPU serializes)."""
-    return [await run_item_c(item, client, corpus, reading_parameter, k=k) for item in items]
+    """Run arm (c) over the breach items (sequential — one MS-S1 GPU serializes).
+
+    ``vertical`` drives the data-derived RAG persona (``persona_for``); the entity
+    word is derived per-item from the scenario. ``vertical="energy"`` is
+    byte-identical to the pre-data-driven prompt."""
+    return [
+        await run_item_c(item, client, corpus, reading_parameter, k=k, vertical=vertical)
+        for item in items
+    ]
 
 
 def comparison_records(arm_b: list[ArmBResult], arm_c: list[ArmCResult]) -> list[dict[str, Any]]:
@@ -215,7 +259,10 @@ def comparison_records(arm_b: list[ArmBResult], arm_c: list[ArmCResult]) -> list
 
 
 __all__ = [
+    "ARM_A_AQUACULTURE",
+    "ARM_A_BY_VERTICAL",
     "ARM_A_ENERGY",
+    "ARM_A_SUPPLY_CHAIN",
     "ArmAReference",
     "ArmBSummary",
     "ArmCSummary",
