@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-17T09:28:51+07:00
-session: 65
-current_batch: 'session-65 — PLAN-0028 (B-γ extension) Step 2 + Step 3 SHIPPED (#350, 244e484): data-driven harness (Cray-approved — derive every vertical-term from Scenario/Dataset so vertical #4+ needs no template change; energy byte-identical by derivation) + aquaculture_v0 + supply_chain_v0 corpora (joint binding over+under, parity disambiguation) + ARM_A_AQUACULTURE/SUPPLY_CHAIN reused per D-2/OQ-3 + per-vertical mock tests. OFFLINE GATE GREEN: ruff + mypy --strict clean; full suite 1591 passed / 22 skipped; energy regression byte-identical. AC-2/3/4/5 done offline. §8 ratified earlier (#349); PLAN minted #347. Awaiting Cray host-state go for Step 5.'
+last_updated: 2026-06-17T13:31:38+07:00
+session: 66
+current_batch: 'session-66 — PLAN-0028 Step 5 RAN + VERIFIED, then PLAN-0029 minted + implemented. (1) Got the Cray host-state go and ran the ONE combined scored sweep (gpt-oss:20b @ MS-S1, warm-first, 80 breach items = 40 aquaculture + 40 supply_chain, systemd-run --user unit, ~18 min, 0 errors / 0 invalid SQL) — every score traced to a real model verdict via the Read tool. Cross-vertical finding (Cray-ratified framing): arm (c) lean RAG ties arm (a) governed on BOTH new verticals (canonical 100%/100% post-calibration), arm (b) raw text-to-SQL swings 0% (aquaculture) ↔ 100% (supply_chain) = evidence-for-the-moat (semantic distance), not a bug. OQ-2 answered: the arm-c≈arm-a tie REPLICATES. (2) The single aqua-c miss (aqua-h06) was a grader measurement artifact (model named pond-A116 with a U+202F NARROW NO-BREAK SPACE) → PLAN-0029 minted #352 (Cowork-authored on Desktop, G2-override) + implemented #353: normalize_primary_key folds the whitespace-separator family ({U+0020,U+00A0,U+2007,U+202F,U+2060}→"-", recover-only); offline re-grade flipped EXACTLY aqua-h06 → aqua arm-c 39/40 → 40/40 (supply_chain + arm-b unchanged); ruff + mypy clean, tests/benchmark 151 passed (+4). The product entity-trust gap (recommender trusts model PKs verbatim) = the real universality investment, routed OUT → future ADR + PLAN-0030.'
 current_actor: code
-blocked_on: 'PLAN-0028 Step 5 — the ONE combined host-state scored sweep (gpt-oss:20b on MS-S1, warm-first, §8) needs a SEPARATE explicit Cray go; Code is HOLDING at the host-state gate (offline gate already green). PLAN-0028 file status-flip to Accepted → Cowork (G1). Held (unchanged): PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial, ADR-0021(c) future-triggered.'
-next_action: 'Cray: host-state go for PLAN-0028 Step 5 (ONE combined scored sweep — aquaculture + supply_chain breach subsets, gpt-oss:20b @ MS-S1, warm-first, --dump-json). Then Code runs Step 5 → VERIFY every score from --dump-json via the Read tool → Step 6 REPORT B-3 per-vertical extension (test/* PR).'
-head_commit: 244e484
-recent_commits: [244e484, 9f29872, e3c0910, b5dffb1, 6dd3186, 436065c, 7ed2ebb, 4a9af81, 235ee9f, 89eab42]
+blocked_on: 'Nothing blocks Code. Open: PLAN-0028 Step 6 REPORT (B-3 per-vertical extension with the CANONICAL post-calibration numbers; test/* PR); PLAN-0029 + PLAN-0028 file status-flip to Accepted + done-move → Cowork (G1); the future ADR + PLAN-0030 (governed entity resolution vs the declared object universe) + the Rule-of-Three vertical-#3 research → Cowork-routed/gated. Held (unchanged): PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial, ADR-0021(c) future-triggered.'
+next_action: 'Code: PLAN-0028 Step 6 — extend benchmarks/procedure_baseline/REPORT.md ## B-3 with the two per-vertical comparison tables (CANONICAL: aquaculture a=100% nudged/60% hardened · b=0% · c=100%; supply_chain a=b=c=100%) + the OQ-1 disclosures (retriever near-oracle caveat, per-vertical corpus size, parity disambiguation, inherited _reduced_expected looser-entity grade) + the semantic-distance framing + Threats-to-validity (supply_chain ceiling tie; Rule-of-Three not yet satisfied). Land via test/* PR.'
+head_commit: e5f9774
+recent_commits: [e5f9774, 1ada20d, 912ea75, 9dce74a, 244e484, 9f29872, e3c0910, b5dffb1, 6dd3186, 436065c]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,51 @@ recent_commits: [244e484, 9f29872, e3c0910, b5dffb1, 6dd3186, 436065c, 7ed2ebb, 
 
 ## Current Focus
 
-> **Session 64 (current; head_commit `0aee4eb`) — B-γ EXECUTED END-TO-END:
+> **Session 66 (current; head_commit `e5f9774`) — PLAN-0028 Step 5 RAN + VERIFIED;
+> PLAN-0029 (entity-key whitespace calibration) minted + implemented; canonical B-γ
+> numbers locked.** Building on session 65's offline Step 2/3 (#350 — the data-driven
+> harness + the aquaculture/supply_chain corpora), this session got the Cray
+> host-state go and ran **PLAN-0028 Step 5** — the ONE combined scored sweep
+> (`gpt-oss:20b` @ MS-S1, warm-first, 80 breach items = 40 aquaculture + 40
+> supply_chain, serialized in one warm window via a `systemd-run --user` unit, ~18
+> min, **0 errors / 0 invalid SQL**). Every score traced to a real model verdict via
+> the Read tool (session-46 confirm-don't-infer). **Cross-vertical finding
+> (Cray-ratified framing):** arm (c) **lean RAG ties arm (a) governed on BOTH new
+> verticals** (canonical **100% / 100%** post-calibration), while arm (b) **raw
+> text-to-SQL swings 0% (aquaculture) ↔ 100% (supply_chain)** — the swing is
+> **evidence FOR the moat, not a bug**: the explanatory variable is **semantic
+> distance** between the NL question and the physical schema (supply_chain breach = a
+> clean numeric threshold raw SQL nails; aquaculture breach hides meaning in a
+> free-text `description` + a named pond subtype raw SQL must guess → 0 rows). arm (c)
+> is robust because the corpus carries the mapping ("ontology in prose"); the governed
+> stack declares it once. **OQ-2 answered: the arm-c≈arm-a tie REPLICATES.** **The
+> single aquaculture arm-c miss (aqua-h06) was a grader MEASUREMENT artifact** — the
+> model named the right pond `pond-A116` with a **U+202F NARROW NO-BREAK SPACE**
+> separator the hyphen-only `normalize_primary_key` didn't recover. Under Cray's
+> **universality** criterion the fix split two ways: **(1) PLAN-0029** (small, offline)
+> — extend the B-6 calibration to fold the whitespace-separator family
+> ({U+0020,U+00A0,U+2007,U+202F,U+2060} → ASCII `-`, recover-only / never-invent) + an
+> **offline re-grade** of the stored dumps (no host-state); **(2) the product
+> entity-trust gap** (`recommender._compose_llm_record` trusts model-emitted entity
+> PKs verbatim, no resolution against the declared object universe) = the **real
+> universality investment**, routed OUT → a future **ADR + PLAN-0030** (design-first).
+> PLAN-0029 was **minted #352** — the **G2 boundary blocked both the in-harness
+> plan-drafter AND Code** from writing a new PLAN (G2 ≠ G1, no in-context-approval
+> release; **Cowork authored on Desktop, Code committed** via a `docs/*` chore PR) —
+> then **implemented #353** (`feat(benchmarks)`): the whitespace fold + 4 regression
+> tests + the offline re-grade harness (`benchmarks/procedure_comparison/regrade.py`).
+> **Re-grade VERIFIED via Read:** **exactly one** flip (aqua-h06) → aquaculture arm-c
+> **39/40 → 40/40**; supply_chain unchanged 40/40; arm (b) whitespace-invariant by
+> construction (not re-gradable from the dump → carried forward). Gate green: ruff +
+> mypy clean, `tests/benchmark` **151 passed** (+4). **Frontier:** PLAN-0028 **Step 6
+> REPORT** — the B-3 per-vertical extension with the CANONICAL numbers + OQ-1
+> disclosures + the semantic-distance framing + threats-to-validity (supply_chain is a
+> 3-way ceiling tie; Rule-of-Three not yet satisfied) via a `test/*` PR; then the
+> PLAN-0028/0029 status-flips + done-moves (Cowork, G1) and the ADR/PLAN-0030 +
+> vertical-#3 research (Cowork-routed). Nothing blocks Code. AI-assisted (Claude Code,
+> session 66); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 64 (head_commit `0aee4eb`) — B-γ EXECUTED END-TO-END:
 > PLAN-0027 Steps 2–5 SHIPPED; PLAN-0019 Step B-γ / AC B-3 = DONE.** This session
 > read the session-63 handoff and ran PLAN-0019's last open step (the three-arm
 > comparison on the energy breach subset) to completion. **Offline arms (#339
