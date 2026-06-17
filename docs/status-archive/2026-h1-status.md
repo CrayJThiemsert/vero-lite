@@ -12,6 +12,126 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-17 (session-67 reconcile): three CF blocks fell outside the 4-newest-sessions window {67,66,64,63} — both Session-62 blocks (second batch — harness-improvement "plan-first then execute" distillation, `cf958d3`; first batch — PLAN-0026 AC-9 optional live MS-S1 re-verify PASS, `c16778d`) and the Session-61 block (PLAN-0026 COMPLETE: ADR-0021 authored→Accepted + Phase A `measured_kind` shipped, `b53e631`), newest first._
+
+> **Session 62 (second batch, current; head_commit `cf958d3`) — HARNESS
+> IMPROVEMENT: the AC-9 "plan-first then execute" pattern distilled into durable
+> harness discipline (Cray-directed retrospective).** Cray observed the AC-9
+> session went well largely because the prompt said *"plan carefully, then if
+> ready, begin"* — but that quality depended on Cray re-typing it, not on the
+> harness. Cray selected all four proposed improvements (cost ~0, advisory-first,
+> reusing existing machinery — **no new always-on hook**, per the classifier-billing
+> / L1-friction lessons). **(1+2+4 — #334 `ba66561`, `docs:`):** the
+> `code-operational-policy` skill gains a *"Plan-first for costly / host-state /
+> irreversible / multi-step work"* section (read the result-producing code first →
+> staged plan + pre-committed pass/fail read → cheapest gate first → run once →
+> verify via the Read tool) + a *"use the Axis-B `/goal` loop for verification
+> tasks"* sub-section (reuses ADR-0018, no new hook); **Lesson #0026
+> (interpret-before-run)** — pre-commit what each outcome MEANS (pass /
+> known-acceptable-miss / real failure) before running, generalising the
+> green-against-the-wrong-thing failure class (the AC-9 nl-01 false-alarm +
+> nl-08/11 false-confidence near-misses it avoided). **(3 + §11 pointer — #335
+> `cf958d3`, `docs(constitution):`):** Cray-direct constitutional codification
+> (Lesson #5 §2): CLAUDE.md §8 gains a **"Host-State Actions"** subsection homing
+> the host-state ASK-Cray binding rule that previously lived only in transient
+> PLANs/handoffs (orphaned once PLAN-0026 archived), and §11 gains a plan-first
+> pointer to the skill. **Restart-bridge filed** (Lesson #5 §1, gitignored,
+> validated OK). The meta-move: turn a good *per-prompt instruction* into a harness
+> default so future sessions keep the quality sustainably. **Frontier:**
+> harness-improvement batch closed; held items remain (B-γ, PLAN-002 ≥ADR-014,
+> auditprep + ADR-011 real-partner-gated, partner-sim). Nothing blocks Code.
+> AI-assisted (Claude Code, session 62); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 62 (first batch; head_commit `c16778d`) — PLAN-0026 AC-9 OPTIONAL LIVE
+> MS-S1 RE-VERIFY RAN AND PASSED: nl-08/nl-11 CONFIRMED CORRECT ON THE
+> DETERMINISTIC STRUCTURED LENS, LIVE.** Cray-authorized host-state run closing
+> the one remaining PLAN-0026 open item (the optional live re-verify; the
+> offline oracle stays the CI **gate**, AC-9 is **verification, not a gate** —
+> Lesson #15 live-vs-mock). The 12-question NL-query harness ran live against
+> `gpt-oss:20b` @ MS-S1 (`run_benchmark.py --warm`); the offline oracle
+> (`tests/services/engine/test_nl_query.py` + `tests/benchmark/test_nl_query_feasibility_gold.py`)
+> was **65 passed** immediately before the run. **Result: 11/12 correct (was
+> 10/12 in AC-8) · anti-hallucination 12/12 HELD · latency p50 15.5s / p95 39.0s.**
+> **Headline (AC-1 confirmed live):** nl-08 + nl-11 both flipped to **correct on
+> the deterministic structured lens** — `result_count 7`, max `96.5 °C`, top
+> `Battery Bank A` read from the execute-stage `AggregateResult` (not phrase
+> prose). Both AC-8 failure modes are gone live: the model emits `operation:max`
+> (not `list`) and does **not** invent a `resolve` placeholder. **Two honest
+> notes (kept, not dropped):** (1) the lone miss is **nl-01** — *not* an AC-9
+> target — a known filter-omission nondeterminism on a *simple list*; the phrase
+> named the 2 real batteries (zero fabrication), it is **out of PLAN-0026 scope**,
+> and its offline gold test is green → **not a Phase-A regression**. (2) This run
+> reached the right result via the model's own `unit=celsius` filter
+> (`measured_kind:null`), so the coherence seam had nothing to rewrite — the
+> deterministic seam is the **safety net proven by the offline oracle (AC-7)**,
+> not exercised this particular run; both routes yield the identical grounded
+> result. **Verdict: AC-9 PASS.** Recorded as an addendum in
+> `benchmarks/nl_query_feasibility/RESULTS.md` (#332, `dc65425`; merge `c16778d`);
+> the `--dump-json` evidence is gitignored at
+> `.claude/benchmark-results/2026-06-16-nl-query-ac9.jsonl`. **Frontier:** AC-9
+> done → PLAN-0026 fully closed incl. the optional live re-verify; no gated
+> NL-query work remains; ADR-0021 (c) remains a future triggered successor
+> (ADR-016 procedure engine + ≥3 verticals); held items (B-γ, PLAN-002,
+> auditprep, ADR-011) unchanged. AI-assisted (Claude Code, session 62); no
+> `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 61 (head_commit `b53e631`) — PLAN-0026 COMPLETE: ADR-0021
+> (METRIC-KIND TYPED ONTOLOGY SEMANTICS) AUTHORED→ACCEPTED, THEN PHASE A
+> (`measured_kind` enum + `quantity_bindings` + "classify, don't synthesize")
+> SHIPPED; PLAN-0026 ARCHIVED to `done/`.** The session opened with #323 MERGED
+> (`e93320f`, PLAN-0026 eval tooling + 2026-06-15 RESULTS.md addendum → the
+> RESULTS.md citation no longer dangles on main) and a latent handoff-validator
+> commit-blocker FIXED (#325, `ea08d88`: `session_md_files` now exempts raw
+> `-transcript.md` renders, which carry a `# Transcript —` preamble and **never**
+> frontmatter by design — they had falsely blocked every commit; 29 handoff tests,
+> 2 new; the good frontmatter format stays enforced). Both were preamble; the
+> headline is **PLAN-0026 closed end-to-end** — the principled fix for
+> aggregate-superlative kind-word disambiguation Phase B could only approximate.
+> **Decision chain (Cray):** Gate-1 (T2-vs-T3 roadmap fork) = **T2** (NL-query is
+> the moat wedge to invest in deep); Gate-2 (PLAN-0026 SD-2) = **Path B**
+> (kind↔unit binding declared in the ontology → a new ADR). Cross-check confirmed
+> **(b) over (c)**: (c) typed-measurement-composite is over-scope now (Rule of
+> Three; ADR-008 D3 defers composites to v1; JSONB-vs-deterministic-execute tension
+> risks the 12/12 anti-hallucination) and (b) reuses entirely into (c).
+> **ADR-0021 ("classify, don't synthesize"):** Cowork-authored the draft (ADR-009
+> D1) → Code committed **Proposed** (#327, `a102b9d`) → Cray ratified **Accepted**
+> (#328, `4423a22`); construct **(b)** (QUDT-style quantity-kind ⟂ unit typed pair,
+> `quantity_bindings`) confirmed over (a) per-enum-value map and (c) composite —
+> (c) recorded as a **triggered successor** (revisit when the ADR-016
+> procedure/trigger engine needs first-class measurements AND ≥3 verticals exercise
+> the path). Amends ADR-008 D3. **Phase A (PLAN-0026 steps 6–7, #329 `37f62a7`;
+> commits `bcbb62d` step 6 + `7f72181` step 7):** *Step 6* — `measured_kind` enum
+> (temperature|frequency) + object-level `quantity_bindings` (temperature→celsius,
+> frequency→hz) on OperationalEvent in the energy ontology; `quantity_bindings`
+> admitted by `ontology_schema.json` (amends ADR-008 D3) + parsed into
+> `ontology_meta` (QuantityBinding); synthetic data tagged (7 temperature /
+> 2 frequency / 2 none); `vero-lite generate` emits `measured_kind` across all 5
+> artifacts; a D6 L2 validator check (kinds ∈ enum, bound once); ORM
+> (`services/db/models.py`) + Alembic `0003` add the column (DB↔generated-DDL
+> parity, caught by `test_schema_parity`). *Step 7* — `StructuredQuery.measured_kind`:
+> the translate LLM **classifies** the bounded kind; the coherence seam
+> **synthesizes** the precise `unit` filter from the binding, **superseding
+> Phase B's best-effort dominant-unit** (PLAN-0026 IN-1). Backward-compat: no
+> classified kind → dominant-unit fallback; a classified kind whose bound unit is
+> absent → clarify (never fabricate). The win: distinguishes "highest **frequency**"
+> from "highest temperature" that Phase B's dominant heuristic could not. **Verified:
+> full suite 1535 passed / 22 skipped; ruff + ruff-format + mypy clean; 12/12
+> anti-hallucination preserved; the offline oracle re-pointed to feed a classified
+> `measured_kind` (not inferred); 6 new tests (4 engine + 2 validator).**
+> **PLAN-0026 → `done/`** (#330, `0a1427e`/`b53e631`) — both phases shipped,
+> archived per Plan Flow. **Frontier:** no gated NL-query work remains; ADR-0021 (c)
+> is a future triggered successor; held items (B-γ, PLAN-002, auditprep, ADR-011)
+> unchanged. AI-assisted (Claude Code, session 61); no `Co-Authored-By` per
+> CLAUDE.md §7.
+> _Rotation note: this reconcile replaced the prior session-61 CF block (#323/#325)
+> with the comprehensive PLAN-0026-COMPLETE narrative, and rotated all four
+> Session-57 CF blocks (fifth/fourth/third/second batches — head_commits `e09af9b`
+> / `2331ffb` / `f1cf3b4` / `4c46a92`; session 57 falls outside the 4-newest-sessions
+> window {61,60,59,58}) plus the oldest Recent Decisions row (2026-06-12 Lessons
+> #24 + #25, `4b0e306`) to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) per
+> the STATUS.md Rotation Policy (R2/R4)._
+
 _Addendum — rotated 2026-06-16 (session 64 reconcile): the Session-60 CF block (session 60 fell outside the 4-newest-sessions window {64,63,62,61})._
 
 > **Session 60 (head_commit `19eeb21`) — PLAN-0026 (NL-QUERY AGGREGATE
@@ -1093,6 +1213,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-13 | **ADR-0020 (synthetic design-partner simulation venue, partner-sim) committed Proposed (#297, `e25281d`, session 57) + project system instruction landed (#298, `e387a63`)** _(rotated 2026-06-17, session 67)_ — a specialist Cowork project that role-plays a Thai operator + emits a "partner profile package" so the intake+PDPA pipeline is rehearsed before a real partner. D1 venue OUTSIDE governance tiers (no commits / no repo mount / enters via Code receive); D2 three BINDING anti-circularity rules (R1 feed-questions-not-schema, R2 forced messiness, R3 SYNTHETIC provenance — never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger); D3 reuses completion-handoff schema (no enum change); D4 guarded-trial (mirrors ADR-012 D5) + R-PS1..R-PS4. SD-1..SD-4 recommendations only. **Awaits Cray ratification (Proposed→Accepted + SD-1..SD-4) before the project goes live (ADR-0020 T3).** Author≠reviewer (ADR-012 D4.3): Cowork authored, Code R2-reviewed + committed both | `e25281d` (#297) + `e387a63` (#298) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 | 2026-06-12 | **B-6 hyphen-normalization grader change RATIFIED + SHIPPED (#295, `2331ffb`, session 57)** _(rotated 2026-06-16, session 64)_ — Cray ratified in-session; `grader.py` `normalize_primary_key()` folds the Unicode hyphen/dash family (U+2010–U+2014, U+2212) → ASCII `-` on both sides of the two primary-KEY comparisons only; free-text untouched. Offline dump replay vs the 2026-06-12 scored run: β 118/120 → 119/120, EXACTLY one flip (energy-007, zero collateral); aqua-028 still fails. Same measurement-correctness class as the 2026-06-08 items; no bar moves; REPORT.md dated addendum | `2331ffb` (#295) / `benchmarks/procedure_baseline/grader.py` |
 | 2026-06-12 | **First SCORED watch-lane run RECORDED — watch 97.4% (38/39); M-2=b arc COMPLETE (#288, `4c46a92`, session 57)** _(rotated 2026-06-16, session 63)_ — `gpt-oss:20b`/MS-S1, 198 items, 318 calls, 0 errors, dump-VERIFIED (39/39 `watch_graded:true`); first production `run_detached.sh` run (sentinel as designed; watcher Monitor died silently + one false alarm — truth via content-based test). Aqua + energy 13/13; supply 12/13 — sole FAIL supply-040 (reroute @1.0 on an in-spec 7.8 °C) = `forbidden_keywords` discriminating as designed. β 98.3% (same two known misses; energy-007 U+2011 now ×3 → strengthens B-6). SD-2 p95 30.18s = +0.18s nominal, within the ±10s straddle band + classifier-contaminated; no bar moves (B-6) | `4c46a92` (#288) / `benchmarks/procedure_baseline/REPORT.md` |
 | 2026-06-12 | **Watch-lane ground truth PINNED — all 39 watch items (#286, `1bd6328`, session 57)** _(rotated 2026-06-16, session 62)_ — Cray adjudicated the M-2=b pinning from the #273 calibration distribution: aqua canonical `start_emergency_aerator` + acceptable `[dispatch_technician, increase_water_exchange, escalate]`; energy canonical `restart` + acceptable `[dispatch_technician, escalate]` (`isolate` excluded → 'other'); supply_chain canonical `inspect` + acceptable `[hold, escalate]` + `forbidden_keywords [expedite, reroute]` declared (3/13 observed reroutes → forbidden). Dataset-only; the watch lane auto-flips unscored→scored; first SCORED run gated on a separate Cray go | `1bd6328` (#286) / `benchmarks/procedure_baseline/dataset/` |
