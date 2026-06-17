@@ -1,10 +1,10 @@
 ---
-last_updated: 2026-06-17T08:00:00+07:00
+last_updated: 2026-06-17T08:43:09+07:00
 session: 65
-current_batch: 'session-65 — PLAN-0028 (B-γ extension to aquaculture+supply_chain) MINTED as Proposed draft (#347, 7ed2ebb): plan-drafter authored the body → Cowork led the OQ-1 external-grade RAG-fairness re-look (R-OQ1-1..4, within corpus+prompt levers, D-6 intact) + materialized → Code R2-reviewed (verified the "ceiling" template-neutrality fix + the _reduced_expected looser-grade disclosure live) + committed per ADR-009 D2. Awaits Cray ratify §8 before Step 2. Earlier this session: quick-wins audit (#344 ontology cleanup, #345 STATUS reconcile, #346 phase-enum close).'
+current_batch: 'session-65 — PLAN-0028 (B-γ extension) §8 Cray-RATIFIED: OQ-3 nudged 100% (+ report 60→100 range); OQ-1 R-OQ1-1..4 + OQ-2/4/5 per rec. Methodology delta now FIXED (B-6). Step 2 (offline build: aquaculture+supply_chain corpora over+under + 3 parameterizations [persona/unit/threshold-noun] + per-vertical mock tests) is UNGATED — Code executing. PLAN minted #347 (plan-drafter body → Cowork OQ-1 re-look + materialize → Code R2-review + commit). (PLAN-file status-flip to Accepted routes to Cowork — G1-gated for Code self-edit.) Earlier: quick-wins audit (#344/#345/#346).'
 current_actor: code
-blocked_on: 'Code is at the PLAN-0028 ratify gate — Step 2 (offline build) is GATED on Cray ratifying the methodology delta (§8 / AC-1 / B-6: the two corpora + three parameterizations); Step 5 host-state run needs a separate Cray go (§8). Held (unchanged): PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial, ADR-0021(c) future-triggered.'
-next_action: 'Cray: ratify PLAN-0028 §8 — the OQ-1 re-look outcome (R-OQ1-1..4) + OQ-2/3/4/5 — fixing the methodology delta BEFORE any build (B-6). Then Code executes Step 2 (offline build, ungated) → Step 3 offline gate → ONE Cray-gated scored run (Step 5, §8).'
+blocked_on: 'Step 2/3 (offline build + gate) UNGATED (§8 ratified). Step 5 host-state scored run (ONE combined sweep, gpt-oss:20b, §8) needs a SEPARATE Cray go. PLAN-0028 file status-flip to Accepted → Cowork (G1-gated for Code). Held (unchanged): PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial, ADR-0021(c) future-triggered.'
+next_action: 'Code: execute PLAN-0028 Step 2 (offline build — aquaculture_v0.yaml + supply_chain_v0.yaml honoring the joint binding over+under; parameterize questions.py persona/unit/threshold-noun; per-vertical mock-ChatClient tests) → Step 3 offline gate (energy regression byte-identical) → request Cray host-state go for the ONE combined scored run (Step 5, §8).'
 head_commit: 7ed2ebb
 recent_commits: [7ed2ebb, 4a9af81, 235ee9f, 89eab42, 38de3aa, 86561e5, 4b08870, 74a2a1d, 7d1cd33, c435b89]
 ---
