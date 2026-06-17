@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-17T13:31:38+07:00
+last_updated: 2026-06-17T14:05:00+07:00
 session: 66
-current_batch: 'session-66 — PLAN-0028 Step 5 RAN + VERIFIED, then PLAN-0029 minted + implemented. (1) Got the Cray host-state go and ran the ONE combined scored sweep (gpt-oss:20b @ MS-S1, warm-first, 80 breach items = 40 aquaculture + 40 supply_chain, systemd-run --user unit, ~18 min, 0 errors / 0 invalid SQL) — every score traced to a real model verdict via the Read tool. Cross-vertical finding (Cray-ratified framing): arm (c) lean RAG ties arm (a) governed on BOTH new verticals (canonical 100%/100% post-calibration), arm (b) raw text-to-SQL swings 0% (aquaculture) ↔ 100% (supply_chain) = evidence-for-the-moat (semantic distance), not a bug. OQ-2 answered: the arm-c≈arm-a tie REPLICATES. (2) The single aqua-c miss (aqua-h06) was a grader measurement artifact (model named pond-A116 with a U+202F NARROW NO-BREAK SPACE) → PLAN-0029 minted #352 (Cowork-authored on Desktop, G2-override) + implemented #353: normalize_primary_key folds the whitespace-separator family ({U+0020,U+00A0,U+2007,U+202F,U+2060}→"-", recover-only); offline re-grade flipped EXACTLY aqua-h06 → aqua arm-c 39/40 → 40/40 (supply_chain + arm-b unchanged); ruff + mypy clean, tests/benchmark 151 passed (+4). The product entity-trust gap (recommender trusts model PKs verbatim) = the real universality investment, routed OUT → future ADR + PLAN-0030.'
+current_batch: 'session-66 — PLAN-0028 COMPLETE end-to-end + PLAN-0029 minted/implemented. (1) Got the Cray host-state go and ran PLAN-0028 Step 5, the ONE combined scored sweep (gpt-oss:20b @ MS-S1, warm-first, 80 breach items = 40 aquaculture + 40 supply_chain, systemd-run --user unit, ~18 min, 0 errors / 0 invalid SQL) — every score traced to a real model verdict via the Read tool. Cross-vertical finding (Cray-ratified framing): arm (c) lean RAG ties arm (a) governed on BOTH new verticals (canonical 100%/100% post-calibration), arm (b) raw text-to-SQL swings 0% (aquaculture) ↔ 100% (supply_chain) = evidence-for-the-moat (semantic distance), not a bug. OQ-2 answered: the arm-c≈arm-a tie REPLICATES. (2) The single aqua-c miss (aqua-h06) was a grader measurement artifact (model named pond-A116 with a U+202F NARROW NO-BREAK SPACE) → PLAN-0029 minted #352 (Cowork-authored, G2-override) + implemented #353: normalize_primary_key folds the whitespace-separator family ({U+0020,U+00A0,U+2007,U+202F,U+2060}→"-", recover-only); offline re-grade flipped EXACTLY aqua-h06 → aqua arm-c 39/40 → 40/40; ruff + mypy clean, tests/benchmark 151 passed (+4). (3) Step 6 B-3 REPORT cross-vertical extension SHIPPED #355 (canonical tables + OQ-1/OQ-3 disclosures + threats-to-validity). The product entity-trust gap (recommender trusts model PKs verbatim) = the real universality investment, routed OUT → future ADR + PLAN-0030.'
 current_actor: code
-blocked_on: 'Nothing blocks Code. Open: PLAN-0028 Step 6 REPORT (B-3 per-vertical extension with the CANONICAL post-calibration numbers; test/* PR); PLAN-0029 + PLAN-0028 file status-flip to Accepted + done-move → Cowork (G1); the future ADR + PLAN-0030 (governed entity resolution vs the declared object universe) + the Rule-of-Three vertical-#3 research → Cowork-routed/gated. Held (unchanged): PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial, ADR-0021(c) future-triggered.'
-next_action: 'Code: PLAN-0028 Step 6 — extend benchmarks/procedure_baseline/REPORT.md ## B-3 with the two per-vertical comparison tables (CANONICAL: aquaculture a=100% nudged/60% hardened · b=0% · c=100%; supply_chain a=b=c=100%) + the OQ-1 disclosures (retriever near-oracle caveat, per-vertical corpus size, parity disambiguation, inherited _reduced_expected looser-entity grade) + the semantic-distance framing + Threats-to-validity (supply_chain ceiling tie; Rule-of-Three not yet satisfied). Land via test/* PR.'
-head_commit: e5f9774
-recent_commits: [e5f9774, 1ada20d, 912ea75, 9dce74a, 244e484, 9f29872, e3c0910, b5dffb1, 6dd3186, 436065c]
+blocked_on: 'Nothing blocks Code. PLAN-0028 COMPLETE (all 6 steps); PLAN-0029 implemented. Backlog (all Cowork-routed / Cray-gated): PLAN-0028 + PLAN-0029 status-flip to Accepted + done-move (Cowork flips G1-clean, Code commits + git mv to done/); a new ADR + PLAN-0030 (governed entity resolution vs the declared object universe — the real universality investment; design-first, Cray ratifies the construct first); Rule-of-Three vertical-#3 research. Held (unchanged): PLAN-002 ≥ADR-014, auditprep SD-4/SD-5/OQ-A + ADR-011 (real-partner gated), partner-sim guarded trial, ADR-0021(c) future-triggered.'
+next_action: 'New session per the session-66 closeout handoff (.claude/handoffs/session-66/2026-06-17-1405-code-session66-closeout-backlog-handoff.md): (1) Cowork ratify-flip PLAN-0028 + PLAN-0029 → Accepted, Code commits + git mv to done/; (2) Cowork drafts the ADR (governed entity resolution) → Cray ratifies the construct + design-fork BEFORE any PLAN-0030 build; (3) Cowork research scopes vertical #3 (high semantic distance, Rule-of-Three). All Cowork-routed/Cray-gated — nothing for Code to build solo.'
+head_commit: 7275a69
+recent_commits: [7275a69, d48b770, dd50dd0, 1eb6856, e5f9774, 1ada20d, 912ea75, 9dce74a, 244e484, 9f29872]
 ---
 
 # vero-lite — Project Status
@@ -54,10 +54,10 @@ recent_commits: [e5f9774, 1ada20d, 912ea75, 9dce74a, 244e484, 9f29872, e3c0910, 
 > **Re-grade VERIFIED via Read:** **exactly one** flip (aqua-h06) → aquaculture arm-c
 > **39/40 → 40/40**; supply_chain unchanged 40/40; arm (b) whitespace-invariant by
 > construction (not re-gradable from the dump → carried forward). Gate green: ruff +
-> mypy clean, `tests/benchmark` **151 passed** (+4). **Frontier:** PLAN-0028 **Step 6
-> REPORT** — the B-3 per-vertical extension with the CANONICAL numbers + OQ-1
-> disclosures + the semantic-distance framing + threats-to-validity (supply_chain is a
-> 3-way ceiling tie; Rule-of-Three not yet satisfied) via a `test/*` PR; then the
+> mypy clean, `tests/benchmark` **151 passed** (+4). **Step 6 B-3 REPORT cross-vertical
+> extension SHIPPED (#355)** — canonical tables + OQ-1/OQ-3 disclosures +
+> threats-to-validity → **PLAN-0028 COMPLETE end-to-end**. **Frontier (next session,
+> Cowork-routed; see the session-66 closeout handoff `…1405…`):** the
 > PLAN-0028/0029 status-flips + done-moves (Cowork, G1) and the ADR/PLAN-0030 +
 > vertical-#3 research (Cowork-routed). Nothing blocks Code. AI-assisted (Claude Code,
 > session 66); no `Co-Authored-By` per CLAUDE.md §7.
