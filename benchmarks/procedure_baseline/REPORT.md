@@ -800,6 +800,133 @@ generation, not a raw-accuracy edge.
   gate (ruff / mypy --strict / pytest) is green and is the oracle — this live run
   is evidence, not the gate.
 
+### B-γ cross-vertical extension — aquaculture + supply_chain (PLAN-0028)
+
+> **Does the energy finding REPLICATE across verticals?** PLAN-0028 extends the
+> three-arm comparison from energy to two more verticals — **aquaculture** (a
+> below-floor dissolved-oxygen breach) and **supply_chain** (an above-ceiling
+> cold-chain temperature breach). Same methodology; D-1..D-6 + the joint SD-1↔SD-2
+> fairness binding inherited verbatim (PLAN-0027). Arm (a) **reused** from the
+> per-vertical hardened/nudged runs (D-2 — NOT re-run); arms (b)+(c) run fresh.
+> Scored run: `gpt-oss:20b` (ADR-0001 pin) on MS-S1, 2026-06-17, warm-first, ONE
+> combined sweep (80 breach items = 40+40); **0 errors / 0 invalid SQL**; every
+> score VERIFIED from `--dump-json` with the Read tool.
+
+**aquaculture breach subset (40 items; corpus `aquaculture_v0` = 11 snippets, k=4):**
+
+| arm | entity-ID | action-class | entity **+** action | latency p50 / p95 | failure-mode |
+|---|---|---|---|---|---|
+| **(a) governed** (reused, D-2) | — | — | **100%** nudged (40/40) · **60%** hardened (24/40) | ~28.7–31.8 s p95 | OQ-3: read the nudged headline, disclose the 60→100 range |
+| **(b) raw text-to-SQL** | **0%** (0/40) | structurally N/A (D-3) | **incomplete** | 11.5 s / 14.6 s | 40 wrong, 0 invalid — over-constrains with a guessed free-text `description LIKE '%dissolved_oxygen%'` → 0 rows |
+| **(c) lean RAG** | **100%** (40/40) | **100%** (40/40) | **100%** (40/40) | 2.7 s / 4.2 s | none (post-PLAN-0029 calibration; see below) |
+
+**supply_chain breach subset (40 items; corpus `supply_chain_v0` = 10 snippets, k=4):**
+
+| arm | entity-ID | action-class | entity **+** action | latency p50 / p95 | failure-mode |
+|---|---|---|---|---|---|
+| **(a) governed** (reused, D-2) | — | — | **100%** (40/40, hardened + nudged) | ~28.7–31.8 s p95 | — |
+| **(b) raw text-to-SQL** | **100%** (40/40) | structurally N/A (D-3) | **incomplete** | 8.7 s / 9.9 s | 0 wrong, 0 invalid — clean `unit='celsius' AND measured_value>=8` threshold join |
+| **(c) lean RAG** | **100%** (40/40) | **100%** (40/40) | **100%** (40/40) | 3.7 s / 4.9 s | none |
+
+**Reading — the finding REPLICATES, with a sharper explanatory variable:**
+
+1. **arm (c) lean RAG ties arm (a) governed on BOTH new verticals** (100% / 100%),
+   exactly as on energy (97.5% ≈ arm a). The arm-c≈arm-a parity is **not an energy
+   fluke — it replicates** (OQ-2: all three reported honestly; the tie does
+   replicate). Per the ring-fence this is a **finding, not a failure** — it
+   re-confirms the moat relocation OFF raw NL→action accuracy and ONTO the
+   governance layer (§3.4).
+2. **arm (b) raw text-to-SQL swings 0% (aquaculture) ↔ 100% (supply_chain)** — the
+   most informative result. The explanatory variable is the **semantic distance**
+   between the operator's NL question and the physical schema encoding:
+   supply_chain's breach is a clean numeric threshold
+   (`unit='celsius' AND measured_value>=8`) the model expresses directly, and the
+   entity IS the `asset_id` primary key → **low distance → 100%**. aquaculture's
+   breach meaning lives partly in a free-text `description` literal the model must
+   guess (`'%dissolved_oxygen%'` → 0 rows) and the entity is a named `site`/pond
+   subtype → **high distance → 0%**. Raw text-to-SQL's accuracy is a function of
+   **schema-vocabulary luck**; the ontology/governed stack declares that mapping
+   once and removes the dependence. **Semantic distance ↑ ⇒ the value of the
+   ontology ↑** (the inverse of "harder vertical = our stack looks worse": harder
+   *mapping* = the moat matters *more*).
+3. **The baselines stay 3–10× faster** (arm c ~4 s p95, arm b ~10–15 s vs arm a's
+   ~30 s) — consistent across verticals; a logged finding (reports-not-gates).
+
+**OQ-3 — aquaculture arm (a) headline.** The reused aquaculture arm (a) reads the
+**nudged 100%** (40/40, PLAN-0020 R1) as the external-grade headline AND discloses
+the **60→100 range**: the hardened run (2026-06-09) scored 24/40 = 60% on the full
+precision key; the Phase-1 prompt nudge lifts it to 40/40. The 60% basis is graded
+on arm (a)'s full hardened key, so a "60%-basis arm c beats arm a" reading would be
+confounded by the grading asymmetry in the next caveat — hence the range is
+disclosed, nothing hidden.
+
+**OQ-1 fairness disclosures (R-OQ1-1..4, PLAN-0028 §3.5; D-6 intact — corpus+prompt levers only):**
+
+- **Corpus size + retrieved fraction (§3.5 A).** `aquaculture_v0` = **11 snippets**,
+  `supply_chain_v0` = **10 snippets** (energy ≈ 10) — structural parity (same
+  snippet KINDS), sized to each vertical's action vocabulary, **not** an identical
+  count. Each uses **one consolidated breach-action playbook snippet** naming all
+  breach lemmas together (aquaculture `aerate`/`aeration`/`oxygenate`; supply_chain
+  `hold`/`inspect`/`quarantine`/`divert`) so the action-relevant snippet reliably
+  ranks **top-4 of ~10–11** under k=4.
+- **Retriever near-oracle caveat (§3.5 B).** The retriever is the locked
+  deterministic **lexical** top-k (D-4, not re-opened). Under the joint binding the
+  action-relevant snippet is guaranteed surface-token-retrievable, so lexical
+  retrieval behaves as a **near-oracle** for the graded lemmas — retrieval is
+  *generous* to arm (c), so an arm(a)≈arm(c) **parity is conservative for the moat
+  thesis**, not a lexical handicap. Robustness is claimed only for corpora honouring
+  the binding.
+- **Parity disambiguation / over-cover guard (§3.5 D).** The binding is two-sided:
+  every breach lemma is covered AND no snippet names a dataset entity key
+  (`pond-A`/`ship-S`) or hands the model the per-item answer (asserted in tests — arm
+  (c) must still pick the breached entity from the readings and map condition →
+  action). The dangerous near-miss actions are disambiguated in-corpus.
+- **Inherited grading-asymmetry caveat (D-1 `_reduced_expected`).** Arm (c) is graded
+  on the **common sub-task** — entity-present (`affected_primary_key`) + action-class
+  (`action_keywords`) — via the D-1 reduced expected; it is **NOT** graded on arm
+  (a)'s full hardened key (no `forbidden_primary_keys` precision add-on, no handler
+  probe). Arm (c)'s "100%" is therefore a **looser entity grade** than arm (a)'s
+  hardened key — the comparison is on the common sub-task both arms share, not arm
+  (a)'s full precision bar.
+
+**PLAN-0029 measurement calibration (the one aquaculture arm-c recovery).** As-run,
+aquaculture arm (c) scored **39/40** — one miss, `aqua-h06`: the model named the
+right pond `pond-A116` but with a **U+202F NARROW NO-BREAK SPACE** separator the
+hyphen-only `normalize_primary_key` did not fold, so a correctly-named entity graded
+a miss. PLAN-0029 extended the B-6 grader calibration to fold the
+whitespace-separator family ({U+0020, U+00A0, U+2007, U+202F, U+2060} → ASCII `-`,
+recover-only / never-invent) and **offline re-graded** the stored dumps (no
+host-state re-run): exactly `aqua-h06` flipped → aquaculture arm (c) **39/40 →
+40/40**; supply_chain unchanged; arm (b) whitespace-invariant (carried forward). The
+**canonical** numbers in the tables above are post-calibration; the as-run 39/40 and
+the re-grade before→after are retained in the artifacts. Same standard as the energy
+U+2011 hyphen calibration — recovers only a correctly-named entity, so the
+arm(a)≈arm(c) parity stays conservative.
+
+**Threats to validity (recorded honestly):**
+
+- **supply_chain is a 3-way ceiling tie** (a = b = c = 100%) → on this vertical the
+  comparison is **non-discriminating**: a clean numeric-threshold breach is easy for
+  all three paradigms. Only **aquaculture discriminates** (arm b collapses to 0%), so
+  the cross-vertical discrimination evidence rests on ~**1.5 discriminating
+  verticals** (energy + aquaculture), not 2.
+- **Rule-of-Three not yet satisfied.** A third vertical chosen for **high semantic
+  distance** (free-text / relational, where raw SQL is stressed) is needed before any
+  abstraction is extracted from this pattern.
+- **The governed entity-resolution gap is a forward-pointer, not measured here.** The
+  product LLM-path (`recommender._compose_llm_record`) currently trusts the
+  model-emitted entity primary_key verbatim; the genuine universality investment
+  (resolve against the declared object universe) is routed to a future ADR +
+  PLAN-0030, OUT OF SCOPE for B-γ (D-6).
+
+**Run provenance.** `gpt-oss:20b` on MS-S1, Cray-approved host-state run 2026-06-17,
+warm-first, ONE combined sweep (80 calls). Artifacts:
+`.claude/benchmark-results/2026-06-17-bgamma-{aquaculture,supply_chain}.{log,jsonl}`
+(40 item records each; gitignored, retained locally) + the offline re-grade
+(`benchmarks/procedure_comparison/regrade.py`, PLAN-0029). Every number VERIFIED
+against the `--dump-json` records via the Read tool. The offline mock gate stays the
+oracle; this live run is evidence.
+
 ## B-4 / G-3 model-selection sweep
 
 Same dataset + harness, alternative local models — Cray-scoped to three candidates
