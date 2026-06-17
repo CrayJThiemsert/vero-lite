@@ -1,7 +1,7 @@
 ---
 plan: PLAN-0028
 title: B-γ extension — three-arm procedure comparison for aquaculture + supply_chain (PLAN-0027's natural successor frontier; PLAN-0019 Step B-γ generalised cross-vertical)
-status: Proposed (draft)
+status: Accepted
 owner: Claude Code
 created: 2026-06-17
 related_plans:
@@ -61,15 +61,32 @@ authored_by: plan-drafter subagent (in-harness; draft body) + Cowork session-65 
 
 ## 1. Status
 
-**Proposed (draft).** Awaits (i) Cray adjudication of §8 — in particular
-**ratification of the OQ-1 re-look outcome** (the corpus / template / parameter
-calibration recommendations in §3.2 / §3.5, all within the corpus+prompt levers,
-D-6 intact) — then (ii), per the inherited PLAN-0019 B-6 anti-moving-target
-discipline, a Cray ratification of the methodology **delta** (the two new corpora
-+ the template-neutrality / parameterization fixes OQ-1 surfaced) BEFORE the
-scored host-state run. The offline build (Step 2) + the offline mock gate (Step 3)
-may proceed once OQ-1 + §8 are adjudicated; the live scored run (Step 5) needs a
-**separate** explicit Cray go per CLAUDE.md §8 (host-state).
+**Accepted.** Cray ratified this PLAN 2026-06-17 (session 67). All work is
+complete — this is a formal flip of already-executed, already-Cray-approved work,
+not a new decision.
+
+### 1.0 Ratification record (Cray, 2026-06-17, session 67)
+
+Cray ratified, in-session:
+
+- **OQ-1 — the external-grade RAG-fairness re-look outcome** (R-OQ1-1..4: corpus
+  richness · the retriever near-oracle caveat · the template-neutrality fix · the
+  two-sided over+under coverage guard), and the methodology **delta** (the two
+  corpora + the three parameterizations incl. the threshold-noun ceiling/floor
+  fix) — ratified **before the scored run** per the inherited PLAN-0019 B-6
+  anti-moving-target discipline.
+- **OQ-2** — the arm(a)≈arm(c) tie **replicates cross-vertical** (canonical
+  aquaculture 100% / supply_chain 100%, post-calibration).
+- **OQ-3** — the aquaculture join reads against the nudged **100%**, with the
+  60→100% hardened→nudged range disclosed in the REPORT.
+- **OQ-4** — the three mechanical harness parameterizations (RAG persona · unit
+  map · threshold-noun ceiling/floor) confirmed in-scope.
+- **OQ-5** — **ONE combined scored sweep** (executed).
+
+**Completion.** All 6 Steps executed; **AC-1..AC-7 met**. The Step 5 scored sweep
+ran + was VERIFIED (`gpt-oss:20b` @ MS-S1, 80 breach items, 0 errors / 0 invalid).
+Step 6 — the B-3 REPORT cross-vertical extension — shipped (#355, `d48b770` /
+`7275a69`). The canonical numbers were folded via PLAN-0029.
 
 ### 1.1 INHERITED locked decisions (from PLAN-0027 — recorded, do NOT re-open)
 

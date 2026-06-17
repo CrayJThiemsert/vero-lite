@@ -1,7 +1,7 @@
 ---
 plan: PLAN-0029
 title: Entity-key whitespace calibration + offline re-grade of the B-γ dumps (small; measurement-correctness; unblocks PLAN-0028 Step 6 REPORT)
-status: Proposed (draft)
+status: Accepted
 owner: Claude Code
 created: 2026-06-17
 related_plans:
@@ -32,6 +32,21 @@ authored_by: "plan-drafter subagent (in-harness; independent drafting + fact-ver
 > (2026-06-17). Reviewer at ratification = **Cray**; Code commits via PR per ADR-009
 > D2. Separation: originator (Code) ≠ independent drafter (plan-drafter) ≠
 > materializer (Cowork) ≠ reviewer (Cray) — **INTACT**.
+
+## Status
+
+**Accepted.** Cray ratified this PLAN 2026-06-17 (session 67); **SD-1 + SD-2 were
+already Cray-ratified at materialization** (see the drafting-provenance note above).
+All work is complete — this is a formal flip of already-executed,
+already-Cray-approved work, not a new decision.
+
+**Completion — AC-1..AC-5 met.** `normalize_primary_key` now folds the
+whitespace-separator family ({U+0020, U+00A0, U+2007, U+202F, U+2060} → `-`,
+recover-only) for KEY comparison; the offline re-grade flipped **exactly aqua-h06**
+→ aquaculture arm-(c) **39/40 → 40/40** (VERIFIED via the Read tool); supply_chain
+unchanged (40/40); arm-(b) unchanged. ruff + `mypy --strict` clean; `tests/benchmark`
+151 passed (+4). Shipped #353 (`e5f9774` / `1ada20d`). The product entity-trust
+finding is routed OUT to a future ADR + PLAN-0030 (AC-5).
 
 ## Goal
 
