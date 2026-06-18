@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-18T16:11:06+07:00
+last_updated: 2026-06-18T17:02:53+07:00
 session: 67
-current_batch: 'session-67 Phase B — B1 (PLAN-0031, ORM emitter) SHIPPED (#370, merge 7a59814 / commit 73e85f3). The SQLAlchemy ORM is now generated from the ontology (a 6th emit_orm in code_generator.py) to the COMMITTED services/db/models.py — DDL↔ORM parity (test_schema_parity) holds by construction, no more hand-edit drift. B1-DP-1 resolved Option B (Cray): the ORM is a runtime dep (services/db + alembic import it) so it generates to the committed central models.py via _ORM_COMMITTED_DEST, NOT a gitignored generated/ artifact — the re-export-from-gitignored (originally-picked a) would break fresh checkouts, caught at build + re-decided. SD-D: emitter does ORM-model-only (Alembic separate). Full suite 1612 passed; ruff + mypy --strict clean; offline. PLAN-0031 git mv to done/. Group B governance (ADR-0023 Proposed #367; PLAN-0032 Draft #368) committed earlier this phase. Per-vertical ORM layout deferred (Rule-of-Three; Active TODO).'
+current_batch: 'session-67 Phase B COMPLETE (Group B foundation). ADR-0023 (registry auto-discovery, ADR-006 D3 L1→L2) Accepted (#372); B1 ORM emitter shipped (#370); B2 registry auto-discovery shipped (#373, merge 558ec29 / commit c0a4be9). B2: discover_and_register() import-scans verticals/* + invokes the conventional register_<ns>_* entry functions at startup (services/engine/discovery.py) — additive, idempotent, failure-isolated, reset-resettable; the hand-wired main.py _VERTICAL_REGISTRARS map + the scaffold main.py code-mod are removed (a new vertical is auto-discovered, no core edit). Full suite 1615 passed; ruff + mypy --strict clean; offline. PLAN-0032 git mv to done/. The Phase A + B engine backlog is now DONE — ADR-0022/0023 Accepted; PLAN-0028/0029/0030/0031/0032 all shipped + archived. Per-vertical ORM layout deferred (B1-DP-1, Active TODO).'
 current_actor: code
-blocked_on: 'B1 (ORM emitter, PLAN-0031) DONE + shipped (#370). B2 (PLAN-0032, registry auto-discovery) impl is GATED on ADR-0023 Accepted (currently Proposed #367 — the ratification-flip dispatch …1534… is written, awaiting a Cray→Cowork relay + Cowork flip; Cray already ratified SD-A=new-ADR + SD-C=import-scan in-session). ADR-0022 + PLAN-0028/0029/0030/0031 all Accepted/shipped/archived. See next_action.'
-next_action: 'Session-67 Phase B — B1 (ORM emitter) shipped (#370). NEXT: (1) ADR-0023 ratification-flip — dispatch written (…1534…) for Cray to relay to Cowork; Cray ratified SD-A=new-ADR + SD-C=import-scan in-session 2026-06-18; Cowork flips ADR-0023 Proposed→Accepted (G1-trap for Code), Code commits via docs(adr): PR → unblocks B2. (2) Code implements B2 (PLAN-0032, registry auto-discovery via import-scan) on a feat/* branch AFTER ADR-0023 Accepted (offline-only); git mv 0032 to done/ + reconcile STATUS. Deferred: per-vertical ORM layout (B1-DP-1 follow-up, Rule-of-Three; Active TODO). Phase C (UI rework + new-vertical intake) parked until A+B land; Phase D (#3b next-vertical refresh) light + parallelable. All Cowork-routed / Cray-gated.'
-head_commit: 7a59814
-recent_commits: [7a59814, 73e85f3, 0593bc8, 2efb9eb, a9488b6, 206a242, 330de4a, 164770e, 0b56fdf, 2068e1f]
+blocked_on: 'Nothing blocks Code — the Phase A + Phase B engine backlog is COMPLETE (ADR-0022/0023 Accepted; PLAN-0028/0029/0030/0031/0032 all shipped + archived). Next is Phase C (UI rework + new-vertical intake) + Phase D (#3b next-vertical refresh), both Cray-directed (UI design discussion happens in Chat/Cowork → a PLAN; #3b is a light Cowork refresh) — see next_action.'
+next_action: 'Session-67 — Phase A + B (the engine backlog) DONE. NEXT per the session-67 roadmap handoff (…0938…): Phase C (UI rework + new-vertical intake — reflect the settled engine: pipeline display + receive-context-from-user-to-create-a-vertical; the B1 ORM emitter + B2 discovery seam are the enablers) — PARKED pending a Cray UI-design discussion (Chat/Cowork) → then a PLAN. Phase D (#3b next-vertical refresh via the semantic-distance lens; research at docs/research/private/2026-06-04-vertical3-pick.md) — LIGHT Cowork refresh, parallelable. Deferred: per-vertical ORM layout (B1-DP-1, Active TODO). All Cowork-routed / Cray-gated.'
+head_commit: 558ec29
+recent_commits: [558ec29, c0a4be9, cdccf83, 1cdd837, 7a59814, 73e85f3, 0593bc8, 2efb9eb, a9488b6, 206a242]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,29 @@ recent_commits: [7a59814, 73e85f3, 0593bc8, 2efb9eb, a9488b6, 206a242, 330de4a, 
 
 ## Current Focus
 
-> **Session 67 (current; head_commit `7a59814`) — PHASE B: B1 ORM EMITTER SHIPPED
+> **Session 67 (current; head_commit `558ec29`) — PHASE B COMPLETE: B2 REGISTRY
+> AUTO-DISCOVERY SHIPPED (#373); Group B foundation DONE.** A vertical under
+> `verticals/<ns>/` exposing the conventional `register_<ns>_*` entry functions is
+> now **discovered + registered at startup via import-scan**
+> (`services/engine/discovery.py` / `discover_and_register()`, ADR-0023 D1 — the
+> ADR-006 D3 **L1→L2** plugin-maturity move) — **no hand edit to `main.py`**.
+> Additive (the explicit register API unchanged), idempotent (skips
+> already-registered), failure-isolated (a broken vertical is skipped + logged),
+> reset-resettable (PLAN-0005 R5). The hand-wired `_VERTICAL_REGISTRARS` map **and**
+> the scaffold's `main.py` code-mod are **removed** — the "onboarding edits core"
+> fragility is closed. **Verify:** new `test_discovery.py` (register-all /
+> idempotent / failure-isolation / reset) + `test_scaffold` + `test_intake_routes`
+> rewired (no main.py code-mod); **full suite 1615 passed, 22 skipped**; `ruff` +
+> `mypy --strict` clean; offline. `feat(engine)` (#373 / `c0a4be9`); PLAN-0032
+> `git mv`'d to `done/`. **Phase A + B (the engine backlog) are DONE** — ADR-0022 /
+> ADR-0023 Accepted; PLAN-0028/0029/0030/0031/0032 shipped + archived. The moat is
+> built: ontology → 6 generated artifacts (incl. the auto-generated ORM) →
+> auto-registering plugins → 3 OCT features + governed entity resolution. **NEXT:**
+> Phase C (UI rework, Cray-directed) + Phase D (#3b vertical refresh, light Cowork)
+> per the roadmap handoff. AI-assisted (Claude Code, session 67); no
+> `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 67 (head_commit `7a59814`) — PHASE B: B1 ORM EMITTER SHIPPED
 > (#370).** The SQLAlchemy ORM is now **generated from the ontology** — a 6th
 > `emit_orm` in `code_generator.py` writes the energy ORM to the **committed**
 > `services/db/models.py`, so DDL↔ORM parity (`test_schema_parity`) holds **by
