@@ -28,6 +28,7 @@ from services.engine.recommender import (
     reject,
 )
 from services.engine.registry import registry
+from verticals.energy.data_adapter import register_energy_adapter
 
 _BUILD_CLIENT = "services.engine.recommender._build_chat_client"
 
@@ -116,6 +117,7 @@ async def test_recommend_llm_path_returns_proposed_action(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """§7.2/§7.4: a crossing event on the LLM path yields a proposed action."""
+    register_energy_adapter()  # PLAN-0030: the LLM path now resolves affected_entities
     registry.register_handler("energy", "echo", _echo_handler)
     fake = _FakeChatClient(results=[_chat("draft", thinking="reasoned"), _chat(_judgment_json())])
     monkeypatch.setattr(_BUILD_CLIENT, lambda: fake)
@@ -134,6 +136,7 @@ async def test_recommend_llm_trace_has_llm_inference_step(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """§7.3: the LLM path produces a hybrid trace with an llm_inference step."""
+    register_energy_adapter()  # PLAN-0030: the LLM path now resolves affected_entities
     registry.register_handler("energy", "echo", _echo_handler)
     fake = _FakeChatClient(results=[_chat("draft", thinking="reasoned"), _chat(_judgment_json())])
     monkeypatch.setattr(_BUILD_CLIENT, lambda: fake)
@@ -218,6 +221,7 @@ async def test_confidence_does_not_gate_approve_or_execute(
     monkeypatch: pytest.MonkeyPatch, confidence: float
 ) -> None:
     """§7.3: an action approves + executes regardless of the confidence value."""
+    register_energy_adapter()  # PLAN-0030: the LLM path now resolves affected_entities
     registry.register_handler("energy", "echo", _echo_handler)
     fake = _FakeChatClient(
         results=[

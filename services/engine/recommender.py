@@ -38,6 +38,7 @@ from typing import Any
 
 from services.api.config import settings
 from services.engine.actions import AuditMetadata, EntityRef, ReasoningStep, RecommendedAction
+from services.engine.entity_resolution import event_subject_ref, resolve_affected_entities
 from services.engine.llm.client import OllamaClient, OllamaUnreachableError
 from services.engine.llm.structured import ChatClient, JudgmentResult, generate_judgment
 from services.engine.llm.trace import build_llm_audit_metadata, build_llm_reasoning_trace
@@ -140,13 +141,20 @@ def _compose_llm_record(
     event: dict[str, Any],
     vertical: str,
     result: JudgmentResult,
+    affected_entities: list[EntityRef],
+    resolution_steps: list[ReasoningStep],
 ) -> ActionRecord:
     """Compose the ADR-007 D2 envelope from the LLM judgment (SC-1).
 
     The model owns the judgment fields; the harness owns ``id``,
     ``vertical``, ``created_at``, ``requires_approval`` (default True),
-    ``audit_metadata`` and the reasoning trace. The ADR-007 D2 envelope
-    class is unchanged.
+    ``audit_metadata`` and the reasoning trace. ``affected_entities`` are the
+    **governed-resolved** entities (PLAN-0030 / ADR-0022 member (a)) -- each
+    model-emitted ``primary_key`` resolved against the declared object universe
+    (kept canonical) or replaced by the deterministic event subject anchor on a
+    non-match -- NOT the model's verbatim list; ``resolution_steps`` records each
+    outcome, appended to the hybrid trace. The ADR-007 D2 envelope class is
+    unchanged.
     """
     judgment = result.judgment
     event_id = str(event.get("event_id", "unknown"))
@@ -155,9 +163,9 @@ def _compose_llm_record(
         title=judgment.title,
         description=judgment.description,
         vertical=vertical,
-        reasoning_trace=build_llm_reasoning_trace(event, vertical, result),
+        reasoning_trace=build_llm_reasoning_trace(event, vertical, result) + resolution_steps,
         confidence=judgment.confidence,
-        affected_entities=judgment.affected_entities,
+        affected_entities=affected_entities,
         suggested_handler=judgment.suggested_handler,
         handler_payload=judgment.handler_payload,
         audit_metadata=build_llm_audit_metadata(result.model),
@@ -185,7 +193,13 @@ async def recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
         result = await generate_judgment(
             client, event, vertical, retry_budget=settings.llm_retry_budget
         )
-        return _compose_llm_record(event, vertical, result)
+        # ADR-0022 member (a) / PLAN-0030: resolve the model-emitted entity refs
+        # against the declared object universe before the governed record trusts
+        # them. Any resolution error propagates to the fail-safe below (IN-4).
+        affected_entities, resolution_steps = await resolve_affected_entities(
+            event, vertical, result.judgment.affected_entities
+        )
+        return _compose_llm_record(event, vertical, result, affected_entities, resolution_steps)
     except Exception as exc:  # fail-safe must catch everything — §6.6 / ADR-010 IN-4
         if isinstance(exc, OllamaUnreachableError):
             # PLAN-0014: MS-S1 is unreachable — best-effort ping (never raises),
@@ -224,9 +238,13 @@ def _rule_recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
     ):
         return None
 
-    entity_type = settings.oct_recommend_entity_type
+    # SD-2 (Cray-approved): the LLM-path resolution fall-back and this deterministic
+    # fail-safe converge on ONE subject-anchor source via event_subject_ref so they
+    # cannot drift. Behavior-identical to the prior inline EntityRef construction.
+    subject_ref = event_subject_ref(event)
+    entity_type = subject_ref.object_type
     label = settings.oct_recommend_label
-    subject_id = str(event.get(settings.oct_recommend_entity_id_field, "unknown"))
+    subject_id = subject_ref.primary_key
     event_id = str(event.get("event_id", "unknown"))
     unit = str(event.get("unit", ""))
     below = settings.oct_recommend_direction.strip().lower() == "below"
@@ -262,7 +280,7 @@ def _rule_recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
         vertical=vertical,
         reasoning_trace=trace,
         confidence=RULE_CONFIDENCE,
-        affected_entities=[EntityRef(object_type=entity_type, primary_key=subject_id)],
+        affected_entities=[subject_ref],
         suggested_handler="echo",
         handler_payload={"event_id": event_id, "entity_id": subject_id, "measured_value": measured},
         audit_metadata=AuditMetadata(actor="engine", actor_kind="engine"),
