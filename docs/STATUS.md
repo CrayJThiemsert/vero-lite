@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-18T14:41:22+07:00
+last_updated: 2026-06-18T15:02:00+07:00
 session: 67
-current_batch: 'session-67 Phase A COMPLETE — ADR-0022 ratified Accepted (#361) + PLAN-0030 (governed entity-resolution build, member a) authored by Cowork, committed (#363), and IMPLEMENTED by Code (#365, merge 0b56fdf / commit 2068e1f). SD-1 (trace-only ReasoningStep) + SD-2 (shared event_subject_ref helper) Cray-adjudicated 2026-06-18. The LLM recommend path now resolves each model-emitted EntityRef.primary_key against the declared object universe (1-b DataAdapter lookup); a non-resolving PK falls back to the deterministic event subject anchor (recommender.py:265) + a resolution-outcome trace — never certifies an invented identity (PDPA-forward). D-6 honoured (fresh product-side normalizer, no benchmarks cross-import, AST-asserted); member (b) verify+reshape forward-declared; fail-safe :265 not regressed. Full suite 1608 passed; ruff + mypy --strict clean; offline-only. PLAN-0030 git mv to done/.'
+current_batch: 'session-67 Phase B kickoff — Group B foundation governance committed. Cray triggered Group B (Rule-of-Three met on energy/supply_chain/aquaculture) + ruled B2 needs an ADR-006-area touch. Cowork authored 3 drafts → Code reviewed (R2-verified anchors: main.py:40-42 map, registry.py:51-52 dup guard, test_intake_routes.py:256 assertion) + committed: ADR-0023 (registry auto-discovery = ADR-006 D3 L1→L2 plugin maturity; Proposed, #367 a9488b6) + PLAN-0031 (B1 ORM emitter, Draft, no ADR gate) + PLAN-0032 (B2 registry auto-discovery via import-scan, Draft, gated on ADR-0023 Accepted) — both #368 0593bc8. Cowork resolved SD-A=new-ADR, SD-B=split, SD-C=import-scan, SD-D=ORM-only + surfaced B1-DP-1 (ORM output location). AWAITING Cray: ratify ADR-0023 (Proposed→Accepted, SD-A/SD-C) + confirm SD-B/SD-D/B1-DP-1.'
 current_actor: code
-blocked_on: 'Nothing blocks Code. ADR-0022 (governed entity resolution) now Accepted on main (#361, 5c51a75) — design fork resolved (F1=1-b+1-c, F2=2-c+trace, D3=α). PLAN-0028 + PLAN-0029 Accepted + archived (#357). Next is the PLAN-0030 dispatch (Code writes the Code→Cowork dispatch; Cowork authors PLAN-0030, Code commits + implements). Remaining backlog all Cowork-routed / Cray-gated — see next_action.'
-next_action: 'Session-67 Phase A is DONE (ADR-0022 Accepted + PLAN-0030 member (a) shipped #365 + archived to done/). NEXT = Phase B (Group B foundation, per the roadmap handoff …0938…): B1 ORM emitter (a 6th code_generator artifact — generate services/db/models.py from the ontology, ending the hand-authored-ORM drift test_schema_parity catches) + B2 explicit registry → auto-discovery (ADR-006 D3 L1→L2). OPEN (Cray): trigger Group B now (Rule-of-Three met on energy/supply_chain/aquaculture) or wait for vertical #4; and whether B2 needs an ADR-006-area governance touch (Cowork-authored ADR/PLAN) vs B1 PLAN-only. Phase C (UI rework + new-vertical intake) parked until A+B land; Phase D (#3b next-vertical refresh via the semantic-distance lens) light + parallelable. All Cowork-routed / Cray-gated.'
-head_commit: 0b56fdf
-recent_commits: [0b56fdf, 2068e1f, e89e2c8, d4fa8e6, 1493196, 19381b6, 5c51a75, a9634e5, 6ca5467, af1ead8]
+blocked_on: 'B1 (PLAN-0031, ORM emitter) is NOT blocked — no ADR gate, Code can implement now (pending Cray confirm of B1-DP-1 output location). B2 (PLAN-0032, registry auto-discovery) impl is GATED on ADR-0023 Accepted (currently Proposed, #367). ADR-0022 + PLAN-0028/0029/0030 all Accepted/shipped/archived. Awaiting Cray: ratify ADR-0023 (SD-A/SD-C) + confirm SD-B/SD-D/B1-DP-1 — see next_action.'
+next_action: 'Session-67 Phase B — Group B governance committed (ADR-0023 Proposed #367; PLAN-0031 + PLAN-0032 Draft #368). NEXT: Cray ratifies ADR-0023 (Proposed→Accepted, resolving SD-A [new-ADR vs in-place amend; Cowork rec new-ADR] + SD-C [import-scan vs entry-points; Cowork rec import-scan]) + confirms SD-B (split PLANs), SD-D (ORM-emitter does model only; Alembic separate), B1-DP-1 (ORM output location: per-vertical generated/orm.py re-exported by models.py [Cowork rec] vs central). Then: Cowork flips ADR-0023 Accepted (G1-trap for Code) → Code implements B1 (PLAN-0031, no gate, now) + B2 (PLAN-0032, after ADR-0023 Accepted) on feat/* branches, offline-only; git mv PLANs to done/ + reconcile STATUS. Phase C (UI) parked until A+B land; Phase D (#3b) light + parallelable. All Cowork-routed / Cray-gated.'
+head_commit: 0593bc8
+recent_commits: [0593bc8, 2efb9eb, a9488b6, 206a242, 330de4a, 164770e, 0b56fdf, 2068e1f, e89e2c8, d4fa8e6]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,24 @@ recent_commits: [0b56fdf, 2068e1f, e89e2c8, d4fa8e6, 1493196, 19381b6, 5c51a75, 
 
 ## Current Focus
 
-> **Session 67 (current; head_commit `0b56fdf`) — PHASE A COMPLETE: ADR-0022
+> **Session 67 (current; head_commit `0593bc8`) — PHASE B KICKOFF: Group B
+> foundation governance committed (ADR-0023 + PLAN-0031/0032).** Cray **triggered
+> Group B** (Rule-of-Three met on energy/supply_chain/aquaculture; ADR-006 D4) and
+> ruled **B2 needs an ADR-006-area touch**. Cowork authored 3 drafts; **Code
+> reviewed (R2-verified the anchors — `main.py:40-42` map, `registry.py:51-52` dup
+> guard, `test_intake_routes.py:256` assertion) + committed**: **ADR-0023**
+> (registry auto-discovery = the ADR-006 D3 **L1→L2** plugin-maturity move;
+> **Proposed**, #367 `a9488b6`) · **PLAN-0031** (B1 ORM emitter — a 6th `emit_orm`
+> so `test_schema_parity` holds by construction; **no ADR gate**) · **PLAN-0032**
+> (B2 registry auto-discovery via import-scan; **gated on ADR-0023 Accepted**) —
+> both #368 `0593bc8`. Cowork resolved **SD-A=new-ADR · SD-B=split ·
+> SD-C=import-scan · SD-D=ORM-only** + surfaced **B1-DP-1** (ORM output location).
+> **AWAITING Cray:** ratify ADR-0023 (Proposed→Accepted, SD-A/SD-C) + confirm
+> SD-B/SD-D/B1-DP-1 → then Cowork flips ADR-0023 (G1-trap for Code) → Code
+> implements **B1 now** + **B2 after the ADR**, offline-only. AI-assisted (Claude
+> Code, session 67); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 67 (head_commit `0b56fdf`) — PHASE A COMPLETE: ADR-0022
 > ratified + PLAN-0030 member (a) SHIPPED (#365).** Governed **entity resolution**
 > now lands on the LLM recommend path (ADR-0022 D2 member (a), the universality
 > lever): `recommend()` resolves each model-emitted `EntityRef.primary_key` against
