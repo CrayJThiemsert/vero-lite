@@ -1,7 +1,7 @@
 # ADR-0022: Governed entity resolution — resolve a model-emitted entity reference against the declared object universe before the governed record trusts it
 
-**Status:** Proposed
-**Date:** 2026-06-17
+**Status:** Accepted (ratified 2026-06-18 — fork resolved: **F1 = 1-b** (DB/ontology-object lookup) primary **+ 1-c** (deterministic `subject_id`) fall-back · **F2 = 2-c** (fall back to the deterministic subject) **+ a resolution-outcome trace** · **D3 = α** (one construct housing entity-resolution + verify+reshape))
+**Date:** 2026-06-17 (drafted Proposed) · 2026-06-18 (ratified Accepted)
 **Deciders:** Jirachai Thiemsert (founder) — ratifies the construct AND resolves the §"Design fork" options below
 **Related:** ADR-0021 (metric-kind typed semantics — the "classify, don't synthesize" lineage this extends, and the draft→Cray-picks-the-construct ratification flow this mirrors), ADR-016 (governed procedure engine — the governed action/procedure area this enhancement lands in; it carries **no** verify/reshape clause today — see Context), ADR-007 (OCT engine contracts — D2 `RecommendedAction` envelope + `EntityRef`, generalized not broken), ADR-010 (LLM reasoning-hook surface — D5 LLM-backed `recommend()`, IN-4 deterministic fail-safe), ADR-011 (earmarked audit framework — interplay flagged for the reject/flag fork branch, not pulled in), PLAN-0027 (the **D-6 contamination guard** — the binding boundary in the §"Design fork"), PLAN-0028 / PLAN-0029 (the B-γ extension whose `## Findings` routed this universality investment OUT to "a future ADR + PLAN-0030"; the verify+reshape §3.4 forward-pointer), `benchmarks/procedure_baseline/REPORT.md` §B-3 (the verify+reshape future-enhancement forward-pointer), CLAUDE.md §1 (semantic layer = the moat), §8 (PDPA-forward; ADRs Accepted before implementation), ADR-009 D1/D2 (Cowork drafts, Code commits), ADR-012 D4.3 (author≠reviewer disclosure), ADR-013 (phased autonomy relocation; Cowork = advisory governance drafter)
 
@@ -18,12 +18,18 @@
 > (PLAN-0028 §3.4 / D-6, REPORT §B-3, session-66 closeout §7-A1) against the live
 > repo before asserting them.
 
-> **Design-first — the fork is OPEN.** This ADR fixes the **construct + framing
-> only**. The §"Design fork" axes are drafted as **un-decided options**; Cray
-> resolves them at ratification (Proposed → Accepted), exactly as ADR-0021
-> confirmed construct (b) at its ratification. **No implementation, no build
-> steps** — a separate Cowork-routed **PLAN-0030** builds the ratified construct
-> AFTER ratification (CLAUDE.md §6 Decision/Plan Flow; CLAUDE.md §8 ADR-Accepted-before-impl).
+> **Fork — RESOLVED at ratification (2026-06-18).** This ADR fixed the
+> **construct + framing**; Cray has now resolved the §"Design fork" axes (Proposed
+> → Accepted), exactly as ADR-0021 confirmed construct (b) at its ratification:
+> **F1 = 1-b** (DB/ontology-object lookup against the declared object universe)
+> primary **+ 1-c** (the deterministic `subject_id`, `recommender.py:265`) as the
+> fall-back anchor · **F2 = 2-c** (fall back to the deterministic subject on a
+> non-resolving model PK) **+ a resolution-outcome trace** (PDPA-forward — never
+> silently fabricate identity) · **D3 = α** (one governance construct housing both
+> members: entity resolution (a) + verify+reshape (b)). **Still no implementation,
+> no build steps in this ADR** — a separate Cowork-routed **PLAN-0030** builds the
+> ratified construct (member (a), the entity-resolution slice) AFTER this ADR is
+> Accepted (CLAUDE.md §6 Decision/Plan Flow; CLAUDE.md §8 ADR-Accepted-before-impl).
 
 ## Context
 
@@ -94,9 +100,10 @@ is where that pointer lands.**
 ## Decision
 
 > **Read this section as a frame, not a finished mechanism.** D1–D3 fix the
-> construct and its boundary; the **§"Design fork"** below is deliberately left
-> **open** for Cray to resolve at ratification. PLAN-0030 builds only what
-> ratification selects.
+> construct and its boundary; the **§"Design fork"** below was deliberately left
+> open for Cray, who **resolved it at ratification (2026-06-18 — see the Status
+> line + the "Fork — RESOLVED" callout above)**. PLAN-0030 builds only what
+> ratification selected.
 
 ### D1: The construct — *govern the LLM's emitted output against a declared contract before the governed record trusts it*
 
@@ -126,36 +133,39 @@ unresolved reference into a governed fall-back. Designing them as one construct
 keeps the governance discipline coherent and avoids two overlapping ADR-016-area
 ADRs.
 
-### D3: Framing choice — surface, do not pre-pick (Cray decides at ratification)
+### D3: Framing choice — RESOLVED (Cray selected D3-α, 2026-06-18)
 
 Two ways to formalise D1/D2, surfaced rather than silently chosen:
 
 | Option | Shape | Trade-off |
 |---|---|---|
-| **D3-α (recommended)** | **One** governance construct covering both facets; (a) and (b) are two members of a single "govern emitted output against a declared contract" discipline. | One coherent citation anchor; matches the "same governance family" framing (session-66 §7); slightly broader scope to ratify at once. |
+| **D3-α (recommended)** ← SELECTED | **One** governance construct covering both facets; (a) and (b) are two members of a single "govern emitted output against a declared contract" discipline. | One coherent citation anchor; matches the "same governance family" framing (session-66 §7); slightly broader scope to ratify at once. |
 | **D3-β** | A **base** construct establishing the discipline, with **(a) as its first instance** and **(b) named as a forward-declared second instance** (built later). | Narrower thing to ratify now; but risks the same two-ADR fragmentation this dispatch set out to avoid if (b) later spawns its own ADR. |
 
-**Cowork recommends D3-α** (a single coherent governance construct) unless the
-fork analysis below argues otherwise — but this is **Cray's call at ratification**.
+**Cowork recommended D3-α** (a single coherent governance construct); **Cray
+selected D3-α at ratification (2026-06-18)** — one construct housing both members
+(entity resolution (a) + verify+reshape (b)).
 
-## Design fork (OPEN — Cray resolves at ratification; mirrors ADR-0021(b))
+## Design fork (RESOLVED 2026-06-18 — F1=1-b+1-c · F2=2-c+trace · D3=α; mirrors ADR-0021(b))
 
-These axes are drafted as **un-decided options**. PLAN-0030 builds the branch
-Cray selects. Fork axis 3 is the exception — it is a **binding boundary**, not an
-open choice.
+These axes were drafted as un-decided options; **Cray resolved them at ratification
+(2026-06-18)** — the **← SELECTED** markers below record each chosen branch (the
+full option tables are retained as the record of what was weighed). PLAN-0030 builds
+the selected branches. Fork axis 3 is the exception — it is a **binding boundary**,
+not an open choice (it never was one).
 
 ### Fork 1 — Where does the "known universe" come from at recommend-time?
 
 | Branch | Source of truth | Coupling / latency / staleness |
 |---|---|---|
 | **1-a** | The **triggering event's candidate entities** (the entities surfaced by the event that fired the recommender). | Lowest coupling; no extra read; universe is only as complete as the event payload — may miss valid entities the model legitimately names from broader context. |
-| **1-b** | A **DB / ontology-object lookup** against the canonical object table (the full declared object universe). | Most complete + authoritative; adds a read at recommend-time (latency); needs a freshness/staleness story for the object table. |
-| **1-c** | The **deterministic trigger's already-identified subject** (`subject_id` — the `recommender.py:265` anchor) as ground truth. | Zero extra coupling; reuses the path already proven universal-correct; **narrowest** — collapses the LLM's potentially multi-entity judgment to the single triggering subject. |
+| **1-b** ← SELECTED (primary) | A **DB / ontology-object lookup** against the canonical object table (the full declared object universe). | Most complete + authoritative; adds a read at recommend-time (latency); needs a freshness/staleness story for the object table. |
+| **1-c** ← SELECTED (fall-back anchor) | The **deterministic trigger's already-identified subject** (`subject_id` — the `recommender.py:265` anchor) as ground truth. | Zero extra coupling; reuses the path already proven universal-correct; **narrowest** — collapses the LLM's potentially multi-entity judgment to the single triggering subject. |
 
-*(Each has a distinct coupling + latency + staleness profile — Cray weighs
-completeness against recommend-time cost. The branches are not mutually exclusive
-in principle, e.g. 1-c as the fall-back anchor under 1-b's lookup; PLAN-0030
-specifies the exact composition once Cray picks the primary.)*
+*(Each has a distinct coupling + latency + staleness profile. **Cray's resolution
+(2026-06-18): 1-b as the primary, with 1-c as the fall-back anchor** — exactly the
+"1-c as the fall-back anchor under 1-b's lookup" composition this note floated.
+PLAN-0030 specifies the exact composition.)*
 
 ### Fork 2 — What happens on a non-resolving model PK?
 
@@ -163,7 +173,7 @@ specifies the exact composition once Cray picks the primary.)*
 |---|---|---|
 | **2-a** | **Drop** the unresolved entity from `affected_entities`. | Loses information silently — note it in the trace. |
 | **2-b** | **Flag** it low-confidence (keep it, marked unresolved). | Touches the audit trail (a flagged-unresolved marker). |
-| **2-c** | **Fall back** to the deterministic subject (`subject_id`, the `:265` ground truth). | Cleanest grounding; converges the LLM path toward the already-correct deterministic path on failure. |
+| **2-c** ← SELECTED (+ resolution-outcome trace) | **Fall back** to the deterministic subject (`subject_id`, the `:265` ground truth). | Cleanest grounding; converges the LLM path toward the already-correct deterministic path on failure. |
 | **2-d** | **Reject** pending human review (suspend at the approval gate). | Heaviest; touches the audit trail + the approval gate. |
 
 **Audit interplay (flag, do not pull in).** A reject-or-flag branch (2-b / 2-d)
@@ -185,13 +195,14 @@ guard** (re-asserted in PLAN-0028: "Arm (c) stays a CLEAN naive RAG baseline —
 verify/reshape/governance/ontology layer bleeds in"). If the resolution
 contaminates arm (c), the B-γ comparison stops being honest. **State this as an
 explicit non-goal in the build.** This is a guardrail, not a choice — it binds
-whatever Cray selects for forks 1 and 2.
+whatever Cray selected for forks 1 and 2 (1-b+1-c · 2-c).
 
 ## Constraints / guardrails (encode in PLAN-0030)
 
 - **Design-first, no build.** This ADR is framing + fork only. **No code, no
-  implementation steps.** PLAN-0030 builds it AFTER Cray ratifies the construct
-  and resolves the fork (CLAUDE.md §6 Decision Flow; §8 ADR-Accepted-before-impl;
+  implementation steps.** PLAN-0030 builds it now that Cray has ratified the
+  construct and resolved the fork (2026-06-18: α · 1-b+1-c · 2-c) — the §8
+  ADR-Accepted-before-impl gate is satisfied (CLAUDE.md §6 Decision Flow;
   inherited anti-moving-target spirit).
 - **Deterministic path is already correct** (`recommender.py:265`). The construct
   fixes the **LLM path** (`:160`) only — do not regress or re-open the fail-safe
@@ -234,8 +245,11 @@ whatever Cray selects for forks 1 and 2.
 - **Audit-trail interplay is opened but not closed** here. The 2-b/2-d branches
   touch ADR-011's earmarked surface; this ADR flags it rather than resolving it,
   leaving a forward dependency.
-- **Scope decision deferred to ratification.** Cray must resolve D3 (framing) and
-  forks 1–2 before PLAN-0030 can build — the ADR intentionally does not pre-decide.
+- **Scope decision was deferred to ratification (now discharged).** The
+  design-first framing intentionally did not pre-decide D3 + forks 1–2, so PLAN-0030
+  could not begin until ratification — a real sequencing cost. Cray discharged it at
+  ratification (2026-06-18: D3 = α · F1 = 1-b+1-c · F2 = 2-c+trace); PLAN-0030 is now
+  unblocked.
 
 ### Neutral
 
@@ -336,7 +350,9 @@ whatever Cray selects for forks 1 and 2.
      "Cowork drafts ungated, Code commits" path).
   3. **Cray** ratifies **Proposed → Accepted**, resolving D3 (framing) + forks 1–2
      (the construct branch). Cowork authored, so **Cray is the independent
-     reviewer** — the independent-deliberation check (ADR-012 D4.3).
+     reviewer** — the independent-deliberation check (ADR-012 D4.3). **✓ done
+     (2026-06-18, session 67: D3 = α · F1 = 1-b primary + 1-c fall-back · F2 = 2-c
+     + a resolution-outcome trace).**
   4. **Then** a separate Cowork dispatch authors **PLAN-0030** to build the
      ratified construct (the entity-resolution slice (a) first).
 - **Governance gate:** PLAN-0030's implementation PR is gated on this ADR being
