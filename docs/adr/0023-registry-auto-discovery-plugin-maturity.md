@@ -1,8 +1,8 @@
 # ADR-0023: Registry auto-discovery — vertical plugin maturity L1→L2 (amends ADR-006 D3)
 
-**Status:** Proposed *(Cray ratifies Proposed → Accepted, resolving **SD-A** — the amend-vs-new-ADR framing — and **SD-C** — the discovery mechanism; see §"Surfaced decisions")*
-**Date:** 2026-06-18
-**Deciders:** Jirachai Thiemsert (founder) — ratifies the construct AND resolves SD-A (framing) + SD-C (mechanism)
+**Status:** Accepted (ratified 2026-06-18 — **SD-A = a new ADR-0023** that amends ADR-006 D3 [not an in-place edit] · **SD-C = import-scan** over `verticals/*` [Python entry-points = the L3 future seam])
+**Date:** 2026-06-18 (drafted Proposed) · 2026-06-18 (ratified Accepted)
+**Deciders:** Jirachai Thiemsert (founder) — ratified the construct AND resolved SD-A (framing) + SD-C (mechanism) in-session 2026-06-18
 **Related:** ADR-006 (vertical plugin architecture — **this ADR amends D3** [template maturity L1/L2] and is gated by D4 [Rule of Three]); ADR-007 (OCT engine contracts — D1 "plugin discovery" mechanism left unpinned, see OQ-6); ADR-008 (YAML ontology — each vertical declares its objects/adapters); PLAN-0005 (§6.4 OQ-6 "explicit registration, no import-scan discovery"; §8.1 deferred-foundational register; R5 registry-reset fixture); PLAN-0016 / PLAN-0017 (new-vertical scaffold + live co-creation intake — the flows that currently *edit* `main.py`); CLAUDE.md §1 (vertical plugin architecture = part of the moat), §3 (Action layer registers at runtime), §6 (Decision Flow); ADR-009 D1/D2 (Cowork drafts, Code commits); ADR-012 D4.3 (author≠reviewer disclosure); ADR-013 (phased autonomy relocation — Cowork = advisory governance drafter)
 
 > **Authoring disclosure (ADR-012 D4.3).** Drafted (uncommitted) by Cowork
@@ -22,8 +22,19 @@
 > (ADR-0021 amended ADR-008 D3 via a new ADR, not an in-place rewrite), and
 > editing an Accepted ADR in place is the **G1 trap** the dispatch routing flags.
 > This ADR therefore **records the L1→L2 amendment to ADR-006 D3** as a standalone
-> decision and cross-links both ways. **SD-A is surfaced, not silently chosen** —
-> Cray ratifies the framing (see §"Surfaced decisions").
+> decision and cross-links both ways. **SD-A was surfaced, not silently chosen —
+> Cray selected the new-ADR framing at ratification (2026-06-18; see
+> §"Surfaced decisions").**
+
+> **Ratification — RESOLVED (2026-06-18).** Cray ratified this ADR Proposed →
+> Accepted in-session, resolving the two surfaced decisions: **SD-A = a new
+> ADR-0023** that amends ADR-006 D3 (not an in-place edit) · **SD-C = import-scan**
+> over `verticals/*` as the discovery mechanism (Python entry-points recorded as
+> the L3 / commercial future seam). The construct (D1–D5) is **unchanged** from the
+> Proposed draft — only the ratification outcome is recorded. The §"Surfaced
+> decisions" tables are retained as the record of what was weighed, with the
+> selected branch marked **← SELECTED**. PLAN-0032 (B2) implementation is now
+> unblocked (impl-gate ADR-0023 Accepted satisfied).
 
 ## Context
 
@@ -89,10 +100,11 @@ maturity level now explicitly includes **runtime registry discovery** of
 verticals — the registry no longer requires hand-wiring per vertical. (ADR-006 D3
 L1/L2/L3 levels are otherwise unchanged; L3 web-UI self-service is untouched.)
 
-### D2: Discovery mechanism — import-scan over `verticals/*` (SD-C: RESOLVED at ratification)
+### D2: Discovery mechanism — import-scan over `verticals/*` (SD-C: RESOLVED 2026-06-18 — import-scan ← SELECTED)
 
-> *Drafted recommendation: **import-scan**. Cray resolves SD-C at ratification —
-> the §"Surfaced decisions" table records both branches.*
+> *Cray selected **import-scan** at ratification (2026-06-18); Python entry-points
+> are recorded as the L3 future seam. The §"Surfaced decisions" SD-C table is
+> retained as the record of what was weighed (import-scan ← SELECTED).*
 
 Discovery walks the `verticals/` package, and for each vertical package that
 exposes the conventional entry points (`register_<ns>_adapter` in
@@ -142,28 +154,33 @@ PLAN-0017) to **edit `main.py`** to register a new vertical. The registration ma
 (PLAN-0032) — a deliberate, tested change, not a silent removal. This closes the
 "onboarding edits core" fragility that makes a new vertical a non-plugin today.
 
-## Surfaced decisions (for Cray to adjudicate)
+## Surfaced decisions (RESOLVED at ratification 2026-06-18)
 
-### SD-A — Record the L1→L2 amendment as a NEW ADR vs an in-place edit of ADR-006 D3. *(Cowork recommends: new ADR — this one.)*
+> Both axes were drafted as un-decided options; **Cray resolved them at
+> ratification (2026-06-18)** — the **← SELECTED** markers below record each chosen
+> branch (the full option tables are retained as the record of what was weighed).
+
+### SD-A — Record the L1→L2 amendment as a NEW ADR vs an in-place edit of ADR-006 D3. *(Cowork recommended: new ADR — this one. **Cray selected new-ADR at ratification, 2026-06-18.**)*
 
 | Option | Shape | Trade-off |
 |---|---|---|
-| **New ADR-0023 (recommended)** | A standalone decision record that amends ADR-006 D3 + cross-links. | Matches repo convention (ADR-0021 amended ADR-008 D3 via a new ADR); preserves ADR-006 as an immutable historical record; clean own-ratification; avoids the G1 in-place-edit-of-Accepted-ADR trap. Slight cost: the plugin-architecture story spans ADR-006 + ADR-0023 (mitigated by explicit cross-links both ways). |
+| **New ADR-0023 (recommended) ← SELECTED** | A standalone decision record that amends ADR-006 D3 + cross-links. | Matches repo convention (ADR-0021 amended ADR-008 D3 via a new ADR); preserves ADR-006 as an immutable historical record; clean own-ratification; avoids the G1 in-place-edit-of-Accepted-ADR trap. Slight cost: the plugin-architecture story spans ADR-006 + ADR-0023 (mitigated by explicit cross-links both ways). |
 | **Amend ADR-006 D3 in place** | Edit the Accepted ADR-006 D3 table/text directly. | One citation anchor for the whole plugin story. But rewrites an Accepted decision record (loses immutability), and in-place edits of an Accepted ADR are the **G1 trap** the dispatch routing flags. |
 
-*Cray adjudicates.* If Cray prefers the in-place amendment, Cowork re-issues the
-change as an ADR-006 edit and withdraws this file (it is an uncommitted draft).
+*Cray selected the new-ADR form at ratification (2026-06-18)* — this file stands as
+the standalone ADR amending ADR-006 D3; the in-place-edit option was weighed and not
+taken.
 
-### SD-C — Discovery mechanism: import-scan vs Python entry-points (D2). *(Cowork recommends: import-scan.)*
+### SD-C — Discovery mechanism: import-scan vs Python entry-points (D2). *(Cowork recommended: import-scan. **Cray selected import-scan at ratification, 2026-06-18.**)*
 
 | Branch | Mechanism | Trade-off |
 |---|---|---|
-| **import-scan (recommended)** | `importlib`/`pkgutil` walk of `verticals/*`; invoke each vertical's conventional `register_<ns>_*` entry functions. | Simplest; stdlib-only; no packaging change; rides the naming convention already emitted by every vertical + the scaffold. Needs a per-vertical **import-failure-isolation** story (a broken vertical must not crash discovery for the others). |
+| **import-scan (recommended) ← SELECTED** | `importlib`/`pkgutil` walk of `verticals/*`; invoke each vertical's conventional `register_<ns>_*` entry functions. | Simplest; stdlib-only; no packaging change; rides the naming convention already emitted by every vertical + the scaffold. Needs a per-vertical **import-failure-isolation** story (a broken vertical must not crash discovery for the others). |
 | **Python entry-points** | Declare each vertical as a packaging entry-point; discover via importlib.metadata. | The "real" plugin seam for *separately installed* verticals; but adds packaging metadata + a build step, and ADR-006 Alt-2 rejected separate vertical packages for Phase 1 → premature. |
 
-*Cray ratifies the mechanism.* PLAN-0032's mechanism-specific steps follow the
-ratified branch (drafted around import-scan; an entry-points selection re-points
-PLAN-0032 Step 2).
+*Cray selected import-scan at ratification (2026-06-18).* PLAN-0032's
+mechanism-specific steps follow the selected branch (import-scan); Python
+entry-points stay reserved for the L3 future seam.
 
 ## Consequences
 
@@ -220,9 +237,9 @@ PLAN-0032 Step 2).
 - **Pros:** single citation anchor for the plugin architecture.
 - **Cons:** rewrites an Accepted decision record (immutability loss); the G1
   in-place-edit trap.
-- **Why not chosen as the default:** recorded as **SD-A / in-place**; Cray
-  adjudicates. The new-ADR form (this file) is the recommended, convention-aligned
-  default.
+- **Why not chosen:** recorded as **SD-A / in-place**; **Cray selected the new-ADR
+  form at ratification (2026-06-18).** The new-ADR form (this file) is the
+  convention-aligned outcome.
 
 ## References
 
@@ -261,11 +278,13 @@ PLAN-0032 Step 2).
   2. **Code** commits it **Proposed** via a `docs(adr):` chore PR (ADR-009 D2).
   3. **Cray** ratifies **Proposed → Accepted**, resolving **SD-A** (amend-framing)
      + **SD-C** (mechanism). Cowork authored, so **Cray is the independent
-     reviewer** (ADR-012 D4.3 independent-deliberation check).
+     reviewer** (ADR-012 D4.3 independent-deliberation check). **✓ done
+     (2026-06-18, session 67: SD-A = new ADR-0023 amends ADR-006 D3; SD-C =
+     import-scan; Python entry-points = L3 future seam).**
   4. **Then** PLAN-0032 builds B2 (the entity gate: this ADR Accepted, CLAUDE.md
-     §6 Decision/Plan Flow + §8 ADR-Accepted-before-impl).
+     §6 Decision/Plan Flow + §8 ADR-Accepted-before-impl). **✓ gate satisfied.**
 - **B1 is independent of this ADR.** The ORM emitter (PLAN-0031) is an additive
-  generator artifact with **no** ADR gate; it may land before this ADR ratifies
-  (see SD-B in the completion handoff).
+  generator artifact with **no** ADR gate; it had no dependency on this ADR's
+  ratification and may land independently (see SD-B in the completion handoff).
 - Drafted by Cowork (Tier-1, ADR-009 D1); uncommitted. Code reviews + commits.
   AI-assisted (Claude); no `Co-Authored-By` per CLAUDE.md §7.
