@@ -21,7 +21,8 @@ _ENERGY_YAML = Path("verticals/energy/ontology/energy_v0.yaml")
 
 
 def _energy_table_names() -> set[str]:
-    """Table names of the energy ontology ORM (the classes in services/db/models.py).
+    """Table names of the energy ontology ORM (the classes in services/db/models.py —
+    now GENERATED in place by ``code_generator.emit_orm``, PLAN-0031 B1).
 
     The Procedure-engine run tables (``pipeline_runs`` / ``step_results``) share the
     same ``Base.metadata`` — ``services/db/base.py``: "shared by every vero-lite ORM
