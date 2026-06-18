@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-18T12:01:52+07:00
+last_updated: 2026-06-18T13:36:00+07:00
 session: 67
-current_batch: 'session-67 Phase A — ADR-0022 (governed entity resolution) RATIFIED Proposed → Accepted (#361, merge 5c51a75 / ratify a9634e5). Cray ratified in-session 2026-06-18, resolving the design fork: F1 = 1-b (DB/ontology-object lookup) primary + 1-c (deterministic subject_id) fall-back; F2 = 2-c (fall back to the deterministic subject) + a resolution-outcome trace; D3 = α (one construct housing entity resolution (a) + verify+reshape (b)). Authoring split (ADR-009 D1/D2): Code landed the mechanical Status flip under Cray direct in-context instruction; the G1 gate then blocked Code from authoring the ADR narrative once Status:Accepted, so Cowork authored the ratification narrative + a residual-tense coherence fold; Code committed. Construct + framing unchanged from the Proposed draft (#359). Unblocks PLAN-0030 (the entity-resolution build, member a).'
+current_batch: 'session-67 Phase A — ADR-0022 (governed entity resolution) RATIFIED Proposed → Accepted (#361, merge 5c51a75 / ratify a9634e5). Cray ratified in-session 2026-06-18, resolving the design fork: F1 = 1-b (DB/ontology-object lookup) primary + 1-c (deterministic subject_id) fall-back; F2 = 2-c (fall back to the deterministic subject) + a resolution-outcome trace; D3 = α (one construct housing entity resolution (a) + verify+reshape (b)). Authoring split (ADR-009 D1/D2): Code landed the mechanical Status flip under Cray direct in-context instruction; the G1 gate then blocked Code from authoring the ADR narrative once Status:Accepted, so Cowork authored the ratification narrative + a residual-tense coherence fold; Code committed. Construct + framing unchanged from the Proposed draft (#359). PLAN-0030 (entity-resolution build, member a) now authored by Cowork (ADR-009 D1) + reviewed/committed by Code (#363, 1493196); 2 contract-touching surfaced decisions (SD-1 marker shape, SD-2 shared subject-anchor helper that touches the guarded :265) LEFT OPEN for Cray to adjudicate before Code implements.'
 current_actor: code
 blocked_on: 'Nothing blocks Code. ADR-0022 (governed entity resolution) now Accepted on main (#361, 5c51a75) — design fork resolved (F1=1-b+1-c, F2=2-c+trace, D3=α). PLAN-0028 + PLAN-0029 Accepted + archived (#357). Next is the PLAN-0030 dispatch (Code writes the Code→Cowork dispatch; Cowork authors PLAN-0030, Code commits + implements). Remaining backlog all Cowork-routed / Cray-gated — see next_action.'
-next_action: 'Session-67 Phase A tail — Code writes the Code→Cowork PLAN-0030 dispatch (the entity-resolution build, member a, per the resolved fork: 1-b lookup primary + 1-c/2-c deterministic fall-back + resolution-outcome trace; D-6 boundary — no leak into the arm-c naive-RAG baseline); Cowork authors PLAN-0030 (NEW PLAN = G2-blocked for Code), Code commits + implements. Then Phase B (Group B foundation: ORM emitter + registry discovery — Rule-of-Three met on energy/supply_chain/aquaculture) per the session-67 roadmap handoff (…0938…). Phase C (UI rework + new-vertical intake) parked until A+B land; Phase D (#3b next-vertical refresh via the semantic-distance lens) light + parallelable. All Cowork-routed / Cray-gated.'
-head_commit: 5c51a75
-recent_commits: [5c51a75, a9634e5, 6ca5467, af1ead8, 9ce1289, a258739, d966f38, d84422a, 1cda40f, 3d5e2af]
+next_action: 'Session-67 Phase A tail — PLAN-0030 dispatched (Code, …1210…) → authored (Cowork) → committed (Code, #363, 1493196). NEXT: Cray adjudicates the 2 surfaced decisions — SD-1 (resolution marker: trace-only ReasoningStep [Cowork rec] vs an optional EntityRef.resolution field on the shared ADR-007 D2 envelope) + SD-2 (shared _event_subject_ref(event) helper [Cowork rec] vs duplicate — the shared-helper option edits the guarded :265 line, behavior-preserving) — then Code implements member (a) on a feat/* branch + PR (offline-only; impl-gate ADR-0022 Accepted satisfied #361), git mv 0030 to done/, reconcile STATUS. Then Phase B (Group B foundation: ORM emitter + registry discovery — Rule-of-Three met) per the roadmap handoff (…0938…); Phase C (UI rework) parked until A+B; Phase D (#3b vertical refresh via semantic-distance lens) light + parallelable. All Cowork-routed / Cray-gated.'
+head_commit: 1493196
+recent_commits: [1493196, 19381b6, 5c51a75, a9634e5, 6ca5467, af1ead8, 9ce1289, a258739, d966f38, d84422a]
 ---
 
 # vero-lite — Project Status
@@ -18,8 +18,8 @@ recent_commits: [5c51a75, a9634e5, 6ca5467, af1ead8, 9ce1289, a258739, d966f38, 
 
 ## Current Focus
 
-> **Session 67 (current; head_commit `5c51a75`) — PHASE A: ADR-0022 RATIFIED
-> ACCEPTED (#361).** The governed-entity-resolution construct (the universality
+> **Session 67 (current; head_commit `1493196`) — PHASE A: ADR-0022 RATIFIED
+> ACCEPTED (#361) + PLAN-0030 AUTHORED & COMMITTED (#363).** The governed-entity-resolution construct (the universality
 > lever PLAN-0029 routed out) flipped **Proposed → Accepted** at Cray's
 > ratification (2026-06-18), recording the resolved **design fork**: **F1 = 1-b**
 > (DB/ontology-object lookup vs the declared object universe) primary **+ 1-c**
@@ -35,11 +35,18 @@ recent_commits: [5c51a75, a9634e5, 6ca5467, af1ead8, 9ce1289, a258739, d966f38, 
 > Construct + framing **unchanged** from the Proposed draft (#359) — only the
 > ratification outcome is recorded. **R2 verify:** the ratified ADR was read back
 > on-disk + grep-swept (no present-tense-pending stragglers) before commit.
-> **Next (Phase A tail):** Code writes the Code→Cowork **PLAN-0030** dispatch (the
-> entity-resolution build, member (a)); Cowork authors PLAN-0030, Code commits +
-> implements. Then **Phase B** (Group B foundation: ORM emitter + registry
-> discovery) per the session-67 roadmap handoff. Nothing blocks Code. AI-assisted
-> (Claude Code, session 67); no `Co-Authored-By` per CLAUDE.md §7.
+> **Phase A tail — through PLAN-0030 commit:** Code wrote the Code→Cowork
+> **PLAN-0030** dispatch (`…1210…`); Cowork authored it (ADR-009 D1, the
+> entity-resolution build / member (a)); Code reviewed + committed the draft (#363,
+> `1493196`). **NEXT — Cray adjudicates 2 surfaced decisions** before
+> implementation: **SD-1** (resolution marker: trace-only `ReasoningStep` [Cowork
+> rec] vs an optional `EntityRef.resolution` field on the shared ADR-007 D2
+> envelope) · **SD-2** (shared `_event_subject_ref(event)` helper [Cowork rec] vs
+> duplicate — the helper edits the guarded `:265` line, behavior-preserving). Then
+> Code implements member (a) on a `feat/*` branch (offline-only; impl-gate
+> ADR-0022-Accepted satisfied). Then **Phase B** (Group B foundation: ORM emitter +
+> registry discovery) per the session-67 roadmap handoff. AI-assisted (Claude Code,
+> session 67); no `Co-Authored-By` per CLAUDE.md §7.
 
 > **Session 67 (head_commit `1cda40f`) — PHASE 1 RATIFY-FLIPS DONE
 > (#357): PLAN-0028 + PLAN-0029 → Accepted + archived to `done/`.** The
