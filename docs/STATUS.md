@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-18T15:02:00+07:00
+last_updated: 2026-06-18T16:11:06+07:00
 session: 67
-current_batch: 'session-67 Phase B kickoff — Group B foundation governance committed. Cray triggered Group B (Rule-of-Three met on energy/supply_chain/aquaculture) + ruled B2 needs an ADR-006-area touch. Cowork authored 3 drafts → Code reviewed (R2-verified anchors: main.py:40-42 map, registry.py:51-52 dup guard, test_intake_routes.py:256 assertion) + committed: ADR-0023 (registry auto-discovery = ADR-006 D3 L1→L2 plugin maturity; Proposed, #367 a9488b6) + PLAN-0031 (B1 ORM emitter, Draft, no ADR gate) + PLAN-0032 (B2 registry auto-discovery via import-scan, Draft, gated on ADR-0023 Accepted) — both #368 0593bc8. Cowork resolved SD-A=new-ADR, SD-B=split, SD-C=import-scan, SD-D=ORM-only + surfaced B1-DP-1 (ORM output location). AWAITING Cray: ratify ADR-0023 (Proposed→Accepted, SD-A/SD-C) + confirm SD-B/SD-D/B1-DP-1.'
+current_batch: 'session-67 Phase B — B1 (PLAN-0031, ORM emitter) SHIPPED (#370, merge 7a59814 / commit 73e85f3). The SQLAlchemy ORM is now generated from the ontology (a 6th emit_orm in code_generator.py) to the COMMITTED services/db/models.py — DDL↔ORM parity (test_schema_parity) holds by construction, no more hand-edit drift. B1-DP-1 resolved Option B (Cray): the ORM is a runtime dep (services/db + alembic import it) so it generates to the committed central models.py via _ORM_COMMITTED_DEST, NOT a gitignored generated/ artifact — the re-export-from-gitignored (originally-picked a) would break fresh checkouts, caught at build + re-decided. SD-D: emitter does ORM-model-only (Alembic separate). Full suite 1612 passed; ruff + mypy --strict clean; offline. PLAN-0031 git mv to done/. Group B governance (ADR-0023 Proposed #367; PLAN-0032 Draft #368) committed earlier this phase. Per-vertical ORM layout deferred (Rule-of-Three; Active TODO).'
 current_actor: code
-blocked_on: 'B1 (PLAN-0031, ORM emitter) is NOT blocked — no ADR gate, Code can implement now (pending Cray confirm of B1-DP-1 output location). B2 (PLAN-0032, registry auto-discovery) impl is GATED on ADR-0023 Accepted (currently Proposed, #367). ADR-0022 + PLAN-0028/0029/0030 all Accepted/shipped/archived. Awaiting Cray: ratify ADR-0023 (SD-A/SD-C) + confirm SD-B/SD-D/B1-DP-1 — see next_action.'
-next_action: 'Session-67 Phase B — Group B governance committed (ADR-0023 Proposed #367; PLAN-0031 + PLAN-0032 Draft #368). NEXT: Cray ratifies ADR-0023 (Proposed→Accepted, resolving SD-A [new-ADR vs in-place amend; Cowork rec new-ADR] + SD-C [import-scan vs entry-points; Cowork rec import-scan]) + confirms SD-B (split PLANs), SD-D (ORM-emitter does model only; Alembic separate), B1-DP-1 (ORM output location: per-vertical generated/orm.py re-exported by models.py [Cowork rec] vs central). Then: Cowork flips ADR-0023 Accepted (G1-trap for Code) → Code implements B1 (PLAN-0031, no gate, now) + B2 (PLAN-0032, after ADR-0023 Accepted) on feat/* branches, offline-only; git mv PLANs to done/ + reconcile STATUS. Phase C (UI) parked until A+B land; Phase D (#3b) light + parallelable. All Cowork-routed / Cray-gated.'
-head_commit: 0593bc8
-recent_commits: [0593bc8, 2efb9eb, a9488b6, 206a242, 330de4a, 164770e, 0b56fdf, 2068e1f, e89e2c8, d4fa8e6]
+blocked_on: 'B1 (ORM emitter, PLAN-0031) DONE + shipped (#370). B2 (PLAN-0032, registry auto-discovery) impl is GATED on ADR-0023 Accepted (currently Proposed #367 — the ratification-flip dispatch …1534… is written, awaiting a Cray→Cowork relay + Cowork flip; Cray already ratified SD-A=new-ADR + SD-C=import-scan in-session). ADR-0022 + PLAN-0028/0029/0030/0031 all Accepted/shipped/archived. See next_action.'
+next_action: 'Session-67 Phase B — B1 (ORM emitter) shipped (#370). NEXT: (1) ADR-0023 ratification-flip — dispatch written (…1534…) for Cray to relay to Cowork; Cray ratified SD-A=new-ADR + SD-C=import-scan in-session 2026-06-18; Cowork flips ADR-0023 Proposed→Accepted (G1-trap for Code), Code commits via docs(adr): PR → unblocks B2. (2) Code implements B2 (PLAN-0032, registry auto-discovery via import-scan) on a feat/* branch AFTER ADR-0023 Accepted (offline-only); git mv 0032 to done/ + reconcile STATUS. Deferred: per-vertical ORM layout (B1-DP-1 follow-up, Rule-of-Three; Active TODO). Phase C (UI rework + new-vertical intake) parked until A+B land; Phase D (#3b next-vertical refresh) light + parallelable. All Cowork-routed / Cray-gated.'
+head_commit: 7a59814
+recent_commits: [7a59814, 73e85f3, 0593bc8, 2efb9eb, a9488b6, 206a242, 330de4a, 164770e, 0b56fdf, 2068e1f]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,28 @@ recent_commits: [0593bc8, 2efb9eb, a9488b6, 206a242, 330de4a, 164770e, 0b56fdf, 
 
 ## Current Focus
 
-> **Session 67 (current; head_commit `0593bc8`) — PHASE B KICKOFF: Group B
+> **Session 67 (current; head_commit `7a59814`) — PHASE B: B1 ORM EMITTER SHIPPED
+> (#370).** The SQLAlchemy ORM is now **generated from the ontology** — a 6th
+> `emit_orm` in `code_generator.py` writes the energy ORM to the **committed**
+> `services/db/models.py`, so DDL↔ORM parity (`test_schema_parity`) holds **by
+> construction** instead of by hand-edit discipline (the PLAN-0005 §8.1 ORM-emitter
+> Rule-of-Three trigger fired). **B1-DP-1 resolved Option B (Cray):** the ORM is a
+> **runtime dependency** (services/db + alembic import it), so it generates to the
+> committed central `models.py` via `_ORM_COMMITTED_DEST` — **not** a gitignored
+> `verticals/<ns>/generated/` artifact; the re-export-from-gitignored approach (the
+> originally-picked (a)) would break fresh checkouts — **caught at build +
+> re-decided**. **SD-D:** the emitter does the ORM model only; Alembic stays
+> separate. **Verify:** new `test_orm_emitter.py` + `test_schema_parity` green
+> against the generated ORM; **full suite 1612 passed, 22 skipped**; `ruff` +
+> `mypy --strict` clean; offline. `feat(engine)` (#370 / `73e85f3`); PLAN-0031
+> `git mv`'d to `done/`. **Deferred (Cray):** the per-vertical ORM layout is a
+> Rule-of-Three follow-up (trigger: vertical #2 needs an ORM) — Active TODO.
+> **NEXT:** the ADR-0023 ratification-flip (dispatch `…1534…` → Cowork flips; Cray
+> ratified SD-A=new-ADR + SD-C=import-scan) → unblocks **B2** (PLAN-0032)
+> implementation. AI-assisted (Claude Code, session 67); no `Co-Authored-By` per
+> CLAUDE.md §7.
+
+> **Session 67 (head_commit `0593bc8`) — PHASE B KICKOFF: Group B
 > foundation governance committed (ADR-0023 + PLAN-0031/0032).** Cray **triggered
 > Group B** (Rule-of-Three met on energy/supply_chain/aquaculture; ADR-006 D4) and
 > ruled **B2 needs an ADR-006-area touch**. Cowork authored 3 drafts; **Code
@@ -306,6 +327,7 @@ below, and git history.
 - [ ] **PLAN-004 Phase C — OPTIONAL POLISH (forward-declared; "may never land"):** HTML/markdown handoff dashboard under `docs/` + references-graph (mermaid dispatch chains) + `render_transcript.py` unified session export (PLAN-0004 §"Phase C"). *(Phase A + B both COMPLETE — session 35; the prior TODO's validator **warning-swallow bug was FIXED #312**, s58. Minor never-formally-scoped sub-ideas — README/`_rename-map` walk-exclusion, Cat G `references_*` autofix, OQ-2 effective-vs-authored `status:` dashboard flag — fold in only if Phase C lands. Reconciled 2026-06-16 s65 audit.)*
 - [ ] **A1 — verify+reshape governance demo (B-γ moat successor).** The heaviest moat-proof: prove the moat IS governance — verify an LLM step's output for semantic consistency + reshape to the next step's contract (what arm (c) structurally lacks; ADR-016 area; the B-3 REPORT forward-points to it). **Scope together with the Phase-2 governed-entity-resolution ADR** — one ADR-016-area construct, not two overlapping ADRs. *(folded from §7 handoff, s67)*
 - [ ] **A2 — equal-rubric arm-(a) re-grade.** Grade arm (a) on arm (c)'s `_reduced_expected` for a true apples-to-apples number (removes the grading asymmetry the B-3 REPORT discloses). Small, **offline, reuses `benchmarks/procedure_comparison/regrade.py`**. *(folded from §7 handoff, s67)*
+- [ ] **ORM-emitter per-vertical layout (B1-DP-1 follow-up; Cray-deferred s67).** B1 (PLAN-0031, #370) ships the ORM emitter writing energy's ORM to the **committed** `services/db/models.py` (via `code_generator._ORM_COMMITTED_DEST`) — the gitignored `verticals/<ns>/generated/` cannot host a runtime dependency. When a **2nd vertical needs its own ORM** (the Rule-of-Three trigger), decide the per-vertical layout: extend `_ORM_COMMITTED_DEST` to per-vertical committed modules **vs** un-ignore a per-vertical `generated/orm.py` (gitignore negation) + re-export. Premature to design now (one ORM today). *(Cray-deferred 2026-06-18)*
 - [ ] **G2 drafting-friction root-fix (parked s63; hit AGAIN s66 + s67).** Exempt the plan-drafter's *uncommitted-draft* write from the G2 always-pause (the Stop-hook auto-dispatch tells you to spawn plan-drafter, then the PreToolUse arm denies the very write — and it over-fires on non-new-plan tasks like the s67 ratify-flip). Worth a harness-improvement batch. *(folded from §7 handoff, s67)*
 - [ ] **Promote the "proceed vs Cowork-dispatch-file" routing standard (un-promoted since s63).** The captured routing framework (solid + just-needs-perspective → proceed/approve; might-have-gaps OR needs-creative-ideas → Cowork dispatch file) → promote from private memory to a `docs/conventions/` standard. *(folded from §7 handoff, s67)*
 - [ ] **ADR-NN (TBD, ≥ ADR-014) + PLAN-002** — Custom Postgres image with extensions (ADR-011 earmarked for the audit framework, ADR-012 taken, ADR-013 taken by autonomy axis relocation; floor bumped from ≥0013 to ≥0014 on 2026-05-23 per ADR-013 T6)
