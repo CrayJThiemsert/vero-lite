@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-18T13:36:00+07:00
+last_updated: 2026-06-18T14:41:22+07:00
 session: 67
-current_batch: 'session-67 Phase A — ADR-0022 (governed entity resolution) RATIFIED Proposed → Accepted (#361, merge 5c51a75 / ratify a9634e5). Cray ratified in-session 2026-06-18, resolving the design fork: F1 = 1-b (DB/ontology-object lookup) primary + 1-c (deterministic subject_id) fall-back; F2 = 2-c (fall back to the deterministic subject) + a resolution-outcome trace; D3 = α (one construct housing entity resolution (a) + verify+reshape (b)). Authoring split (ADR-009 D1/D2): Code landed the mechanical Status flip under Cray direct in-context instruction; the G1 gate then blocked Code from authoring the ADR narrative once Status:Accepted, so Cowork authored the ratification narrative + a residual-tense coherence fold; Code committed. Construct + framing unchanged from the Proposed draft (#359). PLAN-0030 (entity-resolution build, member a) now authored by Cowork (ADR-009 D1) + reviewed/committed by Code (#363, 1493196); 2 contract-touching surfaced decisions (SD-1 marker shape, SD-2 shared subject-anchor helper that touches the guarded :265) LEFT OPEN for Cray to adjudicate before Code implements.'
+current_batch: 'session-67 Phase A COMPLETE — ADR-0022 ratified Accepted (#361) + PLAN-0030 (governed entity-resolution build, member a) authored by Cowork, committed (#363), and IMPLEMENTED by Code (#365, merge 0b56fdf / commit 2068e1f). SD-1 (trace-only ReasoningStep) + SD-2 (shared event_subject_ref helper) Cray-adjudicated 2026-06-18. The LLM recommend path now resolves each model-emitted EntityRef.primary_key against the declared object universe (1-b DataAdapter lookup); a non-resolving PK falls back to the deterministic event subject anchor (recommender.py:265) + a resolution-outcome trace — never certifies an invented identity (PDPA-forward). D-6 honoured (fresh product-side normalizer, no benchmarks cross-import, AST-asserted); member (b) verify+reshape forward-declared; fail-safe :265 not regressed. Full suite 1608 passed; ruff + mypy --strict clean; offline-only. PLAN-0030 git mv to done/.'
 current_actor: code
 blocked_on: 'Nothing blocks Code. ADR-0022 (governed entity resolution) now Accepted on main (#361, 5c51a75) — design fork resolved (F1=1-b+1-c, F2=2-c+trace, D3=α). PLAN-0028 + PLAN-0029 Accepted + archived (#357). Next is the PLAN-0030 dispatch (Code writes the Code→Cowork dispatch; Cowork authors PLAN-0030, Code commits + implements). Remaining backlog all Cowork-routed / Cray-gated — see next_action.'
-next_action: 'Session-67 Phase A tail — PLAN-0030 dispatched (Code, …1210…) → authored (Cowork) → committed (Code, #363, 1493196). NEXT: Cray adjudicates the 2 surfaced decisions — SD-1 (resolution marker: trace-only ReasoningStep [Cowork rec] vs an optional EntityRef.resolution field on the shared ADR-007 D2 envelope) + SD-2 (shared _event_subject_ref(event) helper [Cowork rec] vs duplicate — the shared-helper option edits the guarded :265 line, behavior-preserving) — then Code implements member (a) on a feat/* branch + PR (offline-only; impl-gate ADR-0022 Accepted satisfied #361), git mv 0030 to done/, reconcile STATUS. Then Phase B (Group B foundation: ORM emitter + registry discovery — Rule-of-Three met) per the roadmap handoff (…0938…); Phase C (UI rework) parked until A+B; Phase D (#3b vertical refresh via semantic-distance lens) light + parallelable. All Cowork-routed / Cray-gated.'
-head_commit: 1493196
-recent_commits: [1493196, 19381b6, 5c51a75, a9634e5, 6ca5467, af1ead8, 9ce1289, a258739, d966f38, d84422a]
+next_action: 'Session-67 Phase A is DONE (ADR-0022 Accepted + PLAN-0030 member (a) shipped #365 + archived to done/). NEXT = Phase B (Group B foundation, per the roadmap handoff …0938…): B1 ORM emitter (a 6th code_generator artifact — generate services/db/models.py from the ontology, ending the hand-authored-ORM drift test_schema_parity catches) + B2 explicit registry → auto-discovery (ADR-006 D3 L1→L2). OPEN (Cray): trigger Group B now (Rule-of-Three met on energy/supply_chain/aquaculture) or wait for vertical #4; and whether B2 needs an ADR-006-area governance touch (Cowork-authored ADR/PLAN) vs B1 PLAN-only. Phase C (UI rework + new-vertical intake) parked until A+B land; Phase D (#3b next-vertical refresh via the semantic-distance lens) light + parallelable. All Cowork-routed / Cray-gated.'
+head_commit: 0b56fdf
+recent_commits: [0b56fdf, 2068e1f, e89e2c8, d4fa8e6, 1493196, 19381b6, 5c51a75, a9634e5, 6ca5467, af1ead8]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,30 @@ recent_commits: [1493196, 19381b6, 5c51a75, a9634e5, 6ca5467, af1ead8, 9ce1289, 
 
 ## Current Focus
 
-> **Session 67 (current; head_commit `1493196`) — PHASE A: ADR-0022 RATIFIED
+> **Session 67 (current; head_commit `0b56fdf`) — PHASE A COMPLETE: ADR-0022
+> ratified + PLAN-0030 member (a) SHIPPED (#365).** Governed **entity resolution**
+> now lands on the LLM recommend path (ADR-0022 D2 member (a), the universality
+> lever): `recommend()` resolves each model-emitted `EntityRef.primary_key` against
+> the vertical's **declared object universe** via the registered
+> `DataAdapter.fetch_objects` (**1-b**); a resolving PK keeps the **canonical**
+> declared key, a non-resolving PK **falls back to the deterministic event subject
+> anchor** (`recommender.py:265`) + a `ReasoningStep(kind="entity_resolution")`
+> records the outcome — the governed record **never certifies a model-invented
+> identity** (PDPA-forward). **SD-1 = trace-only** (ADR-007 D2 envelope untouched) +
+> **SD-2 = shared `event_subject_ref()`** (the LLM-path fall-back and the
+> deterministic `:265` path converge, can't drift) — both **Cray-adjudicated**
+> 2026-06-18. **D-6 honoured** (fresh product-side key normalizer; no `benchmarks/`
+> cross-import, AST-asserted); member (b) verify+reshape **forward-declared**; the
+> deterministic fail-safe `:265` **not regressed**. **Verify:** new
+> `test_entity_resolution.py` (full contract — resolving/fall-back/never-invent/
+> mixed/unknown-type/error→fail-safe/SD-2/D-6); **full suite 1608 passed, 22
+> skipped**; `ruff` + `mypy --strict` clean; **offline-only** (no host-state).
+> `feat(engine)` (#365, merge `0b56fdf` / `2068e1f`); PLAN-0030 `git mv`'d to
+> `done/`. **NEXT = Phase B** (Group B foundation: ORM emitter + registry
+> discovery) per the roadmap handoff. AI-assisted (Claude Code, session 67); no
+> `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 67 (head_commit `1493196`) — PHASE A: ADR-0022 RATIFIED
 > ACCEPTED (#361) + PLAN-0030 AUTHORED & COMMITTED (#363).** The governed-entity-resolution construct (the universality
 > lever PLAN-0029 routed out) flipped **Proposed → Accepted** at Cray's
 > ratification (2026-06-18), recording the resolved **design fork**: **F1 = 1-b**
