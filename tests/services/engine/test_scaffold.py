@@ -1,8 +1,8 @@
 """Tests for the ``vero-lite new-vertical`` scaffolding engine (PLAN-0016).
 
-Unit tests exercise role detection, the registration code-mod, and the
-direction-aware synthetic breach against the real energy/supply_chain
-ontologies + main.py. The end-to-end test runs the CLI in-process (Typer
+Unit tests exercise role detection and the direction-aware synthetic breach
+against the real energy/supply_chain ontologies. The end-to-end test runs the
+CLI in-process (Typer
 CliRunner) against a staged copy of the supply_chain ontology renamed to a
 fresh namespace, proving domain-renamed scaffolding + the clobber guard
 without dirtying the working tree (Lesson #7 §3.2 in-process pattern).
@@ -74,32 +74,6 @@ def test_detect_roles_requires_operational_event() -> None:
     del doc["object_types"]["OperationalEvent"]
     with pytest.raises(ScaffoldError, match="OperationalEvent"):
         scaffold.detect_roles(doc)
-
-
-# --------------------------------------------------------------------------- #
-# Registration code-mod
-# --------------------------------------------------------------------------- #
-
-
-def test_register_in_main_adds_import_and_row() -> None:
-    main_text = (_SRC_ROOT / "services" / "api" / "main.py").read_text(encoding="utf-8")
-    out = scaffold.register_in_main(main_text, "aquaculture")
-    assert "from verticals.aquaculture.data_adapter import register_aquaculture_adapter" in out
-    assert "from verticals.aquaculture.handlers import register_aquaculture_handlers" in out
-    assert (
-        '    "aquaculture": (register_aquaculture_adapter, register_aquaculture_handlers),' in out
-    )
-    # The energy + supply_chain rows are preserved.
-    assert '"energy": (register_energy_adapter, register_energy_handlers)' in out
-    assert '"supply_chain": (register_supply_chain_adapter, register_supply_chain_handlers)' in out
-
-
-def test_register_in_main_is_idempotent() -> None:
-    main_text = (_SRC_ROOT / "services" / "api" / "main.py").read_text(encoding="utf-8")
-    once = scaffold.register_in_main(main_text, "aquaculture")
-    twice = scaffold.register_in_main(once, "aquaculture")
-    assert once == twice
-    assert once.count("register_aquaculture_adapter") == 2  # one import + one row ref
 
 
 # --------------------------------------------------------------------------- #
@@ -233,12 +207,20 @@ def test_new_vertical_scaffolds_full_vertical(scaffold_repo: Path) -> None:
     assert "OCT_RECOMMEND_ENTITY_ID_FIELD=shipment_id" in readme
 
 
-def test_new_vertical_code_mods_main(scaffold_repo: Path) -> None:
+def test_new_vertical_does_not_code_mod_main(scaffold_repo: Path) -> None:
+    """PLAN-0032 (B2): the scaffold no longer edits main.py — the vertical is
+    auto-discovered at runtime via the registry import-scan (ADR-0023). main.py is
+    unchanged; the conventional ``register_<ns>_handlers`` entry function discovery
+    rides on was written."""
     runner = CliRunner()
+    main_path = scaffold_repo / "services" / "api" / "main.py"
+    original_main = main_path.read_text(encoding="utf-8")
     assert runner.invoke(app, _new_vertical_args()).exit_code == 0
-    main_text = (scaffold_repo / "services" / "api" / "main.py").read_text(encoding="utf-8")
-    assert "from verticals.cold_demo.data_adapter import register_cold_demo_adapter" in main_text
-    assert '"cold_demo": (register_cold_demo_adapter, register_cold_demo_handlers),' in main_text
+    assert main_path.read_text(encoding="utf-8") == original_main  # NOT code-modded
+    handlers = (scaffold_repo / "verticals" / "cold_demo" / "handlers.py").read_text(
+        encoding="utf-8"
+    )
+    assert "def register_cold_demo_handlers(" in handlers
 
 
 def test_new_vertical_refuses_to_clobber(scaffold_repo: Path) -> None:

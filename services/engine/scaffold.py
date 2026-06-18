@@ -854,52 +854,6 @@ def render_readme(roles: VerticalRoles, config: RecommendConfig, env_block: str)
 
 
 # --------------------------------------------------------------------------- #
-# Registration code-mod (services/api/main.py)
-# --------------------------------------------------------------------------- #
-
-_REGISTRARS_DECL = "_VERTICAL_REGISTRARS"
-
-
-def register_in_main(main_text: str, namespace: str) -> str:
-    """Idempotently add the vertical's imports + a ``_VERTICAL_REGISTRARS`` row.
-
-    Pure text transform (returns the new file text). A no-op when the vertical
-    is already registered, so re-running ``new-vertical`` is safe.
-    """
-    ns = namespace
-    adapter_import = f"from verticals.{ns}.data_adapter import register_{ns}_adapter"
-    handlers_import = f"from verticals.{ns}.handlers import register_{ns}_handlers"
-    row = f'    "{ns}": (register_{ns}_adapter, register_{ns}_handlers),'
-
-    if adapter_import in main_text and row in main_text:
-        return main_text
-
-    lines = main_text.splitlines()
-
-    # 1. Insert the two imports after the last ``from verticals.`` import.
-    last_vertical_import = max(
-        (i for i, ln in enumerate(lines) if ln.startswith("from verticals.")), default=-1
-    )
-    if last_vertical_import < 0:
-        raise ScaffoldError("could not find the 'from verticals.' import block in main.py")
-    inserts = [ln for ln in (adapter_import, handlers_import) if ln not in lines]
-    for offset, ln in enumerate(inserts, start=1):
-        lines.insert(last_vertical_import + offset, ln)
-
-    # 2. Insert the registrar row before the dict's closing brace.
-    decl_idx = next((i for i, ln in enumerate(lines) if ln.startswith(_REGISTRARS_DECL)), None)
-    if decl_idx is None:
-        raise ScaffoldError(f"could not find {_REGISTRARS_DECL} in main.py")
-    close_idx = next((i for i in range(decl_idx, len(lines)) if lines[i] == "}"), None)
-    if close_idx is None:
-        raise ScaffoldError(f"could not find the closing brace of {_REGISTRARS_DECL}")
-    if row not in lines:
-        lines.insert(close_idx, row)
-
-    return "\n".join(lines) + ("\n" if main_text.endswith("\n") else "")
-
-
-# --------------------------------------------------------------------------- #
 # Orchestration
 # --------------------------------------------------------------------------- #
 
@@ -995,20 +949,15 @@ def scaffold_vertical(
         path.write_text(content, encoding="utf-8")
         written.append(path)
 
-    registered = False
-    main_path = root / "services" / "api" / "main.py"
-    if main_path.is_file():
-        original = main_path.read_text(encoding="utf-8")
-        new_text = register_in_main(original, namespace)
-        if new_text != original:
-            main_path.write_text(new_text, encoding="utf-8")
-        registered = True
-
+    # PLAN-0032 (B2): the vertical is auto-discovered + registered at runtime via the
+    # registry import-scan (ADR-0023) — the scaffold no longer code-mods
+    # services/api/main.py. A successfully-scaffolded vertical (its package + the
+    # conventional register_<ns>_* entry functions written above) is discoverable.
     return ScaffoldResult(
         namespace=namespace,
         roles=roles,
         written=written,
         generated=generated,
         env_block=env_block,
-        registered=registered,
+        registered=True,
     )

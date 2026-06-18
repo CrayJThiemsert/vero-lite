@@ -1,7 +1,7 @@
 """FastAPI entry point for vero-lite."""
 
 import logging
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -15,14 +15,9 @@ from services.api.routers.actions import router as actions_router
 from services.api.routers.admin import router as admin_router
 from services.api.routers.intake import router as intake_router
 from services.api.routers.query import router as query_router
+from services.engine.discovery import discover_and_register
 from services.engine.registry import registry
 from services.notify.telegram import describe_arm_state
-from verticals.aquaculture.data_adapter import register_aquaculture_adapter
-from verticals.aquaculture.handlers import register_aquaculture_handlers
-from verticals.energy.data_adapter import register_energy_adapter
-from verticals.energy.handlers import register_energy_handlers
-from verticals.supply_chain.data_adapter import register_supply_chain_adapter
-from verticals.supply_chain.handlers import register_supply_chain_handlers
 
 # uvicorn configures its "uvicorn.error" logger (the startup banner) at INFO with
 # a console handler, while leaving the root logger at WARNING — so a plain
@@ -32,30 +27,22 @@ _boot_logger = logging.getLogger("uvicorn.error")
 
 _STATIC_DIR = Path(__file__).parent / "static"
 
-# Explicit vertical registry (OQ-6: no import-scan discovery). Each entry
-# registers that vertical's adapter + handlers; lifespan wires up the one
-# named by OCT_VERTICAL. Adding a vertical = swap the ontology + adapter and
-# add a row here — no engine or UI change (PLAN-0013 AC-template).
-_VERTICAL_REGISTRARS: dict[str, tuple[Callable[[], object], Callable[[], None]]] = {
-    "energy": (register_energy_adapter, register_energy_handlers),
-    "supply_chain": (register_supply_chain_adapter, register_supply_chain_handlers),
-    "aquaculture": (register_aquaculture_adapter, register_aquaculture_handlers),
-}
-
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
-    """Register the OCT_VERTICAL-selected vertical (adapter + handlers) on startup."""
+    """Auto-discover + register all verticals at startup (import-scan over
+    ``verticals/*`` — ADR-0023 / PLAN-0032; the ADR-006 D3 L1→L2 plugin-maturity move,
+    no hand-wired registry map). The OCT_VERTICAL-selected vertical is warmed for the
+    real-time anchor.
+    """
+    discover_and_register()
     vertical = settings.oct_vertical
-    registrars = _VERTICAL_REGISTRARS.get(vertical)
-    if registrars is None:
-        known = ", ".join(sorted(_VERTICAL_REGISTRARS)) or "(none)"
+    known = registry.verticals()
+    if vertical not in known:
         raise RuntimeError(
-            f"OCT_VERTICAL={vertical!r} is not a registered vertical; known: {known}"
+            f"OCT_VERTICAL={vertical!r} is not a discovered vertical; "
+            f"known: {', '.join(known) or '(none)'}"
         )
-    register_adapter, register_handlers = registrars
-    register_adapter()
-    register_handlers()
     # PLAN-0015 D1: warm the per-process live OperationalEvent view so the
     # real-time anchor base = server start (the breach is anchored to "now").
     # Reads raw object dicts only (no LLM call), so it is safe even when MS-S1 is
@@ -64,7 +51,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # One-shot boot diagnostic: makes a mis-armed PLAN-0014 notifier (e.g. the
     # enable flag left off — otherwise a silent per-call no-op) visible at startup.
     _boot_logger.info(
-        "vertical %r registered; PLAN-0014 Telegram notify: %s",
+        "verticals discovered: %s; active=%r; PLAN-0014 Telegram notify: %s",
+        ", ".join(known),
         vertical,
         describe_arm_state(),
     )
