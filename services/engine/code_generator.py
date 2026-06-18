@@ -353,17 +353,206 @@ def emit_typescript(doc: dict[str, Any], output_path: Path) -> Path:
 
 
 # ---------------------------------------------------------------------------
+# SQLAlchemy ORM emitter (PLAN-0031 / Group B B1)
+# ---------------------------------------------------------------------------
+
+_ORM_PY_TYPE: dict[str, str] = {
+    "string": "str",
+    "int": "int",
+    "float": "float",
+    "bool": "bool",
+    "timestamp": "datetime",
+    "date": "date",
+    "json": "dict[str, Any]",
+    "ref": "str",
+    "enum": "str",
+}
+
+# The ``mapped_column(...)`` type expression per YAML type (``ref``/``json`` handled
+# specially). ``enum`` maps to ``Text`` — CHECK validity lives at the Pydantic layer,
+# and the parity guard covers types not constraints (matches the prior ORM).
+_ORM_COLUMN_TYPE: dict[str, str] = {
+    "string": "Text",
+    "int": "BigInteger",
+    "float": "Double",
+    "bool": "Boolean",
+    "timestamp": "DateTime(timezone=True)",
+    "date": "Date",
+    "enum": "Text",
+}
+
+# The bare SQLAlchemy import name per YAML type (sans constructor args).
+_ORM_SQLALCHEMY_IMPORT: dict[str, str] = {
+    "string": "Text",
+    "int": "BigInteger",
+    "float": "Double",
+    "bool": "Boolean",
+    "timestamp": "DateTime",
+    "date": "Date",
+    "enum": "Text",
+    "ref": "Text",
+}
+
+
+def _orm_used_imports(object_types: dict[str, Any]) -> tuple[set[str], bool, set[str]]:
+    """Return (datetime_imports, needs_any, sqlalchemy_imports) the doc actually uses.
+
+    ``json`` needs ``typing.Any`` (for ``dict[str, Any]``) + ``JSONB`` (from the
+    postgresql dialect, emitted separately when ``needs_any``). Each ``ref`` pulls in
+    ``ForeignKey`` + ``Index``.
+    """
+    datetime_set: set[str] = set()
+    needs_any = False
+    sqlalchemy_set: set[str] = set()
+    for obj_def in object_types.values():
+        for prop_def in (obj_def.get("properties") or {}).values():
+            ptype = prop_def["type"]
+            if ptype == "timestamp":
+                datetime_set.add("datetime")
+            elif ptype == "date":
+                datetime_set.add("date")
+            elif ptype == "json":
+                needs_any = True
+                continue  # JSONB import handled separately (needs_any)
+            sqlalchemy_set.add(_ORM_SQLALCHEMY_IMPORT[ptype])
+            if ptype == "ref":
+                sqlalchemy_set.update({"ForeignKey", "Index"})
+    return datetime_set, needs_any, sqlalchemy_set
+
+
+def _orm_column_def(
+    prop_name: str,
+    prop_def: dict[str, Any],
+    primary_key: str,
+    object_types: dict[str, Any],
+) -> list[str]:
+    """One ``mapped_column`` field as a list of source lines (wrapped if > 100 cols,
+    mirroring the hand-authored ORM's ruff-clean formatting)."""
+    ptype = prop_def["type"]
+    py_type = _ORM_PY_TYPE[ptype]
+    if ptype == "ref":
+        target = prop_def["target"]
+        target_pk = object_types[target]["primary_key"]
+        col_args = [f'Text, ForeignKey("{_snake(target)}.{target_pk}")']
+    elif ptype == "json":
+        col_args = ["JSONB"]
+    else:
+        col_args = [_ORM_COLUMN_TYPE[ptype]]
+    if prop_name == primary_key:
+        col_args.append("primary_key=True")
+        annotation = py_type
+    elif prop_def.get("required", False):
+        col_args.append("nullable=False")
+        annotation = py_type
+    else:
+        annotation = f"{py_type} | None"
+    args = ", ".join(col_args)
+    single = f"    {prop_name}: Mapped[{annotation}] = mapped_column({args})"
+    if len(single) <= 100:
+        return [single]
+    return [
+        f"    {prop_name}: Mapped[{annotation}] = mapped_column(",
+        f"        {args}",
+        "    )",
+    ]
+
+
+def _orm_table_args(table: str, ref_cols: list[str]) -> list[str]:
+    """The ``__table_args__`` index tuple as source lines (single-line if it fits in
+    100 cols, else one ``Index`` per line — matching the hand-authored ORM)."""
+    if not ref_cols:
+        return []
+    entries = [f'Index("idx_{table}_{col}", "{col}")' for col in ref_cols]
+    trailing = "," if len(entries) == 1 else ""
+    single = f"    __table_args__ = ({', '.join(entries)}{trailing})"
+    if len(single) <= 100:
+        return [single]
+    return ["    __table_args__ = (", *[f"        {entry}," for entry in entries], "    )"]
+
+
+def emit_orm(doc: dict[str, Any], output_path: Path) -> Path:
+    """Write SQLAlchemy 2.0 declarative ORM models for every object_type.
+
+    PLAN-0031 (Group B / B1) — the 6th emitter. Generates the SQLAlchemy ORM from the
+    ontology so it is no longer hand-authored; DDL<->ORM parity then holds **by
+    construction** (``tests/services/db/test_schema_parity.py``). Bound to the shared
+    ``services.db.base.Base``. CHECK constraints are omitted (enum validity at the
+    Pydantic layer; the parity guard covers types, not constraints) — schema-equivalent
+    to the prior hand-authored ORM. Deterministic, ordered by ``object_types`` insertion
+    order, like the other five emitters.
+    """
+    object_types = doc.get("object_types") or {}
+    datetime_imports, needs_any, sqlalchemy_imports = _orm_used_imports(object_types)
+
+    lines: list[str] = [
+        '"""Generated SQLAlchemy ORM models from ontology YAML — do not edit by hand."""',
+        "",
+    ]
+    if datetime_imports:
+        lines.append(f"from datetime import {', '.join(sorted(datetime_imports))}")
+    if needs_any:
+        lines.append("from typing import Any")
+    if datetime_imports or needs_any:
+        lines.append("")
+    lines.append(f"from sqlalchemy import {', '.join(sorted(sqlalchemy_imports))}")
+    if needs_any:
+        lines.append("from sqlalchemy.dialects.postgresql import JSONB")
+    lines.append("from sqlalchemy.orm import Mapped, mapped_column")
+    lines.append("")
+    lines.append("from services.db.base import Base")
+
+    for obj_name, obj_def in object_types.items():
+        table = _snake(obj_name)
+        pk = obj_def.get("primary_key", "")
+        props = obj_def.get("properties") or {}
+        lines.append("")
+        lines.append("")
+        lines.append(f"class {obj_name}(Base):")
+        lines.append(f'    __tablename__ = "{table}"')
+        ref_cols = [pn for pn, pd in props.items() if pd["type"] == "ref"]
+        lines.extend(_orm_table_args(table, ref_cols))
+        lines.append("")
+        if not props:
+            lines.append("    pass")
+            continue
+        for prop_name, prop_def in props.items():
+            lines.extend(_orm_column_def(prop_name, prop_def, pk, object_types))
+
+    body = "\n".join(lines).rstrip() + "\n"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(body)
+    return output_path
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
 
+# Committed-ORM destinations (PLAN-0031 B1 / B1-DP-1, resolved Option B 2026-06-18).
+# The SQLAlchemy ORM is a RUNTIME dependency (services/db + alembic import it), so —
+# unlike the other five gitignored reference artifacts under verticals/<ns>/generated/ —
+# it must be generated to a COMMITTED path. Energy's ORM is services/db/models.py. How a
+# 2nd vertical's ORM is laid out (central per-vertical module vs a committed per-vertical
+# generated file) is a deferred Rule-of-Three decision — the B1-DP-1 follow-up.
+_ORM_COMMITTED_DEST: dict[str, Path] = {"energy": Path("services/db/models.py")}
+
+
 def generate_all(yaml_path: Path, output_dir: Path) -> dict[str, Path]:
-    """Run every emitter against ``yaml_path``; return name -> output path map."""
+    """Run every emitter against ``yaml_path``; return name -> output path map.
+
+    The ORM emitter writes to the vertical's **committed** ORM destination
+    (``_ORM_COMMITTED_DEST``) when one is registered — it is runtime code, not a
+    gitignored reference artifact like the other five (falls back to
+    ``output_dir / 'orm.py'`` for a vertical with no committed ORM yet).
+    """
     doc = load_doc(yaml_path)
+    vertical = output_dir.parent.name
     outputs: dict[str, Path] = {}
     outputs["pydantic"] = emit_pydantic(doc, output_dir / "models.py")
     outputs["sql"] = emit_sql(doc, output_dir / "schema.sql")
     outputs["jsonschema"] = emit_jsonschema(doc, output_dir / "schema.json")
     outputs["mcp"] = emit_mcp(doc, output_dir / "mcp_tools.json")
     outputs["typescript"] = emit_typescript(doc, output_dir / "types.ts")
+    outputs["orm"] = emit_orm(doc, _ORM_COMMITTED_DEST.get(vertical, output_dir / "orm.py"))
     return outputs
