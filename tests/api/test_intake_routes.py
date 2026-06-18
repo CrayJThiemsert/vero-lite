@@ -241,7 +241,10 @@ async def test_generate_below_direction_threads_through(
 
 
 async def test_generate_invokes_engine_and_registers(staged_root: Path, http: AsyncClient) -> None:
-    """AC-5: the engine is invoked unchanged — artifacts emitted + main.py code-modded."""
+    """AC-5 (PLAN-0032/B2): the engine is invoked unchanged — artifacts emitted + the
+    vertical is discoverable WITHOUT a main.py code-mod (auto-registered at runtime via
+    the registry import-scan)."""
+    original_main = (staged_root / "services" / "api" / "main.py").read_text()
     res = await http.post(
         "/intake/generate", json={"package": _package_payload(), "confirmed": True}
     )
@@ -252,8 +255,10 @@ async def test_generate_invokes_engine_and_registers(staged_root: Path, http: As
     assert body["registered"] is True
     for name in ("models.py", "schema.sql", "schema.json", "mcp_tools.json", "types.ts"):
         assert (staged_root / "verticals" / "cold_room" / "generated" / name).exists()
-    main_text = (staged_root / "services" / "api" / "main.py").read_text()
-    assert '"cold_room": (register_cold_room_adapter, register_cold_room_handlers),' in main_text
+    # main.py is NOT code-modded; discovery rides the scaffolded register_<ns>_* entry fns.
+    assert (staged_root / "services" / "api" / "main.py").read_text() == original_main
+    handlers = (staged_root / "verticals" / "cold_room" / "handlers.py").read_text()
+    assert "def register_cold_room_handlers(" in handlers
 
 
 async def test_generate_refuses_to_clobber(staged_root: Path, http: AsyncClient) -> None:

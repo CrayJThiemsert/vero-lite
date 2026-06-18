@@ -101,7 +101,8 @@ def new_vertical(
         sys.stderr.write(f"  wrote: {path.relative_to(cwd)}\n")
     for name, path in result.generated.items():
         sys.stderr.write(f"  generated: {name}: {path}\n")
-    sys.stderr.write(f"  registered: {'yes' if result.registered else 'no (main.py absent)'}\n")
+    discoverable = "yes (auto-registered at startup via import-scan)" if result.registered else "no"
+    sys.stderr.write(f"  discoverable: {discoverable}\n")
     sys.stderr.write(
         f"OK: scaffolded vertical {namespace!r} "
         f"(Asset={result.roles.asset_type}, Site={result.roles.site_type}, "
