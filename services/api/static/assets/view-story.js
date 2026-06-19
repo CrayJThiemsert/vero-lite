@@ -335,14 +335,14 @@
           'WO-AQ-7731 · audit#a3f1 · reversible'
         ]));
       } else if (k === 3) {
-        actionsEl.appendChild(h('span', { class: 'gc-hint' }, 'Reject / Hold ก็ได้ — ทุกทางถูก log'));
+        actionsEl.appendChild(h('span', { class: 'gc-hint' }, 'Reject / Hold are fine too — every choice is logged'));
         const wrap = h('div', { class: 'gc-act-btns' }, [
           h('button', { class: 'btn primary', onClick: () => advance() }, [icon('check'), 'Approve']),
-          h('button', { class: 'btn danger sm', onClick: () => { cap.textContent = 'ปฏิเสธ — ไม่มี action ใดทำงาน. และการปฏิเสธ ก็ถูก log เช่นกัน.'; } }, [icon('x', { width: 14, height: 14 }), 'Reject'])
+          h('button', { class: 'btn danger sm', onClick: () => { cap.textContent = 'Rejected — nothing runs. And the rejection is logged too.'; } }, [icon('x', { width: 14, height: 14 }), 'Reject'])
         ]);
         actionsEl.appendChild(wrap);
       } else {
-        actionsEl.appendChild(h('span', { class: 'gc-hint muted' }, 'ระบบกำลังเสนอ — ยังไม่มีอะไรทำงาน'));
+        actionsEl.appendChild(h('span', { class: 'gc-hint muted' }, 'The system is proposing — nothing has run yet'));
       }
     }
     function setRail(k) {
@@ -359,8 +359,8 @@
       setRail(k);
       titleEl.textContent = prop().title;
       descEl.textContent = mode === 'fault'
-        ? 'AI ไม่ผ่านเกณฑ์ความมั่นใจ → ระบบใช้กฎ fail-safe ที่กำหนดไว้ล่วงหน้า'
-        : 'เติมอากาศล่วงหน้า ก่อน DO แตะเส้น 4.0 — ขณะที่ยังถูกและทันเวลา';
+        ? 'The AI missed the confidence gate → the system uses the predefined rule fail-safe'
+        : 'Pre-start aeration before DO hits the 4.0 line — while it is still cheap and in time';
       renderConf();
       setBand(k >= 4 ? 'executed' : 'proposed');
       // entities + trace reveal progressively
@@ -379,9 +379,9 @@
     renderTrace();
     renderEntities();
     return {
-      title: 'จับได้ — และคุณยังคุมทุกอย่าง',
+      title: 'Caught it — and you stay in command',
       stepCount: 4,
-      alt: { label: 'ถ้า AI ไม่มั่นใจ?', title: 'แสดง self-catch: LLM ไม่มั่นใจ → กฎ fail-safe (ยังต้องเซ็น)' },
+      alt: { label: 'What if the AI is unsure?', title: 'Show the self-catch: LLM unsure → deterministic rule fail-safe (still needs your signature)' },
       applyStep: applyStep,
       setAlt: setAlt
     };
@@ -929,7 +929,7 @@
     if (nextCta) {
       if (stepIndex >= active.stepCount && hasNext) {
         clear(nextCta);
-        nextCta.appendChild(document.createTextNode('ต่อ →'));
+        nextCta.appendChild(document.createTextNode('Continue '));
         nextCta.appendChild(icon('chevron', { width: 15, height: 15 }));
         nextCta.style.display = '';
       } else {
