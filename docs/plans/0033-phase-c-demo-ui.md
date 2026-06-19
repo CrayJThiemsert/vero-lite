@@ -1,6 +1,6 @@
 # PLAN-0033: Phase C — Pain-First Animated Demo + Branching Pipeline Overview + New-Vertical Intake
 
-**Status:** Draft (uncommitted — Cowork-drafted per ADR-009 D1; Code commits per ADR-009 D2)
+**Status:** Active — committed #381 (Code R2-reviewed) + SD-A..D ratified by Cray 2026-06-19 (session 68); **C0 vertical-slice build is the next step**. (Cowork-drafted per ADR-009 D1; Code commits per ADR-009 D2.)
 **Owner:** Claude Code (Tier 2 executes) — Cowork drafted (ADR-009 D1)
 **Created:** 2026-06-19
 **Related ADRs:** ADR-0015 (two-tier vertical onboarding — this is the **Tier-1 "Mirror demo"** face; D5 live co-creation), ADR-010 (LLM reasoning hook; **IN-4 deterministic rule fail-safe** — the honesty anchor for the branching DAG), ADR-0022 (governed entity resolution — `entity_resolution` trace step), ADR-008 (YAML ontology contract), ADR-006 (vertical plugin architecture; D4 Rule of Three), ADR-009 D1/D2 (Cowork drafts / Code commits), ADR-012 D4.3 (author≠reviewer disclosure), ADR-013 (phased advisory relocation — interim authoring applies)
@@ -238,6 +238,13 @@ confirm `resident` → run story), STATUS update, and `git mv` to `done/` on com
 | **Over-promise of "builds your whole business from a sentence"** | Reframe scene 4 as "ร่าง skeleton … มาปรับด้วยกัน" with the mandatory human review/edit step (ADR-0015 D5 hard requirement). |
 
 ## SURFACED decisions — Cowork recommends, **Cray adjudicates** (do not downgrade)
+
+> **✅ RATIFIED by Cray — 2026-06-19 (session 68); all four match Cowork's recommendation.**
+> **SD-A** = keep 6 scenes, couple 1+2 · **SD-B** = aquaculture for the C0 de-risk slice ·
+> **SD-C** = new `view-story.js` overlay (coexist with the A–E console, don't replace) ·
+> **SD-D** = anchor scene-5 on the in-repo B-γ/A2 finding (robustness framing); the
+> dbt-Labs "86%→6%" external stat is **gated verify-before-ship**. The per-SD write-ups
+> below are retained as the rationale of record.
 
 ### SD-A — Scene count: keep 6, or fold? → **Recommend keep 6, with scenes 1+2 tightly coupled** *(Cray adjudicates)*
 **Recommend:** keep all six as distinct beats, but stage **1 (Hook) → 2 (จับได้+คุณคุม)
