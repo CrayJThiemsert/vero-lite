@@ -60,9 +60,33 @@
   border: 1px solid var(--line); border-radius: 3px; padding: 1px 4px; margin-left: 2px;
 }
 
-/* ---- two-axis body: details LEFT, overview + control RIGHT (AC-4) ---- */
-.story-body {
-  flex: 1 1 auto; min-height: 0; display: grid;
+/* per-scene step counter + scene nav (shell chrome — C1) */
+.story-steptext { font-size: 10.5px; color: var(--tx-3); letter-spacing: .04em; min-width: 64px; text-align: right; }
+.story-scenenav { display: flex; align-items: center; gap: 4px; }
+.story-scenenav .iconbtn { min-width: 30px; justify-content: center; font-size: 16px; line-height: 1; padding: 0 9px; }
+.story-scenenav .iconbtn:disabled { opacity: .32; cursor: default; }
+.story-transport .story-alt.is-on { color: var(--warn); border-color: var(--warn-line); background: var(--warn-bg); }
+
+/* floating "continue ›" CTA — appears when a scene has played out (couples scenes) */
+.story-nextcta {
+  position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 62;
+  display: inline-flex; align-items: center; gap: 6px; cursor: pointer;
+  height: 34px; padding: 0 18px; border-radius: 999px;
+  background: linear-gradient(160deg, var(--accent), #2f6fd0);
+  border: 1px solid var(--accent); color: #fff;
+  font-family: var(--sans); font-size: 12.5px; font-weight: 600; letter-spacing: .02em;
+  box-shadow: 0 8px 22px rgba(0,0,0,.4); animation: cta-rise .3s ease-out;
+}
+.story-nextcta:hover { filter: brightness(1.08); }
+.story-nextcta svg { width: 15px; height: 15px; }
+@keyframes cta-rise { from { opacity: 0; transform: translate(-50%, 8px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+/* ---- body host: a plain region; each scene applies its own layout ---- */
+.story-body { flex: 1 1 auto; min-height: 0; display: flex; overflow: hidden; }
+
+/* ---- SCENE 3 — two-axis pipeline: details LEFT, overview + control RIGHT (AC-4) ---- */
+.scene-pipeline {
+  flex: 1 1 auto; min-width: 0; min-height: 0; display: grid;
   grid-template-columns: minmax(320px, 38%) 1fr; gap: 0;
 }
 .story-detail {
@@ -226,10 +250,107 @@
 
 .story-empty { color: var(--tx-3); font-size: 11px; text-align: center; padding: 14px 6px; font-family: var(--mono); }
 
+/* ============================================================
+   SCENE 1 — Hook (C1). Pain-first cold-open. Layers reveal by step;
+   the reveal motion is JS-driven (scope.tween → reduced-motion snaps),
+   so the resting state is encoded by .is-shown alone (AC-10).
+   ============================================================ */
+.scene-hook {
+  flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; padding: 28px 24px;
+  background: radial-gradient(80% 60% at 50% 28%, #0b121d, var(--bg-0));
+}
+.hook-stage { width: 100%; max-width: 600px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.hook-clock { display: flex; align-items: center; gap: 12px; }
+.hook-clock-face { width: 44px; height: 44px; }
+.hook-clock-face circle { fill: none; stroke: var(--line-strong); stroke-width: 1.5; }
+.hook-clock-face .h-hand, .hook-clock-face .m-hand { stroke: var(--tx-2); stroke-width: 2; stroke-linecap: round; }
+.hook-time { font-size: 22px; font-weight: 700; color: var(--tx-0); letter-spacing: .04em; line-height: 1.1; }
+.hook-place { font-size: 11.5px; color: var(--tx-3); }
+.hook-chart { width: 100%; max-width: 560px; height: auto; }
+.hk-axis, .hk-axis-u { fill: var(--tx-3); font-family: var(--mono); font-size: 9px; }
+.hk-action { stroke: var(--warn); stroke-width: 1.4; stroke-dasharray: 5 5; opacity: .85; }
+.hk-action-lbl { fill: var(--warn); font-family: var(--mono); font-size: 9px; }
+.hk-obs { fill: none; stroke: var(--accent); stroke-width: 2.4; stroke-linejoin: round; stroke-linecap: round; }
+.hk-now { fill: var(--accent); }
+.hk-now-lbl { fill: var(--tx-0); font-size: 11px; font-weight: 600; font-family: var(--mono); }
+.hk-proj { stroke: var(--crit); stroke-width: 2; stroke-dasharray: 4 4; }
+.hk-breach { fill: var(--crit); }
+.hk-eta rect { fill: var(--crit-bg); stroke: var(--crit-line); }
+.hk-eta text { fill: var(--crit); font-family: var(--mono); font-size: 10px; font-weight: 600; }
+.hk-layer { opacity: 0; }
+.hk-layer.is-shown { opacity: 1; }
+.hook-stake { display: flex; gap: 26px; opacity: 0; }
+.hook-stake.is-shown { opacity: 1; }
+.hook-stake .stk { display: flex; flex-direction: column; gap: 2px; align-items: center; }
+.hook-stake .stk-k { font-size: 10.5px; color: var(--tx-3); }
+.hook-stake .stk-v { font-size: 15px; font-weight: 700; color: var(--tx-0); font-family: var(--mono); }
+.hook-stake .stk-v.crit { color: var(--crit); }
+.hook-turn { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--accent); opacity: 0; text-align: center; }
+.hook-turn.is-shown { opacity: 1; }
+.hook-turn svg { color: var(--warn); flex: 0 0 auto; }
+.hook-caption { max-width: 520px; text-align: center; font-size: 13px; line-height: 1.5; color: var(--tx-1); min-height: 40px; }
+
+/* ============================================================
+   SCENE 2 — จับได้ + คุณคุม (C1). LEFT governance rail, RIGHT hero
+   decision card (rehoused View-B grammar via shared primitives).
+   ============================================================ */
+.scene-govern { flex: 1 1 auto; min-width: 0; min-height: 0; display: grid; grid-template-columns: minmax(280px, 34%) 1fr; }
+.govern-rail {
+  border-right: 1px solid var(--line); padding: 18px; overflow: auto;
+  display: flex; flex-direction: column;
+  background: linear-gradient(180deg, rgba(18,24,38,.35), transparent 140px);
+}
+.govern-rail .col-head h3 { margin: 2px 0 0; font-size: 13.5px; font-weight: 600; }
+.rail-list { margin-top: 14px; display: flex; flex-direction: column; gap: 4px; }
+.rail-beat { display: flex; gap: 10px; padding: 9px 10px; border-radius: var(--r-md); border: 1px solid transparent; opacity: .5; transition: opacity .2s, background .2s, border-color .2s; }
+.rail-beat.done { opacity: .82; }
+.rail-beat.active { opacity: 1; background: #16203020; border-color: var(--accent-line); }
+.rail-n { width: 20px; height: 20px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center; font-family: var(--mono); font-size: 10.5px; font-weight: 600; background: var(--bg-3); color: var(--tx-2); border: 1px solid var(--line); }
+.rail-beat.active .rail-n { background: var(--accent); color: #fff; border-color: transparent; }
+.rail-beat.done .rail-n { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-line); }
+.rail-t { font-size: 12.5px; font-weight: 600; color: var(--tx-0); }
+.rail-sub { font-size: 11px; color: var(--tx-2); margin-top: 1px; }
+.govern-offense { margin-top: auto; display: flex; align-items: center; gap: 9px; padding: 11px 12px; border-radius: var(--r-md); background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok); font-size: 11.5px; font-weight: 600; line-height: 1.35; }
+.govern-offense svg { flex: 0 0 auto; }
+.govern-stage { min-width: 0; min-height: 0; overflow: auto; padding: 20px; display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.gc-card { width: 100%; max-width: 560px; border: 1px solid var(--line-strong); border-radius: 14px; background: var(--bg-2); overflow: hidden; transition: border-color .2s, box-shadow .2s; }
+.gc-card.gate-on { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-line), 0 10px 30px rgba(0,0,0,.35); }
+.gc-card.is-executed { border-color: var(--ok-line); }
+.gc-band { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--crit-bg); }
+.gc-card.is-executed .gc-band { background: var(--ok-bg); }
+.gc-band-icon { display: inline-flex; color: var(--crit); }
+.gc-card.is-executed .gc-band-icon { color: var(--ok); }
+.gc-band-lbl { font-size: 12px; font-weight: 600; color: var(--tx-0); }
+.gc-head { padding: 14px; display: flex; flex-direction: column; gap: 9px; }
+.gc-title { margin: 0; font-size: 15px; font-weight: 600; }
+.gc-desc { margin: 0; font-size: 12px; color: var(--tx-1); line-height: 1.4; }
+.gc-conf { display: flex; flex-direction: column; gap: 5px; }
+.gc-conf-top { display: flex; justify-content: space-between; align-items: center; }
+.gc-det { font-size: 10px; color: var(--tx-3); }
+.gc-handler { display: flex; flex-direction: column; gap: 2px; }
+.gc-handler .mono { font-size: 11.5px; color: var(--tx-1); }
+.gc-sec { padding: 0 14px 12px; }
+.gc-sec .eyebrow { margin-bottom: 7px; }
+.gc-ent.is-hidden { display: none; }
+.gc-trace-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.gc-trace-head .muted { font-size: 10.5px; }
+.gc-trace { display: none; max-height: 260px; overflow: auto; }
+.gc-card.trace-open .gc-trace { display: block; }
+.gc-card.trace-open .gc-trace .trace { margin: 0; }
+.gc-actions { padding: 12px 14px; border-top: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.gc-act-btns { display: flex; gap: 8px; }
+.gc-hint { font-size: 11px; color: var(--tx-2); }
+.gc-hint.muted { color: var(--tx-3); }
+.gc-receipt { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--ok); font-family: var(--mono); }
+.govern-caption { max-width: 560px; text-align: center; font-size: 12.5px; line-height: 1.5; color: var(--tx-1); min-height: 36px; }
+
 /* reduced-motion: kill every story animation; state stays readable via
    colour + icon + label (AC-10). This is the universal floor. */
 @media (prefers-reduced-motion: reduce) {
   .story-overlay,
+  .story-nextcta,
   .task-card.state-active,
   .dag-edge.flow,
   .ctl-inbox.is-armed .led { animation: none !important; }
