@@ -4,7 +4,48 @@
    shared across event severities and entity statuses.
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+/* ------------------------------------------------------------
+   Fonts — vendored locally for offline-first / no-CDN posture
+   (CLAUDE.md §8; PLAN-0033 AC-12). IBM Plex Sans + Mono, SIL
+   Open Font License 1.1 — see assets/fonts/LICENSE.txt.
+   "complete" woff2 (IBM/plex v6.4.0): full Latin + Greek glyph
+   coverage; font-display: swap. No network request at load.
+   ------------------------------------------------------------ */
+@font-face {
+  font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 400;
+  font-display: swap;
+  src: url('fonts/IBMPlexSans-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 500;
+  font-display: swap;
+  src: url('fonts/IBMPlexSans-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 600;
+  font-display: swap;
+  src: url('fonts/IBMPlexSans-SemiBold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Sans'; font-style: normal; font-weight: 700;
+  font-display: swap;
+  src: url('fonts/IBMPlexSans-Bold.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 400;
+  font-display: swap;
+  src: url('fonts/IBMPlexMono-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 500;
+  font-display: swap;
+  src: url('fonts/IBMPlexMono-Medium.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'IBM Plex Mono'; font-style: normal; font-weight: 600;
+  font-display: swap;
+  src: url('fonts/IBMPlexMono-SemiBold.woff2') format('woff2');
+}
 
 :root {
   /* ---- surfaces (deep charcoal-navy) ---- */
