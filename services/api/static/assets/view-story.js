@@ -217,34 +217,34 @@
 
     const RAIL = {
       happy: [
-        ['จับได้ — ก่อนเส้นอันตราย', 'เฝ้าดูบ่อ P-12 ตลอดคืน'],
-        ['เสนอการแก้ + เหตุผล', 'DO 4.6 ยังไม่แตะ 4.0'],
-        ['เปิดเหตุผลทั้งหมด', 'query → rule → llm · โปร่งใส'],
-        ['ไม่มีอะไรทำงานก่อน คุณ เซ็น', 'governance = จุดแข็ง'],
-        ['เซ็น → ทำงาน → log ครบ', 'ใครเซ็นก็รู้ · ย้อนกลับได้']
+        ['Caught it — before the danger line', 'Watching pond P-12 all night'],
+        ['Proposes a fix + the reasons', 'DO 4.6, not yet at 4.0'],
+        ['Opens the full reasoning', 'query → rule → llm · transparent'],
+        ['Nothing runs before YOU sign', 'governance = the strength'],
+        ['Sign → run → fully logged', 'who signed is known · reversible']
       ],
       fault: [
-        ['จับได้ — ก่อนเส้นอันตราย', 'เฝ้าดูบ่อ P-12 ตลอดคืน'],
-        ['เสนอการแก้ + เหตุผล', 'DO 4.6 ยังไม่แตะ 4.0'],
-        ['🌟 AI ไม่มั่นใจ → จับตัวเองได้', '0.41 < 0.70 → กฎ fail-safe'],
-        ['กฎ ก็ยัง รอ คุณ เซ็น', 'error ก็ยัง governed'],
-        ['เซ็น → กฎทำงาน → log ครบ', 'ปลอดภัยแม้ AI พลาด']
+        ['Caught it — before the danger line', 'Watching pond P-12 all night'],
+        ['Proposes a fix + the reasons', 'DO 4.6, not yet at 4.0'],
+        ['🌟 AI unsure → it catches itself', '0.41 < 0.70 → rule fail-safe'],
+        ['The rule still waits for you', 'an error is still governed'],
+        ['Sign → rule runs → fully logged', 'safe even when the AI slips']
       ]
     };
     const CAP = {
       happy: [
-        'มีบางอย่างเฝ้าดูบ่อ P-12 ตลอดคืน. และมันเพิ่งจับอะไรได้.',
-        'จับได้ตั้งแต่ DO ยัง 4.6 — ก่อน แตะเส้น 4.0. ไม่ใช่หลังกุ้งตาย.',
-        'นี่คือเหตุผลทั้งหมด: query → rule → llm. ทุกขั้นเปิดให้ตรวจ.',
-        'แต่มันไม่ทำอะไรเลย จนกว่า คุณ จะเซ็น. นี่คือจุดแข็ง ไม่ใช่ข้อจำกัด.',
-        'เซ็นแล้ว → เครื่องเติมอากาศทำงาน → log ครบ ใครเซ็นก็รู้ · ย้อนกลับได้.'
+        'Something watched pond P-12 all night. And it just caught something.',
+        'Caught while DO is still 4.6 — before the 4.0 line. Not after the shrimp die.',
+        'Here is the full reasoning: query → rule → llm. Every step is open to inspect.',
+        'But it does nothing until YOU sign. That is the strength, not a limitation.',
+        'Signed → the aerator runs → fully logged, who signed is known · reversible.'
       ],
       fault: [
-        'คืนนี้ AI ที่แต่งคำสั่ง “ไม่มั่นใจ”. ดูสิ่งที่ระบบทำ.',
-        'จับได้เหมือนเดิม — DO ร่วง ก่อนเส้น 4.0.',
-        'AI มั่นใจแค่ 0.41 (ต่ำกว่าเกณฑ์ 0.70) → ระบบสลับไปกฎ fail-safe เอง. มันจับตัวเองได้.',
-        'และถึงจะเป็นกฎ ไม่ใช่ AI — มันก็ยัง รอคุณเซ็น เหมือนเดิม. error ก็ยัง governed.',
-        'เซ็น → กฎ SOP-DO-01 ทำงาน → log ครบ · ย้อนกลับได้. ปลอดภัยแม้ AI พลาด.'
+        'Tonight, the AI that composes the action is “unsure”. Watch what the system does.',
+        'Caught all the same — DO falling, before the 4.0 line.',
+        'The AI is only 0.41 confident (below the 0.70 gate) → the system reroutes to the rule fail-safe on its own. It catches itself.',
+        'And even though it is a rule, not the AI — it still waits for your signature. An error is still governed.',
+        'Sign → rule SOP-DO-01 runs → fully logged · reversible. Safe even when the AI slips.'
       ]
     };
 
@@ -254,8 +254,8 @@
     const railEls = [];
     const rail = h('div', { class: 'govern-rail' }, [
       h('div', { class: 'col-head' }, [
-        h('div', { class: 'eyebrow' }, 'จับได้ + คุณคุม'),
-        h('h3', null, 'ระบบโชว์เหตุผล — แล้ว รอ คุณ')
+        h('div', { class: 'eyebrow' }, 'Caught it + you stay in control'),
+        h('h3', null, 'The system shows its reasoning — then waits for you')
       ])
     ]);
     const railList = h('div', { class: 'rail-list' });
@@ -272,7 +272,7 @@
     rail.appendChild(railList);
     rail.appendChild(h('div', { class: 'govern-offense' }, [
       icon('check', { width: 14, height: 14 }),
-      h('span', null, 'ไม่มีอะไรทำงานก่อนคุณเซ็น · ทุก action ถูก log · ย้อนกลับได้')
+      h('span', null, 'Nothing runs before you sign · every action is logged · reversible')
     ]));
     root.appendChild(rail);
 
@@ -290,7 +290,7 @@
         h('div', { class: 'gc-handler' }, [h('span', { class: 'eyebrow' }, 'Handler'), h('span', { class: 'mono' }, 'aerator.set_state')])
       ]),
       h('div', { class: 'gc-sec' }, [h('div', { class: 'eyebrow' }, 'Affected'), entEl]),
-      h('div', { class: 'gc-sec' }, [h('div', { class: 'gc-trace-head' }, [h('div', { class: 'eyebrow' }, 'Reasoning trace'), h('span', { class: 'muted' }, 'อ่านบนลงล่าง')]), traceWrap]),
+      h('div', { class: 'gc-sec' }, [h('div', { class: 'gc-trace-head' }, [h('div', { class: 'eyebrow' }, 'Reasoning trace'), h('span', { class: 'muted' }, 'read top to bottom')]), traceWrap]),
       actionsEl
     ]);
     const cap = h('div', { class: 'govern-caption' }, CAP[mode][0]);
@@ -317,7 +317,7 @@
     }
     function setBand(phase) {
       const map = {
-        proposed: ['s-crit', 'Proposed — รอคุณอนุมัติ'],
+        proposed: ['s-crit', 'Proposed — awaiting your approval'],
         executed: ['s-ok', 'Executed — handler dispatched · logged']
       };
       const m = map[phase] || map.proposed;
