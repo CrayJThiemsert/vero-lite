@@ -1,0 +1,236 @@
+/* ============================================================
+   OCT — Story mode (PLAN-0033 Phase C, C0 vertical slice).
+   An additive presentation overlay (SD-C) over the same engine —
+   it coexists with Views A–E, never replaces them (AC-14).
+   Reuses the theme.css design tokens + the rule/llm/query colour
+   legend (rule=warn/amber, llm=info/blue, query|ontology=ok/green).
+   ============================================================ */
+
+/* ---- launcher (mounted into the header .right, beside Refresh) ---- */
+.story-launch {
+  height: 30px; padding: 0 12px; border-radius: var(--r-sm);
+  display: inline-flex; align-items: center; gap: 7px; cursor: pointer;
+  background: linear-gradient(160deg, #2b3a52, #19222f);
+  border: 1px solid var(--accent-line); color: var(--tx-0);
+  font-family: var(--sans); font-size: 12px; font-weight: 600; letter-spacing: .01em;
+}
+.story-launch:hover { border-color: var(--accent); background: #20293a; }
+.story-launch svg { width: 14px; height: 14px; color: var(--accent); }
+
+/* ---- overlay shell ---- */
+.story-overlay {
+  position: fixed; inset: 0; z-index: 60;
+  display: flex; flex-direction: column;
+  background: radial-gradient(120% 90% at 70% 0%, #0e1521 0%, var(--bg-0) 60%);
+  animation: story-fade .22s ease-out;
+}
+@keyframes story-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.story-top {
+  flex: 0 0 auto; display: flex; align-items: center; gap: 16px;
+  padding: 14px 22px; border-bottom: 1px solid var(--line); background: rgba(13,17,25,.6);
+}
+.story-id { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.story-id .eyebrow { color: var(--accent); }
+.story-id h2 { margin: 0; font-size: 16px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; }
+.story-top .flex { flex: 1 1 auto; }
+
+/* scene progress dots */
+.story-dots { display: flex; align-items: center; gap: 7px; }
+.story-dots .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--bg-3); border: 1px solid var(--line-strong);
+}
+.story-dots .dot.active { background: var(--accent); border-color: transparent; box-shadow: 0 0 0 3px var(--accent-soft); }
+.story-dots .dot.done { background: var(--ok); border-color: transparent; }
+
+/* transport controls */
+.story-transport { display: flex; align-items: center; gap: 6px; }
+.story-transport .iconbtn.is-on {
+  color: var(--warn); border-color: var(--warn-line); background: var(--warn-bg);
+}
+
+/* per-step narration caption under the DAG */
+.story-caption {
+  margin: 14px auto 0; max-width: 420px; min-height: 18px;
+  font-size: 12.5px; line-height: 1.45; color: var(--tx-1); text-align: center;
+}
+.story-transport .kbd {
+  font-family: var(--mono); font-size: 9.5px; color: var(--tx-3);
+  border: 1px solid var(--line); border-radius: 3px; padding: 1px 4px; margin-left: 2px;
+}
+
+/* ---- two-axis body: details LEFT, overview + control RIGHT (AC-4) ---- */
+.story-body {
+  flex: 1 1 auto; min-height: 0; display: grid;
+  grid-template-columns: minmax(320px, 38%) 1fr; gap: 0;
+}
+.story-detail {
+  border-right: 1px solid var(--line); overflow: auto; padding: 16px 18px;
+  background: linear-gradient(180deg, rgba(18,24,38,.35), transparent 120px);
+}
+.story-detail .col-head { margin-bottom: 12px; }
+.story-detail .col-head h3 { margin: 2px 0 0; font-size: 13.5px; font-weight: 600; }
+.story-right { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+/* DAG = a short HORIZONTAL band at the top (fixed to content); the control
+   surface below takes the remaining height and scrolls when content is long. */
+.story-stage { flex: 0 0 auto; padding: 16px 18px 10px; overflow-x: auto; }
+.story-control {
+  flex: 1 1 auto; min-height: 0; overflow-y: auto;
+  border-top: 1px solid var(--line); background: rgba(10,14,21,.5);
+}
+
+/* ---- LEFT: all tasks at once (AC-4) ---- */
+.task-card {
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg-2);
+  padding: 11px 13px; margin-bottom: 9px; transition: border-color .2s, background .2s, opacity .2s;
+}
+.task-card.is-branch { margin-left: 16px; border-left: 2px solid var(--line-strong); }
+.task-card.state-pending { opacity: .62; }
+.task-card.state-done { border-color: var(--ok-line); }
+.task-card.state-error { border-color: var(--crit-line); background: var(--crit-bg); }
+.task-card.state-skipped { opacity: .34; }
+.task-card.state-active {
+  border-color: var(--accent); background: #16203020;
+  box-shadow: 0 0 0 1px var(--accent-line), 0 6px 18px rgba(0,0,0,.3);
+}
+/* active-task blink — the only motion on the LEFT axis (AC-4) */
+.task-card.state-active { animation: task-blink 1.25s ease-in-out infinite; }
+@keyframes task-blink {
+  0%, 100% { box-shadow: 0 0 0 1px var(--accent-line), 0 6px 18px rgba(0,0,0,.3); }
+  50%      { box-shadow: 0 0 0 2px var(--accent), 0 6px 22px rgba(77,141,240,.25); }
+}
+.task-card.is-focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.task-top { display: flex; align-items: center; gap: 9px; }
+.task-n {
+  width: 20px; height: 20px; flex: 0 0 auto; border-radius: 4px;
+  display: grid; place-items: center; font-family: var(--mono); font-size: 10.5px; font-weight: 600;
+  background: var(--bg-3); color: var(--tx-2); border: 1px solid var(--line);
+}
+.task-card.state-done .task-n { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-line); }
+.task-card.state-active .task-n { background: var(--accent); color: #fff; border-color: transparent; }
+.task-card.state-error .task-n { background: var(--crit-bg); color: var(--crit); border-color: var(--crit-line); }
+.task-name { font-size: 13px; font-weight: 600; flex: 1 1 auto; }
+.task-detail { margin-top: 8px; display: grid; gap: 4px; }
+.task-row { display: flex; justify-content: space-between; gap: 10px; font-size: 11.5px; }
+.task-row .k { color: var(--tx-2); }
+.task-row .v { color: var(--tx-0); font-family: var(--mono); font-size: 11px; text-align: right; }
+.task-note { margin-top: 7px; font-size: 11.5px; color: var(--tx-1); line-height: 1.4; }
+
+/* ---- RIGHT: the branching DAG (AC-2/AC-3) ---- */
+.dag-wrap { position: relative; }
+.dag-legend {
+  display: flex; flex-wrap: wrap; gap: 10px 16px; margin: 4px 0 12px;
+  font-size: 11px; color: var(--tx-2);
+}
+.dag-legend .lg { display: inline-flex; align-items: center; gap: 6px; }
+.dag-legend .sw { width: 22px; height: 0; border-top-width: 2px; border-top-style: solid; }
+.dag-legend .sw.taken { border-color: var(--ok); }
+.dag-legend .sw.alt { border-color: var(--neutral); border-top-style: dashed; }
+.dag-legend .sw.fail { border-color: var(--warn); }
+.dag-legend .nd { width: 10px; height: 10px; border-radius: 3px; }
+.dag-legend .nd.rule { background: var(--warn); }
+.dag-legend .nd.llm { background: var(--info); }
+.dag-legend .nd.query { background: var(--ok); }
+
+.dag-svg { width: 100%; height: auto; max-width: 880px; display: block; margin: 0 auto; }
+
+/* node states (state = colour + icon + label — AC-10 static floor) */
+.dag-node .node-box {
+  fill: var(--bg-2); stroke: var(--line-strong); stroke-width: 1.4;
+  transition: fill .25s, stroke .25s;
+}
+.dag-node .node-label { fill: var(--tx-1); font-family: var(--sans); font-size: 11px; font-weight: 600; }
+.dag-node .node-sub { fill: var(--tx-3); font-family: var(--mono); font-size: 8.5px; }
+.dag-node .node-glyph { stroke: var(--tx-2); stroke-width: 1.6; fill: none; }
+.dag-node[data-state="pending"] { opacity: .55; }
+.dag-node[data-state="active"] .node-box { fill: #15203220; stroke: var(--accent); stroke-width: 2; }
+.dag-node[data-state="active"] .node-label { fill: var(--tx-0); }
+.dag-node[data-state="active"] .node-glyph { stroke: var(--accent); }
+.dag-node[data-state="done"] .node-box { stroke: var(--ok-line); }
+.dag-node[data-state="done"] .node-glyph { stroke: var(--ok); }
+.dag-node[data-state="error"] .node-box { fill: var(--crit-bg); stroke: var(--crit); }
+.dag-node[data-state="error"] .node-glyph { stroke: var(--crit); }
+.dag-node[data-state="skipped"] { opacity: .3; }
+.dag-node[data-state="skipped"] .node-box { stroke-dasharray: 3 3; }
+.dag-node.is-focus .node-box { stroke: var(--accent); stroke-width: 2.4; }
+.dag-node { cursor: pointer; }
+
+/* node kind tint (rule/llm/query legend on the small kind chip) */
+.dag-node .node-kind { font-family: var(--mono); font-size: 7.5px; font-weight: 600; letter-spacing: .08em; }
+.dag-node .node-kind.rule { fill: var(--warn); }
+.dag-node .node-kind.llm { fill: var(--info); }
+.dag-node .node-kind.query { fill: var(--ok); }
+
+/* edges */
+.dag-edge { fill: none; stroke-width: 2; transition: stroke .25s, opacity .25s; }
+.dag-edge.type-taken { stroke: var(--ok); }
+.dag-edge.type-alt { stroke: var(--neutral); stroke-dasharray: 5 5; opacity: .5; }
+.dag-edge.type-fail { stroke: var(--warn); }
+.dag-edge.is-idle { stroke: var(--line-strong); }
+/* green/amber flow dash animation along a taken/fail edge (suppressed under reduced-motion) */
+.dag-edge.flow { stroke-dasharray: 7 7; animation: edge-flow 1s linear infinite; }
+@keyframes edge-flow { to { stroke-dashoffset: -28; } }
+.dag-token { fill: var(--ok); }
+.dag-token.fail { fill: var(--warn); }
+
+/* ---- RIGHT bottom: scene-6 control surface (AC-5/AC-6) ---- */
+.ctl-head {
+  display: flex; align-items: center; gap: 10px; padding: 10px 16px 6px;
+  position: sticky; top: 0; z-index: 2; background: var(--bg-inset);
+}
+.ctl-head .eyebrow { color: var(--tx-2); }
+.ctl-inbox {
+  display: flex; align-items: center; gap: 8px; margin-left: auto;
+  font-size: 11px; color: var(--tx-2); font-family: var(--mono);
+}
+.ctl-inbox .led { width: 7px; height: 7px; border-radius: 50%; background: var(--neutral); }
+.ctl-inbox.is-armed { color: var(--warn); }
+.ctl-inbox.is-armed .led { background: var(--warn); animation: pulse-led 1.1s ease-out infinite; }
+
+/* kanban lanes */
+.kanban { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; padding: 6px 16px 16px; }
+.lane {
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg-1);
+  min-height: 96px; display: flex; flex-direction: column;
+}
+.lane-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 7px 10px; border-bottom: 1px solid var(--line-soft);
+  font-family: var(--mono); font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--tx-2);
+}
+.lane[data-lane="proposed"] .lane-head { color: var(--crit); }
+.lane[data-lane="approved"] .lane-head { color: var(--info); }
+.lane[data-lane="executed"] .lane-head { color: var(--ok); }
+.lane-count {
+  font-size: 9.5px; min-width: 16px; height: 16px; padding: 0 5px; border-radius: 8px;
+  display: inline-grid; place-items: center; background: var(--bg-3); color: var(--tx-1);
+}
+.lane-body { padding: 8px; display: grid; gap: 8px; align-content: start; }
+
+/* proposal card travelling across lanes */
+.prop-card {
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm); background: var(--bg-2);
+  padding: 9px 10px;
+}
+.prop-card .pc-band { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+.prop-card .pc-title { font-size: 12px; font-weight: 600; line-height: 1.3; }
+.prop-card .pc-meta { margin-top: 5px; font-size: 10.5px; color: var(--tx-2); font-family: var(--mono); }
+.prop-card .pc-actions { display: flex; gap: 6px; margin-top: 9px; }
+.prop-card .pc-why { margin-top: 9px; border-top: 1px solid var(--line-soft); padding-top: 8px; display: none; max-height: 230px; overflow-y: auto; }
+.prop-card.why-open .pc-why { display: block; }
+.prop-card .pc-why .trace { margin: 0; }
+.prop-card .pc-receipt { margin-top: 8px; font-size: 10.5px; color: var(--ok); font-family: var(--mono); display: flex; align-items: center; gap: 6px; }
+
+.story-empty { color: var(--tx-3); font-size: 11px; text-align: center; padding: 14px 6px; font-family: var(--mono); }
+
+/* reduced-motion: kill every story animation; state stays readable via
+   colour + icon + label (AC-10). This is the universal floor. */
+@media (prefers-reduced-motion: reduce) {
+  .story-overlay,
+  .task-card.state-active,
+  .dag-edge.flow,
+  .ctl-inbox.is-armed .led { animation: none !important; }
+}

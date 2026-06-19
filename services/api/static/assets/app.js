@@ -43,6 +43,8 @@
     const rightEl = h('div', { class: 'right' });
     // MS-S1 LLM control (PLAN-0018): residency indicator + warm/sleep, before Refresh.
     if (O.LlmControl && O.LlmControl.mount) O.LlmControl.mount(rightEl);
+    // Story-mode launcher (PLAN-0033 C0): additive overlay, coexists with Views A–E.
+    if (O.ViewStory && O.ViewStory.mountLauncher) O.ViewStory.mountLauncher(rightEl);
     rightEl.appendChild(
       h('button', { class: 'iconbtn', id: 'globalRefresh', onClick: globalRefresh }, [icon('refresh'), 'Refresh'])
     );
