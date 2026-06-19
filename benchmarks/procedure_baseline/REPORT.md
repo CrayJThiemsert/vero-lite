@@ -889,6 +889,34 @@ disclosed, nothing hidden.
   hardened key — the comparison is on the common sub-task both arms share, not arm
   (a)'s full precision bar.
 
+**A2 — equal-rubric re-grade (closes the inherited grading-asymmetry caveat above
++ OQ-3).** To remove the asymmetry as a confound, arm (a) is re-graded on the
+**same reduced rubric arm (c) uses** (`_reduced_expected` = entity-present +
+action-class only) — recomputed **offline** from arm (a)'s RAW judgments with the
+CURRENT grader (same normalizer, no host-state re-run). On the identical reduced
+rubric:
+
+| vertical | arm (a) hardened (full → reduced) | arm (a) nudged (full → reduced) | arm (c) reduced |
+|---|---|---|---|
+| energy | 39 → **39** (97.5%) | 40 → **40** (100%) | 39/40 (97.5%) |
+| aquaculture | 24 → **33** (60% → 82.5%) | 40 → **40** (100%) | 40/40 (100%) |
+| supply_chain | 40 → **40** (100%) | 40 → **40** (100%) | 40/40 (100%) |
+
+The six **full-key** numbers reproduce the arm-(a) headlines stated above (hardened
+39/24/40, nudged 40/40/40), confirming the recompute reads the right dumps. The
+original "arm c 100% vs arm a 60%" reading (aquaculture) confounded **two** levers —
+the full-vs-reduced **rubric** AND the hardened-vs-nudged **prompt**. A2 separates
+them: matching the rubric lifts hardened arm (a) **24 → 33** (all nine lifted items
+pass entity + action and failed full only on the dropped precision add-ons —
+`forbidden_primary_keys`, plus `handler_tier` on two); the residual 33 → 40 is the
+**prompt** lever, closed by the REPORT's headline (nudged) basis. Once **both**
+confounds are removed — same rubric AND nudged prompt — arm (a) **ties-or-exceeds
+arm (c) on all three verticals** (energy 40 ≥ 39, aquaculture 40 = 40, supply_chain
+40 = 40). → The apparent arm-c advantage was a rubric + prompt confound, **not a
+real accuracy edge**; the moat-relocation reading (§3.4) stands. *(Offline re-grade
+`.claude/benchmark-results/regrade_arm_a.py`, gitignored scratch; hardened source
+`2026-06-09-hardened-dump.jsonl`, nudged source `r1b.jsonl` = PLAN-0020 R1.)*
+
 **PLAN-0029 measurement calibration (the one aquaculture arm-c recovery).** As-run,
 aquaculture arm (c) scored **39/40** — one miss, `aqua-h06`: the model named the
 right pond `pond-A116` but with a **U+202F NARROW NO-BREAK SPACE** separator the
