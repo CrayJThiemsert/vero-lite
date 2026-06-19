@@ -5,8 +5,8 @@ current_batch: 'session-68 — routing standard PROMOTED into the constitution: 
 current_actor: code
 blocked_on: 'Nothing blocks Code — the Phase A + Phase B engine backlog is COMPLETE (ADR-0022/0023 Accepted; PLAN-0028/0029/0030/0031/0032 all shipped + archived). Next is Phase C (UI rework + new-vertical intake) + Phase D (#3b next-vertical refresh), both Cray-directed (UI design discussion happens in Chat/Cowork → a PLAN; #3b is a light Cowork refresh) — see next_action.'
 next_action: 'Session-67 — Phase A + B (the engine backlog) DONE. NEXT per the session-67 roadmap handoff (…0938…): Phase C (UI rework + new-vertical intake — reflect the settled engine: pipeline display + receive-context-from-user-to-create-a-vertical; the B1 ORM emitter + B2 discovery seam are the enablers) — PARKED pending a Cray UI-design discussion (Chat/Cowork) → then a PLAN. Phase D (#3b next-vertical refresh via the semantic-distance lens; research at docs/research/private/2026-06-04-vertical3-pick.md) — LIGHT Cowork refresh, parallelable. Deferred: per-vertical ORM layout (B1-DP-1, Active TODO). All Cowork-routed / Cray-gated.'
-head_commit: 1963282
-recent_commits: [1963282, 558ec29, c0a4be9, cdccf83, 1cdd837, 7a59814, 73e85f3, 0593bc8, 2efb9eb, a9488b6]
+head_commit: dcf912b
+recent_commits: [dcf912b, 1963282, 558ec29, c0a4be9, cdccf83, 1cdd837, 7a59814, 73e85f3, 0593bc8, 2efb9eb]
 ---
 
 # vero-lite — Project Status
