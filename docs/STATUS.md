@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-19T18:18:00+07:00
-session: 68
-current_batch: 'session-68 CLOSE — PLAN-0033 SD-A..D RATIFIED by Cray (docs(plans): #383 / commit bedb438 / merge 69d9e0d), all matching Cowork rec: SD-A keep-6+couple-1+2 · SD-B aquaculture C0 slice · SD-C new view-story.js overlay (coexist with A-E console) · SD-D scene-5 on in-repo B-gamma/A2 + dbt 86->6% stat verify-before-ship; PLAN now Active/execution-ready. Session PAUSED at the C0 boundary — detailed session-close handoff written (.claude/handoffs/session-68/2026-06-19-1818-code-session68-close-phasec-c0-handoff.md: LOCKED design set + SD ratifications + C0 step plan + verified code anchors) for the next session to build C0 (view-story.js shell + aquaculture branching-DAG pipeline + scene-6 control surface). PRIOR: PLAN-0033 (Phase C demo UI) COMMITTED (docs(plans): #381 / commit e99d7f5 / merge ff4ba01): Cowork-drafted (ADR-009 D1, new-PLAN G2 gate) -> Code R2-reviewed (all References file:line anchors verified vs the static front-end app.js/view-flow.js/view-anomaly.js/index.html; honesty guards hold — scene-5 anchored on in-repo B-gamma/A2 [robustness not accuracy supremacy, no 100%], dbt 86->6% external stat gated verify-before-ship SD-D, no [search-synthesis] Palantir quote asserted as fact) + committed (D2). Design Cray-LOCKED s68: arc G pain-first, F1-F3, two-axis layout (all-task details left + branching overview right), branching DAG taxonomy (error->fail-safe reroute = the moat beat), SD-1/2/3, Tier-1 mirror scope; vertical-slice-first phasing (4-8wk front-end). SD-A..D surfaced -> AWAITING CRAY RATIFICATION. Feeding artifacts: Cowork Palantir Data->Decision research (docs/research/private/2026-06-19-*, gitignored) + 3 Code prototypes (chat widgets) + 6-persona expert-panel review. PRIOR: A2 equal-rubric re-grade addendum LANDED (docs(benchmarks): #379 / commit e032512 / merge 41d0372): the B-gamma REPORT disclosed "Inherited grading-asymmetry caveat" + OQ-3 is now CLOSED — arm (a) re-graded offline on the arm-(c) reduced rubric ties-or-exceeds arm (c) on all 3 verticals (energy 40>=39, aqua 40=40, supply 40=40) once both confounds (rubric + prompt) are removed; verified first-hand via regrade_arm_a.py + full-key cross-check (hardened 39/24/40, nudged 40/40/40); wording Cray-approved before commit. PRIOR: routing standard PROMOTED into the constitution: CLAUDE.md §6 new "Routing: proceed vs Cowork-dispatch" subsection + footer note (docs(constitution): #376 / commit 1963282 / merge dcf912b) — homes Cray standing work-method (solid+confirming-perspective → proceed; gaps/creative → Cowork dispatch; a new PLAN/ADR or Accepted-ADR edit is PreToolUse-gated [G1/G2, scoped to docs/adr+docs/plans] while a constitutional edit is convention-routed → Cowork drafts ungated, Code commits). Cowork-drafted (ADR-009 D1), Code R2-reviewed + committed (D2); Code corrected one gate-scope citation at commit (CLAUDE.md is convention-routed, not hook-gated); restart-bridge filed (Lesson #5 §1); promotion TODO closed; private Auto-Memory slimmed to a pointer (SD-C); parked G2 root-fix preserved (SD-D); s68 G2-misfire instance recorded (#375). PRIOR: session-67 Phase B COMPLETE (Group B foundation). ADR-0023 (registry auto-discovery, ADR-006 D3 L1→L2) Accepted (#372); B1 ORM emitter shipped (#370); B2 registry auto-discovery shipped (#373, merge 558ec29 / commit c0a4be9). B2: discover_and_register() import-scans verticals/* + invokes the conventional register_<ns>_* entry functions at startup (services/engine/discovery.py) — additive, idempotent, failure-isolated, reset-resettable; the hand-wired main.py _VERTICAL_REGISTRARS map + the scaffold main.py code-mod are removed (a new vertical is auto-discovered, no core edit). Full suite 1615 passed; ruff + mypy --strict clean; offline. PLAN-0032 git mv to done/. The Phase A + B engine backlog is now DONE — ADR-0022/0023 Accepted; PLAN-0028/0029/0030/0031/0032 all shipped + archived. Per-vertical ORM layout deferred (B1-DP-1, Active TODO).'
+last_updated: 2026-06-20T01:45:00+07:00
+session: 69
+current_batch: 'session-69 — PLAN-0033 Phase C C0 VERTICAL SLICE SHIPPED (#385, feat a9079e5 / merge 0a32e67): the aquaculture story-mode. New view-story.js additive overlay (SD-C — coexists with Views A-E, never replaces) + motion.js (driver-agnostic Motion seam enforcing the lifecycle-teardown contract) + story.css, wired into index.html/app.js. Delivers a horizontal branching-DAG overview (5 node states + 3 edge types, hand-placed SVG), a two-axis layout (all task details left / DAG + transport right), and the scene-6 control surface (Proposed->Approved->Executed kanban + reasoning-trace why-toggle reusing the rule/llm/query colour legend). Moat beat (AC-3, ADR-010 IN-4) works: an LLM-compose error reroutes (amber) to the deterministic rule fail-safe, which STILL passes the human approve-gate + records audit. GSAP DEFERRED to C1/C2 (corrects the s68 next_action) — the Motion seam is driver-agnostic so C0 ships on the zero-dependency WAAPI/rAF driver (offline, no-CDN, reduced-motion floor); GSAP/Motion One can drop in behind Motion.useDriver later after the one-time licence check, no scene-code change. AC-2/3/4/5/6/9/10/11/12/13/14 verified via the preview workflow (a11y snapshot + behavioral eval); deterministic /goal gate (files exist / index.html wired / no new CDN) passes; teardown leaks 0 timers/tweens/listeners across repeated open/close. Caveat: preview_screenshot environmentally unavailable in this WSL/FastAPI preview (times out on the plain console too — not a page defect) so verification was snapshot + behavioral eval. Scope: Tier-1 mirror, synthetic only (ADR-0015 D1); no new backend.'
 current_actor: code
-blocked_on: 'Nothing blocks Code — Phase C PLAN-0033 SD-A..D are RATIFIED (#383); PLAN is Active/execution-ready. NEXT is the C0 vertical-slice BUILD (Code execution — not Cowork-drafting). Session paused at the C0 boundary; the 1818 session-close handoff carries the full build brief. Phase D (#3b next-vertical refresh) is parallelable (LIGHT Cowork). — see next_action.'
-next_action: 'Session-68 CLOSE — Phase C PLAN-0033 (demo UI) COMMITTED (#381) + SD-A..D RATIFIED (#383); PLAN now Active. NEXT: Code builds the C0 vertical slice on AQUACULTURE (SD-B): (C0-1) view-story.js overlay shell + scene router + the lifecycle-teardown (enter->build/leave->kill) contract FIRST + vendor GSAP locally; (C0-2) branching-DAG component (5 node states + 3 edge types + error->fail-safe reroute wired to ADR-010 IN-4, reduced-motion static from day 1); (C0-3) two-axis layout (all-task details left + DAG right) + scene-6 control surface (kanban lanes Proposed->Approved->Executed, reusing view-anomaly.js decisionCard/trace/approve-execute) — to de-risk the GSAP spine before C1 (scenes 1/2/4/5) + C2 (breadth+Ask+appendix). Declare a /goal + verify via the preview workflow (dont ask Cray to check manually). FULL build brief + verified code anchors + prototype specs: the session-close handoff .claude/handoffs/session-68/2026-06-19-1818-code-session68-close-phasec-c0-handoff.md. C0 is Code execution (PLAN/ADR drafting stays Cowork-tab; decline the Stop-hook plan-drafter over-fire). Phase D (#3b next-vertical refresh; research docs/research/private/2026-06-04-vertical3-pick.md) — LIGHT Cowork, parallelable. Deferred: B1-DP-1 ORM layout; dbt-86->6% stat verify-before-ship (SD-D).'
-head_commit: 69d9e0d
-recent_commits: [69d9e0d, bedb438, ff4ba01, e99d7f5, 41d0372, e032512, dcf912b, 1963282, 558ec29, c0a4be9]
+blocked_on: 'Nothing blocks Code — C0 is shipped (#385). C1 is the next Code-execution step (full arc scenes), NOT Cowork-drafting. Phase D (#3b next-vertical refresh) is parallelable (LIGHT Cowork). — see next_action.'
+next_action: 'Session-69 — Phase C C0 vertical slice SHIPPED (#385); proven story-mode spine in place. NEXT: Code builds C1 — the full arc scenes (1 Hook, 2 จับได้+คุณคุม with the fail-safe self-catch beat, 4 live-intake dual-path reusing PLAN-0018, 5 Before/After with the one honest number) on the proven C0 spine — then C2 (breadth: other verticals + Ask via view-ask.js + the optional ontology appendix). Reuse the WAAPI Motion driver; revisit GSAP only if a C1/C2 scroll-driven beat needs it (after the licence check). Declare a /goal + verify via the preview workflow (dont ask Cray to check manually). Carry-over deferred: B1-DP-1 per-vertical ORM layout; dbt 86->6% external stat verify-before-ship (SD-D, only if scene-5 cites it); G2 drafting-friction root-fix; Phase D (#3b next-vertical refresh; research docs/research/private/2026-06-04-vertical3-pick.md) — LIGHT Cowork, parallelable.'
+head_commit: 0a32e67
+recent_commits: [0a32e67, a9079e5, 6dbbbc4, 8d19c8e, 69d9e0d, bedb438, 6ebaac2, 315b198, ff4ba01, e99d7f5]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,42 @@ recent_commits: [69d9e0d, bedb438, ff4ba01, e99d7f5, 41d0372, e032512, dcf912b, 
 
 ## Current Focus
 
-> **Session 67 (current; head_commit `558ec29`) — PHASE B COMPLETE: B2 REGISTRY
+> **Session 69 (current; head_commit `0a32e67`) — PLAN-0033 Phase C **C0 VERTICAL
+> SLICE** SHIPPED (#385): the aquaculture story-mode.** A new
+> `services/api/static/assets/view-story.js` **additive overlay** (SD-C — it
+> *coexists* with Views A–E and **never replaces** the console) lands the proven
+> story-mode spine, alongside **`motion.js`** (a **driver-agnostic** Motion seam
+> that enforces the lifecycle **teardown contract**) + `story.css`, wired into
+> `index.html` / `app.js`. C0 delivers the three load-bearing structures: a
+> **horizontal branching-DAG** overview (**5 node states + 3 edge types**,
+> hand-placed SVG), a **two-axis layout** (all task details **left** / DAG +
+> transport **right**), and the **scene-6 control surface** (Proposed→Approved→
+> Executed kanban + a reasoning-trace **why-toggle** reusing the existing
+> rule/llm/query colour legend). **The moat beat works (AC-3, ADR-010 IN-4):** an
+> LLM-compose error **reroutes (amber) to the deterministic rule fail-safe**,
+> which **still** passes the human **approve-gate** + **records audit** — the
+> governance layer is the demo, not raw accuracy. **GSAP DEFERRED to C1/C2**
+> (this **corrects** the s68 next_action that bundled "vendor GSAP locally" into
+> C0-1): GSAP's 2026 public-repo licence check + local vendoring are gated, and
+> because the Motion seam is **driver-agnostic**, C0 ships on the
+> **zero-dependency WAAPI/rAF driver** (offline, no-CDN, the reduced-motion
+> floor); GSAP — or an MIT lib like Motion One — drops in behind the same
+> `Motion.useDriver` interface for C1/C2 scroll-driven beats after the one-time
+> licence check, **with no scene-code change** (Cray's call, s69). **Verify:**
+> phase AC-2/3/4/5/6/9/10/11/12/13/14 all confirmed via the **preview workflow**
+> (accessibility snapshot + behavioral eval); the deterministic **/goal** gate
+> (files exist / `index.html` wired / **no new CDN**) passes; **teardown leaks 0
+> timers/tweens/listeners** across repeated open/close cycles. **Caveat:**
+> `preview_screenshot` is **environmentally unavailable** in this WSL/FastAPI
+> preview (it times out even on the plain console — not a page defect), so
+> verification was snapshot + behavioral eval, which the workflow endorses for
+> structure/content. **Scope:** Tier-1 mirror, **synthetic data only**
+> (ADR-0015 D1); **no new backend**. **NEXT = C1** (full arc scenes) on the
+> proven C0 spine, then **C2** (breadth + Ask + appendix) — Code execution, not
+> Cowork-drafting. AI-assisted (Claude Code, session 69); no `Co-Authored-By` per
+> CLAUDE.md §7.
+
+> **Session 67 (head_commit `558ec29`) — PHASE B COMPLETE: B2 REGISTRY
 > AUTO-DISCOVERY SHIPPED (#373); Group B foundation DONE.** A vertical under
 > `verticals/<ns>/` exposing the conventional `register_<ns>_*` entry functions is
 > now **discovered + registered at startup via import-scan**
@@ -131,34 +166,7 @@ recent_commits: [69d9e0d, bedb438, ff4ba01, e99d7f5, 41d0372, e032512, dcf912b, 
 > registry discovery) per the session-67 roadmap handoff. AI-assisted (Claude Code,
 > session 67); no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 67 (head_commit `1cda40f`) — PHASE 1 RATIFY-FLIPS DONE
-> (#357): PLAN-0028 + PLAN-0029 → Accepted + archived to `done/`.** The
-> governance-closeout half of the universality track: **PLAN-0028** (B-γ
-> cross-vertical extension — aquaculture + supply_chain) and **PLAN-0029**
-> (entity-key whitespace calibration + offline re-grade) both flipped
-> **Proposed (draft) → Accepted** (Cray ratified in-session 2026-06-17) and
-> `git mv`'d to `docs/plans/done/`. **Cowork** applied the status-flip +
-> ratification record (ADR-009 D1, G1-clean on Desktop); **Code** committed
-> per ADR-009 D2 (#357, merge `1cda40f` / flip `3d5e2af`). Both PLANs document
-> **already-complete, already-Cray-approved** work — a formal flip, not new
-> work — so this is a clean close of the PLAN-0028/0029 governance loop; both
-> moats' source PLANs are now archived. **R2 trust-but-verify confirmed:** spot
-> SHAs check out (#353 `e5f9774`/`1ada20d`, #355 `d48b770`/`7275a69`) and the
-> #357 diff is **status + ratification record only** (no scope/numbers change).
-> **One harness note:** a Stop-hook D2 auto-dispatch **misrouted** — it tried to
-> spawn `plan-drafter` to "draft a plan to flip 0028/0029," but the task was a
-> **status-flip on existing complete PLANs**, not new-plan drafting; Code
-> declined per the hook's override clause (reinforces the parked
-> G2-drafting-friction root-fix — now a durable Active TODO). **Frontier:**
-> Phase 2 kicked off — **ADR-0022 (governed entity resolution) authored by Cowork
-> + committed Proposed (#359, `9ce1289`)**, design-first with the §Design fork left
-> OPEN (Fork 3 = D-6 guard binding); scoped as one ADR-016-area construct also
-> housing Group-A A1 (verify+reshape). **Awaits Cray ratification** (resolves the
-> fork) → then a separate Cowork dispatch authors PLAN-0030; vertical-#3 research
-> runs in parallel — all **Cowork-routed / Cray-gated**. Nothing blocks Code.
-> AI-assisted (Claude Code, session 67); no `Co-Authored-By` per CLAUDE.md §7.
-
-> **Session 66 (current; head_commit `e5f9774`) — PLAN-0028 Step 5 RAN + VERIFIED;
+> **Session 66 (head_commit `e5f9774`) — PLAN-0028 Step 5 RAN + VERIFIED;
 > PLAN-0029 (entity-key whitespace calibration) minted + implemented; canonical B-γ
 > numbers locked.** Building on session 65's offline Step 2/3 (#350 — the data-driven
 > harness + the aquaculture/supply_chain corpora), this session got the Cray
@@ -247,34 +255,16 @@ recent_commits: [69d9e0d, bedb438, ff4ba01, e99d7f5, 41d0372, e032512, dcf912b, 
 > partner-sim, ADR-0021(c) future-triggered). Nothing blocks Code.
 > AI-assisted (Claude Code, session 64); no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 63 (head_commit `ab0174a`) — B-γ KICKOFF: PLAN-0027 (B-γ
-> COMPARISON METHODOLOGY PRE-REGISTRATION) LANDED + CRAY-RATIFIED §3–§4 (#337).**
-> This session opens **B-γ** — PLAN-0019's last open step (AC B-3): the three-arm
-> comparison on the **energy breach subset** — (a) the **governed-procedure stack**
-> (reuse the existing REPORT numbers, **no re-run**), (b) **raw text-to-SQL**, and
-> (c) a **lean-but-real RAG** baseline. Framed **reports-not-gates** (B-3/B-6) with
-> a **D-6 contamination guard**: arm (c) stays a clean naive RAG baseline — **no**
-> verify/reshape/governance layer bleeds in, so the comparison measures paradigms
-> not a stacked deck. **PLAN-0027 completes B-γ Step 1 (pre-registration); status is
-> now Ready for execution.** **Governance chain (the G2-routed path):** the
-> in-harness `plan-drafter` authored the PLAN body → the **G2 PreToolUse gate blocks
-> Code/subagent from writing a new PLAN** → **Cowork materialized** the file
-> (ungated) → **Code committed** it (#337 `e70daa9`; ADR-009 D1/D2) → **Cray ratified
-> §3–§4** (`fb91777`), resolving **SD-1..SD-4** per the drafter recommendations.
-> Added at ratification: a **joint SD-1↔SD-2 fairness binding** (Cowork advisory) —
-> under the locked lexical retriever the corpus + question template must **share
-> vocabulary** and cover every breach item's `action_keywords` lemma, else arm (c)
-> misses are **retrieval artifacts, not paradigm limits** (the binding that keeps the
-> naive-RAG arm an honest baseline). **Also this session (no artifact change):**
-> discussed the recurring **G2-vs-drafting friction** (the gate that forces the
-> plan-drafter → Cowork → Code relay on every new PLAN); Cray **PARKED** the root-fix
-> (exempt the plan-drafter's *uncommitted-draft* write from G2) as a **future
-> harness-improvement batch**, and a "proceed vs Cowork-dispatch-file" routing
-> framework was captured in private memory. **Frontier:** PLAN-0027 is Ready —
-> **Step 2 (build arms b + c + the comparison harness offline, mock-ChatClient,
-> honoring the joint binding) is ungated**; Step 3 offline gate; Step 4 host-state
-> run is Cray-gated (§8). Held items unchanged. Nothing blocks Code.
-> AI-assisted (Claude Code, session 63); no `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note (session-69 reconcile, 2026-06-20): two Current Focus blocks
+> rotated to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) per
+> the STATUS.md Rotation Policy (R2/R4) — the **Session-63** block (B-γ kickoff:
+> PLAN-0027 pre-registration landed + Cray-ratified §3–§4, head_commit `ab0174a`;
+> session 63 fell outside the 4-newest-sessions window {69,67,66,64}) and the
+> oldest **Session-67** block (Phase 1 ratify-flips: PLAN-0028 + PLAN-0029 →
+> Accepted + archived, #357, head_commit `1cda40f`; rotated to hold Current Focus
+> at the 8-block cap) — along with the oldest Recent Decisions row (2026-06-13
+> ADR-0020 RATIFIED Proposed→Accepted, `4d1347b`)._
 
 > _Rotation note (session-67 reconcile, 2026-06-17): three Current Focus blocks
 > fell outside the 4-newest-sessions window {67,66,64,63} and rotated to
@@ -323,6 +313,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-19 | **PLAN-0033 Phase C C0 vertical slice SHIPPED — aquaculture story-mode (#385, feat `a9079e5` / merge `0a32e67`, session 69)** — the additive `view-story.js` overlay (SD-C; coexists with Views A–E, never replaces) + `motion.js` (driver-agnostic Motion seam enforcing the lifecycle-teardown contract) + `story.css`, wired into `index.html`/`app.js`. Delivers the branching-DAG overview (5 node states + 3 edge types, hand-placed SVG), the two-axis layout (all task details left / DAG + transport right), and the scene-6 control surface (Proposed→Approved→Executed kanban + reasoning-trace why-toggle reusing the rule/llm/query colour legend). Moat beat (AC-3, ADR-010 IN-4) works: an LLM-compose error reroutes (amber) to the deterministic rule fail-safe, which still passes the human approve-gate + records audit. **GSAP DEFERRED to C1/C2** (Cray's call, s69 — corrects the s68 next_action): the seam is driver-agnostic so C0 ships on the zero-dependency WAAPI/rAF driver (offline, no-CDN, reduced-motion floor); GSAP/Motion One drops in behind `Motion.useDriver` later after the one-time licence check, no scene-code change. AC-2/3/4/5/6/9/10/11/12/13/14 verified via the preview workflow (a11y snapshot + behavioral eval); deterministic /goal gate (files exist / wired / no new CDN) passes; teardown leaks 0 timers/tweens/listeners. Caveat: `preview_screenshot` environmentally unavailable in this WSL/FastAPI preview (times out on the plain console too — not a page defect). Scope: Tier-1 mirror, synthetic only (ADR-0015 D1); no new backend. NEXT = C1 (full arc scenes) then C2 (breadth+Ask+appendix) | `0a32e67` (#385, feat `a9079e5`) / `services/api/static/assets/view-story.js` + `motion.js` + `story.css` + `docs/plans/0033-*.md` |
 | 2026-06-17 | **Session 67 Phase 1 — PLAN-0028 + PLAN-0029 ratify-flipped Proposed→Accepted + archived to `done/` (#357, `1cda40f`)** — Cray ratified both PLANs in-session 2026-06-17; Cowork applied the status-flip + ratification record (ADR-009 D1, G1-clean on Desktop), Code committed per ADR-009 D2 (#357, merge `1cda40f` / flip `3d5e2af`). A formal flip of **already-complete, already-Cray-approved** work (PLAN-0028 B-γ cross-vertical extension; PLAN-0029 entity-key whitespace calibration), not new work — closes the PLAN-0028/0029 governance loop; both moats' source PLANs now archived. R2-verified (spot SHAs + the #357 diff = status + ratification only). One harness note: a Stop-hook D2 auto-dispatch misrouted (tried to spawn `plan-drafter` to "draft a plan to flip" existing complete PLANs); Code declined per the override clause — reinforces the parked G2-drafting-friction root-fix (now an Active TODO) | `1cda40f` (#357, flip `3d5e2af`) / `docs/plans/done/0028-*.md` + `docs/plans/done/0029-*.md` |
 | 2026-06-16 | **B-γ EXECUTED END-TO-END — PLAN-0027 Steps 2–5 SHIPPED; PLAN-0019 Step B-γ / AC B-3 = DONE (#339–#342, `0aee4eb`, session 64)** — the three-arm comparison on the energy breach subset, run to completion. Offline arms (#339 `e41806a`/`a394342`, Steps 2–3): arm (b) raw text-to-SQL + arm (c) lean RAG + comparison harness, behind a mock-ChatClient offline gate (D-6 guard intact). ONE Cray-approved scored host-state run (`gpt-oss:20b` @ MS-S1, 40 energy breach items, warm-first; every score VERIFIED from `--dump-json` via the Read tool, reports-not-gates per B-3/B-6), then the B-3 REPORT landed (#342 `0aee4eb`/`01370e5`, Step 5). **Results:** arm (a) governed stack 97.5–100% entity+action (REUSED, D-2, not re-run; p95 ~30s); arm (b) raw text-to-SQL 100% entity-ID (40/40, correct `WHERE measured_value >= 90`) but structurally cannot propose an action (D-3; p95 10.2s); arm (c) lean RAG 97.5% entity+action (39/40; action 100%; p95 3.2s); 0 errors / 0 invalid SQL; the lone arm-c miss (`energy-h05`) is a real naive-RAG output-fidelity miss (`E113` not `asset-E113`), VERIFIED not a grading artifact. **Load-bearing finding:** raw entity+action accuracy does NOT separate the governed stack from lean RAG (c ties a at 97.5%) → relocates the moat claim off "raw NL→action accuracy" onto the governance layer (§3.4 verify+reshape / deterministic disposition / handler allowlist / audit that arm c structurally lacks); verify+reshape captured as a forward-pointer (future ADR-016 area), OUT OF SCOPE per D-6. Supporting: #340 (`099d55b`/`17863ef`, `test(handoffs):`) chip-session fix isolating `CLAUDE_GOAL_PATH` in `stub_env` so a live `goal.json` can't leak into Phase-2 Stop-hook tests (test-only +6; 575 passed/2 skipped); #341 (`cf645f7`/`7d8a716`, `fix(benchmarks):`) pre-run arm-c case-normalize calibration, ratified BEFORE the scored run per B-6 (recovers a correctly-named entity, never invents one). Concurrent-session recovery handled (shared WSL checkout: local↔origin divergence + transient `.git/index.lock` after #339; diagnosed read-only, nothing lost, synced cleanly). **PLAN-0027 complete; PLAN-0019 Step B-γ / AC B-3 = DONE** | `0aee4eb` (#339/#340/#341/#342) / `benchmarks/procedure_baseline/` REPORT `## B-3` + `docs/plans/0027-*.md` |
 | 2026-06-16 | **PLAN-0027 (B-γ comparison methodology pre-registration) LANDED + Cray-ratified §3–§4 (#337, `ab0174a`/`e70daa9`/`fb91777`, session 63)** — completes PLAN-0019 Step B-γ / AC B-3 **Step 1** (pre-registration); status now **Ready for execution**. Pre-registers the three-arm comparison on the energy breach subset: (a) governed-procedure stack (reuse REPORT numbers, no re-run), (b) raw text-to-SQL, (c) lean-but-real RAG — **reports-not-gates** (B-3/B-6) with a **D-6 contamination guard** (arm c stays a clean naive RAG baseline, no verify/reshape/governance layer). Governance (G2-routed): `plan-drafter` authored → G2 blocks Code/subagent PLAN writes → Cowork materialized (ungated) → Code committed (#337, ADR-009 D1/D2) → Cray ratified §3–§4 resolving SD-1..SD-4 per drafter recs, plus a **joint SD-1↔SD-2 fairness binding** (Cowork advisory): under the locked lexical retriever the corpus + question template must share vocabulary + cover every breach item's `action_keywords` lemma, else arm (c) misses = retrieval artifacts not paradigm limits. Side-thread (no artifact): G2-vs-drafting friction discussed; Cray PARKED the root-fix (exempt plan-drafter uncommitted-draft write from G2) as a future harness-improvement batch | `ab0174a` (#337, content `e70daa9`/`fb91777`) / `docs/plans/0027-*.md` |
@@ -332,7 +323,6 @@ below, and git history.
 | 2026-06-15 | **PLAN-0024 (NL-query T2 engine enrichment) SHIPPED — engine half of the T2 wedge (#316 plan / #317 engine, `f4aa7fe`, session 59)** — `StructuredQuery` gains `max/min/avg/sum` (+ optional `group_by`) computed in the deterministic execute stage + a new `NlAnswer.aggregate` grounding receipt (never the phrase LLM), plus a `NameResolve` cross-type name→id descriptor (resolve-then-filter; `object_type` stays single/enum-constrained, group keys relabelled id→title); translate prompt now requires the implied filter + exact enum grounding. Gold ceiling cases nl-08/09/10/11 moved onto the deterministic structured-result lens (`_aggregate_ok`). Anti-hallucination AC-5 preserved (empty/no-numeric/unresolved short-circuit to no-records). 11 new offline tests; suite 1511/22 (+30); ruff+mypy clean. Governance: Cray scoped engine-only (UI→PLAN-0025, SD-1 deferred) → `plan-drafter` authored PLAN-0024 → ungated Cowork placed the file (G2 denied all in-harness Code writes) → Code committed #316 → merged → Code executed #317; SD-1 done as the recommended pre-step; one L1 loop-detect resolved by a Cray-approved counter reset, no Bash | `f4aa7fe` (#316/#317) / `services/engine/nl_query.py` + `docs/plans/done/0024-nl-query-t2-engine-enrichment.md` |
 | 2026-06-14 | **Two backlog quick-wins SHIPPED (Code-solo, #311 + #312, `9595d3e`, session 58)** — cleared after the audit-framework arc closed; a separate small harness-tooling batch. **#311** (`f2ee579`, `test(stop-classifier):`): 3 "dispatch discriminator" gold cases added to `benchmarks/stop_classifier/gold.yaml` (20→23) pinning the surfaced-vs-ratified distinction the local classifier got wrong in s57 (over-fired `plan-drafter` on ADR/PLAN mentions while formality was a PENDING Cray decision — 2 cases) and right in s58 (post-ratification dispatch correct); 2 `pause` negatives + 1 `dispatch` positive, safety-weighted (spurious dispatch = HARD FAIL); offline test green (4 passed); live re-score pending Cray go; RESULTS.md addendum (recorded 2026-06-12 run predates the cases). **#312** (`9595d3e`, `fix(handoffs):`, PLAN-004 Phase B): handoff-validator warning-swallow bug fixed — `_schema.py::_build()` discarded its `errors` list on the otherwise-valid path so `_check_unknown()` WARNINGs were unreachable; `Frontmatter` gains `warnings`, `validate_file()` surfaces it, CLI prints it (precommit unchanged); regression tests strengthened; `tests/handoffs/` 573 passed / 2 skipped; ruff + mypy clean | `9595d3e` (#311/#312) / `benchmarks/stop_classifier/gold.yaml` + `tools/handoffs/_schema.py` |
 | 2026-06-14 | **PLAN-0023 (PDPA RoPA-lite, step-2 of audit-framework-prep) SHIPPED (#308 PLAN + #309 deliverables, `afea6b3`, session 58)** — two tracked deliverables: reusable RoPA-lite template (`docs/conventions/partner-ropa-lite.md`, canonical) + NPD synthetic example (`docs/strategy/public/partner-sim-run1-ropa-example.md`, SYNTHETIC), each RoPA slot annotated with a data-quality/lineage hook; example's DSR/lineage→ADR-011 section maps 4 gaps→implications (PII-in-free-text→log-by-reference; scattered actor identity→actor unification; PK reuse + NTP drift→lineage/valid-from + ordering; under-recording→completeness-not-assumed). Governance: Cray ratified PLAN formality (3 decisions) → `plan-drafter` subagent authored PLAN-0023 (ADR-013 D1) → Code committed (#308, ADR-009 D2) → Code executed deliverables Code-direct (#309); PLAN archived to `done/`. SD-1 kept (AC-6 in-PLAN). ADR-011 still gated on a real partner — synthetic run INFORMS but never triggers PLAN-0005 §8.1 (ADR-0020 R3). Carried open: SD-4/SD-5/OQ-A | `afea6b3` (#308/#309) / `docs/conventions/partner-ropa-lite.md` + `docs/strategy/public/partner-sim-run1-ropa-example.md` |
-| 2026-06-13 | **ADR-0020 (partner-sim venue) RATIFIED Proposed→Accepted (#302, `4d1347b`, session 57)** — Cray ratified in-session ("เอาตาม Cowork ทุกข้อ"); all four venue SDs + dispatch-SD-1 accepted per Cowork rec (Cowork-authored fold per ADR-009 D1, Code R2-reviewed + committed). SD-1 N=3 (→D2/R2); SD-2 one-project-per-business-type (→D4; R-PS4 reframed as a guard); SD-3 size/region/maturity enums + run-1 default energy·mid·th-regional·mixed-legacy (→D3 input); SD-4 "what we refused to share" ratified-required (→D3 output). R1/R2/R3 substance unchanged (#300 errata settled those). Instruction file reconciled same PR (6 ratification-pending markers → ratified; Code-amends-conventions, ADR-009 D2). dispatch-SD-1 (gitignored): one-pager sector-callout forbidden-action note trimmed, R1-clean seed untouched. Venue now ACCEPTED guarded-trial (R-PS1..R-PS4) — live action is Cray's (launch energy run-1) | `4d1347b` (#302) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 
 ## In-Flight Discussions
 

@@ -12,6 +12,64 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-20 (session-69 reconcile): two CF blocks fell outside the 4-newest-sessions window {69, 67, 66, 64} — the **Session-67 `1cda40f`** block (Phase 1 ratify-flips, PLAN-0028/0029 → Accepted) and the **Session-63 `ab0174a`** block (B-γ kickoff, PLAN-0027 pre-registration), newest first._
+
+> **Session 67 (head_commit `1cda40f`) — PHASE 1 RATIFY-FLIPS DONE
+> (#357): PLAN-0028 + PLAN-0029 → Accepted + archived to `done/`.** The
+> governance-closeout half of the universality track: **PLAN-0028** (B-γ
+> cross-vertical extension — aquaculture + supply_chain) and **PLAN-0029**
+> (entity-key whitespace calibration + offline re-grade) both flipped
+> **Proposed (draft) → Accepted** (Cray ratified in-session 2026-06-17) and
+> `git mv`'d to `docs/plans/done/`. **Cowork** applied the status-flip +
+> ratification record (ADR-009 D1, G1-clean on Desktop); **Code** committed
+> per ADR-009 D2 (#357, merge `1cda40f` / flip `3d5e2af`). Both PLANs document
+> **already-complete, already-Cray-approved** work — a formal flip, not new
+> work — so this is a clean close of the PLAN-0028/0029 governance loop; both
+> moats' source PLANs are now archived. **R2 trust-but-verify confirmed:** spot
+> SHAs check out (#353 `e5f9774`/`1ada20d`, #355 `d48b770`/`7275a69`) and the
+> #357 diff is **status + ratification record only** (no scope/numbers change).
+> **One harness note:** a Stop-hook D2 auto-dispatch **misrouted** — it tried to
+> spawn `plan-drafter` to "draft a plan to flip 0028/0029," but the task was a
+> **status-flip on existing complete PLANs**, not new-plan drafting; Code
+> declined per the hook's override clause (reinforces the parked
+> G2-drafting-friction root-fix — now a durable Active TODO). **Frontier:**
+> Phase 2 kicked off — **ADR-0022 (governed entity resolution) authored by Cowork
+> + committed Proposed (#359, `9ce1289`)**, design-first with the §Design fork left
+> OPEN (Fork 3 = D-6 guard binding); scoped as one ADR-016-area construct also
+> housing Group-A A1 (verify+reshape). **Awaits Cray ratification** (resolves the
+> fork) → then a separate Cowork dispatch authors PLAN-0030; vertical-#3 research
+> runs in parallel — all **Cowork-routed / Cray-gated**. Nothing blocks Code.
+> AI-assisted (Claude Code, session 67); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 63 (head_commit `ab0174a`) — B-γ KICKOFF: PLAN-0027 (B-γ
+> COMPARISON METHODOLOGY PRE-REGISTRATION) LANDED + CRAY-RATIFIED §3–§4 (#337).**
+> This session opens **B-γ** — PLAN-0019's last open step (AC B-3): the three-arm
+> comparison on the **energy breach subset** — (a) the **governed-procedure stack**
+> (reuse the existing REPORT numbers, **no re-run**), (b) **raw text-to-SQL**, and
+> (c) a **lean-but-real RAG** baseline. Framed **reports-not-gates** (B-3/B-6) with
+> a **D-6 contamination guard**: arm (c) stays a clean naive RAG baseline — **no**
+> verify/reshape/governance layer bleeds in, so the comparison measures paradigms
+> not a stacked deck. **PLAN-0027 completes B-γ Step 1 (pre-registration); status is
+> now Ready for execution.** **Governance chain (the G2-routed path):** the
+> in-harness `plan-drafter` authored the PLAN body → the **G2 PreToolUse gate blocks
+> Code/subagent from writing a new PLAN** → **Cowork materialized** the file
+> (ungated) → **Code committed** it (#337 `e70daa9`; ADR-009 D1/D2) → **Cray ratified
+> §3–§4** (`fb91777`), resolving **SD-1..SD-4** per the drafter recommendations.
+> Added at ratification: a **joint SD-1↔SD-2 fairness binding** (Cowork advisory) —
+> under the locked lexical retriever the corpus + question template must **share
+> vocabulary** and cover every breach item's `action_keywords` lemma, else arm (c)
+> misses are **retrieval artifacts, not paradigm limits** (the binding that keeps the
+> naive-RAG arm an honest baseline). **Also this session (no artifact change):**
+> discussed the recurring **G2-vs-drafting friction** (the gate that forces the
+> plan-drafter → Cowork → Code relay on every new PLAN); Cray **PARKED** the root-fix
+> (exempt the plan-drafter's *uncommitted-draft* write from G2) as a **future
+> harness-improvement batch**, and a "proceed vs Cowork-dispatch-file" routing
+> framework was captured in private memory. **Frontier:** PLAN-0027 is Ready —
+> **Step 2 (build arms b + c + the comparison harness offline, mock-ChatClient,
+> honoring the joint binding) is ungated**; Step 3 offline gate; Step 4 host-state
+> run is Cray-gated (§8). Held items unchanged. Nothing blocks Code.
+> AI-assisted (Claude Code, session 63); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-17 (session-67 reconcile): three CF blocks fell outside the 4-newest-sessions window {67,66,64,63} — both Session-62 blocks (second batch — harness-improvement "plan-first then execute" distillation, `cf958d3`; first batch — PLAN-0026 AC-9 optional live MS-S1 re-verify PASS, `c16778d`) and the Session-61 block (PLAN-0026 COMPLETE: ADR-0021 authored→Accepted + Phase A `measured_kind` shipped, `b53e631`), newest first._
 
 > **Session 62 (second batch, current; head_commit `cf958d3`) — HARNESS
@@ -1213,6 +1271,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-13 | **ADR-0020 (partner-sim venue) RATIFIED Proposed→Accepted (#302, `4d1347b`, session 57)** _(rotated 2026-06-20, session 69)_ — Cray ratified in-session ("เอาตาม Cowork ทุกข้อ"); all four venue SDs + dispatch-SD-1 accepted per Cowork rec (Cowork-authored fold per ADR-009 D1, Code R2-reviewed + committed). SD-1 N=3 (→D2/R2); SD-2 one-project-per-business-type (→D4; R-PS4 reframed as a guard); SD-3 size/region/maturity enums + run-1 default energy·mid·th-regional·mixed-legacy (→D3 input); SD-4 "what we refused to share" ratified-required (→D3 output). R1/R2/R3 substance unchanged (#300 errata settled those). Instruction file reconciled same PR (6 ratification-pending markers → ratified; Code-amends-conventions, ADR-009 D2). dispatch-SD-1 (gitignored): one-pager sector-callout forbidden-action note trimmed, R1-clean seed untouched. Venue now ACCEPTED guarded-trial (R-PS1..R-PS4) — live action is Cray's (launch energy run-1) | `4d1347b` (#302) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 | 2026-06-13 | **ADR-0020 (synthetic design-partner simulation venue, partner-sim) committed Proposed (#297, `e25281d`, session 57) + project system instruction landed (#298, `e387a63`)** _(rotated 2026-06-17, session 67)_ — a specialist Cowork project that role-plays a Thai operator + emits a "partner profile package" so the intake+PDPA pipeline is rehearsed before a real partner. D1 venue OUTSIDE governance tiers (no commits / no repo mount / enters via Code receive); D2 three BINDING anti-circularity rules (R1 feed-questions-not-schema, R2 forced messiness, R3 SYNTHETIC provenance — never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger); D3 reuses completion-handoff schema (no enum change); D4 guarded-trial (mirrors ADR-012 D5) + R-PS1..R-PS4. SD-1..SD-4 recommendations only. **Awaits Cray ratification (Proposed→Accepted + SD-1..SD-4) before the project goes live (ADR-0020 T3).** Author≠reviewer (ADR-012 D4.3): Cowork authored, Code R2-reviewed + committed both | `e25281d` (#297) + `e387a63` (#298) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 | 2026-06-12 | **B-6 hyphen-normalization grader change RATIFIED + SHIPPED (#295, `2331ffb`, session 57)** _(rotated 2026-06-16, session 64)_ — Cray ratified in-session; `grader.py` `normalize_primary_key()` folds the Unicode hyphen/dash family (U+2010–U+2014, U+2212) → ASCII `-` on both sides of the two primary-KEY comparisons only; free-text untouched. Offline dump replay vs the 2026-06-12 scored run: β 118/120 → 119/120, EXACTLY one flip (energy-007, zero collateral); aqua-028 still fails. Same measurement-correctness class as the 2026-06-08 items; no bar moves; REPORT.md dated addendum | `2331ffb` (#295) / `benchmarks/procedure_baseline/grader.py` |
 | 2026-06-12 | **First SCORED watch-lane run RECORDED — watch 97.4% (38/39); M-2=b arc COMPLETE (#288, `4c46a92`, session 57)** _(rotated 2026-06-16, session 63)_ — `gpt-oss:20b`/MS-S1, 198 items, 318 calls, 0 errors, dump-VERIFIED (39/39 `watch_graded:true`); first production `run_detached.sh` run (sentinel as designed; watcher Monitor died silently + one false alarm — truth via content-based test). Aqua + energy 13/13; supply 12/13 — sole FAIL supply-040 (reroute @1.0 on an in-spec 7.8 °C) = `forbidden_keywords` discriminating as designed. β 98.3% (same two known misses; energy-007 U+2011 now ×3 → strengthens B-6). SD-2 p95 30.18s = +0.18s nominal, within the ±10s straddle band + classifier-contaminated; no bar moves (B-6) | `4c46a92` (#288) / `benchmarks/procedure_baseline/REPORT.md` |
