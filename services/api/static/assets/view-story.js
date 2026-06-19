@@ -104,11 +104,11 @@
     const etaPt = [470, yAction];        // projection meets 4.0 ≈ 70 min out
 
     const CAP = [
-      'ตี 2 ครึ่ง. ทั้งฟาร์มหลับ — แต่บ่อ P-12 ไม่ได้หลับ.',
-      'ออกซิเจนในน้ำกำลังร่วง ช้า ๆ — 4.8 … 4.7 … 4.6 mg/L. ยังไม่มีใครเห็น.',
-      'ถ้าปล่อยไว้ มันจะแตะเส้นอันตราย 4.0 ในราว ๆ 70 นาที. นี่คือ “เวลานำ” ที่คุณมี.',
-      'บ่อนี้ = ~16 ตันชีวมวล · ราว ฿2.3M. ออกซิเจนหมดตอนตี 3 — กว่าจะรู้ตอนเช้า ก็สาย.',
-      'แล้วถ้ามีบางอย่างเฝ้าดูแทนคุณ — และปลุกคุณ ก่อน เส้น 4.0 ล่ะ?'
+      '2:30 a.m. The whole farm is asleep — but pond P-12 is not.',
+      'Dissolved oxygen is slipping — 4.8 … 4.7 … 4.6 mg/L. No one is watching yet.',
+      'Left alone, it crosses the 4.0 danger line in about 70 minutes. That lead time is what you have.',
+      'This pond = ~16 t of biomass · about ฿2.3M. Oxygen gone by 3 a.m. — finding out at dawn is too late.',
+      'What if something watched it for you — and woke you before the 4.0 line?'
     ];
 
     const root = h('div', { class: 'scene-hook' });
@@ -124,7 +124,7 @@
       clockSvg,
       h('div', null, [
         h('div', { class: 'hook-time mono' }, '02:30'),
-        h('div', { class: 'hook-place' }, 'ฟาร์มกุ้ง · บ่อ P-12')
+        h('div', { class: 'hook-place' }, 'Shrimp farm · pond P-12')
       ])
     ]));
 
@@ -154,23 +154,23 @@
     gProj.appendChild(s('circle', { class: 'hk-breach', cx: etaPt[0], cy: etaPt[1], r: 5 }));
     const etaBadge = s('g', { class: 'hk-eta', transform: 'translate(' + (etaPt[0] + 8) + ',' + (etaPt[1] - 20) + ')' });
     etaBadge.appendChild(s('rect', { x: 0, y: 0, width: 80, height: 18, rx: 5 }));
-    etaBadge.appendChild(s('text', { x: 40, y: 13, 'text-anchor': 'middle' }, '~70 นาที'));
+    etaBadge.appendChild(s('text', { x: 40, y: 13, 'text-anchor': 'middle' }, '~70 min'));
     gProj.appendChild(etaBadge);
     chart.appendChild(gProj);
     stage.appendChild(chart);
 
     // the stake (shown step 3) — $/biomass attached
     const stake = h('div', { class: 'hook-stake', 'data-layer': 'stake' }, [
-      h('div', { class: 'stk' }, [h('span', { class: 'stk-k' }, 'ชีวมวลในบ่อ'), h('span', { class: 'stk-v' }, '~16 ตัน')]),
-      h('div', { class: 'stk' }, [h('span', { class: 'stk-k' }, 'มูลค่าเสี่ยง'), h('span', { class: 'stk-v crit' }, '≈ ฿2.3M')]),
-      h('div', { class: 'stk' }, [h('span', { class: 'stk-k' }, 'รู้ตอนเช้า'), h('span', { class: 'stk-v crit' }, 'สาย')])
+      h('div', { class: 'stk' }, [h('span', { class: 'stk-k' }, 'biomass in pond'), h('span', { class: 'stk-v' }, '~16 t')]),
+      h('div', { class: 'stk' }, [h('span', { class: 'stk-k' }, 'value at risk'), h('span', { class: 'stk-v crit' }, '≈ ฿2.3M')]),
+      h('div', { class: 'stk' }, [h('span', { class: 'stk-k' }, 'found at dawn'), h('span', { class: 'stk-v crit' }, 'too late')])
     ]);
     stage.appendChild(stake);
 
     // the turn (shown step 4) — couples into scene 2
     const turn = h('div', { class: 'hook-turn', 'data-layer': 'turn' }, [
       icon('anomaly', { width: 15, height: 15 }),
-      'มีบางอย่างเฝ้าดูแทนคุณได้ — และปลุกคุณ ก่อน เส้น 4.0'
+      'Something can watch this for you — and wake you before the 4.0 line'
     ]);
     stage.appendChild(turn);
 
@@ -195,7 +195,7 @@
       if (el && scope) scope.tween(el, [{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 360, fill: 'none' });
     }
 
-    return { title: 'ตี 2 — ออกซิเจนในบ่อกำลังร่วง', stepCount: 4, applyStep: applyStep, enterStep: enterStep };
+    return { title: '2 a.m. — oxygen is falling in your pond', stepCount: 4, applyStep: applyStep, enterStep: enterStep };
   }
 
   /* ============================================================
