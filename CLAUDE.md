@@ -106,6 +106,41 @@ Tier instruction files in `docs/conventions/cowork_tab_instructions.md` (Tier 0 
 3. **Code commits the PLAN** per ADR-009 D2, then executes plan in feature branch
 4. After completion, `git mv docs/plans/NNNN-*.md docs/plans/done/`
 
+### Routing: proceed vs Cowork-dispatch (per ADR-009 D1/D2, ADR-013)
+
+Decide the route from the *nature* of the task, not by default:
+
+- **Solid, and the only thing left is a confirming second perspective → proceed.**
+  Code approves / executes directly. Don't bounce solid work through a heavier cycle.
+- **Might have gaps, OR genuinely needs creative / adversarial input → build a
+  Cowork dispatch file.** Cowork returns the draft; Code + Cray review. Reserve the
+  heavier cycle for where an independent creative / adversarial lens adds *real* value.
+
+**Mechanical overlay (structural — NOT a quality judgment).** A *new* PLAN or ADR
+(or editing an Accepted ADR) is **PreToolUse-gated** for Code and the in-harness
+`plan-drafter` (the G1 / G2 governance gates, scoped to `docs/adr/` + `docs/plans/`);
+a constitutional edit to this file is **not gate-blocked but is Cowork-drafted by
+convention** (ADR-009 D1). Either way the work routes through Cowork **regardless of
+how solid it is**: **Cowork drafts (ungated) → Code commits** (ADR-009 D1/D2, the
+commit boundary reinforced by ADR-013 D2). This is mechanical — **not** a finding
+that the work has gaps. When routing to Cowork, state the solid-vs-needs-creative
+judgment **explicitly**; never bounce the substance silently.
+
+| Task | Route | Why |
+|------|-------|-----|
+| New PLAN | Cowork dispatch | mechanical — new PLAN = G2-gated for Code |
+| New ADR | Cowork dispatch | mechanical — new ADR = G2-gated for Code |
+| Refresh / re-rank of existing work | judgment call | solid → proceed; needs creative re-rank → dispatch |
+| Offline re-grade / harness reuse (no governance artifact) | proceed (Code solo) | solid, no gate |
+
+How-to when routing to Cowork: build the dispatch as
+`.claude/handoffs/session-NN/<YYYY-MM-DD>-<HHMM>-cowork-<topic>-dispatch.md` with
+valid frontmatter, mark LOCKED vs SURFACED decisions, give the write target +
+fallback (full mechanics: `docs/conventions/cowork_tab_instructions.md` K-1/K-2
+workflow + the handoff-frontmatter schema). Code commits the returned draft via PR
+(§7). This records standing ADR-009 / ADR-013 practice — it does not override any
+ADR (§1 Precedence: a later ADR still wins).
+
 ### Token Economy
 
 - Detailed plans BEFORE implementation = 3–10x token savings
@@ -211,4 +246,4 @@ skill (Lesson #0026; host-state gate = §8 above).
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-06-16 (session 62, Cray-direct constitutional codification — Lesson #5 §2: §8 new "Host-State Actions" subsection homing the host-state ASK-Cray binding rule [previously only in transient PLANs/handoffs]; §11 plan-first-discipline pointer to the `code-operational-policy` skill + Lesson #0026. Source artifacts pre-existed [the `ms-s1-ollama` skill caveat + the just-merged skill section, #334]; restart-bridge filed). Prior 2026-06-09 (ADR-0017 "Skills as a memory tier" alignment, T2–T4: §1 derived-artifacts precedence line [D6], §4 Tier 2.6 row + the D5 knowledge-placement decision rule, §10 skills row cites ADR-0017 [pending-follow-up note resolved]; full Tier 2.6 conventions + decision rule live in the memory-architecture runbook [T5]. Prior same-day: slimmed to on-demand Skills — §7 git mechanics → `git-workflow` skill, §11 worktree + transcript-handoff → `code-operational-policy` skill; binding rules retained in-file, how-to/rationale extracted; §10 gains `.claude/skills/` row. Prior 2026-05-26 (§7 PR/issue/release body-file line, Lesson #11; all-commits-to-main-via-PR + Lesson #10); 2026-05-23 per ADR-013 (§6 autonomy-axis note); 2026-05-22 per ADR-012; 2026-05-21 per ADR-009 D1+D5.)*
+*Last updated: 2026-06-19 (session 68 — §6 new subsection "Routing: proceed vs Cowork-dispatch": homes Cray's standing work-method — solid + only-needs-confirming-perspective → proceed; might-have-gaps OR needs-creative/adversarial → Cowork dispatch file; a new PLAN/ADR or Accepted-ADR edit is structurally PreToolUse-gated [a constitutional edit is convention-routed, not hook-gated] → Cowork drafts ungated, Code commits. Promoted from private Auto-Memory [un-promoted since s63; STATUS Active TODO] per Cray's 2026-06-19 home=CLAUDE.md decision; Cowork-drafted [ADR-009 D1], Code R2-reviewed + committed [D2] — Code corrected one gate-scope citation at commit; records standing ADR-009/ADR-013 practice, overrides no ADR [§1]; restart-bridge filed). Prior 2026-06-16 (session 62, Cray-direct constitutional codification — Lesson #5 §2: §8 new "Host-State Actions" subsection homing the host-state ASK-Cray binding rule [previously only in transient PLANs/handoffs]; §11 plan-first-discipline pointer to the `code-operational-policy` skill + Lesson #0026. Source artifacts pre-existed [the `ms-s1-ollama` skill caveat + the just-merged skill section, #334]; restart-bridge filed). Prior 2026-06-09 (ADR-0017 "Skills as a memory tier" alignment, T2–T4: §1 derived-artifacts precedence line [D6], §4 Tier 2.6 row + the D5 knowledge-placement decision rule, §10 skills row cites ADR-0017 [pending-follow-up note resolved]; full Tier 2.6 conventions + decision rule live in the memory-architecture runbook [T5]. Prior same-day: slimmed to on-demand Skills — §7 git mechanics → `git-workflow` skill, §11 worktree + transcript-handoff → `code-operational-policy` skill; binding rules retained in-file, how-to/rationale extracted; §10 gains `.claude/skills/` row. Prior 2026-05-26 (§7 PR/issue/release body-file line, Lesson #11; all-commits-to-main-via-PR + Lesson #10); 2026-05-23 per ADR-013 (§6 autonomy-axis note); 2026-05-22 per ADR-012; 2026-05-21 per ADR-009 D1+D5.)*
