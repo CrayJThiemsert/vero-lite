@@ -747,13 +747,230 @@
   }
 
   /* ============================================================
-     The SCENES registry (arc order = G, pain-first). Scenes 4/5 (C1
-     remainder) and 6 (C2 breadth) append here on the same contract.
+     SCENE 4 — Live intake, dual-path (NEW). Reuses the PLAN-0017
+     View-E framing + the PLAN-0018 GET /llm/status readiness — builds
+     none of it new (AC-7). The live-demo risk (MS-S1 cold/slow
+     mid-pitch) is met with a DUAL PATH: a cached draft that *looks*
+     live + a true-live "Go live" button with a HARD TIMEOUT and a
+     scripted fallback that reads as deliberate. Honest frame: this is a
+     SKELETON of your operation — a starting draft you refine together,
+     NOT "your whole business from a sentence" (ADR-0015 D5 human gate).
+     No host-state MS-S1 call is made here: the readiness pill is a safe
+     GET /llm/status read (INV-1 never warms) and the go-live demo is
+     scripted (a real wiring would race O.Intake.extract on the same
+     timeout). The hard timeout runs through scope.after → reclaimed on
+     leave (AC-13).
+     ============================================================ */
+  const LLM_VIS = {
+    resident:    ['s-ok',      'MS-S1 resident — live ready'],
+    cold:        ['s-warn',    'MS-S1 cold — cached draft stands in'],
+    warming:     ['s-info',    'MS-S1 warming…'],
+    unreachable: ['s-crit',    'MS-S1 offline — cached draft stands in'],
+    error:       ['s-crit',    'MS-S1 error — cached draft stands in'],
+    unknown:     ['s-neutral', 'MS-S1 status unknown — cached draft stands in']
+  };
+  const SAMPLE_SENTENCE = 'We run shrimp ponds across coastal farms. At night dissolved oxygen can crash below 4 mg/L and kill a pond within hours; we start the emergency aerator.';
+  const SKELETON = {
+    namespace: 'aquaculture',
+    asset: 'Pond', props: ['dissolved_oxygen', 'biomass_kg'],
+    site: 'Farm',
+    metric: 'Dissolved oxygen below 4.0 mg/L',
+    actions: ['start_aerator', 'exchange_water']
+  };
+
+  function createIntakeScene(ctx) {
+    const scope = ctx.scope, host = ctx.host;
+    const CAP = [
+      'Every buyer’s real first question: “and what about MY operation?”',
+      'A cached draft appears instantly — it looks live, and a pitch never stalls.',
+      'It can also come live from MS-S1. If the box is cold or slow, we fall back to the cached draft — on purpose. The demo never freezes.',
+      'And this is only a SKELETON of your operation — a starting draft. Nothing is built until you review and refine it, together.'
+    ];
+    let liveTimer = null;
+
+    const root = h('div', { class: 'scene-intake' });
+    const pill = h('span', { class: 'intake-pill s-neutral' }, [icon('cpu', { width: 12, height: 12 }), h('span', { class: 'led' }), h('span', { class: 'pill-txt' }, 'checking MS-S1…')]);
+    root.appendChild(h('div', { class: 'intake-head' }, [
+      h('div', null, [h('div', { class: 'eyebrow' }, 'Build a vertical · live'), h('h3', null, 'And what’s YOUR operation?')]),
+      h('div', { class: 'flex' }), pill
+    ]));
+    root.appendChild(h('div', { class: 'intake-sentence' }, '“' + SAMPLE_SENTENCE + '”'));
+
+    const statusLine = h('div', { class: 'intake-status muted' }, 'Two ways to draft — both safe on stage.');
+    root.appendChild(h('div', { class: 'intake-paths' }, [
+      h('button', { class: 'btn primary sm', onClick: () => showDraft(false) }, [icon('grid', { width: 14, height: 14 }), 'Use cached draft']),
+      h('span', { class: 'ca-or muted' }, 'or'),
+      h('button', { class: 'btn ghost sm', onClick: goLive }, [icon('bolt', { width: 14, height: 14 }), 'Go live (MS-S1)']),
+      h('span', { class: 'flex' }), statusLine
+    ]));
+    const resil = h('div', { class: 'intake-resilience' }, [icon('bolt', { width: 13, height: 13 }), 'Live path = hard timeout → cached fallback. The fallback reads as deliberate, never a stall.']);
+    root.appendChild(resil);
+
+    const draftWrap = h('div', { class: 'intake-draft' });
+    root.appendChild(draftWrap);
+
+    const frame = h('div', { class: 'intake-frame' }, [
+      icon('check', { width: 15, height: 15 }),
+      h('span', null, 'A SKELETON of your operation — a starting draft, not your whole business. You review + refine it, then the engine builds it.')
+    ]);
+    root.appendChild(frame);
+    const cap = h('div', { class: 'intake-caption' }, CAP[0]);
+    root.appendChild(cap);
+    host.appendChild(root);
+
+    function drField(label, val) {
+      return h('div', { class: 'dr-field' }, [h('span', { class: 'dr-k eyebrow' }, label), h('span', { class: 'dr-v mono' }, val)]);
+    }
+    function buildSkeleton(live) {
+      const srcBadge = live
+        ? h('span', { class: 'badge s-ok' }, [h('span', { class: 'led' }), 'MS-S1 EXTRACTION'])
+        : h('span', { class: 'badge s-info' }, [h('span', { class: 'led' }), 'CACHED DRAFT']);
+      return h('div', { class: 'draft-card' }, [
+        h('div', { class: 'dr-band' }, [srcBadge, h('span', { class: 'muted mono dr-ns' }, SKELETON.namespace), h('span', { class: 'flex' }), h('span', { class: 'muted dr-gate' }, 'nothing is generated until you confirm')]),
+        h('div', { class: 'dr-grid' }, [
+          drField('Asset', SKELETON.asset + ' { ' + SKELETON.props.join(', ') + ' }'),
+          drField('Site', SKELETON.site),
+          drField('Metric', SKELETON.metric),
+          drField('Actions', SKELETON.actions.join(', '))
+        ])
+      ]);
+    }
+    function showDraft(live) {
+      clear(draftWrap);
+      draftWrap.appendChild(buildSkeleton(live));
+      if (scope) scope.tween(draftWrap, [{ opacity: 0.2, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 320, fill: 'none' });
+    }
+    function goLive() {
+      if (liveTimer != null || !scope) return;
+      statusLine.className = 'intake-status s-info';
+      statusLine.textContent = 'MS-S1: calling live…';
+      clear(draftWrap);
+      liveTimer = scope.after(2200, () => {                 // the HARD TIMEOUT (scope-owned)
+        liveTimer = null;
+        statusLine.className = 'intake-status s-warn';
+        statusLine.textContent = 'MS-S1 slow → fell back to the cached draft (deliberate). The pitch never stalls.';
+        showDraft(false);
+      });
+    }
+
+    // readiness pill — a safe GET /llm/status read (INV-1: never warms)
+    if (O.Llm && O.Llm.status) {
+      O.Llm.status().then(r => {
+        if (scope.killed) return;
+        const st = (r && r.ok && r.body && r.body.state) || 'unknown';
+        const v = LLM_VIS[st] || LLM_VIS.unknown;
+        pill.className = 'intake-pill ' + v[0];
+        const txt = pill.querySelector('.pill-txt'); if (txt) txt.textContent = v[1];
+      }).catch(() => {});
+    }
+
+    function applyStep(k) {
+      cap.textContent = CAP[k] || CAP[CAP.length - 1];
+      root.classList.toggle('show-live', k >= 2);
+      root.classList.toggle('show-frame', k >= 3);
+      if (k >= 1) { if (!draftWrap.children.length) showDraft(false); }
+      else {
+        clear(draftWrap);
+        statusLine.className = 'intake-status muted';
+        statusLine.textContent = 'Two ways to draft — both safe on stage.';
+        if (liveTimer != null) { scope.cancelTimer(liveTimer); liveTimer = null; }
+      }
+    }
+    return { title: 'And what’s YOUR operation? — drafted live', stepCount: 3, applyStep: applyStep };
+  }
+
+  /* ============================================================
+     SCENE 5 — Before / After (NEW). ONE honest, in-repo-sourced number
+     framed as ROBUSTNESS, not an accuracy leaderboard (AC-8 / SD-D).
+     Anchored on the B-γ / A2 finding: ask the same DO-breach query two
+     ways — raw text-to-SQL guesses a free-text literal
+     (`description LIKE '%dissolved_oxygen%'`) and SILENTLY returns
+     0 rows (0 of 40 runs, aquaculture); the grounded/ontology stack
+     declares the mapping and is robust across every vertical. No
+     "100%", no raw-accuracy supremacy bar. The number ties to money:
+     "0 rows" on a real night = no alarm = the ฿2.3M pond (scene 1).
+     Source is on screen (public-repo defensibility). The external dbt
+     "86%→6%" stat is NOT used (SD-D verify-before-ship gate).
+     Source: benchmarks/procedure_baseline/REPORT.md §B-3.
+     ============================================================ */
+  function createBeforeAfterScene(ctx) {
+    const scope = ctx.scope, host = ctx.host;
+    const CAP = [
+      'Does the governed stack actually win? Honest answer: not on a leaderboard %. Ask the same breach question two ways.',
+      'Raw LLM → SQL guesses a free-text literal — and silently returns 0 rows. No error thrown. No alarm raised.',
+      'The grounded stack declares the mapping (do_mg_l < 4.0). The right rows — on every vertical, not just the lucky one.',
+      'Not a leaderboard %. Robustness: “0 rows” on a real night would have lost the ฿2.3M pond. Grounding closes the gap raw LLMs open.'
+    ];
+    function arm(side, title, sub) {
+      const result = h('div', { class: 'ba-result' });
+      const card = h('div', { class: 'ba-arm ' + side }, [
+        h('div', { class: 'ba-arm-head' }, [h('span', { class: 'ba-arm-title' }, title), h('span', { class: 'ba-arm-sub mono muted' }, sub)]),
+        result
+      ]);
+      return { card: card, result: result };
+    }
+    const rawArm = arm('raw', 'Raw LLM → SQL', 'text-to-SQL, no ontology');
+    const grdArm = arm('grounded', 'Grounded (ontology)', 'declared mapping');
+    const verdict = h('div', { class: 'ba-verdict' });
+
+    const root = h('div', { class: 'scene-ba' }, [
+      h('div', { class: 'ba-head' }, [
+        h('div', { class: 'eyebrow' }, 'Before / After · same question'),
+        h('h3', null, '“Which ponds breached DO last night?”')
+      ]),
+      h('div', { class: 'ba-split' }, [rawArm.card, grdArm.card]),
+      verdict
+    ]);
+    const cap = h('div', { class: 'ba-caption' }, CAP[0]);
+    root.appendChild(cap);
+    host.appendChild(root);
+
+    function setRaw(on) {
+      clear(rawArm.result);
+      if (!on) return;
+      rawArm.result.appendChild(h('div', { class: 'ba-sql mono' }, "… WHERE description LIKE '%dissolved_oxygen%'"));
+      rawArm.result.appendChild(h('div', { class: 'ba-rows crit' }, [icon('anomaly', { width: 14, height: 14 }), '0 rows — a silent miss']));
+    }
+    function setGrounded(on) {
+      clear(grdArm.result);
+      if (!on) return;
+      grdArm.result.appendChild(h('div', { class: 'ba-sql mono' }, '… WHERE do_mg_l < 4.0   (ontology-declared)'));
+      grdArm.result.appendChild(h('div', { class: 'ba-rows ok' }, [icon('check', { width: 14, height: 14 }), 'breach caught · rows returned']));
+    }
+    function setVerdict(on) {
+      clear(verdict);
+      if (!on) return;
+      verdict.appendChild(h('div', { class: 'ba-num' }, [
+        h('span', { class: 'ba-num-v mono' }, '0 of 40'),
+        h('span', { class: 'ba-num-k' }, 'raw runs returned the aquaculture breach — consistent, not luck')
+      ]));
+      verdict.appendChild(h('div', { class: 'ba-frame' }, 'Grounding closes the gap raw LLMs open. The win is robustness, not a leaderboard % — “0 rows” on a real night = no alarm = the ฿2.3M pond.'));
+      verdict.appendChild(h('div', { class: 'ba-src mono muted' }, 'source: benchmarks/procedure_baseline/REPORT.md §B-3 (B-γ · gpt-oss:20b · 2026-06-17)'));
+    }
+
+    function applyStep(k) {
+      cap.textContent = CAP[k] || CAP[CAP.length - 1];
+      setRaw(k >= 1); setGrounded(k >= 2); setVerdict(k >= 3);
+      root.classList.toggle('raw-on', k >= 1);
+      root.classList.toggle('grounded-on', k >= 2);
+    }
+    function enterStep(k) {
+      const el = k === 1 ? rawArm.result : k === 2 ? grdArm.result : k === 3 ? verdict : null;
+      if (el && scope) scope.tween(el, [{ opacity: 0.2, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }], { duration: 320, fill: 'none' });
+    }
+    return { title: 'Grounding closes the gap — robustness, not a leaderboard', stepCount: 3, applyStep: applyStep, enterStep: enterStep };
+  }
+
+  /* ============================================================
+     The SCENES registry (arc order = G, pain-first). Scene 6 (C2
+     breadth) appends here on the same contract.
      ============================================================ */
   const SCENES = [
-    { id: 'hook',     create: createHookScene },
-    { id: 'govern',   create: createGovernScene },
-    { id: 'pipeline', create: createPipelineScene }
+    { id: 'hook',       create: createHookScene },
+    { id: 'govern',     create: createGovernScene },
+    { id: 'pipeline',   create: createPipelineScene },
+    { id: 'intake',     create: createIntakeScene },
+    { id: 'beforeafter', create: createBeforeAfterScene }
   ];
   const EYEBROW = 'Story mode · Aquaculture';
 

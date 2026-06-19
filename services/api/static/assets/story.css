@@ -346,6 +346,91 @@
 .gc-receipt { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--ok); font-family: var(--mono); }
 .govern-caption { max-width: 560px; text-align: center; font-size: 12.5px; line-height: 1.5; color: var(--tx-1); min-height: 36px; }
 
+/* ============================================================
+   SCENE 4 — Live intake, dual-path (C1).
+   ============================================================ */
+.scene-intake {
+  flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto;
+  display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 24px;
+}
+.scene-intake > * { width: 100%; max-width: 680px; }
+.intake-head { display: flex; align-items: center; gap: 12px; }
+.intake-head h3 { margin: 2px 0 0; font-size: 15px; font-weight: 600; }
+.intake-pill {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px;
+  font-size: 10.5px; font-family: var(--mono); border: 1px solid var(--line); white-space: nowrap;
+}
+.intake-pill .led { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.intake-pill.s-ok { color: var(--ok); border-color: var(--ok-line); background: var(--ok-bg); }
+.intake-pill.s-warn { color: var(--warn); border-color: var(--warn-line); background: var(--warn-bg); }
+.intake-pill.s-info { color: var(--info); border-color: var(--accent-line); }
+.intake-pill.s-crit { color: var(--crit); border-color: var(--crit-line); background: var(--crit-bg); }
+.intake-pill.s-neutral { color: var(--tx-2); }
+.intake-sentence {
+  border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: var(--r-md);
+  background: var(--bg-2); padding: 12px 14px; font-size: 13px; line-height: 1.5; color: var(--tx-0);
+}
+.intake-paths { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.intake-paths .ca-or { font-size: 11px; }
+.intake-status { font-size: 11.5px; }
+.intake-status.s-info { color: var(--info); }
+.intake-status.s-warn { color: var(--warn); }
+.intake-resilience {
+  display: none; align-items: center; gap: 8px; font-size: 11px; color: var(--tx-2);
+  border: 1px dashed var(--line-strong); border-radius: var(--r-sm); padding: 8px 10px;
+}
+.scene-intake.show-live .intake-resilience { display: flex; }
+.intake-resilience svg { color: var(--warn); flex: 0 0 auto; }
+.intake-draft:empty { display: none; }
+.draft-card { border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg-2); overflow: hidden; }
+.dr-band { display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--bg-inset); }
+.dr-ns { font-size: 11px; }
+.dr-gate { font-size: 10.5px; }
+.dr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1px; background: var(--line); }
+.dr-field { background: var(--bg-2); padding: 10px 12px; display: flex; flex-direction: column; gap: 3px; }
+.dr-field .dr-k { color: var(--tx-2); }
+.dr-field .dr-v { font-size: 11.5px; color: var(--tx-0); }
+.intake-frame {
+  display: none; align-items: center; gap: 9px; padding: 11px 13px; border-radius: var(--r-md);
+  background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok);
+  font-size: 11.5px; font-weight: 600; line-height: 1.35;
+}
+.scene-intake.show-frame .intake-frame { display: flex; }
+.intake-frame svg { flex: 0 0 auto; }
+.intake-caption { text-align: center; font-size: 12.5px; line-height: 1.5; color: var(--tx-1); min-height: 36px; }
+
+/* ============================================================
+   SCENE 5 — Before / After (C1). ONE honest number, robustness framing.
+   ============================================================ */
+.scene-ba {
+  flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto;
+  display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 24px;
+}
+.scene-ba > * { width: 100%; max-width: 760px; }
+.ba-head { text-align: center; }
+.ba-head h3 { margin: 4px 0 0; font-size: 17px; font-weight: 600; }
+.ba-split { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.ba-arm { border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg-2); overflow: hidden; }
+.ba-arm-head { padding: 10px 12px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.ba-arm.raw .ba-arm-head { background: var(--crit-bg); }
+.ba-arm.grounded .ba-arm-head { background: var(--ok-bg); }
+.ba-arm-title { font-size: 13px; font-weight: 600; }
+.ba-arm-sub { font-size: 10px; }
+.ba-result { padding: 12px; min-height: 84px; display: flex; flex-direction: column; gap: 9px; justify-content: center; }
+.ba-result:empty::before { content: 'pending…'; color: var(--tx-3); font-family: var(--mono); font-size: 11px; }
+.ba-sql { font-size: 11px; color: var(--tx-1); background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--r-sm); padding: 7px 9px; word-break: break-all; }
+.ba-rows { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; }
+.ba-rows.crit { color: var(--crit); }
+.ba-rows.ok { color: var(--ok); }
+.ba-verdict:empty { display: none; }
+.ba-verdict { display: flex; flex-direction: column; gap: 10px; align-items: center; text-align: center; border-top: 1px solid var(--line); padding-top: 14px; }
+.ba-num { display: flex; flex-direction: column; gap: 3px; align-items: center; }
+.ba-num-v { font-size: 30px; font-weight: 700; color: var(--crit); letter-spacing: .01em; }
+.ba-num-k { font-size: 11.5px; color: var(--tx-2); max-width: 440px; }
+.ba-frame { font-size: 12.5px; line-height: 1.5; color: var(--tx-0); max-width: 580px; }
+.ba-src { font-size: 10px; word-break: break-all; }
+.ba-caption { text-align: center; font-size: 12.5px; line-height: 1.5; color: var(--tx-1); min-height: 36px; }
+
 /* reduced-motion: kill every story animation; state stays readable via
    colour + icon + label (AC-10). This is the universal floor. */
 @media (prefers-reduced-motion: reduce) {
