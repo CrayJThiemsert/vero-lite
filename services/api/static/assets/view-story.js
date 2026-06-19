@@ -140,7 +140,9 @@
     // observed group (shown step 1): the 4.0 action line + the falling DO line + current value
     const gObs = s('g', { class: 'hk-layer', 'data-layer': 'obs' });
     gObs.appendChild(s('line', { class: 'hk-action', x1: 50, y1: yAction, x2: 520, y2: yAction }));
-    gObs.appendChild(s('text', { class: 'hk-action-lbl', x: 520, y: yAction - 7, 'text-anchor': 'end' }, 'action line · 4.0 mg/L'));
+    // label sits BELOW the 4.0 line — the ETA badge lives above it near the breach
+    // point, so keeping the two on opposite sides of the line avoids overlap (step 2).
+    gObs.appendChild(s('text', { class: 'hk-action-lbl', x: 520, y: yAction + 15, 'text-anchor': 'end' }, 'action line · 4.0 mg/L'));
     gObs.appendChild(s('polyline', { class: 'hk-obs', points: OBS.map(p => p[0] + ',' + yOf(p[1])).join(' ') }));
     const last = OBS[OBS.length - 1];
     gObs.appendChild(s('circle', { class: 'hk-now', cx: last[0], cy: yOf(last[1]), r: 4.5 }));
