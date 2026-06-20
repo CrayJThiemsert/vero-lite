@@ -914,8 +914,10 @@ confounds are removed — same rubric AND nudged prompt — arm (a) **ties-or-ex
 arm (c) on all three verticals** (energy 40 ≥ 39, aquaculture 40 = 40, supply_chain
 40 = 40). → The apparent arm-c advantage was a rubric + prompt confound, **not a
 real accuracy edge**; the moat-relocation reading (§3.4) stands. *(Offline re-grade
-`.claude/benchmark-results/regrade_arm_a.py`, gitignored scratch; hardened source
-`2026-06-09-hardened-dump.jsonl`, nudged source `r1b.jsonl` = PLAN-0020 R1.)*
+`benchmarks/procedure_comparison/regrade_arm_a.py` (committed — reproduces this full
+table; all-120 sanity assert: every recomputed full-key grade matches the stored
+`proposal_correct`); dumps `2026-06-09-hardened-dump.jsonl` + `r1b.jsonl`
+(PLAN-0020 R1 nudged) are gitignored scratch.)*
 
 **PLAN-0029 measurement calibration (the one aquaculture arm-c recovery).** As-run,
 aquaculture arm (c) scored **39/40** — one miss, `aqua-h06`: the model named the
