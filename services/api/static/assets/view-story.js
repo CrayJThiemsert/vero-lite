@@ -999,7 +999,7 @@ object_types:
                  dispatch_technician, escalate]
 # breach: dissolved-oxygen reading BELOW 4.0 mg/L  ->  a crash` },
     { key: 'energy', label: 'Energy grid', tone: 's-info', ns: 'energy',
-      asset: 'Asset · transformer', site: 'Site · substation', metric: 'Temperature', dir: 'above', thr: '', action: 'isolate / restart',
+      asset: 'Asset', site: 'Site', metric: 'Temperature', dir: 'above', thr: '', action: 'isolate / restart',
       yaml: `version: 0
 namespace: energy
 object_types:
@@ -1068,15 +1068,16 @@ object_types:
     const root = h('div', { class: 'scene-breadth' });
     root.appendChild(h('div', { class: 'bd-head' }, [
       h('div', { class: 'eyebrow' }, 'One engine · many operations'),
-      h('h3', null, 'The same ontology shape — a new vertical is data, not code')
+      h('h3', null, 'The same ontology shape — a new vertical is data, not code'),
+      h('div', { class: 'bd-subnote muted' }, 'The engine fixes four roles — Asset · Site · Metric · Action. A domain author just names + fills them in the YAML (the names are theirs — energy left Asset/Site generic; aquaculture chose Pond/Farm); the engine generates everything else.')
     ]));
 
     // three vertical cards, revealed cumulatively; each carries a "View YAML"
     // toggle (hidden by default) that reveals the real abridged ontology.
     const cards = VERTICALS.map((v) => {
       const slots = [
-        ['Asset', v.asset, ''],
-        ['Site', v.site, ''],
+        ['Asset-role', v.asset, ''],
+        ['Site-role', v.site, ''],
         ['Metric', v.metric + ' ' + (v.dir === 'below' ? '↓' : '↑') + (v.thr ? ' ' + v.thr : ''), v.dir === 'below' ? 'down' : 'up'],
         ['Action', v.action, '']
       ].map(s => h('div', { class: 'bd-slot' }, [

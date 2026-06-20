@@ -438,6 +438,7 @@
 .scene-breadth > * { width: 100%; max-width: 720px; }
 .bd-head { text-align: center; }
 .bd-head h3 { margin: 4px 0 0; font-size: 16px; font-weight: 600; }
+.bd-subnote { max-width: 600px; margin: 7px auto 0; font-size: 11px; line-height: 1.45; color: var(--tx-2); }
 /* three vertical cards — revealed cumulatively, each with a YAML toggle */
 .bd-cards { display: flex; flex-direction: column; gap: 10px; }
 .bd-card { display: none; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg-2); overflow: hidden; }
