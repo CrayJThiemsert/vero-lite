@@ -969,46 +969,140 @@
      grounding-receipt grammar + the anti-hallucination guard.
      Synthetic mirror data (ADR-0015 D1), consistent with the story.
      ============================================================ */
+  // nouns + YAML excerpts are FAITHFUL to the real in-repo ontologies
+  // (verticals/<ns>/ontology/<ns>_v0.yaml) — abridged, not invented (AC-9).
   const VERTICALS = [
-    { key: 'aquaculture', label: 'Aquaculture',          tone: 's-ok',   asset: 'Pond',     site: 'Farm',             metric: 'Dissolved oxygen', dir: 'below', thr: '4.0 mg/L',  action: 'start_aerator',    note: 'the showcase you just watched' },
-    { key: 'energy',      label: 'Energy grid',          tone: 's-info', asset: 'Feeder',   site: 'Substation',       metric: 'Load',             dir: 'above', thr: '95% rating', action: 'shed_load',        note: 'same shape — a crash becomes an overrun' },
-    { key: 'supply',      label: 'Cold-chain logistics', tone: 's-warn', asset: 'Shipment', site: 'Distribution hub', metric: 'Reefer temp',      dir: 'above', thr: '8 °C',      action: 'reroute_expedite', note: 'a named excursion rule + a clock' }
+    { key: 'aquaculture', label: 'Aquaculture', tone: 's-ok', ns: 'aquaculture',
+      asset: 'Pond', site: 'Farm', metric: 'Dissolved oxygen', dir: 'below', thr: '4.0 mg/L', action: 'start_emergency_aerator',
+      yaml: `version: 0
+namespace: aquaculture
+object_types:
+  Pond:                       # the managed unit
+    primary_key: pond_id
+    properties:
+      species:
+        type: enum
+        values: [whiteleg_shrimp, tiger_prawn, tilapia]
+      site_id:
+        type: ref
+        target: Farm
+  Farm:                       # the geo site
+    properties:
+      site_type:
+        type: enum
+        values: [coastal, inland, recirculating]
+  RecommendedAction:
+    properties:
+      action_type:
+        type: enum
+        values: [start_emergency_aerator, increase_water_exchange,
+                 dispatch_technician, escalate]
+# breach: dissolved-oxygen reading BELOW 4.0 mg/L  ->  a crash` },
+    { key: 'energy', label: 'Energy grid', tone: 's-info', ns: 'energy',
+      asset: 'Asset · transformer', site: 'Site · substation', metric: 'Temperature', dir: 'above', thr: '', action: 'isolate / restart',
+      yaml: `version: 0
+namespace: energy
+object_types:
+  Asset:                      # the managed unit
+    primary_key: asset_id
+    properties:
+      asset_type:
+        type: enum
+        values: [battery, inverter, meter, transformer]
+      site_id:
+        type: ref
+        target: Site
+  Site:
+    properties:
+      site_type:
+        type: enum
+        values: [substation, microgrid, depot]
+  OperationalEvent:
+    properties:
+      measured_kind:
+        type: enum
+        values: [temperature, frequency]
+  RecommendedAction:
+    properties:
+      action_type:
+        type: enum
+        values: [restart, isolate, dispatch_technician, escalate]
+# breach: transformer temperature ABOVE threshold  ->  an overrun` },
+    { key: 'supply', label: 'Cold-chain logistics', tone: 's-warn', ns: 'supply_chain',
+      asset: 'Shipment', site: 'Facility', metric: 'Cold-chain temperature', dir: 'above', thr: '', action: 'reroute / expedite',
+      yaml: `version: 0
+namespace: supply_chain
+object_types:
+  Shipment:                   # the managed unit
+    primary_key: shipment_id
+    properties:
+      cargo_type:
+        type: enum
+        values: [pharma, produce, frozen, biologic]
+      facility_id:
+        type: ref
+        target: Facility
+  Facility:
+    properties:
+      facility_type:
+        type: enum
+        values: [cold_storage, distribution_center, port, cross_dock]
+  RecommendedAction:
+    properties:
+      action_type:
+        type: enum
+        values: [reroute, expedite, hold, inspect, escalate]
+# breach: cold-chain temperature ABOVE threshold  ->  an excursion` }
   ];
 
   function createBreadthScene(ctx) {
     const scope = ctx.scope, host = ctx.host;
     const CAP = [
       'One engine. The shape never changes — only the nouns.',
-      'Aquaculture: a Pond on a Farm, oxygen falling through 4.0 — start the aerator.',
-      'Energy grid: a Feeder on a Substation, load rising past 95% — shed load. Same shape, the crash is now an overrun.',
-      'Cold-chain: a Shipment at a hub, reefer temp past 8 °C — reroute. A new vertical is a YAML ontology — data, not code. It auto-registers.',
+      'Aquaculture: a Pond on a Farm, oxygen falling through 4.0 — start the aerator. Open the YAML — that IS the whole vertical.',
+      'Energy grid: the same shape on an Asset at a Site, temperature rising. The crash is now an overrun.',
+      'Cold-chain: a Shipment at a Facility, temperature past the limit — reroute. Three verticals, ONE engine — each is just a YAML ontology, not new code.',
       'And the operator asks in plain language — grounded in the real records, never invented.'
     ];
-    let active = -1;
 
     const root = h('div', { class: 'scene-breadth' });
     root.appendChild(h('div', { class: 'bd-head' }, [
       h('div', { class: 'eyebrow' }, 'One engine · many operations'),
       h('h3', null, 'The same ontology shape — a new vertical is data, not code')
     ]));
-    const chipRow = h('div', { class: 'bd-verticals' });
-    const chips = VERTICALS.map((v, i) => {
-      const c = h('button', { class: 'bd-vchip', onClick: () => selectVertical(i) }, [h('span', { class: 'bd-vdot ' + v.tone }), v.label]);
-      chipRow.appendChild(c); return c;
+
+    // three vertical cards, revealed cumulatively; each carries a "View YAML"
+    // toggle (hidden by default) that reveals the real abridged ontology.
+    const cards = VERTICALS.map((v) => {
+      const slots = [
+        ['Asset', v.asset, ''],
+        ['Site', v.site, ''],
+        ['Metric', v.metric + ' ' + (v.dir === 'below' ? '↓' : '↑') + (v.thr ? ' ' + v.thr : ''), v.dir === 'below' ? 'down' : 'up'],
+        ['Action', v.action, '']
+      ].map(s => h('div', { class: 'bd-slot' }, [
+        h('div', { class: 'bd-slot-k eyebrow' }, s[0]),
+        h('div', { class: 'bd-slot-v mono ' + s[2] }, s[1])
+      ]));
+      const toggle = h('button', { class: 'bd-yaml-btn' }, 'View YAML');
+      const card = h('div', { class: 'bd-card', dataset: { v: v.key } }, [
+        h('div', { class: 'bd-card-head' }, [
+          h('span', { class: 'bd-vdot ' + v.tone }),
+          h('span', { class: 'bd-card-label' }, v.label),
+          h('span', { class: 'bd-card-ns mono muted' }, 'verticals/' + v.ns + '/ontology/' + v.ns + '_v0.yaml'),
+          h('span', { class: 'flex' }),
+          toggle
+        ]),
+        h('div', { class: 'bd-shape' }, slots),
+        h('pre', { class: 'bd-yaml mono' }, v.yaml)
+      ]);
+      toggle.addEventListener('click', () => {
+        const open = card.classList.toggle('yaml-open');
+        toggle.textContent = open ? 'Hide YAML' : 'View YAML';
+      });
+      return card;
     });
-    root.appendChild(chipRow);
-    const slots = {};
-    function slot(key, label) {
-      const val = h('div', { class: 'bd-slot-v mono' }, '—');
-      slots[key] = val;
-      return h('div', { class: 'bd-slot' }, [h('div', { class: 'bd-slot-k eyebrow' }, label), val]);
-    }
-    const shapeEl = h('div', { class: 'bd-shape' }, [
-      slot('asset', 'Asset'), slot('site', 'Site'), slot('metric', 'Metric + direction'), slot('action', 'Action')
-    ]);
-    root.appendChild(shapeEl);
-    const vnote = h('div', { class: 'bd-vnote muted' }, '');
-    root.appendChild(vnote);
+    root.appendChild(h('div', { class: 'bd-cards' }, cards));
+
     root.appendChild(buildAsk());
     const cap = h('div', { class: 'bd-caption' }, CAP[0]);
     root.appendChild(cap);
@@ -1026,33 +1120,17 @@
         ])
       ]);
     }
-    function selectVertical(i) {
-      active = i;
-      const v = VERTICALS[i];
-      chips.forEach((c, ci) => c.classList.toggle('active', ci === i));
-      slots.asset.textContent = v.asset;
-      slots.site.textContent = v.site;
-      slots.metric.textContent = v.metric + ' ' + (v.dir === 'below' ? '↓ ' : '↑ ') + v.thr;
-      slots.metric.className = 'bd-slot-v mono ' + (v.dir === 'below' ? 'down' : 'up');
-      slots.action.textContent = v.action;
-      vnote.textContent = v.note;
-      if (scope) scope.tween(shapeEl, [{ opacity: 0.4 }, { opacity: 1 }], { duration: 260, fill: 'none' });
-    }
-    function clearShape() {
-      active = -1;
-      chips.forEach(c => c.classList.remove('active'));
-      Object.keys(slots).forEach(key => { slots[key].textContent = '—'; slots[key].className = 'bd-slot-v mono'; });
-      vnote.textContent = '';
-    }
 
     function applyStep(k) {
       cap.textContent = CAP[k] || CAP[CAP.length - 1];
+      cards.forEach((c, i) => c.classList.toggle('revealed', k >= i + 1));   // cumulative — all 3 stay visible
       root.classList.toggle('show-ask', k >= 4);
-      if (k === 0) clearShape();
-      else if (k <= 3) selectVertical(k - 1);
-      else if (active !== 2) selectVertical(2);   // keep supply-chain filled while the Ask shows
     }
-    return { title: 'One engine, many operations — and ask your own data', stepCount: 4, applyStep: applyStep };
+    function enterStep(k) {
+      const c = cards[k - 1];
+      if (c && scope) scope.tween(c, [{ opacity: 0.2, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 320, fill: 'none' });
+    }
+    return { title: 'One engine, many operations — and ask your own data', stepCount: 4, applyStep: applyStep, enterStep: enterStep };
   }
 
   /* ============================================================
