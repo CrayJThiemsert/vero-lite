@@ -567,6 +567,59 @@ concrete: identical UI build, different operations, zero per-vertical UI code.
 
 ---
 
+## 6c. Story mode — the guided 7-scene arc (hotkey **S**, PLAN-0033 Phase C)
+
+> §6a/§6b drive the **console** (Views A–E) by hand. **Story mode** is a separate,
+> narration-paced **7-scene overlay** (`view-story.js`, PLAN-0033 Phase C) that tells
+> the whole pitch as one arc — pain → governance → pipeline → live intake → the honest
+> number → breadth → "how it works." It is an **additive overlay** (it never replaces
+> the console — **Esc** returns you to whatever view was open), runs on synthetic
+> Tier-1 mirror data, and is **offline** (no MS-S1 dependency; see the honesty note).
+
+**Pre-demo checklist (same as §5a).** Pre-warm MS-S1 (header **Warm**, or §5) and confirm
+the indicator reads **RESIDENT** before you start. Story mode runs fine cold, but scene 4's
+readiness pill reads the real `GET /llm/status` — **green ("resident") looks best on stage**.
+
+**Launch.** Press **S** anywhere in the demo (or click the header **Story** button). The
+`S` hotkey is app-lifetime and ignores typing into inputs, so it never collides with the
+A–E view keys.
+
+**Drive it** (narration-paced — click/keyboard, never a timer that desyncs live Q&A):
+
+| Key | Action |
+|---|---|
+| **→** | next step within the scene |
+| **Space** | play / pause auto-advance (~1.1 s/step) |
+| **]** / **[** | next / previous scene |
+| **R** | restart the current scene |
+| **Esc** | exit story mode (returns to the console) |
+
+The arc (**Story · Aquaculture**): **1 Hook** (2 a.m. DO crash, ฿/biomass at stake) →
+**2 Govern** (decision card + the 🌟 fail-safe self-catch — toggle *"What if the AI is
+unsure?"*) → **3 Pipeline** (the branching DAG + Proposed→Approved→Executed control
+surface; toggle **"Simulate LLM fault"** to show the LLM → deterministic rule fail-safe
+reroute that *still* needs your signature) → **4 Live intake** (dual-path: "Use cached
+draft" / "Go live") → **5 Before/After** (the one honest number) → **6 Breadth** (swap
+across verticals + "Compare all" matrix + real-YAML) → **7 Appendix** (how the YAML
+generates the whole stack).
+
+> **Honesty (don't over-claim on stage).** Scene 4's **"Go live"** button is a *scripted*
+> resilience beat — it shows a hard-timeout → cached-draft fallback; it does **not** make
+> a real MS-S1 extraction call (real wiring is deferred). The readiness pill *does* do a
+> real safe `GET /llm/status` read. Scene 5's "**0 of 40**" is the in-repo B-γ finding
+> (`benchmarks/procedure_baseline/REPORT.md` §B-3), framed as *robustness*, not a
+> leaderboard %.
+
+**Editing the demo assets — the `?v=` cache-bust convention (operator gotcha).** The
+browser **caches** the static JS/CSS, so after you edit any file under
+`services/api/static/assets/`, a normal reload serves the **stale** asset (it looks like
+"my change didn't land"). Bump the shared `?v=` token in `services/api/static/index.html`
+(e.g. `?v=c8` → `?v=c9`) on **every** asset edit so the browser refetches; verify with a
+cache-busted `fetch` + a runtime probe (`window.OCT.ViewStory._probe()` returns
+`{open, scene, step, motion}`), never "reload = fresh."
+
+---
+
 ## 7. Stop / clean up
 
 - Stop a server: **Ctrl-C** in its terminal.
