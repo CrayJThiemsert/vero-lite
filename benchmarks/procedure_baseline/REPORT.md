@@ -919,6 +919,19 @@ table; all-120 sanity assert: every recomputed full-key grade matches the stored
 `proposal_correct`); dumps `2026-06-09-hardened-dump.jsonl` + `r1b.jsonl`
 (PLAN-0020 R1 nudged) are gitignored scratch.)*
 
+**Residual decomposition (the 7 hardened-reduced aquaculture misses) — handler-verified.**
+The reduced-key residual decomposes, read from each dump judgment's `suggested_handler`:
+**5 of 7 chose the CORRECT action** (`start_emergency_aerator`, `probe_correct=True` —
+aqua-007/014/028/h03/h06) but framed the proposal as a *"DO breach assessment"* that
+never states the verb in title/description/rationale, so the prose-only `action_keywords`
+check missed it — the action lives in the structured handler the check does not read.
+**2 of 7 are genuine action-selection errors** (`increase_water_exchange`,
+`probe_correct=False` — aqua-017/h05). So the hardened-reduced 82.5% **under-credits**
+arm (a)'s action (true wrong-action **2/40**, not 7/40); the 5 prose-omission cases are the
+textbook target of the verify+reshape governance layer (Group-A **A1** / ADR-0022
+member (b)) — verify the proposal states the corrective action, reshape it from the
+resolved handler. The nudge closes all 7 (→ nudged 40/40).
+
 **PLAN-0029 measurement calibration (the one aquaculture arm-c recovery).** As-run,
 aquaculture arm (c) scored **39/40** — one miss, `aqua-h06`: the model named the
 right pond `pond-A116` but with a **U+202F NARROW NO-BREAK SPACE** separator the
