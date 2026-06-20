@@ -755,11 +755,12 @@
      scripted fallback that reads as deliberate. Honest frame: this is a
      SKELETON of your operation — a starting draft you refine together,
      NOT "your whole business from a sentence" (ADR-0015 D5 human gate).
-     No host-state MS-S1 call is made here: the readiness pill is a safe
-     GET /llm/status read (INV-1 never warms) and the go-live demo is
-     scripted (a real wiring would race O.Intake.extract on the same
-     timeout). The hard timeout runs through scope.after → reclaimed on
-     leave (AC-13).
+     The readiness pill is a safe GET /llm/status read (INV-1 never warms).
+     "Go live" makes a REAL MS-S1 extraction call — O.Intake.extract is a
+     host-state call (it loads the model) — raced against a hard timeout;
+     on timeout / degraded / error it falls back to the cached draft
+     (deliberate — the pitch never stalls). The timeout runs through
+     scope.after → reclaimed on leave (AC-13).
      ============================================================ */
   const LLM_VIS = {
     resident:    ['s-ok',      'MS-S1 resident — live ready'],
@@ -777,6 +778,12 @@
     metric: 'Dissolved oxygen below 4.0 mg/L',
     actions: ['start_aerator', 'exchange_water']
   };
+  // "Go live" demo-pacing cutoff: cut over to the cached draft if the REAL
+  // MS-S1 extraction (backend per-call timeout 120s) has not returned. A warm
+  // gpt-oss:20b single-sentence extraction measured ~19.5s (live smoke, s71);
+  // 35s gives comfortable margin for variance / one retry while still falling
+  // back well before the backend's multi-retry budget. Pre-warm MS-S1 first.
+  const LIVE_TIMEOUT_MS = 35000;
 
   function createIntakeScene(ctx) {
     const scope = ctx.scope, host = ctx.host;
@@ -786,7 +793,7 @@
       'It can also come live from MS-S1. If the box is cold or slow, we fall back to the cached draft — on purpose. The demo never freezes.',
       'And this is only a SKELETON of your operation — a starting draft. Nothing is built until you review and refine it, together.'
     ];
-    let liveTimer = null;
+    let liveTimer = null, liveInFlight = false, liveGen = 0;
 
     const root = h('div', { class: 'scene-intake' });
     const pill = h('span', { class: 'intake-pill s-neutral' }, [icon('cpu', { width: 12, height: 12 }), h('span', { class: 'led' }), h('span', { class: 'pill-txt' }, 'checking MS-S1…')]);
@@ -821,36 +828,84 @@
     function drField(label, val) {
       return h('div', { class: 'dr-field' }, [h('span', { class: 'dr-k eyebrow' }, label), h('span', { class: 'dr-v mono' }, val)]);
     }
-    function buildSkeleton(live) {
+    // Map a live MS-S1 IntakePackage onto the scene's compact draft shape.
+    function packageToSkeleton(pkg) {
+      const m = (pkg && pkg.metric) || {};
+      const parts = [m.label || 'metric'];
+      if (m.direction) parts.push(m.direction);
+      if (m.threshold != null && m.threshold !== '') parts.push(String(m.threshold));
+      if (m.unit) parts.push(m.unit);
+      const props = (((pkg && pkg.asset_role) || {}).properties || []).map(p => p.name).filter(Boolean);
+      return {
+        namespace: (pkg && pkg.namespace) || '—',
+        asset: ((pkg && pkg.asset_role) || {}).type_name || '—',
+        props: props,
+        site: ((pkg && pkg.site_role) || {}).type_name || '—',
+        metric: parts.join(' '),
+        actions: (pkg && pkg.action_types) || []
+      };
+    }
+    function buildSkeleton(live, data) {
+      data = data || SKELETON;
       const srcBadge = live
         ? h('span', { class: 'badge s-ok' }, [h('span', { class: 'led' }), 'MS-S1 EXTRACTION'])
         : h('span', { class: 'badge s-info' }, [h('span', { class: 'led' }), 'CACHED DRAFT']);
       return h('div', { class: 'draft-card' }, [
-        h('div', { class: 'dr-band' }, [srcBadge, h('span', { class: 'muted mono dr-ns' }, SKELETON.namespace), h('span', { class: 'flex' }), h('span', { class: 'muted dr-gate' }, 'nothing is generated until you confirm')]),
+        h('div', { class: 'dr-band' }, [srcBadge, h('span', { class: 'muted mono dr-ns' }, data.namespace), h('span', { class: 'flex' }), h('span', { class: 'muted dr-gate' }, 'nothing is generated until you confirm')]),
         h('div', { class: 'dr-grid' }, [
-          drField('Asset', SKELETON.asset + ' { ' + SKELETON.props.join(', ') + ' }'),
-          drField('Site', SKELETON.site),
-          drField('Metric', SKELETON.metric),
-          drField('Actions', SKELETON.actions.join(', '))
+          drField('Asset', data.asset + ' { ' + (data.props || []).join(', ') + ' }'),
+          drField('Site', data.site),
+          drField('Metric', data.metric),
+          drField('Actions', (data.actions || []).join(', '))
         ])
       ]);
     }
-    function showDraft(live) {
+    function showDraft(live, data) {
       clear(draftWrap);
-      draftWrap.appendChild(buildSkeleton(live));
+      draftWrap.appendChild(buildSkeleton(live, data));
       if (scope) scope.tween(draftWrap, [{ opacity: 0.2, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 320, fill: 'none' });
     }
+    // "Go live" — race the REAL MS-S1 extraction against a hard timeout.
+    // O.Intake.extract is a host-state call (loads the model). On success the
+    // live-extracted skeleton renders (MS-S1 EXTRACTION badge); on timeout /
+    // degraded / error / unreachable it falls back to the cached draft —
+    // deliberate, so the pitch never stalls (AC-7). The timer is scope-owned →
+    // reclaimed on scene leave (AC-13); liveGen invalidates an in-flight call
+    // when the operator resets/leaves; liveInFlight guards double-clicks.
     function goLive() {
-      if (liveTimer != null || !scope) return;
+      if (!scope || liveInFlight) return;
+      const gen = liveGen;
+      liveInFlight = true;
       statusLine.className = 'intake-status s-info';
       statusLine.textContent = 'MS-S1: calling live…';
       clear(draftWrap);
-      liveTimer = scope.after(2200, () => {                 // the HARD TIMEOUT (scope-owned)
-        liveTimer = null;
+      const stale = () => gen !== liveGen || scope.killed;
+      const finishOwned = () => {
+        liveInFlight = false;
+        if (liveTimer != null) { scope.cancelTimer(liveTimer); liveTimer = null; }
+      };
+      const fallback = (msg) => {
+        if (stale()) return;
+        finishOwned();
         statusLine.className = 'intake-status s-warn';
-        statusLine.textContent = 'MS-S1 slow → fell back to the cached draft (deliberate). The pitch never stalls.';
+        statusLine.textContent = msg;
         showDraft(false);
+      };
+      liveTimer = scope.after(LIVE_TIMEOUT_MS, () => {        // hard timeout (scope-owned)
+        liveTimer = null;
+        fallback('MS-S1 slow → fell back to the cached draft (deliberate). The pitch never stalls.');
       });
+      O.Intake.extract(SAMPLE_SENTENCE).then((r) => {
+        if (stale()) return;
+        if (r && r.ok && r.body && r.body.state === 'ok' && r.body.package) {
+          finishOwned();
+          statusLine.className = 'intake-status s-ok';
+          statusLine.textContent = 'MS-S1 drafted it live — a SKELETON to refine, not your whole business.';
+          showDraft(true, packageToSkeleton(r.body.package));
+        } else {
+          fallback('MS-S1 unavailable → cached draft (deliberate). The pitch never stalls.');
+        }
+      }).catch(() => fallback('MS-S1 unreachable → cached draft (deliberate). The pitch never stalls.'));
     }
 
     // readiness pill — a safe GET /llm/status read (INV-1: never warms)
@@ -873,6 +928,7 @@
         clear(draftWrap);
         statusLine.className = 'intake-status muted';
         statusLine.textContent = 'Two ways to draft — both safe on stage.';
+        liveGen++; liveInFlight = false;                    // invalidate any in-flight live extract
         if (liveTimer != null) { scope.cancelTimer(liveTimer); liveTimer = null; }
       }
     }
