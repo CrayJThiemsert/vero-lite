@@ -1058,51 +1058,51 @@ object_types:
   function createBreadthScene(ctx) {
     const scope = ctx.scope, host = ctx.host;
     const CAP = [
-      'One engine. The shape never changes — only the nouns.',
-      'Aquaculture: a Pond on a Farm, oxygen falling through 4.0 — start the aerator. Open the YAML — that IS the whole vertical.',
-      'Energy grid: the same shape on an Asset at a Site, temperature rising. The crash is now an overrun.',
-      'Cold-chain: a Shipment at a Facility, temperature past the limit — reroute. Three verticals, ONE engine — each is just a YAML ontology, not new code.',
+      'One engine asks every operation the same four things — here, filled for aquaculture.',
+      'Swap the data: energy grid. The SAME four slots — only the values changed; the crash is now an overrun.',
+      'Swap again: cold-chain. Each swap is just a different YAML file — data, not code. Open “View YAML” to see it.',
       'And the operator asks in plain language — grounded in the real records, never invented.'
     ];
+    let active = -1, yamlOpen = false;
 
     const root = h('div', { class: 'scene-breadth' });
     root.appendChild(h('div', { class: 'bd-head' }, [
       h('div', { class: 'eyebrow' }, 'One engine · many operations'),
       h('h3', null, 'The same ontology shape — a new vertical is data, not code'),
-      h('div', { class: 'bd-subnote muted' }, 'The engine fixes four roles — Asset · Site · Metric · Action. A domain author just names + fills them in the YAML (the names are theirs — energy left Asset/Site generic; aquaculture chose Pond/Farm); the engine generates everything else.')
+      h('div', { class: 'bd-subnote muted' }, 'The four slots below are fixed by the engine (Asset · Site · Metric · Action). Pick a vertical — only the DATA swaps; a domain author wrote each as a YAML file.')
     ]));
 
-    // three vertical cards, revealed cumulatively; each carries a "View YAML"
-    // toggle (hidden by default) that reveals the real abridged ontology.
-    const cards = VERTICALS.map((v) => {
-      const slots = [
-        ['Asset-role', v.asset, ''],
-        ['Site-role', v.site, ''],
-        ['Metric', v.metric + ' ' + (v.dir === 'below' ? '↓' : '↑') + (v.thr ? ' ' + v.thr : ''), v.dir === 'below' ? 'down' : 'up'],
-        ['Action', v.action, '']
-      ].map(s => h('div', { class: 'bd-slot' }, [
-        h('div', { class: 'bd-slot-k eyebrow' }, s[0]),
-        h('div', { class: 'bd-slot-v mono ' + s[2] }, s[1])
-      ]));
-      const toggle = h('button', { class: 'bd-yaml-btn' }, 'View YAML');
-      const card = h('div', { class: 'bd-card', dataset: { v: v.key } }, [
-        h('div', { class: 'bd-card-head' }, [
-          h('span', { class: 'bd-vdot ' + v.tone }),
-          h('span', { class: 'bd-card-label' }, v.label),
-          h('span', { class: 'bd-card-ns mono muted' }, 'verticals/' + v.ns + '/ontology/' + v.ns + '_v0.yaml'),
-          h('span', { class: 'flex' }),
-          toggle
-        ]),
-        h('div', { class: 'bd-shape' }, slots),
-        h('pre', { class: 'bd-yaml mono' }, v.yaml)
-      ]);
-      toggle.addEventListener('click', () => {
-        const open = card.classList.toggle('yaml-open');
-        toggle.textContent = open ? 'Hide YAML' : 'View YAML';
-      });
-      return card;
+    // vertical selector — picking a vertical SWAPS its data into the same slots
+    const chipRow = h('div', { class: 'bd-verticals' });
+    const chips = VERTICALS.map((v, i) => {
+      const c = h('button', { class: 'bd-vchip', onClick: () => selectVertical(i, true) }, [h('span', { class: 'bd-vdot ' + v.tone }), v.label]);
+      chipRow.appendChild(c); return c;
     });
-    root.appendChild(h('div', { class: 'bd-cards' }, cards));
+    root.appendChild(chipRow);
+
+    // ONE shared engine shape (the fixed contract); only the values swap in place
+    const activeBadge = h('span', { class: 'bd-active' });
+    const yamlBtn = h('button', { class: 'bd-yaml-btn', onClick: () => { yamlOpen = !yamlOpen; syncYaml(); } }, 'View YAML');
+    const slotVals = {};
+    function slotCell(key, label) {
+      const val = h('div', { class: 'bd-slot-v mono' }, '—');
+      slotVals[key] = val;
+      return h('div', { class: 'bd-slot' }, [h('div', { class: 'bd-slot-k eyebrow' }, label), val]);
+    }
+    const yamlBox = h('pre', { class: 'bd-yaml mono' }, '');
+    const engine = h('div', { class: 'bd-engine' }, [
+      h('div', { class: 'bd-engine-head' }, [
+        h('span', { class: 'bd-engine-tag' }, [icon('cpu', { width: 13, height: 13 }), 'Engine · 4 fixed roles']),
+        h('span', { class: 'flex' }),
+        activeBadge, yamlBtn
+      ]),
+      h('div', { class: 'bd-shape' }, [
+        slotCell('asset', 'Asset-role'), slotCell('site', 'Site-role'),
+        slotCell('metric', 'Metric'), slotCell('action', 'Action')
+      ]),
+      yamlBox
+    ]);
+    root.appendChild(engine);
 
     root.appendChild(buildAsk());
     const cap = h('div', { class: 'bd-caption' }, CAP[0]);
@@ -1122,16 +1122,39 @@ object_types:
       ]);
     }
 
+    function syncYaml() {
+      engine.classList.toggle('yaml-open', yamlOpen);
+      yamlBtn.textContent = yamlOpen ? 'Hide YAML' : 'View YAML';
+    }
+    function setVal(key, text, cls) {
+      slotVals[key].textContent = text;
+      slotVals[key].className = 'bd-slot-v mono ' + cls;
+    }
+    function selectVertical(i, animate) {
+      if (i === active) return;
+      active = i;
+      const v = VERTICALS[i];
+      chips.forEach((c, ci) => c.classList.toggle('active', ci === i));
+      clear(activeBadge);
+      activeBadge.appendChild(h('span', { class: 'bd-vdot ' + v.tone }));
+      activeBadge.appendChild(document.createTextNode(v.label + ' · ' + v.ns + '_v0.yaml'));
+      setVal('asset', v.asset, '');
+      setVal('site', v.site, '');
+      setVal('metric', v.metric + ' ' + (v.dir === 'below' ? '↓' : '↑') + (v.thr ? ' ' + v.thr : ''), v.dir === 'below' ? 'down' : 'up');
+      setVal('action', v.action, '');
+      yamlBox.textContent = v.yaml;
+      if (animate && scope && !M.reduced()) {            // swap motion: the slots stay, the values refill
+        ['asset', 'site', 'metric', 'action'].forEach(k =>
+          scope.tween(slotVals[k], [{ opacity: 0.12, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }], { duration: 300, fill: 'none' }));
+      }
+    }
+
     function applyStep(k) {
       cap.textContent = CAP[k] || CAP[CAP.length - 1];
-      cards.forEach((c, i) => c.classList.toggle('revealed', k >= i + 1));   // cumulative — all 3 stay visible
-      root.classList.toggle('show-ask', k >= 4);
+      root.classList.toggle('show-ask', k >= 3);
+      if (k <= 2) selectVertical(k, true);   // 0 aquaculture -> 1 energy -> 2 cold-chain, swapped in place
     }
-    function enterStep(k) {
-      const c = cards[k - 1];
-      if (c && scope) scope.tween(c, [{ opacity: 0.2, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 320, fill: 'none' });
-    }
-    return { title: 'One engine, many operations — and ask your own data', stepCount: 4, applyStep: applyStep, enterStep: enterStep };
+    return { title: 'One engine, many operations — and ask your own data', stepCount: 3, applyStep: applyStep };
   }
 
   /* ============================================================
