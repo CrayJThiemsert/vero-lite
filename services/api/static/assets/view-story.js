@@ -1203,54 +1203,98 @@ object_types:
      three-layer mental model (CLAUDE.md §3). Reachable for technical
      audiences who want the "how", never the opener.
      ============================================================ */
-  const LAYERS = [
-    { key: 'map', name: 'Mapping layer',  tone: 's-info', sub: 'dbt / SQLMesh',                 body: 'Raw sources → canonical records. Messy inputs become clean, typed objects.' },
-    { key: 'sem', name: 'Semantic layer', tone: 's-ok',   sub: 'YAML ontology · the moat',       body: 'ONE YAML ontology = the single source of truth. It generates the Pydantic models, SQL DDL, JSON Schema, MCP tools and TypeScript types.', moat: true },
-    { key: 'act', name: 'Action layer',   tone: 's-warn', sub: 'FastAPI · permissions · audit',  body: 'Governed functions tied to objects — every call gated by permissions and written to an audit trail.' }
-  ];
+  // the engine as a flow: a runtime pipeline (raw -> mapping -> semantic -> action)
+  // whose Semantic layer (ONE YAML) GENERATES the whole stack (the moat). Every
+  // node is clickable -> a detail card. (CLAUDE.md §3 three-layer model, enriched.)
+  const ENGINE_NODES = {
+    raw: { name: 'Raw sources', kind: 'input', sub: 'sensors · feeds', desc: 'Sensors, SCADA feeds, ERP exports — the messy inputs, every format and every vertical, before any structure.' },
+    map: { name: 'Mapping layer', kind: 'runtime', sub: 'dbt / SQLMesh', desc: 'Transforms raw sources into canonical, typed records. Adapter logic lives here only — swap a data source and nothing downstream changes.' },
+    sem: { name: 'Semantic layer', kind: 'moat', sub: 'YAML ontology', moat: true, desc: 'ONE YAML ontology = the single source of truth: object types, roles, properties, metrics and actions. Everything below is generated from it — edit the YAML and the whole stack re-skins.' },
+    act: { name: 'Action layer', kind: 'runtime', sub: 'FastAPI · permissions · audit', desc: 'Governed functions tied to objects — every call gated by permissions and written to an audit trail. This is the approve → execute you saw in scenes 2 and 3.' },
+    pydantic: { name: 'Pydantic models', kind: 'generated', desc: 'Typed request/response + validation models for every object — generated, never hand-written.' },
+    sql: { name: 'SQL DDL', kind: 'generated', desc: 'The database schema — tables, columns, types and foreign keys — for every object type.' },
+    jsonschema: { name: 'JSON schema', kind: 'generated', desc: 'Machine-readable contracts for APIs and external integrations.' },
+    mcp: { name: 'MCP tools', kind: 'generated', desc: 'Tool definitions so an LLM / agent can query the ontology safely and grounded — the Ask in scene 6.' },
+    ts: { name: 'TypeScript types', kind: 'generated', desc: 'Front-end types — the console is typed straight from the ontology.' },
+    ui: { name: 'UI', kind: 'generated', desc: 'The operational console re-skins per vertical from the ontology — the map, the decision cards and the Ask view you have been looking at.' },
+    alembic: { name: 'Alembic migrations', kind: 'generated', desc: 'Schema migrations emitted when the ontology changes — the database evolves with the YAML, versioned.' }
+  };
+  const AP_PIPE = ['raw', 'map', 'sem', 'act'];
+  const AP_GEN = ['pydantic', 'sql', 'jsonschema', 'mcp', 'ts', 'ui', 'alembic'];
+  const KIND_TAG = { input: ['s-neutral', 'input'], runtime: ['s-neutral', 'runtime layer'], moat: ['s-ok solid', 'the moat'], generated: ['s-info', 'generated'] };
 
   function createAppendixScene(ctx) {
     const scope = ctx.scope, host = ctx.host;
     const CAP = [
-      'Under the hood: three layers, one source of truth.',
-      'Mapping — dbt/SQLMesh turns raw sources into canonical, typed records.',
-      'Semantic — ONE YAML ontology generates the models, SQL, schema, MCP tools and types. This is the moat.',
-      'Action — governed functions with permissions + an audit trail. Swap the YAML → the whole stack re-skins.'
+      'Under the hood: data flows left to right through the layers — raw, mapping, semantic, action.',
+      'But the Semantic layer — ONE YAML ontology — also GENERATES the whole stack below it.',
+      'Edit one YAML → it all regenerates and stays in sync. A new vertical is data, not code — this is why scenes 1–6 work. Click any node to see what it does.'
     ];
+    let selected = 'sem';
+    const nodeEls = {};
+
     const root = h('div', { class: 'scene-appendix' });
     root.appendChild(h('div', { class: 'ap-head' }, [
       h('div', { class: 'eyebrow' }, 'Appendix · how it works'),
-      h('h3', null, 'Three layers. One source of truth.')
+      h('h3', null, 'One YAML ontology generates the whole stack')
     ]));
-    const stack = h('div', { class: 'ap-stack' });
-    const layerEls = LAYERS.map(L => {
-      const gen = L.moat ? h('div', { class: 'ap-gen' }, ['Pydantic', 'SQL DDL', 'JSON Schema', 'MCP tools', 'TS types'].map(g => h('span', { class: 'ap-gchip mono' }, g))) : null;
-      const card = h('div', { class: 'ap-layer' + (L.moat ? ' is-moat' : ''), dataset: { k: L.key } }, [
-        h('div', { class: 'ap-ltop' }, [
-          h('span', { class: 'ap-ldot ' + L.tone }), h('span', { class: 'ap-lname' }, L.name),
-          h('span', { class: 'ap-lsub mono muted' }, L.sub),
-          L.moat ? h('span', { class: 'badge s-ok', style: { marginLeft: 'auto', textTransform: 'none' } }, 'the moat') : null
-        ]),
-        h('div', { class: 'ap-lbody' }, L.body),
-        gen
+
+    // runtime pipeline row
+    root.appendChild(h('div', { class: 'ap-flowlabel' }, [icon('arrow', { width: 13, height: 13 }), 'runtime data flow']));
+    const pipeRow = h('div', { class: 'ap-pipe' });
+    AP_PIPE.forEach((key, i) => {
+      const n = ENGINE_NODES[key];
+      const box = h('button', { class: 'ap-node' + (n.moat ? ' is-moat' : ''), onClick: () => selectNode(key) }, [
+        h('div', { class: 'ap-node-name' }, n.name),
+        h('div', { class: 'ap-node-sub mono' }, n.sub)
       ]);
-      stack.appendChild(card);
-      return card;
+      nodeEls[key] = box;
+      pipeRow.appendChild(box);
+      if (i < AP_PIPE.length - 1) pipeRow.appendChild(h('span', { class: 'ap-arrow' }, icon('arrow', { width: 15, height: 15 })));
     });
-    root.appendChild(stack);
+    root.appendChild(pipeRow);
+
+    // generated fan-out (revealed at step 1)
+    const gens = h('div', { class: 'ap-gens' });
+    AP_GEN.forEach(key => {
+      const chip = h('button', { class: 'ap-gen', onClick: () => selectNode(key) }, ENGINE_NODES[key].name);
+      nodeEls[key] = chip;
+      gens.appendChild(chip);
+    });
+    const genWrap = h('div', { class: 'ap-genwrap' }, [
+      h('div', { class: 'ap-genlabel mono' }, 'generated from the one YAML ↓'),
+      gens
+    ]);
+    root.appendChild(genWrap);
+
+    // detail card (driven by node clicks)
+    const detail = h('div', { class: 'ap-detail' });
+    root.appendChild(detail);
     const cap = h('div', { class: 'ap-caption' }, CAP[0]);
     root.appendChild(cap);
     host.appendChild(root);
 
+    function selectNode(key) {
+      selected = key;
+      const n = ENGINE_NODES[key], tag = KIND_TAG[n.kind] || KIND_TAG.runtime;
+      Object.keys(nodeEls).forEach(k => nodeEls[k].classList.toggle('sel', k === key));
+      clear(detail);
+      detail.appendChild(h('div', { class: 'ap-d-head' }, [
+        h('span', { class: 'ap-d-name' }, n.name),
+        h('span', { class: 'badge ' + tag[0], style: { textTransform: 'none' } }, tag[1])
+      ]));
+      detail.appendChild(h('div', { class: 'ap-d-body' }, n.desc));
+    }
+
     function applyStep(k) {
       cap.textContent = CAP[k] || CAP[CAP.length - 1];
-      layerEls.forEach((el, i) => el.classList.toggle('lit', k >= i + 1));
+      root.classList.toggle('show-gens', k >= 1);
     }
     function enterStep(k) {
-      const el = layerEls[k - 1];
-      if (el && scope) scope.tween(el, [{ opacity: 0.3, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 300, fill: 'none' });
+      if (k === 1 && scope) scope.tween(genWrap, [{ opacity: 0.15, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 340, fill: 'none' });
     }
-    return { title: 'How it works — the three-layer ontology engine', stepCount: 3, applyStep: applyStep, enterStep: enterStep };
+    selectNode('sem');   // default to the moat
+    return { title: 'How it works — one YAML generates the whole stack', stepCount: 2, applyStep: applyStep, enterStep: enterStep };
   }
 
   /* ============================================================

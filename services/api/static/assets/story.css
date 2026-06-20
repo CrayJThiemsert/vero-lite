@@ -512,23 +512,33 @@
    SCENE 7 — Appendix · how it works (C2, optional).
    ============================================================ */
 .scene-appendix { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 24px; }
-.scene-appendix > * { width: 100%; max-width: 640px; }
+.scene-appendix > * { width: 100%; max-width: 700px; }
 .ap-head { text-align: center; }
 .ap-head h3 { margin: 4px 0 0; font-size: 16px; font-weight: 600; }
-.ap-stack { display: flex; flex-direction: column; gap: 10px; }
-.ap-layer { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg-2); padding: 13px 15px; opacity: .4; transition: opacity .25s, border-color .25s, box-shadow .25s; }
-.ap-layer.lit { opacity: 1; }
-.ap-layer.is-moat.lit { border-color: var(--ok-line); box-shadow: 0 0 0 1px var(--ok-line), 0 6px 20px rgba(0,0,0,.25); }
-.ap-ltop { display: flex; align-items: center; gap: 9px; }
-.ap-ldot { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
-.ap-ldot.s-ok { background: var(--ok); }
-.ap-ldot.s-info { background: var(--info); }
-.ap-ldot.s-warn { background: var(--warn); }
-.ap-lname { font-size: 13.5px; font-weight: 600; }
-.ap-lsub { font-size: 10.5px; }
-.ap-lbody { font-size: 12px; color: var(--tx-1); line-height: 1.45; margin-top: 7px; }
-.ap-gen { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 10px; }
-.ap-gchip { font-size: 10.5px; color: var(--ok); border: 1px solid var(--ok-line); background: var(--ok-bg); border-radius: 999px; padding: 3px 9px; }
+.ap-flowlabel { display: flex; align-items: center; gap: 6px; justify-content: center; font-size: 10.5px; color: var(--tx-3); }
+.ap-flowlabel svg { color: var(--tx-3); }
+/* runtime pipeline — clickable nodes */
+.ap-pipe { display: flex; align-items: stretch; justify-content: center; gap: 6px; flex-wrap: wrap; }
+.ap-node { display: flex; flex-direction: column; gap: 4px; justify-content: center; text-align: center; padding: 11px 13px; min-width: 112px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg-2); color: var(--tx-1); cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s; }
+.ap-node:hover { border-color: var(--accent-line); }
+.ap-node.is-moat { border-color: var(--ok-line); background: var(--ok-bg); }
+.ap-node.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-line); }
+.ap-node-name { font-size: 12.5px; font-weight: 600; color: var(--tx-0); }
+.ap-node-sub { font-size: 9.5px; color: var(--tx-2); }
+.ap-arrow { display: flex; align-items: center; color: var(--tx-3); }
+/* generated fan-out — clickable chips */
+.ap-genwrap { display: none; flex-direction: column; align-items: center; gap: 9px; }
+.scene-appendix.show-gens .ap-genwrap { display: flex; }
+.ap-genlabel { font-size: 10.5px; color: var(--ok); }
+.ap-gens { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; border-top: 2px solid var(--ok-line); padding-top: 12px; width: 100%; }
+.ap-gen { font-size: 11px; font-family: var(--mono); color: var(--tx-1); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; background: var(--bg-2); cursor: pointer; transition: border-color .15s, color .15s, box-shadow .15s; }
+.ap-gen:hover { border-color: var(--ok-line); color: var(--tx-0); }
+.ap-gen.sel { border-color: var(--accent); color: var(--tx-0); box-shadow: 0 0 0 1px var(--accent-line); }
+/* detail card — driven by node clicks */
+.ap-detail { border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg-2); padding: 13px 15px; }
+.ap-d-head { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+.ap-d-name { font-size: 13.5px; font-weight: 600; color: var(--tx-0); }
+.ap-d-body { font-size: 12px; line-height: 1.5; color: var(--tx-1); }
 .ap-caption { text-align: center; font-size: 12.5px; line-height: 1.5; color: var(--tx-1); min-height: 36px; }
 
 /* reduced-motion: kill every story animation; state stays readable via
