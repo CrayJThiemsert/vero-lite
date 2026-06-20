@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-20T16:38:06+07:00
+last_updated: 2026-06-20T18:19:20+07:00
 session: 71
 current_batch: 'session-71 — PLAN-0033 Phase C COMPLETE + Step-6 closeout. Phase C (C1+C2) — the full 7-scene story-mode arc — MERGED to main (#387, merge d7ae465, session 70): C1 scenes 1 Hook / 2 Govern-with-fail-safe-self-catch / 4 live-intake dual-path / 5 Before-After + C2 scenes 6 Breadth / 7 Appendix, on a SCENES registry + generic shell with a two-tier Motion scope (shell + per-scene) enforcing the AC-13 teardown contract. On-screen copy localised to English; offline IBM Plex fonts vendored (#388); ?v= static-asset cache-bust added; Scene 6 iterated live to a swap-in-place + Compare-all matrix hybrid (per-vertical real-YAML toggle); Scene 7 iterated live to an SVG fan-flow (runtime pipeline + YAML->6-artifacts fan-out) with marching-dash animation + click-to-detail + the golden moat takeaway. This batch (s71) = Step-6 closeout: per-AC AC-1..AC-14 = 14/14 PASS via the preview workflow, demo-operator runbook section added to docs/runbooks/run-oct-demo.md, PLAN-0033 git mv to done/. Additive overlay (SD-C, coexists with Views A-E); synthetic Tier-1 mirror (ADR-0015 D1); no new backend; offline/no-CDN.'
 current_actor: code
 blocked_on: 'Nothing blocks Code — PLAN-0033 Phase C COMPLETE + archived to done/.'
-next_action: 'PLAN-0033 fully closed. Deferred/optional (Cray-gated, parallelable): scene-4 "Go live" real wiring (race O.Intake.extract vs hard timeout; needs MS-S1 warm = host-state, explicit Cray go per CLAUDE.md §8); the dbt 86->6% external stat (SD-D verify-before-ship, only if scene 5 ever cites it). Standing backlog unchanged: PLAN-0005 §8.1 revisit register; G2 drafting-friction root-fix; Phase D (#3b next-vertical refresh, light Cowork, parallelable).'
-head_commit: d7ae465
-recent_commits: [d7ae465, 3f3c6bb, 8bb4c30, 43cc6a8, 212df7f, e2e403b, b68eb18, 3e33866, ca785eb, 99705f7]
+next_action: 'PLAN-0033 fully closed; scene-4 "Go live" real MS-S1 wiring SHIPPED (#390, 04efb8d, s71 follow-up) — completes the AC-7 true-live path (race O.Intake.extract vs a 35s hard timeout → cached fallback). Deferred/optional (Cray-gated): the dbt 86->6% external stat (SD-D verify-before-ship, only if scene 5 ever cites it). Standing backlog unchanged: PLAN-0005 §8.1 revisit register; G2 drafting-friction root-fix; Phase D (#3b next-vertical refresh, light Cowork, parallelable).'
+head_commit: 04efb8d
+recent_commits: [04efb8d, 4ad4b8c, 70c3ff8, d7ae465, 3f3c6bb, 8bb4c30, 43cc6a8, 212df7f, e2e403b, b68eb18]
 ---
 
 # vero-lite — Project Status
@@ -47,11 +47,14 @@ recent_commits: [d7ae465, 3f3c6bb, 8bb4c30, 43cc6a8, 212df7f, e2e403b, b68eb18, 
 > no CDN, fonts vendored). A **demo-operator runbook section** added to
 > `docs/runbooks/run-oct-demo.md` (pre-warm MS-S1 → confirm `resident` → press S;
 > the `?v=` bump convention); **PLAN-0033 `git mv` → `docs/plans/done/`** (Code's
-> lane, ADR-009 D2). **Honesty notes preserved:** scene 4 "Go live" remains a
-> **SCRIPTED dummy** (hard-timeout → cached fallback; **no real MS-S1 extract
-> call**) — Cray-approved deferral, real wiring deferred; the readiness pill *does*
-> do a **real safe `GET /llm/status`** read (PLAN-0018, never warms). AI-assisted
-> (Claude Code, session 71); no `Co-Authored-By` per CLAUDE.md §7.
+> lane, ADR-009 D2). **Follow-up (s71):** scene 4 "Go live" now makes a **REAL
+> MS-S1 extraction call** (shipped #390, merge `04efb8d`) — races
+> `O.Intake.extract` against a **35s** hard timeout, falling back to the cached
+> draft on timeout/degraded/error (live-smoked: real extract ~19.5s, warm
+> `gpt-oss:20b`); this **completes the AC-7 true-live path** (was a scripted
+> dummy). The readiness pill still does a real safe `GET /llm/status` read
+> (PLAN-0018, never warms). AI-assisted (Claude Code, session 71); no
+> `Co-Authored-By` per CLAUDE.md §7.
 
 > **Session 69 (head_commit `0a32e67`) — PLAN-0033 Phase C **C0 VERTICAL
 > SLICE** SHIPPED (#385): the aquaculture story-mode.** A new
