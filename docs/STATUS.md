@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-20T01:45:00+07:00
-session: 69
-current_batch: 'session-69 — PLAN-0033 Phase C C0 VERTICAL SLICE SHIPPED (#385, feat a9079e5 / merge 0a32e67): the aquaculture story-mode. New view-story.js additive overlay (SD-C — coexists with Views A-E, never replaces) + motion.js (driver-agnostic Motion seam enforcing the lifecycle-teardown contract) + story.css, wired into index.html/app.js. Delivers a horizontal branching-DAG overview (5 node states + 3 edge types, hand-placed SVG), a two-axis layout (all task details left / DAG + transport right), and the scene-6 control surface (Proposed->Approved->Executed kanban + reasoning-trace why-toggle reusing the rule/llm/query colour legend). Moat beat (AC-3, ADR-010 IN-4) works: an LLM-compose error reroutes (amber) to the deterministic rule fail-safe, which STILL passes the human approve-gate + records audit. GSAP DEFERRED to C1/C2 (corrects the s68 next_action) — the Motion seam is driver-agnostic so C0 ships on the zero-dependency WAAPI/rAF driver (offline, no-CDN, reduced-motion floor); GSAP/Motion One can drop in behind Motion.useDriver later after the one-time licence check, no scene-code change. AC-2/3/4/5/6/9/10/11/12/13/14 verified via the preview workflow (a11y snapshot + behavioral eval); deterministic /goal gate (files exist / index.html wired / no new CDN) passes; teardown leaks 0 timers/tweens/listeners across repeated open/close. Caveat: preview_screenshot environmentally unavailable in this WSL/FastAPI preview (times out on the plain console too — not a page defect) so verification was snapshot + behavioral eval. Scope: Tier-1 mirror, synthetic only (ADR-0015 D1); no new backend.'
+last_updated: 2026-06-20T16:38:06+07:00
+session: 71
+current_batch: 'session-71 — PLAN-0033 Phase C COMPLETE + Step-6 closeout. Phase C (C1+C2) — the full 7-scene story-mode arc — MERGED to main (#387, merge d7ae465, session 70): C1 scenes 1 Hook / 2 Govern-with-fail-safe-self-catch / 4 live-intake dual-path / 5 Before-After + C2 scenes 6 Breadth / 7 Appendix, on a SCENES registry + generic shell with a two-tier Motion scope (shell + per-scene) enforcing the AC-13 teardown contract. On-screen copy localised to English; offline IBM Plex fonts vendored (#388); ?v= static-asset cache-bust added; Scene 6 iterated live to a swap-in-place + Compare-all matrix hybrid (per-vertical real-YAML toggle); Scene 7 iterated live to an SVG fan-flow (runtime pipeline + YAML->6-artifacts fan-out) with marching-dash animation + click-to-detail + the golden moat takeaway. This batch (s71) = Step-6 closeout: per-AC AC-1..AC-14 = 14/14 PASS via the preview workflow, demo-operator runbook section added to docs/runbooks/run-oct-demo.md, PLAN-0033 git mv to done/. Additive overlay (SD-C, coexists with Views A-E); synthetic Tier-1 mirror (ADR-0015 D1); no new backend; offline/no-CDN.'
 current_actor: code
-blocked_on: 'Nothing blocks Code — C0 is shipped (#385). C1 is the next Code-execution step (full arc scenes), NOT Cowork-drafting. Phase D (#3b next-vertical refresh) is parallelable (LIGHT Cowork). — see next_action.'
-next_action: 'Session-69 — Phase C C0 vertical slice SHIPPED (#385); proven story-mode spine in place. NEXT: Code builds C1 — the full arc scenes (1 Hook, 2 จับได้+คุณคุม with the fail-safe self-catch beat, 4 live-intake dual-path reusing PLAN-0018, 5 Before/After with the one honest number) on the proven C0 spine — then C2 (breadth: other verticals + Ask via view-ask.js + the optional ontology appendix). Reuse the WAAPI Motion driver; revisit GSAP only if a C1/C2 scroll-driven beat needs it (after the licence check). Declare a /goal + verify via the preview workflow (dont ask Cray to check manually). Carry-over deferred: B1-DP-1 per-vertical ORM layout; dbt 86->6% external stat verify-before-ship (SD-D, only if scene-5 cites it); G2 drafting-friction root-fix; Phase D (#3b next-vertical refresh; research docs/research/private/2026-06-04-vertical3-pick.md) — LIGHT Cowork, parallelable.'
-head_commit: 0a32e67
-recent_commits: [0a32e67, a9079e5, 6dbbbc4, 8d19c8e, 69d9e0d, bedb438, 6ebaac2, 315b198, ff4ba01, e99d7f5]
+blocked_on: 'Nothing blocks Code — PLAN-0033 Phase C COMPLETE + archived to done/.'
+next_action: 'PLAN-0033 fully closed. Deferred/optional (Cray-gated, parallelable): scene-4 "Go live" real wiring (race O.Intake.extract vs hard timeout; needs MS-S1 warm = host-state, explicit Cray go per CLAUDE.md §8); the dbt 86->6% external stat (SD-D verify-before-ship, only if scene 5 ever cites it). Standing backlog unchanged: PLAN-0005 §8.1 revisit register; G2 drafting-friction root-fix; Phase D (#3b next-vertical refresh, light Cowork, parallelable).'
+head_commit: d7ae465
+recent_commits: [d7ae465, 3f3c6bb, 8bb4c30, 43cc6a8, 212df7f, e2e403b, b68eb18, 3e33866, ca785eb, 99705f7]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,42 @@ recent_commits: [0a32e67, a9079e5, 6dbbbc4, 8d19c8e, 69d9e0d, bedb438, 6ebaac2, 
 
 ## Current Focus
 
-> **Session 69 (current; head_commit `0a32e67`) — PLAN-0033 Phase C **C0 VERTICAL
+> **Session 71 (current; head_commit `d7ae465`) — PLAN-0033 Phase C **COMPLETE**
+> (C1+C2 MERGED #387, s70) + **Step-6 closeout** (s71, this batch).** Phase C
+> ships the **full 7-scene story-mode arc** on the proven C0 spine, merged to main
+> (#387, merge `d7ae465`, **session 70**): **C1** — scene **1 Hook**, scene **2
+> Govern-with-fail-safe-self-catch**, scene **4 live-intake dual-path**, scene **5
+> Before/After** — plus **C2** — scene **6 Breadth**, scene **7 Appendix**.
+> **Architecture:** a **SCENES registry + generic shell** with a **two-tier Motion
+> scope** (shell-level + per-scene) enforcing the **AC-13 teardown contract**; the
+> additive `view-story.js` **overlay** (SD-C — coexists with Views A–E, never
+> replaces) on **synthetic Tier-1 mirror data** (ADR-0015 D1), **no new backend**,
+> **offline/no-CDN**. On-screen copy **localised to English**; **offline IBM Plex
+> fonts vendored** (#388); a **`?v=` static-asset cache-bust** added (the
+> stale-asset trap). **Two scenes iterated live (Cray review):** scene **6** → a
+> **swap-in-place** (one engine shape, the data swaps) + **"Compare all" matrix**
+> hybrid with a **per-vertical real-YAML toggle**; scene **7** → an **SVG fan-flow**
+> (the runtime pipeline + the **YAML→6-artifacts fan-out**) with **marching-dash
+> animation** + **click-to-detail** cards + the **golden moat takeaway**.
+> **Step-6 closeout (this batch, s71):** per-AC verification **AC-1…AC-14 = 14/14
+> PASS** via the **preview workflow** (a11y/DOM probes + behavioral eval;
+> `preview_screenshot` environmentally unavailable here). Highlights: **AC-13**
+> teardown leak probe `OCT.Motion.activeCount().total === 0` after open→cycle all 7
+> scenes→close; **AC-3** moat beat (LLM low-confidence → deterministic rule
+> fail-safe reroute → **still** passes the human approve gate + records audit
+> `WO-AQ-7731 · audit#a3f1`); **AC-8** scene-5 "**0 of 40**" figure confirmed
+> defensible against `benchmarks/procedure_baseline/REPORT.md` §B-3; **AC-9/AC-12**
+> honesty+offline greps clean (no `[search-synthesis]`/Palantir/dbt stat in copy,
+> no CDN, fonts vendored). A **demo-operator runbook section** added to
+> `docs/runbooks/run-oct-demo.md` (pre-warm MS-S1 → confirm `resident` → press S;
+> the `?v=` bump convention); **PLAN-0033 `git mv` → `docs/plans/done/`** (Code's
+> lane, ADR-009 D2). **Honesty notes preserved:** scene 4 "Go live" remains a
+> **SCRIPTED dummy** (hard-timeout → cached fallback; **no real MS-S1 extract
+> call**) — Cray-approved deferral, real wiring deferred; the readiness pill *does*
+> do a **real safe `GET /llm/status`** read (PLAN-0018, never warms). AI-assisted
+> (Claude Code, session 71); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 69 (head_commit `0a32e67`) — PLAN-0033 Phase C **C0 VERTICAL
 > SLICE** SHIPPED (#385): the aquaculture story-mode.** A new
 > `services/api/static/assets/view-story.js` **additive overlay** (SD-C — it
 > *coexists* with Views A–E and **never replaces** the console) lands the proven
@@ -210,50 +245,13 @@ recent_commits: [0a32e67, a9079e5, 6dbbbc4, 8d19c8e, 69d9e0d, bedb438, 6ebaac2, 
 > vertical-#3 research (Cowork-routed). Nothing blocks Code. AI-assisted (Claude Code,
 > session 66); no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 64 (head_commit `0aee4eb`) — B-γ EXECUTED END-TO-END:
-> PLAN-0027 Steps 2–5 SHIPPED; PLAN-0019 Step B-γ / AC B-3 = DONE.** This session
-> read the session-63 handoff and ran PLAN-0019's last open step (the three-arm
-> comparison on the energy breach subset) to completion. **Offline arms (#339
-> `e41806a`/`a394342`, Steps 2–3):** arm (b) **raw text-to-SQL** + arm (c)
-> **lean RAG** + the comparison harness, all built behind a **mock-ChatClient
-> offline gate** (D-6 contamination guard intact — arm c stays a clean naive RAG
-> baseline). **ONE Cray-approved scored host-state run** (`gpt-oss:20b` on MS-S1,
-> 40 energy breach items, warm-first; **every score VERIFIED from `--dump-json`
-> via the Read tool**, reports-not-gates per B-3/B-6), then the **B-3 REPORT**
-> landed (#342 `0aee4eb`/`01370e5`, Step 5). **Scored results:** arm (a)
-> governed-procedure stack **97.5–100%** entity+action (REUSED from REPORT, D-2 —
-> NOT re-run; p95 ~30s/judgment); arm (b) raw text-to-SQL **100% entity-ID** (40/40,
-> correct `WHERE measured_value >= 90` threshold join) but **structurally cannot
-> propose an action** (D-3; p95 10.2s); arm (c) lean RAG **97.5% entity+action**
-> (39/40; action 100%; p95 3.2s). **0 errors / 0 invalid SQL.** The one arm-c miss
-> (`energy-h05`) is a real naive-RAG output-fidelity miss (emitted non-canonical
-> `E113`, not the ontology key `asset-E113`), VERIFIED — not a grading artifact.
-> **The load-bearing finding:** raw entity+action accuracy does **NOT** separate
-> the governed stack from lean RAG (arm c ties arm a at 97.5%) → this **relocates
-> the moat claim** off "raw NL→action accuracy" and onto the **governance layer**
-> (the §3.4 verify+reshape / deterministic disposition / handler allowlist / audit
-> narrative arm c structurally lacks). The **verify+reshape enhancement** is
-> captured as a forward-pointer (future ADR-016 area), OUT OF SCOPE for B-γ per the
-> D-6 contamination guard. **Two supporting PRs:** **#340** (`099d55b`/`17863ef`,
-> `test(handoffs):`) — the spun-off chip-session fix isolating `CLAUDE_GOAL_PATH`
-> in the `stub_env` fixture so a developer's live `.claude/state/goal.json` can't
-> leak into the Phase-2 Stop-hook integration tests (test-only +6 lines; handoffs
-> suite 575 passed / 2 skipped; before/after repro: PR head + active goal PASSES,
-> main FAILS with goal-gate dispatch); **#341** (`cf645f7`/`7d8a716`,
-> `fix(benchmarks):`) — the pre-run measurement-correctness calibration
-> (case+hyphen-normalize the arm-c free-text entity match, **ratified BEFORE the
-> scored run** per B-6; only recovers a correctly-named entity, never invents one).
-> **Concurrent-session recovery handled:** the chip session ran in the SHARED WSL
-> checkout; after #339 merged, local-main vs origin diverged + a transient
-> `.git/index.lock` appeared — diagnosed read-only (nothing lost: origin/main
-> correct, chip work pushed) then synced cleanly (the shared-worktree
-> concurrent-branch-switch lesson). **Frontier:** B-γ extension to aquaculture +
-> supply_chain (D-5 was energy-first; the natural point to revisit RAG-baseline
-> fairness with a fresh creative/adversarial Cowork perspective) + the
-> verify+reshape forward-pointer (future PLAN/ADR) — both Cray-routed/gated. Held
-> items unchanged (PLAN-002 ≥ADR-014, auditprep + ADR-011 real-partner-gated,
-> partner-sim, ADR-0021(c) future-triggered). Nothing blocks Code.
-> AI-assisted (Claude Code, session 64); no `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note (session-71 reconcile, 2026-06-20): the **Session-64** Current
+> Focus block (B-γ executed end-to-end: PLAN-0027 Steps 2–5 shipped / PLAN-0019
+> Step B-γ / AC B-3 = DONE, head_commit `0aee4eb`) fell outside the
+> 4-newest-sessions window {71,69,67,66} and rotated to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md),
+> along with the oldest Recent Decisions row (2026-06-14 PLAN-0023 PDPA RoPA-lite
+> SHIPPED, `afea6b3`), per the STATUS.md Rotation Policy (R2/R4)._
 
 > _Rotation note (session-69 reconcile, 2026-06-20): two Current Focus blocks
 > rotated to
@@ -313,6 +311,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-20 | **PLAN-0033 Phase C COMPLETE — full 7-scene story-mode arc MERGED + Step-6 closeout (#387 merge `d7ae465`, session 70; closeout session 71)** — C1 (scene 1 Hook / 2 Govern-with-fail-safe-self-catch / 4 live-intake dual-path / 5 Before-After) + C2 (scene 6 Breadth / 7 Appendix) on a SCENES registry + generic shell with a two-tier Motion scope (shell + per-scene) enforcing the AC-13 teardown contract; additive `view-story.js` overlay (SD-C, coexists with Views A–E), synthetic Tier-1 mirror (ADR-0015 D1), no new backend, offline/no-CDN. On-screen copy localised to English; offline IBM Plex fonts vendored (#388); `?v=` static-asset cache-bust added. Two scenes iterated live (Cray review): scene 6 → swap-in-place + "Compare all" matrix hybrid (per-vertical real-YAML toggle); scene 7 → SVG fan-flow (runtime pipeline + YAML→6-artifacts fan-out) + marching-dash animation + click-to-detail + golden moat takeaway. **Step-6 closeout (s71):** per-AC AC-1…AC-14 = 14/14 PASS via the preview workflow (a11y/DOM probes + behavioral eval; `preview_screenshot` env-unavailable) — AC-13 teardown `OCT.Motion.activeCount().total === 0` after cycling all 7 scenes; AC-3 moat beat (LLM low-conf → rule fail-safe reroute → still passes approve gate + audit `WO-AQ-7731 · audit#a3f1`); AC-8 scene-5 "0 of 40" defensible vs REPORT §B-3; AC-9/AC-12 honesty+offline greps clean. Demo-operator runbook section added to `docs/runbooks/run-oct-demo.md`; PLAN-0033 `git mv` → `done/`. Honesty note preserved: scene 4 "Go live" is a SCRIPTED dummy (hard-timeout → cached fallback, no real MS-S1 extract; Cray-approved deferral) — the readiness pill does a real safe `GET /llm/status` (PLAN-0018, never warms) | `d7ae465` (#387, #388) / `services/api/static/assets/view-story.js` + `docs/runbooks/run-oct-demo.md` + `docs/plans/done/0033-phase-c-demo-ui.md` |
 | 2026-06-19 | **PLAN-0033 Phase C C0 vertical slice SHIPPED — aquaculture story-mode (#385, feat `a9079e5` / merge `0a32e67`, session 69)** — the additive `view-story.js` overlay (SD-C; coexists with Views A–E, never replaces) + `motion.js` (driver-agnostic Motion seam enforcing the lifecycle-teardown contract) + `story.css`, wired into `index.html`/`app.js`. Delivers the branching-DAG overview (5 node states + 3 edge types, hand-placed SVG), the two-axis layout (all task details left / DAG + transport right), and the scene-6 control surface (Proposed→Approved→Executed kanban + reasoning-trace why-toggle reusing the rule/llm/query colour legend). Moat beat (AC-3, ADR-010 IN-4) works: an LLM-compose error reroutes (amber) to the deterministic rule fail-safe, which still passes the human approve-gate + records audit. **GSAP DEFERRED to C1/C2** (Cray's call, s69 — corrects the s68 next_action): the seam is driver-agnostic so C0 ships on the zero-dependency WAAPI/rAF driver (offline, no-CDN, reduced-motion floor); GSAP/Motion One drops in behind `Motion.useDriver` later after the one-time licence check, no scene-code change. AC-2/3/4/5/6/9/10/11/12/13/14 verified via the preview workflow (a11y snapshot + behavioral eval); deterministic /goal gate (files exist / wired / no new CDN) passes; teardown leaks 0 timers/tweens/listeners. Caveat: `preview_screenshot` environmentally unavailable in this WSL/FastAPI preview (times out on the plain console too — not a page defect). Scope: Tier-1 mirror, synthetic only (ADR-0015 D1); no new backend. NEXT = C1 (full arc scenes) then C2 (breadth+Ask+appendix) | `0a32e67` (#385, feat `a9079e5`) / `services/api/static/assets/view-story.js` + `motion.js` + `story.css` + `docs/plans/0033-*.md` |
 | 2026-06-17 | **Session 67 Phase 1 — PLAN-0028 + PLAN-0029 ratify-flipped Proposed→Accepted + archived to `done/` (#357, `1cda40f`)** — Cray ratified both PLANs in-session 2026-06-17; Cowork applied the status-flip + ratification record (ADR-009 D1, G1-clean on Desktop), Code committed per ADR-009 D2 (#357, merge `1cda40f` / flip `3d5e2af`). A formal flip of **already-complete, already-Cray-approved** work (PLAN-0028 B-γ cross-vertical extension; PLAN-0029 entity-key whitespace calibration), not new work — closes the PLAN-0028/0029 governance loop; both moats' source PLANs now archived. R2-verified (spot SHAs + the #357 diff = status + ratification only). One harness note: a Stop-hook D2 auto-dispatch misrouted (tried to spawn `plan-drafter` to "draft a plan to flip" existing complete PLANs); Code declined per the override clause — reinforces the parked G2-drafting-friction root-fix (now an Active TODO) | `1cda40f` (#357, flip `3d5e2af`) / `docs/plans/done/0028-*.md` + `docs/plans/done/0029-*.md` |
 | 2026-06-16 | **B-γ EXECUTED END-TO-END — PLAN-0027 Steps 2–5 SHIPPED; PLAN-0019 Step B-γ / AC B-3 = DONE (#339–#342, `0aee4eb`, session 64)** — the three-arm comparison on the energy breach subset, run to completion. Offline arms (#339 `e41806a`/`a394342`, Steps 2–3): arm (b) raw text-to-SQL + arm (c) lean RAG + comparison harness, behind a mock-ChatClient offline gate (D-6 guard intact). ONE Cray-approved scored host-state run (`gpt-oss:20b` @ MS-S1, 40 energy breach items, warm-first; every score VERIFIED from `--dump-json` via the Read tool, reports-not-gates per B-3/B-6), then the B-3 REPORT landed (#342 `0aee4eb`/`01370e5`, Step 5). **Results:** arm (a) governed stack 97.5–100% entity+action (REUSED, D-2, not re-run; p95 ~30s); arm (b) raw text-to-SQL 100% entity-ID (40/40, correct `WHERE measured_value >= 90`) but structurally cannot propose an action (D-3; p95 10.2s); arm (c) lean RAG 97.5% entity+action (39/40; action 100%; p95 3.2s); 0 errors / 0 invalid SQL; the lone arm-c miss (`energy-h05`) is a real naive-RAG output-fidelity miss (`E113` not `asset-E113`), VERIFIED not a grading artifact. **Load-bearing finding:** raw entity+action accuracy does NOT separate the governed stack from lean RAG (c ties a at 97.5%) → relocates the moat claim off "raw NL→action accuracy" onto the governance layer (§3.4 verify+reshape / deterministic disposition / handler allowlist / audit that arm c structurally lacks); verify+reshape captured as a forward-pointer (future ADR-016 area), OUT OF SCOPE per D-6. Supporting: #340 (`099d55b`/`17863ef`, `test(handoffs):`) chip-session fix isolating `CLAUDE_GOAL_PATH` in `stub_env` so a live `goal.json` can't leak into Phase-2 Stop-hook tests (test-only +6; 575 passed/2 skipped); #341 (`cf645f7`/`7d8a716`, `fix(benchmarks):`) pre-run arm-c case-normalize calibration, ratified BEFORE the scored run per B-6 (recovers a correctly-named entity, never invents one). Concurrent-session recovery handled (shared WSL checkout: local↔origin divergence + transient `.git/index.lock` after #339; diagnosed read-only, nothing lost, synced cleanly). **PLAN-0027 complete; PLAN-0019 Step B-γ / AC B-3 = DONE** | `0aee4eb` (#339/#340/#341/#342) / `benchmarks/procedure_baseline/` REPORT `## B-3` + `docs/plans/0027-*.md` |
@@ -322,7 +321,6 @@ below, and git history.
 | 2026-06-15 | **PLAN-0026 (NL-query aggregate metric-semantics) AUTHORED+RATIFIED+MERGED (#321) then Phase B (deterministic rewrite seam) MERGED (#322, `19eeb21`, session 60)** — closes the filter-omission-on-aggregate-superlative gap PLAN-0024 left open (nl-08/nl-11). Diagnosis (Cray-directed): a 4-model MS-S1 sweep + a 3-variant prompt escalation both NEGATIVE → it's a typed-query-on-untyped-metric data-model problem, not model/prompt (two external LLMs concurred). Phase B = a post-translate rewrite seam in `nl_query.py`: `group_by` inference for "which <entity>" superlatives (AC-2, reshape-only) + a heterogeneous-aggregate coherence rewrite composing the dominant-unit filter in the engine (AC-3, model never re-supplies it = v2-regression-proof) + a clarify-not-silent-no-data guard (AC-4) + `NlAnswer.outcome: Literal["answered","no_data","clarify"]` (SD-1, Cray-approved). Offline oracle feeds the model's known-bad `{filters:[], operation:max, group_by:null}` and asserts the seam → `result_count==7`, value 96.5, top "Battery Bank A" structurally (not phrase-rescued). Suite 1527/22; ruff+mypy clean; anti-hallucination 12/12 preserved (AC-5); one `# noqa: C901` justified on the orchestrator. Governance: Cray "governed-first" → `plan-drafter` G2-denied → Cowork (ungated) authored → Code committed #321 → Cray ratified Proposed→Accepted → Phase B #322. Phase A (`measured_kind` ontology enum, the principled kind-word fix) GATED on the T2-vs-T3 roadmap call + SD-2's ADR; PLAN stays ACTIVE (not `done/`) | `19eeb21` (#321/#322) / `services/engine/nl_query.py` + `docs/plans/0026-nl-query-aggregate-metric-semantics.md` |
 | 2026-06-15 | **PLAN-0024 (NL-query T2 engine enrichment) SHIPPED — engine half of the T2 wedge (#316 plan / #317 engine, `f4aa7fe`, session 59)** — `StructuredQuery` gains `max/min/avg/sum` (+ optional `group_by`) computed in the deterministic execute stage + a new `NlAnswer.aggregate` grounding receipt (never the phrase LLM), plus a `NameResolve` cross-type name→id descriptor (resolve-then-filter; `object_type` stays single/enum-constrained, group keys relabelled id→title); translate prompt now requires the implied filter + exact enum grounding. Gold ceiling cases nl-08/09/10/11 moved onto the deterministic structured-result lens (`_aggregate_ok`). Anti-hallucination AC-5 preserved (empty/no-numeric/unresolved short-circuit to no-records). 11 new offline tests; suite 1511/22 (+30); ruff+mypy clean. Governance: Cray scoped engine-only (UI→PLAN-0025, SD-1 deferred) → `plan-drafter` authored PLAN-0024 → ungated Cowork placed the file (G2 denied all in-harness Code writes) → Code committed #316 → merged → Code executed #317; SD-1 done as the recommended pre-step; one L1 loop-detect resolved by a Cray-approved counter reset, no Bash | `f4aa7fe` (#316/#317) / `services/engine/nl_query.py` + `docs/plans/done/0024-nl-query-t2-engine-enrichment.md` |
 | 2026-06-14 | **Two backlog quick-wins SHIPPED (Code-solo, #311 + #312, `9595d3e`, session 58)** — cleared after the audit-framework arc closed; a separate small harness-tooling batch. **#311** (`f2ee579`, `test(stop-classifier):`): 3 "dispatch discriminator" gold cases added to `benchmarks/stop_classifier/gold.yaml` (20→23) pinning the surfaced-vs-ratified distinction the local classifier got wrong in s57 (over-fired `plan-drafter` on ADR/PLAN mentions while formality was a PENDING Cray decision — 2 cases) and right in s58 (post-ratification dispatch correct); 2 `pause` negatives + 1 `dispatch` positive, safety-weighted (spurious dispatch = HARD FAIL); offline test green (4 passed); live re-score pending Cray go; RESULTS.md addendum (recorded 2026-06-12 run predates the cases). **#312** (`9595d3e`, `fix(handoffs):`, PLAN-004 Phase B): handoff-validator warning-swallow bug fixed — `_schema.py::_build()` discarded its `errors` list on the otherwise-valid path so `_check_unknown()` WARNINGs were unreachable; `Frontmatter` gains `warnings`, `validate_file()` surfaces it, CLI prints it (precommit unchanged); regression tests strengthened; `tests/handoffs/` 573 passed / 2 skipped; ruff + mypy clean | `9595d3e` (#311/#312) / `benchmarks/stop_classifier/gold.yaml` + `tools/handoffs/_schema.py` |
-| 2026-06-14 | **PLAN-0023 (PDPA RoPA-lite, step-2 of audit-framework-prep) SHIPPED (#308 PLAN + #309 deliverables, `afea6b3`, session 58)** — two tracked deliverables: reusable RoPA-lite template (`docs/conventions/partner-ropa-lite.md`, canonical) + NPD synthetic example (`docs/strategy/public/partner-sim-run1-ropa-example.md`, SYNTHETIC), each RoPA slot annotated with a data-quality/lineage hook; example's DSR/lineage→ADR-011 section maps 4 gaps→implications (PII-in-free-text→log-by-reference; scattered actor identity→actor unification; PK reuse + NTP drift→lineage/valid-from + ordering; under-recording→completeness-not-assumed). Governance: Cray ratified PLAN formality (3 decisions) → `plan-drafter` subagent authored PLAN-0023 (ADR-013 D1) → Code committed (#308, ADR-009 D2) → Code executed deliverables Code-direct (#309); PLAN archived to `done/`. SD-1 kept (AC-6 in-PLAN). ADR-011 still gated on a real partner — synthetic run INFORMS but never triggers PLAN-0005 §8.1 (ADR-0020 R3). Carried open: SD-4/SD-5/OQ-A | `afea6b3` (#308/#309) / `docs/conventions/partner-ropa-lite.md` + `docs/strategy/public/partner-sim-run1-ropa-example.md` |
 
 ## In-Flight Discussions
 

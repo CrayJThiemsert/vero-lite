@@ -12,6 +12,53 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-20 (session-71 reconcile): the **Session-64 `0aee4eb`** CF block (B-γ executed end-to-end — PLAN-0027 Steps 2–5 SHIPPED; PLAN-0019 Step B-γ / AC B-3 DONE) fell outside the 4-newest-sessions window {71, 69, 67, 66} when the session-71 PLAN-0033 Phase C closeout block landed._
+
+> **Session 64 (head_commit `0aee4eb`) — B-γ EXECUTED END-TO-END:
+> PLAN-0027 Steps 2–5 SHIPPED; PLAN-0019 Step B-γ / AC B-3 = DONE.** This session
+> read the session-63 handoff and ran PLAN-0019's last open step (the three-arm
+> comparison on the energy breach subset) to completion. **Offline arms (#339
+> `e41806a`/`a394342`, Steps 2–3):** arm (b) **raw text-to-SQL** + arm (c)
+> **lean RAG** + the comparison harness, all built behind a **mock-ChatClient
+> offline gate** (D-6 contamination guard intact — arm c stays a clean naive RAG
+> baseline). **ONE Cray-approved scored host-state run** (`gpt-oss:20b` on MS-S1,
+> 40 energy breach items, warm-first; **every score VERIFIED from `--dump-json`
+> via the Read tool**, reports-not-gates per B-3/B-6), then the **B-3 REPORT**
+> landed (#342 `0aee4eb`/`01370e5`, Step 5). **Scored results:** arm (a)
+> governed-procedure stack **97.5–100%** entity+action (REUSED from REPORT, D-2 —
+> NOT re-run; p95 ~30s/judgment); arm (b) raw text-to-SQL **100% entity-ID** (40/40,
+> correct `WHERE measured_value >= 90` threshold join) but **structurally cannot
+> propose an action** (D-3; p95 10.2s); arm (c) lean RAG **97.5% entity+action**
+> (39/40; action 100%; p95 3.2s). **0 errors / 0 invalid SQL.** The one arm-c miss
+> (`energy-h05`) is a real naive-RAG output-fidelity miss (emitted non-canonical
+> `E113`, not the ontology key `asset-E113`), VERIFIED — not a grading artifact.
+> **The load-bearing finding:** raw entity+action accuracy does **NOT** separate
+> the governed stack from lean RAG (arm c ties arm a at 97.5%) → this **relocates
+> the moat claim** off "raw NL→action accuracy" and onto the **governance layer**
+> (the §3.4 verify+reshape / deterministic disposition / handler allowlist / audit
+> narrative arm c structurally lacks). The **verify+reshape enhancement** is
+> captured as a forward-pointer (future ADR-016 area), OUT OF SCOPE for B-γ per the
+> D-6 contamination guard. **Two supporting PRs:** **#340** (`099d55b`/`17863ef`,
+> `test(handoffs):`) — the spun-off chip-session fix isolating `CLAUDE_GOAL_PATH`
+> in the `stub_env` fixture so a developer's live `.claude/state/goal.json` can't
+> leak into the Phase-2 Stop-hook integration tests (test-only +6 lines; handoffs
+> suite 575 passed / 2 skipped; before/after repro: PR head + active goal PASSES,
+> main FAILS with goal-gate dispatch); **#341** (`cf645f7`/`7d8a716`,
+> `fix(benchmarks):`) — the pre-run measurement-correctness calibration
+> (case+hyphen-normalize the arm-c free-text entity match, **ratified BEFORE the
+> scored run** per B-6; only recovers a correctly-named entity, never invents one).
+> **Concurrent-session recovery handled:** the chip session ran in the SHARED WSL
+> checkout; after #339 merged, local-main vs origin diverged + a transient
+> `.git/index.lock` appeared — diagnosed read-only (nothing lost: origin/main
+> correct, chip work pushed) then synced cleanly (the shared-worktree
+> concurrent-branch-switch lesson). **Frontier:** B-γ extension to aquaculture +
+> supply_chain (D-5 was energy-first; the natural point to revisit RAG-baseline
+> fairness with a fresh creative/adversarial Cowork perspective) + the
+> verify+reshape forward-pointer (future PLAN/ADR) — both Cray-routed/gated. Held
+> items unchanged (PLAN-002 ≥ADR-014, auditprep + ADR-011 real-partner-gated,
+> partner-sim, ADR-0021(c) future-triggered). Nothing blocks Code.
+> AI-assisted (Claude Code, session 64); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-20 (session-69 reconcile): two CF blocks fell outside the 4-newest-sessions window {69, 67, 66, 64} — the **Session-67 `1cda40f`** block (Phase 1 ratify-flips, PLAN-0028/0029 → Accepted) and the **Session-63 `ab0174a`** block (B-γ kickoff, PLAN-0027 pre-registration), newest first._
 
 > **Session 67 (head_commit `1cda40f`) — PHASE 1 RATIFY-FLIPS DONE
@@ -1271,6 +1318,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-14 | **PLAN-0023 (PDPA RoPA-lite, step-2 of audit-framework-prep) SHIPPED (#308 PLAN + #309 deliverables, `afea6b3`, session 58)** _(rotated 2026-06-20, session 71)_ — two tracked deliverables: reusable RoPA-lite template (`docs/conventions/partner-ropa-lite.md`, canonical) + NPD synthetic example (`docs/strategy/public/partner-sim-run1-ropa-example.md`, SYNTHETIC), each RoPA slot annotated with a data-quality/lineage hook; example's DSR/lineage→ADR-011 section maps 4 gaps→implications (PII-in-free-text→log-by-reference; scattered actor identity→actor unification; PK reuse + NTP drift→lineage/valid-from + ordering; under-recording→completeness-not-assumed). Governance: Cray ratified PLAN formality (3 decisions) → `plan-drafter` subagent authored PLAN-0023 (ADR-013 D1) → Code committed (#308, ADR-009 D2) → Code executed deliverables Code-direct (#309); PLAN archived to `done/`. SD-1 kept (AC-6 in-PLAN). ADR-011 still gated on a real partner — synthetic run INFORMS but never triggers PLAN-0005 §8.1 (ADR-0020 R3). Carried open: SD-4/SD-5/OQ-A | `afea6b3` (#308/#309) / `docs/conventions/partner-ropa-lite.md` + `docs/strategy/public/partner-sim-run1-ropa-example.md` |
 | 2026-06-13 | **ADR-0020 (partner-sim venue) RATIFIED Proposed→Accepted (#302, `4d1347b`, session 57)** _(rotated 2026-06-20, session 69)_ — Cray ratified in-session ("เอาตาม Cowork ทุกข้อ"); all four venue SDs + dispatch-SD-1 accepted per Cowork rec (Cowork-authored fold per ADR-009 D1, Code R2-reviewed + committed). SD-1 N=3 (→D2/R2); SD-2 one-project-per-business-type (→D4; R-PS4 reframed as a guard); SD-3 size/region/maturity enums + run-1 default energy·mid·th-regional·mixed-legacy (→D3 input); SD-4 "what we refused to share" ratified-required (→D3 output). R1/R2/R3 substance unchanged (#300 errata settled those). Instruction file reconciled same PR (6 ratification-pending markers → ratified; Code-amends-conventions, ADR-009 D2). dispatch-SD-1 (gitignored): one-pager sector-callout forbidden-action note trimmed, R1-clean seed untouched. Venue now ACCEPTED guarded-trial (R-PS1..R-PS4) — live action is Cray's (launch energy run-1) | `4d1347b` (#302) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 | 2026-06-13 | **ADR-0020 (synthetic design-partner simulation venue, partner-sim) committed Proposed (#297, `e25281d`, session 57) + project system instruction landed (#298, `e387a63`)** _(rotated 2026-06-17, session 67)_ — a specialist Cowork project that role-plays a Thai operator + emits a "partner profile package" so the intake+PDPA pipeline is rehearsed before a real partner. D1 venue OUTSIDE governance tiers (no commits / no repo mount / enters via Code receive); D2 three BINDING anti-circularity rules (R1 feed-questions-not-schema, R2 forced messiness, R3 SYNTHETIC provenance — never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger); D3 reuses completion-handoff schema (no enum change); D4 guarded-trial (mirrors ADR-012 D5) + R-PS1..R-PS4. SD-1..SD-4 recommendations only. **Awaits Cray ratification (Proposed→Accepted + SD-1..SD-4) before the project goes live (ADR-0020 T3).** Author≠reviewer (ADR-012 D4.3): Cowork authored, Code R2-reviewed + committed both | `e25281d` (#297) + `e387a63` (#298) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
 | 2026-06-12 | **B-6 hyphen-normalization grader change RATIFIED + SHIPPED (#295, `2331ffb`, session 57)** _(rotated 2026-06-16, session 64)_ — Cray ratified in-session; `grader.py` `normalize_primary_key()` folds the Unicode hyphen/dash family (U+2010–U+2014, U+2212) → ASCII `-` on both sides of the two primary-KEY comparisons only; free-text untouched. Offline dump replay vs the 2026-06-12 scored run: β 118/120 → 119/120, EXACTLY one flip (energy-007, zero collateral); aqua-028 still fails. Same measurement-correctness class as the 2026-06-08 items; no bar moves; REPORT.md dated addendum | `2331ffb` (#295) / `benchmarks/procedure_baseline/grader.py` |
