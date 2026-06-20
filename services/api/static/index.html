@@ -6,9 +6,14 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <title>OCT · Operational Control Tower</title>
   <meta name="description" content="Operational Control Tower — an ontology-driven operations console: see your assets, understand a flagged anomaly, approve a governed action, and ask grounded questions of your own data." />
-  <link rel="stylesheet" href="assets/theme.css" />
-  <link rel="stylesheet" href="assets/views.css" />
-  <link rel="stylesheet" href="assets/story.css" />
+  <!-- Asset cache-busting: bump the ?v= token on ANY assets/* edit so a NORMAL
+       browser reload picks up the change (no hard-refresh needed during review).
+       Same-origin local query string — no CDN, offline-safe: the static server
+       serves the file and ignores the query, so the cached ?v=<token> URL is
+       reused offline with zero external request (AC-12). -->
+  <link rel="stylesheet" href="assets/theme.css?v=c2" />
+  <link rel="stylesheet" href="assets/views.css?v=c2" />
+  <link rel="stylesheet" href="assets/story.css?v=c2" />
 </head>
 <body>
   <div id="app"></div>
@@ -27,18 +32,18 @@
     </svg>
   </template>
 
-  <!-- data + logic (order matters) -->
-  <script src="assets/mock.js"></script>
-  <script src="assets/api.js"></script>
-  <script src="assets/components.js"></script>
-  <script src="assets/motion.js"></script>
-  <script src="assets/llm-control.js"></script>
-  <script src="assets/view-map.js"></script>
-  <script src="assets/view-anomaly.js"></script>
-  <script src="assets/view-ask.js"></script>
-  <script src="assets/view-flow.js"></script>
-  <script src="assets/intake-view.js"></script>
-  <script src="assets/view-story.js"></script>
-  <script src="assets/app.js"></script>
+  <!-- data + logic (order matters) — ?v= token shared with the CSS above -->
+  <script src="assets/mock.js?v=c2"></script>
+  <script src="assets/api.js?v=c2"></script>
+  <script src="assets/components.js?v=c2"></script>
+  <script src="assets/motion.js?v=c2"></script>
+  <script src="assets/llm-control.js?v=c2"></script>
+  <script src="assets/view-map.js?v=c2"></script>
+  <script src="assets/view-anomaly.js?v=c2"></script>
+  <script src="assets/view-ask.js?v=c2"></script>
+  <script src="assets/view-flow.js?v=c2"></script>
+  <script src="assets/intake-view.js?v=c2"></script>
+  <script src="assets/view-story.js?v=c2"></script>
+  <script src="assets/app.js?v=c2"></script>
 </body>
 </html>
