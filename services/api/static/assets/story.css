@@ -515,30 +515,35 @@
 .scene-appendix > * { width: 100%; max-width: 700px; }
 .ap-head { text-align: center; }
 .ap-head h3 { margin: 4px 0 0; font-size: 16px; font-weight: 600; }
-.ap-flowlabel { display: flex; align-items: center; gap: 6px; justify-content: center; font-size: 10.5px; color: var(--tx-3); }
-.ap-flowlabel svg { color: var(--tx-3); }
-/* runtime pipeline — clickable nodes */
-.ap-pipe { display: flex; align-items: stretch; justify-content: center; gap: 6px; flex-wrap: wrap; }
-.ap-node { display: flex; flex-direction: column; gap: 4px; justify-content: center; text-align: center; padding: 11px 13px; min-width: 112px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg-2); color: var(--tx-1); cursor: pointer; transition: border-color .15s, background .15s, box-shadow .15s; }
-.ap-node:hover { border-color: var(--accent-line); }
-.ap-node.is-moat { border-color: var(--ok-line); background: var(--ok-bg); }
-.ap-node.sel { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent-line); }
-.ap-node-name { font-size: 12.5px; font-weight: 600; color: var(--tx-0); }
-.ap-node-sub { font-size: 9.5px; color: var(--tx-2); }
-.ap-arrow { display: flex; align-items: center; color: var(--tx-3); }
-/* generated fan-out — clickable chips */
-.ap-genwrap { display: none; flex-direction: column; align-items: center; gap: 9px; }
-.scene-appendix.show-gens .ap-genwrap { display: flex; }
-.ap-genlabel { font-size: 10.5px; color: var(--ok); }
-.ap-gens { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; border-top: 2px solid var(--ok-line); padding-top: 12px; width: 100%; }
-.ap-gen { font-size: 11px; font-family: var(--mono); color: var(--tx-1); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; background: var(--bg-2); cursor: pointer; transition: border-color .15s, color .15s, box-shadow .15s; }
-.ap-gen:hover { border-color: var(--ok-line); color: var(--tx-0); }
-.ap-gen.sel { border-color: var(--accent); color: var(--tx-0); box-shadow: 0 0 0 1px var(--accent-line); }
+/* ---- the engine as an SVG flow: clickable nodes + animated flow lines ---- */
+.ap-svg { width: 100%; height: auto; max-width: 720px; display: block; margin: 0 auto; }
+.ap-svg-node .ap-nbox { fill: var(--bg-2); stroke: var(--line-strong); stroke-width: 1.3; transition: stroke .15s, fill .15s; }
+.ap-svg-node:hover .ap-nbox { stroke: var(--accent-line); }
+.ap-svg-node.sel .ap-nbox { stroke: var(--accent); stroke-width: 2; }
+.ap-svg-node.is-moat .ap-nbox { fill: var(--ok-bg); stroke: var(--ok-line); }
+.ap-ntitle { fill: var(--tx-0); font-family: var(--sans); font-size: 11px; font-weight: 600; }
+.ap-nsub { fill: var(--tx-2); font-family: var(--mono); font-size: 8px; }
+.ap-svg-node.is-moat .ap-nsub { fill: var(--ok); }
+.ap-gen-node .ap-ntitle { font-family: var(--mono); font-size: 9.5px; font-weight: 500; fill: var(--tx-1); }
+.ap-fan-label { fill: var(--ok); font-family: var(--mono); font-size: 9px; }
+.ap-fl { stroke: var(--line-strong); stroke-width: 1.4; fill: none; }
+.ap-pipe-fl { stroke: var(--tx-3); }
+.ap-gen-fl { stroke: var(--ok-line); }
+.ap-fan { opacity: 0; pointer-events: none; }
+.ap-svg.show-fan .ap-fan { opacity: 1; pointer-events: auto; }
+.ap-svg.flowing .ap-fl { stroke-dasharray: 6 5; animation: ap-flow 1s linear infinite; }
+@keyframes ap-flow { to { stroke-dashoffset: -22; } }
 /* detail card — driven by node clicks */
 .ap-detail { border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--bg-2); padding: 13px 15px; }
 .ap-d-head { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
 .ap-d-name { font-size: 13.5px; font-weight: 600; color: var(--tx-0); }
 .ap-d-body { font-size: 12px; line-height: 1.5; color: var(--tx-1); }
+/* the prominent moat takeaway (golden finale) */
+.ap-takeaway { display: none; align-items: center; gap: 13px; padding: 15px 18px; border-radius: var(--r-md); border: 1px solid var(--ok-line); background: linear-gradient(120deg, var(--ok-bg), rgba(70,179,119,.05)); box-shadow: 0 0 0 1px var(--ok-line), 0 8px 26px rgba(0,0,0,.3); }
+.scene-appendix.show-takeaway .ap-takeaway { display: flex; }
+.ap-tk-icon { flex: 0 0 auto; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--ok-bg); border: 1px solid var(--ok-line); color: var(--ok); }
+.ap-tk-lead { font-size: 14px; font-weight: 600; color: var(--tx-0); line-height: 1.4; }
+.ap-tk-sub { font-size: 12px; color: var(--tx-1); line-height: 1.45; margin-top: 3px; }
 .ap-caption { text-align: center; font-size: 12.5px; line-height: 1.5; color: var(--tx-1); min-height: 36px; }
 
 /* reduced-motion: kill every story animation; state stays readable via
@@ -548,5 +553,6 @@
   .story-nextcta,
   .task-card.state-active,
   .dag-edge.flow,
+  .ap-svg.flowing .ap-fl,
   .ctl-inbox.is-armed .led { animation: none !important; }
 }

@@ -1210,27 +1210,25 @@ object_types:
     raw: { name: 'Raw sources', kind: 'input', sub: 'sensors · feeds', desc: 'Sensors, SCADA feeds, ERP exports — the messy inputs, every format and every vertical, before any structure.' },
     map: { name: 'Mapping layer', kind: 'runtime', sub: 'dbt / SQLMesh', desc: 'Transforms raw sources into canonical, typed records. Adapter logic lives here only — swap a data source and nothing downstream changes.' },
     sem: { name: 'Semantic layer', kind: 'moat', sub: 'YAML ontology', moat: true, desc: 'ONE YAML ontology = the single source of truth: object types, roles, properties, metrics and actions. Everything below is generated from it — edit the YAML and the whole stack re-skins.' },
-    act: { name: 'Action layer', kind: 'runtime', sub: 'FastAPI · permissions · audit', desc: 'Governed functions tied to objects — every call gated by permissions and written to an audit trail. This is the approve → execute you saw in scenes 2 and 3.' },
-    pydantic: { name: 'Pydantic models', kind: 'generated', desc: 'Typed request/response + validation models for every object — generated, never hand-written.' },
-    sql: { name: 'SQL DDL', kind: 'generated', desc: 'The database schema — tables, columns, types and foreign keys — for every object type.' },
-    jsonschema: { name: 'JSON schema', kind: 'generated', desc: 'Machine-readable contracts for APIs and external integrations.' },
-    mcp: { name: 'MCP tools', kind: 'generated', desc: 'Tool definitions so an LLM / agent can query the ontology safely and grounded — the Ask in scene 6.' },
-    ts: { name: 'TypeScript types', kind: 'generated', desc: 'Front-end types — the console is typed straight from the ontology.' },
-    ui: { name: 'UI', kind: 'generated', desc: 'The operational console re-skins per vertical from the ontology — the map, the decision cards and the Ask view you have been looking at.' },
-    alembic: { name: 'Alembic migrations', kind: 'generated', desc: 'Schema migrations emitted when the ontology changes — the database evolves with the YAML, versioned.' }
+    act: { name: 'Action layer', kind: 'runtime', sub: 'FastAPI · audit', desc: 'Governed functions tied to objects — every call gated by permissions and written to an audit trail. This is the approve → execute you saw in scenes 2 and 3.' },
+    pydantic: { name: 'Pydantic models', short: 'Pydantic', kind: 'generated', desc: 'Typed request/response + validation models for every object — generated, never hand-written.' },
+    sql: { name: 'SQL DDL', short: 'SQL DDL', kind: 'generated', desc: 'The database schema — tables, columns, types and foreign keys — for every object type.' },
+    jsonschema: { name: 'JSON schema', short: 'JSON', kind: 'generated', desc: 'Machine-readable contracts for APIs and external integrations.' },
+    mcp: { name: 'MCP tools', short: 'MCP tools', kind: 'generated', desc: 'Tool definitions so an LLM / agent can query the ontology safely and grounded — the Ask in scene 6.' },
+    ts: { name: 'TypeScript types', short: 'TS types', kind: 'generated', desc: 'Front-end types — the console is typed straight from the ontology.' },
+    ui: { name: 'UI', short: 'UI', kind: 'generated', desc: 'The operational console re-skins per vertical from the ontology — the map, the decision cards and the Ask view you have been looking at.' },
+    alembic: { name: 'Alembic migrations', short: 'Alembic', kind: 'generated', desc: 'Schema migrations emitted when the ontology changes — the database evolves with the YAML, versioned.' }
   };
-  const AP_PIPE = ['raw', 'map', 'sem', 'act'];
-  const AP_GEN = ['pydantic', 'sql', 'jsonschema', 'mcp', 'ts', 'ui', 'alembic'];
   const KIND_TAG = { input: ['s-neutral', 'input'], runtime: ['s-neutral', 'runtime layer'], moat: ['s-ok solid', 'the moat'], generated: ['s-info', 'generated'] };
+  const AP_GEN = ['pydantic', 'sql', 'jsonschema', 'mcp', 'ts', 'ui', 'alembic'];
 
   function createAppendixScene(ctx) {
     const scope = ctx.scope, host = ctx.host;
     const CAP = [
-      'Under the hood: data flows left to right through the layers — raw, mapping, semantic, action.',
-      'But the Semantic layer — ONE YAML ontology — also GENERATES the whole stack below it.',
-      'Edit one YAML → it all regenerates and stays in sync. A new vertical is data, not code — this is why scenes 1–6 work. Click any node to see what it does.'
+      'Under the hood: data flows left → right through the layers — raw, mapping, semantic, action.',
+      'But the Semantic layer — ONE YAML ontology — also GENERATES the whole stack. Click any node to see what it does.',
+      'The golden rule of the moat ↓'
     ];
-    let selected = 'sem';
     const nodeEls = {};
 
     const root = h('div', { class: 'scene-appendix' });
@@ -1239,43 +1237,70 @@ object_types:
       h('h3', null, 'One YAML ontology generates the whole stack')
     ]));
 
-    // runtime pipeline row
-    root.appendChild(h('div', { class: 'ap-flowlabel' }, [icon('arrow', { width: 13, height: 13 }), 'runtime data flow']));
-    const pipeRow = h('div', { class: 'ap-pipe' });
-    AP_PIPE.forEach((key, i) => {
-      const n = ENGINE_NODES[key];
-      const box = h('button', { class: 'ap-node' + (n.moat ? ' is-moat' : ''), onClick: () => selectNode(key) }, [
-        h('div', { class: 'ap-node-name' }, n.name),
-        h('div', { class: 'ap-node-sub mono' }, n.sub)
-      ]);
-      nodeEls[key] = box;
-      pipeRow.appendChild(box);
-      if (i < AP_PIPE.length - 1) pipeRow.appendChild(h('span', { class: 'ap-arrow' }, icon('arrow', { width: 15, height: 15 })));
-    });
-    root.appendChild(pipeRow);
+    // ---- the engine as an SVG flow: pipeline (→) + the generative fan-out (↓) ----
+    const svg = s('svg', { class: 'ap-svg', viewBox: '0 0 720 146', xmlns: SVGNS, role: 'img',
+      'aria-label': 'Runtime pipeline raw → mapping → semantic → action; the semantic YAML layer fans out to the generated Pydantic, SQL, JSON schema, MCP tools, TypeScript types, UI and Alembic migrations' });
+    svg.appendChild(s('defs', null, s('marker', { id: 'ap-arrow', markerWidth: 8, markerHeight: 8, refX: 6, refY: 3, orient: 'auto' },
+      s('path', { d: 'M0,0 L6,3 L0,6 Z', style: { fill: 'var(--tx-3)' } }))));
 
-    // generated fan-out (revealed at step 1)
-    const gens = h('div', { class: 'ap-gens' });
-    AP_GEN.forEach(key => {
-      const chip = h('button', { class: 'ap-gen', onClick: () => selectNode(key) }, ENGINE_NODES[key].name);
-      nodeEls[key] = chip;
-      gens.appendChild(chip);
+    function pnode(key, cx, w, title, sub) {
+      const n = ENGINE_NODES[key], hh = 26;
+      const g = s('g', { class: 'ap-svg-node' + (n.moat ? ' is-moat' : ''), transform: 'translate(' + cx + ',40)', style: { cursor: 'pointer' } });
+      g.appendChild(s('rect', { class: 'ap-nbox', x: -w / 2, y: -hh, width: w, height: hh * 2, rx: 8 }));
+      g.appendChild(s('text', { class: 'ap-ntitle', x: 0, y: -3, 'text-anchor': 'middle' }, title));
+      g.appendChild(s('text', { class: 'ap-nsub', x: 0, y: 12, 'text-anchor': 'middle' }, sub));
+      g.addEventListener('click', () => selectNode(key));
+      nodeEls[key] = g; return g;
+    }
+    function fline(cls, x1, y1, x2, y2, arrow) {
+      return s('line', { class: 'ap-fl ' + cls, x1: x1, y1: y1, x2: x2, y2: y2, 'marker-end': arrow ? 'url(#ap-arrow)' : null });
+    }
+    // pipeline nodes
+    svg.appendChild(pnode('raw', 86, 156, 'Raw sources', 'sensors · feeds'));
+    svg.appendChild(pnode('map', 269, 156, 'Mapping layer', 'dbt / SQLMesh'));
+    svg.appendChild(pnode('sem', 451, 156, 'Semantic · YAML', 'the moat'));
+    svg.appendChild(pnode('act', 634, 156, 'Action layer', 'FastAPI · audit'));
+    // pipeline arrows (flow → )
+    svg.appendChild(fline('ap-pipe-fl', 164, 40, 189, 40, true));
+    svg.appendChild(fline('ap-pipe-fl', 347, 40, 372, 40, true));
+    svg.appendChild(fline('ap-pipe-fl', 529, 40, 554, 40, true));
+    // fan-out group (revealed at step 1)
+    const fan = s('g', { class: 'ap-fan' });
+    fan.appendChild(s('text', { class: 'ap-fan-label', x: 451, y: 82, 'text-anchor': 'middle' }, 'generated from the one YAML ↓'));
+    fan.appendChild(fline('ap-gen-fl', 451, 66, 451, 90));        // trunk
+    fan.appendChild(fline('ap-gen-fl', 46, 90, 662, 90));         // distributor
+    const cxs = [46, 149, 251, 354, 457, 559, 662];
+    AP_GEN.forEach((key, i) => {
+      const cx = cxs[i];
+      fan.appendChild(fline('ap-gen-fl', cx, 90, cx, 102));        // drop
+      const g = s('g', { class: 'ap-svg-node ap-gen-node', transform: 'translate(' + cx + ',118)', style: { cursor: 'pointer' } });
+      g.appendChild(s('rect', { class: 'ap-nbox', x: -45, y: -15, width: 90, height: 30, rx: 7 }));
+      g.appendChild(s('text', { class: 'ap-ntitle', x: 0, y: 4, 'text-anchor': 'middle' }, ENGINE_NODES[key].short));
+      g.addEventListener('click', () => selectNode(key));
+      nodeEls[key] = g; fan.appendChild(g);
     });
-    const genWrap = h('div', { class: 'ap-genwrap' }, [
-      h('div', { class: 'ap-genlabel mono' }, 'generated from the one YAML ↓'),
-      gens
-    ]);
-    root.appendChild(genWrap);
+    svg.appendChild(fan);
+    root.appendChild(svg);
 
     // detail card (driven by node clicks)
     const detail = h('div', { class: 'ap-detail' });
     root.appendChild(detail);
+
+    // the prominent moat takeaway (golden finale, revealed at step 2)
+    const takeaway = h('div', { class: 'ap-takeaway' }, [
+      h('div', { class: 'ap-tk-icon' }, icon('spark', { width: 20, height: 20 })),
+      h('div', null, [
+        h('div', { class: 'ap-tk-lead' }, 'Edit one YAML → the whole stack regenerates and stays in sync.'),
+        h('div', { class: 'ap-tk-sub' }, 'A new vertical or field is data, not code — this is why scenes 1–6 just work.')
+      ])
+    ]);
+    root.appendChild(takeaway);
+
     const cap = h('div', { class: 'ap-caption' }, CAP[0]);
     root.appendChild(cap);
     host.appendChild(root);
 
     function selectNode(key) {
-      selected = key;
       const n = ENGINE_NODES[key], tag = KIND_TAG[n.kind] || KIND_TAG.runtime;
       Object.keys(nodeEls).forEach(k => nodeEls[k].classList.toggle('sel', k === key));
       clear(detail);
@@ -1288,10 +1313,13 @@ object_types:
 
     function applyStep(k) {
       cap.textContent = CAP[k] || CAP[CAP.length - 1];
-      root.classList.toggle('show-gens', k >= 1);
+      svg.classList.toggle('show-fan', k >= 1);          // reveal the generative fan-out
+      svg.classList.toggle('flowing', !M.reduced());      // marching-dash flow (suppressed under reduced-motion)
+      root.classList.toggle('show-takeaway', k >= 2);     // the golden moat finale
     }
     function enterStep(k) {
-      if (k === 1 && scope) scope.tween(genWrap, [{ opacity: 0.15, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 340, fill: 'none' });
+      if (k === 1 && scope) scope.tween(fan, [{ opacity: 0.1 }, { opacity: 1 }], { duration: 360, fill: 'none' });
+      if (k === 2 && scope) scope.tween(takeaway, [{ opacity: 0.1, transform: 'translateY(8px)' }, { opacity: 1, transform: 'none' }], { duration: 360, fill: 'none' });
     }
     selectNode('sem');   // default to the moat
     return { title: 'How it works — one YAML generates the whole stack', stepCount: 2, applyStep: applyStep, enterStep: enterStep };
