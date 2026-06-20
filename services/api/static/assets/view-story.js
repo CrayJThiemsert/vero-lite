@@ -962,15 +962,167 @@
   }
 
   /* ============================================================
-     The SCENES registry (arc order = G, pain-first). Scene 6 (C2
-     breadth) appends here on the same contract.
+     SCENE 6 — Breadth + Ask (C2). The same engine shape across
+     verticals (a new vertical is a YAML ontology — DATA, not code;
+     it auto-registers via PLAN-0032 / Rule of Three), closed by the
+     NL-query "ask your own data" beat that re-houses the View-C
+     grounding-receipt grammar + the anti-hallucination guard.
+     Synthetic mirror data (ADR-0015 D1), consistent with the story.
+     ============================================================ */
+  const VERTICALS = [
+    { key: 'aquaculture', label: 'Aquaculture',          tone: 's-ok',   asset: 'Pond',     site: 'Farm',             metric: 'Dissolved oxygen', dir: 'below', thr: '4.0 mg/L',  action: 'start_aerator',    note: 'the showcase you just watched' },
+    { key: 'energy',      label: 'Energy grid',          tone: 's-info', asset: 'Feeder',   site: 'Substation',       metric: 'Load',             dir: 'above', thr: '95% rating', action: 'shed_load',        note: 'same shape — a crash becomes an overrun' },
+    { key: 'supply',      label: 'Cold-chain logistics', tone: 's-warn', asset: 'Shipment', site: 'Distribution hub', metric: 'Reefer temp',      dir: 'above', thr: '8 °C',      action: 'reroute_expedite', note: 'a named excursion rule + a clock' }
+  ];
+
+  function createBreadthScene(ctx) {
+    const scope = ctx.scope, host = ctx.host;
+    const CAP = [
+      'One engine. The shape never changes — only the nouns.',
+      'Aquaculture: a Pond on a Farm, oxygen falling through 4.0 — start the aerator.',
+      'Energy grid: a Feeder on a Substation, load rising past 95% — shed load. Same shape, the crash is now an overrun.',
+      'Cold-chain: a Shipment at a hub, reefer temp past 8 °C — reroute. A new vertical is a YAML ontology — data, not code. It auto-registers.',
+      'And the operator asks in plain language — grounded in the real records, never invented.'
+    ];
+    let active = -1;
+
+    const root = h('div', { class: 'scene-breadth' });
+    root.appendChild(h('div', { class: 'bd-head' }, [
+      h('div', { class: 'eyebrow' }, 'One engine · many operations'),
+      h('h3', null, 'The same ontology shape — a new vertical is data, not code')
+    ]));
+    const chipRow = h('div', { class: 'bd-verticals' });
+    const chips = VERTICALS.map((v, i) => {
+      const c = h('button', { class: 'bd-vchip', onClick: () => selectVertical(i) }, [h('span', { class: 'bd-vdot ' + v.tone }), v.label]);
+      chipRow.appendChild(c); return c;
+    });
+    root.appendChild(chipRow);
+    const slots = {};
+    function slot(key, label) {
+      const val = h('div', { class: 'bd-slot-v mono' }, '—');
+      slots[key] = val;
+      return h('div', { class: 'bd-slot' }, [h('div', { class: 'bd-slot-k eyebrow' }, label), val]);
+    }
+    const shapeEl = h('div', { class: 'bd-shape' }, [
+      slot('asset', 'Asset'), slot('site', 'Site'), slot('metric', 'Metric + direction'), slot('action', 'Action')
+    ]);
+    root.appendChild(shapeEl);
+    const vnote = h('div', { class: 'bd-vnote muted' }, '');
+    root.appendChild(vnote);
+    root.appendChild(buildAsk());
+    const cap = h('div', { class: 'bd-caption' }, CAP[0]);
+    root.appendChild(cap);
+    host.appendChild(root);
+
+    function buildAsk() {
+      return h('div', { class: 'bd-ask' }, [
+        h('div', { class: 'bd-ask-q' }, [icon('ask', { width: 14, height: 14 }), '“How many ponds are below the DO action line right now?”']),
+        h('div', { class: 'bd-ask-a' }, '3 ponds — P-12, P-07, P-21.'),
+        h('div', { class: 'bd-receipt' }, [
+          h('div', { class: 'bd-rhead' }, [icon('receipt', { width: 13, height: 13 }), h('span', { class: 'eyebrow' }, 'Grounding receipt'), h('span', { class: 'badge s-ok', style: { textTransform: 'none' } }, [h('span', { class: 'led' }), 'grounded'])]),
+          h('div', { class: 'bd-rq mono' }, 'LIST Pond WHERE do_mg_l < 4.0'),
+          h('div', { class: 'bd-rids' }, ['P-12', 'P-07', 'P-21'].map(id => h('span', { class: 'bd-src mono' }, [icon('link', { width: 11, height: 11 }), id]))),
+          h('div', { class: 'bd-rnote muted' }, 'Ask something with no match → an explicit “no records — not invented”, never a fabricated answer.')
+        ])
+      ]);
+    }
+    function selectVertical(i) {
+      active = i;
+      const v = VERTICALS[i];
+      chips.forEach((c, ci) => c.classList.toggle('active', ci === i));
+      slots.asset.textContent = v.asset;
+      slots.site.textContent = v.site;
+      slots.metric.textContent = v.metric + ' ' + (v.dir === 'below' ? '↓ ' : '↑ ') + v.thr;
+      slots.metric.className = 'bd-slot-v mono ' + (v.dir === 'below' ? 'down' : 'up');
+      slots.action.textContent = v.action;
+      vnote.textContent = v.note;
+      if (scope) scope.tween(shapeEl, [{ opacity: 0.4 }, { opacity: 1 }], { duration: 260, fill: 'none' });
+    }
+    function clearShape() {
+      active = -1;
+      chips.forEach(c => c.classList.remove('active'));
+      Object.keys(slots).forEach(key => { slots[key].textContent = '—'; slots[key].className = 'bd-slot-v mono'; });
+      vnote.textContent = '';
+    }
+
+    function applyStep(k) {
+      cap.textContent = CAP[k] || CAP[CAP.length - 1];
+      root.classList.toggle('show-ask', k >= 4);
+      if (k === 0) clearShape();
+      else if (k <= 3) selectVertical(k - 1);
+      else if (active !== 2) selectVertical(2);   // keep supply-chain filled while the Ask shows
+    }
+    return { title: 'One engine, many operations — and ask your own data', stepCount: 4, applyStep: applyStep };
+  }
+
+  /* ============================================================
+     SCENE 7 — Appendix · how it works (C2, optional). The
+     ontology/engine explainer DEMOTED from scene 1 (AC-1): the
+     three-layer mental model (CLAUDE.md §3). Reachable for technical
+     audiences who want the "how", never the opener.
+     ============================================================ */
+  const LAYERS = [
+    { key: 'map', name: 'Mapping layer',  tone: 's-info', sub: 'dbt / SQLMesh',                 body: 'Raw sources → canonical records. Messy inputs become clean, typed objects.' },
+    { key: 'sem', name: 'Semantic layer', tone: 's-ok',   sub: 'YAML ontology · the moat',       body: 'ONE YAML ontology = the single source of truth. It generates the Pydantic models, SQL DDL, JSON Schema, MCP tools and TypeScript types.', moat: true },
+    { key: 'act', name: 'Action layer',   tone: 's-warn', sub: 'FastAPI · permissions · audit',  body: 'Governed functions tied to objects — every call gated by permissions and written to an audit trail.' }
+  ];
+
+  function createAppendixScene(ctx) {
+    const scope = ctx.scope, host = ctx.host;
+    const CAP = [
+      'Under the hood: three layers, one source of truth.',
+      'Mapping — dbt/SQLMesh turns raw sources into canonical, typed records.',
+      'Semantic — ONE YAML ontology generates the models, SQL, schema, MCP tools and types. This is the moat.',
+      'Action — governed functions with permissions + an audit trail. Swap the YAML → the whole stack re-skins.'
+    ];
+    const root = h('div', { class: 'scene-appendix' });
+    root.appendChild(h('div', { class: 'ap-head' }, [
+      h('div', { class: 'eyebrow' }, 'Appendix · how it works'),
+      h('h3', null, 'Three layers. One source of truth.')
+    ]));
+    const stack = h('div', { class: 'ap-stack' });
+    const layerEls = LAYERS.map(L => {
+      const gen = L.moat ? h('div', { class: 'ap-gen' }, ['Pydantic', 'SQL DDL', 'JSON Schema', 'MCP tools', 'TS types'].map(g => h('span', { class: 'ap-gchip mono' }, g))) : null;
+      const card = h('div', { class: 'ap-layer' + (L.moat ? ' is-moat' : ''), dataset: { k: L.key } }, [
+        h('div', { class: 'ap-ltop' }, [
+          h('span', { class: 'ap-ldot ' + L.tone }), h('span', { class: 'ap-lname' }, L.name),
+          h('span', { class: 'ap-lsub mono muted' }, L.sub),
+          L.moat ? h('span', { class: 'badge s-ok', style: { marginLeft: 'auto', textTransform: 'none' } }, 'the moat') : null
+        ]),
+        h('div', { class: 'ap-lbody' }, L.body),
+        gen
+      ]);
+      stack.appendChild(card);
+      return card;
+    });
+    root.appendChild(stack);
+    const cap = h('div', { class: 'ap-caption' }, CAP[0]);
+    root.appendChild(cap);
+    host.appendChild(root);
+
+    function applyStep(k) {
+      cap.textContent = CAP[k] || CAP[CAP.length - 1];
+      layerEls.forEach((el, i) => el.classList.toggle('lit', k >= i + 1));
+    }
+    function enterStep(k) {
+      const el = layerEls[k - 1];
+      if (el && scope) scope.tween(el, [{ opacity: 0.3, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 300, fill: 'none' });
+    }
+    return { title: 'How it works — the three-layer ontology engine', stepCount: 3, applyStep: applyStep, enterStep: enterStep };
+  }
+
+  /* ============================================================
+     The SCENES registry (arc order = G, pain-first). The appendix is
+     the optional technical encore (AC-1 — reachable, never the opener).
      ============================================================ */
   const SCENES = [
-    { id: 'hook',       create: createHookScene },
-    { id: 'govern',     create: createGovernScene },
-    { id: 'pipeline',   create: createPipelineScene },
-    { id: 'intake',     create: createIntakeScene },
-    { id: 'beforeafter', create: createBeforeAfterScene }
+    { id: 'hook',        create: createHookScene },
+    { id: 'govern',      create: createGovernScene },
+    { id: 'pipeline',    create: createPipelineScene },
+    { id: 'intake',      create: createIntakeScene },
+    { id: 'beforeafter', create: createBeforeAfterScene },
+    { id: 'breadth',     create: createBreadthScene },
+    { id: 'appendix',    create: createAppendixScene }
   ];
   const EYEBROW = 'Story mode · Aquaculture';
 
