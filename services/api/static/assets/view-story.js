@@ -1063,46 +1063,76 @@ object_types:
       'Swap again: cold-chain. Each swap is just a different YAML file — data, not code. Open “View YAML” to see it.',
       'And the operator asks in plain language — grounded in the real records, never invented.'
     ];
-    let active = -1, yamlOpen = false;
+    const ROWS = [
+      ['Asset-role', v => [v.asset, '']],
+      ['Site-role', v => [v.site, '']],
+      ['Metric', v => [v.metric + ' ' + (v.dir === 'below' ? '↓' : '↑') + (v.thr ? ' ' + v.thr : ''), v.dir === 'below' ? 'down' : 'up']],
+      ['Action', v => [v.action, '']]
+    ];
+    let mode = 'swap', active = -1, yamlVertical = 0, yamlOpen = false;
 
-    const root = h('div', { class: 'scene-breadth' });
+    const root = h('div', { class: 'scene-breadth mode-swap' });
     root.appendChild(h('div', { class: 'bd-head' }, [
       h('div', { class: 'eyebrow' }, 'One engine · many operations'),
       h('h3', null, 'The same ontology shape — a new vertical is data, not code'),
-      h('div', { class: 'bd-subnote muted' }, 'The four slots below are fixed by the engine (Asset · Site · Metric · Action). Pick a vertical — only the DATA swaps; a domain author wrote each as a YAML file.')
+      h('div', { class: 'bd-subnote muted' }, 'The four slots are fixed by the engine (Asset · Site · Metric · Action). Swap a vertical to refill them, or “Compare all” to see the three side by side — each is just a YAML file a domain author wrote.')
     ]));
 
-    // vertical selector — picking a vertical SWAPS its data into the same slots
+    // ---- mode toggle: Swap (default) | Compare all (matrix) ----
+    const swapBtn = h('button', { class: 'bd-modebtn', onClick: () => setMode('swap') }, [icon('refresh', { width: 13, height: 13 }), 'Swap']);
+    const matrixBtn = h('button', { class: 'bd-modebtn', onClick: () => setMode('matrix') }, [icon('grid', { width: 13, height: 13 }), 'Compare all']);
+    root.appendChild(h('div', { class: 'bd-modebar' }, [h('span', { class: 'flex' }), h('div', { class: 'bd-modeseg' }, [swapBtn, matrixBtn])]));
+
+    // ---- SWAP view: chips + ONE shared engine shape; only the values swap ----
     const chipRow = h('div', { class: 'bd-verticals' });
     const chips = VERTICALS.map((v, i) => {
       const c = h('button', { class: 'bd-vchip', onClick: () => selectVertical(i, true) }, [h('span', { class: 'bd-vdot ' + v.tone }), v.label]);
       chipRow.appendChild(c); return c;
     });
-    root.appendChild(chipRow);
-
-    // ONE shared engine shape (the fixed contract); only the values swap in place
     const activeBadge = h('span', { class: 'bd-active' });
-    const yamlBtn = h('button', { class: 'bd-yaml-btn', onClick: () => { yamlOpen = !yamlOpen; syncYaml(); } }, 'View YAML');
+    const swapYamlBtn = h('button', { class: 'bd-yaml-btn', onClick: () => { yamlVertical = active < 0 ? 0 : active; yamlOpen = !yamlOpen; syncYaml(); } }, 'View YAML');
     const slotVals = {};
     function slotCell(key, label) {
       const val = h('div', { class: 'bd-slot-v mono' }, '—');
       slotVals[key] = val;
       return h('div', { class: 'bd-slot' }, [h('div', { class: 'bd-slot-k eyebrow' }, label), val]);
     }
-    const yamlBox = h('pre', { class: 'bd-yaml mono' }, '');
     const engine = h('div', { class: 'bd-engine' }, [
       h('div', { class: 'bd-engine-head' }, [
         h('span', { class: 'bd-engine-tag' }, [icon('cpu', { width: 13, height: 13 }), 'Engine · 4 fixed roles']),
-        h('span', { class: 'flex' }),
-        activeBadge, yamlBtn
+        h('span', { class: 'flex' }), activeBadge, swapYamlBtn
       ]),
       h('div', { class: 'bd-shape' }, [
         slotCell('asset', 'Asset-role'), slotCell('site', 'Site-role'),
         slotCell('metric', 'Metric'), slotCell('action', 'Action')
-      ]),
-      yamlBox
+      ])
     ]);
-    root.appendChild(engine);
+    root.appendChild(h('div', { class: 'bd-swap' }, [chipRow, engine]));
+
+    // ---- MATRIX view (Compare all): roles as rows, verticals as columns ----
+    const hrow = h('tr', null, [h('th', { class: 'bd-mrole bd-mcorner' }, 'engine role')]);
+    VERTICALS.forEach((v, i) => {
+      hrow.appendChild(h('th', { class: 'bd-mvhead' }, [
+        h('div', { class: 'bd-mvtop' }, [h('span', { class: 'bd-vdot ' + v.tone }), h('span', null, v.label)]),
+        h('button', { class: 'bd-myaml-btn', onClick: () => { yamlVertical = i; yamlOpen = true; syncYaml(); } }, 'view yaml')
+      ]));
+    });
+    const tbody = h('tbody');
+    ROWS.forEach(row => {
+      const tr = h('tr', null, [h('td', { class: 'bd-mrole' }, row[0])]);
+      VERTICALS.forEach(v => { const r = row[1](v); tr.appendChild(h('td', { class: 'bd-mcell mono ' + r[1] }, r[0])); });
+      tbody.appendChild(tr);
+    });
+    root.appendChild(h('div', { class: 'bd-matrix' }, [h('table', { class: 'bd-mtable' }, [h('thead', null, hrow), tbody])]));
+
+    // ---- shared YAML area (drives both views) ----
+    const yamlFile = h('span', { class: 'bd-ya-file mono' }, '');
+    const yamlBox = h('pre', { class: 'bd-ya-pre mono' }, '');
+    root.appendChild(h('div', { class: 'bd-yaml-area' }, [
+      h('div', { class: 'bd-ya-head' }, [icon('flow', { width: 13, height: 13 }), yamlFile, h('span', { class: 'flex' }),
+        h('button', { class: 'bd-ya-close', onClick: () => { yamlOpen = false; syncYaml(); } }, [icon('x', { width: 12, height: 12 }), 'close'])]),
+      yamlBox
+    ]));
 
     root.appendChild(buildAsk());
     const cap = h('div', { class: 'bd-caption' }, CAP[0]);
@@ -1122,9 +1152,19 @@ object_types:
       ]);
     }
 
+    function setMode(m) {
+      mode = m;
+      root.classList.toggle('mode-matrix', m === 'matrix');
+      root.classList.toggle('mode-swap', m === 'swap');
+      swapBtn.classList.toggle('active', m === 'swap');
+      matrixBtn.classList.toggle('active', m === 'matrix');
+    }
     function syncYaml() {
-      engine.classList.toggle('yaml-open', yamlOpen);
-      yamlBtn.textContent = yamlOpen ? 'Hide YAML' : 'View YAML';
+      const v = VERTICALS[yamlVertical];
+      yamlFile.textContent = 'verticals/' + v.ns + '/ontology/' + v.ns + '_v0.yaml';
+      yamlBox.textContent = v.yaml;
+      root.classList.toggle('yaml-open', yamlOpen);
+      swapYamlBtn.textContent = (yamlOpen && mode === 'swap') ? 'Hide YAML' : 'View YAML';
     }
     function setVal(key, text, cls) {
       slotVals[key].textContent = text;
@@ -1142,7 +1182,7 @@ object_types:
       setVal('site', v.site, '');
       setVal('metric', v.metric + ' ' + (v.dir === 'below' ? '↓' : '↑') + (v.thr ? ' ' + v.thr : ''), v.dir === 'below' ? 'down' : 'up');
       setVal('action', v.action, '');
-      yamlBox.textContent = v.yaml;
+      if (yamlOpen && mode === 'swap') { yamlVertical = i; syncYaml(); }   // keep an open YAML following the swap
       if (animate && scope && !M.reduced()) {            // swap motion: the slots stay, the values refill
         ['asset', 'site', 'metric', 'action'].forEach(k =>
           scope.tween(slotVals[k], [{ opacity: 0.12, transform: 'translateY(5px)' }, { opacity: 1, transform: 'none' }], { duration: 300, fill: 'none' }));
