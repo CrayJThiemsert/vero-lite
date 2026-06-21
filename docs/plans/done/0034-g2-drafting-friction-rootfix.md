@@ -1,9 +1,10 @@
 # PLAN-0034: G2 drafting-friction root-fix — stop the classifier over-firing + exempt the `plan-drafter`'s uncommitted draft-write from the G2 PreToolUse gate
 
-**Status:** Ready for execution
+**Status:** Complete
 **Owner:** Claude Code (execution) — drafted by Cowork (Tier-1, ADR-009 D1); Code commits (ADR-009 D2)
 **Created:** 2026-06-21
 **Ratified:** Cray 2026-06-21 (s71) — SD-1..SD-4 = option (a). SD-1 resolved on the Code Step-3 spike (offline, no host-state). Folded by Cowork (Tier-1, ADR-009 D1) off the s71 ratification dispatch; Code commits via a `docs/*` PR (ADR-009 D2).
+**Completed:** 2026-06-21 (s72) — ratified #396 (SD-1..SD-4 = (a)); core-implemented #397 (prong-1 classifier over-fire guards + prong-2 `plan-drafter` G2 exemption + 6 gold negatives + tests; offline gates green — 137 targeted + 730 handoffs/benchmark, ruff/mypy --strict clean); Step-5 registry annotation #399. Optional live gold re-score deferred (host-state, Cray-gated — not an acceptance gate). `git mv` → `done/`.
 **Related ADRs:** ADR-009 (Cowork Tier-1 authoring D1 / "only Code commits" D2 — **preserved, not amended**), ADR-013 (autonomy-axis relocation; D2 deterministic deny reinforcing ADR-009 D2 — the mechanism this PLAN refines; **PLAN-only per ratified SD-3 (a) — no ADR amendment** (G5 / "only Code commits" untouched)), ADR-012 (Cowork free-form; D4.3 disclosure at foot)
 
 > **Drafting provenance.** Drafted (uncommitted) by Cowork in Tier-1 governance-authoring mode under ADR-009 D1, off the Code-authored session-71 dispatch (`.claude/handoffs/session-71/2026-06-21-0506-code-cowork-g2-drafting-friction-rootfix-dispatch.md`, anchors code-verified by Code against `main` `0073e32`). Code reviews + commits via a `docs/*` PR (ADR-009 D2); Cray ratifies. This PLAN **drafts** the design; it implements nothing (see Out of Scope). **Author≠reviewer disclosure (ADR-012 D4.3):** at the foot of this file.
