@@ -709,3 +709,128 @@ def test_classifier_user_message_includes_tool_payload(
     assert '"tool_name": "Edit"' in user_message
     assert "0009-accepted.md" in user_message
     assert "Status: Accepted" in user_message
+
+
+# ---------------------------------------------------------------------------
+# PLAN-0034 prong 2 — plan-drafter subagent exemption (SD-1 (a))
+#
+# The project-level classifier gate must STOP denying the sanctioned
+# `plan-drafter` subagent's draft-write (the deadlock), while still gating the
+# MAIN agent's inline new-artifact write (G2 preserved). The exemption is a
+# deterministic check that short-circuits BEFORE the classifier (no network).
+# ---------------------------------------------------------------------------
+
+
+def _plan_drafter_payload(
+    file_path: str = "docs/plans/0099-new-plan.md",
+    tool_name: str = "Write",
+) -> dict[str, Any]:
+    """A PreToolUse payload as it arrives from the plan-drafter subagent:
+    ``agent_id`` present (the subagent-only signal G5 keys on) + ``agent_type``
+    == 'plan-drafter'. The path is a fresh governance NNNN so that WITHOUT the
+    exemption the G2 pre-filter would fire and the classifier would be consulted.
+    """
+    return {
+        "hook_event_name": "PreToolUse",
+        "tool_name": tool_name,
+        "tool_input": {"file_path": file_path, "content": "# PLAN-0099\n"},
+        "agent_id": "sub-pd-001",
+        "agent_type": "plan-drafter",
+    }
+
+
+def test_is_plan_drafter_subagent_signal(inproc: dict[str, Any]) -> None:
+    """The helper keys on agent_id (present + non-empty) AND agent_type."""
+    assert _hook._is_plan_drafter_subagent({"agent_id": "x", "agent_type": "plan-drafter"})
+    # empty / whitespace / missing / non-string agent_id => not a subagent
+    assert not _hook._is_plan_drafter_subagent({"agent_id": "", "agent_type": "plan-drafter"})
+    assert not _hook._is_plan_drafter_subagent({"agent_id": "  ", "agent_type": "plan-drafter"})
+    assert not _hook._is_plan_drafter_subagent({"agent_type": "plan-drafter"})
+    assert not _hook._is_plan_drafter_subagent({"agent_id": 123, "agent_type": "plan-drafter"})
+    # wrong / missing agent_type => not the sanctioned drafter
+    assert not _hook._is_plan_drafter_subagent({"agent_id": "x", "agent_type": "general-purpose"})
+    assert not _hook._is_plan_drafter_subagent({"agent_id": "x"})
+
+
+def test_prong2_plan_drafter_write_exempt_and_short_circuits(
+    monkeypatch: pytest.MonkeyPatch, inproc: dict[str, Any]
+) -> None:
+    """AC-7a + AC-7c: a plan-drafter Write to docs/plans/NNNN is allowed
+    WITHOUT invoking the classifier (short-circuit before the LLM call)."""
+    classifier_called = {"n": 0}
+
+    def spy(payload: dict[str, Any]) -> dict[str, Any]:
+        classifier_called["n"] += 1
+        # Would DENY if reached — proves the exemption short-circuits.
+        return {
+            "decision": "dispatch",
+            "matched_rows": ["G2"],
+            "reason": "x",
+            "dispatch": {
+                "subagent": "plan-drafter",
+                "artifact_kind": "plan",
+                "task_summary": "draft",
+            },
+        }
+
+    monkeypatch.setattr(_sc, "classify", spy)
+    rc, out = _run_inproc(monkeypatch, _plan_drafter_payload())
+    assert rc == 0
+    assert out == ""  # allowed, no deny
+    assert classifier_called["n"] == 0  # short-circuited before classify (no network)
+
+
+def test_prong2_main_agent_new_write_still_gated(
+    monkeypatch: pytest.MonkeyPatch, inproc: dict[str, Any]
+) -> None:
+    """AC-7b: a MAIN-agent (no agent_id) new-PLAN Write is still gated — the
+    exemption is subagent-only, so G2 is preserved for the main agent."""
+    _patch_classify(
+        monkeypatch,
+        {"decision": "pause", "matched_rows": ["G2"], "reason": "consuming fresh PLAN number"},
+    )
+    rc, out = _run_inproc(monkeypatch, _g2_payload())  # no agent_id
+    assert rc == 0
+    parsed = json.loads(out)
+    assert parsed["hookSpecificOutput"]["permissionDecision"] == "deny"
+    assert "G2" in parsed["hookSpecificOutput"]["permissionDecisionReason"]
+
+
+def test_prong2_other_subagent_not_exempt(
+    monkeypatch: pytest.MonkeyPatch, inproc: dict[str, Any]
+) -> None:
+    """A different subagent (agent_id present but agent_type != plan-drafter) is
+    NOT exempt — the exemption is scoped to the one sanctioned drafter."""
+    classifier_called = {"n": 0}
+
+    def spy(payload: dict[str, Any]) -> dict[str, Any]:
+        classifier_called["n"] += 1
+        return {"decision": "pause", "matched_rows": ["G2"], "reason": "x"}
+
+    monkeypatch.setattr(_sc, "classify", spy)
+    payload = _plan_drafter_payload()
+    payload["agent_type"] = "general-purpose"
+    rc, out = _run_inproc(monkeypatch, payload)
+    assert classifier_called["n"] == 1  # gated — classifier consulted
+    parsed = json.loads(out)
+    assert parsed["hookSpecificOutput"]["permissionDecision"] == "deny"
+
+
+def test_prong2_plan_drafter_empty_agent_id_not_exempt(
+    monkeypatch: pytest.MonkeyPatch, inproc: dict[str, Any]
+) -> None:
+    """Defensive: agent_type='plan-drafter' but an empty agent_id is NOT a real
+    subagent call (matches G5 semantics) — not exempt, still gated."""
+    classifier_called = {"n": 0}
+
+    def spy(payload: dict[str, Any]) -> dict[str, Any]:
+        classifier_called["n"] += 1
+        return {"decision": "pause", "matched_rows": ["G2"], "reason": "x"}
+
+    monkeypatch.setattr(_sc, "classify", spy)
+    payload = _plan_drafter_payload()
+    payload["agent_id"] = ""
+    rc, out = _run_inproc(monkeypatch, payload)
+    assert classifier_called["n"] == 1  # gated
+    parsed = json.loads(out)
+    assert parsed["hookSpecificOutput"]["permissionDecision"] == "deny"

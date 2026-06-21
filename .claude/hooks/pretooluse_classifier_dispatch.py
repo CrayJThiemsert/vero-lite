@@ -259,13 +259,55 @@ def _build_dispatch_deny_reason(
     )
 
 
-def main() -> int:
+def _is_plan_drafter_subagent(payload: dict[str, Any]) -> bool:
+    """True iff this PreToolUse call comes from the sanctioned ``plan-drafter``
+    subagent (PLAN-0034 prong 2 / SD-1 (a)).
+
+    Reuses the **same signal G5 keys on**
+    (``pretooluse_git_deny._is_subagent_call``): ``agent_id`` is present +
+    non-empty *only* when the hook fires inside a subagent call (PLAN-0009
+    Step 1a Q3, empirically re-confirmed by the PLAN-0034 Step-3 spike — the
+    live Claude Code harness populates both ``agent_id`` and ``agent_type`` on
+    subagent PreToolUse payloads, though the public hooks docs currently omit
+    them). We additionally require ``agent_type == "plan-drafter"`` so the
+    exemption is scoped to the one sanctioned governance drafter (the codebase
+    already name-couples to it: ``settings.json`` SubagentStop matcher,
+    ``_sonnet_classifier.DISPATCH_ALLOWED_SUBAGENTS``).
+
+    Version-dependent + fail-closed toward MORE gating: if a future Claude Code
+    version stops populating these fields this returns ``False`` and the gate
+    falls back to its prior (deny-prone) behaviour — never the reverse.
+    """
+    agent_id = payload.get("agent_id")
+    if not isinstance(agent_id, str) or not agent_id.strip():
+        return False
+    agent_type = payload.get("agent_type")
+    return isinstance(agent_type, str) and agent_type.strip() == "plan-drafter"
+
+
+# ``main`` is a linear guard-clause dispatcher (parse -> validate -> prong-2
+# exempt -> detect signature -> classify -> map verdict); the prong-2 exemption
+# (PLAN-0034) adds the 11th branch. Decomposing would scatter the single
+# PreToolUse contract across helpers without reducing real complexity.
+def main() -> int:  # noqa: C901
     try:
         payload = json.load(sys.stdin)
     except json.JSONDecodeError:
         return 0  # fail-open on malformed input (protocol expects valid JSON)
 
     if not isinstance(payload, dict):
+        return 0
+
+    # PLAN-0034 prong 2 (SD-1 (a)): the sanctioned `plan-drafter` subagent's
+    # draft-write is governed by the H2 allowlist
+    # (`pretooluse_plan_subagent_write_deny.py`), NOT by this project-level
+    # classifier gate. Without this exemption the gate fires on the drafter's
+    # own `docs/(adr|plans)/NNNN-*.md` write (G2 signature) and denies it — the
+    # mutual deadlock the dispatch creates. Short-circuit BEFORE the classifier
+    # (no network; AC-7c). The main agent carries no `agent_id`, so its inline
+    # new-artifact write is still gated (G2 preserved; AC-7b). G5 still denies
+    # the subagent's git ops (separate hook, untouched; AC-7d).
+    if _is_plan_drafter_subagent(payload):
         return 0
 
     tool_name = payload.get("tool_name", "")
