@@ -158,6 +158,26 @@ review, it just removes the Cray-paste relay step (resolves PLAN-0008
 OQ-D in-harness arm; cross-tab arm remains blocked by K-1/K-2 per
 ADR-013 OQ-1).
 
+**NOTE — the `plan-drafter` draft-write is NOT re-gated by the
+project-level classifier arm (PLAN-0034 prong 2; SD-3 = (a) PLAN-only).**
+When the classifier dispatches `plan-drafter` (D1 / D2 above), **G2 governs
+only the *main agent's* inline new-artifact write** — a `Write` of a fresh
+`docs/(adr|plans)/NNNN-*.md` carrying **no** `agent_id`. The sanctioned
+`plan-drafter` subagent's uncommitted draft-write of that same path is
+governed by the **H2 subagent-hook allowlist**
+(`pretooluse_plan_subagent_write_deny.py`, wired via
+`.claude/agents/plan-drafter.md`) **+ G5 (commit-block) + PR review** — NOT
+by the project-level classifier arm: `pretooluse_classifier_dispatch.py`
+short-circuits on the **G5 `agent_id` / `agent_type` subagent signal**
+before classifying, so the drafter is exempt while a **main-agent write
+stays gated** (G2 preserved). This resolves the G1/G2 drafting deadlock
+(PLAN-0034 failure-mode B). The exemption is **narrow** — it unblocks only
+the *uncommitted draft-write*; **G5, the commit boundary, ADR-009 D2 "only
+Code commits", and ADR-013 D2 are untouched** (no ADR amendment —
+SD-3 = (a)). Code never authors *committed* governance unilaterally; the
+drafter stays bounded by the H2 allowlist to `docs/(adr|plans)/*.md`.
+Cross-link: PLAN-0034 (impl #397 / `c69b6e2`).
+
 ## Verification-loop triggers (Axis B — ADR-0018; gate-emitted, NOT classifier-mediated)
 
 The V-row class is distinct from G/C/L/H (always-pause) and D (classifier
@@ -212,7 +232,14 @@ Telegram + the verdict trail are the channel of record.
   continuation instruction). Bypass-immune (PreToolUse `deny` fires
   regardless of `permissionMode` per ADR-013 D2 precedent). The
   on-disk file read defeats in-payload spoofing (the hook reads the
-  real file, not the `tool_input`).
+  real file, not the `tool_input`). **A `plan-drafter` subagent's
+  draft-write is exempt from this arm (PLAN-0034 prong 2):
+  `_is_plan_drafter_subagent(payload)` short-circuits (`return 0`) at
+  the top of `main()`, before `_classify()`, keyed on the G5
+  `agent_id` / `agent_type` signal — so the subagent's uncommitted
+  draft lands under H2 (`pretooluse_plan_subagent_write_deny.py`) + G5
+  + PR review, while a main-agent write (no `agent_id`) is still gated.
+  See the Auto-handoff triggers §NOTE; impl #397 / `c69b6e2`.**
 - Updates to this file **must** stay machine-readable: leading `#`/`|`
   table rows, no embedded HTML, no inline-code list-items inside table
   cells. The classifier reads it as plain text — content edits propagate
@@ -230,4 +257,4 @@ Telegram + the verdict trail are the channel of record.
 
 ---
 
-*Last updated: 2026-06-10 (Session 51 — PLAN-0021 Step 5 / ADR-0018 T3: added the **Verification-loop triggers** section with the V1 row — gate-emitted deterministic dispatch by `_goal_gate.py`, NOT classifier-mediated; classifier `subagent` values unchanged; chain-cap shared; warn-only v1. Previous: 2026-06-08 (Session 45 — L1 path-class threshold refinement: `l1_threshold_for` (6 code / 15 prose-doc) + subagent-completion L1 reset (`_handle_agent_completion`), after L1 false-fired on multi-section governance authoring; Cray-approved per-diff self-modification. See `docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md`. Previous: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-2: PreToolUse classifier dispatch LIVE via `pretooluse_classifier_dispatch.py`; G1/G2 enforcement rows expanded with PreToolUse arm citation; "How the classifier reads this file" §flipped from "deferred to 5c-2" to "LIVE in 5c-2". Same-session: Step 5c-1 added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" §with the 3rd decision value `dispatch`. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*
+*Last updated: 2026-06-21 (Session 72 — PLAN-0034 Step 5 / SD-3 = (a) PLAN-only: annotated the **Auto-handoff triggers** §(NOTE) + the **PreToolUse classifier dispatch** bullet to record the prong-2 scope refinement — `pretooluse_classifier_dispatch.py` short-circuits on the G5 `agent_id`/`agent_type` signal so a `plan-drafter` subagent's uncommitted draft-write of a fresh `docs/(adr|plans)/NNNN-*.md` is exempt from the project-level classifier arm (governed by H2 `pretooluse_plan_subagent_write_deny.py` + G5 + PR review), while the main-agent write stays G2-gated. Annotation only — no new row, no row-count change; G5 / ADR-009 D2 / ADR-013 D2 untouched. Impl shipped #397 / `c69b6e2`; cross-link PLAN-0034. Cowork-drafted (ADR-009 D1), Code commits (D2). Previous: 2026-06-10 (Session 51 — PLAN-0021 Step 5 / ADR-0018 T3: added the **Verification-loop triggers** section with the V1 row — gate-emitted deterministic dispatch by `_goal_gate.py`, NOT classifier-mediated; classifier `subagent` values unchanged; chain-cap shared; warn-only v1. Previous: 2026-06-08 (Session 45 — L1 path-class threshold refinement: `l1_threshold_for` (6 code / 15 prose-doc) + subagent-completion L1 reset (`_handle_agent_completion`), after L1 false-fired on multi-section governance authoring; Cray-approved per-diff self-modification. See `docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md`. Previous: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-2: PreToolUse classifier dispatch LIVE via `pretooluse_classifier_dispatch.py`; G1/G2 enforcement rows expanded with PreToolUse arm citation; "How the classifier reads this file" §flipped from "deferred to 5c-2" to "LIVE in 5c-2". Same-session: Step 5c-1 added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" §with the 3rd decision value `dispatch`. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*
