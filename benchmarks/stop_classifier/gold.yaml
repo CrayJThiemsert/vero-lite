@@ -266,3 +266,81 @@ cases:
           example) and angle (DSR/lineage) both decided. The goal, acceptance
           criteria, and steps are all known from the brief. The next artifact is
           a PR-ready PLAN draft in docs/plans/.
+
+  # --- PLAN-0034 prong-1 over-fire negatives (s67/s68/s71) (6) ---------------
+  # The classifier OVER-FIRED `dispatch` on edits that are NOT new-artifact
+  # authoring: a CLAUDE.md edit (s68), a PLAN status-flip (s67), and an
+  # already-routed/unratified task (s71, 3x live). These pin prong-1's three
+  # guards (non-NNNN target / already-dispatched / existing-lifecycle-flip).
+  # expected: pause makes any `dispatch` a HARD FAIL — exactly the over-fire
+  # being killed. Contrast with dispatch-plan-after-ratified-formality above.
+  - id: pause-claudemd-already-routed
+    expected: pause
+    description: A CLAUDE.md constitutional edit Cray already routed to Cowork — not a docs/(adr|plans)/NNNN target, no number to consume (PLAN-0034 prong 1a/1b; s68).
+    transcript_turns:
+      - role: user
+        text: "เอา routing rule ไปใส่ CLAUDE.md §6 เลย — ให้ Cowork ร่าง"
+      - role: assistant
+        text: |
+          Understood — the routing-standard promotion lands in CLAUDE.md §6, and
+          you've routed the drafting to Cowork. CLAUDE.md is a constitutional edit
+          (Cowork-drafted by convention), not a docs/adr or docs/plans NNNN
+          artifact — there is no new number to consume. I've built the Cowork
+          dispatch; nothing for me to author inline.
+
+  - id: pause-plan-status-flip
+    expected: pause
+    description: Flipping an existing PLAN's Status / git mv to done/ — lifecycle bookkeeping on an existing artifact, not new-artifact authoring (PLAN-0034 prong 1c).
+    transcript_turns:
+      - role: assistant
+        text: |
+          PLAN-0028 is complete and Cray-approved. Next I will flip its Status
+          from "Ready for execution" to "Complete" and git mv docs/plans/0028-*.md
+          into docs/plans/done/. This is a lifecycle edit of an existing PLAN, not
+          a new artifact — there is nothing to draft.
+
+  - id: pause-already-dispatched-cowork
+    expected: pause
+    description: A task with an existing Cowork dispatch handoff; the turn ends awaiting the returned draft — re-dispatch would be spurious (PLAN-0034 prong 1b).
+    transcript_turns:
+      - role: assistant
+        text: |
+          I've written the Cowork dispatch for the new PLAN and validated its
+          frontmatter. The work is now routed to Cowork (ADR-009 D1); the next
+          step is to wait for Cowork to return the draft, then I commit it. There
+          is nothing for me to author until that draft comes back.
+
+  - id: pause-dispatch-after-cowork-chosen
+    expected: pause
+    description: Live s71 — the PLAN-0034 drafting was dispatched AFTER Cray had already chosen Cowork; already routed, so a dispatch is the spurious fire (PLAN-0034 prong 1b).
+    transcript_turns:
+      - role: user
+        text: "อันนี้ให้ Cowork ร่างนะ"
+      - role: assistant
+        text: |
+          Got it — PLAN-0034 drafting goes to Cowork. I'm building the Cowork
+          dispatch file now; the PLAN will be authored by Cowork (ADR-009 D1) and
+          I'll commit it. The drafting is already routed — there is nothing for me
+          to dispatch.
+
+  - id: pause-redispatch-already-dispatched
+    expected: pause
+    description: Live s71 — a re-dispatch of the already-Cowork-dispatched PLAN-0034 task; a second dispatch of the same work (PLAN-0034 prong 1b).
+    transcript_turns:
+      - role: assistant
+        text: |
+          The Cowork ratification dispatch for PLAN-0034 is written and validated;
+          the fold-in is routed to Cowork. I am waiting for Cowork to return the
+          edited PLAN so I can review and commit it. The task is already
+          dispatched — re-routing it would duplicate work.
+
+  - id: pause-new-adr-while-unratified
+    expected: pause
+    description: Live s71 — "draft a new ADR for PLAN-0034" while the ADR-need (SD-3) was still unresolved and no Cray ratification had landed; no ratified drafting need (PLAN-0034 prong 1b/1c; cf. pause-pending-formality-decision).
+    transcript_turns:
+      - role: assistant
+        text: |
+          One open question for PLAN-0034 is whether prong 2 needs an ADR-013
+          amendment or is PLAN-only (SD-3). That is still unratified — Cray has not
+          decided yet. Until the ADR-need is ratified there is no new ADR to draft;
+          drafting one now would pre-empt the decision.
