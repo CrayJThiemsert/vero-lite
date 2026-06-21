@@ -12,6 +12,52 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-21 (session-71 reconcile): the **Session-66 `e5f9774`** CF block (PLAN-0028 Step 5 RAN + VERIFIED; PLAN-0029 whitespace calibration minted + implemented; canonical B-γ numbers locked) fell outside the 4-newest-sessions window when the session-71 PLAN-0034 ratify+implement block landed (Current Focus 8-block cap, R2)._
+
+> **Session 66 (head_commit `e5f9774`) — PLAN-0028 Step 5 RAN + VERIFIED;
+> PLAN-0029 (entity-key whitespace calibration) minted + implemented; canonical B-γ
+> numbers locked.** Building on session 65's offline Step 2/3 (#350 — the data-driven
+> harness + the aquaculture/supply_chain corpora), this session got the Cray
+> host-state go and ran **PLAN-0028 Step 5** — the ONE combined scored sweep
+> (`gpt-oss:20b` @ MS-S1, warm-first, 80 breach items = 40 aquaculture + 40
+> supply_chain, serialized in one warm window via a `systemd-run --user` unit, ~18
+> min, **0 errors / 0 invalid SQL**). Every score traced to a real model verdict via
+> the Read tool (session-46 confirm-don't-infer). **Cross-vertical finding
+> (Cray-ratified framing):** arm (c) **lean RAG ties arm (a) governed on BOTH new
+> verticals** (canonical **100% / 100%** post-calibration), while arm (b) **raw
+> text-to-SQL swings 0% (aquaculture) ↔ 100% (supply_chain)** — the swing is
+> **evidence FOR the moat, not a bug**: the explanatory variable is **semantic
+> distance** between the NL question and the physical schema (supply_chain breach = a
+> clean numeric threshold raw SQL nails; aquaculture breach hides meaning in a
+> free-text `description` + a named pond subtype raw SQL must guess → 0 rows). arm (c)
+> is robust because the corpus carries the mapping ("ontology in prose"); the governed
+> stack declares it once. **OQ-2 answered: the arm-c≈arm-a tie REPLICATES.** **The
+> single aquaculture arm-c miss (aqua-h06) was a grader MEASUREMENT artifact** — the
+> model named the right pond `pond-A116` with a **U+202F NARROW NO-BREAK SPACE**
+> separator the hyphen-only `normalize_primary_key` didn't recover. Under Cray's
+> **universality** criterion the fix split two ways: **(1) PLAN-0029** (small, offline)
+> — extend the B-6 calibration to fold the whitespace-separator family
+> ({U+0020,U+00A0,U+2007,U+202F,U+2060} → ASCII `-`, recover-only / never-invent) + an
+> **offline re-grade** of the stored dumps (no host-state); **(2) the product
+> entity-trust gap** (`recommender._compose_llm_record` trusts model-emitted entity
+> PKs verbatim, no resolution against the declared object universe) = the **real
+> universality investment**, routed OUT → a future **ADR + PLAN-0030** (design-first).
+> PLAN-0029 was **minted #352** — the **G2 boundary blocked both the in-harness
+> plan-drafter AND Code** from writing a new PLAN (G2 ≠ G1, no in-context-approval
+> release; **Cowork authored on Desktop, Code committed** via a `docs/*` chore PR) —
+> then **implemented #353** (`feat(benchmarks)`): the whitespace fold + 4 regression
+> tests + the offline re-grade harness (`benchmarks/procedure_comparison/regrade.py`).
+> **Re-grade VERIFIED via Read:** **exactly one** flip (aqua-h06) → aquaculture arm-c
+> **39/40 → 40/40**; supply_chain unchanged 40/40; arm (b) whitespace-invariant by
+> construction (not re-gradable from the dump → carried forward). Gate green: ruff +
+> mypy clean, `tests/benchmark` **151 passed** (+4). **Step 6 B-3 REPORT cross-vertical
+> extension SHIPPED (#355)** — canonical tables + OQ-1/OQ-3 disclosures +
+> threats-to-validity → **PLAN-0028 COMPLETE end-to-end**. **Frontier (next session,
+> Cowork-routed; see the session-66 closeout handoff `…1405…`):** the
+> PLAN-0028/0029 status-flips + done-moves (Cowork, G1) and the ADR/PLAN-0030 +
+> vertical-#3 research (Cowork-routed). Nothing blocks Code. AI-assisted (Claude Code,
+> session 66); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-20 (session-71 reconcile): the **Session-64 `0aee4eb`** CF block (B-γ executed end-to-end — PLAN-0027 Steps 2–5 SHIPPED; PLAN-0019 Step B-γ / AC B-3 DONE) fell outside the 4-newest-sessions window {71, 69, 67, 66} when the session-71 PLAN-0033 Phase C closeout block landed._
 
 > **Session 64 (head_commit `0aee4eb`) — B-γ EXECUTED END-TO-END:
@@ -1318,6 +1364,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-15 | **PLAN-0024 (NL-query T2 engine enrichment) SHIPPED — engine half of the T2 wedge (#316 plan / #317 engine, `f4aa7fe`, session 59)** _(rotated 2026-06-21, session 71)_ — `StructuredQuery` gains `max/min/avg/sum` (+ optional `group_by`) computed in the deterministic execute stage + a new `NlAnswer.aggregate` grounding receipt (never the phrase LLM), plus a `NameResolve` cross-type name→id descriptor (resolve-then-filter; `object_type` stays single/enum-constrained, group keys relabelled id→title); translate prompt now requires the implied filter + exact enum grounding. Gold ceiling cases nl-08/09/10/11 moved onto the deterministic structured-result lens (`_aggregate_ok`). Anti-hallucination AC-5 preserved (empty/no-numeric/unresolved short-circuit to no-records). 11 new offline tests; suite 1511/22 (+30); ruff+mypy clean. Governance: Cray scoped engine-only (UI→PLAN-0025, SD-1 deferred) → `plan-drafter` authored PLAN-0024 → ungated Cowork placed the file (G2 denied all in-harness Code writes) → Code committed #316 → merged → Code executed #317; SD-1 done as the recommended pre-step; one L1 loop-detect resolved by a Cray-approved counter reset, no Bash | `f4aa7fe` (#316/#317) / `services/engine/nl_query.py` + `docs/plans/done/0024-nl-query-t2-engine-enrichment.md` |
 | 2026-06-14 | **Two backlog quick-wins SHIPPED (Code-solo, #311 + #312, `9595d3e`, session 58)** _(rotated 2026-06-21, session 71)_ — cleared after the audit-framework arc closed; a separate small harness-tooling batch. **#311** (`f2ee579`, `test(stop-classifier):`): 3 "dispatch discriminator" gold cases added to `benchmarks/stop_classifier/gold.yaml` (20→23) pinning the surfaced-vs-ratified distinction the local classifier got wrong in s57 (over-fired `plan-drafter` on ADR/PLAN mentions while formality was a PENDING Cray decision — 2 cases) and right in s58 (post-ratification dispatch correct); 2 `pause` negatives + 1 `dispatch` positive, safety-weighted (spurious dispatch = HARD FAIL); offline test green (4 passed); live re-score pending Cray go; RESULTS.md addendum (recorded 2026-06-12 run predates the cases). **#312** (`9595d3e`, `fix(handoffs):`, PLAN-004 Phase B): handoff-validator warning-swallow bug fixed — `_schema.py::_build()` discarded its `errors` list on the otherwise-valid path so `_check_unknown()` WARNINGs were unreachable; `Frontmatter` gains `warnings`, `validate_file()` surfaces it, CLI prints it (precommit unchanged); regression tests strengthened; `tests/handoffs/` 573 passed / 2 skipped; ruff + mypy clean | `9595d3e` (#311/#312) / `benchmarks/stop_classifier/gold.yaml` + `tools/handoffs/_schema.py` |
 | 2026-06-14 | **PLAN-0023 (PDPA RoPA-lite, step-2 of audit-framework-prep) SHIPPED (#308 PLAN + #309 deliverables, `afea6b3`, session 58)** _(rotated 2026-06-20, session 71)_ — two tracked deliverables: reusable RoPA-lite template (`docs/conventions/partner-ropa-lite.md`, canonical) + NPD synthetic example (`docs/strategy/public/partner-sim-run1-ropa-example.md`, SYNTHETIC), each RoPA slot annotated with a data-quality/lineage hook; example's DSR/lineage→ADR-011 section maps 4 gaps→implications (PII-in-free-text→log-by-reference; scattered actor identity→actor unification; PK reuse + NTP drift→lineage/valid-from + ordering; under-recording→completeness-not-assumed). Governance: Cray ratified PLAN formality (3 decisions) → `plan-drafter` subagent authored PLAN-0023 (ADR-013 D1) → Code committed (#308, ADR-009 D2) → Code executed deliverables Code-direct (#309); PLAN archived to `done/`. SD-1 kept (AC-6 in-PLAN). ADR-011 still gated on a real partner — synthetic run INFORMS but never triggers PLAN-0005 §8.1 (ADR-0020 R3). Carried open: SD-4/SD-5/OQ-A | `afea6b3` (#308/#309) / `docs/conventions/partner-ropa-lite.md` + `docs/strategy/public/partner-sim-run1-ropa-example.md` |
 | 2026-06-13 | **ADR-0020 (partner-sim venue) RATIFIED Proposed→Accepted (#302, `4d1347b`, session 57)** _(rotated 2026-06-20, session 69)_ — Cray ratified in-session ("เอาตาม Cowork ทุกข้อ"); all four venue SDs + dispatch-SD-1 accepted per Cowork rec (Cowork-authored fold per ADR-009 D1, Code R2-reviewed + committed). SD-1 N=3 (→D2/R2); SD-2 one-project-per-business-type (→D4; R-PS4 reframed as a guard); SD-3 size/region/maturity enums + run-1 default energy·mid·th-regional·mixed-legacy (→D3 input); SD-4 "what we refused to share" ratified-required (→D3 output). R1/R2/R3 substance unchanged (#300 errata settled those). Instruction file reconciled same PR (6 ratification-pending markers → ratified; Code-amends-conventions, ADR-009 D2). dispatch-SD-1 (gitignored): one-pager sector-callout forbidden-action note trimmed, R1-clean seed untouched. Venue now ACCEPTED guarded-trial (R-PS1..R-PS4) — live action is Cray's (launch energy run-1) | `4d1347b` (#302) / `docs/adr/0020-partner-sim-venue.md` + `docs/conventions/partnersim_project_instructions.md` |
