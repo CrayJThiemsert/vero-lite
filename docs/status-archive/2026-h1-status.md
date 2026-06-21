@@ -12,6 +12,38 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-22 (session-72 reconcile): the **Session-67 `1493196`** CF block (PHASE A: ADR-0022 RATIFIED Accepted #361 + PLAN-0030 authored & committed #363) fell outside the 4-newest-sessions window when the session-72 PLAN-0034 fully-complete block landed (Current Focus 8-block cap, R2)._
+
+> **Session 67 (head_commit `1493196`) — PHASE A: ADR-0022 RATIFIED
+> ACCEPTED (#361) + PLAN-0030 AUTHORED & COMMITTED (#363).** The governed-entity-resolution construct (the universality
+> lever PLAN-0029 routed out) flipped **Proposed → Accepted** at Cray's
+> ratification (2026-06-18), recording the resolved **design fork**: **F1 = 1-b**
+> (DB/ontology-object lookup vs the declared object universe) primary **+ 1-c**
+> (deterministic `subject_id`, `recommender.py:265`) fall-back · **F2 = 2-c** (fall
+> back to the deterministic subject on a non-resolving model PK) **+ a
+> resolution-outcome trace** (PDPA-forward — never silently fabricate identity) ·
+> **D3 = α** (one construct housing entity resolution (a) + verify+reshape (b)).
+> **Authoring split (ADR-009 D1/D2):** Code landed the mechanical Status flip
+> under Cray's **direct in-context instruction**; the **G1 gate then correctly
+> blocked Code** from authoring the ADR narrative once `Status:Accepted`, so
+> **Cowork (Tier-1) authored the ratification narrative + the residual-tense
+> coherence fold**; Code committed (#361, merge `5c51a75` / ratify `a9634e5`).
+> Construct + framing **unchanged** from the Proposed draft (#359) — only the
+> ratification outcome is recorded. **R2 verify:** the ratified ADR was read back
+> on-disk + grep-swept (no present-tense-pending stragglers) before commit.
+> **Phase A tail — through PLAN-0030 commit:** Code wrote the Code→Cowork
+> **PLAN-0030** dispatch (`…1210…`); Cowork authored it (ADR-009 D1, the
+> entity-resolution build / member (a)); Code reviewed + committed the draft (#363,
+> `1493196`). **NEXT — Cray adjudicates 2 surfaced decisions** before
+> implementation: **SD-1** (resolution marker: trace-only `ReasoningStep` [Cowork
+> rec] vs an optional `EntityRef.resolution` field on the shared ADR-007 D2
+> envelope) · **SD-2** (shared `_event_subject_ref(event)` helper [Cowork rec] vs
+> duplicate — the helper edits the guarded `:265` line, behavior-preserving). Then
+> Code implements member (a) on a `feat/*` branch (offline-only; impl-gate
+> ADR-0022-Accepted satisfied). Then **Phase B** (Group B foundation: ORM emitter +
+> registry discovery) per the session-67 roadmap handoff. AI-assisted (Claude Code,
+> session 67); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-21 (session-71 reconcile): the **Session-66 `e5f9774`** CF block (PLAN-0028 Step 5 RAN + VERIFIED; PLAN-0029 whitespace calibration minted + implemented; canonical B-γ numbers locked) fell outside the 4-newest-sessions window when the session-71 PLAN-0034 ratify+implement block landed (Current Focus 8-block cap, R2)._
 
 > **Session 66 (head_commit `e5f9774`) — PLAN-0028 Step 5 RAN + VERIFIED;
@@ -1364,6 +1396,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-15 | **PLAN-0026 (NL-query aggregate metric-semantics) AUTHORED+RATIFIED+MERGED (#321) then Phase B (deterministic rewrite seam) MERGED (#322, `19eeb21`, session 60)** _(rotated 2026-06-22, session 72)_ — closes the filter-omission-on-aggregate-superlative gap PLAN-0024 left open (nl-08/nl-11). Diagnosis (Cray-directed): a 4-model MS-S1 sweep + a 3-variant prompt escalation both NEGATIVE → it's a typed-query-on-untyped-metric data-model problem, not model/prompt (two external LLMs concurred). Phase B = a post-translate rewrite seam in `nl_query.py`: `group_by` inference for "which <entity>" superlatives (AC-2, reshape-only) + a heterogeneous-aggregate coherence rewrite composing the dominant-unit filter in the engine (AC-3, model never re-supplies it = v2-regression-proof) + a clarify-not-silent-no-data guard (AC-4) + `NlAnswer.outcome: Literal["answered","no_data","clarify"]` (SD-1, Cray-approved). Offline oracle feeds the model's known-bad `{filters:[], operation:max, group_by:null}` and asserts the seam → `result_count==7`, value 96.5, top "Battery Bank A" structurally (not phrase-rescued). Suite 1527/22; ruff+mypy clean; anti-hallucination 12/12 preserved (AC-5); one `# noqa: C901` justified on the orchestrator. Governance: Cray "governed-first" → `plan-drafter` G2-denied → Cowork (ungated) authored → Code committed #321 → Cray ratified Proposed→Accepted → Phase B #322. Phase A (`measured_kind` ontology enum, the principled kind-word fix) GATED on the T2-vs-T3 roadmap call + SD-2's ADR; PLAN stays ACTIVE (not `done/`) | `19eeb21` (#321/#322) / `services/engine/nl_query.py` + `docs/plans/0026-nl-query-aggregate-metric-semantics.md` |
 | 2026-06-15 | **PLAN-0024 (NL-query T2 engine enrichment) SHIPPED — engine half of the T2 wedge (#316 plan / #317 engine, `f4aa7fe`, session 59)** _(rotated 2026-06-21, session 71)_ — `StructuredQuery` gains `max/min/avg/sum` (+ optional `group_by`) computed in the deterministic execute stage + a new `NlAnswer.aggregate` grounding receipt (never the phrase LLM), plus a `NameResolve` cross-type name→id descriptor (resolve-then-filter; `object_type` stays single/enum-constrained, group keys relabelled id→title); translate prompt now requires the implied filter + exact enum grounding. Gold ceiling cases nl-08/09/10/11 moved onto the deterministic structured-result lens (`_aggregate_ok`). Anti-hallucination AC-5 preserved (empty/no-numeric/unresolved short-circuit to no-records). 11 new offline tests; suite 1511/22 (+30); ruff+mypy clean. Governance: Cray scoped engine-only (UI→PLAN-0025, SD-1 deferred) → `plan-drafter` authored PLAN-0024 → ungated Cowork placed the file (G2 denied all in-harness Code writes) → Code committed #316 → merged → Code executed #317; SD-1 done as the recommended pre-step; one L1 loop-detect resolved by a Cray-approved counter reset, no Bash | `f4aa7fe` (#316/#317) / `services/engine/nl_query.py` + `docs/plans/done/0024-nl-query-t2-engine-enrichment.md` |
 | 2026-06-14 | **Two backlog quick-wins SHIPPED (Code-solo, #311 + #312, `9595d3e`, session 58)** _(rotated 2026-06-21, session 71)_ — cleared after the audit-framework arc closed; a separate small harness-tooling batch. **#311** (`f2ee579`, `test(stop-classifier):`): 3 "dispatch discriminator" gold cases added to `benchmarks/stop_classifier/gold.yaml` (20→23) pinning the surfaced-vs-ratified distinction the local classifier got wrong in s57 (over-fired `plan-drafter` on ADR/PLAN mentions while formality was a PENDING Cray decision — 2 cases) and right in s58 (post-ratification dispatch correct); 2 `pause` negatives + 1 `dispatch` positive, safety-weighted (spurious dispatch = HARD FAIL); offline test green (4 passed); live re-score pending Cray go; RESULTS.md addendum (recorded 2026-06-12 run predates the cases). **#312** (`9595d3e`, `fix(handoffs):`, PLAN-004 Phase B): handoff-validator warning-swallow bug fixed — `_schema.py::_build()` discarded its `errors` list on the otherwise-valid path so `_check_unknown()` WARNINGs were unreachable; `Frontmatter` gains `warnings`, `validate_file()` surfaces it, CLI prints it (precommit unchanged); regression tests strengthened; `tests/handoffs/` 573 passed / 2 skipped; ruff + mypy clean | `9595d3e` (#311/#312) / `benchmarks/stop_classifier/gold.yaml` + `tools/handoffs/_schema.py` |
 | 2026-06-14 | **PLAN-0023 (PDPA RoPA-lite, step-2 of audit-framework-prep) SHIPPED (#308 PLAN + #309 deliverables, `afea6b3`, session 58)** _(rotated 2026-06-20, session 71)_ — two tracked deliverables: reusable RoPA-lite template (`docs/conventions/partner-ropa-lite.md`, canonical) + NPD synthetic example (`docs/strategy/public/partner-sim-run1-ropa-example.md`, SYNTHETIC), each RoPA slot annotated with a data-quality/lineage hook; example's DSR/lineage→ADR-011 section maps 4 gaps→implications (PII-in-free-text→log-by-reference; scattered actor identity→actor unification; PK reuse + NTP drift→lineage/valid-from + ordering; under-recording→completeness-not-assumed). Governance: Cray ratified PLAN formality (3 decisions) → `plan-drafter` subagent authored PLAN-0023 (ADR-013 D1) → Code committed (#308, ADR-009 D2) → Code executed deliverables Code-direct (#309); PLAN archived to `done/`. SD-1 kept (AC-6 in-PLAN). ADR-011 still gated on a real partner — synthetic run INFORMS but never triggers PLAN-0005 §8.1 (ADR-0020 R3). Carried open: SD-4/SD-5/OQ-A | `afea6b3` (#308/#309) / `docs/conventions/partner-ropa-lite.md` + `docs/strategy/public/partner-sim-run1-ropa-example.md` |
