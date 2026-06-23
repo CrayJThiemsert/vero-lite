@@ -6,6 +6,20 @@
 **Related ADRs:** ADR-0022 (Accepted — D2 names **member (b)** verify+reshape; D3 = α one construct; **"(a) is a specific instance of (b)"**; **THIS PLAN builds member (b)**); ADR-0021 (the "classify, don't synthesize" lineage extended here); ADR-007 (D2 `RecommendedAction` envelope — generalised, not broken); ADR-010 (D5 LLM-backed `recommend()`; **IN-4 deterministic fail-safe — not regressed**); ADR-011 (earmarked audit framework — trace interplay **flagged, not designed**); ADR-016 (the governed procedure engine — the area member (b) lands in; it **carries no verify/reshape clause today**, the gap A1 fills); ADR-009 D1/D2 (Cowork drafts, Code commits); ADR-012 D4.3 (author≠reviewer disclosure); ADR-013 (Cowork = advisory governance drafter)
 **Related Plans:** PLAN-0030 (member (a) entity-resolution build — **the pattern this mirrors**); PLAN-0027 / PLAN-0028 (the **D-6 contamination guard** — the binding boundary); PLAN-0019 (the procedure-baseline harness + arm (a)); PLAN-0006 (§6.6 the LLM path + the retained deterministic fail-safe)
 
+> **SD adjudication (Cray, session 73) — SD-1 = (c) Hybrid, phased.** SD-1 = **(c) Hybrid**
+> (a deterministic floor **+** an advisory local-LLM-judge) with **4 locked constraints**
+> (① deterministic floor IS the offline gate · ② LLM-judge ADVISORY, never overrides the
+> surfaced action · ③ deterministic compare in v1, no 3rd LLM · ④ LLM-absent → mode
+> "(a)-only", disclosed not silent). SD-2 = **(a)** recommend-time (internal pipeline =
+> D→L→compare→reshape); SD-3 = **Phase-1 trace-only**, **Phase-2** reconsiders a
+> first-class backward-compatible `verification` field; **SD-4 = an ADR-0022 amendment**
+> (gates **Phase 2 only** — drafted this session as Deliverable A); SD-5 = engine-capability
+> vs grader-measurement kept distinct (grader-fix scoped **OUT**, TODO). The build is
+> **phased**: **Phase 1** = the deterministic floor (mechanism-agnostic D2(b), **no
+> amendment** — **Code executing in parallel, session 73**); **Phase 2** = the advisory
+> local-LLM-judge (**gated on the ADR-0022 amendment**). Per-SD decision stamps are in
+> §"Surfaced decisions"; the phase split is in §"Steps".
+
 > **Disclosure (ADR-012 D4.3).** The scope, the §B-3 target decomposition, and
 > the code-surface fact-pack originate in **Code's** session-71/72 investigation
 > (the A2 equal-rubric re-grade + the §B-3 residual decomposition + this session's
@@ -48,6 +62,19 @@ the model's free text. Member (a) already verifies/reshapes *identity*; member (
 verifies/reshapes the *action expression*. The procedure-engine step-to-step
 "reshape to the **next step's** contract" seam stays **forward-declared, NOT built
 here** (SD-2).
+
+**Phased build (SD-1 = (c) Hybrid, Cray-adjudicated session 73).** The verify mechanism
+is a **hybrid**: a **deterministic floor** (Phase 1) **+** an **advisory local-LLM-judge**
+(Phase 2). **Phase 1** ships the deterministic floor + reshape-from-the-resolved-handler +
+the `action_verification` trace + `verification_mode` scaffolding (trivially `"(a)-only"`
+while no judge exists); it implements the **mechanism-agnostic D2(b)**, needs **no
+amendment**, and is **executable on its own** (Code is building it in parallel, session
+73). **Phase 2** adds the **advisory** local-LLM-judge + a **deterministic**
+agreement/confidence step + **disclosed** degradation; it is **gated on the ADR-0022
+amendment** (this session's Deliverable A). The advisory judge **never overrides** the
+action the deterministic floor surfaces (constraint ②); the **offline oracle stays the
+acceptance gate** in both phases (constraint ①) — a live judge run is Cray-gated host-state
+evidence, not a gate (CLAUDE.md §8).
 
 ## Source of truth — ADR-0022 (Accepted 2026-06-18; stated, not re-opened)
 
@@ -120,7 +147,7 @@ decomposition, handler-verified from each dump's `suggested_handler`):
   title/description **already state the action** and **`:284`**
   `suggested_handler="echo"` — the deterministic path is **already internally
   consistent**; member (b) hooks the **LLM path only** (do not regress — AC-7).
-- `services/engine/structured.py:85-108` — `LlmJudgment` (what the model emits
+- `services/engine/llm/structured.py:85-108` — `LlmJudgment` (what the model emits
   pre-governance): `title` `:85`, `description` `:86`, `rationale` `:87-91`,
   `suggested_handler` `:103-105`; **`:111-125`** `_judgment_schema` **enum-binds
   `suggested_handler` to the vertical's registered handler names** — so the
@@ -171,8 +198,12 @@ decomposition, handler-verified from each dump's `suggested_handler`):
       **verified** for semantic consistency between its **prose**
       (title/description/rationale) and the **corrective action named by the
       resolved structured handler** (`judgment.suggested_handler`, the
-      enum-bound declared contract). The verify mechanism is **SD-1** (lean:
-      deterministic, from the structured handler — no new model call). `[impl]`
+      enum-bound declared contract). The verify mechanism is **SD-1 = (c) Hybrid**
+      (Cray-adjudicated): a **deterministic floor** (Phase 1 — from the structured
+      handler, **no new model call**, the offline gate) **+** an **advisory**
+      local-LLM-judge (Phase 2 — gated on the ADR-0022 amendment). The **floor decides
+      the surfaced action**; the judge is **advisory** (confidence + trace only, never
+      overrides). `[impl]`
 - [ ] **AC-2 — A consistent proposal is kept unchanged.** When the prose already
       expresses the action the structured handler names, the governed envelope is
       **kept as-is** (outcome `consistent`); the verify is a no-op beyond emitting
@@ -227,9 +258,21 @@ decomposition, handler-verified from each dump's `suggested_handler`):
       (iv) a **null/unallowed handler** → fail-safe skip + a `skipped` trace, no
       fabrication; (v) a verify/reshape error → the deterministic fail-safe
       (IN-4 intact); (vi) the **D-6** no-cross-import assertion (AC-6); (vii) the
-      full `uv run pytest -q` suite stays green (baseline stated at execution). `[impl]`
+      full `uv run pytest -q` suite stays green (baseline stated at execution).
+      Tests (i)–(vii) are the **Phase 1** deterministic-floor contract (the offline
+      gate). **Phase 2 adds (judge faked, still offline):** (viii) the **advisory
+      judge** faked → agreement raises confidence + a trace, **disagreement keeps the
+      floor's surfaced action** (advisory, never overrides — constraint ②); (ix)
+      **judge-absent** → mode `"(a)-only"` **disclosed** in the trace (degradation,
+      constraint ④), routed through the existing IN-4 path. The offline oracle stays
+      the acceptance gate in **both** phases (constraint ①); a live judge run is
+      Cray-gated host-state evidence, **not** a gate. `[impl]`
 
 ## Out of Scope
+
+> Non-goals for **both** phases unless a line says otherwise. **Note:** the advisory
+> local-LLM-judge is **not** out of scope — it is **Phase 2**, gated on the ADR-0022
+> amendment (Deliverable A); see §"Steps".
 
 - ❌ **The procedure-engine step-to-step "reshape to the next step's contract"
   seam** — forward-declared only (SD-2 (b); `orchestrator.py:90-95` /
@@ -238,43 +281,64 @@ decomposition, handler-verified from each dump's `suggested_handler`):
 - ❌ **Improving action *selection*** — member (b) verifies/reshapes the
   *expression* of the action the model already selected (in the structured
   handler); it does **not** change which handler the model picks. The 2 genuine
-  wrong-action cases (aqua-017/h05) stay wrong (AC-5).
+  wrong-action cases (aqua-017/h05) stay wrong (AC-5). The Phase-2 judge is
+  **advisory** and likewise never changes the selected handler (constraint ②).
 - ❌ **Touching / regressing the deterministic fail-safe** (`recommender.py:219-289`)
-  — already internally consistent; behaviour unchanged (AC-7).
-- ❌ **Leaking verify/reshape into the arm-(c) naive-RAG baseline** — the D-6
-  contamination guard (BINDING; AC-6).
+  — already internally consistent; behaviour unchanged (AC-7). The **Phase-2**
+  degradation path **reuses** the existing IN-4 / `OllamaUnreachableError` seam
+  (`recommender.py:203-216`) — it adds **no** new fail-safe and does not regress it.
+- ❌ **Leaking verify/reshape (or the Phase-2 judge) into the arm-(c) naive-RAG
+  baseline** — the D-6 contamination guard (BINDING; AC-6); binds **both** phases.
+- ❌ **A 3rd LLM to reconcile a floor-vs-judge disagreement** — the v1
+  compare/agreement step is **deterministic** (constraint ③); an LLM reconciliation
+  is a **future** extension, not built here.
+- ❌ **A live MS-S1 judge run as an acceptance condition** — the offline oracle is the
+  gate (constraint ①); a live judge run is **Cray-gated host-state evidence**, not a
+  gate (CLAUDE.md §8).
 - ❌ **Fixing the benchmark grader's prose-only `action_keywords` check to read
   `suggested_handler`** — that is a **measurement-correctness** matter, **NOT** the
-  moat capability (SD-5); scoped out here (or noted as a separate aside) so the
+  moat capability (SD-5); scoped out here (noted as a separate aside) so the
   engine work is not mistaken for teaching-to-the-test.
 - ❌ **Designing the audit framework / expanding `AuditMetadata`** (ADR-011
   earmarked) — emit a **minimal** trace only; flag the interplay (D-3).
-- ❌ **A new ADR or an edit to the Accepted ADR-0022** — PLAN-only (SD-4); ADR-0022
-  D2 already frames member (b). (Only if SD-1 lands a fork ADR-0022 does not cover
-  would a **one-line** ADR-0022 amendment be needed — a separate Cowork-drafted,
-  G1-gated edit; flag, do not apply inline.)
+- ❌ **Re-opening ADR-0022's member-(a) Design fork (F1/F2/F3) or D3-α, or authoring a
+  *new* construct ADR** — the ADR-0022 **amendment** (Deliverable A, SD-4) refines
+  **member (b)'s verify mechanism only**, is **in scope this session** (drafted;
+  Cray-ratification pending), and gates **Phase 2** only. **Phase 1 needs no ADR
+  change** (it implements the mechanism-agnostic D2(b)).
 - ❌ **Vertical #3/#4, UI work, NL-query** — PLAN-0035 is the **engine slice only**.
 
 ## Steps
 
-Ordered, each small and reviewable (verify helper → reshape → trace → wire →
-contract shape → tests → gate → handback). Mirrors PLAN-0030's step shape.
+> **Phased (SD-1 = (c) Hybrid).** **Phase 1** (the deterministic floor) is **executable on
+> its own** and needs **no amendment** — **Code is executing it in parallel (session 73)**.
+> **Phase 2** (the advisory local-LLM-judge) is **GATED on the ADR-0022 amendment**
+> (Deliverable A). Steps are ordered, each small and reviewable; mirrors PLAN-0030's step
+> shape (verify helper → reshape → trace+mode → wire → contract shape → tests → gate, then
+> the Phase-2 judge → agreement → degradation → field+tests → gate, then handback).
 
-### Step 1 — The consistency-verify helper (in `services/`)
+### Phase 1 — the deterministic floor (no amendment; Code executing in parallel, session 73)
+
+The (a) deterministic floor + reshape-from-the-resolved-handler + the `action_verification`
+trace + `verification_mode` scaffolding. Offline tests; the offline oracle is the gate.
+**Self-contained — does NOT depend on the amendment** (it implements the mechanism-agnostic
+D2(b)).
+
+#### Step 1 — The consistency-verify helper (in `services/`)
 
 Add a small **deterministic** verifier in `services/engine/` (e.g. a new
 `action_verification.py`, or a private helper beside the recommender — Code's call)
 that, given the proposal prose (title/description/rationale) and the resolved
 structured `suggested_handler`, decides whether the prose **expresses** the action
-the handler names. Implements **SD-1** (lean: deterministic — derive the handler's
-action lemma(s) from the registered handler name / its ontology `action_type` and
-check prose expression; **no model call**). **Recover-only / never-invent**: it can
-only detect omission, never invent an action. **Do NOT import** the benchmark
-grader (`benchmarks/`) — that would breach D-6 (AC-6). Unit-test a positive (prose
-states the action → consistent) + a negative (prose omits it → inconsistent).
-(AC-1, AC-6, AC-8) `[impl]`
+the handler names. Implements the **Phase-1 deterministic floor of SD-1 = (c)** — derive
+the handler's action lemma(s) from the registered handler name / its ontology
+`action_type` and check prose expression; **no model call** (the judge is Phase 2).
+**Recover-only / never-invent**: it can only detect omission, never invent an action.
+**Do NOT import** the benchmark grader (`benchmarks/`) — that would breach D-6 (AC-6).
+Unit-test a positive (prose states the action → consistent) + a negative (prose omits it
+→ inconsistent). (AC-1, AC-6, AC-8) `[impl]`
 
-### Step 2 — Reshape from the resolved handler (SD-3)
+#### Step 2 — Reshape from the resolved handler (SD-3)
 
 On an inconsistency, **reshape** the governed envelope so it authoritatively
 carries the corrective action **surfaced from the resolved `suggested_handler`**
@@ -284,15 +348,17 @@ fabricate** — surface only the already-selected, allow-listed handler's action
 On a **null / unallowed** handler, **skip** (no reshape) and trace the gap (fail
 safe). (AC-3, AC-7) `[impl]`
 
-### Step 3 — Verify-outcome trace step
+#### Step 3 — Verify-outcome trace step + `verification_mode` scaffolding
 
 Append a `ReasoningStep(kind="action_verification", …)` whose `detail` records the
 structured handler, the outcome (`consistent` | `reshaped` | `skipped`), and on
 reshape the surfaced action. Mirror `_resolution_step` (`entity_resolution.py:125-161`).
-The trace lands in `reasoning_trace` only; `AuditMetadata` is **flagged, not
-designed** (D-3). (AC-4) `[impl]`
+**Also record a `verification_mode` value, trivially `"(a)-only"` in Phase 1** (no judge
+exists yet) — this **scaffolds the mode field now** so Phase 2's judge/degradation flips
+it without an envelope change. The trace lands in `reasoning_trace` only; `AuditMetadata`
+is **flagged, not designed** (D-3). (AC-4) `[impl]`
 
-### Step 4 — Wire into the LLM path (async-correct, IN-4-safe)
+#### Step 4 — Wire into the LLM path (async-correct, IN-4-safe)
 
 Hook the verify+reshape at the `_compose_llm_record` seam (`recommender.py:202`),
 exactly where member (a)'s `resolve_affected_entities` plugged in (`:199-201`).
@@ -302,16 +368,17 @@ and **merge the trace** into the same `reasoning_trace` seam member (a) uses
 through the `recommend()` `except` (`:203-216`) to `_rule_recommend`, never raise
 into the loop. (AC-1, AC-4, AC-7, AC-8) `[impl]`
 
-### Step 5 — Reshape output contract (implements SD-3)
+#### Step 5 — Reshape output contract (implements SD-3, Phase-1 = trace-only)
 
-Implement the contract decided in **SD-3**: the trace `ReasoningStep` + reuse of
-existing structured fields is the default (no envelope change). **If** Cray/Code
-approve an optional new envelope field (e.g. a `verified_action` marker), add it
-**backward-compatibly** (`Optional`, default `None`) **without** forcing it into
-the `LlmJudgment` model schema the LLM emits (mirrors member (a) SD-1 / the
-deferred `EntityRef.resolution` field). (AC-3, AC-7) `[impl]`
+Implement the **Phase-1** contract decided in **SD-3**: the trace `ReasoningStep` (incl.
+`verification_mode`) + reuse of existing structured fields is the default — **no envelope
+change** in Phase 1. The first-class, backward-compatible `verification` field is
+**reconsidered in Phase 2** (SD-3, Step 11) once the judge adds confidence/mode. **If**
+Cray/Code approve it early, add it **backward-compatibly** (`Optional`, default `None`)
+**without** forcing it into the `LlmJudgment` model schema the LLM emits (mirrors member
+(a) SD-1 / the deferred `EntityRef.resolution` field). (AC-3, AC-7) `[impl]`
 
-### Step 6 — Offline tests (the contract)
+#### Step 6 — Offline tests (the Phase-1 contract)
 
 Add offline tests (fake `ChatClient` / fixed `LlmJudgment`s — extend the patterns
 in `tests/services/engine/`; no live Ollama, no host-state): the consistent
@@ -321,24 +388,78 @@ verify/reshape error → deterministic fail-safe; the **D-6 no-cross-import**
 assertion. Assert on the returned envelope + trace, never on incidental shape
 (Lesson #7 §3). (AC-2, AC-3, AC-5, AC-6, AC-8) `[impl]`
 
-### Step 7 — Gate + suite green
+#### Step 7 — Gate + suite green (Phase 1)
 
 `ruff` + `mypy --strict` clean; full `uv run pytest -q` green against the current
-baseline (state it at execution). (AC-8) `[impl]`
+baseline (state it at execution). **Phase 1 is shippable here** without the amendment.
+(AC-8) `[impl]`
 
-### Step 8 — Handback → Code commits + executes
+### Phase 2 — the advisory local-LLM-judge (GATED on the ADR-0022 amendment)
 
-Hand the uncommitted draft path back to Code. Code reviews, commits this PLAN via
-a `docs(plans):` chore PR (ADR-009 D2; CLAUDE.md §7), executes member (b) on a
-`feat/*` branch + PR (**gated on ADR-0022 Accepted — satisfied**), reconciles
-`docs/STATUS.md`, then on completion `git mv docs/plans/0035-*.md docs/plans/done/`.
+> **Phase-2 gate / dependency (hard):** Do **NOT** start Phase 2 until the **ADR-0022
+> amendment** (Deliverable A — member (b) verify = hybrid) is **ratified by Cray**. Phase 1
+> ships independently of this gate. The judge is **advisory**: it adds confidence + trace,
+> it **never overrides** the action Phase 1's deterministic floor surfaced (constraint ②).
+
+#### Step 8 — The advisory local-LLM-judge (local Ollama, ADR-002 pin)
+
+Add an **advisory** semantic cross-check: a local-LLM-judge that, given the proposal prose
+and the resolved handler's required action, emits a semantic-equivalence verdict +
+confidence. It runs on the **MS-S1 local Ollama** (ADR-002 local-LLM pin; Claude API only
+with consent + non-PII, §8) and reuses the existing `ChatClient`/judgment seam. **Advisory
+only** — it **never** changes which action is surfaced (constraint ②); it sets confidence +
+trace. (constraint ②, local-LLM pin; AC-1) `[impl]`
+
+#### Step 9 — Deterministic agreement / confidence (v1 — no 3rd LLM)
+
+Compute the agreement between the **deterministic floor's** verdict and the **judge's**
+verdict **deterministically** (constraint ③) — **no 3rd LLM**. Agreement raises/lowers a
+confidence signal recorded in the trace; on **disagreement the floor's surfaced action
+stands** (advisory). An LLM *reconciliation* of disagreements is a **future** extension
+(Out of Scope). (constraint ②, ③; AC-4) `[impl]`
+
+#### Step 10 — Disclosed degradation (mode `"(a)-only"`)
+
+When the judge is unavailable, run in **mode `"(a)-only"`** and **disclose** it in the
+`verification_mode` trace field (constraint ④) — **not** silent. Route through the existing
+IN-4 / `OllamaUnreachableError` path (`recommender.py:203-216`); add **no** new fail-safe
+and do **not** regress the deterministic one (AC-7). (constraint ④; AC-7) `[impl]`
+
+#### Step 11 — Reconsider the first-class `verification` field (SD-3) + Phase-2 offline tests
+
+Now that the judge adds confidence + mode, **reconsider promoting** the trace to a
+first-class, **backward-compatible** `verification` field on `RecommendedAction` (SD-3;
+`Optional`, default `None`, **never** forced into `LlmJudgment`) — a Cray/Code envelope
+decision. Add **offline** Phase-2 tests with the **judge faked** (no live Ollama):
+agreement raises confidence; **disagreement keeps the floor's action**; judge-absent →
+mode `"(a)-only"` disclosed. The offline oracle stays the gate; a live MS-S1 run is
+Cray-gated evidence, not a gate. (SD-3, AC-7, AC-8; constraints ①②③④) `[impl]`
+
+#### Step 12 — Gate + suite green (Phase 2)
+
+`ruff` + `mypy --strict` clean; full `uv run pytest -q` green (judge **faked**, offline).
+(AC-8) `[impl]`
+
+### Handback → Code commits + executes (Phase 1 first, then Phase 2)
+
+Hand the uncommitted draft path(s) back to Code. Code reviews, commits this PLAN via
+a `docs(plans):` chore PR (ADR-009 D2; CLAUDE.md §7). **Phase 1:** Code executes the
+deterministic floor on a `feat/*` branch + PR (**gated on ADR-0022 Accepted — satisfied**;
+needs **no** amendment) — **in parallel this session**. **Phase 2:** executed **after** the
+ADR-0022 amendment is **ratified** (the Phase-2 gate). On completion of both phases,
+reconcile `docs/STATUS.md`, then `git mv docs/plans/0035-*.md docs/plans/done/`.
 
 ## Verification
 
-- **Construct (AC-1/AC-2/AC-3):** offline tests show (i) a consistent proposal
+- **Construct — Phase 1 (AC-1/AC-2/AC-3):** offline tests show (i) a consistent proposal
   kept unchanged + a `consistent` trace; (ii) an inconsistent proposal (prose
   omits the verb, structured handler `start_emergency_aerator`) reshaped to
   authoritatively carry the action + a `reshaped` trace — the 5-case shape.
+- **Phase-2 advisory judge (faked, offline):** the local-LLM-judge agreement raises
+  confidence + a trace; on **disagreement the deterministic floor's surfaced action
+  stands** (advisory, never overrides — ②); **judge-absent → mode `"(a)-only"` disclosed**
+  (④) via the existing IN-4 path. Tests **fake the judge** — the offline oracle stays the
+  gate (①); a live MS-S1 judge run is Cray-gated host-state evidence, **not** a gate.
 - **Anti-regression (AC-5):** a wrong-handler proposal (`increase_water_exchange`,
   the aqua-017/h05 shape) is **not** rescued — the governed envelope reflects the
   wrong selection; member (b) does not improve selection.
@@ -356,17 +477,20 @@ a `docs(plans):` chore PR (ADR-009 D2; CLAUDE.md §7), executes member (b) on a
   reports-not-gates), **not** an acceptance condition; any live MS-S1 re-score is
   **host-state / Cray-gated / not a gate** (CLAUDE.md §8; Lesson #15).
 
-## Surfaced decisions (SD-N) — for Cray to adjudicate
+## Surfaced decisions (SD-N) — ADJUDICATED (Cray, session 73)
 
-State each as an option set with a recommendation; **Cray adjudicates** (the
-PLAN-0030 / PLAN-0034 SD pattern). LOCKED facts (§"Source of truth") are settled.
+> **All five SDs are now adjudicated** (Cray, session 73). Each carries a **Decision** line
+> below; the option sets + Cowork recommendations are **retained as the record of what was
+> weighed** (the PLAN-0030 / PLAN-0034 SD pattern). Headline: **SD-1 = (c) Hybrid, phased**
+> (4 locked constraints) and **SD-4 = an ADR-0022 amendment** (gates Phase 2 only). LOCKED
+> facts (§"Source of truth") are settled.
 
 - **SD-1 — The VERIFY mechanism (the meaty one). [Cowork recommends: (a)
   deterministic, from the structured handler.]**
   *Question:* how does the engine check the proposal expresses the step's required
   corrective action?
   (a) **Deterministic, from the structured handler** — the correct action already
-  lives in the enum-bound `suggested_handler` (`structured.py:103-105`/`:111-125`);
+  lives in the enum-bound `suggested_handler` (`llm/structured.py:103-105`/`:111-125`);
   verify = "does the prose express the action this allow-listed handler names",
   reshape = surface that structured handler's action into the governed contract so
   downstream trusts it (not the prose). No new model call.
@@ -384,6 +508,15 @@ PLAN-0030 / PLAN-0034 SD pattern). LOCKED facts (§"Source of truth") are settle
   "classify/verify against a declared contract, don't synthesize." (b)/(c) are the
   honest "richer semantic verify" alternative if Cray wants future-proofing beyond
   the action-lemma check — but they trade away the deterministic gate.
+  **Decision (Cray, session 73): (c) Hybrid, phased.** A deterministic floor **+** an
+  *advisory* local-LLM-judge, with **4 locked constraints** — **① the deterministic floor
+  IS the offline gate · ② the LLM-judge is ADVISORY (never overrides the surfaced action) ·
+  ③ the compare/agreement step is DETERMINISTIC in v1 (no 3rd LLM) · ④ LLM-absent → mode
+  "(a)-only", disclosed not silent**. Built **phased**: Phase 1 = the deterministic floor
+  (**no amendment**); Phase 2 = the advisory judge (**gated on the ADR-0022 amendment**,
+  SD-4). *(The Cowork (a) lean above is retained as the record; Cray's (c) supersedes it —
+  the §B-3 deterministic floor is kept as the gate, the judge adds advisory semantic
+  confidence on top.)*
 
 - **SD-2 — The HOOK point / scope. [Cowork recommends: (a) recommend-time only,
   procedure-step seam as a forward-pointer.]**
@@ -399,6 +532,10 @@ PLAN-0030 / PLAN-0034 SD pattern). LOCKED facts (§"Source of truth") are settle
   procedure-step seam as a forward-pointer** (the broader ADR-016 generalisation)
   rather than building it now. ADR-016 carries no verify/reshape clause today, so
   the step-to-step reshape is a clean future PLAN.
+  **Decision (Cray, session 73): (a) recommend-time.** The internal mechanism is a
+  **D→L→compare→reshape** pipeline (deterministic floor **D** → advisory judge **L** →
+  deterministic compare → reshape). The procedure-step seam stays a forward-pointer (Out of
+  Scope).
 
 - **SD-3 — The RESHAPE output contract. [Cowork recommends: trace + reuse existing
   structured fields; defer any new envelope field.]**
@@ -415,6 +552,12 @@ PLAN-0030 / PLAN-0034 SD pattern). LOCKED facts (§"Source of truth") are settle
   trace-only default is fully buildable without that decision.
   *Why this is a Cray/Code decision, not a Cowork judgment call:* adding a field to
   `RecommendedAction` changes the shared ADR-007 D2 envelope.
+  **Decision (Cray, session 73): Phase-1 trace-only; Phase-2 reconsiders a first-class
+  field.** Phase 1 ships **trace-only + reuse** (incl. the `verification_mode` scaffold) with
+  **no envelope change**; **Phase 2 reconsiders** a first-class, **backward-compatible**
+  `verification` field on `RecommendedAction` (`Optional`, default `None`, never forced into
+  `LlmJudgment`) once the judge adds confidence + mode (Step 11) — a Cray/Code envelope
+  decision at that point.
 
 - **SD-4 — ADR need. [Cowork recommends: PLAN-only.]**
   *Question:* record the build in PLAN-0035 with **no ADR change**, **or** a
@@ -425,6 +568,14 @@ PLAN-0030 / PLAN-0034 SD pattern). LOCKED facts (§"Source of truth") are settle
   is needed **only if** SD-1 lands (b)/(c) (an LLM-judge surface the Accepted ADR
   does not contemplate) — and then it is a **separate Cowork-drafted, G1-gated
   edit** to the Accepted ADR, flagged not applied inline (Guardrails).
+  **Decision (Cray, session 73): an ADR-0022 amendment** (member (b) verify = hybrid) —
+  **not** PLAN-only, *because SD-1 landed (c)*, introducing a **host-state local-LLM-judge**
+  into the governed recommend path that the Accepted ADR's deterministic-grounding thesis
+  does not contemplate (PDPA / data-residency weight, §8). The amendment is **drafted this
+  session as Deliverable A** — an inline `## Amendment` subsection on ADR-0022 (**SD-A1**
+  surfaced for shape: inline vs companion ADR), Status stays Accepted, **Cray-ratification
+  pending (G1)**. It **gates Phase 2 only**; **Phase 1 needs no amendment**. *(The exact
+  contingency the Cowork lean flagged — "only if SD-1 lands (b)/(c)" — is what fired.)*
 
 - **SD-5 — The moat-framing guard (call this out explicitly). [Cowork
   recommends: keep the distinction crisp; scope the grader fix OUT.]**
@@ -439,6 +590,10 @@ PLAN-0030 / PLAN-0034 SD pattern). LOCKED facts (§"Source of truth") are settle
   fix OUT** (Out of Scope), noting it only as a separate measurement aside, so the
   engine work is **not** mistaken for teaching-to-the-test. (If Cray wants the
   grader fix tracked, it is a one-line follow-up TODO, not part of this build.)
+  **Decision (Cray, session 73): keep the distinction crisp; grader-fix scoped OUT.**
+  Engine-capability (verify+reshape) and grader measurement-correctness are kept distinct;
+  the grader prose-only-`action_keywords` fix is **scoped OUT** of this build and tracked as
+  a separate **follow-up TODO** (not part of PLAN-0035).
 
 ## References
 
@@ -454,7 +609,7 @@ PLAN-0030 / PLAN-0034 SD pattern). LOCKED facts (§"Source of truth") are settle
   merge, `:168` resolved entities, `:169` the structured handler), `:177-216`
   (`recommend` + the `:199-202` seam + the `:203-216` IN-4 fail-safe), `:219-289`
   (`_rule_recommend`; `:275-279`/`:284` already consistent);
-  `services/engine/structured.py:85-108` (`LlmJudgment`), `:111-125`
+  `services/engine/llm/structured.py:85-108` (`LlmJudgment`), `:111-125`
   (`_judgment_schema` enum-binds `suggested_handler`);
   `services/engine/actions.py:20-24` (`ReasoningStep`), `:33-39` (`AuditMetadata`),
   `:42-63` (`RecommendedAction`); `services/engine/entity_resolution.py:164-209`
@@ -483,9 +638,14 @@ PLAN-0030 / PLAN-0034 SD pattern). LOCKED facts (§"Source of truth") are settle
   (PDPA-forward / anti-hallucination; ADR-Accepted-before-impl; host-state
   ASK-Cray); ADR-009 D1/D2; ADR-012 D4.3; ADR-013.
 - **Dispatch + roadmap:**
+  `.claude/handoffs/session-73/2026-06-23-1118-code-cowork-plan0035-c-amendment-revision-dispatch.md`
+  (the **(c) Hybrid** adjudication + this revision);
   `.claude/handoffs/session-72/2026-06-22-0223-code-cowork-a1-verify-reshape-plan0035-dispatch.md`;
   `.claude/handoffs/session-72/2026-06-22-0211-code-session72-plan0034-closeout-a1-bridge.md`;
   STATUS Active TODO "A1 — verify+reshape governance demo (B-γ moat successor)".
+- **The ADR-0022 amendment (this revision's companion, Deliverable A):**
+  `docs/adr/0022-governed-entity-resolution.md` §"Amendment (2026-06-23)" (member (b) verify
+  = hybrid; **PROPOSED**, Cray-ratification pending; gates Phase 2).
 
 ---
 
@@ -494,8 +654,12 @@ moat-proof: the governed engine verifies an LLM step's emitted output for semant
 consistency against a declared contract and reshapes it so downstream trusts the
 structured action, not prose — the capability arm (c) naive-RAG structurally
 lacks). Drafted by Cowork (Tier-1, ADR-009 D1); Code reviews, commits (ADR-009
-D2), and executes; Cray ratifies the SDs. Mirrors PLAN-0030 (member (a)). Synthetic
-data only; engine slice only; the deterministic fail-safe (`recommender.py:219-289`)
+D2), and executes; **Cray adjudicated the SDs (session 73 — SD-1 = (c) Hybrid, phased;
+SD-4 = an ADR-0022 amendment, drafted as Deliverable A)**. Mirrors PLAN-0030 (member (a)).
+Synthetic data only; engine slice only; the deterministic fail-safe (`recommender.py:219-289`)
 is untouched; the D-6 boundary is BINDING; the §B-3 lift is a demonstration
-(reports-not-gates), not the goal (SD-5); offline-only build (no host-state).
-AI-assisted (Claude, Cowork session); no `Co-Authored-By` per CLAUDE.md §7.*
+(reports-not-gates), not the goal (SD-5). **The offline oracle is the acceptance gate in
+both phases**; **Phase 1** is a fully offline deterministic build (no host-state); **Phase 2**
+adds an **advisory** local-LLM-judge whose live run is **Cray-gated host-state evidence (not a
+gate)** — tests fake it. AI-assisted (Claude, Cowork session); no `Co-Authored-By` per
+CLAUDE.md §7.*
