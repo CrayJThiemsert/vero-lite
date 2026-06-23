@@ -19,12 +19,16 @@ from typing import Any
 
 import pytest
 
+from services.api.config import settings
 from services.engine.action_verification import (
     VERIFICATION_MODE_DETERMINISTIC,
+    VERIFICATION_MODE_HYBRID,
+    augment_with_advisory_judge,
+    judge_action_expression,
     verify_action_expression,
 )
 from services.engine.actions import EntityRef
-from services.engine.llm.client import ChatResult
+from services.engine.llm.client import ChatResult, OllamaError, OllamaUnreachableError
 from services.engine.llm.structured import LlmJudgment
 from services.engine.recommender import recommend
 from services.engine.registry import registry
@@ -65,10 +69,13 @@ class _FakeAdapter:
 
 
 class _FakeChatClient:
-    """Replays canned ChatResults (mirrors test_recommender / test_entity_resolution)."""
+    """Replays canned ChatResults, or always raises (mirrors test_entity_resolution)."""
 
-    def __init__(self, *, results: list[ChatResult]) -> None:
-        self._results = list(results)
+    def __init__(
+        self, *, results: list[ChatResult] | None = None, error: Exception | None = None
+    ) -> None:
+        self._results = list(results or [])
+        self._error = error
 
     async def chat(
         self,
@@ -78,6 +85,8 @@ class _FakeChatClient:
         response_format: dict[str, Any] | None = None,
         temperature: float = 0.0,
     ) -> ChatResult:
+        if self._error is not None:
+            raise self._error
         return self._results.pop(0)
 
 
@@ -274,6 +283,223 @@ async def test_recommend_verification_error_falls_back_to_rule_path(
 
     assert record is not None
     assert record.action.audit_metadata.actor_kind == "engine"  # the deterministic fail-safe
+
+
+# --- Phase 2: the advisory local-LLM-judge (judge FAKED, offline) ---------
+#
+# Constraint ①: the offline oracle is the gate — every judge here is a fake
+# ChatClient; a live MS-S1 run is Cray-gated host-state, NOT a gate (CLAUDE.md §8).
+
+
+def _verdict_json(
+    *, expresses_action: bool, confidence: float, rationale: str = "judge rationale"
+) -> str:
+    return json.dumps(
+        {
+            "expresses_action": expresses_action,
+            "confidence": confidence,
+            "rationale": rationale,
+        }
+    )
+
+
+async def test_judge_agreement_raises_confidence_when_floor_consistent() -> None:
+    """AC-8(viii): floor consistent + judge agrees (expresses) -> hybrid mode, high
+    confidence; the floor outcome is unchanged."""
+    _register_aqua_handlers()
+    judgment = _judgment(handler="start_emergency_aerator")  # prose states it -> consistent
+    floor = verify_action_expression(judgment, "aquaculture")
+    assert _detail(floor[0])["outcome"] == "consistent"
+    judge = _FakeChatClient(results=[_chat(_verdict_json(expresses_action=True, confidence=0.95))])
+
+    steps = await augment_with_advisory_judge(floor, judgment, judge_client=judge)
+
+    detail = _detail(steps[0])
+    assert detail["verification_mode"] == VERIFICATION_MODE_HYBRID
+    assert detail["outcome"] == "consistent"  # floor outcome unchanged
+    assert detail["judge_agreement"] is True
+    assert detail["confidence_signal"] == "high"
+    assert detail["judge"]["expresses_action"] is True
+
+
+async def test_judge_agreement_when_floor_reshaped() -> None:
+    """AC-8(viii): floor reshaped (prose omits) + judge agrees it omits -> hybrid, high
+    confidence; the surfaced action stays the structured handler's."""
+    _register_aqua_handlers()
+    judgment = _judgment(handler="start_emergency_aerator", **_OMITTING)  # prose omits -> reshaped
+    floor = verify_action_expression(judgment, "aquaculture")
+    assert _detail(floor[0])["outcome"] == "reshaped"
+    judge = _FakeChatClient(results=[_chat(_verdict_json(expresses_action=False, confidence=0.9))])
+
+    steps = await augment_with_advisory_judge(floor, judgment, judge_client=judge)
+
+    detail = _detail(steps[0])
+    assert detail["outcome"] == "reshaped"
+    assert detail["surfaced_action"] == "start_emergency_aerator"  # unchanged
+    assert detail["judge_agreement"] is True
+    assert detail["confidence_signal"] == "high"
+    assert detail["verification_mode"] == VERIFICATION_MODE_HYBRID
+
+
+async def test_judge_disagreement_never_overrides_the_floor_action() -> None:
+    """Constraint ② (the load-bearing invariant): the judge is ADVISORY — on disagreement
+    the floor's outcome AND the surfaced action stand; only the confidence signal drops.
+    The judge can never rescue/flip a reshaped verdict to consistent."""
+    _register_aqua_handlers()
+    judgment = _judgment(handler="start_emergency_aerator", **_OMITTING)  # floor: reshaped
+    floor = verify_action_expression(judgment, "aquaculture")
+    # The judge DISAGREES: it thinks the prose DOES express the action (expresses=True).
+    judge = _FakeChatClient(results=[_chat(_verdict_json(expresses_action=True, confidence=0.8))])
+
+    steps = await augment_with_advisory_judge(floor, judgment, judge_client=judge)
+
+    detail = _detail(steps[0])
+    assert detail["outcome"] == "reshaped"  # NOT flipped to consistent by the judge
+    assert detail["surfaced_action"] == "start_emergency_aerator"  # unchanged
+    assert detail["judge_agreement"] is False
+    assert detail["confidence_signal"] == "low"
+
+
+async def test_judge_not_called_when_floor_skipped() -> None:
+    """A floor 'skipped' (echo / no operational action) -> the judge is not engaged at all
+    (no judge fields are added); the trace stays (a)-only."""
+    _register_aqua_handlers()
+    judgment = _judgment(handler="echo")  # floor: skipped
+    floor = verify_action_expression(judgment, "aquaculture")
+    assert _detail(floor[0])["outcome"] == "skipped"
+    exploding = _FakeChatClient(error=AssertionError("judge must not run on a skipped floor"))
+
+    steps = await augment_with_advisory_judge(floor, judgment, judge_client=exploding)
+
+    detail = _detail(steps[0])
+    assert detail["outcome"] == "skipped"
+    assert "judge" not in detail  # the judge was never invoked
+    assert "judge_status" not in detail
+    assert detail["verification_mode"] == VERIFICATION_MODE_DETERMINISTIC
+
+
+async def test_judge_disabled_returns_floor_unchanged() -> None:
+    """judge_client is None (the verification_judge_enabled lever off) -> the floor's
+    (a)-only steps are returned byte-unchanged (Phase-1-identical)."""
+    _register_aqua_handlers()
+    judgment = _judgment(handler="start_emergency_aerator", **_OMITTING)
+    floor = verify_action_expression(judgment, "aquaculture")
+
+    steps = await augment_with_advisory_judge(floor, judgment, judge_client=None)
+
+    assert steps is floor  # the same list object — nothing layered on
+    detail = _detail(steps[0])
+    assert detail["verification_mode"] == VERIFICATION_MODE_DETERMINISTIC
+    assert "judge" not in detail
+
+
+async def test_judge_unreachable_degrades_to_a_only_disclosed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-8(ix) / constraint ④: judge unreachable -> mode '(a)-only' DISCLOSED in the trace
+    (not silent); the floor stands; the IN-4 notify is reused. Never raises."""
+    _register_aqua_handlers()
+    judgment = _judgment(handler="start_emergency_aerator", **_OMITTING)
+    floor = verify_action_expression(judgment, "aquaculture")
+    notified: dict[str, bool] = {}
+
+    async def _fake_notify() -> bool:
+        notified["called"] = True
+        return True
+
+    monkeypatch.setattr("services.notify.telegram.notify_llm_unreachable", _fake_notify)
+    judge = _FakeChatClient(error=OllamaUnreachableError("MS-S1 is unreachable"))
+
+    steps = await augment_with_advisory_judge(floor, judgment, judge_client=judge)
+
+    detail = _detail(steps[0])
+    assert detail["verification_mode"] == VERIFICATION_MODE_DETERMINISTIC  # (a)-only disclosed
+    assert detail["judge_status"] == "unreachable"
+    assert "judge_disclosure" in detail  # disclosed, not silent
+    assert detail["outcome"] == "reshaped"  # floor stands
+    assert detail["surfaced_action"] == "start_emergency_aerator"
+    assert notified.get("called") is True  # reused the IN-4 OllamaUnreachable notify
+
+
+async def test_judge_reachable_error_degrades_to_a_only() -> None:
+    """Constraint ④: a reachable-but-errored judge -> '(a)-only' disclosed (no notify); the
+    floor stands. The advisory judge never harms the load-bearing result."""
+    _register_aqua_handlers()
+    judgment = _judgment(handler="start_emergency_aerator", **_OMITTING)
+    floor = verify_action_expression(judgment, "aquaculture")
+    judge = _FakeChatClient(error=OllamaError("reachable but HTTP 500"))
+
+    steps = await augment_with_advisory_judge(floor, judgment, judge_client=judge)
+
+    detail = _detail(steps[0])
+    assert detail["verification_mode"] == VERIFICATION_MODE_DETERMINISTIC
+    assert detail["judge_status"] == "error"
+    assert detail["outcome"] == "reshaped"
+
+
+async def test_judge_unusable_verdict_degrades_to_a_only() -> None:
+    """A reachable judge that returns non-JSON / schema-invalid output -> ActionJudgeError
+    inside, caught -> '(a)-only' disclosed; the floor stands."""
+    _register_aqua_handlers()
+    judgment = _judgment(handler="start_emergency_aerator")
+    floor = verify_action_expression(judgment, "aquaculture")
+    judge = _FakeChatClient(results=[_chat("this is not json at all")])
+
+    steps = await augment_with_advisory_judge(floor, judgment, judge_client=judge)
+
+    detail = _detail(steps[0])
+    assert detail["verification_mode"] == VERIFICATION_MODE_DETERMINISTIC
+    assert detail["judge_status"] == "error"
+
+
+async def test_judge_action_expression_parses_a_verdict() -> None:
+    """Step 8: the judge call parses the structured verdict (expresses/confidence/rationale)
+    + the judging model name."""
+    judge = _FakeChatClient(
+        results=[
+            _chat(_verdict_json(expresses_action=True, confidence=0.7, rationale="prose names it"))
+        ]
+    )
+
+    result = await judge_action_expression(
+        _judgment(handler="start_emergency_aerator"), "start_emergency_aerator", judge_client=judge
+    )
+
+    assert result.verdict.expresses_action is True
+    assert result.verdict.confidence == 0.7
+    assert result.verdict.rationale == "prose names it"
+    assert result.model == "gpt-oss:20b"
+
+
+async def test_recommend_hybrid_judge_end_to_end(monkeypatch: pytest.MonkeyPatch) -> None:
+    """End-to-end with the lever ON: recommend() runs floor -> advisory judge; a prose
+    omission (floor reshaped) + a judge that agrees it omits -> a 'hybrid' trace whose
+    surfaced action is still the structured handler's."""
+    registry.register_handler("energy", "echo", _stub)
+    registry.register_handler("energy", "start_emergency_aerator", _stub)
+    _register_assets("asset-battery-01")
+    judgment = _judgment_json(
+        handler="start_emergency_aerator",
+        title="Assess the over-temperature breach on the battery",
+        description="Conduct a breach assessment: verify the reading, inspect the asset.",
+        rationale="A structured breach assessment is the correct response to the crossing.",
+    )
+    verdict = _verdict_json(expresses_action=False, confidence=0.92)
+    fake = _FakeChatClient(results=[_chat("draft", thinking="r"), _chat(judgment), _chat(verdict)])
+    monkeypatch.setattr("services.engine.recommender._build_chat_client", lambda: fake)
+    monkeypatch.setattr(settings, "verification_judge_enabled", True)
+
+    record = await recommend(_crossing_event(), "energy")
+
+    assert record is not None
+    verif = [s for s in record.action.reasoning_trace if s.kind == "action_verification"]
+    assert len(verif) == 1
+    detail = verif[0].detail
+    assert detail is not None
+    assert detail["verification_mode"] == VERIFICATION_MODE_HYBRID
+    assert detail["outcome"] == "reshaped"
+    assert detail["judge_agreement"] is True  # floor omits + judge expresses=False -> agree
+    assert detail["judge"]["expresses_action"] is False
 
 
 # --- D-6 contamination boundary (BINDING) ---------------------------------
