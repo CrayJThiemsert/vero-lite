@@ -37,6 +37,7 @@ from enum import StrEnum
 from typing import Any
 
 from services.api.config import settings
+from services.engine.action_verification import verify_action_expression
 from services.engine.actions import AuditMetadata, EntityRef, ReasoningStep, RecommendedAction
 from services.engine.entity_resolution import event_subject_ref, resolve_affected_entities
 from services.engine.llm.client import OllamaClient, OllamaUnreachableError
@@ -143,6 +144,7 @@ def _compose_llm_record(
     result: JudgmentResult,
     affected_entities: list[EntityRef],
     resolution_steps: list[ReasoningStep],
+    verification_steps: list[ReasoningStep],
 ) -> ActionRecord:
     """Compose the ADR-007 D2 envelope from the LLM judgment (SC-1).
 
@@ -153,8 +155,9 @@ def _compose_llm_record(
     model-emitted ``primary_key`` resolved against the declared object universe
     (kept canonical) or replaced by the deterministic event subject anchor on a
     non-match -- NOT the model's verbatim list; ``resolution_steps`` records each
-    outcome, appended to the hybrid trace. The ADR-007 D2 envelope class is
-    unchanged.
+    outcome, appended to the hybrid trace. ``verification_steps`` records the
+    ADR-0022 member (b) action verify+reshape outcome (PLAN-0035 Phase 1),
+    likewise appended. The ADR-007 D2 envelope class is unchanged.
     """
     judgment = result.judgment
     event_id = str(event.get("event_id", "unknown"))
@@ -163,7 +166,9 @@ def _compose_llm_record(
         title=judgment.title,
         description=judgment.description,
         vertical=vertical,
-        reasoning_trace=build_llm_reasoning_trace(event, vertical, result) + resolution_steps,
+        reasoning_trace=build_llm_reasoning_trace(event, vertical, result)
+        + resolution_steps
+        + verification_steps,
         confidence=judgment.confidence,
         affected_entities=affected_entities,
         suggested_handler=judgment.suggested_handler,
@@ -199,7 +204,14 @@ async def recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
         affected_entities, resolution_steps = await resolve_affected_entities(
             event, vertical, result.judgment.affected_entities
         )
-        return _compose_llm_record(event, vertical, result, affected_entities, resolution_steps)
+        # ADR-0022 member (b) / PLAN-0035 Phase 1: verify the proposal prose expresses
+        # the action its structured handler names; reshape (authoritatively surface it)
+        # on a mismatch + trace. The deterministic floor (the (a) mechanism of SD-1=(c));
+        # any error propagates to the fail-safe below (ADR-010 IN-4).
+        verification_steps = verify_action_expression(result.judgment, vertical)
+        return _compose_llm_record(
+            event, vertical, result, affected_entities, resolution_steps, verification_steps
+        )
     except Exception as exc:  # fail-safe must catch everything — §6.6 / ADR-010 IN-4
         if isinstance(exc, OllamaUnreachableError):
             # PLAN-0014: MS-S1 is unreachable — best-effort ping (never raises),

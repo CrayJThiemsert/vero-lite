@@ -91,9 +91,12 @@ def test_golden_trace_composes_to_valid_envelope(trace: dict[str, Any]) -> None:
         model="gpt-oss:20b",
         attempts=1,
     )
-    # PLAN-0030 added resolved-entities + resolution-trace params; this golden test
-    # exercises trace COMPOSITION, not resolution -> pass the verbatim entities + no steps.
-    record = _compose_llm_record(trace["event"], "energy", result, judgment.affected_entities, [])
+    # PLAN-0030 added resolved-entities + resolution-trace params; PLAN-0035 added the
+    # member-(b) verification-trace param. This golden test exercises trace COMPOSITION,
+    # not resolution/verification -> pass the verbatim entities + no steps.
+    record = _compose_llm_record(
+        trace["event"], "energy", result, judgment.affected_entities, [], []
+    )
     action = record.action
 
     # the composed envelope round-trips as an ADR-007 D2 RecommendedAction
