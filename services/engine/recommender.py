@@ -37,7 +37,10 @@ from enum import StrEnum
 from typing import Any
 
 from services.api.config import settings
-from services.engine.action_verification import verify_action_expression
+from services.engine.action_verification import (
+    augment_with_advisory_judge,
+    verify_action_expression,
+)
 from services.engine.actions import AuditMetadata, EntityRef, ReasoningStep, RecommendedAction
 from services.engine.entity_resolution import event_subject_ref, resolve_affected_entities
 from services.engine.llm.client import OllamaClient, OllamaUnreachableError
@@ -207,8 +210,18 @@ async def recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
         # ADR-0022 member (b) / PLAN-0035 Phase 1: verify the proposal prose expresses
         # the action its structured handler names; reshape (authoritatively surface it)
         # on a mismatch + trace. The deterministic floor (the (a) mechanism of SD-1=(c));
-        # any error propagates to the fail-safe below (ADR-010 IN-4).
+        # any error here propagates to the fail-safe below (ADR-010 IN-4) — AC-7.
         verification_steps = verify_action_expression(result.judgment, vertical)
+        # PLAN-0035 Phase 2: layer the ADVISORY local-LLM-judge onto the floor — a
+        # confidence + agreement signal that NEVER overrides the surfaced action
+        # (constraint ②) and degrades to "(a)-only" disclosed when MS-S1 is unreachable
+        # (constraint ④). Gated behind verification_judge_enabled (default off — a live
+        # judge is host-state, CLAUDE.md §8); this call never raises (advisory must not
+        # harm the load-bearing floor result), so it stays out of the IN-4 contract.
+        judge_client = client if settings.verification_judge_enabled else None
+        verification_steps = await augment_with_advisory_judge(
+            verification_steps, result.judgment, judge_client=judge_client
+        )
         return _compose_llm_record(
             event, vertical, result, affected_entities, resolution_steps, verification_steps
         )

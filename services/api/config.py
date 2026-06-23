@@ -106,6 +106,19 @@ class Settings(BaseSettings):
             "generation-length window per poll"
         ),
     )
+    verification_judge_enabled: bool = Field(
+        default=False,
+        description=(
+            "PLAN-0035 Phase 2 / ADR-0022 amendment — enable the ADVISORY local-LLM "
+            "action-verification judge (member (b)). When False (default), recommend() "
+            "runs the deterministic floor alone (verification_mode '(a)-only'), "
+            "byte-identical to Phase 1. When True, the advisory judge adds a confidence + "
+            "agreement signal and a 'hybrid' trace; it NEVER overrides the surfaced action "
+            "(constraint ②) and degrades to '(a)-only' disclosed when MS-S1 is unreachable "
+            "(constraint ④). Default off because a live judge run is host-state — "
+            "Cray-gated (CLAUDE.md §8); the offline acceptance gate fakes the judge."
+        ),
+    )
 
     # OCT demo — active vertical + recommender policy (PLAN-0013 AC-template).
     # Only ONE vertical runs per process, so the policy is a flat set of
