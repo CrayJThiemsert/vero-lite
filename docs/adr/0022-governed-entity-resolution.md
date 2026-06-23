@@ -1,6 +1,7 @@
 # ADR-0022: Governed entity resolution — resolve a model-emitted entity reference against the declared object universe before the governed record trusts it
 
 **Status:** Accepted (ratified 2026-06-18 — fork resolved: **F1 = 1-b** (DB/ontology-object lookup) primary **+ 1-c** (deterministic `subject_id`) fall-back · **F2 = 2-c** (fall back to the deterministic subject) **+ a resolution-outcome trace** · **D3 = α** (one construct housing entity-resolution + verify+reshape))
+**Amendment log:** 2026-06-23 — **PROPOSED (awaiting Cray ratification; do not treat as ratified)**: member (b)'s **verify mechanism** authorized = **hybrid** — a deterministic floor **+** an *advisory* local-LLM-judge (full text in §"Amendment (2026-06-23)" at the end of this file). The ADR Status **stays Accepted**; this amendment is a **DRAFT** proposed under G1 (Cowork drafts, Code commits, **Cray ratifies**). **Scope: member (b) verify-mechanism ONLY** — it does **not** re-open the member-(a) Design fork (F1/F2/F3) or D3-α.
 **Date:** 2026-06-17 (drafted Proposed) · 2026-06-18 (ratified Accepted)
 **Deciders:** Jirachai Thiemsert (founder) — ratifies the construct AND resolves the §"Design fork" options below
 **Related:** ADR-0021 (metric-kind typed semantics — the "classify, don't synthesize" lineage this extends, and the draft→Cray-picks-the-construct ratification flow this mirrors), ADR-016 (governed procedure engine — the governed action/procedure area this enhancement lands in; it carries **no** verify/reshape clause today — see Context), ADR-007 (OCT engine contracts — D2 `RecommendedAction` envelope + `EntityRef`, generalized not broken), ADR-010 (LLM reasoning-hook surface — D5 LLM-backed `recommend()`, IN-4 deterministic fail-safe), ADR-011 (earmarked audit framework — interplay flagged for the reject/flag fork branch, not pulled in), PLAN-0027 (the **D-6 contamination guard** — the binding boundary in the §"Design fork"), PLAN-0028 / PLAN-0029 (the B-γ extension whose `## Findings` routed this universality investment OUT to "a future ADR + PLAN-0030"; the verify+reshape §3.4 forward-pointer), `benchmarks/procedure_baseline/REPORT.md` §B-3 (the verify+reshape future-enhancement forward-pointer), CLAUDE.md §1 (semantic layer = the moat), §8 (PDPA-forward; ADRs Accepted before implementation), ADR-009 D1/D2 (Cowork drafts, Code commits), ADR-012 D4.3 (author≠reviewer disclosure), ADR-013 (phased autonomy relocation; Cowork = advisory governance drafter)
@@ -360,3 +361,112 @@ whatever Cray selected for forks 1 and 2 (1-b+1-c · 2-c).
 - Drafted by Cowork (Tier-1, ADR-009 D1); uncommitted. Code reviews + commits via a
   `docs(adr):` chore PR (ADR-009 D2). AI-assisted (Claude); no `Co-Authored-By` per
   CLAUDE.md §7.
+
+---
+
+## Amendment (2026-06-23, PROPOSED — Cray ratification pending): member (b)'s verify mechanism = hybrid (deterministic floor + advisory local-LLM-judge)
+
+> **Status of this amendment:** **PROPOSED (DRAFT).** The ADR's overall **Status stays
+> `Accepted`**; this amendment proposes a mechanism for member (b)'s verify, surfaced for
+> Cray's ratification under **G1** (Cowork drafts → Code commits → **Cray ratifies**; do
+> **not** self-ratify).
+> **Scope — member (b)'s verify mechanism ONLY.** This amendment does **NOT** re-open the
+> member-(a) Design fork (F1/F2/F3, `:149-198`) or D3-α (`:136-147`) — those remain settled
+> as ratified 2026-06-18. It authorizes *how* member (b) (Verify + reshape, D2(b)
+> `:124-128`) verifies — a question D2(b) deliberately left mechanism-agnostic.
+
+### Why this rises to an ADR amendment (not a PLAN-only note)
+
+- **D2(b)** (`:124-128`) frames verify+reshape **mechanism-agnostically** — it names the
+  *what* (verify an LLM step's output for semantic consistency; reshape it to the
+  contract), never the *how*. So a mechanism choice is unaddressed by the Accepted text.
+- The **entire Design fork (F1/F2/F3, `:149-198`)** resolved **member (a)** (entity
+  resolution). **Member (b)'s verify mechanism was forward-declared, never decided** —
+  authorizing one is a **genuine new decision**, not a re-litigation of a settled fork.
+- The **load-bearing new commitment**: the hybrid mechanism introduces a **host-state
+  local-LLM call into the governed product recommend path**, which the ADR's
+  deterministic-grounding thesis (Constraints `:207-209` "deterministic path is already
+  correct… fixes the LLM path only") does **not** contemplate, and which carries **PDPA /
+  data-residency** weight (ADR-002 local-LLM default; CLAUDE.md §8). That weight is why
+  this is an ADR amendment rather than a PLAN-only note.
+
+### A1 (proposed) — member (b)'s verify = HYBRID
+
+Member (b) verifies the LLM proposal's prose against the corrective action named by the
+resolved structured handler using **two layers**:
+
+1. a **deterministic floor** — the structured-handler consistency check (does the prose
+   express the action the **allow-listed `suggested_handler`** names); **and**
+2. an **advisory local-LLM-judge** — a semantic cross-check that *adds confidence + a
+   trace*, **never** changing which action is surfaced.
+
+### A2 (proposed) — constraints (all binding on the Phase-2 build)
+
+These keep the amendment coherent with the ADR's existing discipline. ①–④ are the four
+constraints Cray locked at adjudication; the remaining three carry forward invariants the
+Accepted ADR already holds.
+
+1. **① The deterministic floor IS the offline acceptance gate.** The structured-handler
+   consistency check decides which action is surfaced and is what the offline oracle
+   tests. Tests **fake the judge** (the existing `tests/services/engine/` fake-`ChatClient`
+   pattern) so the gate stays deterministic; a **live** judge run is **Cray-gated
+   host-state evidence, NOT a gate** (CLAUDE.md §8). Preserves the ADR's product-layer-
+   governance posture (`:213-215`).
+2. **② The LLM-judge is ADVISORY.** It **never overrides the surfaced action**; the
+   **deterministic floor decides which action** is surfaced. The judge sets **confidence +
+   trace only**. Coheres with `:207` ("deterministic path is correct") and `:210-212`
+   ("classify, don't synthesize").
+3. **③ The compare/agreement step is DETERMINISTIC (v1).** Agreement between the two
+   verdicts is computed deterministically — **no 3rd LLM**. An LLM *reconciliation* of
+   disagreements is named here as a **future** extension, **not built** in v1.
+4. **④ Graceful degradation, disclosed not silent.** LLM unavailable → the engine runs in
+   **mode "(a)-only"** (deterministic floor alone), **disclosed** in the trace, not
+   silently dropped. This **reuses the existing IN-4 / `OllamaUnreachableError` path**
+   (`services/engine/recommender.py:203-216`) and **does NOT regress** the deterministic
+   fail-safe (ADR-010 IN-4 / PLAN-0006 §6.6).
+5. **Never fabricated.** The surfaced action comes from the **already-selected,
+   allow-listed structured handler**, never invented — the existing PDPA-forward
+   anti-hallucination invariant (`:185-188`).
+6. **Local-LLM pin** *(the new architectural commitment)*. The judge runs on the **MS-S1
+   local Ollama** (ADR-002 local-LLM default); the Claude API is used **only with consent +
+   non-PII** (CLAUDE.md §8 data-residency).
+7. **D-6 boundary preserved** (`:190-198`). No verify / judge / governance logic bleeds
+   into the **arm-(c) naive-RAG baseline** — the PLAN-0027 D-6 contamination guard binds
+   the hybrid mechanism exactly as it binds member (a).
+
+### A3 (proposed) — phasing
+
+- **Phase 1 = the deterministic floor.** Requires **no amendment** — it is simply one
+  mechanism implementing the already-Accepted, mechanism-agnostic D2(b). (Code is building
+  it in parallel as of session 73.)
+- **Phase 2 = the advisory local-LLM-judge layer.** **Gated on this amendment** being
+  ratified.
+
+### Surfaced for Cray — SD-A1 (amendment shape)
+
+Two ways to record this decision; **Cray adjudicates**:
+
+| Option | Shape | Trade-off |
+|---|---|---|
+| **(i) Inline amendment subsection (Cowork lean)** ← this draft | Append this `## Amendment` subsection to ADR-0022 (as drafted). | One citation anchor; it is a **mechanism refinement within the same construct** (member (b)), not a new construct, so it belongs with the ADR it refines. |
+| **(ii) Tiny companion ADR that amends ADR-0022** | A new ADR-00NN whose sole decision amends ADR-0022's member (b) (the ADR-0021-amends-ADR-008 precedent). | Cleaner standalone audit entry; but fragments the member-(b) citation anchor across two files for a mechanism (not construct) refinement. |
+
+**Cowork lean: (i)** — a mechanism refinement within the same construct keeps one
+anchor. **(ii) surfaced honestly** in case Cray prefers a standalone amendment record. If
+Cray selects (ii), this subsection moves to the companion ADR unchanged.
+
+### Authoring disclosure (ADR-012 D4.3)
+
+The **(c)-hybrid adjudication, the four locked constraints, and the amendment scope**
+originate in **Code + Cray's session-73 deliberation** (Code mapped the ADR-0022 surface +
+the host-state / PDPA rationale), **not** in a Cowork free-form deliberation — so this is
+**not** an ADR-012 D4.3 self-deliberation case (no Cowork opinion is silently promoted).
+**Cowork is the drafter**; the **independent reviewers are Code at PR review/commit + Cray
+at amendment ratification (G1)**. Drafter↔reviewer separation is intact. Cowork
+re-verified the cited ADR-0022 line anchors and the `recommender.py:203-216` IN-4 /
+`OllamaUnreachableError` degradation path against the live repo before asserting them
+(fact-pack-first, ADR-009 D1 Tier-1 rule #4).
+
+*Amendment drafted by Cowork (Tier-1, ADR-009 D1); uncommitted. Code reviews + commits via
+a `docs(adr):` chore PR (ADR-009 D2); Cray ratifies the amendment (G1). AI-assisted
+(Claude); no `Co-Authored-By` per CLAUDE.md §7.*
