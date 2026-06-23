@@ -1,7 +1,7 @@
 # ADR-0022: Governed entity resolution — resolve a model-emitted entity reference against the declared object universe before the governed record trusts it
 
 **Status:** Accepted (ratified 2026-06-18 — fork resolved: **F1 = 1-b** (DB/ontology-object lookup) primary **+ 1-c** (deterministic `subject_id`) fall-back · **F2 = 2-c** (fall back to the deterministic subject) **+ a resolution-outcome trace** · **D3 = α** (one construct housing entity-resolution + verify+reshape))
-**Amendment log:** 2026-06-23 — **PROPOSED (awaiting Cray ratification; do not treat as ratified)**: member (b)'s **verify mechanism** authorized = **hybrid** — a deterministic floor **+** an *advisory* local-LLM-judge (full text in §"Amendment (2026-06-23)" at the end of this file). The ADR Status **stays Accepted**; this amendment is a **DRAFT** proposed under G1 (Cowork drafts, Code commits, **Cray ratifies**). **Scope: member (b) verify-mechanism ONLY** — it does **not** re-open the member-(a) Design fork (F1/F2/F3) or D3-α.
+**Amendment log:** 2026-06-23 — **RATIFIED (Cray, 2026-06-23)**: member (b)'s **verify mechanism** = **hybrid** — a deterministic floor **+** an *advisory* local-LLM-judge (full text in §"Amendment (2026-06-23)" at the end of this file; recorded **inline** per SD-A1 = (i), Cray-selected). The ADR Status **stays Accepted**. **Scope: member (b) verify-mechanism ONLY** — it does **not** re-open the member-(a) Design fork (F1/F2/F3) or D3-α.
 **Date:** 2026-06-17 (drafted Proposed) · 2026-06-18 (ratified Accepted)
 **Deciders:** Jirachai Thiemsert (founder) — ratifies the construct AND resolves the §"Design fork" options below
 **Related:** ADR-0021 (metric-kind typed semantics — the "classify, don't synthesize" lineage this extends, and the draft→Cray-picks-the-construct ratification flow this mirrors), ADR-016 (governed procedure engine — the governed action/procedure area this enhancement lands in; it carries **no** verify/reshape clause today — see Context), ADR-007 (OCT engine contracts — D2 `RecommendedAction` envelope + `EntityRef`, generalized not broken), ADR-010 (LLM reasoning-hook surface — D5 LLM-backed `recommend()`, IN-4 deterministic fail-safe), ADR-011 (earmarked audit framework — interplay flagged for the reject/flag fork branch, not pulled in), PLAN-0027 (the **D-6 contamination guard** — the binding boundary in the §"Design fork"), PLAN-0028 / PLAN-0029 (the B-γ extension whose `## Findings` routed this universality investment OUT to "a future ADR + PLAN-0030"; the verify+reshape §3.4 forward-pointer), `benchmarks/procedure_baseline/REPORT.md` §B-3 (the verify+reshape future-enhancement forward-pointer), CLAUDE.md §1 (semantic layer = the moat), §8 (PDPA-forward; ADRs Accepted before implementation), ADR-009 D1/D2 (Cowork drafts, Code commits), ADR-012 D4.3 (author≠reviewer disclosure), ADR-013 (phased autonomy relocation; Cowork = advisory governance drafter)
@@ -364,12 +364,12 @@ whatever Cray selected for forks 1 and 2 (1-b+1-c · 2-c).
 
 ---
 
-## Amendment (2026-06-23, PROPOSED — Cray ratification pending): member (b)'s verify mechanism = hybrid (deterministic floor + advisory local-LLM-judge)
+## Amendment (2026-06-23, RATIFIED — Cray 2026-06-23): member (b)'s verify mechanism = hybrid (deterministic floor + advisory local-LLM-judge)
 
-> **Status of this amendment:** **PROPOSED (DRAFT).** The ADR's overall **Status stays
-> `Accepted`**; this amendment proposes a mechanism for member (b)'s verify, surfaced for
-> Cray's ratification under **G1** (Cowork drafts → Code commits → **Cray ratifies**; do
-> **not** self-ratify).
+> **Status of this amendment:** **RATIFIED (Cray, 2026-06-23).** The ADR's overall **Status
+> stays `Accepted`**; this amendment authorizes a mechanism for member (b)'s verify, ratified
+> by Cray under **G1** (Cowork drafted → Code committed → **Cray ratified**). Recorded
+> **inline** (SD-A1 = (i), Cray-selected 2026-06-23).
 > **Scope — member (b)'s verify mechanism ONLY.** This amendment does **NOT** re-open the
 > member-(a) Design fork (F1/F2/F3, `:149-198`) or D3-α (`:136-147`) — those remain settled
 > as ratified 2026-06-18. It authorizes *how* member (b) (Verify + reshape, D2(b)
@@ -442,18 +442,18 @@ Accepted ADR already holds.
 - **Phase 2 = the advisory local-LLM-judge layer.** **Gated on this amendment** being
   ratified.
 
-### Surfaced for Cray — SD-A1 (amendment shape)
+### SD-A1 (amendment shape) — RESOLVED (Cray selected (i) inline, 2026-06-23)
 
-Two ways to record this decision; **Cray adjudicates**:
+Two ways to record this decision were surfaced; **Cray selected (i) inline subsection** (2026-06-23):
 
 | Option | Shape | Trade-off |
 |---|---|---|
-| **(i) Inline amendment subsection (Cowork lean)** ← this draft | Append this `## Amendment` subsection to ADR-0022 (as drafted). | One citation anchor; it is a **mechanism refinement within the same construct** (member (b)), not a new construct, so it belongs with the ADR it refines. |
+| **(i) Inline amendment subsection** ← SELECTED (Cray 2026-06-23) | Append this `## Amendment` subsection to ADR-0022 (as drafted). | One citation anchor; it is a **mechanism refinement within the same construct** (member (b)), not a new construct, so it belongs with the ADR it refines. |
 | **(ii) Tiny companion ADR that amends ADR-0022** | A new ADR-00NN whose sole decision amends ADR-0022's member (b) (the ADR-0021-amends-ADR-008 precedent). | Cleaner standalone audit entry; but fragments the member-(b) citation anchor across two files for a mechanism (not construct) refinement. |
 
-**Cowork lean: (i)** — a mechanism refinement within the same construct keeps one
-anchor. **(ii) surfaced honestly** in case Cray prefers a standalone amendment record. If
-Cray selects (ii), this subsection moves to the companion ADR unchanged.
+**Cray selected (i)** (2026-06-23) — a mechanism refinement within the same construct keeps
+one citation anchor; this amendment is recorded inline (as drafted). (ii) was surfaced as
+the standalone-record alternative but not chosen.
 
 ### Authoring disclosure (ADR-012 D4.3)
 
