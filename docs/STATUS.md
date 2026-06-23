@@ -1,5 +1,5 @@
 ---
-last_updated: 2026-06-23T15:02:04+07:00
+last_updated: 2026-06-23T15:33:01+07:00
 session: 74
 current_batch: 'session-74 — PLAN-0035 Phase 2 (advisory local-LLM-judge, ADR-0022 member (b)) SHIPPED (#407, `5c7c175`) on the Phase-1 floor; PLAN-0035 → Complete + archived to `done/` (`805f5d2`); both phases of member (b) verify+reshape now shipped.'
 current_actor: code
@@ -50,9 +50,12 @@ recent_commits: [805f5d2, 5c7c175, 3625ea4, 47e154b, 17f5d6e, 1c34125, 4eb2539, 
 > passed, 22 skipped** (was 1629; +10 offline judge-faked tests); AC-5
 > wrong-handler-not-rescued + D-6 contamination boundary hold. **Routing:**
 > Phase 2 was impl (`feat/*` + PR) gated on the ADR-0022 amendment (RATIFIED
-> #405) — **NOT** G2-gated; Code built + self-merged (#407, Cray-authorized
-> self-merge this session); the `docs(plans):` closeout (`805f5d2`) + this
-> `docs(status):` reconcile follow on a `docs/*` branch. **PLAN-0035
+> #405) — **NOT** G2-gated; Code built + self-merged **#407** (the feat-PR
+> self-merge was **Cray-authorized via AskUserQuestion** — Landing = "feat PR +
+> self-merge"). The `docs(plans):` closeout (`805f5d2`) + the session-74
+> `docs(status):` reconcile landed as docs closeout **PR #408**, whose self-merge
+> was a **Code extension of the #407 authorization — not separately Cray-approved**
+> (attribution-honesty note, s74; recorded for audit completeness). **PLAN-0035
 > lifecycle:** flipped Draft → Complete + `git mv`'d to
 > `docs/plans/done/0035-governed-action-verify-reshape-build.md` (`805f5d2`)
 > — the whole Group-A A1 arc (member (b) verify+reshape) is now closed
