@@ -12,6 +12,103 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-23 (session-74 reconcile): four CF blocks rotated to hold Current Focus at the 4-newest-sessions window {74,73,72,71} when the session-74 PLAN-0035-Phase-2-shipped block landed (R2) — the **Session-69 `0a32e67`** block (PLAN-0033 Phase C C0 story-mode) and three **Session-67** blocks (`558ec29` B2 registry auto-discovery, `7a59814` B1 ORM emitter, `0593bc8` Phase B kickoff)._
+
+> **Session 69 (head_commit `0a32e67`) — PLAN-0033 Phase C **C0 VERTICAL
+> SLICE** SHIPPED (#385): the aquaculture story-mode.** A new
+> `services/api/static/assets/view-story.js` **additive overlay** (SD-C — it
+> *coexists* with Views A–E and **never replaces** the console) lands the proven
+> story-mode spine, alongside **`motion.js`** (a **driver-agnostic** Motion seam
+> that enforces the lifecycle **teardown contract**) + `story.css`, wired into
+> `index.html` / `app.js`. C0 delivers the three load-bearing structures: a
+> **horizontal branching-DAG** overview (**5 node states + 3 edge types**,
+> hand-placed SVG), a **two-axis layout** (all task details **left** / DAG +
+> transport **right**), and the **scene-6 control surface** (Proposed→Approved→
+> Executed kanban + a reasoning-trace **why-toggle** reusing the existing
+> rule/llm/query colour legend). **The moat beat works (AC-3, ADR-010 IN-4):** an
+> LLM-compose error **reroutes (amber) to the deterministic rule fail-safe**,
+> which **still** passes the human **approve-gate** + **records audit** — the
+> governance layer is the demo, not raw accuracy. **GSAP DEFERRED to C1/C2**
+> (this **corrects** the s68 next_action that bundled "vendor GSAP locally" into
+> C0-1): GSAP's 2026 public-repo licence check + local vendoring are gated, and
+> because the Motion seam is **driver-agnostic**, C0 ships on the
+> **zero-dependency WAAPI/rAF driver** (offline, no-CDN, the reduced-motion
+> floor); GSAP — or an MIT lib like Motion One — drops in behind the same
+> `Motion.useDriver` interface for C1/C2 scroll-driven beats after the one-time
+> licence check, **with no scene-code change** (Cray's call, s69). **Verify:**
+> phase AC-2/3/4/5/6/9/10/11/12/13/14 all confirmed via the **preview workflow**
+> (accessibility snapshot + behavioral eval); the deterministic **/goal** gate
+> (files exist / `index.html` wired / **no new CDN**) passes; **teardown leaks 0
+> timers/tweens/listeners** across repeated open/close cycles. **Caveat:**
+> `preview_screenshot` is **environmentally unavailable** in this WSL/FastAPI
+> preview (it times out even on the plain console — not a page defect), so
+> verification was snapshot + behavioral eval, which the workflow endorses for
+> structure/content. **Scope:** Tier-1 mirror, **synthetic data only**
+> (ADR-0015 D1); **no new backend**. **NEXT = C1** (full arc scenes) on the
+> proven C0 spine, then **C2** (breadth + Ask + appendix) — Code execution, not
+> Cowork-drafting. AI-assisted (Claude Code, session 69); no `Co-Authored-By` per
+> CLAUDE.md §7.
+
+> **Session 67 (head_commit `558ec29`) — PHASE B COMPLETE: B2 REGISTRY
+> AUTO-DISCOVERY SHIPPED (#373); Group B foundation DONE.** A vertical under
+> `verticals/<ns>/` exposing the conventional `register_<ns>_*` entry functions is
+> now **discovered + registered at startup via import-scan**
+> (`services/engine/discovery.py` / `discover_and_register()`, ADR-0023 D1 — the
+> ADR-006 D3 **L1→L2** plugin-maturity move) — **no hand edit to `main.py`**.
+> Additive (the explicit register API unchanged), idempotent (skips
+> already-registered), failure-isolated (a broken vertical is skipped + logged),
+> reset-resettable (PLAN-0005 R5). The hand-wired `_VERTICAL_REGISTRARS` map **and**
+> the scaffold's `main.py` code-mod are **removed** — the "onboarding edits core"
+> fragility is closed. **Verify:** new `test_discovery.py` (register-all /
+> idempotent / failure-isolation / reset) + `test_scaffold` + `test_intake_routes`
+> rewired (no main.py code-mod); **full suite 1615 passed, 22 skipped**; `ruff` +
+> `mypy --strict` clean; offline. `feat(engine)` (#373 / `c0a4be9`); PLAN-0032
+> `git mv`'d to `done/`. **Phase A + B (the engine backlog) are DONE** — ADR-0022 /
+> ADR-0023 Accepted; PLAN-0028/0029/0030/0031/0032 shipped + archived. The moat is
+> built: ontology → 6 generated artifacts (incl. the auto-generated ORM) →
+> auto-registering plugins → 3 OCT features + governed entity resolution. **NEXT:**
+> Phase C (UI rework, Cray-directed) + Phase D (#3b vertical refresh, light Cowork)
+> per the roadmap handoff. AI-assisted (Claude Code, session 67); no
+> `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 67 (head_commit `7a59814`) — PHASE B: B1 ORM EMITTER SHIPPED
+> (#370).** The SQLAlchemy ORM is now **generated from the ontology** — a 6th
+> `emit_orm` in `code_generator.py` writes the energy ORM to the **committed**
+> `services/db/models.py`, so DDL↔ORM parity (`test_schema_parity`) holds **by
+> construction** instead of by hand-edit discipline (the PLAN-0005 §8.1 ORM-emitter
+> Rule-of-Three trigger fired). **B1-DP-1 resolved Option B (Cray):** the ORM is a
+> **runtime dependency** (services/db + alembic import it), so it generates to the
+> committed central `models.py` via `_ORM_COMMITTED_DEST` — **not** a gitignored
+> `verticals/<ns>/generated/` artifact; the re-export-from-gitignored approach (the
+> originally-picked (a)) would break fresh checkouts — **caught at build +
+> re-decided**. **SD-D:** the emitter does the ORM model only; Alembic stays
+> separate. **Verify:** new `test_orm_emitter.py` + `test_schema_parity` green
+> against the generated ORM; **full suite 1612 passed, 22 skipped**; `ruff` +
+> `mypy --strict` clean; offline. `feat(engine)` (#370 / `73e85f3`); PLAN-0031
+> `git mv`'d to `done/`. **Deferred (Cray):** the per-vertical ORM layout is a
+> Rule-of-Three follow-up (trigger: vertical #2 needs an ORM) — Active TODO.
+> **NEXT:** the ADR-0023 ratification-flip (dispatch `…1534…` → Cowork flips; Cray
+> ratified SD-A=new-ADR + SD-C=import-scan) → unblocks **B2** (PLAN-0032)
+> implementation. AI-assisted (Claude Code, session 67); no `Co-Authored-By` per
+> CLAUDE.md §7.
+
+> **Session 67 (head_commit `0593bc8`) — PHASE B KICKOFF: Group B
+> foundation governance committed (ADR-0023 + PLAN-0031/0032).** Cray **triggered
+> Group B** (Rule-of-Three met on energy/supply_chain/aquaculture; ADR-006 D4) and
+> ruled **B2 needs an ADR-006-area touch**. Cowork authored 3 drafts; **Code
+> reviewed (R2-verified the anchors — `main.py:40-42` map, `registry.py:51-52` dup
+> guard, `test_intake_routes.py:256` assertion) + committed**: **ADR-0023**
+> (registry auto-discovery = the ADR-006 D3 **L1→L2** plugin-maturity move;
+> **Proposed**, #367 `a9488b6`) · **PLAN-0031** (B1 ORM emitter — a 6th `emit_orm`
+> so `test_schema_parity` holds by construction; **no ADR gate**) · **PLAN-0032**
+> (B2 registry auto-discovery via import-scan; **gated on ADR-0023 Accepted**) —
+> both #368 `0593bc8`. Cowork resolved **SD-A=new-ADR · SD-B=split ·
+> SD-C=import-scan · SD-D=ORM-only** + surfaced **B1-DP-1** (ORM output location).
+> **AWAITING Cray:** ratify ADR-0023 (Proposed→Accepted, SD-A/SD-C) + confirm
+> SD-B/SD-D/B1-DP-1 → then Cowork flips ADR-0023 (G1-trap for Code) → Code
+> implements **B1 now** + **B2 after the ADR**, offline-only. AI-assisted (Claude
+> Code, session 67); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-22 (session-73 reconcile): the **Session-67 `0b56fdf`** CF block (PHASE A COMPLETE: ADR-0022 ratified + PLAN-0030 member (a) entity-resolution SHIPPED #365) rotated to hold Current Focus at the 8-block cap when the session-73 PLAN-0035-created block landed (R2)._
 
 > **Session 67 (head_commit `0b56fdf`) — PHASE A COMPLETE: ADR-0022
@@ -1422,6 +1519,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 | Date | Decision | Reference |
 |------|----------|-----------|
 | 2026-06-16 | **PLAN-0026 AC-9 optional live MS-S1 re-verify RAN + PASSED (#332, `dc65425`/`c16778d`, session 62)** _(rotated 2026-06-23, session 73)_ — Cray-authorized host-state run closing the last PLAN-0026 open item; offline oracle stays the CI gate, AC-9 is verification-not-gate (Lesson #15). 12-Q NL-query harness vs `gpt-oss:20b` @ MS-S1 (`run_benchmark.py --warm`), offline oracle 65 passed immediately prior. **Result: 11/12 correct (was 10/12 in AC-8) · anti-hallucination 12/12 HELD · p50 15.5s / p95 39.0s.** Headline (AC-1 live): nl-08 + nl-11 both flipped correct on the deterministic structured lens (`result_count 7`, max `96.5 °C`, top `Battery Bank A` from the execute-stage `AggregateResult`, not phrase prose) — model emits `operation:max` not `list` and invents no `resolve` placeholder. Two honest notes: (1) lone miss = nl-01 (not an AC-9 target) — known simple-list filter-omission nondeterminism, zero fabrication, out of PLAN-0026 scope, offline gold green → not a Phase-A regression; (2) this run hit the right result via the model's own `unit=celsius` filter (`measured_kind:null`) so the coherence seam had nothing to rewrite — the seam is the safety net proven by the offline oracle (AC-7), both routes yield the identical grounded result. **Verdict: AC-9 PASS.** Recorded as a RESULTS.md addendum; `--dump-json` evidence gitignored at `.claude/benchmark-results/2026-06-16-nl-query-ac9.jsonl`. PLAN-0026 now fully closed incl. the optional live re-verify | `c16778d` (#332, content `dc65425`) / `benchmarks/nl_query_feasibility/RESULTS.md` |
+| 2026-06-16 | **PLAN-0027 (B-γ comparison methodology pre-registration) LANDED + Cray-ratified §3–§4 (#337, `ab0174a`/`e70daa9`/`fb91777`, session 63)** _(rotated 2026-06-23, session 74)_ — completes PLAN-0019 Step B-γ / AC B-3 **Step 1** (pre-registration); status now **Ready for execution**. Pre-registers the three-arm comparison on the energy breach subset: (a) governed-procedure stack (reuse REPORT numbers, no re-run), (b) raw text-to-SQL, (c) lean-but-real RAG — **reports-not-gates** (B-3/B-6) with a **D-6 contamination guard** (arm c stays a clean naive RAG baseline, no verify/reshape/governance layer). Governance (G2-routed): `plan-drafter` authored → G2 blocks Code/subagent PLAN writes → Cowork materialized (ungated) → Code committed (#337, ADR-009 D1/D2) → Cray ratified §3–§4 resolving SD-1..SD-4 per drafter recs, plus a **joint SD-1↔SD-2 fairness binding** (Cowork advisory): under the locked lexical retriever the corpus + question template must share vocabulary + cover every breach item's `action_keywords` lemma, else arm (c) misses = retrieval artifacts not paradigm limits. Side-thread (no artifact): G2-vs-drafting friction discussed; Cray PARKED the root-fix (exempt plan-drafter uncommitted-draft write from G2) as a future harness-improvement batch | `ab0174a` (#337, content `e70daa9`/`fb91777`) / `docs/plans/0027-*.md` |
 | 2026-06-15 | **PLAN-0026 COMPLETE — ADR-0021 (metric-kind typed ontology semantics) AUTHORED→ACCEPTED then Phase A (`measured_kind`) SHIPPED; PLAN archived to `done/` (#327–#330, `b53e631`, session 61)** _(rotated 2026-06-22, session 73)_ — closes PLAN-0026 end-to-end (the principled fix Phase B could only approximate). Cray decisions: Gate-1 = **T2** (NL-query is the moat wedge), Gate-2/SD-2 = **Path B** (kind↔unit binding in the ontology → a new ADR); cross-check confirmed **(b) over (c)** ((c) over-scope now per Rule of Three + ADR-008 D3, and (b) reuses entirely into (c)). **ADR-0021 ("classify, don't synthesize"):** Cowork-authored (ADR-009 D1) → Code committed Proposed (#327, `a102b9d`) → Cray ratified Accepted (#328, `4423a22`); construct **(b)** QUDT-style quantity-kind ⟂ unit typed pair (`quantity_bindings`) over (a) per-enum-value map and (c) composite; (c) is a **triggered successor** (ADR-016 procedure engine + ≥3 verticals); amends ADR-008 D3. **Phase A (steps 6–7, #329 `37f62a7`; `bcbb62d`+`7f72181`):** step 6 — `measured_kind` enum (temperature|frequency) + object-level `quantity_bindings` on OperationalEvent, admitted by `ontology_schema.json` + parsed into `ontology_meta`, synthetic data tagged (7/2/2), emitted across all 5 artifacts, D6 L2 validator check, ORM + Alembic `0003` column (DB↔DDL parity via `test_schema_parity`); step 7 — `StructuredQuery.measured_kind` (translate LLM **classifies** the kind, the coherence seam **synthesizes** the precise `unit` from the binding, **superseding** Phase B dominant-unit per IN-1; no kind → dominant fallback, classified-but-absent → clarify, never fabricate). Distinguishes "highest frequency" from "highest temperature". Suite 1535/22; ruff+ruff-format+mypy clean; 12/12 anti-hallucination preserved; offline oracle re-pointed to a classified `measured_kind`; 6 new tests (4 engine + 2 validator). PLAN-0026 → `done/` (#330, `0a1427e`/`b53e631`). No gated NL-query work remains | `b53e631` (#327/#328/#329/#330) / `docs/adr/0021-metric-kind-typed-ontology-semantics.md` + `services/engine/nl_query.py` + `docs/plans/done/0026-nl-query-aggregate-metric-semantics.md` |
 | 2026-06-15 | **PLAN-0026 (NL-query aggregate metric-semantics) AUTHORED+RATIFIED+MERGED (#321) then Phase B (deterministic rewrite seam) MERGED (#322, `19eeb21`, session 60)** _(rotated 2026-06-22, session 72)_ — closes the filter-omission-on-aggregate-superlative gap PLAN-0024 left open (nl-08/nl-11). Diagnosis (Cray-directed): a 4-model MS-S1 sweep + a 3-variant prompt escalation both NEGATIVE → it's a typed-query-on-untyped-metric data-model problem, not model/prompt (two external LLMs concurred). Phase B = a post-translate rewrite seam in `nl_query.py`: `group_by` inference for "which <entity>" superlatives (AC-2, reshape-only) + a heterogeneous-aggregate coherence rewrite composing the dominant-unit filter in the engine (AC-3, model never re-supplies it = v2-regression-proof) + a clarify-not-silent-no-data guard (AC-4) + `NlAnswer.outcome: Literal["answered","no_data","clarify"]` (SD-1, Cray-approved). Offline oracle feeds the model's known-bad `{filters:[], operation:max, group_by:null}` and asserts the seam → `result_count==7`, value 96.5, top "Battery Bank A" structurally (not phrase-rescued). Suite 1527/22; ruff+mypy clean; anti-hallucination 12/12 preserved (AC-5); one `# noqa: C901` justified on the orchestrator. Governance: Cray "governed-first" → `plan-drafter` G2-denied → Cowork (ungated) authored → Code committed #321 → Cray ratified Proposed→Accepted → Phase B #322. Phase A (`measured_kind` ontology enum, the principled kind-word fix) GATED on the T2-vs-T3 roadmap call + SD-2's ADR; PLAN stays ACTIVE (not `done/`) | `19eeb21` (#321/#322) / `services/engine/nl_query.py` + `docs/plans/0026-nl-query-aggregate-metric-semantics.md` |
 | 2026-06-15 | **PLAN-0024 (NL-query T2 engine enrichment) SHIPPED — engine half of the T2 wedge (#316 plan / #317 engine, `f4aa7fe`, session 59)** _(rotated 2026-06-21, session 71)_ — `StructuredQuery` gains `max/min/avg/sum` (+ optional `group_by`) computed in the deterministic execute stage + a new `NlAnswer.aggregate` grounding receipt (never the phrase LLM), plus a `NameResolve` cross-type name→id descriptor (resolve-then-filter; `object_type` stays single/enum-constrained, group keys relabelled id→title); translate prompt now requires the implied filter + exact enum grounding. Gold ceiling cases nl-08/09/10/11 moved onto the deterministic structured-result lens (`_aggregate_ok`). Anti-hallucination AC-5 preserved (empty/no-numeric/unresolved short-circuit to no-records). 11 new offline tests; suite 1511/22 (+30); ruff+mypy clean. Governance: Cray scoped engine-only (UI→PLAN-0025, SD-1 deferred) → `plan-drafter` authored PLAN-0024 → ungated Cowork placed the file (G2 denied all in-harness Code writes) → Code committed #316 → merged → Code executed #317; SD-1 done as the recommended pre-step; one L1 loop-detect resolved by a Cray-approved counter reset, no Bash | `f4aa7fe` (#316/#317) / `services/engine/nl_query.py` + `docs/plans/done/0024-nl-query-t2-engine-enrichment.md` |
