@@ -1,6 +1,6 @@
 # PLAN-0035: Governed action verify+reshape build (ADR-0022 member (b))
 
-**Status:** Draft
+**Status:** Complete (both phases shipped 2026-06-23 — Phase 1 deterministic floor #403 `1c34125`; Phase 2 advisory local-LLM-judge #407 `5c7c175`)
 **Owner:** both (Cowork/Tier-1 authors this PLAN; Code commits + executes per ADR-009 D1/D2)
 **Created:** 2026-06-22
 **Related ADRs:** ADR-0022 (Accepted — D2 names **member (b)** verify+reshape; D3 = α one construct; **"(a) is a specific instance of (b)"**; **THIS PLAN builds member (b)**); ADR-0021 (the "classify, don't synthesize" lineage extended here); ADR-007 (D2 `RecommendedAction` envelope — generalised, not broken); ADR-010 (D5 LLM-backed `recommend()`; **IN-4 deterministic fail-safe — not regressed**); ADR-011 (earmarked audit framework — trace interplay **flagged, not designed**); ADR-016 (the governed procedure engine — the area member (b) lands in; it **carries no verify/reshape clause today**, the gap A1 fills); ADR-009 D1/D2 (Cowork drafts, Code commits); ADR-012 D4.3 (author≠reviewer disclosure); ADR-013 (Cowork = advisory governance drafter)

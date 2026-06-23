@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-23T14:11:17+07:00
-session: 73
-current_batch: 'session-73 (cont.) — PLAN-0035 A1 advanced end-to-end: SD-1 = (c) Hybrid phased (Cray); Phase 1 deterministic verify+reshape floor SHIPPED (#403 `1c34125`, 1629 tests); (c) governance landed (#404 — ADR-0022 amendment + PLAN-0035 revision) + amendment RATIFIED (#405 `3625ea4`, SD-A1=(i) inline). Phase 2 (advisory local-LLM-judge) UNBLOCKED.'
+last_updated: 2026-06-23T15:02:04+07:00
+session: 74
+current_batch: 'session-74 — PLAN-0035 Phase 2 (advisory local-LLM-judge, ADR-0022 member (b)) SHIPPED (#407, `5c7c175`) on the Phase-1 floor; PLAN-0035 → Complete + archived to `done/` (`805f5d2`); both phases of member (b) verify+reshape now shipped.'
 current_actor: code
-blocked_on: 'Nothing blocks Code — Phase 1 shipped; the ADR-0022 amendment is RATIFIED so Phase 2 is unblocked. A live LLM-judge smoke is host-state (Cray-gated), not an acceptance gate.'
-next_action: 'Build PLAN-0035 **Phase 2** (the advisory local-LLM-judge, Steps 8–12) on a `feat/*` branch: the LLM-judge cross-check (advisory — never overrides the surfaced action) + the deterministic agreement/confidence + the `verification_mode` degradation disclosure (reuses the IN-4 / OllamaUnreachable path); tests fake the judge (the offline oracle stays the gate); a live judge run is Cray-gated host-state. Then flip PLAN-0035 → Complete + `git mv` to `done/`. Standing backlog: a more-robust MS-S1 keep-warm (Windows Task / MS-S1-side config) AFTER the Procurement vertical work (Cray, 2026-06-23); the Procurement vertical (parked, real design-partner interest); PLAN-0005 §8.1 register; Phase D (#3b).'
-head_commit: 3625ea4
-recent_commits: [3625ea4, 47e154b, 17f5d6e, 1c34125, 4eb2539, 72f0deb, 0f56d24, 5daa0e0, fde6713, 1917a6e]
+blocked_on: 'Nothing blocks Code — PLAN-0035 fully complete (both phases shipped). A live LLM-judge smoke is host-state (Cray-gated), not an acceptance gate.'
+next_action: 'Standing backlog — the Procurement vertical (parked, real design-partner interest); a more-robust MS-S1 keep-warm (Windows Task / MS-S1-side config) AFTER the Procurement work (Cray, 2026-06-23); PLAN-0005 §8.1 deferred-foundational register; Phase D (#3b vertical refresh).'
+head_commit: 805f5d2
+recent_commits: [805f5d2, 5c7c175, 3625ea4, 47e154b, 17f5d6e, 1c34125, 4eb2539, 72f0deb, 0f56d24, 5daa0e0]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,48 @@ recent_commits: [3625ea4, 47e154b, 17f5d6e, 1c34125, 4eb2539, 72f0deb, 0f56d24, 
 
 ## Current Focus
 
-> **Session 73 (current; head_commit `3625ea4`) — PLAN-0035 (Group-A **A1**
+> **Session 74 (current; head_commit `805f5d2`) — PLAN-0035 **Phase 2** (the
+> advisory local-LLM-judge, ADR-0022 **member (b)**) SHIPPED (#407, feat
+> `5c7c175`); **PLAN-0035 → Complete + archived to `done/`** (`805f5d2`) —
+> **both phases of member (b) verify+reshape now shipped, the A1 arc closed
+> end-to-end.** Phase 2 layers an **advisory** local-LLM-judge on the Phase-1
+> deterministic floor (`services/engine/action_verification.py`): it
+> semantically cross-checks *does the proposal prose express the corrective
+> action the structured handler names?*, adding a confidence + agreement
+> signal and a **`"hybrid"`** `verification_mode` trace. New surface —
+> `judge_action_expression()` + `augment_with_advisory_judge()` +
+> `ActionJudgeVerdict`/`JudgeResult` + `VERIFICATION_MODE_HYBRID`; the Phase-1
+> floor (`verify_action_expression`) is **unchanged**. **The 4 locked
+> constraints (ADR-0022 amendment A2) all honored:** ① **offline gate** —
+> tests **fake the judge**, the live judge is gated behind a new setting
+> `verification_judge_enabled` (**default off** — a live run is host-state,
+> CLAUDE.md §8); ② **advisory** — the judge **NEVER overrides the surfaced
+> action** (the deterministic floor still decides what is surfaced), pinned by
+> `test_judge_disagreement_never_overrides_the_floor_action`; ③ **deterministic
+> compare** — floor(D) vs judge(L) agreement computed in code, no 3rd LLM;
+> ④ **disclosed degradation** — judge unavailable → `verification_mode
+> "(a)-only"` disclosed in the trace, **reusing** the IN-4 /
+> `OllamaUnreachableError` seam + `notify_llm_unreachable` (no new fail-safe,
+> IN-4 not regressed). `augment_with_advisory_judge` **never raises** into
+> `recommend()` (advisory must not harm the load-bearing floor; only the floor
+> propagates to the IN-4 fail-safe, AC-7). **SD-3 / Step 11 — the first-class
+> `verification` envelope field is DEFERRED (trace-only)**, mirroring member
+> (a)'s deferred `EntityRef.resolution` field; the ADR-007 D2 envelope is
+> untouched (Code's rec, surfaced → proceed-to-PR). **Gate:** ruff +
+> ruff-format clean; `mypy --strict` clean (`services/`); **full suite 1639
+> passed, 22 skipped** (was 1629; +10 offline judge-faked tests); AC-5
+> wrong-handler-not-rescued + D-6 contamination boundary hold. **Routing:**
+> Phase 2 was impl (`feat/*` + PR) gated on the ADR-0022 amendment (RATIFIED
+> #405) — **NOT** G2-gated; Code built + self-merged (#407, Cray-authorized
+> self-merge this session); the `docs(plans):` closeout (`805f5d2`) + this
+> `docs(status):` reconcile follow on a `docs/*` branch. **PLAN-0035
+> lifecycle:** flipped Draft → Complete + `git mv`'d to
+> `docs/plans/done/0035-governed-action-verify-reshape-build.md` (`805f5d2`)
+> — the whole Group-A A1 arc (member (b) verify+reshape) is now closed
+> end-to-end. AI-assisted (Claude Code, session 74); no `Co-Authored-By` per
+> CLAUDE.md §7.
+
+> **Session 73 (head_commit `3625ea4`) — PLAN-0035 (Group-A **A1**
 > = ADR-0022 **member (b) verify+reshape**) advanced END-TO-END: created →
 > Phase 1 SHIPPED → (c) governance RATIFIED → Phase 2 next.** The heaviest
 > moat-proof — *prove the moat IS governance* — moved from a Draft PLAN to a
@@ -40,15 +81,14 @@ recent_commits: [3625ea4, 47e154b, 17f5d6e, 1c34125, 4eb2539, 72f0deb, 0f56d24, 
 > revision** (SD-1…SD-5 stamped; Goal/Steps restructured into Phase 1 / Phase
 > 2; path-fix `structured.py` → `llm/structured.py`). **The amendment was
 > RATIFIED** (#405, `3625ea4`; SD-A1 = (i) inline, Cray-selected), so
-> **PLAN-0035 Phase 2 (advisory local-LLM-judge) is now UNBLOCKED.**
+> **PLAN-0035 Phase 2 (advisory local-LLM-judge) was thereby UNBLOCKED**
+> (shipped next session — see the Session-74 block above).
 > *Operational detour:* the G1/G2 classifier backend is **local Ollama (MS-S1
 > `gpt-oss:20b`) since 2026-06-12**, and **G1 is always-pause for Code** — a
 > warm-confirmed probe this session re-confirmed Accepted-ADR edits route to
 > Cowork; a **keep-alive cron** was installed (every 3h, keeps `gpt-oss:20b`
-> warm) to stop cold-load stalls on the classifier path. **Phase 2 next**
-> (the advisory judge + agreement/confidence + `verification_mode`
-> degradation disclosure). AI-assisted (Claude Code, session 73); no
-> `Co-Authored-By` per CLAUDE.md §7.
+> warm) to stop cold-load stalls on the classifier path. AI-assisted (Claude
+> Code, session 73); no `Co-Authored-By` per CLAUDE.md §7.
 
 > **Session 72 (current; head_commit `72f0deb`) — **PLAN-0034 (G2
 > drafting-friction root-fix) FULLY COMPLETE.** The two-prong fix that has
@@ -180,100 +220,18 @@ recent_commits: [3625ea4, 47e154b, 17f5d6e, 1c34125, 4eb2539, 72f0deb, 0f56d24, 
 > to a fresh session by a context-pressure call). AI-assisted (Claude Code,
 > session 71); no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 69 (head_commit `0a32e67`) — PLAN-0033 Phase C **C0 VERTICAL
-> SLICE** SHIPPED (#385): the aquaculture story-mode.** A new
-> `services/api/static/assets/view-story.js` **additive overlay** (SD-C — it
-> *coexists* with Views A–E and **never replaces** the console) lands the proven
-> story-mode spine, alongside **`motion.js`** (a **driver-agnostic** Motion seam
-> that enforces the lifecycle **teardown contract**) + `story.css`, wired into
-> `index.html` / `app.js`. C0 delivers the three load-bearing structures: a
-> **horizontal branching-DAG** overview (**5 node states + 3 edge types**,
-> hand-placed SVG), a **two-axis layout** (all task details **left** / DAG +
-> transport **right**), and the **scene-6 control surface** (Proposed→Approved→
-> Executed kanban + a reasoning-trace **why-toggle** reusing the existing
-> rule/llm/query colour legend). **The moat beat works (AC-3, ADR-010 IN-4):** an
-> LLM-compose error **reroutes (amber) to the deterministic rule fail-safe**,
-> which **still** passes the human **approve-gate** + **records audit** — the
-> governance layer is the demo, not raw accuracy. **GSAP DEFERRED to C1/C2**
-> (this **corrects** the s68 next_action that bundled "vendor GSAP locally" into
-> C0-1): GSAP's 2026 public-repo licence check + local vendoring are gated, and
-> because the Motion seam is **driver-agnostic**, C0 ships on the
-> **zero-dependency WAAPI/rAF driver** (offline, no-CDN, the reduced-motion
-> floor); GSAP — or an MIT lib like Motion One — drops in behind the same
-> `Motion.useDriver` interface for C1/C2 scroll-driven beats after the one-time
-> licence check, **with no scene-code change** (Cray's call, s69). **Verify:**
-> phase AC-2/3/4/5/6/9/10/11/12/13/14 all confirmed via the **preview workflow**
-> (accessibility snapshot + behavioral eval); the deterministic **/goal** gate
-> (files exist / `index.html` wired / **no new CDN**) passes; **teardown leaks 0
-> timers/tweens/listeners** across repeated open/close cycles. **Caveat:**
-> `preview_screenshot` is **environmentally unavailable** in this WSL/FastAPI
-> preview (it times out even on the plain console — not a page defect), so
-> verification was snapshot + behavioral eval, which the workflow endorses for
-> structure/content. **Scope:** Tier-1 mirror, **synthetic data only**
-> (ADR-0015 D1); **no new backend**. **NEXT = C1** (full arc scenes) on the
-> proven C0 spine, then **C2** (breadth + Ask + appendix) — Code execution, not
-> Cowork-drafting. AI-assisted (Claude Code, session 69); no `Co-Authored-By` per
-> CLAUDE.md §7.
-
-> **Session 67 (head_commit `558ec29`) — PHASE B COMPLETE: B2 REGISTRY
-> AUTO-DISCOVERY SHIPPED (#373); Group B foundation DONE.** A vertical under
-> `verticals/<ns>/` exposing the conventional `register_<ns>_*` entry functions is
-> now **discovered + registered at startup via import-scan**
-> (`services/engine/discovery.py` / `discover_and_register()`, ADR-0023 D1 — the
-> ADR-006 D3 **L1→L2** plugin-maturity move) — **no hand edit to `main.py`**.
-> Additive (the explicit register API unchanged), idempotent (skips
-> already-registered), failure-isolated (a broken vertical is skipped + logged),
-> reset-resettable (PLAN-0005 R5). The hand-wired `_VERTICAL_REGISTRARS` map **and**
-> the scaffold's `main.py` code-mod are **removed** — the "onboarding edits core"
-> fragility is closed. **Verify:** new `test_discovery.py` (register-all /
-> idempotent / failure-isolation / reset) + `test_scaffold` + `test_intake_routes`
-> rewired (no main.py code-mod); **full suite 1615 passed, 22 skipped**; `ruff` +
-> `mypy --strict` clean; offline. `feat(engine)` (#373 / `c0a4be9`); PLAN-0032
-> `git mv`'d to `done/`. **Phase A + B (the engine backlog) are DONE** — ADR-0022 /
-> ADR-0023 Accepted; PLAN-0028/0029/0030/0031/0032 shipped + archived. The moat is
-> built: ontology → 6 generated artifacts (incl. the auto-generated ORM) →
-> auto-registering plugins → 3 OCT features + governed entity resolution. **NEXT:**
-> Phase C (UI rework, Cray-directed) + Phase D (#3b vertical refresh, light Cowork)
-> per the roadmap handoff. AI-assisted (Claude Code, session 67); no
-> `Co-Authored-By` per CLAUDE.md §7.
-
-> **Session 67 (head_commit `7a59814`) — PHASE B: B1 ORM EMITTER SHIPPED
-> (#370).** The SQLAlchemy ORM is now **generated from the ontology** — a 6th
-> `emit_orm` in `code_generator.py` writes the energy ORM to the **committed**
-> `services/db/models.py`, so DDL↔ORM parity (`test_schema_parity`) holds **by
-> construction** instead of by hand-edit discipline (the PLAN-0005 §8.1 ORM-emitter
-> Rule-of-Three trigger fired). **B1-DP-1 resolved Option B (Cray):** the ORM is a
-> **runtime dependency** (services/db + alembic import it), so it generates to the
-> committed central `models.py` via `_ORM_COMMITTED_DEST` — **not** a gitignored
-> `verticals/<ns>/generated/` artifact; the re-export-from-gitignored approach (the
-> originally-picked (a)) would break fresh checkouts — **caught at build +
-> re-decided**. **SD-D:** the emitter does the ORM model only; Alembic stays
-> separate. **Verify:** new `test_orm_emitter.py` + `test_schema_parity` green
-> against the generated ORM; **full suite 1612 passed, 22 skipped**; `ruff` +
-> `mypy --strict` clean; offline. `feat(engine)` (#370 / `73e85f3`); PLAN-0031
-> `git mv`'d to `done/`. **Deferred (Cray):** the per-vertical ORM layout is a
-> Rule-of-Three follow-up (trigger: vertical #2 needs an ORM) — Active TODO.
-> **NEXT:** the ADR-0023 ratification-flip (dispatch `…1534…` → Cowork flips; Cray
-> ratified SD-A=new-ADR + SD-C=import-scan) → unblocks **B2** (PLAN-0032)
-> implementation. AI-assisted (Claude Code, session 67); no `Co-Authored-By` per
-> CLAUDE.md §7.
-
-> **Session 67 (head_commit `0593bc8`) — PHASE B KICKOFF: Group B
-> foundation governance committed (ADR-0023 + PLAN-0031/0032).** Cray **triggered
-> Group B** (Rule-of-Three met on energy/supply_chain/aquaculture; ADR-006 D4) and
-> ruled **B2 needs an ADR-006-area touch**. Cowork authored 3 drafts; **Code
-> reviewed (R2-verified the anchors — `main.py:40-42` map, `registry.py:51-52` dup
-> guard, `test_intake_routes.py:256` assertion) + committed**: **ADR-0023**
-> (registry auto-discovery = the ADR-006 D3 **L1→L2** plugin-maturity move;
-> **Proposed**, #367 `a9488b6`) · **PLAN-0031** (B1 ORM emitter — a 6th `emit_orm`
-> so `test_schema_parity` holds by construction; **no ADR gate**) · **PLAN-0032**
-> (B2 registry auto-discovery via import-scan; **gated on ADR-0023 Accepted**) —
-> both #368 `0593bc8`. Cowork resolved **SD-A=new-ADR · SD-B=split ·
-> SD-C=import-scan · SD-D=ORM-only** + surfaced **B1-DP-1** (ORM output location).
-> **AWAITING Cray:** ratify ADR-0023 (Proposed→Accepted, SD-A/SD-C) + confirm
-> SD-B/SD-D/B1-DP-1 → then Cowork flips ADR-0023 (G1-trap for Code) → Code
-> implements **B1 now** + **B2 after the ADR**, offline-only. AI-assisted (Claude
-> Code, session 67); no `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note (session-74 reconcile, 2026-06-23): the **Session-69**
+> Current Focus block (PLAN-0033 Phase C **C0 vertical slice** SHIPPED #385 —
+> the aquaculture story-mode, head_commit `0a32e67`) and all three
+> **Session-67** blocks (PHASE B COMPLETE: B2 registry auto-discovery #373,
+> head_commit `558ec29`; B1 ORM emitter #370, head_commit `7a59814`; PHASE B
+> KICKOFF: ADR-0023 + PLAN-0031/0032, head_commit `0593bc8`) fell outside the
+> 4-newest-sessions window {74,73,72,71} after the session-74 PLAN-0035 Phase-2
+> block landed, and rotated to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md),
+> along with the oldest Recent Decisions row (2026-06-16 PLAN-0027 B-γ
+> pre-registration LANDED, `ab0174a`), per the STATUS.md Rotation Policy
+> (R2/R4)._
 
 > _Rotation note (session-73 reconcile, 2026-06-22): the oldest **Session-67**
 > Current Focus block (PHASE A COMPLETE: ADR-0022 ratified + PLAN-0030 member
@@ -364,6 +322,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-23 | **PLAN-0035 Phase 2 (advisory local-LLM-judge, ADR-0022 member (b)) SHIPPED + PLAN-0035 fully COMPLETE (session 74, #407)** — an **advisory** local-LLM-judge layered on the Phase-1 deterministic floor (`services/engine/action_verification.py`): semantically cross-checks *does the proposal prose express the corrective action the structured handler names?*, adding confidence + agreement + a `"hybrid"` `verification_mode` trace (`judge_action_expression()` + `augment_with_advisory_judge()` + `ActionJudgeVerdict`/`JudgeResult` + `VERIFICATION_MODE_HYBRID`; the Phase-1 floor `verify_action_expression` unchanged). The 4 locked constraints (ADR-0022 amendment A2) all honored: ① offline gate — tests fake the judge, the live judge gated behind a new `verification_judge_enabled` setting (**default off** — live = host-state, CLAUDE.md §8); ② advisory — the judge NEVER overrides the surfaced action (the deterministic floor decides), pinned by `test_judge_disagreement_never_overrides_the_floor_action`; ③ deterministic compare — floor(D) vs judge(L) agreement in code, no 3rd LLM; ④ disclosed degradation — judge unavailable → `verification_mode "(a)-only"` in the trace, reusing the IN-4 / `OllamaUnreachableError` seam + `notify_llm_unreachable` (no new fail-safe, IN-4 not regressed). `augment_with_advisory_judge` never raises into `recommend()` (only the floor propagates to the IN-4 fail-safe, AC-7). **SD-3 / Step 11 — the first-class `verification` envelope field DEFERRED (trace-only)**, mirroring member (a)'s deferred `EntityRef.resolution` field; ADR-007 D2 envelope untouched (Code's rec → proceed-to-PR). Gate: ruff + ruff-format clean, `mypy --strict` clean (`services/`), **full suite 1639 passed/22 skipped** (was 1629; +10 offline judge-faked tests); AC-5 wrong-handler-not-rescued + D-6 boundary hold. Routing: impl (`feat/*` + PR) gated on the ADR-0022 amendment (RATIFIED #405) — NOT G2-gated; Code built + self-merged (#407, Cray-authorized). **PLAN-0035 flipped Draft → Complete + `git mv` to `done/` (`805f5d2`)** — both phases of member (b) verify+reshape now shipped, the Group-A A1 arc closed end-to-end | `5c7c175` (#407) + `805f5d2` / `services/engine/action_verification.py` + `docs/plans/done/0035-governed-action-verify-reshape-build.md` |
 | 2026-06-23 | **PLAN-0035 (A1 = ADR-0022 member (b) verify+reshape) advanced END-TO-END — SD-1 = (c) Hybrid phased; Phase 1 floor SHIPPED; (c) governance + amendment RATIFIED (session 73 cont., #403/#404/#405)** — **SD-1 adjudicated by Cray = (c) Hybrid, phased** (deterministic floor + advisory local-LLM-judge; constraint ② advisory-only, ③ deterministic compare), superseding the Cowork (a)-lean. **Phase 1 = deterministic verify+reshape floor SHIPPED** (#403, feat `1c34125`): new `services/engine/action_verification.py` at the `recommender._compose_llm_record` seam, reshaping the 5 §B-3 "assessment-prose" cases (`aqua-007/014/028/h03/h06`); the 2 genuine wrong-action cases (`aqua-017/h05`) stay wrong (AC-5 — wrong handler NOT rescued); D-6 offline guard held; **1629 passed/22 skipped**, ruff + mypy --strict clean, offline. **The (c) governance landed** (#404): an **ADR-0022 amendment** (member (b) verify = hybrid; 7 constraints incl. the local-LLM pin + D-6; scope = member-(b) mechanism only, F1/F2/F3 + D3-α untouched) + a **PLAN-0035 revision** (SD-1…SD-5 stamped, Goal/Steps restructured Phase 1/Phase 2, path-fix `structured.py`→`llm/structured.py`). **The amendment was RATIFIED** (#405, `3625ea4`; SD-A1 = (i) inline, Cray-selected). **Phase 2 (advisory local-LLM-judge, Steps 8–12) now UNBLOCKED + NEXT** — NOT marked done. Operational detour (no artifact): the G1/G2 classifier backend is local Ollama (MS-S1 `gpt-oss:20b`) since 2026-06-12, G1 is always-pause for Code (warm-confirmed → Accepted-ADR edits route to Cowork), and a keep-alive cron (every 3h) was installed to keep `gpt-oss:20b` warm | `3625ea4` (#405) / `1c34125` (#403) / `47e154b`+`17f5d6e` (#404) / `services/engine/action_verification.py` + `docs/adr/0022-*.md` + `docs/plans/0035-*.md` |
 | 2026-06-22 | **PLAN-0035 (Group-A A1 = ADR-0022 member (b) verify+reshape build) CREATED + merged DRAFT (session 73)** — Cowork-drafted (ADR-009 D1) via the s72 `0223` dispatch (the proven Cowork-dispatch route, NOT the now-unblocked in-harness `plan-drafter` — Cray's call); Code independent-reviewed (faithful to LOCKED facts; spot-checked the `recommender.py:202` `_compose_llm_record` seam — Cowork had caught the post-member-(a) #365 line-number shift and re-verified) + committed `4eb2539` (#401, Cray-merged, D2). A **build PLAN, not a new ADR** (ADR-0022 Accepted, D3-α houses member (b); mirrors PLAN-0030 = member (a)). Scope = recommend-time LLM-path verify+reshape for the **5 §B-3 "assessment-prose" cases** (`aqua-007/014/028/h03/h06`, correct `suggested_handler`, prose omits the verb); the **2 genuine wrong-action cases** (`aqua-017/h05`) stay wrong (AC-5 anti-regression). **Implements nothing on commit** (every AC `[impl]`); **5 SDs surfaced** for Cray (SD-1 verify mechanism … SD-5 moat-framing guard) — SD-1 is the load-bearing gate. A1 TODO updated (PLAN drafted+merged Draft; NOT done) | `4eb2539` (#401) / `docs/plans/0035-*.md` |
 | 2026-06-22 | **PLAN-0034 (G2 drafting-friction root-fix) FULLY COMPLETE (session 72)** — Step-5 prong-2 scope annotation Cowork-drafted (ADR-009 D1, K-1/K-2 scratchpad; Code declined the Stop-hook Code-direct override, applied byte-identical edits) + merged #399 (`0f56d24`/`5daa0e0`) into `.claude/autonomy-triggers.md`; PLAN flipped Ready→Complete + `git mv` to `done/` (`72f0deb`). SD-3 = (a) PLAN-only, **no ADR amendment**. Optional live gold re-score (prong-1 behavioral proof) remains Cray-gated host-state — **NOT** an acceptance gate (offline gate, green at #397, is the sole acceptance condition). Group-A: A2 ✅ → G2 ✅ → A1 next | `0f56d24`/`5daa0e0` (#399) + `72f0deb` / `.claude/autonomy-triggers.md` + `docs/plans/done/0034-*.md` |
@@ -373,7 +332,6 @@ below, and git history.
 | 2026-06-19 | **PLAN-0033 Phase C C0 vertical slice SHIPPED — aquaculture story-mode (#385, feat `a9079e5` / merge `0a32e67`, session 69)** — the additive `view-story.js` overlay (SD-C; coexists with Views A–E, never replaces) + `motion.js` (driver-agnostic Motion seam enforcing the lifecycle-teardown contract) + `story.css`, wired into `index.html`/`app.js`. Delivers the branching-DAG overview (5 node states + 3 edge types, hand-placed SVG), the two-axis layout (all task details left / DAG + transport right), and the scene-6 control surface (Proposed→Approved→Executed kanban + reasoning-trace why-toggle reusing the rule/llm/query colour legend). Moat beat (AC-3, ADR-010 IN-4) works: an LLM-compose error reroutes (amber) to the deterministic rule fail-safe, which still passes the human approve-gate + records audit. **GSAP DEFERRED to C1/C2** (Cray's call, s69 — corrects the s68 next_action): the seam is driver-agnostic so C0 ships on the zero-dependency WAAPI/rAF driver (offline, no-CDN, reduced-motion floor); GSAP/Motion One drops in behind `Motion.useDriver` later after the one-time licence check, no scene-code change. AC-2/3/4/5/6/9/10/11/12/13/14 verified via the preview workflow (a11y snapshot + behavioral eval); deterministic /goal gate (files exist / wired / no new CDN) passes; teardown leaks 0 timers/tweens/listeners. Caveat: `preview_screenshot` environmentally unavailable in this WSL/FastAPI preview (times out on the plain console too — not a page defect). Scope: Tier-1 mirror, synthetic only (ADR-0015 D1); no new backend. NEXT = C1 (full arc scenes) then C2 (breadth+Ask+appendix) | `0a32e67` (#385, feat `a9079e5`) / `services/api/static/assets/view-story.js` + `motion.js` + `story.css` + `docs/plans/0033-*.md` |
 | 2026-06-17 | **Session 67 Phase 1 — PLAN-0028 + PLAN-0029 ratify-flipped Proposed→Accepted + archived to `done/` (#357, `1cda40f`)** — Cray ratified both PLANs in-session 2026-06-17; Cowork applied the status-flip + ratification record (ADR-009 D1, G1-clean on Desktop), Code committed per ADR-009 D2 (#357, merge `1cda40f` / flip `3d5e2af`). A formal flip of **already-complete, already-Cray-approved** work (PLAN-0028 B-γ cross-vertical extension; PLAN-0029 entity-key whitespace calibration), not new work — closes the PLAN-0028/0029 governance loop; both moats' source PLANs now archived. R2-verified (spot SHAs + the #357 diff = status + ratification only). One harness note: a Stop-hook D2 auto-dispatch misrouted (tried to spawn `plan-drafter` to "draft a plan to flip" existing complete PLANs); Code declined per the override clause — reinforces the parked G2-drafting-friction root-fix (now an Active TODO) | `1cda40f` (#357, flip `3d5e2af`) / `docs/plans/done/0028-*.md` + `docs/plans/done/0029-*.md` |
 | 2026-06-16 | **B-γ EXECUTED END-TO-END — PLAN-0027 Steps 2–5 SHIPPED; PLAN-0019 Step B-γ / AC B-3 = DONE (#339–#342, `0aee4eb`, session 64)** — the three-arm comparison on the energy breach subset, run to completion. Offline arms (#339 `e41806a`/`a394342`, Steps 2–3): arm (b) raw text-to-SQL + arm (c) lean RAG + comparison harness, behind a mock-ChatClient offline gate (D-6 guard intact). ONE Cray-approved scored host-state run (`gpt-oss:20b` @ MS-S1, 40 energy breach items, warm-first; every score VERIFIED from `--dump-json` via the Read tool, reports-not-gates per B-3/B-6), then the B-3 REPORT landed (#342 `0aee4eb`/`01370e5`, Step 5). **Results:** arm (a) governed stack 97.5–100% entity+action (REUSED, D-2, not re-run; p95 ~30s); arm (b) raw text-to-SQL 100% entity-ID (40/40, correct `WHERE measured_value >= 90`) but structurally cannot propose an action (D-3; p95 10.2s); arm (c) lean RAG 97.5% entity+action (39/40; action 100%; p95 3.2s); 0 errors / 0 invalid SQL; the lone arm-c miss (`energy-h05`) is a real naive-RAG output-fidelity miss (`E113` not `asset-E113`), VERIFIED not a grading artifact. **Load-bearing finding:** raw entity+action accuracy does NOT separate the governed stack from lean RAG (c ties a at 97.5%) → relocates the moat claim off "raw NL→action accuracy" onto the governance layer (§3.4 verify+reshape / deterministic disposition / handler allowlist / audit that arm c structurally lacks); verify+reshape captured as a forward-pointer (future ADR-016 area), OUT OF SCOPE per D-6. Supporting: #340 (`099d55b`/`17863ef`, `test(handoffs):`) chip-session fix isolating `CLAUDE_GOAL_PATH` in `stub_env` so a live `goal.json` can't leak into Phase-2 Stop-hook tests (test-only +6; 575 passed/2 skipped); #341 (`cf645f7`/`7d8a716`, `fix(benchmarks):`) pre-run arm-c case-normalize calibration, ratified BEFORE the scored run per B-6 (recovers a correctly-named entity, never invents one). Concurrent-session recovery handled (shared WSL checkout: local↔origin divergence + transient `.git/index.lock` after #339; diagnosed read-only, nothing lost, synced cleanly). **PLAN-0027 complete; PLAN-0019 Step B-γ / AC B-3 = DONE** | `0aee4eb` (#339/#340/#341/#342) / `benchmarks/procedure_baseline/` REPORT `## B-3` + `docs/plans/0027-*.md` |
-| 2026-06-16 | **PLAN-0027 (B-γ comparison methodology pre-registration) LANDED + Cray-ratified §3–§4 (#337, `ab0174a`/`e70daa9`/`fb91777`, session 63)** — completes PLAN-0019 Step B-γ / AC B-3 **Step 1** (pre-registration); status now **Ready for execution**. Pre-registers the three-arm comparison on the energy breach subset: (a) governed-procedure stack (reuse REPORT numbers, no re-run), (b) raw text-to-SQL, (c) lean-but-real RAG — **reports-not-gates** (B-3/B-6) with a **D-6 contamination guard** (arm c stays a clean naive RAG baseline, no verify/reshape/governance layer). Governance (G2-routed): `plan-drafter` authored → G2 blocks Code/subagent PLAN writes → Cowork materialized (ungated) → Code committed (#337, ADR-009 D1/D2) → Cray ratified §3–§4 resolving SD-1..SD-4 per drafter recs, plus a **joint SD-1↔SD-2 fairness binding** (Cowork advisory): under the locked lexical retriever the corpus + question template must share vocabulary + cover every breach item's `action_keywords` lemma, else arm (c) misses = retrieval artifacts not paradigm limits. Side-thread (no artifact): G2-vs-drafting friction discussed; Cray PARKED the root-fix (exempt plan-drafter uncommitted-draft write from G2) as a future harness-improvement batch | `ab0174a` (#337, content `e70daa9`/`fb91777`) / `docs/plans/0027-*.md` |
 
 ## In-Flight Discussions
 
@@ -388,7 +346,7 @@ below, and git history.
 
 - [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten (full table: PLAN-0005 §8.1): rule-based recommender → **ADR-010 ACCEPTED (2026-05-22) → PLAN-0006 next** (LLM reasoning hook); minimal approval gate → **ADR-011+** (audit framework — trigger: first design-partner data / PDPA review); no mapping layer → **dbt/SQLMesh** (trigger: first non-synthetic source); hand-authored ORM → **"ORM emitter"** Rule-of-Three candidate (trigger: 3rd vertical / DDL↔ORM parity-test drift); base Postgres only → **PLAN-002** (pgvector/AGE — trigger: semantic + graph features); explicit registry → **ADR-006 D3 L2** (trigger: vertical #2/#3 or `new-vertical` generator). *(per Cray note 2026-05-21)*
 - [ ] **PLAN-004 Phase C — OPTIONAL POLISH (forward-declared; "may never land"):** HTML/markdown handoff dashboard under `docs/` + references-graph (mermaid dispatch chains) + `render_transcript.py` unified session export (PLAN-0004 §"Phase C"). *(Phase A + B both COMPLETE — session 35; the prior TODO's validator **warning-swallow bug was FIXED #312**, s58. Minor never-formally-scoped sub-ideas — README/`_rename-map` walk-exclusion, Cat G `references_*` autofix, OQ-2 effective-vs-authored `status:` dashboard flag — fold in only if Phase C lands. Reconciled 2026-06-16 s65 audit.)*
-- [ ] **A1 — verify+reshape governance demo (B-γ moat successor).** The heaviest moat-proof: prove the moat IS governance — verify an LLM step's output for semantic consistency + reshape to the next step's contract (what arm (c) structurally lacks; ADR-016 area; the B-3 REPORT forward-points to it). **Scope together with the Phase-2 governed-entity-resolution ADR** — one ADR-016-area construct, not two overlapping ADRs. **UPDATE (s71):** that consolidation is DONE — **ADR-0022 (Accepted) D3-α already houses verify+reshape as member (b)**, so A1 = a PLAN to build member (b) (like PLAN-0030 built member (a)), at most an ADR-0022 amendment if a member-(b) design fork surfaces — NOT a new ADR. A2's residual decomposition (s71) shows the concrete A1 target: the 5 correct-action "assessment-prose" cases (verify the proposal states the action, reshape from the resolved handler). Sequenced AFTER the G2 root-fix (Cray, s71). **UPDATE (s73, cont.):** advanced END-TO-END — **SD-1 adjudicated = (c) Hybrid, phased** (Cray); **Phase 1 floor SHIPPED** (#403 `1c34125` — `services/engine/action_verification.py` at the `_compose_llm_record` seam; 1629 passed/22 skipped; AC-5 wrong-handler-not-rescued + D-6 held); the **(c) hybrid governance RATIFIED** (#404 ADR-0022 amendment [member (b) = hybrid, 7 constraints, local-LLM pin, scope = mechanism-only] + PLAN-0035 revision [Phase 1/2 restructure]; #405 `3625ea4` amendment ratified, SD-A1 = (i) inline). **NOT done** — **Phase 2 (the advisory local-LLM-judge, Steps 8–12) is NEXT** + now UNBLOCKED: the judge cross-check (advisory, never overrides the surfaced action) + deterministic agreement/confidence + `verification_mode` degradation disclosure (reuses the IN-4 / OllamaUnreachable path); tests fake the judge (offline oracle stays the gate); a live judge run is Cray-gated host-state. Then flip PLAN-0035 → Complete + `git mv` to `done/`. *(folded from §7 handoff, s67; PLAN drafted+merged s73; Phase 1 shipped + (c) ratified s73)*
+- [x] **A1 — verify+reshape governance demo (B-γ moat successor) — DONE (s74).** The heaviest moat-proof: prove the moat IS governance — verify an LLM step's output for semantic consistency + reshape to the next step's contract (what arm (c) structurally lacks; ADR-016 area; the B-3 REPORT forward-points to it). **Scope together with the Phase-2 governed-entity-resolution ADR** — one ADR-016-area construct, not two overlapping ADRs. **UPDATE (s71):** that consolidation is DONE — **ADR-0022 (Accepted) D3-α already houses verify+reshape as member (b)**, so A1 = a PLAN to build member (b) (like PLAN-0030 built member (a)), at most an ADR-0022 amendment if a member-(b) design fork surfaces — NOT a new ADR. A2's residual decomposition (s71) shows the concrete A1 target: the 5 correct-action "assessment-prose" cases (verify the proposal states the action, reshape from the resolved handler). Sequenced AFTER the G2 root-fix (Cray, s71). **UPDATE (s73, cont.):** advanced END-TO-END — **SD-1 adjudicated = (c) Hybrid, phased** (Cray); **Phase 1 floor SHIPPED** (#403 `1c34125` — `services/engine/action_verification.py` at the `_compose_llm_record` seam; 1629 passed/22 skipped; AC-5 wrong-handler-not-rescued + D-6 held); the **(c) hybrid governance RATIFIED** (#404 ADR-0022 amendment [member (b) = hybrid, 7 constraints, local-LLM pin, scope = mechanism-only] + PLAN-0035 revision [Phase 1/2 restructure]; #405 `3625ea4` amendment ratified, SD-A1 = (i) inline). **UPDATE (s74) — DONE:** **Phase 2 (the advisory local-LLM-judge, Steps 8–12) SHIPPED** (#407, feat `5c7c175`) on the Phase-1 floor — the advisory judge (never overrides the surfaced action, ②) + deterministic agreement (③) + `verification_mode` degradation disclosure reusing the IN-4 / OllamaUnreachable path (④), gated behind `verification_judge_enabled` default-off (①); tests fake the judge (1639 passed/22 skipped). **PLAN-0035 flipped Draft → Complete + `git mv` to `done/` (`805f5d2`) — both phases of member (b) verify+reshape now shipped, the A1 arc closed end-to-end.** *(folded from §7 handoff, s67; PLAN drafted+merged s73; Phase 1 shipped + (c) ratified s73; Phase 2 shipped + A1 closed s74)*
 - [x] **A2 — equal-rubric arm-(a) re-grade — DONE (s71, #392 + `2463229`).** Committed reproducible harness `benchmarks/procedure_comparison/regrade_arm_a.py` reproduces the full §B-3 A2 table (hardened 24→33/39→39/40→40; nudged 40/40/40), all-120 sanity assert green (every recomputed full-key grade matches the stored `proposal_correct`). §B-3 enriched with the handler-verified residual decomposition: the 7 hardened-reduced aquaculture misses = **5 correct-action** (`start_emergency_aerator`, prose framed as an "assessment" omitting the verb → the prose `action_keywords` check misses it) + **2 genuine wrong-action** (`increase_water_exchange`) → true wrong-action **2/40**. Finding: arm (a) ties-or-exceeds arm (c) once the rubric + prompt confounds are removed; the 5 prose-omission cases are the A1 verify+reshape target. *(folded from §7 handoff, s67; closed s71)*
 - [ ] **ORM-emitter per-vertical layout (B1-DP-1 follow-up; Cray-deferred s67).** B1 (PLAN-0031, #370) ships the ORM emitter writing energy's ORM to the **committed** `services/db/models.py` (via `code_generator._ORM_COMMITTED_DEST`) — the gitignored `verticals/<ns>/generated/` cannot host a runtime dependency. When a **2nd vertical needs its own ORM** (the Rule-of-Three trigger), decide the per-vertical layout: extend `_ORM_COMMITTED_DEST` to per-vertical committed modules **vs** un-ignore a per-vertical `generated/orm.py` (gitignore negation) + re-export. Premature to design now (one ORM today). *(Cray-deferred 2026-06-18)*
 - [x] **G2 drafting-friction root-fix — PLAN-0034 FULLY COMPLETE — DONE (s72).** Step-5 prong-2 scope annotation merged (#399, `.claude/autonomy-triggers.md`; annotation `5daa0e0` / merge `0f56d24`) — Cowork-drafted (ADR-009 D1, K-1/K-2; Code declined the Stop-hook Code-direct override, applied byte-identical edits, committed). PLAN-0034 flipped **Ready for execution → Complete** + `git mv docs/plans/0034-*.md → docs/plans/done/` (`72f0deb`). SD-3 = (a) PLAN-only (no ADR amendment). The only residual is the **optional, non-blocking** Cray-gated live gold re-score (prong-1 behavioral proof, host-state — **NOT** an acceptance gate; the offline gate, green at #397, is the sole acceptance condition). Parked s63; hit AGAIN s66 + s67 + s68; DRAFTED s71 (#394); ratified all four SDs = (a) + core-implemented s71 (#396/#397). *(folded from §7 handoff, s67; s68 instance + classifier prong; drafted s71; ratified+implemented s71; closed s72)*
