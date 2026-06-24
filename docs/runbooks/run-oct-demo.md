@@ -620,6 +620,41 @@ cache-busted `fetch` + a runtime probe (`window.OCT.ViewStory._probe()` returns
 
 ---
 
+## 6d. Procurement story — the 5 operator surfaces (PLAN-0036 Stage 1)
+
+> The **4th vertical** is a **procurement** scene group appended to the same story
+> overlay (scenes 8–12 of the 12). It is **not** a re-skin of the aquaculture arc —
+> it is a procurement operator's **round-trip** (worklist → approve → monitor), the
+> concrete proof that the same engine runs a governed sourcing workflow. Pitch
+> target: **Fastenal Thailand** (auto-parts manufacturing, EEC); the UI is **Thai-
+> localized** and all data is **abstract** (no partner brand). Runs offline on
+> synthetic Tier-1 data, same as the aquaculture arc.
+
+**Reach it.** Press **S**, then **]** to page past the 7 aquaculture scenes to the
+procurement group (or click the scene dots 8–12). The header eyebrow flips to
+**"Story mode · Procurement (Fastenal TH)."**
+
+**The hero:** a critical CNC machining center fails, line down, spare out of stock
+→ governed emergency sourcing. The arc (**scenes 8–12**):
+
+| # | Surface | What to show |
+|---|---------|--------------|
+| 8 | **Worklist / inbox** | the operator's home — urgency-sorted queue; the CNC emergency (red) on top, the calm reorder below |
+| 9 | **Process timeline** | the 7-step pipeline; rule gates auto-resolve (gray, 🔒), and it **stops at "⏸ รอการตัดสินใจของคุณ"** at `approve` — the bottleneck is a human gate, by design |
+| 10 | **Approval "money screen"** | the one screen where it all converges: AI exec-summary (editable) · per-criterion compliance (incl the cert-blocked quote) · DOA ladder (฿2.15M → **ผอ.**) · emergency-waiver banner · supplier/RFQ compare · SoD · approve/reject |
+| 11 | **Graduation moment** | step through it: an **"AI draft"** justification (blue) → a human edit → **approve** → the card **flips to solid green "human-approved · ผอ. · time"**. This *is* governed ≠ generated, made visible |
+| 12 | **Monitoring dashboard** | real KPIs (req-to-PO cycle · rush-freight avoided · stockout · maverick · %on-contract — each value + trend + target) · emergency-waivers-used (watched) · the **AI-assist throughput** panel: *"AI drafted N · 0 supplier-selections · 0 approvals"* |
+
+**The three visual registers (look for them on every surface).** **AI-assist** =
+blue, "AI draft" (advisory, editable) · **rule-decided** = gray + 🔒 (deterministic,
+names the rule) · **human-approved** = green + name·role·time (accountable). The line
+to land: *the AI drafts and summarises; the rules and the human decide.*
+
+> Same `?v=` cache-bust + `_probe()` teardown conventions as §6c apply (the
+> procurement scenes are in the same `view-story.js`).
+
+---
+
 ## 7. Stop / clean up
 
 - Stop a server: **Ctrl-C** in its terminal.
