@@ -1,0 +1,414 @@
+# vero-lite ontology — procurement vertical, v0.
+# The 4th concrete OCT vertical (PLAN-0036 Stage 1, Fastenal Thailand pitch target):
+# governed procurement for automotive / auto-parts manufacturing in the EEC
+# (Chonburi–Rayong). The hero workflow is a CRITICAL EQUIPMENT FAILURE → governed
+# emergency sourcing of a critical spare; the calm-path is a low-stock reorder.
+#
+# Conforms to the SAME ADR-008 D2 grammar as aquaculture_v0.yaml. The six BASE
+# object_types mirror the aquaculture shape with Asset→Equipment, Site→Plant
+# (Plant carries the geo lat/lng — the OCT Site role detected by the scaffold).
+# OperationalEvent carries exactly one Equipment ref + one Plant ref so the
+# `vero-lite new-vertical` role detector resolves Asset=Equipment, Site=Plant.
+#
+# Six PROCUREMENT EXTENSION object_types (ADR-008 D1 "may extend") model the
+# sourcing domain: Part, Supplier, Quotation, PurchaseOrder, ComplianceRule,
+# ApprovalTier. The procedure spine (intake→judge→source→compliance→approve→
+# issue_po→audit) lives in procedures.yaml, NOT here (a distinct ADR-016 layer).
+#
+# Stage 1 is synthetic Tier-1 (ADR-0015): no per-vertical ORM (PLAN-0036 SD-2),
+# zero `services/` core edit (CQ-1 / ADR-0023 auto-discovery).
+
+version: 0
+namespace: procurement
+
+object_types:
+  # --- Base (OCT) object_types — mirror aquaculture, Asset→Equipment, Site→Plant ---
+
+  Equipment:
+    primary_key: equipment_id
+    title_key: name
+    description: A production asset (the managed operational unit) whose failure triggers sourcing.
+    properties:
+      equipment_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      equipment_type:
+        type: enum
+        values: [cnc_machine, stamping_press, robot_arm, conveyor, welding_cell, hvac]
+      criticality:
+        type: enum
+        values: [low, medium, high, critical]
+      status:
+        type: enum
+        values: [operational, degraded, failed, maintenance]
+      site_id:
+        type: ref
+        target: Plant
+        required: true
+
+  Plant:
+    primary_key: plant_id
+    title_key: name
+    description: A physical manufacturing plant grouping one or more Equipment units (geo-bearing Site role).
+    properties:
+      plant_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      plant_type:
+        type: enum
+        values: [assembly, stamping, machining, paint_shop, warehouse]
+      lat:
+        type: float
+      lng:
+        type: float
+
+  OperationalEvent:
+    primary_key: event_id
+    description: Time-stamped operational signal (equipment failure, low stock, reading) concerning an Equipment or Plant.
+    properties:
+      event_id:
+        type: string
+        required: true
+      event_type:
+        type: enum
+        values: [reading, failure, low_stock, transition, alarm]
+      severity:
+        type: enum
+        values: [info, warn, error, critical]
+      measured_value:
+        type: float
+      unit:
+        type: string
+      description:
+        type: string
+      occurred_at:
+        type: timestamp
+        required: true
+      equipment_id:
+        type: ref
+        target: Equipment
+      site_id:
+        type: ref
+        target: Plant
+
+  Alert:
+    primary_key: alert_id
+    title_key: title
+    description: An actionable notification derived from one or more OperationalEvents.
+    properties:
+      alert_id:
+        type: string
+        required: true
+      title:
+        type: string
+        required: true
+      urgency:
+        type: enum
+        values: [low, medium, high, critical]
+      status:
+        type: enum
+        values: [open, acknowledged, resolved]
+      opened_at:
+        type: timestamp
+        required: true
+      resolved_at:
+        type: timestamp
+      reasoning:
+        type: string
+
+  RecommendedAction:
+    primary_key: action_id
+    description: An AI-proposed procurement action awaiting human approval; mirrors the ADR-007 D2 runtime envelope.
+    properties:
+      action_id:
+        type: string
+        required: true
+      action_type:
+        type: enum
+        values: [emergency_source, reorder, request_approval, issue_po, escalate]
+      confidence_score:
+        type: float
+      status:
+        type: enum
+        values: [proposed, approved, rejected, executed]
+      parameters:
+        type: json
+      alert_id:
+        type: ref
+        target: Alert
+        required: true
+      target_equipment_id:
+        type: ref
+        target: Equipment
+
+  AlertEventLink:
+    primary_key: link_id
+    description: Join object linking an Alert to the OperationalEvent(s) that triggered it (N:M via composition per ADR-008 D4).
+    properties:
+      link_id:
+        type: string
+        required: true
+      created_at:
+        type: timestamp
+        required: true
+      alert_id:
+        type: ref
+        target: Alert
+        required: true
+      event_id:
+        type: ref
+        target: OperationalEvent
+        required: true
+
+  # --- Procurement extension object_types (ADR-008 D1 "may extend") ---
+
+  Part:
+    primary_key: part_no
+    title_key: name
+    description: A stocked or sourceable spare part / MRO item (the sourcing target).
+    properties:
+      part_no:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      on_contract:
+        type: bool
+        description: True when the part is covered by a standing supply contract (sourced on-contract by default; RFQ is the exception).
+      preferred_supplier:
+        type: ref
+        target: Supplier
+      stock_qty:
+        type: int
+        description: Current on-hand quantity.
+      reorder_point:
+        type: int
+        description: Stock level at or below which a reorder fires (calm-path trigger).
+      lead_time:
+        type: int
+        description: Nominal replenishment lead time in days.
+      fits_equipment_id:
+        type: ref
+        target: Equipment
+
+  Supplier:
+    primary_key: supplier_id
+    title_key: name
+    description: A vendor on (or off) the Approved Vendor List; the entity a PurchaseOrder is raised against.
+    properties:
+      supplier_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      avl_status:
+        type: enum
+        values: [approved, pending, suspended, blocked]
+        description: Approved Vendor List standing — the compliance gate the LLM may summarize but never override.
+      tax_id:
+        type: string
+      cert_status:
+        type: enum
+        values: [valid, expired, none]
+      sanctions_flag:
+        type: bool
+      single_source_flag:
+        type: bool
+        description: True when this supplier is the only qualified source (forces the single-source compliance criterion).
+
+  Quotation:
+    primary_key: quote_id
+    description: A supplier quote for a Part — the candidate the scored sourcing rule (never the LLM) selects among.
+    properties:
+      quote_id:
+        type: string
+        required: true
+      part_no:
+        type: ref
+        target: Part
+        required: true
+      supplier_id:
+        type: ref
+        target: Supplier
+        required: true
+      price:
+        type: float
+      currency:
+        type: enum
+        values: [THB, USD, EUR, JPY]
+      lead_time:
+        type: int
+        description: Quoted delivery lead time in days.
+      warranty:
+        type: string
+      on_contract:
+        type: bool
+        description: True when this quote is the standing-contract price (the on-contract default path).
+
+  PurchaseOrder:
+    primary_key: po_id
+    description: A purchase order — the human-gated write at the end of the procedure (issue_po step).
+    properties:
+      po_id:
+        type: string
+        required: true
+      part_no:
+        type: ref
+        target: Part
+        required: true
+      supplier_id:
+        type: ref
+        target: Supplier
+        required: true
+      quote_id:
+        type: ref
+        target: Quotation
+      amount:
+        type: float
+        description: PO value in THB (drives the DOA tier band).
+      currency:
+        type: enum
+        values: [THB, USD, EUR, JPY]
+      status:
+        type: enum
+        values: [draft, pending_approval, approved, issued, rejected]
+      approver_chain:
+        type: json
+        description: The ordered SoD approver chain (requester ≠ approver ≠ receiver ≠ AP).
+      waiver_applied:
+        type: bool
+        description: True when the emergency waiver relaxed 3-bid/sole-source AND escalated the approver (never skipped a gate).
+      justification:
+        type: string
+        description: The forced, logged justification recorded when a waiver is applied.
+
+  ComplianceRule:
+    primary_key: rule_id
+    title_key: name
+    description: A per-criterion compliance check the deterministic compliance step evaluates (blocks the PO on fail).
+    properties:
+      rule_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      type:
+        type: enum
+        values: [avl, tax, cert, sanctions, single_source]
+      predicate:
+        type: string
+        description: The human-readable rule predicate (e.g. "supplier.avl_status == approved").
+
+  ApprovalTier:
+    primary_key: tier_id
+    title_key: approver_role
+    description: A Delegation-of-Authority band — the ฿ ceiling and the role authorised to approve at that tier.
+    properties:
+      tier_id:
+        type: string
+        required: true
+      tier:
+        type: int
+        description: Tier ordinal (1 = lowest authority).
+      max_amount:
+        type: float
+        description: The ฿ ceiling this tier may approve; an amount above it escalates to the next tier.
+      approver_role:
+        type: string
+        description: The role authorised at this tier (e.g. หน.จัดซื้อ, ผจก.จัดซื้อ, ผจก.โรงงาน, ผอ.).
+
+link_types:
+  equipment_hosted_at_plant:
+    from: Equipment
+    to: Plant
+    cardinality: many_to_one
+    foreign_key: Equipment.site_id -> Plant.plant_id
+    description: Each Equipment unit is hosted at exactly one Plant.
+
+  event_emitted_by_equipment:
+    from: OperationalEvent
+    to: Equipment
+    cardinality: many_to_one
+    foreign_key: OperationalEvent.equipment_id -> Equipment.equipment_id
+
+  event_occurred_at_plant:
+    from: OperationalEvent
+    to: Plant
+    cardinality: many_to_one
+    foreign_key: OperationalEvent.site_id -> Plant.plant_id
+
+  action_addresses_alert:
+    from: RecommendedAction
+    to: Alert
+    cardinality: many_to_one
+    foreign_key: RecommendedAction.alert_id -> Alert.alert_id
+
+  action_target_equipment:
+    from: RecommendedAction
+    to: Equipment
+    cardinality: many_to_one
+    foreign_key: RecommendedAction.target_equipment_id -> Equipment.equipment_id
+
+  alert_event_link_to_alert:
+    from: AlertEventLink
+    to: Alert
+    cardinality: many_to_one
+    foreign_key: AlertEventLink.alert_id -> Alert.alert_id
+
+  alert_event_link_to_event:
+    from: AlertEventLink
+    to: OperationalEvent
+    cardinality: many_to_one
+    foreign_key: AlertEventLink.event_id -> OperationalEvent.event_id
+
+  part_preferred_supplier:
+    from: Part
+    to: Supplier
+    cardinality: many_to_one
+    foreign_key: Part.preferred_supplier -> Supplier.supplier_id
+
+  part_fits_equipment:
+    from: Part
+    to: Equipment
+    cardinality: many_to_one
+    foreign_key: Part.fits_equipment_id -> Equipment.equipment_id
+    description: The Equipment a Part is a spare for (asset failure → which part to source).
+
+  quotation_for_part:
+    from: Quotation
+    to: Part
+    cardinality: many_to_one
+    foreign_key: Quotation.part_no -> Part.part_no
+
+  quotation_from_supplier:
+    from: Quotation
+    to: Supplier
+    cardinality: many_to_one
+    foreign_key: Quotation.supplier_id -> Supplier.supplier_id
+
+  po_for_part:
+    from: PurchaseOrder
+    to: Part
+    cardinality: many_to_one
+    foreign_key: PurchaseOrder.part_no -> Part.part_no
+
+  po_to_supplier:
+    from: PurchaseOrder
+    to: Supplier
+    cardinality: many_to_one
+    foreign_key: PurchaseOrder.supplier_id -> Supplier.supplier_id
+
+  po_from_quotation:
+    from: PurchaseOrder
+    to: Quotation
+    cardinality: many_to_one
+    foreign_key: PurchaseOrder.quote_id -> Quotation.quote_id
