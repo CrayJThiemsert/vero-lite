@@ -1,0 +1,247 @@
+# vero-lite procedure spec — procurement vertical, v0 (PLAN-0036 Stage 1, Step 3).
+# The ADR-016 worked example for the 4th vertical: the HERO "Emergency Sourcing
+# Round" (asset failure → governed emergency sourcing) + the calm-path "Low-Stock
+# Reorder Round". A distinct spec layer from the ADR-008 ontology
+# (procurement_v0.yaml is untouched): agents + procedures, NOT object_types.
+# `agents` / `procedures` are MAPS keyed by id (house YAML style).
+#
+# Phase-1 scope (L-8 / PLAN-0019 L-1): only `trigger: manual` is RUNNABLE. The
+# handlers (verticals/procurement/handlers.py — Step 4) are the procurement
+# RecommendedAction.action_type vocabulary {emergency_source, request_approval,
+# issue_po, reorder} + `echo`, each a no-op receipt today (real ERP/email I/O
+# ships with the design partner — § Out of Scope).
+#
+# GOVERNED ≠ GENERATED (L-3, the guardrail across every step): the LLM only
+# DRAFTS/SUMMARISES (intake enrich · quote summary · justification + exec-summary ·
+# audit summary). The LLM NEVER selects the supplier (source selection is a scored
+# RULE), NEVER sets a threshold (the judge band is authored), and NEVER approves
+# (the human gate). Each step below carries a structured 5-FACET annotation
+# (input · decision-condition · llm-assist · output · governance) as YAML COMMENTS
+# — SD-4 / AC-14. It is comment-only by constraint: services/engine/procedures/
+# spec.py declares `Step` with `extra="forbid"`, so a first-class `facet:` field
+# would be rejected (= a core edit); promotion to a real field is a Stage-2
+# ADR-016 amendment. The facet map is mirrored in verticals/procurement/README.md
+# so Stage 2 can extract the generalized procedure schema from it.
+
+namespace: procurement
+version: 0
+
+agents:
+  procurement_agent:
+    name: Emergency Sourcing Agent
+    llm_model: gpt-oss:20b          # ADR-001 default local model
+    # ceiling = auto: the source + audit steps are `auto` actions, so the agent
+    # must be permitted to act un-gated (autonomy_ceiling is the MAX any step may
+    # exercise). The approve + issue_po steps stay `gated` regardless (the human
+    # go/no-go on an irreversible write).
+    autonomy_ceiling: auto
+    allowed:
+      step_kinds: [query, evaluate, action]
+      # The procurement action vocabulary the agent may invoke: `emergency_source`
+      # for the auto sourcing step; `request_approval` for the gated DOA approval;
+      # `issue_po` for the gated PO write; `reorder` for the calm-path; `echo` for
+      # the auto audit terminal (a no-op artifact, not an operational action).
+      action_handlers: [emergency_source, request_approval, issue_po, reorder, echo]
+
+procedures:
+  emergency_sourcing_round:
+    title: Emergency Sourcing Round
+    goal: >-
+      A critical production asset has failed. Intake the maintenance request,
+      judge each item against the deterministic criticality band, source the
+      critical set (on-contract by default, RFQ→AVL only as a logged exception)
+      with the LLM summarising quotes but the SCORED RULE selecting the supplier,
+      check per-criterion compliance (AVL/tax/cert/sanctions/single-source) which
+      blocks the PO on any fail, route the compliant set to a tiered-DOA human
+      approval (the LLM drafts the justification + exec-summary; the emergency
+      waiver escalates the approver and forces a logged justification but never
+      skips a gate), issue the PO on approval, and write an audit record tying
+      every decision to the control that governed it.
+    run_by: procurement_agent
+    trigger: manual                 # L-8: only manual runs in Phase 1
+    steps:
+      # facet[intake]
+      #   input        : purchase requisition / CMMS work-order (the failure signal)
+      #   decision     : — (no gate; pure read + enrich)
+      #   llm-assist   : enrich / auto-fill the PR from the work-order (advisory draft)
+      #   output       : enriched PR set
+      #   governance   : —
+      - step_id: intake
+        name: Intake the maintenance request
+        description: >-
+          Read the failure work-order(s) and assemble the enriched purchase-
+          requisition set. LLM-assist auto-fills the PR (advisory, editable); it
+          does not decide anything.
+        kind: query
+      # facet[judge]
+      #   input        : intake set
+      #   decision     : DETERMINISTIC criticality band (threshold/direction/watch_margin)
+      #   llm-assist   : — (no model signal — determinism invariant, ADR-0019/ADR-010 IN-3)
+      #   output       : per-item criticality verdict {breach=critical, watch=high, ok}
+      #   governance   : the verdict is a pure function of the reading + the authored band
+      - step_id: judge
+        name: Judge criticality
+        description: >-
+          Tag each requisition's verdict vs the authored criticality band — breach
+          (critical, ≥ 0.8), watch (high, 0.6–0.8), ok (< 0.6). The breach set is
+          the emergency-sourcing path. Deterministic: no LLM, no confidence input.
+        kind: evaluate
+        threshold: 0.8
+        direction: above
+        watch_margin: 0.2
+      # facet[source]
+      #   input        : judge (the breach/critical subset)
+      #   decision     : on-contract default; RFQ→AVL only as a logged exception
+      #   llm-assist   : summarise the candidate quotes (advisory)
+      #   output       : candidate quote(s) per critical item
+      #   governance   : SELECTION = a scored RULE, never the LLM (governed ≠ generated)
+      - step_id: source
+        name: Source the critical set
+        description: >-
+          Propose an emergency-sourcing action per critical item: on-contract
+          supplier by default; an off-contract RFQ→AVL path only as a logged
+          exception. The LLM summarises quotes; the scored rule selects the
+          supplier. action_type emergency_source (a no-op receipt stub today).
+        kind: action
+        autonomy: auto              # an auto proposal — selection is the deterministic rule
+        handler: emergency_source
+        tiers:
+          canonical: emergency_source
+          acceptable: [request_approval]
+        input:
+          from: judge               # the named-input fan-out: only the critical subset
+          where:
+            verdict: breach
+      # facet[compliance]
+      #   input        : source set (the candidate quotes)
+      #   decision     : PER-CRITERION rule gate — AVL · tax · cert · sanctions · single_source
+      #   llm-assist   : — (deterministic; the LLM may summarise but never decides pass/fail)
+      #   output       : per-criterion pass/fail; a non-compliant candidate is blocked
+      #   governance   : blocks the PO on ANY failed criterion (hard gate)
+      #
+      # NOTE (Step-3 / Step-7 seam): `compliance` is an evaluate step for SD-4
+      # facet fidelity, but per-criterion compliance is a RULE gate, not a numeric
+      # band — so it is intentionally band-less here (loads + validates via
+      # load_procedures). Its runnable executor (tagging each candidate with
+      # `compliant` + per-criterion results) is supplied by the Step-7 run harness,
+      # NOT the shipped numeric EvaluateStepExecutor. The downstream `approve` step
+      # consumes `where {compliant: true}`.
+      - step_id: compliance
+        name: Check per-criterion compliance
+        description: >-
+          Evaluate each candidate against the per-criterion compliance rules
+          (AVL approved · tax id valid · cert valid · not sanctioned · single-
+          source justified). Any failed criterion blocks the PO. Deterministic.
+        kind: evaluate
+      # facet[approve]
+      #   input        : compliance (the compliant subset)
+      #   decision     : DOA tier band (฿) — escalates the approver above the band
+      #   llm-assist   : draft the justification + the approver exec-summary (advisory, editable)
+      #   output       : approval decision (human)
+      #   governance   : tiered DOA + emergency waiver (escalate, never skip) + SoD; HUMAN approves
+      - step_id: approve
+        name: Tiered DOA approval (human gate)
+        description: >-
+          Route the compliant set to the human approver at the DOA tier its ฿
+          amount demands. The LLM drafts the justification + exec-summary
+          (advisory). The emergency waiver relaxes 3-bid/sole-source BUT escalates
+          the approver authority and forces a logged justification — it never skips
+          a gate. SoD holds (requester ≠ approver). The run suspends at
+          waiting_human; the human approves/rejects a concrete recommendation.
+        kind: action
+        autonomy: gated             # the human go/no-go — never the LLM
+        handler: request_approval
+        input:
+          from: compliance
+          where:
+            compliant: true
+      # facet[issue_po]
+      #   input        : approve (the approved set)
+      #   decision     : — (mechanical write of the approved decision)
+      #   llm-assist   : —
+      #   output       : PurchaseOrder
+      #   governance   : human-gated write (only runs on resume after approval)
+      - step_id: issue_po
+        name: Issue the purchase order
+        description: >-
+          Issue the PO for each approved item. A human-gated write: it only
+          proposes until a human approves, then issues on resume. action_type
+          issue_po (a no-op receipt stub until the real ERP handler ships).
+        kind: action
+        autonomy: gated
+        handler: issue_po
+      # facet[audit]
+      #   input        : judge (the full run verdict set)
+      #   decision     : —
+      #   llm-assist   : draft the decision summary (advisory)
+      #   output       : audit record
+      #   governance   : ties every row to the control that governed it (traceability)
+      - step_id: audit
+        name: Audit record
+        description: >-
+          Auto audit terminal over the whole run: an LLM-drafted decision summary
+          tying each item to the criticality verdict, the sourcing rule, the
+          compliance criteria, and the approval tier / waiver that governed it.
+        kind: action
+        autonomy: auto
+        handler: echo
+        input:
+          from: judge               # no `where` -> the whole verdict set
+    terminal: audit
+
+  low_stock_reorder_round:
+    title: Low-Stock Reorder Round
+    goal: >-
+      The familiar MRO calm-path on the same engine + agent: read each part's
+      stock level, judge it against its reorder point, and reorder the low-stock
+      set after a single human go/no-go. The contrast to the hero — routine,
+      single-tier, no emergency waiver — on one shared governed procedure engine.
+    run_by: procurement_agent
+    trigger: manual
+    steps:
+      # facet[read_stock]
+      #   input        : part stock levels
+      #   decision     : —
+      #   llm-assist   : —
+      #   output       : stock reading per part
+      #   governance   : —
+      - step_id: read_stock
+        name: Read stock levels
+        description: Latest stock reading per stocked Part.
+        kind: query
+      # facet[judge_stock]
+      #   input        : read_stock set
+      #   decision     : DETERMINISTIC reorder band — stock at/below the reorder point
+      #   llm-assist   : —
+      #   output       : per-part verdict {breach=at/below reorder point}
+      #   governance   : determinism invariant (authored band)
+      - step_id: judge_stock
+        name: Judge vs reorder point
+        description: >-
+          Tag each part's verdict vs its reorder point — breach (stock ≤ reorder
+          point) is the reorder set. The threshold mirrors the demo part's reorder
+          point; a per-part band is a Stage-2 refinement (a single fixed band runs
+          the calm-path beat). Deterministic.
+        kind: evaluate
+        threshold: 100.0
+        direction: below
+      # facet[reorder]
+      #   input        : judge_stock (the low-stock subset)
+      #   decision     : on-contract reorder at the contracted price
+      #   llm-assist   : — (a routine reorder; the LLM does not decide)
+      #   output       : reorder PurchaseOrder
+      #   governance   : single-tier human approval (the calm contrast to the hero DOA ladder)
+      - step_id: reorder
+        name: Reorder the low-stock set
+        description: >-
+          Propose an on-contract reorder per low-stock part; a single human go/no-
+          go approves it (the routine, single-tier calm-path — no emergency waiver,
+          no escalated DOA). action_type reorder (a no-op receipt stub today).
+        kind: action
+        autonomy: gated
+        handler: reorder
+        input:
+          from: judge_stock
+          where:
+            verdict: breach
+    terminal: reorder
