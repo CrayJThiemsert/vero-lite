@@ -1382,8 +1382,360 @@ object_types:
   }
 
   /* ============================================================
+     PROCUREMENT vertical scenes (PLAN-0036 Step 6). The 4th vertical
+     as a procurement operator's round-trip: worklist → process timeline
+     → approval "money screen" → graduation moment → monitoring dashboard.
+     Three VISUAL REGISTERS, no exception (AC-10): AI-assist (.reg-llm,
+     blue "AI draft", advisory+editable) / rule-decided (.reg-rule, gray +
+     🔒, names the rule, deterministic) / human-approved (.reg-human, green
+     + name·role·time, accountable). Governed ≠ generated (L-3): the LLM
+     drafts/summarises; rules + humans select/threshold/approve.
+     Data mirrors verticals/procurement/data_adapter/synthetic.py (the same
+     ฿2.15M hero PO, the cert-blocked quote, the DOA tiers) so the demo and
+     the engine never contradict. Thai-localized (AC-13): Thai-primary doc
+     nouns + EN loanwords (PO·RFQ·AVL·lead time·supplier); ฿ + พ.ศ. dates.
+     Additive overlay, no engine edit (the Option-A demo-presentation seam).
+     ============================================================ */
+  const PROC_EYEBROW = 'Story mode · Procurement (Fastenal TH)';
+  function baht(n) { return '฿' + Math.round(n).toLocaleString('en-US'); }
+  const PROC = {
+    equipment: { id: 'CNC-07', name: 'CNC Machining Center #7', plant: 'EEC Assembly Plant 1', crit: 0.92 },
+    part: { no: 'SP-DRV-01', name: 'CNC Spindle Servo Drive (สเปดเซอร์โว)', stock: 0 },
+    filter: { no: 'FLT-02', name: 'Coolant Filter Cartridge (ไส้กรอง)', stock: 40, reorder: 100 },
+    // the three spindle quotes — selection is the SCORED RULE, never the LLM
+    quotes: [
+      { sup: 'Contracted OEM Spares Co.', avl: 'approved', onContract: true, price: 1850000, lead: 21, selected: false, blocked: false, note: 'on-contract · lead time 21 วัน ช้าเกินไปสำหรับสายหยุด' },
+      { sup: 'Regional Industrial Supply', avl: 'pending', onContract: false, price: 2150000, lead: 5, selected: true, blocked: false, note: 'RFQ · AVL exception (emergency, logged) · เร็วสุด 5 วัน — เลือกโดยกติกาให้คะแนน' },
+      { sup: 'Allied Parts Trading', avl: 'approved', onContract: false, price: 1950000, lead: 9, selected: false, blocked: true, note: 'cert หมดอายุ → compliance บล็อก (ไม่ใช่ราคา)' }
+    ],
+    compliance: [
+      { k: 'AVL', label: 'Approved Vendor List', pass: true, note: 'AVL exception (emergency) — logged' },
+      { k: 'Tax', label: 'ภาษี · tax id', pass: true, note: 'ถูกต้อง' },
+      { k: 'Cert', label: 'ใบรับรอง · cert', pass: true, note: 'valid (supplier ที่เลือก)' },
+      { k: 'Sanctions', label: 'Sanctions screening', pass: true, note: 'ผ่าน' },
+      { k: 'Single-source', label: 'Single-source', pass: true, note: 'documented + justified' }
+    ],
+    doa: [
+      { tier: 1, role: 'หน.จัดซื้อ', max: 50000 },
+      { tier: 2, role: 'ผจก.จัดซื้อ', max: 500000 },
+      { tier: 3, role: 'ผจก.โรงงาน', max: 2000000 },
+      { tier: 4, role: 'ผอ.', max: Infinity }
+    ],
+    po: { amount: 2150000, tierIdx: 3, waiver: true },
+    sod: ['ผู้ขอ · maintenance', 'หน.จัดซื้อ', 'ผจก.โรงงาน', 'ผอ. · อนุมัติ'],
+    kpis: [
+      { k: 'รอบเวลา req → PO', v: '6.2 ชม.', trend: '↓ 18%', target: 'เป้า ≤ 8 ชม.', good: true },
+      { k: 'rush-freight ที่เลี่ยงได้', v: '฿420k', trend: '↑ 12%', target: 'YTD', good: true },
+      { k: 'อัตรา stockout', v: '1.8%', trend: '↓ 0.6pp', target: 'เป้า ≤ 2%', good: true },
+      { k: 'maverick spend', v: '4.1%', trend: '↓ 1.2pp', target: 'เป้า ≤ 5%', good: true },
+      { k: '% on-contract', v: '88%', trend: '↑ 3pp', target: 'เป้า ≥ 85%', good: true }
+    ]
+  };
+  // a 3-register legend strip reused across procurement scenes (AC-10)
+  function procRegisterLegend() {
+    return h('div', { class: 'pr-legend' }, [
+      h('span', { class: 'pr-chip reg-llm' }, 'AI draft · ช่วยร่าง'),
+      h('span', { class: 'pr-chip reg-rule' }, '🔒 rule · กติกาตัดสิน'),
+      h('span', { class: 'pr-chip reg-human' }, '✓ human · คนอนุมัติ')
+    ]);
+  }
+
+  /* ---- P1: worklist / inbox (home — the demo opens here) ---- */
+  function createProcWorklistScene(ctx) {
+    const host = ctx.host;
+    const root = h('div', { class: 'scene-pwork' });
+    host.appendChild(root);
+    root.appendChild(h('div', { class: 'pw-head' }, [
+      h('div', { class: 'eyebrow' }, 'งานของฉัน · worklist'),
+      h('h3', null, 'กล่องงานจัดซื้อ — เรียงตามความเร่งด่วน')
+    ]));
+    root.appendChild(procRegisterLegend());
+    const queue = h('div', { class: 'pw-queue' });
+    root.appendChild(queue);
+    const TASKS = [
+      { urg: 'crit', tag: 'ด่วนที่สุด', title: 'จัดหาด่วน: สเปด ' + PROC.equipment.id + ' — สายการผลิตหยุด', meta: 'PR · ' + PROC.equipment.plant + ' · criticality critical', stat: '⏸ รอการตัดสินใจของคุณ · อนุมัติ (ผอ.)', reg: 'human' },
+      { urg: 'warn', tag: 'ปกติ', title: 'เติมสต๊อก: ' + PROC.filter.name, meta: 'reorder · stock 40 ≤ reorder point 100', stat: '⏸ รออนุมัติ · หน.จัดซื้อ', reg: 'human' }
+    ];
+    TASKS.forEach((t) => {
+      queue.appendChild(h('div', { class: 'pw-task urg-' + t.urg }, [
+        h('div', { class: 'pw-task-l' }, [
+          h('span', { class: 'pw-urg' }, t.tag),
+          h('div', { class: 'pw-task-title' }, t.title),
+          h('div', { class: 'pw-task-meta mono' }, t.meta)
+        ]),
+        h('div', { class: 'pw-task-stat reg-' + t.reg }, t.stat)
+      ]));
+    });
+    const cap = h('div', { class: 'pw-caption' }, '');
+    root.appendChild(cap);
+    const CAP = [
+      'กล่องงานคือหน้าแรก — งานเรียงตามความเร่งด่วน, เคสฉุกเฉินลอยขึ้นบนสุด',
+      'เคส CNC-07 สายหยุด = ด่วนที่สุด (แดง) · งานเติมสต๊อกปกติรอด้านล่าง',
+      'คลิกเปิดงาน → เข้าสู่ไทม์ไลน์กระบวนการ 7 ขั้น (ฉากถัดไป)'
+    ];
+    function applyStep(k) {
+      cap.textContent = CAP[Math.min(k, CAP.length - 1)] || '';
+      Array.prototype.forEach.call(queue.children, (el, i) => el.classList.toggle('is-shown', k >= i + 1));
+    }
+    return { title: 'งานของฉัน — กล่องงานจัดซื้อ (worklist)', stepCount: 3, applyStep: applyStep, eyebrow: PROC_EYEBROW };
+  }
+
+  /* ---- P2: process timeline (the 7-step hero pipeline, bottleneck-first) ---- */
+  function createProcTimelineScene(ctx) {
+    const host = ctx.host;
+    const root = h('div', { class: 'scene-ptime' });
+    host.appendChild(root);
+    root.appendChild(h('div', { class: 'pt-head' }, [
+      h('div', { class: 'eyebrow' }, 'กระบวนการ · process timeline' ),
+      h('h3', null, 'จัดหาฉุกเฉิน CNC-07 — 7 ขั้น, รออยู่ที่ "อนุมัติ"')
+    ]));
+    root.appendChild(procRegisterLegend());
+    const band = h('div', { class: 'pt-band' });
+    root.appendChild(band);
+    // step_id, label, register (which color), sub
+    const STEPS = [
+      { id: 'intake', label: 'intake · รับเรื่อง', reg: 'llm', sub: 'AI ช่วยกรอก PR' },
+      { id: 'judge', label: 'judge · ตัดวิกฤต', reg: 'rule', sub: 'band 0.8 (กติกา)' },
+      { id: 'source', label: 'source · หาแหล่ง', reg: 'rule', sub: 'เลือกโดยคะแนน' },
+      { id: 'compliance', label: 'compliance', reg: 'rule', sub: 'ต่อเกณฑ์' },
+      { id: 'approve', label: 'approve · อนุมัติ', reg: 'human', sub: '⏸ รอคุณ' },
+      { id: 'issue_po', label: 'issue PO', reg: 'human', sub: 'เขียนเมื่ออนุมัติ' },
+      { id: 'audit', label: 'audit · บันทึก', reg: 'llm', sub: 'AI สรุป' }
+    ];
+    STEPS.forEach((st, i) => {
+      band.appendChild(h('div', { class: 'pt-node reg-' + st.reg, 'data-step': st.id }, [
+        h('span', { class: 'pt-n mono' }, String(i + 1)),
+        h('div', { class: 'pt-node-l' }, [
+          h('div', { class: 'pt-node-label' }, st.label),
+          h('div', { class: 'pt-node-sub mono' }, st.sub)
+        ]),
+        h('span', { class: 'pt-wait' }, '⏸ รอการตัดสินใจของคุณ')
+      ]));
+      if (i < STEPS.length - 1) band.appendChild(h('span', { class: 'pt-arrow' }, '→'));
+    });
+    const cap = h('div', { class: 'pt-caption' }, '');
+    root.appendChild(cap);
+    const nodes = Array.prototype.filter.call(band.children, (c) => c.classList.contains('pt-node'));
+    // bottleneck-first: the run advances to `approve` and SUSPENDS there
+    const CAP = [
+      'ขั้นที่เป็นกติกา (judge·source·compliance) รันเองจนจบ — ล็อก, ไม่ต้องรอคน',
+      'intake: AI ช่วยร่าง PR (ฟ้า) · judge: กติกาตัดวิกฤต (เทา ล็อก)',
+      'source + compliance: กติกาเลือก supplier + เช็คเกณฑ์ — ยังไม่มีคนแตะ',
+      'หยุดที่ "approve" — ⏸ รอการตัดสินใจของคุณ (คอขวดที่ตั้งใจ)',
+      'อนุมัติแล้ว → issue PO + audit รันต่อจนจบ'
+    ];
+    const PROG = [0, 1, 3, 4, 7]; // how many nodes are done/active by step
+    function applyStep(k) {
+      cap.textContent = CAP[Math.min(k, CAP.length - 1)] || '';
+      const done = PROG[Math.min(k, PROG.length - 1)];
+      nodes.forEach((nd, i) => {
+        const isApprove = nd.getAttribute('data-step') === 'approve';
+        nd.classList.toggle('st-done', i < done && !(isApprove && k < 4));
+        nd.classList.toggle('st-active', i === done && k < 4);
+        nd.classList.toggle('st-wait', isApprove && k >= 3 && k < 4);
+        nd.classList.toggle('st-pending', i > done);
+      });
+    }
+    return { title: 'ไทม์ไลน์กระบวนการ — 7 ขั้น (คอขวดอยู่ที่อนุมัติ)', stepCount: 5, applyStep: applyStep, eyebrow: PROC_EYEBROW };
+  }
+
+  /* ---- P3: approval "money screen" (the centerpiece) ---- */
+  function createProcApprovalScene(ctx) {
+    const host = ctx.host;
+    const root = h('div', { class: 'scene-pappr' });
+    host.appendChild(root);
+    const card = h('div', { class: 'ap-card' });
+    root.appendChild(card);
+    // header: the ask + criticality
+    card.appendChild(h('div', { class: 'apc-band' }, [
+      h('span', { class: 'apc-crit' }, 'CRITICAL · สายการผลิตหยุด'),
+      h('div', { class: 'apc-ask' }, 'อนุมัติจัดหา: ' + PROC.part.name + ' สำหรับ ' + PROC.equipment.id),
+      h('span', { class: 'apc-amt mono' }, baht(PROC.po.amount))
+    ]));
+    // AI exec-summary (editable register)
+    const sec = (cls, title, body) => h('div', { class: 'apc-sec ' + cls }, [h('div', { class: 'apc-sec-h' }, title), body]);
+    card.appendChild(sec('s-llm', [h('span', { class: 'pr-chip reg-llm' }, 'AI draft · แก้ไขได้'), 'สรุปผู้บริหาร (AI ช่วยร่าง)'],
+      h('div', { class: 'apc-exec', contenteditable: 'true' }, 'CNC-07 สายหยุด — สเปดหมดสต๊อก. on-contract OEM lead time 21 วัน ช้าเกินไป; เลือก RFQ 5 วัน (AVL exception, logged). ขออนุมัติภายใต้ waiver ฉุกเฉิน, escalate ถึง ผอ. (> ฿2M).')));
+    // compliance per-criterion (rule register)
+    const compBody = h('div', { class: 'apc-comp' });
+    PROC.compliance.forEach((c) => compBody.appendChild(h('div', { class: 'apc-comp-row ' + (c.pass ? 'ok' : 'bad') }, [
+      h('span', { class: 'apc-comp-i' }, c.pass ? '✓' : '✗'),
+      h('span', { class: 'apc-comp-k' }, c.label),
+      h('span', { class: 'apc-comp-n mono' }, c.note || '')
+    ])));
+    compBody.appendChild(h('div', { class: 'apc-comp-blocked' }, '✗ Allied Parts Trading — cert หมดอายุ → quote ถูกบล็อก (กติกา ไม่ใช่ราคา)'));
+    card.appendChild(sec('s-rule', [h('span', { class: 'pr-chip reg-rule' }, '🔒 rule'), 'compliance ต่อเกณฑ์ (บล็อก PO ถ้าตก)'], compBody));
+    // DOA ladder + waiver banner
+    const doaBody = h('div', { class: 'apc-doa' });
+    PROC.doa.forEach((t, i) => doaBody.appendChild(h('div', { class: 'apc-doa-row' + (i === PROC.po.tierIdx ? ' is-tier' : '') }, [
+      h('span', { class: 'apc-doa-t mono' }, 'T' + t.tier),
+      h('span', { class: 'apc-doa-r' }, t.role),
+      h('span', { class: 'apc-doa-m mono' }, t.max === Infinity ? '> ฿2M' : '≤ ' + baht(t.max))
+    ])));
+    const doaWrap = h('div', null, [
+      h('div', { class: 'apc-waiver' }, '⚠ Emergency waiver — ผ่อน 3-bid/sole-source แต่ escalate ผู้อนุมัติ + บังคับเหตุผล (ไม่ข้ามด่าน)'),
+      doaBody
+    ]);
+    card.appendChild(sec('s-rule', [h('span', { class: 'pr-chip reg-rule' }, '🔒 rule'), 'DOA tier · ' + baht(PROC.po.amount) + ' → ผอ.'], doaWrap));
+    // supplier / RFQ compare
+    const cmp = h('div', { class: 'apc-quotes' });
+    PROC.quotes.forEach((q) => cmp.appendChild(h('div', { class: 'apc-quote' + (q.selected ? ' is-sel' : '') + (q.blocked ? ' is-blocked' : '') }, [
+      h('div', { class: 'apc-q-top' }, [
+        h('span', { class: 'apc-q-sup' }, q.sup),
+        q.selected ? h('span', { class: 'apc-q-pick' }, 'เลือก (คะแนน)') : (q.blocked ? h('span', { class: 'apc-q-block' }, 'บล็อก') : h('span', { class: 'apc-q-na' }, ''))
+      ]),
+      h('div', { class: 'apc-q-meta mono' }, baht(q.price) + ' · lead ' + q.lead + ' วัน · AVL ' + q.avl + (q.onContract ? ' · on-contract' : ' · RFQ')),
+      h('div', { class: 'apc-q-note' }, q.note)
+    ])));
+    card.appendChild(sec('s-rule', [h('span', { class: 'pr-chip reg-rule' }, '🔒 rule'), 'เทียบ supplier · เลือกโดยกติกาให้คะแนน (ไม่ใช่ LLM)'], cmp));
+    // SoD chain
+    card.appendChild(sec('s-human', [h('span', { class: 'pr-chip reg-human' }, '✓ human'), 'Separation of Duties (SoD)'],
+      h('div', { class: 'apc-sod' }, PROC.sod.map((s, i) => h('span', { class: 'apc-sod-step' }, (i ? '→ ' : '') + s)))));
+    // actions
+    const actions = h('div', { class: 'apc-actions' }, [
+      h('button', { class: 'apc-btn reject' }, 'ปฏิเสธ'),
+      h('button', { class: 'apc-btn approve' }, '✓ อนุมัติ (ผอ.)')
+    ]);
+    card.appendChild(actions);
+    const cap = h('div', { class: 'apc-caption' }, '');
+    root.appendChild(cap);
+    const secs = Array.prototype.filter.call(card.children, (c) => c.classList.contains('apc-sec'));
+    const CAP = [
+      'หน้าจออนุมัติ = ที่เดียวจบ: คำขอ + วิกฤต + สรุป AI + compliance + DOA + เทียบเจ้า + SoD',
+      'สรุปผู้บริหารคือ AI ช่วยร่าง (ฟ้า, แก้ไขได้) — ไม่ใช่ตัวตัดสิน',
+      'compliance ต่อเกณฑ์ (เทา ล็อก): เจ้า cert หมดอายุถูกบล็อก — กติกากัดจริง',
+      '฿2.15M > ฿2M → ผอ. + waiver (escalate + เหตุผล, ไม่ข้ามด่าน)',
+      'เลือก supplier โดยคะแนน (เร็ว 5 วัน) — กติกา ไม่ใช่ LLM · SoD ครบ',
+      'ปุ่มอนุมัติเป็นของคน — governed ≠ generated'
+    ];
+    function applyStep(k) {
+      cap.textContent = CAP[Math.min(k, CAP.length - 1)] || '';
+      secs.forEach((el, i) => el.classList.toggle('is-shown', k >= i + 1));
+      actions.classList.toggle('is-shown', k >= secs.length + 1);
+    }
+    return { title: 'หน้าจออนุมัติ "money screen" — ที่เดียวจบ', stepCount: 6, applyStep: applyStep, eyebrow: PROC_EYEBROW };
+  }
+
+  /* ---- P4: graduation moment (AI-draft → human edit → approve → flips human-approved) ---- */
+  function createProcGraduationScene(ctx) {
+    const scope = ctx.scope, host = ctx.host;
+    const root = h('div', { class: 'scene-pgrad' });
+    host.appendChild(root);
+    root.appendChild(h('div', { class: 'pg-head' }, [
+      h('div', { class: 'eyebrow' }, 'governed ≠ generated' ),
+      h('h3', null, 'จาก "AI ร่าง" → "คนอนุมัติ" — เห็นการกำกับด้วยตา')
+    ]));
+    const card = h('div', { class: 'pg-card reg-llm' });
+    root.appendChild(card);
+    const regTag = h('div', { class: 'pg-reg' }, [h('span', { class: 'pr-chip reg-llm' }, 'AI draft · ช่วยร่าง')]);
+    const body = h('div', { class: 'pg-body', contenteditable: 'false' },
+      'เหตุผลอนุมัติ: CNC-07 สายหยุด; on-contract 21 วัน vs RFQ 5 วัน. ขอ waiver ฉุกเฉิน, AVL exception (logged), escalate ผอ.');
+    const stamp = h('div', { class: 'pg-stamp' }, '');
+    card.appendChild(regTag);
+    card.appendChild(body);
+    card.appendChild(stamp);
+    const cap = h('div', { class: 'pg-caption' }, '');
+    root.appendChild(cap);
+    const CAP = [
+      'เริ่มจากร่างของ AI (ฟ้า, ป้าย "AI draft") — แค่ช่วยร่าง',
+      'คนแก้ข้อความได้ (เพิ่ม "ยืนยันสายหยุด > 2 ชม.") — ยังเป็นร่าง',
+      'กดอนุมัติ → การ์ดพลิกเป็นเขียว "human-approved · ผอ. · เวลา"',
+      'นี่คือ governed ≠ generated: AI ร่าง, คนรับผิดชอบการตัดสิน'
+    ];
+    function applyStep(k) {
+      cap.textContent = CAP[Math.min(k, CAP.length - 1)] || '';
+      // step2: human edit
+      if (k >= 2) {
+        body.textContent = 'เหตุผลอนุมัติ: CNC-07 สายหยุด > 2 ชม. (ยืนยัน); on-contract 21 วัน vs RFQ 5 วัน. ขอ waiver ฉุกเฉิน, AVL exception (logged), escalate ผอ.';
+        body.classList.add('is-edited');
+      } else {
+        body.textContent = 'เหตุผลอนุมัติ: CNC-07 สายหยุด; on-contract 21 วัน vs RFQ 5 วัน. ขอ waiver ฉุกเฉิน, AVL exception (logged), escalate ผอ.';
+        body.classList.remove('is-edited');
+      }
+      // step3: flip to human-approved
+      const approved = k >= 3;
+      card.classList.toggle('reg-llm', !approved);
+      card.classList.toggle('reg-human', approved);
+      clear(regTag);
+      regTag.appendChild(h('span', { class: 'pr-chip ' + (approved ? 'reg-human' : 'reg-llm') }, approved ? '✓ human-approved' : 'AI draft · ช่วยร่าง'));
+      stamp.textContent = approved ? 'อนุมัติโดย ผอ. · สมชาย ก. · 24 มิ.ย. 2569 · 09:42' : '';
+      stamp.classList.toggle('is-shown', approved);
+    }
+    function enterStep(k) {
+      if (k === 3 && scope) scope.tween(card, [{ transform: 'scale(0.98)' }, { transform: 'scale(1)' }], { duration: 320, fill: 'none' });
+    }
+    return { title: 'ช่วงเปลี่ยนผ่าน — AI ร่าง สู่ คนอนุมัติ', stepCount: 4, applyStep: applyStep, enterStep: enterStep, eyebrow: PROC_EYEBROW };
+  }
+
+  /* ---- P5: monitoring dashboard (KPI tiles + waivers watched + AI-assist throughput) ---- */
+  function createProcDashboardScene(ctx) {
+    const host = ctx.host;
+    const root = h('div', { class: 'scene-pdash' });
+    host.appendChild(root);
+    root.appendChild(h('div', { class: 'pd-head' }, [
+      h('div', { class: 'eyebrow' }, 'มอนิเตอร์ · monitoring dashboard'),
+      h('h3', null, 'ภาพรวมจัดซื้อ — KPI, waiver ที่ใช้, และ throughput ของ AI')
+    ]));
+    const tiles = h('div', { class: 'pd-tiles' });
+    root.appendChild(tiles);
+    PROC.kpis.forEach((kpi) => tiles.appendChild(h('div', { class: 'pd-tile' }, [
+      h('div', { class: 'pd-k' }, kpi.k),
+      h('div', { class: 'pd-v' }, kpi.v),
+      h('div', { class: 'pd-foot' }, [
+        h('span', { class: 'pd-trend ' + (kpi.good ? 'good' : 'bad') }, kpi.trend),
+        h('span', { class: 'pd-target mono' }, kpi.target)
+      ])
+    ])));
+    // watched tile: emergency waivers used
+    tiles.appendChild(h('div', { class: 'pd-tile watched' }, [
+      h('div', { class: 'pd-k' }, '⚠ emergency waiver ที่ใช้ (เดือนนี้)'),
+      h('div', { class: 'pd-v' }, '3'),
+      h('div', { class: 'pd-foot' }, [h('span', { class: 'pd-trend bad' }, 'เฝ้าดู'), h('span', { class: 'pd-target mono' }, 'เกณฑ์ ≤ 5')])
+    ]));
+    // pending by tier
+    const pend = h('div', { class: 'pd-pend' }, [
+      h('div', { class: 'pd-sec-h' }, 'รออนุมัติ แยกตาม DOA tier'),
+      h('div', { class: 'pd-pend-bars' }, [
+        h('div', { class: 'pd-bar' }, [h('span', null, 'หน.จัดซื้อ'), h('span', { class: 'pd-bar-f', style: { width: '60%' } }, '6')]),
+        h('div', { class: 'pd-bar' }, [h('span', null, 'ผจก.จัดซื้อ'), h('span', { class: 'pd-bar-f', style: { width: '30%' } }, '3')]),
+        h('div', { class: 'pd-bar' }, [h('span', null, 'ผจก.โรงงาน'), h('span', { class: 'pd-bar-f', style: { width: '10%' } }, '1')]),
+        h('div', { class: 'pd-bar' }, [h('span', null, 'ผอ.'), h('span', { class: 'pd-bar-f crit', style: { width: '10%' } }, '1')])
+      ])
+    ]);
+    root.appendChild(pend);
+    // AI-assist throughput panel — the governance proof
+    const ai = h('div', { class: 'pd-ai reg-llm' }, [
+      h('div', { class: 'pd-sec-h' }, [h('span', { class: 'pr-chip reg-llm' }, 'AI draft'), 'AI-assist throughput (เดือนนี้)']),
+      h('div', { class: 'pd-ai-row' }, [
+        h('span', { class: 'pd-ai-n' }, 'AI ช่วยร่าง 142'),
+        h('span', { class: 'pd-ai-n zero' }, '0 การเลือก supplier'),
+        h('span', { class: 'pd-ai-n zero' }, '0 การอนุมัติ')
+      ]),
+      h('div', { class: 'pd-ai-note' }, 'AI ช่วยร่าง/สรุปเท่านั้น — การเลือกเจ้า·ตั้งเกณฑ์·อนุมัติ เป็นของกติกา+คน (governed ≠ generated)')
+    ]);
+    root.appendChild(ai);
+    const cap = h('div', { class: 'pd-caption' }, '');
+    root.appendChild(cap);
+    const groups = [tiles, pend, ai];
+    const CAP = [
+      'แดชบอร์ดมอนิเตอร์: KPI จริง — มีค่า + แนวโน้ม + เป้า (ไม่ใช่เลขลอย)',
+      'ไทล์เฝ้าดู: จำนวน emergency waiver ที่ใช้ — กันการใช้พร่ำเพรื่อ',
+      'รออนุมัติแยกตาม tier · ผอ. มี 1 (เคส CNC-07)',
+      'throughput ของ AI: ร่าง 142 · เลือก supplier 0 · อนุมัติ 0 — หลักฐานว่า AI ไม่ตัดสิน'
+    ];
+    function applyStep(k) {
+      cap.textContent = CAP[Math.min(k, CAP.length - 1)] || '';
+      groups.forEach((g, i) => g.classList.toggle('is-shown', k >= i + 1));
+      tiles.classList.toggle('is-shown', k >= 1);
+    }
+    return { title: 'แดชบอร์ดมอนิเตอร์ — KPI + waiver + AI throughput', stepCount: 4, applyStep: applyStep, eyebrow: PROC_EYEBROW };
+  }
+
+  /* ============================================================
      The SCENES registry (arc order = G, pain-first). The appendix is
      the optional technical encore (AC-1 — reachable, never the opener).
+     The procurement scene group (PLAN-0036 Step 6) is appended after the
+     aquaculture arc — the same shell, a 4th vertical's operator round-trip.
      ============================================================ */
   const SCENES = [
     { id: 'hook',        create: createHookScene },
@@ -1392,7 +1744,12 @@ object_types:
     { id: 'intake',      create: createIntakeScene },
     { id: 'beforeafter', create: createBeforeAfterScene },
     { id: 'breadth',     create: createBreadthScene },
-    { id: 'appendix',    create: createAppendixScene }
+    { id: 'appendix',    create: createAppendixScene },
+    { id: 'proc-worklist',   create: createProcWorklistScene },
+    { id: 'proc-timeline',   create: createProcTimelineScene },
+    { id: 'proc-approval',   create: createProcApprovalScene },
+    { id: 'proc-graduation', create: createProcGraduationScene },
+    { id: 'proc-dashboard',  create: createProcDashboardScene }
   ];
   const EYEBROW = 'Story mode · Aquaculture';
 
@@ -1402,7 +1759,7 @@ object_types:
      ============================================================ */
   let isOpen = false, overlayEl = null, shellScope = null, sceneScope = null;
   let sceneIndex = 0, stepIndex = 0, playing = false, playTimer = null, altOn = false, active = null;
-  let titleEl = null, sceneDotsEl = null, stepTextEl = null, playBtn = null, altBtn = null;
+  let titleEl = null, eyebrowEl = null, sceneDotsEl = null, stepTextEl = null, playBtn = null, altBtn = null;
   let prevBtn = null, nextBtn = null, nextCta = null, bodyHost = null;
 
   function mountLauncher(hostEl) {
@@ -1433,7 +1790,7 @@ object_types:
     if (shellScope) shellScope.kill();
     shellScope = null;
     if (overlayEl && overlayEl.parentNode) overlayEl.parentNode.removeChild(overlayEl);
-    overlayEl = null; titleEl = sceneDotsEl = stepTextEl = playBtn = altBtn = null;
+    overlayEl = null; titleEl = eyebrowEl = sceneDotsEl = stepTextEl = playBtn = altBtn = null;
     prevBtn = nextBtn = nextCta = bodyHost = null;
     sceneIndex = 0; stepIndex = 0; playing = false; playTimer = null; altOn = false;
   }
@@ -1443,7 +1800,8 @@ object_types:
 
     const top = h('div', { class: 'story-top' });
     titleEl = h('h2', null, '');
-    top.appendChild(h('div', { class: 'story-id' }, [h('div', { class: 'eyebrow' }, EYEBROW), titleEl]));
+    eyebrowEl = h('div', { class: 'eyebrow' }, EYEBROW);
+    top.appendChild(h('div', { class: 'story-id' }, [eyebrowEl, titleEl]));
     top.appendChild(h('div', { class: 'flex' }));
 
     sceneDotsEl = h('div', { class: 'story-dots', title: 'Scene' });
@@ -1489,6 +1847,7 @@ object_types:
     sceneScope = M.scope('story:' + SCENES[i].id);
     active = SCENES[i].create({ scope: sceneScope, host: bodyHost, advance: () => stepForward(true) });
     titleEl.textContent = active.title || '';
+    if (eyebrowEl) eyebrowEl.textContent = active.eyebrow || EYEBROW;
     if (active.alt) {
       clear(altBtn);
       altBtn.appendChild(icon('anomaly'));
