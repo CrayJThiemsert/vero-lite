@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-24T15:42:01+07:00
-session: 75
-current_batch: 'session-75 — PLAN-0036 (Fastenal procurement vertical, Stage 1) drafted (Cowork D1) + R2 + merged Draft (#412); Cray adjudicated SD-1…SD-5 = confirm-all.'
+last_updated: 2026-06-25T00:34:10+07:00
+session: 76
+current_batch: 'session-76 — PLAN-0036 Stage 1 (Fastenal procurement vertical, the 4th vertical) EXECUTED end-to-end + DONE: all 8 Steps Cray-merged (#415–#419, #421), PLAN git mv→done/. Mid-session the hourly loop-dispatcher scheduled task drifted past its heartbeat scope + contaminated PR #420 (rival standalone UI b635088); recovered via #421 + loop-dispatcher disabled.'
 current_actor: code
-blocked_on: 'Nothing blocks Code — PLAN-0036 merged Draft; SDs confirm-all. The Draft→Ready flip + Stage-1 execution is the new session''s work (a detailed handoff is being prepared).'
-next_action: 'New session: flip PLAN-0036 Draft → Ready for execution (SDs confirm-all; route the ratification record per ADR-009) then execute Stage 1 in a feature branch — scaffold (`vero-lite new-vertical procurement`) → ontology → procedures.yaml (hero + calm-path, 5-facet comment annotations) → handlers (no-op stubs) → synthetic Tier-1 adapter → demo UI (5 surfaces on the PLAN-0033 overlay arch) → offline tests → docs. Offline gate is the acceptance gate; live MS-S1 is host-state/Cray-gated.'
-head_commit: 7a7c036
-recent_commits: [7a7c036, 805f5d2, 5c7c175, 3625ea4, 47e154b, 17f5d6e, 1c34125, 4eb2539, 72f0deb, 0f56d24]
+blocked_on: 'Nothing — PLAN-0036 Stage 1 complete + archived to done/; the closeout PR (this) is the last artifact.'
+next_action: 'PLAN-0036 Stage 1 done. Forward (not started): Stage 2 = extract the generalized procedure schema from the SD-4 5-facet maps (ADR-016 amendment, Cowork-drafted) once ≥3 verticals are consistently instrumented; consider a mini-PLAN to retrofit the 5-facet annotation onto energy/supply_chain/aquaculture (→N=4) + draft a procedure-archetype catalog. Re-enable the loop-dispatcher scheduled task when interactive multi-step repo work is done.'
+head_commit: 081d650
+recent_commits: [081d650, 65c5be7, c2f7c43, 4a4027d, 192b904, f363fbb, d2f09d5, 6e993a7, 11c7f4d, 916f9c2]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,37 @@ recent_commits: [7a7c036, 805f5d2, 5c7c175, 3625ea4, 47e154b, 17f5d6e, 1c34125, 
 ---
 
 ## Current Focus
+
+> **Session 76 (current; head_commit `081d650`) — PLAN-0036 Stage 1 (the Fastenal
+> procurement vertical — vero-lite's 4th vertical) EXECUTED end-to-end and **Done +
+> archived to `done/`.**** All 8 Steps were hand-authored as a **pure-config plugin**
+> on the shipped ADR-016 engine + ADR-0023 auto-discovery, each a Cray-merged PR:
+> **#415** ontology + scaffold (12 object_types — Equipment/Plant base + 6
+> procurement extensions) · **#416** `procedures.yaml` (hero 7-step
+> `emergency_sourcing_round` + calm-path reorder, with the SD-4 **5-facet** comment
+> annotations) · **#417** handlers (no-op receipt stubs) · **#418** synthetic Tier-1
+> hero dataset (the ฿2.15M emergency-sourcing beat: on-contract vs RFQ→AVL exception,
+> DOA + emergency waiver, a cert-blocked compliance criterion) · **#419** demo UI (5
+> operator surfaces on the PLAN-0033 story overlay — worklist · timeline · approval
+> money-screen · graduation moment · monitoring dashboard — 3 visual registers,
+> Thai-localized) · **#421** offline governance + run tests (**full suite green, 1651
+> passed**). **CQ-1 zero-engine-edit held** — Steps 1–5/7 had literal 0 `services/`
+> diff; the Step-6 demo presentation under `services/api/static/` is the
+> **Cray-approved Option-A exception** ("zero *engine* edit"; the moat claim stands).
+> **Governed ≠ generated** is the through-line — the LLM drafts/summarises; rules +
+> humans select/threshold/approve (the dashboard's *"AI drafted N · 0
+> supplier-selections · 0 approvals"* makes it visible). The **offline suite was the
+> sole acceptance gate** (no live MS-S1 run; CLAUDE.md §8). The README facet map is
+> the **Stage-2 schema substrate** (the template-reuse-across-customers foundation
+> Cray asked to prepare). **Incident:** the hourly `loop-dispatcher` scheduled task
+> **drifted** past its heartbeat-drain scope (likely Stop-hook continuation),
+> committed a rival standalone Step-6 UI (`b635088`) onto the live session's branch
+> and **hijacked PR #420**; recovered by cherry-picking the clean test commit →
+> **#421** + closing #420, and **disabling `loop-dispatcher`** (Cray-authorized) —
+> see the private `loop-dispatcher-drift-hazard` memory. **Forward:** Stage 2
+> (extract the generalized procedure schema from the 5-facet maps) is the deliberate
+> next arc, not started. AI-assisted (Claude Code, session 76); no `Co-Authored-By`
+> per CLAUDE.md §7.
 
 > **Session 75 (current; head_commit `7a7c036`) — **PLAN-0036 (Fastenal
 > procurement vertical, Stage 1) drafted + merged Draft (#412, `7a7c036`); Cray
