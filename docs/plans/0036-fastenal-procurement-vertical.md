@@ -1,8 +1,9 @@
 # PLAN-0036: Fastenal Procurement Vertical (Stage 1) — hand-author the 4th vertical
 
-**Status:** Draft
+**Status:** Ready for execution
 **Owner:** Claude Code (Tier 2 executes; Cowork drafted per ADR-009 D1)
 **Created:** 2026-06-24
+**Ratified:** 2026-06-24 — SD-1…SD-5 adjudicated by Cray = **confirm-all** (all as-recommended); lifecycle flipped Draft → Ready for execution by Code (PLAN-0034 prong-1 exempts a Draft lifecycle flip from Stop-hook dispatch).
 **Related ADRs:** ADR-016 (governed procedure engine — the spine: `kind`/`autonomy`/set-valued/durable-suspend), ADR-008 (YAML ontology grammar — D1 "may extend"), ADR-0019 (`watch→gated` proposal routing; determinism invariant), ADR-0022 (governed entity resolution — supplier identity on the LLM path), ADR-0023 (registry auto-discovery — a new vertical auto-registers, **zero `services/` core edit**), ADR-006 (vertical-plugin architecture + Rule of Three), ADR-0015 (Tier-1 synthetic Mirror demo), ADR-0021 (metric-kind typed quantities), ADR-005 ("Palantir-lite" OCT positioning)
 **Related PLANs:** done/0016 (`vero-lite new-vertical` scaffold — the generator this reuses), 0019 (active — procedure-engine Phase-1 baseline + the aquaculture worked example this mirrors), done/0031 (ORM emitter; B1-DP-1), done/0032 (registry auto-discovery), done/0033 (Phase-C demo-UI story-mode overlay — the SD-3 UI vehicle)
 
@@ -99,10 +100,14 @@ trigger "vertical #2 needs an ORM"; Active TODO) is the single core decision poi
 Stage 1 is **synthetic Tier-1 (in-memory adapter, no live DB)**, so this caveat does
 **not** fire here — see SD-2.
 
-## SURFACED decisions (SD-1…SD-5) — resolved-or-flagged; **Cray adjudicates**
+## SURFACED decisions (SD-1…SD-5) — **ADJUDICATED 2026-06-24 = confirm-all**
 
-Per Tier-1 rule #8 ("surface, do not silently choose"), each carries a recommendation
-+ reasoning; the final call is Cray's.
+Per Tier-1 rule #8 ("surface, do not silently choose"), each carried a recommendation
++ reasoning; the final call was Cray's. **Cray adjudicated all five on 2026-06-24 =
+confirm-all** — every SD resolves **as-recommended**; the recommendations below are the
+ratified positions. (SD-1 standalone vertical · SD-2 no ORM in Stage 1 · SD-3 reuse the
+PLAN-0033 overlay architecture, author procurement surfaces · SD-4 5-facet hypothesis +
+comment-only annotation · SD-5 ship the 5 advisory surfaces, defer interactive Q&A.)
 
 ### SD-1 — Vertical boundary: standalone vs consume an existing asset vertical's events
 
@@ -116,7 +121,7 @@ events would require engine work the engine does not model (out of Stage-1 scope
 energy/aquaculture/supply_chain already each declare — a **Rule-of-Three signal** that
 an "asset core" base could later be extracted. **Do not extract now** (premature; ADR-006
 D4). Log as a cross-vertical abstraction *candidate* for the deliberate abstraction step.
-**Cray adjudicates.**
+**Cray adjudicated 2026-06-24 = confirm (as recommended).**
 
 ### SD-2 — ORM destination (the B1-DP-1 per-vertical-layout trigger)
 
@@ -129,7 +134,7 @@ layout decision does not fire**. CQ-1's "zero `services/` core edit" holds intac
 **Flag (forward):** procurement's eventual **Tier-2 real-data path** (out of scope, §
 Out of Scope) is precisely the "vertical #2 needs an ORM" trigger that activates the
 deferred per-vertical ORM layout — that is the one core touch-point, to be decided in
-its own PLAN/ADR at that time, **not** here. **Cray adjudicates.**
+its own PLAN/ADR at that time, **not** here. **Cray adjudicated 2026-06-24 = confirm (as recommended).**
 
 ### SD-3 — Demo UI vehicle: extend PLAN-0033 story-mode overlay vs a new view
 
@@ -144,8 +149,8 @@ no-new-backend, no-CDN substrate. **Nuance:** L-7's 5 operator surfaces
 dashboard) are **richer than a linear scene arc** — author them as procurement scenes/
 panels within the SCENES/shell pattern (the 5 Code-session-75 mockups are the design
 reference). **Flag:** this is "extend the pattern, new content", **not** a brand-new
-view system and **not** reuse of aquaculture's scenes. **Cray adjudicates** (incl.
-whether all 5 surfaces ship in the Stage-1 demo or a subset — pairs with SD-5).
+view system and **not** reuse of aquaculture's scenes. **Cray adjudicated 2026-06-24 = confirm** (incl.
+the 5 surfaces ship in the Stage-1 demo per the SD-5 advisory scope — pairs with SD-5).
 
 ### SD-4 — Schema instrumentation (the Stage-2 hook) — **load-bearing for the platform thesis**
 
@@ -176,7 +181,7 @@ annotates via structured YAML comments + this PLAN's facet map** (zero core edit
 preserves CQ-1). Promotion to a **first-class `facet` annotation field** is a **Stage-2
 ADR-016 amendment** (out of scope here). This mirrors the precedent where PLAN-0035 /
 member-(a) deferred a first-class envelope field and kept the signal trace-only.
-**Cray adjudicates** (confirm the 5 facets + the comment-only Stage-1 mechanism).
+**Cray adjudicated 2026-06-24 = confirm** (the 5 facets + the comment-only Stage-1 mechanism confirmed).
 
 ### SD-5 — Assist-surface scope for the Stage-1 demo
 
@@ -193,7 +198,7 @@ sets a threshold / approves):
 **Offline-gate note (binding, L-8):** every shipped LLM surface is **faked/scripted in
 tests** (the offline gate is the acceptance gate); a **live MS-S1 run is host-state /
 Cray-gated, NOT an acceptance gate** (CLAUDE.md §8) — mirroring the PLAN-0033 scene-4
-live-vs-scripted treatment. **Cray adjudicates** the ship/defer split (pairs with SD-3).
+live-vs-scripted treatment. **Cray adjudicated 2026-06-24 = confirm** the ship/defer split (pairs with SD-3).
 
 ---
 
