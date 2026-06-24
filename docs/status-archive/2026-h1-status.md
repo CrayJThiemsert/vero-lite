@@ -12,6 +12,114 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-24 (session-75 reconcile): both **Session-71** Current Focus blocks rotated to hold Current Focus at the 4-newest-sessions window {75,74,73,72} when the session-75 PLAN-0036 (Fastenal procurement vertical, Stage 1) block landed (R2)._
+
+> **Session 71 (current; head_commit `c69b6e2`) — Group-A: **G2 root-fix
+> PLAN-0034 RATIFIED + core-IMPLEMENTED** (#396/#397).** PLAN-0034 (G2
+> drafting-friction root-fix) went **Draft → ratified → core-implemented** this
+> session. **Ratification (#396, `5705b8a`, merge `3dcecaa`):** Cray ratified all
+> four surfaced decisions = option **(a)**. **SD-1** (prong-2 mechanism) was gated
+> on a **Code Step-3 spike** run offline this session, which empirically confirmed
+> (Q1) project-level PreToolUse hooks **DO** fire inside a subagent context (so the
+> deadlock is real, prong 2 is needed) and (Q2) the PreToolUse payload carries
+> **both `agent_id` and `agent_type` reliably** in this Claude Code version (the
+> official hooks docs omit them — the live harness provides them, vindicating
+> `done/0009` §1). So **SD-1 = (a)** exempt `agent_type == "plan-drafter"` reusing
+> G5's `_is_subagent_call`/`agent_id` pattern (this **SUPERSEDED** the pre-spike
+> (c) narrow-to-main-agent lean); **SD-2 = (a)** hybrid guards; **SD-3 = (a)**
+> PLAN-only + a `.claude/autonomy-triggers.md` annotation (no ADR amendment);
+> **SD-4 = (a)** keep G5 / PR-review / "only Code commits" untouched. Cowork folded
+> the ratification + spike into the PLAN (ADR-009 D1); Code R2-reviewed + committed
+> (ADR-009 D2); the PLAN flipped to **Status: Ready for execution**.
+> **Implementation (#397, `c69b6e2`, merge `9092db5`):** the offline, deterministic
+> core. **Self-modification of the autonomy hooks — Cray-approved per-diff
+> in-session; opened as a PR and NOT self-merged (Cray merged it)** — that
+> PR-review boundary is the **SD-4 checkpoint**. **Prong 2:**
+> `pretooluse_classifier_dispatch.py` exempts the `plan-drafter` subagent
+> (short-circuit before `_classify()`; main-agent writes have no `agent_id` so G2
+> is preserved; `main()` carries a justified `# noqa: C901`). **Prong 1:** three
+> DISPATCH over-fire negative guards in `_sonnet_classifier._build_system_prompt`
+> (non-`docs/(adr|plans)/NNNN` target / already-routed / existing-lifecycle-flip; a
+> genuine `Status: Accepted` ADR mutation still pauses — **G1 unchanged**). Gold: 6
+> `expected: pause` negatives added to `benchmarks/stop_classifier/gold.yaml` (the
+> s67 ratify-flip, the s68 CLAUDE.md mis-type, and the 3 live s71 Stop-hook
+> over-fires). Tests: prong-2 deterministic AC-7 tests. **Offline gates green:**
+> 137 targeted + 730 handoffs/benchmark tests pass, ruff + ruff-format +
+> mypy --strict clean, gold parses. **Offline-only (no host-state); the live gold
+> re-score (prong-1's true behavioral proof) stays Cray-gated host-state — NOT
+> run.** The session also **exercised the very over-fire** prong-1 fixes: the
+> Stop-hook over-fired ~4× around PLAN-0034 (dispatch after Cowork chosen /
+> re-dispatch / "new ADR while unratified" / "draft final PLAN-0034" while already
+> routed) — Code declined each per the override clause; these are now gold
+> negatives. **PLAN-0034 stays Status: Ready for execution** (NOT Complete, NOT
+> `git mv`'d) — two tails remain: (a) the **Cowork** `.claude/autonomy-triggers.md`
+> registry annotation (Step 5 / SD-3 PLAN-only; Cowork drafts, Code commits) → then
+> PLAN → Complete + `done/`; (b) the optional Cray-gated **live gold re-score**.
+> **Group-A sequencing:** A2 ✅ → **G2 (PLAN-0034) ratified + core-implemented**
+> (Step-5 tail remains) → **A1** (verify+reshape = ADR-0022 member (b); a PLAN, not
+> a new ADR) is next. AI-assisted (Claude Code, session 71); no `Co-Authored-By`
+> per CLAUDE.md §7.
+
+> **Session 71 — Group-A: **A2 CLOSED** + **G2
+> root-fix PLAN-0034 committed as DRAFT** (#394); earlier this batch PLAN-0033
+> Phase C **COMPLETE** (C1+C2 MERGED #387, s70) + **Step-6 closeout**.** Phase C
+> ships the **full 7-scene story-mode arc** on the proven C0 spine, merged to main
+> (#387, merge `d7ae465`, **session 70**): **C1** — scene **1 Hook**, scene **2
+> Govern-with-fail-safe-self-catch**, scene **4 live-intake dual-path**, scene **5
+> Before/After** — plus **C2** — scene **6 Breadth**, scene **7 Appendix**.
+> **Architecture:** a **SCENES registry + generic shell** with a **two-tier Motion
+> scope** (shell-level + per-scene) enforcing the **AC-13 teardown contract**; the
+> additive `view-story.js` **overlay** (SD-C — coexists with Views A–E, never
+> replaces) on **synthetic Tier-1 mirror data** (ADR-0015 D1), **no new backend**,
+> **offline/no-CDN**. On-screen copy **localised to English**; **offline IBM Plex
+> fonts vendored** (#388); a **`?v=` static-asset cache-bust** added (the
+> stale-asset trap). **Two scenes iterated live (Cray review):** scene **6** → a
+> **swap-in-place** (one engine shape, the data swaps) + **"Compare all" matrix**
+> hybrid with a **per-vertical real-YAML toggle**; scene **7** → an **SVG fan-flow**
+> (the runtime pipeline + the **YAML→6-artifacts fan-out**) with **marching-dash
+> animation** + **click-to-detail** cards + the **golden moat takeaway**.
+> **Step-6 closeout (this batch, s71):** per-AC verification **AC-1…AC-14 = 14/14
+> PASS** via the **preview workflow** (a11y/DOM probes + behavioral eval;
+> `preview_screenshot` environmentally unavailable here). Highlights: **AC-13**
+> teardown leak probe `OCT.Motion.activeCount().total === 0` after open→cycle all 7
+> scenes→close; **AC-3** moat beat (LLM low-confidence → deterministic rule
+> fail-safe reroute → **still** passes the human approve gate + records audit
+> `WO-AQ-7731 · audit#a3f1`); **AC-8** scene-5 "**0 of 40**" figure confirmed
+> defensible against `benchmarks/procedure_baseline/REPORT.md` §B-3; **AC-9/AC-12**
+> honesty+offline greps clean (no `[search-synthesis]`/Palantir/dbt stat in copy,
+> no CDN, fonts vendored). A **demo-operator runbook section** added to
+> `docs/runbooks/run-oct-demo.md` (pre-warm MS-S1 → confirm `resident` → press S;
+> the `?v=` bump convention); **PLAN-0033 `git mv` → `docs/plans/done/`** (Code's
+> lane, ADR-009 D2). **Follow-up (s71):** scene 4 "Go live" now makes a **REAL
+> MS-S1 extraction call** (shipped #390, merge `04efb8d`) — races
+> `O.Intake.extract` against a **35s** hard timeout, falling back to the cached
+> draft on timeout/degraded/error (live-smoked: real extract ~19.5s, warm
+> `gpt-oss:20b`); this **completes the AC-7 true-live path** (was a scripted
+> dummy). The readiness pill still does a real safe `GET /llm/status` read
+> (PLAN-0018, never warms). **Group-A progression (this batch, s71):** with
+> **A2 CLOSED** (committed reproducible re-grade harness #392 + the §B-3 residual
+> decomposition #392/`2463229` + a STATUS reconcile #393), Code built the **G2
+> drafting-friction root-fix Cowork dispatch**, and **PLAN-0034 (G2
+> drafting-friction root-fix) is now committed as a `Draft`** (#394, merge
+> `fda2557`) — **Cowork-drafted** (ADR-009 D1) off the s71 Code→Cowork dispatch,
+> **Code R2-reviewed + committed** (ADR-009 D2). PLAN-0034 **drafts a two-prong
+> fix and IMPLEMENTS NOTHING** (Out of Scope): **prong 1** tightens the
+> **Stop-side** classifier (`_sonnet_classifier._build_system_prompt` +
+> `.claude/autonomy-triggers.md` D-rows + `benchmarks/stop_classifier/gold.yaml`)
+> against spurious dispatch/pause (CLAUDE.md-target / already-dispatched /
+> existing-lifecycle-edit over-fires); **prong 2** exempts the **`plan-drafter`**
+> subagent's **uncommitted draft-write** from the project-level **G2 PreToolUse
+> gate** (`pretooluse_classifier_dispatch.py`), with **G5 commit-block + PR review
+> preserving oversight**. Code R2 verified Cowork's **3 framing corrections**
+> against HEAD (over-fires are Stop-side not the PreToolUse pre-filter;
+> `run_eval.py` is manual/not-CI; the H2 boundary-inversion caveat is
+> direction-specific) and applied **one R2 correction at commit** (fact-2's
+> "PLANs never use Status: Accepted" was false — `done/0026` uses it). **Status:
+> Draft — awaiting Cray ratification (SD-1..SD-4); nothing blocks Code** (the
+> PLAN implements nothing; ratification is Cray's, the Step-3 spike is DEFERRED
+> to a fresh session by a context-pressure call). AI-assisted (Claude Code,
+> session 71); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-23 (session-74 reconcile): four CF blocks rotated to hold Current Focus at the 4-newest-sessions window {74,73,72,71} when the session-74 PLAN-0035-Phase-2-shipped block landed (R2) — the **Session-69 `0a32e67`** block (PLAN-0033 Phase C C0 story-mode) and three **Session-67** blocks (`558ec29` B2 registry auto-discovery, `7a59814` B1 ORM emitter, `0593bc8` Phase B kickoff)._
 
 > **Session 69 (head_commit `0a32e67`) — PLAN-0033 Phase C **C0 VERTICAL
@@ -1518,6 +1626,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-16 | **B-γ EXECUTED END-TO-END — PLAN-0027 Steps 2–5 SHIPPED; PLAN-0019 Step B-γ / AC B-3 = DONE (#339–#342, `0aee4eb`, session 64)** _(rotated 2026-06-24, session 75)_ — the three-arm comparison on the energy breach subset, run to completion. Offline arms (#339 `e41806a`/`a394342`, Steps 2–3): arm (b) raw text-to-SQL + arm (c) lean RAG + comparison harness, behind a mock-ChatClient offline gate (D-6 guard intact). ONE Cray-approved scored host-state run (`gpt-oss:20b` @ MS-S1, 40 energy breach items, warm-first; every score VERIFIED from `--dump-json` via the Read tool, reports-not-gates per B-3/B-6), then the B-3 REPORT landed (#342 `0aee4eb`/`01370e5`, Step 5). **Results:** arm (a) governed stack 97.5–100% entity+action (REUSED, D-2, not re-run; p95 ~30s); arm (b) raw text-to-SQL 100% entity-ID (40/40, correct `WHERE measured_value >= 90`) but structurally cannot propose an action (D-3; p95 10.2s); arm (c) lean RAG 97.5% entity+action (39/40; action 100%; p95 3.2s); 0 errors / 0 invalid SQL; the lone arm-c miss (`energy-h05`) is a real naive-RAG output-fidelity miss (`E113` not `asset-E113`), VERIFIED not a grading artifact. **Load-bearing finding:** raw entity+action accuracy does NOT separate the governed stack from lean RAG (c ties a at 97.5%) → relocates the moat claim off "raw NL→action accuracy" onto the governance layer (§3.4 verify+reshape / deterministic disposition / handler allowlist / audit that arm c structurally lacks); verify+reshape captured as a forward-pointer (future ADR-016 area), OUT OF SCOPE per D-6. Supporting: #340 (`099d55b`/`17863ef`, `test(handoffs):`) chip-session fix isolating `CLAUDE_GOAL_PATH` in `stub_env` so a live `goal.json` can't leak into Phase-2 Stop-hook tests (test-only +6; 575 passed/2 skipped); #341 (`cf645f7`/`7d8a716`, `fix(benchmarks):`) pre-run arm-c case-normalize calibration, ratified BEFORE the scored run per B-6 (recovers a correctly-named entity, never invents one). Concurrent-session recovery handled (shared WSL checkout: local↔origin divergence + transient `.git/index.lock` after #339; diagnosed read-only, nothing lost, synced cleanly). **PLAN-0027 complete; PLAN-0019 Step B-γ / AC B-3 = DONE** | `0aee4eb` (#339/#340/#341/#342) / `benchmarks/procedure_baseline/` REPORT `## B-3` + `docs/plans/0027-*.md` |
 | 2026-06-16 | **PLAN-0026 AC-9 optional live MS-S1 re-verify RAN + PASSED (#332, `dc65425`/`c16778d`, session 62)** _(rotated 2026-06-23, session 73)_ — Cray-authorized host-state run closing the last PLAN-0026 open item; offline oracle stays the CI gate, AC-9 is verification-not-gate (Lesson #15). 12-Q NL-query harness vs `gpt-oss:20b` @ MS-S1 (`run_benchmark.py --warm`), offline oracle 65 passed immediately prior. **Result: 11/12 correct (was 10/12 in AC-8) · anti-hallucination 12/12 HELD · p50 15.5s / p95 39.0s.** Headline (AC-1 live): nl-08 + nl-11 both flipped correct on the deterministic structured lens (`result_count 7`, max `96.5 °C`, top `Battery Bank A` from the execute-stage `AggregateResult`, not phrase prose) — model emits `operation:max` not `list` and invents no `resolve` placeholder. Two honest notes: (1) lone miss = nl-01 (not an AC-9 target) — known simple-list filter-omission nondeterminism, zero fabrication, out of PLAN-0026 scope, offline gold green → not a Phase-A regression; (2) this run hit the right result via the model's own `unit=celsius` filter (`measured_kind:null`) so the coherence seam had nothing to rewrite — the seam is the safety net proven by the offline oracle (AC-7), both routes yield the identical grounded result. **Verdict: AC-9 PASS.** Recorded as a RESULTS.md addendum; `--dump-json` evidence gitignored at `.claude/benchmark-results/2026-06-16-nl-query-ac9.jsonl`. PLAN-0026 now fully closed incl. the optional live re-verify | `c16778d` (#332, content `dc65425`) / `benchmarks/nl_query_feasibility/RESULTS.md` |
 | 2026-06-16 | **PLAN-0027 (B-γ comparison methodology pre-registration) LANDED + Cray-ratified §3–§4 (#337, `ab0174a`/`e70daa9`/`fb91777`, session 63)** _(rotated 2026-06-23, session 74)_ — completes PLAN-0019 Step B-γ / AC B-3 **Step 1** (pre-registration); status now **Ready for execution**. Pre-registers the three-arm comparison on the energy breach subset: (a) governed-procedure stack (reuse REPORT numbers, no re-run), (b) raw text-to-SQL, (c) lean-but-real RAG — **reports-not-gates** (B-3/B-6) with a **D-6 contamination guard** (arm c stays a clean naive RAG baseline, no verify/reshape/governance layer). Governance (G2-routed): `plan-drafter` authored → G2 blocks Code/subagent PLAN writes → Cowork materialized (ungated) → Code committed (#337, ADR-009 D1/D2) → Cray ratified §3–§4 resolving SD-1..SD-4 per drafter recs, plus a **joint SD-1↔SD-2 fairness binding** (Cowork advisory): under the locked lexical retriever the corpus + question template must share vocabulary + cover every breach item's `action_keywords` lemma, else arm (c) misses = retrieval artifacts not paradigm limits. Side-thread (no artifact): G2-vs-drafting friction discussed; Cray PARKED the root-fix (exempt plan-drafter uncommitted-draft write from G2) as a future harness-improvement batch | `ab0174a` (#337, content `e70daa9`/`fb91777`) / `docs/plans/0027-*.md` |
 | 2026-06-15 | **PLAN-0026 COMPLETE — ADR-0021 (metric-kind typed ontology semantics) AUTHORED→ACCEPTED then Phase A (`measured_kind`) SHIPPED; PLAN archived to `done/` (#327–#330, `b53e631`, session 61)** _(rotated 2026-06-22, session 73)_ — closes PLAN-0026 end-to-end (the principled fix Phase B could only approximate). Cray decisions: Gate-1 = **T2** (NL-query is the moat wedge), Gate-2/SD-2 = **Path B** (kind↔unit binding in the ontology → a new ADR); cross-check confirmed **(b) over (c)** ((c) over-scope now per Rule of Three + ADR-008 D3, and (b) reuses entirely into (c)). **ADR-0021 ("classify, don't synthesize"):** Cowork-authored (ADR-009 D1) → Code committed Proposed (#327, `a102b9d`) → Cray ratified Accepted (#328, `4423a22`); construct **(b)** QUDT-style quantity-kind ⟂ unit typed pair (`quantity_bindings`) over (a) per-enum-value map and (c) composite; (c) is a **triggered successor** (ADR-016 procedure engine + ≥3 verticals); amends ADR-008 D3. **Phase A (steps 6–7, #329 `37f62a7`; `bcbb62d`+`7f72181`):** step 6 — `measured_kind` enum (temperature|frequency) + object-level `quantity_bindings` on OperationalEvent, admitted by `ontology_schema.json` + parsed into `ontology_meta`, synthetic data tagged (7/2/2), emitted across all 5 artifacts, D6 L2 validator check, ORM + Alembic `0003` column (DB↔DDL parity via `test_schema_parity`); step 7 — `StructuredQuery.measured_kind` (translate LLM **classifies** the kind, the coherence seam **synthesizes** the precise `unit` from the binding, **superseding** Phase B dominant-unit per IN-1; no kind → dominant fallback, classified-but-absent → clarify, never fabricate). Distinguishes "highest frequency" from "highest temperature". Suite 1535/22; ruff+ruff-format+mypy clean; 12/12 anti-hallucination preserved; offline oracle re-pointed to a classified `measured_kind`; 6 new tests (4 engine + 2 validator). PLAN-0026 → `done/` (#330, `0a1427e`/`b53e631`). No gated NL-query work remains | `b53e631` (#327/#328/#329/#330) / `docs/adr/0021-metric-kind-typed-ontology-semantics.md` + `services/engine/nl_query.py` + `docs/plans/done/0026-nl-query-aggregate-metric-semantics.md` |
