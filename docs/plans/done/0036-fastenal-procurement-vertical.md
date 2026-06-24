@@ -1,9 +1,10 @@
 # PLAN-0036: Fastenal Procurement Vertical (Stage 1) — hand-author the 4th vertical
 
-**Status:** Ready for execution
+**Status:** Done — Stage 1 complete (2026-06-25)
 **Owner:** Claude Code (Tier 2 executes; Cowork drafted per ADR-009 D1)
 **Created:** 2026-06-24
 **Ratified:** 2026-06-24 — SD-1…SD-5 adjudicated by Cray = **confirm-all** (all as-recommended); lifecycle flipped Draft → Ready for execution by Code (PLAN-0034 prong-1 exempts a Draft lifecycle flip from Stop-hook dispatch).
+**Completed:** 2026-06-25 (session 76) — all 8 Steps executed in feature branches, Cray-merged: Step 1+2 ontology+scaffold (#415) · Step 3 procedures.yaml (#416) · Step 4 handlers (#417) · Step 5 synthetic Tier-1 (#418) · Step 6 demo UI / 5 surfaces (#419) · Step 7 offline tests (#421, superseding the loop-dispatcher-contaminated #420) · Step 8 docs+closeout (this). AC-1…AC-15 satisfied offline (full suite green; CQ-1 zero-engine-edit held — Step 6 demo presentation in `services/api/static/` is the Cray-approved Option-A exception). A live MS-S1 run was **not** required (offline gate is the sole acceptance gate, CLAUDE.md §8).
 **Related ADRs:** ADR-016 (governed procedure engine — the spine: `kind`/`autonomy`/set-valued/durable-suspend), ADR-008 (YAML ontology grammar — D1 "may extend"), ADR-0019 (`watch→gated` proposal routing; determinism invariant), ADR-0022 (governed entity resolution — supplier identity on the LLM path), ADR-0023 (registry auto-discovery — a new vertical auto-registers, **zero `services/` core edit**), ADR-006 (vertical-plugin architecture + Rule of Three), ADR-0015 (Tier-1 synthetic Mirror demo), ADR-0021 (metric-kind typed quantities), ADR-005 ("Palantir-lite" OCT positioning)
 **Related PLANs:** done/0016 (`vero-lite new-vertical` scaffold — the generator this reuses), 0019 (active — procedure-engine Phase-1 baseline + the aquaculture worked example this mirrors), done/0031 (ORM emitter; B1-DP-1), done/0032 (registry auto-discovery), done/0033 (Phase-C demo-UI story-mode overlay — the SD-3 UI vehicle)
 
