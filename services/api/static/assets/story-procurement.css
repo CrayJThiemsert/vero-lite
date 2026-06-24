@@ -1,0 +1,376 @@
+/* story-procurement.css — PLAN-0036 Step 6
+   Procurement operator surfaces: 5 scenes, 3 visual registers.
+   Additive overlay — zero services/ core edits (AC-6 / CQ-1).
+   All colours from theme.css CSS vars. No CDN; offline-safe. */
+
+/* ---- Procurement story launcher button ---- */
+.story-launch-proc {
+  background: linear-gradient(160deg, #342400, #1e1600);
+  border-color: var(--warn-line);
+}
+.story-launch-proc:hover { background: #3d2b00; border-color: var(--warn); }
+.story-launch-proc svg { color: var(--warn); }
+.story-id-proc { color: var(--warn); }
+
+/* ---- Shared scene base ---- */
+.pc-scene-wl,
+.pc-scene-tl,
+.pc-scene-grad,
+.pc-scene-dash {
+  flex: 1 1 auto; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column;
+  padding: 20px 24px; gap: 14px;
+  overflow-y: auto;
+}
+
+/* Approval scene: no root padding; cols own padding */
+.pc-scene-apv {
+  flex: 1 1 auto; min-width: 0; min-height: 0;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.pc-scene-apv > .pc-scene-hd { padding: 14px 18px 0; flex: 0 0 auto; }
+.pc-scene-apv > .pc-scene-cap { padding: 6px 18px 12px; flex: 0 0 auto; }
+
+.pc-scene-hd h3 { margin: 3px 0 0; font-size: 14px; font-weight: 600; color: var(--tx-0); }
+
+.pc-scene-cap {
+  font-size: 12.5px; line-height: 1.55; color: var(--tx-1);
+  text-align: center; max-width: 580px; align-self: center;
+  padding-top: 6px;
+}
+
+/* ---- 3 visual registers ---- */
+.pc-reg {
+  border-left: 3px solid transparent;
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: var(--bg-2); padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.pc-reg-ai    { border-left-color: var(--info);
+                background: color-mix(in srgb, var(--info-bg) 60%, transparent); }
+.pc-reg-rule  { border-left-color: var(--warn);
+                background: color-mix(in srgb, var(--warn-bg) 60%, transparent); }
+.pc-reg-human { border-left-color: var(--ok);
+                background: color-mix(in srgb, var(--ok-bg) 60%, transparent); }
+
+/* fallback for browsers without color-mix */
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .pc-reg-ai    { background: var(--info-bg); }
+  .pc-reg-rule  { background: var(--warn-bg); }
+  .pc-reg-human { background: var(--ok-bg); }
+}
+
+.pc-reg-hd { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pc-reg-badge { display: inline-flex !important; align-items: center; gap: 4px; }
+.pc-reg-lbl { font-size: 10.5px; color: var(--tx-2); font-family: var(--mono); }
+.pc-reg-body { font-size: 12.5px; color: var(--tx-0); line-height: 1.5; }
+
+/* ================================================================
+   SCENE 1 — Worklist / Inbox
+   ================================================================ */
+.pc-wl-queue { display: flex; flex-direction: column; gap: 10px; }
+
+.pc-wl-item {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--bg-2); padding: 12px 14px;
+  display: flex; align-items: flex-start; gap: 12px;
+  opacity: 0; transition: opacity .22s ease, box-shadow .22s ease;
+  border-left-width: 3px;
+}
+.pc-wl-item.pc-shown { opacity: 1; }
+.pc-wl-hero { border-left-color: var(--crit); }
+.pc-wl-calm { border-left-color: var(--warn); }
+.pc-wl-item.pc-focus { box-shadow: 0 0 0 2px var(--accent); }
+
+.pc-wl-top {
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 5px; flex: 0 0 auto; min-width: 110px;
+}
+.pc-wl-age { font-size: 10.5px; color: var(--tx-2); }
+.pc-wl-body { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.pc-wl-title { font-size: 13px; font-weight: 600; line-height: 1.35; }
+.pc-wl-sub { font-size: 11px; font-family: var(--mono); color: var(--tx-2); }
+.pc-wl-meta { font-size: 11.5px; color: var(--tx-1); }
+.pc-wl-amount { font-size: 15px; font-weight: 700; color: var(--tx-0);
+                font-family: var(--mono); white-space: nowrap; margin-left: auto; }
+
+/* ================================================================
+   SCENE 2 — Process Timeline
+   ================================================================ */
+.pc-tl-list { display: flex; flex-direction: column; flex: 1 1 auto; }
+.pc-tl-step { display: flex; align-items: flex-start; gap: 12px; }
+
+.pc-tl-left {
+  display: flex; flex-direction: column; align-items: center;
+  flex: 0 0 auto; width: 28px;
+}
+.pc-tl-n {
+  width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: 11px; font-weight: 600;
+  background: var(--bg-3); color: var(--tx-2); border: 1px solid var(--line);
+  transition: background .2s, color .2s, border-color .2s;
+  flex: 0 0 auto;
+}
+.pc-tl-line { flex: 1; width: 2px; background: var(--line); min-height: 14px; margin: 2px 0; }
+
+.pc-tl-right {
+  flex: 1 1 auto; padding: 4px 0 14px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.pc-tl-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pc-tl-label { font-size: 13px; font-weight: 600; }
+.pc-tl-kind { text-transform: none !important; }
+.pc-tl-note { font-size: 11.5px; color: var(--tx-2); line-height: 1.4; }
+
+/* timeline step states */
+.pc-tl-done .pc-tl-n   { background: var(--ok-bg); color: var(--ok); border-color: var(--ok-line); }
+.pc-tl-done .pc-tl-line { background: var(--ok-line); }
+.pc-tl-done .pc-tl-label { color: var(--tx-2); }
+.pc-tl-done .pc-tl-note  { opacity: .55; }
+
+.pc-tl-active .pc-tl-n  { background: var(--accent); color: #fff; border-color: transparent; }
+.pc-tl-active .pc-tl-label { color: var(--tx-0); }
+
+.pc-tl-waiting .pc-tl-n {
+  background: var(--crit-bg); color: var(--crit); border-color: var(--crit-line);
+  animation: pc-wait-pulse 1.3s ease-in-out infinite;
+}
+.pc-tl-waiting .pc-tl-label { color: var(--crit); font-weight: 700; }
+
+@keyframes pc-wait-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  50%       { box-shadow: 0 0 0 5px var(--crit-bg); }
+}
+
+/* ================================================================
+   SCENE 3 — Approval Money Screen
+   ================================================================ */
+.pc-apv-cols {
+  flex: 1 1 auto; min-height: 0;
+  display: flex; overflow: hidden;
+}
+.pc-apv-left {
+  flex: 0 0 50%; border-right: 1px solid var(--line);
+  overflow-y: auto; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.pc-apv-right {
+  flex: 1 1 auto; overflow-y: auto; padding: 12px 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+
+/* ask header */
+.pc-apv-ask {
+  display: flex; flex-direction: column; gap: 5px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--line);
+}
+.pc-apv-ask-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.pc-apv-ask-title { font-size: 15px; font-weight: 700; color: var(--tx-0); }
+.pc-apv-ask-meta {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; font-size: 12px; color: var(--tx-1);
+}
+.pc-apv-amount { font-size: 17px; font-weight: 800; color: var(--tx-0); font-family: var(--mono); }
+
+/* criticality */
+.pc-crit-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pc-crit-val { font-size: 22px; font-weight: 800; font-family: var(--mono); color: var(--crit); }
+.pc-crit-sep { font-size: 13px; color: var(--tx-2); }
+.pc-crit-note { font-size: 10.5px; color: var(--tx-2); font-style: italic; }
+
+/* summary */
+.pc-summ-text { font-size: 12px; line-height: 1.6; color: var(--tx-1); }
+.pc-summ-hint { font-size: 10.5px; font-style: italic; color: var(--tx-2); }
+
+/* waiver banner */
+.pc-waiver {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 8px 10px; border-radius: var(--r-sm);
+  background: var(--warn-bg); border: 1px solid var(--warn-line);
+}
+.pc-waiver-txt { font-size: 11.5px; color: var(--tx-1); line-height: 1.45; }
+
+/* section + sub-blocks */
+.pc-apv-section { display: flex; flex-direction: column; gap: 6px; }
+.pc-sec-hd { margin-bottom: 4px; }
+
+/* quote rows */
+.pc-q-row {
+  display: flex; flex-direction: column; gap: 3px;
+  padding: 7px 9px; border-radius: var(--r-sm);
+  border: 1px solid var(--line); background: var(--bg-3);
+}
+.pc-q-selected { border-color: var(--ok-line);  background: var(--ok-bg); }
+.pc-q-blocked  { border-color: var(--crit-line); background: var(--crit-bg); opacity: .75; }
+.pc-q-slow     { opacity: .6; }
+.pc-q-sup  { font-size: 12px; font-weight: 600; }
+.pc-q-detail { display: flex; gap: 10px; font-size: 11.5px; font-family: var(--mono); }
+.pc-q-lt   { color: var(--tx-2); }
+.pc-q-v    { display: flex; align-items: center; gap: 6px; }
+.pc-q-vt   { font-size: 10.5px; color: var(--tx-2); }
+
+/* compliance rows */
+.pc-comp-grp { display: flex; flex-direction: column; gap: 4px; }
+.pc-comp-sup { font-size: 11px; color: var(--tx-2); padding-bottom: 3px; }
+.pc-comp-rows { display: flex; flex-direction: column; gap: 3px; }
+.pc-comp-row { display: flex; align-items: center; gap: 7px; font-size: 11.5px; }
+.pc-comp-icon { width: 14px; text-align: center; font-weight: 700; }
+.pc-comp-pass .pc-comp-icon { color: var(--ok); }
+.pc-comp-fail .pc-comp-icon { color: var(--crit); }
+.pc-comp-name { font-weight: 600; min-width: 90px; }
+.pc-comp-note { font-size: 10.5px; color: var(--tx-2); }
+
+/* DOA ladder */
+.pc-doa-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 4px 8px; border-radius: var(--r-sm);
+  font-size: 12px;
+}
+.pc-doa-active {
+  background: var(--crit-bg); border: 1px solid var(--crit-line);
+  padding: 5px 8px;
+}
+.pc-doa-t    { font-family: var(--mono); font-size: 10px; font-weight: 700; color: var(--tx-3); min-width: 22px; }
+.pc-doa-role { flex: 1 1 auto; font-weight: 600; }
+.pc-doa-max  { font-size: 11px; font-family: var(--mono); }
+
+/* SoD chain */
+.pc-sod-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.pc-sod-s {
+  font-size: 11.5px; background: var(--bg-3); border: 1px solid var(--line);
+  border-radius: var(--r-sm); padding: 3px 7px;
+}
+.pc-sod-sep { color: var(--tx-3); font-size: 12px; margin: 0 1px; }
+
+/* action buttons */
+.pc-apv-actions {
+  margin-top: auto; padding-top: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.pc-apv-hint { font-size: 11px; color: var(--tx-2); }
+.pc-apv-btns { display: flex; gap: 8px; }
+.pc-apv-rejected {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px; border-radius: var(--r-sm); background: var(--bg-3);
+  font-size: 12px;
+}
+
+/* approval buttons (standalone — not relying on external .btn class) */
+.pc-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 600; border-radius: var(--r-sm);
+  padding: 6px 14px; border: 1px solid transparent; cursor: pointer;
+  font-family: var(--sans); transition: opacity .15s;
+}
+.pc-btn:hover { opacity: .85; }
+.pc-btn-primary { background: var(--ok); color: #fff; border-color: var(--ok-line); }
+.pc-btn-danger  { background: var(--bg-3); color: var(--crit); border-color: var(--crit-line); }
+
+/* ================================================================
+   SCENE 4 — Graduation Moment
+   ================================================================ */
+.pc-scene-grad { align-items: center; justify-content: center; }
+
+.pc-grad-card {
+  width: 100%; max-width: 580px; border: 1px solid var(--line);
+  border-radius: var(--r-lg); background: var(--bg-2);
+  padding: 18px; display: flex; flex-direction: column; gap: 10px;
+  transition: border-color .35s, background .35s;
+}
+.pc-grad-card.pc-human-approved {
+  border-color: var(--ok-line);
+  background: color-mix(in srgb, var(--ok-bg) 40%, var(--bg-2));
+}
+@supports not (color: color-mix(in srgb, red, blue)) {
+  .pc-grad-card.pc-human-approved { background: var(--ok-bg); }
+}
+
+.pc-grad-reg {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding-bottom: 8px; border-bottom: 1px solid var(--line);
+}
+.pc-grad-who  { font-size: 11.5px; color: var(--ok); font-family: var(--mono); }
+.pc-grad-edited { font-size: 11px; color: var(--tx-2); }
+.pc-grad-lbl  { font-size: 10px; letter-spacing: .06em; color: var(--tx-2); text-transform: uppercase; }
+.pc-grad-text {
+  font-size: 12.5px; line-height: 1.6; color: var(--tx-1); font-style: italic;
+  padding: 8px 0; border-bottom: 1px solid var(--line);
+  transition: color .35s;
+}
+.pc-grad-text.pc-settled { color: var(--tx-0); font-style: normal; }
+.pc-grad-receipt {
+  font-size: 11.5px; color: var(--ok); font-family: var(--mono);
+  display: flex; align-items: center; gap: 6px;
+}
+.pc-grad-takeaway {
+  margin-top: 4px; padding: 12px 14px; border-radius: var(--r-md);
+  background: var(--ok-bg); border: 1px solid var(--ok-line);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.pc-grad-tk-line {
+  font-size: 13px; font-weight: 600; color: var(--ok);
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ================================================================
+   SCENE 5 — Monitoring Dashboard
+   ================================================================ */
+.pc-dash-body { display: flex; flex-direction: column; gap: 14px; flex: 1 1 auto; min-height: 0; }
+
+.pc-kpi-row {
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px;
+}
+@media (max-width: 860px) {
+  .pc-kpi-row { grid-template-columns: repeat(3, 1fr); }
+}
+
+.pc-kpi {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--bg-2); padding: 10px 12px;
+  display: flex; flex-direction: column; gap: 3px;
+}
+.pc-kpi-lbl  { font-size: 9.5px; color: var(--tx-2); text-transform: uppercase; letter-spacing: .06em; }
+.pc-kpi-val  { font-size: 16px; font-weight: 700; color: var(--tx-0); font-family: var(--mono); }
+.pc-kpi-trend { font-size: 11.5px; font-weight: 600; }
+.pc-trend-ok  { color: var(--ok); }
+.pc-trend-bad { color: var(--crit); }
+.pc-kpi-tgt  { font-size: 10px; color: var(--tx-2); }
+
+.pc-dash-r2 { display: grid; grid-template-columns: 190px 1fr; gap: 10px; }
+
+.pc-dash-waivers {
+  border: 1px solid var(--warn-line); border-radius: var(--r-md);
+  background: var(--warn-bg); padding: 10px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.pc-w-val  { display: flex; align-items: baseline; gap: 4px; }
+.pc-w-n    { font-size: 28px; font-weight: 800; color: var(--warn); font-family: var(--mono); }
+.pc-w-denom { font-size: 11px; color: var(--tx-2); }
+
+.pc-dash-tiers {
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--bg-2); padding: 10px 14px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.pc-tier-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; font-size: 12px;
+}
+.pc-tier-hero .pc-tier-lbl { color: var(--crit); font-weight: 600; }
+
+.pc-dash-ai-wrap { display: flex; flex-direction: column; gap: 8px; }
+.pc-ai-grid { display: flex; flex-direction: column; gap: 5px; }
+.pc-ai-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; font-size: 12px;
+}
+.pc-ai-k { color: var(--tx-2); }
+.pc-ai-v { font-family: var(--mono); }
+.pc-ai-zero { color: var(--ok); font-weight: 600; }
+.pc-ai-note {
+  font-size: 11.5px; color: var(--tx-2);
+  display: flex; align-items: center; gap: 6px;
+  border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px;
+}

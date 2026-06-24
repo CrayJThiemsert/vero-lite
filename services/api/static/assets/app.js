@@ -45,6 +45,8 @@
     if (O.LlmControl && O.LlmControl.mount) O.LlmControl.mount(rightEl);
     // Story-mode launcher (PLAN-0033 C0): additive overlay, coexists with Views A–E.
     if (O.ViewStory && O.ViewStory.mountLauncher) O.ViewStory.mountLauncher(rightEl);
+    // Procurement story launcher (PLAN-0036 Step 6): additive overlay, same shell contract.
+    if (O.ViewStoryProcurement && O.ViewStoryProcurement.mountLauncher) O.ViewStoryProcurement.mountLauncher(rightEl);
     rightEl.appendChild(
       h('button', { class: 'iconbtn', id: 'globalRefresh', onClick: globalRefresh }, [icon('refresh'), 'Refresh'])
     );
