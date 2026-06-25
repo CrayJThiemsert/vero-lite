@@ -12,6 +12,78 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-25 (session-78 reconcile): the **Session-74 `805f5d2`** CF block (PLAN-0035 Phase 2 advisory local-LLM-judge SHIPPED #407; PLAN-0035 Complete + archived to `done/`) fell outside the 4-newest-sessions window {78,77,76,75} when the session-78 ADR-0024 + PLAN-0039 Stage-3-kickoff block landed (R2), newest first._
+
+> **Session 74 (head_commit `805f5d2`) — PLAN-0035 **Phase 2** (the
+> advisory local-LLM-judge, ADR-0022 **member (b)**) SHIPPED (#407, feat
+> `5c7c175`); **PLAN-0035 → Complete + archived to `done/`** (`805f5d2`) —
+> **both phases of member (b) verify+reshape now shipped, the A1 arc closed
+> end-to-end.** Phase 2 layers an **advisory** local-LLM-judge on the Phase-1
+> deterministic floor (`services/engine/action_verification.py`): it
+> semantically cross-checks *does the proposal prose express the corrective
+> action the structured handler names?*, adding a confidence + agreement
+> signal and a **`"hybrid"`** `verification_mode` trace. New surface —
+> `judge_action_expression()` + `augment_with_advisory_judge()` +
+> `ActionJudgeVerdict`/`JudgeResult` + `VERIFICATION_MODE_HYBRID`; the Phase-1
+> floor (`verify_action_expression`) is **unchanged**. **The 4 locked
+> constraints (ADR-0022 amendment A2) all honored:** ① **offline gate** —
+> tests **fake the judge**, the live judge is gated behind a new setting
+> `verification_judge_enabled` (**default off** — a live run is host-state,
+> CLAUDE.md §8); ② **advisory** — the judge **NEVER overrides the surfaced
+> action** (the deterministic floor still decides what is surfaced), pinned by
+> `test_judge_disagreement_never_overrides_the_floor_action`; ③ **deterministic
+> compare** — floor(D) vs judge(L) agreement computed in code, no 3rd LLM;
+> ④ **disclosed degradation** — judge unavailable → `verification_mode
+> "(a)-only"` disclosed in the trace, **reusing** the IN-4 /
+> `OllamaUnreachableError` seam + `notify_llm_unreachable` (no new fail-safe,
+> IN-4 not regressed). `augment_with_advisory_judge` **never raises** into
+> `recommend()` (advisory must not harm the load-bearing floor; only the floor
+> propagates to the IN-4 fail-safe, AC-7). **SD-3 / Step 11 — the first-class
+> `verification` envelope field is DEFERRED (trace-only)**, mirroring member
+> (a)'s deferred `EntityRef.resolution` field; the ADR-007 D2 envelope is
+> untouched (Code's rec, surfaced → proceed-to-PR). **Gate:** ruff +
+> ruff-format clean; `mypy --strict` clean (`services/`); **full suite 1639
+> passed, 22 skipped** (was 1629; +10 offline judge-faked tests); AC-5
+> wrong-handler-not-rescued + D-6 contamination boundary hold. **Routing:**
+> Phase 2 was impl (`feat/*` + PR) gated on the ADR-0022 amendment (RATIFIED
+> #405) — **NOT** G2-gated; Code built + self-merged **#407** (the feat-PR
+> self-merge was **Cray-authorized via AskUserQuestion** — Landing = "feat PR +
+> self-merge"). The `docs(plans):` closeout (`805f5d2`) + the session-74
+> `docs(status):` reconcile landed as docs closeout **PR #408**, whose self-merge
+> was a **Code extension of the #407 authorization — not separately Cray-approved**
+> (attribution-honesty note, s74; recorded for audit completeness). **PLAN-0035
+> lifecycle:** flipped Draft → Complete + `git mv`'d to
+> `docs/plans/done/0035-governed-action-verify-reshape-build.md` (`805f5d2`)
+> — the whole Group-A A1 arc (member (b) verify+reshape) is now closed
+> end-to-end. AI-assisted (Claude Code, session 74); no `Co-Authored-By` per
+> CLAUDE.md §7.
+
+_Addendum — rotated 2026-06-25 (session-78 reconcile, R1 byte-ceiling): the **Session-75 `7a7c036`** CF block (PLAN-0036 Fastenal procurement vertical Stage-1, drafted+merged Draft #412) **also rotated** when the large session-78 block pushed `docs/STATUS.md` over the R1 64 KB hard ceiling (R1 overrides the 4-newest-sessions window)._
+
+> **Session 75 (head_commit `7a7c036`) — **PLAN-0036 (Fastenal
+> procurement vertical, Stage 1) drafted + merged Draft (#412, `7a7c036`); Cray
+> adjudicated SD-1…SD-5 = confirm-all.**** PLAN-0036 was **Cowork-drafted**
+> (ADR-009 D1) from Code's session-75 dispatch, **Code R2-reviewed + committed**
+> (D2), and **merged as `Draft`** (#412). **Stage 1 = hand-author vero-lite's
+> 4th vertical — Procurement**, instantiated on automotive/auto-parts in the
+> **EEC** (the **Fastenal Thailand** pitch target), as a **pure-config plugin**
+> on the shipped ADR-016 procedure engine with **zero `services/` core edit**
+> (CQ-1, ADR-0023). **Hero** = asset-failure → governed emergency sourcing;
+> **calm-path** = low-stock reorder. R2 confirmed the load-bearing **SD-4
+> catch**: `services/engine/procedures/spec.py` has `Step = ConfigDict(extra=
+> "forbid")`, so Stage-1 facet annotations are **comment-only** — a first-class
+> `facet` field is a **Stage-2 ADR-016 amendment**, not Stage 1. **Cray
+> adjudicated SD-1…SD-5 = confirm-all** (2026-06-24, as-recommended). PLAN-0036
+> is the **proving ground** for vero-lite's ultimate **3-phase
+> generative-procedure platform** (pre-process *generate* / process *run* /
+> post-process *monitor* = ADR-016 Phase 2/3 + a generalized procedure schema);
+> per **Rule-of-Three** it builds **no generic generator** (author by hand →
+> extract schema Stage 2 → generator Stage 3). It **implements nothing on
+> commit** (every AC is `[impl]`). **Next:** a new session flips PLAN-0036
+> **Draft → Ready for execution** (SDs confirm-all) then executes Stage 1 in a
+> feature branch. AI-assisted (Claude Code, session 75); no `Co-Authored-By`
+> per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-25 (session-77 reconcile): both the **Session-73 `3625ea4`** CF block (PLAN-0035 A1 advanced END-TO-END — created → Phase 1 floor SHIPPED → (c) governance + ADR-0022 amendment RATIFIED, #403/#404/#405) and the **Session-72 `72f0deb`** CF block (PLAN-0034 G2 drafting-friction root-fix FULLY COMPLETE + archived, #399) fell outside the 4-newest-sessions window {77,76,75,74} when the session-77 PLAN-0037 Stage-2-PREP block landed (R2), newest first._
 
 > **Session 73 (head_commit `3625ea4`) — PLAN-0035 (Group-A **A1**
@@ -1683,6 +1755,7 @@ _Addendum — rotated 2026-06-13 (session-57 sixth reconcile #297/#298) — the 
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-21 | **PLAN-0034 (G2 drafting-friction root-fix) committed as DRAFT — Cowork-drafted, Code R2-reviewed (#394 merge `fda2557`, session 71)** _(rotated 2026-06-25, session 78)_ — Cowork-authored (ADR-009 D1) off the s71 Code→Cowork dispatch, Code R2-reviewed + committed (ADR-009 D2). DRAFTS a two-prong fix and IMPLEMENTS NOTHING (Out of Scope): prong 1 = tighten the Stop-side classifier (`_sonnet_classifier._build_system_prompt` + `.claude/autonomy-triggers.md` + `benchmarks/stop_classifier/gold.yaml`) vs spurious dispatch/pause; prong 2 = exempt the `plan-drafter` uncommitted draft-write from the project G2 PreToolUse gate (`pretooluse_classifier_dispatch.py`), G5 commit-block + PR review preserving oversight. Code R2 verified Cowork's 3 framing corrections vs HEAD + applied 1 R2 correction at commit (the "PLANs never use Status: Accepted" fact was false — `done/0026` uses it). **Status: Draft — awaiting Cray ratification (SD-1..SD-4); the Step-3 spike DEFERRED to a fresh session.** Same batch (s71) also CLOSED A2 (committed re-grade harness #392 + §B-3 residual decomposition `2463229` + reconcile #393) | `fda2557` (#394) / `docs/plans/0034-*.md` |
 | 2026-06-20 | **PLAN-0033 Phase C COMPLETE — full 7-scene story-mode arc MERGED + Step-6 closeout (#387 merge `d7ae465`, session 70; closeout session 71)** _(rotated 2026-06-25, session 77 — batch-3 RD last-10 trim)_ — C1 (scene 1 Hook / 2 Govern-with-fail-safe-self-catch / 4 live-intake dual-path / 5 Before-After) + C2 (scene 6 Breadth / 7 Appendix) on a SCENES registry + generic shell with a two-tier Motion scope (shell + per-scene) enforcing the AC-13 teardown contract; additive `view-story.js` overlay (SD-C, coexists with Views A–E), synthetic Tier-1 mirror (ADR-0015 D1), no new backend, offline/no-CDN. On-screen copy localised to English; offline IBM Plex fonts vendored (#388); `?v=` static-asset cache-bust added. Two scenes iterated live (Cray review): scene 6 → swap-in-place + "Compare all" matrix hybrid (per-vertical real-YAML toggle); scene 7 → SVG fan-flow (runtime pipeline + YAML→6-artifacts fan-out) + marching-dash animation + click-to-detail + golden moat takeaway. **Step-6 closeout (s71):** per-AC AC-1…AC-14 = 14/14 PASS via the preview workflow (a11y/DOM probes + behavioral eval; `preview_screenshot` env-unavailable) — AC-13 teardown `OCT.Motion.activeCount().total === 0` after cycling all 7 scenes; AC-3 moat beat (LLM low-conf → rule fail-safe reroute → still passes approve gate + audit `WO-AQ-7731 · audit#a3f1`); AC-8 scene-5 "0 of 40" defensible vs REPORT §B-3; AC-9/AC-12 honesty+offline greps clean. Demo-operator runbook section added to `docs/runbooks/run-oct-demo.md`; PLAN-0033 `git mv` → `done/`. Honesty note preserved: scene 4 "Go live" is a SCRIPTED dummy (hard-timeout → cached fallback, no real MS-S1 extract; Cray-approved deferral) — the readiness pill does a real safe `GET /llm/status` (PLAN-0018, never warms) | `d7ae465` (#387, #388) / `services/api/static/assets/view-story.js` + `docs/runbooks/run-oct-demo.md` + `docs/plans/done/0033-phase-c-demo-ui.md` |
 | 2026-06-19 | **PLAN-0033 Phase C C0 vertical slice SHIPPED — aquaculture story-mode (#385, feat `a9079e5` / merge `0a32e67`, session 69)** _(rotated 2026-06-25, session 77)_ — the additive `view-story.js` overlay (SD-C; coexists with Views A–E, never replaces) + `motion.js` (driver-agnostic Motion seam enforcing the lifecycle-teardown contract) + `story.css`, wired into `index.html`/`app.js`. Delivers the branching-DAG overview (5 node states + 3 edge types, hand-placed SVG), the two-axis layout (all task details left / DAG + transport right), and the scene-6 control surface (Proposed→Approved→Executed kanban + reasoning-trace why-toggle reusing the rule/llm/query colour legend). Moat beat (AC-3, ADR-010 IN-4) works: an LLM-compose error reroutes (amber) to the deterministic rule fail-safe, which still passes the human approve-gate + records audit. **GSAP DEFERRED to C1/C2** (Cray's call, s69 — corrects the s68 next_action): the seam is driver-agnostic so C0 ships on the zero-dependency WAAPI/rAF driver (offline, no-CDN, reduced-motion floor); GSAP/Motion One drops in behind `Motion.useDriver` later after the one-time licence check, no scene-code change. AC-2/3/4/5/6/9/10/11/12/13/14 verified via the preview workflow (a11y snapshot + behavioral eval); deterministic /goal gate (files exist / wired / no new CDN) passes; teardown leaks 0 timers/tweens/listeners. Caveat: `preview_screenshot` environmentally unavailable in this WSL/FastAPI preview (times out on the plain console too — not a page defect). Scope: Tier-1 mirror, synthetic only (ADR-0015 D1); no new backend. NEXT = C1 (full arc scenes) then C2 (breadth+Ask+appendix) | `0a32e67` (#385, feat `a9079e5`) / `services/api/static/assets/view-story.js` + `motion.js` + `story.css` + `docs/plans/0033-*.md` |
 | 2026-06-17 | **Session 67 Phase 1 — PLAN-0028 + PLAN-0029 ratify-flipped Proposed→Accepted + archived to `done/` (#357, `1cda40f`)** _(rotated 2026-06-25, session 77)_ — Cray ratified both PLANs in-session 2026-06-17; Cowork applied the status-flip + ratification record (ADR-009 D1, G1-clean on Desktop), Code committed per ADR-009 D2 (#357, merge `1cda40f` / flip `3d5e2af`). A formal flip of **already-complete, already-Cray-approved** work (PLAN-0028 B-γ cross-vertical extension; PLAN-0029 entity-key whitespace calibration), not new work — closes the PLAN-0028/0029 governance loop; both moats' source PLANs now archived. R2-verified (spot SHAs + the #357 diff = status + ratification only). One harness note: a Stop-hook D2 auto-dispatch misrouted (tried to spawn `plan-drafter` to "draft a plan to flip" existing complete PLANs); Code declined per the override clause — reinforces the parked G2-drafting-friction root-fix (now an Active TODO) | `1cda40f` (#357, flip `3d5e2af`) / `docs/plans/done/0028-*.md` + `docs/plans/done/0029-*.md` |
