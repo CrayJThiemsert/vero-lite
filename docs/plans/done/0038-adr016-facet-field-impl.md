@@ -1,6 +1,6 @@
 # PLAN-0038: ADR-016 D2 Amendment — implement the first-class typed `facet:` Step field
 
-**Status:** Draft
+**Status:** Complete (executed 2026-06-25, session 77 — Step A merged #431, Step B merged #432; surfaced decisions resolved SD-1=a / SD-2=a / SD-3=b; all ACs met — full offline suite 1688 passed, ruff + mypy --strict clean, no live MS-S1)
 **Owner:** Claude Code (Tier 2 execution; this draft authored by the in-harness `plan-drafter` subagent)
 **Created:** 2026-06-25
 **Related ADRs:** ADR-016 (§ "D2 Amendment (2026-06-25)" — **Accepted**; the literal spec this PLAN executes), ADR-006 (Rule-of-Three — N=4 justifies extraction now), ADR-0019 (determinism invariant — routing on the deterministic verdict, never LLM confidence), ADR-008 (ontology codegen path — **untouched**; `procedures.yaml` is engine-read), ADR-009 D1/D2 (Cowork/plan-drafter drafts, Code commits), ADR-013 (autonomy-axis relocation)
