@@ -5,6 +5,8 @@
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-005 (strategic pivot to OCT — **expands feature-3**), ADR-007 (OCT engine contracts — **generalizes** the D2 `RecommendedAction` envelope; does **not** break it), ADR-008 (YAML ontology spec — the six `object_types` are **untouched**; `procedures.yaml` is a separate spec layer), ADR-001 (LLM model baseline — the local `gpt-oss:20b` pin is the default `Agent` model), ADR-010 (LLM reasoning-hook surface — the per-action reasoning trace generalizes to per-step), ADR-013 (autonomy-axis relocation — safe / human-gated autonomy posture). Implementation deferred to **PLAN-0019**. Grounding research: `docs/research/private/2026-06-07-palantir-5-concerns-pipeline-design.md` (5 Palantir findings, 25 claims 3-0 / 0 killed), `docs/research/private/2026-06-06-impl-approach-reconciliation.md` (on-thesis framing). This ADR does **not** supersede any prior ADR.
 
+**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified).
+
 > **Drafting provenance.** Drafted (uncommitted) by the in-harness
 > `plan-drafter` subagent under ADR-009 D1 interim authoring per ADR-013's
 > phased relocation; Code commits via PR (ADR-009 D2). ADR number (ADR-016)
@@ -193,6 +195,239 @@ The reasoning trace and audit metadata that ADR-007/ADR-010 attach per-action
 are **generalized to per-step** in `step_results` — every step (read, judgment,
 write, human task) carries its own trace + audit, which is the legibility
 upgrade the OCT monitor (D7, Phase 3) consumes.
+
+### D2 Amendment (2026-06-25): first-class typed `facet:` Step field
+
+> **Status:** **Accepted** (Cray-ratified 2026-06-25, session 77 — both forks: Fork 1 Hybrid scope + Fork 2 Discriminated gate_kind). **Date:** 2026-06-25 (session 77). **Deciders:**
+> Jirachai Thiemsert (founder). **Amends:** D2 (the `Step` grammar) — **extends,
+> does not reverse or renumber**; mirrors the **D3 Amendment (2026-06-11) /
+> ADR-0019** in-place precedent.
+>
+> **Author≠reviewer disclosure (ADR-012 D4.3).** Outline originator = Cray (s77
+> greenlight, 2026-06-25). Drafter = Cowork (Tier-1 governance authoring,
+> ADR-009 D1). Independent reviewer = Cray at ratification + Code R2-review at
+> commit. The drafter is not the ratifier — separation **intact**. The schema
+> fork below (**Hybrid + Discriminated**) was adjudicated by Cray *during*
+> drafting; the independent-deliberation check is therefore Code's R2-review +
+> Cray's ratification, not a separate Cowork deliberation pass.
+
+#### Context for the amendment
+
+D2 fixed the `Step` grammar; PLAN-0019 / PLAN-0022 then shipped it and added the
+typed `threshold` / `direction` / `watch_margin` / `tiers` / `handler` fields.
+Across **four** verticals (N=4) each `Step` now also carries a **5-facet
+annotation** — `input · decision-condition · llm-assist · output · governance` —
+but **only as YAML comments**, because `services/engine/procedures/spec.py`
+declares `Step` with `ConfigDict(extra="forbid")`, which rejects any real
+`facet:` key (PLAN-0037 SD-4 / L-1). The archetype catalog
+(`docs/conventions/procedure-archetypes.md`, Step B) names the recurring shapes
+(AT-1 / AT-1b / AT-2 / AT-3) those facets reveal. **Rule-of-Three is satisfied**
+(N=4 consistently-instrumented examples; ADR-006) — the schema is extracted
+**now**, not prematurely.
+
+This amendment promotes `facet:` from a comment to a **first-class, typed,
+validated, optional `Step` field** — engine-*readable* (machine-readable for the
+Stage-3 generator and a future config / monitor UI), while engine-*consumption*
+stays deferred (Scope boundary below).
+
+#### Decision (D2-A1 … D2-A4)
+
+**D2-A1 — Add an optional typed `facet:` sub-model to `Step`; KEEP `extra="forbid"`.**
+`facet` becomes a KNOWN key; unknown keys are still rejected — the safety that
+`extra="forbid"` provides is preserved (this is **not** merely dropping it).
+`facet` is **optional**: absent `facet` = today's behaviour byte-for-byte (every
+shipped procedure still loads — backward-compatible, cf. PLAN-0022 AC-9).
+
+**D2-A2 — `facet` is descriptive metadata, NOT a second source of truth (the
+*Hybrid* shape).** The `Step` model already types most of what the five facets
+describe — `input` (`StepInput`), `output`, the in-file band
+(`threshold`/`direction`/`watch_margin`), the gate
+(`autonomy`/`handler`/`on_failure`/`tiers`). To avoid storing the same fact
+twice (a drift hazard on a public determinism-first repo), `facet` carries:
+
+- the **net-new machine-readable** signal as **typed** sub-fields:
+  `decision_condition` (D2-A3) and `llm_assist` (what, if anything, the LLM
+  drafts / summarises — advisory only; not modelled anywhere today);
+- the three already-typed facets (`input` / `output` / `governance`) as
+  **optional, explicitly NON-authoritative human notes** (`str`). The typed
+  `Step` fields remain the source of truth; the notes preserve the uniform
+  "5-facet" reading of the catalog without re-owning structured values.
+
+**D2-A3 — `decision_condition` is a discriminated shape (the env-vs-in-file split
+is *modelled*, not papered over).** The N=4 substrate authors a step's
+deterministic decision **six** distinct ways; `decision_condition.gate_kind`
+enumerates exactly those — **no speculative future kinds** (Rule-of-Three):
+
+| `gate_kind` | N=4 instance(s) | carries |
+|---|---|---|
+| `env_band` | `energy.judge`, `supply_chain.judge` | `band_source: env` + `env_var` (e.g. `OCT_RECOMMEND_THRESHOLD`) |
+| `in_file_band` | `aquaculture.judge`, `procurement.judge` / `judge_stock` | `band_source: in_file` → the existing typed `threshold`/`direction`/`watch_margin` (NOT re-stored) |
+| `rule_gate` | `procurement.compliance` (per-criterion AVL · tax · cert · sanctions · single-source) | — |
+| `scored_rule` | `procurement.source` (supplier selection = a scored rule, never the LLM) | — |
+| `doa_tier` | `procurement.approve` (tiered ฿ delegation-of-authority) | — |
+| `none` | reads / summary / audit terminals (no decision) | — |
+
+`band_source` (`env` \| `in_file`) is present **iff** `gate_kind ∈ {env_band,
+in_file_band}`; `env_var` only with `band_source = env`. For `in_file_band` the
+facet **points at** the already-typed band fields rather than copying their
+values — so the numeric truth lives in exactly one place. (`scored_rule` is the
+case the original dispatch's sketch omitted — it is the **governed ≠ generated**
+selection gate of AT-2 and must be first-class.)
+
+**D2-A4 — Schema only; no engine consumption; no codegen touched.** v0 makes
+`facet` a validated, engine-readable field. The Stage-3 generator that
+*consumes* facets stays deferred (Rule-of-Three; Out-of-scope below).
+`procedures.yaml` is **engine-read** (`load_procedures`), **not** codegen-emitted
+like the ADR-008 ontology — so the ADR-008 D5/D6 generator and its validators are
+**untouched**; the only code edit is the `Step` model in `spec.py`.
+
+#### `spec.py` Step-model delta (illustrative — PLAN owns the literal edit)
+
+```python
+class BandSource(StrEnum):
+    ENV = "env"
+    IN_FILE = "in_file"
+
+class GateKind(StrEnum):                  # EXACTLY the N=4 observed kinds (no speculation)
+    ENV_BAND = "env_band"
+    IN_FILE_BAND = "in_file_band"
+    RULE_GATE = "rule_gate"
+    SCORED_RULE = "scored_rule"
+    DOA_TIER = "doa_tier"
+    NONE = "none"
+
+class DecisionCondition(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    gate_kind: GateKind
+    band_source: BandSource | None = None  # present iff gate_kind ∈ {env_band, in_file_band}
+    env_var: str | None = None             # only with band_source == env
+    note: str | None = None                # optional human prose
+    # @model_validator: band_source ⇔ band gate_kinds; env_var only when band_source == env
+
+class StepFacet(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    decision_condition: DecisionCondition | None = None
+    llm_assist: str | None = None          # NET-NEW: advisory LLM draft/summary, or None
+    # non-authoritative notes — the typed Step fields remain source of truth (D2-A2):
+    input: str | None = None
+    output: str | None = None
+    governance: str | None = None
+
+class Step(BaseModel):
+    model_config = ConfigDict(extra="forbid")    # UNCHANGED — facet is now a KNOWN key
+    ...
+    facet: StepFacet | None = Field(
+        default=None,
+        description="descriptive 5-facet metadata; optional; non-authoritative for runtime (D2-A2)",
+    )
+```
+
+YAML (the four verticals' comment facets become migratable to this — a
+**follow-on PLAN**, not this amendment):
+
+```yaml
+# energy.judge — ENV-authored band (no in-file threshold field)
+- step_id: judge
+  kind: evaluate
+  facet:
+    decision_condition: { gate_kind: env_band, band_source: env, env_var: OCT_RECOMMEND_THRESHOLD }
+    llm_assist: null
+    governance: "verdict = pure function of the reading + the authored (env) band"
+# aquaculture.judge — IN-FILE band: facet POINTS AT the typed fields, never re-stores the values
+- step_id: judge
+  kind: evaluate
+  threshold: 4.0
+  direction: below
+  watch_margin: 1.0
+  facet:
+    decision_condition: { gate_kind: in_file_band, band_source: in_file }
+    llm_assist: null
+```
+
+**Naming:** YAML keys use `decision_condition` / `llm_assist` (underscore —
+Python-attribute-faithful), not the hyphenated comment form
+(`decision-condition`); the loader needs no alias.
+
+#### Alternatives considered (amendment-scope)
+
+- **Keep facets comment-only forever** — rejected: not engine-readable; cannot
+  feed the Stage-3 generator or a config UI.
+- **Drop `extra="forbid"` wholesale** — rejected: re-opens the unvalidated-key
+  hole the constraint exists to close; a typed optional field keeps the safety.
+- **Full denormalised 5-string facet** (re-state every typed field) — rejected:
+  stores `threshold`/`input`/`output`/etc. twice → a drift hazard. The Hybrid
+  shape (D2-A2) keeps one source of truth.
+- **Free-form `dict[str, Any]` facet** — rejected: unvalidated; the same hole as
+  dropping `extra`.
+- **A new standalone ADR** — rejected per Cray: `facet` directly extends the D2
+  `Step` grammar, so it belongs as an ADR-016 amendment (the D3 Amendment /
+  ADR-0019 in-place precedent).
+- **Cross-validate `facet.decision_condition` against the typed band fields**
+  (e.g. require `threshold` when `gate_kind = in_file_band`) — **deferred, not
+  adopted in v0** (keeps the amendment tight and `facet` non-authoritative; see
+  OQ-A2).
+
+#### Consequences
+
+- `Step` gains a typed optional `facet` sub-model; `spec.py` is edited so `facet`
+  is a **known** field (typed, NOT `extra="allow"`). Backward-compatible (absent
+  = unchanged; cf. AC-9).
+- This is the **first deliberate engine edit on the procedures path** since the
+  procurement vertical held literal zero-engine-edit — which is exactly why it is
+  an **ADR amendment**, not a config change. (The edit itself is the follow-on
+  PLAN's; this amendment fixes only the schema.)
+- **No drift by construction** for the overlapping facets — `in_file_band` points
+  at the typed band; `input` / `output` / `governance` notes are stamped
+  non-authoritative.
+- The four verticals' comment-only facets become **migratable** to the real field
+  — a **follow-on PLAN** (gated on this amendment `Accepted`), not this amendment.
+- `facet` + the archetype catalog become the substrate for **Stage 3** (the
+  generator) and a future config / monitor UI (D7 Phase 3).
+- **No `procedures.yaml` codegen / ADR-008 generator change** — the only code
+  touched is `spec.py` (D2-A4).
+
+#### Scope boundary (amendment — keep it tight)
+
+- **IN:** the `facet` **schema** — shape, typing, the env-vs-in-file
+  `decision_condition` modelling. Nothing else.
+- **OUT:** the `spec.py` edit + the four-vertical comment→field migration
+  (follow-on PLAN, gated on `Accepted`); the Stage-3 generator; any runtime
+  consumption of facets; any change to `kind` / `autonomy` / `input` /
+  `threshold` / gates (all unchanged).
+
+#### Open Questions (amendment)
+
+- **OQ-A1 (catalog growth).** When a 5th vertical lands a decision shape outside
+  the six `gate_kind`s, extend the enum (optional field → additive,
+  backward-compatible). Do not force-fit (catalog discipline).
+- **OQ-A2 (facet↔typed integrity).** Should a later phase cross-validate
+  `facet.decision_condition` against the typed band (`in_file_band` ⇒ `threshold`
+  set) or against `kind`? Deferred — v0 keeps `facet` non-authoritative; Stage-3
+  may promote select integrity checks.
+- **OQ-A3 (`llm_assist` structure).** `llm_assist` is free prose in v0. Does the
+  Stage-3 generator want it typed (e.g. `{role: draft|summarise, of: <field>}`)?
+  Deferred until the generator's needs are concrete.
+
+#### Amendment references
+
+- `docs/conventions/procedure-archetypes.md` — the N=4 archetype catalog (AT-1 /
+  1b / 2 / 3) + the band-authoring split table (load-bearing here).
+- `docs/plans/done/0037-stage2-facet-retrofit-archetype-catalog.md` — the PREP
+  that produced the N=4 5-facet instrumentation + catalog (L-5 env-vs-in-file
+  honesty is the input to this amendment).
+- `verticals/{energy,supply_chain,aquaculture,procurement}/procedures.yaml` — the
+  comment-only 5-facet substrate this field formalizes.
+- `services/engine/procedures/spec.py` — the `Step` model
+  (`ConfigDict(extra="forbid")`; the typed `threshold`/`direction`/`watch_margin`/
+  `tiers`/`handler` fields the Hybrid shape points at).
+- ADR-0019 / the D3 Amendment (2026-06-11) — the in-place amendment precedent +
+  the determinism invariant (routing on the deterministic verdict, never LLM
+  `confidence`; ADR-010 IN-3).
+- ADR-008 (D5/D6) — the ontology codegen path that is **untouched**
+  (`procedures.yaml` is engine-read).
+- ADR-006 (Rule-of-Three) — N=4 justifies extracting the schema now.
+- Memory: `project-vero-ultimate-target-generative-procedures` (the
+  generate → run → monitor arc).
 
 ### D3: Autonomy model + safe-agentic posture
 
