@@ -34,16 +34,34 @@ procedures:
     run_by: cold_chain_agent
     trigger: manual                 # L-1: only manual runs in Phase 1
     steps:
+      # facet[read_temps]
+      #   input        : latest temperature reading per in-transit Shipment
+      #   decision     : — (no gate; pure read)
+      #   llm-assist   : —
+      #   output       : temperature reading per in-transit Shipment
+      #   governance   : —
       - step_id: read_temps
         name: Read latest shipment temperatures
         description: Latest temperature reading per in-transit Shipment.
         kind: query
+      # facet[judge]
+      #   input        : read_temps set
+      #   decision     : DETERMINISTIC cold-chain ceiling band via ENV (OCT_RECOMMEND_THRESHOLD; direction=above) — NO in-file threshold field
+      #   llm-assist   : — (determinism invariant, ADR-0019/ADR-010 IN-3)
+      #   output       : per-shipment verdict {breach=over ceiling, ok}
+      #   governance   : verdict = pure function of the reading + the authored (env) band
       - step_id: judge
         name: Judge vs cold-chain ceiling
         description: >-
           Tag each shipment's verdict vs the cold-chain temperature ceiling —
           breach (over the ceiling) vs ok. OCT_RECOMMEND_DIRECTION=above semantics.
         kind: evaluate
+      # facet[hold_breaches]
+      #   input        : judge (the breach subset)
+      #   decision     : — (handler fixed to `hold`; the LLM proposal menu is graded separately = the α probe, PLAN-0019 Part B)
+      #   llm-assist   : propose the hold action (ADR-007 envelope, advisory; handler stays fixed)
+      #   output       : hold action proposal per breaching shipment
+      #   governance   : handler fixed; HUMAN go/no-go on the irreversible write (gated)
       - step_id: hold_breaches
         name: Hold the breaching shipments
         description: >-
