@@ -23,6 +23,13 @@
 # `human_task` (ADR-016 "Morning Pond Health Round" step-4 row, amended
 # 2026-06-11). "Augment" (propose AND queue a visual check) remains a
 # per-procedure authoring option.
+#
+# Each step carries the 5-facet annotation (input · decision-condition · llm-assist ·
+# output · governance) as the first-class typed `facet:` field (ADR-016 D2 Amendment
+# 2026-06-25 / PLAN-0038): the net-new `decision_condition` + `llm_assist` are typed;
+# `input`/`output`/`governance` are non-authoritative notes (the typed Step fields
+# stay source of truth, D2-A2). The `judge` facet's `in_file_band` POINTS AT the
+# typed threshold/direction/watch_margin — it never re-stores them (D2-A3).
 
 namespace: aquaculture
 version: 0
@@ -54,22 +61,15 @@ procedures:
     run_by: pond_agent
     trigger: manual                 # L-1: only manual runs in Phase 1 (06:00 deferred)
     steps:
-      # facet[read_do]
-      #   input        : latest dissolved-oxygen reading per active Pond
-      #   decision     : — (no gate; pure read)
-      #   llm-assist   : —
-      #   output       : DO reading per active Pond
-      #   governance   : —
       - step_id: read_do
         name: Read dissolved oxygen
         description: Latest DO reading per active Pond.
         kind: query
-      # facet[judge]
-      #   input        : read_do set
-      #   decision     : DETERMINISTIC DO band authored IN-FILE (threshold:4.0/below/watch_margin:1.0) — crash semantics, breach BELOW the floor
-      #   llm-assist   : — (determinism invariant, ADR-0019/ADR-010 IN-3)
-      #   output       : per-pond verdict {breach <4, watch 4–5, ok >5}
-      #   governance   : verdict = pure function of the reading + the authored (in-file) band; watch = the ADR-0019 escalate zone
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "latest dissolved-oxygen reading per active Pond"
+          output: "DO reading per active Pond"
       - step_id: judge
         name: Judge vs threshold
         description: >-
@@ -83,12 +83,14 @@ procedures:
         threshold: 4.0
         direction: below
         watch_margin: 1.0
-      # facet[aerate]
-      #   input        : judge (the breach subset)
-      #   decision     : — (handler fixed to `start_emergency_aerator`; tiers taxonomy declared; LLM menu graded separately = the α probe)
-      #   llm-assist   : propose the emergency-aerator action (ADR-007 envelope, advisory; handler stays fixed)
-      #   output       : emergency-aerator proposal per breaching pond
-      #   governance   : handler fixed; HUMAN go/no-go on the irreversible write (gated)
+        facet:
+          # in_file_band POINTS AT the typed threshold/direction/watch_margin above —
+          # crash semantics, breach BELOW the floor — it does NOT re-store the values (D2-A3).
+          decision_condition: { gate_kind: in_file_band, band_source: in_file }
+          llm_assist: null
+          input: "read_do set"
+          output: "per-pond verdict {breach <4, watch 4–5, ok >5}"
+          governance: "verdict = pure function of the reading + the authored (in-file) band; watch = the ADR-0019 escalate zone"
       - step_id: aerate
         name: Aerate the breach set
         description: >-
@@ -109,12 +111,12 @@ procedures:
           from: judge               # the named-input fan-out: only the breach subset
           where:
             verdict: breach
-      # facet[escalate_watch]
-      #   input        : judge (the watch subset)
-      #   decision     : watch-band routing → a precautionary water-exchange proposal (ADR-0019 watch→gated; trigger = the deterministic verdict, never confidence)
-      #   llm-assist   : recommend a concrete water-exchange action (advisory)
-      #   output       : water-exchange proposal per borderline pond
-      #   governance   : HUMAN decides on the ambiguous band (gated); routing never keyed on confidence (ADR-010 IN-3)
+        facet:
+          decision_condition: { gate_kind: none }   # handler fixed to `start_emergency_aerator`; tiers taxonomy declared; the LLM menu is graded separately (the α probe)
+          llm_assist: "propose the emergency-aerator action (ADR-007 envelope, advisory; handler stays fixed)"
+          input: "judge (the breach subset)"
+          output: "emergency-aerator proposal per breaching pond"
+          governance: "handler fixed; HUMAN go/no-go on the irreversible write (gated)"
       - step_id: escalate_watch
         name: Escalate the watch set (gated proposal)
         description: >-
@@ -132,12 +134,14 @@ procedures:
           from: judge
           where:
             verdict: watch
-      # facet[summary]
-      #   input        : judge (the whole verdict set — no `where`)
-      #   decision     : —
-      #   llm-assist   : draft the round summary (advisory)
-      #   output       : round-summary artifact
-      #   governance   : — (auto terminal; a no-op `echo` artifact, not an operational action)
+        facet:
+          decision_condition:
+            gate_kind: none
+            note: "watch-band routing → a precautionary water-exchange proposal (ADR-0019 watch→gated; trigger = the deterministic verdict, never confidence)"
+          llm_assist: "recommend a concrete water-exchange action (advisory)"
+          input: "judge (the watch subset)"
+          output: "water-exchange proposal per borderline pond"
+          governance: "HUMAN decides on the ambiguous band (gated); routing never keyed on confidence (ADR-010 IN-3)"
       - step_id: summary
         name: Round summary
         description: Auto round-summary terminal artifact over the whole verdict set.
@@ -146,4 +150,10 @@ procedures:
         handler: echo
         input:
           from: judge               # no `where` -> the whole verdict set
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: "draft the round summary (advisory)"
+          input: "judge (the whole verdict set — no `where`)"
+          output: "round-summary artifact"
+          governance: "auto terminal; a no-op `echo` artifact, not an operational action"
     terminal: summary

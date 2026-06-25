@@ -33,13 +33,17 @@ the supplier (a scored rule), **never** sets a threshold (authored band), and
 **never** approves (the human gate). The demo's AI-assist throughput panel makes
 this visible: *"AI drafted N · 0 supplier-selections · 0 approvals."*
 
-## The 5-facet map (SD-4 — the Stage-2 schema substrate)
+## The 5-facet map (SD-4 — the schema substrate)
 
 Each hero step is annotated in `procedures.yaml` with a structured **5-facet**
-comment block (comment-only because `services/engine/procedures/spec.py` declares
-`Step` with `extra="forbid"` — a first-class `facet:` field is a **Stage-2**
-ADR-016 amendment). This map is the **template substrate**: Stage 2 extracts the
-generalized procedure schema from it (and it cross-checks aquaculture's procedure).
+field — the first-class typed `facet:` field (ADR-016 D2 Amendment 2026-06-25 /
+PLAN-0038). It was **comment-only** through Stage-1 (because
+`services/engine/procedures/spec.py` declared `Step` with `extra="forbid"`, so a
+real `facet:` key would be rejected); the **Stage-2** amendment promoted it to a
+typed, validated, optional field (the net-new `decision_condition` + `llm_assist`
+typed; `input`/`output`/`governance` as non-authoritative notes, D2-A2). This map
+is the **template substrate**: **Stage 3** extracts the generalized procedure
+generator from it (and it cross-checks aquaculture's procedure).
 
 | Hero step | kind / autonomy | input | decision-condition | llm-assist | output | governance |
 |---|---|---|---|---|---|---|
@@ -96,7 +100,7 @@ gate (CLAUDE.md §8).
 | File | Purpose |
 |------|---------|
 | `ontology/procurement_v0.yaml` | 6 base OCT object_types + 6 procurement extensions + link_types (ADR-008) |
-| `procedures.yaml` | the agent + hero (7-step) + calm-path procedures, with the 5-facet annotations |
+| `procedures.yaml` | the agent + hero (7-step) + calm-path procedures, with the typed 5-facet `facet:` fields |
 | `handlers.py` | the action-type vocabulary as no-op receipt stubs (real ERP/email I/O ships with the partner) |
 | `data_adapter/` | the deterministic synthetic Tier-1 hero + calm-path dataset |
 | `generated/` | codegen artifacts (gitignored; `vero-lite generate procurement`) |

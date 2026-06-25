@@ -361,3 +361,125 @@ def test_unknown_key_rejected_on_facet_models() -> None:
         StepFacet.model_validate({"bogus": 1})
     with pytest.raises(ValidationError):
         DecisionCondition.model_validate({"gate_kind": "none", "bogus": 1})
+
+
+# --- PLAN-0038 Step B: the four-vertical comment→`facet:` migration (end-to-end) ---
+#
+# These exercise the SHIPPED procedures.yaml after the migration: every step now
+# carries a typed `facet:` field (was a `# facet[...]` comment block). AC-4/AC-5
+# (all four load clean + the migrated facets round-trip) and AC-6 (an in_file_band
+# facet POINTS AT the typed band — it never re-stores the numeric values).
+
+_MIGRATED_VERTICALS = ["energy", "supply_chain", "aquaculture", "procurement"]
+
+# (vertical, procedure_id, judge_step_id) for the in-file-band judge steps — the
+# facet must point at the typed Step band, not copy it (AC-6).
+_IN_FILE_BAND_JUDGES = [
+    ("aquaculture", "morning_pond_health_round", "judge"),
+    ("procurement", "emergency_sourcing_round", "judge"),
+    ("procurement", "low_stock_reorder_round", "judge_stock"),
+]
+
+
+def _step(vertical: str, procedure_id: str, step_id: str) -> Step:
+    spec = load_procedures(vertical)
+    proc = next(p for p in spec.procedures if p.procedure_id == procedure_id)
+    return next(s for s in proc.steps if s.step_id == step_id)
+
+
+@pytest.mark.parametrize("vertical", _MIGRATED_VERTICALS)
+def test_migrated_vertical_loads_clean(vertical: str) -> None:
+    """AC-4/AC-5: every shipped procedure still loads via load_procedures post-migration."""
+    spec = load_procedures(vertical)
+    assert spec.procedures  # at least one procedure
+
+
+@pytest.mark.parametrize("vertical", _MIGRATED_VERTICALS)
+def test_every_step_carries_a_facet(vertical: str) -> None:
+    """Migration completeness: every step in every procedure now has a typed facet
+    (the `# facet[...]` comment blocks became the real field — SD-1=a / SD-2=a)."""
+    spec = load_procedures(vertical)
+    for proc in spec.procedures:
+        for step in proc.steps:
+            assert step.facet is not None, f"{vertical}/{proc.procedure_id}/{step.step_id}"
+            # every migrated facet states its decision_condition (uniform 5-facet reading)
+            assert step.facet.decision_condition is not None
+
+
+@pytest.mark.parametrize("vertical", _MIGRATED_VERTICALS)
+def test_migrated_facets_round_trip(vertical: str) -> None:
+    """AC-5: each migrated facet dumps and re-parses to an identical shape."""
+    spec = load_procedures(vertical)
+    for proc in spec.procedures:
+        for step in proc.steps:
+            assert step.facet is not None
+            dumped = step.facet.model_dump()
+            assert StepFacet.model_validate(dumped).model_dump() == dumped
+
+
+@pytest.mark.parametrize("vertical", ["energy", "supply_chain"])
+def test_env_band_judge_migrated(vertical: str) -> None:
+    """The energy / supply_chain judge steps carry the env-authored band (no LLM)."""
+    procedure_id = {
+        "energy": "substation_health_sweep",
+        "supply_chain": "cold_chain_excursion_sweep",
+    }[vertical]
+    facet = _step(vertical, procedure_id, "judge").facet
+    assert facet is not None and facet.decision_condition is not None
+    dc = facet.decision_condition
+    assert dc.gate_kind is GateKind.ENV_BAND
+    assert dc.band_source is BandSource.ENV
+    assert dc.env_var == "OCT_RECOMMEND_THRESHOLD"
+    assert facet.llm_assist is None  # determinism invariant — no LLM in the judge
+
+
+@pytest.mark.parametrize("vertical, procedure_id, step_id", _IN_FILE_BAND_JUDGES)
+def test_in_file_band_facet_points_at_typed_band(
+    vertical: str, procedure_id: str, step_id: str
+) -> None:
+    """AC-6: an in_file_band facet POINTS AT the typed Step band — the numeric values
+    live ONLY on the Step (threshold/direction/...), never re-stored on the facet."""
+    step = _step(vertical, procedure_id, step_id)
+    # the Step still carries the authored numeric band (single source of truth)
+    assert step.threshold is not None
+    assert step.facet is not None and step.facet.decision_condition is not None
+    dc = step.facet.decision_condition
+    assert dc.gate_kind is GateKind.IN_FILE_BAND
+    assert dc.band_source is BandSource.IN_FILE
+    # the facet's decision_condition carries NO numeric band of its own
+    dumped = dc.model_dump()
+    for numeric in ("threshold", "direction", "watch_margin"):
+        assert numeric not in dumped
+
+
+def test_procurement_governance_gate_kinds_migrated() -> None:
+    """The AT-2 governance gates map to their discriminated gate_kinds (no band_source)."""
+    proc_id = "emergency_sourcing_round"
+    expected = {
+        "source": GateKind.SCORED_RULE,
+        "compliance": GateKind.RULE_GATE,
+        "approve": GateKind.DOA_TIER,
+    }
+    for step_id, gate_kind in expected.items():
+        facet = _step("procurement", proc_id, step_id).facet
+        assert facet is not None and facet.decision_condition is not None
+        assert facet.decision_condition.gate_kind is gate_kind
+        assert facet.decision_condition.band_source is None  # non-band kinds
+    # the scored-rule source step still records its advisory LLM summary (governed ≠ generated)
+    source_facet = _step("procurement", proc_id, "source").facet
+    assert source_facet is not None and source_facet.llm_assist is not None
+    assert "summarise" in source_facet.llm_assist
+
+
+def test_no_decision_steps_use_gate_kind_none() -> None:
+    """Reads / mechanical writes / audit terminals migrate to gate_kind: none."""
+    for vertical, proc_id, step_id in [
+        ("energy", "substation_health_sweep", "read_readings"),
+        ("procurement", "emergency_sourcing_round", "intake"),
+        ("procurement", "emergency_sourcing_round", "issue_po"),
+        ("aquaculture", "morning_pond_health_round", "summary"),
+    ]:
+        facet = _step(vertical, proc_id, step_id).facet
+        assert facet is not None and facet.decision_condition is not None
+        assert facet.decision_condition.gate_kind is GateKind.NONE
+        assert facet.decision_condition.band_source is None
