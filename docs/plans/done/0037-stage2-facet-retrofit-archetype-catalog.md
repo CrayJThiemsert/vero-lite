@@ -1,8 +1,9 @@
 # PLAN-0037: Stage 2 PREP — 5-facet retrofit to N=4 + procedure archetype catalog
 
-**Status:** Draft
-**Owner:** both (Code executes; Cray adjudicates the OPEN decisions)
+**Status:** Complete — Step A + Step B shipped 2026-06-25 (session 77); archived to `done/`.
+**Owner:** both (Code executed; Cray adjudicated SD-1/2/3 + merged each PR)
 **Created:** 2026-06-25
+**Completed:** 2026-06-25 (session 77). Step A — 5-facet retrofit to N=4 (#425). Step B — procedure archetype catalog at `docs/conventions/procedure-archetypes.md` (#426). Cray resolved the surfaced decisions: SD-1 = one PR for the 3 verticals; SD-2 = Step B as a follow-on PR; SD-3 = catalog home `docs/conventions/`. Step C (the ADR-016 `facet:` first-class field) stays out of scope — a separate Cowork-drafted ADR; Stage 3 (the generator) remains Rule-of-Three-deferred.
 **Related ADRs:** ADR-016 (procedure engine), ADR-0023 (auto-discovery), ADR-006 (vertical plugin + Rule-of-Three), ADR-0019 (tiered routing / determinism invariant), ADR-0015 (Tier-1 synthetic)
 **Related PLANs:** PLAN-0036 (done — the procurement vertical that produced the 5-facet template)
 
