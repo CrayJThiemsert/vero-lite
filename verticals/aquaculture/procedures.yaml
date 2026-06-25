@@ -54,10 +54,22 @@ procedures:
     run_by: pond_agent
     trigger: manual                 # L-1: only manual runs in Phase 1 (06:00 deferred)
     steps:
+      # facet[read_do]
+      #   input        : latest dissolved-oxygen reading per active Pond
+      #   decision     : — (no gate; pure read)
+      #   llm-assist   : —
+      #   output       : DO reading per active Pond
+      #   governance   : —
       - step_id: read_do
         name: Read dissolved oxygen
         description: Latest DO reading per active Pond.
         kind: query
+      # facet[judge]
+      #   input        : read_do set
+      #   decision     : DETERMINISTIC DO band authored IN-FILE (threshold:4.0/below/watch_margin:1.0) — crash semantics, breach BELOW the floor
+      #   llm-assist   : — (determinism invariant, ADR-0019/ADR-010 IN-3)
+      #   output       : per-pond verdict {breach <4, watch 4–5, ok >5}
+      #   governance   : verdict = pure function of the reading + the authored (in-file) band; watch = the ADR-0019 escalate zone
       - step_id: judge
         name: Judge vs threshold
         description: >-
@@ -71,6 +83,12 @@ procedures:
         threshold: 4.0
         direction: below
         watch_margin: 1.0
+      # facet[aerate]
+      #   input        : judge (the breach subset)
+      #   decision     : — (handler fixed to `start_emergency_aerator`; tiers taxonomy declared; LLM menu graded separately = the α probe)
+      #   llm-assist   : propose the emergency-aerator action (ADR-007 envelope, advisory; handler stays fixed)
+      #   output       : emergency-aerator proposal per breaching pond
+      #   governance   : handler fixed; HUMAN go/no-go on the irreversible write (gated)
       - step_id: aerate
         name: Aerate the breach set
         description: >-
@@ -91,6 +109,12 @@ procedures:
           from: judge               # the named-input fan-out: only the breach subset
           where:
             verdict: breach
+      # facet[escalate_watch]
+      #   input        : judge (the watch subset)
+      #   decision     : watch-band routing → a precautionary water-exchange proposal (ADR-0019 watch→gated; trigger = the deterministic verdict, never confidence)
+      #   llm-assist   : recommend a concrete water-exchange action (advisory)
+      #   output       : water-exchange proposal per borderline pond
+      #   governance   : HUMAN decides on the ambiguous band (gated); routing never keyed on confidence (ADR-010 IN-3)
       - step_id: escalate_watch
         name: Escalate the watch set (gated proposal)
         description: >-
@@ -108,6 +132,12 @@ procedures:
           from: judge
           where:
             verdict: watch
+      # facet[summary]
+      #   input        : judge (the whole verdict set — no `where`)
+      #   decision     : —
+      #   llm-assist   : draft the round summary (advisory)
+      #   output       : round-summary artifact
+      #   governance   : — (auto terminal; a no-op `echo` artifact, not an operational action)
       - step_id: summary
         name: Round summary
         description: Auto round-summary terminal artifact over the whole verdict set.

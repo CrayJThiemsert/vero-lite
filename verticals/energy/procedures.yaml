@@ -34,16 +34,34 @@ procedures:
     run_by: grid_agent
     trigger: manual                 # L-1: only manual runs in Phase 1
     steps:
+      # facet[read_readings]
+      #   input        : latest temperature reading per active Asset
+      #   decision     : — (no gate; pure read)
+      #   llm-assist   : —
+      #   output       : temperature reading per active Asset
+      #   governance   : —
       - step_id: read_readings
         name: Read latest asset readings
         description: Latest temperature reading per active Asset.
         kind: query
+      # facet[judge]
+      #   input        : read_readings set
+      #   decision     : DETERMINISTIC over-temp band via ENV (OCT_RECOMMEND_THRESHOLD; direction=above) — NO in-file threshold field
+      #   llm-assist   : — (determinism invariant, ADR-0019/ADR-010 IN-3)
+      #   output       : per-asset verdict {breach=over ceiling, ok}
+      #   governance   : verdict = pure function of the reading + the authored (env) band
       - step_id: judge
         name: Judge vs over-temperature threshold
         description: >-
           Tag each asset's verdict vs the over-temperature threshold —
           breach (over the ceiling) vs ok. OCT_RECOMMEND_DIRECTION=above semantics.
         kind: evaluate
+      # facet[restart_breaches]
+      #   input        : judge (the breach subset)
+      #   decision     : — (handler fixed to `restart`; the LLM proposal menu is graded separately = the α probe, PLAN-0019 Part B)
+      #   llm-assist   : propose the restart action (ADR-007 envelope, advisory; handler stays fixed)
+      #   output       : restart action proposal per breaching asset
+      #   governance   : handler fixed; HUMAN go/no-go on the irreversible write (gated)
       - step_id: restart_breaches
         name: Restart the breaching assets
         description: >-
