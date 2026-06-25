@@ -75,6 +75,33 @@ class Trigger(StrEnum):
     SCHEDULE = "schedule"
 
 
+class BandSource(StrEnum):
+    """How an ``evaluate`` step's deterministic band is authored (ADR-016 D2-A3).
+
+    ``env`` = the band comes from the runtime env (``OCT_RECOMMEND_THRESHOLD`` +
+    direction) with NO in-file ``threshold`` field (energy / supply_chain);
+    ``in_file`` = the band is authored on the ``Step`` itself
+    (``threshold`` / ``direction`` / ``watch_margin``; aquaculture / procurement).
+    """
+
+    ENV = "env"
+    IN_FILE = "in_file"
+
+
+class GateKind(StrEnum):
+    """The kind of deterministic decision a step's ``decision_condition`` gates on —
+    exactly the six kinds observed across the N=4 instrumented verticals (ADR-016
+    D2-A3; no speculative future kinds, Rule-of-Three). A 5th vertical with a new
+    shape extends this enum additively (amendment OQ-A1)."""
+
+    ENV_BAND = "env_band"
+    IN_FILE_BAND = "in_file_band"
+    RULE_GATE = "rule_gate"
+    SCORED_RULE = "scored_rule"
+    DOA_TIER = "doa_tier"
+    NONE = "none"
+
+
 class StepInput(BaseModel):
     """A step's input source (ADR-016 D4; PLAN-0019 A-ζ-prep named-input).
 
@@ -126,6 +153,74 @@ class StepTiers(BaseModel):
     )
 
 
+class DecisionCondition(BaseModel):
+    """The discriminated decision-condition facet of a ``Step`` (ADR-016 D2-A3).
+
+    ``gate_kind`` names HOW the step decides (one of the six observed kinds).
+    ``band_source`` is set iff ``gate_kind`` is a band kind (``env_band`` /
+    ``in_file_band``); ``env_var`` names the env band's source only when
+    ``band_source == env``. An ``in_file_band`` POINTS AT the existing typed
+    ``threshold`` / ``direction`` / ``watch_margin`` on the ``Step`` — it does NOT
+    re-store those values (single source of truth, no drift; D2-A2/A3).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    gate_kind: GateKind
+    band_source: BandSource | None = Field(
+        default=None,
+        description="present iff gate_kind in {env_band, in_file_band} (D2-A3)",
+    )
+    env_var: str | None = Field(
+        default=None,
+        description="the env var carrying the band; only with band_source == env",
+    )
+    note: str | None = Field(default=None, description="optional human prose")
+
+    @model_validator(mode="after")
+    def _validate_band_source(self) -> Self:
+        """band_source set iff gate_kind is a band kind; env_var only with env (D2-A3)."""
+        is_band = self.gate_kind in (GateKind.ENV_BAND, GateKind.IN_FILE_BAND)
+        if is_band != (self.band_source is not None):
+            raise ValueError(
+                f"decision_condition: band_source must be set iff gate_kind is a band "
+                f"kind (env_band/in_file_band); got gate_kind '{self.gate_kind.value}', "
+                f"band_source {self.band_source!r} — ADR-016 D2-A3"
+            )
+        if self.env_var is not None and self.band_source is not BandSource.ENV:
+            raise ValueError(
+                f"decision_condition: env_var applies only with band_source == env; "
+                f"got band_source {self.band_source!r} — ADR-016 D2-A3"
+            )
+        return self
+
+
+class StepFacet(BaseModel):
+    """Descriptive 5-facet metadata for a ``Step`` (ADR-016 D2 Amendment 2026-06-25).
+
+    NON-AUTHORITATIVE for runtime — the engine reads but does NOT consume it
+    (D2-A2/A4). The Hybrid shape (D2-A2): the net-new machine-readable signal
+    (``decision_condition`` + ``llm_assist``) is typed; the three facets the
+    ``Step`` already types are kept as optional non-authoritative ``str`` notes so
+    the catalog's uniform 5-facet reading is preserved without re-owning structured
+    values (the typed ``Step`` fields stay source of truth). Note ``StepFacet.input``
+    is a prose ``str`` note — distinct from ``Step.input: StepInput``; the type
+    difference is intentional.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    decision_condition: DecisionCondition | None = None
+    llm_assist: str | None = Field(
+        default=None,
+        description="what (if anything) the LLM drafts/summarises — advisory only; "
+        "the net-new facet not modelled elsewhere today (D2-A2).",
+    )
+    input: str | None = Field(default=None, description="non-authoritative note (D2-A2)")
+    output: str | None = Field(default=None, description="non-authoritative note (D2-A2)")
+    governance: str | None = Field(default=None, description="non-authoritative note (D2-A2)")
+
+
 class Step(BaseModel):
     """One step of a Procedure (ADR-016 D2; threshold/tier config per PLAN-0022 Step 3)."""
 
@@ -170,6 +265,11 @@ class Step(BaseModel):
         default=None,
         description="canonical/acceptable/forbidden handler-tier taxonomy; action steps "
         "only (PLAN-0022 Step 3, SD-5=a). A taxonomy mirror, not an execution allowlist.",
+    )
+    facet: StepFacet | None = Field(
+        default=None,
+        description="descriptive 5-facet metadata; optional; non-authoritative for runtime "
+        "(ADR-016 D2 Amendment 2026-06-25 / D2-A2). The engine reads but does not consume it.",
     )
 
     @model_validator(mode="after")

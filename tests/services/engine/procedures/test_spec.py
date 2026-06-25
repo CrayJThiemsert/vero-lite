@@ -16,8 +16,12 @@ from pydantic import ValidationError
 
 from services.engine.procedures.spec import (
     Autonomy,
+    BandSource,
+    DecisionCondition,
+    GateKind,
     Procedure,
     Step,
+    StepFacet,
     StepKind,
     StepTiers,
     Trigger,
@@ -252,3 +256,108 @@ def test_empty_steps_rejected() -> None:
 
 def test_procedures_path() -> None:
     assert procedures_path("aquaculture") == Path("verticals") / "aquaculture" / "procedures.yaml"
+
+
+# --- ADR-016 D2 Amendment (2026-06-25): the typed `facet` field (PLAN-0038 Step A) ---
+
+_ALL_GATE_KINDS = [
+    (GateKind.ENV_BAND, BandSource.ENV),
+    (GateKind.IN_FILE_BAND, BandSource.IN_FILE),
+    (GateKind.RULE_GATE, None),
+    (GateKind.SCORED_RULE, None),
+    (GateKind.DOA_TIER, None),
+    (GateKind.NONE, None),
+]
+
+
+@pytest.mark.parametrize("gate_kind, band_source", _ALL_GATE_KINDS)
+def test_each_gate_kind_parses(gate_kind: GateKind, band_source: BandSource | None) -> None:
+    dc = DecisionCondition(gate_kind=gate_kind, band_source=band_source)
+    assert dc.gate_kind is gate_kind
+    assert dc.band_source is band_source
+
+
+def test_env_band_carries_env_var() -> None:
+    dc = DecisionCondition(
+        gate_kind=GateKind.ENV_BAND,
+        band_source=BandSource.ENV,
+        env_var="OCT_RECOMMEND_THRESHOLD",
+    )
+    assert dc.env_var == "OCT_RECOMMEND_THRESHOLD"
+
+
+def test_band_source_required_for_band_kind() -> None:
+    with pytest.raises(ValidationError, match="band_source must be set iff gate_kind is a band"):
+        DecisionCondition(gate_kind=GateKind.ENV_BAND)  # band kind, no band_source
+
+
+@pytest.mark.parametrize(
+    "gate_kind", [GateKind.RULE_GATE, GateKind.SCORED_RULE, GateKind.DOA_TIER, GateKind.NONE]
+)
+def test_band_source_rejected_on_non_band_kind(gate_kind: GateKind) -> None:
+    with pytest.raises(ValidationError, match="band_source must be set iff gate_kind is a band"):
+        DecisionCondition(gate_kind=gate_kind, band_source=BandSource.IN_FILE)
+
+
+def test_env_var_requires_env_band_source() -> None:
+    with pytest.raises(ValidationError, match="env_var applies only with band_source == env"):
+        DecisionCondition(
+            gate_kind=GateKind.IN_FILE_BAND, band_source=BandSource.IN_FILE, env_var="X"
+        )
+
+
+def test_in_file_band_stores_no_numeric_band() -> None:
+    """An in_file_band facet POINTS AT the typed Step band — it carries no numeric
+    value itself (AC-6, single source of truth, no re-store)."""
+    dc = DecisionCondition(gate_kind=GateKind.IN_FILE_BAND, band_source=BandSource.IN_FILE)
+    dumped = dc.model_dump()
+    assert "threshold" not in dumped
+    assert "direction" not in dumped
+    assert "watch_margin" not in dumped
+
+
+def test_step_facet_accepts_non_authoritative_notes() -> None:
+    facet = StepFacet(
+        decision_condition=DecisionCondition(gate_kind=GateKind.NONE),
+        llm_assist="draft the decision summary (advisory)",
+        input="the prior step's verdict set",
+        output="an audit record",
+        governance="ties each row to the control that governed it",
+    )
+    assert facet.input == "the prior step's verdict set"
+    assert facet.llm_assist == "draft the decision summary (advisory)"
+    assert facet.decision_condition is not None
+
+
+def test_step_accepts_a_facet() -> None:
+    step = Step(
+        step_id="judge",
+        name="Judge",
+        kind=StepKind.EVALUATE,
+        threshold=4.0,
+        direction="below",
+        facet=StepFacet(
+            decision_condition=DecisionCondition(
+                gate_kind=GateKind.IN_FILE_BAND, band_source=BandSource.IN_FILE
+            )
+        ),
+    )
+    assert step.facet is not None
+    assert step.facet.decision_condition is not None
+    assert step.facet.decision_condition.gate_kind is GateKind.IN_FILE_BAND
+
+
+def test_absent_facet_is_none_backward_compatible() -> None:
+    """A Step with no facet loads with facet is None — behaviour unchanged (AC-4)."""
+    step = Step(step_id="q", name="Q", kind=StepKind.QUERY)
+    assert step.facet is None
+
+
+def test_unknown_key_rejected_on_facet_models() -> None:
+    """extra='forbid' still bites on Step, StepFacet, and DecisionCondition (AC-2)."""
+    with pytest.raises(ValidationError):
+        Step.model_validate({"step_id": "q", "name": "Q", "kind": "query", "bogus": 1})
+    with pytest.raises(ValidationError):
+        StepFacet.model_validate({"bogus": 1})
+    with pytest.raises(ValidationError):
+        DecisionCondition.model_validate({"gate_kind": "none", "bogus": 1})
