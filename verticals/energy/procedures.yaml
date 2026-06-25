@@ -10,6 +10,12 @@
 # no-op receipt today (real grid-control I/O ships with the design partner). The
 # over-temperature action step fixes its handler to `restart` (PLAN-0019 Part B);
 # the LLM's wider proposal menu is graded separately (the α probe).
+#
+# Each step carries the 5-facet annotation (input · decision-condition · llm-assist ·
+# output · governance) as the first-class typed `facet:` field (ADR-016 D2 Amendment
+# 2026-06-25 / PLAN-0038): the net-new `decision_condition` + `llm_assist` are typed;
+# `input`/`output`/`governance` are non-authoritative notes (the typed Step fields
+# stay source of truth, D2-A2). The engine reads but does not consume `facet` (D2-A4).
 
 namespace: energy
 version: 0
@@ -34,34 +40,27 @@ procedures:
     run_by: grid_agent
     trigger: manual                 # L-1: only manual runs in Phase 1
     steps:
-      # facet[read_readings]
-      #   input        : latest temperature reading per active Asset
-      #   decision     : — (no gate; pure read)
-      #   llm-assist   : —
-      #   output       : temperature reading per active Asset
-      #   governance   : —
       - step_id: read_readings
         name: Read latest asset readings
         description: Latest temperature reading per active Asset.
         kind: query
-      # facet[judge]
-      #   input        : read_readings set
-      #   decision     : DETERMINISTIC over-temp band via ENV (OCT_RECOMMEND_THRESHOLD; direction=above) — NO in-file threshold field
-      #   llm-assist   : — (determinism invariant, ADR-0019/ADR-010 IN-3)
-      #   output       : per-asset verdict {breach=over ceiling, ok}
-      #   governance   : verdict = pure function of the reading + the authored (env) band
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "latest temperature reading per active Asset"
+          output: "temperature reading per active Asset"
       - step_id: judge
         name: Judge vs over-temperature threshold
         description: >-
           Tag each asset's verdict vs the over-temperature threshold —
           breach (over the ceiling) vs ok. OCT_RECOMMEND_DIRECTION=above semantics.
         kind: evaluate
-      # facet[restart_breaches]
-      #   input        : judge (the breach subset)
-      #   decision     : — (handler fixed to `restart`; the LLM proposal menu is graded separately = the α probe, PLAN-0019 Part B)
-      #   llm-assist   : propose the restart action (ADR-007 envelope, advisory; handler stays fixed)
-      #   output       : restart action proposal per breaching asset
-      #   governance   : handler fixed; HUMAN go/no-go on the irreversible write (gated)
+        facet:
+          decision_condition: { gate_kind: env_band, band_source: env, env_var: OCT_RECOMMEND_THRESHOLD }
+          llm_assist: null
+          input: "read_readings set"
+          output: "per-asset verdict {breach=over ceiling, ok}"
+          governance: "verdict = pure function of the reading + the authored (env) band"
       - step_id: restart_breaches
         name: Restart the breaching assets
         description: >-
@@ -75,4 +74,10 @@ procedures:
           from: judge               # the named-input fan-out: only the breach subset
           where:
             verdict: breach
+        facet:
+          decision_condition: { gate_kind: none }   # handler fixed to `restart`; the LLM proposal menu is graded separately (the α probe, PLAN-0019 Part B)
+          llm_assist: "propose the restart action (ADR-007 envelope, advisory; handler stays fixed)"
+          input: "judge (the breach subset)"
+          output: "restart action proposal per breaching asset"
+          governance: "handler fixed; HUMAN go/no-go on the irreversible write (gated)"
     terminal: restart_breaches

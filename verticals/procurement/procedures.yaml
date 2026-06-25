@@ -15,13 +15,15 @@
 # DRAFTS/SUMMARISES (intake enrich · quote summary · justification + exec-summary ·
 # audit summary). The LLM NEVER selects the supplier (source selection is a scored
 # RULE), NEVER sets a threshold (the judge band is authored), and NEVER approves
-# (the human gate). Each step below carries a structured 5-FACET annotation
-# (input · decision-condition · llm-assist · output · governance) as YAML COMMENTS
-# — SD-4 / AC-14. It is comment-only by constraint: services/engine/procedures/
-# spec.py declares `Step` with `extra="forbid"`, so a first-class `facet:` field
-# would be rejected (= a core edit); promotion to a real field is a Stage-2
-# ADR-016 amendment. The facet map is mirrored in verticals/procurement/README.md
-# so Stage 2 can extract the generalized procedure schema from it.
+# (the human gate). Each step below carries the structured 5-FACET annotation
+# (input · decision-condition · llm-assist · output · governance) as the first-class
+# typed `facet:` field (ADR-016 D2 Amendment 2026-06-25 / PLAN-0038): the net-new
+# `decision_condition` (a discriminated `gate_kind`) + `llm_assist` are typed, while
+# `input`/`output`/`governance` are non-authoritative notes (the typed Step fields
+# stay source of truth, D2-A2). The facet was comment-only through Stage-1 (spec.py
+# `Step` declared `extra="forbid"`); the Stage-2 amendment promoted it to the typed
+# field. The facet map is mirrored in verticals/procurement/README.md so Stage 3 can
+# extract the generalized procedure schema from it.
 
 namespace: procurement
 version: 0
@@ -60,12 +62,6 @@ procedures:
     run_by: procurement_agent
     trigger: manual                 # L-8: only manual runs in Phase 1
     steps:
-      # facet[intake]
-      #   input        : purchase requisition / CMMS work-order (the failure signal)
-      #   decision     : — (no gate; pure read + enrich)
-      #   llm-assist   : enrich / auto-fill the PR from the work-order (advisory draft)
-      #   output       : enriched PR set
-      #   governance   : —
       - step_id: intake
         name: Intake the maintenance request
         description: >-
@@ -73,12 +69,11 @@ procedures:
           requisition set. LLM-assist auto-fills the PR (advisory, editable); it
           does not decide anything.
         kind: query
-      # facet[judge]
-      #   input        : intake set
-      #   decision     : DETERMINISTIC criticality band (threshold/direction/watch_margin)
-      #   llm-assist   : — (no model signal — determinism invariant, ADR-0019/ADR-010 IN-3)
-      #   output       : per-item criticality verdict {breach=critical, watch=high, ok}
-      #   governance   : the verdict is a pure function of the reading + the authored band
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: "enrich / auto-fill the PR from the work-order (advisory draft)"
+          input: "purchase requisition / CMMS work-order (the failure signal)"
+          output: "enriched PR set"
       - step_id: judge
         name: Judge criticality
         description: >-
@@ -89,12 +84,14 @@ procedures:
         threshold: 0.8
         direction: above
         watch_margin: 0.2
-      # facet[source]
-      #   input        : judge (the breach/critical subset)
-      #   decision     : on-contract default; RFQ→AVL only as a logged exception
-      #   llm-assist   : summarise the candidate quotes (advisory)
-      #   output       : candidate quote(s) per critical item
-      #   governance   : SELECTION = a scored RULE, never the LLM (governed ≠ generated)
+        facet:
+          # in_file_band POINTS AT the typed threshold/direction/watch_margin above —
+          # it does NOT re-store the values (single source of truth, D2-A3).
+          decision_condition: { gate_kind: in_file_band, band_source: in_file }
+          llm_assist: null
+          input: "intake set"
+          output: "per-item criticality verdict {breach=critical, watch=high, ok}"
+          governance: "the verdict is a pure function of the reading + the authored band"
       - step_id: source
         name: Source the critical set
         description: >-
@@ -112,20 +109,21 @@ procedures:
           from: judge               # the named-input fan-out: only the critical subset
           where:
             verdict: breach
-      # facet[compliance]
-      #   input        : source set (the candidate quotes)
-      #   decision     : PER-CRITERION rule gate — AVL · tax · cert · sanctions · single_source
-      #   llm-assist   : — (deterministic; the LLM may summarise but never decides pass/fail)
-      #   output       : per-criterion pass/fail; a non-compliant candidate is blocked
-      #   governance   : blocks the PO on ANY failed criterion (hard gate)
-      #
-      # NOTE (Step-3 / Step-7 seam): `compliance` is an evaluate step for SD-4
-      # facet fidelity, but per-criterion compliance is a RULE gate, not a numeric
-      # band — so it is intentionally band-less here (loads + validates via
-      # load_procedures). Its runnable executor (tagging each candidate with
-      # `compliant` + per-criterion results) is supplied by the Step-7 run harness,
-      # NOT the shipped numeric EvaluateStepExecutor. The downstream `approve` step
-      # consumes `where {compliant: true}`.
+        facet:
+          decision_condition:
+            gate_kind: scored_rule
+            note: "on-contract default; RFQ→AVL only as a logged exception"
+          llm_assist: "summarise the candidate quotes (advisory)"
+          input: "judge (the breach/critical subset)"
+          output: "candidate quote(s) per critical item"
+          governance: "SELECTION = a scored RULE, never the LLM (governed ≠ generated)"
+      # NOTE (Step-3 / Step-7 seam): `compliance` is an evaluate step for facet
+      # fidelity, but per-criterion compliance is a RULE gate, not a numeric band —
+      # so it is intentionally band-less here (loads + validates via load_procedures),
+      # and its facet's decision_condition is `gate_kind: rule_gate` (no band_source).
+      # Its runnable executor (tagging each candidate with `compliant` + per-criterion
+      # results) is supplied by the Step-7 run harness, NOT the shipped numeric
+      # EvaluateStepExecutor. The downstream `approve` step consumes `where {compliant: true}`.
       - step_id: compliance
         name: Check per-criterion compliance
         description: >-
@@ -133,12 +131,14 @@ procedures:
           (AVL approved · tax id valid · cert valid · not sanctioned · single-
           source justified). Any failed criterion blocks the PO. Deterministic.
         kind: evaluate
-      # facet[approve]
-      #   input        : compliance (the compliant subset)
-      #   decision     : DOA tier band (฿) — escalates the approver above the band
-      #   llm-assist   : draft the justification + the approver exec-summary (advisory, editable)
-      #   output       : approval decision (human)
-      #   governance   : tiered DOA + emergency waiver (escalate, never skip) + SoD; HUMAN approves
+        facet:
+          decision_condition:
+            gate_kind: rule_gate
+            note: "per-criterion rule gate — AVL · tax · cert · sanctions · single_source"
+          llm_assist: null
+          input: "source set (the candidate quotes)"
+          output: "per-criterion pass/fail; a non-compliant candidate is blocked"
+          governance: "blocks the PO on ANY failed criterion (hard gate)"
       - step_id: approve
         name: Tiered DOA approval (human gate)
         description: >-
@@ -155,12 +155,14 @@ procedures:
           from: compliance
           where:
             compliant: true
-      # facet[issue_po]
-      #   input        : approve (the approved set)
-      #   decision     : — (mechanical write of the approved decision)
-      #   llm-assist   : —
-      #   output       : PurchaseOrder
-      #   governance   : human-gated write (only runs on resume after approval)
+        facet:
+          decision_condition:
+            gate_kind: doa_tier
+            note: "DOA tier band (฿) — escalates the approver above the band"
+          llm_assist: "draft the justification + the approver exec-summary (advisory, editable)"
+          input: "compliance (the compliant subset)"
+          output: "approval decision (human)"
+          governance: "tiered DOA + emergency waiver (escalate, never skip) + SoD; HUMAN approves"
       - step_id: issue_po
         name: Issue the purchase order
         description: >-
@@ -170,12 +172,12 @@ procedures:
         kind: action
         autonomy: gated
         handler: issue_po
-      # facet[audit]
-      #   input        : judge (the full run verdict set)
-      #   decision     : —
-      #   llm-assist   : draft the decision summary (advisory)
-      #   output       : audit record
-      #   governance   : ties every row to the control that governed it (traceability)
+        facet:
+          decision_condition: { gate_kind: none }   # mechanical write of the approved decision
+          llm_assist: null
+          input: "approve (the approved set)"
+          output: "PurchaseOrder"
+          governance: "human-gated write (only runs on resume after approval)"
       - step_id: audit
         name: Audit record
         description: >-
@@ -187,6 +189,12 @@ procedures:
         handler: echo
         input:
           from: judge               # no `where` -> the whole verdict set
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: "draft the decision summary (advisory)"
+          input: "judge (the full run verdict set)"
+          output: "audit record"
+          governance: "ties every row to the control that governed it (traceability)"
     terminal: audit
 
   low_stock_reorder_round:
@@ -199,22 +207,15 @@ procedures:
     run_by: procurement_agent
     trigger: manual
     steps:
-      # facet[read_stock]
-      #   input        : part stock levels
-      #   decision     : —
-      #   llm-assist   : —
-      #   output       : stock reading per part
-      #   governance   : —
       - step_id: read_stock
         name: Read stock levels
         description: Latest stock reading per stocked Part.
         kind: query
-      # facet[judge_stock]
-      #   input        : read_stock set
-      #   decision     : DETERMINISTIC reorder band — stock at/below the reorder point
-      #   llm-assist   : —
-      #   output       : per-part verdict {breach=at/below reorder point}
-      #   governance   : determinism invariant (authored band)
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "part stock levels"
+          output: "stock reading per part"
       - step_id: judge_stock
         name: Judge vs reorder point
         description: >-
@@ -225,12 +226,13 @@ procedures:
         kind: evaluate
         threshold: 100.0
         direction: below
-      # facet[reorder]
-      #   input        : judge_stock (the low-stock subset)
-      #   decision     : on-contract reorder at the contracted price
-      #   llm-assist   : — (a routine reorder; the LLM does not decide)
-      #   output       : reorder PurchaseOrder
-      #   governance   : single-tier human approval (the calm contrast to the hero DOA ladder)
+        facet:
+          # in_file_band POINTS AT the typed threshold/direction above — no re-store (D2-A3).
+          decision_condition: { gate_kind: in_file_band, band_source: in_file }
+          llm_assist: null
+          input: "read_stock set"
+          output: "per-part verdict {breach=at/below reorder point}"
+          governance: "determinism invariant (authored band)"
       - step_id: reorder
         name: Reorder the low-stock set
         description: >-
@@ -244,4 +246,12 @@ procedures:
           from: judge_stock
           where:
             verdict: breach
+        facet:
+          decision_condition:
+            gate_kind: none
+            note: "on-contract reorder at the contracted price"
+          llm_assist: null
+          input: "judge_stock (the low-stock subset)"
+          output: "reorder PurchaseOrder"
+          governance: "single-tier human approval (the calm contrast to the hero DOA ladder)"
     terminal: reorder
