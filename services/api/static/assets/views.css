@@ -557,8 +557,16 @@
 .pv-fval.pv-llm { color: var(--info); font-style: italic; }
 .pv-empty { font-size: 12px; }
 
-/* the inert edit seam (read-only in v1; PLAN-0040 enables mode:'edit') */
+/* the edit seam (PLAN-0040 C1: mode:'edit' renders authoring inputs for H-fields) */
 .pv-edit { font-family: var(--mono); font-size: 12px; padding: 2px 6px; background: var(--bg-inset); border: 1px solid var(--accent-line); border-radius: 4px; color: var(--tx-0); }
+/* a STUB (absent governance value): dashed = author-required, never pre-filled (D4) */
+.pv-edit.is-stub { border-style: dashed; border-color: var(--warn); }
+.pv-edit::placeholder { color: var(--tx-2); font-style: italic; }
+/* mode toggle: shipped (read) ↔ authoring gate (edit) segmented control */
+.pv-modetoggle { display: inline-flex; gap: 2px; padding: 2px; background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); }
+.pv-modetab { font-size: 12px; padding: 3px 11px; border: 0; background: transparent; color: var(--tx-2); border-radius: 4px; cursor: pointer; }
+.pv-modetab:hover:not(.active) { color: var(--tx-1); }
+.pv-modetab.active { background: var(--bg-inset); color: var(--tx-0); }
 
 @media (max-width: 720px) {
   .pv-facet { grid-template-columns: 1fr; gap: 4px; }
