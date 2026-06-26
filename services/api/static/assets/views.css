@@ -456,3 +456,111 @@
   .field-grid { grid-template-columns: 1fr; }
   .prop-row { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   View F — Procedures (PLAN-0039 read-only 5-facet viewer)
+   Reuses the s-* / accent palette; the ONE added affordance is the
+   typed-vs-prose provenance distinction on facet field values (AC-4/AC-8).
+   ============================================================ */
+.procview { gap: 0; }
+
+/* the ONE authority-vs-advisory affordance: a legend (AC-8) */
+.pv-legend { display: flex; gap: 13px; align-items: center; margin-right: 12px; }
+.pv-leg { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; color: var(--tx-2); }
+.pv-swatch { width: 10px; height: 10px; border-radius: 3px; flex: 0 0 auto; }
+.pv-leg.pv-auth .pv-swatch { background: var(--accent); }
+.pv-leg.pv-prose .pv-swatch { background: var(--neutral); }
+.pv-leg.pv-llm .pv-swatch { background: var(--info); opacity: .85; }
+
+/* vertical selector */
+.pv-nav { display: flex; gap: 8px; padding: 12px 0 9px; flex-wrap: wrap; flex: 0 0 auto; }
+.pv-chip {
+  display: inline-flex; align-items: center; gap: 8px; cursor: pointer; text-transform: capitalize;
+  padding: 6px 12px; border-radius: var(--r-md); background: var(--bg-2);
+  border: 1px solid var(--line); color: var(--tx-1); font-family: var(--sans); font-size: 13px;
+}
+.pv-chip:hover { border-color: var(--accent-line); }
+.pv-chip.active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--tx-0); }
+.pv-chip-n { font-size: 11px; color: var(--tx-2); background: var(--bg-inset); padding: 1px 6px; border-radius: 8px; }
+
+/* procedure tabs (within a vertical) */
+.pv-sub { display: flex; gap: 8px; padding: 0 0 12px; flex-wrap: wrap; flex: 0 0 auto; border-bottom: 1px solid var(--line); }
+.pv-proctab {
+  display: inline-flex; align-items: center; gap: 9px; cursor: pointer;
+  padding: 7px 12px; border-radius: var(--r-md); background: transparent;
+  border: 1px solid var(--line); color: var(--tx-1); font-family: var(--sans); font-size: 13px;
+}
+.pv-proctab:hover { border-color: var(--accent-line); }
+.pv-proctab.active { background: var(--bg-2); border-color: var(--accent-line); color: var(--tx-0); }
+
+/* archetype badge */
+.pv-arch-badge {
+  font-family: var(--mono); font-size: 10.5px; font-weight: 700; letter-spacing: .04em;
+  padding: 2px 7px; border-radius: 6px; border: 1px solid currentColor;
+}
+.pv-arch-badge.lg { font-size: 13px; padding: 4px 10px; }
+.pv-arch-badge.s-info { color: var(--info); background: var(--info-bg); }
+.pv-arch-badge.s-warn { color: var(--warn); background: var(--warn-bg); }
+.pv-arch-badge.s-ok { color: var(--ok); background: var(--ok-bg); }
+.pv-arch-badge.s-neutral { color: var(--neutral); background: var(--neutral-bg); }
+
+/* body scroll */
+.pv-body { flex: 1 1 auto; overflow: auto; padding: 14px 2px 24px; min-height: 0; }
+
+/* procedure card */
+.pv-proccard { padding: 18px 18px 22px; }
+.pv-proc-head { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.pv-proc-title { font-size: 18px; margin: 0; }
+.pv-proc-id { font-size: 11px; margin-top: 2px; }
+.pv-trigger { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; color: var(--tx-2); }
+.pv-goal { font-size: 13px; line-height: 1.55; margin: 4px 0 12px; }
+.pv-agent {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px;
+  padding: 8px 11px; background: var(--bg-inset); border: 1px solid var(--line);
+  border-radius: var(--r-md); margin-bottom: 16px;
+}
+.pv-agent-sep { color: var(--line-strong); }
+
+/* steps */
+.pv-steps { display: flex; flex-direction: column; gap: 14px; }
+.pv-step { border: 1px solid var(--line); border-radius: var(--r-md); background: var(--bg-1); padding: 13px 14px; }
+.pv-step-head { display: flex; align-items: flex-start; gap: 11px; }
+.pv-step-n {
+  width: 24px; height: 24px; flex: 0 0 auto; border-radius: 50%; display: grid; place-items: center;
+  font-family: var(--mono); font-size: 11px; font-weight: 600; background: var(--bg-3);
+  border: 1.5px solid currentColor; color: var(--neutral);
+}
+.pv-step-n.s-ok { color: var(--ok); } .pv-step-n.s-info { color: var(--info); }
+.pv-step-n.s-warn { color: var(--warn); } .pv-step-n.s-neutral { color: var(--neutral); }
+.pv-step-name { font-size: 14px; font-weight: 600; display: flex; align-items: center; }
+.pv-step-id { font-size: 10.5px; margin-top: 1px; }
+.pv-step-desc { font-size: 12.5px; line-height: 1.5; margin: 8px 0 10px; padding-left: 35px; }
+
+/* facet grid */
+.pv-facets {
+  display: flex; flex-direction: column; gap: 1px; background: var(--line-soft);
+  border: 1px solid var(--line); border-radius: var(--r-md); overflow: hidden; margin-left: 35px;
+}
+.pv-facet { display: grid; grid-template-columns: 104px 1fr; gap: 12px; padding: 9px 12px; background: var(--bg-2); }
+.pv-facet-label { font-size: 10.5px; color: var(--tx-2); text-transform: uppercase; letter-spacing: .05em; padding-top: 2px; }
+.pv-facet-fields { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.pv-field { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.pv-flabel { font-size: 10.5px; color: var(--tx-2); min-width: 62px; }
+.pv-fval { font-size: 12.5px; word-break: break-word; color: var(--tx-1); }
+
+/* provenance — THE typed-vs-prose distinction (AC-4 / D2-A2) */
+.pv-fval.pv-auth {
+  color: var(--tx-0); font-family: var(--mono); font-size: 12px;
+  padding: 1px 7px; background: var(--accent-soft); border-left: 2px solid var(--accent); border-radius: 3px;
+}
+.pv-fval.pv-prose { color: var(--tx-2); font-style: italic; }
+.pv-fval.pv-llm { color: var(--info); font-style: italic; }
+.pv-empty { font-size: 12px; }
+
+/* the inert edit seam (read-only in v1; PLAN-0040 enables mode:'edit') */
+.pv-edit { font-family: var(--mono); font-size: 12px; padding: 2px 6px; background: var(--bg-inset); border: 1px solid var(--accent-line); border-radius: 4px; color: var(--tx-0); }
+
+@media (max-width: 720px) {
+  .pv-facet { grid-template-columns: 1fr; gap: 4px; }
+  .pv-step-desc, .pv-facets { margin-left: 0; padding-left: 0; }
+}
