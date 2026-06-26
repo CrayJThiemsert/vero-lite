@@ -12,6 +12,47 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-26 (session-80 reconcile #2): the **Session-77 (batch 3) `777393c`** CF block (PLAN-0038 — the ADR-016 D2 typed-`facet:` field implementation EXECUTED end-to-end + Stage 2 complete) rotated under the **R1 64 KB hard ceiling** when the session-80 Phase-A-BUILT update grew the Session 80 block. It was the genuine oldest in-window block; the in-window CF set is now {80, 79, 78}. Verbatim immediately below, before the earlier session-80 (batch-2) addendum._
+
+> **Session 77 (batch 3; head_commit `777393c`) — **PLAN-0038 (the ADR-016
+> D2 Amendment implementation) EXECUTED end-to-end → Complete + archived; Stage 2
+> (generalized-schema extraction) now COMPLETE on real data, not just the model.**
+> **Step A** (PR-1, #431, feat `bf7e858`) = the `services/engine/procedures/spec.py`
+> engine edit — the typed `facet` sub-model exactly per the amendment delta
+> (`BandSource` / `GateKind` (6 kinds) / `DecisionCondition` with its
+> `band_source⇔gate_kind` + `env_var`-only-with-`env` validator / `StepFacet` /
+> `Step.facet`), keeping `extra="forbid"` (facet now a KNOWN key) — the **first
+> deliberate `spec.py` edit since the procurement vertical held zero-engine-edit
+> (CQ-1)**, ADR-sanctioned; schema-level facet tests landed here (suite 1669 passed).
+> **Step B** (PR-2, #432, feat `777393c`, merge `42a8327`) = migrate the **4
+> verticals'** comment-facets (`# facet[...]` blocks) → the real typed `facet:` field
+> — **config + tests only, no `services/` edit**; +19 end-to-end migration
+> round-trip tests. **SDs (Cray-resolved):** **SD-1 = (a)** populate all five facets
+> (`decision_condition`+`llm_assist` typed; `input`/`output`/`governance` str notes
+> from the comment prose — uniform 5-facet reading preserved); **SD-2 = (a)** remove
+> the comment blocks (single carrier, no drift — grep confirms 0 leftover `# facet[`);
+> **SD-3 = (b)** split (Step A its own PR, then the migration PR). The **D2-A3
+> `gate_kind` mapping:** `energy.judge`/`supply_chain.judge` → `env_band` (env /
+> `OCT_RECOMMEND_THRESHOLD`); `aquaculture.judge`/`procurement.judge`/
+> `procurement.judge_stock` → `in_file_band` (**points at** the typed
+> `threshold`/`direction`/`watch_margin`, **no re-store** — AC-6); `procurement.compliance`
+> → `rule_gate`; `procurement.source` → `scored_rule`; `procurement.approve` →
+> `doa_tier`; reads / mechanical writes / audit terminals / simple gated actions →
+> `none` (incl. `escalate_watch` = `gate_kind: none` + a `decision_condition.note` for
+> the watch→gated routing rationale, Cray-endorsed, since the band decision lives on
+> the `judge` step). Also updated the now-stale "facets are comment-only" framing in
+> `verticals/procurement/README.md` + the procurement `procedures.yaml` header.
+> **`facet` stays non-authoritative** — the engine reads but does NOT consume it at
+> run time (D2-A4); a `grep` confirmed 0 `.facet` reads in `services/`. **Gates:**
+> full offline suite **1688 passed / 22 skipped** (1669 baseline + 19 new); `ruff` +
+> `ruff-format` clean; `mypy --strict services/` clean; **no live MS-S1** (CLAUDE.md
+> §8 — pure schema/config). **`loop-dispatcher` still DISABLED** all session
+> (keep-disabled + guard; the Stop-hook root-fix is deferred + is the precondition for
+> any re-enable). PLAN-0038 `git mv` → `done/`. **Forward:** Stage 3 (the procedure
+> generator, ADR-016 Phase 2, Rule-of-Three-deferred) + a schema-driven **review UI**
+> (5-facet render; unlocked now facets are machine-readable on real data). AI-assisted
+> (Claude Code, session 77); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-26 (session-80 reconcile): the **Session-77 (batch 2) `b2f19bc`** CF block (Stage 2 COMPLETE — the ADR-016 D2 typed-`facet:` amendment #428 + the follow-on impl PLAN-0038 minted #429) rotated under the **R1 64 KB hard ceiling** when the session-80 PLAN-0040-generator CF block landed. It was the genuine oldest in-window block; the **Session-78** block was kept in-window as session-80's direct predecessor (the ADR-0024 D1–D12 lock + the PLAN-0039 ratification PLAN-0040 builds on). Verbatim immediately below, before the session-79 addendum._
 
 > **Session 77 (batch 2; head_commit `b2f19bc`) — **Stage 2 COMPLETE: the
