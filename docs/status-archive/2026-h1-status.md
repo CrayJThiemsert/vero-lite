@@ -12,6 +12,79 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-26 (session-79 reconcile): two blocks rotated under the **R1 64 KB hard ceiling** (R1 overrides the R2 4-session window) when the session-79 PLAN-0039-viewer block landed — the **Session-76 `081d650`** CF block (PLAN-0036 Fastenal procurement Stage-1 EXECUTED end-to-end + Done + archived `done/`) and the **Session-77 Stage-2-PREP `f029913`** sub-block (PLAN-0037 Stage-2 PREP + procedure-archetype catalog SHIPPED + archived `done/` + the `loop-dispatcher` keep-disabled decision; the oldest of session-77's three sub-blocks). Both verbatim below, newest first (Session-77 PREP, then Session-76)._
+
+> **Session 77 (head_commit `f029913`) — **Stage 2 PREP for the
+> generative-procedures target (PLAN-0037) SHIPPED + archived to `done/`**, plus a
+> `loop-dispatcher` governance decision.** **PLAN-0037** was **`plan-drafter`-authored**
+> (the in-harness subagent, ADR-013 D1 phased authority) → **Code R2-reviewed +
+> committed** (#424, ADR-009 D2); **separation intact**. Cray chose the **formal-PLAN
+> route (ทาง 1)** over a no-PLAN proceed — to keep the PLAN archive as a cross-project
+> work-pattern substrate. **Step A (#425, content `31ded05`)** retrofits the SD-4
+> **5-facet** annotation (`input · decision-condition · llm-assist · output ·
+> governance`) as **YAML comment blocks** onto `energy`/`supply_chain`/`aquaculture`
+> `procedures.yaml`, mirroring the procurement template → consistent **N=4**
+> instrumentation (the Rule-of-Three substrate). **Provably inert:**
+> `services/engine/procedures/spec.py` `Step` declares `extra="forbid"` (so `facet:`
+> can only be a comment) and the loader uses `YAML(typ="safe")` (discards comments at
+> parse) → Step objects byte-identical, the static-JS demos untouched. Gate:
+> parse-clean for all 4 verticals (step counts unchanged 3/3/5/10); **66 insertions,
+> all comment lines, 0 deletion**; **full offline suite 1651 passed, 22 skipped**
+> (baseline); no live MS-S1 (CLAUDE.md §8). It captured the **env-vs-in-file judge-band
+> split** (energy/supply_chain author the band via `OCT_RECOMMEND_THRESHOLD`;
+> aquaculture/procurement author it in-file) as the load-bearing input to Step C.
+> **Step B (#426, content `c3b477a`)** is the **procedure-archetype catalog** at
+> `docs/conventions/procedure-archetypes.md`: **AT-1** `anomaly→action`, **AT-1b**
+> `watch+summary` variant, **AT-2** `request→approve→fulfill`, **AT-3**
+> `monitor→reorder` — the canonical reference the Step-C ADR + the Stage-3 generator
+> will cite. **Cray resolved the surfaced decisions:** SD-1 = one PR for the 3
+> verticals; SD-2 = Step B as a follow-on PR; SD-3 = catalog home `docs/conventions/`.
+> **`loop-dispatcher` decision (Cray, s77):** **keep-disabled + guard** (chosen over
+> fix-hook / delete); the structural root fix (a **Stop-hook exemption** so
+> scheduled-task sessions don't auto-continue) is **deferred and is the precondition
+> for any future re-enable**. The whole PLAN-0010 loop was dormant all session
+> (producer paused, inbox empty); no drift. **Out of scope (forward):** **Step C** (the
+> ADR-016 first-class `facet:` field — a separate **Cowork-drafted ADR**, G2-gated) and
+> **Stage 3** (the procedure generator — Rule-of-Three-deferred until the schema is
+> extracted). **Honesty notes:** an auto-handoff classifier dispatch **misrouted early**
+> (guessed "drafting a plan" while Code was still proposing the no-PLAN route) — Code
+> **overrode** per the clause, spawning `plan-drafter` only after Cray chose ทาง 1; a
+> transient `.git/index.lock` made Step A's first commit appear to fail (echoed exit
+> unreliable) — verified HEAD + re-committed `31ded05`; two harness-continuation
+> "proceed"s were flagged as **harness-not-Cray**. AI-assisted (Claude Code, session
+> 77); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 76 (head_commit `081d650`) — PLAN-0036 Stage 1 (the Fastenal
+> procurement vertical — vero-lite's 4th vertical) EXECUTED end-to-end and **Done +
+> archived to `done/`.**** All 8 Steps were hand-authored as a **pure-config plugin**
+> on the shipped ADR-016 engine + ADR-0023 auto-discovery, each a Cray-merged PR:
+> **#415** ontology + scaffold (12 object_types — Equipment/Plant base + 6
+> procurement extensions) · **#416** `procedures.yaml` (hero 7-step
+> `emergency_sourcing_round` + calm-path reorder, with the SD-4 **5-facet** comment
+> annotations) · **#417** handlers (no-op receipt stubs) · **#418** synthetic Tier-1
+> hero dataset (the ฿2.15M emergency-sourcing beat: on-contract vs RFQ→AVL exception,
+> DOA + emergency waiver, a cert-blocked compliance criterion) · **#419** demo UI (5
+> operator surfaces on the PLAN-0033 story overlay — worklist · timeline · approval
+> money-screen · graduation moment · monitoring dashboard — 3 visual registers,
+> Thai-localized) · **#421** offline governance + run tests (**full suite green, 1651
+> passed**). **CQ-1 zero-engine-edit held** — Steps 1–5/7 had literal 0 `services/`
+> diff; the Step-6 demo presentation under `services/api/static/` is the
+> **Cray-approved Option-A exception** ("zero *engine* edit"; the moat claim stands).
+> **Governed ≠ generated** is the through-line — the LLM drafts/summarises; rules +
+> humans select/threshold/approve (the dashboard's *"AI drafted N · 0
+> supplier-selections · 0 approvals"* makes it visible). The **offline suite was the
+> sole acceptance gate** (no live MS-S1 run; CLAUDE.md §8). The README facet map is
+> the **Stage-2 schema substrate** (the template-reuse-across-customers foundation
+> Cray asked to prepare). **Incident:** the hourly `loop-dispatcher` scheduled task
+> **drifted** past its heartbeat-drain scope (likely Stop-hook continuation),
+> committed a rival standalone Step-6 UI (`b635088`) onto the live session's branch
+> and **hijacked PR #420**; recovered by cherry-picking the clean test commit →
+> **#421** + closing #420, and **disabling `loop-dispatcher`** (Cray-authorized) —
+> see the private `loop-dispatcher-drift-hazard` memory. **Forward:** Stage 2
+> (extract the generalized procedure schema from the 5-facet maps) is the deliberate
+> next arc, not started. AI-assisted (Claude Code, session 76); no `Co-Authored-By`
+> per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-25 (session-78 reconcile): the **Session-74 `805f5d2`** CF block (PLAN-0035 Phase 2 advisory local-LLM-judge SHIPPED #407; PLAN-0035 Complete + archived to `done/`) fell outside the 4-newest-sessions window {78,77,76,75} when the session-78 ADR-0024 + PLAN-0039 Stage-3-kickoff block landed (R2), newest first._
 
 > **Session 74 (head_commit `805f5d2`) — PLAN-0035 **Phase 2** (the
