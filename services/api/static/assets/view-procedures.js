@@ -24,6 +24,11 @@
   const PROSE = 'advisory-prose'; // a non-authoritative facet note
   const LLM = 'llm-assist'; // what the LLM drafts/summarises (advisory)
 
+  // the H partition (ADR-0024 D3): the human-author governance fields edit-mode makes
+  // editable. Mirrors services/engine/procedures/draft.py STEP_GOVERNANCE_FIELDS — the
+  // generator NEVER emits these; the gate is where a human authors them (PLAN-0040 C1).
+  const H_FIELDS = new Set(['threshold', 'direction', 'watch_margin', 'handler', 'autonomy', 'tiers', 'env_var']);
+
   let data = null; // the GET /procedures payload: { verticals: [...] }
   const state = { vertical: null, procedureId: null, mode: 'read' };
   let root, navEl, subEl, bodyEl;
@@ -32,10 +37,12 @@
      Maps a Step -> the five-facet view-model. Each field carries its
      provenance class and an `editable` flag (always false in v1). PLAN-0040
      reuses this verbatim and flips `editable` on the governance H-class. */
-  function facetModel(step) {
+  function facetModel(step, opts) {
     const f = step.facet || {};
     const dc = f.decision_condition || null;
-    const field = (label, value, provenance) => ({ label, value, provenance, editable: false });
+    // `editable` is DERIVED from the field's H-class (PLAN-0040 finding #6a): a
+    // governance H-field flips editable in edit-mode; everything else stays static.
+    const field = (label, value, provenance) => ({ label, value, provenance, editable: H_FIELDS.has(label) });
 
     // input: the typed Step.input (from/where) is authoritative; facet.input is a prose note (finding #5)
     const input = [];
@@ -70,19 +77,47 @@
     if (step.tiers) governance.push(field('tiers', tiersStr(step.tiers), AUTH));
     if (f.governance) governance.push(field('note', f.governance, PROSE));
 
-    return {
-      step_id: step.step_id,
-      name: step.name,
-      description: step.description,
-      kind: step.kind,
-      facets: [
-        { key: 'input', label: 'input', fields: input },
-        { key: 'decision_condition', label: 'decision', fields: decision },
-        { key: 'llm_assist', label: 'llm assist', fields: llm },
-        { key: 'output', label: 'output', fields: output },
-        { key: 'governance', label: 'governance', fields: governance }
-      ]
-    };
+    const facets = [
+      { key: 'input', label: 'input', fields: input },
+      { key: 'decision_condition', label: 'decision', fields: decision },
+      { key: 'llm_assist', label: 'llm assist', fields: llm },
+      { key: 'output', label: 'output', fields: output },
+      { key: 'governance', label: 'governance', fields: governance }
+    ];
+    // edit-mode: surface the unfilled governance STUBS the human must author
+    // (finding #6b: facetModel emits only PRESENT fields, so an absent stub never
+    // renders). The worklist is the procedure's governance_todo[step_id] (OQ-C/AC-A7),
+    // passed in via opts — facetModel itself stays the load-bearing decomposition.
+    if (opts && opts.mode === 'edit' && opts.todo) surfaceStubs(facets, step, opts.todo);
+    return { step_id: step.step_id, name: step.name, description: step.description, kind: step.kind, facets: facets };
+  }
+
+  // which facet a governance H-field belongs to (mirrors view-procedures read layout)
+  function facetForField(label) {
+    return (label === 'handler' || label === 'autonomy' || label === 'tiers')
+      ? 'governance' : 'decision_condition';
+  }
+  // whether the H-field already carries an authored value on the step (present ⇒ it is
+  // already emitted as an editable field; only ABSENT obligations are surfaced as stubs)
+  function isPresent(step, label) {
+    if (label === 'env_var') {
+      const dc = step.facet && step.facet.decision_condition;
+      return !!(dc && dc.env_var != null);
+    }
+    return step[label] != null;
+  }
+  // append each unfilled governance obligation as a STUB field (value absent, editable,
+  // carrying its reason + the oracle's archetype_expectation for the gate's zones, C2).
+  function surfaceStubs(facets, step, todo) {
+    todo.forEach((ob) => {
+      if (isPresent(step, ob.field)) return;
+      const target = facets.find((fc) => fc.key === facetForField(ob.field));
+      if (!target) return;
+      target.fields.push({
+        label: ob.field, value: null, provenance: AUTH, editable: true,
+        stub: true, reason: ob.reason, expectation: ob.archetype_expectation
+      });
+    });
   }
 
   /* ---- small formatters ---- */
@@ -106,12 +141,14 @@
   /* ---- shell ---- */
   function build() {
     root = h('div', { class: 'view-inner procview' });
+    const editing = state.mode === 'edit';
     root.appendChild(h('div', { class: 'view-head' }, [
       h('div', null, [
-        h('div', { class: 'eyebrow', style: { marginBottom: '4px' } }, 'View F · Procedures'),
-        h('h1', null, 'How a governed procedure decomposes')
+        h('div', { class: 'eyebrow', style: { marginBottom: '4px' } }, editing ? 'View F · Authoring gate' : 'View F · Procedures'),
+        h('h1', null, editing ? 'Author a generated procedure draft' : 'How a governed procedure decomposes')
       ]),
       h('div', { class: 'flex' }),
+      modeToggle(),
       legend(),
       h('button', { class: 'iconbtn', onClick: () => mount(root.parentElement, { mode: state.mode }) }, [icon('refresh'), 'Refresh'])
     ]));
@@ -132,6 +169,16 @@
       h('span', { class: 'pv-leg pv-prose' }, [h('span', { class: 'pv-swatch' }), 'prose · advisory note']),
       h('span', { class: 'pv-leg pv-llm' }, [h('span', { class: 'pv-swatch' }), 'llm · drafted'])
     ]);
+  }
+
+  // read ↔ authoring-gate toggle (PLAN-0040 C1). Edit-mode renders the offline
+  // generated draft (gate-fixture.js); read-mode fetches the live shipped procedures.
+  function modeToggle() {
+    const tab = (mode, label) => h('button', {
+      class: 'pv-modetab' + (state.mode === mode ? ' active' : ''),
+      onClick: () => { if (state.mode !== mode) mount(root.parentElement, { mode: mode }); }
+    }, label);
+    return h('div', { class: 'pv-modetoggle' }, [tab('read', 'Shipped'), tab('edit', 'Authoring gate')]);
   }
 
   /* ---- selection ---- */
@@ -234,7 +281,12 @@
 
     // ---- the steps, each decomposed by its five facets ----
     const stepsWrap = h('div', { class: 'pv-steps' });
-    (proc.steps || []).forEach((step, i) => stepsWrap.appendChild(renderStep(facetModel(step), i + 1, { mode: state.mode })));
+    // edit-mode threads the per-step governance_todo (OQ-C/AC-A7) into facetModel so
+    // the unfilled stubs surface; read-mode passes no todo (renders present fields only).
+    const todoMap = proc.governance_todo || {};
+    (proc.steps || []).forEach((step, i) => stepsWrap.appendChild(
+      renderStep(facetModel(step, { mode: state.mode, todo: todoMap[step.step_id] }), i + 1, { mode: state.mode })
+    ));
     card.appendChild(stepsWrap);
     return card;
   }
@@ -269,12 +321,19 @@
   }
 
   function renderField(fld, mode) {
-    // THE SEAM (AC-7): in read-mode every field renders static. PLAN-0040 sets
-    // mode:'edit' and flips `editable` on the H-class governance fields; this
-    // branch then renders an authoring control instead. v1 = always static.
-    const valEl = (mode === 'edit' && fld.editable)
-      ? h('input', { class: 'pv-edit', value: String(fld.value), disabled: true })
-      : h('span', { class: 'pv-fval ' + provClass(fld.provenance) }, String(fld.value));
+    // THE SEAM (AC-7 / PLAN-0040 C1): read-mode renders every field static; edit-mode
+    // renders an authoring INPUT for the H-class governance fields (finding #6c: the
+    // input was `disabled` in read-only v1 — un-disable it). A STUB (absent value)
+    // renders an empty author-required control; guided controls (selects of the legal
+    // domain) land in C2. No value is ever pre-filled into a stub (governed ≠ generated).
+    let valEl;
+    if (mode === 'edit' && fld.editable) {
+      valEl = fld.stub
+        ? h('input', { class: 'pv-edit is-stub', placeholder: 'author required', value: '' })
+        : h('input', { class: 'pv-edit', value: String(fld.value) });
+    } else {
+      valEl = h('span', { class: 'pv-fval ' + provClass(fld.provenance) }, String(fld.value));
+    }
     return h('div', { class: 'pv-field' }, [
       h('span', { class: 'pv-flabel mono' }, fld.label),
       valEl
@@ -286,7 +345,10 @@
     state.mode = opts.mode || 'read';
     clear(container);
     container.appendChild(build());
-    bodyEl.appendChild(O.loadingState('Loading procedures…'));
+    bodyEl.appendChild(O.loadingState(state.mode === 'edit' ? 'Loading the authoring gate…' : 'Loading procedures…'));
+    // edit-mode renders a RECORDED generated draft OFFLINE (PLAN-0040 C1 / OQ-D D1):
+    // no /procedures fetch, no backend dependency — the gate is exercisable offline.
+    if (state.mode === 'edit') { mountEdit(); return; }
     try {
       // meta is only for the default-vertical pick (OQ-3); its failure is non-fatal
       if (!O.State.meta) await O.loadMeta().catch(() => {});
@@ -304,6 +366,22 @@
         () => mount(container, opts)
       ));
     }
+  }
+
+  // edit-mode (PLAN-0040 C1): render the recorded generated draft from gate-fixture.js
+  // — OFFLINE, no fetch (OQ-D D1). Deep-clone so authoring edits never mutate the source.
+  function mountEdit() {
+    data = O.GateFixture ? JSON.parse(JSON.stringify(O.GateFixture)) : null;
+    if (!data || !Array.isArray(data.verticals) || !data.verticals.length) {
+      clear(bodyEl);
+      bodyEl.appendChild(O.errorState(
+        'No draft to author',
+        'the edit-mode gate fixture (gate-fixture.js) is unavailable.', null
+      ));
+      return;
+    }
+    initSelection();
+    render();
   }
 
   // exposed: `mount` (read by app.js). `facetModel` is exported so PLAN-0040's
