@@ -367,12 +367,14 @@ async def test_unreachable_llm_abstains_gracefully() -> None:
     assert outcome.reason == "llm_unreachable"
 
 
-async def test_missing_judge_gate_cannot_skip_the_cross_check() -> None:
-    """OQ-3 mandate: a classification that OMITS the judge gate cannot skip the per-step
-    cross-check by emitting a short step_gates list — it abstains (AC-A8 must actually run)."""
-    client = RecordedChatClient(
-        [_classify("AT-1", gates=[("read", "none"), ("act", "none")])]  # judge gate omitted
-    )
+async def test_classification_with_own_step_naming_still_proceeds() -> None:
+    """OQ-3 is step_id-INDEPENDENT (PR-B2 live finding): the live model names steps freely
+    and does not echo the template's internal ids, so a classification that uses its own
+    step naming (here a band gate under 'evaluate', not the template's 'judge') still
+    proceeds on the LABEL — the template guarantees the skeleton's gate signature (AC-A8).
+    Only an AT2-only kind or a same-step_id contradiction abstains."""
+    own_gates = [("step1", "none"), ("evaluate", "in_file_band"), ("step3", "none")]
+    client = RecordedChatClient([_classify("AT-1", gates=own_gates)])
     outcome = await classify_narrative(client, narrative="watch and act", vertical=VERTICAL)
-    assert isinstance(outcome, Abstained)
-    assert outcome.reason == "archetype_disagreement"
+    assert isinstance(outcome, ProposedMatch)
+    assert outcome.template.archetype_id == "AT-1"
