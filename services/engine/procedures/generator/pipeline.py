@@ -212,17 +212,15 @@ async def classify_narrative(
             f"classified '{classification.archetype_id}' — no catalogued archetype fits",
         )
     template = REGISTRY[classification.archetype_id]
-    # OQ-3 (both granularities): the per-step cross-check is MANDATORY for the load-bearing
-    # oracle — the judge gate must be classified, so the check cannot be skipped by emitting
-    # an empty step_gates list (the AC-A8 invariant must actually execute).
-    judge_ids = {slot.step_id for slot in template.slots if slot.kind is StepKind.EVALUATE}
-    classified_ids = {sg.step_id for sg in classification.step_gates}
-    if not judge_ids.issubset(classified_ids):
-        return Abstained(
-            "archetype_disagreement",
-            f"OQ-3: the judge gate(s) {sorted(judge_ids - classified_ids)} were not classified — "
-            "the per-step cross-check is mandatory for the archetype oracle",
-        )
+    # OQ-3 (both granularities): the per-step gate_kinds are CHECKED when present — an
+    # AT2-only kind (security-meaningful), or a gate contradicting the archetype on a
+    # step_id the template names, abstains (:func:`_archetype_disagreement`). The
+    # whole-procedure LABEL is the primary driver and the template guarantees the generated
+    # skeleton's gate signature (AC-A8 is tested on the templates), so the cross-check never
+    # REQUIRES the model to echo the template's internal step_ids: a classification that
+    # uses its own step naming (as the live model does) or omits the per-step gates still
+    # proceeds on the label. (A mandate to name the template's exact judge step_id broke the
+    # live path — every real classification failed it — caught by the PR-B2 live run.)
     disagreement = _archetype_disagreement(classification, template)
     if disagreement is not None:
         return Abstained("archetype_disagreement", disagreement)
