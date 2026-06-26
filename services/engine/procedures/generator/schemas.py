@@ -1,8 +1,9 @@
 """The two narrow LLM-call schemas for the procedure generator (ADR-0024 D1;
 PLAN-0040 Phase B, Step B1).
 
-The generator makes **exactly two** narrow LLM calls (LOCKED-1 / D1), each emitting
-a small TYPED JSON object — never YAML, never structure:
+The generator makes **two** narrow LLM calls per successful run (LOCKED-1 / D1) — one
+classify + one prose (a repair retry adds further prose calls) — each emitting a small
+TYPED JSON object, never YAML, never structure:
 
 * **S1 classify** (:class:`Classification`) — the LLM SELECTS one archetype from the
   closed catalog enum (classify-don't-synthesize, ADR-0021): ``archetype_id`` is the

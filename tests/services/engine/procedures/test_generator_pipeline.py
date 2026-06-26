@@ -25,7 +25,7 @@ import json
 
 import pytest
 
-from services.engine.llm.client import ChatResult
+from services.engine.llm.client import ChatResult, OllamaError
 from services.engine.procedures.generator import (
     Abstained,
     GeneratedSkeleton,
@@ -329,3 +329,50 @@ async def test_build_skeleton_requires_a_proposed_match() -> None:
     judge = next(s for s in outcome.procedure.steps if s.kind is StepKind.EVALUATE)
     assert judge.facet is not None and judge.facet.decision_condition is not None
     assert judge.facet.decision_condition.gate_kind.value in {"in_file_band", "env_band"}
+
+
+# --- hardening: generator guards from the PR-B1 security/correctness audit -------
+
+
+class _UnreachableChatClient:
+    """A ChatClient whose every call raises a transport error (cold/unreachable MS-S1)."""
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        think: bool | None = None,
+        response_format: dict[str, object] | None = None,
+        temperature: float = 0.0,
+    ) -> ChatResult:
+        raise OllamaError("connection refused")
+
+
+async def test_empty_narrative_abstains_before_any_llm_call() -> None:
+    """A whitespace-only narrative abstains BEFORE any LLM call — no skeleton from nothing."""
+    client = RecordedChatClient([])
+    outcome = await classify_narrative(client, narrative="   \n\t  ", vertical=VERTICAL)
+    assert isinstance(outcome, Abstained)
+    assert outcome.reason == "empty_narrative"
+    assert client.calls == []  # the classify call was never made
+
+
+async def test_unreachable_llm_abstains_gracefully() -> None:
+    """A transport failure (cold/unreachable MS-S1) abstains, never escapes uncaught —
+    symmetric with the recommender / nl_query fail-safes."""
+    outcome = await classify_narrative(
+        _UnreachableChatClient(), narrative="watch and act", vertical=VERTICAL
+    )
+    assert isinstance(outcome, Abstained)
+    assert outcome.reason == "llm_unreachable"
+
+
+async def test_missing_judge_gate_cannot_skip_the_cross_check() -> None:
+    """OQ-3 mandate: a classification that OMITS the judge gate cannot skip the per-step
+    cross-check by emitting a short step_gates list — it abstains (AC-A8 must actually run)."""
+    client = RecordedChatClient(
+        [_classify("AT-1", gates=[("read", "none"), ("act", "none")])]  # judge gate omitted
+    )
+    outcome = await classify_narrative(client, narrative="watch and act", vertical=VERTICAL)
+    assert isinstance(outcome, Abstained)
+    assert outcome.reason == "archetype_disagreement"
