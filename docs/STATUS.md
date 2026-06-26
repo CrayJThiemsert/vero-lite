@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-26T15:07:23+07:00
-session: 80
-current_batch: 'session-80 — PLAN-0040 Phase A (the offline guardrail spine, zero-LLM) BUILT end-to-end (#444/#446/#447); ratified + committed earlier (#442). next = Phase B.'
+last_updated: 2026-06-26T17:30:28+07:00
+session: 81
+current_batch: 'session-81: PLAN-0040 Phase B offline pipeline (S0–S6 two-call generator) BUILT + merged (#449), then post-audit hardened (#450); Phase B offline complete. next = Phase C (offline gate UI) or AC-B4 live evidence (host-state).'
 current_actor: code
-blocked_on: "Nothing — PLAN-0040 Phase A (offline guardrail spine) complete + merged. Next = Phase B."
-next_action: "PLAN-0040 Phase B — the two-call LLM pipeline (S0–S6: classify → abstain-gate → template-instantiate → stub-stamp → prose-draft → assemble+validate) + the poisoned-narrative red-team (AC-B3, recorded fixture, offline) + MS-S1-local gpt-oss:20b integration (the live run is host-state — ASK Cray, CLAUDE.md §8). Per OQ-A A1, Phase A's offline gate is green so Phase B may start. loop-dispatcher stays DISABLED."
-head_commit: 42a0aa0
-recent_commits: [26b6240, 42a0aa0, 78f20a3, e2d4dc2, eb4f542, 6384dbf, b097bde, ee03425, aec56f3, 1650306]
+blocked_on: "Nothing — PLAN-0040 Phase B offline pipeline BUILT + hardened, all merged. Next = Phase C (offline) or AC-B4 live evidence (host-state, ASK Cray)."
+next_action: "Phase C edit-mode gate UI (offline-buildable, OQ-D D1) OR PR-B2 live MS-S1 evidence (host-state, ASK Cray, warm via warm.sh). loop-dispatcher stays DISABLED."
+head_commit: 8e11f82
+recent_commits: [8e11f82, 5166628, ee0ba91, 6c589a7, 002859e, 995580f, 31d375c, 834f5ea, 26b6240, 42a0aa0]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,56 @@ recent_commits: [26b6240, 42a0aa0, 78f20a3, e2d4dc2, eb4f542, 6384dbf, b097bde, 
 
 ## Current Focus
 
-> **Session 80 (current; head_commit `42a0aa0`) — **PLAN-0040 Phase A (the
+> **Session 81 (current; head_commit `8e11f82`) — **PLAN-0040 Phase B offline
+> pipeline (the S0–S6 two-call generator) BUILT + merged (#449), then post-audit
+> hardened (#450) — Phase B offline complete.** Phase A shipped the offline
+> guardrail spine (s80); s81 built the orchestration on top, fully offline.
+> **PR-B1 (#449, `002859e`)** = a new `services/engine/procedures/generator/`
+> package: `classify_narrative` (S0–S2 — classify to a closed archetype enum +
+> abstain-gate) + `build_skeleton` (S3–S6 — template-instantiate → stub-stamp via
+> `lift_to_step` → prose-draft → assemble + `parse_procedures` round-trip + a
+> capped validate→repair-retry→abstain loop) + `generate` (the explicit
+> human-confirm boundary). It **reuses Phase A wholesale** (registry/`instantiate`,
+> `lift_to_procedure`, `prose_lint`, `validate_governance_complete`) + the existing
+> `llm/` `ChatClient` seam — **NOT a new LLM client**, just orchestration glue +
+> two narrow typed-JSON schemas (classify + advisory-prose). Exercised **fully
+> offline** via a recorded-fixture ChatClient. The headline is the **AC-B3
+> poisoned-narrative red-team**: a narrative forcing "threshold 4.0 / auto-approve
+> ฿50k / handler wire_transfer" → those values appear **nowhere** (typed by
+> construction, prose via `prose_lint`), the lift carries them as ABSENT stubs, and
+> `validate_runnable` raises. 9 offline tests. **Two surfaced build decisions:**
+> abstain is a model-emitted enum LABEL (`"abstain"`), **NOT a confidence
+> threshold** — the route is deterministic on the label and confidence NEVER routes
+> (reconciles S2's "low-confidence→abstain" with LOCKED-5 / ADR-0019 / ADR-010
+> IN-3); and human-confirm is **STRUCTURALLY enforced** (`build_skeleton` only
+> accepts a confirmed `ProposedMatch`). `goal` stays `""` (OQ-B B2). `spec.py` +
+> `load_procedures` **UNTOUCHED**. **Post-audit hardening (#450, `ee0ba91` +
+> `5166628`)** — two specialist subagents (security + correctness, spawned under
+> Cray's new standing go-ahead to spawn specialist reviewers when it raises
+> quality) adversarially audited PR-B1. **The structural moat HELD** (a typed
+> governance value cannot reach a runnable field; a stub skeleton cannot run —
+> neither breachable); all findings were in `prose_lint` (the one denylist guard,
+> D3 mech 2) + three small generator robustness gaps. Hardened `prose_lint`:
+> NFKC-normalize + strip zero-width before scanning, single-digit + hyphen
+> integers, scientific/hex, spelled-out numbers, expanded approval verbs, and
+> `snake_case`/`UPPER_SNAKE`/`camelCase` identifiers + flexible-separator match for
+> registered handler names (so `OCT_RECOMMEND_THRESHOLD` and
+> `wire transfer`/`wireTransfer` are caught). Three generator guards: empty
+> narrative → abstain, transport `OllamaError` (cold MS-S1) → `Abstained
+> ("llm_unreachable")`, and the OQ-3 per-step cross-check made **non-skippable**
+> for the judge gate. The security specialist re-verified **twice** → verdict
+> **"prose-guard adequate"**; named residuals accepted as run-gate-backstopped
+> (roman-numeral tiers, non-English/Thai number-words, ambiguous verbs). Gate:
+> **299+ tests** (procedures + recommender + nl_query), ruff + mypy --strict clean.
+> **Net:** Phase B's **offline pipeline is complete + the moat guard hardened**.
+> Remaining: **AC-B4 live MS-S1 `gpt-oss:20b` evidence** (host-state — ASK Cray,
+> CLAUDE.md §8) and **Phase C** (the edit-mode gate UI, offline-buildable per
+> OQ-D D1). **Standing:** `loop-dispatcher` stays **DISABLED**; new standing
+> practice (s81) — spawn specialist reviewers proactively when it raises output
+> quality. AI-assisted (Claude Code, session 81); no `Co-Authored-By` per
+> CLAUDE.md §7.
+
+> **Session 80 (head_commit `42a0aa0`) — **PLAN-0040 Phase A (the
 > offline guardrail spine, zero-LLM) BUILT end-to-end (#444/#446/#447)** — the
 > ADR-0024 D8 generator arc, the edit-mode GENERATOR behind the human-review gate
 > (read-only 5-facet viewer shipped s79, PLAN-0039). PLAN-0040 was **Cowork-drafted
@@ -105,59 +154,16 @@ recent_commits: [26b6240, 42a0aa0, 78f20a3, e2d4dc2, eb4f542, 6384dbf, b097bde, 
 > Cowork dispatch). AI-assisted (Claude Code, session 79); no `Co-Authored-By` per
 > CLAUDE.md §7.
 
-> **Session 78 (head_commit `4e56d4b`) — **Stage 3 of the
-> generative-procedures arc KICKED OFF (ADR-016 Phase 2): two governance
-> artifacts, both Cowork-drafted (ADR-009 D1) → Code R2-reviewed → Cray-ratified
-> → committed (D2).** **(1) ADR-0024 — archetype-first procedure generator**
-> (ADR-016 Phase 2 / "Stage 3") — **Accepted, merged #434** (add `c90b2d2`),
-> **backed by a Code-run 5-specialist design panel** (LLM-pipeline · governance ·
-> schema · product-UX · red-team) + Cray's s78 scope calls. **Locked decisions
-> D1–D12:** generation = **archetype-first** (classify narrative → 1 of N
-> catalogued archetypes → deterministic-code instantiates the template → LLM
-> drafts only advisory prose; **exactly 2 narrow LLM calls**; classify-don't-
-> synthesize, ADR-0021); **"governed ≠ generated" re-fenced for the AUTHORING
-> surface + made MECHANICAL** — a **restricted draft type** with NO governance
-> fields (a leak = a type error) + a deterministic **prose-lint**; the generator
-> emits `gate_kind` (a closed-enum classification) but **never a
-> value/handler/threshold/tier/autonomy/env_var** (D4 sharp line); **abstain,
-> never force-fit** (D5); the **determinism invariant holds at the authoring
-> layer** (never route generation on LLM match-confidence); a skeleton is
-> **draft-loadable but NOT run-loadable** until a human authors the gates (D6);
-> **v1 = AT-1 family (AT-1/AT-1b/AT-3), AT-2 DEFERRED** (the only AT-2 =
-> `procurement.emergency_sourcing`, N=1 — the catalog is really **N≈2**; D7);
-> **one review surface** (the 5-facet viewer + the generator gate = read/edit
-> modes of ONE component, read-only viewer ships first; D8). The archetype
-> catalog must be promoted prose→machine-readable `ArchetypeTemplate` (D2, the
-> actual unblock). **9 Open Questions** all surfaced with a recommendation +
-> **Cray-ratified ACCEPTED** as standing guidance, each finalized at its
-> consuming PLAN. **(2) PLAN-0039 — read-only 5-facet procedure viewer**
-> (ADR-0024 D8 "viewer ships first") — **Ready, merged #435** (`edd28a6`)
-> together with **the ADR-0024 OQ-disposition errata** (`4e56d4b`). PLAN-0039 = a
-> **zero-LLM** view in the oct-demo console rendering **every shipped procedure
-> (5 across 4 verticals)** by its five facets per step, the authoritative-typed
-> band visually distinct from non-authoritative prose, served by a read-only
-> `GET /procedures`; built as the **read-mode of the ONE component PLAN-0040
-> extends to edit-mode** (de-risk seam = a `mode:read|edit` param + a pure
-> `facetModel(step)` provenance decomposition, AC-7). Cowork's fact-pack
-> **corrected the dispatch's "4 procedures" → 5** (procurement ships two) + flagged
-> **AT-2 is RENDERED here even though AT-2 *generation* is deferred (D7)**. **7
-> UI/endpoint OQs Cray-ratified ACCEPTED**. The **ADR-0024 OQ errata** (commit
-> `4e56d4b`) records, in the now-Accepted ADR's OQ section, the ratified
-> disposition Code could NOT inline — editing an Accepted ADR is **G1-gated** and
-> **in-context approval does NOT override the local-Ollama classifier**
-> (fail-closed deny; the chore-PR-via-Cowork path, the s77 precedent); **NO
-> decision changed** (D1–D12 byte-identical, diff-verified). **Governance/process
-> notes:** the G1 "edit an Accepted ADR" deny was re-confirmed fail-closed even
-> with explicit Cray per-diff approval → errata routed via Cowork (the sanctioned
-> editor), Code committed; PLAN-0039 + errata were **bundled into one PR / two
-> commits** (#435) — a Code-judgment bundle for worktree simplicity, separable in
-> history; **`loop-dispatcher` stays DISABLED** (keep-disabled + guard; Stop-hook
-> root-fix still the re-enable precondition); **no live MS-S1** — both artifacts
-> docs only (CLAUDE.md §8); pre-commit detect-secrets + handoff-validation green
-> on both PRs. **Forward:** **build PLAN-0039** (the read-only viewer — its
-> feature branch + PR), then **PLAN-0040** (the archetype generator, AT-1 family)
-> — its own Cowork dispatch (new PLAN = G2-gated). AI-assisted (Claude Code,
-> session 78); no `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note (session-81 reconcile, 2026-06-26): the **Session-78** Current
+> Focus block (Stage 3 of the generative-procedures arc KICKED OFF — ADR-0024
+> archetype-first generator ACCEPTED #434 + PLAN-0039 read-only 5-facet viewer
+> Ready #435 + the ADR-0024 OQ-disposition errata, head_commit `4e56d4b` — the
+> oldest in-window block) was rotated to hold the Current Focus window at the
+> **R2 4-session cap** (resulting window = {81, 80, 79}) and STATUS under the **R1
+> 64 KB hard ceiling** when the session-81 PLAN-0040 Phase-B block landed, moved
+> verbatim to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md), per
+> the STATUS.md Rotation Policy (R1/R2/R4)._
 
 > _Rotation note (session-80 reconcile #2, 2026-06-26): the **Session-77 (batch 3)**
 > Current Focus block (PLAN-0038 — the ADR-016 D2 Amendment implementation EXECUTED
