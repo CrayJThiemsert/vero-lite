@@ -14,6 +14,7 @@ from services.api.models.health import HealthResponse
 from services.api.routers.actions import router as actions_router
 from services.api.routers.admin import router as admin_router
 from services.api.routers.intake import router as intake_router
+from services.api.routers.procedures import router as procedures_router
 from services.api.routers.query import router as query_router
 from services.engine.discovery import discover_and_register
 from services.engine.registry import registry
@@ -69,6 +70,7 @@ app.include_router(actions_router)
 app.include_router(query_router)
 app.include_router(admin_router)
 app.include_router(intake_router)
+app.include_router(procedures_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["infrastructure"])
