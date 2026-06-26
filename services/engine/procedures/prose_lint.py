@@ -16,13 +16,18 @@ pure, offline-testable function. It is NOT run over hand-authored specs — a sh
 ``facet.governance`` note may legitimately say "HUMAN approves", which this would
 flag; that is fine, because the lint's scope is *generated* prose only.
 
-**Hardening (PR-B1 security audit).** The text is **canonicalised before scanning**
-(NFKC + zero-width strip) so display-equivalent obfuscations cannot evade the digit
-patterns — a fullwidth-digit decimal folds to ASCII ``4.0``, a zero-width-split number
-collapses. Coverage was widened to the bypass classes the audit found: single-digit
-and hyphen-adjacent integers, scientific / hex forms, **spelled-out** numbers
-("four point zero", "fifty thousand"), a fuller approval-verb set, and any
-``snake_case`` identifier (a handler/field binding never appears in natural prose).
+**Hardening (PR-B1 security audit + re-verify).** The text is **canonicalised before
+scanning** (NFKC + zero-width strip) so display-equivalent obfuscations cannot evade the
+digit patterns — a fullwidth-digit decimal folds to ASCII ``4.0``, a zero-width-split
+number collapses. Coverage was widened to the bypass classes the audit found:
+single-digit and hyphen-adjacent integers, scientific / hex forms, **spelled-out**
+numbers ("four point zero", "fifty thousand"), a fuller approval-verb set, and any
+``snake_case`` / ``UPPER_SNAKE`` / ``camelCase`` identifier (a handler / field / env-var
+binding never appears in natural prose). Registered handler names are matched in any
+separator spelling ("wire transfer" / "wire-transfer" / "wireTransfer"). Named residuals
+(run-gate-backstopped — none can make a skeleton runnable): roman-numeral tiers,
+non-English (e.g. Thai) spelled number-words, and ambiguous approval synonyms
+(clear / confirm / validate) too false-positive-prone to denylist.
 """
 
 from __future__ import annotations
@@ -83,10 +88,13 @@ _SPELLED_DECIMAL = re.compile(rf"\b(?:{_NUMWORD})\s+point\s+(?:{_NUMWORD})\b", r
 
 # --- identifiers ----------------------------------------------------------------
 
-# A snake_case token (lower, with an internal underscore) is a code identifier — a
-# handler / field binding — never natural advisory prose. Catches an invented handler
-# name (swift_payout) the registered-name check would miss.
-_SNAKE_CASE = re.compile(r"\b[a-z][a-z0-9]*(?:_[a-z0-9]+)+\b")
+# A snake_case token (with an internal underscore) is a code identifier — a handler /
+# field / env-var binding — never natural advisory prose. Case-INsensitive so an
+# UPPER_SNAKE env var (OCT_RECOMMEND_THRESHOLD — the literal env-band binding) is caught,
+# not just lower snake (wire_transfer). A camelCase token is the same kind of identifier
+# in a different spelling (swiftPayout); both catch an invented handler the registry misses.
+_SNAKE_CASE = re.compile(r"\b[A-Za-z][A-Za-z0-9]*(?:_[A-Za-z0-9]+)+\b")
+_CAMEL_CASE = re.compile(r"\b[a-z]+[A-Z][A-Za-z0-9]*\b")
 
 # --- decision verbs -------------------------------------------------------------
 
@@ -100,6 +108,7 @@ _DECISION_VERB = re.compile(
     r"ratif(?:y|ies|ied)|permit|permits|permitted|grant|grants|granted|"
     r"den(?:y|ies|ied)|reject|rejects|rejected|overrid(?:e|es|den|ing)|"
     r"waive|waives|waived|veto(?:es|ed)?|endors(?:e|es|ed|ing)|"
+    r"accept|accepts|accepted|decline|declines|declined|disapprove|disapproves|disapproved|"
     r"sanction|sanctions|sanctioned)\b",
     re.IGNORECASE,
 )
@@ -148,12 +157,17 @@ def _scan(text: str, table: Iterable[tuple[re.Pattern[str], str, str]]) -> list[
 
 
 def _handler_violations(text: str, handlers: frozenset[str]) -> list[Violation]:
-    """Registered-handler names (exact, for precise messaging) + any snake_case identifier
-    (the structural catch for an invented / cross-vertical handler the registry misses)."""
+    """Registered-handler names — matched in ANY separator spelling (wire_transfer also
+    catches 'wire transfer' / 'wire-transfer' / 'wireTransfer') — plus any snake_case /
+    UPPER_SNAKE / camelCase identifier (the structural catch for an invented handler or
+    env-var binding the registry misses)."""
     out: list[Violation] = []
-    reported: set[str] = set()
+    matched: set[str] = set()
     for handler in sorted(handlers):
-        if re.search(rf"\b{re.escape(handler)}\b", text):
+        # a registered name may surface with the separators rewritten (or removed); match
+        # all spellings so a known binding cannot be laundered past the exact-name check.
+        flexible = re.escape(handler).replace("_", r"[_\- ]?")
+        if re.search(rf"\b{flexible}\b", text, re.IGNORECASE) is not None:
             out.append(
                 Violation(
                     "handler",
@@ -161,15 +175,18 @@ def _handler_violations(text: str, handlers: frozenset[str]) -> list[Violation]:
                     f"the registered handler name '{handler}' is a human-authored binding",
                 )
             )
-            reported.add(handler)
-    for m in _SNAKE_CASE.finditer(text):
-        token = m.group()
-        if token not in reported:
+            matched.add(handler.lower())
+    for pattern in (_SNAKE_CASE, _CAMEL_CASE):
+        for m in pattern.finditer(text):
+            token = m.group()
+            if token.lower() in matched:
+                continue
+            matched.add(token.lower())
             out.append(
                 Violation(
                     "handler",
                     token,
-                    f"the snake_case identifier '{token}' (a handler/field binding) is authored",
+                    f"the identifier '{token}' (a handler/field binding) is human-authored",
                 )
             )
     return out

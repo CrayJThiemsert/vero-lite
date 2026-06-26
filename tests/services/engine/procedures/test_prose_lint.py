@@ -152,3 +152,41 @@ def test_lone_small_number_words_are_not_flagged(text: str) -> None:
     """A lone ones-word (one..ten) stays clean — only specific magnitudes (teens / tens /
     scales) and explicit decimals are values; flagging "two" everywhere would be unusable."""
     assert prose_lint(text) == []
+
+
+# --- re-verify round 2: the two HIGH gaps the second audit pass found ------------
+
+
+def test_flags_upper_snake_env_var_binding() -> None:
+    """An UPPER_SNAKE env-var binding (the literal env-band governance value a judge owes)
+    is caught — the case-insensitive snake_case rule (re-verify HIGH #1)."""
+    v = prose_lint("read the band from OCT_RECOMMEND_THRESHOLD at runtime")
+    assert any(x.kind == "handler" and x.match == "OCT_RECOMMEND_THRESHOLD" for x in v)
+
+
+@pytest.mark.parametrize(
+    "text, handlers",
+    [
+        ("dispatch via swiftPayout urgently", frozenset()),  # camelCase invented name
+        ("use the wire transfer handler", frozenset({"wire_transfer"})),  # spaced registered
+        ("use the wire-transfer handler", frozenset({"wire_transfer"})),  # kebab registered
+        ("use the WireTransfer handler", frozenset({"wire_transfer"})),  # Pascal registered
+    ],
+)
+def test_flags_non_underscore_handler_spellings(text: str, handlers: frozenset[str]) -> None:
+    """A handler named in camelCase / spaced / kebab / Pascal form is caught — the
+    camelCase structural rule + the flexible-separator registered match (re-verify HIGH #2)."""
+    assert any(v.kind == "handler" for v in prose_lint(text, handlers=handlers)), text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "the manager will accept the breach set",
+        "the desk may decline the request",
+        "operations disapprove the reorder list",
+    ],
+)
+def test_flags_more_approval_verbs(text: str) -> None:
+    """accept / decline / disapprove are approval decisions the LLM may not make."""
+    assert any(v.kind == "decision_verb" for v in prose_lint(text)), text
