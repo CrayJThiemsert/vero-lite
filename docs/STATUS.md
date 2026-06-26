@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-26T12:06:12+07:00
-session: 79
-current_batch: 'session-79 — PLAN-0039 (read-only 5-facet procedure viewer, ADR-0024 D8) BUILT end-to-end: backend GET /procedures #437 + frontend View F #440 (5 procedures across 4 verticals, typed-authoritative band visually distinct from prose, AC-7 edit-mode de-risk seam real). Plus harness sharpening: CLAUDE.md §6 "verification is hygiene, not a verdict" #438 + Lesson #0027 #439. loop-dispatcher stays DISABLED.'
+last_updated: 2026-06-26T13:27:22+07:00
+session: 80
+current_batch: 'session-80 — PLAN-0040 (ADR-0024 PLAN-β — the archetype-first procedure generator, AT-1 family v1) RATIFIED + COMMITTED (#442); the ADR-0024 D8 generator arc (the edit-mode behind the human-review gate, viewer shipped s79). Cowork-drafted → Code R2 → Cray-ratified all 5 residual forks. NOT yet implemented — awaiting Cray build go. loop-dispatcher stays DISABLED.'
 current_actor: code
-blocked_on: 'Nothing — PLAN-0039 viewer DONE; next is the PLAN-0040 Cowork dispatch (the archetype generator).'
-next_action: 'Dispatch PLAN-0040 — the archetype generator (AT-1 family; ArchetypeTemplate + 2-call pipeline + restricted draft type + prose-lint, ADR-0024 D1–D8) — a NEW PLAN = G2-gated → a Cowork dispatch (the arc has used the Cowork path). loop-dispatcher stays DISABLED until the Stop-hook root-fix lands.'
-head_commit: 3eaf881
-recent_commits: [c0dca0c, 3eaf881, f10e93c, 2981725, 9420edb, 975515e, 709a947, a8aee4a, a05d38c, 2118033]
+blocked_on: "Awaiting Cray's explicit build go for PLAN-0040 implementation (dispatch §7). PLAN-0040 ratified + committed (#442); not yet implemented."
+next_action: "On Cray's build go, implement PLAN-0040 Phase A — the offline guardrail spine (ArchetypeTemplate artifact + StepDraft/ProcedureDraft + lift + prose-lint + validate_governance_complete + the 3 D12 offline tests; all zero-LLM, moat-critical). Per OQ-A A1, Phase A's offline-gate slice must be green before Phase B. loop-dispatcher stays DISABLED until the Stop-hook root-fix lands."
+head_commit: 1650306
+recent_commits: [aec56f3, 1650306, e4259c8, 0bf3fb0, c0dca0c, 3eaf881, f10e93c, 2981725, 9420edb, 709a947]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,37 @@ recent_commits: [c0dca0c, 3eaf881, f10e93c, 2981725, 9420edb, 975515e, 709a947, 
 
 ## Current Focus
 
-> **Session 79 (current; head_commit `3eaf881`) — **PLAN-0039 — the read-only
+> **Session 80 (current; head_commit `1650306`) — **PLAN-0040 (ADR-0024 PLAN-β —
+> the archetype-first procedure generator, AT-1 family v1) RATIFIED + COMMITTED
+> (#442) — the ADR-0024 D8 generator arc; NOT yet implemented (awaiting Cray's
+> build go).** The read-only 5-facet viewer shipped s79 (PLAN-0039); **this is
+> the GENERATOR behind the human-review gate** — the edit-mode of the SAME one
+> component. **Cowork-drafted** (ADR-009 D1 interim per ADR-013) → **Code
+> R2-reviewed** (fact-pack verified against fresh on-disk evidence) →
+> **Cray-ratified all 5 residual build-level forks**; merged #442 (docs(plans),
+> `1650306`). **The 5 ratified dispositions:** **OQ-A → A1** = one PLAN, phases
+> A→B→C, with **Phase A (the offline guardrail spine, zero-LLM) independently
+> merged before B**; A2 (split into PLAN-0041) is the evidence-based fallback at
+> the Phase-A boundary. **OQ-B → B2** = defer the generated `goal` (a leak-class-3
+> runtime-prompt surface) until the edit-mode gate's elevated-scrutiny zone
+> ships; it rides with Phase C. **OQ-C → C1** = **drop the in-field sentinel** —
+> Code R2-verified it is incompatible with the typed `Step` schema
+> (`threshold: float|None` under `extra="forbid"`, `spec.py:247`; widening
+> `spec.py` is forbidden); the stub = the governance field absent (`None`) on the
+> lifted `Step` + a derived `governance_todo`, and `validate_governance_complete()`
+> re-derives the obligation set (**overrides ADR-0024 OQ-5's sentinel *lean*** — a
+> lean, not a D-decision). **OQ-D → D1** = defer the live MS-S1 intake face
+> (host-state); land the offline-exercised edit-mode gate in v1. **OQ-E** = the
+> three D12 offline tests are the gate; a live MS-S1 run is evidence (CLAUDE.md
+> §8). **Standing:** `loop-dispatcher` stays **DISABLED** (Stop-hook root-fix is
+> still the re-enable precondition). **Forward:** on Cray's explicit build go,
+> implement **PLAN-0040 Phase A — the offline guardrail spine** (the
+> `ArchetypeTemplate` artifact + `StepDraft`/`ProcedureDraft` + lift + prose-lint +
+> `validate_governance_complete` + the 3 D12 offline tests; all zero-LLM,
+> moat-critical), Phase A's offline-gate slice green before Phase B (OQ-A A1).
+> AI-assisted (Claude Code, session 80); no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 79 (head_commit `3eaf881`) — **PLAN-0039 — the read-only
 > 5-facet procedure viewer — BUILT end-to-end**, plus a harness/memory
 > sharpening pass.** **Arc B — PLAN-0039 (a ratified PLAN = coding, not
 > governance; Code-direct, per-step PRs off `main`, each Cray-merged, no
@@ -152,44 +182,15 @@ recent_commits: [c0dca0c, 3eaf881, f10e93c, 2981725, 9420edb, 975515e, 709a947, 
 > (5-facet render; unlocked now facets are machine-readable on real data). AI-assisted
 > (Claude Code, session 77); no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 77 (batch 2; head_commit `b2f19bc`) — **Stage 2 COMPLETE: the
-> ADR-016 D2 facet amendment landed (#428) + the follow-on impl PLAN-0038 minted
-> (#429).** **Step C = the ADR-016 D2 Amendment (a first-class typed `facet:` `Step`
-> field) ACCEPTED + merged** (#428, content `0b56954`) — promotes the **5-facet**
-> annotation from a YAML comment to a **first-class, typed, validated, optional
-> `facet:` field** on `Step`, completing **Stage 2** (the generalized-schema
-> extraction) of the generative-procedures arc. **Cowork-drafted** (ADR-009 D1) →
-> **Code R2-reviewed** (fact-pack verified vs the live repo: `gate_kind`↔N=4 band
-> split, `spec.py` `extra="forbid"` + typed fields, `procedures.yaml` engine-read not
-> codegen, validator dog-food 0 errors) → **Cray-ratified both forks** → committed
-> (D2). **Design (both Cray-ratified):** **Fork 1 = Hybrid** — `facet` carries only the
-> **net-new** `decision_condition` + `llm_assist` as *typed*, with
-> `input`/`output`/`governance` as **optional non-authoritative notes** (one source of
-> truth, no drift — `spec.py` already types 4/5 facets via PLAN-0022). **Fork 2 =
-> discriminated `gate_kind`** — an enum over **exactly the 6 N=4-observed kinds**
-> (`env_band` · `in_file_band` · `rule_gate` · `scored_rule` · `doa_tier` · `none`) +
-> `band_source`/`env_var`; `in_file_band` **points at the existing typed band** (no
-> re-store). **Governance-process note (worth recording):** the ratify status-flip
-> (Proposed→Accepted) was **G1-blocked for Code** — editing an **already-Accepted** ADR
-> is denied **even with explicit Cray per-diff approval + a warmed classifier**
-> (`gpt-oss:20b` warmed via `warm.sh` first ruled out a fail-closed infra deny → the
-> deny was **genuine policy**, distinct from the ratify-*transition* case s40/67 where
-> approval flips it). Resolution = the **chore-PR-with-rationale** path: **Cowork
-> applied the flip** (ungated), **Code committed**, Cray merged (= the G1 review);
-> [[project_g1_adr_gate_override_via_incontext_approval]] updated. **PLAN-0038 (the
-> follow-on implementation PLAN) MINTED Draft** (#429, content `b2f19bc`) —
-> **`plan-drafter`-authored** (ADR-013 D1) → **Code R2-reviewed** → committed. Scope:
-> the **`services/engine/procedures/spec.py` engine edit** (the typed `facet` field per
-> the amendment delta) + migrate the **4 verticals'** comment-facets → the real field +
-> load/validation tests — **the first deliberate `spec.py` edit since the procurement
-> vertical held zero-engine-edit (CQ-1)**, ADR-sanctioned. **Schema only** (the engine
-> still **ignores `facet`** at run time); **implements nothing on commit**; **3 OPEN
-> SDs** surfaced for Cray (note-migration / comment-removal / PR-granularity). Gate =
-> the offline suite (1651 baseline + new tests) + `mypy --strict`; no live MS-S1
-> (CLAUDE.md §8). **Forward:** Cray merges #429 + adjudicates SD-1/2/3 → execute
-> PLAN-0038 → then **Stage 3** (the procedure generator, Rule-of-Three-deferred) + a
-> schema-driven **review UI** (gated on this impl landing). AI-assisted (Claude Code,
-> session 77); no `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note (session-80 reconcile, 2026-06-26): the **Session-77 (batch 2)**
+> Current Focus block (Stage 2 COMPLETE — the ADR-016 D2 first-class typed `facet:`
+> amendment ACCEPTED #428 + the follow-on impl PLAN-0038 minted #429, head_commit
+> `b2f19bc` — the oldest in-window sub-block) was rotated to hold STATUS under the
+> **R1 64 KB hard ceiling** (R1 overrides the R2 4-session window) when the
+> session-80 PLAN-0040-generator block landed, moved verbatim to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md), per
+> the STATUS.md Rotation Policy (R1/R2/R4). Resulting window = {80, 79, 78, 77
+> (batch 3 = PLAN-0038 EXECUTED `777393c`)}._
 
 > _Rotation note (session-79 reconcile, 2026-06-26): the **Session-76** Current
 > Focus block (PLAN-0036 Fastenal procurement Stage-1 EXECUTED end-to-end + Done +

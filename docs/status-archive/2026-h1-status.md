@@ -12,6 +12,47 @@ rotations start here rather than appending. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-26 (session-80 reconcile): the **Session-77 (batch 2) `b2f19bc`** CF block (Stage 2 COMPLETE — the ADR-016 D2 typed-`facet:` amendment #428 + the follow-on impl PLAN-0038 minted #429) rotated under the **R1 64 KB hard ceiling** when the session-80 PLAN-0040-generator CF block landed. It was the genuine oldest in-window block; the **Session-78** block was kept in-window as session-80's direct predecessor (the ADR-0024 D1–D12 lock + the PLAN-0039 ratification PLAN-0040 builds on). Verbatim immediately below, before the session-79 addendum._
+
+> **Session 77 (batch 2; head_commit `b2f19bc`) — **Stage 2 COMPLETE: the
+> ADR-016 D2 facet amendment landed (#428) + the follow-on impl PLAN-0038 minted
+> (#429).** **Step C = the ADR-016 D2 Amendment (a first-class typed `facet:` `Step`
+> field) ACCEPTED + merged** (#428, content `0b56954`) — promotes the **5-facet**
+> annotation from a YAML comment to a **first-class, typed, validated, optional
+> `facet:` field** on `Step`, completing **Stage 2** (the generalized-schema
+> extraction) of the generative-procedures arc. **Cowork-drafted** (ADR-009 D1) →
+> **Code R2-reviewed** (fact-pack verified vs the live repo: `gate_kind`↔N=4 band
+> split, `spec.py` `extra="forbid"` + typed fields, `procedures.yaml` engine-read not
+> codegen, validator dog-food 0 errors) → **Cray-ratified both forks** → committed
+> (D2). **Design (both Cray-ratified):** **Fork 1 = Hybrid** — `facet` carries only the
+> **net-new** `decision_condition` + `llm_assist` as *typed*, with
+> `input`/`output`/`governance` as **optional non-authoritative notes** (one source of
+> truth, no drift — `spec.py` already types 4/5 facets via PLAN-0022). **Fork 2 =
+> discriminated `gate_kind`** — an enum over **exactly the 6 N=4-observed kinds**
+> (`env_band` · `in_file_band` · `rule_gate` · `scored_rule` · `doa_tier` · `none`) +
+> `band_source`/`env_var`; `in_file_band` **points at the existing typed band** (no
+> re-store). **Governance-process note (worth recording):** the ratify status-flip
+> (Proposed→Accepted) was **G1-blocked for Code** — editing an **already-Accepted** ADR
+> is denied **even with explicit Cray per-diff approval + a warmed classifier**
+> (`gpt-oss:20b` warmed via `warm.sh` first ruled out a fail-closed infra deny → the
+> deny was **genuine policy**, distinct from the ratify-*transition* case s40/67 where
+> approval flips it). Resolution = the **chore-PR-with-rationale** path: **Cowork
+> applied the flip** (ungated), **Code committed**, Cray merged (= the G1 review);
+> [[project_g1_adr_gate_override_via_incontext_approval]] updated. **PLAN-0038 (the
+> follow-on implementation PLAN) MINTED Draft** (#429, content `b2f19bc`) —
+> **`plan-drafter`-authored** (ADR-013 D1) → **Code R2-reviewed** → committed. Scope:
+> the **`services/engine/procedures/spec.py` engine edit** (the typed `facet` field per
+> the amendment delta) + migrate the **4 verticals'** comment-facets → the real field +
+> load/validation tests — **the first deliberate `spec.py` edit since the procurement
+> vertical held zero-engine-edit (CQ-1)**, ADR-sanctioned. **Schema only** (the engine
+> still **ignores `facet`** at run time); **implements nothing on commit**; **3 OPEN
+> SDs** surfaced for Cray (note-migration / comment-removal / PR-granularity). Gate =
+> the offline suite (1651 baseline + new tests) + `mypy --strict`; no live MS-S1
+> (CLAUDE.md §8). **Forward:** Cray merges #429 + adjudicates SD-1/2/3 → execute
+> PLAN-0038 → then **Stage 3** (the procedure generator, Rule-of-Three-deferred) + a
+> schema-driven **review UI** (gated on this impl landing). AI-assisted (Claude Code,
+> session 77); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-26 (session-79 reconcile): two blocks rotated under the **R1 64 KB hard ceiling** (R1 overrides the R2 4-session window) when the session-79 PLAN-0039-viewer block landed — the **Session-76 `081d650`** CF block (PLAN-0036 Fastenal procurement Stage-1 EXECUTED end-to-end + Done + archived `done/`) and the **Session-77 Stage-2-PREP `f029913`** sub-block (PLAN-0037 Stage-2 PREP + procedure-archetype catalog SHIPPED + archived `done/` + the `loop-dispatcher` keep-disabled decision; the oldest of session-77's three sub-blocks). Both verbatim below, newest first (Session-77 PREP, then Session-76)._
 
 > **Session 77 (head_commit `f029913`) — **Stage 2 PREP for the
