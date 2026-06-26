@@ -92,3 +92,63 @@ def test_shipped_llm_assist_prose_is_clean(vertical: str) -> None:
                     f"{vertical}/{step.step_id}: llm_assist tripped the lint: "
                     f"{step.facet.llm_assist!r}"
                 )
+
+
+# --- hardening: the bypass classes the PR-B1 security audit found are now closed --
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "set the operating band to " + chr(0xFF14) + chr(0xFF0E) + chr(0xFF10),  # C1 fullwidth
+        "the band sits at four point zero on the meter",  # C2 spelled-out decimal
+        "the ceiling is fifty thousand baht for this route",  # C2 spelled-out magnitude
+        "keep dissolved oxygen above 4 at all times",  # C3 single-digit threshold
+        "flag invoices over 50-baht each",  # C3 hyphen-adjacent integer
+        "set the band to 4​.​0 on a breach",  # M1 zero-width-split decimal
+        "the threshold is 4e0 units",  # M2 scientific notation
+        "the threshold is 0x32 on the meter",  # M2 hex
+        "drop candidates scoring below eighty percent",  # spelled-out percentage
+    ],
+)
+def test_flags_obfuscated_numeric_values(text: str) -> None:
+    """NFKC + zero-width strip + single-digit/hyphen + scientific/hex + spelled-out
+    numbers — none of these display-equivalent obfuscations evade the lint anymore."""
+    assert prose_lint(text), f"expected a violation for: {text!r}"
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "a supervisor will green-light each remediation",
+        "the shift lead must sign off on every breach",
+        "operations ratify the proposed reorder list",
+        "a manager may override the standing band",
+        "the desk can waive the hold for trusted vendors",
+        "the reviewer will grant or deny each request",
+    ],
+)
+def test_flags_expanded_decision_verbs(text: str) -> None:
+    """The approval verbs the original set missed (ratify/permit/grant/deny/override/
+    waive/sign-off/green-light) are caught — the LLM may only draft/summarise."""
+    assert any(v.kind == "decision_verb" for v in prose_lint(text)), text
+
+
+def test_flags_invented_snake_case_handler() -> None:
+    """A handler name NOT in the passed registry (invented or cross-vertical) is caught by
+    the snake_case structural rule — a code identifier never appears in advisory prose."""
+    v = prose_lint("dispatch via the swift_payout handler", handlers=frozenset())
+    assert any(x.kind == "handler" and x.match == "swift_payout" for x in v)
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "review each of the two proposed actions for the operator",
+        "propose one corrective action per breach (advisory)",
+    ],
+)
+def test_lone_small_number_words_are_not_flagged(text: str) -> None:
+    """A lone ones-word (one..ten) stays clean — only specific magnitudes (teens / tens /
+    scales) and explicit decimals are values; flagging "two" everywhere would be unusable."""
+    assert prose_lint(text) == []

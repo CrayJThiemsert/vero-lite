@@ -89,6 +89,16 @@ class VerticalRegistry:
             return []
         return sorted(entry.handlers)
 
+    def all_handler_names(self) -> list[str]:
+        """Return the sorted UNION of every handler name across all registered verticals.
+
+        Used by the procedure generator's prose-lint (PLAN-0040): a handler name is a
+        human-authored binding regardless of which vertical it belongs to, so a generated
+        prose string is scanned against the cross-vertical set, not just one vertical's.
+        Empty when nothing is registered (e.g. in a fresh test process).
+        """
+        return sorted({name for entry in self._verticals.values() for name in entry.handlers})
+
     def reset(self) -> None:
         """Drop all registrations — mandatory between tests (PLAN-0005 R5)."""
         self._verticals.clear()

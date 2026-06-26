@@ -1,8 +1,9 @@
 """The archetype-first procedure generator pipeline (ADR-0024 D1; PLAN-0040 Phase B,
 Steps B1/B2).
 
-Deterministic-code-DOMINANT orchestration of the seven stages with **exactly two**
-narrow LLM calls (LOCKED-1 / D1):
+Deterministic-code-DOMINANT orchestration of the seven stages with **two** narrow LLM
+calls per successful run — 1 classify + 1 prose (LOCKED-1 / D1); a repair retry adds
+further prose calls, never a second classify:
 
 * **S0 normalize** — trim the narrative.
 * **S1 classify** *(LLM)* — :func:`classify_narrative` selects one archetype from the
@@ -41,6 +42,7 @@ from typing import Any, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
+from services.engine.llm.client import OllamaError
 from services.engine.llm.structured import ChatClient
 from services.engine.procedures.archetypes.template import REGISTRY, ArchetypeTemplate, StepSlot
 from services.engine.procedures.draft import (
@@ -190,10 +192,17 @@ async def classify_narrative(
     branch here. Returns a :class:`ProposedMatch` (awaiting human confirm) or an
     :class:`Abstained`."""
     text = _normalize(narrative)
+    if not text:
+        return Abstained("empty_narrative", "no narrative text to classify — nothing to generate")
     catalog = [(t.archetype_id, t.title) for t in REGISTRY.values()]
     messages = build_classify_messages(text, vertical=vertical, catalog=catalog)
     # classify is a structuring call (format) → omit think (Ollama #15260 contract, ADR-001)
-    result = await client.chat(messages, response_format=classification_schema())
+    try:
+        result = await client.chat(messages, response_format=classification_schema())
+    except OllamaError as exc:
+        # a transport failure (most likely a cold/unreachable MS-S1) is NOT retried here —
+        # it abstains gracefully, symmetric with the recommender / nl_query fail-safes.
+        return Abstained("llm_unreachable", f"the classify call could not reach the LLM: {exc}")
     classification = _parse(result.content, Classification)
     if classification is None:
         return Abstained("classify_unparseable", "the classification response was not valid")
@@ -203,6 +212,17 @@ async def classify_narrative(
             f"classified '{classification.archetype_id}' — no catalogued archetype fits",
         )
     template = REGISTRY[classification.archetype_id]
+    # OQ-3 (both granularities): the per-step cross-check is MANDATORY for the load-bearing
+    # oracle — the judge gate must be classified, so the check cannot be skipped by emitting
+    # an empty step_gates list (the AC-A8 invariant must actually execute).
+    judge_ids = {slot.step_id for slot in template.slots if slot.kind is StepKind.EVALUATE}
+    classified_ids = {sg.step_id for sg in classification.step_gates}
+    if not judge_ids.issubset(classified_ids):
+        return Abstained(
+            "archetype_disagreement",
+            f"OQ-3: the judge gate(s) {sorted(judge_ids - classified_ids)} were not classified — "
+            "the per-step cross-check is mandatory for the archetype oracle",
+        )
     disagreement = _archetype_disagreement(classification, template)
     if disagreement is not None:
         return Abstained("archetype_disagreement", disagreement)
@@ -392,20 +412,25 @@ async def build_skeleton(
     """
     text = _normalize(narrative)
     template = match.template
-    lint_handlers = (
-        handlers if handlers is not None else frozenset(registry.handler_names(vertical))
-    )
+    # default the handler-name lint vocabulary to the ALL-vertical registered union (a
+    # handler registered in another vertical, or invented, is still a binding the model
+    # must not echo); the snake_case structural catch in prose_lint covers the rest.
+    lint_handlers = handlers if handlers is not None else frozenset(registry.all_handler_names())
     autonomies = _slot_autonomies(template)
     feedback: str | None = None
     last_detail = "no attempt was made"
 
     for attempt in range(1, max(1, retry_budget) + 1):
-        result = await client.chat(
-            build_prose_messages(
-                text, vertical=vertical, template=template, retry_feedback=feedback
-            ),
-            response_format=prose_schema(),
-        )
+        try:
+            result = await client.chat(
+                build_prose_messages(
+                    text, vertical=vertical, template=template, retry_feedback=feedback
+                ),
+                response_format=prose_schema(),
+            )
+        except OllamaError as exc:
+            # transport failure is not retried — abstain gracefully (cold/unreachable MS-S1)
+            return Abstained("llm_unreachable", f"the prose call could not reach the LLM: {exc}")
         prose = _parse(result.content, ProseResponse)
         if prose is None:
             last_detail = "the prose response was not valid JSON for the schema"
