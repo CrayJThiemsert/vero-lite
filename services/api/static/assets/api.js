@@ -62,8 +62,22 @@
     recommendations: () => request('GET', '/recommendations'),
     approve: (id) => request('POST', '/recommendations/' + encodeURIComponent(id) + '/approve'),
     execute: (id) => request('POST', '/recommendations/' + encodeURIComponent(id) + '/execute'),
-    query: (question) => request('POST', '/query', { question })
+    query: (question) => request('POST', '/query', { question }),
+    // PLAN-0039 (read-only procedure viewer): a DIRECT fetch with NO mock
+    // fallback. A mocked copy would drift from the live verticals/*/procedures.yaml
+    // the viewer is meant to render faithfully, so an honest "backend required"
+    // empty state offline is correct (the view shows errorState on failure).
+    procedures: () => fetchProcedures()
   };
+
+  async function fetchProcedures() {
+    const res = await fetch('/procedures');
+    const ct = res.headers.get('content-type') || '';
+    if (!res.ok || !ct.includes('json')) {
+      throw new Error('GET /procedures unavailable (' + res.status + ')');
+    }
+    return res.json();
+  }
 
   /* ---- LLM control (PLAN-0018): MS-S1 status + warm/sleep ----
      These talk to the REAL backend only — NO mock fallback. A mocked
