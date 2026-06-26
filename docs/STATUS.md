@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-25T19:49:36+07:00
-session: 78
-current_batch: 'session-78 — Stage 3 (generative-procedures, ADR-016 Phase 2) KICKED OFF: ADR-0024 (archetype-first procedure generator) Accepted #434 (panel-backed; D1–D12 + 9 OQs accepted); PLAN-0039 (read-only 5-facet viewer, ADR-0024 D8) Ready #435 + the ADR-0024 OQ errata (G1-routed via Cowork). Cowork-drafted → Code R2 → Cray-ratified → committed; docs only, no build yet.'
+last_updated: 2026-06-26T12:06:12+07:00
+session: 79
+current_batch: 'session-79 — PLAN-0039 (read-only 5-facet procedure viewer, ADR-0024 D8) BUILT end-to-end: backend GET /procedures #437 + frontend View F #440 (5 procedures across 4 verticals, typed-authoritative band visually distinct from prose, AC-7 edit-mode de-risk seam real). Plus harness sharpening: CLAUDE.md §6 "verification is hygiene, not a verdict" #438 + Lesson #0027 #439. loop-dispatcher stays DISABLED.'
 current_actor: code
-blocked_on: 'Nothing — ADR-0024 Accepted + PLAN-0039 Ready; next is building PLAN-0039 (the viewer), then dispatching PLAN-0040 (the generator).'
-next_action: 'Build PLAN-0039 (read-only 5-facet viewer, AC-1..10) on a feature branch + PR; then PLAN-0040 (the archetype generator, AT-1 family) via a new Cowork dispatch (G2-gated). loop-dispatcher stays DISABLED until the Stop-hook root-fix lands.'
-head_commit: 4e56d4b
-recent_commits: [97afbc5, 4e56d4b, edd28a6, ab770d2, c90b2d2, e8c217a, 82153f2, 777393c, bf7e858, b2f19bc]
+blocked_on: 'Nothing — PLAN-0039 viewer DONE; next is the PLAN-0040 Cowork dispatch (the archetype generator).'
+next_action: 'Dispatch PLAN-0040 — the archetype generator (AT-1 family; ArchetypeTemplate + 2-call pipeline + restricted draft type + prose-lint, ADR-0024 D1–D8) — a NEW PLAN = G2-gated → a Cowork dispatch (the arc has used the Cowork path). loop-dispatcher stays DISABLED until the Stop-hook root-fix lands.'
+head_commit: 3eaf881
+recent_commits: [c0dca0c, 3eaf881, f10e93c, 2981725, 9420edb, 975515e, 709a947, a8aee4a, a05d38c, 2118033]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,48 @@ recent_commits: [97afbc5, 4e56d4b, edd28a6, ab770d2, c90b2d2, e8c217a, 82153f2, 
 
 ## Current Focus
 
-> **Session 78 (current; head_commit `4e56d4b`) — **Stage 3 of the
+> **Session 79 (current; head_commit `3eaf881`) — **PLAN-0039 — the read-only
+> 5-facet procedure viewer — BUILT end-to-end**, plus a harness/memory
+> sharpening pass.** **Arc B — PLAN-0039 (a ratified PLAN = coding, not
+> governance; Code-direct, per-step PRs off `main`, each Cray-merged, no
+> self-merge):** **Step 1 backend `GET /procedures`** (#437, `a8aee4a`) loops
+> `registry.verticals()` (ADR-0023 discovery, **not** `OCT_VERTICAL`) →
+> `load_procedures` → **every shipped procedure (5 across 4 verticals)** annotated
+> with its catalog **archetype** via an explicit server-side `procedure_id→archetype`
+> map (OQ-5); read-only — no DB / no mutation / no LLM; `ProcedureView` **subclasses
+> the engine `Procedure`** so steps/facet/authored-band stay byte-for-byte the spec.
+> **Steps 2–4 frontend View F** (#440, `3eaf881`): new `view-procedures.js`
+> (`window.OCT.ViewProcedures = { mount, facetModel }`) — vertical selector →
+> procedure list → per-step **5-facet cards**, the **typed-authoritative band visually
+> distinct from advisory prose** (AC-4 via `pv-auth`/`pv-prose`/`pv-llm`) + an
+> archetype header (AC-9); `?v=` cache-bust bumped c13→c14. **The AC-7 de-risk seam
+> is real + load-bearing:** `facetModel(step)` is a PURE provenance decomposition
+> (`editable:false` throughout), **exported**, and the renderer is
+> `mode:'read'|'edit'`-parameterized → **PLAN-0040 grafts edit-mode onto the SAME
+> component, no rewrite.** **Verified (CLAUDE.md §8):** the offline `GET /procedures`
+> test is the **GATE** (all 5 procedures round-trip `load_procedures`, all six
+> `gate_kind`s present in real data, the typed band passes through); a **live preview
+> (`:8096`, zero-LLM, MS-S1 uninvoked) is the EVIDENCE** (the AT-2 7-step governance
+> ladder renders end-to-end; finding #5 = both the typed `Step.input` from/where AND
+> the prose `facet.input` are shown). PLAN-0039 is being `git mv`'d → `done/`.
+> **Arc A — harness/memory sharpening (Cowork-drafted [ADR-009 D1] → Code R2 →
+> Cray-ratified → committed [D2]; a constitutional edit routed via Cowork by
+> convention):** **CLAUDE.md §6 "Verification is hygiene, not a verdict"** (#438,
+> `709a947`) generalizes the §6 Mechanical-overlay principle (*structural, NOT a
+> quality judgment*) from Cowork-dispatch routing to the **Axis-B verify loop** — a
+> re-checked, evidence-backed prior is logged `confirmed — prior intact` (never a
+> defect); a recalled-artifact mismatch is **classified** `superseded by new info`
+> (evolution) vs `was an error` (fix); the duty to **refute the claim** is UNCHANGED
+> (no fresh evidence = INSUFFICIENT-EVIDENCE, never a pass — claim-refutation stays
+> fully adversarial); added with a §11 one-line pointer. **Lesson #0027** (#439,
+> `9420edb`) = the companion rationale + the claim↔decision worked example.
+> **Standing:** `loop-dispatcher` stays **DISABLED** (verified `enabled:false`; the
+> Stop-hook root-fix is still the re-enable precondition). **Forward:** dispatch
+> **PLAN-0040** (the archetype generator, AT-1 family — a NEW PLAN = G2-gated → a
+> Cowork dispatch). AI-assisted (Claude Code, session 79); no `Co-Authored-By` per
+> CLAUDE.md §7.
+
+> **Session 78 (head_commit `4e56d4b`) — **Stage 3 of the
 > generative-procedures arc KICKED OFF (ADR-016 Phase 2): two governance
 > artifacts, both Cowork-drafted (ADR-009 D1) → Code R2-reviewed → Cray-ratified
 > → committed (D2).** **(1) ADR-0024 — archetype-first procedure generator**
@@ -150,76 +191,17 @@ recent_commits: [97afbc5, 4e56d4b, edd28a6, ab770d2, c90b2d2, e8c217a, 82153f2, 
 > schema-driven **review UI** (gated on this impl landing). AI-assisted (Claude Code,
 > session 77); no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 77 (head_commit `f029913`) — **Stage 2 PREP for the
-> generative-procedures target (PLAN-0037) SHIPPED + archived to `done/`**, plus a
-> `loop-dispatcher` governance decision.** **PLAN-0037** was **`plan-drafter`-authored**
-> (the in-harness subagent, ADR-013 D1 phased authority) → **Code R2-reviewed +
-> committed** (#424, ADR-009 D2); **separation intact**. Cray chose the **formal-PLAN
-> route (ทาง 1)** over a no-PLAN proceed — to keep the PLAN archive as a cross-project
-> work-pattern substrate. **Step A (#425, content `31ded05`)** retrofits the SD-4
-> **5-facet** annotation (`input · decision-condition · llm-assist · output ·
-> governance`) as **YAML comment blocks** onto `energy`/`supply_chain`/`aquaculture`
-> `procedures.yaml`, mirroring the procurement template → consistent **N=4**
-> instrumentation (the Rule-of-Three substrate). **Provably inert:**
-> `services/engine/procedures/spec.py` `Step` declares `extra="forbid"` (so `facet:`
-> can only be a comment) and the loader uses `YAML(typ="safe")` (discards comments at
-> parse) → Step objects byte-identical, the static-JS demos untouched. Gate:
-> parse-clean for all 4 verticals (step counts unchanged 3/3/5/10); **66 insertions,
-> all comment lines, 0 deletion**; **full offline suite 1651 passed, 22 skipped**
-> (baseline); no live MS-S1 (CLAUDE.md §8). It captured the **env-vs-in-file judge-band
-> split** (energy/supply_chain author the band via `OCT_RECOMMEND_THRESHOLD`;
-> aquaculture/procurement author it in-file) as the load-bearing input to Step C.
-> **Step B (#426, content `c3b477a`)** is the **procedure-archetype catalog** at
-> `docs/conventions/procedure-archetypes.md`: **AT-1** `anomaly→action`, **AT-1b**
-> `watch+summary` variant, **AT-2** `request→approve→fulfill`, **AT-3**
-> `monitor→reorder` — the canonical reference the Step-C ADR + the Stage-3 generator
-> will cite. **Cray resolved the surfaced decisions:** SD-1 = one PR for the 3
-> verticals; SD-2 = Step B as a follow-on PR; SD-3 = catalog home `docs/conventions/`.
-> **`loop-dispatcher` decision (Cray, s77):** **keep-disabled + guard** (chosen over
-> fix-hook / delete); the structural root fix (a **Stop-hook exemption** so
-> scheduled-task sessions don't auto-continue) is **deferred and is the precondition
-> for any future re-enable**. The whole PLAN-0010 loop was dormant all session
-> (producer paused, inbox empty); no drift. **Out of scope (forward):** **Step C** (the
-> ADR-016 first-class `facet:` field — a separate **Cowork-drafted ADR**, G2-gated) and
-> **Stage 3** (the procedure generator — Rule-of-Three-deferred until the schema is
-> extracted). **Honesty notes:** an auto-handoff classifier dispatch **misrouted early**
-> (guessed "drafting a plan" while Code was still proposing the no-PLAN route) — Code
-> **overrode** per the clause, spawning `plan-drafter` only after Cray chose ทาง 1; a
-> transient `.git/index.lock` made Step A's first commit appear to fail (echoed exit
-> unreliable) — verified HEAD + re-committed `31ded05`; two harness-continuation
-> "proceed"s were flagged as **harness-not-Cray**. AI-assisted (Claude Code, session
-> 77); no `Co-Authored-By` per CLAUDE.md §7.
-
-> **Session 76 (head_commit `081d650`) — PLAN-0036 Stage 1 (the Fastenal
-> procurement vertical — vero-lite's 4th vertical) EXECUTED end-to-end and **Done +
-> archived to `done/`.**** All 8 Steps were hand-authored as a **pure-config plugin**
-> on the shipped ADR-016 engine + ADR-0023 auto-discovery, each a Cray-merged PR:
-> **#415** ontology + scaffold (12 object_types — Equipment/Plant base + 6
-> procurement extensions) · **#416** `procedures.yaml` (hero 7-step
-> `emergency_sourcing_round` + calm-path reorder, with the SD-4 **5-facet** comment
-> annotations) · **#417** handlers (no-op receipt stubs) · **#418** synthetic Tier-1
-> hero dataset (the ฿2.15M emergency-sourcing beat: on-contract vs RFQ→AVL exception,
-> DOA + emergency waiver, a cert-blocked compliance criterion) · **#419** demo UI (5
-> operator surfaces on the PLAN-0033 story overlay — worklist · timeline · approval
-> money-screen · graduation moment · monitoring dashboard — 3 visual registers,
-> Thai-localized) · **#421** offline governance + run tests (**full suite green, 1651
-> passed**). **CQ-1 zero-engine-edit held** — Steps 1–5/7 had literal 0 `services/`
-> diff; the Step-6 demo presentation under `services/api/static/` is the
-> **Cray-approved Option-A exception** ("zero *engine* edit"; the moat claim stands).
-> **Governed ≠ generated** is the through-line — the LLM drafts/summarises; rules +
-> humans select/threshold/approve (the dashboard's *"AI drafted N · 0
-> supplier-selections · 0 approvals"* makes it visible). The **offline suite was the
-> sole acceptance gate** (no live MS-S1 run; CLAUDE.md §8). The README facet map is
-> the **Stage-2 schema substrate** (the template-reuse-across-customers foundation
-> Cray asked to prepare). **Incident:** the hourly `loop-dispatcher` scheduled task
-> **drifted** past its heartbeat-drain scope (likely Stop-hook continuation),
-> committed a rival standalone Step-6 UI (`b635088`) onto the live session's branch
-> and **hijacked PR #420**; recovered by cherry-picking the clean test commit →
-> **#421** + closing #420, and **disabling `loop-dispatcher`** (Cray-authorized) —
-> see the private `loop-dispatcher-drift-hazard` memory. **Forward:** Stage 2
-> (extract the generalized procedure schema from the 5-facet maps) is the deliberate
-> next arc, not started. AI-assisted (Claude Code, session 76); no `Co-Authored-By`
-> per CLAUDE.md §7.
+> _Rotation note (session-79 reconcile, 2026-06-26): the **Session-76** Current
+> Focus block (PLAN-0036 Fastenal procurement Stage-1 EXECUTED end-to-end + Done +
+> archived `done/`, head_commit `081d650`) and the **Session-77 Stage-2-PREP**
+> sub-block (PLAN-0037 Stage-2 PREP + the procedure-archetype catalog SHIPPED +
+> archived `done/` + the `loop-dispatcher` keep-disabled decision, head_commit
+> `f029913` — the oldest of session-77's three sub-blocks) were rotated to hold
+> STATUS under the **R1 64 KB hard ceiling** (R1 overrides the R2 4-session
+> window) when the session-79 PLAN-0039-viewer block landed, both moved verbatim to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md), per
+> the STATUS.md Rotation Policy (R1/R2/R4). Resulting window ≈ {79, 78, 77 (the two
+> newer sub-blocks: Stage-2-COMPLETE `b2f19bc` + PLAN-0038 `777393c`)}._
 
 > _Rotation note (session-78 reconcile, 2026-06-25): the **Session-74** Current
 > Focus block (PLAN-0035 **Phase 2** advisory local-LLM-judge [ADR-0022 member
