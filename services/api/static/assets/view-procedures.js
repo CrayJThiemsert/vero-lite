@@ -141,12 +141,14 @@
   /* ---- shell ---- */
   function build() {
     root = h('div', { class: 'view-inner procview' });
+    const editing = state.mode === 'edit';
     root.appendChild(h('div', { class: 'view-head' }, [
       h('div', null, [
-        h('div', { class: 'eyebrow', style: { marginBottom: '4px' } }, 'View F · Procedures'),
-        h('h1', null, 'How a governed procedure decomposes')
+        h('div', { class: 'eyebrow', style: { marginBottom: '4px' } }, editing ? 'View F · Authoring gate' : 'View F · Procedures'),
+        h('h1', null, editing ? 'Author a generated procedure draft' : 'How a governed procedure decomposes')
       ]),
       h('div', { class: 'flex' }),
+      modeToggle(),
       legend(),
       h('button', { class: 'iconbtn', onClick: () => mount(root.parentElement, { mode: state.mode }) }, [icon('refresh'), 'Refresh'])
     ]));
@@ -167,6 +169,16 @@
       h('span', { class: 'pv-leg pv-prose' }, [h('span', { class: 'pv-swatch' }), 'prose · advisory note']),
       h('span', { class: 'pv-leg pv-llm' }, [h('span', { class: 'pv-swatch' }), 'llm · drafted'])
     ]);
+  }
+
+  // read ↔ authoring-gate toggle (PLAN-0040 C1). Edit-mode renders the offline
+  // generated draft (gate-fixture.js); read-mode fetches the live shipped procedures.
+  function modeToggle() {
+    const tab = (mode, label) => h('button', {
+      class: 'pv-modetab' + (state.mode === mode ? ' active' : ''),
+      onClick: () => { if (state.mode !== mode) mount(root.parentElement, { mode: mode }); }
+    }, label);
+    return h('div', { class: 'pv-modetoggle' }, [tab('read', 'Shipped'), tab('edit', 'Authoring gate')]);
   }
 
   /* ---- selection ---- */
@@ -354,6 +366,22 @@
         () => mount(container, opts)
       ));
     }
+  }
+
+  // edit-mode (PLAN-0040 C1): render the recorded generated draft from gate-fixture.js
+  // — OFFLINE, no fetch (OQ-D D1). Deep-clone so authoring edits never mutate the source.
+  function mountEdit() {
+    data = O.GateFixture ? JSON.parse(JSON.stringify(O.GateFixture)) : null;
+    if (!data || !Array.isArray(data.verticals) || !data.verticals.length) {
+      clear(bodyEl);
+      bodyEl.appendChild(O.errorState(
+        'No draft to author',
+        'the edit-mode gate fixture (gate-fixture.js) is unavailable.', null
+      ));
+      return;
+    }
+    initSelection();
+    render();
   }
 
   // exposed: `mount` (read by app.js). `facetModel` is exported so PLAN-0040's
