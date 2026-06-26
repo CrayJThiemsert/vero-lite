@@ -20,6 +20,62 @@ separate Current-Focus-only artifact. Tier-3: grep + windowed reads only.
 
 ## Rotated Current Focus blocks (rotated 2026-06-10)
 
+_Addendum — rotated 2026-06-26 (session-81 reconcile): the **Session-78 `4e56d4b`** CF block (Stage 3 of the generative-procedures arc KICKED OFF — ADR-0024 archetype-first generator ACCEPTED #434 + PLAN-0039 read-only 5-facet viewer Ready #435 + the OQ-disposition errata) rotated under the **R1 64 KB hard ceiling** when the session-81 Phase-B-BUILT update grew the Session 81 block. It was the genuine oldest in-window block; the in-window CF set is now {81, 80, 79}. Verbatim immediately below, before the session-80-reconcile Session-77 addendum._
+
+> **Session 78 (head_commit `4e56d4b`) — **Stage 3 of the
+> generative-procedures arc KICKED OFF (ADR-016 Phase 2): two governance
+> artifacts, both Cowork-drafted (ADR-009 D1) → Code R2-reviewed → Cray-ratified
+> → committed (D2).** **(1) ADR-0024 — archetype-first procedure generator**
+> (ADR-016 Phase 2 / "Stage 3") — **Accepted, merged #434** (add `c90b2d2`),
+> **backed by a Code-run 5-specialist design panel** (LLM-pipeline · governance ·
+> schema · product-UX · red-team) + Cray's s78 scope calls. **Locked decisions
+> D1–D12:** generation = **archetype-first** (classify narrative → 1 of N
+> catalogued archetypes → deterministic-code instantiates the template → LLM
+> drafts only advisory prose; **exactly 2 narrow LLM calls**; classify-don't-
+> synthesize, ADR-0021); **"governed ≠ generated" re-fenced for the AUTHORING
+> surface + made MECHANICAL** — a **restricted draft type** with NO governance
+> fields (a leak = a type error) + a deterministic **prose-lint**; the generator
+> emits `gate_kind` (a closed-enum classification) but **never a
+> value/handler/threshold/tier/autonomy/env_var** (D4 sharp line); **abstain,
+> never force-fit** (D5); the **determinism invariant holds at the authoring
+> layer** (never route generation on LLM match-confidence); a skeleton is
+> **draft-loadable but NOT run-loadable** until a human authors the gates (D6);
+> **v1 = AT-1 family (AT-1/AT-1b/AT-3), AT-2 DEFERRED** (the only AT-2 =
+> `procurement.emergency_sourcing`, N=1 — the catalog is really **N≈2**; D7);
+> **one review surface** (the 5-facet viewer + the generator gate = read/edit
+> modes of ONE component, read-only viewer ships first; D8). The archetype
+> catalog must be promoted prose→machine-readable `ArchetypeTemplate` (D2, the
+> actual unblock). **9 Open Questions** all surfaced with a recommendation +
+> **Cray-ratified ACCEPTED** as standing guidance, each finalized at its
+> consuming PLAN. **(2) PLAN-0039 — read-only 5-facet procedure viewer**
+> (ADR-0024 D8 "viewer ships first") — **Ready, merged #435** (`edd28a6`)
+> together with **the ADR-0024 OQ-disposition errata** (`4e56d4b`). PLAN-0039 = a
+> **zero-LLM** view in the oct-demo console rendering **every shipped procedure
+> (5 across 4 verticals)** by its five facets per step, the authoritative-typed
+> band visually distinct from non-authoritative prose, served by a read-only
+> `GET /procedures`; built as the **read-mode of the ONE component PLAN-0040
+> extends to edit-mode** (de-risk seam = a `mode:read|edit` param + a pure
+> `facetModel(step)` provenance decomposition, AC-7). Cowork's fact-pack
+> **corrected the dispatch's "4 procedures" → 5** (procurement ships two) + flagged
+> **AT-2 is RENDERED here even though AT-2 *generation* is deferred (D7)**. **7
+> UI/endpoint OQs Cray-ratified ACCEPTED**. The **ADR-0024 OQ errata** (commit
+> `4e56d4b`) records, in the now-Accepted ADR's OQ section, the ratified
+> disposition Code could NOT inline — editing an Accepted ADR is **G1-gated** and
+> **in-context approval does NOT override the local-Ollama classifier**
+> (fail-closed deny; the chore-PR-via-Cowork path, the s77 precedent); **NO
+> decision changed** (D1–D12 byte-identical, diff-verified). **Governance/process
+> notes:** the G1 "edit an Accepted ADR" deny was re-confirmed fail-closed even
+> with explicit Cray per-diff approval → errata routed via Cowork (the sanctioned
+> editor), Code committed; PLAN-0039 + errata were **bundled into one PR / two
+> commits** (#435) — a Code-judgment bundle for worktree simplicity, separable in
+> history; **`loop-dispatcher` stays DISABLED** (keep-disabled + guard; Stop-hook
+> root-fix still the re-enable precondition); **no live MS-S1** — both artifacts
+> docs only (CLAUDE.md §8); pre-commit detect-secrets + handoff-validation green
+> on both PRs. **Forward:** **build PLAN-0039** (the read-only viewer — its
+> feature branch + PR), then **PLAN-0040** (the archetype generator, AT-1 family)
+> — its own Cowork dispatch (new PLAN = G2-gated). AI-assisted (Claude Code,
+> session 78); no `Co-Authored-By` per CLAUDE.md §7.
+
 _Addendum — rotated 2026-06-26 (session-80 reconcile #2): the **Session-77 (batch 3) `777393c`** CF block (PLAN-0038 — the ADR-016 D2 typed-`facet:` field implementation EXECUTED end-to-end + Stage 2 complete) rotated under the **R1 64 KB hard ceiling** when the session-80 Phase-A-BUILT update grew the Session 80 block. It was the genuine oldest in-window block; the in-window CF set is now {80, 79, 78}. Verbatim immediately below, before the earlier session-80 (batch-2) addendum._
 
 > **Session 77 (batch 3; head_commit `777393c`) — **PLAN-0038 (the ADR-016
