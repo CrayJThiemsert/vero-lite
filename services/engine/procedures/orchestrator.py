@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
+from services.engine.procedures.draft import unfilled_governance
 from services.engine.procedures.runs import (
     PipelineRun,
     PipelineRunStatus,
@@ -125,6 +126,12 @@ def validate_runnable(procedure: Procedure, agent: Agent) -> None:
             f"procedure '{procedure.procedure_id}': trigger '{procedure.trigger.value}' is not "
             "runnable in Phase 1 — only 'manual' (schedule is a deferred PLAN-0010 reuse, L-1)"
         )
+    # ADR-0024 D6 / OQ-1: a generated skeleton LOADS (load_procedures = shape only)
+    # but must NOT RUN until a human authors its gates. Safe-defaults alone do not make
+    # a skeleton un-runnable — a stub action with handler=None passes the handler guard
+    # below, and autonomy defaults to `gated` so a stub LOOKS authored — so an explicit
+    # stub-rejecting check is required.
+    validate_governance_complete(procedure)
     allowed_kinds = set(agent.allowed.step_kinds)
     ceiling = _AUTONOMY_RANK[agent.autonomy_ceiling]
     seen_ids: set[str] = set()
@@ -155,6 +162,33 @@ def validate_runnable(procedure: Procedure, agent: Agent) -> None:
             raise ProcedureError(
                 f"step '{step.step_id}': handler '{step.handler}' is outside agent "
                 f"'{agent.agent_id}' allowed.action_handlers {agent.allowed.action_handlers}"
+            )
+
+
+def validate_governance_complete(procedure: Procedure) -> None:
+    """Raise :class:`ProcedureError` if any step carries an unfilled governance stub
+    (ADR-0024 D6 / OQ-1; PLAN-0040 Step A4).
+
+    The D6 two-state gate: a generated skeleton is **draft-loadable** (``load_procedures``
+    validates shape + cross-refs only) but must be **NOT run-loadable** until a human
+    authors the gates. Re-derives each step's obligation set from ``(gate_kind, kind)``
+    via :func:`unfilled_governance` — it does NOT trust a stored worklist — and raises
+    on the first step with an unfilled obligation (a ``handler`` on an ``action``; the
+    band value on a ``judge``). Closes the verified hole: a stub ``action`` with
+    ``handler=None`` passes the ``validate_runnable`` handler guard, and ``autonomy``
+    defaults to ``gated`` so a stub *looks* authored — safe-defaults alone do not make a
+    skeleton un-runnable. Invoked by :func:`validate_runnable`.
+
+    A complete (hand-authored) procedure raises nothing — every shipped vertical's
+    procedures pass unchanged (the generator-support layer adds a gate, not a new
+    constraint on authored specs)."""
+    for step in procedure.steps:
+        missing = unfilled_governance(step)
+        if missing:
+            raise ProcedureError(
+                f"step '{step.step_id}': unfilled governance stub(s) {missing} — a generated "
+                f"skeleton is draft-loadable but NOT run-loadable until a human authors the "
+                f"gates (ADR-0024 D6 / OQ-1)"
             )
 
 
