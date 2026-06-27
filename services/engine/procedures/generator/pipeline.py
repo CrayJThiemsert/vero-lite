@@ -361,12 +361,15 @@ def _step_expectation(step_kind: StepKind, gate_kind: GateKind) -> str:
     return "no gate expected"
 
 
-def _governance_todo(
-    procedure: Procedure, template: ArchetypeTemplate
-) -> dict[str, list[GovernanceStub]]:
+def build_governance_todo(procedure: Procedure) -> dict[str, list[GovernanceStub]]:
     """The "YOU must author" worklist (OQ-C / AC-A7), keyed by step_id. Derived from
     ``derive_governance_todo`` (the same re-derivation ``validate_governance_complete``
-    re-checks — never a trusted stored copy)."""
+    re-checks — never a trusted stored copy).
+
+    Public so the deterministic, zero-LLM instantiate path (the D9 manual-pick fallback,
+    ``POST /procedures/draft/instantiate``) builds the SAME worklist from a template-only
+    skeleton — one source of truth for the reasons/expectations, no drift from this
+    pipeline (the gate-fixture's verbatim copy is the only other mirror)."""
     todo: dict[str, list[GovernanceStub]] = {}
     for step in procedure.steps:
         fields = derive_governance_todo(step)
@@ -466,7 +469,7 @@ async def build_skeleton(
             agent_id=agent_id,
             procedure=procedure,
             document=document,
-            governance_todo=_governance_todo(procedure, template),
+            governance_todo=build_governance_todo(procedure),
             classification=match.classification,
             prose_attempts=attempt,
         )
