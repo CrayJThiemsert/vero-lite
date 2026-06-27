@@ -143,7 +143,7 @@
   // the LEGAL set from data.governance_options (the allowlist a human picks from, not a
   // recommendation): the dropdown answers "what is legal here", the human still authors.
   const FIELD_GUIDE = {
-    threshold: { type: 'float', source: 'from the safe-operating band' },
+    threshold: { type: 'float', source: 'read it off the asset’s operating spec — the safe-operating band' },
     direction: { type: 'enum', options: 'direction' },
     watch_margin: { type: 'float', source: 'optional — blank skips the early-warning watch' },
     handler: { type: 'enum', options: 'handler', source: 'a registered handler in the allowlist' },
@@ -303,7 +303,8 @@
         h('input', {
           class: 'pv-edit is-stub pv-goal-input',
           placeholder: 'author the runtime directive — describe intent, not thresholds or amounts',
-          value: proc.goal || ''
+          value: proc.goal || '',
+          'aria-label': 'procedure goal'
         }),
         h('div', { class: 'pv-fhint faint' }, 'the goal is the agent’s runtime instruction — a human authors it (governed ≠ generated)')
       ]));
@@ -413,14 +414,14 @@
     let control;
     if (guide.options) {
       const opts = govOptions(guide.options);
-      control = h('select', { class: 'pv-edit' + (fld.stub ? ' is-stub' : '') },
+      control = h('select', { class: 'pv-edit' + (fld.stub ? ' is-stub' : ''), 'aria-label': fld.label },
         (fld.stub ? [h('option', { value: '' }, 'choose…')] : []).concat(
           opts.map((o) => h('option', { value: o, selected: !fld.stub && String(fld.value) === o }, o))
         ));
     } else {
       control = fld.stub
-        ? h('input', { class: 'pv-edit is-stub', placeholder: 'author required', value: '' })
-        : h('input', { class: 'pv-edit', value: String(fld.value) });
+        ? h('input', { class: 'pv-edit is-stub', placeholder: 'author required', value: '', 'aria-label': fld.label })
+        : h('input', { class: 'pv-edit', value: String(fld.value), 'aria-label': fld.label });
     }
     const rows = [
       h('div', { class: 'pv-afield-head' }, [
