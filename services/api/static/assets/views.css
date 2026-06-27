@@ -594,6 +594,13 @@ select.pv-edit { height: 26px; cursor: pointer; }
 .pv-goal-head { display: flex; align-items: center; gap: 7px; font-size: 12px; color: var(--warn); margin-bottom: 6px; }
 .pv-goal-input { width: 100%; box-sizing: border-box; }
 
+/* the live completion gate (PLAN-0040 C3): a browser mirror of validate_governance_complete */
+.pv-gate-status { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 8px 12px; border-radius: 8px; margin-bottom: 12px; border: 1px solid var(--line); }
+.pv-gate-status.is-pending { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-line); }
+.pv-gate-status.is-ok { color: var(--ok); background: var(--ok-bg); border-color: var(--ok-line); }
+/* a required stub clears its dashed "unfilled" cue the moment it is authored (live) */
+.pv-edit.is-stub.is-filled { border-style: solid; border-color: var(--ok-line); }
+
 @media (max-width: 720px) {
   .pv-facet { grid-template-columns: 1fr; gap: 4px; }
   .pv-step-desc, .pv-facets { margin-left: 0; padding-left: 0; }

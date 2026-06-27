@@ -291,6 +291,10 @@
       h('span', { class: 'pv-trigger mono' }, [icon('play', { width: 12, height: 12 }), 'trigger: ' + (proc.trigger || 'manual')])
     ]));
 
+    // ---- gate status (edit-mode): a LIVE mirror of validate_governance_complete — how many
+    // required gates are still unauthored (the "don't pass too easily" affordance, C3) ----
+    if (state.mode === 'edit') card.appendChild(h('div', { class: 'pv-gate-status' }));
+
     // ---- goal + agent (the governance context) ----
     // edit-mode: the goal is the runtime LLM directive — a leak-class-3 G-field the human
     // authors behind an ELEVATED-scrutiny affordance (OQ-B B2: generated empty, not drafted).
@@ -332,7 +336,37 @@
       renderStep(facetModel(step, { mode: state.mode, todo: todoMap[step.step_id] }), i + 1, { mode: state.mode })
     ));
     card.appendChild(stepsWrap);
+    // wire the live completion gate (C3): recompute the banner + clear a stub's "unfilled"
+    // styling as each required gate is authored.
+    if (state.mode === 'edit') wireGateStatus(card);
     return card;
+  }
+
+  // the LIVE completion gate (PLAN-0040 C3): mirrors validate_governance_complete in the
+  // browser — counts the unauthored REQUIRED stubs (the gates that block the run), updates
+  // the banner, and clears a stub's dashed "unfilled" styling the moment it is authored.
+  // Review-only: no write-back, no submit endpoint (LOCKED-10) — it shows the verdict, it
+  // does not act on it. `required` = the surfaced stubs (threshold/direction/handler); the
+  // autonomy confirm defaults to gated and never blocks, mirroring unfilled_governance.
+  function wireGateStatus(card) {
+    const required = Array.from(card.querySelectorAll('.pv-edit[data-required]'));
+    const banner = card.querySelector('.pv-gate-status');
+    if (!banner) return;
+    const filled = (el) => String(el.value || '').trim() !== '';
+    function update() {
+      required.forEach((el) => el.classList.toggle('is-filled', filled(el)));
+      const done = required.filter(filled).length;
+      const total = required.length;
+      const ok = done === total;
+      banner.className = 'pv-gate-status ' + (ok ? 'is-ok' : 'is-pending');
+      clear(banner);
+      banner.appendChild(icon(ok ? 'check' : 'anomaly', { width: 14, height: 14 }));
+      banner.appendChild(h('span', null, ok
+        ? 'all ' + total + ' required gates authored — this draft would pass validate_governance_complete (review-only · no write-back)'
+        : done + ' of ' + total + ' required gates authored — ' + (total - done) + ' still unauthored; this draft would fail validate_governance_complete'));
+    }
+    required.forEach((el) => { el.addEventListener('input', update); el.addEventListener('change', update); });
+    update();
   }
 
   function renderStep(model, n, opts) {
@@ -414,13 +448,13 @@
     let control;
     if (guide.options) {
       const opts = govOptions(guide.options);
-      control = h('select', { class: 'pv-edit' + (fld.stub ? ' is-stub' : ''), 'aria-label': fld.label },
+      control = h('select', { class: 'pv-edit' + (fld.stub ? ' is-stub' : ''), 'aria-label': fld.label, 'data-required': fld.stub ? '1' : null },
         (fld.stub ? [h('option', { value: '' }, 'choose…')] : []).concat(
           opts.map((o) => h('option', { value: o, selected: !fld.stub && String(fld.value) === o }, o))
         ));
     } else {
       control = fld.stub
-        ? h('input', { class: 'pv-edit is-stub', placeholder: 'author required', value: '', 'aria-label': fld.label })
+        ? h('input', { class: 'pv-edit is-stub', placeholder: 'author required', value: '', 'aria-label': fld.label, 'data-required': '1' })
         : h('input', { class: 'pv-edit', value: String(fld.value), 'aria-label': fld.label });
     }
     const rows = [
