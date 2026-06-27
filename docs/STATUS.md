@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-27T08:53:45+07:00
-session: 82
-current_batch: 'session-82: PLAN-0040 Phase C (edit-mode authoring gate UI) COMPLETE — C1 seam+offline fixture (#453), C2 three guided zones (#454), C3 live completion gate (#455). PLAN-0040 (A+B+C) done, archived to done/.'
+last_updated: 2026-06-27T12:04:17+07:00
+session: 83
+current_batch: 'session-83: PLAN-0040 AC-B5 (the live MS-S1 single-shot intake face) shipped + live-verified across #457/#458/#459; PLAN-0040 (A+B+C + live intake) DONE 100%.'
 current_actor: code
-blocked_on: "Nothing — PLAN-0040 fully complete (Phase A+B+C) and archived to done/."
-next_action: "PLAN-0040 done. Remaining is host-state only: the live MS-S1 single-shot intake face (OQ-D D1 / AC-B5 live) — deferred, ASK Cray (CLAUDE.md §8). loop-dispatcher stays DISABLED."
-head_commit: d3c2279
-recent_commits: [d3c2279, 708d63c, 97b448a, 41f5bb0, 3347bd4, b5d6aaf, 9ee8bb9, 18ec771, dde0414, 738a44f]
+blocked_on: "Nothing — PLAN-0040 fully complete incl. the live intake face; live-verified."
+next_action: "PLAN-0040 done. Next forward = classify-prompt enrichment (richer catalog + gate_kind guidance to lift the live match-rate; does NOT touch the moat guard; G2 → Cowork) or the next PLAN. loop-dispatcher stays DISABLED."
+head_commit: ef46ea0
+recent_commits: [ef46ea0, 751c1e2, 0dd7693, 3a44e79, 0fd0489, 5c00a76, 99043b3, d3c2279, 708d63c, 97b448a]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,64 @@ recent_commits: [d3c2279, 708d63c, 97b448a, 41f5bb0, 3347bd4, b5d6aaf, 9ee8bb9, 
 ---
 
 ## Current Focus
+
+> **Session 83 (current; head_commit `ef46ea0`) — **PLAN-0040 AC-B5 (the live
+> MS-S1 single-shot INTAKE FACE) shipped + LIVE-VERIFIED — PLAN-0040 (A + B + C +
+> live intake) is now DONE 100%.** AC-B5 was the last remaining PLAN-0040 item
+> (LOCKED-9 / D9): narrative → classify → human-confirm → governed skeleton,
+> wired to the live MS-S1 `gpt-oss:20b` (local-only, CLAUDE.md §8). Built as
+> **three Code-direct per-step PRs off `main`, Cray merged each (no self-merge).**
+> **PR-1 server (#457, `0fd0489` merge; `99043b3`+`5c00a76`):** new
+> `services/api/routers/procedure_draft.py` + models —
+> `POST /procedures/draft/classify` (narrative → proposed archetype, **no
+> skeleton yet**, LOCKED-5; or abstain/degraded + a manual-pick catalog),
+> `/build` (human-CONFIRMED archetype → governed skeleton in the gate-render
+> envelope shape; **refuses unconfirmed / unknown-archetype 422**), and
+> `/instantiate` (the deterministic **ZERO-LLM** fallback — manual pick, D9
+> graceful degradation). Model pinned `gpt-oss:20b` + local-only;
+> `_governance_todo` refactored → public `build_governance_todo`. **Security
+> fold (`5c00a76`):** the classify rationale is now **`prose_lint`-gated** (was a
+> leak-class-1 gap — values could render beside the confirm decision) and the
+> degraded detail **no longer echoes the MS-S1 host/port**. Offline route tests
+> (recorded-fixture chat client, **zero host-state**). **PR-2 front-end (#458,
+> `0dd7693` merge; `3a44e79`):** new `intake-procedures.js` capture surface
+> (narrative → classify → confirm → build, with graceful degradation to
+> manual-pick / a recorded sample); `view-procedures.js` `mount` accepts
+> `opts.draft` and renders it via the **existing gate path** (edit-mode without a
+> draft delegates to capture — **no second renderer, LOCKED-8**); `api.js`
+> `O.Draft.{classify,build,instantiate}`; `index.html` `?v=` bump c19→c20.
+> **PR-3 prose fix found by the live run (#459, `ef46ea0` merge; `751c1e2`):**
+> `_build_procedure_draft` — when the prose step COUNT matches the template, fall
+> back to **POSITIONAL** pairing, because the **live model does NOT echo the
+> template's exact `step_id`s** in its prose, so descriptions were silently
+> dropping to `""`. Advisory-prose only; **governance untouched**; +1 offline
+> test. **Offline gate (the verdict):** `ruff` + `ruff-format` + `mypy --strict
+> services/` (64 files) clean; **`pytest` 1801 passed, 24 skipped.** **LIVE
+> (MS-S1 `gpt-oss:20b`, Cray-pre-approved host-state; Cray also hands-on verified
+> the full happy path in the UI):** **the moat HOLDS live (the point)** — a
+> poisoned narrative ("threshold 4.0 / above 80% / wire_transfer / automatically
+> / no human") → build → the forced values appear **NOWHERE** (leaked tokens
+> `[]`), every governance value ABSENT, `governance_todo` populated, the skeleton
+> **fails `validate_governance_complete`** (D6 two-state); **classify matches
+> live** for clear AT-1 / AT-3 narratives (conf 0.9–0.95), and the happy path
+> renders a draft whose advisory descriptions come from the live model
+> (value-free, lint-clean) with every governance value an unfilled stub + `goal`
+> empty (human-authored, OQ-B B2). **Live findings (honest):** (1) classify is
+> **non-deterministic** + the per-step AT-2 cross-check is strict →
+> **~1-in-3 false-abstain** on a textbook AT-1 narrative (the live model
+> occasionally mis-tags the judge step with an AT-2-only gate kind
+> `scored_rule`/`rule_gate`, which `_archetype_disagreement` correctly abstains
+> on — **never down-classify, LOCKED-7**). **Safe** (→ manual-pick), but lowers
+> the classify hit-rate; the per-step gate is a **SAFETY signal only — it never
+> builds** (the template dictates the gate), so the mis-tag never leaks (AT-1b
+> reaches the gate only via manual-pick). (2) The offline fixture (matching
+> step_ids) **masked** the prose step-id-rename gap — the live run was the
+> cheapest catch (consistent with the standing lesson). **Forward lever (NOT a
+> blocker):** classify-prompt enrichment (per-archetype catalog descriptions +
+> band-vs-scored_rule guidance) to lift the live match-rate **without relaxing
+> the AT-2 cross-check** (the moat); G2-gated → Cowork dispatch when scoped.
+> **Standing:** `loop-dispatcher` stays **DISABLED**. AI-assisted (Claude Code,
+> session 83); no `Co-Authored-By` per CLAUDE.md §7.
 
 > **Session 82 (current; head_commit `d3c2279`) — **PLAN-0040 Phase C (the
 > edit-mode authoring GATE UI) is COMPLETE — "governed ≠ generated" now has a
@@ -63,104 +121,16 @@ recent_commits: [d3c2279, 708d63c, 97b448a, 41f5bb0, 3347bd4, b5d6aaf, 9ee8bb9, 
 > `loop-dispatcher` stays **DISABLED**. AI-assisted (Claude Code, session 82);
 > no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 81 (head_commit `8e11f82`) — **PLAN-0040 Phase B offline
-> pipeline (the S0–S6 two-call generator) BUILT + merged (#449), then post-audit
-> hardened (#450) — Phase B offline complete.** Phase A shipped the offline
-> guardrail spine (s80); s81 built the orchestration on top, fully offline.
-> **PR-B1 (#449, `002859e`)** = a new `services/engine/procedures/generator/`
-> package: `classify_narrative` (S0–S2 — classify to a closed archetype enum +
-> abstain-gate) + `build_skeleton` (S3–S6 — template-instantiate → stub-stamp via
-> `lift_to_step` → prose-draft → assemble + `parse_procedures` round-trip + a
-> capped validate→repair-retry→abstain loop) + `generate` (the explicit
-> human-confirm boundary). It **reuses Phase A wholesale** (registry/`instantiate`,
-> `lift_to_procedure`, `prose_lint`, `validate_governance_complete`) + the existing
-> `llm/` `ChatClient` seam — **NOT a new LLM client**, just orchestration glue +
-> two narrow typed-JSON schemas (classify + advisory-prose). Exercised **fully
-> offline** via a recorded-fixture ChatClient. The headline is the **AC-B3
-> poisoned-narrative red-team**: a narrative forcing "threshold 4.0 / auto-approve
-> ฿50k / handler wire_transfer" → those values appear **nowhere** (typed by
-> construction, prose via `prose_lint`), the lift carries them as ABSENT stubs, and
-> `validate_runnable` raises. 9 offline tests. **Two surfaced build decisions:**
-> abstain is a model-emitted enum LABEL (`"abstain"`), **NOT a confidence
-> threshold** — the route is deterministic on the label and confidence NEVER routes
-> (reconciles S2's "low-confidence→abstain" with LOCKED-5 / ADR-0019 / ADR-010
-> IN-3); and human-confirm is **STRUCTURALLY enforced** (`build_skeleton` only
-> accepts a confirmed `ProposedMatch`). `goal` stays `""` (OQ-B B2). `spec.py` +
-> `load_procedures` **UNTOUCHED**. **Post-audit hardening (#450, `ee0ba91` +
-> `5166628`)** — two specialist subagents (security + correctness, spawned under
-> Cray's new standing go-ahead to spawn specialist reviewers when it raises
-> quality) adversarially audited PR-B1. **The structural moat HELD** (a typed
-> governance value cannot reach a runnable field; a stub skeleton cannot run —
-> neither breachable); all findings were in `prose_lint` (the one denylist guard,
-> D3 mech 2) + three small generator robustness gaps. Hardened `prose_lint`:
-> NFKC-normalize + strip zero-width before scanning, single-digit + hyphen
-> integers, scientific/hex, spelled-out numbers, expanded approval verbs, and
-> `snake_case`/`UPPER_SNAKE`/`camelCase` identifiers + flexible-separator match for
-> registered handler names (so `OCT_RECOMMEND_THRESHOLD` and
-> `wire transfer`/`wireTransfer` are caught). Three generator guards: empty
-> narrative → abstain, transport `OllamaError` (cold MS-S1) → `Abstained
-> ("llm_unreachable")`, and the OQ-3 per-step cross-check made **non-skippable**
-> for the judge gate. _(**Superseded by new info** (#452, `738a44f`, s82): the
-> OQ-3 mandate was relaxed to be **step_id-INDEPENDENT** — the live MS-S1 run
-> found it abstained on EVERY real classification because the model names steps
-> freely and the offline fixture had masked it; match by kind/shape, not internal
-> step_id. An evolution from live evidence, NOT an error — CLAUDE.md §6.)_ The security specialist re-verified **twice** → verdict
-> **"prose-guard adequate"**; named residuals accepted as run-gate-backstopped
-> (roman-numeral tiers, non-English/Thai number-words, ambiguous verbs). Gate:
-> **299+ tests** (procedures + recommender + nl_query), ruff + mypy --strict clean.
-> **Net:** Phase B's **offline pipeline is complete + the moat guard hardened**.
-> Remaining: **AC-B4 live MS-S1 `gpt-oss:20b` evidence** (host-state — ASK Cray,
-> CLAUDE.md §8) and **Phase C** (the edit-mode gate UI, offline-buildable per
-> OQ-D D1). **Standing:** `loop-dispatcher` stays **DISABLED**; new standing
-> practice (s81) — spawn specialist reviewers proactively when it raises output
-> quality. AI-assisted (Claude Code, session 81); no `Co-Authored-By` per
-> CLAUDE.md §7.
-
-> **Session 80 (head_commit `42a0aa0`) — **PLAN-0040 Phase A (the
-> offline guardrail spine, zero-LLM) BUILT end-to-end (#444/#446/#447)** — the
-> ADR-0024 D8 generator arc, the edit-mode GENERATOR behind the human-review gate
-> (read-only 5-facet viewer shipped s79, PLAN-0039). PLAN-0040 was **Cowork-drafted
-> → Code R2 → Cray-ratified all 5 residual forks**, merged #442 (docs(plans),
-> `1650306`); Phase A is now built as **three Code-direct per-step feat PRs**
-> (each Cray-merged, no self-merge), all offline-gated, with `spec.py` +
-> `load_procedures` **UNTOUCHED throughout**. **A1 (#444, `6384dbf`)** = the
-> `ArchetypeTemplate` artifact + the AT-1-family registry (AT-1 base; **AT-1b / AT-3
-> as variant deltas off the base**, D2) + `instantiate()` → a `load_procedures`-valid
-> skeleton with every human-author (H) value ABSENT (OQ-C C1, no in-field sentinel);
-> 16 tests (AC-A2 round-trip both band sources, AC-A8 archetype-agreement). **A2
-> (#446, `e2d4dc2`)** = `StepDraft`/`ProcedureDraft`/`AgentDraft` (restricted, **zero
-> governance fields → a leak is a TYPE ERROR**, D3) + `GOVERNANCE_FIELDS` +
-> `lift_to_step`/`lift_to_procedure` (inject H values as absent stubs) +
-> `derive_governance_todo` + **`validate_governance_complete`** (the run-gate
-> invoked by `validate_runnable` — closes the verified OQ-1 hole where a stub
-> `handler=None` slipped through; the **two-state D6 property**: draft-loadable but
-> NOT run-loadable); 19 tests (AC-A4 disjointness, A3 lift, A6 run-gate, A7 todo +
-> every shipped vertical stays governance-complete). **A3 (#447, `42a0aa0`)** = the
-> deterministic `prose_lint` (D3 mechanism 2: rejects numerics/currency/%/handler-names/
-> select-approve verbs in generated prose — closes prose-smuggling, leak class 1,
-> that `extra="forbid"` can't; identifier-aware so ADR-007/`gpt-oss:20b` don't
-> false-positive); 19 tests + a no-FP guard over every shipped `facet.llm_assist`.
-> **Net:** "governed ≠ generated" is now MECHANICAL — a leak is a type error OR a
-> lint failure; the three D12 offline mechanisms are green (structural disjointness,
-> archetype-agreement, governance-completeness); **full procedures suite green (187)**.
-> The 5 ratified PLAN dispositions remain: **OQ-A A1** = one PLAN A→B→C, Phase A
-> merged before B (now done); A2 (PLAN-0041) is the evidence-based fallback at the
-> Phase-A boundary. **OQ-B B2** = defer the generated `goal` (leak-class-3 runtime
-> surface) to the edit-mode gate's elevated-scrutiny zone, rides with Phase C.
-> **OQ-C C1** = drop the in-field sentinel (Code R2-verified incompatible with
-> `threshold: float|None` under `extra="forbid"`, `spec.py:247`; widening `spec.py`
-> forbidden) — stub = field absent (`None`) + derived `governance_todo`, re-checked
-> by `validate_governance_complete()` (**overrides ADR-0024 OQ-5's sentinel *lean***).
-> **OQ-D D1** = defer the live MS-S1 intake face (host-state); land the
-> offline-exercised gate in v1. **OQ-E** = the three D12 offline tests are the gate;
-> a live MS-S1 run is evidence (CLAUDE.md §8). **Standing:** `loop-dispatcher` stays
-> **DISABLED** (Stop-hook root-fix is the re-enable precondition). **Forward:**
-> **Phase B** — the two-call LLM pipeline (S0–S6: classify → abstain-gate →
-> template-instantiate → stub-stamp → prose-draft → assemble+validate) + the
-> poisoned-narrative red-team (AC-B3, recorded fixture, offline) + MS-S1-local
-> `gpt-oss:20b` integration (live run = host-state, ASK Cray). Phase A's offline gate
-> is green so Phase B may start (OQ-A A1).
-> AI-assisted (Claude Code, session 80); no `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note (session-83 reconcile, 2026-06-27): the **Session-81** Current
+> Focus block (PLAN-0040 Phase B offline pipeline [the S0–S6 two-call generator]
+> BUILT + merged #449 + post-audit hardened #450, head_commit `8e11f82`) and the
+> **Session-80** block (PLAN-0040 Phase A offline guardrail spine, zero-LLM, BUILT
+> end-to-end #444/#446/#447, head_commit `42a0aa0` — the oldest in-window block)
+> were rotated to hold STATUS under the **R1 64 KB hard ceiling** (the file was at
+> ~63 KB, near the ceiling) and back toward the soft ceiling when the session-83
+> PLAN-0040 AC-B5-LIVE block landed, both moved verbatim to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md), per
+> the STATUS.md Rotation Policy (R1/R2/R4). Resulting window = {83, 82}._
 
 > _Rotation note (session-82 reconcile, 2026-06-27): the **Session-79** Current
 > Focus block (PLAN-0039 — the read-only 5-facet procedure viewer — BUILT
@@ -202,130 +172,16 @@ recent_commits: [d3c2279, 708d63c, 97b448a, 41f5bb0, 3347bd4, b5d6aaf, 9ee8bb9, 
 > the STATUS.md Rotation Policy (R1/R2/R4). Resulting window = {80, 79, 78, 77
 > (batch 3 = PLAN-0038 EXECUTED `777393c`)}._
 
-> _Rotation note (session-79 reconcile, 2026-06-26): the **Session-76** Current
-> Focus block (PLAN-0036 Fastenal procurement Stage-1 EXECUTED end-to-end + Done +
-> archived `done/`, head_commit `081d650`) and the **Session-77 Stage-2-PREP**
-> sub-block (PLAN-0037 Stage-2 PREP + the procedure-archetype catalog SHIPPED +
-> archived `done/` + the `loop-dispatcher` keep-disabled decision, head_commit
-> `f029913` — the oldest of session-77's three sub-blocks) were rotated to hold
-> STATUS under the **R1 64 KB hard ceiling** (R1 overrides the R2 4-session
-> window) when the session-79 PLAN-0039-viewer block landed, both moved verbatim to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md), per
-> the STATUS.md Rotation Policy (R1/R2/R4). Resulting window ≈ {79, 78, 77 (the two
-> newer sub-blocks: Stage-2-COMPLETE `b2f19bc` + PLAN-0038 `777393c`)}._
-
-> _Rotation note (session-78 reconcile, 2026-06-25): the **Session-74** Current
-> Focus block (PLAN-0035 **Phase 2** advisory local-LLM-judge [ADR-0022 member
-> (b)] SHIPPED #407 → PLAN-0035 Complete + archived `805f5d2`) fell outside the
-> **4-newest-sessions window {78,77,76,75}** (R2), and the **Session-75** block
-> (PLAN-0036 Fastenal procurement Stage-1, drafted+merged Draft #412, head_commit
-> `7a7c036`) **also rotated to hold STATUS under the R1 64 KB hard ceiling** (R1
-> overrides the 4-session window) — both to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md),
-> along with the oldest Recent Decisions row (2026-06-21 Session-71 PLAN-0034
-> committed-as-DRAFT, `fda2557`), per the STATUS.md Rotation Policy (R1/R2/R4)._
-
-> _Rotation note (session-77 reconcile, 2026-06-25): both the **Session-73**
-> Current Focus block (PLAN-0035 A1 advanced END-TO-END — created → Phase 1 floor
-> SHIPPED → (c) governance + ADR-0022 amendment RATIFIED, #403/#404/#405,
-> head_commit `3625ea4`) and the **Session-72** block (PLAN-0034 G2
-> drafting-friction root-fix FULLY COMPLETE + archived, #399, head_commit
-> `72f0deb`) fell outside the **4-newest-sessions window {77,76,75,74}** after the
-> session-77 PLAN-0037 Stage-2-PREP block landed, and rotated to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md),
-> along with the oldest Recent Decisions row (2026-06-17 Session-67 Phase-1 PLAN
-> ratify-flip, `1cda40f`), per the STATUS.md Rotation Policy (R2/R4)._
-
-> _Rotation note (session-75 reconcile, 2026-06-24): both **Session-71**
-> Current Focus blocks — (1) **G2 root-fix PLAN-0034 RATIFIED +
-> core-IMPLEMENTED** (#396/#397, head_commit `c69b6e2`) and (2) **A2 CLOSED + G2
-> root-fix PLAN-0034 committed as DRAFT** (#394; + PLAN-0033 Phase C COMPLETE
-> #387 / Step-6 closeout) — fell outside the 4-newest-sessions window
-> {75,74,73,72} after the session-75 PLAN-0036 block landed, and rotated to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md),
-> per the STATUS.md Rotation Policy (R2/R4)._
-
-> _Rotation note (session-74 reconcile, 2026-06-23): the **Session-69**
-> Current Focus block (PLAN-0033 Phase C **C0 vertical slice** SHIPPED #385 —
-> the aquaculture story-mode, head_commit `0a32e67`) and all three
-> **Session-67** blocks (PHASE B COMPLETE: B2 registry auto-discovery #373,
-> head_commit `558ec29`; B1 ORM emitter #370, head_commit `7a59814`; PHASE B
-> KICKOFF: ADR-0023 + PLAN-0031/0032, head_commit `0593bc8`) fell outside the
-> 4-newest-sessions window {74,73,72,71} after the session-74 PLAN-0035 Phase-2
-> block landed, and rotated to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md),
-> along with the oldest Recent Decisions row (2026-06-16 PLAN-0027 B-γ
-> pre-registration LANDED, `ab0174a`), per the STATUS.md Rotation Policy
-> (R2/R4)._
-
-> _Rotation note (session-73 reconcile, 2026-06-22): the oldest **Session-67**
-> Current Focus block (PHASE A COMPLETE: ADR-0022 ratified + PLAN-0030 member
-> (a) verify+reshape's sibling — entity-resolution member (a) — SHIPPED #365,
-> head_commit `0b56fdf`) rotated to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) to
-> hold Current Focus at the 8-block cap after the session-73 PLAN-0035-created
-> block landed, per the STATUS.md Rotation Policy (R2/R4)._
-
-> _Rotation note (session-72 reconcile, 2026-06-22): the oldest **Session-67**
-> Current Focus block (PHASE A: ADR-0022 RATIFIED Accepted #361 + PLAN-0030
-> authored & committed #363, head_commit `1493196`) rotated to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) to
-> hold Current Focus at the 8-block cap after the session-72 PLAN-0034
-> fully-complete block landed, per the STATUS.md Rotation Policy (R2/R4)._
-
-> _Rotation note (session-71 reconcile, 2026-06-21): the **Session-66** Current
-> Focus block (PLAN-0028 Step 5 RAN + VERIFIED / PLAN-0029 whitespace calibration
-> minted + implemented / canonical B-γ numbers locked, head_commit `e5f9774`)
-> rotated to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) to
-> hold Current Focus at the 8-block cap after the session-71 PLAN-0034
-> ratify+impl block landed, per the STATUS.md Rotation Policy (R2/R4)._
-
-> _Rotation note (session-71 reconcile, 2026-06-20): the **Session-64** Current
-> Focus block (B-γ executed end-to-end: PLAN-0027 Steps 2–5 shipped / PLAN-0019
-> Step B-γ / AC B-3 = DONE, head_commit `0aee4eb`) fell outside the
-> 4-newest-sessions window {71,69,67,66} and rotated to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md),
-> along with the oldest Recent Decisions row (2026-06-14 PLAN-0023 PDPA RoPA-lite
-> SHIPPED, `afea6b3`), per the STATUS.md Rotation Policy (R2/R4)._
-
-> _Rotation note (session-69 reconcile, 2026-06-20): two Current Focus blocks
-> rotated to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) per
-> the STATUS.md Rotation Policy (R2/R4) — the **Session-63** block (B-γ kickoff:
-> PLAN-0027 pre-registration landed + Cray-ratified §3–§4, head_commit `ab0174a`;
-> session 63 fell outside the 4-newest-sessions window {69,67,66,64}) and the
-> oldest **Session-67** block (Phase 1 ratify-flips: PLAN-0028 + PLAN-0029 →
-> Accepted + archived, #357, head_commit `1cda40f`; rotated to hold Current Focus
-> at the 8-block cap) — along with the oldest Recent Decisions row (2026-06-13
-> ADR-0020 RATIFIED Proposed→Accepted, `4d1347b`)._
-
-> _Rotation note (session-67 reconcile, 2026-06-17): three Current Focus blocks
-> fell outside the 4-newest-sessions window {67,66,64,63} and rotated to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) —
-> both Session-62 blocks (second batch — harness-improvement "plan-first then
-> execute" distillation, head_commit `cf958d3`; first batch — PLAN-0026 AC-9
-> optional live MS-S1 re-verify PASS, head_commit `c16778d`) and the Session-61
-> block (PLAN-0026 COMPLETE: ADR-0021 authored→Accepted + Phase A `measured_kind`
-> shipped; PLAN-0026 archived to `done/`, head_commit `b53e631`) — along with the
-> oldest Recent Decisions row (2026-06-13 ADR-0020 committed Proposed #297,
-> `e25281d`), per the STATUS.md Rotation Policy (R2/R4)._
-
-> _Rotation note: this reconcile rotated both Session-58 Current Focus blocks
-> (third batch — NL-query feasibility spike / fork-resolution, head_commit
-> `987c2be`; second batch — two backlog quick-wins, head_commit `9595d3e`;
-> session 58 falls outside the 4-newest-sessions window {62,61,60,59}) plus the
-> oldest Recent Decisions row (2026-06-12 watch-lane ground truth PINNED,
-> `1bd6328`) to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md)
-> per the STATUS.md Rotation Policy (R2/R4)._
->
-> _Rotation note (session-64 reconcile): the Session-60 CF block
-> (PLAN-0026 authored+ratified+merged #321 / Phase B #322, head_commit `19eeb21`)
-> fell outside the 4-newest-sessions window {64,63,62,61} and rotated to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md),
-> along with the oldest Recent Decisions row (2026-06-12 B-6 hyphen-normalization
-> grader change, `2331ffb`), per the STATUS.md Rotation Policy (R2/R4)._
+> _Rotation-note ledger pruned (session-83 reconcile, 2026-06-27): the per-reconcile
+> rotation notes for the **session-79 reconcile and earlier** (sessions 64–79
+> reconciles, covering CF blocks/RD rows already archived for sessions ≤79) were
+> removed from this live file to hold STATUS under the **R1 64 KB hard ceiling** and
+> back toward the soft ceiling. They were pure archive-POINTER bookkeeping — the
+> session blocks/rows they reference already live verbatim in
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md) and in
+> git history (Tier 3), so no content was lost. The three most-recent reconcile notes
+> (session-80/81/82) are retained above for continuity; older notes remain in git
+> history per the STATUS.md Rotation Policy (R1/R4)._
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
 ## Prior focus (archived)
@@ -347,6 +203,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-27 | **PLAN-0040 AC-B5 (the live MS-S1 single-shot intake face) SHIPPED + LIVE-VERIFIED → PLAN-0040 (A+B+C + live intake) DONE 100% (session 83, #457/#458/#459)** — the last PLAN-0040 item (LOCKED-9 / D9): narrative → classify → human-confirm → governed skeleton on live MS-S1 `gpt-oss:20b` (local-only, §8). Three **Code-direct per-step PRs off `main`, Cray merged each (no self-merge)**. **#457 server (`0fd0489` merge):** `services/api/routers/procedure_draft.py` — `POST /procedures/draft/{classify,build,instantiate}` (classify = narrative→archetype, no skeleton, LOCKED-5; build = CONFIRMED archetype→governed skeleton, refuses unconfirmed/unknown 422; instantiate = ZERO-LLM manual-pick fallback, D9); model-pinned + local-only; `_governance_todo`→public `build_governance_todo`; **security fold `5c00a76`** = classify rationale now `prose_lint`-gated (was leak-class-1) + degraded detail no longer echoes MS-S1 host/port; offline route tests (recorded-fixture, zero host-state). **#458 front-end (`0dd7693` merge):** `intake-procedures.js` capture (classify→confirm→build + graceful degradation to manual-pick/sample); `view-procedures.js` `mount(opts.draft)` renders via the **existing gate path** (no second renderer, LOCKED-8); `api.js` `O.Draft.*`; `?v=` c19→c20. **#459 prose fix from the live run (`ef46ea0` merge, `751c1e2`):** `_build_procedure_draft` falls back to **POSITIONAL** step pairing when the count matches — the live model does NOT echo template `step_id`s so descriptions dropped to `""`; advisory-prose only, governance untouched, +1 test. **Gate:** ruff+ruff-format+`mypy --strict services/` (64 files) clean; **pytest 1801 passed/24 skipped.** **LIVE (Cray-pre-approved host-state + hands-on UI verify):** **moat HOLDS** — poisoned narrative → build → forced values NOWHERE (leaked `[]`), all governance ABSENT, fails `validate_governance_complete` (D6); classify matches live for clear AT-1/AT-3 (conf 0.9–0.95), happy path = value-free advisory prose + unfilled stubs + empty `goal` (OQ-B B2). **Live findings (honest):** classify is non-deterministic + the strict per-step AT-2 cross-check → ~1-in-3 false-abstain (mis-tag of the judge step with AT-2-only `scored_rule`/`rule_gate` → correct abstain, never down-classify, LOCKED-7; SAFETY signal only, never builds, never leaks); the offline fixture masked the prose step-id-rename gap (live = cheapest catch). NEXT lever = classify-prompt enrichment (G2-gated → Cowork), NO guard relax without data + ADR. `loop-dispatcher` stays DISABLED | `0fd0489` (#457) / `0dd7693` (#458) / `ef46ea0` (#459) / `services/api/routers/procedure_draft.py` + `services/api/static/assets/{intake-procedures,view-procedures,api}.js` |
 | 2026-06-25 | **Stage 3 KICKED OFF — ADR-0024 (archetype-first procedure generator) ACCEPTED #434 + PLAN-0039 (read-only 5-facet viewer) Ready #435 + the ADR-0024 OQ-disposition errata (session 78)** — opens Stage 3 of the generative-procedures arc (ADR-016 Phase 2). Both artifacts **Cowork-drafted (ADR-009 D1) → Code R2-reviewed → Cray-ratified → committed (D2)**. **ADR-0024 (#434, add `c90b2d2`):** archetype-first generation **backed by a Code-run 5-specialist design panel** (LLM-pipeline · governance · schema · product-UX · red-team). **D1–D12 locked:** classify narrative → 1 of N archetypes → deterministic-code instantiates → LLM drafts advisory prose only (**exactly 2 narrow LLM calls**, classify-don't-synthesize ADR-0021); **"governed ≠ generated" re-fenced at the AUTHORING surface + made MECHANICAL** = a **restricted draft type** with NO governance fields (leak = type error) + a deterministic prose-lint; generator emits `gate_kind` (closed-enum) but **never a value/handler/threshold/tier/autonomy/env_var** (D4); **abstain never force-fit** (D5); determinism invariant holds at the authoring layer; skeleton **draft-loadable but NOT run-loadable** until a human authors gates (D6); **v1 = AT-1 family (AT-1/AT-1b/AT-3), AT-2 DEFERRED** (only AT-2 = `procurement.emergency_sourcing`, N=1; catalog really N≈2; D7); **one review surface**, read-only viewer ships first (D8); the catalog promotes prose→machine-readable `ArchetypeTemplate` (D2). **9 OQs Cray-ratified ACCEPTED** as standing guidance. **PLAN-0039 (#435, `edd28a6`):** a **zero-LLM** oct-demo view rendering **every shipped procedure (5 across 4 verticals — Cowork corrected the dispatch's "4"→5, procurement ships two)** by its 5 facets per step, authoritative band visually distinct from prose, served by read-only `GET /procedures`; built as the **read-mode of the ONE component PLAN-0040 extends to edit-mode** (`mode:read|edit` + pure `facetModel(step)`, AC-7); **AT-2 RENDERED here though AT-2 generation is deferred (D7)**; **7 UI/endpoint OQs Cray-ratified ACCEPTED**. **ADR-0024 OQ errata (commit `4e56d4b`, bundled into #435):** records the ratified OQ disposition in the Accepted ADR's OQ section — Code could NOT inline it (editing an Accepted ADR is **G1-gated**; **in-context approval does NOT override the local-Ollama classifier**, fail-closed deny → routed via Cowork, the s77 chore-PR precedent); **NO decision changed (D1–D12 byte-identical, diff-verified)**. **Notes:** PLAN-0039 + errata bundled one PR / two commits (#435, Code-judgment, separable in history); **`loop-dispatcher` stays DISABLED**; **no live MS-S1** (docs only, §8); pre-commit detect-secrets + handoff-validation green. NEXT = build PLAN-0039 (the viewer) then dispatch PLAN-0040 (the generator, AT-1 family, G2-gated) | `c90b2d2` (#434) / `edd28a6` + `4e56d4b` (#435) / `docs/adr/0024-procedure-generator.md` + `docs/plans/0039-readonly-facet-viewer.md` |
 | 2026-06-25 | **PLAN-0038 (ADR-016 D2 Amendment implementation) EXECUTED end-to-end → Complete + archived; Stage 2 (generalized-schema extraction) now COMPLETE on real data (session 77, batch 3, #431/#432)** — completes Stage 2 of the generative-procedures arc, now proven on real data not just the model. **Step A (PR-1, #431, feat `bf7e858`):** the `services/engine/procedures/spec.py` engine edit — the typed `facet` sub-model per the amendment delta (`BandSource`/`GateKind` (6 kinds)/`DecisionCondition` w/ `band_source⇔gate_kind` + `env_var`-only-with-`env` validator/`StepFacet`/`Step.facet`), keeping `extra="forbid"` (facet now a KNOWN key) — the **first deliberate `spec.py` edit since procurement's zero-engine-edit (CQ-1)**, ADR-sanctioned; schema-level facet tests landed here (suite 1669 passed). **Step B (PR-2, #432, feat `777393c`, merge `42a8327`):** migrate the **4 verticals'** comment-facets → the real typed `facet:` field — **config + tests only, no `services/` edit**; +19 end-to-end migration round-trip tests. **SDs (Cray-resolved):** SD-1=(a) populate all 5 facets (`decision_condition`+`llm_assist` typed; `input`/`output`/`governance` str notes from the comment prose); SD-2=(a) remove the comment blocks (single carrier, grep confirms 0 leftover `# facet[`); SD-3=(b) split A/B PRs. **D2-A3 `gate_kind` mapping:** energy/supply_chain `judge`→`env_band` (`OCT_RECOMMEND_THRESHOLD`); aquaculture/procurement `judge`+`judge_stock`→`in_file_band` (points at the typed `threshold`/`direction`/`watch_margin`, no re-store — AC-6); procurement `compliance`→`rule_gate`, `source`→`scored_rule`, `approve`→`doa_tier`; reads/mechanical writes/audit terminals/simple gated actions→`none` (incl. `escalate_watch`=`none`+`decision_condition.note`, Cray-endorsed). Updated the stale "facets are comment-only" framing in `verticals/procurement/README.md` + the procurement `procedures.yaml` header. **`facet` stays non-authoritative** — engine reads but does NOT consume it at run time (D2-A4; grep = 0 `.facet` reads in `services/`). Gates: full offline suite **1688 passed/22 skipped** (1669 baseline + 19 new), ruff + ruff-format clean, mypy --strict `services/` clean, no live MS-S1 (§8 — pure schema/config). `loop-dispatcher` still DISABLED all session (Stop-hook root-fix deferred = precondition for re-enable). PLAN-0038 `git mv` → `done/`. NEXT = Stage 3 (the procedure generator, ADR-016 Phase 2, Rule-of-Three-deferred) + a schema-driven 5-facet review UI | `bf7e858` (#431) / `777393c` (#432) / `services/engine/procedures/spec.py` + `verticals/{energy,supply_chain,aquaculture,procurement}/procedures.yaml` + `docs/plans/done/0038-*.md` |
 | 2026-06-25 | **Stage 2 COMPLETE — ADR-016 D2 Amendment (first-class typed `facet:` Step field) ACCEPTED + merged (#428) + PLAN-0038 impl PLAN minted (#429) (session 77, batch 2)** — Step C promotes the 5-facet annotation from a YAML comment to a **first-class, typed, validated, optional `facet:` field** on `Step`, completing Stage 2 (generalized-schema extraction). **Cowork-drafted** (ADR-009 D1) → Code R2-reviewed (gate_kind↔N=4 split, `spec.py extra="forbid"`+typed fields, `procedures.yaml` engine-read, validator dog-food 0 errors) → **Cray-ratified both forks** → committed (D2). **Fork 1 = Hybrid** (`facet` carries net-new `decision_condition`+`llm_assist` typed; `input`/`output`/`governance` optional non-authoritative notes — one source of truth, `spec.py` already types 4/5 via PLAN-0022). **Fork 2 = discriminated `gate_kind`** (enum over the 6 N=4 kinds `env_band`/`in_file_band`/`rule_gate`/`scored_rule`/`doa_tier`/`none` + `band_source`/`env_var`; `in_file_band` points at the existing typed band, no re-store). **Process note:** the ratify status-flip (Proposed→Accepted) was **G1-blocked for Code** — editing an already-Accepted ADR is denied **even with Cray per-diff approval + a warmed `gpt-oss:20b` classifier** (genuine policy, not a fail-closed infra deny; distinct from the ratify-transition case s40/67) → resolution = chore-PR path: **Cowork applied the flip** (ungated), Code committed, Cray merged (= the G1 review); [[project_g1_adr_gate_override_via_incontext_approval]] updated. **PLAN-0038 MINTED Draft** (#429, `b2f19bc`) — **`plan-drafter`-authored** (ADR-013 D1) → Code R2-reviewed → committed. Scope: the `services/engine/procedures/spec.py` engine edit (typed `facet` per the delta) + migrate the 4 verticals' comment-facets → the real field + load/validation tests — the **first deliberate `spec.py` edit since procurement's zero-engine-edit (CQ-1)**, ADR-sanctioned. **Schema only** (engine still ignores `facet` at run time); **implements nothing on commit**; **3 OPEN SDs** (note-migration / comment-removal / PR-granularity). Gate = offline suite (1651 baseline + new tests) + `mypy --strict`; no live MS-S1. NEXT = Cray merges #429 + adjudicates SD-1/2/3 → execute PLAN-0038 → Stage 3 generator + review UI | `0b56954` (#428) / `b2f19bc` (#429) / `docs/adr/0016-governed-procedure-engine.md` + `docs/plans/0038-*.md` |
@@ -356,7 +213,6 @@ below, and git history.
 | 2026-06-23 | **PLAN-0035 (A1 = ADR-0022 member (b) verify+reshape) advanced END-TO-END — SD-1 = (c) Hybrid phased; Phase 1 floor SHIPPED; (c) governance + amendment RATIFIED (session 73 cont., #403/#404/#405)** — **SD-1 adjudicated by Cray = (c) Hybrid, phased** (deterministic floor + advisory local-LLM-judge; constraint ② advisory-only, ③ deterministic compare), superseding the Cowork (a)-lean. **Phase 1 = deterministic verify+reshape floor SHIPPED** (#403, feat `1c34125`): new `services/engine/action_verification.py` at the `recommender._compose_llm_record` seam, reshaping the 5 §B-3 "assessment-prose" cases (`aqua-007/014/028/h03/h06`); the 2 genuine wrong-action cases (`aqua-017/h05`) stay wrong (AC-5 — wrong handler NOT rescued); D-6 offline guard held; **1629 passed/22 skipped**, ruff + mypy --strict clean, offline. **The (c) governance landed** (#404): an **ADR-0022 amendment** (member (b) verify = hybrid; 7 constraints incl. the local-LLM pin + D-6; scope = member-(b) mechanism only, F1/F2/F3 + D3-α untouched) + a **PLAN-0035 revision** (SD-1…SD-5 stamped, Goal/Steps restructured Phase 1/Phase 2, path-fix `structured.py`→`llm/structured.py`). **The amendment was RATIFIED** (#405, `3625ea4`; SD-A1 = (i) inline, Cray-selected). **Phase 2 (advisory local-LLM-judge, Steps 8–12) now UNBLOCKED + NEXT** — NOT marked done. Operational detour (no artifact): the G1/G2 classifier backend is local Ollama (MS-S1 `gpt-oss:20b`) since 2026-06-12, G1 is always-pause for Code (warm-confirmed → Accepted-ADR edits route to Cowork), and a keep-alive cron (every 3h) was installed to keep `gpt-oss:20b` warm | `3625ea4` (#405) / `1c34125` (#403) / `47e154b`+`17f5d6e` (#404) / `services/engine/action_verification.py` + `docs/adr/0022-*.md` + `docs/plans/0035-*.md` |
 | 2026-06-22 | **PLAN-0035 (Group-A A1 = ADR-0022 member (b) verify+reshape build) CREATED + merged DRAFT (session 73)** — Cowork-drafted (ADR-009 D1) via the s72 `0223` dispatch (the proven Cowork-dispatch route, NOT the now-unblocked in-harness `plan-drafter` — Cray's call); Code independent-reviewed (faithful to LOCKED facts; spot-checked the `recommender.py:202` `_compose_llm_record` seam — Cowork had caught the post-member-(a) #365 line-number shift and re-verified) + committed `4eb2539` (#401, Cray-merged, D2). A **build PLAN, not a new ADR** (ADR-0022 Accepted, D3-α houses member (b); mirrors PLAN-0030 = member (a)). Scope = recommend-time LLM-path verify+reshape for the **5 §B-3 "assessment-prose" cases** (`aqua-007/014/028/h03/h06`, correct `suggested_handler`, prose omits the verb); the **2 genuine wrong-action cases** (`aqua-017/h05`) stay wrong (AC-5 anti-regression). **Implements nothing on commit** (every AC `[impl]`); **5 SDs surfaced** for Cray (SD-1 verify mechanism … SD-5 moat-framing guard) — SD-1 is the load-bearing gate. A1 TODO updated (PLAN drafted+merged Draft; NOT done) | `4eb2539` (#401) / `docs/plans/0035-*.md` |
 | 2026-06-22 | **PLAN-0034 (G2 drafting-friction root-fix) FULLY COMPLETE (session 72)** — Step-5 prong-2 scope annotation Cowork-drafted (ADR-009 D1, K-1/K-2 scratchpad; Code declined the Stop-hook Code-direct override, applied byte-identical edits) + merged #399 (`0f56d24`/`5daa0e0`) into `.claude/autonomy-triggers.md`; PLAN flipped Ready→Complete + `git mv` to `done/` (`72f0deb`). SD-3 = (a) PLAN-only, **no ADR amendment**. Optional live gold re-score (prong-1 behavioral proof) remains Cray-gated host-state — **NOT** an acceptance gate (offline gate, green at #397, is the sole acceptance condition). Group-A: A2 ✅ → G2 ✅ → A1 next | `0f56d24`/`5daa0e0` (#399) + `72f0deb` / `.claude/autonomy-triggers.md` + `docs/plans/done/0034-*.md` |
-| 2026-06-21 | **PLAN-0034 (G2 drafting-friction root-fix) RATIFIED + core-IMPLEMENTED (#396/#397, session 71)** — Cray ratified all four SDs = option (a) (#396 `5705b8a`, merge `3dcecaa`). SD-1 (prong-2 mechanism) gated on a Code Step-3 spike run offline this session: it confirmed (Q1) project PreToolUse hooks DO fire inside a subagent context (deadlock real, prong 2 needed) and (Q2) the payload carries BOTH `agent_id` and `agent_type` reliably (docs omit them; the live harness provides them — vindicates `done/0009` §1) → SD-1 = (a) exempt `agent_type=="plan-drafter"` reusing G5's `_is_subagent_call`/`agent_id` (SUPERSEDED the pre-spike (c) lean); SD-2 = (a) hybrid guards; SD-3 = (a) PLAN-only + `.claude/autonomy-triggers.md` annotation (no ADR amendment); SD-4 = (a) keep G5/PR-review/"only Code commits" untouched. Cowork folded ratify+spike into the PLAN (D1), Code R2-reviewed + committed (D2) → PLAN Status: Ready for execution. **Impl (#397 `c69b6e2`, merge `9092db5`):** offline deterministic core; self-modification of the autonomy hooks Cray-approved per-diff, opened as a PR + NOT self-merged (Cray merged — the SD-4 checkpoint). Prong 2: `pretooluse_classifier_dispatch.py` exempts the `plan-drafter` subagent (short-circuit before `_classify()`; main-agent writes have no `agent_id` so G2 preserved; `# noqa: C901` justified). Prong 1: three DISPATCH over-fire guards in `_sonnet_classifier._build_system_prompt` (non-`docs/(adr\|plans)/NNNN` / already-routed / existing-lifecycle-flip; genuine `Status: Accepted` ADR mutation still pauses — G1 unchanged) + 6 `expected: pause` gold negatives. Gates green: 137 targeted + 730 handoffs/benchmark pass, ruff/ruff-format/mypy --strict clean, gold parses. Offline-only; live gold re-score (prong-1 behavioral proof) stays Cray-gated host-state — NOT run. **PLAN-0034 stays Ready for execution (NOT Complete, NOT `done/`);** tails = Cowork `.claude/autonomy-triggers.md` annotation (Step 5) + optional live re-score | `c69b6e2`/`9092db5` (#396/#397) / `pretooluse_classifier_dispatch.py` + `.claude/hooks/_sonnet_classifier.py` + `benchmarks/stop_classifier/gold.yaml` + `docs/plans/0034-*.md` |
 
 ## In-Flight Discussions
 
@@ -370,6 +226,7 @@ below, and git history.
 
 ## Active TODOs
 
+- [ ] **classify-prompt enrich (lever a) — lift the live classify match-rate (s83 finding).** The live classify match-rate is low because the prompt sends a **title-only catalog + no gate_kind guidance**, so the model mis-tags / abstains (~1-in-3 false-abstain on a textbook AT-1; the AT-2-only `scored_rule`/`rule_gate` mis-tag on the judge step → `_archetype_disagreement` correctly abstains, LOCKED-7). Enrich the classify prompt (**per-archetype descriptions + band-vs-`scored_rule` guidance**) to raise the hit-rate **WITHOUT relaxing the AT-2 cross-check** (the moat, LOCKED-7). **G2-gated → Cowork dispatch** when scoped. **Do NOT relax the guard without data + an ADR.** *(s83; PLAN-0040 AC-B5 live run)*
 - [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten (full table: PLAN-0005 §8.1): rule-based recommender → **ADR-010 ACCEPTED (2026-05-22) → PLAN-0006 next** (LLM reasoning hook); minimal approval gate → **ADR-011+** (audit framework — trigger: first design-partner data / PDPA review); no mapping layer → **dbt/SQLMesh** (trigger: first non-synthetic source); hand-authored ORM → **"ORM emitter"** Rule-of-Three candidate (trigger: 3rd vertical / DDL↔ORM parity-test drift); base Postgres only → **PLAN-002** (pgvector/AGE — trigger: semantic + graph features); explicit registry → **ADR-006 D3 L2** (trigger: vertical #2/#3 or `new-vertical` generator). *(per Cray note 2026-05-21)*
 - [ ] **Demo card UX — "trust shape", NO operator confidence badge (s74 design, Cray-approved).** For the next demo round's operator recommendation card: show **what / grounded-why / approve gate** + a **"show full reasoning trace" toggle** that reveals the engine-view (where the floor-vs-judge agreement lives, labelled *audit/QA — not the operator*; reuses the scene-6 why-toggle pattern). **No operator-facing confidence badge** — the floor-vs-judge `confidence_signal` (PLAN-0035 Phase 2) is an **engine-internal QA/audit signal kept trace-only (SD-3 option A)**; surfacing it as a badge mis-reads as "the action might be wrong" (it is **not** — member (b) is advisory, never changes the action). The **(B) first-class `verification` envelope field is NOT needed for the operator UI** — reconsider **only** if a future internal audit/QA dashboard wants confidence as a first-class field (trace stays sufficient otherwise). Settled via a show_widget design review (s74; Cray: "ตรงใจ ตอบโจทย์"). The reframe: users want *what was decided · is it right · why* — answered by the action + grounding (real entity, allow-listed handler, deterministic detection, human approve) + the reasoning trace, **not** a self-reported confidence number. *(Trigger: the next demo / UI round; pairs with any (B) reconsideration.)*
 - [ ] **PLAN-004 Phase C — OPTIONAL POLISH (forward-declared; "may never land"):** HTML/markdown handoff dashboard under `docs/` + references-graph (mermaid dispatch chains) + `render_transcript.py` unified session export (PLAN-0004 §"Phase C"). *(Phase A + B both COMPLETE — session 35; the prior TODO's validator **warning-swallow bug was FIXED #312**, s58. Minor never-formally-scoped sub-ideas — README/`_rename-map` walk-exclusion, Cat G `references_*` autofix, OQ-2 effective-vs-authored `status:` dashboard flag — fold in only if Phase C lands. Reconciled 2026-06-16 s65 audit.)*
