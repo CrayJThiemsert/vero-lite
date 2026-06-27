@@ -12,6 +12,10 @@
       const v = attrs[k];
       if (v == null || v === false) continue;
       if (k === 'class') el.className = v;
+      // SECURITY (PLAN-0040 C2 review): `html:` is the ONLY innerHTML sink. NEVER pass
+      // draft/LLM-sourced or otherwise untrusted text here — it is parsed as markup (XSS).
+      // Pass such text as a CHILD (textContent, safe) or via `text:`. Used today only for
+      // static SVG/icon strings; the procedure render path correctly never uses it.
       else if (k === 'html') el.innerHTML = v;
       else if (k === 'text') el.textContent = v;
       else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
