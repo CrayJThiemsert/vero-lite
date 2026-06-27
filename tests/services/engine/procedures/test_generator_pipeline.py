@@ -146,6 +146,19 @@ _POISONED_PROSE = json.dumps(
 
 _POISON_TOKENS = ["4.0", "฿50k", "50k", "wire_transfer", "auto-approve", "approve"]
 
+# The live model renames steps in its prose (does not echo the template's step_ids) — a
+# clean response whose ids are step_one/two/three, in the asked order (the AC-B5 live finding).
+_PROSE_RENAMED_IDS = json.dumps(
+    {
+        "title": "Transformer temperature procedure",
+        "steps": [
+            {"step_id": "step_one", "description": "Pull the latest readings for the assets."},
+            {"step_id": "step_two", "description": "Compare each reading against its band."},
+            {"step_id": "step_three", "description": "Propose a remediation for the breaches."},
+        ],
+    }
+)
+
 
 def _permissive_agent() -> Agent:
     """An agent that constrains nothing — so the only thing that can make the skeleton
@@ -193,6 +206,25 @@ async def test_clean_narrative_produces_gate_skeleton() -> None:
     assert set(outcome.governance_todo) == {"judge", "act"}
     assert {s.field for s in outcome.governance_todo["judge"]} == {"threshold", "direction"}
     assert {s.field for s in outcome.governance_todo["act"]} == {"handler", "autonomy"}
+
+
+async def test_prose_with_renamed_step_ids_lands_by_position() -> None:
+    """AC-B5 live finding: the model often does NOT echo the template's step_ids in its
+    prose. When the prose step COUNT matches the template, the advisory descriptions land
+    POSITIONALLY (the model returns its steps in the asked order) instead of silently
+    dropping to "" — structure + governance still come ONLY from the template."""
+    client = RecordedChatClient([_classify("AT-1"), _PROSE_RENAMED_IDS])
+    outcome = await generate(
+        client, narrative="watch and act", vertical=VERTICAL, confirm=lambda _m: True
+    )
+    assert isinstance(outcome, GeneratedSkeleton)
+    steps = {s.step_id: s for s in outcome.procedure.steps}
+    # the advisory descriptions landed on the template steps, in order (not dropped to "")
+    assert steps["read"].description == "Pull the latest readings for the assets."
+    assert steps["judge"].description == "Compare each reading against its band."
+    assert steps["act"].description == "Propose a remediation for the breaches."
+    # ...and governance is STILL all stubs — the fix touches advisory prose only
+    assert steps["judge"].threshold is None and steps["act"].handler is None
 
 
 # --- AC-B3: the poisoned-narrative red-team (the headline) ----------------------
