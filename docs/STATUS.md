@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-26T17:30:28+07:00
-session: 81
-current_batch: 'session-81: PLAN-0040 Phase B offline pipeline (S0–S6 two-call generator) BUILT + merged (#449), then post-audit hardened (#450); Phase B offline complete. next = Phase C (offline gate UI) or AC-B4 live evidence (host-state).'
+last_updated: 2026-06-27T08:53:45+07:00
+session: 82
+current_batch: 'session-82: PLAN-0040 Phase C (edit-mode authoring gate UI) COMPLETE — C1 seam+offline fixture (#453), C2 three guided zones (#454), C3 live completion gate (#455). PLAN-0040 (A+B+C) done, archived to done/.'
 current_actor: code
-blocked_on: "Nothing — PLAN-0040 Phase B offline pipeline BUILT + hardened, all merged. Next = Phase C (offline) or AC-B4 live evidence (host-state, ASK Cray)."
-next_action: "Phase C edit-mode gate UI (offline-buildable, OQ-D D1) OR PR-B2 live MS-S1 evidence (host-state, ASK Cray, warm via warm.sh). loop-dispatcher stays DISABLED."
-head_commit: 8e11f82
-recent_commits: [8e11f82, 5166628, ee0ba91, 6c589a7, 002859e, 995580f, 31d375c, 834f5ea, 26b6240, 42a0aa0]
+blocked_on: "Nothing — PLAN-0040 fully complete (Phase A+B+C) and archived to done/."
+next_action: "PLAN-0040 done. Remaining is host-state only: the live MS-S1 single-shot intake face (OQ-D D1 / AC-B5 live) — deferred, ASK Cray (CLAUDE.md §8). loop-dispatcher stays DISABLED."
+head_commit: d3c2279
+recent_commits: [d3c2279, 708d63c, 97b448a, 41f5bb0, 3347bd4, b5d6aaf, 9ee8bb9, 18ec771, dde0414, 738a44f]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,52 @@ recent_commits: [8e11f82, 5166628, ee0ba91, 6c589a7, 002859e, 995580f, 31d375c, 
 
 ## Current Focus
 
-> **Session 81 (current; head_commit `8e11f82`) — **PLAN-0040 Phase B offline
+> **Session 82 (current; head_commit `d3c2279`) — **PLAN-0040 Phase C (the
+> edit-mode authoring GATE UI) is COMPLETE — "governed ≠ generated" now has a
+> visible, governed authoring surface.** Phase C = the **ADR-0024 D8 review
+> surface in EDIT mode**: the generator's draft rendered behind the
+> human-review gate, every governance value a human-author stub. Built
+> **Code-direct, per-step PR off `main`, Cray merged each (no self-merge)**.
+> **C1 (#453, `b5d6aaf`):** the **edit-mode seam** on the PLAN-0039 read-only
+> viewer + an **OFFLINE recorded-draft fixture**
+> (`services/api/static/assets/gate-fixture.js`, mirrors `instantiate(AT1)` +
+> `derive_governance_todo`). `facetModel` derives `editable` from the field's
+> H-class, surfaces the unfilled governance **STUBS**, `renderField`
+> un-disabled; a **Shipped↔Authoring-gate toggle**. Offline (OQ-D D1, no
+> backend). **LOCKED-8: one `facetModel`, no second renderer.** **C2 (#454,
+> `3347bd4`/`41f5bb0`):** each step regrouped into the **THREE zones** —
+> LLM-drafted (advisory) · YOU must author (the H-stubs) · archetype
+> expectation (the oracle). **GUIDED controls:** a closed-domain H-field is a
+> **SELECT of its LEGAL set** from `governance_options`
+> (direction/autonomy/handler), an open field a typed input + source hint;
+> nothing pre-filled into a stub (D4); `autonomy` a confirm at its safe
+> `gated` default. `goal` in an **elevated-scrutiny zone** (OQ-B B2: empty,
+> human-authored). Spawned a **security + a UX specialist** (the s81 standing
+> rule): the **moat HOLDS** (no value reaches a control; `h()` renders prose
+> via `textContent` = XSS-safe; `governance_options` is the legal allowlist,
+> a guardrail not a recommendation) — folded the author-zone visual dominance
+> + goal elevation + aria-labels + a guard comment on the one `components.js`
+> `innerHTML` sink. **C3 (#455, `708d63c`):** the **LIVE completion gate** —
+> `wireGateStatus` is a **browser MIRROR of `validate_governance_complete`**:
+> it counts the unauthored REQUIRED stubs
+> (threshold/direction/handler = the `unfilled_governance` set; the `gated`
+> autonomy confirm never blocks, so it is **not** counted), shows
+> **"N of M required gates authored — would FAIL/PASS
+> `validate_governance_complete`"**, recomputes on every input, and clears a
+> stub's dashed cue the moment it is authored. **Review-only: no write-back,
+> no submit (LOCKED-10).** The **AC-C3 backend contract** (AT-1 skeleton
+> `load_procedures`-valid but failing `validate_governance_complete` until
+> authored) is **ALREADY proven** by Phase A's
+> `tests/services/engine/procedures/test_draft_lift_governance.py` — C3
+> surfaces that gate in the UI, **no duplicate test** (CLAUDE.md §6). **Net:**
+> PLAN-0040 (Phase A guardrail spine + Phase B two-call pipeline + Phase C
+> gate UI) is **COMPLETE**; archived to `docs/plans/done/`. **Verified live
+> each step via preview (oct-demo)** — read-mode unchanged, stubs empty, the
+> completion gate flips FAIL↔PASS faithfully, no console errors. **Standing:**
+> `loop-dispatcher` stays **DISABLED**. AI-assisted (Claude Code, session 82);
+> no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 81 (head_commit `8e11f82`) — **PLAN-0040 Phase B offline
 > pipeline (the S0–S6 two-call generator) BUILT + merged (#449), then post-audit
 > hardened (#450) — Phase B offline complete.** Phase A shipped the offline
 > guardrail spine (s80); s81 built the orchestration on top, fully offline.
@@ -55,7 +100,11 @@ recent_commits: [8e11f82, 5166628, ee0ba91, 6c589a7, 002859e, 995580f, 31d375c, 
 > `wire transfer`/`wireTransfer` are caught). Three generator guards: empty
 > narrative → abstain, transport `OllamaError` (cold MS-S1) → `Abstained
 > ("llm_unreachable")`, and the OQ-3 per-step cross-check made **non-skippable**
-> for the judge gate. The security specialist re-verified **twice** → verdict
+> for the judge gate. _(**Superseded by new info** (#452, `738a44f`, s82): the
+> OQ-3 mandate was relaxed to be **step_id-INDEPENDENT** — the live MS-S1 run
+> found it abstained on EVERY real classification because the model names steps
+> freely and the offline fixture had masked it; match by kind/shape, not internal
+> step_id. An evolution from live evidence, NOT an error — CLAUDE.md §6.)_ The security specialist re-verified **twice** → verdict
 > **"prose-guard adequate"**; named residuals accepted as run-gate-backstopped
 > (roman-numeral tiers, non-English/Thai number-words, ambiguous verbs). Gate:
 > **299+ tests** (procedures + recommender + nl_query), ruff + mypy --strict clean.
@@ -113,46 +162,15 @@ recent_commits: [8e11f82, 5166628, ee0ba91, 6c589a7, 002859e, 995580f, 31d375c, 
 > is green so Phase B may start (OQ-A A1).
 > AI-assisted (Claude Code, session 80); no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 79 (head_commit `3eaf881`) — **PLAN-0039 — the read-only
-> 5-facet procedure viewer — BUILT end-to-end**, plus a harness/memory
-> sharpening pass.** **Arc B — PLAN-0039 (a ratified PLAN = coding, not
-> governance; Code-direct, per-step PRs off `main`, each Cray-merged, no
-> self-merge):** **Step 1 backend `GET /procedures`** (#437, `a8aee4a`) loops
-> `registry.verticals()` (ADR-0023 discovery, **not** `OCT_VERTICAL`) →
-> `load_procedures` → **every shipped procedure (5 across 4 verticals)** annotated
-> with its catalog **archetype** via an explicit server-side `procedure_id→archetype`
-> map (OQ-5); read-only — no DB / no mutation / no LLM; `ProcedureView` **subclasses
-> the engine `Procedure`** so steps/facet/authored-band stay byte-for-byte the spec.
-> **Steps 2–4 frontend View F** (#440, `3eaf881`): new `view-procedures.js`
-> (`window.OCT.ViewProcedures = { mount, facetModel }`) — vertical selector →
-> procedure list → per-step **5-facet cards**, the **typed-authoritative band visually
-> distinct from advisory prose** (AC-4 via `pv-auth`/`pv-prose`/`pv-llm`) + an
-> archetype header (AC-9); `?v=` cache-bust bumped c13→c14. **The AC-7 de-risk seam
-> is real + load-bearing:** `facetModel(step)` is a PURE provenance decomposition
-> (`editable:false` throughout), **exported**, and the renderer is
-> `mode:'read'|'edit'`-parameterized → **PLAN-0040 grafts edit-mode onto the SAME
-> component, no rewrite.** **Verified (CLAUDE.md §8):** the offline `GET /procedures`
-> test is the **GATE** (all 5 procedures round-trip `load_procedures`, all six
-> `gate_kind`s present in real data, the typed band passes through); a **live preview
-> (`:8096`, zero-LLM, MS-S1 uninvoked) is the EVIDENCE** (the AT-2 7-step governance
-> ladder renders end-to-end; finding #5 = both the typed `Step.input` from/where AND
-> the prose `facet.input` are shown). PLAN-0039 is being `git mv`'d → `done/`.
-> **Arc A — harness/memory sharpening (Cowork-drafted [ADR-009 D1] → Code R2 →
-> Cray-ratified → committed [D2]; a constitutional edit routed via Cowork by
-> convention):** **CLAUDE.md §6 "Verification is hygiene, not a verdict"** (#438,
-> `709a947`) generalizes the §6 Mechanical-overlay principle (*structural, NOT a
-> quality judgment*) from Cowork-dispatch routing to the **Axis-B verify loop** — a
-> re-checked, evidence-backed prior is logged `confirmed — prior intact` (never a
-> defect); a recalled-artifact mismatch is **classified** `superseded by new info`
-> (evolution) vs `was an error` (fix); the duty to **refute the claim** is UNCHANGED
-> (no fresh evidence = INSUFFICIENT-EVIDENCE, never a pass — claim-refutation stays
-> fully adversarial); added with a §11 one-line pointer. **Lesson #0027** (#439,
-> `9420edb`) = the companion rationale + the claim↔decision worked example.
-> **Standing:** `loop-dispatcher` stays **DISABLED** (verified `enabled:false`; the
-> Stop-hook root-fix is still the re-enable precondition). **Forward:** dispatch
-> **PLAN-0040** (the archetype generator, AT-1 family — a NEW PLAN = G2-gated → a
-> Cowork dispatch). AI-assisted (Claude Code, session 79); no `Co-Authored-By` per
-> CLAUDE.md §7.
+> _Rotation note (session-82 reconcile, 2026-06-27): the **Session-79** Current
+> Focus block (PLAN-0039 — the read-only 5-facet procedure viewer — BUILT
+> end-to-end [#437/#440], plus the harness/memory sharpening pass — CLAUDE.md §6
+> "Verification is hygiene, not a verdict" #438 + Lesson #0027 #439; head_commit
+> `3eaf881` — the oldest in-window block) was rotated to hold STATUS comfortably
+> under the **R1 64 KB hard ceiling** (the file was at ~62 KB, near the ceiling)
+> when the session-82 PLAN-0040 Phase-C-COMPLETE block landed, moved verbatim to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md),
+> per the STATUS.md Rotation Policy (R1/R2/R4). Resulting window = {82, 81, 80}._
 
 > _Rotation note (session-81 reconcile, 2026-06-26): the **Session-78** Current
 > Focus block (Stage 3 of the generative-procedures arc KICKED OFF — ADR-0024

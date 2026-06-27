@@ -1071,6 +1071,49 @@ window {62,61,60,59}._
 > count at 8.
 > AI-assisted (Claude Code, session 58); no `Co-Authored-By` per CLAUDE.md §7.
 
+_Addendum — rotated 2026-06-27 (session-82 reconcile, PLAN-0040 Phase C closeout): the **Session 79** CF block (PLAN-0039 — the read-only 5-facet procedure viewer BUILT end-to-end, + the §6 "Verification is hygiene" harness/memory pass) rotated under the R1 64 KB ceiling when the session-82 Phase-C-COMPLETE block grew. The in-window CF set is now {82, 81, 80}. Verbatim below._
+
+> **Session 79 (head_commit `3eaf881`) — **PLAN-0039 — the read-only
+> 5-facet procedure viewer — BUILT end-to-end**, plus a harness/memory
+> sharpening pass.** **Arc B — PLAN-0039 (a ratified PLAN = coding, not
+> governance; Code-direct, per-step PRs off `main`, each Cray-merged, no
+> self-merge):** **Step 1 backend `GET /procedures`** (#437, `a8aee4a`) loops
+> `registry.verticals()` (ADR-0023 discovery, **not** `OCT_VERTICAL`) →
+> `load_procedures` → **every shipped procedure (5 across 4 verticals)** annotated
+> with its catalog **archetype** via an explicit server-side `procedure_id→archetype`
+> map (OQ-5); read-only — no DB / no mutation / no LLM; `ProcedureView` **subclasses
+> the engine `Procedure`** so steps/facet/authored-band stay byte-for-byte the spec.
+> **Steps 2–4 frontend View F** (#440, `3eaf881`): new `view-procedures.js`
+> (`window.OCT.ViewProcedures = { mount, facetModel }`) — vertical selector →
+> procedure list → per-step **5-facet cards**, the **typed-authoritative band visually
+> distinct from advisory prose** (AC-4 via `pv-auth`/`pv-prose`/`pv-llm`) + an
+> archetype header (AC-9); `?v=` cache-bust bumped c13→c14. **The AC-7 de-risk seam
+> is real + load-bearing:** `facetModel(step)` is a PURE provenance decomposition
+> (`editable:false` throughout), **exported**, and the renderer is
+> `mode:'read'|'edit'`-parameterized → **PLAN-0040 grafts edit-mode onto the SAME
+> component, no rewrite.** **Verified (CLAUDE.md §8):** the offline `GET /procedures`
+> test is the **GATE** (all 5 procedures round-trip `load_procedures`, all six
+> `gate_kind`s present in real data, the typed band passes through); a **live preview
+> (`:8096`, zero-LLM, MS-S1 uninvoked) is the EVIDENCE** (the AT-2 7-step governance
+> ladder renders end-to-end; finding #5 = both the typed `Step.input` from/where AND
+> the prose `facet.input` are shown). PLAN-0039 is being `git mv`'d → `done/`.
+> **Arc A — harness/memory sharpening (Cowork-drafted [ADR-009 D1] → Code R2 →
+> Cray-ratified → committed [D2]; a constitutional edit routed via Cowork by
+> convention):** **CLAUDE.md §6 "Verification is hygiene, not a verdict"** (#438,
+> `709a947`) generalizes the §6 Mechanical-overlay principle (*structural, NOT a
+> quality judgment*) from Cowork-dispatch routing to the **Axis-B verify loop** — a
+> re-checked, evidence-backed prior is logged `confirmed — prior intact` (never a
+> defect); a recalled-artifact mismatch is **classified** `superseded by new info`
+> (evolution) vs `was an error` (fix); the duty to **refute the claim** is UNCHANGED
+> (no fresh evidence = INSUFFICIENT-EVIDENCE, never a pass — claim-refutation stays
+> fully adversarial); added with a §11 one-line pointer. **Lesson #0027** (#439,
+> `9420edb`) = the companion rationale + the claim↔decision worked example.
+> **Standing:** `loop-dispatcher` stays **DISABLED** (verified `enabled:false`; the
+> Stop-hook root-fix is still the re-enable precondition). **Forward:** dispatch
+> **PLAN-0040** (the archetype generator, AT-1 family — a NEW PLAN = G2-gated → a
+> Cowork dispatch). AI-assisted (Claude Code, session 79); no `Co-Authored-By` per
+> CLAUDE.md §7.
+
 ---
 
 ## Rotated Recent Decisions rows (rotated 2026-06-10)
