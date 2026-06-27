@@ -267,10 +267,20 @@ def _build_procedure_draft(
     synthesizes, D1); only the prose (description + notes) is LLM-sourced — and the draft
     type has no governance field, so a value cannot ride it (D3 mech 1)."""
     prose_by_id = {p.step_id: p for p in prose.steps}
+    # The live model often does NOT echo the template's exact step_ids in its prose (it
+    # renames freely — the same behaviour the classify cross-check already tolerates,
+    # PR-B2). When the prose step COUNT matches the template, fall back to POSITIONAL
+    # pairing (the model returns its steps in the asked order) so the advisory descriptions
+    # LAND instead of silently dropping to "" — structure + governance still come ONLY from
+    # the template, and the prose strings are linted regardless (D3). Found via the AC-B5
+    # live run: a matched narrative built a stub-correct skeleton with EMPTY descriptions.
+    by_position = prose.steps if len(prose.steps) == len(template.slots) else None
     steps: list[StepDraft] = []
-    for slot in template.slots:
+    for index, slot in enumerate(template.slots):
         gate_kind, band = _slot_gate(slot, band_source)
         text = prose_by_id.get(slot.step_id)
+        if text is None and by_position is not None:
+            text = by_position[index]
         steps.append(
             StepDraft(
                 step_id=slot.step_id,
