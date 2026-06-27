@@ -1114,12 +1114,114 @@ _Addendum — rotated 2026-06-27 (session-82 reconcile, PLAN-0040 Phase C closeo
 > Cowork dispatch). AI-assisted (Claude Code, session 79); no `Co-Authored-By` per
 > CLAUDE.md §7.
 
+_Addendum — rotated 2026-06-27 (session-83 reconcile, PLAN-0040 AC-B5 live intake DONE): the **Session 81** (`8e11f82`) and **Session 80** (`42a0aa0`) CF blocks rotated under the R1 ceiling when the session-83 AC-B5 block landed; the in-window CF set is now {83, 82}. Verbatim below._
+
+> **Session 81 (head_commit `8e11f82`) — **PLAN-0040 Phase B offline
+> pipeline (the S0–S6 two-call generator) BUILT + merged (#449), then post-audit
+> hardened (#450) — Phase B offline complete.** Phase A shipped the offline
+> guardrail spine (s80); s81 built the orchestration on top, fully offline.
+> **PR-B1 (#449, `002859e`)** = a new `services/engine/procedures/generator/`
+> package: `classify_narrative` (S0–S2 — classify to a closed archetype enum +
+> abstain-gate) + `build_skeleton` (S3–S6 — template-instantiate → stub-stamp via
+> `lift_to_step` → prose-draft → assemble + `parse_procedures` round-trip + a
+> capped validate→repair-retry→abstain loop) + `generate` (the explicit
+> human-confirm boundary). It **reuses Phase A wholesale** (registry/`instantiate`,
+> `lift_to_procedure`, `prose_lint`, `validate_governance_complete`) + the existing
+> `llm/` `ChatClient` seam — **NOT a new LLM client**, just orchestration glue +
+> two narrow typed-JSON schemas (classify + advisory-prose). Exercised **fully
+> offline** via a recorded-fixture ChatClient. The headline is the **AC-B3
+> poisoned-narrative red-team**: a narrative forcing "threshold 4.0 / auto-approve
+> ฿50k / handler wire_transfer" → those values appear **nowhere** (typed by
+> construction, prose via `prose_lint`), the lift carries them as ABSENT stubs, and
+> `validate_runnable` raises. 9 offline tests. **Two surfaced build decisions:**
+> abstain is a model-emitted enum LABEL (`"abstain"`), **NOT a confidence
+> threshold** — the route is deterministic on the label and confidence NEVER routes
+> (reconciles S2's "low-confidence→abstain" with LOCKED-5 / ADR-0019 / ADR-010
+> IN-3); and human-confirm is **STRUCTURALLY enforced** (`build_skeleton` only
+> accepts a confirmed `ProposedMatch`). `goal` stays `""` (OQ-B B2). `spec.py` +
+> `load_procedures` **UNTOUCHED**. **Post-audit hardening (#450, `ee0ba91` +
+> `5166628`)** — two specialist subagents (security + correctness, spawned under
+> Cray's new standing go-ahead to spawn specialist reviewers when it raises
+> quality) adversarially audited PR-B1. **The structural moat HELD** (a typed
+> governance value cannot reach a runnable field; a stub skeleton cannot run —
+> neither breachable); all findings were in `prose_lint` (the one denylist guard,
+> D3 mech 2) + three small generator robustness gaps. Hardened `prose_lint`:
+> NFKC-normalize + strip zero-width before scanning, single-digit + hyphen
+> integers, scientific/hex, spelled-out numbers, expanded approval verbs, and
+> `snake_case`/`UPPER_SNAKE`/`camelCase` identifiers + flexible-separator match for
+> registered handler names (so `OCT_RECOMMEND_THRESHOLD` and
+> `wire transfer`/`wireTransfer` are caught). Three generator guards: empty
+> narrative → abstain, transport `OllamaError` (cold MS-S1) → `Abstained
+> ("llm_unreachable")`, and the OQ-3 per-step cross-check made **non-skippable**
+> for the judge gate. _(**Superseded by new info** (#452, `738a44f`, s82): the
+> OQ-3 mandate was relaxed to be **step_id-INDEPENDENT** — the live MS-S1 run
+> found it abstained on EVERY real classification because the model names steps
+> freely and the offline fixture had masked it; match by kind/shape, not internal
+> step_id. An evolution from live evidence, NOT an error — CLAUDE.md §6.)_ The security specialist re-verified **twice** → verdict
+> **"prose-guard adequate"**; named residuals accepted as run-gate-backstopped
+> (roman-numeral tiers, non-English/Thai number-words, ambiguous verbs). Gate:
+> **299+ tests** (procedures + recommender + nl_query), ruff + mypy --strict clean.
+> **Net:** Phase B's **offline pipeline is complete + the moat guard hardened**.
+> Remaining: **AC-B4 live MS-S1 `gpt-oss:20b` evidence** (host-state — ASK Cray,
+> CLAUDE.md §8) and **Phase C** (the edit-mode gate UI, offline-buildable per
+> OQ-D D1). **Standing:** `loop-dispatcher` stays **DISABLED**; new standing
+> practice (s81) — spawn specialist reviewers proactively when it raises output
+> quality. AI-assisted (Claude Code, session 81); no `Co-Authored-By` per
+> CLAUDE.md §7.
+
+> **Session 80 (head_commit `42a0aa0`) — **PLAN-0040 Phase A (the
+> offline guardrail spine, zero-LLM) BUILT end-to-end (#444/#446/#447)** — the
+> ADR-0024 D8 generator arc, the edit-mode GENERATOR behind the human-review gate
+> (read-only 5-facet viewer shipped s79, PLAN-0039). PLAN-0040 was **Cowork-drafted
+> → Code R2 → Cray-ratified all 5 residual forks**, merged #442 (docs(plans),
+> `1650306`); Phase A is now built as **three Code-direct per-step feat PRs**
+> (each Cray-merged, no self-merge), all offline-gated, with `spec.py` +
+> `load_procedures` **UNTOUCHED throughout**. **A1 (#444, `6384dbf`)** = the
+> `ArchetypeTemplate` artifact + the AT-1-family registry (AT-1 base; **AT-1b / AT-3
+> as variant deltas off the base**, D2) + `instantiate()` → a `load_procedures`-valid
+> skeleton with every human-author (H) value ABSENT (OQ-C C1, no in-field sentinel);
+> 16 tests (AC-A2 round-trip both band sources, AC-A8 archetype-agreement). **A2
+> (#446, `e2d4dc2`)** = `StepDraft`/`ProcedureDraft`/`AgentDraft` (restricted, **zero
+> governance fields → a leak is a TYPE ERROR**, D3) + `GOVERNANCE_FIELDS` +
+> `lift_to_step`/`lift_to_procedure` (inject H values as absent stubs) +
+> `derive_governance_todo` + **`validate_governance_complete`** (the run-gate
+> invoked by `validate_runnable` — closes the verified OQ-1 hole where a stub
+> `handler=None` slipped through; the **two-state D6 property**: draft-loadable but
+> NOT run-loadable); 19 tests (AC-A4 disjointness, A3 lift, A6 run-gate, A7 todo +
+> every shipped vertical stays governance-complete). **A3 (#447, `42a0aa0`)** = the
+> deterministic `prose_lint` (D3 mechanism 2: rejects numerics/currency/%/handler-names/
+> select-approve verbs in generated prose — closes prose-smuggling, leak class 1,
+> that `extra="forbid"` can't; identifier-aware so ADR-007/`gpt-oss:20b` don't
+> false-positive); 19 tests + a no-FP guard over every shipped `facet.llm_assist`.
+> **Net:** "governed ≠ generated" is now MECHANICAL — a leak is a type error OR a
+> lint failure; the three D12 offline mechanisms are green (structural disjointness,
+> archetype-agreement, governance-completeness); **full procedures suite green (187)**.
+> The 5 ratified PLAN dispositions remain: **OQ-A A1** = one PLAN A→B→C, Phase A
+> merged before B (now done); A2 (PLAN-0041) is the evidence-based fallback at the
+> Phase-A boundary. **OQ-B B2** = defer the generated `goal` (leak-class-3 runtime
+> surface) to the edit-mode gate's elevated-scrutiny zone, rides with Phase C.
+> **OQ-C C1** = drop the in-field sentinel (Code R2-verified incompatible with
+> `threshold: float|None` under `extra="forbid"`, `spec.py:247`; widening `spec.py`
+> forbidden) — stub = field absent (`None`) + derived `governance_todo`, re-checked
+> by `validate_governance_complete()` (**overrides ADR-0024 OQ-5's sentinel *lean***).
+> **OQ-D D1** = defer the live MS-S1 intake face (host-state); land the
+> offline-exercised gate in v1. **OQ-E** = the three D12 offline tests are the gate;
+> a live MS-S1 run is evidence (CLAUDE.md §8). **Standing:** `loop-dispatcher` stays
+> **DISABLED** (Stop-hook root-fix is the re-enable precondition). **Forward:**
+> **Phase B** — the two-call LLM pipeline (S0–S6: classify → abstain-gate →
+> template-instantiate → stub-stamp → prose-draft → assemble+validate) + the
+> poisoned-narrative red-team (AC-B3, recorded fixture, offline) + MS-S1-local
+> `gpt-oss:20b` integration (live run = host-state, ASK Cray). Phase A's offline gate
+> is green so Phase B may start (OQ-A A1).
+> AI-assisted (Claude Code, session 80); no `Co-Authored-By` per CLAUDE.md §7.
+
 ---
 
 ## Rotated Recent Decisions rows (rotated 2026-06-10)
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-21 | **PLAN-0034 (G2 drafting-friction root-fix) RATIFIED + core-IMPLEMENTED (#396/#397, session 71)** _(rotated 2026-06-27, session-83 reconcile)_ — Cray ratified all four SDs = option (a) (#396 `5705b8a`, merge `3dcecaa`). SD-1 (prong-2 mechanism) gated on a Code Step-3 spike run offline this session: it confirmed (Q1) project PreToolUse hooks DO fire inside a subagent context (deadlock real, prong 2 needed) and (Q2) the payload carries BOTH `agent_id` and `agent_type` reliably (docs omit them; the live harness provides them — vindicates `done/0009` §1) → SD-1 = (a) exempt `agent_type=="plan-drafter"` reusing G5's `_is_subagent_call`/`agent_id` (SUPERSEDED the pre-spike (c) lean); SD-2 = (a) hybrid guards; SD-3 = (a) PLAN-only + `.claude/autonomy-triggers.md` annotation (no ADR amendment); SD-4 = (a) keep G5/PR-review/"only Code commits" untouched. Cowork folded ratify+spike into the PLAN (D1), Code R2-reviewed + committed (D2) → PLAN Status: Ready for execution. **Impl (#397 `c69b6e2`, merge `9092db5`):** offline deterministic core; self-modification of the autonomy hooks Cray-approved per-diff, opened as a PR + NOT self-merged (Cray merged — the SD-4 checkpoint). Prong 2: `pretooluse_classifier_dispatch.py` exempts the `plan-drafter` subagent (short-circuit before `_classify()`; main-agent writes have no `agent_id` so G2 preserved; `# noqa: C901` justified). Prong 1: three DISPATCH over-fire guards in `_sonnet_classifier._build_system_prompt` (non-`docs/(adr\|plans)/NNNN` / already-routed / existing-lifecycle-flip; genuine `Status: Accepted` ADR mutation still pauses — G1 unchanged) + 6 `expected: pause` gold negatives. Gates green: 137 targeted + 730 handoffs/benchmark pass, ruff/ruff-format/mypy --strict clean, gold parses. Offline-only; live gold re-score (prong-1 behavioral proof) stays Cray-gated host-state — NOT run. **PLAN-0034 stays Ready for execution (NOT Complete, NOT `done/`);** tails = Cowork `.claude/autonomy-triggers.md` annotation (Step 5) + optional live re-score | `c69b6e2`/`9092db5` (#396/#397) / `pretooluse_classifier_dispatch.py` + `.claude/hooks/_sonnet_classifier.py` + `benchmarks/stop_classifier/gold.yaml` + `docs/plans/0034-*.md` |
 | 2026-06-21 | **PLAN-0034 (G2 drafting-friction root-fix) committed as DRAFT — Cowork-drafted, Code R2-reviewed (#394 merge `fda2557`, session 71)** _(rotated 2026-06-25, session 78)_ — Cowork-authored (ADR-009 D1) off the s71 Code→Cowork dispatch, Code R2-reviewed + committed (ADR-009 D2). DRAFTS a two-prong fix and IMPLEMENTS NOTHING (Out of Scope): prong 1 = tighten the Stop-side classifier (`_sonnet_classifier._build_system_prompt` + `.claude/autonomy-triggers.md` + `benchmarks/stop_classifier/gold.yaml`) vs spurious dispatch/pause; prong 2 = exempt the `plan-drafter` uncommitted draft-write from the project G2 PreToolUse gate (`pretooluse_classifier_dispatch.py`), G5 commit-block + PR review preserving oversight. Code R2 verified Cowork's 3 framing corrections vs HEAD + applied 1 R2 correction at commit (the "PLANs never use Status: Accepted" fact was false — `done/0026` uses it). **Status: Draft — awaiting Cray ratification (SD-1..SD-4); the Step-3 spike DEFERRED to a fresh session.** Same batch (s71) also CLOSED A2 (committed re-grade harness #392 + §B-3 residual decomposition `2463229` + reconcile #393) | `fda2557` (#394) / `docs/plans/0034-*.md` |
 | 2026-06-20 | **PLAN-0033 Phase C COMPLETE — full 7-scene story-mode arc MERGED + Step-6 closeout (#387 merge `d7ae465`, session 70; closeout session 71)** _(rotated 2026-06-25, session 77 — batch-3 RD last-10 trim)_ — C1 (scene 1 Hook / 2 Govern-with-fail-safe-self-catch / 4 live-intake dual-path / 5 Before-After) + C2 (scene 6 Breadth / 7 Appendix) on a SCENES registry + generic shell with a two-tier Motion scope (shell + per-scene) enforcing the AC-13 teardown contract; additive `view-story.js` overlay (SD-C, coexists with Views A–E), synthetic Tier-1 mirror (ADR-0015 D1), no new backend, offline/no-CDN. On-screen copy localised to English; offline IBM Plex fonts vendored (#388); `?v=` static-asset cache-bust added. Two scenes iterated live (Cray review): scene 6 → swap-in-place + "Compare all" matrix hybrid (per-vertical real-YAML toggle); scene 7 → SVG fan-flow (runtime pipeline + YAML→6-artifacts fan-out) + marching-dash animation + click-to-detail + golden moat takeaway. **Step-6 closeout (s71):** per-AC AC-1…AC-14 = 14/14 PASS via the preview workflow (a11y/DOM probes + behavioral eval; `preview_screenshot` env-unavailable) — AC-13 teardown `OCT.Motion.activeCount().total === 0` after cycling all 7 scenes; AC-3 moat beat (LLM low-conf → rule fail-safe reroute → still passes approve gate + audit `WO-AQ-7731 · audit#a3f1`); AC-8 scene-5 "0 of 40" defensible vs REPORT §B-3; AC-9/AC-12 honesty+offline greps clean. Demo-operator runbook section added to `docs/runbooks/run-oct-demo.md`; PLAN-0033 `git mv` → `done/`. Honesty note preserved: scene 4 "Go live" is a SCRIPTED dummy (hard-timeout → cached fallback, no real MS-S1 extract; Cray-approved deferral) — the readiness pill does a real safe `GET /llm/status` (PLAN-0018, never warms) | `d7ae465` (#387, #388) / `services/api/static/assets/view-story.js` + `docs/runbooks/run-oct-demo.md` + `docs/plans/done/0033-phase-c-demo-ui.md` |
 | 2026-06-19 | **PLAN-0033 Phase C C0 vertical slice SHIPPED — aquaculture story-mode (#385, feat `a9079e5` / merge `0a32e67`, session 69)** _(rotated 2026-06-25, session 77)_ — the additive `view-story.js` overlay (SD-C; coexists with Views A–E, never replaces) + `motion.js` (driver-agnostic Motion seam enforcing the lifecycle-teardown contract) + `story.css`, wired into `index.html`/`app.js`. Delivers the branching-DAG overview (5 node states + 3 edge types, hand-placed SVG), the two-axis layout (all task details left / DAG + transport right), and the scene-6 control surface (Proposed→Approved→Executed kanban + reasoning-trace why-toggle reusing the rule/llm/query colour legend). Moat beat (AC-3, ADR-010 IN-4) works: an LLM-compose error reroutes (amber) to the deterministic rule fail-safe, which still passes the human approve-gate + records audit. **GSAP DEFERRED to C1/C2** (Cray's call, s69 — corrects the s68 next_action): the seam is driver-agnostic so C0 ships on the zero-dependency WAAPI/rAF driver (offline, no-CDN, reduced-motion floor); GSAP/Motion One drops in behind `Motion.useDriver` later after the one-time licence check, no scene-code change. AC-2/3/4/5/6/9/10/11/12/13/14 verified via the preview workflow (a11y snapshot + behavioral eval); deterministic /goal gate (files exist / wired / no new CDN) passes; teardown leaks 0 timers/tweens/listeners. Caveat: `preview_screenshot` environmentally unavailable in this WSL/FastAPI preview (times out on the plain console too — not a page defect). Scope: Tier-1 mirror, synthetic only (ADR-0015 D1); no new backend. NEXT = C1 (full arc scenes) then C2 (breadth+Ask+appendix) | `0a32e67` (#385, feat `a9079e5`) / `services/api/static/assets/view-story.js` + `motion.js` + `story.css` + `docs/plans/0033-*.md` |
