@@ -601,6 +601,33 @@ select.pv-edit { height: 26px; cursor: pointer; }
 /* a required stub clears its dashed "unfilled" cue the moment it is authored (live) */
 .pv-edit.is-stub.is-filled { border-style: solid; border-color: var(--ok-line); }
 
+/* the narrative capture surface (PLAN-0040 AC-B5): free-text -> classify -> confirm */
+.pv-capture { max-width: 760px; margin: 14px auto; display: flex; flex-direction: column; gap: 14px; }
+.pv-cap-head { display: flex; align-items: flex-start; gap: 10px; }
+.pv-cap-head svg { color: var(--accent); margin-top: 2px; }
+.pv-cap-title { font-size: 18px; margin: 2px 0 0; }
+.pv-cap-sub { font-size: 13px; line-height: 1.5; margin: 0; }
+.pv-cap-note { font-size: 12.5px; padding: 9px 12px; border-radius: var(--r-md); border: 1px solid var(--line); }
+.pv-cap-note.s-warn { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-line); }
+.pv-cap-note.s-info { color: var(--info); background: var(--info-bg); border-color: var(--info-line); }
+.pv-cap-field { display: flex; flex-direction: column; gap: 5px; }
+.pv-cap-label { font-size: 11px; }
+.pv-cap-input, .pv-cap-textarea {
+  width: 100%; font-family: var(--sans); font-size: 13px; color: var(--tx-0);
+  background: var(--bg-1); border: 1px solid var(--line-strong); border-radius: var(--r-md);
+  padding: 8px 10px; box-sizing: border-box;
+}
+.pv-cap-input.mono { font-family: var(--mono); }
+.pv-cap-textarea { resize: vertical; line-height: 1.5; }
+.pv-cap-input:focus, .pv-cap-textarea:focus { outline: none; border-color: var(--accent); }
+.pv-cap-hint { font-size: 11.5px; }
+.pv-cap-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pv-cap-actions .pv-cap-input { width: auto; flex: 1 1 220px; }
+.pv-cap-foot { font-size: 11.5px; line-height: 1.5; }
+.pv-prop-arch { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line-soft); }
+.pv-prop-conf { font-size: 11.5px; }
+.pv-prop-rationale { font-size: 13px; line-height: 1.55; margin: 0; }
+
 @media (max-width: 720px) {
   .pv-facet { grid-template-columns: 1fr; gap: 4px; }
   .pv-step-desc, .pv-facets { margin-left: 0; padding-left: 0; }

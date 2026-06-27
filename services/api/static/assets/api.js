@@ -128,6 +128,26 @@
       intakeCall('POST', '/intake/generate', { package: pkg, confirmed: true, force: !!force })
   };
 
+  /* ---- procedure-draft intake (PLAN-0040 AC-B5): narrative -> governed skeleton ----
+     REAL backend only (reuses intakeCall — NO mock fallback; a mocked classify/build
+     would lie about the moat). `build` ALWAYS sends confirmed:true: the ONLY caller is
+     the operator's explicit gate Confirm click (no auto-confirm path, LOCKED-5).
+     `instantiate` is the zero-LLM manual-pick fallback (works when MS-S1 is cold, D9).
+     Each returns {ok, status, body}; the body carries state=match|abstain|degraded|ok. */
+  const Draft = {
+    classify: (narrative, vertical) =>
+      intakeCall('POST', '/procedures/draft/classify', { narrative, vertical }),
+    build: (narrative, vertical, archetypeId, bandSource) =>
+      intakeCall('POST', '/procedures/draft/build', {
+        narrative, vertical, archetype_id: archetypeId,
+        confirmed: true, band_source: bandSource || 'in_file'
+      }),
+    instantiate: (archetypeId, vertical, title) =>
+      intakeCall('POST', '/procedures/draft/instantiate', {
+        archetype_id: archetypeId, vertical, title: title || ''
+      })
+  };
+
   /* ---- ontology helpers (everything domain-specific comes from here) ---- */
   const Onto = {
     typeDef(name) { return State.meta ? State.meta.object_types.find(t => t.name === name) : null; },
@@ -204,7 +224,7 @@
 
   window.OCT = window.OCT || {};
   Object.assign(window.OCT, {
-    State, API, Llm, Intake, Onto, onConnection, setConnection,
+    State, API, Llm, Intake, Draft, Onto, onConnection, setConnection,
     loadMeta, loadObjects, loadAllObjects, loadRecommendations
   });
 })();
