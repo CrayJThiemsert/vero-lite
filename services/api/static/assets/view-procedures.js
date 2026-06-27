@@ -30,7 +30,7 @@
   const H_FIELDS = new Set(['threshold', 'direction', 'watch_margin', 'handler', 'autonomy', 'tiers', 'env_var']);
 
   let data = null; // the GET /procedures payload: { verticals: [...] }
-  const state = { vertical: null, procedureId: null, mode: 'read' };
+  const state = { vertical: null, procedureId: null, mode: 'read', draft: null };
   let root, navEl, subEl, bodyEl;
 
   /* ---- the load-bearing pure decomposition (AC-7 seam) -------------------
@@ -175,8 +175,12 @@
       ]),
       h('div', { class: 'flex' }),
       modeToggle(),
+      // when a generated draft is shown, offer a way back to the narrative capture
+      (editing && state.draft)
+        ? h('button', { class: 'iconbtn', onClick: () => mount(root.parentElement, { mode: 'edit' }) }, [icon('spark', { width: 13, height: 13 }), 'New narrative'])
+        : null,
       legend(),
-      h('button', { class: 'iconbtn', onClick: () => mount(root.parentElement, { mode: state.mode }) }, [icon('refresh'), 'Refresh'])
+      h('button', { class: 'iconbtn', onClick: () => mount(root.parentElement, { mode: state.mode, draft: state.draft }) }, [icon('refresh'), 'Refresh'])
     ]));
     navEl = h('div', { class: 'pv-nav' });
     subEl = h('div', { class: 'pv-sub' });
@@ -492,12 +496,14 @@
   async function mount(container, opts) {
     opts = opts || {};
     state.mode = opts.mode || 'read';
+    state.draft = opts.draft || null; // an in-memory generated draft (edit-mode gate render)
     clear(container);
     container.appendChild(build());
-    bodyEl.appendChild(O.loadingState(state.mode === 'edit' ? 'Loading the authoring gate…' : 'Loading procedures…'));
-    // edit-mode renders a RECORDED generated draft OFFLINE (PLAN-0040 C1 / OQ-D D1):
-    // no /procedures fetch, no backend dependency — the gate is exercisable offline.
-    if (state.mode === 'edit') { mountEdit(); return; }
+    // edit-mode: render a generated draft behind the gate when one is supplied (the live
+    // build, the instantiate fallback, or the recorded sample); with no draft, show the
+    // narrative capture surface (PLAN-0040 AC-B5 / LOCKED-9). Either way no /procedures fetch.
+    if (state.mode === 'edit') { mountEdit(container); return; }
+    bodyEl.appendChild(O.loadingState('Loading procedures…'));
     try {
       // meta is only for the default-vertical pick (OQ-3); its failure is non-fatal
       if (!O.State.meta) await O.loadMeta().catch(() => {});
@@ -517,20 +523,37 @@
     }
   }
 
-  // edit-mode (PLAN-0040 C1): render the recorded generated draft from gate-fixture.js
-  // — OFFLINE, no fetch (OQ-D D1). Deep-clone so authoring edits never mutate the source.
-  function mountEdit() {
-    data = O.GateFixture ? JSON.parse(JSON.stringify(O.GateFixture)) : null;
-    if (!data || !Array.isArray(data.verticals) || !data.verticals.length) {
-      clear(bodyEl);
-      bodyEl.appendChild(O.errorState(
-        'No draft to author',
-        'the edit-mode gate fixture (gate-fixture.js) is unavailable.', null
-      ));
+  // edit-mode (PLAN-0040 C1 / AC-B5): with a supplied draft, render it behind the gate
+  // (deep-clone so authoring edits never mutate the source); with no draft, show the
+  // narrative capture surface, which calls back with a built / instantiated / recorded-sample
+  // draft and re-mounts here WITH it — the gate render stays this one renderer (LOCKED-8).
+  function mountEdit(container) {
+    if (state.draft) {
+      data = JSON.parse(JSON.stringify(state.draft));
+      if (!data || !Array.isArray(data.verticals) || !data.verticals.length) {
+        clear(bodyEl);
+        bodyEl.appendChild(O.errorState('No draft to author', 'the generated draft was empty.', null));
+        return;
+      }
+      initSelection();
+      render();
       return;
     }
-    initSelection();
-    render();
+    clear(navEl);
+    clear(subEl);
+    clear(bodyEl);
+    const v = (O.State.meta && O.State.meta.vertical) || 'draft';
+    if (O.IntakeProcedures && O.IntakeProcedures.mount) {
+      O.IntakeProcedures.mount(bodyEl, {
+        vertical: v,
+        onDraft: (env) => mount(container, { mode: 'edit', draft: env })
+      });
+    } else {
+      bodyEl.appendChild(O.errorState(
+        'Authoring intake unavailable',
+        'the capture module (intake-procedures.js) did not load.', null
+      ));
+    }
   }
 
   // exposed: `mount` (read by app.js). `facetModel` is exported so PLAN-0040's
