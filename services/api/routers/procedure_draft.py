@@ -68,6 +68,7 @@ from services.engine.procedures.generator import (
     classify_narrative,
 )
 from services.engine.procedures.generator.schemas import Classification
+from services.engine.procedures.prose_lint import prose_lint
 from services.engine.procedures.spec import Autonomy, BandSource, Procedure, parse_procedures
 from services.engine.registry import registry
 
@@ -123,6 +124,29 @@ def _governance_options(vertical: str) -> dict[str, list[str]]:
 
 def _band_source(value: str) -> BandSource:
     return BandSource.ENV if value == "env" else BandSource.IN_FILE
+
+
+_UNREACHABLE_DETAIL = "the local model server is unreachable — pick an archetype manually"
+
+
+def _abstain_detail(reason: str, detail: str | None) -> str | None:
+    """Sanitise a degraded detail before it crosses the HTTP boundary: an
+    ``llm_unreachable`` detail embeds the MS-S1 host/port (``OllamaUnreachableError``) —
+    return a generic message instead of echoing the internal address to the caller."""
+    if reason == "llm_unreachable":
+        return _UNREACHABLE_DETAIL
+    return detail
+
+
+def _safe_rationale(rationale: str) -> str:
+    """Lint the classify rationale (advisory LLM prose) before returning it. The S5 build
+    prose is linted, but the classify rationale renders right beside the confirm decision —
+    a value smuggled here is the same leak-class-1 anchor a human would copy into the field
+    they author (governed ≠ generated). On any violation, blank it (advisory — safe to drop;
+    it is recorded in provenance, not authoritative)."""
+    if rationale and prose_lint(rationale, handlers=frozenset(registry.all_handler_names())):
+        return ""
+    return rationale
 
 
 def _envelope(
@@ -226,7 +250,10 @@ async def draft_classify(req: ClassifyRequest) -> ClassifyResponse:
         # hand-author route (abstain) — distinct states so the UI offers the right next step.
         state = "degraded" if outcome.reason == "llm_unreachable" else "abstain"
         return ClassifyResponse(
-            state=state, reason=outcome.reason, detail=outcome.detail, catalog=_catalog()
+            state=state,
+            reason=outcome.reason,
+            detail=_abstain_detail(outcome.reason, outcome.detail),
+            catalog=_catalog(),
         )
 
     return ClassifyResponse(
@@ -235,7 +262,7 @@ async def draft_classify(req: ClassifyRequest) -> ClassifyResponse:
             archetype_id=outcome.template.archetype_id,
             title=outcome.template.title,
             confidence=outcome.classification.confidence,
-            rationale=outcome.classification.rationale,
+            rationale=_safe_rationale(outcome.classification.rationale),
         ),
         catalog=_catalog(),
     )
@@ -274,7 +301,11 @@ async def draft_build(req: BuildRequest) -> BuildResponse:
     )
     if isinstance(outcome, Abstained):
         state = "degraded" if outcome.reason == "llm_unreachable" else "abstain"
-        return BuildResponse(state=state, reason=outcome.reason, detail=outcome.detail)
+        return BuildResponse(
+            state=state,
+            reason=outcome.reason,
+            detail=_abstain_detail(outcome.reason, outcome.detail),
+        )
 
     return BuildResponse(
         state="ok", draft=_skeleton_envelope(outcome), prose_attempts=outcome.prose_attempts

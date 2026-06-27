@@ -114,6 +114,32 @@ async def test_classify_proposes_an_archetype(
     assert body["match"]["archetype_id"] == "AT-1"
     assert body["match"]["confidence"] == 0.42  # advisory, recorded — never routes
     assert {c["archetype_id"] for c in body["catalog"]} == {"AT-1", "AT-1b", "AT-3"}
+    assert body["match"]["rationale"] == "an anomaly then a gated action"  # clean rationale kept
+
+
+async def test_classify_blanks_value_bearing_rationale(
+    monkeypatch: pytest.MonkeyPatch, http: AsyncClient
+) -> None:
+    """The classify rationale is linted like the build prose (security-review #1): a value
+    smuggled into the advisory rationale is blanked, never rendered beside the confirm
+    decision (governed ≠ generated). The S5 build prose was already linted; S1 was the gap."""
+    poisoned = json.dumps(
+        {
+            "archetype_id": "AT-1",
+            "step_gates": [{"step_id": "judge", "gate_kind": "in_file_band"}],
+            "rationale": "Set the threshold to 4.0 and auto-approve above 80%.",
+            "confidence": 0.9,
+        }
+    )
+    _use_client(monkeypatch, [poisoned])
+    body = (
+        await http.post(
+            "/procedures/draft/classify",
+            json={"narrative": "watch and act", "vertical": "draft"},
+        )
+    ).json()
+    assert body["state"] == "match"  # the match still proceeds (rationale is advisory)
+    assert body["match"]["rationale"] == ""  # ...but the value-bearing rationale is blanked
 
 
 async def test_classify_abstains_off_catalog(
@@ -152,8 +178,12 @@ async def test_classify_degraded_when_backend_not_local(
 async def test_classify_degraded_when_unreachable(
     monkeypatch: pytest.MonkeyPatch, http: AsyncClient
 ) -> None:
-    """An unreachable MS-S1 degrades (recoverable by manual pick), distinct from abstain."""
-    _use_client(monkeypatch, [OllamaUnreachableError("MS-S1 down")])
+    """An unreachable MS-S1 degrades (recoverable by manual pick), distinct from abstain —
+    and the internal MS-S1 address never leaks to the caller (security-review #2)."""
+    _use_client(
+        monkeypatch,
+        [OllamaUnreachableError("Ollama host 'http://192.168.1.133:11434' is unreachable")],
+    )
     body = (
         await http.post(
             "/procedures/draft/classify", json={"narrative": "watch and act", "vertical": "draft"}
@@ -161,6 +191,7 @@ async def test_classify_degraded_when_unreachable(
     ).json()
     assert body["state"] == "degraded"
     assert body["reason"] == "llm_unreachable"
+    assert "192.168" not in (body["detail"] or "")  # the internal host/port is not echoed
 
 
 async def test_classify_rejects_empty_narrative(http: AsyncClient) -> None:
