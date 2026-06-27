@@ -138,6 +138,32 @@
     return p === AUTH ? 'pv-auth' : p === LLM ? 'pv-llm' : 'pv-prose';
   }
 
+  // guided-authoring presentation meta (PLAN-0040 C2): each H-field's TYPE + legal domain
+  // + where to source it — never a VALUE (so it never crosses D4). An `options` key pulls
+  // the LEGAL set from data.governance_options (the allowlist a human picks from, not a
+  // recommendation): the dropdown answers "what is legal here", the human still authors.
+  const FIELD_GUIDE = {
+    threshold: { type: 'float', source: 'read it off the asset’s operating spec — the safe-operating band' },
+    direction: { type: 'enum', options: 'direction' },
+    watch_margin: { type: 'float', source: 'optional — blank skips the early-warning watch' },
+    handler: { type: 'enum', options: 'handler', source: 'a registered handler in the allowlist' },
+    autonomy: { type: 'enum', options: 'autonomy', source: 'confirm the safe default (gated)' },
+    tiers: { type: 'text', source: 'optional — canonical / acceptable / forbidden' },
+    env_var: { type: 'text', source: 'the env var carrying the band' }
+  };
+  function govOptions(key) {
+    return (data && data.governance_options && data.governance_options[key]) || [];
+  }
+  // the archetype oracle's expectation for a step (derived from kind + gate_kind, the
+  // template's signature) — the "must be a band" affordance (D4/D8).
+  function oracleExpectation(kind, gateKind) {
+    if (kind === 'evaluate' && gateKind === 'in_file_band') return 'must be an in_file band — author threshold + direction';
+    if (kind === 'evaluate' && gateKind === 'env_band') return 'must be an env band — author the env var';
+    if (kind === 'evaluate') return 'must be a band — never none';
+    if (kind === 'action') return 'no gate · author a registered handler + confirm autonomy';
+    return 'no gate expected';
+  }
+
   /* ---- shell ---- */
   function build() {
     root = h('div', { class: 'view-inner procview' });
@@ -266,7 +292,25 @@
     ]));
 
     // ---- goal + agent (the governance context) ----
-    if (proc.goal) card.appendChild(h('p', { class: 'pv-goal muted' }, proc.goal));
+    // edit-mode: the goal is the runtime LLM directive — a leak-class-3 G-field the human
+    // authors behind an ELEVATED-scrutiny affordance (OQ-B B2: generated empty, not drafted).
+    if (state.mode === 'edit') {
+      card.appendChild(h('div', { class: 'pv-goal-edit' }, [
+        h('div', { class: 'pv-goal-head' }, [
+          icon('anomaly', { width: 14, height: 14 }),
+          h('span', null, 'procedure goal — elevated scrutiny · runtime directive')
+        ]),
+        h('input', {
+          class: 'pv-edit is-stub pv-goal-input',
+          placeholder: 'author the runtime directive — describe intent, not thresholds or amounts',
+          value: proc.goal || '',
+          'aria-label': 'procedure goal'
+        }),
+        h('div', { class: 'pv-fhint faint' }, 'the goal is the agent’s runtime instruction — a human authors it (governed ≠ generated)')
+      ]));
+    } else if (proc.goal) {
+      card.appendChild(h('p', { class: 'pv-goal muted' }, proc.goal));
+    }
     if (agent) {
       card.appendChild(h('div', { class: 'pv-agent' }, [
         h('span', { class: 'eyebrow' }, 'Run by'),
@@ -293,7 +337,7 @@
 
   function renderStep(model, n, opts) {
     const mode = (opts && opts.mode) || 'read';
-    const step = h('div', { class: 'pv-step' });
+    const step = h('div', { class: 'pv-step' + (mode === 'edit' ? ' pv-step-edit' : '') });
     step.appendChild(h('div', { class: 'pv-step-head' }, [
       h('span', { class: 'pv-step-n mono ' + stepKindClass(model.kind) }, String(n)),
       h('div', { class: 'pv-step-titles' }, [
@@ -304,8 +348,10 @@
         h('div', { class: 'pv-step-id mono faint' }, model.step_id)
       ])
     ]));
-    if (model.description) step.appendChild(h('p', { class: 'pv-step-desc muted' }, model.description));
+    // edit-mode: the SAME facetModel, regrouped into the three authoring zones (C2/AC-C2).
+    if (mode === 'edit') { step.appendChild(renderZones(model)); return step; }
 
+    if (model.description) step.appendChild(h('p', { class: 'pv-step-desc muted' }, model.description));
     const facets = h('div', { class: 'pv-facets' });
     model.facets.forEach((facet) => {
       facets.appendChild(h('div', { class: 'pv-facet' }, [
@@ -318,6 +364,75 @@
     });
     step.appendChild(facets);
     return step;
+  }
+
+  // the THREE zones (PLAN-0040 C2 / AC-C2 / LOCKED-8): one facetModel, regrouped — NOT a
+  // second renderer. The same fields, bucketed: LLM-drafted (advisory prose) · YOU must
+  // author (the editable H-fields, guided) · archetype expectation (the oracle).
+  function renderZones(model) {
+    const all = [];
+    model.facets.forEach((fc) => fc.fields.forEach((fl) => all.push(fl)));
+    const llm = all.filter((f) => f.provenance === PROSE || f.provenance === LLM);
+    const author = all.filter((f) => f.editable);
+    const dc = model.facets.find((fc) => fc.key === 'decision_condition');
+    const gk = dc && dc.fields.find((f) => f.label === 'gate_kind');
+    const gateKind = gk ? gk.value : 'none';
+
+    const llmBody = [];
+    if (model.description) llmBody.push(h('p', { class: 'pv-zbody' }, model.description));
+    llm.forEach((f) => llmBody.push(h('div', { class: 'pv-znote' }, [
+      h('span', { class: 'pv-flabel mono' }, f.label),
+      h('span', { class: 'pv-fval ' + provClass(f.provenance) }, String(f.value))
+    ])));
+    if (!llmBody.length) llmBody.push(h('span', { class: 'pv-empty faint' }, '—'));
+
+    const authBody = author.length
+      ? author.map((f) => renderAuthorField(f))
+      : [h('div', { class: 'pv-noauth' }, [icon('check', { width: 13, height: 13 }), 'no governance required'])];
+
+    const oracleBody = [
+      h('div', { class: 'pv-orow mono' }, 'kind: ' + model.kind),
+      h('div', { class: 'pv-orow mono' }, 'gate_kind: ' + gateKind),
+      h('div', { class: 'pv-oexp' }, oracleExpectation(model.kind, gateKind))
+    ];
+
+    return h('div', { class: 'pv-zones' }, [
+      zone('zone-llm', 'LLM-drafted · advisory', llmBody),
+      zone('zone-author', 'YOU must author', authBody),
+      zone('zone-oracle', 'archetype expectation', oracleBody)
+    ]);
+  }
+  function zone(cls, label, body) {
+    return h('div', { class: 'pv-zone ' + cls }, [h('div', { class: 'pv-zone-label mono' }, label)].concat(body));
+  }
+
+  // one H-field in the author zone: a GUIDED control (a select of the legal domain from
+  // governance_options, or a typed input) + a type/source hint + (for a stub) the reason.
+  // NEVER a pre-filled value into a stub — guided authoring that does not cross D4.
+  function renderAuthorField(fld) {
+    const guide = FIELD_GUIDE[fld.label] || {};
+    let control;
+    if (guide.options) {
+      const opts = govOptions(guide.options);
+      control = h('select', { class: 'pv-edit' + (fld.stub ? ' is-stub' : ''), 'aria-label': fld.label },
+        (fld.stub ? [h('option', { value: '' }, 'choose…')] : []).concat(
+          opts.map((o) => h('option', { value: o, selected: !fld.stub && String(fld.value) === o }, o))
+        ));
+    } else {
+      control = fld.stub
+        ? h('input', { class: 'pv-edit is-stub', placeholder: 'author required', value: '', 'aria-label': fld.label })
+        : h('input', { class: 'pv-edit', value: String(fld.value), 'aria-label': fld.label });
+    }
+    const rows = [
+      h('div', { class: 'pv-afield-head' }, [
+        h('span', { class: 'pv-flabel mono' }, fld.label),
+        guide.type ? h('span', { class: 'pv-ftype mono faint' }, guide.type) : null
+      ]),
+      control
+    ];
+    if (guide.source) rows.push(h('div', { class: 'pv-fhint faint' }, guide.source));
+    if (fld.reason) rows.push(h('div', { class: 'pv-freason faint' }, fld.reason));
+    return h('div', { class: 'pv-afield' }, rows);
   }
 
   function renderField(fld, mode) {
