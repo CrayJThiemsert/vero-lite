@@ -211,32 +211,52 @@ def _step_gate_kind(step: Step) -> GateKind:
     return GateKind.NONE
 
 
+_AT2_GATE_KINDS = frozenset({GateKind.SCORED_RULE, GateKind.RULE_GATE, GateKind.DOA_TIER})
+"""The AT-2 (managerial) gate kinds whose step owes typed ``governance_content`` (ADR-0025
+D5): a ``scored_rule`` action owes a ``ScoredRule``, a ``rule_gate`` evaluate owes a
+``ComplianceGate``, a ``doa_tier`` action owes a ``DoaLadder``. (Distinct from the
+generator's classify-time AT-2 abstain guard in ``generator/pipeline.py``.)"""
+
+
 def derive_governance_todo(step: Step) -> list[str]:
     """The governance gates a human still owes on ``step``, derived deterministically
-    from ``(gate_kind, kind)`` (ADR-0024 OQ-C / AC-A7). A ``judge`` (evaluate) owes
-    its band value (threshold+direction for an in-file band; env_var for an env
-    band); an ``action`` owes a ``handler`` and an autonomy confirm. The list is the
-    review gate's "YOU must author" worklist; ``validate_governance_complete``
-    re-derives it (it never trusts a stored copy)."""
+    from ``(gate_kind, kind)`` (ADR-0024 OQ-C / AC-A7; extended for AT-2 by ADR-0025 D5).
+    A ``judge`` (evaluate) owes its band value (threshold+direction for an in-file band;
+    env_var for an env band); an ``action`` owes a ``handler`` and an autonomy confirm; and
+    a step on an **AT-2 gate kind** (``scored_rule`` / ``rule_gate`` / ``doa_tier``) also
+    owes its typed ``governance_content`` (the matching DoaLadder / ScoredRule /
+    ComplianceGate — D5). The list is the review gate's "YOU must author" worklist;
+    ``validate_governance_complete`` re-derives it (it never trusts a stored copy)."""
     gate_kind = _step_gate_kind(step)
+    owes_at2 = ["governance_content"] if gate_kind in _AT2_GATE_KINDS else []
     if step.kind is StepKind.EVALUATE:
         if gate_kind is GateKind.IN_FILE_BAND:
             return ["threshold", "direction"]  # watch_margin stays optional
         if gate_kind is GateKind.ENV_BAND:
             return ["env_var"]
-        return []
+        return owes_at2  # rule_gate owes its ComplianceGate; none owes nothing
     if step.kind is StepKind.ACTION:
-        return ["handler", "autonomy"]
-    return []
+        return ["handler", "autonomy", *owes_at2]  # scored_rule/doa_tier add the content
+    return owes_at2
 
 
 def _is_filled(step: Step, field: str) -> bool:
     """Whether a derived obligation ``field`` is authored on ``step`` (presence test).
     ``autonomy`` is always present (defaulted ``gated`` = safe), so it never blocks a
-    run — it stays in the worklist as a human CONFIRM, not a hard gate."""
+    run — it stays in the worklist as a human CONFIRM, not a hard gate.
+
+    ``governance_content`` (AT-2, ADR-0025 D5) is filled iff it is present AND its
+    discriminator ``kind`` matches the step's ``gate_kind`` — the D4 correspondence check,
+    so a ``DoaLadder`` mistakenly placed on a ``scored_rule`` step counts as unfilled
+    (wrong content), not filled. (Semantic validity — non-empty tiers, monotone floors,
+    etc. — is already guaranteed by the model validators at construction, so a *present,
+    matching* content is a *valid* content.)"""
     if field == "env_var":
         dc = step.facet.decision_condition if step.facet is not None else None
         return dc is not None and dc.env_var is not None
+    if field == "governance_content":
+        content = step.governance_content
+        return content is not None and content.kind == _step_gate_kind(step).value
     return getattr(step, field, None) is not None
 
 
@@ -245,3 +265,29 @@ def unfilled_governance(step: Step) -> list[str]:
     what ``validate_governance_complete`` raises on. Empty ⇒ the step's gates are
     authored (run-loadable)."""
     return [field for field in derive_governance_todo(step) if not _is_filled(step, field)]
+
+
+# --- procedure-level governance obligations (AT-2 SoD; ADR-0025 D5) --------------
+
+
+def derive_procedure_governance_todo(procedure: Procedure) -> list[str]:
+    """The procedure-level governance obligations, derived from the procedure's steps
+    (ADR-0025 D5). A procedure containing a ``doa_tier`` action owes >=1
+    ``separation_of_duties`` constraint — SoD spans steps, so it is procedure-scoped, not
+    step-scoped. The author-time gate enforces this STRUCTURAL form (a constraint exists,
+    naming >=2 distinct real steps — see the ``Procedure`` validators); the
+    resolved-PRINCIPAL distinctness (fail-closed on alias-collapse) is the deferred A2 run
+    check (ADR-0025 OQ-A=A1; AC-13-ALT)."""
+    if any(_step_gate_kind(s) is GateKind.DOA_TIER for s in procedure.steps):
+        return ["separation_of_duties"]
+    return []
+
+
+def unfilled_procedure_governance(procedure: Procedure) -> list[str]:
+    """The procedure-level obligations not yet authored (ADR-0025 D5). Empty ⇒ the
+    procedure's SoD obligation (if any) is satisfied. Re-derived; never a stored copy."""
+    out: list[str] = []
+    for field in derive_procedure_governance_todo(procedure):
+        if field == "separation_of_duties" and not procedure.separation_of_duties:
+            out.append(field)
+    return out

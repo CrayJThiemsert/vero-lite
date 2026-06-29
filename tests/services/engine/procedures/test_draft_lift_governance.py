@@ -16,6 +16,7 @@ Offline gate (zero-LLM, no DB) for ADR-0024 D3 mechanism 1 + D6 / OQ-1:
 
 from __future__ import annotations
 
+from decimal import Decimal
 from typing import Any, get_args
 
 import pytest
@@ -42,15 +43,21 @@ from services.engine.procedures.orchestrator import (
 from services.engine.procedures.spec import (
     Autonomy,
     BandSource,
+    ComplianceCriterion,
     ComplianceGate,
     ComplianceRule,
+    DecisionCondition,
     DoaLadder,
     DoaTier,
     EmergencyWaiverPolicy,
+    ExceptionPolicy,
     GateKind,
+    Procedure,
+    RelaxableConstraint,
     ScoredCriterion,
     ScoredRule,
     SoDConstraint,
+    SourcePolicy,
     Step,
     StepFacet,
     StepKind,
@@ -283,3 +290,164 @@ def test_lift_injects_at2_content_absent() -> None:
         run_by="agent",
     )
     assert proc.separation_of_duties == []
+
+
+# --- ADR-0025 Step 2 (D5): the AT-2-aware run-gate (governance_content + SoD) -----
+#
+# derive_governance_todo now owes governance_content on an AT-2 gate kind; _is_filled checks
+# the D4 correspondence (variant kind == gate_kind); validate_governance_complete refuses a
+# hollow AT-2 (missing content) and a doa_tier procedure with no SoD. The principal-level SoD
+# is the deferred A2 run check (OQ-A=A1) — these assert the author-time STRUCTURAL gate.
+
+
+def _dc_step(
+    step_id: str,
+    kind: StepKind,
+    gate_kind: GateKind,
+    *,
+    handler: str | None = None,
+    governance_content: DoaLadder | ScoredRule | ComplianceGate | None = None,
+) -> Step:
+    """A step carrying a facet ``gate_kind`` (the discriminator the gate reads)."""
+    return Step(
+        step_id=step_id,
+        name=step_id,
+        kind=kind,
+        handler=handler,
+        governance_content=governance_content,
+        facet=StepFacet(decision_condition=DecisionCondition(gate_kind=gate_kind)),
+    )
+
+
+def _ladder() -> DoaLadder:
+    return DoaLadder(
+        currency="THB",
+        tiers=[DoaTier(min_amount=Decimal("0"), approver_role="dept_head")],
+        emergency_waiver=EmergencyWaiverPolicy(
+            relaxes=[RelaxableConstraint.THREE_BID], escalate_to="director"
+        ),
+    )
+
+
+def _scored() -> ScoredRule:
+    return ScoredRule(
+        criteria=[ScoredCriterion(name="price", weight=Decimal("1"))],
+        default_source=SourcePolicy.ON_CONTRACT,
+        exception_policy=ExceptionPolicy.RFQ_AVL_LOGGED,
+    )
+
+
+# AC-7 — derive_governance_todo owes governance_content on each AT-2 gate kind
+
+
+def test_governance_todo_scored_rule_action_owes_content() -> None:
+    step = _dc_step("source", StepKind.ACTION, GateKind.SCORED_RULE, handler="emergency_source")
+    assert "governance_content" in derive_governance_todo(step)
+
+
+def test_governance_todo_rule_gate_evaluate_owes_content() -> None:
+    step = _dc_step("compliance", StepKind.EVALUATE, GateKind.RULE_GATE)
+    assert derive_governance_todo(step) == ["governance_content"]
+
+
+def test_governance_todo_doa_tier_action_owes_content() -> None:
+    step = _dc_step("approve", StepKind.ACTION, GateKind.DOA_TIER, handler="request_approval")
+    assert "governance_content" in derive_governance_todo(step)
+
+
+def test_governance_todo_none_gate_action_owes_no_at2_content() -> None:
+    """An AT-1-family action (gate_kind none) is unchanged — no governance_content owed."""
+    step = _dc_step("issue", StepKind.ACTION, GateKind.NONE, handler="issue_po")
+    assert "governance_content" not in derive_governance_todo(step)
+
+
+# AC-7 — _is_filled enforces the D4 variant<->gate_kind correspondence
+
+
+def test_doa_tier_with_matching_ladder_is_filled() -> None:
+    step = _dc_step(
+        "approve",
+        StepKind.ACTION,
+        GateKind.DOA_TIER,
+        handler="request_approval",
+        governance_content=_ladder(),
+    )
+    assert "governance_content" not in unfilled_governance(step)
+
+
+def test_doa_tier_with_wrong_variant_is_unfilled() -> None:
+    """D4 correspondence: a ScoredRule on a doa_tier step is present but mismatched -> unfilled."""
+    step = _dc_step(
+        "approve",
+        StepKind.ACTION,
+        GateKind.DOA_TIER,
+        handler="request_approval",
+        governance_content=_scored(),
+    )
+    assert "governance_content" in unfilled_governance(step)
+
+
+def test_at2_step_missing_content_is_unfilled() -> None:
+    step = _dc_step("compliance", StepKind.EVALUATE, GateKind.RULE_GATE)
+    assert unfilled_governance(step) == ["governance_content"]
+
+
+# AC-9 — the negative hollow-but-complete regression (the D5 ratification gate)
+
+_SOD = [SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))]
+
+
+def _doa_procedure(
+    *, content: DoaLadder | ScoredRule | ComplianceGate | None, sod: list[SoDConstraint]
+) -> Procedure:
+    return Procedure(
+        procedure_id="p",
+        title="P",
+        run_by="a",
+        steps=[
+            Step(step_id="intake", name="Intake", kind=StepKind.QUERY),
+            _dc_step(
+                "approve",
+                StepKind.ACTION,
+                GateKind.DOA_TIER,
+                handler="request_approval",
+                governance_content=content,
+            ),
+        ],
+        separation_of_duties=sod,
+    )
+
+
+def test_hollow_at2_missing_content_is_refused() -> None:
+    """AC-9 / D8 fixture 1: a doa_tier step with handler+autonomy filled but governance_content
+    ABSENT is refused — the live blindness defect, now closed (pre-committed pass/fail)."""
+    proc = _doa_procedure(content=None, sod=_SOD)
+    with pytest.raises(ProcedureError, match="governance_content"):
+        validate_governance_complete(proc)
+
+
+def test_doa_procedure_missing_sod_is_refused() -> None:
+    """AC-9: a doa_tier-bearing procedure with no separation_of_duties is refused (D5)."""
+    proc = _doa_procedure(content=_ladder(), sod=[])
+    with pytest.raises(ProcedureError, match="separation_of_duties"):
+        validate_governance_complete(proc)
+
+
+def test_wrong_variant_at2_is_refused() -> None:
+    """AC-9: a present-but-mismatched variant (ScoredRule on a doa_tier step) is refused."""
+    proc = _doa_procedure(content=_scored(), sod=_SOD)
+    with pytest.raises(ProcedureError, match="governance_content"):
+        validate_governance_complete(proc)
+
+
+def test_fully_authored_at2_passes_the_gate() -> None:
+    """The second state: matching content on the doa_tier step + a SoD constraint passes."""
+    proc = _doa_procedure(content=_ladder(), sod=_SOD)
+    validate_governance_complete(proc)  # no raise
+
+
+def test_compliance_criterion_import_is_used() -> None:
+    """A rule_gate evaluate owes a ComplianceGate; a matching one fills it."""
+    gate = ComplianceGate(rules=[ComplianceRule(criterion=ComplianceCriterion.AVL, spec="on AVL")])
+    step = _dc_step("compliance", StepKind.EVALUATE, GateKind.RULE_GATE, governance_content=gate)
+    assert "governance_content" not in unfilled_governance(step)

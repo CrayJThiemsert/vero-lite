@@ -25,7 +25,11 @@ from services.engine.procedures.spec import (
     load_procedures,
 )
 
-VERTICALS = ["aquaculture", "energy", "supply_chain"]
+# procurement (the 4th vertical, the only AT-2) is included so the golden test exercises the
+# AT-2-aware run-gate end-to-end: emergency_sourcing_round passes validate_runnable BECAUSE its
+# governance_content + separation_of_duties are now typed (ADR-0025 D5; PLAN-0042 Step 2) — not
+# because the gate is blind. (Pre-Step-2 it would FAIL here: the migration trap.)
+VERTICALS = ["aquaculture", "energy", "supply_chain", "procurement"]
 
 
 def _agent_for(spec: VerticalProcedures, agent_id: str) -> Agent:
