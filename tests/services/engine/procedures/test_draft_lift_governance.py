@@ -16,7 +16,10 @@ Offline gate (zero-LLM, no DB) for ADR-0024 D3 mechanism 1 + D6 / OQ-1:
 
 from __future__ import annotations
 
+from typing import Any, get_args
+
 import pytest
+from pydantic import BaseModel
 
 from services.engine.procedures.archetypes.template import REGISTRY, instantiate
 from services.engine.procedures.draft import (
@@ -27,6 +30,7 @@ from services.engine.procedures.draft import (
     ProcedureDraft,
     StepDraft,
     derive_governance_todo,
+    lift_to_procedure,
     lift_to_step,
     unfilled_governance,
 )
@@ -38,8 +42,17 @@ from services.engine.procedures.orchestrator import (
 from services.engine.procedures.spec import (
     Autonomy,
     BandSource,
+    ComplianceGate,
+    ComplianceRule,
+    DoaLadder,
+    DoaTier,
+    EmergencyWaiverPolicy,
     GateKind,
+    ScoredCriterion,
+    ScoredRule,
+    SoDConstraint,
     Step,
+    StepFacet,
     StepKind,
     VerticalProcedures,
     load_procedures,
@@ -185,3 +198,88 @@ def test_shipped_verticals_pass_governance_complete(vertical: str) -> None:
     for proc in spec.procedures:
         validate_governance_complete(proc)  # no raise
         assert all(not unfilled_governance(s) for s in proc.steps)
+
+
+# --- ADR-0025 Step 1 (D4): AT-2 content is H — recursive draft-disjointness + facet-unreach ---
+
+_AT2_CONTENT_TYPES: frozenset[type[BaseModel]] = frozenset(
+    {
+        DoaTier,
+        DoaLadder,
+        EmergencyWaiverPolicy,
+        ScoredCriterion,
+        ScoredRule,
+        ComplianceRule,
+        ComplianceGate,
+        SoDConstraint,
+    }
+)
+
+
+def _annotation_types(annotation: Any) -> list[type]:
+    """Every concrete type named in a type annotation, walked recursively through
+    list/set/frozenset/Optional/Union/Annotated args."""
+    out: list[type] = [annotation] if isinstance(annotation, type) else []
+    for arg in get_args(annotation):
+        out.extend(_annotation_types(arg))
+    return out
+
+
+def _reachable_models(root: type[BaseModel]) -> set[type[BaseModel]]:
+    """Every BaseModel subclass reachable from ``root``'s fields, recursively (excludes
+    ``root`` itself)."""
+    seen: set[type[BaseModel]] = set()
+    stack: list[type] = [root]
+    while stack:
+        current = stack.pop()
+        if not (isinstance(current, type) and issubclass(current, BaseModel)) or current in seen:
+            continue
+        seen.add(current)
+        for field in current.model_fields.values():
+            stack.extend(_annotation_types(field.annotation))
+    seen.discard(root)
+    return seen
+
+
+@pytest.mark.parametrize("draft_type", [StepDraft, ProcedureDraft, AgentDraft])
+def test_no_at2_content_reachable_from_any_draft_type(draft_type: type[BaseModel]) -> None:
+    """D4 recursive disjointness: no AT-2 governance-content type (nor any union variant) is
+    reachable from any draft type's fields — a generated AT-2 value is a TYPE ERROR at the
+    boundary. Adding one to a draft type later fails CI (the guardrail cannot silently
+    erode)."""
+    assert _AT2_CONTENT_TYPES.isdisjoint(_reachable_models(draft_type))
+
+
+def test_no_at2_content_reachable_from_step_facet() -> None:
+    """D4 / D2-A4: the non-authoritative StepFacet cannot embed AT-2 content — it may only
+    carry the gate_kind (point-at), never a ladder. Keeps the authoritative content on the
+    typed Step field, never in the facet."""
+    assert _AT2_CONTENT_TYPES.isdisjoint(_reachable_models(StepFacet))
+
+
+def test_step_reaches_at2_content_positive_control() -> None:
+    """Positive control: the AUTHORITATIVE Step DOES reach the AT-2 union (so the
+    disjointness assertions above are meaningful, not vacuous)."""
+    assert not _AT2_CONTENT_TYPES.isdisjoint(_reachable_models(Step))
+
+
+def test_new_governance_fields_registered_as_human_authored() -> None:
+    """AC-4: governance_content (Step) + separation_of_duties (Procedure) are in the H set."""
+    assert "governance_content" in STEP_GOVERNANCE_FIELDS
+    assert "separation_of_duties" in PROCEDURE_GOVERNANCE_FIELDS
+
+
+def test_lift_injects_at2_content_absent() -> None:
+    """AC-4: the lift leaves governance_content / separation_of_duties ABSENT (H stubs) — a
+    draft cannot carry them, so a lifted skeleton has neither."""
+    step = lift_to_step(StepDraft(step_id="approve", name="Approve", kind=StepKind.ACTION))
+    assert step.governance_content is None
+    proc = lift_to_procedure(
+        ProcedureDraft(
+            procedure_id="p",
+            title="P",
+            steps=[StepDraft(step_id="approve", name="Approve", kind=StepKind.ACTION)],
+        ),
+        run_by="agent",
+    )
+    assert proc.separation_of_duties == []

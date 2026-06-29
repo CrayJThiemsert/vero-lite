@@ -31,9 +31,11 @@ keyed by id.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from enum import StrEnum
+from itertools import pairwise
 from pathlib import Path
-from typing import Any, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from ruamel.yaml import YAML
@@ -221,6 +223,203 @@ class StepFacet(BaseModel):
     governance: str | None = Field(default=None, description="non-authoritative note (D2-A2)")
 
 
+# --- AT-2 governance content (ADR-0025 D2/D3 — the managerial layer) -------------
+#
+# The typed, HUMAN-AUTHORED, AUTHORITATIVE home for the AT-2 (managerial) archetype's
+# governance content: a tiered delegation-of-authority (DOA) ladder, a scored selection
+# rule, a per-criterion compliance gate, and procedure-level separation-of-duties (SoD).
+# These are the source of truth (like ``Step.threshold``), POINTED AT by ``gate_kind``
+# (D2-A3) — never carried in the non-authoritative ``facet`` (D2-A4). Every value is
+# human-authored (D4: registered in ``draft.GOVERNANCE_FIELDS``, never declared on a draft
+# type) — never model-emitted.
+#
+# Bypass is made UNREPRESENTABLE, not defaulted-false (D3): there is no field that skips a
+# gate, lowers a tier, or waives compliance/SoD — the closed ``RelaxableConstraint`` enum
+# cannot name compliance/SoD, ``ComplianceRule.blocks_po`` is ``Literal[True]``, the waiver
+# always requires a justification, and the DOA ladder is a total, strictly-monotonic cover.
+# The AMOUNT- / PRINCIPAL- / ROLE-RANK-dependent SEMANTIC checks (the resolved-tier strict
+# escalation of the waiver; requester-principal != approver-principal) are RUN-time
+# enforcement on the deferred A2 path (ADR-0025 D6 / OQ-A=A1, ratified s85; AC-13-ALT) —
+# author time enforces only the structural invariants below (no principal/role-rank model
+# exists in the engine yet).
+#
+# Rule-of-Three caveat (ADR-0025 D2 / LOCKED-2): AT-2 is N=1
+# (``procurement.emergency_sourcing_round``). These models are scoped tightly to that one
+# observed signature and are PROVISIONAL-UNTIL-N>=2; genericizing them is gated on the D7
+# CI re-trigger. v1 boundary (OQ-A=A1): author + render only — they render read-only.
+
+RoleId = str
+"""A human approval-role identifier (e.g. ``dept_head``) — a human-authored binding."""
+
+StepId = str
+"""A reference to a ``Step.step_id`` within the same procedure."""
+
+
+class ComplianceCriterion(StrEnum):
+    """The per-criterion compliance checks an AT-2 ``rule_gate`` evaluates (ADR-0025 D2),
+    scoped to the observed procurement signature (provisional-until-N>=2)."""
+
+    AVL = "avl"
+    TAX = "tax"
+    CERT = "cert"
+    SANCTIONS = "sanctions"
+    SINGLE_SOURCE = "single_source"
+
+
+class SourcePolicy(StrEnum):
+    """The default supplier-selection policy for an AT-2 ``scored_rule`` (ADR-0025 D2)."""
+
+    ON_CONTRACT = "on_contract"
+    OFF_CONTRACT = "off_contract"
+
+
+class ExceptionPolicy(StrEnum):
+    """The logged-exception policy when the default source cannot be used (ADR-0025 D2)."""
+
+    RFQ_AVL_LOGGED = "rfq_avl_logged"
+
+
+class RelaxableConstraint(StrEnum):
+    """The sourcing constraints an emergency waiver MAY relax (ADR-0025 D3) — a CLOSED set
+    that CANNOT name compliance or separation-of-duties (those are non-waivable by type)."""
+
+    THREE_BID = "three_bid"
+    SOLE_SOURCE = "sole_source"
+
+
+class DoaTier(BaseModel):
+    """One tier of a delegation-of-authority ladder: a spend within this tier's half-open
+    band ``[min_amount, next_min)`` routes to ``approver_role`` (ADR-0025 D2). Money is
+    ``Decimal``, never ``float`` (no binary-float rounding on an authority threshold)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min_amount: Decimal = Field(ge=0, description="inclusive spend floor of this tier (Decimal)")
+    approver_role: RoleId = Field(description="role authorised to approve within this tier")
+
+
+class EmergencyWaiverPolicy(BaseModel):
+    """An emergency waiver that ESCALATES the approver and forces a logged justification but
+    NEVER skips a gate (ADR-0025 D3). Bypass is unrepresentable: no field removes a gate,
+    lowers a tier, or waives compliance/SoD — ``relaxes`` is a closed enum that cannot name
+    them, and ``requires_justification`` is ``Literal[True]``. (The resolved-tier strict
+    escalation of ``escalate_to`` is a RUN-time A2 check — it needs the spend->tier
+    resolution + a role-rank model that does not exist yet; OQ-A=A1.)"""
+
+    model_config = ConfigDict(extra="forbid")
+
+    relaxes: list[RelaxableConstraint] = Field(
+        min_length=1,
+        description="the sourcing constraints this waiver relaxes (closed; never compliance/SoD)",
+    )
+    escalate_to: RoleId = Field(description="the higher authority approval escalates to")
+    requires_justification: Literal[True] = Field(
+        default=True,
+        description="a waiver ALWAYS forces a logged justification (unrepresentable to omit)",
+    )
+
+
+class DoaLadder(BaseModel):
+    """A tiered delegation-of-authority ladder (the ``doa_tier`` content, ADR-0025 D2/D3).
+
+    Total + unambiguous by construction: a single ``currency`` (one field — multiple
+    currencies are unrepresentable, D3); ``tiers`` non-empty with the first floor at 0 and
+    strictly-increasing floors, so every spend >= 0 maps to exactly one half-open band
+    ``[min_i, min_{i+1})`` (top tier unbounded)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["doa_tier"] = "doa_tier"
+    currency: str = Field(min_length=1, description="ISO currency for every tier (single, D3)")
+    tiers: list[DoaTier] = Field(min_length=1, description="the DOA tiers, ascending by floor")
+    emergency_waiver: EmergencyWaiverPolicy = Field(description="the escalate-never-skip waiver")
+
+    @model_validator(mode="after")
+    def _validate_ladder(self) -> Self:
+        """Total-cover, strictly-monotonic ladder (D3): first floor 0, no equal/overlapping
+        floors. Single currency is structural (one field). The resolved-tier strict
+        escalation is an A2 run check (needs a role-rank model)."""
+        floors = [t.min_amount for t in self.tiers]
+        if floors[0] != 0:
+            raise ValueError(
+                f"DoaLadder: the first tier's min_amount must be 0 (total cover from zero "
+                f"spend); got {floors[0]} — ADR-0025 D3"
+            )
+        if any(nxt <= cur for cur, nxt in pairwise(floors)):
+            raise ValueError(
+                f"DoaLadder: tier min_amount must be STRICTLY increasing (no overlap / equal "
+                f"thresholds); got {floors} — ADR-0025 D3"
+            )
+        return self
+
+
+class ScoredCriterion(BaseModel):
+    """One weighted criterion of a scored selection rule (ADR-0025 D2)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, description="the criterion name (human prose label)")
+    weight: Decimal = Field(description="the criterion's weight in the scored selection (Decimal)")
+
+
+class ScoredRule(BaseModel):
+    """The deterministic, human-authored supplier-selection rule (the ``scored_rule``
+    content, ADR-0025 D2). The LLM only summarises quotes — selection is this rule."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["scored_rule"] = "scored_rule"
+    criteria: list[ScoredCriterion] = Field(min_length=1, description="the weighted criteria (>=1)")
+    default_source: SourcePolicy = Field(description="the default supplier-selection policy")
+    exception_policy: ExceptionPolicy = Field(description="the logged-exception policy")
+
+
+class ComplianceRule(BaseModel):
+    """One per-criterion compliance rule that ALWAYS blocks the PO on failure (ADR-0025
+    D2/D3). ``blocks_po`` is ``Literal[True]`` — a non-blocking 'compliance' rule is
+    unrepresentable (it would not be a gate)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    criterion: ComplianceCriterion = Field(description="the compliance criterion checked")
+    spec: str = Field(
+        min_length=1,
+        description="the human-authored predicate for this criterion (rendered read-only in "
+        "v1; evaluated on the deferred A2 run path)",
+    )
+    blocks_po: Literal[True] = Field(
+        default=True, description="a compliance rule ALWAYS blocks the PO on failure (D3)"
+    )
+
+
+class ComplianceGate(BaseModel):
+    """A per-criterion compliance gate (the ``rule_gate`` content, ADR-0025 D2)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["rule_gate"] = "rule_gate"
+    rules: list[ComplianceRule] = Field(min_length=1, description="the per-criterion rules (>=1)")
+
+
+AT2Governance = Annotated[DoaLadder | ScoredRule | ComplianceGate, Field(discriminator="kind")]
+"""The discriminated AT-2 governance-content union, keyed to a step's ``gate_kind`` via the
+``kind`` literal (ADR-0025 D2). One field, not four bare ``Optional``s — a leaked variant
+is one test, not four (Alternative 3 rejected)."""
+
+
+class SoDConstraint(BaseModel):
+    """A separation-of-duties constraint: the named steps MUST be performed by distinct
+    principals (ADR-0025 D2). Author time enforces the STRUCTURAL form (>=2 distinct steps,
+    each resolving to a real step — see ``Procedure``); the resolved-PRINCIPAL distinctness
+    (fail-closed on alias-collapse) is the deferred A2 run check (OQ-A=A1; AC-13-ALT)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    distinct_steps: frozenset[StepId] = Field(
+        min_length=2, description="step_ids that must be performed by distinct principals (>=2)"
+    )
+
+
 class Step(BaseModel):
     """One step of a Procedure (ADR-016 D2; threshold/tier config per PLAN-0022 Step 3)."""
 
@@ -270,6 +469,13 @@ class Step(BaseModel):
         default=None,
         description="descriptive 5-facet metadata; optional; non-authoritative for runtime "
         "(ADR-016 D2 Amendment 2026-06-25 / D2-A2). The engine reads but does not consume it.",
+    )
+    governance_content: AT2Governance | None = Field(
+        default=None,
+        description="AUTHORITATIVE AT-2 governance content (DOA ladder / scored rule / "
+        "compliance gate), discriminated by `kind` to match this step's gate_kind (ADR-0025 "
+        "D2). Human-author-only (never on a draft type, D4); the gate_kind POINTS AT it — it "
+        "is never stored in the non-authoritative facet (D2-A4).",
     )
 
     @model_validator(mode="after")
@@ -362,6 +568,11 @@ class Procedure(BaseModel):
     trigger: Trigger = Trigger.MANUAL
     steps: list[Step] = Field(..., min_length=1)
     terminal: str | None = Field(default=None, description="final step_id / produced artifact")
+    separation_of_duties: list[SoDConstraint] = Field(
+        default_factory=list,
+        description="separation-of-duties constraints: each names >=2 steps that must be "
+        "performed by distinct principals (ADR-0025 D2). Human-author-only (D4).",
+    )
 
     @model_validator(mode="after")
     def _unique_step_ids(self) -> Self:
@@ -369,6 +580,22 @@ class Procedure(BaseModel):
         dupes = sorted({i for i in ids if ids.count(i) > 1})
         if dupes:
             raise ValueError(f"procedure '{self.procedure_id}': duplicate step_id(s) {dupes}")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_separation_of_duties(self) -> Self:
+        """Each SoD constraint must reference real steps of THIS procedure (ADR-0025 D2). The
+        >=2-distinct-steps invariant is enforced structurally by ``SoDConstraint`` itself;
+        this catches dangling step_id references (a typo'd SoD is an authoring error, not a
+        silent no-op)."""
+        known = {s.step_id for s in self.steps}
+        for sod in self.separation_of_duties:
+            dangling = sorted(sod.distinct_steps - known)
+            if dangling:
+                raise ValueError(
+                    f"procedure '{self.procedure_id}': separation_of_duties references unknown "
+                    f"step_id(s) {dangling} (known: {sorted(known)}) — ADR-0025 D2"
+                )
         return self
 
 

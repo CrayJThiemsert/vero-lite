@@ -9,6 +9,7 @@ these tests use inline fixtures.
 
 from __future__ import annotations
 
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -17,9 +18,20 @@ from pydantic import ValidationError
 from services.engine.procedures.spec import (
     Autonomy,
     BandSource,
+    ComplianceCriterion,
+    ComplianceGate,
+    ComplianceRule,
     DecisionCondition,
+    DoaLadder,
+    DoaTier,
+    EmergencyWaiverPolicy,
+    ExceptionPolicy,
     GateKind,
     Procedure,
+    RelaxableConstraint,
+    ScoredRule,
+    SoDConstraint,
+    SourcePolicy,
     Step,
     StepFacet,
     StepKind,
@@ -483,3 +495,199 @@ def test_no_decision_steps_use_gate_kind_none() -> None:
         assert facet is not None and facet.decision_condition is not None
         assert facet.decision_condition.gate_kind is GateKind.NONE
         assert facet.decision_condition.band_source is None
+
+
+# --- ADR-0025 Step 1: the AT-2 typed governance content + D3 unrepresentable-bypass ---
+#
+# D2 = the discriminated `Step.governance_content` union + `Procedure.separation_of_duties`;
+# D3 = bypass is UNREPRESENTABLE (no skip flag; closed waiver enum; Literal[True] guards;
+# total strictly-monotonic DOA ladder). The amount/principal/role-rank-dependent SEMANTIC
+# checks (resolved-tier strict escalation; requester != approver principal) are the deferred
+# A2 run path (OQ-A=A1) — these tests exercise the author-time structural invariants only.
+
+
+def _valid_ladder() -> DoaLadder:
+    return DoaLadder(
+        currency="THB",
+        tiers=[
+            DoaTier(min_amount=Decimal("0"), approver_role="dept_head"),
+            DoaTier(min_amount=Decimal("500000"), approver_role="manager"),
+            DoaTier(min_amount=Decimal("5000000"), approver_role="director"),
+        ],
+        emergency_waiver=EmergencyWaiverPolicy(
+            relaxes=[RelaxableConstraint.THREE_BID], escalate_to="director"
+        ),
+    )
+
+
+def test_doa_ladder_valid_total_monotonic_cover() -> None:
+    ladder = _valid_ladder()
+    assert ladder.kind == "doa_tier"
+    assert ladder.currency == "THB"
+    assert [t.min_amount for t in ladder.tiers] == [
+        Decimal("0"),
+        Decimal("500000"),
+        Decimal("5000000"),
+    ]
+    assert isinstance(ladder.tiers[0].min_amount, Decimal)  # money is Decimal, never float
+
+
+def test_doa_ladder_first_tier_must_start_at_zero() -> None:
+    with pytest.raises(ValidationError, match="first tier's min_amount must be 0"):
+        DoaLadder(
+            currency="THB",
+            tiers=[DoaTier(min_amount=Decimal("100"), approver_role="dept_head")],
+            emergency_waiver=EmergencyWaiverPolicy(
+                relaxes=[RelaxableConstraint.THREE_BID], escalate_to="director"
+            ),
+        )
+
+
+def test_doa_ladder_floors_must_strictly_increase() -> None:
+    with pytest.raises(ValidationError, match="STRICTLY increasing"):
+        DoaLadder(
+            currency="THB",
+            tiers=[
+                DoaTier(min_amount=Decimal("0"), approver_role="dept_head"),
+                DoaTier(min_amount=Decimal("0"), approver_role="manager"),  # equal -> overlap
+            ],
+            emergency_waiver=EmergencyWaiverPolicy(
+                relaxes=[RelaxableConstraint.THREE_BID], escalate_to="director"
+            ),
+        )
+
+
+def test_doa_ladder_rejects_empty_tiers() -> None:
+    with pytest.raises(ValidationError):
+        DoaLadder(
+            currency="THB",
+            tiers=[],
+            emergency_waiver=EmergencyWaiverPolicy(
+                relaxes=[RelaxableConstraint.THREE_BID], escalate_to="director"
+            ),
+        )
+
+
+def test_doa_tier_rejects_negative_amount() -> None:
+    with pytest.raises(ValidationError):
+        DoaTier(min_amount=Decimal("-1"), approver_role="dept_head")
+
+
+def test_waiver_requires_at_least_one_relaxable() -> None:
+    with pytest.raises(ValidationError):
+        EmergencyWaiverPolicy(relaxes=[], escalate_to="director")
+
+
+def test_waiver_cannot_name_compliance_or_sod() -> None:
+    """D3: RelaxableConstraint is a CLOSED enum that cannot name compliance / SoD — so
+    'waiving compliance' is structurally unrepresentable."""
+    with pytest.raises(ValidationError):
+        EmergencyWaiverPolicy.model_validate({"relaxes": ["compliance"], "escalate_to": "director"})
+
+
+def test_waiver_justification_cannot_be_disabled() -> None:
+    """D3: requires_justification is Literal[True] — omitting it is unrepresentable."""
+    with pytest.raises(ValidationError):
+        EmergencyWaiverPolicy.model_validate(
+            {"relaxes": ["three_bid"], "escalate_to": "director", "requires_justification": False}
+        )
+
+
+def test_compliance_rule_always_blocks_po() -> None:
+    rule = ComplianceRule(criterion=ComplianceCriterion.AVL, spec="supplier on the AVL")
+    assert rule.blocks_po is True
+    with pytest.raises(ValidationError):
+        # D3: a non-blocking 'compliance' rule is unrepresentable (blocks_po is Literal[True])
+        ComplianceRule.model_validate({"criterion": "avl", "spec": "x", "blocks_po": False})
+
+
+def test_compliance_gate_requires_at_least_one_rule() -> None:
+    with pytest.raises(ValidationError):
+        ComplianceGate(rules=[])
+
+
+def test_scored_rule_requires_at_least_one_criterion() -> None:
+    with pytest.raises(ValidationError):
+        ScoredRule(
+            criteria=[],
+            default_source=SourcePolicy.ON_CONTRACT,
+            exception_policy=ExceptionPolicy.RFQ_AVL_LOGGED,
+        )
+
+
+def test_at2_governance_union_discriminates_on_kind() -> None:
+    """The discriminated union routes each `kind` to its variant (ADR-0025 D2)."""
+    step = Step.model_validate(
+        {
+            "step_id": "approve",
+            "name": "Approve",
+            "kind": "action",
+            "governance_content": {
+                "kind": "doa_tier",
+                "currency": "THB",
+                "tiers": [{"min_amount": "0", "approver_role": "dept_head"}],
+                "emergency_waiver": {"relaxes": ["three_bid"], "escalate_to": "director"},
+            },
+        }
+    )
+    assert isinstance(step.governance_content, DoaLadder)
+    assert step.governance_content.currency == "THB"
+
+
+def test_step_governance_content_defaults_absent() -> None:
+    """A step without AT-2 content carries governance_content = None (additive; AC-6)."""
+    step = Step(step_id="q", name="Q", kind=StepKind.QUERY)
+    assert step.governance_content is None
+
+
+def test_at2_content_extra_forbid_bites() -> None:
+    with pytest.raises(ValidationError):
+        DoaTier.model_validate({"min_amount": "0", "approver_role": "x", "bogus": 1})
+
+
+def test_sod_constraint_requires_two_distinct_steps() -> None:
+    with pytest.raises(ValidationError):
+        SoDConstraint(distinct_steps=frozenset({"intake"}))  # < 2 -> degenerate
+
+
+def test_sod_constraint_accepts_two_steps() -> None:
+    sod = SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))
+    assert sod.distinct_steps == frozenset({"intake", "approve"})
+
+
+def test_procedure_separation_of_duties_defaults_empty() -> None:
+    proc = Procedure(
+        procedure_id="p",
+        title="P",
+        run_by="a",
+        steps=[Step(step_id="s", name="S", kind=StepKind.QUERY)],
+    )
+    assert proc.separation_of_duties == []
+
+
+def test_procedure_sod_rejects_dangling_step_reference() -> None:
+    with pytest.raises(ValidationError, match="references unknown step_id"):
+        Procedure(
+            procedure_id="p",
+            title="P",
+            run_by="a",
+            steps=[
+                Step(step_id="intake", name="Intake", kind=StepKind.QUERY),
+                Step(step_id="approve", name="Approve", kind=StepKind.ACTION),
+            ],
+            separation_of_duties=[SoDConstraint(distinct_steps=frozenset({"intake", "ghost"}))],
+        )
+
+
+def test_procedure_sod_accepts_valid_step_references() -> None:
+    proc = Procedure(
+        procedure_id="p",
+        title="P",
+        run_by="a",
+        steps=[
+            Step(step_id="intake", name="Intake", kind=StepKind.QUERY),
+            Step(step_id="approve", name="Approve", kind=StepKind.ACTION),
+        ],
+        separation_of_duties=[SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))],
+    )
+    assert len(proc.separation_of_duties) == 1
