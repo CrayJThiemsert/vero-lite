@@ -557,6 +557,31 @@
 .pv-fval.pv-llm { color: var(--info); font-style: italic; }
 .pv-empty { font-size: 12px; }
 
+/* AC-12 (PLAN-0042 Step 3b): the typed AT-2 governance content rendered as the AUTHORITATIVE
+   managerial control (the Box-3 "the gate is no longer blind" artifact) + the
+   "ADVISORY — NOT A CONTROL" band on its non-authoritative free-text (ADR-0025 D4 / OQ-D). */
+.pv-at2, .pv-sod {
+  margin: 10px 0 2px 35px; padding: 9px 12px;
+  border: 1px solid var(--accent-line); border-left: 3px solid var(--accent);
+  border-radius: 8px; background: var(--accent-soft);
+}
+.pv-sod { margin-left: 0; }
+.pv-at2-head { display: flex; align-items: center; gap: 9px; margin-bottom: 8px; }
+.pv-at2-title { font-size: 12.5px; font-weight: 600; color: var(--tx-0); }
+.pv-at2-tag { font-size: 9.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--accent); background: var(--bg-1); padding: 1px 7px; border-radius: 8px; }
+.pv-at2-body { display: flex; flex-direction: column; gap: 5px; }
+/* the advisory band: a non-authoritative free-text marker — warn-tinted, deliberately NOT the
+   accent (which marks the authoritative typed control) so the two never read as the same thing */
+.pv-notctrl { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; padding-left: 12px; }
+.pv-notctrl-band {
+  font-size: 9px; font-weight: 700; letter-spacing: .04em;
+  color: var(--warn); background: var(--warn-bg); border: 1px solid var(--warn-line);
+  border-radius: 4px; padding: 1px 6px; flex: 0 0 auto;
+}
+.pv-notctrl-text { font-size: 12px; font-style: italic; color: var(--tx-2); }
+/* a banded description / goal: the band chip renders inline before the prose */
+.pv-advisory-desc { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+
 /* the edit seam (PLAN-0040 C1: mode:'edit' renders authoring inputs for H-fields) */
 .pv-edit { font-family: var(--mono); font-size: 12px; padding: 2px 6px; background: var(--bg-inset); border: 1px solid var(--accent-line); border-radius: 4px; color: var(--tx-0); }
 /* a STUB (absent governance value): dashed = author-required, never pre-filled (D4) */
