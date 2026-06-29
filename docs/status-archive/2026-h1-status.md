@@ -1301,3 +1301,77 @@ _Addendum — rotated 2026-06-27 (session-83 reconcile, PLAN-0040 AC-B5 live int
 > completion gate flips FAIL↔PASS faithfully, no console errors. **Standing:**
 > `loop-dispatcher` stays **DISABLED**. AI-assisted (Claude Code, session 82);
 > no `Co-Authored-By` per CLAUDE.md §7.
+
+---
+
+## Rotated this reconcile (session-85, 2026-06-29 — PLAN-0042 merged #465)
+
+_Rotated 2026-06-29 (session-85 reconcile): under the R1 64 KB hard ceiling, the **Session-83** CF block + two **Recent-Decisions** rows (2026-06-22 PLAN-0035-CREATED; 2026-06-23 PLAN-0035 advanced/Phase-1-floor `3625ea4`) were rotated from the live STATUS when the s85 PLAN-0042 block landed. Verbatim below, per the STATUS.md Rotation Policy (R1/R2/R4)._
+
+### Current-Focus block — Session 83 (head_commit `ef46ea0`)
+
+> **Session 83 (current; head_commit `ef46ea0`) — **PLAN-0040 AC-B5 (the live
+> MS-S1 single-shot INTAKE FACE) shipped + LIVE-VERIFIED — PLAN-0040 (A + B + C +
+> live intake) is now DONE 100%.** AC-B5 was the last remaining PLAN-0040 item
+> (LOCKED-9 / D9): narrative → classify → human-confirm → governed skeleton,
+> wired to the live MS-S1 `gpt-oss:20b` (local-only, CLAUDE.md §8). Built as
+> **three Code-direct per-step PRs off `main`, Cray merged each (no self-merge).**
+> **PR-1 server (#457, `0fd0489` merge; `99043b3`+`5c00a76`):** new
+> `services/api/routers/procedure_draft.py` + models —
+> `POST /procedures/draft/classify` (narrative → proposed archetype, **no
+> skeleton yet**, LOCKED-5; or abstain/degraded + a manual-pick catalog),
+> `/build` (human-CONFIRMED archetype → governed skeleton in the gate-render
+> envelope shape; **refuses unconfirmed / unknown-archetype 422**), and
+> `/instantiate` (the deterministic **ZERO-LLM** fallback — manual pick, D9
+> graceful degradation). Model pinned `gpt-oss:20b` + local-only;
+> `_governance_todo` refactored → public `build_governance_todo`. **Security
+> fold (`5c00a76`):** the classify rationale is now **`prose_lint`-gated** (was a
+> leak-class-1 gap — values could render beside the confirm decision) and the
+> degraded detail **no longer echoes the MS-S1 host/port**. Offline route tests
+> (recorded-fixture chat client, **zero host-state**). **PR-2 front-end (#458,
+> `0dd7693` merge; `3a44e79`):** new `intake-procedures.js` capture surface
+> (narrative → classify → confirm → build, with graceful degradation to
+> manual-pick / a recorded sample); `view-procedures.js` `mount` accepts
+> `opts.draft` and renders it via the **existing gate path** (edit-mode without a
+> draft delegates to capture — **no second renderer, LOCKED-8**); `api.js`
+> `O.Draft.{classify,build,instantiate}`; `index.html` `?v=` bump c19→c20.
+> **PR-3 prose fix found by the live run (#459, `ef46ea0` merge; `751c1e2`):**
+> `_build_procedure_draft` — when the prose step COUNT matches the template, fall
+> back to **POSITIONAL** pairing, because the **live model does NOT echo the
+> template's exact `step_id`s** in its prose, so descriptions were silently
+> dropping to `""`. Advisory-prose only; **governance untouched**; +1 offline
+> test. **Offline gate (the verdict):** `ruff` + `ruff-format` + `mypy --strict
+> services/` (64 files) clean; **`pytest` 1801 passed, 24 skipped.** **LIVE
+> (MS-S1 `gpt-oss:20b`, Cray-pre-approved host-state; Cray also hands-on verified
+> the full happy path in the UI):** **the moat HOLDS live (the point)** — a
+> poisoned narrative ("threshold 4.0 / above 80% / wire_transfer / automatically
+> / no human") → build → the forced values appear **NOWHERE** (leaked tokens
+> `[]`), every governance value ABSENT, `governance_todo` populated, the skeleton
+> **fails `validate_governance_complete`** (D6 two-state); **classify matches
+> live** for clear AT-1 / AT-3 narratives (conf 0.9–0.95), and the happy path
+> renders a draft whose advisory descriptions come from the live model
+> (value-free, lint-clean) with every governance value an unfilled stub + `goal`
+> empty (human-authored, OQ-B B2). **Live findings (honest):** (1) classify is
+> **non-deterministic** + the per-step AT-2 cross-check is strict →
+> **~1-in-3 false-abstain** on a textbook AT-1 narrative (the live model
+> occasionally mis-tags the judge step with an AT-2-only gate kind
+> `scored_rule`/`rule_gate`, which `_archetype_disagreement` correctly abstains
+> on — **never down-classify, LOCKED-7**). **Safe** (→ manual-pick), but lowers
+> the classify hit-rate; the per-step gate is a **SAFETY signal only — it never
+> builds** (the template dictates the gate), so the mis-tag never leaks (AT-1b
+> reaches the gate only via manual-pick). (2) The offline fixture (matching
+> step_ids) **masked** the prose step-id-rename gap — the live run was the
+> cheapest catch (consistent with the standing lesson). **Forward lever (NOT a
+> blocker):** classify-prompt enrichment (per-archetype catalog descriptions +
+> band-vs-scored_rule guidance) to lift the live match-rate **without relaxing
+> the AT-2 cross-check** (the moat); G2-gated → Cowork dispatch when scoped.
+> **Standing:** `loop-dispatcher` stays **DISABLED**. AI-assisted (Claude Code,
+> session 83); no `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-22 (PLAN-0035 CREATED)
+
+| 2026-06-22 | **PLAN-0035 (Group-A A1 = ADR-0022 member (b) verify+reshape build) CREATED + merged DRAFT (session 73)** — Cowork-drafted (ADR-009 D1) via the s72 `0223` dispatch (the proven Cowork-dispatch route, NOT the now-unblocked in-harness `plan-drafter` — Cray's call); Code independent-reviewed (faithful to LOCKED facts; spot-checked the `recommender.py:202` `_compose_llm_record` seam — Cowork had caught the post-member-(a) #365 line-number shift and re-verified) + committed `4eb2539` (#401, Cray-merged, D2). A **build PLAN, not a new ADR** (ADR-0022 Accepted, D3-α houses member (b); mirrors PLAN-0030 = member (a)). Scope = recommend-time LLM-path verify+reshape for the **5 §B-3 "assessment-prose" cases** (`aqua-007/014/028/h03/h06`, correct `suggested_handler`, prose omits the verb); the **2 genuine wrong-action cases** (`aqua-017/h05`) stay wrong (AC-5 anti-regression). **Implements nothing on commit** (every AC `[impl]`); **5 SDs surfaced** for Cray (SD-1 verify mechanism … SD-5 moat-framing guard) — SD-1 is the load-bearing gate. A1 TODO updated (PLAN drafted+merged Draft; NOT done) | `4eb2539` (#401) / `docs/plans/0035-*.md` |
+
+### Recent-Decisions row — 2026-06-23 (PLAN-0035 advanced END-TO-END)
+
+| 2026-06-23 | **PLAN-0035 (A1 = ADR-0022 member (b) verify+reshape) advanced END-TO-END — SD-1 = (c) Hybrid phased; Phase 1 floor SHIPPED; (c) governance + amendment RATIFIED (session 73 cont., #403/#404/#405)** — **SD-1 adjudicated by Cray = (c) Hybrid, phased** (deterministic floor + advisory local-LLM-judge; constraint ② advisory-only, ③ deterministic compare), superseding the Cowork (a)-lean. **Phase 1 = deterministic verify+reshape floor SHIPPED** (#403, feat `1c34125`): new `services/engine/action_verification.py` at the `recommender._compose_llm_record` seam, reshaping the 5 §B-3 "assessment-prose" cases (`aqua-007/014/028/h03/h06`); the 2 genuine wrong-action cases (`aqua-017/h05`) stay wrong (AC-5 — wrong handler NOT rescued); D-6 offline guard held; **1629 passed/22 skipped**, ruff + mypy --strict clean, offline. **The (c) governance landed** (#404): an **ADR-0022 amendment** (member (b) verify = hybrid; 7 constraints incl. the local-LLM pin + D-6; scope = member-(b) mechanism only, F1/F2/F3 + D3-α untouched) + a **PLAN-0035 revision** (SD-1…SD-5 stamped, Goal/Steps restructured Phase 1/Phase 2, path-fix `structured.py`→`llm/structured.py`). **The amendment was RATIFIED** (#405, `3625ea4`; SD-A1 = (i) inline, Cray-selected). **Phase 2 (advisory local-LLM-judge, Steps 8–12) now UNBLOCKED + NEXT** — NOT marked done. Operational detour (no artifact): the G1/G2 classifier backend is local Ollama (MS-S1 `gpt-oss:20b`) since 2026-06-12, G1 is always-pause for Code (warm-confirmed → Accepted-ADR edits route to Cowork), and a keep-alive cron (every 3h) was installed to keep `gpt-oss:20b` warm | `3625ea4` (#405) / `1c34125` (#403) / `47e154b`+`17f5d6e` (#404) / `services/engine/action_verification.py` + `docs/adr/0022-*.md` + `docs/plans/0035-*.md` |
