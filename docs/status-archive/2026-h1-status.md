@@ -1375,3 +1375,49 @@ _Rotated 2026-06-29 (session-85 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-23 (PLAN-0035 advanced END-TO-END)
 
 | 2026-06-23 | **PLAN-0035 (A1 = ADR-0022 member (b) verify+reshape) advanced END-TO-END — SD-1 = (c) Hybrid phased; Phase 1 floor SHIPPED; (c) governance + amendment RATIFIED (session 73 cont., #403/#404/#405)** — **SD-1 adjudicated by Cray = (c) Hybrid, phased** (deterministic floor + advisory local-LLM-judge; constraint ② advisory-only, ③ deterministic compare), superseding the Cowork (a)-lean. **Phase 1 = deterministic verify+reshape floor SHIPPED** (#403, feat `1c34125`): new `services/engine/action_verification.py` at the `recommender._compose_llm_record` seam, reshaping the 5 §B-3 "assessment-prose" cases (`aqua-007/014/028/h03/h06`); the 2 genuine wrong-action cases (`aqua-017/h05`) stay wrong (AC-5 — wrong handler NOT rescued); D-6 offline guard held; **1629 passed/22 skipped**, ruff + mypy --strict clean, offline. **The (c) governance landed** (#404): an **ADR-0022 amendment** (member (b) verify = hybrid; 7 constraints incl. the local-LLM pin + D-6; scope = member-(b) mechanism only, F1/F2/F3 + D3-α untouched) + a **PLAN-0035 revision** (SD-1…SD-5 stamped, Goal/Steps restructured Phase 1/Phase 2, path-fix `structured.py`→`llm/structured.py`). **The amendment was RATIFIED** (#405, `3625ea4`; SD-A1 = (i) inline, Cray-selected). **Phase 2 (advisory local-LLM-judge, Steps 8–12) now UNBLOCKED + NEXT** — NOT marked done. Operational detour (no artifact): the G1/G2 classifier backend is local Ollama (MS-S1 `gpt-oss:20b`) since 2026-06-12, G1 is always-pause for Code (warm-confirmed → Accepted-ADR edits route to Cowork), and a keep-alive cron (every 3h) was installed to keep `gpt-oss:20b` warm | `3625ea4` (#405) / `1c34125` (#403) / `47e154b`+`17f5d6e` (#404) / `services/engine/action_verification.py` + `docs/adr/0022-*.md` + `docs/plans/0035-*.md` |
+
+---
+
+## Rotated this reconcile (session-85 cont., 2026-06-29 — PLAN-0042 Steps 1-2 merged #467/#468)
+
+_Rotated 2026-06-29 (session-85 cont. reconcile): under the R1 64 KB hard ceiling, the **Session 84 (current; head_commit `7601174`)** CF block (PLAN-0041 — the classify-prompt enrichment lever — RATIFIED + COMMITTED #461, plus the Four-Box strategy consultation that set the 4-rock roadmap) + one **Recent-Decisions** row (2026-06-23 PLAN-0035 Phase 2 / fully COMPLETE `5c7c175`) were rotated from the live STATUS when the s85-cont PLAN-0042-build block landed (the file was at ~61.7 KB; R1 overrides the R2 4-session window). Verbatim below, per the STATUS.md Rotation Policy (R1/R2/R4). Resulting live Current-Focus window = {85 (cont. `059c6ea`), 85 (`21d7669`), 84 (cont. `f56a6e8`)}._
+
+### Current-Focus block — Session 84 (current; head_commit `7601174`)
+
+> **Session 84 (current; head_commit `7601174`) — **PLAN-0041 (the
+> classify-prompt enrichment lever) RATIFIED + COMMITTED (#461), plus a strategy
+> consultation that set a 4-rock roadmap.** **PLAN-0041**
+> (`docs/plans/0041-classify-prompt-enrichment.md`, `7601174`, merge `4718f05`) is
+> the fix for the PLAN-0040 AC-B5 live finding (the ~1-in-3 false-abstain on a
+> textbook AT-1/AT-3 narrative). A **prompt-only** lever — enrich
+> `build_classify_messages` with **per-archetype descriptions** (derived from the
+> canonical catalog) + a **positive band-vs-out-of-scope-gate explainer** that teaches
+> the band case, so the live model stops mis-tagging the judge step with an AT-2-only
+> `gate_kind`. **Moat-safe by construction:** the AT-2 cross-check
+> (`_archetype_disagreement` / `_AT2_ONLY_KINDS`, ADR-0024 **D4/D7**) stays
+> **byte-identical**; no schema change; **no new ADR**. **OQ-C twin-metric
+> acceptance:** Arm B **11/11 AT-2-abstain = a HARD gate** + a pre-committed pass/fail
+> read; the offline structural tests are the gate, the live hit-rate lift is
+> confirming evidence behind a Cray host-state go (§8). **Flow:** Cowork-drafted
+> (ADR-009 D1) → **Code R2-reviewed** (fact-pack re-verified byte-accurate against the
+> live repo; the `LOCKED-7`↔`D4/D7` mapping confirmed — "LOCKED-7" is PLAN-0040's
+> rendering of D7, not an ADR-0024 string; the Cowork completion-handoff timestamp
+> corrected) → **Cray-ratified** (OQ-A..E recs as-is) → committed via **#461, Cray
+> merged (no self-merge)**. **Ready for execution** (Steps 1-4 offline; Step 5 live =
+> host-state). **Strategy consultation (captured; no code):** mapped vero-lite onto the
+> **Four-Box Business Model** (Johnson/Christensen/Kagermann) — boxes 1-3 are strong
+> fits, **Box 4 (Profit Formula) is the gap + the biggest demo lever**; the Box-3
+> reframe = "vero-lite is a governed **operation + managerial process** platform" (the
+> deferred AT-2 = the managerial layer). Yielded a **4-rock roadmap**: Rock 1 =
+> PLAN-0041 (done here); Rock 2 = AT-2/managerial-process generation (next big build,
+> ADR+PLAN); Rock 3 = Box-4 economics + the procedure→ontology data-binding gap
+> (prepare-now / build-later per Rule-of-Three); **Rock 4 = a Cowork deep-research
+> dispatch (4-box + Palantir wins → a Box-4-forward demo playbook + an agentic-AI
+> forward scan)**, drafted + awaiting Cray relay. Full capture:
+> `.claude/handoffs/session-84/2026-06-27-2349-code-strategy-4box-rocks-discussion.md`.
+> **Standing:** `loop-dispatcher` stays **DISABLED**. AI-assisted (Claude Code,
+> session 84); no `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-23 (PLAN-0035 Phase 2 / fully COMPLETE)
+
+| 2026-06-23 | **PLAN-0035 Phase 2 (advisory local-LLM-judge, ADR-0022 member (b)) SHIPPED + PLAN-0035 fully COMPLETE (session 74, #407)** — an **advisory** local-LLM-judge layered on the Phase-1 deterministic floor (`services/engine/action_verification.py`): semantically cross-checks *does the proposal prose express the corrective action the structured handler names?*, adding confidence + agreement + a `"hybrid"` `verification_mode` trace (`judge_action_expression()` + `augment_with_advisory_judge()` + `ActionJudgeVerdict`/`JudgeResult` + `VERIFICATION_MODE_HYBRID`; the Phase-1 floor `verify_action_expression` unchanged). The 4 locked constraints (ADR-0022 amendment A2) all honored: ① offline gate — tests fake the judge, the live judge gated behind a new `verification_judge_enabled` setting (**default off** — live = host-state, CLAUDE.md §8); ② advisory — the judge NEVER overrides the surfaced action (the deterministic floor decides), pinned by `test_judge_disagreement_never_overrides_the_floor_action`; ③ deterministic compare — floor(D) vs judge(L) agreement in code, no 3rd LLM; ④ disclosed degradation — judge unavailable → `verification_mode "(a)-only"` in the trace, reusing the IN-4 / `OllamaUnreachableError` seam + `notify_llm_unreachable` (no new fail-safe, IN-4 not regressed). `augment_with_advisory_judge` never raises into `recommend()` (only the floor propagates to the IN-4 fail-safe, AC-7). **SD-3 / Step 11 — the first-class `verification` envelope field DEFERRED (trace-only)**, mirroring member (a)'s deferred `EntityRef.resolution` field; ADR-007 D2 envelope untouched (Code's rec → proceed-to-PR). Gate: ruff + ruff-format clean, `mypy --strict` clean (`services/`), **full suite 1639 passed/22 skipped** (was 1629; +10 offline judge-faked tests); AC-5 wrong-handler-not-rescued + D-6 boundary hold. Routing: impl (`feat/*` + PR) gated on the ADR-0022 amendment (RATIFIED #405) — NOT G2-gated; Code built + self-merged (#407, Cray-authorized). **PLAN-0035 flipped Draft → Complete + `git mv` to `done/` (`805f5d2`)** — both phases of member (b) verify+reshape now shipped, the Group-A A1 arc closed end-to-end | `5c7c175` (#407) + `805f5d2` / `services/engine/action_verification.py` + `docs/plans/done/0035-governed-action-verify-reshape-build.md` |
