@@ -113,6 +113,12 @@ class ArchetypeTemplate(BaseModel):
 
     archetype_id: str = Field(description="catalog id, e.g. 'AT-1' / 'AT-1b' / 'AT-3'")
     title: str
+    description: str = Field(
+        default="",
+        description="one-line classify-prompt hint DERIVED from the canonical catalog "
+        "(docs/conventions/procedure-archetypes.md; PLAN-0041 OQ-A) — value-free, names the "
+        "single-band nature; default='' keeps bare-template construction back-compatible",
+    )
     base: str | None = Field(
         default=None, description="the AT-1 base archetype_id this varies (D2 base+delta)"
     )
@@ -213,11 +219,22 @@ def _at3_slots() -> list[StepSlot]:
 
 
 AT1 = ArchetypeTemplate(
-    archetype_id="AT-1", title="anomaly→action", slots=_at1_base_slots(), terminal_slot="act"
+    archetype_id="AT-1",
+    title="anomaly→action",
+    description=(
+        "read a signal, judge it against one deterministic band, then act on the breach "
+        "set after a human go/no-go"
+    ),
+    slots=_at1_base_slots(),
+    terminal_slot="act",
 )
 AT1B = ArchetypeTemplate(
     archetype_id="AT-1b",
     title="anomaly→action + watch escalation + summary",
+    description=(
+        "the AT-1 loop plus a second band-routed branch for the borderline watch set and "
+        "an automatic summary receipt"
+    ),
     base="AT-1",
     slots=_at1b_slots(),
     terminal_slot="summary",
@@ -225,6 +242,10 @@ AT1B = ArchetypeTemplate(
 AT3 = ArchetypeTemplate(
     archetype_id="AT-3",
     title="monitor→reorder",
+    description=(
+        "read stock levels, judge them against a single reorder-point band, then reorder "
+        "the low set after one human approval"
+    ),
     base="AT-1",
     slots=_at3_slots(),
     terminal_slot="act",

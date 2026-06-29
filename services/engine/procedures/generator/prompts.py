@@ -36,16 +36,35 @@ _GOVERNANCE_BAR = (
     "(governed ≠ generated). You only identify the workflow SHAPE and draft advisory prose."
 )
 
+# The POSITIVE band-vs-out-of-scope-gate explainer (PLAN-0041 OQ-B; value-free, additive).
+# Teaches the band case a catalogued judge should emit (in_file_band / env_band) so the model
+# stops reaching for an AT-2-only kind on a true AT-1-family judge — while the trailing
+# "When unsure … abstain" restores abstain as the default under ambiguity (R2 moat-safety brake).
+_BAND_EXPLAINER = (
+    "A catalogued (AT-1-family) judge compares ONE signal against a SINGLE deterministic "
+    "band — a threshold or a reorder point — so its gate_kind is a band kind: 'in_file_band' "
+    "when the band is authored in the procedure, 'env_band' when it comes from a deployment "
+    "binding. A step that weighs SEVERAL criteria, computes a weighted or ranked score, or "
+    "routes by an approval/authority tier (DOA) is a different, OUT-OF-SCOPE shape — abstain "
+    "for the whole narrative rather than tag such a step with a band kind. When unsure whether "
+    "a judge is a single band or a multi-criteria gate, abstain."
+)
+
 
 def build_classify_messages(
-    narrative: str, *, vertical: str, catalog: list[tuple[str, str]]
+    narrative: str, *, vertical: str, catalog: list[tuple[str, str, str]]
 ) -> list[Message]:
     """S1 — classify the narrative to one closed-catalog archetype, or abstain.
 
-    ``catalog`` is the ``[(archetype_id, title), ...]`` the model may pick from; it is
-    trusted config, so it is named in the system instruction. The narrative reaches ONLY
-    the untrusted block."""
-    catalog_lines = "\n".join(f"- {aid}: {title}" for aid, title in catalog)
+    ``catalog`` is the ``[(archetype_id, title, description), ...]`` the model may pick from
+    (PLAN-0041 OQ-A — the description is DERIVED from the canonical catalog, value-free); it
+    is trusted config, so it is named in the system instruction. An empty ``description``
+    falls back to the bare ``id: title`` line. The narrative reaches ONLY the untrusted
+    block."""
+    catalog_lines = "\n".join(
+        f"- {aid}: {title} — {desc}" if desc else f"- {aid}: {title}"
+        for aid, title, desc in catalog
+    )
     system = (
         f"You classify an operational PROCEDURE NARRATIVE for the '{vertical}' vertical into "
         "exactly one catalogued archetype, or abstain. You SELECT from a CLOSED list — you "
@@ -56,6 +75,7 @@ def build_classify_messages(
         "For each step you infer, emit its gate_kind: 'none' for a read or act step, a band "
         "kind only for the single judge step. NEVER emit 'scored_rule', 'rule_gate', or "
         "'doa_tier' — if the narrative needs one, abstain instead.\n\n"
+        f"{_BAND_EXPLAINER}\n\n"
         f"{_GOVERNANCE_BAR}\n\n{_SECURITY}"
     )
     user = (

@@ -194,7 +194,7 @@ async def classify_narrative(
     text = _normalize(narrative)
     if not text:
         return Abstained("empty_narrative", "no narrative text to classify — nothing to generate")
-    catalog = [(t.archetype_id, t.title) for t in REGISTRY.values()]
+    catalog = [(t.archetype_id, t.title, t.description) for t in REGISTRY.values()]
     messages = build_classify_messages(text, vertical=vertical, catalog=catalog)
     # classify is a structuring call (format) → omit think (Ollama #15260 contract, ADR-001)
     try:

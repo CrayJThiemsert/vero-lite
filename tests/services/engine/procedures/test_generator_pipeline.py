@@ -26,6 +26,7 @@ import json
 import pytest
 
 from services.engine.llm.client import ChatResult, OllamaError
+from services.engine.procedures.archetypes.template import REGISTRY
 from services.engine.procedures.generator import (
     Abstained,
     GeneratedSkeleton,
@@ -33,7 +34,10 @@ from services.engine.procedures.generator import (
     build_skeleton,
     classify_narrative,
     generate,
+    pipeline,
+    prompts,
 )
+from services.engine.procedures.generator.schemas import ARCHETYPE_CHOICES, classification_schema
 from services.engine.procedures.orchestrator import (
     ProcedureError,
     validate_governance_complete,
@@ -44,6 +48,7 @@ from services.engine.procedures.spec import (
     Agent,
     AgentAllowed,
     Autonomy,
+    GateKind,
     StepKind,
     parse_procedures,
 )
@@ -295,11 +300,14 @@ async def test_abstain_label_routes_to_hand_author() -> None:
     assert outcome.reason == "no_archetype_match"
 
 
-async def test_at2_only_gate_disagreement_abstains() -> None:
-    """AC-B2 / OQ-3 / AC-A8: a per-step gate that needs an AT-2-only kind disagrees with
-    the archetype oracle → abstain, never a down-classified AT-3 skeleton (LOCKED-7)."""
+@pytest.mark.parametrize("at2_kind", ["scored_rule", "rule_gate", "doa_tier"])
+async def test_at2_only_gate_disagreement_abstains(at2_kind: str) -> None:
+    """AC-B2 / OQ-3 / AC-A8 / PLAN-0041 AC-2: a per-step gate that needs ANY AT-2-only kind
+    (scored_rule / rule_gate / doa_tier) on the judge step disagrees with the archetype
+    oracle → abstain, never a down-classified AT-3 skeleton (LOCKED-7). Generalized from the
+    single-kind original — the prompt enrichment must not have shifted the abstain gate."""
     client = RecordedChatClient(
-        [_classify("AT-1", gates=[("read", "none"), ("judge", "scored_rule"), ("act", "none")])]
+        [_classify("AT-1", gates=[("read", "none"), ("judge", at2_kind), ("act", "none")])]
     )
     outcome = await classify_narrative(client, narrative="score and gate it", vertical=VERTICAL)
     assert isinstance(outcome, Abstained)
@@ -410,3 +418,86 @@ async def test_classification_with_own_step_naming_still_proceeds() -> None:
     outcome = await classify_narrative(client, narrative="watch and act", vertical=VERTICAL)
     assert isinstance(outcome, ProposedMatch)
     assert outcome.template.archetype_id == "AT-1"
+
+
+# --- PLAN-0041: classify-prompt enrichment — the offline gate (AC-1..AC-5) -------
+#
+# The lift is a prompt-only lever (PLAN-0041): per-archetype descriptions + a positive
+# band-vs-out-of-scope explainer in the classify prompt. These tests are the OFFLINE GATE
+# (OQ-D) — they assert the moat guard is byte-identical and the enrichment landed as
+# intended, with ZERO host-state. The live hit-rate lift (AC-7) is confirming evidence,
+# not the gate, and is run separately behind a Cray host-state go.
+
+
+def test_guard_constants_byte_identical() -> None:
+    """AC-1 (the moat invariant): the abstain-gate's kind sets are EXACTLY the documented
+    constants — the prompt enrichment must not have shifted them (LOCKED-1). _AT2_ONLY_KINDS
+    is the three AT-2-only kinds; _BAND_KINDS is the two band kinds; ARCHETYPE_CHOICES still
+    excludes 'AT-2' (classify-don't-synthesize — AT-2 absent by construction, LOCKED-2)."""
+    assert pipeline._AT2_ONLY_KINDS == frozenset(
+        {GateKind.SCORED_RULE, GateKind.RULE_GATE, GateKind.DOA_TIER}
+    )
+    assert pipeline._BAND_KINDS == (GateKind.ENV_BAND, GateKind.IN_FILE_BAND)
+    assert "AT-2" not in ARCHETYPE_CHOICES
+    assert set(ARCHETYPE_CHOICES) == {"AT-1", "AT-1b", "AT-3", "abstain"}
+
+
+def _classify_system() -> str:
+    """The classify system instruction, built from the live 3-tuple registry catalog."""
+    catalog = [(t.archetype_id, t.title, t.description) for t in REGISTRY.values()]
+    messages = prompts.build_classify_messages("a narrative", vertical=VERTICAL, catalog=catalog)
+    return messages[0]["content"]
+
+
+def test_enriched_classify_prompt_introspection() -> None:
+    """AC-3: the enriched classify prompt (a) STILL carries the AT-2 prohibition + the
+    OUT-OF-SCOPE (DOA) clause; (b) NOW carries each per-archetype description + the positive
+    band-vs-out-of-scope explainer (incl. the 'When unsure … abstain' moat-safety brake);
+    (c) STILL carries the trusted governance bar + the security containment clause."""
+    system = _classify_system()
+
+    # (a) the prohibition + OUT-OF-SCOPE clauses are preserved verbatim
+    assert "NEVER emit 'scored_rule', 'rule_gate', or" in system
+    assert "abstain instead" in system
+    assert "OUT OF SCOPE" in system
+    assert "abstain, never force-fit" in system
+
+    # (b) each per-archetype description + the positive band explainer are present
+    for template in REGISTRY.values():
+        assert template.description  # the registry actually carries a description
+        assert template.description in system
+    assert "single deterministic" in system.lower()  # the explainer's positive band teaching
+    assert "When unsure whether a judge is a single band" in system  # the moat-safety brake
+
+    # (c) the trusted governance bar + security clause survive
+    assert prompts._GOVERNANCE_BAR in system
+    assert prompts._SECURITY in system
+
+
+def test_empty_description_falls_back_to_bare_line() -> None:
+    """AC-3 corollary / back-compat: a catalog tuple with an empty description renders the
+    bare ``id: title`` line (no trailing ' — '), so an un-enriched template still classifies."""
+    system_bare = prompts.build_classify_messages(
+        "n", vertical=VERTICAL, catalog=[("AT-9", "stub title", "")]
+    )[0]["content"]
+    assert "- AT-9: stub title" in system_bare
+    assert "AT-9: stub title —" not in system_bare  # no trailing ' — ' separator appended
+
+
+def test_archetype_descriptions_carry_no_at2_vocabulary() -> None:
+    """AC-4 (R3 guard): the per-archetype descriptions contain NONE of the AT-2-only gate
+    kinds — the enrichment cannot teach the model to EMIT an AT-2-only kind on a true
+    AT-1/AT-3 step (which would be a new, self-defeating false-abstain)."""
+    for template in REGISTRY.values():
+        lowered = template.description.lower()
+        for token in ("scored_rule", "rule_gate", "doa_tier"):
+            assert token not in lowered, f"{template.archetype_id} description leaks {token!r}"
+
+
+def test_classification_schema_pins_closed_enum() -> None:
+    """AC-5: the classify schema STILL pins archetype_id to the closed ARCHETYPE_CHOICES enum
+    (classify-don't-synthesize) — the prompt enrichment did not widen the type surface or add
+    AT-2 to the pickable set."""
+    schema = classification_schema()
+    assert schema["properties"]["archetype_id"]["enum"] == list(ARCHETYPE_CHOICES)
+    assert "AT-2" not in schema["properties"]["archetype_id"]["enum"]
