@@ -105,6 +105,18 @@ procedures:
         tiers:
           canonical: emergency_source
           acceptable: [request_approval]
+        # AT-2 typed content (ADR-0025 D2 / PLAN-0042 Step 2). OQ-B = B2: default_source +
+        # exception_policy mirror the data adapter (on-contract default, logged RFQ→AVL
+        # exception); the criteria WEIGHTS are PROVISIONAL placeholders pending Cray sign-off
+        # of the real Fastenal scoring (no explicit weights exist in the data yet).
+        governance_content:
+          kind: scored_rule
+          criteria:
+            - { name: criticality, weight: "0.5" }
+            - { name: lead_time, weight: "0.3" }
+            - { name: unit_price, weight: "0.2" }
+          default_source: on_contract
+          exception_policy: rfq_avl_logged
         input:
           from: judge               # the named-input fan-out: only the critical subset
           where:
@@ -131,6 +143,22 @@ procedures:
           (AVL approved · tax id valid · cert valid · not sanctioned · single-
           source justified). Any failed criterion blocks the PO. Deterministic.
         kind: evaluate
+        # AT-2 typed content (ADR-0025 D2 / PLAN-0042 Step 2). OQ-B = B2: the per-criterion
+        # predicates mirror the data adapter's compliance_rule_records (human-authored; each
+        # blocks the PO on failure — blocks_po is Literal[True], not authorable false).
+        governance_content:
+          kind: rule_gate
+          rules:
+            - criterion: avl
+              spec: "supplier.avl_status == approved (or a logged emergency AVL exception)"
+            - criterion: tax
+              spec: "supplier.tax_id present and valid"
+            - criterion: cert
+              spec: "supplier.cert_status == valid"
+            - criterion: sanctions
+              spec: "supplier.sanctions_flag == false"
+            - criterion: single_source
+              spec: "single-source documented and justified"
         facet:
           decision_condition:
             gate_kind: rule_gate
@@ -151,6 +179,23 @@ procedures:
         kind: action
         autonomy: gated             # the human go/no-go — never the LLM
         handler: request_approval
+        # AT-2 typed content (ADR-0025 D2/D3 / PLAN-0042 Step 2). OQ-B = B2: the DOA tiers
+        # MIRROR the data adapter's approval_tier_records (max_amount ceilings -> min_amount
+        # half-open floors): [0,50k)=หน.จัดซื้อ, [50k,500k)=ผจก.จัดซื้อ, [500k,2M)=ผจก.โรงงาน,
+        # [2M,∞)=ผอ. The waiver escalates (never skips) + forces a justification. Pending Cray
+        # sign-off of the real Fastenal figures. Money is Decimal (quoted to avoid float).
+        governance_content:
+          kind: doa_tier
+          currency: THB
+          tiers:
+            - { min_amount: "0", approver_role: "หน.จัดซื้อ" }
+            - { min_amount: "50000", approver_role: "ผจก.จัดซื้อ" }
+            - { min_amount: "500000", approver_role: "ผจก.โรงงาน" }
+            - { min_amount: "2000000", approver_role: "ผอ." }
+          emergency_waiver:
+            relaxes: [three_bid]
+            escalate_to: "ผอ."
+            requires_justification: true
         input:
           from: compliance
           where:
@@ -196,6 +241,12 @@ procedures:
           output: "audit record"
           governance: "ties every row to the control that governed it (traceability)"
     terminal: audit
+    # AT-2 separation of duties (ADR-0025 D2/D5 / PLAN-0042 Step 2). The requester (intake)
+    # must not also be the approver (approve). Author time = the STRUCTURAL distinct-steps
+    # form (>=2 distinct real steps); the resolved-PRINCIPAL distinctness (fail-closed on
+    # alias-collapse) is the deferred A2 run check (OQ-A=A1; AC-13-ALT).
+    separation_of_duties:
+      - distinct_steps: [intake, approve]
 
   low_stock_reorder_round:
     title: Low-Stock Reorder Round

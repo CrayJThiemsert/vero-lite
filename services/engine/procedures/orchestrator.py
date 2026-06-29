@@ -28,7 +28,10 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
-from services.engine.procedures.draft import unfilled_governance
+from services.engine.procedures.draft import (
+    unfilled_governance,
+    unfilled_procedure_governance,
+)
 from services.engine.procedures.runs import (
     PipelineRun,
     PipelineRunStatus,
@@ -181,15 +184,29 @@ def validate_governance_complete(procedure: Procedure) -> None:
 
     A complete (hand-authored) procedure raises nothing — every shipped vertical's
     procedures pass unchanged (the generator-support layer adds a gate, not a new
-    constraint on authored specs)."""
+    constraint on authored specs).
+
+    **AT-2 awareness (ADR-0025 D5):** a step on an AT-2 gate kind
+    (``scored_rule`` / ``rule_gate`` / ``doa_tier``) also owes its typed
+    ``governance_content`` (re-derived per step above), and a ``doa_tier``-bearing
+    procedure owes a ``separation_of_duties`` constraint (the procedure-level check
+    below). This closes the run-gate's AT-2 blindness — an empty-DOA / no-criteria /
+    no-compliance-rule / no-SoD AT-2 procedure is no longer judged run-loadable."""
     for step in procedure.steps:
         missing = unfilled_governance(step)
         if missing:
             raise ProcedureError(
                 f"step '{step.step_id}': unfilled governance stub(s) {missing} — a generated "
                 f"skeleton is draft-loadable but NOT run-loadable until a human authors the "
-                f"gates (ADR-0024 D6 / OQ-1)"
+                f"gates (ADR-0024 D6 / OQ-1; AT-2 content per ADR-0025 D5)"
             )
+    proc_missing = unfilled_procedure_governance(procedure)
+    if proc_missing:
+        raise ProcedureError(
+            f"procedure '{procedure.procedure_id}': unfilled procedure-level governance "
+            f"{proc_missing} — a doa_tier procedure requires a separation_of_duties "
+            f"constraint (ADR-0025 D5)"
+        )
 
 
 def _suspends(step: Step) -> bool:

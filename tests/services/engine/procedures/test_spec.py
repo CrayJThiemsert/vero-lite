@@ -691,3 +691,24 @@ def test_procedure_sod_accepts_valid_step_references() -> None:
         separation_of_duties=[SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))],
     )
     assert len(proc.separation_of_duties) == 1
+
+
+def test_procurement_at2_carries_typed_governance_content() -> None:
+    """AC-8 (PLAN-0042 Step 2): the shipped procurement AT-2 was migrated prose->typed — each
+    AT-2 step carries its MATCHING governance_content variant + the procedure carries the SoD
+    constraint. Values are OQ-B B2 (DOA tiers + compliance predicates mirror the data adapter;
+    scored-rule weights provisional), pending Cray sign-off."""
+    spec = load_procedures("procurement")
+    proc = next(p for p in spec.procedures if p.procedure_id == "emergency_sourcing_round")
+    by_id = {s.step_id: s for s in proc.steps}
+    assert isinstance(by_id["source"].governance_content, ScoredRule)
+    assert isinstance(by_id["compliance"].governance_content, ComplianceGate)
+    ladder = by_id["approve"].governance_content
+    assert isinstance(ladder, DoaLadder)
+    assert ladder.currency == "THB"
+    assert ladder.tiers[0].min_amount == Decimal("0")  # total cover from zero spend (D3)
+    assert proc.separation_of_duties  # >=1 SoD constraint (D5)
+    # finding 5: low_stock_reorder_round (AT-3, no AT-2 gates) carries NO AT-2 content
+    calm = next(p for p in spec.procedures if p.procedure_id == "low_stock_reorder_round")
+    assert all(s.governance_content is None for s in calm.steps)
+    assert calm.separation_of_duties == []
