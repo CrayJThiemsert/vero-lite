@@ -89,7 +89,7 @@
     // renders). The worklist is the procedure's governance_todo[step_id] (OQ-C/AC-A7),
     // passed in via opts — facetModel itself stays the load-bearing decomposition.
     if (opts && opts.mode === 'edit' && opts.todo) surfaceStubs(facets, step, opts.todo);
-    return { step_id: step.step_id, name: step.name, description: step.description, kind: step.kind, facets: facets };
+    return { step_id: step.step_id, name: step.name, description: step.description, kind: step.kind, facets: facets, governance_content: step.governance_content || null };
   }
 
   // which facet a governance H-field belongs to (mirrors view-procedures read layout)
@@ -317,7 +317,12 @@
         h('div', { class: 'pv-fhint faint' }, 'the goal is the agent’s runtime instruction — a human authors it (governed ≠ generated)')
       ]));
     } else if (proc.goal) {
-      card.appendChild(h('p', { class: 'pv-goal muted' }, proc.goal));
+      // AC-12: an AT-2 procedure's goal is non-authoritative free-text (a runtime directive,
+      // never a control) — banded; a plain procedure's goal renders as today.
+      const isAt2 = (proc.steps || []).some((s) => s.governance_content);
+      card.appendChild(isAt2
+        ? h('div', { class: 'pv-goal muted pv-advisory-desc' }, [advisoryBand(), h('span', null, proc.goal)])
+        : h('p', { class: 'pv-goal muted' }, proc.goal));
     }
     if (agent) {
       card.appendChild(h('div', { class: 'pv-agent' }, [
@@ -340,6 +345,11 @@
       renderStep(facetModel(step, { mode: state.mode, todo: todoMap[step.step_id] }), i + 1, { mode: state.mode })
     ));
     card.appendChild(stepsWrap);
+    // AC-12/AC-13: the procedure-level separation-of-duties, rendered authoritative (read-mode)
+    // — part of "the DOA ladder / compliance rules / SoD are visible" (the gate is no longer blind).
+    if (state.mode !== 'edit' && proc.separation_of_duties && proc.separation_of_duties.length) {
+      card.appendChild(renderSoD(proc.separation_of_duties));
+    }
     // wire the live completion gate (C3): recompute the banner + clear a stub's "unfilled"
     // styling as each required gate is authored.
     if (state.mode === 'edit') wireGateStatus(card);
@@ -373,6 +383,95 @@
     update();
   }
 
+  /* ---- AC-12 (PLAN-0042 Step 3b): render the typed AT-2 governance content as the
+     AUTHORITATIVE control (the Box-3 "the gate is no longer blind" artifact) and band its
+     non-authoritative free-text "ADVISORY — NOT A CONTROL" (ADR-0025 D4 / OQ-D). Reuses the
+     pv-auth provenance styling — NOT a second renderer (AC-12). ---- */
+  function advisoryBand() {
+    return h('span', {
+      class: 'pv-notctrl-band mono',
+      title: 'non-authoritative free-text — the control is the typed value, never this prose'
+    }, 'ADVISORY — NOT A CONTROL');
+  }
+  function authRow(label, value) {
+    return h('div', { class: 'pv-field' }, [
+      h('span', { class: 'pv-flabel mono' }, label),
+      h('span', { class: 'pv-fval pv-auth' }, String(value))
+    ]);
+  }
+  // a banded advisory note (a tier/criterion note or a waiver justification); empty ⇒ omitted
+  function noteRow(value) {
+    return value
+      ? h('div', { class: 'pv-notctrl' }, [advisoryBand(), h('span', { class: 'pv-notctrl-text' }, String(value))])
+      : null;
+  }
+  function at2Block(title, kind, rows) {
+    return h('div', { class: 'pv-at2 pv-at2-' + kind }, [
+      h('div', { class: 'pv-at2-head' }, [
+        h('span', { class: 'pv-at2-title' }, title),
+        h('span', { class: 'pv-at2-tag mono' }, 'authoritative control')
+      ]),
+      h('div', { class: 'pv-at2-body' }, rows.filter(Boolean))
+    ]);
+  }
+  function renderDoaLadder(gc) {
+    const rows = [authRow('currency', gc.currency)];
+    (gc.tiers || []).forEach((t, i) => {
+      rows.push(h('div', { class: 'pv-field' }, [
+        h('span', { class: 'pv-flabel mono' }, 'tier ' + (i + 1)),
+        h('span', { class: 'pv-fval pv-auth' }, '≥ ' + t.min_amount + '   →   ' + t.approver_role)
+      ]));
+      rows.push(noteRow(t.note));
+    });
+    const w = gc.emergency_waiver || {};
+    rows.push(authRow('waiver · relaxes', (w.relaxes || []).join(', ')));
+    rows.push(authRow('waiver · escalate_to', w.escalate_to));
+    rows.push(authRow('waiver · requires_justification', String(w.requires_justification)));
+    rows.push(noteRow(w.justification));
+    return at2Block('DOA ladder', 'doa', rows);
+  }
+  function renderScoredRule(gc) {
+    const rows = [];
+    (gc.criteria || []).forEach((c) => {
+      rows.push(h('div', { class: 'pv-field' }, [
+        h('span', { class: 'pv-flabel mono' }, c.name),
+        h('span', { class: 'pv-fval pv-auth' }, 'weight ' + c.weight)
+      ]));
+      rows.push(noteRow(c.note));
+    });
+    rows.push(authRow('default_source', gc.default_source));
+    rows.push(authRow('exception_policy', gc.exception_policy));
+    return at2Block('Scored rule', 'scored', rows);
+  }
+  function renderComplianceGate(gc) {
+    const rows = (gc.rules || []).map((r) => h('div', { class: 'pv-field' }, [
+      h('span', { class: 'pv-flabel mono' }, r.criterion),
+      h('span', { class: 'pv-fval pv-auth' }, r.spec + (r.blocks_po ? '   · blocks PO' : ''))
+    ]));
+    return at2Block('Compliance gate', 'rule', rows);
+  }
+  function renderAt2Control(gc) {
+    if (!gc || !gc.kind) return null;
+    if (gc.kind === 'doa_tier') return renderDoaLadder(gc);
+    if (gc.kind === 'scored_rule') return renderScoredRule(gc);
+    if (gc.kind === 'rule_gate') return renderComplianceGate(gc);
+    return null;
+  }
+  // procedure-level separation-of-duties (ADR-0025 D2/D5) — an authoritative constraint set
+  function renderSoD(sods) {
+    const rows = sods.map((s) => h('div', { class: 'pv-field' }, [
+      h('span', { class: 'pv-flabel mono' }, 'distinct'),
+      h('span', { class: 'pv-fval pv-auth' }, (s.distinct_steps || []).join('   ≠   '))
+    ]));
+    return h('div', { class: 'pv-sod' }, [
+      h('div', { class: 'pv-at2-head' }, [
+        h('span', { class: 'pv-at2-title' }, 'Separation of duties'),
+        h('span', { class: 'pv-at2-tag mono' }, 'authoritative control')
+      ]),
+      h('div', { class: 'pv-at2-body' }, rows)
+    ]);
+  }
+
   function renderStep(model, n, opts) {
     const mode = (opts && opts.mode) || 'read';
     const step = h('div', { class: 'pv-step' + (mode === 'edit' ? ' pv-step-edit' : '') });
@@ -389,7 +488,13 @@
     // edit-mode: the SAME facetModel, regrouped into the three authoring zones (C2/AC-C2).
     if (mode === 'edit') { step.appendChild(renderZones(model)); return step; }
 
-    if (model.description) step.appendChild(h('p', { class: 'pv-step-desc muted' }, model.description));
+    // AC-12: an AT-2 step's description is non-authoritative free-text (banded); a plain
+    // step's description renders as today.
+    if (model.description) {
+      step.appendChild(model.governance_content
+        ? h('div', { class: 'pv-step-desc muted pv-advisory-desc' }, [advisoryBand(), h('span', null, model.description)])
+        : h('p', { class: 'pv-step-desc muted' }, model.description));
+    }
     const facets = h('div', { class: 'pv-facets' });
     model.facets.forEach((facet) => {
       facets.appendChild(h('div', { class: 'pv-facet' }, [
@@ -401,6 +506,8 @@
       ]));
     });
     step.appendChild(facets);
+    // AC-12: the typed AT-2 managerial control, rendered authoritative below the facets.
+    if (model.governance_content) step.appendChild(renderAt2Control(model.governance_content));
     return step;
   }
 
