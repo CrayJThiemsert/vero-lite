@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-29T08:40:10+07:00
-session: 84
-current_batch: 'session-84 (cont.): O-1 (Box-4 ฿ pitch artifact) done + O-3 (AT-2 / managerial layer) RATIFIED + committed as ADR-0025 (#463, Accepted), off the delivered Rock-4 research. Next = the O-3 follow-on build PLAN (OQ-5, separate Cowork dispatch).'
+last_updated: 2026-06-29T11:49:32+07:00
+session: 85
+current_batch: "session-85: PLAN-0042 (O-3 follow-on AT-2 / managerial-layer BUILD) drafted (Cowork) → Code R2 → Cray-ratified OQ-A=A1 / OQ-B=B2 (OQ-C/D/E confirmed), committed + merged (#465). NEXT = execute the build (v1 = Steps 1–3+5, A1)."
 current_actor: code
-blocked_on: "Nothing — ADR-0025 Accepted (#463). The O-3 build is a follow-on PLAN (OQ-5, separate Cowork dispatch when Cray wants it). PLAN-0041 still ready for execution (live Step 5 = Cray host-state go)."
-next_action: "Dispatch the O-3 follow-on build PLAN (OQ-5): type AT-2 content + close the run-gate AT-2-blindness defect (D5) + the prose→typed migration of the procurement AT-2 in ONE PR behind a green golden test. PLAN-0041 execution still pending. loop-dispatcher stays DISABLED."
-head_commit: f56a6e8
-recent_commits: [17789ef, f56a6e8, bddedfd, 91e5307, 4718f05, 7601174, d2038c3, 6776606, ef46ea0, 751c1e2]
+blocked_on: "Nothing — PLAN-0042 ratified + merged (#465). Execution can begin (Steps 1–3+5, A1). OQ-B placeholder control values authored at Step 2 (B2 provisional + Cray sign-off; B1 folds in if Cray supplies real Fastenal figures). PLAN-0041 still ready for execution (live Step 5 = Cray host-state go)."
+next_action: "Execute PLAN-0042 Step 1 (the D2 typed `Step.governance_content` union + `Procedure.separation_of_duties` + D3 validators + D4 type-coupled invariants), then Step 2 (the D5 AT-2-aware gate + the procurement prose→typed migration in ONE PR behind a green golden test; author the OQ-B B2 placeholder values there). loop-dispatcher stays DISABLED."
+head_commit: 21d7669
+recent_commits: [294e7b8, 21d7669, 1305b32, 6cb6c61, 17789ef, f56a6e8, bddedfd, 91e5307, 4718f05, 7601174]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,40 @@ recent_commits: [17789ef, f56a6e8, bddedfd, 91e5307, 4718f05, 7601174, d2038c3, 
 ---
 
 ## Current Focus
+
+> **Session 85 (head_commit `21d7669`) — PLAN-0042 (the O-3 follow-on AT-2 /
+> managerial-layer BUILD PLAN) DRAFTED → Code R2 → Cray-RATIFIED → committed + merged
+> (#465).** PLAN-0042 (`docs/plans/0042-at2-managerial-build.md`, commit `21d7669`,
+> merge `294e7b8`) is the **O-3 follow-on BUILD PLAN** that **ADR-0025 OQ-5** named — it
+> renders ADR-0025 (Accepted #463) D1–D8 Implementation Notes + owns the migration
+> sequencing. **Build PLAN — no new ADR.** **Primary deliverable = closing a LIVE shipped
+> defect:** `validate_governance_complete` is blind to AT-2 *content* today (`rule_gate`
+> evaluate → `[]`; `scored_rule`/`doa_tier` action → `[handler,autonomy]`, both already
+> filled → no AT-2-content obligation). The build **types the AT-2 content** (D2
+> discriminated `Step.governance_content` union + `Procedure.separation_of_duties`),
+> makes the **run-gate AT-2-aware** (D5), and **migrates the shipped procurement AT-2
+> prose→typed in ONE PR behind a green golden test** (the migration trap). **Cray-ratified
+> (s85):** **OQ-A = A1** (author + render only — the engine has no principal-identity
+> layer for run-time SoD, so D6 mandates the author+render fallback; the A2 run path is
+> deferred to a follow-on PLAN); **OQ-B = B2** (labelled-provisional placeholder control
+> values + Cray sign-off — the spec has no ฿ DOA tiers / criteria weights / compliance
+> predicates, so typing D2 is *authoring*, not transcription); **OQ-C/D/E confirmed**
+> (golden test + D5 migration in ONE PR; scoped value-only prose-lint + "ADVISORY — NOT A
+> CONTROL" band; no per-spec `schema_version`). **Process:** Cowork-drafted (ADR-009 D1)
+> → **Code R2** independently re-verified the fact-pack on HEAD `1305b32` and surfaced two
+> substrate items the dispatch/ADR prose simplified — **finding 1** (a `Step.tiers`
+> naming collision: `StepTiers` = PLAN-0022 handler taxonomy already exists at
+> `spec.py:264` + is in `STEP_GOVERNANCE_FIELDS` → DOA tiers must nest in `DoaLadder`,
+> never a 2nd top-level `Step.tiers`) and the **SoD principal-vs-role scoping finding**
+> (under A1 the author-time gate enforces structural+role-level SoD; principal-identity
+> SoD is run-time → relocated to the deferred **AC-13-ALT**, lineage note:
+> superseded-by-A1, not an ADR amendment) → Code revision dispatch → Cowork applied 3
+> surgical deltas → **Cray-ratified** → Code R2 the delta + committed (#465). **v1 build
+> surface = Steps 1–3 + 5** (the A2 run path / AC-13-ALT deferred to a follow-on PLAN once
+> a principal-identity-resolution capability exists). **Standing:** `loop-dispatcher`
+> stays **DISABLED**; **MS-S1 cold — no live run in this PLAN** (offline oracle is the
+> gate; generation out of scope). AI-assisted (Claude Code, session 85); no
+> `Co-Authored-By` per CLAUDE.md §7.
 
 > **Session 84 (cont.; head_commit `f56a6e8`) — the O-1 → O-3 arc off the Rock-4
 > research.** The Cowork **Rock-4 deep research** delivered (4-box + Palantir wins +
@@ -87,63 +121,15 @@ recent_commits: [17789ef, f56a6e8, bddedfd, 91e5307, 4718f05, 7601174, d2038c3, 
 > **Standing:** `loop-dispatcher` stays **DISABLED**. AI-assisted (Claude Code,
 > session 84); no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 83 (current; head_commit `ef46ea0`) — **PLAN-0040 AC-B5 (the live
-> MS-S1 single-shot INTAKE FACE) shipped + LIVE-VERIFIED — PLAN-0040 (A + B + C +
-> live intake) is now DONE 100%.** AC-B5 was the last remaining PLAN-0040 item
-> (LOCKED-9 / D9): narrative → classify → human-confirm → governed skeleton,
-> wired to the live MS-S1 `gpt-oss:20b` (local-only, CLAUDE.md §8). Built as
-> **three Code-direct per-step PRs off `main`, Cray merged each (no self-merge).**
-> **PR-1 server (#457, `0fd0489` merge; `99043b3`+`5c00a76`):** new
-> `services/api/routers/procedure_draft.py` + models —
-> `POST /procedures/draft/classify` (narrative → proposed archetype, **no
-> skeleton yet**, LOCKED-5; or abstain/degraded + a manual-pick catalog),
-> `/build` (human-CONFIRMED archetype → governed skeleton in the gate-render
-> envelope shape; **refuses unconfirmed / unknown-archetype 422**), and
-> `/instantiate` (the deterministic **ZERO-LLM** fallback — manual pick, D9
-> graceful degradation). Model pinned `gpt-oss:20b` + local-only;
-> `_governance_todo` refactored → public `build_governance_todo`. **Security
-> fold (`5c00a76`):** the classify rationale is now **`prose_lint`-gated** (was a
-> leak-class-1 gap — values could render beside the confirm decision) and the
-> degraded detail **no longer echoes the MS-S1 host/port**. Offline route tests
-> (recorded-fixture chat client, **zero host-state**). **PR-2 front-end (#458,
-> `0dd7693` merge; `3a44e79`):** new `intake-procedures.js` capture surface
-> (narrative → classify → confirm → build, with graceful degradation to
-> manual-pick / a recorded sample); `view-procedures.js` `mount` accepts
-> `opts.draft` and renders it via the **existing gate path** (edit-mode without a
-> draft delegates to capture — **no second renderer, LOCKED-8**); `api.js`
-> `O.Draft.{classify,build,instantiate}`; `index.html` `?v=` bump c19→c20.
-> **PR-3 prose fix found by the live run (#459, `ef46ea0` merge; `751c1e2`):**
-> `_build_procedure_draft` — when the prose step COUNT matches the template, fall
-> back to **POSITIONAL** pairing, because the **live model does NOT echo the
-> template's exact `step_id`s** in its prose, so descriptions were silently
-> dropping to `""`. Advisory-prose only; **governance untouched**; +1 offline
-> test. **Offline gate (the verdict):** `ruff` + `ruff-format` + `mypy --strict
-> services/` (64 files) clean; **`pytest` 1801 passed, 24 skipped.** **LIVE
-> (MS-S1 `gpt-oss:20b`, Cray-pre-approved host-state; Cray also hands-on verified
-> the full happy path in the UI):** **the moat HOLDS live (the point)** — a
-> poisoned narrative ("threshold 4.0 / above 80% / wire_transfer / automatically
-> / no human") → build → the forced values appear **NOWHERE** (leaked tokens
-> `[]`), every governance value ABSENT, `governance_todo` populated, the skeleton
-> **fails `validate_governance_complete`** (D6 two-state); **classify matches
-> live** for clear AT-1 / AT-3 narratives (conf 0.9–0.95), and the happy path
-> renders a draft whose advisory descriptions come from the live model
-> (value-free, lint-clean) with every governance value an unfilled stub + `goal`
-> empty (human-authored, OQ-B B2). **Live findings (honest):** (1) classify is
-> **non-deterministic** + the per-step AT-2 cross-check is strict →
-> **~1-in-3 false-abstain** on a textbook AT-1 narrative (the live model
-> occasionally mis-tags the judge step with an AT-2-only gate kind
-> `scored_rule`/`rule_gate`, which `_archetype_disagreement` correctly abstains
-> on — **never down-classify, LOCKED-7**). **Safe** (→ manual-pick), but lowers
-> the classify hit-rate; the per-step gate is a **SAFETY signal only — it never
-> builds** (the template dictates the gate), so the mis-tag never leaks (AT-1b
-> reaches the gate only via manual-pick). (2) The offline fixture (matching
-> step_ids) **masked** the prose step-id-rename gap — the live run was the
-> cheapest catch (consistent with the standing lesson). **Forward lever (NOT a
-> blocker):** classify-prompt enrichment (per-archetype catalog descriptions +
-> band-vs-scored_rule guidance) to lift the live match-rate **without relaxing
-> the AT-2 cross-check** (the moat); G2-gated → Cowork dispatch when scoped.
-> **Standing:** `loop-dispatcher` stays **DISABLED**. AI-assisted (Claude Code,
-> session 83); no `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note (session-85 reconcile, 2026-06-29): the **Session-83** Current Focus
+> block (PLAN-0040 AC-B5 — the live MS-S1 single-shot INTAKE FACE — shipped +
+> LIVE-VERIFIED → PLAN-0040 [A+B+C + live intake] DONE 100% via #457/#458/#459;
+> head_commit `ef46ea0`; the oldest in-window block) was rotated to hold STATUS under the
+> **R1 64 KB hard ceiling** (the file had reached ~63 KB and adding the s85 PLAN-0042
+> block would cross it; R1 overrides the R2 4-session window) — moved verbatim to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md), per the
+> STATUS.md Rotation Policy (R1/R2/R4). Resulting Current-Focus window = {85, 84 (×2
+> blocks)}._
 
 > _Rotation note (session-84 cont. reconcile, 2026-06-29): the **Session-82** Current
 > Focus block (PLAN-0040 Phase C — the edit-mode authoring GATE UI — COMPLETE end-to-end
@@ -236,6 +222,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-29 | **PLAN-0042 (the O-3 follow-on AT-2 / managerial-layer BUILD PLAN) DRAFTED + RATIFIED + MERGED (session 85, #465)** — the build PLAN ADR-0025 OQ-5 named; renders ADR-0025 (Accepted #463) D1–D8 + owns migration sequencing. **Build PLAN — no new ADR.** **Primary deliverable = closing a LIVE shipped defect:** `validate_governance_complete` is blind to AT-2 *content* (`rule_gate` evaluate → `[]`; `scored_rule`/`doa_tier` action → `[handler,autonomy]`, both filled → no AT-2-content obligation) → the build **types the AT-2 content** (D2 discriminated `Step.governance_content` union + `Procedure.separation_of_duties`), makes the **run-gate AT-2-aware** (D5), and **migrates the procurement AT-2 prose→typed in ONE PR behind a green golden test** (the migration trap). **Cray-ratified:** **OQ-A = A1** (author + render only — no principal-identity layer for run-time SoD, so D6 author+render fallback; the A2 run path deferred to a follow-on PLAN); **OQ-B = B2** (labelled-provisional placeholder control values + Cray sign-off — typing D2 is authoring not transcription); **OQ-C/D/E confirmed** (golden test + D5 migration in ONE PR; scoped value-only prose-lint + "ADVISORY — NOT A CONTROL" band; no per-spec `schema_version`). **Process:** Cowork-drafted (ADR-009 D1) → **Code R2** re-verified the fact-pack on HEAD `1305b32` + surfaced two substrate items: **finding 1** (a `Step.tiers` collision — `StepTiers` = PLAN-0022 handler taxonomy at `spec.py:264`, in `STEP_GOVERNANCE_FIELDS` → DOA tiers must nest in `DoaLadder`, never a 2nd top-level `Step.tiers`) and the **SoD principal-vs-role scoping finding** (A1 = author-time structural+role-level SoD; principal-identity SoD is run-time → relocated to the deferred **AC-13-ALT**, lineage = superseded-by-A1, not an ADR amendment) → Code revision dispatch → Cowork applied 3 surgical deltas → Cray-ratified → Code R2 + committed (#465). **v1 build surface = Steps 1–3 + 5** (A2 / AC-13-ALT deferred). `loop-dispatcher` stays DISABLED; MS-S1 cold, no live run (offline oracle is the gate). NEXT = execute Step 1 (D2 union + SoD + D3/D4) then Step 2 (D5 gate + migration in ONE PR; author the B2 placeholders) | `21d7669` (#465) / `docs/plans/0042-at2-managerial-build.md` |
 | 2026-06-29 | **ADR-0025 (AT-2 / managerial-process layer) RATIFIED + ACCEPTED (session 84, #463)** — makes DOA/SoD/scored-rule/compliance governance first-class (the Box-3 "Action = contract" story the Rock-4 research found is vero-lite's strongest sellable box; Palantir's Apr-2026 "each Action is a contract" ≈ our `Agent.allowed` + gate + audit); **revisits ADR-0024 D7** (AT-2 deferral) + **decides ADR-0024 OQ-8** (typed content sub-model). **Re-framed around a SHIPPED DEFECT Code R2 verified live on HEAD:** `derive_governance_todo` owes no obligation for `scored_rule`/`rule_gate`/`doa_tier` → `validate_governance_complete` is blind to AT-2 content (an empty-DOA AT-2 is run-loadable today). **D2** authoritative discriminated `Step.governance_content` keyed to `gate_kind` (not the non-authoritative facet; D2-A4 held); **D3** bypass structurally unrepresentable (`Decimal` money; total-cover DOA ladder; strict-escalate waiver; compliance+SoD non-waivable); **D5** run-gate becomes AT-2-aware (closes the defect, + a negative regression test); **D7** the AT-2 generator stays deferred under a CI-enforced N≥2 re-trigger (AT-2 = N=1). **Cowork-drafted + a Cowork-run panel (disclosed self-review, NOT independent of the drafter) → Code R2 = the independent check (substrate fact-pack independently verified) → Cray-ratified per the recs** (OQ-1=(c) build-layer/defer-generator [the N=1 "(b)-minus-codegen" trade accepted because the defect forces typing the obligation regardless]; OQ-2=(b)-in-(a); OQ-3=D6 boundary [concrete run-vs-author → the follow-on PLAN]; OQ-4/5 per rec). A harness Stop-hook said "commit as Accepted" pre-ratification — Code **declined** (false attribution on the permanent record), held, committed on Cray's actual ratify. NEXT = the follow-on build PLAN (OQ-5, separate dispatch). Also s84: O-1 (Box-4 ฿ pitch artifact) done; the Rock-4 research delivered + the O-sequence locked | `f56a6e8` (#463) / `docs/adr/0025-at2-managerial-layer.md` |
 | 2026-06-28 | **PLAN-0041 (classify-prompt enrichment lever) RATIFIED + COMMITTED (session 84, #461)** — the fix for the PLAN-0040 AC-B5 live finding (~1-in-3 false-abstain on a textbook AT-1/AT-3). A **prompt-only** lever: enrich `build_classify_messages` with per-archetype descriptions (derived from the canonical catalog) + a positive band-vs-out-of-scope-gate explainer that teaches the band case, so the live model stops mis-tagging the judge step with an AT-2-only `gate_kind`. **Moat-safe:** the AT-2 cross-check (`_archetype_disagreement`/`_AT2_ONLY_KINDS`, ADR-0024 D4/D7) stays **byte-identical**; no schema change; **no new ADR**. **OQ-C twin-metric:** Arm B **11/11 AT-2-abstain HARD gate** + a pre-committed pass/fail read; offline tests = the gate, the live hit-rate lift = confirming evidence behind a Cray host-state go (§8). **Cowork-drafted (ADR-009 D1) → Code R2-reviewed (fact-pack byte-verified; LOCKED-7↔D4/D7 mapping confirmed) → Cray-ratified (OQ-A..E recs as-is) → committed → Cray merged (no self-merge).** Also session 84: a **strategy consultation** mapping vero-lite onto the **Four-Box Business Model** → a 4-rock roadmap (Rock 1 = PLAN-0041; Rock 2 = AT-2/managerial; Rock 3 = Box-4 economics + ontology data-binding; **Rock 4 = a Cowork 4-box+Palantir deep-research dispatch**, awaiting relay). NEXT = execute PLAN-0041 (offline Steps 1-4; live Step 5 = Cray go) + relay Rock 4. `loop-dispatcher` stays DISABLED | `7601174` (#461) / `docs/plans/0041-classify-prompt-enrichment.md` |
 | 2026-06-27 | **PLAN-0040 AC-B5 (the live MS-S1 single-shot intake face) SHIPPED + LIVE-VERIFIED → PLAN-0040 (A+B+C + live intake) DONE 100% (session 83, #457/#458/#459)** — the last PLAN-0040 item (LOCKED-9 / D9): narrative → classify → human-confirm → governed skeleton on live MS-S1 `gpt-oss:20b` (local-only, §8). Three **Code-direct per-step PRs off `main`, Cray merged each (no self-merge)**. **#457 server (`0fd0489` merge):** `services/api/routers/procedure_draft.py` — `POST /procedures/draft/{classify,build,instantiate}` (classify = narrative→archetype, no skeleton, LOCKED-5; build = CONFIRMED archetype→governed skeleton, refuses unconfirmed/unknown 422; instantiate = ZERO-LLM manual-pick fallback, D9); model-pinned + local-only; `_governance_todo`→public `build_governance_todo`; **security fold `5c00a76`** = classify rationale now `prose_lint`-gated (was leak-class-1) + degraded detail no longer echoes MS-S1 host/port; offline route tests (recorded-fixture, zero host-state). **#458 front-end (`0dd7693` merge):** `intake-procedures.js` capture (classify→confirm→build + graceful degradation to manual-pick/sample); `view-procedures.js` `mount(opts.draft)` renders via the **existing gate path** (no second renderer, LOCKED-8); `api.js` `O.Draft.*`; `?v=` c19→c20. **#459 prose fix from the live run (`ef46ea0` merge, `751c1e2`):** `_build_procedure_draft` falls back to **POSITIONAL** step pairing when the count matches — the live model does NOT echo template `step_id`s so descriptions dropped to `""`; advisory-prose only, governance untouched, +1 test. **Gate:** ruff+ruff-format+`mypy --strict services/` (64 files) clean; **pytest 1801 passed/24 skipped.** **LIVE (Cray-pre-approved host-state + hands-on UI verify):** **moat HOLDS** — poisoned narrative → build → forced values NOWHERE (leaked `[]`), all governance ABSENT, fails `validate_governance_complete` (D6); classify matches live for clear AT-1/AT-3 (conf 0.9–0.95), happy path = value-free advisory prose + unfilled stubs + empty `goal` (OQ-B B2). **Live findings (honest):** classify is non-deterministic + the strict per-step AT-2 cross-check → ~1-in-3 false-abstain (mis-tag of the judge step with AT-2-only `scored_rule`/`rule_gate` → correct abstain, never down-classify, LOCKED-7; SAFETY signal only, never builds, never leaks); the offline fixture masked the prose step-id-rename gap (live = cheapest catch). NEXT lever = classify-prompt enrichment (G2-gated → Cowork), NO guard relax without data + ADR. `loop-dispatcher` stays DISABLED | `0fd0489` (#457) / `0dd7693` (#458) / `ef46ea0` (#459) / `services/api/routers/procedure_draft.py` + `services/api/static/assets/{intake-procedures,view-procedures,api}.js` |
@@ -245,8 +232,6 @@ below, and git history.
 | 2026-06-25 | **PLAN-0037 / Stage 2 PREP COMPLETE — 5-facet retrofit (→N=4) + procedure-archetype catalog SHIPPED + PLAN archived (session 77, #424/#425/#426)** — Stage 2 PREP for the generative-procedures target. PLAN-0037 was **`plan-drafter`-authored** (the in-harness subagent, ADR-013 D1 phased authority) → Code R2-reviewed + committed (#424, ADR-009 D2; separation intact); Cray chose the formal-PLAN route (ทาง 1). **Step A (#425, content `31ded05`):** retrofit the SD-4 5-facet annotation (`input · decision-condition · llm-assist · output · governance`) as **YAML comment blocks** onto `energy`/`supply_chain`/`aquaculture` `procedures.yaml` → consistent **N=4** instrumentation (Rule-of-Three substrate). **Provably inert:** `services/engine/procedures/spec.py` `Step` declares `extra="forbid"` (so `facet:` can only be a comment) + the loader uses `YAML(typ="safe")` (discards comments) → Step objects byte-identical, static-JS demos untouched; gate parse-clean all 4 verticals (steps unchanged 3/3/5/10), **66 insertions all-comment / 0 deletion**, **full offline suite 1651 passed/22 skipped** (baseline), no live MS-S1 (§8). Captured the env-vs-in-file judge-band split (energy/supply_chain via `OCT_RECOMMEND_THRESHOLD`; aquaculture/procurement in-file) as the Step-C input. **Step B (#426, content `c3b477a`):** the procedure-archetype catalog at `docs/conventions/procedure-archetypes.md` (AT-1 `anomaly→action`, AT-1b `watch+summary`, AT-2 `request→approve→fulfill`, AT-3 `monitor→reorder`) — the canonical reference the Step-C ADR + Stage-3 generator cite. SD-1=one PR for the 3 verticals / SD-2=Step B follow-on PR / SD-3=catalog home `docs/conventions/` (all Cray-resolved). **`loop-dispatcher` (Cray s77) = keep-disabled + guard** (over fix-hook / delete); the Stop-hook root-fix (scheduled-task auto-continue exemption) is deferred + is the precondition for any re-enable. **Out of scope (forward):** Step C (ADR-016 first-class `facet:` field = a separate **Cowork-drafted ADR**, G2-gated) + Stage 3 (the procedure generator, Rule-of-Three-deferred). PLAN-0037 `git mv` → `done/` | `f029913` (#424/#425/#426) / `verticals/{energy,supply_chain,aquaculture}/procedures.yaml` + `docs/conventions/procedure-archetypes.md` + `docs/plans/done/0037-*.md` |
 | 2026-06-24 | **PLAN-0036 (Fastenal procurement vertical, Stage 1) drafted + merged DRAFT; Cray adjudicated SD-1…SD-5 = confirm-all (session 75, #412)** — Cowork-drafted (ADR-009 D1) from Code's s75 dispatch, Code R2-reviewed + committed (D2), merged as `Draft` (`7a7c036`). Stage 1 = hand-author vero-lite's **4th vertical (Procurement)** instantiated on automotive/auto-parts in the **EEC** (the **Fastenal Thailand** pitch target), as a **PLAN-only, no-ADR pure-config plugin** on the shipped ADR-016 engine with **zero `services/` core edit** (CQ-1 confirmed, ADR-0023). Hero = asset-failure → governed emergency sourcing; calm-path = low-stock reorder. **Cray confirmed all five SDs as-recommended** (2026-06-24). Load-bearing **SD-4 catch:** `services/engine/procedures/spec.py` `Step = ConfigDict(extra="forbid")` → Stage-1 facet annotations are **comment-only** (a first-class `facet` field = a Stage-2 ADR-016 amendment). The **proving ground** for the ultimate 3-phase generative-procedure platform (generate/run/monitor); per Rule-of-Three builds **no generic generator** (hand-author → extract schema Stage 2 → generator Stage 3). **Implements nothing on commit** (every AC `[impl]`). NEXT = a new session flips Draft → Ready for execution then executes Stage 1 | `7a7c036` (#412) / `docs/plans/0036-fastenal-procurement-vertical.md` |
 | 2026-06-23 | **PLAN-0035 Phase 2 (advisory local-LLM-judge, ADR-0022 member (b)) SHIPPED + PLAN-0035 fully COMPLETE (session 74, #407)** — an **advisory** local-LLM-judge layered on the Phase-1 deterministic floor (`services/engine/action_verification.py`): semantically cross-checks *does the proposal prose express the corrective action the structured handler names?*, adding confidence + agreement + a `"hybrid"` `verification_mode` trace (`judge_action_expression()` + `augment_with_advisory_judge()` + `ActionJudgeVerdict`/`JudgeResult` + `VERIFICATION_MODE_HYBRID`; the Phase-1 floor `verify_action_expression` unchanged). The 4 locked constraints (ADR-0022 amendment A2) all honored: ① offline gate — tests fake the judge, the live judge gated behind a new `verification_judge_enabled` setting (**default off** — live = host-state, CLAUDE.md §8); ② advisory — the judge NEVER overrides the surfaced action (the deterministic floor decides), pinned by `test_judge_disagreement_never_overrides_the_floor_action`; ③ deterministic compare — floor(D) vs judge(L) agreement in code, no 3rd LLM; ④ disclosed degradation — judge unavailable → `verification_mode "(a)-only"` in the trace, reusing the IN-4 / `OllamaUnreachableError` seam + `notify_llm_unreachable` (no new fail-safe, IN-4 not regressed). `augment_with_advisory_judge` never raises into `recommend()` (only the floor propagates to the IN-4 fail-safe, AC-7). **SD-3 / Step 11 — the first-class `verification` envelope field DEFERRED (trace-only)**, mirroring member (a)'s deferred `EntityRef.resolution` field; ADR-007 D2 envelope untouched (Code's rec → proceed-to-PR). Gate: ruff + ruff-format clean, `mypy --strict` clean (`services/`), **full suite 1639 passed/22 skipped** (was 1629; +10 offline judge-faked tests); AC-5 wrong-handler-not-rescued + D-6 boundary hold. Routing: impl (`feat/*` + PR) gated on the ADR-0022 amendment (RATIFIED #405) — NOT G2-gated; Code built + self-merged (#407, Cray-authorized). **PLAN-0035 flipped Draft → Complete + `git mv` to `done/` (`805f5d2`)** — both phases of member (b) verify+reshape now shipped, the Group-A A1 arc closed end-to-end | `5c7c175` (#407) + `805f5d2` / `services/engine/action_verification.py` + `docs/plans/done/0035-governed-action-verify-reshape-build.md` |
-| 2026-06-23 | **PLAN-0035 (A1 = ADR-0022 member (b) verify+reshape) advanced END-TO-END — SD-1 = (c) Hybrid phased; Phase 1 floor SHIPPED; (c) governance + amendment RATIFIED (session 73 cont., #403/#404/#405)** — **SD-1 adjudicated by Cray = (c) Hybrid, phased** (deterministic floor + advisory local-LLM-judge; constraint ② advisory-only, ③ deterministic compare), superseding the Cowork (a)-lean. **Phase 1 = deterministic verify+reshape floor SHIPPED** (#403, feat `1c34125`): new `services/engine/action_verification.py` at the `recommender._compose_llm_record` seam, reshaping the 5 §B-3 "assessment-prose" cases (`aqua-007/014/028/h03/h06`); the 2 genuine wrong-action cases (`aqua-017/h05`) stay wrong (AC-5 — wrong handler NOT rescued); D-6 offline guard held; **1629 passed/22 skipped**, ruff + mypy --strict clean, offline. **The (c) governance landed** (#404): an **ADR-0022 amendment** (member (b) verify = hybrid; 7 constraints incl. the local-LLM pin + D-6; scope = member-(b) mechanism only, F1/F2/F3 + D3-α untouched) + a **PLAN-0035 revision** (SD-1…SD-5 stamped, Goal/Steps restructured Phase 1/Phase 2, path-fix `structured.py`→`llm/structured.py`). **The amendment was RATIFIED** (#405, `3625ea4`; SD-A1 = (i) inline, Cray-selected). **Phase 2 (advisory local-LLM-judge, Steps 8–12) now UNBLOCKED + NEXT** — NOT marked done. Operational detour (no artifact): the G1/G2 classifier backend is local Ollama (MS-S1 `gpt-oss:20b`) since 2026-06-12, G1 is always-pause for Code (warm-confirmed → Accepted-ADR edits route to Cowork), and a keep-alive cron (every 3h) was installed to keep `gpt-oss:20b` warm | `3625ea4` (#405) / `1c34125` (#403) / `47e154b`+`17f5d6e` (#404) / `services/engine/action_verification.py` + `docs/adr/0022-*.md` + `docs/plans/0035-*.md` |
-| 2026-06-22 | **PLAN-0035 (Group-A A1 = ADR-0022 member (b) verify+reshape build) CREATED + merged DRAFT (session 73)** — Cowork-drafted (ADR-009 D1) via the s72 `0223` dispatch (the proven Cowork-dispatch route, NOT the now-unblocked in-harness `plan-drafter` — Cray's call); Code independent-reviewed (faithful to LOCKED facts; spot-checked the `recommender.py:202` `_compose_llm_record` seam — Cowork had caught the post-member-(a) #365 line-number shift and re-verified) + committed `4eb2539` (#401, Cray-merged, D2). A **build PLAN, not a new ADR** (ADR-0022 Accepted, D3-α houses member (b); mirrors PLAN-0030 = member (a)). Scope = recommend-time LLM-path verify+reshape for the **5 §B-3 "assessment-prose" cases** (`aqua-007/014/028/h03/h06`, correct `suggested_handler`, prose omits the verb); the **2 genuine wrong-action cases** (`aqua-017/h05`) stay wrong (AC-5 anti-regression). **Implements nothing on commit** (every AC `[impl]`); **5 SDs surfaced** for Cray (SD-1 verify mechanism … SD-5 moat-framing guard) — SD-1 is the load-bearing gate. A1 TODO updated (PLAN drafted+merged Draft; NOT done) | `4eb2539` (#401) / `docs/plans/0035-*.md` |
 
 ## In-Flight Discussions
 
