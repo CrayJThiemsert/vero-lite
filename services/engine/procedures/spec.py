@@ -31,6 +31,7 @@ keyed by id.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from decimal import Decimal
 from enum import StrEnum
 from itertools import pairwise
@@ -39,6 +40,8 @@ from typing import Annotated, Any, Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from ruamel.yaml import YAML
+
+from services.engine.procedures.prose_lint import governance_prose_lint
 
 ThresholdDirection = Literal["below", "above"]
 """Breach direction for an ``evaluate`` step's authored threshold, mirroring
@@ -296,6 +299,12 @@ class DoaTier(BaseModel):
 
     min_amount: Decimal = Field(ge=0, description="inclusive spend floor of this tier (Decimal)")
     approver_role: RoleId = Field(description="role authorised to approve within this tier")
+    note: str = Field(
+        default="",
+        description="optional human note for this tier — NON-AUTHORITATIVE free-text (never a "
+        "gate input; scoped-prose-lint-guarded so a ฿-amount/role token cannot be smuggled in, "
+        "ADR-0025 D4). The authoritative tier is min_amount + approver_role.",
+    )
 
 
 class EmergencyWaiverPolicy(BaseModel):
@@ -316,6 +325,13 @@ class EmergencyWaiverPolicy(BaseModel):
     requires_justification: Literal[True] = Field(
         default=True,
         description="a waiver ALWAYS forces a logged justification (unrepresentable to omit)",
+    )
+    justification: str = Field(
+        default="",
+        description="optional human-authored standing rationale for this waiver — "
+        "NON-AUTHORITATIVE free-text (the per-invocation run-time logged justification is "
+        "separate; this is the authored rationale, scoped-prose-lint-guarded so a "
+        "฿-amount/weight/role token cannot be smuggled in, ADR-0025 D4 / D-129).",
     )
 
 
@@ -360,6 +376,12 @@ class ScoredCriterion(BaseModel):
 
     name: str = Field(min_length=1, description="the criterion name (human prose label)")
     weight: Decimal = Field(description="the criterion's weight in the scored selection (Decimal)")
+    note: str = Field(
+        default="",
+        description="optional human note for this criterion — NON-AUTHORITATIVE free-text "
+        "(never a gate input; scoped-prose-lint-guarded so a weight/amount cannot be smuggled "
+        "in, ADR-0025 D4). The authoritative values are name + weight.",
+    )
 
 
 class ScoredRule(BaseModel):
@@ -553,6 +575,39 @@ class Agent(BaseModel):
     allowed: AgentAllowed = Field(default_factory=AgentAllowed)
 
 
+def _at2_role_vocab(steps: list[Step]) -> frozenset[str]:
+    """The typed approver-role vocabulary of an AT-2 procedure (every DOA tier's
+    ``approver_role`` plus each waiver's ``escalate_to``) — the tokens that must live in the
+    typed field, never in free-text (ADR-0025 D4 / PLAN-0042 Step 3)."""
+    roles: set[str] = set()
+    for step in steps:
+        gc = step.governance_content
+        if isinstance(gc, DoaLadder):
+            roles.update(t.approver_role for t in gc.tiers)
+            roles.add(gc.emergency_waiver.escalate_to)
+    return frozenset(roles)
+
+
+def _at2_free_text_surfaces(goal: str, steps: list[Step]) -> Iterator[tuple[str, str]]:
+    """Yield ``(text, where)`` for every NON-AUTHORITATIVE AT-2 free-text surface the load
+    gate scans: the goal, each governance-bearing step's description, the tier / criterion
+    notes, and the waiver justification (ADR-0025 D4). NOT the typed authoritative fields and
+    NOT a ``ComplianceRule.spec`` predicate (which legitimately holds comparison values)."""
+    yield goal, "goal"
+    for step in steps:
+        gc = step.governance_content
+        if gc is None:
+            continue
+        yield step.description, f"step '{step.step_id}' description"
+        if isinstance(gc, DoaLadder):
+            for tier in gc.tiers:
+                yield tier.note, f"step '{step.step_id}' tier '{tier.approver_role}' note"
+            yield gc.emergency_waiver.justification, f"step '{step.step_id}' waiver justification"
+        elif isinstance(gc, ScoredRule):
+            for crit in gc.criteria:
+                yield crit.note, f"step '{step.step_id}' criterion '{crit.name}' note"
+
+
 class Procedure(BaseModel):
     """A governed, multi-step operating procedure (ADR-016 D2)."""
 
@@ -595,6 +650,29 @@ class Procedure(BaseModel):
                 raise ValueError(
                     f"procedure '{self.procedure_id}': separation_of_duties references unknown "
                     f"step_id(s) {dangling} (known: {sorted(known)}) — ADR-0025 D2"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_at2_free_text(self) -> Self:
+        """Block load if a ฿-amount / weight / approver-role token is smuggled into an AT-2
+        procedure's NON-AUTHORITATIVE free-text (the scoped prose-lint, ADR-0025 D4 /
+        PLAN-0042 Step 3 / OQ-D). Runs ONLY for procedures carrying AT-2 governance content.
+        Surfaces + role vocabulary: :func:`_at2_free_text_surfaces` / :func:`_at2_role_vocab`.
+        The scoped variant omits the decision-verb / approval-phrase classes and the broad
+        identifier catch, so a hand-authored note may legitimately say 'HUMAN approves' /
+        'blocks the PO' or name a registered handler (finding 6)."""
+        if all(s.governance_content is None for s in self.steps):
+            return self
+        roles = _at2_role_vocab(self.steps)
+        for text, where in _at2_free_text_surfaces(self.goal, self.steps):
+            found = governance_prose_lint(text, roles=roles) if text else []
+            if found:
+                v = found[0]
+                raise ValueError(
+                    f"procedure '{self.procedure_id}': AT-2 free-text {where} smuggles a "
+                    f"governance value ({v.kind}: {v.match!r}) — author it in the typed field, "
+                    f"not prose ({v.message}) — ADR-0025 D4"
                 )
         return self
 

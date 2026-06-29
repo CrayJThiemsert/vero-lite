@@ -12,8 +12,8 @@ from __future__ import annotations
 
 import pytest
 
-from services.engine.procedures.prose_lint import prose_lint
-from services.engine.procedures.spec import load_procedures
+from services.engine.procedures.prose_lint import governance_prose_lint, prose_lint
+from services.engine.procedures.spec import DoaLadder, load_procedures
 
 REAL_VERTICALS = ["energy", "supply_chain", "aquaculture", "procurement"]
 
@@ -190,3 +190,78 @@ def test_flags_non_underscore_handler_spellings(text: str, handlers: frozenset[s
 def test_flags_more_approval_verbs(text: str) -> None:
     """accept / decline / disapprove are approval decisions the LLM may not make."""
     assert any(v.kind == "decision_verb" for v in prose_lint(text)), text
+
+
+# === PLAN-0042 Step 3 — the SCOPED governance prose-lint (AC-11 / ADR-0025 D4 / OQ-D) ===
+#
+# governance_prose_lint runs over HAND-AUTHORED AT-2 free-text: value classes only +
+# an approver-role-token check; it OMITS the decision-verb / approval-phrase classes and
+# the broad snake/camel identifier catch (which legitimately appear in hand-authored
+# governance notes — finding 6). A ฿-amount / weight / role token blocks load; a decision
+# verb / handler name in a hand-authored note does not.
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "auto-approve anything under ฿50,000",  # currency
+        "weight criticality at 0.5 in the score",  # decimal (a leaked weight)
+        "escalate amounts above 2M to the director",  # magnitude amount
+        "block candidates scoring below 80%",  # percentage
+        "the ceiling is fifty thousand baht for this route",  # spelled-out magnitude
+        "the floor is 50000 baht",  # bare integer
+    ],
+)
+def test_governance_lint_flags_value_leaks(text: str) -> None:
+    """A ฿-amount / weight / magnitude / percent in AT-2 free-text is a smuggled value (AC-11)."""
+    assert governance_prose_lint(text), text
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        # the EXACT finding-6 hand-authored notes the generated-prose lint over-flags:
+        "SELECTION = a scored RULE, never the LLM (governed != generated)",
+        "blocks the PO on ANY failed criterion (hard gate)",
+        "tiered DOA + emergency waiver (escalate, never skip) + SoD; HUMAN approves",
+        "on-contract default; RFQ->AVL only as a logged exception",
+        "the emergency waiver escalates the approver and forces a logged justification",
+        "fall back to the request_approval handler on a timeout",  # registered handler name
+    ],
+)
+def test_governance_lint_passes_handauthored_decision_prose(text: str) -> None:
+    """Decision verbs / approval phrases / handler-ish identifiers in a HAND-AUTHORED note are
+    legitimate — the scoped variant omits _VERB_SCANS + the broad identifier catch (finding 6)."""
+    assert governance_prose_lint(text) == [], text
+
+
+def test_governance_lint_flags_approver_role_token() -> None:
+    """An approver-role token in free-text belongs in the typed DOA field, not prose (AC-11)."""
+    roles = frozenset({"ผอ.", "ผจก.จัดซื้อ"})
+    v = governance_prose_lint("route straight to ผอ. on a breach", roles=roles)
+    assert any(x.kind == "role" and x.match == "ผอ." for x in v)
+
+
+def test_governance_lint_clean_when_role_not_present() -> None:
+    """The role check only fires on an actual token occurrence — clean prose stays clean."""
+    roles = frozenset({"ผอ.", "ผจก.จัดซื้อ"})
+    assert governance_prose_lint("route the compliant set to the human approver", roles=roles) == []
+
+
+def test_governance_lint_passes_shipped_at2_free_text() -> None:
+    """The shipped procurement AT-2's real free-text (goal + the AT-2-step descriptions) passes
+    the scoped lint — no false positives on real hand-authored governance prose (AC-11). The
+    load itself runs this validator, so a successful load is the standing proof; this asserts it
+    directly on the surfaces."""
+    spec = load_procedures("procurement")
+    proc = next(p for p in spec.procedures if p.procedure_id == "emergency_sourcing_round")
+    roles: set[str] = set()
+    for step in proc.steps:
+        if isinstance(step.governance_content, DoaLadder):
+            roles.update(t.approver_role for t in step.governance_content.tiers)
+            roles.add(step.governance_content.emergency_waiver.escalate_to)
+    role_set = frozenset(roles)
+    assert governance_prose_lint(proc.goal, roles=role_set) == [], "goal"
+    for step in proc.steps:
+        if step.governance_content is not None:
+            assert governance_prose_lint(step.description, roles=role_set) == [], step.step_id

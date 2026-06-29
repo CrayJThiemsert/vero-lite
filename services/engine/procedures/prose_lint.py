@@ -206,3 +206,42 @@ def prose_lint(text: str, *, handlers: frozenset[str] = frozenset()) -> list[Vio
         *_handler_violations(text, handlers),
         *_scan(text, _VERB_SCANS),
     ]
+
+
+# --- scoped variant for HAND-AUTHORED AT-2 governance free-text ------------------
+
+
+def _role_violations(text: str, roles: frozenset[str]) -> list[Violation]:
+    """An approver-ROLE token (an authoritative ``approver_role`` / ``escalate_to`` value)
+    appearing in free-text is a leak — the role belongs in the typed DOA field, not prose
+    (ADR-0025 D4). Exact-token containment, case-insensitive over the canonicalised text —
+    robust for non-Latin role labels (e.g. Thai) where ``\\b`` is unreliable. ``text`` is
+    already canonicalised by the caller; the role token is canonicalised here for symmetry."""
+    folded = text.casefold()
+    return [
+        Violation(
+            "role", role, f"the approver-role token '{role}' is a typed DOA value, never free-text"
+        )
+        for role in sorted(roles)
+        if _canonicalize(role).casefold() in folded
+    ]
+
+
+def governance_prose_lint(text: str, *, roles: frozenset[str] = frozenset()) -> list[Violation]:
+    """Scoped prose-lint for HAND-AUTHORED AT-2 governance free-text (PLAN-0042 Step 3 /
+    ADR-0025 D4 / OQ-D) — empty ⇒ clean.
+
+    Unlike :func:`prose_lint` (generated-prose-only — it deliberately over-flags, so it would
+    block a hand-authored governance note that legitimately says 'HUMAN approves' / 'blocks the
+    PO' or names a registered handler — finding 6), this variant runs the **value classes
+    only** (``_VALUE_SCANS``: currency / magnitude / percent / decimal / numeric /
+    spelled-number) plus an approver-**role**-token check, and OMITS the decision-verb /
+    approval-phrase classes (``_VERB_SCANS``) and the broad snake/camel identifier catch.
+
+    A ฿-amount / weight / approver-role token smuggled into AT-2 free-text (the waiver
+    justification, a tier / criterion note, an AT-2-step description, the goal) is the exact
+    anchor a human then copies into the typed field — so it **blocks load**; a decision verb or
+    a registered handler name in a hand-authored note does **not**. Pure + deterministic; the
+    text is canonicalised (NFKC + zero-width strip) before scanning."""
+    text = _canonicalize(text)
+    return [*_scan(text, _VALUE_SCANS), *_role_violations(text, roles)]

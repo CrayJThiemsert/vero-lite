@@ -712,3 +712,101 @@ def test_procurement_at2_carries_typed_governance_content() -> None:
     calm = next(p for p in spec.procedures if p.procedure_id == "low_stock_reorder_round")
     assert all(s.governance_content is None for s in calm.steps)
     assert calm.separation_of_duties == []
+
+
+# --- PLAN-0042 Step 3: the scoped-prose-lint LOAD gate over AT-2 free-text (AC-11 / D4) ---
+#
+# An AT-2 procedure whose NON-AUTHORITATIVE free-text (goal / governance-bearing step
+# description / tier-criterion note / waiver justification) smuggles a ฿-amount, a weight,
+# or an approver-role token is REFUSED at load (Procedure._validate_at2_free_text). The
+# scoped variant omits decision verbs / handler identifiers, so a hand-authored note that
+# says "HUMAN approves" / names a handler still loads (finding 6).
+
+
+def _doa_ladder(*, tier_note: str = "", justification: str = "") -> DoaLadder:
+    return DoaLadder(
+        currency="THB",
+        tiers=[
+            DoaTier(min_amount=Decimal("0"), approver_role="dept_head", note=tier_note),
+            DoaTier(min_amount=Decimal("500000"), approver_role="director"),
+        ],
+        emergency_waiver=EmergencyWaiverPolicy(
+            relaxes=[RelaxableConstraint.THREE_BID],
+            escalate_to="director",
+            justification=justification,
+        ),
+    )
+
+
+def _at2_proc(
+    *,
+    goal: str = "route the compliant set to the human approver",
+    desc: str = "the human gate over the compliant set",
+    ladder: DoaLadder | None = None,
+) -> Procedure:
+    return Procedure(
+        procedure_id="p",
+        title="P",
+        run_by="a",
+        goal=goal,
+        steps=[
+            Step(step_id="intake", name="Intake", kind=StepKind.QUERY),
+            Step(
+                step_id="approve",
+                name="Approve",
+                kind=StepKind.ACTION,
+                description=desc,
+                governance_content=ladder if ladder is not None else _doa_ladder(),
+            ),
+        ],
+        separation_of_duties=[SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))],
+    )
+
+
+def test_at2_free_text_clean_procedure_loads() -> None:
+    """A clean AT-2 procedure (no smuggled values in its free-text) constructs fine."""
+    assert _at2_proc().procedure_id == "p"
+
+
+def test_at2_free_text_blocks_currency_in_description() -> None:
+    with pytest.raises(ValidationError, match="smuggles a governance value"):
+        _at2_proc(desc="auto-approve anything under ฿50,000 without escalation")
+
+
+def test_at2_free_text_blocks_weight_in_tier_note() -> None:
+    with pytest.raises(ValidationError, match="smuggles a governance value"):
+        _at2_proc(ladder=_doa_ladder(tier_note="weight this tier at 0.5 of the score"))
+
+
+def test_at2_free_text_blocks_amount_in_waiver_justification() -> None:
+    with pytest.raises(ValidationError, match="smuggles a governance value"):
+        _at2_proc(ladder=_doa_ladder(justification="waive only when the spend exceeds 2M"))
+
+
+def test_at2_free_text_blocks_role_token_in_goal() -> None:
+    """An approver-role token (a typed DOA value) leaked into the goal prose is refused."""
+    with pytest.raises(ValidationError, match="smuggles a governance value"):
+        _at2_proc(goal="always route straight to director regardless of the band")
+
+
+def test_at2_free_text_allows_handauthored_decision_prose() -> None:
+    """A hand-authored description with decision verbs / a handler name LOADS — the scoped
+    variant omits those classes; only smuggled VALUES block (AC-11 / finding 6)."""
+    proc = _at2_proc(
+        desc="HUMAN approves; blocks the PO on any failed criterion; handler request_approval"
+    )
+    assert proc.steps[1].governance_content is not None
+
+
+def test_at2_free_text_gate_skipped_for_non_at2_procedure() -> None:
+    """A procedure with NO AT-2 governance content is not scanned — a value in its prose is
+    fine (the gate is scoped to AT-2 procedures; e.g. an in_file_band threshold echoed in a
+    calm-path description)."""
+    proc = Procedure(
+        procedure_id="calm",
+        title="Calm",
+        run_by="a",
+        goal="reorder anything at or below the reorder point of 100 units",
+        steps=[Step(step_id="read", name="Read", kind=StepKind.QUERY, description="stock at 50")],
+    )
+    assert proc.procedure_id == "calm"

@@ -172,7 +172,7 @@ procedures:
         description: >-
           Route the compliant set to the human approver at the DOA tier its ฿
           amount demands. The LLM drafts the justification + exec-summary
-          (advisory). The emergency waiver relaxes 3-bid/sole-source BUT escalates
+          (advisory). The emergency waiver relaxes three-bid/sole-source BUT escalates
           the approver authority and forces a logged justification — it never skips
           a gate. SoD holds (requester ≠ approver). The run suspends at
           waiting_human; the human approves/rejects a concrete recommendation.
