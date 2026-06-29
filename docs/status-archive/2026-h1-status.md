@@ -1421,3 +1421,46 @@ _Rotated 2026-06-29 (session-85 cont. reconcile): under the R1 64 KB hard ceilin
 ### Recent-Decisions row — 2026-06-23 (PLAN-0035 Phase 2 / fully COMPLETE)
 
 | 2026-06-23 | **PLAN-0035 Phase 2 (advisory local-LLM-judge, ADR-0022 member (b)) SHIPPED + PLAN-0035 fully COMPLETE (session 74, #407)** — an **advisory** local-LLM-judge layered on the Phase-1 deterministic floor (`services/engine/action_verification.py`): semantically cross-checks *does the proposal prose express the corrective action the structured handler names?*, adding confidence + agreement + a `"hybrid"` `verification_mode` trace (`judge_action_expression()` + `augment_with_advisory_judge()` + `ActionJudgeVerdict`/`JudgeResult` + `VERIFICATION_MODE_HYBRID`; the Phase-1 floor `verify_action_expression` unchanged). The 4 locked constraints (ADR-0022 amendment A2) all honored: ① offline gate — tests fake the judge, the live judge gated behind a new `verification_judge_enabled` setting (**default off** — live = host-state, CLAUDE.md §8); ② advisory — the judge NEVER overrides the surfaced action (the deterministic floor decides), pinned by `test_judge_disagreement_never_overrides_the_floor_action`; ③ deterministic compare — floor(D) vs judge(L) agreement in code, no 3rd LLM; ④ disclosed degradation — judge unavailable → `verification_mode "(a)-only"` in the trace, reusing the IN-4 / `OllamaUnreachableError` seam + `notify_llm_unreachable` (no new fail-safe, IN-4 not regressed). `augment_with_advisory_judge` never raises into `recommend()` (only the floor propagates to the IN-4 fail-safe, AC-7). **SD-3 / Step 11 — the first-class `verification` envelope field DEFERRED (trace-only)**, mirroring member (a)'s deferred `EntityRef.resolution` field; ADR-007 D2 envelope untouched (Code's rec → proceed-to-PR). Gate: ruff + ruff-format clean, `mypy --strict` clean (`services/`), **full suite 1639 passed/22 skipped** (was 1629; +10 offline judge-faked tests); AC-5 wrong-handler-not-rescued + D-6 boundary hold. Routing: impl (`feat/*` + PR) gated on the ADR-0022 amendment (RATIFIED #405) — NOT G2-gated; Code built + self-merged (#407, Cray-authorized). **PLAN-0035 flipped Draft → Complete + `git mv` to `done/` (`805f5d2`)** — both phases of member (b) verify+reshape now shipped, the Group-A A1 arc closed end-to-end | `5c7c175` (#407) + `805f5d2` / `services/engine/action_verification.py` + `docs/plans/done/0035-governed-action-verify-reshape-build.md` |
+
+## Rotated this reconcile (session-86, 2026-06-29 — PLAN-0042 v1 complete #470/#471/#472)
+
+### Current-Focus block — Session 84 (cont.; head_commit `f56a6e8`)
+
+> **Session 84 (cont.; head_commit `f56a6e8`) — the O-1 → O-3 arc off the Rock-4
+> research.** The Cowork **Rock-4 deep research** delivered (4-box + Palantir wins +
+> agentic scan; ~48 sources, vendor-vs-independent tagged;
+> `docs/research/private/2026-06-28-rock4-4box-palantir-agentic-research.md`) → Cray
+> **locked O-1 → O-3 → O-2 → O-4**. **O-1 (Box-4 ฿ pitch) DONE** — a deliberately
+> **conservative** hand-computed ฿ example + an impact-ledger mock (the ROI-spine
+> baseline→฿-lever→realized; no schema change; numbers a customer-calibrated floor to
+> avoid the too-good-to-be-true backfire;
+> `docs/strategy/private/2026-06-28-box4-roi-spine-impact-ledger-pitch.md`). **O-3 (the
+> AT-2 / managerial layer) RATIFIED + COMMITTED as ADR-0025 (#463, `f56a6e8`,
+> Accepted)** — makes DOA/SoD/scored-rule/compliance first-class (the Box-3 "Action =
+> contract" story the research found is the strongest sellable box; Palantir's Apr-2026
+> framing ≈ our `Agent.allowed` + gate + audit). **Re-framed around a SHIPPED DEFECT
+> Code R2 verified live on HEAD:** `derive_governance_todo` owes no obligation for
+> `scored_rule`/`rule_gate`/`doa_tier` → `validate_governance_complete` is **blind to
+> AT-2 content** (an empty-DOA AT-2 is run-loadable today; = ADR-0024 OQ-8 surface,
+> live). **Decisions:** D2 authoritative discriminated `Step.governance_content` keyed
+> to `gate_kind` (NOT the non-authoritative facet, D2-A4 held); D3 bypass **structurally
+> unrepresentable** (`Decimal` money; total-cover DOA ladder; strict-escalate waiver;
+> compliance+SoD non-waivable); D5 run-gate becomes AT-2-aware (closes the defect);
+> **D7 the AT-2 generator stays deferred under a CI-enforced N≥2 re-trigger** (AT-2 =
+> N=1). **Cowork-drafted + a Cowork-run panel (disclosed self-review, NOT independent) →
+> Code R2 = the independent check (substrate fact-pack independently verified) →
+> Cray-ratified per the recs** (OQ-1=(c) build-layer/defer-generator — the N=1
+> "(b)-minus-codegen" trade accepted *because the defect forces typing the obligation
+> regardless*; OQ-2=(b)-in-(a); OQ-3=D6 boundary [concrete run-vs-author → the follow-on
+> PLAN]; OQ-4/5 per rec). **Process note:** a harness Stop-hook said "commit as Accepted"
+> *before* Cray ratified — Code **declined** (committing would falsely attribute
+> ratification on the permanent record), held for Cray's actual ratify, then committed.
+> **NEXT = the follow-on build PLAN (OQ-5, separate dispatch): type the AT-2 content +
+> close the D5 defect + the prose→typed migration of the procurement AT-2 in ONE PR
+> behind a green golden test** (⚠ the shipped AT-2 fails `validate_governance_complete`
+> until typed). `loop-dispatcher` stays DISABLED. AI-assisted (Claude Code, session 84);
+> no `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-24 (PLAN-0036 Fastenal procurement Stage 1)
+
+| 2026-06-24 | **PLAN-0036 (Fastenal procurement vertical, Stage 1) drafted + merged DRAFT; Cray adjudicated SD-1…SD-5 = confirm-all (session 75, #412)** — Cowork-drafted (ADR-009 D1) from Code's s75 dispatch, Code R2-reviewed + committed (D2), merged as `Draft` (`7a7c036`). Stage 1 = hand-author vero-lite's **4th vertical (Procurement)** instantiated on automotive/auto-parts in the **EEC** (the **Fastenal Thailand** pitch target), as a **PLAN-only, no-ADR pure-config plugin** on the shipped ADR-016 engine with **zero `services/` core edit** (CQ-1 confirmed, ADR-0023). Hero = asset-failure → governed emergency sourcing; calm-path = low-stock reorder. **Cray confirmed all five SDs as-recommended** (2026-06-24). Load-bearing **SD-4 catch:** `services/engine/procedures/spec.py` `Step = ConfigDict(extra="forbid")` → Stage-1 facet annotations are **comment-only** (a first-class `facet` field = a Stage-2 ADR-016 amendment). The **proving ground** for the ultimate 3-phase generative-procedure platform (generate/run/monitor); per Rule-of-Three builds **no generic generator** (hand-author → extract schema Stage 2 → generator Stage 3). **Implements nothing on commit** (every AC `[impl]`). NEXT = a new session flips Draft → Ready for execution then executes Stage 1 | `7a7c036` (#412) / `docs/plans/0036-fastenal-procurement-vertical.md` |
