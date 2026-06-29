@@ -1464,3 +1464,47 @@ _Rotated 2026-06-29 (session-85 cont. reconcile): under the R1 64 KB hard ceilin
 ### Recent-Decisions row — 2026-06-24 (PLAN-0036 Fastenal procurement Stage 1)
 
 | 2026-06-24 | **PLAN-0036 (Fastenal procurement vertical, Stage 1) drafted + merged DRAFT; Cray adjudicated SD-1…SD-5 = confirm-all (session 75, #412)** — Cowork-drafted (ADR-009 D1) from Code's s75 dispatch, Code R2-reviewed + committed (D2), merged as `Draft` (`7a7c036`). Stage 1 = hand-author vero-lite's **4th vertical (Procurement)** instantiated on automotive/auto-parts in the **EEC** (the **Fastenal Thailand** pitch target), as a **PLAN-only, no-ADR pure-config plugin** on the shipped ADR-016 engine with **zero `services/` core edit** (CQ-1 confirmed, ADR-0023). Hero = asset-failure → governed emergency sourcing; calm-path = low-stock reorder. **Cray confirmed all five SDs as-recommended** (2026-06-24). Load-bearing **SD-4 catch:** `services/engine/procedures/spec.py` `Step = ConfigDict(extra="forbid")` → Stage-1 facet annotations are **comment-only** (a first-class `facet` field = a Stage-2 ADR-016 amendment). The **proving ground** for the ultimate 3-phase generative-procedure platform (generate/run/monitor); per Rule-of-Three builds **no generic generator** (hand-author → extract schema Stage 2 → generator Stage 3). **Implements nothing on commit** (every AC `[impl]`). NEXT = a new session flips Draft → Ready for execution then executes Stage 1 | `7a7c036` (#412) / `docs/plans/0036-fastenal-procurement-vertical.md` |
+
+## Rotated this reconcile (session-87, 2026-06-29 — PLAN-0041 classify-prompt enrichment COMPLETE #475/#476 + live AC-7 PASS)
+
+_Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the **Session 85 `21d7669`** CF block (PLAN-0042 BUILD PLAN drafted→ratified→merged #465) + the **2026-06-25 PLAN-0037** Recent-Decisions row (Stage 2 PREP complete) were rotated from the live STATUS when the s87 PLAN-0041-COMPLETE block + RD row landed. Verbatim below, per the STATUS.md Rotation Policy (R1/R2/R4)._
+
+### Current-Focus block — Session 85 (head_commit `21d7669`)
+
+> **Session 85 (head_commit `21d7669`) — PLAN-0042 (the O-3 follow-on AT-2 /
+> managerial-layer BUILD PLAN) DRAFTED → Code R2 → Cray-RATIFIED → committed + merged
+> (#465).** PLAN-0042 (`docs/plans/0042-at2-managerial-build.md`, commit `21d7669`,
+> merge `294e7b8`) is the **O-3 follow-on BUILD PLAN** that **ADR-0025 OQ-5** named — it
+> renders ADR-0025 (Accepted #463) D1–D8 Implementation Notes + owns the migration
+> sequencing. **Build PLAN — no new ADR.** **Primary deliverable = closing a LIVE shipped
+> defect:** `validate_governance_complete` is blind to AT-2 *content* today (`rule_gate`
+> evaluate → `[]`; `scored_rule`/`doa_tier` action → `[handler,autonomy]`, both already
+> filled → no AT-2-content obligation). The build **types the AT-2 content** (D2
+> discriminated `Step.governance_content` union + `Procedure.separation_of_duties`),
+> makes the **run-gate AT-2-aware** (D5), and **migrates the shipped procurement AT-2
+> prose→typed in ONE PR behind a green golden test** (the migration trap). **Cray-ratified
+> (s85):** **OQ-A = A1** (author + render only — the engine has no principal-identity
+> layer for run-time SoD, so D6 mandates the author+render fallback; the A2 run path is
+> deferred to a follow-on PLAN); **OQ-B = B2** (labelled-provisional placeholder control
+> values + Cray sign-off — the spec has no ฿ DOA tiers / criteria weights / compliance
+> predicates, so typing D2 is *authoring*, not transcription); **OQ-C/D/E confirmed**
+> (golden test + D5 migration in ONE PR; scoped value-only prose-lint + "ADVISORY — NOT A
+> CONTROL" band; no per-spec `schema_version`). **Process:** Cowork-drafted (ADR-009 D1)
+> → **Code R2** independently re-verified the fact-pack on HEAD `1305b32` and surfaced two
+> substrate items the dispatch/ADR prose simplified — **finding 1** (a `Step.tiers`
+> naming collision: `StepTiers` = PLAN-0022 handler taxonomy already exists at
+> `spec.py:264` + is in `STEP_GOVERNANCE_FIELDS` → DOA tiers must nest in `DoaLadder`,
+> never a 2nd top-level `Step.tiers`) and the **SoD principal-vs-role scoping finding**
+> (under A1 the author-time gate enforces structural+role-level SoD; principal-identity
+> SoD is run-time → relocated to the deferred **AC-13-ALT**, lineage note:
+> superseded-by-A1, not an ADR amendment) → Code revision dispatch → Cowork applied 3
+> surgical deltas → **Cray-ratified** → Code R2 the delta + committed (#465). **v1 build
+> surface = Steps 1–3 + 5** (the A2 run path / AC-13-ALT deferred to a follow-on PLAN once
+> a principal-identity-resolution capability exists). **Standing:** `loop-dispatcher`
+> stays **DISABLED**; **MS-S1 cold — no live run in this PLAN** (offline oracle is the
+> gate; generation out of scope). AI-assisted (Claude Code, session 85); no
+> `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-25 (PLAN-0037 / Stage 2 PREP COMPLETE)
+
+| 2026-06-25 | **PLAN-0037 / Stage 2 PREP COMPLETE — 5-facet retrofit (→N=4) + procedure-archetype catalog SHIPPED + PLAN archived (session 77, #424/#425/#426)** — Stage 2 PREP for the generative-procedures target. PLAN-0037 was **`plan-drafter`-authored** (the in-harness subagent, ADR-013 D1 phased authority) → Code R2-reviewed + committed (#424, ADR-009 D2; separation intact); Cray chose the formal-PLAN route (ทาง 1). **Step A (#425, content `31ded05`):** retrofit the SD-4 5-facet annotation (`input · decision-condition · llm-assist · output · governance`) as **YAML comment blocks** onto `energy`/`supply_chain`/`aquaculture` `procedures.yaml` → consistent **N=4** instrumentation (Rule-of-Three substrate). **Provably inert:** `services/engine/procedures/spec.py` `Step` declares `extra="forbid"` (so `facet:` can only be a comment) + the loader uses `YAML(typ="safe")` (discards comments) → Step objects byte-identical, static-JS demos untouched; gate parse-clean all 4 verticals (steps unchanged 3/3/5/10), **66 insertions all-comment / 0 deletion**, **full offline suite 1651 passed/22 skipped** (baseline), no live MS-S1 (§8). Captured the env-vs-in-file judge-band split (energy/supply_chain via `OCT_RECOMMEND_THRESHOLD`; aquaculture/procurement in-file) as the Step-C input. **Step B (#426, content `c3b477a`):** the procedure-archetype catalog at `docs/conventions/procedure-archetypes.md` (AT-1 `anomaly→action`, AT-1b `watch+summary`, AT-2 `request→approve→fulfill`, AT-3 `monitor→reorder`) — the canonical reference the Step-C ADR + Stage-3 generator cite. SD-1=one PR for the 3 verticals / SD-2=Step B follow-on PR / SD-3=catalog home `docs/conventions/` (all Cray-resolved). **`loop-dispatcher` (Cray s77) = keep-disabled + guard** (over fix-hook / delete); the Stop-hook root-fix (scheduled-task auto-continue exemption) is deferred + is the precondition for any re-enable. **Out of scope (forward):** Step C (ADR-016 first-class `facet:` field = a separate **Cowork-drafted ADR**, G2-gated) + Stage 3 (the procedure generator, Rule-of-Three-deferred). PLAN-0037 `git mv` → `done/` | `f029913` (#424/#425/#426) / `verticals/{energy,supply_chain,aquaculture}/procedures.yaml` + `docs/conventions/procedure-archetypes.md` + `docs/plans/done/0037-*.md` |
