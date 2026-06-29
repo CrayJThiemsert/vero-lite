@@ -40,14 +40,27 @@ from services.engine.procedures.spec import (
 # --- the H partition: the governance fields a draft must NEVER carry (D3) --------
 
 STEP_GOVERNANCE_FIELDS = frozenset(
-    {"autonomy", "handler", "threshold", "direction", "watch_margin", "tiers", "env_var"}
+    {
+        "autonomy",
+        "handler",
+        "threshold",
+        "direction",
+        "watch_margin",
+        "tiers",
+        "env_var",
+        "governance_content",
+    }
 )
 """``Step``-level human-author (H) fields. ``env_var`` lives on the nested
 ``DecisionCondition`` (not a top-level ``Step`` field), but it is named here so the
-disjointness test (AC-A4) also fails CI if someone adds it to a draft type."""
+disjointness test (AC-A4) also fails CI if someone adds it to a draft type.
+``governance_content`` is the AT-2 typed managerial content (ADR-0025 D2/D4) — the
+highest-consequence governance value in the system; never model-emitted."""
 
-PROCEDURE_GOVERNANCE_FIELDS = frozenset({"run_by"})
-"""``Procedure``-level H field: ``run_by`` binds the Agent — a blast-radius choice."""
+PROCEDURE_GOVERNANCE_FIELDS = frozenset({"run_by", "separation_of_duties"})
+"""``Procedure``-level H fields: ``run_by`` binds the Agent (a blast-radius choice);
+``separation_of_duties`` is the AT-2 SoD constraint set (ADR-0025 D2/D4) — human-authored,
+never generated."""
 
 AGENT_GOVERNANCE_FIELDS = frozenset({"llm_model", "autonomy_ceiling", "allowed"})
 """``Agent``-level H fields: the residency binding + the blast-radius bounds."""
