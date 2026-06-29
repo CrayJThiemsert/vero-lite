@@ -1,10 +1,10 @@
 ---
-last_updated: 2026-06-29T14:54:24+07:00
+last_updated: 2026-06-29T16:31:24+07:00
 session: 86
 current_batch: "session-86: PLAN-0042 v1 offline tail COMPLETE (#470/#471/#472, Cray-merged) → PLAN-0042 v1 (Steps 1–3+5) COMPLETE, PLAN git mv → done/. AT-2 layer typed + run-gated + rendered authoritative (advisory band) + red-teamed offline."
 current_actor: code
-blocked_on: "Nothing blocking — PLAN-0042 v1 complete (offline oracle is the gate; pytest 1877/24). Non-blocking carries: AC-13-ALT (A2 run path) needs a principal-identity capability; OQ-B placeholder values provisional pending Cray sign-off (B1, verticals/ PR); PLAN-0041 ready (live Step 5 = Cray go); loop-dispatcher DISABLED."
-next_action: "Mint a follow-on PLAN for AC-13-ALT / the A2 run path once a principal-identity-resolution capability exists; OQ-B real Fastenal numbers fold-in (B1, small verticals/ PR); PLAN-0041 live Step 5 (Cray host-state go). loop-dispatcher stays DISABLED."
+blocked_on: "Nothing blocking — PLAN-0042 v1 complete (offline oracle is the gate; pytest 1877/24). Non-blocking carries: AC-13-ALT (A2 run path) needs a principal-identity capability; OQ-B placeholder values provisional pending Cray sign-off (B1, verticals/ PR); PLAN-0041 ready to execute (Steps 1-4 = offline gate AC-1..6, NOT yet built; THEN the Cray-gated live Step 5); loop-dispatcher DISABLED."
+next_action: "Mint a follow-on PLAN for AC-13-ALT / the A2 run path once a principal-identity-resolution capability exists; OQ-B real Fastenal numbers fold-in (B1, small verticals/ PR); execute PLAN-0041 Steps 1-4 (offline gate AC-1..6 — NOT yet built, only the PLAN doc #461 exists) → THEN the Cray-gated live Step 5 (AC-7, host-state). loop-dispatcher stays DISABLED."
 head_commit: 973ba69
 recent_commits: [973ba69, fb46095, 5464831, 5fac5d2, c70012a, 4ff1180, 9d1015c, b91a16e, e92e2f5, 059c6ea]
 ---
