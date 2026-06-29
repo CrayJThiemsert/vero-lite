@@ -1252,3 +1252,52 @@ _Addendum — rotated 2026-06-27 (session-83 reconcile, PLAN-0040 AC-B5 live int
 | 2026-06-10 | **PLAN-0021 SHIPPED (#249, `3dc586a`, session 51) — the Axis-B verification loop is LIVE; both harness-review tracks complete** _(rotated 2026-06-12, session 56)_ — goal gate (`_goal_gate.py` at the D4 seam inside `stop_continuation.py`, fail-open per ADR-0018 D4) + `goal-evaluator` 4th subagent + `/goal` (the repo's first project command) + the SD-1 narrowed-Write deny hook; +64 tests (suite 1398 passed / 22 skipped, zero regression); 7/10 case-matrix rows proven LIVE incl. the fail-open probe (`released-unevaluated` + LOUD Telegram, no wedge). F-L1: verdict→flip lands at the next non-chained Stop (OQ-8 blocking-mode promotion must account). Archived to done/ (`7d6d713`, same PR) | `3dc586a` (#249) / `docs/plans/done/0021-axis-b-verification-loop-build.md` |
 | 2026-06-10 | **PLAN-0021 "Axis-B verification loop — build" landed as Draft (#247, `78b8659`, session 51)** _(rotated 2026-06-12, session 56)_ — Cowork-drafted per ADR-009 D1, Code R2-reviewed + committed per D2/D3; renders Accepted ADR-0018 into a build plan: 6 new files (incl. the repo's first project command `.claude/commands/goal.md`, the `goal-evaluator` 4th subagent, the SD-1 narrowed-Write deny hook), exactly 3 modified files at the D4 seam, 10 ACs incl. AC-2 byte-for-byte non-interference, 10-row case matrix, VX-1..3 resolved, OQ-8 Out of Scope. R2 **F-1**: the deny hook wires via agent frontmatter, not `settings.json`. Gates on Cray ratification (SD-1: Cowork recommends NO for v1) | `78b8659` (#247) / `docs/plans/0021-axis-b-verification-loop-build.md` |
 | 2026-06-10 | **ADR-0018 "Axis-B Verification Loop" ACCEPTED (Cray-ratified, session 51) — opens harness-review track 2 (the evaluator loop) on top of the at-frontier Axis-A governance layer.** _(rotated 2026-06-12, session 56)_ A `/goal` Stop-hook gate + a `goal-evaluator` subagent that judges whether a run achieved its declared goal. **Decisions:** D1 hybrid deterministic-check + LLM-judge; D2 a `.claude/state/goal.json` run-goal artifact; D3 a 4th subagent sibling that **REFUTES not blesses** (structural guard against reasoning-blindness); D4 `_goal_gate.py` inside `stop_continuation.py`, **FAIL-OPEN** (broken/absent evaluator never blocks Stop); D5 session-Stop **warn-only v1**; D6 structural reasoning-blindness rationale; D7 formalize + augment the manual AC ritual. **SD-1 resolved = narrowed Write** (the evaluator's Write is hook-narrowed to `goal.json` only — same author-bounded pattern as `plan-drafter`/`status-scribe`). **Lineage:** #241 (`5f8073c`, `docs(adr):`) added ADR-0018 `Proposed` → **#242 (`1be60f7`, `docs(adr):`, head_commit) ratified it Proposed→Accepted** + carries the T4 STATUS reconcile (record ADR-0018 here + clear the Current-Focus Axis-B "deferred" earmark). **NEXT = T2:** Code dispatches the Axis-B build PLAN to Cowork (ADR-009 D1) → T3 (autonomy-triggers V-row) → build. OQ-8 (plugin packaging, MS-S1 local evaluator, blocking-mode promotion, PR-merge gating, auto-declared goals) + VX-1..3 stay non-binding / verify-at-execution | `1be60f7` (#241 + #242) / `docs/adr/0018-axis-b-verification-loop.md` |
+
+---
+
+## Current Focus — rotated blocks (session-84-cont reconcile, 2026-06-29)
+
+> **Session 82 (current; head_commit `d3c2279`) — **PLAN-0040 Phase C (the
+> edit-mode authoring GATE UI) is COMPLETE — "governed ≠ generated" now has a
+> visible, governed authoring surface.** Phase C = the **ADR-0024 D8 review
+> surface in EDIT mode**: the generator's draft rendered behind the
+> human-review gate, every governance value a human-author stub. Built
+> **Code-direct, per-step PR off `main`, Cray merged each (no self-merge)**.
+> **C1 (#453, `b5d6aaf`):** the **edit-mode seam** on the PLAN-0039 read-only
+> viewer + an **OFFLINE recorded-draft fixture**
+> (`services/api/static/assets/gate-fixture.js`, mirrors `instantiate(AT1)` +
+> `derive_governance_todo`). `facetModel` derives `editable` from the field's
+> H-class, surfaces the unfilled governance **STUBS**, `renderField`
+> un-disabled; a **Shipped↔Authoring-gate toggle**. Offline (OQ-D D1, no
+> backend). **LOCKED-8: one `facetModel`, no second renderer.** **C2 (#454,
+> `3347bd4`/`41f5bb0`):** each step regrouped into the **THREE zones** —
+> LLM-drafted (advisory) · YOU must author (the H-stubs) · archetype
+> expectation (the oracle). **GUIDED controls:** a closed-domain H-field is a
+> **SELECT of its LEGAL set** from `governance_options`
+> (direction/autonomy/handler), an open field a typed input + source hint;
+> nothing pre-filled into a stub (D4); `autonomy` a confirm at its safe
+> `gated` default. `goal` in an **elevated-scrutiny zone** (OQ-B B2: empty,
+> human-authored). Spawned a **security + a UX specialist** (the s81 standing
+> rule): the **moat HOLDS** (no value reaches a control; `h()` renders prose
+> via `textContent` = XSS-safe; `governance_options` is the legal allowlist,
+> a guardrail not a recommendation) — folded the author-zone visual dominance
+> + goal elevation + aria-labels + a guard comment on the one `components.js`
+> `innerHTML` sink. **C3 (#455, `708d63c`):** the **LIVE completion gate** —
+> `wireGateStatus` is a **browser MIRROR of `validate_governance_complete`**:
+> it counts the unauthored REQUIRED stubs
+> (threshold/direction/handler = the `unfilled_governance` set; the `gated`
+> autonomy confirm never blocks, so it is **not** counted), shows
+> **"N of M required gates authored — would FAIL/PASS
+> `validate_governance_complete`"**, recomputes on every input, and clears a
+> stub's dashed cue the moment it is authored. **Review-only: no write-back,
+> no submit (LOCKED-10).** The **AC-C3 backend contract** (AT-1 skeleton
+> `load_procedures`-valid but failing `validate_governance_complete` until
+> authored) is **ALREADY proven** by Phase A's
+> `tests/services/engine/procedures/test_draft_lift_governance.py` — C3
+> surfaces that gate in the UI, **no duplicate test** (CLAUDE.md §6). **Net:**
+> PLAN-0040 (Phase A guardrail spine + Phase B two-call pipeline + Phase C
+> gate UI) is **COMPLETE**; archived to `docs/plans/done/`. **Verified live
+> each step via preview (oct-demo)** — read-mode unchanged, stubs empty, the
+> completion gate flips FAIL↔PASS faithfully, no console errors. **Standing:**
+> `loop-dispatcher` stays **DISABLED**. AI-assisted (Claude Code, session 82);
+> no `Co-Authored-By` per CLAUDE.md §7.

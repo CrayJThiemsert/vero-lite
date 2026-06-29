@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-28T10:13:28+07:00
+last_updated: 2026-06-29T08:40:10+07:00
 session: 84
-current_batch: 'session-84: PLAN-0041 (classify-prompt enrichment lever) Cowork-drafted → Code R2 → Cray-ratified → committed (#461); + a strategy consultation (the Four-Box Business Model as compass) → a 4-rock roadmap + a Rock-4 deep-research dispatch to Cowork.'
+current_batch: 'session-84 (cont.): O-1 (Box-4 ฿ pitch artifact) done + O-3 (AT-2 / managerial layer) RATIFIED + committed as ADR-0025 (#463, Accepted), off the delivered Rock-4 research. Next = the O-3 follow-on build PLAN (OQ-5, separate Cowork dispatch).'
 current_actor: code
-blocked_on: "Nothing — PLAN-0041 committed (ready for execution; the live before/after run is gated on a Cray host-state go). Rock-4 research dispatch awaiting Cray relay to Cowork."
-next_action: "Execute PLAN-0041 (offline Steps 1-4 = the gate; Step 5 live MS-S1 = Cray host-state go). Relay the Rock-4 deep-research dispatch to Cowork. loop-dispatcher stays DISABLED."
-head_commit: 7601174
-recent_commits: [4718f05, 7601174, d2038c3, 6776606, ef46ea0, 751c1e2, 0dd7693, 3a44e79, 0fd0489, 5c00a76]
+blocked_on: "Nothing — ADR-0025 Accepted (#463). The O-3 build is a follow-on PLAN (OQ-5, separate Cowork dispatch when Cray wants it). PLAN-0041 still ready for execution (live Step 5 = Cray host-state go)."
+next_action: "Dispatch the O-3 follow-on build PLAN (OQ-5): type AT-2 content + close the run-gate AT-2-blindness defect (D5) + the prose→typed migration of the procurement AT-2 in ONE PR behind a green golden test. PLAN-0041 execution still pending. loop-dispatcher stays DISABLED."
+head_commit: f56a6e8
+recent_commits: [17789ef, f56a6e8, bddedfd, 91e5307, 4718f05, 7601174, d2038c3, 6776606, ef46ea0, 751c1e2]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,41 @@ recent_commits: [4718f05, 7601174, d2038c3, 6776606, ef46ea0, 751c1e2, 0dd7693, 
 ---
 
 ## Current Focus
+
+> **Session 84 (cont.; head_commit `f56a6e8`) — the O-1 → O-3 arc off the Rock-4
+> research.** The Cowork **Rock-4 deep research** delivered (4-box + Palantir wins +
+> agentic scan; ~48 sources, vendor-vs-independent tagged;
+> `docs/research/private/2026-06-28-rock4-4box-palantir-agentic-research.md`) → Cray
+> **locked O-1 → O-3 → O-2 → O-4**. **O-1 (Box-4 ฿ pitch) DONE** — a deliberately
+> **conservative** hand-computed ฿ example + an impact-ledger mock (the ROI-spine
+> baseline→฿-lever→realized; no schema change; numbers a customer-calibrated floor to
+> avoid the too-good-to-be-true backfire;
+> `docs/strategy/private/2026-06-28-box4-roi-spine-impact-ledger-pitch.md`). **O-3 (the
+> AT-2 / managerial layer) RATIFIED + COMMITTED as ADR-0025 (#463, `f56a6e8`,
+> Accepted)** — makes DOA/SoD/scored-rule/compliance first-class (the Box-3 "Action =
+> contract" story the research found is the strongest sellable box; Palantir's Apr-2026
+> framing ≈ our `Agent.allowed` + gate + audit). **Re-framed around a SHIPPED DEFECT
+> Code R2 verified live on HEAD:** `derive_governance_todo` owes no obligation for
+> `scored_rule`/`rule_gate`/`doa_tier` → `validate_governance_complete` is **blind to
+> AT-2 content** (an empty-DOA AT-2 is run-loadable today; = ADR-0024 OQ-8 surface,
+> live). **Decisions:** D2 authoritative discriminated `Step.governance_content` keyed
+> to `gate_kind` (NOT the non-authoritative facet, D2-A4 held); D3 bypass **structurally
+> unrepresentable** (`Decimal` money; total-cover DOA ladder; strict-escalate waiver;
+> compliance+SoD non-waivable); D5 run-gate becomes AT-2-aware (closes the defect);
+> **D7 the AT-2 generator stays deferred under a CI-enforced N≥2 re-trigger** (AT-2 =
+> N=1). **Cowork-drafted + a Cowork-run panel (disclosed self-review, NOT independent) →
+> Code R2 = the independent check (substrate fact-pack independently verified) →
+> Cray-ratified per the recs** (OQ-1=(c) build-layer/defer-generator — the N=1
+> "(b)-minus-codegen" trade accepted *because the defect forces typing the obligation
+> regardless*; OQ-2=(b)-in-(a); OQ-3=D6 boundary [concrete run-vs-author → the follow-on
+> PLAN]; OQ-4/5 per rec). **Process note:** a harness Stop-hook said "commit as Accepted"
+> *before* Cray ratified — Code **declined** (committing would falsely attribute
+> ratification on the permanent record), held for Cray's actual ratify, then committed.
+> **NEXT = the follow-on build PLAN (OQ-5, separate dispatch): type the AT-2 content +
+> close the D5 defect + the prose→typed migration of the procurement AT-2 in ONE PR
+> behind a green golden test** (⚠ the shipped AT-2 fails `validate_governance_complete`
+> until typed). `loop-dispatcher` stays DISABLED. AI-assisted (Claude Code, session 84);
+> no `Co-Authored-By` per CLAUDE.md §7.
 
 > **Session 84 (current; head_commit `7601174`) — **PLAN-0041 (the
 > classify-prompt enrichment lever) RATIFIED + COMMITTED (#461), plus a strategy
@@ -110,50 +145,14 @@ recent_commits: [4718f05, 7601174, d2038c3, 6776606, ef46ea0, 751c1e2, 0dd7693, 
 > **Standing:** `loop-dispatcher` stays **DISABLED**. AI-assisted (Claude Code,
 > session 83); no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 82 (current; head_commit `d3c2279`) — **PLAN-0040 Phase C (the
-> edit-mode authoring GATE UI) is COMPLETE — "governed ≠ generated" now has a
-> visible, governed authoring surface.** Phase C = the **ADR-0024 D8 review
-> surface in EDIT mode**: the generator's draft rendered behind the
-> human-review gate, every governance value a human-author stub. Built
-> **Code-direct, per-step PR off `main`, Cray merged each (no self-merge)**.
-> **C1 (#453, `b5d6aaf`):** the **edit-mode seam** on the PLAN-0039 read-only
-> viewer + an **OFFLINE recorded-draft fixture**
-> (`services/api/static/assets/gate-fixture.js`, mirrors `instantiate(AT1)` +
-> `derive_governance_todo`). `facetModel` derives `editable` from the field's
-> H-class, surfaces the unfilled governance **STUBS**, `renderField`
-> un-disabled; a **Shipped↔Authoring-gate toggle**. Offline (OQ-D D1, no
-> backend). **LOCKED-8: one `facetModel`, no second renderer.** **C2 (#454,
-> `3347bd4`/`41f5bb0`):** each step regrouped into the **THREE zones** —
-> LLM-drafted (advisory) · YOU must author (the H-stubs) · archetype
-> expectation (the oracle). **GUIDED controls:** a closed-domain H-field is a
-> **SELECT of its LEGAL set** from `governance_options`
-> (direction/autonomy/handler), an open field a typed input + source hint;
-> nothing pre-filled into a stub (D4); `autonomy` a confirm at its safe
-> `gated` default. `goal` in an **elevated-scrutiny zone** (OQ-B B2: empty,
-> human-authored). Spawned a **security + a UX specialist** (the s81 standing
-> rule): the **moat HOLDS** (no value reaches a control; `h()` renders prose
-> via `textContent` = XSS-safe; `governance_options` is the legal allowlist,
-> a guardrail not a recommendation) — folded the author-zone visual dominance
-> + goal elevation + aria-labels + a guard comment on the one `components.js`
-> `innerHTML` sink. **C3 (#455, `708d63c`):** the **LIVE completion gate** —
-> `wireGateStatus` is a **browser MIRROR of `validate_governance_complete`**:
-> it counts the unauthored REQUIRED stubs
-> (threshold/direction/handler = the `unfilled_governance` set; the `gated`
-> autonomy confirm never blocks, so it is **not** counted), shows
-> **"N of M required gates authored — would FAIL/PASS
-> `validate_governance_complete`"**, recomputes on every input, and clears a
-> stub's dashed cue the moment it is authored. **Review-only: no write-back,
-> no submit (LOCKED-10).** The **AC-C3 backend contract** (AT-1 skeleton
-> `load_procedures`-valid but failing `validate_governance_complete` until
-> authored) is **ALREADY proven** by Phase A's
-> `tests/services/engine/procedures/test_draft_lift_governance.py` — C3
-> surfaces that gate in the UI, **no duplicate test** (CLAUDE.md §6). **Net:**
-> PLAN-0040 (Phase A guardrail spine + Phase B two-call pipeline + Phase C
-> gate UI) is **COMPLETE**; archived to `docs/plans/done/`. **Verified live
-> each step via preview (oct-demo)** — read-mode unchanged, stubs empty, the
-> completion gate flips FAIL↔PASS faithfully, no console errors. **Standing:**
-> `loop-dispatcher` stays **DISABLED**. AI-assisted (Claude Code, session 82);
-> no `Co-Authored-By` per CLAUDE.md §7.
+> _Rotation note (session-84 cont. reconcile, 2026-06-29): the **Session-82** Current
+> Focus block (PLAN-0040 Phase C — the edit-mode authoring GATE UI — COMPLETE end-to-end
+> #453/#454/#455, head_commit `d3c2279`; the oldest in-window block) was rotated to hold
+> STATUS under the **R1 64 KB hard ceiling** (the file had crossed it at ~65.6 KB when the
+> session-84-cont O-3 / ADR-0025 block landed; R1 overrides the R2 4-session window) —
+> moved verbatim to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md), per the
+> STATUS.md Rotation Policy (R1/R2/R4). Resulting Current-Focus window = {84 (×2 blocks), 83}._
 
 > _Rotation note (session-83 reconcile, 2026-06-27): the **Session-81** Current
 > Focus block (PLAN-0040 Phase B offline pipeline [the S0–S6 two-call generator]
@@ -237,6 +236,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-06-29 | **ADR-0025 (AT-2 / managerial-process layer) RATIFIED + ACCEPTED (session 84, #463)** — makes DOA/SoD/scored-rule/compliance governance first-class (the Box-3 "Action = contract" story the Rock-4 research found is vero-lite's strongest sellable box; Palantir's Apr-2026 "each Action is a contract" ≈ our `Agent.allowed` + gate + audit); **revisits ADR-0024 D7** (AT-2 deferral) + **decides ADR-0024 OQ-8** (typed content sub-model). **Re-framed around a SHIPPED DEFECT Code R2 verified live on HEAD:** `derive_governance_todo` owes no obligation for `scored_rule`/`rule_gate`/`doa_tier` → `validate_governance_complete` is blind to AT-2 content (an empty-DOA AT-2 is run-loadable today). **D2** authoritative discriminated `Step.governance_content` keyed to `gate_kind` (not the non-authoritative facet; D2-A4 held); **D3** bypass structurally unrepresentable (`Decimal` money; total-cover DOA ladder; strict-escalate waiver; compliance+SoD non-waivable); **D5** run-gate becomes AT-2-aware (closes the defect, + a negative regression test); **D7** the AT-2 generator stays deferred under a CI-enforced N≥2 re-trigger (AT-2 = N=1). **Cowork-drafted + a Cowork-run panel (disclosed self-review, NOT independent of the drafter) → Code R2 = the independent check (substrate fact-pack independently verified) → Cray-ratified per the recs** (OQ-1=(c) build-layer/defer-generator [the N=1 "(b)-minus-codegen" trade accepted because the defect forces typing the obligation regardless]; OQ-2=(b)-in-(a); OQ-3=D6 boundary [concrete run-vs-author → the follow-on PLAN]; OQ-4/5 per rec). A harness Stop-hook said "commit as Accepted" pre-ratification — Code **declined** (false attribution on the permanent record), held, committed on Cray's actual ratify. NEXT = the follow-on build PLAN (OQ-5, separate dispatch). Also s84: O-1 (Box-4 ฿ pitch artifact) done; the Rock-4 research delivered + the O-sequence locked | `f56a6e8` (#463) / `docs/adr/0025-at2-managerial-layer.md` |
 | 2026-06-28 | **PLAN-0041 (classify-prompt enrichment lever) RATIFIED + COMMITTED (session 84, #461)** — the fix for the PLAN-0040 AC-B5 live finding (~1-in-3 false-abstain on a textbook AT-1/AT-3). A **prompt-only** lever: enrich `build_classify_messages` with per-archetype descriptions (derived from the canonical catalog) + a positive band-vs-out-of-scope-gate explainer that teaches the band case, so the live model stops mis-tagging the judge step with an AT-2-only `gate_kind`. **Moat-safe:** the AT-2 cross-check (`_archetype_disagreement`/`_AT2_ONLY_KINDS`, ADR-0024 D4/D7) stays **byte-identical**; no schema change; **no new ADR**. **OQ-C twin-metric:** Arm B **11/11 AT-2-abstain HARD gate** + a pre-committed pass/fail read; offline tests = the gate, the live hit-rate lift = confirming evidence behind a Cray host-state go (§8). **Cowork-drafted (ADR-009 D1) → Code R2-reviewed (fact-pack byte-verified; LOCKED-7↔D4/D7 mapping confirmed) → Cray-ratified (OQ-A..E recs as-is) → committed → Cray merged (no self-merge).** Also session 84: a **strategy consultation** mapping vero-lite onto the **Four-Box Business Model** → a 4-rock roadmap (Rock 1 = PLAN-0041; Rock 2 = AT-2/managerial; Rock 3 = Box-4 economics + ontology data-binding; **Rock 4 = a Cowork 4-box+Palantir deep-research dispatch**, awaiting relay). NEXT = execute PLAN-0041 (offline Steps 1-4; live Step 5 = Cray go) + relay Rock 4. `loop-dispatcher` stays DISABLED | `7601174` (#461) / `docs/plans/0041-classify-prompt-enrichment.md` |
 | 2026-06-27 | **PLAN-0040 AC-B5 (the live MS-S1 single-shot intake face) SHIPPED + LIVE-VERIFIED → PLAN-0040 (A+B+C + live intake) DONE 100% (session 83, #457/#458/#459)** — the last PLAN-0040 item (LOCKED-9 / D9): narrative → classify → human-confirm → governed skeleton on live MS-S1 `gpt-oss:20b` (local-only, §8). Three **Code-direct per-step PRs off `main`, Cray merged each (no self-merge)**. **#457 server (`0fd0489` merge):** `services/api/routers/procedure_draft.py` — `POST /procedures/draft/{classify,build,instantiate}` (classify = narrative→archetype, no skeleton, LOCKED-5; build = CONFIRMED archetype→governed skeleton, refuses unconfirmed/unknown 422; instantiate = ZERO-LLM manual-pick fallback, D9); model-pinned + local-only; `_governance_todo`→public `build_governance_todo`; **security fold `5c00a76`** = classify rationale now `prose_lint`-gated (was leak-class-1) + degraded detail no longer echoes MS-S1 host/port; offline route tests (recorded-fixture, zero host-state). **#458 front-end (`0dd7693` merge):** `intake-procedures.js` capture (classify→confirm→build + graceful degradation to manual-pick/sample); `view-procedures.js` `mount(opts.draft)` renders via the **existing gate path** (no second renderer, LOCKED-8); `api.js` `O.Draft.*`; `?v=` c19→c20. **#459 prose fix from the live run (`ef46ea0` merge, `751c1e2`):** `_build_procedure_draft` falls back to **POSITIONAL** step pairing when the count matches — the live model does NOT echo template `step_id`s so descriptions dropped to `""`; advisory-prose only, governance untouched, +1 test. **Gate:** ruff+ruff-format+`mypy --strict services/` (64 files) clean; **pytest 1801 passed/24 skipped.** **LIVE (Cray-pre-approved host-state + hands-on UI verify):** **moat HOLDS** — poisoned narrative → build → forced values NOWHERE (leaked `[]`), all governance ABSENT, fails `validate_governance_complete` (D6); classify matches live for clear AT-1/AT-3 (conf 0.9–0.95), happy path = value-free advisory prose + unfilled stubs + empty `goal` (OQ-B B2). **Live findings (honest):** classify is non-deterministic + the strict per-step AT-2 cross-check → ~1-in-3 false-abstain (mis-tag of the judge step with AT-2-only `scored_rule`/`rule_gate` → correct abstain, never down-classify, LOCKED-7; SAFETY signal only, never builds, never leaks); the offline fixture masked the prose step-id-rename gap (live = cheapest catch). NEXT lever = classify-prompt enrichment (G2-gated → Cowork), NO guard relax without data + ADR. `loop-dispatcher` stays DISABLED | `0fd0489` (#457) / `0dd7693` (#458) / `ef46ea0` (#459) / `services/api/routers/procedure_draft.py` + `services/api/static/assets/{intake-procedures,view-procedures,api}.js` |
 | 2026-06-25 | **Stage 3 KICKED OFF — ADR-0024 (archetype-first procedure generator) ACCEPTED #434 + PLAN-0039 (read-only 5-facet viewer) Ready #435 + the ADR-0024 OQ-disposition errata (session 78)** — opens Stage 3 of the generative-procedures arc (ADR-016 Phase 2). Both artifacts **Cowork-drafted (ADR-009 D1) → Code R2-reviewed → Cray-ratified → committed (D2)**. **ADR-0024 (#434, add `c90b2d2`):** archetype-first generation **backed by a Code-run 5-specialist design panel** (LLM-pipeline · governance · schema · product-UX · red-team). **D1–D12 locked:** classify narrative → 1 of N archetypes → deterministic-code instantiates → LLM drafts advisory prose only (**exactly 2 narrow LLM calls**, classify-don't-synthesize ADR-0021); **"governed ≠ generated" re-fenced at the AUTHORING surface + made MECHANICAL** = a **restricted draft type** with NO governance fields (leak = type error) + a deterministic prose-lint; generator emits `gate_kind` (closed-enum) but **never a value/handler/threshold/tier/autonomy/env_var** (D4); **abstain never force-fit** (D5); determinism invariant holds at the authoring layer; skeleton **draft-loadable but NOT run-loadable** until a human authors gates (D6); **v1 = AT-1 family (AT-1/AT-1b/AT-3), AT-2 DEFERRED** (only AT-2 = `procurement.emergency_sourcing`, N=1; catalog really N≈2; D7); **one review surface**, read-only viewer ships first (D8); the catalog promotes prose→machine-readable `ArchetypeTemplate` (D2). **9 OQs Cray-ratified ACCEPTED** as standing guidance. **PLAN-0039 (#435, `edd28a6`):** a **zero-LLM** oct-demo view rendering **every shipped procedure (5 across 4 verticals — Cowork corrected the dispatch's "4"→5, procurement ships two)** by its 5 facets per step, authoritative band visually distinct from prose, served by read-only `GET /procedures`; built as the **read-mode of the ONE component PLAN-0040 extends to edit-mode** (`mode:read|edit` + pure `facetModel(step)`, AC-7); **AT-2 RENDERED here though AT-2 generation is deferred (D7)**; **7 UI/endpoint OQs Cray-ratified ACCEPTED**. **ADR-0024 OQ errata (commit `4e56d4b`, bundled into #435):** records the ratified OQ disposition in the Accepted ADR's OQ section — Code could NOT inline it (editing an Accepted ADR is **G1-gated**; **in-context approval does NOT override the local-Ollama classifier**, fail-closed deny → routed via Cowork, the s77 chore-PR precedent); **NO decision changed (D1–D12 byte-identical, diff-verified)**. **Notes:** PLAN-0039 + errata bundled one PR / two commits (#435, Code-judgment, separable in history); **`loop-dispatcher` stays DISABLED**; **no live MS-S1** (docs only, §8); pre-commit detect-secrets + handoff-validation green. NEXT = build PLAN-0039 (the viewer) then dispatch PLAN-0040 (the generator, AT-1 family, G2-gated) | `c90b2d2` (#434) / `edd28a6` + `4e56d4b` (#435) / `docs/adr/0024-procedure-generator.md` + `docs/plans/0039-readonly-facet-viewer.md` |
@@ -261,9 +261,9 @@ below, and git history.
 ## Active TODOs
 
 - [ ] **PLAN-0041 (classify-prompt enrichment lever — Rock 1) — RATIFIED + COMMITTED (#461, s84); ready for execution.** The fix for the s83 AC-B5 live finding (~1-in-3 false-abstain on a textbook AT-1/AT-3). Prompt-only: enrich `build_classify_messages` with **per-archetype descriptions** (derived from the canonical catalog) + a **positive band-vs-out-of-scope-gate explainer**, **WITHOUT relaxing the AT-2 cross-check** (`_archetype_disagreement`/`_AT2_ONLY_KINDS`, ADR-0024 D4/D7 — byte-identical; no schema change; no new ADR). **OQ-C twin-metric:** Arm B 11/11 AT-2-abstain HARD gate + a pre-committed pass/fail read; offline Steps 1-4 = the gate, **Step 5 live before/after on MS-S1 = Cray host-state go** (§8). **NEXT = a session executes Steps 1-4 (offline) then the Cray-gated live run.** *(Cowork-D1 → Code-R2 → Cray-ratified → committed #461; PLAN-0040 AC-B5 live finding)*
-- [ ] **Rock 2 — AT-2 / managerial-process generation (Box 3 governance) — the next big build (s84 roadmap).** The deferred AT-2 family (`scored_rule`/`rule_gate`/`doa_tier` — DOA / weighted-scoring / approval-tier / SoD) is the **managerial-process** layer Fastenal needs (DOA/waiver/SoD). AT-2 is **already instrumented** (the gate kinds exist in `GateKind` across the N=4 verticals — merely deferred at the generator, ADR-0024 D7), so this is catalog expansion + a gate-heavy authoring surface = **its own ADR + PLAN** (Rule-of-Three: the Fastenal hand-authoring triangulates it). *(s84 strategy discussion; [[project_vero_ultimate_target_generative_procedures]])*
+- [ ] **Rock 2 / O-3 — AT-2 / managerial layer — ADR-0025 RATIFIED + ACCEPTED (#463, s84); next = the follow-on build PLAN.** The Box-3 "Action = contract" layer (DOA/SoD/scored-rule/compliance). **ADR-0025 (Accepted)** decided: type AT-2 content (D2 authoritative discriminated `Step.governance_content` keyed to `gate_kind`, not the facet), bypass structurally unrepresentable (D3), **close the live run-gate AT-2-blindness defect** (D5), **defer the generator** under a CI-enforced N≥2 re-trigger (D7; AT-2 = N=1). **NEXT = the follow-on build PLAN (OQ-5, separate Cowork dispatch):** type the content + the D5 gate-extension + the prose→typed migration of the existing procurement AT-2 in **ONE PR behind a green golden test** (⚠ the shipped AT-2 fails `validate_governance_complete` until typed). OQ-3 (run vs author-only) concrete v1 call lands in that PLAN. *(s84; ADR-0025; [[project_vero_ultimate_target_generative_procedures]])*
 - [ ] **Rock 3 — Box-4 economics + the procedure→ontology data-binding gap (prepare-now / build-later, s84 roadmap).** (1) **Box 4 (Profit Formula):** the reasoning trace is operational, not economic — tie each action to ฿ impact (avoided outage / margin / ROI). Prepare by capturing the economic dimension as prose when hand-authoring Fastenal + proving the ฿ framing in the demo; type an economic-impact facet only after N≥3 verticals triangulate it. (2) **Q3 data-access gap:** a `query` step has no typed binding to an ontology object (today `input.from_step` is intra-step only; no read-side `Agent.allowed.object_types`) — the right design binds query steps to **ontology objects** (the mapping layer absorbs source diversity), NOT connectors-in-the-procedure. Both = generalized-schema work, post-Fastenal. *(s84 strategy discussion + the 3-layer / ontology-binding diagram)*
-- [ ] **Rock 4 — Cowork deep-research dispatch (4-box + Palantir wins → a Box-4-forward demo playbook + an agentic-AI forward scan) — DRAFTED, awaiting Cray relay (s84).** A Tier-0 deep-research task (NOT a governance artifact): how Palantir/peers quantify + demo economic impact (the "ROI spine"), how the 4 boxes land at demo (esp. Box 4), + where agent-to-agent business automation is heading (MCP / A2A / ontology-as-shared-contract) and how vero-lite's governance positions for it. Output = a cited research file in `docs/research/private/` + a demo-playbook sketch + a "could-graduate-to-PLAN" options list. Dispatch: `.claude/handoffs/session-84/2026-06-28-1013-code-cowork-rock4-4box-palantir-research-dispatch.md`. *(s84 Cray ask)*
+- [ ] **Rock 4 — Cowork deep research DELIVERED → O-sequence locked, O-1 done, O-3 Accepted (s84).** The 4-box + Palantir + agentic research landed (`docs/research/private/2026-06-28-rock4-4box-palantir-agentic-research.md`; ~48 sources, vendor-vs-independent tagged, adversarially balanced; central finding = the evidence asymmetry [bullish ROI all vendor, independent mostly skeptical]) → Cray **locked O-1 → O-3 → O-2 → O-4**. **O-1 (Box-4 ฿ pitch artifact) DONE** (conservative ฿ + impact-ledger mock; `docs/strategy/private/2026-06-28-box4-roi-spine-impact-ledger-pitch.md`). **O-3 = ADR-0025 Accepted** (see Rock 2). **Remaining:** **O-2** (economic-impact facet + Q3 ontology data-binding = Rock 3, after N≥3) · **O-4** (agent-interop North-Star, vision only). [[reference_rock4_4box_palantir_demo_research]]. *(s84 Cray ask)*
 - [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten (full table: PLAN-0005 §8.1): rule-based recommender → **ADR-010 ACCEPTED (2026-05-22) → PLAN-0006 next** (LLM reasoning hook); minimal approval gate → **ADR-011+** (audit framework — trigger: first design-partner data / PDPA review); no mapping layer → **dbt/SQLMesh** (trigger: first non-synthetic source); hand-authored ORM → **"ORM emitter"** Rule-of-Three candidate (trigger: 3rd vertical / DDL↔ORM parity-test drift); base Postgres only → **PLAN-002** (pgvector/AGE — trigger: semantic + graph features); explicit registry → **ADR-006 D3 L2** (trigger: vertical #2/#3 or `new-vertical` generator). *(per Cray note 2026-05-21)*
 - [ ] **Demo card UX — "trust shape", NO operator confidence badge (s74 design, Cray-approved).** For the next demo round's operator recommendation card: show **what / grounded-why / approve gate** + a **"show full reasoning trace" toggle** that reveals the engine-view (where the floor-vs-judge agreement lives, labelled *audit/QA — not the operator*; reuses the scene-6 why-toggle pattern). **No operator-facing confidence badge** — the floor-vs-judge `confidence_signal` (PLAN-0035 Phase 2) is an **engine-internal QA/audit signal kept trace-only (SD-3 option A)**; surfacing it as a badge mis-reads as "the action might be wrong" (it is **not** — member (b) is advisory, never changes the action). The **(B) first-class `verification` envelope field is NOT needed for the operator UI** — reconsider **only** if a future internal audit/QA dashboard wants confidence as a first-class field (trace stays sufficient otherwise). Settled via a show_widget design review (s74; Cray: "ตรงใจ ตอบโจทย์"). The reframe: users want *what was decided · is it right · why* — answered by the action + grounding (real entity, allow-listed handler, deterministic detection, human approve) + the reasoning trace, **not** a self-reported confidence number. *(Trigger: the next demo / UI round; pairs with any (B) reconsideration.)*
 - [ ] **PLAN-004 Phase C — OPTIONAL POLISH (forward-declared; "may never land"):** HTML/markdown handoff dashboard under `docs/` + references-graph (mermaid dispatch chains) + `render_transcript.py` unified session export (PLAN-0004 §"Phase C"). *(Phase A + B both COMPLETE — session 35; the prior TODO's validator **warning-swallow bug was FIXED #312**, s58. Minor never-formally-scoped sub-ideas — README/`_rename-map` walk-exclusion, Cat G `references_*` autofix, OQ-2 effective-vs-authored `status:` dashboard flag — fold in only if Phase C lands. Reconciled 2026-06-16 s65 audit.)*
