@@ -257,6 +257,11 @@ RoleId = str
 StepId = str
 """A reference to a ``Step.step_id`` within the same procedure."""
 
+PersonId = str
+"""A canonical principal-identity key (e.g. ``alice``) — the resolved-principal identity
+SoD compares at run time (ADR-0026 D1). A bare ``person_id`` match is the first of the two
+OQ-3=(c) alias-collapse triggers. Human-authored."""
+
 
 class ComplianceCriterion(StrEnum):
     """The per-criterion compliance checks an AT-2 ``rule_gate`` evaluates (ADR-0025 D2),
@@ -432,14 +437,38 @@ is one test, not four (Alternative 3 rejected)."""
 class SoDConstraint(BaseModel):
     """A separation-of-duties constraint: the named steps MUST be performed by distinct
     principals (ADR-0025 D2). Author time enforces the STRUCTURAL form (>=2 distinct steps,
-    each resolving to a real step — see ``Procedure``); the resolved-PRINCIPAL distinctness
-    (fail-closed on alias-collapse) is the deferred A2 run check (OQ-A=A1; AC-13-ALT)."""
+    each resolving to a real step — see ``Procedure``) plus the step->required-role map's own
+    integrity (no role named for a step outside this constraint); the resolved-PRINCIPAL
+    distinctness (fail-closed on alias-collapse) is the run check ADR-0026 D4 adds — it
+    resolves each constrained step's ``required_role`` to a ``Person`` and fails closed if any
+    is unresolvable or two collapse to one human."""
 
     model_config = ConfigDict(extra="forbid")
 
     distinct_steps: frozenset[StepId] = Field(
         min_length=2, description="step_ids that must be performed by distinct principals (>=2)"
     )
+    required_roles: dict[StepId, RoleId] = Field(
+        default_factory=dict,
+        description="step->required-role map (ADR-0026 D2; OQ-1=(a), SD-1=(b)): the RoleId each "
+        "constrained step requires, so the run-check resolves step -> required_role -> Person. "
+        "Human-author-only (H). Keys must be among distinct_steps; a constrained step left "
+        "unmapped is unresolvable -> the run-check fails closed (ADR-0026 D4).",
+    )
+
+    @model_validator(mode="after")
+    def _validate_required_roles(self) -> Self:
+        """A ``required_roles`` key may only name a step this constraint covers — a role bound
+        to a step outside ``distinct_steps`` is an authoring error (ADR-0026 D2). (Coverage of
+        every constrained step is NOT forced here: a partial/empty map keeps author-time load
+        backward-compatible; an unmapped constrained step fails closed at run time, D4.)"""
+        dangling = sorted(self.required_roles.keys() - self.distinct_steps)
+        if dangling:
+            raise ValueError(
+                f"SoDConstraint: required_roles names step_id(s) {dangling} not in "
+                f"distinct_steps {sorted(self.distinct_steps)} — ADR-0026 D2"
+            )
+        return self
 
 
 class Step(BaseModel):
@@ -556,6 +585,47 @@ class AgentAllowed(BaseModel):
     step_kinds: list[StepKind] = Field(default_factory=list)
     action_handlers: list[str] = Field(
         default_factory=list, description="registered handler names this agent may invoke"
+    )
+
+
+class PrincipalAlias(BaseModel):
+    """A human-authored declaration that several principal-identity keys denote the SAME
+    human (the OQ-3=(c) declared alias chain; ADR-0026 D4, SD-2=(b) — a separate first-class
+    LINK object, NOT a flat alias-set on ``Person``). Two principals collapse (and the SoD
+    run-check fails closed) when they share a ``PrincipalAlias`` link — i.e. both ``person_id``s
+    are in one alias's ``members``. The link-object shape (over a flat set) is the more
+    extensible path: it folds into the OQ-6 N>=2 shared-identity re-trigger later.
+    Human-author-only (H, ADR-0024 D3) — never model-emitted."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    alias_id: str = Field(description="identifier of this declared alias group")
+    members: frozenset[PersonId] = Field(
+        min_length=2,
+        description="the person_ids this alias declares to be the SAME human (>=2) — the second "
+        "OQ-3 collapse trigger, beside a bare person_id (PK) match",
+    )
+
+
+class Person(BaseModel):
+    """A first-class, human-authored principal identity — the resolvable human who holds
+    approval role(s) (ADR-0026 D1/D2). Lives in the procedures spec layer beside ``Agent`` (the
+    MACHINE actor that *runs* a procedure), following ADR-0008 ontology-grammar conventions; it
+    supersedes the procurement role-label near-misses (``ApprovalTier.approver_role`` /
+    ``PurchaseOrder.approver_chain``) — those point at a ``Person``, they do not re-store the
+    identity. Human-author-only (H, ADR-0024 D3) — a principal is never model-emitted."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    person_id: PersonId = Field(
+        description="canonical identity key (PK) — the resolved-principal identity SoD compares "
+        "(ADR-0026 D1); a bare PK match is the first OQ-3 collapse trigger"
+    )
+    name: str = Field(description="the human's name (display)")
+    roles: frozenset[RoleId] = Field(
+        min_length=1,
+        description="the approval role(s) this principal holds (>=1) — the role->principal "
+        "binding the step->required-role map resolves against (ADR-0026 D2; OQ-1=(a))",
     )
 
 
@@ -678,7 +748,8 @@ class Procedure(BaseModel):
 
 
 class VerticalProcedures(BaseModel):
-    """A vertical's full ``procedures.yaml`` — its Agents and its Procedures."""
+    """A vertical's full ``procedures.yaml`` — its Agents, Procedures, and (ADR-0026 D1/D4) the
+    human Principals + declared alias groups SoD resolves against."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -687,6 +758,35 @@ class VerticalProcedures(BaseModel):
     version: int | None = None
     agents: list[Agent]
     procedures: list[Procedure]
+    principals: list[Person] = Field(
+        default_factory=list,
+        description="the human principals the SoD run-check resolves against (ADR-0026 D1) — "
+        "human-author-only (H, ADR-0024 D3), never generated",
+    )
+    principal_aliases: list[PrincipalAlias] = Field(
+        default_factory=list,
+        description="declared alias groups, the second OQ-3=(c) collapse trigger (ADR-0026 D4, "
+        "SD-2=(b)) — human-author-only (H), never generated",
+    )
+
+    @model_validator(mode="after")
+    def _validate_principals(self) -> Self:
+        """Principal identity integrity (ADR-0026 D1/D4): person_ids are unique, and every
+        alias member resolves to a defined ``Person`` (a typo'd alias is an authoring error,
+        not a silent collapse that never fires)."""
+        ids = [p.person_id for p in self.principals]
+        dupes = sorted({i for i in ids if ids.count(i) > 1})
+        if dupes:
+            raise ValueError(f"vertical '{self.vertical}': duplicate person_id(s) {dupes}")
+        known = set(ids)
+        for alias in self.principal_aliases:
+            dangling = sorted(alias.members - known)
+            if dangling:
+                raise ValueError(
+                    f"vertical '{self.vertical}': principal_alias '{alias.alias_id}' references "
+                    f"unknown person_id(s) {dangling} (known: {sorted(known)}) — ADR-0026 D4"
+                )
+        return self
 
     @model_validator(mode="after")
     def _cross_refs(self) -> Self:
