@@ -101,3 +101,16 @@ ADR-0026 LOCKS the model (HYBRID), the phasing (A1a before A1b), and resolves al
 ## Residual gaps / open questions
 
 None. D1–D4 + the resolved OQ-1/OQ-2/OQ-3 (and the OQ-6 deferral marker) are fully renderable from ADR-0026 + the verified seams. The two physical-shape forks SD-1 and SD-2 are now **RESOLVED (Cray, s88)**: SD-1=(b) (`required_role: RoleId` on `SoDConstraint`), SD-2=(b) (a separate `PrincipalAlias` link object `Person` references, deviating from the drafted recommendation (a)). No remaining open shape forks. OQ-4/OQ-5 are A1b-scoped and correctly excluded.
+
+## Completion (A1a COMPLETE — A1a/A1b boundary, Cray-confirmed s88)
+
+**A1a SHIPPED** (merged to `main`, two PRs): **#481** (Steps 1–3 — the construct: `Person` / `PrincipalAlias` data model + `SoDConstraint.required_roles` + the H-governance / recursive draft-disjointness) and **#482** (Steps 4–6 — `services/engine/procedures/principal_sod.py` the fail-closed principal-SoD run-check emitting a structured `PrincipalSoDVerdict`, the `RunContext.principal` + `resolve_gated_step(principal=…)` seam, and the offline oracle `test_principal_sod.py`). The principal construct + the fail-closed run-check + the seam + the offline oracle are complete and tested offline. *This PLAN's substantive `Status:` above remains as-drafted; A1a is complete and Code is moving this file to `docs/plans/done/` via `git mv` at commit (the drafter does not git).*
+
+**AC coverage — what landed in A1a vs deferred to A1b:**
+- **LANDED in A1a:** AC-1, AC-2, AC-3, AC-4, AC-5, AC-6, AC-7, AC-8, AC-11 + the structured-`PrincipalSoDVerdict` verdict shape (the hero-demo convergence ask #1).
+- **AC-9 (split):** the fail-closed **semantics** landed and are tested offline (an unresolved / collapsed principal fails closed; no bypass-by-omission). The **live unconditional invocation on the run path** is **deferred to A1b** — it needs per-step principal recording.
+- **AC-10 — deferred to A1b:** the per-vertical procurement `Person` + the OQ-6 N≥2 re-trigger marker pair with the live wiring and move to A1b.
+
+**A1a/A1b boundary rationale (Code implementation finding, Cray-confirmed s88):** the run-check is a **pure function over `step_principals`**; populating `step_principals` during a real multi-step run — recording the requester-vs-approver principal ACROSS the two constrained steps — is the **A1b executors' job** (`resolve_gated_step` sees only the approver of a single gate). A1a delivers the capability + the seam; A1b wires the live enforcement.
+
+**A1b (the follow-on PLAN) carries:** per-step principal recording + the live unconditional run-check invocation + AC-10 + the D5–D6 per-kind run executors (`doa_tier` / `rule_gate` / `scored_rule`) + the OQ-5 minimal structured audit-to-control field. **A1a-before-A1b stays LOCKED** (A1b without A1a would certify an un-owned control as governed — the ADR-0025 D8 red-team fixture-3 failure).
