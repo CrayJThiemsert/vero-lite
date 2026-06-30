@@ -56,8 +56,18 @@ from services.engine.procedures.orchestrator import (
     StepOutcome,
 )
 from services.engine.procedures.persistence import load_run
-from services.engine.procedures.runs import StepResult, StepResultStatus
-from services.engine.procedures.spec import Autonomy, Person, Step
+from services.engine.procedures.principal_sod import (
+    PrincipalSoDVerdict,
+    check_principal_sod,
+)
+from services.engine.procedures.runs import PipelineRun, StepResult, StepResultStatus
+from services.engine.procedures.spec import (
+    Autonomy,
+    Person,
+    PrincipalAlias,
+    Procedure,
+    Step,
+)
 from services.engine.recommender import (
     ActionRecord,
     approve,
@@ -69,6 +79,27 @@ from services.engine.recommender import (
 
 APPROVE = "approve"
 REJECT = "reject"
+
+
+class PrincipalSoDError(ProcedureError):
+    """A SoD-constrained gate failed the LIVE principal-SoD run-check (ADR-0026 D4;
+    PLAN-0044 A1b Step 1) — the run is BLOCKED.
+
+    Raising this aborts the gate resolution **before** any approve/execute runs: no
+    handler fires, no PO is issued, no "governed" verdict is emitted — the fail-closed
+    run enforcement that the structural author-time ``SoDConstraint`` could only assert
+    over *steps*, not *humans* (the Alternative-5 collapse ADR-0025 rejected). It carries
+    the structured :class:`PrincipalSoDVerdict` so a caller / read-only render can surface
+    WHICH constraint + principals collapsed (the hero-demo governance moment, ask #1)."""
+
+    def __init__(self, verdict: PrincipalSoDVerdict, *, run_id: str, step_id: str) -> None:
+        self.verdict = verdict
+        detail = "; ".join(v.detail for v in verdict.violations) or "no detail"
+        super().__init__(
+            f"run '{run_id}': step '{step_id}' BLOCKED by the principal-SoD run-check "
+            f"({len(verdict.violations)} violation(s)): {detail}"
+        )
+
 
 ClientFactory = Callable[[str], ChatClient]
 """``llm_model`` name -> a ``ChatClient`` for that model. Injected so offline
@@ -217,12 +248,61 @@ class ActionStepExecutor:
         return StepOutcome(output=output, reasoning_trace=trace, audit=audit)
 
 
+def _enforce_principal_sod(
+    run: PipelineRun,
+    step_id: str,
+    principal: Person | None,
+    procedure: Procedure | None,
+    principals: list[Person] | None,
+    principal_aliases: list[PrincipalAlias] | None,
+) -> None:
+    """Run the LIVE fail-closed principal-SoD run-check for a gate resolution (ADR-0026
+    D4; PLAN-0044 A1b Step 1). A no-op unless the run carried a SoD constraint AND this
+    step is one of the constrained steps.
+
+    ``run.step_principals is not None`` is the durable "this run carried SoD" signal the
+    orchestrator persisted (the requester half). On such a run the check is NOT skippable:
+    omitting ``procedure`` / ``principals`` raises rather than silently bypassing (AC-2).
+    When this step is constrained it assembles the full ``step_principals`` (the persisted
+    REQUESTER half + this gate's APPROVER from the ``principal`` arg — the typed Person
+    seam, never ``trigger_context``, OQ-2) and invokes the pure check, raising
+    :class:`PrincipalSoDError` (BLOCK — no approve/execute) on any violation.
+    """
+    sod_run = run.step_principals is not None
+    if sod_run and (procedure is None or principals is None):
+        raise ProcedureError(
+            f"run '{run.run_id}': step '{step_id}' resolves a gate on a SoD-constrained run "
+            "but no procedure/principals were supplied — the principal-SoD run-check cannot "
+            "be skipped (ADR-0026 D4; PLAN-0044 A1b Step 1)"
+        )
+    if procedure is None or not any(
+        step_id in sod.distinct_steps for sod in procedure.separation_of_duties
+    ):
+        return
+    step_principals: dict[str, str | None] = {
+        **(run.step_principals or {}),
+        step_id: principal.person_id if principal is not None else None,
+    }
+    verdict = check_principal_sod(
+        procedure,
+        principals=principals or [],
+        principal_aliases=principal_aliases or [],
+        step_principals=step_principals,
+    )
+    if not verdict.governed:
+        raise PrincipalSoDError(verdict, run_id=run.run_id, step_id=step_id)
+
+
 async def resolve_gated_step(
     session: AsyncSession,
     run_id: str,
     step_id: str,
     decisions: Mapping[str, str],
     principal: Person | None = None,
+    *,
+    procedure: Procedure | None = None,
+    principals: list[Person] | None = None,
+    principal_aliases: list[PrincipalAlias] | None = None,
 ) -> StepResult:
     """Apply a human's approve/reject decisions to a suspended gated action
     (Option 2 — the EXTERNAL gate driver; the shipped ``recommender`` gate,
@@ -230,13 +310,26 @@ async def resolve_gated_step(
 
     ``principal`` is the resolved HUMAN who approved THIS gate (ADR-0026 D3, OQ-2
     — the *load-bearing* identity, beside the ambient ``RunContext.principal``).
-    It is the typed seam the principal-SoD run-check resolves against; when
+    It is the typed seam the principal-SoD run-check resolves against, and when
     supplied it is recorded on the step's reasoning trace (the approving-principal
-    record). Defaulting it to ``None`` keeps every existing caller unchanged — the
-    fail-closed SoD enforcement that *consumes* this identity across the two
-    constrained steps is the deferred A1b run-path (it needs per-step principal
-    recording the executors add); A1a builds the seam + the run-check, not the
-    live multi-step wiring.
+    record).
+
+    **The LIVE fail-closed principal-SoD run-check (ADR-0026 D4; PLAN-0044 A1b
+    Step 1).** When the run carried a separation-of-duties constraint (the orchestrator
+    recorded a ``step_principals`` map on the run) and this step is one of the
+    constrained steps, the gate assembles the full ``step_principals`` (the persisted
+    REQUESTER half + this step's APPROVER from the ``principal`` arg) and invokes
+    :func:`~services.engine.procedures.principal_sod.check_principal_sod`
+    **unconditionally**, **failing CLOSED** — raising :class:`PrincipalSoDError`
+    BEFORE any approve/execute, so no handler fires and no governed verdict is emitted —
+    on any violation (an unresolvable/missing principal, a role mismatch, or two
+    constrained steps collapsing to one human). It is **not skippable**: on a run that
+    recorded ``step_principals``, omitting ``procedure`` / ``principals`` raises rather
+    than silently bypassing the check. ``procedure`` + ``principals`` + ``principal_aliases``
+    are the resolution context (the procedure's SoD constraints + the vertical's authored
+    ``Person`` set + declared alias groups); the caller supplies them (consistent with
+    :func:`resume_run`). A run with no SoD constraint leaves them unused (the check is
+    inert), keeping every non-SoD caller unchanged.
 
     ``decisions`` maps each proposed ``action_id`` to ``"approve"`` or
     ``"reject"`` (every proposal needs an explicit decision — no silent default on
@@ -255,8 +348,10 @@ async def resolve_gated_step(
     output forward and continues. Returns the updated ``StepResult``.
 
     Raises :class:`ProcedureError` if the run/step is absent, the step is not
-    awaiting a human decision, it carries no proposals, or a proposal has no
-    (or an unknown) decision.
+    awaiting a human decision, it carries no proposals, a proposal has no (or an
+    unknown) decision, or a SoD-constrained run is resolved without the procedure /
+    principals context (non-skippable). Raises :class:`PrincipalSoDError` when the
+    live SoD run-check fails closed (the structured verdict is on the exception).
     """
     loaded = await load_run(session, run_id)
     if loaded is None:
@@ -272,6 +367,11 @@ async def resolve_gated_step(
     proposals: list[dict[str, Any]] = (target.artifact or {}).get("output_set", [])
     if not proposals:
         raise ProcedureError(f"run '{run_id}': step '{step_id}' has no proposed actions to resolve")
+
+    # The LIVE fail-closed principal-SoD run-check (ADR-0026 D4; A1b Step 1) — runs
+    # BEFORE any approve/execute so a violation blocks the gate (no PO, no governed
+    # verdict). Non-skippable on a SoD run; inert otherwise (see the helper).
+    _enforce_principal_sod(loaded.run, step_id, principal, procedure, principals, principal_aliases)
 
     executed_effects: list[dict[str, Any]] = []
     decided: list[dict[str, Any]] = []

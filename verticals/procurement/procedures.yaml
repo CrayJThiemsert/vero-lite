@@ -45,6 +45,31 @@ agents:
       # the auto audit terminal (a no-op artifact, not an operational action).
       action_handlers: [emergency_source, request_approval, issue_po, reorder, echo]
 
+# Human principals the SoD run-check resolves against (ADR-0026 D1/D4 / PLAN-0044 A1b
+# Step 1). Human-author-only (H, ADR-0024 D3) — never model-emitted. `person_id` is the
+# canonical identity key SoD compares; `roles` are the approval roles the step->required-role
+# map binds against. The requester side (`req-planner`) holds only `requester`; each approver
+# holds the generic `approver` role the SoD constraint binds `approve` to, PLUS its DOA tier
+# role (the tier role picks WHICH approver — the deferred A1b Step 3 doa_tier executor; SoD
+# only needs "an approver, distinct from the requester"). No `principal_aliases` here: the two
+# SoD steps resolve to genuinely distinct humans (alias-collapse is exercised in the tests).
+principals:
+  - person_id: req-planner
+    name: "ปรีชา — ผู้วางแผนซ่อมบำรุง (ผู้ขอซื้อ)"
+    roles: [requester]
+  - person_id: appr-buyer
+    name: "สมหญิง — หน.จัดซื้อ"
+    roles: [approver, "หน.จัดซื้อ"]
+  - person_id: appr-pm
+    name: "นรี — ผจก.จัดซื้อ"
+    roles: [approver, "ผจก.จัดซื้อ"]
+  - person_id: appr-plant
+    name: "วิชัย — ผจก.โรงงาน"
+    roles: [approver, "ผจก.โรงงาน"]
+  - person_id: appr-director
+    name: "เดชา — ผอ.โรงงาน"
+    roles: [approver, "ผอ."]
+
 procedures:
   emergency_sourcing_round:
     title: Emergency Sourcing Round
@@ -243,10 +268,16 @@ procedures:
     terminal: audit
     # AT-2 separation of duties (ADR-0025 D2/D5 / PLAN-0042 Step 2). The requester (intake)
     # must not also be the approver (approve). Author time = the STRUCTURAL distinct-steps
-    # form (>=2 distinct real steps); the resolved-PRINCIPAL distinctness (fail-closed on
-    # alias-collapse) is the deferred A2 run check (OQ-A=A1; AC-13-ALT).
+    # form (>=2 distinct real steps). The resolved-PRINCIPAL distinctness (fail-closed on a
+    # PK match OR an alias-collapse) is now the LIVE run check (ADR-0026 D4 / PLAN-0044 A1b
+    # Step 1): `required_roles` binds each constrained step to the role its acting Person
+    # must hold, so the run-check resolves intake->requester->Person and approve->approver->
+    # Person and fails closed if either is unresolvable or the two collapse to one human.
     separation_of_duties:
       - distinct_steps: [intake, approve]
+        required_roles:
+          intake: requester
+          approve: approver
 
   low_stock_reorder_round:
     title: Low-Stock Reorder Round

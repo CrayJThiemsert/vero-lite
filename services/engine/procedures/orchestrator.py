@@ -289,6 +289,39 @@ def _make_step_result(
     )
 
 
+def _record_requester_principals(
+    procedure: Procedure,
+    step_results: list[StepResult],
+    principal: Person | None,
+) -> dict[str, str | None] | None:
+    """The REQUESTER half of the SoD ``step_principals`` map (ADR-0026 D4; PLAN-0044
+    A1b Step 1, SD-2=(a)).
+
+    For each SoD-constrained step the run **completed**, record the ambient acting
+    principal's ``person_id`` — sourced from the typed ``RunContext.principal`` seam,
+    NEVER the untyped ``trigger_context`` blob (OQ-2). ``None`` when no principal was
+    resolved (the run-check then fails closed, AC-3). The gated approver step suspends
+    at ``waiting_human`` before its human acts, so its principal is recorded later by
+    :func:`resolve_gated_step`, not here.
+
+    Returns ``None`` for a procedure with **no** SoD constraint (the live check stays
+    inert), and a dict (possibly empty, if no constrained step completed yet) when the
+    procedure HAS a constraint — so ``run.step_principals is not None`` is the durable
+    "this run carried SoD" signal the gate resolution relies on (non-skippable, AC-2).
+    """
+    constrained: set[str] = set()
+    for sod in procedure.separation_of_duties:
+        constrained |= set(sod.distinct_steps)
+    if not constrained:
+        return None
+    pid = principal.person_id if principal is not None else None
+    return {
+        sr.step_id: pid
+        for sr in step_results
+        if sr.step_id in constrained and sr.status == StepResultStatus.COMPLETE.value
+    }
+
+
 async def run_procedure(
     procedure: Procedure,
     agent: Agent,
@@ -297,6 +330,7 @@ async def run_procedure(
     vertical: str,
     run_id: str,
     trigger_context: dict[str, Any] | None = None,
+    principal: Person | None = None,
 ) -> RunResult:
     """Run ``procedure`` under ``agent`` over the given per-kind ``executors``.
 
@@ -314,6 +348,14 @@ async def run_procedure(
     ``StepResult.artifact["output_set"]`` so a later resume can thread it forward.
     A misbehaving executor (raising, or returning a non-``StepOutcome``) is
     diverted via fail-and-divert, never crashing the run loop.
+
+    ``principal`` is the resolved HUMAN who triggered the run (the REQUESTER /
+    ambient resolution, ADR-0026 D3 OQ-2). It is recorded against each SoD-
+    constrained step the run completes — the requester half of the run-level
+    ``step_principals`` map the fail-closed principal-SoD run-check resolves against
+    (A1b Step 1, SD-2=(a)); the approver half is recorded at the gate by
+    :func:`resolve_gated_step`. ``None`` (the default) leaves a SoD-constrained
+    requester step unresolved, which fails the run-check closed at the gate (AC-3).
     """
     validate_runnable(procedure, agent)
 
@@ -332,10 +374,14 @@ async def run_procedure(
         vertical=vertical,
         trigger_context=trigger_context,
         goal=procedure.goal or None,
+        principal=principal,
     )
     step_results, final_status = await execute_steps(procedure.steps, executors, ctx, run_id)
     run.status = final_status.value
     run.updated_at = datetime.now(UTC)
+    # Record the requester half of the SoD principal map from the typed ambient
+    # principal (ADR-0026 D4 / A1b Step 1) — None for a non-SoD procedure (inert).
+    run.step_principals = _record_requester_principals(procedure, step_results, ctx.principal)
     return RunResult(run=run, step_results=step_results)
 
 

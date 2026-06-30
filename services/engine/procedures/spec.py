@@ -838,6 +838,12 @@ def parse_procedures(doc: dict[str, Any], *, vertical: str) -> VerticalProcedure
         version=doc.get("version"),
         agents=agents,
         procedures=procedures,
+        # Principals + declared alias groups are LIST-shaped (not id-keyed maps like
+        # agents/procedures): the SoD run-check resolves against them (ADR-0026 D1/D4).
+        # Pydantic coerces each raw dict into a Person / PrincipalAlias. Absent keys
+        # default to empty — every non-SoD vertical loads unchanged.
+        principals=doc.get("principals") or [],
+        principal_aliases=doc.get("principal_aliases") or [],
     )
 
 
