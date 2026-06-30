@@ -65,8 +65,22 @@ never generated."""
 AGENT_GOVERNANCE_FIELDS = frozenset({"llm_model", "autonomy_ceiling", "allowed"})
 """``Agent``-level H fields: the residency binding + the blast-radius bounds."""
 
-GOVERNANCE_FIELDS = STEP_GOVERNANCE_FIELDS | PROCEDURE_GOVERNANCE_FIELDS | AGENT_GOVERNANCE_FIELDS
-"""The full never-generate (H) field set across Step / Procedure / Agent (D3)."""
+PRINCIPAL_GOVERNANCE_FIELDS = frozenset({"principals", "principal_aliases", "required_roles"})
+"""ADR-0026 D1/D4 principal-identity H fields: ``principals`` / ``principal_aliases`` (the
+``VerticalProcedures`` human-identity records the SoD run-check resolves against) and
+``required_roles`` (the ``SoDConstraint`` step->required-role map). Human-authored — a
+principal, an alias group, or a role binding is never model-emitted (ADR-0024 D3). There is
+no ``VerticalProceduresDraft`` (principals are not a generated surface), so these are guarded
+by the recursive TYPE-disjointness test (``Person`` / ``PrincipalAlias`` unreachable from any
+draft type) rather than a per-draft field check."""
+
+GOVERNANCE_FIELDS = (
+    STEP_GOVERNANCE_FIELDS
+    | PROCEDURE_GOVERNANCE_FIELDS
+    | AGENT_GOVERNANCE_FIELDS
+    | PRINCIPAL_GOVERNANCE_FIELDS
+)
+"""The full never-generate (H) field set across Step / Procedure / Agent / principal (D3)."""
 
 
 # --- the restricted draft types (G fields only) ---------------------------------

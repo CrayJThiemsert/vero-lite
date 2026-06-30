@@ -27,6 +27,8 @@ from services.engine.procedures.spec import (
     EmergencyWaiverPolicy,
     ExceptionPolicy,
     GateKind,
+    Person,
+    PrincipalAlias,
     Procedure,
     RelaxableConstraint,
     ScoredRule,
@@ -37,6 +39,7 @@ from services.engine.procedures.spec import (
     StepKind,
     StepTiers,
     Trigger,
+    VerticalProcedures,
     load_procedures,
     load_procedures_file,
     procedures_path,
@@ -691,6 +694,116 @@ def test_procedure_sod_accepts_valid_step_references() -> None:
         separation_of_duties=[SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))],
     )
     assert len(proc.separation_of_duties) == 1
+
+
+# --- ADR-0026 A1a (PLAN-0043 Steps 1-2): principal identity + the step->required-role map ---
+
+
+def test_sod_constraint_required_roles_defaults_empty() -> None:
+    """SD-1=(b): required_roles is optional (default empty) so author-time load stays
+    backward-compatible; an unmapped constrained step is unresolvable -> the run-check fails
+    closed (ADR-0026 D4), which is a run-time concern, not an author-time one."""
+    sod = SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))
+    assert sod.required_roles == {}
+
+
+def test_sod_constraint_required_roles_accepts_constrained_steps() -> None:
+    """SD-1=(b): the step->required-role map names the RoleId each constrained step requires."""
+    sod = SoDConstraint(
+        distinct_steps=frozenset({"intake", "approve"}),
+        required_roles={"intake": "requester", "approve": "dept_head"},
+    )
+    assert sod.required_roles == {"intake": "requester", "approve": "dept_head"}
+
+
+def test_sod_constraint_required_roles_rejects_dangling_key() -> None:
+    """ADR-0026 D2: a required_role naming a step outside distinct_steps is an authoring error."""
+    with pytest.raises(ValidationError, match="not in distinct_steps"):
+        SoDConstraint(
+            distinct_steps=frozenset({"intake", "approve"}),
+            required_roles={"ghost": "dept_head"},
+        )
+
+
+def test_person_requires_at_least_one_role() -> None:
+    """ADR-0026 D1/D2: a principal with no role binding cannot be resolved against a
+    required_role — the role->principal binding must carry >=1 role."""
+    with pytest.raises(ValidationError):
+        Person(person_id="alice", name="Alice", roles=frozenset())
+
+
+def test_person_accepts_pk_and_role_binding() -> None:
+    p = Person(person_id="alice", name="Alice", roles=frozenset({"requester", "dept_head"}))
+    assert p.person_id == "alice"
+    assert p.roles == frozenset({"requester", "dept_head"})
+
+
+def test_principal_alias_requires_two_members() -> None:
+    """OQ-3=(c)/SD-2=(b): an alias group declares >=2 identity keys denote ONE human (a
+    single-member 'alias' collapses nothing and is degenerate)."""
+    with pytest.raises(ValidationError):
+        PrincipalAlias(alias_id="g1", members=frozenset({"alice"}))
+
+
+def test_principal_alias_accepts_two_members() -> None:
+    alias = PrincipalAlias(alias_id="g1", members=frozenset({"alice", "alice_oncall"}))
+    assert alias.members == frozenset({"alice", "alice_oncall"})
+
+
+def test_vertical_principals_default_empty_backward_compatible() -> None:
+    """A vertical that declares no principals loads unchanged (AC-8 spirit — additive)."""
+    vp = VerticalProcedures(vertical="v", agents=[], procedures=[])
+    assert vp.principals == []
+    assert vp.principal_aliases == []
+
+
+def test_vertical_rejects_duplicate_person_id() -> None:
+    with pytest.raises(ValidationError, match="duplicate person_id"):
+        VerticalProcedures(
+            vertical="v",
+            agents=[],
+            procedures=[],
+            principals=[
+                Person(person_id="alice", name="Alice", roles=frozenset({"requester"})),
+                Person(person_id="alice", name="Alias", roles=frozenset({"dept_head"})),
+            ],
+        )
+
+
+def test_vertical_rejects_alias_member_unknown_person() -> None:
+    """ADR-0026 D4: a typo'd alias member is an authoring error, not a collapse that never
+    fires (a fail-closed trigger that silently references nobody is worse than a load error)."""
+    with pytest.raises(ValidationError, match="unknown person_id"):
+        VerticalProcedures(
+            vertical="v",
+            agents=[],
+            procedures=[],
+            principals=[Person(person_id="alice", name="Alice", roles=frozenset({"requester"}))],
+            principal_aliases=[
+                PrincipalAlias(alias_id="g1", members=frozenset({"alice", "ghost"}))
+            ],
+        )
+
+
+def test_vertical_accepts_valid_principals_and_aliases() -> None:
+    vp = VerticalProcedures(
+        vertical="v",
+        agents=[],
+        procedures=[],
+        principals=[
+            Person(person_id="alice", name="Alice", roles=frozenset({"requester"})),
+            Person(
+                person_id="alice_oncall",
+                name="Alice (on-call)",
+                roles=frozenset({"dept_head"}),
+            ),
+        ],
+        principal_aliases=[
+            PrincipalAlias(alias_id="g1", members=frozenset({"alice", "alice_oncall"}))
+        ],
+    )
+    assert len(vp.principals) == 2
+    assert vp.principal_aliases[0].members == frozenset({"alice", "alice_oncall"})
 
 
 def test_procurement_at2_carries_typed_governance_content() -> None:
