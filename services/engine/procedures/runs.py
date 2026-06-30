@@ -60,6 +60,14 @@ class PipelineRun(Base):
     procedure_id: Mapped[str] = mapped_column(Text, nullable=False)
     agent_id: Mapped[str] = mapped_column(Text, nullable=False)
     trigger_context: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    # The run-level per-step principal map the SoD run-check resolves against
+    # (ADR-0026 D4 / PLAN-0044 A1b Step 1, SD-2=(a)): {step_id -> person_id | None}
+    # for each SoD-constrained step the run completed (the REQUESTER half, recorded
+    # from the TYPED ``RunContext.principal`` ambient resolution — never the untyped
+    # ``trigger_context`` blob, OQ-2). The APPROVER half is added at gate-resolution
+    # time (``resolve_gated_step``). ``None`` / absent = no SoD-constrained step ran
+    # (every non-SoD procedure leaves it empty, so the live check stays inert for them).
+    step_principals: Mapped[dict[str, str | None] | None] = mapped_column(JSONB)
     status: Mapped[str] = mapped_column(Text, nullable=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

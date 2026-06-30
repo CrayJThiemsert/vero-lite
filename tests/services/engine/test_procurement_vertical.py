@@ -29,7 +29,7 @@ from services.engine.procedures.orchestrator import (
     run_procedure,
 )
 from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
-from services.engine.procedures.spec import Step, StepKind, load_procedures
+from services.engine.procedures.spec import Person, Step, StepKind, load_procedures
 from services.engine.registry import registry
 from verticals.procurement.data_adapter import synthetic
 
@@ -275,3 +275,39 @@ def test_routing_is_by_verdict_not_confidence() -> None:
     for s in proc.steps:
         if s.input and s.input.where:
             assert "confidence" not in s.input.where
+
+
+# --------------------------------------------------------------------------- #
+# AC-1 (A1b Step 1) — the requester principal is recorded on the run (typed seam)
+# --------------------------------------------------------------------------- #
+
+
+async def test_run_records_requester_principal() -> None:
+    """The orchestrator records the resolving Person for each SoD-constrained step it
+    completes into the run-level ``step_principals`` map, from the TYPED
+    ``RunContext.principal`` ambient seam — NEVER ``trigger_context`` (OQ-2). The gated
+    ``approve`` step suspends, so its approver is recorded later at the gate, not here."""
+    proc, agent = _proc("emergency_sourcing_round")
+    requester = Person(person_id="req-planner", name="ผู้ขอซื้อ", roles=frozenset({"requester"}))
+    result = await run_procedure(
+        proc,
+        agent,
+        _executors(_events("failure")),
+        vertical="procurement",
+        run_id="proc-rec",
+        principal=requester,
+    )
+    # intake is SoD-constrained + completes -> recorded; approve suspends (recorded at gate).
+    assert result.run.step_principals == {"intake": "req-planner"}
+    assert result.run.trigger_context is None  # the carrier is the typed seam, not the blob
+
+
+async def test_run_without_principal_records_none() -> None:
+    """No ambient principal -> the constrained requester step records ``None`` (a present
+    key signalling SoD), which fails the run-check CLOSED at the gate (AC-3) rather than
+    silently passing."""
+    proc, agent = _proc("emergency_sourcing_round")
+    result = await run_procedure(
+        proc, agent, _executors(_events("failure")), vertical="procurement", run_id="proc-none"
+    )
+    assert result.run.step_principals == {"intake": None}
