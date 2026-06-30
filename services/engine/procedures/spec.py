@@ -470,6 +470,15 @@ class SoDConstraint(BaseModel):
             )
         return self
 
+    @property
+    def constraint_id(self) -> str:
+        """The stable id for this SoD constraint (PLAN-0044 A1b Step 6, SD-3 / D2): the sorted,
+        ``+``-joined ``distinct_steps``. Derived identically wherever a ``control_ref`` names this
+        constraint (the audit-to-control tie + a read-only render) so the join is EXACT, not
+        fuzzy — and needs no new schema field (the ``distinct_steps`` ARE the constraint's
+        identity)."""
+        return "+".join(sorted(self.distinct_steps))
+
 
 class Step(BaseModel):
     """One step of a Procedure (ADR-016 D2; threshold/tier config per PLAN-0022 Step 3)."""

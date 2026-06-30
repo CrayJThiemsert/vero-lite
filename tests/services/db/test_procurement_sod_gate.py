@@ -234,6 +234,12 @@ async def test_happy_two_distinct_principals_proceeds(db_engine: AsyncEngine) ->
         )
     assert len(spy.calls) == 1, "a governed gate executes the approved handler"
     assert resolved.artifact["output_set"][0]["status"] == "executed"
+    # AC-8 (A1b Step 6): the governed SoD gate emits the typed audit-to-control tie on the
+    # resolved step — control_ref {kind:'sod', id: the sorted distinct_steps} + the approver PK.
+    assert resolved.audit is not None
+    assert resolved.audit["governed_decision"] == [
+        {"control_ref": {"kind": "sod", "id": "appr+req"}, "principal_id": "bob"}
+    ]
 
 
 async def test_missing_approver_fails_closed(db_engine: AsyncEngine) -> None:
@@ -415,6 +421,12 @@ async def test_procurement_distinct_principals_proceeds(db_engine: AsyncEngine) 
             principal_aliases=aliases,
         )
     assert all(e["status"] == "executed" for e in resolved.artifact["output_set"])
+    # AC-8 (A1b Step 6) — the REAL hero gate emits the audit-to-control tie: the procurement SoD
+    # constraint is [intake, approve] (sorted id 'approve+intake'), the approver appr-director.
+    assert resolved.audit is not None
+    assert resolved.audit["governed_decision"] == [
+        {"control_ref": {"kind": "sod", "id": "approve+intake"}, "principal_id": "appr-director"}
+    ]
 
 
 async def test_procurement_requester_cannot_self_approve(db_engine: AsyncEngine) -> None:

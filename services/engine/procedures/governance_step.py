@@ -23,6 +23,7 @@ from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from services.engine.actions import ControlRef, GovernedDecision
 from services.engine.procedures.doa_tier import DoaTierError, resolve_doa_tier
 from services.engine.procedures.orchestrator import RunContext, StepExecutor, StepOutcome
 from services.engine.procedures.spec import DoaLadder, Person, Step
@@ -109,9 +110,22 @@ class GovernanceActionExecutor:
             }
             for v in verdicts
         ]
+        # The OQ-5 audit-to-control side-effect (A1b Step 6, AC-8): tie each resolved tier route
+        # to its control + the resolved approver. Engine-emitted (cannot be authored auto). A
+        # tier whose role resolves to no Person emits no tie (no principal to name — that case
+        # fails closed at the SoD gate, Step 1).
+        governed_decisions = [
+            GovernedDecision(
+                control_ref=ControlRef(kind="doa_tier", id=v.resolved_tier_id),
+                principal_id=v.resolved_approver_id,
+            ).model_dump(mode="json")
+            for v in verdicts
+            if v.resolved_approver_id is not None
+        ]
         audit = {
             **(base_outcome.audit or {}),
             "governed_kind": "doa_tier",
             "doa_tier": [v.to_audit() for v in verdicts],
+            "governed_decision": governed_decisions,
         }
         return StepOutcome(output=base_outcome.output, reasoning_trace=trace, audit=audit)

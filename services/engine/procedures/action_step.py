@@ -46,7 +46,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.config import settings
-from services.engine.actions import EntityRef, RecommendedAction
+from services.engine.actions import ControlRef, EntityRef, GovernedDecision, RecommendedAction
 from services.engine.llm.client import OllamaClient
 from services.engine.llm.structured import ChatClient, JudgmentResult, generate_judgment
 from services.engine.llm.trace import build_llm_audit_metadata, build_llm_reasoning_trace
@@ -293,6 +293,43 @@ def _enforce_principal_sod(
         raise PrincipalSoDError(verdict, run_id=run.run_id, step_id=step_id)
 
 
+def _sod_governed_decisions(
+    step_id: str,
+    principal: Person | None,
+    procedure: Procedure | None,
+) -> list[dict[str, Any]]:
+    """The OQ-5 audit-to-control ties for a GOVERNED SoD gate (ADR-0026 D6; PLAN-0044 A1b Step 6,
+    AC-8). Called only AFTER the live principal-SoD check passed (no violation): for each SoD
+    constraint covering this step, tie the gate to its control (the stable ``constraint_id``, D2)
+    + the approving principal's ``person_id``. Empty when the step is unconstrained or no
+    principal was supplied (no resolved principal to name). Engine side-effect — typed, minimal,
+    not free prose (it does not pre-empt the ADR-011 framework)."""
+    if procedure is None or principal is None:
+        return []
+    return [
+        GovernedDecision(
+            control_ref=ControlRef(kind="sod", id=sod.constraint_id),
+            principal_id=principal.person_id,
+        ).model_dump(mode="json")
+        for sod in procedure.separation_of_duties
+        if step_id in sod.distinct_steps
+    ]
+
+
+def _record_governed_decision(
+    target: StepResult,
+    step_id: str,
+    principal: Person | None,
+    procedure: Procedure | None,
+) -> None:
+    """Record the OQ-5 SoD audit-to-control tie on a GOVERNED gate's resolved step (A1b Step 6,
+    AC-8) — merged into the step audit, never overwriting it. A no-op for a non-SoD / principal-
+    less gate (nothing to tie)."""
+    governed = _sod_governed_decisions(step_id, principal, procedure)
+    if governed:
+        target.audit = {**(target.audit or {}), "governed_decision": governed}
+
+
 async def resolve_gated_step(
     session: AsyncSession,
     run_id: str,
@@ -428,6 +465,11 @@ async def resolve_gated_step(
                 ),
             }
         )
+    # The OQ-5 audit-to-control side-effect (A1b Step 6, AC-8): the live SoD check governed this
+    # gate (it did not raise above), so tie the gate to its SoD control + the approving principal.
+    # Engine-emitted — recorded whether the human approved or rejected the proposals (it records
+    # WHO governed the gate, not the per-action outcome). Inert for a non-SoD / principal-less gate.
+    _record_governed_decision(target, step_id, principal, procedure)
     target.artifact = {"output_set": executed_effects, "decisions": decided}
     target.reasoning_trace = list(target.reasoning_trace or []) + trace_adds
     await session.merge(target)
