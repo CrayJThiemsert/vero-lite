@@ -1508,3 +1508,43 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-25 (PLAN-0037 / Stage 2 PREP COMPLETE)
 
 | 2026-06-25 | **PLAN-0037 / Stage 2 PREP COMPLETE — 5-facet retrofit (→N=4) + procedure-archetype catalog SHIPPED + PLAN archived (session 77, #424/#425/#426)** — Stage 2 PREP for the generative-procedures target. PLAN-0037 was **`plan-drafter`-authored** (the in-harness subagent, ADR-013 D1 phased authority) → Code R2-reviewed + committed (#424, ADR-009 D2; separation intact); Cray chose the formal-PLAN route (ทาง 1). **Step A (#425, content `31ded05`):** retrofit the SD-4 5-facet annotation (`input · decision-condition · llm-assist · output · governance`) as **YAML comment blocks** onto `energy`/`supply_chain`/`aquaculture` `procedures.yaml` → consistent **N=4** instrumentation (Rule-of-Three substrate). **Provably inert:** `services/engine/procedures/spec.py` `Step` declares `extra="forbid"` (so `facet:` can only be a comment) + the loader uses `YAML(typ="safe")` (discards comments) → Step objects byte-identical, static-JS demos untouched; gate parse-clean all 4 verticals (steps unchanged 3/3/5/10), **66 insertions all-comment / 0 deletion**, **full offline suite 1651 passed/22 skipped** (baseline), no live MS-S1 (§8). Captured the env-vs-in-file judge-band split (energy/supply_chain via `OCT_RECOMMEND_THRESHOLD`; aquaculture/procurement in-file) as the Step-C input. **Step B (#426, content `c3b477a`):** the procedure-archetype catalog at `docs/conventions/procedure-archetypes.md` (AT-1 `anomaly→action`, AT-1b `watch+summary`, AT-2 `request→approve→fulfill`, AT-3 `monitor→reorder`) — the canonical reference the Step-C ADR + Stage-3 generator cite. SD-1=one PR for the 3 verticals / SD-2=Step B follow-on PR / SD-3=catalog home `docs/conventions/` (all Cray-resolved). **`loop-dispatcher` (Cray s77) = keep-disabled + guard** (over fix-hook / delete); the Stop-hook root-fix (scheduled-task auto-continue exemption) is deferred + is the precondition for any re-enable. **Out of scope (forward):** Step C (ADR-016 first-class `facet:` field = a separate **Cowork-drafted ADR**, G2-gated) + Stage 3 (the procedure generator, Rule-of-Three-deferred). PLAN-0037 `git mv` → `done/` | `f029913` (#424/#425/#426) / `verticals/{energy,supply_chain,aquaculture}/procedures.yaml` + `docs/conventions/procedure-archetypes.md` + `docs/plans/done/0037-*.md` |
+
+---
+
+### Current-Focus block — Session 85 (cont., `059c6ea`) [rotated 2026-06-30, session-88 reconcile]
+
+> **Session 85 (cont.; head_commit `059c6ea`) — PLAN-0042 (the O-3 AT-2 /
+> managerial-layer BUILD) Steps 1–2 SHIPPED + MERGED (#467/#468) — the AT-2
+> managerial layer is typed + the run-gate is AT-2-aware: the LIVE run-gate blindness
+> defect is CLOSED.** PLAN-0042 execution (the O-3 AT-2/managerial build, A1 = author +
+> render only). **Step 1 (#467, `6176b18`):** the typed AT-2 governance content (D2) — a
+> discriminated `Step.governance_content` union (`DoaLadder` | `ScoredRule` |
+> `ComplianceGate`, keyed on `kind`) + `Procedure.separation_of_duties`; D3 bypass made
+> **unrepresentable** (`Decimal` money; a closed `RelaxableConstraint` enum that can't
+> name compliance/SoD; `blocks_po`/`requires_justification` `Literal[True]`; a total
+> strictly-monotonic DOA ladder); D4 H-field invariants (the new fields in
+> `GOVERNANCE_FIELDS`, never on a draft type; recursive draft-disjointness +
+> `StepFacet`-unreachability CI checks). **Finding 1 honored** — DOA tiers nest in
+> `DoaLadder`, no 2nd top-level `Step.tiers`. **Step 2 (#468, `059c6ea`):** the
+> AT-2-aware run-gate (D5) **+** the procurement prose→typed migration in ONE PR behind a
+> green golden test (the migration trap). **CLOSES THE LIVE DEFECT** —
+> `validate_governance_complete` now owes typed `governance_content` on the AT-2 gate
+> kinds + a `doa_tier` procedure owes `separation_of_duties`; an empty-DOA / no-criteria /
+> no-SoD AT-2 is **no longer run-loadable**. The negative hollow-but-complete regression
+> is the D5 ratification gate. **OQ-B = B2:** the DOA tiers + compliance predicates MIRROR
+> the synthetic data adapter (coherent); the scored-rule weights are provisional — **all
+> labelled provisional pending Cray sign-off.** **Build interpretations (consistent with
+> the s85 Delta-2 SoD scoping):** principal-level SoD + the resolved-tier strict
+> escalation remain **A2 (run-time, deferred AC-13-ALT)** — the engine has no
+> principal/role-rank layer; the author-time gate enforces the STRUCTURAL form (≥2 distinct
+> steps; ladder totality). **Gate:** ruff + ruff-format + `mypy --strict services/` (64
+> files) clean; **pytest 1843 passed / 24 skipped.** No live MS-S1. **Remaining (v1 surface
+> Steps 1–3+5, A1):** **Step 3** (scoped value-only prose-lint over AT-2 free-text +
+> "ADVISORY — NOT A CONTROL" provenance banding, reuse the PLAN-0039 viewer) + **Step 5**
+> (the 3 D8 red-team fixtures, LLM stubbed). **AC-13-ALT (the A2 run path) deferred** to a
+> follow-on PLAN. `loop-dispatcher` stays DISABLED. AI-assisted (Claude Code, session 85);
+> no `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-25 (ADR-016 D2 Amendment + PLAN-0038 minted) [rotated 2026-06-30, session-88 reconcile]
+
+| 2026-06-25 | **Stage 2 COMPLETE — ADR-016 D2 Amendment (first-class typed `facet:` Step field) ACCEPTED + merged (#428) + PLAN-0038 impl PLAN minted (#429) (session 77, batch 2)** — Step C promotes the 5-facet annotation from a YAML comment to a **first-class, typed, validated, optional `facet:` field** on `Step`, completing Stage 2 (generalized-schema extraction). **Cowork-drafted** (ADR-009 D1) → Code R2-reviewed (gate_kind↔N=4 split, `spec.py extra="forbid"`+typed fields, `procedures.yaml` engine-read, validator dog-food 0 errors) → **Cray-ratified both forks** → committed (D2). **Fork 1 = Hybrid** (`facet` carries net-new `decision_condition`+`llm_assist` typed; `input`/`output`/`governance` optional non-authoritative notes — one source of truth, `spec.py` already types 4/5 via PLAN-0022). **Fork 2 = discriminated `gate_kind`** (enum over the 6 N=4 kinds `env_band`/`in_file_band`/`rule_gate`/`scored_rule`/`doa_tier`/`none` + `band_source`/`env_var`; `in_file_band` points at the existing typed band, no re-store). **Process note:** the ratify status-flip (Proposed→Accepted) was **G1-blocked for Code** — editing an already-Accepted ADR is denied **even with Cray per-diff approval + a warmed `gpt-oss:20b` classifier** (genuine policy, not a fail-closed infra deny; distinct from the ratify-transition case s40/67) → resolution = chore-PR path: **Cowork applied the flip** (ungated), Code committed, Cray merged (= the G1 review); [[project_g1_adr_gate_override_via_incontext_approval]] updated. **PLAN-0038 MINTED Draft** (#429, `b2f19bc`) — **`plan-drafter`-authored** (ADR-013 D1) → Code R2-reviewed → committed. Scope: the `services/engine/procedures/spec.py` engine edit (typed `facet` per the delta) + migrate the 4 verticals' comment-facets → the real field + load/validation tests — the **first deliberate `spec.py` edit since procurement's zero-engine-edit (CQ-1)**, ADR-sanctioned. **Schema only** (engine still ignores `facet` at run time); **implements nothing on commit**; **3 OPEN SDs** (note-migration / comment-removal / PR-granularity). Gate = offline suite (1651 baseline + new tests) + `mypy --strict`; no live MS-S1. NEXT = Cray merges #429 + adjudicates SD-1/2/3 → execute PLAN-0038 → Stage 3 generator + review UI | `0b56954` (#428) / `b2f19bc` (#429) / `docs/adr/0016-governed-procedure-engine.md` + `docs/plans/0038-*.md` |
