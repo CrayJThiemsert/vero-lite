@@ -1548,3 +1548,44 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-25 (ADR-016 D2 Amendment + PLAN-0038 minted) [rotated 2026-06-30, session-88 reconcile]
 
 | 2026-06-25 | **Stage 2 COMPLETE — ADR-016 D2 Amendment (first-class typed `facet:` Step field) ACCEPTED + merged (#428) + PLAN-0038 impl PLAN minted (#429) (session 77, batch 2)** — Step C promotes the 5-facet annotation from a YAML comment to a **first-class, typed, validated, optional `facet:` field** on `Step`, completing Stage 2 (generalized-schema extraction). **Cowork-drafted** (ADR-009 D1) → Code R2-reviewed (gate_kind↔N=4 split, `spec.py extra="forbid"`+typed fields, `procedures.yaml` engine-read, validator dog-food 0 errors) → **Cray-ratified both forks** → committed (D2). **Fork 1 = Hybrid** (`facet` carries net-new `decision_condition`+`llm_assist` typed; `input`/`output`/`governance` optional non-authoritative notes — one source of truth, `spec.py` already types 4/5 via PLAN-0022). **Fork 2 = discriminated `gate_kind`** (enum over the 6 N=4 kinds `env_band`/`in_file_band`/`rule_gate`/`scored_rule`/`doa_tier`/`none` + `band_source`/`env_var`; `in_file_band` points at the existing typed band, no re-store). **Process note:** the ratify status-flip (Proposed→Accepted) was **G1-blocked for Code** — editing an already-Accepted ADR is denied **even with Cray per-diff approval + a warmed `gpt-oss:20b` classifier** (genuine policy, not a fail-closed infra deny; distinct from the ratify-transition case s40/67) → resolution = chore-PR path: **Cowork applied the flip** (ungated), Code committed, Cray merged (= the G1 review); [[project_g1_adr_gate_override_via_incontext_approval]] updated. **PLAN-0038 MINTED Draft** (#429, `b2f19bc`) — **`plan-drafter`-authored** (ADR-013 D1) → Code R2-reviewed → committed. Scope: the `services/engine/procedures/spec.py` engine edit (typed `facet` per the delta) + migrate the 4 verticals' comment-facets → the real field + load/validation tests — the **first deliberate `spec.py` edit since procurement's zero-engine-edit (CQ-1)**, ADR-sanctioned. **Schema only** (engine still ignores `facet` at run time); **implements nothing on commit**; **3 OPEN SDs** (note-migration / comment-removal / PR-granularity). Gate = offline suite (1651 baseline + new tests) + `mypy --strict`; no live MS-S1. NEXT = Cray merges #429 + adjudicates SD-1/2/3 → execute PLAN-0038 → Stage 3 generator + review UI | `0b56954` (#428) / `b2f19bc` (#429) / `docs/adr/0016-governed-procedure-engine.md` + `docs/plans/0038-*.md` |
+
+### Current-Focus block — Session 86 (head_commit `973ba69`) [rotated 2026-06-30, session-89 reconcile]
+
+> **Session 86 (head_commit `973ba69`) — PLAN-0042 v1 (the O-3 AT-2 /
+> managerial-layer BUILD) OFFLINE TAIL COMPLETE (#470/#471/#472, all Cray-merged) →
+> PLAN-0042 v1 (Steps 1–3 + 5) is COMPLETE; PLAN `git mv` → `done/`.** Session 86
+> continued the s85 closeout handoff and executed the already-ratified build PLAN
+> directly (a build PLAN — the Steps were ratified). **Step 3a (#470, feat `4ff1180`):**
+> the scoped value-only prose-lint over AT-2 free-text (`governance_prose_lint` = value
+> classes + an approver-role-token check; OMITS the decision-verb + broad-identifier
+> classes per finding 6) **+** a LOAD gate (`Procedure._validate_at2_free_text` blocks
+> load on a ฿-amount / weight / role token smuggled into AT-2 free-text) **+** the 3
+> ADR-0025-D4-mandated advisory NON-AUTHORITATIVE free-text fields
+> (`EmergencyWaiverPolicy.justification`, `DoaTier.note`, `ScoredCriterion.note`); one
+> reword of the shipped procurement AT-2 (`"3-bid"`→`"three-bid"`). **Step 3b (#471, feat
+> `5fac5d2`):** the PLAN-0039 read-only viewer now renders the typed AT-2 governance
+> content (DOA ladder / scored rule / compliance gate / SoD) as **AUTHORITATIVE** (the
+> Box-3 "the gate is no longer blind" artifact, AC-13) + bands the AT-2 free-text
+> **"ADVISORY — NOT A CONTROL"** (OQ-D label); no API change (`model_dump` serializes it);
+> verified live on the preview (snapshot/eval). **Step 4 (AC-13) = author + render only
+> (A1)** — delivered by Step 3's render, no separate build. **Step 5 (#472, test
+> `5464831`):** the D8 offline oracle — `tests/services/engine/procedures/test_red_team_at2.py`
+> consolidates the 3 red-team fixtures (hollow-but-complete → refused; leak-in-free-text →
+> blocks load; identity-collapse role-level = a single-step SoD rejected at construction +
+> a missing-SoD `doa_tier` procedure refused at the gate) + a positive control; the
+> PRINCIPAL-level collapse / literal `approver_role==requester_role` / un-gated-audit are
+> **A2-deferred (AC-13-ALT)** — documented, intentionally NOT asserted (no false coverage).
+> **Gate (every step, offline):** ruff + ruff-format + `mypy --strict services/` (64 files)
+> clean; **pytest 1877 passed / 24 skipped**; no live MS-S1 (the offline oracle is the
+> gate). **AC-13-ALT (the A2 run path: principal-identity SoD + deterministic per-kind
+> enforcement executors) deferred** to a follow-on PLAN, gated on a
+> principal-identity-resolution capability the engine lacks today. **OQ-B** placeholder
+> control values (DOA tiers + compliance predicates mirror the synthetic data adapter;
+> scored-rule weights provisional) stay labelled provisional — the real Fastenal figures
+> fold in via a small `verticals/`-only PR (B1), blocking nothing. `loop-dispatcher` stays
+> **DISABLED** (the Stop-hook root-fix is the re-enable precondition). AI-assisted (Claude
+> Code, session 86); no `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-25 (PLAN-0038 ADR-016 D2 Amendment EXECUTED) [rotated 2026-06-30, session-89 reconcile]
+
+| 2026-06-25 | **PLAN-0038 (ADR-016 D2 Amendment implementation) EXECUTED end-to-end → Complete + archived; Stage 2 (generalized-schema extraction) now COMPLETE on real data (session 77, batch 3, #431/#432)** — completes Stage 2 of the generative-procedures arc, now proven on real data not just the model. **Step A (PR-1, #431, feat `bf7e858`):** the `services/engine/procedures/spec.py` engine edit — the typed `facet` sub-model per the amendment delta (`BandSource`/`GateKind` (6 kinds)/`DecisionCondition` w/ `band_source⇔gate_kind` + `env_var`-only-with-`env` validator/`StepFacet`/`Step.facet`), keeping `extra="forbid"` (facet now a KNOWN key) — the **first deliberate `spec.py` edit since procurement's zero-engine-edit (CQ-1)**, ADR-sanctioned; schema-level facet tests landed here (suite 1669 passed). **Step B (PR-2, #432, feat `777393c`, merge `42a8327`):** migrate the **4 verticals'** comment-facets → the real typed `facet:` field — **config + tests only, no `services/` edit**; +19 end-to-end migration round-trip tests. **SDs (Cray-resolved):** SD-1=(a) populate all 5 facets (`decision_condition`+`llm_assist` typed; `input`/`output`/`governance` str notes from the comment prose); SD-2=(a) remove the comment blocks (single carrier, grep confirms 0 leftover `# facet[`); SD-3=(b) split A/B PRs. **D2-A3 `gate_kind` mapping:** energy/supply_chain `judge`→`env_band` (`OCT_RECOMMEND_THRESHOLD`); aquaculture/procurement `judge`+`judge_stock`→`in_file_band` (points at the typed `threshold`/`direction`/`watch_margin`, no re-store — AC-6); procurement `compliance`→`rule_gate`, `source`→`scored_rule`, `approve`→`doa_tier`; reads/mechanical writes/audit terminals/simple gated actions→`none` (incl. `escalate_watch`=`none`+`decision_condition.note`, Cray-endorsed). Updated the stale "facets are comment-only" framing in `verticals/procurement/README.md` + the procurement `procedures.yaml` header. **`facet` stays non-authoritative** — engine reads but does NOT consume it at run time (D2-A4; grep = 0 `.facet` reads in `services/`). Gates: full offline suite **1688 passed/22 skipped** (1669 baseline + 19 new), ruff + ruff-format clean, mypy --strict `services/` clean, no live MS-S1 (§8 — pure schema/config). `loop-dispatcher` still DISABLED all session (Stop-hook root-fix deferred = precondition for re-enable). PLAN-0038 `git mv` → `done/`. NEXT = Stage 3 (the procedure generator, ADR-016 Phase 2, Rule-of-Three-deferred) + a schema-driven 5-facet review UI | `bf7e858` (#431) / `777393c` (#432) / `services/engine/procedures/spec.py` + `verticals/{energy,supply_chain,aquaculture,procurement}/procedures.yaml` + `docs/plans/done/0038-*.md` |
