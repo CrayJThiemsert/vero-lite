@@ -1589,3 +1589,49 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-25 (PLAN-0038 ADR-016 D2 Amendment EXECUTED) [rotated 2026-06-30, session-89 reconcile]
 
 | 2026-06-25 | **PLAN-0038 (ADR-016 D2 Amendment implementation) EXECUTED end-to-end → Complete + archived; Stage 2 (generalized-schema extraction) now COMPLETE on real data (session 77, batch 3, #431/#432)** — completes Stage 2 of the generative-procedures arc, now proven on real data not just the model. **Step A (PR-1, #431, feat `bf7e858`):** the `services/engine/procedures/spec.py` engine edit — the typed `facet` sub-model per the amendment delta (`BandSource`/`GateKind` (6 kinds)/`DecisionCondition` w/ `band_source⇔gate_kind` + `env_var`-only-with-`env` validator/`StepFacet`/`Step.facet`), keeping `extra="forbid"` (facet now a KNOWN key) — the **first deliberate `spec.py` edit since procurement's zero-engine-edit (CQ-1)**, ADR-sanctioned; schema-level facet tests landed here (suite 1669 passed). **Step B (PR-2, #432, feat `777393c`, merge `42a8327`):** migrate the **4 verticals'** comment-facets → the real typed `facet:` field — **config + tests only, no `services/` edit**; +19 end-to-end migration round-trip tests. **SDs (Cray-resolved):** SD-1=(a) populate all 5 facets (`decision_condition`+`llm_assist` typed; `input`/`output`/`governance` str notes from the comment prose); SD-2=(a) remove the comment blocks (single carrier, grep confirms 0 leftover `# facet[`); SD-3=(b) split A/B PRs. **D2-A3 `gate_kind` mapping:** energy/supply_chain `judge`→`env_band` (`OCT_RECOMMEND_THRESHOLD`); aquaculture/procurement `judge`+`judge_stock`→`in_file_band` (points at the typed `threshold`/`direction`/`watch_margin`, no re-store — AC-6); procurement `compliance`→`rule_gate`, `source`→`scored_rule`, `approve`→`doa_tier`; reads/mechanical writes/audit terminals/simple gated actions→`none` (incl. `escalate_watch`=`none`+`decision_condition.note`, Cray-endorsed). Updated the stale "facets are comment-only" framing in `verticals/procurement/README.md` + the procurement `procedures.yaml` header. **`facet` stays non-authoritative** — engine reads but does NOT consume it at run time (D2-A4; grep = 0 `.facet` reads in `services/`). Gates: full offline suite **1688 passed/22 skipped** (1669 baseline + 19 new), ruff + ruff-format clean, mypy --strict `services/` clean, no live MS-S1 (§8 — pure schema/config). `loop-dispatcher` still DISABLED all session (Stop-hook root-fix deferred = precondition for re-enable). PLAN-0038 `git mv` → `done/`. NEXT = Stage 3 (the procedure generator, ADR-016 Phase 2, Rule-of-Three-deferred) + a schema-driven 5-facet review UI | `bf7e858` (#431) / `777393c` (#432) / `services/engine/procedures/spec.py` + `verticals/{energy,supply_chain,aquaculture,procurement}/procedures.yaml` + `docs/plans/done/0038-*.md` |
+
+### Current-Focus block — Session 87 (head_commit `de36c2b`) [rotated 2026-06-30, session-89 reconcile]
+
+> **Session 87 (head_commit `de36c2b`) — PLAN-0041 (the classify-prompt
+> enrichment lever — the fix for the PLAN-0040 AC-B5 ~1-in-3 false-abstain) COMPLETE:
+> offline gate (#475 Steps 1-3 + #476 Step 4) + the Cray-gated live before/after
+> (Step 5 / AC-7) PASSED on MS-S1 `gpt-oss:20b`; PLAN `git mv` → `done/`.** A
+> **PROMPT-ONLY** lever to lift the live AT-1-family classify match-rate — the moat
+> abstain-guard (`_archetype_disagreement` / `_AT2_ONLY_KINDS` / `_BAND_KINDS`,
+> ADR-0024 D4/D7) stayed **byte-identical** throughout; no schema change; **no new
+> ADR**. Executed Steps 1-5 this session (the ratified PLAN #461; Code-direct).
+> **Steps 1-3 (#475, feat `035af38`):** added `ArchetypeTemplate.description`
+> (value-free, derived from the canonical catalog `docs/conventions/procedure-archetypes.md`),
+> widened the classify catalog to a 3-tuple, and inserted a value-free
+> `_BAND_EXPLAINER` (the positive band-vs-out-of-scope teaching, ending on "When
+> unsure … abstain" = the R2 moat-safety brake) into `build_classify_messages`.
+> Offline gate AC-1..5: guard byte-identity introspection; the AT-2-only-abstain test
+> generalized to all three kinds (scored_rule/rule_gate/doa_tier); enriched-prompt
+> introspection; descriptions-carry-no-AT2-vocabulary; schema still pins the closed
+> enum. **Step 4 (#476, test `d06d420`):** the OQ-C 26-narrative labelled fixture set
+> (`classify_enrichment_fixtures.py` — Arm A: 6 AT-1 + 5 AT-3 gated + 4 AT-1b
+> measured-only; Arm B: 11 genuine AT-2, 2 borderline) + offline validators + a
+> `@live`-gated before/after A/B harness (`test_classify_enrichment_live.py`) routing
+> both arms through the byte-identical imported guard (no production change). An
+> independent adversarial moat-safety reviewer judged the set trustworthy, no blocking
+> defect. The pre-committed pass/fail read is embedded in the harness (a docs/plans/
+> evidence doc was G2-gated → relocated into the test module). **Step 5 (live, AC-7,
+> host-state — Cray go via AskUserQuestion):** the live before/after on MS-S1
+> `gpt-oss:20b`, N=3 reps, worst reported. **PASS.** Arm A gated AT-1+AT-3 lifted
+> **8→11/11 (perfect, all 3 reps)** vs the ~7/11 PLAN-0040 reference; Arm B **11/11
+> abstain every rep** (zero AT-2 regression); **Arm-B guard paths = {label_abstain:
+> 33}** (step_disagreement = 0 — the model labels AT-2 out-of-scope ITSELF; the
+> deterministic backstop never needed to fire = the strongest outcome, no silent
+> label→backstop shift); AT-1b 11/12 (reported, not gated). Live = **confirming
+> evidence**, the offline gate is the binding bar (OQ-D). Raw log gitignored at
+> `.claude/benchmark-results/plan0041-step5-live-ab.log`; thin tracked summary at
+> `docs/logs/2026-06-29-plan0041-step5-live-ab.md` (two-artifact model). **Closeout
+> (`de36c2b`):** PLAN `git mv` → `done/` + the docs/logs summary. **Gate (offline,
+> every step):** ruff + ruff-format + `mypy --strict services/` clean; **pytest 1891
+> passed / 25 skipped** (1877 baseline + 7 Steps-1-3 + 7 Step-4 validators; the live
+> test skipped offline). **Standing:** `loop-dispatcher` stays **DISABLED**;
+> AI-assisted (Claude Code, session 87), no `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-25 (Stage 3 KICKOFF: ADR-0024 + PLAN-0039) [rotated 2026-06-30, session-89 reconcile]
+
+| 2026-06-25 | **Stage 3 KICKED OFF — ADR-0024 (archetype-first procedure generator) ACCEPTED #434 + PLAN-0039 (read-only 5-facet viewer) Ready #435 + the ADR-0024 OQ-disposition errata (session 78)** — opens Stage 3 of the generative-procedures arc (ADR-016 Phase 2). Both artifacts **Cowork-drafted (ADR-009 D1) → Code R2-reviewed → Cray-ratified → committed (D2)**. **ADR-0024 (#434, add `c90b2d2`):** archetype-first generation **backed by a Code-run 5-specialist design panel** (LLM-pipeline · governance · schema · product-UX · red-team). **D1–D12 locked:** classify narrative → 1 of N archetypes → deterministic-code instantiates → LLM drafts advisory prose only (**exactly 2 narrow LLM calls**, classify-don't-synthesize ADR-0021); **"governed ≠ generated" re-fenced at the AUTHORING surface + made MECHANICAL** = a **restricted draft type** with NO governance fields (leak = type error) + a deterministic prose-lint; generator emits `gate_kind` (closed-enum) but **never a value/handler/threshold/tier/autonomy/env_var** (D4); **abstain never force-fit** (D5); determinism invariant holds at the authoring layer; skeleton **draft-loadable but NOT run-loadable** until a human authors gates (D6); **v1 = AT-1 family (AT-1/AT-1b/AT-3), AT-2 DEFERRED** (only AT-2 = `procurement.emergency_sourcing`, N=1; catalog really N≈2; D7); **one review surface**, read-only viewer ships first (D8); the catalog promotes prose→machine-readable `ArchetypeTemplate` (D2). **9 OQs Cray-ratified ACCEPTED** as standing guidance. **PLAN-0039 (#435, `edd28a6`):** a **zero-LLM** oct-demo view rendering **every shipped procedure (5 across 4 verticals — Cowork corrected the dispatch's "4"→5, procurement ships two)** by its 5 facets per step, authoritative band visually distinct from prose, served by read-only `GET /procedures`; built as the **read-mode of the ONE component PLAN-0040 extends to edit-mode** (`mode:read|edit` + pure `facetModel(step)`, AC-7); **AT-2 RENDERED here though AT-2 generation is deferred (D7)**; **7 UI/endpoint OQs Cray-ratified ACCEPTED**. **ADR-0024 OQ errata (commit `4e56d4b`, bundled into #435):** records the ratified OQ disposition in the Accepted ADR's OQ section — Code could NOT inline it (editing an Accepted ADR is **G1-gated**; **in-context approval does NOT override the local-Ollama classifier**, fail-closed deny → routed via Cowork, the s77 chore-PR precedent); **NO decision changed (D1–D12 byte-identical, diff-verified)**. **Notes:** PLAN-0039 + errata bundled one PR / two commits (#435, Code-judgment, separable in history); **`loop-dispatcher` stays DISABLED**; **no live MS-S1** (docs only, §8); pre-commit detect-secrets + handoff-validation green. NEXT = build PLAN-0039 (the viewer) then dispatch PLAN-0040 (the generator, AT-1 family, G2-gated) | `c90b2d2` (#434) / `edd28a6` + `4e56d4b` (#435) / `docs/adr/0024-procedure-generator.md` + `docs/plans/0039-readonly-facet-viewer.md` |
