@@ -42,6 +42,7 @@ from services.engine.procedures.spec import (
     Agent,
     Autonomy,
     OnFailure,
+    Person,
     Procedure,
     Step,
     StepKind,
@@ -83,12 +84,20 @@ class RunContext:
     PLAN-0019 A-8) — an LLM-backed executor (``evaluate`` / ``action`` reasoning)
     passes it to :func:`generate_judgment` so it steers the system prompt. It is
     ``None`` when the procedure declares no goal.
+
+    ``principal`` is the resolved HUMAN principal on the approval path (ADR-0026
+    D3, OQ-2 — the *ambient* resolution; the *load-bearing* "who approved THIS
+    gate" is the explicit ``principal`` arg on :func:`resolve_gated_step`). It is
+    the typed identity carrier the principal-SoD run-check consumes — NOT the
+    untyped ``trigger_context`` blob (rejected as the carrier, OQ-2). ``None``
+    until a principal is resolved.
     """
 
     agent: Agent
     vertical: str
     trigger_context: dict[str, Any] | None = None
     goal: str | None = None
+    principal: Person | None = None
 
 
 class StepExecutor(Protocol):

@@ -57,7 +57,7 @@ from services.engine.procedures.orchestrator import (
 )
 from services.engine.procedures.persistence import load_run
 from services.engine.procedures.runs import StepResult, StepResultStatus
-from services.engine.procedures.spec import Autonomy, Step
+from services.engine.procedures.spec import Autonomy, Person, Step
 from services.engine.recommender import (
     ActionRecord,
     approve,
@@ -222,10 +222,21 @@ async def resolve_gated_step(
     run_id: str,
     step_id: str,
     decisions: Mapping[str, str],
+    principal: Person | None = None,
 ) -> StepResult:
     """Apply a human's approve/reject decisions to a suspended gated action
     (Option 2 — the EXTERNAL gate driver; the shipped ``recommender`` gate,
     verbatim).
+
+    ``principal`` is the resolved HUMAN who approved THIS gate (ADR-0026 D3, OQ-2
+    — the *load-bearing* identity, beside the ambient ``RunContext.principal``).
+    It is the typed seam the principal-SoD run-check resolves against; when
+    supplied it is recorded on the step's reasoning trace (the approving-principal
+    record). Defaulting it to ``None`` keeps every existing caller unchanged — the
+    fail-closed SoD enforcement that *consumes* this identity across the two
+    constrained steps is the deferred A1b run-path (it needs per-step principal
+    recording the executors add); A1a builds the seam + the run-check, not the
+    live multi-step wiring.
 
     ``decisions`` maps each proposed ``action_id`` to ``"approve"`` or
     ``"reject"`` (every proposal needs an explicit decision — no silent default on
@@ -306,6 +317,17 @@ async def resolve_gated_step(
                 "(expected 'approve' or 'reject')"
             )
 
+    if principal is not None:
+        trace_adds.append(
+            {
+                "kind": "gate_principal_recorded",
+                "principal_id": principal.person_id,
+                "summary": (
+                    f"gate resolved by principal '{principal.person_id}' — the approving human "
+                    "recorded for the principal-SoD run-check (ADR-0026 D3, OQ-2)"
+                ),
+            }
+        )
     target.artifact = {"output_set": executed_effects, "decisions": decided}
     target.reasoning_trace = list(target.reasoning_trace or []) + trace_adds
     await session.merge(target)
