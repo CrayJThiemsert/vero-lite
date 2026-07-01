@@ -92,7 +92,7 @@
     return res.json();
   }
   const Hero = {
-    governance: () => fetchDemoHero('/demo/hero/governance'),
+    governance: (live) => fetchDemoHero('/demo/hero/governance' + (live ? '?live=true' : '')),
     impact: () => fetchDemoHero('/demo/hero/impact')
   };
 

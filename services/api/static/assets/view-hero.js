@@ -192,10 +192,18 @@
     ]);
   }
 
-  function render(container, gov, ledger) {
+  function render(container, gov, ledger, host, live) {
     clear(container);
     const hero = governanceMoment(gov.hero);
     const contrast = governanceMoment(gov.contrast);
+
+    const srcLabel = gov.source === 'offline-fixture'
+      ? 'OFFLINE FIXTURE'
+      : (gov.source === 'live-ms-s1' ? 'LIVE · MS-S1' : 'LIVE · RUN');
+    const srcCls = gov.source === 'offline-fixture' ? 's-info' : 's-ok';
+    const toggle = h('button', { class: 'hero-badge hero-toggle', type: 'button' },
+      live ? '↺ Offline fixture' : '▶ Run live');
+    toggle.addEventListener('click', function () { mount(host, { live: !live }); });
 
     const head = h('div', { class: 'hero-head' }, [
       h('div', { class: 'hero-title' }, [
@@ -204,8 +212,9 @@
         h('span', { class: 'faint' }, '· Emergency Sourcing (Fastenal)')
       ]),
       h('div', { class: 'hero-badges' }, [
-        badge(gov.source === 'offline-fixture' ? 'OFFLINE FIXTURE' : 'LIVE · MS-S1', 's-info'),
-        badge('DEMO-GRADE · PROVISIONAL', 's-warn')
+        badge(srcLabel, srcCls),
+        badge('DEMO-GRADE · PROVISIONAL', 's-warn'),
+        toggle
       ])
     ]);
 
@@ -223,20 +232,22 @@
     container.appendChild(renderLedger(ledger));
   }
 
-  async function mount(container) {
+  async function mount(container, opts) {
+    const live = !!(opts && opts.live);
     clear(container);
     const body = h('div', { class: 'hero-view' });
     container.appendChild(body);
-    body.appendChild(O.loadingState ? O.loadingState('Loading the governance moment…') : h('div', null, 'Loading…'));
+    const loadMsg = live ? 'Running the governance moment live…' : 'Loading the governance moment…';
+    body.appendChild(O.loadingState ? O.loadingState(loadMsg) : h('div', null, 'Loading…'));
     try {
-      const [gov, ledger] = await Promise.all([O.Hero.governance(), O.Hero.impact()]);
-      render(body, gov, ledger);
+      const [gov, ledger] = await Promise.all([O.Hero.governance(live), O.Hero.impact()]);
+      render(body, gov, ledger, container, live);
     } catch (e) {
       clear(body);
       const msg = String((e && e.message) || e) +
         ' — the hero-demo endpoints (/demo/hero/*) require the live backend (no embedded demo).';
       body.appendChild(O.errorState
-        ? O.errorState('Could not load the governance moment', msg, () => mount(container))
+        ? O.errorState('Could not load the governance moment', msg, () => mount(container, { live }))
         : h('div', { class: 'hero-err' }, msg));
     }
   }

@@ -22,14 +22,29 @@ from fastapi import APIRouter
 from services.api.models.demo import HeroGovernanceAudit, HeroImpactLedger
 from verticals.procurement.hero_demo.governance_audit import build_hero_governance_audit
 from verticals.procurement.hero_demo.ledger import build_hero_impact_ledger
+from verticals.procurement.hero_demo.run import (
+    advisory_stub_factory,
+    build_live_hero_governance_audit,
+)
 
 router = APIRouter(prefix="/demo/hero", tags=["demo"])
 
 
 @router.get("/governance", response_model=HeroGovernanceAudit)
-async def hero_governance_moment() -> HeroGovernanceAudit:
-    """Return the governance-moment gate audit the render binds to (deterministic capture)."""
-    return HeroGovernanceAudit.model_validate(await build_hero_governance_audit())
+async def hero_governance_moment(live: bool = False) -> HeroGovernanceAudit:
+    """Return the governance-moment gate audit the render binds to.
+
+    ``live=false`` (default): the deterministic OFFLINE-FIXTURE capture (``resolve_doa_tier`` over
+    the PO total). ``live=true``: the SAME contract DERIVED by a real procedure run (the scored_rule
+    selects + emits the spend the doa_tier resolves), ``source: "live-run"``. The live path runs
+    HOST-STATE-FREE with an advisory-LLM stub (the governed decision is the rule, not the LLM); the
+    real MS-S1 model is the C-5 smoke (settings-gated), never a per-request host-state hit here."""
+    audit = (
+        await build_live_hero_governance_audit(client_factory=advisory_stub_factory)
+        if live
+        else await build_hero_governance_audit()
+    )
+    return HeroGovernanceAudit.model_validate(audit)
 
 
 @router.get("/impact", response_model=HeroImpactLedger)
