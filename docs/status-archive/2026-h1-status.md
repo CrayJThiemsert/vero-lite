@@ -1639,3 +1639,70 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-27 (PLAN-0040 AC-B5 live intake face DONE) [rotated 2026-07-01, session-91 reconcile]
 
 | 2026-06-27 | **PLAN-0040 AC-B5 (the live MS-S1 single-shot intake face) SHIPPED + LIVE-VERIFIED → PLAN-0040 (A+B+C + live intake) DONE 100% (session 83, #457/#458/#459)** — the last PLAN-0040 item (LOCKED-9 / D9): narrative → classify → human-confirm → governed skeleton on live MS-S1 `gpt-oss:20b` (local-only, §8). Three **Code-direct per-step PRs off `main`, Cray merged each (no self-merge)**. **#457 server (`0fd0489` merge):** `services/api/routers/procedure_draft.py` — `POST /procedures/draft/{classify,build,instantiate}` (classify = narrative→archetype, no skeleton, LOCKED-5; build = CONFIRMED archetype→governed skeleton, refuses unconfirmed/unknown 422; instantiate = ZERO-LLM manual-pick fallback, D9); model-pinned + local-only; `_governance_todo`→public `build_governance_todo`; **security fold `5c00a76`** = classify rationale now `prose_lint`-gated (was leak-class-1) + degraded detail no longer echoes MS-S1 host/port; offline route tests (recorded-fixture, zero host-state). **#458 front-end (`0dd7693` merge):** `intake-procedures.js` capture (classify→confirm→build + graceful degradation to manual-pick/sample); `view-procedures.js` `mount(opts.draft)` renders via the **existing gate path** (no second renderer, LOCKED-8); `api.js` `O.Draft.*`; `?v=` c19→c20. **#459 prose fix from the live run (`ef46ea0` merge, `751c1e2`):** `_build_procedure_draft` falls back to **POSITIONAL** step pairing when the count matches — the live model does NOT echo template `step_id`s so descriptions dropped to `""`; advisory-prose only, governance untouched, +1 test. **Gate:** ruff+ruff-format+`mypy --strict services/` (64 files) clean; **pytest 1801 passed/24 skipped.** **LIVE (Cray-pre-approved host-state + hands-on UI verify):** **moat HOLDS** — poisoned narrative → build → forced values NOWHERE (leaked `[]`), all governance ABSENT, fails `validate_governance_complete` (D6); classify matches live for clear AT-1/AT-3 (conf 0.9–0.95), happy path = value-free advisory prose + unfilled stubs + empty `goal` (OQ-B B2). **Live findings (honest):** classify is non-deterministic + the strict per-step AT-2 cross-check → ~1-in-3 false-abstain (mis-tag of the judge step with AT-2-only `scored_rule`/`rule_gate` → correct abstain, never down-classify, LOCKED-7; SAFETY signal only, never builds, never leaks); the offline fixture masked the prose step-id-rename gap (live = cheapest catch). NEXT lever = classify-prompt enrichment (G2-gated → Cowork), NO guard relax without data + ADR. `loop-dispatcher` stays DISABLED | `0fd0489` (#457) / `0dd7693` (#458) / `ef46ea0` (#459) / `services/api/routers/procedure_draft.py` + `services/api/static/assets/{intake-procedures,view-procedures,api}.js` |
+
+### Current-Focus blocks — Session 89 (A1b Step 1) + Session 88 (A1 landed) [rotated 2026-07-01, session-91 demo-close reconcile; R1 64 KB ceiling]
+
+> **Session 89 (head_commit `719ea78`) — A1b STEP 1 (the demo-critical LIVE
+> fail-closed principal-SoD run enforcement) SHIPPED + MERGED (#486) +
+> INDEPENDENTLY VERIFIED (J1/J2 PASS).** INTERIM — one of A1b's six steps landed;
+> A1b is NOT complete. This is the step that makes the A1a pure `check_principal_sod`
+> actually fire on a REAL suspended-gate resolution (A1a shipped the construct +
+> run-check + seam s88; A1b wires the live enforcement). **What it does:**
+> `spec.parse_procedures` now reads `principals` / `principal_aliases` (were
+> silently dropped on load); procurement ships **5 authored principals +
+> `required_roles`** (AC-10); a **`step_principals` JSONB column on `PipelineRun`
+> (+ Alembic `0004`)**; `orchestrator.run_procedure(principal=…)` records the
+> requester per SoD step (**SD-2 = (a)**); and `action_step.resolve_gated_step`
+> invokes `check_principal_sod` **unconditionally**, fails **CLOSED** (raises
+> `PrincipalSoDError` carrying the structured verdict) **BEFORE** any approve /
+> execute, and is **non-skippable**. **Inert for non-SoD procedures** (only
+> procurement carries SoD; the aquaculture inert-reconcile test proves no behavior
+> change elsewhere). **Gate (offline = the binding bar, §8):** ruff + mypy clean;
+> **1921 offline + 27 DB tests green** incl. **8 NEW live-SoD DB tests** +
+> `alembic upgrade head` (0004) + the aquaculture inert-reconcile. **Axis-B
+> goal-gate: J1 PASS + J2 PASS** (high confidence, independent goal-evaluator,
+> creator≠critic intact). **Demo-convergence framing:** this is **1 of 3
+> demo-critical pieces** of the hero-demo's "governed → run → ฿" path; **A1b Steps
+> 3 (`doa_tier` executor) + 6 (`governed_decision` audit-to-control) are next** =
+> the rest of the demo-critical path (both offline-pure); Steps 2/4/5 (`OQ-6`
+> marker · `rule_gate` · `scored_rule`) after; the parallel hero-demo session
+> converges once that path is in (procedures/* hold releases). **Owed at A1b CLOSE
+> (not per-step):** the PLAN-0044 SD-1/SD-2/SD-3-as-rec disposition + a PLAN-0044
+> Completion note + a STATUS full-body reconcile. **Standing:** `loop-dispatcher`
+> stays **DISABLED**; MS-S1 cold (A1b is offline, §8); AI-assisted (Claude Code,
+> session 89), no `Co-Authored-By` per CLAUDE.md §7.
+
+> **Session 88 (head_commit `f5c6342`) — A1 (run-time moat enforcement —
+> Cray's #1 roadmap rock) LANDED end-to-end: ADR-0026 ACCEPTED (#479) → A1a
+> (PLAN-0043) COMPLETE (#481/#482) → A1b planned (PLAN-0044).** A1 builds the
+> principal-identity capability the AT-2 layer's run-time SoD was deferred on
+> (the s85-s86 AC-13-ALT carry); A1a ships the construct + the run-check + the
+> seam, A1b wires the live enforcement. **ADR-0026 ACCEPTED (#479, `620d799`):**
+> the principal-identity capability + AT-2 run-time enforcement (the deferred
+> ADR-0025 AC-13-ALT made concrete); all **6 OQs Cray-adjudicated as-recommended**.
+> **PLAN-0043 (A1a) drafted + SD-1/SD-2 folded (#480, `05243eb`/`af0d882`):**
+> Cray adjudicated **SD-1 = `required_roles` on `SoDConstraint`** and **SD-2 =
+> a `PrincipalAlias` link object** (deviating from the drafted rec). **A1a COMPLETE
+> end-to-end:** **Steps 1-3 (#481, `f1e7afa`)** = the `Person` / `PrincipalAlias`
+> construct + `SoDConstraint.required_roles` + the H-governance (the new fields are
+> governance, never on a draft type); **Steps 4-6 (#482, `f5c6342`)** =
+> `services/engine/procedures/principal_sod.py`, the **fail-closed principal-SoD
+> run-check** emitting a **STRUCTURED `PrincipalSoDVerdict`** + the
+> `RunContext.principal` / `resolve_gated_step(principal=…)` seam + the offline
+> oracle. **Gate: offline green throughout — the full procedures suite 344
+> passed.** **A1a/A1b boundary confirmed (Cray s88):** the LIVE invocation of the
+> run-check needs per-step principal RECORDING = the A1b executors' job; A1a stops
+> at the construct + run-check + seam, A1b wires live enforcement. **A1b drafted =
+> PLAN-0044 (in-flight, #484):** live run enforcement + per-kind executors
+> (`doa_tier` / `rule_gate` / `scored_rule`) + audit-to-control (OQ-5); **3 SDs
+> surfaced for Cray.** **Hero-demo dependency (a parallel session):** A1's
+> structured `PrincipalSoDVerdict` + the A1b OQ-5 audit field are what the
+> hero-demo's read-only "governance moment" render consumes — convergence ask #1
+> is MET, #2 lands with A1b. **In-flight PRs awaiting Cray merge:** #483 (PLAN-0043
+> `git mv` → `done/`) + #484 (PLAN-0044 A1b draft). **Standing:** `loop-dispatcher`
+> stays **DISABLED**; MS-S1 cold (A1a is offline, §8); AI-assisted (Claude Code,
+> session 88), no `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-28 (PLAN-0041 classify-prompt enrichment RATIFIED) [rotated 2026-07-01, session-91 demo-close reconcile]
+
+| 2026-06-28 | **PLAN-0041 (classify-prompt enrichment lever) RATIFIED + COMMITTED (session 84, #461)** — the fix for the PLAN-0040 AC-B5 live finding (~1-in-3 false-abstain on a textbook AT-1/AT-3). A **prompt-only** lever: enrich `build_classify_messages` with per-archetype descriptions (derived from the canonical catalog) + a positive band-vs-out-of-scope-gate explainer that teaches the band case, so the live model stops mis-tagging the judge step with an AT-2-only `gate_kind`. **Moat-safe:** the AT-2 cross-check (`_archetype_disagreement`/`_AT2_ONLY_KINDS`, ADR-0024 D4/D7) stays **byte-identical**; no schema change; **no new ADR**. **OQ-C twin-metric:** Arm B **11/11 AT-2-abstain HARD gate** + a pre-committed pass/fail read; offline tests = the gate, the live hit-rate lift = confirming evidence behind a Cray host-state go (§8). **Cowork-drafted (ADR-009 D1) → Code R2-reviewed (fact-pack byte-verified; LOCKED-7↔D4/D7 mapping confirmed) → Cray-ratified (OQ-A..E recs as-is) → committed → Cray merged (no self-merge).** Also session 84: a **strategy consultation** mapping vero-lite onto the **Four-Box Business Model** → a 4-rock roadmap (Rock 1 = PLAN-0041; Rock 2 = AT-2/managerial; Rock 3 = Box-4 economics + ontology data-binding; **Rock 4 = a Cowork 4-box+Palantir deep-research dispatch**, awaiting relay). NEXT = execute PLAN-0041 (offline Steps 1-4; live Step 5 = Cray go) + relay Rock 4. `loop-dispatcher` stays DISABLED | `7601174` (#461) / `docs/plans/0041-classify-prompt-enrichment.md` |
