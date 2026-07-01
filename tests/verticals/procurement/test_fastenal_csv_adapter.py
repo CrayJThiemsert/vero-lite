@@ -139,6 +139,30 @@ async def test_money_columns_are_decimal() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# OperationalEvent + Quotation (the C-full run inputs)
+# --------------------------------------------------------------------------- #
+
+
+async def test_operational_event_failure_present() -> None:
+    events = await FastenalCsvAdapter().fetch_objects("OperationalEvent")
+    fail = _by_pk(events, "event_id", "EVT-CNC-014-FAIL")
+    assert fail["event_type"] == "failure"
+    assert fail["asset_id"] == "AST-CNC-014"
+    assert isinstance(fail["measured_value"], float)
+    assert fail["measured_value"] == 0.92
+
+
+async def test_quotation_offavl_is_the_hero_price() -> None:
+    quotes = await FastenalCsvAdapter().fetch_objects("Quotation")
+    rapid = _by_pk(quotes, "quote_id", "QT-SPN-RAPIDMRO")
+    assert rapid["supplier_id"] == "SUP-RAPIDMRO"
+    assert rapid["price_thb"] == Decimal("96000")
+    assert isinstance(rapid["price_thb"], Decimal)
+    assert rapid["lead_time_days"] == 2
+    assert rapid["on_contract"] is False
+
+
+# --------------------------------------------------------------------------- #
 # fetch_links — 2 explicit files + 4 inline-FK from purchase_order.csv
 # --------------------------------------------------------------------------- #
 

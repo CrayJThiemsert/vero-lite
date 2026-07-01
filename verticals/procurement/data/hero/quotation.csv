@@ -1,0 +1,4 @@
+quote_id,part_id,supplier_id,price_thb,currency,lead_time_days,warranty,on_contract
+QT-SPN-FASTENAL,PRT-SPN-700,SUP-FASTENAL-TH,78500,THB,14,12 months,true
+QT-SPN-RAPIDMRO,PRT-SPN-700,SUP-RAPIDMRO,96000,THB,2,6 months,false
+QT-SPN-NSK,PRT-SPN-700,SUP-NSKBRG-TH,74000,THB,21,6 months,false

@@ -58,6 +58,11 @@ def _int(value: str) -> int:
     return int(value)
 
 
+def _float(value: str) -> float:
+    """A non-money numeric column (e.g. a criticality reading) -> ``float``."""
+    return float(value)
+
+
 def _bool(value: str) -> bool:
     """A CSV boolean cell (``true`` / ``false``) -> ``bool``."""
     return value.strip().lower() == "true"
@@ -85,6 +90,11 @@ _OBJECT_FILES: dict[str, tuple[str, dict[str, _Coerce]]] = {
         {"min_thb": _dec, "max_thb": _dec, "sod_required": _bool},
     ),
     "Person": ("person.csv", {"roles": _roles}),
+    "OperationalEvent": ("operational_event.csv", {"measured_value": _float}),
+    "Quotation": (
+        "quotation.csv",
+        {"price_thb": _dec, "lead_time_days": _int, "on_contract": _bool},
+    ),
 }
 
 # Explicit link files: link_type -> (filename, from_col, to_col, {prop_col: coercion}).
