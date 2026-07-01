@@ -79,6 +79,23 @@
     return res.json();
   }
 
+  /* ---- hero-demo read-only views (PLAN-0045): the governance-moment audit + the
+     ฿-impact ledger. DIRECT fetch, NO mock fallback — the render binds to the shipped
+     A1b engine shapes / the derived ledger, so a mocked copy would drift; an honest
+     "backend required" error offline is correct (the view shows errorState). */
+  async function fetchDemoHero(path) {
+    const res = await fetch(path);
+    const ct = res.headers.get('content-type') || '';
+    if (!res.ok || !ct.includes('json')) {
+      throw new Error('GET ' + path + ' unavailable (' + res.status + ')');
+    }
+    return res.json();
+  }
+  const Hero = {
+    governance: () => fetchDemoHero('/demo/hero/governance'),
+    impact: () => fetchDemoHero('/demo/hero/impact')
+  };
+
   /* ---- LLM control (PLAN-0018): MS-S1 status + warm/sleep ----
      These talk to the REAL backend only — NO mock fallback. A mocked
      "resident" would lie about MS-S1, and GET /llm/status already returns a
@@ -224,7 +241,7 @@
 
   window.OCT = window.OCT || {};
   Object.assign(window.OCT, {
-    State, API, Llm, Intake, Draft, Onto, onConnection, setConnection,
+    State, API, Llm, Intake, Draft, Hero, Onto, onConnection, setConnection,
     loadMeta, loadObjects, loadAllObjects, loadRecommendations
   });
 })();
