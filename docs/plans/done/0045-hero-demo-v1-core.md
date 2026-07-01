@@ -1,9 +1,35 @@
 # PLAN-0045: Hero-demo v1 core build (C1 adapter · governance-moment render · ฿-impact ledger)
 
-**Status:** Draft
+**Status:** Complete (2026-07-01, session 92) — moved to `done/`
 **Owner:** both (Code executes; Cray ratifies the SDs first)
 **Created:** 2026-06-30
 **Related ADRs:** ADR-006 (vertical plugin), ADR-007 (DataAdapter), ADR-0023 (registry auto-discovery), ADR-0025 (AT-2 / DOA tiers), ADR-0026 (governed_decision / OQ-5 audit-to-control); PLAN-0039/0042 (read-only procedure viewer), PLAN-0043/0044 (A1b principal-SoD + render contract)
+
+> ## Completion (2026-07-01, session 92)
+>
+> **Hero-demo v1 core is COMPLETE** — all eight acceptance criteria met on `main`, offline gate
+> green (`ruff` + `mypy --strict` + `pytest`; no live MS-S1, §8). The build went BEYOND the
+> SD-1=(b) fixture recommendation to a live-run layer (C-3 `run_hero_governance_moment` drives the
+> real orchestrator loop; C-4 `?live=true` toggle; C-5 Cray-approved live MS-S1 smoke confirmed
+> `governed == offline`).
+>
+> | AC | Shipped by |
+> |----|-----------|
+> | AC-1 (C1 `FastenalCsvAdapter` round-trip) | #493 Step 1 (`85eafaa`) |
+> | AC-2 (zero `services/` core edit) | #493 |
+> | AC-3/4/5 (governance-moment render — DoaTier / SoD / `governed_decision` join, no reshape) | #493 Step 1b/2 + the render `view-hero.js` |
+> | AC-6 (B1 ฿-impact ledger, provisional) | #493 Step 3 (`b76c080`) |
+> | AC-7 (contrast case PO-2026-0411 → MANAGER, data-driven) | #493 |
+> | AC-8 (offline gate — ruff + mypy --strict + pytest) | ✅ throughout |
+>
+> **Surfaced-decision dispositions:** SD-1 resolved beyond (b) — a real live-run layer landed
+> (#496 C-3/C-4; the C-1 fixture path is the offline fallback). SD-2 = the `view-hero.js`
+> governance-moment screen (reused the read-only viewer's decomposition seam). SD-3 = (a) the
+> derived `GET /demo/hero/impact` API view.
+>
+> **Out-of-scope items stayed out:** the `rule_gate`/`scored_rule` A1b work (PLAN-0044); the
+> hero-demo `compliance` harness→`rule_gate`-executor swap is an OPTIONAL follow-up (not an AC of
+> this PLAN). B2 real Fastenal numbers + the hybrid LLM-extraction path remain deferred.
 
 > **Drafting note (author≠reviewer, ADR-012 D4.3):** drafted by the in-harness `plan-drafter`
 > subagent under ADR-013 D1 phased authority; outline originated by Code (session 88 dossier);
