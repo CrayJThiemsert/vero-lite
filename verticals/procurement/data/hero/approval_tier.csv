@@ -1,0 +1,5 @@
+tier_id,tier_name,min_thb,max_thb,approver_role,sod_required
+TIER-SUP,Supervisor Band,0,15000,SUPERVISOR,true
+TIER-MGR,Manager Band,15001,200000,MANAGER,true
+TIER-CTRL,Controller Band,200001,1000000,CONTROLLER,true
+TIER-VP,VP / Director Band,1000001,999999999,VP_OPERATIONS,true

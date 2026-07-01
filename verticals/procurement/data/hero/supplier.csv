@@ -1,0 +1,5 @@
+supplier_id,name,avl_status,region,on_contract
+SUP-FASTENAL-TH,Fastenal Thailand (EEC),ON_AVL,TH-EEC,true
+SUP-NSKBRG-TH,NSK Bearings Thailand,ON_AVL,TH-Bangkok,true
+SUP-RAPIDMRO,RapidMRO Express (gray-market),OFF_AVL,TH-Bangkok,false
+SUP-THMOTION,Thai Motion Components,ON_AVL,TH-Chonburi,false
