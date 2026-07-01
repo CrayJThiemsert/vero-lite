@@ -1706,3 +1706,51 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-28 (PLAN-0041 classify-prompt enrichment RATIFIED) [rotated 2026-07-01, session-91 demo-close reconcile]
 
 | 2026-06-28 | **PLAN-0041 (classify-prompt enrichment lever) RATIFIED + COMMITTED (session 84, #461)** — the fix for the PLAN-0040 AC-B5 live finding (~1-in-3 false-abstain on a textbook AT-1/AT-3). A **prompt-only** lever: enrich `build_classify_messages` with per-archetype descriptions (derived from the canonical catalog) + a positive band-vs-out-of-scope-gate explainer that teaches the band case, so the live model stops mis-tagging the judge step with an AT-2-only `gate_kind`. **Moat-safe:** the AT-2 cross-check (`_archetype_disagreement`/`_AT2_ONLY_KINDS`, ADR-0024 D4/D7) stays **byte-identical**; no schema change; **no new ADR**. **OQ-C twin-metric:** Arm B **11/11 AT-2-abstain HARD gate** + a pre-committed pass/fail read; offline tests = the gate, the live hit-rate lift = confirming evidence behind a Cray host-state go (§8). **Cowork-drafted (ADR-009 D1) → Code R2-reviewed (fact-pack byte-verified; LOCKED-7↔D4/D7 mapping confirmed) → Cray-ratified (OQ-A..E recs as-is) → committed → Cray merged (no self-merge).** Also session 84: a **strategy consultation** mapping vero-lite onto the **Four-Box Business Model** → a 4-rock roadmap (Rock 1 = PLAN-0041; Rock 2 = AT-2/managerial; Rock 3 = Box-4 economics + ontology data-binding; **Rock 4 = a Cowork 4-box+Palantir deep-research dispatch**, awaiting relay). NEXT = execute PLAN-0041 (offline Steps 1-4; live Step 5 = Cray go) + relay Rock 4. `loop-dispatcher` stays DISABLED | `7601174` (#461) / `docs/plans/0041-classify-prompt-enrichment.md` |
+
+### Current-Focus block — Session 89 (head_commit `f5527d9`) — A1b Steps 3+6 [rotated 2026-07-01, session-92 reconcile; R1 64 KB ceiling]
+
+> **Session 89 (head_commit `f5527d9`) — A1b STEPS 3 + 6 (the rest of the
+> demo-critical path) SHIPPED + MERGED (#488 `doa_tier` / #489
+> `governed_decision`) + INDEPENDENTLY VERIFIED (J1/J2 PASS) → the
+> DEMO-CRITICAL PATH IS COMPLETE ON MAIN.** MILESTONE, not closure — **A1b is
+> NOT complete** (AC-9 + Steps 2/4/5 remain). With **Step 1 (#486, the live
+> fail-closed SoD gate)**, all three structured fields the hero render joins on
+> are now on main. **Step 3 (#488, `34be3a5` — AC-5):** a deterministic
+> `doa_tier` per-kind executor — `resolve_doa_tier` walks the `DoaLadder`
+> half-open band (`Decimal` spend → tier), resolves the tier's `approver_role`
+> → a `Person`, and **fails CLOSED on a currency mismatch (OQ-4)**; the
+> **SD-1 = (a) `GovernanceActionExecutor` wrapper** dispatches on
+> `governance_content.kind` **without a new `StepKind`**. **Step 6 (#489,
+> `f5527d9` — AC-8):** the typed, minimal **`governed_decision`
+> audit-to-control field (SD-3 = (a))** — `ControlRef{kind,id}` +
+> `GovernedDecision{control_ref, principal_id}` on `AuditMetadata`, emitted as
+> an **ENGINE side-effect** by the `doa_tier` route
+> (`{kind:'doa_tier', id:resolved_tier_id}`) and the SoD gate
+> (`{kind:'sod', id:sorted distinct_steps}`); **join-stable keys** (the
+> `Person` PK + the verdict-emitted control id). **Gate (offline = the binding
+> bar, §8):** both ruff + mypy clean — **Step 3: 19 new `doa_tier` tests, full
+> suite 1968 passed**; **Step 6: 5 new `governed_decision` tests + the SoD-gate
+> DB emission** (the real hero gate emits
+> `{kind:'sod', id:'approve+intake', principal_id:'appr-director'}`), **full
+> suite 1973 passed / 5 skipped**. **Axis-B goal-gate: J1 PASS + J2 PASS**
+> (independent goal-evaluator, creator≠critic intact, both steps). **AC-9
+> DEFERRAL (surfaced for Cray, NOT silently applied):** the procurement
+> `audit` step is authored `autonomy: auto` AND is downstream of the
+> `approve` / `issue_po` gates, so the AC-9 "auto-downstream-of-a-gate"
+> assertion would **restructure the hero procedure itself** — that is a Cray
+> decision (restructure the procurement audit terminal vs exempt no-op
+> terminals), not a mechanical assertion, so it is **held for adjudication**.
+> **NEXT (the convergence move):** signal the parallel hero-demo session to
+> converge — the demo-critical path is on main, so the
+> `services/engine/procedures/*` hold releases and it can build the read-only
+> governance-moment render. Then A1b's remaining **non-demo-critical** work:
+> **AC-9** (the Cray option pick) + **Steps 2/4/5** (`OQ-6` N≥2 marker ·
+> `rule_gate` · `scored_rule`). **Owed at A1b CLOSE (not per-step):** the
+> PLAN-0044 Completion note + `git mv` → `done/` + a STATUS full-body
+> reconcile. **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold
+> (A1b is offline, §8); AI-assisted (Claude Code, session 89), no
+> `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-29 (ADR-0025 AT-2 managerial-layer RATIFIED + ACCEPTED) [rotated 2026-07-01, session-92 reconcile]
+
+| 2026-06-29 | **ADR-0025 (AT-2 / managerial-process layer) RATIFIED + ACCEPTED (session 84, #463)** — makes DOA/SoD/scored-rule/compliance governance first-class (the Box-3 "Action = contract" story the Rock-4 research found is vero-lite's strongest sellable box; Palantir's Apr-2026 "each Action is a contract" ≈ our `Agent.allowed` + gate + audit); **revisits ADR-0024 D7** (AT-2 deferral) + **decides ADR-0024 OQ-8** (typed content sub-model). **Re-framed around a SHIPPED DEFECT Code R2 verified live on HEAD:** `derive_governance_todo` owes no obligation for `scored_rule`/`rule_gate`/`doa_tier` → `validate_governance_complete` is blind to AT-2 content (an empty-DOA AT-2 is run-loadable today). **D2** authoritative discriminated `Step.governance_content` keyed to `gate_kind` (not the non-authoritative facet; D2-A4 held); **D3** bypass structurally unrepresentable (`Decimal` money; total-cover DOA ladder; strict-escalate waiver; compliance+SoD non-waivable); **D5** run-gate becomes AT-2-aware (closes the defect, + a negative regression test); **D7** the AT-2 generator stays deferred under a CI-enforced N≥2 re-trigger (AT-2 = N=1). **Cowork-drafted + a Cowork-run panel (disclosed self-review, NOT independent of the drafter) → Code R2 = the independent check (substrate fact-pack independently verified) → Cray-ratified per the recs** (OQ-1=(c) build-layer/defer-generator [the N=1 "(b)-minus-codegen" trade accepted because the defect forces typing the obligation regardless]; OQ-2=(b)-in-(a); OQ-3=D6 boundary [concrete run-vs-author → the follow-on PLAN]; OQ-4/5 per rec). A harness Stop-hook said "commit as Accepted" pre-ratification — Code **declined** (false attribution on the permanent record), held, committed on Cray's actual ratify. NEXT = the follow-on build PLAN (OQ-5, separate dispatch). Also s84: O-1 (Box-4 ฿ pitch artifact) done; the Rock-4 research delivered + the O-sequence locked | `f56a6e8` (#463) / `docs/adr/0025-at2-managerial-layer.md` |
