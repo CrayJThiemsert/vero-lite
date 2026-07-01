@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-01T22:00:21+07:00
+last_updated: 2026-07-01T23:52:50+07:00
 session: 93
-current_batch: "ADR-016 Q3 read-side ontology object-binding amendment ACCEPTED (Rock 3 / O-2, PR #505) — in-place ADR-016 D2+D3 amendment closing the read-side governance gap that mirrors the shipped write-side. v1 = a typed read contract (StepInput.reads: list[str]) + Agent.allowed.object_types + a LOAD-time consistency/scoping gate (reads ∈ ontology ∩ allowlist, else refuse load); zero runtime-data-flow change. Honest frame (Cowork caught, Code-verified): NOT runtime parity — teeth = declared==dispatched, gained read-side only at Q4. Deferred: the generic run-consume query executor (fast-follow build PLAN) + the Box-4 economic facet (self-cancelling N≥3 marker)."
+current_batch: "ADR-016 Q3 read-side ontology object-binding amendment ACCEPTED (Rock 3 / O-2, PR #505) — in-place ADR-016 D2+D3 amendment closing the read-side governance gap that mirrors the shipped write-side. v1 = a typed read contract (StepInput.reads: list[str]) + Agent.allowed.object_types + a LOAD-time consistency/scoping gate (reads ∈ ontology ∩ allowlist, else refuse load); zero runtime-data-flow change. Honest frame (Cowork caught, Code-verified): NOT runtime parity — teeth = declared==dispatched, gained read-side only at Q4. Deferred: the generic run-consume query executor (fast-follow build PLAN) + the Box-4 economic facet (self-cancelling N≥3 marker). · PLAN-0046 (the Q3 build PLAN) drafted + Cray-ratified (SD-1 = a separate validate_read_bindings load-gate entry point; SD-2 = leave existing verticals absent, prove on a fixture) + merged **Ready for execution** (#509)."
 current_actor: code
 blocked_on: "Nothing blocking. ADR-016 Q3 amendment Accepted (#505); the parallel hero compliance-swap follow-up landed last session (#506, 0b7efe4). Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
-next_action: "NEXT = the fast-follow build PLAN implementing the Q3 read-side: StepInput.reads + Agent.allowed.object_types + the load-gate + reads→STEP_GOVERNANCE_FIELDS + tests (impl note: the load-gate must thread the vertical OntologyMeta into pre-flight — validate_runnable(procedure, agent) doesn't carry it today). The generic query executor (Q4) is a separate later PLAN. Needs a Cray go / dispatch."
-head_commit: cb7eb05
-recent_commits: [cb7eb05, 915c344, 0b7efe4, 3a4d98a, d080740]
+next_action: "EXECUTE PLAN-0046 (Ready): spec.py StepInput.reads: list[str] + AgentAllowed.object_types → the new validate_read_bindings(procedure, agent, registry) load-gate (SD-1 Option A — validate_runnable untouched) → add reads to STEP_GOVERNANCE_FIELDS → fixture-based offline tests; offline suite is the gate; the generic run-consume query executor (Q4) is a separate later PLAN. No live run. Needs a Cray go to start the build."
+head_commit: d544414
+recent_commits: [d544414, bd7423b, cb7eb05, 915c344, 0b7efe4]
 ---
 
 # vero-lite — Project Status
@@ -52,6 +52,12 @@ recent_commits: [cb7eb05, 915c344, 0b7efe4, 3a4d98a, d080740]
 > executor (Q4) is a separate later PLAN. **Standing:** `loop-dispatcher` stays
 > **DISABLED**; MS-S1 cold (offline, §8); AI-assisted (Claude Code, session 93),
 > no `Co-Authored-By` per CLAUDE.md §7.
+>
+> **UPDATE (same session):** the fast-follow build PLAN is now **PLAN-0046** —
+> drafted → Cowork-lens-informed Code R2 → Cray-ratified (SD-1 separate
+> `validate_read_bindings` entry point + SD-2 verticals-stay-absent) → merged
+> **Ready for execution** (#509, `d544414`). NEXT = execute Steps 1–4 (offline
+> gate; no live run).
 
 > **Session 92 (head_commit `4f22602`) — PLAN-0044 A1b STEPS 2 + 4 MERGED
 > (offline close-out) — two PRs (#499 Step 4 the `rule_gate` per-kind executor
