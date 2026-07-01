@@ -10,9 +10,11 @@ falling through to the BASE executor for a non-AT-2 step — so the orchestrator
 ``_Evaluate`` dispatch. The enforcement itself stays a small pure function the wrapper calls
 (:func:`~services.engine.procedures.doa_tier.resolve_doa_tier`).
 
-This module ships the **ACTION** wrapper with the ``doa_tier`` branch (Step 3); the ``scored_rule``
-branch (Step 5, also an ACTION-step content) and the EVALUATE wrapper's ``rule_gate`` branch
-(Step 4) extend it. Render / route / block only — the wrapper resolves + annotates; the shipped
+This module ships the **ACTION** wrapper with the ``doa_tier`` branch (Step 3) and the
+``scored_rule`` branch (Step 5, also ACTION-step content); the EVALUATE wrapper's ``rule_gate``
+branch (Step 4) extends it. Render / route / select only — the wrapper resolves + annotates, and
+for ``scored_rule`` it EMITS the selected quote's spend onto the threaded entity so the downstream
+``doa_tier`` resolves (PLAN-0044 A1b Step 5, the section-3 baht-threading fix); the shipped
 ADR-0007 approve->execute gate stays the only external write path (LOCKED #3).
 """
 
@@ -26,7 +28,8 @@ from typing import Any
 from services.engine.actions import ControlRef, GovernedDecision
 from services.engine.procedures.doa_tier import DoaTierError, resolve_doa_tier
 from services.engine.procedures.orchestrator import RunContext, StepExecutor, StepOutcome
-from services.engine.procedures.spec import DoaLadder, Person, Step
+from services.engine.procedures.scored_rule import ScoredRuleError, select_scored_supplier
+from services.engine.procedures.spec import DoaLadder, Person, ScoredRule, Step
 
 
 def _spend(entity: Any) -> tuple[Decimal, str]:
@@ -50,6 +53,63 @@ def _spend(entity: Any) -> tuple[Decimal, str]:
     return value, str(entity["currency"])
 
 
+def _candidate_quotes(entity: Any) -> list[Any]:
+    """The candidate quotes the ``scored_rule`` ``source`` step scores -- carried on the input
+    entity (intake enriches the requisition with them, data-access = (a), Cray-confirmed s91).
+    Fails CLOSED if absent / not a list (a supplier cannot be selected without candidates)."""
+    if not isinstance(entity, Mapping) or "candidate_quotes" not in entity:
+        raise ScoredRuleError(
+            "scored_rule: input entity carries no 'candidate_quotes' -- the source step needs the "
+            "part's candidate quotes to score (intake enriches the requisition with them, "
+            "PLAN-0044 A1b Step 5 data-access = (a)); fail closed"
+        )
+    quotes = entity["candidate_quotes"]
+    if not isinstance(quotes, list):
+        raise ScoredRuleError(
+            f"scored_rule: 'candidate_quotes' must be a list, got {type(quotes).__name__} "
+            "-- fail closed"
+        )
+    return quotes
+
+
+def _quantity(entity: Any) -> Decimal:
+    """The requested quantity that scales the winning unit price to the PO spend (PLAN-0044 A1b
+    Step 5). Defaults to 1 (a single-unit order) when the requisition carries none. ``Decimal``,
+    never ``float`` -- the spend routes an authority tier."""
+    raw = entity.get("qty", entity.get("quantity", 1)) if isinstance(entity, Mapping) else 1
+    try:
+        return Decimal(str(raw))
+    except InvalidOperation as exc:
+        raise ScoredRuleError(
+            f"scored_rule: entity qty '{raw}' is not a valid Decimal quantity -- fail closed"
+        ) from exc
+
+
+def _event_criticality(entity: Any) -> Decimal:
+    """The event criticality (0..1) that amplifies the ``criticality`` criterion's weight (see
+    ``scored_rule`` module docstring). Read from an explicit ``criticality`` field; else the
+    ontology-projected ``measured_value`` when the reading IS a criticality (``unit ==
+    'criticality'``, the operational-event convention); else a neutral 0.5 (no amplification bias).
+    Clamped to [0, 1]."""
+    if isinstance(entity, Mapping) and "criticality" in entity:
+        raw: Any = entity["criticality"]
+    elif (
+        isinstance(entity, Mapping)
+        and str(entity.get("unit", "")).lower() == "criticality"
+        and "measured_value" in entity
+    ):
+        raw = entity["measured_value"]
+    else:
+        raw = "0.5"
+    try:
+        value = Decimal(str(raw))
+    except InvalidOperation as exc:
+        raise ScoredRuleError(
+            f"scored_rule: entity criticality '{raw}' is not a valid Decimal -- fail closed"
+        ) from exc
+    return min(Decimal(1), max(Decimal(0), value))
+
+
 @dataclass(frozen=True)
 class GovernanceActionExecutor:
     """SD-1=(a) dispatching wrapper for the ``action`` StepKind (PLAN-0044 A1b Step 3).
@@ -70,6 +130,8 @@ class GovernanceActionExecutor:
         gc = step.governance_content
         if isinstance(gc, DoaLadder):
             return await self._doa_tier(step, gc, input_set, ctx)
+        if isinstance(gc, ScoredRule):
+            return await self._scored_rule(step, gc, input_set, ctx)
         return await self.base.execute(step, input_set, ctx)
 
     async def _doa_tier(
@@ -129,3 +191,64 @@ class GovernanceActionExecutor:
             "governed_decision": governed_decisions,
         }
         return StepOutcome(output=base_outcome.output, reasoning_trace=trace, audit=audit)
+
+    async def _scored_rule(
+        self, step: Step, rule: ScoredRule, input_set: list[Any], ctx: RunContext
+    ) -> StepOutcome:
+        """Deterministically select the supplier per entity's candidate quotes and EMIT the
+        selected spend (``unit_price x qty``) + currency onto the threaded entity, so the downstream
+        approve doa_tier resolves (PLAN-0044 A1b Step 5 -- the section-3 baht-threading fix).
+
+        Unlike :meth:`_doa_tier` (which KEEPS the base envelopes), this REPLACES the output with the
+        enriched selected entities -- the whole point of the finding: the shipped ``action``
+        executor returns action envelopes, DROPPING the input entity's spend, so the approve
+        doa_tier would fail closed with no amount. The base executor still runs (its advisory LLM
+        judgment + the auto sourcing action + its audit); the LLM NEVER selects (governed !=
+        generated, ADR-0019 IN-3). Render / route / select only -- no PO is issued (LOCKED #3)."""
+        verdicts = [
+            select_scored_supplier(
+                rule,
+                _candidate_quotes(entity),
+                qty=_quantity(entity),
+                event_criticality=_event_criticality(entity),
+            )
+            for entity in input_set
+        ]
+        base_outcome = await self.base.execute(step, input_set, ctx)
+        enriched: list[Any] = [
+            {
+                **(entity if isinstance(entity, Mapping) else {"value": entity}),
+                "amount": str(v.amount),
+                "currency": v.currency,
+                "selected_quote_id": v.selected_quote_id,
+                "selected_supplier_id": v.selected_supplier_id,
+                "source_path": v.source_path,
+                "override_required": v.override_required,
+            }
+            for entity, v in zip(input_set, verdicts, strict=True)
+        ]
+        trace = list(base_outcome.reasoning_trace) + [
+            {
+                "kind": "scored_rule_selected",
+                "selected_supplier_id": v.selected_supplier_id,
+                "selected_quote_id": v.selected_quote_id,
+                "amount": str(v.amount),
+                "currency": v.currency,
+                "summary": (
+                    f"scored {len(v.ranked)} quotes -> '{v.selected_supplier_id}' "
+                    f"(quote '{v.selected_quote_id}', {v.amount} {v.currency}"
+                    + (
+                        ", off-contract exception -- logged justification required)"
+                        if v.override_required
+                        else ", on-contract default)"
+                    )
+                ),
+            }
+            for v in verdicts
+        ]
+        audit = {
+            **(base_outcome.audit or {}),
+            "governed_kind": "scored_rule",
+            "scored_rule": [v.to_audit() for v in verdicts],
+        }
+        return StepOutcome(output=enriched, reasoning_trace=trace, audit=audit)
