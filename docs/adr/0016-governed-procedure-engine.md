@@ -5,7 +5,7 @@
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-005 (strategic pivot to OCT — **expands feature-3**), ADR-007 (OCT engine contracts — **generalizes** the D2 `RecommendedAction` envelope; does **not** break it), ADR-008 (YAML ontology spec — the six `object_types` are **untouched**; `procedures.yaml` is a separate spec layer), ADR-001 (LLM model baseline — the local `gpt-oss:20b` pin is the default `Agent` model), ADR-010 (LLM reasoning-hook surface — the per-action reasoning trace generalizes to per-step), ADR-013 (autonomy-axis relocation — safe / human-gated autonomy posture). Implementation deferred to **PLAN-0019**. Grounding research: `docs/research/private/2026-06-07-palantir-5-concerns-pipeline-design.md` (5 Palantir findings, 25 claims 3-0 / 0 killed), `docs/research/private/2026-06-06-impl-approach-reconciliation.md` (on-thesis framing). This ADR does **not** supersede any prior ADR.
 
-**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified).
+**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified). **D2 + D3 Amendment (2026-07-01)** → typed read-side ontology object-binding for query steps (Q3) (**Proposed** — awaiting Cray ratification).
 
 > **Drafting provenance.** Drafted (uncommitted) by the in-harness
 > `plan-drafter` subagent under ADR-009 D1 interim authoring per ADR-013's
@@ -428,6 +428,273 @@ Python-attribute-faithful), not the hyphenated comment form
 - ADR-006 (Rule-of-Three) — N=4 justifies extracting the schema now.
 - Memory: `project-vero-ultimate-target-generative-procedures` (the
   generate → run → monitor arc).
+
+### D2 + D3 Amendment (2026-07-01): typed read-side ontology object-binding for query steps (Q3)
+
+> **Status:** **Proposed** (awaiting Cray ratification). **Date:** 2026-07-01.
+> **Deciders:** Jirachai Thiemsert (founder) — to ratify. **Amends:** D2 (the
+> `Step` / `StepInput` grammar) **and** D3 (the `Agent.allowed` blast-radius
+> allowlist) — **extends, does not reverse or renumber**; mirrors the **D2
+> Amendment (2026-06-25)** typed-`facet:` in-place precedent and the **D3
+> Amendment (2026-06-11) / ADR-0019** extends-not-reverses precedent. This is a
+> **Q3-only** amendment (Rock 3 / O-2).
+>
+> **Author≠reviewer disclosure (ADR-012 D4.3).** Outline originator = Cray (the
+> s84 design direction "bind query steps to ontology objects; the mapping layer
+> absorbs source diversity" + the Rock 3 / O-2 gap flag). Drafter = the
+> in-harness `plan-drafter` subagent (ADR-013 D2 authoring path / ADR-009 D1
+> interim authoring). Independent reviewer = Code R2-review at commit + Cray at
+> ratification (Proposed → Accepted). The drafter is not the ratifier —
+> separation **intact**.
+
+#### Context for the amendment
+
+D2/D3 gave the write side of the procedure engine real governance: an `action`
+step is `gated` by default (D3), its blast radius is bounded by
+`Agent.allowed.action_handlers` (enforced at run time — the engine refuses to
+invoke a handler the agent is not allowlisted for), and the `RecommendedAction`
+it produces routes through the approve→execute gate (ADR-007). **The mirror-image
+READ side has no equivalent seam.** Two gaps, both verified against the shipped
+code:
+
+**Gap (A) — a query Step has no typed object-type binding.** `StepInput`
+(`services/engine/procedures/spec.py:110-132`) carries **only** `from_step`
+(alias `from`) + `where`, under `ConfigDict(extra="forbid")`. The orchestrator's
+`_resolve_input` (`orchestrator.py:310-330`) resolves a step's input **only** from
+the prior-step output bag (by `from_step`, else the immediately-prior step); the
+**first** step gets an empty base `[]` and never touches the adapter. So
+`from_step` is an **intra-run** threading path, not a data entry point. Every
+vertical names its query object **in prose only** — the `description` string plus
+the **non-authoritative** free-text `facet.input`. Consequence: **no shipped query
+executor exists in the engine** — each vertical hand-writes a seed executor that
+calls `adapter.fetch_objects` manually (e.g. procurement's `_SeedQuery` /
+`_intake_seed` in `verticals/procurement/hero_demo/run.py`, which calls
+`adapter.fetch_objects("OperationalEvent")` / `("PurchaseOrder")` / `("Quotation")`
+directly).
+
+**Gap (B) — the `Agent` has no read-side blast-radius bound.** `AgentAllowed`
+(`spec.py:589-597`) = `{step_kinds, action_handlers}`. `action_handlers` bounds
+the **write** side and **is** enforced at run time. There is **no `object_types`
+field** → an agent's read reach is **unbounded**. And there is **zero read-side
+access control anywhere**: the `DataAdapter` protocol (`data_adapter.py:24-69`)
+assumes the caller is authorized — `fetch_objects(object_type)` /
+`fetch_links(link_type)` / `stream_events(event_type)` all take object-type names
+but **gate nothing**.
+
+**The binding seam already exists at the adapter.** `ObjectTypeMeta`
+(`ontology_meta.py:42-55`) is the typed object registry
+(`name`/`primary_key`/`title_key`/`properties`/`quantity_bindings`), sourced from
+`verticals/<v>/ontology/<v>_v0.yaml` (`ontology_meta.ontology_path`) via codegen.
+The `DataAdapter` **already speaks object-type names** — the read entry point is
+just **untyped and unbounded in the procedure spec**. Cray's s84 direction is to
+**bind query steps to ontology objects** (the mapping layer absorbs source
+diversity); this is **not** connectors-in-the-procedure.
+
+**Three ambiguities the Explore pass flagged (defined here so the Decision is
+unambiguous):**
+
+1. **"data source" is overloaded.** *Input-**binding*** = which prior step's
+   output set feeds this step (today's `StepInput.from_step`; an **intra-run**
+   thread). *Data-**sourcing*** = the executor's job of **fetching the initial /
+   external object set** for a query step that has no prior step to thread from.
+   **Q3 is about typing the read *entry point* (data-sourcing) as an ontology
+   object** — it does **not** change or replace `from_step` (input-binding stays
+   as-is).
+2. **Adapter binding is implicit today.** The vertical is passed as a **string to
+   `run_procedure`** (the seed executor closes over that adapter); the adapter is
+   **not named in the procedure spec**. This amendment does not change how the
+   adapter is selected — it types **what object** a query step reads through it.
+3. **No shipped query executor.** That each vertical supplies a seed/query
+   executor is today an **undocumented operational expectation**, not an engine
+   contract.
+
+**Rule-of-Three (N=4 — pattern amply extracted per ADR-006; extract now, not
+prematurely).** Every vertical's first query step already names its object in
+prose:
+
+| vertical | query step | object bound (prose today) |
+|---|---|---|
+| aquaculture | `read_do` | "per active **Pond**" |
+| supply_chain | `read_temps` | "per in-transit **Shipment**" |
+| energy | `read_readings` | "per active **Asset**" |
+| procurement | `read_stock` / `intake` | "per stocked **Part**" / failure "**work-order(s)**" → PR |
+
+#### Decision (D2/D3-Q1 … Q4)
+
+The read side gets **governance parity with the write side**, delivered
+**contract-first**: type the binding + add the allowlist + **gate at LOAD time**
+now (low-risk, no runtime data-flow change), and **defer** the generic
+run-consume executor to a fast-follow PLAN.
+
+**Q1 — Add a typed object-type binding to a query Step's read entry point.**
+Introduce a **known** sub-field naming the ontology object a query step reads
+(working name `reads` / `object_type`), **keeping `ConfigDict(extra="forbid")`
+intact** — the binding becomes a typed key, unknown keys stay rejected. It is
+**distinct from** and **additive to** `from_step` (the intra-run thread stays for
+threading; `reads` names the data-sourcing entry point). It is **not** carried on
+the non-authoritative `facet.input` (that stays a prose note per the 2026-06-25
+D2-A2 Hybrid rule — the typed binding is the source of truth). **Exact placement
+is surfaced as OQ-1** (recommendation: a `StepInput` sub-field, so the read entry
+point sits beside the existing `from`/`where` input grammar).
+
+**Q2 — Add `Agent.allowed.object_types: list[str]` mirroring `action_handlers`.**
+This is the read-side counterpart to the write-side handler allowlist — it
+**bounds an agent's read blast radius**, closing Gap (B). Shape and default mirror
+`action_handlers` exactly (`list[str]`, `default_factory=list`), under the
+existing `AgentAllowed(extra="forbid")`.
+
+**Q3 — Enforce at LOAD / validation time (a real read-gate, symmetric with the
+write-side handler bound).** A query step's named object_type MUST **(a)** exist
+in the vertical's ontology (present in `ObjectTypeMeta` for that vertical) **AND
+(b)** be in the running `Agent.allowed.object_types` — else the engine **refuses
+to load the procedure** (mirroring how an un-allowlisted `action_handler` is
+refused). Enforcement is at **load / pre-flight** (alongside
+`validate_runnable`), so it touches **no runtime data flow** — the hero-demo and
+live paths are **unaffected** (they keep their hand-written seeds until the
+executor lands). This is the low-risk half that delivers read-side governance
+**now**.
+
+**Q4 — Defer the generic query executor to a fast-follow build PLAN.** The
+executor that resolves a query step's `object_type` → `adapter.fetch_objects` →
+typed entities (retiring the hand-written per-vertical seeds) is **deferred**
+because it **touches the runtime data flow the hero-demo / live path depends on**,
+and because some query steps **enrich / join** rather than do a plain fetch (e.g.
+procurement's `intake` reads the failure **work-order** and assembles an enriched
+**PurchaseRequisition** set, joining across `OperationalEvent` / `PurchaseOrder` /
+`Quotation`). The typed contract (Q1–Q3) must **prove out first**; the executor is
+a separate PLAN once the contract is `Accepted`.
+
+**Rationale (capture).** Contract-first: type the binding + add the allowlist to
+get **read-side governance parity at low risk now** (author + validate +
+load-gate), and **consume later** (the run-consume executor is a fast-follow). The
+`object_types` allowlist is also the **foundation for future read-side audit /
+PDPA** (PLAN-0005 §8.1) — an agent's declared read reach becomes an auditable,
+enforced fact rather than an implicit adapter capability.
+
+#### `spec.py` delta (illustrative — the follow-on PLAN owns the literal edit)
+
+```python
+# Q1 — the read entry point on StepInput (OQ-1 recommendation; extra="forbid" kept):
+class StepInput(BaseModel):
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+    from_step: str | None = Field(default=None, alias="from")  # UNCHANGED — intra-run thread
+    where: dict[str, Any] | None = None                        # UNCHANGED — post-fetch filter (OQ-4)
+    reads: str | None = Field(                                 # NET-NEW — data-sourcing entry point
+        default=None,
+        description="ontology object_type this query step reads (must exist in the vertical's "
+        "ObjectTypeMeta AND be in Agent.allowed.object_types) — ADR-016 Q3",
+    )
+
+# Q2 — the read-side allowlist mirroring action_handlers:
+class AgentAllowed(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    step_kinds: list[StepKind] = Field(default_factory=list)
+    action_handlers: list[str] = Field(default_factory=list)   # UNCHANGED — write bound
+    object_types: list[str] = Field(                           # NET-NEW — read bound (Q2)
+        default_factory=list, description="ontology object_types this agent may read (Q3 load-gate)"
+    )
+```
+
+Load-gate (Q3), at pre-flight beside `validate_runnable` — **no runtime data-flow
+change**: for each `kind == query` step with `input.reads` set, assert
+`reads ∈ vertical_object_types` **and** `reads ∈ agent.allowed.object_types`, else
+refuse to load.
+
+#### Scope boundary (amendment — keep it tight)
+
+- **IN:** the **typed read-side binding** (Q1) + the **`object_types` allowlist**
+  (Q2) + the **load-time enforcement** (Q3). Read-side governance parity, contract
+  only.
+- **OUT — the generic run-consume query executor** (Q4): a **fast-follow build
+  PLAN**, gated on this amendment `Accepted`. It touches runtime data flow and the
+  enrich/join query steps; the contract proves out first.
+- **OUT — the Box-4 economic-impact facet (฿ dimension), EXPLICITLY DEFERRED as a
+  self-cancelling deferral.** It is gated on **N ≥ 3 verticals actually carrying
+  the ฿ dimension** (today **N = 1** — Fastenal / procurement only). Mirroring the
+  **ADR-0025 D7 / ADR-0026 OQ-6** enforceable-re-trigger precedent: a CI / test
+  marker (an `xfail`-style assertion) counts verticals carrying the economic
+  dimension across `verticals/*/`, and **fails / flags** when the **2nd then 3rd**
+  vertical crosses the threshold — so the deferral **cannot silently erode** under
+  delivery pressure (governance R5). The economic facet is **not designed here**;
+  the marker is the self-cancelling trigger to re-open it at N ≥ 3.
+- **OUT:** connectors-in-the-procedure (LOCKED — the mapping layer absorbs source
+  diversity, Cray s84); any change to how the adapter is selected
+  (`run_procedure`'s vertical string, ambiguity #2); any change to `from_step`
+  input-binding, `kind`, `autonomy`, gates, or the D2 `facet` schema (all
+  unchanged).
+
+#### Open Questions (for Cray ratification)
+
+- **OQ-1 (field placement).** `StepInput.reads` sub-field **(recommended** — the
+  read entry point sits beside the existing `from`/`where` input grammar; one
+  cohesive input model) **vs** a top-level `Step.reads`. Both keep
+  `extra="forbid"`; the difference is where the read binding conceptually lives.
+- **OQ-2 (v1 depth).** author + validate + **load-gate (recommended** — real
+  read-side governance now, zero runtime-data-flow risk) **vs** full run-consume
+  (delivers the executor now but touches the hero-demo/live data flow and the
+  enrich/join steps — higher risk, defeats contract-first) **vs**
+  validate-only-no-enforce (types the binding but adds **no** actual read-gate —
+  documents the gap without closing Gap (B), so no governance parity). The
+  recommendation buys the governance parity at the lowest blast radius.
+- **OQ-3 (allowlist verb scope).** Does `Agent.allowed.object_types` gate
+  `stream_events` / `fetch_links` too, or only `fetch_objects`-style reads in v1?
+  **Recommendation: all read verbs in principle** (the allowlist is a read-reach
+  bound, not a fetch-verb bound); **v1 enforcement scope = the query-step object
+  binding** (Q3), with events/links folding in when the executor lands (Q4).
+- **OQ-4 (`reads` ↔ `input.where`).** Is `where` still the **post-fetch**
+  narrowing over the fetched object set? **Recommendation: yes** — `reads` names
+  **what** to fetch (the object_type); `where` stays the **field-equality filter
+  over the fetched set** (unchanged from `_matches` / `_resolve_input`), so the
+  set-valued fan-out semantics are preserved.
+
+#### Consequences
+
+- `StepInput` gains a typed optional **read entry point** (Q1) and `AgentAllowed`
+  gains a typed **read allowlist** (Q2); both keep `extra="forbid"`.
+  **Backward-compatible**: a query step without `reads` and an agent without
+  `object_types` load exactly as today (every shipped procedure + hero-demo still
+  loads — the load-gate only fires when `reads` is set).
+- The read side reaches **governance parity** with the write side: an agent's
+  read reach becomes a **bounded, enforced, auditable** fact (Gap B closed at
+  load time), symmetric with `action_handlers`.
+- **No runtime data-flow change** — `_resolve_input` and the hand-written seed
+  executors are untouched; the hero-demo and live paths are unaffected. The
+  generic executor (Q4) that retires the seeds is a **fast-follow PLAN**.
+- The `object_types` allowlist becomes the **foundation for read-side audit /
+  PDPA** (PLAN-0005 §8.1) — the first typed read-access surface in the engine.
+- The Box-4 **economic facet stays out**, guarded by an **enforceable
+  self-cancelling N ≥ 3 re-trigger** (ADR-0025 D7 precedent) so the deferral is
+  auditable, not a comment that erodes.
+
+#### Amendment references
+
+- `services/engine/procedures/spec.py` — `StepInput` (`:110-132`, the
+  `from`/`where` grammar + `extra="forbid"`), `AgentAllowed` (`:589-597`,
+  `step_kinds`/`action_handlers`), `Agent` (`:641-654`).
+- `services/engine/procedures/orchestrator.py` — `_resolve_input` (`:310-330`,
+  the intra-run threading that never touches the adapter) + `run_procedure`.
+- `services/engine/data_adapter.py` — the `DataAdapter` protocol (`:24-69`;
+  `fetch_objects`/`fetch_links`/`stream_events` take object-type names but gate
+  nothing).
+- `services/engine/ontology_meta.py` — `ObjectTypeMeta` (`:42-55`) + `ontology_path`
+  (`:77-79`), the typed object registry the load-gate validates against.
+- `verticals/{aquaculture,supply_chain,energy,procurement}/procedures.yaml` — the
+  N=4 query steps that name their object in prose only (`read_do` / `read_temps` /
+  `read_readings` / `read_stock` / `intake`).
+- `verticals/procurement/hero_demo/run.py` — `_SeedQuery` / `_intake_seed`, the
+  hand-written seed executor (the enrich/join case that keeps Q4 deferred).
+- ADR-016 D2 Amendment (2026-06-25) — the typed-`facet:` in-place precedent (and
+  D2-A2: `facet.input` stays a non-authoritative prose note, so the typed `reads`
+  is the source of truth).
+- ADR-016 D3 Amendment (2026-06-11) / ADR-0019 — the extends-not-reverses in-place
+  precedent.
+- ADR-0025 D7 / ADR-0026 OQ-6 — the enforceable self-cancelling Rule-of-Three
+  re-trigger precedent (mirrored for the deferred economic facet, N ≥ 3).
+- ADR-006 (Rule-of-Three) — N=4 justifies extracting the read-binding schema now.
+- ADR-007 D1 (the `DataAdapter` contract) / ADR-008 (the ontology the object_type
+  names resolve against, untouched).
+- PLAN-0005 §8.1 — the read-side audit / PDPA surface the `object_types` allowlist
+  seeds.
 
 ### D3: Autonomy model + safe-agentic posture
 
