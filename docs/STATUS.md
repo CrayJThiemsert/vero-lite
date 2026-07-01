@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-06-30T23:46:26+07:00
-session: 89
-current_batch: "session-89 A1b Steps 3+6 SHIPPED+merged (#488 doa_tier / #489 governed_decision) + verified (J1/J2 PASS) — the DEMO-CRITICAL PATH (live SoD · doa_tier · audit-to-control) is COMPLETE on main. Remaining A1b (non-demo-critical): AC-9 (auto-downstream-of-gate assertion, needs a Cray decision) + Steps 2/4/5."
+last_updated: 2026-07-01T10:33:43+07:00
+session: 90
+current_batch: "session-90 HERO-DEMO v1 execution — PLAN-0045 MERGED (#491, e161248). Phase 0 COMPLETE (Cray ratified all 4: SD-1=Layered [offline fixture gate + live MS-S1 runner] · SD-2=reuse facetModel seam + thin governanceMoment joiner · SD-3=derived API view /demo/hero/impact + 4 demo guards · hero=bearing-set ฿288k). Phase 1 building offline (C1 FastenalCsvAdapter · governance-moment render · ฿-impact ledger; ruff+mypy--strict+pytest = the gate, no live MS-S1)."
 current_actor: code
-blocked_on: "Nothing blocking. The demo-critical A1b path (Steps 1+3+6) is COMPLETE on main; the hero-demo session can build the governance-moment render. Remaining A1b is offline-pure: AC-9 (a Cray decision — it restructures the procurement audit terminal) + Steps 2/4/5. loop-dispatcher DISABLED; MS-S1 cold; PLAN-0044 Completion-note + git mv → done/ owed at A1b CLOSE."
-next_action: "Signal the hero-demo session to converge — the demo-critical path is on main, so release the services/engine/procedures/* hold and let it build the governance-moment render. Then A1b's remaining non-demo-critical work: AC-9 (the autonomy:auto-downstream-of-a-gate assertion, on a Cray option pick — restructure the procurement audit terminal vs exempt no-op terminals) + Steps 2/4/5 (OQ-6 N≥2 marker · rule_gate · scored_rule)."
-head_commit: f5527d9
-recent_commits: [f5527d9, 34be3a5, 719ea78, 7d8ae2b, b07af06, e20dc77, 2833e58, b3a0f69, bcf3b74, 3d671d4]
+blocked_on: "Nothing blocking. Phase 1 hero-demo build is offline (§8 gate); the live MS-S1 runner layer (SD-1) is host-state — explicit Cray go before each live run. Owed at A1b CLOSE (Phase 2): PLAN-0044 Completion-note + git mv → done/ + a STATUS full-body reconcile. loop-dispatcher DISABLED."
+next_action: "Execute PLAN-0045 Phase 1: C1 FastenalCsvAdapter (verticals/, zero services/ core edit) → offline audit fixture (resolve_doa_tier + check_principal_sod from the real engine) → governance-moment render (bind the 3 shipped A1b fields, no reshape) → ฿-ledger derived view → offline gate (AC-1..8). Then the live MS-S1 runner (Cray go). Phase 2 = A1 close-out (AC-9 + Steps 2/4/5)."
+head_commit: e161248
+recent_commits: [e161248, ff2a2b0, e57fe8d, 411b5f7, 6b54ffe, b2a6cd0, f5527d9, 34be3a5, a9929fc, 755c539]
 ---
 
 # vero-lite — Project Status
