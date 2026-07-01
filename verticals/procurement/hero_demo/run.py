@@ -23,8 +23,7 @@ DEMO-GRADE / PROVISIONAL (the C1 dataset).
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from services.engine.actions import ControlRef, GovernedDecision
@@ -32,7 +31,10 @@ from services.engine.llm.client import ChatResult
 from services.engine.llm.structured import ChatClient
 from services.engine.procedures.action_step import ActionStepExecutor, ClientFactory
 from services.engine.procedures.evaluate_step import EvaluateStepExecutor
-from services.engine.procedures.governance_step import GovernanceActionExecutor
+from services.engine.procedures.governance_step import (
+    GovernanceActionExecutor,
+    GovernanceEvaluateExecutor,
+)
 from services.engine.procedures.orchestrator import (
     ProcedureError,
     RunContext,
@@ -113,7 +115,8 @@ def advisory_stub_factory(_model: str) -> ChatClient:
 
 
 # --------------------------------------------------------------------------- #
-# Run-harness executors — the intake seed + the evaluate dispatch (judge / compliance)
+# Run-harness executors — the intake seed (the QUERY seam); the EVALUATE (judge /
+# compliance) now uses the SHIPPED :class:`GovernanceEvaluateExecutor` (see :func:`_executors`)
 # --------------------------------------------------------------------------- #
 
 
@@ -128,26 +131,6 @@ class _SeedQuery:
         return StepOutcome(
             output=list(self.seed),
             reasoning_trace=[{"kind": "query", "summary": "intake: enriched requisition seed"}],
-        )
-
-
-@dataclass
-class _EvaluateDispatch:
-    """The EVALUATE executor: the BANDED ``judge`` step uses the shipped deterministic
-    :class:`EvaluateStepExecutor`; the band-less ``compliance`` step is a run harness tagging each
-    candidate ``compliant`` (the AT-2 ``rule_gate`` executor is PLAN-0044 Step 4, not yet shipped --
-    the compliance gate is stubbed PASS for the hero happy path, honestly noted in the trace)."""
-
-    _band: EvaluateStepExecutor = field(default_factory=EvaluateStepExecutor)
-
-    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
-        if step.threshold is not None:
-            return await self._band.execute(step, input_set, ctx)
-        return StepOutcome(
-            output=[{**e, "compliant": True} for e in input_set if isinstance(e, Mapping)],
-            reasoning_trace=[
-                {"kind": "rule", "summary": "compliance (harness — rule_gate is Step 4, deferred)"}
-            ],
         )
 
 
@@ -206,6 +189,20 @@ async def _intake_seed(adapter: FastenalCsvAdapter) -> dict[str, Any]:
         "criticality": failure["measured_value"],
         "qty": req["qty"],  # the hero-knob qty (3) -> 96,000 x 3 = 288,000
         "candidate_quotes": _normalize_quotes(quotes),
+        # the per-criterion compliance signal the shipped rule_gate enforces (data-access = (a),
+        # mirroring candidate_quotes -- rule_gate.COMPLIANCE_FIELD = "compliance"). The hero passes
+        # every criterion, so the gate does not block the PO. NARRATIVE: RapidMRO is OFF_AVL and is
+        # selected via the logged RFQ->AVL exception (the scored_rule's source_path:
+        # exception_policy). The `avl` spec explicitly allows "a logged emergency AVL exception", so
+        # the `avl` signal is True VIA that documented exception -- NOT because RapidMRO is on-AVL
+        # (the exception is the reason it passes; coherent with the off-AVL story).
+        "compliance": {
+            "avl": True,  # True via the logged RFQ->AVL emergency exception (off-AVL)
+            "tax": True,
+            "cert": True,
+            "sanctions": True,
+            "single_source": True,
+        },
         # requisition metadata for the audit contract (the governed fields are re-derived)
         "order_type": req["order_type"],
         "is_off_avl_override": req["is_off_avl_override"],
@@ -216,9 +213,14 @@ async def _intake_seed(adapter: FastenalCsvAdapter) -> dict[str, Any]:
 def _executors(
     client_factory: ClientFactory, principals: list[Person], seed: list[Any]
 ) -> dict[StepKind, StepExecutor]:
-    """The per-kind executors for the live run: QUERY seeds the requisition; EVALUATE dispatches
-    judge/compliance; ACTION is the AT-2 governance wrapper (scored_rule at ``source``, doa_tier at
-    ``approve``) over the shipped :class:`ActionStepExecutor` base."""
+    """The per-kind executors for the live run: QUERY seeds the requisition; EVALUATE is the AT-2
+    governance wrapper (``rule_gate`` at ``compliance``, falling through to the shipped
+    :class:`EvaluateStepExecutor` for the banded ``judge``); ACTION is the AT-2 governance wrapper
+    (scored_rule at ``source``, doa_tier at ``approve``) over the shipped
+    :class:`ActionStepExecutor` base. The band-less ``compliance`` step now runs the SHIPPED
+    ``rule_gate`` gate end-to-end (no stub) -- :class:`GovernanceEvaluateExecutor` dispatches its
+    ``ComplianceGate`` content to the deterministic
+    :func:`~services.engine.procedures.rule_gate.evaluate_compliance`."""
     action = GovernanceActionExecutor(
         base=ActionStepExecutor(client_factory=client_factory),
         principals=principals,
@@ -226,7 +228,7 @@ def _executors(
     )
     return {
         StepKind.QUERY: _SeedQuery(seed),
-        StepKind.EVALUATE: _EvaluateDispatch(),
+        StepKind.EVALUATE: GovernanceEvaluateExecutor(base=EvaluateStepExecutor()),
         StepKind.ACTION: action,
     }
 
