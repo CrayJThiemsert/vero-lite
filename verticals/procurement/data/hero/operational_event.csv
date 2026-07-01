@@ -1,0 +1,3 @@
+event_id,event_type,severity,measured_value,unit,description,occurred_at,asset_id,site
+EVT-CNC-014-FAIL,failure,critical,0.92,criticality,CNC Machining Center #14 spindle bearing failure — line down; on-hand spare exhausted,2026-06-30T09:15:00Z,AST-CNC-014,Rayong-EEC-Plant1
+EVT-CNC-014-BASE,reading,info,0.30,criticality,CNC Machining Center #14 operating nominally,2026-06-30T06:00:00Z,AST-CNC-014,Rayong-EEC-Plant1
