@@ -12,7 +12,8 @@
     C: { key: 'C', label: 'Ask', icon: 'ask', mod: () => O.ViewAsk },
     D: { key: 'D', label: 'Data → Decision', icon: 'flow', mod: () => O.ViewFlow },
     E: { key: 'E', label: 'Build a Vertical', icon: 'spark', mod: () => O.ViewIntake },
-    F: { key: 'F', label: 'Procedures', icon: 'receipt', mod: () => O.ViewProcedures }
+    F: { key: 'F', label: 'Procedures', icon: 'receipt', mod: () => O.ViewProcedures },
+    G: { key: 'G', label: 'Governance Moment', icon: 'spark', mod: () => O.ViewHero }
   };
 
   let stripEl, metaChipsEl, tabsEl, containers = {};

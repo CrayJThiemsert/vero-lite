@@ -1,0 +1,6 @@
+person_id,name,roles
+req-maint-planner,Preecha — Maintenance Planner (requester),requester|MAINT_PLANNER
+appr-supervisor,Somsak — Line Supervisor,approver|SUPERVISOR
+appr-manager,Naree — Plant Manager,approver|MANAGER
+appr-controller,Decha — Financial Controller,approver|CONTROLLER
+appr-vp,Wichai — VP Operations,approver|VP_OPERATIONS

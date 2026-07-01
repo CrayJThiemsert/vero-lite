@@ -1,0 +1,6 @@
+asset_id,name,asset_type,line_code,site,status,downtime_cost_per_hour_thb,criticality
+AST-CNC-014,CNC Machining Center #14,CNC_MILL,LINE-A,Rayong-EEC-Plant1,DOWN,85000,CRITICAL
+AST-CNC-009,CNC Machining Center #9,CNC_MILL,LINE-A,Rayong-EEC-Plant1,OPERATIONAL,82000,HIGH
+AST-PRESS-03,Stamping Press 300T,STAMP_PRESS,LINE-B,Rayong-EEC-Plant1,OPERATIONAL,120000,CRITICAL
+AST-ROBOT-21,Weld Robot Cell 21,WELD_ROBOT,LINE-C,Rayong-EEC-Plant1,OPERATIONAL,64000,HIGH
+AST-CONV-05,Main Line Conveyor 05,CONVEYOR,LINE-A,Rayong-EEC-Plant1,OPERATIONAL,38000,MED
