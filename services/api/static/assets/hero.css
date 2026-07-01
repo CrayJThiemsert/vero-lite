@@ -39,6 +39,11 @@
 .hero-badge.s-warn { color: var(--warn); background: var(--warn-bg); border-color: var(--warn-line); }
 .hero-badge.s-crit { color: var(--crit); background: var(--crit-bg); border-color: var(--crit-line); }
 .hero-badge.s-info { color: var(--info); background: var(--info-bg); border-color: var(--info-line); }
+.hero-toggle {
+  cursor: pointer; color: var(--info); background: var(--info-bg); border: 1px solid var(--info-line);
+  margin-left: auto;
+}
+.hero-toggle:hover { filter: brightness(1.12); }
 
 /* ---- cards ---- */
 .hero-card {

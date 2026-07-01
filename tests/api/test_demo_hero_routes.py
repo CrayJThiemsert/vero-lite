@@ -60,6 +60,25 @@ async def test_governance_endpoint_binds_shipped_shapes(client: AsyncClient) -> 
     assert body["contrast"]["doa_tier"][0]["resolved_tier_id"] == "MANAGER"
 
 
+async def test_governance_endpoint_live_derives_the_same_moment(client: AsyncClient) -> None:
+    """``?live=true`` runs the REAL procedure (host-state-free advisory stub) and returns the SAME
+    contract with ``source: "live-run"`` — the governance moment DERIVED by the run (the scored_rule
+    selects + emits the spend the doa_tier resolves), not the offline shortcut."""
+    response = await client.get("/demo/hero/governance?live=true")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["provisional"] is True
+    assert body["source"] == "live-run"
+    hero = body["hero"]
+    assert hero["supplier_id"] == "SUP-RAPIDMRO"  # selected by the scored rule, not the LLM
+    assert hero["doa_tier"][0]["resolved_tier_id"] == "CONTROLLER"
+    assert hero["amount"] == {"value": "288000", "currency": "THB"}
+    kinds = {gd["control_ref"]["kind"] for gd in hero["governed_decision"]}
+    assert kinds == {"doa_tier", "sod"}
+    # the contrast is the reused deterministic offline case (99k -> MANAGER)
+    assert body["contrast"]["doa_tier"][0]["resolved_tier_id"] == "MANAGER"
+
+
 async def test_demo_routes_advertised_in_openapi(client: AsyncClient) -> None:
     paths = (await client.get("/openapi.json")).json()["paths"]
     assert "/demo/hero/governance" in paths

@@ -22,11 +22,14 @@ DEMO-GRADE / PROVISIONAL (the C1 dataset).
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
 from services.engine.actions import ControlRef, GovernedDecision
+from services.engine.llm.client import ChatResult
+from services.engine.llm.structured import ChatClient
 from services.engine.procedures.action_step import ActionStepExecutor, ClientFactory
 from services.engine.procedures.evaluate_step import EvaluateStepExecutor
 from services.engine.procedures.governance_step import GovernanceActionExecutor
@@ -58,6 +61,55 @@ _LIVE_SOURCE = "live-run"
 # The hero procedure's SoD constraint id (sorted '+'-joined distinct_steps) -- the exact SoD
 # control id the engine emits + the offline builder ties on (intake != approve).
 _SOD_CONSTRAINT_ID = "approve+intake"
+
+
+# --------------------------------------------------------------------------- #
+# The offline-safe advisory-LLM default (the C-4 endpoint client; C-5 = real MS-S1)
+# --------------------------------------------------------------------------- #
+
+_STUB_JUDGMENT = json.dumps(
+    {
+        "title": "Emergency source the critical set",
+        "description": "A governed sourcing proposal awaiting the human DOA gate.",
+        "rationale": "The scored rule selected the supplier; the LLM only summarises.",
+        "confidence": 0.9,
+        "affected_entities": [{"object_type": "PurchaseOrder", "primary_key": _HERO_PO}],
+        "suggested_handler": "emergency_source",
+        "handler_payload": {},
+    }
+)
+
+
+class _AdvisoryStubClient:
+    """A deterministic advisory-prose stub ``ChatClient`` -- the offline-safe default for the
+    live-run endpoint (C-4). The run's GOVERNED decision (the scored_rule selection + the doa_tier
+    resolution) is INDEPENDENT of the LLM (governed != generated, ADR-0019 IN-3), so stubbing the
+    advisory prose keeps the ``?live=true`` endpoint deterministic + HOST-STATE-FREE. The C-5 live
+    smoke swaps the real :class:`~services.engine.llm.client.OllamaClient` (settings-gated) for the
+    live MS-S1 prose (CLAUDE.md #8)."""
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        think: bool | None = None,
+        response_format: dict[str, Any] | None = None,
+        temperature: float = 0.0,
+    ) -> ChatResult:
+        if response_format is not None:
+            return ChatResult(content=_STUB_JUDGMENT, thinking=None, model="stub", raw={})
+        return ChatResult(
+            content="advisory draft -- LLM prose stubbed; the governed decision is the rule",
+            thinking=None,
+            model="stub",
+            raw={},
+        )
+
+
+def advisory_stub_factory(_model: str) -> ChatClient:
+    """The demo-default ``client_factory`` for the live-run endpoint -- a deterministic advisory
+    stub (see :class:`_AdvisoryStubClient`). Host-state-free; the live MS-S1 client is C-5."""
+    return _AdvisoryStubClient()
 
 
 # --------------------------------------------------------------------------- #
