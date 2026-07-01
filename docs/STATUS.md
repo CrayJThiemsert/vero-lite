@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-01T18:32:00+07:00
+last_updated: 2026-07-01T20:18:56+07:00
 session: 92
-current_batch: "A1b (PLAN-0044) COMPLETE offline + CLOSED — all 12 ACs met (AC-9 merged #502, Option 2: no-op audit terminal exempt via a forge-proof handler-allowlist). PLAN-0044 + PLAN-0045 (hero-demo v1) Completion-noted + git mv → done/. Offline suite 2026 passed; no host-state, no PO issued."
+current_batch: "A1b (PLAN-0044) COMPLETE offline + CLOSED — all 12 ACs met (AC-9 merged #502, Option 2: no-op audit terminal exempt via a forge-proof handler-allowlist). PLAN-0044 + PLAN-0045 (hero-demo v1) Completion-noted + git mv → done/. Offline suite 2026 passed; no host-state, no PO issued. Optional hero-demo compliance harness→rule_gate-executor swap now DONE (merged #506, 0b7efe4): the live hero runner enforces the SHIPPED rule_gate gate end-to-end (compliance no longer stubbed); governed outcome unchanged (SUP-RAPIDMRO → ฿288,000 → CONTROLLER, sod.governed: true); offline-only, no PO issued."
 current_actor: code
-blocked_on: "Nothing blocking. A1b closed; PLAN-0044/0045 in done/. Optional follow-up = the hero-demo compliance harness→rule_gate-executor swap (out of scope for both PLANs; needs a compliance-signal enrichment + the off-AVL-exception narrative encoding). Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
-next_action: "Optional: the hero compliance-swap follow-up (tracked). Otherwise the next capability = Phase-3 product ADRs (generalize the scored_rule/rule_gate data-access = the Q3 ontology-binding gap), previously deferred — needs a Cray go / dispatch. A full-body STATUS reconcile can fold the older CF blocks when the next batch lands."
-head_commit: 3a4d98a
-recent_commits: [d080740, 3a4d98a, e935e6c, ea27b27, 7797bb6, 0ee3f4d, 4f22602, 05c9541, 12ac1dd, a458142]
+blocked_on: "Nothing blocking. A1b closed (PLAN-0044/0045 in done/); the optional hero compliance-swap follow-up is DONE (merged #506, 0b7efe4). Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
+next_action: "Next capability = Phase-3 product ADRs (generalize the scored_rule/rule_gate data-access = the Q3 ontology-binding gap), previously deferred — needs a Cray go / dispatch. A full-body STATUS reconcile can fold the older CF blocks when the next batch lands."
+head_commit: 0b7efe4
+recent_commits: [50441d6, 0b7efe4, 3c4a402, 9e59a86, d080740, 3a4d98a, e935e6c, ea27b27, 7797bb6, 0ee3f4d]
 ---
 
 # vero-lite — Project Status
