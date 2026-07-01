@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-01T12:51:37+07:00
+last_updated: 2026-07-01T14:19:28+07:00
 session: 91
-current_batch: "Phase 1 hero-demo MERGED (#492/#493). Building Phase-2 `scored_rule` per-kind executor (PLAN-0044 A1b Step 5) on `feat/a1b-scored-rule`: deterministic supplier selection that emits the selected quote's `amount` onto the threaded entity so the `approve` doa_tier resolves — closing the §3 ฿-threading finding (the shipped `source` `ActionStepExecutor` returns action envelopes, dropping the input entity's amount → doa_tier fails closed at approve). Then C-3 live runner on `feat/hero-demo-v1-live`."
+current_batch: "hero-demo v1 governed→run→฿ COMPLETE (#495 scored_rule · #496 live layer C-1/C-2/C-3 · #497 C-4 toggle · C-5 live MS-S1 smoke Cray-approved, governed outcome == offline). Demo path done offline + live-verified."
 current_actor: code
-blocked_on: "Nothing blocking. scored_rule build is offline (the offline tests ARE the gate, CLAUDE.md §8); the C-5 live MS-S1 runner is host-state — explicit Cray go before each live run. loop-dispatcher DISABLED."
-next_action: "Build PLAN-0044 A1b Step 5 (`GovernanceActionExecutor._scored_rule` branch) on `feat/a1b-scored-rule` — score candidate quotes deterministically (LLM summarises only), select winner, emit amount+currency; offline gate = AC-7 (deterministic pick) + a full-loop stub-client test threading ฿288,000 → CONTROLLER. Merge → rebase `feat/hero-demo-v1-live` → C-3 runner → C-4 endpoint/toggle → C-5 live MS-S1 smoke (host-state, Cray go)."
-head_commit: 788994d
-recent_commits: [788994d, c350544, f310778, b76c080, 6fb7b2b, 85eafaa, 618a9e2, e161248, ff2a2b0, e57fe8d]
+blocked_on: "Nothing blocking. hero-demo v1 complete. Remaining A1b (Steps 2/4 + AC-9) is offline (the offline tests are the gate, §8); any further live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
+next_action: "Close-out: PLAN-0044 A1b is NOT complete (Steps 2 [OQ-6 N≥2 marker] + 4 [rule_gate executor] + AC-9 remain) → the remaining non-demo-critical A1b work; verify PLAN-0045 AC then git mv → done/; the eventual PLAN-0044 Completion note + full-body STATUS reconcile at A1b CLOSE. Phase-3 product ADRs (generalize scored_rule data-access = the Q3 ontology-binding gap) deferred."
+head_commit: b4c03a9
+recent_commits: [b4c03a9, 0a48542, 52523df, 00b9a3c, 75e7e69, bfc4844, b8bbf03, ce15d59, 2ebe851, 1047499]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,54 @@ recent_commits: [788994d, c350544, f310778, b76c080, 6fb7b2b, 85eafaa, 618a9e2, 
 ---
 
 ## Current Focus
+
+> **Session 91 (head_commit `b4c03a9`) — HERO-DEMO v1 "governed → run → ฿"
+> path COMPLETE (offline + LIVE-verified) — three PRs merged (#495 `scored_rule`
+> executor / #496 the live-run layer C-1/C-2/C-3 / #497 the C-4 live toggle) +
+> a Cray-approved C-5 live MS-S1 smoke.** MILESTONE — the *demo path* is done;
+> **A1b is NOT complete** (PLAN-0044 Steps 2/4 + AC-9 remain). **#495 (`2ebe851`,
+> PLAN-0044 A1b Step 5) — the `scored_rule` per-kind executor:**
+> `GovernanceActionExecutor._scored_rule` (SD-1=(a), mirrors `_doa_tier`) scores
+> an emergency-sourcing step's candidate quotes by the typed `ScoredRule` and
+> selects the winner **DETERMINISTICALLY** (same inputs → same pick; the LLM
+> never selects) — and, unlike `_doa_tier` (which keeps base envelopes),
+> **REPLACES the output with the selected entity carrying `amount` (unit_price ×
+> qty) + currency**, closing the **§3 ฿-threading finding** (the shipped
+> `ActionStepExecutor` dropped the entity's spend so the `approve` `doa_tier`
+> had no amount). Scoring = criticality-as-event-weight amplifier (v1; weights
+> provisional per ADR-0025 D2). **17 new tests.** **#496 (`52523df`) — the
+> live-run layer (C-1+C-2+C-3):** C-1 (`bfc4844`) the Fastenal dataset
+> (`operational_event.csv` + `quotation.csv` + adapter types); C-2 (`75e7e69`)
+> the in-code Fastenal hero procedure (ladder-swap → **฿288k crosses into
+> CONTROLLER**); C-3 (`00b9a3c`) `hero_demo/run.py` —
+> `run_hero_governance_moment` drives the **REAL** loop
+> (intake→judge→source→compliance→approve) through the orchestrator + AT-2
+> executors, so the moment is **DERIVED by the run** (same audit contract as the
+> offline builder, `source: "live-run"`). **3 new stub-client tests.** **#497
+> (`b4c03a9`) — C-4 the live toggle:** `GET /demo/hero/governance?live=true`
+> returns the live-run audit; `view-hero.js` gains a "Run live"/"Offline
+> fixture" toggle + source-aware badge. **Host-state-FREE:** the `?live` path
+> uses a deterministic advisory-LLM stub (`advisory_stub_factory`) — the
+> *governed* decision is LLM-independent, so no MS-S1 hit per request.
+> Preview-verified; **+1 endpoint test.** **C-5 live MS-S1 smoke — HOST-STATE
+> EVIDENCE (this session, Cray-approved via AskUserQuestion):** warmed
+> `gpt-oss:20b` on MS-S1 (192.168.1.133, verified present) and ran
+> `run_hero_governance_moment` **ONCE** with the real `OllamaClient`. **Result
+> (fresh on-disk this session — a live run, NOT re-derived):** the governed
+> outcome is **IDENTICAL to the offline gate** — `SUP-RAPIDMRO → ฿288,000 →
+> CONTROLLER (appr-controller)`, `sod.governed: true`, `scored_path:
+> exception_policy`, `governed_decision: [doa_tier, sod]`. This confirms
+> **governed ≠ generated LIVE** — the real LLM (advisory prose only) does not
+> change the governed decision. This is **EVIDENCE** (the offline oracle stays
+> the gate, CLAUDE.md §8); **no code shipped for C-5.** **NEXT (close-out):**
+> A1b's remaining **non-demo-critical** work — **Steps 2** (`OQ-6` N≥2 marker) +
+> **4** (`rule_gate` executor) + **AC-9**; verify PLAN-0045 AC then `git mv` →
+> `done/`. **Owed at A1b CLOSE (not per-step):** the PLAN-0044 Completion note +
+> a STATUS full-body reconcile. Phase-3 product ADRs (generalize the
+> `scored_rule` data-access = the Q3 ontology-binding gap) deferred.
+> **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (remaining A1b
+> is offline, §8); AI-assisted (Claude Code, session 91), no `Co-Authored-By`
+> per CLAUDE.md §7.
 
 > **Session 91 (head_commit `788994d`) — HERO-DEMO PHASE 1 (the offline
 > foundation) SHIPPED + MERGED (#492 session-90 reconcile / #493 Phase-1
@@ -94,66 +142,6 @@ recent_commits: [788994d, c350544, f310778, b76c080, 6fb7b2b, 85eafaa, 618a9e2, 
 > (A1b is offline, §8); AI-assisted (Claude Code, session 89), no
 > `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 89 (head_commit `719ea78`) — A1b STEP 1 (the demo-critical LIVE
-> fail-closed principal-SoD run enforcement) SHIPPED + MERGED (#486) +
-> INDEPENDENTLY VERIFIED (J1/J2 PASS).** INTERIM — one of A1b's six steps landed;
-> A1b is NOT complete. This is the step that makes the A1a pure `check_principal_sod`
-> actually fire on a REAL suspended-gate resolution (A1a shipped the construct +
-> run-check + seam s88; A1b wires the live enforcement). **What it does:**
-> `spec.parse_procedures` now reads `principals` / `principal_aliases` (were
-> silently dropped on load); procurement ships **5 authored principals +
-> `required_roles`** (AC-10); a **`step_principals` JSONB column on `PipelineRun`
-> (+ Alembic `0004`)**; `orchestrator.run_procedure(principal=…)` records the
-> requester per SoD step (**SD-2 = (a)**); and `action_step.resolve_gated_step`
-> invokes `check_principal_sod` **unconditionally**, fails **CLOSED** (raises
-> `PrincipalSoDError` carrying the structured verdict) **BEFORE** any approve /
-> execute, and is **non-skippable**. **Inert for non-SoD procedures** (only
-> procurement carries SoD; the aquaculture inert-reconcile test proves no behavior
-> change elsewhere). **Gate (offline = the binding bar, §8):** ruff + mypy clean;
-> **1921 offline + 27 DB tests green** incl. **8 NEW live-SoD DB tests** +
-> `alembic upgrade head` (0004) + the aquaculture inert-reconcile. **Axis-B
-> goal-gate: J1 PASS + J2 PASS** (high confidence, independent goal-evaluator,
-> creator≠critic intact). **Demo-convergence framing:** this is **1 of 3
-> demo-critical pieces** of the hero-demo's "governed → run → ฿" path; **A1b Steps
-> 3 (`doa_tier` executor) + 6 (`governed_decision` audit-to-control) are next** =
-> the rest of the demo-critical path (both offline-pure); Steps 2/4/5 (`OQ-6`
-> marker · `rule_gate` · `scored_rule`) after; the parallel hero-demo session
-> converges once that path is in (procedures/* hold releases). **Owed at A1b CLOSE
-> (not per-step):** the PLAN-0044 SD-1/SD-2/SD-3-as-rec disposition + a PLAN-0044
-> Completion note + a STATUS full-body reconcile. **Standing:** `loop-dispatcher`
-> stays **DISABLED**; MS-S1 cold (A1b is offline, §8); AI-assisted (Claude Code,
-> session 89), no `Co-Authored-By` per CLAUDE.md §7.
-
-> **Session 88 (head_commit `f5c6342`) — A1 (run-time moat enforcement —
-> Cray's #1 roadmap rock) LANDED end-to-end: ADR-0026 ACCEPTED (#479) → A1a
-> (PLAN-0043) COMPLETE (#481/#482) → A1b planned (PLAN-0044).** A1 builds the
-> principal-identity capability the AT-2 layer's run-time SoD was deferred on
-> (the s85-s86 AC-13-ALT carry); A1a ships the construct + the run-check + the
-> seam, A1b wires the live enforcement. **ADR-0026 ACCEPTED (#479, `620d799`):**
-> the principal-identity capability + AT-2 run-time enforcement (the deferred
-> ADR-0025 AC-13-ALT made concrete); all **6 OQs Cray-adjudicated as-recommended**.
-> **PLAN-0043 (A1a) drafted + SD-1/SD-2 folded (#480, `05243eb`/`af0d882`):**
-> Cray adjudicated **SD-1 = `required_roles` on `SoDConstraint`** and **SD-2 =
-> a `PrincipalAlias` link object** (deviating from the drafted rec). **A1a COMPLETE
-> end-to-end:** **Steps 1-3 (#481, `f1e7afa`)** = the `Person` / `PrincipalAlias`
-> construct + `SoDConstraint.required_roles` + the H-governance (the new fields are
-> governance, never on a draft type); **Steps 4-6 (#482, `f5c6342`)** =
-> `services/engine/procedures/principal_sod.py`, the **fail-closed principal-SoD
-> run-check** emitting a **STRUCTURED `PrincipalSoDVerdict`** + the
-> `RunContext.principal` / `resolve_gated_step(principal=…)` seam + the offline
-> oracle. **Gate: offline green throughout — the full procedures suite 344
-> passed.** **A1a/A1b boundary confirmed (Cray s88):** the LIVE invocation of the
-> run-check needs per-step principal RECORDING = the A1b executors' job; A1a stops
-> at the construct + run-check + seam, A1b wires live enforcement. **A1b drafted =
-> PLAN-0044 (in-flight, #484):** live run enforcement + per-kind executors
-> (`doa_tier` / `rule_gate` / `scored_rule`) + audit-to-control (OQ-5); **3 SDs
-> surfaced for Cray.** **Hero-demo dependency (a parallel session):** A1's
-> structured `PrincipalSoDVerdict` + the A1b OQ-5 audit field are what the
-> hero-demo's read-only "governance moment" render consumes — convergence ask #1
-> is MET, #2 lands with A1b. **In-flight PRs awaiting Cray merge:** #483 (PLAN-0043
-> `git mv` → `done/`) + #484 (PLAN-0044 A1b draft). **Standing:** `loop-dispatcher`
-> stays **DISABLED**; MS-S1 cold (A1a is offline, §8); AI-assisted (Claude Code,
-> session 88), no `Co-Authored-By` per CLAUDE.md §7.
 
 > _Rotation note (session-89 cont. reconcile, 2026-06-30): the **Session 87
 > (head_commit `de36c2b`)** Current Focus block (PLAN-0041 — the classify-prompt
@@ -249,6 +237,17 @@ recent_commits: [788994d, c350544, f310778, b76c080, 6fb7b2b, 85eafaa, 618a9e2, 
 > history (Tier 3), so no content was lost. The session-81/82/83/84-cont/85/85-cont/86
 > reconcile notes are retained above for continuity; older notes remain in git history per
 > the STATUS.md Rotation Policy (R1/R4)._
+> _Rotation note (session-91 demo-close reconcile, 2026-07-01): the oldest
+> **Recent Decisions** row — **2026-06-28 PLAN-0041 (classify-prompt enrichment
+> lever) RATIFIED + COMMITTED (`7601174`, #461)** — was rotated out of the RD
+> 10-row window to make room for the new session-91 hero-demo-v1-COMPLETE row,
+> and moved verbatim to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md),
+> per the STATUS.md Rotation Policy (R2/R4). No Current-Focus block was rotated
+> this reconcile — the new session-91 demo-close block keeps the CF window at
+> {91 (demo-close `b4c03a9`), 91 (Phase-1 `788994d`), 89, 89, 88} = 3 distinct
+> sessions / 5 blocks, within the R2 4-session / 8-block window._
+
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
 ## Prior focus (archived)
@@ -270,6 +269,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-01 | **HERO-DEMO v1 "governed → run → ฿" path COMPLETE — offline + LIVE-verified (session 91)** — three PRs merged (#495/#496/#497) + a Cray-approved C-5 live MS-S1 smoke; MILESTONE (the demo path is done) NOT closure — **A1b is NOT complete** (PLAN-0044 Steps 2/4 + AC-9 remain). **#495 (`2ebe851`, A1b Step 5) `scored_rule` executor:** `GovernanceActionExecutor._scored_rule` (SD-1=(a), mirrors `_doa_tier`) scores an emergency-sourcing step's candidate quotes by the typed `ScoredRule`, selects the winner **DETERMINISTICALLY** (same inputs→same pick; LLM never selects) and — unlike `_doa_tier` — **REPLACES the output with the selected entity carrying `amount` (unit_price × qty) + currency**, closing the **§3 ฿-threading finding** (the shipped `ActionStepExecutor` dropped the entity's spend so `approve` `doa_tier` had no amount); scoring = criticality-as-event-weight amplifier (v1 weights provisional, ADR-0025 D2); **17 new tests.** **#496 (`52523df`) the live-run layer:** C-1 (`bfc4844`) Fastenal dataset (`operational_event.csv`+`quotation.csv`+adapter types); C-2 (`75e7e69`) the in-code Fastenal hero procedure (ladder-swap → **฿288k → CONTROLLER**); C-3 (`00b9a3c`) `hero_demo/run.py` `run_hero_governance_moment` drives the **REAL** loop (intake→judge→source→compliance→approve) through the orchestrator + AT-2 executors — the moment is **DERIVED by the run** (same audit contract, `source: "live-run"`); **3 new stub-client tests.** **#497 (`b4c03a9`) C-4 live toggle:** `GET /demo/hero/governance?live=true` returns the live-run audit; `view-hero.js` gains a "Run live"/"Offline fixture" toggle + source-aware badge; **HOST-STATE-FREE** (the `?live` path uses a deterministic advisory-LLM stub `advisory_stub_factory` — the governed decision is LLM-independent, no MS-S1 hit per request); preview-verified, **+1 endpoint test.** **C-5 live MS-S1 smoke (this session, Cray-approved via AskUserQuestion, HOST-STATE EVIDENCE):** warmed `gpt-oss:20b` on MS-S1 (192.168.1.133, verified present) + ran `run_hero_governance_moment` **ONCE** with the real `OllamaClient` — **result (fresh on-disk this session, a live run NOT re-derived): governed outcome IDENTICAL to the offline gate** (`SUP-RAPIDMRO → ฿288,000 → CONTROLLER (appr-controller)`, `sod.governed: true`, `scored_path: exception_policy`, `governed_decision: [doa_tier, sod]`) → **governed ≠ generated confirmed LIVE** (the real LLM = advisory prose only, does not change the governed decision). Live = **EVIDENCE** (the offline oracle stays the gate, §8); **no code shipped for C-5.** **NEXT (close-out):** A1b's remaining non-demo-critical work = Steps 2 (`OQ-6` N≥2) + 4 (`rule_gate`) + AC-9; verify PLAN-0045 AC then `git mv` → `done/`. **Owed at A1b CLOSE (not per-step):** PLAN-0044 Completion note + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (remaining A1b offline) | `b4c03a9` (#497) / `2ebe851` (#495) / `52523df`·`00b9a3c`·`75e7e69`·`bfc4844` (#496) / `services/engine/procedures/{scored_rule,governance_step}.py` (`select_scored_supplier` + the `_scored_rule` branch) + `verticals/procurement/hero_demo/run.py` (`run_hero_governance_moment`) + `verticals/procurement/data/hero/{operational_event,quotation}.csv` + `services/api/routers/demo.py` (`/demo/hero/governance?live=true`) + `services/api/static/assets/view-hero.js` |
 | 2026-07-01 | **HERO-DEMO PHASE 1 (offline foundation) SHIPPED + MERGED (#492 session-90 reconcile / #493 Phase-1 foundation) (session 91)** — MILESTONE, not closure: the SD-1 live layer (C-full) is still WIP on `feat/hero-demo-v1-live` and **A1b is NOT complete** (AC-9 + PLAN-0044 Steps 2/4/5 remain). **#493 = four PLAN-0045 commits:** **Step 1 (`85eafaa`)** C1 `FastenalCsvAdapter` (CSV-backed hero-demo `DataAdapter`, `verticals/` only, **zero `services/` core edit**); **Step 1b (`6fb7b2b`)** the governance-moment audit capture (`resolve_doa_tier` + `check_principal_sod` from the **real engine**); **Step 3 (`b76c080`, B1)** the ฿-impact ledger + the `/demo/hero/{governance,impact}` **derived API views** behind **4 demo guards**; **Step 2 (`f310778`)** the governance-moment render screen `view-hero.js` (render tab **G**). **Verification (attributed to the session-90 handoff evidence, NOT re-run this reconcile — CLAUDE.md §6):** offline gate green (~2005 tests) + verified live on the `oct-demo` preview (all 4 cards, both `governed_decision` joins JOIN, contrast case = MANAGER, ฿-ledger ฿9.76M → ฿1.65M). **§3 ฿-threading finding:** the shipped `source` `ActionStepExecutor` returns action envelopes + **drops the input entity's amount** → the `approve` `doa_tier` fails CLOSED at approve. **NEXT (Phase 2):** PLAN-0044 A1b Step 5 (`GovernanceActionExecutor._scored_rule`) on `feat/a1b-scored-rule` — deterministic quote scoring (LLM summarises only), select winner, emit amount+currency so `approve` resolves; offline gate = AC-7 + a full-loop stub-client test threading ฿288,000 → CONTROLLER; then merge → rebase `feat/hero-demo-v1-live` → C-3 runner → C-4 endpoint/toggle → C-5 live MS-S1 smoke (host-state, Cray go). **Owed at A1b CLOSE (not per-step):** PLAN-0044 Completion note + `git mv` → `done/` + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (offline) | `788994d` (#493) / `85eafaa`·`6fb7b2b`·`b76c080`·`f310778` / `verticals/procurement/data_adapter/fastenal_csv.py` + `verticals/procurement/hero_demo/{governance_audit,ledger}.py` + `services/api/{models,routers}/demo.py` (`/demo/hero/{governance,impact}`) + `services/api/static/assets/view-hero.js` |
 | 2026-06-30 | **A1b STEPS 3 + 6 (the rest of the demo-critical path) SHIPPED + MERGED (#488 `doa_tier` / #489 `governed_decision`) + independently verified (J1/J2 PASS) → the DEMO-CRITICAL PATH IS COMPLETE ON MAIN (session 89)** — MILESTONE, not closure: **A1b is NOT complete** (AC-9 + Steps 2/4/5 remain). With **Step 1 (#486, the live SoD gate)**, the hero render now has all three structured fields it joins on. **Step 3 (#488, `34be3a5`, AC-5):** a deterministic `doa_tier` per-kind executor — `resolve_doa_tier` over the `DoaLadder` half-open band (`Decimal` spend → tier), resolves the tier's `approver_role` → a `Person`, **fails CLOSED on a currency mismatch (OQ-4)**; the **SD-1=(a) `GovernanceActionExecutor` wrapper** dispatches on `governance_content.kind` **without a new `StepKind`**. **Step 6 (#489, `f5527d9`, AC-8):** the typed minimal **`governed_decision` audit-to-control field (SD-3=(a))** — `ControlRef{kind,id}` + `GovernedDecision{control_ref, principal_id}` on `AuditMetadata`, emitted as an **ENGINE side-effect** by the `doa_tier` route (`{kind:'doa_tier', id:resolved_tier_id}`) and the SoD gate (`{kind:'sod', id:sorted distinct_steps}`); **join-stable keys** (the `Person` PK + the verdict-emitted control id). **Gate (offline = binding bar):** both ruff + mypy clean — Step 3: **19 new `doa_tier` tests, full suite 1968 passed**; Step 6: **5 new `governed_decision` tests + the SoD-gate DB emission** (real hero gate emits `{kind:'sod', id:'approve+intake', principal_id:'appr-director'}`), **full suite 1973 passed / 5 skipped**. **Axis-B goal-gate: J1 PASS + J2 PASS** (independent goal-evaluator, creator≠critic intact, both steps). **AC-9 DEFERRAL (surfaced for Cray, NOT silently applied):** the procurement `audit` step is authored `autonomy: auto` AND downstream of the `approve`/`issue_po` gates, so the AC-9 auto-downstream-of-a-gate assertion would **restructure the hero procedure** — a Cray decision (restructure the audit terminal vs exempt no-op terminals), held for adjudication. **NEXT:** signal the hero-demo session to converge (the `services/engine/procedures/*` hold releases — it can build the read-only governance-moment render); then A1b's remaining non-demo-critical work = AC-9 (the Cray pick) + Steps 2/4/5 (`OQ-6` N≥2 marker · `rule_gate` · `scored_rule`). **Owed at A1b CLOSE (not per-step):** PLAN-0044 Completion note + `git mv` → `done/` + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (A1b offline) | `34be3a5` (#488) / `f5527d9` (#489) / `services/engine/procedures/{action_step,orchestrator}.py` + `services/db/models.py` (`AuditMetadata`/`GovernedDecision`/`ControlRef`) + `verticals/procurement/procedures.yaml` |
 | 2026-06-30 | **A1b STEP 1 (demo-critical LIVE fail-closed principal-SoD run enforcement) SHIPPED + MERGED (#486) + independently verified (J1/J2 PASS) (session 89)** — INTERIM (1 of A1b's 6 steps; A1b NOT complete). Makes the A1a pure `check_principal_sod` fire on a REAL suspended-gate resolution. `spec.parse_procedures` now reads `principals`/`principal_aliases` (were silently dropped); procurement ships **5 authored principals + `required_roles`** (AC-10); a **`step_principals` JSONB column on `PipelineRun` (+ Alembic `0004`)**; `orchestrator.run_procedure(principal=…)` records the requester per SoD step (**SD-2=(a)**); `action_step.resolve_gated_step` invokes the check **unconditionally**, fails **CLOSED** (raises `PrincipalSoDError` with the structured verdict) **BEFORE** any approve/execute, **non-skippable**. **Inert for non-SoD procedures** (only procurement carries SoD; aquaculture inert-reconcile proves no behavior change). **Gate (offline = binding bar):** ruff + mypy clean; **1921 offline + 27 DB tests green** incl. **8 NEW live-SoD DB tests** + `alembic upgrade head` (0004) + aquaculture inert-reconcile. **Axis-B goal-gate: J1 PASS + J2 PASS** (high, independent goal-evaluator, creator≠critic intact). **Demo-convergence:** 1 of 3 demo-critical pieces of the hero-demo "governed→run→฿" path; **A1b Steps 3 (`doa_tier` executor) + 6 (`governed_decision` audit-to-control) next** = the rest of that path (offline-pure); Steps 2/4/5 (`OQ-6`·`rule_gate`·`scored_rule`) after; hero-demo session converges once the path is in. **Owed at A1b CLOSE (not per-step):** PLAN-0044 SD-1/SD-2/SD-3-as-rec disposition + a PLAN-0044 Completion note + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (A1b offline) | `719ea78` (#486) / `services/engine/procedures/{spec,orchestrator,action_step}.py` + `services/db/models.py` + `services/db/migrations/versions/0004_*.py` + `verticals/procurement/procedures.yaml` |
@@ -279,7 +279,6 @@ below, and git history.
 | 2026-06-29 | **PLAN-0042 (O-3 AT-2/managerial layer) Steps 1-2 SHIPPED + MERGED (session 85 cont., #467/#468)** — typed AT-2 content (D2) + the AT-2-aware run-gate (D5) closing the live blindness defect; the procurement AT-2 migrated prose→typed behind a green golden test; OQ-B=B2 values mirror the data adapter (provisional, pending Cray sign-off). **Step 1 (#467, `6176b18`):** discriminated `Step.governance_content` (`DoaLadder`\|`ScoredRule`\|`ComplianceGate`, keyed on `kind`) + `Procedure.separation_of_duties`; D3 bypass unrepresentable (`Decimal` money; closed `RelaxableConstraint` enum can't name compliance/SoD; `blocks_po`/`requires_justification` `Literal[True]`; total strictly-monotonic DOA ladder); D4 H-field invariants (new fields in `GOVERNANCE_FIELDS`, never on a draft type; draft-disjointness + `StepFacet`-unreachability CI). Finding 1 honored (DOA tiers nest in `DoaLadder`, no 2nd `Step.tiers`). **Step 2 (#468, `059c6ea`):** the AT-2-aware run-gate + the prose→typed migration in ONE PR behind the golden test — `validate_governance_complete` now owes typed `governance_content` on the AT-2 kinds + a `doa_tier` proc owes `separation_of_duties`; an empty-DOA/no-criteria/no-SoD AT-2 is no longer run-loadable (the negative hollow-but-complete regression = the D5 ratification gate). **Build interps:** principal-level SoD + resolved-tier strict-escalation deferred to **A2 (AC-13-ALT)** — no engine principal/role-rank layer; the author-time gate enforces the STRUCTURAL form (≥2 distinct steps; ladder totality). Gate: mypy --strict + ruff clean, **pytest 1843/24**; no live MS-S1. Remaining: Steps 3 (prose-lint + "ADVISORY — NOT A CONTROL" banding) + 5 (offline oracle), A1 | `059c6ea` (#467/#468) / `services/engine/procedures/{spec,draft,orchestrator}.py` + `verticals/procurement/procedures.yaml` |
 | 2026-06-29 | **PLAN-0042 (the O-3 follow-on AT-2 / managerial-layer BUILD PLAN) DRAFTED + RATIFIED + MERGED (session 85, #465)** — the build PLAN ADR-0025 OQ-5 named; renders ADR-0025 (Accepted #463) D1–D8 + owns migration sequencing. **Build PLAN — no new ADR.** **Primary deliverable = closing a LIVE shipped defect:** `validate_governance_complete` is blind to AT-2 *content* (`rule_gate` evaluate → `[]`; `scored_rule`/`doa_tier` action → `[handler,autonomy]`, both filled → no AT-2-content obligation) → the build **types the AT-2 content** (D2 discriminated `Step.governance_content` union + `Procedure.separation_of_duties`), makes the **run-gate AT-2-aware** (D5), and **migrates the procurement AT-2 prose→typed in ONE PR behind a green golden test** (the migration trap). **Cray-ratified:** **OQ-A = A1** (author + render only — no principal-identity layer for run-time SoD, so D6 author+render fallback; the A2 run path deferred to a follow-on PLAN); **OQ-B = B2** (labelled-provisional placeholder control values + Cray sign-off — typing D2 is authoring not transcription); **OQ-C/D/E confirmed** (golden test + D5 migration in ONE PR; scoped value-only prose-lint + "ADVISORY — NOT A CONTROL" band; no per-spec `schema_version`). **Process:** Cowork-drafted (ADR-009 D1) → **Code R2** re-verified the fact-pack on HEAD `1305b32` + surfaced two substrate items: **finding 1** (a `Step.tiers` collision — `StepTiers` = PLAN-0022 handler taxonomy at `spec.py:264`, in `STEP_GOVERNANCE_FIELDS` → DOA tiers must nest in `DoaLadder`, never a 2nd top-level `Step.tiers`) and the **SoD principal-vs-role scoping finding** (A1 = author-time structural+role-level SoD; principal-identity SoD is run-time → relocated to the deferred **AC-13-ALT**, lineage = superseded-by-A1, not an ADR amendment) → Code revision dispatch → Cowork applied 3 surgical deltas → Cray-ratified → Code R2 + committed (#465). **v1 build surface = Steps 1–3 + 5** (A2 / AC-13-ALT deferred). `loop-dispatcher` stays DISABLED; MS-S1 cold, no live run (offline oracle is the gate). NEXT = execute Step 1 (D2 union + SoD + D3/D4) then Step 2 (D5 gate + migration in ONE PR; author the B2 placeholders) | `21d7669` (#465) / `docs/plans/0042-at2-managerial-build.md` |
 | 2026-06-29 | **ADR-0025 (AT-2 / managerial-process layer) RATIFIED + ACCEPTED (session 84, #463)** — makes DOA/SoD/scored-rule/compliance governance first-class (the Box-3 "Action = contract" story the Rock-4 research found is vero-lite's strongest sellable box; Palantir's Apr-2026 "each Action is a contract" ≈ our `Agent.allowed` + gate + audit); **revisits ADR-0024 D7** (AT-2 deferral) + **decides ADR-0024 OQ-8** (typed content sub-model). **Re-framed around a SHIPPED DEFECT Code R2 verified live on HEAD:** `derive_governance_todo` owes no obligation for `scored_rule`/`rule_gate`/`doa_tier` → `validate_governance_complete` is blind to AT-2 content (an empty-DOA AT-2 is run-loadable today). **D2** authoritative discriminated `Step.governance_content` keyed to `gate_kind` (not the non-authoritative facet; D2-A4 held); **D3** bypass structurally unrepresentable (`Decimal` money; total-cover DOA ladder; strict-escalate waiver; compliance+SoD non-waivable); **D5** run-gate becomes AT-2-aware (closes the defect, + a negative regression test); **D7** the AT-2 generator stays deferred under a CI-enforced N≥2 re-trigger (AT-2 = N=1). **Cowork-drafted + a Cowork-run panel (disclosed self-review, NOT independent of the drafter) → Code R2 = the independent check (substrate fact-pack independently verified) → Cray-ratified per the recs** (OQ-1=(c) build-layer/defer-generator [the N=1 "(b)-minus-codegen" trade accepted because the defect forces typing the obligation regardless]; OQ-2=(b)-in-(a); OQ-3=D6 boundary [concrete run-vs-author → the follow-on PLAN]; OQ-4/5 per rec). A harness Stop-hook said "commit as Accepted" pre-ratification — Code **declined** (false attribution on the permanent record), held, committed on Cray's actual ratify. NEXT = the follow-on build PLAN (OQ-5, separate dispatch). Also s84: O-1 (Box-4 ฿ pitch artifact) done; the Rock-4 research delivered + the O-sequence locked | `f56a6e8` (#463) / `docs/adr/0025-at2-managerial-layer.md` |
-| 2026-06-28 | **PLAN-0041 (classify-prompt enrichment lever) RATIFIED + COMMITTED (session 84, #461)** — the fix for the PLAN-0040 AC-B5 live finding (~1-in-3 false-abstain on a textbook AT-1/AT-3). A **prompt-only** lever: enrich `build_classify_messages` with per-archetype descriptions (derived from the canonical catalog) + a positive band-vs-out-of-scope-gate explainer that teaches the band case, so the live model stops mis-tagging the judge step with an AT-2-only `gate_kind`. **Moat-safe:** the AT-2 cross-check (`_archetype_disagreement`/`_AT2_ONLY_KINDS`, ADR-0024 D4/D7) stays **byte-identical**; no schema change; **no new ADR**. **OQ-C twin-metric:** Arm B **11/11 AT-2-abstain HARD gate** + a pre-committed pass/fail read; offline tests = the gate, the live hit-rate lift = confirming evidence behind a Cray host-state go (§8). **Cowork-drafted (ADR-009 D1) → Code R2-reviewed (fact-pack byte-verified; LOCKED-7↔D4/D7 mapping confirmed) → Cray-ratified (OQ-A..E recs as-is) → committed → Cray merged (no self-merge).** Also session 84: a **strategy consultation** mapping vero-lite onto the **Four-Box Business Model** → a 4-rock roadmap (Rock 1 = PLAN-0041; Rock 2 = AT-2/managerial; Rock 3 = Box-4 economics + ontology data-binding; **Rock 4 = a Cowork 4-box+Palantir deep-research dispatch**, awaiting relay). NEXT = execute PLAN-0041 (offline Steps 1-4; live Step 5 = Cray go) + relay Rock 4. `loop-dispatcher` stays DISABLED | `7601174` (#461) / `docs/plans/0041-classify-prompt-enrichment.md` |
 
 ## In-Flight Discussions
 
