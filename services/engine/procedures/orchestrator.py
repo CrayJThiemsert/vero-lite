@@ -200,7 +200,12 @@ def validate_governance_complete(procedure: Procedure) -> None:
     ``governance_content`` (re-derived per step above), and a ``doa_tier``-bearing
     procedure owes a ``separation_of_duties`` constraint (the procedure-level check
     below). This closes the run-gate's AT-2 blindness — an empty-DOA / no-criteria /
-    no-compliance-rule / no-SoD AT-2 procedure is no longer judged run-loadable."""
+    no-compliance-rule / no-SoD AT-2 procedure is no longer judged run-loadable.
+
+    **AC-9 (ADR-0026 D6 hard guarantee 2 / red-team Attack-5; PLAN-0044):** an AT-2
+    procedure may not run an ``autonomy: auto`` OPERATIONAL action downstream of a gate
+    — the un-gated-audit / bypass surface — with a verified no-op audit-receipt terminal
+    exempt (:func:`_check_no_auto_downstream_of_gate`, Option 2)."""
     for step in procedure.steps:
         missing = unfilled_governance(step)
         if missing:
@@ -216,6 +221,7 @@ def validate_governance_complete(procedure: Procedure) -> None:
             f"{proc_missing} — a doa_tier procedure requires a separation_of_duties "
             f"constraint (ADR-0025 D5)"
         )
+    _check_no_auto_downstream_of_gate(procedure)
 
 
 def _suspends(step: Step) -> bool:
@@ -231,6 +237,65 @@ def _suspends(step: Step) -> bool:
     if step.kind is StepKind.HUMAN_TASK:
         return True
     return step.kind is StepKind.ACTION and step.autonomy is Autonomy.GATED
+
+
+_AUDIT_TERMINAL_HANDLERS = frozenset({"echo"})
+"""The verified no-op / audit-receipt handlers EXEMPT from the AC-9 auto-downstream-of-a-gate
+guarantee (ADR-0026 D6 hard guarantee 2; PLAN-0044 AC-9, Option 2). An ``autonomy: auto`` step
+downstream of a gate is a bypass surface only if it performs an OPERATIONAL action; a step whose
+handler is a known side-effect-free receipt (``echo`` — the cross-vertical no-op audit handler in
+``verticals/*/handlers.py``) merely RECORDS the decision, so it is allowed to run auto after a
+gate. The exemption is tied to the VERIFIED handler name — forge-proof: routing an operational
+action through ``echo`` yields a no-op, and any other handler is NOT exempt — NEVER to an author's
+self-declaration. Instance-scoped / provisional-until-N>=2: a second vertical's distinct audit
+handler EXTENDS this set (mirroring the AT-2 content instance-scoping, ADR-0025)."""
+
+
+def _is_at2_procedure(procedure: Procedure) -> bool:
+    """Whether ``procedure`` carries AT-2 managerial governance (ADR-0025 D2) — typed
+    ``governance_content`` on some step (a DOA ladder / scored rule / compliance gate) or a
+    ``separation_of_duties`` constraint. AC-9 (below) is scoped to AT-2 procedures — the
+    red-team Attack-5 surface (PLAN-0044 AC-9)."""
+    return bool(procedure.separation_of_duties) or any(
+        step.governance_content is not None for step in procedure.steps
+    )
+
+
+def _check_no_auto_downstream_of_gate(procedure: Procedure) -> None:
+    """Raise :class:`ProcedureError` if an AT-2 procedure runs an ``autonomy: auto`` OPERATIONAL
+    action downstream of a gate (AC-9 — ADR-0026 D6 hard guarantee 2 / red-team Attack-5).
+
+    A human gate (a ``gated`` action / ``human_task``, per :func:`_suspends`) exists to impose
+    oversight; an ``auto`` action that runs AFTER it would act un-attended, bypassing that
+    oversight. **Option 2 exemption (Cray, session 92):** a step whose handler is a VERIFIED no-op
+    audit-receipt (:data:`_AUDIT_TERMINAL_HANDLERS`) only RECORDS the decision — it does not act —
+    so it may run auto after a gate (the authoritative, non-omittable audit is the engine-emitted
+    ``governed_decision`` side-effect, A1b Step 6; this exempt terminal is a cosmetic receipt).
+    The exemption is verified against the handler name, never an author flag. Non-AT-2 procedures
+    are out of scope (PLAN-0044 AC-9). Invoked by :func:`validate_governance_complete`, so a
+    violating AT-2 procedure is NOT run-loadable."""
+    if not _is_at2_procedure(procedure):
+        return
+    seen_gate = False
+    for step in procedure.steps:
+        if _suspends(step):
+            seen_gate = True
+            continue
+        if (
+            seen_gate
+            and step.kind is StepKind.ACTION
+            and step.autonomy is Autonomy.AUTO
+            and step.handler not in _AUDIT_TERMINAL_HANDLERS
+        ):
+            raise ProcedureError(
+                f"step '{step.step_id}': an autonomy:auto action (handler '{step.handler}') is "
+                f"downstream of a gate in an AT-2 procedure — an unattended operational action "
+                f"after a human gate is a bypass surface (ADR-0026 D6 hard guarantee 2 / red-team "
+                f"Attack-5; PLAN-0044 AC-9). Only a verified no-op audit-receipt handler "
+                f"{sorted(_AUDIT_TERMINAL_HANDLERS)} may run auto after a gate (it records, it "
+                f"does not act) — gate the step, move it before the gate, or route it through the "
+                f"audit handler."
+            )
 
 
 def _matches(entity: Any, where: Mapping[str, Any]) -> bool:

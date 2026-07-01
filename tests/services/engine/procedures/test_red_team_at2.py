@@ -15,12 +15,15 @@ zero host-state, no MS-S1 (CLAUDE.md §8).
               BLOCKS LOAD (the control is the typed value, never the prose; D4).
   Fixture 3 — identity-collapse:    under A1 the author-time testable form is the role-level /
               structural collapse — a single-step SoD (rejected at construction) and a
-              doa_tier procedure with no SoD (refused at the gate). The PRINCIPAL-level
-              collapse (the SoD's roles resolving to one human), the literal
-              ``approver_role == requester_role`` check, and the un-gated-audit guarantee
-              (``autonomy: auto`` forbidden downstream of a gate) are the deferred A2 run-tests
-              (AC-13-ALT) — NOT author-time-enforced in v1 (the engine has no principal /
-              requester-role model), and are intentionally NOT asserted here (no false coverage).
+              doa_tier procedure with no SoD (refused at the gate).
+  AC-9       — un-gated-audit:      an ``autonomy: auto`` OPERATIONAL action downstream of a gate
+              is refused at the run-loadability gate (ADR-0026 D6 hard guarantee 2 / Attack-5;
+              PLAN-0044, Option 2), with a verified no-op audit-receipt handler (``echo``)
+              exempt. Formerly A2-deferred here; now enforced in ``validate_governance_complete``.
+              (The PRINCIPAL-level collapse now ships as LIVE run enforcement — ADR-0026 D4 /
+              PLAN-0044 A1b Step 1, ``check_principal_sod`` — exercised in the principal-SoD run
+              tests, not this author-time oracle. The literal ``approver_role == requester_role``
+              check remains A2-deferred, intentionally NOT asserted here — no false coverage.)
 """
 
 from __future__ import annotations
@@ -32,6 +35,7 @@ from pydantic import ValidationError
 
 from services.engine.procedures.orchestrator import ProcedureError, validate_governance_complete
 from services.engine.procedures.spec import (
+    Autonomy,
     ComplianceCriterion,
     ComplianceGate,
     ComplianceRule,
@@ -50,6 +54,7 @@ from services.engine.procedures.spec import (
     Step,
     StepFacet,
     StepKind,
+    load_procedures,
 )
 
 # the requester step (intake) must differ from the approver step (approve) — the author-time
@@ -86,10 +91,14 @@ def _at2_procedure(
     criterion_note: str = "",
     sod: list[SoDConstraint] | None = None,
     goal: str = "route the compliant set to the human approver",
+    trailing_auto_handler: str | None = None,
 ) -> Procedure:
     """A fully-valid AT-2 procedure: the three AT-2 gate kinds (scored_rule / rule_gate /
-    doa_tier) + a >=2-step SoD. Perturbable via the free-text kwargs (fixture 2) and ``sod``
-    (fixture 3); with no perturbation it loads AND passes the gate (the positive control)."""
+    doa_tier) + a >=2-step SoD. Perturbable via the free-text kwargs (fixture 2), ``sod``
+    (fixture 3), and ``trailing_auto_handler`` (fixture 3 / AC-9 — append an ``autonomy: auto``
+    action AFTER the ``approve`` gate; an operational handler is the bypass, ``echo`` is the
+    exempt no-op receipt). With no perturbation it loads AND passes the gate (the positive
+    control)."""
     ladder = DoaLadder(
         currency="THB",
         tiers=[
@@ -110,31 +119,42 @@ def _at2_procedure(
     gate = ComplianceGate(
         rules=[ComplianceRule(criterion=ComplianceCriterion.AVL, spec="supplier on the AVL")]
     )
+    steps = [
+        Step(step_id="intake", name="Intake", kind=StepKind.QUERY),
+        _gate_step(
+            "source",
+            StepKind.ACTION,
+            GateKind.SCORED_RULE,
+            handler="emergency_source",
+            governance_content=scored,
+        ),
+        _gate_step("compliance", StepKind.EVALUATE, GateKind.RULE_GATE, governance_content=gate),
+        _gate_step(
+            "approve",
+            StepKind.ACTION,
+            GateKind.DOA_TIER,
+            handler="request_approval",
+            governance_content=ladder,
+        ),
+    ]
+    if trailing_auto_handler is not None:
+        # an autonomy:auto action AFTER the approve gate — the AC-9 surface (gate_kind none;
+        # governance-complete since a handler is set, so AC-9 is the check that fires).
+        steps.append(
+            Step(
+                step_id="audit",
+                name="Audit",
+                kind=StepKind.ACTION,
+                autonomy=Autonomy.AUTO,
+                handler=trailing_auto_handler,
+            )
+        )
     return Procedure(
         procedure_id="emergency",
         title="Emergency",
         run_by="a",
         goal=goal,
-        steps=[
-            Step(step_id="intake", name="Intake", kind=StepKind.QUERY),
-            _gate_step(
-                "source",
-                StepKind.ACTION,
-                GateKind.SCORED_RULE,
-                handler="emergency_source",
-                governance_content=scored,
-            ),
-            _gate_step(
-                "compliance", StepKind.EVALUATE, GateKind.RULE_GATE, governance_content=gate
-            ),
-            _gate_step(
-                "approve",
-                StepKind.ACTION,
-                GateKind.DOA_TIER,
-                handler="request_approval",
-                governance_content=ladder,
-            ),
-        ],
+        steps=steps,
         separation_of_duties=_SOD if sod is None else sod,
     )
 
@@ -256,8 +276,39 @@ def test_d8_fixture3_doa_procedure_missing_sod_refused() -> None:
         validate_governance_complete(_at2_procedure(sod=[]))
 
 
-# NOTE (A2-deferred, AC-13-ALT — intentionally NOT asserted, no false coverage): the
-# PRINCIPAL-level collapse (the SoD's two roles resolving to a single human), the literal
-# `approver_role == requester_role` check, and the un-gated-audit guarantee (`autonomy: auto`
-# forbidden downstream of a gate) are RUN-time checks gated on a principal-identity model the
-# procedures engine does not have today (OQ-A=A1). They move to the deferred A2 run path.
+# --- AC-9 — the un-gated-audit guarantee (`autonomy: auto` forbidden downstream of a gate) ---
+# (ADR-0026 D6 hard guarantee 2 / red-team Attack-5; PLAN-0044 A1b, Option 2). Formerly A2-deferred
+# in this file's fixture-3 note — now IMPLEMENTED in `validate_governance_complete`.
+
+
+def test_ac9_auto_operational_action_downstream_of_gate_refused() -> None:
+    """An `autonomy: auto` OPERATIONAL action (a real handler) downstream of the `approve`
+    gate is a bypass surface — it would act un-attended after the human gate — so it is REFUSED
+    at the run-loadability gate (ADR-0026 D6 hard guarantee 2 / Attack-5)."""
+    with pytest.raises(ProcedureError, match="downstream of a gate"):
+        validate_governance_complete(_at2_procedure(trailing_auto_handler="issue_po"))
+
+
+def test_ac9_auto_audit_receipt_downstream_of_gate_allowed() -> None:
+    """Option 2 exemption: the SAME shape but the auto step's handler is the verified no-op
+    audit receipt (`echo`) — it records, it does not act — so it PASSES the gate. The exemption
+    is tied to the handler name, not an author flag (route an operational action through `echo`
+    and you get a no-op)."""
+    validate_governance_complete(_at2_procedure(trailing_auto_handler="echo"))  # no raise
+
+
+def test_ac9_shipped_procurement_procedure_passes() -> None:
+    """The AC-9 regression guard on the SHIPPED authored content: the procurement
+    `emergency_sourcing_round` (its `audit` step is `autonomy: auto` + `handler: echo`,
+    downstream of the `approve`/`issue_po` gates) is exempt and loads run-loadable — so an edit
+    that flipped the audit terminal to an operational auto handler after a gate would be caught."""
+    spec = load_procedures("procurement")
+    proc = next(p for p in spec.procedures if p.procedure_id == "emergency_sourcing_round")
+    validate_governance_complete(proc)  # no raise — the auto echo audit terminal is exempt
+
+
+# NOTE (STILL A2-deferred, AC-13-ALT — intentionally NOT asserted, no false coverage): the
+# PRINCIPAL-level collapse (the SoD's two roles resolving to a single human) and the literal
+# `approver_role == requester_role` check remain RUN-time checks. The principal-collapse check
+# now ships as the LIVE run enforcement (ADR-0026 D4 / PLAN-0044 A1b Step 1, `check_principal_sod`)
+# — exercised in the principal-SoD run tests, not this author-time oracle.
