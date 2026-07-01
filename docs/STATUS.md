@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-01T17:42:36+07:00
+last_updated: 2026-07-01T18:20:00+07:00
 session: 92
-current_batch: "PLAN-0044 A1b Steps 2 + 4 merged offline (#499 Step 4 rule_gate per-kind executor + GovernanceEvaluateExecutor · #500 Step 2 OQ-6 N≥2 shared-Person re-trigger marker). A1b still OPEN — remaining = AC-9 (Cray decision owed) + the hero-demo compliance-harness→rule_gate-executor swap. Offline, no host-state, no PO issued."
+current_batch: "A1b (PLAN-0044) COMPLETE offline + CLOSED — all 12 ACs met (AC-9 merged #502, Option 2: no-op audit terminal exempt via a forge-proof handler-allowlist). PLAN-0044 + PLAN-0045 (hero-demo v1) Completion-noted + git mv → done/. Offline suite 2026 passed; no host-state, no PO issued."
 current_actor: code
-blocked_on: "AC-9 needs a Cray decision — the procurement audit step is authored autonomy:auto AND downstream of the approve/issue_po gates, so the AC-9 auto-downstream-of-a-gate assertion would restructure the hero procedure (restructure the audit terminal vs exempt no-op terminals). Remaining A1b is offline (offline tests are the gate, §8); any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
-next_action: "Resolve AC-9 (Cray pick) + the hero-demo compliance-harness→rule_gate-executor swap follow-up (needs intake compliance-signal enrichment + the off-AVL-exception narrative call). Then the PLAN-0044 Completion note + git mv PLAN-0044/0045 → done/ + a full-body STATUS reconcile at A1b CLOSE. Phase-3 product ADRs (generalize the scored_rule/rule_gate data-access = the Q3 ontology-binding gap) deferred."
-head_commit: 4f22602
-recent_commits: [4f22602, 05c9541, 12ac1dd, a458142, 7ec198d, c6d451e, b4c03a9, 0a48542, 52523df, 00b9a3c]
+blocked_on: "Nothing blocking. A1b closed; PLAN-0044/0045 in done/. Optional follow-up = the hero-demo compliance harness→rule_gate-executor swap (out of scope for both PLANs; needs a compliance-signal enrichment + the off-AVL-exception narrative encoding). Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
+next_action: "Optional: the hero compliance-swap follow-up (tracked). Otherwise the next capability = Phase-3 product ADRs (generalize the scored_rule/rule_gate data-access = the Q3 ontology-binding gap), previously deferred — needs a Cray go / dispatch. A full-body STATUS reconcile can fold the older CF blocks when the next batch lands."
+head_commit: e935e6c
+recent_commits: [e935e6c, ea27b27, 7797bb6, 0ee3f4d, 4f22602, 05c9541, 12ac1dd, a458142, 7ec198d, c6d451e]
 ---
 
 # vero-lite — Project Status
@@ -20,8 +20,13 @@ recent_commits: [4f22602, 05c9541, 12ac1dd, a458142, 7ec198d, c6d451e, b4c03a9, 
 
 > **Session 92 (head_commit `4f22602`) — PLAN-0044 A1b STEPS 2 + 4 MERGED
 > (offline close-out) — two PRs (#499 Step 4 the `rule_gate` per-kind executor
-> / #500 Step 2 the OQ-6 N≥2 shared-`Person` re-trigger marker).** INTERIM —
-> **A1b is STILL OPEN** (AC-9 + the hero compliance-swap follow-up remain).
+> / #500 Step 2 the OQ-6 N≥2 shared-`Person` re-trigger marker).** INTERIM at
+> merge — **then A1b CLOSED later this same session:** AC-9 merged (#502 `ea27b27`,
+> Option 2 — a verified no-op audit-receipt terminal (`echo`) is exempt downstream
+> of a gate, forge-proof handler-allowlist), and **PLAN-0044 + PLAN-0045 (hero-demo
+> v1) Completion-noted + `git mv` → `done/`.** All 12 PLAN-0044 ACs met; offline
+> suite 2026 passed. The hero-demo `compliance` harness→`rule_gate`-executor swap is
+> an OPTIONAL follow-up (out of scope for both PLANs).
 > **#499 (feat `a458142`, merge `05c9541`, A1b Step 4 / AC-6) — the `rule_gate`
 > per-kind executor:** NEW `services/engine/procedures/rule_gate.py` — a pure
 > `evaluate_compliance(gate, candidate)` reads the candidate's per-criterion

@@ -1,8 +1,39 @@
 # PLAN-0044: A1b — live fail-closed run enforcement (per-step principal recording · per-kind executors · audit-to-control)
 
-**Status:** Draft
+**Status:** Complete (2026-07-01, session 92) — moved to `done/`
 **Owner:** Claude Code (executes); `plan-drafter` subagent (this draft, uncommitted)
 **Created:** 2026-06-30
+
+> ## Completion (2026-07-01, session 92)
+>
+> **A1b is COMPLETE offline** — all twelve acceptance criteria met on `main`, the offline
+> suite green throughout (`ruff` + `mypy` clean; 2026 passed / 5 skipped at close). No live
+> MS-S1 in any gate (§8); render / route / block only (no PO issued, ADR-0007 LOCKED #3).
+>
+> | AC | Shipped by |
+> |----|-----------|
+> | AC-1/2/3/4 (per-step principal recording + live fail-closed principal-SoD) | Step 1 — #486 (`719ea78`) |
+> | AC-5 (`doa_tier` executor + fail-closed currency, OQ-4) | Step 3 — #488 (`34be3a5`) |
+> | AC-6 (`rule_gate` executor — block PO on any failed compliance rule) | Step 4 — #499 (`a458142`) |
+> | AC-7 (`scored_rule` executor — deterministic supplier selection) | Step 5 — #495 (`2ebe851`) |
+> | AC-8 (typed `governed_decision` audit-to-control field, SD-3=(a)) | Step 6 — #489 (`f5527d9`) |
+> | AC-9 (`autonomy: auto` forbidden downstream of a gate; no-op audit terminal exempt, Option 2) | #502 (`ea27b27`) |
+> | AC-10 (procurement principals + OQ-6 N≥2 re-trigger marker) | Step 1 #486 (principals) + Step 2 #500 (`12ac1dd`, marker) |
+> | AC-11 (gate/run tests reconciled, author-time gate unchanged) | verified green across the suite |
+> | AC-12 (ruff + mypy clean; offline-only) | ✅ at every step |
+>
+> **Surfaced-decision dispositions:** SD-1 = (a) the dispatching wrapper per StepKind
+> (`GovernanceActionExecutor` / `GovernanceEvaluateExecutor`); SD-2 = (a) orchestrator records
+> `ctx.principal` per constrained step; SD-3 = (a) the typed `GovernedDecision` sub-model — all
+> as-recommended, built accordingly. **AC-9 = Option 2** (Cray, session 92): a verified no-op
+> audit-receipt handler (`echo`) is exempt downstream of a gate; the exemption is tied to the
+> handler name (forge-proof), not an author flag.
+>
+> **Follow-up (NOT an A1b AC — optional demo polish):** swap the hero-demo `compliance` harness
+> stub (`verticals/procurement/hero_demo/run.py` `_EvaluateDispatch`) to the shipped `rule_gate`
+> executor. Out of scope for both PLAN-0044 and PLAN-0045 (0045 explicitly excludes
+> `rule_gate`); tracked separately. Phase-3 product ADRs (generalize the scored_rule/rule_gate
+> data-access = the Q3 ontology-binding gap) remain deferred.
 **Related ADRs:** ADR-0026 (D5–D6 = this PLAN's scope; OQ-4/OQ-5/OQ-6 resolved Cray s87 — implemented here, never re-decided; D1–D4 = the A1a floor this stands on), ADR-0025 (the AT-2 D5/D6 semantics + the four hard guarantees + the D8 red-team fixture-3 — IMPLEMENTED, never re-litigated), ADR-016 (the `StepExecutor` Protocol + orchestrator run path this EXTENDS — not a new engine; D2-A4 the facet stays non-authoritative), ADR-0007 (the `RecommendedAction` approve→execute write gate — the only external write path, untouched), ADR-0024 D3 (`governed ≠ generated` — principals, bindings, typed AT-2 content stay human-authored), ADR-006 D4 (Rule of Three — the OQ-6 N≥2 re-trigger), ADR-011 (the deferred audit-framework — OQ-5 keeps the field minimal so it does not pre-empt it), ADR-0019 / ADR-010 IN-3 (the LLM-only-summarises determinism invariant), ADR-009 D1/D2 (the drafter authors ungated, only Code commits)
 
 > **Drafting provenance.** Drafted (uncommitted) by the in-harness `plan-drafter` subagent under ADR-013 D1 phased authority (the advisory governance drafter). This is a **new PLAN** — Code is G2-gated from authoring it; the independent drafter authors, Code R2-reviews + commits via a `feat/*` PR after Cray ratifies (ADR-009 D2). The subagent does not git.
