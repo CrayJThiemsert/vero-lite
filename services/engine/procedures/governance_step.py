@@ -10,11 +10,14 @@ falling through to the BASE executor for a non-AT-2 step — so the orchestrator
 ``_Evaluate`` dispatch. The enforcement itself stays a small pure function the wrapper calls
 (:func:`~services.engine.procedures.doa_tier.resolve_doa_tier`).
 
-This module ships the **ACTION** wrapper with the ``doa_tier`` branch (Step 3) and the
-``scored_rule`` branch (Step 5, also ACTION-step content); the EVALUATE wrapper's ``rule_gate``
-branch (Step 4) extends it. Render / route / select only — the wrapper resolves + annotates, and
-for ``scored_rule`` it EMITS the selected quote's spend onto the threaded entity so the downstream
-``doa_tier`` resolves (PLAN-0044 A1b Step 5, the section-3 baht-threading fix); the shipped
+This module ships the **ACTION** wrapper (:class:`GovernanceActionExecutor`) with the ``doa_tier``
+branch (Step 3) and the ``scored_rule`` branch (Step 5, also ACTION-step content), and the
+**EVALUATE** wrapper (:class:`GovernanceEvaluateExecutor`) with the ``rule_gate`` branch (Step 4 —
+the compliance gate is EVALUATE-step content). Render / route / select / block only — the wrapper
+resolves + annotates, for ``scored_rule`` it EMITS the selected quote's spend onto the threaded
+entity so the downstream ``doa_tier`` resolves (PLAN-0044 A1b Step 5, the section-3 baht-threading
+fix), and for ``rule_gate`` it tags each candidate ``compliant`` so the downstream ``approve``
+fan-out (``where: {compliant: true}``) drops a non-compliant candidate (Step 4); the shipped
 ADR-0007 approve->execute gate stays the only external write path (LOCKED #3).
 """
 
@@ -28,8 +31,9 @@ from typing import Any
 from services.engine.actions import ControlRef, GovernedDecision
 from services.engine.procedures.doa_tier import DoaTierError, resolve_doa_tier
 from services.engine.procedures.orchestrator import RunContext, StepExecutor, StepOutcome
+from services.engine.procedures.rule_gate import evaluate_compliance
 from services.engine.procedures.scored_rule import ScoredRuleError, select_scored_supplier
-from services.engine.procedures.spec import DoaLadder, Person, ScoredRule, Step
+from services.engine.procedures.spec import ComplianceGate, DoaLadder, Person, ScoredRule, Step
 
 
 def _spend(entity: Any) -> tuple[Decimal, str]:
@@ -252,3 +256,68 @@ class GovernanceActionExecutor:
             "scored_rule": [v.to_audit() for v in verdicts],
         }
         return StepOutcome(output=enriched, reasoning_trace=trace, audit=audit)
+
+
+@dataclass(frozen=True)
+class GovernanceEvaluateExecutor:
+    """SD-1=(a) dispatching wrapper for the ``evaluate`` StepKind (PLAN-0044 A1b Step 4).
+
+    Branches on ``step.governance_content`` and delegates the ``rule_gate`` (compliance) content to
+    the deterministic :func:`~services.engine.procedures.rule_gate.evaluate_compliance`; a non-AT-2
+    evaluate step (the banded ``judge`` — no / non-``rule_gate`` governance content) delegates
+    straight to the wrapped ``base`` (the shipped deterministic
+    :class:`~services.engine.procedures.evaluate_step.EvaluateStepExecutor`, which reads the
+    authored band). The orchestrator's ``StepKind``-keyed contract is untouched (extend not replace,
+    LOCKED #5), mirroring :class:`GovernanceActionExecutor`.
+
+    The ``rule_gate`` branch does NOT call the base: the base ``EvaluateStepExecutor`` REQUIRES an
+    authored numeric ``threshold`` and a band-less compliance step would fail it — compliance is a
+    RULE gate, not a numeric band. The gate is the pure :func:`evaluate_compliance` (no LLM — the
+    LLM never evaluates the rule, governed ≠ generated, ADR-0019 IN-3). Block / render only.
+    """
+
+    base: StepExecutor
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        gc = step.governance_content
+        if isinstance(gc, ComplianceGate):
+            return await self._rule_gate(step, gc, input_set, ctx)
+        return await self.base.execute(step, input_set, ctx)
+
+    async def _rule_gate(
+        self, step: Step, gate: ComplianceGate, input_set: list[Any], ctx: RunContext
+    ) -> StepOutcome:
+        """Evaluate the compliance gate per candidate and TAG each ``compliant`` (blocking the PO on
+        any failed criterion — the non-compliant candidate is dropped by the downstream ``approve``
+        ``where: {compliant: true}`` fan-out). Deterministic + fail-closed (see
+        :func:`evaluate_compliance`); no base call (compliance has no numeric band), no LLM. The
+        per-criterion results ride the step audit (the hero render reads them); no PO is issued
+        (render / block only, LOCKED #3)."""
+        verdicts = [evaluate_compliance(gate, candidate) for candidate in input_set]
+        output: list[Any] = [
+            {
+                **(candidate if isinstance(candidate, Mapping) else {"value": candidate}),
+                "compliant": v.compliant,
+                "failed_criteria": list(v.failed_criteria),
+            }
+            for candidate, v in zip(input_set, verdicts, strict=True)
+        ]
+        blocked = sum(1 for v in verdicts if not v.compliant)
+        trace = [
+            {
+                "kind": "rule_gate_evaluated",
+                "summary": (
+                    f"evaluated {len(gate.rules)} compliance rule(s) over {len(verdicts)} "
+                    f"candidate(s): {blocked} blocked (any failed criterion blocks the PO — "
+                    "non-waivable)"
+                ),
+            }
+        ]
+        audit = {
+            "actor": ctx.agent.agent_id,
+            "actor_kind": "engine",
+            "deterministic": True,
+            "governed_kind": "rule_gate",
+            "rule_gate": [v.to_audit() for v in verdicts],
+        }
+        return StepOutcome(output=output, reasoning_trace=trace, audit=audit)
