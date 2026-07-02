@@ -1,10 +1,10 @@
 ---
-last_updated: 2026-07-02T15:26:45+07:00
+last_updated: 2026-07-02T18:25:29+07:00
 session: 94
-current_batch: "ADR-0020 D4 post-run-1 review COMPLETE (s94, 2026-07-02) — verdict CONTINUE WITH ADJUSTMENTS (Cray-ratified); 4-lens panel all R-PS NOT-FIRED; C-1..C-3 confirmed; #516 instruction R1-tighten landed (re-paste to UI before run 2)."
+current_batch: "ADR-0020 partner-sim RUN 2 (supply-chain) COMPLETE (s94, 2026-07-02, working-tree event — no commit): synthetic cold-chain package received in a FRESH project w/ all 3 D4 adjustments; S-1..S-6 ALL PASS vs a pre-committed oracle (first live R-PS4 screen: clean); first-pass findings drafted (gitignored, R3)."
 current_actor: code
 blocked_on: "Nothing blocking. Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
-next_action: "D4 review DONE (the last owed trial-level item). Next = the standing Cray pick: (b) the Q4 generic query executor PLAN, or the rehearsal-enriched backlog. Run-2 preconditions recorded (instruction re-paste to UI + stripped-checklist paste-variant + fresh project + persona-brief fix) — run 2 itself stays unscheduled."
+next_action: "Run-2 receive DONE. Cray-owned: confirm C-1..C-3 for the new supply-chain project (2-min Desktop check, carried open) + the next pick — full run-2 rehearsal (the run-1 fork-(a) pattern: intake/mapping/PDPA vs the cold-chain package), (b) the Q4 generic query executor PLAN, or the rehearsal-enriched backlog."
 head_commit: 255627b
 recent_commits: [255627b, eb63692, 878b517, d544414, bd7423b]
 ---
@@ -17,6 +17,56 @@ recent_commits: [255627b, eb63692, 878b517, d544414, bd7423b]
 ---
 
 ## Current Focus
+
+> **Session 94 cont., 2026-07-02 (head_commit `255627b` unchanged —
+> WORKING-TREE EVENT, no commit; #517 was a `docs(status)` merge, excluded) —
+> ADR-0020 PARTNER-SIM RUN 2 (supply-chain) COMPLETE — synthetic cold-chain
+> package received + screened: S-1..S-6 ALL PASS vs a pre-committed oracle,
+> incl. the FIRST live R-PS4 context-bleed screen (clean); first-pass findings
+> drafted (gitignored, R3).** Run launched by Cray in a FRESH project per SD-2
+> with ALL THREE D4 adjustments applied: (i) the #516-tightened instruction,
+> (ii) the R1-STRIPPED PDPA paste-variant, (iii) fresh project + a
+> Code-authored run-start assembly
+> (`docs/research/private/2026-07-02-partnersim-run2-runstart-paste.md`).
+> Parameters: supply-chain / mid / **multi-site-sea** / mixed-legacy
+> (multi-site-sea = Code's pick to force the cross-border PDPA surface run 1
+> never touched). **Screen — S-1..S-6 ALL PASS vs the PRE-COMMITTED oracle**
+> (`...run2-receive-checklist.md`, criteria fixed before the package existed):
+> R3 banner verbatim ×2; S-2 under the SHARPER post-#516 detector found
+> nothing (own duration-qualified rules, own action verbs "ปล่อย/กัก/ตีกลับ",
+> own fields, decidedly non-schema-shaped); S-3 = 5 unsolicited facts (≥N=3) +
+> heavy flaw classes; S-4 = 7 refusals w/ blockers; S-5 K-1 re-stamps; **S-6
+> R-PS4 (first live context-bleed screen, run-2-specific): zero run-1/TWP
+> specifics — clean.** No R-PS trigger fired. **Landed (gitignored, R3):**
+> package
+> `docs/research/private/2026-07-02-partnersim-run2-supply-chain-package.md`
+> (fictional cold-chain operator "สุวรรณเย็น ทรานส์") + oracle/verdicts
+> `...run2-receive-checklist.md` + the completion handoff (session-94, 1825).
+> **First-pass value — new finding classes run 1 could not surface:**
+> cross-border transfer ALREADY in flight (logger-vendor cloud @ Singapore, no
+> PDPA terms; deletion non-guaranteeable → the DPA must handle third-party
+> processor chains; the residency story flips from run-1's "straight win" to a
+> real ss.28/29 design question); duration-qualified thresholds (−15.5°C เกิน
+> 45 นาที, door >12 min, pharma no-grace) vs our instantaneous
+> `in_file_band`; per-CONTRACT (not per-asset-class) bands; a per-device
+> calibration registry (raw 0–4095 × paper cal sheets); GPS-as-PII w/ a
+> column-drop counter-proposal + re-identification honesty; third-party
+> data-ownership boundaries (JV board / shipping agent / vendor cloud).
+> **Cross-run signal (2/2 verticals):** identity-unresolvable principals, PK
+> renumber+reuse, clock chaos, single-person knowledge bottleneck, batch-only
+> export — these graduate from energy quirks to the mapping-layer's
+> must-handle core. **Watch items:** repeated messiness ARCHETYPES across runs
+> (below the R-PS4 bar, partly instruction-example-driven — fixture-diversity
+> watch for any run 3); the "unannotated bulk slice" ask only partially met
+> (curated small samples again); C-1..C-3 for the NEW project requested from
+> Cray, UNCONFIRMED — benign (no S-2/S-6 indicator fired). **NEXT
+> (Cray-owned):** confirm C-1..C-3 for the new supply-chain project (2-min
+> Desktop check, carried open) + the next pick — a full run-2 rehearsal (the
+> run-1 fork-(a) pattern: intake/mapping/PDPA vs the cold-chain package), (b)
+> the Q4 generic query executor PLAN, or the rehearsal-enriched backlog.
+> **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (nothing
+> touched it); AI-assisted (Claude Code, session 94), no `Co-Authored-By` per
+> CLAUDE.md §7.
 
 > **Session 94 cont., 2026-07-02 (head_commit `eb63692` → `255627b` — #516
 > `docs(conventions):` is SUBSTANTIVE per lint policy, merge `cb161a4`) —
@@ -114,104 +164,22 @@ recent_commits: [255627b, eb63692, 878b517, d544414, bd7423b]
 > **DISABLED**; MS-S1 cold (nothing touched it); AI-assisted (Claude Code,
 > session 94), no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 93 cont., 2026-07-02 (head_commit `eb63692`) — PLAN-0046 (Q3
-> READ-SIDE ONTOLOGY-BINDING BUILD) EXECUTED + COMPLETE + CLOSED — one feat PR
-> (#511 feat `878b517`, merge `d95f0a2`) + the close PR (#512 docs `eb63692`,
-> merge `ac8ad24`); PLAN Completion-noted + `git mv` → `done/`.** Renders the
-> Accepted ADR-016 Q3 amendment into code; **all 11 ACs met.** **Step 1
-> (AC-1..3):** `StepInput.reads: list[str] | None` (typed data-sourcing entry
-> point, OQ-5 list) + `AgentAllowed.object_types: list[str]` (read-side
-> blast-radius allowlist mirroring `action_handlers`); both `extra="forbid"`,
-> backward-compat (absent/empty = loads as today; OQ-6 empty=unconstrained).
-> **Step 2 (AC-4..8):** NEW pure `validate_read_bindings(procedure, agent,
-> object_type_names)` in `orchestrator.py` (SD-1 Option A —
-> `validate_runnable`'s signature + all ~12 call-sites untouched); each query
-> step's `reads` element must ∈ the vertical's ontology AND (when the agent
-> opts in) ∈ `allowed.object_types`, else `ProcedureError` naming the object +
-> failed condition; wired at the 2 production pre-flight sites
-> (`run_procedure` + `persistence.resume_run`) via
-> `validate_read_bindings_for_vertical` (builds the registry from
-> `load_ontology_meta(vertical)`; SKIPPED entirely — no ontology I/O — for a
-> reads-absent procedure). **Zero runtime-data-flow change**
-> (`_resolve_input`/seeds untouched). AC-5 refuse pass/fail read pre-committed
-> in the test module BEFORE the tests; AC-7 wiring test runs against the REAL
-> aquaculture registry. **Step 3 (AC-9/10):** `reads` →
-> `STEP_GOVERNANCE_FIELDS` (H, OQ-A); `object_types` confirmed covered via
-> `allowed` (asserted, not re-added); PLUS one disclosed build-level hardening
-> beyond the PLAN's letter (consistent with OQ-A "never model-emitted", no ADR
-> decision changed): `StepDraft` REUSES `StepInput` so a generated draft CAN
-> physically carry `reads` — `lift_to_step` now strips it to an ABSENT stub
-> (`_strip_read_binding`, the OQ-C C1 inject-absent pattern / `env_var`
-> precedent) + a CI tripwire test. **Step 4 (AC-11):** 12 new tests; ruff +
-> ruff-format + `mypy --strict services/` clean; **full offline suite 2066
-> passed / 5 skipped.** Honest frame delivered (LOCKED-9): declared ✔ ·
-> consistency-gated at load ✔ · execution-bound ✖. **SD dispositions:** SD-1 =
-> Option A (as ratified); SD-2 = Option A (no vertical migrated; gate inert
-> until opt-in). Offline-only — no host-state, no live run. **NEXT:** the Q4
-> generic run-consume query executor is a SEPARATE later PLAN (deferred by
-> ADR-016 Q3); otherwise the parked backlog (Rock sequence /
-> PLAN-0010/0012/0019/0027 / partner-GTM) — a Cray pick. **Standing:**
-> `loop-dispatcher` stays **DISABLED**; MS-S1 cold; AI-assisted (Claude Code,
-> session 93), no `Co-Authored-By` per CLAUDE.md §7.
-
-> **Session 93 (head_commit `cb7eb05`) — ADR-016 Q3 READ-SIDE ONTOLOGY
-> OBJECT-BINDING AMENDMENT ACCEPTED (Rock 3 / O-2, PR #505) — an in-place
-> ADR-016 D2+D3 amendment closing the read-side governance gap that mirrors the
-> shipped write-side.** Two commits: `915c344` (Proposed) + `cb7eb05` (fold the
-> ratified decisions → **Accepted**). **Decision (contract-first):** a typed
-> `StepInput.reads: list[str]` read entry point (OQ-5: **list, not `str`** —
-> procurement `intake` reads 3 object types + joins); `Agent.allowed.object_types`
-> mirroring `action_handlers`; **LOAD-time enforcement** (`reads ∈ ontology ∩
-> allowlist`, else refuse load) — **zero runtime-data-flow change.** **Honest
-> enforcement frame (Cowork caught, Code-verified):** v1 = a typed read contract
-> + a load-time consistency/scoping gate, **NOT** runtime-enforced parity — even
-> write-side `action_handlers` is only pre-flight-checked in `validate_runnable`;
-> teeth = declared==dispatched, and the read side gains that only at **Q4**.
-> **Deferred:** the generic run-consume **query executor** → a fast-follow build
-> PLAN (touches runtime flow + enrich/join steps); the **Box-4 economic-impact
-> facet** → a self-cancelling **N≥3** marker (typed facet only; the economic
-> dimension is prose-captured at vertical authoring). **Governance decisions
-> ratified (OQ-1..6/A):** OQ-1 `StepInput.reads` · OQ-2 load-gate + reframe ·
-> OQ-3 `object_types` bounds `fetch_objects` only (links/events out of v1) · OQ-4
-> `where` = post-fetch · OQ-5 `reads: list[str]` · OQ-A `reads`/`object_types`
-> H-governed (`object_types` auto-covered; add `reads` to
-> `STEP_GOVERNANCE_FIELDS` = a build-PLAN task) · OQ-6 `object_types` empty =
-> unconstrained (backward-compat). **Three-lens review process:** `plan-drafter`
-> **AUTHORED** the amendment + folded the ratified decisions; **Cowork Tier-1b**
-> delivered an independent second-perspective review (caught the parity
-> over-claim + surfaced OQ-5); **Code R2-verified** every claim on disk +
-> committed; **Cray ratified** OQ-1..6/A. **Impl note for the build PLAN:** the
-> load-gate must thread the vertical `OntologyMeta` into pre-flight
-> (`validate_runnable(procedure, agent)` doesn't carry it today). **NEXT = the
-> fast-follow build PLAN** (implement `StepInput.reads` + `Agent.allowed.object_types`
-> + the load-gate + `reads`→`STEP_GOVERNANCE_FIELDS` + tests); the generic query
-> executor (Q4) is a separate later PLAN. **Standing:** `loop-dispatcher` stays
-> **DISABLED**; MS-S1 cold (offline, §8); AI-assisted (Claude Code, session 93),
-> no `Co-Authored-By` per CLAUDE.md §7.
->
-> **UPDATE (same session):** the fast-follow build PLAN is now **PLAN-0046** —
-> drafted → Cowork-lens-informed Code R2 → Cray-ratified (SD-1 separate
-> `validate_read_bindings` entry point + SD-2 verticals-stay-absent) → merged
-> **Ready for execution** (#509, `d544414`). NEXT = execute Steps 1–4 (offline
-> gate; no live run).
-
-> _Rotation note (session-93 build-close reconcile, 2026-07-02): to hold STATUS
-> under the **R1 64 KB hard ceiling** as the new Session-93 PLAN-0046-build CF
-> block + a new Recent-Decisions row landed (the file was at ~60.3 KB before the
-> additions; R1 overrides the R2 4-session window — the s93 SD-1 precedent
-> accepted a 2-block window), three items were rotated verbatim to
+> _Rotation note (session-94 run-2 receive reconcile, 2026-07-02): to hold
+> STATUS under the **R1 64 KB hard ceiling** as the new Session-94 partner-sim
+> run-2 CF block landed (the file was at ~63.8 KB before the addition; R1
+> overrides the R2 4-session window — the s93 precedents accepted a narrowed
+> window), two Current Focus blocks were rotated verbatim to
 > [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md):
-> (1) the **Session 92 (head_commit `4f22602`)** Current Focus block (PLAN-0044
-> A1b Steps 2+4 — #499/#500 — including the same-session A1b-CLOSE update: AC-9
-> #502, PLAN-0044/0045 → `done/`); (2)+(3) the two oldest **Recent Decisions**
-> rows — **2026-06-29 PLAN-0042 v1 (Steps 1–3 + 5) COMPLETE (session 86,
-> #470/#471/#472)** and **2026-06-29 PLAN-0042 Steps 1-2 SHIPPED (session 85
-> cont., #467/#468)**. Resulting Current-Focus window = {93 (PLAN-0046 build
-> `eb63692`), 93 (ADR-016 Q3 `cb7eb05`)}; RD table = 9 rows. **Ledger prune:**
-> the prior session-93 (2026-07-01) reconcile rotation note was removed from
-> this live file — pure archive-POINTER bookkeeping (the blocks/rows it
-> references already live verbatim in the archive + git history, Tier 3; no
-> content lost). Per the STATUS.md Rotation Policy (R1/R2/R4)._
+> (1) the **Session 93 (head_commit `cb7eb05`)** ADR-016 Q3 read-side
+> object-binding amendment block (#505, incl. its same-session PLAN-0046
+> UPDATE addendum); (2) the **Session 93 cont. (head_commit `eb63692`)**
+> PLAN-0046 build-close block (#511/#512). Resulting Current-Focus window =
+> {94 run-2 receive, 94 D4 review `255627b`, 94 run-1 rehearsal}; RD table = 9
+> rows (untouched). **Ledger prune:** the prior session-93 build-close
+> rotation note was removed from this live file — pure archive-POINTER
+> bookkeeping (its referenced items already live verbatim in the archive + git
+> history, Tier 3; no content lost). Per the STATUS.md Rotation Policy
+> (R1/R2/R4)._
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
@@ -247,7 +215,7 @@ below, and git history.
 ## In-Flight Discussions
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
-- **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** Accepted 2026-06-13 (ratified `4d1347b`, #302; committed Proposed `e25281d`, #297 + instruction `e387a63`, #298 + R1 errata `655344d`, #300) — guarded trial under observation (parallel to ADR-012). A specialist Cowork project role-plays a Thai operator and emits a "partner profile package" to rehearse the intake+PDPA pipeline before a real partner; venue OUTSIDE the governance tiers (no commits / no repo mount / enters via Code receive). Three BINDING anti-circularity rules R1/R2/R3 (R3 SYNTHETIC provenance → never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger). All four venue SDs + dispatch-SD-1 ratified per Cowork rec (SD-1 N=3; SD-2 one-project-per-business-type; SD-3 size/region/maturity enums w/ energy·mid·th-regional·mixed-legacy default; SD-4 "what we refused to share" now required). D4 guarded-trial mirrors ADR-012 D5; regression triggers R-PS1..R-PS4 are the exit criteria; run 1 = energy operator (ADR-005 primary). **RUN 1 (energy / mid / th-regional / mixed-legacy) COMPLETE 2026-07-02 (session 93):** synthetic partner profile package (fictional TWP operator) received via Cray relay + Code-screened **S-1..S-5 ALL PASS** against a **pre-committed** oracle (R1 no schema echo · R2 six unsolicited inconvenient facts + heavy data flaws · R3 SYNTHETIC banner intact · SD-4 refused-to-share present); no R-PS trigger fired. Landed (gitignored, R3): package `docs/research/private/2026-07-02-partnersim-run1-energy-package.md` + oracle/verdicts `...-run1-receive-checklist.md` + completion handoff (session-93). First-pass value: **8 schema-mismatch findings** for the intake/mapping/PDPA path (unstable asset PKs, unresolvable principal identity vs ADR-0026 SoD + the worker-committee PDPA angle, multi-unit columns vs ADR-0021, per-source TZ chaos, action-events-in-status + seasonal thresholds vs in_file_band, mutable history, residency = our on-prem fit, DPA 4–6-wk timeline). **ADR-0020 D4 post-run-1 review DONE 2026-07-02 (s94): verdict continue-with-adjustments (no R-PS trigger fired; C-1..C-3 confirmed; #516 R1-tighten + stripped paste-variant landed; run-2 preconditions recorded — re-paste instruction to UI, fresh project per SD-2, unannotated bulk ask, persona fix). ADR-011 audit framework stays gated on a REAL partner conversation — the synthetic run INFORMS but never TRIGGERS it (R3).**
+- **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** Accepted 2026-06-13 (ratified `4d1347b`, #302; committed Proposed `e25281d`, #297 + instruction `e387a63`, #298 + R1 errata `655344d`, #300) — guarded trial under observation (parallel to ADR-012). A specialist Cowork project role-plays a Thai operator and emits a "partner profile package" to rehearse the intake+PDPA pipeline before a real partner; venue OUTSIDE the governance tiers (no commits / no repo mount / enters via Code receive). Three BINDING anti-circularity rules R1/R2/R3 (R3 SYNTHETIC provenance → never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger). All four venue SDs + dispatch-SD-1 ratified per Cowork rec (SD-1 N=3; SD-2 one-project-per-business-type; SD-3 size/region/maturity enums w/ energy·mid·th-regional·mixed-legacy default; SD-4 "what we refused to share" now required). D4 guarded-trial mirrors ADR-012 D5; regression triggers R-PS1..R-PS4 are the exit criteria; run 1 = energy operator (ADR-005 primary). **RUN 1 (energy / mid / th-regional / mixed-legacy) COMPLETE 2026-07-02 (session 93):** synthetic partner profile package (fictional TWP operator) received via Cray relay + Code-screened **S-1..S-5 ALL PASS** against a **pre-committed** oracle (R1 no schema echo · R2 six unsolicited inconvenient facts + heavy data flaws · R3 SYNTHETIC banner intact · SD-4 refused-to-share present); no R-PS trigger fired. Landed (gitignored, R3): package `docs/research/private/2026-07-02-partnersim-run1-energy-package.md` + oracle/verdicts `...-run1-receive-checklist.md` + completion handoff (session-93). First-pass value: **8 schema-mismatch findings** for the intake/mapping/PDPA path (unstable asset PKs, unresolvable principal identity vs ADR-0026 SoD + the worker-committee PDPA angle, multi-unit columns vs ADR-0021, per-source TZ chaos, action-events-in-status + seasonal thresholds vs in_file_band, mutable history, residency = our on-prem fit, DPA 4–6-wk timeline). **ADR-0020 D4 post-run-1 review DONE 2026-07-02 (s94): verdict continue-with-adjustments (no R-PS trigger fired; C-1..C-3 confirmed; #516 R1-tighten + stripped paste-variant landed; run-2 preconditions recorded — re-paste instruction to UI, fresh project per SD-2, unannotated bulk ask, persona fix). RUN 2 (supply-chain / mid / multi-site-sea / mixed-legacy) COMPLETE 2026-07-02 (s94): fresh project + all 3 D4 adjustments; S-1..S-6 ALL PASS pre-committed (first live R-PS4 screen clean); cross-run signal — identity/PK/clock/bottleneck/batch-only recur in 2/2 verticals (mapping-layer core, not energy quirks); new classes: cross-border-already-in-flight, duration-qualified + per-contract bands, per-device calibration, GPS-as-PII column-drop. C-1..C-3 (new project) carried open. ADR-011 audit framework stays gated on a REAL partner conversation — the synthetic run INFORMS but never TRIGGERS it (R3).**
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
 - **Procurement vertical — GO + IN MOTION: PLAN-0036 (Fastenal, Stage 1) drafted + merged Draft (#412, `7a7c036`):** **GO** — Cray greenlit the 4th vertical (Procurement) and **PLAN-0036 (Fastenal procurement vertical, Stage 1) is drafted + merged Draft** (#412, head_commit `7a7c036`; Cowork-D1 + Code-R2 + committed D2, session 75). **Cray adjudicated SD-1…SD-5 = confirm-all** (2026-06-24, as-recommended). **Demo target = Fastenal Thailand** — automotive/auto-parts in the EEC; **hero** = asset-failure → governed emergency sourcing, **calm-path** = low-stock reorder. Stage 1 = a **PLAN-only, no-ADR pure-config plugin** on the shipped ADR-016 engine, **zero `services/` core edit** (CQ-1 confirmed, ADR-0023); the **SD-4 catch** = `services/engine/procedures/spec.py` `Step = ConfigDict(extra="forbid")` → Stage-1 facet annotations are **comment-only** (a first-class `facet` field = a Stage-2 ADR-016 amendment). It is the **proving ground** for the ultimate **3-phase generative-procedure platform** (generate / run / monitor); per Rule-of-Three it builds **no generic generator** (hand-author → extract schema Stage 2 → generator Stage 3). **NEXT = a new session flips PLAN-0036 Draft → Ready for execution (SDs confirm-all) then executes Stage 1.** *Supporting de-risk dossier (Cowork, session 72, 2026-06-22, `docs/research/private/`)* — **(1)** `2026-06-22-procurement-spec-expressiveness-probe.md` (procurement is **config-layer**, **0 new core amendments**; only engine pulls are the already-deferred ADR-016 Phase 2 / Phase 4+ items); **(2)** `2026-06-22-procurement-gtm-commercial-validation.md` (wedge = ops-triggered asset-aware procurement; econ buyer = CFO/Controller, champion = ops/procurement mgr; metric = **cycle-time**; ~$40K–150K/yr; 6-wk paid pilot); **(3)** `2026-06-22-procurement-asset-aware-incumbent-scan.md` (de-risk #1 — EAM/CMMS = nearest incumbent on the *trigger* only; white space = the **triple intersection** asset-trigger × governed sourcing × cross-vertical); **(4)** `2026-06-22-ai-sourcing-competitor-teardown.md` (de-risk #2 — Verusen/Keelvar/Fairmarkit/Arkestro/… triple intersection unoccupied; defensibility on **axis (a) asset-event trigger**; watchlist: **Verusen #1**, Fairmarkit, Coupa); **(5)** `2026-06-22-platform-incumbent-deepdive.md` (de-risk #3 — Palantir/Maximo/GE Vernova/SAP = capability-yes / product-no; moat = **packaging × ICP × price** = the **"Palantir-lite"** thesis, ADR-005, **governed ≠ generated**). **Pitch:** lead with asset-ontology-triggered governed sourcing + the native ontology (ADR-008) + engine (ADR-016) combination — **NOT** "governed"/"cross-vertical" (now commoditized claims).
 - **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (PLAN-001 line 9 forward-reference); ADR-005 was reused for the strategic pivot, so the Postgres-image ADR needs a fresh number (**≥ ADR-014** — ADR-011 earmarked for the audit framework, ADR-012 taken by Cowork second free-form tier, ADR-013 taken by autonomy axis relocation; floor bumped 2026-05-23 per ADR-013 §Consequences/Neutral + T6).

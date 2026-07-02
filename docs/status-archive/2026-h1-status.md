@@ -1908,3 +1908,88 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-29 (PLAN-0042 Steps 1-2 SHIPPED, session 85 cont.) [rotated 2026-07-02, session-93 build-close reconcile]
 
 | 2026-06-29 | **PLAN-0042 (O-3 AT-2/managerial layer) Steps 1-2 SHIPPED + MERGED (session 85 cont., #467/#468)** — typed AT-2 content (D2) + the AT-2-aware run-gate (D5) closing the live blindness defect; the procurement AT-2 migrated prose→typed behind a green golden test; OQ-B=B2 values mirror the data adapter (provisional, pending Cray sign-off). **Step 1 (#467, `6176b18`):** discriminated `Step.governance_content` (`DoaLadder`\|`ScoredRule`\|`ComplianceGate`, keyed on `kind`) + `Procedure.separation_of_duties`; D3 bypass unrepresentable (`Decimal` money; closed `RelaxableConstraint` enum can't name compliance/SoD; `blocks_po`/`requires_justification` `Literal[True]`; total strictly-monotonic DOA ladder); D4 H-field invariants (new fields in `GOVERNANCE_FIELDS`, never on a draft type; draft-disjointness + `StepFacet`-unreachability CI). Finding 1 honored (DOA tiers nest in `DoaLadder`, no 2nd `Step.tiers`). **Step 2 (#468, `059c6ea`):** the AT-2-aware run-gate + the prose→typed migration in ONE PR behind the golden test — `validate_governance_complete` now owes typed `governance_content` on the AT-2 kinds + a `doa_tier` proc owes `separation_of_duties`; an empty-DOA/no-criteria/no-SoD AT-2 is no longer run-loadable (the negative hollow-but-complete regression = the D5 ratification gate). **Build interps:** principal-level SoD + resolved-tier strict-escalation deferred to **A2 (AC-13-ALT)** — no engine principal/role-rank layer; the author-time gate enforces the STRUCTURAL form (≥2 distinct steps; ladder totality). Gate: mypy --strict + ruff clean, **pytest 1843/24**; no live MS-S1. Remaining: Steps 3 (prose-lint + "ADVISORY — NOT A CONTROL" banding) + 5 (offline oracle), A1 | `059c6ea` (#467/#468) / `services/engine/procedures/{spec,draft,orchestrator}.py` + `verticals/procurement/procedures.yaml` |
+
+### Current-Focus block — Session 93 cont. (head_commit `eb63692`) — PLAN-0046 build-close [rotated 2026-07-02, session-94 run-2 receive reconcile; R1 64 KB ceiling]
+
+> **Session 93 cont., 2026-07-02 (head_commit `eb63692`) — PLAN-0046 (Q3
+> READ-SIDE ONTOLOGY-BINDING BUILD) EXECUTED + COMPLETE + CLOSED — one feat PR
+> (#511 feat `878b517`, merge `d95f0a2`) + the close PR (#512 docs `eb63692`,
+> merge `ac8ad24`); PLAN Completion-noted + `git mv` → `done/`.** Renders the
+> Accepted ADR-016 Q3 amendment into code; **all 11 ACs met.** **Step 1
+> (AC-1..3):** `StepInput.reads: list[str] | None` (typed data-sourcing entry
+> point, OQ-5 list) + `AgentAllowed.object_types: list[str]` (read-side
+> blast-radius allowlist mirroring `action_handlers`); both `extra="forbid"`,
+> backward-compat (absent/empty = loads as today; OQ-6 empty=unconstrained).
+> **Step 2 (AC-4..8):** NEW pure `validate_read_bindings(procedure, agent,
+> object_type_names)` in `orchestrator.py` (SD-1 Option A —
+> `validate_runnable`'s signature + all ~12 call-sites untouched); each query
+> step's `reads` element must ∈ the vertical's ontology AND (when the agent
+> opts in) ∈ `allowed.object_types`, else `ProcedureError` naming the object +
+> failed condition; wired at the 2 production pre-flight sites
+> (`run_procedure` + `persistence.resume_run`) via
+> `validate_read_bindings_for_vertical` (builds the registry from
+> `load_ontology_meta(vertical)`; SKIPPED entirely — no ontology I/O — for a
+> reads-absent procedure). **Zero runtime-data-flow change**
+> (`_resolve_input`/seeds untouched). AC-5 refuse pass/fail read pre-committed
+> in the test module BEFORE the tests; AC-7 wiring test runs against the REAL
+> aquaculture registry. **Step 3 (AC-9/10):** `reads` →
+> `STEP_GOVERNANCE_FIELDS` (H, OQ-A); `object_types` confirmed covered via
+> `allowed` (asserted, not re-added); PLUS one disclosed build-level hardening
+> beyond the PLAN's letter (consistent with OQ-A "never model-emitted", no ADR
+> decision changed): `StepDraft` REUSES `StepInput` so a generated draft CAN
+> physically carry `reads` — `lift_to_step` now strips it to an ABSENT stub
+> (`_strip_read_binding`, the OQ-C C1 inject-absent pattern / `env_var`
+> precedent) + a CI tripwire test. **Step 4 (AC-11):** 12 new tests; ruff +
+> ruff-format + `mypy --strict services/` clean; **full offline suite 2066
+> passed / 5 skipped.** Honest frame delivered (LOCKED-9): declared ✔ ·
+> consistency-gated at load ✔ · execution-bound ✖. **SD dispositions:** SD-1 =
+> Option A (as ratified); SD-2 = Option A (no vertical migrated; gate inert
+> until opt-in). Offline-only — no host-state, no live run. **NEXT:** the Q4
+> generic run-consume query executor is a SEPARATE later PLAN (deferred by
+> ADR-016 Q3); otherwise the parked backlog (Rock sequence /
+> PLAN-0010/0012/0019/0027 / partner-GTM) — a Cray pick. **Standing:**
+> `loop-dispatcher` stays **DISABLED**; MS-S1 cold; AI-assisted (Claude Code,
+> session 93), no `Co-Authored-By` per CLAUDE.md §7.
+
+### Current-Focus block — Session 93 (head_commit `cb7eb05`) — ADR-016 Q3 amendment + same-session UPDATE [rotated 2026-07-02, session-94 run-2 receive reconcile; R1 64 KB ceiling]
+
+> **Session 93 (head_commit `cb7eb05`) — ADR-016 Q3 READ-SIDE ONTOLOGY
+> OBJECT-BINDING AMENDMENT ACCEPTED (Rock 3 / O-2, PR #505) — an in-place
+> ADR-016 D2+D3 amendment closing the read-side governance gap that mirrors the
+> shipped write-side.** Two commits: `915c344` (Proposed) + `cb7eb05` (fold the
+> ratified decisions → **Accepted**). **Decision (contract-first):** a typed
+> `StepInput.reads: list[str]` read entry point (OQ-5: **list, not `str`** —
+> procurement `intake` reads 3 object types + joins); `Agent.allowed.object_types`
+> mirroring `action_handlers`; **LOAD-time enforcement** (`reads ∈ ontology ∩
+> allowlist`, else refuse load) — **zero runtime-data-flow change.** **Honest
+> enforcement frame (Cowork caught, Code-verified):** v1 = a typed read contract
+> + a load-time consistency/scoping gate, **NOT** runtime-enforced parity — even
+> write-side `action_handlers` is only pre-flight-checked in `validate_runnable`;
+> teeth = declared==dispatched, and the read side gains that only at **Q4**.
+> **Deferred:** the generic run-consume **query executor** → a fast-follow build
+> PLAN (touches runtime flow + enrich/join steps); the **Box-4 economic-impact
+> facet** → a self-cancelling **N≥3** marker (typed facet only; the economic
+> dimension is prose-captured at vertical authoring). **Governance decisions
+> ratified (OQ-1..6/A):** OQ-1 `StepInput.reads` · OQ-2 load-gate + reframe ·
+> OQ-3 `object_types` bounds `fetch_objects` only (links/events out of v1) · OQ-4
+> `where` = post-fetch · OQ-5 `reads: list[str]` · OQ-A `reads`/`object_types`
+> H-governed (`object_types` auto-covered; add `reads` to
+> `STEP_GOVERNANCE_FIELDS` = a build-PLAN task) · OQ-6 `object_types` empty =
+> unconstrained (backward-compat). **Three-lens review process:** `plan-drafter`
+> **AUTHORED** the amendment + folded the ratified decisions; **Cowork Tier-1b**
+> delivered an independent second-perspective review (caught the parity
+> over-claim + surfaced OQ-5); **Code R2-verified** every claim on disk +
+> committed; **Cray ratified** OQ-1..6/A. **Impl note for the build PLAN:** the
+> load-gate must thread the vertical `OntologyMeta` into pre-flight
+> (`validate_runnable(procedure, agent)` doesn't carry it today). **NEXT = the
+> fast-follow build PLAN** (implement `StepInput.reads` + `Agent.allowed.object_types`
+> + the load-gate + `reads`→`STEP_GOVERNANCE_FIELDS` + tests); the generic query
+> executor (Q4) is a separate later PLAN. **Standing:** `loop-dispatcher` stays
+> **DISABLED**; MS-S1 cold (offline, §8); AI-assisted (Claude Code, session 93),
+> no `Co-Authored-By` per CLAUDE.md §7.
+>
+> **UPDATE (same session):** the fast-follow build PLAN is now **PLAN-0046** —
+> drafted → Cowork-lens-informed Code R2 → Cray-ratified (SD-1 separate
+> `validate_read_bindings` entry point + SD-2 verticals-stay-absent) → merged
+> **Ready for execution** (#509, `d544414`). NEXT = execute Steps 1–4 (offline
+> gate; no live run).
