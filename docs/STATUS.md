@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-02T12:07:05+07:00
+last_updated: 2026-07-02T15:26:45+07:00
 session: 94
-current_batch: "ADR-0020 partner-sim run-1 REHEARSAL (fork a) COMPLETE (s94, 2026-07-02, working-tree event — no commit): intake/mapping/PDPA-RoPA run for real against the synthetic TWP package; 8 findings + 3 net-new decomposed into tagged work items (gitignored, R3)."
+current_batch: "ADR-0020 D4 post-run-1 review COMPLETE (s94, 2026-07-02) — verdict CONTINUE WITH ADJUSTMENTS (Cray-ratified); 4-lens panel all R-PS NOT-FIRED; C-1..C-3 confirmed; #516 instruction R1-tighten landed (re-paste to UI before run 2)."
 current_actor: code
 blocked_on: "Nothing blocking. Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
-next_action: "Fork (a) DONE. Cray-owned: the ADR-0020 D4 post-run-1 review (owed before any 2nd business type) + the next pick — (b) the Q4 generic query executor PLAN, or the rehearsal-enriched backlog ([ENG] → ADR-0021/0026 follow-ups + the energy-v1 ontology batch candidate + generalized-schema inputs; [GTM] pack; standard-intake-form TODO now w/ 7 concrete question additions)."
-head_commit: eb63692
-recent_commits: [eb63692, 878b517, d544414, bd7423b, cb7eb05]
+next_action: "D4 review DONE (the last owed trial-level item). Next = the standing Cray pick: (b) the Q4 generic query executor PLAN, or the rehearsal-enriched backlog. Run-2 preconditions recorded (instruction re-paste to UI + stripped-checklist paste-variant + fresh project + persona-brief fix) — run 2 itself stays unscheduled."
+head_commit: 255627b
+recent_commits: [255627b, eb63692, 878b517, d544414, bd7423b]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,57 @@ recent_commits: [eb63692, 878b517, d544414, bd7423b, cb7eb05]
 ---
 
 ## Current Focus
+
+> **Session 94 cont., 2026-07-02 (head_commit `eb63692` → `255627b` — #516
+> `docs(conventions):` is SUBSTANTIVE per lint policy, merge `cb161a4`) —
+> ADR-0020 D4 POST-RUN-1 REVIEW COMPLETE — verdict: CONTINUE WITH ADJUSTMENTS
+> (Cray-ratified, explicit AskUserQuestion pick); 4-lens specialist panel: all
+> R-PS triggers NOT-FIRED; C-1..C-3 confirmed; adjustment (i) landed as
+> #516.** D4 executed via a 4-lens adversarial (refute-not-bless) specialist
+> subagent panel — R-PS1 circularity skeptic / R-PS2 provenance auditor /
+> R-PS3 messiness-value judge / domain-realism; findings attributed as agent
+> findings, load-bearing instruction quotes code-verified before acting.
+> **Verdicts:** R-PS1 NOT-FIRED (HIGH on the trigger; broader R1 assurance
+> capped MEDIUM by the input-hygiene finding) · R-PS2 NOT-FIRED (VERY HIGH,
+> 6/6 provenance checks clean) · R-PS3 NOT-FIRED (HIGH ~0.9) · domain realism
+> SOUND-WITH-CAVEATS (กกพ. quarterly premise web-verified; worker-committee
+> 30-d gate down-weighted to partner-conditional — LPA s.96 remit is welfare,
+> not monitoring approval; role-level-audit mode retained on independent PDPA
+> grounds). **Key panel finding (the material one):** the RATIFIED inputs
+> themselves leaked vendor vocabulary — instruction §4.2(4) carried
+> "over-threshold (breach), watch/near-threshold, and normal" (2/3 of our
+> band labels) and §5 carried "restart / isolate / dispatch a technician"
+> (3/4 of the action enum). The run-1 "WATCH = organic SCADA term" narration
+> is REFUTED (reclassified `was an error`); the S-2 PASS itself stands
+> `confirmed — prior intact` on amended grounds (uptake from a ratified input
+> ≠ the R-PS1 breach vector; every one-pager fingerprint affirmatively absent
+> — the persona declined "restart" for the organic "reclose"). **C-1..C-3
+> input-state deviation: CONFIRMED by Cray** (Desktop check: no connected
+> folders / current canonical instructions / no project-knowledge files) —
+> the run-1 record is fully closed. **No trigger fired → ADR-0020 unchanged.
+> Adjustments:** (i) instruction band-labels + action-menus stripped = **#516
+> landed** (Cray must RE-PASTE the updated canonical into the partner-sim
+> project UI before any run 2 — repo-canonical / UI-derived); (ii) an
+> R1-stripped PDPA-checklist paste-variant created (gitignored:
+> `docs/research/private/2026-07-02-pdpa-checklist-partnersim-paste-variant.md`
+> — the ONLY PDPA doc cleared for future partner-sim pastes); (iii)
+> run-2-time: fresh project per SD-2 + an unannotated bulk sample at a
+> realistic historian rate + a persona-brief fix (drop the implausible
+> municipal-service claim / model the customer-PII surface). **Record
+> hygiene:** the D4 addendum (panel verdicts + record corrections — the "0
+> hits" input-screen claim corrected to ~8 benign PDPA-sense "breach" tokens;
+> the reclose §5 misattribution; R-PS3 strict count 4+2 ≥ N=3) appended
+> APPEND-ONLY to the run-1 receive checklist (gitignored). **New value
+> surfaced by the panel:** an unannotated authority violation sits in the
+> run-1 package (หัวหน้ากะ reclose-1 on F-07, reserved to วิศวกรเวร+) = a
+> ready-made audit-detection test-case fixture; 10 domain blind-spot classes
+> listed for run 2 / the real intake form (relay-event reconciliation,
+> PEA/EGAT interchange metering, topology drift, customer PII, Thai encoding,
+> …). **NEXT (Cray-owned):** the standing pick — (b) the Q4 generic query
+> executor PLAN, or the rehearsal-enriched backlog; run-2 preconditions
+> recorded, run 2 itself stays unscheduled. **Standing:** `loop-dispatcher`
+> stays **DISABLED**; MS-S1 cold (nothing touched it); AI-assisted (Claude
+> Code, session 94), no `Co-Authored-By` per CLAUDE.md §7.
 
 > **Session 94, 2026-07-02 (head_commit `eb63692` unchanged — WORKING-TREE
 > EVENT, no commit; #513/#514 were `docs(status)` merges, excluded) — ADR-0020
@@ -196,7 +247,7 @@ below, and git history.
 ## In-Flight Discussions
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
-- **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** Accepted 2026-06-13 (ratified `4d1347b`, #302; committed Proposed `e25281d`, #297 + instruction `e387a63`, #298 + R1 errata `655344d`, #300) — guarded trial under observation (parallel to ADR-012). A specialist Cowork project role-plays a Thai operator and emits a "partner profile package" to rehearse the intake+PDPA pipeline before a real partner; venue OUTSIDE the governance tiers (no commits / no repo mount / enters via Code receive). Three BINDING anti-circularity rules R1/R2/R3 (R3 SYNTHETIC provenance → never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger). All four venue SDs + dispatch-SD-1 ratified per Cowork rec (SD-1 N=3; SD-2 one-project-per-business-type; SD-3 size/region/maturity enums w/ energy·mid·th-regional·mixed-legacy default; SD-4 "what we refused to share" now required). D4 guarded-trial mirrors ADR-012 D5; regression triggers R-PS1..R-PS4 are the exit criteria; run 1 = energy operator (ADR-005 primary). **RUN 1 (energy / mid / th-regional / mixed-legacy) COMPLETE 2026-07-02 (session 93):** synthetic partner profile package (fictional TWP operator) received via Cray relay + Code-screened **S-1..S-5 ALL PASS** against a **pre-committed** oracle (R1 no schema echo · R2 six unsolicited inconvenient facts + heavy data flaws · R3 SYNTHETIC banner intact · SD-4 refused-to-share present); no R-PS trigger fired. Landed (gitignored, R3): package `docs/research/private/2026-07-02-partnersim-run1-energy-package.md` + oracle/verdicts `...-run1-receive-checklist.md` + completion handoff (session-93). First-pass value: **8 schema-mismatch findings** for the intake/mapping/PDPA path (unstable asset PKs, unresolvable principal identity vs ADR-0026 SoD + the worker-committee PDPA angle, multi-unit columns vs ADR-0021, per-source TZ chaos, action-events-in-status + seasonal thresholds vs in_file_band, mutable history, residency = our on-prem fit, DPA 4–6-wk timeline). **ADR-0020 D4 post-run-1 review owed before any 2nd business type. ADR-011 audit framework stays gated on a REAL partner conversation — the synthetic run INFORMS but never TRIGGERS it (R3).**
+- **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** Accepted 2026-06-13 (ratified `4d1347b`, #302; committed Proposed `e25281d`, #297 + instruction `e387a63`, #298 + R1 errata `655344d`, #300) — guarded trial under observation (parallel to ADR-012). A specialist Cowork project role-plays a Thai operator and emits a "partner profile package" to rehearse the intake+PDPA pipeline before a real partner; venue OUTSIDE the governance tiers (no commits / no repo mount / enters via Code receive). Three BINDING anti-circularity rules R1/R2/R3 (R3 SYNTHETIC provenance → never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger). All four venue SDs + dispatch-SD-1 ratified per Cowork rec (SD-1 N=3; SD-2 one-project-per-business-type; SD-3 size/region/maturity enums w/ energy·mid·th-regional·mixed-legacy default; SD-4 "what we refused to share" now required). D4 guarded-trial mirrors ADR-012 D5; regression triggers R-PS1..R-PS4 are the exit criteria; run 1 = energy operator (ADR-005 primary). **RUN 1 (energy / mid / th-regional / mixed-legacy) COMPLETE 2026-07-02 (session 93):** synthetic partner profile package (fictional TWP operator) received via Cray relay + Code-screened **S-1..S-5 ALL PASS** against a **pre-committed** oracle (R1 no schema echo · R2 six unsolicited inconvenient facts + heavy data flaws · R3 SYNTHETIC banner intact · SD-4 refused-to-share present); no R-PS trigger fired. Landed (gitignored, R3): package `docs/research/private/2026-07-02-partnersim-run1-energy-package.md` + oracle/verdicts `...-run1-receive-checklist.md` + completion handoff (session-93). First-pass value: **8 schema-mismatch findings** for the intake/mapping/PDPA path (unstable asset PKs, unresolvable principal identity vs ADR-0026 SoD + the worker-committee PDPA angle, multi-unit columns vs ADR-0021, per-source TZ chaos, action-events-in-status + seasonal thresholds vs in_file_band, mutable history, residency = our on-prem fit, DPA 4–6-wk timeline). **ADR-0020 D4 post-run-1 review DONE 2026-07-02 (s94): verdict continue-with-adjustments (no R-PS trigger fired; C-1..C-3 confirmed; #516 R1-tighten + stripped paste-variant landed; run-2 preconditions recorded — re-paste instruction to UI, fresh project per SD-2, unannotated bulk ask, persona fix). ADR-011 audit framework stays gated on a REAL partner conversation — the synthetic run INFORMS but never TRIGGERS it (R3).**
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
 - **Procurement vertical — GO + IN MOTION: PLAN-0036 (Fastenal, Stage 1) drafted + merged Draft (#412, `7a7c036`):** **GO** — Cray greenlit the 4th vertical (Procurement) and **PLAN-0036 (Fastenal procurement vertical, Stage 1) is drafted + merged Draft** (#412, head_commit `7a7c036`; Cowork-D1 + Code-R2 + committed D2, session 75). **Cray adjudicated SD-1…SD-5 = confirm-all** (2026-06-24, as-recommended). **Demo target = Fastenal Thailand** — automotive/auto-parts in the EEC; **hero** = asset-failure → governed emergency sourcing, **calm-path** = low-stock reorder. Stage 1 = a **PLAN-only, no-ADR pure-config plugin** on the shipped ADR-016 engine, **zero `services/` core edit** (CQ-1 confirmed, ADR-0023); the **SD-4 catch** = `services/engine/procedures/spec.py` `Step = ConfigDict(extra="forbid")` → Stage-1 facet annotations are **comment-only** (a first-class `facet` field = a Stage-2 ADR-016 amendment). It is the **proving ground** for the ultimate **3-phase generative-procedure platform** (generate / run / monitor); per Rule-of-Three it builds **no generic generator** (hand-author → extract schema Stage 2 → generator Stage 3). **NEXT = a new session flips PLAN-0036 Draft → Ready for execution (SDs confirm-all) then executes Stage 1.** *Supporting de-risk dossier (Cowork, session 72, 2026-06-22, `docs/research/private/`)* — **(1)** `2026-06-22-procurement-spec-expressiveness-probe.md` (procurement is **config-layer**, **0 new core amendments**; only engine pulls are the already-deferred ADR-016 Phase 2 / Phase 4+ items); **(2)** `2026-06-22-procurement-gtm-commercial-validation.md` (wedge = ops-triggered asset-aware procurement; econ buyer = CFO/Controller, champion = ops/procurement mgr; metric = **cycle-time**; ~$40K–150K/yr; 6-wk paid pilot); **(3)** `2026-06-22-procurement-asset-aware-incumbent-scan.md` (de-risk #1 — EAM/CMMS = nearest incumbent on the *trigger* only; white space = the **triple intersection** asset-trigger × governed sourcing × cross-vertical); **(4)** `2026-06-22-ai-sourcing-competitor-teardown.md` (de-risk #2 — Verusen/Keelvar/Fairmarkit/Arkestro/… triple intersection unoccupied; defensibility on **axis (a) asset-event trigger**; watchlist: **Verusen #1**, Fairmarkit, Coupa); **(5)** `2026-06-22-platform-incumbent-deepdive.md` (de-risk #3 — Palantir/Maximo/GE Vernova/SAP = capability-yes / product-no; moat = **packaging × ICP × price** = the **"Palantir-lite"** thesis, ADR-005, **governed ≠ generated**). **Pitch:** lead with asset-ontology-triggered governed sourcing + the native ontology (ADR-008) + engine (ADR-016) combination — **NOT** "governed"/"cross-vertical" (now commoditized claims).
 - **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (PLAN-001 line 9 forward-reference); ADR-005 was reused for the strategic pivot, so the Postgres-image ADR needs a fresh number (**≥ ADR-014** — ADR-011 earmarked for the audit framework, ADR-012 taken by Cowork second free-form tier, ADR-013 taken by autonomy axis relocation; floor bumped 2026-05-23 per ADR-013 §Consequences/Neutral + T6).
