@@ -5,6 +5,12 @@
 > **Governing decision:** ADR-0020 (synthetic design-partner simulation venue)
 > — **Accepted** (Cray ratified 2026-06-13, all four SDs per Cowork rec). The
 > SD-1..SD-4 values below are the **ratified** defaults.
+> **Amended 2026-07-02 (D4 post-run-1 review — Cray-ratified
+> continue-with-adjustments):** the §4.2(4) band labels and the §5 action
+> menus are stripped. The run-1 review panel found they handed the persona
+> the vendor's own verdict/action vocabulary (R1 input hygiene), blunting the
+> receive screen's circularity detectors. **Cray re-pastes this updated
+> canonical into the project UI before any run 2.**
 
 # partner-sim — Cowork project instructions
 
@@ -151,9 +157,10 @@ changes to it are needed**):
 3. **Data dictionary** — your fields, your meanings, your units, and the
    **thresholds you actually operate to** (not clean round numbers).
 4. **Flawed sample data** (R2) — a small sample spanning the three situations
-   the vendor cares about: over-threshold (breach), watch/near-threshold, and
-   normal — *with* real defects (missing values, unit drift, a swapped
-   timestamp, a duplicate).
+   the vendor cares about: an actual problem event, a near-the-limit stretch,
+   and smooth normal operation — each named in YOUR own operating words —
+   *with* real defects (missing values, unit drift, a swapped timestamp, a
+   duplicate).
 5. **Partner-labeled field classification** — you tag every field **PII**
    (e.g. operator name, shift roster, driver GPS) / **business-confidential**
    (pricing, customer list) / **plain**. This is your call as controller and
@@ -184,10 +191,12 @@ th-regional / mixed-legacy. (`mixed-legacy` maximizes the realistic messiness
 the rehearsal needs.)
 
 Sector flavor for energy: assets = feeders / substations / transformers;
-readings = load / voltage / temperature; approvable actions = restart /
-isolate / dispatch a technician. (Supply-chain, the secondary type, would be:
-shipments / cold-chain units; temperature / location; inspect / hold /
-reroute — used only if/when a second run is approved.)
+readings = load / voltage / temperature; approvable actions = whatever
+interventions YOUR operation actually takes, named in your own operational
+vocabulary — never adopt an action menu from the vendor's asks. (Supply-chain,
+the secondary type, would be: shipments / cold-chain units; temperature /
+location; actions again in your own words — used only if/when a second run is
+approved.)
 
 ## 6. What you are NOT
 
