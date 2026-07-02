@@ -42,6 +42,7 @@ from services.engine.procedures.orchestrator import (
     validate_runnable,
 )
 from services.engine.procedures.spec import (
+    AgentAllowed,
     Autonomy,
     BandSource,
     ComplianceCriterion,
@@ -63,6 +64,7 @@ from services.engine.procedures.spec import (
     SourcePolicy,
     Step,
     StepFacet,
+    StepInput,
     StepKind,
     VerticalProcedures,
     load_procedures,
@@ -478,3 +480,37 @@ def test_compliance_criterion_import_is_used() -> None:
     gate = ComplianceGate(rules=[ComplianceRule(criterion=ComplianceCriterion.AVL, spec="on AVL")])
     step = _dc_step("compliance", StepKind.EVALUATE, GateKind.RULE_GATE, governance_content=gate)
     assert "governance_content" not in unfilled_governance(step)
+
+
+# --- ADR-016 Q3 OQ-A: reads/object_types are H-governed (PLAN-0046 Step 3) --------
+
+
+def test_lift_strips_reads_from_draft_input() -> None:
+    """AC-9/AC-10 tripwire: StepDraft REUSES StepInput, so a generated draft CAN
+    physically carry `reads` — the lift must inject it ABSENT (a skeleton never
+    self-declares its read blast-radius, OQ-A) while the G fan-out structure
+    (from/where) survives. Weakening the strip fails CI here."""
+    draft = StepDraft(
+        step_id="read",
+        name="Read",
+        kind=StepKind.QUERY,
+        input=StepInput(from_step="intake", where={"verdict": "breach"}, reads=["Pond"]),
+    )
+    step = lift_to_step(draft)
+    assert step.input is not None
+    assert step.input.reads is None  # H value stripped at lift
+    assert step.input.from_step == "intake"  # G structure survives
+    assert step.input.where == {"verdict": "breach"}
+
+
+def test_reads_is_h_governed_and_object_types_covered_via_allowed() -> None:
+    """AC-9: `reads` joins STEP_GOVERNANCE_FIELDS (the env_var nested-field
+    precedent). AC-10: `object_types` is NOT re-added — it is already covered
+    because it rides inside Agent.allowed (∈ AGENT_GOVERNANCE_FIELDS) and
+    AgentDraft carries no `allowed` at all."""
+    assert "reads" in STEP_GOVERNANCE_FIELDS
+    assert "reads" not in set(StepDraft.model_fields)  # never a top-level draft field
+    assert "object_types" not in AGENT_GOVERNANCE_FIELDS  # covered via `allowed`, not re-added
+    assert "allowed" in AGENT_GOVERNANCE_FIELDS
+    assert "object_types" in AgentAllowed.model_fields
+    assert "allowed" not in set(AgentDraft.model_fields)  # a draft cannot carry the allowlist

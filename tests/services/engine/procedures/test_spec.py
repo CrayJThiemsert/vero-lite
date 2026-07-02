@@ -16,6 +16,7 @@ import pytest
 from pydantic import ValidationError
 
 from services.engine.procedures.spec import (
+    AgentAllowed,
     Autonomy,
     BandSource,
     ComplianceCriterion,
@@ -36,6 +37,7 @@ from services.engine.procedures.spec import (
     SourcePolicy,
     Step,
     StepFacet,
+    StepInput,
     StepKind,
     StepTiers,
     Trigger,
@@ -923,3 +925,24 @@ def test_at2_free_text_gate_skipped_for_non_at2_procedure() -> None:
         steps=[Step(step_id="read", name="Read", kind=StepKind.QUERY, description="stock at 50")],
     )
     assert proc.procedure_id == "calm"
+
+
+# --- ADR-016 Q3: the typed read contract (PLAN-0046 Step 1) -----------------------
+
+
+def test_step_input_reads_parses_and_defaults_absent() -> None:
+    """AC-1: `reads` is a KNOWN typed key (list[str], OQ-5) beside from/where under
+    extra="forbid"; absent = None (loads byte-for-byte as today)."""
+    bound = StepInput(reads=["Pond", "OperationalEvent"], where={"active": True})
+    assert bound.reads == ["Pond", "OperationalEvent"]
+    assert bound.where == {"active": True}
+    assert StepInput().reads is None
+
+
+def test_agent_allowed_object_types_parses_and_defaults_empty() -> None:
+    """AC-2: `object_types` mirrors action_handlers (list[str], default []); absent =
+    empty = UNCONSTRAINED (OQ-6) — an existing agent spec loads unchanged."""
+    allowed = AgentAllowed(object_types=["Pond"])
+    assert allowed.object_types == ["Pond"]
+    assert AgentAllowed().object_types == []
+    assert AgentAllowed(step_kinds=[], action_handlers=["echo"]).object_types == []

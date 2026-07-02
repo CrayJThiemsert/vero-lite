@@ -28,6 +28,7 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
+from services.engine.ontology_meta import load_ontology_meta
 from services.engine.procedures.draft import (
     unfilled_governance,
     unfilled_procedure_governance,
@@ -175,6 +176,72 @@ def validate_runnable(procedure: Procedure, agent: Agent) -> None:
                 f"step '{step.step_id}': handler '{step.handler}' is outside agent "
                 f"'{agent.agent_id}' allowed.action_handlers {agent.allowed.action_handlers}"
             )
+
+
+def has_read_bindings(procedure: Procedure) -> bool:
+    """True iff any ``query`` step declares a typed read binding (``input.reads``).
+
+    The read-binding gate's trigger predicate: a reads-absent procedure (every
+    shipped vertical today) never invokes the gate at all — and, via
+    :func:`validate_read_bindings_for_vertical`, never loads the ontology
+    registry either (ADR-016 Q3 OQ-6 backward-compat).
+    """
+    return any(
+        step.kind is StepKind.QUERY and step.input is not None and bool(step.input.reads)
+        for step in procedure.steps
+    )
+
+
+def validate_read_bindings(
+    procedure: Procedure, agent: Agent, object_type_names: frozenset[str]
+) -> None:
+    """Raise :class:`ProcedureError` unless every ``query`` step's ``input.reads``
+    is consistent with the ontology AND the agent's read allowlist.
+
+    The ADR-016 Q3 **load-time consistency & scoping gate** (PLAN-0046 Step 2,
+    SD-1 = a separate entry point beside :func:`validate_runnable`, whose
+    ``(procedure, agent)`` signature is untouched): each object_type a query step
+    declares MUST (a) exist in the vertical's ontology (``object_type_names``)
+    AND (b) — when the agent opts in with a non-empty ``allowed.object_types``
+    (OQ-6: empty = unconstrained, mirroring ``step_kinds``, NOT
+    ``action_handlers``' fail-closed) — be inside that read allowlist. Mirrors
+    the write-side ``action_handlers`` pre-flight bound. Enforcement status
+    (the ADR's honest frame): declared ✔ · consistency-gated at load ✔ ·
+    execution-bound ✖ — execution-binding arrives with the Q4 generic executor
+    (a separate PLAN). Pure: the caller supplies the registry — no filesystem
+    I/O here (testable with a fixture registry).
+    """
+    allowed_object_types = agent.allowed.object_types
+    for step in procedure.steps:
+        if step.kind is not StepKind.QUERY or step.input is None or not step.input.reads:
+            continue
+        for object_type in step.input.reads:
+            if object_type not in object_type_names:
+                raise ProcedureError(
+                    f"step '{step.step_id}': reads object_type '{object_type}' does not "
+                    f"exist in the vertical's ontology (ADR-016 Q3 load-gate)"
+                )
+            if allowed_object_types and object_type not in allowed_object_types:
+                raise ProcedureError(
+                    f"step '{step.step_id}': reads object_type '{object_type}' is outside "
+                    f"agent '{agent.agent_id}' allowed.object_types {allowed_object_types}"
+                )
+
+
+def validate_read_bindings_for_vertical(procedure: Procedure, agent: Agent, vertical: str) -> None:
+    """Build the vertical's object-type registry and run the read-binding gate.
+
+    The production pre-flight wrapper (PLAN-0046 AC-7): threads
+    ``load_ontology_meta(vertical)`` — the call-sites already own the vertical
+    string — into the pure :func:`validate_read_bindings`. **Skipped entirely
+    (no ontology I/O) when no query step declares** ``reads`` (OQ-6
+    backward-compat: every shipped procedure is reads-absent, so existing runs
+    are byte-identical and never touch the ontology loader).
+    """
+    if not has_read_bindings(procedure):
+        return
+    meta = load_ontology_meta(vertical)
+    validate_read_bindings(procedure, agent, frozenset(m.name for m in meta.object_types))
 
 
 def validate_governance_complete(procedure: Procedure) -> None:
@@ -423,6 +490,7 @@ async def run_procedure(
     requester step unresolved, which fails the run-check closed at the gate (AC-3).
     """
     validate_runnable(procedure, agent)
+    validate_read_bindings_for_vertical(procedure, agent, vertical)
 
     opened = datetime.now(UTC)
     run = PipelineRun(
