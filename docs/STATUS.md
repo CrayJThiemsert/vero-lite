@@ -1,10 +1,10 @@
 ---
-last_updated: 2026-07-02T11:39:17+07:00
-session: 93
-current_batch: "PLAN-0046 (Q3 read-side ontology-binding build) EXECUTED + COMPLETE + CLOSED (s93 cont. 2026-07-02, #511 feat 878b517 / #512 close eb63692; PLAN → done/) — all 11 ACs met; offline suite 2066 passed / 5 skipped. · ADR-0020 partner-sim RUN 1 (energy) COMPLETE — synthetic package received, S-1..S-5 screens PASS vs a pre-committed oracle; 8 schema-mismatch findings drafted (all gitignored, R3)."
+last_updated: 2026-07-02T12:07:05+07:00
+session: 94
+current_batch: "ADR-0020 partner-sim run-1 REHEARSAL (fork a) COMPLETE (s94, 2026-07-02, working-tree event — no commit): intake/mapping/PDPA-RoPA run for real against the synthetic TWP package; 8 findings + 3 net-new decomposed into tagged work items (gitignored, R3)."
 current_actor: code
-blocked_on: "Nothing blocking. PLAN-0046 complete + closed (#511/#512, done/). Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
-next_action: "Next capability = a Cray pick: the Q4 generic query executor (separate later PLAN, deferred by ADR-016 Q3) OR the parked backlog (Procurement Stage 2/3 · PLAN-0010/0012/0019/0027 · ADR-0020 partner-sim run-1). ALSO pending a Cray pick: (a) full intake/mapping/PDPA-RoPA rehearsal against the run-1 package vs (b) proceed to the Q4 executor PLAN; plus the ADR-0020 D4 post-run-1 review (owed before any 2nd business type)."
+blocked_on: "Nothing blocking. Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
+next_action: "Fork (a) DONE. Cray-owned: the ADR-0020 D4 post-run-1 review (owed before any 2nd business type) + the next pick — (b) the Q4 generic query executor PLAN, or the rehearsal-enriched backlog ([ENG] → ADR-0021/0026 follow-ups + the energy-v1 ontology batch candidate + generalized-schema inputs; [GTM] pack; standard-intake-form TODO now w/ 7 concrete question additions)."
 head_commit: eb63692
 recent_commits: [eb63692, 878b517, d544414, bd7423b, cb7eb05]
 ---
@@ -17,6 +17,51 @@ recent_commits: [eb63692, 878b517, d544414, bd7423b, cb7eb05]
 ---
 
 ## Current Focus
+
+> **Session 94, 2026-07-02 (head_commit `eb63692` unchanged — WORKING-TREE
+> EVENT, no commit; #513/#514 were `docs(status)` merges, excluded) — ADR-0020
+> PARTNER-SIM RUN-1 REHEARSAL (fork a) COMPLETE — the intake/mapping/PDPA-RoPA
+> pipeline run FOR REAL against the synthetic TWP package; 8 findings + 3
+> net-new decomposed into tagged work items.** **Cray selected fork (a)**
+> (explicit AskUserQuestion pick, 2026-07-02) over (b) the Q4 executor PLAN.
+> Deliverable (gitignored + SYNTHETIC-bannered per ADR-0020 R3 — NEVER
+> unlabeled into benchmark/REPORT/ADR-011 contexts):
+> `docs/research/private/2026-07-02-partnersim-run1-rehearsal-intake-mapping-pdpa.md`.
+> **§1 Intake rehearsal:** TWP's answers graded vs the one-pager's 6 asks —
+> **5 DELIVERED, ask-6 (DPA+pseudonymization) CONDITIONAL**; key result: ask-1
+> delivers the artifacts but its engineering purpose FAILS (historical
+> principal identity unresolvable: shared OPER1, LINE display-name ≠
+> decision-maker). **§2 Mapping rehearsal vs `energy_v0.yaml` — real gaps
+> clean fixtures never showed:** `asset_type` enum lacks
+> feeder/cap_bank/gas_engine; `measured_kind` lacks current/voltage (+ missing
+> `quantity_bindings`); TWP's STATUS column splits 3 ways (verdict →
+> recomputed, transitions, actions); band-model gaps = 4-zone top-oil
+> (78/87/92) + seasonal 300A vs our 3-zone `in_file_band` (bus-voltage
+> 21.4/21.6 kV fits exactly); era-scoped surrogate-PK rule; per-source
+> TZ/พ.ศ./dedup rule set; versioned ingest (bitemporal-lite — serves the กกพ.
+> as-reported view + PDPA DSR). PLAN-0005 §8.1 mapping trigger NOT tripped
+> (synthetic) — the mapping spec is designed in advance, builds at the
+> real-data trigger. **§3 PDPA-RoPA:** RoPA-lite built cleanly from TWP §5
+> labels; minimization cheap (tokenize 2–3 columns); worker-committee 30+d
+> constraint → role-level-audit mode proposed as the pre-clearance posture;
+> residency = straight win (their no-foreign-cloud mandate fits our
+> on-prem/local-LLM posture verbatim). **§4 Work items:** F1–F8 (the run-1
+> findings) + net-new **F9** (energy-v0 enum coverage → an "energy v1 ontology
+> batch" candidate), **F10** (instance-scoped authority — per-feeder + ฿ caps
+> vs our type-scoped `AgentAllowed.object_types` → generalized-schema input),
+> **F11** (refused-field degraded modes → UI backlog, trigger-gated); tags
+> [MAP]/[ENG]/[GTM]/[INTAKE]/[DEFER], each routed to its owning thread.
+> **Nothing starts a build today.** **§5:** 7 intake-instrument additions for
+> the real meeting — validates Cray's standard-intake-form template
+> observation (lineage = the partner-facing ONE-PAGER, NOT the R1-clean
+> variant). **R2:** an independent reviewer subagent verified the report vs
+> all sources (schema/PDPA/R3/arithmetic claims confirmed); 2 findings applied
+> (top-oil zone-count phrasing clarified; a §8.1 quote-casing nit). **NEXT
+> (Cray-owned):** the ADR-0020 D4 post-run-1 review (owed before any 2nd
+> business type) + the next pick — (b) the Q4 generic query executor PLAN, or
+> the rehearsal-enriched backlog. **Standing:** `loop-dispatcher` stays
+> **DISABLED**; MS-S1 cold (nothing touched it); AI-assisted (Claude Code,
+> session 94), no `Co-Authored-By` per CLAUDE.md §7.
 
 > **Session 93 cont., 2026-07-02 (head_commit `eb63692`) — PLAN-0046 (Q3
 > READ-SIDE ONTOLOGY-BINDING BUILD) EXECUTED + COMPLETE + CLOSED — one feat PR
