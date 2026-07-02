@@ -18,7 +18,10 @@ from services.engine.procedures.orchestrator import (
     RunContext,
     StepExecutor,
     StepOutcome,
+    has_read_bindings,
     run_procedure,
+    validate_read_bindings,
+    validate_read_bindings_for_vertical,
     validate_runnable,
 )
 from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
@@ -81,12 +84,17 @@ def _agent(
     ceiling: Autonomy = Autonomy.GATED,
     kinds: list[StepKind] | None = None,
     handlers: list[str] | None = None,
+    object_types: list[str] | None = None,
 ) -> Agent:
     return Agent(
         agent_id="a1",
         name="Agent One",
         autonomy_ceiling=ceiling,
-        allowed=AgentAllowed(step_kinds=kinds or [], action_handlers=handlers or []),
+        allowed=AgentAllowed(
+            step_kinds=kinds or [],
+            action_handlers=handlers or [],
+            object_types=object_types or [],
+        ),
     )
 
 
@@ -460,3 +468,105 @@ def test_validate_rejects_unknown_reference() -> None:
     )
     with pytest.raises(ProcedureError, match="not an earlier step"):
         validate_runnable(proc, _agent())
+
+
+# --- ADR-016 Q3: the read-binding load-gate (PLAN-0046 Step 2) --------------------
+#
+# Pre-committed pass/fail read (AC-5, fixed BEFORE these tests were written):
+# REFUSE-1 reads=["Ghost"] vs registry {Pond, Reading} -> ProcedureError naming the
+#   step, 'Ghost', and the ontology condition. REFUSE-2 reads=["Pond"], registry
+#   {Pond, Reading}, allowlist ["Reading"] -> ProcedureError naming 'Pond' + the
+#   allowlist condition. REFUSE-3 a mixed list with ANY failing element -> refuse.
+# ACCEPT single + multi-object consistent bindings -> no raise. OQ-6 empty
+#   object_types -> no raise (unconstrained). SKIP a reads-absent procedure -> the
+#   gate (and the ontology I/O) never fire.
+
+_REGISTRY = frozenset({"Pond", "Reading"})
+
+
+def _read_proc(reads: list[str]) -> Procedure:
+    return _proc(
+        [Step(step_id="read", name="Read", kind=StepKind.QUERY, input=StepInput(reads=reads))]
+    )
+
+
+def test_read_gate_accepts_consistent_binding() -> None:
+    """AC-4: reads ∈ ontology ∩ allowlist loads without error."""
+    validate_read_bindings(_read_proc(["Pond"]), _agent(object_types=["Pond"]), _REGISTRY)
+
+
+def test_read_gate_accepts_multi_object_binding() -> None:
+    """AC-4 / OQ-5: reads is a LIST — every element gated; all-consistent loads."""
+    validate_read_bindings(
+        _read_proc(["Pond", "Reading"]), _agent(object_types=["Pond", "Reading"]), _REGISTRY
+    )
+
+
+def test_read_gate_refuses_object_not_in_ontology() -> None:
+    """AC-5 REFUSE-1: an object_type outside the vertical's ontology refuses to load."""
+    with pytest.raises(ProcedureError, match="'Ghost' does not exist in the vertical's ontology"):
+        validate_read_bindings(_read_proc(["Ghost"]), _agent(object_types=["Ghost"]), _REGISTRY)
+
+
+def test_read_gate_refuses_object_outside_allowlist() -> None:
+    """AC-5 REFUSE-2: in-ontology but outside a NON-EMPTY agent allowlist refuses."""
+    with pytest.raises(ProcedureError, match="'Pond' is outside agent .* allowed.object_types"):
+        validate_read_bindings(_read_proc(["Pond"]), _agent(object_types=["Reading"]), _REGISTRY)
+
+
+def test_read_gate_refuses_mixed_list_on_any_failing_element() -> None:
+    """AC-5 REFUSE-3: a multi-object list refuses when ANY element fails a condition."""
+    with pytest.raises(ProcedureError, match="'Ghost' does not exist"):
+        validate_read_bindings(
+            _read_proc(["Pond", "Ghost"]), _agent(object_types=["Pond", "Ghost"]), _REGISTRY
+        )
+
+
+def test_read_gate_empty_object_types_is_unconstrained() -> None:
+    """AC-6 / OQ-6: empty object_types = UNCONSTRAINED (mirrors step_kinds, NOT
+    action_handlers' fail-closed) — the gate only bites when the agent opts in."""
+    validate_read_bindings(_read_proc(["Pond"]), _agent(), _REGISTRY)
+
+
+def test_read_gate_ignores_non_query_steps() -> None:
+    """The v1 gate scopes to QUERY steps (ADR-016 Q3): a reads on another kind is
+    not gated and does not count as a read binding."""
+    proc = _proc(
+        [Step(step_id="judge", name="J", kind=StepKind.EVALUATE, input=StepInput(reads=["Ghost"]))]
+    )
+    validate_read_bindings(proc, _agent(), _REGISTRY)  # no raise — out of the v1 gate's scope
+    assert has_read_bindings(proc) is False
+
+
+def test_read_gate_skipped_when_no_reads_declared() -> None:
+    """AC-3/AC-6 backward-compat: a reads-absent procedure NEVER invokes the gate —
+    proven with a vertical that has no ontology on disk (any registry I/O would raise)."""
+    proc = _proc([Step(step_id="read", name="Read", kind=StepKind.QUERY)])
+    validate_read_bindings_for_vertical(proc, _agent(), "no-such-vertical")  # no raise
+
+
+async def test_run_procedure_wires_read_gate_accept_and_refuse() -> None:
+    """AC-7: the gate fires at the run_procedure pre-flight against the REAL
+    aquaculture ontology registry — accept completes; refuse raises BEFORE any
+    executor runs (validate_runnable's signature + call-sites untouched)."""
+    query = _RecordingExecutor(output=[{"pond": "p1"}])
+    result = await run_procedure(
+        _read_proc(["Pond"]),
+        _agent(object_types=["Pond"]),
+        {StepKind.QUERY: query},
+        vertical="aquaculture",
+        run_id="run-reads-ok",
+    )
+    assert result.run.status == PipelineRunStatus.COMPLETED.value
+    assert query.calls  # the accepted run actually executed
+
+    refused = _RecordingExecutor()
+    with pytest.raises(ProcedureError, match="'Ghost' does not exist"):
+        await run_procedure(
+            _read_proc(["Ghost"]),
+            _agent(),
+            {StepKind.QUERY: refused},
+            vertical="aquaculture",
+            run_id="run-reads-bad",
+        )
+    assert refused.calls == []  # refused at pre-flight — no step ever ran

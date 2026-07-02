@@ -49,13 +49,18 @@ STEP_GOVERNANCE_FIELDS = frozenset(
         "tiers",
         "env_var",
         "governance_content",
+        "reads",
     }
 )
 """``Step``-level human-author (H) fields. ``env_var`` lives on the nested
 ``DecisionCondition`` (not a top-level ``Step`` field), but it is named here so the
 disjointness test (AC-A4) also fails CI if someone adds it to a draft type.
 ``governance_content`` is the AT-2 typed managerial content (ADR-0025 D2/D4) — the
-highest-consequence governance value in the system; never model-emitted."""
+highest-consequence governance value in the system; never model-emitted.
+``reads`` (ADR-016 Q3 OQ-A) lives on the nested ``StepInput`` — which ``StepDraft``
+REUSES for the G fan-out structure — so unlike ``env_var`` it CAN physically ride a
+draft; :func:`lift_to_step` therefore strips it to an ABSENT stub (a generated
+skeleton may never self-declare its own read blast-radius)."""
 
 PROCEDURE_GOVERNANCE_FIELDS = frozenset({"run_by", "separation_of_duties"})
 """``Procedure``-level H fields: ``run_by`` binds the Agent (a blast-radius choice);
@@ -105,7 +110,11 @@ class StepDraft(BaseModel):
     )
     kind: StepKind
     output: str | None = Field(default=None, description="produced artifact name (G prose)")
-    input: StepInput | None = Field(default=None, description="input fan-out structure (G)")
+    input: StepInput | None = Field(
+        default=None,
+        description="input fan-out structure (G); a carried `reads` is an H value "
+        "(ADR-016 Q3 OQ-A) and is stripped to an absent stub at lift",
+    )
     gate_kind: GateKind = Field(
         default=GateKind.NONE, description="closed-enum decision-condition classification (G, D4)"
     )
@@ -160,6 +169,21 @@ class GovernanceStub(BaseModel):
 # --- the deterministic lift (inject governance as absent stubs; OQ-C C1) ---------
 
 
+def _strip_read_binding(input_: StepInput | None) -> StepInput | None:
+    """Inject ``reads`` as an ABSENT stub (H, ADR-016 Q3 OQ-A; OQ-C C1 pattern).
+
+    ``StepDraft`` reuses the runtime :class:`StepInput` for the G fan-out
+    structure (``from``/``where``), so — unlike ``env_var``, which a draft cannot
+    physically carry — a generated draft CAN arrive with ``reads`` set. The lift
+    drops it, exactly as it injects ``handler``/``threshold``/``env_var`` absent:
+    a generated skeleton may never self-declare its own read blast-radius; the
+    human authors ``reads`` (+ the agent's ``allowed.object_types``) later.
+    """
+    if input_ is None or input_.reads is None:
+        return input_
+    return input_.model_copy(update={"reads": None})
+
+
 def lift_to_step(draft: StepDraft, *, autonomy: Autonomy | None = None) -> Step:
     """Lift a :class:`StepDraft` to a runtime :class:`Step`, injecting every
     governance value as an ABSENT stub (OQ-C C1: ``None`` / safe default, never a
@@ -186,9 +210,9 @@ def lift_to_step(draft: StepDraft, *, autonomy: Autonomy | None = None) -> Step:
         description=draft.description,
         kind=draft.kind,
         output=draft.output,
-        input=draft.input,
+        input=_strip_read_binding(draft.input),
         autonomy=autonomy if draft.kind is StepKind.ACTION else None,
-        # handler / threshold / direction / watch_margin / tiers: ABSENT stubs (H)
+        # handler / threshold / direction / watch_margin / tiers / input.reads: ABSENT stubs (H)
         facet=facet,
     )
 

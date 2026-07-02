@@ -117,6 +117,15 @@ class StepInput(BaseModel):
     on the evaluate step's output. A non-mapping entity never matches a ``where``
     (it has no fields). Linear-only: ``from`` must name an EARLIER step
     (forward / unknown references are rejected at pre-flight by ``validate_runnable``).
+
+    ``reads`` (ADR-016 Q3, 2026-07-01 amendment) is the typed **data-sourcing entry
+    point** — the ontology object_type(s) a ``query`` step reads — distinct from and
+    additive to the ``from`` intra-run thread. It is a declaration + a load-time
+    consistency/scoping gate (``validate_read_bindings``): each named object_type
+    must exist in the vertical's ontology AND, when the agent opts in with a
+    non-empty ``allowed.object_types``, be inside that read allowlist. It is NOT
+    execution-bound in v1 (the Q4 generic executor is a later PLAN) and it is an
+    H-governed value the generator may never emit (OQ-A; stripped at lift).
     """
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -129,6 +138,11 @@ class StepInput(BaseModel):
     where: dict[str, Any] | None = Field(
         default=None,
         description="field-equality filter: keep entities where entity[field] == value (all pairs)",
+    )
+    reads: list[str] | None = Field(
+        default=None,
+        description="ontology object_types this query step reads (each must exist in the "
+        "vertical's ObjectTypeMeta AND be in Agent.allowed.object_types) — ADR-016 Q3",
     )
 
 
@@ -594,6 +608,11 @@ class AgentAllowed(BaseModel):
     step_kinds: list[StepKind] = Field(default_factory=list)
     action_handlers: list[str] = Field(
         default_factory=list, description="registered handler names this agent may invoke"
+    )
+    object_types: list[str] = Field(
+        default_factory=list,
+        description="ontology object_types this agent may read (ADR-016 Q3 load-gate; "
+        "empty = unconstrained, mirroring step_kinds — NOT action_handlers' fail-closed)",
     )
 
 

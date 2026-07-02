@@ -30,6 +30,7 @@ from services.engine.procedures.orchestrator import (
     RunResult,
     StepExecutor,
     execute_steps,
+    validate_read_bindings_for_vertical,
     validate_runnable,
 )
 from services.engine.procedures.runs import (
@@ -89,6 +90,7 @@ async def resume_run(
     ``procedure``.
     """
     validate_runnable(procedure, agent)
+    validate_read_bindings_for_vertical(procedure, agent, vertical)
     loaded = await load_run(session, run_id)
     if loaded is None:
         raise ProcedureError(f"run '{run_id}' not found")
