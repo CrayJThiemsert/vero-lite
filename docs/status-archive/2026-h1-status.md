@@ -1844,3 +1844,67 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-29 (PLAN-0042 O-3 AT-2 build PLAN DRAFTED+RATIFIED+MERGED, #465) [rotated 2026-07-01, session-93 reconcile]
 
 | 2026-06-29 | **PLAN-0042 (the O-3 follow-on AT-2 / managerial-layer BUILD PLAN) DRAFTED + RATIFIED + MERGED (session 85, #465)** — the build PLAN ADR-0025 OQ-5 named; renders ADR-0025 (Accepted #463) D1–D8 + owns migration sequencing. **Build PLAN — no new ADR.** **Primary deliverable = closing a LIVE shipped defect:** `validate_governance_complete` is blind to AT-2 *content* (`rule_gate` evaluate → `[]`; `scored_rule`/`doa_tier` action → `[handler,autonomy]`, both filled → no AT-2-content obligation) → the build **types the AT-2 content** (D2 discriminated `Step.governance_content` union + `Procedure.separation_of_duties`), makes the **run-gate AT-2-aware** (D5), and **migrates the procurement AT-2 prose→typed in ONE PR behind a green golden test** (the migration trap). **Cray-ratified:** **OQ-A = A1** (author + render only — no principal-identity layer for run-time SoD, so D6 author+render fallback; the A2 run path deferred to a follow-on PLAN); **OQ-B = B2** (labelled-provisional placeholder control values + Cray sign-off — typing D2 is authoring not transcription); **OQ-C/D/E confirmed** (golden test + D5 migration in ONE PR; scoped value-only prose-lint + "ADVISORY — NOT A CONTROL" band; no per-spec `schema_version`). **Process:** Cowork-drafted (ADR-009 D1) → **Code R2** re-verified the fact-pack on HEAD `1305b32` + surfaced two substrate items: **finding 1** (a `Step.tiers` collision — `StepTiers` = PLAN-0022 handler taxonomy at `spec.py:264`, in `STEP_GOVERNANCE_FIELDS` → DOA tiers must nest in `DoaLadder`, never a 2nd top-level `Step.tiers`) and the **SoD principal-vs-role scoping finding** (A1 = author-time structural+role-level SoD; principal-identity SoD is run-time → relocated to the deferred **AC-13-ALT**, lineage = superseded-by-A1, not an ADR amendment) → Code revision dispatch → Cowork applied 3 surgical deltas → Cray-ratified → Code R2 + committed (#465). **v1 build surface = Steps 1–3 + 5** (A2 / AC-13-ALT deferred). `loop-dispatcher` stays DISABLED; MS-S1 cold, no live run (offline oracle is the gate). NEXT = execute Step 1 (D2 union + SoD + D3/D4) then Step 2 (D5 gate + migration in ONE PR; author the B2 placeholders) | `21d7669` (#465) / `docs/plans/0042-at2-managerial-build.md` |
+
+### Current-Focus block — Session 92 (head_commit `4f22602`) [rotated 2026-07-02, session-93 build-close reconcile]
+
+> **Session 92 (head_commit `4f22602`) — PLAN-0044 A1b STEPS 2 + 4 MERGED
+> (offline close-out) — two PRs (#499 Step 4 the `rule_gate` per-kind executor
+> / #500 Step 2 the OQ-6 N≥2 shared-`Person` re-trigger marker).** INTERIM at
+> merge — **then A1b CLOSED later this same session:** AC-9 merged (#502 `ea27b27`,
+> Option 2 — a verified no-op audit-receipt terminal (`echo`) is exempt downstream
+> of a gate, forge-proof handler-allowlist), and **PLAN-0044 + PLAN-0045 (hero-demo
+> v1) Completion-noted + `git mv` → `done/`.** All 12 PLAN-0044 ACs met; offline
+> suite 2026 passed. The hero-demo `compliance` harness→`rule_gate`-executor swap is
+> an OPTIONAL follow-up (out of scope for both PLANs).
+> **#499 (feat `a458142`, merge `05c9541`, A1b Step 4 / AC-6) — the `rule_gate`
+> per-kind executor:** NEW `services/engine/procedures/rule_gate.py` — a pure
+> `evaluate_compliance(gate, candidate)` reads the candidate's per-criterion
+> `compliance` signal map (data-access = (a), mirrors `scored_rule`'s
+> `candidate_quotes`) and **blocks the PO on ANY failed criterion** (candidate
+> tagged non-`compliant` → dropped by the downstream `approve` `where:
+> {compliant: true}` fan-out). **Non-waivable by type** (`blocks_po` is
+> `Literal[True]`; no pass-a-failed-rule path). **Fails CLOSED** — non-mapping
+> candidate / no `compliance` map → `RuleGateError`; an absent-OR-false
+> per-criterion signal fails that criterion. v1 does NOT evaluate the prose
+> `spec` predicate (deferred to the A2 run path, ADR-0025 D2) — it enforces the
+> GATE. `services/engine/procedures/governance_step.py` gains a NEW
+> **`GovernanceEvaluateExecutor`** (SD-1=(a) dispatching wrapper for the
+> EVALUATE StepKind, sibling of `GovernanceActionExecutor`): its `rule_gate`
+> branch tags each candidate `compliant` + audits (`governed_kind: rule_gate`),
+> never calls the base (compliance has no numeric band) nor the LLM (governed ≠
+> generated, ADR-0019 IN-3); a banded `judge` step falls through to the shipped
+> `EvaluateStepExecutor`. **17 new tests**
+> (`tests/services/engine/procedures/test_rule_gate.py`). **#500 (test
+> `12ac1dd`, merge `4f22602`, A1b Step 2 / AC-10 re-trigger half; mirrors
+> ADR-0025 D7) — the OQ-6 N≥2 shared-`Person` re-trigger marker:** NEW
+> `tests/services/engine/procedures/test_principal_identity_retrigger.py`
+> counts the verticals whose `procedures.yaml` ships `principals` and **FAILS
+> the moment a SECOND vertical ships principals (N≥2)** — making the shared/core
+> `Person` extraction deferral (ADR-0026 OQ-6=(b)) **self-cancelling** rather
+> than a silent `# TODO`. Currently N=1 (procurement only). **3 tests.**
+> **Verification:** ruff + mypy clean; full offline suite **2020 passed / 5
+> skipped** (verified on the merged main `4f22602`). Offline-only, no
+> host-state; **no PO issued** (render / block only, ADR-0007 LOCKED #3).
+> **Routing:** both non-gated Code `feat/*`/`chore/*` feature PRs executing the
+> already-accepted PLAN-0044 (no new PLAN/ADR); Code merged per the established
+> session-91 workflow. **NEXT (still A1b close-out):** **AC-9** — a Cray
+> decision is owed (the procurement `audit` step is authored `autonomy: auto`
+> AND downstream of the `approve`/`issue_po` gates, so the AC-9
+> "auto-downstream-of-a-gate" assertion would **restructure the hero
+> procedure** — restructure the audit terminal vs exempt no-op terminals) PLUS
+> the hero-demo `compliance` harness → `rule_gate`-executor swap follow-up
+> (needs intake compliance-signal enrichment + the off-AVL-exception narrative
+> call). Then the PLAN-0044 Completion note + `git mv` PLAN-0044/0045 →
+> `done/` + a full-body STATUS reconcile at A1b CLOSE. Phase-3 product ADRs
+> (generalize the `scored_rule`/`rule_gate` data-access = the Q3
+> ontology-binding gap) deferred. **Standing:** `loop-dispatcher` stays
+> **DISABLED**; MS-S1 cold (remaining A1b is offline, §8); AI-assisted (Claude
+> Code, session 92), no `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-29 (PLAN-0042 v1 OFFLINE TAIL COMPLETE, session 86) [rotated 2026-07-02, session-93 build-close reconcile]
+
+| 2026-06-29 | **PLAN-0042 v1 (O-3 AT-2/managerial layer) OFFLINE TAIL COMPLETE → v1 (Steps 1–3 + 5) COMPLETE (session 86, #470/#471/#472, all Cray-merged)** — the offline A1 tail of the AT-2/managerial build; PLAN `git mv` → `done/`. The AT-2 layer is now typed + run-gated + rendered authoritative (with the advisory band) + red-teamed offline. **Step 3a (#470, feat `4ff1180`):** the scoped value-only prose-lint over AT-2 free-text (`governance_prose_lint` = value classes + an approver-role-token check; OMITS the decision-verb + broad-identifier classes, finding 6) + a LOAD gate (`Procedure._validate_at2_free_text` blocks load on a ฿-amount/weight/role token smuggled into AT-2 free-text) + the 3 ADR-0025-D4 advisory NON-AUTHORITATIVE free-text fields (`EmergencyWaiverPolicy.justification`, `DoaTier.note`, `ScoredCriterion.note`); one reword (`"3-bid"`→`"three-bid"`). **Step 3b (#471, feat `5fac5d2`):** the PLAN-0039 read-only viewer renders the typed AT-2 content (DOA ladder/scored rule/compliance gate/SoD) as AUTHORITATIVE (the Box-3 "the gate is no longer blind" artifact, AC-13) + bands the AT-2 free-text "ADVISORY — NOT A CONTROL" (OQ-D); no API change (`model_dump` serializes it), verified live on the preview. **Step 4 (AC-13) = author + render only (A1)** — delivered by Step 3's render, no separate build. **Step 5 (#472, test `5464831`):** the D8 offline oracle `tests/services/engine/procedures/test_red_team_at2.py` consolidates the 3 red-team fixtures (hollow-but-complete → refused; leak-in-free-text → blocks load; identity-collapse role-level = single-step SoD rejected at construction + a missing-SoD `doa_tier` proc refused at the gate) + a positive control; PRINCIPAL-level collapse / literal `approver_role==requester_role` / un-gated-audit are A2-deferred (AC-13-ALT), documented + intentionally NOT asserted (no false coverage). Gate (every step, offline): ruff + ruff-format + `mypy --strict services/` (64 files) clean, **pytest 1877 passed / 24 skipped**, no live MS-S1. **AC-13-ALT (the A2 run path)** deferred to a follow-on PLAN, gated on a principal-identity-resolution capability the engine lacks today. OQ-B placeholder control values stay provisional (real Fastenal figures fold in via a small `verticals/`-only PR, B1; blocks nothing). `loop-dispatcher` stays DISABLED | `973ba69` (#470/#471/#472) / `services/engine/procedures/{spec,draft,orchestrator}.py` + `tests/services/engine/procedures/test_red_team_at2.py` + `services/api/static/assets/view-procedures.js` + `docs/plans/done/0042-at2-managerial-build.md` |
+
+### Recent-Decisions row — 2026-06-29 (PLAN-0042 Steps 1-2 SHIPPED, session 85 cont.) [rotated 2026-07-02, session-93 build-close reconcile]
+
+| 2026-06-29 | **PLAN-0042 (O-3 AT-2/managerial layer) Steps 1-2 SHIPPED + MERGED (session 85 cont., #467/#468)** — typed AT-2 content (D2) + the AT-2-aware run-gate (D5) closing the live blindness defect; the procurement AT-2 migrated prose→typed behind a green golden test; OQ-B=B2 values mirror the data adapter (provisional, pending Cray sign-off). **Step 1 (#467, `6176b18`):** discriminated `Step.governance_content` (`DoaLadder`\|`ScoredRule`\|`ComplianceGate`, keyed on `kind`) + `Procedure.separation_of_duties`; D3 bypass unrepresentable (`Decimal` money; closed `RelaxableConstraint` enum can't name compliance/SoD; `blocks_po`/`requires_justification` `Literal[True]`; total strictly-monotonic DOA ladder); D4 H-field invariants (new fields in `GOVERNANCE_FIELDS`, never on a draft type; draft-disjointness + `StepFacet`-unreachability CI). Finding 1 honored (DOA tiers nest in `DoaLadder`, no 2nd `Step.tiers`). **Step 2 (#468, `059c6ea`):** the AT-2-aware run-gate + the prose→typed migration in ONE PR behind the golden test — `validate_governance_complete` now owes typed `governance_content` on the AT-2 kinds + a `doa_tier` proc owes `separation_of_duties`; an empty-DOA/no-criteria/no-SoD AT-2 is no longer run-loadable (the negative hollow-but-complete regression = the D5 ratification gate). **Build interps:** principal-level SoD + resolved-tier strict-escalation deferred to **A2 (AC-13-ALT)** — no engine principal/role-rank layer; the author-time gate enforces the STRUCTURAL form (≥2 distinct steps; ladder totality). Gate: mypy --strict + ruff clean, **pytest 1843/24**; no live MS-S1. Remaining: Steps 3 (prose-lint + "ADVISORY — NOT A CONTROL" banding) + 5 (offline oracle), A1 | `059c6ea` (#467/#468) / `services/engine/procedures/{spec,draft,orchestrator}.py` + `verticals/procurement/procedures.yaml` |
