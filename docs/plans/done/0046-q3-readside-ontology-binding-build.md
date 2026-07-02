@@ -1,6 +1,31 @@
 # PLAN-0046: Q3 read-side ontology object-binding — the typed read contract + load-time consistency & scoping gate (renders ADR-016 D2+D3 Q3 amendment, Accepted 2026-07-01)
 
-**Status:** **Ready for execution** — SD-1 (seam = separate `validate_read_bindings` entry point) + SD-2 (leave verticals absent, prove on fixture) Cray-ratified session 93
+**Status:** **Complete** (executed + merged 2026-07-02, session 93 — PR #511 `878b517`, merge `d95f0a2`; all 11 ACs met; full offline suite 2066 passed / 5 skipped)
+
+> **Completion note (2026-07-02, session 93).** Executed in ONE PR (**#511**, feat
+> `878b517`, merge `d95f0a2`) the morning after ratification. **AC→PR mapping:**
+> AC-1..3 (the typed read contract — `StepInput.reads: list[str] | None` +
+> `AgentAllowed.object_types`, backward-compat) / AC-4..8 (the
+> `validate_read_bindings` load-gate per **SD-1 = Option A** — pure entry point +
+> the `validate_read_bindings_for_vertical` production wrapper wired at
+> `run_procedure` + `persistence.resume_run`; `validate_runnable`'s signature +
+> all ~12 call-sites untouched; the AC-5 refuse pass/fail read pre-committed in
+> the test module BEFORE the tests; the AC-7 wiring test runs against the REAL
+> aquaculture registry) / AC-9..10 (H-governance — `reads` ∈
+> `STEP_GOVERNANCE_FIELDS`; `object_types` confirmed covered via `allowed`,
+> asserted not re-added) / AC-11 (ruff + ruff-format + `mypy --strict services/`
+> clean; **full offline suite 2066 passed / 5 skipped**) — all in #511.
+> **SD dispositions:** SD-1 = Option A (built as ratified); SD-2 = Option A (no
+> vertical migrated — the gate proven on fixtures + the real registry; inert
+> until opt-in). **One build-level hardening beyond the PLAN's letter
+> (disclosed in the PR, consistent with OQ-A "never model-emitted", no ADR
+> decision changed):** `StepDraft` REUSES `StepInput`, so a generated draft CAN
+> physically carry `reads` — `lift_to_step` now strips it to an ABSENT stub
+> (`_strip_read_binding`, the OQ-C C1 inject-absent pattern / the `env_var`
+> precedent) with a CI tripwire test (`test_lift_strips_reads_from_draft_input`).
+> **Honest frame delivered as LOCKED-9:** declared ✔ · consistency-gated at
+> load ✔ · execution-bound ✖ (the Q4 generic run-consume executor remains a
+> SEPARATE later PLAN). Offline-only — no host-state, no live run.
 **Owner:** Claude Code
 **Created:** 2026-07-01
 **Related ADRs:** ADR-016 (the decision spine — this PLAN *renders* the **D2 + D3 Amendment (2026-07-01): typed read-side ontology object-binding for query steps (Q3)**, Accepted session 93; renders its ratified OQ-1..6/A + the honest declared/consistency-gated/execution-bound enforcement frame + the "Implementation note" seam it explicitly flagged as a build task). Also: ADR-016 D2 (the `Step`/`StepInput` grammar this extends), D3 (the `Agent.allowed` blast-radius allowlist this mirrors on the read side), D2 Amendment 2026-06-25 (D2-A2: `facet.input` stays non-authoritative prose → the typed `reads` is the source of truth), ADR-0024 D3 (the G/H governed≠generated partition + the draft-disjointness machinery `reads` must join), ADR-0025 / PLAN-0042 (the AT-2 build whose `governance_content`-added-to-`STEP_GOVERNANCE_FIELDS` precedent this exactly mirrors for `reads`), ADR-007 D1 (the `DataAdapter` contract — untouched), ADR-008 (the ontology the object_type names resolve against — untouched), ADR-006 (Rule-of-Three: N=4 query steps justify extracting the read-binding schema now), ADR-009 D1/D2 (drafter authors ungated, only Code commits), ADR-012 D4.3 (author≠reviewer disclosure), ADR-013 (the in-harness `plan-drafter` is the phased governance drafter). Substrate: `services/engine/procedures/{spec.py,orchestrator.py,draft.py,persistence.py}`, `services/engine/ontology_meta.py`, `services/engine/data_adapter.py`, `verticals/*/procedures.yaml`.
