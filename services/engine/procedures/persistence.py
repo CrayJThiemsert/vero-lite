@@ -24,6 +24,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from services.db.audit_log import append_audit
 from services.engine.procedures.orchestrator import (
     ProcedureError,
     RunContext,
@@ -86,6 +87,19 @@ async def run_procedure_persisted(
         updated_at=opened,
     )
     session.add(run)
+    # PLAN-0047 Step 5: the run-start audit row lands in the SAME transaction
+    # as the write-ahead run row (one durable fact, one commit).
+    await append_audit(
+        session,
+        action="run_started",
+        actor_person_id=(
+            principal.person_id
+            if principal is not None
+            else (trigger_context or {}).get("triggered_by")
+        ),
+        run_id=run_id,
+        payload={"procedure_id": procedure.procedure_id, "agent_id": agent.agent_id},
+    )
     await session.commit()  # the write-ahead: the run is durable BEFORE any effect
 
     ctx = RunContext(
@@ -258,5 +272,13 @@ async def resume_run(
     run.updated_at = datetime.now(UTC)
     for step_result in new_results:
         await session.merge(step_result)
+    # PLAN-0047 Step 5: the resume transition is audited in the same commit.
+    await append_audit(
+        session,
+        action="run_resumed",
+        run_id=run_id,
+        step_id=suspended.step_id,
+        payload={"final_status": final_status.value},
+    )
     await session.commit()
     return RunResult(run=run, step_results=prior_results + new_results)
