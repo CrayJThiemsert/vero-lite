@@ -53,6 +53,39 @@ async def persist_run(session: AsyncSession, result: RunResult) -> None:
     await session.commit()
 
 
+def _read_refusal_entry(step_result: StepResult) -> dict[str, Any] | None:
+    """The structured ``read_refused`` trace entry on a diverted step, if any.
+
+    PLAN-0048 SD-5(a): the persistence seam — not the DB-free executor —
+    turns a typed read refusal into a first-class, hash-chained audit fact.
+    The entry shape is the orchestrator's D4 structured divert (AC-8).
+    """
+    for entry in step_result.reasoning_trace or []:
+        if isinstance(entry, dict) and entry.get("kind") == "read_refused":
+            return entry
+    return None
+
+
+async def _append_read_refusal_audit(
+    session: AsyncSession, run_id: str, step_result: StepResult
+) -> None:
+    """Append the ``read_refused`` audit row when a refusal StepResult lands
+    (same transaction as the step-result commit — the caller owns the commit)."""
+    refusal = _read_refusal_entry(step_result)
+    if refusal is None:
+        return
+    await append_audit(
+        session,
+        action="read_refused",
+        run_id=run_id,
+        step_id=step_result.step_id,
+        payload={
+            "refusal_kind": refusal.get("refusal_kind"),
+            "object_type": refusal.get("object_type"),
+        },
+    )
+
+
 async def run_procedure_persisted(
     session: AsyncSession,
     procedure: Procedure,
@@ -117,6 +150,9 @@ async def run_procedure_persisted(
 
     async def _persist_step(step_result: StepResult) -> None:
         await session.merge(step_result)
+        # PLAN-0048 SD-5(a): a refusal StepResult lands with its audit row in
+        # ONE transaction — refusal-safety becomes a tamper-evident audit fact.
+        await _append_read_refusal_audit(session, run_id, step_result)
         await session.commit()
 
     step_results, final_status = await execute_steps(
@@ -303,6 +339,8 @@ async def resume_run(
     run.updated_at = datetime.now(UTC)
     for step_result in new_results:
         await session.merge(step_result)
+        # PLAN-0048 SD-5(a): refusals on the resume path are audited too.
+        await _append_read_refusal_audit(session, run_id, step_result)
     # PLAN-0047 Step 5: the resume transition is audited in the same commit.
     await append_audit(
         session,
