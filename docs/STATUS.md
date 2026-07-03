@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-03T12:34:11+07:00
-session: 94
-current_batch: "SESSION 94 CLOSED (2026-07-03) — ADR-0020 partner-sim trial COMPLETE end-to-end across both verticals (run-1 + run-2, receive+screen+rehearsal ×2, C-1..C-3 confirmed). Plus a concurrent-session demo-honesty fix (#520, ORM-not-Alembic). No open partner-sim debt."
+last_updated: 2026-07-04T00:29:14+07:00
+session: 95
+current_batch: "SESSION 95 CLOSED (2026-07-03 → 2026-07-04) — pre-pilot hardening arc: 3-specialist production-readiness audit → Cray-ratified 7-item sprint → 4 research briefs + 5-wave backlog re-order → PLAN-0047 drafted/ratified/EXECUTED COMPLETE (#522–#531, all 7 steps + all 10 ACs, +31 tests → suite 2097) → done/. Sales claims (authn/audit/exactly-once/config-pin) now code- and CI-backed."
 current_actor: code
 blocked_on: "Nothing blocking. Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
-next_action: "Session 94 closed; pick up at the session-94 CLOSE handoff. C-1..C-3 CONFIRMED (partner-sim run-2 open item closed). Next capability = a Cray pick: (b) the Q4 generic query executor PLAN · the paired v1 ontology batches (energy-v1 + supply-chain-v1, specs ready from both rehearsals) · the [GTM] pack (customer-demanded templates) · the standard-intake-form TODO (11 additions) · or other backlog."
-head_commit: f63c975
-recent_commits: [f63c975, 255627b, eb63692, 878b517, d544414]
+next_action: "Wave-2 Cray pick (all G2-gated → plan-drafter dispatch → Code R2+commit → Cray ratify): (a) Q4 generic query executor PLAN (design brief absorbs the research: refusal UX, bounded execute-validate-retry inside the allowlist, OSI/MCP-aware interface, per-vertical executor-factory follow-up from Step 2) · (b) v1 ontology bundle PLAN (energy-v1 + supply-chain-v1 + R2 meta-schema fields + R1 context-pack emitter + alembic autogenerate via vero-lite CLI) · (c) small reason-then-structure A/B via the offline oracle. Track B parallel (Cowork): GTM pack + standard intake form."
+head_commit: 28d919c
+recent_commits: [28d919c, 6cde2db, 692f748, bafdf92, a0db450]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,74 @@ recent_commits: [f63c975, 255627b, eb63692, 878b517, d544414]
 ---
 
 ## Current Focus
+
+> **Session 95 CLOSE, 2026-07-03 → 2026-07-04 (head_commit `f63c975` →
+> `28d919c` — #531 `docs(plans):` close-out is SUBSTANTIVE per lint policy,
+> merge `353c04e`) — PLAN-0047 PRE-PILOT HARDENING SPRINT COMPLETE: all 7
+> steps + all 10 ACs (PRs #522–#530), +31 tests (suite 2066 → 2097 passed /
+> 5 skipped); sales claims (authn / audit / exactly-once / config-pin) now
+> code- and CI-backed.** (Reconcile committed by the successor session per
+> the s95 CLOSE handoff.) **Arc:** a 3-specialist production-readiness
+> audit (in-chat; codegen/governance/compliance lenses) surfaced BLOCKER
+> gaps → Cray ratified a 7-item hardening sprint + ordering. **4
+> web-research briefs** (gitignored `docs/research/private/`, all
+> 2026-07-03): ontology-llm-market-landscape (thesis SUPPORTED;
+> commoditized layer ⇒ sell vertical content + generator + governed
+> actions, mid-market price); llm-db-reliability-techniques (we ARE the
+> CaMeL/OWASP reference architecture; ADOPT reason-then-structure, outbox
+> [done in spirit via Step 4], OTel gen_ai.*, OSI export);
+> local-llm-stack-viability (local-first stands; pitch "compute never
+> leaves"; keep the `gpt-oss:20b` pin; open a Qwen 3.5/3.6-27B Thai eval
+> track — host-state, Cray gate); semantic-foundation-build-techniques (R1
+> context-pack emitter +17–23pp evidence · R2 meta-schema fields [synonyms
+> th/en, sample_values, verified_queries, grain] · R3 schema-guided
+> bootstrap · R4 usage-mined loop human-gated; Thai = uncovered moat).
+> **5-wave backlog re-order (Cray-agreed):** W1 = PLAN-0047 ✅ · W2 = Q4
+> executor PLAN + v1 ontology bundle (energy-v1 + supply-chain-v1 + R1 +
+> R2 + migration-autogenerate) + a small reason-then-structure item · W3
+> (parallel, Cowork) = GTM pack + standard intake form (11 additions) · W4
+> = ADR-016 Phase-3 monitor PLAN + sprint items 5/6-remainder + ops · W5 =
+> coverage eval + raw-vs-layer re-benchmark + optional partner-sim run-3 →
+> real partner intake. **PLAN-0047 (plan-drafter authored, draft #522
+> `b6cb0d5`; SD-1..4 ratified as-recommended #523 `8198548`: SD-1=(a) API
+> keys · SD-2 defer · SD-3 yes-minimal · SD-4 CI w/ DB) EXECUTED
+> COMPLETE:** Step 7 CI (#524 `0401a0a`) — the repo's FIRST CI gate: ruff
+> + ruff-format + `mypy --strict` + full suite w/ postgres container +
+> `alembic upgrade head` on every PR; 2066 baseline green; every sprint PR
+> from #525 on ran green under it. Step 1 authn (#525 `3b3db46`) —
+> `services/api/auth.py` fail-closed API-key gate on state-changing
+> routes; `/warm` + `/sleep` + `/intake/generate` also gated (disclosed
+> deviation); `action_identity` sidecar table (alembic 0005). Step 2
+> endpoints (#526 `5da9e1d`) — POST `/procedures/{id}/run` +
+> `/runs/{id}/gate/resolve` (auto-resume); identity recorded server-side
+> (AC-2 on the persisted row); registry executor-factory seam. Step 3 gate
+> state machine (#527 `a0db450`) — RESOLVED status; resume refuses
+> undecided proposal gates + SoD tie re-assert; optimistic lock (alembic
+> 0006 `pipeline_runs.version`); AC-5 narrowing disclosed (empty-watch
+> contract kept). Step 4 write-ahead (#528 `bafdf92`) —
+> `run_procedure_persisted` (write-ahead + per-step commits via
+> `on_step_complete`); two-phase resolve — decision committed BEFORE
+> effect; version bump AT decision commit = exactly-once under
+> concurrency; `pending_execution` entries = the outbox seam. Step 5
+> append-only audit (#529 `692f748`) — hash-chained `audit_log` + block
+> trigger + INSERT-only `vero_audit_writer` role (alembic 0007);
+> run_started/gate_decision/handler_receipt/run_resumed/gate_refused each
+> in-transaction; tamper-detect survives a superuser. Step 6 config
+> pinning (#530 `6cde2db`) — `governance_pin.py` + snapshot/hash on
+> `pipeline_runs` (alembic 0008); fail-closed pin-mismatch at resume +
+> gate; prose excluded; people deliberately NOT pinned. Close-out (#531
+> `28d919c`, merge `353c04e`) — completion fold (Status → Complete, 10 ACs
+> ticked, step→PR table, 5 disclosed deviations) + `git mv` →
+> `docs/plans/done/0047-pre-pilot-hardening-authn-gate-audit.md`.
+> **Disclosed local dev-box state:** local `.env` gained
+> `API_AUTH_ENABLED=false` (code default now ON — preserves demo UX); dev
+> DB migrated through alembic 0008 (0005 action_identity · 0006
+> `pipeline_runs.version` · 0007 audit_log + trigger + role · 0008
+> governance-pin columns). Session-95 CLOSE handoff:
+> `.claude/handoffs/session-95/2026-07-04-0014-code-session95-CLOSE-plan0047-hardening-sprint.md`.
+> **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (the
+> entire sprint was offline); AI-assisted (Claude Code, session 95), no
+> `Co-Authored-By` per CLAUDE.md §7.
 
 > **Session 94 CLOSE, 2026-07-03 (head_commit `255627b` → `f63c975` — #520
 > `fix(demo)` is SUBSTANTIVE per lint policy, merge `9314100`) — ADR-0020
@@ -60,133 +128,21 @@ recent_commits: [f63c975, 255627b, eb63692, 878b517, d544414]
 > touched it); AI-assisted (Claude Code, session 94), no `Co-Authored-By` per
 > CLAUDE.md §7.
 
-> **Session 94 cont., 2026-07-03 (head_commit `255627b` unchanged —
-> WORKING-TREE EVENT, no commit; #518 was a `docs(status)` merge, excluded) —
-> ADR-0020 PARTNER-SIM RUN-2 REHEARSAL COMPLETE — the run-1 fork-(a) pattern
-> (intake/mapping/PDPA-RoPA) run FOR REAL against the cold-chain package + the
-> 2-run cross-vertical synthesis; findings G1–G11 decomposed into tagged work
-> items.** **Cray pick, 2026-07-03.** Deliverable (gitignored +
-> SYNTHETIC-bannered, R3):
-> `docs/research/private/2026-07-03-partnersim-run2-rehearsal-intake-mapping-pdpa.md`;
-> offline throughout — no MS-S1 (stays cold), no server/port. **§1 Intake
-> (round 2):** 6 asks survive 2/2 — **5 DELIVERED + ask-6
-> CONDITIONAL-with-RECIPROCAL-ASKS** (they explicitly request our LI
-> balancing-test + 72h processor→controller notification templates → run-1
-> [GTM] items graduate to customer-demanded deliverables); identity wall +
-> one-owner failure both recur (2/2); NEW: authority is ATTRIBUTE-CONDITIONAL
-> (cargo value ≤฿300k, งานยา carve-out, release-on-gap data-quality rule).
-> **§2 Mapping vs `supply_chain_v0.yaml` — the headline gap: NO equipment
-> entity** (รถ 62 / ตู้ reefer 38 / logger ~140 homeless; ปรับ-setpoint actions
-> homeless) → v1 needs `Equipment`/`Device` + link (G1); NO
-> `measured_kind`/`quantity_bindings` at all (ADR-0021 Phase A landed
-> energy-only, G2); BUT `cargo_type`/`facility_type`/`action_type` enums
-> largely FIT (contrast with energy's failed `asset_type`). **4 NEW band-gap
-> classes** (duration-qualified −15.5°C เกิน 45 นาที · two-sided corridor 2–8 ·
-> per-contract SLA timers แจ้งลูกค้า ≤4 ชม. · context-scoped during-loading) →
-> 6 band-expressiveness requirements across 2 runs route to the
-> generalized-schema thread (G3); calibration/bias registry (per-device
-> ×scale−offset paper cal, probe +0.4, room −1.2 "บวกในใจ") with a WORKED
-> dual-stream example computed from the package's own RF-21 slice (~2.4–2.7°C
-> systematic offset, trend agreement) (G6); multi-latency fusion +
-> retro-reaudit policy (late TL-2/paper data can contradict a released verdict
-> — the QA-07 release-on-gap case) (G5). §8.1 mapping trigger NOT tripped
-> (synthetic). **§3 PDPA-RoPA (round 2):** RoPA-lite builds cleanly again; GPS
-> = PII hard-bar → column-drop round 1 accepted + a prepared "เสนอวิธีมา"
-> answer (15-min downsample + stop-strip + geofence-derived events only) (G8);
-> role-level-audit pre-clearance posture now validated against a SECOND
-> instrument type (contractual driver-agent agreement vs run-1's
-> worker-committee); **cross-border payoff as designed** — the SG vendor-cloud
-> transfer already exists on the controller side → DPA musts: ingest-source
-> pinning (controller-pulled files), deletion-scope honesty (vendor-cloud
-> copies non-guaranteeable), sub-processor disclosure (G7). **§4:** G1–G11
-> tagged [MAP]/[ENG]/[GTM]/[INTAKE]/[DEFER] + routed; nothing starts a build;
-> the paired v1 ontology batches (energy-v1 from run 1 + supply-chain-v1 =
-> G1/G2/G11) are a natural small PLAN when scheduled. **§5 Cross-run synthesis
-> (the trial's compounding payoff):** 9 classes recur 2/2 verticals =
-> mapping-layer CORE (unresolvable principals, era-PK renumber+reuse, clock
-> chaos, unit/calibration chaos, mutable/late history, single-person
-> knowledge, multi-channel telemetry rows, structured refusals, 4–6-wk
-> external-counsel window); vertical-specific kept 1/2 (watch, don't
-> generalize); Rule-of-Three — the third data point comes from procurement or
-> the first REAL partner before abstraction (ADR-006). **§6:** intake-form
-> additions 8–11 (source ownership, sub-processor inventory, undocumented
-> mental corrections, band-shape probes) extend run-1's seven → the
-> standard-intake-form TODO. **R2:** an independent reviewer verified
-> facts/arithmetic/schema/R3/consistency — **0 BLOCKER / 0 FIX / 4 NITs
-> applied** (quote exactness, enum completeness, the partner's own
-> inconsistent asset-count noted as an intake datum, refusal-count
-> cross-reference pinned to the run-1 S-4 record). **NEXT (Cray-owned):**
-> C-1..C-3 for the supply-chain project (still open, benign) + the next pick —
-> (b) the Q4 generic query executor PLAN, the paired v1 ontology batches
-> (energy-v1 + supply-chain-v1), the [GTM] pack (now customer-demanded
-> templates), or other backlog. **Standing:** `loop-dispatcher` stays
-> **DISABLED**; MS-S1 cold (nothing touched it); AI-assisted (Claude Code,
-> session 94), no `Co-Authored-By` per CLAUDE.md §7.
-
-> **Session 94 cont., 2026-07-02 (head_commit `255627b` unchanged —
-> WORKING-TREE EVENT, no commit; #517 was a `docs(status)` merge, excluded) —
-> ADR-0020 PARTNER-SIM RUN 2 (supply-chain) COMPLETE — synthetic cold-chain
-> package received + screened: S-1..S-6 ALL PASS vs a pre-committed oracle,
-> incl. the FIRST live R-PS4 context-bleed screen (clean); first-pass findings
-> drafted (gitignored, R3).** Run launched by Cray in a FRESH project per SD-2
-> with ALL THREE D4 adjustments applied: (i) the #516-tightened instruction,
-> (ii) the R1-STRIPPED PDPA paste-variant, (iii) fresh project + a
-> Code-authored run-start assembly
-> (`docs/research/private/2026-07-02-partnersim-run2-runstart-paste.md`).
-> Parameters: supply-chain / mid / **multi-site-sea** / mixed-legacy
-> (multi-site-sea = Code's pick to force the cross-border PDPA surface run 1
-> never touched). **Screen — S-1..S-6 ALL PASS vs the PRE-COMMITTED oracle**
-> (`...run2-receive-checklist.md`, criteria fixed before the package existed):
-> R3 banner verbatim ×2; S-2 under the SHARPER post-#516 detector found
-> nothing (own duration-qualified rules, own action verbs "ปล่อย/กัก/ตีกลับ",
-> own fields, decidedly non-schema-shaped); S-3 = 5 unsolicited facts (≥N=3) +
-> heavy flaw classes; S-4 = 7 refusals w/ blockers; S-5 K-1 re-stamps; **S-6
-> R-PS4 (first live context-bleed screen, run-2-specific): zero run-1/TWP
-> specifics — clean.** No R-PS trigger fired. **Landed (gitignored, R3):**
-> package
-> `docs/research/private/2026-07-02-partnersim-run2-supply-chain-package.md`
-> (fictional cold-chain operator "สุวรรณเย็น ทรานส์") + oracle/verdicts
-> `...run2-receive-checklist.md` + the completion handoff (session-94, 1825).
-> **First-pass value — new finding classes run 1 could not surface:**
-> cross-border transfer ALREADY in flight (logger-vendor cloud @ Singapore, no
-> PDPA terms; deletion non-guaranteeable → the DPA must handle third-party
-> processor chains; the residency story flips from run-1's "straight win" to a
-> real ss.28/29 design question); duration-qualified thresholds (−15.5°C เกิน
-> 45 นาที, door >12 min, pharma no-grace) vs our instantaneous
-> `in_file_band`; per-CONTRACT (not per-asset-class) bands; a per-device
-> calibration registry (raw 0–4095 × paper cal sheets); GPS-as-PII w/ a
-> column-drop counter-proposal + re-identification honesty; third-party
-> data-ownership boundaries (JV board / shipping agent / vendor cloud).
-> **Cross-run signal (2/2 verticals):** identity-unresolvable principals, PK
-> renumber+reuse, clock chaos, single-person knowledge bottleneck, batch-only
-> export — these graduate from energy quirks to the mapping-layer's
-> must-handle core. **Watch items:** repeated messiness ARCHETYPES across runs
-> (below the R-PS4 bar, partly instruction-example-driven — fixture-diversity
-> watch for any run 3); the "unannotated bulk slice" ask only partially met
-> (curated small samples again); C-1..C-3 for the NEW project requested from
-> Cray, UNCONFIRMED — benign (no S-2/S-6 indicator fired). **NEXT
-> (Cray-owned):** confirm C-1..C-3 for the new supply-chain project (2-min
-> Desktop check, carried open) + the next pick — a full run-2 rehearsal (the
-> run-1 fork-(a) pattern: intake/mapping/PDPA vs the cold-chain package), (b)
-> the Q4 generic query executor PLAN, or the rehearsal-enriched backlog.
-> **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (nothing
-> touched it); AI-assisted (Claude Code, session 94), no `Co-Authored-By` per
-> CLAUDE.md §7.
-
-> _Rotation note (session-94 CLOSE reconcile, 2026-07-03): to hold STATUS
-> under the **R1 64 KB hard ceiling** as the new Session-94 CLOSE CF block
-> landed (the file was at ~63.6 KB before the addition; R1 overrides the R2
-> 4-session window — the s93/s94 precedents accepted a narrowed window), one
-> Current Focus block was rotated verbatim to
+> _Rotation note (session-95 CLOSE reconcile, 2026-07-04): to hold STATUS
+> under the **R1 64 KB hard ceiling** as the new Session-95 CLOSE CF block
+> landed (the file was at ~63.0 KB before the addition; R1 overrides the R2
+> 4-session window — the s93/s94 precedents accepted a narrowed window), two
+> Current Focus blocks were rotated verbatim to
 > [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md):
-> the **Session 94 (head_commit `eb63692` → `255627b`)** ADR-0020 D4
-> POST-RUN-1 REVIEW block (#516 substantive, merge `cb161a4`). Resulting
-> Current-Focus window = {94 CLOSE `f63c975`, 94 run-2 rehearsal, 94 run-2
-> receive}; RD table = 9 rows (untouched). **Prior (session-94 run-2
-> rehearsal reconcile, 2026-07-03):** rotated the **Session 94 (head_commit
-> `eb63692`)** ADR-0020 partner-sim RUN-1 REHEARSAL (fork a) block
-> (working-tree event, reconciled #515) to the same archive. Per the
-> STATUS.md Rotation Policy (R1/R2/R4)._
+> the **Session 94 cont., 2026-07-03 (head_commit `255627b` unchanged)**
+> ADR-0020 partner-sim RUN-2 REHEARSAL + 2-run cross-vertical-synthesis
+> block, and the **Session 94 cont., 2026-07-02 (head_commit `255627b`
+> unchanged)** ADR-0020 partner-sim RUN-2 RECEIVE (supply-chain, S-1..S-6
+> PASS) block (both working-tree events). Resulting Current-Focus window =
+> {95 CLOSE `28d919c`, 94 CLOSE `f63c975`}; RD table = 10 rows (at the R2
+> cap). **Prior (session-94 CLOSE + run-2-rehearsal reconciles,
+> 2026-07-03):** the 94 D4 POST-RUN-1 REVIEW and 94 RUN-1 REHEARSAL blocks,
+> rotated to the same archive. Per the STATUS.md Rotation Policy (R1/R2/R4)._
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
@@ -209,6 +165,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-03 | **PLAN-0047 (pre-pilot hardening: authn + run/gate endpoints + write-ahead + audit + config-pin + CI) EXECUTED + COMPLETE + CLOSED (session 95; PRs #522–#531; PLAN → `done/`)** — all 7 steps + all 10 ACs; **+31 tests (suite 2066 → 2097 passed / 5 skipped)**; sales claims (authn / audit / exactly-once / config-pin) now code- and CI-backed. **Step→PR:** draft #522 `b6cb0d5` (plan-drafter authored) · SD-1..4 as-rec #523 `8198548` (SD-1=(a) API keys · SD-2 defer · SD-3 yes-minimal · SD-4 CI w/ DB) · Step 7 CI #524 `0401a0a` (FIRST CI gate on the repo: ruff + ruff-format + `mypy --strict` + full suite w/ postgres container + `alembic upgrade head` per PR) · Step 1 authn #525 `3b3db46` (fail-closed API-key gate on state-changing routes; `action_identity` sidecar, alembic 0005) · Step 2 endpoints #526 `5da9e1d` (POST `/procedures/{id}/run` + `/runs/{id}/gate/resolve` auto-resume; identity recorded server-side, AC-2 on the persisted row) · Step 3 gate state machine #527 `a0db450` (RESOLVED status; resume refuses undecided proposal gates + SoD tie re-assert; optimistic lock, alembic 0006) · Step 4 write-ahead #528 `bafdf92` (`run_procedure_persisted`; two-phase resolve — decision committed BEFORE effect, version bump AT decision commit = exactly-once under concurrency; `pending_execution` = the outbox seam) · Step 5 audit #529 `692f748` (append-only hash-chained `audit_log` + block trigger + INSERT-only `vero_audit_writer` role, alembic 0007; tamper-detect survives a superuser) · Step 6 pinning #530 `6cde2db` (`governance_pin.py`; fail-closed pin-mismatch at resume + gate; prose excluded; people deliberately NOT pinned; alembic 0008) · close-out #531 `28d919c` (completion fold: 10 ACs ticked, step→PR table, **5 disclosed deviations** incl. `/warm`+`/sleep`+`/intake/generate` gated + the AC-5 narrowing w/ empty-watch contract kept; `git mv` → `done/`). Local dev-box (disclosed): `.env` `API_AUTH_ENABLED=false` (code default now ON); dev DB migrated through alembic 0008. Offline throughout; MS-S1 cold | `353c04e` (#531 merge) / `28d919c` (#531 close) / `services/api/auth.py` + `services/engine/procedures/persistence.py` (write-ahead) + `services/engine/procedures/governance_pin.py` + `alembic/versions/{0005_action_identity,0006_pipeline_run_version,0007_audit_log,0008_governance_pin}.py` + `.github/workflows/ci.yml` + `docs/plans/done/0047-pre-pilot-hardening-authn-gate-audit.md` |
 | 2026-07-02 | **PLAN-0046 (Q3 read-side ontology-binding build) EXECUTED + COMPLETE + CLOSED (session 93 cont., #511 feat + #512 close; PLAN → `done/`)** — renders the Accepted ADR-016 Q3 amendment into code; **all 11 ACs met.** `StepInput.reads: list[str]` + `AgentAllowed.object_types` (both `extra="forbid"`, backward-compat: absent/empty = loads as today) + the NEW pure `validate_read_bindings` load-gate (SD-1 Option A — `validate_runnable` + its ~12 call-sites untouched) wired at both production pre-flight sites (`run_procedure` + `persistence.resume_run`; skipped, no ontology I/O, for reads-absent procedures); `reads` → `STEP_GOVERNANCE_FIELDS` (OQ-A) + a disclosed `lift_to_step` strip-hardening (`StepDraft` reuses `StepInput` → generated drafts physically strip `reads` to ABSENT, OQ-C C1 pattern) + CI tripwire. 12 new tests; ruff + `mypy --strict` clean; **full offline suite 2066 passed / 5 skipped.** Zero runtime-data-flow change; honest frame (LOCKED-9): declared ✔ · load-gated ✔ · execution-bound ✖. SD-2 = Option A (verticals stay absent; gate inert until opt-in). The Q4 generic run-consume query executor = a SEPARATE later PLAN. Offline-only, no host-state | `eb63692` (#512 close) / `878b517` (#511 feat) / `services/engine/procedures/` (spec + orchestrator + draft-lift) + `docs/plans/done/0046-*.md` |
 | 2026-07-01 | **ADR-016 Q3 READ-SIDE ONTOLOGY OBJECT-BINDING AMENDMENT ACCEPTED (Rock 3 / O-2, #505) (session 93)** — an in-place ADR-016 D2+D3 amendment closing the read-side governance gap that mirrors the shipped write-side. Two commits: `915c344` (Proposed) + `cb7eb05` (fold ratified decisions → Accepted). **Decision (contract-first):** a typed `StepInput.reads: list[str]` read entry point (OQ-5: list not `str` — procurement `intake` reads 3 object types + joins); `Agent.allowed.object_types` mirroring `action_handlers`; **LOAD-time enforcement** (`reads ∈ ontology ∩ allowlist`, else refuse load) — **zero runtime-data-flow change.** **Honest enforcement frame (Cowork caught, Code-verified):** v1 = a typed read contract + a load-time consistency/scoping gate, **NOT** runtime-enforced parity — even write-side `action_handlers` is only pre-flight-checked in `validate_runnable`; teeth = declared==dispatched, gained read-side only at **Q4**. **Deferred:** the generic run-consume query executor → a fast-follow build PLAN (touches runtime flow + enrich/join steps); the Box-4 economic-impact facet → a self-cancelling **N≥3** marker (typed facet only; economic dimension prose-captured at authoring). **OQ-1..6/A ratified:** OQ-1 `StepInput.reads` · OQ-2 load-gate+reframe · OQ-3 `object_types` bounds `fetch_objects` only (links/events out of v1) · OQ-4 `where`=post-fetch · OQ-5 `reads:list[str]` · OQ-A `reads`/`object_types` H-governed (`object_types` auto-covered; add `reads` to `STEP_GOVERNANCE_FIELDS` = build-PLAN task) · OQ-6 `object_types` empty=unconstrained (backward-compat). **Three-lens process:** `plan-drafter` AUTHORED the amendment + folded the ratified decisions; Cowork Tier-1b independent second-perspective review (caught the parity over-claim + surfaced OQ-5); Code R2-verified on disk + committed; Cray ratified OQ-1..6/A. **Context:** the parallel hero compliance-swap (#506, `0b7efe4`) landed last session (swapped the hero-demo compliance stub for the shipped `rule_gate` executor; governed outcome unchanged). **Impl note for the build PLAN:** the load-gate must thread the vertical `OntologyMeta` into pre-flight (`validate_runnable(procedure, agent)` doesn't carry it today). **NEXT = the fast-follow build PLAN** (`StepInput.reads` + `Agent.allowed.object_types` + load-gate + `reads`→`STEP_GOVERNANCE_FIELDS` + tests); the generic query executor (Q4) = a separate later PLAN. **Routing:** the ADR-016 amendment authored by the in-harness `plan-drafter` (prong-2 exempt) → Code R2 + committed via `docs/adr` PR. `loop-dispatcher` stays DISABLED; MS-S1 cold (offline) | `cb7eb05` (#505 fold→Accepted) / `915c344` (#505 Proposed) / `docs/adr/0016-*.md` (D2 `StepInput.reads` + `Agent.allowed.object_types` + D3 load-gate) |
 | 2026-07-01 | **PLAN-0044 A1b STEPS 2 + 4 MERGED (offline close-out; A1b STILL OPEN) (session 92)** — two PRs (#499 Step 4 / #500 Step 2); INTERIM, not closure — remaining A1b = **AC-9** (Cray decision owed) + the hero-demo compliance-harness→`rule_gate`-executor swap. **#499 (feat `a458142`, merge `05c9541`, A1b Step 4 / AC-6) the `rule_gate` per-kind executor:** NEW `services/engine/procedures/rule_gate.py` — pure `evaluate_compliance(gate, candidate)` reads the candidate's per-criterion `compliance` signal map (data-access = (a), mirrors `scored_rule`'s `candidate_quotes`) and **blocks the PO on ANY failed criterion** (candidate tagged non-`compliant` → dropped by the downstream `approve` `where: {compliant: true}` fan-out). **Non-waivable by type** (`blocks_po` `Literal[True]`; no pass-a-failed-rule path); **fails CLOSED** (non-mapping candidate / no `compliance` map → `RuleGateError`; absent-OR-false per-criterion signal fails that criterion). v1 does NOT evaluate the prose `spec` predicate (deferred to the A2 run path, ADR-0025 D2) — it enforces the GATE. NEW **`GovernanceEvaluateExecutor`** in `governance_step.py` (SD-1=(a) dispatching wrapper for the EVALUATE StepKind, sibling of `GovernanceActionExecutor`): its `rule_gate` branch tags each candidate `compliant` + audits (`governed_kind: rule_gate`), never the base (compliance has no numeric band) nor the LLM (governed ≠ generated, ADR-0019 IN-3); a banded `judge` step falls through to the shipped `EvaluateStepExecutor`; **17 new tests.** **#500 (test `12ac1dd`, merge `4f22602`, A1b Step 2 / AC-10 re-trigger half; mirrors ADR-0025 D7) the OQ-6 N≥2 shared-`Person` re-trigger marker:** NEW `test_principal_identity_retrigger.py` counts the verticals whose `procedures.yaml` ships `principals` and **FAILS the moment a SECOND vertical ships principals (N≥2)** — making the shared/core `Person` extraction deferral (ADR-0026 OQ-6=(b)) **self-cancelling** rather than a silent `# TODO`; currently N=1 (procurement only); **3 tests.** **Verification:** ruff + mypy clean; full offline suite **2020 passed / 5 skipped** (on merged main `4f22602`); offline-only, no host-state, **no PO issued** (render / block only, ADR-0007 LOCKED #3). **Routing:** both non-gated Code `feat/*`/`chore/*` PRs executing the already-accepted PLAN-0044 (no new PLAN/ADR). **NEXT:** AC-9 (Cray pick — the `audit` step is `autonomy:auto` AND downstream of `approve`/`issue_po`, so the assertion would restructure the hero procedure) + the hero compliance-swap follow-up; then the PLAN-0044 Completion note + `git mv` → `done/` + a STATUS full-body reconcile at A1b CLOSE. `loop-dispatcher` stays DISABLED; MS-S1 cold (remaining A1b offline) | `4f22602` (#500) / `05c9541`·`a458142` (#499 Step 4) / `services/engine/procedures/rule_gate.py` + `services/engine/procedures/governance_step.py` (`GovernanceEvaluateExecutor`) + `tests/services/engine/procedures/test_rule_gate.py` (Step 4) · `12ac1dd` (#500 Step 2) / `tests/services/engine/procedures/test_principal_identity_retrigger.py` |
