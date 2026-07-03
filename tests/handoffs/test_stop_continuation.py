@@ -370,6 +370,15 @@ def inproc_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Pat
     monkeypatch.setenv("CLAUDE_STOP_CHAIN_PATH", str(chain_path))
     monkeypatch.setenv("CLAUDE_TELEGRAM_SCRIPT", str(telegram_script))
     monkeypatch.delenv("CLAUDE_CODE_STOP_HOOK_BLOCK_CAP", raising=False)
+    # PLAN-0021 M2 hermeticity — the stub_env fix (PR #340) mirrored to the
+    # in-process fixture, which had been missed: point the goal gate at a
+    # per-test (absent) goal file so a developer's live .claude/state/goal.json
+    # can never leak in. With a live ACTIVE goal the gate runs BEFORE the
+    # patched classifier, so it would emit GOAL-GATE DISPATCH instead of the
+    # asserted AUTO-HANDOFF block AND write dispatch/release markers into the
+    # live evaluations[] trail (observed session 96: dispatch + released 3s
+    # apart, killing the real Axis-B goal mid-plan).
+    monkeypatch.setenv("CLAUDE_GOAL_PATH", str(tmp_path / "goal.json"))
     # Reload the hook to refresh any module-level cached paths/cap (defensive —
     # current impl reads via _state_path()/_chain_path()/_cap() helpers, which
     # query env at call time, but reload guarantees test isolation).
