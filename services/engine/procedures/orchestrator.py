@@ -23,7 +23,7 @@ a later step.
 from __future__ import annotations
 
 import time
-from collections.abc import Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Protocol
@@ -526,6 +526,7 @@ async def execute_steps(
     *,
     prior_outputs: Mapping[str, list[Any]] | None = None,
     start_index: int = 0,
+    on_step_complete: Callable[[StepResult], Awaitable[None]] | None = None,
 ) -> tuple[list[StepResult], PipelineRunStatus]:
     """Run ``steps[start_index:]`` over ``executors`` against a named-output bag.
 
@@ -537,6 +538,12 @@ async def execute_steps(
     output is recorded back into the bag under its ``step_id`` so a LATER step can
     reference it (the breach/watch/ok fan-out). Returns the new ``StepResult``s +
     the resulting run status; it does NOT create or persist the ``PipelineRun``.
+
+    ``on_step_complete`` (PLAN-0047 Step 4): an optional awaited callback fired
+    with each ``StepResult`` as it is recorded (success, suspend, AND failure) —
+    the seam the persistence wrapper uses to commit per-step durably while the
+    orchestrator itself stays DB-free. Default ``None`` = exactly the prior
+    behavior.
     """
     engine_audit: dict[str, Any] = {"actor": ctx.agent.agent_id, "actor_kind": "engine"}
     step_results: list[StepResult] = []
@@ -579,6 +586,8 @@ async def execute_steps(
                     audit=engine_audit,
                 )
             )
+            if on_step_complete is not None:
+                await on_step_complete(step_results[-1])
             final_status = PipelineRunStatus.WAITING_HUMAN if escalate else PipelineRunStatus.FAILED
             break
 
@@ -596,6 +605,8 @@ async def execute_steps(
                 audit=outcome.audit or engine_audit,
             )
         )
+        if on_step_complete is not None:
+            await on_step_complete(step_results[-1])
         outputs[step.step_id] = outcome.output
         if suspends:
             final_status = PipelineRunStatus.WAITING_HUMAN

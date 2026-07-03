@@ -186,6 +186,53 @@ def _entry(record: ActionRecord, receipt: dict[str, Any] | None) -> dict[str, An
     }
 
 
+def _decide_proposals(
+    run_id: str,
+    proposals: list[dict[str, Any]],
+    decisions: Mapping[str, str],
+) -> tuple[list[tuple[ActionRecord, str]], list[dict[str, Any]], list[dict[str, Any]]]:
+    """Phase 1 of the gate (PLAN-0047 Step 4): validate + apply every decision
+    IN MEMORY — no handler fires here. Returns ``(dispositions, pending_entries,
+    trace_adds)`` in proposal order: approved records serialise as
+    ``pending_execution`` (the durable intent the caller commits before any
+    effect), rejects serialise final + carry their trace entry."""
+    dispositions: list[tuple[ActionRecord, str]] = []
+    pending_entries: list[dict[str, Any]] = []
+    trace_adds: list[dict[str, Any]] = []
+    for proposal in proposals:
+        action = RecommendedAction.model_validate(proposal["action"])
+        decision = decisions.get(action.id)
+        if decision is None:
+            raise ProcedureError(
+                f"run '{run_id}': no decision for proposed action '{action.id}' "
+                "(every gated action needs an explicit approve/reject)"
+            )
+        record = ActionRecord(action=action)
+        if decision == APPROVE:
+            approve(record)
+            pending_entries.append({**_entry(record, None), "status": "pending_execution"})
+        elif decision == REJECT:
+            reject(record)
+            pending_entries.append(_entry(record, None))
+            trace_adds.append(
+                {
+                    "kind": "action_rejected",
+                    "action_id": action.id,
+                    "summary": (
+                        f"human-rejected handler '{action.suggested_handler}'; not executed "
+                        "(run continues — a reject is a recorded decision, not a failure)"
+                    ),
+                }
+            )
+        else:
+            raise ProcedureError(
+                f"run '{run_id}': unknown decision '{decision}' for action '{action.id}' "
+                "(expected 'approve' or 'reject')"
+            )
+        dispositions.append((record, decision))
+    return dispositions, pending_entries, trace_adds
+
+
 @dataclass(frozen=True)
 class ActionStepExecutor:
     """The real ``action`` StepExecutor (AC A-7). See module docstring."""
@@ -410,49 +457,15 @@ async def resolve_gated_step(
     # verdict). Non-skippable on a SoD run; inert otherwise (see the helper).
     _enforce_principal_sod(loaded.run, step_id, principal, procedure, principals, principal_aliases)
 
-    executed_effects: list[dict[str, Any]] = []
-    decided: list[dict[str, Any]] = []
-    trace_adds: list[dict[str, Any]] = []
-    for proposal in proposals:
-        action = RecommendedAction.model_validate(proposal["action"])
-        decision = decisions.get(action.id)
-        if decision is None:
-            raise ProcedureError(
-                f"run '{run_id}': no decision for proposed action '{action.id}' "
-                "(every gated action needs an explicit approve/reject)"
-            )
-        record = ActionRecord(action=action)
-        if decision == APPROVE:
-            approve(record)
-            receipt = await gate_execute(record)
-            effect = _entry(record, receipt)
-            executed_effects.append(effect)
-            decided.append(effect)
-            trace_adds.append(
-                {
-                    "kind": "action_executed",
-                    "action_id": action.id,
-                    "summary": f"human-approved; executed handler '{action.suggested_handler}'",
-                }
-            )
-        elif decision == REJECT:
-            reject(record)
-            decided.append(_entry(record, None))
-            trace_adds.append(
-                {
-                    "kind": "action_rejected",
-                    "action_id": action.id,
-                    "summary": (
-                        f"human-rejected handler '{action.suggested_handler}'; not executed "
-                        "(run continues — a reject is a recorded decision, not a failure)"
-                    ),
-                }
-            )
-        else:
-            raise ProcedureError(
-                f"run '{run_id}': unknown decision '{decision}' for action '{action.id}' "
-                "(expected 'approve' or 'reject')"
-            )
+    # ---- Phase 1 (PLAN-0047 Step 4, AC-6): decide + COMMIT the intent -------
+    # Every decision is validated and applied in memory, then the decisions +
+    # the governed_decision audit tie + the gate-principal trace are COMMITTED
+    # BEFORE any handler effect fires. A crash/raise after this commit leaves:
+    # the step still waiting_human, the ORIGINAL proposals intact (the resolve
+    # is retryable), the decisions durably recorded as pending_execution, and
+    # NO phantom executed effect. The pending -> executed shape is the seam a
+    # real transactional outbox slots into later (in-process handlers today).
+    dispositions, pending_entries, trace_adds = _decide_proposals(run_id, proposals, decisions)
 
     if principal is not None:
         trace_adds.append(
@@ -470,8 +483,44 @@ async def resolve_gated_step(
     # Engine-emitted — recorded whether the human approved or rejected the proposals (it records
     # WHO governed the gate, not the per-action outcome). Inert for a non-SoD / principal-less gate.
     _record_governed_decision(target, step_id, principal, procedure)
-    target.artifact = {"output_set": executed_effects, "decisions": decided}
+    target.artifact = {"output_set": proposals, "decisions": pending_entries}
     target.reasoning_trace = list(target.reasoning_trace or []) + trace_adds
+    # The run row is touched HERE so its optimistic-lock version bumps AT the
+    # decision commit — a concurrent resolver loses (StaleDataError) BEFORE its
+    # handlers fire, not after (true exactly-once under concurrency).
+    loaded.run.updated_at = datetime.now(UTC)
+    await session.merge(loaded.run)
+    await session.merge(target)
+    await session.commit()  # the decision is durable BEFORE any effect (AC-6)
+
+    # ---- Phase 2: execute the approved effects, then commit the receipts ----
+    executed_effects: list[dict[str, Any]] = []
+    effects_by_id: dict[str, dict[str, Any]] = {}
+    exec_trace: list[dict[str, Any]] = []
+    for record, decision in dispositions:
+        if decision != APPROVE:
+            continue
+        receipt = await gate_execute(record)
+        effect = _entry(record, receipt)
+        executed_effects.append(effect)
+        effects_by_id[record.action.id] = effect
+        exec_trace.append(
+            {
+                "kind": "action_executed",
+                "action_id": record.action.id,
+                "summary": (
+                    f"human-approved; executed handler '{record.action.suggested_handler}'"
+                ),
+            }
+        )
+    # Final artifact in proposal order — byte-shape identical to the pre-Step-4
+    # contract: executed effects thread forward; rejects are recorded, not threaded.
+    decided = [
+        effects_by_id[record.action.id] if decision == APPROVE else _entry(record, None)
+        for record, decision in dispositions
+    ]
+    target.artifact = {"output_set": executed_effects, "decisions": decided}
+    target.reasoning_trace = list(target.reasoning_trace or []) + exec_trace
     # PLAN-0047 Step 3 — the gate state machine: a decided gate flips to RESOLVED,
     # so a second resolve fails the waiting_human precondition above (idempotent
     # BY STATE — the handler cannot refire) and resume_run advances the gate from

@@ -43,8 +43,12 @@ from services.api.models.runs import (
 )
 from services.db.session import get_session
 from services.engine.procedures.action_step import PrincipalSoDError, resolve_gated_step
-from services.engine.procedures.orchestrator import ProcedureError, run_procedure
-from services.engine.procedures.persistence import load_run, persist_run, resume_run
+from services.engine.procedures.orchestrator import ProcedureError
+from services.engine.procedures.persistence import (
+    load_run,
+    resume_run,
+    run_procedure_persisted,
+)
 from services.engine.procedures.runs import PipelineRunStatus, StepResult
 from services.engine.procedures.spec import (
     Agent,
@@ -150,7 +154,10 @@ async def run_procedure_endpoint(
 
     run_id = f"run-{uuid4().hex[:12]}"
     try:
-        result = await run_procedure(
+        # PLAN-0047 Step 4 (AC-6): the WRITE-AHEAD driver — the running row is
+        # durable before step 1 executes; each StepResult commits as it lands.
+        result = await run_procedure_persisted(
+            session,
             procedure,
             agent,
             factory(),
@@ -161,7 +168,6 @@ async def run_procedure_endpoint(
         )
     except ProcedureError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
-    await persist_run(session, result)
 
     suspended = _suspended_step(result.step_results, result.run.status)
     return RunProcedureResponse(
