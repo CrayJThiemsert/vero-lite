@@ -33,6 +33,7 @@ from services.engine.procedures.draft import (
     unfilled_governance,
     unfilled_procedure_governance,
 )
+from services.engine.procedures.governance_pin import governance_pin_for
 from services.engine.procedures.runs import (
     PipelineRun,
     PipelineRunStatus,
@@ -493,6 +494,8 @@ async def run_procedure(
     validate_read_bindings_for_vertical(procedure, agent, vertical)
 
     opened = datetime.now(UTC)
+    # PLAN-0047 Step 6 (AC-8): pin the resolved governance config at run start.
+    snapshot, config_hash = governance_pin_for(procedure)
     run = PipelineRun(
         run_id=run_id,
         procedure_id=procedure.procedure_id,
@@ -501,6 +504,8 @@ async def run_procedure(
         status=PipelineRunStatus.RUNNING.value,
         started_at=opened,
         updated_at=opened,
+        governance_snapshot=snapshot,
+        governance_hash=config_hash,
     )
     ctx = RunContext(
         agent=agent,

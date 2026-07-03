@@ -56,7 +56,7 @@ from services.engine.procedures.orchestrator import (
     RunContext,
     StepOutcome,
 )
-from services.engine.procedures.persistence import load_run
+from services.engine.procedures.persistence import assert_governance_pin, load_run
 from services.engine.procedures.principal_sod import (
     PrincipalSoDVerdict,
     check_principal_sod,
@@ -378,6 +378,33 @@ def _record_governed_decision(
         target.audit = {**(target.audit or {}), "governed_decision": governed}
 
 
+async def _enforce_sod_with_refusal_audit(
+    session: AsyncSession,
+    run: PipelineRun,
+    run_id: str,
+    step_id: str,
+    principal: Person | None,
+    procedure: Procedure | None,
+    principals: list[Person] | None,
+    principal_aliases: list[PrincipalAlias] | None,
+) -> None:
+    """Run the live principal-SoD check; on a violation, durably audit the
+    refusal (PLAN-0047 Step 5) BEFORE the ``PrincipalSoDError`` propagates."""
+    try:
+        _enforce_principal_sod(run, step_id, principal, procedure, principals, principal_aliases)
+    except PrincipalSoDError as exc:
+        await append_audit(
+            session,
+            action="gate_refused",
+            actor_person_id=principal.person_id if principal is not None else None,
+            run_id=run_id,
+            step_id=step_id,
+            payload={"violations": [v.detail for v in exc.verdict.violations]},
+        )
+        await session.commit()
+        raise
+
+
 async def resolve_gated_step(
     session: AsyncSession,
     run_id: str,
@@ -453,26 +480,20 @@ async def resolve_gated_step(
     if not proposals:
         raise ProcedureError(f"run '{run_id}': step '{step_id}' has no proposed actions to resolve")
 
+    # PLAN-0047 Step 6 (AC-8): a mid-flight governance edit fails closed at the
+    # gate too — verified whenever the caller supplies the procedure (the HTTP
+    # surface always does; a procedure-less legacy call on a non-SoD run has no
+    # config to compare, and resume re-checks the pin regardless).
+    if procedure is not None:
+        assert_governance_pin(loaded.run, procedure, context="gate resolution")
+
     # The LIVE fail-closed principal-SoD run-check (ADR-0026 D4; A1b Step 1) — runs
     # BEFORE any approve/execute so a violation blocks the gate (no PO, no governed
-    # verdict). Non-skippable on a SoD run; inert otherwise (see the helper).
-    # PLAN-0047 Step 5: a refusal is itself a governance-relevant transition —
-    # audited durably before the exception propagates.
-    try:
-        _enforce_principal_sod(
-            loaded.run, step_id, principal, procedure, principals, principal_aliases
-        )
-    except PrincipalSoDError as exc:
-        await append_audit(
-            session,
-            action="gate_refused",
-            actor_person_id=principal.person_id if principal is not None else None,
-            run_id=run_id,
-            step_id=step_id,
-            payload={"violations": [v.detail for v in exc.verdict.violations]},
-        )
-        await session.commit()
-        raise
+    # verdict). Non-skippable on a SoD run; inert otherwise. PLAN-0047 Step 5: a
+    # refusal is itself audited durably before the exception propagates.
+    await _enforce_sod_with_refusal_audit(
+        session, loaded.run, run_id, step_id, principal, procedure, principals, principal_aliases
+    )
 
     # ---- Phase 1 (PLAN-0047 Step 4, AC-6): decide + COMMIT the intent -------
     # Every decision is validated and applied in memory, then the decisions +

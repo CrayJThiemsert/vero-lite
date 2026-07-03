@@ -25,6 +25,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.db.audit_log import append_audit
+from services.engine.procedures.governance_pin import governance_pin_for
 from services.engine.procedures.orchestrator import (
     ProcedureError,
     RunContext,
@@ -77,6 +78,8 @@ async def run_procedure_persisted(
     validate_runnable(procedure, agent)
     validate_read_bindings_for_vertical(procedure, agent, vertical)
     opened = datetime.now(UTC)
+    # PLAN-0047 Step 6 (AC-8): pin the resolved governance config at run start.
+    snapshot, config_hash = governance_pin_for(procedure)
     run = PipelineRun(
         run_id=run_id,
         procedure_id=procedure.procedure_id,
@@ -85,6 +88,8 @@ async def run_procedure_persisted(
         status=PipelineRunStatus.RUNNING.value,
         started_at=opened,
         updated_at=opened,
+        governance_snapshot=snapshot,
+        governance_hash=config_hash,
     )
     session.add(run)
     # PLAN-0047 Step 5: the run-start audit row lands in the SAME transaction
@@ -147,6 +152,30 @@ def _has_decidable_proposals(artifact: dict[str, Any]) -> bool:
     return any(
         isinstance(entry, dict) and isinstance(entry.get("action"), dict) for entry in output_set
     )
+
+
+def assert_governance_pin(run: PipelineRun, procedure: Procedure, *, context: str) -> None:
+    """PLAN-0047 Step 6 (AC-8): fail CLOSED when the caller-supplied procedure's
+    governance config no longer matches the config pinned at run start.
+
+    A mid-flight DOA-ladder / SoD / rule edit must never silently govern an
+    old run — the ONLY sanctioned path is the refusal below: the operator
+    cancels the stale run and starts a fresh one under the new config (no
+    silent re-pin). A run with no pin (pre-0008 row / legacy library run)
+    skips the check — backward compat.
+    """
+    if run.governance_hash is None:
+        return
+    _, current_hash = governance_pin_for(procedure)
+    if current_hash != run.governance_hash:
+        raise ProcedureError(
+            f"run '{run.run_id}': governance-config pin mismatch at {context} — the "
+            f"procedure's governance config (hash {current_hash[:12]}…) no longer matches "
+            f"the config this run was started under (hash {run.governance_hash[:12]}…). "
+            "Refusing to proceed (PLAN-0047 Step 6 fail-closed): cancel this run and start "
+            "a fresh one under the current config; the pinned snapshot on the run row "
+            "records exactly which config governed it."
+        )
 
 
 def _assert_sod_tie_present(run: PipelineRun, procedure: Procedure, suspended: StepResult) -> None:
@@ -214,6 +243,8 @@ async def resume_run(
         )
     if not loaded.step_results:
         raise ProcedureError(f"run '{run_id}' has no step results to resume from")
+    # PLAN-0047 Step 6 (AC-8): a mid-flight governance edit fails closed here.
+    assert_governance_pin(run, procedure, context="resume")
 
     suspended = loaded.step_results[-1]
     index = next((i for i, s in enumerate(procedure.steps) if s.step_id == suspended.step_id), None)
