@@ -12,14 +12,22 @@ cases (PLAN-0005 R5) — the autouse ``_reset_registry`` fixture in
 ``tests/conftest.py`` does this.
 """
 
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from services.engine.actions import RecommendedAction
 from services.engine.data_adapter import DataAdapter
 
+if TYPE_CHECKING:  # TYPE_CHECKING-only: keeps registry import-cycle-free at runtime
+    from services.engine.procedures.orchestrator import StepExecutor
+    from services.engine.procedures.spec import StepKind
+
 Handler = Callable[[RecommendedAction], Awaitable[dict[str, Any]]]
+
+# PLAN-0047 Step 2: a vertical's per-kind procedure-executor wiring, built fresh
+# per run/resume request (stateful executors never leak across requests).
+ExecutorFactory = Callable[[], "Mapping[StepKind, StepExecutor]"]
 
 
 class RegistryError(Exception):
@@ -28,10 +36,11 @@ class RegistryError(Exception):
 
 @dataclass
 class _VerticalEntry:
-    """One vertical's registered adapter and named handlers."""
+    """One vertical's registered adapter, named handlers, and executor factory."""
 
     adapter: DataAdapter | None = None
     handlers: dict[str, Handler] = field(default_factory=dict)
+    executor_factory: ExecutorFactory | None = None
 
 
 class VerticalRegistry:
@@ -72,6 +81,29 @@ class VerticalRegistry:
         if entry is None or name not in entry.handlers:
             raise RegistryError(f"no handler '{name}' registered for vertical '{vertical}'")
         return entry.handlers[name]
+
+    def register_procedure_executors(self, vertical: str, factory: ExecutorFactory) -> None:
+        """Register a vertical's procedure-executor factory (PLAN-0047 Step 2).
+
+        The factory is invoked fresh per run/resume request by the HTTP run
+        surface, mirroring the explicit adapter/handler registration pattern
+        (OQ-6 — no import-scan discovery).
+        """
+        entry = self._verticals.setdefault(vertical, _VerticalEntry())
+        if entry.executor_factory is not None:
+            raise RegistryError(
+                f"procedure-executor factory already registered for vertical '{vertical}'"
+            )
+        entry.executor_factory = factory
+
+    def get_procedure_executors(self, vertical: str) -> ExecutorFactory:
+        """Return the procedure-executor factory registered for ``vertical``."""
+        entry = self._verticals.get(vertical)
+        if entry is None or entry.executor_factory is None:
+            raise RegistryError(
+                f"no procedure-executor factory registered for vertical '{vertical}'"
+            )
+        return entry.executor_factory
 
     def verticals(self) -> list[str]:
         """Return the sorted names of every registered vertical."""

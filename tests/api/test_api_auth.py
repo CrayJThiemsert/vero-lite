@@ -150,7 +150,15 @@ async def test_execute_persists_identity_row(client_with_db: AsyncClient, auth_o
 def test_state_changing_routes_carry_authn() -> None:
     """The enforceable AC-1 coverage read: every state-changing route carries
     the authn dependency (path-suffix keyed so router prefixes cannot hide one)."""
-    targets = {"/approve", "/execute", "/warm", "/sleep", "/intake/generate"}
+    targets = {
+        "/approve",
+        "/execute",
+        "/warm",
+        "/sleep",
+        "/intake/generate",
+        "/run",
+        "/gate/resolve",
+    }
     seen: set[str] = set()
     for route in app.routes:
         if not isinstance(route, APIRoute):
