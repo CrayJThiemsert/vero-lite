@@ -1,0 +1,67 @@
+# PLAN-0047 Step 7 (AC-10): the offline gate, enforced on every PR.
+# SD-4 (ratified 2026-07-03) = DB-backed tests included: a postgres:16-alpine
+# service container mirrors docker-compose.yml; migrations run against the
+# fresh vero_lite DB (AC-9) and the suite owns the disposable vero_lite_test
+# sibling (tests/db_support.py — never the dev DB).
+name: CI
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: vero
+          POSTGRES_PASSWORD: vero # pragma: allowlist secret — throwaway CI-container cred, same as docker-compose.yml
+          POSTGRES_DB: vero_lite
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U vero -d vero_lite"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install dependencies (locked, with dev tools)
+        run: uv sync --extra dev --frozen
+
+      # --no-sync below: a bare `uv run` re-syncs WITHOUT the dev extra and
+      # uninstalls pytest/ruff/mypy mid-job (project memory
+      # project_uv_run_shared_venv_dev_tool_thrash).
+      - name: ruff check
+        run: uv run --no-sync ruff check .
+
+      - name: ruff format check
+        run: uv run --no-sync ruff format --check .
+
+      - name: mypy (strict, services/)
+        run: uv run --no-sync mypy --strict services/
+
+      - name: Migrations on a fresh DB (AC-9)
+        env:
+          DATABASE_URL: postgresql+asyncpg://vero:vero@localhost:5432/vero_lite # pragma: allowlist secret
+        run: uv run --no-sync alembic upgrade head
+
+      - name: Full test suite (offline gate + DB-backed tests)
+        env:
+          DATABASE_URL: postgresql+asyncpg://vero:vero@localhost:5432/vero_lite # pragma: allowlist secret
+          TEST_DATABASE_URL: postgresql+asyncpg://vero:vero@localhost:5432/vero_lite_test # pragma: allowlist secret
+        run: uv run --no-sync pytest -q
