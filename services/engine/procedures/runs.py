@@ -23,7 +23,7 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Text
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, Text, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -48,6 +48,11 @@ class StepResultStatus(StrEnum):
     PROCESSING = "processing"
     COMPLETE = "complete"
     WAITING_HUMAN = "waiting_human"
+    # PLAN-0047 Step 3: the gate state machine — resolve_gated_step flips a
+    # decided proposal gate waiting_human -> RESOLVED (so a second resolve fails
+    # at the waiting_human precondition, idempotent BY STATE), and resume_run
+    # advances a decidable gate ONLY from RESOLVED (never on artifact presence).
+    RESOLVED = "resolved"
     FAILED = "failed"
 
 
@@ -71,6 +76,16 @@ class PipelineRun(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # PLAN-0047 Step 3: optimistic concurrency — SQLAlchemy bumps + checks this
+    # on every UPDATE (version_id_col), so concurrent resolve/resume writers lose
+    # cleanly (StaleDataError) instead of silently double-writing run state.
+    version: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=1, server_default=text("1")
+    )
+
+    # SQLAlchemy's DeclarativeBase types __mapper_args__ as an instance-level
+    # attribute, so ClassVar (RUF012's suggested fix) would break mypy --strict.
+    __mapper_args__ = {"version_id_col": version}  # noqa: RUF012
 
 
 class StepResult(Base):

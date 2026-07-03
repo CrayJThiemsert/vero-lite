@@ -63,6 +63,39 @@ async def load_run(session: AsyncSession, run_id: str) -> RunResult | None:
     return RunResult(run=run, step_results=list(rows.scalars().all()))
 
 
+def _has_decidable_proposals(artifact: dict[str, Any]) -> bool:
+    """True when a suspended artifact carries >=1 REAL proposal (an ADR-007
+    envelope whose ``action`` is a dict) — the only content
+    :func:`resolve_gated_step` can decide. An empty watch set / non-proposal
+    artifact has nothing to decide, so the documented plain-resume continuation
+    contract holds for it (PLAN-0022 human_task parity)."""
+    output_set = artifact.get("output_set", [])
+    return any(
+        isinstance(entry, dict) and isinstance(entry.get("action"), dict) for entry in output_set
+    )
+
+
+def _assert_sod_tie_present(run: PipelineRun, procedure: Procedure, suspended: StepResult) -> None:
+    """PLAN-0047 Step 3 (AC-5): re-assert the SoD verdict before advancing a
+    resolved gate on a SoD-carrying run. The ``governed_decision`` audit tie
+    ``resolve_gated_step`` records (A1b Step 6) must be present on a
+    constrained step; its absence means the gate did not pass through the
+    governed resolution path (or the record was tampered) — fail closed."""
+    if run.step_principals is None:
+        return
+    constrained: set[str] = set()
+    for sod in procedure.separation_of_duties:
+        constrained |= set(sod.distinct_steps)
+    if suspended.step_id not in constrained:
+        return
+    if not (suspended.audit or {}).get("governed_decision"):
+        raise ProcedureError(
+            f"run '{run.run_id}': resolved step '{suspended.step_id}' is SoD-constrained but "
+            "carries no governed_decision audit tie — refusing to resume (PLAN-0047 Step 3 "
+            "fail-closed; resolve the gate through resolve_gated_step)"
+        )
+
+
 async def resume_run(
     session: AsyncSession,
     procedure: Procedure,
@@ -74,12 +107,18 @@ async def resume_run(
 ) -> RunResult:
     """Resume a ``waiting_human`` run, reconstructing state purely from the DB.
 
-    Two cases, distinguished by whether the suspended step recorded an artifact:
+    Three cases (PLAN-0047 Step 3 — the gate state machine):
 
-    * **Gated action / human_task suspend** (artifact present): the step is
-      resolved by the human — mark it ``complete``, thread its persisted
-      ``artifact["output_set"]`` forward, and continue from the NEXT step (the
-      completed prefix is never re-executed).
+    * **Decided proposal gate** (artifact carries real proposals AND the step is
+      ``resolved`` — the status :func:`resolve_gated_step` sets): mark it
+      ``complete``, thread its rewritten ``artifact["output_set"]`` forward, and
+      continue from the NEXT step. A proposal gate still ``waiting_human`` is
+      **refused fail-closed** — artifact presence proves nothing (the proposals
+      were recorded AT suspend time); on a SoD-carrying run the
+      ``governed_decision`` audit tie is re-asserted before advancing.
+    * **No-decision suspend** (artifact present but no real proposals — an empty
+      watch set / non-proposal ``human_task`` artifact): nothing was decidable,
+      so the documented plain-resume continuation holds unchanged.
     * **Escalated failure** (``on_failure = escalate_to_human``; no artifact): the
       step failed and a human took over — **re-run that step** from its original
       input (the prior step's output), overwriting the stale failed record, so a
@@ -131,8 +170,18 @@ async def resume_run(
         prior_results = loaded.step_results[:-1]
         start_index = index
     else:
-        # Gated action / human_task suspend: the human resolved it — mark complete
-        # (its output is already in the bag) and continue from the NEXT step.
+        # PLAN-0047 Step 3 — the gate state machine: a suspend carrying REAL
+        # proposals advances ONLY from RESOLVED; a no-decision suspend (empty
+        # watch set / non-proposal artifact) keeps the plain-resume contract.
+        if _has_decidable_proposals(suspended.artifact):
+            if suspended.status != StepResultStatus.RESOLVED.value:
+                raise ProcedureError(
+                    f"run '{run_id}': step '{suspended.step_id}' suspended with undecided "
+                    "proposals — resolve it through resolve_gated_step before resuming "
+                    "(PLAN-0047 Step 3 fail-closed; artifact presence no longer advances "
+                    "a gate)"
+                )
+            _assert_sod_tie_present(run, procedure, suspended)
         suspended.status = StepResultStatus.COMPLETE.value
         prior_results = loaded.step_results
         start_index = index + 1

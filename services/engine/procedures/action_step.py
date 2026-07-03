@@ -472,6 +472,15 @@ async def resolve_gated_step(
     _record_governed_decision(target, step_id, principal, procedure)
     target.artifact = {"output_set": executed_effects, "decisions": decided}
     target.reasoning_trace = list(target.reasoning_trace or []) + trace_adds
+    # PLAN-0047 Step 3 — the gate state machine: a decided gate flips to RESOLVED,
+    # so a second resolve fails the waiting_human precondition above (idempotent
+    # BY STATE — the handler cannot refire) and resume_run advances the gate from
+    # this status, never from artifact presence. The RUN row is touched so its
+    # optimistic-lock version bumps — a concurrent resolver loses at commit
+    # (StaleDataError) instead of silently double-writing.
+    target.status = StepResultStatus.RESOLVED.value
+    loaded.run.updated_at = datetime.now(UTC)
+    await session.merge(loaded.run)
     await session.merge(target)
     await session.commit()
     return target
