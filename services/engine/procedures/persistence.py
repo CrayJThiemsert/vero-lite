@@ -29,6 +29,7 @@ from services.engine.procedures.orchestrator import (
     RunContext,
     RunResult,
     StepExecutor,
+    _record_requester_principals,
     execute_steps,
     validate_read_bindings_for_vertical,
     validate_runnable,
@@ -39,7 +40,7 @@ from services.engine.procedures.runs import (
     StepResult,
     StepResultStatus,
 )
-from services.engine.procedures.spec import Agent, Procedure, StepKind
+from services.engine.procedures.spec import Agent, Person, Procedure, StepKind
 
 
 async def persist_run(session: AsyncSession, result: RunResult) -> None:
@@ -48,6 +49,65 @@ async def persist_run(session: AsyncSession, result: RunResult) -> None:
     for step_result in result.step_results:
         await session.merge(step_result)
     await session.commit()
+
+
+async def run_procedure_persisted(
+    session: AsyncSession,
+    procedure: Procedure,
+    agent: Agent,
+    executors: Mapping[StepKind, StepExecutor],
+    *,
+    vertical: str,
+    run_id: str,
+    trigger_context: dict[str, Any] | None = None,
+    principal: Person | None = None,
+) -> RunResult:
+    """WRITE-AHEAD run driver (PLAN-0047 Step 4, AC-6).
+
+    The ``running`` :class:`PipelineRun` row is COMMITTED before step 1
+    executes, and every :class:`StepResult` is committed as it completes
+    (success, suspend, and failure) via the ``on_step_complete`` seam — so a
+    crash mid-run leaves a queryable, resumable record instead of an
+    invisible in-memory run. Mirrors :func:`orchestrator.run_procedure`
+    exactly otherwise (same validation, same SoD requester recording); the
+    DB-free ``run_procedure`` stays for library callers, the HTTP run
+    surface uses this wrapper.
+    """
+    validate_runnable(procedure, agent)
+    validate_read_bindings_for_vertical(procedure, agent, vertical)
+    opened = datetime.now(UTC)
+    run = PipelineRun(
+        run_id=run_id,
+        procedure_id=procedure.procedure_id,
+        agent_id=agent.agent_id,
+        trigger_context=trigger_context,
+        status=PipelineRunStatus.RUNNING.value,
+        started_at=opened,
+        updated_at=opened,
+    )
+    session.add(run)
+    await session.commit()  # the write-ahead: the run is durable BEFORE any effect
+
+    ctx = RunContext(
+        agent=agent,
+        vertical=vertical,
+        trigger_context=trigger_context,
+        goal=procedure.goal or None,
+        principal=principal,
+    )
+
+    async def _persist_step(step_result: StepResult) -> None:
+        await session.merge(step_result)
+        await session.commit()
+
+    step_results, final_status = await execute_steps(
+        procedure.steps, executors, ctx, run_id, on_step_complete=_persist_step
+    )
+    run.status = final_status.value
+    run.updated_at = datetime.now(UTC)
+    run.step_principals = _record_requester_principals(procedure, step_results, ctx.principal)
+    await session.commit()
+    return RunResult(run=run, step_results=step_results)
 
 
 async def load_run(session: AsyncSession, run_id: str) -> RunResult | None:
