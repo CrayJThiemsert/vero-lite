@@ -29,6 +29,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm.exc import StaleDataError
 
 from services.api.auth import AuthContext, get_current_principal
 from services.api.config import settings
@@ -226,11 +227,21 @@ async def resolve_gate_endpoint(
         raise HTTPException(status_code=403, detail=detail) from exc
     except ProcedureError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except StaleDataError as exc:
+        # PLAN-0047 Step 3: the optimistic-lock version says another writer got
+        # here first — the concurrent resolver loses cleanly, never double-writes.
+        raise HTTPException(
+            status_code=409, detail=f"run '{run_id}' was updated concurrently — reload and retry"
+        ) from exc
 
     try:
         result = await resume_run(session, procedure, agent, factory(), run_id, vertical=vertical)
     except ProcedureError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except StaleDataError as exc:
+        raise HTTPException(
+            status_code=409, detail=f"run '{run_id}' was updated concurrently — reload and retry"
+        ) from exc
 
     suspended = _suspended_step(result.step_results, result.run.status)
     return GateResolveResponse(
