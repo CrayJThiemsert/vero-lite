@@ -76,6 +76,12 @@ class PipelineRun(Base):
     status: Mapped[str] = mapped_column(Text, nullable=False)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # PLAN-0047 Step 6 (AC-8): the resolved governance config pinned at run
+    # start — snapshot for human/audit inspection, hash for the fail-closed
+    # pin-mismatch check on resume/resolve. Nullable: pre-0008 rows carry no
+    # pin and skip the check (backward compat).
+    governance_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    governance_hash: Mapped[str | None] = mapped_column(Text)
     # PLAN-0047 Step 3: optimistic concurrency — SQLAlchemy bumps + checks this
     # on every UPDATE (version_id_col), so concurrent resolve/resume writers lose
     # cleanly (StaleDataError) instead of silently double-writing run state.
