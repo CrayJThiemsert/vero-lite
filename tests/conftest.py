@@ -8,6 +8,12 @@ from services.api.config import settings
 from services.engine import demo_events
 from services.engine.registry import registry
 
+# PLAN-0047 Step 1: the legacy suites exercise business logic with authn OFF;
+# auth behavior is covered explicitly in tests/api/test_api_auth.py (which
+# monkeypatches it back on per-test). Attribute-level (not env) so dev (.env
+# present) and CI (no .env) collect identically.
+settings.api_auth_enabled = False
+
 
 @pytest.fixture(autouse=True)
 def _reset_registry() -> Iterator[None]:

@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 
 from alembic import context
 from services.api.config import settings
+from services.db import identity as _identity  # noqa: F401  (registers action_identity)
 from services.db import models as _models  # noqa: F401  (registers tables on Base.metadata)
 from services.db.base import Base
 from services.engine.procedures import runs as _procedure_runs  # noqa: F401  (registers run tables)

@@ -5,11 +5,13 @@ tappable; Ollama's GET endpoints only *list*, so this is the GET→POST bridge).
 ``GET /sleep`` — unload it (free VRAM).
 
 Both are best-effort and report status; on an unreachable host they return
-**HTTP 503** with ``reachable: false`` and never raise. Phase-2 demo endpoints:
-**no auth** (LAN/localhost demo box), consistent with the other unauthenticated
-demo routes. ``GET`` is intentional so the address bar / a Telegram tap-link can
-trigger them; warming is effectively idempotent (a re-load just resets the
-``keep_alive`` window).
+**HTTP 503** with ``reachable: false`` and never raise. Both are **host-state
+changes on MS-S1**, so they carry the PLAN-0047 Step-1 authn dependency
+(``GET /llm/status`` stays open — read-only UI poll). ``GET`` is intentional so
+the address bar / a Telegram tap-link can trigger them (with authn enabled the
+caller must supply the bearer key, or the deployment sets
+``api_auth_enabled=false``); warming is effectively idempotent (a re-load just
+resets the ``keep_alive`` window).
 """
 
 from __future__ import annotations
@@ -17,11 +19,12 @@ from __future__ import annotations
 import re
 import time
 from datetime import UTC, datetime
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from services.api.auth import AuthContext, get_current_principal
 from services.api.config import settings
 from services.engine.llm.client import OllamaClient, OllamaError, OllamaUnreachableError
 
@@ -170,7 +173,9 @@ async def _warm_bg(client: OllamaClient) -> None:
 
 @router.get("/warm")
 async def warm(
-    background_tasks: BackgroundTasks, wait: bool = Query(default=True)
+    background_tasks: BackgroundTasks,
+    _auth: Annotated[AuthContext, Depends(get_current_principal)],
+    wait: bool = Query(default=True),
 ) -> dict[str, Any]:
     """Load the configured model into MS-S1 VRAM. Browser/phone-hittable (GET).
 
@@ -215,7 +220,7 @@ async def warm(
 
 
 @router.get("/sleep")
-async def sleep() -> dict[str, Any]:
+async def sleep(_auth: Annotated[AuthContext, Depends(get_current_principal)]) -> dict[str, Any]:
     """Unload the configured model from MS-S1 VRAM (free it). Browser-hittable (GET)."""
     client = _client()
     try:

@@ -100,6 +100,10 @@ class ActionRecord:
 
     action: RecommendedAction
     status: ActionStatus = ActionStatus.PROPOSED
+    # PLAN-0047 Step 1: server-resolved caller identity (the authn dependency) —
+    # None when api_auth_enabled=false; projected to action_identity at persist.
+    approved_by: str | None = None
+    executed_by: str | None = None
 
 
 def _is_recommendation_trigger(event: dict[str, Any]) -> bool:
