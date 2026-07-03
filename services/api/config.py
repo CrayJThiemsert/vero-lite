@@ -49,6 +49,26 @@ class Settings(BaseSettings):
         ),
     )
 
+    # API authentication (PLAN-0047 Step 1, SD-1 = (a) static per-person API keys)
+    api_auth_enabled: bool = Field(
+        default=True,
+        description=(
+            "Require a bearer API key on every state-changing route (approve/"
+            "execute, /warm, /sleep, /intake/generate, and the PLAN-0047 run/"
+            "gate-resolve endpoints). Fail-closed default; set false only on a "
+            "local dev/demo box that deliberately wants the pre-authn behavior."
+        ),
+    )
+    api_keys: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "SHA-256 hex digest of a raw bearer API key -> the person_id it "
+            "authenticates. Digests only — raw keys are never stored. Provision "
+            'via the API_KEYS env var as JSON, e.g. {"<sha256-hex>": "appr-x"} '
+            "(.env.example documents a key-generation one-liner)."
+        ),
+    )
+
     # Redis
     redis_url: str = Field(
         default="redis://localhost:6379/0",

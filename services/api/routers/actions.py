@@ -13,6 +13,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from services.api.auth import AuthContext, get_current_principal
 from services.api.config import settings
 from services.api.models.actions import (
     ExecuteResponse,
@@ -96,13 +97,22 @@ async def list_recommendations() -> RecommendationListResponse:
 
 
 @router.post("/recommendations/{action_id}/approve", response_model=RecommendationResponse)
-async def approve_recommendation(action_id: str) -> RecommendationResponse:
-    """Approve a proposed recommendation (proposed -> approved)."""
+async def approve_recommendation(
+    action_id: str,
+    auth: Annotated[AuthContext, Depends(get_current_principal)],
+) -> RecommendationResponse:
+    """Approve a proposed recommendation (proposed -> approved).
+
+    PLAN-0047 Step 1: the approver identity comes from the authn dependency
+    (server-resolved from the bearer key — never the request body) and is
+    recorded on the record for the execute-time identity projection.
+    """
     record = _get_record(action_id)
     try:
         approve(record)
     except ApprovalError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    record.approved_by = auth.person_id
     return _to_response(record)
 
 
@@ -110,13 +120,19 @@ async def approve_recommendation(action_id: str) -> RecommendationResponse:
 async def execute_recommendation(
     action_id: str,
     session: Annotated[AsyncSession, Depends(get_session)],
+    auth: Annotated[AuthContext, Depends(get_current_principal)],
 ) -> ExecuteResponse:
-    """Execute an approved recommendation and persist it (approved -> executed)."""
+    """Execute an approved recommendation and persist it (approved -> executed).
+
+    PLAN-0047 Step 1: the executor identity is server-resolved by the authn
+    dependency and persisted with the projection (action_identity sidecar).
+    """
     record = _get_record(action_id)
     try:
         receipt = await execute(record)
     except ApprovalError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
+    record.executed_by = auth.person_id
     await persist_executed_action(session, record)
     # PLAN-0015 D2: the recovery reading is the modeled effect of Execute —
     # injected into the live OperationalEvent view at real execute-time, on the

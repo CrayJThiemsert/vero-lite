@@ -9,8 +9,11 @@ writes the executed action as a ``recommended_action`` row plus the
 alert; assets are served from the synthetic adapter, not the database.
 """
 
+from datetime import UTC, datetime
+
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from services.db.identity import ActionIdentity
 from services.db.models import Alert, RecommendedAction
 from services.engine.recommender import ActionRecord
 
@@ -40,6 +43,18 @@ async def persist_executed_action(session: AsyncSession, record: ActionRecord) -
             parameters=action.handler_payload,
             alert_id=alert_id,
             target_asset_id=None,
+        )
+    )
+    # PLAN-0047 Step 1: identity sidecar — the generated recommended_action
+    # table is byte-pinned to the ontology by the parity suite, so the
+    # server-resolved approver/executor person_ids land in the hand-authored
+    # action_identity table instead (NULLs when api_auth_enabled=false).
+    await session.merge(
+        ActionIdentity(
+            action_id=action.id,
+            approved_by=record.approved_by,
+            executed_by=record.executed_by,
+            recorded_at=datetime.now(UTC),
         )
     )
     await session.commit()

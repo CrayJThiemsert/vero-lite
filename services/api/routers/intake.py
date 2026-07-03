@@ -31,11 +31,12 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import Literal
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
+from services.api.auth import AuthContext, get_current_principal
 from services.api.config import settings
 from services.api.intake_defaults import load_default_packages
 from services.engine import ontology_validator, scaffold
@@ -192,8 +193,14 @@ async def intake_defaults() -> DefaultsResponse:
 
 
 @router.post("/intake/generate", response_model=GenerateResponse)
-async def intake_generate(req: GenerateRequest) -> GenerateResponse:
+async def intake_generate(
+    req: GenerateRequest,
+    _auth: Annotated[AuthContext, Depends(get_current_principal)],
+) -> GenerateResponse:
     """Assemble + invoke the engine for a CONFIRMED package (the human gate).
+
+    PLAN-0047 Step 1: this route WRITES the working tree (ontology YAML +
+    scaffold), so it is state-changing and carries the authn dependency.
 
     AC-2: refuses an unconfirmed package (no bypass). AC-5: invokes
     ``scaffold.scaffold_vertical`` unchanged and surfaces the refuse-to-clobber
