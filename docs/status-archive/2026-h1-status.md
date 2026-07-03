@@ -2093,3 +2093,120 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 > recorded, run 2 itself stays unscheduled. **Standing:** `loop-dispatcher`
 > stays **DISABLED**; MS-S1 cold (nothing touched it); AI-assisted (Claude
 > Code, session 94), no `Co-Authored-By` per CLAUDE.md §7.
+
+### Current-Focus block — Session 94 cont. (head_commit `255627b`) — ADR-0020 partner-sim run-2 receive (supply-chain, S-1..S-6 PASS) [rotated 2026-07-04, session-95 CLOSE reconcile; R1 64 KB ceiling]
+
+> **Session 94 cont., 2026-07-02 (head_commit `255627b` unchanged —
+> WORKING-TREE EVENT, no commit; #517 was a `docs(status)` merge, excluded) —
+> ADR-0020 PARTNER-SIM RUN 2 (supply-chain) COMPLETE — synthetic cold-chain
+> package received + screened: S-1..S-6 ALL PASS vs a pre-committed oracle,
+> incl. the FIRST live R-PS4 context-bleed screen (clean); first-pass findings
+> drafted (gitignored, R3).** Run launched by Cray in a FRESH project per SD-2
+> with ALL THREE D4 adjustments applied: (i) the #516-tightened instruction,
+> (ii) the R1-STRIPPED PDPA paste-variant, (iii) fresh project + a
+> Code-authored run-start assembly
+> (`docs/research/private/2026-07-02-partnersim-run2-runstart-paste.md`).
+> Parameters: supply-chain / mid / **multi-site-sea** / mixed-legacy
+> (multi-site-sea = Code's pick to force the cross-border PDPA surface run 1
+> never touched). **Screen — S-1..S-6 ALL PASS vs the PRE-COMMITTED oracle**
+> (`...run2-receive-checklist.md`, criteria fixed before the package existed):
+> R3 banner verbatim ×2; S-2 under the SHARPER post-#516 detector found
+> nothing (own duration-qualified rules, own action verbs "ปล่อย/กัก/ตีกลับ",
+> own fields, decidedly non-schema-shaped); S-3 = 5 unsolicited facts (≥N=3) +
+> heavy flaw classes; S-4 = 7 refusals w/ blockers; S-5 K-1 re-stamps; **S-6
+> R-PS4 (first live context-bleed screen, run-2-specific): zero run-1/TWP
+> specifics — clean.** No R-PS trigger fired. **Landed (gitignored, R3):**
+> package
+> `docs/research/private/2026-07-02-partnersim-run2-supply-chain-package.md`
+> (fictional cold-chain operator "สุวรรณเย็น ทรานส์") + oracle/verdicts
+> `...run2-receive-checklist.md` + the completion handoff (session-94, 1825).
+> **First-pass value — new finding classes run 1 could not surface:**
+> cross-border transfer ALREADY in flight (logger-vendor cloud @ Singapore, no
+> PDPA terms; deletion non-guaranteeable → the DPA must handle third-party
+> processor chains; the residency story flips from run-1's "straight win" to a
+> real ss.28/29 design question); duration-qualified thresholds (−15.5°C เกิน
+> 45 นาที, door >12 min, pharma no-grace) vs our instantaneous
+> `in_file_band`; per-CONTRACT (not per-asset-class) bands; a per-device
+> calibration registry (raw 0–4095 × paper cal sheets); GPS-as-PII w/ a
+> column-drop counter-proposal + re-identification honesty; third-party
+> data-ownership boundaries (JV board / shipping agent / vendor cloud).
+> **Cross-run signal (2/2 verticals):** identity-unresolvable principals, PK
+> renumber+reuse, clock chaos, single-person knowledge bottleneck, batch-only
+> export — these graduate from energy quirks to the mapping-layer's
+> must-handle core. **Watch items:** repeated messiness ARCHETYPES across runs
+> (below the R-PS4 bar, partly instruction-example-driven — fixture-diversity
+> watch for any run 3); the "unannotated bulk slice" ask only partially met
+> (curated small samples again); C-1..C-3 for the NEW project requested from
+> Cray, UNCONFIRMED — benign (no S-2/S-6 indicator fired). **NEXT
+> (Cray-owned):** confirm C-1..C-3 for the new supply-chain project (2-min
+> Desktop check, carried open) + the next pick — a full run-2 rehearsal (the
+> run-1 fork-(a) pattern: intake/mapping/PDPA vs the cold-chain package), (b)
+> the Q4 generic query executor PLAN, or the rehearsal-enriched backlog.
+> **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (nothing
+> touched it); AI-assisted (Claude Code, session 94), no `Co-Authored-By` per
+> CLAUDE.md §7.
+
+### Current-Focus block — Session 94 cont. (head_commit `255627b`) — ADR-0020 partner-sim run-2 rehearsal + 2-run cross-vertical synthesis [rotated 2026-07-04, session-95 CLOSE reconcile; R1 64 KB ceiling]
+
+> **Session 94 cont., 2026-07-03 (head_commit `255627b` unchanged —
+> WORKING-TREE EVENT, no commit; #518 was a `docs(status)` merge, excluded) —
+> ADR-0020 PARTNER-SIM RUN-2 REHEARSAL COMPLETE — the run-1 fork-(a) pattern
+> (intake/mapping/PDPA-RoPA) run FOR REAL against the cold-chain package + the
+> 2-run cross-vertical synthesis; findings G1–G11 decomposed into tagged work
+> items.** **Cray pick, 2026-07-03.** Deliverable (gitignored +
+> SYNTHETIC-bannered, R3):
+> `docs/research/private/2026-07-03-partnersim-run2-rehearsal-intake-mapping-pdpa.md`;
+> offline throughout — no MS-S1 (stays cold), no server/port. **§1 Intake
+> (round 2):** 6 asks survive 2/2 — **5 DELIVERED + ask-6
+> CONDITIONAL-with-RECIPROCAL-ASKS** (they explicitly request our LI
+> balancing-test + 72h processor→controller notification templates → run-1
+> [GTM] items graduate to customer-demanded deliverables); identity wall +
+> one-owner failure both recur (2/2); NEW: authority is ATTRIBUTE-CONDITIONAL
+> (cargo value ≤฿300k, งานยา carve-out, release-on-gap data-quality rule).
+> **§2 Mapping vs `supply_chain_v0.yaml` — the headline gap: NO equipment
+> entity** (รถ 62 / ตู้ reefer 38 / logger ~140 homeless; ปรับ-setpoint actions
+> homeless) → v1 needs `Equipment`/`Device` + link (G1); NO
+> `measured_kind`/`quantity_bindings` at all (ADR-0021 Phase A landed
+> energy-only, G2); BUT `cargo_type`/`facility_type`/`action_type` enums
+> largely FIT (contrast with energy's failed `asset_type`). **4 NEW band-gap
+> classes** (duration-qualified −15.5°C เกิน 45 นาที · two-sided corridor 2–8 ·
+> per-contract SLA timers แจ้งลูกค้า ≤4 ชม. · context-scoped during-loading) →
+> 6 band-expressiveness requirements across 2 runs route to the
+> generalized-schema thread (G3); calibration/bias registry (per-device
+> ×scale−offset paper cal, probe +0.4, room −1.2 "บวกในใจ") with a WORKED
+> dual-stream example computed from the package's own RF-21 slice (~2.4–2.7°C
+> systematic offset, trend agreement) (G6); multi-latency fusion +
+> retro-reaudit policy (late TL-2/paper data can contradict a released verdict
+> — the QA-07 release-on-gap case) (G5). §8.1 mapping trigger NOT tripped
+> (synthetic). **§3 PDPA-RoPA (round 2):** RoPA-lite builds cleanly again; GPS
+> = PII hard-bar → column-drop round 1 accepted + a prepared "เสนอวิธีมา"
+> answer (15-min downsample + stop-strip + geofence-derived events only) (G8);
+> role-level-audit pre-clearance posture now validated against a SECOND
+> instrument type (contractual driver-agent agreement vs run-1's
+> worker-committee); **cross-border payoff as designed** — the SG vendor-cloud
+> transfer already exists on the controller side → DPA musts: ingest-source
+> pinning (controller-pulled files), deletion-scope honesty (vendor-cloud
+> copies non-guaranteeable), sub-processor disclosure (G7). **§4:** G1–G11
+> tagged [MAP]/[ENG]/[GTM]/[INTAKE]/[DEFER] + routed; nothing starts a build;
+> the paired v1 ontology batches (energy-v1 from run 1 + supply-chain-v1 =
+> G1/G2/G11) are a natural small PLAN when scheduled. **§5 Cross-run synthesis
+> (the trial's compounding payoff):** 9 classes recur 2/2 verticals =
+> mapping-layer CORE (unresolvable principals, era-PK renumber+reuse, clock
+> chaos, unit/calibration chaos, mutable/late history, single-person
+> knowledge, multi-channel telemetry rows, structured refusals, 4–6-wk
+> external-counsel window); vertical-specific kept 1/2 (watch, don't
+> generalize); Rule-of-Three — the third data point comes from procurement or
+> the first REAL partner before abstraction (ADR-006). **§6:** intake-form
+> additions 8–11 (source ownership, sub-processor inventory, undocumented
+> mental corrections, band-shape probes) extend run-1's seven → the
+> standard-intake-form TODO. **R2:** an independent reviewer verified
+> facts/arithmetic/schema/R3/consistency — **0 BLOCKER / 0 FIX / 4 NITs
+> applied** (quote exactness, enum completeness, the partner's own
+> inconsistent asset-count noted as an intake datum, refusal-count
+> cross-reference pinned to the run-1 S-4 record). **NEXT (Cray-owned):**
+> C-1..C-3 for the supply-chain project (still open, benign) + the next pick —
+> (b) the Q4 generic query executor PLAN, the paired v1 ontology batches
+> (energy-v1 + supply-chain-v1), the [GTM] pack (now customer-demanded
+> templates), or other backlog. **Standing:** `loop-dispatcher` stays
+> **DISABLED**; MS-S1 cold (nothing touched it); AI-assisted (Claude Code,
+> session 94), no `Co-Authored-By` per CLAUDE.md §7.
