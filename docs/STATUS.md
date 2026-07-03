@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-04T00:29:14+07:00
-session: 95
-current_batch: "SESSION 95 CLOSED (2026-07-03 → 2026-07-04) — pre-pilot hardening arc: 3-specialist production-readiness audit → Cray-ratified 7-item sprint → 4 research briefs + 5-wave backlog re-order → PLAN-0047 drafted/ratified/EXECUTED COMPLETE (#522–#531, all 7 steps + all 10 ACs, +31 tests → suite 2097) → done/. Sales claims (authn/audit/exactly-once/config-pin) now code- and CI-backed."
+last_updated: 2026-07-04T06:48:23+07:00
+session: 97
+current_batch: "s96 PLAN-0048 Q4-executor arc IN PROGRESS: draft #533 → ratify #534 → Steps 1–3 #535/#536/#538 (suite 2097→2131 passed / 5 skipped); Step 4 remains — s96 NOT closed. s97 side-session: #537 goal-path fixture-hermeticity fix + this reconcile."
 current_actor: code
 blocked_on: "Nothing blocking. Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
-next_action: "Wave-2 Cray pick (all G2-gated → plan-drafter dispatch → Code R2+commit → Cray ratify): (a) Q4 generic query executor PLAN (design brief absorbs the research: refusal UX, bounded execute-validate-retry inside the allowlist, OSI/MCP-aware interface, per-vertical executor-factory follow-up from Step 2) · (b) v1 ontology bundle PLAN (energy-v1 + supply-chain-v1 + R2 meta-schema fields + R1 context-pack emitter + alembic autogenerate via vero-lite CLI) · (c) small reason-then-structure A/B via the offline oracle. Track B parallel (Cowork): GTM pack + standard intake form."
-head_commit: 28d919c
-recent_commits: [28d919c, 6cde2db, 692f748, bafdf92, a0db450]
+next_action: "PLAN-0048 Step 4 — seams, docs, offline oracle (AC-14..AC-15) → completion fold + git mv → done/. Track B parallel (Cowork): GTM pack + standard intake form."
+head_commit: 676fbc2
+recent_commits: [676fbc2, 2c627bb, f3d362b, 462ead2, 0e17dc6]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,47 @@ recent_commits: [28d919c, 6cde2db, 692f748, bafdf92, a0db450]
 ---
 
 ## Current Focus
+
+> **Session 96 (IN PROGRESS) + session 97 side-session, 2026-07-03 →
+> 2026-07-04 (head_commit `28d919c` → `676fbc2`) — PLAN-0048 Q4 GENERIC
+> QUERY EXECUTOR: DRAFTED → RATIFIED → STEPS 1–3 EXECUTED (#533/#534 →
+> #535/#536/#538), suite 2097 → 2131 passed / 5 skipped; Step 4
+> (AC-14..AC-15) remains — session 96 NOT closed. Session 97 shipped the
+> #537 fixture-hermeticity fix that CLOSES the #535/#536
+> "transient concurrent-pytest collision" disclosures.** **Session-96 arc
+> (Wave-2 pick (a) from the s95 next_action):** PLAN-0048 draft #533
+> (`d107d99`, merge `761f33d`, plan-drafter authored, SD-1..SD-5
+> surfaced) → Cray ratified SD-1..SD-5 as-recommended #534 (`260df5a`,
+> merge `c169ec1`; Draft → Ready for execution). **Step 1 (#535, oracle
+> `c104da2` + feat `0e17dc6`, merge `1ff2899`, AC-1..AC-3):** `plan_read`
+> compile seam + typed `ReadRefusal` + the shared read bound;
+> oracle-first two-commit history; suite 2112 passed / 5 skipped (+15).
+> **Step 2 (#536, oracle `462ead2` + feat `f3d362b`, merge `9622307`,
+> AC-4..AC-9):** `QueryStepExecutor` + the shared `matches_where`
+> promotion + the structured D4 refusal divert; suite 2123 / 5 (+11).
+> Axis-B goal gate C1–C4 PASS on both Steps 1 + 2. **Step 3 (#538,
+> `676fbc2`, merge `65519c0`, AC-10..AC-13):** both production paths
+> wired + the `read_refused` audit row (hash-chained) + `reads` into the
+> governance pin; suite 2131 / 5 (+8), DB-backed cases against postgres;
+> CI re-runs everything. **Session-97 side-session (Code-executed): #537
+> (`2c627bb`, merge `3b8cfa3`, `test(handoffs)`, test-only +9 lines)**
+> isolates `CLAUDE_GOAL_PATH` in the in-process Stop-flow fixture
+> (`inproc_env`). Root cause of the #535/#536 disclosures was NOT
+> concurrency — the unhermetic fixture let a live ACTIVE
+> `.claude/state/goal.json` leak into the gate-before-classifier path,
+> failing one test (GOAL-GATE DISPATCH where AUTO-HANDOFF DISPATCH is
+> asserted) AND writing dispatch/release markers into the live goal
+> trail — the s96 Step-2 goal's released-unevaluated status was an
+> ARTIFACT of this bug (released by the test run itself, 3 s apart,
+> identical fingerprints), NOT an Axis-B gate decision. Same bug class as
+> #340 (`stub_env` got the hermeticity line; `inproc_env` was missed).
+> Deterministic repro: seed an active goal + run the single test — no
+> concurrency needed. After: 38/38 `test_stop_continuation.py` green WITH
+> an active goal present; `goal.json` byte-identical (sha256). **NEXT:**
+> PLAN-0048 Step 4 — seams, docs, offline oracle (AC-14..AC-15) → plan
+> completion → `git mv` → `done/`. **Standing:** `loop-dispatcher` stays
+> **DISABLED**; MS-S1 cold (the whole batch offline); AI-assisted (Claude
+> Code, sessions 96 + 97), no `Co-Authored-By` per CLAUDE.md §7.
 
 > **Session 95 CLOSE, 2026-07-03 → 2026-07-04 (head_commit `f63c975` →
 > `28d919c` — #531 `docs(plans):` close-out is SUBSTANTIVE per lint policy,
@@ -86,63 +127,21 @@ recent_commits: [28d919c, 6cde2db, 692f748, bafdf92, a0db450]
 > entire sprint was offline); AI-assisted (Claude Code, session 95), no
 > `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 94 CLOSE, 2026-07-03 (head_commit `255627b` → `f63c975` — #520
-> `fix(demo)` is SUBSTANTIVE per lint policy, merge `9314100`) — ADR-0020
-> PARTNER-SIM TRIAL COMPLETE END-TO-END ACROSS BOTH VERTICALS; C-1..C-3
-> input-state check now CONFIRMED, closing the last run-2 open item.**
-> Session 94 (2026-07-01 → 2026-07-03) delivered the entire trial: run-1
-> rehearsal (fork a, energy; #515), the D4 post-run-1 review →
-> continue-with-adjustments + the #516/#517 R1-tighten, run-2 receive
-> (supply-chain, S-1..S-6 PASS incl. the first live R-PS4 screen; #518), the
-> run-2 rehearsal + 2-run cross-vertical synthesis (#519), and now C-1..C-3.
-> **C-1..C-3 CONFIRMED 2026-07-03 (Cray Path-1 UI check, evidence-backed —
-> `confirmed — prior intact`, not from memory):** C-1 no repo mount (the
-> Cowork Context is the project's own workspace; only file = the project's
-> CLAUDE.md-style instruction memory = the post-#516 persona contract, NOT the
-> vero-lite repo CLAUDE.md; no ontology/schema; Memory empty; referenced files
-> = the Cray-pasted, R1-permitted run inputs); C-2 post-#516 instructions
-> (all 3 current fingerprints present, both old FAIL fingerprints absent); C-3
-> no past-chats/knowledge (no reference-past-chats capability in this Desktop
-> build; project-knowledge empty); identity = the project's latest batch reply
-> is the landed run-2 package verbatim (already-screened + already-rehearsed).
-> Full record: gitignored `docs/research/private/2026-07-02-partnersim-run2-receive-checklist.md`
-> §C-1..C-3 addendum + the probe protocol `2026-07-03-partnersim-c123-probe-protocol.md`.
-> **Trial durable outputs:** a designed-in-advance mapping-layer core spec (9
-> classes recurring 2/2 verticals), two v1 ontology-batch specs (energy-v1 +
-> supply-chain-v1), 6 band-expressiveness requirements → the generalized-schema
-> thread, a GTM pack now carrying customer-demanded templates, and an 11-item
-> intake-form addition set. Rule-of-Three holds (3rd data point = procurement
-> or a first real partner before abstraction). **Concurrent-session fix (NOT
-> this session's work — attributed factually):** #520 `fix(demo)` (`f63c975`,
-> merge `9314100`) corrected the demo story appendix's generated-artifacts
-> fan-out — it claimed a non-existent "Alembic migrations" emitter, but
-> `generate_all()` in `services/engine/code_generator.py` has six emitters
-> (pydantic/sql/jsonschema/mcp/typescript/orm) and no migration emitter, so the
-> false `alembic` node was swapped for the real `orm` emitter
-> (`services/db/models.py`); Alembic migrations stay hand-authored, kept in
-> lockstep by the schema-parity test. Touched `view-story.js` + `index.html`
-> (cache token c24→c25); stakeholder-facing honesty fix, no engine/schema
-> change. Session-94 CLOSE handoff:
-> `.claude/handoffs/session-94/2026-07-03-1234-code-session94-CLOSE-partnersim-trial-both-verticals.md`.
-> **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (nothing
-> touched it); AI-assisted (Claude Code, session 94), no `Co-Authored-By` per
-> CLAUDE.md §7.
-
-> _Rotation note (session-95 CLOSE reconcile, 2026-07-04): to hold STATUS
-> under the **R1 64 KB hard ceiling** as the new Session-95 CLOSE CF block
-> landed (the file was at ~63.0 KB before the addition; R1 overrides the R2
-> 4-session window — the s93/s94 precedents accepted a narrowed window), two
-> Current Focus blocks were rotated verbatim to
+> _Rotation note (sessions-96/97 reconcile, 2026-07-04): to hold STATUS
+> under the **R1 64 KB hard ceiling** as the new Sessions-96/97 CF block
+> landed (the file was at ~62.4 KB before the addition; R1 overrides the
+> R2 4-session window — the s93/s94/s95 precedents accepted a narrowed
+> window), one Current Focus block was rotated verbatim to
 > [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md):
-> the **Session 94 cont., 2026-07-03 (head_commit `255627b` unchanged)**
-> ADR-0020 partner-sim RUN-2 REHEARSAL + 2-run cross-vertical-synthesis
-> block, and the **Session 94 cont., 2026-07-02 (head_commit `255627b`
-> unchanged)** ADR-0020 partner-sim RUN-2 RECEIVE (supply-chain, S-1..S-6
-> PASS) block (both working-tree events). Resulting Current-Focus window =
-> {95 CLOSE `28d919c`, 94 CLOSE `f63c975`}; RD table = 10 rows (at the R2
-> cap). **Prior (session-94 CLOSE + run-2-rehearsal reconciles,
-> 2026-07-03):** the 94 D4 POST-RUN-1 REVIEW and 94 RUN-1 REHEARSAL blocks,
-> rotated to the same archive. Per the STATUS.md Rotation Policy (R1/R2/R4)._
+> the **Session 94 CLOSE, 2026-07-03 (head_commit `255627b` → `f63c975`)**
+> ADR-0020 partner-sim TRIAL-COMPLETE-BOTH-VERTICALS + C-1..C-3-confirmed
+> block (incl. the #520 `fix(demo)` concurrent-session attribution).
+> Resulting Current-Focus window = {96/97 `676fbc2`, 95 CLOSE `28d919c`};
+> RD table = 10 rows (at the R2 cap). **Prior (session-95 CLOSE
+> reconcile, 2026-07-04):** the two **Session 94 cont.** blocks (RUN-2
+> REHEARSAL + synthesis; RUN-2 RECEIVE); **prior (2026-07-03):** the 94
+> D4 POST-RUN-1 REVIEW and 94 RUN-1 REHEARSAL blocks — all to the same
+> archive. Per the STATUS.md Rotation Policy (R1/R2/R4)._
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 

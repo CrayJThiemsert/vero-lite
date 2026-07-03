@@ -2210,3 +2210,47 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 > templates), or other backlog. **Standing:** `loop-dispatcher` stays
 > **DISABLED**; MS-S1 cold (nothing touched it); AI-assisted (Claude Code,
 > session 94), no `Co-Authored-By` per CLAUDE.md §7.
+
+### Current-Focus block — Session 94 CLOSE (head_commit `f63c975`) — ADR-0020 partner-sim trial complete both verticals + C-1..C-3 confirmed [rotated 2026-07-04, sessions-96/97 reconcile; R1 64 KB ceiling]
+
+> **Session 94 CLOSE, 2026-07-03 (head_commit `255627b` → `f63c975` — #520
+> `fix(demo)` is SUBSTANTIVE per lint policy, merge `9314100`) — ADR-0020
+> PARTNER-SIM TRIAL COMPLETE END-TO-END ACROSS BOTH VERTICALS; C-1..C-3
+> input-state check now CONFIRMED, closing the last run-2 open item.**
+> Session 94 (2026-07-01 → 2026-07-03) delivered the entire trial: run-1
+> rehearsal (fork a, energy; #515), the D4 post-run-1 review →
+> continue-with-adjustments + the #516/#517 R1-tighten, run-2 receive
+> (supply-chain, S-1..S-6 PASS incl. the first live R-PS4 screen; #518), the
+> run-2 rehearsal + 2-run cross-vertical synthesis (#519), and now C-1..C-3.
+> **C-1..C-3 CONFIRMED 2026-07-03 (Cray Path-1 UI check, evidence-backed —
+> `confirmed — prior intact`, not from memory):** C-1 no repo mount (the
+> Cowork Context is the project's own workspace; only file = the project's
+> CLAUDE.md-style instruction memory = the post-#516 persona contract, NOT the
+> vero-lite repo CLAUDE.md; no ontology/schema; Memory empty; referenced files
+> = the Cray-pasted, R1-permitted run inputs); C-2 post-#516 instructions
+> (all 3 current fingerprints present, both old FAIL fingerprints absent); C-3
+> no past-chats/knowledge (no reference-past-chats capability in this Desktop
+> build; project-knowledge empty); identity = the project's latest batch reply
+> is the landed run-2 package verbatim (already-screened + already-rehearsed).
+> Full record: gitignored `docs/research/private/2026-07-02-partnersim-run2-receive-checklist.md`
+> §C-1..C-3 addendum + the probe protocol `2026-07-03-partnersim-c123-probe-protocol.md`.
+> **Trial durable outputs:** a designed-in-advance mapping-layer core spec (9
+> classes recurring 2/2 verticals), two v1 ontology-batch specs (energy-v1 +
+> supply-chain-v1), 6 band-expressiveness requirements → the generalized-schema
+> thread, a GTM pack now carrying customer-demanded templates, and an 11-item
+> intake-form addition set. Rule-of-Three holds (3rd data point = procurement
+> or a first real partner before abstraction). **Concurrent-session fix (NOT
+> this session's work — attributed factually):** #520 `fix(demo)` (`f63c975`,
+> merge `9314100`) corrected the demo story appendix's generated-artifacts
+> fan-out — it claimed a non-existent "Alembic migrations" emitter, but
+> `generate_all()` in `services/engine/code_generator.py` has six emitters
+> (pydantic/sql/jsonschema/mcp/typescript/orm) and no migration emitter, so the
+> false `alembic` node was swapped for the real `orm` emitter
+> (`services/db/models.py`); Alembic migrations stay hand-authored, kept in
+> lockstep by the schema-parity test. Touched `view-story.js` + `index.html`
+> (cache token c24→c25); stakeholder-facing honesty fix, no engine/schema
+> change. Session-94 CLOSE handoff:
+> `.claude/handoffs/session-94/2026-07-03-1234-code-session94-CLOSE-partnersim-trial-both-verticals.md`.
+> **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (nothing
+> touched it); AI-assisted (Claude Code, session 94), no `Co-Authored-By` per
+> CLAUDE.md §7.
