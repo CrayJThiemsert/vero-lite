@@ -20,6 +20,14 @@ NOT pinned in v1 (disclosed): the vertical-level ``principals`` /
 ``principal_aliases`` sets — the SoD run-check resolves those live by
 design (a personnel change must apply immediately); the pinned surface is
 the RULE configuration, not the people directory.
+
+Pinned since PLAN-0048 SD-5(b): each step's declared ``input.reads``
+(sorted) — the moment ``reads`` became execution-bound (the Q4 generic
+executor dispatches exactly what is declared), a mid-flight ``reads`` edit
+changes what a resumed run READS, so it must trip the same fail-closed
+pin as a ladder edit. Disclosed format consequence: runs pinned BEFORE
+this field existed refuse at resume (the PLAN-0047 sanctioned
+cancel-and-restart path).
 """
 
 from __future__ import annotations
@@ -51,6 +59,13 @@ def build_governance_snapshot(procedure: Procedure) -> dict[str, Any]:
                 "governance_content": (
                     step.governance_content.model_dump(mode="json")
                     if step.governance_content is not None
+                    else None
+                ),
+                # PLAN-0048 SD-5(b): the declared read surface is governance the
+                # moment it is execution-bound — pinned sorted, like distinct_steps.
+                "reads": (
+                    sorted(step.input.reads)
+                    if step.input is not None and step.input.reads
                     else None
                 ),
             }

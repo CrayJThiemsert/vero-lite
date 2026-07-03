@@ -30,10 +30,11 @@ dispatch cannot drift (AC-3).
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 from services.engine.data_adapter import DataAdapter
 from services.engine.procedures.orchestrator import (
@@ -183,6 +184,22 @@ def readable_object_types(agent: Agent, object_type_names: frozenset[str]) -> fr
     return object_type_names & frozenset(allowed)
 
 
+def _json_safe(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """JSON-normalize fetched rows at the adapter boundary (PLAN-0048 Step 3,
+    disclosed).
+
+    Real adapters return rows carrying datetimes; the write-ahead path
+    (PLAN-0047 Step 4) persists a step's output set as JSONB, which refuses
+    them. One ``default=str`` coercion at THE adapter boundary keeps every
+    downstream surface — artifact persistence, ``where`` narrowing, the
+    judge's numeric reads — consistent. Keys and dict shape are unchanged, so
+    SD-2's raw-dict threading stands; only non-JSON scalar TYPES coerce (a
+    datetime becomes its ``str``), which is what landing in a JSONB column
+    would force anyway.
+    """
+    return cast(list[dict[str, Any]], json.loads(json.dumps(rows, default=str)))
+
+
 @dataclass(frozen=True)
 class QueryStepExecutor:
     """The generic, deterministic ``query`` StepExecutor — the execute half
@@ -230,7 +247,7 @@ class QueryStepExecutor:
             }
             return StepOutcome(output=list(input_set), reasoning_trace=trace, audit=audit)
         plan = plan_read(step, ctx.agent, self.object_type_names)
-        fetched = await self.adapter.fetch_objects(plan.object_type)
+        fetched = _json_safe(await self.adapter.fetch_objects(plan.object_type))
         output = (
             [entity for entity in fetched if matches_where(entity, plan.where)]
             if plan.where
