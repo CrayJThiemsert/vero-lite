@@ -1273,10 +1273,10 @@ object_types:
     mcp: { name: 'MCP tools', short: 'MCP tools', kind: 'generated', desc: 'Tool definitions so an LLM / agent can query the ontology safely and grounded — the Ask in scene 6.' },
     ts: { name: 'TypeScript types', short: 'TS types', kind: 'generated', desc: 'Front-end types — the console is typed straight from the ontology.' },
     ui: { name: 'UI', short: 'UI', kind: 'generated', desc: 'The operational console re-skins per vertical from the ontology — the map, the decision cards and the Ask view you have been looking at.' },
-    alembic: { name: 'Alembic migrations', short: 'Alembic', kind: 'generated', desc: 'Schema migrations emitted when the ontology changes — the database evolves with the YAML, versioned.' }
+    orm: { name: 'SQLAlchemy ORM', short: 'ORM', kind: 'generated', desc: 'Runtime database models generated straight from the YAML into committed code. Alembic migrations stay hand-authored — a schema-parity test keeps them in lockstep with the generated schema.' }
   };
   const KIND_TAG = { input: ['s-neutral', 'input'], runtime: ['s-neutral', 'runtime layer'], moat: ['s-ok solid', 'the moat'], generated: ['s-info', 'generated'] };
-  const AP_GEN = ['pydantic', 'sql', 'jsonschema', 'mcp', 'ts', 'ui', 'alembic'];
+  const AP_GEN = ['pydantic', 'sql', 'jsonschema', 'mcp', 'ts', 'ui', 'orm'];
 
   function createAppendixScene(ctx) {
     const scope = ctx.scope, host = ctx.host;
@@ -1295,7 +1295,7 @@ object_types:
 
     // ---- the engine as an SVG flow: pipeline (→) + the generative fan-out (↓) ----
     const svg = s('svg', { class: 'ap-svg', viewBox: '0 0 720 146', xmlns: SVGNS, role: 'img',
-      'aria-label': 'Runtime pipeline raw → mapping → semantic → action; the semantic YAML layer fans out to the generated Pydantic, SQL, JSON schema, MCP tools, TypeScript types, UI and Alembic migrations' });
+      'aria-label': 'Runtime pipeline raw → mapping → semantic → action; the semantic YAML layer fans out to the generated Pydantic, SQL, JSON schema, MCP tools, TypeScript types, UI and SQLAlchemy ORM' });
     svg.appendChild(s('defs', null, s('marker', { id: 'ap-arrow', markerWidth: 8, markerHeight: 8, refX: 6, refY: 3, orient: 'auto' },
       s('path', { d: 'M0,0 L6,3 L0,6 Z', style: { fill: 'var(--tx-3)' } }))));
 
