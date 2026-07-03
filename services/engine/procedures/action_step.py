@@ -46,6 +46,7 @@ from typing import Any
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.config import settings
+from services.db.audit_log import append_audit
 from services.engine.actions import ControlRef, EntityRef, GovernedDecision, RecommendedAction
 from services.engine.llm.client import OllamaClient
 from services.engine.llm.structured import ChatClient, JudgmentResult, generate_judgment
@@ -455,7 +456,23 @@ async def resolve_gated_step(
     # The LIVE fail-closed principal-SoD run-check (ADR-0026 D4; A1b Step 1) — runs
     # BEFORE any approve/execute so a violation blocks the gate (no PO, no governed
     # verdict). Non-skippable on a SoD run; inert otherwise (see the helper).
-    _enforce_principal_sod(loaded.run, step_id, principal, procedure, principals, principal_aliases)
+    # PLAN-0047 Step 5: a refusal is itself a governance-relevant transition —
+    # audited durably before the exception propagates.
+    try:
+        _enforce_principal_sod(
+            loaded.run, step_id, principal, procedure, principals, principal_aliases
+        )
+    except PrincipalSoDError as exc:
+        await append_audit(
+            session,
+            action="gate_refused",
+            actor_person_id=principal.person_id if principal is not None else None,
+            run_id=run_id,
+            step_id=step_id,
+            payload={"violations": [v.detail for v in exc.verdict.violations]},
+        )
+        await session.commit()
+        raise
 
     # ---- Phase 1 (PLAN-0047 Step 4, AC-6): decide + COMMIT the intent -------
     # Every decision is validated and applied in memory, then the decisions +
@@ -491,6 +508,16 @@ async def resolve_gated_step(
     loaded.run.updated_at = datetime.now(UTC)
     await session.merge(loaded.run)
     await session.merge(target)
+    # PLAN-0047 Step 5: the gate decision is audited in the SAME transaction
+    # as the durable intent (decision + audit land together, before any effect).
+    await append_audit(
+        session,
+        action="gate_decision",
+        actor_person_id=principal.person_id if principal is not None else None,
+        run_id=run_id,
+        step_id=step_id,
+        payload={"decisions": dict(decisions)},
+    )
     await session.commit()  # the decision is durable BEFORE any effect (AC-6)
 
     # ---- Phase 2: execute the approved effects, then commit the receipts ----
@@ -531,5 +558,16 @@ async def resolve_gated_step(
     loaded.run.updated_at = datetime.now(UTC)
     await session.merge(loaded.run)
     await session.merge(target)
+    # PLAN-0047 Step 5: every executed effect's receipt is audited in the same
+    # commit that records it on the step artifact.
+    for effect in executed_effects:
+        await append_audit(
+            session,
+            action="handler_receipt",
+            actor_person_id=principal.person_id if principal is not None else None,
+            run_id=run_id,
+            step_id=step_id,
+            payload={"action_id": effect["action_id"], "receipt": effect["receipt"]},
+        )
     await session.commit()
     return target
