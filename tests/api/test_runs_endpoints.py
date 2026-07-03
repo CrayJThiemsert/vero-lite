@@ -1,0 +1,206 @@
+"""PLAN-0047 Step 2 tests (AC-2 / AC-3) — run → suspend → resolve → resume over HTTP only.
+
+Drives the energy ``substation_health_sweep`` (query → evaluate → gated
+restart) end-to-end through the two new endpoints with stub executors
+registered via ``registry.register_procedure_executors`` — no library
+shortcut touches the run. AC-2: a spoofed ``triggered_by`` in the body is
+OVERWRITTEN by the server-resolved identity on the persisted run.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+from typing import Any
+
+import pytest
+import sqlalchemy as sa
+from httpx import AsyncClient
+
+from services.api.config import settings
+from services.engine.llm.client import ChatResult
+from services.engine.procedures.action_step import ActionStepExecutor
+from services.engine.procedures.orchestrator import RunContext, StepExecutor, StepOutcome
+from services.engine.procedures.spec import Step, StepKind
+from services.engine.registry import registry
+from tests.db_support import create_test_engine
+
+RAW_KEY = "test-key-op-somchai"
+DIGEST = hashlib.sha256(RAW_KEY.encode("utf-8")).hexdigest()
+HEADERS = {"Authorization": f"Bearer {RAW_KEY}"}
+
+_PROCEDURE_ID = "substation_health_sweep"
+_GATED_STEP = "restart_breaches"
+
+
+@pytest.fixture
+def runs_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Authn ON with one provisioned key → 'op-somchai' (energy authors no
+    principals, so identity records with person=None — the Step-1 contract)."""
+    monkeypatch.setattr(settings, "api_auth_enabled", True)
+    monkeypatch.setattr(settings, "api_keys", {DIGEST: "op-somchai"})
+
+
+class _FakeChat:
+    """Replays canned ChatResults (call-1 draft + call-2 judgment per entity)."""
+
+    def __init__(self, results: list[ChatResult]) -> None:
+        self._results = list(results)
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        think: bool | None = None,
+        response_format: dict[str, Any] | None = None,
+        temperature: float = 0.0,
+    ) -> ChatResult:
+        return self._results.pop(0)
+
+
+def _judgment_json() -> str:
+    return json.dumps(
+        {
+            "title": "Restart asset a1 after over-temperature",
+            "description": "Reading 95.0 exceeds the 90 ceiling.",
+            "rationale": "Sustained over-temperature risks damage; restart.",
+            "confidence": 0.9,
+            "affected_entities": [{"object_type": "Asset", "primary_key": "a1"}],
+            "suggested_handler": "restart",
+            "handler_payload": {"asset_id": "a1"},
+        }
+    )
+
+
+def _chat_results(entities: int) -> list[ChatResult]:
+    out: list[ChatResult] = []
+    for _ in range(entities):
+        out.append(ChatResult(content="draft", thinking="t", model="gpt-oss:20b", raw={}))
+        out.append(ChatResult(content=_judgment_json(), thinking=None, model="gpt-oss:20b", raw={}))
+    return out
+
+
+class _Query:
+    """Fixed-output query executor — one over-threshold asset reading."""
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        return StepOutcome(
+            output=[{"asset_id": "a1", "measured_value": 95.0}],
+            reasoning_trace=[{"kind": "query", "summary": "read latest readings"}],
+        )
+
+
+class _Judge:
+    """Deterministic evaluate executor — tags verdict vs the 90 ceiling."""
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        tagged = [
+            {**entity, "verdict": "breach" if entity["measured_value"] >= 90 else "ok"}
+            for entity in input_set
+        ]
+        return StepOutcome(
+            output=tagged, reasoning_trace=[{"kind": "evaluate", "summary": "judged vs ceiling"}]
+        )
+
+
+def _register_energy_executors() -> None:
+    def factory() -> dict[StepKind, StepExecutor]:
+        return {
+            StepKind.QUERY: _Query(),
+            StepKind.EVALUATE: _Judge(),
+            StepKind.ACTION: ActionStepExecutor(
+                client_factory=lambda _model: _FakeChat(_chat_results(1))
+            ),
+        }
+
+    registry.register_procedure_executors("energy", factory)
+
+
+@pytest.fixture
+async def wired_client(client_with_db: AsyncClient) -> AsyncClient:
+    """The DB-backed client with energy's stub executor factory registered."""
+    _register_energy_executors()
+    return client_with_db
+
+
+async def test_run_requires_auth(wired_client: AsyncClient, runs_auth: None) -> None:
+    response = await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={})
+    assert response.status_code == 401
+
+
+async def test_http_only_run_suspend_resolve_resume(
+    wired_client: AsyncClient, runs_auth: None
+) -> None:
+    """AC-3: the full loop over HTTP only — and AC-2 on the persisted record."""
+    run_response = await wired_client.post(
+        f"/procedures/{_PROCEDURE_ID}/run",
+        json={"trigger_context": {"source": "test", "triggered_by": "spoofed-person"}},
+        headers=HEADERS,
+    )
+    assert run_response.status_code == 200
+    body = run_response.json()
+    assert body["status"] == "waiting_human"
+    assert body["suspended_step"] == _GATED_STEP
+    assert body["triggered_by"] == "op-somchai"
+    assert len(body["proposals"]) == 1
+    run_id = body["run_id"]
+    action_id = body["proposals"][0]["action_id"]
+
+    # AC-2: the persisted run carries the SERVER-resolved identity — the
+    # spoofed body value is overwritten, the caller-legitimate key survives.
+    eng = await create_test_engine()
+    try:
+        async with eng.connect() as conn:
+            trigger_context = (
+                await conn.execute(
+                    sa.text("SELECT trigger_context FROM pipeline_runs WHERE run_id = :run_id"),
+                    {"run_id": run_id},
+                )
+            ).scalar_one()
+    finally:
+        await eng.dispose()
+    assert trigger_context["triggered_by"] == "op-somchai"
+    assert trigger_context["source"] == "test"
+
+    resolve_response = await wired_client.post(
+        f"/runs/{run_id}/gate/resolve",
+        json={"step_id": _GATED_STEP, "decisions": {action_id: "approve"}},
+        headers=HEADERS,
+    )
+    assert resolve_response.status_code == 200
+    resolved = resolve_response.json()
+    assert resolved["run_status"] == "completed"
+    assert resolved["suspended_step"] is None
+    assert {s["status"] for s in resolved["steps"]} == {"complete"}
+
+    # Replay visibility pre-Step-3: a second resolve on the settled gate is a
+    # clean conflict, not a silent re-execution.
+    replay = await wired_client.post(
+        f"/runs/{run_id}/gate/resolve",
+        json={"step_id": _GATED_STEP, "decisions": {action_id: "approve"}},
+        headers=HEADERS,
+    )
+    assert replay.status_code == 409
+
+
+async def test_run_unknown_procedure_is_404(wired_client: AsyncClient, runs_auth: None) -> None:
+    response = await wired_client.post(
+        "/procedures/no-such-procedure/run", json={}, headers=HEADERS
+    )
+    assert response.status_code == 404
+
+
+async def test_resolve_unknown_run_is_404(wired_client: AsyncClient, runs_auth: None) -> None:
+    response = await wired_client.post(
+        "/runs/run-nonexistent/gate/resolve",
+        json={"step_id": _GATED_STEP, "decisions": {}},
+        headers=HEADERS,
+    )
+    assert response.status_code == 404
+
+
+async def test_unwired_vertical_is_409(client: AsyncClient, runs_auth: None) -> None:
+    """A vertical with no registered executor factory refuses the run cleanly."""
+    response = await client.post(f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS)
+    assert response.status_code == 409
+    assert "executor factory" in response.json()["detail"]
