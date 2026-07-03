@@ -1,6 +1,6 @@
 # PLAN-0047: Pre-pilot hardening — authn + run/gate endpoints, gate state machine, append-only audit + config pinning, CI
 
-**Status:** Ready for execution
+**Status:** Complete
 **Owner:** Claude Code
 **Created:** 2026-07-03
 **Related ADRs:** ADR-0026 (principal identity + run-time SoD), ADR-016 (procedure engine), ADR-0025 (AT-2 typed governance) — this plan implements **enforcement/hardening on the shipped constructs and amends none of them**; if any step turns out to require an ADR amendment, execution stops and the question is surfaced to Cray.
@@ -78,56 +78,56 @@ this plan is enforced by CI from the moment it lands.
 Offline deterministic tests are the acceptance gate (CLAUDE.md §8 — no host-state /
 live runs required). Each AC names its pre-committed pass/fail read.
 
-- [ ] **AC-1 (authn fail-closed):** with authn enabled, an unauthenticated request to
+- [x] **AC-1 (authn fail-closed):** with authn enabled, an unauthenticated request to
   every state-changing endpoint (run, gate-resolve, approve, execute) returns
   **401/403**; an authenticated request succeeds and the resolved `person_id` appears
   in the persisted run/step record. *Pass/fail read:* new API tests assert both
   halves; grep confirms no state-changing route lacks the authn dependency.
-- [ ] **AC-2 (no principal from the body):** the request models for
+- [x] **AC-2 (no principal from the body):** the request models for
   `POST /procedures/{procedure_id}/run` and `POST /runs/{run_id}/gate/resolve`
   contain **no principal/person field**; a test posting a spoofed principal in the
   body shows the server-resolved identity (not the spoofed one) on the persisted
   record. *Pass/fail read:* test asserts persisted `person_id` == authenticated
   subject, != body value.
-- [ ] **AC-3 (endpoints exist, typed):** both new endpoints ship with Pydantic
+- [x] **AC-3 (endpoints exist, typed):** both new endpoints ship with Pydantic
   request + response models, every field carrying `Field(description=...)`
   (CLAUDE.md §8); the run endpoint suspends at a gated step and returns the run id +
   status; the resolve endpoint applies decisions and returns the updated step.
   *Pass/fail read:* API tests drive run → suspend → resolve → resume through HTTP
   only (no library shortcut).
-- [ ] **AC-4 (gate idempotency):** calling gate-resolve twice for the same step
+- [x] **AC-4 (gate idempotency):** calling gate-resolve twice for the same step
   executes the handler **exactly once**; the second call is rejected (409-class
   error), verified via a counting stub handler. *Pass/fail read:* handler-invocation
   count == 1 and second response is an error.
-- [ ] **AC-5 (state machine, not artifact-presence):** a run whose suspended step has
+- [x] **AC-5 (state machine, not artifact-presence):** a run whose suspended step has
   an artifact but was **not** resolved through `resolve_gated_step` is **refused** by
   `resume_run` (fail-closed); a properly resolved step passes; resume re-asserts the
   recorded SoD verdict before continuing. *Pass/fail read:* both branches covered by
   new persistence tests; the artifact-presence branch for gated steps is gone from
   `persistence.py` (escalated-failure re-run branch retained).
-- [ ] **AC-6 (write-ahead + decision-before-effect):** the `PipelineRun` row exists
+- [x] **AC-6 (write-ahead + decision-before-effect):** the `PipelineRun` row exists
   in the DB (status `running`) **before** the first step executes; the gate decision
   + audit record is committed in the same transaction as (or durably before) the
   handler effect — a handler that raises mid-resolve leaves a committed decision
   record and **no** phantom executed effect. *Pass/fail read:* DB-backed test
   injects a raising handler and asserts the post-crash DB state.
-- [ ] **AC-7 (append-only audit):** an attempt to UPDATE or DELETE a committed audit
+- [x] **AC-7 (append-only audit):** an attempt to UPDATE or DELETE a committed audit
   record through the app's DB role fails at the database layer; each audit row
   carries a hash chaining to its predecessor, and a verification helper detects a
   tampered row. *Pass/fail read:* DB-backed test asserts the rejection + a
   hash-chain-verify pass on clean data / fail on mutated data. *(Shape gated on
   SD-3.)*
-- [ ] **AC-8 (config pinning):** `PipelineRun` carries the resolved governance
+- [x] **AC-8 (config pinning):** `PipelineRun` carries the resolved governance
   snapshot (ladder / SoD / rule) + content hash at start; after an on-disk edit to
   the procedure's governance config, `resume_run` and `resolve_gated_step` on the
   old run **fail closed** with an explicit pin-mismatch error (they never silently
   apply the new config). *Pass/fail read:* test edits the resolved config between
   suspend and resume and asserts the refusal; unedited config resumes normally.
-- [ ] **AC-9 (migrations):** every new column/DDL lands as an Alembic migration
+- [x] **AC-9 (migrations):** every new column/DDL lands as an Alembic migration
   under `alembic/versions/` (next after `0004`); `alembic upgrade head` on a fresh
   DB succeeds and the offline suite passes against it. *Pass/fail read:* migration
   test / CI job runs upgrade + suite.
-- [ ] **AC-10 (CI):** `.github/workflows/` contains a workflow that, on every PR,
+- [x] **AC-10 (CI):** `.github/workflows/` contains a workflow that, on every PR,
   runs ruff + `mypy --strict services/` + the pytest suite (scope per SD-4) and
   fails the PR on any failure. *Pass/fail read:* the PR that lands this plan shows
   the workflow green; a deliberate scratch failure (or the workflow's own log)
@@ -301,3 +301,61 @@ deliberate failure demonstrates gating; AC-9's upgrade-head runs here.
   pilot-critical path exercised through every hardening layer this plan adds.
 - After completion: `git mv docs/plans/0047-*.md docs/plans/done/` (Code-tab
   operation).
+
+## Completion note (2026-07-03/04, session 95)
+
+All 10 acceptance criteria met; all seven steps landed via feature-branch PRs
+under the Step-7 CI gate (every PR from #524 onward ran under it). Final suite:
+**2097 passed / 5 skipped** (baseline 2066 at plan start → **+31 new tests**).
+All work offline; MS-S1 never touched; migrations 0005–0008 all additive and
+applied cleanly.
+
+| Step | PR (commit) | Delivered | ACs |
+|------|-------------|-----------|-----|
+| 7 — CI workflow | #524 (`0401a0a`) | `.github/workflows/ci.yml`: ruff + ruff-format + mypy `--strict` + full suite w/ `postgres:16-alpine` container + `alembic upgrade head`. First run green: 2066 passed / 5 skipped in 48s. Landed first per plan ordering. | AC-10, AC-9 (upgrade-head half) |
+| 1 — authn | #525 (`3b3db46`) | `services/api/auth.py::get_current_principal` (SD-1=(a): static per-person API keys, sha256 digests in `settings.api_keys`); gated approve/execute + `/warm` + `/sleep` + `/intake/generate`; `action_identity` sidecar table + Alembic 0005; `api_auth_enabled` default ON; 11 tests incl. enforceable route-coverage read. | AC-1 |
+| 2 — endpoints | #526 (`5da9e1d`) | `POST /procedures/{id}/run` + `POST /runs/{run_id}/gate/resolve`; identity server-side (`trigger_context.triggered_by` overwritten — AC-2 proven on the persisted row); `registry.register_procedure_executors` seam (ADR-0023 pattern); HTTP-only loop test; 5 tests. | AC-2, AC-3 |
+| 3 — gate state machine | #527 (`a0db450`) | `StepResultStatus.RESOLVED`; `resume_run` refuses undecided proposal gates + SoD `governed_decision` tie re-assert; `pipeline_runs.version` optimistic lock + Alembic 0006; AC-4 exactly-once proven by counting spy; 5 tests. | AC-4, AC-5 |
+| 4 — write-ahead + decision-before-effect | #528 (`bafdf92`) | `persistence.run_procedure_persisted` (running row committed before step 1; per-step commits via new `execute_steps` `on_step_complete` callback — orchestrator stays DB-free); `resolve_gated_step` two-phase (Phase-1 durable intent incl. `pending_execution` decisions + `governed_decision` tie + run-version bump at the decision commit → concurrent resolver loses before handlers fire; Phase-2 receipts); crash-injection + retry proven; 2 tests. | AC-6 |
+| 5 — append-only audit (SD-3 minimal) | #529 (`692f748`) | `services/db/audit_log.py` (sha256 hash chain, `UNIQUE(prev_hash)`, `FOR UPDATE` head) + Alembic 0007 (block trigger raising on UPDATE/DELETE + `vero_audit_writer` INSERT-only NOLOGIN role); call sites run_started / gate_decision / handler_receipt / run_resumed / gate_refused, each in the same transaction as its transition; tamper-detection proven with the trigger disabled; 4 tests. | AC-7 |
+| 6 — governance pinning | #530 (`6cde2db`) | `services/engine/procedures/governance_pin.py` + `pipeline_runs.governance_snapshot`/`governance_hash` + Alembic 0008; fail-closed pin-mismatch at resume (unconditional) + gate (when procedure supplied); prose excluded from the hash; hash determinism proven; 4 tests. **Merge pending at drafting time — verify merged at commit.** | AC-8 |
+
+AC-9 is covered by CI: `alembic upgrade head` on a fresh DB per PR + suite green
+against it. Migrations landed as 0005/0006/0007/0008 — the plan's illustrative
+numbering (0005/0006/0007 in Steps 3/5/6) shifted by one because Step 1's
+`action_identity` table took 0005.
+
+**Disclosed deviations (scope-visible, none amend an ADR):**
+
+- **Step 1 gated more routes than the plan's list** — `/warm`, `/sleep`,
+  `/intake/generate` added: unambiguously state-changing, so leaving them open
+  would have violated AC-1's spirit.
+- **Step 2 resolve auto-resumes** — one human action = one call (resolve applies
+  decisions and resumes the run), rather than a separate resume call.
+- **Step 3 / AC-5 scope narrowing** — a no-decision suspend (empty proposal set —
+  the shipped PLAN-0022 empty-watch contract, or a non-proposal artifact) keeps
+  plain-resume; a blanket refusal would deadlock the shipped aquaculture flow,
+  which has no bypass surface. The `human_task` resolution driver is a follow-up
+  (nothing ships/tests it; it fails closed if proposal-shaped).
+- **Step 5 role bootstrap lives in the migration, not `docker-compose.yml`** —
+  portable deviation: the migration creates `vero_audit_writer` so the guarantee
+  holds on any deployment, not just compose.
+- **Step 6 principals/aliases are NOT pinned** — by design: SoD resolves people
+  live (a personnel change must apply to in-flight runs); the pinned snapshot
+  covers ladder / SoD constraints / rule bindings.
+
+**Deferred (unchanged from Out of Scope):** sprint items 4 (migration
+autogenerate), 5 (required-gate policy), 7 remainder (pitch wording),
+item-6 deployment remainder (Dockerfile / backups / health checks / credential
+cutover), full ADR-011 audit framework, reactive-loop durable persistence
+(SD-2), `human_task` resolution driver, per-vertical production executor
+factories.
+
+**Close-out mechanics (committing session):** `git mv docs/plans/0047-*.md
+docs/plans/done/` in the same PR as this fold — `git add` the edit **before**
+`git mv` (project memory: `git mv` of a modified file drops the edit).
+
+> **Completion-fold provenance (ADR-012 D4.3):** This fold was drafted by the
+> in-harness `plan-drafter` subagent (session 95) from the Code-supplied
+> execution-facts payload; Code R2-reviews and commits (ADR-009 D2);
+> independent reviewer: Cray at PR merge. Separation: INTACT.
