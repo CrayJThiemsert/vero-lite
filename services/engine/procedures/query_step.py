@@ -1,0 +1,177 @@
+"""Generic query-step compile seam (PLAN-0048 Step 1; renders ADR-016 Q4).
+
+The **compile** third of the compile / execute / inspect factoring (PLAN-0048
+D-N3 — the dbt-MCP ``list/discover + constrained run`` 3-tool shape; MCP
+plumbing itself is an explicit non-goal):
+
+- **compile** — :func:`plan_read`: pure, no I/O; turns a query step + agent +
+  ontology registry into an executable :class:`ReadPlan` **or** a typed,
+  auditable :class:`ReadRefusal`. Out-of-coverage reads refuse loudly — never
+  a guess, never a silent ``[]`` masquerading as "no data" (D-N1 / must 1).
+- **execute** — the adapter-injected ``QueryStepExecutor`` (PLAN-0048 Step 2)
+  runs a compiled plan: exactly ONE ``fetch_objects`` dispatch per plan, no
+  retry/repair loop in v1 (D-N2; any future repair loop is a new PLAN and must
+  stay deterministic and inside ``reads ∩ object_types`` — no LLM reshaping).
+- **inspect** — :func:`readable_object_types`: the agent's read coverage
+  (ontology ∩ allowlist; empty allowlist = unconstrained, LOCKED-5/OQ-6).
+
+Deterministic throughout — **no LLM anywhere in the read path** (LOCKED-6,
+governed ≠ generated): this module is the deterministic-disposer half of the
+CaMeL-shaped "LLM proposes, deterministic policy engine disposes" architecture.
+v1 executes SINGLE declared reads only (SD-1, ratified 2026-07-04): multi-read
+joins and projections stay with the hand-written per-vertical seeds until a
+join grammar is ratified (an ADR-016 amendment, out of scope here).
+
+The ontology/allowlist bound is THE shared predicate
+:func:`services.engine.procedures.orchestrator.read_bound_violation` — the same
+function the PLAN-0046 load gate uses, so load-time acceptance and run-time
+dispatch cannot drift (AC-3).
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any
+
+from services.engine.procedures.orchestrator import read_bound_violation
+from services.engine.procedures.spec import Agent, Step, StepKind
+
+
+class ReadRefusalKind(str, Enum):
+    """Why a declared read was refused (PLAN-0048 D-N1 — the typed refusal taxonomy).
+
+    The first two mirror :data:`orchestrator.ReadBoundViolation` (the shared
+    ontology/allowlist bound); the last two are compile-seam shape refusals.
+    """
+
+    UNKNOWN_OBJECT_TYPE = "unknown_object_type"
+    OUTSIDE_ALLOWLIST = "outside_allowlist"
+    UNSUPPORTED_READ_SHAPE = "unsupported_read_shape"
+    UNBOUND_QUERY = "unbound_query"
+
+
+class ReadRefusal(Exception):  # noqa: N818 — a refusal is deliberately NOT an *Error (D-N1)
+    """A typed, structured, auditable read refusal (PLAN-0048 D-N1 / must 1).
+
+    Refusal ≠ no-data: an in-coverage fetch that finds zero rows COMPLETES the
+    step with ``output=[]`` plus provenance (Step 2); this exception is the
+    other thing — the engine declining to guess. Carries structured fields
+    (``refusal_kind`` / ``step_id`` / ``object_type``) so persisted records and
+    audit rows can name the refusal without parsing prose.
+    """
+
+    def __init__(
+        self,
+        refusal_kind: ReadRefusalKind,
+        *,
+        step_id: str,
+        object_type: str | None = None,
+        detail: str = "",
+    ) -> None:
+        self.refusal_kind = refusal_kind
+        self.step_id = step_id
+        self.object_type = object_type
+        self.detail = detail
+        target = f" object_type '{object_type}'" if object_type is not None else ""
+        message = f"read refused ({refusal_kind.value}) at step '{step_id}'{target}"
+        if detail:
+            message = f"{message}: {detail}"
+        super().__init__(message)
+
+
+@dataclass(frozen=True)
+class ReadPlan:
+    """The compiled, executable read of a single query step (AC-1).
+
+    ``where`` is the OQ-4 engine-side post-fetch field-equality narrowing —
+    carried here, applied by the executor over the FETCHED set (never pushed
+    down to the adapter's ``filter_expr``).
+    """
+
+    step_id: str
+    object_type: str
+    where: Mapping[str, Any] = field(default_factory=dict)
+
+
+def plan_read(step: Step, agent: Agent, object_type_names: frozenset[str]) -> ReadPlan:
+    """Compile a query step's declared read, or refuse typed (AC-1/AC-2).
+
+    Pure and total: no I/O, no adapter; every ``Step`` shape either returns a
+    :class:`ReadPlan` or raises :class:`ReadRefusal` — there is no
+    silently-empty path. The v1 executable shape is a SINGLE declared read
+    (SD-1): ``reads`` with more than one entry, ``reads`` combined with an
+    intra-run ``from`` thread, and a reads-absent entry-point query all refuse.
+    A reads-absent step that threads ``from`` a prior step is not a declared
+    read at all — identity pass-through belongs to the executor (SD-1), so the
+    compile seam refuses it rather than inventing a plan.
+    """
+    if step.kind is not StepKind.QUERY:
+        raise ReadRefusal(
+            ReadRefusalKind.UNSUPPORTED_READ_SHAPE,
+            step_id=step.step_id,
+            detail=(
+                f"kind '{step.kind.value}' is not a query step — "
+                "the compile seam is a query-step contract"
+            ),
+        )
+    step_input = step.input
+    if step_input is None or not step_input.reads:
+        from_step = step_input.from_step if step_input is not None else None
+        if from_step is not None:
+            raise ReadRefusal(
+                ReadRefusalKind.UNSUPPORTED_READ_SHAPE,
+                step_id=step.step_id,
+                detail=(
+                    f"no declared read; input threads from step '{from_step}' — identity "
+                    "pass-through is the executor's case (SD-1), not a compilable read"
+                ),
+            )
+        raise ReadRefusal(
+            ReadRefusalKind.UNBOUND_QUERY,
+            step_id=step.step_id,
+            detail=(
+                "entry-point query step declares no reads — refusing rather than "
+                "returning a silent empty set"
+            ),
+        )
+    reads = step_input.reads
+    if step_input.from_step is not None:
+        raise ReadRefusal(
+            ReadRefusalKind.UNSUPPORTED_READ_SHAPE,
+            step_id=step.step_id,
+            detail=(
+                f"reads {reads} + from '{step_input.from_step}' are two competing input "
+                "sources (where would double-apply) — declare one"
+            ),
+        )
+    if len(reads) > 1:
+        raise ReadRefusal(
+            ReadRefusalKind.UNSUPPORTED_READ_SHAPE,
+            step_id=step.step_id,
+            detail=(
+                f"multi-read {reads} — v1 executes single reads only (SD-1); "
+                "a join grammar is a future ADR-016 amendment"
+            ),
+        )
+    object_type = reads[0]
+    violation = read_bound_violation(object_type, object_type_names, agent.allowed.object_types)
+    if violation is not None:
+        raise ReadRefusal(ReadRefusalKind(violation), step_id=step.step_id, object_type=object_type)
+    where = dict(step_input.where) if step_input.where else {}
+    return ReadPlan(step_id=step.step_id, object_type=object_type, where=where)
+
+
+def readable_object_types(agent: Agent, object_type_names: frozenset[str]) -> frozenset[str]:
+    """The inspect half (D-N3): the agent's read coverage.
+
+    ``ontology ∩ allowlist``; an EMPTY ``allowed.object_types`` is
+    UNCONSTRAINED (LOCKED-5 / OQ-6, mirroring ``step_kinds``) and yields the
+    whole ontology set. Allowlist entries naming unknown object_types simply
+    drop out of the intersection — coverage never exceeds the ontology.
+    """
+    allowed = agent.allowed.object_types
+    if not allowed:
+        return object_type_names
+    return object_type_names & frozenset(allowed)
