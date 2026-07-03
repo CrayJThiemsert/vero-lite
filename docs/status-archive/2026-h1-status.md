@@ -1993,3 +1993,50 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 > `validate_read_bindings` entry point + SD-2 verticals-stay-absent) → merged
 > **Ready for execution** (#509, `d544414`). NEXT = execute Steps 1–4 (offline
 > gate; no live run).
+
+### Current-Focus block — Session 94 (head_commit `eb63692`) — partner-sim run-1 rehearsal, fork (a) [rotated 2026-07-03, session-94 run-2 rehearsal reconcile; R1 64 KB ceiling]
+
+> **Session 94, 2026-07-02 (head_commit `eb63692` unchanged — WORKING-TREE
+> EVENT, no commit; #513/#514 were `docs(status)` merges, excluded) — ADR-0020
+> PARTNER-SIM RUN-1 REHEARSAL (fork a) COMPLETE — the intake/mapping/PDPA-RoPA
+> pipeline run FOR REAL against the synthetic TWP package; 8 findings + 3
+> net-new decomposed into tagged work items.** **Cray selected fork (a)**
+> (explicit AskUserQuestion pick, 2026-07-02) over (b) the Q4 executor PLAN.
+> Deliverable (gitignored + SYNTHETIC-bannered per ADR-0020 R3 — NEVER
+> unlabeled into benchmark/REPORT/ADR-011 contexts):
+> `docs/research/private/2026-07-02-partnersim-run1-rehearsal-intake-mapping-pdpa.md`.
+> **§1 Intake rehearsal:** TWP's answers graded vs the one-pager's 6 asks —
+> **5 DELIVERED, ask-6 (DPA+pseudonymization) CONDITIONAL**; key result: ask-1
+> delivers the artifacts but its engineering purpose FAILS (historical
+> principal identity unresolvable: shared OPER1, LINE display-name ≠
+> decision-maker). **§2 Mapping rehearsal vs `energy_v0.yaml` — real gaps
+> clean fixtures never showed:** `asset_type` enum lacks
+> feeder/cap_bank/gas_engine; `measured_kind` lacks current/voltage (+ missing
+> `quantity_bindings`); TWP's STATUS column splits 3 ways (verdict →
+> recomputed, transitions, actions); band-model gaps = 4-zone top-oil
+> (78/87/92) + seasonal 300A vs our 3-zone `in_file_band` (bus-voltage
+> 21.4/21.6 kV fits exactly); era-scoped surrogate-PK rule; per-source
+> TZ/พ.ศ./dedup rule set; versioned ingest (bitemporal-lite — serves the กกพ.
+> as-reported view + PDPA DSR). PLAN-0005 §8.1 mapping trigger NOT tripped
+> (synthetic) — the mapping spec is designed in advance, builds at the
+> real-data trigger. **§3 PDPA-RoPA:** RoPA-lite built cleanly from TWP §5
+> labels; minimization cheap (tokenize 2–3 columns); worker-committee 30+d
+> constraint → role-level-audit mode proposed as the pre-clearance posture;
+> residency = straight win (their no-foreign-cloud mandate fits our
+> on-prem/local-LLM posture verbatim). **§4 Work items:** F1–F8 (the run-1
+> findings) + net-new **F9** (energy-v0 enum coverage → an "energy v1 ontology
+> batch" candidate), **F10** (instance-scoped authority — per-feeder + ฿ caps
+> vs our type-scoped `AgentAllowed.object_types` → generalized-schema input),
+> **F11** (refused-field degraded modes → UI backlog, trigger-gated); tags
+> [MAP]/[ENG]/[GTM]/[INTAKE]/[DEFER], each routed to its owning thread.
+> **Nothing starts a build today.** **§5:** 7 intake-instrument additions for
+> the real meeting — validates Cray's standard-intake-form template
+> observation (lineage = the partner-facing ONE-PAGER, NOT the R1-clean
+> variant). **R2:** an independent reviewer subagent verified the report vs
+> all sources (schema/PDPA/R3/arithmetic claims confirmed); 2 findings applied
+> (top-oil zone-count phrasing clarified; a §8.1 quote-casing nit). **NEXT
+> (Cray-owned):** the ADR-0020 D4 post-run-1 review (owed before any 2nd
+> business type) + the next pick — (b) the Q4 generic query executor PLAN, or
+> the rehearsal-enriched backlog. **Standing:** `loop-dispatcher` stays
+> **DISABLED**; MS-S1 cold (nothing touched it); AI-assisted (Claude Code,
+> session 94), no `Co-Authored-By` per CLAUDE.md §7.
