@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-03T09:15:39+07:00
+last_updated: 2026-07-03T12:34:11+07:00
 session: 94
-current_batch: "partner-sim RUN-2 REHEARSAL COMPLETE (s94 cont., 2026-07-03, working-tree event — no commit): intake/mapping/PDPA-RoPA run vs the cold-chain package + the 2-run cross-vertical synthesis; G1–G11 tagged work items (gitignored, R3); R2 0-blocker."
+current_batch: "SESSION 94 CLOSED (2026-07-03) — ADR-0020 partner-sim trial COMPLETE end-to-end across both verticals (run-1 + run-2, receive+screen+rehearsal ×2, C-1..C-3 confirmed). Plus a concurrent-session demo-honesty fix (#520, ORM-not-Alembic). No open partner-sim debt."
 current_actor: code
 blocked_on: "Nothing blocking. Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
-next_action: "Run-2 rehearsal DONE — the ADR-0020 trial has now delivered BOTH verticals end-to-end (receive+screen+rehearsal ×2). Cray-owned: C-1..C-3 for the supply-chain project (still open, benign) + the next pick — (b) the Q4 generic query executor PLAN, the paired v1 ontology batches (energy-v1 + supply-chain-v1), the [GTM] pack (now customer-demanded templates), or other backlog."
-head_commit: 255627b
-recent_commits: [255627b, eb63692, 878b517, d544414, bd7423b]
+next_action: "Session 94 closed; pick up at the session-94 CLOSE handoff. C-1..C-3 CONFIRMED (partner-sim run-2 open item closed). Next capability = a Cray pick: (b) the Q4 generic query executor PLAN · the paired v1 ontology batches (energy-v1 + supply-chain-v1, specs ready from both rehearsals) · the [GTM] pack (customer-demanded templates) · the standard-intake-form TODO (11 additions) · or other backlog."
+head_commit: f63c975
+recent_commits: [f63c975, 255627b, eb63692, 878b517, d544414]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,48 @@ recent_commits: [255627b, eb63692, 878b517, d544414, bd7423b]
 ---
 
 ## Current Focus
+
+> **Session 94 CLOSE, 2026-07-03 (head_commit `255627b` → `f63c975` — #520
+> `fix(demo)` is SUBSTANTIVE per lint policy, merge `9314100`) — ADR-0020
+> PARTNER-SIM TRIAL COMPLETE END-TO-END ACROSS BOTH VERTICALS; C-1..C-3
+> input-state check now CONFIRMED, closing the last run-2 open item.**
+> Session 94 (2026-07-01 → 2026-07-03) delivered the entire trial: run-1
+> rehearsal (fork a, energy; #515), the D4 post-run-1 review →
+> continue-with-adjustments + the #516/#517 R1-tighten, run-2 receive
+> (supply-chain, S-1..S-6 PASS incl. the first live R-PS4 screen; #518), the
+> run-2 rehearsal + 2-run cross-vertical synthesis (#519), and now C-1..C-3.
+> **C-1..C-3 CONFIRMED 2026-07-03 (Cray Path-1 UI check, evidence-backed —
+> `confirmed — prior intact`, not from memory):** C-1 no repo mount (the
+> Cowork Context is the project's own workspace; only file = the project's
+> CLAUDE.md-style instruction memory = the post-#516 persona contract, NOT the
+> vero-lite repo CLAUDE.md; no ontology/schema; Memory empty; referenced files
+> = the Cray-pasted, R1-permitted run inputs); C-2 post-#516 instructions
+> (all 3 current fingerprints present, both old FAIL fingerprints absent); C-3
+> no past-chats/knowledge (no reference-past-chats capability in this Desktop
+> build; project-knowledge empty); identity = the project's latest batch reply
+> is the landed run-2 package verbatim (already-screened + already-rehearsed).
+> Full record: gitignored `docs/research/private/2026-07-02-partnersim-run2-receive-checklist.md`
+> §C-1..C-3 addendum + the probe protocol `2026-07-03-partnersim-c123-probe-protocol.md`.
+> **Trial durable outputs:** a designed-in-advance mapping-layer core spec (9
+> classes recurring 2/2 verticals), two v1 ontology-batch specs (energy-v1 +
+> supply-chain-v1), 6 band-expressiveness requirements → the generalized-schema
+> thread, a GTM pack now carrying customer-demanded templates, and an 11-item
+> intake-form addition set. Rule-of-Three holds (3rd data point = procurement
+> or a first real partner before abstraction). **Concurrent-session fix (NOT
+> this session's work — attributed factually):** #520 `fix(demo)` (`f63c975`,
+> merge `9314100`) corrected the demo story appendix's generated-artifacts
+> fan-out — it claimed a non-existent "Alembic migrations" emitter, but
+> `generate_all()` in `services/engine/code_generator.py` has six emitters
+> (pydantic/sql/jsonschema/mcp/typescript/orm) and no migration emitter, so the
+> false `alembic` node was swapped for the real `orm` emitter
+> (`services/db/models.py`); Alembic migrations stay hand-authored, kept in
+> lockstep by the schema-parity test. Touched `view-story.js` + `index.html`
+> (cache token c24→c25); stakeholder-facing honesty fix, no engine/schema
+> change. Session-94 CLOSE handoff:
+> `.claude/handoffs/session-94/2026-07-03-1234-code-session94-CLOSE-partnersim-trial-both-verticals.md`.
+> **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (nothing
+> touched it); AI-assisted (Claude Code, session 94), no `Co-Authored-By` per
+> CLAUDE.md §7.
 
 > **Session 94 cont., 2026-07-03 (head_commit `255627b` unchanged —
 > WORKING-TREE EVENT, no commit; #518 was a `docs(status)` merge, excluded) —
@@ -131,70 +173,19 @@ recent_commits: [255627b, eb63692, 878b517, d544414, bd7423b]
 > touched it); AI-assisted (Claude Code, session 94), no `Co-Authored-By` per
 > CLAUDE.md §7.
 
-> **Session 94 cont., 2026-07-02 (head_commit `eb63692` → `255627b` — #516
-> `docs(conventions):` is SUBSTANTIVE per lint policy, merge `cb161a4`) —
-> ADR-0020 D4 POST-RUN-1 REVIEW COMPLETE — verdict: CONTINUE WITH ADJUSTMENTS
-> (Cray-ratified, explicit AskUserQuestion pick); 4-lens specialist panel: all
-> R-PS triggers NOT-FIRED; C-1..C-3 confirmed; adjustment (i) landed as
-> #516.** D4 executed via a 4-lens adversarial (refute-not-bless) specialist
-> subagent panel — R-PS1 circularity skeptic / R-PS2 provenance auditor /
-> R-PS3 messiness-value judge / domain-realism; findings attributed as agent
-> findings, load-bearing instruction quotes code-verified before acting.
-> **Verdicts:** R-PS1 NOT-FIRED (HIGH on the trigger; broader R1 assurance
-> capped MEDIUM by the input-hygiene finding) · R-PS2 NOT-FIRED (VERY HIGH,
-> 6/6 provenance checks clean) · R-PS3 NOT-FIRED (HIGH ~0.9) · domain realism
-> SOUND-WITH-CAVEATS (กกพ. quarterly premise web-verified; worker-committee
-> 30-d gate down-weighted to partner-conditional — LPA s.96 remit is welfare,
-> not monitoring approval; role-level-audit mode retained on independent PDPA
-> grounds). **Key panel finding (the material one):** the RATIFIED inputs
-> themselves leaked vendor vocabulary — instruction §4.2(4) carried
-> "over-threshold (breach), watch/near-threshold, and normal" (2/3 of our
-> band labels) and §5 carried "restart / isolate / dispatch a technician"
-> (3/4 of the action enum). The run-1 "WATCH = organic SCADA term" narration
-> is REFUTED (reclassified `was an error`); the S-2 PASS itself stands
-> `confirmed — prior intact` on amended grounds (uptake from a ratified input
-> ≠ the R-PS1 breach vector; every one-pager fingerprint affirmatively absent
-> — the persona declined "restart" for the organic "reclose"). **C-1..C-3
-> input-state deviation: CONFIRMED by Cray** (Desktop check: no connected
-> folders / current canonical instructions / no project-knowledge files) —
-> the run-1 record is fully closed. **No trigger fired → ADR-0020 unchanged.
-> Adjustments:** (i) instruction band-labels + action-menus stripped = **#516
-> landed** (Cray must RE-PASTE the updated canonical into the partner-sim
-> project UI before any run 2 — repo-canonical / UI-derived); (ii) an
-> R1-stripped PDPA-checklist paste-variant created (gitignored:
-> `docs/research/private/2026-07-02-pdpa-checklist-partnersim-paste-variant.md`
-> — the ONLY PDPA doc cleared for future partner-sim pastes); (iii)
-> run-2-time: fresh project per SD-2 + an unannotated bulk sample at a
-> realistic historian rate + a persona-brief fix (drop the implausible
-> municipal-service claim / model the customer-PII surface). **Record
-> hygiene:** the D4 addendum (panel verdicts + record corrections — the "0
-> hits" input-screen claim corrected to ~8 benign PDPA-sense "breach" tokens;
-> the reclose §5 misattribution; R-PS3 strict count 4+2 ≥ N=3) appended
-> APPEND-ONLY to the run-1 receive checklist (gitignored). **New value
-> surfaced by the panel:** an unannotated authority violation sits in the
-> run-1 package (หัวหน้ากะ reclose-1 on F-07, reserved to วิศวกรเวร+) = a
-> ready-made audit-detection test-case fixture; 10 domain blind-spot classes
-> listed for run 2 / the real intake form (relay-event reconciliation,
-> PEA/EGAT interchange metering, topology drift, customer PII, Thai encoding,
-> …). **NEXT (Cray-owned):** the standing pick — (b) the Q4 generic query
-> executor PLAN, or the rehearsal-enriched backlog; run-2 preconditions
-> recorded, run 2 itself stays unscheduled. **Standing:** `loop-dispatcher`
-> stays **DISABLED**; MS-S1 cold (nothing touched it); AI-assisted (Claude
-> Code, session 94), no `Co-Authored-By` per CLAUDE.md §7.
-
-> _Rotation note (session-94 run-2 rehearsal reconcile, 2026-07-03): to hold
-> STATUS under the **R1 64 KB hard ceiling** as the new Session-94 run-2
-> rehearsal CF block landed (the file was at ~62.0 KB before the addition; R1
-> overrides the R2 4-session window — the s93/s94 precedents accepted a
-> narrowed window), one Current Focus block was rotated verbatim to
+> _Rotation note (session-94 CLOSE reconcile, 2026-07-03): to hold STATUS
+> under the **R1 64 KB hard ceiling** as the new Session-94 CLOSE CF block
+> landed (the file was at ~63.6 KB before the addition; R1 overrides the R2
+> 4-session window — the s93/s94 precedents accepted a narrowed window), one
+> Current Focus block was rotated verbatim to
 > [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md):
-> the **Session 94 (head_commit `eb63692`)** ADR-0020 partner-sim RUN-1
-> REHEARSAL (fork a) block (working-tree event, reconciled #515). Resulting
-> Current-Focus window = {94 run-2 rehearsal, 94 run-2 receive, 94 D4 review
-> `255627b`}; RD table = 9 rows (untouched). **Ledger prune:** the prior
-> session-94 run-2-receive rotation note was removed from this live file —
-> pure archive-POINTER bookkeeping (its referenced items already live
-> verbatim in the archive + git history, Tier 3; no content lost). Per the
+> the **Session 94 (head_commit `eb63692` → `255627b`)** ADR-0020 D4
+> POST-RUN-1 REVIEW block (#516 substantive, merge `cb161a4`). Resulting
+> Current-Focus window = {94 CLOSE `f63c975`, 94 run-2 rehearsal, 94 run-2
+> receive}; RD table = 9 rows (untouched). **Prior (session-94 run-2
+> rehearsal reconcile, 2026-07-03):** rotated the **Session 94 (head_commit
+> `eb63692`)** ADR-0020 partner-sim RUN-1 REHEARSAL (fork a) block
+> (working-tree event, reconciled #515) to the same archive. Per the
 > STATUS.md Rotation Policy (R1/R2/R4)._
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
@@ -231,7 +222,7 @@ below, and git history.
 ## In-Flight Discussions
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
-- **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** Accepted 2026-06-13 (ratified `4d1347b`, #302; committed Proposed `e25281d`, #297 + instruction `e387a63`, #298 + R1 errata `655344d`, #300) — guarded trial under observation (parallel to ADR-012). A specialist Cowork project role-plays a Thai operator and emits a "partner profile package" to rehearse the intake+PDPA pipeline before a real partner; venue OUTSIDE the governance tiers (no commits / no repo mount / enters via Code receive). Three BINDING anti-circularity rules R1/R2/R3 (R3 SYNTHETIC provenance → never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger). All four venue SDs + dispatch-SD-1 ratified per Cowork rec (SD-1 N=3; SD-2 one-project-per-business-type; SD-3 size/region/maturity enums w/ energy·mid·th-regional·mixed-legacy default; SD-4 "what we refused to share" now required). D4 guarded-trial mirrors ADR-012 D5; regression triggers R-PS1..R-PS4 are the exit criteria; run 1 = energy operator (ADR-005 primary). **RUN 1 (energy / mid / th-regional / mixed-legacy) COMPLETE 2026-07-02 (session 93):** synthetic partner profile package (fictional TWP operator) received via Cray relay + Code-screened **S-1..S-5 ALL PASS** against a **pre-committed** oracle (R1 no schema echo · R2 six unsolicited inconvenient facts + heavy data flaws · R3 SYNTHETIC banner intact · SD-4 refused-to-share present); no R-PS trigger fired. Landed (gitignored, R3): package `docs/research/private/2026-07-02-partnersim-run1-energy-package.md` + oracle/verdicts `...-run1-receive-checklist.md` + completion handoff (session-93). First-pass value: **8 schema-mismatch findings** for the intake/mapping/PDPA path (unstable asset PKs, unresolvable principal identity vs ADR-0026 SoD + the worker-committee PDPA angle, multi-unit columns vs ADR-0021, per-source TZ chaos, action-events-in-status + seasonal thresholds vs in_file_band, mutable history, residency = our on-prem fit, DPA 4–6-wk timeline). **ADR-0020 D4 post-run-1 review DONE 2026-07-02 (s94): verdict continue-with-adjustments (no R-PS trigger fired; C-1..C-3 confirmed; #516 R1-tighten + stripped paste-variant landed; run-2 preconditions recorded — re-paste instruction to UI, fresh project per SD-2, unannotated bulk ask, persona fix). RUN 2 (supply-chain / mid / multi-site-sea / mixed-legacy) COMPLETE 2026-07-02 (s94): fresh project + all 3 D4 adjustments; S-1..S-6 ALL PASS pre-committed (first live R-PS4 screen clean); cross-run signal — identity/PK/clock/bottleneck/batch-only recur in 2/2 verticals (mapping-layer core, not energy quirks); new classes: cross-border-already-in-flight, duration-qualified + per-contract bands, per-device calibration, GPS-as-PII column-drop. C-1..C-3 (new project) carried open. RUN-2 REHEARSAL done 2026-07-03 (s94 cont.): G1–G11 (headline: supply_chain_v0 lacks an equipment entity + measured_kind; 4 new band-gap classes; cross-border DPA musts; GTM templates now customer-demanded); §5 cross-run synthesis = 9 classes recur 2/2 verticals (mapping-layer core; Rule-of-Three holds — no abstraction yet). ADR-011 audit framework stays gated on a REAL partner conversation — the synthetic run INFORMS but never TRIGGERS it (R3).**
+- **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** Accepted 2026-06-13 (ratified `4d1347b`, #302; committed Proposed `e25281d`, #297 + instruction `e387a63`, #298 + R1 errata `655344d`, #300) — guarded trial under observation (parallel to ADR-012). A specialist Cowork project role-plays a Thai operator and emits a "partner profile package" to rehearse the intake+PDPA pipeline before a real partner; venue OUTSIDE the governance tiers (no commits / no repo mount / enters via Code receive). Three BINDING anti-circularity rules R1/R2/R3 (R3 SYNTHETIC provenance → never trips PLAN-0005 §8.1 / ADR-011 first-real-data trigger). All four venue SDs + dispatch-SD-1 ratified per Cowork rec (SD-1 N=3; SD-2 one-project-per-business-type; SD-3 size/region/maturity enums w/ energy·mid·th-regional·mixed-legacy default; SD-4 "what we refused to share" now required). D4 guarded-trial mirrors ADR-012 D5; regression triggers R-PS1..R-PS4 are the exit criteria; run 1 = energy operator (ADR-005 primary). **RUN 1 (energy / mid / th-regional / mixed-legacy) COMPLETE 2026-07-02 (session 93):** synthetic partner profile package (fictional TWP operator) received via Cray relay + Code-screened **S-1..S-5 ALL PASS** against a **pre-committed** oracle (R1 no schema echo · R2 six unsolicited inconvenient facts + heavy data flaws · R3 SYNTHETIC banner intact · SD-4 refused-to-share present); no R-PS trigger fired. Landed (gitignored, R3): package `docs/research/private/2026-07-02-partnersim-run1-energy-package.md` + oracle/verdicts `...-run1-receive-checklist.md` + completion handoff (session-93). First-pass value: **8 schema-mismatch findings** for the intake/mapping/PDPA path (unstable asset PKs, unresolvable principal identity vs ADR-0026 SoD + the worker-committee PDPA angle, multi-unit columns vs ADR-0021, per-source TZ chaos, action-events-in-status + seasonal thresholds vs in_file_band, mutable history, residency = our on-prem fit, DPA 4–6-wk timeline). **ADR-0020 D4 post-run-1 review DONE 2026-07-02 (s94): verdict continue-with-adjustments (no R-PS trigger fired; C-1..C-3 confirmed; #516 R1-tighten + stripped paste-variant landed; run-2 preconditions recorded — re-paste instruction to UI, fresh project per SD-2, unannotated bulk ask, persona fix). RUN 2 (supply-chain / mid / multi-site-sea / mixed-legacy) COMPLETE 2026-07-02 (s94): fresh project + all 3 D4 adjustments; S-1..S-6 ALL PASS pre-committed (first live R-PS4 screen clean); cross-run signal — identity/PK/clock/bottleneck/batch-only recur in 2/2 verticals (mapping-layer core, not energy quirks); new classes: cross-border-already-in-flight, duration-qualified + per-contract bands, per-device calibration, GPS-as-PII column-drop. C-1..C-3 (new project) carried open. RUN-2 REHEARSAL done 2026-07-03 (s94 cont.): G1–G11 (headline: supply_chain_v0 lacks an equipment entity + measured_kind; 4 new band-gap classes; cross-border DPA musts; GTM templates now customer-demanded); §5 cross-run synthesis = 9 classes recur 2/2 verticals (mapping-layer core; Rule-of-Three holds — no abstraction yet). C-1..C-3 input-state check CONFIRMED 2026-07-03 (Cray Path-1 UI: no repo mount, post-#516 instructions, no past-chats) — run-2 open item CLOSED; the trial has no open partner-sim debt. ADR-011 audit framework stays gated on a REAL partner conversation — the synthetic run INFORMS but never TRIGGERS it (R3).**
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
 - **Procurement vertical — GO + IN MOTION: PLAN-0036 (Fastenal, Stage 1) drafted + merged Draft (#412, `7a7c036`):** **GO** — Cray greenlit the 4th vertical (Procurement) and **PLAN-0036 (Fastenal procurement vertical, Stage 1) is drafted + merged Draft** (#412, head_commit `7a7c036`; Cowork-D1 + Code-R2 + committed D2, session 75). **Cray adjudicated SD-1…SD-5 = confirm-all** (2026-06-24, as-recommended). **Demo target = Fastenal Thailand** — automotive/auto-parts in the EEC; **hero** = asset-failure → governed emergency sourcing, **calm-path** = low-stock reorder. Stage 1 = a **PLAN-only, no-ADR pure-config plugin** on the shipped ADR-016 engine, **zero `services/` core edit** (CQ-1 confirmed, ADR-0023); the **SD-4 catch** = `services/engine/procedures/spec.py` `Step = ConfigDict(extra="forbid")` → Stage-1 facet annotations are **comment-only** (a first-class `facet` field = a Stage-2 ADR-016 amendment). It is the **proving ground** for the ultimate **3-phase generative-procedure platform** (generate / run / monitor); per Rule-of-Three it builds **no generic generator** (hand-author → extract schema Stage 2 → generator Stage 3). **NEXT = a new session flips PLAN-0036 Draft → Ready for execution (SDs confirm-all) then executes Stage 1.** *Supporting de-risk dossier (Cowork, session 72, 2026-06-22, `docs/research/private/`)* — **(1)** `2026-06-22-procurement-spec-expressiveness-probe.md` (procurement is **config-layer**, **0 new core amendments**; only engine pulls are the already-deferred ADR-016 Phase 2 / Phase 4+ items); **(2)** `2026-06-22-procurement-gtm-commercial-validation.md` (wedge = ops-triggered asset-aware procurement; econ buyer = CFO/Controller, champion = ops/procurement mgr; metric = **cycle-time**; ~$40K–150K/yr; 6-wk paid pilot); **(3)** `2026-06-22-procurement-asset-aware-incumbent-scan.md` (de-risk #1 — EAM/CMMS = nearest incumbent on the *trigger* only; white space = the **triple intersection** asset-trigger × governed sourcing × cross-vertical); **(4)** `2026-06-22-ai-sourcing-competitor-teardown.md` (de-risk #2 — Verusen/Keelvar/Fairmarkit/Arkestro/… triple intersection unoccupied; defensibility on **axis (a) asset-event trigger**; watchlist: **Verusen #1**, Fairmarkit, Coupa); **(5)** `2026-06-22-platform-incumbent-deepdive.md` (de-risk #3 — Palantir/Maximo/GE Vernova/SAP = capability-yes / product-no; moat = **packaging × ICP × price** = the **"Palantir-lite"** thesis, ADR-005, **governed ≠ generated**). **Pitch:** lead with asset-ontology-triggered governed sourcing + the native ontology (ADR-008) + engine (ADR-016) combination — **NOT** "governed"/"cross-vertical" (now commoditized claims).
 - **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (PLAN-001 line 9 forward-reference); ADR-005 was reused for the strategic pivot, so the Postgres-image ADR needs a fresh number (**≥ ADR-014** — ADR-011 earmarked for the audit framework, ADR-012 taken by Cowork second free-form tier, ADR-013 taken by autonomy axis relocation; floor bumped 2026-05-23 per ADR-013 §Consequences/Neutral + T6).

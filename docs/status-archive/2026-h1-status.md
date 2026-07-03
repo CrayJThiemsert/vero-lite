@@ -2040,3 +2040,56 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 > the rehearsal-enriched backlog. **Standing:** `loop-dispatcher` stays
 > **DISABLED**; MS-S1 cold (nothing touched it); AI-assisted (Claude Code,
 > session 94), no `Co-Authored-By` per CLAUDE.md §7.
+
+### Current-Focus block — Session 94 cont. (head_commit `255627b`) — ADR-0020 D4 post-run-1 review [rotated 2026-07-03, session-94 CLOSE reconcile; R1 64 KB ceiling]
+
+> **Session 94 cont., 2026-07-02 (head_commit `eb63692` → `255627b` — #516
+> `docs(conventions):` is SUBSTANTIVE per lint policy, merge `cb161a4`) —
+> ADR-0020 D4 POST-RUN-1 REVIEW COMPLETE — verdict: CONTINUE WITH ADJUSTMENTS
+> (Cray-ratified, explicit AskUserQuestion pick); 4-lens specialist panel: all
+> R-PS triggers NOT-FIRED; C-1..C-3 confirmed; adjustment (i) landed as
+> #516.** D4 executed via a 4-lens adversarial (refute-not-bless) specialist
+> subagent panel — R-PS1 circularity skeptic / R-PS2 provenance auditor /
+> R-PS3 messiness-value judge / domain-realism; findings attributed as agent
+> findings, load-bearing instruction quotes code-verified before acting.
+> **Verdicts:** R-PS1 NOT-FIRED (HIGH on the trigger; broader R1 assurance
+> capped MEDIUM by the input-hygiene finding) · R-PS2 NOT-FIRED (VERY HIGH,
+> 6/6 provenance checks clean) · R-PS3 NOT-FIRED (HIGH ~0.9) · domain realism
+> SOUND-WITH-CAVEATS (กกพ. quarterly premise web-verified; worker-committee
+> 30-d gate down-weighted to partner-conditional — LPA s.96 remit is welfare,
+> not monitoring approval; role-level-audit mode retained on independent PDPA
+> grounds). **Key panel finding (the material one):** the RATIFIED inputs
+> themselves leaked vendor vocabulary — instruction §4.2(4) carried
+> "over-threshold (breach), watch/near-threshold, and normal" (2/3 of our
+> band labels) and §5 carried "restart / isolate / dispatch a technician"
+> (3/4 of the action enum). The run-1 "WATCH = organic SCADA term" narration
+> is REFUTED (reclassified `was an error`); the S-2 PASS itself stands
+> `confirmed — prior intact` on amended grounds (uptake from a ratified input
+> ≠ the R-PS1 breach vector; every one-pager fingerprint affirmatively absent
+> — the persona declined "restart" for the organic "reclose"). **C-1..C-3
+> input-state deviation: CONFIRMED by Cray** (Desktop check: no connected
+> folders / current canonical instructions / no project-knowledge files) —
+> the run-1 record is fully closed. **No trigger fired → ADR-0020 unchanged.
+> Adjustments:** (i) instruction band-labels + action-menus stripped = **#516
+> landed** (Cray must RE-PASTE the updated canonical into the partner-sim
+> project UI before any run 2 — repo-canonical / UI-derived); (ii) an
+> R1-stripped PDPA-checklist paste-variant created (gitignored:
+> `docs/research/private/2026-07-02-pdpa-checklist-partnersim-paste-variant.md`
+> — the ONLY PDPA doc cleared for future partner-sim pastes); (iii)
+> run-2-time: fresh project per SD-2 + an unannotated bulk sample at a
+> realistic historian rate + a persona-brief fix (drop the implausible
+> municipal-service claim / model the customer-PII surface). **Record
+> hygiene:** the D4 addendum (panel verdicts + record corrections — the "0
+> hits" input-screen claim corrected to ~8 benign PDPA-sense "breach" tokens;
+> the reclose §5 misattribution; R-PS3 strict count 4+2 ≥ N=3) appended
+> APPEND-ONLY to the run-1 receive checklist (gitignored). **New value
+> surfaced by the panel:** an unannotated authority violation sits in the
+> run-1 package (หัวหน้ากะ reclose-1 on F-07, reserved to วิศวกรเวร+) = a
+> ready-made audit-detection test-case fixture; 10 domain blind-spot classes
+> listed for run 2 / the real intake form (relay-event reconciliation,
+> PEA/EGAT interchange metering, topology drift, customer PII, Thai encoding,
+> …). **NEXT (Cray-owned):** the standing pick — (b) the Q4 generic query
+> executor PLAN, or the rehearsal-enriched backlog; run-2 preconditions
+> recorded, run 2 itself stays unscheduled. **Standing:** `loop-dispatcher`
+> stays **DISABLED**; MS-S1 cold (nothing touched it); AI-assisted (Claude
+> Code, session 94), no `Co-Authored-By` per CLAUDE.md §7.
