@@ -1,10 +1,23 @@
 # PLAN-0047: Pre-pilot hardening — authn + run/gate endpoints, gate state machine, append-only audit + config pinning, CI
 
-**Status:** Draft
+**Status:** Ready for execution
 **Owner:** Claude Code
 **Created:** 2026-07-03
 **Related ADRs:** ADR-0026 (principal identity + run-time SoD), ADR-016 (procedure engine), ADR-0025 (AT-2 typed governance) — this plan implements **enforcement/hardening on the shipped constructs and amends none of them**; if any step turns out to require an ADR amendment, execution stops and the question is surfaced to Cray.
 **Related plans:** PLAN-0044 (A1b run enforcement + executors — done).
+
+> **Ratification status.** Cray ratified all four §Surfaced Decisions
+> as-recommended on 2026-07-03, in-session (Claude Code session 95)
+> immediately after merging PR #522 ("merge #522 แล้ว / SD-1..4 approve
+> ตาม recommended"): SD-1 = (a) static per-person API keys; SD-2 =
+> defer reactive-loop durable persistence (identity binding on its
+> existing endpoints stays in scope per AC-1); SD-3 = yes — minimal
+> append-only audit slice now (full framework stays ADR-011, gated on
+> real partner data); SD-4 = yes — CI includes the DB-backed tests.
+> Status flipped Draft → Ready for execution at the same time;
+> execution proceeds per ADR-009 D2 (Code commits, feature branches
+> per step). This ratification fold was also authored by the
+> in-harness `plan-drafter` (session 95) and R2'd by Code.
 
 > **Drafting provenance (ADR-012 D4.3):** Drafted by the in-harness `plan-drafter`
 > subagent under ADR-013 D1 phased authority, from the session-95 dispatch payload
@@ -139,9 +152,10 @@ live runs required). Each AC names its pre-committed pass/fail read.
   would amend them stops and surfaces the question.
 - ❌ **New verticals, ontology changes, UI work, live-model runs.**
 
-## Surfaced Decisions (Cray adjudicates before the affected step starts)
+## Surfaced Decisions (all four RATIFIED by Cray 2026-07-03 — as recommended; see blockquote above)
 
-- **SD-1 — Pilot authn mechanism (blocks Step 1).** Options: (a) **static
+- **SD-1 — Pilot authn mechanism (blocks Step 1).** **RATIFIED
+  2026-07-03 = (a).** Options: (a) **static
   per-person API keys** — hashed keys in server config/env mapped to `person_id`,
   sent as `Authorization: Bearer`; (b) signed session token (login endpoint +
   HMAC/JWT); (c) reverse-proxy header trust (proxy authenticates, app trusts a
@@ -151,18 +165,19 @@ live runs required). Each AC names its pre-committed pass/fail read.
   UX + token-expiry machinery the pilot doesn't need yet; (c) makes authn invisible
   to tests and couples correctness to deployment topology.
 - **SD-2 — Reactive-loop (ADR-007) durable persistence in this plan?**
-  **Recommendation: defer** — the procedure path is the pilot-critical one; the
+  **RATIFIED 2026-07-03 = defer.** **Recommendation: defer** — the procedure path is the pilot-critical one; the
   reactive loop gets identity binding on its endpoints now (AC-1) and durable
   persistence in a follow-up. Alternative: fold it in (adds a store rework + a
   fuller projection mid-sprint).
 - **SD-3 — Minimal append-only audit now, without authoring ADR-011 first?**
-  **Recommendation: yes, minimal** — ship an append-only audit table + restricted
+  **RATIFIED 2026-07-03 = yes, minimal.** **Recommendation: yes, minimal** — ship an append-only audit table + restricted
   DB role (INSERT-only via REVOKE and/or a block-UPDATE/DELETE trigger) + a
   per-row hash chain, as migration DDL; the full audit *framework* (retention,
   export, external anchoring, PDPA surface) stays ADR-011, gated on real partner
   data. Alternative: author ADR-011 first (correct layering, but blocks a ratified
   pilot blocker on a document that needs partner input we don't have).
-- **SD-4 — Do CI runs include the DB-backed tests?** **Recommendation: yes** — add
+- **SD-4 — Do CI runs include the DB-backed tests?** **RATIFIED
+  2026-07-03 = yes.** **Recommendation: yes** — add
   a `postgres:16-alpine` service container to the workflow and set
   `TEST_DATABASE_URL` at the disposable test DB; AC-6/AC-7 assertions are
   DB-behavioral, so an offline-only CI would not guard exactly the properties this
@@ -175,7 +190,7 @@ Ordering: B (Steps 3–4) is engine-internal and unblocks nothing; A (Steps 1–
 exposes it; C (Steps 5–6) adds the audit/pinning layer; D (Step 7) can land first
 or in parallel — landing CI early is preferred so later steps merge under it.
 
-### Step 1: Authn dependency + identity on existing endpoints *(blocked on SD-1)*
+### Step 1: Authn dependency + identity on existing endpoints *(SD-1 ratified = (a) static per-person API keys)*
 
 Add a FastAPI dependency (e.g. `services/api/auth.py::get_current_principal`) that
 authenticates the request per the SD-1 mechanism and resolves the subject to a
@@ -235,7 +250,7 @@ real outbox slots into later). Library callers (tests,
 `verticals/procurement/hero_demo/run.py`) keep working via the wrapper.
 *Pre-committed pass/fail read:* AC-6 DB-backed crash-injection test green.
 
-### Step 5: Append-only audit role + hash chain *(blocked on SD-3)*
+### Step 5: Append-only audit role + hash chain *(SD-3 ratified = yes, minimal slice)*
 
 Migration `0006`: create the append-only audit surface — an `audit_log` table
 (actor `person_id`, action, run/step refs, payload, `prev_hash`, `row_hash`,
@@ -262,7 +277,7 @@ re-run (no silent override).
 *Pre-committed pass/fail read:* AC-8 test green (edit-between-suspend-and-resume
 refused; clean config resumes).
 
-### Step 7: CI workflow *(scope gated on SD-4; can land first)*
+### Step 7: CI workflow *(SD-4 ratified = DB-backed tests included; can land first)*
 
 Add `.github/workflows/ci.yml`: on `pull_request` — checkout, `uv sync --extra dev`,
 `ruff check`, `mypy --strict services/`, pytest. Per SD-4 recommendation: include a
