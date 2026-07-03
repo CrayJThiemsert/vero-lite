@@ -23,10 +23,10 @@ a later step.
 from __future__ import annotations
 
 import time
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
 from services.engine.ontology_meta import load_ontology_meta
 from services.engine.procedures.draft import (
@@ -193,6 +193,31 @@ def has_read_bindings(procedure: Procedure) -> bool:
     )
 
 
+ReadBoundViolation = Literal["unknown_object_type", "outside_allowlist"]
+"""The two ways a declared read can violate the ADR-016 Q3 ontology/allowlist bound."""
+
+
+def read_bound_violation(
+    object_type: str,
+    object_type_names: frozenset[str],
+    allowed_object_types: Sequence[str],
+) -> ReadBoundViolation | None:
+    """Classify ONE declared object_type against the ADR-016 Q3 read bound, or ``None`` if it holds.
+
+    THE single shared bound predicate (PLAN-0048 AC-3 — one bound, zero drift):
+    the load gate (:func:`validate_read_bindings`) and the Q4 compile seam
+    (``query_step.plan_read``) both route here, so load-time acceptance and
+    run-time dispatch can never diverge on what "in ontology ∩ allowlist"
+    means. Empty ``allowed_object_types`` = UNCONSTRAINED (OQ-6, mirrors
+    ``step_kinds``). Pure; no I/O.
+    """
+    if object_type not in object_type_names:
+        return "unknown_object_type"
+    if allowed_object_types and object_type not in allowed_object_types:
+        return "outside_allowlist"
+    return None
+
+
 def validate_read_bindings(
     procedure: Procedure, agent: Agent, object_type_names: frozenset[str]
 ) -> None:
@@ -217,12 +242,13 @@ def validate_read_bindings(
         if step.kind is not StepKind.QUERY or step.input is None or not step.input.reads:
             continue
         for object_type in step.input.reads:
-            if object_type not in object_type_names:
+            violation = read_bound_violation(object_type, object_type_names, allowed_object_types)
+            if violation == "unknown_object_type":
                 raise ProcedureError(
                     f"step '{step.step_id}': reads object_type '{object_type}' does not "
                     f"exist in the vertical's ontology (ADR-016 Q3 load-gate)"
                 )
-            if allowed_object_types and object_type not in allowed_object_types:
+            if violation == "outside_allowlist":
                 raise ProcedureError(
                     f"step '{step.step_id}': reads object_type '{object_type}' is outside "
                     f"agent '{agent.agent_id}' allowed.object_types {allowed_object_types}"
