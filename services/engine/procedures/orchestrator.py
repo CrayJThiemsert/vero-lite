@@ -392,10 +392,16 @@ def _check_no_auto_downstream_of_gate(procedure: Procedure) -> None:
             )
 
 
-def _matches(entity: Any, where: Mapping[str, Any]) -> bool:
+def matches_where(entity: Any, where: Mapping[str, Any]) -> bool:
     """True iff ``entity`` is a mapping with ``entity[field] == value`` for EVERY
     pair in ``where`` (the field-equality fan-out filter). A non-mapping entity
-    has no fields, so it never matches."""
+    has no fields, so it never matches.
+
+    THE single ``where`` predicate (PLAN-0048 LOCKED-3): the orchestrator's
+    bag-resolved input narrowing (:func:`_resolve_input`) and the Q4 executor's
+    post-fetch narrowing (``query_step.QueryStepExecutor``) both route here, so
+    the spec's ``where`` semantics cannot drift between the two surfaces.
+    """
     if not isinstance(entity, Mapping):
         return False
     return all(entity.get(field) == value for field, value in where.items())
@@ -420,8 +426,31 @@ def _resolve_input(
     else:
         base = []
     if spec_input is not None and spec_input.where:
-        base = [entity for entity in base if _matches(entity, spec_input.where)]
+        base = [entity for entity in base if matches_where(entity, spec_input.where)]
     return base
+
+
+def _failure_trace_entry(exc: Exception) -> dict[str, Any]:
+    """The D4 fail-and-divert trace entry for a raising step.
+
+    A ``ReadRefusal`` (PLAN-0048 AC-8) lands as a STRUCTURED ``read_refused``
+    entry carrying ``refusal_kind`` / ``object_type`` / ``step_id`` fields, so
+    persisted records and audit rows can name the refusal without parsing
+    prose; EVERY other exception keeps the byte-identical legacy ``error``
+    entry. The import is local: ``query_step`` imports this module (the
+    executor precedent), so a module-level import here would cycle.
+    """
+    from services.engine.procedures.query_step import ReadRefusal
+
+    if isinstance(exc, ReadRefusal):
+        return {
+            "kind": "read_refused",
+            "summary": f"{type(exc).__name__}: {exc}",
+            "refusal_kind": exc.refusal_kind.value,
+            "step_id": exc.step_id,
+            "object_type": exc.object_type,
+        }
+    return {"kind": "error", "summary": f"{type(exc).__name__}: {exc}"}
 
 
 def _make_step_result(
@@ -613,7 +642,7 @@ async def execute_steps(
                     started_at,
                     duration_ms,
                     artifact=None,
-                    reasoning_trace=[{"kind": "error", "summary": f"{type(exc).__name__}: {exc}"}],
+                    reasoning_trace=[_failure_trace_entry(exc)],
                     audit=engine_audit,
                 )
             )

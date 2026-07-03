@@ -35,7 +35,13 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from services.engine.procedures.orchestrator import read_bound_violation
+from services.engine.data_adapter import DataAdapter
+from services.engine.procedures.orchestrator import (
+    RunContext,
+    StepOutcome,
+    matches_where,
+    read_bound_violation,
+)
 from services.engine.procedures.spec import Agent, Step, StepKind
 
 
@@ -175,3 +181,77 @@ def readable_object_types(agent: Agent, object_type_names: frozenset[str]) -> fr
     if not allowed:
         return object_type_names
     return object_type_names & frozenset(allowed)
+
+
+@dataclass(frozen=True)
+class QueryStepExecutor:
+    """The generic, deterministic ``query`` StepExecutor — the execute half
+    (PLAN-0048 Step 2; AC-4..AC-7).
+
+    Constructor-injected (the PLAN-0046 SD-1 purity rationale; the
+    ``ActionStepExecutor(client_factory=...)`` shape): the composing factory
+    supplies ``registry.get_adapter(vertical)`` and the vertical's ontology
+    object-type names — the executor itself performs no registry or filesystem
+    I/O. Per execution it makes **exactly ONE** ``fetch_objects`` dispatch
+    (D-N2 — the bound is a tested property, and an adapter raise propagates to
+    D4 fail-and-divert with no re-fetch); ``where`` narrows the FETCHED set
+    engine-side via the shared :func:`orchestrator.matches_where` predicate
+    (LOCKED-3 — the adapter's ``filter_expr`` is never used). A reads-absent
+    step that threads ``from`` a prior step is the SD-1 identity pass-through
+    (no dispatch); every other shape compiles-or-refuses via
+    :func:`plan_read`, which raises BEFORE any dispatch.
+    """
+
+    adapter: DataAdapter
+    object_type_names: frozenset[str]
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        """Run the step's declared read (or the SD-1 pass-through), or refuse typed."""
+        step_input = step.input
+        if (
+            (step_input is None or not step_input.reads)
+            and step_input is not None
+            and step_input.from_step is not None
+        ):
+            trace: list[dict[str, Any]] = [
+                {
+                    "kind": "read_passthrough",
+                    "summary": (
+                        f"step '{step.step_id}': no declared read; passing through "
+                        f"{len(input_set)} entities threaded from '{step_input.from_step}' (SD-1)"
+                    ),
+                }
+            ]
+            audit: dict[str, Any] = {
+                "actor": ctx.agent.agent_id,
+                "actor_kind": "engine",
+                "deterministic": True,
+                "passthrough": True,
+            }
+            return StepOutcome(output=list(input_set), reasoning_trace=trace, audit=audit)
+        plan = plan_read(step, ctx.agent, self.object_type_names)
+        fetched = await self.adapter.fetch_objects(plan.object_type)
+        output = (
+            [entity for entity in fetched if matches_where(entity, plan.where)]
+            if plan.where
+            else list(fetched)
+        )
+        provenance: list[dict[str, Any]] = [
+            {
+                "kind": "read_provenance",
+                "summary": (
+                    f"read '{plan.object_type}': fetched {len(fetched)}, "
+                    f"{len(output)} after where"
+                ),
+                "object_type": plan.object_type,
+                "fetched_count": len(fetched),
+                "post_where_count": len(output),
+            }
+        ]
+        read_audit: dict[str, Any] = {
+            "actor": ctx.agent.agent_id,
+            "actor_kind": "engine",
+            "deterministic": True,
+            "object_type": plan.object_type,
+        }
+        return StepOutcome(output=output, reasoning_trace=provenance, audit=read_audit)
