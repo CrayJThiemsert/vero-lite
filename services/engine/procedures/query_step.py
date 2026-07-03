@@ -19,8 +19,19 @@ Deterministic throughout — **no LLM anywhere in the read path** (LOCKED-6,
 governed ≠ generated): this module is the deterministic-disposer half of the
 CaMeL-shaped "LLM proposes, deterministic policy engine disposes" architecture.
 v1 executes SINGLE declared reads only (SD-1, ratified 2026-07-04): multi-read
-joins and projections stay with the hand-written per-vertical seeds until a
-join grammar is ratified (an ADR-016 amendment, out of scope here).
+joins and projections stay with the hand-written per-vertical seeds —
+deprecate-in-place, never migrated (SD-3; e.g. the procurement hero-demo
+``_SeedQuery`` 3-type join) — until a join grammar is ratified (an ADR-016
+amendment, out of scope here).
+
+**Future repair-loop contract (D-N2 — documented, deliberately NOT built).**
+v1 has no execute-validate-retry loop: exactly one dispatch, ever. If one is
+ever added it MUST (1) carry a FIXED maximum attempt count, (2) keep every
+attempt inside ``reads ∩ Agent.allowed.object_types`` — the same shared bound,
+re-checked per attempt, and (3) stay fully deterministic — no LLM proposes a
+reshaped read or ``where`` (LOCKED-6). Adding such a loop is a NEW PLAN; the
+llm-db reliability brief's "bounded execute-validate-retry inside the existing
+allowlist" finding (gitignored, 2026-07-03) is its authorizing context.
 
 The ontology/allowlist bound is THE shared predicate
 :func:`services.engine.procedures.orchestrator.read_bound_violation` — the same
