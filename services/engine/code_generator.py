@@ -550,6 +550,35 @@ def emit_orm(doc: dict[str, Any], output_path: Path) -> Path:
 CONTEXT_PACK_CHAR_BUDGET = 32_000
 
 
+def _synonyms_phrase(syn_def: Any) -> str:
+    """Render a ``{th, en}`` synonyms mapping as ``th: a, b; en: c, d`` (empty if none)."""
+    if not isinstance(syn_def, dict):
+        return ""
+    bits: list[str] = []
+    for lang in ("th", "en"):
+        vals = syn_def.get(lang)
+        if isinstance(vals, list) and vals:
+            bits.append(f"{lang}: {', '.join(str(v) for v in vals)}")
+    return "; ".join(bits)
+
+
+def _doc_has_enrichment(doc: dict[str, Any]) -> bool:
+    """True if any object/property carries an ADR-0027 enrichment construct — drives
+    the conditional degrade note (which fires only when the ontology declares none)."""
+    for obj_def in (doc.get("object_types") or {}).values():
+        obj = obj_def or {}
+        if obj.get("synonyms") or obj.get("verified_queries"):
+            return True
+        for prop_def in (obj.get("properties") or {}).values():
+            prop = prop_def or {}
+            if prop.get("synonyms") or prop.get("sample_values"):
+                return True
+        for binding in obj.get("quantity_bindings") or []:
+            if isinstance(binding, dict) and (binding.get("grain") or binding.get("join_path")):
+                return True
+    return False
+
+
 def _context_pack_property_line(prop_name: str, prop_def: dict[str, Any]) -> str:
     parts = [f"- `{prop_name}` ({prop_def.get('type', 'string')})"]
     if prop_def.get("type") == "enum":
@@ -562,11 +591,32 @@ def _context_pack_property_line(prop_name: str, prop_def: dict[str, Any]) -> str
     desc = prop_def.get("description")
     if desc:
         parts.append(f" — {' '.join(str(desc).split())}")
+    syn = _synonyms_phrase(prop_def.get("synonyms"))
+    if syn:
+        parts.append(f" — aka {syn}")
+    samples = prop_def.get("sample_values")
+    if isinstance(samples, list) and samples:
+        parts.append(f" — sample values: {{{', '.join(str(v) for v in samples)}}}")
     return "".join(parts)
 
 
+def _context_pack_verified_query_lines(obj: dict[str, Any]) -> list[str]:
+    """Render an object's ADR-0027 ``verified_queries`` as Q/A lines (empty if none)."""
+    queries = obj.get("verified_queries")
+    if not isinstance(queries, list) or not queries:
+        return []
+    lines = ["Verified queries:"]
+    for query in queries:
+        if isinstance(query, dict):
+            question = str(query.get("question", "")).strip()
+            answer = str(query.get("answer", "")).strip()
+            lines.append(f"- Q: {question} -> A: {answer}")
+    return lines
+
+
 def _context_pack_object_lines(object_types: dict[str, Any]) -> list[str]:
-    """The ``## Object types`` body — one block per type (heading + meta + props)."""
+    """The ``## Object types`` body — one block per type (heading + meta + ADR-0027
+    synonyms + props + verified queries)."""
     lines: list[str] = []
     for obj_name, obj_def in object_types.items():
         obj = obj_def or {}
@@ -583,8 +633,12 @@ def _context_pack_object_lines(object_types: dict[str, Any]) -> list[str]:
             meta_bits.append(f"title `{obj['title_key']}`")
         if meta_bits:
             lines.append(f"{'; '.join(meta_bits).capitalize()}.")
+        obj_syn = _synonyms_phrase(obj.get("synonyms"))
+        if obj_syn:
+            lines.append(f"Synonyms — {obj_syn}.")
         for prop_name, prop_def in (obj.get("properties") or {}).items():
             lines.append(_context_pack_property_line(prop_name, prop_def or {}))
+        lines.extend(_context_pack_verified_query_lines(obj))
     return lines
 
 
@@ -593,9 +647,19 @@ def _context_pack_measure_lines(object_types: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     for obj_name, obj_def in object_types.items():
         bindings = (obj_def or {}).get("quantity_bindings") or []
-        if bindings:
-            pairs = ", ".join(f"{b.get('kind')}→{b.get('unit')}" for b in bindings)
-            lines.append(f"- {obj_name}: {pairs} (one unit per kind, ADR-0021)")
+        if not bindings:
+            continue
+        rendered: list[str] = []
+        for binding in bindings:
+            if not isinstance(binding, dict):
+                continue
+            piece = f"{binding.get('kind')}→{binding.get('unit')}"
+            if binding.get("grain"):
+                piece += f" @{binding['grain']}"
+            if binding.get("join_path"):
+                piece += f" via {binding['join_path']}"
+            rendered.append(piece)
+        lines.append(f"- {obj_name}: {', '.join(rendered)} (one unit per kind, ADR-0021)")
     return lines
 
 
@@ -645,12 +709,18 @@ def emit_context_pack(doc: dict[str, Any], output_path: Path) -> Path:
 
     lines.append("")
     lines.append("## Notes")
-    lines.append(
-        "- Semantic enrichment (synonyms th/en, sample values, verified queries) is "
-        "not yet populated — pending the R2 meta-schema follow-up (a carved-out "
-        "ADR-008 amendment); this pack degrades to the structural + measure content "
-        "available today."
-    )
+    if _doc_has_enrichment(doc):
+        lines.append(
+            "- Semantic enrichment (synonyms th/en, sample values, verified queries, "
+            "metric grain) is populated inline above where the ontology declares it "
+            "(ADR-0027 R2)."
+        )
+    else:
+        lines.append(
+            "- Semantic enrichment (synonyms th/en, sample values, verified queries) is "
+            "not yet populated — this ontology declares none of the ADR-0027 R2 fields; "
+            "the pack degrades to the structural + measure content available today."
+        )
 
     body = "\n".join(lines).rstrip() + "\n"
     output_path.parent.mkdir(parents=True, exist_ok=True)
