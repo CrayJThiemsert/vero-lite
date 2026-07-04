@@ -119,6 +119,35 @@ def classification_schema() -> dict[str, Any]:
     return schema
 
 
+def classification_schema_reasoning_first() -> dict[str, Any]:
+    """PLAN-0051 field-order-flip A/B arm (experimental) — the SAME closed-enum classification
+    schema, but with the advisory ``rationale`` reasoning field emitted FIRST, before the
+    ``archetype_id`` decision field. This is the research brief's within-schema variant
+    (`docs/research/private/2026-07-03-llm-db-reliability-techniques.md`, finding #2): strict
+    constrained decoding degrades reasoning "especially when answer fields precede reasoning
+    fields", so this arm reorders the schema so the model reasons before it commits.
+
+    ``rationale`` and ``archetype_id`` are both marked required so constrained generation must
+    emit non-empty reasoning BEFORE the closed-enum label. ``archetype_id`` stays pinned to
+    :data:`ARCHETYPE_CHOICES` (classify-don't-synthesize) — the decision surface, the parsed
+    :class:`Classification`, and the downstream abstain-guard/route are byte-identical to
+    :func:`classification_schema`; ONLY the model's emission order differs. The shipped path
+    uses :func:`classification_schema`; only the A/B harness selects this variant."""
+    # base schema + the archetype_id enum pin — the decision surface is identical to baseline
+    schema = classification_schema()
+    props = schema["properties"]
+    # rationale first, then the decision + the remaining properties (definitions unchanged)
+    schema["properties"] = {
+        "rationale": props["rationale"],
+        "archetype_id": props["archetype_id"],
+        "step_gates": props["step_gates"],
+        "confidence": props["confidence"],
+    }
+    # force the model to actually emit the reasoning before the decision (both required)
+    schema["required"] = ["rationale", "archetype_id"]
+    return schema
+
+
 def prose_schema() -> dict[str, Any]:
     """The JSON Schema handed to Ollama ``format`` for S5 (advisory prose only)."""
     return ProseResponse.model_json_schema()

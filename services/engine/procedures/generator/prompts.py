@@ -89,6 +89,77 @@ def build_classify_messages(
     ]
 
 
+def build_classify_reasoning_messages(
+    narrative: str, *, vertical: str, catalog: list[tuple[str, str, str]]
+) -> list[Message]:
+    """PLAN-0051 two-pass A/B arm — classify call 1 (free-form reasoning; NO ``format``).
+
+    The reason-then-structure first pass: the model reasons IN PROSE about which catalogued
+    archetype fits (or whether to abstain) BEFORE the constrained pick in call 2
+    (:func:`build_classify_structuring_messages`). This call carries no JSON schema, so the
+    Ollama #15260 ``think``+``format`` hazard does not apply — only the call-2 structuring
+    pass sets ``format``, and it omits ``think``. The catalog is trusted config (named in the
+    system instruction); the narrative reaches ONLY the untrusted block. EXPERIMENTAL — the
+    shipped path is the single :func:`build_classify_messages` call."""
+    catalog_lines = "\n".join(
+        f"- {aid}: {title} — {desc}" if desc else f"- {aid}: {title}"
+        for aid, title, desc in catalog
+    )
+    system = (
+        f"You are analysing an operational PROCEDURE NARRATIVE for the '{vertical}' vertical to "
+        "decide which catalogued archetype fits, or whether to abstain. Reason in plain prose "
+        "FIRST — do NOT emit JSON yet.\n\n"
+        f"CATALOG (the only allowed archetype_id values, plus 'abstain'):\n{catalog_lines}\n\n"
+        "Choose 'abstain' when no catalogued archetype fits — including any scoring / rule / "
+        "approval-tier (DOA) shape, which is OUT OF SCOPE for v1 (abstain, never force-fit). "
+        "For each step the gate_kind is 'none' for a read or act step, a band kind only for the "
+        "single judge step; a 'scored_rule', 'rule_gate', or 'doa_tier' shape means abstain.\n\n"
+        f"{_BAND_EXPLAINER}\n\n"
+        f"{_GOVERNANCE_BAR}\n\n{_SECURITY}"
+    )
+    user = (
+        "Reason step by step about which single catalogued archetype best fits the narrative "
+        "below — or whether no catalogued archetype fits (abstain). Weigh the per-step gate "
+        "kinds. Do NOT emit JSON; write only your reasoning.\n\n"
+        f"{render_untrusted_block('procedure narrative', narrative)}"
+    )
+    return [
+        {"role": "system", "content": system},
+        {"role": "user", "content": user},
+    ]
+
+
+def build_classify_structuring_messages(
+    narrative: str,
+    *,
+    vertical: str,
+    catalog: list[tuple[str, str, str]],
+    draft: str,
+) -> list[Message]:
+    """PLAN-0051 two-pass A/B arm — classify call 2 (constrained ``format``; OMITS ``think``).
+
+    Reuses the shipped classify prompt (:func:`build_classify_messages` — same system rules +
+    the untrusted narrative), threads the call-1 reasoning ``draft`` as an assistant turn, then
+    asks for the closed-enum classification — mirroring the recommender's Pattern B
+    ``build_structuring_messages``. The ``draft`` is model-derived, so it is appended with
+    ASSISTANT authority, never as a system/trusted instruction (IN-2 corollary)."""
+    messages: list[Message] = list(
+        build_classify_messages(narrative, vertical=vertical, catalog=catalog)
+    )
+    messages.append({"role": "assistant", "content": draft})
+    messages.append(
+        {
+            "role": "user",
+            "content": (
+                "Now emit the closed-enum classification as JSON — the archetype_id (or "
+                "'abstain'), the per-step gate_kind list, a short rationale, and your confidence "
+                "— consistent with the reasoning above."
+            ),
+        }
+    )
+    return messages
+
+
 def build_prose_messages(
     narrative: str,
     *,

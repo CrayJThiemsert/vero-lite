@@ -38,7 +38,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, TypeVar
+from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel, ValidationError
 
@@ -54,6 +54,8 @@ from services.engine.procedures.draft import (
 )
 from services.engine.procedures.generator.prompts import (
     build_classify_messages,
+    build_classify_reasoning_messages,
+    build_classify_structuring_messages,
     build_prose_messages,
 )
 from services.engine.procedures.generator.schemas import (
@@ -61,6 +63,7 @@ from services.engine.procedures.generator.schemas import (
     Classification,
     ProseResponse,
     classification_schema,
+    classification_schema_reasoning_first,
     prose_schema,
 )
 from services.engine.procedures.prose_lint import Violation, prose_lint
@@ -77,6 +80,22 @@ from services.engine.registry import registry
 
 _BAND_KINDS = (GateKind.ENV_BAND, GateKind.IN_FILE_BAND)
 _AT2_ONLY_KINDS = frozenset({GateKind.SCORED_RULE, GateKind.RULE_GATE, GateKind.DOA_TIER})
+
+ClassifyArm = Literal["baseline", "field_order_flip", "two_pass"]
+"""PLAN-0051 reason-then-structure A/B arm selector for the classify call (EXPERIMENTAL).
+
+* ``baseline`` — the shipped single constrained call (``build_classify_messages`` +
+  ``classification_schema``). **Default — byte-identical to the shipped behaviour.**
+* ``field_order_flip`` — the SAME single call, but the schema emits ``rationale`` (reasoning)
+  BEFORE ``archetype_id`` (decision) — the research brief's within-schema variant.
+* ``two_pass`` — a free-form reasoning call (no ``format``, ``think=True``) BEFORE the
+  constrained call (which OMITS ``think`` — CHECKPOINT-0 / Ollama #15260), mirroring the
+  recommender's Pattern B (:func:`services.engine.llm.structured.generate_judgment`).
+
+Only the A/B harness passes a non-``baseline`` arm; the shipped call sites pass nothing. The
+abstain-gate (:func:`_archetype_disagreement` + the closed-label check) and the closed-enum
+route are byte-identical across all three arms — the arm moves ONLY the classify prompt/schema,
+never the deterministic guard (LOCKED-3)."""
 
 _GOVERNANCE_REASONS = {
     "threshold": "the breach floor/ceiling is a deterministic band a human authors (D3)",
@@ -183,22 +202,45 @@ def _archetype_disagreement(
 
 
 async def classify_narrative(
-    client: ChatClient, *, narrative: str, vertical: str
+    client: ChatClient, *, narrative: str, vertical: str, arm: ClassifyArm = "baseline"
 ) -> ProposedMatch | Abstained:
     """S0-S2: classify the narrative to a catalogued archetype, or abstain.
 
     The route is a deterministic function of the closed-enum LABEL + the per-step
     cross-check (LOCKED-5) — ``classification.confidence`` is advisory and appears in NO
     branch here. Returns a :class:`ProposedMatch` (awaiting human confirm) or an
-    :class:`Abstained`."""
+    :class:`Abstained`.
+
+    ``arm`` (PLAN-0051 reason-then-structure A/B, default ``"baseline"``) selects the classify
+    prompt/schema variant WITHOUT changing the route: ``baseline`` = the shipped single
+    constrained call; ``field_order_flip`` = the same call with a reasoning-first schema;
+    ``two_pass`` = a free-form reasoning call before the constrained call. Everything from the
+    ``_parse`` below down — the abstain-guard + the closed-enum route — is byte-identical across
+    arms (see :data:`ClassifyArm`)."""
     text = _normalize(narrative)
     if not text:
         return Abstained("empty_narrative", "no narrative text to classify — nothing to generate")
     catalog = [(t.archetype_id, t.title, t.description) for t in REGISTRY.values()]
-    messages = build_classify_messages(text, vertical=vertical, catalog=catalog)
-    # classify is a structuring call (format) → omit think (Ollama #15260 contract, ADR-001)
+    schema = (
+        classification_schema_reasoning_first()
+        if arm == "field_order_flip"
+        else classification_schema()
+    )
+    # the classify STRUCTURING call passes `format` → omit think (Ollama #15260 contract,
+    # ADR-001). two_pass runs a free-form reasoning call (no format, think=True) FIRST — the
+    # hazard needs `format`, so it applies only to the constrained call below.
     try:
-        result = await client.chat(messages, response_format=classification_schema())
+        if arm == "two_pass":
+            reasoning = await client.chat(
+                build_classify_reasoning_messages(text, vertical=vertical, catalog=catalog),
+                think=True,
+            )
+            messages = build_classify_structuring_messages(
+                text, vertical=vertical, catalog=catalog, draft=reasoning.content
+            )
+        else:
+            messages = build_classify_messages(text, vertical=vertical, catalog=catalog)
+        result = await client.chat(messages, response_format=schema)
     except OllamaError as exc:
         # a transport failure (most likely a cold/unreachable MS-S1) is NOT retried here —
         # it abstains gracefully, symmetric with the recommender / nl_query fail-safes.
