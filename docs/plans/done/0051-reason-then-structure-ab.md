@@ -1,14 +1,17 @@
 # PLAN-0051: Reason-then-structure A/B — measure the reasoning-order lever on the two single-pass structured-output call sites
 
-**Status:** Ready for execution
+**Status:** Complete
 **Owner:** Claude Code (executes; offline build is Code-solo); `plan-drafter` drafted (ADR-013 D1 phased authority); Cray ratified SD-1..SD-6 as-recommended (2026-07-04)
 **Created:** 2026-07-04
 **Ratified:** 2026-07-04 (Cray — SD-1..SD-6 all as-recommended; Draft → Ready)
+**Completed:** 2026-07-05 (all 6 steps; live A/B ran 2:17:02 on gpt-oss:20b — NO LIFT either site; REJECT both variants, shipped default unchanged)
 **Related ADRs:** ADR-010 (IN-3 confidence-never-routes / determinism invariant; D1 local-backend), ADR-0021 (classify-don't-synthesize; `measured_kind`), ADR-0024 (procedure generator — D4 `gate_kind` cross-check / D7 AT-1-family-only + abstain, the moat guard this PLAN must NOT move; D12 tests-are-the-offline-oracle), ADR-001 (CHECKPOINT-0 / Ollama #15260 caller contract — never `think=False` with `response_format`)
 
 > **No new ADR (recommended — SD-5).** This PLAN adds **experimental levers + labelled corpora + an offline+live A/B harness**. It changes **no grammar**, **no deterministic guard**, and **no shipped production default**. It mirrors PLAN-0041 (a prompt-lever A/B on the SAME classify path) which needed no ADR. If a *future adoption* of two-pass as a cross-site standard is decided, THAT is a separate, possibly ADR-gated decision — explicitly not this PLAN (SD-6). If execution surfaces a reason a deterministic guard or a shipped default *must* change to run the experiment, **STOP and surface it** (that flips to an ADR-gated decision); do not bake it in here.
 
 > **Provenance / author≠reviewer (ADR-012 D4.3).** Originator of the outline = Cray (this session — the scope was Cray-ratified and LOCKED per the dispatch). Drafter = the in-harness `plan-drafter` subagent (ADR-013 D1 phased authority). The research grounding is the July-2026 brief `docs/research/private/2026-07-03-llm-db-reliability-techniques.md` (finding #2 + TOP-REC #1). Independent reviewer = Cray at PR merge, with Code R2-review at commit. Separation: INTACT (the drafter is not the reviewer; the outline originator is not the artifact author).
+
+> **COMPLETION (2026-07-05).** All 6 steps executed. Offline build (Steps 1-4, PRs #566-#569) + the live A/B harness (Step 5a, #570) landed; the Cray-gated live run (Step 5b — host-state §8, full N=3 both sites, **2:17:02** on `gpt-oss:20b`) returned `2 passed`. **Result: NO measurable lift on either site.** Classify (AC-6): baseline at the 11/11 ceiling; field_order_flip +0, two_pass −1; **Arm-B moat brake held 11/11 in every arm/rep** (safety). nl_query (AC-7): worst-rep mean baseline 0.978 vs variants 0.965–0.978; hard-class 0.844 all arms (Δ +0.000). **Recommendation (SD-6): REJECT both `field_order_flip` + `two_pass` on both sites — keep the shipped `baseline`; no production default changed; no new ADR (SD-5).** The arm plumbing + corpora + harness remain behind the `baseline`-default `arm` param as reusable scaffolding for a future model/prompt change. The research "reason-then-structure lifts 10-30%" **did not replicate** — both paths are already strongly prompted and `gpt-oss:20b` extracts structured output well, so the format tax is not biting. **AC status:** AC-1..AC-5 (offline, the binding gate) MET; AC-6/AC-7 (live, confirming evidence) ran + recorded — the measured verdict is no-lift, a valid null result (the experiment measured, it did not assume), not an AC failure. Full record: [`docs/logs/2026-07-05-plan0051-live-ab-results.md`](../../logs/2026-07-05-plan0051-live-ab-results.md).
 
 ---
 
