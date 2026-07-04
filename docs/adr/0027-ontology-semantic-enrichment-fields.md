@@ -2,6 +2,24 @@
 
 **Status:** Accepted (ratified 2026-07-04 — SD-1…SD-7 all confirmed as-recommended; SD-6 follow-up build = PLAN-0050)
 **Date:** 2026-07-04
+
+> **Erratum (2026-07-04, PLAN-0050 Step 7).** During the R2 build, Code read
+> `services/engine/code_generator.py::emit_context_pack` + its 3 helpers
+> (`:536-658`) and captured fresh on-disk evidence: the shipped R1 emitter (PLAN-0049
+> Step 4) does **NOT** read the four enrichment fields
+> (`synonyms`/`sample_values`/`verified_queries`/`grain`). It reads only structural
+> fields (`type`/`values`/`target`/`required`/`description`) + `quantity_bindings`
+> kind→unit, and emits a **hardcoded, unconditional** "## Notes … not yet populated"
+> degrade note — which fires even for the now-fully-enriched energy vertical (the
+> enriched energy context pack carries no Thai synonym / verified query / sample
+> value). So the ADR's original "already reads these fields when present … zero
+> emitter change" forward-reference was **factually incorrect**: R2 requires a
+> **small, localized emitter change** (teach the 3 helpers to render the enrichment
+> + make the degrade note conditional). **Cray's decision (2026-07-04):** amend this
+> ADR to correct the premise (this erratum), then make the small emitter change (a
+> separate follow-up authorized in PLAN-0050 Step 7). The **DESIGN is unchanged** —
+> D1–D4, the four constructs, D2/D3 invariants, and SD-1…SD-7 all stand; only the
+> incorrect emitter forward-reference is corrected. Status stays **Accepted**.
 **Deciders:** Jirachai Thiemsert (founder) — ratifies the surfaced decisions
 **Related:** ADR-008 (YAML ontology specification — D2 grammar, D3 types, D5 generator, D6 validation; **this ADR amends D2/D3**), ADR-0021 (metric-kind typed semantics — the `quantity_bindings` grammar-amendment precedent this mirrors), ADR-0024 (governed ≠ generated — machine drafts, human canonicalizes), ADR-006 (vertical plugin architecture / Rule of Three), ADR-005 (OCT pivot — energy first), PLAN-0049 (the R1 semantic-context-pack + SD-1 carve-out that originated this ADR), `docs/research/private/2026-07-03-semantic-foundation-build-techniques.md` (F4 + F9 + P1/P2 + R2 — the convergent-fields + Thai-moat evidence), ADR-009 D1/D2 (drafter drafts, Code commits), ADR-012 D4.3 (author≠reviewer disclosure)
 
@@ -51,12 +69,18 @@ constructs beyond ADR-008 D2/D3 (per-property data types + object/link structure
 That is the exact shape ADR-0021 handled with a dedicated ADR for `quantity_bindings`.
 This ADR **decides the grammar**; it does **not** build (SD-6).
 
-**Forward-compat (already shipped — cite, don't re-decide).** The R1 emitter
-(`services/engine/code_generator.py::emit_context_pack`, PLAN-0049 Step 4) already
-reads these fields *when present* and omits their sections *when absent* — the
-documented R2 DEGRADE PATH (code_generator.py :539–544, :649). So the moment R2's build
-lands, R1 gains the enrichment **with no emitter change**. This ADR records that clean
-forward-reference; it does not alter the emitter.
+**Forward-compat (small emitter change required — corrected by the 2026-07-04
+erratum).** The shipped R1 emitter
+(`services/engine/code_generator.py::emit_context_pack` + its 3 helpers, PLAN-0049
+Step 4) carries a **hardcoded, unconditional** "## Notes … not yet populated"
+degrade note but does **NOT** read the four enrichment fields — it reads only
+structural fields + `quantity_bindings` kind→unit (verified 2026-07-04,
+`:536-658`). So when R2's build lands, R1 does **not** gain the enrichment for free:
+R2 requires a **small, localized emitter change** — the 3 helpers
+(`_context_pack_property_line`, `_context_pack_object_lines`,
+`_context_pack_measure_lines`) gain enrichment rendering and the degrade note
+becomes **conditional** (fires only when the fields are absent). This is a bounded
+follow-up (PLAN-0050 Step 7), not a design change; D1–D5 are unaffected.
 
 ## Decision
 
@@ -111,8 +135,9 @@ Like ADR-0021 D4: this ADR decides the model (D1–D4). The **build is a follow-
 (SD-6) that will amend L1 (`ontology_schema.json`) + the Pydantic projection
 (`ontology_meta.py`: new optional attrs on `PropertyMeta` / `ObjectTypeMeta`, mirroring
 `QuantityBinding`) + the L2 validator, and backfill the v1 verticals (energy-v1 +
-supply-chain-v1 — the natural batch boundary per research R2). The R1 emitter consumes
-it for free (forward-reference above).
+supply-chain-v1 — the natural batch boundary per research R2). The R1 emitter requires
+a small, localized change to render the enrichment (forward-reference above, as
+corrected by the 2026-07-04 erratum) — not a free consume.
 
 ## Consequences
 
@@ -123,8 +148,10 @@ it for free (forward-reference above).
   queries. Best-evidenced 2026 intervention (F1, +17–23pp).
 - **Thai alias coverage becomes a first-class authored artifact** — a moat no benchmark
   or vendor covers (F9).
-- **R1 gains enrichment the moment R2 lands, with zero emitter change** — the
-  forward-reference is already shipped and tested (degrade path).
+- **R1 gains enrichment via a small, localized emitter change** — the shipped emitter
+  carried a hardcoded degrade note but did not read the fields; the 3 helpers gain
+  enrichment rendering + the note becomes conditional (corrected by the 2026-07-04
+  Step-7 erratum; the design is unchanged, the cost is bounded).
 - **`sample_values`-as-closed-set aligns with the closed-enum philosophy** (F4) and the
   emitter's existing "CLOSED — refuse, do not guess" framing.
 - The **governed ≠ generated rule (D3)** pre-wires the safe adoption path for the R3
@@ -234,8 +261,10 @@ Each SD carried a recommendation. **Ratified 2026-07-04: SD-1 … SD-7 all confi
   (L1), `services/engine/ontology_meta.py` (`PropertyMeta` / `ObjectTypeMeta` optional
   attrs, mirroring `QuantityBinding`), `services/engine/ontology_validator.py`
   (`_check_*` mirroring `_check_quantity_bindings`), and the v1 vertical backfill.
-  `services/engine/code_generator.py::emit_context_pack` consumes them **for free**
-  (the shipped R2 degrade path, :539–544).
+  `services/engine/code_generator.py::emit_context_pack` (the emitter + its 3 helpers,
+  `:536-658`) **must be extended to render them** — the shipped emitter carried a
+  hardcoded "not yet populated" degrade note only and did not read the fields
+  (corrected by the 2026-07-04 Step-7 erratum).
 - CLAUDE.md §1 (semantic layer = the moat; Rule of Three), §8 (ADR Accepted before
   impl PR). ADR-009 D1/D2 (drafter drafts, Code commits), ADR-012 D4.3 (author≠reviewer
   disclosure), ADR-013 D1 (plan-drafter phased authority).
