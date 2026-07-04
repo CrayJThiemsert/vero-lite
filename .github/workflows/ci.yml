@@ -60,6 +60,16 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://vero:vero@localhost:5432/vero_lite # pragma: allowlist secret
         run: uv run --no-sync alembic upgrade head
 
+      # PLAN-0049 Step 5 (SD-5): the migration<->ORM lockstep guard. After
+      # `upgrade head`, `alembic check` autogenerates against the migrated DB and
+      # FAILS if the generated ORM has drifted from the migration chain (a column
+      # added to the ontology/ORM without its migration). compare_type is on
+      # (alembic/env.py), so type changes are caught too.
+      - name: Migration <-> ORM lockstep guard (alembic check)
+        env:
+          DATABASE_URL: postgresql+asyncpg://vero:vero@localhost:5432/vero_lite # pragma: allowlist secret
+        run: uv run --no-sync alembic check
+
       - name: Full test suite (offline gate + DB-backed tests)
         env:
           DATABASE_URL: postgresql+asyncpg://vero:vero@localhost:5432/vero_lite # pragma: allowlist secret
