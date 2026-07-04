@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://vero-lite.local/schemas/ontology_v0.json",
   "title": "vero-lite ontology v0",
-  "description": "L1 JSON Schema for ADR-008 D2 grammar. Phase 1 (PLAN-003) v0 — only the canonical map-shaped form is accepted; the list-of-dicts illustration in PLAN-003 §8.6 is REJECTED by design (Lesson #5 §3 schema fidelity).",
+  "description": "L1 JSON Schema for ADR-008 D2 grammar. Phase 1 (PLAN-003) v0 — only the canonical map-shaped form is accepted; the list-of-dicts illustration in PLAN-003 §8.6 is REJECTED by design (Lesson #5 §3 schema fidelity). ADR-0027 R2 (PLAN-0050) adds four OPTIONAL semantic-enrichment constructs (synonyms, sample_values, verified_queries, and quantity-binding grain/join_path); declaring none of them loads byte-identically to the pre-R2 grammar (the D2 backward-compat HARD INVARIANT).",
   "type": "object",
   "required": ["version", "namespace", "object_types"],
   "additionalProperties": false,
@@ -50,6 +50,13 @@
           "items": {"$ref": "#/$defs/quantityBinding"},
           "minItems": 1,
           "description": "ADR-0021 construct (b): declared quantity-kind <-> unit bindings. Each binds a measured_kind enum value to its coherent unit; the engine reads it from ontology meta."
+        },
+        "synonyms": {"$ref": "#/$defs/synonyms"},
+        "verified_queries": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/verifiedQuery"},
+          "minItems": 1,
+          "description": "ADR-0027 R2 (SD-B, object-type level): curated known-good NL question -> trusted-answer pairs for this object type. OPTIONAL; absent = pre-R2 grammar."
         }
       }
     },
@@ -74,6 +81,13 @@
           "type": "string",
           "pattern": "^[A-Z][A-Za-z0-9]*$",
           "description": "Required when type == ref; names another object_type."
+        },
+        "synonyms": {"$ref": "#/$defs/synonyms"},
+        "sample_values": {
+          "type": "array",
+          "items": {"type": "string"},
+          "minItems": 1,
+          "description": "ADR-0027 R2 (SD-3): representative values; the closed filtering set when populated. Distinct from an enum's `values` (a property may have neither, either, or both by intent). OPTIONAL; absent = pre-R2 grammar."
         }
       },
       "allOf": [
@@ -93,8 +107,30 @@
       "additionalProperties": false,
       "properties": {
         "kind": {"type": "string", "minLength": 1, "description": "A measured_kind enum value (checked against the enum in L2)."},
-        "unit": {"type": "string", "minLength": 1, "description": "The coherent unit bound to this kind."}
+        "unit": {"type": "string", "minLength": 1, "description": "The coherent unit bound to this kind."},
+        "grain": {"type": "string", "minLength": 1, "description": "ADR-0027 R2 (SD-5): OPTIONAL aggregation grain for this measured kind (e.g. hourly, daily). Absent = pre-R2 grammar."},
+        "join_path": {"type": "string", "minLength": 1, "description": "ADR-0027 R2 (SD-5): OPTIONAL join-path semantics for this measured kind. Absent = pre-R2 grammar."}
       }
+    },
+    "synonyms": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "th": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+        "en": {"type": "array", "items": {"type": "string"}, "minItems": 1}
+      },
+      "description": "ADR-0027 R2 (SD-2): lang-keyed alternate names {th, en} for NL matching. At least one lang required when present; extra lang keys REJECTED (additionalProperties false). The th/en separation is the moat (F9). Attachable at object-type and property level (SD-1)."
+    },
+    "verifiedQuery": {
+      "type": "object",
+      "required": ["question", "answer"],
+      "additionalProperties": false,
+      "properties": {
+        "question": {"type": "string", "minLength": 1},
+        "answer": {"type": "string", "minLength": 1}
+      },
+      "description": "ADR-0027 R2 (SD-4): a curated known-good NL question -> trusted answer pair (least-coupling v1; NO IR/QueryFilter binding)."
     },
     "linkType": {
       "type": "object",

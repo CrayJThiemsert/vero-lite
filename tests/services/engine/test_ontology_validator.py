@@ -503,3 +503,139 @@ def test_cli_no_args_prints_usage_and_returns_1(
     captured = capsys.readouterr()
     assert ret == 1
     assert "usage:" in captured.err
+
+
+# ---------- ADR-0027 R2 / PLAN-0050 Step 1: L1 shape for the four enrichment constructs ----------
+
+_ENRICHED_YAML = """\
+version: 1
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    synonyms:
+      th: [sinsap]
+      en: [asset, equipment]
+    verified_queries:
+      - question: How many active assets are there?
+        answer: Count Asset rows where status is active.
+    properties:
+      asset_id:
+        type: string
+        required: true
+      status:
+        type: enum
+        values: [active, retired]
+        synonyms:
+          en: [state, condition]
+        sample_values: [active, retired]
+  OperationalEvent:
+    primary_key: event_id
+    properties:
+      event_id:
+        type: string
+      asset_id:
+        type: string
+      measured_kind:
+        type: enum
+        values: [temperature]
+    quantity_bindings:
+      - kind: temperature
+        unit: celsius
+        grain: hourly
+        join_path: OperationalEvent.asset_id -> Asset.asset_id
+"""
+
+
+def test_l1_enrichment_constructs_valid(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """ADR-0027 R2 (PLAN-0050 Step 1, AC-1): a YAML declaring all four
+    enrichment constructs (object-type + property ``synonyms``, ``sample_values``,
+    object-type ``verified_queries``, quantity-binding ``grain``/``join_path``)
+    passes L1 (and L2 — Step 1 adds no L2 checks for them yet)."""
+    yaml_path = _write(tmp_path, "enriched.yaml", _ENRICHED_YAML)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 0
+    assert "OK: 1 file(s) valid" in captured.err
+
+
+def test_l1_bare_yaml_still_valid_absent_enrichment(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """AC-1 / D2 backward-compat: an ontology declaring NONE of the four
+    constructs still validates unchanged (absent = pre-R2 grammar)."""
+    yaml_path = _write(tmp_path, "bare.yaml", _VALID_YAML)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 0
+    assert "OK: 1 file(s) valid" in captured.err
+
+
+def test_l1_synonyms_flat_list_rejected(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """AC-1 malformed: ``synonyms`` as a flat list (not a ``{th, en}`` map) → L1 reject."""
+    body = """\
+version: 0
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    synonyms: [asset, equipment]
+    properties:
+      asset_id:
+        type: string
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert _LINE_COL_RE.search(captured.err)
+
+
+def test_l1_synonyms_extra_lang_key_rejected(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """AC-1 malformed: an unknown lang key in ``synonyms`` → L1 reject
+    (``additionalProperties: false`` on the ``{th, en}`` map)."""
+    body = """\
+version: 0
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    properties:
+      asset_id:
+        type: string
+        synonyms:
+          fr: [identifiant]
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert _LINE_COL_RE.search(captured.err)
+
+
+def test_l1_verified_query_missing_question_rejected(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """AC-1 malformed: a ``verified_queries`` entry missing ``question`` → L1 reject."""
+    body = """\
+version: 0
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    verified_queries:
+      - answer: An answer with no question.
+    properties:
+      asset_id:
+        type: string
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert "question" in captured.err
