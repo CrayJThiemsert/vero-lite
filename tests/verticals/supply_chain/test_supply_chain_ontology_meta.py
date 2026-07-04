@@ -33,9 +33,60 @@ def test_enums_and_required() -> None:
     shipment = next(t for t in meta.object_types if t.name == "Shipment")
     props = {p.name: p for p in shipment.properties}
     assert props["cargo_type"].enum == ["pharma", "produce", "frozen", "biologic"]
-    assert props["status"].enum == ["in_transit", "at_facility", "delayed", "held", "delivered"]
+    # supply-chain-v1 (PLAN-0049 Step 2, G11): `returned` status added.
+    assert props["status"].enum == [
+        "in_transit",
+        "at_facility",
+        "delayed",
+        "held",
+        "delivered",
+        "returned",
+    ]
     assert props["shipment_id"].required is True
     assert props["payload_kg"].enum is None  # non-enum property
+
+
+def test_v1_equipment_entity_and_link() -> None:
+    """supply-chain-v1 (PLAN-0049 Step 2, G1): a first-class Equipment entity +
+    the shipment_uses_equipment link home the previously-homeless reefer fleet."""
+    meta = load_ontology_meta("supply_chain")
+    equipment = next((t for t in meta.object_types if t.name == "Equipment"), None)
+    assert equipment is not None
+    props = {p.name: p for p in equipment.properties}
+    assert props["equipment_type"].enum == ["reefer_truck", "reefer_container", "data_logger"]
+    shipment = next(t for t in meta.object_types if t.name == "Shipment")
+    assert any(p.name == "equipment_id" and p.target == "Equipment" for p in shipment.properties)
+    assert any(
+        link.from_type == "Shipment" and link.to_type == "Equipment" for link in meta.link_types
+    )
+
+
+def test_v1_metric_kinds_and_bindings() -> None:
+    """supply-chain-v1 (PLAN-0049 Step 2, G2): OperationalEvent gains temperature
+    and battery measured_kinds, each bound one-to-one to its unit (ADR-0021)."""
+    meta = load_ontology_meta("supply_chain")
+    event = next(t for t in meta.object_types if t.name == "OperationalEvent")
+    kinds = {p.name: p for p in event.properties}["measured_kind"].enum
+    assert kinds == ["temperature", "battery"]
+    bindings = {b.kind: b.unit for b in event.quantity_bindings}
+    assert bindings == {"temperature": "celsius", "battery": "percent"}
+
+
+def test_v1_action_enum_gaps() -> None:
+    """supply-chain-v1 (PLAN-0049 Step 2, G11): release/return/adjust_setpoint."""
+    meta = load_ontology_meta("supply_chain")
+    action = next(t for t in meta.object_types if t.name == "RecommendedAction")
+    action_type = {p.name: p for p in action.properties}["action_type"].enum
+    assert action_type == [
+        "reroute",
+        "expedite",
+        "hold",
+        "inspect",
+        "escalate",
+        "release",
+        "return",
+        "adjust_setpoint",
+    ]
 
 
 def test_facility_is_geo_bearing() -> None:
