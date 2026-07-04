@@ -130,3 +130,72 @@ def test_generate_all_includes_context_pack(tmp_path: Path) -> None:
     assert "context_pack" in outputs
     assert outputs["context_pack"].name == "context_pack.md"
     assert outputs["context_pack"].read_text(encoding="utf-8").startswith("# Semantic context pack")
+
+
+# ---------- ADR-0027 R2 / PLAN-0050 Step 7: the emitter POPULATES enrichment (AC-7) ----------
+
+
+def _enriched_doc() -> dict[str, Any]:
+    """A doc carrying all four ADR-0027 enrichment constructs — the AC-7 populate path."""
+    return {
+        "version": 1,
+        "namespace": "enr",
+        "object_types": {
+            "Asset": {
+                "primary_key": "asset_id",
+                "title_key": "name",
+                "description": "An asset.",
+                "synonyms": {"th": ["สินทรัพย์"], "en": ["asset", "equipment"]},
+                "verified_queries": [
+                    {"question": "How many active assets?", "answer": "Count active Assets."}
+                ],
+                "properties": {
+                    "asset_id": {"type": "string", "required": True},
+                    "status": {
+                        "type": "enum",
+                        "values": ["active", "retired"],
+                        "synonyms": {"en": ["state"]},
+                        "sample_values": ["active", "retired"],
+                    },
+                },
+                "quantity_bindings": [
+                    {
+                        "kind": "temperature",
+                        "unit": "celsius",
+                        "grain": "hourly",
+                        "join_path": "Asset.asset_id -> Site.site_id",
+                    }
+                ],
+            },
+            "Site": {"primary_key": "site_id", "properties": {"site_id": {"type": "string"}}},
+        },
+    }
+
+
+def test_ac7_emitter_populates_enrichment(tmp_path: Path) -> None:
+    """AC-7 (PLAN-0050 Step 7): with the four ADR-0027 constructs present, the emitter
+    POPULATES them inline — object + property synonyms, sample values, verified queries,
+    and metric grain / join_path — and the 'not yet populated' degrade note does NOT fire."""
+    out = emit_context_pack(_enriched_doc(), tmp_path / "enr.md")
+    text = out.read_text(encoding="utf-8")
+    # object-level synonyms (th/en moat) + verified queries
+    assert "Synonyms — th: สินทรัพย์; en: asset, equipment." in text
+    assert "Verified queries:" in text
+    assert "Q: How many active assets? -> A: Count active Assets." in text
+    # property-level synonyms + sample values (closed set)
+    assert "aka en: state" in text
+    assert "sample values: {active, retired}" in text
+    # metric grain + join_path rendered on the measure line
+    assert "temperature→celsius @hourly via Asset.asset_id -> Site.site_id" in text
+    # the degrade note is GONE for an enriched doc (the conditional's populate branch)
+    assert "not yet populated" not in text
+    assert "is populated inline above" in text
+
+
+def test_ac7_bare_doc_still_degrades(tmp_path: Path) -> None:
+    """AC-7 pair: a doc declaring NONE of the four constructs still emits the
+    'not yet populated' degrade note (the conditional's else branch — both paths held)."""
+    out = emit_context_pack(_bare_doc(), tmp_path / "bare.md")
+    text = out.read_text(encoding="utf-8")
+    assert "not yet populated" in text
+    assert "is populated inline above" not in text
