@@ -123,7 +123,15 @@ def advisory_stub_factory(_model: str) -> ChatClient:
 @dataclass(frozen=True)
 class _SeedQuery:
     """The QUERY executor for ``intake`` -- returns the enriched purchase-requisition seed the run
-    threads forward (the failure signal already enriched, data-access = (a))."""
+    threads forward (the failure signal already enriched, data-access = (a)).
+
+    DEPRECATE-IN-PLACE (PLAN-0048 SD-3, ratified 2026-07-04): an interim
+    hand-written JOIN seed -- ``intake`` fuses three object_types
+    (OperationalEvent + PurchaseOrder + Quotation), a shape the generic
+    ``QueryStepExecutor`` cannot honestly express until a join/projection
+    grammar is ratified (an ADR-016 amendment). It stays; nothing migrates.
+    NEW plain single-type declared reads go through the engine default:
+    ``services/engine/procedures/query_step.py`` (declared==dispatched)."""
 
     seed: list[Any]
 
