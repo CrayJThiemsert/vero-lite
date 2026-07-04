@@ -1,8 +1,9 @@
 # PLAN-0051: Reason-then-structure A/B — measure the reasoning-order lever on the two single-pass structured-output call sites
 
-**Status:** Draft
-**Owner:** Claude Code (executes; offline build is Code-solo); `plan-drafter` drafted (ADR-013 D1 phased authority); Cray ratifies
+**Status:** Ready for execution
+**Owner:** Claude Code (executes; offline build is Code-solo); `plan-drafter` drafted (ADR-013 D1 phased authority); Cray ratified SD-1..SD-6 as-recommended (2026-07-04)
 **Created:** 2026-07-04
+**Ratified:** 2026-07-04 (Cray — SD-1..SD-6 all as-recommended; Draft → Ready)
 **Related ADRs:** ADR-010 (IN-3 confidence-never-routes / determinism invariant; D1 local-backend), ADR-0021 (classify-don't-synthesize; `measured_kind`), ADR-0024 (procedure generator — D4 `gate_kind` cross-check / D7 AT-1-family-only + abstain, the moat guard this PLAN must NOT move; D12 tests-are-the-offline-oracle), ADR-001 (CHECKPOINT-0 / Ollama #15260 caller contract — never `think=False` with `response_format`)
 
 > **No new ADR (recommended — SD-5).** This PLAN adds **experimental levers + labelled corpora + an offline+live A/B harness**. It changes **no grammar**, **no deterministic guard**, and **no shipped production default**. It mirrors PLAN-0041 (a prompt-lever A/B on the SAME classify path) which needed no ADR. If a *future adoption* of two-pass as a cross-site standard is decided, THAT is a separate, possibly ADR-gated decision — explicitly not this PLAN (SD-6). If execution surfaces a reason a deterministic guard or a shipped default *must* change to run the experiment, **STOP and surface it** (that flips to an ADR-gated decision); do not bake it in here.
@@ -57,7 +58,9 @@ Each site runs a **3-arm A/B** — **baseline** (shipped single-pass), **field-o
 - ❌ **An Alembic migration / any ontology or grammar change** (LOCKED-6).
 - ❌ **Widening the corpora beyond what the metric needs** — the classify corpus is reused as-is; the nl_query corpus is sized to the SD-1 recommendation.
 
-## Surfaced Decisions (SD-1..SD-6 — recommendation each; Cray adjudicates, do NOT silently resolve)
+## Surfaced Decisions (SD-1..SD-6)
+
+> **RATIFIED 2026-07-04 (Cray): all six SD-1..SD-6 accepted as-recommended.** Each drafter recommendation below is now the LOCKED decision for execution — SD-1 (field-weighted match on the raw `_translate` output) · SD-2 (nl_query gets the leading advisory `reasoning` field, stripped before execute — the field-order arm runs on BOTH sites) · SD-3 (keyword-only `arm` enum, `baseline` default) · SD-4 (classify reuses PLAN-0041's twin metric; nl_query gets a mean-score floor + a strict-win read on the hard class, numbers pre-committed at corpus authorship) · SD-5 (no new ADR) · SD-6 (measure-only; adoption is a separate follow-up, shipped default stays `baseline`). The "Recommendation" / "Alternative" framing is retained below as the decision record; the recommendation is the ratified path.
 
 ### SD-1 — nl_query gold corpus: size, authorship, and the scoring metric
 
