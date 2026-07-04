@@ -28,9 +28,35 @@ def test_enums_and_required() -> None:
     meta = load_ontology_meta("energy")
     asset = next(t for t in meta.object_types if t.name == "Asset")
     props = {p.name: p for p in asset.properties}
-    assert props["asset_type"].enum == ["battery", "inverter", "meter", "transformer"]
+    # energy-v1 (PLAN-0049 Step 1, F9): distribution-utility asset types added.
+    assert props["asset_type"].enum == [
+        "battery",
+        "inverter",
+        "meter",
+        "transformer",
+        "feeder",
+        "cap_bank",
+        "gas_engine",
+    ]
     assert props["asset_id"].required is True
     assert props["capacity_kw"].enum is None  # non-enum property
+    assert props["rated_current_a"].enum is None  # non-enum float (SD-6)
+
+
+def test_energy_v1_metric_kinds_and_bindings() -> None:
+    """energy-v1 (PLAN-0049 Step 1, F9): OperationalEvent gains current/voltage
+    measured_kinds, each bound one-to-one to its coherent unit (ADR-0021)."""
+    meta = load_ontology_meta("energy")
+    event = next(t for t in meta.object_types if t.name == "OperationalEvent")
+    kinds = {p.name: p for p in event.properties}["measured_kind"].enum
+    assert kinds == ["temperature", "frequency", "current", "voltage"]
+    bindings = {b.kind: b.unit for b in event.quantity_bindings}
+    assert bindings == {
+        "temperature": "celsius",
+        "frequency": "hz",
+        "current": "ampere",
+        "voltage": "kilovolt",
+    }
 
 
 def test_ref_target() -> None:

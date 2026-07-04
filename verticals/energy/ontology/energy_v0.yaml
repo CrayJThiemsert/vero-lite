@@ -1,7 +1,13 @@
-# vero-lite ontology — energy vertical, v0.
+# vero-lite ontology — energy vertical.
 # Conforms to ADR-008 D2 grammar (PLAN-003 dispatch R-K1 binding).
 # Five base entities per ADR-008 D1 + an explicit AlertEventLink join
 # object_type per ADR-008 D4 / PLAN-003 §8.6 (many-to-many deferred).
+# v1 content (PLAN-0049 Step 1): distribution-utility coverage from the
+# partner-sim run-1 rehearsal (F9) — asset_type += feeder/cap_bank/gas_engine,
+# a distinct current-rating property (SD-6), and current/voltage metric kinds +
+# bindings. NOTE: `version` below is the ADR-008 GRAMMAR version (const 0 in the
+# L1 meta-schema), NOT the content revision — the grammar is unchanged (the R2
+# grammar amendment is carved out of PLAN-0049 per SD-1), so it stays 0.
 
 version: 0
 namespace: energy
@@ -20,9 +26,14 @@ object_types:
         required: true
       asset_type:
         type: enum
-        values: [battery, inverter, meter, transformer]
+        values: [battery, inverter, meter, transformer, feeder, cap_bank, gas_engine]
       capacity_kw:
         type: float
+      rated_current_a:
+        type: float
+        description: >-
+          Rated current in amperes for current-rated assets (feeders, etc.) —
+          distinct from capacity_kw, which misfits assets rated in A (SD-6, F9).
       status:
         type: enum
         values: [active, maintenance, retired]
@@ -71,7 +82,7 @@ object_types:
         type: string
       measured_kind:
         type: enum
-        values: [temperature, frequency]
+        values: [temperature, frequency, current, voltage]
       description:
         type: string
       occurred_at:
@@ -88,6 +99,10 @@ object_types:
         unit: celsius
       - kind: frequency
         unit: hz
+      - kind: current
+        unit: ampere
+      - kind: voltage
+        unit: kilovolt
 
   Alert:
     primary_key: alert_id

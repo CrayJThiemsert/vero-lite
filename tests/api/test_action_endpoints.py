@@ -147,7 +147,16 @@ async def test_meta_returns_ontology_driven_types(client: AsyncClient) -> None:
     assert asset["title_key"] == "name"
     assert asset["primary_key"] == "asset_id"
     props = {p["name"]: p for p in asset["properties"]}
-    assert props["asset_type"]["enum"] == ["battery", "inverter", "meter", "transformer"]
+    # energy-v1 (PLAN-0049 Step 1, F9): distribution-utility asset types added.
+    assert props["asset_type"]["enum"] == [
+        "battery",
+        "inverter",
+        "meter",
+        "transformer",
+        "feeder",
+        "cap_bank",
+        "gas_engine",
+    ]
     assert any(
         link["from_type"] == "Asset" and link["to_type"] == "Site" for link in body["link_types"]
     )
