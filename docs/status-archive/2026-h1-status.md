@@ -2330,3 +2330,68 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-29 (PLAN-0041 classify-prompt enrichment lever COMPLETE, session 87) [rotated 2026-07-04, sessions-96/97 CLOSE reconcile]
 
 | 2026-06-29 | **PLAN-0041 (classify-prompt enrichment lever) COMPLETE (session 87, #475/#476 + live AC-7 PASS)** — the fix for the PLAN-0040 AC-B5 ~1-in-3 false-abstain on a textbook AT-1/AT-3; a **PROMPT-ONLY** lever to lift the live AT-1-family classify match-rate. **Moat byte-identical** — the abstain-guard (`_archetype_disagreement`/`_AT2_ONLY_KINDS`/`_BAND_KINDS`, ADR-0024 D4/D7) unchanged; no schema change; **no new ADR**. **Steps 1-3 (#475, feat `035af38`):** `ArchetypeTemplate.description` (value-free, from the canonical catalog) + a 3-tuple classify catalog + a value-free `_BAND_EXPLAINER` into `build_classify_messages` (ends "When unsure … abstain" = the R2 moat-safety brake); offline gate AC-1..5 (guard byte-identity introspection; AT-2-only-abstain generalized to scored_rule/rule_gate/doa_tier; enriched-prompt introspection; descriptions-carry-no-AT2-vocab; schema pins the closed enum). **Step 4 (#476, test `d06d420`):** the OQ-C 26-narrative labelled fixture set + offline validators + a `@live`-gated before/after A/B harness routing both arms through the byte-identical imported guard (no production change); an independent adversarial moat-safety reviewer judged the set trustworthy; the pre-committed pass/fail read embedded in the harness (a docs/plans/ evidence doc was G2-gated → relocated into the test module). **Step 5 (live, AC-7, host-state — Cray go via AskUserQuestion):** the live before/after on MS-S1 `gpt-oss:20b`, N=3, worst reported — **PASS:** Arm A gated AT-1+AT-3 **8→11/11 (perfect, all 3 reps)** vs the ~7/11 PLAN-0040 reference; Arm B **11/11 abstain every rep** (zero AT-2 regression); **Arm-B guard paths = {label_abstain: 33}** (step_disagreement = 0 — the model labels AT-2 out-of-scope ITSELF, the deterministic backstop never needed to fire = no silent label→backstop shift); AT-1b 11/12 (reported, not gated). Live = **confirming evidence; the offline gate is the binding bar** (OQ-D). Raw log gitignored at `.claude/benchmark-results/plan0041-step5-live-ab.log`; thin tracked summary at `docs/logs/2026-06-29-plan0041-step5-live-ab.md` (two-artifact model). Gate (every step, offline): ruff + ruff-format + `mypy --strict services/` clean, **pytest 1891 passed / 25 skipped** (1877 baseline + 7 Steps-1-3 + 7 Step-4 validators; live test skipped offline). PLAN `git mv` → `done/`. `loop-dispatcher` stays DISABLED | `de36c2b` (#475/#476) / `services/engine/procedures/{archetypes/template,generator/{pipeline,prompts}}.py` + `tests/services/engine/procedures/{test_generator_pipeline,classify_enrichment_fixtures,test_classify_enrichment_fixtures,test_classify_enrichment_live}.py` + `docs/plans/done/0041-classify-prompt-enrichment.md` + `docs/logs/2026-06-29-plan0041-step5-live-ab.md` |
+
+## Rotated this reconcile (session-98, 2026-07-04 — PLAN-0050 ADR-0027 R2 build COMPLETE #553-#563)
+
+### Current-Focus block — Sessions 96/97 CLOSE (head_commit `676fbc2` → `d8f9ec5`) — PLAN-0048/0049 COMPLETE + ADR-0027 Accepted [rotated 2026-07-04, session-98 reconcile; R1 64 KB ceiling]
+
+> **Sessions 96/97 CLOSE, 2026-07-04 (head_commit `676fbc2` →
+> `d8f9ec5`) — s96/97 GOVERNANCE + ONTOLOGY ARC COMPLETE: PLAN-0048 Q4
+> generic query executor COMPLETE + CLOSED, PLAN-0049 v1 ontology bundle
+> executable set {1,2,4,5} COMPLETE + CLOSED (R2 carved out), ADR-0027
+> semantic-enrichment fields ACCEPTED. Suite 2097 → 2142 passed / 5
+> skipped (+45 across both plans); every feature PR green under the
+> PLAN-0047 Step-7 CI gate (ruff + ruff-format + `mypy --strict` + full
+> suite w/ postgres + `alembic upgrade head`; #548 added an `alembic
+> check` drift-guard step).** **PLAN-0048 Q4 executor (Steps 1–3 already
+> reconciled in #540):** Step 4 seams/docs #539 (`f7d4972`, merge
+> `ab394b0`) — 3-tool seam docs + future-loop contract + SD-3 seed
+> annotation; **COMPLETE fold + `git mv` → done/ #541** (`73a6f9c`, merge
+> `0215b3a`) → `docs/plans/done/0048-q4-generic-query-executor.md`. Net:
+> the read side gains **declared==dispatched** via `QueryStepExecutor`.
+> **PLAN-0049 v1 ontology bundle (executable set {1,2,4,5}):** draft #542
+> (`6626d97`, merge `37d865f`, SD-1..7 surfaced) → Cray ratified SD-1..7
+> as-recommended, flip Draft→Ready + carve out R2 #543 (`c8b48be`, merge
+> `b6330e2`). **Step 1 energy-v1 #544** (`69d7759`, merge `9b2fffb`) —
+> asset_type += feeder/cap_bank/gas_engine; NEW `rated_current_a` col
+> (SD-6); measured_kind += current/voltage; alembic 0009; regen
+> `energy/models.py`. **version = content-revision #545** (`aec644d`,
+> merge `154e37e`, SD-2 Cray-confirmed) — `ontology_schema.json` `version`
+> const 0 → `{integer, minimum 0}` (real finding: the field was the
+> GRAMMAR version, repurposed as content-revision); energy→1,
+> supply_chain→1. **Step 2 supply-chain-v1 #546** (`37387ed`, merge
+> `fd8acd6`) — NEW Equipment entity + `shipment_uses_equipment` link +
+> `adjust_setpoint`; measured_kind [temperature, battery]; enum gaps
+> returned/release/return; NO committed ORM / no migration (SD-3
+> gitignored fallback; SD-4 parity gap documented). **Step 4 R1
+> context-pack emitter #547** (`b80dcff`, merge `0d97ae9`) —
+> `code_generator.py::emit_context_pack` → gitignored `context_pack.md`
+> (7th emitter); closed-set refuse-not-guess; R2 DEGRADE PATH reads
+> ADR-0027 fields when present, omits when absent; 32K token-budget
+> tripwire. **Step 5 alembic autogenerate #548** (`1a689ef`, merge
+> `518d7da`) — `env.py compare_type=True`; CI `alembic check` drift-guard;
+> `docs/runbooks/ontology-migration-autogenerate.md`. **COMPLETE fold +
+> `git mv` → done/ #550** (`579c5d1`, merge `d7041f4`) →
+> `docs/plans/done/0049-v1-ontology-bundle.md`; R2/Step-3 carved out to
+> ADR-0027. **ADR-0027 (the R2 grammar amendment) ACCEPTED:** Proposed
+> #549 (`a7bd595`, merge `e61c287`) — ADR-008 D2/D3 grammar amendment
+> adding 4 OPTIONAL constructs (synonyms th+en · sample_values ·
+> verified_queries · metric grain/join-path), mirrors ADR-0021,
+> backward-compat HARD INVARIANT, governed≠generated, decides grammar +
+> defers build; **Accepted #551** (`d8f9ec5`, merge `9f95942`) — Cray
+> ratified ALL SD-1..7 as-recommended (none overridden); **SD-6 follow-up
+> build PLAN named PLAN-0050** (amends L1 `ontology_schema.json` +
+> `ontology_meta.py` optional attrs on PropertyMeta/ObjectTypeMeta
+> [mirroring QuantityBinding] + L2 validators + backfills
+> energy-v1/supply-chain-v1; the shipped R1 emitter consumes it for free
+> via the degrade path). **#537 fixture-hermeticity fix** (`2c627bb`,
+> merge `3b8cfa3`, test-only) isolated `CLAUDE_GOAL_PATH` in the
+> in-process Stop-flow fixture (`inproc_env`), closing the #535/#536
+> concurrent-pytest disclosures (root cause = an unhermetic fixture, not
+> concurrency; same class as #340). **Standing:** `loop-dispatcher` stays
+> **DISABLED**; MS-S1 cold (the whole arc offline); AI-assisted (Claude
+> Code, sessions 96 + 97), no `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-30 (A1 run-time moat enforcement / ADR-0026 Accepted, session 88) [rotated 2026-07-04, session-98 reconcile]
+
+| 2026-06-30 | **A1 (run-time moat enforcement — Cray's #1 rock) LANDED (session 88): ADR-0026 Accepted #479 + A1a COMPLETE #481/#482 + A1b planned PLAN-0044 #484** — builds the principal-identity capability the AT-2 layer's run-time SoD was deferred on (the s85/s86 AC-13-ALT carry). **ADR-0026 Accepted (#479, `620d799`):** principal-identity + AT-2 run-time enforcement; all **6 OQs Cray-adjudicated as-recommended**. **PLAN-0043 (A1a) drafted + SD-1/SD-2 folded (#480, `05243eb`/`af0d882`):** Cray adjudicated **SD-1 = `required_roles` on `SoDConstraint`** + **SD-2 = a `PrincipalAlias` link object** (deviating from the drafted rec). **A1a COMPLETE end-to-end:** **Steps 1-3 (#481, `f1e7afa`)** = the `Person` / `PrincipalAlias` construct + `SoDConstraint.required_roles` + H-governance (new fields are governance, never on a draft type); **Steps 4-6 (#482, `f5c6342`)** = `services/engine/procedures/principal_sod.py`, the **fail-closed principal-SoD run-check** emitting a **STRUCTURED `PrincipalSoDVerdict`** + the `RunContext.principal` / `resolve_gated_step(principal=…)` seam + the offline oracle. **Gate: offline green — the full procedures suite 344 passed.** **A1a/A1b boundary (Cray s88):** the live invocation needs per-step principal RECORDING = the A1b executors' job; A1a ships construct + run-check + seam, A1b wires live enforcement. **A1b drafted = PLAN-0044 (in-flight, #484):** live run enforcement + per-kind executors (`doa_tier`/`rule_gate`/`scored_rule`) + audit-to-control (OQ-5); **3 SDs surfaced for Cray.** **Hero-demo dependency (parallel session):** A1's structured `PrincipalSoDVerdict` + the A1b OQ-5 audit field feed the hero-demo's read-only "governance moment" render (convergence ask #1 MET, #2 lands with A1b). In-flight PRs awaiting Cray merge: **#483** (PLAN-0043 → `done/`) + **#484** (PLAN-0044). `loop-dispatcher` stays DISABLED; MS-S1 cold (A1a offline) | `620d799` (#479) / `f1e7afa` (#481) / `f5c6342` (#482) / `docs/adr/0026-principal-identity-run-enforcement.md` + `docs/plans/done/0043-a1a-principal-identity-sod-runcheck.md` + `services/engine/procedures/principal_sod.py` |
