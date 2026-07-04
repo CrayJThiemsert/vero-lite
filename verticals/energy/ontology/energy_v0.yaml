@@ -17,6 +17,14 @@ object_types:
     primary_key: asset_id
     title_key: name
     description: A physical operational unit (battery, inverter, meter, etc.).
+    synonyms:
+      th: [สินทรัพย์, อุปกรณ์, เครื่องจักร]
+      en: [asset, equipment, device]
+    verified_queries:
+      - question: มีสินทรัพย์ประเภท feeder ที่ยัง active อยู่กี่ตัว?
+        answer: Count Assets where asset_type = feeder and status = active.
+      - question: How many active assets are hosted at each site?
+        answer: Group Assets with status = active by site_id and count.
     properties:
       asset_id:
         type: string
@@ -37,6 +45,10 @@ object_types:
       status:
         type: enum
         values: [active, maintenance, retired]
+        synonyms:
+          th: [สถานะ, สถานะการทำงาน]
+          en: [status, state, condition]
+        sample_values: [active, maintenance]
       install_date:
         type: date
       site_id:
@@ -80,6 +92,10 @@ object_types:
         type: float
       unit:
         type: string
+        synonyms:
+          th: [หน่วย, หน่วยวัด]
+          en: [unit, measurement unit]
+        sample_values: [celsius, hz, ampere, kilovolt]
       measured_kind:
         type: enum
         values: [temperature, frequency, current, voltage]
@@ -97,12 +113,17 @@ object_types:
     quantity_bindings:
       - kind: temperature
         unit: celsius
+        grain: hourly
       - kind: frequency
         unit: hz
+        grain: realtime
       - kind: current
         unit: ampere
+        grain: hourly
+        join_path: OperationalEvent.asset_id -> Asset.asset_id
       - kind: voltage
         unit: kilovolt
+        grain: hourly
 
   Alert:
     primary_key: alert_id

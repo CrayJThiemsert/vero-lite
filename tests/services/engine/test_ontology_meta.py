@@ -147,10 +147,33 @@ def test_enrichment_projection_from_yaml(tmp_path: Path, monkeypatch: pytest.Mon
     assert binding.join_path == "OperationalEvent.asset_id -> Asset.asset_id"
 
 
-def test_unenriched_vertical_projects_defaults() -> None:
-    """AC-2 / D2 backward-compat: the real (un-enriched) energy ontology
-    projects every new enrichment attribute to its empty/None default."""
-    meta = load_ontology_meta("energy")
+def test_unenriched_ontology_projects_defaults(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC-2 / D2 backward-compat: an ontology declaring NONE of the four
+    enrichment constructs projects every new attribute to its empty/None default.
+    Uses a bare fixture so the assertion stays valid as real verticals are
+    enriched (energy was the example until PLAN-0050 Step 5 backfilled it)."""
+    body = """\
+version: 0
+namespace: bare
+object_types:
+  Thing:
+    primary_key: thing_id
+    properties:
+      thing_id:
+        type: string
+      measured_kind:
+        type: enum
+        values: [temperature]
+    quantity_bindings:
+      - kind: temperature
+        unit: celsius
+"""
+    path = tmp_path / "bare_v0.yaml"
+    path.write_text(body, encoding="utf-8")
+    monkeypatch.setattr("services.engine.ontology_meta.ontology_path", lambda v: path)
+    meta = load_ontology_meta("bare")
     for t in meta.object_types:
         assert t.synonyms is None
         assert t.verified_queries == []
