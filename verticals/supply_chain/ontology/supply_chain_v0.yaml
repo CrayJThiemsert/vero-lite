@@ -1,13 +1,19 @@
-# vero-lite ontology — supply_chain vertical, v0.
+# vero-lite ontology — supply_chain vertical.
 # Second concrete OCT vertical (ADR-005 secondary; ADR-006 vertical plugin).
 # Domain: temperature-controlled (cold-chain) logistics — pharma / perishable
 # shipments moving between cold-storage facilities, monitored for cold-chain
 # temperature excursions. Conforms to the SAME ADR-008 D2 grammar as
-# energy_v0.yaml (six object_types: five base entities + an explicit
+# energy_v0.yaml (now seven object_types: six base entities + an explicit
 # AlertEventLink join per ADR-008 D4). PLAN-0013 AC-template: this proves the
 # ontology-driven UI re-skins onto a different domain with zero UI-code change.
+# v1 content (PLAN-0049 Step 2): partner-sim run-2 rehearsal (G1/G2/G11) —
+# a first-class Equipment entity (reefer trucks/containers/loggers were
+# homeless) + shipment_uses_equipment link + adjust_setpoint action; temperature
+# and battery metric kinds + bindings (supply_chain had none); returned status
+# and release/return enum gaps. `version` is the content-revision number
+# (PLAN-0049 SD-2) — bumped 0->1; grammar conformance is fixed by ADR-008 D2.
 
-version: 0
+version: 1
 namespace: supply_chain
 
 object_types:
@@ -29,13 +35,20 @@ object_types:
         type: float
       status:
         type: enum
-        values: [in_transit, at_facility, delayed, held, delivered]
+        values: [in_transit, at_facility, delayed, held, delivered, returned]
       dispatched_date:
         type: date
       facility_id:
         type: ref
         target: Facility
         required: true
+      equipment_id:
+        type: ref
+        target: Equipment
+        description: >-
+          The primary reefer unit (truck/container) this shipment travels in
+          (G1). Additional per-shipment devices (e.g. multiple loggers) are a
+          later N:M refinement.
 
   Facility:
     primary_key: facility_id
@@ -73,6 +86,9 @@ object_types:
         type: float
       unit:
         type: string
+      measured_kind:
+        type: enum
+        values: [temperature, battery]
       description:
         type: string
       occurred_at:
@@ -84,6 +100,11 @@ object_types:
       facility_id:
         type: ref
         target: Facility
+    quantity_bindings:
+      - kind: temperature
+        unit: celsius
+      - kind: battery
+        unit: percent
 
   Alert:
     primary_key: alert_id
@@ -119,7 +140,7 @@ object_types:
         required: true
       action_type:
         type: enum
-        values: [reroute, expedite, hold, inspect, escalate]
+        values: [reroute, expedite, hold, inspect, escalate, release, return, adjust_setpoint]
       confidence_score:
         type: float
       status:
@@ -134,6 +155,27 @@ object_types:
       target_shipment_id:
         type: ref
         target: Shipment
+
+  Equipment:
+    primary_key: equipment_id
+    title_key: label
+    description: >-
+      A cold-chain device a Shipment travels with — a reefer truck, a reefer
+      container, or a temperature data-logger (G1). Homes the fleet the
+      shipment-centric v0 model missed: reefer units, containers, and loggers.
+    properties:
+      equipment_id:
+        type: string
+        required: true
+      label:
+        type: string
+        required: true
+      equipment_type:
+        type: enum
+        values: [reefer_truck, reefer_container, data_logger]
+      status:
+        type: enum
+        values: [active, maintenance, retired]
 
   AlertEventLink:
     primary_key: link_id
@@ -161,6 +203,16 @@ link_types:
     cardinality: many_to_one
     foreign_key: Shipment.facility_id -> Facility.facility_id
     description: Each Shipment is currently handled at exactly one Facility.
+
+  shipment_uses_equipment:
+    from: Shipment
+    to: Equipment
+    cardinality: many_to_one
+    foreign_key: Shipment.equipment_id -> Equipment.equipment_id
+    description: >-
+      Each Shipment travels in one primary reefer unit/container (G1). A reefer
+      unit carries many shipments over time; per-shipment logger associations
+      (N:M) are a later refinement.
 
   event_concerns_shipment:
     from: OperationalEvent
