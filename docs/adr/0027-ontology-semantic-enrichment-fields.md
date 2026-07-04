@@ -1,6 +1,6 @@
 # ADR-0027: Ontology semantic-enrichment fields (synonyms, sample_values, verified_queries, metric grain) — an ADR-008 grammar amendment
 
-**Status:** Proposed
+**Status:** Accepted (ratified 2026-07-04 — SD-1…SD-7 all confirmed as-recommended; SD-6 follow-up build = PLAN-0050)
 **Date:** 2026-07-04
 **Deciders:** Jirachai Thiemsert (founder) — ratifies the surfaced decisions
 **Related:** ADR-008 (YAML ontology specification — D2 grammar, D3 types, D5 generator, D6 validation; **this ADR amends D2/D3**), ADR-0021 (metric-kind typed semantics — the `quantity_bindings` grammar-amendment precedent this mirrors), ADR-0024 (governed ≠ generated — machine drafts, human canonicalizes), ADR-006 (vertical plugin architecture / Rule of Three), ADR-005 (OCT pivot — energy first), PLAN-0049 (the R1 semantic-context-pack + SD-1 carve-out that originated this ADR), `docs/research/private/2026-07-03-semantic-foundation-build-techniques.md` (F4 + F9 + P1/P2 + R2 — the convergent-fields + Thai-moat evidence), ADR-009 D1/D2 (drafter drafts, Code commits), ADR-012 D4.3 (author≠reviewer disclosure)
@@ -62,9 +62,9 @@ forward-reference; it does not alter the emitter.
 
 ### D1: Four optional semantic-enrichment constructs are added to the ADR-008 grammar
 
-The ontology grammar gains four **optional** constructs. Their placement and shape are
-**surfaced for ratification** (SD-1…SD-5) — the recommendations below are load-bearing
-in this draft but explicitly contingent on Cray's adjudication:
+The ontology grammar gains four **optional** constructs. Their placement and shape were
+**surfaced for ratification** (SD-1…SD-5) — the recommendations below were load-bearing
+in this draft and were **confirmed as-recommended at ratification (2026-07-04)**:
 
 1. **`synonyms`** (th + en alternate names) — for NL matching. Recommend a lang-keyed
    map `{th: [...], en: [...]}` (SD-2), attachable at both **object-type** and
@@ -173,44 +173,46 @@ it for free (forward-reference above).
 
 ## Surfaced Decisions (SD) / Open Questions (OQ)
 
-Each SD carries a recommendation; **Cray adjudicates — none silently decided.**
+Each SD carried a recommendation. **Ratified 2026-07-04: SD-1 … SD-7 all confirmed as-recommended (none overridden).**
 
 - **SD-1 (field placement).** Which construct attaches where — property-level, object-
   type-level, or metric-level? **Recommend:** `synonyms` at BOTH object-type + property
   level; `sample_values` property-level; `verified_queries` object-type-level (or
   top-level, see SD-4); `grain`/join-path on `quantity_bindings` (SD-5). *Why a Cray
   decision:* placement sets the grammar shape all four surfaces implement; multiple
-  defensible cuts.
+  defensible cuts. **Ratified 2026-07-04 — as-recommended.**
 - **SD-2 (`synonyms` shape).** Lang-keyed map `{th: [...], en: [...]}` vs a flat list?
   **Recommend the lang-keyed map** — the Thai moat (F9) argues for explicit language
   separation, and it keeps EN/TH matchers independent. *Alt:* flat list (simpler,
-  loses lang signal).
+  loses lang signal). **Ratified 2026-07-04 — as-recommended.**
 - **SD-3 (`sample_values` semantics).** Closed enumerated set vs open examples; and its
   relationship to an enum property's `values`. **Recommend:** closed-set-when-populated
   (matches F4 + the emitter's closed-enum framing), **distinct from** `values`
   (`sample_values` = representative data for non-enum props; `values` = the enum's
   definitional set — a property may have neither, either, or overlap by intent). *Why
-  Cray:* redundancy-vs-distinctness is a modeling call.
+  Cray:* redundancy-vs-distinctness is a modeling call. **Ratified 2026-07-04 — as-recommended.**
 - **SD-4 (`verified_queries` shape).** The answer side: a natural-language expected
   answer, an NL-query IR, or the structured `QueryFilter` from
   `services/engine/nl_query.py`? **Recommend the least-coupling v1** — a
   `{question, answer}` NL pair (answer = expected natural-language answer or a short
   grounded fact), deferring any IR/`QueryFilter` binding until a consumer needs it.
   *Why Cray:* couples (or decouples) the ontology to the NL-query engine's internal
-  shape.
+  shape. **Ratified 2026-07-04 — as-recommended.**
 - **SD-5 (`grain`/join-path placement + shape).** On `quantity_bindings`? a new
   per-metric construct? a top-level `metrics` block? **Recommend attaching to
   `quantity_bindings`** (already the per-kind metric-semantics home, ADR-0021) — extend
   each binding with an optional `grain` + optional join-path rather than a parallel
   block. *Alt:* a first-class `metrics` block (heavier; over-scope for v1).
+  **Ratified 2026-07-04 — as-recommended.**
 - **SD-6 (build sequencing).** ADR-only now, defer the build to a follow-up PLAN (the
   ADR-0021→PLAN-0026 pattern) vs bundle build into this ADR's PR. **Recommend
   ADR-only + a named follow-up PLAN** — matches the precedent and CLAUDE.md §8 (ADR
-  Accepted before impl PR). *Name the PLAN at ratification.*
+  Accepted before impl PR). **Follow-up PLAN named at ratification: PLAN-0050.**
+  **Ratified 2026-07-04 — as-recommended.**
 - **SD-7 (enforcement depth).** L1 shape + L2 consistency (D4, mirrors
   `quantity_bindings`) vs free-form-until-consumed (Alternative 3). **Recommend
   L1+L2** — parity with the rest of the ontology's rigor; the marginal cost is one
-  `_check_*` per construct.
+  `_check_*` per construct. **Ratified 2026-07-04 — as-recommended.**
 
 ## References
 
@@ -247,6 +249,11 @@ Each SD carries a recommendation; **Cray adjudicates — none silently decided.*
   unrelated threads — **OUT**.
 - **Governance gate:** the follow-up build PR (SD-6) is gated on this ADR being
   **Accepted before** the PR (CLAUDE.md §8).
+- **Ratification outcome (2026-07-04):** SD-1 … SD-7 **all confirmed as-recommended**
+  (none overridden). SD-6's follow-up build PLAN is named **PLAN-0050** (next free
+  number). D1–D5 stand as drafted; the ADR-008 D2/D3 grammar amendment proceeds with
+  the four optional constructs. The follow-up build PR (PLAN-0050) is gated on this ADR
+  being Accepted before the PR (CLAUDE.md §8) — now satisfied.
 - Drafted by the in-harness `plan-drafter` (ADR-013 D1); uncommitted. Code R2-reviews +
   commits via a `docs/*` PR (ADR-009 D2). AI-assisted (Claude); no `Co-Authored-By` per
   CLAUDE.md §7.
