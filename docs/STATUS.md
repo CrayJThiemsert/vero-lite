@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-04T06:48:23+07:00
+last_updated: 2026-07-04T10:30:00+07:00
 session: 97
-current_batch: "s96 PLAN-0048 Q4-executor arc IN PROGRESS: draft #533 → ratify #534 → Steps 1–3 #535/#536/#538 (suite 2097→2131 passed / 5 skipped); Step 4 remains — s96 NOT closed. s97 side-session: #537 goal-path fixture-hermeticity fix + this reconcile."
+current_batch: "s96/97 arc COMPLETE: PLAN-0048 Q4 executor COMPLETE+CLOSED (#533–#541) + PLAN-0049 v1 ontology bundle COMPLETE {1,2,4,5} (#542–#550, R2 carved out) + ADR-0027 semantic-enrichment fields ACCEPTED (#549 Proposed → #551 SD-1..7 as-rec, SD-6→PLAN-0050); suite 2097→2142/5."
 current_actor: code
-blocked_on: "Nothing blocking. Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
-next_action: "PLAN-0048 Step 4 — seams, docs, offline oracle (AC-14..AC-15) → completion fold + git mv → done/. Track B parallel (Cowork): GTM pack + standard intake form."
-head_commit: 676fbc2
-recent_commits: [676fbc2, 2c627bb, f3d362b, 462ead2, 0e17dc6]
+blocked_on: "Nothing blocking. PLAN-0050 (the ADR-0027 R2 follow-up build) is gated on ADR-0027 Accepted — now satisfied. Any live MS-S1 run is host-state — explicit Cray go. loop-dispatcher DISABLED."
+next_action: "PLAN-0050 — ADR-0027 R2 build (synonyms/sample_values/verified_queries/grain: L1 ontology_schema.json + ontology_meta.py optional attrs + L2 validators + energy-v1/supply-chain-v1 backfill; G2-gated → plan-drafter drafts → Code R2+commit → Cray ratify). Backlog: Wave-2(c) reason-then-structure A/B (offline); Wave-3 (Cowork) GTM pack + standard intake form; Wave-4 ADR-016 Phase-3 monitor PLAN."
+head_commit: d8f9ec5
+recent_commits: [d8f9ec5, 579c5d1, a7bd595, 1a689ef, b80dcff]
 ---
 
 # vero-lite — Project Status
@@ -18,130 +18,81 @@ recent_commits: [676fbc2, 2c627bb, f3d362b, 462ead2, 0e17dc6]
 
 ## Current Focus
 
-> **Session 96 (IN PROGRESS) + session 97 side-session, 2026-07-03 →
-> 2026-07-04 (head_commit `28d919c` → `676fbc2`) — PLAN-0048 Q4 GENERIC
-> QUERY EXECUTOR: DRAFTED → RATIFIED → STEPS 1–3 EXECUTED (#533/#534 →
-> #535/#536/#538), suite 2097 → 2131 passed / 5 skipped; Step 4
-> (AC-14..AC-15) remains — session 96 NOT closed. Session 97 shipped the
-> #537 fixture-hermeticity fix that CLOSES the #535/#536
-> "transient concurrent-pytest collision" disclosures.** **Session-96 arc
-> (Wave-2 pick (a) from the s95 next_action):** PLAN-0048 draft #533
-> (`d107d99`, merge `761f33d`, plan-drafter authored, SD-1..SD-5
-> surfaced) → Cray ratified SD-1..SD-5 as-recommended #534 (`260df5a`,
-> merge `c169ec1`; Draft → Ready for execution). **Step 1 (#535, oracle
-> `c104da2` + feat `0e17dc6`, merge `1ff2899`, AC-1..AC-3):** `plan_read`
-> compile seam + typed `ReadRefusal` + the shared read bound;
-> oracle-first two-commit history; suite 2112 passed / 5 skipped (+15).
-> **Step 2 (#536, oracle `462ead2` + feat `f3d362b`, merge `9622307`,
-> AC-4..AC-9):** `QueryStepExecutor` + the shared `matches_where`
-> promotion + the structured D4 refusal divert; suite 2123 / 5 (+11).
-> Axis-B goal gate C1–C4 PASS on both Steps 1 + 2. **Step 3 (#538,
-> `676fbc2`, merge `65519c0`, AC-10..AC-13):** both production paths
-> wired + the `read_refused` audit row (hash-chained) + `reads` into the
-> governance pin; suite 2131 / 5 (+8), DB-backed cases against postgres;
-> CI re-runs everything. **Session-97 side-session (Code-executed): #537
-> (`2c627bb`, merge `3b8cfa3`, `test(handoffs)`, test-only +9 lines)**
-> isolates `CLAUDE_GOAL_PATH` in the in-process Stop-flow fixture
-> (`inproc_env`). Root cause of the #535/#536 disclosures was NOT
-> concurrency — the unhermetic fixture let a live ACTIVE
-> `.claude/state/goal.json` leak into the gate-before-classifier path,
-> failing one test (GOAL-GATE DISPATCH where AUTO-HANDOFF DISPATCH is
-> asserted) AND writing dispatch/release markers into the live goal
-> trail — the s96 Step-2 goal's released-unevaluated status was an
-> ARTIFACT of this bug (released by the test run itself, 3 s apart,
-> identical fingerprints), NOT an Axis-B gate decision. Same bug class as
-> #340 (`stub_env` got the hermeticity line; `inproc_env` was missed).
-> Deterministic repro: seed an active goal + run the single test — no
-> concurrency needed. After: 38/38 `test_stop_continuation.py` green WITH
-> an active goal present; `goal.json` byte-identical (sha256). **NEXT:**
-> PLAN-0048 Step 4 — seams, docs, offline oracle (AC-14..AC-15) → plan
-> completion → `git mv` → `done/`. **Standing:** `loop-dispatcher` stays
-> **DISABLED**; MS-S1 cold (the whole batch offline); AI-assisted (Claude
+> **Sessions 96/97 CLOSE, 2026-07-04 (head_commit `676fbc2` →
+> `d8f9ec5`) — s96/97 GOVERNANCE + ONTOLOGY ARC COMPLETE: PLAN-0048 Q4
+> generic query executor COMPLETE + CLOSED, PLAN-0049 v1 ontology bundle
+> executable set {1,2,4,5} COMPLETE + CLOSED (R2 carved out), ADR-0027
+> semantic-enrichment fields ACCEPTED. Suite 2097 → 2142 passed / 5
+> skipped (+45 across both plans); every feature PR green under the
+> PLAN-0047 Step-7 CI gate (ruff + ruff-format + `mypy --strict` + full
+> suite w/ postgres + `alembic upgrade head`; #548 added an `alembic
+> check` drift-guard step).** **PLAN-0048 Q4 executor (Steps 1–3 already
+> reconciled in #540):** Step 4 seams/docs #539 (`f7d4972`, merge
+> `ab394b0`) — 3-tool seam docs + future-loop contract + SD-3 seed
+> annotation; **COMPLETE fold + `git mv` → done/ #541** (`73a6f9c`, merge
+> `0215b3a`) → `docs/plans/done/0048-q4-generic-query-executor.md`. Net:
+> the read side gains **declared==dispatched** via `QueryStepExecutor`.
+> **PLAN-0049 v1 ontology bundle (executable set {1,2,4,5}):** draft #542
+> (`6626d97`, merge `37d865f`, SD-1..7 surfaced) → Cray ratified SD-1..7
+> as-recommended, flip Draft→Ready + carve out R2 #543 (`c8b48be`, merge
+> `b6330e2`). **Step 1 energy-v1 #544** (`69d7759`, merge `9b2fffb`) —
+> asset_type += feeder/cap_bank/gas_engine; NEW `rated_current_a` col
+> (SD-6); measured_kind += current/voltage; alembic 0009; regen
+> `energy/models.py`. **version = content-revision #545** (`aec644d`,
+> merge `154e37e`, SD-2 Cray-confirmed) — `ontology_schema.json` `version`
+> const 0 → `{integer, minimum 0}` (real finding: the field was the
+> GRAMMAR version, repurposed as content-revision); energy→1,
+> supply_chain→1. **Step 2 supply-chain-v1 #546** (`37387ed`, merge
+> `fd8acd6`) — NEW Equipment entity + `shipment_uses_equipment` link +
+> `adjust_setpoint`; measured_kind [temperature, battery]; enum gaps
+> returned/release/return; NO committed ORM / no migration (SD-3
+> gitignored fallback; SD-4 parity gap documented). **Step 4 R1
+> context-pack emitter #547** (`b80dcff`, merge `0d97ae9`) —
+> `code_generator.py::emit_context_pack` → gitignored `context_pack.md`
+> (7th emitter); closed-set refuse-not-guess; R2 DEGRADE PATH reads
+> ADR-0027 fields when present, omits when absent; 32K token-budget
+> tripwire. **Step 5 alembic autogenerate #548** (`1a689ef`, merge
+> `518d7da`) — `env.py compare_type=True`; CI `alembic check` drift-guard;
+> `docs/runbooks/ontology-migration-autogenerate.md`. **COMPLETE fold +
+> `git mv` → done/ #550** (`579c5d1`, merge `d7041f4`) →
+> `docs/plans/done/0049-v1-ontology-bundle.md`; R2/Step-3 carved out to
+> ADR-0027. **ADR-0027 (the R2 grammar amendment) ACCEPTED:** Proposed
+> #549 (`a7bd595`, merge `e61c287`) — ADR-008 D2/D3 grammar amendment
+> adding 4 OPTIONAL constructs (synonyms th+en · sample_values ·
+> verified_queries · metric grain/join-path), mirrors ADR-0021,
+> backward-compat HARD INVARIANT, governed≠generated, decides grammar +
+> defers build; **Accepted #551** (`d8f9ec5`, merge `9f95942`) — Cray
+> ratified ALL SD-1..7 as-recommended (none overridden); **SD-6 follow-up
+> build PLAN named PLAN-0050** (amends L1 `ontology_schema.json` +
+> `ontology_meta.py` optional attrs on PropertyMeta/ObjectTypeMeta
+> [mirroring QuantityBinding] + L2 validators + backfills
+> energy-v1/supply-chain-v1; the shipped R1 emitter consumes it for free
+> via the degrade path). **#537 fixture-hermeticity fix** (`2c627bb`,
+> merge `3b8cfa3`, test-only) isolated `CLAUDE_GOAL_PATH` in the
+> in-process Stop-flow fixture (`inproc_env`), closing the #535/#536
+> concurrent-pytest disclosures (root cause = an unhermetic fixture, not
+> concurrency; same class as #340). **Standing:** `loop-dispatcher` stays
+> **DISABLED**; MS-S1 cold (the whole arc offline); AI-assisted (Claude
 > Code, sessions 96 + 97), no `Co-Authored-By` per CLAUDE.md §7.
 
-> **Session 95 CLOSE, 2026-07-03 → 2026-07-04 (head_commit `f63c975` →
-> `28d919c` — #531 `docs(plans):` close-out is SUBSTANTIVE per lint policy,
-> merge `353c04e`) — PLAN-0047 PRE-PILOT HARDENING SPRINT COMPLETE: all 7
-> steps + all 10 ACs (PRs #522–#530), +31 tests (suite 2066 → 2097 passed /
-> 5 skipped); sales claims (authn / audit / exactly-once / config-pin) now
-> code- and CI-backed.** (Reconcile committed by the successor session per
-> the s95 CLOSE handoff.) **Arc:** a 3-specialist production-readiness
-> audit (in-chat; codegen/governance/compliance lenses) surfaced BLOCKER
-> gaps → Cray ratified a 7-item hardening sprint + ordering. **4
-> web-research briefs** (gitignored `docs/research/private/`, all
-> 2026-07-03): ontology-llm-market-landscape (thesis SUPPORTED;
-> commoditized layer ⇒ sell vertical content + generator + governed
-> actions, mid-market price); llm-db-reliability-techniques (we ARE the
-> CaMeL/OWASP reference architecture; ADOPT reason-then-structure, outbox
-> [done in spirit via Step 4], OTel gen_ai.*, OSI export);
-> local-llm-stack-viability (local-first stands; pitch "compute never
-> leaves"; keep the `gpt-oss:20b` pin; open a Qwen 3.5/3.6-27B Thai eval
-> track — host-state, Cray gate); semantic-foundation-build-techniques (R1
-> context-pack emitter +17–23pp evidence · R2 meta-schema fields [synonyms
-> th/en, sample_values, verified_queries, grain] · R3 schema-guided
-> bootstrap · R4 usage-mined loop human-gated; Thai = uncovered moat).
-> **5-wave backlog re-order (Cray-agreed):** W1 = PLAN-0047 ✅ · W2 = Q4
-> executor PLAN + v1 ontology bundle (energy-v1 + supply-chain-v1 + R1 +
-> R2 + migration-autogenerate) + a small reason-then-structure item · W3
-> (parallel, Cowork) = GTM pack + standard intake form (11 additions) · W4
-> = ADR-016 Phase-3 monitor PLAN + sprint items 5/6-remainder + ops · W5 =
-> coverage eval + raw-vs-layer re-benchmark + optional partner-sim run-3 →
-> real partner intake. **PLAN-0047 (plan-drafter authored, draft #522
-> `b6cb0d5`; SD-1..4 ratified as-recommended #523 `8198548`: SD-1=(a) API
-> keys · SD-2 defer · SD-3 yes-minimal · SD-4 CI w/ DB) EXECUTED
-> COMPLETE:** Step 7 CI (#524 `0401a0a`) — the repo's FIRST CI gate: ruff
-> + ruff-format + `mypy --strict` + full suite w/ postgres container +
-> `alembic upgrade head` on every PR; 2066 baseline green; every sprint PR
-> from #525 on ran green under it. Step 1 authn (#525 `3b3db46`) —
-> `services/api/auth.py` fail-closed API-key gate on state-changing
-> routes; `/warm` + `/sleep` + `/intake/generate` also gated (disclosed
-> deviation); `action_identity` sidecar table (alembic 0005). Step 2
-> endpoints (#526 `5da9e1d`) — POST `/procedures/{id}/run` +
-> `/runs/{id}/gate/resolve` (auto-resume); identity recorded server-side
-> (AC-2 on the persisted row); registry executor-factory seam. Step 3 gate
-> state machine (#527 `a0db450`) — RESOLVED status; resume refuses
-> undecided proposal gates + SoD tie re-assert; optimistic lock (alembic
-> 0006 `pipeline_runs.version`); AC-5 narrowing disclosed (empty-watch
-> contract kept). Step 4 write-ahead (#528 `bafdf92`) —
-> `run_procedure_persisted` (write-ahead + per-step commits via
-> `on_step_complete`); two-phase resolve — decision committed BEFORE
-> effect; version bump AT decision commit = exactly-once under
-> concurrency; `pending_execution` entries = the outbox seam. Step 5
-> append-only audit (#529 `692f748`) — hash-chained `audit_log` + block
-> trigger + INSERT-only `vero_audit_writer` role (alembic 0007);
-> run_started/gate_decision/handler_receipt/run_resumed/gate_refused each
-> in-transaction; tamper-detect survives a superuser. Step 6 config
-> pinning (#530 `6cde2db`) — `governance_pin.py` + snapshot/hash on
-> `pipeline_runs` (alembic 0008); fail-closed pin-mismatch at resume +
-> gate; prose excluded; people deliberately NOT pinned. Close-out (#531
-> `28d919c`, merge `353c04e`) — completion fold (Status → Complete, 10 ACs
-> ticked, step→PR table, 5 disclosed deviations) + `git mv` →
-> `docs/plans/done/0047-pre-pilot-hardening-authn-gate-audit.md`.
-> **Disclosed local dev-box state:** local `.env` gained
-> `API_AUTH_ENABLED=false` (code default now ON — preserves demo UX); dev
-> DB migrated through alembic 0008 (0005 action_identity · 0006
-> `pipeline_runs.version` · 0007 audit_log + trigger + role · 0008
-> governance-pin columns). Session-95 CLOSE handoff:
-> `.claude/handoffs/session-95/2026-07-04-0014-code-session95-CLOSE-plan0047-hardening-sprint.md`.
-> **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (the
-> entire sprint was offline); AI-assisted (Claude Code, session 95), no
-> `Co-Authored-By` per CLAUDE.md §7.
-
-> _Rotation note (sessions-96/97 reconcile, 2026-07-04): to hold STATUS
-> under the **R1 64 KB hard ceiling** as the new Sessions-96/97 CF block
-> landed (the file was at ~62.4 KB before the addition; R1 overrides the
-> R2 4-session window — the s93/s94/s95 precedents accepted a narrowed
-> window), one Current Focus block was rotated verbatim to
+> _Rotation note (sessions-96/97 CLOSE reconcile, 2026-07-04): to hold
+> STATUS under the **R1 64 KB hard ceiling** as the rewritten Sessions-96/97
+> CLOSE CF block landed (the file was at ~61.5 KB before this reconcile; R1
+> overrides the R2 4-session window — the s93/s94/s95 precedents accepted a
+> narrowed window), the oldest full Current Focus block was rotated verbatim
+> to
 > [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md):
-> the **Session 94 CLOSE, 2026-07-03 (head_commit `255627b` → `f63c975`)**
-> ADR-0020 partner-sim TRIAL-COMPLETE-BOTH-VERTICALS + C-1..C-3-confirmed
-> block (incl. the #520 `fix(demo)` concurrent-session attribution).
-> Resulting Current-Focus window = {96/97 `676fbc2`, 95 CLOSE `28d919c`};
-> RD table = 10 rows (at the R2 cap). **Prior (session-95 CLOSE
-> reconcile, 2026-07-04):** the two **Session 94 cont.** blocks (RUN-2
-> REHEARSAL + synthesis; RUN-2 RECEIVE); **prior (2026-07-03):** the 94
-> D4 POST-RUN-1 REVIEW and 94 RUN-1 REHEARSAL blocks — all to the same
-> archive. Per the STATUS.md Rotation Policy (R1/R2/R4)._
+> the **Session 95 CLOSE, 2026-07-03 → 2026-07-04 (head_commit `f63c975` →
+> `28d919c`)** PLAN-0047 PRE-PILOT HARDENING SPRINT COMPLETE block (all 7
+> steps + 10 ACs, #522–#531; PLAN-0047 is already the top Recent-Decisions
+> row and lives in `docs/plans/done/`). Resulting Current-Focus window =
+> {Sessions 96/97 `d8f9ec5`}; RD table = 10 rows (at the R2 cap). **Prior
+> (sessions-96/97 reconcile, 2026-07-04):** the **Session 94 CLOSE**
+> ADR-0020 partner-sim TRIAL-COMPLETE-BOTH-VERTICALS block. **Prior
+> (session-95 CLOSE reconcile, 2026-07-04):** the two **Session 94 cont.**
+> blocks (RUN-2 REHEARSAL + synthesis; RUN-2 RECEIVE); **prior
+> (2026-07-03):** the 94 D4 POST-RUN-1 REVIEW and 94 RUN-1 REHEARSAL blocks
+> — all to the same archive. Per the STATUS.md Rotation Policy (R1/R2/R4)._
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
@@ -164,6 +115,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-04 | **PLAN-0048 Q4 generic query executor COMPLETE + CLOSED (#533–#541) + PLAN-0049 v1 ontology bundle COMPLETE {1,2,4,5} (#542–#550, R2 carved out) + ADR-0027 semantic-enrichment fields ACCEPTED (sessions 96/97)** — suite 2097 → 2142 passed / 5 skipped (+45); every feature PR green under the PLAN-0047 Step-7 CI gate (ruff + ruff-format + `mypy --strict` + full suite w/ postgres + `alembic upgrade head`; #548 added an `alembic check` drift-guard step). **PLAN-0048** (read side gains **declared==dispatched** via `QueryStepExecutor`; Steps 1–3 reconciled in #540): Step 4 seams/docs #539 `f7d4972` (merge `ab394b0`) + COMPLETE fold + `git mv` → done/ #541 `73a6f9c` (merge `0215b3a`). **PLAN-0049** (executable set {1,2,4,5}; R2/Step-3 carved out to ADR-0027): draft #542 `6626d97` (SD-1..7 surfaced) · SD-1..7 as-rec + flip Draft→Ready + carve R2 #543 `c8b48be` · Step 1 energy-v1 #544 `69d7759` (asset_type feeder/cap_bank/gas_engine; NEW `rated_current_a` [SD-6]; measured_kind current/voltage; alembic 0009) · version=content-revision #545 `aec644d` (`ontology_schema.json` `version` const 0 → `{integer, minimum 0}` — the GRAMMAR-version field repurposed as content-revision, SD-2 Cray-confirmed; energy→1, supply_chain→1) · Step 2 supply-chain-v1 #546 `37387ed` (NEW Equipment entity + `shipment_uses_equipment` + `adjust_setpoint`; measured_kind temperature/battery; enum gaps; NO committed ORM — SD-3 gitignored fallback, SD-4 parity gap documented) · Step 4 R1 context-pack emitter #547 `b80dcff` (`emit_context_pack` 7th emitter; closed-set refuse-not-guess; R2 DEGRADE PATH reads ADR-0027 fields when present; 32K token-budget tripwire) · Step 5 alembic autogenerate #548 `1a689ef` (`compare_type=True`; CI `alembic check` drift-guard; migration<->ORM lockstep runbook) · COMPLETE fold + `git mv` → done/ #550 `579c5d1` (merge `d7041f4`). **ADR-0027** (ADR-008 D2/D3 grammar amendment, 4 OPTIONAL constructs: synonyms th+en · sample_values · verified_queries · metric grain/join-path; mirrors ADR-0021; backward-compat HARD INVARIANT; governed≠generated; decides grammar + defers build): Proposed #549 `a7bd595` (merge `e61c287`, 7 SDs) → **Accepted #551 `d8f9ec5`** (merge `9f95942`) — Cray ratified ALL SD-1..7 as-recommended (none overridden); **SD-6 follow-up build = PLAN-0050** (L1 `ontology_schema.json` + `ontology_meta.py` optional attrs mirroring QuantityBinding + L2 validators + energy-v1/supply-chain-v1 backfill; the shipped R1 emitter consumes it for free via the degrade path). #537 fixture-hermeticity fix (`2c627bb`) closed the #535/#536 concurrent-pytest disclosures. `loop-dispatcher` DISABLED; MS-S1 cold (offline throughout) | `9f95942` (#551 merge) / `d8f9ec5` (ADR-0027 Accepted) / `d7041f4` (#550 merge) / `0215b3a` (#541 merge) / `docs/adr/0027-ontology-semantic-enrichment-fields.md` + `docs/plans/done/{0048-q4-generic-query-executor,0049-v1-ontology-bundle}.md` + `services/engine/code_generator.py::emit_context_pack` + `services/engine/ontology_schema.json` + `alembic/versions/0009_*.py` |
 | 2026-07-03 | **PLAN-0047 (pre-pilot hardening: authn + run/gate endpoints + write-ahead + audit + config-pin + CI) EXECUTED + COMPLETE + CLOSED (session 95; PRs #522–#531; PLAN → `done/`)** — all 7 steps + all 10 ACs; **+31 tests (suite 2066 → 2097 passed / 5 skipped)**; sales claims (authn / audit / exactly-once / config-pin) now code- and CI-backed. **Step→PR:** draft #522 `b6cb0d5` (plan-drafter authored) · SD-1..4 as-rec #523 `8198548` (SD-1=(a) API keys · SD-2 defer · SD-3 yes-minimal · SD-4 CI w/ DB) · Step 7 CI #524 `0401a0a` (FIRST CI gate on the repo: ruff + ruff-format + `mypy --strict` + full suite w/ postgres container + `alembic upgrade head` per PR) · Step 1 authn #525 `3b3db46` (fail-closed API-key gate on state-changing routes; `action_identity` sidecar, alembic 0005) · Step 2 endpoints #526 `5da9e1d` (POST `/procedures/{id}/run` + `/runs/{id}/gate/resolve` auto-resume; identity recorded server-side, AC-2 on the persisted row) · Step 3 gate state machine #527 `a0db450` (RESOLVED status; resume refuses undecided proposal gates + SoD tie re-assert; optimistic lock, alembic 0006) · Step 4 write-ahead #528 `bafdf92` (`run_procedure_persisted`; two-phase resolve — decision committed BEFORE effect, version bump AT decision commit = exactly-once under concurrency; `pending_execution` = the outbox seam) · Step 5 audit #529 `692f748` (append-only hash-chained `audit_log` + block trigger + INSERT-only `vero_audit_writer` role, alembic 0007; tamper-detect survives a superuser) · Step 6 pinning #530 `6cde2db` (`governance_pin.py`; fail-closed pin-mismatch at resume + gate; prose excluded; people deliberately NOT pinned; alembic 0008) · close-out #531 `28d919c` (completion fold: 10 ACs ticked, step→PR table, **5 disclosed deviations** incl. `/warm`+`/sleep`+`/intake/generate` gated + the AC-5 narrowing w/ empty-watch contract kept; `git mv` → `done/`). Local dev-box (disclosed): `.env` `API_AUTH_ENABLED=false` (code default now ON); dev DB migrated through alembic 0008. Offline throughout; MS-S1 cold | `353c04e` (#531 merge) / `28d919c` (#531 close) / `services/api/auth.py` + `services/engine/procedures/persistence.py` (write-ahead) + `services/engine/procedures/governance_pin.py` + `alembic/versions/{0005_action_identity,0006_pipeline_run_version,0007_audit_log,0008_governance_pin}.py` + `.github/workflows/ci.yml` + `docs/plans/done/0047-pre-pilot-hardening-authn-gate-audit.md` |
 | 2026-07-02 | **PLAN-0046 (Q3 read-side ontology-binding build) EXECUTED + COMPLETE + CLOSED (session 93 cont., #511 feat + #512 close; PLAN → `done/`)** — renders the Accepted ADR-016 Q3 amendment into code; **all 11 ACs met.** `StepInput.reads: list[str]` + `AgentAllowed.object_types` (both `extra="forbid"`, backward-compat: absent/empty = loads as today) + the NEW pure `validate_read_bindings` load-gate (SD-1 Option A — `validate_runnable` + its ~12 call-sites untouched) wired at both production pre-flight sites (`run_procedure` + `persistence.resume_run`; skipped, no ontology I/O, for reads-absent procedures); `reads` → `STEP_GOVERNANCE_FIELDS` (OQ-A) + a disclosed `lift_to_step` strip-hardening (`StepDraft` reuses `StepInput` → generated drafts physically strip `reads` to ABSENT, OQ-C C1 pattern) + CI tripwire. 12 new tests; ruff + `mypy --strict` clean; **full offline suite 2066 passed / 5 skipped.** Zero runtime-data-flow change; honest frame (LOCKED-9): declared ✔ · load-gated ✔ · execution-bound ✖. SD-2 = Option A (verticals stay absent; gate inert until opt-in). The Q4 generic run-consume query executor = a SEPARATE later PLAN. Offline-only, no host-state | `eb63692` (#512 close) / `878b517` (#511 feat) / `services/engine/procedures/` (spec + orchestrator + draft-lift) + `docs/plans/done/0046-*.md` |
 | 2026-07-01 | **ADR-016 Q3 READ-SIDE ONTOLOGY OBJECT-BINDING AMENDMENT ACCEPTED (Rock 3 / O-2, #505) (session 93)** — an in-place ADR-016 D2+D3 amendment closing the read-side governance gap that mirrors the shipped write-side. Two commits: `915c344` (Proposed) + `cb7eb05` (fold ratified decisions → Accepted). **Decision (contract-first):** a typed `StepInput.reads: list[str]` read entry point (OQ-5: list not `str` — procurement `intake` reads 3 object types + joins); `Agent.allowed.object_types` mirroring `action_handlers`; **LOAD-time enforcement** (`reads ∈ ontology ∩ allowlist`, else refuse load) — **zero runtime-data-flow change.** **Honest enforcement frame (Cowork caught, Code-verified):** v1 = a typed read contract + a load-time consistency/scoping gate, **NOT** runtime-enforced parity — even write-side `action_handlers` is only pre-flight-checked in `validate_runnable`; teeth = declared==dispatched, gained read-side only at **Q4**. **Deferred:** the generic run-consume query executor → a fast-follow build PLAN (touches runtime flow + enrich/join steps); the Box-4 economic-impact facet → a self-cancelling **N≥3** marker (typed facet only; economic dimension prose-captured at authoring). **OQ-1..6/A ratified:** OQ-1 `StepInput.reads` · OQ-2 load-gate+reframe · OQ-3 `object_types` bounds `fetch_objects` only (links/events out of v1) · OQ-4 `where`=post-fetch · OQ-5 `reads:list[str]` · OQ-A `reads`/`object_types` H-governed (`object_types` auto-covered; add `reads` to `STEP_GOVERNANCE_FIELDS` = build-PLAN task) · OQ-6 `object_types` empty=unconstrained (backward-compat). **Three-lens process:** `plan-drafter` AUTHORED the amendment + folded the ratified decisions; Cowork Tier-1b independent second-perspective review (caught the parity over-claim + surfaced OQ-5); Code R2-verified on disk + committed; Cray ratified OQ-1..6/A. **Context:** the parallel hero compliance-swap (#506, `0b7efe4`) landed last session (swapped the hero-demo compliance stub for the shipped `rule_gate` executor; governed outcome unchanged). **Impl note for the build PLAN:** the load-gate must thread the vertical `OntologyMeta` into pre-flight (`validate_runnable(procedure, agent)` doesn't carry it today). **NEXT = the fast-follow build PLAN** (`StepInput.reads` + `Agent.allowed.object_types` + load-gate + `reads`→`STEP_GOVERNANCE_FIELDS` + tests); the generic query executor (Q4) = a separate later PLAN. **Routing:** the ADR-016 amendment authored by the in-harness `plan-drafter` (prong-2 exempt) → Code R2 + committed via `docs/adr` PR. `loop-dispatcher` stays DISABLED; MS-S1 cold (offline) | `cb7eb05` (#505 fold→Accepted) / `915c344` (#505 Proposed) / `docs/adr/0016-*.md` (D2 `StepInput.reads` + `Agent.allowed.object_types` + D3 load-gate) |
@@ -173,7 +125,6 @@ below, and git history.
 | 2026-06-30 | **A1b STEPS 3 + 6 (the rest of the demo-critical path) SHIPPED + MERGED (#488 `doa_tier` / #489 `governed_decision`) + independently verified (J1/J2 PASS) → the DEMO-CRITICAL PATH IS COMPLETE ON MAIN (session 89)** — MILESTONE, not closure: **A1b is NOT complete** (AC-9 + Steps 2/4/5 remain). With **Step 1 (#486, the live SoD gate)**, the hero render now has all three structured fields it joins on. **Step 3 (#488, `34be3a5`, AC-5):** a deterministic `doa_tier` per-kind executor — `resolve_doa_tier` over the `DoaLadder` half-open band (`Decimal` spend → tier), resolves the tier's `approver_role` → a `Person`, **fails CLOSED on a currency mismatch (OQ-4)**; the **SD-1=(a) `GovernanceActionExecutor` wrapper** dispatches on `governance_content.kind` **without a new `StepKind`**. **Step 6 (#489, `f5527d9`, AC-8):** the typed minimal **`governed_decision` audit-to-control field (SD-3=(a))** — `ControlRef{kind,id}` + `GovernedDecision{control_ref, principal_id}` on `AuditMetadata`, emitted as an **ENGINE side-effect** by the `doa_tier` route (`{kind:'doa_tier', id:resolved_tier_id}`) and the SoD gate (`{kind:'sod', id:sorted distinct_steps}`); **join-stable keys** (the `Person` PK + the verdict-emitted control id). **Gate (offline = binding bar):** both ruff + mypy clean — Step 3: **19 new `doa_tier` tests, full suite 1968 passed**; Step 6: **5 new `governed_decision` tests + the SoD-gate DB emission** (real hero gate emits `{kind:'sod', id:'approve+intake', principal_id:'appr-director'}`), **full suite 1973 passed / 5 skipped**. **Axis-B goal-gate: J1 PASS + J2 PASS** (independent goal-evaluator, creator≠critic intact, both steps). **AC-9 DEFERRAL (surfaced for Cray, NOT silently applied):** the procurement `audit` step is authored `autonomy: auto` AND downstream of the `approve`/`issue_po` gates, so the AC-9 auto-downstream-of-a-gate assertion would **restructure the hero procedure** — a Cray decision (restructure the audit terminal vs exempt no-op terminals), held for adjudication. **NEXT:** signal the hero-demo session to converge (the `services/engine/procedures/*` hold releases — it can build the read-only governance-moment render); then A1b's remaining non-demo-critical work = AC-9 (the Cray pick) + Steps 2/4/5 (`OQ-6` N≥2 marker · `rule_gate` · `scored_rule`). **Owed at A1b CLOSE (not per-step):** PLAN-0044 Completion note + `git mv` → `done/` + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (A1b offline) | `34be3a5` (#488) / `f5527d9` (#489) / `services/engine/procedures/{action_step,orchestrator}.py` + `services/db/models.py` (`AuditMetadata`/`GovernedDecision`/`ControlRef`) + `verticals/procurement/procedures.yaml` |
 | 2026-06-30 | **A1b STEP 1 (demo-critical LIVE fail-closed principal-SoD run enforcement) SHIPPED + MERGED (#486) + independently verified (J1/J2 PASS) (session 89)** — INTERIM (1 of A1b's 6 steps; A1b NOT complete). Makes the A1a pure `check_principal_sod` fire on a REAL suspended-gate resolution. `spec.parse_procedures` now reads `principals`/`principal_aliases` (were silently dropped); procurement ships **5 authored principals + `required_roles`** (AC-10); a **`step_principals` JSONB column on `PipelineRun` (+ Alembic `0004`)**; `orchestrator.run_procedure(principal=…)` records the requester per SoD step (**SD-2=(a)**); `action_step.resolve_gated_step` invokes the check **unconditionally**, fails **CLOSED** (raises `PrincipalSoDError` with the structured verdict) **BEFORE** any approve/execute, **non-skippable**. **Inert for non-SoD procedures** (only procurement carries SoD; aquaculture inert-reconcile proves no behavior change). **Gate (offline = binding bar):** ruff + mypy clean; **1921 offline + 27 DB tests green** incl. **8 NEW live-SoD DB tests** + `alembic upgrade head` (0004) + aquaculture inert-reconcile. **Axis-B goal-gate: J1 PASS + J2 PASS** (high, independent goal-evaluator, creator≠critic intact). **Demo-convergence:** 1 of 3 demo-critical pieces of the hero-demo "governed→run→฿" path; **A1b Steps 3 (`doa_tier` executor) + 6 (`governed_decision` audit-to-control) next** = the rest of that path (offline-pure); Steps 2/4/5 (`OQ-6`·`rule_gate`·`scored_rule`) after; hero-demo session converges once the path is in. **Owed at A1b CLOSE (not per-step):** PLAN-0044 SD-1/SD-2/SD-3-as-rec disposition + a PLAN-0044 Completion note + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (A1b offline) | `719ea78` (#486) / `services/engine/procedures/{spec,orchestrator,action_step}.py` + `services/db/models.py` + `services/db/migrations/versions/0004_*.py` + `verticals/procurement/procedures.yaml` |
 | 2026-06-30 | **A1 (run-time moat enforcement — Cray's #1 rock) LANDED (session 88): ADR-0026 Accepted #479 + A1a COMPLETE #481/#482 + A1b planned PLAN-0044 #484** — builds the principal-identity capability the AT-2 layer's run-time SoD was deferred on (the s85/s86 AC-13-ALT carry). **ADR-0026 Accepted (#479, `620d799`):** principal-identity + AT-2 run-time enforcement; all **6 OQs Cray-adjudicated as-recommended**. **PLAN-0043 (A1a) drafted + SD-1/SD-2 folded (#480, `05243eb`/`af0d882`):** Cray adjudicated **SD-1 = `required_roles` on `SoDConstraint`** + **SD-2 = a `PrincipalAlias` link object** (deviating from the drafted rec). **A1a COMPLETE end-to-end:** **Steps 1-3 (#481, `f1e7afa`)** = the `Person` / `PrincipalAlias` construct + `SoDConstraint.required_roles` + H-governance (new fields are governance, never on a draft type); **Steps 4-6 (#482, `f5c6342`)** = `services/engine/procedures/principal_sod.py`, the **fail-closed principal-SoD run-check** emitting a **STRUCTURED `PrincipalSoDVerdict`** + the `RunContext.principal` / `resolve_gated_step(principal=…)` seam + the offline oracle. **Gate: offline green — the full procedures suite 344 passed.** **A1a/A1b boundary (Cray s88):** the live invocation needs per-step principal RECORDING = the A1b executors' job; A1a ships construct + run-check + seam, A1b wires live enforcement. **A1b drafted = PLAN-0044 (in-flight, #484):** live run enforcement + per-kind executors (`doa_tier`/`rule_gate`/`scored_rule`) + audit-to-control (OQ-5); **3 SDs surfaced for Cray.** **Hero-demo dependency (parallel session):** A1's structured `PrincipalSoDVerdict` + the A1b OQ-5 audit field feed the hero-demo's read-only "governance moment" render (convergence ask #1 MET, #2 lands with A1b). In-flight PRs awaiting Cray merge: **#483** (PLAN-0043 → `done/`) + **#484** (PLAN-0044). `loop-dispatcher` stays DISABLED; MS-S1 cold (A1a offline) | `620d799` (#479) / `f1e7afa` (#481) / `f5c6342` (#482) / `docs/adr/0026-principal-identity-run-enforcement.md` + `docs/plans/done/0043-a1a-principal-identity-sod-runcheck.md` + `services/engine/procedures/principal_sod.py` |
-| 2026-06-29 | **PLAN-0041 (classify-prompt enrichment lever) COMPLETE (session 87, #475/#476 + live AC-7 PASS)** — the fix for the PLAN-0040 AC-B5 ~1-in-3 false-abstain on a textbook AT-1/AT-3; a **PROMPT-ONLY** lever to lift the live AT-1-family classify match-rate. **Moat byte-identical** — the abstain-guard (`_archetype_disagreement`/`_AT2_ONLY_KINDS`/`_BAND_KINDS`, ADR-0024 D4/D7) unchanged; no schema change; **no new ADR**. **Steps 1-3 (#475, feat `035af38`):** `ArchetypeTemplate.description` (value-free, from the canonical catalog) + a 3-tuple classify catalog + a value-free `_BAND_EXPLAINER` into `build_classify_messages` (ends "When unsure … abstain" = the R2 moat-safety brake); offline gate AC-1..5 (guard byte-identity introspection; AT-2-only-abstain generalized to scored_rule/rule_gate/doa_tier; enriched-prompt introspection; descriptions-carry-no-AT2-vocab; schema pins the closed enum). **Step 4 (#476, test `d06d420`):** the OQ-C 26-narrative labelled fixture set + offline validators + a `@live`-gated before/after A/B harness routing both arms through the byte-identical imported guard (no production change); an independent adversarial moat-safety reviewer judged the set trustworthy; the pre-committed pass/fail read embedded in the harness (a docs/plans/ evidence doc was G2-gated → relocated into the test module). **Step 5 (live, AC-7, host-state — Cray go via AskUserQuestion):** the live before/after on MS-S1 `gpt-oss:20b`, N=3, worst reported — **PASS:** Arm A gated AT-1+AT-3 **8→11/11 (perfect, all 3 reps)** vs the ~7/11 PLAN-0040 reference; Arm B **11/11 abstain every rep** (zero AT-2 regression); **Arm-B guard paths = {label_abstain: 33}** (step_disagreement = 0 — the model labels AT-2 out-of-scope ITSELF, the deterministic backstop never needed to fire = no silent label→backstop shift); AT-1b 11/12 (reported, not gated). Live = **confirming evidence; the offline gate is the binding bar** (OQ-D). Raw log gitignored at `.claude/benchmark-results/plan0041-step5-live-ab.log`; thin tracked summary at `docs/logs/2026-06-29-plan0041-step5-live-ab.md` (two-artifact model). Gate (every step, offline): ruff + ruff-format + `mypy --strict services/` clean, **pytest 1891 passed / 25 skipped** (1877 baseline + 7 Steps-1-3 + 7 Step-4 validators; live test skipped offline). PLAN `git mv` → `done/`. `loop-dispatcher` stays DISABLED | `de36c2b` (#475/#476) / `services/engine/procedures/{archetypes/template,generator/{pipeline,prompts}}.py` + `tests/services/engine/procedures/{test_generator_pipeline,classify_enrichment_fixtures,test_classify_enrichment_fixtures,test_classify_enrichment_live}.py` + `docs/plans/done/0041-classify-prompt-enrichment.md` + `docs/logs/2026-06-29-plan0041-step5-live-ab.md` |
 
 ## In-Flight Discussions
 
@@ -188,6 +139,7 @@ below, and git history.
 ## Active TODOs
 
 - [x] **PLAN-0041 (classify-prompt enrichment lever — Rock 1) — COMPLETE (s87, offline gate #475/#476 + live AC-7 PASS, moat byte-identical).** The prompt-only fix for the s83 AC-B5 ~1-in-3 false-abstain: offline gate (#475 Steps 1-3 + #476 Step 4) + the Cray-gated live before/after on MS-S1 `gpt-oss:20b` (Arm A 8→11/11 all reps; Arm B 11/11 abstain; label_abstain 33/33, step_disagreement 0); the AT-2 cross-check stayed byte-identical, no schema change, no new ADR; the offline gate is the binding bar, live = confirming. PLAN `git mv` → `done/`. *(Cowork-D1 → Code-R2 → Cray-ratified → committed #461; executed Steps 1-5 Code-direct s87)*
+- [ ] **ADR-0027 R2 build → PLAN-0050 (the semantic-enrichment-fields follow-up; Wave-2 residue, s96/97).** ADR-0027 Accepted (#549 Proposed → #551 SD-1..7 as-rec) decided the grammar (4 OPTIONAL constructs: synonyms th+en · sample_values · verified_queries · metric grain/join-path) + deferred the build; **SD-6 follow-up build PLAN = PLAN-0050:** amends L1 `services/engine/ontology_schema.json` + `ontology_meta.py` (new optional attrs on PropertyMeta/ObjectTypeMeta, mirroring QuantityBinding) + L2 validators + backfills energy-v1 + supply-chain-v1; the shipped R1 `emit_context_pack` emitter consumes it for free via the degrade path (reads the fields when present, omits when absent). Backward-compat is a HARD INVARIANT; governed≠generated. **Route:** G2-gated → `plan-drafter` drafts → Code R2 + commit → Cray ratify. *(s96/97; ADR-0027; pairs with Rock-3 Box-4 residue below)*
 - [ ] **Rock 2 / O-3 — AT-2 / managerial layer — ADR-0025 RATIFIED + ACCEPTED (#463, s84); next = the follow-on build PLAN.** The Box-3 "Action = contract" layer (DOA/SoD/scored-rule/compliance). **ADR-0025 (Accepted)** decided: type AT-2 content (D2 authoritative discriminated `Step.governance_content` keyed to `gate_kind`, not the facet), bypass structurally unrepresentable (D3), **close the live run-gate AT-2-blindness defect** (D5), **defer the generator** under a CI-enforced N≥2 re-trigger (D7; AT-2 = N=1). **NEXT = the follow-on build PLAN (OQ-5, separate Cowork dispatch):** type the content + the D5 gate-extension + the prose→typed migration of the existing procurement AT-2 in **ONE PR behind a green golden test** (⚠ the shipped AT-2 fails `validate_governance_complete` until typed). OQ-3 (run vs author-only) concrete v1 call lands in that PLAN. *(s84; ADR-0025; [[project_vero_ultimate_target_generative_procedures]])*
 - [ ] **Rock 3 — Box-4 economics + the procedure→ontology data-binding gap (O-2; Q3 ADR Accepted + BUILD COMPLETE s93 — open only for the residues).** (1) **Q3 ontology data-binding — DONE end-to-end:** the ADR-016 D2+D3 amendment (Accepted s93, #505) is now **BUILT + CLOSED** (PLAN-0046 → `done/`; #511 feat `878b517` / #512 close `eb63692`, s93 cont. 2026-07-02): `StepInput.reads: list[str]` + `Agent.allowed.object_types` + the `validate_read_bindings` **LOAD-time consistency/scoping gate** (`reads ∈ ontology ∩ allowlist`, SD-1 Option A) wired at both production pre-flight sites; `reads` H-governed via `STEP_GOVERNANCE_FIELDS` + the `lift_to_step` draft-strip hardening; 12 new tests, offline suite 2066 passed / 5 skipped. v1 = a typed read contract + load-gate, **NOT** runtime-enforced parity — declared==dispatched teeth arrive with the **Q4 generic run-consume query executor = a SEPARATE later PLAN (remaining Rock-3 build residue)**. (2) **Box 4 (Profit Formula) — STILL DEFERRED (N≥3, unchanged).** The reasoning trace is operational, not economic — tie each action to ฿ impact (avoided outage / margin / ROI). Prepare by capturing the economic dimension as prose when hand-authoring verticals + proving the ฿ framing in the demo; type an economic-impact facet only after **N≥3** verticals triangulate it (the ADR-016 Q3 amendment left it a self-cancelling N≥3 marker). *(s84 strategy discussion + the 3-layer / ontology-binding diagram; Q3 ADR Accepted s93 #505; Q3 build complete + PLAN-0046 closed s93 cont. #511/#512 — TODO stays open ONLY for the Q4 executor + the Box-4 facet)*
 - [ ] **Standard partner-intake form (template candidate — Cray observation, s93 partner-sim run-1).** Generalize the 6-ask structure (+ the TWP package's §1–§10 answer shape as a SYNTHETIC-bannered worked example) into a stakeholder-facing standard intake form per vertical, so partners can prepare narrative context for vero-lite to generate workflow pipelines more accurately. Template lineage = the partner-facing ONE-PAGER (full taxonomy allowed for real partners), NOT the R1-clean variant (partner-sim-only screen). Pairs with the partner-trial-readiness discussion + ADR-016 Phase 2 intake. *(s93; ADR-0020 run-1)*
