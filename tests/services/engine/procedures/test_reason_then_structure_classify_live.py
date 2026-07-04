@@ -31,6 +31,11 @@ Run for evidence (Step 5b), with Cray's host-state go + MS-S1 warm::
 
     OCT_LIVE_MS_S1=1 python -m pytest \\
         tests/services/engine/procedures/test_reason_then_structure_classify_live.py -s -v
+
+LIVE RESULT (2026-07-05, gpt-oss:20b, N=3, worst rep): Arm-B safety 11/11 in EVERY arm/rep
+(held); Arm-A gated baseline 11/11, field_order_flip 11/11 (+0), two_pass 10/11 (-1) — NO LIFT
+(baseline already at the 11/11 ceiling). Recommendation: REJECT both variants, keep baseline.
+Full record: docs/logs/2026-07-05-plan0051-live-ab-results.md.
 """
 
 from __future__ import annotations
