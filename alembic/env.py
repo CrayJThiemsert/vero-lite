@@ -40,7 +40,16 @@ def run_migrations_offline() -> None:
 
 
 def _do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+    context.configure(
+        connection=connection,
+        target_metadata=target_metadata,
+        # PLAN-0049 Step 5 (SD-5): make `alembic revision --autogenerate` and
+        # `alembic check` reliable — detect column TYPE changes (not just
+        # add/drop), so a regen-driven ontology change surfaces its full diff
+        # against the generated ORM. server_default is intentionally NOT compared
+        # (the ORM declares none; comparing it would produce false positives).
+        compare_type=True,
+    )
     with context.begin_transaction():
         context.run_migrations()
 
