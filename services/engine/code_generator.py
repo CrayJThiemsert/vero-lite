@@ -1,13 +1,13 @@
-"""Code generator: emits 5 artifacts per vertical from an ontology YAML.
+"""Code generator: emits artifacts per vertical from an ontology YAML.
 
 Implements ADR-008 D5. Each emitter is a pure-Python structured
 builder — no Jinja2 (consultation reply Q6: the project is dep-
 conservative). Outputs are deterministic given the same input doc,
 ordered by ``object_types`` insertion order from the parsed YAML.
 
-This commit (PLAN-003 commit 4) ships the orchestrator plus the
-Pydantic + SQL emitters. Commit 5 lands JSON Schema, MCP, and
-TypeScript emitters.
+Emitters: Pydantic + SQL (PLAN-003 commit 4), JSON Schema + MCP +
+TypeScript (commit 5), the SQLAlchemy ORM (PLAN-0031, the 6th), and the
+R1 semantic context pack (PLAN-0049 Step 4, the 7th).
 
 Type mappings (per ADR-008 D3 + PLAN-003 §6):
 
@@ -525,6 +525,140 @@ def emit_orm(doc: dict[str, Any], output_path: Path) -> Path:
 
 
 # ---------------------------------------------------------------------------
+# Semantic context-pack emitter (PLAN-0049 Step 4 / R1)
+# ---------------------------------------------------------------------------
+
+# The R1 "semantic context pack" (PLAN-0049 Step 4; semantic-foundation research
+# 2026-07-03, F1/R1): a compact markdown compilation of a vertical's ontology —
+# object types, closed enum value-sets, measured-quantity conventions, and
+# relationships — for grounding NL-query + anomaly-reasoning (the best-evidenced
+# 2026 intervention: +17-23pp, model-independent). It is the 7th emitter, sharing
+# the ``(doc, output_path) -> Path`` shape. Deterministic (object_types insertion
+# order), pure-Python (no Jinja), gitignored like the other reference artifacts.
+#
+# R2 DEGRADE PATH (SD-1 carve-out): the convergent semantic-enrichment fields
+# (``synonyms`` th/en, ``sample_values``, ``verified_queries``, metric ``grain``)
+# are a carved-out ADR-008 grammar amendment (R2, a separate prerequisite ADR),
+# absent from the ontology today. This emitter reads them WHEN PRESENT and omits
+# their sections when absent — so it ships now on structural + measure content and
+# gains the enrichment automatically once R2 lands. No hard dependency on R2.
+
+# Fixed per-vertical token budget (semantic-foundation research: 32K = the
+# industry context-ceiling tripwire; the pack target is ~4KB). ``vero-lite
+# generate`` does not enforce it (deterministic emit only); the budget is asserted
+# by the emitter's tests. Exposed here so the test and the emitter share one source.
+CONTEXT_PACK_CHAR_BUDGET = 32_000
+
+
+def _context_pack_property_line(prop_name: str, prop_def: dict[str, Any]) -> str:
+    parts = [f"- `{prop_name}` ({prop_def.get('type', 'string')})"]
+    if prop_def.get("type") == "enum":
+        values = prop_def.get("values") or []
+        parts.append(f" — closed set: {{{', '.join(str(v) for v in values)}}}")
+    if prop_def.get("type") == "ref" and prop_def.get("target"):
+        parts.append(f" -> {prop_def['target']}")
+    if prop_def.get("required"):
+        parts.append(" (required)")
+    desc = prop_def.get("description")
+    if desc:
+        parts.append(f" — {' '.join(str(desc).split())}")
+    return "".join(parts)
+
+
+def _context_pack_object_lines(object_types: dict[str, Any]) -> list[str]:
+    """The ``## Object types`` body — one block per type (heading + meta + props)."""
+    lines: list[str] = []
+    for obj_name, obj_def in object_types.items():
+        obj = obj_def or {}
+        desc = obj.get("description")
+        heading = f"### {obj_name}"
+        if desc:
+            heading += f" — {' '.join(str(desc).split())}"
+        lines.append("")
+        lines.append(heading)
+        meta_bits = []
+        if obj.get("primary_key"):
+            meta_bits.append(f"primary key `{obj['primary_key']}`")
+        if obj.get("title_key"):
+            meta_bits.append(f"title `{obj['title_key']}`")
+        if meta_bits:
+            lines.append(f"{'; '.join(meta_bits).capitalize()}.")
+        for prop_name, prop_def in (obj.get("properties") or {}).items():
+            lines.append(_context_pack_property_line(prop_name, prop_def or {}))
+    return lines
+
+
+def _context_pack_measure_lines(object_types: dict[str, Any]) -> list[str]:
+    """The ``## Measured quantities`` body — the ADR-0021 kind->unit conventions."""
+    lines: list[str] = []
+    for obj_name, obj_def in object_types.items():
+        bindings = (obj_def or {}).get("quantity_bindings") or []
+        if bindings:
+            pairs = ", ".join(f"{b.get('kind')}→{b.get('unit')}" for b in bindings)
+            lines.append(f"- {obj_name}: {pairs} (one unit per kind, ADR-0021)")
+    return lines
+
+
+def emit_context_pack(doc: dict[str, Any], output_path: Path) -> Path:
+    """Write the R1 semantic context pack (markdown) to ``output_path``.
+
+    See the module-section header: a compact, LLM-facing compilation of the
+    ontology for NL-query / anomaly grounding, degrading gracefully in the
+    absence of the carved-out R2 enrichment fields.
+    """
+    namespace = doc.get("namespace", "")
+    version = doc.get("version", 0)
+    object_types: dict[str, Any] = doc.get("object_types") or {}
+    link_types: dict[str, Any] = doc.get("link_types") or {}
+
+    lines: list[str] = [
+        f"# Semantic context pack — {namespace}",
+        "",
+        f"Ontology revision {version}. Compiled, LLM-facing summary of the "
+        f"`{namespace}` ontology — object types, closed enum value-sets, "
+        "measured-quantity conventions, and relationships — for grounding "
+        "natural-language query and anomaly reasoning. **Enum value-sets are "
+        "CLOSED**: a value outside a listed set is out of coverage — refuse, do "
+        "not guess.",
+        "",
+        "## Object types",
+    ]
+    lines.extend(_context_pack_object_lines(object_types))
+
+    # Measured quantities (the ADR-0021 measured_kind -> unit conventions).
+    measure_lines = _context_pack_measure_lines(object_types)
+    if measure_lines:
+        lines.append("")
+        lines.append("## Measured quantities (conventions)")
+        lines.extend(measure_lines)
+
+    # Relationships (the link_types).
+    if link_types:
+        lines.append("")
+        lines.append("## Relationships")
+        for link_name, link_def in link_types.items():
+            link = link_def or {}
+            lines.append(
+                f"- {link.get('from')} —{link.get('cardinality')}→ {link.get('to')} "
+                f"(`{link_name}`)"
+            )
+
+    lines.append("")
+    lines.append("## Notes")
+    lines.append(
+        "- Semantic enrichment (synonyms th/en, sample values, verified queries) is "
+        "not yet populated — pending the R2 meta-schema follow-up (a carved-out "
+        "ADR-008 amendment); this pack degrades to the structural + measure content "
+        "available today."
+    )
+
+    body = "\n".join(lines).rstrip() + "\n"
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(body, encoding="utf-8")
+    return output_path
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
@@ -555,4 +689,5 @@ def generate_all(yaml_path: Path, output_dir: Path) -> dict[str, Path]:
     outputs["mcp"] = emit_mcp(doc, output_dir / "mcp_tools.json")
     outputs["typescript"] = emit_typescript(doc, output_dir / "types.ts")
     outputs["orm"] = emit_orm(doc, _ORM_COMMITTED_DEST.get(vertical, output_dir / "orm.py"))
+    outputs["context_pack"] = emit_context_pack(doc, output_dir / "context_pack.md")
     return outputs
