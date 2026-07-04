@@ -2254,3 +2254,79 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 > **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (nothing
 > touched it); AI-assisted (Claude Code, session 94), no `Co-Authored-By` per
 > CLAUDE.md §7.
+
+## Rotated this reconcile (sessions-96/97 CLOSE, 2026-07-04 — PLAN-0048/0049 COMPLETE + ADR-0027 Accepted #541/#550/#551)
+
+### Current-Focus block — Session 95 CLOSE (head_commit `f63c975` → `28d919c`) — PLAN-0047 pre-pilot hardening sprint COMPLETE [rotated 2026-07-04, sessions-96/97 CLOSE reconcile; R1 64 KB ceiling]
+
+> **Session 95 CLOSE, 2026-07-03 → 2026-07-04 (head_commit `f63c975` →
+> `28d919c` — #531 `docs(plans):` close-out is SUBSTANTIVE per lint policy,
+> merge `353c04e`) — PLAN-0047 PRE-PILOT HARDENING SPRINT COMPLETE: all 7
+> steps + all 10 ACs (PRs #522–#530), +31 tests (suite 2066 → 2097 passed /
+> 5 skipped); sales claims (authn / audit / exactly-once / config-pin) now
+> code- and CI-backed.** (Reconcile committed by the successor session per
+> the s95 CLOSE handoff.) **Arc:** a 3-specialist production-readiness
+> audit (in-chat; codegen/governance/compliance lenses) surfaced BLOCKER
+> gaps → Cray ratified a 7-item hardening sprint + ordering. **4
+> web-research briefs** (gitignored `docs/research/private/`, all
+> 2026-07-03): ontology-llm-market-landscape (thesis SUPPORTED;
+> commoditized layer ⇒ sell vertical content + generator + governed
+> actions, mid-market price); llm-db-reliability-techniques (we ARE the
+> CaMeL/OWASP reference architecture; ADOPT reason-then-structure, outbox
+> [done in spirit via Step 4], OTel gen_ai.*, OSI export);
+> local-llm-stack-viability (local-first stands; pitch "compute never
+> leaves"; keep the `gpt-oss:20b` pin; open a Qwen 3.5/3.6-27B Thai eval
+> track — host-state, Cray gate); semantic-foundation-build-techniques (R1
+> context-pack emitter +17–23pp evidence · R2 meta-schema fields [synonyms
+> th/en, sample_values, verified_queries, grain] · R3 schema-guided
+> bootstrap · R4 usage-mined loop human-gated; Thai = uncovered moat).
+> **5-wave backlog re-order (Cray-agreed):** W1 = PLAN-0047 ✅ · W2 = Q4
+> executor PLAN + v1 ontology bundle (energy-v1 + supply-chain-v1 + R1 +
+> R2 + migration-autogenerate) + a small reason-then-structure item · W3
+> (parallel, Cowork) = GTM pack + standard intake form (11 additions) · W4
+> = ADR-016 Phase-3 monitor PLAN + sprint items 5/6-remainder + ops · W5 =
+> coverage eval + raw-vs-layer re-benchmark + optional partner-sim run-3 →
+> real partner intake. **PLAN-0047 (plan-drafter authored, draft #522
+> `b6cb0d5`; SD-1..4 ratified as-recommended #523 `8198548`: SD-1=(a) API
+> keys · SD-2 defer · SD-3 yes-minimal · SD-4 CI w/ DB) EXECUTED
+> COMPLETE:** Step 7 CI (#524 `0401a0a`) — the repo's FIRST CI gate: ruff
+> + ruff-format + `mypy --strict` + full suite w/ postgres container +
+> `alembic upgrade head` on every PR; 2066 baseline green; every sprint PR
+> from #525 on ran green under it. Step 1 authn (#525 `3b3db46`) —
+> `services/api/auth.py` fail-closed API-key gate on state-changing
+> routes; `/warm` + `/sleep` + `/intake/generate` also gated (disclosed
+> deviation); `action_identity` sidecar table (alembic 0005). Step 2
+> endpoints (#526 `5da9e1d`) — POST `/procedures/{id}/run` +
+> `/runs/{id}/gate/resolve` (auto-resume); identity recorded server-side
+> (AC-2 on the persisted row); registry executor-factory seam. Step 3 gate
+> state machine (#527 `a0db450`) — RESOLVED status; resume refuses
+> undecided proposal gates + SoD tie re-assert; optimistic lock (alembic
+> 0006 `pipeline_runs.version`); AC-5 narrowing disclosed (empty-watch
+> contract kept). Step 4 write-ahead (#528 `bafdf92`) —
+> `run_procedure_persisted` (write-ahead + per-step commits via
+> `on_step_complete`); two-phase resolve — decision committed BEFORE
+> effect; version bump AT decision commit = exactly-once under
+> concurrency; `pending_execution` entries = the outbox seam. Step 5
+> append-only audit (#529 `692f748`) — hash-chained `audit_log` + block
+> trigger + INSERT-only `vero_audit_writer` role (alembic 0007);
+> run_started/gate_decision/handler_receipt/run_resumed/gate_refused each
+> in-transaction; tamper-detect survives a superuser. Step 6 config
+> pinning (#530 `6cde2db`) — `governance_pin.py` + snapshot/hash on
+> `pipeline_runs` (alembic 0008); fail-closed pin-mismatch at resume +
+> gate; prose excluded; people deliberately NOT pinned. Close-out (#531
+> `28d919c`, merge `353c04e`) — completion fold (Status → Complete, 10 ACs
+> ticked, step→PR table, 5 disclosed deviations) + `git mv` →
+> `docs/plans/done/0047-pre-pilot-hardening-authn-gate-audit.md`.
+> **Disclosed local dev-box state:** local `.env` gained
+> `API_AUTH_ENABLED=false` (code default now ON — preserves demo UX); dev
+> DB migrated through alembic 0008 (0005 action_identity · 0006
+> `pipeline_runs.version` · 0007 audit_log + trigger + role · 0008
+> governance-pin columns). Session-95 CLOSE handoff:
+> `.claude/handoffs/session-95/2026-07-04-0014-code-session95-CLOSE-plan0047-hardening-sprint.md`.
+> **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (the
+> entire sprint was offline); AI-assisted (Claude Code, session 95), no
+> `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-29 (PLAN-0041 classify-prompt enrichment lever COMPLETE, session 87) [rotated 2026-07-04, sessions-96/97 CLOSE reconcile]
+
+| 2026-06-29 | **PLAN-0041 (classify-prompt enrichment lever) COMPLETE (session 87, #475/#476 + live AC-7 PASS)** — the fix for the PLAN-0040 AC-B5 ~1-in-3 false-abstain on a textbook AT-1/AT-3; a **PROMPT-ONLY** lever to lift the live AT-1-family classify match-rate. **Moat byte-identical** — the abstain-guard (`_archetype_disagreement`/`_AT2_ONLY_KINDS`/`_BAND_KINDS`, ADR-0024 D4/D7) unchanged; no schema change; **no new ADR**. **Steps 1-3 (#475, feat `035af38`):** `ArchetypeTemplate.description` (value-free, from the canonical catalog) + a 3-tuple classify catalog + a value-free `_BAND_EXPLAINER` into `build_classify_messages` (ends "When unsure … abstain" = the R2 moat-safety brake); offline gate AC-1..5 (guard byte-identity introspection; AT-2-only-abstain generalized to scored_rule/rule_gate/doa_tier; enriched-prompt introspection; descriptions-carry-no-AT2-vocab; schema pins the closed enum). **Step 4 (#476, test `d06d420`):** the OQ-C 26-narrative labelled fixture set + offline validators + a `@live`-gated before/after A/B harness routing both arms through the byte-identical imported guard (no production change); an independent adversarial moat-safety reviewer judged the set trustworthy; the pre-committed pass/fail read embedded in the harness (a docs/plans/ evidence doc was G2-gated → relocated into the test module). **Step 5 (live, AC-7, host-state — Cray go via AskUserQuestion):** the live before/after on MS-S1 `gpt-oss:20b`, N=3, worst reported — **PASS:** Arm A gated AT-1+AT-3 **8→11/11 (perfect, all 3 reps)** vs the ~7/11 PLAN-0040 reference; Arm B **11/11 abstain every rep** (zero AT-2 regression); **Arm-B guard paths = {label_abstain: 33}** (step_disagreement = 0 — the model labels AT-2 out-of-scope ITSELF, the deterministic backstop never needed to fire = no silent label→backstop shift); AT-1b 11/12 (reported, not gated). Live = **confirming evidence; the offline gate is the binding bar** (OQ-D). Raw log gitignored at `.claude/benchmark-results/plan0041-step5-live-ab.log`; thin tracked summary at `docs/logs/2026-06-29-plan0041-step5-live-ab.md` (two-artifact model). Gate (every step, offline): ruff + ruff-format + `mypy --strict services/` clean, **pytest 1891 passed / 25 skipped** (1877 baseline + 7 Steps-1-3 + 7 Step-4 validators; live test skipped offline). PLAN `git mv` → `done/`. `loop-dispatcher` stays DISABLED | `de36c2b` (#475/#476) / `services/engine/procedures/{archetypes/template,generator/{pipeline,prompts}}.py` + `tests/services/engine/procedures/{test_generator_pipeline,classify_enrichment_fixtures,test_classify_enrichment_fixtures,test_classify_enrichment_live}.py` + `docs/plans/done/0041-classify-prompt-enrichment.md` + `docs/logs/2026-06-29-plan0041-step5-live-ab.md` |
