@@ -6,6 +6,10 @@ Loads the real energy ontology YAML and asserts the UI-facing projection
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from services.engine.ontology_meta import load_ontology_meta
 
 
@@ -70,3 +74,89 @@ def test_ref_target() -> None:
 def test_link_types() -> None:
     meta = load_ontology_meta("energy")
     assert any(link.from_type == "Asset" and link.to_type == "Site" for link in meta.link_types)
+
+
+# ---------- ADR-0027 R2 / PLAN-0050 Step 2: semantic-enrichment projection (AC-2) ----------
+
+_ENRICHED_ONTOLOGY = """\
+version: 1
+namespace: enr
+object_types:
+  Asset:
+    primary_key: asset_id
+    synonyms:
+      th: [sinsap]
+      en: [asset, equipment]
+    verified_queries:
+      - question: How many active assets?
+        answer: Count Asset rows where status is active.
+    properties:
+      asset_id:
+        type: string
+      status:
+        type: enum
+        values: [active, retired]
+        synonyms:
+          en: [state]
+        sample_values: [active, retired]
+  OperationalEvent:
+    primary_key: event_id
+    properties:
+      event_id:
+        type: string
+      measured_kind:
+        type: enum
+        values: [temperature]
+    quantity_bindings:
+      - kind: temperature
+        unit: celsius
+        grain: hourly
+        join_path: OperationalEvent.asset_id -> Asset.asset_id
+"""
+
+
+def test_enrichment_projection_from_yaml(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """ADR-0027 R2 (PLAN-0050 Step 2, AC-2): the loader projects the four
+    enrichment constructs — typed ``Synonyms`` / ``VerifiedQuery`` (SD-D),
+    ``sample_values``, and quantity-binding ``grain`` / ``join_path`` — from an
+    enriched ontology YAML."""
+    path = tmp_path / "enr_v0.yaml"
+    path.write_text(_ENRICHED_ONTOLOGY, encoding="utf-8")
+    monkeypatch.setattr("services.engine.ontology_meta.ontology_path", lambda v: path)
+
+    meta = load_ontology_meta("enr")
+    asset = next(t for t in meta.object_types if t.name == "Asset")
+    # object-type synonyms (typed model, SD-D)
+    assert asset.synonyms is not None
+    assert asset.synonyms.th == ["sinsap"]
+    assert asset.synonyms.en == ["asset", "equipment"]
+    # object-type verified_queries (SD-B)
+    assert len(asset.verified_queries) == 1
+    assert asset.verified_queries[0].question == "How many active assets?"
+    assert asset.verified_queries[0].answer.startswith("Count Asset")
+    # property synonyms + sample_values (an absent lang projects to [])
+    status = next(p for p in asset.properties if p.name == "status")
+    assert status.synonyms is not None
+    assert status.synonyms.en == ["state"]
+    assert status.synonyms.th == []
+    assert status.sample_values == ["active", "retired"]
+    # quantity-binding grain / join_path (SD-5)
+    event = next(t for t in meta.object_types if t.name == "OperationalEvent")
+    binding = next(b for b in event.quantity_bindings if b.kind == "temperature")
+    assert binding.grain == "hourly"
+    assert binding.join_path == "OperationalEvent.asset_id -> Asset.asset_id"
+
+
+def test_unenriched_vertical_projects_defaults() -> None:
+    """AC-2 / D2 backward-compat: the real (un-enriched) energy ontology
+    projects every new enrichment attribute to its empty/None default."""
+    meta = load_ontology_meta("energy")
+    for t in meta.object_types:
+        assert t.synonyms is None
+        assert t.verified_queries == []
+        for p in t.properties:
+            assert p.synonyms is None
+            assert p.sample_values == []
+        for b in t.quantity_bindings:
+            assert b.grain is None
+            assert b.join_path is None
