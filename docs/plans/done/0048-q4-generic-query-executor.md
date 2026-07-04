@@ -1,6 +1,7 @@
 # PLAN-0048: Q4 generic run-consume query executor — declared==dispatched for the read side (renders ADR-016 Q4, the Q3-amendment fast-follow)
 
-**Status:** **Ready for execution**
+**Status:** Complete
+**Completed:** 2026-07-04 (session 96) — all 15 ACs met; PRs #533–#539.
 **Ratified:** 2026-07-04 — SD-1..SD-5 adjudicated **as-recommended** by Cray (typed in-session: "approve SD-1..5 ตาม recommended", relayed via the Code dispatch); the draft merged to main unchanged via `docs/*` PR #533 (merge `761f33d`) per ADR-009 D2
 **Owner:** Claude Code
 **Created:** 2026-07-04
@@ -162,6 +163,75 @@ Build order: compile seam first (pure, no I/O — cheapest gate), then the execu
 - **Honest enforcement frame (LOCKED-9 — verbatim, no over-claim):** after this PLAN, a query step **run by the generic executor** is declared ✔ · load-gated ✔ · **execution-bound ✔** (the executor dispatches exactly the declared read — write-side parity achieved for that step class). A step still on a hand-written seed remains **execution-bound ✖**; nothing in this PLAN may claim runtime read enforcement for seed-run steps or for `fetch_links`/`stream_events`.
 - **Optional live evidence (NOT the gate):** a single live confirming run of the fixture composition is possible but is a **host-state action — explicit Cray go required first** (CLAUDE.md §8); the offline oracle alone decides merge.
 - **STOP-and-surface:** if building any LOCKED item reveals a ratified ADR-016 decision must change (e.g. the multi-read parenthetical proves un-renderable under SD-1=A), that is an ADR-016 amendment (G-gated) — surface to Cray; never bake the deviation in.
+
+---
+
+## Completion note (2026-07-04, session 96)
+
+All 15 acceptance criteria met; the executor + compile seam + both production
+paths + persistence/audit/pin all landed via feature-branch PRs under the
+PLAN-0047 Step-7 CI gate (ruff + ruff-format + `mypy --strict` + full suite w/
+postgres container + `alembic upgrade head` — every step PR ran green under it).
+Final suite: **2131 passed / 5 skipped** (baseline 2097 at plan start → **+34
+new tests**). All work offline; MS-S1 never touched; **no new migration**
+(reuses PLAN-0047's 0005–0008; SD-5(b) adds `reads` to the existing
+`governance_snapshot` JSONB, no DDL). Renders ADR-016 Q4 — no new ADR.
+
+| Step | PR (commits) | Delivered | ACs |
+|------|--------------|-----------|-----|
+| Draft | #533 (`d107d99` / merge `761f33d`) | plan-drafter authored the Q4 build plan; 5 SDs surfaced | — |
+| SD ratify fold | #534 (`260df5a` / merge `c169ec1`) | SD-1..5 ratified as-recommended (Cray), Draft→Ready | — |
+| Step 1 — compile seam | #535 (oracle `c104da2` + impl `0e17dc6` / merge `1ff2899`) | `services/engine/procedures/query_step.py`: `ReadRefusal`/`ReadRefusalKind`, `ReadPlan`, `plan_read` (pure/total, single-read only per SD-1), `readable_object_types`; the shared `orchestrator.read_bound_violation` predicate (one bound, byte-identical gate messages — PLAN-0046 tests untouched); 15 tests incl. the AC-3 gate-vs-seam no-drift tripwire; oracle-first two-commit history | AC-1, AC-2, AC-3 |
+| Step 2 — execute half | #536 (oracle `462ead2` + impl `f3d362b` / merge `9622307`) | `QueryStepExecutor` (constructor-injected; one `fetch_objects` dispatch per execution — no retry loop; post-fetch `where` via the promoted shared `orchestrator.matches_where`, `filter_expr` never pushed down; read-provenance trace; SD-1 identity pass-through); the isinstance-scoped D4 structured `read_refused` divert in `orchestrator.py` (every other exception byte-identical); 11 tests incl. the adversarial counting-adapter property + the load-gate-accepts/runtime-refuses multi-read split; oracle-first | AC-4, AC-5, AC-6, AC-7, AC-8, AC-9 |
+| Step 3 — both paths + persistence/audit/pin | #538 (impl `676fbc2` / merge `65519c0`) | AC-10 in-memory end-to-end vs the real aquaculture ontology; AC-11 write-ahead read durability + the SD-5(a) `read_refused` audit row appended by the persistence seam (executor stays DB-free), on write-ahead AND resume paths; AC-12 the SD-4 composition recipe (`QueryStepExecutor` wired from `registry.get_adapter` drives the real `POST /procedures/{id}/run` to suspend; unwired vertical still 409s); AC-13 the SD-5(b) sorted `reads` in `governance_pin.build_governance_snapshot`, fail-closed at resume on a still-load-gate-valid reads edit; 8 tests | AC-10, AC-11, AC-12, AC-13 |
+| Step 4 — seams/docs/oracle | #539 (impl `f7d4972` / merge `ab394b0`) | AC-14: the `query_step.py` module docstring maps compile/execute/inspect onto the dbt-MCP 3-tool shape, names MCP plumbing a non-goal + the CaMeL deterministic-disposer role + the D-N2 future-repair-loop contract; the SD-3 deprecate-in-place annotation on the hero-demo `_SeedQuery`; AC-15: full offline oracle green. Docstring-only, zero behavior change | AC-14, AC-15 |
+
+**SD dispositions (all ratified as-recommended, 2026-07-04):** SD-1 single-read
+only · SD-2 raw dicts threaded ("typed" = typed binding+refusal+provenance) ·
+SD-3 deprecate-in-place (nothing retired/migrated) · SD-4 production factories =
+named follow-up PLAN · SD-5 BOTH the `read_refused` audit row (a) AND `reads` in
+the pin (b).
+
+**Disclosed deviations (scope-visible, none amend an ADR):**
+
+- **`_json_safe` adapter-boundary JSON normalization (Step 3, `query_step.py`)** —
+  NOT in the plan; added when AC-12 drove the REAL energy synthetic adapter
+  through the write-ahead path and its `datetime`-carrying rows broke the JSONB
+  `artifact["output_set"]` (the known datetime-in-JSONB trap). ONE `default=str`
+  coercion at the adapter boundary; keys/dict shape unchanged so SD-2's raw-dict
+  threading stands, only non-JSON scalar TYPES coerce (which a JSONB column
+  forces anyway); covered by a dedicated test.
+- **SD-5(b) pin-format consequence (disclosed, ratified)** — a `waiting_human`
+  run pinned BEFORE the `reads` field existed refuses at resume (the PLAN-0047
+  sanctioned cancel-and-restart). Ratified as-recommended, acceptable pre-pilot;
+  not a deviation, a disclosed consequence.
+- **Concurrent-pytest flake, now resolved** — Steps 1–2 disclosed a
+  `test_stop_continuation` failure that reproduced only when the Axis-B
+  goal-gate's pytest check ran concurrently with a manual full-suite run in the
+  same worktree; independently FIXED by #537 (`fix/inproc-goal-path-leak`, merged
+  before Step 3). No longer a live issue.
+
+**Deferred (unchanged from Out of Scope):** the join/projection grammar for
+multi-read (a future ADR-016 amendment) · `fetch_links`/`stream_events`
+executors + bounds · MCP plumbing / OSI export / the semantic-context-pack
+generator · the per-vertical production executor factories (SD-4 named follow-up
+PLAN) · NL-query convergence onto the 3-tool seam · retry/repair loops (the D-N2
+future contract is documented, not built) · the Box-4 ฿ facet (N≥3-gated).
+
+**Honest enforcement frame (LOCKED-9, verbatim):** after PLAN-0048, a query step
+run by the generic executor is declared ✔ · load-gated ✔ · execution-bound ✔
+(write-side parity for that step class); a step still on a hand-written seed
+remains execution-bound ✖; nothing claims runtime read enforcement for seed-run
+steps or for `fetch_links`/`stream_events`.
+
+**Close-out mechanics (committing session 96):** `git mv docs/plans/0048-*.md
+docs/plans/done/` in the same PR as this fold — `git add` the edit **before**
+`git mv` (project memory: `git mv` of a modified file drops the edit).
+
+> **Completion-fold provenance (ADR-012 D4.3):** This fold was drafted by the
+> in-harness `plan-drafter` subagent (session 96) from the Code-supplied
+> execution-facts payload; Code R2-reviews and commits (ADR-009 D2); independent
+> reviewer: Cray at PR merge. Separation: INTACT.
 
 ---
 
