@@ -1,13 +1,20 @@
-"""PLAN-0051 Step 1 — classify reason-then-structure arm plumbing (AC-1, fully offline).
+"""PLAN-0051 Steps 1-2 — classify reason-then-structure A/B (AC-1 + AC-2, fully offline).
 
-The structural gate (CLAUDE.md §8, zero host-state): the three A/B arms —
-``baseline`` / ``field_order_flip`` / ``two_pass`` — are wired correctly and the
-deterministic abstain-guard + the closed-enum route are **byte-identical across all
-three**. The arm moves ONLY the classify prompt/schema, never the guard (LOCKED-3).
+The structural gate (CLAUDE.md §8, zero host-state):
+
+* **AC-1 (Step 1) — arm plumbing.** The three A/B arms — ``baseline`` / ``field_order_flip`` /
+  ``two_pass`` — are wired correctly: each selects the right schema/call-shape, the two-pass
+  constrained call omits ``think`` (CHECKPOINT-0), and the deterministic abstain-guard + the
+  closed-enum route are **byte-identical across all three** (the arm moves only the classify
+  prompt/schema, never the guard — LOCKED-3).
+* **AC-2 (Step 2) — corpus reuse + the offline A/B driver.** The A/B reuses PLAN-0041's
+  26-narrative labelled corpus VERBATIM (``classify_enrichment_fixtures.FIXTURES``) and drives
+  every fixture through the shared :func:`classify_ab_route` for each arm — the same helper the
+  Cray-gated live twin metric (Step 5) uses — proving the arm is the ONLY new variable.
 
 The A/B *accuracy* measurement is the separate live twin-metric (Step 5, behind a Cray
-host-state go); THIS proves only the plumbing, through a recorded ``ChatClient`` — no
-MS-S1 call. Mirrors the recorded-fixture seam in ``test_generator_pipeline.py`` (D12).
+host-state go); THESE prove only the plumbing, through a recorded ``ChatClient`` — no MS-S1
+call. Mirrors the recorded-fixture seam in ``test_generator_pipeline.py`` (D12).
 """
 
 from __future__ import annotations
@@ -28,6 +35,11 @@ from services.engine.procedures.generator.schemas import (
     classification_schema,
     classification_schema_reasoning_first,
 )
+from tests.services.engine.procedures.classify_enrichment_fixtures import (
+    EXPECTED_LABELS,
+    FIXTURES,
+)
+from tests.services.engine.procedures.reason_then_structure_ab import classify_ab_route
 
 VERTICAL = "draft"
 
@@ -251,3 +263,66 @@ async def test_default_arm_is_baseline_and_byte_identical() -> None:
     schema = client.calls[0]["response_format"]
     assert isinstance(schema, dict)
     assert next(iter(schema["properties"].keys())) == "archetype_id"  # baseline, not flipped
+
+
+# --- AC-2 (Step 2): the offline A/B driver reuses the PLAN-0041 26-narrative corpus --
+
+
+def _canned_for_expected(expected: str) -> str:
+    """A canned classification whose route resolves to ``expected`` through the PRODUCTION guard.
+
+    Empty ``step_gates`` makes the per-step cross-check a no-op (the whole-procedure LABEL is the
+    driver), so a catalogued label matches and 'abstain' abstains — letting the offline driver
+    assert the byte-identical guard over the real corpus without hand-authoring each archetype's
+    gate signature."""
+    return _classification_json(expected, gates=[])
+
+
+def test_ab_reuses_the_plan0041_corpus_verbatim() -> None:
+    """AC-2: the classify A/B reuses PLAN-0041's 26-narrative labelled set VERBATIM — Arm A =
+    6 AT-1 + 5 AT-3 (gated) + 4 AT-1b (measured-only); Arm B = 11 genuine AT-2 (HARD abstain),
+    2 borderline. No new classify corpus is authored — the arm is the only new variable."""
+    assert len(FIXTURES) == 26
+    arm_a = [f for f in FIXTURES if f.arm == "A_lift"]
+    arm_b = [f for f in FIXTURES if f.arm == "B_abstain"]
+    assert len(arm_a) == 15
+    assert len(arm_b) == 11
+    assert sum(1 for f in arm_a if f.expected == "AT-1") == 6
+    assert sum(1 for f in arm_a if f.expected == "AT-3") == 5
+    assert sum(1 for f in arm_a if f.expected == "AT-1b") == 4
+    assert all(f.expected == "abstain" for f in arm_b)
+    assert sum(1 for f in arm_b if f.borderline) == 2
+    assert {f.expected for f in FIXTURES} <= EXPECTED_LABELS
+
+
+@pytest.mark.parametrize("arm", _ARMS)
+async def test_every_arm_routes_the_whole_corpus_to_its_expected_label(arm: ClassifyArm) -> None:
+    """AC-2 (the byte-identical guard on the REAL corpus): drive all 26 fixtures through the
+    shared :func:`classify_ab_route` for each arm, feeding a canned classification of the
+    fixture's own ``expected`` label. The route must equal ``expected`` in EVERY arm — the arm
+    moves only the prompt/schema, never the deterministic route (LOCKED-3). This is the offline
+    DRIVER, not an accuracy measurement (canned responses); the live lift is Step 5."""
+    for fx in FIXTURES:
+        client = _RecordingClient(_responses_for(arm, _canned_for_expected(fx.expected)))
+        route, path = await classify_ab_route(client, fx.narrative, vertical=VERTICAL, arm=arm)
+        assert (
+            route == fx.expected
+        ), f"{fx.fixture_id} [{arm}]: route {route!r} != expected {fx.expected!r}"
+        # the diagnostic path is coherent: a catalogued match reports 'matched'; an abstain
+        # reports the label-abstain reason (the guard-backstop shift the live metric watches for)
+        assert path == ("matched" if fx.expected != "abstain" else "no_archetype_match")
+
+
+async def test_ab_route_surfaces_the_step_disagreement_guard_path() -> None:
+    """AC-2 diagnostics: when the model labels an AT-1 but implies an AT-2-only gate on the judge
+    step, the driver reports ``abstain`` via the ``archetype_disagreement`` path in EVERY arm — so
+    the twin metric can tell a label-abstain from a guard-backstop abstain (the silent shift the
+    live run watches for)."""
+    gates = [("read", "none"), ("judge", "doa_tier"), ("act", "none")]
+    for arm in _ARMS:
+        client = _RecordingClient(_responses_for(arm, _classification_json("AT-1", gates=gates)))
+        route, path = await classify_ab_route(
+            client, "monitor then approve by tier", vertical=VERTICAL, arm=arm
+        )
+        assert route == "abstain"
+        assert path == "archetype_disagreement"
