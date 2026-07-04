@@ -754,3 +754,46 @@ object_types:
     assert "error(s) across" in captured.err
     assert "join_path" in captured.err
     assert "Ghost" in captured.err
+
+
+# ---------- ADR-0027 R2 / PLAN-0050 Step 4: D2 backward-compat GATE (AC-4) ----------
+
+
+def test_ac4_real_verticals_validate_clean_post_r2() -> None:
+    """AC-4 (D2 backward-compat GATE): both real verticals — energy + supply_chain,
+    which declare NONE of the R2 enrichment constructs — still validate clean after
+    Steps 1-3. Byte-identity of generated artifacts is proven separately: running
+    ``vero-lite generate`` on both verticals leaves the working tree git-clean."""
+    repo_root = Path(__file__).resolve().parents[3]
+    for vertical in ("energy", "supply_chain"):
+        path = repo_root / "verticals" / vertical / "ontology" / f"{vertical}_v0.yaml"
+        assert main([str(path)]) == 0, f"{vertical} failed to validate clean"
+
+
+def test_ac4_quantity_bindings_without_r2_fields_validate_clean(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """AC-4 (D2 GATE): an object with ``quantity_bindings`` but NO R2 ``grain`` /
+    ``join_path`` (and no ``synonyms`` / ``sample_values`` / ``verified_queries``)
+    validates clean — the new ``_check_*`` all no-op on absent constructs."""
+    body = """\
+version: 0
+namespace: energy
+object_types:
+  OperationalEvent:
+    primary_key: event_id
+    properties:
+      event_id:
+        type: string
+      measured_kind:
+        type: enum
+        values: [temperature]
+    quantity_bindings:
+      - kind: temperature
+        unit: celsius
+"""
+    yaml_path = _write(tmp_path, "bare_qb.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 0
+    assert "OK: 1 file(s) valid" in captured.err
