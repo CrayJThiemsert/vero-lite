@@ -639,3 +639,118 @@ object_types:
     assert ret == 1
     assert "error(s) across" in captured.err
     assert "question" in captured.err
+
+
+# ---------- ADR-0027 R2 / PLAN-0050 Step 3: L2 consistency for the enrichment constructs ----------
+
+_L2_ENUM_HEAD = """\
+version: 1
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    properties:
+      asset_id:
+        type: string
+      status:
+        type: enum
+        values: [active, retired]
+"""
+
+
+def test_l2_sample_value_not_in_enum_rejected(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """AC-3 (SD-C): a ``sample_values`` entry outside an enum property's ``values``
+    → L2 reject (the closed-set reading; L1 accepts any string array)."""
+    body = _L2_ENUM_HEAD + "        sample_values: [active, DECOMMISSIONED]\n"
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert "not a declared enum value" in captured.err
+
+
+def test_l2_synonyms_duplicate_within_lang_rejected(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """AC-3: a synonym repeated within a language list → L2 reject."""
+    body = """\
+version: 1
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    synonyms:
+      en: [asset, asset]
+    properties:
+      asset_id:
+        type: string
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert "more than once" in captured.err
+
+
+def test_l2_verified_queries_duplicate_question_rejected(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """AC-3: two ``verified_queries`` with the same ``question`` → L2 reject."""
+    body = """\
+version: 1
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    verified_queries:
+      - question: How many assets?
+        answer: A count.
+      - question: How many assets?
+        answer: Another count.
+    properties:
+      asset_id:
+        type: string
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert "repeats question" in captured.err
+
+
+def test_l2_join_path_undefined_object_type_rejected(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """AC-3 (SD-5): a quantity-binding ``join_path`` whose endpoint object_type is
+    undefined → L2 reject (endpoint resolution, mirroring foreign_key)."""
+    body = """\
+version: 1
+namespace: energy
+object_types:
+  OperationalEvent:
+    primary_key: event_id
+    properties:
+      event_id:
+        type: string
+      asset_id:
+        type: string
+      measured_kind:
+        type: enum
+        values: [temperature]
+    quantity_bindings:
+      - kind: temperature
+        unit: celsius
+        join_path: OperationalEvent.asset_id -> Ghost.asset_id
+"""
+    yaml_path = _write(tmp_path, "bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert "join_path" in captured.err
+    assert "Ghost" in captured.err
