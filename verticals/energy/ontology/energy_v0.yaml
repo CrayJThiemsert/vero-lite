@@ -5,11 +5,11 @@
 # v1 content (PLAN-0049 Step 1): distribution-utility coverage from the
 # partner-sim run-1 rehearsal (F9) — asset_type += feeder/cap_bank/gas_engine,
 # a distinct current-rating property (SD-6), and current/voltage metric kinds +
-# bindings. NOTE: `version` below is the ADR-008 GRAMMAR version (const 0 in the
-# L1 meta-schema), NOT the content revision — the grammar is unchanged (the R2
-# grammar amendment is carved out of PLAN-0049 per SD-1), so it stays 0.
+# bindings. `version` is the ontology CONTENT-revision number (PLAN-0049 SD-2,
+# Cray-confirmed) — bumped 0→1 for this first content revision; grammar
+# conformance itself is fixed by ADR-008 D2.
 
-version: 0
+version: 1
 namespace: energy
 
 object_types:

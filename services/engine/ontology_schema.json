@@ -8,8 +8,9 @@
   "additionalProperties": false,
   "properties": {
     "version": {
-      "const": 0,
-      "description": "Ontology grammar version. v0 == ADR-008 D2 grammar."
+      "type": "integer",
+      "minimum": 0,
+      "description": "Ontology content-revision number (0 = initial; increment on each content revision). Grammar conformance itself is fixed by ADR-008 D2. PLAN-0049 SD-2: version tracks revisions for future rigor."
     },
     "namespace": {
       "type": "string",

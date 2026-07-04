@@ -84,8 +84,11 @@ object_types:
 
 
 def test_l1_wrong_type_for_version(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    # PLAN-0049 SD-2: `version` is now an integer >= 0 (content revision), so a
+    # non-integer (or negative) value is the invalid case — a positive int like
+    # 1 is VALID (see test_l1_version_revision_is_valid).
     body = """\
-version: 1
+version: "one"
 namespace: energy
 object_types:
   Asset:
@@ -100,6 +103,24 @@ object_types:
     assert ret == 1
     assert "error(s) across" in captured.err
     assert _LINE_COL_RE.search(captured.err)
+
+
+def test_l1_version_revision_is_valid(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """PLAN-0049 SD-2: a positive content-revision version (>= 0) validates."""
+    body = """\
+version: 1
+namespace: energy
+object_types:
+  Asset:
+    primary_key: asset_id
+    properties:
+      asset_id:
+        type: string
+        required: true
+"""
+    yaml_path = _write(tmp_path, "ok.yaml", body)
+    ret = main([str(yaml_path)])
+    assert ret == 0
 
 
 def test_l1_unknown_property_type(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
