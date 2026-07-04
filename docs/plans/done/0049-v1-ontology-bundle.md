@@ -1,6 +1,7 @@
 # PLAN-0049: v1 Ontology Bundle — energy-v1 + supply-chain-v1 content, meta-schema enrichment (R2), semantic-context-pack emitter (R1), alembic autogenerate
 
-**Status:** Ready for execution
+**Status:** Complete (executable scope {1,2,4,5}; R2 carved out)
+**Completed:** 2026-07-04 (session 96) — executable set {1,2,4,5} shipped; R2 (Step 3) carved out per ratified SD-1 → ADR-0027 (Proposed).
 **Owner:** Claude Code (executes) + Cray (ratifies SDs)
 **Created:** 2026-07-04
 **Ratified:** 2026-07-04 — SD-1..7 adjudicated as-recommended by Cray, typed in-session ("approve SD-1..7 ตาม recommended"), relayed via the Code dispatch; draft merged unchanged via docs/* PR #542 (merge 37d865f) per ADR-009 D2.
@@ -71,6 +72,68 @@ Wire `alembic revision --autogenerate` from the generated ORM per SD-5 (new `ver
 ## Verification
 
 Offline suite green at every step boundary (baseline ~2131 passed / 5 skipped, confirmed at execution). `vero-lite validate <vertical>` L1+L2 green post-edit; `vero-lite generate <vertical>` clean; `test_schema_parity.py` re-passes after each energy regen; new migrations advance head past `0008` and `alembic upgrade head` runs clean in CI (PLAN-0047 Step 7, postgres). R1 token-budget assertion enforces the 32K tripwire. No live-model run (host-state gate, CLAUDE.md §8). Governed ≠ generated: every R1 machine-drafted artifact is human-canonicalized before its commit.
+
+---
+
+## Completion note (2026-07-04, session 96)
+
+The executable set **{1, 2, 4, 5}** shipped via feature-branch PRs under the
+PLAN-0047 Step-7 CI gate (ruff + ruff-format + `mypy --strict` + full suite w/
+postgres container + `alembic upgrade head` — every PR ran green under it). The
+delivered scope renders the **v1 ontology bundle content** (energy-v1 +
+supply-chain-v1) + the **R1 semantic-context-pack emitter** + **alembic
+autogenerate** wiring. **R2 (Step 3, the meta-schema grammar amendment) was
+CARVED OUT per ratified SD-1** to a prerequisite ADR — now drafted as **ADR-0027
+(Proposed, 2026-07-04)**; its build is a named follow-up PLAN (ADR-0027 SD-6). So
+this PLAN is **COMPLETE for its executable scope**; R2's build is tracked
+forward, not in this PLAN.
+
+| Step | PR (merge) | Delivered |
+|------|------------|-----------|
+| Draft | #542 (merge `37d865f`) | plan-drafter authored; 7 SDs surfaced |
+| SD-1..7 ratify fold | #543 (merge `b6330e2`) | all as-recommended; SD-1 = carve out R2 |
+| Step 1 — energy-v1 | #544 (merge `9b2fffb`) | `asset_type` += `{feeder, cap_bank, gas_engine}`; `rated_current_a` (SD-6); `measured_kind` += `{current, voltage}` + bindings `{current→ampere, voltage→kilovolt}`; regen `models.py`; alembic `0009` (`asset.rated_current_a`); +2 tests |
+| version = content-revision | #545 (merge `154e37e`) | SD-2 follow-up (Cray-confirmed): L1 `ontology_schema.json` `version` const `0` → `integer >= 0` (content-revision semantics, decoupled from grammar); energy `version` `0`→`1`; validator test repurposed + 1 new |
+| Step 2 — supply-chain-v1 | #546 (merge `fd8acd6`) | `Equipment` entity + `shipment_uses_equipment` link + `adjust_setpoint` (G1); `measured_kind` `[temperature, battery]` + bindings (G2); `returned`/`release`/`return` enum gaps (G11); `version` `0`→`1`; regen to gitignored fallback (SD-3: no committed ORM/migration); +3 tests |
+| Step 4 — R1 emitter | #547 (merge `0d97ae9`) | `emit_context_pack` (7th emitter) → gitignored `context_pack.md`; closed-set refuse-not-guess framing; R2 degrade path (SD-1); 32K token-budget tripwire; +6 tests |
+| Step 5 — alembic autogenerate | #548 (merge `518d7da`) | `env.py` `compare_type=True`; CI alembic-check drift guard; runbook `docs/runbooks/ontology-migration-autogenerate.md`; AC-7 hand-verify (autogenerate reproduces `0009`) |
+
+**SD dispositions recap (all ratified as-recommended 2026-07-04):** SD-1 carve out
+R2 (→ ADR-0027) · SD-2 edit `_v0.yaml` in place + version bump (`version` became
+content-revision, #545) · SD-3 supply-chain on gitignored ORM fallback, B1-DP-1
+deferred · SD-4 parity gap documented (`supply_chain` not in `test_schema_parity`
+scope) · SD-5 documented alembic workflow + hand-verify · SD-6 distinct
+`rated_current_a` · SD-7 raw-counts kind deferred to the ADR-0021 thread.
+
+**Disclosed deviations / notes:**
+
+- The **`version` field's meaning changed** (grammar-version → content-revision,
+  #545) per SD-2 Cray-confirmed — an L1-meta-schema **semantics** change flagged
+  for the record (an ADR-008 D2/D6-adjacent loosening, **not a new construct**;
+  formalize in an ADR-008 amendment later if Cray wants).
+- The supply-chain **`Equipment` link is `many_to_one`** (shipment → primary
+  reefer); per-shipment multi-device (N:M) is a later refinement.
+- Suite grew **2066 → 2142** across the arc (final on `main`).
+
+**Deferred / follow-ups (carried forward):** the **R2 build** (ADR-0027 → a named
+follow-up PLAN, SD-6) · the **raw-counts quantity-kind fork** (SD-7, ADR-0021
+thread) · supply-chain **committed-ORM + parity extension** if a runtime path
+arrives (SD-3/SD-4) · **N:M shipment-device** modeling.
+
+**Honest frame:** the v1 ontology **CONTENT** (energy + supply-chain) + the **R1
+emitter** + **alembic autogenerate** are **shipped**; **R2** (the
+semantic-enrichment grammar) is **decided-not-built** (ADR-0027 Proposed) — the
+grammar amendment is authorized-in-draft, the meta-schema/`ontology_meta.py`/L2
+work + v1 backfill are the tracked-forward follow-up.
+
+**Close-out mechanics (committing session 96):** `git mv docs/plans/0049-*.md
+docs/plans/done/` in the **same PR** as this fold — `git add` the edit **before**
+`git mv` (project memory: `git mv` of a modified file drops the edit).
+
+> **Completion-fold provenance (ADR-012 D4.3):** This fold was drafted by the
+> in-harness `plan-drafter` subagent (session 96) from the Code-supplied
+> execution-facts payload; Code R2-reviews and commits (ADR-009 D2); independent
+> reviewer: Cray at PR merge. Separation: INTACT.
 
 ---
 
