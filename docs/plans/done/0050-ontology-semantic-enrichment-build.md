@@ -1,6 +1,6 @@
 # PLAN-0050: ADR-0027 R2 grammar amendment — build the four optional semantic-enrichment ontology constructs (synonyms, sample_values, verified_queries, metric grain)
 
-**Status:** Ready for execution (SD-A…SD-D ratified as-recommended 2026-07-04)
+**Status:** Complete (2026-07-04 — all 8 steps merged #555-#562; ADR-0027 erratum #561)
 **Owner:** both (in-harness `plan-drafter` authors this PLAN; Code commits + executes per ADR-009 D2)
 **Created:** 2026-07-04
 **Related ADRs:** ADR-0027 (the AUTHORITATIVE spec — Accepted 2026-07-04; D1–D5 + SD-1…SD-7 all ratified as-recommended; **this PLAN renders D1–D5 into code**, SD-6's named follow-up build); ADR-0021 (the DIRECT `quantity_bindings` grammar-amendment precedent this mirrors — L1 sub-schema + Pydantic `default_factory` projection + `_check_*` L2 pass); ADR-008 (YAML ontology specification — **D2/D3 amended** by ADR-0027 to admit the four constructs; D5 generator, D6 L1+L2); ADR-0024 (governed ≠ generated — machine drafts, human canonicalizes; the D3 standing rule); ADR-006 (vertical plugin architecture / Rule of Three); ADR-005 (OCT pivot — energy first); ADR-009 D1/D2 (drafter drafts, Code commits); ADR-012 D4.3 (author≠reviewer disclosure); ADR-013 D1 (plan-drafter phased authority)
@@ -67,7 +67,7 @@ as-recommended 2026-07-04; see *Surfaced decisions*.
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 — L1 shape for all four constructs (`ontology_schema.json`).** The
+- [x] **AC-1 — L1 shape for all four constructs (`ontology_schema.json`).** (#555, ✓ — 25 validator tests.) The
   L1 JSON Schema gains, mirroring the existing `quantityBinding` `$def`:
   (a) a `synonyms` optional sub-schema (lang-keyed map `{th: [str], en: [str]}`,
   `additionalProperties: false` on the lang keys) referenced from BOTH the
@@ -79,7 +79,7 @@ as-recommended 2026-07-04; see *Surfaced decisions*.
   valid). **Oracle:** a schema-validation test asserts a YAML declaring each
   construct passes L1, and a malformed one (e.g. `synonyms` as a flat list, an
   extra lang key, a `verified_query` missing `question`) is REJECTED.
-- [ ] **AC-2 — Pydantic projection (`ontology_meta.py`).** `PropertyMeta` gains
+- [x] **AC-2 — Pydantic projection (`ontology_meta.py`).** (#556, ✓.) `PropertyMeta` gains
   optional `synonyms` + `sample_values` attrs; `ObjectTypeMeta` gains optional
   `synonyms` + `verified_queries` attrs; `QuantityBinding` gains optional
   `grain` + join-path attrs — each with `default_factory` (or `None` default) so
@@ -91,7 +91,7 @@ as-recommended 2026-07-04; see *Surfaced decisions*.
   `bindings = [...]` comprehension). **Oracle:** a unit test loads a backfilled
   vertical and asserts the projected values; a second loads an un-enriched fixture
   and asserts every new attr is the empty/None default.
-- [ ] **AC-3 — L2 consistency (`ontology_validator.py`).** A `_check_*` pass per
+- [x] **AC-3 — L2 consistency (`ontology_validator.py`).** (#557, ✓ — `_check_synonyms` / `_check_sample_values` [SD-C] / `_check_verified_queries` / `_check_quantity_binding_paths` [SD-5], via `_check_enrichment`.) A `_check_*` pass per
   construct, mirroring `_check_quantity_bindings` (:291): (a) `_check_synonyms` —
   well-formedness + (property-level) the synonym'd property exists on the type;
   (b) `_check_sample_values` — the sample-valued property exists, and (SD-C
@@ -104,7 +104,7 @@ as-recommended 2026-07-04; see *Surfaced decisions*.
   its key is absent** (the D2 invariant). **Oracle:** per-construct unit tests
   with a well-formed pass + a deliberately-broken fail (e.g. `verified_queries`
   referencing a non-existent property; a `sample_values` on a missing property).
-- [ ] **AC-4 — D2 BACKWARD-COMPAT HARD INVARIANT (explicit, tested).** An
+- [x] **AC-4 — D2 BACKWARD-COMPAT HARD INVARIANT (explicit, tested).** (#558, ✓ — zero backfill; generate byte-identical, git-clean.) An
   ontology YAML that declares NONE of the four constructs loads
   **byte-identically** to today, generates the same five artifacts
   byte-for-byte, and validates unchanged. **Oracle (decisive):** run
@@ -114,7 +114,7 @@ as-recommended 2026-07-04; see *Surfaced decisions*.
   +L2 check green with zero backfill. This is the gate that lets R2 land without
   touching any vertical. A test asserts an un-enriched ontology's L2 findings
   list is unchanged (the new `_check_*` passes all no-op).
-- [ ] **AC-5 — Backfill energy-v1 (`energy_v0.yaml`).** The energy ontology
+- [x] **AC-5 — Backfill energy-v1 (`energy_v0.yaml`).** (#559, ✓ — curated th/en synonyms + sample_values [enum-overlap + non-enum] + verified_queries + grain + join_path.) The energy ontology
   gains curated, human-canonicalized values for the four constructs on a
   representative slice (e.g. `Asset.asset_type` th/en synonyms + `sample_values`;
   `OperationalEvent` `verified_queries`; a `grain` on the `temperature`/`current`
@@ -124,12 +124,12 @@ as-recommended 2026-07-04; see *Surfaced decisions*.
   four constructs are ontology-meta, not asset DB columns (verified s96: enum-
   value adds + metadata constructs need no migration; `alembic check` drift-guard
   stays green).
-- [ ] **AC-6 — Backfill supply-chain-v1 (`supply_chain_v0.yaml`).** Same curated
+- [x] **AC-6 — Backfill supply-chain-v1 (`supply_chain_v0.yaml`).** (#560, ✓ — same curated set, cold-chain.) Same curated
   backfill on the supply-chain vertical (the natural batch partner per ADR-0027
   D5 / research R2). Passes L1+L2; `uv run vero-lite generate supply_chain`
   reports "OK:"; no migration. (SD-A ratified: one PR per vertical — AC-5 (energy)
   and AC-6 (supply-chain) land in separate PRs.)
-- [ ] **AC-7 — Emitter POPULATES for free (the forward-reference proof).** With
+- [x] **AC-7 — Emitter POPULATES the enrichment (the forward-reference proof).** (#562, ✓ — but **NOT for free**: met via a **Cray-authorized emitter change** [ADR-0027 erratum #561 → emitter fix #562], NOT the assumed zero-change degrade path. Step 7 found the shipped emitter did NOT read the four fields — it emitted a hardcoded "not yet populated" degrade note; the 3 helpers now render the enrichment + the degrade note is conditional. See the Completion note DEVIATION.) With
   the constructs + a backfilled value in place (AC-5), `emit_context_pack` — **with
   ZERO emitter code change** — now populates the previously-degraded sections
   (synonyms / sample values / verified queries / metric grain) in the generated
@@ -142,8 +142,8 @@ as-recommended 2026-07-04; see *Surfaced decisions*.
   backfilled value should populate, that is a genuine emitter gap → surface it
   (do not silently patch the emitter — ADR-0027 says zero emitter change; a real
   gap is a finding for Code + Cray, see Residual note IN-1).
-- [ ] **AC-8 — Offline suite green + quality bar (CLAUDE.md §8 / PLAN-0047 Step
-  7 CI gate).** Every step's PR is green under the live CI gate: `ruff` +
+- [x] **AC-8 — Offline suite green + quality bar (CLAUDE.md §8 / PLAN-0047 Step
+  7 CI gate).** (✓ — every step's PR ran green; no Alembic migration [metadata only, both verticals].) Every step's PR is green under the live CI gate: `ruff` +
   `ruff-format` + `mypy --strict` + full suite w/ postgres + `alembic upgrade
   head` + `alembic check` drift-guard. All new code carries type hints + tests;
   the ontology tests are **offline** (no live Ollama — pure schema/projection/
@@ -420,6 +420,60 @@ completion `git mv docs/plans/0050-*.md docs/plans/done/`.
   NOT `python -m` — silent no-op); verify "OK:" + artifact mtime; no Alembic
   migration for metadata constructs (verified s96); enrichment tests are offline
   (no live Ollama).
+
+## Completion note (2026-07-04)
+
+**PLAN-0050 (the ADR-0027 R2 build) is COMPLETE — all 8 steps + all 8 ACs
+merged (#555–#562), plus an ADR-0027 erratum (#561).** The arc landed exactly
+as sequenced: **grammar → projection → L2 → D2 gate → 2 backfills → emitter.**
+
+**Step → PR → AC map:**
+
+| Step | Shipped | PR | AC |
+|------|---------|----|----|
+| 1 | L1 schema (4 optional constructs) | #555 | AC-1 ✓ (25 validator tests) |
+| 2 | Pydantic projection (typed `Synonyms`/`VerifiedQuery`, optional attrs, `default_factory`) | #556 | AC-2 ✓ |
+| 3 | L2 consistency (`_check_synonyms`/`_check_sample_values` [SD-C]/`_check_verified_queries`/`_check_quantity_binding_paths` [SD-5], via `_check_enrichment`) | #557 | AC-3 ✓ |
+| 4 | D2 backward-compat GATE (zero backfill; generate byte-identical, git-clean) | #558 | AC-4 ✓ |
+| 5 | energy-v1 backfill (th/en synonyms + sample_values [enum-overlap + non-enum] + verified_queries + grain + join_path) | #559 | AC-5 ✓ |
+| 6 | supply-chain-v1 backfill (same, cold-chain) | #560 | AC-6 ✓ |
+| 7 | the emitter fix (**DEVIATION — see below**) | #562 | AC-7 ✓ |
+
+**AC-8 (CI + no migration).** Every step's PR ran green under the PLAN-0047
+Step-7 live CI gate (`ruff` + `ruff-format` + `mypy --strict` + full suite w/
+postgres + `alembic upgrade head` + `alembic check`). **No Alembic migration** —
+the four constructs are ontology-metadata (not asset DB columns), on **both**
+verticals; the `alembic check` drift-guard stayed green throughout (IN-3
+confirmed).
+
+**DEVIATION — Step 7 emitter change (disclosed, load-bearing).** The PLAN's
+*Out of Scope* said "❌ Any emitter (`emit_context_pack`) code change" and AC-7
+assumed the emitter "populates **for free** with zero emitter change" (a premise
+inherited from ADR-0027's forward-reference, IN-1). **That premise was FACTUALLY
+WRONG.** Step 7 found — Code read the shipped emitter code + fresh on-disk
+evidence — that the emitter did **not** read the four enrichment fields at all;
+it only emitted a hardcoded "not yet populated — pending the R2 meta-schema
+follow-up" degrade note. This is exactly the IN-1 escape hatch firing: a genuine
+emitter gap, surfaced (not silently patched) as a Code + Cray finding. **Cray's
+decision (2026-07-04):** first **amend ADR-0027 via an erratum (#561)** correcting
+both the "zero emitter change" claim and the AC-7 "for free" premise, **then**
+make a **small, localized, Cray-authorized emitter change (#562)** — the 3
+helpers now render the enrichment and the degrade note became **conditional**
+(fires only for an un-enriched vertical). So AC-7 was met **via a Cray-authorized
+emitter change, NOT for free** — a disclosed deviation from the original
+Out-of-Scope and ADR-0027's "zero emitter change" forward-reference, both
+corrected by the erratum.
+
+**Outcome (R2's value now reaches the LLM).** Both real vertical packs populate:
+Thai synonyms are present, closed sample sets and verified queries render, and
+metric grain/join-path surface — the previously-hardcoded degrade note is gone
+for the enriched verticals. R2's moat value (th/en synonyms + closed sample sets
++ verified queries + metric grain) now reaches the LLM-facing context pack, which
+was the whole point of the R1→R2 arc.
+
+*The Goal, the four construct shapes, the Steps' technical content, and the
+SD-A…SD-D ratifications are unchanged — this note records completion status +
+the disclosed Step-7 deviation only.*
 
 ---
 
