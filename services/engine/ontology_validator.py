@@ -244,6 +244,7 @@ def _check_object_type(
     for prop_name, prop_def in props.items():
         findings.extend(_check_property(file, obj_name, prop_name, prop_def, object_types))
     findings.extend(_check_quantity_bindings(file, obj_name, obj_def))
+    findings.extend(_check_enrichment(file, obj_name, obj_def, object_types))
     return findings
 
 
@@ -333,6 +334,226 @@ def _check_quantity_bindings(
                 )
             )
         seen.add(kind)
+    return findings
+
+
+def _check_synonyms(
+    file: str, obj_name: str, prop_name: str | None, syn_def: dict[str, Any]
+) -> list[OntologyError]:
+    """ADR-0027 R2 (SD-2) L2: reject a synonym repeated within a language list."""
+    findings: list[OntologyError] = []
+    line, col = _node_lc(syn_def)
+    owner = prop_name if prop_name is not None else obj_name
+    for lang in ("th", "en"):
+        values = syn_def.get(lang)
+        if not isinstance(values, list):
+            continue
+        seen: set[str] = set()
+        for raw in values:
+            value = str(raw)
+            if value in seen:
+                findings.append(
+                    SemanticValidationError(
+                        file=file,
+                        object_type=obj_name,
+                        property=prop_name or "synonyms",
+                        yaml_line=line,
+                        yaml_col=col,
+                        message=(f"synonyms.{lang} for {owner!r} lists {value!r} more than once"),
+                    )
+                )
+            seen.add(value)
+    return findings
+
+
+def _check_sample_values(
+    file: str, obj_name: str, prop_name: str, prop_def: dict[str, Any]
+) -> list[OntologyError]:
+    """ADR-0027 R2 (SD-3 / SD-C) L2: no duplicate sample; and when the property is
+    also an enum, every ``sample_values`` entry must be a declared enum ``value``."""
+    samples = prop_def.get("sample_values")
+    if not isinstance(samples, list):
+        return []
+    findings: list[OntologyError] = []
+    line, col = _node_lc(prop_def)
+    enum_values: set[str] | None = None
+    if prop_def.get("type") == "enum":
+        vals = prop_def.get("values")
+        if isinstance(vals, list):
+            enum_values = {str(v) for v in vals}
+    seen: set[str] = set()
+    for raw in samples:
+        value = str(raw)
+        if value in seen:
+            findings.append(
+                SemanticValidationError(
+                    file=file,
+                    object_type=obj_name,
+                    property=prop_name,
+                    yaml_line=line,
+                    yaml_col=col,
+                    message=(f"sample_values for {prop_name!r} lists {value!r} more than once"),
+                )
+            )
+        seen.add(value)
+        if enum_values is not None and value not in enum_values:
+            findings.append(
+                SemanticValidationError(
+                    file=file,
+                    object_type=obj_name,
+                    property=prop_name,
+                    yaml_line=line,
+                    yaml_col=col,
+                    message=(
+                        f"sample_value {value!r} for enum property {prop_name!r} is not "
+                        f"a declared enum value {sorted(enum_values)}"
+                    ),
+                )
+            )
+    return findings
+
+
+def _check_verified_queries(
+    file: str, obj_name: str, obj_def: dict[str, Any]
+) -> list[OntologyError]:
+    """ADR-0027 R2 (SD-4) L2: ``question``/``answer`` must be non-blank and no
+    ``question`` may repeat. v1 is the least-coupling ``{question, answer}`` NL
+    pair, so there is no referent check into the NL-query IR."""
+    queries = obj_def.get("verified_queries")
+    if not isinstance(queries, list):
+        return []
+    findings: list[OntologyError] = []
+    line, col = _node_lc(obj_def)
+    seen: set[str] = set()
+    for entry in queries:
+        if not isinstance(entry, dict):
+            continue
+        question = str(entry.get("question", "")).strip()
+        answer = str(entry.get("answer", "")).strip()
+        if not question or not answer:
+            findings.append(
+                SemanticValidationError(
+                    file=file,
+                    object_type=obj_name,
+                    property="verified_queries",
+                    yaml_line=line,
+                    yaml_col=col,
+                    message=(f"verified_queries for {obj_name!r} has a blank question/answer"),
+                )
+            )
+            continue
+        if question in seen:
+            findings.append(
+                SemanticValidationError(
+                    file=file,
+                    object_type=obj_name,
+                    property="verified_queries",
+                    yaml_line=line,
+                    yaml_col=col,
+                    message=(f"verified_queries for {obj_name!r} repeats question {question!r}"),
+                )
+            )
+        seen.add(question)
+    return findings
+
+
+def _check_quantity_binding_paths(
+    file: str, obj_name: str, obj_def: dict[str, Any], object_types: dict[str, Any]
+) -> list[OntologyError]:
+    """ADR-0027 R2 (SD-5) L2: a quantity-binding ``join_path`` (when present) must
+    parse as ``<Obj>.<field> -> <Obj>.<field>`` with both endpoints resolving to a
+    declared object_type + property; ``grain`` (when present) must be non-blank."""
+    bindings = obj_def.get("quantity_bindings")
+    if not isinstance(bindings, list):
+        return []
+    findings: list[OntologyError] = []
+    line, col = _node_lc(obj_def)
+    for binding in bindings:
+        if not isinstance(binding, dict):
+            continue
+        kind = str(binding.get("kind", ""))
+        grain = binding.get("grain")
+        if grain is not None and not str(grain).strip():
+            findings.append(
+                SemanticValidationError(
+                    file=file,
+                    object_type=obj_name,
+                    property="quantity_bindings",
+                    yaml_line=line,
+                    yaml_col=col,
+                    message=f"quantity_bindings grain for kind {kind!r} is blank",
+                )
+            )
+        join_path = binding.get("join_path")
+        if not isinstance(join_path, str) or not join_path:
+            continue
+        match = _FK_RE.fullmatch(join_path)
+        if match is None:
+            findings.append(
+                SemanticValidationError(
+                    file=file,
+                    object_type=obj_name,
+                    property="quantity_bindings",
+                    yaml_line=line,
+                    yaml_col=col,
+                    message=(
+                        f"quantity_bindings join_path {join_path!r} for kind {kind!r} "
+                        f"does not match '<FromObject>.<from_field> -> <ToObject>.<to_field>'"
+                    ),
+                )
+            )
+            continue
+        from_obj, from_field, to_obj, to_field = match.groups()
+        for endpoint_obj, endpoint_field, side in (
+            (from_obj, from_field, "from"),
+            (to_obj, to_field, "to"),
+        ):
+            if endpoint_obj not in object_types:
+                findings.append(
+                    SemanticValidationError(
+                        file=file,
+                        object_type=obj_name,
+                        property="quantity_bindings",
+                        yaml_line=line,
+                        yaml_col=col,
+                        message=(f"join_path {side}-side object_type {endpoint_obj!r} undefined"),
+                    )
+                )
+            elif endpoint_field not in _props_of(object_types[endpoint_obj]):
+                findings.append(
+                    SemanticValidationError(
+                        file=file,
+                        object_type=obj_name,
+                        property="quantity_bindings",
+                        yaml_line=line,
+                        yaml_col=col,
+                        message=(
+                            f"join_path {side}-side {endpoint_obj}.{endpoint_field!r} "
+                            f"not declared in properties"
+                        ),
+                    )
+                )
+    return findings
+
+
+def _check_enrichment(
+    file: str, obj_name: str, obj_def: dict[str, Any], object_types: dict[str, Any]
+) -> list[OntologyError]:
+    """ADR-0027 R2 (PLAN-0050 Step 3) L2 orchestrator: run each enrichment-construct
+    consistency pass. Each pass no-ops when its construct is absent (the D2 invariant)."""
+    findings: list[OntologyError] = []
+    obj_syn = obj_def.get("synonyms")
+    if isinstance(obj_syn, dict):
+        findings.extend(_check_synonyms(file, obj_name, None, obj_syn))
+    findings.extend(_check_verified_queries(file, obj_name, obj_def))
+    for prop_name, prop_def in _props_of(obj_def).items():
+        if not isinstance(prop_def, dict):
+            continue
+        prop_syn = prop_def.get("synonyms")
+        if isinstance(prop_syn, dict):
+            findings.extend(_check_synonyms(file, obj_name, str(prop_name), prop_syn))
+        findings.extend(_check_sample_values(file, obj_name, str(prop_name), prop_def))
+    findings.extend(_check_quantity_binding_paths(file, obj_name, obj_def, object_types))
     return findings
 
 
