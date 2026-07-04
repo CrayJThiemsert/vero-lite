@@ -21,6 +21,14 @@ object_types:
     primary_key: shipment_id
     title_key: reference
     description: A temperature-controlled consignment moving through the cold chain.
+    synonyms:
+      th: [การจัดส่ง, ชิปเมนต์, พัสดุ]
+      en: [shipment, consignment, delivery]
+    verified_queries:
+      - question: มีชิปเมนต์กี่รายการที่ delayed หรือ held อยู่ตอนนี้?
+        answer: Count Shipments where status = delayed or status = held.
+      - question: How many pharma shipments are currently in transit?
+        answer: Count Shipments where cargo_type = pharma and status = in_transit.
     properties:
       shipment_id:
         type: string
@@ -36,6 +44,10 @@ object_types:
       status:
         type: enum
         values: [in_transit, at_facility, delayed, held, delivered, returned]
+        synonyms:
+          th: [สถานะ, สถานะการจัดส่ง]
+          en: [status, state]
+        sample_values: [in_transit, delayed, held]
       dispatched_date:
         type: date
       facility_id:
@@ -86,6 +98,10 @@ object_types:
         type: float
       unit:
         type: string
+        synonyms:
+          th: [หน่วย, หน่วยวัด]
+          en: [unit, measurement unit]
+        sample_values: [celsius, percent]
       measured_kind:
         type: enum
         values: [temperature, battery]
@@ -103,8 +119,11 @@ object_types:
     quantity_bindings:
       - kind: temperature
         unit: celsius
+        grain: hourly
+        join_path: OperationalEvent.shipment_id -> Shipment.shipment_id
       - kind: battery
         unit: percent
+        grain: hourly
 
   Alert:
     primary_key: alert_id
