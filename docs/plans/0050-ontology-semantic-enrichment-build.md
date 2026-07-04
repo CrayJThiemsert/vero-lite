@@ -1,6 +1,6 @@
 # PLAN-0050: ADR-0027 R2 grammar amendment — build the four optional semantic-enrichment ontology constructs (synonyms, sample_values, verified_queries, metric grain)
 
-**Status:** Draft
+**Status:** Ready for execution (SD-A…SD-D ratified as-recommended 2026-07-04)
 **Owner:** both (in-harness `plan-drafter` authors this PLAN; Code commits + executes per ADR-009 D2)
 **Created:** 2026-07-04
 **Related ADRs:** ADR-0027 (the AUTHORITATIVE spec — Accepted 2026-07-04; D1–D5 + SD-1…SD-7 all ratified as-recommended; **this PLAN renders D1–D5 into code**, SD-6's named follow-up build); ADR-0021 (the DIRECT `quantity_bindings` grammar-amendment precedent this mirrors — L1 sub-schema + Pydantic `default_factory` projection + `_check_*` L2 pass); ADR-008 (YAML ontology specification — **D2/D3 amended** by ADR-0027 to admit the four constructs; D5 generator, D6 L1+L2); ADR-0024 (governed ≠ generated — machine drafts, human canonicalizes; the D3 standing rule); ADR-006 (vertical plugin architecture / Rule of Three); ADR-005 (OCT pivot — energy first); ADR-009 D1/D2 (drafter drafts, Code commits); ADR-012 D4.3 (author≠reviewer disclosure); ADR-013 D1 (plan-drafter phased authority)
@@ -51,8 +51,8 @@ does **not** re-open any of it; the construct shapes below are FIXED inputs:
 - **`sample_values`** — property-level (SD-1); semantics = **closed filtering
   set when populated** (SD-3); DISTINCT from an enum property's `values` (a prop
   may have neither, either, or both by intent).
-- **`verified_queries`** — object-type-level (or top-level — see SD-B) (SD-1 /
-  SD-4); shape = `{question, answer}` NL pair (least-coupling v1; **NO
+- **`verified_queries`** — object-type-level (SD-B ratified: object-type-level)
+  (SD-1 / SD-4); shape = `{question, answer}` NL pair (least-coupling v1; **NO
   IR/QueryFilter binding**).
 - **metric `grain` / join-path** — OPTIONAL attrs on the existing ADR-0021
   `quantity_bindings` construct (SD-5): each binding gains an OPTIONAL `grain` +
@@ -60,10 +60,10 @@ does **not** re-open any of it; the construct shapes below are FIXED inputs:
 - **Enforcement (SD-7):** L1 shape (optional sub-schema per construct) + L2
   consistency (`_check_*` per construct, mirroring `_check_quantity_bindings`).
 
-The only NEW decisions this PLAN surfaces are BUILD-level (step batching,
+The only NEW decisions this PLAN surfaced were BUILD-level (step batching,
 one-PR-per-vertical vs both, fixture strategy, and the SD-4-latitude
-object-type-vs-top-level placement for `verified_queries`) — see *Surfaced
-decisions*.
+object-type-vs-top-level placement for `verified_queries`) — all ratified
+as-recommended 2026-07-04; see *Surfaced decisions*.
 
 ## Acceptance Criteria
 
@@ -73,7 +73,8 @@ decisions*.
   `additionalProperties: false` on the lang keys) referenced from BOTH the
   `objectType` and the `property` `$def`; (b) a `sample_values` optional array on
   the `property` `$def`; (c) a `verified_queries` optional array of
-  `{question, answer}` objects (placement per SD-B); (d) an OPTIONAL `grain` +
+  `{question, answer}` objects at object-type level (SD-B ratified:
+  object-type-level); (d) an OPTIONAL `grain` +
   OPTIONAL join-path on the `quantityBinding` `$def`. Each is OPTIONAL (absent =
   valid). **Oracle:** a schema-validation test asserts a YAML declaring each
   construct passes L1, and a malformed one (e.g. `synonyms` as a flat list, an
@@ -84,7 +85,8 @@ decisions*.
   `grain` + join-path attrs — each with `default_factory` (or `None` default) so
   an absent field projects to the empty/None default, exactly the
   `quantity_bindings: list[...] = Field(default_factory=list)` pattern. A new
-  `VerifiedQuery` (and, if needed, a `Synonyms`) model mirrors `QuantityBinding`.
+  `VerifiedQuery` model and a typed `Synonyms` model (SD-D ratified: typed model)
+  mirror `QuantityBinding`.
   `load_ontology_meta` populates them from the raw YAML (mirroring the existing
   `bindings = [...]` comprehension). **Oracle:** a unit test loads a backfilled
   vertical and asserts the projected values; a second loads an un-enriched fixture
@@ -92,9 +94,9 @@ decisions*.
 - [ ] **AC-3 — L2 consistency (`ontology_validator.py`).** A `_check_*` pass per
   construct, mirroring `_check_quantity_bindings` (:291): (a) `_check_synonyms` —
   well-formedness + (property-level) the synonym'd property exists on the type;
-  (b) `_check_sample_values` — the sample-valued property exists (and, if the
-  property is also an enum, the samples ⊆ `values`, per the SD-3 distinct-but-
-  compatible reading — see SD-C); (c) `_check_verified_queries` — non-empty
+  (b) `_check_sample_values` — the sample-valued property exists, and (SD-C
+  ratified) when the property is also an enum the samples must be ⊆ `values`
+  (orthogonal only for non-enum props); (c) `_check_verified_queries` — non-empty
   `question` + `answer` (v1 = least coupling, so NO referent check into the NL-IR;
   optional: if the query names an object_type/property, it must resolve);
   (d) the `grain`/join-path check folds into `_check_quantity_bindings` (grain
@@ -125,7 +127,8 @@ decisions*.
 - [ ] **AC-6 — Backfill supply-chain-v1 (`supply_chain_v0.yaml`).** Same curated
   backfill on the supply-chain vertical (the natural batch partner per ADR-0027
   D5 / research R2). Passes L1+L2; `uv run vero-lite generate supply_chain`
-  reports "OK:"; no migration. (Whether AC-5 + AC-6 are one PR or two = SD-A.)
+  reports "OK:"; no migration. (SD-A ratified: one PR per vertical — AC-5 (energy)
+  and AC-6 (supply-chain) land in separate PRs.)
 - [ ] **AC-7 — Emitter POPULATES for free (the forward-reference proof).** With
   the constructs + a backfilled value in place (AC-5), `emit_context_pack` — **with
   ZERO emitter code change** — now populates the previously-degraded sections
@@ -189,7 +192,8 @@ Add, mirroring the existing `quantityBinding` `$def` + its optional array on
 `additionalProperties: false`) referenced from BOTH `objectType` and `property`;
 (b) `sample_values` (optional array of strings) on `property`; (c) a
 `verifiedQuery` `$def` (`{question, answer}`, both required, non-empty) + a
-`verified_queries` optional array (placement per SD-B); (d) OPTIONAL `grain` +
+`verified_queries` optional array at object-type level (SD-B ratified:
+object-type-level); (d) OPTIONAL `grain` +
 join-path on the `quantityBinding` `$def`. All OPTIONAL. **Oracle:** L1-validation
 test — a fully-enriched YAML passes; malformed ones (flat-list `synonyms`, extra
 lang key, `verified_query` missing `question`) are REJECTED; a bare YAML still
@@ -197,8 +201,8 @@ passes. `additionalProperties: false` must still hold everywhere it does today.
 
 ### Step 2 — Pydantic projection (`ontology_meta.py`) → AC-2
 
-Add a `VerifiedQuery` model (and a `Synonyms` model if a typed projection is
-cleaner than a raw dict — SD-D). Extend `PropertyMeta` (+`synonyms`,
+Add a `VerifiedQuery` model and a typed `Synonyms` model (SD-D ratified: typed
+model). Extend `PropertyMeta` (+`synonyms`,
 +`sample_values`), `ObjectTypeMeta` (+`synonyms`, +`verified_queries`), and
 `QuantityBinding` (+`grain`, +join-path) with `default_factory`/`None` defaults.
 Extend `_property_meta` + the `load_ontology_meta` comprehensions to populate
@@ -211,8 +215,9 @@ layer).
 
 Add `_check_synonyms`, `_check_sample_values`, `_check_verified_queries`, and
 fold `grain`/join-path into `_check_quantity_bindings`, each mirroring the
-existing pass (:291): a defined referent (property exists; enum-sample subset per
-SD-C; join-path resolves to a real ref/link), well-formedness, and a
+existing pass (:291): a defined referent (property exists; enum-sample subset when
+the property is also an enum — SD-C ratified; join-path resolves to a real
+ref/link), well-formedness, and a
 **no-op-when-absent** guard. Wire each into `_validate_l2`. **Oracle:** per-check
 unit tests — a well-formed pass + a deliberately-broken fail (non-existent
 referent), and an absent-key no-op assertion.
@@ -242,7 +247,8 @@ still clean (metadata-only change, verified s96).
 
 Same curated backfill on the supply-chain vertical (the ADR-0027 D5 batch
 partner). **Oracle:** L1+L2 green; `generate supply_chain` "OK:"; no migration.
-Whether Steps 5–6 are ONE PR (both verticals) or TWO (one per vertical) = **SD-A**.
+SD-A ratified: **one PR per vertical** — Step 5 (energy) and Step 6
+(supply-chain) are separate PRs.
 
 ### Step 7 — Prove the emitter POPULATES for free (zero emitter change) → AC-7
 
@@ -311,6 +317,8 @@ completion `git mv docs/plans/0050-*.md docs/plans/done/`.
 > sequencing SD-6, enforcement depth SD-7) is **fully ratified in ADR-0027 —
 > not re-opened here.** Only genuinely-new BUILD-level choices follow.
 
+**Ratified 2026-07-04: SD-A…SD-D all confirmed as-recommended (none overridden).**
+
 ### SD-A — One PR for both vertical backfills, or one PR per vertical?
 
 - **Question:** land energy-v1 + supply-chain-v1 backfills (Steps 5–6) in ONE PR,
@@ -324,6 +332,7 @@ completion `git mv docs/plans/0050-*.md docs/plans/done/`.
   to review); or grammar+validators+energy in one PR and supply-chain follow-on.
 - **Why this is Cray's call:** it is a review-granularity + curation-batching
   judgment on hand-authored moat content, not a code-mechanics detail.
+- **Ratified 2026-07-04 — as-recommended.**
 
 ### SD-B — `verified_queries` at object-type level vs top-level (within the SD-4 latitude)?
 
@@ -340,6 +349,7 @@ completion `git mv docs/plans/0050-*.md docs/plans/done/`.
 - **Why this is Cray's call:** it sets the grammar placement the L1 schema + L2
   check + backfill all implement — a shape decision within ADR-0027's explicit
   SD-4 latitude, with two defensible cuts.
+- **Ratified 2026-07-04 — as-recommended.**
 
 ### SD-C — `sample_values` on an enum property: enforce samples ⊆ `values` in L2, or leave orthogonal?
 
@@ -359,6 +369,7 @@ completion `git mv docs/plans/0050-*.md docs/plans/done/`.
 - **Why this is Cray's call:** it is an L2-strictness interpretation of the SD-3
   "distinct-but-compatible" ratification — a validator-semantics choice that
   could reject a (rare) intentional divergence.
+- **Ratified 2026-07-04 — as-recommended.**
 
 ### SD-D — Typed `Synonyms` Pydantic model, or a raw `dict[str, list[str]]` projection?
 
