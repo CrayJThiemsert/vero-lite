@@ -2395,3 +2395,64 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-30 (A1 run-time moat enforcement / ADR-0026 Accepted, session 88) [rotated 2026-07-04, session-98 reconcile]
 
 | 2026-06-30 | **A1 (run-time moat enforcement — Cray's #1 rock) LANDED (session 88): ADR-0026 Accepted #479 + A1a COMPLETE #481/#482 + A1b planned PLAN-0044 #484** — builds the principal-identity capability the AT-2 layer's run-time SoD was deferred on (the s85/s86 AC-13-ALT carry). **ADR-0026 Accepted (#479, `620d799`):** principal-identity + AT-2 run-time enforcement; all **6 OQs Cray-adjudicated as-recommended**. **PLAN-0043 (A1a) drafted + SD-1/SD-2 folded (#480, `05243eb`/`af0d882`):** Cray adjudicated **SD-1 = `required_roles` on `SoDConstraint`** + **SD-2 = a `PrincipalAlias` link object** (deviating from the drafted rec). **A1a COMPLETE end-to-end:** **Steps 1-3 (#481, `f1e7afa`)** = the `Person` / `PrincipalAlias` construct + `SoDConstraint.required_roles` + H-governance (new fields are governance, never on a draft type); **Steps 4-6 (#482, `f5c6342`)** = `services/engine/procedures/principal_sod.py`, the **fail-closed principal-SoD run-check** emitting a **STRUCTURED `PrincipalSoDVerdict`** + the `RunContext.principal` / `resolve_gated_step(principal=…)` seam + the offline oracle. **Gate: offline green — the full procedures suite 344 passed.** **A1a/A1b boundary (Cray s88):** the live invocation needs per-step principal RECORDING = the A1b executors' job; A1a ships construct + run-check + seam, A1b wires live enforcement. **A1b drafted = PLAN-0044 (in-flight, #484):** live run enforcement + per-kind executors (`doa_tier`/`rule_gate`/`scored_rule`) + audit-to-control (OQ-5); **3 SDs surfaced for Cray.** **Hero-demo dependency (parallel session):** A1's structured `PrincipalSoDVerdict` + the A1b OQ-5 audit field feed the hero-demo's read-only "governance moment" render (convergence ask #1 MET, #2 lands with A1b). In-flight PRs awaiting Cray merge: **#483** (PLAN-0043 → `done/`) + **#484** (PLAN-0044). `loop-dispatcher` stays DISABLED; MS-S1 cold (A1a offline) | `620d799` (#479) / `f1e7afa` (#481) / `f5c6342` (#482) / `docs/adr/0026-principal-identity-run-enforcement.md` + `docs/plans/done/0043-a1a-principal-identity-sod-runcheck.md` + `services/engine/procedures/principal_sod.py` |
+
+### Current-Focus block — Session 98 (PLAN-0050 ADR-0027 R2 build) [rotated 2026-07-05, session-99 reconcile]
+
+> **Session 98, 2026-07-04 (head_commit `d8f9ec5` → `81cd3ff`) —
+> PLAN-0050 (ADR-0027 R2 build) DRAFTED → RATIFIED → BUILT COMPLETE (8
+> steps / 8 ACs) → CLOSED (#553–#563).** Renders the Accepted ADR-0027
+> grammar amendment into code: the four OPTIONAL semantic-enrichment
+> ontology constructs — `synonyms` (th/en) · `sample_values` ·
+> `verified_queries` · metric `grain`/`join_path` — now flow L1 grammar →
+> Pydantic projection → L2 consistency → both v1 verticals → the LLM-facing
+> context pack. **Draft #553** (`db8c889`, SD-A..D surfaced) → **Ratify
+> #554** (`e9c4e07`) flip Draft→Ready — Cray ratified SD-A..D as-rec (SD-A
+> one-PR-per-vertical · SD-B verified_queries object-type-level · SD-C
+> samples ⊆ enum · SD-D typed `Synonyms` model). **Step 1 L1 schema #555**
+> (`e430d5f`, AC-1) — the 4 optional constructs added to
+> `ontology_schema.json`, mirroring `quantityBinding`. **Step 2 projection
+> #556** (`3ee691a`, AC-2) — typed `Synonyms`/`VerifiedQuery` models +
+> optional attrs on `PropertyMeta`/`ObjectTypeMeta`/`QuantityBinding`
+> (`default_factory`). **Step 3 L2 consistency #557** (`6b7cc74`, AC-3) —
+> the `_check_enrichment` orchestrator (`_check_synonyms` /
+> `_check_sample_values` [SD-C samples ⊆ enum] / `_check_verified_queries`
+> / `_check_quantity_binding_paths` [SD-5 join_path resolution]); no-op
+> when the fields are absent (D2). **Step 4 D2 backward-compat GATE #558**
+> (`f0191b1`, AC-4) — the zero-backfill proof: `generate` byte-identical +
+> git-clean with no enrichment present. **Step 5 energy-v1 backfill #559**
+> (`1254b2d`, AC-5) — curated th/en synonyms + sample_values (enum-overlap
+> + non-enum) + verified_queries + grain + join_path on the energy
+> ontology. **Step 6 supply-chain-v1 backfill #560** (`2e2150c`, AC-6) —
+> same, cold-chain vertical; completes the v1-batch backfill (ADR-0027
+> D5). **ADR-0027 erratum #561** (`c23a7da`) — the Step-7 FINDING: the
+> shipped R1 emitter did NOT read the enrichment fields (only a hardcoded
+> "not yet populated" degrade note); ADR-0027's "zero emitter change / for
+> free" forward-reference was factually WRONG. Corrected in-place; DESIGN
+> (D1-D4, SD-1..7) unchanged, Status stayed Accepted. **Step 7 emitter fix
+> #562** (`33a2429`, AC-7) — the 3 context-pack helpers now RENDER the
+> enrichment (synonyms `aka`, `sample values`, `Verified queries`, `@grain
+> via join_path`) + the degrade note is now CONDITIONAL. **DISCLOSED
+> DEVIATION:** AC-7 was met via a **Cray-authorized emitter change**
+> (erratum #561 → #562), NOT "for free" — the IN-1 escape hatch firing as
+> designed (gap surfaced, not silently patched). **COMPLETE fold + `git
+> mv` → done/ #563** (`81cd3ff`, merge `81090de`) →
+> `docs/plans/done/0050-ontology-semantic-enrichment-build.md`; Status →
+> Complete, 8 ACs ticked, completion note carries the deviation
+> disclosure. **Outcome:** R2's moat value (th/en synonyms + closed sample
+> sets + verified queries + metric grain) now reaches the LLM context
+> pack — both real vertical packs populate (Thai synonyms present; the
+> degrade note is gone). **Gate (AC-8 / CI):** every step's PR ran green
+> under the PLAN-0047 Step-7 CI gate (ruff + ruff-format + `mypy --strict`
+> + full suite w/ postgres + `alembic upgrade head` + `alembic check`);
+> **no Alembic migration the whole arc** (the four constructs are
+> ontology-metadata, both verticals). **Tests:** ~+15 across the arc
+> (Step1 +5 validator, Step2 +2 meta, Step3 +4 validator, Step4 +2
+> validator, Step7 +2 emitter; baseline 2142 → ~2157, **CI-green per PR**
+> — the full suite was NOT re-run locally this reconcile; CI is the gate).
+> **Standing:** `loop-dispatcher` stays **DISABLED**; MS-S1 cold (the whole
+> arc offline); AI-assisted (Claude Code, session 98), no `Co-Authored-By`
+> per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-30 (A1b Step 1 principal-SoD run enforcement, session 89) [rotated 2026-07-05, session-99 reconcile]
+
+| 2026-06-30 | **A1b STEP 1 (demo-critical LIVE fail-closed principal-SoD run enforcement) SHIPPED + MERGED (#486) + independently verified (J1/J2 PASS) (session 89)** — INTERIM (1 of A1b's 6 steps; A1b NOT complete). Makes the A1a pure `check_principal_sod` fire on a REAL suspended-gate resolution. `spec.parse_procedures` now reads `principals`/`principal_aliases` (were silently dropped); procurement ships **5 authored principals + `required_roles`** (AC-10); a **`step_principals` JSONB column on `PipelineRun` (+ Alembic `0004`)**; `orchestrator.run_procedure(principal=…)` records the requester per SoD step (**SD-2=(a)**); `action_step.resolve_gated_step` invokes the check **unconditionally**, fails **CLOSED** (raises `PrincipalSoDError` with the structured verdict) **BEFORE** any approve/execute, **non-skippable**. **Inert for non-SoD procedures** (only procurement carries SoD; aquaculture inert-reconcile proves no behavior change). **Gate (offline = binding bar):** ruff + mypy clean; **1921 offline + 27 DB tests green** incl. **8 NEW live-SoD DB tests** + `alembic upgrade head` (0004) + aquaculture inert-reconcile. **Axis-B goal-gate: J1 PASS + J2 PASS** (high, independent goal-evaluator, creator≠critic intact). **Demo-convergence:** 1 of 3 demo-critical pieces of the hero-demo "governed→run→฿" path; **A1b Steps 3 (`doa_tier` executor) + 6 (`governed_decision` audit-to-control) next** = the rest of that path (offline-pure); Steps 2/4/5 (`OQ-6`·`rule_gate`·`scored_rule`) after; hero-demo session converges once the path is in. **Owed at A1b CLOSE (not per-step):** PLAN-0044 SD-1/SD-2/SD-3-as-rec disposition + a PLAN-0044 Completion note + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (A1b offline) | `719ea78` (#486) / `services/engine/procedures/{spec,orchestrator,action_step}.py` + `services/db/models.py` + `services/db/migrations/versions/0004_*.py` + `verticals/procurement/procedures.yaml` |
