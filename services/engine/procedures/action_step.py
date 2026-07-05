@@ -537,7 +537,7 @@ async def resolve_gated_step(
         actor_person_id=principal.person_id if principal is not None else None,
         run_id=run_id,
         step_id=step_id,
-        payload={"decisions": dict(decisions)},
+        payload={"decisions": dict(decisions), "actor_kind": "human"},
     )
     await session.commit()  # the decision is durable BEFORE any effect (AC-6)
 
@@ -588,7 +588,11 @@ async def resolve_gated_step(
             actor_person_id=principal.person_id if principal is not None else None,
             run_id=run_id,
             step_id=step_id,
-            payload={"action_id": effect["action_id"], "receipt": effect["receipt"]},
+            payload={
+                "action_id": effect["action_id"],
+                "receipt": effect["receipt"],
+                "actor_kind": "human",
+            },
         )
     await session.commit()
     return target

@@ -34,6 +34,7 @@ from services.engine.procedures.spec import (
     Agent,
     AgentAllowed,
     Autonomy,
+    Person,
     Procedure,
     Step,
     StepKind,
@@ -220,6 +221,68 @@ async def test_reject_does_not_execute_and_run_continues(db_engine: AsyncEngine)
         )
     assert done.run.status == PipelineRunStatus.COMPLETED.value
     assert after.calls == 1, "the run must continue to the next step after a reject"
+
+
+async def test_resume_stamps_the_human_actor_on_the_audit(db_engine: AsyncEngine) -> None:
+    """PLAN-0053 AC-3 (SP-4, human path): ``resume_run`` threads the resolved human
+    into the continuation, and the ``run_resumed`` audit row carries that person as
+    a NON-NULL actor (the resume audit was previously actor-less — the never-null
+    gap). Resolving + resuming with an explicit principal must record it."""
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    spy = _SpyHandler()
+    registry.register_handler("aquaculture", "aerate", spy)
+    approver = Person(person_id="approver-somchai", name="Somchai", roles=frozenset({"pond_lead"}))
+    procedure = Procedure(
+        procedure_id="round",
+        title="Morning Round",
+        goal="Act on DO breaches.",
+        run_by="pond_agent",
+        steps=[
+            Step(step_id="read", name="Read", kind=StepKind.QUERY),
+            Step(step_id="aerate", name="Aerate", kind=StepKind.ACTION, handler="aerate"),  # gated
+        ],
+    )
+    executors: dict[StepKind, StepExecutor] = {
+        StepKind.QUERY: _Query(_breach_set()),
+        StepKind.ACTION: ActionStepExecutor(client_factory=lambda _m: _FakeChat(_chat_results(1))),
+    }
+    result = await run_procedure(
+        procedure, _agent(), executors, vertical="aquaculture", run_id="run-actor"
+    )
+    assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    async with maker() as session:
+        await persist_run(session, result)
+
+    async with maker() as session:
+        await resolve_gated_step(
+            session, "run-actor", "aerate", {"action-e7": "approve"}, principal=approver
+        )
+    async with maker() as fresh:
+        done = await resume_run(
+            fresh,
+            procedure,
+            _agent(),
+            executors,
+            "run-actor",
+            vertical="aquaculture",
+            principal=approver,
+        )
+    assert done.run.status == PipelineRunStatus.COMPLETED.value
+
+    # AC-3: the run_resumed audit row now carries the human actor (not None).
+    async with maker() as session:
+        rows = (
+            await session.execute(
+                sa.text(
+                    "SELECT actor_person_id, payload FROM audit_log "
+                    "WHERE run_id = 'run-actor' AND action = 'run_resumed'"
+                )
+            )
+        ).all()
+    assert len(rows) == 1
+    actor_person_id, payload = rows[0]
+    assert actor_person_id == "approver-somchai"
+    assert payload["actor_kind"] == "human"
 
 
 async def test_resolve_requires_explicit_decision(db_engine: AsyncEngine) -> None:

@@ -324,6 +324,23 @@ async def resolve_gate_endpoint(
     groups) is supplied server-side from the vertical's spec — the
     non-skippable principal-SoD run-check fails CLOSED (403) on a violation.
     """
+    # RF-1 (ADR-016 S2, PLAN-0053 AC-1): a gated step's approver MUST be an
+    # authenticated human. When api_auth_enabled is off (auth.py -> person_id None)
+    # or no valid credential was presented, there is no accountable approver -> fail
+    # closed (403), INDEPENDENT of the authn toggle (closing the amendment's
+    # motivating hole: authn-off gate-resolve silently applying decisions with no
+    # human). This is the Phase-A human path; Phase B adds the library-level
+    # rejection of a non-human (service) approver at the resolve_gated_step
+    # chokepoint (the scheduler path, which bypasses this HTTP surface).
+    if auth.person_id is None:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "a gated step requires an authenticated human approver (ADR-016 S2 "
+                "RF-1) — api_auth_enabled is off or no valid credential was presented"
+            ),
+        )
+
     vertical = settings.oct_vertical
     loaded = await load_run(session, run_id)
     if loaded is None:
@@ -370,7 +387,15 @@ async def resolve_gate_endpoint(
         ) from exc
 
     try:
-        result = await resume_run(session, procedure, agent, factory(), run_id, vertical=vertical)
+        result = await resume_run(
+            session,
+            procedure,
+            agent,
+            factory(),
+            run_id,
+            vertical=vertical,
+            principal=auth.person,  # PLAN-0053 AC-3: never-null actor on the resumed continuation
+        )
     except ProcedureError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except StaleDataError as exc:
