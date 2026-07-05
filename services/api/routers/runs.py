@@ -35,6 +35,7 @@ from sqlalchemy.orm.exc import StaleDataError
 from services.api.auth import AuthContext, get_current_principal
 from services.api.config import settings
 from services.api.models.runs import (
+    CancelRunResponse,
     GateResolveRequest,
     GateResolveResponse,
     ProposalView,
@@ -50,6 +51,7 @@ from services.db.session import get_session
 from services.engine.procedures.action_step import PrincipalSoDError, resolve_gated_step
 from services.engine.procedures.orchestrator import ProcedureError
 from services.engine.procedures.persistence import (
+    cancel_run,
     load_run,
     resume_run,
     run_procedure_persisted,
@@ -411,3 +413,53 @@ async def resolve_gate_endpoint(
         suspended_step=suspended.step_id if suspended is not None else None,
         steps=_step_views(result.step_results),
     )
+
+
+@router.post("/runs/{run_id}/cancel", response_model=CancelRunResponse)
+async def cancel_run_endpoint(
+    run_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    auth: Annotated[AuthContext, Depends(get_current_principal)],
+) -> CancelRunResponse:
+    """Cancel a run parked at a human gate — a governed human action (PLAN-0054
+    Control-leg v1, SD-B). Requires an authenticated human (RF-1, mirrors the
+    resolve endpoint); v1 cancels ONLY a ``waiting_human`` run (parked = no
+    in-flight effect) — any other state is a 409. Writes ``status = cancelled`` +
+    a ``run_cancelled`` audit row naming the human actor.
+    """
+    # RF-1 (ADR-016 S2): cancelling a governed run is a consequential action —
+    # require an authenticated human (authn off -> no accountable actor -> 403),
+    # mirroring the resolve endpoint's guard.
+    if auth.person_id is None:
+        raise HTTPException(
+            status_code=403,
+            detail=(
+                "cancelling a run requires an authenticated human (ADR-016 S2 RF-1) "
+                "— api_auth_enabled is off or no valid credential was presented"
+            ),
+        )
+
+    loaded = await load_run(session, run_id)
+    if loaded is None:
+        raise HTTPException(status_code=404, detail=f"run '{run_id}' not found")
+
+    # SD-B: v1 cancels ONLY a parked (waiting_human) run — a run mid-execution
+    # (running) or already settled (completed/failed/cancelled) is NOT cancellable.
+    if loaded.run.status != PipelineRunStatus.WAITING_HUMAN.value:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"run '{run_id}' is not cancellable — status '{loaded.run.status}' "
+                "(v1 cancels only a waiting_human run)"
+            ),
+        )
+
+    try:
+        run = await cancel_run(session, loaded.run, actor_person_id=auth.person_id)
+    except StaleDataError as exc:
+        raise HTTPException(
+            status_code=409,
+            detail=f"run '{run_id}' was updated concurrently — reload and retry",
+        ) from exc
+
+    return CancelRunResponse(run_id=run_id, run_status=run.status)
