@@ -285,3 +285,67 @@ async def test_human_resolve_audit_records_actor_kind(
     assert kinds["run_started"] == "human"
     assert kinds["gate_decision"] == "human"
     assert kinds["handler_receipt"] == "human"
+
+
+# --- PLAN-0054 Control-leg v1: POST /runs/{id}/cancel (SD-B, waiting_human only) ---
+
+
+async def test_cancel_waiting_human_run_records_audit(
+    wired_client: AsyncClient, runs_auth: None
+) -> None:
+    """AC-5 (PLAN-0054 SD-B): an authenticated human cancels a `waiting_human` run
+    → status `cancelled` + a `run_cancelled` audit row naming the canceller with
+    `actor_kind:"human"`. The actor is the AUTHENTICATED id (non-null even though
+    energy authors no `Person` set)."""
+    run_response = await wired_client.post(
+        f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS
+    )
+    assert run_response.json()["status"] == "waiting_human"
+    run_id = run_response.json()["run_id"]
+
+    cancel = await wired_client.post(f"/runs/{run_id}/cancel", headers=HEADERS)
+    assert cancel.status_code == 200
+    assert cancel.json()["run_status"] == "cancelled"
+    # visible via the read endpoint
+    assert (await wired_client.get(f"/runs/{run_id}")).json()["status"] == "cancelled"
+
+    eng = await create_test_engine()
+    try:
+        async with eng.connect() as conn:
+            row = (
+                await conn.execute(
+                    sa.text(
+                        "SELECT actor_person_id, payload FROM audit_log "
+                        "WHERE run_id = :run_id AND action = 'run_cancelled'"
+                    ),
+                    {"run_id": run_id},
+                )
+            ).one()
+    finally:
+        await eng.dispose()
+    actor_person_id, payload = row
+    assert actor_person_id == "op-somchai"
+    assert payload["actor_kind"] == "human"
+
+
+async def test_cancel_requires_authenticated_human(
+    wired_client: AsyncClient, runs_no_auth: None
+) -> None:
+    """AC-5 (RF-1): with `api_auth_enabled` off there is no accountable canceller →
+    cancel fails closed (403) and the run is left untouched (`waiting_human`)."""
+    run_id = (await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={})).json()["run_id"]
+    cancel = await wired_client.post(f"/runs/{run_id}/cancel")
+    assert cancel.status_code == 403
+    assert (await wired_client.get(f"/runs/{run_id}")).json()["status"] == "waiting_human"
+
+
+async def test_cancel_non_waiting_human_is_409(wired_client: AsyncClient, runs_auth: None) -> None:
+    """SD-B: only a `waiting_human` run is cancellable — a second cancel (the run is
+    now `cancelled`) is a 409, not a silent re-cancel."""
+    run_id = (
+        await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS)
+    ).json()["run_id"]
+    assert (await wired_client.post(f"/runs/{run_id}/cancel", headers=HEADERS)).status_code == 200
+    second = await wired_client.post(f"/runs/{run_id}/cancel", headers=HEADERS)
+    assert second.status_code == 409
+    assert "not cancellable" in second.json()["detail"]

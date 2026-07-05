@@ -196,3 +196,14 @@ class GateResolveResponse(BaseModel):
     steps: list[StepResultView] = Field(
         description="Every recorded step result after the resume, in run order"
     )
+
+
+class CancelRunResponse(BaseModel):
+    """The outcome of cancelling a parked (``waiting_human``) run (PLAN-0054 SD-B).
+
+    v1 cancels ONLY a ``waiting_human`` run (parked = no in-flight effect); a
+    ``running`` run's mid-effect compensation is a named v2 concern.
+    """
+
+    run_id: str = Field(description="The cancelled run")
+    run_status: str = Field(description="Run status after the cancel (always 'cancelled')")

@@ -370,3 +370,33 @@ async def resume_run(
     )
     await session.commit()
     return RunResult(run=run, step_results=prior_results + new_results)
+
+
+async def cancel_run(
+    session: AsyncSession, run: PipelineRun, *, actor_person_id: str | None = None
+) -> PipelineRun:
+    """Cancel a run parked at a human gate (PLAN-0054 SD-B).
+
+    Sets ``status = cancelled`` + bumps the optimistic-lock version (a concurrent
+    resolver/canceller loses cleanly with ``StaleDataError``) and audits
+    ``run_cancelled`` with the human actor + ``actor_kind:"human"`` — persist +
+    audit in ONE commit (mirrors the ``run_resumed`` idiom). ``actor_person_id`` is
+    the AUTHENTICATED canceller's id (``auth.person_id``) — non-null past the
+    endpoint's RF-1 guard even in a vertical that authors no ``Person`` set, so the
+    cancel is always attributable (cancel has no SoD check, so it needs the id, not
+    the resolved ``Person``). The caller enforces cancellability (v1 = only
+    ``waiting_human``, SD-B). ``PipelineRunStatus.CANCELLED`` was defined but set by
+    no transition until now — this is its first writer.
+    """
+    run.status = PipelineRunStatus.CANCELLED.value
+    run.updated_at = datetime.now(UTC)
+    await session.merge(run)
+    await append_audit(
+        session,
+        action="run_cancelled",
+        actor_person_id=actor_person_id,
+        run_id=run.run_id,
+        payload={"actor_kind": "human"},
+    )
+    await session.commit()
+    return run
