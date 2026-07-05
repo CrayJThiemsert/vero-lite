@@ -2506,3 +2506,36 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-30 (A1b Steps 3+6 demo-critical path complete, session 89) [rotated 2026-07-05, session-100 reconcile]
 
 | 2026-06-30 | **A1b STEPS 3 + 6 (the rest of the demo-critical path) SHIPPED + MERGED (#488 `doa_tier` / #489 `governed_decision`) + independently verified (J1/J2 PASS) → the DEMO-CRITICAL PATH IS COMPLETE ON MAIN (session 89)** — MILESTONE, not closure: **A1b is NOT complete** (AC-9 + Steps 2/4/5 remain). With **Step 1 (#486, the live SoD gate)**, the hero render now has all three structured fields it joins on. **Step 3 (#488, `34be3a5`, AC-5):** a deterministic `doa_tier` per-kind executor — `resolve_doa_tier` over the `DoaLadder` half-open band (`Decimal` spend → tier), resolves the tier's `approver_role` → a `Person`, **fails CLOSED on a currency mismatch (OQ-4)**; the **SD-1=(a) `GovernanceActionExecutor` wrapper** dispatches on `governance_content.kind` **without a new `StepKind`**. **Step 6 (#489, `f5527d9`, AC-8):** the typed minimal **`governed_decision` audit-to-control field (SD-3=(a))** — `ControlRef{kind,id}` + `GovernedDecision{control_ref, principal_id}` on `AuditMetadata`, emitted as an **ENGINE side-effect** by the `doa_tier` route (`{kind:'doa_tier', id:resolved_tier_id}`) and the SoD gate (`{kind:'sod', id:sorted distinct_steps}`); **join-stable keys** (the `Person` PK + the verdict-emitted control id). **Gate (offline = binding bar):** both ruff + mypy clean — Step 3: **19 new `doa_tier` tests, full suite 1968 passed**; Step 6: **5 new `governed_decision` tests + the SoD-gate DB emission** (real hero gate emits `{kind:'sod', id:'approve+intake', principal_id:'appr-director'}`), **full suite 1973 passed / 5 skipped**. **Axis-B goal-gate: J1 PASS + J2 PASS** (independent goal-evaluator, creator≠critic intact, both steps). **AC-9 DEFERRAL (surfaced for Cray, NOT silently applied):** the procurement `audit` step is authored `autonomy: auto` AND downstream of the `approve`/`issue_po` gates, so the AC-9 auto-downstream-of-a-gate assertion would **restructure the hero procedure** — a Cray decision (restructure the audit terminal vs exempt no-op terminals), held for adjudication. **NEXT:** signal the hero-demo session to converge (the `services/engine/procedures/*` hold releases — it can build the read-only governance-moment render); then A1b's remaining non-demo-critical work = AC-9 (the Cray pick) + Steps 2/4/5 (`OQ-6` N≥2 marker · `rule_gate` · `scored_rule`). **Owed at A1b CLOSE (not per-step):** PLAN-0044 Completion note + `git mv` → `done/` + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (A1b offline) | `34be3a5` (#488) / `f5527d9` (#489) / `services/engine/procedures/{action_step,orchestrator}.py` + `services/db/models.py` (`AuditMetadata`/`GovernedDecision`/`ControlRef`) + `verticals/procurement/procedures.yaml` |
+
+### Current-Focus block — Session 100 (Wave-3 Cowork content-authoring) [rotated 2026-07-05, session-101 Wave-4 reconcile]
+
+> **Session 100, 2026-07-05 (head_commit `57a6593` → `05c12c2`) —
+> Wave-3 (Cowork content-authoring track, from the session-95 5-wave
+> backlog re-order) COMPLETE.** Two Tier-0 deliverables, Cowork-drafted
+> (ADR-009 D1) → Code R2 + committed (ADR-009 D2); **no new ADR/PLAN** (no
+> architectural decision). **(1) partner-intake-form v2→v3** (PR #572,
+> `5ca1c18`) — 11 `[v3]` additions surfaced by the two partner-sim mapping
+> rehearsals, folded into the sections they extend (B:1, C:3, F:1, G:1, H:5
+> = 11 = 7 run-1 §5 items 1–7 + 4 run-2 §6 items 8–11), each carrying a `Vn`
+> ID traceable 1:1 to its rehearsal item. No v2 content removed; questions
+> 1–17 unchanged. A `docs/conventions/` edit — **NOT** G1/G2-gated.
+> **(2) Wave-3 GTM ammo pack** — 4 new evidence pieces (residency "compute
+> never leaves" · Thai AI Act assistive-only keeps us out of the
+> high-risk-AI registration bucket · Gartner "60% of agentic analytics
+> projects relying solely on MCP will fail by 2028" · refusal-safety
+> "governed refusal vs. confident wrong answer", grounded on the shipped
+> `_validate_query` seam) layered onto the box4 ROI-spine + b3 moat
+> narrative. A **gitignored confidential strategy note**
+> (`docs/strategy/private/`) — **NOT committed** (same convention as
+> box4/b3). **Code R2:** verified the 11-count + no-question-loss vs the v2
+> diff; verified ammo-(d)'s `_validate_query` seam
+> (`services/engine/nl_query.py:428`/`:534`) exists; corrected one
+> provenance citation typo (V2 cited run-1 §5 #1 → #2). The Stop-hook
+> classifier misrouted the dispatch to an ADR draft; Code overrode it
+> (content authoring, not governance).
+> **Standing:** `loop-dispatcher` stayed **DISABLED**; MS-S1 cold (offline);
+> AI-assisted (Claude Code, session 100), no `Co-Authored-By` per §7.
+
+### Recent-Decisions row — 2026-07-01 (HERO-DEMO PHASE 1 offline foundation, session 91) [rotated 2026-07-05, session-101 Wave-4 reconcile]
+
+| 2026-07-01 | **HERO-DEMO PHASE 1 (offline foundation) SHIPPED + MERGED (#492 session-90 reconcile / #493 Phase-1 foundation) (session 91)** — MILESTONE, not closure: the SD-1 live layer (C-full) is still WIP on `feat/hero-demo-v1-live` and **A1b is NOT complete** (AC-9 + PLAN-0044 Steps 2/4/5 remain). **#493 = four PLAN-0045 commits:** **Step 1 (`85eafaa`)** C1 `FastenalCsvAdapter` (CSV-backed hero-demo `DataAdapter`, `verticals/` only, **zero `services/` core edit**); **Step 1b (`6fb7b2b`)** the governance-moment audit capture (`resolve_doa_tier` + `check_principal_sod` from the **real engine**); **Step 3 (`b76c080`, B1)** the ฿-impact ledger + the `/demo/hero/{governance,impact}` **derived API views** behind **4 demo guards**; **Step 2 (`f310778`)** the governance-moment render screen `view-hero.js` (render tab **G**). **Verification (attributed to the session-90 handoff evidence, NOT re-run this reconcile — CLAUDE.md §6):** offline gate green (~2005 tests) + verified live on the `oct-demo` preview (all 4 cards, both `governed_decision` joins JOIN, contrast case = MANAGER, ฿-ledger ฿9.76M → ฿1.65M). **§3 ฿-threading finding:** the shipped `source` `ActionStepExecutor` returns action envelopes + **drops the input entity's amount** → the `approve` `doa_tier` fails CLOSED at approve. **NEXT (Phase 2):** PLAN-0044 A1b Step 5 (`GovernanceActionExecutor._scored_rule`) on `feat/a1b-scored-rule` — deterministic quote scoring (LLM summarises only), select winner, emit amount+currency so `approve` resolves; offline gate = AC-7 + a full-loop stub-client test threading ฿288,000 → CONTROLLER; then merge → rebase `feat/hero-demo-v1-live` → C-3 runner → C-4 endpoint/toggle → C-5 live MS-S1 smoke (host-state, Cray go). **Owed at A1b CLOSE (not per-step):** PLAN-0044 Completion note + `git mv` → `done/` + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (offline) | `788994d` (#493) / `85eafaa`·`6fb7b2b`·`b76c080`·`f310778` / `verticals/procurement/data_adapter/fastenal_csv.py` + `verticals/procurement/hero_demo/{governance_audit,ledger}.py` + `services/api/{models,routers}/demo.py` (`/demo/hero/{governance,impact}`) + `services/api/static/assets/view-hero.js` |
