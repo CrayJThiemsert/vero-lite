@@ -5,7 +5,7 @@
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-005 (strategic pivot to OCT — **expands feature-3**), ADR-007 (OCT engine contracts — **generalizes** the D2 `RecommendedAction` envelope; does **not** break it), ADR-008 (YAML ontology spec — the six `object_types` are **untouched**; `procedures.yaml` is a separate spec layer), ADR-001 (LLM model baseline — the local `gpt-oss:20b` pin is the default `Agent` model), ADR-010 (LLM reasoning-hook surface — the per-action reasoning trace generalizes to per-step), ADR-013 (autonomy-axis relocation — safe / human-gated autonomy posture). Implementation deferred to **PLAN-0019**. Grounding research: `docs/research/private/2026-06-07-palantir-5-concerns-pipeline-design.md` (5 Palantir findings, 25 claims 3-0 / 0 killed), `docs/research/private/2026-06-06-impl-approach-reconciliation.md` (on-thesis framing). This ADR does **not** supersede any prior ADR.
 
-**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified). **D2 + D3 Amendment (2026-07-01)** → typed read-side ontology object-binding for query steps (Q3) (**Accepted** 2026-07-01 — Cray-ratified).
+**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified). **D2 + D3 Amendment (2026-07-01)** → typed read-side ontology object-binding for query steps (Q3) (**Accepted** 2026-07-01 — Cray-ratified). **D2 + D3 Amendment (2026-07-05)** → typed service-principal for non-human (`schedule`) triggers (S2; requester-never-approver) (**Proposed** 2026-07-05 — awaiting Cray ratification).
 
 > **Drafting provenance.** Drafted (uncommitted) by the in-harness
 > `plan-drafter` subagent under ADR-009 D1 interim authoring per ADR-013's
@@ -768,6 +768,211 @@ else refuse to load.
   names resolve against, untouched).
 - PLAN-0005 §8.1 — the read-side audit / PDPA surface the `object_types` allowlist
   seeds.
+
+### D2 + D3 Amendment (2026-07-05): typed service-principal for non-human triggers
+
+> **Status:** **Proposed** (Cray ratifies at Proposed → Accepted). **Date:**
+> 2026-07-05 (session 101). **Deciders:** Jirachai Thiemsert (founder).
+> **Amends:** D2 (the `Agent` / principal grammar) **and** D3 (the autonomy +
+> `Agent.allowed` blast-radius model) — **extends, does not reverse or
+> renumber**; mirrors the **D2 Amendment (2026-06-25)** typed-`facet:` and the
+> **D2 + D3 Amendment (2026-07-01)** read-binding in-place precedents.
+>
+> **Author≠reviewer disclosure (ADR-012 D4.3).** Outline originator = Cray
+> (session 101 — ratified the PLAN-0052 **S2** direction as-recommended: a typed
+> service-principal, requester-never-approver, and the accompanying
+> security-IAM / PDPA panel review). Drafter = the in-harness `plan-drafter`
+> subagent (ADR-013 D1 phased authoring / ADR-009 D1 interim authoring).
+> Independent reviewers = the session-101 **security-IAM / PDPA-DPO panel lens**
+> (advisory, `explore-research` read-only review) + **Code R2** (verifies every
+> cited `file:line` on disk against fresh evidence and commits per ADR-009 D2) +
+> **Cray** at ratification (Proposed → Accepted). Drafter ≠ ratifier and no
+> reviewer originated the direction — separation **intact**.
+
+#### Context for the amendment
+
+D7 Phase 3 forward-declares a `schedule` (non-human) trigger. Today **every** run
+is human-triggered, and the `run_started` audit row coalesces the actor to
+`principal.person_id → trigger_context["triggered_by"] → None`
+(`services/engine/procedures/persistence.py:132-140`). A non-human run therefore
+resolves `actor_person_id = None` — a **PDPA accountability gap**: a consequential
+write with no attributable actor. The engine also **hard-blocks** `schedule`
+today (`orchestrator.py:138-142` raises `ProcedureError` for any non-`manual`
+trigger), so this is **forward-looking** — but the **actor model must be DECIDED
+before the S1 scheduler is built** (**S2 before S1**): a scheduler shipped first
+would null the audit actor on the exact runs it creates.
+
+This amendment fixes the **actor model** — the *decision*. It does **not** build
+the scheduler (S1) or the service-principal machinery (a follow-on build-PLAN,
+gated on this Accepted). Grounding: **PLAN-0052** (ADR-016 Phase-3 monitor)
+Surfaced-Decision **S2** carries the full folded analysis + invariants M1–M7 +
+RF-1..3, produced by the session-101 security-IAM / PDPA panel lens.
+
+The shipped code the decision binds against (all Code R2-verified on disk):
+
+- `services/engine/procedures/spec.py` — `Person` (`:638-657`, the human
+  principal SoD compares by `person_id`), `Agent` (`:660-673`) +
+  `AgentAllowed` (`:606-616`, `{step_kinds, action_handlers, object_types}`).
+- `services/engine/procedures/action_step.py` — `_enforce_principal_sod`
+  (`:299`) + `resolve_gated_step` (`:408`) fail-closed on the approver check;
+  the audit `actor_kind:"engine"` convention (`:292`).
+- `services/engine/procedures/persistence.py:132-140` — the actor-coalesce that
+  falls to `None`.
+- `services/api/auth.py:71-72` — `api_auth_enabled=false → AuthContext(None,
+  None)` (the toggle that makes a plain `gated` approver check inert).
+- `services/db/audit_log.py` — the tamper-evident hash-chain that gives the
+  trail integrity (the actor field this amendment guarantees is resolvable).
+
+#### Decision (SP-1 … SP-8 — direction LOCKED; only the shape choices below are OQs)
+
+The `schedule` trigger changes only **who fired** a run, never **who approves** a
+`gated` write. The actor model gains a **typed service-principal** — a non-human
+requester/actor with a stable id + declared scope, bound to the Agent — recorded
+as a **never-null** audit actor and classified by `actor_kind`. **No new scope
+primitive**; least-privilege reuses the Agent's existing allowlists.
+
+**SP-1 — Requester-only, NEVER approver (the core invariant — preserve
+verbatim).** A service-principal is a **requester/actor ONLY, NEVER an
+approver**. A `schedule` trigger changes only *who fired* a run, never *who
+approves* a `gated` write (still a human at `waiting_human`). Letting a
+service-principal satisfy the approver role silently converts `gated`→`auto` and
+voids D3 + the fail-safe posture. Grounds: `resolve_gated_step` /
+`_enforce_principal_sod` fail-closed (`action_step.py:299,408`).
+
+**SP-2 — Typed identity, bound to the Agent, mirroring `Person` (NOT overloading
+it).** A service-principal is a typed identity declared in the vertical's
+procedures spec **beside** `Person` / `Agent`, **bound to the Agent** (the
+machine actor that RUNS a procedure), mirroring `Person`'s shape (stable id +
+declared scope, human-authored / H-governed). It is a **distinct actor kind** —
+do **NOT** overload `Person`: SoD compares `person_id`s, and a service id leaking
+into that comparison set could collapse a constraint (RF-3). Keep the namespaces
+typed-distinct.
+
+**SP-3 — `actor_kind` classifies the actor (`human` vs `service`).** Extend the
+existing audit `actor_kind:"engine"` convention (`action_step.py:292`) with
+`"service"` vs `"human"` so the trail is **filterable by actor class** — the
+highest-leverage PDPA-legibility fix.
+
+**SP-4 — Never-null actor (M2).** Replace the `None` fallback
+(`persistence.py:132-140`): a scheduled run resolves the declared service id,
+**never** `None`. This is the highest-leverage PDPA fix — every consequential
+write carries a resolvable declared actor.
+
+**SP-5 — On-behalf-of chain (M4).** `trigger_context` records **BOTH** the
+service-principal (who fired) **AND** the owning human (who scheduled / owns it),
+if any — so accountability preserves the human-in-the-loop lineage even for an
+automated fire.
+
+**SP-6 — Least-privilege by reuse; no auth material on the identity (M5 / M6).**
+The service-principal inherits its Agent's blast radius via the **EXISTING**
+`Agent.allowed.{action_handlers, object_types}` (`spec.py:606-616`) — **no new
+scope primitive**. The identity is a **declared identity only** in the
+local/on-prem model; the API-key transport (`auth.py`) is the **scheduler's**
+concern (the trigger transport), kept **separate** from the principal identity.
+
+**SP-7 — H-governed fields (M7).** The new fields are **H** (human-authored) —
+add to `STEP_ / AGENT_GOVERNANCE_FIELDS` per the 2026-07-01 OQ-A precedent
+(ADR-0024 D3 H-only machinery). A service-principal is never model-emitted.
+
+**SP-8 — The security invariants to record (M1 + RF-1..3).**
+
+- **M1 / RF-1 — reject a service/`None` principal for a `gated` step regardless
+  of the authn toggle.** `auth.py:71-72` (`api_auth_enabled=false →
+  AuthContext(None, None)`) makes a plain (non-SoD) `gated` step's approver check
+  inert — a scheduler driving gate-resolve with authn off would **evaporate the
+  human gate**. Gate-resolve MUST fail closed against a service/`None` principal
+  **independent of** `api_auth_enabled`.
+- **RF-2 — no autonomy elevation.** `auto` on a write stays a **deliberate
+  per-step author choice**; a service-principal does **NOT** elevate any step's
+  autonomy. A schedule trigger firing an all-`gated` procedure still parks every
+  write at `waiting_human`.
+- **RF-3 — keep service ids out of the `Person`/SoD comparison set** (the SP-2
+  namespace-distinctness invariant, restated as a security property).
+
+**DPO / PDPA framing.** The audit hash-chain (`audit_log.py`) already gives the
+trail **integrity**; this amendment guarantees the **actor field is always a
+resolvable declared identity** — a non-null, non-repudiable, typed actor on every
+consequential write. Together: attributable **and** tamper-evident.
+
+#### Scope boundary (amendment — this is a DECISION, not a build)
+
+- **IN:** the **actor-model decision** — the typed service-principal shape
+  (SP-2), `actor_kind` (SP-3), the never-null actor (SP-4), the on-behalf-of
+  chain (SP-5), the least-privilege reuse (SP-6), the requester-never-approver
+  invariant + RF-1..3 (SP-1, SP-8).
+- **OUT — the build** (a follow-on build-PLAN, gated on this `Accepted`):
+  implementing the service-principal type + the `actor_kind` field + the
+  never-null wiring + the gate-resolve rejection invariant + tests.
+- **OUT — the S1 scheduler** that CREATES service-triggered runs (its own
+  ADR/PLAN — **S2 before S1**).
+- **UNCHANGED:** the ADR-007 `RecommendedAction` envelope, the ADR-008 ontology,
+  the `auto` / `gated` model, `autonomy_ceiling`, and the handler / object_type
+  allowlists' **existing semantics** (the service-principal *reuses* them; it does
+  not alter them).
+
+#### Open Questions (amendment — Cray ratifies at Proposed → Accepted; do NOT silently resolve)
+
+The **direction is LOCKED** (typed service-principal, requester-not-approver — not
+an OQ). Only these genuinely-open *shape* choices are surfaced:
+
+- **OQ-1 (identity-shape placement).** Where does the service-principal identity
+  live — an **Agent-bound field** (recommended: the service-principal is declared
+  on/beside the `Agent` it binds to, so its blast radius is the Agent's
+  allowlists by construction — SP-6) **vs** a **vertical-level registry** (a
+  top-level `service_principals:` list the `Agent` references by id) **vs**
+  **referenced by the `schedule` trigger** (the trigger names the principal).
+  *Recommendation:* Agent-bound (least-privilege falls out of SP-6 with no new
+  wiring). *Why Cray's call:* it fixes the spec grammar's shape and the
+  H-governance field home (SP-7), and the registry alternative is defensible if a
+  principal must be shared across Agents.
+- **OQ-2 (`RunContext.principal` typing).** Does `RunContext.principal` widen to a
+  union (`Person | ServicePrincipal`) **or** does the service actor ride a
+  **separate field** (`RunContext.service_principal`, leaving `principal`
+  human-only)? *Recommendation:* a **separate field** — it keeps `Person` (and the
+  SoD comparison set) free of any service identity by construction (RF-3), rather
+  than relying on every SoD call-site to discriminate a union. *Why Cray's call:*
+  I did **not** fully trace the `RunContext` dataclass (`persistence.py` /
+  `orchestrator.py` reference `RunContext.principal`); the union-vs-separate choice
+  ripples through every principal call-site and is a build-shaping decision —
+  flag for the build.
+- **OQ-3 (`actor_kind` field home).** Does `actor_kind` live on the **audit
+  metadata only** (`action_step.py:292` convention, extended) **or also on the
+  principal type** (the service-principal declares its own kind)? *Recommendation:*
+  **audit metadata is the source of truth** for filtering the trail; the principal
+  type's kind (if added) is derived/redundant — prefer audit-only unless the build
+  finds a call-site that needs the kind before the audit row is written. *Why
+  Cray's call:* it decides whether `actor_kind` is one field or two, and whether
+  the principal type carries a discriminator.
+
+Any other genuinely-open shape choice surfaces the same way — but the
+**DIRECTION** (typed service-principal, requester-not-approver) is **LOCKED**, not
+an OQ.
+
+#### Amendment references
+
+- `services/engine/procedures/persistence.py:132-140` — the `run_started`
+  actor-coalesce that falls to `None` (SP-4 replaces it).
+- `services/engine/procedures/action_step.py` — `_enforce_principal_sod`
+  (`:299`), `resolve_gated_step` (`:408`) fail-closed approver check (SP-1 / M1),
+  and the `actor_kind:"engine"` audit convention (`:292`, extended by SP-3).
+- `services/engine/procedures/spec.py` — `Person` (`:638-657`), `Agent`
+  (`:660-673`), `AgentAllowed` (`:606-616`, the reused `action_handlers` /
+  `object_types` allowlists — SP-6).
+- `services/api/auth.py:71-72` — the `api_auth_enabled=false → AuthContext(None,
+  None)` toggle that makes a plain `gated` approver check inert (RF-1).
+- `services/db/audit_log.py` — the tamper-evident hash-chain (integrity; the DPO
+  framing).
+- `docs/plans/0052-adr016-phase3-oct-monitor.md` — Surfaced-Decision **S2** (the
+  full folded analysis + M1–M7 + RF-1..3) and the **S2-before-S1** sequencing
+  constraint; S1 (the scheduler) is the sibling surface gated on this amendment.
+- ADR-016 D2 Amendment (2026-06-25) / D2 + D3 Amendment (2026-07-01) — the
+  in-place, extends-not-reverses amendment precedents this one follows.
+- ADR-016 D3 (autonomy model + `Agent.allowed` blast-radius) — the model this
+  amendment extends without altering its existing semantics.
+- ADR-0024 D3 — the H-only (human-authored) governance-field machinery
+  (`STEP_ / AGENT_GOVERNANCE_FIELDS`) the new fields join (SP-7).
+- PLAN-0005 §8.1 — the read-side audit / PDPA surface a resolvable declared
+  actor serves.
 
 ### D3: Autonomy model + safe-agentic posture
 
