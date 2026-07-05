@@ -2456,3 +2456,53 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-06-30 (A1b Step 1 principal-SoD run enforcement, session 89) [rotated 2026-07-05, session-99 reconcile]
 
 | 2026-06-30 | **A1b STEP 1 (demo-critical LIVE fail-closed principal-SoD run enforcement) SHIPPED + MERGED (#486) + independently verified (J1/J2 PASS) (session 89)** — INTERIM (1 of A1b's 6 steps; A1b NOT complete). Makes the A1a pure `check_principal_sod` fire on a REAL suspended-gate resolution. `spec.parse_procedures` now reads `principals`/`principal_aliases` (were silently dropped); procurement ships **5 authored principals + `required_roles`** (AC-10); a **`step_principals` JSONB column on `PipelineRun` (+ Alembic `0004`)**; `orchestrator.run_procedure(principal=…)` records the requester per SoD step (**SD-2=(a)**); `action_step.resolve_gated_step` invokes the check **unconditionally**, fails **CLOSED** (raises `PrincipalSoDError` with the structured verdict) **BEFORE** any approve/execute, **non-skippable**. **Inert for non-SoD procedures** (only procurement carries SoD; aquaculture inert-reconcile proves no behavior change). **Gate (offline = binding bar):** ruff + mypy clean; **1921 offline + 27 DB tests green** incl. **8 NEW live-SoD DB tests** + `alembic upgrade head` (0004) + aquaculture inert-reconcile. **Axis-B goal-gate: J1 PASS + J2 PASS** (high, independent goal-evaluator, creator≠critic intact). **Demo-convergence:** 1 of 3 demo-critical pieces of the hero-demo "governed→run→฿" path; **A1b Steps 3 (`doa_tier` executor) + 6 (`governed_decision` audit-to-control) next** = the rest of that path (offline-pure); Steps 2/4/5 (`OQ-6`·`rule_gate`·`scored_rule`) after; hero-demo session converges once the path is in. **Owed at A1b CLOSE (not per-step):** PLAN-0044 SD-1/SD-2/SD-3-as-rec disposition + a PLAN-0044 Completion note + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (A1b offline) | `719ea78` (#486) / `services/engine/procedures/{spec,orchestrator,action_step}.py` + `services/db/models.py` + `services/db/migrations/versions/0004_*.py` + `verticals/procurement/procedures.yaml` |
+
+## Rotated this reconcile (session-100, 2026-07-05 — Wave-3 Cowork content-authoring COMPLETE #572)
+
+### Current-Focus block — Session 99 (head_commit `81cd3ff` → `57a6593`) — PLAN-0051 reason-then-structure A/B COMPLETE [rotated 2026-07-05, session-100 reconcile; R1 64 KB ceiling]
+
+> **Session 99, 2026-07-05 (head_commit `81cd3ff` → `57a6593`) —
+> PLAN-0051 (reason-then-structure A/B — Wave-2(c)) DRAFTED → RATIFIED →
+> BUILT (6 steps) → LIVE-RUN → COMPLETE + CLOSED (#565–#570).**
+> Operationalizes the July-2026 research finding #2 (reason-then-structure
+> lifts constrained-decoding accuracy 10-30%) as a **3-arm A/B**
+> (`baseline` / `field_order_flip` / `two_pass`) on vero-lite's two
+> remaining single-pass structured-output call sites — **classify**
+> (`classify_narrative`) + **nl_query** (`_translate`); the anomaly
+> recommender was OUT of scope (already two-pass Pattern B). **Draft #565**
+> (`db8c889`→`8abdd33`/`bd8e2dc`, plan-drafter) → Cray ratified SD-1..SD-6
+> **as-recommended** → Draft→Ready. **Build (6 steps; each offline gate MET,
+> both shipped defaults byte-identical, the guard/validator/Phase-B seam
+> untouched):** classify `arm` plumbing + the offline A/B driver
+> `classify_ab_route` reusing PLAN-0041's 26-narrative corpus (**#566**
+> `1e6a121` AC-1 · **#567** `426ebaa` AC-2); nl_query gold corpus (27
+> hand-authored energy-ontology questions, all pass `_validate_query`) +
+> `score_query` on the RAW `_translate` output (SD-1) + `arm` plumbing with
+> the leading advisory `reasoning` field stripped before execute (**#568**
+> `b6619fd` AC-3 · **#569** `74760bd` AC-4). Each arm = `baseline` /
+> `field_order_flip` (reasoning-first schema) / `two_pass` (free-form
+> reasoning call before the constrained call, omits `think` — CHECKPOINT-0). **Step 5a harness + 5b results + Step 6 close #570**
+> (`b8ab793` harness skip-by-default → `57a6593` results + `git mv` →
+> done/). **Live run (Step 5b — host-state §8, Cray go, full N=3 both
+> sites, 2:17:02 on `gpt-oss:20b`):** `2 passed`. **RESULT: NO measurable
+> lift on either site.** classify (AC-6): baseline at the **11/11 ceiling**;
+> field_order_flip +0, two_pass −1; the **Arm-B moat brake held 11/11 in
+> EVERY arm/rep** (the reasoning-order lever did not weaken the AT-2 abstain
+> gate; no false-accepts). nl_query (AC-7): worst-rep mean baseline 0.978
+> vs variants 0.965–0.978; hard-class 0.844 all arms (Δ +0.000).
+> **Recommendation (SD-6): REJECT both `field_order_flip` + `two_pass` on
+> both sites — keep the shipped `baseline`; NO production default changed;
+> NO new ADR (SD-5).** The arm plumbing + 2 corpora + the A/B harness remain
+> behind the `baseline`-default `arm` param as reusable scaffolding. The
+> research "10-30% lift" **did not replicate** (both paths already strongly
+> prompted; `gpt-oss:20b` extracts structured output well) — a **valid null
+> result** (measured, not assumed). **Gate:** offline AC-1..AC-5 (the binding
+> bar) MET; AC-6/AC-7 (live) = confirming. Full record:
+> `docs/logs/2026-07-05-plan0051-live-ab-results.md`.
+> **Standing:** `loop-dispatcher` stayed **DISABLED**; MS-S1 warmed once for
+> the Cray-gated run then idle; AI-assisted (Claude Code, session 99), no
+> `Co-Authored-By` per CLAUDE.md §7.
+
+### Recent-Decisions row — 2026-06-30 (A1b Steps 3+6 demo-critical path complete, session 89) [rotated 2026-07-05, session-100 reconcile]
+
+| 2026-06-30 | **A1b STEPS 3 + 6 (the rest of the demo-critical path) SHIPPED + MERGED (#488 `doa_tier` / #489 `governed_decision`) + independently verified (J1/J2 PASS) → the DEMO-CRITICAL PATH IS COMPLETE ON MAIN (session 89)** — MILESTONE, not closure: **A1b is NOT complete** (AC-9 + Steps 2/4/5 remain). With **Step 1 (#486, the live SoD gate)**, the hero render now has all three structured fields it joins on. **Step 3 (#488, `34be3a5`, AC-5):** a deterministic `doa_tier` per-kind executor — `resolve_doa_tier` over the `DoaLadder` half-open band (`Decimal` spend → tier), resolves the tier's `approver_role` → a `Person`, **fails CLOSED on a currency mismatch (OQ-4)**; the **SD-1=(a) `GovernanceActionExecutor` wrapper** dispatches on `governance_content.kind` **without a new `StepKind`**. **Step 6 (#489, `f5527d9`, AC-8):** the typed minimal **`governed_decision` audit-to-control field (SD-3=(a))** — `ControlRef{kind,id}` + `GovernedDecision{control_ref, principal_id}` on `AuditMetadata`, emitted as an **ENGINE side-effect** by the `doa_tier` route (`{kind:'doa_tier', id:resolved_tier_id}`) and the SoD gate (`{kind:'sod', id:sorted distinct_steps}`); **join-stable keys** (the `Person` PK + the verdict-emitted control id). **Gate (offline = binding bar):** both ruff + mypy clean — Step 3: **19 new `doa_tier` tests, full suite 1968 passed**; Step 6: **5 new `governed_decision` tests + the SoD-gate DB emission** (real hero gate emits `{kind:'sod', id:'approve+intake', principal_id:'appr-director'}`), **full suite 1973 passed / 5 skipped**. **Axis-B goal-gate: J1 PASS + J2 PASS** (independent goal-evaluator, creator≠critic intact, both steps). **AC-9 DEFERRAL (surfaced for Cray, NOT silently applied):** the procurement `audit` step is authored `autonomy: auto` AND downstream of the `approve`/`issue_po` gates, so the AC-9 auto-downstream-of-a-gate assertion would **restructure the hero procedure** — a Cray decision (restructure the audit terminal vs exempt no-op terminals), held for adjudication. **NEXT:** signal the hero-demo session to converge (the `services/engine/procedures/*` hold releases — it can build the read-only governance-moment render); then A1b's remaining non-demo-critical work = AC-9 (the Cray pick) + Steps 2/4/5 (`OQ-6` N≥2 marker · `rule_gate` · `scored_rule`). **Owed at A1b CLOSE (not per-step):** PLAN-0044 Completion note + `git mv` → `done/` + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (A1b offline) | `34be3a5` (#488) / `f5527d9` (#489) / `services/engine/procedures/{action_step,orchestrator}.py` + `services/db/models.py` (`AuditMetadata`/`GovernedDecision`/`ControlRef`) + `verticals/procurement/procedures.yaml` |
