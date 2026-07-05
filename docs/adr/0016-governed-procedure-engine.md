@@ -5,7 +5,7 @@
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-005 (strategic pivot to OCT — **expands feature-3**), ADR-007 (OCT engine contracts — **generalizes** the D2 `RecommendedAction` envelope; does **not** break it), ADR-008 (YAML ontology spec — the six `object_types` are **untouched**; `procedures.yaml` is a separate spec layer), ADR-001 (LLM model baseline — the local `gpt-oss:20b` pin is the default `Agent` model), ADR-010 (LLM reasoning-hook surface — the per-action reasoning trace generalizes to per-step), ADR-013 (autonomy-axis relocation — safe / human-gated autonomy posture). Implementation deferred to **PLAN-0019**. Grounding research: `docs/research/private/2026-06-07-palantir-5-concerns-pipeline-design.md` (5 Palantir findings, 25 claims 3-0 / 0 killed), `docs/research/private/2026-06-06-impl-approach-reconciliation.md` (on-thesis framing). This ADR does **not** supersede any prior ADR.
 
-**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified). **D2 + D3 Amendment (2026-07-01)** → typed read-side ontology object-binding for query steps (Q3) (**Accepted** 2026-07-01 — Cray-ratified). **D2 + D3 Amendment (2026-07-05)** → typed service-principal for non-human (`schedule`) triggers (S2; requester-never-approver) (**Proposed** 2026-07-05 — awaiting Cray ratification).
+**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified). **D2 + D3 Amendment (2026-07-01)** → typed read-side ontology object-binding for query steps (Q3) (**Accepted** 2026-07-01 — Cray-ratified). **D2 + D3 Amendment (2026-07-05)** → typed service-principal for non-human (`schedule`) triggers (S2; requester-never-approver) (**Accepted** 2026-07-05 — Cray-ratified, session 102; OQ-1 = vertical-level registry, OQ-2 = separate `RunContext.service_principal` field, OQ-3 = audit-only `actor_kind`).
 
 > **Drafting provenance.** Drafted (uncommitted) by the in-harness
 > `plan-drafter` subagent under ADR-009 D1 interim authoring per ADR-013's
@@ -771,8 +771,9 @@ else refuse to load.
 
 ### D2 + D3 Amendment (2026-07-05): typed service-principal for non-human triggers
 
-> **Status:** **Proposed** (Cray ratifies at Proposed → Accepted). **Date:**
-> 2026-07-05 (session 101). **Deciders:** Jirachai Thiemsert (founder).
+> **Status:** **Accepted** (Cray-ratified, Proposed → Accepted, 2026-07-05 /
+> session 102). **Date:** 2026-07-05 (session 101 drafted; session 102 ratified).
+> **Deciders:** Jirachai Thiemsert (founder).
 > **Amends:** D2 (the `Agent` / principal grammar) **and** D3 (the autonomy +
 > `Agent.allowed` blast-radius model) — **extends, does not reverse or
 > renumber**; mirrors the **D2 Amendment (2026-06-25)** typed-`facet:` and the
@@ -786,8 +787,9 @@ else refuse to load.
 > Independent reviewers = the session-101 **security-IAM / PDPA-DPO panel lens**
 > (advisory, `explore-research` read-only review) + **Code R2** (verifies every
 > cited `file:line` on disk against fresh evidence and commits per ADR-009 D2) +
-> **Cray** at ratification (Proposed → Accepted). Drafter ≠ ratifier and no
-> reviewer originated the direction — separation **intact**.
+> **Cray** at ratification (Proposed → Accepted, landed 2026-07-05 / session
+> 102). Drafter ≠ ratifier and no reviewer originated the direction — separation
+> **intact**.
 
 #### Context for the amendment
 
@@ -840,13 +842,18 @@ voids D3 + the fail-safe posture. Grounds: `resolve_gated_step` /
 `_enforce_principal_sod` fail-closed (`action_step.py:299,408`).
 
 **SP-2 — Typed identity, bound to the Agent, mirroring `Person` (NOT overloading
-it).** A service-principal is a typed identity declared in the vertical's
-procedures spec **beside** `Person` / `Agent`, **bound to the Agent** (the
-machine actor that RUNS a procedure), mirroring `Person`'s shape (stable id +
-declared scope, human-authored / H-governed). It is a **distinct actor kind** —
-do **NOT** overload `Person`: SoD compares `person_id`s, and a service id leaking
-into that comparison set could collapse a constraint (RF-3). Keep the namespaces
-typed-distinct.
+it).** A service-principal is a typed identity declared in a **vertical-level
+`service_principals:` registry** in the procedures spec (top-level, **beside**
+`principals:` / `agents:`) and **bound to the Agent** by reference — the Agent
+(the machine actor that RUNS a procedure) references the principal by id, and its
+blast radius is that Agent's `allowed.{action_handlers, object_types}` at runtime
+(SP-6). It mirrors `Person`'s shape (stable id + declared scope, human-authored /
+H-governed). It is a **distinct actor kind** — do **NOT** overload `Person`: SoD
+compares `person_id`s, and a service id leaking into that comparison set could
+collapse a constraint (RF-3). Keep the namespaces typed-distinct. *(Placement
+refined per OQ-1 RATIFIED = vertical-level registry, 2026-07-05 / session 102 —
+declared top-level, bound-to-Agent by reference + runtime scope; SP-2's intent
+and the RF-3 namespace-distinctness invariant are preserved.)*
 
 **SP-3 — `actor_kind` classifies the actor (`human` vs `service`).** Extend the
 existing audit `actor_kind:"engine"` convention (`action_step.py:292`) with
@@ -925,6 +932,19 @@ an OQ). Only these genuinely-open *shape* choices are surfaced:
   wiring). *Why Cray's call:* it fixes the spec grammar's shape and the
   H-governance field home (SP-7), and the registry alternative is defensible if a
   principal must be shared across Agents.
+  **RATIFIED (2026-07-05 / session 102) = vertical-level registry.** A top-level
+  `service_principals:` list declared in the vertical's procedures spec (beside
+  `principals:` / `agents:`), which an `Agent` references by id. Cray chose the
+  registry over the *recommended* Agent-bound option **for the flexibility to
+  share one service-principal across multiple Agents**. **SP-6 least-privilege
+  holds intact:** the blast radius comes from the Agent that RUNS the procedure
+  (`procedure.run_by`) at runtime — a registry-declared identity, once referenced
+  by a running Agent, is still bounded by THAT Agent's `allowed.{action_handlers,
+  object_types}`; the registry adds an indirection but opens **no scope hole**.
+  The choice is **consistent with SP-2** ("declared beside Person/Agent, bound to
+  the Agent") — it refines SP-2's placement (declared top-level; bound-to-Agent by
+  reference + runtime scope), it does not contradict it (SP-2 wording reconciled
+  minimally above; RF-3 namespace-distinctness preserved verbatim).
 - **OQ-2 (`RunContext.principal` typing).** Does `RunContext.principal` widen to a
   union (`Person | ServicePrincipal`) **or** does the service actor ride a
   **separate field** (`RunContext.service_principal`, leaving `principal`
@@ -935,6 +955,14 @@ an OQ). Only these genuinely-open *shape* choices are surfaced:
   `orchestrator.py` reference `RunContext.principal`); the union-vs-separate choice
   ripples through every principal call-site and is a build-shaping decision —
   flag for the build.
+  **RATIFIED (2026-07-05 / session 102) = separate field (as INTENT / DIRECTION).**
+  The service actor rides a **separate** `RunContext.service_principal` field;
+  `RunContext.principal` stays **human-only**, keeping `Person` and the SoD
+  comparison set free of any service identity **by construction** (RF-3). This
+  ratifies the **DIRECTION**; the exact typing / mechanics are to be **CONFIRMED
+  AT BUILD** after the S2 build-PLAN traces the `RunContext` dataclass (the ADR
+  flags above that Code did not fully trace `RunContext`) — no fully-specified
+  typing is claimed here.
 - **OQ-3 (`actor_kind` field home).** Does `actor_kind` live on the **audit
   metadata only** (`action_step.py:292` convention, extended) **or also on the
   principal type** (the service-principal declares its own kind)? *Recommendation:*
@@ -943,6 +971,11 @@ an OQ). Only these genuinely-open *shape* choices are surfaced:
   finds a call-site that needs the kind before the audit row is written. *Why
   Cray's call:* it decides whether `actor_kind` is one field or two, and whether
   the principal type carries a discriminator.
+  **RATIFIED (2026-07-05 / session 102) = audit-only.** `actor_kind` lives on the
+  **audit metadata** — extend the existing `actor_kind:"engine"` convention
+  (`action_step.py:292`) with `"human"` vs `"service"`. The principal type does
+  **NOT** carry a redundant `kind` discriminator **UNLESS** the build finds a
+  call-site that needs the kind **before** the audit row is written.
 
 Any other genuinely-open shape choice surfaces the same way — but the
 **DIRECTION** (typed service-principal, requester-not-approver) is **LOCKED**, not
