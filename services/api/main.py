@@ -52,6 +52,17 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Reads raw object dicts only (no LLM call), so it is safe even when MS-S1 is
     # warming; a no-op beyond a fixed-datetime copy when OCT_DEMO_TIME_ANCHOR off.
     await registry.get_adapter(vertical).fetch_objects("OperationalEvent")
+    # PLAN-0054 Step 6b: register the deterministic procurement procedure-executor
+    # factory for the Control-leg operate demo. The gate-resolve endpoint resumes a
+    # run via registry.get_procedure_executors(vertical), which 409s until a factory
+    # is registered -- discover_and_register (OQ-6) registers adapters + handlers only.
+    # Explicit + active-vertical-scoped (NOT import-scan); deterministic (no MS-S1).
+    if vertical == "procurement":
+        from verticals.procurement.hero_demo.run import (
+            register_procurement_procedure_executors,
+        )
+
+        await register_procurement_procedure_executors()
     # One-shot boot diagnostic: makes a mis-armed PLAN-0014 notifier (e.g. the
     # enable flag left off — otherwise a silent per-call no-op) visible at startup.
     _boot_logger.info(

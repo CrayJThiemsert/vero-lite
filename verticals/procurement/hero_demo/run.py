@@ -377,3 +377,49 @@ async def build_live_hero_governance_audit(
         "hero": hero,
         "contrast": offline["contrast"],
     }
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0054 Step 6b — the deterministic procurement procedure-executor factory
+# for the Control-leg operate demo (the HTTP resolve/resume path)
+# --------------------------------------------------------------------------- #
+
+
+async def register_procurement_procedure_executors(
+    adapter: FastenalCsvAdapter | None = None,
+) -> None:
+    """Register a DETERMINISTIC ``procurement`` procedure-executor factory (PLAN-0054 Step 6b).
+
+    The Control-leg operate demo resolves a ``waiting_human`` gate over HTTP
+    (``POST /runs/{run_id}/gate/resolve``), which resumes the run via
+    ``registry.get_procedure_executors("procurement")`` -- a lookup that 409s ("no
+    procedure-executor factory") until a factory is registered. ``register_procedure_executors``
+    has no live caller: the import-scan discovery deliberately registers adapters + handlers
+    only (OQ-6, no executor-factory discovery). This is that explicit, active-vertical-scoped
+    registration (wired at startup in ``services/api/main.py`` when ``OCT_VERTICAL=procurement``).
+
+    The registered factory REUSES the hero harness's per-kind :func:`_executors` bound to the
+    deterministic :func:`advisory_stub_factory` -- NOT the real ``OllamaClient``-backed
+    ``ActionStepExecutor`` -- so resolve->resume (the ``source`` auto step + the post-``approve``
+    ``issue_po`` ACTION) fires NO live MS-S1 call (host-state, CLAUDE.md #8). The SAME executors
+    seed the ``waiting_human`` run and resolve it -- one consistent factory for ``procurement``.
+
+    Idempotent: a no-op when a ``procurement`` factory is already registered.
+    """
+    try:
+        registry.get_procedure_executors(_VERTICAL)
+        return  # already registered -- idempotent
+    except RegistryError:
+        pass
+
+    adapter = adapter or FastenalCsvAdapter()
+    principals = await load_fastenal_principals(adapter)
+    seed = [await _intake_seed(adapter)]
+
+    def factory() -> dict[StepKind, StepExecutor]:
+        # Built fresh per run/resume request (stateful executors never leak across
+        # requests -- the registry Step-2 contract); the principals + seed are
+        # immutable read-only data captured once at registration.
+        return _executors(advisory_stub_factory, principals, seed)
+
+    registry.register_procedure_executors(_VERTICAL, factory)
