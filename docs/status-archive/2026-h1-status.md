@@ -2539,3 +2539,68 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-07-01 (HERO-DEMO PHASE 1 offline foundation, session 91) [rotated 2026-07-05, session-101 Wave-4 reconcile]
 
 | 2026-07-01 | **HERO-DEMO PHASE 1 (offline foundation) SHIPPED + MERGED (#492 session-90 reconcile / #493 Phase-1 foundation) (session 91)** — MILESTONE, not closure: the SD-1 live layer (C-full) is still WIP on `feat/hero-demo-v1-live` and **A1b is NOT complete** (AC-9 + PLAN-0044 Steps 2/4/5 remain). **#493 = four PLAN-0045 commits:** **Step 1 (`85eafaa`)** C1 `FastenalCsvAdapter` (CSV-backed hero-demo `DataAdapter`, `verticals/` only, **zero `services/` core edit**); **Step 1b (`6fb7b2b`)** the governance-moment audit capture (`resolve_doa_tier` + `check_principal_sod` from the **real engine**); **Step 3 (`b76c080`, B1)** the ฿-impact ledger + the `/demo/hero/{governance,impact}` **derived API views** behind **4 demo guards**; **Step 2 (`f310778`)** the governance-moment render screen `view-hero.js` (render tab **G**). **Verification (attributed to the session-90 handoff evidence, NOT re-run this reconcile — CLAUDE.md §6):** offline gate green (~2005 tests) + verified live on the `oct-demo` preview (all 4 cards, both `governed_decision` joins JOIN, contrast case = MANAGER, ฿-ledger ฿9.76M → ฿1.65M). **§3 ฿-threading finding:** the shipped `source` `ActionStepExecutor` returns action envelopes + **drops the input entity's amount** → the `approve` `doa_tier` fails CLOSED at approve. **NEXT (Phase 2):** PLAN-0044 A1b Step 5 (`GovernanceActionExecutor._scored_rule`) on `feat/a1b-scored-rule` — deterministic quote scoring (LLM summarises only), select winner, emit amount+currency so `approve` resolves; offline gate = AC-7 + a full-loop stub-client test threading ฿288,000 → CONTROLLER; then merge → rebase `feat/hero-demo-v1-live` → C-3 runner → C-4 endpoint/toggle → C-5 live MS-S1 smoke (host-state, Cray go). **Owed at A1b CLOSE (not per-step):** PLAN-0044 Completion note + `git mv` → `done/` + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (offline) | `788994d` (#493) / `85eafaa`·`6fb7b2b`·`b76c080`·`f310778` / `verticals/procurement/data_adapter/fastenal_csv.py` + `verticals/procurement/hero_demo/{governance_audit,ledger}.py` + `services/api/{models,routers}/demo.py` (`/demo/hero/{governance,impact}`) + `services/api/static/assets/view-hero.js` |
+
+### Current-Focus block — Session 101 Wave-4 (ADR-016 Phase-3 OCT Monitor) [rotated 2026-07-06, session-102 S2-track reconcile]
+
+> **Session 101, 2026-07-05 (head_commit `05c12c2` → `b4d312c`) —
+> Wave-4 (ADR-016 D7 Phase-3 "OCT Monitor", parallel track, Cray-directed).**
+> A PLAN → panel-advised → BUILT → amendment arc, `plan-drafter`-authored,
+> Code R2-verified + committed (ADR-009 D1/D2). **(1) PLAN-0052 Draft→Ready
+> (#574/#575).** `plan-drafter` authored PLAN-0052 (ADR-016 Phase-3 OCT
+> monitor, v1 read-only) — #574 (`ab4c8f9`, merge `b89c4dc`); a **4-lens
+> specialist+stakeholder panel** (read-only `explore-research`: S1
+> scheduler/SRE · S2 security-IAM/PDPA-DPO · S3 SRE/ops-mgr · S4
+> frontend-UX/operator) advised, Code R2-verified every load-bearing on-disk
+> claim, the drafter folded the enrichments, Cray ratified S1–S5 as-rec →
+> Draft→Ready #575 (`2cae236`, merge `7c3cee0`). No direction reversed; the
+> one v1 build-touch (read-only) = widening the list projection with
+> `trigger`/step-progress + `data-testid`s.
+> **(2) v1 read-only Monitor BUILT — #577** (`febdf7e`, merge `38c277b`).
+> Backend `GET /runs` (newest-first list + a `waiting_human` "waiting on you"
+> count + step-progress) + `GET /runs/{run_id}` (ordered steps + per-step
+> trace/audit/duration + the `waiting_human` gate & proposals exposed
+> READ-ONLY) in `services/api/{models,routers}/runs.py` — **reuses
+> `load_run`, no new query layer, no mutation.** Front-end **View H
+> "Monitor"** (`static/assets/view-monitor.js` + `app.js` VIEWS.H +
+> index.html): list + live detail (poll 3s/10s, stop-terminal, pause-hidden),
+> gate panel behind a `mode:'read'|'operate'` seam (**inert v1** → the
+> Control leg wires the already-shipped `POST /runs/{id}/gate/resolve`, an
+> L4 extension-not-rewrite), amber high-salience `waiting_human` badge,
+> stable data-testids. **Verified:** new pytest 4 passed + **full suite 2211
+> passed / 7 skipped**; ruff + mypy clean; **AC-8 frozen surfaces (spec.py /
+> ADR-007 envelope / ontology) UNTOUCHED**; browser-verified end-to-end via
+> preview (list → detail → gate proposals read-only; no console/server
+> errors).
+> **(3) ADR-016 D2+D3 amendment PROPOSED — #576** (`8570c1c`, merge
+> `b4d312c`): a typed **service-principal for non-human (`schedule`)
+> triggers** (Surfaced-Decision S2). Direction LOCKED — a service-principal
+> is a **requester/actor ONLY, NEVER an approver** (SP-1); SP-2..8 + RF-1..3
+> (never-null actor, `actor_kind` human|service, on-behalf-of chain,
+> least-privilege via existing allowlists, H-governed; **RF-1** = gate-resolve
+> rejects a service/None principal for a `gated` step regardless of the
+> authn toggle). **Proposed — awaiting Cray ratification** of SP-1..8 + OQ-1
+> (identity placement, rec Agent-bound) / OQ-2 (`RunContext.principal`
+> union-vs-separate, rec separate) / OQ-3 (`actor_kind` home, rec
+> audit-only). **S2-before-S1** (a scheduled run has no human actor → PDPA
+> gap).
+> **Standing:** `loop-dispatcher` stayed **DISABLED**; MS-S1 not exercised by
+> Wave-4 (the monitor is DB-only/offline); AI-assisted (Claude Code, session
+> 101), no `Co-Authored-By` per §7.
+
+> _Rotation note (session-101 Wave-4 reconcile, 2026-07-05): to hold STATUS
+> under the **R1 64 KB hard ceiling** as the Session-101 Wave-4 CF block
+> landed (R1 overrides the R2 4-session window — the s95–s100 precedents
+> accepted a narrowed 1-block window), the **Session 100 Wave-3 (Cowork
+> content-authoring track) COMPLETE — partner-intake-form v2→v3 (#572) +
+> Wave-3 GTM ammo pack** Current Focus block was rotated verbatim to
+> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md)
+> (it is covered by the top Recent-Decisions row; the intake-form edit lives
+> in `docs/conventions/` + the ammo pack in gitignored
+> `docs/strategy/private/`). Resulting Current-Focus window = {Session 101
+> `b4d312c`}; RD table = 10 rows (at the R2 cap; the 2026-07-04 PLAN-0048
+> Q4 + PLAN-0049 v1 + ADR-0027 row rotated out to the same archive). Per the
+> STATUS.md Rotation Policy (R1/R2/R4)._
+
+### Recent-Decisions row — 2026-07-01 (HERO-DEMO v1 governed-run-baht path COMPLETE) [rotated 2026-07-06, session-102 S2-track reconcile]
+
+| 2026-07-01 | **HERO-DEMO v1 "governed → run → ฿" path COMPLETE — offline + LIVE-verified (session 91)** — three PRs merged (#495/#496/#497) + a Cray-approved C-5 live MS-S1 smoke; MILESTONE (the demo path is done) NOT closure — **A1b is NOT complete** (PLAN-0044 Steps 2/4 + AC-9 remain). **#495 (`2ebe851`, A1b Step 5) `scored_rule` executor:** `GovernanceActionExecutor._scored_rule` (SD-1=(a), mirrors `_doa_tier`) scores an emergency-sourcing step's candidate quotes by the typed `ScoredRule`, selects the winner **DETERMINISTICALLY** (same inputs→same pick; LLM never selects) and — unlike `_doa_tier` — **REPLACES the output with the selected entity carrying `amount` (unit_price × qty) + currency**, closing the **§3 ฿-threading finding** (the shipped `ActionStepExecutor` dropped the entity's spend so `approve` `doa_tier` had no amount); scoring = criticality-as-event-weight amplifier (v1 weights provisional, ADR-0025 D2); **17 new tests.** **#496 (`52523df`) the live-run layer:** C-1 (`bfc4844`) Fastenal dataset (`operational_event.csv`+`quotation.csv`+adapter types); C-2 (`75e7e69`) the in-code Fastenal hero procedure (ladder-swap → **฿288k → CONTROLLER**); C-3 (`00b9a3c`) `hero_demo/run.py` `run_hero_governance_moment` drives the **REAL** loop (intake→judge→source→compliance→approve) through the orchestrator + AT-2 executors — the moment is **DERIVED by the run** (same audit contract, `source: "live-run"`); **3 new stub-client tests.** **#497 (`b4c03a9`) C-4 live toggle:** `GET /demo/hero/governance?live=true` returns the live-run audit; `view-hero.js` gains a "Run live"/"Offline fixture" toggle + source-aware badge; **HOST-STATE-FREE** (the `?live` path uses a deterministic advisory-LLM stub `advisory_stub_factory` — the governed decision is LLM-independent, no MS-S1 hit per request); preview-verified, **+1 endpoint test.** **C-5 live MS-S1 smoke (this session, Cray-approved via AskUserQuestion, HOST-STATE EVIDENCE):** warmed `gpt-oss:20b` on MS-S1 (192.168.1.133, verified present) + ran `run_hero_governance_moment` **ONCE** with the real `OllamaClient` — **result (fresh on-disk this session, a live run NOT re-derived): governed outcome IDENTICAL to the offline gate** (`SUP-RAPIDMRO → ฿288,000 → CONTROLLER (appr-controller)`, `sod.governed: true`, `scored_path: exception_policy`, `governed_decision: [doa_tier, sod]`) → **governed ≠ generated confirmed LIVE** (the real LLM = advisory prose only, does not change the governed decision). Live = **EVIDENCE** (the offline oracle stays the gate, §8); **no code shipped for C-5.** **NEXT (close-out):** A1b's remaining non-demo-critical work = Steps 2 (`OQ-6` N≥2) + 4 (`rule_gate`) + AC-9; verify PLAN-0045 AC then `git mv` → `done/`. **Owed at A1b CLOSE (not per-step):** PLAN-0044 Completion note + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (remaining A1b offline) | `b4c03a9` (#497) / `2ebe851` (#495) / `52523df`·`00b9a3c`·`75e7e69`·`bfc4844` (#496) / `services/engine/procedures/{scored_rule,governance_step}.py` (`select_scored_supplier` + the `_scored_rule` branch) + `verticals/procurement/hero_demo/run.py` (`run_hero_governance_moment`) + `verticals/procurement/data/hero/{operational_event,quotation}.csv` + `services/api/routers/demo.py` (`/demo/hero/governance?live=true`) + `services/api/static/assets/view-hero.js` |
