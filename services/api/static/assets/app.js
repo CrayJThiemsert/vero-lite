@@ -13,7 +13,8 @@
     D: { key: 'D', label: 'Data → Decision', icon: 'flow', mod: () => O.ViewFlow },
     E: { key: 'E', label: 'Build a Vertical', icon: 'spark', mod: () => O.ViewIntake },
     F: { key: 'F', label: 'Procedures', icon: 'receipt', mod: () => O.ViewProcedures },
-    G: { key: 'G', label: 'Governance Moment', icon: 'spark', mod: () => O.ViewHero }
+    G: { key: 'G', label: 'Governance Moment', icon: 'spark', mod: () => O.ViewHero },
+    H: { key: 'H', label: 'Monitor', icon: 'gauge', mod: () => O.ViewMonitor }
   };
 
   let stripEl, metaChipsEl, tabsEl, containers = {};
