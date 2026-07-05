@@ -136,7 +136,15 @@ async def run_procedure_persisted(
             else (trigger_context or {}).get("triggered_by")
         ),
         run_id=run_id,
-        payload={"procedure_id": procedure.procedure_id, "agent_id": agent.agent_id},
+        # PLAN-0053 AC-4 (OQ-3 audit-only): classify the trigger's actor. Phase A
+        # runs are manual/human-triggered (the orchestrator hard-blocks non-manual
+        # triggers, orchestrator.py:138-142); Phase B classifies scheduler-fired
+        # runs as "service".
+        payload={
+            "procedure_id": procedure.procedure_id,
+            "agent_id": agent.agent_id,
+            "actor_kind": "human",
+        },
     )
     await session.commit()  # the write-ahead: the run is durable BEFORE any effect
 
@@ -243,6 +251,7 @@ async def resume_run(
     run_id: str,
     *,
     vertical: str,
+    principal: Person | None = None,
 ) -> RunResult:
     """Resume a ``waiting_human`` run, reconstructing state purely from the DB.
 
@@ -295,6 +304,11 @@ async def resume_run(
         vertical=vertical,
         trigger_context=run.trigger_context,
         goal=procedure.goal or None,
+        # PLAN-0053 AC-3 (SP-4, human path): thread the resolved human through the
+        # continuation context. resume_run previously passed NO principal -> the
+        # RunContext defaulted to None, so a resumed step's requester-principal
+        # recording lost the actor. The HTTP resume call-site passes auth.person.
+        principal=principal,
     )
     # Rebuild the named-output bag from every completed step that recorded an
     # output, so a resumed step can reference ANY earlier named step (the
@@ -342,12 +356,17 @@ async def resume_run(
         # PLAN-0048 SD-5(a): refusals on the resume path are audited too.
         await _append_read_refusal_audit(session, run_id, step_result)
     # PLAN-0047 Step 5: the resume transition is audited in the same commit.
+    # PLAN-0053 AC-3/AC-4: the resume is a HUMAN-driven continuation (the human who
+    # resolved the gate) — stamp the resolvable actor + actor_kind so the row is no
+    # longer actor-less (SP-4 never-null on resume). Phase B classifies a
+    # scheduler-driven resume as actor_kind "service".
     await append_audit(
         session,
         action="run_resumed",
+        actor_person_id=principal.person_id if principal is not None else None,
         run_id=run_id,
         step_id=suspended.step_id,
-        payload={"final_status": final_status.value},
+        payload={"final_status": final_status.value, "actor_kind": "human"},
     )
     await session.commit()
     return RunResult(run=run, step_results=prior_results + new_results)

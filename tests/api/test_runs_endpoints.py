@@ -204,3 +204,84 @@ async def test_unwired_vertical_is_409(client: AsyncClient, runs_auth: None) -> 
     response = await client.post(f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS)
     assert response.status_code == 409
     assert "executor factory" in response.json()["detail"]
+
+
+# --- PLAN-0053 Phase A: ADR-016 S2 RF-1 (broad gate-approver) + actor_kind ------
+
+
+@pytest.fixture
+def runs_no_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Authn OFF (the per-deployment dev/demo escape) -> get_current_principal
+    returns ``AuthContext(None, None)``: no accountable human identity."""
+    monkeypatch.setattr(settings, "api_auth_enabled", False)
+
+
+async def test_resolve_rejects_when_no_authenticated_approver(
+    wired_client: AsyncClient, runs_no_auth: None
+) -> None:
+    """AC-1 (ADR-016 S2 RF-1): with ``api_auth_enabled`` off there is NO
+    accountable human approver, so gate-resolve fails closed (403) BEFORE any
+    decision is applied — INDEPENDENT of the authn toggle. This closes the
+    amendment's motivating hole: an authn-off resolve silently applying decisions
+    with no human. The gate is left intact (``waiting_human``), retryable once a
+    human authenticates."""
+    run_response = await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={})
+    assert run_response.status_code == 200
+    body = run_response.json()
+    assert body["status"] == "waiting_human"
+    run_id = body["run_id"]
+    action_id = body["proposals"][0]["action_id"]
+
+    resolve_response = await wired_client.post(
+        f"/runs/{run_id}/gate/resolve",
+        json={"step_id": _GATED_STEP, "decisions": {action_id: "approve"}},
+    )
+    assert resolve_response.status_code == 403
+    assert "authenticated human approver" in resolve_response.json()["detail"]
+
+    # The rejected resolve did NOT mutate the gate — still waiting_human (retryable).
+    detail = await wired_client.get(f"/runs/{run_id}")
+    assert detail.status_code == 200
+    assert detail.json()["status"] == "waiting_human"
+
+
+async def test_human_resolve_audit_records_actor_kind(
+    wired_client: AsyncClient, runs_auth: None
+) -> None:
+    """AC-4 (ADR-016 S2 OQ-3, audit-only): a human-driven run-start + gate
+    resolution stamp ``actor_kind='human'`` in the audit metadata (extending the
+    existing ``'engine'`` convention), so the tamper-evident trail is filterable by
+    actor class. The ``Person`` type carries no redundant ``kind`` field."""
+    run_response = await wired_client.post(
+        f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS
+    )
+    assert run_response.status_code == 200
+    run_id = run_response.json()["run_id"]
+    action_id = run_response.json()["proposals"][0]["action_id"]
+
+    resolve_response = await wired_client.post(
+        f"/runs/{run_id}/gate/resolve",
+        json={"step_id": _GATED_STEP, "decisions": {action_id: "approve"}},
+        headers=HEADERS,
+    )
+    assert resolve_response.status_code == 200
+
+    eng = await create_test_engine()
+    try:
+        async with eng.connect() as conn:
+            rows = (
+                await conn.execute(
+                    sa.text(
+                        "SELECT action, payload FROM audit_log "
+                        "WHERE run_id = :run_id ORDER BY audit_id"
+                    ),
+                    {"run_id": run_id},
+                )
+            ).all()
+    finally:
+        await eng.dispose()
+
+    kinds = {action: (payload or {}).get("actor_kind") for action, payload in rows}
+    assert kinds["run_started"] == "human"
+    assert kinds["gate_decision"] == "human"
+    assert kinds["handler_receipt"] == "human"
