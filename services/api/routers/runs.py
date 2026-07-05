@@ -28,6 +28,7 @@ from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm.exc import StaleDataError
 
@@ -37,8 +38,12 @@ from services.api.models.runs import (
     GateResolveRequest,
     GateResolveResponse,
     ProposalView,
+    RunDetailView,
     RunProcedureRequest,
     RunProcedureResponse,
+    RunsListResponse,
+    RunSummaryView,
+    StepDetailView,
     StepResultView,
 )
 from services.db.session import get_session
@@ -49,7 +54,12 @@ from services.engine.procedures.persistence import (
     resume_run,
     run_procedure_persisted,
 )
-from services.engine.procedures.runs import PipelineRunStatus, StepResult
+from services.engine.procedures.runs import (
+    PipelineRun,
+    PipelineRunStatus,
+    StepResult,
+    StepResultStatus,
+)
 from services.engine.procedures.spec import (
     Agent,
     Procedure,
@@ -127,6 +137,125 @@ def _proposals(suspended: StepResult | None) -> list[ProposalView]:
             )
         )
     return views
+
+
+def _trigger_of(trigger_context: dict[str, Any] | None) -> str:
+    """The trigger discriminator recorded on the run — ``manual`` when unstamped
+    (forward-compat: the S1 scheduler will stamp ``schedule``)."""
+    return str((trigger_context or {}).get("trigger") or "manual")
+
+
+def _triggered_by(trigger_context: dict[str, Any] | None) -> str | None:
+    """The actor recorded on the run, displayed GENERICALLY (a person_id today; a
+    service-principal id post-ADR-016 S2) — never assumed to be a ``Person``."""
+    value = (trigger_context or {}).get("triggered_by")
+    return str(value) if value is not None else None
+
+
+def _detail_step_views(step_results: list[StepResult]) -> list[StepDetailView]:
+    return [
+        StepDetailView(
+            step_id=s.step_id,
+            status=s.status,
+            duration_ms=s.duration_ms,
+            artifact=s.artifact,
+            reasoning_trace=s.reasoning_trace,
+            audit=s.audit,
+        )
+        for s in step_results
+    ]
+
+
+# --- PLAN-0052 Phase-3 OCT monitor (v1): READ-ONLY list + detail endpoints. ---
+# No mutation, no LLM call, no executor — only SELECTs (AC-3). These are the
+# mirror-image GET of the existing POST run/gate-resolve seams: the monitor
+# reads the same persisted records the Control write path acts on, so
+# "approve/reject/cancel from the UI" later is an extension, not a rewrite (L4).
+
+
+@router.get("/runs", response_model=RunsListResponse)
+async def list_runs(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> RunsListResponse:
+    """List persisted runs, newest-first — a READ-ONLY projection (AC-1 / AC-3).
+
+    Runs are scoped by the single active vertical (``settings.oct_vertical``);
+    ``steps_total`` is the current spec's declared step count when the procedure
+    still ships.
+    """
+    vertical = settings.oct_vertical
+    declared: dict[str, int] = {}
+    try:
+        spec = load_procedures(vertical)
+        declared = {p.procedure_id: len(p.steps) for p in spec.procedures}
+    except FileNotFoundError:
+        declared = {}  # a vertical shipping no procedures file still lists its runs
+
+    runs = (
+        (await session.execute(select(PipelineRun).order_by(PipelineRun.started_at.desc())))
+        .scalars()
+        .all()
+    )
+    run_ids = [r.run_id for r in runs]
+    recorded: dict[str, int] = {}
+    waiting: dict[str, int] = {}
+    if run_ids:
+        rows = await session.execute(
+            select(StepResult.run_id, StepResult.status).where(StepResult.run_id.in_(run_ids))
+        )
+        for sr_run_id, sr_status in rows.all():
+            recorded[sr_run_id] = recorded.get(sr_run_id, 0) + 1
+            if sr_status == StepResultStatus.WAITING_HUMAN.value:
+                waiting[sr_run_id] = waiting.get(sr_run_id, 0) + 1
+
+    summaries = [
+        RunSummaryView(
+            run_id=r.run_id,
+            procedure_id=r.procedure_id,
+            agent_id=r.agent_id,
+            status=r.status,
+            trigger=_trigger_of(r.trigger_context),
+            triggered_by=_triggered_by(r.trigger_context),
+            started_at=r.started_at,
+            updated_at=r.updated_at,
+            steps_recorded=recorded.get(r.run_id, 0),
+            steps_total=declared.get(r.procedure_id),
+            steps_waiting=waiting.get(r.run_id, 0),
+        )
+        for r in runs
+    ]
+    waiting_human_count = sum(1 for r in runs if r.status == PipelineRunStatus.WAITING_HUMAN.value)
+    return RunsListResponse(runs=summaries, waiting_human_count=waiting_human_count)
+
+
+@router.get("/runs/{run_id}", response_model=RunDetailView)
+async def get_run(
+    run_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> RunDetailView:
+    """One run's full read projection: ordered steps + per-step trace/audit, plus
+    the ``waiting_human`` gate + its pending proposals exposed READ-ONLY
+    (AC-2 / AC-7). Reuses the existing ``load_run`` — no new query layer, no
+    mutation.
+    """
+    loaded = await load_run(session, run_id)
+    if loaded is None:
+        raise HTTPException(status_code=404, detail=f"run '{run_id}' not found")
+    run = loaded.run
+    suspended = _suspended_step(loaded.step_results, run.status)
+    return RunDetailView(
+        run_id=run.run_id,
+        procedure_id=run.procedure_id,
+        agent_id=run.agent_id,
+        status=run.status,
+        trigger=_trigger_of(run.trigger_context),
+        triggered_by=_triggered_by(run.trigger_context),
+        started_at=run.started_at,
+        updated_at=run.updated_at,
+        suspended_step=suspended.step_id if suspended is not None else None,
+        proposals=_proposals(suspended),
+        steps=_detail_step_views(loaded.step_results),
+    )
 
 
 @router.post("/procedures/{procedure_id}/run", response_model=RunProcedureResponse)
