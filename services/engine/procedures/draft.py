@@ -67,8 +67,12 @@ PROCEDURE_GOVERNANCE_FIELDS = frozenset({"run_by", "separation_of_duties"})
 ``separation_of_duties`` is the AT-2 SoD constraint set (ADR-0025 D2/D4) — human-authored,
 never generated."""
 
-AGENT_GOVERNANCE_FIELDS = frozenset({"llm_model", "autonomy_ceiling", "allowed"})
-"""``Agent``-level H fields: the residency binding + the blast-radius bounds."""
+AGENT_GOVERNANCE_FIELDS = frozenset(
+    {"llm_model", "autonomy_ceiling", "allowed", "service_principal_ids"}
+)
+"""``Agent``-level H fields: the residency binding + the blast-radius bounds +
+``service_principal_ids`` (ADR-016 S2 / PLAN-0053 SD-3 — the Agent->service-principal reference;
+a blast-radius/identity choice, never model-emitted)."""
 
 PRINCIPAL_GOVERNANCE_FIELDS = frozenset({"principals", "principal_aliases", "required_roles"})
 """ADR-0026 D1/D4 principal-identity H fields: ``principals`` / ``principal_aliases`` (the

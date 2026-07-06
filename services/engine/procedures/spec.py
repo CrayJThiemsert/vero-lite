@@ -277,6 +277,13 @@ SoD compares at run time (ADR-0026 D1). A bare ``person_id`` match is the first 
 OQ-3=(c) alias-collapse triggers. Human-authored."""
 
 
+ServicePrincipalId = str
+"""A canonical service-principal identity key (e.g. ``svc-scheduler``) — the stable id of a
+NON-HUMAN (service) actor for non-human triggers (ADR-016 S2 D2+D3; PLAN-0053 Phase B).
+DISTINCT from ``PersonId``: a service id is NEVER a member of the SoD ``Person`` comparison
+set (RF-3) and NEVER an approver (SP-1). Human-authored (never model-emitted)."""
+
+
 class ComplianceCriterion(StrEnum):
     """The per-criterion compliance checks an AT-2 ``rule_gate`` evaluates (ADR-0025 D2),
     scoped to the observed procurement signature (provisional-until-N>=2)."""
@@ -657,6 +664,25 @@ class Person(BaseModel):
     )
 
 
+class ServicePrincipal(BaseModel):
+    """A first-class, human-authored NON-HUMAN (service) actor identity for non-human triggers
+    (ADR-016 S2 D2+D3; PLAN-0053 Phase B). It fires / owns a run; it is NEVER an approver (SP-1)
+    and NEVER substitutable for a ``Person`` in the SoD comparison set (RF-3) — deliberately a
+    DISTINCT type with NO ``roles`` field so the approver seam cannot be reused. Least-privilege
+    is unchanged (SP-6): the service actor's blast radius is the running ``Agent``'s
+    ``allowed.{action_handlers, object_types}`` — this identity carries no scope primitive of its
+    own. Human-author-only (H, ADR-0024 D3) — never model-emitted."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    service_principal_id: ServicePrincipalId = Field(
+        description="canonical service-identity key (PK) — the stable id an Agent references and "
+        "the never-null audit actor a service-triggered run records (SP-4). NEVER compared as a "
+        "``Person`` in SoD (RF-3)."
+    )
+    name: str = Field(description="the service actor's name (display)")
+
+
 class Agent(BaseModel):
     """The actor that RUNS a Procedure (ADR-016 D2)."""
 
@@ -671,6 +697,13 @@ class Agent(BaseModel):
         default=Autonomy.GATED, description="max autonomy any step under this agent may exercise"
     )
     allowed: AgentAllowed = Field(default_factory=AgentAllowed)
+    service_principal_ids: list[str] = Field(
+        default_factory=list,
+        description="ids of registry ``ServicePrincipal``s this Agent may act as (SD-3, "
+        "SP-2/SP-6) — cross-ref-validated on ``VerticalProcedures`` like ``run_by``. Default "
+        "empty; the service actor's blast radius stays this Agent's ``allowed`` (no new scope "
+        "primitive). Human-authored (H, ADR-0024 D3).",
+    )
 
 
 def _at2_role_vocab(steps: list[Step]) -> frozenset[str]:
@@ -796,6 +829,12 @@ class VerticalProcedures(BaseModel):
         description="declared alias groups, the second OQ-3=(c) collapse trigger (ADR-0026 D4, "
         "SD-2=(b)) — human-author-only (H), never generated",
     )
+    service_principals: list[ServicePrincipal] = Field(
+        default_factory=list,
+        description="the non-human service actors for non-human triggers (ADR-016 S2 / PLAN-0053 "
+        "Phase B) — human-author-only (H, ADR-0024 D3), never generated. Absent => empty (every "
+        "existing vertical unchanged).",
+    )
 
     @model_validator(mode="after")
     def _validate_principals(self) -> Self:
@@ -817,6 +856,19 @@ class VerticalProcedures(BaseModel):
         return self
 
     @model_validator(mode="after")
+    def _validate_service_principals(self) -> Self:
+        """Service-principal identity integrity (ADR-016 S2 / PLAN-0053 Phase B AC-6):
+        ``service_principal_id``s are unique. The service id-space is disjoint from ``Person``
+        by TYPE (RF-3), so no cross-space collision check is needed."""
+        ids = [sp.service_principal_id for sp in self.service_principals]
+        dupes = sorted({i for i in ids if ids.count(i) > 1})
+        if dupes:
+            raise ValueError(
+                f"vertical '{self.vertical}': duplicate service_principal_id(s) {dupes}"
+            )
+        return self
+
+    @model_validator(mode="after")
     def _cross_refs(self) -> Self:
         agent_ids = [a.agent_id for a in self.agents]
         dup_agents = sorted({a for a in agent_ids if agent_ids.count(a) > 1})
@@ -832,6 +884,18 @@ class VerticalProcedures(BaseModel):
                 raise ValueError(
                     f"procedure '{proc.procedure_id}': run_by '{proc.run_by}' is not a "
                     f"defined agent (known: {sorted(known)})"
+                )
+        # ADR-016 S2 / PLAN-0053 SD-3 (AC-7): every Agent->service reference resolves to a
+        # registry ServicePrincipal (mirrors the run_by cross-ref; a dangling ref is an
+        # authoring error, not a silent no-op).
+        known_services = {sp.service_principal_id for sp in self.service_principals}
+        for agent in self.agents:
+            dangling_sp = sorted(set(agent.service_principal_ids) - known_services)
+            if dangling_sp:
+                raise ValueError(
+                    f"agent '{agent.agent_id}': service_principal_ids reference unknown "
+                    f"service_principal_id(s) {dangling_sp} (known: {sorted(known_services)}) "
+                    "— ADR-016 S2 / SD-3"
                 )
         return self
 
@@ -872,6 +936,9 @@ def parse_procedures(doc: dict[str, Any], *, vertical: str) -> VerticalProcedure
         # default to empty — every non-SoD vertical loads unchanged.
         principals=doc.get("principals") or [],
         principal_aliases=doc.get("principal_aliases") or [],
+        # Service principals are LIST-shaped (like principals): non-human actors for non-human
+        # triggers (ADR-016 S2 / PLAN-0053 Phase B). Absent key => empty (every vertical unchanged).
+        service_principals=doc.get("service_principals") or [],
     )
 
 

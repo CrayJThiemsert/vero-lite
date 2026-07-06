@@ -60,6 +60,7 @@ from services.engine.procedures.spec import (
     RelaxableConstraint,
     ScoredCriterion,
     ScoredRule,
+    ServicePrincipal,
     SoDConstraint,
     SourcePolicy,
     Step,
@@ -277,23 +278,25 @@ def test_step_reaches_at2_content_positive_control() -> None:
 
 # --- ADR-0026 D1/D4 (A1a / PLAN-0043 AC-3): principal identity is H — draft-disjointness ---
 
-_PRINCIPAL_TYPES: frozenset[type[BaseModel]] = frozenset({Person, PrincipalAlias})
+_PRINCIPAL_TYPES: frozenset[type[BaseModel]] = frozenset({Person, PrincipalAlias, ServicePrincipal})
 """The ADR-0026 principal-identity types — the resolvable ``Person`` + the declared
-``PrincipalAlias`` link (SD-2=(b)). Like the AT-2 content they are H: never reachable from a
-draft type, so a generated principal or alias is a TYPE ERROR at the boundary."""
+``PrincipalAlias`` link (SD-2=(b)) — plus the ADR-016 S2 ``ServicePrincipal`` (PLAN-0053 Phase B,
+AC-12). Like the AT-2 content they are H: never reachable from a draft type, so a generated
+principal, alias, or service identity is a TYPE ERROR at the boundary."""
 
 
 @pytest.mark.parametrize("draft_type", [StepDraft, ProcedureDraft, AgentDraft])
 def test_no_principal_type_reachable_from_any_draft_type(draft_type: type[BaseModel]) -> None:
-    """ADR-0026 D1/D4 / ADR-0024 D3 recursive disjointness: no principal-identity type
-    (``Person`` / ``PrincipalAlias``) is reachable from any draft type — `governed != generated`
-    holds for identity too. Adding one to a draft type later fails CI."""
+    """ADR-0026 D1/D4 / ADR-016 S2 / ADR-0024 D3 recursive disjointness: no identity type
+    (``Person`` / ``PrincipalAlias`` / ``ServicePrincipal``) is reachable from any draft type —
+    `governed != generated` holds for identity too. Adding one to a draft type later fails CI."""
     assert _PRINCIPAL_TYPES.isdisjoint(_reachable_models(draft_type))
 
 
 def test_vertical_reaches_principal_types_positive_control() -> None:
-    """Positive control: the AUTHORITATIVE ``VerticalProcedures`` DOES reach both ``Person``
-    and ``PrincipalAlias`` (so the disjointness assertion above is meaningful, not vacuous)."""
+    """Positive control: the AUTHORITATIVE ``VerticalProcedures`` DOES reach ``Person``,
+    ``PrincipalAlias``, and ``ServicePrincipal`` (so the disjointness assertion above is
+    meaningful, not vacuous)."""
     assert _PRINCIPAL_TYPES.issubset(_reachable_models(VerticalProcedures))
 
 
@@ -303,6 +306,8 @@ def test_new_governance_fields_registered_as_human_authored() -> None:
     assert "governance_content" in STEP_GOVERNANCE_FIELDS
     assert "separation_of_duties" in PROCEDURE_GOVERNANCE_FIELDS
     assert {"principals", "principal_aliases", "required_roles"} <= PRINCIPAL_GOVERNANCE_FIELDS
+    # ADR-016 S2 / PLAN-0053 SD-3 (AC-12): the Agent->service reference is H, never generated.
+    assert "service_principal_ids" in AGENT_GOVERNANCE_FIELDS
 
 
 def test_lift_injects_at2_content_absent() -> None:
