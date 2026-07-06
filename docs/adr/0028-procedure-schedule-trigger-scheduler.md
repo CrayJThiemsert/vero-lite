@@ -1,7 +1,8 @@
 # ADR-0028: Procedure `schedule`-Trigger Scheduler (S1)
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-07-06
+**Ratified:** 2026-07-07 — Cray ratified SD-1/SD-2/SD-3 as recommended.
 **Deciders:** Cray (ratifies), Code (R2 + commit), plan-drafter (drafts under ADR-013 D1)
 **Related:** ADR-016 (governed procedure engine — D7 Phase 3 `schedule` trigger, S2-before-S1 sequencing, OQ-2 `schedule` reuse §1192-1195), PLAN-0052 (ADR-016 Phase-3 monitor — Surfaced-Decision S1, §237-291), PLAN-0053 (S2 service-principal actor model, Phase B — `done/`), ADR-0024 (skeleton LOADS-but-not-RUNS), PLAN-0010 (harness two-poller autonomy loop — the *category-mismatch* alternative, rejected)
 
@@ -73,42 +74,68 @@ ratified Cray s101). The scheduler:
    on every expected-but-absent fire, so the *absence* of a run is detectable.
 
 **Three first-order architecture questions** — the process model (SD-1), the
-schedule-parser dependency (SD-2), and the invocation path (SD-3) — are
-**surfaced for Cray** (see Surfaced Decisions); recommendations below are
-load-bearing in this draft but contingent on ratification. Second-order
-build-PLAN concerns (cron/timezone, missed-run, overlap, delivery semantics,
-schedule-state persistence, observability) are **flagged, not fully decided**
-here (see Consequences → Neutral).
+schedule-parser dependency (SD-2), and the invocation path (SD-3) — were
+surfaced for Cray and are now **ratified 2026-07-07 as recommended** (see
+Surfaced Decisions). The settled architecture is therefore:
+
+5. **Process model (SD-1, ratified):** a **separate, long-lived worker/daemon**
+   — not an in-process FastAPI `asyncio` task (dies with the request/reload
+   cycle) and not external cron (which would entangle with SD-3). This is the
+   first clock-driven component in the codebase and sets its deployment/ops
+   posture.
+6. **Schedule-parser dependency (SD-2, ratified):** **`croniter`** — a thin,
+   parse-only dependency that leaves the scheduling loop under our control
+   (pairs with the worker/daemon in SD-1); not `APScheduler` (which bundles its
+   own scheduler runtime and would partially pre-decide SD-1) and not a
+   hand-rolled interval.
+7. **Invocation path (SD-3, ratified):** a **direct in-process
+   `run_procedure_persisted` call** — keeping the service actor typed
+   end-to-end; not HTTP `POST /procedures/{id}/run`, whose
+   `get_current_principal` seam assumes a human caller and would need scheduler
+   auth material via `auth.py` (SP-6).
+
+Second-order build-PLAN concerns (cron/timezone, missed-run, overlap, delivery
+semantics, schedule-state persistence, observability) remain **flagged, not
+fully decided** here (see Consequences → Neutral).
 
 ## Surfaced Decisions
 
-Each SD has multiple defensible answers; the Code recommendation is load-bearing
-in the Decision/Alternatives above but is **contingent on Cray's ratification**.
+Each SD had multiple defensible answers; the Code recommendation was
+load-bearing in the Decision/Alternatives above and was **contingent on Cray's
+ratification**. **Cray ratified all three on 2026-07-07, each as the Code
+recommendation.** The reasoning + alternatives below are preserved as the record
+of *why* each was ratified.
 
-- **SD-1 — Process model.** In-process `asyncio` task inside the FastAPI app vs a
+- **RATIFIED (2026-07-07): a separate, long-lived worker/daemon.**
+  **SD-1 — Process model.** In-process `asyncio` task inside the FastAPI app vs a
   separate long-lived worker/daemon vs external cron hitting an HTTP endpoint.
-  *Code recommendation:* a **separate worker/daemon** — a request-scoped FastAPI
-  app has no natural clock-driven lifecycle; an in-process task dies with the
-  request/reload cycle. *Alternatives:* in-process `asyncio` (simplest, weakest
-  liveness); external cron (ties to SD-3). *Why Cray's call:* no long-lived
-  scaffold exists on disk — this sets the deployment/ops posture for the first
-  clock-driven component in the codebase; multiple defensible answers.
+  *Code recommendation (ratified):* a **separate worker/daemon** — a
+  request-scoped FastAPI app has no natural clock-driven lifecycle; an in-process
+  task dies with the request/reload cycle. *Alternatives:* in-process `asyncio`
+  (simplest, weakest liveness); external cron (ties to SD-3). *Why Cray's call:*
+  no long-lived scaffold exists on disk — this sets the deployment/ops posture
+  for the first clock-driven component in the codebase; multiple defensible
+  answers.
 
-- **SD-2 — Schedule-parser dependency.** `croniter` vs `APScheduler` vs a
-  hand-rolled interval; none on disk. *Code recommendation:* **`croniter`** — a
-  thin, parse-only dependency that leaves the scheduling loop under our control
-  (pairs with SD-1). *Alternatives:* `APScheduler` (bundles a scheduler runtime —
-  overlaps and partially pre-decides SD-1); hand-roll (no dependency, but
-  reimplements cron edge cases). *Why Cray's call:* a new production dependency,
-  and it partially pre-decides SD-1 (APScheduler brings its own process model).
+- **RATIFIED (2026-07-07): `croniter`.**
+  **SD-2 — Schedule-parser dependency.** `croniter` vs `APScheduler` vs a
+  hand-rolled interval; none on disk. *Code recommendation (ratified):*
+  **`croniter`** — a thin, parse-only dependency that leaves the scheduling loop
+  under our control (pairs with SD-1). *Alternatives:* `APScheduler` (bundles a
+  scheduler runtime — overlaps and partially pre-decides SD-1); hand-roll (no
+  dependency, but reimplements cron edge cases). *Why Cray's call:* a new
+  production dependency, and it partially pre-decides SD-1 (APScheduler brings
+  its own process model).
 
-- **SD-3 — Invocation path.** Direct in-process `run_procedure_persisted` call vs
-  HTTP `POST /procedures/{id}/run`. *Code recommendation:* a **direct in-process
-  call** — the HTTP `get_current_principal` seam assumes a human caller; a direct
-  call keeps the service actor typed end-to-end. *Alternatives:* HTTP (a viable
-  interim per Alternative 2, but needs scheduler auth material via `auth.py`,
-  SP-6). *Why Cray's call:* entangled with SD-1 and with the SP-6 auth-transport
-  boundary; the HTTP path's human-caller assumption is a real friction point.
+- **RATIFIED (2026-07-07): a direct in-process `run_procedure_persisted` call.**
+  **SD-3 — Invocation path.** Direct in-process `run_procedure_persisted` call vs
+  HTTP `POST /procedures/{id}/run`. *Code recommendation (ratified):* a **direct
+  in-process call** — the HTTP `get_current_principal` seam assumes a human
+  caller; a direct call keeps the service actor typed end-to-end. *Alternatives:*
+  HTTP (a viable interim per Alternative 2, but needs scheduler auth material via
+  `auth.py`, SP-6). *Why Cray's call:* entangled with SD-1 and with the SP-6
+  auth-transport boundary; the HTTP path's human-caller assumption is a real
+  friction point.
 
 ## Consequences
 
