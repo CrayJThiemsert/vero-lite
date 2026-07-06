@@ -182,7 +182,10 @@
     const tbl = h('div', { class: 'kvdump' });
     Object.keys(obj).forEach(k => {
       let v = obj[k];
-      if (Array.isArray(v)) v = v.join(', ');
+      // scalar arrays read nicely comma-joined; an array/object of OBJECTS (e.g. the
+      // governed_decision SoD tie naming the approver) must JSON-stringify — a plain
+      // join() renders each element as the useless "[object Object]".
+      if (Array.isArray(v) && v.every(x => x == null || typeof x !== 'object')) v = v.join(', ');
       else if (v != null && typeof v === 'object') v = JSON.stringify(v);
       tbl.appendChild(h('div', { class: 'kvdump-row' }, [
         h('span', { class: 'kvdump-k mono' }, k),
