@@ -250,14 +250,15 @@ tier-matched approver (a หน.จัดซื้อ would be under-tier).
 > behind the same frontend `authHeader()` seam + the backend `get_current_principal`
 > dependency.
 
-> **Reseed.** A restart re-uses the existing seeded run (idempotent on the fixed
-> `run-operate-demo` id). The `audit_log` is **append-only** (a tamper-evidence trigger,
-> PLAN-0047), so you cannot delete a single run's rows — to reseed fresh, use a **clean
-> demo DB** (drop + `alembic upgrade head`) and restart, or seed a **new run_id** via
-> `seed_operate_waiting_human_run(session, run_id=…)`. Field reference:
+> **Reseed (test / demo loop).** Each approve/cancel consumes the run, and the `audit_log` is
+> **append-only** (a tamper-evidence trigger, PLAN-0047) so a run can't be reset in place — you
+> seed a NEW one with the one-command helper (**dev/demo only — never run in production**):
+> `python scripts/seed_operate_demo.py` (or `python scripts/seed_operate_demo.py my-run-id` for a
+> chosen id), then reload the Monitor. A **full** reset = a clean demo DB (drop +
+> `alembic upgrade head`) + restart (self-seeds `run-operate-demo`). Field reference:
 > `services/api/config.py` (`oct_demo_seed_operate`); seed seam:
-> `verticals/procurement/hero_demo/run.py` (`seed_operate_waiting_human_run`); the executor
-> factory: `register_procurement_procedure_executors`.
+> `verticals/procurement/hero_demo/run.py` (`seed_operate_waiting_human_run`); the manual helper:
+> `scripts/seed_operate_demo.py`; the executor factory: `register_procurement_procedure_executors`.
 
 ---
 

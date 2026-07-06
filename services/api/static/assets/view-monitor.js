@@ -311,12 +311,32 @@
     return h('div', { class: 'mon-gate', 'data-testid': 'gate-panel' }, kids);
   }
 
+  function stepApprover(s) {
+    // The human who RESOLVED this gate — recorded by resolve_gated_step on the step's trace
+    // (gate_principal_recorded), for BOTH the SoD gate (approve) and a plain gate (issue_po).
+    // This is the SERVER-resolved person_id (from the API key), the accountable approver in the
+    // audit — NOT the cosmetic typed identity.
+    const rec = (s.reasoning_trace || []).find(
+      e => e && e.kind === 'gate_principal_recorded' && e.principal_id);
+    if (!rec) return null;
+    const approved = (s.reasoning_trace || []).some(e => e && e.kind === 'action_executed');
+    return { who: rec.principal_id, approved: approved };
+  }
+
   function stepCard(s) {
+    const appr = stepApprover(s);
     const kids = [
       h('div', { class: 'mon-step-top' }, [
         statusBadge(s.status),
         h('span', { class: 'mon-step-id mono' }, s.step_id),
-        s.duration_ms != null ? h('span', { class: 'faint mono' }, s.duration_ms + ' ms') : null
+        s.duration_ms != null ? h('span', { class: 'faint mono' }, s.duration_ms + ' ms') : null,
+        appr ? h('span', {
+          class: 'mon-approver ' + (appr.approved ? 'approved' : 'resolved'),
+          'data-testid': 'step-approver',
+          title: 'The human who resolved this gate — the server-resolved person_id (from the '
+               + 'API key), the accountable approver recorded in the audit'
+        }, [icon('check', { width: 12, height: 12 }),
+            (appr.approved ? 'approved by ' : 'resolved by '), h('b', null, appr.who)]) : null
       ].filter(Boolean))
     ];
     if (s.reasoning_trace && s.reasoning_trace.length) kids.push(O.reasoningTrace(s.reasoning_trace));
@@ -505,6 +525,10 @@
 .mon-step { background: var(--bg-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 9px 10px; }
 .mon-step-top { display: flex; align-items: center; gap: 8px; }
 .mon-step-id { color: var(--tx-1); }
+.mon-approver { margin-left: auto; display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 600; padding: 2px 9px; border-radius: 999px; }
+.mon-approver.approved { color: var(--ok); background: var(--accent-soft); border: 1px solid var(--ok); }
+.mon-approver.resolved { color: var(--tx-1); background: var(--bg-2); border: 1px solid var(--line); }
 .mon-audit-wrap { margin-top: 6px; }
 .btn.ghost { background: transparent; }
 `;
