@@ -446,10 +446,18 @@
   function injectStyles() {
     if (document.getElementById(STYLE_ID)) return;
     const css = `
-.mon { height: 100%; }
-.mon-cols { display: grid; grid-template-columns: minmax(300px, 400px) 1fr; gap: 14px; align-items: start; }
-@media (max-width: 900px) { .mon-cols { grid-template-columns: 1fr; } }
-.mon-list, .mon-detail { background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--r-lg); padding: 12px; }
+.mon { height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.mon-cols { flex: 1 1 auto; min-height: 0; display: grid;
+  grid-template-columns: minmax(300px, 400px) 1fr; gap: 14px; }
+.mon-list, .mon-detail { background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--r-lg);
+  padding: 12px; overflow-y: auto; min-height: 0; }
+/* the .view container is fixed-height + overflow-hidden (app shell) — so each pane
+   scrolls INTERNALLY on desktop; on a narrow screen the whole monitor scrolls instead. */
+@media (max-width: 900px) {
+  .mon { display: block; overflow-y: auto; }
+  .mon-cols { grid-template-columns: 1fr; }
+  .mon-list, .mon-detail { overflow-y: visible; min-height: auto; }
+}
 .mon-listhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 .mon-listhead h3 { margin: 0; font-size: 14px; color: var(--tx-0); }
 .mon-runs { display: flex; flex-direction: column; gap: 6px; }
@@ -462,7 +470,7 @@
 .mon-run .mon-agent, .mon-run .mon-trig, .mon-run .mon-prog, .mon-run .mon-time { font-size: 11.5px; }
 .mon-run .mon-time { flex-basis: 100%; }
 .mon-empty, .mon-detail-empty { color: var(--tx-2); padding: 24px 12px; text-align: center; }
-.mon-authbar-wrap { margin-bottom: 12px; }
+.mon-authbar-wrap { flex: 0 0 auto; margin-bottom: 12px; }
 .mon-authbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
   background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px 10px; }
 .mon-auth-who { display: flex; align-items: center; gap: 6px; color: var(--ok); font-weight: 600; }
