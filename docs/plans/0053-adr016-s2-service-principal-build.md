@@ -1,6 +1,6 @@
 # PLAN-0053: ADR-016 D2+D3 — typed service-principal build (S2, before S1)
 
-**Status:** Ready
+**Status:** Phase A COMPLETE (s102); Phase B ACTIVE (s104, 2026-07-06)
 **Owner:** Claude Code
 **Created:** 2026-07-05
 **Related ADRs:** ADR-016 (D2 + D3 Amendment 2026-07-05, **Accepted** — typed
@@ -16,6 +16,15 @@ only-Code-commits gate)
 > evidence and commits per ADR-009 D2) + **Cray** at PLAN ratification.
 > Separation: **INTACT** — the drafter did not originate the direction and does
 > not ratify.
+>
+> **Phase-B-activation amendment (session 104, 2026-07-06).** This edit —
+> activating Phase B as the build scope and recording the SD-2/SD-3 ratifications
+> — was also **`plan-drafter`-authored**. Cray ratified **SD-2 (omit-when-None)**
+> and **SD-3 (list `service_principal_ids` on `Agent`)** on 2026-07-06 / session
+> 104; **Code R2-reviews** (re-verifies the newly cited `file:line` — the
+> `compute_row_hash` / `verify_chain` anchors and the Phase-A runs.py finding)
+> **and commits** per ADR-009 D2. Separation: **INTACT** — the drafter recorded
+> Cray's ratifications faithfully, did not originate them, and does not ratify.
 
 ---
 
@@ -180,6 +189,27 @@ implementation — the fact-pack is verified grounding, not a substitute for R2)
 > S1); they stay documented here as the full Phase-B scope, not deleted, but are
 > **out of THIS PR's scope**. Phase B is drafted/ratified separately (SD-2 and
 > SD-3 are deferred to it — see Surfaced Decisions).
+>
+> **➡ Phase B ACTIVATED for build (session 104, 2026-07-06).** Phase A shipped
+> in session 102. **Phase B is now the ACTIVE build scope: the [B]-tagged Steps
+> (4–8) + the [A+B] Steps (9–10).** Its two deferred decisions are now
+> **RATIFIED** below — **SD-2 = omit-when-None** (add `actor_service_principal_id`
+> to `compute_row_hash`'s canonical dict only when non-None) and **SD-3 = a list
+> `service_principal_ids: list[str]` on `Agent`**. Step 8's SD-2 pointer is
+> updated to follow the ratified omit-when-None rule.
+>
+> **On-disk Phase-A finding (verified session 104).** Phase A shipped the RF-1
+> human-approver guard at the **HTTP endpoint** (`services/api/routers/runs.py:337-344`
+> — `auth.person_id is None → 403`), **not** at the library. The library
+> chokepoint `resolve_gated_step` (`services/engine/procedures/action_step.py:408+`)
+> still has **no broad `None`/service rejection** — it only runs the SoD check,
+> which is inert on a non-SoD step (docstring `action_step.py:443-444`). The code
+> comment at `runs.py:334-336` explicitly states the library-level rejection is
+> **Phase B**. So **Phase B Step 1 (library portion) + Step 6 (service arm)
+> genuinely land the library guard — it is still open.** Classification:
+> `superseded by new info` (the [A] tag anticipated the library location; Phase A
+> implemented it at HTTP; the library guard is Phase B per the shipped code
+> comment) — **not an error**.
 
 ### Step 1 [A]: RF-1 broad gate-resolve hardening (the security headline)
 
@@ -269,10 +299,12 @@ Add a **nullable** `actor_service_principal_id: str | None` column to `AuditLog`
 migration only ADDs a nullable column, existing rows unaffected). **Add the new
 field to `compute_row_hash`'s canonical JSON** (`audit_log.py:82-111`, in the
 sorted-key dict at `:96-110`) so the sha256 hash-chain stays byte-recomputable.
-**Load-bearing implication:** the canonical-hash change alters the hash inputs;
-existing rows were hashed WITHOUT the field, so the verifier must handle the
-schema boundary (a `null` field must serialize identically to its absence, OR the
-migration is treated as a chain-epoch boundary — SD-2). This is a real,
+**Load-bearing implication (SD-2 RATIFIED = omit-when-None):**
+`actor_service_principal_id` is added to `compute_row_hash`'s canonical dict
+**only when non-None** (omit-when-None, SD-2 RATIFIED); a `None` value ⇒ the key
+is absent, so every pre-migration row recomputes **byte-identically** and the
+chain never needs an epoch. `verify_chain` (`audit_log.py:163-192`) passes the
+row's `actor_service_principal_id` through unchanged. This is a real,
 load-bearing build item, not a rubber-stamp. Touches: `audit_log.py:55-79,82-111`
 + a new `alembic/versions/*.py`.
 
@@ -364,12 +396,33 @@ wrong choice silently voids `verify_chain`. If SD-1 = split, this decision lands
 **with Phase B** and Phase A ships without touching the hash canonical at all
 (flagged in Step 8).
 
-> **⏸ DEFERRED to Phase B (Cray, 2026-07-05 / session 102).** Not decided now —
-> SD-1 ratified as SPLIT, and this decision lands **with Phase B** (Phase A does
-> not touch the hash canonical). The **Code recommendation stands as the proposed
-> default** for Phase B: treat the `audit_log` hash-canonical change as a
-> **chain-epoch boundary** (Option b) — never retro-changes a stored hash. Cray
-> ratifies when Phase B is drafted.
+> **✅ RATIFIED (Cray, 2026-07-06 / session 104) = omit-when-None.** Include
+> `actor_service_principal_id` in `compute_row_hash`'s canonical dict **ONLY when
+> non-None** (None ⇒ the key is omitted from the canonical JSON).
+>
+> This **SUPERSEDES** the plan's original Code-recommended default (Option b, the
+> chain-epoch boundary). Classification: `superseded by new info` (evolution — the
+> epoch rec was sound when drafted, before reading the code) — **not an error**.
+>
+> **Why it changed.** A close read of the REAL `compute_row_hash`
+> (`services/db/audit_log.py:82-111`) surfaced that for an **additive nullable
+> column**, omit-when-None is strictly better than epoch: it is **DB-independent**
+> (the epoch would be an `audit_id` boundary that DIFFERS per database → needs
+> per-DB persisted epoch state → new fragility in `verify_chain`, the one
+> component that must never be wrong), it is a **1-line** conditional, and it
+> preserves tamper-evidence while old rows recompute **byte-identically** (the
+> protobuf absent-optional-field property).
+>
+> **Proven on-disk before ratification.** A prototype importing the ACTUAL
+> production `compute_row_hash` as v1 verified the full chain across a simulated
+> migration boundary (0 breaks), caught every tamper case (service-id flip,
+> hide-actor→None, old-row payload), and confirmed
+> `omit(service=None) == prod v1 hash` byte-for-byte — **7/7 checks**.
+>
+> **Escalation note.** Epoch / schema-versioning remains the documented answer IF
+> a future **NON-additive** audit change ever arrives (reformat/rename an existing
+> field, change the hash algorithm) — adopt it **lazily at that boundary**, do
+> **not** pre-pay its complexity now.
 
 ### SD-3 — Agent→service-principal reference field shape
 
@@ -394,11 +447,10 @@ the registry's share rationale); (b) reference on the trigger/`schedule`
 surface) and the H-governance field home (SP-7) — an authoring-contract decision
 the ADR left to the build. Lands in Phase B.
 
-> **⏸ DEFERRED to Phase B (Cray, 2026-07-05 / session 102).** Not decided now —
-> this is a Phase-B authoring-contract decision (SD-1 ratified as SPLIT). The
-> **Code recommendation stands as the proposed default** for Phase B: an
-> `Agent`-level list `service_principal_ids: list[str]` (default empty),
-> cross-ref-validated like `run_by`. Cray ratifies when Phase B is drafted.
+> **✅ RATIFIED (Cray, 2026-07-06 / session 104) = list `service_principal_ids:
+> list[str]` on `Agent`** (default empty), cross-ref-validated on
+> `VerticalProcedures` like `run_by`. **As-recommended** (the plan's Code
+> default above).
 
 ## Test plan
 
