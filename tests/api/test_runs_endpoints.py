@@ -17,11 +17,12 @@ import pytest
 import sqlalchemy as sa
 from httpx import AsyncClient
 
+import services.api.auth as auth_module
 from services.api.config import settings
 from services.engine.llm.client import ChatResult
 from services.engine.procedures.action_step import ActionStepExecutor
 from services.engine.procedures.orchestrator import RunContext, StepExecutor, StepOutcome
-from services.engine.procedures.spec import Step, StepKind
+from services.engine.procedures.spec import Person, Step, StepKind
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
 
@@ -35,10 +36,22 @@ _GATED_STEP = "restart_breaches"
 
 @pytest.fixture
 def runs_auth(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Authn ON with one provisioned key → 'op-somchai' (energy authors no
-    principals, so identity records with person=None — the Step-1 contract)."""
+    """Authn ON with one provisioned key → the 'op-somchai' Person.
+
+    ADR-016 S2 RF-1 (PLAN-0053): resolving a gated step requires an *identified
+    Person* approver — not merely an accountable ``person_id`` string — so the
+    approver is provisioned here as a real ``Person`` (energy's gated
+    ``restart_breaches`` carries no SoD constraint, so any role satisfies it).
+    The ``_principal_index`` seam is monkeypatched (mirroring test_api_auth.py)
+    rather than authoring a principal into the production energy vertical, which
+    would arm vertical-wide membership enforcement — the OQ-6 N≥2 boundary the
+    ``get_current_principal`` ``if index:`` branch guards (services/api/auth.py)."""
     monkeypatch.setattr(settings, "api_auth_enabled", True)
     monkeypatch.setattr(settings, "api_keys", {DIGEST: "op-somchai"})
+    approver = Person(
+        person_id="op-somchai", name="Somchai (operator)", roles=frozenset({"operator"})
+    )
+    monkeypatch.setattr(auth_module, "_principal_index", lambda vertical: {"op-somchai": approver})
 
 
 class _FakeChat:
