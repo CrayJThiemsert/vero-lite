@@ -26,6 +26,8 @@ import json
 from dataclasses import dataclass
 from typing import Any
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from services.engine.actions import ControlRef, GovernedDecision
 from services.engine.llm.client import ChatResult
 from services.engine.llm.structured import ChatClient
@@ -38,13 +40,15 @@ from services.engine.procedures.governance_step import (
 from services.engine.procedures.orchestrator import (
     ProcedureError,
     RunContext,
+    RunResult,
     StepExecutor,
     StepOutcome,
     run_procedure,
 )
+from services.engine.procedures.persistence import run_procedure_persisted
 from services.engine.procedures.principal_sod import PrincipalSoDVerdict, check_principal_sod
 from services.engine.procedures.runs import StepResultStatus
-from services.engine.procedures.spec import Person, Step, StepKind
+from services.engine.procedures.spec import Person, Step, StepKind, load_procedures
 from services.engine.registry import RegistryError, registry
 from verticals.procurement.data_adapter.fastenal_csv import FastenalCsvAdapter
 from verticals.procurement.handlers import register_procurement_handlers
@@ -423,3 +427,53 @@ async def register_procurement_procedure_executors(
         return _executors(advisory_stub_factory, principals, seed)
 
     registry.register_procedure_executors(_VERTICAL, factory)
+
+
+async def seed_operate_waiting_human_run(
+    session: AsyncSession,
+    *,
+    run_id: str = "run-operate-demo",
+    adapter: FastenalCsvAdapter | None = None,
+) -> RunResult:
+    """Seed a PERSISTED procurement ``waiting_human`` run for the Control-leg operate demo
+    (PLAN-0054 Step 6c) -- the gate the Monitor (View H) shows + a distinct approver resolves.
+
+    Runs the SHIPPED YAML ``emergency_sourcing_round`` to its ``approve`` gate through the
+    deterministic hero ``_executors`` (scored_rule -> doa_tier, the ``advisory_stub_factory`` LLM
+    seam -- NO MS-S1), persisted via ``run_procedure_persisted`` with the REQUESTER
+    (``req-planner``) as the intake principal. The ``approve`` gate suspends at ``waiting_human``;
+    the requester half of the SoD map (``{intake: req-planner}``) is recorded on the run, so a
+    DISTINCT ``approver`` (e.g. ``appr-pm``, matching the ฿288,000 DOA tier) keeps SoD GOVERNED
+    at resolve. Returns the persisted ``RunResult`` (reachable by ``GET /runs/{run_id}``).
+
+    Two deliberate choices for the resolve endpoint's benefit:
+
+    * the YAML ``emergency_sourcing_round`` (NOT the re-id'd Fastenal hero procedure) is seeded,
+      so the resolve endpoint -- which looks the procedure up in the vertical's spec -- can find it;
+    * the roster is the SPEC's authored ``principals`` (``req-planner`` / ``appr-*``), NOT the
+      Fastenal ``person.csv`` roster, so the run-check + doa_tier resolve against the SAME set the
+      resolve endpoint's SoD check uses.
+
+    JSONB-safe: the Fastenal requisition carries ``Decimal`` ``unit_price`` (kept exact for the
+    scored_rule); persisting it raw fails JSONB (project memory
+    ``project_procurement_synthetic_events_datetime_jsonb``). Sanitising ``Decimal`` -> ``str``
+    is loss-free here -- the scored_rule re-parses via ``Decimal(str(...))`` (``scored_rule.py``).
+    """
+    adapter = adapter or FastenalCsvAdapter()
+    _ensure_handlers()
+    spec = load_procedures(_VERTICAL)
+    proc = next(p for p in spec.procedures if p.procedure_id == "emergency_sourcing_round")
+    agent = next(a for a in spec.agents if a.agent_id == proc.run_by)
+    principals = list(spec.principals)
+    requester = next(p for p in principals if "requester" in p.roles)
+    seed = json.loads(json.dumps([await _intake_seed(adapter)], default=str))
+    return await run_procedure_persisted(
+        session,
+        proc,
+        agent,
+        _executors(advisory_stub_factory, principals, seed),
+        vertical=_VERTICAL,
+        run_id=run_id,
+        trigger_context={"source": "operate-demo-seed", "triggered_by": requester.person_id},
+        principal=requester,
+    )
