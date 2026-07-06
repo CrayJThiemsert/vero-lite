@@ -92,6 +92,16 @@
           }
         ]
       }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/userpromptsubmit_next_work_nudge.py"
+          }
+        ]
+      }
     ]
   }
 }
