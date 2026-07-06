@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-06T10:38:53+07:00
+last_updated: 2026-07-06T19:12:12+07:00
 session: 103
 current_batch: "s103 Control-leg v1 COMPLETE (PLAN-0054) + CSP follow-up — OCT Monitor flips watch-only→watch+OPERATE (named human approves/rejects a waiting_human gate + cancels a parked run from the UI; SoD + tamper-evident actor server-side, RF-1). 5 PRs: #587 operate UI (auth.js seam + approve/reject/cancel/403/409; 2 specialists secure-for-pilot; preview-verified E2E) / #586 procurement operate-demo seed / #585 deterministic executor factory / #584 POST /runs/{id}/cancel / #588 CSP defense-in-depth (0 violations). Suite 2223 passed/7 skipped; ruff+mypy clean. plan-drafter-authored, Code R2+committed."
 current_actor: code
 blocked_on: "Nothing blocking — Control-leg v1 COMPLETE, no active PLAN in flight. loop-dispatcher DISABLED; MS-S1 idle (Control-leg demo is deterministic / MS-S1-independent)."
 next_action: "No active PLAN. Deferred/candidate next: ADR-016 S2 Phase B (ServicePrincipal registry + actor_service_principal_id audit migration + library-level non-human rejection at resolve_gated_step; pairs w/ S1 scheduler); full user/password/session login v2 (behind shipped authHeader() seam + get_current_principal); GET /whoami (v2); multi-operator RBAC (v2). No new PLAN drafted yet."
-head_commit: 488ed25
-recent_commits: [488ed25, 7b41567, 03588ea, f98de81, ba0a0ae, 036fffe, 8a6e527, 16d218f, 3a94012]
+head_commit: 4548ed8
+recent_commits: [4548ed8, 488ed25, 7b41567, 03588ea, f98de81, ba0a0ae, 036fffe, 8a6e527, 16d218f, 3a94012]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,11 @@ recent_commits: [488ed25, 7b41567, 03588ea, f98de81, ba0a0ae, 036fffe, 8a6e527, 
 ---
 
 ## Current Focus
+
+> **Closeout (2026-07-06, #590, head_commit `488ed25` → `4548ed8`):**
+> PLAN-0054 archived to `docs/plans/done/` (Status → Complete + a COMPLETION
+> note: PR map #584–#589, AC-1…AC-10 MET, v2 sequels listed). Control-leg v1
+> arc fully closed; no active PLAN. Next = Cray-directed (candidates below).
 
 > **Session 103, 2026-07-06 (head_commit `b68beee` → `488ed25`) —
 > Control-leg v1 COMPLETE (PLAN-0054) + CSP follow-up.** The OCT Monitor
