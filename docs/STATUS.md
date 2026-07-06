@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-06T05:34:25+07:00
-session: 102
-current_batch: "s102 ADR-016 S2 service-principal track — amendment RATIFIED Proposed→Accepted #579 (OQ-1 vertical registry / OQ-2 separate RunContext.service_principal / OQ-3 audit-only actor_kind; SP-1/RF-1..3 locked) + PLAN-0053 Ready #580 (SD-1 SPLIT Phase-A-first) + S2 Phase A BUILT #581 (RF-1 authenticated-approver at resolve endpoint→403 + actor_kind human + never-null-resume; suite 2214 passed/7 skipped) + PLAN-0054 Control-leg v1 Ready #582. plan-drafter-authored, Code R2+committed."
+last_updated: 2026-07-06T10:38:53+07:00
+session: 103
+current_batch: "s103 Control-leg v1 COMPLETE (PLAN-0054) + CSP follow-up — OCT Monitor flips watch-only→watch+OPERATE (named human approves/rejects a waiting_human gate + cancels a parked run from the UI; SoD + tamper-evident actor server-side, RF-1). 5 PRs: #587 operate UI (auth.js seam + approve/reject/cancel/403/409; 2 specialists secure-for-pilot; preview-verified E2E) / #586 procurement operate-demo seed / #585 deterministic executor factory / #584 POST /runs/{id}/cancel / #588 CSP defense-in-depth (0 violations). Suite 2223 passed/7 skipped; ruff+mypy clean. plan-drafter-authored, Code R2+committed."
 current_actor: code
-blocked_on: "Nothing blocking — Control-leg v1 PLAN-0054 Ready. loop-dispatcher DISABLED; MS-S1 idle (the Control-leg demo is deterministic / MS-S1-independent)."
-next_action: "Build Control-leg v1 per PLAN-0054 (#582) — POST /runs/{id}/cancel + operate-mode UI (approve/reject controls + login-form/auth-module) + procurement operate-demo (env key + OCT_VERTICAL=procurement launch + seed + deterministic executor factory) + 403/409 handling + tests. Deferred: S2 Phase B (ServicePrincipal registry + audit migration, with S1); S1 scheduler; S3 SLA; full login (v2)."
-head_commit: b68beee
-recent_commits: [b68beee, 986437e, 1937c8c, 354b47c, 9b5065d, 9d0134a]
+blocked_on: "Nothing blocking — Control-leg v1 COMPLETE, no active PLAN in flight. loop-dispatcher DISABLED; MS-S1 idle (Control-leg demo is deterministic / MS-S1-independent)."
+next_action: "No active PLAN. Deferred/candidate next: ADR-016 S2 Phase B (ServicePrincipal registry + actor_service_principal_id audit migration + library-level non-human rejection at resolve_gated_step; pairs w/ S1 scheduler); full user/password/session login v2 (behind shipped authHeader() seam + get_current_principal); GET /whoami (v2); multi-operator RBAC (v2). No new PLAN drafted yet."
+head_commit: 488ed25
+recent_commits: [488ed25, 7b41567, 03588ea, f98de81, ba0a0ae, 036fffe, 8a6e527, 16d218f, 3a94012]
 ---
 
 # vero-lite — Project Status
@@ -18,87 +18,69 @@ recent_commits: [b68beee, 986437e, 1937c8c, 354b47c, 9b5065d, 9d0134a]
 
 ## Current Focus
 
-> **Session 102, 2026-07-06 (head_commit `b4d312c` → `b68beee`) —
-> ADR-016 S2 service-principal track (amendment → PLAN → Phase-A build →
-> Control-leg PLAN).** `plan-drafter`-authored, Code R2 + committed
-> (ADR-009 D1/D2). **(1) S2 amendment RATIFIED Proposed→Accepted — #579**
-> (`faed8d4`): OQ-1 = vertical-level `service_principals:` registry; OQ-2 =
-> separate `RunContext.service_principal` field; OQ-3 = audit-only
-> `actor_kind`. SP-1 verbatim (service principal = requester/actor ONLY,
-> NEVER approver); RF-1..3 locked. **(2) PLAN-0053 Ready — #580** (merge
-> `9b5065d`): S2 build; SD-1 ratified = SPLIT, Phase A first; SD-2/SD-3 →
-> Phase B. **(3) S2 Phase A BUILT — #581** (merge `1937c8c`): RF-1
-> gate-approver enforced at the resolve **endpoint** on `auth.person_id`
-> → 403 (placement refined library→endpoint per a Cray-ratified SD — RF-1
-> = an authenticated identity; authored-Person SoD + the service-principal
-> library rejection stay Phase B) + `actor_kind:"human"` audit (OQ-3) +
-> never-null-actor-on-resume (`resume_run` threads the principal;
-> `run_resumed` audit now carries the actor). **Full suite 2214 passed /
-> 7 skipped**; ruff + mypy clean. **(4) PLAN-0054 Control-leg v1 Ready —
-> #582** (merge `b68beee`): governed approve/reject/cancel from the OCT
-> Monitor UI — SD-A = login-form over the static-key backend (2 v2-upgrade
-> seams); SD-B = `waiting_human`-only cancel; SD-C = procurement
-> operate-demo reusing the 5 SoD principals; Step 6b = a **deterministic**
-> procurement executor factory → MS-S1-independent.
-> **Standing:** `loop-dispatcher` **DISABLED**; MS-S1 idle (the S2 track +
-> Control-leg demo are deterministic / MS-S1-independent); AI-assisted
-> (Claude Code, session 102), no `Co-Authored-By` per §7.
+> **Session 103, 2026-07-06 (head_commit `b68beee` → `488ed25`) —
+> Control-leg v1 COMPLETE (PLAN-0054) + CSP follow-up.** The OCT Monitor
+> (View H) flips watch-only → **watch + OPERATE**: a named, authenticated
+> human approves/rejects a `waiting_human` procedure gate and cancels a
+> parked run FROM the UI, with SoD + a tamper-evident audit actor enforced
+> server-side (ADR-016 S2 RF-1 / PLAN-0053). **Code-built directly** (a
+> Ready PLAN-0054 — the PLAN was `plan-drafter`-authored in s102),
+> committed via PR (ADR-009 D2). **Five merged PRs (newest first):**
+> **#587** (`036fffe`+`ba0a0ae`+`03588ea`+`7b41567`, merge `488ed25`) —
+> **Steps 2–5 + 7: the operate UI.** NEW `assets/auth.js` (SD-A) = the
+> single frontend credential seam (login/authHeader/logout; pilot API key
+> in sessionStorage; Bearer on operate POSTs only; optimistic login — the
+> display identity is cosmetic, the real approver is the key's
+> server-resolved `person_id`). `view-monitor.js` = approve/reject per
+> proposal (submit gated until all decided), auth bar, cancel
+> (`waiting_human` only, SD-B), 403 (RF-1/SoD) + 409 (stale
+> reload-and-retry) inline; + Monitor detail-pane scroll fix, audit-dump
+> `[object Object]` fix (kvDump arrays-of-objects), green "approved by
+> <person>" badge on resolved gates, `scripts/seed_operate_demo.py`
+> (dev-only reseed). **2 spawned specialists (frontend + app-security):
+> secure-for-pilot, no real vulns.** Preview-verified E2E (login → approve
+> → submit → resume → issue_po gate → approve → completed; cancel; logout;
+> 0 console errors). **#586** (`8a6e527`) — Step 6: procurement
+> operate-demo provisioning + seed (`seed_operate_waiting_human_run` →
+> `emergency_sourcing_round` at the approve gate, `req-planner` SoD
+> requester, JSONB-safe Decimal→str; lifespan auto-seed gated on
+> `OCT_DEMO_SEED_OPERATE`, idempotent + fail-soft; `.env.example` +
+> runbook §3b; DB-backed test). **#585** (`16d218f`) — Step 6b:
+> `register_procurement_procedure_executors` wired at startup
+> (procurement-gated) — closes the live resolve endpoint 409ing "no
+> procedure-executor factory"; reuses the hero `_executors` on the
+> deterministic advisory stub (MS-S1-independent). AC-10. **#584**
+> (`3a94012`) — Step 1: `POST /runs/{run_id}/cancel` (RF-1 403 guard,
+> `waiting_human`-only → 409 SD-B, `run_cancelled` audit naming the human;
+> first writer of `PipelineRunStatus.CANCELLED`). **#588** (`f98de81`) —
+> CSP defense-in-depth (operate-UI security-review follow-up, parallel
+> session): scoped `Content-Security-Policy` on static-file serving
+> (`_StaticFilesWithCSP`), NOT the JSON API / /docs; operate UI runs under
+> it with **0 CSP violations**. **Suite 2223 passed / 7 skipped** (frontend
+> commits Python-neutral); ruff + mypy clean; MS-S1 not exercised.
+> **Standing:** Control-leg v1 **COMPLETE** (no active PLAN);
+> `loop-dispatcher` **DISABLED**; MS-S1 idle; AI-assisted (Claude Code,
+> session 103), no `Co-Authored-By` per §7.
 
-> _Rotation note (session-102 S2-track reconcile, 2026-07-06): to hold
-> STATUS under the **R1 64 KB hard ceiling** (the file was at the ceiling
-> pre-reconcile; R1 overrides the R2 4-session window — the s95–s101
-> precedent = a narrowed 1-block CF window), the **Session 101 Wave-4
-> (ADR-016 Phase-3 OCT Monitor)** Current Focus block was rotated verbatim
-> to [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md)
-> (it is covered by the top Recent-Decisions row). Resulting Current-Focus
-> window = {Session 102 `b68beee`}; RD table held at 10 rows (the oldest
-> 2026-07-01 HERO-DEMO v1 [session 91] row rotated to the same archive).
-> Per the STATUS.md Rotation Policy (R1/R2/R4)._
-
-> _Rotation note (session-99 PLAN-0051 CLOSE reconcile, 2026-07-05): to hold
-> STATUS under the **R1 64 KB hard ceiling** as the Session-99 PLAN-0051 CF
-> block landed (the file was at ~59.7 KB before this reconcile; R1 overrides
-> the R2 4-session window — the s93–s98 precedents accepted a narrowed
-> window), the **Session 98 PLAN-0050 (ADR-0027 R2 build) DRAFTED → RATIFIED
-> → BUILT COMPLETE (8 steps / 8 ACs) → CLOSED (#553–#563)** Current Focus
-> block was rotated verbatim to
+> _Rotation note (session-103 Control-leg-v1 CLOSE reconcile, 2026-07-06):
+> to hold STATUS under the **R1 64 KB hard ceiling** (the file was at
+> ~62.3 KB pre-reconcile; R1 overrides the R2 4-session window — the
+> s95–s102 precedent = a narrowed 1-block CF window), the **Session 102
+> ADR-016 S2 service-principal track** Current Focus block was rotated
+> verbatim to
 > [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md)
-> (it is covered by the top Recent-Decisions row and lives in
-> `docs/plans/done/`). Resulting Current-Focus window = {Session 99
-> `57a6593`}; RD table = 10 rows (at the R2 cap; the 2026-06-30 A1b Step 1
-> row rotated out to the same archive). Per the STATUS.md Rotation Policy
-> (R1/R2/R4)._
+> (it is covered by the top-2 Recent-Decisions rows). Resulting
+> Current-Focus window = {Session 103 `488ed25`}; RD table held at 10 rows
+> (the oldest 2026-07-01 PLAN-0044 A1b [session 92] row rotated to the same
+> archive). Per the STATUS.md Rotation Policy (R1/R2/R4)._
 
-> _Rotation note (session-98 PLAN-0050 CLOSE reconcile, 2026-07-04): to hold
-> STATUS under the **R1 64 KB hard ceiling** as the Session-98 PLAN-0050 CF
-> block landed (the file was at ~59.7 KB before this reconcile; R1 overrides
-> the R2 4-session window — the s93/s94/s95/s96-97 precedents accepted a
-> narrowed window), the **Sessions 96/97 CLOSE** (`676fbc2` → `d8f9ec5`) —
-> s96/97 GOVERNANCE + ONTOLOGY ARC (PLAN-0048 Q4 executor + PLAN-0049 v1
-> ontology bundle + ADR-0027 Accepted, #533–#551) — Current Focus block was
-> rotated verbatim to
+> _Prior per-reconcile rotation notes (sessions 94–102) pruned 2026-07-06
+> (s103) as superseded procedural meta-records — the CF blocks/RD rows they
+> tracked already live verbatim in
 > [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md)
-> (it is covered by the top Recent-Decisions row and lives in
-> `docs/plans/done/`). Resulting Current-Focus window = {Session 98
-> `81cd3ff`}; RD table = 10 rows (at the R2 cap). **Prior (sessions-96/97
-> CLOSE reconcile, 2026-07-04):** to hold
-> STATUS under the **R1 64 KB hard ceiling** as the rewritten Sessions-96/97
-> CLOSE CF block landed (the file was at ~61.5 KB before this reconcile; R1
-> overrides the R2 4-session window — the s93/s94/s95 precedents accepted a
-> narrowed window), the oldest full Current Focus block was rotated verbatim
-> to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md):
-> the **Session 95 CLOSE, 2026-07-03 → 2026-07-04 (head_commit `f63c975` →
-> `28d919c`)** PLAN-0047 PRE-PILOT HARDENING SPRINT COMPLETE block (all 7
-> steps + 10 ACs, #522–#531; PLAN-0047 is already the top Recent-Decisions
-> row and lives in `docs/plans/done/`). Resulting Current-Focus window =
-> {Sessions 96/97 `d8f9ec5`}; RD table = 10 rows (at the R2 cap). **Prior
-> (sessions-96/97 reconcile, 2026-07-04):** the **Session 94 CLOSE**
-> ADR-0020 partner-sim TRIAL-COMPLETE-BOTH-VERTICALS block. **Prior
-> (session-95 CLOSE reconcile, 2026-07-04):** the two **Session 94 cont.**
-> blocks (RUN-2 REHEARSAL + synthesis; RUN-2 RECEIVE); **prior
-> (2026-07-03):** the 94 D4 POST-RUN-1 REVIEW and 94 RUN-1 REHEARSAL blocks
-> — all to the same archive. Per the STATUS.md Rotation Policy (R1/R2/R4)._
+> and git history (Tier 3). Per the STATUS.md Rotation Policy (R4:
+> substance is archived; these self-referential meta-notes are not
+> session narrative and need no separate archive append)._
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
@@ -121,6 +103,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-06 | **Control-leg v1 COMPLETE (PLAN-0054) + CSP follow-up — OCT Monitor flips watch-only→watch+OPERATE (session 103; #584–#588)** — a named, authenticated human approves/rejects a `waiting_human` gate + cancels a parked run from the UI; SoD + tamper-evident audit actor server-side (ADR-016 S2 RF-1 / PLAN-0053). `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2); 2 spawned specialists (frontend + app-security) verdict **secure-for-pilot, no real vulns**; preview-verified E2E. **#587 (Steps 2–5+7, merge `488ed25`):** NEW `assets/auth.js` (SD-A) single frontend credential seam (login/authHeader/logout; pilot key in sessionStorage; Bearer on operate POSTs only; optimistic login — display identity cosmetic, real approver = key's server-resolved `person_id`) + `view-monitor.js` approve/reject (submit gated until all decided) + cancel (`waiting_human` only, SD-B) + 403 (RF-1/SoD)/409 (stale reload-retry) inline + scroll/`[object Object]` fixes + "approved by <person>" badge + `scripts/seed_operate_demo.py`. **#586 (`8a6e527`):** procurement operate-demo seed (`seed_operate_waiting_human_run`, `req-planner` SoD requester, JSONB-safe; `OCT_DEMO_SEED_OPERATE` lifespan auto-seed). **#585 (`16d218f`):** `register_procurement_procedure_executors` at startup (procurement-gated) → closes the resolve-endpoint 409 "no executor factory"; deterministic advisory stub (MS-S1-independent). AC-10. **#584 (`3a94012`):** `POST /runs/{id}/cancel` (RF-1 403, `waiting_human`-only→409 SD-B, `run_cancelled` audit; first `PipelineRunStatus.CANCELLED` writer). **#588 (`f98de81`):** CSP defense-in-depth (`_StaticFilesWithCSP` on static serving, NOT the JSON API/docs; 0 CSP violations). **Suite 2223 passed / 7 skipped**; ruff + mypy clean; MS-S1 not exercised. Control-leg v1 COMPLETE (no active PLAN). `loop-dispatcher` DISABLED; MS-S1 idle | `488ed25` (#587 merge) / `f98de81` (#588 CSP) / `8a6e527` (#586 seed) / `16d218f` (#585 executor factory) / `3a94012` (#584 cancel) / `services/api/static/assets/{auth.js,view-monitor.js}` + `services/api/routers/runs.py` (`POST /runs/{id}/cancel`) + `services/api/main.py` (`_StaticFilesWithCSP` + `register_procurement_procedure_executors` + `OCT_DEMO_SEED_OPERATE`) + `scripts/seed_operate_demo.py` + `docs/plans/done/0054-control-leg-v1.md` |
 | 2026-07-06 | **ADR-016 S2 service-principal track — amendment RATIFIED + PLAN-0053 Ready + S2 Phase A BUILT + PLAN-0054 Control-leg v1 Ready (session 102; #579–#582)** — `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2). **(1) S2 amendment Proposed→Accepted (#579 `faed8d4`):** OQ-1 = vertical `service_principals:` registry · OQ-2 = separate `RunContext.service_principal` · OQ-3 = audit-only `actor_kind`; SP-1 verbatim (service principal = requester/actor ONLY, never approver), RF-1..3 locked. **(2) PLAN-0053 Ready (#580 merge `9b5065d`):** S2 build, SD-1 = SPLIT Phase-A-first, SD-2/SD-3 → Phase B. **(3) S2 Phase A BUILT (#581 merge `1937c8c`):** RF-1 gate-approver enforced at the resolve **endpoint** on `auth.person_id` → 403 (placement refined library→endpoint per a Cray-ratified SD; authored-Person SoD + service-principal library rejection = Phase B) + `actor_kind:"human"` audit (OQ-3) + never-null-actor-on-resume (`resume_run` threads the principal; `run_resumed` audit carries the actor). **Full suite 2214 passed / 7 skipped**; ruff + mypy clean. **(4) PLAN-0054 Control-leg v1 Ready (#582 merge `b68beee`):** governed approve/reject/cancel from the OCT Monitor — SD-A login-form over static-key backend (2 v2 seams) · SD-B `waiting_human`-only cancel · SD-C procurement operate-demo reusing the 5 SoD principals · Step 6b deterministic procurement executor factory (MS-S1-independent). `loop-dispatcher` DISABLED; MS-S1 idle | `b68beee` (#582 merge) / `1937c8c` (#581 merge) / `9b5065d` (#580 merge) / `faed8d4` (#579 S2 amendment) / `docs/adr/0016-*.md` (S2 service-principal) + `docs/plans/{0053-adr016-s2-service-principal.md, 0054-control-leg-v1.md}` + `services/api/routers/runs.py` + `services/engine/procedures/persistence.py` (resume_run actor threading) |
 | 2026-07-05 | **Wave-4 (ADR-016 D7 Phase-3 "OCT Monitor") — PLAN-0052 Draft→Ready + v1 read-only Monitor BUILT + ADR-016 service-principal amendment PROPOSED (session 101; #574–#577; parallel track, Cray-directed)** — `plan-drafter`-authored, Code R2-verified + committed (ADR-009 D1/D2). **(1) PLAN-0052 (#574 `ab4c8f9` → #575 `2cae236`):** ADR-016 Phase-3 monitor v1 read-only; a 4-lens specialist+stakeholder panel (read-only `explore-research`) advised, Code R2-verified every on-disk claim, drafter folded enrichments, Cray ratified S1–S5 as-rec → Draft→Ready. **(2) v1 Monitor BUILT (#577 `febdf7e`):** `GET /runs` (list + `waiting_human` count + step-progress) + `GET /runs/{run_id}` (ordered steps + per-step trace/audit/duration + gate & proposals READ-ONLY) in `services/api/{models,routers}/runs.py` — reuses `load_run`, no new query layer, no mutation; front-end View H "Monitor" (`view-monitor.js` + `app.js` VIEWS.H) — list + live poll detail, gate panel behind an inert `mode:'read'|'operate'` seam (Control leg wires the shipped `POST /runs/{id}/gate/resolve`, extension-not-rewrite), amber `waiting_human` badge, stable data-testids. **Verified:** new pytest 4 + full suite **2211 passed / 7 skipped**; ruff + mypy clean; AC-8 frozen surfaces (spec.py / ADR-007 envelope / ontology) UNTOUCHED; browser-verified end-to-end. **(3) ADR-016 D2+D3 amendment PROPOSED (#576 `8570c1c`):** typed service-principal for non-human (`schedule`) triggers (SD-S2) — a requester/actor ONLY, NEVER an approver (SP-1); SP-2..8 + RF-1..3 (RF-1 = gate-resolve rejects a service/None principal for a `gated` step regardless of the authn toggle). **Proposed — awaiting Cray ratify SP-1..8 + OQ-1 (identity placement, rec Agent-bound) / OQ-2 (`RunContext.principal` union-vs-separate, rec separate) / OQ-3 (`actor_kind` home, rec audit-only); S2-before-S1** (scheduled run has no human actor → PDPA gap). `loop-dispatcher` DISABLED; MS-S1 not exercised (monitor is DB-only/offline) | `b4d312c` (#576 merge) / `38c277b` (#577 merge) / `febdf7e` (#577 feat) / `8570c1c` (#576 amendment) / `2cae236` (#575 Draft→Ready) / `ab4c8f9` (#574 draft) / `services/api/{models,routers}/runs.py` + `services/api/static/assets/view-monitor.js` + `services/api/static/assets/app.js` + `docs/adr/0016-*.md` (D2+D3 service-principal) + `docs/plans/0052-adr016-phase3-oct-monitor.md` |
 | 2026-07-05 | **Wave-3 (Cowork content-authoring track) COMPLETE (session 100)** — two Tier-0 deliverables, Cowork-drafted (ADR-009 D1) → Code R2 + committed (ADR-009 D2); **no new ADR/PLAN**. **(1) partner-intake-form v2→v3 (PR #572 `5ca1c18`)** — 11 `[v3]` additions surfaced by the two partner-sim mapping rehearsals, folded into the sections they extend (B:1, C:3, F:1, G:1, H:5 = 11 = 7 run-1 §5 items 1–7 + 4 run-2 §6 items 8–11), each carrying a `Vn` ID traceable 1:1 to its rehearsal item; no v2 content removed; questions 1–17 unchanged; a `docs/conventions/` edit — **NOT** G1/G2-gated. **(2) Wave-3 GTM ammo pack** — 4 evidence pieces (residency "compute never leaves" · Thai AI Act assistive-only → out of the high-risk-AI registration bucket · Gartner "60% of agentic analytics projects relying solely on MCP will fail by 2028" · governed-refusal vs. confident-wrong, grounded on the shipped `_validate_query` seam) layered onto the box4 ROI-spine + b3 moat narrative; a **gitignored confidential strategy note** (`docs/strategy/private/`) — **NOT committed** (same convention as box4/b3). **Code R2:** verified the 11-count + no-question-loss vs the v2 diff; verified ammo-(d)'s `_validate_query` seam (`services/engine/nl_query.py:428`/`:534`); corrected one provenance citation typo (V2 run-1 §5 #1 → #2). The Stop-hook classifier misrouted the dispatch to an ADR draft; Code overrode it (content authoring, not governance). `loop-dispatcher` DISABLED; MS-S1 cold (offline) | `05c12c2` (#572 merge) / `5ca1c18` (partner-intake-form v2→v3) / `docs/conventions/partner-intake-form.md` + `docs/strategy/private/` (Wave-3 GTM ammo pack, gitignored — NOT committed) |
@@ -130,7 +113,6 @@ below, and git history.
 | 2026-07-03 | **PLAN-0047 (pre-pilot hardening: authn + run/gate endpoints + write-ahead + audit + config-pin + CI) EXECUTED + COMPLETE + CLOSED (session 95; PRs #522–#531; PLAN → `done/`)** — all 7 steps + all 10 ACs; **+31 tests (suite 2066 → 2097 passed / 5 skipped)**; sales claims (authn / audit / exactly-once / config-pin) now code- and CI-backed. **Step→PR:** draft #522 `b6cb0d5` (plan-drafter authored) · SD-1..4 as-rec #523 `8198548` (SD-1=(a) API keys · SD-2 defer · SD-3 yes-minimal · SD-4 CI w/ DB) · Step 7 CI #524 `0401a0a` (FIRST CI gate on the repo: ruff + ruff-format + `mypy --strict` + full suite w/ postgres container + `alembic upgrade head` per PR) · Step 1 authn #525 `3b3db46` (fail-closed API-key gate on state-changing routes; `action_identity` sidecar, alembic 0005) · Step 2 endpoints #526 `5da9e1d` (POST `/procedures/{id}/run` + `/runs/{id}/gate/resolve` auto-resume; identity recorded server-side, AC-2 on the persisted row) · Step 3 gate state machine #527 `a0db450` (RESOLVED status; resume refuses undecided proposal gates + SoD tie re-assert; optimistic lock, alembic 0006) · Step 4 write-ahead #528 `bafdf92` (`run_procedure_persisted`; two-phase resolve — decision committed BEFORE effect, version bump AT decision commit = exactly-once under concurrency; `pending_execution` = the outbox seam) · Step 5 audit #529 `692f748` (append-only hash-chained `audit_log` + block trigger + INSERT-only `vero_audit_writer` role, alembic 0007; tamper-detect survives a superuser) · Step 6 pinning #530 `6cde2db` (`governance_pin.py`; fail-closed pin-mismatch at resume + gate; prose excluded; people deliberately NOT pinned; alembic 0008) · close-out #531 `28d919c` (completion fold: 10 ACs ticked, step→PR table, **5 disclosed deviations** incl. `/warm`+`/sleep`+`/intake/generate` gated + the AC-5 narrowing w/ empty-watch contract kept; `git mv` → `done/`). Local dev-box (disclosed): `.env` `API_AUTH_ENABLED=false` (code default now ON); dev DB migrated through alembic 0008. Offline throughout; MS-S1 cold | `353c04e` (#531 merge) / `28d919c` (#531 close) / `services/api/auth.py` + `services/engine/procedures/persistence.py` (write-ahead) + `services/engine/procedures/governance_pin.py` + `alembic/versions/{0005_action_identity,0006_pipeline_run_version,0007_audit_log,0008_governance_pin}.py` + `.github/workflows/ci.yml` + `docs/plans/done/0047-pre-pilot-hardening-authn-gate-audit.md` |
 | 2026-07-02 | **PLAN-0046 (Q3 read-side ontology-binding build) EXECUTED + COMPLETE + CLOSED (session 93 cont., #511 feat + #512 close; PLAN → `done/`)** — renders the Accepted ADR-016 Q3 amendment into code; **all 11 ACs met.** `StepInput.reads: list[str]` + `AgentAllowed.object_types` (both `extra="forbid"`, backward-compat: absent/empty = loads as today) + the NEW pure `validate_read_bindings` load-gate (SD-1 Option A — `validate_runnable` + its ~12 call-sites untouched) wired at both production pre-flight sites (`run_procedure` + `persistence.resume_run`; skipped, no ontology I/O, for reads-absent procedures); `reads` → `STEP_GOVERNANCE_FIELDS` (OQ-A) + a disclosed `lift_to_step` strip-hardening (`StepDraft` reuses `StepInput` → generated drafts physically strip `reads` to ABSENT, OQ-C C1 pattern) + CI tripwire. 12 new tests; ruff + `mypy --strict` clean; **full offline suite 2066 passed / 5 skipped.** Zero runtime-data-flow change; honest frame (LOCKED-9): declared ✔ · load-gated ✔ · execution-bound ✖. SD-2 = Option A (verticals stay absent; gate inert until opt-in). The Q4 generic run-consume query executor = a SEPARATE later PLAN. Offline-only, no host-state | `eb63692` (#512 close) / `878b517` (#511 feat) / `services/engine/procedures/` (spec + orchestrator + draft-lift) + `docs/plans/done/0046-*.md` |
 | 2026-07-01 | **ADR-016 Q3 READ-SIDE ONTOLOGY OBJECT-BINDING AMENDMENT ACCEPTED (Rock 3 / O-2, #505) (session 93)** — an in-place ADR-016 D2+D3 amendment closing the read-side governance gap that mirrors the shipped write-side. Two commits: `915c344` (Proposed) + `cb7eb05` (fold ratified decisions → Accepted). **Decision (contract-first):** a typed `StepInput.reads: list[str]` read entry point (OQ-5: list not `str` — procurement `intake` reads 3 object types + joins); `Agent.allowed.object_types` mirroring `action_handlers`; **LOAD-time enforcement** (`reads ∈ ontology ∩ allowlist`, else refuse load) — **zero runtime-data-flow change.** **Honest enforcement frame (Cowork caught, Code-verified):** v1 = a typed read contract + a load-time consistency/scoping gate, **NOT** runtime-enforced parity — even write-side `action_handlers` is only pre-flight-checked in `validate_runnable`; teeth = declared==dispatched, gained read-side only at **Q4**. **Deferred:** the generic run-consume query executor → a fast-follow build PLAN (touches runtime flow + enrich/join steps); the Box-4 economic-impact facet → a self-cancelling **N≥3** marker (typed facet only; economic dimension prose-captured at authoring). **OQ-1..6/A ratified:** OQ-1 `StepInput.reads` · OQ-2 load-gate+reframe · OQ-3 `object_types` bounds `fetch_objects` only (links/events out of v1) · OQ-4 `where`=post-fetch · OQ-5 `reads:list[str]` · OQ-A `reads`/`object_types` H-governed (`object_types` auto-covered; add `reads` to `STEP_GOVERNANCE_FIELDS` = build-PLAN task) · OQ-6 `object_types` empty=unconstrained (backward-compat). **Three-lens process:** `plan-drafter` AUTHORED the amendment + folded the ratified decisions; Cowork Tier-1b independent second-perspective review (caught the parity over-claim + surfaced OQ-5); Code R2-verified on disk + committed; Cray ratified OQ-1..6/A. **Context:** the parallel hero compliance-swap (#506, `0b7efe4`) landed last session (swapped the hero-demo compliance stub for the shipped `rule_gate` executor; governed outcome unchanged). **Impl note for the build PLAN:** the load-gate must thread the vertical `OntologyMeta` into pre-flight (`validate_runnable(procedure, agent)` doesn't carry it today). **NEXT = the fast-follow build PLAN** (`StepInput.reads` + `Agent.allowed.object_types` + load-gate + `reads`→`STEP_GOVERNANCE_FIELDS` + tests); the generic query executor (Q4) = a separate later PLAN. **Routing:** the ADR-016 amendment authored by the in-harness `plan-drafter` (prong-2 exempt) → Code R2 + committed via `docs/adr` PR. `loop-dispatcher` stays DISABLED; MS-S1 cold (offline) | `cb7eb05` (#505 fold→Accepted) / `915c344` (#505 Proposed) / `docs/adr/0016-*.md` (D2 `StepInput.reads` + `Agent.allowed.object_types` + D3 load-gate) |
-| 2026-07-01 | **PLAN-0044 A1b STEPS 2 + 4 MERGED (offline close-out; A1b STILL OPEN) (session 92)** — two PRs (#499 Step 4 / #500 Step 2); INTERIM, not closure — remaining A1b = **AC-9** (Cray decision owed) + the hero-demo compliance-harness→`rule_gate`-executor swap. **#499 (feat `a458142`, merge `05c9541`, A1b Step 4 / AC-6) the `rule_gate` per-kind executor:** NEW `services/engine/procedures/rule_gate.py` — pure `evaluate_compliance(gate, candidate)` reads the candidate's per-criterion `compliance` signal map (data-access = (a), mirrors `scored_rule`'s `candidate_quotes`) and **blocks the PO on ANY failed criterion** (candidate tagged non-`compliant` → dropped by the downstream `approve` `where: {compliant: true}` fan-out). **Non-waivable by type** (`blocks_po` `Literal[True]`; no pass-a-failed-rule path); **fails CLOSED** (non-mapping candidate / no `compliance` map → `RuleGateError`; absent-OR-false per-criterion signal fails that criterion). v1 does NOT evaluate the prose `spec` predicate (deferred to the A2 run path, ADR-0025 D2) — it enforces the GATE. NEW **`GovernanceEvaluateExecutor`** in `governance_step.py` (SD-1=(a) dispatching wrapper for the EVALUATE StepKind, sibling of `GovernanceActionExecutor`): its `rule_gate` branch tags each candidate `compliant` + audits (`governed_kind: rule_gate`), never the base (compliance has no numeric band) nor the LLM (governed ≠ generated, ADR-0019 IN-3); a banded `judge` step falls through to the shipped `EvaluateStepExecutor`; **17 new tests.** **#500 (test `12ac1dd`, merge `4f22602`, A1b Step 2 / AC-10 re-trigger half; mirrors ADR-0025 D7) the OQ-6 N≥2 shared-`Person` re-trigger marker:** NEW `test_principal_identity_retrigger.py` counts the verticals whose `procedures.yaml` ships `principals` and **FAILS the moment a SECOND vertical ships principals (N≥2)** — making the shared/core `Person` extraction deferral (ADR-0026 OQ-6=(b)) **self-cancelling** rather than a silent `# TODO`; currently N=1 (procurement only); **3 tests.** **Verification:** ruff + mypy clean; full offline suite **2020 passed / 5 skipped** (on merged main `4f22602`); offline-only, no host-state, **no PO issued** (render / block only, ADR-0007 LOCKED #3). **Routing:** both non-gated Code `feat/*`/`chore/*` PRs executing the already-accepted PLAN-0044 (no new PLAN/ADR). **NEXT:** AC-9 (Cray pick — the `audit` step is `autonomy:auto` AND downstream of `approve`/`issue_po`, so the assertion would restructure the hero procedure) + the hero compliance-swap follow-up; then the PLAN-0044 Completion note + `git mv` → `done/` + a STATUS full-body reconcile at A1b CLOSE. `loop-dispatcher` stays DISABLED; MS-S1 cold (remaining A1b offline) | `4f22602` (#500) / `05c9541`·`a458142` (#499 Step 4) / `services/engine/procedures/rule_gate.py` + `services/engine/procedures/governance_step.py` (`GovernanceEvaluateExecutor`) + `tests/services/engine/procedures/test_rule_gate.py` (Step 4) · `12ac1dd` (#500 Step 2) / `tests/services/engine/procedures/test_principal_identity_retrigger.py` |
 
 ## In-Flight Discussions
 
