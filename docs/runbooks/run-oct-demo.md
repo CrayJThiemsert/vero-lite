@@ -193,6 +193,59 @@ Then open **http://localhost:8099**.
 
 ---
 
+## 3b. Run the procurement OPERATE demo (Control-leg v1, View H — PLAN-0054)
+
+Unlike §2/§3/§3a (which drive the map + anomaly→decision on **read-only** data), this
+demo drives the **OCT Monitor (View H)** from **watch → OPERATE**: a named,
+authenticated operator **approves/rejects** a `waiting_human` procedure gate and
+**cancels** a parked run — from the UI, with **SoD** (requester ≠ approver) + a
+tamper-evident audit actor. It runs the **procurement** vertical (5 authored SoD
+principals, tiered DOA) with **auth ON**.
+
+> **DB required.** Unlike the read-only demos, this one **persists** runs — bring up
+> Postgres + migrate (§1) first. The seed is **deterministic + MS-S1-independent**
+> (the advisory stub — no LLM/host-state), so it needs nothing warmed.
+
+**One command (self-seeding).** The `oct-demo-procurement` launch config
+(`.claude/launch.json`, port **8101**) sets `OCT_VERTICAL=procurement`,
+`API_AUTH_ENABLED=true`, `OCT_DEMO_SEED_OPERATE=true`, and an `API_KEYS` operator key
+for **`appr-pm`** (ผจก.จัดซื้อ). On boot it registers the deterministic procurement
+executor factory (PLAN-0054 Step 6b) and **auto-seeds ONE `waiting_human`
+`emergency_sourcing_round` run** — idempotent (a fixed `run-operate-demo` id) +
+fail-soft (a seed error logs, never blocks boot).
+
+Manual run (equivalent to the launch config):
+
+```bash
+cd ~/work/vero-lite && source .venv/bin/activate
+# Provision ONE operator key for the appr-pm approver (RAW key stays out of git — §8):
+python -c "import secrets,hashlib; k=secrets.token_urlsafe(24); print('key:',k); print('sha256:',hashlib.sha256(k.encode()).hexdigest())"
+OCT_VERTICAL=procurement \
+API_AUTH_ENABLED=true \
+OCT_DEMO_SEED_OPERATE=true \
+API_KEYS='{"<sha256-hex>": "appr-pm"}' \
+exec uvicorn services.api.main:app --port 8101
+```
+
+Then open **http://localhost:8101** and go to the **Monitor** tab (**View H** — click
+the tab, `location.hash` does not route OCT views). The seeded `waiting_human` run is
+listed, suspended at its `approve` gate.
+
+**The governed round-trip (once the operate UI ships — PLAN-0054 Steps 2–5):** log in
+with the RAW key (→ `appr-pm`), **approve** the gate → SoD passes (requester
+`req-planner` ≠ approver `appr-pm`) → the run resumes; a **logged-out** submit or a
+**self-approval** fails closed (**403**); a **cancel** on the `waiting_human` run →
+`cancelled`. The seed's **฿288,000** amount lands in the **ผจก.จัดซื้อ** DOA tier, so
+`appr-pm` is the tier-matched approver (a หน.จัดซื้อ would be under-tier).
+
+> **Reseed.** A restart re-uses the existing seeded run (idempotent). To reseed fresh
+> (e.g. after cancelling/resolving it in a rehearsal), wipe the demo run row or the
+> demo DB, then restart. Field reference: `services/api/config.py`
+> (`oct_demo_seed_operate`); seed seam: `verticals/procurement/hero_demo/run.py`
+> (`seed_operate_waiting_human_run`); the executor factory: `register_procurement_procedure_executors`.
+
+---
+
 ## 4. Open it in a browser
 
 uvicorn binds `127.0.0.1` by default. **WSL2 forwards `localhost` to Windows**,

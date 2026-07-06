@@ -211,6 +211,17 @@ class Settings(BaseSettings):
             "the fixed synthetic datetimes so tests stay deterministic (D5)."
         ),
     )
+    oct_demo_seed_operate: bool = Field(
+        default=False,
+        description=(
+            "When True (env OCT_DEMO_SEED_OPERATE) AND the active vertical is "
+            "procurement, seed ONE waiting_human 'emergency_sourcing_round' run at "
+            "startup so the Control-leg operate demo (View H) has a real gate to "
+            "act on (PLAN-0054 Step 6). Idempotent (a fixed demo run_id, skipped if "
+            "present) + fail-soft (a seed error logs, never blocks boot). Off by "
+            "default so no non-demo startup writes to the DB."
+        ),
+    )
     oct_recovery_value: float = Field(
         default=58.0,
         description=(

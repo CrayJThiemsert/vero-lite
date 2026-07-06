@@ -63,6 +63,29 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         )
 
         await register_procurement_procedure_executors()
+        # PLAN-0054 Step 6c: seed ONE waiting_human run so the Control-leg operate
+        # demo (View H) has a real gate to act on. Env-gated (demo only), idempotent
+        # (a fixed run_id, skipped if present), and FAIL-SOFT (a seed error logs +
+        # never blocks the demo boot — the Monitor just shows no run).
+        if settings.oct_demo_seed_operate:
+            from services.db.session import async_session
+            from services.engine.procedures.persistence import load_run
+            from verticals.procurement.hero_demo.run import seed_operate_waiting_human_run
+
+            try:
+                async with async_session() as _seed_session:
+                    if await load_run(_seed_session, "run-operate-demo") is None:
+                        _seeded = await seed_operate_waiting_human_run(_seed_session)
+                        _boot_logger.info(
+                            "operate-demo seed: run 'run-operate-demo' seeded (status=%s)",
+                            _seeded.run.status,
+                        )
+                    else:
+                        _boot_logger.info(
+                            "operate-demo seed: run 'run-operate-demo' already present — skip"
+                        )
+            except Exception as exc:  # fail-soft — a seed error must never block the demo boot
+                _boot_logger.warning("operate-demo seed skipped (error): %s", exc)
     # One-shot boot diagnostic: makes a mis-armed PLAN-0014 notifier (e.g. the
     # enable flag left off — otherwise a silent per-call no-op) visible at startup.
     _boot_logger.info(
