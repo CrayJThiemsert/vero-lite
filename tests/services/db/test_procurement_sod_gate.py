@@ -34,6 +34,7 @@ from services.db.base import Base
 from services.engine.llm.client import ChatResult
 from services.engine.procedures.action_step import (
     ActionStepExecutor,
+    GateApproverError,
     PrincipalSoDError,
     resolve_gated_step,
 )
@@ -249,8 +250,10 @@ async def test_missing_approver_fails_closed(db_engine: AsyncEngine) -> None:
     alice = Person(person_id="alice", name="Alice", roles=frozenset({"requester"}))
     bob = Person(person_id="bob", name="Bob", roles=frozenset({"approver"}))
     spy = await _run_to_gate(maker, "sod-noappr", alice)
+    # ADR-016 S2 RF-1 / PLAN-0053 AC-1: a None approver is caught by the broad library
+    # guard before the SoD verdict machinery.
     async with maker() as session:
-        with pytest.raises(PrincipalSoDError) as exc:
+        with pytest.raises(GateApproverError):
             await resolve_gated_step(
                 session,
                 "sod-noappr",
@@ -260,8 +263,6 @@ async def test_missing_approver_fails_closed(db_engine: AsyncEngine) -> None:
                 procedure=_sod_procedure(),
                 principals=[alice, bob],
             )
-    kinds = {v.kind for v in exc.value.verdict.violations}
-    assert SoDViolationKind.UNRESOLVED_PRINCIPAL in kinds
     assert spy.calls == [], "a blocked gate must not execute the handler"
 
 

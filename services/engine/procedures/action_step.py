@@ -82,6 +82,15 @@ APPROVE = "approve"
 REJECT = "reject"
 
 
+class GateApproverError(ProcedureError):
+    """A gated step's resolve was attempted with NO identified human approver (ADR-016 S2 RF-1,
+    PLAN-0053 AC-1) — BLOCKED. The LIBRARY-level fail-closed guard behind the HTTP RF-1 403: a
+    gate resolution is a consequential approval point, so an unidentified approver is refused
+    independent of ``settings.api_auth_enabled`` and of any SoD constraint (the SoD run-check is
+    inert on a non-SoD step). A service actor cannot reach this seam by construction (``principal``
+    is ``Person | None``; RF-3)."""
+
+
 class PrincipalSoDError(ProcedureError):
     """A SoD-constrained gate failed the LIVE principal-SoD run-check (ADR-0026 D4;
     PLAN-0044 A1b Step 1) — the run is BLOCKED.
@@ -405,7 +414,7 @@ async def _enforce_sod_with_refusal_audit(
         raise
 
 
-async def resolve_gated_step(
+async def resolve_gated_step(  # noqa: C901 — load-bearing gate driver: precondition guards (incl. RF-1) + SoD + governance pin + 2-phase decide/execute
     session: AsyncSession,
     run_id: str,
     step_id: str,
@@ -479,6 +488,19 @@ async def resolve_gated_step(
     proposals: list[dict[str, Any]] = (target.artifact or {}).get("output_set", [])
     if not proposals:
         raise ProcedureError(f"run '{run_id}': step '{step_id}' has no proposed actions to resolve")
+
+    # RF-1 LIBRARY guard (ADR-016 S2, PLAN-0053 AC-1) — the fail-closed check the Phase-A HTTP
+    # endpoint (runs.py:337) shipped ONLY at the HTTP surface. A gated step is a consequential
+    # human-approval point: resolving one with NO identified approver is never permitted,
+    # INDEPENDENT of settings.api_auth_enabled and of whether the step carries a SoD constraint
+    # (the SoD run-check below is inert on a non-SoD step). This closes the scheduler / direct-
+    # caller bypass. RF-3: `principal` is typed Person | None, so a service actor cannot reach
+    # this approver seam by construction.
+    if principal is None:
+        raise GateApproverError(
+            f"run '{run_id}': step '{step_id}' is a gated step — resolving it requires an "
+            "identified human approver (ADR-016 S2 RF-1); none was supplied"
+        )
 
     # PLAN-0047 Step 6 (AC-8): a mid-flight governance edit fails closed at the
     # gate too — verified whenever the caller supplies the procedure (the HTTP

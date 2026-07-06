@@ -18,9 +18,14 @@ import pytest
 import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
+from services.api.config import settings
 from services.db.base import Base
 from services.engine.llm.client import ChatResult
-from services.engine.procedures.action_step import ActionStepExecutor, resolve_gated_step
+from services.engine.procedures.action_step import (
+    ActionStepExecutor,
+    GateApproverError,
+    resolve_gated_step,
+)
 from services.engine.procedures.orchestrator import (
     ProcedureError,
     RunContext,
@@ -41,6 +46,10 @@ from services.engine.procedures.spec import (
 )
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
+
+# A resolving human for the non-SoD gate tests (ADR-016 S2 RF-1 / PLAN-0053 AC-1: a gate
+# resolution now requires an identified approver even on a plain, non-SoD step).
+_APPROVER = Person(person_id="pond-lead", name="Pond Lead", roles=frozenset({"pond_lead"}))
 
 
 class _FakeChat:
@@ -161,7 +170,9 @@ async def test_approve_executes_via_gate_then_resume_completes(db_engine: AsyncE
 
     # EXTERNAL gate: approve -> execute() fires the handler verbatim.
     async with maker() as session:
-        resolved = await resolve_gated_step(session, "run-ap", "aerate", {"action-e7": "approve"})
+        resolved = await resolve_gated_step(
+            session, "run-ap", "aerate", {"action-e7": "approve"}, principal=_APPROVER
+        )
     assert len(spy.calls) == 1, "approve must execute the handler via the shipped gate"
     assert resolved.artifact["output_set"][0]["status"] == "executed"
 
@@ -208,7 +219,9 @@ async def test_reject_does_not_execute_and_run_continues(db_engine: AsyncEngine)
 
     # EXTERNAL gate: reject -> the handler must NOT fire.
     async with maker() as session:
-        resolved = await resolve_gated_step(session, "run-rej", "aerate", {"action-e7": "reject"})
+        resolved = await resolve_gated_step(
+            session, "run-rej", "aerate", {"action-e7": "reject"}, principal=_APPROVER
+        )
     assert spy.calls == [], "a rejected action must never execute its handler"
     assert resolved.artifact["output_set"] == []  # nothing executed -> nothing threaded forward
     assert any(t["kind"] == "action_rejected" for t in resolved.reasoning_trace)
@@ -308,4 +321,43 @@ async def test_resolve_requires_explicit_decision(db_engine: AsyncEngine) -> Non
         await persist_run(session, result)
     async with maker() as session:
         with pytest.raises(ProcedureError, match="no decision"):
-            await resolve_gated_step(session, "run-nd", "aerate", {})
+            await resolve_gated_step(session, "run-nd", "aerate", {}, principal=_APPROVER)
+
+
+async def test_gate_resolve_requires_identified_approver(
+    db_engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC-1 (the load-bearing RF-1 LIBRARY guard): resolving a PLAIN, non-SoD gated step with
+    NO principal RAISES ``GateApproverError`` — INDEPENDENT of ``api_auth_enabled`` — so a
+    non-HTTP caller (a future scheduler / a direct call) cannot silently apply a gate decision
+    with no accountable approver. Phase A shipped this guard only at the HTTP endpoint
+    (runs.py:337); this closes the library chokepoint (runs.py:334-336)."""
+    monkeypatch.setattr(settings, "api_auth_enabled", False)  # the guard does not consult it
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    spy = _SpyHandler()
+    registry.register_handler("aquaculture", "aerate", spy)
+    procedure = Procedure(
+        procedure_id="round",
+        title="Morning Round",
+        goal="Act on DO breaches.",
+        run_by="pond_agent",
+        steps=[
+            Step(step_id="read", name="Read", kind=StepKind.QUERY),
+            Step(step_id="aerate", name="Aerate", kind=StepKind.ACTION, handler="aerate"),
+        ],
+    )
+    execs: dict[StepKind, StepExecutor] = {
+        StepKind.QUERY: _Query(_breach_set()),
+        StepKind.ACTION: ActionStepExecutor(client_factory=lambda _m: _FakeChat(_chat_results(1))),
+    }
+    result = await run_procedure(
+        procedure, _agent(), execs, vertical="aquaculture", run_id="run-noappr"
+    )
+    assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    async with maker() as session:
+        await persist_run(session, result)
+    # A plain, non-SoD gated step + authn OFF + NO principal -> fail closed at the library.
+    async with maker() as session:
+        with pytest.raises(GateApproverError, match="identified human approver"):
+            await resolve_gated_step(session, "run-noappr", "aerate", {"action-e7": "approve"})
+    assert spy.calls == [], "no identified approver -> the handler must never fire (fail closed)"

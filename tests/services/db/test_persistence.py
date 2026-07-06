@@ -47,6 +47,11 @@ async def _drop_everything(eng: AsyncEngine) -> None:
     async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+        # This module does not import services.db.identity, so `action_identity`
+        # (created by the alembic migration this test runs) is absent from this
+        # process's Base.metadata and survives drop_all — leaking into the next
+        # alembic test as a DuplicateTableError. Drop it explicitly.
+        await conn.execute(sa.text("DROP TABLE IF EXISTS action_identity CASCADE"))
 
 
 @pytest.fixture

@@ -39,12 +39,15 @@ from services.engine.procedures.spec import (
     Agent,
     AgentAllowed,
     Autonomy,
+    Person,
     Procedure,
     Step,
     StepKind,
 )
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
+
+_APPROVER = Person(person_id="approver", name="Approver", roles=frozenset({"approver"}))
 
 
 class _FakeChat:
@@ -239,7 +242,9 @@ async def test_handler_crash_leaves_decision_no_phantom_effect(db_engine: AsyncE
     # The injected crash: the handler raises AFTER the decision commit.
     async with maker() as session:
         with pytest.raises(RuntimeError, match="injected handler crash"):
-            await resolve_gated_step(session, run_id, "aerate", {action_id: "approve"})
+            await resolve_gated_step(
+                session, run_id, "aerate", {action_id: "approve"}, principal=_APPROVER
+            )
     assert len(flaky.calls) == 1
 
     # Post-crash DB state (fresh session): decision committed, no phantom effect.
@@ -256,7 +261,9 @@ async def test_handler_crash_leaves_decision_no_phantom_effect(db_engine: AsyncE
 
     # Recovery: the cause is fixed -> the SAME gate resolves + resumes normally.
     async with maker() as session:
-        resolved = await resolve_gated_step(session, run_id, "aerate", {action_id: "approve"})
+        resolved = await resolve_gated_step(
+            session, run_id, "aerate", {action_id: "approve"}, principal=_APPROVER
+        )
     assert resolved.status == StepResultStatus.RESOLVED.value
     assert len(flaky.calls) == 2
     async with maker() as fresh:

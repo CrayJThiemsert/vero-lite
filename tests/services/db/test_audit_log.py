@@ -41,12 +41,15 @@ from services.engine.procedures.spec import (
     Agent,
     AgentAllowed,
     Autonomy,
+    Person,
     Procedure,
     Step,
     StepKind,
 )
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
+
+_APPROVER = Person(person_id="approver", name="Approver", roles=frozenset({"approver"}))
 
 
 @pytest.fixture
@@ -215,7 +218,9 @@ async def test_governed_loop_emits_chained_audit_trail(db_engine: AsyncEngine) -
     action_id = str(proposals[0]["action_id"])
 
     async with maker() as session:
-        await resolve_gated_step(session, "al-run", "aerate", {action_id: "approve"})
+        await resolve_gated_step(
+            session, "al-run", "aerate", {action_id: "approve"}, principal=_APPROVER
+        )
     async with maker() as fresh:
         resumed = await resume_run(
             fresh, procedure, agent, _executors(0), "al-run", vertical="aquaculture"
