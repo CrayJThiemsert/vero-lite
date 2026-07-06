@@ -1,8 +1,9 @@
 # PLAN-0053: ADR-016 D2+D3 — typed service-principal build (S2, before S1)
 
-**Status:** Phase A COMPLETE (s102); Phase B ACTIVE (s104, 2026-07-06)
+**Status:** Complete — Phase A (s102) + Phase B (s104) shipped
 **Owner:** Claude Code
 **Created:** 2026-07-05
+**Completed:** 2026-07-06 (session 104 — Phase B PRs #594 spec / #595 runtime+guard / #596 audit; all ACs met)
 **Related ADRs:** ADR-016 (D2 + D3 Amendment 2026-07-05, **Accepted** — typed
 service-principal for non-human triggers), ADR-0026 (principal-SoD run-check),
 ADR-0024 D3 (H-only governance machinery), ADR-013 D1/D2 (phased authoring + the
@@ -25,6 +26,20 @@ only-Code-commits gate)
 > `compute_row_hash` / `verify_chain` anchors and the Phase-A runs.py finding)
 > **and commits** per ADR-009 D2. Separation: **INTACT** — the drafter recorded
 > Cray's ratifications faithfully, did not originate them, and does not ratify.
+>
+> **COMPLETION (2026-07-06, session 104).** Phase B shipped in full across three PRs
+> — **#594** (spec: `ServicePrincipal` type + `service_principals` registry +
+> `Agent.service_principal_ids` + draft-governance disjointness; AC-5/6/7/12),
+> **#595** (runtime: the library RF-1 guard at `resolve_gated_step` [AC-1, closing the
+> Phase-A HTTP-only gap] + `RunContext.service_principal` threaded through all three
+> construction sites [AC-8]), **#596** (audit: the `actor_service_principal_id` column
+> [alembic 0010] + `compute_row_hash` **omit-when-None** [SD-2, proven on-disk 7/7] +
+> `verify_chain` passthrough + `actor_kind:"service"` + on-behalf-of lineage;
+> AC-9/10/11). Phase A (s102) already shipped AC-1's HTTP guard + AC-2/3/4. **All ACs
+> (1–13) met**; 52 db + 489 procedures tests green; ruff + mypy clean. MS-S1 not
+> exercised (deterministic by design). **S1 — the scheduler that CREATES
+> service-triggered runs (lifts the non-`manual` trigger block) — remains its own
+> later ADR/PLAN ("S2 before S1" satisfied).**
 
 ---
 
