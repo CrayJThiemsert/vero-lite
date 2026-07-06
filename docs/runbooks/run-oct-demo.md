@@ -244,6 +244,24 @@ with the RAW key (→ `appr-pm`), **approve** the gate → SoD passes (requester
 > (`oct_demo_seed_operate`); seed seam: `verticals/procurement/hero_demo/run.py`
 > (`seed_operate_waiting_human_run`); the executor factory: `register_procurement_procedure_executors`.
 
+> **Security note — Content-Security-Policy (defense-in-depth, PLAN-0054 operate-UI
+> review follow-up).** The operate UI holds the operator's pilot API key in
+> `sessionStorage` (SD-A login-form). The PLAN-0054 security review verdict was
+> **secure-for-pilot** with a *single* defense-in-depth gap: **no CSP**. The static
+> server now stamps a strict **`Content-Security-Policy`** on every served UI response
+> (`services/api/main.py` — `_OCT_CSP` + the `_StaticFilesWithCSP` mount):
+> `default-src 'self'` with only the relaxations the bundle actually needs —
+> `style-src 'unsafe-inline'` (the runtime `<style>` injection + inline `style=` attrs),
+> `img-src 'self' data:`, and `script-src` / `connect-src` / `font-src` all `'self'`,
+> plus `object-src 'none'` / `base-uri 'self'` / `frame-ancestors 'none'`. It is the
+> safety net that would **contain** a future `html:`/`innerHTML` XSS regression: script
+> execution and network egress are pinned to same-origin, so the `sessionStorage`
+> credential cannot be exfiltrated to an attacker origin (a "credential exfiltration" bug
+> becomes a contained one). It is **scoped to the static mount** (a `StaticFiles`
+> subclass, not global middleware), so FastAPI's `/docs` + `/redoc` (which load Swagger/
+> ReDoc from a CDN + inline scripts) are untouched. When rehearsing, confirm **zero CSP
+> violations** in the browser console across every view (A–H + Story mode + the Map).
+
 ---
 
 ## 4. Open it in a browser
