@@ -46,6 +46,7 @@ from services.engine.procedures.spec import (
     OnFailure,
     Person,
     Procedure,
+    ServicePrincipal,
     Step,
     StepKind,
     Trigger,
@@ -93,6 +94,12 @@ class RunContext:
     the typed identity carrier the principal-SoD run-check consumes — NOT the
     untyped ``trigger_context`` blob (rejected as the carrier, OQ-2). ``None``
     until a principal is resolved.
+
+    ``service_principal`` is the resolved NON-HUMAN (service) actor on a
+    service-triggered run (ADR-016 S2 / PLAN-0053 Phase B, OQ-2) — a SEPARATE
+    field BESIDE ``principal`` (never a union: RF-3 keeps the service id out of
+    the ``Person`` / SoD comparison set by construction). ``None`` on a human
+    run; exercised end-to-end once S1 creates service-triggered runs.
     """
 
     agent: Agent
@@ -100,6 +107,7 @@ class RunContext:
     trigger_context: dict[str, Any] | None = None
     goal: str | None = None
     principal: Person | None = None
+    service_principal: ServicePrincipal | None = None
 
 
 class StepExecutor(Protocol):
@@ -519,6 +527,7 @@ async def run_procedure(
     run_id: str,
     trigger_context: dict[str, Any] | None = None,
     principal: Person | None = None,
+    service_principal: ServicePrincipal | None = None,
 ) -> RunResult:
     """Run ``procedure`` under ``agent`` over the given per-kind ``executors``.
 
@@ -568,6 +577,7 @@ async def run_procedure(
         trigger_context=trigger_context,
         goal=procedure.goal or None,
         principal=principal,
+        service_principal=service_principal,
     )
     step_results, final_status = await execute_steps(procedure.steps, executors, ctx, run_id)
     run.status = final_status.value

@@ -33,6 +33,7 @@ from services.engine.procedures.spec import (
     Agent,
     AgentAllowed,
     Autonomy,
+    Person,
     Procedure,
     SoDConstraint,
     Step,
@@ -40,6 +41,8 @@ from services.engine.procedures.spec import (
 )
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
+
+_APPROVER = Person(person_id="approver", name="Approver", roles=frozenset({"approver"}))
 
 
 class _FakeChat:
@@ -161,7 +164,12 @@ async def test_mid_flight_governance_edit_refused_at_gate_and_resume(
     async with maker() as session:
         with pytest.raises(ProcedureError, match="pin mismatch"):
             await resolve_gated_step(
-                session, "pin-1", "aerate", {action_id: "approve"}, procedure=edited
+                session,
+                "pin-1",
+                "aerate",
+                {action_id: "approve"},
+                procedure=edited,
+                principal=_APPROVER,
             )
     async with maker() as session:
         with pytest.raises(ProcedureError, match="pin mismatch"):
@@ -178,7 +186,12 @@ async def test_unedited_config_resolves_and_resumes(db_engine: AsyncEngine) -> N
 
     async with maker() as session:
         await resolve_gated_step(
-            session, "pin-2", "aerate", {action_id: "approve"}, procedure=procedure
+            session,
+            "pin-2",
+            "aerate",
+            {action_id: "approve"},
+            procedure=procedure,
+            principal=_APPROVER,
         )
     async with maker() as fresh:
         resumed = await resume_run(
@@ -200,7 +213,12 @@ async def test_legacy_unpinned_run_skips_the_check(db_engine: AsyncEngine) -> No
     maker = async_sessionmaker(db_engine, expire_on_commit=False)
     async with maker() as session:
         await resolve_gated_step(
-            session, "pin-3", "aerate", {action_id: "approve"}, procedure=_procedure(with_sod=False)
+            session,
+            "pin-3",
+            "aerate",
+            {action_id: "approve"},
+            procedure=_procedure(with_sod=False),
+            principal=_APPROVER,
         )
     async with maker() as fresh:
         resumed = await resume_run(

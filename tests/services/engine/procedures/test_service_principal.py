@@ -11,6 +11,7 @@ from __future__ import annotations
 import pytest
 from pydantic import ValidationError
 
+from services.engine.procedures.orchestrator import RunContext
 from services.engine.procedures.spec import (
     Agent,
     Person,
@@ -109,3 +110,24 @@ def test_vertical_accepts_valid_agent_service_reference() -> None:
         service_principals=[ServicePrincipal(service_principal_id="svc-1", name="Scheduler")],
     )
     assert vp.agents[0].service_principal_ids == ["svc-1"]
+
+
+# --- AC-8: RunContext carries a service_principal BESIDE the human-only principal --
+
+
+def test_run_context_carries_service_principal_beside_none_human() -> None:
+    """AC-8 (OQ-2): RunContext gains ``service_principal`` as a SEPARATE field beside the
+    human-only ``principal`` — a service-triggered context has ``principal=None`` and a
+    service actor (RF-3 keeps the two id-spaces disjoint; ``principal`` is never widened)."""
+    sp = ServicePrincipal(service_principal_id="svc-scheduler", name="Scheduler")
+    ctx = RunContext(
+        agent=Agent(agent_id="a", name="A"),
+        vertical="v",
+        principal=None,
+        service_principal=sp,
+    )
+    assert ctx.principal is None
+    assert ctx.service_principal is sp
+    # both fields exist as distinct carriers (principal is never widened into a union — RF-3).
+    assert "principal" in RunContext.__dataclass_fields__
+    assert "service_principal" in RunContext.__dataclass_fields__

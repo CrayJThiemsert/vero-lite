@@ -40,9 +40,11 @@ from services.engine.procedures.orchestrator import (
 )
 from services.engine.procedures.persistence import load_run, persist_run, resume_run
 from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
-from services.engine.procedures.spec import Agent, Step, StepKind, load_procedures
+from services.engine.procedures.spec import Agent, Person, Step, StepKind, load_procedures
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
+
+_APPROVER = Person(person_id="approver", name="Approver", roles=frozenset({"approver"}))
 
 # Canned pond set: two breaches (DO crashed below 4 mg/L), one watch (4-5), one ok —
 # `measured_value` is the reading field the REAL EvaluateStepExecutor judges.
@@ -188,7 +190,11 @@ async def test_headline_end_to_end_approve(db_engine: AsyncEngine) -> None:
     # 2. External gate: approve both breaches -> the aerator handler fires once per pond.
     async with maker() as session:
         resolved = await resolve_gated_step(
-            session, "hl-ap", "aerate", {"action-e1": "approve", "action-e2": "approve"}
+            session,
+            "hl-ap",
+            "aerate",
+            {"action-e1": "approve", "action-e2": "approve"},
+            principal=_APPROVER,
         )
     assert len(spy.calls) == 2, "approve must execute the handler once per breach pond"
     assert all(e["status"] == "executed" for e in _outputs(resolved))
@@ -209,7 +215,9 @@ async def test_headline_end_to_end_approve(db_engine: AsyncEngine) -> None:
 
     # 4. External gate: approve the watch proposal -> the water-exchange handler fires.
     async with maker() as session:
-        await resolve_gated_step(session, "hl-ap", "escalate_watch", {WATCH_ID: "approve"})
+        await resolve_gated_step(
+            session, "hl-ap", "escalate_watch", {WATCH_ID: "approve"}, principal=_APPROVER
+        )
     assert len(spy.calls) == 3, "approving the escalation executes its handler"
 
     # 5. Resume -> summary (auto action) over the WHOLE verdict set -> COMPLETED.
@@ -254,7 +262,11 @@ async def test_headline_reject_breach_continues(db_engine: AsyncEngine) -> None:
     # External gate: reject both breaches -> the handler must NOT fire.
     async with maker() as session:
         resolved = await resolve_gated_step(
-            session, "hl-rej", "aerate", {"action-e1": "reject", "action-e2": "reject"}
+            session,
+            "hl-rej",
+            "aerate",
+            {"action-e1": "reject", "action-e2": "reject"},
+            principal=_APPROVER,
         )
     assert spy.calls == [], "a rejected breach action must never execute its handler"
     assert _outputs(resolved) == [], "nothing executed -> nothing threaded forward"
@@ -270,7 +282,9 @@ async def test_headline_reject_breach_continues(db_engine: AsyncEngine) -> None:
     escalate_sr = next(sr for sr in after_escalate.step_results if sr.step_id == "escalate_watch")
     assert [p["action_id"] for p in _outputs(escalate_sr)] == [WATCH_ID]
     async with maker() as session:
-        await resolve_gated_step(session, "hl-rej", "escalate_watch", {WATCH_ID: "reject"})
+        await resolve_gated_step(
+            session, "hl-rej", "escalate_watch", {WATCH_ID: "reject"}, principal=_APPROVER
+        )
     assert spy.calls == [], "a rejected watch proposal must never execute its handler"
 
     async with maker() as fresh:

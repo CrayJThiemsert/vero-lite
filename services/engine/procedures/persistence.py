@@ -42,7 +42,7 @@ from services.engine.procedures.runs import (
     StepResult,
     StepResultStatus,
 )
-from services.engine.procedures.spec import Agent, Person, Procedure, StepKind
+from services.engine.procedures.spec import Agent, Person, Procedure, ServicePrincipal, StepKind
 
 
 async def persist_run(session: AsyncSession, result: RunResult) -> None:
@@ -96,6 +96,7 @@ async def run_procedure_persisted(
     run_id: str,
     trigger_context: dict[str, Any] | None = None,
     principal: Person | None = None,
+    service_principal: ServicePrincipal | None = None,
 ) -> RunResult:
     """WRITE-AHEAD run driver (PLAN-0047 Step 4, AC-6).
 
@@ -154,6 +155,7 @@ async def run_procedure_persisted(
         trigger_context=trigger_context,
         goal=procedure.goal or None,
         principal=principal,
+        service_principal=service_principal,
     )
 
     async def _persist_step(step_result: StepResult) -> None:
@@ -252,6 +254,7 @@ async def resume_run(
     *,
     vertical: str,
     principal: Person | None = None,
+    service_principal: ServicePrincipal | None = None,
 ) -> RunResult:
     """Resume a ``waiting_human`` run, reconstructing state purely from the DB.
 
@@ -309,6 +312,9 @@ async def resume_run(
         # RunContext defaulted to None, so a resumed step's requester-principal
         # recording lost the actor. The HTTP resume call-site passes auth.person.
         principal=principal,
+        # PLAN-0053 AC-8 (Phase B): the service actor threads BESIDE the human on a
+        # service-triggered resume (None on a human resume; RF-3 keeps them separate).
+        service_principal=service_principal,
     )
     # Rebuild the named-output bag from every completed step that recorded an
     # output, so a resumed step can reference ANY earlier named step (the

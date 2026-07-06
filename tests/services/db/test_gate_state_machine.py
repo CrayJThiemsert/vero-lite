@@ -215,13 +215,17 @@ async def test_double_resolve_executes_handler_exactly_once(db_engine: AsyncEngi
     action_id = await _run_and_persist(db_engine, _procedure("sm-round"), "sm-1")
 
     async with maker() as session:
-        resolved = await resolve_gated_step(session, "sm-1", "aerate", {action_id: "approve"})
+        resolved = await resolve_gated_step(
+            session, "sm-1", "aerate", {action_id: "approve"}, principal=_APPROVER
+        )
     assert resolved.status == StepResultStatus.RESOLVED.value
     assert len(spy.calls) == 1
 
     async with maker() as session:
         with pytest.raises(ProcedureError, match="not awaiting a human decision"):
-            await resolve_gated_step(session, "sm-1", "aerate", {action_id: "approve"})
+            await resolve_gated_step(
+                session, "sm-1", "aerate", {action_id: "approve"}, principal=_APPROVER
+            )
     assert len(spy.calls) == 1, "the handler must never refire on a replayed resolve"
 
 
@@ -242,7 +246,9 @@ async def test_bare_resume_refuses_undecided_proposals(db_engine: AsyncEngine) -
 
     # The governed path still works: resolve -> resume -> completed.
     async with maker() as session:
-        await resolve_gated_step(session, "sm-2", "aerate", {action_id: "approve"})
+        await resolve_gated_step(
+            session, "sm-2", "aerate", {action_id: "approve"}, principal=_APPROVER
+        )
     async with maker() as fresh:
         resumed = await resume_run(
             fresh, procedure, _agent(), _executors(0, []), "sm-2", vertical="aquaculture"
