@@ -71,6 +71,10 @@ class AuditLog(Base):
     audit_id: Mapped[int] = mapped_column(sa.BigInteger, sa.Identity(), primary_key=True)
     occurred_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     actor_person_id: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    # ADR-016 S2 / PLAN-0053 Phase B (AC-11): the never-null service actor of a
+    # service-triggered run (NULL on a human-triggered row). Nullable + omit-when-None
+    # hashed (see compute_row_hash) so pre-migration rows recompute byte-identically.
+    actor_service_principal_id: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     action: Mapped[str] = mapped_column(sa.Text, nullable=False)
     run_id: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     step_id: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
@@ -88,21 +92,36 @@ def compute_row_hash(
     run_id: str | None,
     step_id: str | None,
     payload: dict[str, Any] | None,
+    actor_service_principal_id: str | None = None,
 ) -> str:
     """The canonical row hash: sha256 over a sorted-key JSON of every audited
     field + the predecessor's hash. ``occurred_at`` is normalised to UTC at
     microsecond precision (timestamptz round-trips it losslessly), so the
-    verifier recomputes byte-identically from the stored row."""
+    verifier recomputes byte-identically from the stored row.
+
+    ``actor_service_principal_id`` (ADR-016 S2 / PLAN-0053 Phase B, SD-2 RATIFIED =
+    **omit-when-None**) is included in the canonical dict **ONLY when non-None**. A
+    ``None`` value ⇒ the key is ABSENT, so every pre-migration row (whose column is
+    NULL) recomputes BYTE-IDENTICALLY to its stored hash and the tamper-evident chain
+    never needs a migration epoch; a service row's non-None id IS hashed, so tampering
+    with it (change or hide) is detected. The asymmetry vs ``actor_person_id`` (always
+    present-as-null) is deliberate — it is the backward-compatible way to evolve an
+    append-only hash-chained log (the same property that lets protobuf add an optional
+    field without breaking old bytes). Future nullable audit fields SHOULD follow this
+    same None⇒omit convention."""
+    canonical_fields: dict[str, Any] = {
+        "prev_hash": prev_hash,
+        "occurred_at": occurred_at.astimezone(UTC).isoformat(timespec="microseconds"),
+        "actor_person_id": actor_person_id,
+        "action": action,
+        "run_id": run_id,
+        "step_id": step_id,
+        "payload": payload,
+    }
+    if actor_service_principal_id is not None:
+        canonical_fields["actor_service_principal_id"] = actor_service_principal_id
     canonical = json.dumps(
-        {
-            "prev_hash": prev_hash,
-            "occurred_at": occurred_at.astimezone(UTC).isoformat(timespec="microseconds"),
-            "actor_person_id": actor_person_id,
-            "action": action,
-            "run_id": run_id,
-            "step_id": step_id,
-            "payload": payload,
-        },
+        canonical_fields,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
@@ -119,6 +138,7 @@ async def append_audit(
     run_id: str | None = None,
     step_id: str | None = None,
     payload: dict[str, Any] | None = None,
+    actor_service_principal_id: str | None = None,
 ) -> AuditLog:
     """Append one chained audit row to the CURRENT session transaction.
 
@@ -141,6 +161,7 @@ async def append_audit(
     row = AuditLog(
         occurred_at=occurred_at,
         actor_person_id=actor_person_id,
+        actor_service_principal_id=actor_service_principal_id,
         action=action,
         run_id=run_id,
         step_id=step_id,
@@ -154,6 +175,7 @@ async def append_audit(
             run_id=run_id,
             step_id=step_id,
             payload=payload,
+            actor_service_principal_id=actor_service_principal_id,
         ),
     )
     session.add(row)
@@ -182,6 +204,7 @@ async def verify_chain(session: AsyncSession) -> list[str]:
             run_id=row.run_id,
             step_id=row.step_id,
             payload=row.payload,
+            actor_service_principal_id=row.actor_service_principal_id,
         )
         if recomputed != row.row_hash:
             breaks.append(

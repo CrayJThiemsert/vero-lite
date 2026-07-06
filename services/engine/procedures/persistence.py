@@ -128,6 +128,22 @@ async def run_procedure_persisted(
     session.add(run)
     # PLAN-0047 Step 5: the run-start audit row lands in the SAME transaction
     # as the write-ahead run row (one durable fact, one commit).
+    # PLAN-0053 AC-9/AC-10 (Phase B, OQ-3 audit-only): classify the trigger's actor. A
+    # human-triggered run records actor_kind="human". A service-triggered run
+    # (service_principal supplied — the forward-looking S1 scheduler path) records
+    # actor_kind="service", a NEVER-null service actor in the new
+    # actor_service_principal_id column (SP-4), and the on-behalf-of lineage (SP-5) —
+    # BOTH who fired (the service id) and who owns/scheduled it (the human, if any).
+    run_started_payload: dict[str, Any] = {
+        "procedure_id": procedure.procedure_id,
+        "agent_id": agent.agent_id,
+        "actor_kind": "service" if service_principal is not None else "human",
+    }
+    if service_principal is not None:
+        run_started_payload["on_behalf_of"] = {
+            "service_principal_id": service_principal.service_principal_id,
+            "owning_person_id": principal.person_id if principal is not None else None,
+        }
     await append_audit(
         session,
         action="run_started",
@@ -136,16 +152,11 @@ async def run_procedure_persisted(
             if principal is not None
             else (trigger_context or {}).get("triggered_by")
         ),
+        actor_service_principal_id=(
+            service_principal.service_principal_id if service_principal is not None else None
+        ),
         run_id=run_id,
-        # PLAN-0053 AC-4 (OQ-3 audit-only): classify the trigger's actor. Phase A
-        # runs are manual/human-triggered (the orchestrator hard-blocks non-manual
-        # triggers, orchestrator.py:138-142); Phase B classifies scheduler-fired
-        # runs as "service".
-        payload={
-            "procedure_id": procedure.procedure_id,
-            "agent_id": agent.agent_id,
-            "actor_kind": "human",
-        },
+        payload=run_started_payload,
     )
     await session.commit()  # the write-ahead: the run is durable BEFORE any effect
 
