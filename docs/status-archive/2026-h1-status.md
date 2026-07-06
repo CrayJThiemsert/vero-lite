@@ -2633,3 +2633,61 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-07-01 (HERO-DEMO v1 governed-run-baht path COMPLETE) [rotated 2026-07-06, session-102 S2-track reconcile]
 
 | 2026-07-01 | **HERO-DEMO v1 "governed → run → ฿" path COMPLETE — offline + LIVE-verified (session 91)** — three PRs merged (#495/#496/#497) + a Cray-approved C-5 live MS-S1 smoke; MILESTONE (the demo path is done) NOT closure — **A1b is NOT complete** (PLAN-0044 Steps 2/4 + AC-9 remain). **#495 (`2ebe851`, A1b Step 5) `scored_rule` executor:** `GovernanceActionExecutor._scored_rule` (SD-1=(a), mirrors `_doa_tier`) scores an emergency-sourcing step's candidate quotes by the typed `ScoredRule`, selects the winner **DETERMINISTICALLY** (same inputs→same pick; LLM never selects) and — unlike `_doa_tier` — **REPLACES the output with the selected entity carrying `amount` (unit_price × qty) + currency**, closing the **§3 ฿-threading finding** (the shipped `ActionStepExecutor` dropped the entity's spend so `approve` `doa_tier` had no amount); scoring = criticality-as-event-weight amplifier (v1 weights provisional, ADR-0025 D2); **17 new tests.** **#496 (`52523df`) the live-run layer:** C-1 (`bfc4844`) Fastenal dataset (`operational_event.csv`+`quotation.csv`+adapter types); C-2 (`75e7e69`) the in-code Fastenal hero procedure (ladder-swap → **฿288k → CONTROLLER**); C-3 (`00b9a3c`) `hero_demo/run.py` `run_hero_governance_moment` drives the **REAL** loop (intake→judge→source→compliance→approve) through the orchestrator + AT-2 executors — the moment is **DERIVED by the run** (same audit contract, `source: "live-run"`); **3 new stub-client tests.** **#497 (`b4c03a9`) C-4 live toggle:** `GET /demo/hero/governance?live=true` returns the live-run audit; `view-hero.js` gains a "Run live"/"Offline fixture" toggle + source-aware badge; **HOST-STATE-FREE** (the `?live` path uses a deterministic advisory-LLM stub `advisory_stub_factory` — the governed decision is LLM-independent, no MS-S1 hit per request); preview-verified, **+1 endpoint test.** **C-5 live MS-S1 smoke (this session, Cray-approved via AskUserQuestion, HOST-STATE EVIDENCE):** warmed `gpt-oss:20b` on MS-S1 (192.168.1.133, verified present) + ran `run_hero_governance_moment` **ONCE** with the real `OllamaClient` — **result (fresh on-disk this session, a live run NOT re-derived): governed outcome IDENTICAL to the offline gate** (`SUP-RAPIDMRO → ฿288,000 → CONTROLLER (appr-controller)`, `sod.governed: true`, `scored_path: exception_policy`, `governed_decision: [doa_tier, sod]`) → **governed ≠ generated confirmed LIVE** (the real LLM = advisory prose only, does not change the governed decision). Live = **EVIDENCE** (the offline oracle stays the gate, §8); **no code shipped for C-5.** **NEXT (close-out):** A1b's remaining non-demo-critical work = Steps 2 (`OQ-6` N≥2) + 4 (`rule_gate`) + AC-9; verify PLAN-0045 AC then `git mv` → `done/`. **Owed at A1b CLOSE (not per-step):** PLAN-0044 Completion note + a STATUS full-body reconcile. `loop-dispatcher` stays DISABLED; MS-S1 cold (remaining A1b offline) | `b4c03a9` (#497) / `2ebe851` (#495) / `52523df`·`00b9a3c`·`75e7e69`·`bfc4844` (#496) / `services/engine/procedures/{scored_rule,governance_step}.py` (`select_scored_supplier` + the `_scored_rule` branch) + `verticals/procurement/hero_demo/run.py` (`run_hero_governance_moment`) + `verticals/procurement/data/hero/{operational_event,quotation}.csv` + `services/api/routers/demo.py` (`/demo/hero/governance?live=true`) + `services/api/static/assets/view-hero.js` |
+
+
+<!-- rotated 2026-07-06 (session 104) from docs/STATUS.md during the ADR-016 S2 Phase B reconcile (Current Focus window + RD 10-row cap) -->
+
+### Rotated Current-Focus blocks (2026-07-06, s104)
+
+> **Closeout (2026-07-06, #590, head_commit `488ed25` → `4548ed8`):**
+> PLAN-0054 archived to `docs/plans/done/` (Status → Complete + a COMPLETION
+> note: PR map #584–#589, AC-1…AC-10 MET, v2 sequels listed). Control-leg v1
+> arc fully closed; no active PLAN. Next = Cray-directed (candidates below).
+
+> **Session 103, 2026-07-06 (head_commit `b68beee` → `488ed25`) —
+> Control-leg v1 COMPLETE (PLAN-0054) + CSP follow-up.** The OCT Monitor
+> (View H) flips watch-only → **watch + OPERATE**: a named, authenticated
+> human approves/rejects a `waiting_human` procedure gate and cancels a
+> parked run FROM the UI, with SoD + a tamper-evident audit actor enforced
+> server-side (ADR-016 S2 RF-1 / PLAN-0053). **Code-built directly** (a
+> Ready PLAN-0054 — the PLAN was `plan-drafter`-authored in s102),
+> committed via PR (ADR-009 D2). **Five merged PRs (newest first):**
+> **#587** (`036fffe`+`ba0a0ae`+`03588ea`+`7b41567`, merge `488ed25`) —
+> **Steps 2–5 + 7: the operate UI.** NEW `assets/auth.js` (SD-A) = the
+> single frontend credential seam (login/authHeader/logout; pilot API key
+> in sessionStorage; Bearer on operate POSTs only; optimistic login — the
+> display identity is cosmetic, the real approver is the key's
+> server-resolved `person_id`). `view-monitor.js` = approve/reject per
+> proposal (submit gated until all decided), auth bar, cancel
+> (`waiting_human` only, SD-B), 403 (RF-1/SoD) + 409 (stale
+> reload-and-retry) inline; + Monitor detail-pane scroll fix, audit-dump
+> `[object Object]` fix (kvDump arrays-of-objects), green "approved by
+> <person>" badge on resolved gates, `scripts/seed_operate_demo.py`
+> (dev-only reseed). **2 spawned specialists (frontend + app-security):
+> secure-for-pilot, no real vulns.** Preview-verified E2E (login → approve
+> → submit → resume → issue_po gate → approve → completed; cancel; logout;
+> 0 console errors). **#586** (`8a6e527`) — Step 6: procurement
+> operate-demo provisioning + seed (`seed_operate_waiting_human_run` →
+> `emergency_sourcing_round` at the approve gate, `req-planner` SoD
+> requester, JSONB-safe Decimal→str; lifespan auto-seed gated on
+> `OCT_DEMO_SEED_OPERATE`, idempotent + fail-soft; `.env.example` +
+> runbook §3b; DB-backed test). **#585** (`16d218f`) — Step 6b:
+> `register_procurement_procedure_executors` wired at startup
+> (procurement-gated) — closes the live resolve endpoint 409ing "no
+> procedure-executor factory"; reuses the hero `_executors` on the
+> deterministic advisory stub (MS-S1-independent). AC-10. **#584**
+> (`3a94012`) — Step 1: `POST /runs/{run_id}/cancel` (RF-1 403 guard,
+> `waiting_human`-only → 409 SD-B, `run_cancelled` audit naming the human;
+> first writer of `PipelineRunStatus.CANCELLED`). **#588** (`f98de81`) —
+> CSP defense-in-depth (operate-UI security-review follow-up, parallel
+> session): scoped `Content-Security-Policy` on static-file serving
+> (`_StaticFilesWithCSP`), NOT the JSON API / /docs; operate UI runs under
+> it with **0 CSP violations**. **Suite 2223 passed / 7 skipped** (frontend
+> commits Python-neutral); ruff + mypy clean; MS-S1 not exercised.
+> **Standing:** Control-leg v1 **COMPLETE** (no active PLAN);
+> `loop-dispatcher` **DISABLED**; MS-S1 idle; AI-assisted (Claude Code,
+> session 103), no `Co-Authored-By` per §7.
+
+### Rotated Recent-Decisions row (2026-07-06, s104)
+
+| 2026-07-01 | **ADR-016 Q3 READ-SIDE ONTOLOGY OBJECT-BINDING AMENDMENT ACCEPTED (Rock 3 / O-2, #505) (session 93)** — an in-place ADR-016 D2+D3 amendment closing the read-side governance gap that mirrors the shipped write-side. Two commits: `915c344` (Proposed) + `cb7eb05` (fold ratified decisions → Accepted). **Decision (contract-first):** a typed `StepInput.reads: list[str]` read entry point (OQ-5: list not `str` — procurement `intake` reads 3 object types + joins); `Agent.allowed.object_types` mirroring `action_handlers`; **LOAD-time enforcement** (`reads ∈ ontology ∩ allowlist`, else refuse load) — **zero runtime-data-flow change.** **Honest enforcement frame (Cowork caught, Code-verified):** v1 = a typed read contract + a load-time consistency/scoping gate, **NOT** runtime-enforced parity — even write-side `action_handlers` is only pre-flight-checked in `validate_runnable`; teeth = declared==dispatched, gained read-side only at **Q4**. **Deferred:** the generic run-consume query executor → a fast-follow build PLAN (touches runtime flow + enrich/join steps); the Box-4 economic-impact facet → a self-cancelling **N≥3** marker (typed facet only; economic dimension prose-captured at authoring). **OQ-1..6/A ratified:** OQ-1 `StepInput.reads` · OQ-2 load-gate+reframe · OQ-3 `object_types` bounds `fetch_objects` only (links/events out of v1) · OQ-4 `where`=post-fetch · OQ-5 `reads:list[str]` · OQ-A `reads`/`object_types` H-governed (`object_types` auto-covered; add `reads` to `STEP_GOVERNANCE_FIELDS` = build-PLAN task) · OQ-6 `object_types` empty=unconstrained (backward-compat). **Three-lens process:** `plan-drafter` AUTHORED the amendment + folded the ratified decisions; Cowork Tier-1b independent second-perspective review (caught the parity over-claim + surfaced OQ-5); Code R2-verified on disk + committed; Cray ratified OQ-1..6/A. **Context:** the parallel hero compliance-swap (#506, `0b7efe4`) landed last session (swapped the hero-demo compliance stub for the shipped `rule_gate` executor; governed outcome unchanged). **Impl note for the build PLAN:** the load-gate must thread the vertical `OntologyMeta` into pre-flight (`validate_runnable(procedure, agent)` doesn't carry it today). **NEXT = the fast-follow build PLAN** (`StepInput.reads` + `Agent.allowed.object_types` + load-gate + `reads`→`STEP_GOVERNANCE_FIELDS` + tests); the generic query executor (Q4) = a separate later PLAN. **Routing:** the ADR-016 amendment authored by the in-harness `plan-drafter` (prong-2 exempt) → Code R2 + committed via `docs/adr` PR. `loop-dispatcher` stays DISABLED; MS-S1 cold (offline) | `cb7eb05` (#505 fold→Accepted) / `915c344` (#505 Proposed) / `docs/adr/0016-*.md` (D2 `StepInput.reads` + `Agent.allowed.object_types` + D3 load-gate) |
