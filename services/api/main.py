@@ -8,6 +8,8 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
+from starlette.responses import Response
+from starlette.types import Scope
 
 from services.api.config import settings
 from services.api.models.health import HealthResponse
@@ -30,6 +32,64 @@ from services.notify.telegram import describe_arm_state
 _boot_logger = logging.getLogger("uvicorn.error")
 
 _STATIC_DIR = Path(__file__).parent / "static"
+
+
+# --- Content-Security-Policy for the served OCT demo UI (defense-in-depth) ---
+# PLAN-0054's operate UI (View H) keeps the operator's pilot API key in
+# sessionStorage (the SD-A login-form auth surface). That security review
+# returned "secure-for-pilot" with a SINGLE defense-in-depth gap: no CSP. This
+# header is that safety net -- it caps what a *future* html:/innerHTML XSS
+# regression could reach, turning "exfiltrate the sessionStorage credential to
+# an attacker origin" into a contained bug (script execution + network egress
+# are pinned to same-origin).
+#
+# Intentionally minimal: default-src 'self' plus only the relaxations the
+# current assets actually need (verified against services/api/static):
+#   * script-src 'self'         -- every script is an external assets/*.js; no
+#                                  inline <script>, no eval / new Function, no
+#                                  inline on*= handlers (all grep-verified).
+#   * style-src 'unsafe-inline'  -- the UI injects <style> elements at runtime
+#                                  (e.g. view-monitor.js injectStyles) and uses
+#                                  many inline style= attributes; a nonce is
+#                                  heavier for no real gain on a same-origin
+#                                  static bundle.
+#   * img-src 'self' data:       -- favicon.svg + defensive room for inline
+#                                  data: images (data: cannot execute script).
+#   * font-src 'self'            -- IBM Plex woff2 bundled under assets/fonts/.
+#   * connect-src 'self'         -- every fetch() targets a relative same-origin
+#                                  API path.
+# object-src / base-uri / frame-ancestors harden with no functional cost.
+# Scoped to the static mount (a StaticFiles subclass, NOT a global middleware)
+# so it never lands on the JSON API or FastAPI's /docs & /redoc -- whose
+# Swagger/ReDoc UIs load from a CDN + inline scripts and would break under a
+# blanket 'self' policy.
+_OCT_CSP = "; ".join(
+    (
+        "default-src 'self'",
+        "script-src 'self'",
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data:",
+        "font-src 'self'",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "frame-ancestors 'none'",
+    )
+)
+
+
+class _StaticFilesWithCSP(StaticFiles):
+    """StaticFiles that stamps a Content-Security-Policy on every served file.
+
+    Overriding ``get_response`` covers the ``html=True`` index lookup, the
+    ``assets/`` bundle, and 404s alike, scoping the header to the UI mount so it
+    never lands on the JSON API or the /docs pages.
+    """
+
+    async def get_response(self, path: str, scope: Scope) -> Response:
+        response = await super().get_response(path, scope)
+        response.headers["Content-Security-Policy"] = _OCT_CSP
+        return response
 
 
 @asynccontextmanager
@@ -128,4 +188,4 @@ async def health() -> HealthResponse:
 # precedence; this catch-all serves index.html at "/" and the assets/ bundle.
 # The UI fetches the relative API paths (/meta, /objects, /recommendations,
 # /query) which resolve to the routers above.
-app.mount("/", StaticFiles(directory=_STATIC_DIR, html=True), name="ui")
+app.mount("/", _StaticFilesWithCSP(directory=_STATIC_DIR, html=True), name="ui")
