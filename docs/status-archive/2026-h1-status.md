@@ -2691,3 +2691,47 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Rotated Recent-Decisions row (2026-07-06, s104)
 
 | 2026-07-01 | **ADR-016 Q3 READ-SIDE ONTOLOGY OBJECT-BINDING AMENDMENT ACCEPTED (Rock 3 / O-2, #505) (session 93)** — an in-place ADR-016 D2+D3 amendment closing the read-side governance gap that mirrors the shipped write-side. Two commits: `915c344` (Proposed) + `cb7eb05` (fold ratified decisions → Accepted). **Decision (contract-first):** a typed `StepInput.reads: list[str]` read entry point (OQ-5: list not `str` — procurement `intake` reads 3 object types + joins); `Agent.allowed.object_types` mirroring `action_handlers`; **LOAD-time enforcement** (`reads ∈ ontology ∩ allowlist`, else refuse load) — **zero runtime-data-flow change.** **Honest enforcement frame (Cowork caught, Code-verified):** v1 = a typed read contract + a load-time consistency/scoping gate, **NOT** runtime-enforced parity — even write-side `action_handlers` is only pre-flight-checked in `validate_runnable`; teeth = declared==dispatched, gained read-side only at **Q4**. **Deferred:** the generic run-consume query executor → a fast-follow build PLAN (touches runtime flow + enrich/join steps); the Box-4 economic-impact facet → a self-cancelling **N≥3** marker (typed facet only; economic dimension prose-captured at authoring). **OQ-1..6/A ratified:** OQ-1 `StepInput.reads` · OQ-2 load-gate+reframe · OQ-3 `object_types` bounds `fetch_objects` only (links/events out of v1) · OQ-4 `where`=post-fetch · OQ-5 `reads:list[str]` · OQ-A `reads`/`object_types` H-governed (`object_types` auto-covered; add `reads` to `STEP_GOVERNANCE_FIELDS` = build-PLAN task) · OQ-6 `object_types` empty=unconstrained (backward-compat). **Three-lens process:** `plan-drafter` AUTHORED the amendment + folded the ratified decisions; Cowork Tier-1b independent second-perspective review (caught the parity over-claim + surfaced OQ-5); Code R2-verified on disk + committed; Cray ratified OQ-1..6/A. **Context:** the parallel hero compliance-swap (#506, `0b7efe4`) landed last session (swapped the hero-demo compliance stub for the shipped `rule_gate` executor; governed outcome unchanged). **Impl note for the build PLAN:** the load-gate must thread the vertical `OntologyMeta` into pre-flight (`validate_runnable(procedure, agent)` doesn't carry it today). **NEXT = the fast-follow build PLAN** (`StepInput.reads` + `Agent.allowed.object_types` + load-gate + `reads`→`STEP_GOVERNANCE_FIELDS` + tests); the generic query executor (Q4) = a separate later PLAN. **Routing:** the ADR-016 amendment authored by the in-harness `plan-drafter` (prong-2 exempt) → Code R2 + committed via `docs/adr` PR. `loop-dispatcher` stays DISABLED; MS-S1 cold (offline) | `cb7eb05` (#505 fold→Accepted) / `915c344` (#505 Proposed) / `docs/adr/0016-*.md` (D2 `StepInput.reads` + `Agent.allowed.object_types` + D3 load-gate) |
+
+
+## Rotated this reconcile (session-105, 2026-07-07 — ADR-0028 Accepted [schedule-trigger scheduler S1] + main greened #599/#600)
+
+### Rotated Current-Focus block — Session 104 (ADR-016 S2 Phase B COMPLETE) [rotated 2026-07-07, session-105 reconcile; R1 64 KB ceiling]
+
+> **Session 104, 2026-07-06 (head_commit `4548ed8` → `fe36e36`) —
+> ADR-016 S2 Phase B COMPLETE (PLAN-0053): the typed service-principal
+> actor model; "S2 before S1" now satisfied.** A scheduled/non-human run
+> now has a typed, audit-legible actor and can NEVER approve its own gate.
+> `plan-drafter`-authored, Code R2 + committed via PR (ADR-009 D1/D2).
+> **Six merged PRs (newest first):** **#597** (`fe36e36`) — PLAN-0053
+> `git mv` → `done/` (Phase A s102 + Phase B s104 COMPLETE). **#596**
+> (`4f49e29`) — **Phase B audit:** `actor_service_principal_id` column
+> (alembic 0010) + `compute_row_hash` **omit-when-None** (SD-2 RATIFIED —
+> proven on-disk 7/7 that pre-migration rows recompute byte-identically,
+> no epoch boundary) + `verify_chain` passthrough + `actor_kind:"service"`
+> + on-behalf-of lineage. AC-9/10/11. **#595** (`4ab67ca`) — **Phase B
+> runtime:** the **library-level RF-1 guard** at `resolve_gated_step`
+> (AC-1 — a gated resolve with no principal RAISES `GateApproverError`
+> independent of `api_auth_enabled`; closes the Phase-A HTTP-only gap so a
+> scheduler / direct caller can't bypass) + `RunContext.service_principal`
+> threaded through all 3 construction sites (AC-8). Blast radius: 8
+> gate-resolve test files updated to name an approver + one incidental
+> pre-existing test-isolation fix. **#594** (`bab3c3e`) — **Phase B
+> spec:** `ServicePrincipal` type (distinct from Person — no approver
+> field / SP-1, no scope primitive / SP-6) + vertical `service_principals`
+> registry + `Agent.service_principal_ids` (SD-3) + draft-governance
+> disjointness. AC-5/6/7/12. **#593** (`8077242`) — **Phase B
+> activation:** Cray ratified SD-2 (omit-when-None, superseding the
+> original epoch-boundary rec after a code read) + SD-3 (list on Agent).
+> **#592** (`b1fb2e7`) — a `next-work-analyst` skill + a soft
+> `UserPromptSubmit` handoff-nudge hook (rank next work + ELI-CRAY; grounds
+> candidates vs code). **All ACs 1–13 met; 52 db + 489 procedures tests
+> green; ruff + mypy clean; MS-S1 not exercised (deterministic).**
+> **Standing:** ADR-016 S2 Phase B **COMPLETE** (no active PLAN);
+> `loop-dispatcher` **DISABLED**; MS-S1 idle; AI-assisted (Claude Code,
+> session 104), no `Co-Authored-By` per §7.
+
+### Rotated Recent-Decisions rows [rotated 2026-07-07, session-105 reconcile]
+
+| 2026-07-03 | **PLAN-0047 (pre-pilot hardening: authn + run/gate endpoints + write-ahead + audit + config-pin + CI) EXECUTED + COMPLETE + CLOSED (session 95; PRs #522–#531; PLAN → `done/`)** — all 7 steps + all 10 ACs; **+31 tests (suite 2066 → 2097 passed / 5 skipped)**; sales claims (authn / audit / exactly-once / config-pin) now code- and CI-backed. **Step→PR:** draft #522 `b6cb0d5` (plan-drafter authored) · SD-1..4 as-rec #523 `8198548` (SD-1=(a) API keys · SD-2 defer · SD-3 yes-minimal · SD-4 CI w/ DB) · Step 7 CI #524 `0401a0a` (FIRST CI gate on the repo: ruff + ruff-format + `mypy --strict` + full suite w/ postgres container + `alembic upgrade head` per PR) · Step 1 authn #525 `3b3db46` (fail-closed API-key gate on state-changing routes; `action_identity` sidecar, alembic 0005) · Step 2 endpoints #526 `5da9e1d` (POST `/procedures/{id}/run` + `/runs/{id}/gate/resolve` auto-resume; identity recorded server-side, AC-2 on the persisted row) · Step 3 gate state machine #527 `a0db450` (RESOLVED status; resume refuses undecided proposal gates + SoD tie re-assert; optimistic lock, alembic 0006) · Step 4 write-ahead #528 `bafdf92` (`run_procedure_persisted`; two-phase resolve — decision committed BEFORE effect, version bump AT decision commit = exactly-once under concurrency; `pending_execution` = the outbox seam) · Step 5 audit #529 `692f748` (append-only hash-chained `audit_log` + block trigger + INSERT-only `vero_audit_writer` role, alembic 0007; tamper-detect survives a superuser) · Step 6 pinning #530 `6cde2db` (`governance_pin.py`; fail-closed pin-mismatch at resume + gate; prose excluded; people deliberately NOT pinned; alembic 0008) · close-out #531 `28d919c` (completion fold: 10 ACs ticked, step→PR table, **5 disclosed deviations** incl. `/warm`+`/sleep`+`/intake/generate` gated + the AC-5 narrowing w/ empty-watch contract kept; `git mv` → `done/`). Local dev-box (disclosed): `.env` `API_AUTH_ENABLED=false` (code default now ON); dev DB migrated through alembic 0008. Offline throughout; MS-S1 cold | `353c04e` (#531 merge) / `28d919c` (#531 close) / `services/api/auth.py` + `services/engine/procedures/persistence.py` (write-ahead) + `services/engine/procedures/governance_pin.py` + `alembic/versions/{0005_action_identity,0006_pipeline_run_version,0007_audit_log,0008_governance_pin}.py` + `.github/workflows/ci.yml` + `docs/plans/done/0047-pre-pilot-hardening-authn-gate-audit.md` |
+
+| 2026-07-02 | **PLAN-0046 (Q3 read-side ontology-binding build) EXECUTED + COMPLETE + CLOSED (session 93 cont., #511 feat + #512 close; PLAN → `done/`)** — renders the Accepted ADR-016 Q3 amendment into code; **all 11 ACs met.** `StepInput.reads: list[str]` + `AgentAllowed.object_types` (both `extra="forbid"`, backward-compat: absent/empty = loads as today) + the NEW pure `validate_read_bindings` load-gate (SD-1 Option A — `validate_runnable` + its ~12 call-sites untouched) wired at both production pre-flight sites (`run_procedure` + `persistence.resume_run`; skipped, no ontology I/O, for reads-absent procedures); `reads` → `STEP_GOVERNANCE_FIELDS` (OQ-A) + a disclosed `lift_to_step` strip-hardening (`StepDraft` reuses `StepInput` → generated drafts physically strip `reads` to ABSENT, OQ-C C1 pattern) + CI tripwire. 12 new tests; ruff + `mypy --strict` clean; **full offline suite 2066 passed / 5 skipped.** Zero runtime-data-flow change; honest frame (LOCKED-9): declared ✔ · load-gated ✔ · execution-bound ✖. SD-2 = Option A (verticals stay absent; gate inert until opt-in). The Q4 generic run-consume query executor = a SEPARATE later PLAN. Offline-only, no host-state | `eb63692` (#512 close) / `878b517` (#511 feat) / `services/engine/procedures/` (spec + orchestrator + draft-lift) + `docs/plans/done/0046-*.md` |
