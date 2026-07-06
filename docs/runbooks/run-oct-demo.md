@@ -229,20 +229,35 @@ exec uvicorn services.api.main:app --port 8101
 
 Then open **http://localhost:8101** and go to the **Monitor** tab (**View H** — click
 the tab, `location.hash` does not route OCT views). The seeded `waiting_human` run is
-listed, suspended at its `approve` gate.
+listed, suspended at its `approve` gate; a **login bar** sits at the top of the view.
 
-**The governed round-trip (once the operate UI ships — PLAN-0054 Steps 2–5):** log in
-with the RAW key (→ `appr-pm`), **approve** the gate → SoD passes (requester
-`req-planner` ≠ approver `appr-pm`) → the run resumes; a **logged-out** submit or a
-**self-approval** fails closed (**403**); a **cancel** on the `waiting_human` run →
-`cancelled`. The seed's **฿288,000** amount lands in the **ผจก.จัดซื้อ** DOA tier, so
-`appr-pm` is the tier-matched approver (a หน.จัดซื้อ would be under-tier).
+**The governed round-trip (the operate UI — PLAN-0054 Steps 2–5, shipped):** in the login
+bar enter the RAW key + a display identity (`appr-pm`) → **Operating as appr-pm**; select
+the run → per-proposal **Approve / Reject** appear → **Submit decisions** POSTs the gate
+(`Authorization: Bearer <key>`) → SoD passes (requester `req-planner` ≠ approver `appr-pm`)
+→ the run resumes to the `issue_po` gate → approve again → **completed**. A **logged-out**
+submit or a **self-approval** fails closed (**403**, surfaced inline); a concurrent change
+is a **409** "reload and retry"; a **Cancel run** on a `waiting_human` run → `cancelled`.
+The seed's **฿288,000** amount lands in the **ผจก.จัดซื้อ** DOA tier, so `appr-pm` is the
+tier-matched approver (a หน.จัดซื้อ would be under-tier).
 
-> **Reseed.** A restart re-uses the existing seeded run (idempotent). To reseed fresh
-> (e.g. after cancelling/resolving it in a rehearsal), wipe the demo run row or the
-> demo DB, then restart. Field reference: `services/api/config.py`
-> (`oct_demo_seed_operate`); seed seam: `verticals/procurement/hero_demo/run.py`
-> (`seed_operate_waiting_human_run`); the executor factory: `register_procurement_procedure_executors`.
+> **Security (pilot-grade, PLAN-0047 SD-A).** The operator's key is a **bearer credential**
+> held in `sessionStorage` (per-tab) and sent ONLY on operate POSTs — reads stay
+> header-less. The typed identity is a cosmetic display; the REAL approver is the key the
+> backend resolves to a `person_id` and SoD-checks (a buyer's key cannot approve as a
+> director, whatever is typed). A real pilot deployment MUST be served over **TLS only**
+> (the localhost demo is fine). Full user/password login is the named **v2** sequel, built
+> behind the same frontend `authHeader()` seam + the backend `get_current_principal`
+> dependency.
+
+> **Reseed.** A restart re-uses the existing seeded run (idempotent on the fixed
+> `run-operate-demo` id). The `audit_log` is **append-only** (a tamper-evidence trigger,
+> PLAN-0047), so you cannot delete a single run's rows — to reseed fresh, use a **clean
+> demo DB** (drop + `alembic upgrade head`) and restart, or seed a **new run_id** via
+> `seed_operate_waiting_human_run(session, run_id=…)`. Field reference:
+> `services/api/config.py` (`oct_demo_seed_operate`); seed seam:
+> `verticals/procurement/hero_demo/run.py` (`seed_operate_waiting_human_run`); the executor
+> factory: `register_procurement_procedure_executors`.
 
 ---
 
