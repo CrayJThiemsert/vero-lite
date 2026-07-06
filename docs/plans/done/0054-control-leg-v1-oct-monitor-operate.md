@@ -1,8 +1,9 @@
 # PLAN-0054: Control-leg v1 — governed approve/reject/cancel a procedure run FROM the OCT Monitor UI
 
-**Status:** Ready
+**Status:** Complete
 **Owner:** Claude Code
 **Created:** 2026-07-06
+**Completed:** 2026-07-06 (session 103 — all Steps 1–7 + Step 6b shipped + merged; watch→operate live in the OCT Monitor, preview-verified E2E, secure-for-pilot)
 **Related ADRs:** ADR-016 (procedure runs + gates + SoD, S2 authenticated-approver); ADR-013 (drafter/committer boundary); ADR-0026 (procurement SoD principals)
 **Related PLANs:** PLAN-0052 (OCT Monitor v1, read-only — the seam this wires); PLAN-0053 (ADR-016 S2 Phase A — RF-1 authenticated-approver 403); PLAN-0047 (pilot-grade static API-key auth)
 
@@ -13,6 +14,25 @@
 > Amended 2026-07-06 (session 102): Step 6b + AC-10 added — a Code-R2-caught completeness
 > gap (the live resolve endpoint 409s for every vertical with no registered procedure-executor
 > factory). Surgical addition within the Cray-ratified scope; existing Steps/ACs unchanged.
+
+> **COMPLETION (2026-07-06, session 103).** All Steps 1–7 + Step 6b executed and merged to
+> `main` (`68083c6`). **Control-leg v1 = COMPLETE:** the OCT Monitor (View H) flips
+> **watch-only → watch + OPERATE** — a named, authenticated human approves/rejects a
+> `waiting_human` gate and cancels a parked run FROM the UI, with SoD + a tamper-evident audit
+> actor enforced server-side. PRs: **#584** (Step 1 — `POST /runs/{run_id}/cancel`; RF-1 403 /
+> `waiting_human`-only 409 / `run_cancelled` audit naming the human) · **#585** (Step 6b / AC-10
+> — `register_procurement_procedure_executors` at startup closes the resolve-endpoint 409;
+> deterministic advisory-stub factory, MS-S1-independent) · **#586** (Step 6 — procurement
+> operate-demo seed + lifespan auto-seed gated on `OCT_DEMO_SEED_OPERATE`, idempotent + fail-soft)
+> · **#587** (Steps 2–5 + 7 — the operate UI: `auth.js` login-module + approve/reject/submit/cancel
+> + 403/409 inline + Monitor scroll fix + audit `[object Object]` fix + "approved by" badge +
+> reseed helper; 2 spawned specialists = secure-for-pilot; preview-verified E2E) · **#588** (CSP
+> defense-in-depth on the static mount, parallel session) · **#589** (STATUS reconcile s103).
+> Suite 2223 passed / 7 skipped; ruff + mypy clean. **All ACs (AC-1…AC-10) MET.** MS-S1 not
+> exercised (deterministic by design). **v2 sequels** designed-into-seams but out of scope: full
+> user/password/session login (the `authHeader()` + `get_current_principal` seams), `GET /whoami`,
+> ADR-016 S2 Phase B (`ServicePrincipal` registry + non-human-approver rejection at
+> `resolve_gated_step`) paired with S1 (automated scheduler), and multi-operator RBAC.
 
 ## Goal
 
