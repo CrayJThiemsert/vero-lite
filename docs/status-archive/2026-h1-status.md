@@ -2785,3 +2785,61 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-07-04 (PLAN-0048 Q4 executor + PLAN-0049 v1 ontology bundle + ADR-0027 Accepted, sessions 96/97) [rotated 2026-07-07, session-106 reconcile]
 
 | 2026-07-04 | **PLAN-0048 Q4 generic query executor COMPLETE + CLOSED (#533–#541) + PLAN-0049 v1 ontology bundle COMPLETE {1,2,4,5} (#542–#550, R2 carved out) + ADR-0027 semantic-enrichment fields ACCEPTED (sessions 96/97)** — suite 2097 → 2142 passed / 5 skipped (+45); every feature PR green under the PLAN-0047 Step-7 CI gate (ruff + ruff-format + `mypy --strict` + full suite w/ postgres + `alembic upgrade head`; #548 added an `alembic check` drift-guard step). **PLAN-0048** (read side gains **declared==dispatched** via `QueryStepExecutor`; Steps 1–3 reconciled in #540): Step 4 seams/docs #539 `f7d4972` (merge `ab394b0`) + COMPLETE fold + `git mv` → done/ #541 `73a6f9c` (merge `0215b3a`). **PLAN-0049** (executable set {1,2,4,5}; R2/Step-3 carved out to ADR-0027): draft #542 `6626d97` (SD-1..7 surfaced) · SD-1..7 as-rec + flip Draft→Ready + carve R2 #543 `c8b48be` · Step 1 energy-v1 #544 `69d7759` (asset_type feeder/cap_bank/gas_engine; NEW `rated_current_a` [SD-6]; measured_kind current/voltage; alembic 0009) · version=content-revision #545 `aec644d` (`ontology_schema.json` `version` const 0 → `{integer, minimum 0}` — the GRAMMAR-version field repurposed as content-revision, SD-2 Cray-confirmed; energy→1, supply_chain→1) · Step 2 supply-chain-v1 #546 `37387ed` (NEW Equipment entity + `shipment_uses_equipment` + `adjust_setpoint`; measured_kind temperature/battery; enum gaps; NO committed ORM — SD-3 gitignored fallback, SD-4 parity gap documented) · Step 4 R1 context-pack emitter #547 `b80dcff` (`emit_context_pack` 7th emitter; closed-set refuse-not-guess; R2 DEGRADE PATH reads ADR-0027 fields when present; 32K token-budget tripwire) · Step 5 alembic autogenerate #548 `1a689ef` (`compare_type=True`; CI `alembic check` drift-guard; migration<->ORM lockstep runbook) · COMPLETE fold + `git mv` → done/ #550 `579c5d1` (merge `d7041f4`). **ADR-0027** (ADR-008 D2/D3 grammar amendment, 4 OPTIONAL constructs: synonyms th+en · sample_values · verified_queries · metric grain/join-path; mirrors ADR-0021; backward-compat HARD INVARIANT; governed≠generated; decides grammar + defers build): Proposed #549 `a7bd595` (merge `e61c287`, 7 SDs) → **Accepted #551 `d8f9ec5`** (merge `9f95942`) — Cray ratified ALL SD-1..7 as-recommended (none overridden); **SD-6 follow-up build = PLAN-0050** (L1 `ontology_schema.json` + `ontology_meta.py` optional attrs mirroring QuantityBinding + L2 validators + energy-v1/supply-chain-v1 backfill; the shipped R1 emitter consumes it for free via the degrade path). #537 fixture-hermeticity fix (`2c627bb`) closed the #535/#536 concurrent-pytest disclosures. `loop-dispatcher` DISABLED; MS-S1 cold (offline throughout) | `9f95942` (#551 merge) / `d8f9ec5` (ADR-0027 Accepted) / `d7041f4` (#550 merge) / `0215b3a` (#541 merge) / `docs/adr/0027-ontology-semantic-enrichment-fields.md` + `docs/plans/done/{0048-q4-generic-query-executor,0049-v1-ontology-bundle}.md` + `services/engine/code_generator.py::emit_context_pack` + `services/engine/ontology_schema.json` + `alembic/versions/0009_*.py` |
+
+## Rotated this reconcile (session-107, 2026-07-07 — PLAN-0055 Phase A S1 Step 2 + Step 3 #606/#607)
+
+### Current-Focus block — Session 106 (head_commit `255ca96`) [rotated 2026-07-07, session-107 reconcile]
+
+> **Session 106, 2026-07-07 (head_commit `c9c0698` → `255ca96`) —
+> PLAN-0055 Ready (S1 schedule-trigger scheduler BUILD) + S1 Step 1
+> merged + `main` branch-protection ARMED.** Four merged PRs
+> (#602/#603/#604) + one repo-config. `plan-drafter`-authored where
+> gated, Code R2 + committed via PR (ADR-009 D1/D2). **Repo-config —
+> branch protection (NOT a commit).** `main` was found **completely
+> unprotected** (no classic protection, no rulesets, no rules —
+> contradicting CLAUDE.md §7's "protected, no direct push"). Applied
+> (Cray-authorized, §8 go): **require-PR + require the `gate` status
+> check + `enforce_admins` + no force-push / no branch-deletion** —
+> closes the **merged-red hole** that let #595's RF-1 regression stay red
+> through #596–#598 (the s105 finding). Every PR this session merged
+> through the now-required `gate`. **#602 — PLAN-0055 (S1 schedule-trigger
+> scheduler BUILD plan).** `plan-drafter`-authored (`a1058c4` add →
+> `3bec1f0` Draft→Ready), Code R2 + committed; merge `22daea3`. Cray
+> ratified **all six SD-P1..P6 as-recommended:** SD-P1 cron/tz =
+> `Asia/Bangkok` + IANA tz per schedule · SD-P2 missed-run =
+> skip-with-audit · SD-P3 overlap = skip-if-in-flight · SD-P4 delivery =
+> at-most-once · SD-P5 dedicated schedule-state table + restart recovery ·
+> SD-P6 `trigger_context` stamp → Status **Ready for execution**. Phased:
+> **Phase A** (offline-testable — lift block + descriptor + state table +
+> `croniter` + pure fire-fn), **Phase B** (long-lived daemon). Implements
+> Accepted ADR-0028. **#603 — lessons #0028 + #0029** (`d7094bb`,
+> Code-authored advisory Tier-2, un-gated). #0028 = omit-when-None to
+> evolve an append-only hash-chained audit log without an epoch boundary
+> (grounds `services/db/audit_log.py::compute_row_hash`, from the s104
+> ADR-016 S2 arc). #0029 = a named-subset "green" is not a full-suite
+> green + make CI required (the s105 #600 root-cause: s104's "52 db + 489
+> proc green" excluded `tests/api/` where the #595 RF-1 regression lived).
+> **#604 — S1 Step 1 (PLAN-0055 Phase A)** (`feat(procedures)`,
+> `255ca96`; merge `ec5822b`). `validate_runnable` now admits
+> `Trigger.SCHEDULE` via an explicit `_RUNNABLE_TRIGGERS` allowlist
+> ({MANUAL, SCHEDULE}) — **every OTHER governance check**
+> (skeleton-reject / step-kind / autonomy-ceiling / handler-allowlist /
+> linear-input) **unchanged and still fires** for a schedule proc (the
+> trigger check sits first, so the lift is surgical). Corrected 4 stale
+> texts (block message + `validate_runnable` docstring in
+> `orchestrator.py`, the `Trigger` enum docstring in `spec.py`, a test
+> comment) and **ADR-016 OQ-2 (:1192-1195) marked RESOLVED (ADR-0028)** —
+> a `plan-drafter`-authored erratum (G1-exempt; Code's own Edit was
+> correctly G1-denied), Cray **per-diff-approved verbatim**, Code
+> committed. Tests: `test_schedule_trigger_is_not_runnable` →
+> `test_schedule_trigger_is_runnable` (AC-1) +
+> `test_schedule_trigger_still_enforces_governance` (AC-2). **Full suite
+> 2240 passed / 7 skipped** (DB-backed, local :5442); ruff + mypy clean;
+> AC-1/2/3 met. **Standing:** PLAN-0055 **Ready** (Step 1 merged, Step 2
+> next); `main` **green + PROTECTED**; 0 open PRs; `loop-dispatcher`
+> **DISABLED**; MS-S1 idle; AI-assisted (Claude Code, session 106), no
+> `Co-Authored-By` per §7.
+
+### Recent-Decisions row — 2026-07-05 (Wave-3 Cowork content-authoring COMPLETE, session 100) [rotated 2026-07-07, session-107 reconcile]
+
+| 2026-07-05 | **Wave-3 (Cowork content-authoring track) COMPLETE (session 100)** — two Tier-0 deliverables, Cowork-drafted (ADR-009 D1) → Code R2 + committed (ADR-009 D2); **no new ADR/PLAN**. **(1) partner-intake-form v2→v3 (PR #572 `5ca1c18`)** — 11 `[v3]` additions surfaced by the two partner-sim mapping rehearsals, folded into the sections they extend (B:1, C:3, F:1, G:1, H:5 = 11 = 7 run-1 §5 items 1–7 + 4 run-2 §6 items 8–11), each carrying a `Vn` ID traceable 1:1 to its rehearsal item; no v2 content removed; questions 1–17 unchanged; a `docs/conventions/` edit — **NOT** G1/G2-gated. **(2) Wave-3 GTM ammo pack** — 4 evidence pieces (residency "compute never leaves" · Thai AI Act assistive-only → out of the high-risk-AI registration bucket · Gartner "60% of agentic analytics projects relying solely on MCP will fail by 2028" · governed-refusal vs. confident-wrong, grounded on the shipped `_validate_query` seam) layered onto the box4 ROI-spine + b3 moat narrative; a **gitignored confidential strategy note** (`docs/strategy/private/`) — **NOT committed** (same convention as box4/b3). **Code R2:** verified the 11-count + no-question-loss vs the v2 diff; verified ammo-(d)'s `_validate_query` seam (`services/engine/nl_query.py:428`/`:534`); corrected one provenance citation typo (V2 run-1 §5 #1 → #2). The Stop-hook classifier misrouted the dispatch to an ADR draft; Code overrode it (content authoring, not governance). `loop-dispatcher` DISABLED; MS-S1 cold (offline) | `05c12c2` (#572 merge) / `5ca1c18` (partner-intake-form v2→v3) / `docs/conventions/partner-intake-form.md` + `docs/strategy/private/` (Wave-3 GTM ammo pack, gitignored — NOT committed) |
