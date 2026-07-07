@@ -173,6 +173,15 @@ class EventTrigger(BaseModel):
         "with no SoD requester to resolve (a doa_tier procedure requires SoD, ADR-0025 D5, so it "
         "needs one). Cross-ref validated against the vertical's `principals` at load.",
     )
+    dedup_window_seconds: int = Field(
+        default=3600,
+        gt=0,
+        description="the detection-window granularity (seconds) for the SD-2 dedup key (SD-P1). "
+        "`detected_at` is truncated to this bucket by `event_bridge.event_key`, so a steady-state "
+        "anomaly re-detected each poll collapses to ONE run while the same condition recurring in "
+        "a LATER window fires a fresh run. Per-mapping (SD-P1) — a slow-moving asset anomaly wants "
+        "a wide window, a transient one a narrow one. Default 1h.",
+    )
 
 
 class BandSource(StrEnum):

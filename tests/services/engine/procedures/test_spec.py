@@ -231,6 +231,16 @@ def test_event_trigger_rejects_unknown_field() -> None:
         EventTrigger(event_kind="asset_failure", tz="UTC")  # type: ignore[call-arg]
 
 
+def test_event_trigger_dedup_window_defaults_and_validates() -> None:
+    # SD-P1: the per-mapping detection-window granularity — default 1h, must be > 0.
+    assert EventTrigger(event_kind="asset_failure").dedup_window_seconds == 3600
+    assert (
+        EventTrigger(event_kind="asset_failure", dedup_window_seconds=60).dedup_window_seconds == 60
+    )
+    with pytest.raises(ValidationError):
+        EventTrigger(event_kind="asset_failure", dedup_window_seconds=0)
+
+
 def _one_event_proc(pid: str, kind: str, *, owning: str | None = None) -> Procedure:
     return Procedure(
         procedure_id=pid,
