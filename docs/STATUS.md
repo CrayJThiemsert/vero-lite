@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-07T10:52:43+07:00
-session: 106
-current_batch: "s106 PLAN-0055 Ready (S1 schedule-trigger scheduler BUILD, ADR-0028) + S1 Step 1 merged + branch-protection ARMED + 2 lessons. 4 PRs + 1 repo-config: main was found COMPLETELY UNPROTECTED (Cray-authorized §8) → require-PR + require `gate` check + enforce_admins + no force-push/delete (closes the #595 merged-red hole). #602 PLAN-0055 (plan-drafter, Code R2; Cray ratified all 6 SD-P1..P6 as-rec → cron=Asia/Bangkok+IANA per schedule / skip-missed / skip-if-in-flight / at-most-once / dedicated schedule-state table+restart-recovery / trigger_context stamp; phased A offline + B daemon). #603 lessons #0028 (omit-when-None hash-chain evolve) + #0029 (named-subset green ≠ full-suite; make CI required). #604 S1 Step 1 (Phase A): validate_runnable admits SCHEDULE via _RUNNABLE_TRIGGERS allowlist {MANUAL,SCHEDULE}, every other governance check unchanged; 4 stale texts + ADR-016 OQ-2 marked RESOLVED (plan-drafter erratum, Cray per-diff approved). Full suite 2240 passed/7 skipped; ruff+mypy clean."
+last_updated: 2026-07-07T12:05:00+07:00
+session: 107
+current_batch: "s107 PLAN-0055 Phase A S1 Step 2 + Step 3 merged (2 PRs, both green through the now-required `gate`). #606 Step 2: two persisted schedule surfaces — (1) a typed `Schedule` descriptor (cron + per-schedule IANA `timezone`, extra='forbid') on `Procedure`, present IFF trigger==schedule (symmetric fail-loud-at-load invariant; tz validated vs the system tz db, cron non-blank only) [Code decision, Cray veto-open], and (2) a dedicated `schedule_states` table (new ORM + Alembic 0011, `(vertical, procedure_id)` unique, holds last_fired/next_fire for restart recovery; additive, outside the energy parity guard). Suite 2254/7. #607 Step 3: `croniter>=2.0.0` prod dep (6.2.3) + `types-croniter` (dev + mypy hook) + uv.lock; a DB-free `cron.py::next_fire(cron, tz, after)` — wall-clock in per-schedule IANA tz, exclusive of `after`, croniter authoritative parser (malformed raises), incl the TH-tz AC-10 case (06:00 Asia/Bangkok == 23:00 UTC prev day). Suite 2261/7; ruff+mypy clean. Phase A now has trigger-lift[s106] + descriptor + state + parser — 3 of 4 Phase-A steps done."
 current_actor: code
-blocked_on: "Nothing blocking — PLAN-0055 Ready (Step 1 merged); main green + PROTECTED; 0 open PRs. loop-dispatcher DISABLED; MS-S1 idle."
-next_action: "S1 Step 2 (PLAN-0055 Phase A) — the schedule descriptor on `Procedure` (extra='forbid', cron + IANA tz per SD-P1) + a dedicated schedule-state table + Alembic migration (SD-P5); then Step 3 (croniter + next-fire calc) / Step 4 (pure fire-due-schedules fn) / Phase B (long-lived daemon). Deferred: v2 login / GET /whoami / multi-operator RBAC."
-head_commit: 255ca96
-recent_commits: [255ca96, d7094bb, 3bec1f0, a1058c4, c9c0698, 5f3eec3, 4b7f472, fe36e36, 4f49e29, 4ab67ca]
+blocked_on: "Nothing blocking — PLAN-0055 Phase A Steps 1/2/3 merged (3 of 4); main green + PROTECTED; 0 open PRs. loop-dispatcher DISABLED; MS-S1 idle."
+next_action: "S1 Step 4 (PLAN-0055 Phase A) — the pure 'fire due schedules' function (injected clock): compute due set, skip-if-in-flight (SD-P3) + skip-with-audit for missed (SD-P2), call run_procedure_persisted(..., service_principal=<declared SP>) once per due (SD-3), stamp trigger_context (SD-P6), update last_fired/next_fire; AC-4/5/6/9. Then Phase B (Steps 5–8: long-lived daemon, restart recovery, missed-round LOUDness + Telegram, optional procurement demo). Deferred: v2 login / GET /whoami / multi-operator RBAC."
+head_commit: ef91ea7
+recent_commits: [ef91ea7, 3938191, 255ca96, d7094bb, 3bec1f0, a1058c4, c9c0698, 5f3eec3, 4b7f472, fe36e36]
 ---
 
 # vero-lite — Project Status
@@ -18,69 +18,66 @@ recent_commits: [255ca96, d7094bb, 3bec1f0, a1058c4, c9c0698, 5f3eec3, 4b7f472, 
 
 ## Current Focus
 
-> **Session 106, 2026-07-07 (head_commit `c9c0698` → `255ca96`) —
-> PLAN-0055 Ready (S1 schedule-trigger scheduler BUILD) + S1 Step 1
-> merged + `main` branch-protection ARMED.** Four merged PRs
-> (#602/#603/#604) + one repo-config. `plan-drafter`-authored where
-> gated, Code R2 + committed via PR (ADR-009 D1/D2). **Repo-config —
-> branch protection (NOT a commit).** `main` was found **completely
-> unprotected** (no classic protection, no rulesets, no rules —
-> contradicting CLAUDE.md §7's "protected, no direct push"). Applied
-> (Cray-authorized, §8 go): **require-PR + require the `gate` status
-> check + `enforce_admins` + no force-push / no branch-deletion** —
-> closes the **merged-red hole** that let #595's RF-1 regression stay red
-> through #596–#598 (the s105 finding). Every PR this session merged
-> through the now-required `gate`. **#602 — PLAN-0055 (S1 schedule-trigger
-> scheduler BUILD plan).** `plan-drafter`-authored (`a1058c4` add →
-> `3bec1f0` Draft→Ready), Code R2 + committed; merge `22daea3`. Cray
-> ratified **all six SD-P1..P6 as-recommended:** SD-P1 cron/tz =
-> `Asia/Bangkok` + IANA tz per schedule · SD-P2 missed-run =
-> skip-with-audit · SD-P3 overlap = skip-if-in-flight · SD-P4 delivery =
-> at-most-once · SD-P5 dedicated schedule-state table + restart recovery ·
-> SD-P6 `trigger_context` stamp → Status **Ready for execution**. Phased:
-> **Phase A** (offline-testable — lift block + descriptor + state table +
-> `croniter` + pure fire-fn), **Phase B** (long-lived daemon). Implements
-> Accepted ADR-0028. **#603 — lessons #0028 + #0029** (`d7094bb`,
-> Code-authored advisory Tier-2, un-gated). #0028 = omit-when-None to
-> evolve an append-only hash-chained audit log without an epoch boundary
-> (grounds `services/db/audit_log.py::compute_row_hash`, from the s104
-> ADR-016 S2 arc). #0029 = a named-subset "green" is not a full-suite
-> green + make CI required (the s105 #600 root-cause: s104's "52 db + 489
-> proc green" excluded `tests/api/` where the #595 RF-1 regression lived).
-> **#604 — S1 Step 1 (PLAN-0055 Phase A)** (`feat(procedures)`,
-> `255ca96`; merge `ec5822b`). `validate_runnable` now admits
-> `Trigger.SCHEDULE` via an explicit `_RUNNABLE_TRIGGERS` allowlist
-> ({MANUAL, SCHEDULE}) — **every OTHER governance check**
-> (skeleton-reject / step-kind / autonomy-ceiling / handler-allowlist /
-> linear-input) **unchanged and still fires** for a schedule proc (the
-> trigger check sits first, so the lift is surgical). Corrected 4 stale
-> texts (block message + `validate_runnable` docstring in
-> `orchestrator.py`, the `Trigger` enum docstring in `spec.py`, a test
-> comment) and **ADR-016 OQ-2 (:1192-1195) marked RESOLVED (ADR-0028)** —
-> a `plan-drafter`-authored erratum (G1-exempt; Code's own Edit was
-> correctly G1-denied), Cray **per-diff-approved verbatim**, Code
-> committed. Tests: `test_schedule_trigger_is_not_runnable` →
-> `test_schedule_trigger_is_runnable` (AC-1) +
-> `test_schedule_trigger_still_enforces_governance` (AC-2). **Full suite
-> 2240 passed / 7 skipped** (DB-backed, local :5442); ruff + mypy clean;
-> AC-1/2/3 met. **Standing:** PLAN-0055 **Ready** (Step 1 merged, Step 2
-> next); `main` **green + PROTECTED**; 0 open PRs; `loop-dispatcher`
-> **DISABLED**; MS-S1 idle; AI-assisted (Claude Code, session 106), no
-> `Co-Authored-By` per §7.
+> **Session 107, 2026-07-07 (head_commit `255ca96` → `ef91ea7`) —
+> PLAN-0055 Phase A S1 Step 2 + Step 3 (the persisted schedule surfaces +
+> the `croniter` next-fire parser).** Two merged PRs (#606/#607), both
+> **un-gated Code `feat` PRs** executed directly (PLAN-0055 already Ready;
+> §6 "Steps 2–8 execute directly, no drafter"), both green through the
+> now-required `gate`; no ADR/PLAN edit. **#606 — S1 Step 2 (Phase A;
+> SD-P1 + SD-P5)** (feat `3938191`, merge `ed87153`). Two persisted
+> schedule surfaces: **(1)** a typed `Schedule` descriptor (cron +
+> per-schedule **IANA `timezone`**, `extra="forbid"`) on `Procedure`,
+> **present IFF `trigger==schedule`** — a **symmetric fail-loud-at-load
+> invariant** (a `manual` proc carrying a `schedule` is rejected; a
+> `schedule` proc missing one is rejected). The tz is validated against the
+> system tz database at load; the cron is checked non-blank only (croniter
+> is the Step-3 authoritative parser). **Code decision, Cray veto-open:**
+> required-iff-schedule (not optional-if-present), house "fail loudly at
+> load" style; blast radius **test-only** (no vertical YAML uses
+> `schedule`). **(2)** a small dedicated **`schedule_states`** table (new
+> ORM `services/engine/procedures/schedules.py` + **Alembic 0011**) holding
+> the persisted schedules + `last_fired` + `next_fire` the daemon recovers
+> on restart; `(vertical, procedure_id)` unique. **Additive**; registered
+> on `Base.metadata` via `alembic/env.py`; **outside the energy DDL↔ORM
+> parity guard** (cross-vertical engine infra, like `pipeline_runs`). Tests:
+> descriptor units + DB-backed 0011 migration/ORM round-trip +
+> unique-constraint. **Full suite 2254 passed / 7 skipped. #607 — S1 Step 3
+> (Phase A; SD-2 + AC-10)** (feat `ef91ea7`, merge `e58e7af`).
+> `croniter>=2.0.0` as a **production** dep (resolved **6.2.3**) +
+> `types-croniter` in dev **and** in the pre-commit mypy hook's
+> `additional_dependencies`; `uv.lock` updated (`uv sync --extra dev`
+> resolves). A pure DB-free helper
+> `services/engine/procedures/cron.py::next_fire(cron, tz, after)` — cron
+> fields are **wall-clock in the per-schedule IANA tz** (SD-P1); `after` is
+> normalised into tz (aware converted, naive read local); returns
+> tz-aware in tz; walks **exclusive of `after`** (croniter `get_next`,
+> never re-fires the just-fired slot); croniter is the authoritative parser
+> (malformed cron raises `CroniterError`). **NOT** celery-beat (ADR-0028
+> chose a separate croniter daemon). Tests: offline
+> `tests/services/engine/procedures/test_cron.py` incl the **TH-tz AC-10
+> case** (06:00 `Asia/Bangkok` == 23:00 UTC prev day, no DST), exclusive-of-
+> `after`, same-cron-different-tz, naive-after, malformed-raises. **Full
+> suite 2261 passed / 7 skipped**; ruff + mypy clean. Cray typed this
+> session: "re-rank not needed / ลุย Step 3 ต่อเลย" (proceed Step 2→3) +
+> "reconcile STATUS ก่อน" (Stop-hook "proceed" nudges = harness, kept
+> distinct). **Standing:** PLAN-0055 **Phase A 3 of 4 done** (Steps 1/2/3
+> merged, **Step 4 next**); `main` **green + PROTECTED**; 0 open PRs;
+> `loop-dispatcher` **DISABLED**; MS-S1 idle; AI-assisted (Claude Code,
+> session 107), no `Co-Authored-By` per §7.
 
-> _Rotation note (session-106 PLAN-0055 + S1-Step-1 + branch-protection
-> reconcile, 2026-07-07): to hold STATUS under the **R1 64 KB hard
-> ceiling** (R1 overrides the R2 4-session window — the s95–s105 precedent
-> = a narrowed 1-block CF window), the **Session 105 `c9c0698`** CF block
-> (ADR-0028 Accepted + `main` greened, #599/#600) was rotated verbatim to
+> _Rotation note (session-107 PLAN-0055 Phase A Step 2 + Step 3 reconcile,
+> 2026-07-07): to hold STATUS under the **R1 64 KB hard ceiling** (R1
+> overrides the R2 4-session window — the s95–s106 precedent = a narrowed
+> 1-block CF window), the **Session 106 `255ca96`** CF block (PLAN-0055
+> Ready + S1 Step 1 + branch-protection ARMED, #602/#603/#604) was rotated
+> verbatim to
 > [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md)
-> (it is covered by the top two Recent-Decisions rows). Resulting
-> Current-Focus window = {Session 106 `255ca96`}; 3 new RD rows added
-> (branch-protection · PLAN-0055 Ready · S1 Step 1 + lessons) so the 3
-> oldest — 2026-07-05 PLAN-0051 [session 99] + 2026-07-04 PLAN-0050
-> [session 98] + 2026-07-04 PLAN-0048/0049/ADR-0027 [sessions 96/97] —
-> rotated to the same archive to hold the RD table at 10. Per the
-> STATUS.md Rotation Policy (R1/R2/R4)._
+> (it is covered by the S1-Step-1 / lessons / PLAN-0055 Recent-Decisions
+> rows). Resulting Current-Focus window = {Session 107 `ef91ea7`}; 1 new
+> combined RD row added (S1 Step 2 + Step 3) so the oldest — the 2026-07-05
+> Wave-3 [Cowork content-authoring track, session 100] row — rotated to the same archive
+> to hold the RD table at 10. Per the STATUS.md Rotation Policy
+> (R1/R2/R4)._
 
 > _Prior per-reconcile rotation notes (sessions 94–102) pruned 2026-07-06
 > (s103) as superseded procedural meta-records — the CF blocks/RD rows they
@@ -111,6 +108,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-07 | **S1 Step 2 + Step 3 BUILT (PLAN-0055 Phase A) — the persisted schedule surfaces + the `croniter` next-fire parser (session 107; #606 + #607)** — two un-gated Code `feat` PRs executed directly (PLAN-0055 already Ready; §6 "Steps 2–8 execute directly"), both green through the required `gate`. **Step 2 (#606, SD-P1 + SD-P5):** (1) a typed `Schedule` descriptor (cron + per-schedule IANA `timezone`, `extra="forbid"`) on `Procedure`, **present IFF `trigger==schedule`** — a symmetric fail-loud-at-load invariant; tz validated vs the system tz db, cron non-blank only (croniter is the Step-3 parser) [**Code decision, Cray veto-open:** required-iff-schedule, house fail-loud style; blast radius test-only]; (2) a dedicated `schedule_states` table (new ORM `schedules.py` + Alembic 0011, `(vertical, procedure_id)` unique, holds `last_fired`/`next_fire` for restart recovery; additive, **outside the energy parity guard**). **Full suite 2254 passed / 7 skipped.** **Step 3 (#607, SD-2 + AC-10):** `croniter>=2.0.0` prod dep (6.2.3) + `types-croniter` (dev + mypy hook) + `uv.lock`; a DB-free `cron.py::next_fire(cron, tz, after)` — wall-clock in per-schedule IANA tz (SD-P1), exclusive of `after` (never re-fire the just-fired slot), croniter authoritative parser (malformed raises `CroniterError`); tests incl the TH-tz AC-10 case (06:00 `Asia/Bangkok` == 23:00 UTC prev day). **Full suite 2261 passed / 7 skipped**; ruff + mypy clean. Phase A now = trigger-lift[s106] + descriptor + state + parser (3 of 4 steps) | `ef91ea7` (#607 Step 3 feat) / `e58e7af` (#607 merge) / `3938191` (#606 Step 2 feat) / `ed87153` (#606 merge) / `services/engine/procedures/{spec.py (`Schedule` + present-iff-schedule invariant), schedules.py (`schedule_states` ORM), cron.py (`next_fire`)}` + `alembic/versions/0011_schedule_states.py` + `alembic/env.py` + `pyproject.toml`/`uv.lock` (`croniter` + `types-croniter`) + `tests/services/engine/procedures/{test_spec.py,test_orchestrator.py,test_cron.py}` + `tests/services/db/test_schedule_state.py` |
 | 2026-07-07 | **S1 Step 1 BUILT (PLAN-0055 Phase A) — `SCHEDULE` trigger admitted to `validate_runnable`, all other governance intact (session 106; #604)** — `feat(procedures)`: `validate_runnable` gains an explicit `_RUNNABLE_TRIGGERS` allowlist ({MANUAL, SCHEDULE}); the trigger check sits first so **every OTHER governance check** (skeleton-reject / step-kind / autonomy-ceiling / handler-allowlist / linear-input) is **unchanged and still fires** for a schedule proc (surgical lift). Corrected 4 stale texts (block message + `validate_runnable` docstring in `orchestrator.py`, the `Trigger` enum docstring in `spec.py`, a test comment) + **ADR-016 OQ-2 (:1192-1195) marked RESOLVED (ADR-0028)** — a `plan-drafter`-authored erratum (G1-exempt; Code's own Edit correctly G1-denied), Cray **per-diff approved verbatim**. AC-1 (`test_schedule_trigger_is_runnable`) + AC-2 (`test_schedule_trigger_still_enforces_governance`). **Full suite 2240 passed / 7 skipped**; ruff + mypy clean | `255ca96` (#604 feat) / `ec5822b` (#604 merge) / `services/engine/procedures/orchestrator.py` (`_RUNNABLE_TRIGGERS`) + `services/engine/procedures/spec.py` (`Trigger` docstring) + `docs/adr/0016-*.md` (OQ-2 RESOLVED) |
 | 2026-07-07 | **Lessons #0028 + #0029 landed (session 106; #603)** — Code-authored advisory Tier-2 (un-gated). **#0028** = omit-when-None to evolve an append-only hash-chained audit log without an epoch boundary (grounds `services/db/audit_log.py::compute_row_hash`, from the s104 ADR-016 S2 arc). **#0029** = a named-subset "green" is not a full-suite green + make CI required (the s105 #600 root-cause: s104's "52 db + 489 proc green" excluded `tests/api/` where the #595 RF-1 regression lived) | `d7094bb` (#603) / `docs/lessons/0028-*.md` + `docs/lessons/0029-*.md` |
 | 2026-07-07 | **PLAN-0055 Ready + `main` branch-protection ARMED (session 106; #602 + repo-config)** — **(1) Repo-config (NOT a commit):** `main` was found **completely unprotected** (no classic protection, no rulesets, no rules — contradicting CLAUDE.md §7). Applied Cray-authorized (§8 go): **require-PR + require the `gate` status check + `enforce_admins` + no force-push / no branch-deletion** — closes the merged-red hole that let #595's RF-1 regression stay red through #596–#598 (s105 finding). Every PR this session merged through the now-required `gate`. **(2) PLAN-0055 (S1 schedule-trigger scheduler BUILD) Ready (#602 merge `22daea3`):** `plan-drafter`-authored (`a1058c4` add → `3bec1f0` Draft→Ready), Code R2 + committed. Cray ratified **all six SD-P1..P6 as-rec:** SD-P1 cron/tz = `Asia/Bangkok` + IANA tz per schedule · SD-P2 skip-missed-with-audit · SD-P3 skip-if-in-flight · SD-P4 at-most-once · SD-P5 dedicated schedule-state table + restart recovery · SD-P6 `trigger_context` stamp → Ready for execution. Phased: Phase A (offline-testable) + Phase B (long-lived daemon). Implements Accepted ADR-0028 | `22daea3` (#602 merge) / `3bec1f0` (Draft→Ready) / `a1058c4` (PLAN add) / `docs/plans/0055-*.md` + GitHub branch-protection on `main` |
@@ -120,7 +118,6 @@ below, and git history.
 | 2026-07-06 | **Control-leg v1 COMPLETE (PLAN-0054) + CSP follow-up — OCT Monitor flips watch-only→watch+OPERATE (session 103; #584–#588)** — a named, authenticated human approves/rejects a `waiting_human` gate + cancels a parked run from the UI; SoD + tamper-evident audit actor server-side (ADR-016 S2 RF-1 / PLAN-0053). `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2); 2 spawned specialists (frontend + app-security) verdict **secure-for-pilot, no real vulns**; preview-verified E2E. **#587 (Steps 2–5+7, merge `488ed25`):** NEW `assets/auth.js` (SD-A) single frontend credential seam (login/authHeader/logout; pilot key in sessionStorage; Bearer on operate POSTs only; optimistic login — display identity cosmetic, real approver = key's server-resolved `person_id`) + `view-monitor.js` approve/reject (submit gated until all decided) + cancel (`waiting_human` only, SD-B) + 403 (RF-1/SoD)/409 (stale reload-retry) inline + scroll/`[object Object]` fixes + "approved by <person>" badge + `scripts/seed_operate_demo.py`. **#586 (`8a6e527`):** procurement operate-demo seed (`seed_operate_waiting_human_run`, `req-planner` SoD requester, JSONB-safe; `OCT_DEMO_SEED_OPERATE` lifespan auto-seed). **#585 (`16d218f`):** `register_procurement_procedure_executors` at startup (procurement-gated) → closes the resolve-endpoint 409 "no executor factory"; deterministic advisory stub (MS-S1-independent). AC-10. **#584 (`3a94012`):** `POST /runs/{id}/cancel` (RF-1 403, `waiting_human`-only→409 SD-B, `run_cancelled` audit; first `PipelineRunStatus.CANCELLED` writer). **#588 (`f98de81`):** CSP defense-in-depth (`_StaticFilesWithCSP` on static serving, NOT the JSON API/docs; 0 CSP violations). **Suite 2223 passed / 7 skipped**; ruff + mypy clean; MS-S1 not exercised. Control-leg v1 COMPLETE (no active PLAN). `loop-dispatcher` DISABLED; MS-S1 idle | `488ed25` (#587 merge) / `f98de81` (#588 CSP) / `8a6e527` (#586 seed) / `16d218f` (#585 executor factory) / `3a94012` (#584 cancel) / `services/api/static/assets/{auth.js,view-monitor.js}` + `services/api/routers/runs.py` (`POST /runs/{id}/cancel`) + `services/api/main.py` (`_StaticFilesWithCSP` + `register_procurement_procedure_executors` + `OCT_DEMO_SEED_OPERATE`) + `scripts/seed_operate_demo.py` + `docs/plans/done/0054-control-leg-v1.md` |
 | 2026-07-06 | **ADR-016 S2 service-principal track — amendment RATIFIED + PLAN-0053 Ready + S2 Phase A BUILT + PLAN-0054 Control-leg v1 Ready (session 102; #579–#582)** — `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2). **(1) S2 amendment Proposed→Accepted (#579 `faed8d4`):** OQ-1 = vertical `service_principals:` registry · OQ-2 = separate `RunContext.service_principal` · OQ-3 = audit-only `actor_kind`; SP-1 verbatim (service principal = requester/actor ONLY, never approver), RF-1..3 locked. **(2) PLAN-0053 Ready (#580 merge `9b5065d`):** S2 build, SD-1 = SPLIT Phase-A-first, SD-2/SD-3 → Phase B. **(3) S2 Phase A BUILT (#581 merge `1937c8c`):** RF-1 gate-approver enforced at the resolve **endpoint** on `auth.person_id` → 403 (placement refined library→endpoint per a Cray-ratified SD; authored-Person SoD + service-principal library rejection = Phase B) + `actor_kind:"human"` audit (OQ-3) + never-null-actor-on-resume (`resume_run` threads the principal; `run_resumed` audit carries the actor). **Full suite 2214 passed / 7 skipped**; ruff + mypy clean. **(4) PLAN-0054 Control-leg v1 Ready (#582 merge `b68beee`):** governed approve/reject/cancel from the OCT Monitor — SD-A login-form over static-key backend (2 v2 seams) · SD-B `waiting_human`-only cancel · SD-C procurement operate-demo reusing the 5 SoD principals · Step 6b deterministic procurement executor factory (MS-S1-independent). `loop-dispatcher` DISABLED; MS-S1 idle | `b68beee` (#582 merge) / `1937c8c` (#581 merge) / `9b5065d` (#580 merge) / `faed8d4` (#579 S2 amendment) / `docs/adr/0016-*.md` (S2 service-principal) + `docs/plans/{0053-adr016-s2-service-principal.md, 0054-control-leg-v1.md}` + `services/api/routers/runs.py` + `services/engine/procedures/persistence.py` (resume_run actor threading) |
 | 2026-07-05 | **Wave-4 (ADR-016 D7 Phase-3 "OCT Monitor") — PLAN-0052 Draft→Ready + v1 read-only Monitor BUILT + ADR-016 service-principal amendment PROPOSED (session 101; #574–#577; parallel track, Cray-directed)** — `plan-drafter`-authored, Code R2-verified + committed (ADR-009 D1/D2). **(1) PLAN-0052 (#574 `ab4c8f9` → #575 `2cae236`):** ADR-016 Phase-3 monitor v1 read-only; a 4-lens specialist+stakeholder panel (read-only `explore-research`) advised, Code R2-verified every on-disk claim, drafter folded enrichments, Cray ratified S1–S5 as-rec → Draft→Ready. **(2) v1 Monitor BUILT (#577 `febdf7e`):** `GET /runs` (list + `waiting_human` count + step-progress) + `GET /runs/{run_id}` (ordered steps + per-step trace/audit/duration + gate & proposals READ-ONLY) in `services/api/{models,routers}/runs.py` — reuses `load_run`, no new query layer, no mutation; front-end View H "Monitor" (`view-monitor.js` + `app.js` VIEWS.H) — list + live poll detail, gate panel behind an inert `mode:'read'|'operate'` seam (Control leg wires the shipped `POST /runs/{id}/gate/resolve`, extension-not-rewrite), amber `waiting_human` badge, stable data-testids. **Verified:** new pytest 4 + full suite **2211 passed / 7 skipped**; ruff + mypy clean; AC-8 frozen surfaces (spec.py / ADR-007 envelope / ontology) UNTOUCHED; browser-verified end-to-end. **(3) ADR-016 D2+D3 amendment PROPOSED (#576 `8570c1c`):** typed service-principal for non-human (`schedule`) triggers (SD-S2) — a requester/actor ONLY, NEVER an approver (SP-1); SP-2..8 + RF-1..3 (RF-1 = gate-resolve rejects a service/None principal for a `gated` step regardless of the authn toggle). **Proposed — awaiting Cray ratify SP-1..8 + OQ-1 (identity placement, rec Agent-bound) / OQ-2 (`RunContext.principal` union-vs-separate, rec separate) / OQ-3 (`actor_kind` home, rec audit-only); S2-before-S1** (scheduled run has no human actor → PDPA gap). `loop-dispatcher` DISABLED; MS-S1 not exercised (monitor is DB-only/offline) | `b4d312c` (#576 merge) / `38c277b` (#577 merge) / `febdf7e` (#577 feat) / `8570c1c` (#576 amendment) / `2cae236` (#575 Draft→Ready) / `ab4c8f9` (#574 draft) / `services/api/{models,routers}/runs.py` + `services/api/static/assets/view-monitor.js` + `services/api/static/assets/app.js` + `docs/adr/0016-*.md` (D2+D3 service-principal) + `docs/plans/0052-adr016-phase3-oct-monitor.md` |
-| 2026-07-05 | **Wave-3 (Cowork content-authoring track) COMPLETE (session 100)** — two Tier-0 deliverables, Cowork-drafted (ADR-009 D1) → Code R2 + committed (ADR-009 D2); **no new ADR/PLAN**. **(1) partner-intake-form v2→v3 (PR #572 `5ca1c18`)** — 11 `[v3]` additions surfaced by the two partner-sim mapping rehearsals, folded into the sections they extend (B:1, C:3, F:1, G:1, H:5 = 11 = 7 run-1 §5 items 1–7 + 4 run-2 §6 items 8–11), each carrying a `Vn` ID traceable 1:1 to its rehearsal item; no v2 content removed; questions 1–17 unchanged; a `docs/conventions/` edit — **NOT** G1/G2-gated. **(2) Wave-3 GTM ammo pack** — 4 evidence pieces (residency "compute never leaves" · Thai AI Act assistive-only → out of the high-risk-AI registration bucket · Gartner "60% of agentic analytics projects relying solely on MCP will fail by 2028" · governed-refusal vs. confident-wrong, grounded on the shipped `_validate_query` seam) layered onto the box4 ROI-spine + b3 moat narrative; a **gitignored confidential strategy note** (`docs/strategy/private/`) — **NOT committed** (same convention as box4/b3). **Code R2:** verified the 11-count + no-question-loss vs the v2 diff; verified ammo-(d)'s `_validate_query` seam (`services/engine/nl_query.py:428`/`:534`); corrected one provenance citation typo (V2 run-1 §5 #1 → #2). The Stop-hook classifier misrouted the dispatch to an ADR draft; Code overrode it (content authoring, not governance). `loop-dispatcher` DISABLED; MS-S1 cold (offline) | `05c12c2` (#572 merge) / `5ca1c18` (partner-intake-form v2→v3) / `docs/conventions/partner-intake-form.md` + `docs/strategy/private/` (Wave-3 GTM ammo pack, gitignored — NOT committed) |
 
 ## In-Flight Discussions
 
