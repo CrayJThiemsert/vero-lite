@@ -253,3 +253,116 @@ def test_schedule_missed_message_carries_no_pii() -> None:
     assert "procurement:reorder" in msg
     for forbidden in ("shipment", "asset-", "select ", "operator question", "person"):
         assert forbidden.lower() not in msg.lower()
+
+
+# --- notify_event_fire_failed (PLAN-0056 Step 7 / AC-10) ------------------------------------
+
+
+async def test_event_fire_failed_sends_when_armed(monkeypatch: pytest.MonkeyPatch) -> None:
+    _arm(monkeypatch)
+    captured: dict[str, Any] = {}
+    sent = await telegram.notify_event_fire_failed(
+        procedure_id="event_emergency_sourcing_round",
+        event_kind="asset_failure",
+        transport=_capturing_transport(captured),
+        now=1000.0,
+    )
+    assert sent is True
+    assert "/botTESTTOKEN/sendMessage" in captured["url"]
+    assert captured["body"]["chat_id"] == "999"
+    assert "FAILED to fire" in captured["body"]["text"]
+    assert "asset_failure" in captured["body"]["text"]
+
+
+async def test_event_fire_failed_ignores_llm_backend(monkeypatch: pytest.MonkeyPatch) -> None:
+    """No llm_backend condition — a dropped/failed event fire is an ops event, so it fires even
+    when the LLM backend is hosted (like notify_schedule_missed, unlike notify_llm_unreachable)."""
+    _arm(monkeypatch)
+    monkeypatch.setattr(settings, "llm_backend", "hosted")
+    sent = await telegram.notify_event_fire_failed(
+        procedure_id="p", event_kind="k", transport=_capturing_transport({}), now=1000.0
+    )
+    assert sent is True
+
+
+async def test_event_fire_failed_noop_when_flag_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    _arm(monkeypatch)
+    monkeypatch.setattr(settings, "telegram_notify_enabled", False)
+    captured: dict[str, Any] = {}
+    sent = await telegram.notify_event_fire_failed(
+        procedure_id="p", event_kind="k", transport=_capturing_transport(captured), now=1000.0
+    )
+    assert sent is False
+    assert captured == {}
+
+
+async def test_event_fire_failed_noop_when_env_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    _arm(monkeypatch)
+    monkeypatch.setattr(settings, "telegram_chat_id", "")
+    sent = await telegram.notify_event_fire_failed(
+        procedure_id="p", event_kind="k", transport=_capturing_transport({}), now=1000.0
+    )
+    assert sent is False
+
+
+async def test_event_fire_failed_cooldown_is_independent(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A separate cooldown anchor — a schedule-missed (or MS-S1) alert must not debounce an
+    event-fire-failed alert at the same instant, and the event alert's own anchor debounces its
+    second send inside the window."""
+    _arm(monkeypatch)
+    count = {"n": 0}
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        count["n"] += 1
+        return httpx.Response(200, json={"ok": True})
+
+    transport = httpx.MockTransport(handler)
+    # a schedule-missed alert at t=1000 must NOT block the first event-fire alert at that instant.
+    assert (
+        await telegram.notify_schedule_missed(
+            schedule_id="s", scheduled_for="t", transport=transport, now=1000.0
+        )
+        is True
+    )
+    assert (
+        await telegram.notify_event_fire_failed(
+            procedure_id="p", event_kind="k", transport=transport, now=1000.0
+        )
+        is True
+    )
+    # the event alert's OWN anchor debounces a second one inside the window.
+    assert (
+        await telegram.notify_event_fire_failed(
+            procedure_id="p", event_kind="k", transport=transport, now=1100.0
+        )
+        is False
+    )
+    assert count["n"] == 2
+
+
+async def test_event_fire_failed_never_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    _arm(monkeypatch)
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("telegram unreachable")
+
+    sent = await telegram.notify_event_fire_failed(
+        procedure_id="p", event_kind="k", transport=httpx.MockTransport(handler), now=1000.0
+    )
+    assert sent is False  # swallowed, no exception escapes
+
+
+def test_event_fire_failed_message_carries_no_pii() -> None:
+    msg = telegram.build_event_fire_failed_message(
+        procedure_id="event_emergency_sourcing_round", event_kind="asset_failure"
+    )
+    assert "FAILED to fire" in msg
+    assert "asset_failure" in msg
+    for forbidden in ("shipment", "select ", "operator question", "person", "pump-7"):
+        assert forbidden.lower() not in msg.lower()
+
+
+def test_event_fire_failed_message_handles_unmapped_procedure() -> None:
+    msg = telegram.build_event_fire_failed_message(procedure_id=None, event_kind="asset_failure")
+    assert "no mapped procedure" in msg
+    assert "asset_failure" in msg

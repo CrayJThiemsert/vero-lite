@@ -19,6 +19,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from services.api.routers import actions
+from services.db.audit_log import AuditLog
 from services.db.base import Base
 from services.engine.actions import AuditMetadata, EntityRef, RecommendedAction
 from services.engine.procedures.event_bridge import EventFireResult
@@ -173,6 +174,13 @@ def _clear_store() -> AsyncIterator[None]:
     actions.reset_action_store()
 
 
+async def _audit_rows(engine: AsyncEngine, action: str) -> list[AuditLog]:
+    maker = async_sessionmaker(engine, expire_on_commit=False)
+    async with maker() as s:
+        rows = await s.execute(sa.select(AuditLog).where(AuditLog.action == action))
+        return list(rows.scalars().all())
+
+
 # --- _load_event_bridge -----------------------------------------------------------------------
 
 
@@ -217,17 +225,53 @@ async def test_load_event_bridge_event_vertical_returns_resolver(
 # --- _fire_event_for_record -------------------------------------------------------------------
 
 
-async def test_fire_event_for_record_unmapped_kind_returns_none(
-    monkeypatch: pytest.MonkeyPatch,
+async def test_fire_event_for_record_unmapped_kind_is_loud(
+    db_engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # An actionable recommendation whose suggested_handler maps to no event procedure — the
-    # resolver raises EventBridgeError, which Step 6 swallows (Step 7 makes it LOUD). No DB needed:
-    # the raise precedes the session open.
+    # AC-10: an actionable recommendation whose suggested_handler maps to no event procedure is
+    # LOUD, not a silent drop — the resolver raises EventBridgeError, which Step 7 turns into an
+    # event_fire_missed audit row (+ a best-effort Telegram alert, gated off here). Returns None so
+    # the read path never breaks.
+    monkeypatch.setattr(
+        actions, "async_session", async_sessionmaker(db_engine, expire_on_commit=False)
+    )
     monkeypatch.setattr(actions, "load_procedures", lambda v: _event_spec())
     monkeypatch.setattr(actions.registry, "get_procedure_executors", lambda v: _executors)
     resolve = await actions._load_event_bridge("procurement")
     assert resolve is not None
     assert await actions._fire_event_for_record(resolve, _record(handler="not_a_kind")) is None
+
+    rows = await _audit_rows(db_engine, "event_fire_missed")
+    assert len(rows) == 1
+    assert rows[0].payload is not None
+    assert rows[0].payload["event_kind"] == "not_a_kind"
+    assert rows[0].payload["procedure_id"] is None
+
+
+async def test_fire_event_for_record_fire_error_is_loud(
+    db_engine: AsyncEngine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # AC-10: a kind that MAPS but whose governed fire errors mid-flight → an event_fire_failed
+    # audit row (never a crash into the read path).
+    monkeypatch.setattr(
+        actions, "async_session", async_sessionmaker(db_engine, expire_on_commit=False)
+    )
+    monkeypatch.setattr(actions, "load_procedures", lambda v: _event_spec())
+    monkeypatch.setattr(actions.registry, "get_procedure_executors", lambda v: _executors)
+
+    async def _boom(session: object, request: object, *, now: object) -> None:
+        raise RuntimeError("fire exploded")
+
+    monkeypatch.setattr(actions, "fire_event", _boom)
+    resolve = await actions._load_event_bridge("procurement")
+    assert resolve is not None
+    assert await actions._fire_event_for_record(resolve, _record()) is None
+
+    rows = await _audit_rows(db_engine, "event_fire_failed")
+    assert len(rows) == 1
+    assert rows[0].payload is not None
+    assert rows[0].payload["procedure_id"] == PROC_ID
+    assert rows[0].payload["event_kind"] == KIND
 
 
 async def test_fire_event_for_record_maps_and_fires(
