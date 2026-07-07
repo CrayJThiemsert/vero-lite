@@ -28,10 +28,11 @@ router = APIRouter(tags=["procedures"])
 # server-side, in one place). Canonical source is
 # docs/conventions/procedure-archetypes.md; this is a read-only derived MIRROR
 # (CLAUDE.md §4 canonical→derived). A 5th vertical extends this map ADDITIVELY —
-# the catalog grows first, the map mirrors it; never the reverse. Six shipped
+# the catalog grows first, the map mirrors it; never the reverse. Seven shipped
 # procedures across the four instrumented verticals (PLAN-0039 fact-pack #1:
 # procurement ships two manual; energy / supply_chain / aquaculture one each) plus
-# the PLAN-0055 Step 8 schedule-triggered AT-2 variant (procurement).
+# the PLAN-0055 Step 8 schedule-triggered AT-2 variant and the PLAN-0056 Step 8
+# event-triggered AT-2 variant (both procurement).
 PROCEDURE_ARCHETYPES: dict[str, str] = {
     "substation_health_sweep": "AT-1",  # energy — anomaly→action
     "cold_chain_excursion_sweep": "AT-1",  # supply_chain — anomaly→action
@@ -39,11 +40,12 @@ PROCEDURE_ARCHETYPES: dict[str, str] = {
     "emergency_sourcing_round": "AT-2",  # procurement — request→approve→fulfill (hero)
     "low_stock_reorder_round": "AT-3",  # procurement — monitor→reorder (calm-path)
     "scheduled_emergency_sourcing_round": "AT-2",  # procurement — AT-2 on a nightly clock (S1)
+    "event_emergency_sourcing_round": "AT-2",  # procurement — AT-2 on an asset-failure event
 }
 
 # A procedure absent from the catalog map renders with this sentinel rather than
 # failing the read — surfacing "this shipped without a catalogued archetype"
-# instead of a 500 (defensive; all five shipped procedures are mapped today).
+# instead of a 500 (defensive; all seven shipped procedures are mapped today).
 _UNCATALOGUED = "uncatalogued"
 
 

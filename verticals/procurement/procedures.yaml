@@ -553,3 +553,210 @@ procedures:
         required_roles:
           intake: requester
           approve: approver
+
+  # --- PLAN-0056 Step 8 (ADR-0029 event-trigger bridge) — the EVENT-triggered variant ----------
+  #
+  # The SAME governed emergency-sourcing beat as `emergency_sourcing_round`, but fired
+  # AUTOMATICALLY when the OCT recommender detects an actionable asset-failure condition (ADR-0029
+  # event bridge) — instead of by a human (manual) or a nightly clock (scheduled). When
+  # `event_bridge_enabled` is on, the recommender loop (services/api/routers/actions.py
+  # `_populate_store`) FEEDS the actionable detection INTO the governed engine: build_event_resolver
+  # maps the event -> this procedure (by `event_kind`) and fire_event drives run_procedure_persisted
+  # as the declared `svc-buyer` service principal (run_started audit -> actor_kind:"service", SP-4).
+  # It runs the auto steps (intake -> judge -> source -> compliance) and PARKS at the `approve` DOA
+  # gate: RF-3 forbids a service actor from approving, so a HUMAN purchasing manager must resolve it.
+  # NO PO issues until the human acts.
+  #
+  # `event_kind: emergency_source` — matched against the recommender's actionable detection by the
+  # Step-4 resolver. PLAN-0056 Step 6 pinned `event_kind = RecommendedAction.suggested_handler` (the
+  # envelope has NO `action_type`; its action discriminator is the proposed handler). So this
+  # procedure fires when the recommender proposes the `emergency_source` action on a detected asset
+  # failure — feeding that lightweight proposal INTO the full governed sourcing beat instead of the
+  # ActionRecord execute gate. (The live end-to-end path is host-state, CLAUDE.md §8; the offline
+  # DB-backed integration test is the gate.)
+  #
+  # A DISTINCT procedure_id (not a flip of `emergency_sourcing_round`) for the same reasons the
+  # scheduled variant is distinct: (a) `trigger` is a single enum — an `event_trigger` descriptor is
+  # present IFF trigger==event (spec.py), so flipping the manual one would break its manual runs;
+  # (b) SD-P4 skip-if-in-flight keys on procedure_id — a distinct id never collides with a parked
+  # manual `emergency_sourcing_round` run (the OCT operate-demo seed).
+  #
+  # ON BEHALF OF a human (SP-5): fires as `svc-buyer` but acts on behalf of `req-planner` (the
+  # maintenance planner who owns the failure response) via `owning_person_id`. A `doa_tier` gate
+  # REQUIRES a `separation_of_duties` constraint (ADR-0025 D5), and SoD needs a human requester on
+  # `intake`: a fully headless run would record `{intake: None}` and fail CLOSED at the gate
+  # (principal_sod UNRESOLVED_PRINCIPAL). So the event run records `req-planner` as the requester,
+  # and a DISTINCT human — the DOA-tier purchasing manager (`appr-pm`) — must approve. SoD holds
+  # (requester != approver); the service actor can never approve, by construction (RF-3).
+  event_emergency_sourcing_round:
+    title: Emergency Sourcing Round (event-triggered)
+    goal: >-
+      The governed emergency-sourcing round fired AUTOMATICALLY on a detected asset-failure event
+      (ADR-0029 event bridge, on behalf of the maintenance planner): intake the open failure
+      work-orders, judge each item against the deterministic criticality band, source the critical
+      set (on-contract by default, RFQ->AVL only as a logged exception) with the LLM summarising
+      quotes but the SCORED RULE selecting the supplier, check per-criterion compliance which blocks
+      the PO on any fail, then route the compliant set to the tiered-DOA HUMAN approval gate — the
+      automated run proposes, but a distinct human purchasing manager must approve the spend (SoD:
+      requester != approver; the service actor can never approve, RF-3). Write an audit record on
+      approval.
+    run_by: procurement_agent
+    trigger: event
+    event_trigger:
+      event_kind: emergency_source    # = RecommendedAction.suggested_handler (PLAN-0056 Step 6):
+                                      # fires when the recommender proposes emergency_source on a
+                                      # detected asset failure. Unique across the vertical's event
+                                      # procedures (cross-ref validated at load).
+      owning_person_id: req-planner   # SP-5: the human the headless run acts on behalf of (= the
+                                      # SoD requester on `intake`, so a distinct approver governs)
+    steps:
+      - step_id: intake
+        name: Intake the maintenance request
+        description: >-
+          Read the failure work-order(s) and assemble the enriched purchase-requisition set.
+          LLM-assist auto-fills the PR (advisory, editable); it does not decide anything.
+        kind: query
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: "enrich / auto-fill the PR from the work-order (advisory draft)"
+          input: "purchase requisition / CMMS work-order (the failure signal)"
+          output: "enriched PR set"
+      - step_id: judge
+        name: Judge criticality
+        description: >-
+          Tag each requisition's verdict vs the authored criticality band — breach
+          (critical, >= 0.8), watch (high, 0.6-0.8), ok (< 0.6). The breach set is the
+          emergency-sourcing path. Deterministic: no LLM, no confidence input.
+        kind: evaluate
+        threshold: 0.8
+        direction: above
+        watch_margin: 0.2
+        facet:
+          decision_condition: { gate_kind: in_file_band, band_source: in_file }
+          llm_assist: null
+          input: "intake set"
+          output: "per-item criticality verdict {breach=critical, watch=high, ok}"
+          governance: "the verdict is a pure function of the reading + the authored band"
+      - step_id: source
+        name: Source the critical set
+        description: >-
+          Propose an emergency-sourcing action per critical item: on-contract supplier by
+          default; an off-contract RFQ->AVL path only as a logged exception. The LLM summarises
+          quotes; the scored rule selects the supplier.
+        kind: action
+        autonomy: auto
+        handler: emergency_source
+        tiers:
+          canonical: emergency_source
+          acceptable: [request_approval]
+        governance_content:
+          kind: scored_rule
+          criteria:
+            - { name: criticality, weight: "0.5" }
+            - { name: lead_time, weight: "0.3" }
+            - { name: unit_price, weight: "0.2" }
+          default_source: on_contract
+          exception_policy: rfq_avl_logged
+        input:
+          from: judge
+          where:
+            verdict: breach
+        facet:
+          decision_condition:
+            gate_kind: scored_rule
+            note: "on-contract default; RFQ->AVL only as a logged exception"
+          llm_assist: "summarise the candidate quotes (advisory)"
+          input: "judge (the breach/critical subset)"
+          output: "candidate quote(s) per critical item"
+          governance: "SELECTION = a scored RULE, never the LLM (governed != generated)"
+      - step_id: compliance
+        name: Check per-criterion compliance
+        description: >-
+          Evaluate each candidate against the per-criterion compliance rules (AVL approved · tax
+          id valid · cert valid · not sanctioned · single-source justified). Any failed criterion
+          blocks the PO. Deterministic.
+        kind: evaluate
+        governance_content:
+          kind: rule_gate
+          rules:
+            - criterion: avl
+              spec: "supplier.avl_status == approved (or a logged emergency AVL exception)"
+            - criterion: tax
+              spec: "supplier.tax_id present and valid"
+            - criterion: cert
+              spec: "supplier.cert_status == valid"
+            - criterion: sanctions
+              spec: "supplier.sanctions_flag == false"
+            - criterion: single_source
+              spec: "single-source documented and justified"
+        facet:
+          decision_condition:
+            gate_kind: rule_gate
+            note: "per-criterion rule gate — AVL · tax · cert · sanctions · single_source"
+          llm_assist: null
+          input: "source set (the candidate quotes)"
+          output: "per-criterion pass/fail; a non-compliant candidate is blocked"
+          governance: "blocks the PO on ANY failed criterion (hard gate)"
+      - step_id: approve
+        name: Tiered DOA approval (human gate)
+        description: >-
+          Route the compliant set to the human approver at the DOA tier its THB amount demands.
+          The LLM drafts the justification + exec-summary (advisory). The run SUSPENDS at
+          waiting_human; a human approves/rejects a concrete recommendation. The automated
+          service actor can NEVER reach this gate (RF-3) — a human must decide.
+        kind: action
+        autonomy: gated
+        handler: request_approval
+        governance_content:
+          kind: doa_tier
+          currency: THB
+          tiers:
+            - { min_amount: "0", approver_role: "หน.จัดซื้อ" }
+            - { min_amount: "50000", approver_role: "ผจก.จัดซื้อ" }
+            - { min_amount: "500000", approver_role: "ผจก.โรงงาน" }
+            - { min_amount: "2000000", approver_role: "ผอ." }
+          emergency_waiver:
+            relaxes: [three_bid]
+            escalate_to: "ผอ."
+            requires_justification: true
+        input:
+          from: compliance
+          where:
+            compliant: true
+        facet:
+          decision_condition:
+            gate_kind: doa_tier
+            note: "DOA tier band (THB) — escalates the approver above the band"
+          llm_assist: "draft the justification + the approver exec-summary (advisory, editable)"
+          input: "compliance (the compliant subset)"
+          output: "approval decision (human)"
+          governance: "tiered DOA + emergency waiver (escalate, never skip); HUMAN approves (RF-3)"
+      - step_id: audit
+        name: Audit record
+        description: >-
+          Auto audit terminal over the whole run: an LLM-drafted decision summary tying each item
+          to the criticality verdict, the sourcing rule, the compliance criteria, and the approval
+          tier / waiver that governed it.
+        kind: action
+        autonomy: auto
+        handler: echo
+        input:
+          from: judge
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: "draft the decision summary (advisory)"
+          input: "judge (the full run verdict set)"
+          output: "audit record"
+          governance: "ties every row to the control that governed it (traceability)"
+    terminal: audit
+    # Separation of duties (required for a doa_tier procedure, ADR-0025 D5). Same structural +
+    # resolved-principal form as the scheduled/manual hero: the requester (`intake`, recorded as the
+    # event_trigger's owning_person_id `req-planner` at fire time) must not also be the approver
+    # (`approve`). The event run fires as `svc-buyer` ON BEHALF OF `req-planner`, so the run-check
+    # resolves intake->requester->req-planner and approve->approver->(`appr-pm` for the ฿288k tier)
+    # and fails closed if they collapse to one human.
+    separation_of_duties:
+      - distinct_steps: [intake, approve]
+        required_roles:
+          intake: requester
+          approve: approver
