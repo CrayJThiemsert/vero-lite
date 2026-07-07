@@ -75,11 +75,14 @@ class OnFailure(StrEnum):
 
 
 class Trigger(StrEnum):
-    """How a procedure run starts. ``manual`` and ``schedule`` are both runnable
-    (ADR-0028 S1 — the ``schedule`` scheduler is built by PLAN-0055)."""
+    """How a procedure run starts. ``manual``, ``schedule`` and ``event`` are all
+    runnable — ``schedule`` (clock-initiated) via ADR-0028 S1 / PLAN-0055, and
+    ``event`` (an OCT anomaly/Alert) via ADR-0029 / PLAN-0056 (the event-trigger
+    bridge). Each non-manual trigger's firing mechanism is built by its own PLAN."""
 
     MANUAL = "manual"
     SCHEDULE = "schedule"
+    EVENT = "event"
 
 
 class Schedule(BaseModel):
