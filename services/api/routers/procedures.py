@@ -28,15 +28,17 @@ router = APIRouter(tags=["procedures"])
 # server-side, in one place). Canonical source is
 # docs/conventions/procedure-archetypes.md; this is a read-only derived MIRROR
 # (CLAUDE.md §4 canonical→derived). A 5th vertical extends this map ADDITIVELY —
-# the catalog grows first, the map mirrors it; never the reverse. The five
-# shipped procedures across the four instrumented verticals (PLAN-0039 fact-pack
-# #1: procurement ships two; energy / supply_chain / aquaculture one each).
+# the catalog grows first, the map mirrors it; never the reverse. Six shipped
+# procedures across the four instrumented verticals (PLAN-0039 fact-pack #1:
+# procurement ships two manual; energy / supply_chain / aquaculture one each) plus
+# the PLAN-0055 Step 8 schedule-triggered AT-2 variant (procurement).
 PROCEDURE_ARCHETYPES: dict[str, str] = {
     "substation_health_sweep": "AT-1",  # energy — anomaly→action
     "cold_chain_excursion_sweep": "AT-1",  # supply_chain — anomaly→action
     "morning_pond_health_round": "AT-1b",  # aquaculture — AT-1 + watch + summary
     "emergency_sourcing_round": "AT-2",  # procurement — request→approve→fulfill (hero)
     "low_stock_reorder_round": "AT-3",  # procurement — monitor→reorder (calm-path)
+    "scheduled_emergency_sourcing_round": "AT-2",  # procurement — AT-2 on a nightly clock (S1)
 }
 
 # A procedure absent from the catalog map renders with this sentinel rather than

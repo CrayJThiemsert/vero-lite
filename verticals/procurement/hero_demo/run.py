@@ -417,8 +417,24 @@ async def register_procurement_procedure_executors(
         pass
 
     adapter = adapter or FastenalCsvAdapter()
-    principals = await load_fastenal_principals(adapter)
-    seed = [await _intake_seed(adapter)]
+    # Roster reconciliation (PLAN-0055 Step 8): the S1 scheduler fires the schedule procedure
+    # THROUGH this factory, and its doa_tier executor resolves the tier's approver_role against
+    # `principals` at fire time. Use the SPEC's authored principals (Thai DOA roles: req-planner /
+    # appr-pm / …) — NOT the Fastenal person.csv roster (English roles) — so the ฿288k tier resolves
+    # to `appr-pm` (ผจก.จัดซื้อ), matching the human who resolves the gate AND
+    # seed_operate_waiting_human_run's own roster. The Fastenal CSV still supplies the requisition
+    # DATA via `_intake_seed`; only the SoD/DOA principal roster is the spec's. Harmless to the HTTP
+    # resolve/resume path (its resume runs no doa_tier step; the SoD check there already uses
+    # spec.principals).
+    principals = list(load_procedures(_VERTICAL).principals)
+    # JSONB-safe seed (PLAN-0055 Step 8). The HTTP resolve/resume path never re-runs `intake`
+    # (it resumes a run already seeded past it), so a raw Decimal `unit_price` here was latent.
+    # But the S1 scheduler daemon fires a FRESH run through this factory: `intake` executes live,
+    # `run_procedure_persisted` persists its output, and a raw Decimal fails the JSONB column
+    # (project memory project_procurement_synthetic_events_datetime_jsonb). Sanitising Decimal ->
+    # str is loss-free — the scored_rule re-parses via Decimal(str(...)) (scored_rule.py) — and
+    # mirrors seed_operate_waiting_human_run's own sanitisation.
+    seed = json.loads(json.dumps([await _intake_seed(adapter)], default=str))
 
     def factory() -> dict[StepKind, StepExecutor]:
         # Built fresh per run/resume request (stateful executors never leak across
