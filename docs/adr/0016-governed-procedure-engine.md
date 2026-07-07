@@ -1189,10 +1189,12 @@ implementation spec:
   multi-Agent-per-vertical cover it permanently? (Palantir's own per-agent vs
   per-block granularity is only partially documented — research §"Concern 1"
   caveat; moot for us at one local pin.) Deferred.
-- **OQ-2 (`schedule` reuse).** Does the `schedule` trigger reuse the existing
-  PLAN-0010 autonomy / recovery loop machinery, or does Phase-1 introduce a
-  separate scheduler? (Phase-1 has only `manual` + `schedule`; event/Alert is
-  the Phase-0 path.) Deferred to PLAN-0019 dispatch.
+- **OQ-2 (`schedule` reuse) — RESOLVED (ADR-0028, Accepted 2026-07-07).** Does the
+  `schedule` trigger reuse the existing PLAN-0010 autonomy / recovery loop
+  machinery, or does Phase-1 introduce a separate scheduler? **Resolved: a
+  separate, purpose-built scheduler** — a long-lived worker/daemon (ADR-0028 SD-1);
+  PLAN-0010 reuse was rejected as a category mismatch. (Phase-1 has only `manual` +
+  `schedule`; event/Alert is the Phase-0 path.) Built by PLAN-0055 (S1).
 - **OQ-3 (multi-agent orchestration shape).** When Phase-4+ adds parallel /
   swarm agents, is delegation a first-class primitive or composed via an
   `action` step that invokes another `Procedure`? (Palantir does not evidence a

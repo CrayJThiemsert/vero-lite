@@ -85,7 +85,7 @@ def test_aquaculture_headline_fan_out_shape() -> None:
     human_task), auto summary over the whole verdict set."""
     spec = load_procedures("aquaculture")
     proc = next(p for p in spec.procedures if p.procedure_id == "morning_pond_health_round")
-    assert proc.trigger is Trigger.MANUAL  # only manual is runnable in Phase 1 (L-1)
+    assert proc.trigger is Trigger.MANUAL  # this example procedure is human-initiated
     assert proc.terminal == "summary"
     by_id = {s.step_id: s for s in proc.steps}
 
