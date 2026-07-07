@@ -150,3 +150,106 @@ def test_message_adds_warm_link_when_base_url_set(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(settings, "oct_public_base_url", "http://192.168.1.50:8096/")
     msg = telegram.build_message(occurred_at="t")
     assert "http://192.168.1.50:8096/warm" in msg
+
+
+# --- notify_schedule_missed (PLAN-0055 Step 7 / AC-8) ---------------------------------------
+
+
+async def test_schedule_missed_sends_when_armed(monkeypatch: pytest.MonkeyPatch) -> None:
+    _arm(monkeypatch)
+    captured: dict[str, Any] = {}
+    sent = await telegram.notify_schedule_missed(
+        schedule_id="procurement:reorder",
+        scheduled_for="2026-07-07T06:00:00+07:00",
+        transport=_capturing_transport(captured),
+        now=1000.0,
+    )
+    assert sent is True
+    assert "/botTESTTOKEN/sendMessage" in captured["url"]
+    assert captured["body"]["chat_id"] == "999"
+    assert "MISSED" in captured["body"]["text"]
+    assert "procurement:reorder" in captured["body"]["text"]
+
+
+async def test_schedule_missed_ignores_llm_backend(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The schedule gate has NO llm_backend condition — a missed round is a clock/ops event,
+    so it fires even when the LLM backend is hosted (unlike notify_llm_unreachable)."""
+    _arm(monkeypatch)
+    monkeypatch.setattr(settings, "llm_backend", "hosted")
+    sent = await telegram.notify_schedule_missed(
+        schedule_id="s", scheduled_for="t", transport=_capturing_transport({}), now=1000.0
+    )
+    assert sent is True
+
+
+async def test_schedule_missed_noop_when_flag_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    _arm(monkeypatch)
+    monkeypatch.setattr(settings, "telegram_notify_enabled", False)
+    captured: dict[str, Any] = {}
+    sent = await telegram.notify_schedule_missed(
+        schedule_id="s", scheduled_for="t", transport=_capturing_transport(captured), now=1000.0
+    )
+    assert sent is False
+    assert captured == {}
+
+
+async def test_schedule_missed_noop_when_env_unset(monkeypatch: pytest.MonkeyPatch) -> None:
+    _arm(monkeypatch)
+    monkeypatch.setattr(settings, "telegram_chat_id", "")
+    sent = await telegram.notify_schedule_missed(
+        schedule_id="s", scheduled_for="t", transport=_capturing_transport({}), now=1000.0
+    )
+    assert sent is False
+
+
+async def test_schedule_missed_cooldown_is_independent_of_llm_anchor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The two notifiers hold SEPARATE cooldown anchors — an MS-S1 ping must not debounce a
+    schedule-missed alert, and vice versa (distinct events)."""
+    _arm(monkeypatch)
+    count = {"n": 0}
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        count["n"] += 1
+        return httpx.Response(200, json={"ok": True})
+
+    transport = httpx.MockTransport(handler)
+    # an LLM ping at t=1000 must NOT block the first schedule alert at the same instant.
+    assert await telegram.notify_llm_unreachable(transport=transport, now=1000.0) is True
+    assert (
+        await telegram.notify_schedule_missed(
+            schedule_id="s", scheduled_for="t", transport=transport, now=1000.0
+        )
+        is True
+    )
+    # the schedule alert's OWN anchor debounces a second one inside the window.
+    assert (
+        await telegram.notify_schedule_missed(
+            schedule_id="s", scheduled_for="t", transport=transport, now=1100.0
+        )
+        is False
+    )
+    assert count["n"] == 2
+
+
+async def test_schedule_missed_never_raises(monkeypatch: pytest.MonkeyPatch) -> None:
+    _arm(monkeypatch)
+
+    def handler(_request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("telegram unreachable")
+
+    sent = await telegram.notify_schedule_missed(
+        schedule_id="s", scheduled_for="t", transport=httpx.MockTransport(handler), now=1000.0
+    )
+    assert sent is False  # swallowed, no exception escapes
+
+
+def test_schedule_missed_message_carries_no_pii() -> None:
+    msg = telegram.build_schedule_missed_message(
+        schedule_id="procurement:reorder", scheduled_for="2026-07-07T06:00:00+07:00"
+    )
+    assert "MISSED" in msg
+    assert "procurement:reorder" in msg
+    for forbidden in ("shipment", "asset-", "select ", "operator question", "person"):
+        assert forbidden.lower() not in msg.lower()

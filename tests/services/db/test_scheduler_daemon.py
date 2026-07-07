@@ -220,6 +220,62 @@ async def test_load_all_schedules_returns_persisted_set(db_engine: AsyncEngine) 
     assert [st.schedule_id for st in loaded] == ["aqua:a", "aqua:b"]
 
 
+async def test_missed_round_is_loud_and_notifies(db_engine: AsyncEngine) -> None:
+    """AC-8: a missed round (downtime skipped >=1 fire slot) emits a WARN log + a best-effort
+    Telegram ping (the injected notifier) — the absence of runs across the gap is detectable."""
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    stale = _due_state()
+    stale.next_fire = datetime(2026, 7, 4, 6, 0, tzinfo=BKK)  # 3 days stale -> >=1 slot missed
+    await _seed(maker, stale)
+    notified: list[dict[str, str]] = []
+
+    async def spy_notify(*, schedule_id: str, scheduled_for: str) -> bool:
+        notified.append({"schedule_id": schedule_id, "scheduled_for": scheduled_for})
+        return True
+
+    daemon = SchedulerDaemon(
+        session_factory=maker,
+        resolve=_resolver(),
+        clock=lambda: NOW,
+        interval_seconds=0.01,
+        notify=spy_notify,
+    )
+    with structlog.testing.capture_logs() as logs:
+        outcomes = await daemon.tick()
+    assert [o.result.value for o in outcomes] == ["fired"]
+    assert outcomes[0].missed is True
+    events = [entry["event"] for entry in logs]
+    assert "scheduler.missed_round" in events
+    assert len(notified) == 1
+    assert notified[0]["schedule_id"] == "aqua:morning"
+
+
+async def test_normal_fire_does_not_notify(db_engine: AsyncEngine) -> None:
+    """A non-missed fire logs scheduler.fired but does NOT warn/notify (no false alarms)."""
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    await _seed(maker, _due_state())  # exactly one due slot, no intermediate missed
+    notified: list[Any] = []
+
+    async def spy_notify(**kwargs: Any) -> bool:
+        notified.append(kwargs)
+        return True
+
+    daemon = SchedulerDaemon(
+        session_factory=maker,
+        resolve=_resolver(),
+        clock=lambda: NOW,
+        interval_seconds=0.01,
+        notify=spy_notify,
+    )
+    with structlog.testing.capture_logs() as logs:
+        outcomes = await daemon.tick()
+    assert outcomes[0].missed is False
+    events = [entry["event"] for entry in logs]
+    assert "scheduler.fired" in events
+    assert "scheduler.missed_round" not in events
+    assert notified == []
+
+
 async def test_request_stop_before_run_exits_after_zero_or_more_ticks(
     db_engine: AsyncEngine,
 ) -> None:
