@@ -3024,3 +3024,63 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-07-06 (ADR-016 S2 amendment + PLAN-0053/0054, session 102) [rotated 2026-07-07, session-109 reconcile]
 
 | 2026-07-06 | **ADR-016 S2 service-principal track — amendment RATIFIED + PLAN-0053 Ready + S2 Phase A BUILT + PLAN-0054 Control-leg v1 Ready (session 102; #579–#582)** — `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2). **(1) S2 amendment Proposed→Accepted (#579 `faed8d4`):** OQ-1 = vertical `service_principals:` registry · OQ-2 = separate `RunContext.service_principal` · OQ-3 = audit-only `actor_kind`; SP-1 verbatim (service principal = requester/actor ONLY, never approver), RF-1..3 locked. **(2) PLAN-0053 Ready (#580 merge `9b5065d`):** S2 build, SD-1 = SPLIT Phase-A-first, SD-2/SD-3 → Phase B. **(3) S2 Phase A BUILT (#581 merge `1937c8c`):** RF-1 gate-approver enforced at the resolve **endpoint** on `auth.person_id` → 403 (placement refined library→endpoint per a Cray-ratified SD; authored-Person SoD + service-principal library rejection = Phase B) + `actor_kind:"human"` audit (OQ-3) + never-null-actor-on-resume (`resume_run` threads the principal; `run_resumed` audit carries the actor). **Full suite 2214 passed / 7 skipped**; ruff + mypy clean. **(4) PLAN-0054 Control-leg v1 Ready (#582 merge `b68beee`):** governed approve/reject/cancel from the OCT Monitor — SD-A login-form over static-key backend (2 v2 seams) · SD-B `waiting_human`-only cancel · SD-C procurement operate-demo reusing the 5 SoD principals · Step 6b deterministic procurement executor factory (MS-S1-independent). `loop-dispatcher` DISABLED; MS-S1 idle | `b68beee` (#582 merge) / `1937c8c` (#581 merge) / `9b5065d` (#580 merge) / `faed8d4` (#579 S2 amendment) / `docs/adr/0016-*.md` (S2 service-principal) + `docs/plans/{0053-adr016-s2-service-principal.md, 0054-control-leg-v1.md}` + `services/api/routers/runs.py` + `services/engine/procedures/persistence.py` (resume_run actor threading) |
+
+### Current-Focus block — Session 109 (head_commit `2051bc1`) [rotated 2026-07-07, session-110 reconcile]
+
+> **Session 109, 2026-07-07 (head_commit `934eb58` → `2051bc1`) —
+> PLAN-0055 S1 Step 8: the first `schedule`-trigger procedure on a REAL
+> vertical (procurement), wired end-to-end through the shipped scheduler +
+> verified with a LIVE daemon demo — PLAN-0055 now FULLY COMPLETE (Steps 1–8),
+> `git mv`'d to `docs/plans/done/`.** Two merged PRs this session (#617 feat,
+> #618 fix), both **un-gated Code PRs** executed directly (PLAN-0055 already
+> Ready; §6 "Steps 2–8 execute directly, no drafter"), each green through the
+> required `gate`; no ADR/PLAN edit.
+> **#617 — S1 Step 8 (offline foundation)** (feat `6335bd6`, merge `38dfccf`;
+> **this Code thread**). A new `scheduled_emergency_sourcing_round` procedure
+> in `verticals/procurement/procedures.yaml` (AT-2 shape, `trigger: schedule`,
+> cron `0 6 * * *` Asia/Bangkok) + a new **`svc-buyer` ServicePrincipal** +
+> `procurement_agent.service_principal_ids`. It surfaced + fixed two
+> integration gotchas the in-memory Step-7b tests could not catch. **(1)
+> `doa_tier` ⟹ SoD (ADR-0025 D5) vs headless scheduling:** a fully headless
+> scheduled run records `{intake: None}` and fails the principal-SoD run-check
+> CLOSED at gate resolution. Fix (Cray-ratified "Path X"): a new
+> **`Schedule.owning_person_id`** field (SP-5) — the run fires as `svc-buyer`
+> **ON BEHALF OF** `req-planner` (the SoD requester), so a distinct DOA
+> approver (`appr-pm`, ผจก.จัดซื้อ for the ฿288k tier) governs;
+> `scheduler_wiring.build_resolver` resolves + binds it (lifting the Step-7b
+> hard-coded `owning_person=None`) and `spec._cross_refs` validates the ref.
+> **(2) Latent Decimal→JSONB seed** in the procurement executor factory (a
+> daemon-fired fresh run executes `intake` live → raw Decimal persists → JSONB
+> error; the HTTP resolve path never re-ran intake so it stayed latent) —
+> sanitised, plus a roster reconciliation (the factory's `doa_tier` resolves
+> against the spec's authored principals, not the Fastenal CSV roster). New
+> DB-backed integration test
+> **`tests/services/db/test_scheduled_procurement_demo.py`**; the archetype
+> catalog + `/procedures` endpoint updated (six shipped procedures).
+> **#618 — S1 Step 8 fix (surfaced by the LIVE daemon smoke)** (feat
+> `2051bc1`, merge `da8ba03`; same Code thread). Running `vero-lite scheduler
+> --vertical procurement` fired a run that FAILED at the `source` action step
+> — `_run_scheduler` registered the executor factory but **not** the vertical's
+> action handlers (the API lifespan calls `discover_and_register()`; the daemon
+> CLI skipped it). Fix: `_run_scheduler` now calls `discover_and_register()`
+> before firing; the integration-test fixture switched to the daemon's real
+> registration path so it guards the regression. **LIVE demo (host-state,
+> MS-S1-free, disposable DB):** the fixed daemon fired on a real wall clock
+> (`scheduler.fired … run_status=waiting_human`, as `svc-buyer` on behalf of
+> `req-planner`) → parked at the DOA gate (฿288,000 → ผจก.จัดซื้อ → appr-pm) →
+> `POST /runs/{id}/gate/resolve` as **appr-pm** → **completed**; audit:
+> `run_started` actor_kind:service + on_behalf_of req-planner, gate resolved by
+> appr-pm (human), SoD governed (`{sod, approve+intake, appr-pm}`, requester ≠
+> approver). Disposable demo DB dropped after; dev DB + MS-S1 untouched. **Full
+> offline suite green** (2296 passed / 7 skipped at #617; #618 added no count
+> change); ruff + mypy clean; both PRs green through the required `gate`.
+> **Standing:** PLAN-0055 **FULLY COMPLETE** (Steps 1–8) and `git mv`'d to
+> `docs/plans/done/`; next work is OPEN — run `next-work-analyst` (candidates:
+> the procurement hero-demo backlog / the deferred v2 login·GET /whoami·
+> multi-operator RBAC from PLAN-0055 Out-of-Scope). `main` **green + PROTECTED**
+> (`da8ba03`); 0 open PRs; `loop-dispatcher` **DISABLED**; MS-S1 idle;
+> AI-assisted (Claude Code, session 109), no `Co-Authored-By` per §7.
+
+### Recent-Decisions row — 2026-07-06 (Control-leg v1 COMPLETE, PLAN-0054, session 103) [rotated 2026-07-07, session-110 reconcile]
+
+| 2026-07-06 | **Control-leg v1 COMPLETE (PLAN-0054) + CSP follow-up — OCT Monitor flips watch-only→watch+OPERATE (session 103; #584–#588)** — a named, authenticated human approves/rejects a `waiting_human` gate + cancels a parked run from the UI; SoD + tamper-evident audit actor server-side (ADR-016 S2 RF-1 / PLAN-0053). `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2); 2 spawned specialists (frontend + app-security) verdict **secure-for-pilot, no real vulns**; preview-verified E2E. **#587 (Steps 2–5+7, merge `488ed25`):** NEW `assets/auth.js` (SD-A) single frontend credential seam (login/authHeader/logout; pilot key in sessionStorage; Bearer on operate POSTs only; optimistic login — display identity cosmetic, real approver = key's server-resolved `person_id`) + `view-monitor.js` approve/reject (submit gated until all decided) + cancel (`waiting_human` only, SD-B) + 403 (RF-1/SoD)/409 (stale reload-retry) inline + scroll/`[object Object]` fixes + "approved by <person>" badge + `scripts/seed_operate_demo.py`. **#586 (`8a6e527`):** procurement operate-demo seed (`seed_operate_waiting_human_run`, `req-planner` SoD requester, JSONB-safe; `OCT_DEMO_SEED_OPERATE` lifespan auto-seed). **#585 (`16d218f`):** `register_procurement_procedure_executors` at startup (procurement-gated) → closes the resolve-endpoint 409 "no executor factory"; deterministic advisory stub (MS-S1-independent). AC-10. **#584 (`3a94012`):** `POST /runs/{id}/cancel` (RF-1 403, `waiting_human`-only→409 SD-B, `run_cancelled` audit; first `PipelineRunStatus.CANCELLED` writer). **#588 (`f98de81`):** CSP defense-in-depth (`_StaticFilesWithCSP` on static serving, NOT the JSON API/docs; 0 CSP violations). **Suite 2223 passed / 7 skipped**; ruff + mypy clean; MS-S1 not exercised. Control-leg v1 COMPLETE (no active PLAN). `loop-dispatcher` DISABLED; MS-S1 idle | `488ed25` (#587 merge) / `f98de81` (#588 CSP) / `8a6e527` (#586 seed) / `16d218f` (#585 executor factory) / `3a94012` (#584 cancel) / `services/api/static/assets/{auth.js,view-monitor.js}` + `services/api/routers/runs.py` (`POST /runs/{id}/cancel`) + `services/api/main.py` (`_StaticFilesWithCSP` + `register_procurement_procedure_executors` + `OCT_DEMO_SEED_OPERATE`) + `scripts/seed_operate_demo.py` + `docs/plans/done/0054-control-leg-v1.md` |
