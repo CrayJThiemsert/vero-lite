@@ -32,6 +32,7 @@ from services.engine.procedures.spec import (
     PrincipalAlias,
     Procedure,
     RelaxableConstraint,
+    Schedule,
     ScoredRule,
     SoDConstraint,
     SourcePolicy,
@@ -64,6 +65,9 @@ procedures:
     goal: Keep every pond above the dissolved-oxygen floor.
     run_by: round_agent
     trigger: schedule
+    schedule:
+      cron: "0 6 * * *"
+      timezone: Asia/Bangkok
     steps:
       - step_id: read_do
         name: Read DO per pond
@@ -102,6 +106,10 @@ def test_loads_valid_spec(tmp_path: Path) -> None:
     assert proc.procedure_id == "morning_round"
     assert proc.run_by == "round_agent"
     assert proc.trigger is Trigger.SCHEDULE  # schedule LOADS (runnability is enforced later, L-1)
+    # the schedule descriptor rides on the procedure (ADR-0028 SD-P1 / PLAN-0055 Step 2)
+    assert proc.schedule is not None
+    assert proc.schedule.cron == "0 6 * * *"
+    assert proc.schedule.timezone == "Asia/Bangkok"
     assert proc.terminal == "summary"
     assert [s.kind for s in proc.steps] == [
         StepKind.QUERY,
@@ -113,6 +121,59 @@ def test_loads_valid_spec(tmp_path: Path) -> None:
     # the gated action defaults; the explicit auto action stays auto (D3)
     assert proc.steps[2].autonomy is Autonomy.GATED
     assert proc.steps[4].autonomy is Autonomy.AUTO
+
+
+def _one_step() -> list[Step]:
+    return [Step(step_id="read", name="Read", kind=StepKind.QUERY)]
+
+
+def test_schedule_procedure_requires_a_descriptor() -> None:
+    # ADR-0028 SD-P1 / PLAN-0055 Step 2: a `schedule` trigger with no descriptor is an
+    # authoring error — a scheduled procedure needs a clock (cron + tz) to fire.
+    with pytest.raises(ValidationError, match="requires a `schedule` descriptor"):
+        Procedure(
+            procedure_id="p1", title="P", run_by="a1", trigger=Trigger.SCHEDULE, steps=_one_step()
+        )
+
+
+def test_manual_procedure_rejects_a_schedule_descriptor() -> None:
+    # The invariant is symmetric: a `manual` procedure carrying a schedule is rejected.
+    with pytest.raises(ValidationError, match="applies to a 'schedule'-trigger procedure only"):
+        Procedure(
+            procedure_id="p1",
+            title="P",
+            run_by="a1",
+            trigger=Trigger.MANUAL,
+            schedule=Schedule(cron="0 6 * * *"),
+            steps=_one_step(),
+        )
+
+
+def test_schedule_descriptor_defaults_timezone_to_bangkok() -> None:
+    assert Schedule(cron="0 6 * * *").timezone == "Asia/Bangkok"  # SD-P1 default (TH operator)
+
+
+@pytest.mark.parametrize("tz", ["Asia/Bangkok", "UTC", "America/New_York", "Europe/London"])
+def test_schedule_descriptor_accepts_valid_iana_timezones(tz: str) -> None:
+    # SD-P1: a per-schedule IANA tz string (not a global const) so a non-TH vertical works.
+    assert Schedule(cron="*/15 * * * *", timezone=tz).timezone == tz
+
+
+def test_schedule_descriptor_rejects_unknown_timezone() -> None:
+    with pytest.raises(ValidationError, match="not a valid IANA time zone"):
+        Schedule(cron="0 6 * * *", timezone="Mars/Olympus_Mons")
+
+
+@pytest.mark.parametrize("cron", ["", "   "])
+def test_schedule_descriptor_rejects_blank_cron(cron: str) -> None:
+    with pytest.raises(ValidationError):
+        Schedule(cron=cron, timezone="UTC")
+
+
+def test_schedule_descriptor_rejects_unknown_field() -> None:
+    # extra="forbid" — a typo'd key fails loudly at load, not silently ignored.
+    with pytest.raises(ValidationError):
+        Schedule(cron="0 6 * * *", tz="UTC")  # type: ignore[call-arg]
 
 
 def test_action_step_defaults_to_gated() -> None:

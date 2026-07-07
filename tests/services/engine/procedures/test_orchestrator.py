@@ -31,6 +31,7 @@ from services.engine.procedures.spec import (
     Autonomy,
     OnFailure,
     Procedure,
+    Schedule,
     Step,
     StepInput,
     StepKind,
@@ -99,7 +100,12 @@ def _agent(
 
 
 def _proc(steps: list[Step], *, trigger: Trigger = Trigger.MANUAL) -> Procedure:
-    return Procedure(procedure_id="p1", title="P", run_by="a1", trigger=trigger, steps=steps)
+    # A `schedule`-trigger procedure requires a schedule descriptor (ADR-0028 SD-P1 /
+    # PLAN-0055 Step 2); a `manual` one must not carry one.
+    schedule = Schedule(cron="0 6 * * *") if trigger is Trigger.SCHEDULE else None
+    return Procedure(
+        procedure_id="p1", title="P", run_by="a1", trigger=trigger, schedule=schedule, steps=steps
+    )
 
 
 async def test_happy_path_completes_and_threads_sets() -> None:
