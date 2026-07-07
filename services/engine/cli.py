@@ -8,6 +8,7 @@ vero-lite`` (commit 7).
 
 from __future__ import annotations
 
+import asyncio
 import sys
 from pathlib import Path
 
@@ -114,3 +115,52 @@ def new_vertical(
         "  3. Verify the map, NL query, and the breach -> recommend -> approve "
         "-> execute lifecycle.\n"
     )
+
+
+async def _register_executor_factory(vertical: str) -> None:
+    """Register the vertical's procedure-executor factory (OQ-6: explicit, not auto-discovered;
+    a fire would 409 at resolve without it). Only procurement ships one today; energy has none
+    by design — the daemon still runs + ticks, it just cannot fire that vertical's runs."""
+    if vertical == "procurement":
+        from verticals.procurement.hero_demo.run import register_procurement_procedure_executors
+
+        await register_procurement_procedure_executors()
+
+
+async def _run_scheduler(vertical: str, interval_seconds: float) -> None:
+    from services.db.session import async_session
+    from services.engine.procedures.scheduler_daemon import run_scheduler_daemon
+    from services.engine.procedures.scheduler_wiring import build_resolver, sync_schedule_states
+    from services.engine.procedures.spec import load_procedures
+    from services.engine.registry import registry
+
+    spec = load_procedures(vertical)
+    await _register_executor_factory(vertical)
+    factory = registry.get_procedure_executors(vertical)
+    async with async_session() as session:
+        rows = await sync_schedule_states(session, spec)
+    sys.stderr.write(
+        f"OK: scheduler for vertical {vertical!r} — {len(rows)} schedule(s) registered "
+        f"from spec; ticking every {interval_seconds:g}s. Ctrl-C / SIGTERM to stop.\n"
+    )
+    resolver = build_resolver(spec, factory)
+    await run_scheduler_daemon(
+        session_factory=async_session, resolve=resolver, interval_seconds=interval_seconds
+    )
+
+
+@app.command()
+def scheduler(
+    vertical: str = typer.Option(..., help="Vertical whose schedule-trigger procedures to run."),
+    interval_seconds: float = typer.Option(
+        60.0, help="Seconds between fire ticks (the daemon reads the wall clock each tick)."
+    ),
+) -> None:
+    """Run the long-lived ``schedule``-trigger scheduler daemon for a vertical (PLAN-0055 Step 7).
+
+    Loads the vertical spec, registers its procedure-executor factory, syncs the
+    ``schedule_states`` table from the spec's ``schedule``-trigger procedures (the registration
+    step), then runs the daemon with a graceful SIGTERM/SIGINT shutdown. A pure clock — no MS-S1
+    dependency. See ``docs/runbooks/scheduler-daemon.md`` for the deploy posture.
+    """
+    asyncio.run(_run_scheduler(vertical, interval_seconds))
