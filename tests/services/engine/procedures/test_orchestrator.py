@@ -29,6 +29,7 @@ from services.engine.procedures.spec import (
     Agent,
     AgentAllowed,
     Autonomy,
+    EventTrigger,
     OnFailure,
     Procedure,
     Schedule,
@@ -101,10 +102,18 @@ def _agent(
 
 def _proc(steps: list[Step], *, trigger: Trigger = Trigger.MANUAL) -> Procedure:
     # A `schedule`-trigger procedure requires a schedule descriptor (ADR-0028 SD-P1 /
-    # PLAN-0055 Step 2); a `manual` one must not carry one.
+    # PLAN-0055 Step 2); an `event`-trigger one requires an event_trigger (ADR-0029 SD-3 /
+    # PLAN-0056 Step 2); a `manual` one carries neither.
     schedule = Schedule(cron="0 6 * * *") if trigger is Trigger.SCHEDULE else None
+    event_trigger = EventTrigger(event_kind="asset_failure") if trigger is Trigger.EVENT else None
     return Procedure(
-        procedure_id="p1", title="P", run_by="a1", trigger=trigger, schedule=schedule, steps=steps
+        procedure_id="p1",
+        title="P",
+        run_by="a1",
+        trigger=trigger,
+        schedule=schedule,
+        event_trigger=event_trigger,
+        steps=steps,
     )
 
 

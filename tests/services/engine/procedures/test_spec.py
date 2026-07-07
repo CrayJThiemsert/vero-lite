@@ -16,6 +16,7 @@ import pytest
 from pydantic import ValidationError
 
 from services.engine.procedures.spec import (
+    Agent,
     AgentAllowed,
     Autonomy,
     BandSource,
@@ -26,6 +27,7 @@ from services.engine.procedures.spec import (
     DoaLadder,
     DoaTier,
     EmergencyWaiverPolicy,
+    EventTrigger,
     ExceptionPolicy,
     GateKind,
     Person,
@@ -174,6 +176,108 @@ def test_schedule_descriptor_rejects_unknown_field() -> None:
     # extra="forbid" — a typo'd key fails loudly at load, not silently ignored.
     with pytest.raises(ValidationError):
         Schedule(cron="0 6 * * *", tz="UTC")  # type: ignore[call-arg]
+
+
+# ---------------------------------------------------------------------------
+# PLAN-0056 Step 2 (ADR-0029 SD-3 / SD-P2) — the EventTrigger mapping descriptor
+# ---------------------------------------------------------------------------
+
+
+def test_event_procedure_requires_a_descriptor() -> None:
+    # AC-4: an `event` trigger with no descriptor is an authoring error — an event procedure
+    # needs an event_kind binding to fire (mirrors the schedule-descriptor invariant).
+    with pytest.raises(ValidationError, match="requires an `event_trigger` descriptor"):
+        Procedure(
+            procedure_id="p1", title="P", run_by="a1", trigger=Trigger.EVENT, steps=_one_step()
+        )
+
+
+def test_non_event_procedure_rejects_an_event_trigger() -> None:
+    # The invariant is symmetric: a non-event procedure carrying an event_trigger is rejected.
+    with pytest.raises(ValidationError, match="applies to an 'event'-trigger procedure only"):
+        Procedure(
+            procedure_id="p1",
+            title="P",
+            run_by="a1",
+            trigger=Trigger.MANUAL,
+            event_trigger=EventTrigger(event_kind="asset_failure"),
+            steps=_one_step(),
+        )
+
+
+def test_event_procedure_accepts_a_descriptor() -> None:
+    # AC-4: a well-formed event procedure loads — the descriptor rides on the procedure.
+    proc = Procedure(
+        procedure_id="p1",
+        title="P",
+        run_by="a1",
+        trigger=Trigger.EVENT,
+        event_trigger=EventTrigger(event_kind="asset_failure"),
+        steps=_one_step(),
+    )
+    assert proc.event_trigger is not None
+    assert proc.event_trigger.event_kind == "asset_failure"
+    assert proc.event_trigger.owning_person_id is None
+
+
+def test_event_trigger_rejects_blank_event_kind() -> None:
+    with pytest.raises(ValidationError):
+        EventTrigger(event_kind="")
+
+
+def test_event_trigger_rejects_unknown_field() -> None:
+    # extra="forbid" — a typo'd key fails loudly at load (mirrors the Schedule descriptor).
+    with pytest.raises(ValidationError):
+        EventTrigger(event_kind="asset_failure", tz="UTC")  # type: ignore[call-arg]
+
+
+def _one_event_proc(pid: str, kind: str, *, owning: str | None = None) -> Procedure:
+    return Procedure(
+        procedure_id=pid,
+        title=pid,
+        run_by="a1",
+        trigger=Trigger.EVENT,
+        event_trigger=EventTrigger(event_kind=kind, owning_person_id=owning),
+        steps=_one_step(),
+    )
+
+
+def _event_vertical(*procs: Procedure, persons: list[Person] | None = None) -> VerticalProcedures:
+    # A minimal vertical whose run_by resolves — so the _cross_refs event checks are reached.
+    return VerticalProcedures(
+        vertical="v",
+        agents=[Agent(agent_id="a1", name="A1")],
+        procedures=list(procs),
+        principals=persons or [],
+    )
+
+
+def test_vertical_rejects_event_owning_person_unknown() -> None:
+    # AC-4: an event_trigger.owning_person_id that names no declared Person fails LOUDLY at load
+    # (mirrors the schedule owning_person cross-ref; else a None-requester fails at the gate).
+    with pytest.raises(ValidationError, match="event_trigger.owning_person_id 'ghost' is not"):
+        _event_vertical(_one_event_proc("p1", "asset_failure", owning="ghost"))
+
+
+def test_vertical_rejects_duplicate_event_kind() -> None:
+    # AC-4: two event procedures claiming the same event_kind is ambiguous — a detected event
+    # has no single target. Caught at load (ADR-0029 SD-3 = one event_kind -> one procedure).
+    with pytest.raises(ValidationError, match="duplicate event_trigger.event_kind"):
+        _event_vertical(
+            _one_event_proc("p1", "asset_failure"),
+            _one_event_proc("p2", "asset_failure"),
+        )
+
+
+def test_vertical_accepts_valid_event_triggers() -> None:
+    # Distinct event_kinds + a resolvable owning person load cleanly.
+    vp = _event_vertical(
+        _one_event_proc("p1", "asset_failure", owning="alice"),
+        _one_event_proc("p2", "low_stock"),
+        persons=[Person(person_id="alice", name="Alice", roles=frozenset({"requester"}))],
+    )
+    kinds = sorted(p.event_trigger.event_kind for p in vp.procedures if p.event_trigger)
+    assert kinds == ["asset_failure", "low_stock"]
 
 
 def test_action_step_defaults_to_gated() -> None:

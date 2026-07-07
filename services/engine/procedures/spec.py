@@ -139,6 +139,42 @@ class Schedule(BaseModel):
         return self
 
 
+class EventTrigger(BaseModel):
+    """The event-binding descriptor of an ``event``-triggered ``Procedure`` (ADR-0029
+    SD-3 / SD-P2; PLAN-0056 Step 2).
+
+    Declares which detected OCT condition (an anomaly / ``Alert``) fires this procedure.
+    Present **iff** the procedure's ``trigger`` is ``event`` (enforced on :class:`Procedure`),
+    mirroring how :class:`Schedule` rides on a ``schedule`` procedure. The bridge derives the
+    ``event_kind`` -> procedure index by scanning procedures with ``trigger == event`` (ADR-0029
+    SD-3 — the mapping is authored in the vertical spec, not a code registry); a duplicate
+    ``event_kind`` across event procedures is an authoring error caught at load (on
+    :class:`VerticalProcedures`). The precise recommender field ``event_kind`` is matched against
+    is pinned by the Step-4 resolver — the recommender's ``RecommendedAction`` has no
+    ``action_type`` (its discriminators are ``suggested_handler`` / ``vertical``); Step 2 keeps
+    ``event_kind`` a free authored string, unique per vertical.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    event_kind: str = Field(
+        min_length=1,
+        description="the detected OCT condition kind this procedure responds to (ADR-0029 SD-3). "
+        "Matched against the recommender's actionable detection by the Step-4 resolver; unique "
+        "across a vertical's event-triggered procedures (cross-ref validated at load).",
+    )
+    owning_person_id: str | None = Field(  # a PersonId (defined below); str avoids the fwd-ref
+        default=None,
+        description="the human Person a headless event-fired run acts ON BEHALF OF (SP-5; mirrors "
+        "`Schedule.owning_person_id`). An event run fires as its agent's service principal (the "
+        "actor); when the procedure carries a separation_of_duties requester role, this owning "
+        "person is recorded as the run's requester so a distinct downstream human approver "
+        "satisfies SoD (requester != approver). None = fully headless — valid only for a procedure "
+        "with no SoD requester to resolve (a doa_tier procedure requires SoD, ADR-0025 D5, so it "
+        "needs one). Cross-ref validated against the vertical's `principals` at load.",
+    )
+
+
 class BandSource(StrEnum):
     """How an ``evaluate`` step's deterministic band is authored (ADR-016 D2-A3).
 
@@ -817,6 +853,12 @@ class Procedure(BaseModel):
         "(ADR-0028 SD-P1). Present IFF trigger == schedule (validated below); a `manual` "
         "procedure must not carry one. Absent on every existing (manual) procedure.",
     )
+    event_trigger: EventTrigger | None = Field(
+        default=None,
+        description="event-binding (event_kind + SP-5 owning person) for an `event`-triggered "
+        "procedure (ADR-0029 SD-3 / SD-P2). Present IFF trigger == event (validated below); a "
+        "non-event procedure must not carry one. Absent on every manual/schedule procedure.",
+    )
     steps: list[Step] = Field(..., min_length=1)
     terminal: str | None = Field(default=None, description="final step_id / produced artifact")
     separation_of_duties: list[SoDConstraint] = Field(
@@ -851,6 +893,26 @@ class Procedure(BaseModel):
                 f"procedure '{self.procedure_id}': a `schedule` descriptor applies to a "
                 f"'schedule'-trigger procedure only (trigger is '{self.trigger.value}') — "
                 "ADR-0028 SD-P1"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_event_trigger_descriptor(self) -> Self:
+        """An ``event_trigger`` descriptor is present IFF the trigger is ``event`` (ADR-0029
+        SD-3 / SD-P2; PLAN-0056 Step 2). An ``event``-triggered procedure needs an ``event_kind``
+        binding to fire; a non-event procedure carrying one is an authoring error — either way
+        fail loudly at load, not at fire time (mirrors the schedule descriptor invariant)."""
+        is_event = self.trigger is Trigger.EVENT
+        if is_event and self.event_trigger is None:
+            raise ValueError(
+                f"procedure '{self.procedure_id}': trigger 'event' requires an `event_trigger` "
+                "descriptor (event_kind) — ADR-0029 SD-3 / PLAN-0056 Step 2"
+            )
+        if not is_event and self.event_trigger is not None:
+            raise ValueError(
+                f"procedure '{self.procedure_id}': an `event_trigger` descriptor applies to an "
+                f"'event'-trigger procedure only (trigger is '{self.trigger.value}') — "
+                "ADR-0029 SD-3"
             )
         return self
 
@@ -892,6 +954,28 @@ class Procedure(BaseModel):
                     f"not prose ({v.message}) — ADR-0025 D4"
                 )
         return self
+
+
+def _check_event_cross_refs(procedures: list[Procedure], known_persons: set[str]) -> None:
+    """PLAN-0056 Step 2 (ADR-0029 SD-3): validate the ``event_trigger`` cross-refs — the SP-5
+    owning person resolves to a declared Person, and each ``event_kind`` maps to exactly one
+    procedure (a duplicate is ambiguous). Extracted from ``VerticalProcedures._cross_refs`` to
+    keep that validator's cyclomatic complexity bounded."""
+    for proc in procedures:
+        eref = proc.event_trigger.owning_person_id if proc.event_trigger is not None else None
+        if eref is not None and eref not in known_persons:
+            raise ValueError(
+                f"procedure '{proc.procedure_id}': event_trigger.owning_person_id '{eref}' is "
+                f"not a declared principal (known: {sorted(known_persons)}) — PLAN-0056 Step 2"
+            )
+    event_kinds = [p.event_trigger.event_kind for p in procedures if p.event_trigger is not None]
+    dup_kinds = sorted({k for k in event_kinds if event_kinds.count(k) > 1})
+    if dup_kinds:
+        raise ValueError(
+            f"duplicate event_trigger.event_kind(s) {dup_kinds} across event-triggered "
+            "procedures — each event_kind maps to exactly one procedure (ADR-0029 SD-3 / "
+            "PLAN-0056 Step 2)"
+        )
 
 
 class VerticalProcedures(BaseModel):
@@ -994,6 +1078,9 @@ class VerticalProcedures(BaseModel):
                     f"procedure '{proc.procedure_id}': schedule.owning_person_id '{oref}' is not "
                     f"a declared principal (known: {sorted(known_persons)}) — PLAN-0055 Step 8"
                 )
+        # PLAN-0056 Step 2 (ADR-0029 SD-3): event_trigger cross-refs (owning-person resolves +
+        # unique event_kind) — extracted to a helper to keep this validator under the C901 bound.
+        _check_event_cross_refs(self.procedures, known_persons)
         return self
 
 
