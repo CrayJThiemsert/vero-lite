@@ -146,13 +146,21 @@ demo bands vs authored per-procedure bands) the schema must preserve.
 
 ## Forward — how this feeds the generative-procedures arc
 
-- **Step C (next, Cowork-drafted ADR):** the ADR-016 amendment that promotes
-  `facet:` from a YAML comment to a first-class schema field (today blocked by
-  `services/engine/procedures/spec.py` `Step = ConfigDict(extra="forbid")`). This
-  catalog + the per-vertical 5-facet maps are its input.
-- **Stage 3 (deferred — Rule-of-Three-forbidden until the schema is extracted):**
-  the procedure generator. Authoring it before the schema exists is exactly the
-  premature abstraction the PREP work guards against.
+- **Step C — SHIPPED (PLAN-0038, 2026-06-25):** the ADR-016 D2 amendment promoted
+  `facet:` from a YAML comment to a first-class **typed** schema field
+  (`services/engine/procedures/spec.py` `Step.facet: StepFacet | None`, with a
+  discriminated `decision_condition.gate_kind`) — `Step` keeps `extra="forbid"`
+  because `facet` is now a *declared* key. This catalog + the per-vertical 5-facet
+  maps were its input.
+- **Stage 3 — SHIPPED (ADR-0024 Accepted, PLAN-0040):** the archetype procedure
+  generator (`services/engine/procedures/generator/` + the machine-readable
+  `ArchetypeTemplate` registry, ADR-0024 D2). The Rule-of-Three gate (≥3 verticals)
+  is satisfied (N=4: aquaculture / energy / procurement / supply_chain).
+- **Remaining frontier — AT-2 generation (deferred, ADR-0024 D7):** the generator
+  triangulates AT-1 across 3+ verticals, but **AT-2 is still N=1**
+  (`procurement.emergency_sourcing_round` — the only governance-heavy instance;
+  the schedule-triggered variant is the same archetype, not a second instance). A
+  2nd AT-2-shaped vertical is the Rule-of-Three prerequisite before AT-2 extraction.
 
 ## Sources / related
 
