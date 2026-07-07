@@ -37,6 +37,7 @@ from enum import StrEnum
 from itertools import pairwise
 from pathlib import Path
 from typing import Annotated, Any, Literal, Self
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from ruamel.yaml import YAML
@@ -79,6 +80,50 @@ class Trigger(StrEnum):
 
     MANUAL = "manual"
     SCHEDULE = "schedule"
+
+
+class Schedule(BaseModel):
+    """The fire-cadence descriptor of a ``schedule``-triggered ``Procedure`` (ADR-0028
+    SD-P1; PLAN-0055 Step 2).
+
+    Carries a cron expression + the IANA timezone the cron is evaluated in — a
+    **per-schedule** tz string (not a global constant, SD-P1) so a non-TH vertical
+    schedules in its own zone. Present **iff** the procedure's ``trigger`` is ``schedule``
+    (enforced on :class:`Procedure`). The timezone is validated against the system tz
+    database at load — a typo'd zone fails loudly at load, not at fire time (house style).
+    The cron string is checked for non-blankness ONLY here; its **authoritative** parse is
+    ``croniter`` in PLAN-0055 Step 3 (AC-10) — the dependency this step deliberately does
+    not yet add. So a syntactically-malformed cron survives load and is caught by the
+    Step-3 ``next_fire`` helper.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    cron: str = Field(
+        min_length=1,
+        description="cron expression naming the fire cadence; parsed authoritatively by "
+        "croniter (PLAN-0055 Step 3). Non-blank here — full parse-validation lands with the dep.",
+    )
+    timezone: str = Field(
+        default="Asia/Bangkok",
+        description="IANA tz name the cron is evaluated in (SD-P1; per-schedule, not global). "
+        "Default Asia/Bangkok (the primary TH operator); a non-TH vertical sets its own zone.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_schedule(self) -> Self:
+        """Non-blank cron + a real IANA timezone (SD-P1). The tz is resolved against the
+        system tz database so a bad zone is a loud load error, not a silent never-fire."""
+        if not self.cron.strip():
+            raise ValueError("schedule: cron must be a non-blank cron expression — ADR-0028 SD-P1")
+        try:
+            ZoneInfo(self.timezone)
+        except (ZoneInfoNotFoundError, ValueError) as exc:
+            raise ValueError(
+                f"schedule: timezone {self.timezone!r} is not a valid IANA time zone "
+                "(e.g. 'Asia/Bangkok', 'UTC') — ADR-0028 SD-P1"
+            ) from exc
+        return self
 
 
 class BandSource(StrEnum):
@@ -753,6 +798,12 @@ class Procedure(BaseModel):
     )
     run_by: str = Field(..., description="agent_id of the Agent that runs this procedure")
     trigger: Trigger = Trigger.MANUAL
+    schedule: Schedule | None = Field(
+        default=None,
+        description="fire cadence (cron + IANA tz) for a `schedule`-triggered procedure "
+        "(ADR-0028 SD-P1). Present IFF trigger == schedule (validated below); a `manual` "
+        "procedure must not carry one. Absent on every existing (manual) procedure.",
+    )
     steps: list[Step] = Field(..., min_length=1)
     terminal: str | None = Field(default=None, description="final step_id / produced artifact")
     separation_of_duties: list[SoDConstraint] = Field(
@@ -767,6 +818,27 @@ class Procedure(BaseModel):
         dupes = sorted({i for i in ids if ids.count(i) > 1})
         if dupes:
             raise ValueError(f"procedure '{self.procedure_id}': duplicate step_id(s) {dupes}")
+        return self
+
+    @model_validator(mode="after")
+    def _validate_schedule_descriptor(self) -> Self:
+        """A ``schedule`` descriptor is present IFF the trigger is ``schedule`` (ADR-0028
+        SD-P1; PLAN-0055 Step 2). A ``schedule``-triggered procedure needs a clock (cron + tz)
+        to fire; a ``manual`` procedure carrying one is an authoring error — either way fail
+        loudly at load, not at fire time (house style; mirrors the per-kind field invariants
+        on ``Step``)."""
+        is_schedule = self.trigger is Trigger.SCHEDULE
+        if is_schedule and self.schedule is None:
+            raise ValueError(
+                f"procedure '{self.procedure_id}': trigger 'schedule' requires a `schedule` "
+                "descriptor (cron + IANA tz) — ADR-0028 SD-P1 / PLAN-0055 Step 2"
+            )
+        if not is_schedule and self.schedule is not None:
+            raise ValueError(
+                f"procedure '{self.procedure_id}': a `schedule` descriptor applies to a "
+                f"'schedule'-trigger procedure only (trigger is '{self.trigger.value}') — "
+                "ADR-0028 SD-P1"
+            )
         return self
 
     @model_validator(mode="after")

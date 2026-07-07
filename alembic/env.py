@@ -20,6 +20,9 @@ from services.db import identity as _identity  # noqa: F401  (registers action_i
 from services.db import models as _models  # noqa: F401  (registers tables on Base.metadata)
 from services.db.base import Base
 from services.engine.procedures import runs as _procedure_runs  # noqa: F401  (registers run tables)
+from services.engine.procedures import (  # noqa: F401  (registers schedule_states)
+    schedules as _procedure_schedules,
+)
 
 config = context.config
 config.set_main_option("sqlalchemy.url", settings.database_url)
