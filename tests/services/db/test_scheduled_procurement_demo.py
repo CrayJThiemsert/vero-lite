@@ -46,7 +46,7 @@ from services.engine.procedures.scheduler import FireResult, fire_due_schedules
 from services.engine.procedures.scheduler_wiring import build_resolver, schedule_id_for
 from services.engine.procedures.schedules import ScheduleState
 from services.engine.procedures.spec import Person, Trigger, load_procedures
-from services.engine.registry import RegistryError, registry
+from services.engine.registry import registry
 from tests.db_support import create_test_engine
 
 _VERTICAL = "procurement"
@@ -81,15 +81,19 @@ async def session(db_engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
 
 @pytest.fixture
 async def procurement_registered() -> AsyncIterator[None]:
-    """Register the procurement handlers + the deterministic procedure-executor factory (the
-    autouse registry reset in tests/conftest.py wipes the registry per test)."""
-    from verticals.procurement.handlers import register_procurement_handlers
+    """Register EXACTLY what the scheduler daemon registers — ``discover_and_register`` (adapters +
+    action handlers, OQ-6) + the procedure-executor factory — so this test exercises the SAME
+    registration path the live daemon (``cli._run_scheduler``) uses.
+
+    An earlier version registered the handlers explicitly, which MASKED a daemon bug: the CLI
+    skipped ``discover_and_register``, so a fired run's action steps (e.g. ``source`` /
+    ``emergency_source``) could not resolve their handler and the run FAILED at the first action
+    step — surfaced only by the PLAN-0055 Step 8 live-daemon smoke. The autouse registry reset
+    (tests/conftest.py) wipes the registry per test, so this re-registers deterministically."""
+    from services.engine.discovery import discover_and_register
     from verticals.procurement.hero_demo.run import register_procurement_procedure_executors
 
-    try:
-        register_procurement_handlers()
-    except RegistryError:
-        pass  # already registered (idempotent)
+    discover_and_register()
     await register_procurement_procedure_executors()
     yield
 

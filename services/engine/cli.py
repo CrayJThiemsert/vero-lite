@@ -120,7 +120,11 @@ def new_vertical(
 async def _register_executor_factory(vertical: str) -> None:
     """Register the vertical's procedure-executor factory (OQ-6: explicit, not auto-discovered;
     a fire would 409 at resolve without it). Only procurement ships one today; energy has none
-    by design — the daemon still runs + ticks, it just cannot fire that vertical's runs."""
+    by design — the daemon still runs + ticks, it just cannot fire that vertical's runs.
+
+    Note: the vertical's action *handlers* are registered separately by ``discover_and_register``
+    (see :func:`_run_scheduler`) — a fired run's action steps resolve their handlers via the
+    registry, so the daemon must register both."""
     if vertical == "procurement":
         from verticals.procurement.hero_demo.run import register_procurement_procedure_executors
 
@@ -129,11 +133,19 @@ async def _register_executor_factory(vertical: str) -> None:
 
 async def _run_scheduler(vertical: str, interval_seconds: float) -> None:
     from services.db.session import async_session
+    from services.engine.discovery import discover_and_register
     from services.engine.procedures.scheduler_daemon import run_scheduler_daemon
     from services.engine.procedures.scheduler_wiring import build_resolver, sync_schedule_states
     from services.engine.procedures.spec import load_procedures
     from services.engine.registry import registry
 
+    # Register adapters + action handlers (OQ-6) BEFORE firing — a fired run's action steps
+    # (e.g. `source`/`emergency_source`) resolve their handler via the registry, so a daemon that
+    # skipped this fails the run at its first action step (a StructuredOutputError:
+    # "…not a registered handler"). Mirrors the API lifespan (services/api/main.py). Surfaced by
+    # the PLAN-0055 Step 8 live-daemon smoke — the offline test masked it by registering handlers
+    # explicitly.
+    discover_and_register()
     spec = load_procedures(vertical)
     await _register_executor_factory(vertical)
     factory = registry.get_procedure_executors(vertical)
