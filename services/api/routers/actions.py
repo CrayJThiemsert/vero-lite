@@ -7,6 +7,7 @@ process-local store keyed by action_id; executing an action also
 persists it (the OQ-1 projection) via services/db/persistence.py.
 """
 
+from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Annotated
 
@@ -22,11 +23,19 @@ from services.api.models.actions import (
     RecommendationResponse,
 )
 from services.db.persistence import persist_executed_action
-from services.db.session import get_session
+from services.db.session import async_session, get_session
 from services.engine import demo_events
 from services.engine.ontology_meta import OntologyMeta, load_ontology_meta
+from services.engine.procedures.event_bridge import (
+    EventBridgeError,
+    EventFireOutcome,
+    EventRunRequest,
+    build_event_resolver,
+    fire_event,
+)
+from services.engine.procedures.spec import load_procedures
 from services.engine.recommender import ActionRecord, ApprovalError, approve, execute, recommend
-from services.engine.registry import registry
+from services.engine.registry import RegistryError, registry
 
 router = APIRouter(tags=["action-loop"])
 
@@ -56,14 +65,72 @@ def _to_response(record: ActionRecord) -> RecommendationResponse:
     )
 
 
+async def _load_event_bridge(vertical: str) -> Callable[..., EventRunRequest] | None:
+    """Build the event resolver for ``vertical`` once per populate, or ``None`` when the vertical
+    is not wired for the bridge (PLAN-0056 Step 6, SD-P3).
+
+    ``None`` (a clean no-op, not a failure) when the vertical declares **no** ``event``-trigger
+    procedure — e.g. energy, the default demo vertical — or has no registered procedure-executor
+    factory (OQ-6: ``discover_and_register`` registers adapters + handlers only). Called only under
+    the ship-dark flag, so a vertical without the bridge pays nothing when the flag is off.
+    """
+    try:
+        spec = load_procedures(vertical)
+    except FileNotFoundError:
+        return None  # the vertical ships no procedures.yaml — nothing to bridge
+    if not any(p.event_trigger is not None for p in spec.procedures):
+        return None  # not an event-bridge vertical — no fire, no alert
+    try:
+        factory = registry.get_procedure_executors(vertical)
+    except RegistryError:
+        return None  # no registered executor factory (OQ-6) — cannot fire a governed run
+    return build_event_resolver(spec, factory)
+
+
+async def _fire_event_for_record(
+    resolve: Callable[..., EventRunRequest], record: ActionRecord
+) -> EventFireOutcome | None:
+    """FEED one actionable recommendation INTO the governed engine (ADR-0029 SD-1 / PLAN-0056
+    Step 6). The ``event_kind`` is the recommender's ``suggested_handler`` (its semantic
+    action label — ``RecommendedAction`` has no ``action_type``; SD-3 authors the vertical's
+    ``event_trigger.event_kind`` to match it); ``entity_ids`` = the affected-entity primary keys;
+    ``detected_at`` = the recommendation's ``created_at``.
+    """
+    action = record.action
+    try:
+        request = resolve(
+            event_kind=action.suggested_handler,
+            entity_ids=[e.primary_key for e in action.affected_entities],
+            detected_at=action.created_at,
+        )
+    except EventBridgeError:
+        # An actionable recommendation whose kind maps to no event procedure. Step 7 makes this
+        # LOUD (an event_fire_missed audit + a best-effort Telegram alert); Step 6 swallows it so
+        # the read path never breaks on an unmapped kind.
+        return None
+    async with async_session() as session:
+        return await fire_event(session, request, now=datetime.now(UTC))
+
+
 async def _populate_store() -> None:
-    """Read reading events from the active vertical's adapter and derive recommendations."""
+    """Read reading events from the active vertical's adapter and derive recommendations.
+
+    PLAN-0056 Step 6 (ship-dark, SD-P3): when ``event_bridge_enabled`` is on **and** the active
+    vertical maps a recommendation's ``suggested_handler`` to an ``event``-trigger procedure, the
+    actionable recommendation is ALSO FED INTO the governed engine in-process (ADR-0029 SD-1/SD-4)
+    — a real governed ``PipelineRun``, alongside (never replacing) the ``ActionRecord`` store
+    write. Flag **off** (default) = zero behavior change: the resolver is never loaded and the
+    fire branch is never reached.
+    """
     vertical = settings.oct_vertical
     adapter = registry.get_adapter(vertical)
+    resolve = await _load_event_bridge(vertical) if settings.event_bridge_enabled else None
     async for event in adapter.stream_events("reading"):
         record = await recommend(event, vertical)
         if record is not None:
             _action_store[record.action.id] = record
+            if resolve is not None:
+                await _fire_event_for_record(resolve, record)
 
 
 def _get_record(action_id: str) -> ActionRecord:
