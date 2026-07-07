@@ -3088,3 +3088,104 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-07-06 (ADR-016 S2 Phase B COMPLETE, PLAN-0053, session 104) [rotated 2026-07-07, session-110 progress reconcile]
 
 | 2026-07-06 | **ADR-016 S2 Phase B COMPLETE (PLAN-0053) — typed service-principal actor model; "S2 before S1" now satisfied (session 104; #592–#597)** — a scheduled/non-human run now has a typed, audit-legible actor and can NEVER approve its own gate (SP-1). `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2). **#593 (`8077242`) activation:** Cray ratified SD-2 (omit-when-None row-hash, superseding the epoch-boundary rec after a code read) + SD-3 (`service_principal_ids` list on Agent). **#594 (`bab3c3e`) spec:** `ServicePrincipal` type (distinct from Person — no approver field/SP-1, no scope primitive/SP-6) + vertical `service_principals` registry + `Agent.service_principal_ids` + draft-governance disjointness (AC-5/6/7/12). **#595 (`4ab67ca`) runtime:** the **library-level RF-1 guard** at `resolve_gated_step` (AC-1 — a gated resolve with no principal RAISES `GateApproverError` independent of `api_auth_enabled`; closes the Phase-A HTTP-only gap so a scheduler/direct caller can't bypass) + `RunContext.service_principal` threaded through all 3 construction sites (AC-8); blast radius 8 gate-resolve test files + 1 incidental test-isolation fix. **#596 (`4f49e29`) audit:** `actor_service_principal_id` column (alembic 0010) + `compute_row_hash` **omit-when-None** (SD-2 — proven on-disk 7/7 that pre-migration rows recompute byte-identically, no epoch) + `verify_chain` passthrough + `actor_kind:"service"` + on-behalf-of lineage (AC-9/10/11). **#592 (`b1fb2e7`):** `next-work-analyst` skill + soft `UserPromptSubmit` handoff-nudge hook. **#597 (`fe36e36`):** PLAN-0053 `git mv` → `done/` (Phase A s102 + Phase B s104 COMPLETE). **All ACs 1–13 met; 52 db + 489 procedures tests green**; ruff + mypy clean; MS-S1 not exercised. No active PLAN. `loop-dispatcher` DISABLED; MS-S1 idle | `fe36e36` (#597 PLAN→done) / `4f49e29` (#596 audit) / `4ab67ca` (#595 runtime) / `bab3c3e` (#594 spec) / `8077242` (#593 activation) / `b1fb2e7` (#592 skill+hook) / `services/engine/procedures/{spec.py,persistence.py,orchestrator.py}` (`ServicePrincipal` + `RunContext.service_principal` + RF-1 guard) + `services/engine/procedures/audit.py` (`actor_service_principal_id` + omit-when-None row-hash) + `alembic/versions/0010_*.py` + `docs/plans/done/0053-adr016-s2-service-principal.md` |
+
+### Current-Focus block — Session 110, 2026-07-07 (head_commit `2051bc1` → `f63f121`) — ADR-0029 + PLAN-0056 DESIGN + Phase A COMPLETE [rotated 2026-07-08, session-111 PLAN-0056-COMPLETE reconcile]
+
+> **Session 110, 2026-07-07 (head_commit `2051bc1` → `f63f121`) —
+> DESIGN batch: `next-work-analyst` (2 Explore grounding passes over the
+> actual code) ranked the next-work candidates **A ▸ D ▸ C**; Cray picked
+> **A = event/Alert-triggered procedure runs** — the moat's axis-(a)
+> asset-event trigger and the procurement hero-demo's automatic opening
+> line. Two governance artifacts landed, both `plan-drafter`-authored
+> (ADR-013 D1) → Code R2 → Cray-ratified → Code-committed; no code change
+> this batch.**
+> **#621 — ADR-0029 Accepted** (feat `40ef332`, merge `aeb4a75`).
+> Architecture for the third procedure trigger kind `event` (an OCT
+> anomaly/Alert), bridging the recommender's detection to a governed
+> `PipelineRun`. Cray ratified all four SDs as-recommended: **SD-1 = (b)
+> FEED INTO** (an actionable event maps to + fires a governed PipelineRun;
+> the Procedure engine is the single governed action surface — closing the
+> two-parallel-governance-models seam), **SD-2** = deterministic event-keyed
+> `run_id` `<procedure_id>@<event_key>` (write-ahead PK-idempotency,
+> mirroring PLAN-0055 Step 6), **SD-3** = a declarative
+> `event_kind`→`procedure_id` mapping in the vertical spec, **SD-4** =
+> in-process fire at detection for v1 (enqueue/worker deferred).
+> Architecture-only; the build is the follow-on PLAN. Both enabling
+> preconditions (ServicePrincipal PLAN-0053, scheduler ADR-0028/PLAN-0055)
+> already shipped → unblocked today.
+> **#622 — PLAN-0056 Ready** (feat `cae21fc`, merge `54f80c4`). The
+> build-PLAN implementing ADR-0029, phased like PLAN-0055. **Phase A
+> (offline):** lift the manual/schedule-only block for `event` (retain
+> every other governance check) + an `EventTrigger` mapping descriptor on
+> `Procedure` + event-keyed `run_id` idempotency + a pure event resolver
+> (mirrors `scheduler_wiring.build_resolver`) + the bridge fire-fn.
+> **Phase B:** wire into the recommender `_populate_store` loop behind a
+> default-off `event_bridge_enabled` flag (ship-dark) + LOUD-on-failure
+> (audit + `notify_event_fire_failed`) + a procurement demo (an
+> asset-failure event auto-fires a DISTINCT event-triggered
+> emergency-sourcing procedure → parks at the ฿-tier `doa_tier` gate →
+> distinct approver). 12 ACs, all offline/deterministic (no MS-S1). Cray
+> ratified all four plan-level SDs as-rec: SD-P1 `event_key = hash(vertical,
+> event_kind, entity id, detection-window bucket)` · SD-P2 `EventTrigger`
+> descriptor on `Procedure` · SD-P3 default-off `event_bridge_enabled` ·
+> SD-P4 skip-if-in-flight.
+> **Standing:** ADR-0029 Accepted + PLAN-0056 Ready; **Phase A COMPLETE (Steps 1–5)**
+> (#623/#625/#626/#628/#629) — five un-gated Code `feat` PRs executed directly (PLAN-0056
+> Ready; §6 "Steps execute directly"), each green through the required `gate`
+> (full CI). **Step 1 (#623, `ef7bd15`, AC-1/2/3):** the `event` block is lifted
+> (`Trigger.EVENT` admitted to `_RUNNABLE_TRIGGERS`), every OTHER governance check
+> intact. **Step 2 (#625, `3a7bc16`, AC-4):** a typed `EventTrigger` mapping
+> descriptor on `Procedure` (present iff `trigger==event`, `extra="forbid"`;
+> carries `event_kind` + SP-5 `owning_person_id`, mirrors `Schedule`) +
+> `_validate_event_trigger_descriptor` (symmetric iff-invariant) +
+> `VerticalProcedures` cross-refs (extracted to `_check_event_cross_refs` for the
+> C901 bound: owning-person resolves to a declared Person + each `event_kind` maps
+> to exactly one procedure — duplicate = ambiguous, caught at load). Fact-vs-code
+> finding: the recommender's `RecommendedAction` has **NO** `action_type` (the
+> PLAN's candidate match-source was a guess) → `event_kind` stays a free authored
+> string, the match field pinned by Step 4. 783 passed. **Step 3 (#626,
+> `f63f121`, AC-5):** new `services/engine/procedures/event_bridge.py` — the
+> pure/offline `event_key(*, vertical, event_kind, entity_ids, detected_at,
+> window_seconds)` (deterministic dedup hash over vertical + event_kind + sorted
+> entity ids + detection-window bucket → re-detect in the same window = same key =
+> idempotent no-op re-fire; later window = fresh key; naive datetime = UTC; `\x1f`
+> field separator) + `event_run_id(procedure_id, key)` →
+> `<procedure_id>@<event_key>` (the `pipeline_runs` write-ahead PK, mirrors
+> PLAN-0055 Step 6). 11 tests. **Step 4 (#628, `7da5622`, AC-6):**
+> `build_event_resolver` in `event_bridge.py` (mirrors
+> `scheduler_wiring.build_resolver`) turns a detected actionable event into an
+> `EventRunRequest` — procedure by `event_kind` + run-by agent + SP-4
+> ServicePrincipal + SP-5 `owning_person` + the event-keyed `run_id` + a
+> `trigger_context` stamp; an unmapped `event_kind` raises `EventBridgeError`
+> loudly (the reachable failure). Plus `EventTrigger.dedup_window_seconds`
+> (per-mapping detection-window granularity, SD-P1, default 1h) fed to
+> `event_key`. 12 tests. **Step 5 (#629, `117e2d4`, AC-7/8/9):**
+> `fire_event(session, request, *, now)` FEEDS the recommender's actionable
+> detection INTO the governed engine (SD-1) — a REAL persisted `PipelineRun` via
+> `run_procedure_persisted`, NOT the lightweight `ActionRecord` path. Two skips
+> mirror the scheduler: SD-2 idempotency (the event-keyed `run_id` already exists
+> → `ALREADY_FIRED` no-op, the write-ahead PK dedup) + SD-P4 skip-if-in-flight (a
+> different run of the same procedure running/waiting_human → `SKIPPED_IN_FLIGHT`);
+> both land an `event_skipped` audit. The service-actor audit (AC-7:
+> actor_kind:service + SP-5 on-behalf-of), gated-park posture (AC-8: RF-3), and
+> write-ahead durability are inherited verbatim from `run_procedure_persisted`. New
+> DB-backed `tests/services/db/test_event_bridge_fire.py` (5 tests). **807 passed**
+> across procedures/db/verticals/api. **→ Phase A COMPLETE (Steps 1–5, the offline
+> foundation); next = Phase B Step 6** (wire into the recommender `_populate_store`
+> loop behind default-off `event_bridge_enabled` ship-dark), Step 7
+> (LOUD-on-failure: `event_fire_failed` audit + Telegram), Step 8 (a procurement
+> asset-failure event auto-fires a distinct emergency-sourcing procedure → parks at
+> the DOA gate → distinct approver); all un-gated Code (PLAN Ready), Step 8 may
+> touch host-state (ask Cray).
+> Candidate D (hero-demo backlog) + C1 (whoami/reject-at-login) remain the
+> other s110 next-work options. `main` **green + PROTECTED** (`be190d8`);
+> 0 open PRs; `loop-dispatcher` **DISABLED**; MS-S1 idle; AI-assisted
+> (Claude Code, session 110), no `Co-Authored-By` per §7. Still-open
+> housekeeping (unchanged from s109): older `done/` PLANs carry stale
+> Status lines (per-PLAN verify, not a blind sweep); dev DB `vero_lite`
+> behind on migrations (needs `alembic upgrade head` before a daemon run —
+> host-state, ask Cray).
+
+### Recent-Decisions row — 2026-07-07 (`main` greened — RF-1 library-guard 409 fix, session 105 #600) [rotated 2026-07-08, session-111 PLAN-0056-COMPLETE reconcile]
+
+| 2026-07-07 | **`main` greened — RF-1 library-guard 409 regression fixed (session 105; #600)** — `main` was **CI-red since #595**, merged red through #596–#598 (2 tests in `tests/api/test_runs_endpoints.py`). Root cause: the ADR-016 S2 **RF-1 library guard** (`resolve_gated_step`, #595) fails closed when the resolved `principal` (`Person`) is `None`, and the **energy vertical authors no principals** → an authenticated caller (`person_id="op-somchai"`, `person=None`, the documented Phase-A contract) hit `GateApproverError → 409` on gate-resolve. **Fix (approach (a) — the guard is correct):** the 2 happy-path tests now provision a **real `Person` approver** (monkeypatch `auth._principal_index`, mirroring `test_api_auth.py`); energy production `procedures.yaml` deliberately **not** given a principals block (would arm vertical-wide membership enforcement — the OQ-6 N≥2 boundary). Reproduced the 409 on a fresh DB, then verified **234 passed** (api+db+verticals). `plan-drafter`-authored, Code R2 + committed | `4b7f472` (#600 fix) / `tests/api/test_runs_endpoints.py` (real-Person approver) / `services/engine/procedures/orchestrator.py` (RF-1 guard, #595 context) |
