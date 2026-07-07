@@ -15,6 +15,12 @@ Ratified policy (ADR-0028 §157-173, PLAN-0055 SD-P2..P6):
 * **SD-P2 skip-with-audit for missed rounds** — after downtime the clock is advanced to the
   next FUTURE slot (no backfill); if intermediate slots elapsed, a ``schedule_missed`` audit
   row records the gap. The due slot itself still fires once (SD-P4 at-most-once).
+* **SD-P5 / AC-7 restart recovery — no double-fire per slot** — the deterministic per-slot
+  ``run_id = "<schedule_id>@<scheduled_for>"`` is the idempotency key. A slot whose write-ahead
+  run row already exists (it fired, then a crash/restart happened before the clock advanced) is
+  recognised and NOT re-fired — a re-fire would collide on the ``run_id`` primary key
+  (``IntegrityError``) — while the clock still advances. Emits a ``schedule_skipped`` audit row
+  (``reason:"already_fired"``).
 * **SD-P6 trigger_context** — every fired run is stamped
   ``{trigger, cron, timezone, scheduled_for, fired_at, actor:<service-principal-id>}``.
 
@@ -81,6 +87,7 @@ class FireResult(StrEnum):
 
     FIRED = "fired"
     SKIPPED_IN_FLIGHT = "skipped_in_flight"
+    ALREADY_FIRED = "already_fired"
     INITIALIZED = "initialized"
     NOT_DUE = "not_due"
 
@@ -111,6 +118,22 @@ async def _in_flight(session: AsyncSession, procedure_id: str) -> bool:
             ),
         )
         .limit(1)
+    )
+    return row.scalar_one_or_none() is not None
+
+
+async def _run_exists(session: AsyncSession, run_id: str) -> bool:
+    """True iff a :class:`PipelineRun` with this exact ``run_id`` is already persisted — the
+    per-fire-slot idempotency guard for restart recovery (SD-P5, AC-7).
+
+    ``run_id = "<schedule_id>@<scheduled_for>"`` is deterministic per slot, and
+    :func:`run_procedure_persisted` write-ahead-commits the run row BEFORE any effect — so the
+    row exists IFF the slot durably fired. A crash between that write-ahead commit and the
+    ``next_fire`` clock-advance leaves the slot still "due" on restart; re-firing would collide
+    on the ``run_id`` primary key (``IntegrityError``). This lets the fire path detect the
+    already-fired slot and skip it instead of raising."""
+    row = await session.execute(
+        sa.select(PipelineRun.run_id).where(PipelineRun.run_id == run_id).limit(1)
     )
     return row.scalar_one_or_none() is not None
 
@@ -167,6 +190,35 @@ async def fire_due_schedules(
             continue
 
         scheduled_for = state.next_fire
+        run_id = f"{state.schedule_id}@{scheduled_for.isoformat()}"
+
+        # SD-P5 / AC-7 — restart recovery, no double-fire per slot. The write-ahead
+        # PipelineRun row is durable IFF this slot already fired; a crash between that commit
+        # and the clock-advance below leaves the slot still "due" on restart. Re-firing would
+        # collide on the run_id PK — so if the run already exists, skip it (do not re-fire) and
+        # just advance the clock. This precedes the in-flight check: a same-slot run that is
+        # still running is an already-fired slot (recovery), not an SD-P3 overlap.
+        if await _run_exists(session, run_id):
+            await append_audit(
+                session,
+                action="schedule_skipped",
+                payload={
+                    "schedule_id": state.schedule_id,
+                    "procedure_id": state.procedure_id,
+                    "scheduled_for": scheduled_for.isoformat(),
+                    "reason": "already_fired",
+                },
+            )
+            state.next_fire = next_fire_fn(state.cron, state.timezone, now)
+            state.updated_at = now
+            await session.merge(state)
+            await session.commit()
+            outcomes.append(
+                FireOutcome(
+                    state.schedule_id, FireResult.ALREADY_FIRED, scheduled_for, run_id=run_id
+                )
+            )
+            continue
 
         # SD-P3 — skip when a prior run of the same procedure is still in flight.
         if await _in_flight(session, state.procedure_id):
@@ -208,7 +260,6 @@ async def fire_due_schedules(
             )
 
         run = resolve(state)
-        run_id = f"{state.schedule_id}@{scheduled_for.isoformat()}"
         trigger_context = _trigger_context(
             state, scheduled_for, now, run.service_principal.service_principal_id
         )

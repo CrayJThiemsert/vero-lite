@@ -97,12 +97,14 @@ class SchedulerDaemon:
             outcomes = await fire_due_schedules(session, schedules, now=now, resolve=self._resolve)
         fired = sum(1 for o in outcomes if o.result is FireResult.FIRED)
         skipped = sum(1 for o in outcomes if o.result is FireResult.SKIPPED_IN_FLIGHT)
+        recovered = sum(1 for o in outcomes if o.result is FireResult.ALREADY_FIRED)
         self._log.info(
             "scheduler.tick",
             now=now.isoformat(),
             evaluated=len(outcomes),
             fired=fired,
             skipped=skipped,
+            recovered=recovered,
         )
         for o in outcomes:
             if o.result is FireResult.FIRED:
@@ -115,6 +117,11 @@ class SchedulerDaemon:
                 )
             elif o.result is FireResult.SKIPPED_IN_FLIGHT:
                 self._log.warning("scheduler.skipped_in_flight", schedule_id=o.schedule_id)
+            elif o.result is FireResult.ALREADY_FIRED:
+                # AC-7 — this slot's run survived a restart; recovered, not re-fired.
+                self._log.warning(
+                    "scheduler.already_fired", schedule_id=o.schedule_id, run_id=o.run_id
+                )
         return outcomes
 
     async def run(self) -> None:
