@@ -326,3 +326,77 @@ async def test_missed_round_is_audited_and_fires_once(session: AsyncSession) -> 
     missed = await _audit_rows(session, "schedule_missed")
     assert len(missed) == 1
     assert missed[0].payload is not None and missed[0].payload["policy"] == "skip_no_backfill"
+
+
+async def test_restart_does_not_refire_completed_slot(session: AsyncSession) -> None:
+    """AC-7 (the crux): a slot whose run already committed (it fired, then a crash happened
+    before the state clock advanced) is NOT re-fired on restart. ``run_id`` is the pipeline_runs
+    primary key, so a naive re-fire would raise IntegrityError at the write-ahead commit — this
+    test PASSING (no raise) + a single run row + ALREADY_FIRED proves the idempotency guard."""
+    now = datetime(2026, 7, 7, 6, 30, tzinfo=BKK)
+    scheduled_for = datetime(2026, 7, 7, 6, 0, tzinfo=BKK)
+    # the pre-restart durable run for THIS slot, at its deterministic run_id, already COMPLETED.
+    slot_run_id = f"aqua:morning@{scheduled_for.isoformat()}"
+    session.add(
+        PipelineRun(
+            run_id=slot_run_id,
+            procedure_id="morning_round",
+            agent_id="pond_agent",
+            status=PipelineRunStatus.COMPLETED.value,
+            started_at=EPOCH,
+            updated_at=EPOCH,
+        )
+    )
+    state = _state(next_fire=scheduled_for)  # clock never advanced past the fired slot
+    session.add(state)
+    await session.commit()
+
+    [outcome] = await fire_due_schedules(
+        session, [state], now=now, resolve=_resolver(_scheduled_run())
+    )
+    assert outcome.result is FireResult.ALREADY_FIRED
+    assert outcome.run_id == slot_run_id
+    # no SECOND run — the pre-existing row is the only pipeline_runs row (at-most-once holds).
+    assert (
+        await session.execute(sa.select(sa.func.count()).select_from(PipelineRun))
+    ).scalar() == 1
+    # clock advanced past the recovered slot (no spin); last_fired untouched (we did not fire).
+    assert state.next_fire is not None and state.next_fire > now
+    assert state.last_fired is None
+    skipped = await _audit_rows(session, "schedule_skipped")
+    assert len(skipped) == 1
+    assert skipped[0].payload is not None and skipped[0].payload["reason"] == "already_fired"
+
+
+async def test_restart_does_not_refire_in_flight_same_slot(session: AsyncSession) -> None:
+    """AC-7: the run_id idempotency guard precedes the SD-P3 in-flight check — a run for THIS
+    slot still ``running`` after a restart is classified ALREADY_FIRED (recovery of this slot),
+    not SKIPPED_IN_FLIGHT (which is an overlap with a *different* prior run)."""
+    now = datetime(2026, 7, 7, 6, 30, tzinfo=BKK)
+    scheduled_for = datetime(2026, 7, 7, 6, 0, tzinfo=BKK)
+    slot_run_id = f"aqua:morning@{scheduled_for.isoformat()}"
+    session.add(
+        PipelineRun(
+            run_id=slot_run_id,
+            procedure_id="morning_round",
+            agent_id="pond_agent",
+            status=PipelineRunStatus.RUNNING.value,
+            started_at=EPOCH,
+            updated_at=EPOCH,
+        )
+    )
+    state = _state(next_fire=scheduled_for)
+    session.add(state)
+    await session.commit()
+
+    [outcome] = await fire_due_schedules(
+        session, [state], now=now, resolve=_resolver(_scheduled_run())
+    )
+    assert outcome.result is FireResult.ALREADY_FIRED
+    assert outcome.run_id == slot_run_id
+    assert (
+        await session.execute(sa.select(sa.func.count()).select_from(PipelineRun))
+    ).scalar() == 1
+    skipped = await _audit_rows(session, "schedule_skipped")
+    assert len(skipped) == 1
+    assert skipped[0].payload is not None and skipped[0].payload["reason"] == "already_fired"
