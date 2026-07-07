@@ -44,6 +44,12 @@ Clock = Callable[[], datetime]
 """Returns the current instant — the ONLY wall-clock read in the whole scheduler; injectable
 so a test drives the loop with a fixed clock."""
 
+Notifier = Callable[..., Awaitable[bool]]
+"""Best-effort missed-round alert (default :func:`services.notify.telegram.notify_schedule_missed`);
+called ``notify(schedule_id=..., scheduled_for=...)``. Injectable so a test spies without a
+real Telegram POST, and so the default import stays lazy (the daemon module never hard-depends
+on the notify stack)."""
+
 _log: structlog.stdlib.BoundLogger = structlog.get_logger("scheduler_daemon")
 
 
@@ -76,6 +82,7 @@ class SchedulerDaemon:
         interval_seconds: float = 60.0,
         clock: Clock = _utcnow,
         logger: Any = None,
+        notify: Notifier | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._load_schedules = load_schedules
@@ -83,6 +90,12 @@ class SchedulerDaemon:
         self._interval = interval_seconds
         self._clock = clock
         self._log = logger if logger is not None else _log
+        if notify is not None:
+            self._notify: Notifier = notify
+        else:  # lazy import — keep the daemon module free of a hard notify-stack dependency.
+            from services.notify.telegram import notify_schedule_missed
+
+            self._notify = notify_schedule_missed
         self._stop = asyncio.Event()
 
     def request_stop(self) -> None:
@@ -115,6 +128,16 @@ class SchedulerDaemon:
                     run_status=o.run_status,
                     missed=o.missed,
                 )
+                if o.missed:
+                    # AC-8 — a missed round (downtime skipped >=1 fire slot; SD-P2
+                    # skip-no-backfill) is LOUD: a WARN log + a best-effort Telegram ping so
+                    # the ABSENCE of runs across the gap is detectable, not silent.
+                    slot = o.scheduled_for.isoformat() if o.scheduled_for else ""
+                    self._log.warning(
+                        "scheduler.missed_round", schedule_id=o.schedule_id, scheduled_for=slot
+                    )
+                    with suppress(Exception):  # never let an alert failure kill the tick
+                        await self._notify(schedule_id=o.schedule_id, scheduled_for=slot)
             elif o.result is FireResult.SKIPPED_IN_FLIGHT:
                 self._log.warning("scheduler.skipped_in_flight", schedule_id=o.schedule_id)
             elif o.result is FireResult.ALREADY_FIRED:

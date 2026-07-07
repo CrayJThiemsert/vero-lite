@@ -33,6 +33,10 @@ _TELEGRAM_API = "https://api.telegram.org"
 # anchor (SD-4). Resets on process restart (no cross-restart persistence).
 _last_send_monotonic: float | None = None
 
+# A SEPARATE cooldown anchor for scheduler missed-round alerts (PLAN-0055 Step 7 / AC-8) so
+# they never debounce against the MS-S1-unreachable pings — distinct events, distinct limits.
+_last_schedule_send_monotonic: float | None = None
+
 
 def _warm_one_liner() -> str:
     """The copy-pasteable warm command — model + host + keep_alive from config."""
@@ -94,9 +98,30 @@ def describe_arm_state() -> str:
 
 
 def reset_cooldown() -> None:
-    """Reset the process-local cooldown anchor (used by tests)."""
-    global _last_send_monotonic
+    """Reset both process-local cooldown anchors (used by tests)."""
+    global _last_send_monotonic, _last_schedule_send_monotonic
     _last_send_monotonic = None
+    _last_schedule_send_monotonic = None
+
+
+async def _post_telegram(text: str, *, transport: httpx.AsyncBaseTransport | None) -> bool:
+    """POST one message to the Telegram ``sendMessage`` API. Returns ``True`` iff delivered.
+
+    **Never raises** — every failure is swallowed + logged (both notifiers are best-effort and
+    must never break their caller). ``transport`` is the test-injection seam (an
+    ``httpx.MockTransport``); production passes ``None``.
+    """
+    url = f"{_TELEGRAM_API}/bot{settings.telegram_bot_token}/sendMessage"
+    try:
+        async with httpx.AsyncClient(timeout=5.0, transport=transport) as client:
+            response = await client.post(
+                url, json={"chat_id": settings.telegram_chat_id, "text": text}
+            )
+            response.raise_for_status()
+    except Exception as exc:  # best-effort — must never raise into the caller
+        logger.warning("telegram notify failed: %s", exc)
+        return False
+    return True
 
 
 async def notify_llm_unreachable(
@@ -124,16 +149,65 @@ async def notify_llm_unreachable(
 
     occurred_at = datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     text = build_message(occurred_at=occurred_at)
-    url = f"{_TELEGRAM_API}/bot{settings.telegram_bot_token}/sendMessage"
-    try:
-        async with httpx.AsyncClient(timeout=5.0, transport=transport) as client:
-            response = await client.post(
-                url, json={"chat_id": settings.telegram_chat_id, "text": text}
-            )
-            response.raise_for_status()
-    except Exception as exc:  # best-effort — must never raise into the request path
-        logger.warning("telegram notify failed (MS-S1-unreachable ping): %s", exc)
+    if not await _post_telegram(text, transport=transport):
         return False
 
     _last_send_monotonic = current
+    return True
+
+
+def _schedule_gates_open() -> bool:
+    """True when Telegram alerts are armed for the scheduler: flag on + bot token + chat id.
+
+    Unlike :func:`_gates_open` there is **no** ``llm_backend`` condition — a missed scheduled
+    round is a clock / ops event, independent of which LLM backend (or none) is configured.
+    """
+    return bool(
+        settings.telegram_notify_enabled
+        and settings.telegram_bot_token
+        and settings.telegram_chat_id
+    )
+
+
+def build_schedule_missed_message(*, schedule_id: str, scheduled_for: str) -> str:
+    """The no-PII missed-round advisory body (PLAN-0055 Step 7 / AC-8).
+
+    Carries only operational identifiers (the schedule id + the scheduled slot) — never
+    object / record / partner data (CLAUDE.md §8 / PDPA).
+    """
+    return (
+        f"⚠️ vero-lite scheduler: a scheduled run was MISSED — schedule "
+        f"'{schedule_id}', slot {scheduled_for}. The daemon was down across one or more "
+        "fire slots (skip-no-backfill policy); check the scheduler daemon is running."
+    )
+
+
+async def notify_schedule_missed(
+    *,
+    schedule_id: str,
+    scheduled_for: str,
+    transport: httpx.AsyncBaseTransport | None = None,
+    now: float | None = None,
+) -> bool:
+    """Best-effort ping that a scheduled round was MISSED (SD-P2 skip-no-backfill; PLAN-0055
+    Step 7 / AC-8) so the *absence* of a run is detectable. Returns ``True`` iff a message was
+    sent. **Never raises** — every failure is swallowed + logged. ``transport`` / ``now`` are
+    the same test seams as :func:`notify_llm_unreachable`; production passes neither.
+    """
+    global _last_schedule_send_monotonic
+    if not _schedule_gates_open():
+        return False
+
+    current = now if now is not None else time.monotonic()
+    if (
+        _last_schedule_send_monotonic is not None
+        and current - _last_schedule_send_monotonic < settings.telegram_notify_cooldown_s
+    ):
+        return False
+
+    text = build_schedule_missed_message(schedule_id=schedule_id, scheduled_for=scheduled_for)
+    if not await _post_telegram(text, transport=transport):
+        return False
+
+    _last_schedule_send_monotonic = current
     return True
