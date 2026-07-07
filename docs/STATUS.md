@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-07T14:53:43+07:00
-session: 108
-current_batch: "s108 PLAN-0055 Phase B Steps 6–7 — 3 PRs (#612, #614, #615). **Phase A COMPLETE** (Steps 1–4) + **Phase B Steps 5–7** merged. #612 Step 6 (SD-P5 + AC-7): per-fire-slot idempotency guard for restart recovery (`run_id` write-ahead PK checked via `_run_exists` **AHEAD of the SD-P3 in-flight check** → `FireResult.ALREADY_FIRED`; daemon logs `already_fired`/`recovered`). #614 Step 7a (AC-8): missed-round LOUDness — daemon `tick()` emits WARN `scheduler.missed_round` on any FIRED `missed=True` + a best-effort Telegram ping (`services/notify/telegram.py::notify_schedule_missed`, DISTINCT gate + SEPARATE cooldown, `suppress()`-wrapped so it never tears a tick). #615 Step 7b: `scheduler_wiring.py` (`sync_schedule_states` registration + REAL `build_resolver`, SP-4) + `vero-lite scheduler --vertical` CLI + `docs/runbooks/scheduler-daemon.md` — closes the registration gap. Full suite 2294/7; ruff+mypy clean. Step 8 (optional procurement demo) next."
+last_updated: 2026-07-07T16:54:22+07:00
+session: 109
+current_batch: "s109 PLAN-0055 S1 Step 8 COMPLETE → **PLAN-0055 FULLY DONE (Steps 1–8)**, `git mv`'d to `docs/plans/done/`. Two PRs (#617 feat, #618 fix): the first `schedule`-trigger procedure on a REAL vertical (procurement `scheduled_emergency_sourcing_round`, cron `0 6 * * *` Asia/Bangkok) wired end-to-end through the shipped scheduler + verified with a LIVE daemon demo. #617 adds the procedure + a new `svc-buyer` ServicePrincipal + a new `Schedule.owning_person_id` (SP-5: fire as svc-buyer ON BEHALF OF `req-planner` so DOA approver `appr-pm` governs the ฿288k tier) + a latent Decimal→JSONB seed fix + DB-backed `tests/services/db/test_scheduled_procurement_demo.py`. #618 (surfaced by the live smoke): `_run_scheduler` must `discover_and_register()` action handlers before firing. LIVE demo (MS-S1-free, disposable DB): daemon fired on real wall clock → parked at DOA gate → resolved by appr-pm → completed; SoD governed, demo DB dropped, dev DB + MS-S1 untouched. Full suite green; ruff+mypy clean. main da8ba03, 0 open PRs."
 current_actor: code
-blocked_on: "Nothing blocking — PLAN-0055 Steps 1–7 merged (Phase A + Phase B daemon/recovery/LOUDness/deploy-CLI); main green + PROTECTED; 0 open PRs. loop-dispatcher DISABLED; MS-S1 idle."
-next_action: "S1 Step 8 (optional) — procurement demo: author a `schedule`-trigger procedure + its `ServicePrincipal` into `verticals/procurement/procedures.yaml` (no vertical ships one yet), seed, and drive the scheduler machinery end-to-end (schedule→fire→auto-steps→park-at-gate). Deferred: v2 login / GET /whoami / multi-operator RBAC."
-head_commit: 934eb58
-recent_commits: [934eb58, 1939a5f, 801aebe, 43d40dd, 5077d6d, ef91ea7, 3938191, 255ca96, d7094bb, 3bec1f0]
+blocked_on: "Nothing blocking — PLAN-0055 COMPLETE (Steps 1–8) and moved to done/; main green + PROTECTED; 0 open PRs. loop-dispatcher DISABLED; MS-S1 idle."
+next_action: "PLAN-0055 CLOSED (Steps 1–8, moved to done/); next work TBD — run `next-work-analyst`. Candidates (not a committed plan yet): procurement hero-demo backlog / deferred v2 login·GET /whoami·multi-operator RBAC from PLAN-0055 Out-of-Scope."
+head_commit: 2051bc1
+recent_commits: [2051bc1, 6335bd6, 934eb58, 1939a5f, 801aebe, 43d40dd, 5077d6d, ef91ea7, 3938191, 255ca96]
 ---
 
 # vero-lite — Project Status
@@ -18,95 +18,71 @@ recent_commits: [934eb58, 1939a5f, 801aebe, 43d40dd, 5077d6d, ef91ea7, 3938191, 
 
 ## Current Focus
 
-> **Session 108, 2026-07-07 (head_commit `43d40dd` → `934eb58`) —
-> PLAN-0055 S1 Steps 6–7: restart-recovery idempotency guard + missed-round
-> LOUDness + deploy CLI/registration (Phase B continues; AC-7/AC-8).** Three
-> merged PRs this session (#612, #614, #615), all **un-gated Code `feat` PRs**
-> executed directly (PLAN-0055 already Ready; §6 "Steps 2–8 execute directly,
-> no drafter"), each green through the required `gate`; no ADR/PLAN edit.
-> **#612 — S1 Step 6 (Phase B; SD-P5 + AC-7)**
-> (feat `801aebe`, merge `8c6e270`; **this Code thread**). The
-> per-fire-slot **idempotency guard** for restart recovery. `run_id =
-> "<schedule_id>@<scheduled_for>"` is the `pipeline_runs` **primary key**,
-> and `run_procedure_persisted` **write-ahead-commits** the run row before
-> any effect — so the row exists **iff** the slot durably fired. A crash
-> between that write-ahead commit and the `next_fire` clock-advance leaves
-> the slot still "due" on restart; a naive re-fire would collide on the
-> `run_id` PK (`IntegrityError`), and the existing SD-P3 `_in_flight` check
-> does NOT catch it once the prior run has `completed`. `fire_due_schedules`
-> now computes `run_id` early and checks a new `_run_exists(run_id)`
-> **before firing — placed AHEAD of the SD-P3 in-flight check** so a
-> completed prior run is caught too. On hit: skip the re-fire, advance the
-> clock, emit a `schedule_skipped` audit (`reason:"already_fired"`), return
-> the new **`FireResult.ALREADY_FIRED`**. The daemon `tick()` logs
-> `scheduler.already_fired` + a `recovered` count in the tick summary.
-> Tests (AC-7, DB-backed): `test_restart_does_not_refire_completed_slot`
-> (the crux — a completed pre-restart slot is not re-fired, which would
-> otherwise raise `IntegrityError`; single run row; clock advanced;
-> `already_fired` audit) + `test_restart_does_not_refire_in_flight_same_slot`
-> (a same-slot run still `running` is classified `ALREADY_FIRED`,
-> precedence over `SKIPPED_IN_FLIGHT`). **Full suite 2276 passed / 7
-> skipped** (+2 from Step 5's 2274/7); ruff + mypy clean (incl the isolated
-> pre-commit mypy hook — no new typed dep). **Deferred to Step 7:** making
-> the missed *intermediate* slots during the same downtime LOUD (a
-> `schedule_missed` on recovery) — AC-8, per the phased PLAN. **#614 — S1
-> Step 7a (Phase B; AC-8)** (feat `1939a5f`, merge `7eeb40d`; same Code
-> thread) ships that LOUDness: the daemon `tick()` now emits a WARN
-> `scheduler.missed_round` for any FIRED outcome with `missed=True`, then a
-> best-effort **Telegram** ping — an INJECTED collaborator (default resolves
-> lazily to the real notifier), wrapped in `suppress()` so an alert failure
-> never tears a tick. New `services/notify/telegram.py::notify_schedule_missed`
-> reuses the existing best-effort POST + cooldown + never-raise mechanics
-> (extracted into a shared `_post_telegram` core; `notify_llm_unreachable`
-> behaviour unchanged) but with a **DISTINCT gate** (`_schedule_gates_open`:
-> flag + token + chat_id, **no `llm_backend` condition** — a missed round is a
-> clock/ops event) and a **SEPARATE cooldown anchor** so the two alert kinds
-> never debounce each other; no-PII message. 9 new tests (7 telegram + 2
-> daemon); full suite **2285/7**. **#615 — S1 Step 7b (Phase B; deploy
-> posture)** (feat `934eb58`, merge `84e6511`) connects a REAL vertical spec
-> to the pure Step-4 fire fn + the Step-5 daemon and closes the **registration
-> gap** (nothing populated `schedule_states` in production). New
-> `services/engine/procedures/scheduler_wiring.py`: `sync_schedule_states(session,
-> spec)` — the registration step: upsert one `ScheduleState` per
-> `schedule`-trigger procedure keyed `"<vertical>:<procedure_id>"` from
-> `Procedure.schedule` cron + IANA-tz; **idempotent** — spec owns cron/tz, the
-> daemon owns the live clock which is preserved across a re-sync; a cron change
-> drops the stale `next_fire`. Plus `build_resolver(spec, executor_factory)`
-> (the REAL `ScheduleState→ScheduledRun` — reproduces the HTTP run-path
-> assembly + the `ServicePrincipal` lookup SP-4; fail-loud
-> `SchedulerWiringError` on a missing procedure/agent/SP). New `vero-lite
-> scheduler --vertical <v>` CLI (loads spec → registers the executor factory
-> [procurement only] → syncs `schedule_states` → runs `run_scheduler_daemon`,
-> graceful SIGTERM) + new `docs/runbooks/scheduler-daemon.md` (systemd +
-> docker/compose + Telegram arming + a structured-log table). Injected-spec by
-> design (unit-tested with an in-memory `VerticalProcedures`, no disk fixture).
-> **Full suite 2294 passed / 7 skipped**; ruff + mypy clean. **NOTE:** no
-> vertical ships a `schedule`-trigger procedure yet — the **Step 8**
-> procurement demo authors one; until then the daemon runs + ticks + syncs
-> **0** schedules (expected). **MS-S1-independent** (the scheduler is a clock;
-> procurement's executor factory is a deterministic stub). Cray typed
-> this session: "ลุย Step 6 เลย เริ่มจาก confirm run_id uniqueness" +
-> "reconcile STATUS ก่อน" (a Stop-hook mis-routed plan-drafter dispatch was
-> overridden as a misroute — the remaining PLAN-0055 steps were already
-> drafted, so it was execute-not-draft). **Standing:** PLAN-0055 **Phase A
-> COMPLETE** (Steps 1–4) + **Phase B Steps 5–7** merged (daemon / recovery /
-> LOUDness / deploy-CLI), **Step 8 (optional demo) next** (a procurement
-> `schedule`-trigger procedure + its `ServicePrincipal` driving the scheduler
-> end-to-end); `main` **green + PROTECTED**; 0 open PRs;
-> `loop-dispatcher` **DISABLED**; MS-S1 idle; AI-assisted (Claude Code,
-> session 108), no `Co-Authored-By` per §7.
+> **Session 109, 2026-07-07 (head_commit `934eb58` → `2051bc1`) —
+> PLAN-0055 S1 Step 8: the first `schedule`-trigger procedure on a REAL
+> vertical (procurement), wired end-to-end through the shipped scheduler +
+> verified with a LIVE daemon demo — PLAN-0055 now FULLY COMPLETE (Steps 1–8),
+> `git mv`'d to `docs/plans/done/`.** Two merged PRs this session (#617 feat,
+> #618 fix), both **un-gated Code PRs** executed directly (PLAN-0055 already
+> Ready; §6 "Steps 2–8 execute directly, no drafter"), each green through the
+> required `gate`; no ADR/PLAN edit.
+> **#617 — S1 Step 8 (offline foundation)** (feat `6335bd6`, merge `38dfccf`;
+> **this Code thread**). A new `scheduled_emergency_sourcing_round` procedure
+> in `verticals/procurement/procedures.yaml` (AT-2 shape, `trigger: schedule`,
+> cron `0 6 * * *` Asia/Bangkok) + a new **`svc-buyer` ServicePrincipal** +
+> `procurement_agent.service_principal_ids`. It surfaced + fixed two
+> integration gotchas the in-memory Step-7b tests could not catch. **(1)
+> `doa_tier` ⟹ SoD (ADR-0025 D5) vs headless scheduling:** a fully headless
+> scheduled run records `{intake: None}` and fails the principal-SoD run-check
+> CLOSED at gate resolution. Fix (Cray-ratified "Path X"): a new
+> **`Schedule.owning_person_id`** field (SP-5) — the run fires as `svc-buyer`
+> **ON BEHALF OF** `req-planner` (the SoD requester), so a distinct DOA
+> approver (`appr-pm`, ผจก.จัดซื้อ for the ฿288k tier) governs;
+> `scheduler_wiring.build_resolver` resolves + binds it (lifting the Step-7b
+> hard-coded `owning_person=None`) and `spec._cross_refs` validates the ref.
+> **(2) Latent Decimal→JSONB seed** in the procurement executor factory (a
+> daemon-fired fresh run executes `intake` live → raw Decimal persists → JSONB
+> error; the HTTP resolve path never re-ran intake so it stayed latent) —
+> sanitised, plus a roster reconciliation (the factory's `doa_tier` resolves
+> against the spec's authored principals, not the Fastenal CSV roster). New
+> DB-backed integration test
+> **`tests/services/db/test_scheduled_procurement_demo.py`**; the archetype
+> catalog + `/procedures` endpoint updated (six shipped procedures).
+> **#618 — S1 Step 8 fix (surfaced by the LIVE daemon smoke)** (feat
+> `2051bc1`, merge `da8ba03`; same Code thread). Running `vero-lite scheduler
+> --vertical procurement` fired a run that FAILED at the `source` action step
+> — `_run_scheduler` registered the executor factory but **not** the vertical's
+> action handlers (the API lifespan calls `discover_and_register()`; the daemon
+> CLI skipped it). Fix: `_run_scheduler` now calls `discover_and_register()`
+> before firing; the integration-test fixture switched to the daemon's real
+> registration path so it guards the regression. **LIVE demo (host-state,
+> MS-S1-free, disposable DB):** the fixed daemon fired on a real wall clock
+> (`scheduler.fired … run_status=waiting_human`, as `svc-buyer` on behalf of
+> `req-planner`) → parked at the DOA gate (฿288,000 → ผจก.จัดซื้อ → appr-pm) →
+> `POST /runs/{id}/gate/resolve` as **appr-pm** → **completed**; audit:
+> `run_started` actor_kind:service + on_behalf_of req-planner, gate resolved by
+> appr-pm (human), SoD governed (`{sod, approve+intake, appr-pm}`, requester ≠
+> approver). Disposable demo DB dropped after; dev DB + MS-S1 untouched. **Full
+> offline suite green** (2296 passed / 7 skipped at #617; #618 added no count
+> change); ruff + mypy clean; both PRs green through the required `gate`.
+> **Standing:** PLAN-0055 **FULLY COMPLETE** (Steps 1–8) and `git mv`'d to
+> `docs/plans/done/`; next work is OPEN — run `next-work-analyst` (candidates:
+> the procurement hero-demo backlog / the deferred v2 login·GET /whoami·
+> multi-operator RBAC from PLAN-0055 Out-of-Scope). `main` **green + PROTECTED**
+> (`da8ba03`); 0 open PRs; `loop-dispatcher` **DISABLED**; MS-S1 idle;
+> AI-assisted (Claude Code, session 109), no `Co-Authored-By` per §7.
 
-> _Rotation note (session-108 PLAN-0055 Phase B Step 6 reconcile,
-> 2026-07-07): to hold STATUS under the **R1 64 KB hard ceiling** (R1
-> overrides the R2 4-session window — the s95–s107 precedent = a narrowed
-> 1-block CF window), the **Session 107 `43d40dd`** CF block (PLAN-0055 S1
-> Steps 2→5, #606/#607/#609/#610) was rotated verbatim to
+> _Rotation note (session-109 PLAN-0055 S1 Step 8 reconcile, 2026-07-07): to
+> hold the narrowed 1-block CF window (the s95–s108 R1-over-R2 precedent — R1
+> 64 KB hard ceiling overrides the R2 4-session window), the **Session 108
+> `801aebe`→`934eb58`** CF block (PLAN-0055 S1 Steps 6–7, #612/#614/#615) was
+> rotated verbatim to
 > [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md)
-> (it is covered by the S1-Steps-2–5 Recent-Decisions row). Resulting
-> Current-Focus window = {Session 108 `801aebe`}; 1 new RD row added (S1
-> Step 6) so the oldest — the 2026-07-05 Wave-4 [ADR-016 Phase-3 OCT
-> Monitor, session 101] row — rotated to the same archive to hold the RD
-> table at 10. Per the STATUS.md Rotation Policy (R1/R2/R4)._
+> (it is covered by the S1-Steps-6–7 Recent-Decisions row). Resulting
+> Current-Focus window = {Session 109 `2051bc1`}; 1 new RD row added (S1 Step 8)
+> so the oldest — the 2026-07-06 [ADR-016 S2 amendment + PLAN-0053/0054 Ready,
+> session 102] row — rotated to the same archive to hold the RD table at 10.
+> Per the STATUS.md Rotation Policy (R1/R2/R4)._
 
 > _Prior per-reconcile rotation notes (sessions 94–102) pruned 2026-07-06
 > (s103) as superseded procedural meta-records — the CF blocks/RD rows they
@@ -137,6 +113,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-07 | **S1 Step 8 BUILT (PLAN-0055) — first `schedule`-trigger procedure on a REAL vertical (procurement) end-to-end + LIVE daemon demo; PLAN-0055 FULLY COMPLETE (Steps 1–8), moved to `docs/plans/done/` (session 109; #617 + #618)** — two un-gated Code PRs executed directly (PLAN-0055 Ready; §6 "Steps 2–8 execute directly"), each green through the required `gate`. **Step 8 offline (#617, feat):** a new `scheduled_emergency_sourcing_round` procedure in `verticals/procurement/procedures.yaml` (AT-2, `trigger: schedule`, cron `0 6 * * *` Asia/Bangkok) + a new **`svc-buyer` ServicePrincipal** + `procurement_agent.service_principal_ids`; surfaced + fixed two integration gotchas the in-memory Step-7b tests missed: (1) `doa_tier`⟹SoD (ADR-0025 D5) collides with headless scheduling (a headless `{intake:None}` fails the principal-SoD run-check CLOSED at gate resolution) → Cray-ratified "Path X" = a new **`Schedule.owning_person_id`** (SP-5): fire as `svc-buyer` **ON BEHALF OF** `req-planner` so a distinct DOA approver (`appr-pm`, ฿288k tier) governs — `build_resolver` resolves + binds it (lifting the Step-7b hard-coded `owning_person=None`), `spec._cross_refs` validates; (2) a **latent Decimal→JSONB** seed in the procurement executor factory (a daemon-fired fresh run re-runs `intake` live so the raw Decimal persists → JSONB error; the HTTP resolve path never re-ran intake so it stayed latent) sanitised + a roster reconciliation (the factory resolves `doa_tier` against the spec's authored principals, not the Fastenal CSV roster). New DB-backed `tests/services/db/test_scheduled_procurement_demo.py`; archetype catalog + `/procedures` = six shipped procedures. **2296/7.** **Step 8 fix (#618, fix; surfaced by the LIVE daemon smoke):** `vero-lite scheduler --vertical procurement` fired but FAILED at the `source` action — `_run_scheduler` registered the executor factory but not the vertical's action handlers → it now calls **`discover_and_register()`** before firing (the API lifespan already did; the daemon CLI had skipped it); the integration fixture switched to the daemon's real registration path to guard the regression. **LIVE demo (host-state, MS-S1-free, disposable DB):** the fixed daemon fired on a real wall clock (as `svc-buyer` on behalf of `req-planner`) → parked at the ฿288k DOA gate (ผจก.จัดซื้อ → appr-pm) → `POST /runs/{id}/gate/resolve` as **appr-pm** → **completed**; audit actor_kind:service + on_behalf_of req-planner + SoD-governed (requester ≠ approver); demo DB dropped, dev DB + MS-S1 untouched. **Full suite green**; ruff + mypy clean. **PLAN-0055 FULLY COMPLETE (Steps 1–8) → `docs/plans/done/`.** MS-S1-independent | `2051bc1` (#618 fix) / `da8ba03` (#618 merge) / `6335bd6` (#617 feat) / `38dfccf` (#617 merge) / `verticals/procurement/procedures.yaml` (`scheduled_emergency_sourcing_round` + `svc-buyer`) + `services/engine/procedures/spec.py` (`Schedule.owning_person_id`) + `services/engine/procedures/scheduler_wiring.py` (`build_resolver` binds owning_person) + `tests/services/db/test_scheduled_procurement_demo.py` + `docs/plans/done/0055-*.md` |
 | 2026-07-07 | **S1 Steps 6–7 BUILT (PLAN-0055 Phase B) — restart-recovery idempotency guard + missed-round LOUDness + deploy CLI/registration (session 108; #612 + #614 + #615)** — three un-gated Code `feat` PRs executed directly (PLAN-0055 Ready; §6 "Steps 2–8 execute directly"), each green through the required `gate`. **Step 6 (#612, SD-P5 + AC-7):** `fire_due_schedules` computes the per-slot `run_id=<schedule_id>@<scheduled_for>` (the `pipeline_runs` PK, write-ahead-committed before any effect → the row exists iff the slot durably fired) early and checks a new `_run_exists(run_id)` **AHEAD of the SD-P3 in-flight check** so a `completed` prior run is caught too (not only `running`, which `_in_flight` misses) → skip the re-fire, advance the clock, emit `schedule_skipped {reason:already_fired}`, return the new `FireResult.ALREADY_FIRED`; daemon `tick()` logs `scheduler.already_fired` + a `recovered` count. **2276/7.** **Step 7a (#614, AC-8):** missed-round LOUDness — daemon `tick()` emits a WARN `scheduler.missed_round` for any FIRED `missed=True` + a best-effort Telegram ping (INJECTED notifier, `suppress()`-wrapped so an alert failure never tears a tick); new `notify_schedule_missed` reuses the best-effort POST/cooldown/never-raise core (`_post_telegram` extraction; `notify_llm_unreachable` unchanged) with a **DISTINCT gate** (flag + token + chat_id, **no `llm_backend`** — a missed round is a clock/ops event) + a **SEPARATE cooldown anchor**; no-PII. **2285/7.** **Step 7b (#615):** REAL vertical-spec → fire-fn/daemon wiring + closes the **registration gap** — new `scheduler_wiring.py::sync_schedule_states` (upsert one `ScheduleState` per `schedule`-trigger procedure keyed `<vertical>:<procedure_id>`, **idempotent**; spec owns cron/tz, daemon owns the preserved live clock; a cron change drops stale `next_fire`) + `build_resolver` (REAL `ScheduleState→ScheduledRun`, `ServicePrincipal` lookup SP-4, fail-loud `SchedulerWiringError`) + a `vero-lite scheduler --vertical` CLI + `docs/runbooks/scheduler-daemon.md`. **Full suite 2294/7**; ruff + mypy clean. NOTE: no vertical ships a `schedule`-trigger procedure yet — the Step 8 procurement demo authors one (daemon ticks + syncs 0 until then). MS-S1-independent | `934eb58` (#615 Step 7b feat) / `84e6511` (#615 merge) / `1939a5f` (#614 Step 7a feat) / `7eeb40d` (#614 merge) / `801aebe` (#612 Step 6 feat) / `8c6e270` (#612 merge) / `services/engine/procedures/scheduler.py` (`_run_exists` + `FireResult.ALREADY_FIRED`) + `services/engine/procedures/scheduler_daemon.py` (`already_fired`/`recovered` + `scheduler.missed_round`) + `services/notify/telegram.py` (`notify_schedule_missed` + `_post_telegram`) + `services/engine/procedures/scheduler_wiring.py` (`sync_schedule_states` + `build_resolver`) + `vero-lite scheduler` CLI + `docs/runbooks/scheduler-daemon.md` + `tests/services/db/{test_scheduler.py,test_scheduler_daemon.py,test_scheduler_wiring.py}` + `tests/services/notify/test_telegram.py` |
 | 2026-07-07 | **S1 Steps 2–5 BUILT (PLAN-0055) — Phase A COMPLETE + Phase B daemon scaffold (session 107; #606 + #607 + #609 + #610)** — four un-gated Code `feat` PRs executed directly (PLAN-0055 already Ready; §6 "Steps 2–8 execute directly"), all green through the required `gate`. **Step 2 (#606, SD-P1 + SD-P5):** (1) a typed `Schedule` descriptor (cron + per-schedule IANA `timezone`, `extra="forbid"`) on `Procedure`, **present IFF `trigger==schedule`** — a symmetric fail-loud-at-load invariant [**Code decision, Cray veto-open:** required-iff-schedule, house fail-loud style; blast radius test-only]; (2) a dedicated `schedule_states` table (new ORM `schedules.py` + Alembic 0011, `(vertical, procedure_id)` unique, holds `last_fired`/`next_fire` for restart recovery; additive, **outside the energy parity guard**). **2254/7.** **Step 3 (#607, SD-2 + AC-10):** `croniter>=2.0.0` prod dep (6.2.3) + `types-croniter` (dev + mypy hook) + `uv.lock`; a DB-free `cron.py::next_fire(cron, tz, after)` — wall-clock in per-schedule IANA tz (SD-P1), exclusive of `after`, croniter authoritative parser; tests incl the TH-tz AC-10 case (06:00 `Asia/Bangkok` == 23:00 UTC prev day). **2261/7.** **Step 4 (#609, Phase A LAST step, SD-P2/P3/P4/P6; built by a CONCURRENT executor session, verified on-disk here):** the pure DB-free `scheduler.py::fire_due_schedules(session, schedules, *, now, resolve, next_fire_fn)` (injected `now`) — INITIALIZED / NOT_DUE / SD-P3 skip-if-in-flight (`schedule_skipped` audit) / else fire-once (SD-P4) with a `schedule_missed` no-backfill audit (SD-P2) + `trigger_context` stamp (SD-P6); `run_id=<schedule_id>@<scheduled_for>` per-slot key (Step-6 AC-7 foundation); AC-4/AC-5 inherited from `run_procedure_persisted`. **2269/7.** **Step 5 (#610, Phase B BEGINS, SD-1 + AC-11):** the long-lived `scheduler_daemon.py::SchedulerDaemon` run loop (ticks `fire_due_schedules` every `interval_seconds`, NO scheduling logic of its own) with graceful SIGTERM/SIGINT/`request_stop()` shutdown (finish the tick then exit; no torn writes) + tick-error logged & swallowed; INJECTED collaborators (MS-S1-independent); `run_scheduler_daemon` entrypoint; first use of the `structlog` dep. **Full suite 2274 passed / 7 skipped**; ruff + mypy clean. Phase A = trigger-lift[s106] + descriptor + state + parser + fire-fn (4 of 4) | `43d40dd` (#610 Step 5 feat) / `0d2414b` (#610 merge) / `5077d6d` (#609 Step 4 feat) / `369ee73` (#609 merge) / `ef91ea7` (#607 Step 3 feat) / `e58e7af` (#607 merge) / `3938191` (#606 Step 2 feat) / `ed87153` (#606 merge) / `services/engine/procedures/{spec.py (`Schedule` invariant), schedules.py (`schedule_states` ORM), cron.py (`next_fire`), scheduler.py (`fire_due_schedules`), scheduler_daemon.py (`SchedulerDaemon`)}` + `alembic/versions/0011_schedule_states.py` + `alembic/env.py` + `pyproject.toml`/`uv.lock` (`croniter` + `types-croniter` + `structlog`) + `tests/services/engine/procedures/{test_spec.py,test_orchestrator.py,test_cron.py,test_scheduler.py,test_scheduler_daemon.py}` + `tests/services/db/test_schedule_state.py` |
 | 2026-07-07 | **S1 Step 1 BUILT (PLAN-0055 Phase A) — `SCHEDULE` trigger admitted to `validate_runnable`, all other governance intact (session 106; #604)** — `feat(procedures)`: `validate_runnable` gains an explicit `_RUNNABLE_TRIGGERS` allowlist ({MANUAL, SCHEDULE}); the trigger check sits first so **every OTHER governance check** (skeleton-reject / step-kind / autonomy-ceiling / handler-allowlist / linear-input) is **unchanged and still fires** for a schedule proc (surgical lift). Corrected 4 stale texts (block message + `validate_runnable` docstring in `orchestrator.py`, the `Trigger` enum docstring in `spec.py`, a test comment) + **ADR-016 OQ-2 (:1192-1195) marked RESOLVED (ADR-0028)** — a `plan-drafter`-authored erratum (G1-exempt; Code's own Edit correctly G1-denied), Cray **per-diff approved verbatim**. AC-1 (`test_schedule_trigger_is_runnable`) + AC-2 (`test_schedule_trigger_still_enforces_governance`). **Full suite 2240 passed / 7 skipped**; ruff + mypy clean | `255ca96` (#604 feat) / `ec5822b` (#604 merge) / `services/engine/procedures/orchestrator.py` (`_RUNNABLE_TRIGGERS`) + `services/engine/procedures/spec.py` (`Trigger` docstring) + `docs/adr/0016-*.md` (OQ-2 RESOLVED) |
@@ -146,7 +123,7 @@ below, and git history.
 | 2026-07-07 | **`main` greened — RF-1 library-guard 409 regression fixed (session 105; #600)** — `main` was **CI-red since #595**, merged red through #596–#598 (2 tests in `tests/api/test_runs_endpoints.py`). Root cause: the ADR-016 S2 **RF-1 library guard** (`resolve_gated_step`, #595) fails closed when the resolved `principal` (`Person`) is `None`, and the **energy vertical authors no principals** → an authenticated caller (`person_id="op-somchai"`, `person=None`, the documented Phase-A contract) hit `GateApproverError → 409` on gate-resolve. **Fix (approach (a) — the guard is correct):** the 2 happy-path tests now provision a **real `Person` approver** (monkeypatch `auth._principal_index`, mirroring `test_api_auth.py`); energy production `procedures.yaml` deliberately **not** given a principals block (would arm vertical-wide membership enforcement — the OQ-6 N≥2 boundary). Reproduced the 409 on a fresh DB, then verified **234 passed** (api+db+verticals). `plan-drafter`-authored, Code R2 + committed | `4b7f472` (#600 fix) / `tests/api/test_runs_endpoints.py` (real-Person approver) / `services/engine/procedures/orchestrator.py` (RF-1 guard, #595 context) |
 | 2026-07-06 | **ADR-016 S2 Phase B COMPLETE (PLAN-0053) — typed service-principal actor model; "S2 before S1" now satisfied (session 104; #592–#597)** — a scheduled/non-human run now has a typed, audit-legible actor and can NEVER approve its own gate (SP-1). `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2). **#593 (`8077242`) activation:** Cray ratified SD-2 (omit-when-None row-hash, superseding the epoch-boundary rec after a code read) + SD-3 (`service_principal_ids` list on Agent). **#594 (`bab3c3e`) spec:** `ServicePrincipal` type (distinct from Person — no approver field/SP-1, no scope primitive/SP-6) + vertical `service_principals` registry + `Agent.service_principal_ids` + draft-governance disjointness (AC-5/6/7/12). **#595 (`4ab67ca`) runtime:** the **library-level RF-1 guard** at `resolve_gated_step` (AC-1 — a gated resolve with no principal RAISES `GateApproverError` independent of `api_auth_enabled`; closes the Phase-A HTTP-only gap so a scheduler/direct caller can't bypass) + `RunContext.service_principal` threaded through all 3 construction sites (AC-8); blast radius 8 gate-resolve test files + 1 incidental test-isolation fix. **#596 (`4f49e29`) audit:** `actor_service_principal_id` column (alembic 0010) + `compute_row_hash` **omit-when-None** (SD-2 — proven on-disk 7/7 that pre-migration rows recompute byte-identically, no epoch) + `verify_chain` passthrough + `actor_kind:"service"` + on-behalf-of lineage (AC-9/10/11). **#592 (`b1fb2e7`):** `next-work-analyst` skill + soft `UserPromptSubmit` handoff-nudge hook. **#597 (`fe36e36`):** PLAN-0053 `git mv` → `done/` (Phase A s102 + Phase B s104 COMPLETE). **All ACs 1–13 met; 52 db + 489 procedures tests green**; ruff + mypy clean; MS-S1 not exercised. No active PLAN. `loop-dispatcher` DISABLED; MS-S1 idle | `fe36e36` (#597 PLAN→done) / `4f49e29` (#596 audit) / `4ab67ca` (#595 runtime) / `bab3c3e` (#594 spec) / `8077242` (#593 activation) / `b1fb2e7` (#592 skill+hook) / `services/engine/procedures/{spec.py,persistence.py,orchestrator.py}` (`ServicePrincipal` + `RunContext.service_principal` + RF-1 guard) + `services/engine/procedures/audit.py` (`actor_service_principal_id` + omit-when-None row-hash) + `alembic/versions/0010_*.py` + `docs/plans/done/0053-adr016-s2-service-principal.md` |
 | 2026-07-06 | **Control-leg v1 COMPLETE (PLAN-0054) + CSP follow-up — OCT Monitor flips watch-only→watch+OPERATE (session 103; #584–#588)** — a named, authenticated human approves/rejects a `waiting_human` gate + cancels a parked run from the UI; SoD + tamper-evident audit actor server-side (ADR-016 S2 RF-1 / PLAN-0053). `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2); 2 spawned specialists (frontend + app-security) verdict **secure-for-pilot, no real vulns**; preview-verified E2E. **#587 (Steps 2–5+7, merge `488ed25`):** NEW `assets/auth.js` (SD-A) single frontend credential seam (login/authHeader/logout; pilot key in sessionStorage; Bearer on operate POSTs only; optimistic login — display identity cosmetic, real approver = key's server-resolved `person_id`) + `view-monitor.js` approve/reject (submit gated until all decided) + cancel (`waiting_human` only, SD-B) + 403 (RF-1/SoD)/409 (stale reload-retry) inline + scroll/`[object Object]` fixes + "approved by <person>" badge + `scripts/seed_operate_demo.py`. **#586 (`8a6e527`):** procurement operate-demo seed (`seed_operate_waiting_human_run`, `req-planner` SoD requester, JSONB-safe; `OCT_DEMO_SEED_OPERATE` lifespan auto-seed). **#585 (`16d218f`):** `register_procurement_procedure_executors` at startup (procurement-gated) → closes the resolve-endpoint 409 "no executor factory"; deterministic advisory stub (MS-S1-independent). AC-10. **#584 (`3a94012`):** `POST /runs/{id}/cancel` (RF-1 403, `waiting_human`-only→409 SD-B, `run_cancelled` audit; first `PipelineRunStatus.CANCELLED` writer). **#588 (`f98de81`):** CSP defense-in-depth (`_StaticFilesWithCSP` on static serving, NOT the JSON API/docs; 0 CSP violations). **Suite 2223 passed / 7 skipped**; ruff + mypy clean; MS-S1 not exercised. Control-leg v1 COMPLETE (no active PLAN). `loop-dispatcher` DISABLED; MS-S1 idle | `488ed25` (#587 merge) / `f98de81` (#588 CSP) / `8a6e527` (#586 seed) / `16d218f` (#585 executor factory) / `3a94012` (#584 cancel) / `services/api/static/assets/{auth.js,view-monitor.js}` + `services/api/routers/runs.py` (`POST /runs/{id}/cancel`) + `services/api/main.py` (`_StaticFilesWithCSP` + `register_procurement_procedure_executors` + `OCT_DEMO_SEED_OPERATE`) + `scripts/seed_operate_demo.py` + `docs/plans/done/0054-control-leg-v1.md` |
-| 2026-07-06 | **ADR-016 S2 service-principal track — amendment RATIFIED + PLAN-0053 Ready + S2 Phase A BUILT + PLAN-0054 Control-leg v1 Ready (session 102; #579–#582)** — `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2). **(1) S2 amendment Proposed→Accepted (#579 `faed8d4`):** OQ-1 = vertical `service_principals:` registry · OQ-2 = separate `RunContext.service_principal` · OQ-3 = audit-only `actor_kind`; SP-1 verbatim (service principal = requester/actor ONLY, never approver), RF-1..3 locked. **(2) PLAN-0053 Ready (#580 merge `9b5065d`):** S2 build, SD-1 = SPLIT Phase-A-first, SD-2/SD-3 → Phase B. **(3) S2 Phase A BUILT (#581 merge `1937c8c`):** RF-1 gate-approver enforced at the resolve **endpoint** on `auth.person_id` → 403 (placement refined library→endpoint per a Cray-ratified SD; authored-Person SoD + service-principal library rejection = Phase B) + `actor_kind:"human"` audit (OQ-3) + never-null-actor-on-resume (`resume_run` threads the principal; `run_resumed` audit carries the actor). **Full suite 2214 passed / 7 skipped**; ruff + mypy clean. **(4) PLAN-0054 Control-leg v1 Ready (#582 merge `b68beee`):** governed approve/reject/cancel from the OCT Monitor — SD-A login-form over static-key backend (2 v2 seams) · SD-B `waiting_human`-only cancel · SD-C procurement operate-demo reusing the 5 SoD principals · Step 6b deterministic procurement executor factory (MS-S1-independent). `loop-dispatcher` DISABLED; MS-S1 idle | `b68beee` (#582 merge) / `1937c8c` (#581 merge) / `9b5065d` (#580 merge) / `faed8d4` (#579 S2 amendment) / `docs/adr/0016-*.md` (S2 service-principal) + `docs/plans/{0053-adr016-s2-service-principal.md, 0054-control-leg-v1.md}` + `services/api/routers/runs.py` + `services/engine/procedures/persistence.py` (resume_run actor threading) |
+
 ## In-Flight Discussions
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
