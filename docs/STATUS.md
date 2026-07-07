@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-07T13:37:59+07:00
+last_updated: 2026-07-07T14:53:43+07:00
 session: 108
-current_batch: "s108 PLAN-0055 Phase B Step 6 — 1 PR (#612). **Phase A COMPLETE** (Steps 1–4) + **Phase B Steps 5–6** merged. #612 Step 6 (SD-P5 + AC-7): per-fire-slot idempotency guard for restart recovery — `fire_due_schedules` computes `run_id=<schedule_id>@<scheduled_for>` (the `pipeline_runs` PK, write-ahead-committed before any effect → exists iff the slot durably fired) early and checks a new `_run_exists(run_id)` **AHEAD of the SD-P3 in-flight check** (so a `completed` prior run is caught too, not only `running`), skips the re-fire, advances the clock, emits a `schedule_skipped {reason:already_fired}` audit, returns the new `FireResult.ALREADY_FIRED`; daemon `tick()` logs `scheduler.already_fired` + a `recovered` count. Full suite 2276/7 (+2); ruff+mypy clean (incl the isolated pre-commit mypy hook — no new typed dep). Step 7 next (missed-slot LOUDness + Telegram + deploy/CLI + registration gap, AC-8)."
+current_batch: "s108 PLAN-0055 Phase B Steps 6–7 — 3 PRs (#612, #614, #615). **Phase A COMPLETE** (Steps 1–4) + **Phase B Steps 5–7** merged. #612 Step 6 (SD-P5 + AC-7): per-fire-slot idempotency guard for restart recovery (`run_id` write-ahead PK checked via `_run_exists` **AHEAD of the SD-P3 in-flight check** → `FireResult.ALREADY_FIRED`; daemon logs `already_fired`/`recovered`). #614 Step 7a (AC-8): missed-round LOUDness — daemon `tick()` emits WARN `scheduler.missed_round` on any FIRED `missed=True` + a best-effort Telegram ping (`services/notify/telegram.py::notify_schedule_missed`, DISTINCT gate + SEPARATE cooldown, `suppress()`-wrapped so it never tears a tick). #615 Step 7b: `scheduler_wiring.py` (`sync_schedule_states` registration + REAL `build_resolver`, SP-4) + `vero-lite scheduler --vertical` CLI + `docs/runbooks/scheduler-daemon.md` — closes the registration gap. Full suite 2294/7; ruff+mypy clean. Step 8 (optional procurement demo) next."
 current_actor: code
-blocked_on: "Nothing blocking — PLAN-0055 Phase A COMPLETE + Phase B Steps 5–6 merged; main green + PROTECTED; 0 open PRs. loop-dispatcher DISABLED; MS-S1 idle."
-next_action: "S1 Step 7 (PLAN-0055 Phase B, AC-8) — missed-round LOUDness (structured warn + `tools/notify/telegram.sh` wiring) + deploy posture (a CLI entrypoint wiring the REAL vertical spec + executor factory behind `resolve`; the systemd/container run doc) + close the registration gap (nothing populates `schedule_states` from the vertical spec in production — tests seed rows directly). Then Step 8 (optional procurement demo). Deferred: v2 login / GET /whoami / multi-operator RBAC."
-head_commit: 801aebe
-recent_commits: [801aebe, 43d40dd, 5077d6d, ef91ea7, 3938191, 255ca96, d7094bb, 3bec1f0, a1058c4, c9c0698]
+blocked_on: "Nothing blocking — PLAN-0055 Steps 1–7 merged (Phase A + Phase B daemon/recovery/LOUDness/deploy-CLI); main green + PROTECTED; 0 open PRs. loop-dispatcher DISABLED; MS-S1 idle."
+next_action: "S1 Step 8 (optional) — procurement demo: author a `schedule`-trigger procedure + its `ServicePrincipal` into `verticals/procurement/procedures.yaml` (no vertical ships one yet), seed, and drive the scheduler machinery end-to-end (schedule→fire→auto-steps→park-at-gate). Deferred: v2 login / GET /whoami / multi-operator RBAC."
+head_commit: 934eb58
+recent_commits: [934eb58, 1939a5f, 801aebe, 43d40dd, 5077d6d, ef91ea7, 3938191, 255ca96, d7094bb, 3bec1f0]
 ---
 
 # vero-lite — Project Status
@@ -18,12 +18,13 @@ recent_commits: [801aebe, 43d40dd, 5077d6d, ef91ea7, 3938191, 255ca96, d7094bb, 
 
 ## Current Focus
 
-> **Session 108, 2026-07-07 (head_commit `43d40dd` → `801aebe`) —
-> PLAN-0055 S1 Step 6: restart recovery + no-double-fire per fire-slot
-> (Phase B continues; AC-7).** One merged PR this session (#612), an
-> **un-gated Code `feat` PR** executed directly (PLAN-0055 already Ready;
-> §6 "Steps 2–8 execute directly, no drafter"), green through the required
-> `gate`; no ADR/PLAN edit. **#612 — S1 Step 6 (Phase B; SD-P5 + AC-7)**
+> **Session 108, 2026-07-07 (head_commit `43d40dd` → `934eb58`) —
+> PLAN-0055 S1 Steps 6–7: restart-recovery idempotency guard + missed-round
+> LOUDness + deploy CLI/registration (Phase B continues; AC-7/AC-8).** Three
+> merged PRs this session (#612, #614, #615), all **un-gated Code `feat` PRs**
+> executed directly (PLAN-0055 already Ready; §6 "Steps 2–8 execute directly,
+> no drafter"), each green through the required `gate`; no ADR/PLAN edit.
+> **#612 — S1 Step 6 (Phase B; SD-P5 + AC-7)**
 > (feat `801aebe`, merge `8c6e270`; **this Code thread**). The
 > per-fire-slot **idempotency guard** for restart recovery. `run_id =
 > "<schedule_id>@<scheduled_for>"` is the `pipeline_runs` **primary key**,
@@ -48,14 +49,50 @@ recent_commits: [801aebe, 43d40dd, 5077d6d, ef91ea7, 3938191, 255ca96, d7094bb, 
 > skipped** (+2 from Step 5's 2274/7); ruff + mypy clean (incl the isolated
 > pre-commit mypy hook — no new typed dep). **Deferred to Step 7:** making
 > the missed *intermediate* slots during the same downtime LOUD (a
-> `schedule_missed` on recovery) — AC-8, per the phased PLAN. Cray typed
+> `schedule_missed` on recovery) — AC-8, per the phased PLAN. **#614 — S1
+> Step 7a (Phase B; AC-8)** (feat `1939a5f`, merge `7eeb40d`; same Code
+> thread) ships that LOUDness: the daemon `tick()` now emits a WARN
+> `scheduler.missed_round` for any FIRED outcome with `missed=True`, then a
+> best-effort **Telegram** ping — an INJECTED collaborator (default resolves
+> lazily to the real notifier), wrapped in `suppress()` so an alert failure
+> never tears a tick. New `services/notify/telegram.py::notify_schedule_missed`
+> reuses the existing best-effort POST + cooldown + never-raise mechanics
+> (extracted into a shared `_post_telegram` core; `notify_llm_unreachable`
+> behaviour unchanged) but with a **DISTINCT gate** (`_schedule_gates_open`:
+> flag + token + chat_id, **no `llm_backend` condition** — a missed round is a
+> clock/ops event) and a **SEPARATE cooldown anchor** so the two alert kinds
+> never debounce each other; no-PII message. 9 new tests (7 telegram + 2
+> daemon); full suite **2285/7**. **#615 — S1 Step 7b (Phase B; deploy
+> posture)** (feat `934eb58`, merge `84e6511`) connects a REAL vertical spec
+> to the pure Step-4 fire fn + the Step-5 daemon and closes the **registration
+> gap** (nothing populated `schedule_states` in production). New
+> `services/engine/procedures/scheduler_wiring.py`: `sync_schedule_states(session,
+> spec)` — the registration step: upsert one `ScheduleState` per
+> `schedule`-trigger procedure keyed `"<vertical>:<procedure_id>"` from
+> `Procedure.schedule` cron + IANA-tz; **idempotent** — spec owns cron/tz, the
+> daemon owns the live clock which is preserved across a re-sync; a cron change
+> drops the stale `next_fire`. Plus `build_resolver(spec, executor_factory)`
+> (the REAL `ScheduleState→ScheduledRun` — reproduces the HTTP run-path
+> assembly + the `ServicePrincipal` lookup SP-4; fail-loud
+> `SchedulerWiringError` on a missing procedure/agent/SP). New `vero-lite
+> scheduler --vertical <v>` CLI (loads spec → registers the executor factory
+> [procurement only] → syncs `schedule_states` → runs `run_scheduler_daemon`,
+> graceful SIGTERM) + new `docs/runbooks/scheduler-daemon.md` (systemd +
+> docker/compose + Telegram arming + a structured-log table). Injected-spec by
+> design (unit-tested with an in-memory `VerticalProcedures`, no disk fixture).
+> **Full suite 2294 passed / 7 skipped**; ruff + mypy clean. **NOTE:** no
+> vertical ships a `schedule`-trigger procedure yet — the **Step 8**
+> procurement demo authors one; until then the daemon runs + ticks + syncs
+> **0** schedules (expected). **MS-S1-independent** (the scheduler is a clock;
+> procurement's executor factory is a deterministic stub). Cray typed
 > this session: "ลุย Step 6 เลย เริ่มจาก confirm run_id uniqueness" +
 > "reconcile STATUS ก่อน" (a Stop-hook mis-routed plan-drafter dispatch was
 > overridden as a misroute — the remaining PLAN-0055 steps were already
 > drafted, so it was execute-not-draft). **Standing:** PLAN-0055 **Phase A
-> COMPLETE** (Steps 1–4) + **Phase B Steps 5–6** merged, **Step 7 next**
-> (missed-round LOUDness + Telegram + deploy posture / CLI entrypoint + the
-> registration gap, AC-8); `main` **green + PROTECTED**; 0 open PRs;
+> COMPLETE** (Steps 1–4) + **Phase B Steps 5–7** merged (daemon / recovery /
+> LOUDness / deploy-CLI), **Step 8 (optional demo) next** (a procurement
+> `schedule`-trigger procedure + its `ServicePrincipal` driving the scheduler
+> end-to-end); `main` **green + PROTECTED**; 0 open PRs;
 > `loop-dispatcher` **DISABLED**; MS-S1 idle; AI-assisted (Claude Code,
 > session 108), no `Co-Authored-By` per §7.
 
@@ -100,7 +137,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-07-07 | **S1 Step 6 BUILT (PLAN-0055 Phase B) — restart recovery + no-double-fire per fire-slot (session 108; #612)** — an un-gated Code `feat` PR executed directly (PLAN-0055 Ready; §6 "Steps 2–8 execute directly"), green through the required `gate`. **SD-P5 + AC-7:** `fire_due_schedules` computes the per-slot `run_id=<schedule_id>@<scheduled_for>` (the `pipeline_runs` PK, write-ahead-committed before any effect → the row exists iff the slot durably fired) early and checks a new `_run_exists(run_id)` **AHEAD of the SD-P3 in-flight check** so a `completed` prior run is caught too (not only `running`, which `_in_flight` misses) → skip the re-fire, advance the clock, emit a `schedule_skipped {reason:already_fired}` audit, return the new `FireResult.ALREADY_FIRED`; daemon `tick()` logs `scheduler.already_fired` + a `recovered` count. Tests: `test_restart_does_not_refire_completed_slot` (the crux — a naive re-fire would raise `IntegrityError` on the `run_id` PK; single run row; clock advanced; `already_fired` audit) + `test_restart_does_not_refire_in_flight_same_slot` (`ALREADY_FIRED` precedence over `SKIPPED_IN_FLIGHT`). **Full suite 2276 passed / 7 skipped** (+2 from Step 5's 2274/7); ruff + mypy clean (incl the isolated pre-commit mypy hook). Deferred to Step 7: missed-*intermediate*-slot LOUDness (`schedule_missed` on recovery, AC-8) | `801aebe` (#612 feat) / `8c6e270` (#612 merge) / `services/engine/procedures/scheduler.py` (`_run_exists` + early `run_id` compute + `FireResult.ALREADY_FIRED`) + `services/engine/procedures/scheduler_daemon.py` (`tick()` `already_fired`/`recovered`) + `tests/services/db/test_scheduler.py` |
+| 2026-07-07 | **S1 Steps 6–7 BUILT (PLAN-0055 Phase B) — restart-recovery idempotency guard + missed-round LOUDness + deploy CLI/registration (session 108; #612 + #614 + #615)** — three un-gated Code `feat` PRs executed directly (PLAN-0055 Ready; §6 "Steps 2–8 execute directly"), each green through the required `gate`. **Step 6 (#612, SD-P5 + AC-7):** `fire_due_schedules` computes the per-slot `run_id=<schedule_id>@<scheduled_for>` (the `pipeline_runs` PK, write-ahead-committed before any effect → the row exists iff the slot durably fired) early and checks a new `_run_exists(run_id)` **AHEAD of the SD-P3 in-flight check** so a `completed` prior run is caught too (not only `running`, which `_in_flight` misses) → skip the re-fire, advance the clock, emit `schedule_skipped {reason:already_fired}`, return the new `FireResult.ALREADY_FIRED`; daemon `tick()` logs `scheduler.already_fired` + a `recovered` count. **2276/7.** **Step 7a (#614, AC-8):** missed-round LOUDness — daemon `tick()` emits a WARN `scheduler.missed_round` for any FIRED `missed=True` + a best-effort Telegram ping (INJECTED notifier, `suppress()`-wrapped so an alert failure never tears a tick); new `notify_schedule_missed` reuses the best-effort POST/cooldown/never-raise core (`_post_telegram` extraction; `notify_llm_unreachable` unchanged) with a **DISTINCT gate** (flag + token + chat_id, **no `llm_backend`** — a missed round is a clock/ops event) + a **SEPARATE cooldown anchor**; no-PII. **2285/7.** **Step 7b (#615):** REAL vertical-spec → fire-fn/daemon wiring + closes the **registration gap** — new `scheduler_wiring.py::sync_schedule_states` (upsert one `ScheduleState` per `schedule`-trigger procedure keyed `<vertical>:<procedure_id>`, **idempotent**; spec owns cron/tz, daemon owns the preserved live clock; a cron change drops stale `next_fire`) + `build_resolver` (REAL `ScheduleState→ScheduledRun`, `ServicePrincipal` lookup SP-4, fail-loud `SchedulerWiringError`) + a `vero-lite scheduler --vertical` CLI + `docs/runbooks/scheduler-daemon.md`. **Full suite 2294/7**; ruff + mypy clean. NOTE: no vertical ships a `schedule`-trigger procedure yet — the Step 8 procurement demo authors one (daemon ticks + syncs 0 until then). MS-S1-independent | `934eb58` (#615 Step 7b feat) / `84e6511` (#615 merge) / `1939a5f` (#614 Step 7a feat) / `7eeb40d` (#614 merge) / `801aebe` (#612 Step 6 feat) / `8c6e270` (#612 merge) / `services/engine/procedures/scheduler.py` (`_run_exists` + `FireResult.ALREADY_FIRED`) + `services/engine/procedures/scheduler_daemon.py` (`already_fired`/`recovered` + `scheduler.missed_round`) + `services/notify/telegram.py` (`notify_schedule_missed` + `_post_telegram`) + `services/engine/procedures/scheduler_wiring.py` (`sync_schedule_states` + `build_resolver`) + `vero-lite scheduler` CLI + `docs/runbooks/scheduler-daemon.md` + `tests/services/db/{test_scheduler.py,test_scheduler_daemon.py,test_scheduler_wiring.py}` + `tests/services/notify/test_telegram.py` |
 | 2026-07-07 | **S1 Steps 2–5 BUILT (PLAN-0055) — Phase A COMPLETE + Phase B daemon scaffold (session 107; #606 + #607 + #609 + #610)** — four un-gated Code `feat` PRs executed directly (PLAN-0055 already Ready; §6 "Steps 2–8 execute directly"), all green through the required `gate`. **Step 2 (#606, SD-P1 + SD-P5):** (1) a typed `Schedule` descriptor (cron + per-schedule IANA `timezone`, `extra="forbid"`) on `Procedure`, **present IFF `trigger==schedule`** — a symmetric fail-loud-at-load invariant [**Code decision, Cray veto-open:** required-iff-schedule, house fail-loud style; blast radius test-only]; (2) a dedicated `schedule_states` table (new ORM `schedules.py` + Alembic 0011, `(vertical, procedure_id)` unique, holds `last_fired`/`next_fire` for restart recovery; additive, **outside the energy parity guard**). **2254/7.** **Step 3 (#607, SD-2 + AC-10):** `croniter>=2.0.0` prod dep (6.2.3) + `types-croniter` (dev + mypy hook) + `uv.lock`; a DB-free `cron.py::next_fire(cron, tz, after)` — wall-clock in per-schedule IANA tz (SD-P1), exclusive of `after`, croniter authoritative parser; tests incl the TH-tz AC-10 case (06:00 `Asia/Bangkok` == 23:00 UTC prev day). **2261/7.** **Step 4 (#609, Phase A LAST step, SD-P2/P3/P4/P6; built by a CONCURRENT executor session, verified on-disk here):** the pure DB-free `scheduler.py::fire_due_schedules(session, schedules, *, now, resolve, next_fire_fn)` (injected `now`) — INITIALIZED / NOT_DUE / SD-P3 skip-if-in-flight (`schedule_skipped` audit) / else fire-once (SD-P4) with a `schedule_missed` no-backfill audit (SD-P2) + `trigger_context` stamp (SD-P6); `run_id=<schedule_id>@<scheduled_for>` per-slot key (Step-6 AC-7 foundation); AC-4/AC-5 inherited from `run_procedure_persisted`. **2269/7.** **Step 5 (#610, Phase B BEGINS, SD-1 + AC-11):** the long-lived `scheduler_daemon.py::SchedulerDaemon` run loop (ticks `fire_due_schedules` every `interval_seconds`, NO scheduling logic of its own) with graceful SIGTERM/SIGINT/`request_stop()` shutdown (finish the tick then exit; no torn writes) + tick-error logged & swallowed; INJECTED collaborators (MS-S1-independent); `run_scheduler_daemon` entrypoint; first use of the `structlog` dep. **Full suite 2274 passed / 7 skipped**; ruff + mypy clean. Phase A = trigger-lift[s106] + descriptor + state + parser + fire-fn (4 of 4) | `43d40dd` (#610 Step 5 feat) / `0d2414b` (#610 merge) / `5077d6d` (#609 Step 4 feat) / `369ee73` (#609 merge) / `ef91ea7` (#607 Step 3 feat) / `e58e7af` (#607 merge) / `3938191` (#606 Step 2 feat) / `ed87153` (#606 merge) / `services/engine/procedures/{spec.py (`Schedule` invariant), schedules.py (`schedule_states` ORM), cron.py (`next_fire`), scheduler.py (`fire_due_schedules`), scheduler_daemon.py (`SchedulerDaemon`)}` + `alembic/versions/0011_schedule_states.py` + `alembic/env.py` + `pyproject.toml`/`uv.lock` (`croniter` + `types-croniter` + `structlog`) + `tests/services/engine/procedures/{test_spec.py,test_orchestrator.py,test_cron.py,test_scheduler.py,test_scheduler_daemon.py}` + `tests/services/db/test_schedule_state.py` |
 | 2026-07-07 | **S1 Step 1 BUILT (PLAN-0055 Phase A) — `SCHEDULE` trigger admitted to `validate_runnable`, all other governance intact (session 106; #604)** — `feat(procedures)`: `validate_runnable` gains an explicit `_RUNNABLE_TRIGGERS` allowlist ({MANUAL, SCHEDULE}); the trigger check sits first so **every OTHER governance check** (skeleton-reject / step-kind / autonomy-ceiling / handler-allowlist / linear-input) is **unchanged and still fires** for a schedule proc (surgical lift). Corrected 4 stale texts (block message + `validate_runnable` docstring in `orchestrator.py`, the `Trigger` enum docstring in `spec.py`, a test comment) + **ADR-016 OQ-2 (:1192-1195) marked RESOLVED (ADR-0028)** — a `plan-drafter`-authored erratum (G1-exempt; Code's own Edit correctly G1-denied), Cray **per-diff approved verbatim**. AC-1 (`test_schedule_trigger_is_runnable`) + AC-2 (`test_schedule_trigger_still_enforces_governance`). **Full suite 2240 passed / 7 skipped**; ruff + mypy clean | `255ca96` (#604 feat) / `ec5822b` (#604 merge) / `services/engine/procedures/orchestrator.py` (`_RUNNABLE_TRIGGERS`) + `services/engine/procedures/spec.py` (`Trigger` docstring) + `docs/adr/0016-*.md` (OQ-2 RESOLVED) |
 | 2026-07-07 | **Lessons #0028 + #0029 landed (session 106; #603)** — Code-authored advisory Tier-2 (un-gated). **#0028** = omit-when-None to evolve an append-only hash-chained audit log without an epoch boundary (grounds `services/db/audit_log.py::compute_row_hash`, from the s104 ADR-016 S2 arc). **#0029** = a named-subset "green" is not a full-suite green + make CI required (the s105 #600 root-cause: s104's "52 db + 489 proc green" excluded `tests/api/` where the #595 RF-1 regression lived) | `d7094bb` (#603) / `docs/lessons/0028-*.md` + `docs/lessons/0029-*.md` |
