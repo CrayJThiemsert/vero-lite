@@ -37,6 +37,10 @@ _last_send_monotonic: float | None = None
 # they never debounce against the MS-S1-unreachable pings — distinct events, distinct limits.
 _last_schedule_send_monotonic: float | None = None
 
+# A SEPARATE cooldown anchor for event-bridge fire-failure alerts (PLAN-0056 Step 7 / AC-10) so
+# a dropped/failed event fire never debounces against the schedule or MS-S1 pings — distinct event.
+_last_event_fire_send_monotonic: float | None = None
+
 
 def _warm_one_liner() -> str:
     """The copy-pasteable warm command — model + host + keep_alive from config."""
@@ -98,10 +102,11 @@ def describe_arm_state() -> str:
 
 
 def reset_cooldown() -> None:
-    """Reset both process-local cooldown anchors (used by tests)."""
-    global _last_send_monotonic, _last_schedule_send_monotonic
+    """Reset every process-local cooldown anchor (used by tests)."""
+    global _last_send_monotonic, _last_schedule_send_monotonic, _last_event_fire_send_monotonic
     _last_send_monotonic = None
     _last_schedule_send_monotonic = None
+    _last_event_fire_send_monotonic = None
 
 
 async def _post_telegram(text: str, *, transport: httpx.AsyncBaseTransport | None) -> bool:
@@ -210,4 +215,66 @@ async def notify_schedule_missed(
         return False
 
     _last_schedule_send_monotonic = current
+    return True
+
+
+def _event_fire_gates_open() -> bool:
+    """True when Telegram alerts are armed for the event bridge: flag on + bot token + chat id.
+
+    Like :func:`_schedule_gates_open` (and unlike :func:`_gates_open`) there is **no**
+    ``llm_backend`` condition — a dropped/failed event fire is an ops event, independent of which
+    LLM backend (or none) is configured.
+    """
+    return bool(
+        settings.telegram_notify_enabled
+        and settings.telegram_bot_token
+        and settings.telegram_chat_id
+    )
+
+
+def build_event_fire_failed_message(*, procedure_id: str | None, event_kind: str) -> str:
+    """The no-PII event-fire-failure advisory body (PLAN-0056 Step 7 / AC-10).
+
+    Carries only operational identifiers (the target procedure id + the event kind) — never
+    object / record / partner data, and never the raw exception text (which the audit row keeps)
+    (CLAUDE.md §8 / PDPA).
+    """
+    target = f"procedure '{procedure_id}'" if procedure_id else "no mapped procedure"
+    return (
+        f"⚠️ vero-lite event bridge: an actionable event FAILED to fire a governed run — "
+        f"event_kind '{event_kind}' -> {target}. The recommender detected an action but the "
+        "governed run did not start; check the vertical's event_trigger mapping + that its "
+        "procedure-executor factory is registered (see the event_fire_missed/failed audit row)."
+    )
+
+
+async def notify_event_fire_failed(
+    *,
+    procedure_id: str | None,
+    event_kind: str,
+    transport: httpx.AsyncBaseTransport | None = None,
+    now: float | None = None,
+) -> bool:
+    """Best-effort ping that an actionable event FAILED to fire a governed run (a mapping miss or
+    a fire-path error; PLAN-0056 Step 7 / AC-10) so a dropped action is detectable. Returns
+    ``True`` iff a message was sent. **Never raises** — every failure is swallowed + logged.
+    ``transport`` / ``now`` are the same test seams as :func:`notify_schedule_missed`; production
+    passes neither. A SEPARATE cooldown anchor from the schedule / MS-S1 pings (distinct event).
+    """
+    global _last_event_fire_send_monotonic
+    if not _event_fire_gates_open():
+        return False
+
+    current = now if now is not None else time.monotonic()
+    if (
+        _last_event_fire_send_monotonic is not None
+        and current - _last_event_fire_send_monotonic < settings.telegram_notify_cooldown_s
+    ):
+        return False
+
+    text = build_event_fire_failed_message(procedure_id=procedure_id, event_kind=event_kind)
+    if not await _post_telegram(text, transport=transport):
+        return False
+
+    _last_event_fire_send_monotonic = current
     return True
