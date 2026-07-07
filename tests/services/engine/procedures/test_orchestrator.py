@@ -289,6 +289,33 @@ def test_schedule_trigger_still_enforces_governance() -> None:
         validate_runnable(proc, agent)
 
 
+async def test_event_trigger_is_runnable() -> None:
+    # ADR-0029 / PLAN-0056 Step 1 (AC-1): an `event`-trigger procedure is now runnable —
+    # validate_runnable no longer blocks it. (The bridge that FIRES it from a detected
+    # anomaly is built later in PLAN-0056; here we prove only that the trigger gate admits
+    # it. An event procedure carries no schedule descriptor — the descriptor invariant only
+    # requires one for `schedule`.)
+    proc = _proc([Step(step_id="read", name="Read", kind=StepKind.QUERY)], trigger=Trigger.EVENT)
+    result = await run_procedure(
+        proc, _agent(), {StepKind.QUERY: _RecordingExecutor()}, vertical="v", run_id="x"
+    )
+    assert result.run.status == PipelineRunStatus.COMPLETED.value
+
+
+def test_event_trigger_still_enforces_governance() -> None:
+    # AC-2: lifting the `event` trigger block does not weaken any OTHER governance check. An
+    # event proc whose action names a handler outside the agent allowlist still raises — the
+    # handler guard sits BELOW the trigger check in validate_runnable and applies regardless
+    # of trigger.
+    proc = _proc(
+        [Step(step_id="act", name="Act", kind=StepKind.ACTION, handler="danger")],
+        trigger=Trigger.EVENT,
+    )
+    agent = _agent(ceiling=Autonomy.GATED, handlers=["echo"])
+    with pytest.raises(ProcedureError, match="outside agent"):
+        validate_runnable(proc, agent)
+
+
 async def test_missing_executor_for_kind_raises() -> None:
     proc = _proc([Step(step_id="read", name="Read", kind=StepKind.QUERY)])
     with pytest.raises(ProcedureError, match="no executor registered"):
