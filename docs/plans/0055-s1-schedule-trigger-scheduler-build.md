@@ -1,7 +1,7 @@
 # PLAN-0055: S1 Procedure `schedule`-Trigger Scheduler — Build
 
-**Status:** Draft
-**Owner:** both (Code executes; Cray ratifies Surfaced Decisions before build)
+**Status:** Ready for execution
+**Owner:** Code (executes; Surfaced Decisions SD-P1..SD-P6 ratified as-recommended by Cray 2026-07-07)
 **Created:** 2026-07-07
 **Related ADRs:** ADR-0028 (S1 scheduler architecture — Accepted, SD-1/2/3 ratified), ADR-016 (governed procedure engine — D7 Phase-3 `schedule`, OQ-2 §1192-1195), PLAN-0053 (S2 service-principal actor model — `done/`), ADR-0024 (skeleton LOADS-but-not-RUNS)
 
@@ -81,11 +81,12 @@ Offline/deterministic unless flagged. No MS-S1 / host-state dependence in any AC
 - ❌ **`celery`-beat** — `celery` is a dep but as a task-queue; ADR-0028 chose a
   separate `croniter` daemon, not celery-beat.
 
-## Surfaced Decisions (ratify before build)
+## Surfaced Decisions — RATIFIED 2026-07-07 (Cray, all six as-recommended)
 
-ADR-0028 §157-173 flagged these as Neutral/deferred to this PLAN. Each has
-multiple defensible answers; the recommendation is load-bearing in the Steps but
-**contingent on Cray's ratification** (ADR-009 D1). Do not silently pick.
+ADR-0028 §157-173 flagged these as Neutral/deferred to this PLAN. Each had
+multiple defensible answers; **Cray ratified SD-P1..SD-P6 all as-recommended on
+2026-07-07** (ADR-009 D1) — the recommendations below are now the load-bearing
+build contract, no longer contingent.
 
 - **SD-P1 — Cron/timezone semantics.** *Rec:* evaluate schedules in
   `Asia/Bangkok`; store the **IANA tz string per schedule** (not a global const) so
