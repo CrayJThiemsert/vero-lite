@@ -1,8 +1,23 @@
 # PLAN-0056: `event`/Alert-Trigger Bridge — Build (implements ADR-0029)
 
-**Status:** Ready for execution
+**Status:** Complete (2026-07-08, session 111 — all 12 ACs met; Phase A Steps 1–5 [#623/#625/#626/#628/#629, s110] + Phase B Steps 6–8 [#631/#632/#633, s111]; moved to `done/`)
 **Owner:** Code (executes; plan-level Surfaced Decisions SD-P1..SD-P4 ratified by Cray 2026-07-07 (all as-recommended))
 **Created:** 2026-07-07
+
+> **COMPLETE — the `event`/Alert-trigger bridge ships end-to-end.** Phase A (offline foundation,
+> session 110): the `event` trigger lifted + a typed `EventTrigger` mapping descriptor + event-keyed
+> `run_id` idempotency + the pure event resolver + the governed `fire_event` bridge. Phase B (session
+> 111): **Step 6 (#631)** wires the bridge into the recommender `_populate_store` loop behind the
+> **default-off `event_bridge_enabled`** flag (SD-P3 ship-dark; flag-off = zero behavior change) —
+> the one design call resolved as `event_kind = RecommendedAction.suggested_handler` (the envelope
+> has no `action_type`); **Step 7 (#632)** LOUD-on-failure (`event_fire_missed`/`event_fire_failed`
+> audit + a best-effort Telegram alert with a distinct cooldown gate, mirroring
+> `notify_schedule_missed`); **Step 8 (#633)** the procurement demo (a DISTINCT
+> `event_emergency_sourcing_round`, `trigger: event`, → parks at the ฿-tier `doa_tier` gate → the
+> distinct `appr-pm` approver resolves it → COMPLETED). Full offline suite green (2350 passed / 7
+> skipped); ruff + mypy clean; every PR green through the required CI `gate`. **AC-12's live
+> end-to-end smoke** (real detector → real fire) is host-state (CLAUDE.md §8) and remains **deferred**
+> (ask-Cray) — the offline DB-backed integration test is the gate.
 **Related ADRs:** ADR-0029 (`event`/Alert-trigger bridge — Accepted, SD-1..SD-4 ratified), ADR-0028 (`schedule` scheduler — the phased-build + LOUD-on-failure precedent this mirrors), ADR-016 (governed procedure engine — Phase-4+ "event-driven triggers" DEFERRED `:1103,:1139`; `event`/Alert = the Phase-0 recommender path `:1197`), ADR-0025 (AT-2 managerial layer — the `doa_tier`⟹SoD gate the event run must honor, D5), PLAN-0053 (S2 ServicePrincipal actor model — `done/`), PLAN-0055 (S1 scheduler build — the SP-5 on-behalf-of + write-ahead PK-idempotency + LOUD-on-failure patterns this mirrors — `done/`)
 
 > **Author≠reviewer (ADR-012 D4.3 / ADR-013 OQ-1).** Drafted by the in-harness
@@ -36,52 +51,52 @@ Offline/deterministic unless flagged. No MS-S1 / host-state dependence in any AC
 (CLAUDE.md §8) — the bridge exercises the recommender's **deterministic rule path**, not
 a live model call.
 
-- [ ] **AC-1** `validate_runnable` admits an `event`-trigger procedure (does not raise
+- [x] **AC-1** `validate_runnable` admits an `event`-trigger procedure (does not raise
   `ProcedureError` on `Trigger.EVENT`); `manual` and `schedule` procedures still run; an
   unknown/other trigger still raises. Unit-tested offline.
-- [ ] **AC-2** Every *other* governance check is unchanged for `event`:
+- [x] **AC-2** Every *other* governance check is unchanged for `event`:
   `validate_governance_complete` (skeleton-reject, ADR-0024), autonomy-ceiling, handler
   allowlist, linear-input — each proven still-enforced for an `event` procedure by a
   targeted failing-case test.
-- [ ] **AC-3** The `_RUNNABLE_TRIGGERS` docstring (`orchestrator.py:136-141`) no longer
+- [x] **AC-3** The `_RUNNABLE_TRIGGERS` docstring (`orchestrator.py:136-141`) no longer
   describes the `event`/Alert path as merely "future"/blocked; the `Trigger` enum
   docstring (`spec.py:78-79`) names `event` as runnable. In-code text only.
-- [ ] **AC-4** A typed `EventTrigger` mapping descriptor on `Procedure` (SD-3; present
+- [x] **AC-4** A typed `EventTrigger` mapping descriptor on `Procedure` (SD-3; present
   **iff** `trigger == event`, `extra="forbid"`) carries the `event_kind` it responds to +
   its `owning_person_id` (SP-5). Load-time cross-ref validation fails **loudly** on a
   dangling ref (procedure/agent/service-principal/owning-person not in the vertical).
   Unit-tested. *(SD-P2 ratified.)*
-- [ ] **AC-5** A deterministic `event_key` + event-keyed `run_id`
+- [x] **AC-5** A deterministic `event_key` + event-keyed `run_id`
   `<procedure_id>@<event_key>`: the same actionable event re-detected yields the **same**
   `run_id`, and the write-ahead insert is a **no-op** (idempotent per event-slot).
   Unit-tested offline. *(SD-P1 ratified.)*
-- [ ] **AC-6** A pure, DB-free-testable **event resolver** (mirror
+- [x] **AC-6** A pure, DB-free-testable **event resolver** (mirror
   `scheduler_wiring.build_resolver`) maps an actionable `ActionRecord`/event → a
   run-request: target `Procedure` (via the SD-3 mapping) + `Agent` + `ServicePrincipal`
   (via `service_principal_ids[0]`) + `owning_person` (SP-5). A mapping miss raises
   **loudly** — never a silent drop.
-- [ ] **AC-7** An event-fired run binds a declared `ServicePrincipal` as its actor: the
+- [x] **AC-7** An event-fired run binds a declared `ServicePrincipal` as its actor: the
   `run_started` audit row carries `actor_kind:"service"` + `actor_service_principal_id` +
   the `on_behalf_of` lineage. Asserted via a persisted (test-DB) run, not in-memory.
-- [ ] **AC-8** An event-fired run reaching a `gated` step **parks at `waiting_human`**
+- [x] **AC-8** An event-fired run reaching a `gated` step **parks at `waiting_human`**
   (does not auto-approve) — `GateApproverError`/RF-3 posture inherited verbatim. Asserted
   offline.
-- [ ] **AC-9** An actionable event **maps to and fires a governed `PipelineRun`** via
+- [x] **AC-9** An actionable event **maps to and fires a governed `PipelineRun`** via
   `run_procedure_persisted(..., service_principal=, trigger_context=)` (SD-1 FEED-INTO) —
   **not** the `ActionRecord` `execute` path; `trigger_context` is stamped
   `{trigger:"event", event_key, event_kind, detected_at, fired_at,
   actor:<service-principal>, on_behalf_of:<owning-person>}` and is readable off the
   persisted run.
-- [ ] **AC-10** A dropped/failed event fire is **LOUD**: an
+- [x] **AC-10** A dropped/failed event fire is **LOUD**: an
   `event_fire_missed`/`event_fire_failed` audit row + a best-effort Telegram alert (a
   distinct cooldown gate, mirroring `notify_schedule_missed`). Asserted via the audit-row
   assertion; the Telegram post is best-effort (never raises into the fire path).
-- [ ] **AC-11** The bridge is wired into the recommender consumption path
+- [x] **AC-11** The bridge is wired into the recommender consumption path
   (`actions.py` `_populate_store`, SD-1/SD-4 in-process) behind a **default-off**
   `event_bridge_enabled` flag (SD-P3, mirroring `verification_judge_enabled`): flag-off =
   **zero** behavior change (the existing `ActionRecord` path is intact); flag-on = the
   governed run fires. Both states integration-tested.
-- [ ] **AC-12** A **procurement** demo: an asset-failure `event` auto-fires the
+- [x] **AC-12** A **procurement** demo: an asset-failure `event` auto-fires the
   event-triggered emergency-sourcing procedure → auto steps → **parks at the ฿-tier
   `doa_tier` gate** → a **distinct** authored approver resolves it (SoD satisfied via the
   SP-5 owning-person). DB-backed integration test + a deterministic (MS-S1-free) smoke.
