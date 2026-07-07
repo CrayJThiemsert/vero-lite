@@ -1,6 +1,6 @@
 # PLAN-0055: S1 Procedure `schedule`-Trigger Scheduler — Build
 
-**Status:** Ready for execution
+**Status:** Complete (2026-07-07, session 109 — Steps 1–8 all shipped + live-daemon-verified end-to-end; moved to `done/`. Phase A #602/#604/#606–#610; Phase B #612–#619; Step 8 = #617 offline + #618 daemon-fix + #619 close)
 **Owner:** Code (executes; Surfaced Decisions SD-P1..SD-P6 ratified as-recommended by Cray 2026-07-07)
 **Created:** 2026-07-07
 **Related ADRs:** ADR-0028 (S1 scheduler architecture — Accepted, SD-1/2/3 ratified), ADR-016 (governed procedure engine — D7 Phase-3 `schedule`, OQ-2 §1192-1195), PLAN-0053 (S2 service-principal actor model — `done/`), ADR-0024 (skeleton LOADS-but-not-RUNS)

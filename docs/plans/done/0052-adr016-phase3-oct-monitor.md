@@ -1,6 +1,6 @@
 # PLAN-0052: ADR-016 Phase-3 OCT monitor (v1 — read-only pipelines list + live run detail)
 
-**Status:** Ready
+**Status:** Complete (v1 read-only monitor shipped session 101, PR #577 `febdf7e` — `GET /runs` list + live run-detail + `view-monitor.js`; the Control leg PLAN-0054 extended its `mode:'read'|'operate'` seam. The S5 config-UI leg stays Out-of-Scope/deferred. Archived to `done/` 2026-07-07, session 109 — the Status line was un-reconciled at completion.)
 **Owner:** Claude Code (Tier 2 — all commits Code-exclusive per ADR-009 D2 / ADR-013 D2; drafted by the in-harness `plan-drafter` under ADR-013 D1 phased authoring)
 **Created:** 2026-07-05
 **Related ADRs:** ADR-016 (D7 Phase 3 — this PLAN builds its first increment; D2 `PipelineRun`/`StepResult` record shape the monitor reads; D3/D4 the approve→execute + `waiting_human` suspend/resume seam the Control leg extends; **OQ-2** scheduler = S1 below), ADR-007 (D2 `RecommendedAction` envelope — **unchanged**, L5), ADR-008 (ontology — **unchanged**, L5), ADR-012 (D4.3 author≠reviewer disclosure), ADR-013 (safe/human-gated autonomy posture; D1 phased authoring)
