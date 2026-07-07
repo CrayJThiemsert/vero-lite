@@ -30,6 +30,7 @@ from services.engine.procedures.scheduler import ScheduledRun, ScheduleResolver
 from services.engine.procedures.schedules import ScheduleState
 from services.engine.procedures.spec import (
     Agent,
+    Person,
     Procedure,
     ServicePrincipal,
     Trigger,
@@ -142,9 +143,28 @@ def _resolve_service_principal(spec: VerticalProcedures, agent: Agent) -> Servic
     return sp
 
 
+def _resolve_owning_person(spec: VerticalProcedures, procedure: Procedure) -> Person | None:
+    """The SP-5 human a headless scheduled run acts ON BEHALF OF (PLAN-0055 Step 8), resolved from
+    ``procedure.schedule.owning_person_id`` (cross-ref validated at load). Recorded as the run's
+    SoD requester so a distinct downstream human approver satisfies separation of duties. ``None``
+    when the schedule declares no owning person — a fully headless run (valid only for a procedure
+    with no SoD requester to resolve; a ``doa_tier`` procedure requires SoD, ADR-0025 D5)."""
+    oref = procedure.schedule.owning_person_id if procedure.schedule is not None else None
+    if oref is None:
+        return None
+    person = next((p for p in spec.principals if p.person_id == oref), None)
+    if person is None:  # unreachable for a validated spec (cross-ref checked at load) — defensive
+        raise SchedulerWiringError(
+            f"vertical '{spec.vertical}': procedure '{procedure.procedure_id}' "
+            f"schedule.owning_person_id '{oref}' is not in spec.principals"
+        )
+    return person
+
+
 def build_resolver(spec: VerticalProcedures, executor_factory: ExecutorFactory) -> ScheduleResolver:
     """Build the REAL resolver: a :class:`ScheduleState` -> :class:`ScheduledRun` mirroring the
-    HTTP run-path assembly plus the service-principal lookup a scheduled run needs.
+    HTTP run-path assembly plus the service-principal lookup a scheduled run needs, and (PLAN-0055
+    Step 8) the SP-5 owning-person lookup a SoD-carrying scheduled procedure needs.
 
     ``executor_factory`` is the vertical's registered factory
     (``registry.get_procedure_executors(vertical)``) — called fresh per fire so stateful
@@ -164,7 +184,11 @@ def build_resolver(spec: VerticalProcedures, executor_factory: ExecutorFactory) 
             executors=executor_factory(),
             vertical=vertical,
             service_principal=service_principal,
-            owning_person=None,  # headless schedule — the SP-5 owning human is None for S1
+            # SP-5: the human the service acts on behalf of (the SoD requester), or None if the
+            # schedule is fully headless (no SoD to satisfy). PLAN-0055 Step 8 lifted the prior
+            # hard-coded None once the procurement demo needed a doa_tier gate (=> SoD => a
+            # requester).
+            owning_person=_resolve_owning_person(spec, procedure),
         )
 
     return resolve

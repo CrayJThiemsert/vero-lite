@@ -20,8 +20,9 @@ from services.engine.discovery import discover_and_register
 from services.engine.procedures.spec import load_procedures
 from services.engine.registry import registry
 
-# The five shipped procedures, vertical → {procedure_id: archetype} (fact-pack
-# #1 / docs/conventions/procedure-archetypes.md). procurement ships two.
+# The six shipped procedures, vertical → {procedure_id: archetype} (fact-pack
+# #1 / docs/conventions/procedure-archetypes.md). procurement ships three:
+# two manual + the PLAN-0055 Step 8 schedule-triggered AT-2 variant.
 _EXPECTED: dict[str, dict[str, str]] = {
     "energy": {"substation_health_sweep": "AT-1"},
     "supply_chain": {"cold_chain_excursion_sweep": "AT-1"},
@@ -29,6 +30,8 @@ _EXPECTED: dict[str, dict[str, str]] = {
     "procurement": {
         "emergency_sourcing_round": "AT-2",
         "low_stock_reorder_round": "AT-3",
+        # PLAN-0055 Step 8 — the schedule-triggered AT-2 variant (nightly, headless).
+        "scheduled_emergency_sourcing_round": "AT-2",
     },
 }
 
@@ -56,7 +59,8 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
     all_verticals_client: AsyncClient,
 ) -> None:
     """Every discovered vertical's procedures round-trip load_procedures, each
-    carrying the correct catalog archetype — all five across the four verticals."""
+    carrying the correct catalog archetype — all six across the four verticals
+    (procurement ships three: two manual + the PLAN-0055 Step 8 scheduled AT-2)."""
     response = await all_verticals_client.get("/procedures")
     assert response.status_code == 200
     payload = response.json()
@@ -77,7 +81,9 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
         for proc in ventry["procedures"]:
             assert proc["archetype"] == _EXPECTED[vname][proc["procedure_id"]]
             total += 1
-    assert total == 5  # five procedures across four verticals (fact-pack #1)
+    # six procedures across four verticals: fact-pack #1's five + the PLAN-0055
+    # Step 8 schedule-triggered AT-2 variant (procurement.scheduled_emergency_sourcing_round)
+    assert total == 6
 
 
 async def test_procedures_all_six_gate_kinds_present(

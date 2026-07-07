@@ -46,7 +46,7 @@ archetype below preserves this.
 |---|---|---|---|
 | **AT-1** `anomaly→action` | sense → judge(band) → gated action on breach | `energy`, `supply_chain`, `aquaculture` (core) | 1 deterministic band; 1 human gate on the irreversible write; handler fixed |
 | **AT-1b** `+ watch + summary` (AT-1 variant) | AT-1 **+** watch→gated proposal **+** auto summary terminal | `aquaculture.morning_pond_health_round` | AT-1 + ADR-0019 watch→gated escalation + an auto (un-gated) terminal receipt |
-| **AT-2** `request→approve→fulfill` | intake → judge → source(scored rule) → compliance(rule gate) → tiered DOA(human) → fulfill(write) → audit | `procurement.emergency_sourcing_round` | per-criterion rule gate + tiered DOA + emergency waiver (escalate-never-skip) + SoD + traceable audit |
+| **AT-2** `request→approve→fulfill` | intake → judge → source(scored rule) → compliance(rule gate) → tiered DOA(human) → fulfill(write) → audit | `procurement.emergency_sourcing_round` (manual); `procurement.scheduled_emergency_sourcing_round` (S1 schedule-triggered variant) | per-criterion rule gate + tiered DOA + emergency waiver (escalate-never-skip) + SoD (manual) + traceable audit |
 | **AT-3** `monitor→reorder` | read_stock → judge(reorder point) → gated reorder | `procurement.low_stock_reorder_round` | deterministic reorder-point band + single-tier human approval |
 
 ---
@@ -95,7 +95,9 @@ fans into the next via a named-input `where` filter, narrowing the set as it
 passes each gate.
 
 - **Shape:** `query (intake/enrich) → evaluate (judge) → action/auto (source via scored rule) → evaluate (per-criterion compliance gate) → action/gated (tiered DOA approval) → action/gated (fulfill/issue) → action/auto (audit)`
-- **Instance:** `procurement.emergency_sourcing_round` (7 steps).
+- **Instances:**
+  - `procurement.emergency_sourcing_round` (7 steps, `trigger: manual`) — the full hero: SoD + issue_po write gate.
+  - `procurement.scheduled_emergency_sourcing_round` (6 steps, `trigger: schedule`, PLAN-0055 Step 8 / ADR-0028 S1) — the **automated** variant. Fired nightly by the scheduler daemon **as a service principal** (`svc-buyer`, run_started `actor_kind:"service"`); it runs the auto steps and PARKS at the DOA human gate — a machine can never approve its own spend (RF-3). Two deliberate deltas from the manual hero, both consequences of being **headless**: (1) **no `separation_of_duties`** — a scheduled run has no human requester (it fires as the service actor, `owning_person=None`), so a requester≠approver split is inapplicable; the governance moment for an automated trigger is the human approval gate itself. (2) It ends at `approve → audit` (no separate `issue_po` gate) — the automated sweep produces an approved, audited sourcing decision; PO issuance follows via the manual flow.
 - **Governance signature (the credibility musts, L-6):**
   - **Source selection is a scored RULE**, never the LLM (the LLM only summarises
     quotes); on-contract by default, RFQ→AVL only as a logged exception.

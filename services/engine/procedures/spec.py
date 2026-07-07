@@ -109,6 +109,16 @@ class Schedule(BaseModel):
         description="IANA tz name the cron is evaluated in (SD-P1; per-schedule, not global). "
         "Default Asia/Bangkok (the primary TH operator); a non-TH vertical sets its own zone.",
     )
+    owning_person_id: str | None = Field(  # a PersonId (defined below); str avoids the fwd-ref
+        default=None,
+        description="the human Person a headless scheduled run acts ON BEHALF OF (SP-5; PLAN-0055 "
+        "Step 8). A schedule fires as its agent's service principal (the actor); when the "
+        "procedure carries a separation_of_duties requester role, this owning person is recorded "
+        "as the run's requester so a distinct downstream human approver satisfies SoD "
+        "(requester != approver). None = fully headless — valid only for a procedure with no SoD "
+        "requester to resolve (a doa_tier procedure requires SoD, ADR-0025 D5, so it needs one). "
+        "Cross-ref validated against the vertical's `principals` at load.",
+    )
 
     @model_validator(mode="after")
     def _validate_schedule(self) -> Self:
@@ -969,6 +979,17 @@ class VerticalProcedures(BaseModel):
                     f"agent '{agent.agent_id}': service_principal_ids reference unknown "
                     f"service_principal_id(s) {dangling_sp} (known: {sorted(known_services)}) "
                     "— ADR-016 S2 / SD-3"
+                )
+        # PLAN-0055 Step 8: a schedule's owning_person_id (the SP-5 human a headless run acts ON
+        # BEHALF OF, recorded as the SoD requester at fire time) must resolve to a declared Person
+        # — a dangling ref is an authoring error, not a silent None-requester failing at the gate.
+        known_persons = {p.person_id for p in self.principals}
+        for proc in self.procedures:
+            oref = proc.schedule.owning_person_id if proc.schedule is not None else None
+            if oref is not None and oref not in known_persons:
+                raise ValueError(
+                    f"procedure '{proc.procedure_id}': schedule.owning_person_id '{oref}' is not "
+                    f"a declared principal (known: {sorted(known_persons)}) — PLAN-0055 Step 8"
                 )
         return self
 
