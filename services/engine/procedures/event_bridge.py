@@ -13,9 +13,16 @@ import hashlib
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from enum import StrEnum
 from typing import Any
 
+import sqlalchemy as sa
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from services.db.audit_log import append_audit
 from services.engine.procedures.orchestrator import StepExecutor
+from services.engine.procedures.persistence import run_procedure_persisted
+from services.engine.procedures.runs import PipelineRun, PipelineRunStatus
 from services.engine.procedures.spec import (
     Agent,
     Person,
@@ -207,3 +214,107 @@ def build_event_resolver(
         )
 
     return resolve
+
+
+# --- Step 5: the in-process fire function (SD-1 FEED-INTO; SD-4; SD-P4 skip-if-in-flight) ---
+
+
+class EventFireResult(StrEnum):
+    """The outcome of one :func:`fire_event` call."""
+
+    FIRED = "fired"
+    ALREADY_FIRED = "already_fired"
+    SKIPPED_IN_FLIGHT = "skipped_in_flight"
+
+
+@dataclass(frozen=True)
+class EventFireOutcome:
+    """The result of firing (or skipping) ONE event-triggered run."""
+
+    run_id: str
+    result: EventFireResult
+    run_status: str | None = None
+
+
+async def _event_run_exists(session: AsyncSession, run_id: str) -> bool:
+    # mirrors scheduler._run_exists — the event-keyed run_id is the write-ahead PK, so a row
+    # exists IFF this exact event (same key/window) already fired. The SD-2 idempotency guard.
+    row = await session.execute(
+        sa.select(PipelineRun.run_id).where(PipelineRun.run_id == run_id).limit(1)
+    )
+    return row.scalar_one_or_none() is not None
+
+
+async def _procedure_in_flight(session: AsyncSession, procedure_id: str) -> bool:
+    # mirrors scheduler._in_flight — a prior run of this procedure is still running /
+    # waiting_human (a gated run parks for days). SD-P4 backpressure.
+    row = await session.execute(
+        sa.select(PipelineRun.run_id)
+        .where(
+            PipelineRun.procedure_id == procedure_id,
+            PipelineRun.status.in_(
+                [PipelineRunStatus.RUNNING.value, PipelineRunStatus.WAITING_HUMAN.value]
+            ),
+        )
+        .limit(1)
+    )
+    return row.scalar_one_or_none() is not None
+
+
+async def _audit_event_skipped(
+    session: AsyncSession, request: EventRunRequest, reason: str
+) -> None:
+    """A ``event_skipped`` audit row for observability (a re-detected no-op or an in-flight
+    skip). The LOUD-on-failure alert for a mapping/resolve failure is PLAN-0056 Step 7."""
+    await append_audit(
+        session,
+        action="event_skipped",
+        payload={
+            "procedure_id": request.procedure.procedure_id,
+            "run_id": request.run_id,
+            "event_kind": request.trigger_context.get("event_kind"),
+            "reason": reason,
+        },
+    )
+    await session.commit()
+
+
+async def fire_event(
+    session: AsyncSession, request: EventRunRequest, *, now: datetime
+) -> EventFireOutcome:
+    """Fire ONE event-triggered governed run in-process (ADR-0029 SD-1 FEED-INTO / SD-4;
+    PLAN-0056 Step 5).
+
+    The recommender's actionable detection is FED INTO the governed engine — this drives a REAL
+    ``PipelineRun`` via :func:`run_procedure_persisted` (NOT the lightweight ``ActionRecord``
+    execute path). Two skips precede the fire, mirroring the scheduler:
+
+    * **SD-2 idempotency** — the event-keyed ``run_id`` already exists (the same event re-detected
+      in the same detection window) → no-op (``ALREADY_FIRED``); the write-ahead PK is the dedup.
+    * **SD-P4 skip-if-in-flight** — a DIFFERENT run of the same procedure is
+      ``running``/``waiting_human`` (a gated run legitimately parks for days) → skip
+      (``SKIPPED_IN_FLIGHT``).
+
+    ``now`` is injected (no wall-clock read) so the ``fired_at`` stamp + tests are deterministic.
+    The service-actor audit (AC-7), the gated-park posture (AC-8), and the write-ahead durability
+    are inherited verbatim from :func:`run_procedure_persisted` — the bridge is a pure client of
+    the S2 actor plumbing, it rebuilds none of it.
+    """
+    if await _event_run_exists(session, request.run_id):
+        await _audit_event_skipped(session, request, "already_fired")
+        return EventFireOutcome(request.run_id, EventFireResult.ALREADY_FIRED)
+    if await _procedure_in_flight(session, request.procedure.procedure_id):
+        await _audit_event_skipped(session, request, "in_flight")
+        return EventFireOutcome(request.run_id, EventFireResult.SKIPPED_IN_FLIGHT)
+    result = await run_procedure_persisted(
+        session,
+        request.procedure,
+        request.agent,
+        request.executors,
+        vertical=request.vertical,
+        run_id=request.run_id,
+        trigger_context={**request.trigger_context, "fired_at": now.isoformat()},
+        principal=request.owning_person,
+        service_principal=request.service_principal,
+    )
+    return EventFireOutcome(request.run_id, EventFireResult.FIRED, run_status=result.run.status)
