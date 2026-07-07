@@ -257,12 +257,30 @@ async def test_run_context_goal_is_none_when_procedure_has_no_goal() -> None:
     assert capture.contexts[0].goal is None
 
 
-async def test_schedule_trigger_is_not_runnable() -> None:
+async def test_schedule_trigger_is_runnable() -> None:
+    # ADR-0028 S1 / PLAN-0055 Step 1 (AC-1): a `schedule`-trigger procedure is now
+    # runnable — validate_runnable no longer blocks it. (The scheduler that FIRES it
+    # on a clock is a separate worker built later in PLAN-0055; here we prove only
+    # that the trigger gate admits it.)
     proc = _proc([Step(step_id="read", name="Read", kind=StepKind.QUERY)], trigger=Trigger.SCHEDULE)
-    with pytest.raises(ProcedureError, match="runnable in Phase 1"):
-        await run_procedure(
-            proc, _agent(), {StepKind.QUERY: _RecordingExecutor()}, vertical="v", run_id="x"
-        )
+    result = await run_procedure(
+        proc, _agent(), {StepKind.QUERY: _RecordingExecutor()}, vertical="v", run_id="x"
+    )
+    assert result.run.status == PipelineRunStatus.COMPLETED.value
+
+
+def test_schedule_trigger_still_enforces_governance() -> None:
+    # AC-2: lifting the trigger block does not weaken any OTHER governance check. A
+    # schedule proc whose action names a handler outside the agent allowlist still
+    # raises — the handler guard sits BELOW the trigger check in validate_runnable and
+    # applies regardless of trigger.
+    proc = _proc(
+        [Step(step_id="act", name="Act", kind=StepKind.ACTION, handler="danger")],
+        trigger=Trigger.SCHEDULE,
+    )
+    agent = _agent(ceiling=Autonomy.GATED, handlers=["echo"])
+    with pytest.raises(ProcedureError, match="outside agent"):
+        validate_runnable(proc, agent)
 
 
 async def test_missing_executor_for_kind_raises() -> None:

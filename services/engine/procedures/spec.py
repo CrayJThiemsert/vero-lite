@@ -74,7 +74,8 @@ class OnFailure(StrEnum):
 
 
 class Trigger(StrEnum):
-    """How a procedure run starts. Only ``manual`` is runnable in Phase 1 (L-1)."""
+    """How a procedure run starts. ``manual`` and ``schedule`` are both runnable
+    (ADR-0028 S1 — the ``schedule`` scheduler is built by PLAN-0055)."""
 
     MANUAL = "manual"
     SCHEDULE = "schedule"

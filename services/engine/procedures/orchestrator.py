@@ -133,20 +133,30 @@ _AUTONOMY_RANK = {Autonomy.GATED: 0, Autonomy.AUTO: 1}
 MAX a step may exercise, so a step is allowed iff rank(step) <= rank(ceiling)."""
 
 
+_RUNNABLE_TRIGGERS = frozenset({Trigger.MANUAL, Trigger.SCHEDULE})
+"""The triggers a procedure may run under. ``manual`` (human-initiated) and
+``schedule`` (clock-initiated — ADR-0028 S1) are both runnable; the ``schedule``
+scheduler itself is built by PLAN-0055. An explicit allowlist so any *future*
+non-runnable trigger (e.g. a promoted ``event``/Alert path) stays blocked until it
+is deliberately added here, rather than becoming silently runnable."""
+
+
 def validate_runnable(procedure: Procedure, agent: Agent) -> None:
     """Raise :class:`ProcedureError` unless ``procedure`` is runnable under ``agent``.
 
-    Enforces (ADR-016 D3): only ``manual`` trigger runs in Phase 1 (L-1); every
+    Enforces (ADR-016 D3): the trigger is runnable (``manual`` or ``schedule`` —
+    ADR-0028 S1, via ``_RUNNABLE_TRIGGERS``); every
     step kind is within the agent's ``allowed.step_kinds`` (an **empty** list is
     unconstrained — kinds are the coarse filter); every ``action`` step's
     autonomy is at or below ``autonomy_ceiling``; and every ``action`` step's
     named ``handler`` is in ``allowed.action_handlers`` (the fine blast-radius
     bound — an **empty** handler list therefore admits no handler-bearing action).
     """
-    if procedure.trigger is not Trigger.MANUAL:
+    if procedure.trigger not in _RUNNABLE_TRIGGERS:
         raise ProcedureError(
             f"procedure '{procedure.procedure_id}': trigger '{procedure.trigger.value}' is not "
-            "runnable in Phase 1 — only 'manual' (schedule is a deferred PLAN-0010 reuse, L-1)"
+            "runnable — only 'manual' and 'schedule' (ADR-0028 S1); a future non-runnable "
+            "trigger stays blocked until explicitly added to _RUNNABLE_TRIGGERS"
         )
     # ADR-0024 D6 / OQ-1: a generated skeleton LOADS (load_procedures = shape only)
     # but must NOT RUN until a human authors its gates. Safe-defaults alone do not make
