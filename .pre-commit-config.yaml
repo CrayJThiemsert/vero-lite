@@ -31,6 +31,7 @@ repos:
           - ruamel.yaml>=0.18.0
           - jsonschema>=4.23.0
           - types-jsonschema>=4.23.0
+          - types-croniter>=2.0.0
         args: [--config-file=pyproject.toml]
         # PLAN-0008 Step 7: extend coverage to .claude/hooks/** so the
         # Phase 2 hook scripts (Step 1–5b) are gated at commit time, not
