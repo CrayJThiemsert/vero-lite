@@ -139,6 +139,19 @@ class Settings(BaseSettings):
             "Cray-gated (CLAUDE.md §8); the offline acceptance gate fakes the judge."
         ),
     )
+    event_bridge_enabled: bool = Field(
+        default=False,
+        description=(
+            "PLAN-0056 Phase B / ADR-0029 — enable the event-trigger bridge (SD-P3 ship-dark). "
+            "When False (default), an actionable recommendation follows only the existing "
+            "ActionRecord approve/execute path — byte-identical to before the bridge shipped. "
+            "When True, an actionable recommendation whose suggested_handler maps to an "
+            "event-trigger procedure in the active vertical is ALSO FED INTO the governed engine "
+            "in-process (ADR-0029 SD-1/SD-4) — a real governed PipelineRun that parks at any gate. "
+            "Default off because it changes the recommender's action semantics for the deployment "
+            "(a blast-radius / rollout-posture call); the ActionRecord path is untouched when off."
+        ),
+    )
 
     # OCT demo — active vertical + recommender policy (PLAN-0013 AC-template).
     # Only ONE vertical runs per process, so the policy is a flat set of
