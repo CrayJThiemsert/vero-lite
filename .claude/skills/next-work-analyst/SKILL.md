@@ -1,6 +1,8 @@
 ---
 name: next-work-analyst
 description: Rank the candidate next-work items by efficiency-to-quality (value × effort × dependency × design-readiness), grounded against the ACTUAL code / ADRs / PLANs (not the handoff's prose), then deliver the ranked recommendation ELI-CRAY (Thai). Use at the start of a new session after reading a handoff, when choosing what to build next, when Cray asks "what should I do next / จะทำอะไรต่อ / จัดลำดับงาน", or whenever prioritizing a candidate list. Gathers candidates from STATUS + the just-closed PLAN's Out-of-Scope + the handoff §NEXT, fans out Explore agents to VERIFY each candidate against code, scores + ranks, and ends with a recommendation + a question — it never decides for Cray.
+model: fable
+effort: xhigh
 ---
 
 # next-work-analyst — rank the next work, ELI-CRAY
