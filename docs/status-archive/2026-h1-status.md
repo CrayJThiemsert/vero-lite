@@ -3351,3 +3351,64 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-07-07 (Lessons #0028 + #0029, session 106) [rotated 2026-07-08, session-114 reconcile]
 
 | 2026-07-07 | **Lessons #0028 + #0029 landed (session 106; #603)** — Code-authored advisory Tier-2 (un-gated). **#0028** = omit-when-None to evolve an append-only hash-chained audit log without an epoch boundary (grounds `services/db/audit_log.py::compute_row_hash`, from the s104 ADR-016 S2 arc). **#0029** = a named-subset "green" is not a full-suite green + make CI required (the s105 #600 root-cause: s104's "52 db + 489 proc green" excluded `tests/api/` where the #595 RF-1 regression lived) | `d7094bb` (#603) / `docs/lessons/0028-*.md` + `docs/lessons/0029-*.md` |
+
+### Current-Focus block — Session 114, 2026-07-08 (head_commit `a3b7113` → `1de4d14`) — event-bridge live-smoke FINDING + PLAN-0059 KPI panel COMPLETE [rotated 2026-07-09, session-115 reconcile]
+
+> **Session 114, 2026-07-08 (head_commit `a3b7113` → `1de4d14`; merge tip
+> `ab02dfd`) — FINDING + BUILD + CLOSE batch, two items in the order Cray
+> directed (B → A).**
+> **(B) Event-bridge live smoke → FINDING (evidence-only, §8 host-state,
+> #649).** The deferred smoke asked whether the REAL MS-S1 recommender
+> (`gpt-oss:20b`) chooses `emergency_source` for a procurement
+> critical-asset-failure event. It chose **`reorder`** — `actor_kind=llm` (the
+> real model engaged, **NOT** the rule fallback), confidence 1.0. Root cause
+> (offline trace): the reactive judgment prompt shows the model **bare handler
+> NAMES only** — no per-handler descriptions, no when-to-pick guidance,
+> `goal=None`; the distinguishing prose lives only in `procedures.yaml` step
+> descriptions + the procedure goal, which thread into the GOVERNED path, not
+> the reactive prompt. **The governed procedure path and the shipped hero demo
+> (deterministic advisory stub) are UNAFFECTED**; the offline gates
+> (`test_action_event_bridge.py`, `test_event_procurement_demo.py`) stay the
+> binding bar and green. Recorded in
+> `docs/logs/2026-07-08-event-bridge-recommender-live-smoke.md` (#649). The
+> cross-vertical fix — surface per-handler descriptions in the reactive
+> judgment prompt — is a **DEFERRED** next-work candidate (own PLAN, blast
+> radius across all verticals, then one controlled live re-validate).
+> **(A) PLAN-0059 KPI stat-tile panel COMPLETE (all 5 ACs) → moved to
+> `docs/plans/done/` (#650/#651/#652).** The hero demo's three headline
+> ฿-impact figures — expedite premium `฿52,500` / avoided downtime `฿8.16M` /
+> net benefit `฿8.11M` — now render as **KPI stat-tiles** over the
+> already-shipped `GET /demo/hero/impact` ledger, with the baseline→governed
+> exposure (`฿9.76M → ฿1.65M`) as a context sublabel on the net-benefit tile;
+> the old `kv()` rows are replaced (no duplication); no trend/target
+> affordances. **Pure frontend composition — NO new ADR / backend / engine /
+> payload change** (the PLAN-0057 "compose over shipped plumbing" pattern,
+> render-only). Origin: session-114 `next-work-analyst` re-rank → Cray picked
+> **B → A**.
+> **#649 (`docs(logs):` `f528f03`) —** the B event-bridge live-smoke finding
+> recorded as evidence-only (§8 host-state; no code change).
+> **#650 (`docs(plans):` `cffa9d1`) —** PLAN-0059 Ready; `plan-drafter`-authored;
+> Code R2-verified every citation + confirmed the `thb`/`thbM` formatters
+> produce the pre-committed strings; **SD-1..SD-5 ratified as-recommended**
+> (Cray, session 114, AskUserQuestion).
+> **#651 (`feat:` `e8a7d93`) —** Steps 1-3; diff confined to
+> `services/api/static/**`; full offline suite green under the required CI
+> `gate`; preview-verified on the hero view.
+> **#652 (`docs(plans):` `1de4d14`) —** PLAN-0059 Status Ready → Complete,
+> `git mv` → `docs/plans/done/`; all 5 ACs met.
+> **Verification:** offline binding bar green (full offline suite green under
+> the required CI `gate`; every PR green); preview-verified on the hero view —
+> KPI stat-tiles render the pre-committed ฿ strings, the old `kv()` rows are
+> gone, no duplication. `main` **green + PROTECTED** (substantive tip
+> `1de4d14`; merge tip `ab02dfd`); 0 open PRs after merge; `loop-dispatcher`
+> **DISABLED**; MS-S1 idle (the B smoke ran host-state, Cray-approved §8, then
+> released); dev DB at head `0011` (unchanged this session); AI-assisted
+> (Claude Code, session 114), no `Co-Authored-By` per §7. No active PLAN;
+> next-work candidates: recommender handler-description fix (deferred this
+> session; own PLAN, cross-vertical blast radius); Q4 join/projection-grammar
+> ADR (heavy moat, needs-ADR); hero-demo dossier backlog; filing-hygiene —
+> PLAN-0019/0027 misfiled in active `docs/plans/` (cheap cleanup).
+
+### Recent-Decisions row — 2026-07-07 (PLAN-0055 S1 Step 1 `SCHEDULE` trigger, session 106) [rotated 2026-07-09, session-115 reconcile]
+
+| 2026-07-07 | **S1 Step 1 BUILT (PLAN-0055 Phase A) — `SCHEDULE` trigger admitted to `validate_runnable`, all other governance intact (session 106; #604)** — `feat(procedures)`: `validate_runnable` gains an explicit `_RUNNABLE_TRIGGERS` allowlist ({MANUAL, SCHEDULE}); the trigger check sits first so **every OTHER governance check** (skeleton-reject / step-kind / autonomy-ceiling / handler-allowlist / linear-input) is **unchanged and still fires** for a schedule proc (surgical lift). Corrected 4 stale texts (block message + `validate_runnable` docstring in `orchestrator.py`, the `Trigger` enum docstring in `spec.py`, a test comment) + **ADR-016 OQ-2 (:1192-1195) marked RESOLVED (ADR-0028)** — a `plan-drafter`-authored erratum (G1-exempt; Code's own Edit correctly G1-denied), Cray **per-diff approved verbatim**. AC-1 (`test_schedule_trigger_is_runnable`) + AC-2 (`test_schedule_trigger_still_enforces_governance`). **Full suite 2240 passed / 7 skipped**; ruff + mypy clean | `255ca96` (#604 feat) / `ec5822b` (#604 merge) / `services/engine/procedures/orchestrator.py` (`_RUNNABLE_TRIGGERS`) + `services/engine/procedures/spec.py` (`Trigger` docstring) + `docs/adr/0016-*.md` (OQ-2 RESOLVED) |
