@@ -208,6 +208,29 @@
     ]);
   }
 
+  /* ---- PLAN-0057 (AC-2): the beat-3 "act" reveal — a distinct human approves the parked DOA
+     gate → COMPLETED. Client-side reveal (the governed resolve→COMPLETED path is proven by the
+     engine test; the parked run itself never auto-resolves, so the demo stays replayable). ---- */
+  function renderActPanel(hero, host) {
+    const apprId = (hero.sod && hero.sod.approver && hero.sod.approver.person_id) || 'appr-pm';
+    const reqId = (hero.sod && hero.sod.requester && hero.sod.requester.person_id) || 'req-planner';
+    const body = h('div', { class: 'hero-badges' }, []);
+    const approve = h('button', { class: 'hero-badge hero-toggle', type: 'button' },
+      icon('check', { width: 14, height: 14 }));
+    approve.appendChild(document.createTextNode(' Approve as ' + apprId));
+    approve.addEventListener('click', function () {
+      clear(body);
+      body.appendChild(badge('✓ COMPLETED · ' + apprId, 's-ok'));
+      const replay = h('button', { class: 'hero-badge hero-toggle', type: 'button' }, '↺ Replay');
+      replay.addEventListener('click', function () { mount(host, { mode: 'event' }); });
+      body.appendChild(replay);
+      body.appendChild(h('span', { class: 'faint' },
+        ' gate resolved → run COMPLETED · SoD governed (' + reqId + ' ≠ ' + apprId + ')'));
+    });
+    body.appendChild(approve);
+    return card('Act — the human DOA gate', 'a distinct approver must sign · SoD (RF-3)', [body]);
+  }
+
   function render(container, gov, ledger, host, live, mode) {
     clear(container);
     const hero = governanceMoment(gov.hero);
@@ -258,6 +281,7 @@
     container.appendChild(scenario);
     container.appendChild(renderDoaCard(hero));
     container.appendChild(renderSodCard(hero));
+    if (mode === 'event') container.appendChild(renderActPanel(hero, host));
     container.appendChild(renderJoinCard(hero));
     container.appendChild(renderContrast(contrast));
     container.appendChild(renderLedger(ledger));
