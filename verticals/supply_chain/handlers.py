@@ -26,6 +26,27 @@ ACTION_TYPES: tuple[str, ...] = ("reroute", "expedite", "hold", "inspect", "esca
 """The supply_chain ontology ``RecommendedAction.action_type`` enum — the real
 action vocabulary, registered as no-op stubs alongside ``echo``."""
 
+ACTION_DESCRIPTIONS: dict[str, str] = {
+    "echo": "Diagnostic no-op — record the action without performing anything.",
+    "reroute": (
+        "Divert the shipment to an alternate route or carrier to avoid a delay or disruption."
+    ),
+    "expedite": (
+        "Speed up an in-flight shipment (upgrade service level) to recover a slipping delivery."
+    ),
+    "hold": (
+        "Halt the shipment in place pending a decision — e.g. a suspected cold-chain "
+        "or quality breach."
+    ),
+    "inspect": "Trigger a physical or documentary inspection of the shipment before it proceeds.",
+    "escalate": (
+        "Raise the event to a higher tier of human ownership when no automated "
+        "action is appropriate."
+    ),
+}
+"""Per-handler when-to-pick descriptions surfaced to the reactive judgment prompt
+(PLAN-0060). Keyed by ``echo`` + every :data:`ACTION_TYPES` entry."""
+
 
 async def echo_handler(action: RecommendedAction) -> dict[str, Any]:
     """No-op handler: echo the action back as an execution receipt."""
@@ -61,6 +82,13 @@ def register_supply_chain_handlers() -> None:
     """Register the supply_chain vertical's action handlers on the registry — the
     retained ``echo`` no-op plus the ontology action-type vocabulary as no-op
     stubs (PLAN-0019 Part B)."""
-    registry.register_handler("supply_chain", "echo", echo_handler)
+    registry.register_handler(
+        "supply_chain", "echo", echo_handler, description=ACTION_DESCRIPTIONS["echo"]
+    )
     for action_type in ACTION_TYPES:
-        registry.register_handler("supply_chain", action_type, _stub_action_handler(action_type))
+        registry.register_handler(
+            "supply_chain",
+            action_type,
+            _stub_action_handler(action_type),
+            description=ACTION_DESCRIPTIONS[action_type],
+        )

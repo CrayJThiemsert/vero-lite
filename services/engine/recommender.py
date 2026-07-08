@@ -203,7 +203,11 @@ async def recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
     try:
         client = _build_chat_client()
         result = await generate_judgment(
-            client, event, vertical, retry_budget=settings.llm_retry_budget
+            client,
+            event,
+            vertical,
+            retry_budget=settings.llm_retry_budget,
+            include_handler_catalog=settings.handler_catalog_enabled,
         )
         # ADR-0022 member (a) / PLAN-0030: resolve the model-emitted entity refs
         # against the declared object universe before the governed record trusts

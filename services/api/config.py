@@ -152,6 +152,22 @@ class Settings(BaseSettings):
             "(a blast-radius / rollout-posture call); the ActionRecord path is untouched when off."
         ),
     )
+    handler_catalog_enabled: bool = Field(
+        default=False,
+        description=(
+            "PLAN-0060 (SD-4 ship-dark) — surface per-handler descriptions (an 'Available "
+            "actions' catalog) into the REACTIVE recommender judgment prompt so the model "
+            "distinguishes handlers by meaning (e.g. emergency_source vs reorder) instead of "
+            "bare name. When False (default), the reactive prompt is byte-identical to before — "
+            "names only. When True, the vertical's registry.handler_catalog rides in the trusted "
+            "system instruction of every reasoning/structuring call; the suggested_handler enum "
+            "is unchanged either way. Default off because it changes every vertical's reactive "
+            "recommendation input for the deployment and the live evidence does not exist until "
+            "the PLAN-0060 AC-7 re-validate runs (host-state, Cray-gated); flip the default only "
+            "after that, as its own one-line PR. Mirrors verification_judge_enabled / "
+            "event_bridge_enabled. The GOVERNED procedure path is untouched (out of scope)."
+        ),
+    )
 
     # OCT demo — active vertical + recommender policy (PLAN-0013 AC-template).
     # Only ONE vertical runs per process, so the policy is a flat set of

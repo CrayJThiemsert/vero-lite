@@ -25,6 +25,21 @@ ACTION_TYPES: tuple[str, ...] = ("restart", "isolate", "dispatch_technician", "e
 """The energy ontology ``RecommendedAction.action_type`` enum — the real action
 vocabulary, registered as no-op stubs alongside ``echo``."""
 
+ACTION_DESCRIPTIONS: dict[str, str] = {
+    "echo": "Diagnostic no-op — record the action without performing anything.",
+    "restart": "Attempt a controlled restart of the affected asset to clear a transient fault.",
+    "isolate": "Take the affected asset offline / isolate it to contain a fault or hazard.",
+    "dispatch_technician": (
+        "Send a field technician to inspect or repair the affected asset on site."
+    ),
+    "escalate": (
+        "Raise the event to a higher tier of human ownership when no automated "
+        "action is appropriate."
+    ),
+}
+"""Per-handler when-to-pick descriptions surfaced to the reactive judgment prompt
+(PLAN-0060). Keyed by ``echo`` + every :data:`ACTION_TYPES` entry."""
+
 
 async def echo_handler(action: RecommendedAction) -> dict[str, Any]:
     """No-op handler: echo the action back as an execution receipt."""
@@ -60,6 +75,13 @@ def register_energy_handlers() -> None:
     """Register the energy vertical's action handlers on the registry — the
     retained ``echo`` no-op plus the ontology action-type vocabulary as no-op
     stubs (PLAN-0019 Part B)."""
-    registry.register_handler("energy", "echo", echo_handler)
+    registry.register_handler(
+        "energy", "echo", echo_handler, description=ACTION_DESCRIPTIONS["echo"]
+    )
     for action_type in ACTION_TYPES:
-        registry.register_handler("energy", action_type, _stub_action_handler(action_type))
+        registry.register_handler(
+            "energy",
+            action_type,
+            _stub_action_handler(action_type),
+            description=ACTION_DESCRIPTIONS[action_type],
+        )

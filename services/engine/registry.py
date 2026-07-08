@@ -40,6 +40,9 @@ class _VerticalEntry:
 
     adapter: DataAdapter | None = None
     handlers: dict[str, Handler] = field(default_factory=dict)
+    # PLAN-0060: optional per-handler descriptions, keyed by the same name as
+    # ``handlers``; a handler with no description simply has no entry here.
+    descriptions: dict[str, str] = field(default_factory=dict)
     executor_factory: ExecutorFactory | None = None
 
 
@@ -61,12 +64,24 @@ class VerticalRegistry:
             raise RegistryError(f"adapter already registered for vertical '{name}'")
         entry.adapter = adapter
 
-    def register_handler(self, vertical: str, name: str, handler: Handler) -> None:
-        """Register a named action handler for a vertical."""
+    def register_handler(
+        self, vertical: str, name: str, handler: Handler, *, description: str | None = None
+    ) -> None:
+        """Register a named action handler for a vertical.
+
+        ``description`` (optional, keyword-only; PLAN-0060) is a short
+        human-authored line describing *when to pick* this handler. It is
+        surfaced to the reactive judgment prompt via :meth:`handler_catalog`
+        so the model can distinguish handlers by meaning rather than bare name
+        (the session-114 ``reorder`` vs ``emergency_source`` finding). ``None``
+        stores no description — the handler renders name-only in the catalog.
+        """
         entry = self._verticals.setdefault(vertical, _VerticalEntry())
         if name in entry.handlers:
             raise RegistryError(f"handler '{name}' already registered for vertical '{vertical}'")
         entry.handlers[name] = handler
+        if description is not None:
+            entry.descriptions[name] = description
 
     def get_adapter(self, vertical: str) -> DataAdapter:
         """Return the adapter registered for ``vertical``."""
@@ -120,6 +135,21 @@ class VerticalRegistry:
         if entry is None:
             return []
         return sorted(entry.handlers)
+
+    def handler_catalog(self, vertical: str) -> list[tuple[str, str | None]]:
+        """Return ``(name, description | None)`` for each handler of ``vertical``, sorted by name.
+
+        Companion to :meth:`handler_names` (same sort order, same empty-safe
+        behaviour for an unknown vertical): where ``handler_names`` feeds the
+        constrained-generation enum, this feeds the reactive judgment prompt's
+        "Available actions" catalog (PLAN-0060) so the model can tell handlers
+        apart by meaning. A handler registered without a description yields
+        ``None`` for its description (renders name-only).
+        """
+        entry = self._verticals.get(vertical)
+        if entry is None:
+            return []
+        return [(name, entry.descriptions.get(name)) for name in sorted(entry.handlers)]
 
     def all_handler_names(self) -> list[str]:
         """Return the sorted UNION of every handler name across all registered verticals.
