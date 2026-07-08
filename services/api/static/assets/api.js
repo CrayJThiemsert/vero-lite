@@ -83,17 +83,20 @@
      ฿-impact ledger. DIRECT fetch, NO mock fallback — the render binds to the shipped
      A1b engine shapes / the derived ledger, so a mocked copy would drift; an honest
      "backend required" error offline is correct (the view shows errorState). */
-  async function fetchDemoHero(path) {
-    const res = await fetch(path);
+  async function fetchDemoHero(path, init) {
+    const res = await fetch(path, init);
     const ct = res.headers.get('content-type') || '';
     if (!res.ok || !ct.includes('json')) {
-      throw new Error('GET ' + path + ' unavailable (' + res.status + ')');
+      const verb = (init && init.method) || 'GET';
+      throw new Error(verb + ' ' + path + ' unavailable (' + res.status + ')');
     }
     return res.json();
   }
   const Hero = {
     governance: (live) => fetchDemoHero('/demo/hero/governance' + (live ? '?live=true' : '')),
-    impact: () => fetchDemoHero('/demo/hero/impact')
+    impact: () => fetchDemoHero('/demo/hero/impact'),
+    // PLAN-0057: the event-triggered opener — a POST (persists a governed run via the bridge).
+    event: () => fetchDemoHero('/demo/hero/event', { method: 'POST' })
   };
 
   /* ---- LLM control (PLAN-0018): MS-S1 status + warm/sleep ----
