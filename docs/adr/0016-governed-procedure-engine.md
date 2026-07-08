@@ -5,7 +5,7 @@
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-005 (strategic pivot to OCT — **expands feature-3**), ADR-007 (OCT engine contracts — **generalizes** the D2 `RecommendedAction` envelope; does **not** break it), ADR-008 (YAML ontology spec — the six `object_types` are **untouched**; `procedures.yaml` is a separate spec layer), ADR-001 (LLM model baseline — the local `gpt-oss:20b` pin is the default `Agent` model), ADR-010 (LLM reasoning-hook surface — the per-action reasoning trace generalizes to per-step), ADR-013 (autonomy-axis relocation — safe / human-gated autonomy posture). Implementation deferred to **PLAN-0019**. Grounding research: `docs/research/private/2026-06-07-palantir-5-concerns-pipeline-design.md` (5 Palantir findings, 25 claims 3-0 / 0 killed), `docs/research/private/2026-06-06-impl-approach-reconciliation.md` (on-thesis framing). This ADR does **not** supersede any prior ADR.
 
-**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified). **D2 + D3 Amendment (2026-07-01)** → typed read-side ontology object-binding for query steps (Q3) (**Accepted** 2026-07-01 — Cray-ratified). **D2 + D3 Amendment (2026-07-05)** → typed service-principal for non-human (`schedule`) triggers (S2; requester-never-approver) (**Accepted** 2026-07-05 — Cray-ratified, session 102; OQ-1 = vertical-level registry, OQ-2 = separate `RunContext.service_principal` field, OQ-3 = audit-only `actor_kind`).
+**Amendments:** D3 Amendment (2026-06-11) → ADR-0019 (`watch → gated`-proposal routing). **D2 Amendment (2026-06-25)** → first-class typed `facet:` Step field (**Accepted** 2026-06-25 — Cray-ratified). **D2 + D3 Amendment (2026-07-01)** → typed read-side ontology object-binding for query steps (Q3) (**Accepted** 2026-07-01 — Cray-ratified). **D2 + D3 Amendment (2026-07-05)** → typed service-principal for non-human (`schedule`) triggers (S2; requester-never-approver) (**Accepted** 2026-07-05 — Cray-ratified, session 102; OQ-1 = vertical-level registry, OQ-2 = separate `RunContext.service_principal` field, OQ-3 = audit-only `actor_kind`). **Amendment (2026-07-09)** → join/projection grammar for multi-read query steps (Q4) (**Accepted** 2026-07-09 — Cray-ratified, session 115; SD-A Hybrid surface / SD-B two-shape v1 scope / SD-C co-exist + parity migration; OQ-1 = typed `StepInput` `join`/`project` construct, OQ-2 = no repair loop in v1, OQ-3 = join+projection only (computation stays downstream/seed), OQ-4 = warn-first override validation — all as-recommended).
 
 > **Drafting provenance.** Drafted (uncommitted) by the in-harness
 > `plan-drafter` subagent under ADR-009 D1 interim authoring per ADR-013's
@@ -1006,6 +1006,375 @@ an OQ.
   (`STEP_ / AGENT_GOVERNANCE_FIELDS`) the new fields join (SP-7).
 - PLAN-0005 §8.1 — the read-side audit / PDPA surface a resolvable declared
   actor serves.
+
+### Amendment (2026-07-09): join/projection grammar for multi-read query steps (Q4)
+
+> **Status:** **Accepted** (Cray-ratified, Proposed → Accepted, 2026-07-09 /
+> session 115, via AskUserQuestion — OQ-1..OQ-4 all resolved as-recommended).
+> **Date:** 2026-07-09. **Deciders:**
+> Jirachai Thiemsert (founder). **Amends:** D2 (the `StepInput` read grammar) —
+> **extends, does not reverse or renumber**; mirrors the **D2 Amendment
+> (2026-06-25)** typed-`facet:`, the **D2 + D3 Amendment (2026-07-01)**
+> read-binding (Q3), and the **D2 + D3 Amendment (2026-07-05)**
+> service-principal in-place precedents. This renders the **deferred half of
+> Q4**: the 2026-07-01 amendment's OQ-5 located the multi-read join here ("the
+> multi-read join lands with Q4"), and PLAN-0048 — which shipped Q4's
+> single-read half — explicitly walled the grammar off as "an ADR-016
+> amendment, not a build call".
+>
+> **Author≠reviewer disclosure (ADR-012 D4.3).** Outline originator = Cray —
+> the three grammar forks (SD-A Hybrid surface / SD-B two-shape v1 scope /
+> SD-C co-exist + parity-guarded migration) were adjudicated by Cray in-session
+> 2026-07-09 (session 115) via AskUserQuestion, on top of ADR-016 Q4's own
+> ratified deferral naming this exact amendment. Drafter = the in-harness `plan-drafter` subagent
+> (ADR-013 D1 phased authoring / ADR-009 D1 interim authoring). Independent
+> reviewers = Code R2 (every cited `file:line` re-verified on disk against
+> fresh evidence; commits per ADR-009 D2) + Cray at ratification (Proposed →
+> Accepted). Drafter ≠ ratifier — separation **intact**. Because the SD forks
+> were adjudicated by Cray *during* drafting (the 2026-06-25 precedent), the
+> independent-deliberation check is Code's R2 review + Cray's ratification of
+> the rendered whole; the genuinely-open shape choices were surfaced as
+> OQ-1..OQ-4 and resolved by Cray at ratification (session 115, all four
+> as-recommended) — none silently resolved by the drafter.
+
+#### Context
+
+**Where Q4 stands.** The 2026-07-01 amendment typed the read entry point
+(`StepInput.reads`) + the `object_types` allowlist + the load gate, and
+deferred the run-consume executor to Q4. PLAN-0048 (Complete 2026-07-04, PRs
+#533–#539) then rendered Q4's **single-read half**: the engine-owned,
+deterministic `QueryStepExecutor` gives a plain declared read
+declared==dispatched through the compile / execute / inspect seam. But
+**multi-read remains a typed refusal**: `len(reads) > 1` raises
+`ReadRefusal(unsupported_read_shape)` with "a join grammar is a future ADR-016
+amendment" (`services/engine/procedures/query_step.py:167-175`). PLAN-0048
+kept the grammar out of scope on principle — inventing join semantics in a
+build would be new `extra="forbid"` spec surface, "an **ADR-016 amendment**,
+not a build call" (`docs/plans/done/0048-q4-generic-query-executor.md:95`,
+restated in the close-out deferral list `0048:214`). This amendment IS that
+decision.
+
+**The declaration gap.** `StepInput.reads: list[str]`
+(`services/engine/procedures/spec.py:246-250`) names ontology object-type
+NAMES only — it cannot express join keys, projections, or aggregation. And
+PLAN-0048 fact-pack 8 (`0048:29`, verified) found that **none** of the four
+shipped verticals' query steps is a plain fetch — so under the honest
+LOCKED-9 frame every real query step stays **execution-bound ✖** until the
+spec can declare what the hand-written seeds actually do.
+
+**The two shapes v1 must express (the actual N=4 substrate — no speculative
+grammar):**
+
+1. **Latest-per-group projection** — "latest reading per active
+   Asset / Pond / Shipment": the energy / aquaculture / supply_chain OCT
+   query steps (`verticals/{energy,aquaculture,supply_chain}/procedures.yaml`).
+   The group key IS an ontology-declared relationship — e.g.
+   `event_emitted_by_asset` (FK `OperationalEvent.asset_id → Asset.asset_id`,
+   `verticals/energy/ontology/energy_v0.yaml:205-209`; the full declared
+   `link_types` block at `:197-239`).
+2. **Multi-type equi-join enrichment** — procurement `intake`
+   (`verticals/procurement/hero_demo/run.py:183-224`): `OperationalEvent` +
+   `PurchaseOrder` + `Quotation` joined on `part_id` into one enriched
+   `PurchaseRequisition`.
+
+**The intake decomposes into THREE parts** (verified against `_intake_seed`;
+this decomposition is why the Hybrid surface wins):
+
+- **(a) a genuine equi-join** — `Quotation ⋈ PurchaseOrder` on `part_id`
+  (`run.py:192`). The ontology CAN declare this relationship surface: directly
+  (`PurchaseOrder.quote_id → Quotation.quote_id`,
+  `verticals/procurement/ontology/procurement_v0.yaml:414`) and transitively
+  through `Part` (`Quotation.part_no → Part.part_no` `:390`;
+  `PurchaseOrder.part_no → Part.part_no` `:402`).
+- **(b) a positional singleton fusion with NO relational key** —
+  `OperationalEvent` + `PurchaseOrder`: the seed selects the failure event by
+  `event_type == "failure"` and the PO by a constant hero id
+  (`run.py:189-191`). The ontology **cannot** declare this; only an explicit
+  per-step form can express it.
+- **(c) derived / computed fields** — the `compliance` dict, the criticality
+  amplification, qty→amount (`run.py:199-224`) — **transforms, NOT joins**:
+  no join grammar expresses these; they stay in a downstream transform step or
+  the co-existing seed (OQ-3).
+
+**The prerequisite: the ontology already DECLARES the join surface, but it is
+not execution-consumable.** Every vertical's `link_types` carry a
+`foreign_key` (e.g. `energy_v0.yaml:197-239`), BUT `LinkTypeMeta` **drops
+`foreign_key` in projection** (`services/engine/ontology_meta.py:102-108` —
+name / from_type / to_type / cardinality only), so the join column never
+reaches the typed registry the executor consumes. Likewise, ADR-0027 SD-5's
+`join_path` + `grain` on `quantity_bindings` (`ontology_meta.py:71-76`; in the
+wild: `verticals/supply_chain/ontology/supply_chain_v0.yaml:120-123`,
+`join_path: OperationalEvent.shipment_id -> Shipment.shipment_id`) are parsed
+as free-text enrichment hints, NOT executed. The declarative-join substrate
+exists on paper; SD-D below promotes it to typed, consumable form.
+
+#### Decision (SD-A … SD-D — SD-A/B/C direction LOCKED, Cray-ratified 2026-07-09, session 115; SD-D entailed by SD-A)
+
+Query steps gain a **declarative join/projection grammar**: a query step
+DECLARES its multi-read join + projection as typed, authored, deterministic
+spec surface, and the generic executor compiles + runs it — extending
+declared==dispatched from single reads to the join shapes the shipped
+verticals actually use. The grammar is authored and deterministic end to end;
+**no LLM proposes, selects, or reshapes anything in the read path** (LOCKED-6
+/ ADR-0024 D3/D6, carried verbatim in the Scope boundary).
+
+**SD-A — grammar surface = HYBRID: ontology-declared default + per-step
+explicit override (RATIFIED as the fork pick).** The ontology's declared
+`link_types` provide the **default** join: when a step joins declared reads
+across a declared relationship, the join keys resolve from the declared
+`foreign_key` — the ontology stays the single source of join truth (the moat:
+the join is *governed* wherever the ontology can express it). A per-step
+**explicit override** (on-keys / projection) covers exactly the shapes the
+ontology cannot express — the intake's positional singleton fusion (Context
+(b)) and custom projections — as an honest, typed escape hatch: visible in the
+spec, load-gated like everything else, never silently guessed. Illustrative
+sketch only (the binding home is **OQ-1**; the follow-up build PLAN owns the
+literal schema):
+
+```yaml
+# ILLUSTRATIVE ONLY — binding home = OQ-1; the build PLAN owns the literal schema.
+# shape 1 — latest-per-group projection over a DECLARED link (ontology default):
+input:
+  reads: [OperationalEvent]
+  project: { latest_per: event_emitted_by_asset }  # group key = the link's declared foreign_key
+# shape 2 — equi-join enrichment; keys default from a declared link, or an
+# explicit per-step override where no declared relationship fits:
+input:
+  reads: [PurchaseOrder, Quotation]
+  join: [ { on: part_id } ]                        # explicit override form (validation posture = OQ-4)
+```
+
+**SD-B — v1 scope = EXACTLY the two shipped shapes; general aggregation
+DEFERRED (RATIFIED as the fork pick).** v1 expresses (1) latest-per-group
+projection and (2) multi-type equi-join enrichment — the shapes the N=4
+substrate actually uses (Rule-of-Three discipline, ADR-006: no speculative
+grammar). General group-by / max / min / sum / avg aggregation math is
+explicitly **OUT**: that computation already lives on the sibling NL-query
+surface (`services/engine/nl_query.py:157-161` `group_by`; `:705-782` the
+deterministic aggregate computation), which PLAN-0048 walled off (`0048:98` —
+no NL-query path change; convergence = a future design note). Unifying the
+procedure grammar's projection with the NL-query aggregate surface is **named
+as a future design question** — not v1. A third shape a 5th vertical needs =
+extend the grammar via this same amendment discipline (the D2-Amendment OQ-A1
+catalog-growth convention).
+
+**SD-C — seed migration = CO-EXIST + migrate under run-semantics PARITY tests
+(RATIFIED as the fork pick).** The grammar enables NEW declared multi-reads
+immediately once built. The four existing hand-written seeds (esp. procurement
+`_SeedQuery` / `_intake_seed`) are **NOT force-retired** by this amendment:
+they co-exist, then migrate in a follow-up build-PLAN phase (Phase 3), **each
+guarded by a run-semantics-parity test** — the declared-grammar run must
+produce the same step output as the seed on the same fixture data. This is the
+answer to the PLAN-0048 SD-3 deprecate-in-place concern (migration changes
+demo-visible run semantics if the grammar's reading diverges from the seed's);
+the parity test is the guard. A seed that cannot reach parity (the intake's
+derived fields, pending OQ-3) migrates partially or stays, honestly labelled
+**execution-bound ✖** per LOCKED-9 — no over-claim.
+
+**SD-D — the declarative-join substrate: promote `foreign_key` into
+`LinkTypeMeta` (typed) and parse `join_path` into an execution-consumable
+typed form (ENTAILED by SD-A — named here so the decision is complete; the
+follow-up build PLAN owns the wiring).** SD-A's ontology-declared default is
+unimplementable while the typed registry drops the join column.
+`LinkTypeMeta` gains `foreign_key` in typed form (a parsed
+`{from_property, to_property}` shape, not the current free-text
+`A.x -> B.y` string it drops today), and ADR-0027 SD-5's `join_path` strings
+parse into the **same** execution-consumable typed form — one parsed join
+shape, two declaring surfaces. This is a **projection-layer promotion**: the
+vertical YAMLs already carry the data, so the ADR-008 authored ontology
+grammar is **untouched**; the literal `ontology_meta.py` edit + parser +
+validation belong to the follow-up build PLAN.
+
+**Enforcement continuity (binding).** Every object_type a joined read names
+routes through **the single shared `read_bound_violation` predicate**
+(`services/engine/procedures/orchestrator.py:219-237`) against
+`ontology ∩ Agent.allowed.object_types` — at BOTH the load gate
+(`validate_read_bindings`) AND run-time compile/dispatch — so multi-read opens
+**no side door** around the Q3 bound (PLAN-0048 AC-3 one-bound-zero-drift,
+extended, not forked).
+
+**Sequencing.** This amendment (the decision) → the follow-up build PLAN (the
+grammar schema + compile/execute extension + the SD-D registry promotion) →
+per-vertical production factory + seed migration (Phase 3, parity-guarded per
+SD-C).
+
+#### Alternatives considered
+
+- **Alternative A — pure ontology-lean (joins ONLY via declared
+  `link_types`).** Maximal single-source-of-truth. **Rejected:** it cannot
+  express the intake's positional singleton fusion (no relational key, Context
+  (b)) nor custom projections → procurement `intake` becomes permanently
+  un-migratable, freezing the seed — and LOCKED-9 never closes for the hero
+  vertical.
+- **Alternative B — pure explicit per-step (all keys authored on the step).**
+  Fully general. **Rejected:** it duplicates join knowledge the ontology
+  already declares (`foreign_key` in every vertical YAML) → a two-source drift
+  hazard (the same argument that shaped the D2-A2 Hybrid facet), and it
+  weakens the governed story — the moat is that the **ontology** declares the
+  operational semantics.
+- **No grammar — keep the hand-written seeds permanently.** **Rejected:**
+  every real query step in every shipped vertical stays execution-bound ✖
+  (PLAN-0048 fact 8 + LOCKED-9); the read side never reaches
+  declared==dispatched parity on real workloads.
+- **Full aggregation grammar now (unify with `nl_query`).** **Rejected
+  (deferred):** SD-B — speculative surface beyond the N=4 substrate; the
+  PLAN-0048 NL-query wall (`0048:98`) stands; unification is a named future
+  design question.
+- **Force-retire the seeds in this amendment.** **Rejected:** SD-C —
+  demo-visible run-semantics risk without a parity guard; migration is a
+  build-PLAN phase, parity-gated.
+- **A new standalone ADR.** **Rejected:** the grammar directly extends the D2
+  `StepInput` read grammar under `extra="forbid"` — the in-place amendment
+  precedent (2026-06-25 / 2026-07-01 / 2026-07-05) applies.
+- **LLM-assisted join/reshape** (the "flexible" fallback). **Rejected
+  outright:** LOCKED-6 / ADR-0024 D3/D6 — no LLM anywhere in the read path;
+  the grammar is authored, declarative, deterministic.
+
+#### Scope boundary (amendment — keep it tight)
+
+- **IN:** the grammar **DECISION** — the Hybrid surface (SD-A), the two-shape
+  v1 scope (SD-B), the co-exist + parity migration posture (SD-C), the
+  substrate-promotion decision (SD-D), and the enforcement-continuity
+  property. Nothing else.
+- **OUT — the build** (a follow-up build PLAN, gated on this `Accepted`): the
+  literal spec schema + validators; the grammar compile/execute extension of
+  `plan_read` / `QueryStepExecutor`; the `LinkTypeMeta.foreign_key` +
+  `join_path` registry promotion (SD-D wiring); the per-vertical seed
+  migration + parity tests (Phase 3); the governance-pin +
+  `STEP_GOVERNANCE_FIELDS` wiring.
+- **OUT:** general aggregation math / NL-query unification (SD-B);
+  `fetch_links` / `stream_events` executors or bounds (LOCKED-2 carried); any
+  repair loop (OQ-2 — recommended none).
+- **Inherited LOCKs (carried — must-not-violate):**
+  - `extra="forbid"` on `StepInput` / `Step` / `AgentAllowed` — any new
+    grammar field is a new typed KEY, which is exactly why this is a G-gated
+    ADR-016 amendment and not a build call.
+  - **NO LLM anywhere in the read path** (LOCKED-6 / ADR-0024 D3/D6) — the
+    grammar is authored / declarative / deterministic; no LLM proposes a join
+    or a reshape.
+  - `where` stays the **engine-side post-fetch field-equality filter**
+    (LOCKED-3 / OQ-4 of the Q3 amendment) — never pushed to the adapter.
+  - the shared `read_bound_violation` predicate (`orchestrator.py:219-237`)
+    remains THE single bound checked by BOTH the load gate
+    (`validate_read_bindings`) AND run-time dispatch — every joined/named
+    object_type routes through it against
+    `ontology ∩ Agent.allowed.object_types` (AC-3; load-acceptance and
+    run-dispatch cannot drift).
+  - `reads` stays `list[str]` (LOCKED-4 / OQ-5); empty
+    `Agent.allowed.object_types` = unconstrained (LOCKED-5 / OQ-6).
+  - `fetch_objects`-style **object** reads only (LOCKED-2 / OQ-3) — not
+    `fetch_links` / `stream_events`.
+  - new grammar fields are **H-governed + pinned** — they join
+    `STEP_GOVERNANCE_FIELDS` + `build_governance_snapshot` (the PLAN-0048
+    SD-5(b) precedent; a mid-flight grammar edit fails CLOSED at resume).
+- **UNCHANGED:** the ADR-007 `RecommendedAction` envelope; the ADR-008
+  authored ontology grammar (SD-D promotes the *projection* — the
+  `foreign_key` / `join_path` data already exists in every vertical YAML); the
+  Q3 load gate's semantics; `from_step` intra-run threading; the
+  `DataAdapter` contract and how the adapter is selected.
+
+#### Open Questions (amendment — Cray ratifies at Proposed → Accepted; do NOT silently resolve)
+
+The **direction is LOCKED** (Hybrid surface, two-shape v1 scope, co-exist +
+parity migration — SD-A/B/C are ratified forks, not OQs). The four *shape*
+choices below were surfaced genuinely open at Proposed and are now **RESOLVED
+— all four as-recommended, Cray-ratified 2026-07-09 (session 115) via
+AskUserQuestion**; each OQ keeps its deliberation text as the record:
+
+- **OQ-1 (grammar binding home) — RESOLVED (Cray-ratified 2026-07-09, session
+  115): extend `StepInput` with the typed `join` / `project` construct** (the
+  recommended option); the build PLAN owns the literal schema. *Surfaced as:*
+  Extend `StepInput` with a lean typed
+  `join` / `project` construct (**recommended** — the read grammar stays one
+  cohesive input model beside `from` / `where` / `reads`, mirroring the Q3
+  amendment's ratified OQ-1 placement of `reads` on `StepInput`) **vs** a new
+  sibling construct (e.g. a top-level `Step.read_plan`). Both keep
+  `extra="forbid"`. *Why Cray's call:* it fixes the spec grammar's public
+  shape and the H-governance field home.
+- **OQ-2 (repair loop) — RESOLVED (Cray-ratified 2026-07-09, session 115): NO
+  repair loop in v1**; if a loop is EVER added, the D-N2 future contract
+  stands — deterministic, fixed-attempt, in-allowlist, LLM-free. *Surfaced
+  as:* **Recommended: NONE in v1** — consistent with
+  PLAN-0048 D-N2 (`0048:50`): no execute-validate-retry; the bound
+  (attempts = 1 per declared read) stays a tested property. If a loop is EVER
+  added it is deterministic, fixed-attempt, in-allowlist, and LLM-free (the
+  documented D-N2 future contract). Confirm.
+- **OQ-3 (derived/computed-field boundary) — RESOLVED (Cray-ratified
+  2026-07-09, session 115): the grammar = join + projection (field
+  select / rename) ONLY; arbitrary computation (the intake's `compliance` /
+  criticality amplification / qty→amount) stays in a downstream transform step
+  or the co-existing seed** — so procurement `intake` migrates **PARTIALLY**
+  under the SD-C parity guard (the join half migrates; the derived fields
+  stay, honestly labelled execution-bound ✖ per LOCKED-9). *Surfaced as:* The
+  grammar covers **join +
+  projection (field select / rename) ONLY**; arbitrary computation — the
+  intake's `compliance` dict, criticality amplification, qty→amount — stays in
+  a downstream transform step or the co-existing seed. **Confirm the
+  boundary** — it determines whether `intake` migrates fully (if a downstream
+  transform home exists) or partially (the seed keeps the derived fields; the
+  join half migrates under the SD-C parity guard).
+- **OQ-4 (override validation) — RESOLVED (Cray-ratified 2026-07-09, session
+  115): warn-first** — a per-step explicit override join not backed by any
+  declared `link_types` relationship emits a WARNING (ontology-vs-step drift
+  stays visible), not a rejection (reject would defeat the override, whose
+  purpose is the intake's undeclarable fusion); tightening to reject is left
+  as a future option. *Surfaced as:* Is a per-step explicit `on`-key override
+  validated against the declared `link_types` — **warn** or **reject** when a
+  join is not backed by any declared relationship — or left free?
+  *Recommendation:* **warn-first** — the override EXISTS precisely for
+  undeclared shapes (the intake's fusion), so reject would defeat it, while a
+  warning keeps ontology-vs-step drift visible and leaves room to tighten
+  later. *Why Cray's call:* it sets how hard the ontology's declared-join
+  primacy is enforced against the escape hatch.
+
+#### Amendment references
+
+- `services/engine/procedures/query_step.py:167-175` — the multi-read typed
+  refusal (`ReadRefusal(unsupported_read_shape)`, "a join grammar is a future
+  ADR-016 amendment") this amendment renders.
+- `services/engine/procedures/spec.py:246-250` — `StepInput.reads: list[str]`
+  (object-type names only; the declaration gap).
+- `services/engine/procedures/orchestrator.py:219-237` —
+  `read_bound_violation`, the single shared bound predicate every joined
+  object_type keeps routing through (enforcement continuity).
+- `services/engine/ontology_meta.py:102-108` — `LinkTypeMeta` drops
+  `foreign_key` in projection; `:71-76` — the `join_path` / `grain` free-text
+  hints (both promoted by SD-D).
+- `verticals/energy/ontology/energy_v0.yaml:197-239` — the declared
+  `link_types` + `foreign_key` substrate (`event_emitted_by_asset` at
+  `:205-209`).
+- `verticals/supply_chain/ontology/supply_chain_v0.yaml:120-123` — the
+  ADR-0027 SD-5 `join_path` / `grain` declaration in the wild.
+- `verticals/procurement/ontology/procurement_v0.yaml:329-414` — the declared
+  procurement relationship surface (`PurchaseOrder.quote_id → Quotation.quote_id`
+  `:414`; the transitive `part_no` links via `Part` `:390` / `:402`).
+- `verticals/procurement/hero_demo/run.py:183-224` — `_intake_seed`: the
+  three-part decomposition (equi-join `:192` / positional fusion `:189-191` /
+  derived fields `:199-224`).
+- `verticals/{energy,aquaculture,supply_chain}/procedures.yaml` — the
+  latest-per-group query steps (shape 1).
+- `docs/plans/done/0048-q4-generic-query-executor.md` — the single-read
+  predecessor: the grammar named as an ADR-016 amendment (`:95`, `:214`),
+  fact-pack 8 (`:29` — no shipped query step is a plain fetch), the D-N2
+  no-retry contract (`:50`), the NL-query wall (`:98`), and the research-brief
+  authorizing context (`:8`).
+- `services/engine/nl_query.py:157-161`, `:705-782` — the sibling
+  deterministic aggregate surface SD-B walls off (future unification = a named
+  design question).
+- ADR-0027 SD-5 — `join_path` + `grain` (the enrichment hints SD-D makes
+  execution-consumable).
+- ADR-008 — the authored ontology `link_types` grammar (untouched; SD-D is a
+  projection-layer promotion).
+- ADR-0024 D3/D6 — governed ≠ generated; no LLM in the read path (carried).
+- ADR-016 D2 + D3 Amendment (2026-07-01) — Q4's deferral + OQ-5 ("the
+  multi-read join lands with Q4"); D2 Amendment (2026-06-25) + D2 + D3
+  Amendment (2026-07-05) — the in-place, extends-not-reverses precedents.
+- ADR-006 (Rule-of-Three) — the N=4 substrate justifies exactly the two
+  shapes, no more.
+- `docs/research/private/2026-07-03-llm-db-reliability-techniques.md` (+ the
+  two sibling 2026-07-03 briefs, gitignored, on-disk) — the CaMeL
+  deterministic-disposer + dbt-MCP compile/execute/inspect seam authorizing
+  context PLAN-0048 absorbed (`0048:8,49-51`).
 
 ### D3: Autonomy model + safe-agentic posture
 
