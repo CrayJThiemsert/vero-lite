@@ -3301,3 +3301,53 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-07-07 (PLAN-0055 Ready + main branch-protection ARMED, session 106) [rotated 2026-07-08, session-113 reconcile]
 
 | 2026-07-07 | **PLAN-0055 Ready + `main` branch-protection ARMED (session 106; #602 + repo-config)** — **(1) Repo-config (NOT a commit):** `main` was found **completely unprotected** (no classic protection, no rulesets, no rules — contradicting CLAUDE.md §7). Applied Cray-authorized (§8 go): **require-PR + require the `gate` status check + `enforce_admins` + no force-push / no branch-deletion** — closes the merged-red hole that let #595's RF-1 regression stay red through #596–#598 (s105 finding). Every PR this session merged through the now-required `gate`. **(2) PLAN-0055 (S1 schedule-trigger scheduler BUILD) Ready (#602 merge `22daea3`):** `plan-drafter`-authored (`a1058c4` add → `3bec1f0` Draft→Ready), Code R2 + committed. Cray ratified **all six SD-P1..P6 as-rec:** SD-P1 cron/tz = `Asia/Bangkok` + IANA tz per schedule · SD-P2 skip-missed-with-audit · SD-P3 skip-if-in-flight · SD-P4 at-most-once · SD-P5 dedicated schedule-state table + restart recovery · SD-P6 `trigger_context` stamp → Ready for execution. Phased: Phase A (offline-testable) + Phase B (long-lived daemon). Implements Accepted ADR-0028 | `22daea3` (#602 merge) / `3bec1f0` (Draft→Ready) / `a1058c4` (PLAN add) / `docs/plans/0055-*.md` + GitHub branch-protection on `main` |
+
+### Current-Focus block — Session 113, 2026-07-08 (head_commit `5abb1d9` → `a3b7113`) — PLAN-0058 whoami/reject-at-login COMPLETE [rotated 2026-07-08, session-114 reconcile]
+
+> **Session 113, 2026-07-08 (head_commit `5abb1d9` → `a3b7113`) —
+> BUILD + CLOSE batch: PLAN-0058 **COMPLETE (all 5 ACs)** and moved to
+> `docs/plans/done/` (#645/#646/#647). A thin **`GET /whoami`** echo over the
+> already-shipped fail-closed auth seam (`get_current_principal`) + the frontend
+> `login()` probing it, so a **bad key is rejected AT login** instead of only on
+> the first operate POST. Executes the ratified **PLAN-0054 SD-A tail** (the
+> "who am I" read named as a designed-into-seams sequel) — **NO new ADR, NO new
+> auth backend, NO change to the seam's validation logic.** Fully offline /
+> deterministic / MS-S1-independent. Origin: s113 `next-work-analyst` re-rank
+> (grounded 4-agent fan-out) → Cray picked **C1 (whoami)**, the cheap
+> ratified-design front-runner — now SHIPPED.**
+> **#645 (`docs(plans):` PLAN-0058 Ready, feat `847a0bb` / merge `1734187`) —**
+> `plan-drafter`-authored; Code R2-verified every code citation; **SD-1..SD-4
+> ratified as-recommended** (Cray, via AskUserQuestion): SD-1 minimal shape
+> `{person_id, display_name, auth_enabled}`, SD-2 fail-closed (reuse
+> `Depends(get_current_principal)`), SD-3 include the frontend wiring, SD-4
+> deterministic API tests only.
+> **#646 (`feat(api):` Steps 1-3, feat `8eaacd1` / merge `fa0a187`) —** Step 1:
+> `services/api/models/whoami.py` (`WhoamiResponse`) + `services/api/routers/whoami.py`
+> (`GET /whoami`, injects the shared `Depends(get_current_principal)`) + registered
+> in `main.py`. Step 2: `tests/api/test_whoami.py`, 6 deterministic cases (200
+> valid + display_name resolved / 200 no-principals → null / 401 no-header / 401
+> unknown key / 403 unmapped person / dev-escape → 200 person_id null +
+> auth_enabled false). Step 3: async `login()` probes `/whoami` (`auth.js`) →
+> reject-at-login; `doLogin` made promise-aware (`view-monitor.js`); stale comment
+> fixed; `index.html` `?v=` bumped (auth.js c29→c33, view-monitor.js c30→c33).
+> **#647 (`docs(plans):` `cd32b02` / merge `a3b7113`) —** PLAN-0058 Status Ready →
+> Complete, `git mv` → `docs/plans/done/`; all 5 ACs met.
+> **Parallel session (not mine) — #644 (`fb523f3` / merge `3675403`,
+> `chore(agents):`)** pinned the `plan-drafter` subagent to fable + xhigh effort
+> (harness config, unrelated).
+> **Verification:** offline binding bar green — **full suite 2359 passed / 7
+> skipped**; ruff + mypy clean; every PR green through the required CI `gate`.
+> Preview-verified on `oct-demo-procurement` (`API_AUTH_ENABLED=true`): a bad key
+> → inline "unknown API key" with NO session stored (reject-at-login end-to-end);
+> a 200 → session stored; no JS console errors. `main` **green + PROTECTED**
+> (`a3b7113`); 0 open PRs; `loop-dispatcher` **DISABLED**; MS-S1 idle; dev DB at
+> head `0011` (unchanged this session); AI-assisted (Claude Code, session 113), no
+> `Co-Authored-By` per §7. No active PLAN; next-work candidates (re-rank when Cray
+> picks): KPI panel (hero-demo dossier — cheap demo-composition over the shipped
+> `/demo/hero/impact` ledger, greenfield PLAN); Q4 residue (join-grammar ADR +
+> SD-4 factory PLAN, greenfield/needs-ADR, heavy); hero-demo dossier backlog.
+> Event-bridge live smoke = deferred host-state evidence.
+
+### Recent-Decisions row — 2026-07-07 (Lessons #0028 + #0029, session 106) [rotated 2026-07-08, session-114 reconcile]
+
+| 2026-07-07 | **Lessons #0028 + #0029 landed (session 106; #603)** — Code-authored advisory Tier-2 (un-gated). **#0028** = omit-when-None to evolve an append-only hash-chained audit log without an epoch boundary (grounds `services/db/audit_log.py::compute_row_hash`, from the s104 ADR-016 S2 arc). **#0029** = a named-subset "green" is not a full-suite green + make CI required (the s105 #600 root-cause: s104's "52 db + 489 proc green" excluded `tests/api/` where the #595 RF-1 regression lived) | `d7094bb` (#603) / `docs/lessons/0028-*.md` + `docs/lessons/0029-*.md` |
