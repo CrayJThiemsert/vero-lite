@@ -18,7 +18,8 @@ disallowedTools:
   - Bash
   - WebFetch
   - Agent
-model: inherit
+model: fable
+effort: xhigh
 maxTurns: 30
 hooks:
   PreToolUse:
