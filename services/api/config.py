@@ -153,19 +153,19 @@ class Settings(BaseSettings):
         ),
     )
     handler_catalog_enabled: bool = Field(
-        default=False,
+        default=True,
         description=(
-            "PLAN-0060 (SD-4 ship-dark) — surface per-handler descriptions (an 'Available "
-            "actions' catalog) into the REACTIVE recommender judgment prompt so the model "
-            "distinguishes handlers by meaning (e.g. emergency_source vs reorder) instead of "
-            "bare name. When False (default), the reactive prompt is byte-identical to before — "
-            "names only. When True, the vertical's registry.handler_catalog rides in the trusted "
-            "system instruction of every reasoning/structuring call; the suggested_handler enum "
-            "is unchanged either way. Default off because it changes every vertical's reactive "
-            "recommendation input for the deployment and the live evidence does not exist until "
-            "the PLAN-0060 AC-7 re-validate runs (host-state, Cray-gated); flip the default only "
-            "after that, as its own one-line PR. Mirrors verification_judge_enabled / "
-            "event_bridge_enabled. The GOVERNED procedure path is untouched (out of scope)."
+            "PLAN-0060 — surface per-handler descriptions (an 'Available actions' catalog) into "
+            "the REACTIVE recommender judgment prompt so the model distinguishes handlers by "
+            "meaning (e.g. emergency_source vs reorder) instead of bare name. When True, the "
+            "vertical's registry.handler_catalog rides in the trusted system instruction of every "
+            "reasoning/structuring call; the suggested_handler enum is unchanged either way. When "
+            "False, the reactive prompt is byte-identical to before — names only (AC-4). "
+            "Default flipped to True after the PLAN-0060 AC-7 live re-validate PASSED (2026-07-09, "
+            "docs/logs/2026-07-09-reactive-handler-catalog-live-revalidate.md): the real MS-S1 "
+            "gpt-oss:20b picked emergency_source with the catalog on vs reorder off, for the "
+            "session-114 CNC line-down event. The GOVERNED procedure path is untouched (out of "
+            "scope) — it threads no catalog."
         ),
     )
 
