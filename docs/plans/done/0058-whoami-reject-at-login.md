@@ -1,8 +1,9 @@
 # PLAN-0058: `GET /whoami` + reject-at-login
 
-**Status:** Ready for execution
+**Status:** Complete
 **Owner:** Claude Code
 **Created:** 2026-07-08
+**Completed:** 2026-07-08 (session 113) — all 5 ACs met. Steps 1-3 shipped in one feat PR (#646, merge `fa0a187`); Step 4 = this closeout. Offline binding bar green (full suite 2359 passed / 7 skipped; ruff + mypy clean); preview-verified on `oct-demo-procurement` (auth on) — a bad key → inline "unknown API key" with NO session stored (reject-at-login end-to-end), a 200 → session stored. Code refinement: the probe uses leading-slash `/whoami` (on-disk `getJSON`/`postOperate` convention) vs the PLAN sketch's `'whoami'`.
 **Related ADRs:** none new — executes the RATIFIED PLAN-0054 SD-A tail (`docs/plans/done/0054-control-leg-v1-oct-monitor-operate.md:259-262`) against the PLAN-0047 auth seam; `Person` semantics per ADR-0026
 **Related PLANs:** PLAN-0054 (SD-A ratified 2026-07-06; `GET /whoami` named as a designed-into-seams v2 sequel at `0054:33`); PLAN-0047 (pilot-grade static API-key auth — the seam this reads)
 
