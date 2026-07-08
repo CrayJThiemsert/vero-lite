@@ -255,9 +255,11 @@ async def test_recommend_threads_catalog_when_flag_on(monkeypatch: pytest.Monkey
 
 
 async def test_recommend_omits_catalog_when_flag_off(monkeypatch: pytest.MonkeyPatch) -> None:
-    """AC-4: the default (flag off) reactive prompt is free of the catalog block."""
+    """AC-4: with the flag OFF the reactive prompt is free of the catalog block (the default
+    is now ON, so this pins the off-path explicitly)."""
     register_energy_adapter()
     registry.register_handler("energy", "echo", _echo_handler, description="Diagnostic no-op.")
+    monkeypatch.setattr(settings, "handler_catalog_enabled", False)
     fake = _CapturingChatClient([_chat("draft", thinking="r"), _chat(_judgment_json())])
     monkeypatch.setattr(_BUILD_CLIENT, lambda: fake)
 

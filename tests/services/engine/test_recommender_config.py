@@ -170,9 +170,10 @@ def test_above_default_wording_unchanged() -> None:
     assert "rose above" in action.description
 
 
-# --- PLAN-0060 SD-4: the handler-catalog ship-dark flag defaults off ---
+# --- PLAN-0060: the handler-catalog flag is default-ON after the AC-7 live re-validate ---
 
 
-def test_handler_catalog_flag_defaults_off() -> None:
-    """The reactive-prompt catalog is off by default → byte-identical to before (AC-4)."""
-    assert settings.handler_catalog_enabled is False
+def test_handler_catalog_flag_defaults_on() -> None:
+    """Default flipped to True after AC-7 PASSED (2026-07-09 live re-validate); flag-off
+    (byte-identical, AC-4) is still available by setting HANDLER_CATALOG_ENABLED=false."""
+    assert settings.handler_catalog_enabled is True
