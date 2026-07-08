@@ -68,6 +68,14 @@
       h('span', { class: 'hero-v ' + (cls || '') }, value)
     ]);
   }
+  function tile(label, value, cls, sublabel) {
+    const kids = [
+      h('div', { class: 'hero-kpi-label' }, label),
+      h('div', { class: 'hero-kpi-value ' + (cls || '') }, value)
+    ];
+    if (sublabel) kids.push(h('div', { class: 'hero-kpi-sub faint' }, sublabel));
+    return h('div', { class: 'hero-kpi-tile' }, kids);
+  }
   function badge(text, cls) {
     return h('span', { class: 'hero-badge ' + (cls || '') }, text);
   }
@@ -174,9 +182,10 @@
           ledgerSide('Governed — off-AVL emergency', g, 's-ok', led.currency)
         ]),
         h('div', { class: 'hero-ledger-foot' }, [
-          kv('expedite premium (price of speed)', thb(led.expedite_premium_thb), 's-warn'),
-          kv('avoided downtime', thbM(led.avoided_downtime_thb), 's-ok'),
-          kv('net benefit', thbM(led.net_benefit_thb), 's-ok')
+          tile('expedite premium', thb(led.expedite_premium_thb), 's-warn', 'price of speed'),
+          tile('avoided downtime', thbM(led.avoided_downtime_thb), 's-ok'),
+          tile('net benefit', thbM(led.net_benefit_thb), 's-ok',
+            'exposure ' + thbM(b.exposure_thb) + ' → ' + thbM(g.exposure_thb))
         ])
       ]);
   }
