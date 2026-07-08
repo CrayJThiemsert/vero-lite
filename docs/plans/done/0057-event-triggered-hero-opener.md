@@ -1,6 +1,7 @@
 # PLAN-0057: Event-triggered hero-demo opener
 
-**Status:** Ready for execution
+**Status:** Complete
+**Completed:** 2026-07-08 — all 8 ACs met, **live-verified end-to-end**. PRs #638 (Step 1 + Step 5), #639 (Steps 2 + 4), #640 (Step 3 / AC-2). Dev DB migrated `0009 → 0011` (Cray-approved, host-state §8) to run the live smoke: `POST /demo/hero/event → 200`; sense (`CNC-Line-07`) → govern (DOA/SoD) → act (`Approve as appr-pm` → COMPLETED) → ฿ ledger → Replay, on `oct-demo-procurement`.
 **Owner:** both (Claude Code executes; Cray ratifies the surfaced decisions)
 **Created:** 2026-07-08
 **Ratified:** 2026-07-08 — SD-1..SD-5 as-recommended + OQ-1/OQ-2 resolved (Cray, via AskUserQuestion); Code R2-verified SD-2 (demo.py:14 no-mutation invariant) + SD-4 (fire_event → run_procedure_persisted, event_bridge.py:309) on disk
@@ -22,14 +23,14 @@ This is a **DEMO COMPOSITION over already-shipped plumbing** — NOT a new engin
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 (event opener route).** A demo route fires `event_emergency_sourcing_round` via `build_event_resolver` → `fire_event` (directly, MS-S1-free, `event_bridge_enabled`-independent) to a persisted `waiting_human` run, and returns that parked run's gate audit in the **existing `HeroGovernanceAudit` contract** (`services/api/models/demo.py:60`) — same `hero` shape (`po_id`, `doa_tier[0]`, `sod`, `governed_decision`, `declared_tier_id`, `is_off_avl_override`) `view-hero.js`'s `governanceMoment()` joiner already consumes (`static/assets/view-hero.js:35`). No reshape of the contract.
-- [ ] **AC-2 (distinct-approver resolve renders COMPLETED).** After `appr-pm` (SoD-distinct vs `req-planner`) resolves the parked gate, the opener reflects the run reaching `COMPLETED` (the replay/approve beat of the mockup). Resolve path reuses `resolve_gated_step` + `resume_run` exactly as the shipped engine test does.
-- [ ] **AC-3 (UI toggle).** `view-hero.js` gains a "manual opener" vs "event-triggered opener" toggle that **reuses** the existing governance-moment + ฿-ledger render; no second view, no duplicated joiner.
-- [ ] **AC-3b (sense cue).** The event opener surfaces `event_kind` / `detected_at` / `fired_at` from the persisted run's `trigger_context` (the mockup's beat-1 "sense") in the event view; render-only, deterministic, no engine change.
-- [ ] **AC-4 (฿ ledger reused unchanged).** The event opener renders the SAME `/demo/hero/impact` ledger (`verticals/procurement/hero_demo/ledger.py`) — no new ledger code, no figure change.
-- [ ] **AC-5 (ONE integration test, MS-S1-free, pass/fail PRE-COMMITTED).** A single integration test (pass/fail read fixed BEFORE the test is written — Lesson #0026) proves: event-fire → park-at-`doa_tier` → distinct-approver (`appr-pm`) resolve → `COMPLETED` → hero-contract projection is well-formed. DB-backed disposable `<db>_test`; deterministic `advisory_stub_factory` (no live model, CLAUDE.md §8).
-- [ ] **AC-6 (full offline suite green — the merge gate).** ruff + mypy + full pytest green; the required CI `gate` runs the FULL suite per PR (Lesson #0029). The offline suite is the gate, not a named subset.
-- [ ] **AC-7 (no engine / ADR / flag change).** No change to the procedure engine, no new ADR, no change to `event_bridge_enabled`'s default (`False`), no change to the recommender→bridge production path.
+- [x] **AC-1 (event opener route).** A demo route fires `event_emergency_sourcing_round` via `build_event_resolver` → `fire_event` (directly, MS-S1-free, `event_bridge_enabled`-independent) to a persisted `waiting_human` run, and returns that parked run's gate audit in the **existing `HeroGovernanceAudit` contract** (`services/api/models/demo.py:60`) — same `hero` shape (`po_id`, `doa_tier[0]`, `sod`, `governed_decision`, `declared_tier_id`, `is_off_avl_override`) `view-hero.js`'s `governanceMoment()` joiner already consumes (`static/assets/view-hero.js:35`). No reshape of the contract.
+- [x] **AC-2 (distinct-approver resolve renders COMPLETED).** After `appr-pm` (SoD-distinct vs `req-planner`) resolves the parked gate, the opener reflects the run reaching `COMPLETED` (the replay/approve beat of the mockup). Resolve path reuses `resolve_gated_step` + `resume_run` exactly as the shipped engine test does.
+- [x] **AC-3 (UI toggle).** `view-hero.js` gains a "manual opener" vs "event-triggered opener" toggle that **reuses** the existing governance-moment + ฿-ledger render; no second view, no duplicated joiner.
+- [x] **AC-3b (sense cue).** The event opener surfaces `event_kind` / `detected_at` / `fired_at` from the persisted run's `trigger_context` (the mockup's beat-1 "sense") in the event view; render-only, deterministic, no engine change.
+- [x] **AC-4 (฿ ledger reused unchanged).** The event opener renders the SAME `/demo/hero/impact` ledger (`verticals/procurement/hero_demo/ledger.py`) — no new ledger code, no figure change.
+- [x] **AC-5 (ONE integration test, MS-S1-free, pass/fail PRE-COMMITTED).** A single integration test (pass/fail read fixed BEFORE the test is written — Lesson #0026) proves: event-fire → park-at-`doa_tier` → distinct-approver (`appr-pm`) resolve → `COMPLETED` → hero-contract projection is well-formed. DB-backed disposable `<db>_test`; deterministic `advisory_stub_factory` (no live model, CLAUDE.md §8).
+- [x] **AC-6 (full offline suite green — the merge gate).** ruff + mypy + full pytest green; the required CI `gate` runs the FULL suite per PR (Lesson #0029). The offline suite is the gate, not a named subset.
+- [x] **AC-7 (no engine / ADR / flag change).** No change to the procedure engine, no new ADR, no change to `event_bridge_enabled`'s default (`False`), no change to the recommender→bridge production path.
 
 **Non-acceptance optional (host-state §8, Cray-gated — EVIDENCE, not the gate):** a LIVE end-to-end smoke where the real recommender emits `suggested_handler == emergency_source` on MS-S1 → real fire through the `event_bridge_enabled` production loop. This is the deferred smoke from the s111 handoff. List it; do NOT make merge depend on it.
 
