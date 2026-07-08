@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-08T11:57:30+07:00
-session: 112
-current_batch: "s112: PLAN-0057 **COMPLETE (all 8 ACs, live-verified)**, moved to `done/` (#638–#641) — event-triggered hero-demo opener over shipped PLAN-0056 plumbing: asset-failure → auto-fire → DOA gate → distinct approver → COMPLETED + ฿ ledger."
+last_updated: 2026-07-08T14:05:30+07:00
+session: 113
+current_batch: "s113: PLAN-0058 **COMPLETE (5 ACs)** → `done/` (#645/#646/#647) — thin `GET /whoami` over the shipped fail-closed auth seam + frontend reject-at-login; ratified PLAN-0054 SD-A tail, no new ADR/backend."
 current_actor: code
-blocked_on: "Nothing blocking — PLAN-0057 COMPLETE (all 8 ACs, #638–#641), moved to done/; main green + PROTECTED (d33fff7); 0 open PRs; loop-dispatcher DISABLED; MS-S1 idle; dev DB now at head 0011."
-next_action: "No active PLAN. Next-work candidates (s112 re-rank): C1 = whoami/reject-at-login (cheap, ratified-design); Q4 residue = join-grammar ADR (greenfield); hero-demo dossier backlog (greenfield) — re-rank when picking."
-head_commit: 5abb1d9
-recent_commits: [d33fff7, 5abb1d9, 4524a29, 1b2b3e6, 8aa71c1, f78fb57, 0020097, 9c67532, e7f06e1, 57cc6e1]
+blocked_on: "Nothing blocking — PLAN-0058 COMPLETE (5 ACs, #645/#646/#647), moved to done/; main green + PROTECTED (a3b7113); 0 open PRs; loop-dispatcher DISABLED; MS-S1 idle; dev DB at head 0011."
+next_action: "No active PLAN. C1 (whoami) SHIPPED (#645/#646/#647). Candidates (re-rank on Cray pick): KPI panel (cheap demo-composition, greenfield); Q4 residue (join-grammar ADR + SD-4 factory PLAN, heavy); hero-demo dossier backlog. Event-bridge live smoke deferred (§8)."
+head_commit: a3b7113
+recent_commits: [a3b7113, cd32b02, fa0a187, 8eaacd1, 1734187, 847a0bb, 3675403, fb523f3, a5705f4, e331db6]
 ---
 
 # vero-lite — Project Status
@@ -18,61 +18,64 @@ recent_commits: [d33fff7, 5abb1d9, 4524a29, 1b2b3e6, 8aa71c1, f78fb57, 0020097, 
 
 ## Current Focus
 
-> **Session 112, 2026-07-08 (head_commit `9fbc703` → `5abb1d9`) —
-> BUILD + CLOSE batch: PLAN-0057 **COMPLETE (all 8 ACs, live-verified)** and
-> moved to `docs/plans/done/` (#638/#639/#640/#641). The shipped ADR-0029 /
-> PLAN-0056 event bridge is now made VISIBLE in the procurement hero-demo
-> surface: a detected asset-failure event (`CNC-Line-07`) auto-fires
-> `event_emergency_sourcing_round` via `fire_event` → parks at the `doa_tier`
-> DOA gate → a distinct approver (`appr-pm`, SoD vs `req-planner`) → COMPLETED
-> → the same governance-moment + ฿ ledger the manual opener draws, plus the
-> beat-1 sense cue. Demo composition over shipped plumbing — NO new engine
-> capability, NO new ADR, NO contract reshape. SD-1..SD-5 + OQ-1/OQ-2 ratified
-> as-recommended (Cray, via AskUserQuestion); the live smoke was Cray-approved
-> (host-state §8).**
-> **#638 (Step 1 service projection + Step 5 test, merge `0020097`) —**
-> `run_hero_event_governance_moment` + `build_event_hero_governance_audit` in
-> `verticals/procurement/hero_demo/run.py`, plus the service-layer test
-> `tests/services/db/test_event_hero_opener.py`.
-> **#639 (Step 2 route + Step 4 client, merge `8aa71c1`) —** a new
-> `POST /demo/hero/event` (`services/api/routers/demo.py`; SD-2 = a new POST,
-> NOT a param on the read-only GET) + the `view-hero.js` manual↔event toggle +
-> sense cue + `api.js` `Hero.event()` + a route smoke.
-> **#640 (Step 3 reveal, merge `4524a29`, AC-2) —** the approve→COMPLETED
-> reveal (`renderActPanel` in `view-hero.js`; client-side + Replay).
-> **#641 (docs `5abb1d9`, merge `d33fff7`) —** `docs(plans): PLAN-0057
-> COMPLETE` → `docs/plans/done/`; all 8 ACs met, Status Ready → Complete.
-> **Earlier this session — #636 (merge `021efe2`, `docs(status):`)** reconciled
-> the STALE Rock-3 Active-TODO: the "Q4 generic run-consume query executor" is
-> NOT a future PLAN — it SHIPPED as PLAN-0048 (s96). The real remaining Q4
-> residue = a join/projection-grammar ADR + the SD-4 factory PLAN (both undrafted).
-> **Standing-fact change:** dev DB migrated `0009 → 0011` (Cray-approved
-> `alembic upgrade head`, host-state §8) — the long-standing "dev DB behind on
-> migrations" caveat is now **RESOLVED** (do not repeat it next session).
-> **Verification:** every PR green through the required CI `gate`; PLAN-0057
-> live-verified end-to-end (Cray-approved smoke, host-state §8); offline suite
-> MS-S1-independent. `main` **green + PROTECTED** (`d33fff7`); 0 open PRs;
-> `loop-dispatcher` **DISABLED**; MS-S1 idle; dev DB at head `0011`; AI-assisted
-> (Claude Code, session 112), no `Co-Authored-By` per §7. No active PLAN;
-> next-work candidates (s112 re-rank): C1 = whoami/reject-at-login (cheap,
-> ratified-design), Q4 residue = join-grammar ADR (greenfield), hero-demo
-> dossier backlog (greenfield) — re-rank when Cray picks.
+> **Session 113, 2026-07-08 (head_commit `5abb1d9` → `a3b7113`) —
+> BUILD + CLOSE batch: PLAN-0058 **COMPLETE (all 5 ACs)** and moved to
+> `docs/plans/done/` (#645/#646/#647). A thin **`GET /whoami`** echo over the
+> already-shipped fail-closed auth seam (`get_current_principal`) + the frontend
+> `login()` probing it, so a **bad key is rejected AT login** instead of only on
+> the first operate POST. Executes the ratified **PLAN-0054 SD-A tail** (the
+> "who am I" read named as a designed-into-seams sequel) — **NO new ADR, NO new
+> auth backend, NO change to the seam's validation logic.** Fully offline /
+> deterministic / MS-S1-independent. Origin: s113 `next-work-analyst` re-rank
+> (grounded 4-agent fan-out) → Cray picked **C1 (whoami)**, the cheap
+> ratified-design front-runner — now SHIPPED.**
+> **#645 (`docs(plans):` PLAN-0058 Ready, feat `847a0bb` / merge `1734187`) —**
+> `plan-drafter`-authored; Code R2-verified every code citation; **SD-1..SD-4
+> ratified as-recommended** (Cray, via AskUserQuestion): SD-1 minimal shape
+> `{person_id, display_name, auth_enabled}`, SD-2 fail-closed (reuse
+> `Depends(get_current_principal)`), SD-3 include the frontend wiring, SD-4
+> deterministic API tests only.
+> **#646 (`feat(api):` Steps 1-3, feat `8eaacd1` / merge `fa0a187`) —** Step 1:
+> `services/api/models/whoami.py` (`WhoamiResponse`) + `services/api/routers/whoami.py`
+> (`GET /whoami`, injects the shared `Depends(get_current_principal)`) + registered
+> in `main.py`. Step 2: `tests/api/test_whoami.py`, 6 deterministic cases (200
+> valid + display_name resolved / 200 no-principals → null / 401 no-header / 401
+> unknown key / 403 unmapped person / dev-escape → 200 person_id null +
+> auth_enabled false). Step 3: async `login()` probes `/whoami` (`auth.js`) →
+> reject-at-login; `doLogin` made promise-aware (`view-monitor.js`); stale comment
+> fixed; `index.html` `?v=` bumped (auth.js c29→c33, view-monitor.js c30→c33).
+> **#647 (`docs(plans):` `cd32b02` / merge `a3b7113`) —** PLAN-0058 Status Ready →
+> Complete, `git mv` → `docs/plans/done/`; all 5 ACs met.
+> **Parallel session (not mine) — #644 (`fb523f3` / merge `3675403`,
+> `chore(agents):`)** pinned the `plan-drafter` subagent to fable + xhigh effort
+> (harness config, unrelated).
+> **Verification:** offline binding bar green — **full suite 2359 passed / 7
+> skipped**; ruff + mypy clean; every PR green through the required CI `gate`.
+> Preview-verified on `oct-demo-procurement` (`API_AUTH_ENABLED=true`): a bad key
+> → inline "unknown API key" with NO session stored (reject-at-login end-to-end);
+> a 200 → session stored; no JS console errors. `main` **green + PROTECTED**
+> (`a3b7113`); 0 open PRs; `loop-dispatcher` **DISABLED**; MS-S1 idle; dev DB at
+> head `0011` (unchanged this session); AI-assisted (Claude Code, session 113), no
+> `Co-Authored-By` per §7. No active PLAN; next-work candidates (re-rank when Cray
+> picks): KPI panel (hero-demo dossier — cheap demo-composition over the shipped
+> `/demo/hero/impact` ledger, greenfield PLAN); Q4 residue (join-grammar ADR +
+> SD-4 factory PLAN, greenfield/needs-ADR, heavy); hero-demo dossier backlog.
+> Event-bridge live smoke = deferred host-state evidence.
 
-> _Rotation note (session-112 reconcile, 2026-07-08): PLAN-0057 COMPLETE
-> (all 8 ACs, live-verified) → moved to `docs/plans/done/`. A new **Session
-> 112** CF block was added; the prior **Session 111** CF block (BUILD —
-> PLAN-0056 Phase B COMPLETE, `117e2d4`→`9fbc703`, #631/#632/#633/#634) was
-> rotated verbatim to
+> _Rotation note (session-113 reconcile, 2026-07-08): PLAN-0058 COMPLETE
+> (all 5 ACs) → moved to `docs/plans/done/`. A new **Session 113** CF block was
+> added; the prior **Session 112** CF block (BUILD + CLOSE — PLAN-0057 COMPLETE,
+> `9fbc703`→`5abb1d9`, #638/#639/#640/#641) was rotated verbatim to
 > [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md)
 > to hold the narrowed 1-block CF window (the s95–s111 R1-over-R2 precedent —
 > R1 64 KB hard ceiling overrides the R2 4-session window; the block is
-> covered by the PLAN-0056 Phase-A + Phase-B Recent-Decisions rows). Resulting
-> Current-Focus window = {Session 112 `5abb1d9`}; 1 new RD row added (PLAN-0057
-> COMPLETE) so the oldest — the 2026-07-07 [ADR-0028 ACCEPTED, session 105,
-> #599] row — rotated to the same archive to hold the RD table at 10. The
-> session-111 per-reconcile rotation note was pruned (R4: self-referential
-> meta-note, not session narrative — no separate archive append). Per the
-> STATUS.md Rotation Policy (R1/R2/R4)._
+> covered by the PLAN-0057 COMPLETE Recent-Decisions row). Resulting
+> Current-Focus window = {Session 113 `a3b7113`}; 1 new RD row added (PLAN-0058
+> COMPLETE) so the oldest — the 2026-07-07 [PLAN-0055 Ready + `main`
+> branch-protection ARMED, session 106, #602] row — rotated to the same archive
+> to hold the RD table at 10. The session-112 per-reconcile rotation note was
+> pruned (R4: self-referential meta-note, not session narrative — no separate
+> archive append). Per the STATUS.md Rotation Policy (R1/R2/R4)._
 
 > _Prior per-reconcile rotation notes (sessions 94–102) pruned 2026-07-06
 > (s103) as superseded procedural meta-records — the CF blocks/RD rows they
@@ -103,6 +106,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-08 | **PLAN-0058 COMPLETE (all 5 ACs) → moved to `docs/plans/done/` — a thin `GET /whoami` echo over the shipped fail-closed auth seam + a frontend reject-at-login probe (session 113; #645/#646/#647)** — executes the ratified **PLAN-0054 SD-A tail** (the "who am I" read named as a designed-into-seams sequel); **NO new ADR / NO new auth backend / NO change to the seam's validation logic.** Fully offline / deterministic / MS-S1-independent. **#645 (`docs(plans):`, PLAN Ready):** `plan-drafter`-authored, Code R2-verified every code citation; **SD-1..SD-4 ratified as-rec** (Cray, AskUserQuestion) — SD-1 shape `{person_id, display_name, auth_enabled}`, SD-2 fail-closed reuse `Depends(get_current_principal)`, SD-3 include the frontend wiring, SD-4 deterministic API tests. **#646 (`feat(api):`, Steps 1-3):** `services/api/models/whoami.py` (`WhoamiResponse`) + `services/api/routers/whoami.py` (`GET /whoami` injects the shared `Depends(get_current_principal)`) + `main.py` register; `tests/api/test_whoami.py` 6 deterministic cases (200 valid + display_name / 200 no-principals null / 401 no-header / 401 unknown key / 403 unmapped person / dev-escape → auth_enabled false); async `login()` probes `/whoami` (`auth.js`) → reject-at-login, `doLogin` promise-aware (`view-monitor.js`), `?v=` bump. **#647:** Ready → Complete → `done/`. **Full offline suite 2359 passed / 7 skipped**; ruff + mypy clean. **Preview-verified** on `oct-demo-procurement` (`API_AUTH_ENABLED=true`): a bad key → inline "unknown API key", NO session stored (reject-at-login e2e); good key → session stored. Origin: s113 `next-work-analyst` re-rank → Cray picked **C1 (whoami)**, now SHIPPED | `a3b7113` (#647 merge) / `cd32b02` (#647 PLAN-COMPLETE) / `fa0a187` (#646 merge) / `8eaacd1` (#646 feat) / `1734187` (#645 merge) / `847a0bb` (#645 PLAN) / `services/api/routers/whoami.py` + `services/api/models/whoami.py` + `services/api/main.py` + `tests/api/test_whoami.py` + `services/api/static/assets/{auth.js,view-monitor.js}` + `services/api/static/index.html` + `docs/plans/done/0058-*.md` |
 | 2026-07-08 | **PLAN-0057 COMPLETE (all 8 ACs, live-verified) → moved to `docs/plans/done/` — the event-triggered hero-demo opener made VISIBLE over shipped ADR-0029 / PLAN-0056 plumbing (session 112; #638/#639/#640/#641)** — demo composition; NO new engine capability / NO new ADR / NO contract reshape. **#638 (Step 1+5):** `run_hero_event_governance_moment` + `build_event_hero_governance_audit` (`verticals/procurement/hero_demo/run.py`) + a service-layer test. **#639 (Step 2+4):** new `POST /demo/hero/event` (SD-2 = a new POST, NOT a param on the read-only GET) + `view-hero.js` manual↔event toggle + sense cue + `api.js` `Hero.event()`. **#640 (Step 3, AC-2):** approve→COMPLETED reveal (`renderActPanel`, client + Replay). **Live smoke Cray-approved (§8):** detected `CNC-Line-07` failure → `fire_event` → `doa_tier` gate → `appr-pm` (SoD vs `req-planner`) → COMPLETED + ฿ ledger. SD-1..SD-5 + OQ-1/OQ-2 ratified as-rec. **#641:** Ready → Complete → `done/`. Dev DB migrated `0009→0011` (Cray-approved §8) — "behind on migrations" caveat RESOLVED | `5abb1d9` (#641 PLAN-COMPLETE) / `d33fff7` (#641 merge) / `4524a29` (#640) / `8aa71c1` (#639) / `0020097` (#638) / `verticals/procurement/hero_demo/run.py` + `services/api/routers/demo.py` + `view-hero.js`/`api.js` + `tests/services/db/test_event_hero_opener.py` + `docs/plans/done/0057-*.md` |
 | 2026-07-08 | **PLAN-0056 Phase B COMPLETE (Steps 6–8) → whole PLAN COMPLETE (all 12 ACs), moved to `docs/plans/done/` — the `event`/Alert-triggered governed run wired end-to-end behind a default-off ship-dark flag + LOUD-on-failure + a procurement event demo (session 111; #631 + #632 + #633 + #634)** — three un-gated Code `feat` PRs + one `docs` close, each green through the required `gate`; MS-S1-independent. **Step 6 (#631, AC-11):** `_populate_store` FEEDS an actionable recommendation INTO the governed engine in-process (ADR-0029 SD-1/SD-4) behind a **default-off `event_bridge_enabled`** flag (mirrors `verification_judge_enabled`, SD-P3); flag-off = ZERO behavior change; `event_kind = RecommendedAction.suggested_handler` (the envelope has NO `action_type`). **Step 7 (#632, AC-10, ADR-0028 D4 mirror):** a dropped/failed fire is LOUD — `event_fire_missed`/`event_fire_failed` audit + best-effort Telegram (`notify_event_fire_failed`, SEPARATE cooldown, no `llm_backend` gate), then `None` so the read path never breaks; distinct from a healthy `event_skipped`. **Step 8 (#633, AC-12):** a DISTINCT `event_emergency_sourcing_round` (trigger:event, `event_kind:emergency_source`, `owning_person_id:req-planner` SP-5 SoD) in procurement — the 7th shipped procedure (AT-2); DB-backed MS-S1-free test fires a detected asset-failure event → `build_event_resolver` → `fire_event` through the SHIPPED executor factory → parks at the DOA gate (actor_kind:service, on_behalf_of req-planner) → `appr-pm` distinct approver → COMPLETED (live smoke deferred, §8). **#634:** PLAN-0056 Ready → Complete → `done/`. **Full offline suite 2350 passed / 7 skipped**; ruff + mypy clean | `9fbc703` (#634 PLAN-COMPLETE move-to-done) / `65d9039` (#634 merge) / `f5b5c21` (#633 Step 8 feat) / `1af7928` (#632 Step 7 feat) / `02f2af9` (#631 Step 6 feat) / `services/api/routers/actions.py` (`_load_event_bridge` + `_fire_event_for_record`) + `services/api/config.py` (`event_bridge_enabled`) + `services/notify/telegram.py` (`notify_event_fire_failed`) + `verticals/procurement/procedures.yaml` (`event_emergency_sourcing_round`) + `tests/services/db/test_event_procurement_demo.py` + `docs/plans/done/0056-*.md` |
 | 2026-07-07 | **PLAN-0056 Phase A COMPLETE (Steps 1–5) — the `event` trigger lifted + a typed `EventTrigger` descriptor + event-keyed idempotency + the event resolver + the governed `fire_event` bridge (session 110; #623 + #625 + #626 + #628 + #629)** — five un-gated Code `feat` PRs executed directly (PLAN-0056 Ready; §6 "Steps execute directly"), each green through the required `gate` (full CI). **Step 1 (#623, AC-1/2/3):** `Trigger.EVENT` admitted to `_RUNNABLE_TRIGGERS` — the `event` block lifted, every OTHER governance check intact. **Step 2 (#625, AC-4):** a typed `EventTrigger` mapping descriptor on `Procedure` (present iff `trigger==event`, `extra="forbid"`; carries `event_kind` + SP-5 `owning_person_id`, mirrors `Schedule`) + `_validate_event_trigger_descriptor` (symmetric iff-invariant) + `VerticalProcedures` cross-refs (`_check_event_cross_refs`, C901-extracted: owning-person → a declared Person + each `event_kind` maps to exactly one procedure — duplicate = ambiguous, caught at load). Fact-vs-code: the recommender's `RecommendedAction` has NO `action_type` → `event_kind` stays a free authored string, the match field pinned by Step 4. 783 passed. **Step 3 (#626, AC-5):** new `services/engine/procedures/event_bridge.py` — pure/offline `event_key(...)` (deterministic dedup hash → same window = same key = idempotent no-op re-fire; later window = fresh key; naive dt = UTC; `\x1f` sep) + `event_run_id → <procedure_id>@<event_key>` (the `pipeline_runs` write-ahead PK, mirrors PLAN-0055 S6). 11 tests. **Step 4 (#628, AC-6):** `build_event_resolver` (mirrors `scheduler_wiring.build_resolver`) turns a detected actionable event into an `EventRunRequest` — procedure by `event_kind` + run-by agent + SP-4 ServicePrincipal + SP-5 `owning_person` + the event-keyed `run_id` + a `trigger_context` stamp; an unmapped `event_kind` raises `EventBridgeError` loudly. Plus `EventTrigger.dedup_window_seconds` (per-mapping detection-window granularity, SD-P1, default 1h). 12 tests. **Step 5 (#629, AC-7/8/9):** `fire_event(session, request, *, now)` FEEDS the recommender's actionable detection INTO the governed engine (SD-1) — a REAL persisted `PipelineRun` via `run_procedure_persisted`, NOT the lightweight `ActionRecord` path; two skips mirror the scheduler (SD-2 idempotency → `ALREADY_FIRED` no-op via the write-ahead PK + SD-P4 skip-if-in-flight → `SKIPPED_IN_FLIGHT`, both landing an `event_skipped` audit); the service-actor audit (AC-7: actor_kind:service + SP-5 on-behalf-of), gated-park (AC-8: RF-3) + write-ahead durability inherited verbatim from `run_procedure_persisted`. New DB-backed `tests/services/db/test_event_bridge_fire.py` (5 tests). **807 passed** (procedures/db/verticals/api). **→ Phase A COMPLETE (the offline foundation); next = Phase B (Steps 6–8).** MS-S1-independent | `117e2d4` (#629 Step 5 feat) / `7da5622` (#628 Step 4 feat) / `f63f121` (#626 Step 3 feat) / `3a7bc16` (#625 Step 2 feat) / `ef7bd15` (#623 Step 1 feat) / merge tip `be190d8` / `services/engine/procedures/event_bridge.py` (`event_key` + `event_run_id` + `build_event_resolver` + `fire_event`) + `services/engine/procedures/spec.py` (`EventTrigger` + `dedup_window_seconds` + `_validate_event_trigger_descriptor` + `_check_event_cross_refs`) + `services/engine/procedures/orchestrator.py` (`Trigger.EVENT`) + `tests/services/engine/procedures/{test_spec.py,test_event_bridge.py}` + `tests/services/db/test_event_bridge_fire.py` |
@@ -112,7 +116,6 @@ below, and git history.
 | 2026-07-07 | **S1 Steps 2–5 BUILT (PLAN-0055) — Phase A COMPLETE + Phase B daemon scaffold (session 107; #606 + #607 + #609 + #610)** — four un-gated Code `feat` PRs executed directly (PLAN-0055 already Ready; §6 "Steps 2–8 execute directly"), all green through the required `gate`. **Step 2 (#606, SD-P1 + SD-P5):** (1) a typed `Schedule` descriptor (cron + per-schedule IANA `timezone`, `extra="forbid"`) on `Procedure`, **present IFF `trigger==schedule`** — a symmetric fail-loud-at-load invariant [**Code decision, Cray veto-open:** required-iff-schedule, house fail-loud style; blast radius test-only]; (2) a dedicated `schedule_states` table (new ORM `schedules.py` + Alembic 0011, `(vertical, procedure_id)` unique, holds `last_fired`/`next_fire` for restart recovery; additive, **outside the energy parity guard**). **2254/7.** **Step 3 (#607, SD-2 + AC-10):** `croniter>=2.0.0` prod dep (6.2.3) + `types-croniter` (dev + mypy hook) + `uv.lock`; a DB-free `cron.py::next_fire(cron, tz, after)` — wall-clock in per-schedule IANA tz (SD-P1), exclusive of `after`, croniter authoritative parser; tests incl the TH-tz AC-10 case (06:00 `Asia/Bangkok` == 23:00 UTC prev day). **2261/7.** **Step 4 (#609, Phase A LAST step, SD-P2/P3/P4/P6; built by a CONCURRENT executor session, verified on-disk here):** the pure DB-free `scheduler.py::fire_due_schedules(session, schedules, *, now, resolve, next_fire_fn)` (injected `now`) — INITIALIZED / NOT_DUE / SD-P3 skip-if-in-flight (`schedule_skipped` audit) / else fire-once (SD-P4) with a `schedule_missed` no-backfill audit (SD-P2) + `trigger_context` stamp (SD-P6); `run_id=<schedule_id>@<scheduled_for>` per-slot key (Step-6 AC-7 foundation); AC-4/AC-5 inherited from `run_procedure_persisted`. **2269/7.** **Step 5 (#610, Phase B BEGINS, SD-1 + AC-11):** the long-lived `scheduler_daemon.py::SchedulerDaemon` run loop (ticks `fire_due_schedules` every `interval_seconds`, NO scheduling logic of its own) with graceful SIGTERM/SIGINT/`request_stop()` shutdown (finish the tick then exit; no torn writes) + tick-error logged & swallowed; INJECTED collaborators (MS-S1-independent); `run_scheduler_daemon` entrypoint; first use of the `structlog` dep. **Full suite 2274 passed / 7 skipped**; ruff + mypy clean. Phase A = trigger-lift[s106] + descriptor + state + parser + fire-fn (4 of 4) | `43d40dd` (#610 Step 5 feat) / `0d2414b` (#610 merge) / `5077d6d` (#609 Step 4 feat) / `369ee73` (#609 merge) / `ef91ea7` (#607 Step 3 feat) / `e58e7af` (#607 merge) / `3938191` (#606 Step 2 feat) / `ed87153` (#606 merge) / `services/engine/procedures/{spec.py (`Schedule` invariant), schedules.py (`schedule_states` ORM), cron.py (`next_fire`), scheduler.py (`fire_due_schedules`), scheduler_daemon.py (`SchedulerDaemon`)}` + `alembic/versions/0011_schedule_states.py` + `alembic/env.py` + `pyproject.toml`/`uv.lock` (`croniter` + `types-croniter` + `structlog`) + `tests/services/engine/procedures/{test_spec.py,test_orchestrator.py,test_cron.py,test_scheduler.py,test_scheduler_daemon.py}` + `tests/services/db/test_schedule_state.py` |
 | 2026-07-07 | **S1 Step 1 BUILT (PLAN-0055 Phase A) — `SCHEDULE` trigger admitted to `validate_runnable`, all other governance intact (session 106; #604)** — `feat(procedures)`: `validate_runnable` gains an explicit `_RUNNABLE_TRIGGERS` allowlist ({MANUAL, SCHEDULE}); the trigger check sits first so **every OTHER governance check** (skeleton-reject / step-kind / autonomy-ceiling / handler-allowlist / linear-input) is **unchanged and still fires** for a schedule proc (surgical lift). Corrected 4 stale texts (block message + `validate_runnable` docstring in `orchestrator.py`, the `Trigger` enum docstring in `spec.py`, a test comment) + **ADR-016 OQ-2 (:1192-1195) marked RESOLVED (ADR-0028)** — a `plan-drafter`-authored erratum (G1-exempt; Code's own Edit correctly G1-denied), Cray **per-diff approved verbatim**. AC-1 (`test_schedule_trigger_is_runnable`) + AC-2 (`test_schedule_trigger_still_enforces_governance`). **Full suite 2240 passed / 7 skipped**; ruff + mypy clean | `255ca96` (#604 feat) / `ec5822b` (#604 merge) / `services/engine/procedures/orchestrator.py` (`_RUNNABLE_TRIGGERS`) + `services/engine/procedures/spec.py` (`Trigger` docstring) + `docs/adr/0016-*.md` (OQ-2 RESOLVED) |
 | 2026-07-07 | **Lessons #0028 + #0029 landed (session 106; #603)** — Code-authored advisory Tier-2 (un-gated). **#0028** = omit-when-None to evolve an append-only hash-chained audit log without an epoch boundary (grounds `services/db/audit_log.py::compute_row_hash`, from the s104 ADR-016 S2 arc). **#0029** = a named-subset "green" is not a full-suite green + make CI required (the s105 #600 root-cause: s104's "52 db + 489 proc green" excluded `tests/api/` where the #595 RF-1 regression lived) | `d7094bb` (#603) / `docs/lessons/0028-*.md` + `docs/lessons/0029-*.md` |
-| 2026-07-07 | **PLAN-0055 Ready + `main` branch-protection ARMED (session 106; #602 + repo-config)** — **(1) Repo-config (NOT a commit):** `main` was found **completely unprotected** (no classic protection, no rulesets, no rules — contradicting CLAUDE.md §7). Applied Cray-authorized (§8 go): **require-PR + require the `gate` status check + `enforce_admins` + no force-push / no branch-deletion** — closes the merged-red hole that let #595's RF-1 regression stay red through #596–#598 (s105 finding). Every PR this session merged through the now-required `gate`. **(2) PLAN-0055 (S1 schedule-trigger scheduler BUILD) Ready (#602 merge `22daea3`):** `plan-drafter`-authored (`a1058c4` add → `3bec1f0` Draft→Ready), Code R2 + committed. Cray ratified **all six SD-P1..P6 as-rec:** SD-P1 cron/tz = `Asia/Bangkok` + IANA tz per schedule · SD-P2 skip-missed-with-audit · SD-P3 skip-if-in-flight · SD-P4 at-most-once · SD-P5 dedicated schedule-state table + restart recovery · SD-P6 `trigger_context` stamp → Ready for execution. Phased: Phase A (offline-testable) + Phase B (long-lived daemon). Implements Accepted ADR-0028 | `22daea3` (#602 merge) / `3bec1f0` (Draft→Ready) / `a1058c4` (PLAN add) / `docs/plans/0055-*.md` + GitHub branch-protection on `main` |
 
 ## In-Flight Discussions
 

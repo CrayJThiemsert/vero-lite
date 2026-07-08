@@ -3255,3 +3255,49 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — ADR-0028 ACCEPTED (2026-07-07, session 105) [rotated 2026-07-08, session-112 PLAN-0057-COMPLETE reconcile]
 
 | 2026-07-07 | **ADR-0028 ACCEPTED — procedure `schedule`-trigger scheduler (S1) architecture; "S2 before S1" now satisfied (session 105; #599)** — `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2). Drafted Proposed (`5f3eec3`) → **Cray ratified all 3 surfaced decisions 2026-07-07** (`c9c0698`). Ratified S1 architecture: **SD-1 = a separate long-lived worker/daemon** · **SD-2 = `croniter` (thin, parse-only)** · **SD-3 = direct in-process `run_procedure_persisted`**. S1 is a **pure client** of the s104 S2 actor plumbing (PLAN-0053 Phase B). ADR decides **architecture only** — the build is a **follow-on S1 build-PLAN** (not yet drafted) that will lift the `manual`-only trigger block at `orchestrator.py:146-150` + correct ADR-016 OQ-2 §1192-1195. Selection came from the `next-work-analyst` ranking (Cray picked S1, ADR-first). ADR-0028 Accepted + merged; no active PLAN; `main` green; 0 open PRs; `loop-dispatcher` DISABLED; MS-S1 idle | `c9c0698` (ADR-0028 Accepted / ratify) / `5f3eec3` (ADR-0028 Proposed) / `docs/adr/0028-*.md` |
+
+### Current-Focus block — Session 112 (head_commit `5abb1d9`) — PLAN-0057 event hero-opener COMPLETE [rotated 2026-07-08, session-113 reconcile; R1 64 KB ceiling]
+
+> **Session 112, 2026-07-08 (head_commit `9fbc703` → `5abb1d9`) —
+> BUILD + CLOSE batch: PLAN-0057 **COMPLETE (all 8 ACs, live-verified)** and
+> moved to `docs/plans/done/` (#638/#639/#640/#641). The shipped ADR-0029 /
+> PLAN-0056 event bridge is now made VISIBLE in the procurement hero-demo
+> surface: a detected asset-failure event (`CNC-Line-07`) auto-fires
+> `event_emergency_sourcing_round` via `fire_event` → parks at the `doa_tier`
+> DOA gate → a distinct approver (`appr-pm`, SoD vs `req-planner`) → COMPLETED
+> → the same governance-moment + ฿ ledger the manual opener draws, plus the
+> beat-1 sense cue. Demo composition over shipped plumbing — NO new engine
+> capability, NO new ADR, NO contract reshape. SD-1..SD-5 + OQ-1/OQ-2 ratified
+> as-recommended (Cray, via AskUserQuestion); the live smoke was Cray-approved
+> (host-state §8).**
+> **#638 (Step 1 service projection + Step 5 test, merge `0020097`) —**
+> `run_hero_event_governance_moment` + `build_event_hero_governance_audit` in
+> `verticals/procurement/hero_demo/run.py`, plus the service-layer test
+> `tests/services/db/test_event_hero_opener.py`.
+> **#639 (Step 2 route + Step 4 client, merge `8aa71c1`) —** a new
+> `POST /demo/hero/event` (`services/api/routers/demo.py`; SD-2 = a new POST,
+> NOT a param on the read-only GET) + the `view-hero.js` manual↔event toggle +
+> sense cue + `api.js` `Hero.event()` + a route smoke.
+> **#640 (Step 3 reveal, merge `4524a29`, AC-2) —** the approve→COMPLETED
+> reveal (`renderActPanel` in `view-hero.js`; client-side + Replay).
+> **#641 (docs `5abb1d9`, merge `d33fff7`) —** `docs(plans): PLAN-0057
+> COMPLETE` → `docs/plans/done/`; all 8 ACs met, Status Ready → Complete.
+> **Earlier this session — #636 (merge `021efe2`, `docs(status):`)** reconciled
+> the STALE Rock-3 Active-TODO: the "Q4 generic run-consume query executor" is
+> NOT a future PLAN — it SHIPPED as PLAN-0048 (s96). The real remaining Q4
+> residue = a join/projection-grammar ADR + the SD-4 factory PLAN (both undrafted).
+> **Standing-fact change:** dev DB migrated `0009 → 0011` (Cray-approved
+> `alembic upgrade head`, host-state §8) — the long-standing "dev DB behind on
+> migrations" caveat is now **RESOLVED** (do not repeat it next session).
+> **Verification:** every PR green through the required CI `gate`; PLAN-0057
+> live-verified end-to-end (Cray-approved smoke, host-state §8); offline suite
+> MS-S1-independent. `main` **green + PROTECTED** (`d33fff7`); 0 open PRs;
+> `loop-dispatcher` **DISABLED**; MS-S1 idle; dev DB at head `0011`; AI-assisted
+> (Claude Code, session 112), no `Co-Authored-By` per §7. No active PLAN;
+> next-work candidates (s112 re-rank): C1 = whoami/reject-at-login (cheap,
+> ratified-design), Q4 residue = join-grammar ADR (greenfield), hero-demo
+> dossier backlog (greenfield) — re-rank when Cray picks.
+
+### Recent-Decisions row — 2026-07-07 (PLAN-0055 Ready + main branch-protection ARMED, session 106) [rotated 2026-07-08, session-113 reconcile]
+
+| 2026-07-07 | **PLAN-0055 Ready + `main` branch-protection ARMED (session 106; #602 + repo-config)** — **(1) Repo-config (NOT a commit):** `main` was found **completely unprotected** (no classic protection, no rulesets, no rules — contradicting CLAUDE.md §7). Applied Cray-authorized (§8 go): **require-PR + require the `gate` status check + `enforce_admins` + no force-push / no branch-deletion** — closes the merged-red hole that let #595's RF-1 regression stay red through #596–#598 (s105 finding). Every PR this session merged through the now-required `gate`. **(2) PLAN-0055 (S1 schedule-trigger scheduler BUILD) Ready (#602 merge `22daea3`):** `plan-drafter`-authored (`a1058c4` add → `3bec1f0` Draft→Ready), Code R2 + committed. Cray ratified **all six SD-P1..P6 as-rec:** SD-P1 cron/tz = `Asia/Bangkok` + IANA tz per schedule · SD-P2 skip-missed-with-audit · SD-P3 skip-if-in-flight · SD-P4 at-most-once · SD-P5 dedicated schedule-state table + restart recovery · SD-P6 `trigger_context` stamp → Ready for execution. Phased: Phase A (offline-testable) + Phase B (long-lived daemon). Implements Accepted ADR-0028 | `22daea3` (#602 merge) / `3bec1f0` (Draft→Ready) / `a1058c4` (PLAN add) / `docs/plans/0055-*.md` + GitHub branch-protection on `main` |
