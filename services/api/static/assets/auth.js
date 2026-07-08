@@ -8,12 +8,13 @@
 
    Reads stay header-less (view-monitor getJSON) — only operate POSTs attach
    Bearer via authHeader(). The stored key is per-tab (sessionStorage: cleared
-   on tab close), never localStorage. login() is OPTIMISTIC: the shipped API has
-   no auth-validating READ to probe (reads are ungated), so a bad key surfaces as
-   a 403 on the first operate POST; the display identity is what the operator
-   typed (login-SHAPED — the REAL auth is the key the backend resolves to a
-   person_id + SoD-checks, so the display cannot escalate privilege). v2's clean
-   upgrade: validate the credential + resolve the identity server-side.
+   on tab close), never localStorage. login() VALIDATES the key at login by
+   probing GET /whoami (PLAN-0058) — the ONE auth-validating read — so a bad key
+   is rejected AT login instead of on the first operate POST; the display identity
+   is still what the operator typed (login-SHAPED — the REAL auth is the key the
+   backend resolves to a person_id + SoD-checks, so the display cannot escalate
+   privilege). v2's clean upgrade: swap the credential SOURCE (key -> session
+   token) behind the same probe + get_current_principal seam.
    ============================================================ */
 (function () {
   'use strict';
@@ -26,11 +27,22 @@
   function isLoggedIn() { const s = session(); return !!(s && s.key); }
   function identity() { const s = session(); return s ? s.identity : null; }
 
-  function login(rawKey, ident) {
+  async function login(rawKey, ident) {
     const key = (rawKey || '').trim();
     const id = (ident || '').trim();
     if (!key) throw new Error('Enter your operator API key.');
     if (!id) throw new Error('Enter a display identity (e.g. appr-pm).');
+    // Reject-at-login (PLAN-0058): probe the fail-closed auth seam with the
+    // entered key BEFORE storing a session. A bad key -> 401/403 surfaces here
+    // instead of on the first operate POST. With auth disabled the probe returns
+    // 200 (dev/demo open mode), so login proceeds as before.
+    const res = await fetch('/whoami', { headers: { Authorization: 'Bearer ' + key } });
+    if (!res.ok) {
+      let detail = 'Login failed — invalid operator key (HTTP ' + res.status + ').';
+      try { const body = await res.json(); if (body && body.detail) detail = body.detail; }
+      catch (e) { /* non-JSON error body */ }
+      throw new Error(detail);
+    }
     sessionStorage.setItem(KEY, JSON.stringify({ key: key, identity: id }));
     return session();
   }

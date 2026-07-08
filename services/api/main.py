@@ -21,6 +21,7 @@ from services.api.routers.procedure_draft import router as procedure_draft_route
 from services.api.routers.procedures import router as procedures_router
 from services.api.routers.query import router as query_router
 from services.api.routers.runs import router as runs_router
+from services.api.routers.whoami import router as whoami_router
 from services.engine.discovery import discover_and_register
 from services.engine.registry import registry
 from services.notify.telegram import describe_arm_state
@@ -171,6 +172,7 @@ app.include_router(procedures_router)
 app.include_router(procedure_draft_router)
 app.include_router(demo_router)
 app.include_router(runs_router)
+app.include_router(whoami_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["infrastructure"])

@@ -413,8 +413,8 @@
     });
     const err = h('span', { class: 'mon-auth-err', role: 'status', 'aria-live': 'polite',
       'data-testid': 'operate-login-err' });
-    const doLogin = () => {
-      try { O.Auth.login(keyIn.value, idIn.value); afterAuth(); }
+    const doLogin = async () => {
+      try { await O.Auth.login(keyIn.value, idIn.value); afterAuth(); }
       catch (e) { err.textContent = String(e.message || e); }
     };
     keyIn.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
