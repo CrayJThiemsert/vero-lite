@@ -3189,3 +3189,69 @@ _Rotated 2026-06-29 (session-87 reconcile): under the R1 64 KB hard ceiling, the
 ### Recent-Decisions row — 2026-07-07 (`main` greened — RF-1 library-guard 409 fix, session 105 #600) [rotated 2026-07-08, session-111 PLAN-0056-COMPLETE reconcile]
 
 | 2026-07-07 | **`main` greened — RF-1 library-guard 409 regression fixed (session 105; #600)** — `main` was **CI-red since #595**, merged red through #596–#598 (2 tests in `tests/api/test_runs_endpoints.py`). Root cause: the ADR-016 S2 **RF-1 library guard** (`resolve_gated_step`, #595) fails closed when the resolved `principal` (`Person`) is `None`, and the **energy vertical authors no principals** → an authenticated caller (`person_id="op-somchai"`, `person=None`, the documented Phase-A contract) hit `GateApproverError → 409` on gate-resolve. **Fix (approach (a) — the guard is correct):** the 2 happy-path tests now provision a **real `Person` approver** (monkeypatch `auth._principal_index`, mirroring `test_api_auth.py`); energy production `procedures.yaml` deliberately **not** given a principals block (would arm vertical-wide membership enforcement — the OQ-6 N≥2 boundary). Reproduced the 409 on a fresh DB, then verified **234 passed** (api+db+verticals). `plan-drafter`-authored, Code R2 + committed | `4b7f472` (#600 fix) / `tests/api/test_runs_endpoints.py` (real-Person approver) / `services/engine/procedures/orchestrator.py` (RF-1 guard, #595 context) |
+
+### Current-Focus block — Session 111 (2026-07-08, PLAN-0056 COMPLETE) [rotated 2026-07-08, session-112 PLAN-0057-COMPLETE reconcile]
+
+> **Session 111, 2026-07-08 (head_commit `117e2d4` → `9fbc703`) —
+> BUILD batch: PLAN-0056 **Phase B COMPLETE (Steps 6–8)** → the whole PLAN
+> is **COMPLETE (all 12 ACs)** and moved to `docs/plans/done/`
+> (#631/#632/#633/#634). The `event`/Alert-triggered governed run —
+> ADR-0029's moat axis-(a) asset-event trigger + the procurement
+> hero-demo's automatic opener — is now wired end-to-end behind a
+> default-off ship-dark flag, LOUD-on-failure, with a procurement event
+> demo. Three un-gated Code `feat` PRs + one `docs` close, each green
+> through the required CI `gate`; MS-S1-independent.**
+> **#631 (Step 6, feat `02f2af9`, merge `ab082f5`, AC-11) — recommender
+> wiring behind the ship-dark flag.** `_populate_store`
+> (`services/api/routers/actions.py`) now FEEDS an actionable recommendation
+> INTO the governed engine in-process (ADR-0029 SD-1/SD-4) behind a
+> **default-off `event_bridge_enabled`** flag (`services/api/config.py`,
+> mirrors `verification_judge_enabled`; SD-P3 ship-dark). Flag-off = ZERO
+> behavior change (resolver never loaded, fire branch never reached; the
+> `ActionRecord` path intact). The one Step-6 design call resolved:
+> `event_kind = RecommendedAction.suggested_handler` — the envelope has NO
+> `action_type` (the Phase-A fact-vs-code correction); `entity_ids` =
+> affected-entity PKs; `detected_at` = created_at. New `_load_event_bridge`
+> + `_fire_event_for_record` helpers. 9 tests (both flag states + mapping
+> via the persisted run's `trigger_context` + graceful no-fire paths).
+> **#632 (Step 7, feat `1af7928`, merge `42a3a8f`, AC-10, ADR-0028 D4
+> mirror) — LOUD-on-failure.** A dropped/failed event fire is now LOUD, not
+> a silent drop: an `event_fire_missed` audit (unmapped kind — the reachable
+> case) or `event_fire_failed` audit (a kind that maps but errors mid-flight)
+> + a best-effort Telegram alert, then `None` so the read path never breaks.
+> New `notify_event_fire_failed` + `build_event_fire_failed_message` +
+> `_event_fire_gates_open` in `services/notify/telegram.py` with a SEPARATE
+> cooldown anchor (mirrors `notify_schedule_missed`; no `llm_backend` gate —
+> an ops event; no-PII body). Distinct from `event_skipped` (a healthy
+> idempotent/in-flight skip). +9 tests.
+> **#633 (Step 8, feat `f5b5c21`, merge `a45b1fa`, AC-12) — procurement
+> event demo.** A DISTINCT `event_emergency_sourcing_round` (trigger: event;
+> `event_trigger.event_kind: emergency_source`; `owning_person_id:
+> req-planner` for SP-5 SoD) in `verticals/procurement/procedures.yaml` —
+> same governed beat + `doa_tier` gate + SoD as the manual/scheduled hero,
+> NOT a flip (trigger is a single enum). The archetype catalog map + GET
+> /procedures gain the 7th procedure (AT-2). DB-backed MS-S1-free
+> integration test (`tests/services/db/test_event_procurement_demo.py`): a
+> detected asset-failure event → `build_event_resolver` → `fire_event`
+> through the SHIPPED procurement executor factory → parks at the DOA gate
+> (actor_kind:service, on_behalf_of req-planner) → `appr-pm` distinct
+> approver resolves → COMPLETED. The live end-to-end smoke stays deferred
+> (host-state, §8); the offline test is the gate.
+> **#634 (docs `9fbc703`, merge `65d9039`) — PLAN-0056 COMPLETE, moved to
+> `docs/plans/done/`.** All 12 ACs met (Phase A Steps 1–5 s110 + Phase B
+> Steps 6–8 s111); Status Ready → Complete.
+> **Verification:** full offline suite **2350 passed / 7 skipped**; ruff +
+> mypy clean; every PR green through the required CI `gate`;
+> MS-S1-independent. `main` **green + PROTECTED** (`65d9039`); 0 open PRs;
+> `loop-dispatcher` **DISABLED**; MS-S1 idle; AI-assisted (Claude Code,
+> session 111), no `Co-Authored-By` per §7. Still-open housekeeping
+> (unchanged from s110): older `done/` PLANs carry stale Status lines
+> (per-PLAN verify, not a blind sweep); dev DB `vero_lite` behind on
+> migrations (needs `alembic upgrade head` before a daemon/operate run —
+> host-state, ask Cray). No active PLAN; next-work candidates carry forward
+> (s110 ranking): D = hero-demo backlog, C1 = whoami/reject-at-login —
+> re-rank then Cray picks.
+
+### Recent-Decisions row — ADR-0028 ACCEPTED (2026-07-07, session 105) [rotated 2026-07-08, session-112 PLAN-0057-COMPLETE reconcile]
+
+| 2026-07-07 | **ADR-0028 ACCEPTED — procedure `schedule`-trigger scheduler (S1) architecture; "S2 before S1" now satisfied (session 105; #599)** — `plan-drafter`-authored, Code R2 + committed (ADR-009 D1/D2). Drafted Proposed (`5f3eec3`) → **Cray ratified all 3 surfaced decisions 2026-07-07** (`c9c0698`). Ratified S1 architecture: **SD-1 = a separate long-lived worker/daemon** · **SD-2 = `croniter` (thin, parse-only)** · **SD-3 = direct in-process `run_procedure_persisted`**. S1 is a **pure client** of the s104 S2 actor plumbing (PLAN-0053 Phase B). ADR decides **architecture only** — the build is a **follow-on S1 build-PLAN** (not yet drafted) that will lift the `manual`-only trigger block at `orchestrator.py:146-150` + correct ADR-016 OQ-2 §1192-1195. Selection came from the `next-work-analyst` ranking (Cray picked S1, ADR-first). ADR-0028 Accepted + merged; no active PLAN; `main` green; 0 open PRs; `loop-dispatcher` DISABLED; MS-S1 idle | `c9c0698` (ADR-0028 Accepted / ratify) / `5f3eec3` (ADR-0028 Proposed) / `docs/adr/0028-*.md` |
