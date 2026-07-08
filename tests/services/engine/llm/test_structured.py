@@ -285,6 +285,63 @@ async def test_no_goal_leaves_system_prompt_ungoverned() -> None:
     assert "PROCEDURE GOAL" not in client.calls[0]["messages"][0]["content"]
 
 
+# --- PLAN-0060: the handler catalog threads into the reactive prompt behind a flag ---
+
+
+async def test_handler_catalog_threads_into_both_calls_when_enabled() -> None:
+    """AC-3: with include_handler_catalog=True the catalog rides in call 1 AND call 2's
+    system message (via the build_structuring_messages composition)."""
+    registry.register_handler(
+        "energy", "restart", _noop_handler, description="Controlled restart of the asset."
+    )
+    registry.register_handler("energy", "echo", _noop_handler, description="Diagnostic no-op.")
+    client = FakeChatClient([_result("draft", thinking="r"), _result(_valid_json())])
+
+    await generate_judgment(client, _EVENT, "energy", include_handler_catalog=True)
+
+    for call in (client.calls[0], client.calls[1]):
+        system = call["messages"][0]
+        assert system["role"] == "system"
+        assert "AVAILABLE ACTIONS" in system["content"]
+        assert "restart — Controlled restart of the asset." in system["content"]
+
+
+async def test_handler_catalog_absent_by_default() -> None:
+    """AC-4: the default path (flag off) never renders the catalog block."""
+    registry.register_handler("energy", "echo", _noop_handler, description="Diagnostic no-op.")
+    client = FakeChatClient([_result("draft", thinking="r"), _result(_valid_json())])
+
+    await generate_judgment(client, _EVENT, "energy")
+
+    assert "AVAILABLE ACTIONS" not in client.calls[0]["messages"][0]["content"]
+    assert "AVAILABLE ACTIONS" not in client.calls[1]["messages"][0]["content"]
+
+
+async def test_handler_catalog_leaves_enum_unchanged() -> None:
+    """AC-5: enabling the catalog does NOT change the suggested_handler enum constraint."""
+    registry.register_handler("energy", "restart", _noop_handler, description="Controlled restart.")
+    registry.register_handler("energy", "echo", _noop_handler, description="Diagnostic no-op.")
+    client = FakeChatClient([_result("draft", thinking="r"), _result(_valid_json())])
+
+    await generate_judgment(client, _EVENT, "energy", include_handler_catalog=True)
+
+    schema = client.calls[1]["response_format"]
+    assert schema["properties"]["suggested_handler"]["enum"] == ["echo", "restart"]
+
+
+async def test_handler_catalog_threads_on_skip_single_call() -> None:
+    """AC-3: the PLAN-0020 `skip` single-call path also carries the catalog."""
+    registry.register_handler("energy", "echo", _noop_handler, description="Diagnostic no-op.")
+    client = FakeChatClient([_result(_valid_json())])  # only the lone structured call
+
+    await generate_judgment(
+        client, _EVENT, "energy", reasoning_mode="skip", include_handler_catalog=True
+    )
+
+    assert len(client.calls) == 1
+    assert "AVAILABLE ACTIONS" in client.calls[0]["messages"][0]["content"]
+
+
 async def test_judgment_round_trips() -> None:
     """§7.2: the judgment survives model_validate(model_dump())."""
     registry.register_handler("energy", "echo", _noop_handler)

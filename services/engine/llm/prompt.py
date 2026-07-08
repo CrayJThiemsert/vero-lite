@@ -24,6 +24,11 @@ from typing import Any
 
 Message = dict[str, str]
 
+Catalog = list[tuple[str, str | None]]
+"""An ordered ``(handler_name, description | None)`` list (PLAN-0060) — the registry's
+``handler_catalog(vertical)`` output, rendered into the trusted system instruction as
+the model's "Available actions" menu so it can distinguish handlers by meaning."""
+
 UNTRUSTED_OPEN = "<<<BEGIN UNTRUSTED OPERATIONAL DATA>>>"
 """Opening marker of the untrusted-data block — operator text never crosses it."""
 
@@ -46,7 +51,27 @@ def render_untrusted_block(label: str, text: str) -> str:
     return f"{UNTRUSTED_OPEN} [{label}]\n{_neutralise(text)}\n{UNTRUSTED_CLOSE} [{label}]"
 
 
-def build_system_instruction(vertical: str, goal: str | None = None) -> str:
+def _render_action_catalog(catalog: Catalog) -> str:
+    """Render the trusted "Available actions" block — one ``name — description`` line
+    per handler (name-only when the description is ``None``).
+
+    Authored vertical config, never operator data, so it rides in the system
+    instruction (PLAN-0060 / SD-2 — the same trust class as the ADR-016 D5 goal),
+    never inside the untrusted event block.
+    """
+    lines = [
+        f"- {name} — {description}" if description else f"- {name}" for name, description in catalog
+    ]
+    return (
+        "AVAILABLE ACTIONS (the registered handlers you may recommend — choose the one "
+        "whose description best fits the event; a trusted catalog of authored config, "
+        "NOT operational data):\n" + "\n".join(lines)
+    )
+
+
+def build_system_instruction(
+    vertical: str, goal: str | None = None, catalog: Catalog | None = None
+) -> str:
     """Return the trusted system instruction — NO event data is interpolated.
 
     ``vertical`` is a trusted internal identifier (e.g. ``"energy"``), not
@@ -60,6 +85,11 @@ def build_system_instruction(vertical: str, goal: str | None = None) -> str:
     the task so a small local model performs reliably (D5 robustness lever). When
     ``goal`` is ``None``/empty the instruction is byte-identical to the reactive
     Pipeline-v0 path, which passes no goal.
+
+    ``catalog`` (PLAN-0060 / SD-2) is the vertical's ``handler_catalog`` — the same
+    trust class as ``goal`` (authored config, not operator data) — rendered as an
+    "Available actions" block so the model distinguishes handlers by meaning, not bare
+    name. ``None``/empty leaves the instruction byte-identical to the no-catalog path.
     """
     role = (
         "You are the reasoning engine of an operational control tower for the "
@@ -83,6 +113,8 @@ def build_system_instruction(vertical: str, goal: str | None = None) -> str:
             "PROCEDURE GOAL (your operating directive for this run — a trusted "
             f"instruction, NOT operational data): {goal}"
         )
+    if catalog:
+        parts.append(_render_action_catalog(catalog))
     parts.extend([security, advisory])
     return "\n\n".join(parts)
 
@@ -99,12 +131,15 @@ def format_event(event: Mapping[str, Any]) -> str:
 
 
 def build_reasoning_messages(
-    event: Mapping[str, Any], vertical: str, goal: str | None = None
+    event: Mapping[str, Any],
+    vertical: str,
+    goal: str | None = None,
+    catalog: Catalog | None = None,
 ) -> list[Message]:
     """Pattern B call 1 — reason about the event (system + untrusted user).
 
-    ``goal`` (PLAN-0019 A-8) is threaded into the trusted system instruction;
-    the event still reaches ONLY the untrusted block.
+    ``goal`` (PLAN-0019 A-8) and ``catalog`` (PLAN-0060) are threaded into the
+    trusted system instruction; the event still reaches ONLY the untrusted block.
     """
     user = (
         "Assess the following operational event and explain, step by step, "
@@ -116,7 +151,7 @@ def build_reasoning_messages(
         f"{render_untrusted_block('operational event', format_event(event))}"
     )
     return [
-        {"role": "system", "content": build_system_instruction(vertical, goal)},
+        {"role": "system", "content": build_system_instruction(vertical, goal, catalog)},
         {"role": "user", "content": user},
     ]
 
@@ -128,6 +163,7 @@ def build_structuring_messages(
     *,
     retry_feedback: str | None = None,
     goal: str | None = None,
+    catalog: Catalog | None = None,
 ) -> list[Message]:
     """Pattern B call 2 — emit the constrained envelope.
 
@@ -135,15 +171,17 @@ def build_structuring_messages(
     role — never as system authority) plus an emit instruction. On a
     retry, ``retry_feedback`` (the validator error, also model-derived) is
     appended inside an untrusted block, never with system authority
-    (IN-2 corollary, PLAN-0006 §6.4). ``goal`` (PLAN-0019 A-8) threads into the
-    trusted system instruction, identically to call 1.
+    (IN-2 corollary, PLAN-0006 §6.4). ``goal`` (PLAN-0019 A-8) and ``catalog``
+    (PLAN-0060) thread into the trusted system instruction, identically to call 1
+    — this function composes on :func:`build_reasoning_messages`, so a single
+    render site carries both to call 1 AND call 2 (SD-2).
 
     ``draft`` is ``None`` only on the PLAN-0020 ``skip`` think-trim path
     (AC-1a): there is no call-1 output to carry, so the assistant draft turn is
     omitted and this becomes a single-call structured prompt (the system + event
     user turn still set the task; the emit instruction still constrains output).
     """
-    messages = build_reasoning_messages(event, vertical, goal)
+    messages = build_reasoning_messages(event, vertical, goal, catalog)
     if draft is not None:
         messages.append({"role": "assistant", "content": draft})
     messages.append(

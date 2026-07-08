@@ -213,6 +213,61 @@ async def test_recommend_hosted_backend_falls_back(monkeypatch: pytest.MonkeyPat
     assert record.action.audit_metadata.actor_kind == "engine"
 
 
+# --- PLAN-0060: the handler-catalog flag threads end-to-end through recommend() ---
+
+
+class _CapturingChatClient:
+    """Replays canned ChatResults and captures each call's system message."""
+
+    def __init__(self, results: list[ChatResult]) -> None:
+        self._results = list(results)
+        self.system_messages: list[str] = []
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        think: bool | None = None,
+        response_format: dict[str, Any] | None = None,
+        temperature: float = 0.0,
+    ) -> ChatResult:
+        self.system_messages.append(messages[0]["content"])
+        return self._results.pop(0)
+
+
+async def test_recommend_threads_catalog_when_flag_on(monkeypatch: pytest.MonkeyPatch) -> None:
+    """SD-4/AC-3: with handler_catalog_enabled on, the reactive prompt carries the catalog."""
+    register_energy_adapter()
+    registry.register_handler("energy", "echo", _echo_handler, description="Diagnostic no-op.")
+    registry.register_handler(
+        "energy", "restart", _echo_handler, description="Controlled restart of the asset."
+    )
+    monkeypatch.setattr(settings, "handler_catalog_enabled", True)
+    fake = _CapturingChatClient([_chat("draft", thinking="r"), _chat(_judgment_json())])
+    monkeypatch.setattr(_BUILD_CLIENT, lambda: fake)
+
+    record = await recommend(_crossing_event(), "energy")
+
+    assert record is not None
+    assert fake.system_messages  # the LLM path ran
+    assert all("AVAILABLE ACTIONS" in system for system in fake.system_messages)
+    assert any("restart — Controlled restart of the asset." in s for s in fake.system_messages)
+
+
+async def test_recommend_omits_catalog_when_flag_off(monkeypatch: pytest.MonkeyPatch) -> None:
+    """AC-4: the default (flag off) reactive prompt is free of the catalog block."""
+    register_energy_adapter()
+    registry.register_handler("energy", "echo", _echo_handler, description="Diagnostic no-op.")
+    fake = _CapturingChatClient([_chat("draft", thinking="r"), _chat(_judgment_json())])
+    monkeypatch.setattr(_BUILD_CLIENT, lambda: fake)
+
+    record = await recommend(_crossing_event(), "energy")
+
+    assert record is not None
+    assert fake.system_messages
+    assert all("AVAILABLE ACTIONS" not in system for system in fake.system_messages)
+
+
 # --- confidence is advisory only (§7.3 / ADR-010 IN-3) --------------------
 
 

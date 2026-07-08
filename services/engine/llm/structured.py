@@ -157,6 +157,7 @@ async def generate_judgment(
     retry_budget: int = 3,
     goal: str | None = None,
     reasoning_mode: ReasoningMode = "full",
+    include_handler_catalog: bool = False,
 ) -> JudgmentResult:
     """Run the Pattern B exchange and return a validated judgment.
 
@@ -179,6 +180,13 @@ async def generate_judgment(
     from the event alone). On ``skip`` the returned ``draft`` is ``""`` and
     ``thinking`` is ``None`` (no reasoning output existed). See :data:`ReasoningMode`.
 
+    ``include_handler_catalog`` (PLAN-0060, default ``False``) fetches the vertical's
+    ``registry.handler_catalog`` and threads it into the trusted system instruction of
+    every call (both Pattern-B calls and the ``skip`` single call, via the
+    ``build_structuring_messages`` → ``build_reasoning_messages`` composition) so the
+    model distinguishes handlers by description, not bare name. ``False`` → the prompt
+    is byte-identical to before; the ``suggested_handler`` enum is unchanged either way.
+
     Raises :class:`StructuredOutputError` when the budget is exhausted.
     Transport failures surface as ``OllamaError`` from ``client.chat`` and
     are intentionally NOT retried here — they go straight to the Step 5
@@ -186,6 +194,9 @@ async def generate_judgment(
     """
     budget = max(1, retry_budget)
     schema = _judgment_schema(registry.handler_names(vertical))
+    # PLAN-0060: the "Available actions" catalog rides beside the enum fetch; None
+    # (flag off) leaves every prompt builder byte-identical to before.
+    catalog = registry.handler_catalog(vertical) if include_handler_catalog else None
 
     # PLAN-0020 think-trim lever: `skip` omits call 1; `full`/`think_off` run it
     # with think on/off. `draft`/`thinking` feed the hybrid trace (empty on skip).
@@ -196,7 +207,7 @@ async def generate_judgment(
         thinking = None
     else:
         reasoning = await client.chat(
-            build_reasoning_messages(event, vertical, goal),
+            build_reasoning_messages(event, vertical, goal, catalog),
             think=(reasoning_mode == "full"),
         )
         draft = reasoning.content
@@ -206,7 +217,7 @@ async def generate_judgment(
     last_error = "no attempt was made"
     for attempt in range(1, budget + 1):
         messages = build_structuring_messages(
-            event, vertical, draft, retry_feedback=feedback, goal=goal
+            event, vertical, draft, retry_feedback=feedback, goal=goal, catalog=catalog
         )
         # call 2: omit `think` (CHECKPOINT-0 contract — never think=False + format)
         result = await client.chat(messages, response_format=schema)

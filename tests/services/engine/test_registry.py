@@ -79,6 +79,57 @@ def test_handler_names_empty_for_unknown_vertical() -> None:
     assert registry.handler_names("nonexistent") == []
 
 
+# --- PLAN-0060: optional per-handler descriptions + handler_catalog accessor ---
+
+
+def test_handler_catalog_returns_name_description_pairs_sorted() -> None:
+    """A registered description surfaces in the catalog; ordering matches handler_names."""
+    registry.register_handler("energy", "restart", _noop_handler, description="Controlled restart.")
+    registry.register_handler("energy", "echo", _noop_handler, description="Diagnostic no-op.")
+    assert registry.handler_catalog("energy") == [
+        ("echo", "Diagnostic no-op."),
+        ("restart", "Controlled restart."),
+    ]
+
+
+def test_handler_catalog_description_defaults_to_none() -> None:
+    """A handler registered without a description yields None (renders name-only)."""
+    registry.register_handler("energy", "echo", _noop_handler)
+    assert registry.handler_catalog("energy") == [("echo", None)]
+
+
+def test_handler_catalog_mixes_described_and_undescribed() -> None:
+    registry.register_handler("energy", "echo", _noop_handler, description="Diagnostic no-op.")
+    registry.register_handler("energy", "notify", _noop_handler)
+    assert registry.handler_catalog("energy") == [
+        ("echo", "Diagnostic no-op."),
+        ("notify", None),
+    ]
+
+
+def test_handler_catalog_empty_for_unknown_vertical() -> None:
+    assert registry.handler_catalog("nonexistent") == []
+
+
+def test_description_does_not_change_handler_lookup() -> None:
+    """A description is metadata only — get_handler / handler_names are unaffected."""
+    registry.register_handler("energy", "echo", _noop_handler, description="Diagnostic no-op.")
+    assert registry.get_handler("energy", "echo") is _noop_handler
+    assert registry.handler_names("energy") == ["echo"]
+
+
+def test_duplicate_handler_with_description_still_raises() -> None:
+    registry.register_handler("energy", "echo", _noop_handler, description="first")
+    with pytest.raises(RegistryError):
+        registry.register_handler("energy", "echo", _noop_handler, description="second")
+
+
+def test_reset_clears_descriptions() -> None:
+    registry.register_handler("energy", "echo", _noop_handler, description="Diagnostic no-op.")
+    registry.reset()
+    assert registry.handler_catalog("energy") == []
+
+
 def test_reset_clears_registry() -> None:
     registry.register_adapter(_stub("energy"))
     registry.reset()
