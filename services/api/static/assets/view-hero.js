@@ -192,18 +192,47 @@
     ]);
   }
 
-  function render(container, gov, ledger, host, live) {
+  /* ---- PLAN-0057 (AC-3b): the beat-1 "sense" cue — the event that auto-fired the run.
+     Reuses the hero-scenario line idiom + a warning badge; no new CSS. ---- */
+  function renderSenseCue(trigger) {
+    const t = trigger || {};
+    const entity = (t.entity_ids && t.entity_ids[0]) || '—';
+    return h('div', { class: 'hero-scenario' }, [
+      badge('SENSED · event', 's-warn'),
+      h('span', { class: 'faint' }, ' asset-failure on '),
+      h('span', { class: 'mono' }, entity),
+      h('span', { class: 'faint' }, ' → auto-classified '),
+      h('span', { class: 'mono' }, t.event_kind || '—'),
+      h('span', { class: 'faint' }, ' → auto-fired the governed run · detected '),
+      h('span', { class: 'mono faint' }, t.detected_at || '—')
+    ]);
+  }
+
+  function render(container, gov, ledger, host, live, mode) {
     clear(container);
     const hero = governanceMoment(gov.hero);
     const contrast = governanceMoment(gov.contrast);
 
-    const srcLabel = gov.source === 'offline-fixture'
-      ? 'OFFLINE FIXTURE'
-      : (gov.source === 'live-ms-s1' ? 'LIVE · MS-S1' : 'LIVE · RUN');
+    const srcLabel = gov.source === 'event-fired'
+      ? 'EVENT-FIRED'
+      : (gov.source === 'offline-fixture'
+        ? 'OFFLINE FIXTURE'
+        : (gov.source === 'live-ms-s1' ? 'LIVE · MS-S1' : 'LIVE · RUN'));
     const srcCls = gov.source === 'offline-fixture' ? 's-info' : 's-ok';
-    const toggle = h('button', { class: 'hero-badge hero-toggle', type: 'button' },
-      live ? '↺ Offline fixture' : '▶ Run live');
-    toggle.addEventListener('click', function () { mount(host, { live: !live }); });
+
+    // PLAN-0057 (AC-3): the manual ↔ event opener toggle.
+    const modeToggle = h('button', { class: 'hero-badge hero-toggle', type: 'button' },
+      mode === 'event' ? '↩ Manual opener' : '⚡ Event opener');
+    modeToggle.addEventListener('click', function () {
+      mount(host, { mode: mode === 'event' ? 'manual' : 'event' });
+    });
+    // The offline/live toggle applies to the manual opener only.
+    let liveToggle = null;
+    if (mode !== 'event') {
+      liveToggle = h('button', { class: 'hero-badge hero-toggle', type: 'button' },
+        live ? '↺ Offline fixture' : '▶ Run live');
+      liveToggle.addEventListener('click', function () { mount(host, { mode: 'manual', live: !live }); });
+    }
 
     const head = h('div', { class: 'hero-head' }, [
       h('div', { class: 'hero-title' }, [
@@ -214,7 +243,8 @@
       h('div', { class: 'hero-badges' }, [
         badge(srcLabel, srcCls),
         badge('DEMO-GRADE · PROVISIONAL', 's-warn'),
-        toggle
+        modeToggle,
+        liveToggle
       ])
     ]);
 
@@ -224,6 +254,7 @@
       + hero.sod.approver.person_id + ' approves) at ' + thb(hero.amount.value) + '.');
 
     container.appendChild(head);
+    if (mode === 'event') container.appendChild(renderSenseCue(gov.hero.trigger));
     container.appendChild(scenario);
     container.appendChild(renderDoaCard(hero));
     container.appendChild(renderSodCard(hero));
@@ -233,21 +264,25 @@
   }
 
   async function mount(container, opts) {
+    const mode = (opts && opts.mode) || 'manual';
     const live = !!(opts && opts.live);
     clear(container);
     const body = h('div', { class: 'hero-view' });
     container.appendChild(body);
-    const loadMsg = live ? 'Running the governance moment live…' : 'Loading the governance moment…';
+    const loadMsg = mode === 'event'
+      ? 'Firing the event-triggered governance moment…'
+      : (live ? 'Running the governance moment live…' : 'Loading the governance moment…');
     body.appendChild(O.loadingState ? O.loadingState(loadMsg) : h('div', null, 'Loading…'));
     try {
-      const [gov, ledger] = await Promise.all([O.Hero.governance(live), O.Hero.impact()]);
-      render(body, gov, ledger, container, live);
+      const govCall = mode === 'event' ? O.Hero.event() : O.Hero.governance(live);
+      const [gov, ledger] = await Promise.all([govCall, O.Hero.impact()]);
+      render(body, gov, ledger, container, live, mode);
     } catch (e) {
       clear(body);
       const msg = String((e && e.message) || e) +
         ' — the hero-demo endpoints (/demo/hero/*) require the live backend (no embedded demo).';
       body.appendChild(O.errorState
-        ? O.errorState('Could not load the governance moment', msg, () => mount(container, { live }))
+        ? O.errorState('Could not load the governance moment', msg, () => mount(container, { live: live, mode: mode }))
         : h('div', { class: 'hero-err' }, msg));
     }
   }

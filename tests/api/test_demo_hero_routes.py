@@ -83,3 +83,20 @@ async def test_demo_routes_advertised_in_openapi(client: AsyncClient) -> None:
     paths = (await client.get("/openapi.json")).json()["paths"]
     assert "/demo/hero/governance" in paths
     assert "/demo/hero/impact" in paths
+    assert "/demo/hero/event" in paths
+
+
+async def test_event_route_wired_as_post(client: AsyncClient) -> None:
+    """PLAN-0057 (SD-5, thin route smoke): the event opener is wired as a POST returning the
+    HeroGovernanceAudit contract, and it does NOT add mutation to the read-only GET prefix (SD-2).
+    Its fire → park → project behaviour is proven at the service layer by
+    ``tests/services/db/test_event_hero_opener.py`` — not re-proved over HTTP here."""
+    paths = (await client.get("/openapi.json")).json()["paths"]
+    event = paths["/demo/hero/event"]
+    assert set(event) == {"post"}
+    assert event["post"]["responses"]["200"]["content"]["application/json"]["schema"][
+        "$ref"
+    ].endswith("HeroGovernanceAudit")
+    # the read views stay GET-only — the event opener did not mutate the read-only contract.
+    assert set(paths["/demo/hero/governance"]) == {"get"}
+    assert set(paths["/demo/hero/impact"]) == {"get"}
