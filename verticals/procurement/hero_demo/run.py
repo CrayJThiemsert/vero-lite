@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -33,6 +34,7 @@ from services.engine.llm.client import ChatResult
 from services.engine.llm.structured import ChatClient
 from services.engine.procedures.action_step import ActionStepExecutor, ClientFactory
 from services.engine.procedures.evaluate_step import EvaluateStepExecutor
+from services.engine.procedures.event_bridge import build_event_resolver, fire_event
 from services.engine.procedures.governance_step import (
     GovernanceActionExecutor,
     GovernanceEvaluateExecutor,
@@ -45,9 +47,9 @@ from services.engine.procedures.orchestrator import (
     StepOutcome,
     run_procedure,
 )
-from services.engine.procedures.persistence import run_procedure_persisted
+from services.engine.procedures.persistence import load_run, run_procedure_persisted
 from services.engine.procedures.principal_sod import PrincipalSoDVerdict, check_principal_sod
-from services.engine.procedures.runs import StepResultStatus
+from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
 from services.engine.procedures.spec import Person, Step, StepKind, load_procedures
 from services.engine.registry import RegistryError, registry
 from verticals.procurement.data_adapter.fastenal_csv import FastenalCsvAdapter
@@ -378,6 +380,154 @@ async def build_live_hero_governance_audit(
     return {
         "provisional": True,
         "source": _LIVE_SOURCE,
+        "hero": hero,
+        "contrast": offline["contrast"],
+    }
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0057 — the EVENT-triggered hero opener: the shipped event bridge (ADR-0029 /
+# PLAN-0056) made VISIBLE in the hero-demo governance-moment surface. Mirrors
+# run_hero_governance_moment, but the parked run is DERIVED by fire_event (not a
+# manual in-memory run) — a detected asset-failure event auto-fires the governed
+# emergency-sourcing procedure. Demo composition over shipped plumbing (no engine change).
+# --------------------------------------------------------------------------- #
+
+_EVENT_KIND = "emergency_source"  # = RecommendedAction.suggested_handler (PLAN-0056 Step 6)
+_EVENT_PROC_ID = "event_emergency_sourcing_round"
+_EVENT_ASSET_ID = "CNC-Line-07"  # OQ-1 (PLAN-0057): the detected asset (spindle-bearing seizure)
+_EVENT_REQUESTER_ID = "req-planner"  # SP-5: the owning human = the SoD requester on `intake`
+_EVENT_SOURCE = "event-fired"
+# Fixed demo-grade timestamps (deterministic render; the run is event-keyed + idempotent, so a
+# re-fire returns the SAME parked run rather than piling up demo runs).
+_EVENT_DETECTED = datetime(2026, 7, 8, 9, 41, tzinfo=UTC)
+_EVENT_NOW = datetime(2026, 7, 8, 9, 43, tzinfo=UTC)
+
+
+async def run_hero_event_governance_moment(
+    session: AsyncSession,
+    adapter: FastenalCsvAdapter | None = None,
+    *,
+    entity_ids: list[str] | None = None,
+    detected_at: datetime = _EVENT_DETECTED,
+    now: datetime = _EVENT_NOW,
+) -> dict[str, Any]:
+    """Fire the EVENT-triggered emergency-sourcing procedure and capture the parked governance
+    moment in the SAME hero contract the manual opener draws (PLAN-0057, ADR-0029).
+
+    A detected asset-failure event (``event_kind=emergency_source``, entity ``CNC-Line-07``)
+    auto-fires ``event_emergency_sourcing_round`` via ``fire_event`` → a persisted run parks at the
+    ``approve`` DOA gate (``waiting_human``). Projects the parked run's ``source`` scored_rule +
+    ``approve`` doa_tier (+ the derived SoD tie) into the hero contract dict — the EXACT shape
+    :func:`run_hero_governance_moment` returns — and folds the persisted ``trigger_context``
+    (event_kind / entity_ids / detected_at / fired_at) in as the beat-1 "sense" cue under
+    ``hero.trigger`` (AC-3b; render-only, no contract reshape). Deterministic (advisory stub via the
+    shipped factory), MS-S1-free.
+
+    Idempotent + replayable: the run is event-keyed, so a re-fire returns the SAME parked run and it
+    NEVER auto-resolves — like the manual opener (which also stops at the parked moment,
+    governance_audit.py LOCKED #3), the approve→COMPLETED beat is the demo's front-end reveal. The
+    governed resolve capability is proven separately by the integration test.
+
+    Requires the procurement executor factory registered (API startup / test fixture)."""
+    adapter = adapter or FastenalCsvAdapter()
+    spec = load_procedures(_VERTICAL)
+    resolve = build_event_resolver(spec, registry.get_procedure_executors(_VERTICAL))
+    request = resolve(
+        event_kind=_EVENT_KIND,
+        entity_ids=entity_ids or [_EVENT_ASSET_ID],
+        detected_at=detected_at,
+    )
+    outcome = await fire_event(session, request, now=now)
+
+    loaded = await load_run(session, outcome.run_id)
+    if loaded is None or loaded.run.status != PipelineRunStatus.WAITING_HUMAN.value:
+        raise ProcedureError(
+            f"event hero opener '{outcome.run_id}': the event run did not park at waiting_human "
+            f"(outcome '{outcome.result}', status "
+            f"'{loaded.run.status if loaded else None}') — the fire path is broken"
+        )
+    source_sr = next(s for s in loaded.step_results if s.step_id == "source")
+    approve_sr = next(s for s in loaded.step_results if s.step_id == "approve")
+    source_audit = source_sr.audit or {}
+    approve_audit = approve_sr.audit or {}
+    if "scored_rule" not in source_audit or "doa_tier" not in approve_audit:
+        raise ProcedureError(
+            f"event hero opener '{outcome.run_id}': missing scored_rule / doa_tier audit — the "
+            "AT-2 executors did not annotate the fired run"
+        )
+    [scored] = source_audit["scored_rule"]
+    [doa_verdict] = approve_audit["doa_tier"]
+    approver_id = doa_verdict["resolved_approver_id"]
+
+    principals = list(spec.principals)
+    by_id = {p.person_id: p for p in principals}
+    proc = next(p for p in spec.procedures if p.procedure_id == _EVENT_PROC_ID)
+    step_principals: dict[str, str | None] = {"intake": _EVENT_REQUESTER_ID, "approve": approver_id}
+    sod_verdict = check_principal_sod(
+        proc,
+        principals=principals,
+        principal_aliases=list(spec.principal_aliases),
+        step_principals=step_principals,
+    )
+
+    governed_decision = list(approve_audit.get("governed_decision", []))
+    if approver_id is not None and sod_verdict.governed:
+        governed_decision.append(
+            GovernedDecision(
+                control_ref=ControlRef(kind="sod", id=_SOD_CONSTRAINT_ID),
+                principal_id=approver_id,
+            ).model_dump(mode="json")
+        )
+
+    seed_req = await _intake_seed(adapter)
+    tc = loaded.run.trigger_context or {}
+    return {
+        "po_id": seed_req["primary_key"],
+        "part_id": seed_req["part_id"],
+        "supplier_id": scored["selected_supplier_id"],  # DERIVED by the scored rule
+        "asset_id": seed_req["asset_id"],
+        "order_type": seed_req["order_type"],
+        "is_off_avl_override": seed_req["is_off_avl_override"],
+        "amount": doa_verdict["amount"],  # DERIVED (scored_rule spend the doa_tier resolved)
+        "declared_tier_id": seed_req["declared_tier_id"],
+        "doa_tier": [doa_verdict],
+        "governed_kind": "doa_tier",
+        "governed_decision": governed_decision,
+        "scored_rule": [scored],
+        "sod": _sod_projection(
+            sod_verdict, requester_id=_EVENT_REQUESTER_ID, approver_id=approver_id, by_id=by_id
+        ),
+        # AC-3b (PLAN-0057) — the beat-1 "sense" cue: the event trigger provenance (render-only).
+        "trigger": {
+            "event_kind": tc.get("event_kind"),
+            "entity_ids": tc.get("entity_ids"),
+            "detected_at": tc.get("detected_at"),
+            "fired_at": tc.get("fired_at"),
+        },
+    }
+
+
+async def build_event_hero_governance_audit(
+    session: AsyncSession,
+    adapter: FastenalCsvAdapter | None = None,
+    *,
+    entity_ids: list[str] | None = None,
+    detected_at: datetime = _EVENT_DETECTED,
+    now: datetime = _EVENT_NOW,
+) -> dict[str, Any]:
+    """The EVENT analogue of :func:`build_live_hero_governance_audit` — the SAME HeroGovernanceAudit
+    contract with the HERO derived by an event-fired persisted run (``source: "event-fired"``, the
+    trigger sense cue folded into ``hero.trigger``) and the CONTRAST reused from the deterministic
+    offline builder (PLAN-0057 AC-1/AC-3b/AC-4)."""
+    adapter = adapter or FastenalCsvAdapter()
+    hero = await run_hero_event_governance_moment(
+        session, adapter, entity_ids=entity_ids, detected_at=detected_at, now=now
+    )
+    offline = await build_hero_governance_audit(adapter)
+    return {
+        "provisional": True,
+        "source": _EVENT_SOURCE,
         "hero": hero,
         "contrast": offline["contrast"],
     }
