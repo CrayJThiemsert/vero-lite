@@ -1,6 +1,6 @@
 # PLAN-0059: Hero-demo KPI stat-tile panel
 
-**Status:** Ready — SD-1…SD-5 ratified as-recommended by Cray (session 114, AskUserQuestion)
+**Status:** Complete — all 5 ACs met; shipped via #651 (feat) and moved to `done/` (session 114). SD-1…SD-5 ratified as-recommended by Cray (session 114, AskUserQuestion); preview-verified on the hero view (pre-committed strings ฿52,500 / ฿8.16M / ฿8.11M render as tiles, old kv rows gone, no JS errors), full offline suite green under CI `gate`.
 **Owner:** both (Claude Code executes; Cray ratifies the surfaced decisions)
 **Created:** 2026-07-08
 **Related ADRs:** none new — pure frontend composition over the shipped PLAN-0045 ฿-ledger
@@ -44,7 +44,7 @@ pattern, one size smaller (0057 added a POST + DB write; this PLAN touches only
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 — the three figures render as tiles, from the live payload.** The hero view
+- [x] **AC-1 — the three figures render as tiles, from the live payload.** The hero view
       shows a KPI stat-tile panel with the three headline figures (per SD-1), each tile =
       label + ฿ value (+ at most a one-line sublabel per SD-3), populated from the
       **existing** `O.Hero.impact()` fetch (`view-hero.js:302`) — NOT from any hardcoded
@@ -53,23 +53,23 @@ pattern, one size smaller (0057 added a POST + DB write; this PLAN touches only
       the shipped exact-figure tests (`tests/verticals/procurement/test_hero_ledger.py:53-56`):
       expedite premium `฿52,500` (`thb()`, `view-hero.js:22-26`), avoided downtime
       `฿8.16M` and net benefit `฿8.11M` (`thbM()`, `view-hero.js:27-30`).
-- [ ] **AC-2 — no duplication; the ledger cards stay.** The two baseline/governed
+- [x] **AC-2 — no duplication; the ledger cards stay.** The two baseline/governed
       `ledgerSide()` cards (`view-hero.js:183-193`, showing `exposure_thb` ฿9.76M → ฿1.65M
       + detail) remain unchanged, and each of the three headline figures appears exactly
       **once** in the hero view (the tile panel replaces/upgrades the old foot rows per
       SD-4 — no figure rendered twice).
-- [ ] **AC-3 — no empty affordances; demo-grade framing kept.** Tiles carry NO trend
+- [x] **AC-3 — no empty affordances; demo-grade framing kept.** Tiles carry NO trend
       arrow, target line, spark-line, or delta chip (per SD-3 — the one-shot ledger has no
       such data). The provisional/demo-grade framing already on the surface (payload
       `provisional: true`, `models/demo.py:37-39`; ledger docstring stamp `ledger.py:14`)
       stays visible on the card.
-- [ ] **AC-4 — frontend-only diff; offline gate green.** The PR diff is confined to
+- [x] **AC-4 — frontend-only diff; offline gate green.** The PR diff is confined to
       `services/api/static/**` (view-hero.js + hero.css + index.html). The FULL offline
       suite + ruff + mypy stay green under the required CI `gate` on a fresh PR — the
       untouched exact-figure tests (`tests/api/test_demo_hero_routes.py:34-44`,
       `tests/verticals/procurement/test_hero_ledger.py`) double as proof that no payload
       or backend contract moved. No MS-S1, no live LLM, no host-state action anywhere.
-- [ ] **AC-5 — cache-busted preview verification.** Every edited static asset gets a
+- [x] **AC-5 — cache-busted preview verification.** Every edited static asset gets a
       bumped `?v=` token in `services/api/static/index.html` (`hero.css?v=c24` at line 17,
       `view-hero.js?v=c32` at line 51 → next; project memory: the preview serves stale
       assets without it). Render verified via `preview_snapshot` + `preview_eval` DOM/
