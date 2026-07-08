@@ -1,6 +1,6 @@
 # PLAN-0060: Reactive judgment handler catalog — per-handler descriptions in the recommender prompt
 
-**Status:** Ready — SD-1…SD-5 ratified as-recommended by Cray (session 114, AskUserQuestion)
+**Status:** Complete — all 7 ACs met (Steps 1-6 offline binding bar, PR #655 `4d54683`; AC-7 live re-validate PASS + SD-4 default flip, PR #656 `a81f05a`; session 115, 2026-07-09). SD-1…SD-5 ratified as-recommended by Cray (session 114, AskUserQuestion)
 **Owner:** both (Claude Code executes; Cray ratified the surfaced decisions and gates the Step-7 live re-validate)
 **Created:** 2026-07-08
 **Related ADRs:** none new — this is a **build PLAN** (see the ADR-tripwire note below). Cites
@@ -55,41 +55,41 @@ confirms the model picks `emergency_source` for the same event that produced the
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 — registry captures descriptions (optional, additive).** `register_handler` accepts
+- [x] **AC-1 — registry captures descriptions (optional, additive).** `register_handler` accepts
       an optional per-handler `description` (keyword, default `None`); a new sorted
       `handler_catalog(vertical)` accessor returns `(name, description | None)` pairs alongside
       the existing `handler_names` (`services/engine/registry.py:112-122`). Every existing
       call site compiles and behaves unchanged without passing a description; duplicate-name
       registration still raises `RegistryError`; `reset()` clears descriptions. *(Shape per SD-1.)*
-- [ ] **AC-2 — every handler-registering vertical declares descriptions.** All **four** verticals
+- [x] **AC-2 — every handler-registering vertical declares descriptions.** All **four** verticals
       with a `handlers.py` (`procurement`, `energy`, `supply_chain`, `aquaculture` — `vet_clinic`
       registers no handlers; confirmed by glob, see Out of Scope) register a 1–2-line description
       for `echo` + every `ACTION_TYPES` entry. A per-vertical test asserts description keys ==
       registered handler names (no orphan, no gap). The procurement `emergency_source` vs
       `reorder` pair explicitly encodes urgent-critical-failure vs routine-restock. *(Scope per
       SD-3.)*
-- [ ] **AC-3 — catalog renders in the judgment prompt (flag-on).** With the flag on, the trusted
+- [x] **AC-3 — catalog renders in the judgment prompt (flag-on).** With the flag on, the trusted
       system instruction carries an "Available actions" block — one line per handler,
       `name — description` (name-only when description is `None`) — and, via the
       `build_structuring_messages` composition (`services/engine/llm/prompt.py:146` builds on
       `build_reasoning_messages`), the catalog reaches **both** call 1 and call 2 (and the
       PLAN-0020 `skip` single-call path) from a single render site. *(Placement per SD-2.)*
-- [ ] **AC-4 — flag-off is byte-identical to today (default).** With the flag off (default),
+- [x] **AC-4 — flag-off is byte-identical to today (default).** With the flag off (default),
       every prompt builder's output is byte-identical to the pre-change output — asserted the
       same way the `goal` precedent is
       (`tests/services/engine/llm/test_prompt.py:48` `test_goal_none_is_byte_identical_to_no_goal`),
       plus a pinned-literal check that the flag-off system instruction contains no
       "Available actions" marker. *(Flag per SD-4.)*
-- [ ] **AC-5 — existing constraints unchanged.** The `suggested_handler` enum constraint
+- [x] **AC-5 — existing constraints unchanged.** The `suggested_handler` enum constraint
       (`structured.py:111-125`) still restricts generation to registered names; the semantic
       resolve-check backstop (`structured.py:257-263`) is untouched; the ADR-010 containment
       invariants (untrusted block markers, delimiter neutralisation —
       `services/engine/llm/prompt.py:27-46`) still pass their existing tests.
-- [ ] **AC-6 — offline gate green.** Full offline suite + ruff + mypy green under the required CI
+- [x] **AC-6 — offline gate green.** Full offline suite + ruff + mypy green under the required CI
       `gate` on a fresh PR (no regression in `tests/services/engine/llm/test_prompt.py`,
       `test_structured.py`, `tests/services/engine/test_registry.py`,
       `test_recommender.py`, `test_recommender_config.py`, or any vertical suite).
-- [ ] **AC-7 — controlled live re-validate (evidence-only, NOT a merge gate).** Post-merge,
+- [x] **AC-7 — controlled live re-validate (evidence-only, NOT a merge gate).** Post-merge,
       Cray-gated per CLAUDE.md §8: ONE live run against MS-S1 `gpt-oss:20b`, flag on, same event
       shape as the session-114 smoke, with the pass/fail read pre-committed **before** the run
       (`suggested_handler == "emergency_source"` AND `actor_kind == "llm"`); result recorded in a
