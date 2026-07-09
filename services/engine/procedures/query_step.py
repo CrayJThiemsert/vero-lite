@@ -48,9 +48,12 @@ from enum import Enum
 from typing import Any, cast
 
 from services.engine.data_adapter import DataAdapter
+from services.engine.ontology_meta import OntologyMeta
 from services.engine.procedures.orchestrator import (
+    ProcedureError,
     RunContext,
     StepOutcome,
+    _validate_join_project,
     matches_where,
     read_bound_violation,
 )
@@ -61,13 +64,18 @@ class ReadRefusalKind(str, Enum):
     """Why a declared read was refused (PLAN-0048 D-N1 — the typed refusal taxonomy).
 
     The first two mirror :data:`orchestrator.ReadBoundViolation` (the shared
-    ontology/allowlist bound); the last two are compile-seam shape refusals.
+    ontology/allowlist bound); the next two are compile-seam shape refusals.
+    ``JOIN_SHAPE_VIOLATION`` (PLAN-0061 Step 3; the PLAN's OQ-1 settled at step
+    review as ONE additive member) covers every join/project violation — a
+    structural check failing at compile (mirroring the load gate) or the runtime
+    ``fuse`` non-singleton refusal. Existing members untouched (AC-7).
     """
 
     UNKNOWN_OBJECT_TYPE = "unknown_object_type"
     OUTSIDE_ALLOWLIST = "outside_allowlist"
     UNSUPPORTED_READ_SHAPE = "unsupported_read_shape"
     UNBOUND_QUERY = "unbound_query"
+    JOIN_SHAPE_VIOLATION = "join_shape_violation"
 
 
 class ReadRefusal(Exception):  # noqa: N818 — a refusal is deliberately NOT an *Error (D-N1)
@@ -113,17 +121,163 @@ class ReadPlan:
     where: Mapping[str, Any] = field(default_factory=dict)
 
 
-def plan_read(step: Step, agent: Agent, object_type_names: frozenset[str]) -> ReadPlan:
+@dataclass(frozen=True)
+class CompiledJoin:
+    """One resolved join of a :class:`JoinReadPlan` (PLAN-0061 Step 3).
+
+    Keys are RESOLVED at compile — from the declared link's promoted typed
+    ``foreign_key`` (the SD-A governed default) or the explicit ``on`` override;
+    a ``fuse`` join carries no keys (both sides must be exactly one row
+    post-narrowing, refused typed otherwise at execution). ``left`` reads from
+    the accumulated/base side, ``right`` from the joined side. ``where``
+    narrows the JOINED side post-fetch, pre-join (the single ``matches_where``
+    predicate — LOCKED-3).
+    """
+
+    with_type: str
+    left: str | None
+    right: str | None
+    fuse: bool
+    where: Mapping[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class JoinReadPlan:
+    """The compiled multi-read join/projection plan (PLAN-0061 Step 3; Q4 SD-B).
+
+    The sibling of :class:`ReadPlan` for a ``join``/``project``-declaring step:
+    exactly one ``fetch_objects`` dispatch per entry of ``reads`` (the D-N2
+    bound extended), the SD-1 pinned pipeline order (base ``where`` → per-join
+    ``where`` → joins in declaration order → latest-per-group → field renames),
+    and the SD-5 determinism contract (argmax ``order_by`` per ``group_by``,
+    ties broken by max ``tie_break`` — the base type's declared primary_key;
+    rows missing either field are excluded + counted in provenance).
+    """
+
+    step_id: str
+    reads: tuple[str, ...]
+    where: Mapping[str, Any] = field(default_factory=dict)
+    joins: tuple[CompiledJoin, ...] = ()
+    group_by: str | None = None
+    order_by: str | None = None
+    tie_break: str | None = None
+    fields: Mapping[str, str] = field(default_factory=dict)
+
+
+def _compile_join_plan(
+    step: Step, agent: Agent, object_type_names: frozenset[str], meta: OntologyMeta
+) -> JoinReadPlan:
+    """Compile a join/project-declaring step into a :class:`JoinReadPlan`.
+
+    Re-runs the SAME structural validation the load gate runs
+    (:func:`orchestrator._validate_join_project` — one decision surface, so
+    load-acceptance and run-compile cannot drift, the PLAN-0048 AC-3 property
+    extended), converting a structural violation into the typed
+    ``JOIN_SHAPE_VIOLATION`` refusal. Every declared read is bound-checked via
+    the single shared :func:`read_bound_violation` predicate (closing the
+    fact-3 reads[0]-only note).
+    """
+    step_input = step.input
+    assert step_input is not None and step_input.reads  # guarded by plan_read
+    for object_type in step_input.reads:
+        violation = read_bound_violation(object_type, object_type_names, agent.allowed.object_types)
+        if violation is not None:
+            raise ReadRefusal(
+                ReadRefusalKind(violation), step_id=step.step_id, object_type=object_type
+            )
+    try:
+        _validate_join_project(step, meta)
+    except ProcedureError as exc:
+        raise ReadRefusal(
+            ReadRefusalKind.JOIN_SHAPE_VIOLATION, step_id=step.step_id, detail=str(exc)
+        ) from exc
+
+    links = {link.name: link for link in meta.link_types}
+    base = step_input.reads[0]
+    joins: list[CompiledJoin] = []
+    for spec in step_input.join or []:
+        if spec.link is not None:
+            link = links[spec.link]
+            fk = link.foreign_key
+            assert fk is not None  # _validate_join_project refused a keyless link
+            # the link may point either direction; `left` always reads the
+            # accumulated/base side, `right` the joined (`with`) side.
+            if link.from_type == spec.with_read:
+                left, right = fk.to_property, fk.from_property
+            else:
+                left, right = fk.from_property, fk.to_property
+            joins.append(
+                CompiledJoin(
+                    with_type=spec.with_read,
+                    left=left,
+                    right=right,
+                    fuse=False,
+                    where=dict(spec.where) if spec.where else {},
+                )
+            )
+        elif spec.on is not None:
+            joins.append(
+                CompiledJoin(
+                    with_type=spec.with_read,
+                    left=spec.on.left,
+                    right=spec.on.right,
+                    fuse=False,
+                    where=dict(spec.where) if spec.where else {},
+                )
+            )
+        else:  # fuse — validated exactly-one-of by the schema
+            joins.append(
+                CompiledJoin(
+                    with_type=spec.with_read,
+                    left=None,
+                    right=None,
+                    fuse=True,
+                    where=dict(spec.where) if spec.where else {},
+                )
+            )
+
+    group_by: str | None = None
+    order_by: str | None = None
+    tie_break: str | None = None
+    project = step_input.project
+    if project is not None and project.latest_per is not None:
+        link = links[project.latest_per]
+        assert link.foreign_key is not None  # refused above otherwise
+        group_by = link.foreign_key.from_property
+        order_by = project.order_by
+        base_obj = next(t for t in meta.object_types if t.name == base)
+        tie_break = base_obj.primary_key
+
+    return JoinReadPlan(
+        step_id=step.step_id,
+        reads=tuple(step_input.reads),
+        where=dict(step_input.where) if step_input.where else {},
+        joins=tuple(joins),
+        group_by=group_by,
+        order_by=order_by,
+        tie_break=tie_break,
+        fields=dict(project.fields) if project is not None and project.fields else {},
+    )
+
+
+def plan_read(
+    step: Step,
+    agent: Agent,
+    object_type_names: frozenset[str],
+    *,
+    meta: OntologyMeta | None = None,
+) -> ReadPlan | JoinReadPlan:
     """Compile a query step's declared read, or refuse typed (AC-1/AC-2).
 
     Pure and total: no I/O, no adapter; every ``Step`` shape either returns a
-    :class:`ReadPlan` or raises :class:`ReadRefusal` — there is no
-    silently-empty path. The v1 executable shape is a SINGLE declared read
-    (SD-1): ``reads`` with more than one entry, ``reads`` combined with an
-    intra-run ``from`` thread, and a reads-absent entry-point query all refuse.
-    A reads-absent step that threads ``from`` a prior step is not a declared
-    read at all — identity pass-through belongs to the executor (SD-1), so the
-    compile seam refuses it rather than inventing a plan.
+    plan or raises :class:`ReadRefusal` — there is no silently-empty path.
+    A SINGLE declared read compiles to :class:`ReadPlan` exactly as PLAN-0048
+    shipped it (byte-identical path, AC-7). A step declaring the PLAN-0061
+    ``join``/``project`` grammar compiles to :class:`JoinReadPlan` — this
+    REQUIRES ``meta`` (the typed join keys live there; refused typed when
+    absent, mirroring the load gate's fail-loud posture). Multi-read WITHOUT
+    the grammar still refuses (the SD-1 refusal narrowed, not vanished), as do
+    ``reads``+``from`` competition and reads-absent entry-point queries.
     """
     if step.kind is not StepKind.QUERY:
         raise ReadRefusal(
@@ -164,13 +318,24 @@ def plan_read(step: Step, agent: Agent, object_type_names: frozenset[str]) -> Re
                 "sources (where would double-apply) — declare one"
             ),
         )
+    if step_input.join or step_input.project:
+        if meta is None:
+            raise ReadRefusal(
+                ReadRefusalKind.JOIN_SHAPE_VIOLATION,
+                step_id=step.step_id,
+                detail=(
+                    "join/project declared but the executor holds no ontology meta — "
+                    "construct QueryStepExecutor with meta=... (PLAN-0061)"
+                ),
+            )
+        return _compile_join_plan(step, agent, object_type_names, meta)
     if len(reads) > 1:
         raise ReadRefusal(
             ReadRefusalKind.UNSUPPORTED_READ_SHAPE,
             step_id=step.step_id,
             detail=(
-                f"multi-read {reads} — v1 executes single reads only (SD-1); "
-                "a join grammar is a future ADR-016 amendment"
+                f"multi-read {reads} without a declared join/project grammar — declare "
+                "join/project (PLAN-0061, the ADR-016 Q4 amendment) or use a single read"
             ),
         )
     object_type = reads[0]
@@ -232,6 +397,10 @@ class QueryStepExecutor:
 
     adapter: DataAdapter
     object_type_names: frozenset[str]
+    # PLAN-0061 Step 3 (additive): the ontology meta the join/project grammar
+    # resolves typed keys against. None = single-read-only (a declaring step
+    # refuses typed) — every existing construction is unchanged.
+    meta: OntologyMeta | None = None
 
     async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
         """Run the step's declared read (or the SD-1 pass-through), or refuse typed."""
@@ -257,7 +426,9 @@ class QueryStepExecutor:
                 "passthrough": True,
             }
             return StepOutcome(output=list(input_set), reasoning_trace=trace, audit=audit)
-        plan = plan_read(step, ctx.agent, self.object_type_names)
+        plan = plan_read(step, ctx.agent, self.object_type_names, meta=self.meta)
+        if isinstance(plan, JoinReadPlan):
+            return await self._execute_join(plan, ctx)
         fetched = _json_safe(await self.adapter.fetch_objects(plan.object_type))
         output = (
             [entity for entity in fetched if matches_where(entity, plan.where)]
@@ -283,3 +454,211 @@ class QueryStepExecutor:
             "object_type": plan.object_type,
         }
         return StepOutcome(output=output, reasoning_trace=provenance, audit=read_audit)
+
+    async def _execute_join(self, plan: JoinReadPlan, ctx: RunContext) -> StepOutcome:
+        """Run a compiled join/projection plan — the SD-1 pinned pipeline order.
+
+        Exactly ONE ``fetch_objects`` per declared read (the D-N2 bound extended
+        to ``len(reads)`` dispatches, still no retry/repair loop, still no LLM);
+        every fetch passes :func:`_json_safe` at the adapter boundary. Pipeline:
+        base ``where`` → per-join ``where`` (joined side, pre-join) → joins in
+        declaration order (flat merged rows; base value wins a runtime-only key
+        collision, counted in provenance) → latest-per-group (SD-5 argmax +
+        primary-key tie-break; rows missing the group key or ``order_by`` are
+        excluded + counted) → field renames.
+        """
+        provenance: list[dict[str, Any]] = []
+        fetched_by_type: dict[str, list[dict[str, Any]]] = {}
+        for object_type in plan.reads:  # exactly len(reads) dispatches
+            rows = _json_safe(await self.adapter.fetch_objects(object_type))
+            fetched_by_type[object_type] = rows
+            provenance.append(
+                {
+                    "kind": "read_provenance",
+                    "summary": f"read '{object_type}': fetched {len(rows)}",
+                    "object_type": object_type,
+                    "fetched_count": len(rows),
+                }
+            )
+
+        base_type = plan.reads[0]
+        accumulated = [
+            row
+            for row in fetched_by_type[base_type]
+            if not plan.where or matches_where(row, plan.where)
+        ]
+        provenance.append(
+            {
+                "kind": "join_pipeline",
+                "summary": f"base '{base_type}': {len(accumulated)} after where",
+                "object_type": base_type,
+                "post_where_count": len(accumulated),
+            }
+        )
+
+        for join in plan.joins:
+            side = [
+                row
+                for row in fetched_by_type[join.with_type]
+                if not join.where or matches_where(row, join.where)
+            ]
+            accumulated = self._apply_join(plan, join, accumulated, side, provenance)
+
+        if plan.group_by is not None and plan.order_by is not None:
+            accumulated = self._latest_per_group(plan, accumulated, provenance)
+
+        if plan.fields:
+            accumulated = [self._rename(row, plan.fields) for row in accumulated]
+
+        audit: dict[str, Any] = {
+            "actor": ctx.agent.agent_id,
+            "actor_kind": "engine",
+            "deterministic": True,
+            "object_types": list(plan.reads),
+            "join_grammar": True,
+        }
+        return StepOutcome(output=accumulated, reasoning_trace=provenance, audit=audit)
+
+    def _apply_join(
+        self,
+        plan: JoinReadPlan,
+        join: CompiledJoin,
+        accumulated: list[dict[str, Any]],
+        side: list[dict[str, Any]],
+        provenance: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """One join in declaration order — keyed (inner) or fuse (singletons)."""
+        if join.fuse:
+            if len(accumulated) != 1 or len(side) != 1:
+                raise ReadRefusal(
+                    ReadRefusalKind.JOIN_SHAPE_VIOLATION,
+                    step_id=plan.step_id,
+                    object_type=join.with_type,
+                    detail=(
+                        f"fuse with '{join.with_type}' requires exactly one row on each "
+                        f"side post-narrowing (got {len(accumulated)} base, {len(side)} "
+                        "joined) — a fuse is a positional singleton fusion, never a guess"
+                    ),
+                )
+            merged, collisions = self._merge(accumulated[0], side[0], plan.fields)
+            provenance.append(
+                {
+                    "kind": "join_pipeline",
+                    "summary": f"fuse '{join.with_type}': 1 row fused",
+                    "object_type": join.with_type,
+                    "matched": 1,
+                    "unmatched_base": 0,
+                    "runtime_key_collisions": collisions,
+                }
+            )
+            return [merged]
+        assert join.left is not None and join.right is not None
+        out: list[dict[str, Any]] = []
+        unmatched = 0
+        collisions_total = 0
+        for row in accumulated:
+            matches = [s for s in side if s.get(join.right) == row.get(join.left)]
+            if not matches:
+                unmatched += 1
+                continue
+            for match in matches:
+                merged, collisions = self._merge(row, match, plan.fields)
+                collisions_total += collisions
+                out.append(merged)
+        provenance.append(
+            {
+                "kind": "join_pipeline",
+                "summary": (
+                    f"join '{join.with_type}' on {join.left}=={join.right}: "
+                    f"{len(out)} merged, {unmatched} base rows unmatched (excluded)"
+                ),
+                "object_type": join.with_type,
+                "matched": len(out),
+                "unmatched_base": unmatched,
+                "runtime_key_collisions": collisions_total,
+            }
+        )
+        return out
+
+    @staticmethod
+    def _merge(
+        base_row: dict[str, Any], side_row: dict[str, Any], fields: Mapping[str, str]
+    ) -> tuple[dict[str, Any], int]:
+        """Flat-merge one pair. A side key colliding with a base key is renamed
+        when ``project.fields`` maps it (the SD-1 collision-resolution rename
+        applies to the JOINED side at merge, exactly once); an unmapped runtime
+        collision keeps the BASE value and is counted (never a silent clobber).
+        Equal-named join keys hold equal values by the join predicate, so
+        base-wins is value-neutral for them."""
+        merged = dict(base_row)
+        collisions = 0
+        for key, value in side_row.items():
+            if key in merged:
+                if key in fields:
+                    merged[fields[key]] = value
+                elif merged[key] != value:
+                    collisions += 1
+            else:
+                merged[key] = value
+        return merged, collisions
+
+    def _latest_per_group(
+        self,
+        plan: JoinReadPlan,
+        rows: list[dict[str, Any]],
+        provenance: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """SD-5: argmax(``order_by``) per ``group_by``, ties broken by max
+        ``tie_break`` (the declared primary_key, lexicographic) — deterministic
+        across adapter orderings; rows missing either field are excluded and
+        counted, never guessed."""
+        assert plan.group_by is not None and plan.order_by is not None
+        groups: dict[Any, dict[str, Any]] = {}
+        excluded = 0
+        for row in rows:
+            group_key = row.get(plan.group_by)
+            order_value = row.get(plan.order_by)
+            if group_key is None or order_value is None:
+                excluded += 1
+                continue
+            current = groups.get(group_key)
+            if current is None:
+                groups[group_key] = row
+                continue
+            current_order = current[plan.order_by]
+            if order_value > current_order:
+                groups[group_key] = row
+            elif order_value == current_order and plan.tie_break is not None:
+                if str(row.get(plan.tie_break, "")) > str(current.get(plan.tie_break, "")):
+                    groups[group_key] = row
+        kept = [groups[k] for k in sorted(groups, key=str)]
+        provenance.append(
+            {
+                "kind": "join_pipeline",
+                "summary": (
+                    f"latest_per '{plan.group_by}' by '{plan.order_by}': {len(kept)} "
+                    f"groups kept, {excluded} rows excluded (missing key/order)"
+                ),
+                "groups_kept": len(kept),
+                "rows_excluded_missing_key": excluded,
+            }
+        )
+        return kept
+
+    @staticmethod
+    def _rename(row: dict[str, Any], fields: Mapping[str, str]) -> dict[str, Any]:
+        """The final select/rename pass.
+
+        A mapping whose TARGET already exists on the row was consumed by the
+        merge-side collision resolution (the joined side's occurrence became
+        ``target``; the base keeps its original name) — skipping it here is what
+        makes each rename apply exactly ONCE and never clobber. Any other
+        mapping renames normally (the shape-1 single-read case)."""
+        out: dict[str, Any] = {}
+        for key, value in row.items():
+            target = fields.get(key, key)
+            if target != key and target in row:
+                out[key] = value  # collision already resolved at merge — keep the base name
+            else:
+                out[target] = value
+        return out
