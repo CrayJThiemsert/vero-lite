@@ -465,7 +465,11 @@ def validate_read_bindings_for_vertical(procedure: Procedure, agent: Agent, vert
     if not has_read_bindings(procedure):
         return
     meta = load_ontology_meta(vertical)
-    validate_read_bindings(procedure, agent, frozenset(m.name for m in meta.object_types))
+    # PLAN-0061 Step 2: thread the FULL meta so the join/project structural gate
+    # governs declaring procedures at the production pre-flight sites too.
+    validate_read_bindings(
+        procedure, agent, frozenset(m.name for m in meta.object_types), meta=meta
+    )
 
 
 def validate_governance_complete(procedure: Procedure) -> None:

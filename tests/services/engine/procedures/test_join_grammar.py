@@ -38,6 +38,7 @@ from services.engine.procedures.orchestrator import (
     ProcedureError,
     ProcedureWarning,
     validate_read_bindings,
+    validate_read_bindings_for_vertical,
 )
 from services.engine.procedures.spec import (
     Agent,
@@ -388,6 +389,21 @@ def test_reads_only_step_is_byte_compatible_without_meta() -> None:
     validate_read_bindings(
         _proc(StepInput.model_validate({"reads": ["Asset"]})), _agent(), _NAMES
     )  # no meta, no raise
+
+
+def test_production_wrapper_threads_meta_to_the_join_gate() -> None:
+    """The production pre-flight wrapper now governs join/project: an unknown
+    link over the REAL procurement ontology refuses with the STRUCTURAL error —
+    proving the full meta reached the gate (a None meta would raise
+    'no ontology meta' instead)."""
+    input_ = StepInput.model_validate(
+        {
+            "reads": ["PurchaseOrder", "Quotation"],
+            "join": [{"with": "Quotation", "link": "ghost_link"}],
+        }
+    )
+    with pytest.raises(ProcedureError, match="not a declared link_type"):
+        validate_read_bindings_for_vertical(_proc(input_), _agent(), "procurement")
 
 
 # --------------------------------------------------------------------------- #
