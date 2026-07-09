@@ -1,7 +1,7 @@
 ---
 plan: PLAN-0019
 title: Core Procedure baseline (Phase 1) — Procedure/Step/PipelineRun/Agent runtime + linear set-valued orchestrator + 3 example procedures + folded empirical benchmark
-status: In execution
+status: Complete — shipped + filed to done/ (session 116, 2026-07-09); all ACs materially satisfied (Part A engine services/engine/procedures/ + Part B benchmark benchmarks/procedure_baseline/ + REPORT.md; last step B-γ/AC B-3 shipped via PLAN-0027). Frontmatter was stale ("In execution") at filing.
 owner: Claude Code
 created: 2026-06-07
 related_adrs:
