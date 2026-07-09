@@ -50,6 +50,11 @@ STEP_GOVERNANCE_FIELDS = frozenset(
         "env_var",
         "governance_content",
         "reads",
+        # PLAN-0061 Step 2 (Q4): the join/projection grammar is H-authored spec
+        # surface — a generated skeleton may never self-declare it (same rule as
+        # reads; stripped at lift, pinned in the governance snapshot).
+        "join",
+        "project",
     }
 )
 """``Step``-level human-author (H) fields. ``env_var`` lives on the nested
@@ -174,7 +179,7 @@ class GovernanceStub(BaseModel):
 
 
 def _strip_read_binding(input_: StepInput | None) -> StepInput | None:
-    """Inject ``reads`` as an ABSENT stub (H, ADR-016 Q3 OQ-A; OQ-C C1 pattern).
+    """Inject ``reads`` / ``join`` / ``project`` as ABSENT stubs (H; OQ-C C1 pattern).
 
     ``StepDraft`` reuses the runtime :class:`StepInput` for the G fan-out
     structure (``from``/``where``), so — unlike ``env_var``, which a draft cannot
@@ -182,10 +187,12 @@ def _strip_read_binding(input_: StepInput | None) -> StepInput | None:
     drops it, exactly as it injects ``handler``/``threshold``/``env_var`` absent:
     a generated skeleton may never self-declare its own read blast-radius; the
     human authors ``reads`` (+ the agent's ``allowed.object_types``) later.
+    PLAN-0061 Step 2 extends the same rule to the Q4 ``join``/``project``
+    grammar — a skeleton may never self-declare its own join surface either.
     """
-    if input_ is None or input_.reads is None:
+    if input_ is None or (input_.reads is None and input_.join is None and input_.project is None):
         return input_
-    return input_.model_copy(update={"reads": None})
+    return input_.model_copy(update={"reads": None, "join": None, "project": None})
 
 
 def lift_to_step(draft: StepDraft, *, autonomy: Autonomy | None = None) -> Step:

@@ -211,6 +211,115 @@ class GateKind(StrEnum):
     NONE = "none"
 
 
+class JoinOn(BaseModel):
+    """An explicit equi-key override for one join (PLAN-0061 SD-1; ADR-016 Q4 SD-A).
+
+    The per-step escape hatch for keys the ontology does not declare — warn-first
+    at the load gate when no declared ``link_types`` relationship backs the pair
+    (OQ-4 resolved: warn, never reject).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    left: str = Field(..., description="join column on the base/accumulated side")
+    right: str = Field(..., description="join column on the joined ('with') side")
+
+
+class JoinSpec(BaseModel):
+    """One declared join in a multi-read ``query`` step (PLAN-0061 SD-1; Q4 SD-A Hybrid).
+
+    ``with`` names the declared read being joined in. Exactly ONE of the three
+    join forms must be set: ``link`` (the ontology-declared default — keys resolve
+    from the named link's typed ``foreign_key``, the governed path), ``on`` (an
+    explicit equi-key override), or ``fuse`` (positional singleton fusion — both
+    sides must be exactly one row post-narrowing; the procurement-intake shape the
+    ontology cannot declare). ``where`` narrows the JOINED side post-fetch,
+    pre-join, via the same single ``matches_where`` predicate (LOCKED-3).
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    with_read: str = Field(
+        ...,
+        alias="with",
+        description="the declared read (an entry of input.reads) this join brings in",
+    )
+    link: str | None = Field(
+        default=None,
+        description="ontology link_types name — the declared-default join (keys from its "
+        "typed foreign_key)",
+    )
+    on: JoinOn | None = Field(
+        default=None, description="explicit equi-key override (warn-first when undeclared)"
+    )
+    fuse: bool | None = Field(
+        default=None,
+        description="positional singleton fusion — no relational key; both sides must be "
+        "exactly one row",
+    )
+    where: dict[str, Any] | None = Field(
+        default=None,
+        description="field-equality filter narrowing the joined side post-fetch, pre-join",
+    )
+
+    @model_validator(mode="after")
+    def _validate_exactly_one_form(self) -> Self:
+        forms = [self.link is not None, self.on is not None, self.fuse is not None]
+        if sum(forms) != 1:
+            raise ValueError(
+                f"join with '{self.with_read}': exactly one of link/on/fuse must be set "
+                f"(got {sum(forms)}) — PLAN-0061 SD-1"
+            )
+        if self.fuse is False:
+            raise ValueError(
+                f"join with '{self.with_read}': fuse must be true when present (omit it "
+                "for a keyed join)"
+            )
+        return self
+
+
+class ProjectSpec(BaseModel):
+    """A declared projection for a ``query`` step (PLAN-0061 SD-1; Q4 SD-B shape 1).
+
+    ``latest_per`` names a declared ontology link: the group key is that link's
+    typed ``foreign_key.from_property`` and the read keeps argmax(``order_by``)
+    per group with the SD-5 deterministic primary-key tie-break. ``order_by`` is
+    an explicit declared property of the grouped read (never a hard-coded field
+    name). ``fields`` is an optional select/rename map — join + projection ONLY;
+    arbitrary computation stays downstream (OQ-3 resolved).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    latest_per: str | None = Field(
+        default=None,
+        description="ontology link_types name whose typed foreign_key.from_property is "
+        "the group key (latest-per-group)",
+    )
+    order_by: str | None = Field(
+        default=None,
+        description="declared property of the grouped read that orders 'latest' (SD-5: "
+        "explicit, never hard-coded)",
+    )
+    fields: dict[str, str] | None = Field(
+        default=None,
+        description="optional select/rename map {source_field: output_name}; omit to keep "
+        "all fields",
+    )
+
+    @model_validator(mode="after")
+    def _validate_latest_requires_order(self) -> Self:
+        if self.latest_per is not None and self.order_by is None:
+            raise ValueError(
+                "project.latest_per requires an explicit project.order_by (PLAN-0061 SD-5)"
+            )
+        if self.latest_per is None and self.order_by is not None:
+            raise ValueError("project.order_by is only meaningful with project.latest_per")
+        if self.latest_per is None and not self.fields:
+            raise ValueError("an empty project declares nothing — set latest_per and/or fields")
+        return self
+
+
 class StepInput(BaseModel):
     """A step's input source (ADR-016 D4; PLAN-0019 A-ζ-prep named-input).
 
@@ -227,9 +336,14 @@ class StepInput(BaseModel):
     additive to the ``from`` intra-run thread. It is a declaration + a load-time
     consistency/scoping gate (``validate_read_bindings``): each named object_type
     must exist in the vertical's ontology AND, when the agent opts in with a
-    non-empty ``allowed.object_types``, be inside that read allowlist. It is NOT
-    execution-bound in v1 (the Q4 generic executor is a later PLAN) and it is an
-    H-governed value the generator may never emit (OQ-A; stripped at lift).
+    non-empty ``allowed.object_types``, be inside that read allowlist.
+
+    ``join`` / ``project`` (PLAN-0061; the ADR-016 Q4 amendment, Accepted
+    2026-07-09) declare the multi-read join + projection grammar — the two v1
+    shapes (equi-join enrichment + latest-per-group projection). Both are
+    H-governed values the generator may never emit (stripped at lift, pinned in
+    the governance snapshot); both require ``reads`` and are structurally
+    validated by the extended ``validate_read_bindings`` load gate.
     """
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
@@ -248,6 +362,39 @@ class StepInput(BaseModel):
         description="ontology object_types this query step reads (each must exist in the "
         "vertical's ObjectTypeMeta AND be in Agent.allowed.object_types) — ADR-016 Q3",
     )
+    join: list[JoinSpec] | None = Field(
+        default=None,
+        description="declared joins bringing each non-base read into the base read "
+        "(PLAN-0061 SD-1; requires reads)",
+    )
+    project: ProjectSpec | None = Field(
+        default=None,
+        description="declared projection (latest-per-group and/or field select/rename) — "
+        "PLAN-0061 SD-1; requires reads",
+    )
+
+    @model_validator(mode="after")
+    def _validate_join_project_shape(self) -> Self:
+        """Schema-level Q4 invariants (ontology-dependent checks live in the load gate)."""
+        if (self.join or self.project) and not self.reads:
+            raise ValueError("join/project require a declared reads list (PLAN-0061 SD-1)")
+        if self.join:
+            base = self.reads[0] if self.reads else None
+            seen: set[str] = set()
+            for spec in self.join:
+                if self.reads and spec.with_read not in self.reads:
+                    raise ValueError(
+                        f"join with '{spec.with_read}' is not a declared read {self.reads}"
+                    )
+                if spec.with_read == base:
+                    raise ValueError(
+                        f"join with '{spec.with_read}' names the base read (reads[0]) — "
+                        "the base is joined TO, never brought in"
+                    )
+                if spec.with_read in seen:
+                    raise ValueError(f"duplicate join for read '{spec.with_read}'")
+                seen.add(spec.with_read)
+        return self
 
 
 class StepTiers(BaseModel):
