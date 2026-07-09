@@ -1,6 +1,6 @@
 # PLAN-0061: Q4 join/projection grammar build — multi-read query steps (renders the ADR-016 Q4 amendment, Accepted 2026-07-09)
 
-**Status:** Ready — SD-1..SD-6 ratified as-recommended by Cray (session 115, 2026-07-09, AskUserQuestion); ready to execute Steps 1-4.
+**Status:** Complete — all 8 ACs met (Steps 1-4 built as four green-gate PRs: #664 Phase A substrate `978caca`, #665 Phase B schema+governance+gate `93e01d1`/`7fb7497`, #666 Phase C compile/execute `0d738e1`, #667 Phase D fixtures end-to-end; full offline suite 2452 passed / 7 skipped, repo-wide ruff + mypy clean; SD-6 honored — no live run, the offline oracle was the entire bar; session 115, 2026-07-09). SD-1..SD-6 ratified as-recommended by Cray (session 115, AskUserQuestion).
 **Owner:** Claude Code (executes); Cray ratifies the surfaced decisions
 **Created:** 2026-07-09
 **Related ADRs:** ADR-016 — the **"Amendment (2026-07-09): join/projection grammar for
@@ -162,7 +162,7 @@ anywhere in the read path** (LOCKED-6 / ADR-0024 D3/D6).
 Everything below is **offline and deterministic**, each provable under the required CI
 `gate` on a fresh PR (prove main-green via the PR's CI, not a named subset).
 
-- [ ] **AC-1 — SD-D promotion, backward-compat gated.** `LinkTypeMeta` gains a typed
+- [x] **AC-1 — SD-D promotion, backward-compat gated.** `LinkTypeMeta` gains a typed
       optional `foreign_key: {from_property, to_property}` (default `None`) parsed from
       the YAML `A.x -> B.y` string; `QuantityBinding` gains the SAME typed shape parsed
       from `join_path` (the free-text `join_path`/`grain` fields stay, additive
@@ -172,7 +172,7 @@ Everything below is **offline and deterministic**, each provable under the requi
       and `join_path` string parses successfully** (no shipped declaration regresses to
       `None`). A malformed/absent string projects to `None` — ontology load never gets
       stricter (SD-4).
-- [ ] **AC-2 — the typed construct is `extra="forbid"`, H-governed, and pinned.**
+- [x] **AC-2 — the typed construct is `extra="forbid"`, H-governed, and pinned.**
       `StepInput` gains `join`/`project` per the ratified SD-1 schema; every new model
       is `extra="forbid"`. `"join"` + `"project"` enter `STEP_GOVERNANCE_FIELDS`
       (`draft.py:42-54`), the lift strips them to absent stubs (extending
@@ -182,7 +182,7 @@ Everything below is **offline and deterministic**, each provable under the requi
       edit **fails CLOSED at resume** (tested). The pin-format consequence is disclosed
       in the PR body (pre-deploy `waiting_human` runs refuse at resume — the PLAN-0047
       sanctioned cancel-and-restart, the PLAN-0048 SD-5(b) precedent).
-- [ ] **AC-3 — the load gate governs the grammar (no execution yet at this AC).**
+- [x] **AC-3 — the load gate governs the grammar (no execution yet at this AC).**
       `validate_read_bindings` extended: a declared-link join resolves its keys from
       the promoted typed `foreign_key` (refusing typed when the named link does not
       exist, does not connect the declared reads, or carries no parseable
@@ -192,34 +192,34 @@ Everything below is **offline and deterministic**, each provable under the requi
       join/read names routes through `read_bound_violation` at BOTH the gate AND
       `plan_read` — the PLAN-0048 AC-3 tripwire test extends to drive the same
       join-shape matrix through both and assert identical accept/refuse/warn decisions.
-- [ ] **AC-4 — shape 1 compiles + executes deterministically.** A single-read step with
+- [x] **AC-4 — shape 1 compiles + executes deterministically.** A single-read step with
       `project: {latest_per: <link>, order_by: <property>}` fetches ONCE, groups rows
       by the link's typed `from_property`, keeps argmax(`order_by`) per group with the
       SD-5 deterministic tie-break, applies field select/rename, and emits provenance
       (per-read fetched/post-where counts + rows-excluded-missing-key counts). Rows
       missing the group key or `order_by` are **excluded and counted in provenance**,
       never guessed.
-- [ ] **AC-5 — shape 2 compiles + executes deterministically.** A multi-read step with
+- [x] **AC-5 — shape 2 compiles + executes deterministically.** A multi-read step with
       a `join` chain executes: one `fetch_objects` per declared read (exactly
       `len(reads)` dispatches — the D-N2 bound extended, asserted with a counting fake
       adapter), keys from the declared link by default, the explicit `on` override
       honored (with the load-time warn), and the `fuse` singleton form refusing typed
       when either side is not exactly one row post-narrowing. Output = flat merged
       rows (no nesting — L-7); collisions per the ratified SD-1 rule.
-- [ ] **AC-6 — end-to-end on the production paths via test fixtures.** BOTH shapes run
+- [x] **AC-6 — end-to-end on the production paths via test fixtures.** BOTH shapes run
       end-to-end through `run_procedure` with test-module-embedded procedures + fake
       adapters over REAL shipped ontologies (energy for shape 1, procurement for shape
       2 — read-only; no vertical file changes, SD-3); shape 2 additionally runs through
       `run_procedure_persisted` proving the joined output set lands JSONB-safe
       (`_json_safe` covers merged rows) and the pinned `join`/`project` fields
       round-trip.
-- [ ] **AC-7 — existing behavior unchanged.** A join-absent single-read step is
+- [x] **AC-7 — existing behavior unchanged.** A join-absent single-read step is
       **byte-identical** to PLAN-0048 behavior (plan, dispatch, provenance, refusals);
       a join-absent multi-read still refuses `unsupported_read_shape` (the `:167-175`
       refusal narrows, does not vanish); the four existing `ReadRefusalKind` values are
       untouched (new kinds additive only); PLAN-0046/0047/0048 suites pass untouched;
       the hero-demo path is byte-unchanged.
-- [ ] **AC-8 — offline gate green.** Full suite + ruff + ruff-format + `mypy --strict
+- [x] **AC-8 — offline gate green.** Full suite + ruff + ruff-format + `mypy --strict
       services/` green under the required CI `gate` on a fresh PR; new API-facing
       fields carry `Field(description=...)`; **no MS-S1 / live-LLM call anywhere in
       any gate** (SD-6 — see Verification).
