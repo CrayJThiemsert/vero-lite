@@ -42,13 +42,25 @@ procedures:
     steps:
       - step_id: read_readings
         name: Read latest asset readings
-        description: Latest temperature reading per active Asset.
+        description: Latest reading per Asset (event_type=reading), by occurred_at.
         kind: query
+        input:                          # PLAN-0062 Q4 Phase-3: the declared latest-per-group grammar
+          reads: [OperationalEvent]
+          where:
+            event_type: reading
+          project:
+            latest_per: event_emitted_by_asset   # FK OperationalEvent.asset_id -> Asset.asset_id
+            order_by: occurred_at
         facet:
           decision_condition: { gate_kind: none }
           llm_assist: null
-          input: "latest temperature reading per active Asset"
-          output: "temperature reading per active Asset"
+          # PLAN-0062: the typed reads/project above are the source of truth (D2-A2); this prose
+          # is synced to it. The prior "active Asset"/"temperature" qualifiers are dropped — no
+          # status-filter join was ever implemented (SD-4; all synthetic assets are active), and the
+          # judge grades measured_value regardless of unit (synthetic non-temp readings stay
+          # sub-threshold by design).
+          input: "latest OperationalEvent (event_type=reading) per Asset via event_emitted_by_asset, by occurred_at"
+          output: "one latest reading row per Asset"
       - step_id: judge
         name: Judge vs over-temperature threshold
         description: >-
