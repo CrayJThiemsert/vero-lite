@@ -23,12 +23,13 @@ a later step.
 from __future__ import annotations
 
 import time
+import warnings
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any, Literal, Protocol
 
-from services.engine.ontology_meta import load_ontology_meta
+from services.engine.ontology_meta import OntologyMeta, load_ontology_meta
 from services.engine.procedures.draft import (
     unfilled_governance,
     unfilled_procedure_governance,
@@ -61,6 +62,17 @@ class ProcedureError(Exception):
     Distinct from a *runtime* step failure (which is handled by D4
     fail-and-divert, not raised): a ``ProcedureError`` means the spec + agent
     pairing is invalid, so the run never starts.
+    """
+
+
+class ProcedureWarning(UserWarning):
+    """A load-time advisory that does NOT block loading (PLAN-0061; Q4 OQ-4).
+
+    v1 use: a per-step explicit ``on``/``fuse`` join override not backed by any
+    declared ``link_types`` relationship — warn-first (never reject: the override
+    exists precisely for shapes the ontology cannot declare, e.g. the procurement
+    intake's positional fusion); ontology-vs-step drift stays visible and the
+    posture can tighten later.
     """
 
 
@@ -238,7 +250,11 @@ def read_bound_violation(
 
 
 def validate_read_bindings(
-    procedure: Procedure, agent: Agent, object_type_names: frozenset[str]
+    procedure: Procedure,
+    agent: Agent,
+    object_type_names: frozenset[str],
+    *,
+    meta: OntologyMeta | None = None,
 ) -> None:
     """Raise :class:`ProcedureError` unless every ``query`` step's ``input.reads``
     is consistent with the ontology AND the agent's read allowlist.
@@ -250,11 +266,18 @@ def validate_read_bindings(
     AND (b) — when the agent opts in with a non-empty ``allowed.object_types``
     (OQ-6: empty = unconstrained, mirroring ``step_kinds``, NOT
     ``action_handlers``' fail-closed) — be inside that read allowlist. Mirrors
-    the write-side ``action_handlers`` pre-flight bound. Enforcement status
-    (the ADR's honest frame): declared ✔ · consistency-gated at load ✔ ·
-    execution-bound ✖ — execution-binding arrives with the Q4 generic executor
-    (a separate PLAN). Pure: the caller supplies the registry — no filesystem
-    I/O here (testable with a fixture registry).
+    the write-side ``action_handlers`` pre-flight bound. Pure: the caller
+    supplies the registry — no filesystem I/O here (testable with a fixture
+    registry).
+
+    ``meta`` (PLAN-0061 Step 2, additive keyword): the full :class:`OntologyMeta`
+    the Q4 join/project structural checks resolve declared links + typed
+    foreign keys + properties against. REQUIRED as soon as any step declares
+    ``join``/``project`` (fail-loud, never silently skipped); reads-only
+    procedures never need it — every existing 3-arg call is byte-compatible.
+    Enforcement (the honest frame): plain reads = declared ✔ · gated ✔ ·
+    execution-bound ✔ (PLAN-0048); join/project = declared ✔ · gated ✔ ·
+    execution-bound ✖ until Phase C lands the executor extension.
     """
     allowed_object_types = agent.allowed.object_types
     for step in procedure.steps:
@@ -272,6 +295,161 @@ def validate_read_bindings(
                     f"step '{step.step_id}': reads object_type '{object_type}' is outside "
                     f"agent '{agent.agent_id}' allowed.object_types {allowed_object_types}"
                 )
+        # PLAN-0061 Step 2 (Q4 SD-A/SD-B): the join/project grammar's structural
+        # gate — ontology-dependent, so it REQUIRES the full meta (fail loud,
+        # never silently skip: a declaring step without meta cannot be governed).
+        if step.input.join or step.input.project:
+            if meta is None:
+                raise ProcedureError(
+                    f"step '{step.step_id}': join/project declared but no ontology meta "
+                    "was supplied to the load gate (PLAN-0061 — thread OntologyMeta via "
+                    "validate_read_bindings_for_vertical or the meta= keyword)"
+                )
+            _validate_join_project(step, meta)
+
+
+def _links_by_name(meta: OntologyMeta) -> dict[str, Any]:
+    return {link.name: link for link in meta.link_types}
+
+
+def _declared_properties(meta: OntologyMeta, object_type: str) -> set[str]:
+    obj = next((t for t in meta.object_types if t.name == object_type), None)
+    return {p.name for p in obj.properties} if obj is not None else set()
+
+
+def _pair_is_declared(meta: OntologyMeta, type_a: str, type_b: str) -> bool:
+    """True iff any declared link connects the pair, either direction (OQ-4 'backed')."""
+    return any({link.from_type, link.to_type} == {type_a, type_b} for link in meta.link_types)
+
+
+def _validate_join_project(step: Step, meta: OntologyMeta) -> None:
+    """The PLAN-0061 Step-2 structural checks for one declaring query step.
+
+    Refusals are typed ``ProcedureError`` (a declared-link join that cannot
+    resolve is un-governable); an ``on``/``fuse`` override not backed by any
+    declared relationship WARNS via :class:`ProcedureWarning` (OQ-4 resolved:
+    warn-first, never reject). Execution stays Phase C — nothing here dispatches.
+    """
+    assert step.input is not None and step.input.reads  # guarded by the caller
+    reads = step.input.reads
+    base = reads[0]
+    links = _links_by_name(meta)
+
+    joined_types: list[str] = [base]
+    for spec in step.input.join or []:
+        if spec.link is not None:
+            link = links.get(spec.link)
+            if link is None:
+                raise ProcedureError(
+                    f"step '{step.step_id}': join link '{spec.link}' is not a declared "
+                    "link_type in the vertical's ontology"
+                )
+            if {link.from_type, link.to_type} - set(reads):
+                raise ProcedureError(
+                    f"step '{step.step_id}': join link '{spec.link}' connects "
+                    f"{link.from_type}->{link.to_type}, which is not within the declared "
+                    f"reads {reads}"
+                )
+            if spec.with_read not in (link.from_type, link.to_type):
+                raise ProcedureError(
+                    f"step '{step.step_id}': join with '{spec.with_read}' names neither "
+                    f"side of link '{spec.link}' ({link.from_type}->{link.to_type})"
+                )
+            if link.foreign_key is None:
+                raise ProcedureError(
+                    f"step '{step.step_id}': join link '{spec.link}' carries no parseable "
+                    "typed foreign_key (PLAN-0061 SD-D — fix the ontology declaration or "
+                    "use an explicit on: override)"
+                )
+        else:
+            # on/fuse override — warn-first when no declared relationship backs the
+            # pair (the override exists for exactly these shapes; drift stays visible).
+            if not any(_pair_is_declared(meta, spec.with_read, t) for t in joined_types):
+                warnings.warn(
+                    f"step '{step.step_id}': join with '{spec.with_read}' "
+                    f"({'fuse' if spec.fuse else 'on'}) is not backed by any declared "
+                    "link_types relationship (Q4 OQ-4 warn-first)",
+                    ProcedureWarning,
+                    stacklevel=2,
+                )
+        _validate_join_collisions(step, spec, joined_types, meta)
+        joined_types.append(spec.with_read)
+
+    project = step.input.project
+    if project is not None:
+        _validate_project(step, project, base, links, meta)
+
+
+def _validate_join_collisions(
+    step: Step, spec: Any, joined_types: list[str], meta: OntologyMeta
+) -> None:
+    """SD-1 collision rule: an ontology-DECLARED property-name collision between
+    joined types refuses at load unless ``project.fields`` renames it away. The
+    equal-named join-key pair itself is exempt (its values are equal by the join
+    predicate — no clobber)."""
+    assert step.input is not None
+    with_props = _declared_properties(meta, spec.with_read)
+    exempt: set[str] = set()
+    if spec.link is not None:
+        link = _links_by_name(meta)[spec.link]
+        if link.foreign_key is not None and (
+            link.foreign_key.from_property == link.foreign_key.to_property
+        ):
+            exempt.add(link.foreign_key.from_property)
+    elif spec.on is not None and spec.on.left == spec.on.right:
+        exempt.add(spec.on.left)
+    renamed = set((step.input.project.fields or {}) if step.input.project else {})
+    for earlier in joined_types:
+        collisions = (_declared_properties(meta, earlier) & with_props) - exempt - renamed
+        if collisions:
+            raise ProcedureError(
+                f"step '{step.step_id}': declared property collision(s) "
+                f"{sorted(collisions)} between '{earlier}' and '{spec.with_read}' — "
+                "rename via project.fields or drop the join (PLAN-0061 SD-1)"
+            )
+
+
+def _validate_project(
+    step: Step, project: Any, base: str, links: dict[str, Any], meta: OntologyMeta
+) -> None:
+    """SD-5 structural checks for latest-per-group + the OQ-3 rename-target rule."""
+    base_props = _declared_properties(meta, base)
+    if project.latest_per is not None:
+        link = links.get(project.latest_per)
+        if link is None:
+            raise ProcedureError(
+                f"step '{step.step_id}': project.latest_per '{project.latest_per}' is not "
+                "a declared link_type"
+            )
+        if link.from_type != base:
+            raise ProcedureError(
+                f"step '{step.step_id}': project.latest_per '{project.latest_per}' groups "
+                f"'{link.from_type}', but the base read is '{base}' (the link's from_type "
+                "must equal the read it groups)"
+            )
+        if link.foreign_key is None:
+            raise ProcedureError(
+                f"step '{step.step_id}': project.latest_per '{project.latest_per}' carries "
+                "no parseable typed foreign_key (PLAN-0061 SD-D)"
+            )
+        if project.order_by not in base_props:
+            raise ProcedureError(
+                f"step '{step.step_id}': project.order_by '{project.order_by}' is not a "
+                f"declared property of '{base}'"
+            )
+        base_obj = next((t for t in meta.object_types if t.name == base), None)
+        if base_obj is None or not base_obj.primary_key:
+            raise ProcedureError(
+                f"step '{step.step_id}': '{base}' declares no primary_key — the SD-5 "
+                "deterministic tie-break requires one"
+            )
+    for target in (project.fields or {}).values():
+        kept = base_props - set(project.fields or {})
+        if target in kept:
+            raise ProcedureError(
+                f"step '{step.step_id}': project.fields rename target '{target}' collides "
+                "with an existing kept field (PLAN-0061 OQ-3: load-time refusal)"
+            )
 
 
 def validate_read_bindings_for_vertical(procedure: Procedure, agent: Agent, vertical: str) -> None:
@@ -287,7 +465,11 @@ def validate_read_bindings_for_vertical(procedure: Procedure, agent: Agent, vert
     if not has_read_bindings(procedure):
         return
     meta = load_ontology_meta(vertical)
-    validate_read_bindings(procedure, agent, frozenset(m.name for m in meta.object_types))
+    # PLAN-0061 Step 2: thread the FULL meta so the join/project structural gate
+    # governs declaring procedures at the production pre-flight sites too.
+    validate_read_bindings(
+        procedure, agent, frozenset(m.name for m in meta.object_types), meta=meta
+    )
 
 
 def validate_governance_complete(procedure: Procedure) -> None:

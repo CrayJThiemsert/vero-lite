@@ -68,6 +68,20 @@ def build_governance_snapshot(procedure: Procedure) -> dict[str, Any]:
                     if step.input is not None and step.input.reads
                     else None
                 ),
+                # PLAN-0061 Step 2 (Q4): the join/projection grammar changes what a
+                # resumed run reads + how rows merge — pinned canonically (JSON mode,
+                # by_alias so `with` pins as authored); a mid-flight edit fails
+                # CLOSED at resume, same as a ladder edit.
+                "join": (
+                    [j.model_dump(mode="json", by_alias=True) for j in step.input.join]
+                    if step.input is not None and step.input.join
+                    else None
+                ),
+                "project": (
+                    step.input.project.model_dump(mode="json")
+                    if step.input is not None and step.input.project is not None
+                    else None
+                ),
             }
             for step in procedure.steps
         ],
