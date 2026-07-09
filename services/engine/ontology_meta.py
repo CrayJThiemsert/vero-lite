@@ -63,6 +63,20 @@ class PropertyMeta(BaseModel):
     )
 
 
+class JoinKeyMeta(BaseModel):
+    """PLAN-0061 Step 1 (the ADR-016 Q4 amendment SD-D): one typed, execution-consumable
+    join key parsed from an authored ``"A.x -> B.y"`` declaration.
+
+    One parsed join shape, two declaring surfaces (``link_types.foreign_key`` and the
+    ADR-0027 quantity-binding ``join_path``) — the substrate the declarative
+    default join resolves its keys from. The authored YAML strings stay untouched
+    (projection-layer promotion only; the ADR-008 grammar is unchanged).
+    """
+
+    from_property: str = Field(..., description="Join column on the from/source object type")
+    to_property: str = Field(..., description="Join column on the to/target object type")
+
+
 class QuantityBinding(BaseModel):
     """ADR-0021 construct (b): one declared quantity-kind ⟂ unit binding."""
 
@@ -73,6 +87,14 @@ class QuantityBinding(BaseModel):
     )
     join_path: str | None = Field(
         default=None, description="ADR-0027 R2 (SD-5): optional join-path semantics for this kind"
+    )
+    join_key: JoinKeyMeta | None = Field(
+        default=None,
+        description=(
+            "PLAN-0061 SD-D: the typed join key parsed from join_path (None when "
+            "join_path is absent, malformed, or its from-side type prefix does not "
+            "match the owning object type — load never gets stricter, SD-4)"
+        ),
     )
 
 
@@ -106,6 +128,15 @@ class LinkTypeMeta(BaseModel):
     from_type: str = Field(..., description="Source object_type")
     to_type: str = Field(..., description="Target object_type")
     cardinality: str | None = None
+    foreign_key: JoinKeyMeta | None = Field(
+        default=None,
+        description=(
+            "PLAN-0061 SD-D: the typed join key parsed from the authored "
+            "foreign_key 'A.x -> B.y' string (None when absent, malformed, or the "
+            "type prefixes do not match from_type/to_type — load never gets "
+            "stricter, SD-4). Previously the loader dropped this YAML key."
+        ),
+    )
 
 
 class OntologyMeta(BaseModel):
@@ -121,6 +152,37 @@ class OntologyMeta(BaseModel):
 def ontology_path(vertical: str) -> Path:
     """Path to a vertical's source ontology YAML (matches the engine CLI)."""
     return Path("verticals") / vertical / "ontology" / f"{vertical}_v0.yaml"
+
+
+def _parse_join_key(
+    raw: Any, *, expect_from: str | None = None, expect_to: str | None = None
+) -> JoinKeyMeta | None:
+    """Parse an authored ``"A.x -> B.y"`` join declaration into :class:`JoinKeyMeta`.
+
+    The ONE parser both declaring surfaces share (PLAN-0061 SD-D: "one parsed join
+    shape, two declaring surfaces"). Returns ``None`` — never raises — when ``raw``
+    is not a string, is malformed (no ``->``, a side without exactly one
+    ``Type.property`` dot), or a type prefix does not match the expected
+    ``expect_from`` / ``expect_to`` (SD-4: ontology LOAD never gets stricter than
+    today; strictness bites only at the join-declaring load gate, which refuses
+    typed when a link it needs carries no parseable key).
+    """
+    if not isinstance(raw, str):
+        return None
+    left, arrow, right = raw.partition("->")
+    if not arrow:
+        return None
+    from_type, from_sep, from_property = left.strip().partition(".")
+    to_type, to_sep, to_property = right.strip().partition(".")
+    if not (from_sep and to_sep and from_type and from_property and to_type and to_property):
+        return None
+    if "." in from_property or "." in to_property:
+        return None
+    if expect_from is not None and from_type != expect_from:
+        return None
+    if expect_to is not None and to_type != expect_to:
+        return None
+    return JoinKeyMeta(from_property=from_property, to_property=to_property)
 
 
 def _synonyms(raw: Any) -> Synonyms | None:
@@ -171,6 +233,9 @@ def load_ontology_meta(vertical: str) -> OntologyMeta:
                 unit=str(b.get("unit", "")),
                 grain=str(b["grain"]) if b.get("grain") is not None else None,
                 join_path=str(b["join_path"]) if b.get("join_path") is not None else None,
+                # PLAN-0061 SD-D: the typed key; the from-side prefix must be the
+                # owning object type (this loop's `name`) — mismatch parses to None.
+                join_key=_parse_join_key(b.get("join_path"), expect_from=str(name)),
             )
             for b in (obj.get("quantity_bindings") or [])
             if isinstance(b, dict)
@@ -202,6 +267,13 @@ def load_ontology_meta(vertical: str) -> OntologyMeta:
                 from_type=str(link.get("from", "")),
                 to_type=str(link.get("to", "")),
                 cardinality=link.get("cardinality"),
+                # PLAN-0061 SD-D: promote the authored foreign_key (previously
+                # dropped here); prefixes must match the declared from/to types.
+                foreign_key=_parse_join_key(
+                    link.get("foreign_key"),
+                    expect_from=str(link.get("from", "")),
+                    expect_to=str(link.get("to", "")),
+                ),
             )
         )
 
