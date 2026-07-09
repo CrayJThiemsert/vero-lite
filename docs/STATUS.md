@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-09T14:27:35+07:00
-session: 115
-current_batch: "s115 (3rd batch): **PLAN-0061 (Q4 join/projection-grammar build) BUILT + CLOSED — all 8 ACs, 5 PRs (#664-#668)** — renders the Accepted ADR-016 Q4 amendment; a declaring query step is now declared + load-gated + execution-bound (the 2 v1 shapes); ALL offline/deterministic, NO live run (SD-6). Earlier s115: PLAN-0060 COMPLETE; Q4 amendment ACCEPTED; PLAN-0061 Ready (#655-#661)."
+last_updated: 2026-07-09T17:22:24+07:00
+session: 116
+current_batch: "s116 (hygiene sweep, docs-only): filed two shipped-but-misfiled plans to done/ — **PLAN-0019** (core-procedure baseline) + **PLAN-0027** (B-γ comparison baselines); artifacts long on disk, only the status flip + closeout git-mv were outstanding. Reconciled STATUS: corrected the stale Rock-3 'both UNDRAFTED' line (the Q4 join-grammar ADR is Accepted #659 + PLAN-0061 built+closed #664-#668) + trimmed the s115 focus block. NO code change; full suite unchanged (2452/7)."
 current_actor: code
-blocked_on: "Nothing blocking — PLAN-0061 COMPLETE (all 8 ACs) → done/ (#668); full suite 2452/7, ruff + mypy clean; main green + PROTECTED (5a264d6; merge tip 66896e8); 0 open PRs; loop-dispatcher DISABLED; MS-S1 idle (never touched this batch); dev DB unchanged."
-next_action: "NEXT = the Phase-3 per-vertical production-factory + seed-migration PLAN (parity-guarded, SD-C): migrate the 4 shipped verticals' hand-written seeds onto the declared join/project grammar — a NEW PLAN via `plan-drafter` (G2-gated for Code). Other candidates: hero-demo dossier backlog; filing-hygiene PLAN-0019/0027 misfiled."
-head_commit: 5a264d6
-recent_commits: [66896e8, 5a264d6, d5d0025, e04a00b, dba6b57, 0d738e1, 9c1c082, 7fb7497, 93e01d1, ce64e70]
+blocked_on: "Nothing blocking — hygiene sweep only (docs; no code touched, full suite unchanged at 2452/7); main green + PROTECTED; 0 open PRs; loop-dispatcher DISABLED; MS-S1 idle; dev DB unchanged."
+next_action: "NEXT = the Phase-3 per-vertical production-factory + seed-migration PLAN (parity-guarded, SD-C): migrate the 4 shipped verticals' hand-written query seeds onto the declared join/project grammar that PLAN-0061 built (the seeds stay execution-bound ✖ until migrated) — a NEW PLAN (PLAN-0062) via `plan-drafter` (G2-gated for Code). Other candidates: hero-demo dossier backlog (greenfield, ADR-heavy); plan-status decisions on PLAN-0004/0010/0012."
+head_commit: 4da573d
+recent_commits: [4da573d, 66896e8, 5a264d6, d5d0025, e04a00b, dba6b57, 0d738e1, 9c1c082, 7fb7497, 93e01d1]
 ---
 
 # vero-lite — Project Status
@@ -18,6 +18,18 @@ recent_commits: [66896e8, 5a264d6, d5d0025, e04a00b, dba6b57, 0d738e1, 9c1c082, 
 
 ## Current Focus
 
+> **Session 116, 2026-07-09 — hygiene sweep (this batch, docs-only).** Filed
+> two shipped-but-misfiled plans to `docs/plans/done/` — **PLAN-0019**
+> (core-procedure baseline) + **PLAN-0027** (B-γ comparison baselines); their
+> artifacts have been on disk + in use for sessions, only the status flip +
+> closeout `git mv` were outstanding. Reconciled this file: corrected the stale
+> Active-TODO **Rock-3** line (it still called the Q4 join-grammar ADR + grammar
+> PLAN "both UNDRAFTED" — the ADR is **Accepted #659** and **PLAN-0061 is
+> built+closed #664–#668**) and trimmed the s115 focus block. NO code change;
+> full offline suite unchanged (2452 / 7). NEXT: the **Phase-3 per-vertical
+> seed-migration PLAN** (PLAN-0062, via `plan-drafter`). Origin: s116
+> `next-work-analyst` re-rank → Cray picked hygiene-first, then Phase-3.
+
 > **Session 115, 2026-07-09 (head_commit `1de4d14` → `5a264d6`; merge tip
 > `66896e8`) — BUILD + LIVE-VALIDATE + CLOSE, the full join-grammar arc: (1)
 > PLAN-0060 "reactive judgment handler catalog" shipped end-to-end (all 7
@@ -26,123 +38,34 @@ recent_commits: [66896e8, 5a264d6, d5d0025, e04a00b, dba6b57, 0d738e1, 9c1c082, 
 > ACCEPTED (#659); (3) PLAN-0061 (join-grammar build) Ready (#661); (4)
 > PLAN-0061 BUILT + CLOSED (all 8 ACs, #664–#668) — Phases 1-2 of the
 > join-grammar sequence DONE.**
-> **What shipped (#655/#656/#657).** The REACTIVE recommender judgment prompt
-> now surfaces per-handler descriptions — an **"Available actions" catalog** —
-> so the model distinguishes handlers by MEANING (`emergency_source` vs
-> `reorder`) instead of bare NAME. The registry gains a keyword-only
-> `description` + a `handler_catalog(vertical)` accessor; the 4
-> handler-registering verticals (procurement / energy / supply_chain /
-> aquaculture — vet_clinic registers none) declare `ACTION_DESCRIPTIONS`; the
-> prompt renders the block inside the **TRUSTED system instruction** (same
-> trust class as the ADR-016 D5 goal), reaching **both** Pattern-B calls **and**
-> the PLAN-0020 skip path via the `build_structuring_messages` →
-> `build_reasoning_messages` composition. `generate_judgment` gains
-> `include_handler_catalog` (all 3 reasoning modes); a default-off
-> `handler_catalog_enabled` Settings flag is threaded at the reactive
-> `recommend()` call site. The `suggested_handler` enum is unchanged; flag-off
-> is byte-identical; the **GOVERNED path is untouched (governed ≠ generated).**
-> **#655 (`feat`, `4d54683` / merge `7c8f2e0`) —** PLAN-0060 Steps 1-6, the
-> offline binding bar: full offline suite **2389 passed / 7 skipped**; ruff +
-> mypy clean.
-> **AC-7 live re-validate (host-state MS-S1 `gpt-oss:20b`, Cray-gated §8,
-> evidence-only NOT a gate).** ONE controlled A/B on the session-114 CNC
-> line-down event — catalog **OFF → `reorder`** (reproduces the finding),
-> catalog **ON → `emergency_source`** (model engaged, confidence 1.0); same
-> event, the flag the only moved variable; pass/fail pre-committed before the
-> run, each arm fired once. Recorded in
-> `docs/logs/2026-07-09-reactive-handler-catalog-live-revalidate.md`.
-> **#656 (`feat`, `a81f05a` / merge `468c3c9`) —** SD-4 default flip
-> `handler_catalog_enabled` False→True after the AC-7 PASS (only `recommend()`
-> reads the flag; `generate_judgment`'s own param default stays False so the
-> governed path + benchmark harness are unaffected; flag-off stays available)
-> + the docs/logs re-validate note.
-> **#657 (`docs(plans):` `f6a2217` / merge `0c68d58`) —** PLAN-0060 COMPLETE
-> (all 7 ACs) → `docs/plans/done/`.
-> **Verification:** offline suite is the binding bar (**2389 / 7**, green every
-> PR under the required CI `gate`); the live run is confirming evidence only
-> (§8). `main` **green + PROTECTED** (substantive tip `a38acde`; merge tip
-> `dbf25e2`); 0 open PRs after merge; `loop-dispatcher` **DISABLED**; MS-S1
-> warmed for AC-7 then idle (`keep_alive` expiring); dev DB unchanged;
-> AI-assisted (Claude Code, session 115), no `Co-Authored-By` per §7. Origin:
-> session-115 `next-work-analyst` re-rank → Cray picked PLAN-0060 → built
-> Steps 1-6 → live re-validate PASS → default flip → close.
-> **Then the Q4 join/projection-grammar ADR-016 amendment ACCEPTED (#659,
-> `a38acde`).** Cray next picked the Q4 join-grammar ADR; grounded via
-> `explore-research` (the hole is real: `StepInput.reads` is names-only,
-> `QueryStepExecutor` refuses `len(reads)>1` typed). `plan-drafter`-authored
-> amendment appended to ADR-016 (the D2-Amendment in-place precedent), Code
-> R2-verified every citation on disk (correcting a dispatch over-claim on the
-> procurement join surface). **SD-A HYBRID surface** (ontology
-> `link_types.foreign_key` default join [governed] + typed per-step override
-> for undeclarable shapes) / **SD-B v1 = the 2 shipped shapes** (equi-join
-> enrichment + latest-per-group projection; general aggregation deferred to the
-> walled-off `nl_query` surface) / **SD-C co-exist + parity-guarded migration
-> (Phase 3, no force-retire)** / **SD-D (entailed)** promote
-> `LinkTypeMeta.foreign_key` + parse `join_path` into typed executable form;
-> **OQ-1..4 ratified as-rec** (extend `StepInput`; no repair loop v1;
-> join+projection ONLY [computation stays downstream/seed → `intake` migrates
-> partially]; warn-first override validation). **NO LLM in the read path**
-> (LOCKED-6); the single `read_bound_violation` bound carried (load==run, no
-> drift). **Sequence:** this amendment → build PLAN (grammar schema + executor
-> + SD-D promotion) → Phase-3 per-vertical migration. **The build PLAN landed
-> Ready: PLAN-0061 (#661, `ad0f543`) — `plan-drafter`-authored, Code R2-verified
-> (incl. the drafter's self-corrections: `STEP_GOVERNANCE_FIELDS` home,
-> `plan_read` reads[0]-only bound-check, the `LinkTypeMeta` FK-drop loader);
-> SD-1..6 ratified as-rec (lean 2-construct schema; 4 phases, 1 PR each;
-> offline-only, NO live run per SD-6).**
-> **Then Cray picked "execute PLAN-0061 Steps 1-4" — PLAN-0061 BUILT + CLOSED
-> end-to-end (all 8 ACs; 5 PRs #664–#668),** the un-gated Code build of the
-> Ready PLAN (§6 "Steps execute directly"); ALL offline/deterministic, NO live
-> run (SD-6 — MS-S1 never touched). **#664 (`978caca`, Step 1/A):** the SD-D
-> substrate — `JoinKeyMeta` + ONE shared `A.x -> B.y` parser in
-> `ontology_meta.py`; `LinkTypeMeta.foreign_key` now populated (the loader
-> previously DROPPED the authored YAML key) + `QuantityBinding.join_key`
-> parsed from the ADR-0027 `join_path` string (SD-4: malformed → None).
-> **#665 (`93e01d1`+`7fb7497`, Step 2/B):** the SD-1
-> lean two-construct `JoinSpec`/`ProjectSpec` schema on `StepInput`
-> (`extra="forbid"`) + H-governance (`join`/`project` into
-> `STEP_GOVERNANCE_FIELDS` + lift-strip + pin — a mid-flight edit fails
-> CLOSED at resume) + the structural load gate via an additive
-> `validate_read_bindings` `meta=` (REQUIRED iff a step declares — fail-loud):
-> typed-FK resolution, WARN-first on/fuse overrides (OQ-4, new
-> `ProcedureWarning`), SD-1/SD-5/OQ-3 checks. **#666 (`0d738e1`, Step
-> 3/C):** compile + execute — `ReadRefusalKind.JOIN_SHAPE_VIOLATION` (OQ-1);
-> `plan_read` gains `meta=`, compiling via the load gate's OWN validation
-> (one decision surface) + bound-checking EVERY declared read;
-> `QueryStepExecutor` runs the SD-1 pinned pipeline (one `fetch_objects` per
-> declared read [D-N2], ordered joins, SD-5 argmax + tie-break + provenance,
-> fuse singleton refusal); the single-read path stays byte-identical. **#667 (`e04a00b`, Step 4/D):** both
-> shapes e2e through `run_procedure` over the REAL energy + procurement
-> ontologies (SD-3 test-module fixtures, ZERO vertical-file change); the
-> DB-backed `run_procedure_persisted` test proves JSONB-safety + the
-> join/project pin round-trips into the stored governance hash. **Full suite
-> 2452 passed / 7 skipped; repo-wide ruff + mypy clean.** **#668
-> (`docs(plans):` `5a264d6`):** Ready → Complete → `done/`. **Honest frame:**
-> a DECLARING query step = declared ✔ · load-gated ✔ · execution-bound ✔
-> (the 2 v1 shapes); the 4 shipped verticals' hand-written seeds stay
-> execution-bound ✖ until the Phase-3 parity-guarded migration PLAN (SD-C)
-> lands. **Verification:** the offline oracle was the ENTIRE bar (SD-6 — no
-> LLM in the read path); every PR green through the required CI `gate`. Also
-> on `main` this window (NOT this batch's work): #663 `render-handoff` skill
-> (`bb459f4`) — a PARALLEL session's PR. `main` green + PROTECTED
-> (substantive tip `5a264d6`; merge tip `66896e8`); 0 open PRs;
-> loop-dispatcher DISABLED; MS-S1 idle; dev DB unchanged. NEXT: the Phase-3
-> per-vertical factory + seed-migration PLAN (parity-guarded, SD-C — a new
-> PLAN via `plan-drafter`).
+> Per-PR / per-SD detail for all three sub-batches (#655-#668) lives in the
+> Recent-Decisions rows below + the `done/` plans (`0060`, `0061`) + the
+> ADR-016 Q4 amendment. Headlines: **PLAN-0060** made the reactive prompt show
+> per-handler descriptions (an "Available actions" catalog) so the model picks
+> by MEANING; default flipped **ON** after a Cray-gated live A/B PASS (§8;
+> OFF to `reorder` / ON to `emergency_source`); GOVERNED path untouched
+> (governed ≠ generated). **Q4 amendment (#659):** SD-A HYBRID surface / SD-B
+> 2 v1 shapes (equi-join + latest-per-group) / SD-C co-exist + parity migration
+> (Phase 3) / SD-D FK + `join_path` → typed; OQ-1..4 ratified. **PLAN-0061
+> (#664-#668):** grammar schema (`JoinSpec`/`ProjectSpec`) + H-governance pin +
+> load gate + compile/execute (`QueryStepExecutor`, `JOIN_SHAPE_VIOLATION`),
+> all offline (SD-6, NO live run), full suite **2452 / 7**. **Honest frame:**
+> a DECLARING query step is declared ✔ · load-gated ✔ · execution-bound ✔ for
+> the 2 v1 shapes; the 4 shipped verticals keep hand-written seeds
+> (execution-bound ✖) until the Phase-3 parity-guarded migration PLAN (SD-C)
+> lands — that is NEXT. `main` green + PROTECTED; 0 open PRs; loop-dispatcher
+> DISABLED; MS-S1 idle; dev DB unchanged. Also on `main` this window (not this
+> work): #663 `render-handoff` skill (`bb459f4`) — a parallel-session PR.
 
-> _Rotation note (session-115 3rd-batch reconcile, 2026-07-09): the single
-> **Session 115** CF block was EXTENDED in place to cover the full session arc
-> (PLAN-0060 COMPLETE → Q4 ADR-016 amendment ACCEPTED → PLAN-0061 Ready →
-> PLAN-0061 BUILT + CLOSED, #664–#668); no CF block rotated (the narrowed
-> 1-block window per the s95–s114 R1-over-R2 precedent holds). 1 new RD row
-> added (PLAN-0061 COMPLETE) so the oldest — the 2026-07-07 [PLAN-0055 Phase B
-> Steps 6–7 BUILT, session 108, #612/#614/#615] row — rotated verbatim to
-> [`docs/status-archive/2026-h1-status.md`](status-archive/2026-h1-status.md)
-> to hold the RD table at 10 (a glued `## In-Flight Discussions` heading on
-> that row's line was restored to its own line). The prior per-reconcile
-> rotation notes (the s115 2nd-batch note; the s94–s102 prune record) were
-> pruned (R4: self-referential meta-notes, not session narrative — no
-> separate archive append). Per the STATUS.md Rotation Policy (R1/R2/R4)._
+> _Rotation note (session-116 hygiene reconcile, 2026-07-09): the s115 CF
+> "What shipped" per-PR detail was COMPRESSED in place (full detail retained in
+> the Recent-Decisions rows + the `done/` plans) and a short s116 block
+> prepended; no CF block rotated to archive, no RD row added (a hygiene sweep is
+> not a Recent Decision, so the RD table holds at 10). The prior s115 3rd-batch
+> rotation note was pruned (R4: self-referential meta-note). NOTE: this file is
+> under the 64 KB byte ceiling but over the Read-tool 25k-token whole-file cap —
+> a deeper rotate (prune the long In-Flight Discussions entries) is a future
+> reconcile target. Per the STATUS.md Rotation Policy (R1/R2/R4)._
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
@@ -192,7 +115,7 @@ below, and git history.
 - [x] **PLAN-0051 (reason-then-structure A/B — Wave-2(c)) — COMPLETE + CLOSED (s99, #565–#570).** Operationalized July-2026 research finding #2 (reason-then-structure lifts constrained-decoding accuracy 10-30%) as a **3-arm A/B** (`baseline` / `field_order_flip` / `two_pass`) on the two remaining single-pass structured-output call sites — **classify** (`classify_narrative`) + **nl_query** (`_translate`); anomaly recommender out of scope (already two-pass Pattern B). Plumbing (#566/#569, byte-identical `baseline` default) + 2 A/B corpora (classify reuses PLAN-0041's 26-narrative set #567; nl_query 27 hand-authored gold Qs #568) + skip-by-default A/B harness (#570). **Live run (Step 5b, host-state §8, Cray go, N=3 both sites, 2:17:02 on `gpt-oss:20b`): NO measurable lift** — classify baseline at the 11/11 ceiling (flip +0, two_pass −1; Arm-B moat brake held 11/11 every arm/rep); nl_query worst-rep mean 0.978 baseline vs 0.965–0.978 variants (hard-class Δ +0.000). **SD-6 = REJECT both variants, keep `baseline`; NO production default changed; NO new ADR (SD-5).** The research "10-30% lift" did NOT replicate (both paths already strongly prompted; `gpt-oss:20b` extracts structure well) — a **valid null result**; the plumbing + corpora + harness remain reusable scaffolding behind the `baseline`-default `arm` param. Offline AC-1..AC-5 (binding bar) MET; AC-6/AC-7 (live) confirming. Full record `docs/logs/2026-07-05-plan0051-live-ab-results.md`; PLAN → `done/0051-*.md`. *(s99; plan-drafter drafted → Cray ratified SD-1..SD-6 as-rec → Code R2+commit+live-run; `loop-dispatcher` DISABLED; MS-S1 idle)*
 - [x] **ADR-0027 R2 build → PLAN-0050 (the semantic-enrichment-fields follow-up) — COMPLETE + CLOSED (s98, #553–#563).** The 4 OPTIONAL constructs (synonyms th/en · sample_values · verified_queries · metric grain/join_path) BUILT end-to-end (8 steps / 8 ACs): L1 `ontology_schema.json` (#555) + Pydantic projection `ontology_meta.py` typed `Synonyms`/`VerifiedQuery` + optional attrs on PropertyMeta/ObjectTypeMeta/QuantityBinding (#556) + L2 `_check_enrichment` validators (#557, SD-C samples ⊆ enum, SD-5 join_path) + D2 backward-compat GATE (#558, byte-identical/git-clean) + energy-v1 (#559) + supply-chain-v1 (#560) backfills + the emitter fix (#562). **Disclosed deviation:** the "shipped R1 emitter consumes it for free" premise was WRONG — the shipped emitter didn't read the fields; surfaced as ADR-0027 erratum #561 → Cray-authorized emitter change #562 (IN-1 escape hatch, gap surfaced not silently patched). PLAN → `done/0050-ontology-semantic-enrichment-build.md` (#563). Backward-compat HARD INVARIANT held; governed≠generated; no Alembic migration; ~+15 tests, CI-green per PR. *(s98; ADR-0027; drafted→ratified→built→closed; plan-drafter drafted → Code R2+commit → Cray ratified; pairs with Rock-3 Box-4 residue below)*
 - [x] **Rock 2 / O-3 — AT-2 / managerial layer — ADR-0025 ACCEPTED (#463, s84) + follow-on build PLAN COMPLETE (PLAN-0042, s86).** The Box-3 "Action = contract" layer (DOA/SoD/scored-rule/compliance). **ADR-0025 (Accepted)** decided: type AT-2 content (D2 authoritative discriminated `Step.governance_content` keyed to `gate_kind`, not the facet), bypass structurally unrepresentable (D3), **close the live run-gate AT-2-blindness defect** (D5), **defer the generator** under a CI-enforced N≥2 re-trigger (D7; AT-2 = N=1). **The follow-on build PLAN = PLAN-0042, which shipped + closed in session 86** (`a958e6b` git-mv → `done/`, "#470/#471/#472"): procurement `procedures.yaml` now carries 4 typed `governance_content`/`separation_of_duties` blocks; `draft.py::derive_governance_todo` handles all 3 AT-2 gate kinds. **Superseded** by newer work (this line was a STATUS TODO not reconciled since s84 — classify *not* an error). **Residual Rock-2 remainder:** only the deferred OQ-3 run-executor + the N≥3 Box-4 facet. *(s84 ADR-0025; PLAN-0042 built+closed s86; [[project_vero_ultimate_target_generative_procedures]])*
-- [ ] **Rock 3 — Box-4 economics + the procedure→ontology data-binding gap (O-2; Q3 ADR Accepted + BUILD COMPLETE s93 — open only for the residues).** (1) **Q3 ontology data-binding — DONE end-to-end:** the ADR-016 D2+D3 amendment (Accepted s93, #505) is now **BUILT + CLOSED** (PLAN-0046 → `done/`; #511 feat `878b517` / #512 close `eb63692`, s93 cont. 2026-07-02): `StepInput.reads: list[str]` + `Agent.allowed.object_types` + the `validate_read_bindings` **LOAD-time consistency/scoping gate** (`reads ∈ ontology ∩ allowlist`, SD-1 Option A) wired at both production pre-flight sites; `reads` H-governed via `STEP_GOVERNANCE_FIELDS` + the `lift_to_step` draft-strip hardening; 12 new tests, offline suite 2066 passed / 5 skipped. v1 = a typed read contract + load-gate, **NOT** runtime-enforced parity — the declared==dispatched teeth for the read side then **SHIPPED as PLAN-0048** (the "Q4 generic run-consume query executor", `docs/plans/done/0048-q4-generic-query-executor.md`, s96, #533–#539; all 15 ACs, Complete 2026-07-04): an engine-owned deterministic `QueryStepExecutor` (`services/engine/procedures/query_step.py`) giving *plain declared reads* the **declared ✔ · load-gated ✔ · execution-bound ✔** frame + a typed auditable refusal (no silent `[]`). **The REAL remaining Q4 residue** (both **UNDRAFTED**): the four shipped verticals are NOT yet on the generic executor — their query steps encode projections/joins the spec cannot yet declare (PLAN-0048 fact-pack 8 / LOCKED-9: hand-written seeds stay **execution-bound ✖** until migrated), so getting them onto it needs **(a) a join/projection-grammar ADR (an ADR-016 amendment)** + **(b) the SD-4 per-vertical production-factory PLAN**. (2) **Box 4 (Profit Formula) — STILL DEFERRED (N≥3, unchanged).** The reasoning trace is operational, not economic — tie each action to ฿ impact (avoided outage / margin / ROI). Prepare by capturing the economic dimension as prose when hand-authoring verticals + proving the ฿ framing in the demo; type an economic-impact facet only after **N≥3** verticals triangulate it (the ADR-016 Q3 amendment left it a self-cancelling N≥3 marker). *(s84 strategy discussion + the 3-layer / ontology-binding diagram; Q3 ADR Accepted s93 #505; Q3 build complete + PLAN-0046 closed s93 cont. #511/#512; **Q4 executor SHIPPED = PLAN-0048 closed s96 #533–#539** [reconciled 2026-07-08] — TODO stays open ONLY for the join/projection-grammar ADR + SD-4 factory PLAN [both undrafted] + the Box-4 facet)*
+- [ ] **Rock 3 — Box-4 economics + the procedure→ontology data-binding gap (O-2; Q3 ADR Accepted + BUILD COMPLETE s93 — open only for the residues).** (1) **Q3 ontology data-binding — DONE end-to-end:** the ADR-016 D2+D3 amendment (Accepted s93, #505) is now **BUILT + CLOSED** (PLAN-0046 → `done/`; #511 feat `878b517` / #512 close `eb63692`, s93 cont. 2026-07-02): `StepInput.reads: list[str]` + `Agent.allowed.object_types` + the `validate_read_bindings` **LOAD-time consistency/scoping gate** (`reads ∈ ontology ∩ allowlist`, SD-1 Option A) wired at both production pre-flight sites; `reads` H-governed via `STEP_GOVERNANCE_FIELDS` + the `lift_to_step` draft-strip hardening; 12 new tests, offline suite 2066 passed / 5 skipped. v1 = a typed read contract + load-gate, **NOT** runtime-enforced parity — the declared==dispatched teeth for the read side then **SHIPPED as PLAN-0048** (the "Q4 generic run-consume query executor", `docs/plans/done/0048-q4-generic-query-executor.md`, s96, #533–#539; all 15 ACs, Complete 2026-07-04): an engine-owned deterministic `QueryStepExecutor` (`services/engine/procedures/query_step.py`) giving *plain declared reads* the **declared ✔ · load-gated ✔ · execution-bound ✔** frame + a typed auditable refusal (no silent `[]`). **The remaining Q4 residue** (the ADR + grammar build now DONE — only the migration PLAN remains): the four shipped verticals are NOT yet on the generic executor — their query steps encode projections/joins the spec could not yet declare (PLAN-0048 fact-pack 8 / LOCKED-9: hand-written seeds stay **execution-bound ✖** until migrated). The join/projection-grammar ADR is now **Accepted** (ADR-016 Q4 amendment, #659) + the grammar is **BUILT + CLOSED** (PLAN-0061, #664–#668) — a declaring step is execution-bound ✔ for the 2 v1 shapes; only **(b) the per-vertical production-factory + seed-migration PLAN** (Phase 3 = **PLAN-0062, undrafted**) remains, to migrate the four verticals' hand-written seeds onto the grammar. (2) **Box 4 (Profit Formula) — STILL DEFERRED (N≥3, unchanged).** The reasoning trace is operational, not economic — tie each action to ฿ impact (avoided outage / margin / ROI). Prepare by capturing the economic dimension as prose when hand-authoring verticals + proving the ฿ framing in the demo; type an economic-impact facet only after **N≥3** verticals triangulate it (the ADR-016 Q3 amendment left it a self-cancelling N≥3 marker). *(s84 strategy discussion + the 3-layer / ontology-binding diagram; Q3 ADR Accepted s93 #505; Q3 build complete + PLAN-0046 closed s93 cont. #511/#512; **Q4 executor SHIPPED = PLAN-0048 closed s96 #533–#539** [reconciled 2026-07-08]; **Q4 join-grammar ADR Accepted #659 + grammar built PLAN-0061 #664–#668** [reconciled 2026-07-09 s116] — TODO stays open ONLY for the Phase-3 per-vertical factory + seed-migration PLAN [PLAN-0062, undrafted] + the Box-4 facet)*
 - [ ] **Standard partner-intake form (template candidate — Cray observation, s93 partner-sim run-1).** Generalize the 6-ask structure (+ the TWP package's §1–§10 answer shape as a SYNTHETIC-bannered worked example) into a stakeholder-facing standard intake form per vertical, so partners can prepare narrative context for vero-lite to generate workflow pipelines more accurately. Template lineage = the partner-facing ONE-PAGER (full taxonomy allowed for real partners), NOT the R1-clean variant (partner-sim-only screen). Pairs with the partner-trial-readiness discussion + ADR-016 Phase 2 intake. *(s93; ADR-0020 run-1)*
 - [ ] **Rock 4 — Cowork deep research DELIVERED → O-sequence locked, O-1 done, O-3 Accepted (s84).** The 4-box + Palantir + agentic research landed (`docs/research/private/2026-06-28-rock4-4box-palantir-agentic-research.md`; ~48 sources, vendor-vs-independent tagged, adversarially balanced; central finding = the evidence asymmetry [bullish ROI all vendor, independent mostly skeptical]) → Cray **locked O-1 → O-3 → O-2 → O-4**. **O-1 (Box-4 ฿ pitch artifact) DONE** (conservative ฿ + impact-ledger mock; `docs/strategy/private/2026-06-28-box4-roi-spine-impact-ledger-pitch.md`). **O-3 = ADR-0025 Accepted** (see Rock 2). **Remaining:** **O-2** (economic-impact facet + Q3 ontology data-binding = Rock 3, after N≥3) · **O-4** (agent-interop North-Star, vision only). [[reference_rock4_4box_palantir_demo_research]]. *(s84 Cray ask)*
 - [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten (full table: PLAN-0005 §8.1): rule-based recommender → **ADR-010 ACCEPTED (2026-05-22) → PLAN-0006 next** (LLM reasoning hook); minimal approval gate → **ADR-011+** (audit framework — trigger: first design-partner data / PDPA review); no mapping layer → **dbt/SQLMesh** (trigger: first non-synthetic source); hand-authored ORM → **"ORM emitter"** Rule-of-Three candidate (trigger: 3rd vertical / DDL↔ORM parity-test drift); base Postgres only → **PLAN-002** (pgvector/AGE — trigger: semantic + graph features); explicit registry → **ADR-006 D3 L2** (trigger: vertical #2/#3 or `new-vertical` generator). *(per Cray note 2026-05-21)*
