@@ -1,7 +1,7 @@
 ---
 plan: PLAN-0027
 title: B-γ comparison methodology pre-registration + offline build plan — governed-procedure stack vs raw text-to-SQL vs lean RAG (PLAN-0019 Step B-γ / AC B-3)
-status: Ready for execution — §3–§4 ratified (Cray, 2026-06-16)
+status: Complete — shipped + filed to done/ (session 116, 2026-07-09); AC-1..AC-7 met (benchmarks/procedure_comparison/ + REPORT.md §B-3 three-arm B-γ, scored 2026-06-16); §3–§4 ratified (Cray, 2026-06-16)
 owner: Claude Code
 created: 2026-06-16
 related_plans:
