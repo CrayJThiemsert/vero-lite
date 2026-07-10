@@ -38,6 +38,10 @@ from services.engine.procedures.spec import (
     StepKind,
     load_procedures,
 )
+from verticals.aquaculture.data_adapter.synthetic import DO_CRASH_MG_L
+from verticals.aquaculture.data_adapter.synthetic import (
+    operational_events as aquaculture_events,
+)
 from verticals.energy.data_adapter.synthetic import operational_events
 from verticals.supply_chain.data_adapter.synthetic import (
     operational_events as supply_chain_events,
@@ -67,6 +71,17 @@ _SUPPLY_CHAIN_READ_INPUT: dict[str, Any] = {
     "project": {"latest_per": "event_concerns_shipment", "order_by": "occurred_at"},
 }
 _SC_GROUP_KEY = "shipment_id"
+
+# The aquaculture ``read_do`` migration (mirrors verticals/aquaculture/procedures.yaml
+# after PLAN-0062 PR3): latest OperationalEvent (event_type=reading) per Pond via the
+# declared ``event_emitted_by_pond`` link, by ``occurred_at``. Third instance of the same
+# shape -- the Rule-of-Three sanity check on the harness itself.
+_AQUACULTURE_READ_INPUT: dict[str, Any] = {
+    "reads": ["OperationalEvent"],
+    "where": {"event_type": "reading"},
+    "project": {"latest_per": "event_emitted_by_pond", "order_by": "occurred_at"},
+}
+_AQ_GROUP_KEY = "pond_id"
 
 
 class _FakeAdapter:
@@ -403,6 +418,100 @@ async def test_supply_chain_read_temps_parity_real_synthetic_data() -> None:
     assert reference["shipment-pharma-01"]["event_id"] == "event-reading-03"
     # frozen-01's NEWER door-open alarm did not displace its last reading
     assert reference["shipment-frozen-01"]["event_id"] == "event-reading-02"
+    assert all(row["event_type"] == "reading" for row in reference.values())
+
+
+# --------------------------------------------------------------------------- #
+# AC-4 — aquaculture ``read_do`` parity (PR3): the SAME harness, a third link
+# --------------------------------------------------------------------------- #
+
+
+async def test_aquaculture_read_do_parity_sd5_edges() -> None:
+    """The SD-5 edges over ``event_emitted_by_pond``, plus the edge aquaculture makes
+    vivid: a pond whose EARLIER reading sits in the watch band and whose LATEST reading
+    is a breach. Latest-per-group must pick the breach — a projection bug here would
+    silently downgrade a crash to a watch."""
+    data = {
+        "OperationalEvent": [
+            # pond-a: 4.6 (watch band) superseded by a 3.2 crash — the verdict-flipping edge
+            {
+                "event_id": "evt-a1",
+                "event_type": "reading",
+                "measured_value": 4.6,
+                "occurred_at": "2026-06-02T01:30:00Z",
+                "pond_id": "pond-a",
+            },
+            {
+                "event_id": "evt-a2",
+                "event_type": "reading",
+                "measured_value": 3.2,
+                "occurred_at": "2026-06-02T02:00:00Z",
+                "pond_id": "pond-a",
+            },
+            # a stalled-aerator alarm NEWER than pond-a's crash, with no measured_value
+            {
+                "event_id": "evt-alarm",
+                "event_type": "alarm",
+                "occurred_at": "2026-06-02T02:15:00Z",
+                "pond_id": "pond-a",
+            },
+            # pond-b: an order-by TIE — tie-break picks max event_id (evt-b2)
+            {
+                "event_id": "evt-b1",
+                "event_type": "reading",
+                "measured_value": 6.1,
+                "occurred_at": "2026-06-02T01:00:00Z",
+                "pond_id": "pond-b",
+            },
+            {
+                "event_id": "evt-b2",
+                "event_type": "reading",
+                "measured_value": 6.4,
+                "occurred_at": "2026-06-02T01:00:00Z",
+                "pond_id": "pond-b",
+            },
+            # missing group key (no pond_id) — excluded, never guessed
+            {
+                "event_id": "evt-miss-key",
+                "event_type": "reading",
+                "measured_value": 5.0,
+                "occurred_at": "2026-06-02T03:00:00Z",
+            },
+        ]
+    }
+    reference = await assert_read_step_parity(
+        _AQUACULTURE_READ_INPUT,
+        data,
+        vertical="aquaculture",
+        where={"event_type": "reading"},
+        group_key=_AQ_GROUP_KEY,
+        order_by=_ORDER_BY,
+        tie_break=_TIE_BREAK,
+    )
+    assert set(reference) == {"pond-a", "pond-b"}
+    assert reference["pond-a"]["event_id"] == "evt-a2"  # the crash, NOT the 4.6 watch reading
+    assert reference["pond-b"]["event_id"] == "evt-b2"  # order-by tie -> max event_id
+
+
+async def test_aquaculture_read_do_parity_real_synthetic_data() -> None:
+    """The declared grammar over the REAL DO ``operational_events()`` set equals the
+    reference: pond-07's 4.6 mg/L watch reading is superseded by the 3.2 mg/L crash, and
+    the stalled-aerator alarm never displaces a reading."""
+    events = json.loads(json.dumps(aquaculture_events(), default=str))
+    data = {"OperationalEvent": events}
+    reference = await assert_read_step_parity(
+        _AQUACULTURE_READ_INPUT,
+        data,
+        vertical="aquaculture",
+        where={"event_type": "reading"},
+        group_key=_AQ_GROUP_KEY,
+        order_by=_ORDER_BY,
+        tie_break=_TIE_BREAK,
+    )
+    assert reference["pond-07"]["event_id"] == "event-reading-do-crash"
+    assert reference["pond-07"]["measured_value"] == DO_CRASH_MG_L
+    # the healthy ponds keep their nominal readings; pond-05 emits no events -> absent
+    assert set(reference) == {"pond-03", "pond-07", "pond-11"}
     assert all(row["event_type"] == "reading" for row in reference.values())
 
 

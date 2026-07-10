@@ -63,13 +63,27 @@ procedures:
     steps:
       - step_id: read_do
         name: Read dissolved oxygen
-        description: Latest DO reading per active Pond.
+        description: Latest reading per Pond (event_type=reading), by occurred_at.
         kind: query
+        input:                          # PLAN-0062 Q4 Phase-3: the declared latest-per-group grammar
+          reads: [OperationalEvent]
+          where:
+            event_type: reading         # load-bearing: the stalled-aerator alarm carries NO
+                                        # measured_value, and an unfiltered latest-per-group
+                                        # would hand the judge an unreadable row
+          project:
+            latest_per: event_emitted_by_pond   # FK OperationalEvent.pond_id -> Pond.pond_id
+            order_by: occurred_at
         facet:
           decision_condition: { gate_kind: none }
           llm_assist: null
-          input: "latest dissolved-oxygen reading per active Pond"
-          output: "DO reading per active Pond"
+          # PLAN-0062: the typed reads/project above are the source of truth (D2-A2); this prose
+          # is synced to it. The prior "active Pond"/"dissolved-oxygen" qualifiers are dropped —
+          # no status-filter join was ever implemented (SD-4), and the judge grades measured_value
+          # regardless of unit. Latest-per-group is what decides pond-07: its 4.6 mg/L watch
+          # reading is SUPERSEDED by the 3.2 mg/L crash, so the verdict is breach, not watch.
+          input: "latest OperationalEvent (event_type=reading) per Pond via event_emitted_by_pond, by occurred_at"
+          output: "one latest reading row per Pond"
       - step_id: judge
         name: Judge vs threshold
         description: >-
