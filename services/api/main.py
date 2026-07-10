@@ -105,13 +105,22 @@ async def _register_procurement_executors() -> None:
     await register_procurement_procedure_executors()
 
 
+async def _register_supply_chain_executors() -> None:
+    from verticals.supply_chain.procedures_factory import (
+        register_supply_chain_procedure_executors,
+    )
+
+    await register_supply_chain_procedure_executors()
+
+
 _PROCEDURE_EXECUTOR_REGISTRARS: dict[str, Callable[[], Awaitable[None]]] = {
     "energy": _register_energy_executors,
     "procurement": _register_procurement_executors,
+    "supply_chain": _register_supply_chain_executors,
 }
 """Per-vertical procedure-executor factory registration (PLAN-0062 AC-5). Imports stay
 LAZY inside each registrar so booting one vertical never imports another's harness.
-supply_chain / aquaculture join at PLAN-0062 PR2 / PR3."""
+aquaculture joins at PLAN-0062 PR3."""
 
 
 @asynccontextmanager
