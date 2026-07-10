@@ -222,8 +222,22 @@ def suspended_step_result(step_results: list[StepResult]) -> StepResult | None:
     run sorts the later one first, and ``step_results[-1]`` then names a *completed*
     step. Resuming from it re-runs an already-executed gate (duplicate side effects)
     or fails closed on its undecided proposals.
+
+    Fails CLOSED on ambiguity. A run advances one gate at a time, so at most one
+    step result is unresumed; two means the persisted rows are inconsistent. Picking
+    either would resume from the wrong step — firing a handler a human never
+    approved, or silently skipping one they did. Raise instead of guessing.
     """
-    return next((s for s in step_results if s.status in _UNRESUMED_STATUSES), None)
+    unresumed = [s for s in step_results if s.status in _UNRESUMED_STATUSES]
+    if len(unresumed) > 1:
+        run_id = unresumed[0].run_id
+        names = ", ".join(f"{s.step_id}({s.status})" for s in unresumed)
+        raise ProcedureError(
+            f"run '{run_id}': {len(unresumed)} step results are unresumed [{names}] — "
+            "exactly one is expected. The persisted run is inconsistent; it cannot be "
+            "resumed or projected without guessing which gate a human decided."
+        )
+    return unresumed[0] if unresumed else None
 
 
 def _has_decidable_proposals(artifact: dict[str, Any]) -> bool:

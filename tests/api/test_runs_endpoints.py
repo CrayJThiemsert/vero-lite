@@ -362,3 +362,54 @@ async def test_cancel_non_waiting_human_is_409(wired_client: AsyncClient, runs_a
     second = await wired_client.post(f"/runs/{run_id}/cancel", headers=HEADERS)
     assert second.status_code == 409
     assert "not cancellable" in second.json()["detail"]
+
+
+async def test_run_view_finds_the_suspended_step_under_a_backward_clock_step(
+    wired_client: AsyncClient, runs_auth: None
+) -> None:
+    """The read projection identifies the gate by STATUS, not by list position.
+
+    load_run orders step results on created_at — a wall-clock column that a
+    backward clock step (NTP correction, VM/WSL2 host resync) can invert. Taking
+    step_results[-1] would name a completed step and expose ITS (empty) output
+    as the pending proposals, hiding the gate a human still has to decide.
+    """
+    run_id = (
+        await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS)
+    ).json()["run_id"]
+
+    # A second engine (no schema reset — the first was this test's fixture engine):
+    # backdate the gated step so the wall-clock ORDER BY no longer yields
+    # execution order.
+    eng = await create_test_engine()
+    try:
+        async with eng.begin() as conn:
+            await conn.execute(
+                sa.text(
+                    "UPDATE step_results SET created_at = created_at - interval '1 second' "
+                    "WHERE run_id = :run_id AND step_id = :step_id"
+                ),
+                {"run_id": run_id, "step_id": _GATED_STEP},
+            )
+        async with eng.connect() as conn:
+            ordered = [
+                row[0]
+                for row in await conn.execute(
+                    sa.text(
+                        "SELECT step_id FROM step_results WHERE run_id = :run_id "
+                        "ORDER BY created_at, step_result_id"
+                    ),
+                    {"run_id": run_id},
+                )
+            ]
+    finally:
+        await eng.dispose()
+    assert len(ordered) > 1, "the run must have a completed prefix for this to be meaningful"
+    assert ordered[-1] != _GATED_STEP, "precondition: the gate no longer sorts last"
+
+    detail = await wired_client.get(f"/runs/{run_id}")
+    assert detail.status_code == 200
+    body = detail.json()
+    assert body["status"] == "waiting_human"
+    assert body["suspended_step"] == _GATED_STEP
+    assert len(body["proposals"]) == 1, "the pending proposal is still exposed for decision"
