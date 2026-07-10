@@ -181,6 +181,54 @@ async def test_resume_across_fresh_session_completes(db_engine: AsyncEngine) -> 
     assert len(reloaded.step_results) == 3
 
 
+async def test_resume_finds_the_suspended_step_under_a_backward_clock_step(
+    db_engine: AsyncEngine,
+) -> None:
+    """``load_run`` orders step results by ``created_at`` — a WALL-CLOCK column. A
+    backward clock step (NTP correction, VM/WSL2 host resync) stamps the later step
+    with an earlier time, so the suspended step is no longer last. Resume must find
+    it by STATUS: picking ``step_results[-1]`` would re-run the completed ``read``
+    prefix and re-suspend at the gate, leaving the run stuck at ``waiting_human``.
+    """
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    procedure = _gated_procedure()
+
+    result = await run_procedure(
+        procedure, _agent(), _executors(), vertical="aquaculture", run_id="run-skew"
+    )
+    assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    async with maker() as session:
+        await persist_run(session, result)
+
+    # The clock jumps backwards between `read` and `aerate`.
+    async with maker() as session:
+        await session.execute(
+            sa.text(
+                "UPDATE step_results SET created_at = created_at - interval '1 second' "
+                "WHERE run_id = 'run-skew' AND step_id = 'aerate'"
+            )
+        )
+        await session.commit()
+
+    async with maker() as fresh:
+        scrambled = await load_run(fresh, "run-skew")
+    assert scrambled is not None
+    assert [sr.step_id for sr in scrambled.step_results] == [
+        "aerate",
+        "read",
+    ], "precondition: the wall-clock ORDER BY no longer yields execution order"
+
+    fresh_executors = _executors()
+    async with maker() as fresh:
+        resumed = await resume_run(
+            fresh, procedure, _agent(), fresh_executors, "run-skew", vertical="aquaculture"
+        )
+    assert resumed.run.status == PipelineRunStatus.COMPLETED.value
+    # The gate was NOT re-run: only the terminal `summary` action executed.
+    assert fresh_executors[StepKind.QUERY].calls == 0  # type: ignore[attr-defined]
+    assert fresh_executors[StepKind.ACTION].calls == 1  # type: ignore[attr-defined]
+
+
 async def test_resume_reruns_an_escalated_failed_step(db_engine: AsyncEngine) -> None:
     maker = async_sessionmaker(db_engine, expire_on_commit=False)
     procedure = Procedure(
