@@ -7,6 +7,7 @@ import pytest
 from services.api.config import settings
 from services.engine import demo_events
 from services.engine.registry import registry
+from tests import db_support
 
 # PLAN-0047 Step 1: the legacy suites exercise business logic with authn OFF;
 # auth behavior is covered explicitly in tests/api/test_api_auth.py (which
@@ -25,6 +26,20 @@ def _reset_registry() -> Iterator[None]:
     registry.reset()
     yield
     registry.reset()
+
+
+@pytest.fixture(autouse=True)
+def _arm_schema_reset() -> Iterator[None]:
+    """Arm the once-per-test ``public`` schema reset in ``tests.db_support``.
+
+    The reset itself happens lazily, inside the first ``create_test_engine()``
+    call of the test, so a non-DB test never pays for a connection. autouse so
+    no DB test can inherit tables or rows from the test before it — or from an
+    aborted ``pytest`` process (``create_all`` is ``checkfirst=True`` and would
+    silently adopt the residue).
+    """
+    db_support.arm_schema_reset()
+    yield
 
 
 @pytest.fixture(autouse=True)
