@@ -42,13 +42,26 @@ procedures:
     steps:
       - step_id: read_temps
         name: Read latest shipment temperatures
-        description: Latest temperature reading per in-transit Shipment.
+        description: Latest reading per Shipment (event_type=reading), by occurred_at.
         kind: query
+        input:                          # PLAN-0062 Q4 Phase-3: the declared latest-per-group grammar
+          reads: [OperationalEvent]
+          where:
+            event_type: reading         # load-bearing: the door-open alarm is NEWER than
+                                        # frozen-01's last reading and carries NO measured_value,
+                                        # so an unfiltered latest-per-group would fail the judge
+          project:
+            latest_per: event_concerns_shipment   # FK OperationalEvent.shipment_id -> Shipment.shipment_id
+            order_by: occurred_at
         facet:
           decision_condition: { gate_kind: none }
           llm_assist: null
-          input: "latest temperature reading per in-transit Shipment"
-          output: "temperature reading per in-transit Shipment"
+          # PLAN-0062: the typed reads/project above are the source of truth (D2-A2); this prose
+          # is synced to it. The prior "in-transit Shipment"/"temperature" qualifiers are dropped —
+          # no status-filter join was ever implemented (SD-4; both event-carrying shipments are
+          # in_transit anyway), and the judge grades measured_value regardless of unit.
+          input: "latest OperationalEvent (event_type=reading) per Shipment via event_concerns_shipment, by occurred_at"
+          output: "one latest reading row per Shipment"
       - step_id: judge
         name: Judge vs cold-chain ceiling
         description: >-

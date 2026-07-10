@@ -1,5 +1,6 @@
-"""PLAN-0062 Step 1 (AC-1, AC-2): the shared run-semantics **parity** harness +
-the energy ``read_readings`` migration parity, over the REAL energy ontology.
+"""PLAN-0062 Steps 1-2 (AC-1, AC-2, AC-3): the shared run-semantics **parity**
+harness + the energy ``read_readings`` and supply_chain ``read_temps`` migration
+parity, each over its vertical's REAL shipped ontology.
 
 The SD-C guard, made executable: a declared join/projection-grammar query step
 run through the production ``run_procedure`` path must produce the SAME output
@@ -38,6 +39,9 @@ from services.engine.procedures.spec import (
     load_procedures,
 )
 from verticals.energy.data_adapter.synthetic import operational_events
+from verticals.supply_chain.data_adapter.synthetic import (
+    operational_events as supply_chain_events,
+)
 
 # The energy ``read_readings`` migration (mirrors verticals/energy/procedures.yaml
 # after PLAN-0062): latest OperationalEvent (event_type=reading) per Asset via the
@@ -53,12 +57,23 @@ _GROUP_KEY = "asset_id"
 _ORDER_BY = "occurred_at"
 _TIE_BREAK = "event_id"
 
+# The supply_chain ``read_temps`` migration (mirrors verticals/supply_chain/procedures.yaml
+# after PLAN-0062 PR2): latest OperationalEvent (event_type=reading) per Shipment via the
+# declared ``event_concerns_shipment`` link, by ``occurred_at``. Mechanically identical to
+# energy's shape — only the link + FK differ, which is the point of the shared harness.
+_SUPPLY_CHAIN_READ_INPUT: dict[str, Any] = {
+    "reads": ["OperationalEvent"],
+    "where": {"event_type": "reading"},
+    "project": {"latest_per": "event_concerns_shipment", "order_by": "occurred_at"},
+}
+_SC_GROUP_KEY = "shipment_id"
+
 
 class _FakeAdapter:
     """Duck-typed adapter: the executor only calls ``fetch_objects``."""
 
-    def __init__(self, data: dict[str, list[dict[str, Any]]]) -> None:
-        self.vertical_name = "energy"
+    def __init__(self, vertical: str, data: dict[str, list[dict[str, Any]]]) -> None:
+        self.vertical_name = vertical
         self._data = data
 
     async def fetch_objects(self, object_type: str) -> list[dict[str, Any]]:
@@ -128,19 +143,23 @@ async def assert_read_step_parity(
     step_input: dict[str, Any],
     data: dict[str, list[dict[str, Any]]],
     *,
+    vertical: str,
     where: dict[str, Any],
     group_key: str,
     order_by: str,
     tie_break: str,
 ) -> dict[Any, dict[str, Any]]:
-    """Run ``step_input`` through the production ``run_procedure`` path over the real
-    energy ontology + ``data``, and assert its output == the independent reference
-    (order-insensitive, key-complete, identical rows). Returns the reference for
-    edge-specific follow-up assertions."""
-    meta = load_ontology_meta("energy")  # the REAL shipped ontology, read-only
+    """Run ``step_input`` through the production ``run_procedure`` path over
+    ``vertical``'s REAL shipped ontology + ``data``, and assert its output == the
+    independent reference (order-insensitive, key-complete, identical rows). Returns
+    the reference for edge-specific follow-up assertions.
+
+    Vertical-parameterised so one harness guards every seed migration (PLAN-0062
+    SD-3): energy PR1, supply_chain PR2, aquaculture PR3."""
+    meta = load_ontology_meta(vertical)  # the REAL shipped ontology, read-only
     executors = {
         StepKind.QUERY: QueryStepExecutor(
-            adapter=_FakeAdapter(data),
+            adapter=_FakeAdapter(vertical, data),
             object_type_names=frozenset(t.name for t in meta.object_types),
             meta=meta,
         )
@@ -149,8 +168,8 @@ async def assert_read_step_parity(
         _read_step_procedure(step_input),
         _agent(),
         executors,
-        vertical="energy",
-        run_id="parity-read",
+        vertical=vertical,
+        run_id=f"parity-read-{vertical}",
     )
     assert result.run.status == PipelineRunStatus.COMPLETED.value
     artifact = result.step_results[-1].artifact
@@ -243,6 +262,7 @@ async def test_energy_read_readings_parity_sd5_edges() -> None:
     reference = await assert_read_step_parity(
         _ENERGY_READ_INPUT,
         data,
+        vertical="energy",
         where={"event_type": "reading"},
         group_key=_GROUP_KEY,
         order_by=_ORDER_BY,
@@ -269,6 +289,7 @@ async def test_energy_read_readings_parity_real_synthetic_data() -> None:
     reference = await assert_read_step_parity(
         _ENERGY_READ_INPUT,
         data,
+        vertical="energy",
         where={"event_type": "reading"},
         group_key=_GROUP_KEY,
         order_by=_ORDER_BY,
@@ -281,6 +302,108 @@ async def test_energy_read_readings_parity_real_synthetic_data() -> None:
     assert len(reference) == len(
         {e["asset_id"] for e in events if e.get("event_type") == "reading" and e.get("asset_id")}
     )
+
+
+# --------------------------------------------------------------------------- #
+# AC-3 — supply_chain ``read_temps`` parity (PR2): the SAME harness, a new link
+# --------------------------------------------------------------------------- #
+
+
+async def test_supply_chain_read_temps_parity_sd5_edges() -> None:
+    """The SD-5 edges over ``event_concerns_shipment``: several readings per shipment,
+    an order-by tie (primary-key tie-break), a missing-group-key row, and — the edge
+    that matters for cold chain — an ``alarm`` NEWER than the shipment's last reading
+    carrying NO ``measured_value``. ``where`` must drop it before grouping, or the
+    downstream judge would receive an unreadable row."""
+    data = {
+        "OperationalEvent": [
+            {
+                "event_id": "evt-s1",
+                "event_type": "reading",
+                "measured_value": 4.2,
+                "occurred_at": "2026-05-31T07:00:00Z",
+                "shipment_id": "shipment-01",
+            },
+            {
+                "event_id": "evt-s2",
+                "event_type": "reading",
+                "measured_value": 14.6,
+                "occurred_at": "2026-05-31T08:10:00Z",
+                "shipment_id": "shipment-01",
+            },
+            # a door-open alarm LATER than shipment-02's last reading, with no reading:
+            # unfiltered it would win latest-per-group and break the judge
+            {
+                "event_id": "evt-alarm",
+                "event_type": "alarm",
+                "occurred_at": "2026-05-31T09:00:00Z",
+                "shipment_id": "shipment-02",
+            },
+            {
+                "event_id": "evt-s3",
+                "event_type": "reading",
+                "measured_value": -18.5,
+                "occurred_at": "2026-05-31T07:05:00Z",
+                "shipment_id": "shipment-02",
+            },
+            # shipment-03: an order-by TIE — tie-break picks max event_id (evt-s5)
+            {
+                "event_id": "evt-s4",
+                "event_type": "reading",
+                "measured_value": 2.0,
+                "occurred_at": "2026-05-31T08:00:00Z",
+                "shipment_id": "shipment-03",
+            },
+            {
+                "event_id": "evt-s5",
+                "event_type": "reading",
+                "measured_value": 3.0,
+                "occurred_at": "2026-05-31T08:00:00Z",
+                "shipment_id": "shipment-03",
+            },
+            # missing group key (no shipment_id) — excluded, never guessed
+            {
+                "event_id": "evt-miss-key",
+                "event_type": "reading",
+                "measured_value": 1.0,
+                "occurred_at": "2026-05-31T09:30:00Z",
+            },
+        ]
+    }
+    reference = await assert_read_step_parity(
+        _SUPPLY_CHAIN_READ_INPUT,
+        data,
+        vertical="supply_chain",
+        where={"event_type": "reading"},
+        group_key=_SC_GROUP_KEY,
+        order_by=_ORDER_BY,
+        tie_break=_TIE_BREAK,
+    )
+    assert set(reference) == {"shipment-01", "shipment-02", "shipment-03"}
+    assert reference["shipment-01"]["event_id"] == "evt-s2"  # latest reading
+    assert reference["shipment-02"]["event_id"] == "evt-s3"  # the alarm never wins
+    assert reference["shipment-03"]["event_id"] == "evt-s5"  # order-by tie -> max event_id
+
+
+async def test_supply_chain_read_temps_parity_real_synthetic_data() -> None:
+    """The declared grammar over the REAL cold-chain ``operational_events()`` set equals
+    the reference: one latest reading per shipment, the door-open alarm filtered out."""
+    events = json.loads(json.dumps(supply_chain_events(), default=str))
+    data = {"OperationalEvent": events}
+    reference = await assert_read_step_parity(
+        _SUPPLY_CHAIN_READ_INPUT,
+        data,
+        vertical="supply_chain",
+        where={"event_type": "reading"},
+        group_key=_SC_GROUP_KEY,
+        order_by=_ORDER_BY,
+        tie_break=_TIE_BREAK,
+    )
+    # the incident shipment's latest reading is the cold-chain excursion (event-reading-03)
+    assert reference["shipment-pharma-01"]["event_id"] == "event-reading-03"
+    # frozen-01's NEWER door-open alarm did not displace its last reading
+    assert reference["shipment-frozen-01"]["event_id"] == "event-reading-02"
+    assert all(row["event_type"] == "reading" for row in reference.values())
 
 
 # --------------------------------------------------------------------------- #
