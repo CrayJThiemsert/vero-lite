@@ -23,10 +23,21 @@ Two invariants keep that ownership hermetic:
   fixed ``run_id`` literals (``hl-ap``, ``run-rej``, …) cannot collide with rows
   left behind by an earlier test or an earlier run.
 
+* **One test database per checkout.** That schema reset is a ``DROP SCHEMA public
+  CASCADE``: two ``pytest`` processes sharing one test DB would wipe each other's
+  tables mid-test. Several git worktrees of this repo live side by side under
+  ``.claude/worktrees/`` and are worked on concurrently, so the derived
+  ``<db>_test`` is scoped per checkout — ``vero_lite_test_<8-hex of repo root>``.
+  An explicit ``TEST_DATABASE_URL`` (env or ``.env``) always wins verbatim, so CI
+  — which sets it — is unaffected.
+
 See project memory ``project_test_suite_drops_demo_db``.
 """
 
 from __future__ import annotations
+
+import hashlib
+from pathlib import Path
 
 import pytest
 import sqlalchemy as sa
@@ -35,7 +46,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
-from services.api.config import settings
+from services.api.config import _derive_test_database_url, settings
 
 # Registration-only imports — keep in lockstep with ``alembic/env.py`` so that
 # ``Base.metadata`` in a test process always matches the migration head.
@@ -52,6 +63,40 @@ _UNREACHABLE = "Postgres not reachable — start docker compose / set DATABASE_U
 # A DDL lock is held by any live connection to the test DB. Fail loudly rather
 # than hang forever if a prior test leaked one.
 _LOCK_TIMEOUT = "10s"
+
+# This file lives at <repo root>/tests/db_support.py.
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+
+
+def worktree_scoped_test_url(test_database_url: str, repo_root: Path) -> str:
+    """Append a short digest of ``repo_root`` to the test DB name.
+
+    Deterministic per checkout, so a worktree always reuses its own database
+    rather than accumulating a new one per run. The digest keeps the identifier
+    well inside Postgres' 63-character limit (``vero_lite_test_a1b2c3d4``).
+    """
+    digest = hashlib.sha256(str(repo_root).encode()).hexdigest()[:8]
+    url = make_url(test_database_url)
+    # render_as_string(hide_password=False): str(URL) masks the password as
+    # "***", which would corrupt the connection string.
+    return url.set(database=f"{url.database}_{digest}").render_as_string(hide_password=False)
+
+
+def _isolate_test_database_per_worktree() -> None:
+    """Scope the test DB to this checkout — unless it was set explicitly.
+
+    ``Settings._fill_test_database_url`` leaves ``test_database_url`` at the
+    derived ``<db>_test`` when nothing supplied one. Comparing against that
+    derivation is how we tell "nobody chose a test DB" from "someone did":
+    an explicit ``TEST_DATABASE_URL`` (env var or ``.env``) is honoured verbatim,
+    which is what keeps CI — where it is set — on the plain ``vero_lite_test``.
+    """
+    if settings.test_database_url != _derive_test_database_url(settings.database_url):
+        return
+    settings.test_database_url = worktree_scoped_test_url(settings.test_database_url, _REPO_ROOT)
+
+
+_isolate_test_database_per_worktree()
 
 # Armed by the autouse ``_arm_schema_reset`` fixture (tests/conftest.py) at the
 # start of every test; disarmed by the first ``create_test_engine`` call. Tests
