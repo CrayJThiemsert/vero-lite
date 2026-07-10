@@ -214,7 +214,8 @@ async def test_write_ahead_run_row_and_per_step_persistence(db_engine: AsyncEngi
         loaded = await load_run(fresh, run_id)
     assert loaded is not None
     assert loaded.run.status == PipelineRunStatus.WAITING_HUMAN.value
-    assert [sr.step_id for sr in loaded.step_results] == ["read", "judge", "aerate"]
+    # sorted: load_run orders on a wall clock — the durable record is a step SET, not an order.
+    assert sorted(sr.step_id for sr in loaded.step_results) == ["aerate", "judge", "read"]
 
 
 async def test_handler_crash_leaves_decision_no_phantom_effect(db_engine: AsyncEngine) -> None:
@@ -251,7 +252,9 @@ async def test_handler_crash_leaves_decision_no_phantom_effect(db_engine: AsyncE
     async with maker() as fresh:
         loaded = await load_run(fresh, run_id)
     assert loaded is not None
-    crashed = loaded.step_results[-1]
+    # By step_id, not by position (wall-clock order) and not by status — the status is what
+    # this test asserts, so selecting on it would make the assertion below circular.
+    crashed = next(sr for sr in loaded.step_results if sr.step_id == "aerate")
     assert crashed.status == StepResultStatus.WAITING_HUMAN.value, "gate must NOT be resolved"
     artifact = crashed.artifact or {}
     assert artifact["output_set"] == proposals, "original proposals intact (retryable)"

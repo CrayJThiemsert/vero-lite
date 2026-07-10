@@ -141,9 +141,11 @@ async def test_persist_and_load_round_trip(db_engine: AsyncEngine) -> None:
         loaded = await load_run(fresh, "run-pl")
     assert loaded is not None
     assert loaded.run.status == result.run.status == PipelineRunStatus.WAITING_HUMAN.value
-    assert [sr.step_id for sr in loaded.step_results] == ["read", "aerate"]
+    # sorted: load_run orders on a wall clock, so the round-trip preserves the step SET, not
+    # an order (see test_resume_finds_the_suspended_step_under_a_backward_clock_step below).
+    assert sorted(sr.step_id for sr in loaded.step_results) == ["aerate", "read"]
     # the telemetry seam survives the round-trip
-    aerate = loaded.step_results[-1]
+    aerate = next(sr for sr in loaded.step_results if sr.step_id == "aerate")
     assert aerate.status == StepResultStatus.WAITING_HUMAN.value
     assert aerate.artifact == {"output_set": [{"action": "aerate"}]}
 

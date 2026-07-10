@@ -36,8 +36,8 @@ from services.engine.procedures.event_bridge import (
     build_event_resolver,
     fire_event,
 )
-from services.engine.procedures.persistence import load_run, resume_run
-from services.engine.procedures.runs import PipelineRun, PipelineRunStatus
+from services.engine.procedures.persistence import load_run, resume_run, suspended_step_result
+from services.engine.procedures.runs import PipelineRun, PipelineRunStatus, StepResultStatus
 from services.engine.procedures.spec import Person, load_procedures
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
@@ -115,7 +115,8 @@ async def test_event_procurement_run_parks_at_doa_gate(
     loaded = await load_run(session, outcome.run_id)
     assert loaded is not None
     assert loaded.run.status == PipelineRunStatus.WAITING_HUMAN.value
-    suspended = loaded.step_results[-1]
+    suspended = suspended_step_result(loaded.step_results)  # by STATUS, never by position
+    assert suspended is not None
     assert suspended.step_id == _GATED_STEP  # suspended AT the DOA gate
 
     # The ฿288,000 hero spend resolves to the [50k,500k) DOA tier → ผจก.จัดซื้อ → appr-pm.
@@ -146,6 +147,49 @@ async def test_event_procurement_run_parks_at_doa_gate(
     assert "fired_at" in tc
 
 
+async def test_gate_is_found_by_status_under_a_backward_clock_step(
+    session: AsyncSession, procurement_registered: None
+) -> None:
+    """Regression pin for an intermittent, full-suite-only failure of the two tests either side
+    of this one. ``load_run`` orders step results by ``created_at`` — a WALL-CLOCK column, and
+    this box's ``datetime.now(UTC)`` was measured stepping BACKWARDS (2 backward steps per 20 s
+    sample, worst -555 ms). Invert it on purpose here: the ``approve`` gate no longer sorts last,
+    so reading ``step_results[-1]`` names the *completed* ``compliance`` step — whose artifact
+    carries no decidable proposal. Selecting by STATUS finds the gate regardless (#678's
+    ``suspended_step_result``, which production already uses).
+    """
+    outcome = await fire_event(session, _resolve_event(), now=NOW)
+    assert outcome.run_status == PipelineRunStatus.WAITING_HUMAN.value
+
+    # The clock jumps backwards between `compliance` and the `approve` gate it suspended at.
+    await session.execute(
+        sa.text(
+            "UPDATE step_results SET created_at = created_at - interval '1 second' "
+            "WHERE run_id = :run_id AND step_id = :step_id"
+        ),
+        {"run_id": outcome.run_id, "step_id": _GATED_STEP},
+    )
+    await session.commit()
+    session.expire_all()  # re-read the rewritten stamps, not the identity map's
+
+    loaded = await load_run(session, outcome.run_id)
+    assert loaded is not None
+    order = [sr.step_id for sr in loaded.step_results]
+
+    # Precondition: the wall-clock ORDER BY no longer yields execution order. The OLD positional
+    # read would have picked `compliance` here and failed on its empty proposal set.
+    assert order[-1] != _GATED_STEP, "precondition: the inversion must move the gate off last"
+    assert order.index(_GATED_STEP) < order.index("compliance")
+
+    # By STATUS the gate is still the one step that is unresumed.
+    suspended = suspended_step_result(loaded.step_results)
+    assert suspended is not None
+    assert suspended.step_id == _GATED_STEP
+    assert suspended.status == StepResultStatus.WAITING_HUMAN.value
+    proposals = (suspended.artifact or {}).get("output_set", [])
+    assert any(isinstance(p.get("action"), dict) for p in proposals), "the gate stays decidable"
+
+
 async def test_event_run_resolves_through_to_completed(
     session: AsyncSession, procurement_registered: None
 ) -> None:
@@ -166,7 +210,9 @@ async def test_event_run_resolves_through_to_completed(
 
     loaded = await load_run(session, outcome.run_id)
     assert loaded is not None
-    suspended = loaded.step_results[-1]
+    suspended = suspended_step_result(loaded.step_results)  # by STATUS, never by position
+    assert suspended is not None
+    assert suspended.step_id == _GATED_STEP
     output_set: list[dict[str, Any]] = (suspended.artifact or {}).get("output_set", [])
     decisions = {
         p["action"]["id"]: "approve" for p in output_set if isinstance(p.get("action"), dict)
