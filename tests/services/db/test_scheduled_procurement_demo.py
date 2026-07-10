@@ -40,7 +40,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from services.db.audit_log import AuditLog
 from services.db.base import Base
 from services.engine.procedures.action_step import resolve_gated_step
-from services.engine.procedures.persistence import load_run, resume_run
+from services.engine.procedures.persistence import load_run, resume_run, suspended_step_result
 from services.engine.procedures.runs import PipelineRun, PipelineRunStatus
 from services.engine.procedures.scheduler import FireResult, fire_due_schedules
 from services.engine.procedures.scheduler_wiring import build_resolver, schedule_id_for
@@ -140,7 +140,8 @@ async def test_scheduled_procurement_run_parks_at_doa_gate(
     loaded = await load_run(session, outcome.run_id)
     assert loaded is not None
     assert loaded.run.status == PipelineRunStatus.WAITING_HUMAN.value
-    suspended = loaded.step_results[-1]
+    suspended = suspended_step_result(loaded.step_results)  # by STATUS, never by position
+    assert suspended is not None
     assert suspended.step_id == _GATED_STEP  # suspended AT the DOA gate
 
     # The ฿288,000 hero spend resolved to the [50k,500k) DOA tier → ผจก.จัดซื้อ → appr-pm (the
@@ -198,7 +199,9 @@ async def test_scheduled_run_resolves_through_to_completed(
     # Approve every proposal on the parked gate (action_id → "approve").
     loaded = await load_run(session, outcome.run_id)
     assert loaded is not None
-    suspended = loaded.step_results[-1]
+    suspended = suspended_step_result(loaded.step_results)  # by STATUS, never by position
+    assert suspended is not None
+    assert suspended.step_id == _GATED_STEP
     output_set: list[dict[str, Any]] = (suspended.artifact or {}).get("output_set", [])
     decisions = {
         p["action"]["id"]: "approve" for p in output_set if isinstance(p.get("action"), dict)
