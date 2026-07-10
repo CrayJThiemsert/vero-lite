@@ -93,6 +93,14 @@ class _StaticFilesWithCSP(StaticFiles):
         return response
 
 
+async def _register_aquaculture_executors() -> None:
+    from verticals.aquaculture.procedures_factory import (
+        register_aquaculture_procedure_executors,
+    )
+
+    await register_aquaculture_procedure_executors()
+
+
 async def _register_energy_executors() -> None:
     from verticals.energy.procedures_factory import register_energy_procedure_executors
 
@@ -114,13 +122,14 @@ async def _register_supply_chain_executors() -> None:
 
 
 _PROCEDURE_EXECUTOR_REGISTRARS: dict[str, Callable[[], Awaitable[None]]] = {
+    "aquaculture": _register_aquaculture_executors,
     "energy": _register_energy_executors,
     "procurement": _register_procurement_executors,
     "supply_chain": _register_supply_chain_executors,
 }
 """Per-vertical procedure-executor factory registration (PLAN-0062 AC-5). Imports stay
 LAZY inside each registrar so booting one vertical never imports another's harness.
-aquaculture joins at PLAN-0062 PR3."""
+All four shipped verticals now register a factory."""
 
 
 @asynccontextmanager
