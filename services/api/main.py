@@ -1,7 +1,7 @@
 """FastAPI entry point for vero-lite."""
 
 import logging
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -93,6 +93,27 @@ class _StaticFilesWithCSP(StaticFiles):
         return response
 
 
+async def _register_energy_executors() -> None:
+    from verticals.energy.procedures_factory import register_energy_procedure_executors
+
+    await register_energy_procedure_executors()
+
+
+async def _register_procurement_executors() -> None:
+    from verticals.procurement.hero_demo.run import register_procurement_procedure_executors
+
+    await register_procurement_procedure_executors()
+
+
+_PROCEDURE_EXECUTOR_REGISTRARS: dict[str, Callable[[], Awaitable[None]]] = {
+    "energy": _register_energy_executors,
+    "procurement": _register_procurement_executors,
+}
+"""Per-vertical procedure-executor factory registration (PLAN-0062 AC-5). Imports stay
+LAZY inside each registrar so booting one vertical never imports another's harness.
+supply_chain / aquaculture join at PLAN-0062 PR2 / PR3."""
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Auto-discover + register all verticals at startup (import-scan over
@@ -113,17 +134,15 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # Reads raw object dicts only (no LLM call), so it is safe even when MS-S1 is
     # warming; a no-op beyond a fixed-datetime copy when OCT_DEMO_TIME_ANCHOR off.
     await registry.get_adapter(vertical).fetch_objects("OperationalEvent")
-    # PLAN-0054 Step 6b: register the deterministic procurement procedure-executor
-    # factory for the Control-leg operate demo. The gate-resolve endpoint resumes a
-    # run via registry.get_procedure_executors(vertical), which 409s until a factory
-    # is registered -- discover_and_register (OQ-6) registers adapters + handlers only.
+    # PLAN-0054 Step 6b / PLAN-0062 Step 1: register the ACTIVE vertical's deterministic
+    # procedure-executor factory. The gate-resolve endpoint resumes a run via
+    # registry.get_procedure_executors(vertical), which 409s until a factory is
+    # registered -- discover_and_register (OQ-6) registers adapters + handlers only.
     # Explicit + active-vertical-scoped (NOT import-scan); deterministic (no MS-S1).
+    registrar = _PROCEDURE_EXECUTOR_REGISTRARS.get(vertical)
+    if registrar is not None:
+        await registrar()
     if vertical == "procurement":
-        from verticals.procurement.hero_demo.run import (
-            register_procurement_procedure_executors,
-        )
-
-        await register_procurement_procedure_executors()
         # PLAN-0054 Step 6c: seed ONE waiting_human run so the Control-leg operate
         # demo (View H) has a real gate to act on. Env-gated (demo only), idempotent
         # (a fixed run_id, skipped if present), and FAIL-SOFT (a seed error logs +
