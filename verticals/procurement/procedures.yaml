@@ -306,12 +306,30 @@ procedures:
     run_by: procurement_agent
     trigger: manual
     steps:
+      # PLAN-0062 AC-7 — seed migration DEFERRED, and the PLAN's stated reason was WRONG
+      # (erratum, PR4). The substrate EXISTS: the ontology declares Part.stock_qty +
+      # Part.reorder_point, and the registry-registered ProcurementSyntheticAdapter emits
+      # both. A `reads: [Part]` declaration would resolve at the load gate today.
+      #
+      # What blocks migration is EXECUTOR ROUTING, not data. The procurement factory binds
+      # executors per StepKind (hero_demo/run.py::_executors), and its QUERY executor is
+      # `_SeedQuery` — a fixed intake seed. The orchestrator resolves an executor by
+      # `executors.get(step.kind)`, so a declared `read_stock` would pass the gate and then
+      # still be handed the intake requisition at run time: declared ✔ / execution-bound ✖,
+      # and actively misleading. Honest migration needs a per-step QUERY router in the
+      # factory — out of PLAN-0062 SD-2's ratified scope.
+      #
+      # Pinned as an executable invariant (not prose) in
+      # tests/verticals/procurement/test_intake_shadow_parity.py: when a per-step router
+      # ships, that test fails and this note falls due.
       - step_id: read_stock
         name: Read stock levels
         description: Latest stock reading per stocked Part.
         kind: query
         facet:
-          decision_condition: { gate_kind: none }
+          decision_condition:
+            gate_kind: none
+            note: "PLAN-0062 AC-7: migration deferred — substrate exists; the procurement factory lacks per-step QUERY routing"
           llm_assist: null
           input: "part stock levels"
           output: "stock reading per part"
