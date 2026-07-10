@@ -247,7 +247,13 @@ async def get_run(
     if loaded is None:
         raise HTTPException(status_code=404, detail=f"run '{run_id}' not found")
     run = loaded.run
-    suspended = _suspended_step(loaded.step_results, run.status)
+    try:
+        # The only _suspended_step call site reading persisted rows (the run/resume
+        # responses project the in-memory result). Inconsistent rows are a 409, not
+        # an unhandled 500.
+        suspended = _suspended_step(loaded.step_results, run.status)
+    except ProcedureError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     return RunDetailView(
         run_id=run.run_id,
         procedure_id=run.procedure_id,

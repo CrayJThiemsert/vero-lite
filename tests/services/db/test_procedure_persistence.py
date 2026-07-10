@@ -10,6 +10,7 @@ suspended one to completion — with the completed prefix never re-executed.
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from datetime import UTC, datetime
 from typing import Any
 
 import pytest
@@ -24,8 +25,13 @@ from services.engine.procedures.orchestrator import (
     StepOutcome,
     run_procedure,
 )
-from services.engine.procedures.persistence import load_run, persist_run, resume_run
-from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
+from services.engine.procedures.persistence import (
+    load_run,
+    persist_run,
+    resume_run,
+    suspended_step_result,
+)
+from services.engine.procedures.runs import PipelineRunStatus, StepResult, StepResultStatus
 from services.engine.procedures.spec import (
     Agent,
     AgentAllowed,
@@ -227,6 +233,45 @@ async def test_resume_finds_the_suspended_step_under_a_backward_clock_step(
     # The gate was NOT re-run: only the terminal `summary` action executed.
     assert fresh_executors[StepKind.QUERY].calls == 0  # type: ignore[attr-defined]
     assert fresh_executors[StepKind.ACTION].calls == 1  # type: ignore[attr-defined]
+
+
+def _step(step_id: str, status: StepResultStatus) -> StepResult:
+    return StepResult(
+        step_result_id=f"run-amb:{step_id}",
+        run_id="run-amb",
+        step_id=step_id,
+        status=status.value,
+        duration_ms=1,
+        artifact={"output_set": []},
+        reasoning_trace=[],
+        audit={},
+        created_at=datetime(2026, 7, 10, 6, 0, tzinfo=UTC),
+    )
+
+
+def test_suspended_step_result_returns_the_single_unresumed_step() -> None:
+    """`complete` steps are never candidates — only the one gate awaiting a human."""
+    steps = [
+        _step("read", StepResultStatus.COMPLETE),
+        _step("aerate", StepResultStatus.WAITING_HUMAN),
+    ]
+    found = suspended_step_result(steps)
+    assert found is not None
+    assert found.step_id == "aerate"
+    assert suspended_step_result([_step("read", StepResultStatus.COMPLETE)]) is None
+
+
+def test_suspended_step_result_fails_closed_on_two_unresumed_steps() -> None:
+    """A run advances one gate at a time. Two unresumed steps means the persisted
+    rows are inconsistent — resuming from either would fire a handler no human
+    approved, or skip one they did. Raise rather than pick."""
+    steps = [
+        _step("read", StepResultStatus.COMPLETE),
+        _step("aerate", StepResultStatus.RESOLVED),
+        _step("escalate", StepResultStatus.WAITING_HUMAN),
+    ]
+    with pytest.raises(ProcedureError, match="2 step results are unresumed"):
+        suspended_step_result(steps)
 
 
 async def test_resume_reruns_an_escalated_failed_step(db_engine: AsyncEngine) -> None:
