@@ -1,12 +1,16 @@
 # PLAN-0062: Q4 Phase 3 — per-vertical seed migration onto the declared join/projection grammar (SD-C, parity-guarded)
 
-**Status:** Ready for execution — SD-1..SD-6 ratified as-recommended (Cray, session 116,
-2026-07-09, AskUserQuestion); Code R2-verified every load-bearing citation on disk (facts
-3/5/7 confirmed: the sole `StepKind.QUERY` production wiring is `run.py:244`; real
-`purchase_order.csv` has no `quote_id` column + `quotation.csv` carries `part_id`/
-`price_thb`; real `part.csv` has no stock_qty/reorder_point). Steps execute directly (§6
-"Steps execute directly"); Code commits per ADR-009 D2. Build start (PR1) is a separate
-Cray go.
+**Status:** Complete — all 9 ACs met; shipped across PR1 (#672), PR1b (#673), PR2
+(#675), PR3 (#676), PR4 (this PR); closed session 117, 2026-07-10. **Two errata are
+recorded in the Close-out section below**: ERRATUM 1 (AC-5's "shipped executors" wording
+vs the PR1b `EnvBandEvaluateExecutor`) and ERRATUM 2 (fact 7's `read_stock` deferral
+reason — observation true, inference false). Ratification lineage: SD-1..SD-6 ratified
+as-recommended (Cray, session 116, 2026-07-09, AskUserQuestion); Code R2-verified every
+load-bearing citation on disk (facts 3/5/7 confirmed: the sole `StepKind.QUERY`
+production wiring is `run.py:244`; real `purchase_order.csv` has no `quote_id` column +
+`quotation.csv` carries `part_id`/`price_thb`; real `part.csv` has no
+stock_qty/reorder_point — **see ERRATUM 2**). Steps executed directly (§6 "Steps execute
+directly"); Code committed per ADR-009 D2.
 **Owner:** Claude Code (executes); Cray ratifies the surfaced decisions
 **Created:** 2026-07-09
 **Related ADRs:** ADR-016 — the **"Amendment (2026-07-09): join/projection grammar for
@@ -160,11 +164,15 @@ ADR-0024 D3/D6); the PLAN-0061 SD-6 no-live-run posture is carried verbatim.
    Additionally `intake` is a **SoD-constrained step id**
    (`verticals/procurement/procedures.yaml:293-297`, ADR-0025 D5) — splitting/renaming
    it ripples SoD + principals.
-7. **`read_stock` has no data substrate and needs no grammar.** Procurement declares NO
+7. **`read_stock` has no data substrate and needs no grammar.** *(Heading is WRONG —
+   **see ERRATUM 2**. The substrate exists on the vertical's REGISTERED adapter; the
+   real blocker is the per-kind executor routing this fact's own body names below.)*
+   Procurement declares NO
    OperationalEvent→Part link (`procurement_v0.yaml:329-414` — event links go to
    Equipment/Plant only), so there is no `latest_per` link to group by; the ontology
    declares `Part.stock_qty`/`Part.reorder_point` (`:188-193`) but
-   `verticals/procurement/data/hero/part.csv:1` carries **neither column**. As "fetch
+   `verticals/procurement/data/hero/part.csv:1` carries **neither column** (the HERO
+   adapter's CSV — not `ProcurementSyntheticAdapter`, the one the registry serves). As "fetch
    Part rows" it is a PLAN-0048 **single read** (`reads: [Part]`) requiring no
    join/projection at all — and today, run through the registered per-kind factory, it
    would receive the **intake requisition seed** (fact 3), i.e. it has never had a
@@ -197,7 +205,7 @@ Everything below is **offline and deterministic**, each provable under the requi
 `gate` on a fresh PR (prove main-green via the PR's CI, not a named subset). ACs are
 written to the SD recommendations and re-scope mechanically if Cray picks otherwise.
 
-- [ ] **AC-1 — the shared parity harness exists.** One test-module helper (SD-3) that
+- [x] **AC-1 — the shared parity harness exists.** One test-module helper (SD-3) that
       runs a declared-grammar step through the production `run_procedure` path over a
       supplied adapter + REAL shipped ontology meta and compares the step's output set
       against an **independently hand-coded reference** of the seed semantics —
@@ -205,18 +213,18 @@ written to the SD recommendations and re-scope mechanically if Cray picks otherw
       exercise the SD-5 determinism edges: multiple readings per group, an order-by
       tie (primary-key tie-break), and a missing-group-key row (excluded + counted in
       provenance, asserted).
-- [ ] **AC-2 — energy migrated under parity.** `read_readings` declares
+- [x] **AC-2 — energy migrated under parity.** `read_readings` declares
       `reads: [OperationalEvent]` + `project: {latest_per: event_emitted_by_asset,
       order_by: occurred_at}` (+ `where` per SD-4); the shipped YAML passes
       `validate_read_bindings_for_vertical` in a pinned spec test; the parity test is
       green; a full-procedure fixture run (real YAML, fixture adapter, stub action
       client) reaches the gated `restart_breaches` suspension — the migrated step feeds
       `judge` in situ; the `facet.input` prose is synced to the typed truth (D2-A2).
-- [ ] **AC-3 — supply_chain migrated under parity.** Same as AC-2 for `read_temps` over
+- [x] **AC-3 — supply_chain migrated under parity.** Same as AC-2 for `read_temps` over
       `event_concerns_shipment`.
-- [ ] **AC-4 — aquaculture migrated under parity.** Same as AC-2 for `read_do` over
+- [x] **AC-4 — aquaculture migrated under parity.** Same as AC-2 for `read_do` over
       `event_emitted_by_pond` (the breach/watch/ok three-band judge downstream).
-- [ ] **AC-5 — per-vertical production factories registered (SD-2).** The three OCT
+- [x] **AC-5 — per-vertical production factories registered (SD-2).** The three OCT
       verticals gain explicit, idempotent, deterministic executor-factory registrations
       (`QueryStepExecutor(adapter, object_type_names, meta=...)` + the shipped
       evaluate/action executors with the advisory-stub client — the
@@ -224,7 +232,7 @@ written to the SD recommendations and re-scope mechanically if Cray picks otherw
       active-vertical-scoped at API startup (`main.py:116-126` generalized). A migrated
       OCT procedure is then declared ✔ · gated ✔ · **execution-bound ✔ on the production
       HTTP path**, not just in tests.
-- [ ] **AC-6 — procurement intake: the join half proven under parity, PARTIAL per
+- [x] **AC-6 — procurement intake: the join half proven under parity, PARTIAL per
       OQ-3.** A shadow-parity test (SD-5) runs the declared join-half —
       `reads: [OperationalEvent, PurchaseOrder, Quotation]`, `where: {event_type:
       failure}`, `fuse` the hero PO, `on: {left: part_id, right: part_id}` for quotes
@@ -237,17 +245,17 @@ written to the SD recommendations and re-scope mechanically if Cray picks otherw
       docstring's "nothing migrates" stance (`run.py:134-140`) is replaced with the
       SD-C co-exist + this parity citation. The production factory, hero YAML, hero
       audit contract, and scheduled-demo path are **byte-unchanged**.
-- [ ] **AC-7 — `read_stock` disposition recorded (SD-1).** Per the recommendation:
+- [x] **AC-7 — `read_stock` disposition recorded (SD-1).** Per the recommendation:
       deferred with the honest reason (fact 7 — no substrate, no grammar need) recorded
       in this PLAN's close-out + the step's facet note; zero code. (If Cray ratifies
       migrate-now instead: `reads: [Part]` single-read + a fixture parity test, and the
       factory's per-step routing joins SD-2's scope.)
-- [ ] **AC-8 — no regression + pin disclosure.** Full offline suite green (incl. the
+- [x] **AC-8 — no regression + pin disclosure.** Full offline suite green (incl. the
       PLAN-0046/0047/0048/0054/0055/0061 suites untouched); the hero-demo contract and
       `test_scheduled_procurement_demo` byte-unchanged; each YAML-editing PR body
       discloses the governance-pin consequence (fact 9: pre-deploy parked runs of an
       edited procedure refuse at resume — cancel-and-restart).
-- [ ] **AC-9 — offline gate green, no live anything.** Suite + ruff + ruff-format +
+- [x] **AC-9 — offline gate green, no live anything.** Suite + ruff + ruff-format +
       `mypy --strict services/` green under CI `gate` on fresh PRs; **no MS-S1 / live-LLM
       call anywhere** (the PLAN-0061 SD-6 posture carried; nothing non-deterministic
       exists to confirm).
@@ -282,7 +290,7 @@ silently decided.
   aquaculture) + the procurement intake **join half** (shadow-parity per SD-5).
   **`read_stock` is DEFERRED**: it needs no join/projection grammar (a `reads: [Part]`
   single read), its data substrate is absent (fact 7 — `part.csv` has no
-  stock_qty/reorder_point), and there is no seed to parity against (it has never run
+  stock_qty/reorder_point — **see ERRATUM 2**), and there is no seed to parity against (it has never run
   faithfully anywhere — fact 3/7). Migrating it now would be declaration theater.
   *Alternatives:* (i) include `read_stock` as a plain single-read declaration + fixture
   parity — cheap but unfalsifiable against production data; (ii) OCT-only, defer all of
@@ -407,6 +415,131 @@ execution-bound ✔ on the production path; procurement `intake` = join half pro
 grammar-expressible under parity, production execution stays the co-existing seed,
 derived fields execution-bound ✖; `read_stock` = deferred, labelled. Nothing may claim
 more.
+
+## Close-out (session 117, 2026-07-10)
+
+Evidence at close: full offline suite 2496 passed / 7 skipped; ruff + ruff-format +
+`mypy --strict services/` clean; every PR green through the required CI `gate`;
+**MS-S1 never touched** (the SD-6 / PLAN-0061 no-live-run posture held end to end).
+Shipped: PR1 (#672) shared parity harness
+(`tests/services/engine/procedures/test_seed_migration_parity.py`) + energy
+`read_readings` migrated + the 4-vertical load-gate pin; PR1b (#673)
+`services/engine/procedures/env_band_step.py` (`EnvBandEvaluateExecutor`) +
+`services/engine/procedures/advisory_stub.py` + `verticals/energy/procedures_factory.py`
++ the `main.py` per-vertical registrar table; PR2 (#675) supply_chain `read_temps` over
+`event_concerns_shipment` + `verticals/supply_chain/procedures_factory.py` (harness
+became vertical-parameterised); PR3 (#676) aquaculture `read_do` over
+`event_emitted_by_pond` + `verticals/aquaculture/procedures_factory.py`, binding the
+SHIPPED `EvaluateStepExecutor` unwrapped (`in_file_band`); PR4 (this PR)
+`tests/verticals/procurement/test_intake_shadow_parity.py` (8 tests) + the `_SeedQuery`
+docstring supersede + the `read_stock` facet note.
+
+### Honest enforcement frame — the binding claim, no more
+
+The three OCT query steps (energy `read_readings`, supply_chain `read_temps`,
+aquaculture `read_do`) are **declared ✔ · load-gated ✔ · execution-bound ✔ on the
+production HTTP path**. procurement `intake` is **declared-expressible ✔ (proven under
+shadow parity)** but its production execution stays the co-existing `_SeedQuery`; it
+remains **execution-bound ✖ for the derived fields** (`compliance`, the `criticality`
+amplification, the nested `candidate_quotes` reshape) — LOCKED-9. `read_stock` is
+**deferred**, labelled (reason corrected — ERRATUM 2). Nothing may claim more.
+
+### ERRATUM 1 — AC-5's wording vs what PR1b shipped
+
+- The PLAN's `## Out of Scope` says "❌ **Any grammar/spec/gate/executor change** —
+  L-5", and **AC-5** says the factories bind "the **shipped** evaluate/action
+  executors".
+- PR1b (#673) added a **new** engine module,
+  `services/engine/procedures/env_band_step.py::EnvBandEvaluateExecutor`. So AC-5's
+  wording is **not literally satisfied**.
+- Why it was nonetheless the right build: **AC-2 requires a full-procedure run to the
+  gated suspension**, and energy's `judge` is an ADR-016 D2-A3 `env_band` (band from
+  `OCT_RECOMMEND_THRESHOLD`, **no in-file `threshold`**) which the shipped
+  `EvaluateStepExecutor` refuses (`evaluate_step.py` raises on a band-less step). AC-2
+  is unreachable without an env-band evaluate executor. L-5's *enumerated* surfaces are
+  the **grammar stack only** — `spec.py` `JoinOn`/`JoinSpec`/`ProjectSpec`/
+  `StepInput.join|project`, the `orchestrator.py` load gate, and `query_step.py`'s
+  compile/execute seam — none of which PR1b touched.
+- **Cray ratified the engine-module home** (session 117, AskUserQuestion) after Code
+  surfaced the tension; the thin-executor direction was approved in session 116.
+  Disclosed in the #673 PR body, not silently reinterpreted.
+- The executor is a **delegating wrapper**: it binds the env band onto a band-less step
+  and hands it to the shipped base, so `verdict.classify_verdict` remains the single
+  band definition (extend, never fork). It does **not** read `facet` — ADR-016
+  **D2-A4** keeps `facet` schema-only; the vertical's **factory** selects the executor,
+  and the executor's only trigger is the typed `Step` (`threshold is None`).
+
+### ERRATUM 2 — fact 7 / AC-7's stated reason for the `read_stock` deferral was wrong
+
+- The PLAN's Status header (Code R2) and the SD-1 recommendation assert the deferral is
+  because "its data substrate is absent (fact 7 — `part.csv` has no
+  stock_qty/reorder_point)", and AC-7 records "the honest reason (fact 7 — no
+  substrate, no grammar need)".
+- **The observation is true but the inference is false.** `part.csv` belongs to
+  `FastenalCsvAdapter`, which is the **hero demo's** adapter, constructed explicitly.
+  The vertical's **registry-registered** adapter is `ProcurementSyntheticAdapter`,
+  whose `Part` rows **do** carry `stock_qty` and `reorder_point` — and the ontology
+  **declares** both (`Part.stock_qty`, `Part.reorder_point`). A `reads: [Part]`
+  declaration would resolve at the load gate today. **Cray ratified SD-1 on this false
+  premise.**
+- **The true blocker is executor routing, not data.** The procurement factory binds
+  executors **per `StepKind`** (`verticals/procurement/hero_demo/run.py::_executors`),
+  and its `QUERY` executor is the fixed `_SeedQuery` intake seed. The orchestrator
+  resolves an executor by `executors.get(step.kind)`. So a declared `read_stock` would
+  pass the gate and still be handed the intake requisition at run time: **declared ✔ /
+  execution-bound ✖**, and actively misleading. Honest migration needs a **per-step
+  QUERY router**, which SD-2's ratified scope excludes.
+- **This was summary drift, not bad analysis.** Fact 7's *body* already said it —
+  "today, run through the registered per-kind factory, it would receive the **intake
+  requisition seed** (fact 3), i.e. it has never had a faithful implementation
+  anywhere" — and it correctly noted that the ontology *does* declare both columns. The
+  routing reason then fell out of the fact's own **heading** ("`read_stock` has no data
+  substrate"), and every downstream restatement — SD-1's recommendation, AC-7, the
+  Status header's R2 note — carried the heading forward and dropped the body. **A
+  compression step, not the research, introduced the error.** The generalisable guard:
+  when a fact is restated in a decision line, re-read the fact's **body**, not its title.
+- **Disposition, Cray-ratified session 117 (AskUserQuestion): keep the deferral,
+  correct the reason.** Zero code. The corrected reason is recorded in the step's facet
+  note (`verticals/procurement/procedures.yaml`, `read_stock`) and pinned as an
+  **executable invariant** —
+  `tests/verticals/procurement/test_intake_shadow_parity.py::test_read_stock_substrate_exists_the_plan_fact_7_erratum`
+  and `::test_read_stock_is_blocked_by_per_kind_executor_routing_not_by_data`. When a
+  per-step router ships, that second test fails and the deferral falls due.
+- **Method note worth carrying:** the R2 pass verified the *file* the fact named
+  (`part.csv`) and not the *adapter the vertical actually registers*. A citation can be
+  literally correct and still support a false conclusion.
+
+### What PR4 proved about `intake` (AC-6)
+
+The declared join half — `reads: [OperationalEvent, PurchaseOrder, Quotation]`,
+`where: {event_type: failure}`, `fuse` the hero PO, quotes `on: {left: part_id, right:
+part_id}` — runs through the production `run_procedure` path over the **real
+`FastenalCsvAdapter`** and is **information-identical** to `_intake_seed`'s join-half
+fields (`price_thb`→`unit_price` normalisation included, compared as `Decimal`). It
+emits **three flat rows** (one per quote), never the nested reshape, and **none** of
+the derived fields. A further drift is pinned: the ontology declares
+`PurchaseOrder.part_no` / `Quotation.price` / `OperationalEvent.equipment_id` while the
+real CSVs emit `part_id` / `price_thb` / `asset_id`; the load gate checks **declared**
+properties while the executor merges **runtime** keys, so the declaration renames the
+four declared `PurchaseOrder`∩`Quotation` collisions (`currency` · `part_no` ·
+`quote_id` · `supplier_id`) even though only `supplier_id` collides at runtime — and
+that rename is what preserves each quote's own supplier.
+
+### AC-8 pin disclosure (fact 9)
+
+The hero procedure block, the hero audit contract, the production factory, and the
+scheduled-demo path are **byte-unchanged**; the only
+`verticals/procurement/procedures.yaml` change is the AC-7 facet note on the calm-path
+`read_stock` step. Governance-pin consequence: a pre-deploy parked run of an **edited**
+procedure refuses at resume — cancel-and-restart.
+
+### Follow-ups this PLAN deliberately leaves open
+
+- (i) A per-step QUERY router for procurement, which would make `read_stock` migratable
+  and reopen AC-7.
+- (ii) The procurement ontology↔CSV column drift (`part_no`/`part_id`,
+  `price`/`price_thb`, `equipment_id`/`asset_id`) — data/ontology evolution, explicitly
+  out of this PLAN's scope.
 
 ## Open Questions (build-level; settle at step review — never silently)
 

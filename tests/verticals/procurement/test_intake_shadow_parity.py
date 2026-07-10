@@ -1,0 +1,292 @@
+"""PLAN-0062 Step 4 (PR4) — procurement ``intake``: the join half proven under SHADOW parity (AC-6).
+
+The other three OCT verticals MIGRATED their seed to the declared grammar. procurement's
+``intake`` does not, and this module is why that is an honest call rather than a gap.
+
+**Shadow, not migration (SD-C / OQ-3).** Production ``intake`` keeps ``_SeedQuery`` — the
+co-existing hand-written seed. Nothing in the hero YAML, the hero audit contract, the
+production factory, or the scheduled-demo path changes. What these tests prove is a
+narrower, checkable claim: **the JOIN HALF of that seed is expressible in the ratified
+grammar, and over the REAL ``FastenalCsvAdapter`` it carries the same information.**
+
+**What the grammar cannot do — asserted, not hand-waved.** ``_intake_seed`` emits ONE row
+with three quotes nested under ``candidate_quotes`` and four DERIVED fields the ontology
+never stored (``compliance``, the ``criticality`` amplification, the harness-owned
+``object_type``/``primary_key``, the ``required_tier_id``→``declared_tier_id`` relabel).
+A relational join emits **three flat rows** and **no derived fields**. Both facts are
+pinned below. That gap is exactly the OQ-3 boundary: intake stays
+**execution-bound ✖** for the derived fields (LOCKED-9). No transform StepKind is
+invented to close it.
+
+**A drift this test also pins.** The procurement ontology declares
+``PurchaseOrder.part_no`` / ``Quotation.price`` / ``OperationalEvent.equipment_id``,
+while the real CSVs emit ``part_id`` / ``price_thb`` / ``asset_id``. The load gate checks
+**declared** properties; the executor merges **runtime** keys. So the declaration must
+rename the four ontology-declared ``PurchaseOrder``∩``Quotation`` collisions
+(``currency`` · ``part_no`` · ``quote_id`` · ``supplier_id``) even though only
+``supplier_id`` collides at runtime — and renaming it is what keeps each quote's own
+supplier instead of letting the PO's supplier win all three rows.
+
+Deterministic, offline, no LLM, no DB (SD-6 / LOCKED-6): the real CSV adapter, the real
+ontology, no MS-S1.
+"""
+
+from __future__ import annotations
+
+import warnings
+from decimal import Decimal
+from typing import Any
+
+import pytest
+
+from services.engine.discovery import discover_and_register
+from services.engine.ontology_meta import load_ontology_meta
+from services.engine.procedures.advisory_stub import advisory_stub_factory
+from services.engine.procedures.orchestrator import (
+    ProcedureWarning,
+    run_procedure,
+    validate_read_bindings_for_vertical,
+)
+from services.engine.procedures.query_step import QueryStepExecutor
+from services.engine.procedures.runs import PipelineRunStatus
+from services.engine.procedures.spec import (
+    Agent,
+    AgentAllowed,
+    Autonomy,
+    Procedure,
+    Step,
+    StepInput,
+    StepKind,
+)
+from services.engine.registry import registry
+from verticals.procurement.data_adapter.fastenal_csv import FastenalCsvAdapter
+from verticals.procurement.hero_demo.run import _HERO_PO, _executors, _intake_seed
+
+_VERTICAL = "procurement"
+
+# The declared JOIN HALF of `_intake_seed`, in the ratified PLAN-0061 grammar.
+#   * base    = the singleton failure event (`where` narrows it to one row)
+#   * fuse    = the hero PO — the ontology-undeclarable positional fusion (OQ-4 warns)
+#   * on      = quotes keyed on part_id (the PO CSV carries NO quote_id — PLAN fact 5)
+#   * fields  = the four ontology-declared PO∩Quotation collisions, renamed away as the
+#               load gate requires; `part_no` never appears at runtime (ontology drift),
+#               so its rename is a declared no-op.
+_INTAKE_JOIN_INPUT: dict[str, Any] = {
+    "reads": ["OperationalEvent", "PurchaseOrder", "Quotation"],
+    "where": {"event_type": "failure"},
+    "join": [
+        {"with": "PurchaseOrder", "fuse": True, "where": {"po_id": _HERO_PO}},
+        {"with": "Quotation", "on": {"left": "part_id", "right": "part_id"}},
+    ],
+    "project": {
+        "fields": {
+            "supplier_id": "quote_supplier_id",
+            "quote_id": "quotation_id",
+            "currency": "quote_currency",
+            "part_no": "quote_part_no",
+        }
+    },
+}
+
+# grammar row key -> `_intake_seed` key, for the fields the JOIN HALF is responsible for.
+_BASE_FIELD_MAP = {
+    "event_id": "event_id",
+    "po_id": "primary_key",
+    "asset_id": "asset_id",
+    "part_id": "part_id",
+    "qty": "qty",
+    "measured_value": "measured_value",
+    "unit": "unit",
+    "order_type": "order_type",
+    "is_off_avl_override": "is_off_avl_override",
+    "required_tier_id": "declared_tier_id",
+}
+
+# grammar row key -> the seed's `candidate_quotes` entry key (per-quote half).
+_QUOTE_FIELD_MAP = {
+    "quotation_id": "quote_id",
+    "quote_supplier_id": "supplier_id",
+    "quote_currency": "currency",
+    "lead_time_days": "lead_time_days",
+    "on_contract": "on_contract",
+}
+
+# The seed's DERIVED fields — the OQ-3 boundary. A relational join cannot produce them.
+_DERIVED_FIELDS = (
+    "compliance",  # the rule_gate per-criterion signal (data-access = (a))
+    "candidate_quotes",  # the flat-rows -> nested reshape
+    "criticality",  # the scored_rule amplification (a duplicate of measured_value)
+    "object_type",  # harness-owned envelope metadata
+    "primary_key",  # harness-owned envelope metadata
+    "declared_tier_id",  # a relabel of required_tier_id
+)
+
+
+def _agent() -> Agent:
+    return Agent(
+        agent_id="shadow_parity_agent",
+        name="Shadow Parity Agent",
+        autonomy_ceiling=Autonomy.GATED,
+        allowed=AgentAllowed(),  # unconstrained reads (OQ-6)
+    )
+
+
+def _procedure() -> Procedure:
+    return Procedure(
+        procedure_id="intake-shadow-parity",
+        title="Intake shadow parity",
+        goal="Prove the intake join half is grammar-expressible over the real CSVs.",
+        run_by="shadow_parity_agent",
+        steps=[
+            Step(
+                step_id="intake_join",
+                name="Declared intake join half",
+                kind=StepKind.QUERY,
+                input=StepInput.model_validate(_INTAKE_JOIN_INPUT),
+            )
+        ],
+    )
+
+
+async def _grammar_rows() -> list[dict[str, Any]]:
+    """Run the declared join half through the production ``run_procedure`` path over the
+    REAL ``FastenalCsvAdapter`` + the REAL procurement ontology."""
+    meta = load_ontology_meta(_VERTICAL)
+    executors = {
+        StepKind.QUERY: QueryStepExecutor(
+            adapter=FastenalCsvAdapter(),
+            object_type_names=frozenset(t.name for t in meta.object_types),
+            meta=meta,
+        )
+    }
+    with warnings.catch_warnings():
+        # The OperationalEvent<->PurchaseOrder fuse is the ontology-undeclarable shape;
+        # the OQ-4 warn-first advisory fires BY DESIGN (test_join_fixtures_e2e precedent).
+        warnings.simplefilter("ignore", ProcedureWarning)
+        result = await run_procedure(
+            _procedure(), _agent(), executors, vertical=_VERTICAL, run_id="intake-shadow-parity"
+        )
+    assert result.run.status == PipelineRunStatus.COMPLETED.value
+    artifact = result.step_results[-1].artifact
+    assert artifact is not None
+    rows: list[dict[str, Any]] = artifact["output_set"]
+    return rows
+
+
+def test_the_declared_intake_join_passes_the_load_gate() -> None:
+    """The declaration resolves against the REAL ontology — the fuse warns (OQ-4
+    warn-first, never rejects), the four declared PO∩Quotation collisions are renamed
+    away, and nothing raises."""
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        validate_read_bindings_for_vertical(_procedure(), _agent(), _VERTICAL)
+
+    fuse_warnings = [w for w in caught if issubclass(w.category, ProcedureWarning)]
+    assert len(fuse_warnings) == 1
+    assert "PurchaseOrder" in str(fuse_warnings[0].message)
+    assert "fuse" in str(fuse_warnings[0].message)
+
+
+async def test_join_half_is_information_parity_with_the_seed() -> None:
+    """AC-6, the positive half: every join-half field the seed derives from the CSVs is
+    reproduced by the grammar, over the REAL adapter — base fields on every row, and the
+    three quotes matched by id. ``price_thb`` (str, coerced from ``Decimal`` at the
+    adapter boundary by ``_json_safe``) equals ``unit_price`` (``Decimal``) exactly —
+    the normalization ``_normalize_quotes`` performs by hand."""
+    rows = await _grammar_rows()
+    seed = await _intake_seed(FastenalCsvAdapter())
+
+    assert len(rows) == len(seed["candidate_quotes"]) == 3
+
+    # base half: identical on every flat row (the fused event + PO)
+    for row in rows:
+        for grammar_key, seed_key in _BASE_FIELD_MAP.items():
+            assert row[grammar_key] == seed[seed_key], grammar_key
+
+    # per-quote half: match by quote id, then compare field by field
+    by_id = {q["quote_id"]: q for q in seed["candidate_quotes"]}
+    assert {row["quotation_id"] for row in rows} == set(by_id)
+    for row in rows:
+        quote = by_id[row["quotation_id"]]
+        for grammar_key, seed_key in _QUOTE_FIELD_MAP.items():
+            assert row[grammar_key] == quote[seed_key], grammar_key
+        # price_thb -> unit_price: exact, no float round-trip
+        assert Decimal(row["price_thb"]) == quote["unit_price"]
+
+    # the join kept EACH quote's supplier — the PO's supplier did not win all three rows
+    assert {row["quote_supplier_id"] for row in rows} == {
+        q["supplier_id"] for q in seed["candidate_quotes"]
+    }
+    assert all(row["supplier_id"] == "SUP-RAPIDMRO" for row in rows), "base PO supplier intact"
+
+
+async def test_derived_fields_are_absent_from_the_grammar_output() -> None:
+    """AC-6, the honest half — the OQ-3 boundary made executable. The grammar emits THREE
+    flat rows and none of the seed's derived fields; ``_SeedQuery`` co-exists because of
+    exactly this, not because migration was never attempted. intake stays
+    execution-bound ✖ for these fields (LOCKED-9)."""
+    rows = await _grammar_rows()
+
+    assert len(rows) == 3, "a relational join emits one row per quote, never the nested reshape"
+    for row in rows:
+        for derived in _DERIVED_FIELDS:
+            assert derived not in row, f"{derived!r} is derived — the grammar must not invent it"
+        # the seed's normalized quote key never appears; the raw CSV column does
+        assert "unit_price" not in row
+        assert "price_thb" in row
+
+
+@pytest.mark.parametrize("required", ["compliance", "candidate_quotes", "criticality"])
+async def test_the_seed_still_supplies_what_the_grammar_cannot(required: str) -> None:
+    """The complement of the assertion above: production ``intake`` is not merely
+    un-migrated, it is un-migratABLE without a transform step. These three fields exist
+    in the seed and have no relational source."""
+    seed = await _intake_seed(FastenalCsvAdapter())
+    assert required in seed
+
+
+# --------------------------------------------------------------------------- #
+# AC-7 — the `read_stock` deferral, with the PLAN's stated reason CORRECTED
+# --------------------------------------------------------------------------- #
+
+
+async def test_read_stock_substrate_exists_the_plan_fact_7_erratum() -> None:
+    """PLAN-0062 SD-1/fact 7 says ``read_stock`` is deferred because there is "no
+    substrate". **That is false**, and Cray ratified SD-1 on it — so the reason is
+    corrected here rather than quietly repeated.
+
+    The ontology DECLARES ``Part.stock_qty`` + ``Part.reorder_point``, and the
+    registry-registered ``ProcurementSyntheticAdapter`` EMITS both. (The hero
+    ``FastenalCsvAdapter`` does not — but it is not the vertical's registered adapter.)
+    A ``reads: [Part]`` declaration would resolve at the load gate today."""
+    discover_and_register()
+    meta = load_ontology_meta(_VERTICAL)
+    part = next(t for t in meta.object_types if t.name == "Part")
+    declared = {p.name for p in part.properties}
+    assert {"stock_qty", "reorder_point"} <= declared, "the ontology declares the substrate"
+
+    rows = await registry.get_adapter(_VERTICAL).fetch_objects("Part")
+    assert rows, "the registered adapter emits Part rows"
+    assert all(
+        {"stock_qty", "reorder_point"} <= set(row) for row in rows
+    ), "the registered adapter emits the stock substrate"
+
+
+def test_read_stock_is_blocked_by_per_kind_executor_routing_not_by_data() -> None:
+    """The TRUE deferral reason, pinned as an invariant. The procurement factory maps one
+    executor per ``StepKind``; its QUERY executor is the fixed ``_SeedQuery`` intake seed,
+    and the orchestrator resolves executors by ``step.kind``. So a declared ``read_stock``
+    would pass the gate and still receive the intake requisition at run time — declared ✔
+    but execution-bound ✖, which is worse than an honest deferral.
+
+    **This test is the tripwire.** When the factory gains per-step QUERY routing, the
+    ``dict[StepKind, ...]`` assumption below breaks, this fails, and the AC-7 deferral
+    falls due for revisit."""
+    executors = _executors(advisory_stub_factory, [], [{"seed": True}])
+
+    assert set(executors) <= {StepKind.QUERY, StepKind.EVALUATE, StepKind.ACTION}
+    query = executors[StepKind.QUERY]
+    assert type(query).__name__ == "_SeedQuery", (
+        "procurement's QUERY executor is the fixed intake seed — one executor for EVERY "
+        "query step, so read_stock cannot be honestly migrated until a per-step router ships"
+    )

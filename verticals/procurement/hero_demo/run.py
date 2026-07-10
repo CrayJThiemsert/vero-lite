@@ -131,13 +131,25 @@ class _SeedQuery:
     """The QUERY executor for ``intake`` -- returns the enriched purchase-requisition seed the run
     threads forward (the failure signal already enriched, data-access = (a)).
 
-    DEPRECATE-IN-PLACE (PLAN-0048 SD-3, ratified 2026-07-04): an interim
-    hand-written JOIN seed -- ``intake`` fuses three object_types
-    (OperationalEvent + PurchaseOrder + Quotation), a shape the generic
-    ``QueryStepExecutor`` cannot honestly express until a join/projection
-    grammar is ratified (an ADR-016 amendment). It stays; nothing migrates.
+    CO-EXIST, not deprecated-pending-migration (PLAN-0062 SD-C / OQ-3; supersedes the
+    PLAN-0048 SD-3 "nothing migrates" note, which predated the grammar). The
+    join/projection grammar HAS since shipped (PLAN-0061), and
+    ``tests/verticals/procurement/test_intake_shadow_parity.py`` proves the JOIN HALF of
+    this seed is grammar-expressible and information-identical over the REAL
+    ``FastenalCsvAdapter``: `reads: [OperationalEvent, PurchaseOrder, Quotation]`, the
+    hero PO ``fuse``, quotes ``on: part_id``.
+
+    What keeps this seed in production is the OTHER half. A relational join emits three
+    FLAT rows and cannot produce the seed's DERIVED fields -- ``compliance`` (the
+    rule_gate signal), the ``criticality`` amplification, the nested
+    ``candidate_quotes`` reshape -- without inventing a transform StepKind (out of
+    scope). So ``intake`` is declared-expressible for the join half (proven) while its
+    production execution stays here, and it is labelled **execution-bound (no)** for the
+    derived fields (LOCKED-9 -- no over-claim).
+
     NEW plain single-type declared reads go through the engine default:
-    ``services/engine/procedures/query_step.py`` (declared==dispatched)."""
+    ``services/engine/procedures/query_step.py`` (declared==dispatched). The three OCT
+    verticals' read steps migrated there in PLAN-0062 PR1-PR3."""
 
     seed: list[Any]
 
