@@ -187,7 +187,13 @@ async def run_procedure_persisted(
 
 
 async def load_run(session: AsyncSession, run_id: str) -> RunResult | None:
-    """Load a persisted run + its step results (execution order), or ``None``."""
+    """Load a persisted run + its step results (execution order), or ``None``.
+
+    ``created_at`` is a WALL-CLOCK stamp, so this order is best-effort: a backward
+    clock step (an NTP correction, a VM/WSL2 host resync) can stamp a later step
+    with an earlier time. Never infer *which* step a run is suspended at from this
+    order — use :func:`suspended_step_result`, which reads the status.
+    """
     run = await session.get(PipelineRun, run_id)
     if run is None:
         return None
@@ -197,6 +203,27 @@ async def load_run(session: AsyncSession, run_id: str) -> RunResult | None:
         .order_by(StepResult.created_at, StepResult.step_result_id)
     )
     return RunResult(run=run, step_results=list(rows.scalars().all()))
+
+
+# The two statuses a not-yet-resumed step can hold: ``waiting_human`` (suspended at
+# a gate, or escalated on failure with no artifact) and ``resolved`` (its gate was
+# decided; awaiting the resume that threads the decision forward). Every other step
+# of a resumable run is ``complete``, so exactly one step matches.
+_UNRESUMED_STATUSES = frozenset(
+    {StepResultStatus.WAITING_HUMAN.value, StepResultStatus.RESOLVED.value}
+)
+
+
+def suspended_step_result(step_results: list[StepResult]) -> StepResult | None:
+    """The step a ``waiting_human`` run is suspended at — identified by STATUS.
+
+    Never by list position. :func:`load_run` orders by ``created_at``, a wall-clock
+    stamp that is not monotonic: a backward clock step between two steps of the same
+    run sorts the later one first, and ``step_results[-1]`` then names a *completed*
+    step. Resuming from it re-runs an already-executed gate (duplicate side effects)
+    or fails closed on its undecided proposals.
+    """
+    return next((s for s in step_results if s.status in _UNRESUMED_STATUSES), None)
 
 
 def _has_decidable_proposals(artifact: dict[str, Any]) -> bool:
@@ -305,7 +332,12 @@ async def resume_run(
     # PLAN-0047 Step 6 (AC-8): a mid-flight governance edit fails closed here.
     assert_governance_pin(run, procedure, context="resume")
 
-    suspended = loaded.step_results[-1]
+    suspended = suspended_step_result(loaded.step_results)
+    if suspended is None:
+        raise ProcedureError(
+            f"run '{run_id}' is waiting_human but no step result is waiting_human or "
+            "resolved — the run row and its step results disagree"
+        )
     index = next((i for i, s in enumerate(procedure.steps) if s.step_id == suspended.step_id), None)
     if index is None:
         raise ProcedureError(
@@ -339,7 +371,9 @@ async def resume_run(
     if suspended.artifact is None:
         # Escalated failure (no artifact): re-run the failed step from its resolved
         # input; the stale failed record (same step_result_id) is overwritten on merge.
-        prior_results = loaded.step_results[:-1]
+        prior_results = [
+            s for s in loaded.step_results if s.step_result_id != suspended.step_result_id
+        ]
         start_index = index
     else:
         # PLAN-0047 Step 3 — the gate state machine: a suspend carrying REAL

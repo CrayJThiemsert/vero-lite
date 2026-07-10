@@ -55,6 +55,7 @@ from services.engine.procedures.persistence import (
     load_run,
     resume_run,
     run_procedure_persisted,
+    suspended_step_result,
 )
 from services.engine.procedures.runs import (
     PipelineRun,
@@ -117,9 +118,11 @@ def _step_views(step_results: list[StepResult]) -> list[StepResultView]:
 
 
 def _suspended_step(step_results: list[StepResult], run_status: str) -> StepResult | None:
+    # By status, never by list position — load_run orders on a wall-clock column
+    # that a backward clock step can invert (see suspended_step_result).
     if run_status != PipelineRunStatus.WAITING_HUMAN.value or not step_results:
         return None
-    return step_results[-1]
+    return suspended_step_result(step_results)
 
 
 def _proposals(suspended: StepResult | None) -> list[ProposalView]:
