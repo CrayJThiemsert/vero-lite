@@ -1,9 +1,8 @@
 # PLAN-0065: Calm-path reorder runnability — the `stock_qty → measured_value` projection + the manual-run proof + the scheduled sibling
 
-**Status:** Ready for execution (rev 3, fully ratified) — **all five SDs
-ratified** (Cray, 2026-07-11, AskUserQuestion; SD-1..SD-4 at rev 2, SD-5 at
-rev 3); commit-ready pending Code R2 of the SD-5 delta (Code commits via a
-docs PR, ADR-009 D2)
+**Status:** Complete — all five SDs ratified (Cray, 2026-07-11, AskUserQuestion)
+and shipped in ONE build PR (#700, `eaf8b03` → merge `75696c5`; PLAN Ready #699).
+Code R2 accepted (every rev-1/2/3 citation re-verified on disk); Close-out below.
 **Owner:** Claude Code (executes); Cray ratified the surfaced decisions
 **Created:** 2026-07-11 (rev 2 same-day — SD ratification re-scoped XS → S–M;
 rev 3 same-day — SD-5 ratified (b))
@@ -517,6 +516,59 @@ per the fact-16 precedent); (viii) **stale-cite hygiene** — the YAML comment's
 "spec.py:823-842" (fact 11) is a stale line-cite in a 0064-adjacent comment
 block; correct it ONLY if that block is already being touched by AC-1's addendum,
 otherwise leave (no ratified-line edits).
+
+## Close-out (2026-07-11, session 119 — same-day draft → ratify → build → close)
+
+**Shipped (ONE build PR, #700, `eaf8b03` → merge `75696c5`; PLAN committed #699).**
+
+- **Step 2 (AC-1, SD-2).** `verticals/procurement/procedures.yaml` `read_stock` gains
+  `project: {fields: {stock_qty: measured_value}}` (fields-only, shipped Q4 grammar — no
+  spec/grammar/orchestrator/registry change); facet input/output prose + note synced.
+- **Step 1 (AC-2, SD-4).** `tests/verticals/procurement/test_calm_path_production_runnability.py`
+  — the production-factory chain through the REAL `run_procedure`: read_stock (2 registered-
+  adapter Part rows, `measured_value` 0 and 40, no `stock_qty`) → judge_stock `["breach",
+  "breach"]` → suspends `waiting_human` at `reorder`. Red-verified against the unedited YAML
+  (the chain died at judge_stock) before the projection landed.
+- **Step 3 (AC-3, SD-1(b)(i)).** `tests/api/test_calm_path_run_endpoint.py` — `POST
+  /procedures/low_stock_reorder_round/run` runs the chain end-to-end over HTTP to the reorder
+  gate (`waiting_human`, `suspended_step == reorder`), identity server-resolved (`req-planner`;
+  the spoofed body `triggered_by` overwritten); + a no-bearer 401.
+- **Step 4 (AC-4, SD-1(b)(ii) + SD-5(b)).** A NEW distinct `scheduled_low_stock_reorder_round`
+  (trigger: schedule, `cron: "0 5 * * *"`, `owning_person_id: req-planner`) on the shipped
+  PLAN-0055 scheduler; canonical `docs/conventions/procedure-archetypes.md` grew first, then the
+  `PROCEDURE_ARCHETYPES` mirror + comment. `test_scheduled_calm_path_fires_and_parks_at_reorder_gate`
+  proves the headless fire runs read_stock → judge_stock (`["breach","breach"]`) and parks at
+  `reorder`, recording `req-planner` as the run's on-behalf-of principal.
+- **AC-5.** Two count-pins updated deliberately: `test_procedures_endpoint` `total 7 → 8`;
+  `test_scheduled_procurement_demo` one → two schedule procedures (`_sync_and_arm` parameterized
+  to arm a named procedure). **Discovered at build (disclosed):** the PLAN-0064 shadow-parity
+  test `test_read_stock_routes_to_the_shipped_executor_not_the_seed` asserted `read_stock` output
+  == the RAW adapter Part rows; the projection renames `stock_qty → measured_value`, so that
+  assertion was updated deliberately — the routing is unchanged (declared leg = the shipped
+  executor), only the output is now projected. (The rev-2 fact 7 cited this test as pinning the
+  router but did not flag those two lines — a claim-vs-code refinement, not a design change.)
+
+**Verification (AC-8).** CI `gate` green on #700; local full suite WITH Postgres **2516 passed
+/ 7 skipped** (baseline 2512/7 + 4 new); ruff + ruff-format + `mypy --strict services/` clean;
+no MS-S1 / live-LLM / host-state action. L-3 governance-pin consequence disclosed in the #700
+body (no known production parked runs of `low_stock_reorder_round`; the new sibling id has none).
+
+**SD-5(b) divergent path — verified at execution (fact 13a confirmed).** Carrying
+`owning_person_id: req-planner` on the no-SoD AT-3 sibling is accepted at load (cross-ref
+validated; `req-planner` is a declared principal) and at fire (the scheduler records it as the
+run's on-behalf-of principal, no SoD role consumes it). No STOP condition met — the risk-(v)
+backstop did not fire.
+
+**The honest enforcement frame (AC-7 — nothing claims more).** The calm path now runs end-to-end
+from a production entry point (the manual-run endpoint) AND fires unattended (the scheduled
+sibling); in BOTH paths the run parks at ONE human go/no-go — nothing auto-approves, no reorder
+issues until a human acts (RF-1/RF-3). No claim about live deployment or MS-S1.
+
+**SD-3 deferred (an Active next-work candidate).** The per-part reorder-point band trips the L-4
+tripwire (the shipped judge takes a single scalar `Step.threshold`, not a per-entity field
+reference; projection is select/rename only) — it needs a `threshold_field`-style ADR-016 grammar
+amendment or a custom evaluate executor. Deferred to its own ADR-016-amendment PLAN; harmless
+today (identical verdicts on the shipped 2-part data, fact 9).
 
 ---
 
