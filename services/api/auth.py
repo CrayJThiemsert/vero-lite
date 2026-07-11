@@ -92,3 +92,25 @@ async def get_current_principal(
             )
         return AuthContext(person_id=person_id, person=person)
     return AuthContext(person_id=person_id, person=None)
+
+
+async def get_optional_principal(
+    authorization: Annotated[str | None, Header()] = None,
+) -> AuthContext:
+    """Like :func:`get_current_principal`, but a MISSING credential resolves to
+    anonymous — ``AuthContext(None, None)`` — instead of 401 (PLAN-0063 SD-2(d)).
+
+    For a READ route that serves a reduced view to an anonymous caller: the
+    audit-chain verdict is open, the verbatim break strings are credentialed. A
+    credential that IS presented is validated strictly by delegating to
+    :func:`get_current_principal` — a malformed / unknown key still 401s, so a
+    misconfigured auditor fails loudly rather than being silently downgraded to
+    the anonymous view. With ``api_auth_enabled=false`` this returns
+    ``AuthContext(None, None)`` too, so a caller that must distinguish
+    "disabled" from "anonymous" reads ``settings.api_auth_enabled`` directly.
+    """
+    if not settings.api_auth_enabled:
+        return AuthContext(person_id=None, person=None)
+    if authorization is None:
+        return AuthContext(person_id=None, person=None)
+    return await get_current_principal(authorization)
