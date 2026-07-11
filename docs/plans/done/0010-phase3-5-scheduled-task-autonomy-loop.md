@@ -1,6 +1,16 @@
 # PLAN-0010: Phase 3.5 — Scheduled-Task Autonomy Loop (Two-Poller Primitive Layer)
 
-**Status:** Ready for execution
+**Status:** Complete — closed as **"shipped + intentionally disabled"** and filed to
+`done/` 2026-07-11 (session 118, Cray-ratified via AskUserQuestion after an ELI-CRAY
+brief). The primitive layer shipped in full (`tools/loop/{_schema,dispatcher,
+_status_digest}.py` + `loop/inbox/`+`loop/processed/`) and **proved itself in
+production: 427 messages processed 2026-05-26 → 2026-06-25**, then Cray disabled the
+dispatcher over the s76 drift hazard (the hourly task drifted past scope and committed
+onto a live branch). Closing separates "is it built" (yes — evidenced by the run) from
+"is it enabled" (an operational decision, reversible any time). **Any revival mints a
+fresh PLAN whose subject is the drift guardrails** — not a switch-flip of this one.
+AC-1/AC-3/AC-5 ticked against on-disk tests + the production run; AC-2/AC-4/AC-6 left
+unticked honestly (see Close-out note).
 **Owner:** Claude Code (Tier 2 — the consumer + all commits are Code-exclusive per ADR-009 D2 / ADR-013 D2; Cowork drafts this plan under interim ADR-009 D1 authority)
 **Created:** 2026-05-26
 **Related ADRs:** ADR-013 (autonomy axis relocation — **gates this plan**; Phase 3.5 is the scheduled-task slice of the ADR-013 D1 execution-automation axis), ADR-009 (D2 "only Code commits" — load-bearing for the Step 3 consumer commit gate; D1 interim authoring + D3 K-1/K-2 workflow context), ADR-012 (D4.3 author≠reviewer disclosure), ADR-006 (core vs vertical — the loop is vertical-agnostic core harness tooling)
@@ -22,6 +32,15 @@
 > 2. This PLAN's `Status` flips Draft → Ready for execution after Cray
 >    ratifies the §Surfaced decisions section. (✓ — ratified 2026-05-26
 >    in the PR that introduces this file.)
+> **Close-out note (2026-07-11, session 118).** AC-2 (the deliberately-wrong-clock
+> producer test), AC-4 (the formal 4-case identity-matrix test mapping), and AC-6
+> (the formal Phase 1+2+smoke regression re-run) were **never formally discharged**
+> and are left unticked — this PLAN closes by **operational decision** (the s76
+> drift hazard → dispatcher disabled), not by full AC completion. The un-discharged
+> ACs become requirements of the fresh guardrails PLAN if the loop is ever revived.
+> Companion fix in this PR: `tools/loop/__init__.py`'s stale docstring (it still
+> called the dispatcher "(future)" though `dispatcher.py` shipped).
+
 > 3. Cray resolves the Phase 3 ↔ Phase 3.5 sequencing surface (run
 >    PLAN-0010 in parallel with PLAN-0009 Phase 3 execution, or strictly
 >    serial). (✓ — **parallel**, ratified 2026-05-26 — see §Surfaced
@@ -56,7 +75,7 @@ that covers all four identity cases (ADR-013 D2 / ADR-009 D2).
 > case-coverage matrix and names uncovered cases as residual risk —
 > "we are confident it does what we intend," not "tests pass."
 
-- [ ] **AC-1 — Message schema + lifecycle are defined and enforced.** A
+- [x] *(ticked 2026-07-11 s118 close — `tools/loop/_schema.py` + `tests/loop/{test_schema,test_dispatcher,test_loop_roundtrip}.py` cover the lifecycle/idempotency/retention markers; 427 production messages moved inbox→processed exactly once)* **AC-1 — Message schema + lifecycle are defined and enforced.** A
   message has a documented filename pattern (mtime-derived nonce +
   producer-id, **never** an agent-claimed timestamp) and a body schema
   (YAML frontmatter + structured payload). Messages move `inbox/` →
@@ -72,7 +91,7 @@ that covers all four identity cases (ADR-013 D2 / ADR-009 D2).
   with a deliberately wrong claimed clock still produces a
   non-colliding, consumer-parseable message.
 
-- [ ] **AC-3 — Code consumer processes reliably and is the only
+- [x] *(ticked 2026-07-11 s118 close — `tools/loop/dispatcher.py` + `tests/loop/test_dispatcher.py` mtime-order/idempotency coverage; one month of reliable production consumption)* **AC-3 — Code consumer processes reliably and is the only
   committer.** The consumer (Sonnet 4.6 + Auto mode per Lesson #9)
   reads the inbox in **mtime order**, processes idempotently, archives
   to `processed/`, and — for any message whose handling includes a
@@ -88,7 +107,7 @@ that covers all four identity cases (ADR-013 D2 / ADR-009 D2).
   to `bypassPermissions` (ADR-013 D2). This extends, and must not
   regress, the PLAN-0009 Step 1 / AC-3 subagent-identity design.
 
-- [ ] **AC-5 — The loop is observable and fails loudly.** Consumer
+- [x] *(ticked 2026-07-11 s118 close — dispatcher carries L1-L4 poison-detect + retention prune + Telegram integration, exercised by `tests/loop/` and the production run)* **AC-5 — The loop is observable and fails loudly.** Consumer
   failure (parse error, processing exception, git-gate denial when a
   commit was expected) fires a Telegram alert via
   `tools/notify/telegram.sh` (PLAN-0007). Logs are retained/rotated per
