@@ -1,6 +1,8 @@
 # PLAN-0064: Per-step QUERY routing for procurement — migrate `read_stock` onto the shipped executor, reopen PLAN-0062 AC-7
 
-**Status:** Ready for execution — SD-0..SD-5 ratified as-recommended (Cray, 2026-07-11, AskUserQuestion). Steps execute directly (un-gated Code build once committed; ADR-009 D2).
+**Status:** Complete — all 8 ACs shipped in ONE PR (#696, `75ed717` → merge `fdd6a9b`,
+2026-07-11, session 118; gate-green). Close-out below. PLAN-0062 AC-7's deferral is
+**discharged by reference** (AC-6) — no ratified 0062 line edited.
 **Owner:** Claude Code (executes); Cray ratifies the surfaced decisions
 **Created:** 2026-07-11
 **Origin:** Cray picked this candidate as the #1 next-work item (session 118,
@@ -148,20 +150,20 @@ All offline + deterministic, provable under the required CI `gate` on a fresh PR
 ACs are written to the SD recommendations and re-scope mechanically if Cray picks
 otherwise.
 
-- [ ] **AC-1 — the router exists and is unit-pinned.** A delegating QUERY-slot
+- [x] **AC-1 — the router exists and is unit-pinned.** A delegating QUERY-slot
       router (home per SD-2, dispatch rule per SD-1) implementing the plain
       `StepExecutor` protocol: a step WITH declared `reads` dispatches to the
       wrapped declared-grammar executor; a step WITHOUT dispatches to the wrapped
       fallback. Unit tests pin both legs + that the orchestrator's
       `Mapping[StepKind, StepExecutor]` contract is untouched (fact 3's LOCKED-#5
       pattern; the SD-0 tripwire made executable).
-- [ ] **AC-2 — `read_stock` declares `reads: [Part]`.** The calm-path step gains
+- [x] **AC-2 — `read_stock` declares `reads: [Part]`.** The calm-path step gains
       the typed single-read declaration (PLAN-0048 shape — no `join`, no
       `project` under SD-3's recommendation); the shipped-YAML load-gate sweep
       stays green (fact 10); the 16-line deferral note (`procedures.yaml:309-324`)
       and the facet note (`:332`) are rewritten to record the migration + cite this
       PLAN; `facet.input` prose synced to the typed truth (D2-A2 precedent).
-- [ ] **AC-3 — execution-bound through the production factory.** The registered
+- [x] **AC-3 — execution-bound through the production factory.** The registered
       procurement factory (`register_procurement_procedure_executors`) builds the
       router in its QUERY slot: the declared leg = the SHIPPED `QueryStepExecutor`
       bound to the **registry-registered adapter** + real ontology meta (SD-5); the
@@ -170,28 +172,28 @@ otherwise.
       registered adapter's Part rows (both rows; `stock_qty`/`reorder_point`
       present) — the ERRATUM-2 hazard (declared step handed the intake seed) is
       structurally impossible and asserted so.
-- [ ] **AC-4 — `intake` is behaviorally byte-unchanged.** `intake` (no declared
+- [x] **AC-4 — `intake` is behaviorally byte-unchanged.** `intake` (no declared
       reads) still receives `_SeedQuery`'s output identically; the hero audit
       contract, `test_scheduled_procurement_demo`, and the PLAN-0062
       shadow-parity suite pass untouched; the hero procedure block in
       `procedures.yaml` is byte-unchanged (only the calm-path `read_stock` block
       changes).
-- [ ] **AC-5 — the tripwire flip is handled by design.** The old invariant test
+- [x] **AC-5 — the tripwire flip is handled by design.** The old invariant test
       (fact 7) is REWRITTEN per SD-4 to pin the NEW routing contract; the
       substrate companion test (fact 8) stays green untouched. No test is deleted
       or skipped.
-- [ ] **AC-6 — PLAN-0062 AC-7 is reopened + discharged by reference.** This PLAN's
+- [x] **AC-6 — PLAN-0062 AC-7 is reopened + discharged by reference.** This PLAN's
       close-out records: the per-step router shipped, `read_stock` migrated, the
       0062 ERRATUM-2 deferral discharged — citing `0062:536-539` without editing
       any ratified 0062 line (L-5).
-- [ ] **AC-7 — the honest enforcement frame, no over-claim.** Close-out states:
+- [x] **AC-7 — the honest enforcement frame, no over-claim.** Close-out states:
       `read_stock` = declared ✔ · gated ✔ · execution-bound ✔ (production factory
       path); `intake` = unchanged (declared-expressible ✔ per 0062 AC-6, production
       execution = the co-existing seed, derived fields execution-bound ✖);
       `low_stock_reorder_round` end-to-end = **still not production-runnable**
       (fact 9 — `judge_stock`'s `measured_value` contract), honestly labelled as a
       separate future candidate. Nothing may claim more.
-- [ ] **AC-8 — no regression + pin disclosure.** Full offline suite + ruff +
+- [x] **AC-8 — no regression + pin disclosure.** Full offline suite + ruff +
       ruff-format + `mypy --strict services/` green under CI `gate`; the PR body
       discloses the governance-pin consequence of editing the calm-path YAML
       (L-4); **no MS-S1 / live-LLM call anywhere**.
@@ -344,6 +346,50 @@ no known production parked runs of `low_stock_reorder_round`; (iii) scope
 temptation toward calm-path runnability — walled by SD-3 + Out of Scope; (iv) the
 `_executors()` signature change ripples its test callers — contained, the SD-4
 rewrite covers the one caller that pins its shape.
+
+## Close-out (2026-07-11, session 118 — same-day draft → ratify → build → close)
+
+**Shipped (ONE PR, #696, `75ed717` → merge `fdd6a9b`).** Step 1 (AC-1):
+`services/engine/procedures/query_router.py` — the frozen `QueryStepRouter(declared,
+fallback)` on the SD-1 declaration-presence rule, inside one `StepKind` slot (SD-0
+honored: zero orchestrator/registry/spec change; the tripwire never fired) + 5 unit pins
+in `tests/services/engine/procedures/test_query_router.py`, including two query steps
+routed to two different legs through the REAL `run_procedure`. Step 2 (AC-2..AC-5):
+`_executors` gained keyword-only `declared_query` (the three offline hero/demo helpers
+pass none and keep the bare seed slot — their procedures declare no reads);
+`register_procurement_procedure_executors` binds the declared leg to the SHIPPED
+`QueryStepExecutor` over the **registry-registered** `ProcurementSyntheticAdapter` +
+real ontology meta (SD-5); `procedures.yaml` `read_stock` declares `reads: [Part]` with
+the deferral note rewritten to record the migration (hero procedure block
+byte-unchanged — AC-4); the ERRATUM-2 tripwire test rewritten IN PLACE per its own
+docstring contract (SD-4) — it now pins the router in the PRODUCTION factory's QUERY
+slot, the declared `read_stock` receiving the registered adapter's Part rows (never the
+seed), and the undeclared `intake` receiving the co-existing seed byte-identically;
+`test_operate_executor_factory` gained an autouse `discover_and_register` fixture (the
+API-lifespan ordering; the energy-factory-test precedent).
+
+**Verification (AC-8).** CI `gate` green on #696 (full suite + Postgres service + ruff +
+format + `mypy --strict services/` + fresh-DB migrations); local full suite WITH
+Postgres **2512 passed / 7 skipped** (baseline 2507/7 + the new pins, net of the
+tripwire rewrite); the L-4 governance-pin consequence disclosed in the PR body (no known
+production parked runs of `low_stock_reorder_round`); no MS-S1 / host-state action.
+
+**The honest enforcement frame (AC-7 — nothing claims more).** procurement
+`read_stock` = **declared ✔ · load-gated ✔ · execution-bound ✔ on the production
+factory path**; `intake` = unchanged (declared-expressible ✔ per 0062 AC-6, production
+execution stays the co-existing `_SeedQuery`, derived fields execution-bound ✖);
+`low_stock_reorder_round` end-to-end = **still not production-runnable** — `judge_stock`
+reads `measured_value`, which raw Part rows do not carry (fact 9); making the calm path
+runnable is a separate future candidate (SD-3's declined option (i) is its starting
+point). Scope note, stated plainly: the declared⇒dispatched guarantee is a property of
+the **production factory** (AC-3's exact claim); the offline hero/demo helpers keep the
+bare seed slot and run procedures with no declared reads.
+
+**PLAN-0062 AC-7 discharge (AC-6).** The per-step router shipped; `read_stock`
+migrated; the ERRATUM-2 deferral is discharged — citing
+`docs/plans/done/0062-per-vertical-seed-migration.md:536-539` ("a per-step QUERY router
+for procurement, which would make `read_stock` migratable and reopen AC-7"). No 0062
+line was edited (L-5); the STATUS Active TODO for the router closes with this PLAN.
 
 ---
 
