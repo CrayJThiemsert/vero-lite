@@ -313,9 +313,22 @@ async def test_read_stock_routes_to_the_shipped_executor_not_the_seed() -> None:
 
     ctx = RunContext(agent=_agent(), vertical=_VERTICAL)
     stock = await query.execute(read_stock, [], ctx)
-    expected = await registry.get_adapter(_VERTICAL).fetch_objects("Part")
-    assert stock.output == expected, "declared read_stock = the registered adapter's Part rows"
-    assert all({"stock_qty", "reorder_point"} <= set(row) for row in stock.output)
+    # PLAN-0065 (AC-5): read_stock now rename-projects stock_qty -> measured_value so the
+    # shipped judge_stock can band the rows. Routing is unchanged (declared leg = the shipped
+    # QueryStepExecutor over the registered adapter); the OUTPUT is that adapter's Part rows
+    # with the one field renamed (stock_qty MOVED to measured_value, reorder_point kept).
+    raw = await registry.get_adapter(_VERTICAL).fetch_objects("Part")
+    expected = [
+        {**{k: v for k, v in row.items() if k != "stock_qty"}, "measured_value": row["stock_qty"]}
+        for row in raw
+    ]
+    assert (
+        stock.output == expected
+    ), "declared read_stock = the registered adapter's Part rows, projected"
+    assert all(
+        {"measured_value", "reorder_point"} <= set(row) and "stock_qty" not in row
+        for row in stock.output
+    )
 
     seeded = await query.execute(intake, [], ctx)
     assert len(seeded.output) == 1, "intake still gets the single enriched requisition seed"

@@ -51,6 +51,9 @@ from tests.db_support import create_test_engine
 
 _VERTICAL = "procurement"
 _PROC_ID = "scheduled_emergency_sourcing_round"
+_CALM_PROC_ID = "scheduled_low_stock_reorder_round"  # PLAN-0065 Step 4 — the AT-3 calm-path sibling
+# procurement now ships TWO schedule procedures, in YAML declaration order.
+_SCHEDULE_PROC_IDS = [_PROC_ID, _CALM_PROC_ID]
 _GATED_STEP = "approve"
 _SP_ID = "svc-buyer"
 BKK = ZoneInfo("Asia/Bangkok")
@@ -105,17 +108,17 @@ async def _audit_rows(session: AsyncSession, action: str, run_id: str) -> list[A
     return list(rows.scalars().all())
 
 
-async def _sync_and_arm(session: AsyncSession) -> ScheduleState:
-    """Register the procurement schedules, then arm the one schedule procedure's slot as DUE."""
+async def _sync_and_arm(session: AsyncSession, proc_id: str = _PROC_ID) -> ScheduleState:
+    """Register the procurement schedules, then arm the NAMED schedule procedure's slot as DUE."""
     from services.engine.procedures.scheduler_wiring import sync_schedule_states
 
     spec = load_procedures(_VERTICAL)
     rows = await sync_schedule_states(session, spec, now=EPOCH)
     # sync creates a ScheduleState only for `schedule`-trigger procedures — procurement ships
-    # exactly one (the Step-8 demo procedure); the two manual procedures are skipped.
-    assert [r.procedure_id for r in rows] == [_PROC_ID]
-    state = rows[0]
-    assert state.schedule_id == schedule_id_for(_VERTICAL, _PROC_ID)
+    # exactly TWO (PLAN-0055 emergency + PLAN-0065 calm-path); the manual procedures are skipped.
+    assert [r.procedure_id for r in rows] == _SCHEDULE_PROC_IDS
+    state = next(r for r in rows if r.procedure_id == proc_id)
+    assert state.schedule_id == schedule_id_for(_VERTICAL, proc_id)
     assert state.next_fire is None  # fresh registration — not yet armed
     state.next_fire = SLOT  # arm the due slot (the daemon's first tick would INITIALIZE this)
     await session.commit()
@@ -231,3 +234,53 @@ async def test_scheduled_run_resolves_through_to_completed(
 
     run = await session.get(PipelineRun, outcome.run_id)
     assert run is not None and run.status == PipelineRunStatus.COMPLETED.value
+
+
+async def test_scheduled_calm_path_fires_and_parks_at_reorder_gate(
+    session: AsyncSession, procurement_registered: None
+) -> None:
+    """PLAN-0065 (AC-4): the nightly CALM-PATH schedule fires as the service principal ON
+    BEHALF OF req-planner (SD-5(b) accountability), runs read_stock -> judge_stock over the
+    PROJECTED Part rows, and PARKS at the gated ``reorder`` — a machine never reorders past the
+    gate (RF-3). AT-3: NO SoD / doa_tier — the owning person is the run's accountability
+    principal, not an SoD requester."""
+    spec = load_procedures(_VERTICAL)
+    resolve = build_resolver(spec, registry.get_procedure_executors(_VERTICAL))
+    state = await _sync_and_arm(session, _CALM_PROC_ID)
+
+    [outcome] = await fire_due_schedules(session, [state], now=NOW, resolve=resolve)
+
+    # FIRED and parked at the human reorder gate (not auto-completed — RF-3).
+    assert outcome.result is FireResult.FIRED
+    assert outcome.run_status == PipelineRunStatus.WAITING_HUMAN.value
+
+    loaded = await load_run(session, outcome.run_id)
+    assert loaded is not None
+    suspended = suspended_step_result(loaded.step_results)  # by STATUS, never by position
+    assert suspended is not None
+    assert suspended.step_id == "reorder"
+
+    # AC-4 — runs as the declared service principal ON BEHALF OF the owning human (SD-5(b)):
+    # req-planner is recorded as the accountable human behind the unattended sweep.
+    [started] = await _audit_rows(session, "run_started", outcome.run_id)
+    assert started.actor_service_principal_id == _SP_ID
+    assert started.payload is not None
+    assert started.payload["actor_kind"] == "service"
+    assert started.payload["on_behalf_of"]["service_principal_id"] == _SP_ID
+    assert started.payload["on_behalf_of"]["owning_person_id"] == "req-planner"  # SD-5(b)
+
+    # AT-3: no SoD constraint — the calm path has no SoD requester tie (contrast the emergency
+    # sibling, which records step_principals["intake"] for the requester != approver split).
+    assert not (loaded.run.step_principals or {}).get("intake")
+
+    # the judge banded the PROJECTED Part rows: both low-stock parts breach (0 <= 100, 40 <= 100).
+    judge_sr = next(sr for sr in loaded.step_results if sr.step_id == "judge_stock")
+    assert judge_sr.artifact is not None
+    assert [e["verdict"] for e in judge_sr.artifact["output_set"]] == ["breach", "breach"]
+
+    # AC-9 — the SD-P6 trigger_context stamp rides on the persisted run.
+    tc = loaded.run.trigger_context
+    assert tc is not None
+    assert tc["trigger"] == Trigger.SCHEDULE.value
+    assert tc["cron"] == "0 5 * * *"
+    assert tc["actor"] == _SP_ID

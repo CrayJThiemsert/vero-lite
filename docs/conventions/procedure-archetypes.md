@@ -47,7 +47,7 @@ archetype below preserves this.
 | **AT-1** `anomaly→action` | sense → judge(band) → gated action on breach | `energy`, `supply_chain`, `aquaculture` (core) | 1 deterministic band; 1 human gate on the irreversible write; handler fixed |
 | **AT-1b** `+ watch + summary` (AT-1 variant) | AT-1 **+** watch→gated proposal **+** auto summary terminal | `aquaculture.morning_pond_health_round` | AT-1 + ADR-0019 watch→gated escalation + an auto (un-gated) terminal receipt |
 | **AT-2** `request→approve→fulfill` | intake → judge → source(scored rule) → compliance(rule gate) → tiered DOA(human) → fulfill(write) → audit | `procurement.emergency_sourcing_round` (manual); `procurement.scheduled_emergency_sourcing_round` (S1 schedule-triggered variant) | per-criterion rule gate + tiered DOA + emergency waiver (escalate-never-skip) + SoD (manual) + traceable audit |
-| **AT-3** `monitor→reorder` | read_stock → judge(reorder point) → gated reorder | `procurement.low_stock_reorder_round` | deterministic reorder-point band + single-tier human approval |
+| **AT-3** `monitor→reorder` | read_stock → judge(reorder point) → gated reorder | `procurement.low_stock_reorder_round` (manual); `procurement.scheduled_low_stock_reorder_round` (S1 schedule-triggered) | deterministic reorder-point band + single-tier human approval |
 
 ---
 
@@ -121,8 +121,17 @@ gated action), but the cadence and intent differ — a steady restock loop, not 
 anomaly remediation — so it is catalogued distinctly.
 
 - **Shape:** `query (read stock) → evaluate (judge vs reorder point) → action/gated (reorder)`
-- **Instance:** `procurement.low_stock_reorder_round` (3 steps) — the single-tier
-  calm contrast to AT-2's hero ladder, on the same engine + agent.
+- **Instances:**
+  - `procurement.low_stock_reorder_round` (3 steps, `trigger: manual`) — the single-tier
+    calm contrast to AT-2's hero ladder, on the same engine + agent.
+  - `procurement.scheduled_low_stock_reorder_round` (3 steps, `trigger: schedule`,
+    PLAN-0065 Step 4 / ADR-0028 S1) — the **automated** calm-path: fired nightly by the
+    scheduler daemon as the `svc-buyer` service principal (on behalf of `req-planner`,
+    SP-5); it reads stock, judges, and PARKS at the human reorder go/no-go (a service actor
+    never reorders past the gate — RF-3). Unlike the AT-2 scheduled variant it carries **no
+    `separation_of_duties`** (AT-3 has no DOA tier / SoD), but it DOES carry
+    `owning_person_id: req-planner` for accountability parity (the run principal names the
+    accountable human; no SoD role consumes it — PLAN-0065 SD-5(b)).
 - **Governance signature:** a deterministic reorder-point band; a single human
   approval tier (no emergency waiver, no escalated DOA).
 
