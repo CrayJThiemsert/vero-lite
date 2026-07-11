@@ -2885,3 +2885,95 @@ The pre-commit `mypy` hook now also covers `^(services|verticals)/`
 (`9dd1470`), not just `services/` — closes the flagged coverage gap.
 
 ---
+
+*Rotated 2026-07-11 (session 119 reconcile — DEEP rotation under the 64 KB R1 ceiling: the three session-117 Current Focus blocks + the session-116 hygiene block, keeping only s119 + s118 live).*
+
+> **Session 117, 2026-07-10 (head_commit `fe9e98d` → `22242e4`) — residual
+> flaky-suite fix: the TESTS half of #678's wall-clock invariant (#684
+> `fix(test)`).** A ~1-in-3 full-suite flake on `main` — two procurement DB
+> tests (`test_event_run_resolves_through_to_completed`,
+> `test_scheduled_procurement_run_parks_at_doa_gate`) — with NO code cause
+> (#683 was docs-only), green in isolation and under `tests/services/db` alone.
+> Root cause = the SAME non-monotonic WSL2 `datetime.now(UTC)` #678 found, on
+> the OTHER side of the seam: `load_run` still `ORDER BY created_at` (a
+> wall-clock column), and #678 migrated only the PRODUCTION consumers
+> (`resume_run`, `GET /runs/{id}`) to `suspended_step_result()` — leaving SIX
+> TEST sites reading `loaded.step_results[-1]`. Under a backward step the
+> `approve` gate sorts before the completed `compliance` step, so `[-1]` names
+> the wrong step → both observed messages. Fixed BY INTENT: 4 demo sites →
+> `suspended_step_result()`; 2 latent sites → select by `step_id` (status would
+> make their own status-assert circular); + 2 order-asserting sites (a
+> different shape, found while reading) now compare `sorted(...)` — a round-trip
+> preserves a step SET, not an order. Cover: a non-vacuous AST guard
+> (`test_load_run_ordering_guard.py` — reports EXACTLY the six pre-fix sites,
+> provenance-tracked so legit in-memory `RunResult[-1]` reads pass) + a
+> deterministic clock-inversion pin. NO production code changed. Verified:
+> `pytest -q` 5x pre-merge + 3x on the merge commit `22242e4` (CI is PR-only) =
+> eight consecutive full-suite greens, 2499/7 (was 2496 + 3 new); ruff clean;
+> offline, MS-S1 untouched.
+
+> **Session 117, 2026-07-10 (head_commit `a711927` → `9a12087`) — flaky-DB-test
+> isolation track (a CONCURRENT Code track, separate from the PLAN-0062 work
+> below). One intermittent `test_procedure_headline` failure unpacked into TWO
+> unrelated bugs, one of them PRODUCTION. #678 + #679 + #680.**
+> **The load-bearing finding (#678 `fix(engine)`):** `datetime.now(UTC)` on the
+> WSL2 dev box is **NON-MONOTONIC** — measured 2 backward steps in a 20 s sample,
+> worst jump **−555 ms**. `load_run` orders step results by that wall-clock
+> `created_at`, and `resume_run` / `GET /runs/{id}` read `step_results[-1]` as the
+> suspended step. A run straddling the jump therefore resumed from an
+> already-COMPLETED step: re-running a decided gate (duplicate side effects; run
+> stuck at `waiting_human`), or failing on "undecided proposals". ~1 process in 20.
+> Fixed by selecting the suspended step by **STATUS** — the shared
+> `suspended_step_result()` in `services/engine/procedures/persistence.py`.
+> gate/resolve was never affected (it looks steps up by caller-supplied `step_id`).
+> **The test bug (#678 `test(db)`, deterministic):** `Base.metadata` is populated
+> by import side effect, so a process collecting only `tests/services/db` never
+> registered `action_identity` — `create_all` skipped it, `drop_all` could not
+> reach it, and the `alembic upgrade head` tests left it standing
+> (`DuplicateTableError`). The full suite hid it. Fixed with `alembic/env.py`-
+> mirroring registration imports + a `DROP SCHEMA public CASCADE` per test.
+> **#679 `test(db)`:** that reset made concurrent `pytest` in sibling worktrees
+> wipe each other, so the derived test DB is now scoped per checkout
+> (`vero_lite_test_<8-hex of repo root>`); an explicit `TEST_DATABASE_URL` still
+> wins verbatim, so CI is unaffected. Proven by a control experiment (shared DB:
+> both checkouts fail; scoped: both pass).
+> **#680 `fix(engine)`:** the "exactly one unresumed step" invariant was
+> documented but unenforced — two such rows now raise rather than resume from the
+> wrong step, and `get_run` answers **409** instead of an unhandled 500. Plus the
+> HTTP-surface regression test #678 left owing.
+> **Suite 2473/7 → 2488 passed / 7 skipped**, verified on the merge commit itself
+> (CI here is PR-only and never tests a merge commit); ruff + format + mypy clean;
+> offline, **MS-S1 untouched, dev DB unchanged**.
+> **PLAN-0062 unchanged by this track — still 4-of-5 built, PR4 outstanding.**
+> *(True when written; **superseded** — PR4 #682 landed after this track closed and
+> PLAN-0062 is now COMPLETE. See the PLAN-0062 block below.)*
+> Carry-overs → Active TODOs.
+
+> **Session 117, 2026-07-10 (head_commit `4da573d` → `359555b`) — PLAN-0062
+> per-vertical seed migration COMPLETE: PR1b + PR2 + PR3 + PR4 shipped this
+> session (four un-gated Code PRs; STATUS last written at the PR1b reconcile).
+> PLAN-0062 = 5-of-5 built, all 9 ACs ticked → `docs/plans/done/`** — PR1 parity
+> core (#672, s116) + PR1b env-band executor/energy factory (#673) + PR2 (#675)
+> + PR3 (#676) + **PR4 (#682)** procurement shadow-parity + `read_stock` deferral
+> + close-out. **Final honest enforcement frame (LOCKED-9 — nothing claims
+> more):** the three OCT query steps — energy `read_readings`, supply_chain
+> `read_temps`, aquaculture `read_do` — are declared ✔ · load-gated ✔ ·
+> **execution-bound ✔ on the production HTTP path**; procurement `intake` is
+> **declared-expressible ✔ (proven under shadow parity)**, production execution
+> stays the co-existing `_SeedQuery`, execution-bound ✖ for the derived fields;
+> `read_stock` is **deferred, labelled, reason corrected** (ERRATUM 2 — the true
+> blocker was per-`StepKind` executor routing, not "no substrate"; discharged by
+> PLAN-0064's per-step QUERY router #696). Full PR2/PR3/PR4 detail in git history
+> (#675/#676/#682) + the PLAN-0062 done/ close-out; MS-S1 untouched across s116+s117.
+
+> **Session 116, 2026-07-09 — hygiene sweep (this batch, docs-only).** Filed
+> two shipped-but-misfiled plans to `docs/plans/done/` — **PLAN-0019**
+> (core-procedure baseline) + **PLAN-0027** (B-γ comparison baselines); their
+> artifacts have been on disk + in use for sessions, only the status flip +
+> closeout `git mv` were outstanding. Reconciled this file: corrected the stale
+> Active-TODO **Rock-3** line (it still called the Q4 join-grammar ADR + grammar
+> PLAN "both UNDRAFTED" — the ADR is **Accepted #659** and **PLAN-0061 is
+> built+closed #664–#668**) and trimmed the s115 focus block. NO code change;
+> full offline suite unchanged (2452 / 7). NEXT: the **Phase-3 per-vertical
+> seed-migration PLAN** (PLAN-0062, via `plan-drafter`). Origin: s116
+> `next-work-analyst` re-rank → Cray picked hygiene-first, then Phase-3.
