@@ -1,6 +1,12 @@
 # PLAN-004: Handoff Frontmatter and Dashboard
 
-**Status:** Ready for execution — **Phases A + B COMPLETE** (shipped); Phase C forward-declared
+**Status:** Complete — Phases A + B shipped and in daily use (Phase A session 19-20;
+Phase B session 35: pre-commit wiring via `tools/handoffs/precommit_handoffs.py`,
+`--watch`, per-session `INDEX.md`); filed to `done/` 2026-07-11 (session 118,
+Cray-ratified via the next-work hygiene pick). **Phase C — optional polish,
+"may never land" — spins to the backlog** (tracked by the STATUS Next-Steps
+"Deferred (backlog)" line, not by keeping this PLAN active); if Phase C is ever
+picked up it mints as a fresh PLAN per current convention.
 **Date:** 2026-05-19
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-006 (vertical plugin), Lesson #5 (tier-system audit) §1 + §2 + §3 + §4, Lesson #6 (Code surface → Chat re-dispatch pattern), `docs/runbooks/claude-code-chat-handoff.md`, `docs/runbooks/transcript-handoff.md`, `docs/conventions/chat_tab_instructions.md`, `docs/conventions/cowork_tab_instructions.md`, `tools/handoffs/render_transcript.py` (precedent, commit `98e5591`)
@@ -18,6 +24,16 @@
 > **Status vocabulary corrected** from `Proposed` — an ADR-vocabulary leak;
 > this PLAN predates PLAN-0009 OQ-4 (ratified 2026-05-25) which fixed PLANs
 > to use `Draft` → `Ready for execution`, not `Proposed`/`Accepted`.
+
+> **Close-out (2026-07-11, session 118).** The session-26 adjudication kept this
+> PLAN active as the tracker for forward-declared Phases B + C. That duty is
+> discharged: **Phase B shipped session 35** (`precommit_handoffs.py` + `--watch` +
+> auto `INDEX.md`, all in daily use), and Phase C is explicitly optional
+> ("may never land", §Phase C) — an optional-polish idea does not need a standing
+> active PLAN as its tracker; the STATUS "Deferred (backlog)" line carries it.
+> Superseded-by-new-info, not an error (CLAUDE.md §6): keeping it active was right
+> until Phase B landed; the stale part was only that nobody closed it afterward.
+> Cray ratified the close at the s118 next-work hygiene pick (AskUserQuestion).
 
 ## Context
 
