@@ -1,6 +1,6 @@
 # PLAN-0063: Audit-chain verification surface — the trust-dossier read view
 
-**Status:** Ready for execution — SD-1..SD-6 ratified as-recommended (Cray, 2026-07-11). Steps execute directly.
+**Status:** Complete — all 8 ACs shipped (PR1 #688 backend + PR2 #689 UI, both merged 2026-07-11). Close-out below records the evidence and **two disclosed deferrals** (the merge-commit *local* full-suite run + the Step-5 render check — both blocked on the dev Postgres being down; starting dockerd is a host-state action, CLAUDE.md §8, awaiting Cray go).
 **Owner:** both (Claude Code executes; Cray ratifies the surfaced decisions)
 **Created:** 2026-07-10
 **Related ADRs:** none new — this surfaces an **already-shipped, already-tested**
@@ -175,32 +175,32 @@ on a fresh PR (CI is PR-only in this repo — prove green via the PR's checks, f
 never a named subset). ACs are written to the SD recommendations and re-scope
 mechanically if Cray picks otherwise.
 
-- [ ] **AC-1 — intact chain verifies over HTTP.** Against a freshly appended, untampered
+- [x] **AC-1 — intact chain verifies over HTTP.** Against a freshly appended, untampered
       chain (seeded via the real `append_audit`, the `test_audit_log.py:73-77` helper
       pattern), the endpoint returns `intact: true`, `breaks: []`, `rows_verified` equal
       to the appended row count, `head_hash` equal to the last row's stored `row_hash`,
       and `genesis_hash: "0"*64` — asserted through the `tests/api/` client (fact 10),
       not by calling the library directly; fetched break-visible per SD-2(d) (a seeded
       credential or `api_auth_enabled=false` — fact 15: the default is authn-ON).
-- [ ] **AC-2 — in-place mutation is reported, verbatim.** After inducing a mutation the
+- [x] **AC-2 — in-place mutation is reported, verbatim.** After inducing a mutation the
       shipped way (disable trigger → raw `UPDATE` → re-enable,
       `test_audit_log.py:120-125`), the endpoint returns `intact: false` and a break
       string containing `audit_id=` and `row content mutated` (the library string,
       `audit_log.py:210-213`, echoed verbatim per SD-3 — the endpoint invents no prose;
       fetched break-visible, as AC-1).
-- [ ] **AC-3 — splice/linkage break is reported, verbatim.** A `prev_hash` linkage break
+- [x] **AC-3 — splice/linkage break is reported, verbatim.** A `prev_hash` linkage break
       (induced with the same disable-trigger pattern — e.g. rewriting a row's
       `prev_hash` or deleting a middle row; **new exemplar**, fact 3) yields
       `intact: false` + the `prev_hash linkage broken` string (`audit_log.py:195-198`);
       fetched break-visible, as AC-1.
-- [ ] **AC-4 — empty chain is honest.** With zero `audit_log` rows the endpoint returns
+- [x] **AC-4 — empty chain is honest.** With zero `audit_log` rows the endpoint returns
       `intact: true`, `rows_verified: 0`, `head_hash: null` — matching the derived
       library behavior (fact 2), not an invented convention.
-- [ ] **AC-5 — model discipline.** The response model has
+- [x] **AC-5 — model discipline.** The response model has
       `model_config = ConfigDict(extra="forbid")` and `Field(description=...)` on
       **every** field (fact 6; CLAUDE.md §8), and the route declares
       `response_model=...`.
-- [ ] **AC-6 — the SD-2 auth posture is pinned by tests.** Per the SD-2(d)
+- [x] **AC-6 — the SD-2 auth posture is pinned by tests.** Per the SD-2(d)
       recommendation, four cases pinned under the DEFAULT authn-on posture (fact 15):
       anonymous (no `Authorization` header) ⇒ **200** verdict-only (`breaks: null`,
       `intact` computed from the real walk); a PRESENTED-but-invalid credential ⇒
@@ -210,7 +210,7 @@ mechanically if Cray picks otherwise.
       in any case (this is a read, not a consequential write). Whatever Cray ratifies,
       the matrix re-pins mechanically ((b): the anonymous case becomes 401; (a): every
       case serves the full report) — the posture is never left implicit.
-- [ ] **AC-7 — the UI panel renders proof beside the claim.** The monitor view gains a
+- [x] **AC-7 — the UI panel renders proof beside the claim.** The monitor view gains a
       chain-verification panel (SD-5): on demand it calls the endpoint and renders
       "chain intact · N rows verified" or the verbatim break list. Logged-out under the
       default authn-on posture it still renders the OPEN verdict (SD-2(d)), with an
@@ -219,7 +219,7 @@ mechanically if Cray picks otherwise.
       breaks. Every edited asset's `?v=` token is bumped (`view-monitor.js?v=c33` →
       next, `index.html:53`; `api.js` expected untouched per fact 8 — bump only what is
       edited).
-- [ ] **AC-8 — zero collateral.** No Alembic migration (no schema change — the endpoint
+- [x] **AC-8 — zero collateral.** No Alembic migration (no schema change — the endpoint
       only SELECTs); `services/db/audit_log.py` is **byte-unchanged** (the 7 pinned
       `verify_chain` test call sites stay green untouched); no
       `load_run …step_results[...]` subscript anywhere new (fact 11); ruff +
@@ -508,6 +508,63 @@ Risks, named:
 4. **Library-contract drift** — widening `verify_chain` would break 7 pinned call sites
    and brush against Lesson #0028's hash-chain caution. Mitigation: AC-8 pins
    `audit_log.py` byte-unchanged; SD-3 composes endpoint-side.
+
+## Close-out (2026-07-11, session 118)
+
+**Shipped.** PR1 #688 (`b41e3f5` → merge `9d02686`) = Steps 1–3: `services/api/models/audit.py`
+(`ChainVerificationReport`, six SD-3 fields, `extra="forbid"`, `Field(description=...)` on
+every field), `services/api/routers/audit.py` (`GET /audit/verify`,
+`response_model=ChainVerificationReport`, SD-2(d) split visibility —
+`reveal_breaks = (not settings.api_auth_enabled) or (auth.person_id is not None)`;
+`intact` always from the real walk), registration as the 10th `include_router`
+(`main.py:208`), and `tests/api/test_audit_verify.py` (AC-1 intact / AC-2 mutation /
+AC-3 linkage — the suite's **first** linkage-break induction, generalizing the
+disable-trigger pattern per fact 3 / AC-4 empty / AC-5 model discipline / AC-6 the
+four-leg posture matrix). PR2 #689 (`ceee552` → merge `360007a`) = Step 4: the on-demand
+"Verify chain" panel in `view-monitor.js` (`fetchVerify`/`loadTrust`/`trustResult`,
+three states — intact badge / verbatim break list / withheld → "Log in above to see
+where the chain was cut." — off the poll timers per SD-5), `index.html`
+`view-monitor.js?v=c33 → c34` with no other token touched (fact 9).
+
+**Build-level OQ resolutions (settled at step review, per the header note).**
+OQ-1 = **`GET /audit/verify`** (the recommended path). OQ-2 = panel placement settled
+at Step-4 review as built (inside the monitor view, on-demand button). OQ-3 = the
+block-trigger DDL installs via the shared test fixture across all cases. OQ-4 =
+**`get_optional_principal` in `services/api/auth.py`** (the recommended one-tested-home;
+missing credential ⇒ anonymous, a PRESENTED credential still delegates to
+`get_current_principal` so a bad key 401s loudly).
+
+**Verification evidence.** Both PRs green through the required CI `gate` — and per
+`.github/workflows/ci.yml` (SD-4 of the CI PLAN, 2026-07-03) that gate provisions a
+`postgres:16-alpine` service, so the green runs **include the DB-backed
+`test_audit_verify.py` contract oracle**, plus `ruff check` / `ruff format --check` /
+`mypy --strict services/` / migrations-on-a-fresh-DB. AC-8 pins re-verified at close on
+`main = 360007a`: `git diff d3cb446..360007a -- services/db/audit_log.py alembic/` is
+**empty** (byte-unchanged), the full diff is confined to the 8 expected files, and local
+`ruff` + `ruff format --check` + `mypy --strict services/` are clean on the merge
+commit.
+
+**Two deferrals, disclosed — not softened (CLAUDE.md §6: no fresh evidence = not a
+pass).**
+1. **Merge-commit local full suite.** CI here is PR-only (never tests a merge commit);
+   the local re-run on `360007a` degraded to **2391 passed / 123 skipped** because the
+   dev Postgres is DOWN (dockerd not running) — every DB-backed test skipped. That run
+   is recorded as what it is: NOT the bar. The close-out PR's own required `gate` (full
+   suite + Postgres service) runs on code identical to `main = 360007a` and stands in as
+   the merge-commit-equivalent evidence.
+2. **The Step-5 render check** (`preview_eval` DOM assertions against the pre-committed
+   strings — "chain intact" / the withheld affordance) was **NOT RUN**: `/audit/verify`
+   500s without Postgres (`ConnectionRefusedError`, verified live on the preview
+   server), and starting dockerd is a **host-state action outside the worktree
+   (CLAUDE.md §8) awaiting explicit Cray go**. The panel code paths, exact strings, and
+   the `?v=c34` bump are verified on disk (and `?v=c34` observed served by the live
+   preview server); the browser E2E render is deferred to the docker go —
+   **erratum-if-fail** on that run, per the PLAN-0062 errata precedent.
+
+**SD-4 follow-up (recorded in STATUS at this close):** bounded/incremental chain
+verification (checkpointed head / verify-since-anchor) stays explicit future work —
+anchor storage ≈ external anchoring = **ADR-011 tripwire territory**; do not build
+without re-reading the tripwire.
 
 ---
 
