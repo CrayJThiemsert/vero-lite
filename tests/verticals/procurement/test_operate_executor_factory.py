@@ -18,6 +18,7 @@ import pytest
 from fastapi import HTTPException
 
 from services.api.routers.runs import _executor_factory
+from services.engine.discovery import discover_and_register
 from services.engine.procedures.action_step import ActionStepExecutor
 from services.engine.procedures.governance_step import GovernanceActionExecutor
 from services.engine.procedures.spec import StepKind
@@ -27,6 +28,16 @@ from verticals.procurement.hero_demo.run import (
     advisory_stub_factory,
     register_procurement_procedure_executors,
 )
+
+
+@pytest.fixture(autouse=True)
+def _discover() -> None:
+    """PLAN-0064: registration now binds the declared-read leg to the REGISTRY-registered
+    adapter (SD-5), so the adapter must be discovered first — exactly the API-lifespan
+    ordering (`discover_and_register()` before the registrar table) and the
+    energy-factory-test precedent. `_reset_registry` (tests/conftest.py) still leaves the
+    executor FACTORY unregistered at every test start, which is what these tests assert."""
+    discover_and_register()
 
 
 async def test_registration_resolves_the_procurement_factory() -> None:

@@ -41,12 +41,13 @@ import pytest
 
 from services.engine.discovery import discover_and_register
 from services.engine.ontology_meta import load_ontology_meta
-from services.engine.procedures.advisory_stub import advisory_stub_factory
 from services.engine.procedures.orchestrator import (
     ProcedureWarning,
+    RunContext,
     run_procedure,
     validate_read_bindings_for_vertical,
 )
+from services.engine.procedures.query_router import QueryStepRouter
 from services.engine.procedures.query_step import QueryStepExecutor
 from services.engine.procedures.runs import PipelineRunStatus
 from services.engine.procedures.spec import (
@@ -57,10 +58,16 @@ from services.engine.procedures.spec import (
     Step,
     StepInput,
     StepKind,
+    load_procedures,
 )
 from services.engine.registry import registry
 from verticals.procurement.data_adapter.fastenal_csv import FastenalCsvAdapter
-from verticals.procurement.hero_demo.run import _HERO_PO, _executors, _intake_seed
+from verticals.procurement.hero_demo.run import (
+    _HERO_PO,
+    _intake_seed,
+    _SeedQuery,
+    register_procurement_procedure_executors,
+)
 
 _VERTICAL = "procurement"
 
@@ -272,21 +279,45 @@ async def test_read_stock_substrate_exists_the_plan_fact_7_erratum() -> None:
     ), "the registered adapter emits the stock substrate"
 
 
-def test_read_stock_is_blocked_by_per_kind_executor_routing_not_by_data() -> None:
-    """The TRUE deferral reason, pinned as an invariant. The procurement factory maps one
-    executor per ``StepKind``; its QUERY executor is the fixed ``_SeedQuery`` intake seed,
-    and the orchestrator resolves executors by ``step.kind``. So a declared ``read_stock``
-    would pass the gate and still receive the intake requisition at run time — declared ✔
-    but execution-bound ✖, which is worse than an honest deferral.
+async def test_read_stock_routes_to_the_shipped_executor_not_the_seed() -> None:
+    """PLAN-0064: the per-step QUERY router SHIPPED — the PLAN-0062 AC-7 deferral fell due
+    and is discharged. Same lineage, rewritten in place (PLAN-0064 SD-4): this replaces the
+    ERRATUM-2 tripwire ``test_read_stock_is_blocked_by_per_kind_executor_routing_not_by_data``,
+    whose docstring promised exactly this rewrite when routing shipped. The history it
+    pinned stands: the substrate was never the blocker (the companion test above);
+    per-``StepKind`` routing was.
 
-    **This test is the tripwire.** When the factory gains per-step QUERY routing, the
-    ``dict[StepKind, ...]`` assumption below breaks, this fails, and the AC-7 deferral
-    falls due for revisit."""
-    executors = _executors(advisory_stub_factory, [], [{"seed": True}])
+    The NEW contract, pinned three ways against the PRODUCTION factory:
+      * the QUERY slot is the declaration-presence router (SD-1/SD-2) — declared leg the
+        SHIPPED ``QueryStepExecutor``, fallback leg the co-existing ``_SeedQuery``;
+      * the REAL declared ``read_stock`` step receives the REGISTRY-registered adapter's
+        Part rows (SD-5) — never the intake requisition (the ERRATUM-2 hazard is now
+        structurally impossible, and asserted so);
+      * the REAL undeclared ``intake`` step still receives the seed byte-identically
+        (PLAN-0062 SD-C carried — PLAN-0064 AC-4)."""
+    discover_and_register()
+    await register_procurement_procedure_executors()
+    executors = registry.get_procedure_executors(_VERTICAL)()
 
-    assert set(executors) <= {StepKind.QUERY, StepKind.EVALUATE, StepKind.ACTION}
+    assert set(executors) == {StepKind.QUERY, StepKind.EVALUATE, StepKind.ACTION}
     query = executors[StepKind.QUERY]
-    assert type(query).__name__ == "_SeedQuery", (
-        "procurement's QUERY executor is the fixed intake seed — one executor for EVERY "
-        "query step, so read_stock cannot be honestly migrated until a per-step router ships"
-    )
+    assert isinstance(query, QueryStepRouter), "the production QUERY slot is the router"
+    assert isinstance(query.declared, QueryStepExecutor), "declared leg = the shipped executor"
+    assert isinstance(query.fallback, _SeedQuery), "fallback leg = the co-existing seed"
+
+    procedures = load_procedures(_VERTICAL).procedures
+    read_stock = next(s for p in procedures for s in p.steps if s.step_id == "read_stock")
+    assert read_stock.input is not None and read_stock.input.reads == ["Part"]
+    intake = next(s for p in procedures for s in p.steps if s.step_id == "intake")
+    assert intake.input is None or not intake.input.reads, "intake stays undeclared (SD-C)"
+
+    ctx = RunContext(agent=_agent(), vertical=_VERTICAL)
+    stock = await query.execute(read_stock, [], ctx)
+    expected = await registry.get_adapter(_VERTICAL).fetch_objects("Part")
+    assert stock.output == expected, "declared read_stock = the registered adapter's Part rows"
+    assert all({"stock_qty", "reorder_point"} <= set(row) for row in stock.output)
+
+    seeded = await query.execute(intake, [], ctx)
+    assert len(seeded.output) == 1, "intake still gets the single enriched requisition seed"
+    assert "candidate_quotes" in seeded.output[0], "the seed's derived shape, not Part rows"
+    assert seeded.output == query.fallback.seed, "byte-identical to the fallback seed (AC-4)"
