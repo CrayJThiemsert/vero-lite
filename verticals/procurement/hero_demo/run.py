@@ -32,6 +32,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.engine.actions import ControlRef, GovernedDecision
 from services.engine.llm.client import ChatResult
 from services.engine.llm.structured import ChatClient
+from services.engine.ontology_meta import load_ontology_meta
 from services.engine.procedures.action_step import ActionStepExecutor, ClientFactory
 from services.engine.procedures.evaluate_step import EvaluateStepExecutor
 from services.engine.procedures.event_bridge import build_event_resolver, fire_event
@@ -49,6 +50,8 @@ from services.engine.procedures.orchestrator import (
 )
 from services.engine.procedures.persistence import load_run, run_procedure_persisted
 from services.engine.procedures.principal_sod import PrincipalSoDVerdict, check_principal_sod
+from services.engine.procedures.query_router import QueryStepRouter
+from services.engine.procedures.query_step import QueryStepExecutor
 from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
 from services.engine.procedures.spec import Person, Step, StepKind, load_procedures
 from services.engine.registry import RegistryError, registry
@@ -149,7 +152,10 @@ class _SeedQuery:
 
     NEW plain single-type declared reads go through the engine default:
     ``services/engine/procedures/query_step.py`` (declared==dispatched). The three OCT
-    verticals' read steps migrated there in PLAN-0062 PR1-PR3."""
+    verticals' read steps migrated there in PLAN-0062 PR1-PR3 -- and since PLAN-0064 the
+    production procurement factory routes per step too: this seed is the router's
+    FALLBACK leg (undeclared steps only); the declared ``read_stock`` dispatches to the
+    shipped executor over the registry-registered adapter."""
 
     seed: list[Any]
 
@@ -237,23 +243,42 @@ async def _intake_seed(adapter: FastenalCsvAdapter) -> dict[str, Any]:
 
 
 def _executors(
-    client_factory: ClientFactory, principals: list[Person], seed: list[Any]
+    client_factory: ClientFactory,
+    principals: list[Person],
+    seed: list[Any],
+    *,
+    declared_query: StepExecutor | None = None,
 ) -> dict[StepKind, StepExecutor]:
-    """The per-kind executors for the live run: QUERY seeds the requisition; EVALUATE is the AT-2
+    """The per-kind executors for the live run: QUERY seeds the requisition (routed per step
+    when a ``declared_query`` leg is supplied -- PLAN-0064, below); EVALUATE is the AT-2
     governance wrapper (``rule_gate`` at ``compliance``, falling through to the shipped
     :class:`EvaluateStepExecutor` for the banded ``judge``); ACTION is the AT-2 governance wrapper
     (scored_rule at ``source``, doa_tier at ``approve``) over the shipped
     :class:`ActionStepExecutor` base. The band-less ``compliance`` step now runs the SHIPPED
     ``rule_gate`` gate end-to-end (no stub) -- :class:`GovernanceEvaluateExecutor` dispatches its
     ``ComplianceGate`` content to the deterministic
-    :func:`~services.engine.procedures.rule_gate.evaluate_compliance`."""
+    :func:`~services.engine.procedures.rule_gate.evaluate_compliance`.
+
+    PLAN-0064 (SD-1/SD-2): when ``declared_query`` is supplied (the production factory,
+    :func:`register_procurement_procedure_executors`), the QUERY slot is the per-step
+    :class:`QueryStepRouter` -- a step DECLARING ``input.reads`` (the calm-path ``read_stock``)
+    dispatches to the shipped declared-grammar executor, while an undeclared step (``intake``)
+    keeps the co-existing :class:`_SeedQuery` byte-identically (PLAN-0062 SD-C carried). The
+    offline hero/demo helpers pass no declared leg and keep the bare seed slot (their
+    procedures declare no reads)."""
     action = GovernanceActionExecutor(
         base=ActionStepExecutor(client_factory=client_factory),
         principals=principals,
         sod_steps=frozenset({"intake", "approve"}),
     )
+    seed_query: StepExecutor = _SeedQuery(seed)
+    query: StepExecutor = (
+        QueryStepRouter(declared=declared_query, fallback=seed_query)
+        if declared_query is not None
+        else seed_query
+    )
     return {
-        StepKind.QUERY: _SeedQuery(seed),
+        StepKind.QUERY: query,
         StepKind.EVALUATE: GovernanceEvaluateExecutor(base=EvaluateStepExecutor()),
         StepKind.ACTION: action,
     }
@@ -598,11 +623,29 @@ async def register_procurement_procedure_executors(
     # mirrors seed_operate_waiting_human_run's own sanitisation.
     seed = json.loads(json.dumps([await _intake_seed(adapter)], default=str))
 
+    # PLAN-0064 (SD-5): declared reads are served by the REGISTRY-registered adapter
+    # (`ProcurementSyntheticAdapter` -- the only adapter carrying Part.stock_qty /
+    # reorder_point), NEVER the hero FastenalCsvAdapter above (its part.csv lacks the
+    # columns; binding it would re-create ERRATUM 2's declaration theater through the
+    # adapter choice). The seed keeps its Fastenal requisition untouched. A missing
+    # registered adapter raises loudly (the energy-factory precedent): the API lifespan
+    # and every registering caller run `discover_and_register()` first.
+    registered_adapter = registry.get_adapter(_VERTICAL)
+    meta = load_ontology_meta(_VERTICAL)
+    object_type_names = frozenset(object_type.name for object_type in meta.object_types)
+
     def factory() -> dict[StepKind, StepExecutor]:
         # Built fresh per run/resume request (stateful executors never leak across
         # requests -- the registry Step-2 contract); the principals + seed are
         # immutable read-only data captured once at registration.
-        return _executors(advisory_stub_factory, principals, seed)
+        return _executors(
+            advisory_stub_factory,
+            principals,
+            seed,
+            declared_query=QueryStepExecutor(
+                adapter=registered_adapter, object_type_names=object_type_names, meta=meta
+            ),
+        )
 
     registry.register_procedure_executors(_VERTICAL, factory)
 
