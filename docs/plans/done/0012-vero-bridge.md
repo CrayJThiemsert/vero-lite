@@ -1,6 +1,12 @@
 # PLAN-0012: vero-bridge — MCP transport operationalizing ADR-013 D1
 
-**Status:** Ready for execution
+**Status:** Complete — Phase 1 shipped and in daily production use; filed to `done/`
+2026-07-11 (session 118, Cray-ratified via the next-work hygiene pick). AC-3..AC-8
+were ticked `DONE 2026-05-29`; AC-1/AC-2's deliverables shipped the same window
+(`docs/conventions/vero-bridge-wire-format.md` + `tools/vero_bridge/server.py` live
+under Desktop) but the checkboxes were never flipped — ticked at this close as
+bookkeeping, not new work. **Phase 2 remains an explicitly unminted placeholder**
+(not committed scope; mint a fresh PLAN if a concrete need arrives).
 **Owner:** Claude Code + Cowork (advisory drafter)
 **Created:** 2026-05-28
 **Related ADRs:** ADR-013 (D1 — MCP-transport-in-Code-Tier-2; OQ-1 — Cowork retained as advisory governance drafter)
@@ -102,7 +108,7 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
 > RESOLVED). Each AC names what evidence proves it (PLAN-0011
 > §Acceptance Criteria per-AC style).
 
-- [ ] **AC-1 — Transport contract is documented.** A written contract
+- [x] *(ticked 2026-07-11, s118 close — deliverables shipped 2026-05-29: `docs/conventions/vero-bridge-wire-format.md` + `tools/vero_bridge/_schema.py`)* **AC-1 — Transport contract is documented.** A written contract
   specifies the wire format (message framing), the message types
   carried, error codes, a version field, and the `claimed_tag` audit
   field carried in every message envelope (AC-4; audit-only — not used
@@ -114,7 +120,7 @@ the parent — the same pattern PLAN-0009 used when Step 1b became
   against. **OQ-A is RATIFIED A1 = stdio-MCP** (was a gate; resolved in
   this PR — see §Open Questions).
 
-- [ ] **AC-2 — Code-side server runs in the harness session lifecycle.**
+- [x] *(ticked 2026-07-11, s118 close — `tools/vero_bridge/server.py` shipped 2026-05-29 and is live in the current environment: the `mcp__vero-bridge__*` tool surface matches `server.py`'s Phase-1 enumeration)* **AC-2 — Code-side server runs in the harness session lifecycle.**
   The server starts and stops bound to the Code (Tier 2) harness session
   (not a detached daemon that outlives the session). Proven by an
   end-to-end test that starts the server, observes it accept a connection
