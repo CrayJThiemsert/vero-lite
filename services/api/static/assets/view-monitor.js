@@ -39,7 +39,9 @@
     decisions: {},       // {action_id: 'approve'|'reject'} — operate; reset per selected run.
     operateMsg: null,    // {kind, text, runId, retry?} — the operate status line, stamped w/ its run.
     operateBusy: false,  // disables operate controls during a submit/cancel POST.
-    els: null            // { root, authbar, list, detail }
+    trust: null,         // {loading}|{data}|{error} — the on-demand chain-verification result (PLAN-0063).
+    trustBusy: false,    // disables the "Verify chain" button during its fetch.
+    els: null            // { root, authbar, trust, list, detail }
   };
 
   function syncMode() {
@@ -436,7 +438,92 @@
     // login / logout flipped the credential — re-derive the mode + repaint both panes.
     syncMode();
     renderAuthBar();
+    // a credential change alters WHICH break detail is visible (PLAN-0063 SD-2(d)) —
+    // drop any prior verify result so the panel re-invites a fresh, correctly-scoped run.
+    state.trust = null;
+    renderTrust();
     renderDetail();
+  }
+
+  /* ---- trust: on-demand audit-chain verification (PLAN-0063, the trust dossier) ----
+     Proves the "tamper-evident" claim the header makes: GET /audit/verify walks the
+     whole hash chain. SD-2(d) split visibility — logged in sends the Bearer header
+     (breaks disclosed); anonymous sends none (verdict only, breaks withheld). NOT on a
+     poll timer: an O(n) whole-chain walk runs only when the operator asks. */
+  function fetchVerify() {
+    const headers = (O.Auth && O.Auth.isLoggedIn()) ? Object.assign({}, O.Auth.authHeader()) : {};
+    return fetch('/audit/verify', { headers }).then(async res => {
+      const ct = res.headers.get('content-type') || '';
+      if (!res.ok || !ct.includes('json')) {
+        throw new Error('GET /audit/verify unavailable (' + res.status + ')');
+      }
+      return res.json();
+    });
+  }
+
+  async function loadTrust() {
+    if (state.trustBusy) return;
+    state.trustBusy = true; state.trust = { loading: true }; renderTrust();
+    try {
+      state.trust = { data: await fetchVerify() };
+    } catch (e) {
+      state.trust = { error: String(e.message || e) };
+    } finally {
+      state.trustBusy = false; renderTrust();
+    }
+  }
+
+  function trustResult(d) {
+    const kids = [
+      h('div', { class: 'mon-trust-verdict' }, [
+        d.intact
+          ? h('span', { class: 'badge s-ok', 'data-testid': 'trust-verdict' },
+              [h('span', { class: 'led' }), 'chain intact'])
+          : h('span', { class: 'badge s-crit', 'data-testid': 'trust-verdict' },
+              [h('span', { class: 'led' }), 'chain broken']),
+        h('span', { class: 'faint mono' }, d.rows_verified + ' rows verified')
+      ])
+    ];
+    if (!d.intact) {
+      if (d.breaks === null) {
+        // SD-2(d): the verdict is public, the break DETAIL is credentialed.
+        kids.push(h('div', { class: 'mon-trust-withheld faint', 'data-testid': 'trust-withheld' }, [
+          icon('anomaly', { width: 12, height: 12 }),
+          'Log in above to see where the chain was cut.'
+        ]));
+      } else if (d.breaks && d.breaks.length) {
+        const list = h('ul', { class: 'mon-trust-breaks', 'data-testid': 'trust-breaks' });
+        d.breaks.forEach(b => list.appendChild(h('li', { class: 'mono' }, b)));
+        kids.push(list);
+      }
+    }
+    return h('div', { class: 'mon-trust-result', role: 'status', 'aria-live': 'polite' }, kids);
+  }
+
+  function trustBar() {
+    const bar = h('div', { class: 'mon-trust', 'data-testid': 'trust-panel' });
+    bar.appendChild(h('div', { class: 'mon-trust-head' }, [
+      icon('check', { width: 14, height: 14 }),
+      h('b', null, 'Audit trust'),
+      h('span', { class: 'faint' }, 'Verify the tamper-evident hash chain over the whole audit log.'),
+      h('button', {
+        class: 'btn sm', 'data-testid': 'trust-verify',
+        disabled: state.trustBusy ? '' : null, onClick: loadTrust
+      }, state.trustBusy ? 'Verifying…' : 'Verify chain')
+    ]));
+    const t = state.trust;
+    if (t && t.error) {
+      bar.appendChild(h('div', { class: 'mon-trust-result err', role: 'status', 'data-testid': 'trust-result' },
+        'Verification backend required — ' + t.error));
+    } else if (t && t.data) {
+      bar.appendChild(trustResult(t.data));
+    }
+    return bar;
+  }
+
+  function renderTrust() {
+    if (!state.els || !state.els.trust) return;
+    clear(state.els.trust).appendChild(trustBar());
   }
 
   /* ---- polling (S4: poll open detail ~3s, list ~10s) ---- */
@@ -531,6 +618,17 @@
 .mon-approver.resolved { color: var(--tx-1); background: var(--bg-2); border: 1px solid var(--line); }
 .mon-audit-wrap { margin-top: 6px; }
 .btn.ghost { background: transparent; }
+.mon-trust { flex: 0 0 auto; margin-bottom: 12px; background: var(--bg-1);
+  border: 1px solid var(--line); border-radius: var(--r-md); padding: 8px 10px; }
+.mon-trust-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mon-trust-head b { color: var(--tx-0); }
+.mon-trust-head .btn { margin-left: auto; }
+.mon-trust-result { margin-top: 10px; }
+.mon-trust-result.err { color: var(--crit); font-size: 12px; }
+.mon-trust-verdict { display: flex; align-items: center; gap: 8px; }
+.mon-trust-withheld { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px; font-size: 12px; }
+.mon-trust-breaks { margin: 8px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.mon-trust-breaks li { color: var(--crit); font-size: 12px; word-break: break-word; }
 `;
     const el = document.createElement('style');
     el.id = STYLE_ID;
@@ -545,17 +643,20 @@
     syncMode();
     clear(container);
     const authbar = h('div', { class: 'mon-authbar-wrap' });
+    const trust = h('div', { class: 'mon-trust-wrap' });
     const list = h('div', { class: 'mon-list' });
     const detail = h('div', { class: 'mon-detail' },
       h('div', { class: 'mon-detail-empty' }, 'Select a run to see its steps, trace and gate.'));
     const root = h('div', { class: 'mon', 'data-testid': 'monitor' }, [
       authbar,
+      trust,
       h('div', { class: 'mon-cols' }, [list, detail])
     ]);
     container.appendChild(root);
-    state.els = { root, authbar, list, detail };
+    state.els = { root, authbar, trust, list, detail };
 
     renderAuthBar();
+    renderTrust();
     clear(list).appendChild(O.loadingState('Loading runs…'));
     await loadList();
     if (state.selected) await loadDetail(true);
