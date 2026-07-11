@@ -323,13 +323,20 @@ procedures:
         kind: query
         input:                          # PLAN-0064: the declared single-read (PLAN-0048 shape)
           reads: [Part]
+          # PLAN-0065 (SD-2): rename-project stock_qty -> measured_value so the shipped
+          # EvaluateStepExecutor (judge_stock) reads the numeric band field. Select/rename
+          # ONLY: no arithmetic, no join, no LLM (fields-only ProjectSpec); reorder_point and
+          # every other Part field are kept, stock_qty is MOVED to measured_value.
+          project:
+            fields:
+              stock_qty: measured_value
         facet:
           decision_condition:
             gate_kind: none
-            note: "PLAN-0064: migrated — the declared read routes to the shipped QueryStepExecutor via the per-step QUERY router"
+            note: "PLAN-0064: migrated to the shipped QueryStepExecutor via the per-step QUERY router; PLAN-0065: + rename-project stock_qty->measured_value so judge_stock is execution-bound"
           llm_assist: null
-          input: "declared read: Part (stock_qty, reorder_point per part)"
-          output: "stock reading per part"
+          input: "declared read: Part -> measured_value (renamed from stock_qty), reorder_point per part"
+          output: "stock reading per part (measured_value)"
       - step_id: judge_stock
         name: Judge vs reorder point
         description: >-
@@ -568,6 +575,99 @@ procedures:
         required_roles:
           intake: requester
           approve: approver
+
+  # ---------------------------------------------------------------------------
+  # PLAN-0065 Step 4 (SD-1(b)(ii)) — the S1 `schedule`-trigger calm-path sibling.
+  #
+  # The SAME calm-path reorder beat as `low_stock_reorder_round`, fired AUTOMATICALLY on a
+  # nightly clock (ADR-0028 S1 scheduler) instead of by a human. The scheduler daemon resolves
+  # it via scheduler_wiring.build_resolver + fires it through run_procedure_persisted as the
+  # declared `svc-buyer` service principal (SP-4). It runs read_stock -> judge_stock and PARKS
+  # at the gated `reorder`: RF-3 forbids a service actor from acting past the gate, so a HUMAN
+  # resolves the go/no-go. NO reorder is issued until the human acts.
+  #
+  # A DISTINCT procedure_id (not a flip of `low_stock_reorder_round`): `trigger` is a single
+  # enum -- a schedule descriptor is present IFF trigger==schedule (spec.py
+  # _validate_schedule_descriptor) -- so flipping the manual one would break its manual runs;
+  # and SD-P3 skip-if-in-flight keys on procedure_id.
+  #
+  # owning_person_id: req-planner (PLAN-0065 SD-5, Cray-ratified (b) -- the NON-recommended
+  # option). This calm path is AT-3: NO doa_tier, NO separation_of_duties, so an owning person
+  # is NOT REQUIRED (a headless run fails nothing closed; the gate authenticates its own human
+  # resolver, RF-1). It is carried anyway for accountability parity with the hero siblings: the
+  # scheduler records `req-planner` as the fired run's principal, so the run/audit record names
+  # the accountable human behind the unattended sweep. No SoD role consumes it -- verified: no
+  # validator couples owning_person_id to SoD/doa_tier (PLAN-0065 fact 13a).
+  scheduled_low_stock_reorder_round:
+    title: Nightly Low-Stock Reorder Round (scheduled)
+    goal: >-
+      The MRO calm-path on a nightly clock: automatically read each part's stock level (on
+      behalf of the maintenance planner), judge it against the reorder point, and propose the
+      reorder for the low-stock set -- then PARK for a single human go/no-go. The automated run
+      proposes; a human approves (no auto-reorder -- the calm contrast to the hero DOA ladder).
+    run_by: procurement_agent
+    trigger: schedule
+    schedule:
+      cron: "0 5 * * *"                # 05:00 daily -- the overnight stock sweep, before day shift
+      timezone: Asia/Bangkok           # SD-P1: per-schedule IANA tz (validated vs zoneinfo at load)
+      owning_person_id: req-planner    # PLAN-0065 SD-5(b): accountability parity -- the run's
+                                       # principal (NOT an SoD requester; this AT-3 path has no SoD)
+    steps:
+      - step_id: read_stock
+        name: Read stock levels
+        description: Latest stock reading per stocked Part.
+        kind: query
+        input:
+          reads: [Part]
+          # PLAN-0065 (SD-2): same rename-projection as the manual calm-path -- stock_qty ->
+          # measured_value so the shipped EvaluateStepExecutor can band the Part rows.
+          project:
+            fields:
+              stock_qty: measured_value
+        facet:
+          decision_condition:
+            gate_kind: none
+            note: "PLAN-0065: declared read routes to the shipped QueryStepExecutor; rename-project stock_qty->measured_value so judge_stock is execution-bound"
+          llm_assist: null
+          input: "declared read: Part -> measured_value (renamed from stock_qty), reorder_point per part"
+          output: "stock reading per part (measured_value)"
+      - step_id: judge_stock
+        name: Judge vs reorder point
+        description: >-
+          Tag each part's verdict vs its reorder point -- breach (stock <= reorder point) is the
+          reorder set. Deterministic; the fixed band mirrors the manual calm-path (a per-part
+          band is a Stage-2 refinement -- PLAN-0065 SD-3, deferred).
+        kind: evaluate
+        threshold: 100.0
+        direction: below
+        facet:
+          decision_condition: { gate_kind: in_file_band, band_source: in_file }
+          llm_assist: null
+          input: "read_stock set"
+          output: "per-part verdict {breach=at/below reorder point}"
+          governance: "determinism invariant (authored band)"
+      - step_id: reorder
+        name: Reorder the low-stock set
+        description: >-
+          Propose an on-contract reorder per low-stock part; a single human go/no-go approves
+          it. action_type reorder (a no-op receipt stub today). The service actor proposes but
+          never approves (RF-3).
+        kind: action
+        autonomy: gated
+        handler: reorder
+        input:
+          from: judge_stock
+          where:
+            verdict: breach
+        facet:
+          decision_condition:
+            gate_kind: none
+            note: "on-contract reorder at the contracted price; human go/no-go"
+          llm_assist: null
+          input: "judge_stock (the low-stock subset)"
+          output: "reorder PurchaseOrder"
+          governance: "single-tier human approval (headless fire, human resolves -- RF-3)"
+    terminal: reorder
 
   # --- PLAN-0056 Step 8 (ADR-0029 event-trigger bridge) — the EVENT-triggered variant ----------
   #
