@@ -1376,6 +1376,302 @@ AskUserQuestion**; each OQ keeps its deliberation text as the record:
   deterministic-disposer + dbt-MCP compile/execute/inspect seam authorizing
   context PLAN-0048 absorbed (`0048:8,49-51`).
 
+### Amendment (2026-07-11): per-entity `threshold_field` on evaluate steps (same-row v1)
+
+> **Status:** **Accepted** (Cray-ratified 2026-07-11 after Code R2 — the TF-1
+> at-most-one validator defect was the R2 catch; OQ-1..OQ-4 ratified
+> as-recommended). **Date:** 2026-07-11. **Deciders:** Jirachai Thiemsert
+> (founder).
+> **Amends:** D2 (the `Step` band grammar — `threshold` / `direction` /
+> `watch_margin`, PLAN-0022 Step 3) — **extends, does not reverse or
+> renumber**; mirrors the **D2 Amendment (2026-06-25)** typed-`facet:`, the
+> **Q3 (2026-07-01)** / **service-principal (2026-07-05)** / **Q4 join
+> (2026-07-09)** in-place precedents. This discharges **PLAN-0065 SD-3**: the
+> per-part reorder band was ratified-DEFERRED there precisely because it trips
+> the L-4 tripwire — "no spec / grammar change without an ADR-016 amendment"
+> (`docs/plans/done/0065-calm-path-reorder-runnability.md:101-105`, fact 14
+> `:245-256`, SD-3 `:402-407`). This amendment IS that amendment.
+>
+> **Author≠reviewer disclosure (ADR-012 D4.3).** Outline originator = Cray —
+> the three forks (TF-1 Fork A grammar-field, TF-2 same-row v1 scope, TF-3
+> load-gate seam (a) trace-to-reads) were adjudicated by Cray in-session
+> 2026-07-11, on top of PLAN-0065 SD-3's ratified deferral naming this exact
+> amendment. Drafter = the in-harness `plan-drafter` subagent (ADR-013 D1
+> phased authoring / ADR-009 D1 interim authoring). Independent reviewers =
+> Code R2 (every cited `file:line` re-verified on disk against fresh evidence;
+> commits per ADR-009 D2) + Cray at ratification (Proposed → Accepted).
+> Drafter ≠ ratifier — separation **intact**. The genuinely-open shape details
+> are surfaced as OQ-1..OQ-4 below for Cray at ratification — none silently
+> resolved by the drafter.
+
+#### Context
+
+**The stand-in this amendment retires.** The shipped deterministic
+`EvaluateStepExecutor` compares every entity's `measured_value` against **ONE
+scalar authored band**: `Step.threshold: float | None`
+(`services/engine/procedures/spec.py:778-782`), consumed at
+`evaluate_step.py:82-97`. Procurement's `judge_stock` therefore authors
+`threshold: 100.0` — an explicit stand-in whose own YAML comment says "a
+per-part band is a Stage-2 refinement -- PLAN-0065 SD-3, deferred"
+(`verticals/procurement/procedures.yaml:638-641`; the sibling `judge_stock`
+carries the same scalar at `:348`). One floor judges every part, but each part
+should band against its **own** `Part.reorder_point` — "Stock level at or
+below which a reorder fires" (`verticals/procurement/ontology/
+procurement_v0.yaml:191-193`). The data already reaches the judge: the query
+step's rename-projection keeps unmapped columns
+(`services/engine/procedures/query_step.py:649-663`), so `reorder_point`
+rides every row into `judge_stock` (`procedures.yaml:625-632`) — the rows
+carry the per-part band; the grammar just cannot name it.
+
+**Precedent clarification (readers will assume D2-A3 — it is NOT).**
+PLAN-0065 fact 14 filed this as "ADR-016 D2-A3 territory" (`0065:253`); that
+framing is corrected here. D2-A3 is the *facet* rule — a non-authoritative
+annotation that **points at** an already-typed scalar band to avoid
+double-storing one number. `threshold_field` is the **`reads` /
+`project.order_by` precedent** (Q3 amendment OQ-1; Q4 SD-5,
+`spec.py:299-303`): a typed step field that **NAMES a declared ontology
+column** and is load-validated against `_declared_properties`
+(`orchestrator.py:315-317`; the `order_by ∈ base_props` assert at
+`:435-439`). The value is per-row data; the *name* is authored, governed spec
+surface. Different, established precedent — no facet semantics change.
+
+**Reuse evidence (why a grammar field, not a one-off).** Per-entity
+thresholding is conceptually right in all four verticals; 2 of 4 already
+carry the limit property: procurement `Part.reorder_point` (**same-row** —
+this v1) and energy `Asset.rated_current_a` / `capacity_kw`
+(`verticals/energy/ontology/energy_v0.yaml:38-44` — the limit lives on the
+**FK-parent**, so consuming it needs a join). supply_chain (`cargo_type`
+enum, `supply_chain_v0.yaml:39`) and aquaculture (`species` enum,
+`aquaculture_v0.yaml:34`) signal per-class bands but would first need a new
+numeric ontology property. N=1 buildable-today case ⇒ v1 is scoped same-row
+(Rule-of-Three, ADR-006 — no speculative join/derivation grammar at N=1).
+
+#### Decision (TF-1 … TF-4 — TF-1/2/3 direction LOCKED, Cray-ratified in-session 2026-07-11)
+
+**TF-1 — Fork A: a grammar field `threshold_field`, NOT a custom executor
+(LOCKED).** `Step` gains `threshold_field: str | None` — optional; absent =
+today's behaviour byte-for-byte (every shipped procedure loads unchanged).
+**AT MOST one of** `threshold` / `threshold_field` (mutual exclusion ONLY) is
+enforced by a `@model_validator(mode="after")`: BOTH-set raises; NEITHER-set
+stays valid. Neither-set MUST stay valid because two of the four shipped
+verticals author band-less `evaluate` judges — energy `judge`
+(`verticals/energy/procedures.yaml:64-71`) and supply_chain `judge`
+(`verticals/supply_chain/procedures.yaml:65-72`) carry
+`gate_kind: env_band` and take their band from `EnvBandEvaluateExecutor` via
+`env_var` (D2-A3), and NL-only judge steps keep their own custom executors. A
+mandatory exactly-one (the `JoinSpec._validate_exactly_one_form` shape,
+`spec.py:265-278`) would therefore fail both env-band judges at load — the
+**wrong precedent** here (Code R2 catch at review; not-both is the correct
+semantics). `ConfigDict(extra="forbid")` is KEPT — `threshold_field` becomes
+a known key, which is exactly why this is a G-gated ADR-016 amendment and not
+a build call. The existing band invariants extend naturally: the band family
+stays evaluate-only, and `direction` / `watch_margin` require *a* band —
+scalar or field (`spec.py:813-838`).
+
+```yaml
+# ILLUSTRATIVE ONLY — the build PLAN owns the literal schema.
+- step_id: judge_stock
+  kind: evaluate
+  threshold_field: reorder_point   # each Part judges vs ITS OWN reorder_point
+  direction: below                 # direction / watch_margin stay step-level scalars (TF-4)
+```
+
+**TF-2 — v1 scope = SAME-ROW ONLY (LOCKED).** `threshold_field` names a
+column present on the SAME entity rows flowing into the evaluate step
+(procurement's `reorder_point`, already projected through — Context). Two
+extensions are **explicitly DEFERRED to future amendments** under this same
+in-place discipline: (i) the **FK-parent-column** case (energy
+`Asset.rated_current_a` — needs a join to reach the reading's parent); (ii)
+the **not-yet-present-column** cases (supply_chain `cargo_type` / aquaculture
+`species` — need a new numeric ontology property first). Rule-of-Three: do
+not over-abstract at N=1 same-row case.
+
+**TF-3 — load-gate validation seam = (a) trace-to-reads (LOCKED).** The
+evaluate step has no `reads` of its own, so the load gate traces the step's
+`from_step` chain (default = the immediately preceding step) back to the
+QUERY step that declared `reads`, obtains that object type, and asserts
+`threshold_field ∈ _declared_properties(meta, object_type)` — the
+`project.order_by` precedent (`orchestrator.py:435-439`), rendered by
+extending `validate_read_bindings` (`orchestrator.py:252-308`), which today
+skips every non-QUERY step (`:284`). Drafter-rendered corollaries (contract
+entailments — confirm at ratification, OQ-1): **(c1)** an untraceable
+provenance (the chain reaches a query step WITHOUT `reads`, e.g. a
+seed-backed step, or a non-query origin) **fails CLOSED** with a typed
+`ProcedureError` — an un-traceable `threshold_field` is un-governable, the
+same fail-loud posture as the join/project meta requirement (`:301-308`);
+**(c2)** on a multi-read traced step, validate against the **base read**
+(`reads[0]`) declared properties — the `_validate_project` base-props
+precedent; **(c3)** also assert `threshold_field` is not renamed away by the
+traced step's `project.fields` (a rename SOURCE would pass declared-props at
+load yet be absent from the rows at run); **(c4)** the gate's trigger
+predicate `has_read_bindings` (`orchestrator.py:213-224`) extends to fire
+when any evaluate step declares `threshold_field` (else a reads-plus-field
+procedure validates but a hypothetical field-only one silently skips the
+gate).
+
+**TF-4 — run semantics + governance (extends, never forks).** In
+`EvaluateStepExecutor`: the band-less guard (`evaluate_step.py:82-87`)
+becomes `threshold is None AND threshold_field is None`; the per-entity loop
+resolves the threshold per row — the scalar, or the row's `threshold_field`
+column read with the same numeric / bool-reject / fail-loud discipline as
+`_entity_value` (`evaluate_step.py:49-65` — a row without a numeric band
+fails the step loudly; D4 diverts, never a silent verdict). The step summary
+and audit record `threshold_field` (alongside today's `threshold` /
+`direction` / `watch_margin`, `:100-114`). The **determinism invariant is
+intact** (`evaluate_step.py:14-19` / ADR-0019 / ADR-010 IN-3): no LLM — the
+verdict stays a pure function of the entity and the authored band; the only
+change is that the band's *value* is carried per-row by governed data whose
+column *name* is authored. `"threshold_field"` joins `STEP_GOVERNANCE_FIELDS`
+(`services/engine/procedures/draft.py:42-59`) — a per-row breach floor is
+human-authored, governance-sensitive spec surface, same class as `threshold`
+(`:46`); it sits directly on `Step` (like `threshold`), so a plain membership
+entry suffices — no lift-strip needed (unlike nested `StepInput` fields).
+
+#### Change surface (the build contract — this amendment DECIDES; a follow-up build PLAN builds)
+
+- `services/engine/procedures/spec.py` — `Step.threshold_field: str | None`;
+  the at-most-one (not-both) `@model_validator` (TF-1 — NOT the `:265-278`
+  exactly-one shape); band-invariant extension (`:813-838`);
+  `extra="forbid"` kept.
+- `services/engine/procedures/evaluate_step.py` — the guard (`:82-87`);
+  per-row threshold resolution reusing the `_entity_value` discipline
+  (`:49-65`); summary + audit (`:100-114`).
+- `services/engine/procedures/orchestrator.py` — extend
+  `validate_read_bindings` (`:252-308`) with the TF-3 `from_step` trace +
+  `_declared_properties` assert (`:315-317`, precedent `:435-439`); extend
+  `has_read_bindings` (`:213-224`) per c4.
+- `services/engine/procedures/draft.py` — `"threshold_field"` into
+  `STEP_GOVERNANCE_FIELDS` (`:42-59`).
+- `verticals/procurement/procedures.yaml` — migrate the `judge_stock` scalar
+  stand-ins (`:348`, `:641`) to `threshold_field: reorder_point` (OQ-3 owns
+  the which-sites call; the build PLAN owns fixtures + tests).
+
+#### Alternatives considered
+
+- **Fork B — a custom procurement evaluate executor.** **Rejected (Cray,
+  in-session 2026-07-11):** (1) NO precedent exists for a vertical-local
+  band/governance executor — the only vertical-local executor is
+  procurement's `_SeedQuery`, which the project is actively migrating AWAY
+  from (PLAN-0048 seed-migration posture); (2) the closest precedent,
+  `EnvBandEvaluateExecutor`, is ENGINE-GENERAL
+  (`services/engine/procedures/env_band_step.py`, shared by
+  energy + supply_chain) and exists only because D2-A3 pre-ratified the
+  env-vs-in_file band-source fork — the precedent is "engine-general wrapper
+  rendering a RATIFIED grammar fork", not "a vertical ships a bespoke
+  executor"; (3) a Fork-B-done-right (engine-general) would STILL need a
+  grammar field to say *which column* — collapsing back into Fork A; (4) it
+  fights the stated direction (PLAN-0048 "engine-owned generic"; LOCKED-5
+  extend-not-fork; this ADR's own note that a per-vertical executor is an
+  undocumented operational expectation, not an engine contract).
+- **Seam (b) — a runtime presence check instead of the load gate.**
+  **Rejected (Cray — contract-first):** lighter, but the misconfiguration
+  surfaces mid-run per-row instead of at load; every other declared-name
+  field (`reads`, `join`, `project.order_by`) is load-validated against the
+  ontology — a runtime-only check would make `threshold_field` the one
+  ungoverned name in the grammar.
+- **Keep the scalar stand-in permanently.** **Rejected:** one floor judges
+  every part — wrong verdicts the moment a second part's `reorder_point ≠
+  100`; the YAML itself labels the scalar a deferred stand-in (`:638-639`).
+- **Build the full multi-vertical shape now (FK-parent join + per-class
+  bands).** **Rejected (deferred):** TF-2 — speculative beyond the N=1
+  same-row substrate; the join case lands as a future amendment when energy
+  needs it (Rule-of-Three).
+- **A new standalone ADR.** **Rejected:** this directly extends the D2 `Step`
+  band grammar under `extra="forbid"` — the in-place amendment precedent
+  (2026-06-25 / 2026-07-01 / 2026-07-05 / 2026-07-09) applies.
+
+#### Scope boundary (amendment — keep it tight)
+
+- **IN:** the grammar **DECISION** — the `threshold_field` field + at-most-one
+  mutual exclusion (TF-1), the same-row v1 scope (TF-2), the trace-to-reads
+  load seam (TF-3), the run semantics / governance-pin posture (TF-4).
+  Nothing else.
+- **OUT — the build** (a follow-up build PLAN, gated on this `Accepted`): the
+  literal `spec.py` / `evaluate_step.py` / `orchestrator.py` / `draft.py`
+  edits; the procurement YAML migration + tests; fixtures.
+- **OUT (deferred to future amendments):** the FK-parent-column join case
+  (energy); per-class bands needing new ontology properties
+  (supply_chain / aquaculture); any `stock_qty − reorder_point` derived
+  computation (the Q4 OQ-3 wall stands — projection is select/rename only).
+- **Inherited LOCKs (carried — must-not-violate):** `extra="forbid"` on
+  `Step`; **no LLM in the evaluate path** — the determinism invariant
+  (`evaluate_step.py:14-19`, ADR-0019 / ADR-010 IN-3) is untouched;
+  `threshold_field` is **H-governed + pinned** (`STEP_GOVERNANCE_FIELDS` +
+  governance snapshot — a generated skeleton may never self-declare a breach
+  floor); the D2-A3 facet stays non-authoritative point-at metadata.
+- **UNCHANGED:** the scalar `threshold` path (byte-for-byte when
+  `threshold_field` is absent); `classify_verdict` semantics; the ADR-008
+  ontology grammar (`reorder_point` already declared); the Q3/Q4 read grammar
+  itself; `from_step` threading semantics.
+
+#### Open Questions (amendment — Cray ratifies at Proposed → Accepted; do NOT silently resolve)
+
+The **direction is LOCKED** (Fork A / same-row v1 / seam (a) — TF-1/2/3 are
+ratified forks, not OQs). Four shape details were surfaced; **all four
+RATIFIED as-recommended by Cray on 2026-07-11 at Accept** — OQ-1 confirm
+c1–c4; OQ-2 no `watch_margin_field` in v1; OQ-3 migrate BOTH `judge_stock`
+sites with per-part fixtures; OQ-4 keep `in_file_band`. Recorded inline below
+(each recommendation now reads as the ratified disposition):
+
+- **OQ-1 (TF-3 corollaries c1–c4).** The seam's contract entailments —
+  untraceable-provenance fail-closed (c1), base-read validation target (c2),
+  the `project.fields` rename-source assert (c3), the `has_read_bindings`
+  trigger extension (c4) — are drafter-rendered, not Cray-locked.
+  *Recommendation:* confirm all four — each is the fail-loud / one-bound
+  posture the Q3/Q4 gates already take. *Why Cray's call:* they fix how hard
+  the load gate refuses.
+- **OQ-2 (symmetric `watch_margin_field` / `direction_field`).**
+  *Recommendation:* **NO in v1** — no shipped vertical authors a per-row
+  watch margin or direction (Rule-of-Three); a future need lands via this
+  same amendment discipline. Naming it here prevents the build PLAN from
+  "completing the family" speculatively.
+- **OQ-3 (which YAML sites migrate).** Both `judge_stock` scalars (`:348`
+  event-flavoured + `:641` scheduled calm-path)? *Recommendation:* **both**,
+  in the build PLAN, each with a fixture asserting the per-part verdicts —
+  verdict changes for parts whose `reorder_point ≠ 100` are the *point*, so
+  the demo-visible delta is asserted, not discovered.
+- **OQ-4 (facet `gate_kind` taxonomy).** Does a per-row band stay
+  `in_file_band` (the band's *name* is authored in-file; D2-A3 point-at now
+  covers `threshold` OR `threshold_field`) or warrant a new `gate_kind`?
+  *Recommendation:* **keep `in_file_band`** — the facet is non-authoritative
+  metadata (D2-A2); grow the catalog only when a shape genuinely diverges
+  (the D2-Amendment OQ-A1 catalog-growth convention).
+
+#### Amendment references
+
+- `docs/plans/done/0065-calm-path-reorder-runnability.md` — the L-4 tripwire
+  (`:101-105`), fact 14 (`:245-256` — the fired-at-design-time analysis
+  naming a "`threshold_field`-style addition"), SD-3 (`:402-407`, `:567-570`).
+- `verticals/procurement/procedures.yaml:638-641` / `:348` — the scalar
+  stand-ins; `:625-632` — the projection that already carries
+  `reorder_point` to the judge.
+- `verticals/procurement/ontology/procurement_v0.yaml:191-193` —
+  `Part.reorder_point`.
+- `services/engine/procedures/spec.py:778-793` — the scalar band;
+  `:265-278` — `JoinSpec._validate_exactly_one_form`, the mandatory-exactly-one
+  shape TF-1 deliberately does NOT mirror (band-less env-band judges must keep
+  loading — R2 catch); `:299-303` — `order_by`, the named-declared-column
+  precedent; `:813-838` — the band invariants.
+- `services/engine/procedures/evaluate_step.py:14-19` (determinism),
+  `:49-65` (`_entity_value` discipline), `:82-97` (guard + loop),
+  `:100-114` (summary + audit).
+- `services/engine/procedures/orchestrator.py:213-224` (`has_read_bindings`),
+  `:252-308` (`validate_read_bindings` + the `:284` QUERY-only skip +
+  `:301-308` fail-loud meta precedent), `:315-317`
+  (`_declared_properties`), `:435-439` (the `order_by ∈ base_props`
+  precedent TF-3 mirrors).
+- `services/engine/procedures/query_step.py:649-663` — `_rename` keeps
+  unmapped columns (why `reorder_point` reaches the rows).
+- `services/engine/procedures/draft.py:42-59` — `STEP_GOVERNANCE_FIELDS`
+  (`threshold` at `:46`).
+- `services/engine/procedures/env_band_step.py` — `EnvBandEvaluateExecutor`,
+  the engine-general precedent Fork B misreads.
+- D2 Amendment (2026-06-25) — D2-A3, the point-at rule this field is NOT;
+  Q3 (2026-07-01) / Q4 (2026-07-09) amendments — the named-declared-column +
+  load-gate precedents this field IS.
+- ADR-006 (Rule-of-Three) — the N=1 same-row scoping; ADR-0019 / ADR-010
+  IN-3 — the determinism invariant carried.
+
 ### D3: Autonomy model + safe-agentic posture
 
 - **Autonomy attaches to WRITE / `action` steps only.** `query` and `evaluate`
