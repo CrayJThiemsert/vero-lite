@@ -66,12 +66,14 @@ class EnvBandEvaluateExecutor:
     async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
         """Judge ``input_set`` against the runtime env band when the step authors none.
 
-        An authored ``threshold`` means ``in_file`` — delegate untouched, so one
-        registered executor serves a vertical that mixes both band sources. Otherwise
-        rebind the step with the env threshold + direction (the ``Step`` validator
-        guarantees it authored neither) and let the base do the band math + tagging.
+        An authored ``threshold`` **or** ``threshold_field`` means ``in_file`` —
+        delegate untouched, so one registered executor serves a vertical that mixes
+        both band sources (a joined FK-parent band migrates through here too, ADR-016
+        Amendment 2026-07-12 FKP). Otherwise rebind the step with the env threshold +
+        direction (the ``Step`` validator guarantees it authored neither) and let the
+        base do the band math + tagging.
         """
-        if step.threshold is not None:
+        if step.threshold is not None or step.threshold_field is not None:
             return await self.base.execute(step, input_set, ctx)
         bound = step.model_copy(
             update={

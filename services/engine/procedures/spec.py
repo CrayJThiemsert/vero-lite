@@ -795,10 +795,11 @@ class Step(BaseModel):
     )
     threshold_field: str | None = Field(
         default=None,
-        description="name of a same-row ontology column to use as each entity's OWN "
-        "per-entity band, in place of the scalar `threshold`; evaluate steps only, mutually "
-        "exclusive with `threshold` (ADR-016 Amendment 2026-07-11, TF-1). Load-gate-validated "
-        "against the traced query step's declared ontology properties.",
+        description="name of an ontology column — same-row, or a joined FK-parent's "
+        "(ADR-016 Amendment 2026-07-12, FKP) — to use as each entity's OWN per-entity "
+        "band, in place of the scalar `threshold`; evaluate steps only, mutually exclusive "
+        "with `threshold` (2026-07-11 TF-1). Load-gate-validated against the traced query "
+        "step's declared ontology properties (base + joined parents).",
     )
     tiers: StepTiers | None = Field(
         default=None,
