@@ -689,15 +689,16 @@ def test_in_file_band_facet_points_at_typed_band(
     """AC-6: an in_file_band facet POINTS AT the typed Step band — the numeric values
     live ONLY on the Step (threshold/direction/...), never re-stored on the facet."""
     step = _step(vertical, procedure_id, step_id)
-    # the Step still carries the authored numeric band (single source of truth)
-    assert step.threshold is not None
+    # the Step still carries the authored typed band — the scalar threshold, or (ADR-016
+    # TF-1) a per-entity threshold_field — as the single source of truth (never the facet)
+    assert step.threshold is not None or step.threshold_field is not None
     assert step.facet is not None and step.facet.decision_condition is not None
     dc = step.facet.decision_condition
     assert dc.gate_kind is GateKind.IN_FILE_BAND
     assert dc.band_source is BandSource.IN_FILE
-    # the facet's decision_condition carries NO numeric band of its own
+    # the facet's decision_condition carries NO band value/name of its own
     dumped = dc.model_dump()
-    for numeric in ("threshold", "direction", "watch_margin"):
+    for numeric in ("threshold", "threshold_field", "direction", "watch_margin"):
         assert numeric not in dumped
 
 

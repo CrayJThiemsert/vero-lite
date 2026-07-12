@@ -340,15 +340,15 @@ procedures:
       - step_id: judge_stock
         name: Judge vs reorder point
         description: >-
-          Tag each part's verdict vs its reorder point — breach (stock ≤ reorder
-          point) is the reorder set. The threshold mirrors the demo part's reorder
-          point; a per-part band is a Stage-2 refinement (a single fixed band runs
-          the calm-path beat). Deterministic.
+          Tag each part's verdict vs ITS OWN reorder point — breach (stock ≤ the
+          part's reorder_point) is the reorder set. Per-part banding via
+          threshold_field (ADR-016 TF-1 amendment 2026-07-11; PLAN-0066 discharges
+          SD-3) — the blanket 100-unit stand-in is retired. Deterministic.
         kind: evaluate
-        threshold: 100.0
+        threshold_field: reorder_point
         direction: below
         facet:
-          # in_file_band POINTS AT the typed threshold/direction above — no re-store (D2-A3).
+          # in_file_band POINTS AT the typed threshold_field/direction above — no re-store (D2-A3).
           decision_condition: { gate_kind: in_file_band, band_source: in_file }
           llm_assist: null
           input: "read_stock set"
@@ -634,11 +634,12 @@ procedures:
       - step_id: judge_stock
         name: Judge vs reorder point
         description: >-
-          Tag each part's verdict vs its reorder point -- breach (stock <= reorder point) is the
-          reorder set. Deterministic; the fixed band mirrors the manual calm-path (a per-part
-          band is a Stage-2 refinement -- PLAN-0065 SD-3, deferred).
+          Tag each part's verdict vs ITS OWN reorder point -- breach (stock <= the part's
+          reorder_point) is the reorder set. Deterministic; per-part banding via
+          threshold_field (ADR-016 TF-1 amendment 2026-07-11; PLAN-0066 discharges SD-3 --
+          the blanket band is retired).
         kind: evaluate
-        threshold: 100.0
+        threshold_field: reorder_point
         direction: below
         facet:
           decision_condition: { gate_kind: in_file_band, band_source: in_file }
