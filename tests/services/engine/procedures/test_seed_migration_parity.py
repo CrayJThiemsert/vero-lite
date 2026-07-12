@@ -61,10 +61,11 @@ _GROUP_KEY = "asset_id"
 _ORDER_BY = "occurred_at"
 _TIE_BREAK = "event_id"
 
-# The supply_chain ``read_temps`` migration (mirrors verticals/supply_chain/procedures.yaml
-# after PLAN-0062 PR2): latest OperationalEvent (event_type=reading) per Shipment via the
-# declared ``event_concerns_shipment`` link, by ``occurred_at``. Mechanically identical to
-# energy's shape — only the link + FK differ, which is the point of the shared harness.
+# The supply_chain ``read_temps`` latest-per-group half: latest OperationalEvent
+# (event_type=reading) per Shipment via the declared ``event_concerns_shipment`` link, by
+# ``occurred_at``. PLAN-0067 added a Shipment JOIN to the shipped read_temps (for the
+# per-cargo temp_ceiling band) — this input isolates the projection half the join preserves;
+# the join+band superset is covered by test_cold_chain_per_cargo_band.py (PR2's run test).
 _SUPPLY_CHAIN_READ_INPUT: dict[str, Any] = {
     "reads": ["OperationalEvent"],
     "where": {"event_type": "reading"},
@@ -416,8 +417,9 @@ async def test_supply_chain_read_temps_parity_real_synthetic_data() -> None:
     )
     # the incident shipment's latest reading is the cold-chain excursion (event-reading-03)
     assert reference["shipment-pharma-01"]["event_id"] == "event-reading-03"
-    # frozen-01's NEWER door-open alarm did not displace its last reading
-    assert reference["shipment-frozen-01"]["event_id"] == "event-reading-02"
+    # frozen-01's latest reading is now its warming excursion (event-reading-04, the
+    # PLAN-0067 flip seed) — NEWER than the door-open alarm, which is filtered (not a reading)
+    assert reference["shipment-frozen-01"]["event_id"] == "event-reading-04"
     assert all(row["event_type"] == "reading" for row in reference.values())
 
 

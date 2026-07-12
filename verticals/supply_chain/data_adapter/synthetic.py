@@ -6,14 +6,14 @@ cold-chain logistics operator); no design-partner brand names or internal
 codes appear here (PLAN-0005 PD-5 / §7.2; PLAN-0013 AC-safety).
 
 Shapes match ``verticals/supply_chain/ontology/supply_chain_v0.yaml``:
-Facility, Shipment, and OperationalEvent. The reading events include one
-pharma shipment whose temperature crosses the cold-chain limit — the breach
-the recommender escalates, kept as the timeline's **final beat** so real-time
-anchoring (PLAN-0015 D1) leaves nothing dangling in the future (mirrors the
-energy over-temp scenario, swapped to the cold-chain domain). The active
-vertical's escalation threshold is
-configured via ``OCT_RECOMMEND_THRESHOLD`` (8 °C for the demo); this dataset
-stays decoupled from it by breaching well above any sane cold-chain limit.
+Facility, Shipment, and OperationalEvent. Each Shipment carries a per-cargo-type
+``temp_ceiling`` (ADR-016 FKP amendment 2026-07-12) — the judge bands each
+shipment's latest reading against its OWN ceiling, not one blanket limit. Two
+excursions land: the pharma shipment crosses its 8 °C ceiling (14.6 °C), and —
+the per-cargo demo point — the frozen shipment WARMS to -11.8 °C after a
+door-open alarm, above its -15 °C frozen ceiling though a blanket 8 °C limit
+would clear it. The frozen warming reading is the timeline's **final beat** so
+real-time anchoring (PLAN-0015 D1) leaves nothing dangling in the future.
 """
 
 from __future__ import annotations
@@ -54,6 +54,7 @@ def shipments() -> list[dict[str, Any]]:
             "shipment_id": "shipment-pharma-01",
             "reference": "Vaccine Lot VX-1188",
             "cargo_type": "pharma",
+            "temp_ceiling": 8.0,
             "payload_kg": 420.0,
             "status": "in_transit",
             "dispatched_date": date(2026, 5, 29),
@@ -63,6 +64,7 @@ def shipments() -> list[dict[str, Any]]:
             "shipment_id": "shipment-produce-01",
             "reference": "Fresh Produce Pallet FP-204",
             "cargo_type": "produce",
+            "temp_ceiling": 12.0,
             "payload_kg": 1200.0,
             "status": "at_facility",
             "dispatched_date": date(2026, 5, 30),
@@ -72,6 +74,7 @@ def shipments() -> list[dict[str, Any]]:
             "shipment_id": "shipment-frozen-01",
             "reference": "Frozen Goods FZ-77",
             "cargo_type": "frozen",
+            "temp_ceiling": -15.0,
             "payload_kg": 800.0,
             "status": "in_transit",
             "dispatched_date": date(2026, 5, 30),
@@ -81,6 +84,7 @@ def shipments() -> list[dict[str, Any]]:
             "shipment_id": "shipment-biologic-01",
             "reference": "Biologic Sample BS-9",
             "cargo_type": "biologic",
+            "temp_ceiling": 6.0,
             "payload_kg": 35.0,
             "status": "delayed",
             "dispatched_date": date(2026, 5, 28),
@@ -92,8 +96,9 @@ def shipments() -> list[dict[str, Any]]:
 def operational_events() -> list[dict[str, Any]]:
     """Return the synthetic OperationalEvent records (readings + one alarm).
 
-    The door-open alarm precedes the cold-chain breach (``event-reading-03``),
-    which is the last beat so real-time anchoring leaves no event in the future.
+    The door-open alarm precedes the frozen shipment's warming
+    reading (`event-reading-04`, the per-cargo flip), which is the last beat so
+    real-time anchoring leaves no event in the future.
     """
     return [
         {
@@ -137,5 +142,17 @@ def operational_events() -> list[dict[str, Any]]:
             "occurred_at": datetime(2026, 5, 31, 8, 10, tzinfo=UTC),
             "shipment_id": "shipment-pharma-01",
             "facility_id": "facility-coldhub-01",
+        },
+        {
+            "event_id": "event-reading-04",
+            "event_type": "reading",
+            "severity": "warn",
+            "measured_value": -11.8,
+            "unit": "celsius",
+            "description": "Frozen Goods FZ-77 warming after the door-open alarm — above "
+            "its -15 °C frozen ceiling though still cold (a blanket 8 °C limit misses it).",
+            "occurred_at": datetime(2026, 5, 31, 8, 12, tzinfo=UTC),
+            "shipment_id": "shipment-frozen-01",
+            "facility_id": "facility-dc-01",
         },
     ]

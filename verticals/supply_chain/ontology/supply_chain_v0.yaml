@@ -41,6 +41,13 @@ object_types:
         values: [pharma, produce, frozen, biologic]
       payload_kg:
         type: float
+      temp_ceiling:
+        type: float
+        description: >-
+          Per-cargo-type cold-chain temperature ceiling (°C) this shipment must
+          stay at/below — each Shipment's OWN per-entity band (ADR-016 FKP
+          amendment 2026-07-12). Seeded per cargo_type (pharma/produce/frozen/
+          biologic); the judge bands each shipment's latest reading against it.
       status:
         type: enum
         values: [in_transit, at_facility, delayed, held, delivered, returned]
