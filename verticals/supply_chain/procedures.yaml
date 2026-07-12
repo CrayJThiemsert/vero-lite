@@ -42,17 +42,21 @@ procedures:
     steps:
       - step_id: read_temps
         name: Read latest shipment temperatures
-        description: Latest reading per Shipment (event_type=reading), by occurred_at.
+        description: Latest reading per Shipment joined to its cargo band (event_type=reading), by occurred_at.
         kind: query
-        input:                          # PLAN-0062 Q4 Phase-3: the declared latest-per-group grammar
-          reads: [OperationalEvent]
+        input:                          # PLAN-0067: declared latest-per-group + FK-parent join (ADR-016 FKP)
+          reads: [OperationalEvent, Shipment]
           where:
             event_type: reading         # load-bearing: the door-open alarm is NEWER than
                                         # frozen-01's last reading and carries NO measured_value,
                                         # so an unfiltered latest-per-group would fail the judge
+          join:
+            - { with: Shipment, link: event_concerns_shipment }   # brings each Shipment's temp_ceiling onto its readings (ADR-016 FKP 2026-07-12)
           project:
             latest_per: event_concerns_shipment   # FK OperationalEvent.shipment_id -> Shipment.shipment_id
             order_by: occurred_at
+            fields:
+              facility_id: shipment_facility_id   # the declared OperationalEvent/Shipment facility_id collision (join-key shipment_id is exempt)
         facet:
           decision_condition: { gate_kind: none }
           llm_assist: null
@@ -63,17 +67,19 @@ procedures:
           input: "latest OperationalEvent (event_type=reading) per Shipment via event_concerns_shipment, by occurred_at"
           output: "one latest reading row per Shipment"
       - step_id: judge
-        name: Judge vs cold-chain ceiling
+        name: Judge vs per-cargo cold-chain ceiling
         description: >-
-          Tag each shipment's verdict vs the cold-chain temperature ceiling —
-          breach (over the ceiling) vs ok. OCT_RECOMMEND_DIRECTION=above semantics.
+          Tag each shipment's verdict vs ITS OWN cargo-type temp_ceiling — breach
+          (over its ceiling) vs ok (ADR-016 FKP amendment 2026-07-12; direction above).
         kind: evaluate
+        threshold_field: temp_ceiling   # each Shipment bands vs its OWN per-cargo ceiling (joined by read_temps)
+        direction: above                # cold-chain ceiling — breach OVER it
         facet:
-          decision_condition: { gate_kind: env_band, band_source: env, env_var: OCT_RECOMMEND_THRESHOLD }
+          decision_condition: { gate_kind: in_file_band, band_source: in_file }
           llm_assist: null
-          input: "read_temps set"
-          output: "per-shipment verdict {breach=over ceiling, ok}"
-          governance: "verdict = pure function of the reading + the authored (env) band"
+          input: "read_temps set (each row carries its Shipment's temp_ceiling)"
+          output: "per-shipment verdict {breach=over its own ceiling, ok}"
+          governance: "verdict = pure function of the reading + the authored per-entity (in_file) band"
       - step_id: hold_breaches
         name: Hold the breaching shipments
         description: >-

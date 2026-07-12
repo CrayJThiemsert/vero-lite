@@ -625,6 +625,7 @@ _MIGRATED_VERTICALS = ["energy", "supply_chain", "aquaculture", "procurement"]
 # facet must point at the typed Step band, not copy it (AC-6).
 _IN_FILE_BAND_JUDGES = [
     ("aquaculture", "morning_pond_health_round", "judge"),
+    ("supply_chain", "cold_chain_excursion_sweep", "judge"),  # PLAN-0067
     ("procurement", "emergency_sourcing_round", "judge"),
     ("procurement", "low_stock_reorder_round", "judge_stock"),
 ]
@@ -666,12 +667,13 @@ def test_migrated_facets_round_trip(vertical: str) -> None:
             assert StepFacet.model_validate(dumped).model_dump() == dumped
 
 
-@pytest.mark.parametrize("vertical", ["energy", "supply_chain"])
+@pytest.mark.parametrize("vertical", ["energy"])
 def test_env_band_judge_migrated(vertical: str) -> None:
-    """The energy / supply_chain judge steps carry the env-authored band (no LLM)."""
+    """The energy judge step carries the env-authored band (no LLM). supply_chain's judge
+    migrated to a per-cargo threshold_field (PLAN-0067) — it now lives in the
+    ``_IN_FILE_BAND_JUDGES`` set (``test_in_file_band_facet_points_at_typed_band``)."""
     procedure_id = {
         "energy": "substation_health_sweep",
-        "supply_chain": "cold_chain_excursion_sweep",
     }[vertical]
     facet = _step(vertical, procedure_id, "judge").facet
     assert facet is not None and facet.decision_condition is not None

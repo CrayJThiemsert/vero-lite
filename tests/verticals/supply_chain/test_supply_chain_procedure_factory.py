@@ -1,9 +1,10 @@
 """PLAN-0062 Step 2 (PR2) — the supply_chain production factory + full-procedure run (AC-3, AC-5).
 
 The energy PR1b test, re-pointed at the cold chain. What it proves beyond a copy: the
-`env_band` executor and the advisory stub are genuinely **vertical-agnostic** — a second
-vertical binds them with no engine change, and the band simply reads a different
-`OCT_RECOMMEND_THRESHOLD` (a cold-chain ceiling of 8 °C, not energy's 90 °C).
+shared engine executors (QueryStepExecutor / EnvBandEvaluateExecutor / advisory stub) are
+genuinely **vertical-agnostic** — a second vertical binds them with no engine change. The
+``judge`` migrated env_band -> per-cargo ``threshold_field: temp_ceiling`` (PLAN-0067,
+ADR-016 FKP), so it now delegates THROUGH the still-registered EnvBandEvaluateExecutor.
 
 Offline and host-state-free (SD-6): synthetic adapter, deterministic band math, stubbed
 advisory prose — no MS-S1 call anywhere (CLAUDE.md §8).
@@ -102,15 +103,23 @@ async def test_full_procedure_run_suspends_at_the_gated_hold(
 
     judged = by_step["judge"].artifact["output_set"]
     breaches = [row for row in judged if row["verdict"] == "breach"]
-    assert [row["shipment_id"] for row in breaches] == [_INCIDENT_SHIPMENT]
+    # PLAN-0067 (SD-2b): per-cargo banding makes the frozen shipment breach too — it warmed
+    # to -11.8 °C, above its OWN -15 °C ceiling (a blanket 8 °C would clear it) — so the hold
+    # set grew 1 -> 2. pharma still breaches (14.6 °C above its 8 °C ceiling).
+    assert {row["shipment_id"] for row in breaches} == {
+        "shipment-pharma-01",
+        "shipment-frozen-01",
+    }
 
-    # the env band bound the COLD-CHAIN ceiling, not energy's 90 °C — same executor, new env
+    # PLAN-0067: the judge migrated env_band -> threshold_field (in_file per-entity), so it
+    # delegates THROUGH EnvBandEvaluateExecutor untouched — no env band_source, no scalar band.
     judge_audit = by_step["judge"].audit
-    assert judge_audit["band_source"] == "env"
-    assert judge_audit["threshold"] == _COLD_CHAIN_CEILING
+    assert "band_source" not in judge_audit
+    assert judge_audit["threshold_field"] == "temp_ceiling"
+    assert judge_audit["threshold"] is None
 
-    # the gated action fanned out over the breach subset ONLY, and proposed (not executed)
+    # the gated action fanned out over the breach subset (both breaches), and proposed only
     actions = by_step["hold_breaches"].artifact["output_set"]
-    assert len(actions) == 1
+    assert len(actions) == 2
     assert actions[0]["status"] == "proposed"
     assert actions[0]["action"]["suggested_handler"] == "hold"
