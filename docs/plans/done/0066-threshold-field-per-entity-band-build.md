@@ -1,6 +1,6 @@
 # PLAN-0066: `threshold_field` per-entity band — build (ADR-016 Amendment 2026-07-11)
 
-**Status:** Accepted (Cray-ratified 2026-07-12: SD-1/2/3 = (a), SD-4 = (b))
+**Status:** Done (built + merged 2026-07-12, session 120)
 **Owner:** Claude Code
 **Created:** 2026-07-12
 **Related ADRs:** ADR-016 **Amendment (2026-07-11): per-entity `threshold_field` on evaluate steps (same-row v1)** — Accepted (`docs/adr/0016-governed-procedure-engine.md:1379-1673`); ADR-0019 / ADR-010 IN-3 (determinism invariant); ADR-006 (Rule-of-Three scoping)
@@ -35,7 +35,7 @@ is satisfied, and this build discharges PLAN-0065 SD-3.
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 (grammar).** `Step.threshold_field: str | None` exists;
+- [x] **AC-1 (grammar).** `Step.threshold_field: str | None` exists;
   BOTH `threshold` + `threshold_field` set → raises at load (at-most-one /
   NOT-BOTH `@model_validator(mode="after")`); NEITHER set → loads (env-band +
   NL-only judges); `threshold_field` on a non-evaluate kind → raises (band
@@ -44,12 +44,12 @@ is satisfied, and this build discharges PLAN-0065 SD-3.
   `threshold_field` (extend `spec.py:832-838`); `ConfigDict(extra="forbid")`
   kept. ⚠️ Explicitly NOT the `JoinSpec._validate_exactly_one_form`
   mandatory-exactly-one shape (`spec.py:265-278`).
-- [ ] **AC-2 (band-less regression — the R2-catch's point).** Energy `judge`
+- [x] **AC-2 (band-less regression — the R2-catch's point).** Energy `judge`
   (`verticals/energy/procedures.yaml:64-71`) and supply_chain `judge`
   (`verticals/supply_chain/procedures.yaml:65-72`) — band-less env-band
   judges, `threshold` absent today — still load unchanged (explicit factory
   regression tests pass unmodified).
-- [ ] **AC-3 (executor).** With `threshold_field`, each entity bands vs ITS
+- [x] **AC-3 (executor).** With `threshold_field`, each entity bands vs ITS
   OWN column value; a row whose band column is missing / non-numeric / bool
   fails the step loudly (typed error, `_entity_value` discipline,
   `evaluate_step.py:49-65`); band-less guard fires only when BOTH are absent
@@ -57,7 +57,7 @@ is satisfied, and this build discharges PLAN-0065 SD-3.
   determinism invariant (`:14-19`) intact. **Scalar path byte-for-byte
   unchanged when `threshold_field` is absent** — every pre-existing
   `test_evaluate_step.py` case passes unmodified.
-- [ ] **AC-4 (load gate, TF-3 seam (a) + c1–c4).** A valid same-row
+- [x] **AC-4 (load gate, TF-3 seam (a) + c1–c4).** A valid same-row
   `threshold_field` passes `validate_read_bindings`; a non-ontology column
   fails at LOAD (`_declared_properties`, `orchestrator.py:315-317`, precedent
   `:435-439`); **c1** untraceable provenance (traced query step without
@@ -66,11 +66,11 @@ is satisfied, and this build discharges PLAN-0065 SD-3.
   `reads[0]`; **c3** a `project.fields` rename-SOURCE
   (`fields[threshold_field] != threshold_field`) is refused at load; **c4**
   `has_read_bindings` (`:213-224`) fires for a field-only procedure.
-- [ ] **AC-5 (governance pin).** `"threshold_field"` ∈
+- [x] **AC-5 (governance pin).** `"threshold_field"` ∈
   `STEP_GOVERNANCE_FIELDS` (`draft.py:42-59`; plain membership — sits directly
   on `Step` like `threshold`, no lift-strip); the draft-disjointness CI test
   covers it and is green.
-- [ ] **AC-6 (procurement migration + LIVE demo flip, RED-verified).** BOTH
+- [x] **AC-6 (procurement migration + LIVE demo flip, RED-verified).** BOTH
   `judge_stock` sites (`procedures.yaml:348` event-flavoured + `:641`
   scheduled) migrated to `threshold_field: reorder_point`; facet keeps
   `gate_kind: in_file_band` (OQ-4); the demo seed gains a third "flip" Part
@@ -80,7 +80,7 @@ is satisfied, and this build discharges PLAN-0065 SD-3.
   3 parts (a ratified demo-output change, not drift). Per-part verdict
   fixtures assert the flip and are **RED-verified against the UNEDITED YAML
   first** (PLAN-0065 AC-2 discipline: proven, not assumed).
-- [ ] **AC-7 (hygiene).** Full suite green WITH Postgres up (one pytest per
+- [x] **AC-7 (hygiene).** Full suite green WITH Postgres up (one pytest per
   checkout); `ruff check` + `ruff format --check` clean;
   `mypy --strict services/` clean; CI `gate` green on the PR.
 
@@ -266,6 +266,61 @@ RED-then-GREEN fixture sequence (Steps 5–6 — the flip is proven against the
 unedited YAML first); AC-7 by the Step-8 full-suite + linter + CI `gate` run
 on the PR. Evidence = fresh pytest/linter output on the branch, pass/fail
 reads pre-committed per step above (Lesson #0026 discipline).
+
+## Close-out (built + merged 2026-07-12, session 120)
+
+Built on `feat/plan0066-threshold-field` in three commits — engine grammar +
+executor `40ce172` → load gate `57e5e08` → procurement migration + flip seed
+`3047386` — merged via PR #705 (merge commit `3682d79`, now `main`).
+Governance lineage: PR #703 (ADR-016 amendment Accepted) → PR #704 (this PLAN
+Ready) → PR #705 (build). All seven ACs met, verified on-disk this session:
+
+- **AC-1** `Step.threshold_field` + at-most-one (NOT-BOTH) validator +
+  evaluate-only, with the band-family checks extracted to
+  `_validate_band_family` (C901 complexity); `test_spec.py` grammar tests
+  green.
+- **AC-2** energy + supply_chain band-less env-band `judge`s load unchanged
+  (the R2-catch's whole point); full suite + env_band tests green.
+- **AC-3** per-entity band vs each row's OWN column; scalar path
+  byte-for-byte unchanged; loud non-numeric band; determinism intact
+  (`test_evaluate_step.py` green).
+- **AC-4** TF-3 seam (a) + c1–c4: 7 gate tests green in
+  `test_orchestrator.py` (accept, non-ontology column, c1 no-reads, c1
+  entry-point, c3 rename-source, c4 `has_read_bindings`, meta-required).
+- **AC-5** `threshold_field` ∈ `STEP_GOVERNANCE_FIELDS`; draft-disjointness
+  CI green.
+- **AC-6** BOTH `judge_stock` sites migrated to
+  `threshold_field: reorder_point`; SD-4 (b) flip seed part `part-vbelt-03`
+  (stock 150 / reorder_point 200) RED-verified `ok` against the unedited
+  YAML, then GREEN `breach` post-migration; reorder set deliberately 2 → 3.
+- **AC-7** full suite **2536 passed / 7 skipped** WITH Postgres up; `ruff
+  check` + `ruff format --check` + `mypy --strict services/` clean; CI
+  `gate` green on #705.
+
+### Honest completion record
+
+1. **Build-discovered coupling NOT in the ADR change surface** (the standout
+   note): `draft.py::derive_governance_todo` derived the `in_file_band` band
+   obligation as a hardcoded `threshold`, so `validate_governance_complete`
+   flagged `threshold` as an unfilled governance stub on a `threshold_field`
+   judge and REFUSED to run the migrated procedure. Fixed to derive the band
+   obligation as `threshold_field` (when authored) or `threshold`. Caught by
+   the AC-2 in-memory runnability test — not assumed. (Analogous to
+   PLAN-0065's shadow-parity build-discovered coupling.)
+2. **Three draft≠review≠verify findings, one per role:** (i) Code R2 caught
+   the ADR's TF-1 "exactly-one" → "at-most-one" defect (strict exactly-one
+   would have broken the energy/supply_chain env-band judges at load);
+   (ii) the plan-drafter caught the seed-parity fact (the shipped 2 parts
+   BOTH breach under either banding, so the flip needed a third seed part);
+   (iii) the build caught the `draft.py` governance coupling above.
+3. **Coupled tests updated deliberately, disclosed in the #705 body:**
+   scheduled-demo verdict count 2 → 3; the event-based calm-path test feeds
+   `reorder_point` and its `_Evaluate` mock routes `threshold_field` to the
+   band executor; env_band + facet-points-at tests accept the widened band.
+4. **Deferred to future ADR-016 amendments (TF-2):** FK-parent-column join
+   case (energy `Asset.rated_current_a`); not-yet-present-column cases
+   (supply_chain `cargo_type` / aquaculture `species`);
+   `watch_margin_field` / `direction_field` (OQ-2 = no).
 
 ## References
 
