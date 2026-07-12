@@ -89,6 +89,28 @@ async def test_authored_threshold_delegates_untouched() -> None:
     assert "band_source" not in outcome.audit, "an in_file band must not claim env provenance"
 
 
+@pytest.mark.usefixtures("env_band")
+async def test_authored_threshold_field_delegates_untouched() -> None:
+    """FKP (ADR-016 Amendment 2026-07-12): a per-entity ``threshold_field`` band is
+    ``in_file`` too, so it delegates through the env wrapper UNTOUCHED (the
+    ``env_band_step.py`` guard fix — the migrated supply_chain judge). Proof: the step
+    authors ``direction: below`` while the env fixture is ``above`` — the verdicts must
+    follow the AUTHORED direction (NOT the clobbered env one), and the audit must NOT
+    falsely stamp ``band_source: "env"``. Under the old threshold-only guard the rebind
+    would clobber direction to ``above`` and flip the verdicts to ``[ok, breach]``."""
+    step = _step(threshold_field="floor_col", direction="below")
+    rows = [
+        {**_asset("a1", 3.0), "floor_col": 4.0},  # below its own 4.0 floor -> breach
+        {**_asset("a2", 5.0), "floor_col": 4.0},  # not below -> ok
+    ]
+
+    outcome = await _executor().execute(step, rows, _ctx())
+
+    assert [e["verdict"] for e in outcome.output] == ["breach", "ok"]
+    assert outcome.audit is not None
+    assert "band_source" not in outcome.audit, "a threshold_field band must not claim env"
+
+
 def test_an_env_band_step_cannot_author_a_watch_margin_or_direction() -> None:
     """The invariant that makes an env band necessarily WATCH-LESS: ``Step``'s validator
     refuses ``direction``/``watch_margin`` without a band (``threshold`` or, per ADR-016

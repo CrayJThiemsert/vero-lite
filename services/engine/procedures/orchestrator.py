@@ -280,7 +280,9 @@ def validate_read_bindings(
     procedures never need it — every existing 3-arg call is byte-compatible.
     Enforcement (the honest frame): plain reads = declared ✔ · gated ✔ ·
     execution-bound ✔ (PLAN-0048); join/project = declared ✔ · gated ✔ ·
-    execution-bound ✖ until Phase C lands the executor extension.
+    execution-bound ✔ since PLAN-0061 Phase C (#666, ``_execute_join``). The honest
+    residual ✖ is the not-yet-migrated seed-backed procedures (0061:450-452), not
+    the executor.
     """
     allowed_object_types = agent.allowed.object_types
     for step in procedure.steps:
@@ -372,10 +374,17 @@ def _validate_threshold_field_bindings(procedure: Procedure, meta: OntologyMeta 
                 "cannot be ontology-validated (ADR-016 TF-3 c1: fail closed)"
             )
         base = source.input.reads[0]
-        if step.threshold_field not in _declared_properties(meta, base):
+        # FKP-2: the domain widens from the base read alone (same-row v1, TF-3 c2) to
+        # base + each declared joined FK-parent — the join delivers the parent's band
+        # column onto the merged rows (ADR-016 Amendment 2026-07-12).
+        domain = _declared_properties(meta, base)
+        for join_spec in source.input.join or []:
+            domain |= _declared_properties(meta, join_spec.with_read)
+        if step.threshold_field not in domain:
             raise ProcedureError(
                 f"step '{step.step_id}': threshold_field '{step.threshold_field}' is not a "
-                f"declared property of '{base}' (ADR-016 TF-3)"
+                f"declared property of '{base}' or a joined FK-parent it reads "
+                f"(ADR-016 TF-3 / FKP-2)"
             )
         project = source.input.project
         if project is not None and project.fields and step.threshold_field in project.fields:

@@ -13,7 +13,13 @@ from typing import Any
 
 import pytest
 
-from services.engine.ontology_meta import ObjectTypeMeta, OntologyMeta, PropertyMeta
+from services.engine.ontology_meta import (
+    JoinKeyMeta,
+    LinkTypeMeta,
+    ObjectTypeMeta,
+    OntologyMeta,
+    PropertyMeta,
+)
 from services.engine.procedures.orchestrator import (
     ProcedureError,
     RunContext,
@@ -31,6 +37,7 @@ from services.engine.procedures.spec import (
     AgentAllowed,
     Autonomy,
     EventTrigger,
+    JoinSpec,
     OnFailure,
     Procedure,
     ProjectSpec,
@@ -711,6 +718,113 @@ def test_threshold_field_gate_requires_meta() -> None:
     proc = _band_proc(project=ProjectSpec(fields={"stock_qty": "measured_value"}))
     with pytest.raises(ProcedureError, match="no ontology meta was supplied"):
         validate_read_bindings(proc, _agent(), _PART_NAMES)
+
+
+# --- ADR-016 FKP (2026-07-12): threshold_field on a JOINED FK-parent column ------
+
+_FKP_META = OntologyMeta(
+    vertical="fkp-fixture",
+    object_types=[
+        ObjectTypeMeta(
+            name="OperationalEvent",
+            primary_key="event_id",
+            properties=[
+                PropertyMeta(name="event_id", type="string"),
+                PropertyMeta(name="asset_id", type="string"),
+                PropertyMeta(name="measured_value", type="float"),
+                PropertyMeta(name="site_id", type="string"),  # declared collision w/ Asset
+            ],
+        ),
+        ObjectTypeMeta(
+            name="Asset",
+            primary_key="asset_id",
+            properties=[
+                PropertyMeta(name="asset_id", type="string"),
+                PropertyMeta(name="rated_current_a", type="float"),  # the joined-parent band
+                PropertyMeta(name="site_id", type="string"),  # the collision counterpart
+            ],
+        ),
+    ],
+    link_types=[
+        LinkTypeMeta(
+            name="event_emitted_by_asset",
+            from_type="OperationalEvent",
+            to_type="Asset",
+            foreign_key=JoinKeyMeta(from_property="asset_id", to_property="asset_id"),
+        ),
+    ],
+)
+_FKP_NAMES = frozenset(t.name for t in _FKP_META.object_types)
+# the declared site_id collision must be renamed away for a clean load
+_FKP_RENAME = ProjectSpec(fields={"site_id": "asset_site_id"})
+
+
+def _fkp_band_proc(
+    *,
+    threshold_field: str = "rated_current_a",
+    join: bool = True,
+    project: ProjectSpec | None = _FKP_RENAME,
+) -> Procedure:
+    """The FK-parent shape: a read QUERY reads [OperationalEvent, Asset] and joins Asset
+    via event_emitted_by_asset; the judge bands on a JOINED-parent column (ADR-016 FKP
+    amendment 2026-07-12). ``join=False`` drops the join (the same-row-only rule case)."""
+    reads = ["OperationalEvent", "Asset"] if join else ["OperationalEvent"]
+    joins = [JoinSpec(with_read="Asset", link="event_emitted_by_asset")] if join else None
+    return _proc(
+        [
+            Step(
+                step_id="read_readings",
+                name="Read",
+                kind=StepKind.QUERY,
+                input=StepInput(reads=reads, join=joins, project=project if join else None),
+            ),
+            Step(
+                step_id="judge",
+                name="Judge",
+                kind=StepKind.EVALUATE,
+                threshold_field=threshold_field,
+                direction="above",
+            ),
+        ]
+    )
+
+
+def test_threshold_field_gate_accepts_joined_parent_column() -> None:
+    """FKP-2: a threshold_field naming a declared property of a JOINED FK-parent loads —
+    the join delivers the parent's band column onto the merged rows."""
+    validate_read_bindings(_fkp_band_proc(), _agent(), _FKP_NAMES, meta=_FKP_META)
+
+
+def test_threshold_field_gate_accepts_base_column_under_join() -> None:
+    """FKP-2: the widened domain is base + joined — a base-read column still accepts when
+    the step also declares a join."""
+    validate_read_bindings(
+        _fkp_band_proc(threshold_field="measured_value"), _agent(), _FKP_NAMES, meta=_FKP_META
+    )
+
+
+def test_threshold_field_gate_refuses_parent_column_without_join() -> None:
+    """FKP-2: the same-row rule stands — a parent column named while the query declares NO
+    join refuses (the domain is the base read alone)."""
+    proc = _fkp_band_proc(join=False)
+    with pytest.raises(ProcedureError, match="'rated_current_a' is not a declared property"):
+        validate_read_bindings(proc, _agent(), _FKP_NAMES, meta=_FKP_META)
+
+
+def test_threshold_field_gate_refuses_undeclared_column_under_join() -> None:
+    """FKP-2: a band column on neither the base read nor any joined parent refuses."""
+    proc = _fkp_band_proc(threshold_field="ghost_col")
+    with pytest.raises(ProcedureError, match="'ghost_col' is not a declared property"):
+        validate_read_bindings(proc, _agent(), _FKP_NAMES, meta=_FKP_META)
+
+
+def test_threshold_field_gate_collision_refused_before_threshold() -> None:
+    """FKP-2 g2: an un-renamed declared property collision between the joined types refuses
+    at the join/collision gate — which runs BEFORE the threshold gate
+    (orchestrator.py :311-312) — so no new band-column ambiguity rule is needed."""
+    proc = _fkp_band_proc(project=None)  # drop the site_id rename → collision survives
+    with pytest.raises(ProcedureError, match="declared property collision.*site_id"):
+        validate_read_bindings(proc, _agent(), _FKP_NAMES, meta=_FKP_META)
 
 
 async def test_run_procedure_wires_read_gate_accept_and_refuse() -> None:
