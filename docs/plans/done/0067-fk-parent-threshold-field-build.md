@@ -1,6 +1,6 @@
 # PLAN-0067: FK-parent `threshold_field` — supply_chain cold-chain build (ADR-016 Amendment 2026-07-12)
 
-**Status:** Ready for execution (build-level SD-1..SD-5 ratified — Cray, typed 2026-07-12)
+**Status:** Done (built + merged 2026-07-12, session 121)
 **Owner:** Claude Code
 **Created:** 2026-07-12
 **Related ADRs:** ADR-016 **Amendment (2026-07-12): FK-parent-column
@@ -48,7 +48,7 @@ below reopens FKP-1..FKP-4 or the amendment's SD-1..SD-5.
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 (load gate, FKP-2 g1–g4).** `_validate_threshold_field_bindings`
+- [x] **AC-1 (load gate, FKP-2 g1–g4).** `_validate_threshold_field_bindings`
   (`orchestrator.py:350-386`) validates a `threshold_field` against
   **`declared_properties(reads[0]) ∪ ⋃ declared_properties(join[].with_read)`**
   of the traced query step (today: `reads[0]` only, `:374-375`). **g1**: a
@@ -64,7 +64,7 @@ below reopens FKP-1..FKP-4 or the amendment's SD-1..SD-5.
   PLAN-0066 gate tests + the join-grammar gate tests pass unmodified**
   (same-row behaviour byte-identical). C901: extract a helper if the widened
   function trips complexity.
-- [ ] **AC-2 (env-band delegate guard — the draft-discovered coupling).**
+- [x] **AC-2 (env-band delegate guard — the draft-discovered coupling).**
   `EnvBandEvaluateExecutor.execute` delegates UNTOUCHED when the step authors
   **either** band: the guard at `env_band_step.py:74` becomes
   `threshold is not None or threshold_field is not None`. Proof tests: a
@@ -75,7 +75,7 @@ below reopens FKP-1..FKP-4 or the amendment's SD-1..SD-5.
   with the module's own contract ("a step that authors one is an `in_file`
   band and delegates through unchanged", `:17-19`) — a docstring-vs-code gap
   that predates this PLAN.
-- [ ] **AC-3 (ontology property + generated artifacts + DB migration).**
+- [x] **AC-3 (ontology property + generated artifacts + DB migration).**
   `Shipment.temp_ceiling` (`type: float`, described as the cargo-type
   cold-chain ceiling) added to `supply_chain_v0.yaml` (Shipment properties,
   `:32-63`); artifacts regenerated via the **console script `uv run
@@ -84,7 +84,7 @@ below reopens FKP-1..FKP-4 or the amendment's SD-1..SD-5.
   (next = `0012_…`; precedent `alembic/versions/0009_asset_rated_current_a.py`)
   adds the column; schema-parity + supply_chain adapter/ontology-meta tests
   green.
-- [ ] **AC-4 (YAML migration — the first shipped `join:` consumer).**
+- [x] **AC-4 (YAML migration — the first shipped `join:` consumer).**
   `read_temps` → `reads: [OperationalEvent, Shipment]` +
   `join: [{with: Shipment, link: event_concerns_shipment}]`
   (`supply_chain_v0.yaml:236-240` — parseable FK, equal-named key pair
@@ -96,20 +96,20 @@ below reopens FKP-1..FKP-4 or the amendment's SD-1..SD-5.
   band_source: in_file}` (ratified SD-5), facet prose re-synced (D2-A2).
   Both procedures load through the full gate
   (`validate_read_bindings_for_vertical`).
-- [ ] **AC-5 (Q4 SD-C parity).** On the same synthetic fixtures, the migrated
+- [x] **AC-5 (Q4 SD-C parity).** On the same synthetic fixtures, the migrated
   join run of `read_temps` reproduces the prior projection run: the SAME
   latest event per shipment (`event_id`, `measured_value`, `occurred_at`
   equal per `shipment_id`), the SAME row count, every base
   `OperationalEvent` column preserved under its own name; joined `Shipment`
   columns are a strict ADDITION (superset assertion, `facility_id` base-wins
   + `shipment_facility_id` carries the joined side).
-- [ ] **AC-6 (per-cargo flip, RED-verified).** A fixture asserts the
+- [x] **AC-6 (per-cargo flip, RED-verified).** A fixture asserts the
   demo-visible delta — the shipment whose reading the blanket env-band 8 °C
   judges `ok` but its OWN `temp_ceiling` judges `breach` (shape per SD-2/3)
   — and is run **against the UNEDITED YAML first**: it must FAIL there
   (proving the assertion bites), then flip GREEN after Step 6. A green
   against the unedited YAML = the fixture is wrong; stop and fix.
-- [ ] **AC-7 (in-memory `run_procedure`, not spec-load-only).** An in-memory
+- [x] **AC-7 (in-memory `run_procedure`, not spec-load-only).** An in-memory
   end-to-end run of the migrated procedure (synthetic adapter + real
   ontology meta + the registered factory executors) passes
   `validate_governance_complete` (proving `derive_governance_todo`'s
@@ -117,7 +117,7 @@ below reopens FKP-1..FKP-4 or the amendment's SD-1..SD-5.
   build-discovered coupling, proven not assumed), executes the join read +
   per-row judge, and suspends `waiting_human` at gated `hold_breaches` with
   the expected breach set.
-- [ ] **AC-8 (regression pins).** Procurement's shipped same-row consumer
+- [x] **AC-8 (regression pins).** Procurement's shipped same-row consumer
   byte-for-byte (its YAML, fixtures, and the PLAN-0066 flip tests pass
   unmodified); energy's band-less `env_band` judge
   (`verticals/energy/procedures.yaml:64-75`) still loads + runs; the scalar
@@ -126,7 +126,7 @@ below reopens FKP-1..FKP-4 or the amendment's SD-1..SD-5.
   `draft.py` / `spec.py`-schema edits** (FKP-3; `spec.py` gets ONLY the
   `:796-801` description-string reword); the stale Phase-C docstring
   (`orchestrator.py:281-283`) corrected to the honest post-#666 frame.
-- [ ] **AC-9 (hygiene).** Full suite green WITH Postgres up (one pytest per
+- [x] **AC-9 (hygiene).** Full suite green WITH Postgres up (one pytest per
   checkout); `ruff check` + `ruff format --check` clean; `mypy --strict
   services/` clean; CI `gate` green on the PR.
 
@@ -355,6 +355,95 @@ test pins across Steps 2–7; AC-9 by the Step-8 full-suite + linter + CI
 `gate` run. Evidence = fresh pytest/linter output on the branch; pass/fail
 reads pre-committed per step (Lesson #0026 discipline). No live host-state
 run is required — the offline oracle is the gate (CLAUDE.md §8).
+
+## Close-out (built + merged 2026-07-12, session 121)
+
+Built as TWO PRs per ratified SD-1 (b): **PR1 engine**
+`feat/plan0067-fkp-engine` → PR #709 (merge `a24971c`) — the FKP-2 g1–g4
+gate widening + the env_band delegate guard + the stale-docstring fix +
+the `spec.py` description reword; **PR2 vertical**
+`feat/plan0067-fkp-supplychain` → PR #710 (merge `0b6be2a`) —
+`Shipment.temp_ceiling` + per-cargo seeds + the frozen-01 flip event + the
+`read_temps` join migration + the judge migration. Governance lineage:
+amendment PR #707 (Accepted) → PLAN-0067 Ready PR #708 → PR1 #709 → PR2
+#710; final `main` = `670117c`. All nine ACs met, AC-3 as corrected (see
+honest record #1):
+
+- **AC-1** `_validate_threshold_field_bindings` widened its domain from
+  `reads[0]` to base ∪ each declared joined FK-parent; 5 FKP-2 gate tests
+  green in `test_orchestrator.py` (accept joined-parent, accept base under
+  join, refuse parent-without-join, refuse undeclared,
+  collision-refused-before-threshold); same-row path byte-identical.
+- **AC-2** the `env_band_step.py:74` guard now delegates on `threshold` OR
+  `threshold_field` — a `threshold_field` judge passes through untouched
+  (authored `direction` preserved, no false `band_source: "env"` audit);
+  proof test in `test_env_band_evaluate.py`.
+- **AC-3** met **AS CORRECTED** — `Shipment.temp_ceiling: float` added +
+  artifacts regenerated (the gitignored `generated/`); **NO Alembic
+  migration** — build-discovered: supply_chain has no committed ORM / DB
+  table, so there is no `shipment` table to migrate (honest record #1;
+  Cray ratified in-memory Option A). The AC-3 "Alembic `0012_…`" clause is
+  **superseded by new info**, not an error in intent.
+- **AC-4** `read_temps` → `reads: [OperationalEvent, Shipment]` +
+  `join: event_concerns_shipment` + kept `latest_per` + the `facility_id`
+  collision rename; `judge` → `threshold_field: temp_ceiling` +
+  `direction: above`, facet `in_file_band` (SD-5); both procedures load
+  through the gate — the first shipped `join:` consumer.
+- **AC-5** the run test asserts the join preserves the base
+  `measured_value` AND adds `temp_ceiling` (superset); the
+  projection-parity test in `test_seed_migration_parity.py` still
+  validates the latest-per-group half the join preserves.
+- **AC-6** the frozen shipment warms to −11.8 °C: `ok` under the blanket
+  8 °C ceiling, `breach` under its own −15 °C ceiling — RED-verified
+  against the unedited env_band YAML FIRST (it FAILED: frozen judged
+  `ok`), GREEN after migration; hold set deliberately 1 → 2 (SD-2 b).
+- **AC-7** in-memory end-to-end run
+  (`tests/verticals/supply_chain/test_cold_chain_per_cargo_band.py`):
+  governance-complete → join read → per-row judge → suspends
+  `waiting_human` at gated `hold_breaches`, breach set
+  {pharma-01, frozen-01}.
+- **AC-8** procurement same-row consumer byte-identical; energy band-less
+  env_band judge still loads + runs; scalar path unchanged; zero
+  `evaluate_step.py` / `draft.py` change (FKP-3).
+- **AC-9** full suite **2544 passed / 7 skipped** WITH Postgres up;
+  `ruff check` + `ruff format --check` + `mypy --strict services/` clean;
+  CI `gate` green on #709 + #710.
+
+### Honest completion record
+
+1. **Build-discovered AC-3 correction (the standout):** the PLAN assumed
+   an Alembic migration (`0012_shipment_temp_ceiling`), modeled on
+   energy's `rated_current_a` (`0009`). Fresh on-disk evidence corrected
+   it: `services/db/models.py` + `test_schema_parity.py` are energy-only,
+   `_ORM_COMMITTED_DEST = {"energy": ...}`, and supply_chain's Shipment is
+   served in-memory by the synthetic adapter (its `generated/orm.py` is
+   gitignored) — there is no `shipment` table, so `temp_ceiling`'s ripple
+   is the ontology YAML + the gitignored regen only. Cray ratified
+   skipping the migration (in-memory Option A) after an ELI-30 review; a
+   committed supply_chain ORM is the deferred per-vertical ORM-layout
+   decision, out of scope. **Classified: superseded by new info** — the
+   intent (parity with energy) was right; the substrate assumption was
+   wrong.
+2. **Three draft≠review≠verify catches, one per role:** (i) Code R2
+   caught the amendment dispatch's premise that the join executor was
+   "deferred Phase C" (a stale docstring — it had actually shipped:
+   PLAN-0061 #666, `_execute_join`); (ii) the plan-drafter caught the
+   `env_band_step.py:74` delegate-guard coupling the amendment's change
+   surface missed (a migrated judge would clobber `direction` + falsely
+   audit `band_source: "env"`); (iii) the build caught AC-3's no-table
+   reality (#1).
+3. **Coupled tests updated deliberately, disclosed in the #710 body:**
+   the factory full-run breach set 1 → 2 + the judge audit
+   `env → in_file` (`test_supply_chain_procedure_factory.py`);
+   frozen-01's latest reading `event-reading-02 → event-reading-04`
+   (`test_seed_migration_parity.py`); the supply_chain judge moved from
+   the env_band list to `_IN_FILE_BAND_JUDGES` (`test_spec.py`).
+4. **Deferred to future ADR-016 amendments (TF-2 residue):** aquaculture
+   per-species floors (needs a new `Pond` numeric property +
+   `direction: below` floor semantics); energy `rated_current_a`
+   migration (partially-populated band column → FKP-3 fail-loud needs a
+   narrowing `where` or seed completion, plus a `site_id`
+   declared-collision rename).
 
 ## References
 
