@@ -1672,6 +1672,442 @@ sites with per-part fixtures; OQ-4 keep `in_file_band`. Recorded inline below
 - ADR-006 (Rule-of-Three) — the N=1 same-row scoping; ADR-0019 / ADR-010
   IN-3 — the determinism invariant carried.
 
+### Amendment (2026-07-12): FK-parent-column `threshold_field` — the join extension (per-entity bands, v2)
+
+> **Status:** **Accepted** (Cray-ratified 2026-07-12, typed via
+> AskUserQuestion, after Code R2 — no R2 defect; R2 re-verified the
+> load-bearing citations on disk and CONFIRMED the SD-1 corrected premise:
+> the shipped `_execute_join`, the merged-row band resolution, the band-aware
+> `derive_governance_todo`. SD-1..SD-5 ratified as-recommended, with SD-4
+> explicitly narrowed to a **supply_chain-only build scope**). **Date:**
+> 2026-07-12 (session 121).
+> **Deciders:** Jirachai Thiemsert (founder).
+> **Amends:** the 2026-07-11 `threshold_field` amendment's **TF-2** (the
+> same-row v1 scope) — **extends, does not reverse or renumber**; it
+> discharges TF-2's own deferral (i), "the **FK-parent-column** case (energy
+> `Asset.rated_current_a` — needs a join to reach the reading's parent)",
+> exactly under the in-place discipline TF-2 named for it. It RIDES the
+> Accepted **Q4 join amendment (2026-07-09)** — no join-grammar change; the
+> decision series is **FKP-1 … FKP-4**, distinct from the same-row TF-1..TF-4.
+>
+> **Author≠reviewer disclosure (ADR-012 D4.3).** Outline originator = Cray —
+> three forks typed-ratified 2026-07-12 via AskUserQuestion: (1) direction =
+> the **FK-parent join extension** of `threshold_field` (the same-row
+> denormalize-the-band-onto-reading-rows hack was REJECTED as dishonest
+> modeling); (2) **first demo consumer = supply_chain** (the cold-chain
+> per-cargo-type ceiling); (3) **one in-place ADR-016 amendment** (the
+> 2026-06-25 / 07-01 / 07-05 / 07-09 / 07-11 precedent). Drafter = the
+> in-harness `plan-drafter` subagent (ADR-013 D1 phased authoring / ADR-009 D1
+> interim authoring). Independent reviewers = Code R2 (every cited `file:line`
+> re-verified on disk against fresh evidence; commits per ADR-009 D2) + Cray
+> at ratification (Proposed → Accepted). Drafter ≠ ratifier — separation
+> **intact**. The genuinely-open shape questions were surfaced as SD-1..SD-5
+> below — none silently resolved; SD-1 includes a **dispatch-premise
+> correction from disk evidence** (the join executor's build status), surfaced
+> rather than silently adopted in either direction. **All five SDs RATIFIED
+> as-recommended by Cray (typed, 2026-07-12), SD-4 explicitly = build scope
+> supply_chain ONLY** — recorded inline below; drafter ≠ ratifier, separation
+> intact through the Proposed → Accepted flip.
+
+#### Context
+
+**What v1 shipped, and its ratified wall.** The 2026-07-11 amendment (TF-1..
+TF-4, built end-to-end as PLAN-0066 — the executor code cited below is the
+shipped build) gave `evaluate` steps a per-entity band: `threshold_field`
+names a column **on the same rows** flowing into the judge, mutually
+exclusive with the scalar `threshold` (`spec.py:796-801`, `:835-845`).
+Procurement was, by the amendment's own count, the **only** same-row case
+(its N=1 note); TF-2 walled the scope to same-row and explicitly deferred the
+FK-parent-column and not-yet-present-column cases to future amendments.
+
+**The session-121 grounding: ALL THREE remaining OCT verticals band by an
+FK-parent discriminator, with the reading rows = `OperationalEvent`.**
+
+- **energy** — the limit is `Asset.rated_current_a` (numeric, ALREADY
+  declared: `verticals/energy/ontology/energy_v0.yaml:40-44`, "Rated current
+  in amperes for current-rated assets (feeders, etc.)"); the reading is
+  `OperationalEvent` with FK `asset_id → Asset`
+  (`energy_v0.yaml:107-109`; declared link `event_emitted_by_asset`
+  `:205-209`). Its `judge` is band-less `env_band` today
+  (`verticals/energy/procedures.yaml:64-75` — one env ceiling for every
+  asset).
+- **supply_chain** — the discriminator is `Shipment.cargo_type` (enum:
+  pharma / produce / frozen / biologic,
+  `verticals/supply_chain/ontology/supply_chain_v0.yaml:39-41`); there is
+  **no numeric band property yet**. `read_temps` reads `OperationalEvent`
+  with `project: {latest_per: event_concerns_shipment, order_by: occurred_at}`
+  (`verticals/supply_chain/procedures.yaml:47-55`) — a latest-per-group
+  **projection, NOT a join**: Shipment columns never reach the judge rows
+  today. The `judge` is `env_band` (`:65-76` — one cold-chain ceiling for
+  pharma and frozen alike). The ontology already *declares* the join surface:
+  the temperature quantity binding carries
+  `join_path: OperationalEvent.shipment_id -> Shipment.shipment_id`
+  (`supply_chain_v0.yaml:123`).
+- **aquaculture** — the discriminator is `Pond.species` (enum,
+  `verticals/aquaculture/ontology/aquaculture_v0.yaml:34-36`); `read_do`
+  reads `OperationalEvent` via `latest_per: event_emitted_by_pond`
+  (`verticals/aquaculture/procedures.yaml:64-76`); the `judge` authors ONE
+  scalar in-file floor `threshold: 4.0` for every pond regardless of species
+  (`:87-107`).
+
+**Consequence.** There is NO cheap "same-row second vertical" — procurement
+exhausted that shape. Giving ANY second vertical a per-entity band requires
+reaching an FK-parent column. **Rule-of-Three (ADR-006) is therefore MET for
+the FK-parent shape**: three verticals triangulate the same join-then-band
+pattern. This amendment is no longer speculative-at-N=1 — it is the ratified
+TF-2 deferral coming due on schedule.
+
+**The execution substrate — a corrected premise (drafter finding; ratify
+under SD-1).** The dispatch framed the Q4 join executor as "deferred Phase
+C", citing the load-gate docstring "join/project = declared ✔ · gated ✔ ·
+execution-bound ✖ until Phase C lands the executor extension"
+(`services/engine/procedures/orchestrator.py:281-283`). Fresh on-disk
+evidence contradicts that docstring: **PLAN-0061 Phase C LANDED** (PR #666,
+`docs/plans/done/0061-join-projection-grammar-build.md:3` — "Steps 1-4 built
+as four green-gate PRs … #666 Phase C compile/execute"). The executor exists
+end-to-end: `_execute_join` runs the SD-1 pinned pipeline — one fetch per
+declared read → base `where` → per-join `where` → keyed/fuse joins in
+declaration order → latest-per-group → field renames
+(`services/engine/procedures/query_step.py:458-520`; `_apply_join`
+`:522-581`; `_merge` base-wins collision accounting `:583-603`;
+`_latest_per_group` `:605-646`). PLAN-0062 ("Q4 Phase-3") then migrated the
+three OCT query steps onto this same `JoinReadPlan` path (projection-only,
+per the `procedures.yaml` comments) — it runs in shipped procedures today.
+The honest residual ✖ in PLAN-0061's own close-out (`0061:450-452`) applies
+to the **not-yet-migrated seed-backed procedures**, not to the executor. What
+IS true: **zero shipped procedure declares `join:`** (a repo grep over
+`verticals/**/procedures.yaml` returns no matches) — the keyed-join path is
+built and offline-tested but production-unexercised. The stale docstring is a
+change-surface item below.
+
+**The one genuine blocker this amendment removes.** The `threshold_field`
+load gate `_validate_threshold_field_bindings`
+(`orchestrator.py:350-386`) validates the band column ONLY against the traced
+query step's BASE read — `base = source.input.reads[0]` (`:374-375`, the TF-3
+c2 rule). It cannot reach a joined parent type, so an FK-parent band column
+refuses at load today even though the executor could deliver it onto the
+rows. The gate-domain extension (FKP-2) is the load-bearing change.
+
+#### Decision (FKP-1 … FKP-4 — FKP-1 direction LOCKED, Cray-ratified in-session 2026-07-12; FKP-2/3/4 drafter-rendered, RATIFIED via SD-1..SD-5 at Accept)
+
+**FKP-1 — `threshold_field` may name a column on a JOINED FK-PARENT of the
+traced query step (LOCKED direction).** TF-2's scope extends from *same-row*
+to *same-row ∪ joined-parent*: when the traced query step declares a Q4
+`join`, the band column may live on the joined parent type — the join
+delivers it onto the merged rows before the judge. **Zero new grammar
+fields**: the reach comes entirely from the already-Accepted Q4 join grammar
+on the QUERY step (`reads` + `join` + `project`); the evaluate step's surface
+(`threshold_field` + the TF-1 mutual exclusion, `spec.py:835-845`) is
+byte-identical. The rejected alternative — denormalizing the parent's band
+onto the reading rows at seed/adapter time so same-row v1 "just works" — was
+REJECTED by Cray (2026-07-12) as dishonest modeling: the band is a property
+of the parent entity, not of each reading; copying it per-row invents data
+provenance and a drift hazard. Why this is still a G-gated amendment despite
+zero new fields: TF-2's same-row wall was **ratified spec semantics**, and
+the L-4 tripwire ("no spec / grammar change without an ADR-016 amendment")
+covers semantics, not just fields.
+
+```yaml
+# ILLUSTRATIVE ONLY — the build PLAN owns the literal schema, seeds, fixtures.
+# supply_chain read_temps: multi-read + declared-link join + latest-per-group
+- step_id: read_temps
+  kind: query
+  input:
+    reads: [OperationalEvent, Shipment]
+    where: { event_type: reading }
+    join:
+      - { with: Shipment, link: event_concerns_shipment }  # Q4 SD-A declared default
+    project:
+      latest_per: event_concerns_shipment
+      order_by: occurred_at
+      fields: { facility_id: shipment_facility_id }  # the declared facility_id collision, renamed away
+- step_id: judge
+  kind: evaluate
+  threshold_field: temp_ceiling   # each Shipment judges vs ITS OWN cargo-type ceiling
+  direction: above                # cold-chain ceiling — breach OVER it
+```
+
+**FKP-2 — the load-gate extension (renders SD-3; ratified as-recommended).**
+`_validate_threshold_field_bindings` (`orchestrator.py:350-386`) widens its
+validation domain from `reads[0]` alone (`:374-375`) to
+**`declared_properties(reads[0]) ∪ ⋃ declared_properties(join[].with_read)`**
+of the traced query step — the step's own declared `join` names the parent
+type, so no new naming surface is needed. Drafter-rendered corollaries
+(g1–g4):
+
+- **(g1) fail-closed carried.** A `threshold_field` in NO traced read's
+  declared properties refuses with a typed `ProcedureError`; the
+  meta-required and no-reads refusals (TF-3 c1) carry unchanged.
+- **(g2) ambiguity composes for free.** `_validate_join_project` +
+  `_validate_join_collisions` run BEFORE the threshold gate
+  (`orchestrator.py:311` then `:312`) and refuse an ontology-DECLARED
+  property-name collision between joined types unless `project.fields`
+  renames it away (`:461-467`; the equal-named join-key pair is exempt). A
+  band-column name that survives to this gate is therefore unambiguous on the
+  merged rows **by construction** — no new ambiguity rule is invented.
+- **(g3) the rename-away assert carries.** TF-3 c3 extends as-is: a
+  `threshold_field` that the traced step's `project.fields` renames away
+  refuses at load (a rename SOURCE would pass declared-props yet be absent
+  from the rows at run).
+- **(g4) runtime-only collisions stay Q4's problem, deliberately.** An
+  UNDECLARED runtime key collision keeps the base value and is counted in
+  provenance (`_merge`, `query_step.py:583-603`) — the gate governs declared
+  reality; this amendment adopts Q4 SD-1's posture rather than forking a
+  stricter one for band columns.
+
+**FKP-3 — run semantics: ZERO executor change (verified against the shipped
+build).** The per-row band already resolves from the merged row —
+`evaluate_step.py:103-109` reads `entity[threshold_field]` through the same
+fail-loud `_entity_number` discipline as the reading (`:49-68`); the join
+simply delivers the parent's column onto each row before the judge. The
+audit already records `threshold_field` (`:131-139`). The **determinism
+invariant is untouched** (`evaluate_step.py:14-19`, ADR-0019 / ADR-010 IN-3):
+no LLM anywhere in the read or judge path; the band's *value* is per-row
+governed data, only its column *name* is authored spec. `draft.py` is also
+zero-change: `"threshold_field"` is already in `STEP_GOVERNANCE_FIELDS`
+(`draft.py:42-59`, at `:47`) and `derive_governance_todo` is already
+band-aware (`:285-288`). **Load-bearing fail-loud consequence (feeds SD-4):**
+a joined parent row WITHOUT a numeric band value fails the step loudly — so a
+*partially populated* parent band column (energy's `rated_current_a` is
+declared "for current-rated assets", i.e. not every Asset carries it) is a
+step-failing configuration unless the query narrows to banded rows or the
+seed completes the column. Energy is NOT the free second consumer it appears
+to be on paper.
+
+**FKP-4 — substrate + first consumer (renders SD-2 / SD-5; ratified as-recommended).**
+supply_chain gains a **denormalized numeric band property**
+`Shipment.temp_ceiling: float`, seeded per `cargo_type` (pharma / produce /
+frozen / biologic each get their ceiling; every shipment that reaches the
+judge carries a numeric value, per the FKP-3 fail-loud discipline). After
+this, supply_chain is EXACTLY energy's shape — a numeric column on the
+FK-parent — so one substrate serves three verticals (Rule-of-Three-consistent
+minimal shape; the per-class lookup alternative is OUT, see Alternatives).
+The supply_chain `judge` migrates `env_band` → `threshold_field:
+temp_ceiling` (per-entity in-file; facet `gate_kind` → `in_file_band` under
+the TF OQ-4 kept taxonomy — the band's *name* is authored in-file). The
+migrated `read_temps` becomes the **first shipped `join:` consumer** — it
+migrates parity-guarded per Q4 SD-C (the declared-grammar run must reproduce
+the seed/projection run on the same fixture data, plus the intended
+per-cargo verdict deltas asserted explicitly).
+
+#### Change surface (the build contract — this amendment DECIDES; a follow-up build PLAN builds)
+
+- `services/engine/procedures/orchestrator.py` — extend
+  `_validate_threshold_field_bindings` (`:350-386`; the `:374-375` base-only
+  domain) per FKP-2 g1–g4; **fix the stale Phase-C docstring** (`:281-283` —
+  execution-bound is ✔ since PLAN-0061 #666; the honest residual ✖ belongs to
+  unmigrated seed-backed procedures, `0061:450-452`).
+- `services/engine/procedures/spec.py` — **no field change**; only the
+  `threshold_field` description string (`:796-801`, "a same-row ontology
+  column") rewords to the extended scope. A docstring edit, not schema.
+- `verticals/supply_chain/ontology/supply_chain_v0.yaml` —
+  `Shipment.temp_ceiling: float` (a plain new authored property — the ADR-008
+  ontology *grammar* is untouched), + the generator ripple (`uv run
+  vero-lite …` regeneration: Pydantic / DDL / schema parity, CLAUDE.md §3).
+- `verticals/supply_chain/procedures.yaml` — `read_temps` → multi-read +
+  declared-link join + kept `latest_per`, with the **declared `facility_id`
+  collision renamed away** (`Shipment.facility_id`
+  `supply_chain_v0.yaml:53-56` vs `OperationalEvent.facility_id` `:116-118`;
+  the `shipment_id` join-key pair is exempt); `judge` → `threshold_field:
+  temp_ceiling` + `direction: above` + facet `in_file_band`.
+- Seeds / fixtures — per-cargo-type ceilings; a fixture asserting the
+  demo-visible per-cargo verdict deltas (the point of the change), plus the
+  Q4 SD-C parity test for the migrated read.
+- Regression (AC-2-style) — energy's band-less `env_band` judge
+  (`verticals/energy/procedures.yaml:64-75`) still loads + runs
+  (`EnvBandEvaluateExecutor` stays engine-general); the TF-1 not-both
+  invariant already guarantees load — keep the test anyway.
+- energy (NOT in the build scope — a labelled follow-on per ratified SD-4;
+  recorded here for when it is scheduled) — `judge` →
+  `threshold_field: rated_current_a`
+  + join via `event_emitted_by_asset` (`energy_v0.yaml:205-209`) + the
+  declared `site_id` collision rename (`Asset.site_id` `:54-57` vs
+  `OperationalEvent.site_id` `:110-112`) + the FKP-3 partial-population
+  narrowing (a `where` to banded/current-rated rows, or seed completion).
+
+#### Alternatives considered
+
+- **Denormalize the band onto the reading rows (same-row v1 "just works").**
+  **REJECTED (Cray, 2026-07-12, the LOCKED fork):** dishonest modeling — the
+  ceiling is a property of the Shipment/Asset/Pond, not of each reading;
+  per-row copies invent provenance and drift the moment the parent's band
+  changes between readings.
+- **A narrower `threshold_field`-specific parent-column resolver (skip the
+  general join).** **Rejected (recommend, SD-1 option c):** it would
+  duplicate shipped machinery — `_execute_join` already exists and executes
+  (`query_step.py:458-520`) — and inverts Rule-of-Three: the general path is
+  built; a special-case sibling is net-new surface plus a SECOND join
+  semantics to govern and keep honest.
+- **A per-class band LOOKUP grammar (`cargo_type → ceiling` map).**
+  **OUT (SD-2 option b):** net-new class-keyed grammar with zero shipped
+  consumers of that shape; the denormalized numeric column reuses the one
+  substrate all three verticals triangulate. Over-abstraction at this N —
+  revisit only if a vertical genuinely cannot store the band per-entity.
+- **Keep supply_chain's scalar `env_band` permanently.** **Rejected:** one
+  ceiling judges pharma and frozen alike — wrong verdicts by construction the
+  moment ceilings diverge, and the per-cargo divergence IS the cold-chain
+  demo's point.
+- **A new standalone ADR.** **Rejected:** this discharges a deferral the
+  2026-07-11 amendment itself named; the in-place precedent
+  (2026-06-25 / 07-01 / 07-05 / 07-09 / 07-11) applies.
+
+#### Scope boundary (amendment — keep it tight)
+
+- **IN:** the scope-extension DECISION (FKP-1), the gate-domain extension +
+  corollaries (FKP-2), the zero-executor-change / fail-loud confirmation
+  (FKP-3), the supply_chain substrate + first-consumer migration (FKP-4).
+  Nothing else.
+- **OUT — the build** (a follow-up build PLAN, gated on this `Accepted`): the
+  literal `orchestrator.py` / `spec.py`-description edits; the ontology
+  property + generator ripple; the YAML migrations; seeds, fixtures, parity +
+  regression tests; the stale-docstring fix.
+- **OUT (deferred, labelled):** aquaculture per-species floors — needs a new
+  numeric property on `Pond` and carries `direction: below` floor semantics;
+  lands under this same amendment discipline when scheduled (SD-4). Any
+  derived arithmetic (`stock_qty − reorder_point` and kin) — the Q4 wall
+  stands: projection/join is select / rename / equi-join ONLY; the band is a
+  **stored** column, never a computed one. The per-class lookup grammar
+  (SD-2 b). NL-query aggregate convergence (Q4 SD-B's named future question).
+- **Inherited LOCKs (carried — must-not-violate):** `ConfigDict
+  (extra="forbid")` on `Step` — this amendment adds ZERO new fields (a
+  semantics-only extension), which is precisely why it is a G-gated amendment
+  and not a build call (the L-4 tripwire covers semantics); **NO LLM in the
+  query/evaluate path** — the determinism invariant
+  (`evaluate_step.py:14-19`, ADR-0019 / ADR-010 IN-3; read path LOCKED-6 /
+  ADR-0024) is untouched — the band's VALUE is per-row governed data, only
+  its column NAME is authored spec; `threshold_field` stays **H-governed +
+  pinned** (`STEP_GOVERNANCE_FIELDS`, `draft.py:42-59` — a generated skeleton
+  may never self-declare a breach floor); the **Q4 wall** (select / rename /
+  equi-join only — no derived arithmetic); **Rule-of-Three (ADR-006)** — now
+  MET for the FK-parent shape (3 verticals), and honored in the other
+  direction too: no over-abstraction past it.
+- **UNCHANGED:** the scalar `threshold` path; the TF-1 mutual exclusion; the
+  TF-3 trace-to-reads seam mechanics (only its validation DOMAIN widens);
+  procurement's shipped same-row consumer (byte-for-byte); `classify_verdict`
+  semantics; the ADR-008 ontology grammar; the Q4 join grammar itself
+  (`JoinSpec` / `ProjectSpec`, `spec.py:228-320`).
+
+#### Open Questions (SD-1 … SD-5 — Cray ratifies at Proposed → Accepted; do NOT silently resolve)
+
+The **direction is LOCKED** (FK-parent join extension / supply_chain first /
+in-place amendment). Five decisions were surfaced; **all five RATIFIED
+as-recommended by Cray on 2026-07-12 at Accept (typed, via AskUserQuestion)**
+— SD-1 = (a) one build PLAN riding the already-shipped executor (the premise
+correction ACCEPTED; the stale docstring is fixed in the build PLAN); SD-2 =
+(a) the denormalized `Shipment.temp_ceiling: float` per cargo_type, (b) OUT;
+SD-3 = the union-domain rule + g1–g4 confirmed; SD-4 = **build scope =
+supply_chain ONLY** (energy = optional / labelled follow-on, NOT in the build
+scope; aquaculture = labelled follow-on); SD-5 = env_band → threshold_field
+confirmed (facet `in_file_band`). Recorded inline below (each recommendation
+now reads as the ratified disposition):
+
+- **SD-1 — join-executor dependency + sequencing (THE decision), with a
+  corrected premise.** The dispatch's options: (a) this amendment's build
+  PLAN bundles the join-executor build; (b) a separate join-executor build
+  PLAN first; (c) a narrower threshold_field-specific parent resolution.
+  **Fresh disk evidence corrects the premise:** the executor is ALREADY
+  SHIPPED (PLAN-0061 Phase C, PR #666; `_execute_join`
+  `query_step.py:458-520` runs the full pinned pipeline; PLAN-0062 put the
+  projection half into live procedures) — the "deferred Phase C" framing
+  traces to a stale docstring (`orchestrator.py:281-283`; the honest ✖ in
+  `0061:450-452` covers unmigrated seeds, not the executor). The genuine
+  residue is *first-production-consumer risk*: zero shipped procedure
+  declares `join:` yet. *Ratified (as-recommended):* **ONE build PLAN riding
+  the shipped executor** — nominally (a), but with the feared executor scope
+  already discharged; the join-specific residue is retired by the Q4 SD-C
+  parity test on the migrated `read_temps`, and the same PLAN fixes the stale
+  docstring. Reject (b) — it would schedule a build for code that exists;
+  reject (c) — it duplicates shipped machinery (Alternatives). *Why Cray's
+  call:* the premise correction itself + the sequencing pick set the build
+  PLAN's size and gating; ratifying SD-1 RATIFIED the corrected premise
+  (Code R2 confirmed it on disk at review — no defect).
+- **SD-2 — the supply_chain band-property shape.** *Ratified
+  (as-recommended):* **(a)**
+  a denormalized numeric `Shipment.temp_ceiling: float` seeded per
+  `cargo_type` — after which supply_chain is exactly energy's
+  numeric-FK-parent shape: ONE substrate, three verticals
+  (Rule-of-Three-consistent minimal shape). **(b)** a per-class
+  `cargo_type → ceiling` lookup = **OUT** (net-new class-keyed grammar;
+  over-abstraction at this N). *Why Cray's call:* it authors new governed
+  ontology surface for the flagship demo vertical.
+- **SD-3 — the gate-extension seam (FKP-2 g1–g4).** *Ratified
+  (as-recommended):* the union-domain rule confirmed (base ∪ joined declared
+  properties, tied to
+  the step's own declared `join`) + all four corollaries — the fail-closed
+  c1/c3 posture carries; the collision gate composes by ordering
+  (`orchestrator.py:311-312`); runtime-only collisions keep Q4's
+  counted-not-refused posture. *Why Cray's call:* it fixes how hard the load
+  gate refuses — the same class of call as TF OQ-1.
+- **SD-4 — energy in-scope or a follow-on?** *Ratified (NARROWED by Cray):*
+  **build scope = supply_chain ONLY.** All three verticals stay NAMED as the
+  Rule-of-Three substrate (Context), but **energy is NOT in the build scope**
+  — an optional, labelled follow-on (the drafter's optional-second-migration
+  step gate was NOT adopted): cheap on paper (`rated_current_a` exists) but
+  NOT free — the FKP-3 fail-loud discipline makes its partially-populated
+  band column a step-failing config without a narrowing `where` or seed
+  completion, plus the `site_id` collision rename; **aquaculture = a labelled
+  follow-on** (needs the new per-species property + floor-direction
+  semantics). *Why Cray's call:* a demo-scope / build-size trade-off.
+- **SD-5 — the supply_chain judge migration.** *Ratified (as-recommended):*
+  **confirm**
+  `env_band` → `threshold_field` (the exact analogue of procurement's
+  scalar → field migration in the 2026-07-11 change surface), with the facet
+  moving to `in_file_band` (the TF OQ-4 kept taxonomy); keep the AC-2-style
+  regression that the remaining band-less `env_band` judge (energy, if not
+  migrated under SD-4) still loads + runs; assert the demo-visible per-cargo
+  verdict deltas in fixtures rather than discovering them. *Why Cray's call:*
+  it changes the flagship demo's visible behavior.
+
+#### Amendment references
+
+- The 2026-07-11 `threshold_field` amendment (this file, above) — TF-1
+  mutual exclusion; TF-2 same-row wall + the deferral this amendment
+  discharges; TF-3 c1–c4 seam; TF-4 run semantics; OQ-4 `in_file_band`
+  taxonomy; the procurement migration precedent in its change surface.
+- The Q4 join amendment (2026-07-09, this file, above) — SD-A declared-link
+  default, SD-B two-shape scope, SD-C parity-guarded migration, SD-D typed
+  `foreign_key` promotion; the select/rename/equi-join-only wall.
+- `docs/plans/done/0061-join-projection-grammar-build.md:3` — Phase C
+  compile/execute landed (PR #666); `:414` (Step 3 = Phase C); `:450-452` —
+  the honest residual ✖ (unmigrated seeds, not the executor).
+- `services/engine/procedures/orchestrator.py:281-283` (the STALE Phase-C
+  docstring — change-surface item), `:311-312` (gate ordering: join/collision
+  checks before the threshold gate), `:350-386`
+  (`_validate_threshold_field_bindings`; `:374-375` the base-read-only
+  domain FKP-2 widens), `:403-458` (`_validate_join_project`), `:461-467`
+  (the declared-collision refusal + join-key exemption).
+- `services/engine/procedures/query_step.py:145-165` (`JoinReadPlan` + the
+  pinned pipeline order), `:458-520` (`_execute_join` — the shipped
+  executor), `:522-581` (`_apply_join`: keyed inner + fuse), `:583-603`
+  (`_merge` base-wins + counted runtime collisions), `:605-646`
+  (`_latest_per_group`).
+- `services/engine/procedures/evaluate_step.py:14-19` (determinism
+  invariant), `:49-68` (`_entity_number` fail-loud numeric discipline),
+  `:87-93` (band-less guard), `:103-109` (per-row band resolution — why the
+  executor needs zero change), `:131-139` (audit records `threshold_field`).
+- `services/engine/procedures/spec.py:796-801` (the `threshold_field` field —
+  its "same-row" description string is the only spec.py touch), `:835-845`
+  (the TF-1 invariants, unchanged), `:228-320` (`JoinSpec` / `ProjectSpec`,
+  unchanged).
+- `services/engine/procedures/draft.py:42-59` (`STEP_GOVERNANCE_FIELDS`,
+  `threshold_field` at `:47`), `:285-288` (`derive_governance_todo` already
+  band-aware) — zero-change, verified.
+- `verticals/energy/ontology/energy_v0.yaml:40-44` (`rated_current_a`),
+  `:54-57` / `:110-112` (the `site_id` declared collision), `:107-109`
+  (the `asset_id` ref), `:205-209` (`event_emitted_by_asset`);
+  `verticals/energy/procedures.yaml:64-75` (the band-less `env_band` judge).
+- `verticals/supply_chain/ontology/supply_chain_v0.yaml:39-41` (`cargo_type`),
+  `:53-56` / `:116-118` (the `facility_id` declared collision), `:113-115`
+  (the `shipment_id` ref), `:123` (the declared `join_path`);
+  `verticals/supply_chain/procedures.yaml:47-55` (`read_temps` — projection,
+  not join), `:65-76` (the `env_band` judge that migrates).
+- `verticals/aquaculture/ontology/aquaculture_v0.yaml:34-36` (`species`);
+  `verticals/aquaculture/procedures.yaml:64-76` (`read_do`), `:87-107` (the
+  one-floor-for-every-pond scalar judge).
+- ADR-006 (Rule-of-Three) — MET at N=3 for the FK-parent shape; ADR-0019 /
+  ADR-010 IN-3 — the determinism invariant carried; ADR-008 — the ontology
+  grammar untouched by a plain new property.
+
 ### D3: Autonomy model + safe-agentic posture
 
 - **Autonomy attaches to WRITE / `action` steps only.** `query` and `evaluate`
