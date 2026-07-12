@@ -49,6 +49,14 @@ FILTER_REORDER_POINT = 100
 """The calm-path part is at 40 units, at/below its 100-unit reorder point
 (procedures.yaml judge_stock: threshold 100 / below)."""
 
+HIGHTURN_STOCK_QTY = 150
+HIGHTURN_REORDER_POINT = 200
+"""PLAN-0066 SD-4(b): the demo-visible per-part FLIP. A high-turnover part carried at
+150 units. A blanket 100-unit reorder threshold clears it (150 > 100 -> ok), but its
+OWN 200-unit reorder point flags it (150 <= 200 -> breach). Per-part banding
+(judge_stock: threshold_field reorder_point, ADR-016 TF-1) catches the low-stock
+high-reorder part the blanket band silently misses."""
+
 
 def plant_records() -> list[dict[str, Any]]:
     """Return the synthetic Plant records (geo-bearing — map-plottable). Abstract
@@ -192,6 +200,19 @@ def part_records() -> list[dict[str, Any]]:
             "stock_qty": FILTER_STOCK_QTY,
             "reorder_point": FILTER_REORDER_POINT,
             "lead_time": 7,
+            "fits_equipment_id": "equip-conveyor-05",
+        },
+        {
+            # PLAN-0066 SD-4(b): the per-part flip part — a high-turnover consumable whose
+            # high reorder_point (200) a blanket-100 threshold wrongly clears. `ok` under
+            # scalar-100, `breach` under per-part banding (threshold_field: reorder_point).
+            "part_no": "part-vbelt-03",
+            "name": "Drive V-Belt (high-turnover)",
+            "on_contract": True,
+            "preferred_supplier": "sup-contract-02",
+            "stock_qty": HIGHTURN_STOCK_QTY,
+            "reorder_point": HIGHTURN_REORDER_POINT,
+            "lead_time": 5,
             "fits_equipment_id": "equip-conveyor-05",
         },
     ]

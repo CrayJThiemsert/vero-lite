@@ -373,6 +373,63 @@ def test_negative_watch_margin_rejected() -> None:
         )
 
 
+# --- ADR-016 TF-1: per-entity threshold_field grammar -------------------------
+
+
+def test_evaluate_accepts_threshold_field_alone() -> None:
+    """threshold_field names a per-entity band column; it loads on an evaluate step
+    and the scalar threshold stays absent (ADR-016 TF-1)."""
+    step = Step(
+        step_id="judge",
+        name="Judge",
+        kind=StepKind.EVALUATE,
+        threshold_field="reorder_point",
+        direction="below",
+    )
+    assert step.threshold_field == "reorder_point"
+    assert step.threshold is None
+
+
+def test_threshold_and_threshold_field_both_rejected() -> None:
+    """At-most-one (NOT-BOTH): setting both the scalar and the per-row band is a load
+    error (ADR-016 TF-1) — NOT the mandatory-exactly-one JoinSpec shape."""
+    with pytest.raises(ValidationError, match="at most one of threshold / threshold_field"):
+        Step(
+            step_id="judge",
+            name="Judge",
+            kind=StepKind.EVALUATE,
+            threshold=4.0,
+            threshold_field="reorder_point",
+        )
+
+
+def test_neither_band_still_loads_with_threshold_field_absent() -> None:
+    """Neither-set stays valid (env-band / NL-only judges) — threshold_field defaults
+    to None, byte-for-byte with today (AC-9)."""
+    step = Step(step_id="judge", name="Judge", kind=StepKind.EVALUATE)
+    assert step.threshold is None and step.threshold_field is None
+
+
+def test_direction_watch_margin_satisfied_by_threshold_field() -> None:
+    """direction/watch_margin need A band — the per-row threshold_field satisfies the
+    invariant just as the scalar threshold does (ADR-016 TF-1)."""
+    step = Step(
+        step_id="judge",
+        name="Judge",
+        kind=StepKind.EVALUATE,
+        threshold_field="reorder_point",
+        direction="below",
+        watch_margin=1.0,
+    )
+    assert step.threshold_field == "reorder_point"
+
+
+@pytest.mark.parametrize("kind", [StepKind.QUERY, StepKind.ACTION, StepKind.HUMAN_TASK])
+def test_non_evaluate_step_rejects_threshold_field(kind: StepKind) -> None:
+    with pytest.raises(ValidationError, match="threshold_field applies to evaluate steps only"):
+        Step(step_id="s", name="S", kind=kind, threshold_field="reorder_point")
+
+
 def test_action_step_accepts_tiers() -> None:
     step = Step(
         step_id="aerate",
@@ -632,15 +689,16 @@ def test_in_file_band_facet_points_at_typed_band(
     """AC-6: an in_file_band facet POINTS AT the typed Step band — the numeric values
     live ONLY on the Step (threshold/direction/...), never re-stored on the facet."""
     step = _step(vertical, procedure_id, step_id)
-    # the Step still carries the authored numeric band (single source of truth)
-    assert step.threshold is not None
+    # the Step still carries the authored typed band — the scalar threshold, or (ADR-016
+    # TF-1) a per-entity threshold_field — as the single source of truth (never the facet)
+    assert step.threshold is not None or step.threshold_field is not None
     assert step.facet is not None and step.facet.decision_condition is not None
     dc = step.facet.decision_condition
     assert dc.gate_kind is GateKind.IN_FILE_BAND
     assert dc.band_source is BandSource.IN_FILE
-    # the facet's decision_condition carries NO numeric band of its own
+    # the facet's decision_condition carries NO band value/name of its own
     dumped = dc.model_dump()
-    for numeric in ("threshold", "direction", "watch_margin"):
+    for numeric in ("threshold", "threshold_field", "direction", "watch_margin"):
         assert numeric not in dumped
 
 

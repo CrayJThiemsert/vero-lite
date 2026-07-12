@@ -211,15 +211,18 @@ def validate_runnable(procedure: Procedure, agent: Agent) -> None:
 
 
 def has_read_bindings(procedure: Procedure) -> bool:
-    """True iff any ``query`` step declares a typed read binding (``input.reads``).
+    """True iff any ``query`` step declares a typed read binding (``input.reads``) OR
+    any ``evaluate`` step declares a ``threshold_field`` (ADR-016 TF-3 c4).
 
-    The read-binding gate's trigger predicate: a reads-absent procedure (every
+    The read-binding gate's trigger predicate: a binding-absent procedure (every
     shipped vertical today) never invokes the gate at all — and, via
     :func:`validate_read_bindings_for_vertical`, never loads the ontology
-    registry either (ADR-016 Q3 OQ-6 backward-compat).
+    registry either (ADR-016 Q3 OQ-6 backward-compat). A ``threshold_field`` also
+    trips it (c4) so a field-only procedure cannot silently skip the ontology gate.
     """
     return any(
-        step.kind is StepKind.QUERY and step.input is not None and bool(step.input.reads)
+        (step.kind is StepKind.QUERY and step.input is not None and bool(step.input.reads))
+        or (step.kind is StepKind.EVALUATE and step.threshold_field is not None)
         for step in procedure.steps
     )
 
@@ -306,6 +309,81 @@ def validate_read_bindings(
                     "validate_read_bindings_for_vertical or the meta= keyword)"
                 )
             _validate_join_project(step, meta)
+    _validate_threshold_field_bindings(procedure, meta)
+
+
+def _trace_query_source(procedure: Procedure, step: Step) -> Step:
+    """Walk ``step``'s ``from_step`` chain (default = the immediately prior step) back
+    to the QUERY step that sources its rows — the provenance a ``threshold_field`` band
+    is validated against (ADR-016 TF-3 seam (a)). Raise :class:`ProcedureError` (fail
+    CLOSED, c1) when the chain has no query origin: an ungovernable provenance."""
+    steps = procedure.steps
+    by_id = {s.step_id: s for s in steps}
+    order = {s.step_id: i for i, s in enumerate(steps)}
+    current = step
+    for _ in range(len(steps) + 1):  # bounded; linear-only (from must name an earlier step)
+        from_step = current.input.from_step if current.input is not None else None
+        if from_step is not None:
+            prev = by_id.get(from_step)
+            if prev is None:
+                raise ProcedureError(
+                    f"step '{step.step_id}': threshold_field provenance names unknown "
+                    f"from-step '{from_step}' (ADR-016 TF-3 c1)"
+                )
+        else:
+            idx = order[current.step_id]
+            if idx == 0:
+                raise ProcedureError(
+                    f"step '{step.step_id}': threshold_field on an entry-point step has no "
+                    "query provenance to validate against (ADR-016 TF-3 c1: fail closed)"
+                )
+            prev = steps[idx - 1]
+        if prev.kind is StepKind.QUERY:
+            return prev
+        current = prev
+    raise ProcedureError(
+        f"step '{step.step_id}': threshold_field provenance could not be traced to a "
+        "query step (ADR-016 TF-3 c1: fail closed)"
+    )
+
+
+def _validate_threshold_field_bindings(procedure: Procedure, meta: OntologyMeta | None) -> None:
+    """ADR-016 TF-3 seam (a): each ``evaluate`` step's ``threshold_field`` must name a
+    declared ontology property of the object type its provenance QUERY step reads. An
+    evaluate step carries no ``reads`` of its own, so the object type is traced back
+    through ``from_step`` (:func:`_trace_query_source`) to that query step's BASE read
+    (``reads[0]``, c2). Fails CLOSED when the provenance query declares no reads (c1),
+    and refuses a band column the query renames away (c3: a rename SOURCE passes the
+    declared-property check yet is absent from the rows at run)."""
+    for step in procedure.steps:
+        if step.kind is not StepKind.EVALUATE or step.threshold_field is None:
+            continue
+        if meta is None:
+            raise ProcedureError(
+                f"step '{step.step_id}': threshold_field declared but no ontology meta was "
+                "supplied to the load gate (ADR-016 TF-3 — thread OntologyMeta via "
+                "validate_read_bindings_for_vertical or the meta= keyword)"
+            )
+        source = _trace_query_source(procedure, step)
+        if source.input is None or not source.input.reads:
+            raise ProcedureError(
+                f"step '{step.step_id}': threshold_field '{step.threshold_field}' traces to "
+                f"query step '{source.step_id}', which declares no reads — the band column "
+                "cannot be ontology-validated (ADR-016 TF-3 c1: fail closed)"
+            )
+        base = source.input.reads[0]
+        if step.threshold_field not in _declared_properties(meta, base):
+            raise ProcedureError(
+                f"step '{step.step_id}': threshold_field '{step.threshold_field}' is not a "
+                f"declared property of '{base}' (ADR-016 TF-3)"
+            )
+        project = source.input.project
+        if project is not None and project.fields and step.threshold_field in project.fields:
+            raise ProcedureError(
+                f"step '{step.step_id}': threshold_field '{step.threshold_field}' is renamed "
+                f"away by query step '{source.step_id}' project.fields — it would be absent "
+                "from the rows at run (ADR-016 TF-3 c3)"
+            )
 
 
 def _links_by_name(meta: OntologyMeta) -> dict[str, Any]:

@@ -44,6 +44,7 @@ STEP_GOVERNANCE_FIELDS = frozenset(
         "autonomy",
         "handler",
         "threshold",
+        "threshold_field",
         "direction",
         "watch_margin",
         "tiers",
@@ -280,7 +281,12 @@ def derive_governance_todo(step: Step) -> list[str]:
     owes_at2 = ["governance_content"] if gate_kind in _AT2_GATE_KINDS else []
     if step.kind is StepKind.EVALUATE:
         if gate_kind is GateKind.IN_FILE_BAND:
-            return ["threshold", "direction"]  # watch_margin stays optional
+            # ADR-016 TF-1: the in-file band is EITHER the scalar threshold OR a
+            # per-entity threshold_field. A step that authored threshold_field owes
+            # that field (already filled); an unauthored skeleton owes the canonical
+            # scalar threshold. Either way direction is owed; watch_margin stays optional.
+            band = "threshold_field" if step.threshold_field is not None else "threshold"
+            return [band, "direction"]
         if gate_kind is GateKind.ENV_BAND:
             return ["env_var"]
         return owes_at2  # rule_gate owes its ComplianceGate; none owes nothing

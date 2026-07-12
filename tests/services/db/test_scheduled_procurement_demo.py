@@ -273,10 +273,12 @@ async def test_scheduled_calm_path_fires_and_parks_at_reorder_gate(
     # sibling, which records step_principals["intake"] for the requester != approver split).
     assert not (loaded.run.step_principals or {}).get("intake")
 
-    # the judge banded the PROJECTED Part rows: both low-stock parts breach (0 <= 100, 40 <= 100).
+    # the judge banded the PROJECTED Part rows per-part vs each Part's OWN reorder_point
+    # (ADR-016 TF-1 / PLAN-0066 SD-4b): all three seed parts breach their own points
+    # (spindle 0<=1, filter 40<=100, v-belt 150<=200 — the flip part a blanket-100 would miss).
     judge_sr = next(sr for sr in loaded.step_results if sr.step_id == "judge_stock")
     assert judge_sr.artifact is not None
-    assert [e["verdict"] for e in judge_sr.artifact["output_set"]] == ["breach", "breach"]
+    assert [e["verdict"] for e in judge_sr.artifact["output_set"]] == ["breach", "breach", "breach"]
 
     # AC-9 — the SD-P6 trigger_context stamp rides on the persisted run.
     tc = loaded.run.trigger_context

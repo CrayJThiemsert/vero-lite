@@ -13,6 +13,7 @@ from typing import Any
 
 import pytest
 
+from services.engine.ontology_meta import ObjectTypeMeta, OntologyMeta, PropertyMeta
 from services.engine.procedures.orchestrator import (
     ProcedureError,
     RunContext,
@@ -32,6 +33,7 @@ from services.engine.procedures.spec import (
     EventTrigger,
     OnFailure,
     Procedure,
+    ProjectSpec,
     Schedule,
     Step,
     StepInput,
@@ -603,6 +605,112 @@ def test_read_gate_skipped_when_no_reads_declared() -> None:
     proven with a vertical that has no ontology on disk (any registry I/O would raise)."""
     proc = _proc([Step(step_id="read", name="Read", kind=StepKind.QUERY)])
     validate_read_bindings_for_vertical(proc, _agent(), "no-such-vertical")  # no raise
+
+
+# --- ADR-016 TF-3: threshold_field load gate (seam (a) trace-to-reads + c1-c4) ----
+
+_PART_META = OntologyMeta(
+    vertical="fixture",
+    object_types=[
+        ObjectTypeMeta(
+            name="Part",
+            primary_key="part_no",
+            properties=[
+                PropertyMeta(name="part_no", type="string"),
+                PropertyMeta(name="stock_qty", type="int"),
+                PropertyMeta(name="reorder_point", type="int"),
+            ],
+        )
+    ],
+    link_types=[],
+)
+_PART_NAMES = frozenset(t.name for t in _PART_META.object_types)
+
+
+def _band_proc(
+    *,
+    threshold_field: str = "reorder_point",
+    reads: tuple[str, ...] | None = ("Part",),
+    project: ProjectSpec | None = None,
+) -> Procedure:
+    """A read_stock QUERY (reads Part, optional project) feeding a judge_stock EVALUATE
+    that bands on threshold_field — the migrated procurement shape. judge_stock threads
+    from the preceding step by default (no explicit input)."""
+    read_input = None if reads is None else StepInput(reads=list(reads), project=project)
+    return _proc(
+        [
+            Step(step_id="read_stock", name="Read", kind=StepKind.QUERY, input=read_input),
+            Step(
+                step_id="judge_stock",
+                name="Judge",
+                kind=StepKind.EVALUATE,
+                threshold_field=threshold_field,
+                direction="below",
+            ),
+        ]
+    )
+
+
+def test_threshold_field_gate_accepts_declared_same_row_column() -> None:
+    """AC-4: threshold_field naming a declared property of the traced query step's base
+    read loads (the migrated procurement shape: reorder_point rides through the rename)."""
+    proc = _band_proc(project=ProjectSpec(fields={"stock_qty": "measured_value"}))
+    validate_read_bindings(proc, _agent(), _PART_NAMES, meta=_PART_META)
+
+
+def test_threshold_field_gate_refuses_non_ontology_column() -> None:
+    """AC-4: a band column that is not a declared property of the base read refuses."""
+    proc = _band_proc(threshold_field="ghost_col")
+    with pytest.raises(ProcedureError, match="'ghost_col' is not a declared property of 'Part'"):
+        validate_read_bindings(proc, _agent(), _PART_NAMES, meta=_PART_META)
+
+
+def test_threshold_field_gate_c1_no_reads_provenance_fails_closed() -> None:
+    """AC-4 c1: the traced query step declares no reads -> the band column cannot be
+    ontology-validated -> fail CLOSED."""
+    proc = _band_proc(reads=None)
+    with pytest.raises(ProcedureError, match="declares no reads.*fail closed"):
+        validate_read_bindings(proc, _agent(), _PART_NAMES, meta=_PART_META)
+
+
+def test_threshold_field_gate_c1_entry_point_evaluate_fails_closed() -> None:
+    """AC-4 c1: an evaluate step with no prior step (entry point) has no query
+    provenance to validate against -> fail CLOSED."""
+    proc = _proc(
+        [
+            Step(
+                step_id="judge_stock",
+                name="Judge",
+                kind=StepKind.EVALUATE,
+                threshold_field="reorder_point",
+                direction="below",
+            )
+        ]
+    )
+    with pytest.raises(ProcedureError, match="entry-point step has no query provenance"):
+        validate_read_bindings(proc, _agent(), _PART_NAMES, meta=_PART_META)
+
+
+def test_threshold_field_gate_c3_refuses_rename_source() -> None:
+    """AC-4 c3: a band column the query renames away (a project.fields rename SOURCE) is
+    refused — it passes declared-props but would be absent from the rows at run."""
+    proc = _band_proc(project=ProjectSpec(fields={"reorder_point": "rp2"}))
+    with pytest.raises(ProcedureError, match="renamed away by query step .* project.fields"):
+        validate_read_bindings(proc, _agent(), _PART_NAMES, meta=_PART_META)
+
+
+def test_threshold_field_gate_c4_has_read_bindings_fires() -> None:
+    """AC-4 c4: a threshold_field procedure trips has_read_bindings even when the query
+    step declares no reads — so a field-only procedure cannot silently skip the gate."""
+    assert has_read_bindings(_band_proc(reads=None)) is True
+
+
+def test_threshold_field_gate_requires_meta() -> None:
+    """A threshold_field step with no ontology meta supplied fails loudly (fail-loud,
+    mirroring the join/project meta requirement)."""
+    proc = _band_proc(project=ProjectSpec(fields={"stock_qty": "measured_value"}))
+    with pytest.raises(ProcedureError, match="no ontology meta was supplied"):
+        validate_read_bindings(proc, _agent(), _PART_NAMES)
 
 
 async def test_run_procedure_wires_read_gate_accept_and_refuse() -> None:

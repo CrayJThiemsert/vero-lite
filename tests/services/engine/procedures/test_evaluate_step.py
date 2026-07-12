@@ -91,7 +91,7 @@ async def test_bandless_step_raises_procedure_error() -> None:
     NL-only judge steps keep providing their own executor — AC-9)."""
     executor = EvaluateStepExecutor()
 
-    with pytest.raises(ProcedureError, match="no authored threshold"):
+    with pytest.raises(ProcedureError, match="no authored band"):
         await executor.execute(_step(), [_pond("p1", 3.2)], _ctx())
 
 
@@ -126,5 +126,55 @@ async def test_trace_and_audit_record_the_band_and_counts() -> None:
     assert outcome.audit is not None
     assert outcome.audit["deterministic"] is True
     assert outcome.audit["threshold"] == 4.0
+    assert outcome.audit["threshold_field"] is None
     assert outcome.audit["direction"] == "below"
     assert outcome.audit["watch_margin"] == 1.0
+
+
+# --- ADR-016 TF-1: per-entity threshold_field band ---------------------------
+
+
+def _row(row_id: str, reading: Any, **extra: Any) -> dict[str, Any]:
+    """A judge input row carrying a reading plus per-row band columns."""
+    return {"pid": row_id, "event_id": f"e-{row_id}", "measured_value": reading, **extra}
+
+
+async def test_threshold_field_bands_each_entity_vs_its_own_column() -> None:
+    """ADR-016 TF-1: with threshold_field each entity bands vs ITS OWN column — the
+    SAME reading (150) yields different verdicts under different per-row bands."""
+    executor = EvaluateStepExecutor()
+    step = _step(threshold_field="reorder_point", direction="below")
+    rows = [
+        _row("hi", 150, reorder_point=200),  # 150 <= 200 -> breach
+        _row("lo", 150, reorder_point=100),  # 150 >  100 -> ok
+    ]
+
+    outcome = await executor.execute(step, rows, _ctx())
+
+    assert [e["verdict"] for e in outcome.output] == ["breach", "ok"]
+
+
+async def test_threshold_field_recorded_in_audit_and_summary() -> None:
+    """The audit pins threshold_field (threshold stays None); the summary names the
+    per-row band source, not a single scalar."""
+    executor = EvaluateStepExecutor()
+    step = _step(threshold_field="reorder_point", direction="below")
+
+    outcome = await executor.execute(step, [_row("a", 10, reorder_point=100)], _ctx())
+
+    assert outcome.audit is not None
+    assert outcome.audit["threshold_field"] == "reorder_point"
+    assert outcome.audit["threshold"] is None
+    assert "reorder_point" in outcome.reasoning_trace[0]["summary"]
+
+
+@pytest.mark.parametrize("bad_band", [None, "lots", True])
+async def test_threshold_field_missing_or_nonnumeric_band_raises(bad_band: Any) -> None:
+    """A row without a numeric band column fails LOUDLY (D4 diverts) — the same
+    _entity_number discipline as the reading (SD-1a); bool rejected explicitly."""
+    executor = EvaluateStepExecutor()
+    step = _step(threshold_field="reorder_point", direction="below")
+    row = _row("x", 150, reorder_point=bad_band)
+
+    with pytest.raises(ValueError, match="no numeric 'reorder_point'"):
+        await executor.execute(step, [row], _ctx())

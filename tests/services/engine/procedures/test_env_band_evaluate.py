@@ -91,11 +91,12 @@ async def test_authored_threshold_delegates_untouched() -> None:
 
 def test_an_env_band_step_cannot_author_a_watch_margin_or_direction() -> None:
     """The invariant that makes an env band necessarily WATCH-LESS: ``Step``'s validator
-    refuses ``direction``/``watch_margin`` without a ``threshold`` to band around
-    (PLAN-0022 Step 3). So on the executor's binding branch both are always None, and
-    the env band can only ever judge breach/ok — energy's declared two-verdict shape."""
+    refuses ``direction``/``watch_margin`` without a band (``threshold`` or, per ADR-016
+    TF-1, ``threshold_field``) to band around (PLAN-0022 Step 3). An env-band step
+    authors neither, so on the executor's binding branch both are always None, and the
+    env band can only ever judge breach/ok — energy's declared two-verdict shape."""
     for bandless in ({"watch_margin": 5.0}, {"direction": "below"}):
-        with pytest.raises(ValueError, match="require a threshold to band around"):
+        with pytest.raises(ValueError, match="require a threshold or threshold_field"):
             _step(**bandless)
 
 

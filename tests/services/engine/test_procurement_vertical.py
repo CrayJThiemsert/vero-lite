@@ -59,7 +59,7 @@ class _Evaluate:
         self._band = EvaluateStepExecutor()
 
     async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
-        if step.threshold is not None:
+        if step.threshold is not None or step.threshold_field is not None:
             return await self._band.execute(step, input_set, ctx)
         return StepOutcome(
             output=[{**e, "compliant": True} for e in input_set],
@@ -167,10 +167,14 @@ async def test_hero_runs_and_suspends_at_human_gate() -> None:
 
 
 async def test_calm_path_runs_and_suspends_at_reorder() -> None:
-    """The calm-path: read_stock → judge_stock(breach: 40 ≤ 100) → reorder(gated) suspends."""
+    """The calm-path: read_stock → judge_stock(breach: 40 ≤ reorder_point 100) →
+    reorder(gated) suspends. PLAN-0066: judge_stock now bands per-part vs reorder_point
+    (ADR-016 TF-1), so the projected rows must carry it (the production read_stock keeps
+    it; this event-based test feeds it explicitly)."""
     proc, agent = _proc("low_stock_reorder_round")
+    rows = [{**e, "reorder_point": synthetic.FILTER_REORDER_POINT} for e in _events("low_stock")]
     result = await run_procedure(
-        proc, agent, _executors(_events("low_stock")), vertical="procurement", run_id="proc-calm"
+        proc, agent, _executors(rows), vertical="procurement", run_id="proc-calm"
     )
     assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
     assert result.step_results[-1].step_id == "reorder"
