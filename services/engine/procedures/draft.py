@@ -44,6 +44,7 @@ STEP_GOVERNANCE_FIELDS = frozenset(
         "autonomy",
         "handler",
         "threshold",
+        "threshold_field",
         "direction",
         "watch_margin",
         "tiers",
