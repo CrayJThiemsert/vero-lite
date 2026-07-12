@@ -782,15 +782,23 @@ class Step(BaseModel):
     )
     direction: ThresholdDirection | None = Field(
         default=None,
-        description="breach direction for `threshold` (crosses_threshold semantics); "
-        "evaluate steps only, requires threshold.",
+        description="breach direction for the band (crosses_threshold semantics); "
+        "evaluate steps only, requires a band (threshold or threshold_field).",
     )
     watch_margin: float | None = Field(
         default=None,
         ge=0.0,
         description="width of the ambiguity band just inside the safe side of the breach "
         "floor — the escalate-to-human zone (ADR-0019). Evaluate steps only, requires "
-        "threshold. Absent collapses the watch band (preserves today's behaviour, AC-9).",
+        "a band (threshold or threshold_field). Absent collapses the watch band "
+        "(preserves today's behaviour, AC-9).",
+    )
+    threshold_field: str | None = Field(
+        default=None,
+        description="name of a same-row ontology column to use as each entity's OWN "
+        "per-entity band, in place of the scalar `threshold`; evaluate steps only, mutually "
+        "exclusive with `threshold` (ADR-016 Amendment 2026-07-11, TF-1). Load-gate-validated "
+        "against the traced query step's declared ontology properties.",
     )
     tiers: StepTiers | None = Field(
         default=None,
@@ -810,32 +818,44 @@ class Step(BaseModel):
         "is never stored in the non-authoritative facet (D2-A4).",
     )
 
-    @model_validator(mode="after")
-    def _validate_step(self) -> Self:
-        """Enforce the per-kind field invariants: ``autonomy`` / ``handler`` / ``tiers``
-        are axes of ``action`` steps only (ADR-016 D3; PLAN-0022 SD-5=a), and the
-        authored band (``threshold`` / ``direction`` / ``watch_margin``) belongs to
-        ``evaluate`` steps only (PLAN-0022 Step 3).
-
-        ``action`` defaults to ``gated`` (safe-by-default). ``query`` / ``evaluate``
-        always run auto; ``human_task`` is inherently human. ``direction`` and
-        ``watch_margin`` are meaningless without a ``threshold`` to band around, so
-        a margin-without-floor spec fails loudly at load, not mid-run.
-        """
+    def _validate_band_family(self) -> None:
+        """The authored band belongs to ``evaluate`` steps only (PLAN-0022 Step 3); a
+        per-entity ``threshold_field`` is mutually exclusive with the scalar
+        ``threshold`` (at-most-one, ADR-016 TF-1); and ``direction`` / ``watch_margin``
+        are meaningless without a band (scalar or field) to band around — a
+        margin/direction-without-band spec fails loudly at load, not mid-run."""
         if self.kind is not StepKind.EVALUATE:
-            for field_name in ("threshold", "direction", "watch_margin"):
+            for field_name in ("threshold", "threshold_field", "direction", "watch_margin"):
                 if getattr(self, field_name) is not None:
                     raise ValueError(
                         f"step '{self.step_id}': {field_name} applies to evaluate steps only "
                         f"(kind '{self.kind.value}' must not set it) — PLAN-0022 Step 3"
                     )
-        elif (self.direction is not None or self.watch_margin is not None) and (
-            self.threshold is None
+            return
+        if self.threshold is not None and self.threshold_field is not None:
+            raise ValueError(
+                f"step '{self.step_id}': set at most one of threshold / threshold_field, "
+                f"not both — ADR-016 Amendment 2026-07-11, TF-1"
+            )
+        if (self.direction is not None or self.watch_margin is not None) and (
+            self.threshold is None and self.threshold_field is None
         ):
             raise ValueError(
-                f"step '{self.step_id}': direction/watch_margin require a threshold "
-                f"to band around — PLAN-0022 Step 3"
+                f"step '{self.step_id}': direction/watch_margin require a threshold or "
+                f"threshold_field to band around — PLAN-0022 Step 3 / ADR-016 TF-1"
             )
+
+    @model_validator(mode="after")
+    def _validate_step(self) -> Self:
+        """Enforce the per-kind field invariants: ``autonomy`` / ``handler`` / ``tiers``
+        are axes of ``action`` steps only (ADR-016 D3; PLAN-0022 SD-5=a); the authored
+        band family is validated by :meth:`_validate_band_family` (evaluate-only,
+        at-most-one threshold/threshold_field, band-required direction/watch_margin).
+
+        ``action`` defaults to ``gated`` (safe-by-default). ``query`` / ``evaluate``
+        always run auto; ``human_task`` is inherently human.
+        """
+        self._validate_band_family()
         if self.kind is StepKind.ACTION:
             if self.autonomy is None:
                 self.autonomy = Autonomy.GATED
