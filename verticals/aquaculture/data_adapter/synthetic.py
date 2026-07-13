@@ -180,6 +180,23 @@ def operational_events() -> list[dict[str, Any]]:
             "pond_id": "pond-07",
             "site_id": "farm-bayfront-01",
         },
+        # PLAN-0068 PR2 SD-3 flip seed: pond-11 (tiger_prawn) warms to 4.2 mg/L —
+        # only `watch` under the retired blanket 4.0 floor but `breach` under its
+        # OWN per-species 4.5 floor (the demo-visible per-species win). Timed 01:55,
+        # BEFORE the 02:00 pond-07 crash, so the crash stays the timeline's final
+        # beat (real-time anchoring PLAN-0015 D1 intact); 4.2 > 4.0 so the reactive
+        # recommender (env threshold) still does NOT trip on it.
+        {
+            "event_id": "event-reading-12",
+            "event_type": "reading",
+            "severity": "warn",
+            "measured_value": 4.2,
+            "unit": "mg/L",
+            "description": "Pond 11 dissolved oxygen dipped after a warm night.",
+            "occurred_at": datetime(2026, 6, 2, 1, 55, tzinfo=UTC),
+            "pond_id": "pond-11",
+            "site_id": "farm-inland-01",
+        },
         {
             "event_id": "event-reading-do-crash",
             "event_type": "reading",

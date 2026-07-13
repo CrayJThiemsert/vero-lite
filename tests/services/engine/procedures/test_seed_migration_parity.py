@@ -73,10 +73,14 @@ _SUPPLY_CHAIN_READ_INPUT: dict[str, Any] = {
 }
 _SC_GROUP_KEY = "shipment_id"
 
-# The aquaculture ``read_do`` migration (mirrors verticals/aquaculture/procedures.yaml
-# after PLAN-0062 PR3): latest OperationalEvent (event_type=reading) per Pond via the
-# declared ``event_emitted_by_pond`` link, by ``occurred_at``. Third instance of the same
-# shape -- the Rule-of-Three sanity check on the harness itself.
+# The aquaculture ``read_do`` latest-per-group half: latest OperationalEvent
+# (event_type=reading) per Pond via the declared ``event_emitted_by_pond`` link, by
+# ``occurred_at``. PLAN-0068 added a Pond JOIN to the shipped read_do (for the
+# per-species do_floor band) -- this input isolates the projection half the join
+# preserves; the join + do_floor superset is covered by
+# tests/verticals/aquaculture/test_pond_per_species_floor.py (PR2's run test), the
+# aquaculture mirror of supply_chain's test_cold_chain_per_cargo_band.py. Third
+# instance of the same shape -- the Rule-of-Three sanity check on the harness itself.
 _AQUACULTURE_READ_INPUT: dict[str, Any] = {
     "reads": ["OperationalEvent"],
     "where": {"event_type": "reading"},

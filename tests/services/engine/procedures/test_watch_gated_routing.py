@@ -31,13 +31,34 @@ from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
 from services.engine.procedures.spec import Agent, Procedure, Step, StepKind, load_procedures
 from services.engine.registry import RegistryError, registry
 
-# Readings against the REAL authored band (threshold 4.0, below, watch_margin 1.0):
-# one breach, one watch, one ok. object_type/primary_key are the ontology-projected
-# entity keys _loop_entity_ref sources deterministically.
+# Readings against the REAL authored band. PLAN-0068 migrated the judge to a
+# per-entity `threshold_field: do_floor` (direction below, watch_margin 1.0), so
+# each fake read_do row now carries its Pond's own `do_floor` (here a uniform 4.0,
+# as the shipped read_do join would bring onto the reading): one breach, one watch,
+# one ok. object_type/primary_key are the ontology-projected entity keys
+# _loop_entity_ref sources deterministically.
 PONDS: list[dict[str, Any]] = [
-    {"object_type": "Pond", "primary_key": "p1", "event_id": "e1", "measured_value": 3.2},
-    {"object_type": "Pond", "primary_key": "p2", "event_id": "e2", "measured_value": 4.5},
-    {"object_type": "Pond", "primary_key": "p3", "event_id": "e3", "measured_value": 6.1},
+    {
+        "object_type": "Pond",
+        "primary_key": "p1",
+        "event_id": "e1",
+        "measured_value": 3.2,
+        "do_floor": 4.0,
+    },
+    {
+        "object_type": "Pond",
+        "primary_key": "p2",
+        "event_id": "e2",
+        "measured_value": 4.5,
+        "do_floor": 4.0,
+    },
+    {
+        "object_type": "Pond",
+        "primary_key": "p3",
+        "event_id": "e3",
+        "measured_value": 6.1,
+        "do_floor": 4.0,
+    },
 ]
 
 
@@ -168,8 +189,20 @@ async def test_empty_watch_set_still_suspends_with_no_proposals() -> None:
     an empty watch set parks at waiting_human with zero proposals (a plain
     resume_run threads it forward — no resolve needed)."""
     no_watch = [
-        {"object_type": "Pond", "primary_key": "p1", "event_id": "e1", "measured_value": 3.2},
-        {"object_type": "Pond", "primary_key": "p3", "event_id": "e3", "measured_value": 6.1},
+        {
+            "object_type": "Pond",
+            "primary_key": "p1",
+            "event_id": "e1",
+            "measured_value": 3.2,
+            "do_floor": 4.0,
+        },
+        {
+            "object_type": "Pond",
+            "primary_key": "p3",
+            "event_id": "e3",
+            "measured_value": 6.1,
+            "do_floor": 4.0,
+        },
     ]
     _judge, results, _chat = await _run_to_escalation(0.9, no_watch)
 

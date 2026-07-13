@@ -46,13 +46,16 @@ from tests.db_support import create_test_engine
 
 _APPROVER = Person(person_id="approver", name="Approver", roles=frozenset({"approver"}))
 
-# Canned pond set: two breaches (DO crashed below 4 mg/L), one watch (4-5), one ok —
-# `measured_value` is the reading field the REAL EvaluateStepExecutor judges.
+# Canned pond set: two breaches (DO crashed below the floor), one watch (floor..+1), one
+# ok — `measured_value` is the reading field the REAL EvaluateStepExecutor judges, and
+# (PLAN-0068) `do_floor` is the per-entity band it reads via `threshold_field: do_floor`
+# — the shipped read_do join brings each pond's own floor onto its reading (uniform 4.0
+# here so the breach/watch/ok split is unchanged from the pre-migration blanket 4.0).
 PONDS: list[dict[str, Any]] = [
-    {"pond_id": "p1", "event_id": "e1", "measured_value": 3.2},  # breach
-    {"pond_id": "p2", "event_id": "e2", "measured_value": 2.8},  # breach
-    {"pond_id": "p3", "event_id": "e3", "measured_value": 4.5},  # watch
-    {"pond_id": "p4", "event_id": "e4", "measured_value": 6.1},  # ok
+    {"pond_id": "p1", "event_id": "e1", "measured_value": 3.2, "do_floor": 4.0},  # breach
+    {"pond_id": "p2", "event_id": "e2", "measured_value": 2.8, "do_floor": 4.0},  # breach
+    {"pond_id": "p3", "event_id": "e3", "measured_value": 4.5, "do_floor": 4.0},  # watch
+    {"pond_id": "p4", "event_id": "e4", "measured_value": 6.1, "do_floor": 4.0},  # ok
 ]
 BREACH_IDS = {"action-e1", "action-e2"}
 WATCH_ID = "action-e3"
