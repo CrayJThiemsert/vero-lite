@@ -3754,3 +3754,45 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-10 (TESTS half of #678 wall-clock invariant, #684, session 117) [rotated 2026-07-13, session-125 reconcile — 10-row RD window]
 
 | 2026-07-10 | **Residual flaky-suite fix — the TESTS half of #678's wall-clock invariant (session 117; #684, `fix(test)`)** — a ~1-in-3 full-suite flake on `main` (two procurement DB tests), NO code cause (#683 docs-only), green in isolation. SAME non-monotonic WSL2 `datetime.now(UTC)` as #678 on the OTHER side of the seam: `load_run` still `ORDER BY created_at`; #678 migrated only the PRODUCTION consumers to `suspended_step_result()`, leaving SIX TEST sites on `step_results[-1]` → under a backward step `[-1]` names the wrong (completed) step. Fixed by intent: 4 demo sites → `suspended_step_result()`, 2 latent → select by `step_id` (a status-assert would be circular), + 2 order-asserting sites now compare `sorted(...)` (a round-trip preserves a step SET, not an order). Cover: a non-vacuous AST guard (`test_load_run_ordering_guard.py`, reports EXACTLY the six pre-fix sites) + a deterministic clock-inversion pin. NO production code changed; `pytest -q` 5x pre-merge + 3x on the merge commit (CI PR-only) = eight consecutive greens, 2499/7 (was 2496 + 3 new); ruff clean, offline, MS-S1 untouched. | `22242e4` (#684 merge) / `0a9542a` (#684 fix) / `tests/services/db/test_load_run_ordering_guard.py` + `tests/services/db/{test_event_procurement_demo.py,test_scheduled_procurement_demo.py}` + `tests/services/engine/procedures/{test_procedure_persistence.py,test_write_ahead.py}` |
+
+### Current Focus block removed — session 122 (Axis-B v2 enforcing ADR-0018 #713 + PLAN-0068 Ready #712) [rotated 2026-07-13, session-126 reconcile — 4-session CF window]
+
+> **Session 122, 2026-07-13 (head_commit `670117c` → `2e2007c`) — TWO
+> governance-track PRs landed: the Axis-B verify loop GRADUATED to ENFORCING
+> (ADR-0018 V2, #713) + the next build queued (PLAN-0068 Ready — aquaculture
+> per-species DO floors, #712). NO engine/vertical code shipped this batch —
+> both are governance text; the BUILDs are follow-on.** **#713 — ADR-0018 V2
+> Amendment (Accepted 2026-07-13):** graduates the Axis-B verification loop
+> from v1 (warn-only, D5) to **v2 (enforcing)**, discharging the D5 warn-only
+> deferral + OQ-8 "Blocking-mode promotion", and formalizes **unintentional
+> drift vs deliberate redirect** — a divergence WITH a typed Cray sign-off =
+> redirect (passes), WITHOUT = drift (flagged/blocked). SD-0..SD-4 ratified
+> as-recommended: SD-0 in-place amendment to ADR-0018 (extends, does NOT
+> reverse — ADR-0016 discipline; D1-D7 unchanged); SD-1 per-goal `enforce`
+> flag (default warn); SD-2 ratification = typed sign-off in an append-only
+> `amendments[]` log, divergence evaluator-detected +
+> deterministically-consequenced; SD-3 goal-gate graduation ONLY (sibling
+> hooks out-of-scope); SD-4 missing-evidence-under-enforce = pause
+> `blocked-pending-human`, never a silent pass. **draft≠review≠verify:**
+> `plan-drafter` authored → Code R2 (re-verified the D5/OQ-8 text +
+> `work_fingerprint()` at `_goal_gate.py:152`; confirmed 2 build hazards —
+> `_goal_state.py` DROPS unknown fields on rewrite so the v2 fields must be
+> dataclass fields, and `VALID_STATUSES` lacks `blocked-pending-human`) → Cray
+> ratified. Grounded by a 2026-07-13 design brief (research through 13 Jul +
+> repo inventory, published as a private Artifact, NOT a repo file). **The v2
+> gate/schema BUILD is a follow-on PLAN** (ADR-013 D1). **#712 — PLAN-0068
+> Ready (aquaculture per-species DO floors):** the `next-work-analyst`-ranked
+> #1 pick, `plan-drafter`-authored + Code-R2'd + Cray-ratified (SD-0..SD-5;
+> **SD-4 = (b) TWO PRs, a Cray divergence** from the drafter's 1-PR rec).
+> Migrates aquaculture's `morning_pond_health_round` judge from a blanket
+> 4.0 mg/L DO floor to per-species floors via `Pond.do_floor` + a `read_do`
+> FK-parent join — the 3rd OCT vertical on the per-entity band substrate
+> (**Rule-of-Three MET**), zero engine change (rides ADR-016 FKP-1). **Status
+> = Ready; the BUILD (PR1 substrate + RED / PR2 migration + tests) is NOT
+> started.** Commits: `d40d2f6` (#713 ADR-0018 V2 amendment) → merge `2e2007c`;
+> `c443bfd` (#712 PLAN-0068 Ready) → merge `2c3a05d`. No MS-S1 / host-state —
+> pure governance-doc batch; test suite unchanged (no code shipped).
+
+### Recent Decisions row removed — 2026-07-11 (PLAN-0063 audit-chain verification surface COMPLETE, #687-#690, session 118) [rotated 2026-07-13, session-126 reconcile — 10-row RD window]
+
+| 2026-07-11 | **PLAN-0063 audit-chain verification surface COMPLETE (all 8 ACs) → `done/` — trust dossier object ③'s first product surface (session 118; #687/#688/#689/#690)** — #687 Ready (`plan-drafter`-authored, SD-1..6 Cray-ratified as-rec); #688 PR1 `GET /audit/verify` → typed `ChainVerificationReport`, `verify_chain()`'s (PLAN-0047 Step 5) FIRST production caller, SD-2(d) split visibility (verdict open / verbatim break detail credentialed via the new `get_optional_principal`; OQ-1 = `/audit/verify`); #689 PR2 on-demand monitor "Verify chain" panel (off the poll timers); #690 close-out with TWO DISCLOSED DEFERRALS (local merge-commit full-suite + Step-5 render check — dev Postgres down, §8 Cray go pending, erratum-if-fail). `services/db/audit_log.py` + `alembic/` byte-unchanged (AC-8 pins). Suite **2506/8** via the required CI `gate`. Full narrative: the Session-118 CF block above | `7e87d76` (#690 merge) / `576a201` (#690 close) / `360007a` (#689 merge) / `ceee552` (#689 feat) / `9d02686` (#688 merge) / `b41e3f5` (#688 feat) / `ec2250e` (#687 merge) / `e2c65f0` (#687 Ready) / `services/api/routers/audit.py` + `services/api/models/audit.py` + `services/api/auth.py` (`get_optional_principal`) + `tests/api/test_audit_verify.py` + `services/api/static/assets/view-monitor.js` + `docs/plans/done/0063-audit-chain-verification-surface.md` |
