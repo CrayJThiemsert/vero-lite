@@ -31,6 +31,12 @@ object_types:
         type: float
       stocking_density:
         type: float
+      do_floor:
+        type: float
+        description: >-
+          Per-species dissolved-oxygen floor (mg/L) each pond's latest reading
+          must stay at/above — the pond's OWN per-entity band (ADR-016 FKP
+          amendment 2026-07-12); the pond breaches BELOW it.
       species:
         type: enum
         values: [whiteleg_shrimp, tiger_prawn, tilapia]
