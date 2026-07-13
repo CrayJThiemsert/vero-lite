@@ -124,6 +124,9 @@ async def test_procedures_typed_authoritative_band_passes_through(
     aqua = by_vertical["aquaculture"]["procedures"][0]
     aqua_judge = next(s for s in aqua["steps"] if s["step_id"] == "judge")
     assert aqua_judge["threshold"] is None
+    # PLAN-0068: the scalar threshold is None but the per-entity band column IS surfaced in
+    # the payload — the view-procedures decision facet renders it (do not silently drop it).
+    assert aqua_judge["threshold_field"] == "do_floor"
     assert aqua_judge["direction"] == "below"
     assert aqua_judge["watch_margin"] == 1.0
     assert aqua_judge["facet"]["decision_condition"]["gate_kind"] == "in_file_band"
