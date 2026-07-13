@@ -92,10 +92,11 @@ def test_golden_trace_composes_to_valid_envelope(trace: dict[str, Any]) -> None:
         attempts=1,
     )
     # PLAN-0030 added resolved-entities + resolution-trace params; PLAN-0035 added the
-    # member-(b) verification-trace param. This golden test exercises trace COMPOSITION,
-    # not resolution/verification -> pass the verbatim entities + no steps.
+    # member-(b) verification-trace param; PLAN-0071 added the economic-impact trace
+    # param. This golden test exercises trace COMPOSITION, not
+    # resolution/verification/economics -> pass the verbatim entities + no steps.
     record = _compose_llm_record(
-        trace["event"], "energy", result, judgment.affected_entities, [], []
+        trace["event"], "energy", result, judgment.affected_entities, [], [], []
     )
     action = record.action
 
