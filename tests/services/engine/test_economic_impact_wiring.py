@@ -30,6 +30,7 @@ from services.engine.economic_impact import (
 from services.engine.llm.client import ChatResult
 from services.engine.recommender import recommend
 from services.engine.registry import registry
+from verticals.energy.economic_impact import register_energy_economic_impact
 
 
 class _FakeAdapter:
@@ -174,6 +175,26 @@ async def test_facet_appends_without_altering_the_action(monkeypatch: pytest.Mon
     assert len(econ) == 1
     assert withp.action.reasoning_trace[-1].kind == "economic_impact"  # appended LAST
     assert EconomicImpact.model_validate(econ[0].detail) == _impact()
+
+
+async def test_real_energy_producer_carries_the_sdg_facet(monkeypatch: pytest.MonkeyPatch) -> None:
+    """AC-9 GREEN flip: the REAL energy producer (registered as discovery does it) makes a
+    composed action on the mocked LLM path carry exactly one ``economic_impact`` step whose
+    ``net_benefit_thb`` is the ratified SD-G ฿405,000 (baseline ฿480,000 - governed ฿75,000)."""
+    _register_energy()
+    register_energy_economic_impact()  # the same call discovery._register_economic_producer makes
+
+    _patch_llm(monkeypatch)
+    record = await recommend(_crossing_event(), "energy")
+    assert record is not None
+    assert record.action.audit_metadata.actor_kind == "llm"
+    econ = [s for s in record.action.reasoning_trace if s.kind == "economic_impact"]
+    assert len(econ) == 1
+    assert record.action.reasoning_trace[-1].kind == "economic_impact"  # appended LAST
+    impact = EconomicImpact.model_validate(econ[0].detail)
+    assert impact.kind == "avoided_outage"
+    assert impact.provisional is True
+    assert impact.net_benefit_thb == Decimal("405000")  # SD-G arithmetic
 
 
 async def test_raising_producer_does_not_demote_to_rule_path(
