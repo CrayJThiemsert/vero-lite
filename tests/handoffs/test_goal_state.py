@@ -28,14 +28,18 @@ sys.path.insert(0, str(HOOKS_DIR))
 
 from _goal_state import (  # noqa: E402  — sys.path manipulation above
     DEFAULT_GOAL_PATH,
+    SCHEMA_VERSION,
     STATUS_ACTIVE,
+    STATUS_BLOCKED_PENDING_HUMAN,
     STATUS_PASSED,
+    Amendment,
     Criterion,
     Evaluation,
     Goal,
     goal_path,
     load_goal,
     new_goal,
+    record_amendment,
     record_evaluation,
     save_goal,
 )
@@ -250,3 +254,237 @@ class TestAppendOnlyTrail:
         loaded = load_goal(p)
         assert loaded is not None
         assert [e.fingerprint for e in loaded.evaluations] == ["fp0", "fp1", "fp2"]
+
+
+# ---------------------------------------------------------------------------
+# PLAN-0069 PR1 — v2 schema (enforce + amendments[] + blocked-pending-human)
+# ---------------------------------------------------------------------------
+
+
+def _v2_goal_with_amendment() -> Goal:
+    """A v2 goal carrying enforce=True and one amendment — the ratification
+    log's minimal non-empty shape."""
+    goal = new_goal(
+        goal_text="ship the widget",
+        criteria=[Criterion(id="C1", kind="check", cmd="pytest -q", desc="suite", timeout_s=60)],
+        source="docs/plans/0099-widget.md#ac",
+        session=124,
+        enforce=True,
+    )
+    record_amendment(
+        goal,
+        Amendment(
+            ts="2026-07-13T14:00:00+0000",
+            event="ask_user_question:merge-720",
+            summary="redirected to the enforce build",
+            prev_goal="ship the widget",
+            new_goal="ship the enforcing gate",
+            fingerprint="fp-ratify-1",
+        ),
+    )
+    return goal
+
+
+class TestV2Schema:
+    def test_new_goal_defaults_to_v2_warn(self) -> None:
+        """A freshly declared goal is schema_version 2 and enforce=False
+        (default = warn-only v1 behavior, L-1)."""
+        goal = new_goal(goal_text="x", criteria=[])
+        assert goal.schema_version == SCHEMA_VERSION == 2
+        assert goal.enforce is False
+        assert goal.amendments == []
+
+    def test_enforce_and_amendments_are_first_class_fields(self, tmp_path: Path) -> None:
+        """AC-1 (build hazard i — silent-strip): enforce + amendments survive
+        the gate's OWN rewrite path (load -> mutate -> save). The module drops
+        UNKNOWN fields on rewrite, so this holds only because they are real
+        Goal dataclass fields."""
+        p = tmp_path / "goal.json"
+        save_goal(_v2_goal_with_amendment(), p)
+        loaded = load_goal(p)
+        assert loaded is not None
+        assert loaded.enforce is True
+        assert len(loaded.amendments) == 1
+        # the gate's rewrite path: append an evaluation, re-save
+        record_evaluation(loaded, Evaluation(ts="t1", fingerprint="fp1", amendments_seen=1))
+        save_goal(loaded, p)
+        rewritten = load_goal(p)
+        assert rewritten is not None
+        assert rewritten.enforce is True
+        assert [a.fingerprint for a in rewritten.amendments] == ["fp-ratify-1"]
+        assert rewritten.amendments[0].event == "ask_user_question:merge-720"
+        assert rewritten.amendments[0].new_goal == "ship the enforcing gate"
+        # the raw bytes carry them too (defensive against a to_json gap)
+        raw = json.loads(p.read_text(encoding="utf-8"))
+        assert raw["enforce"] is True
+        assert raw["amendments"][0]["fingerprint"] == "fp-ratify-1"
+
+    def test_v1_file_parses_with_v2_defaults(self, tmp_path: Path) -> None:
+        """AC-4a: a v1 file (schema_version 1, no enforce, no amendments) reads
+        with enforce=False, amendments=[], full v1 semantics; schema_version is
+        passed through (not force-upgraded)."""
+        doc = {
+            "schema_version": 1,
+            "goal": "legacy goal",
+            "status": "active",
+            "criteria": [{"id": "C1", "kind": "check", "cmd": "true"}],
+            "evaluations": [{"ts": "t0", "fingerprint": "fp0"}],
+        }
+        p = tmp_path / "goal.json"
+        p.write_text(json.dumps(doc), encoding="utf-8")
+        loaded = load_goal(p)
+        assert loaded is not None
+        assert loaded.enforce is False
+        assert loaded.amendments == []
+        assert loaded.schema_version == 1  # passthrough
+        assert loaded.goal == "legacy goal"
+        assert [c.id for c in loaded.criteria] == ["C1"]
+        # a v1 evaluation with no v2 instrumentation defaults cleanly
+        assert loaded.evaluations[0].amendments_seen == 0
+        assert loaded.evaluations[0].divergence is None
+
+    def test_amendments_seen_and_divergence_round_trip(self, tmp_path: Path) -> None:
+        """SD-D + V2-D2 instrumentation survives round-trip; divergence is
+        omitted from the bytes when None (kept optional)."""
+        goal = new_goal(goal_text="x", criteria=[])
+        record_evaluation(
+            goal,
+            Evaluation(
+                ts="t1",
+                fingerprint="fp1",
+                amendments_seen=2,
+                divergence={"verdict": "DIVERGENT", "reason": "off-anchor"},
+            ),
+        )
+        p = tmp_path / "goal.json"
+        save_goal(goal, p)
+        loaded = load_goal(p)
+        assert loaded is not None
+        ev = loaded.evaluations[0]
+        assert ev.amendments_seen == 2
+        assert ev.divergence == {"verdict": "DIVERGENT", "reason": "off-anchor"}
+        raw = json.loads(p.read_text(encoding="utf-8"))
+        assert "divergence" in raw["evaluations"][0]
+        # an evaluation with no divergence does not emit the key
+        goal2 = new_goal(goal_text="y", criteria=[])
+        record_evaluation(goal2, Evaluation(ts="t2", fingerprint="fp2"))
+        p2 = tmp_path / "goal2.json"
+        save_goal(goal2, p2)
+        raw2 = json.loads(p2.read_text(encoding="utf-8"))
+        assert "divergence" not in raw2["evaluations"][0]
+        assert raw2["evaluations"][0]["amendments_seen"] == 0
+
+    def test_junk_amendment_entries_skipped(self, tmp_path: Path) -> None:
+        """Tolerant amendments parse — non-dict and ts-less entries skipped,
+        never fatal (mirrors junk-criteria)."""
+        doc = {
+            "goal": "x",
+            "status": "active",
+            "amendments": [
+                {"ts": "t1", "event": "typed", "summary": "ok"},
+                {"event": "typed"},  # no ts -> skipped
+                "not-a-dict",
+                {"ts": "", "summary": "empty ts"},  # empty ts -> skipped
+                {"ts": "t2"},
+            ],
+        }
+        p = tmp_path / "goal.json"
+        p.write_text(json.dumps(doc), encoding="utf-8")
+        loaded = load_goal(p)
+        assert loaded is not None
+        assert [a.ts for a in loaded.amendments] == ["t1", "t2"]
+
+
+class TestBlockedPendingHumanStatus:
+    def test_blocked_pending_human_parses_as_real_goal(self, tmp_path: Path) -> None:
+        """AC-2 (build hazard ii): blocked-pending-human is a VALID status — the
+        file loads as a real goal (not None), so the gate can stand down on it
+        without the goal ever transitioning to passed."""
+        doc = {
+            "schema_version": 2,
+            "goal": "paused work",
+            "status": STATUS_BLOCKED_PENDING_HUMAN,
+            "enforce": True,
+        }
+        p = tmp_path / "goal.json"
+        p.write_text(json.dumps(doc), encoding="utf-8")
+        loaded = load_goal(p)
+        assert loaded is not None
+        assert loaded.status == STATUS_BLOCKED_PENDING_HUMAN
+        assert loaded.status != STATUS_PASSED
+
+    def test_blocked_status_round_trips(self, tmp_path: Path) -> None:
+        goal = new_goal(goal_text="x", criteria=[], enforce=True)
+        goal.status = STATUS_BLOCKED_PENDING_HUMAN
+        p = tmp_path / "goal.json"
+        save_goal(goal, p)
+        loaded = load_goal(p)
+        assert loaded is not None and loaded.status == STATUS_BLOCKED_PENDING_HUMAN
+
+
+# a FROZEN replica of v1's status contract (``_goal_state.py:225-227`` pre-PLAN-0069):
+# the v1 code no longer exists at HEAD, so the reader-skew direction (a v2 file
+# read by a v1 reader) is pinned against this fixture (AC-4b; Code R2 confirmed
+# the frozen-fixture approach is the right evidence for a deleted-code contract).
+_V1_VALID_STATUSES = frozenset({"active", "passed", "released-unevaluated"})
+
+
+def _v1_status_ok(doc: dict[str, Any]) -> bool:
+    """Mirror of v1 ``Goal.from_json``'s status gate: a status outside the v1
+    set makes v1 return ``None`` (stand-down)."""
+    status = doc.get("status")
+    return isinstance(status, str) and status in _V1_VALID_STATUSES
+
+
+class TestV1ReaderSkew:
+    def test_blocked_status_absent_from_v1_contract(self) -> None:
+        """AC-4b: the new status is unknown to the frozen v1 contract."""
+        assert STATUS_BLOCKED_PENDING_HUMAN not in _V1_VALID_STATUSES
+
+    def test_v1_reader_stands_down_on_v2_blocked_file(self) -> None:
+        """AC-4b (fail-safe skew direction): a v2 blocked-pending-human file,
+        read by v1 rules, is rejected -> None -> the gate stands down. It never
+        blocks and never marks passed (ADR-0018 Reversibility)."""
+        v2_blocked = {"goal": "paused", "status": STATUS_BLOCKED_PENDING_HUMAN, "enforce": True}
+        assert _v1_status_ok(v2_blocked) is False
+        # an ordinary active goal is accepted by both readers
+        assert _v1_status_ok({"goal": "x", "status": "active"}) is True
+
+    def test_v2_reader_rejects_status_unknown_to_v2(self, tmp_path: Path) -> None:
+        """AC-4c: the stand-down contract survives the NEXT skew — a status
+        unknown to v2 still yields None (never a raise, never a false active)."""
+        doc = {"goal": "x", "status": "some-future-status-v3"}
+        p = tmp_path / "goal.json"
+        p.write_text(json.dumps(doc), encoding="utf-8")
+        assert load_goal(p) is None
+
+
+class TestAmendmentsAppendOnly:
+    def test_record_amendment_appends_and_preserves(self, tmp_path: Path) -> None:
+        goal = new_goal(goal_text="x", criteria=[])
+        for i in range(3):
+            record_amendment(goal, Amendment(ts=f"t{i}", fingerprint=f"fp{i}", event="typed"))
+        assert [a.ts for a in goal.amendments] == ["t0", "t1", "t2"]
+        p = tmp_path / "goal.json"
+        save_goal(goal, p)
+        loaded = load_goal(p)
+        assert loaded is not None
+        assert [a.fingerprint for a in loaded.amendments] == ["fp0", "fp1", "fp2"]
+
+    def test_amendment_never_dropped_by_a_gate_rewrite(self, tmp_path: Path) -> None:
+        """AC-8: interleave an appended amendment with a gate evaluation rewrite;
+        the amendment is never dropped (composes with AC-1)."""
+        p = tmp_path / "goal.json"
+        goal = new_goal(goal_text="x", criteria=[], enforce=True)
+        record_amendment(goal, Amendment(ts="t-amend", fingerprint="fp-amend", event="typed"))
+        save_goal(goal, p)
+        # the gate reloads and appends an evaluation (its rewrite path)
+        g2 = load_goal(p)
+        assert g2 is not None
+        record_evaluation(g2, Evaluation(ts="t-eval", fingerprint="fp-eval", amendments_seen=1))
+        save_goal(g2, p)
+        final = load_goal(p)
+        assert final is not None
+        assert [a.ts for a in final.amendments] == ["t-amend"]
+        assert [e.ts for e in final.evaluations] == ["t-eval"]
+        assert final.evaluations[0].amendments_seen == 1
