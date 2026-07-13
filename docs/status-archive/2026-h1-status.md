@@ -3551,3 +3551,93 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-09 (ADR-016 join/projection DESIGN) [rotated 2026-07-12, session-121 reconcile — normal rotation under the 10-row RD window]
 
 | 2026-07-09 | **DESIGN: ADR-016 join/projection-grammar amendment ACCEPTED (Q4 multi-read) — Phase 1 of the moat join-grammar sequence (session 115; #659)** — renders ADR-016's deferred Q4 (the 2026-07-01 OQ-5 "the multi-read join lands with Q4"; PLAN-0048 walled the grammar off as "an ADR-016 amendment"): query steps will DECLARE multi-read joins + projections as typed, authored, deterministic spec surface (today `StepInput.reads` is names-only + `QueryStepExecutor` refuses `len(reads)>1` typed). **SD-A grammar surface = HYBRID** — ontology `link_types.foreign_key` = the default join (governed, single source of truth) + a typed per-step explicit override for shapes the ontology cannot declare (the procurement `intake`'s positional singleton fusion + custom projections). **SD-B v1 scope = the 2 shipped shapes** (equi-join enrichment + latest-per-group projection; general group-by/aggregation math DEFERRED — stays the walled-off `nl_query` surface). **SD-C = co-exist + parity-guarded seed migration (Phase 3, no force-retire).** **SD-D (entailed by SD-A)** = promote `LinkTypeMeta.foreign_key` into typed form + parse ADR-0027 `join_path` into the same execution-consumable shape (projection layer only; ADR-008 grammar untouched). **OQ-1..4 ratified as-rec** (Cray, AskUserQuestion): extend `StepInput` `join`/`project`; NO repair loop in v1 (D-N2); grammar = join+projection ONLY (arbitrary computation stays downstream/seed → `intake` migrates PARTIALLY under the SD-C parity guard); warn-first override validation. **NO LLM in the read path** (LOCKED-6 / ADR-0024 D3/D6); every joined type still routes through the single `read_bound_violation` bound at BOTH load gate + run dispatch (PLAN-0048 AC-3, extended not forked). `plan-drafter`-authored (in-place amendment per the D2-Amendment precedent), Code R2-verified every cited file:line on disk (corrected a dispatch over-claim — the procurement join is declared as `quote_id→Quotation.quote_id` + transitive `part_no` via `Part`, not a literal `part_id` link). **Sequence:** this amendment → build PLAN (grammar schema + compile/execute extension + SD-D promotion) → Phase-3 per-vertical factory + seed migration. Origin: s115 Cray picked the Q4 join-grammar ADR after PLAN-0060 closed; the Phase-2 build **PLAN-0061 is Ready** (#661, `ad0f543`; SD-1..6 ratified as-rec — lean 2-construct schema, 4 phases, offline-only) | `ad0f543` (#661 PLAN-0061 Ready) / `a38acde` (#659 amendment feat) / `dbf25e2` (#659 merge) / `docs/adr/0016-governed-procedure-engine.md` (§ "Amendment (2026-07-09): join/projection grammar for multi-read query steps (Q4)") |
+
+
+### Current Focus block removed — session 118 [rotated 2026-07-13, session-122 reconcile — normal rotation under the 4-session CF window]
+
+> **Session 118, 2026-07-11 (head_commit `22242e4` → `2694253`) — PLAN-0063
+> audit-chain verification surface (trust dossier object ③, first product
+> surface) COMPLETE in one window: drafted + ratified (#687, SD-1..6 as-rec)
+> → PR1 `GET /audit/verify` (#688) → PR2 monitor "Verify chain" panel (#689)
+> → closed, all 8 ACs → `done/` (#690).** `verify_chain()` (PLAN-0047 Step 5)
+> gains its FIRST production caller: **#688** exposes a typed
+> `ChainVerificationReport` with SD-2(d) SPLIT VISIBILITY — the verdict is
+> open, verbatim break detail is credentialed via the new
+> `get_optional_principal` seam in `services/api/auth.py` (OQ-1 =
+> `/audit/verify`); **#689** renders it as an ON-DEMAND monitor panel
+> (`view-monitor.js?v=c34`, off the poll timers). `services/db/audit_log.py`
+> + `alembic/` byte-unchanged (AC-8 pins verified). **Evidence bar:** #690's
+> required CI `gate` = **2506 passed / 8 skipped in 93.5 s** (FULL suite
+> incl. DB-backed tests via the CI postgres:16-alpine service) on code
+> identical to `main=360007a` plus the docs close-out; local on the merge
+> commit ruff + ruff-format + mypy --strict clean (the LOCAL pytest degraded
+> to 2391/123-skipped — dev Postgres DOWN, dockerd off — recorded as NOT the
+> bar). **TWO DISCLOSED DEFERRALS** (in the close-out, not silent): (1) the
+> merge-commit LOCAL full-suite re-run and (2) the Step-5 render check —
+> both blocked on the dev Postgres; starting dockerd = §8 host-state
+> awaiting explicit Cray go; erratum-if-fail when the render check runs.
+> SD-4 follow-up (bounded/incremental verification) → Active TODO.
+> **CONTINUATION (same session, afternoon batch — `next-work-analyst`
+> ranking delivered; Cray picked "Router + hygiene"; every pick/ratification
+> below = Cray via AskUserQuestion):** (1) **Both disclosed deferrals
+> DISCHARGED — `confirmed — prior intact`, no erratum.** Cray gave the §8
+> go; Docker Desktop restarted, `vero-postgres` (volume
+> `vero-lite_postgres_data`) up. The Step-5 render check PASSED its
+> pre-committed strings: the monitor "Verify chain" panel rendered "chain
+> intact · 36 rows verified" over the REAL dev-DB audit chain (36 rows,
+> breaks []), DOM-asserted + screenshot; the withheld leg is not reachable
+> on this deployment (dev box opts out of authn via `.env`) and stays
+> pinned by the AC-6 pytest matrix. Local full suite on main WITH Postgres
+> = **2507 passed / 7 skipped** (supersedes the 2391/123 degraded run). (2)
+> Orphan test DB `vero_lite_test_69fa7362` DROPPED (Cray-approved §8) after
+> fresh re-verification: sha256-hashed ALL 16 existing checkout-path forms
+> (main + 7 worktrees × POSIX/UNC) — none maps to `69fa7362`; only the live
+> `vero_lite_test_bb36873b` remains → the s117 housekeeping TODO fully
+> discharged. (3) **PLAN-0064 "per-step QUERY router for procurement"
+> READY (#692)** — `plan-drafter`-authored, Code R2 re-verified every
+> load-bearing citation on disk (accept); **SD-0..SD-5 ratified as-rec**:
+> SD-0 no ADR-016 amendment (executor supply is "not an engine contract",
+> 0016:511-513; the STOP tripwire stands) / SD-1 declaration-presence
+> dispatch / SD-2 engine-module home (`query_router.py`) / SD-3
+> `read_stock` only / SD-4 tripwire test rewritten in place / SD-5 declared
+> reads served by the registry-registered `ProcurementSyntheticAdapter`.
+> Reopens PLAN-0062 AC-7 per ERRATUM 2 by its own ACs. (4) **Hygiene
+> (#693):** PLAN-0004 (Phases A+B shipped; Phase C optional → backlog) +
+> PLAN-0012 (vero-bridge Phase 1 shipped + live; AC-1/AC-2 ticked as
+> bookkeeping; Phase 2 stays unminted) filed to `done/`; **PLAN-0010
+> deliberately NOT closed** — Cray asked for an ELI-CRAY brief before the
+> close-vs-park decision (delivered in-session; decision pending). NEXT:
+> build PLAN-0064 (un-gated Code build, one PR).
+> **CONTINUATION 2 (same session — PLAN-0064 went draft [`plan-drafter`] →
+> Code R2 → Cray SD ratification → build → close in ONE session-118 day):**
+> (1) **PLAN-0010 CLOSED "shipped + intentionally disabled" → `done/`
+> (#695)** — Cray-ratified after the ELI-CRAY brief (AskUserQuestion);
+> AC-1/AC-3/AC-5 ticked against `tests/loop/` + the 427-message production
+> run (2026-05-26→06-25); AC-2/AC-4/AC-6 left unticked HONESTLY (closed by
+> operational decision over the s76 drift hazard, NOT full AC discharge —
+> they become requirements of any revival PLAN); companion chore fixed the
+> stale `tools/loop/__init__.py` "(future) dispatcher" docstring. (2)
+> **PLAN-0064 BUILT (#696) + CLOSED, all 8 ACs → `done/` (#697)** —
+> `QueryStepRouter` (declaration-presence, SD-1) in
+> `services/engine/procedures/query_router.py` + 5 unit pins; the
+> production procurement factory routes per step: declared `read_stock`
+> (`reads: [Part]`, PLAN-0048 single-read) → the SHIPPED
+> `QueryStepExecutor` over the REGISTRY-registered
+> `ProcurementSyntheticAdapter` (SD-5); undeclared `intake` → the
+> co-existing `_SeedQuery` byte-identically (PLAN-0062 SD-C carried).
+> ERRATUM-2 tripwire test rewritten IN PLACE per its own contract (SD-4);
+> SD-0 honored — zero orchestrator/registry/spec change, the STOP tripwire
+> never fired; the L-4 governance-pin consequence disclosed in the PR body.
+> Suite **2512/7 local WITH Postgres**. **Honest frame (LOCKED-9 style —
+> nothing claims more):** procurement `read_stock` = declared ✔ ·
+> load-gated ✔ · **execution-bound ✔ on the production factory path**;
+> `intake` unchanged (declared-expressible ✔ per 0062 AC-6, production
+> execution = the co-existing seed, derived fields ✖);
+> `low_stock_reorder_round` END-TO-END = **still not production-runnable**
+> — `judge_stock` reads `measured_value`, raw Part rows don't carry it
+> (PLAN-0064 fact 9 → Active TODO); **PLAN-0062 AC-7's deferral is
+> DISCHARGED by reference** (no 0062 line edited).
+
+### Recent Decisions row removed — 2026-07-09 (PLAN-0061 join/projection-grammar build) [rotated 2026-07-13, session-122 reconcile — normal rotation under the 10-row RD window]
+
+| 2026-07-09 | **PLAN-0061 join/projection-grammar build COMPLETE (all 8 ACs) → moved to `docs/plans/done/` — the ADR-016 Q4 amendment RENDERED: a query step now DECLARES multi-read equi-join enrichment + latest-per-group projection as typed authored spec — declared ✔ load-gated ✔ execution-bound ✔ for the 2 v1 shapes (session 115; #664/#665/#666/#667/#668)** — the un-gated Code build of the Ready PLAN (§6 "Steps execute directly"); ALL offline/deterministic, NO live run (SD-6 — MS-S1 never touched); every PR green through the required CI `gate`; **full suite 2452 passed / 7 skipped, ruff + mypy clean.** Chain: **#664** the SD-D substrate (`JoinKeyMeta` + ONE shared parser; `foreign_key` no longer dropped at load; `join_path` → typed) → **#665** the SD-1 lean `JoinSpec`/`ProjectSpec` schema + H-governance pin (a mid-flight edit fails CLOSED at resume) + the structural load gate (`validate_read_bindings` `meta=`; WARN-first on/fuse overrides, OQ-4) → **#666** compile + execute (`JOIN_SHAPE_VIOLATION`, OQ-1; `plan_read` `meta=` = ONE decision surface; `QueryStepExecutor` SD-1 pinned pipeline, D-N2 extended; single-read path byte-identical) → **#667** both shapes e2e over the REAL energy + procurement ontologies (SD-3 fixtures, zero vertical-file change; DB-backed JSONB-safety + governance-hash round-trip) → **#668** Ready → Complete → `done/`. The 4 shipped verticals' hand-written seeds stay execution-bound ✖ until the Phase-3 parity-guarded migration PLAN (SD-C). Full narrative: the Session-115 CF block above | `5a264d6` (#668 PLAN-COMPLETE move-to-done) / `66896e8` (#668 merge) / `e04a00b` (#667 Step 4 feat) / `0d738e1` (#666 Step 3 feat) / `93e01d1`+`7fb7497` (#665 Step 2) / `978caca` (#664 Step 1 feat) / `services/engine/ontology_meta.py` (`JoinKeyMeta` + shared parser) + `services/engine/procedures/{spec.py,orchestrator.py,query_step.py}` + `docs/plans/done/0061-join-projection-grammar-build.md` |
