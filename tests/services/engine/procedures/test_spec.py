@@ -632,6 +632,7 @@ _MIGRATED_VERTICALS = ["energy", "supply_chain", "aquaculture", "procurement"]
 # (vertical, procedure_id, judge_step_id) for the in-file-band judge steps — the
 # facet must point at the typed Step band, not copy it (AC-6).
 _IN_FILE_BAND_JUDGES = [
+    ("energy", "substation_health_sweep", "judge"),  # PLAN-0070 (per-feeder rated_current_a)
     ("aquaculture", "morning_pond_health_round", "judge"),
     ("supply_chain", "cold_chain_excursion_sweep", "judge"),  # PLAN-0067
     ("procurement", "emergency_sourcing_round", "judge"),
@@ -675,21 +676,22 @@ def test_migrated_facets_round_trip(vertical: str) -> None:
             assert StepFacet.model_validate(dumped).model_dump() == dumped
 
 
-@pytest.mark.parametrize("vertical", ["energy"])
-def test_env_band_judge_migrated(vertical: str) -> None:
-    """The energy judge step carries the env-authored band (no LLM). supply_chain's judge
-    migrated to a per-cargo threshold_field (PLAN-0067) — it now lives in the
-    ``_IN_FILE_BAND_JUDGES`` set (``test_in_file_band_facet_points_at_typed_band``)."""
-    procedure_id = {
-        "energy": "substation_health_sweep",
-    }[vertical]
-    facet = _step(vertical, procedure_id, "judge").facet
-    assert facet is not None and facet.decision_condition is not None
-    dc = facet.decision_condition
-    assert dc.gate_kind is GateKind.ENV_BAND
-    assert dc.band_source is BandSource.ENV
-    assert dc.env_var == "OCT_RECOMMEND_THRESHOLD"
-    assert facet.llm_assist is None  # determinism invariant — no LLM in the judge
+def test_no_shipped_env_band_judge_remains() -> None:
+    """PLAN-0070: energy's judge migrated to a per-feeder ``threshold_field: rated_current_a``
+    band — it was the LAST shipped env_band judge. No shipped procedure across the four
+    verticals now authors an ``env_band`` decision_condition. The ``EnvBandEvaluateExecutor``
+    engine path stays test-covered (``test_env_band_evaluate.py``) but has zero live YAML
+    consumers (the migration milestone this test pins)."""
+    for vertical in _MIGRATED_VERTICALS:
+        spec = load_procedures(vertical)
+        for proc in spec.procedures:
+            for step in proc.steps:
+                facet = step.facet
+                if facet is None or facet.decision_condition is None:
+                    continue
+                assert (
+                    facet.decision_condition.gate_kind is not GateKind.ENV_BAND
+                ), f"{vertical}/{proc.procedure_id}/{step.step_id} still authors env_band"
 
 
 @pytest.mark.parametrize("vertical, procedure_id, step_id", _IN_FILE_BAND_JUDGES)

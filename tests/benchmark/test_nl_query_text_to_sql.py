@@ -28,7 +28,8 @@ def test_build_db_row_counts() -> None:
     conn = build_db()
     assert _scalar(conn, "SELECT COUNT(*) FROM site") == 2
     assert _scalar(conn, "SELECT COUNT(*) FROM asset") == 4
-    assert _scalar(conn, "SELECT COUNT(*) FROM operational_event") == 11
+    # PLAN-0070 added 2 current (ampere) feeder readings to the energy synthetic events.
+    assert _scalar(conn, "SELECT COUNT(*) FROM operational_event") == 13
 
 
 def test_select_only_guard() -> None:
@@ -57,9 +58,9 @@ def test_execute_reports_sqlite_error_for_missing_table() -> None:
 def test_gold_values_cross_check_against_real_sql() -> None:
     """The SQL_EXPECT tokens are the true answers (validates the gold set)."""
     conn = build_db()
-    # nl-02 total events = 11; nl-05 warn events = 1
-    assert _scalar(conn, "SELECT COUNT(*) FROM operational_event") == 11
-    assert _scalar(conn, "SELECT COUNT(*) FROM operational_event WHERE severity='warn'") == 1
+    # nl-02 total events = 13; nl-05 warn events = 2 (PLAN-0070 added 2 current readings, 1 warn)
+    assert _scalar(conn, "SELECT COUNT(*) FROM operational_event") == 13
+    assert _scalar(conn, "SELECT COUNT(*) FROM operational_event WHERE severity='warn'") == 2
     # nl-08 highest temperature = 96.5
     hottest = _scalar(
         conn, "SELECT MAX(measured_value) FROM operational_event WHERE unit='celsius'"

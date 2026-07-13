@@ -14,10 +14,11 @@ Deterministic and host-state-free end to end (PLAN-0062 SD-6; CLAUDE.md §8):
   adapter and the REAL energy ontology meta, so the PLAN-0062 declared latest-per-group
   grammar (``project: {latest_per: event_emitted_by_asset, order_by: occurred_at}``)
   executes on the production path.
-* ``EVALUATE`` — energy's ``judge`` is an ADR-016 D2-A3 ``env_band`` (no in-file
-  ``threshold``), which the bare :class:`EvaluateStepExecutor` refuses; the shipped band
-  math therefore runs through :class:`EnvBandEvaluateExecutor`, which binds
-  ``OCT_RECOMMEND_THRESHOLD`` / ``OCT_RECOMMEND_DIRECTION`` and delegates.
+* ``EVALUATE`` — energy's ``judge`` is a per-feeder in-file band
+  (``threshold_field: rated_current_a``, PLAN-0070). The factory keeps the
+  :class:`EnvBandEvaluateExecutor` wrapper (PLAN-0070 SD-5a): its guard delegates a
+  ``threshold_field`` judge straight through to the bare :class:`EvaluateStepExecutor`
+  (#709), so no ``OCT_RECOMMEND_*`` env band is bound for this judge.
 * ``ACTION`` — the shipped :class:`ActionStepExecutor` bound to
   :func:`advisory_stub_factory` (OQ-1): no live MS-S1 call. ``restart_breaches`` is
   ``gated``, so a run suspends at ``waiting_human`` for the operator's go/no-go rather

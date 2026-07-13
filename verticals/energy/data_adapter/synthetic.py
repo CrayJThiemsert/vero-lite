@@ -19,6 +19,13 @@ the breach** trips an action: the recommender escalates any reading whose
 ``measured_value`` is ≥ the threshold *regardless of unit*, so every non-breach
 reading is kept below it (the 50.0 Hz inverter reading is a deliberate
 sub-threshold value).
+
+Two **current (ampere)** feeder-load readings (``event-reading-07``/``-08``) are
+the substrate the over-current PROCEDURE bands per-feeder against
+``Asset.rated_current_a`` (PLAN-0070 re-theme): both are deliberately < 90.0 (so
+the unit-blind recommender + anchor never fire on them) and BEFORE the 08:10
+thermal breach (which stays the final beat). The procedure's own missed-overload
+flip lives entirely in the per-feeder band, not the blanket env threshold.
 """
 
 from __future__ import annotations
@@ -68,6 +75,7 @@ def assets() -> list[dict[str, Any]]:
             "name": "Inverter Unit A",
             "asset_type": "inverter",
             "capacity_kw": 500.0,
+            "rated_current_a": 722.0,  # 500 kW at 400 V 3φ ≈ 722 A — its current rating
             "status": "active",
             "install_date": date(2024, 4, 1),
             "site_id": "site-substation-01",
@@ -85,6 +93,7 @@ def assets() -> list[dict[str, Any]]:
             "asset_id": "asset-meter-01",
             "name": "Feeder Meter A",
             "asset_type": "meter",
+            "rated_current_a": 80.0,  # the LV feeder current rating — the band ceiling
             "status": "active",
             "install_date": date(2024, 2, 10),
             "site_id": "site-microgrid-01",
@@ -186,6 +195,37 @@ def operational_events() -> list[dict[str, Any]]:
             "description": "Battery Bank B temperature steady.",
             "occurred_at": datetime(2026, 5, 21, 8, 6, tzinfo=UTC),
             "asset_id": "asset-battery-02",
+            "site_id": "site-microgrid-01",
+        },
+        # Two current (ampere) feeder-load readings — the substrate the over-current
+        # PROCEDURE (substation_health_sweep) bands per-feeder vs Asset.rated_current_a
+        # (PLAN-0070). Both are < 90.0 (so the unit-blind reactive recommender + PLAN-0015
+        # demo anchor never escalate/anchor on them) and BEFORE the 08:10 thermal breach
+        # (which stays the timeline's final beat). The demo-visible flip: the feeder meter's
+        # 84 A is `ok` under the blanket env 90 band but `breach` at 105% of its OWN 80 A
+        # rating; the inverter's 61 A is well under its 722 A rating.
+        {
+            "event_id": "event-reading-07",
+            "event_type": "reading",
+            "severity": "info",
+            "measured_value": 61.0,
+            "unit": "ampere",
+            "measured_kind": "current",
+            "description": "Inverter Unit A feeder current under light morning load.",
+            "occurred_at": datetime(2026, 5, 21, 8, 2, tzinfo=UTC),
+            "asset_id": "asset-inverter-01",
+            "site_id": "site-substation-01",
+        },
+        {
+            "event_id": "event-reading-08",
+            "event_type": "reading",
+            "severity": "warn",
+            "measured_value": 84.0,
+            "unit": "ampere",
+            "measured_kind": "current",
+            "description": "Feeder Meter A current at 105% of its rated capacity.",
+            "occurred_at": datetime(2026, 5, 21, 8, 4, tzinfo=UTC),
+            "asset_id": "asset-meter-01",
             "site_id": "site-microgrid-01",
         },
         {

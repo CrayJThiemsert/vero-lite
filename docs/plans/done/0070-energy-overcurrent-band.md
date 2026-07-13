@@ -1,6 +1,20 @@
 # PLAN-0070: energy over-current re-theme — per-feeder `rated_current_a` band on the FK-parent Asset
 
-**Status:** Ready — Code R2 PASS (all 7 load-bearing citations verified vs code, 2026-07-13); SD-1…SD-6 RATIFIED by Cray (AskUserQuestion, 2026-07-13)
+**Status:** Complete — built + merged 2026-07-13 (session 125), one PR (SD-1). All 9 ACs
+met; the RED→GREEN per-feeder flip verified end-to-end (Feeder Meter A at 84 A is `ok`
+under the blanket env 90 band but `breach` at 105% of its own 80 A rating → gated restart);
+full suite **2572 passed / 7 skipped** WITH Postgres; ruff + `ruff format` + `mypy --strict`
+clean; **zero functional `services/` change** (the only `services/` diff is the SD-5
+env_band_step.py docstring hunk — the last shipped env_band judge retired). **Build-discovered
+coupling (correction to AC-8's "benchmark UNMODIFIED" pin):** the two current readings grew the
+energy synthetic OperationalEvent set 11 → 13 and added a second `warn` reading, which rippled
+into the NL-query feasibility benchmark gold set — `gold.yaml` nl-02 (total 11→13), nl-03
+(measured_value>80, 2→3: the 84 A reading is unit-agnostically >80), nl-05 (warn 1→2) updated to
+match the data (the corpus header requires hand-verified-against-data), plus the two
+`test_nl_query_text_to_sql.py` SQL cross-checks. No production code touched.
+
+**Prior status:** Ready — Code R2 PASS (all 7 load-bearing citations verified vs code,
+2026-07-13); SD-1…SD-6 RATIFIED by Cray (AskUserQuestion, 2026-07-13).
 **Owner:** Claude Code
 **Created:** 2026-07-13
 **Related ADRs:** ADR-016 **Amendment (2026-07-12): FK-parent-column

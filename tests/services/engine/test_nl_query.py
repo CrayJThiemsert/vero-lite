@@ -652,8 +652,8 @@ async def test_count_with_limit_one_keeps_full_id_receipt(energy_adapter: None) 
     )
     answer = await answer_question("how many events?", "energy", client=client)
     assert answer.grounded is True
-    assert answer.result_count == 11
-    assert len(answer.source_object_ids) == 11  # NOT truncated to the limit
+    assert answer.result_count == 13  # PLAN-0070 added 2 current (ampere) feeder readings
+    assert len(answer.source_object_ids) == 13  # NOT truncated to the limit
 
 
 async def test_list_still_honors_limit(energy_adapter: None) -> None:
@@ -664,7 +664,9 @@ async def test_list_still_honors_limit(energy_adapter: None) -> None:
     )
     answer = await answer_question("list events", "energy", client=client)
     assert answer.grounded is True
-    assert answer.result_count == 11  # the true match count is preserved
+    assert (
+        answer.result_count == 13
+    )  # the true match count is preserved (PLAN-0070: 11 + 2 current)
     assert len(answer.source_object_ids) == 2  # but only `limit` objects are returned
 
 

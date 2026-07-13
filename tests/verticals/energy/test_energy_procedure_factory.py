@@ -1,15 +1,17 @@
 """PLAN-0062 Step 1 (PR1b) — the energy production factory + the full-procedure run (AC-2, AC-5).
+Judge re-themed to a per-feeder over-current band by PLAN-0070.
 
 The half of AC-2 the parity module could not reach: the migrated ``read_readings``
 grammar feeding ``judge`` **in situ**, through the executors the API actually
 registers, all the way to the gated ``restart_breaches`` suspension. Offline and
 host-state-free (SD-6): the QUERY step reads the synthetic adapter, the EVALUATE step
-is deterministic band math, and the ACTION step's advisory prose is stubbed — no
+is deterministic per-row band math, and the ACTION step's advisory prose is stubbed — no
 MS-S1 call anywhere (CLAUDE.md §8).
 
-Why this test is the one that catches the real gap: energy's ``judge`` is an ADR-016
-D2-A3 ``env_band`` (no in-file ``threshold``), so the bare ``EvaluateStepExecutor``
-raises. A shape-only fixture never runs the judge; this does.
+Why this test is the one that catches the real gap: a shape-only fixture never runs the
+judge; this drives the real per-feeder band (``threshold_field: rated_current_a``) over the
+FK-parent join. The energy factory still wires the ``EnvBandEvaluateExecutor`` wrapper
+(PLAN-0070 SD-5a), whose guard delegates a ``threshold_field`` judge straight through (#709).
 """
 
 from __future__ import annotations
@@ -29,7 +31,7 @@ from verticals.energy.procedures_factory import register_energy_procedure_execut
 
 _VERTICAL = "energy"
 _PROCEDURE_ID = "substation_health_sweep"
-_INCIDENT_ASSET = "asset-battery-01"
+_OVERLOADED_FEEDER = "asset-meter-01"  # 84 A latest vs its OWN 80 A rating → breach
 
 
 @pytest.fixture
@@ -97,18 +99,20 @@ async def test_full_procedure_run_suspends_at_the_gated_restart(
     by_step = {step.step_id: step for step in result.step_results}
     assert set(by_step) == {"read_readings", "judge", "restart_breaches"}
 
-    # the migrated grammar fed the judge in situ: one latest reading per asset, judged
+    # the migrated grammar fed the judge in situ: one latest CURRENT reading per feeder, judged
     readings = by_step["read_readings"].artifact["output_set"]
-    assert readings, "the declared latest-per-group read produced no rows"
+    assert readings, "the declared current-narrowed read produced no rows"
     assert all(row["event_type"] == "reading" for row in readings)
 
     judged = by_step["judge"].artifact["output_set"]
     assert {row["asset_id"] for row in judged} == {row["asset_id"] for row in readings}
     breaches = [row for row in judged if row["verdict"] == "breach"]
-    assert [row["asset_id"] for row in breaches] == [_INCIDENT_ASSET]
+    assert [row["asset_id"] for row in breaches] == [_OVERLOADED_FEEDER]
 
-    # the env band's provenance is on the run trail (not the YAML's — energy authors none)
-    assert by_step["judge"].audit["band_source"] == "env"
+    # PLAN-0070: the verdict is the per-feeder (in_file) band, NOT the blanket env threshold —
+    # the migrated judge records its threshold_field and carries no band_source="env" stamp.
+    assert by_step["judge"].audit.get("threshold_field") == "rated_current_a"
+    assert by_step["judge"].audit.get("band_source") != "env"
 
     # the gated action fanned out over the breach subset ONLY, and proposed (not executed)
     actions = by_step["restart_breaches"].artifact["output_set"]
