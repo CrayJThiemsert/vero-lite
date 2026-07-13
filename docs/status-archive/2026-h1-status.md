@@ -3641,3 +3641,45 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-09 (PLAN-0061 join/projection-grammar build) [rotated 2026-07-13, session-122 reconcile — normal rotation under the 10-row RD window]
 
 | 2026-07-09 | **PLAN-0061 join/projection-grammar build COMPLETE (all 8 ACs) → moved to `docs/plans/done/` — the ADR-016 Q4 amendment RENDERED: a query step now DECLARES multi-read equi-join enrichment + latest-per-group projection as typed authored spec — declared ✔ load-gated ✔ execution-bound ✔ for the 2 v1 shapes (session 115; #664/#665/#666/#667/#668)** — the un-gated Code build of the Ready PLAN (§6 "Steps execute directly"); ALL offline/deterministic, NO live run (SD-6 — MS-S1 never touched); every PR green through the required CI `gate`; **full suite 2452 passed / 7 skipped, ruff + mypy clean.** Chain: **#664** the SD-D substrate (`JoinKeyMeta` + ONE shared parser; `foreign_key` no longer dropped at load; `join_path` → typed) → **#665** the SD-1 lean `JoinSpec`/`ProjectSpec` schema + H-governance pin (a mid-flight edit fails CLOSED at resume) + the structural load gate (`validate_read_bindings` `meta=`; WARN-first on/fuse overrides, OQ-4) → **#666** compile + execute (`JOIN_SHAPE_VIOLATION`, OQ-1; `plan_read` `meta=` = ONE decision surface; `QueryStepExecutor` SD-1 pinned pipeline, D-N2 extended; single-read path byte-identical) → **#667** both shapes e2e over the REAL energy + procurement ontologies (SD-3 fixtures, zero vertical-file change; DB-backed JSONB-safety + governance-hash round-trip) → **#668** Ready → Complete → `done/`. The 4 shipped verticals' hand-written seeds stay execution-bound ✖ until the Phase-3 parity-guarded migration PLAN (SD-C). Full narrative: the Session-115 CF block above | `5a264d6` (#668 PLAN-COMPLETE move-to-done) / `66896e8` (#668 merge) / `e04a00b` (#667 Step 4 feat) / `0d738e1` (#666 Step 3 feat) / `93e01d1`+`7fb7497` (#665 Step 2) / `978caca` (#664 Step 1 feat) / `services/engine/ontology_meta.py` (`JoinKeyMeta` + shared parser) + `services/engine/procedures/{spec.py,orchestrator.py,query_step.py}` + `docs/plans/done/0061-join-projection-grammar-build.md` |
+
+## Rotated this reconcile (session-123, 2026-07-13 — PLAN-0068 aquaculture per-species DO floors close-out)
+
+### Current Focus block removed — session 119 [rotated 2026-07-13, session-123 reconcile — normal rotation under the 4-session CF window]
+
+> **Session 119, 2026-07-11 (head_commit `869a56d` → `06e5f39`) — PLAN-0065
+> (calm-path reorder runnability) drafted → ratified → built → closed in ONE
+> session-119 day; procurement `low_stock_reorder_round` is now runnable
+> end-to-end.** #699 Ready (`plan-drafter`-authored) → #700 build → #701
+> Complete → `done/`. **The fix (SD-2, shipped Q4 grammar, ZERO engine-code
+> change):** the `read_stock` step gained a `project: {fields: {stock_qty:
+> measured_value}}` rename-projection so the shipped `EvaluateStepExecutor` can
+> band the registry-registered adapter's `Part` rows — before this the
+> production factory chain CRASHED at `judge_stock` (raw `Part` rows carry
+> `stock_qty`, the judge reads `measured_value`; PLAN-0064 fact-9 DISCHARGED).
+> **Three new tests prove runnability at three depths:** the production-factory
+> chain (`test_calm_path_production_runnability`, red-verified against the
+> unedited YAML); the manual-run HTTP endpoint (`test_calm_path_run_endpoint` —
+> `POST /procedures/{id}/run` parks at the reorder gate, identity
+> server-resolved); and a NEW scheduled sibling
+> `scheduled_low_stock_reorder_round` on the PLAN-0055 scheduler (fires
+> headless, parks at reorder). **SD-5(b) — Cray-ratified AGAINST the drafter's
+> recommendation:** the scheduled sibling carries `owning_person_id:
+> req-planner` for accountability parity; the divergent path was verified
+> ACCEPTED at execution (no validator couples `owning_person_id` to SoD, and
+> this AT-3 path has no SoD — so it is the run principal, not an SoD requester).
+> **Honest frame:** both the manual-run and scheduled paths park at ONE human
+> go/no-go — nothing auto-approves (RF-1/RF-3). **SD-3 (per-part reorder-point
+> band) DEFERRED** — it trips the L-4 tripwire (the shipped judge takes a single
+> scalar threshold, not a per-entity field reference) → its own
+> ADR-016-amendment PLAN (Active TODO). **Build-discovered coupling
+> (disclosed):** the projection renamed `stock_qty→measured_value`, so the
+> PLAN-0064 shadow-parity assertion (`read_stock` == raw adapter rows) was
+> updated deliberately (routing unchanged, output projected). **Evidence bar:**
+> #700 CI `gate` green; local full suite WITH Postgres **2516 passed / 7
+> skipped** (baseline 2512/7 + 4 new); ruff + ruff-format + `mypy --strict
+> services/` clean; no MS-S1 / host-state action. `docs/plans/` is EMPTY again
+> (every plan in `done/`).
+
+### Recent Decisions row removed — 2026-07-10 (PLAN-0062 COMPLETE, sessions 116–117) [rotated 2026-07-13, session-123 reconcile — normal rotation under the 10-row RD window]
+
+| 2026-07-10 | **PLAN-0062 (Q4 Phase-3 per-vertical seed migration, parity-guarded, SD-C) — COMPLETE, all 9 ACs → `done/` (sessions 116–117; #671/#672/#673/#675/#676/#682)** — **#671 Ready** (`docs/plans/0062-*.md`): plan-drafter-authored, Code R2-verified facts 3/5/7, **SD-1..SD-6 Cray-ratified as-rec** (AskUserQuestion). **#672 PR1 (parity core, s116):** energy `read_readings` → the DECLARED latest-per-group grammar (`reads:[OperationalEvent]` + `where:{event_type:reading}` + `project:{latest_per:event_emitted_by_asset, order_by:occurred_at}`) + the shared `assert_read_step_parity` harness (grammar == an INDEPENDENT hand-coded SD-5 reference, ZERO tolerance) + SD-5-edge fixtures + a 4-vertical load-gate pin; suite 2458/7. **#673 PR1b (s117):** `EnvBandEvaluateExecutor` (binds `OCT_RECOMMEND_THRESHOLD`/`_DIRECTION` onto a band-less step, delegates to the SHIPPED `EvaluateStepExecutor`) + deterministic `advisory_stub.py` + `register_energy_procedure_executors` + `main.py` per-vertical registrar table → energy `read_readings` now **execution-bound ✔ on the production HTTP path**. **#675 PR2 (s117):** supply_chain `read_temps` over `event_concerns_shipment` + `verticals/supply_chain/procedures_factory.py`; parity harness went vertical-parameterised (SD-3); reused PR1b's `EnvBandEvaluateExecutor` + `advisory_stub_factory` UNCHANGED (same `env_band` judge, only the threshold differs — 8 °C cold-chain vs energy's 90 °C); OQ-2 settled against the data (`where:{event_type:reading}` load-bearing); suite 2473/7. **#676 PR3 (s117):** aquaculture `read_do` over `event_emitted_by_pond` + `verticals/aquaculture/procedures_factory.py` (the `main.py` registrar table's 4th/final entry); binds the shipped `EvaluateStepExecutor` UNWRAPPED (judge is `in_file_band` typed `threshold 4.0/below/watch_margin 1.0`; a test asserts `EnvBandEvaluateExecutor` is ABSENT — the `env` half of the ADR-016 D2-A3 split). All THREE OCT query steps now execution-bound ✔; procurement `intake` is declared-expressible ✔ (shadow parity, PR4) but production execution stays the co-existing `_SeedQuery` (✖ for the derived fields); `read_stock` deferred/labelled/reason-corrected. ADR-016 D2-A4 honored (env band selected by the FACTORY). **PR4 (#682, `bd8e586` → merge `359555b`):** AC-6 intake shadow-parity over the REAL `FastenalCsvAdapter` (declared join half == `_intake_seed`'s fields, derived fields ABSENT; four `PurchaseOrder`∩`Quotation` column collisions renamed to keep each quote's supplier); AC-7 `read_stock` deferral KEPT, its "no substrate" reason CORRECTED to per-`StepKind` executor routing (ERRATUM 2, Cray-ratified, pinned by an executable invariant test) → PLAN-0062 **COMPLETE (all 9 ACs)**, both errata (ERRATUM 1 = AC-5 "shipped executors" vs PR1b's `EnvBandEvaluateExecutor`; ERRATUM 2) recorded in the Close-out, `git mv`→`done/`; suite **2496/7 on the merge commit**. Both errata DISCLOSED, not silently reinterpreted. Un-gated Code build (PLAN-0062 §6); offline (SD-6), MS-S1 untouched. Full narrative: the Session-117 CF block above | `359555b` (#682 PR4 merge) / `bd8e586` (#682 feat) / `a711927` (#676 PR3 merge) / `c17500a` (#676 feat) / `624b731` (#675 PR2 merge) / `b9c5ebd` (#675 feat) / `ea08e54` (#673 merge) / `f41da9c` (#673 feat) / `8641cb3` (#672 merge) / `d9e4bd2` (#672 feat) / `66beb17` (#671 merge) / `833676e` (#671 Ready) / `services/engine/procedures/{env_band_step.py,advisory_stub.py}` + `verticals/{energy,supply_chain,aquaculture}/procedures_factory.py` + `services/api/main.py` + `tests/services/engine/procedures/test_seed_migration_parity.py` + `tests/verticals/procurement/test_intake_shadow_parity.py` + `docs/plans/done/0062-per-vertical-seed-migration.md` |

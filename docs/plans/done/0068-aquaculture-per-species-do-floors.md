@@ -1,6 +1,16 @@
 # PLAN-0068: aquaculture per-species DO floors — per-entity `threshold_field` on the FK-parent Pond
 
-**Status:** Ready
+**Status:** Complete (2026-07-13, session 123) — shipped end-to-end in two PRs
+(SD-4 = (b)): **PR1 #715** (`Pond.do_floor` substrate + per-species seeds + the
+SD-3 flip seed, RED-verified vs the unedited YAML) → **PR2 #716** (`read_do`
+FK-parent join + `site_id`→`pond_site_id` rename + `judge`
+`threshold: 4.0`→`threshold_field: do_floor` + the Step-5 coupled-test audit + the
+AC-7/SD-5 same-reading-two-verdicts pin). All 9 ACs met; **zero engine change**
+(rides the ADR-016 FKP-1 amendment; `git diff main -- services/` empty); full suite
+**2549 passed / 7 skipped** WITH Postgres on the merge commit `b55ff43`; ruff +
+`ruff format --check` + `mypy --strict services/` clean; CI `gate` green on both PRs.
+**Rule-of-Three MET** for the FK-parent per-entity band shape (ADR-006). No
+MS-S1 / host-state — pure offline.
 **Owner:** Claude Code
 **Created:** 2026-07-13
 **Related ADRs:** ADR-016 **Amendment (2026-07-12): FK-parent-column
