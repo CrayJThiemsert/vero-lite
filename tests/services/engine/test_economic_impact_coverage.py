@@ -6,10 +6,11 @@ economic marker (ADR-0030 D4; the D4-4 lesson — an owned marker, named by THIS
 AC, in the same breath as the promise). It asserts that ≥3 shipped verticals emit
 the typed ``economic_impact`` facet.
 
-Lifecycle: lands **RED** here (``xfail(strict=True)``) in PLAN-0071 **PR1** — no
-per-vertical ฿ producers exist yet — and flips **GREEN** in **PR2 (Step 6)** when
-the four producers register via discovery (the guard is removed there). A strict
-xfail proves the assertion genuinely fails today, so the erosion class ADR-0030 D4
+Lifecycle: landed **RED** (``xfail(strict=True)``) in PLAN-0071 **PR1** — no
+per-vertical ฿ producers existed yet — and flips **GREEN** here in **PR2 (Step 6)**:
+the four producers now register via discovery (``_register_economic_producer``), so
+the guard is removed and the marker asserts live. The strict-xfail phase proved the
+assertion genuinely failed before the producers, so the erosion class ADR-0030 D4
 records cannot silently recur between this PLAN's acceptance and its build.
 
 Deterministic-offline — assumption producers are pure; procurement reads committed
@@ -18,15 +19,12 @@ CSVs; no MS-S1, no live LLM.
 
 from __future__ import annotations
 
-import pytest
-
 from services.engine.discovery import discover_and_register
 from services.engine.economic_impact import EconomicImpact, build_economic_steps
 
-# A minimal representative trigger event per shipped vertical. In PR1 no producer is
-# registered, so every ``build_economic_steps`` returns ``[]`` regardless of the event;
-# in PR2 the producers (assumption-based for energy/supply_chain/aquaculture; anchor- or
-# assumption-based for procurement) compute the facet from these.
+# A minimal representative trigger event per shipped vertical. The producers
+# (assumption-based for energy/supply_chain/aquaculture; committed-CSV for procurement,
+# gated on the emergency-failure trigger per OQ-C) compute the facet from these.
 _VERTICAL_EVENTS: dict[str, dict[str, object]] = {
     "energy": {
         "event_id": "cov-energy",
@@ -55,11 +53,6 @@ _VERTICAL_EVENTS: dict[str, dict[str, object]] = {
 }
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="AC-5 RED in PLAN-0071 PR1 — the per-vertical economic producers land in PR2 "
-    "(Step 5); this marker's guard is removed there and it flips GREEN at N=4.",
-)
 async def test_at_least_three_verticals_emit_the_economic_facet() -> None:
     discover_and_register()
     emitting = 0

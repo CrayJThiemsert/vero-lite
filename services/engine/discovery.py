@@ -62,10 +62,31 @@ def discover_and_register() -> list[str]:
 def _register_vertical(ns: str) -> None:
     """Import a vertical's ``data_adapter`` + ``handlers`` and invoke its conventional
     ``register_<ns>_adapter`` / ``register_<ns>_handlers`` entry functions against the
-    process-global registry."""
+    process-global registry. The optional ``economic_impact`` producer (ADR-0030 /
+    PLAN-0071) registers here too when the module is present."""
     adapter_mod = importlib.import_module(f"{_VERTICALS_PACKAGE}.{ns}.data_adapter")
     handlers_mod = importlib.import_module(f"{_VERTICALS_PACKAGE}.{ns}.handlers")
     register_adapter = getattr(adapter_mod, f"register_{ns}_adapter")
     register_handlers = getattr(handlers_mod, f"register_{ns}_handlers")
     register_adapter()
     register_handlers()
+    _register_economic_producer(ns)
+
+
+def _register_economic_producer(ns: str) -> None:
+    """Invoke a vertical's optional ``register_<ns>_economic_impact`` entry (ADR-0030 /
+    PLAN-0071) if the vertical ships an ``economic_impact`` module.
+
+    Guarded: an **absent** producer module is fine — the ฿ facet is opt-in per
+    vertical, so a vertical without one is simply ฿-blind. But a producer module that
+    exists yet fails on a **broken transitive import** must still surface (it is a real
+    bug, not an opt-out), so the ``ModuleNotFoundError`` guard checks ``exc.name`` — only
+    the producer module itself being missing is swallowed (drafter finding vii)."""
+    econ_qualname = f"{_VERTICALS_PACKAGE}.{ns}.economic_impact"
+    try:
+        econ_mod = importlib.import_module(econ_qualname)
+    except ModuleNotFoundError as exc:
+        if exc.name == econ_qualname:
+            return  # no producer module for this vertical — ฿-blind by design
+        raise  # a broken transitive import inside an existing producer module — surface it
+    getattr(econ_mod, f"register_{ns}_economic_impact")()
