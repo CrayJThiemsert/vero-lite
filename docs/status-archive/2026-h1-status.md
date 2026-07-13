@@ -3796,3 +3796,56 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-11 (PLAN-0063 audit-chain verification surface COMPLETE, #687-#690, session 118) [rotated 2026-07-13, session-126 reconcile — 10-row RD window]
 
 | 2026-07-11 | **PLAN-0063 audit-chain verification surface COMPLETE (all 8 ACs) → `done/` — trust dossier object ③'s first product surface (session 118; #687/#688/#689/#690)** — #687 Ready (`plan-drafter`-authored, SD-1..6 Cray-ratified as-rec); #688 PR1 `GET /audit/verify` → typed `ChainVerificationReport`, `verify_chain()`'s (PLAN-0047 Step 5) FIRST production caller, SD-2(d) split visibility (verdict open / verbatim break detail credentialed via the new `get_optional_principal`; OQ-1 = `/audit/verify`); #689 PR2 on-demand monitor "Verify chain" panel (off the poll timers); #690 close-out with TWO DISCLOSED DEFERRALS (local merge-commit full-suite + Step-5 render check — dev Postgres down, §8 Cray go pending, erratum-if-fail). `services/db/audit_log.py` + `alembic/` byte-unchanged (AC-8 pins). Suite **2506/8** via the required CI `gate`. Full narrative: the Session-118 CF block above | `7e87d76` (#690 merge) / `576a201` (#690 close) / `360007a` (#689 merge) / `ceee552` (#689 feat) / `9d02686` (#688 merge) / `b41e3f5` (#688 feat) / `ec2250e` (#687 merge) / `e2c65f0` (#687 Ready) / `services/api/routers/audit.py` + `services/api/models/audit.py` + `services/api/auth.py` (`get_optional_principal`) + `tests/api/test_audit_verify.py` + `services/api/static/assets/view-monitor.js` + `docs/plans/done/0063-audit-chain-verification-surface.md` |
+
+### Current Focus block removed — session 123 (PLAN-0068 aquaculture per-species DO floors, #715/#716) [rotated 2026-07-14, session-127 reconcile — 4-session CF window]
+
+> **Session 123, 2026-07-13 (head_commit `2e2007c` → `b55ff43`) — PLAN-0068
+> (aquaculture per-species DO floors) shipped END-TO-END and CLOSED → `done/`
+> in ONE session-123 day; aquaculture's `morning_pond_health_round` judge now
+> bands each pond's latest reading vs its OWN per-species `do_floor` (joined
+> onto the reading by the migrated `read_do` FK-parent join) instead of one
+> blanket 4.0 mg/L floor — the 3rd OCT vertical on the per-entity FK-parent
+> band substrate (procurement same-row s120, supply_chain FK-parent s121), so
+> Rule-of-Three MET for the FK-parent shape (ADR-006).** Two PRs (SD-4 = (b),
+> a Cray divergence isolating the DB-migration / first-join-consumer rollback).
+> **#715 PR1 (substrate + RED):** `Pond.do_floor` + per-species seeds (whiteleg
+> 4.0/4.0, tiger_prawn 4.5, tilapia 3.0) + the SD-3 flip seed (event-reading-12,
+> pond-11 @ 4.2 mg/L, 01:55) + a RED-verify against the unedited YAML.
+> **#716 PR2 (migration + tests):** the `read_do` FK-parent join
+> (`reads:[OperationalEvent, Pond]` + `join:{with:Pond,
+> link:event_emitted_by_pond}`) + the `site_id`→`pond_site_id` declared-collision
+> rename + the `judge` `threshold:4.0` → `threshold_field:do_floor` migration
+> (keeping the authored `direction:below` + `watch_margin:1.0` — the FIRST
+> shipped `threshold_field` + `watch_margin` 3-band consumer) + a Step-5
+> coupled-test audit across 8 test files. **Zero engine change** — rides the
+> Accepted ADR-016 FK-parent `threshold_field` amendment (FKP-1); `git diff main
+> -- services/` is empty. **The demo-visible flip (SD-3 / AC-7):** pond-11
+> (tiger_prawn) warms to 4.2 mg/L — a `watch` under a blanket 4.0 floor but a
+> `breach` under its own 4.5 floor; the aerate breach set grows {pond-07} →
+> {pond-07, pond-11}. AC-7 / SD-5 also pins that the SAME 3.4 mg/L reading is a
+> breach in a whiteleg pond (floor 4.0) but only a watch in a tilapia pond
+> (floor 3.0). **draft≠review≠verify:** the PR2 build RESUMED an interrupted
+> prior-session WIP (`acfcd57`, "migration done, 7 coupled tests pending"); the
+> `next-work-analyst` this session CAUGHT that STATUS said "BUILD NOT started"
+> while the code showed PR1 merged + PR2 WIP — a `superseded by new info`
+> staleness (the build landed after the s122 reconcile). The 7 pending
+> coupled-test breaks were ALL the ones PLAN-0068 Step 5 pre-disclosed (fixture
+> adapters not serving Pond → the migrated inner join empties; fake `read_do`
+> rows lacking `do_floor` → the per-entity judge fails closed FKP-3;
+> `threshold==4.0` assertions → `None` + `threshold_field`) — no engine bug.
+> **Evidence bar:** full suite **2549 passed / 7 skipped** WITH Postgres
+> (verified on the merge commit `b55ff43`, since CI is PR-only) + CI `gate`
+> green on both PRs; ruff + `ruff format --check` + `mypy --strict services/`
+> clean; no MS-S1 / host-state — pure offline. **Disclosed [corrected s124 —
+> `was an error`]:** the read-only Procedures **viewer** (View F,
+> `view-procedures.js`) — NOT the payload — does not surface `threshold_field`
+> (a pre-existing FRONTEND display gap from s121's supply_chain migration; the
+> `/procedures` payload always carried it, the Step model serializes it) — out
+> of PLAN-0068's zero-engine scope; **RESOLVED s124 (#718).** Commits: `acfcd57` (PR2 WIP
+> migration) → `befec8e` (PR2 coupled-test fixes) → merge `b55ff43` (#716 PR2);
+> `ec4fe6f` (#715 PR1 substrate) → merge `d4cb9b3`. PLAN-0068 `git mv`'d to
+> `done/` this same batch; `docs/plans/` is empty again.
+
+### Recent Decisions row removed — 2026-07-11 (s118 CONTINUATION — PLAN-0063 deferrals discharged + PLAN-0064 Ready, #692/#693) [rotated 2026-07-14, session-127 reconcile — 10-row RD window]
+
+| 2026-07-11 | **s118 CONTINUATION — PLAN-0063 deferrals DISCHARGED (`confirmed — prior intact`, no erratum) / #692 PLAN-0064 Ready / #693 hygiene / orphan DB dropped (session 118 cont.)** — Step-5 render check PASSED its pre-committed strings over the REAL dev-DB audit chain (36 rows, breaks []; DOM-asserted + screenshot) + local full suite WITH Postgres **2507/7** (supersedes the 2391/123 degraded run); `vero_lite_test_69fa7362` DROPPED (Cray §8; all 16 checkout-path hash forms re-verified, only the live `bb36873b` remains); **PLAN-0064** (per-step QUERY router for procurement) `plan-drafter`-authored, Code R2 accept, **SD-0..SD-5 Cray-ratified as-rec**, reopens PLAN-0062 AC-7 per ERRATUM 2; PLAN-0004 + PLAN-0012 → `done/` (PLAN-0010 deliberately NOT closed — close-vs-park = Cray decision pending after the s118 ELI-CRAY brief). Full narrative: the Session-118 CF block above | `2694253` (#693 merge) / `e8cba64` (#693 docs) / `f494013` (#692 merge) / `b7e6e40` (#692 Ready) / `docs/plans/0064-per-step-query-router-procurement.md` + `docs/plans/done/{0004,0012}-*.md` |

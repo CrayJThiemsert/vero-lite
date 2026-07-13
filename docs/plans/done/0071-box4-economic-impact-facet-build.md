@@ -1,10 +1,18 @@
 # PLAN-0071: Box-4 economic-impact facet — build (ADR-0030 fast-follow)
 
-**Status:** Ready — SD-A…SD-G ratified by Cray (session 126, 2026-07-13, all
-seven as-recommended via AskUserQuestion) and Code R2 re-verified the
-load-bearing `file:line` citations on-disk (emission sites, the IN-4/never-raise
-correctness pattern, and every test-coupling pin). Code commits via PR per
-ADR-009 D2, then builds per the Steps.
+**Status:** Complete — built + merged across **PR1 (#731, `feat` — engine core +
+RED marker)** and **PR2 (#732, `feat` — four per-vertical producers + GREEN flips)**,
+session 127 (2026-07-14). All 10 ACs met: AC-5 ≥3-vertical build-completion marker
+**GREEN at N=4** (the RED `xfail(strict=True)` phase in PR1 proved it genuinely failed
+pre-producers, discharging the ADR-016 erosion class with an OWNED marker); AC-9 GREEN
+(the real energy producer makes a composed action carry exactly one `economic_impact`
+step, net ฿405,000); the ADR-007 D2 envelope (`services/engine/actions.py`) byte-untouched.
+Evidence: full suite **2591 passed / 7 skipped / 0 xfailed** WITH Postgres, verified on
+both the PR head and the merge commit `b11ea40`; ruff + `ruff format --check` +
+`mypy --strict services/` clean; deterministic-offline (no MS-S1 / host-state). SD-A…SD-G
+ratified by Cray (session 126, all seven as-recommended via AskUserQuestion). Coupled-test
+audit (every pin PINNED-UNMODIFIED) + the OQ-C procurement anchor-resolution fallback
+disclosed in the #732 body.
 **Owner:** Claude Code
 **Created:** 2026-07-13
 **Related ADRs:** **ADR-0030 (Accepted 2026-07-13, s126) — THE ratified contract
