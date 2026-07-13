@@ -47,7 +47,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.config import settings
 from services.db.audit_log import append_audit
-from services.engine.actions import ControlRef, EntityRef, GovernedDecision, RecommendedAction
+from services.engine.actions import (
+    ControlRef,
+    EntityRef,
+    GovernedDecision,
+    ReasoningStep,
+    RecommendedAction,
+)
+from services.engine.economic_impact import build_economic_steps
 from services.engine.llm.client import OllamaClient
 from services.engine.llm.structured import ChatClient, JudgmentResult, generate_judgment
 from services.engine.llm.trace import build_llm_audit_metadata, build_llm_reasoning_trace
@@ -157,6 +164,7 @@ def _compose_action(
     result: JudgmentResult,
     *,
     handler: str,
+    economic_steps: list[ReasoningStep],
 ) -> RecommendedAction:
     """Compose the ADR-007 D2 envelope from an LLM judgment, mirroring
     ``recommender._compose_llm_record`` — EXCEPT two fields are sourced
@@ -167,6 +175,8 @@ def _compose_action(
     handler already fires per-deterministic-entity, so this closes the envelope's
     over-naming metadata/UX leak). The model owns the remaining judgment fields; the
     harness owns id / vertical / created_at / audit + the hybrid trace.
+    ``economic_steps`` is the advisory, trace-carried Box-4 economic-impact facet
+    (ADR-0030 / PLAN-0071), appended LAST — it never changes the action.
     """
     judgment = result.judgment
     event_id = str(event.get("event_id", "unknown"))
@@ -175,7 +185,7 @@ def _compose_action(
         title=judgment.title,
         description=judgment.description,
         vertical=vertical,
-        reasoning_trace=build_llm_reasoning_trace(event, vertical, result),
+        reasoning_trace=build_llm_reasoning_trace(event, vertical, result) + economic_steps,
         confidence=judgment.confidence,
         affected_entities=[_loop_entity_ref(event)],
         suggested_handler=handler,
@@ -271,7 +281,13 @@ class ActionStepExecutor:
             judgment = await generate_judgment(
                 client, event, ctx.vertical, retry_budget=self.retry_budget, goal=ctx.goal
             )
-            action = _compose_action(event, ctx.vertical, judgment, handler=step.handler)
+            # ADR-0030 / PLAN-0071: the advisory economic-impact facet on the governed
+            # action path — the FIRST appended advisory step on this composition; the
+            # helper never raises (ADR-0030 D5), so it cannot break the run.
+            economic_steps = await build_economic_steps(event, ctx.vertical)
+            action = _compose_action(
+                event, ctx.vertical, judgment, handler=step.handler, economic_steps=economic_steps
+            )
             record = ActionRecord(action=action)
             if auto:
                 approve(record)

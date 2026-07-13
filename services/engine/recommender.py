@@ -42,6 +42,7 @@ from services.engine.action_verification import (
     verify_action_expression,
 )
 from services.engine.actions import AuditMetadata, EntityRef, ReasoningStep, RecommendedAction
+from services.engine.economic_impact import build_economic_steps
 from services.engine.entity_resolution import event_subject_ref, resolve_affected_entities
 from services.engine.llm.client import OllamaClient, OllamaUnreachableError
 from services.engine.llm.structured import ChatClient, JudgmentResult, generate_judgment
@@ -152,6 +153,7 @@ def _compose_llm_record(
     affected_entities: list[EntityRef],
     resolution_steps: list[ReasoningStep],
     verification_steps: list[ReasoningStep],
+    economic_steps: list[ReasoningStep],
 ) -> ActionRecord:
     """Compose the ADR-007 D2 envelope from the LLM judgment (SC-1).
 
@@ -164,7 +166,9 @@ def _compose_llm_record(
     non-match -- NOT the model's verbatim list; ``resolution_steps`` records each
     outcome, appended to the hybrid trace. ``verification_steps`` records the
     ADR-0022 member (b) action verify+reshape outcome (PLAN-0035 Phase 1),
-    likewise appended. The ADR-007 D2 envelope class is unchanged.
+    likewise appended. ``economic_steps`` is the advisory, trace-carried Box-4
+    economic-impact facet (ADR-0030 / PLAN-0071), appended LAST — it never
+    changes the action. The ADR-007 D2 envelope class is unchanged.
     """
     judgment = result.judgment
     event_id = str(event.get("event_id", "unknown"))
@@ -175,7 +179,8 @@ def _compose_llm_record(
         vertical=vertical,
         reasoning_trace=build_llm_reasoning_trace(event, vertical, result)
         + resolution_steps
-        + verification_steps,
+        + verification_steps
+        + economic_steps,
         confidence=judgment.confidence,
         affected_entities=affected_entities,
         suggested_handler=judgment.suggested_handler,
@@ -230,8 +235,19 @@ async def recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
         verification_steps = await augment_with_advisory_judge(
             verification_steps, result.judgment, judge_client=judge_client
         )
+        # ADR-0030 / PLAN-0071: the advisory, trace-carried Box-4 economic-impact facet.
+        # build_economic_steps NEVER raises (ADR-0030 D5) — like the advisory judge above it
+        # stays OUT of the IN-4 contract: a raising producer must not demote this good LLM
+        # judgment to the _rule_recommend fail-safe. Absent producer / ungroundable ฿ -> [].
+        economic_steps = await build_economic_steps(event, vertical)
         return _compose_llm_record(
-            event, vertical, result, affected_entities, resolution_steps, verification_steps
+            event,
+            vertical,
+            result,
+            affected_entities,
+            resolution_steps,
+            verification_steps,
+            economic_steps,
         )
     except Exception as exc:  # fail-safe must catch everything — §6.6 / ADR-010 IN-4
         if isinstance(exc, OllamaUnreachableError):

@@ -6,6 +6,7 @@ import pytest
 
 from services.api.config import settings
 from services.engine import demo_events
+from services.engine.economic_impact import clear_economic_producers
 from services.engine.registry import registry
 from tests import db_support
 
@@ -21,11 +22,16 @@ def _reset_registry() -> Iterator[None]:
     """Reset the process-wide vertical registry around every test (PLAN-0005 R5).
 
     autouse so no test that registers an adapter or handler can leak
-    state into another (PLAN-0005 C-4).
+    state into another (PLAN-0005 C-4). Also clears the module-global
+    economic-impact producer registry (ADR-0030 / PLAN-0071) so a
+    discovery-registered ฿ producer cannot leak an ``economic_impact`` trace
+    step into another test's action.
     """
     registry.reset()
+    clear_economic_producers()
     yield
     registry.reset()
+    clear_economic_producers()
 
 
 @pytest.fixture(autouse=True)
