@@ -27,7 +27,7 @@
   // the H partition (ADR-0024 D3): the human-author governance fields edit-mode makes
   // editable. Mirrors services/engine/procedures/draft.py STEP_GOVERNANCE_FIELDS — the
   // generator NEVER emits these; the gate is where a human authors them (PLAN-0040 C1).
-  const H_FIELDS = new Set(['threshold', 'direction', 'watch_margin', 'handler', 'autonomy', 'tiers', 'env_var']);
+  const H_FIELDS = new Set(['threshold', 'threshold_field', 'direction', 'watch_margin', 'handler', 'autonomy', 'tiers', 'env_var']);
 
   let data = null; // the GET /procedures payload: { verticals: [...] }
   const state = { vertical: null, procedureId: null, mode: 'read', draft: null };
@@ -58,6 +58,9 @@
       if (dc.env_var) decision.push(field('env_var', dc.env_var, AUTH));
     }
     if (step.threshold != null) decision.push(field('threshold', step.threshold, AUTH));
+    // per-entity band (ADR-016 threshold_field): the authoritative band is a column read off
+    // each entity (e.g. do_floor / temp_ceiling) instead of a scalar — at-most-one with threshold.
+    if (step.threshold_field) decision.push(field('threshold_field', step.threshold_field, AUTH));
     if (step.direction) decision.push(field('direction', step.direction, AUTH));
     if (step.watch_margin != null) decision.push(field('watch_margin', step.watch_margin, AUTH));
     if (dc && dc.note) decision.push(field('note', dc.note, PROSE));
@@ -144,6 +147,7 @@
   // recommendation): the dropdown answers "what is legal here", the human still authors.
   const FIELD_GUIDE = {
     threshold: { type: 'float', source: 'read it off the asset’s operating spec — the safe-operating band' },
+    threshold_field: { type: 'text', source: 'optional — a per-entity band column (e.g. do_floor) read off each entity, instead of a scalar threshold' },
     direction: { type: 'enum', options: 'direction' },
     watch_margin: { type: 'float', source: 'optional — blank skips the early-warning watch' },
     handler: { type: 'enum', options: 'handler', source: 'a registered handler in the allowlist' },
