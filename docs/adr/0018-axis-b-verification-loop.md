@@ -1,7 +1,7 @@
 # ADR-0018: Axis-B Verification Loop — `/goal` Stop-hook gate + `goal-evaluator` subagent
 
 **Status:** Accepted
-**Date:** 2026-06-10 (Accepted — ratified by Cray; SD-1 resolved = narrowed Write)
+**Date:** 2026-06-10 (Accepted — ratified by Cray; SD-1 resolved = narrowed Write); **V2 Amendment** 2026-07-13 (Accepted — SD-0…SD-4 ratified as-recommended by Cray; discharges the D5 warn-only deferral + OQ-8 blocking-mode promotion — see §V2 Amendment below)
 **Deciders:** Jirachai Thiemsert (founder)
 **Related:** ADR-013 (autonomy-axis relocation — harness primitives are Code-built per D1; **this ADR applies that boundary**: the gate + evaluator are Code-authored), ADR-009 (D1 — this ADR is Cowork-drafted under the interim process; D2 — only Code commits; D3 — K-1/K-2 workflow used for the companion handoff), ADR-0017 (track-1 precedent off the same harness review; D7 harness-as-plugin forward link → OQ-8 here), ADR-0016 (D5 product-side `Procedure.goal` — a **distinct concept**; see D2 NB below), ADR-012 (D4.3 author≠reviewer disclosure), PLAN-0008 (in `done/` — the `Stop` continuation loop + Sonnet classifier this gate composes with), PLAN-0009 (subagent topology — the Step 5c dispatch-block spawn pattern + Step 1b subagent contract reused here), PLAN-0010 (scheduled-task autonomy loop — the unattended-run scope in D5), CLAUDE.md §6 (tier table), §7 (PR flow — explicitly NOT gated in v1, D5). Authoring dispatch: `.claude/handoffs/session-51/2026-06-10-0147-code-axisb-verification-loop-adr-dispatch.md`.
 
@@ -315,6 +315,13 @@ The deterministic layer (D1) is unaffected by API health and still runs.
   misjudgment becomes a session wedge; the chain-cap bounds but does not
   un-waste the burn. Reconsidered at promotion (OQ-8).
 
+> **Deferral DISCHARGED (2026-07-13).** The promotion decision explicitly
+> parked here is taken by the **V2 Amendment (2026-07-13)** below:
+> warn→enforce graduates **per-goal** via an `enforce` flag (V2-D1), with
+> this D5 warn-only posture remaining the **default tier** for every goal
+> not marked enforcing. D5's reasoning is extended, not reversed (ADR-0016
+> in-place-amendment discipline).
+
 ### D6: Injection resistance — structural reasoning-blindness via disk-sourced evidence (resolves OQ-6)
 
 The evaluator inherits the auto-mode classifier's hardening posture, achieved
@@ -557,6 +564,10 @@ No architectural state migrates; no Axis-A surface is touched either way
   - **Blocking-mode promotion:** criteria for promoting warn → block (e.g.
     N sessions of operation, false-positive rate < X, per-scope: autonomous
     first or interactive first) — decide with v1 data.
+    **DISCHARGED 2026-07-13** — resolved by the **V2 Amendment** below:
+    per-goal `enforce` flag, default warn (V2-D1); bounded
+    block-then-`blocked-pending-human` ladder (V2-D3); pause on missing
+    evidence, never a silent pass (V2-D4).
   - **PR-merge gating:** whether a FAIL/unevaluated goal should annotate or
     gate the PR flow (CLAUDE.md §7) — out of v1 scope.
   - **Auto-declared goals:** loop-dispatcher deriving `goal.json` from the
@@ -641,6 +652,300 @@ No architectural state migrates; no Axis-A surface is touched either way
 - **Why rejected:** D4's asymmetry argument; fail-open's cost (a loudly
   flagged unevaluated release, with all pre-existing backstops intact) is
   strictly lower than fail-closed's (unattended burn + a wedged session).
+
+## V2 Amendment (2026-07-13): warn→enforce graduation + the drift-vs-redirect distinction
+
+> **Accepted 2026-07-13; SD-0…SD-4 ratified as-recommended by Cray (typed,
+> via AskUserQuestion); discharges the D5 warn-only deferral + OQ-8
+> "Blocking-mode promotion".** In-place amendment per the ADR-0016
+> dated-amendment precedent — **extends, does not reverse or renumber**:
+> D1–D7 stand unchanged; this amendment changes the *consequence semantics*
+> of the existing gate plus the `goal.json` schema, and nothing else.
+
+> **Drafting provenance + author≠reviewer disclosure (ADR-012 D4.3).**
+> Amendment authored by the in-harness **`plan-drafter`** subagent (ADR-013
+> D1 phased authority) from a Code-authored design brief (2026-07-13
+> session: research through 13 Jul 2026 + repo inventory; the
+> drift-vs-redirect crux originates with Cray). Drafted first as the
+> standalone vehicle `docs/adr/0030-axis-b-v2-enforcing.md` (the drafter
+> could not edit this Accepted ADR pre-ratification), then merged here
+> after SD-0 = in-place amendment — the 0030 draft is **not committed** and
+> the number returns to the pool. **Code performed the independent R2
+> review** (all load-bearing citations re-verified on disk — D5/OQ-8
+> deferral text, `work_fingerprint()` at `_goal_gate.py:152`, the D4
+> fail-open path, and both build hazards in spec note 1 confirmed real; no
+> defects). **Cray ratified SD-0…SD-4 as-recommended** (typed, via
+> AskUserQuestion, 2026-07-13); Code commits per ADR-009 D2. Separation:
+> **INTACT** — author (plan-drafter), reviewer (Code R2), ratifier (Cray)
+> are three distinct actors.
+
+### Context for the amendment
+
+**What v1 deferred.** D5 made v1 warn-only pending false-positive data;
+OQ-8 parked "Blocking-mode promotion" to be decided with v1 data. This
+amendment is that follow-on decision.
+
+**Why now — drift is a measured failure mode.** The design brief's research
+sweep (through 2026-07-13) finds goal drift has moved from anecdote to
+measurement: **GD_actions** (drift by commission) and **GD_inaction** (drift
+by omission) are named metrics, and StepShield-style scoring measures *how
+fast* a violation is caught (**Early Intervention Rate**; the **Intervention
+Gap** between violation turn and catch turn). The load-bearing finding: *a
+rule broken that was followed 10 turns ago is a context failure, not a model
+change* — drift is a decay process the harness must re-anchor against,
+which is exactly what the durable goal artifact + per-Stop gate are shaped
+for. v1 built the sensor; v2 connects it to a brake.
+
+**The founder's crux — drift ≠ redirect.** A naive warn→block flip would
+misfire on the most common legitimate event in this repo's sessions: Cray
+changes the goal mid-session **on purpose**. The requirement this amendment
+formalizes: **unintentional drift** (divergence with *no* fresh sign-off)
+must be flagged — blocked, once enforcing; **deliberate redirect** (the
+founder's prerogative — divergence *with* a fresh ratification event) must
+pass freely and update the anchor. The distinguishing signal reuses a
+primitive already trusted here: a **typed Cray sign-off** (an
+`AskUserQuestion` selection or a typed message — the repo's existing
+attribution-honesty bar: a Stop-hook "proceed" is the harness, never Cray).
+
+**Constraints carried forward unchanged (binding):** (1) harness primitives
+are **Code-built** (ADR-013 D1) — this amendment is governance text only
+(drafter-authored, Code-committed per ADR-009 D2); (2) the gate/evaluator
+stay **reasoning-blind + injection-resistant** (D6) — v2 adds no narration
+channel; (3) the evaluator **refutes, does not bless** (D3) — warn→enforce
+changes the *consequence* of its FAIL, not its mandate; (4) **no LLM in the
+enforcement decision path** — the evaluator writes a verdict artifact to
+disk; the deterministic gate applies a fixed rule over it (V2-D3).
+
+### Ratified surfaced decisions (plan of record — all as-recommended, Cray, typed via AskUserQuestion, 2026-07-13)
+
+- **SD-0 — home:** **in-place amendment to ADR-0018** (this section);
+  standalone ADR-0030 not taken, the 0030 draft file not committed.
+- **SD-1 — enforcement scope:** **per-goal `enforce` flag on `goal.json`,
+  default warn**; enforce-all and unattended-only-detection alternatives
+  not taken.
+- **SD-2 — drift/redirect signal:** **ratification = typed Cray sign-off
+  logged in `amendments[]`; divergence detection = evaluator-detected,
+  deterministically-consequenced** — the LLM writes the divergence verdict
+  to the trail; the gate applies the fixed drift/redirect rule over the
+  artifact. The deterministic-scope-check and both-layers alternatives not
+  taken (revisitable with v2 data).
+- **SD-3 — scope:** **gate-graduation only**; the sibling hooks
+  (anti-duplicate pre-create check, `SubagentStop` verification gate,
+  per-turn re-injection) stay out of scope, each its own PLAN/ADR (V2-D5).
+- **SD-4 — evidence-missing under enforcement:** **pause
+  (`blocked-pending-human`), never a silent pass**; loud-warn-and-release
+  not taken for enforcing goals.
+
+### V2-D1: Graduated enforcement via a per-goal `enforce` flag — not a hard flip *(SD-1 ratified)*
+
+`goal.json` gains a first-class boolean **`enforce`** (schema_version → 2):
+
+- **`enforce: false` (default):** exactly v1 behavior — warn + annotate +
+  Telegram, the Stop fires. Every existing goal, and every goal where Cray
+  has not said otherwise, stays warn-only.
+- **`enforce: true`:** set at `/goal` declaration time (or by a later
+  ratified amendment) for goals Cray marks critical — an evidence-backed
+  FAIL or an unratified divergence now has teeth (V2-D3 ladder).
+
+Rationale: v1 was *deliberately* warn-only pending false-positive data (D5);
+a repo-wide flip would discard that caution in one move. The tag makes
+graduation per-goal and reversible — enforcement lands where the cost of
+silent drift is highest (unattended PLAN-0010 runs, host-state work) while
+routine goals keep accumulating calibration data at warn.
+
+### V2-D2: The drift-vs-redirect mechanism — a ratification log in `goal.json` *(SD-2 ratified)*
+
+`goal.json` gains an append-only **`amendments[]`** log; the goal statement
+plus its latest ratified amendment = the **anchor**.
+
+```jsonc
+"amendments": [                    // append-only ratification log
+  { "ts": "2026-07-13T14:02:00+07:00",
+    "event": "typed",              // "typed" | "ask_user_question:<label>"
+    "summary": "pivot: ship the fixture first, defer the live smoke",
+    "prev_goal": "<verbatim prior goal statement>",
+    "new_goal": "<verbatim new goal statement>",
+    "fingerprint": "<work_fingerprint() at ratification>" }
+]
+```
+
+- **A ratification event is a typed Cray sign-off only** — an
+  `AskUserQuestion` selection or a typed instruction. A Stop-hook harness
+  "proceed", a Code inference, or a subagent suggestion **never** qualifies
+  (the existing attribution-honesty bar, now load-bearing in the
+  mechanism). The main agent records the amendment at the moment of
+  sign-off; the recorded `fingerprint` (the gate's existing
+  `work_fingerprint()`) marks *when* in the work-state the redirect
+  happened.
+- **At each Stop**, the gate's decision over a detected divergence is
+  deterministic given the artifact: divergence **with** an amendment entry
+  fresher than the last evaluation fingerprint → **deliberate redirect** —
+  pass freely, the anchor is already updated. Divergence **without** one →
+  **unintentional drift** — warn (`enforce: false`) or the V2-D3 ladder
+  (`enforce: true`).
+- **Divergence detection (SD-2 ratified):** **evaluator-detected,
+  deterministically-consequenced.** The `judge`-layer evaluator assesses
+  "does this turn's disk evidence serve the anchor?" and writes the verdict
+  to the trail (its only power — it cannot block, release, or ratify); the
+  gate's drift/redirect/enforce rule is a pure function of the on-disk
+  verdict + `amendments[]` + `enforce`. A deterministic scope-list detector
+  (cheaper, coarser) was considered and not taken — revisitable with v2
+  operating data.
+
+### V2-D3: What an enforcing block is — bounded block, then pause-for-human; the decision rule is deterministic
+
+For an `enforce: true` goal, the consequence ladder on an evidence-backed
+FAIL (deterministic `check` failure, or a recorded `judge` FAIL /
+drift-without-ratification verdict per V2-D2):
+
+1. **First Stop with the failing verdict:** the gate emits a **block** (the
+   existing dispatch-block shape, counting toward the same chain-cap-8)
+   whose reason states the failing criteria verbatim and instructs the main
+   agent to either **remediate** or **obtain a typed Cray ratification**
+   (which converts the divergence to a redirect). One bounded continuation,
+   not a loop.
+2. **Re-Stop still failing (or cap pressure):** the gate stops blocking —
+   the Stop **fires**, but the goal transitions to a new terminal-pending
+   status **`blocked-pending-human`** with a loud Telegram alert. The goal
+   **cannot be marked `passed`** until a human acts (re-ratify, remediate
+   in a next session, or clear). Enforcement teeth = the *goal record*
+   refuses to close, not an unbounded refusal to stop.
+
+- **The D4 asymmetry argument still governs:** a gate must never loop an
+  agent against a state it cannot satisfy. The ladder blocks **once**
+  (bounded, chain-cap-counted), then converts to a pause-shaped state that
+  stops the session safely — teeth without a wedge, in attended *and*
+  unattended (PLAN-0010) runs.
+- **No LLM in the decision path:** step transitions are pure functions of
+  the on-disk verdict trail + `amendments[]` + `enforce` flag.
+
+### V2-D4: Fail-semantics under enforcement — INSUFFICIENT-EVIDENCE never passes; missing evidence pauses *(SD-4 ratified)*
+
+When the evaluator cannot run (MS-S1/API dead, spawn failure, malformed
+verdict) or returns `INSUFFICIENT-EVIDENCE`:
+
+- **`enforce: false` goals:** unchanged v1 fail-open — `released-unevaluated`
+  + loud Telegram, the Stop fires (D4 stands for the warn tier).
+- **`enforce: true` goals:** **never a silent pass.** The Stop fires (no
+  wedge — same D4 geometry), but the goal transitions to
+  `blocked-pending-human` with an `UNAVAILABLE`/`INSUFFICIENT-EVIDENCE`
+  trail entry + loud Telegram. An enforcing gate that cannot verify
+  **pauses for a human**; it does not auto-release. CLAUDE.md §6 applied
+  mechanically: *"no fresh evidence = INSUFFICIENT-EVIDENCE, not a pass."*
+- Deterministic `check` criteria are API-independent and always run; only
+  the judge/divergence residue can be evidence-starved.
+
+### V2-D5: Scope — the goal-gate graduation ONLY *(SD-3 ratified)*
+
+This amendment changes the **consequence semantics of the existing gate**
+and the **goal.json schema** — nothing else. The design brief's sibling
+recommendations are explicitly **out of scope**, named so their absence is
+a decision, not an omission (the ADR-0016 amendment scope-boundary
+discipline): an **anti-duplicate pre-create `PreToolUse` check**
+(drift-by-commission at file-creation time); a **`SubagentStop`
+verification gate** (verifying subagent deliverables at their own
+boundary); **per-turn re-injection** of the active PLAN/goal into context
+(the "context failure, not a model change" countermeasure). Each is its own
+PLAN/ADR. The Axis-A non-interference statement (spec §4 above) is
+re-affirmed verbatim: no `pretooluse_*_deny` hook, no classifier behavior,
+no commit-boundary mechanics change.
+
+### V2 schema + build notes (the PLAN-ready surface)
+
+Code implements (ADR-013 D1); the follow-on build PLAN specifies exact code
+shape. Contracts fixed here:
+
+1. **`goal.json` schema_version 2:** adds `enforce: bool` (default
+   `false`), `amendments[]` (shape per V2-D2), and status value
+   `blocked-pending-human`. **Build hazards (verified at HEAD, confirmed at
+   R2):** (a) `_goal_state.py` *ignores unknown fields on parse and drops
+   them on rewrite* (`Goal.from_json`/`to_json` handle only known fields) —
+   `enforce`/`amendments[]` MUST be first-class `Goal` dataclass fields or
+   the gate's own rewrite would silently strip the ratification log;
+   (b) v1 `VALID_STATUSES` treats an unknown status as corrupt →
+   `load_goal` returns `None` → a v1 reader silently stands down on a
+   `blocked-pending-human` file — the PLAN needs a version-skew row in its
+   test matrix.
+2. **Gate rule table** (pure function of the artifact): the
+   drift/redirect/enforce ladder in V2-D2/V2-D3, including the
+   fingerprint-freshness comparison (`amendments[-1].fingerprint` vs the
+   last evaluation fingerprint).
+3. **Instrumentation for the evidence loop:** trail entries gain the fields
+   needed to measure catch-latency (fingerprint at divergence detection vs
+   at introduction where recoverable) — the GD_actions / GD_inaction /
+   intervention-gap counters that motivated this graduation become
+   measurable in our own trail (feeds V2-OQ-1).
+4. **`/goal` command update:** accepts the `enforce` flag; documents the
+   amendment-recording step (typed sign-off → append to `amendments[]`).
+
+### Consequences (amendment-scope)
+
+**Positive:** the v1 sensor gains a brake where Cray chooses — unattended
+runs on critical goals can no longer silently close against a FAIL or an
+unratified pivot; founder prerogative is formalized, not obstructed (a
+deliberate redirect passes with one typed sign-off and leaves a durable
+amendment trail); drift becomes classifiable in the trail (commission vs
+omission vs redirect); no new trusted surface (reuses the gate, evaluator,
+fingerprint, chain-cap, typed-sign-off primitive, Telegram).
+
+**Negative:** a miscalibrated evaluator now has consequences on
+`enforce: true` goals — a false drift verdict costs one bounded block + a
+human-attention pause (mitigated by the opt-in default, the one-block
+ladder, and ratify-to-override being one typed message); ratification
+recording is a manual discipline — a sign-off not appended to
+`amendments[]` reads as drift (mitigated: the block reason names the fix,
+and the failure mode is a false *alarm*, never a false *pass*); schema-skew
+risk is bounded by build-hazard note 1 + the PLAN test matrix.
+
+**Neutral:** warn-tier behavior is byte-for-byte v1; goal-less sessions
+remain zero-delta; the evaluator's prompt, tools, Write-narrowing, and
+refute mandate are untouched; the ADR-0016 `Procedure.goal` disambiguation
+(D2 NB) carries over unchanged.
+
+**Reversibility:** per-goal reversible at zero build cost (`enforce: false`
+or omit = v1). Full revert = remove the v2 fields + ladder from the
+gate/schema modules; `blocked-pending-human` records degrade to
+corrupt-file stand-down under a v1 reader (noisy but fail-safe — the gate
+stands down, it never blocks).
+
+### Open Questions (amendment)
+
+- **V2-OQ-1:** promotion-evidence review — after N enforcing-goal sessions,
+  review false-positive/false-negative counts from the instrumented trail
+  (build note 3) before any default-flip discussion.
+- **V2-OQ-2:** whether `/goal` for PLAN-0010 unattended runs should
+  auto-set `enforce: true` (composes with OQ-8 "auto-declared goals",
+  which remains open).
+- **V2-OQ-3:** the sibling hooks (V2-D5 list) — sequencing, and whether any
+  warrant ADR-level treatment vs PLAN-only.
+- **V2-VX (verify-at-execution, Code confirms in the build PLAN):** the
+  exact harness surface for the one-block remediation message;
+  `amendments[]` concurrency with evaluator trail-writes (same
+  atomic-replace pattern expected to suffice); v1↔v2 reader-skew rows in
+  the test matrix.
+
+### Amendment references
+
+- **Design brief** — Code, session 2026-07-13 (research through 13 Jul
+  2026 + repo inventory): GD_actions / GD_inaction drift metrics,
+  StepShield Early Intervention Rate / Intervention Gap, the "context
+  failure, not a model change" finding, Anthropic harness guidance
+  (durable pass/fail artifact; critic≠creator; reasoning-blind
+  injection-resistant classifier).
+- **ADR-0016** — the in-place dated-amendment precedent (D2 Amendment
+  2026-06-25; D2+D3 Amendments 2026-07-01, 2026-07-05: "extends, does not
+  reverse or renumber") and its amendment scope-boundary discipline.
+- **ADR-013 D1 / ADR-009 D2 / ADR-012 D4.3** — build authority, commit
+  boundary, disclosure (as in the main References).
+- **CLAUDE.md §6** — "no fresh evidence = INSUFFICIENT-EVIDENCE, not a
+  pass" (V2-D4's governing principle).
+- **Live code read for this amendment:** `.claude/hooks/_goal_gate.py`
+  (warn path, dispatch arm, fail-open, `work_fingerprint()` at :152),
+  `.claude/hooks/_goal_state.py` (schema v1; unknown-field drop on
+  rewrite; `VALID_STATUSES` corrupt-stand-down), `docs/adr/` enumeration.
+- **Superseded drafting vehicle:** `docs/adr/0030-axis-b-v2-enforcing.md`
+  (uncommitted; deleted after this merge per SD-0 — number 0030 returns to
+  the pool).
 
 ## References
 
