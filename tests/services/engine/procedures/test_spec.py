@@ -458,7 +458,15 @@ def test_aquaculture_worked_example_loads_with_band_and_tiers() -> None:
     spec = load_procedures("aquaculture")
     procedure = next(p for p in spec.procedures if p.procedure_id == "morning_pond_health_round")
     judge = next(s for s in procedure.steps if s.step_id == "judge")
-    assert (judge.threshold, judge.direction, judge.watch_margin) == (4.0, "below", 1.0)
+    # PLAN-0068: the blanket scalar `threshold: 4.0` migrated to the per-entity
+    # `threshold_field: do_floor` (banded per pond off the read_do FK-parent join);
+    # `direction`/`watch_margin` stay authored scalars.
+    assert (judge.threshold, judge.threshold_field, judge.direction, judge.watch_margin) == (
+        None,
+        "do_floor",
+        "below",
+        1.0,
+    )
     aerate = next(s for s in procedure.steps if s.step_id == "aerate")
     assert aerate.tiers is not None
     assert aerate.tiers.canonical == "start_emergency_aerator"

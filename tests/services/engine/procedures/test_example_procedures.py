@@ -91,8 +91,15 @@ def test_aquaculture_headline_fan_out_shape() -> None:
 
     judge = by_id["judge"]
     assert judge.kind is StepKind.EVALUATE
-    # PLAN-0022 Step 3: the authored band the deterministic evaluate executor reads.
-    assert (judge.threshold, judge.direction, judge.watch_margin) == (4.0, "below", 1.0)
+    # PLAN-0068: the authored band the deterministic evaluate executor reads is now
+    # per-entity — `threshold_field: do_floor` (each pond's own floor, joined by read_do)
+    # instead of one blanket `threshold: 4.0`; direction/watch_margin stay authored scalars.
+    assert (judge.threshold, judge.threshold_field, judge.direction, judge.watch_margin) == (
+        None,
+        "do_floor",
+        "below",
+        1.0,
+    )
 
     aerate = by_id["aerate"]
     assert aerate.kind is StepKind.ACTION

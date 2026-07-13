@@ -15,10 +15,20 @@ In-memory, offline, no DB, no MS-S1 (the synthetic adapter is deterministic; L-1
 
 from __future__ import annotations
 
+from typing import Any
+
 from services.engine.discovery import discover_and_register
-from services.engine.procedures.orchestrator import RunResult, run_procedure
+from services.engine.procedures.action_step import ActionStepExecutor
+from services.engine.procedures.advisory_stub import advisory_stub_factory
+from services.engine.procedures.evaluate_step import EvaluateStepExecutor
+from services.engine.procedures.orchestrator import (
+    RunContext,
+    RunResult,
+    StepOutcome,
+    run_procedure,
+)
 from services.engine.procedures.runs import PipelineRunStatus
-from services.engine.procedures.spec import load_procedures
+from services.engine.procedures.spec import Step, StepKind, load_procedures
 from services.engine.registry import registry
 from verticals.aquaculture.procedures_factory import register_aquaculture_procedure_executors
 
@@ -86,3 +96,62 @@ async def test_per_species_floor_flips_the_warming_tiger_prawn_pond() -> None:
     assert aerate_sr.artifact is not None
     # the gated aerate fans out over the breach subset only: pond-07 crash + pond-11 flip.
     assert len(aerate_sr.artifact["output_set"]) == 2
+
+
+class _FixedReadQuery:
+    """A fake ``read_do`` returning already-joined rows (each carrying its Pond's
+    ``do_floor``) — isolates the per-entity judge from the query/join machinery."""
+
+    def __init__(self, rows: list[dict[str, Any]]) -> None:
+        self._rows = rows
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        return StepOutcome(
+            output=[dict(r) for r in self._rows],
+            reasoning_trace=[{"kind": "query", "summary": "fixed read_do"}],
+        )
+
+
+async def test_same_reading_two_verdicts_by_per_species_floor() -> None:
+    """AC-7 / SD-5 — the per-entity point made executable: the SAME 3.4 mg/L reading is a
+    ``breach`` in a whiteleg pond (its OWN 4.0 floor) but only a ``watch`` in a
+    hypoxia-tolerant tilapia pond (its OWN 3.0 floor). One reading, two verdicts, decided
+    entirely by each pond's do_floor — the first shipped ``threshold_field`` + ``watch_margin``
+    (3-band) coverage. A blanket scalar floor could never split these."""
+    discover_and_register()
+    rows = [
+        {
+            "object_type": "Pond",
+            "primary_key": "pk-white",
+            "pond_id": "pond-white",
+            "measured_value": 3.4,
+            "do_floor": 4.0,
+            "species": "whiteleg_shrimp",
+        },
+        {
+            "object_type": "Pond",
+            "primary_key": "pk-tilapia",
+            "pond_id": "pond-tilapia",
+            "measured_value": 3.4,
+            "do_floor": 3.0,
+            "species": "tilapia",
+        },
+    ]
+    executors = {
+        StepKind.QUERY: _FixedReadQuery(rows),
+        StepKind.EVALUATE: EvaluateStepExecutor(),
+        StepKind.ACTION: ActionStepExecutor(client_factory=advisory_stub_factory),
+    }
+    spec = load_procedures(_VERTICAL)
+    proc = next(p for p in spec.procedures if p.procedure_id == _PROC_ID)
+    agent = next(a for a in spec.agents if a.agent_id == proc.run_by)
+
+    result = await run_procedure(
+        proc, agent, executors, vertical=_VERTICAL, run_id="aq-same-reading"
+    )
+
+    judge_sr = next(sr for sr in result.step_results if sr.step_id == "judge")
+    assert judge_sr.artifact is not None
+    verdicts = {e["pond_id"]: e["verdict"] for e in judge_sr.artifact["output_set"]}
+    # same 3.4 reading: breach under the whiteleg 4.0 floor, only watch under tilapia's 3.0.
+    assert verdicts == {"pond-white": "breach", "pond-tilapia": "watch"}

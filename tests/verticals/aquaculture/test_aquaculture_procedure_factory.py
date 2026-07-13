@@ -46,15 +46,21 @@ _CRASH_POND = "pond-07"
 
 
 class _FixtureAdapter:
-    """Duck-typed adapter: the query executor only calls ``fetch_objects``."""
+    """Duck-typed adapter: the query executor calls ``fetch_objects`` for the base
+    OperationalEvent rows and (post-PLAN-0068 read_do join) the Pond band rows that
+    carry each pond's ``do_floor`` — without Pond rows the inner join empties."""
 
     vertical_name = _VERTICAL
 
-    def __init__(self, events: list[dict[str, Any]]) -> None:
+    def __init__(
+        self, events: list[dict[str, Any]], ponds: list[dict[str, Any]] | None = None
+    ) -> None:
         self._events = events
+        self._ponds = ponds or []
 
     async def fetch_objects(self, object_type: str) -> list[dict[str, Any]]:
-        return [dict(e) for e in self._events] if object_type == "OperationalEvent" else []
+        source = {"OperationalEvent": self._events, "Pond": self._ponds}.get(object_type, [])
+        return [dict(row) for row in source]
 
 
 def _procedure() -> tuple[Procedure, Any]:
@@ -128,8 +134,11 @@ async def test_full_procedure_run_suspends_at_the_gated_aerate(
 ) -> None:
     """AC-4 (the full-run half): read_do -> judge -> aerate over the REAL aquaculture YAML
     + ontology + synthetic adapter. The run suspends at ``waiting_human``; the gated
-    aerator is PROPOSED, never executed. The migrated grammar decides the verdict —
-    pond-07's 4.6 mg/L watch reading is superseded by its 3.2 mg/L crash."""
+    aerator is PROPOSED, never executed. The migrated per-species grammar decides each
+    verdict — pond-07's 4.6 mg/L watch reading is superseded by its 3.2 mg/L crash
+    (breach vs its 4.0 floor), and pond-11's 4.2 mg/L flip breaches its OWN 4.5
+    tiger-prawn floor (a `watch` a blanket 4.0 would have missed), so the breach set
+    is {pond-07, pond-11} (PLAN-0068 SD-3)."""
     procedure, agent = _procedure()
 
     result = await run_procedure(
@@ -150,17 +159,24 @@ async def test_full_procedure_run_suspends_at_the_gated_aerate(
     assert crash["measured_value"] == DO_CRASH_MG_L
     assert crash["verdict"] == "breach", "the 3.2 crash must not be downgraded to the 4.6 watch"
 
-    # the band came from the YAML, not the environment (in_file_band)
+    # the band came from the YAML, not the environment (in_file_band); PLAN-0068
+    # migrated it to the per-entity `threshold_field: do_floor`, so the scalar
+    # `threshold` is None and the audit names the per-entity column instead.
     judge_audit = by_step["judge"].audit
-    assert judge_audit["threshold"] == 4.0
+    assert judge_audit["threshold"] is None
+    assert judge_audit["threshold_field"] == "do_floor"
     assert judge_audit["direction"] == "below"
     assert judge_audit["watch_margin"] == 1.0
     assert "band_source" not in judge_audit
 
+    # PLAN-0068 SD-3: pond-11's 4.2 flip breaches its OWN 4.5 tiger-prawn floor, so the
+    # breach set grows to {pond-07, pond-11} and the gated aerate fans out over both.
+    breached = {row["pond_id"] for row in judged if row["verdict"] == "breach"}
+    assert breached == {"pond-07", "pond-11"}
     actions = by_step["aerate"].artifact["output_set"]
-    assert len(actions) == 1
-    assert actions[0]["status"] == "proposed"
-    assert actions[0]["action"]["suggested_handler"] == "start_emergency_aerator"
+    assert len(actions) == 2
+    assert all(a["status"] == "proposed" for a in actions)
+    assert all(a["action"]["suggested_handler"] == "start_emergency_aerator" for a in actions)
 
 
 async def test_three_band_judge_and_breach_only_fan_out_over_the_migrated_grammar() -> None:
@@ -195,12 +211,30 @@ async def test_three_band_judge_and_breach_only_fan_out_over_the_migrated_gramma
             "pond_id": "pond-ok",
         },
     ]
+    # PLAN-0068: each pond carries its OWN do_floor (joined onto the reading by read_do).
+    # Uniform 4.0 here isolates the three-band math; the per-species "same reading, two
+    # verdicts" point is pinned in test_pond_per_species_floor.py.
+    ponds = [
+        {
+            "pond_id": "pond-breach",
+            "do_floor": 4.0,
+            "species": "whiteleg_shrimp",
+            "site_id": "farm-x",
+        },
+        {
+            "pond_id": "pond-watch",
+            "do_floor": 4.0,
+            "species": "whiteleg_shrimp",
+            "site_id": "farm-x",
+        },
+        {"pond_id": "pond-ok", "do_floor": 4.0, "species": "whiteleg_shrimp", "site_id": "farm-x"},
+    ]
     procedure, agent = _procedure()
 
     result = await run_procedure(
         procedure,
         agent,
-        _executors_over(_FixtureAdapter(events)),
+        _executors_over(_FixtureAdapter(events, ponds)),
         vertical=_VERTICAL,
         run_id="aq-pr3-three-band",
     )

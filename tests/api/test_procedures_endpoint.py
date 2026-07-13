@@ -118,10 +118,12 @@ async def test_procedures_typed_authoritative_band_passes_through(
     payload = (await all_verticals_client.get("/procedures")).json()
     by_vertical = {v["vertical"]: v for v in payload["verticals"]}
 
-    # aquaculture judge: in-file authored band (the source of truth on the Step)
+    # aquaculture judge: in-file authored band (the source of truth on the Step).
+    # PLAN-0068: the band is now per-entity (`threshold_field: do_floor`), so the
+    # rendered scalar `threshold` is None; `direction`/`watch_margin` stay authored.
     aqua = by_vertical["aquaculture"]["procedures"][0]
     aqua_judge = next(s for s in aqua["steps"] if s["step_id"] == "judge")
-    assert aqua_judge["threshold"] == 4.0
+    assert aqua_judge["threshold"] is None
     assert aqua_judge["direction"] == "below"
     assert aqua_judge["watch_margin"] == 1.0
     assert aqua_judge["facet"]["decision_condition"]["gate_kind"] == "in_file_band"
