@@ -41,9 +41,12 @@ _EXPECTED: dict[str, dict[str, str]] = {
     },
 }
 
-# Full coverage of all six gate_kinds is present in the live data, with zero
-# fixtures (PLAN-0039 finding #4 / AC-5).
-_ALL_GATE_KINDS = {"env_band", "in_file_band", "rule_gate", "scored_rule", "doa_tier", "none"}
+# The gate_kinds with a LIVE shipped consumer across the four verticals, with zero
+# fixtures (PLAN-0039 finding #4 / AC-5). PLAN-0070 re-themed energy's judge — the
+# last env_band consumer — to a per-feeder `threshold_field` band, so `env_band` (a
+# valid GateKind) now has NO shipped YAML consumer; the engine path stays test-covered
+# (test_env_band_evaluate.py).
+_LIVE_GATE_KINDS = {"in_file_band", "rule_gate", "scored_rule", "doa_tier", "none"}
 
 
 @pytest.fixture
@@ -93,11 +96,12 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
     assert total == 8
 
 
-async def test_procedures_all_six_gate_kinds_present(
+async def test_procedures_all_live_gate_kinds_present(
     all_verticals_client: AsyncClient,
 ) -> None:
-    """The typed facet decomposition serializes through, and all six gate_kinds
-    appear in the real data with zero fixtures (AC-5 / finding #4)."""
+    """The typed facet decomposition serializes through, and every gate_kind with a live
+    shipped consumer appears in the real data with zero fixtures (AC-5 / finding #4).
+    Post-PLAN-0070 that is five kinds — `env_band` retired its last YAML consumer (energy)."""
     payload = (await all_verticals_client.get("/procedures")).json()
     gate_kinds = {
         step["facet"]["decision_condition"]["gate_kind"]
@@ -106,7 +110,7 @@ async def test_procedures_all_six_gate_kinds_present(
         for step in proc["steps"]
         if (step.get("facet") or {}).get("decision_condition")
     }
-    assert gate_kinds == _ALL_GATE_KINDS
+    assert gate_kinds == _LIVE_GATE_KINDS
 
 
 async def test_procedures_typed_authoritative_band_passes_through(
@@ -131,14 +135,16 @@ async def test_procedures_typed_authoritative_band_passes_through(
     assert aqua_judge["watch_margin"] == 1.0
     assert aqua_judge["facet"]["decision_condition"]["gate_kind"] == "in_file_band"
 
-    # energy judge: env band — no in-file threshold, the band source is the env var
+    # energy judge: PLAN-0070 — per-feeder in-file band (`threshold_field: rated_current_a`),
+    # so the rendered scalar `threshold` is None; the band column + direction stay authored.
     energy_judge = next(
         s for s in by_vertical["energy"]["procedures"][0]["steps"] if s["step_id"] == "judge"
     )
     assert energy_judge["threshold"] is None
+    assert energy_judge["threshold_field"] == "rated_current_a"
+    assert energy_judge["direction"] == "above"
     energy_dc = energy_judge["facet"]["decision_condition"]
-    assert energy_dc["gate_kind"] == "env_band"
-    assert energy_dc["env_var"] == "OCT_RECOMMEND_THRESHOLD"
+    assert energy_dc["gate_kind"] == "in_file_band"
 
 
 async def test_procedures_advertised_in_openapi(all_verticals_client: AsyncClient) -> None:

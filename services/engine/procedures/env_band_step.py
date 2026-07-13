@@ -3,8 +3,10 @@
 ADR-016 D2-A3 models two ways a step's deterministic band is authored: ``in_file``
 — the band lives on the ``Step`` as ``threshold`` / ``direction`` / ``watch_margin``
 (aquaculture, procurement) — and ``env`` — the band comes from the runtime
-environment, with **no** in-file ``threshold`` (``energy.judge``,
-``supply_chain.judge``). The shipped
+environment, with **no** in-file ``threshold``. (No shipped procedure authors an
+``env`` band any more: supply_chain migrated in PLAN-0067 and energy — the last one —
+in PLAN-0070; this executor stays engine-general + test-covered, with zero live YAML
+consumers.) The shipped
 :class:`~services.engine.procedures.evaluate_step.EvaluateStepExecutor` implements
 only the ``in_file`` half: a band-less step raises. This module is the ``env`` half —
 the executable counterpart of a band source the ADR already ratified.

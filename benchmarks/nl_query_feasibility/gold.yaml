@@ -55,11 +55,13 @@ cases:
       - event-reading-09
       - event-reading-10
       - event-reading-11
+      - event-reading-07   # PLAN-0070: inverter current reading (61 A)
+      - event-reading-08   # PLAN-0070: feeder-meter current reading (84 A)
       - event-reading-05
       - event-reading-06
       - event-alarm-01
       - event-reading-03
-    expected_count: 11
+    expected_count: 13
     expected_grounded: true
 
   - id: nl-03
@@ -70,8 +72,10 @@ cases:
     expected_operation: list
     expected_filters:
       - {property: measured_value, op: gt, value: "80"}
-    expected_ids: [event-reading-06, event-reading-03]
-    expected_count: 2
+    # PLAN-0070: measured_value > 80 is unit-agnostic, so the 84 A feeder reading joins the two
+    # hot battery readings (the query does not filter by unit).
+    expected_ids: [event-reading-08, event-reading-06, event-reading-03]
+    expected_count: 3
     expected_grounded: true
 
   - id: nl-04
@@ -94,8 +98,9 @@ cases:
     expected_operation: count
     expected_filters:
       - {property: severity, op: eq, value: warn}
-    expected_ids: [event-reading-06]
-    expected_count: 1
+    # PLAN-0070: the 84 A feeder-overload reading (event-reading-08) is also warn-severity.
+    expected_ids: [event-reading-06, event-reading-08]
+    expected_count: 2
     expected_grounded: true
 
   - id: nl-06

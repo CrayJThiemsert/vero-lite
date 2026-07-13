@@ -8,8 +8,15 @@
 # (verticals/energy/handlers.py) are the ontology RecommendedAction.action_type
 # vocabulary {restart, isolate, dispatch_technician, escalate} + `echo`, each a
 # no-op receipt today (real grid-control I/O ships with the design partner). The
-# over-temperature action step fixes its handler to `restart` (PLAN-0019 Part B);
+# over-current action step fixes its handler to `restart` (PLAN-0019 Part B);
 # the LLM's wider proposal menu is graded separately (the α probe).
+#
+# PLAN-0070 (2026-07-13): re-themed from over-temperature to over-CURRENT (feeder
+# overload) — the judge migrated env_band (blanket OCT_RECOMMEND_THRESHOLD) to a
+# per-feeder `threshold_field: rated_current_a` band over an FK-parent join, making
+# energy the 4th OCT vertical on the per-entity band substrate (ADR-016 FKP amendment
+# 2026-07-12; the labelled energy follow-on it pre-recorded). The reactive-recommender
+# / timeline demo path stays over-temperature (out of scope).
 #
 # Each step carries the 5-facet annotation (input · decision-condition · llm-assist ·
 # output · governance) as the first-class typed `facet:` field (ADR-016 D2 Amendment
@@ -28,57 +35,62 @@ agents:
     autonomy_ceiling: gated
     allowed:
       step_kinds: [query, evaluate, action]
-      action_handlers: [restart]    # the over-temperature action handler (no-op stub today)
+      action_handlers: [restart]    # the over-current feeder-restart handler (no-op stub today)
 
 procedures:
   substation_health_sweep:
     title: Substation Health Sweep
     goal: >-
-      Read each active asset's latest temperature reading, judge it against the
-      over-temperature threshold, and restart the assets that breach after a human
-      go/no-go.
+      Read each feeder's latest current reading, judge it against that feeder's own
+      rated_current_a, and restart the feeders that overload (breach their rating)
+      after a human go/no-go.
     run_by: grid_agent
     trigger: manual                 # L-1: only manual runs in Phase 1
     steps:
       - step_id: read_readings
-        name: Read latest asset readings
-        description: Latest reading per Asset (event_type=reading), by occurred_at.
+        name: Read latest feeder current readings
+        description: Latest current (ampere) reading per Asset joined to its rated_current_a (event_type=reading), by occurred_at.
         kind: query
-        input:                          # PLAN-0062 Q4 Phase-3: the declared latest-per-group grammar
-          reads: [OperationalEvent]
+        input:                          # PLAN-0070: declared latest-per-group + FK-parent join (ADR-016 FKP)
+          reads: [OperationalEvent, Asset]
           where:
             event_type: reading
+            measured_kind: current      # narrow to the ampere feeder-load readings — FKP-3: unrated assets never reach the judge
+          join:
+            - { with: Asset, link: event_emitted_by_asset }   # brings each Asset's rated_current_a onto its readings (ADR-016 FKP 2026-07-12)
           project:
             latest_per: event_emitted_by_asset   # FK OperationalEvent.asset_id -> Asset.asset_id
             order_by: occurred_at
+            fields:
+              site_id: asset_site_id   # the declared OperationalEvent/Asset site_id collision (join-key asset_id is exempt)
         facet:
           decision_condition: { gate_kind: none }
           llm_assist: null
-          # PLAN-0062: the typed reads/project above are the source of truth (D2-A2); this prose
-          # is synced to it. The prior "active Asset"/"temperature" qualifiers are dropped — no
-          # status-filter join was ever implemented (SD-4; all synthetic assets are active), and the
-          # judge grades measured_value regardless of unit (synthetic non-temp readings stay
-          # sub-threshold by design).
-          input: "latest OperationalEvent (event_type=reading) per Asset via event_emitted_by_asset, by occurred_at"
-          output: "one latest reading row per Asset"
+          # PLAN-0070: the typed reads/project above are the source of truth (D2-A2); this prose
+          # is synced to it. The read narrows to current (ampere) feeder readings and joins each
+          # Asset's rated_current_a on via event_emitted_by_asset, so the judge bands per-feeder.
+          input: "latest current (ampere) OperationalEvent per Asset via event_emitted_by_asset (rated_current_a joined on), by occurred_at"
+          output: "one latest current reading row per current-rated Asset, each carrying its rated_current_a"
       - step_id: judge
-        name: Judge vs over-temperature threshold
+        name: Judge vs per-feeder current rating
         description: >-
-          Tag each asset's verdict vs the over-temperature threshold —
-          breach (over the ceiling) vs ok. OCT_RECOMMEND_DIRECTION=above semantics.
+          Tag each feeder's verdict vs ITS OWN rated_current_a — breach (over its own
+          current rating) vs ok (ADR-016 FKP amendment 2026-07-12; direction above).
         kind: evaluate
+        threshold_field: rated_current_a   # each Asset bands vs its OWN rated current (joined by read_readings)
+        direction: above                   # over-current — breach OVER the rating
         facet:
-          decision_condition: { gate_kind: env_band, band_source: env, env_var: OCT_RECOMMEND_THRESHOLD }
+          decision_condition: { gate_kind: in_file_band, band_source: in_file }
           llm_assist: null
-          input: "read_readings set"
-          output: "per-asset verdict {breach=over ceiling, ok}"
-          governance: "verdict = pure function of the reading + the authored (env) band"
+          input: "read_readings set (each row carries its Asset's rated_current_a)"
+          output: "per-feeder verdict {breach=over its own rating, ok}"
+          governance: "verdict = pure function of the reading + the authored per-entity (in_file) band"
       - step_id: restart_breaches
         name: Restart the breaching assets
         description: >-
-          Propose a restart action (ADR-007 envelope) per breaching asset; human
-          approve -> execute. action_type `restart` (a no-op receipt stub until the
-          real grid-control handler ships with the design partner).
+          Propose a restart of the overloaded feeder's breaker (ADR-007 envelope) per
+          breaching asset; human approve -> execute. action_type `restart` (a no-op
+          receipt stub until the real grid-control handler ships with the design partner).
         kind: action
         autonomy: gated             # the human go/no-go on an irreversible write
         handler: restart
