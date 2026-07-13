@@ -3714,3 +3714,43 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-10 (flaky-DB-test isolation #678/#679/#680, session 117) [rotated 2026-07-13, session-124 reconcile — normal rotation under the 10-row RD window]
 
 | 2026-07-10 | **Flaky-DB-test isolation track — one intermittent `test_procedure_headline` failure = TWO unrelated bugs, one PRODUCTION (session 117, a CONCURRENT Code track; #678/#679/#680)** — **#678 (a) production correctness:** WSL2 `datetime.now(UTC)` is NON-MONOTONIC (2 backward steps / 20 s, −555 ms worst); `load_run` orders step results by that wall-clock `created_at` and `resume_run`/`GET /runs/{id}` read `step_results[-1]` as the suspended step → a run straddling the jump resumed from an already-COMPLETED step (re-ran a decided gate, dup side effects, stuck `waiting_human`; or "undecided proposals"); ~1 process in 20. Fixed by selecting the suspended step by **STATUS** (`suspended_step_result()`); gate/resolve never affected (looks up by caller `step_id`). **(b) test isolation (deterministic):** `Base.metadata` is import-populated → a `tests/services/db`-only process never registered `action_identity`, so `drop_all` left it for the next `alembic upgrade head` (`DuplicateTableError`); the full suite hid it. Fixed with `alembic/env.py`-mirroring registration imports + `DROP SCHEMA public CASCADE` per test. **#679:** that reset made concurrent sibling-worktree `pytest` wipe each other → test DB scoped per checkout (`vero_lite_test_<8-hex repo root>`), explicit `TEST_DATABASE_URL` still wins so CI is unaffected; control experiment (shared DB → both fail; scoped → both pass). **#680:** the "exactly one unresumed step" invariant was documented but unenforced → two such rows now raise; `get_run` answers **409** not an unhandled 500; + the HTTP-surface regression test #678 left owing. Suite 2473/7 → **2488/7**, verified on the merge commit (CI here is PR-only); ruff+format+mypy clean; offline, MS-S1 untouched, dev DB unchanged. Carry-overs → Active TODOs. | `9a12087` (#680 merge) / `7afff6a` / `8b617b0` (#679 merge) / `4f018bf` / `47a58ed` (#678 merge) / `a4593c8` / `b4b042c` / `services/engine/procedures/persistence.py` + `services/api/routers/runs.py` + `tests/db_support.py` |
+
+### Current Focus block removed — Session 121 (per-entity FK-parent threshold_field v2 / supply_chain temp_ceiling, #707-#710) [rotated 2026-07-13, session-125 reconcile — 4-session CF window]
+
+> **Session 121, 2026-07-12 (head_commit `71d0fc8` → `670117c`) — per-entity
+> FK-parent `threshold_field` (ADR-016 "per-entity bands v2") shipped
+> END-TO-END in ONE session-121 day: amendment → PLAN → 2-PR build → close.**
+> A `threshold_field` may now name a column on a JOINED FK-parent of the traced
+> query step, and supply_chain's cold-chain `judge` bands each shipment's latest
+> reading against its OWN per-cargo `temp_ceiling` instead of one blanket env
+> ceiling. #707 amendment → #708 Ready → #709 PR1 (engine) → #710 PR2
+> (vertical). **#707 — ADR-016 amendment (2026-07-12), Accepted:**
+> FK-parent-column `threshold_field` (per-entity bands v2), FKP-1..FKP-4,
+> SD-1..SD-5 ratified (SD-4 = supply_chain-only build); Code R2 caught +
+> corrected the dispatch's "executor deferred Phase C" premise (it had shipped,
+> PLAN-0061 #666); discharges TF-2(i). **#708 — PLAN-0067 Ready:** SD-1 = (b)
+> TWO PRs (a Cray divergence isolating the DB-migration / first-join-consumer
+> rollback), SD-2 = (b) demo-visible seed flip, SD-3 rendered ceilings, SD-4 =
+> (a) keep the env-band wrapper + guard, SD-5 = (a). **#709 — PR1 (engine):**
+> the FKP-2 gate widening (`_validate_threshold_field_bindings` domain reads[0]
+> → base + joined FK-parent, in `orchestrator.py`) + a draft-discovered
+> `env_band_step.py` delegate-guard fix (a migrated `threshold_field` judge
+> delegates untouched — no clobbered direction, no false `band_source: env`) +
+> a stale-docstring fix + `spec.py` reword; 6 new engine tests. **#710 — PR2
+> (vertical):** `Shipment.temp_ceiling` + per-cargo seeds (8/12/-15/6) + a
+> frozen warming reading (SD-2b) + `read_temps` as the FIRST shipped `join:`
+> consumer + the `judge` env_band → threshold_field migration; RED-verified
+> flip — the frozen shipment warms to −11.8 °C → `ok` under a blanket 8 °C
+> ceiling but `breach` under its own −15 °C ceiling (hold set 1 → 2).
+> **Build-discovered correction:** NO Alembic migration — supply_chain has no
+> committed ORM/DB table (energy-only), so `temp_ceiling` is in-memory only
+> (Cray-ratified Option A). **THREE draft≠review≠verify catches, one per role:**
+> Code R2 (stale-docstring premise) / `plan-drafter` (env_band guard coupling) /
+> build (AC-3 no-shipment-table). **Evidence bar:** full suite **2544 passed / 7
+> skipped** WITH Postgres (baseline 2536 + engine 6 + vertical 2); ruff + `mypy
+> --strict` clean; CI `gate` green on every PR; no MS-S1 / host-state — pure
+> offline. PLAN-0067 is being closed to `done/` in a sibling `docs(plans)` PR.
+
+### Recent Decisions row removed — 2026-07-10 (TESTS half of #678 wall-clock invariant, #684, session 117) [rotated 2026-07-13, session-125 reconcile — 10-row RD window]
+
+| 2026-07-10 | **Residual flaky-suite fix — the TESTS half of #678's wall-clock invariant (session 117; #684, `fix(test)`)** — a ~1-in-3 full-suite flake on `main` (two procurement DB tests), NO code cause (#683 docs-only), green in isolation. SAME non-monotonic WSL2 `datetime.now(UTC)` as #678 on the OTHER side of the seam: `load_run` still `ORDER BY created_at`; #678 migrated only the PRODUCTION consumers to `suspended_step_result()`, leaving SIX TEST sites on `step_results[-1]` → under a backward step `[-1]` names the wrong (completed) step. Fixed by intent: 4 demo sites → `suspended_step_result()`, 2 latent → select by `step_id` (a status-assert would be circular), + 2 order-asserting sites now compare `sorted(...)` (a round-trip preserves a step SET, not an order). Cover: a non-vacuous AST guard (`test_load_run_ordering_guard.py`, reports EXACTLY the six pre-fix sites) + a deterministic clock-inversion pin. NO production code changed; `pytest -q` 5x pre-merge + 3x on the merge commit (CI PR-only) = eight consecutive greens, 2499/7 (was 2496 + 3 new); ruff clean, offline, MS-S1 untouched. | `22242e4` (#684 merge) / `0a9542a` (#684 fix) / `tests/services/db/test_load_run_ordering_guard.py` + `tests/services/db/{test_event_procurement_demo.py,test_scheduled_procurement_demo.py}` + `tests/services/engine/procedures/{test_procedure_persistence.py,test_write_ahead.py}` |
