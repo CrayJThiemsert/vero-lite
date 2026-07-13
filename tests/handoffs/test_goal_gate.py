@@ -36,20 +36,26 @@ from _goal_gate import (  # noqa: E402
     CHECK_SKIPPED,
     CHECK_TIMEOUT,
     EVALUATOR_NAME,
+    GATE_BLOCKED_MARKER,
     GATE_DISPATCH_MARKER,
+    GATE_ENFORCE_BLOCK_MARKER,
     GATE_PASSED_MARKER,
     GATE_RELEASED_MARKER,
+    _divergence_decision,
     run_goal_gate,
 )
 from _goal_state import (  # noqa: E402
     STATUS_ACTIVE,
+    STATUS_BLOCKED_PENDING_HUMAN,
     STATUS_PASSED,
     STATUS_RELEASED_UNEVALUATED,
+    Amendment,
     Criterion,
     Evaluation,
     Goal,
     load_goal,
     new_goal,
+    record_amendment,
     record_evaluation,
     save_goal,
 )
@@ -347,3 +353,162 @@ class TestFingerprint:
         fp_b = _goal_gate.work_fingerprint()
         assert fp_a == fp_b  # stable when the tree doesn't change
         assert fp_a == "" or len(fp_a) == 16
+
+
+# ---------------------------------------------------------------------------
+# PLAN-0069 PR2 — the v2 warn→enforce ladder (enforce flag + drift/redirect)
+# ---------------------------------------------------------------------------
+
+
+def _goal_with_divergence(
+    amendments_seen: int,
+    num_amendments: int,
+    verdict: str = "DIVERGENT",
+    enforce: bool = True,
+) -> Goal:
+    """A goal whose latest evaluator entry (at the pinned fp-A, no new work)
+    carries a judge FAIL + a divergence verdict recording ``amendments_seen``,
+    plus ``num_amendments`` ratifying amendments — the SD-D freshness inputs."""
+    goal = new_goal("g", [_check_ok(), _judge("J1")], enforce=enforce)
+    record_evaluation(
+        goal,
+        Evaluation(
+            ts="t1",
+            fingerprint="fp-A",
+            judged={"J1": {"verdict": "FAIL", "reason": "off"}},
+            evaluator=EVALUATOR_NAME,
+            amendments_seen=amendments_seen,
+            divergence={"verdict": verdict, "reason": "off-anchor"},
+        ),
+    )
+    for i in range(num_amendments):
+        record_amendment(goal, Amendment(ts=f"a{i}", event="typed", fingerprint=f"fp-am{i}"))
+    return goal
+
+
+class TestEnforceLadder:
+    def test_check_fail_blocks_once_then_parks(self, gate_env: dict[str, Any]) -> None:
+        """AC-5: enforce:true + an evidence-backed check FAIL -> exactly one
+        bounded block, then park at blocked-pending-human on the re-Stop."""
+        _seed(new_goal("g", [_check_fail("C1")], enforce=True), gate_env)
+        # rung 1 — one bounded block (no ping; a directive, like dispatch)
+        directive = run_goal_gate({})
+        assert directive is not None
+        assert directive["decision"] == "block"
+        assert "GOAL-GATE ENFORCE" in directive["reason"]
+        assert "blocked-pending-human" in directive["reason"]
+        mid = _reload(gate_env)
+        assert mid.status == STATUS_ACTIVE
+        assert mid.evaluations[-1].evaluator == GATE_ENFORCE_BLOCK_MARKER
+        # rung 2 — re-Stop still failing: park (NOT a second block)
+        assert run_goal_gate({}) is None
+        parked = _reload(gate_env)
+        assert parked.status == STATUS_BLOCKED_PENDING_HUMAN
+        assert parked.evaluations[-1].evaluator == GATE_BLOCKED_MARKER
+        assert [e for e, _ in gate_env["pings"]] == ["blocked_pending_human"]
+        # rung 3 — parked status != active: self-quiesce, zero delta
+        gate_env["pings"].clear()
+        assert run_goal_gate({}) is None
+        assert gate_env["pings"] == []
+
+    def test_never_blocks_twice_for_same_state(self, gate_env: dict[str, Any]) -> None:
+        """AC-5: the ladder never issues a second block for the same failing
+        state — the re-Stop parks."""
+        _seed(new_goal("g", [_check_fail("C1")], enforce=True), gate_env)
+        d1 = run_goal_gate({})
+        assert d1 is not None and d1["decision"] == "block"
+        d2 = run_goal_gate({})
+        assert d2 is None
+        assert _reload(gate_env).status == STATUS_BLOCKED_PENDING_HUMAN
+
+    def test_judge_fail_no_work_blocks_then_parks(self, gate_env: dict[str, Any]) -> None:
+        """AC-5 (judge axis): checks green, a recorded judge FAIL with no new
+        work -> block then park under enforce."""
+        goal = new_goal("g", [_check_ok(), _judge("J1")], enforce=True)
+        record_evaluation(
+            goal,
+            Evaluation(
+                ts="t1",
+                fingerprint="fp-A",
+                judged={"J1": {"verdict": "FAIL", "reason": "nope"}},
+                evaluator=EVALUATOR_NAME,
+            ),
+        )
+        _seed(goal, gate_env)
+        d1 = run_goal_gate({})
+        assert d1 is not None and d1["decision"] == "block"
+        assert run_goal_gate({}) is None
+        assert _reload(gate_env).status == STATUS_BLOCKED_PENDING_HUMAN
+
+
+class TestEnforceNeverSilentPass:
+    def test_unanswered_dispatch_parks_not_released(self, gate_env: dict[str, Any]) -> None:
+        """AC-6 / V2-D4: an unanswered dispatch under enforce parks at
+        blocked-pending-human — NEVER released-unevaluated, NEVER passed."""
+        goal = new_goal("g", [_check_ok(), _judge("J1")], enforce=True)
+        record_evaluation(
+            goal,
+            Evaluation(ts="t1", fingerprint="fp-A", evaluator=GATE_DISPATCH_MARKER),
+        )
+        _seed(goal, gate_env)
+        assert run_goal_gate({}) is None
+        parked = _reload(gate_env)
+        assert parked.status == STATUS_BLOCKED_PENDING_HUMAN
+        assert parked.status != STATUS_RELEASED_UNEVALUATED
+        assert parked.status != STATUS_PASSED
+        assert parked.evaluations[-1].evaluator == GATE_BLOCKED_MARKER
+        (event, detail), *_ = gate_env["pings"]
+        assert event == "blocked_pending_human"
+        assert "blocked-pending-human" in detail
+
+
+class TestDriftRedirect:
+    def test_divergence_decision_positional_freshness(self) -> None:
+        """AC-7 (pure function): positional freshness, clock-free. Amendment
+        AFTER the flag -> redirect; BEFORE or none -> drift; ALIGNED -> none."""
+        assert _divergence_decision(_goal_with_divergence(0, 1)) == "redirect"
+        assert _divergence_decision(_goal_with_divergence(1, 1)) == "drift"
+        assert _divergence_decision(_goal_with_divergence(0, 0)) == "drift"
+        assert _divergence_decision(_goal_with_divergence(0, 1, verdict="ALIGNED")) == "none"
+
+    def test_drift_under_enforce_blocks(self, gate_env: dict[str, Any]) -> None:
+        """AC-7: unredirected drift under enforce -> the ladder (block)."""
+        _seed(_goal_with_divergence(0, 0, enforce=True), gate_env)
+        directive = run_goal_gate({})
+        assert directive is not None
+        assert directive["decision"] == "block"
+        assert "DIVERGES" in directive["reason"]
+
+    def test_redirect_passes_freely_no_block(self, gate_env: dict[str, Any]) -> None:
+        """AC-7: a divergence explained by a POSITIONALLY fresher amendment ->
+        pass freely (no block, no park; the goal stays active)."""
+        _seed(_goal_with_divergence(0, 1, enforce=True), gate_env)
+        assert run_goal_gate({}) is None
+        reloaded = _reload(gate_env)
+        assert reloaded.status == STATUS_ACTIVE
+        (event, _detail), *_ = gate_env["pings"]
+        assert event == "redirect"
+
+    def test_drift_under_enforce_false_warns(self, gate_env: dict[str, Any]) -> None:
+        """AC-7 (enforce:false half): drift warns, never blocks — and this path
+        only ever fires on a v2 divergence verdict (a v1 replay has none)."""
+        _seed(_goal_with_divergence(0, 0, enforce=False), gate_env)
+        assert run_goal_gate({}) is None
+        (event, detail), *_ = gate_env["pings"]
+        assert event == "warn"
+        assert "DIVERGES" in detail
+
+
+class TestEnforceFalseParity:
+    def test_enforce_is_the_only_pivot_for_check_fail(self, gate_env: dict[str, Any]) -> None:
+        """AC-3: an enforce:false goal takes the EXACT v1 warn path (return
+        None, one 'warn' ping with the verbatim v1 detail, status stays
+        active) — the flag is the sole difference from the enforce:true ladder
+        (proven blocking in TestEnforceLadder)."""
+        _seed(new_goal("g", [_check_fail("C1")], enforce=False), gate_env)
+        assert run_goal_gate({}) is None
+        (event, detail), *_ = gate_env["pings"]
+        assert event == "warn"
+        assert detail.startswith("checks NOT green:")
+        assert detail.endswith("(warn-only, stop fires)")
+        assert _reload(gate_env).status == STATUS_ACTIVE
