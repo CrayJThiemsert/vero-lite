@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-13T13:49:25+07:00
+last_updated: 2026-07-13T15:33:25+07:00
 session: 124
-current_batch: "s124: surfaced `threshold_field` in the read-only Procedures viewer (View F) facet — display-only, 0 engine change (#718 fix); corrects s123 error (payload carried it, frontend-only gap); 2549/7."
+current_batch: "s124: Axis-B gate GRADUATED warn→enforce (per-goal opt-in) — PLAN-0069 shipped 2 PRs + closed→done/ (ADR-0018 V2 #713; #721/#722 feat); opener #718 threshold_field in View F; 2570/7."
 current_actor: code
-blocked_on: "Nothing blocking. main=4a4c444; the Axis-B v2 build PLAN unwritten (only remaining unblocked track); 0 open PRs; tree clean (untracked .claude/ only); MS-S1 idle."
-next_action: "The remaining unblocked build: the drafter-authored Axis-B v2 gate/schema build PLAN (ADR-0018 V2 Accepted #713; build PLAN unwritten). Backlog in Active TODOs."
-head_commit: 4a4c444
-recent_commits: [4a4c444, b55ff43, befec8e, acfcd57, d4cb9b3, ec4fe6f, adfd45c, 40ffaca, 2e2007c, f67b713]
+blocked_on: "Nothing blocking. main=960e988; PLAN-0069 (Axis-B v2) shipped + closed → done/; 0 open PRs after this closeout; tree clean; MS-S1 idle."
+next_action: "Backlog only (each its own future ADR/PLAN): energy rated_current_a FK-parent adoption; monotonic step_results sequence column (needs migration); procurement ontology↔CSV drift (cosmetic)."
+head_commit: 960e988
+recent_commits: [960e988, 17ca489, 4a4c444, b55ff43, befec8e, acfcd57, d4cb9b3, ec4fe6f, adfd45c, 40ffaca]
 ---
 
 # vero-lite — Project Status
@@ -18,30 +18,42 @@ recent_commits: [4a4c444, b55ff43, befec8e, acfcd57, d4cb9b3, ec4fe6f, adfd45c, 
 
 ## Current Focus
 
-> **Session 124, 2026-07-13 (head_commit `b55ff43` → `4a4c444`) — a short
-> one-PR quick-win continuing the s123 close: surfaced `threshold_field` in the
-> read-only Procedures viewer (View F) decision facet (#718, `fix`).** A
-> migrated per-entity band judge (aquaculture's `do_floor`) carries a NULL
-> scalar `threshold`, so the facet rendered only `threshold` / `direction` /
-> `watch_margin` and the band column name was INVISIBLE — the operator saw
-> "banded, but against WHAT" with no answer. #718 renders `threshold_field:
-> do_floor` as a `pv-auth` facet row. **Display-only, ZERO engine change**
-> (`git diff main -- services/engine` empty). Also: restored the frontend
-> `H_FIELDS` mirror of `draft.py`'s `STEP_GOVERNANCE_FIELDS` (which already
-> lists `threshold_field`), added a FIELD_GUIDE authoring hint, bumped the
-> `view-procedures.js` cache token c24→c25, and pinned `threshold_field ==
-> "do_floor"` in the endpoint test. **Corrects a s123 STATUS statement
-> (`was an error`, NOT `superseded`):** s123 said "the rendered `/procedures`
-> payload does not surface `threshold_field`" — grounding this session proved
-> the PAYLOAD always carried it (the Step model serializes it); the gap was
-> FRONTEND-only (`view-procedures.js`). So the s123 "display gap / candidate
-> future item" is now **RESOLVED**, and the "payload does not surface" phrasing
-> was wrong. **Evidence bar:** full suite **2549 passed / 7 skipped** WITH
-> Postgres (verified on the merge commit `4a4c444`, CI PR-only); `ruff check` +
-> `ruff format --check` clean; CI `gate` green on #718 (2m27s); live UI verified
-> (the aquaculture judge decision facet renders `threshold_field: do_floor` as
-> `pv-auth`, no console errors); no MS-S1 / host-state — pure offline. Commit:
-> `4a4c444` (#718).
+> **Session 124, 2026-07-13 (head_commit `b55ff43` → `960e988`) — the Axis-B
+> verify-loop goal gate GRADUATED from warn-only v1 to per-goal opt-in
+> ENFORCEMENT: PLAN-0069 shipped END-TO-END (two PRs) + CLOSED → `done/` in one
+> session-124 day (ADR-0018 V2 Accepted #713; #721/#722, `feat`).** Session
+> opener (folded in, #718 `fix`): surfaced `threshold_field` in the read-only
+> Procedures viewer (View F) decision facet — display-only, ZERO engine change
+> — correcting a s123 `was an error` (the `/procedures` payload always carried
+> it; the gap was FRONTEND-only in `view-procedures.js`), so the `/procedures`
+> threshold_field display gap is now **RESOLVED**. **The major deliverable —
+> Axis-B v2:** the Stop-hook goal gate now enforces per-goal opt-in, with every
+> v2 consequence gated behind `if goal.enforce`, so `enforce:false` is
+> byte-for-byte warn-only v1 (AC-3 — every pre-existing goal test passed
+> UNMODIFIED); all 10 ACs met. Two PRs per SD-A: **#721 PR1 (v2 schema,
+> `.claude/hooks/_goal_state.py`):** `schema_version`→2, a new
+> `blocked-pending-human` status, a first-class `enforce` bool + `amendments[]`
+> on the Goal dataclass (closing both build hazards — unknown-field-drop +
+> VALID_STATUSES rejection), a new Amendment dataclass, and SD-D
+> `amendments_seen` on Evaluation. **#722 PR2 (enforce ladder,
+> `.claude/hooks/_goal_gate.py` + `/goal` + goal-evaluator):** the warn→enforce
+> ladder at the three v1 return-None sites (one bounded block → park at
+> `blocked-pending-human`, never twice for the same state), the V2-D4
+> unanswered-dispatch park (never released / silent-pass), the SD-D
+> drift/redirect pure function (positional `amendments_seen`, clock-free — the
+> WSL wall clock is non-monotonic), `goal.md` documenting the enforce flag +
+> amend-ratification + blocked-pending-human handling, and the goal-evaluator's
+> V2-D2 anchor-divergence assessment (refute-not-bless posture UNCHANGED).
+> **Cray ratified SD-A..SD-D via AskUserQuestion, all four as-recommended**
+> (SD-A = 2 PRs / SD-B = same-PR/PR2 / SD-C = no migration / SD-D = positional
+> `amendments_seen`). **draft≠review≠verify:** `plan-drafter` PLAN → Code R2
+> (grounded citations verified) → Cray-ratified SDs → Code build. **Evidence
+> bar:** full suite **2570 passed / 7 skipped** WITH Postgres (verified on the
+> PR2 merge commit `960e988`, CI PR-only); `ruff` + `ruff format` + `mypy
+> --strict` clean; CI `gate` green on #721 (2m37s) + #722 (2m46s);
+> deterministic-offline — no MS-S1 / host-state. PLAN-0069 `git mv`→`done/`
+> this batch. Commit: `960e988` (#722 PR2; the PLAN-0069 close rides the same
+> closeout PR as housekeeping — head_commit stays the feat merge per Q4).
 
 > **Session 123, 2026-07-13 (head_commit `2e2007c` → `b55ff43`) — PLAN-0068
 > (aquaculture per-species DO floors) shipped END-TO-END and CLOSED → `done/`
@@ -195,7 +207,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-07-13 | **s124 — surfaced `threshold_field` in the read-only Procedures viewer (View F) decision facet; one-PR quick-win continuing the s123 close (#718, `fix`)** — a migrated per-entity band judge (aquaculture `do_floor`) carries a NULL scalar `threshold`, so the facet showed only `threshold`/`direction`/`watch_margin` and the band column name was invisible; #718 renders `threshold_field: do_floor` as a `pv-auth` row. Display-only, ZERO engine change (`git diff main -- services/engine` empty); also restored the frontend `H_FIELDS` mirror of `draft.py`'s `STEP_GOVERNANCE_FIELDS`, added a FIELD_GUIDE hint, bumped `view-procedures.js` c24→c25, pinned `threshold_field == "do_floor"` in the endpoint test. **Corrects a s123 `was an error`:** the `/procedures` payload ALWAYS carried `threshold_field` (the Step model serializes it) — the gap was FRONTEND-only (`view-procedures.js`), now RESOLVED. Suite **2549/7** WITH Postgres (on merge commit `4a4c444`, CI PR-only); ruff + `ruff format --check` clean; CI `gate` green (#718, 2m27s); live UI verified; no MS-S1 / host-state — pure offline. Full narrative: the Session-124 CF block above | `4a4c444` (#718) / `services/api/static/assets/view-procedures.js` (+ `H_FIELDS`, FIELD_GUIDE, c24→c25) + the endpoint test |
+| 2026-07-13 | **s124 — Axis-B verify-loop goal gate GRADUATED warn-only v1 → per-goal opt-in ENFORCEMENT; PLAN-0069 shipped END-TO-END (2 PRs) + CLOSED → `done/` in one session-124 day (ADR-0018 V2 Accepted #713; #721/#722, `feat`); session opener #718 `fix` surfaced `threshold_field` in the read-only Procedures viewer (View F) facet — display-only, RESOLVING the s123 frontend display gap** — every v2 consequence gated behind `if goal.enforce`, so `enforce:false` is byte-for-byte warn-only v1 (AC-3, all pre-existing goal tests UNMODIFIED); all 10 ACs met. **#721 PR1 (`_goal_state.py`):** `schema_version`→2, new `blocked-pending-human` status, first-class `enforce` bool + `amendments[]` on the Goal dataclass (closes both build hazards — unknown-field-drop + VALID_STATUSES rejection), new Amendment dataclass, SD-D `amendments_seen` on Evaluation. **#722 PR2 (`_goal_gate.py` + `/goal` + goal-evaluator):** warn→enforce ladder at the three v1 return-None sites (one bounded block → park at `blocked-pending-human`, never twice for the same state), V2-D4 unanswered-dispatch park (never released / silent-pass), SD-D drift/redirect pure function (positional `amendments_seen`, clock-free — WSL wall clock non-monotonic), `goal.md` + goal-evaluator V2-D2 anchor-divergence (refute-not-bless UNCHANGED). Cray ratified SD-A..SD-D via AskUserQuestion, all four as-rec (SD-A=2 PRs / SD-B=PR2 / SD-C=no migration / SD-D=positional). draft≠review≠verify: `plan-drafter` PLAN → Code R2 (grounded citations verified) → Cray SDs → Code build. Suite **2570/7** WITH Postgres (on merge commit `960e988`, CI PR-only); ruff + `ruff format` + `mypy --strict` clean; CI `gate` green (#721 2m37s / #722 2m46s); no MS-S1 / host-state — pure offline. PLAN-0069 `git mv`→`done/`. Full narrative: the Session-124 CF block above | `960e988` (#722 PR2 merge) / `17ca489` (#721 PR1 merge) / `.claude/hooks/{_goal_state.py,_goal_gate.py}` + the `/goal` command + the `goal-evaluator` subagent doc + `docs/plans/done/0069-*.md` |
 | 2026-07-13 | **s123 — PLAN-0068 (aquaculture per-species DO floors) shipped END-TO-END + CLOSED → `done/` in ONE session-123 day; aquaculture's `morning_pond_health_round` judge now bands each pond's latest reading vs its OWN per-species `do_floor` (joined by the migrated `read_do` FK-parent join) instead of one blanket 4.0 mg/L floor — the 3rd OCT vertical on the per-entity FK-parent band substrate → Rule-of-Three MET (ADR-006), zero engine change (#715/#716)** — TWO PRs (SD-4 = (b), a Cray divergence isolating the DB-migration/first-join-consumer rollback). **#715 PR1 (substrate+RED):** `Pond.do_floor` + per-species seeds (whiteleg 4.0/4.0, tiger_prawn 4.5, tilapia 3.0) + the SD-3 flip seed (event-reading-12, pond-11 @ 4.2 mg/L, 01:55) + a RED-verify vs the unedited YAML. **#716 PR2 (migration+tests):** the `read_do` FK-parent join (`reads:[OperationalEvent, Pond]` + `join:{with:Pond, link:event_emitted_by_pond}`) + the `site_id`→`pond_site_id` declared-collision rename + `judge` `threshold:4.0`→`threshold_field:do_floor` (keeping authored `direction:below` + `watch_margin:1.0` — the FIRST shipped `threshold_field`+`watch_margin` 3-band consumer) + a Step-5 coupled-test audit (8 test files). **Zero engine change** (`git diff main -- services/` empty; rides ADR-016 FKP-1). Demo-visible flip (SD-3/AC-7): pond-11 (tiger_prawn) warms to 4.2 mg/L → `watch` under a blanket 4.0 but `breach` under its own 4.5 floor (aerate set {pond-07} → {pond-07, pond-11}); AC-7/SD-5 pins the SAME 3.4 mg/L reading = breach in a whiteleg pond (floor 4.0) but watch in a tilapia pond (floor 3.0). **draft≠review≠verify:** PR2 RESUMED an interrupted prior-session WIP (`acfcd57`, "migration done, 7 coupled tests pending"); `next-work-analyst` CAUGHT STATUS saying "BUILD NOT started" while the code showed PR1 merged + PR2 WIP — a `superseded by new info` staleness (build landed after the s122 reconcile); the 7 pending coupled-test breaks were ALL PLAN-0068 Step-5 pre-disclosed (fixture adapters not serving Pond → inner join empties / fake read_do rows lacking `do_floor` → per-entity judge fails closed FKP-3 / `threshold==4.0` asserts → `None`+`threshold_field`), no engine bug. Suite **2549/7** WITH Postgres (verified on merge commit `b55ff43`, CI PR-only); ruff + `ruff format --check` + `mypy --strict services/` clean; CI `gate` green on both PRs; no MS-S1 / host-state — pure offline. Disclosed [corrected s124 — `was an error`]: the read-only Procedures viewer (View F, `view-procedures.js`) — NOT the payload — doesn't surface `threshold_field` (a pre-existing FRONTEND s121 supply_chain display gap; the payload always carried it), out of PLAN-0068's zero-engine scope; RESOLVED s124 (#718). PLAN-0068 `git mv`→`done/`. Full narrative: the Session-123 CF block above | `b55ff43` (HEAD, #716 PR2 merge) / `befec8e` (PR2 coupled-test fixes) / `acfcd57` (PR2 WIP migration) / `d4cb9b3` (#715 PR1 merge) / `ec4fe6f` (#715 PR1 substrate) / `verticals/aquaculture/{ontology/aquaculture_v0.yaml (`Pond.do_floor`), procedures.yaml (`read_do` `join:` + `judge` `threshold_field:do_floor`), data_adapter/synthetic.py (per-species do_floor seeds + SD-3 flip reading)}` (+ regenerated `generated/**`) + `docs/plans/done/0068-*.md` |
 | 2026-07-13 | **s122 — Axis-B verify loop GRADUATED to enforcing (ADR-0018 V2, Accepted 2026-07-13, #713) + next build queued (PLAN-0068 Ready — aquaculture per-species DO floors, #712); governance-text batch, NO code shipped** — **#713 ADR-0018 V2 Amendment:** graduates the Axis-B verification loop from v1 (warn-only, D5) to **v2 (enforcing)**, discharging the D5 warn-only deferral + OQ-8 "Blocking-mode promotion", and formalizes **unintentional drift vs deliberate redirect** (a divergence WITH a typed Cray sign-off = redirect/passes, WITHOUT = drift/flagged-or-blocked). SD-0..SD-4 ratified as-rec: SD-0 in-place amendment to ADR-0018 (ADR-0016 discipline — extends not reverses, D1-D7 unchanged) / SD-1 per-goal `enforce` flag (default warn) / SD-2 typed sign-off in an append-only `amendments[]` log + evaluator-detected, deterministically-consequenced divergence / SD-3 goal-gate graduation ONLY (sibling hooks out-of-scope) / SD-4 missing-evidence-under-enforce = pause `blocked-pending-human`, never a silent pass. **draft≠review≠verify:** `plan-drafter` authored → Code R2 (re-verified D5/OQ-8 + `work_fingerprint()` at `_goal_gate.py:152`; confirmed 2 build hazards — `_goal_state.py` DROPS unknown fields on rewrite [v2 fields must be dataclass fields], `VALID_STATUSES` lacks `blocked-pending-human`) → Cray ratified. Grounded by a 2026-07-13 design brief (research through 13 Jul + repo inventory, a private Artifact, NOT a repo file). **The v2 gate/schema BUILD is a follow-on PLAN** (ADR-013 D1). **#712 PLAN-0068 Ready:** the `next-work-analyst`-ranked #1 pick, `plan-drafter`-authored + Code-R2'd + Cray-ratified (SD-0..SD-5; **SD-4 = (b) TWO PRs, a Cray divergence** from the drafter's 1-PR rec) — migrates aquaculture's `morning_pond_health_round` judge from a blanket 4.0 mg/L DO floor to per-species floors via `Pond.do_floor` + a `read_do` FK-parent join (3rd OCT vertical on the per-entity band substrate → **Rule-of-Three MET**, zero engine change, rides ADR-016 FKP-1); Status = Ready, BUILD (PR1 substrate+RED / PR2 migration+tests) NOT started. No MS-S1 / host-state — pure governance-doc batch; suite unchanged. Full narrative: the Session-122 CF block above | `2e2007c` (HEAD, #713 ADR-0018 V2 merge) / `f67b713` (intervening branch-sync merge, inferred from order) / `d40d2f6` (#713 ADR-0018 V2 amendment) / `2c3a05d` (#712 PLAN-0068 Ready merge) / `c443bfd` (#712 PLAN-0068 Ready) / `docs/adr/0018-*.md` (V2 enforcing amendment) + `docs/plans/0068-*.md` (aquaculture per-species DO floors, Ready) |
 | 2026-07-12 | **s121 — per-entity FK-parent `threshold_field` (ADR-016 "per-entity bands v2") shipped END-TO-END (amendment → PLAN-0067 Ready → PR1 engine → PR2 vertical) in ONE session-121 day; supply_chain cold-chain `judge` now bands each shipment vs its OWN per-cargo `temp_ceiling` instead of one blanket env ceiling (#707/#708/#709/#710)** — **#707 ADR-016 amendment (Accepted 2026-07-12):** FK-parent-column `threshold_field` (a `threshold_field` may name a column on a JOINED FK-parent of the traced query step; FKP-1..FKP-4, SD-1..SD-5, SD-4 = supply_chain-only build), discharging TF-2(i); **Code R2 caught + corrected the dispatch's "executor deferred Phase C" premise** (it had shipped in PLAN-0061 #666). **#708 PLAN-0067 Ready:** SD-1 = (b) TWO PRs (a Cray divergence isolating the DB-migration / first-join-consumer rollback), SD-2 = (b) demo-visible seed flip, SD-3 rendered ceilings, SD-4 = (a) keep env-band wrapper + guard, SD-5 = (a). **#709 PR1 (engine):** FKP-2 gate widening (`_validate_threshold_field_bindings` domain reads[0] → base + joined FK-parent, in `orchestrator.py`) + a draft-discovered `env_band_step.py` delegate-guard fix (a migrated `threshold_field` judge delegates untouched — no clobbered direction, no false `band_source: env`) + a stale-docstring fix + `spec.py` reword; 6 new engine tests. **#710 PR2 (vertical):** `Shipment.temp_ceiling` + per-cargo seeds (8/12/-15/6) + a frozen warming reading (SD-2b) + `read_temps` as the FIRST shipped `join:` consumer + the `judge` env_band → threshold_field migration; **RED-verified flip** — the frozen shipment warms to −11.8 °C → `ok` under a blanket 8 °C ceiling but `breach` under its own −15 °C ceiling (hold set 1 → 2). **Build-discovered correction:** NO Alembic migration — supply_chain has no committed ORM/DB table (energy-only), so `temp_ceiling` is in-memory only (Cray-ratified Option A). THREE draft≠review≠verify catches, one per role (Code R2 stale-docstring premise / `plan-drafter` env_band guard coupling / build AC-3 no-shipment-table). Suite **2544/7** WITH Postgres (baseline 2536 + engine 6 + vertical 2); ruff + `mypy --strict` clean; CI `gate` green on every PR; no MS-S1 / host-state — pure offline; PLAN-0067 closing to `done/` in a sibling `docs(plans)` PR. Full narrative: the Session-121 CF block above | `670117c` (HEAD, #710 PR2 vertical merge) / `0b6be2a` / `83cbb39` / `a24971c` / `4c05ecd` / `e3debdd` (the s121 #708 Ready / #709 PR1 engine / #710 PR2 vertical + PLAN-0067 close commits — merge↔content pairing inferred from order) / `1c296a4` (#707 ADR-016 amendment merge) / `7e54a34` (#707 amendment) / `services/engine/procedures/{orchestrator.py,env_band_step.py,spec.py}` + `verticals/supply_chain/{ontology/supply_chain_v0.yaml (`Shipment.temp_ceiling`),procedures.yaml (`read_temps` `join:` + `judge` env_band→`threshold_field`),data_adapter/synthetic.py (per-cargo seeds 8/12/-15/6 + frozen warming reading)}` (+ regenerated `generated/**`) + `docs/adr/0016-governed-procedure-engine.md` (per-entity FK-parent `threshold_field` amendment) + `docs/plans/done/0067-*.md` |

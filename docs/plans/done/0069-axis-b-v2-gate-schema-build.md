@@ -1,6 +1,6 @@
 # PLAN-0069: Axis-B v2 gate/schema build — warn→enforce graduation of the Stop-hook goal gate
 
-**Status:** Ready (SD-A…SD-D ratified by Cray via AskUserQuestion 2026-07-13 — all four as-recommended: SD-A = 2 PRs, SD-B = same-PR/PR2, SD-C = no migration, SD-D = positional `amendments_seen`)
+**Status:** Complete (2026-07-13 — built + merged as PR1 #721 [v2 schema] + PR2 #722 [enforce ladder]; all 10 ACs met; SD-A…SD-D ratified by Cray via AskUserQuestion, all four as-recommended: SD-A = 2 PRs, SD-B = same-PR/PR2, SD-C = no migration, SD-D = positional `amendments_seen`. Evidence: full suite 2570 passed / 7 skipped WITH Postgres on the merge commit; every pre-existing goal test passed unmodified [AC-3]; ruff + mypy --strict clean.)
 **Owner:** Claude Code
 **Created:** 2026-07-13
 **Related ADRs:** ADR-0018 (V2 Amendment, Accepted 2026-07-13 — the design of record; this PLAN implements, does not redesign), ADR-013 D1 (harness primitives are Code-built), ADR-009 D2 (only Code commits)
