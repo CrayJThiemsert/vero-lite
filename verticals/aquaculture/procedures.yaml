@@ -63,17 +63,21 @@ procedures:
     steps:
       - step_id: read_do
         name: Read dissolved oxygen
-        description: Latest reading per Pond (event_type=reading), by occurred_at.
+        description: Latest reading per Pond joined to its per-species DO floor (event_type=reading), by occurred_at.
         kind: query
-        input:                          # PLAN-0062 Q4 Phase-3: the declared latest-per-group grammar
-          reads: [OperationalEvent]
+        input:                          # PLAN-0068: declared latest-per-group + FK-parent join (ADR-016 FKP)
+          reads: [OperationalEvent, Pond]
           where:
             event_type: reading         # load-bearing: the stalled-aerator alarm carries NO
                                         # measured_value, and an unfiltered latest-per-group
                                         # would hand the judge an unreadable row
+          join:
+            - { with: Pond, link: event_emitted_by_pond }   # brings each Pond's do_floor onto its readings (ADR-016 FKP 2026-07-12)
           project:
             latest_per: event_emitted_by_pond   # FK OperationalEvent.pond_id -> Pond.pond_id
             order_by: occurred_at
+            fields:
+              site_id: pond_site_id             # the declared OperationalEvent/Pond site_id collision (join-key pond_id is exempt)
         facet:
           decision_condition: { gate_kind: none }
           llm_assist: null
@@ -85,25 +89,26 @@ procedures:
           input: "latest OperationalEvent (event_type=reading) per Pond via event_emitted_by_pond, by occurred_at"
           output: "one latest reading row per Pond"
       - step_id: judge
-        name: Judge vs threshold
+        name: Judge vs per-species DO floor
         description: >-
-          Tag each pond's verdict vs the 4 mg/L floor — breach (< 4), watch (4–5),
-          ok (> 5). OCT_RECOMMEND_DIRECTION=below crash semantics.
+          Tag each pond's verdict vs ITS OWN per-species do_floor — breach (at/below
+          the floor), watch (within watch_margin above it), ok (higher).
+          OCT_RECOMMEND_DIRECTION=below crash semantics (ADR-016 FKP amendment 2026-07-12).
         kind: evaluate
-        # PLAN-0022 Step 3 (SD-5=a): the authored deterministic band the evaluate
-        # executor (Phase 2a) computes per-entity verdicts from. The watch band is
-        # the ADR-0019 escalate-to-human zone; all three fields are optional —
-        # absent, the band stays NL-only and behaviour is unchanged (AC-9).
-        threshold: 4.0
+        # PLAN-0068: each pond bands vs its OWN per-species do_floor (joined onto the
+        # reading by read_do), not one blanket 4 mg/L floor. direction/watch_margin stay
+        # authored scalars — each species' watch band = (do_floor, do_floor + 1.0]. The
+        # watch band is the ADR-0019 escalate-to-human zone.
+        threshold_field: do_floor
         direction: below
         watch_margin: 1.0
         facet:
-          # in_file_band POINTS AT the typed threshold/direction/watch_margin above —
-          # crash semantics, breach BELOW the floor — it does NOT re-store the values (D2-A3).
+          # in_file_band POINTS AT the typed threshold_field/direction/watch_margin above —
+          # crash semantics, breach BELOW each pond's own floor — it does NOT re-store them (D2-A3).
           decision_condition: { gate_kind: in_file_band, band_source: in_file }
           llm_assist: null
-          input: "read_do set"
-          output: "per-pond verdict {breach <4, watch 4–5, ok >5}"
+          input: "read_do set (each row carries its Pond's do_floor)"
+          output: "per-pond verdict {breach at/below own floor, watch within margin, ok above}"
           governance: "verdict = pure function of the reading + the authored (in-file) band; watch = the ADR-0019 escalate zone"
       - step_id: aerate
         name: Aerate the breach set
