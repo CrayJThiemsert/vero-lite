@@ -217,27 +217,108 @@
     ]);
   }
 
-  /* ---- PLAN-0057 (AC-2): the beat-3 "act" reveal — a distinct human approves the parked DOA
-     gate → COMPLETED. Client-side reveal (the governed resolve→COMPLETED path is proven by the
-     engine test; the parked run itself never auto-resolves, so the demo stays replayable). ---- */
-  function renderActPanel(hero, host) {
+  /* ---- PLAN-0072 (beat 3): the "act" panel GENUINELY resolves the parked DOA gate.
+     SD-A(b): drives the REAL production POST /runs/{id}/gate/resolve (authenticated approver,
+     RF-1); SD-B(b): approve AND reject as real affordances; SD-D(a): inline login here — the
+     approver authenticates, THEN signs. The render binds to the PERSISTED GateResolveResponse
+     (run_status), never a client literal; a reject renders the honest shipped semantics (no PO
+     issued, decision recorded, run completed — reject = continue+record, not a rejected terminal). ---- */
+  function renderActPanel(hero, host, runId) {
     const apprId = (hero.sod && hero.sod.approver && hero.sod.approver.person_id) || 'appr-pm';
     const reqId = (hero.sod && hero.sod.requester && hero.sod.requester.person_id) || 'req-planner';
+    const auth = O.Auth;
     const body = h('div', { class: 'hero-badges' }, []);
-    const approve = h('button', { class: 'hero-badge hero-toggle', type: 'button' },
-      icon('check', { width: 14, height: 14 }));
-    approve.appendChild(document.createTextNode(' Approve as ' + apprId));
-    approve.addEventListener('click', function () {
-      clear(body);
-      body.appendChild(badge('✓ COMPLETED · ' + apprId, 's-ok'));
+
+    function addReplay() {
       const replay = h('button', { class: 'hero-badge hero-toggle', type: 'button' }, '↺ Replay');
       replay.addEventListener('click', function () { mount(host, { mode: 'event' }); });
       body.appendChild(replay);
-      body.appendChild(h('span', { class: 'faint' },
-        ' gate resolved → run COMPLETED · SoD governed (' + reqId + ' ≠ ' + apprId + ')'));
-    });
-    body.appendChild(approve);
-    return card('Act — the human DOA gate', 'a distinct approver must sign · SoD (RF-3)', [body]);
+    }
+
+    function renderLogin() {
+      clear(body);
+      if (!auth) {
+        body.appendChild(h('span', { class: 'faint' }, 'Operate unavailable — auth module not loaded.'));
+        return;
+      }
+      const keyIn = h('input', { class: 'mon-auth-in mono', type: 'password', autocomplete: 'off', placeholder: 'operator API key' });
+      const idIn = h('input', { class: 'mon-auth-in', type: 'text', autocomplete: 'off', placeholder: 'identity (e.g. ' + apprId + ')' });
+      const err = h('span', { class: 'mon-auth-err', role: 'status', 'aria-live': 'polite' });
+      const doLogin = async function () {
+        try { await auth.login(keyIn.value, idIn.value); renderActions(); }
+        catch (e) { err.textContent = String((e && e.message) || e); }
+      };
+      keyIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+      idIn.addEventListener('keydown', function (e) { if (e.key === 'Enter') doLogin(); });
+      const loginBtn = h('button', { class: 'hero-badge hero-toggle', type: 'button' }, 'Log in');
+      loginBtn.addEventListener('click', doLogin);
+      body.appendChild(h('span', { class: 'faint' }, 'Log in to sign the gate: '));
+      body.appendChild(keyIn);
+      body.appendChild(idIn);
+      body.appendChild(loginBtn);
+      body.appendChild(err);
+    }
+
+    function renderActions() {
+      clear(body);
+      body.appendChild(h('span', { class: 'faint' }, 'Signed in as ' + (auth.identity() || apprId) + ' · '));
+      const approve = h('button', { class: 'hero-badge hero-toggle', type: 'button' }, icon('check', { width: 14, height: 14 }));
+      approve.appendChild(document.createTextNode(' Approve'));
+      approve.addEventListener('click', function () { decide('approve'); });
+      const reject = h('button', { class: 'hero-badge hero-toggle', type: 'button' }, '✗ Reject');
+      reject.addEventListener('click', function () { decide('reject'); });
+      const logout = h('button', { class: 'hero-badge hero-toggle', type: 'button' }, 'Log out');
+      logout.addEventListener('click', function () { auth.logout(); renderLogin(); });
+      body.appendChild(approve);
+      body.appendChild(reject);
+      body.appendChild(logout);
+    }
+
+    async function decide(kind) {
+      clear(body);
+      body.appendChild(badge('resolving…', 's-info'));  // OQ-3: optimistic paint = a loading state only
+      try {
+        const detail = await O.Hero.runDetail(runId);
+        const decisions = {};
+        (detail.proposals || []).forEach(function (p) { decisions[p.action_id] = kind; });
+        const out = await O.Hero.resolve(runId, detail.suspended_step, decisions);
+        renderOutcome(kind, out);
+      } catch (e) { renderError(e); }
+    }
+
+    function renderOutcome(kind, out) {
+      clear(body);
+      const who = auth.identity() || apprId;
+      const status = (out && out.run_status) || 'completed';
+      if (kind === 'approve') {
+        body.appendChild(badge('✓ COMPLETED · approved by ' + who, 's-ok'));
+        body.appendChild(h('span', { class: 'faint' },
+          ' gate resolved → run ' + status + ' · SoD governed (' + reqId + ' ≠ ' + who + ')'));
+      } else {
+        body.appendChild(badge('✗ REJECTED · by ' + who, 's-warn'));
+        body.appendChild(h('span', { class: 'faint' },
+          ' no PO created (handler never fired) · decision recorded on the audit trace · run ' + status));
+      }
+      addReplay();
+    }
+
+    function renderError(e) {
+      clear(body);
+      const st = e && e.status;
+      let msg = String((e && e.message) || e);
+      if (st === 401) msg = 'Not authenticated — log in as the approver (' + apprId + ') first.';
+      else if (st === 403) msg = 'Refused — SoD: the requester (' + reqId + ') cannot also approve.';
+      body.appendChild(badge('resolve failed', 's-warn'));
+      body.appendChild(h('span', { class: 'faint' }, ' ' + msg + ' '));
+      const retry = h('button', { class: 'hero-badge hero-toggle', type: 'button' }, '↺ Try again');
+      retry.addEventListener('click', function () {
+        if (auth && auth.isLoggedIn()) renderActions(); else renderLogin();
+      });
+      body.appendChild(retry);
+    }
+
+    if (auth && auth.isLoggedIn()) renderActions(); else renderLogin();
+    return card('Act — the human DOA gate', 'a distinct approver authenticates, then signs · SoD (RF-3)', [body]);
   }
 
   function render(container, gov, ledger, host, live, mode) {
@@ -290,7 +371,7 @@
     container.appendChild(scenario);
     container.appendChild(renderDoaCard(hero));
     container.appendChild(renderSodCard(hero));
-    if (mode === 'event') container.appendChild(renderActPanel(hero, host));
+    if (mode === 'event') container.appendChild(renderActPanel(hero, host, gov.hero && gov.hero.run_id));
     container.appendChild(renderJoinCard(hero));
     container.appendChild(renderContrast(contrast));
     container.appendChild(renderLedger(ledger));

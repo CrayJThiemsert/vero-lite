@@ -23,6 +23,7 @@ escalated-failure resume (re-run a failed step) is NOT exposed in v1.
 
 from __future__ import annotations
 
+import json
 from dataclasses import asdict, is_dataclass
 from typing import Annotated, Any
 from uuid import uuid4
@@ -386,7 +387,12 @@ async def resolve_gate_endpoint(
     except PrincipalSoDError as exc:
         detail: dict[str, Any] = {"error": str(exc)}
         if is_dataclass(exc.verdict) and not isinstance(exc.verdict, type):
-            detail["verdict"] = asdict(exc.verdict)
+            # PLAN-0072: JSON-sanitize the verdict — SoDViolation.constraint_steps is a
+            # frozenset (principal_sod.py) that asdict keeps verbatim and Starlette cannot
+            # JSON-encode; an un-sanitized detail 500s and MASKS the 403 (the procurement SoD
+            # gate is the first frozenset-bearing verdict to reach this HTTP path). frozenset ->
+            # sorted list (deterministic).
+            detail["verdict"] = json.loads(json.dumps(asdict(exc.verdict), default=sorted))
         raise HTTPException(status_code=403, detail=detail) from exc
     except ProcedureError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
