@@ -199,15 +199,18 @@ class BandSource(StrEnum):
 
 class GateKind(StrEnum):
     """The kind of deterministic decision a step's ``decision_condition`` gates on —
-    exactly the six kinds observed across the N=4 instrumented verticals (ADR-016
-    D2-A3; no speculative future kinds, Rule-of-Three). A 5th vertical with a new
-    shape extends this enum additively (amendment OQ-A1)."""
+    the seven kinds observed across the instrumented verticals (ADR-016 D2-A3; no
+    speculative future kinds, Rule-of-Three). A new vertical shape extends this enum
+    additively (amendment OQ-A1). ``severity_tier`` is the 2nd AT-2 signature's
+    non-money authority gate (PLAN-0074 SD-1; the ADR-0031 D3 gate-kind seam's first
+    concrete pressure)."""
 
     ENV_BAND = "env_band"
     IN_FILE_BAND = "in_file_band"
     RULE_GATE = "rule_gate"
     SCORED_RULE = "scored_rule"
     DOA_TIER = "doa_tier"
+    SEVERITY_TIER = "severity_tier"
     NONE = "none"
 
 
@@ -426,7 +429,7 @@ class StepTiers(BaseModel):
 class DecisionCondition(BaseModel):
     """The discriminated decision-condition facet of a ``Step`` (ADR-016 D2-A3).
 
-    ``gate_kind`` names HOW the step decides (one of the six observed kinds).
+    ``gate_kind`` names HOW the step decides (one of the observed ``GateKind`` kinds).
     ``band_source`` is set iff ``gate_kind`` is a band kind (``env_band`` /
     ``in_file_band``); ``env_var`` names the env band's source only when
     ``band_source == env``. An ``in_file_band`` POINTS AT the existing typed
@@ -700,10 +703,95 @@ class ComplianceGate(BaseModel):
     rules: list[ComplianceRule] = Field(min_length=1, description="the per-criterion rules (>=1)")
 
 
-AT2Governance = Annotated[DoaLadder | ScoredRule | ComplianceGate, Field(discriminator="kind")]
+class ExcursionSeverity(StrEnum):
+    """The ordinal severity of a cold-chain excursion — the NON-MONEY authority quantity a
+    ``severity_tier`` gate routes on (ADR-0025 D2 / ADR-0031 D3 gate-kind seam / PLAN-0074
+    SD-1). Declaration order is ASCENDING (negligible < minor < major < critical); a
+    ``SeverityLadder`` tier floor ranks by this order — the non-money analog of
+    ``DoaTier.min_amount``'s ``Decimal`` order. Scoped to the observed supply_chain
+    cold-chain-disposition signature — PROVISIONAL-UNTIL-N>=2 (genericization gated on the
+    ADR-0025 D7 re-trigger, the same discipline as the procurement AT-2 enums)."""
+
+    NEGLIGIBLE = "negligible"
+    MINOR = "minor"
+    MAJOR = "major"
+    CRITICAL = "critical"
+
+
+_SEVERITY_BY_RANK: tuple[ExcursionSeverity, ...] = tuple(ExcursionSeverity)
+"""Ascending severity order (enum declaration order) — the ordinal a ``SeverityLadder`` tier
+floor ranks by, so ``_SEVERITY_BY_RANK.index(sev)`` is its rank (NEGLIGIBLE=0). The non-money
+analog of the ``Decimal`` spend order a ``DoaLadder`` ranks by (ADR-0025 D2 / PLAN-0074 SD-1)."""
+
+
+class SeverityTier(BaseModel):
+    """One tier of a severity-authority ladder: an excursion whose severity falls in this
+    tier's half-open ordinal band ``[min_severity, next_min)`` routes to ``approver_role``
+    (ADR-0025 D2 / PLAN-0074 SD-1). The severity is a CLOSED ordinal (``ExcursionSeverity``),
+    never money — a ``severity_tier`` gate authorises on patient-safety / regulatory severity,
+    not spend, so ``DoaLadder`` cannot represent it (money-typed by construction)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min_severity: ExcursionSeverity = Field(
+        description="inclusive severity floor of this tier (ordinal; ranks by _SEVERITY_BY_RANK)"
+    )
+    approver_role: RoleId = Field(description="role authorised to approve within this tier")
+    note: str = Field(
+        default="",
+        description="optional human note for this tier — NON-AUTHORITATIVE free-text (never a "
+        "gate input; scoped-prose-lint-guarded so a severity/role token cannot be smuggled in, "
+        "ADR-0025 D4). The authoritative tier is min_severity + approver_role.",
+    )
+
+
+class SeverityLadder(BaseModel):
+    """A tiered severity-authority ladder (the ``severity_tier`` content, ADR-0025 D2 /
+    ADR-0031 D3 gate-kind seam / PLAN-0074 SD-1) — the fourth AT-2 gate kind, and the first
+    with a NON-MONEY authority quantity.
+
+    Total + unambiguous by construction (the ordinal analog of ``DoaLadder``): ``tiers``
+    non-empty with the first floor at the LOWEST severity (``NEGLIGIBLE``) and
+    strictly-increasing ordinal floors, so every ``ExcursionSeverity`` maps to exactly one
+    half-open ordinal band ``[min_i, min_{i+1})`` (top tier unbounded). No emergency-waiver in
+    v1 (the waiver is procurement-shaped — PLAN-0074 SD-1). Scoped to the observed signature,
+    PROVISIONAL-UNTIL-N>=2 (ADR-0025 D2 discipline; genericization gated on the D7 re-trigger)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["severity_tier"] = "severity_tier"
+    tiers: list[SeverityTier] = Field(
+        min_length=1, description="the severity tiers, ascending by ordinal floor"
+    )
+
+    @model_validator(mode="after")
+    def _validate_ladder(self) -> Self:
+        """Total-cover, strictly-monotonic ordinal ladder (the ordinal analog of
+        ``DoaLadder._validate_ladder``, ADR-0025 D3): the first tier's floor is the LOWEST
+        severity (total cover from ``NEGLIGIBLE``), and floors strictly increase by ordinal
+        rank (no equal / overlapping tiers)."""
+        ranks = [_SEVERITY_BY_RANK.index(t.min_severity) for t in self.tiers]
+        if ranks[0] != 0:
+            raise ValueError(
+                f"SeverityLadder: the first tier's min_severity must be the lowest severity "
+                f"'{_SEVERITY_BY_RANK[0].value}' (total cover from the floor); got "
+                f"'{self.tiers[0].min_severity.value}' — ADR-0025 D3 / PLAN-0074 SD-1"
+            )
+        if any(nxt <= cur for cur, nxt in pairwise(ranks)):
+            raise ValueError(
+                f"SeverityLadder: tier min_severity must be STRICTLY increasing (no overlap / "
+                f"equal tiers); got {[t.min_severity.value for t in self.tiers]} — ADR-0025 D3"
+            )
+        return self
+
+
+AT2Governance = Annotated[
+    DoaLadder | ScoredRule | ComplianceGate | SeverityLadder, Field(discriminator="kind")
+]
 """The discriminated AT-2 governance-content union, keyed to a step's ``gate_kind`` via the
-``kind`` literal (ADR-0025 D2). One field, not four bare ``Optional``s — a leaked variant
-is one test, not four (Alternative 3 rejected)."""
+``kind`` literal (ADR-0025 D2; the ``severity_tier`` arm added by PLAN-0074, the 2nd AT-2
+signature). One field, not five bare ``Optional``s — a leaked variant is one test, not five
+(Alternative 3 rejected)."""
 
 
 class SoDConstraint(BaseModel):
@@ -988,6 +1076,8 @@ def _at2_role_vocab(steps: list[Step]) -> frozenset[str]:
         if isinstance(gc, DoaLadder):
             roles.update(t.approver_role for t in gc.tiers)
             roles.add(gc.emergency_waiver.escalate_to)
+        elif isinstance(gc, SeverityLadder):
+            roles.update(t.approver_role for t in gc.tiers)
     return frozenset(roles)
 
 
@@ -1009,6 +1099,10 @@ def _at2_free_text_surfaces(goal: str, steps: list[Step]) -> Iterator[tuple[str,
         elif isinstance(gc, ScoredRule):
             for crit in gc.criteria:
                 yield crit.note, f"step '{step.step_id}' criterion '{crit.name}' note"
+        elif isinstance(gc, SeverityLadder):
+            for sev_tier in gc.tiers:
+                where = f"step '{step.step_id}' severity tier '{sev_tier.min_severity.value}' note"
+                yield sev_tier.note, where
 
 
 class Procedure(BaseModel):

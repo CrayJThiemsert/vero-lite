@@ -61,6 +61,8 @@ from services.engine.procedures.spec import (
     ScoredCriterion,
     ScoredRule,
     ServicePrincipal,
+    SeverityLadder,
+    SeverityTier,
     SoDConstraint,
     SourcePolicy,
     Step,
@@ -224,6 +226,8 @@ _AT2_CONTENT_TYPES: frozenset[type[BaseModel]] = frozenset(
         ScoredRule,
         ComplianceRule,
         ComplianceGate,
+        SeverityTier,
+        SeverityLadder,
         SoDConstraint,
     }
 )
