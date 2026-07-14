@@ -261,11 +261,14 @@ def _step_gate_kind(step: Step) -> GateKind:
     return GateKind.NONE
 
 
-_AT2_GATE_KINDS = frozenset({GateKind.SCORED_RULE, GateKind.RULE_GATE, GateKind.DOA_TIER})
+_AT2_GATE_KINDS = frozenset(
+    {GateKind.SCORED_RULE, GateKind.RULE_GATE, GateKind.DOA_TIER, GateKind.SEVERITY_TIER}
+)
 """The AT-2 (managerial) gate kinds whose step owes typed ``governance_content`` (ADR-0025
 D5): a ``scored_rule`` action owes a ``ScoredRule``, a ``rule_gate`` evaluate owes a
-``ComplianceGate``, a ``doa_tier`` action owes a ``DoaLadder``. (Distinct from the
-generator's classify-time AT-2 abstain guard in ``generator/pipeline.py``.)"""
+``ComplianceGate``, a ``doa_tier`` action owes a ``DoaLadder``, and a ``severity_tier`` action
+owes a ``SeverityLadder`` (the 2nd AT-2 signature's non-money authority gate, PLAN-0074).
+(Distinct from the generator's classify-time AT-2 abstain guard in ``generator/pipeline.py``.)"""
 
 
 def derive_governance_todo(step: Step) -> list[str]:
@@ -327,13 +330,15 @@ def unfilled_governance(step: Step) -> list[str]:
 
 def derive_procedure_governance_todo(procedure: Procedure) -> list[str]:
     """The procedure-level governance obligations, derived from the procedure's steps
-    (ADR-0025 D5). A procedure containing a ``doa_tier`` action owes >=1
-    ``separation_of_duties`` constraint — SoD spans steps, so it is procedure-scoped, not
-    step-scoped. The author-time gate enforces this STRUCTURAL form (a constraint exists,
-    naming >=2 distinct real steps — see the ``Procedure`` validators); the
-    resolved-PRINCIPAL distinctness (fail-closed on alias-collapse) is the deferred A2 run
-    check (ADR-0025 OQ-A=A1; AC-13-ALT)."""
-    if any(_step_gate_kind(s) is GateKind.DOA_TIER for s in procedure.steps):
+    (ADR-0025 D5). A procedure containing a human authority-approval gate — a ``doa_tier``
+    (spend authority) OR a ``severity_tier`` (non-money severity authority, PLAN-0074) — owes
+    >=1 ``separation_of_duties`` constraint: both route to a human approver, so requester !=
+    approver applies to each. SoD spans steps, so it is procedure-scoped, not step-scoped. The
+    author-time gate enforces this STRUCTURAL form (a constraint exists, naming >=2 distinct
+    real steps — see the ``Procedure`` validators); the resolved-PRINCIPAL distinctness
+    (fail-closed on alias-collapse) is the deferred A2 run check (ADR-0025 OQ-A=A1; AC-13-ALT)."""
+    authority_gates = {GateKind.DOA_TIER, GateKind.SEVERITY_TIER}
+    if any(_step_gate_kind(s) in authority_gates for s in procedure.steps):
         return ["separation_of_duties"]
     return []
 
