@@ -3952,3 +3952,39 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-11 (s119 — PLAN-0065 calm-path reorder runnability BUILT + CLOSED #700/#701) [rotated 2026-07-14, session-129 reconcile — 10-row RD window]
 
 | 2026-07-11 | **s119 — PLAN-0065 calm-path reorder runnability BUILT (#700) + CLOSED → `done/` (#701); procurement `low_stock_reorder_round` now runnable END-TO-END; drafted→ratified→built→closed in ONE session-119 day (#699 Ready, `plan-drafter`-authored)** — **SD-2 fix (shipped Q4 grammar, ZERO engine-code change):** `read_stock` gained a `project: {fields: {stock_qty: measured_value}}` rename-projection so the shipped `EvaluateStepExecutor` bands the registry-registered adapter's `Part` rows — the production factory chain used to CRASH at `judge_stock` (raw `Part` rows carry `stock_qty`, the judge reads `measured_value`); **PLAN-0064 fact-9 DISCHARGED**. Three new tests prove runnability at three depths: production-factory chain (`test_calm_path_production_runnability`, red-verified vs the unedited YAML), manual-run HTTP (`test_calm_path_run_endpoint` — `POST /procedures/{id}/run` parks at the reorder gate, identity server-resolved), and a NEW scheduled sibling `scheduled_low_stock_reorder_round` on the PLAN-0055 scheduler (fires headless, parks at reorder). **SD-5(b) Cray-ratified AGAINST the drafter's rec:** the scheduled sibling carries `owning_person_id: req-planner` (verified ACCEPTED at execution — no validator couples it to SoD, this AT-3 path has no SoD, so it is the run principal not an SoD requester). Both paths park at ONE human go/no-go (RF-1/RF-3). **SD-3 (per-part reorder-point band) DEFERRED** — trips the L-4 tripwire (the shipped judge takes a single scalar threshold, not a per-entity field reference) → own ADR-016-amendment PLAN. PLAN-0064 shadow-parity assertion updated for the projection (routing unchanged, output projected — disclosed). Suite **2516/7** local WITH Postgres (2512/7 + 4 new); no host-state action; `docs/plans/` EMPTY again. Full narrative: the Session-119 CF block above | `06e5f39` (HEAD, #701 close-out merge) / `22a89fd` / `75696c5` / `eaf8b03` / `bfa8a36` / `5ab424a` (the six s119 commits — #699 Ready / #700 build / #701 close; merge↔content pairing inferred from order) / `verticals/procurement/procedures.yaml` (`read_stock` `project` + `scheduled_low_stock_reorder_round`) + `tests/verticals/procurement/` (`test_calm_path_production_runnability`, `test_calm_path_run_endpoint`) + `docs/plans/done/0065-*.md` |
+
+### Current Focus block removed — 2026-07-13 (s126 — ADR-0030 Accepted: Box-4 economic-impact ฿ facet) [rotated 2026-07-14, session-130 reconcile — 4-session CF window]
+
+> **Session 126, 2026-07-13 (head_commit `b19dce4` → `a9dbb6f`) — ADR-0030
+> Accepted: the Box-4 economic-impact (฿) facet — typed, ADVISORY,
+> trace-carried — DISCHARGING the ADR-016 self-cancelling Box-4 deferral now
+> that N≥3 is MET (4 shipped verticals). ONE PR (#728, `docs(adr)`); doc-only
+> governance-text batch — NO code/tests shipped; the BUILD is a follow-on
+> PLAN.** **D1 (SD-1):** ฿ is carried as an advisory `economic_impact`
+> `ReasoningStep` in `reasoning_trace` (`detail` = a producer-validated
+> `EconomicImpact` model) — ZERO change to the ADR-007 D2 "verbatim" envelope
+> (`services/engine/actions.py:11`); mirrors the PLAN-0035/ADR-0022
+> advisory-trace precedent + the s74 trace-only trust-shape discipline. **D3
+> (SD-3):** ONE common cross-vertical shape (`baseline` vs `governed` exposure
+> → `net_benefit`) for ROI comparability; per-vertical `kind` = avoided_outage
+> (energy) / expedite_tradeoff (procurement) / spoilage_avoided (supply_chain)
+> / mortality_avoided (aquaculture). **D4 (SD-4) — disclosed `was an error`
+> (CLAUDE.md §6):** the ADR-016-promised "enforceable self-cancelling N≥3
+> marker" test was NEVER built — a claim-vs-code gap caught by session-126
+> MANUAL grounding (the re-open was NOT triggered mechanically); enforcement
+> moves forward as a ≥3-vertical build-completion AC in the follow-on PLAN.
+> **D5/D6/D7:** ฿ is always provisional/advisory, never auto-authoritative
+> (§8); contract-only ADR (the build is a fast-follow PLAN gated on Accepted);
+> a fresh ADR-0030 referencing ADR-016 (discharged) + ADR-007 (envelope).
+> **draft≠review≠verify:** `plan-drafter` authored → Code R2 (load-bearing
+> citations verified vs disk, incl. independently confirming NO economic/N≥3
+> marker exists in `tests/`) → Cray ratified ALL SD-1..SD-7 as-recommended
+> (s126, via AskUserQuestion) → Code committed (#728). CI `gate` pass 2m35s;
+> doc-only so ruff/mypy/format skipped (no files to check). Minor artifact:
+> the in-body ratification note was G1-gate-blocked once Status flipped to
+> Accepted (deterministic) — the ratification is recorded in the ADR's
+> Deciders line + the commit/PR instead. Commit: `a9dbb6f` (#728 merge).
+
+### Recent Decisions row removed — 2026-07-12 (s120 — threshold_field per-entity band shipped END-TO-END) [rotated 2026-07-14, session-130 reconcile — 10-row RD window]
+
+| 2026-07-12 | **s120 — `threshold_field` per-entity band shipped END-TO-END (ADR-016 amendment → PLAN-0066 Ready → build) in ONE session-120 day; procurement `judge_stock` now bands each `Part` vs its OWN `reorder_point` (#703/#704/#705)** — **#703 ADR-016 amendment (Accepted 2026-07-11):** per-entity `threshold_field` on evaluate steps, **same-row v1** (TF-1..TF-4, OQ-1..OQ-4), discharging PLAN-0065 SD-3's deferral; **Code R2 caught + fixed the TF-1 exactly-one → at-most-one defect BEFORE ratification.** **#704 PLAN-0066 Ready** (SDs ratified a/a/a/b — SD-4=(b) added a flip seed part so the LIVE demo shows the per-part win a blanket threshold misses). **#705 build:** `threshold_field` grammar (`spec.py` at-most-one validator) + per-entity band executor (`evaluate_step.py`, SD-1a `_entity_number`) + TF-3 load gate (`orchestrator.py` trace-to-reads, c1–c4) + governance pin (`draft.py`) + procurement migration (both `judge_stock` → `threshold_field: reorder_point`) + SD-4(b) flip seed part `part-vbelt-03`; **build-discovered coupling fixed** — `draft.py::derive_governance_todo`'s band obligation is now threshold_field-OR-threshold. THREE draft≠review≠verify catches, one per stage (R2's exactly-one→at-most-one #703 / the drafter's SD-4 seed-parity #704 / the build's `draft.py` governance coupling #705). Suite **2536/7** WITH Postgres (baseline 2516/7); ruff + `mypy --strict` clean; no host-state action; PLAN-0066 closing to `done/` in a sibling `docs(plans)` PR. Full narrative: the Session-120 CF block above | `3682d79` (HEAD, #705 build merge) / `3047386` / `57e5e08` / `40ce172` (the three #705 build commits) / `525c028` (#704 PLAN-0066 Ready merge) / `f1b7157` (#704 Ready) / `1c9a9af` (#703 ADR merge) / `758610e` (#703 amendment) / `services/engine/procedures/{spec.py,evaluate_step.py,orchestrator.py,draft.py}` + `verticals/procurement/procedures.yaml` (`judge_stock` `threshold_field: reorder_point`) + `verticals/procurement/**` (SD-4(b) flip seed `part-vbelt-03`) + `docs/adr/0016-governed-procedure-engine.md` (per-entity `threshold_field` amendment) + `docs/plans/0066-*.md` |
