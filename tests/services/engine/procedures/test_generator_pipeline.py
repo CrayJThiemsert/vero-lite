@@ -300,12 +300,13 @@ async def test_abstain_label_routes_to_hand_author() -> None:
     assert outcome.reason == "no_archetype_match"
 
 
-@pytest.mark.parametrize("at2_kind", ["scored_rule", "rule_gate", "doa_tier"])
+@pytest.mark.parametrize("at2_kind", ["scored_rule", "rule_gate", "doa_tier", "severity_tier"])
 async def test_at2_only_gate_disagreement_abstains(at2_kind: str) -> None:
     """AC-B2 / OQ-3 / AC-A8 / PLAN-0041 AC-2: a per-step gate that needs ANY AT-2-only kind
-    (scored_rule / rule_gate / doa_tier) on the judge step disagrees with the archetype
-    oracle → abstain, never a down-classified AT-3 skeleton (LOCKED-7). Generalized from the
-    single-kind original — the prompt enrichment must not have shifted the abstain gate."""
+    (scored_rule / rule_gate / doa_tier / severity_tier) on the judge step disagrees with the
+    archetype oracle → abstain, never a down-classified AT-3 skeleton (LOCKED-7). Generalized
+    from the single-kind original; severity_tier (PLAN-0074, the 4th AT-2 kind) must abstain
+    too — the generator stays AT-1-only."""
     client = RecordedChatClient(
         [_classify("AT-1", gates=[("read", "none"), ("judge", at2_kind), ("act", "none")])]
     )
@@ -432,10 +433,11 @@ async def test_classification_with_own_step_naming_still_proceeds() -> None:
 def test_guard_constants_byte_identical() -> None:
     """AC-1 (the moat invariant): the abstain-gate's kind sets are EXACTLY the documented
     constants — the prompt enrichment must not have shifted them (LOCKED-1). _AT2_ONLY_KINDS
-    is the three AT-2-only kinds; _BAND_KINDS is the two band kinds; ARCHETYPE_CHOICES still
-    excludes 'AT-2' (classify-don't-synthesize — AT-2 absent by construction, LOCKED-2)."""
+    is the four AT-2-only kinds (severity_tier added by PLAN-0074, the 4th AT-2 gate kind);
+    _BAND_KINDS is the two band kinds; ARCHETYPE_CHOICES still excludes 'AT-2'
+    (classify-don't-synthesize — AT-2 absent by construction, LOCKED-2)."""
     assert pipeline._AT2_ONLY_KINDS == frozenset(
-        {GateKind.SCORED_RULE, GateKind.RULE_GATE, GateKind.DOA_TIER}
+        {GateKind.SCORED_RULE, GateKind.RULE_GATE, GateKind.DOA_TIER, GateKind.SEVERITY_TIER}
     )
     assert pipeline._BAND_KINDS == (GateKind.ENV_BAND, GateKind.IN_FILE_BAND)
     assert "AT-2" not in ARCHETYPE_CHOICES

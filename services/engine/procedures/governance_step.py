@@ -33,7 +33,16 @@ from services.engine.procedures.doa_tier import DoaTierError, resolve_doa_tier
 from services.engine.procedures.orchestrator import RunContext, StepExecutor, StepOutcome
 from services.engine.procedures.rule_gate import evaluate_compliance
 from services.engine.procedures.scored_rule import ScoredRuleError, select_scored_supplier
-from services.engine.procedures.spec import ComplianceGate, DoaLadder, Person, ScoredRule, Step
+from services.engine.procedures.severity_tier import SeverityTierError, resolve_severity_tier
+from services.engine.procedures.spec import (
+    ComplianceGate,
+    DoaLadder,
+    ExcursionSeverity,
+    Person,
+    ScoredRule,
+    SeverityLadder,
+    Step,
+)
 
 
 def _spend(entity: Any) -> tuple[Decimal, str]:
@@ -55,6 +64,28 @@ def _spend(entity: Any) -> tuple[Decimal, str]:
             "(fail closed)"
         ) from exc
     return value, str(entity["currency"])
+
+
+def _severity(entity: Any) -> ExcursionSeverity:
+    """Read the :class:`ExcursionSeverity` off a ``severity_tier`` step's input entity
+    (PLAN-0074 Step 3 — the non-money analog of :func:`_spend`).
+
+    Fails CLOSED (:class:`SeverityTierError`) if the entity carries no ``severity`` or an
+    unrecognised value — a severity tier cannot be routed without a resolvable severity. The
+    severity is the authority quantity the upstream ``assess`` step stamps onto the entity (the
+    non-money analog of the ``scored_rule`` amount-stamp)."""
+    if not isinstance(entity, Mapping) or "severity" not in entity:
+        raise SeverityTierError(
+            "severity_tier: input entity carries no 'severity' — cannot resolve a severity tier "
+            "(fail closed; render/route/block only)"
+        )
+    try:
+        return ExcursionSeverity(str(entity["severity"]))
+    except ValueError as exc:
+        raise SeverityTierError(
+            f"severity_tier: input entity severity '{entity['severity']}' is not a recognised "
+            "ExcursionSeverity (fail closed)"
+        ) from exc
 
 
 def _candidate_quotes(entity: Any) -> list[Any]:
@@ -136,6 +167,8 @@ class GovernanceActionExecutor:
             return await self._doa_tier(step, gc, input_set, ctx)
         if isinstance(gc, ScoredRule):
             return await self._scored_rule(step, gc, input_set, ctx)
+        if isinstance(gc, SeverityLadder):
+            return await self._severity_tier(step, gc, input_set, ctx)
         return await self.base.execute(step, input_set, ctx)
 
     async def _doa_tier(
@@ -192,6 +225,60 @@ class GovernanceActionExecutor:
             **(base_outcome.audit or {}),
             "governed_kind": "doa_tier",
             "doa_tier": [v.to_audit() for v in verdicts],
+            "governed_decision": governed_decisions,
+        }
+        return StepOutcome(output=base_outcome.output, reasoning_trace=trace, audit=audit)
+
+    async def _severity_tier(
+        self, step: Step, ladder: SeverityLadder, input_set: list[Any], ctx: RunContext
+    ) -> StepOutcome:
+        """Resolve the severity tier per input entity (deterministic, fail-closed on an absent /
+        unrecognised severity), then delegate to the base executor for the gated proposal — the
+        orchestrator suspends the ``gated`` action at ``waiting_human``. The structured verdicts
+        ride the step audit (the render reads them); the LLM only drafts (base, advisory) — it
+        never decides the tier (governed != generated). Render / route / block only — the
+        non-money analog of :meth:`_doa_tier` (PLAN-0074 Step 3)."""
+        sod_required = step.step_id in self.sod_steps
+        verdicts = [
+            resolve_severity_tier(
+                ladder,
+                severity=severity,
+                principals=self.principals,
+                sod_required=sod_required,
+            )
+            for severity in (_severity(entity) for entity in input_set)
+        ]
+        base_outcome = await self.base.execute(step, input_set, ctx)
+        trace = list(base_outcome.reasoning_trace) + [
+            {
+                "kind": "severity_tier_resolved",
+                "resolved_tier_id": v.resolved_tier_id,
+                "required_role": v.required_role,
+                "resolved_approver_id": v.resolved_approver_id,
+                "summary": (
+                    f"severity '{v.severity.value}' -> tier '{v.resolved_tier_id}' "
+                    f"(approver_role '{v.required_role}'"
+                    + (
+                        f", resolved to '{v.resolved_approver_id}')"
+                        if v.resolved_approver_id is not None
+                        else ", no declared approver — SoD run-check fails closed at the gate)"
+                    )
+                ),
+            }
+            for v in verdicts
+        ]
+        governed_decisions = [
+            GovernedDecision(
+                control_ref=ControlRef(kind="severity_tier", id=v.resolved_tier_id),
+                principal_id=v.resolved_approver_id,
+            ).model_dump(mode="json")
+            for v in verdicts
+            if v.resolved_approver_id is not None
+        ]
+        audit = {
+            **(base_outcome.audit or {}),
+            "governed_kind": "severity_tier",
+            "severity_tier": [v.to_audit() for v in verdicts],
             "governed_decision": governed_decisions,
         }
         return StepOutcome(output=base_outcome.output, reasoning_trace=trace, audit=audit)

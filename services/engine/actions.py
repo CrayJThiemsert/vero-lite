@@ -34,13 +34,14 @@ class ControlRef(BaseModel):
     """A reference to the governing control a decision fired under (ADR-0026 D6 / OQ-5;
     PLAN-0044 A1b Step 6, SD-3=(a)). ``id`` is the control's STABLE id — matching the id the
     governing verdict emits so a read-only render joins audit -> control EXACTLY (no fuzzy
-    match): the ``resolved_tier_id`` for a ``doa_tier`` control, the sorted-distinct-steps SoD
-    constraint id for a ``sod`` control."""
+    match): the ``resolved_tier_id`` for a ``doa_tier`` / ``severity_tier`` control, the
+    sorted-distinct-steps SoD constraint id for a ``sod`` control."""
 
     model_config = ConfigDict(extra="forbid")
 
-    kind: Literal["doa_tier", "sod"] = Field(
-        description="the control family that governed the decision (doa_tier route | SoD gate)"
+    kind: Literal["doa_tier", "severity_tier", "sod"] = Field(
+        description="the control family that governed the decision (doa_tier spend route | "
+        "severity_tier non-money authority route, PLAN-0074 | SoD gate)"
     )
     id: str = Field(
         description="the control's stable id — the resolved_tier_id (doa_tier) or the sorted "

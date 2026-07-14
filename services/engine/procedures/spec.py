@@ -718,9 +718,9 @@ class ExcursionSeverity(StrEnum):
     CRITICAL = "critical"
 
 
-_SEVERITY_BY_RANK: tuple[ExcursionSeverity, ...] = tuple(ExcursionSeverity)
+SEVERITY_BY_RANK: tuple[ExcursionSeverity, ...] = tuple(ExcursionSeverity)
 """Ascending severity order (enum declaration order) — the ordinal a ``SeverityLadder`` tier
-floor ranks by, so ``_SEVERITY_BY_RANK.index(sev)`` is its rank (NEGLIGIBLE=0). The non-money
+floor ranks by, so ``SEVERITY_BY_RANK.index(sev)`` is its rank (NEGLIGIBLE=0). The non-money
 analog of the ``Decimal`` spend order a ``DoaLadder`` ranks by (ADR-0025 D2 / PLAN-0074 SD-1)."""
 
 
@@ -734,7 +734,7 @@ class SeverityTier(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     min_severity: ExcursionSeverity = Field(
-        description="inclusive severity floor of this tier (ordinal; ranks by _SEVERITY_BY_RANK)"
+        description="inclusive severity floor of this tier (ordinal; ranks by SEVERITY_BY_RANK)"
     )
     approver_role: RoleId = Field(description="role authorised to approve within this tier")
     note: str = Field(
@@ -770,11 +770,11 @@ class SeverityLadder(BaseModel):
         ``DoaLadder._validate_ladder``, ADR-0025 D3): the first tier's floor is the LOWEST
         severity (total cover from ``NEGLIGIBLE``), and floors strictly increase by ordinal
         rank (no equal / overlapping tiers)."""
-        ranks = [_SEVERITY_BY_RANK.index(t.min_severity) for t in self.tiers]
+        ranks = [SEVERITY_BY_RANK.index(t.min_severity) for t in self.tiers]
         if ranks[0] != 0:
             raise ValueError(
                 f"SeverityLadder: the first tier's min_severity must be the lowest severity "
-                f"'{_SEVERITY_BY_RANK[0].value}' (total cover from the floor); got "
+                f"'{SEVERITY_BY_RANK[0].value}' (total cover from the floor); got "
                 f"'{self.tiers[0].min_severity.value}' — ADR-0025 D3 / PLAN-0074 SD-1"
             )
         if any(nxt <= cur for cur, nxt in pairwise(ranks)):
