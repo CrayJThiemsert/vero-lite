@@ -3892,3 +3892,63 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-11 (s118 CONTINUATION 2 — PLAN-0010 CLOSED + PLAN-0064 per-step query router #695/#696/#697) [rotated 2026-07-14, session-128 reconcile — 10-row RD window]
 
 | 2026-07-11 | **s118 CONTINUATION 2 — PLAN-0010 CLOSED "shipped + intentionally disabled" (#695) / PLAN-0064 per-step query router BUILT (#696) + CLOSED all 8 ACs → `done/` (#697); draft→R2→SD-ratify→build→close in ONE session-118 day** — #695: Cray-ratified (AskUserQuestion) after the ELI-CRAY brief; AC-1/AC-3/AC-5 ticked (tests/loop/ + the 427-message production run), AC-2/AC-4/AC-6 HONESTLY unticked (operational close over the s76 drift hazard — they become revival-PLAN requirements). #696: `QueryStepRouter` (declaration-presence, SD-1) routes the production procurement factory per step — declared `read_stock` → the SHIPPED `QueryStepExecutor` over the registry-registered `ProcurementSyntheticAdapter` (SD-5); undeclared `intake` → `_SeedQuery` byte-identically; ERRATUM-2 tripwire rewritten in place (SD-4); SD-0 zero engine change; **PLAN-0062 AC-7's deferral DISCHARGED by reference**; `low_stock_reorder_round` end-to-end still NOT production-runnable (fact 9 → Active TODO). Suite **2512/7** local WITH Postgres. Full narrative: the Session-118 CF block above | `869a56d` (#697 merge) / `9a0eb7d` / `fdd6a9b` (#696 merge) / `75ed717` / `0b784f7` (#695 merge) / `3bdef0d` / `services/engine/procedures/query_router.py` + `verticals/procurement/hero_demo/run.py` + `verticals/procurement/procedures.yaml` + `tests/verticals/procurement/test_intake_shadow_parity.py` + `docs/plans/done/0064-per-step-query-router-procurement.md` + `docs/plans/done/0010-phase3-5-scheduled-task-autonomy-loop.md` |
+
+### Current Focus block removed — Session 125 (event-bridge FULL-LOOP live smoke + energy 4th OCT vertical, over-current FK-parent band) [rotated 2026-07-14, session-129 reconcile — 4-session CF window]
+
+> **Session 125, 2026-07-13 (head_commit `960e988` → `b19dce4`) — (1) the
+> moat's asset-event trigger PROVED LIVE end-to-end, then (2) energy shipped as
+> the 4th OCT vertical on the per-entity FK-parent band substrate.** Three PRs.
+> **#724 (`22365f2`, `docs(logs)`) — event-bridge FULL-LOOP live smoke: PASS
+> (EVIDENCE, not a gate — CLAUDE.md §8).** The deferred host-state smoke from
+> PLAN-0056 AC-12 / PLAN-0057: on real MS-S1 (`gpt-oss:20b`) the reactive
+> recommender picked `suggested_handler == emergency_source` for the procurement
+> CNC line-down event AND that pick propagated through the production fire path
+> (`recommend` → `build_event_resolver` → `fire_event`) into a PERSISTED
+> `event_emergency_sourcing_round` run parked at the DOA `approve` gate (฿288k →
+> `appr-pm`, service actor `svc-buyer` on-behalf `req-planner`). Sessions
+> 114/115 proved the recommender-level pick; this closes the one remaining live
+> seam (propagation + persistence). Ran against a disposable test DB (never the
+> demo DB); `event_bridge_enabled` stays default False (ship-dark) — no
+> production code changed. Log:
+> `docs/logs/2026-07-13-event-bridge-full-loop-live-smoke.md`. **#725
+> (`9571abb`, `docs(plans)`) — PLAN-0070 Ready** (`plan-drafter`-authored, Code
+> R2 PASS on all 7 load-bearing citations, Cray-ratified SD-1..SD-6 via
+> AskUserQuestion). **#726 (`b19dce4`, `feat`) — PLAN-0070 BUILT + CLOSED →
+> `done/` in one PR (SD-1):** re-themes energy's single procedure
+> `substation_health_sweep` from over-TEMPERATURE to over-CURRENT (feeder
+> overload) — `read_readings` gains the FK-parent `join:` via
+> `event_emitted_by_asset` + a narrowing `where {measured_kind: current}` + the
+> declared `site_id → asset_site_id` collision rename; the `judge` migrates
+> `env_band` (blanket OCT_RECOMMEND_THRESHOLD) → `threshold_field:
+> rated_current_a` + `direction: above`, so each feeder's latest ampere reading
+> bands against its OWN `Asset.rated_current_a`. **Energy = the 4th OCT vertical
+> on the per-entity FK-parent band substrate** (procurement s120 / supply_chain
+> s121 / aquaculture s123 / energy s125). Rides the Accepted ADR-016 FKP
+> amendment (its pre-recorded energy follow-on) — NO new ADR, NO ontology edit,
+> NO regen, NO Alembic migration; the whole change is `synthetic.py` seeds +
+> `procedures.yaml` + tests. **Demo-visible flip (RED→GREEN vs the unedited YAML
+> first):** Feeder Meter A at 84 A is `ok` under the blanket env 90 band but
+> `breach` at 105% of its OWN 80 A rating → parks `waiting_human` at the gated
+> restart; the inverter (61 A) stays under its 722 A rating. **Energy's judge
+> was the LAST shipped `env_band` consumer — it retires here** (no shipped YAML
+> authors `env_band`; the `EnvBandEvaluateExecutor` engine path stays
+> test-covered). **Zero functional `services/` change** (AC-8 — the only
+> `services/` diff is an SD-5 docstring hunk). **Build-discovered coupling
+> (disclosed correction to AC-8):** the 2 new current readings grew energy
+> synthetic events 11→13 (one new warn), rippling into the NL-query feasibility
+> benchmark gold set — `gold.yaml` nl-02 (total 11→13), nl-03
+> (`measured_value>80` is unit-agnostic → the 84 A reading joins, 2→3), nl-05
+> (warn 1→2) updated to match the data; no production code touched.
+> **draft≠review≠verify:** `plan-drafter` PLAN → Code R2 (grounded citations) →
+> Cray SD-1..SD-6 → Code build. All 9 ACs met; full suite **2572 passed / 7
+> skipped** WITH Postgres (verified on merge commit `b19dce4`, CI PR-only); ruff
+> + `ruff format` + `mypy --strict` clean; the BUILD is deterministic-offline
+> (no MS-S1 / host-state — the live smoke is #724). Honesty framing:
+> demo-breadth (the Rule-of-Three for the band shape was already MET at N=3 by
+> PLAN-0068), not moat-critical. Commits: `22365f2` (#724 live-smoke log) →
+> `9571abb` (#725 PLAN-0070 Ready) → `b19dce4` (#726 feat build + close).
+> PLAN-0070 `git mv`→`done/` this batch; `docs/plans/` empty again.
+
+### Recent Decisions row removed — 2026-07-11 (s119 — PLAN-0065 calm-path reorder runnability BUILT + CLOSED #700/#701) [rotated 2026-07-14, session-129 reconcile — 10-row RD window]
+
+| 2026-07-11 | **s119 — PLAN-0065 calm-path reorder runnability BUILT (#700) + CLOSED → `done/` (#701); procurement `low_stock_reorder_round` now runnable END-TO-END; drafted→ratified→built→closed in ONE session-119 day (#699 Ready, `plan-drafter`-authored)** — **SD-2 fix (shipped Q4 grammar, ZERO engine-code change):** `read_stock` gained a `project: {fields: {stock_qty: measured_value}}` rename-projection so the shipped `EvaluateStepExecutor` bands the registry-registered adapter's `Part` rows — the production factory chain used to CRASH at `judge_stock` (raw `Part` rows carry `stock_qty`, the judge reads `measured_value`); **PLAN-0064 fact-9 DISCHARGED**. Three new tests prove runnability at three depths: production-factory chain (`test_calm_path_production_runnability`, red-verified vs the unedited YAML), manual-run HTTP (`test_calm_path_run_endpoint` — `POST /procedures/{id}/run` parks at the reorder gate, identity server-resolved), and a NEW scheduled sibling `scheduled_low_stock_reorder_round` on the PLAN-0055 scheduler (fires headless, parks at reorder). **SD-5(b) Cray-ratified AGAINST the drafter's rec:** the scheduled sibling carries `owning_person_id: req-planner` (verified ACCEPTED at execution — no validator couples it to SoD, this AT-3 path has no SoD, so it is the run principal not an SoD requester). Both paths park at ONE human go/no-go (RF-1/RF-3). **SD-3 (per-part reorder-point band) DEFERRED** — trips the L-4 tripwire (the shipped judge takes a single scalar threshold, not a per-entity field reference) → own ADR-016-amendment PLAN. PLAN-0064 shadow-parity assertion updated for the projection (routing unchanged, output projected — disclosed). Suite **2516/7** local WITH Postgres (2512/7 + 4 new); no host-state action; `docs/plans/` EMPTY again. Full narrative: the Session-119 CF block above | `06e5f39` (HEAD, #701 close-out merge) / `22a89fd` / `75696c5` / `eaf8b03` / `bfa8a36` / `5ab424a` (the six s119 commits — #699 Ready / #700 build / #701 close; merge↔content pairing inferred from order) / `verticals/procurement/procedures.yaml` (`read_stock` `project` + `scheduled_low_stock_reorder_round`) + `tests/verticals/procurement/` (`test_calm_path_production_runnability`, `test_calm_path_run_endpoint`) + `docs/plans/done/0065-*.md` |
