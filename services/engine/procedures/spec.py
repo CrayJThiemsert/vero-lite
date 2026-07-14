@@ -539,27 +539,56 @@ set (RF-3) and NEVER an approver (SP-1). Human-authored (never model-emitted).""
 
 
 class ComplianceCriterion(StrEnum):
-    """The per-criterion compliance checks an AT-2 ``rule_gate`` evaluates (ADR-0025 D2),
-    scoped to the observed procurement signature (provisional-until-N>=2)."""
+    """The per-criterion compliance checks an AT-2 ``rule_gate`` evaluates (ADR-0025 D2).
 
+    Grown ADDITIVELY per observed signature (ADR-016 OQ-A1) — the first five are the
+    procurement vendor-hygiene criteria; the GDP/GxP block is the 2nd AT-2 signature's
+    regulatory-quality gate (supply_chain cold-chain disposition, PLAN-0074 Step 4). The
+    two blocks are instance-scoped, NOT a generic vocabulary: an AT-2 vertical extends this
+    enum with its own gate's criteria (the N=2 triangulation finding — what generalised is
+    the GATE (block on any fail, non-waivable), never the criterion vocabulary)."""
+
+    # procurement — vendor hygiene (the 1st AT-2 signature)
     AVL = "avl"
     TAX = "tax"
     CERT = "cert"
     SANCTIONS = "sanctions"
     SINGLE_SOURCE = "single_source"
+    # supply_chain — GDP/GxP regulatory quality (the 2nd AT-2 signature, PLAN-0074)
+    STABILITY_BUDGET = "stability_budget"
+    BATCH_QUARANTINE = "batch_quarantine"
+    LICENSED_DISPOSAL_VENDOR = "licensed_disposal_vendor"
+    COA_CUSTOMS = "coa_customs"
 
 
 class SourcePolicy(StrEnum):
-    """The default supplier-selection policy for an AT-2 ``scored_rule`` (ADR-0025 D2)."""
+    """The default selection policy for an AT-2 ``scored_rule`` (ADR-0025 D2).
+
+    NOT extended by the 2nd AT-2 signature (PLAN-0074 Step 4 — a recorded N=2 finding that
+    CORRECTS the PLAN's ``SourcePolicy += validated_lane`` sketch). The run executor keys
+    provenance on the MEMBER ITSELF (``scored_rule.py``: ``rule.default_source is
+    ON_CONTRACT`` decides whether the winner's ``on_contract`` flag satisfies the default),
+    so a third member would be scored as "off-contract by construction" — inverting the
+    provenance of any vertical that used it. This enum is therefore NOT freely extensible
+    while the executor is binary: supply_chain's disposition lanes reuse ``on_contract`` (a
+    pre-qualified GDP lane) and the deviation path grows on :class:`ExceptionPolicy` (a pure
+    label the executor never keys on). Input to the SD-3 genericization PLAN."""
 
     ON_CONTRACT = "on_contract"
     OFF_CONTRACT = "off_contract"
 
 
 class ExceptionPolicy(StrEnum):
-    """The logged-exception policy when the default source cannot be used (ADR-0025 D2)."""
+    """The logged-exception policy when the default source cannot be used (ADR-0025 D2).
+
+    Additive per signature (ADR-016 OQ-A1): ``rfq_avl_logged`` is procurement's off-AVL
+    sourcing exception; ``deviation_quarantine_logged`` is supply_chain's GDP deviation path
+    (an off-lane disposition is quarantined + logged, never silently taken). The run executor
+    reads this as a LABEL only (it stamps ``source_path: exception_policy``), so growth here
+    is safe — unlike :class:`SourcePolicy` (see above)."""
 
     RFQ_AVL_LOGGED = "rfq_avl_logged"
+    DEVIATION_QUARANTINE_LOGGED = "deviation_quarantine_logged"
 
 
 class RelaxableConstraint(StrEnum):

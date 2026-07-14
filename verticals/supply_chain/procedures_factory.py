@@ -1,48 +1,209 @@
-"""The deterministic ``supply_chain`` procedure-executor factory (PLAN-0062 Step 2, AC-5).
+"""The deterministic ``supply_chain`` procedure-executor factory (PLAN-0062 Step 2, AC-5;
+extended to the AT-2 disposition by PLAN-0074 Step 4, AC-10).
 
-The exact shape of ``verticals/energy/procedures_factory.py`` (PLAN-0062 PR1b) over the
-cold-chain ontology — which is the point: two verticals, one grammar, one band executor,
-one advisory stub, zero new engine surface. ``discover_and_register`` registers adapters +
-handlers only (OQ-6), so the HTTP run/resume surface 409s ("no procedure-executor factory")
-until a vertical registers one explicitly. This is that registration for ``supply_chain``,
-wired active-vertical-scoped at API startup (``services/api/main.py``). With it,
-supply_chain's migrated ``read_temps`` is declared ✔ · load-gated ✔ · **execution-bound ✔
-on the production HTTP path**.
+Originally the exact shape of ``verticals/energy/procedures_factory.py`` over the cold-chain
+ontology — which was the point: two verticals, one grammar, one band executor, one advisory stub,
+zero new engine surface. PLAN-0074 adds the vertical's **second** procedure — the AT-2 governed
+``cold_chain_excursion_disposition`` (the 2nd AT-2 signature, non-money authority) — so this
+factory now binds the AT-2 governance wrappers too. ``discover_and_register`` registers adapters +
+handlers only (OQ-6), so the HTTP run/resume surface 409s ("no procedure-executor factory") until a
+vertical registers one explicitly. This is that registration for ``supply_chain``, wired
+active-vertical-scoped at API startup (``services/api/main.py``).
 
-Deterministic and host-state-free end to end (PLAN-0062 SD-6; CLAUDE.md §8):
+**Both procedures run through ONE factory** (the orchestrator's ``StepKind``-keyed contract is
+per-run, not per-procedure), so every slot is a DELEGATING wrapper that falls through untouched for
+the step it does not govern — the AT-3 sweep is byte-identical (PLAN-0074 AC-9):
 
-* ``QUERY`` — the shipped generic :class:`QueryStepExecutor` over the registry's warmed
-  adapter and the REAL supply_chain ontology meta, so the declared latest-per-group
-  grammar (``project: {latest_per: event_concerns_shipment, order_by: occurred_at}``)
-  executes on the production path.
-* ``EVALUATE`` — supply_chain's ``judge`` is an ADR-016 D2-A3 ``env_band``, exactly like
-  energy's, so it reuses :class:`EnvBandEvaluateExecutor` **unchanged**: the band binds
-  from ``OCT_RECOMMEND_THRESHOLD`` / ``OCT_RECOMMEND_DIRECTION`` and the shipped
-  :class:`EvaluateStepExecutor` does the math. A cold-chain deployment sets the threshold
-  to its ceiling (e.g. 8 °C) rather than energy's 90 °C — same executor, different env.
-* ``ACTION`` — the shipped :class:`ActionStepExecutor` bound to
-  :func:`advisory_stub_factory` (OQ-1): no live MS-S1 call. ``hold_breaches`` is ``gated``,
-  so a run suspends at ``waiting_human`` for the operator's go/no-go rather than executing
-  the irreversible hold.
+* ``QUERY`` — :class:`QueryStepRouter` (PLAN-0064's declaration-presence routing): the sweep's
+  ``read_temps`` DECLARES ``input.reads``, so it dispatches to the shipped
+  :class:`QueryStepExecutor` over the registry's warmed adapter and the REAL supply_chain ontology
+  meta (unchanged). The disposition's ``intake`` declares none, so it takes the seed leg — the
+  enriched excursion intake below (data-access = (a), the procurement ``_SeedQuery`` precedent:
+  a relational read cannot produce the DERIVED intake fields without a transform grammar, which
+  is ADR-0031 D3 row-1 and deliberately out of scope).
+* ``EVALUATE`` — :class:`GovernanceEvaluateExecutor` over the existing
+  :class:`EnvBandEvaluateExecutor`: the disposition's band-less ``gdp_gate`` carries
+  ``rule_gate`` content and dispatches to the deterministic compliance gate; the sweep's banded
+  ``judge`` carries none, so it falls through to the env-band wrapper exactly as before (and its
+  authored ``threshold_field`` makes THAT wrapper delegate straight to the shipped band executor —
+  PLAN-0067).
+* ``ACTION`` — :class:`ColdChainAssessExecutor` (the vertical's SD-2 severity action-stamp, which
+  only touches ``assess``) over the shipped :class:`GovernanceActionExecutor` (``scored_rule`` at
+  ``assess``, ``severity_tier`` at ``approve``) over the shipped :class:`ActionStepExecutor` bound
+  to :func:`advisory_stub_factory` (OQ-1: no live MS-S1 call). The sweep's ``hold_breaches``
+  carries no governance content and is not a stamp step, so it reaches the base executor
+  unchanged. Every gated action still SUSPENDS at ``waiting_human`` — nothing is executed.
 
-Idempotent: a no-op when a ``supply_chain`` factory is already registered.
+``sod_steps`` is DERIVED from the spec's own ``separation_of_duties`` constraints, not hardcoded
+(procurement hardcodes ``frozenset({"intake","approve"})`` at ``hero_demo/run.py:278`` — a named
+drift point in PLAN-0074's coordination-point list: a renamed step there silently drops the
+``sod_required`` flag. Deriving it cannot drift.)
+
+Deterministic and host-state-free end to end (PLAN-0062 SD-6; CLAUDE.md §8): synthetic adapter,
+pure band math, pure AT-2 resolution, stubbed advisory prose. Idempotent: a no-op when a
+``supply_chain`` factory is already registered.
 """
 
 from __future__ import annotations
 
+import json
 from collections.abc import Mapping
+from dataclasses import dataclass
+from typing import Any
 
 from services.engine.ontology_meta import load_ontology_meta
 from services.engine.procedures.action_step import ActionStepExecutor
 from services.engine.procedures.advisory_stub import advisory_stub_factory
 from services.engine.procedures.env_band_step import EnvBandEvaluateExecutor
 from services.engine.procedures.evaluate_step import EvaluateStepExecutor
-from services.engine.procedures.orchestrator import StepExecutor
+from services.engine.procedures.governance_step import (
+    GovernanceActionExecutor,
+    GovernanceEvaluateExecutor,
+)
+from services.engine.procedures.orchestrator import RunContext, StepExecutor, StepOutcome
+from services.engine.procedures.query_router import QueryStepRouter
 from services.engine.procedures.query_step import QueryStepExecutor
-from services.engine.procedures.spec import StepKind
+from services.engine.procedures.spec import Person, Step, StepKind, load_procedures
 from services.engine.registry import RegistryError, registry
+from verticals.supply_chain.cold_chain_assess import ColdChainAssessExecutor
 
 _VERTICAL = "supply_chain"
+_ASSESS_STEP = "assess"
+_INCIDENT_SHIPMENT = "shipment-pharma-01"
+_CURRENCY = "THB"
+
+
+@dataclass(frozen=True)
+class _DispositionSeed:
+    """The QUERY executor for the disposition's ``intake`` — the enriched excursion the run threads
+    forward (the procurement ``_SeedQuery`` precedent, data-access = (a)).
+
+    Why a seed and not a declared read: the gates downstream consume DERIVED intake fields the
+    relational grammar cannot produce — the excursion's duration + the cargo's stability budget (the
+    severity derivation's inputs), the candidate disposition lanes (the ``scored_rule``'s
+    ``candidate_quotes``), and the per-criterion GDP signal map (the ``rule_gate``'s
+    ``compliance``). Producing them from a join needs a transform StepKind — ADR-0031 D3 row-1,
+    deliberately deferred. The seed's MEASURED half is real adapter data (see :func:`_intake_seed`);
+    only the derived/authored half is synthesised here, and it is labelled as such."""
+
+    seed: list[Any]
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        return StepOutcome(
+            output=list(self.seed),
+            reasoning_trace=[
+                {"kind": "query", "summary": "intake: the enriched cold-chain excursion seed"}
+            ],
+        )
+
+
+def _latest_breach_reading(
+    events: list[dict[str, Any]], shipment_id: str
+) -> Mapping[str, Any] | None:
+    """The latest ``reading`` for ``shipment_id`` (by ``occurred_at``) — the excursion the sweep
+    would have flagged. ``event_type`` is filtered exactly as the sweep's declared query does: the
+    door-open ALARM is newer and carries no ``measured_value``, so an unfiltered latest-per-group
+    would read the wrong row (the load-bearing filter, ``procedures.yaml``)."""
+    readings = [
+        e
+        for e in events
+        if e.get("event_type") == "reading"
+        and e.get("shipment_id") == shipment_id
+        and e.get("measured_value") is not None
+    ]
+    if not readings:
+        return None
+    return max(readings, key=lambda e: str(e.get("occurred_at", "")))
+
+
+async def _intake_seed(adapter: Any) -> list[dict[str, Any]]:
+    """Build the disposition intake for the breaching pharma batch — deterministic, offline.
+
+    MEASURED (real adapter data): the shipment, its per-cargo ``temp_ceiling``, and the latest
+    reading — so ``excursion_magnitude_c`` is the REAL breach height (reading minus the cargo's own
+    ceiling), the same number the sweep's judge bands on.
+
+    AUTHORED (the derived/enrichment half a relational read cannot produce — see the
+    :class:`_DispositionSeed` docstring): the excursion's duration, the cargo's stability budget,
+    the ELIGIBLE disposition lanes, and the GDP compliance signals. Provisional until a design
+    partner signs the real cold-chain figures — the same standing as procurement's provisional
+    DOA/scoring values.
+
+    **Lane ELIGIBILITY is upstream of the rule** (data-access = (a)): a batch whose stability budget
+    is spent does not carry the release lane among its candidates — releasing a compromised pharma
+    batch is not a cheaper option, it is an unlawful one. The scored rule RANKS eligible lanes; it
+    never decides eligibility. (A declarative eligibility predicate is a follow-on — it would want
+    the same grammar row-1 wants.)"""
+    shipments = await adapter.fetch_objects("Shipment")
+    events = await adapter.fetch_objects("OperationalEvent")
+    shipment = next(
+        (s for s in shipments if s.get("shipment_id") == _INCIDENT_SHIPMENT),
+        None,
+    )
+    reading = _latest_breach_reading(events, _INCIDENT_SHIPMENT)
+    if shipment is None or reading is None:
+        return []  # no excursion in the dataset — the run intakes nothing (never a fabricated one)
+
+    magnitude_c = float(reading["measured_value"]) - float(shipment["temp_ceiling"])
+    if magnitude_c <= 0:
+        return []  # the latest reading is within the cargo's band — nothing to dispose of
+
+    return [
+        {
+            # --- identity (measured) ---
+            "shipment_id": shipment["shipment_id"],
+            "batch_id": shipment["reference"],
+            "cargo_type": shipment["cargo_type"],
+            "facility_id": shipment["facility_id"],
+            "temp_ceiling": shipment["temp_ceiling"],
+            "reading_c": reading["measured_value"],
+            "event_id": reading["event_id"],
+            # --- the severity derivation's inputs (magnitude measured; the rest authored) ---
+            "excursion_magnitude_c": round(magnitude_c, 2),
+            "excursion_duration_h": 9,  # authored: how long the reefer stayed out of band
+            "stability_budget_ch": 24,  # authored: the vaccine lot's remaining MKT dose budget
+            # --- the scored_rule's candidates (authored; ELIGIBLE lanes only — see docstring) ---
+            "qty": shipment["payload_kg"],
+            "currency": _CURRENCY,
+            "candidate_quotes": [
+                {
+                    "quote_id": "lane-quarantine-rework",
+                    "supplier_id": "reworker-bkk-01",
+                    "unit_price": "180.00",
+                    "currency": _CURRENCY,
+                    "lead_time_days": 21,
+                    "on_contract": True,
+                },
+                {
+                    "quote_id": "lane-licensed-destruction",
+                    "supplier_id": "disposal-licensed-01",
+                    "unit_price": "95.00",
+                    "currency": _CURRENCY,
+                    "lead_time_days": 3,
+                    "on_contract": True,
+                },
+            ],
+            # --- the rule_gate's per-criterion GDP signal map (authored) ---
+            "quarantine_status": "quarantined",
+            "compliance": {
+                "stability_budget": True,
+                "batch_quarantine": True,
+                "licensed_disposal_vendor": True,
+                "coa_customs": True,
+            },
+        }
+    ]
+
+
+def _sod_steps(procedures: Any) -> frozenset[str]:
+    """Every SoD-constrained step across the vertical's procedures — DERIVED, never hardcoded (the
+    ``sod_required`` flag on a verdict cannot drift when a step is renamed)."""
+    return frozenset(
+        step_id
+        for procedure in procedures
+        for constraint in procedure.separation_of_duties
+        for step_id in constraint.distinct_steps
+    )
 
 
 async def register_supply_chain_procedure_executors() -> None:
@@ -61,16 +222,35 @@ async def register_supply_chain_procedure_executors() -> None:
     meta = load_ontology_meta(_VERTICAL)
     object_type_names = frozenset(object_type.name for object_type in meta.object_types)
 
+    spec = load_procedures(_VERTICAL)
+    principals: list[Person] = list(spec.principals)
+    sod_steps = _sod_steps(spec.procedures)
+    # JSONB-safe (project memory: a raw Decimal / datetime fails the JSONB column on a persisted
+    # run — the disposition's `intake` executes live on any fresh run through this factory).
+    seed: list[Any] = json.loads(json.dumps(await _intake_seed(adapter), default=str))
+
     def factory() -> Mapping[StepKind, StepExecutor]:
         # Built fresh per run/resume request (the registry Step-2 contract — a stateful
-        # executor must never leak across requests); adapter + meta are immutable
-        # read-only data captured once at registration.
+        # executor must never leak across requests); adapter + meta + principals + seed are
+        # immutable read-only data captured once at registration.
         return {
-            StepKind.QUERY: QueryStepExecutor(
-                adapter=adapter, object_type_names=object_type_names, meta=meta
+            StepKind.QUERY: QueryStepRouter(
+                declared=QueryStepExecutor(
+                    adapter=adapter, object_type_names=object_type_names, meta=meta
+                ),
+                fallback=_DispositionSeed(seed),
             ),
-            StepKind.EVALUATE: EnvBandEvaluateExecutor(base=EvaluateStepExecutor()),
-            StepKind.ACTION: ActionStepExecutor(client_factory=advisory_stub_factory),
+            StepKind.EVALUATE: GovernanceEvaluateExecutor(
+                base=EnvBandEvaluateExecutor(base=EvaluateStepExecutor())
+            ),
+            StepKind.ACTION: ColdChainAssessExecutor(
+                inner=GovernanceActionExecutor(
+                    base=ActionStepExecutor(client_factory=advisory_stub_factory),
+                    principals=principals,
+                    sod_steps=sod_steps,
+                ),
+                stamp_steps=frozenset({_ASSESS_STEP}),
+            ),
         }
 
     registry.register_procedure_executors(_VERTICAL, factory)

@@ -66,25 +66,40 @@ def _spend(entity: Any) -> tuple[Decimal, str]:
     return value, str(entity["currency"])
 
 
+EXCURSION_SEVERITY_FIELD = "excursion_severity"
+"""The entity field a ``severity_tier`` gate reads its authority quantity from (PLAN-0074).
+
+DELIBERATELY NOT the bare ``severity`` (the Step-4 run-path finding, the second coordination point
+static analysis missed): the shipped ontologies ALREADY carry an ``OperationalEvent.severity``
+(``info`` | ``warning`` | ``critical`` — an alert-triage vocabulary), whose value space OVERLAPS
+:class:`ExcursionSeverity` at ``critical``. A gate reading a bare ``severity`` would therefore
+resolve an event-triage string as a stability-budget-derived excursion severity and silently route
+the TOP approval tier — failing DANGEROUS (a plausible wrong authority), not closed. A distinct
+field name makes that collision unrepresentable: an un-stamped entity carries no
+``excursion_severity`` at all, so the gate fails closed (below), which is the invariant."""
+
+
 def _severity(entity: Any) -> ExcursionSeverity:
     """Read the :class:`ExcursionSeverity` off a ``severity_tier`` step's input entity
     (PLAN-0074 Step 3 — the non-money analog of :func:`_spend`).
 
-    Fails CLOSED (:class:`SeverityTierError`) if the entity carries no ``severity`` or an
-    unrecognised value — a severity tier cannot be routed without a resolvable severity. The
-    severity is the authority quantity the upstream ``assess`` step stamps onto the entity (the
-    non-money analog of the ``scored_rule`` amount-stamp)."""
-    if not isinstance(entity, Mapping) or "severity" not in entity:
+    Fails CLOSED (:class:`SeverityTierError`) if the entity carries no
+    :data:`EXCURSION_SEVERITY_FIELD` or an unrecognised value — a severity tier cannot be routed
+    without a resolvable severity. The severity is the authority quantity the upstream ``assess``
+    step stamps onto the entity (the non-money analog of the ``scored_rule`` amount-stamp)."""
+    if not isinstance(entity, Mapping) or EXCURSION_SEVERITY_FIELD not in entity:
         raise SeverityTierError(
-            "severity_tier: input entity carries no 'severity' — cannot resolve a severity tier "
-            "(fail closed; render/route/block only)"
+            f"severity_tier: input entity carries no '{EXCURSION_SEVERITY_FIELD}' — cannot resolve "
+            "a severity tier (fail closed; render/route/block only). NOTE: the ontology's own "
+            "OperationalEvent.severity is a DIFFERENT vocabulary and is never read here"
         )
     try:
-        return ExcursionSeverity(str(entity["severity"]))
+        return ExcursionSeverity(str(entity[EXCURSION_SEVERITY_FIELD]))
     except ValueError as exc:
         raise SeverityTierError(
-            f"severity_tier: input entity severity '{entity['severity']}' is not a recognised "
-            "ExcursionSeverity (fail closed)"
+            f"severity_tier: input entity {EXCURSION_SEVERITY_FIELD} "
+            f"'{entity[EXCURSION_SEVERITY_FIELD]}' is not a recognised ExcursionSeverity "
+            "(fail closed)"
         ) from exc
 
 

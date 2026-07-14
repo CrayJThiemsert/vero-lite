@@ -16,13 +16,20 @@ import pytest
 
 from services.api.config import settings
 from services.engine.discovery import discover_and_register
+from services.engine.procedures.action_step import ActionStepExecutor
 from services.engine.procedures.env_band_step import EnvBandEvaluateExecutor
 from services.engine.procedures.evaluate_step import EvaluateStepExecutor
+from services.engine.procedures.governance_step import (
+    GovernanceActionExecutor,
+    GovernanceEvaluateExecutor,
+)
 from services.engine.procedures.orchestrator import run_procedure
+from services.engine.procedures.query_router import QueryStepRouter
 from services.engine.procedures.query_step import QueryStepExecutor
 from services.engine.procedures.runs import PipelineRunStatus
 from services.engine.procedures.spec import StepKind, load_procedures
 from services.engine.registry import ExecutorFactory, RegistryError, registry
+from verticals.supply_chain.cold_chain_assess import ColdChainAssessExecutor
 from verticals.supply_chain.procedures_factory import register_supply_chain_procedure_executors
 
 _VERTICAL = "supply_chain"
@@ -59,20 +66,50 @@ async def test_registration_is_required_then_idempotent() -> None:
 async def test_factory_reuses_the_shared_engine_executors(
     supply_chain_factory: ExecutorFactory,
 ) -> None:
-    """AC-5: the QUERY executor carries the REAL supply_chain ontology meta; the EVALUATE
-    executor is the SAME `EnvBandEvaluateExecutor` energy binds (no per-vertical band
-    class); each call builds a fresh map (the registry Step-2 no-leak contract)."""
+    """AC-5: the shared engine executors are still what does the work — now reached THROUGH the
+    AT-2 wrappers the second procedure needs (PLAN-0074 Step 4). Each slot is a delegating wrapper
+    over the SAME shipped executor the vertical bound before (no per-vertical band class, no
+    per-vertical query executor), so the AT-3 sweep's path is unchanged — proven behaviourally by
+    ``test_full_procedure_run_suspends_at_the_gated_hold`` below, which is untouched.
+
+    Each call still builds a fresh map (the registry Step-2 no-leak contract)."""
     executors = supply_chain_factory()
 
     assert set(executors) == {StepKind.QUERY, StepKind.EVALUATE, StepKind.ACTION}
-    query = executors[StepKind.QUERY]
-    assert isinstance(query, QueryStepExecutor)
-    assert query.meta is not None
-    assert "Shipment" in query.object_type_names
 
+    # QUERY: routed per step (PLAN-0064 declaration-presence). The sweep's `read_temps` DECLARES
+    # reads -> the shipped QueryStepExecutor over the REAL ontology meta (as before); the
+    # disposition's undeclared `intake` takes the seed leg.
+    query = executors[StepKind.QUERY]
+    assert isinstance(query, QueryStepRouter)
+    declared = query.declared
+    assert isinstance(declared, QueryStepExecutor)
+    assert declared.meta is not None
+    assert "Shipment" in declared.object_type_names
+
+    # EVALUATE: the rule_gate dispatcher over the SAME EnvBandEvaluateExecutor energy binds, over
+    # the SAME shipped band executor — the sweep's banded `judge` falls through both wrappers.
     evaluate = executors[StepKind.EVALUATE]
-    assert isinstance(evaluate, EnvBandEvaluateExecutor)
-    assert isinstance(evaluate.base, EvaluateStepExecutor)
+    assert isinstance(evaluate, GovernanceEvaluateExecutor)
+    assert isinstance(evaluate.base, EnvBandEvaluateExecutor)
+    assert isinstance(evaluate.base.base, EvaluateStepExecutor)
+
+    # ACTION: the vertical's severity stamp (assess only) over the shipped AT-2 governance wrapper
+    # over the shipped ActionStepExecutor — the sweep's `hold_breaches` reaches the base untouched.
+    action = executors[StepKind.ACTION]
+    assert isinstance(action, ColdChainAssessExecutor)
+    assert action.stamp_steps == frozenset({"assess"})
+    assert isinstance(action.inner, GovernanceActionExecutor)
+    assert isinstance(action.inner.base, ActionStepExecutor)
+    # SoD steps are DERIVED from the spec's own constraints, never hardcoded (no rename drift)
+    assert action.inner.sod_steps == frozenset({"intake", "approve"})
+    assert [p.person_id for p in action.inner.principals] == [
+        "req-coldchain",
+        "appr-qa",
+        "appr-qam",
+        "appr-qp",
+        "appr-qdir",
+    ]
 
     assert supply_chain_factory()[StepKind.QUERY] is not query, "executors are per-request"
 

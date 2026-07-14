@@ -216,7 +216,7 @@ async def test_wrapper_dispatches_severity_tier_and_delegates_to_base() -> None:
     wrapper = GovernanceActionExecutor(
         base=base, principals=_principals(), sod_steps=frozenset({"intake", "approve"})
     )
-    entities = [{"batch_id": "b-1", "severity": "critical"}]
+    entities = [{"batch_id": "b-1", "excursion_severity": "critical"}]
     outcome = await wrapper.execute(_severity_step(), entities, _ctx())
     assert base.calls == 1  # delegated to base for the proposal
     assert outcome.output == entities
@@ -236,7 +236,7 @@ async def test_wrapper_missing_severity_fails_closed_before_base() -> None:
     wrapper = GovernanceActionExecutor(
         base=base, principals=_principals(), sod_steps=frozenset({"approve"})
     )
-    with pytest.raises(SeverityTierError, match="no 'severity'"):
+    with pytest.raises(SeverityTierError, match="no 'excursion_severity'"):
         await wrapper.execute(_severity_step(), [{"batch_id": "b-1"}], _ctx())
     assert base.calls == 0
 
@@ -248,9 +248,27 @@ async def test_wrapper_unrecognised_severity_fails_closed() -> None:
     )
     with pytest.raises(SeverityTierError, match="not a recognised"):
         await wrapper.execute(
-            _severity_step(), [{"batch_id": "b-1", "severity": "apocalyptic"}], _ctx()
+            _severity_step(), [{"batch_id": "b-1", "excursion_severity": "apocalyptic"}], _ctx()
         )
     assert base.calls == 0
+
+
+async def test_ontology_event_severity_never_authorises_a_tier() -> None:
+    """The PLAN-0074 Step-4 run-path finding, pinned (``EXCURSION_SEVERITY_FIELD``).
+
+    The shipped ontologies carry an ``OperationalEvent.severity`` (``info`` | ``warning`` |
+    ``critical``) whose value space OVERLAPS :class:`ExcursionSeverity` at ``critical``. Had the
+    gate read a bare ``severity``, an event-triage row threaded into ``approve`` would resolve the
+    TOP tier — a plausible WRONG authority (fail-dangerous). It must fail CLOSED instead: the
+    ontology field is not the authority quantity, and no stamp means no route."""
+    base = _RecordingBase()
+    wrapper = GovernanceActionExecutor(
+        base=base, principals=_principals(), sod_steps=frozenset({"approve"})
+    )
+    event_row = {"event_id": "event-alarm-01", "event_type": "alarm", "severity": "critical"}
+    with pytest.raises(SeverityTierError, match="no 'excursion_severity'"):
+        await wrapper.execute(_severity_step(), [event_row], _ctx())
+    assert base.calls == 0, "an ontology event-severity row never reaches the approver"
 
 
 # --------------------------------------------------------------------------- #

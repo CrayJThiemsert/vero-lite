@@ -46,7 +46,7 @@ archetype below preserves this.
 |---|---|---|---|
 | **AT-1** `anomaly→action` | sense → judge(band) → gated action on breach | `energy`, `supply_chain`, `aquaculture` (core) | 1 deterministic band; 1 human gate on the irreversible write; handler fixed |
 | **AT-1b** `+ watch + summary` (AT-1 variant) | AT-1 **+** watch→gated proposal **+** auto summary terminal | `aquaculture.morning_pond_health_round` | AT-1 + ADR-0019 watch→gated escalation + an auto (un-gated) terminal receipt |
-| **AT-2** `request→approve→fulfill` | intake → judge → source(scored rule) → compliance(rule gate) → tiered DOA(human) → fulfill(write) → audit | `procurement.emergency_sourcing_round` (manual); `procurement.scheduled_emergency_sourcing_round` (S1 schedule-triggered variant) | per-criterion rule gate + tiered DOA + emergency waiver (escalate-never-skip) + SoD (manual) + traceable audit |
+| **AT-2** `request→approve→fulfill` | intake → (judge) → select(scored rule) → compliance(rule gate) → **tiered authority gate**(human) → fulfill(write) → (audit) | `procurement.emergency_sourcing_round` (manual); `procurement.scheduled_emergency_sourcing_round` (S1 schedule-triggered variant); **`supply_chain.cold_chain_excursion_disposition`** (the 2nd SIGNATURE — non-money authority, PLAN-0074) | per-criterion rule gate + a tiered human authority gate + SoD + traceable audit. **The authority QUANTITY is per-instance:** ฿ spend (`doa_tier`, procurement) or excursion severity (`severity_tier`, supply_chain) |
 | **AT-3** `monitor→reorder` | read_stock → judge(reorder point) → gated reorder | `procurement.low_stock_reorder_round` (manual); `procurement.scheduled_low_stock_reorder_round` (S1 schedule-triggered) | deterministic reorder-point band + single-tier human approval |
 
 ---
@@ -98,9 +98,22 @@ passes each gate.
 - **Instances:**
   - `procurement.emergency_sourcing_round` (7 steps, `trigger: manual`) — the full hero: SoD + issue_po write gate.
   - `procurement.scheduled_emergency_sourcing_round` (6 steps, `trigger: schedule`, PLAN-0055 Step 8 / ADR-0028 S1) — the **automated** variant. Fired nightly by the scheduler daemon **as a service principal** (`svc-buyer`, run_started `actor_kind:"service"`); it runs the auto steps and PARKS at the DOA human gate — a machine can never approve its own spend (RF-3). Two deliberate deltas from the manual hero, both consequences of being **headless**: (1) **no `separation_of_duties`** — a scheduled run has no human requester (it fires as the service actor, `owning_person=None`), so a requester≠approver split is inapplicable; the governance moment for an automated trigger is the human approval gate itself. (2) It ends at `approve → audit` (no separate `issue_po` gate) — the automated sweep produces an approved, audited sourcing decision; PO issuance follows via the manual flow.
+  - `supply_chain.cold_chain_excursion_disposition` (5 steps, `trigger: manual`, PLAN-0074) — **the
+    2nd AT-2 SIGNATURE** (the procurement entries above are trigger variants of ONE signature; this
+    is a genuinely second one, on a second vertical). A reefer breach routes the affected pharma
+    batch to a governed disposition: `intake → assess`(scored rule picks the disposition lane +
+    stamps the derived excursion severity) `→ gdp_gate`(rule gate: GDP/GxP quality) `→
+    approve`(**`severity_tier`** — human) `→ fulfill`(gated write). **What it proved by being
+    different:** the AT-2 authority quantity is **not inherently money**. A cold-chain disposition
+    is authorised on **patient-safety / regulatory severity** (how much of the cargo's stability
+    budget the excursion burned), which `DoaLadder` cannot represent (money-typed by construction)
+    — hence a 4th gate kind + its own typed content model (`SeverityLadder`, ADR-0025 D2 discipline;
+    the ADR-0031 D3 gate-kind seam's first concrete pressure). The money is still present (each
+    lane has a cost, and the scored rule prices it) — it simply does not authorise. No emergency
+    waiver: a waiver is procurement-shaped, and there is no waiving patient safety.
 - **Governance signature (the credibility musts, L-6):**
-  - **Source selection is a scored RULE**, never the LLM (the LLM only summarises
-    quotes); on-contract by default, RFQ→AVL only as a logged exception.
+  - **Selection is a scored RULE**, never the LLM (the LLM only summarises the candidates);
+    the pre-qualified default path by default, a deviation only as a logged exception.
   - **Per-criterion compliance** (AVL · tax · cert · sanctions · single-source)
     is a hard rule gate — any failed criterion **blocks the PO**.
   - **Tiered DOA** (delegation-of-authority bands in ฿) escalates the approver to
@@ -165,11 +178,15 @@ demo bands vs authored per-procedure bands) the schema must preserve.
   generator (`services/engine/procedures/generator/` + the machine-readable
   `ArchetypeTemplate` registry, ADR-0024 D2). The Rule-of-Three gate (≥3 verticals)
   is satisfied (N=4: aquaculture / energy / procurement / supply_chain).
-- **Remaining frontier — AT-2 generation (deferred, ADR-0024 D7):** the generator
-  triangulates AT-1 across 3+ verticals, but **AT-2 is still N=1**
-  (`procurement.emergency_sourcing_round` — the only governance-heavy instance;
-  the schedule-triggered variant is the same archetype, not a second instance). A
-  2nd AT-2-shaped vertical is the Rule-of-Three prerequisite before AT-2 extraction.
+- **Remaining frontier — AT-2 generation (deferred, ADR-0024 D7 / ADR-0025 D7):** the generator
+  triangulates AT-1 across 3+ verticals. **AT-2 reached N=2 on 2026-07-14** (PLAN-0074):
+  `procurement.emergency_sourcing_round` (money authority) + `supply_chain.cold_chain_excursion_disposition`
+  (severity authority) are two distinct SIGNATURES — the schedule/event-triggered procurement
+  variants are the same signature, not further instances. The generator **still abstains** on AT-2
+  (`generator/pipeline.py` `_AT2_ONLY_KINDS`, which the new gate kind extends): N≥2 *permits* the
+  genericization the D7 re-trigger guards, it does not mandate it here. What N=2 revealed — the
+  authority quantity is per-instance (money vs severity), the compliance criterion vocabulary is
+  per-instance, but the GATE shapes generalised unchanged — is the input to that extraction PLAN.
 
 ## Sources / related
 
