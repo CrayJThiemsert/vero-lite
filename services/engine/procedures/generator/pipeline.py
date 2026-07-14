@@ -79,7 +79,9 @@ from services.engine.procedures.spec import (
 from services.engine.registry import registry
 
 _BAND_KINDS = (GateKind.ENV_BAND, GateKind.IN_FILE_BAND)
-_AT2_ONLY_KINDS = frozenset({GateKind.SCORED_RULE, GateKind.RULE_GATE, GateKind.DOA_TIER})
+_AT2_ONLY_KINDS = frozenset(
+    {GateKind.SCORED_RULE, GateKind.RULE_GATE, GateKind.DOA_TIER, GateKind.SEVERITY_TIER}
+)
 
 ClassifyArm = Literal["baseline", "field_order_flip", "two_pass"]
 """PLAN-0051 reason-then-structure A/B arm selector for the classify call (EXPERIMENTAL).

@@ -29,6 +29,7 @@ from services.engine.procedures.spec import (
     EmergencyWaiverPolicy,
     EventTrigger,
     ExceptionPolicy,
+    ExcursionSeverity,
     GateKind,
     Person,
     PrincipalAlias,
@@ -36,6 +37,8 @@ from services.engine.procedures.spec import (
     RelaxableConstraint,
     Schedule,
     ScoredRule,
+    SeverityLadder,
+    SeverityTier,
     SoDConstraint,
     SourcePolicy,
     Step,
@@ -895,6 +898,82 @@ def test_at2_content_extra_forbid_bites() -> None:
         DoaTier.model_validate({"min_amount": "0", "approver_role": "x", "bogus": 1})
 
 
+# --- PLAN-0074 SD-1: the SeverityLadder (4th AT-2 gate kind, non-money authority) ---
+
+
+def _valid_severity_ladder() -> SeverityLadder:
+    return SeverityLadder(
+        tiers=[
+            SeverityTier(min_severity=ExcursionSeverity.NEGLIGIBLE, approver_role="qa_officer"),
+            SeverityTier(min_severity=ExcursionSeverity.MAJOR, approver_role="qa_manager"),
+            SeverityTier(min_severity=ExcursionSeverity.CRITICAL, approver_role="qp_release"),
+        ],
+    )
+
+
+def test_severity_ladder_valid_total_ordinal_cover() -> None:
+    ladder = _valid_severity_ladder()
+    assert ladder.kind == "severity_tier"
+    assert [t.min_severity for t in ladder.tiers] == [
+        ExcursionSeverity.NEGLIGIBLE,
+        ExcursionSeverity.MAJOR,
+        ExcursionSeverity.CRITICAL,
+    ]
+
+
+def test_severity_ladder_first_tier_must_be_lowest_severity() -> None:
+    with pytest.raises(ValidationError, match="must be the lowest severity"):
+        SeverityLadder(
+            tiers=[SeverityTier(min_severity=ExcursionSeverity.MINOR, approver_role="qa_officer")],
+        )
+
+
+def test_severity_ladder_floors_must_strictly_increase() -> None:
+    with pytest.raises(ValidationError, match="STRICTLY increasing"):
+        SeverityLadder(
+            tiers=[
+                SeverityTier(min_severity=ExcursionSeverity.NEGLIGIBLE, approver_role="qa_officer"),
+                SeverityTier(min_severity=ExcursionSeverity.NEGLIGIBLE, approver_role="qa_manager"),
+            ],
+        )
+
+
+def test_severity_ladder_rejects_empty_tiers() -> None:
+    with pytest.raises(ValidationError):
+        SeverityLadder(tiers=[])
+
+
+def test_severity_ladder_is_non_money() -> None:
+    """The 4th gate kind's authority is a closed ordinal, not Decimal money — the whole point
+    of the gate-kind seam (PLAN-0074 SD-1). SeverityLadder carries no currency/amount field."""
+    ladder = _valid_severity_ladder()
+    assert not hasattr(ladder, "currency")
+    assert not any(hasattr(t, "min_amount") for t in ladder.tiers)
+
+
+def test_severity_ladder_discriminates_on_kind() -> None:
+    """The discriminated union routes kind='severity_tier' to SeverityLadder (ADR-0025 D2 /
+    PLAN-0074) — a 4th arm alongside doa_tier / scored_rule / rule_gate."""
+    step = Step.model_validate(
+        {
+            "step_id": "approve",
+            "name": "Approve",
+            "kind": "action",
+            "governance_content": {
+                "kind": "severity_tier",
+                "tiers": [{"min_severity": "negligible", "approver_role": "qa_officer"}],
+            },
+        }
+    )
+    assert isinstance(step.governance_content, SeverityLadder)
+    assert step.governance_content.tiers[0].min_severity is ExcursionSeverity.NEGLIGIBLE
+
+
+def test_severity_tier_extra_forbid_bites() -> None:
+    with pytest.raises(ValidationError):
+        SeverityTier.model_validate({"min_severity": "minor", "approver_role": "x", "bogus": 1})
+
+
 def test_sod_constraint_requires_two_distinct_steps() -> None:
     with pytest.raises(ValidationError):
         SoDConstraint(distinct_steps=frozenset({"intake"}))  # < 2 -> degenerate
@@ -1117,6 +1196,7 @@ def _at2_proc(
                 kind=StepKind.ACTION,
                 description=desc,
                 governance_content=ladder if ladder is not None else _doa_ladder(),
+                facet=StepFacet(decision_condition=DecisionCondition(gate_kind=GateKind.DOA_TIER)),
             ),
         ],
         separation_of_duties=[SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))],
@@ -1170,6 +1250,67 @@ def test_at2_free_text_gate_skipped_for_non_at2_procedure() -> None:
         steps=[Step(step_id="read", name="Read", kind=StepKind.QUERY, description="stock at 50")],
     )
     assert proc.procedure_id == "calm"
+
+
+# --- PLAN-0074 hole-2 fix: the prose-lint sees the 4th gate kind (SeverityLadder) ---
+#
+# ADR-0031 D3 understated the gate-extension cost: the scoped prose-lint hardcoded
+# isinstance(DoaLadder | ScoredRule), so a NEW content model's role-bearing free-text was
+# INVISIBLE to the D4 lint (a role/severity token could be smuggled past load). Extending
+# _at2_role_vocab + _at2_free_text_surfaces to SeverityLadder closes that hole — parity with
+# the DoaLadder surfaces. These prove the hole is closed (not merely claimed).
+
+
+def _severity_at2_proc(*, tier_note: str = "", goal: str | None = None) -> Procedure:
+    ladder = SeverityLadder(
+        tiers=[
+            SeverityTier(
+                min_severity=ExcursionSeverity.NEGLIGIBLE,
+                approver_role="qa_officer",
+                note=tier_note,
+            ),
+            SeverityTier(min_severity=ExcursionSeverity.CRITICAL, approver_role="qp_release"),
+        ],
+    )
+    return Procedure(
+        procedure_id="p",
+        title="P",
+        run_by="a",
+        goal=goal if goal is not None else "route the excursion to the human approver",
+        steps=[
+            Step(step_id="intake", name="Intake", kind=StepKind.QUERY),
+            Step(
+                step_id="approve",
+                name="Approve",
+                kind=StepKind.ACTION,
+                governance_content=ladder,
+                facet=StepFacet(
+                    decision_condition=DecisionCondition(gate_kind=GateKind.SEVERITY_TIER)
+                ),
+            ),
+        ],
+        separation_of_duties=[SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))],
+    )
+
+
+def test_severity_ladder_at2_free_text_clean_loads() -> None:
+    """Positive control: a clean SeverityLadder AT-2 procedure constructs fine (so the block
+    tests below are not vacuous)."""
+    assert _severity_at2_proc().procedure_id == "p"
+
+
+def test_severity_ladder_blocks_role_token_in_tier_note() -> None:
+    """Hole-2 fix: an approver-role token smuggled into a SEVERITY-tier note is refused at
+    load — the new content model's free-text is now scanned (was invisible before PLAN-0074)."""
+    with pytest.raises(ValidationError, match="smuggles a governance value"):
+        _severity_at2_proc(tier_note="on repeat, escalate straight to qp_release")
+
+
+def test_severity_ladder_blocks_amount_in_tier_note() -> None:
+    """The value classes (currency/numeric) also reach the SeverityLadder note now that it is
+    a scanned surface — a ฿-amount in a severity-tier note is refused."""
+    with pytest.raises(ValidationError, match="smuggles a governance value"):
+        _severity_at2_proc(tier_note="only for cargo worth over ฿2,000,000")
 
 
 # --- ADR-016 Q3: the typed read contract (PLAN-0046 Step 1) -----------------------

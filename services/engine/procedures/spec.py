@@ -199,15 +199,18 @@ class BandSource(StrEnum):
 
 class GateKind(StrEnum):
     """The kind of deterministic decision a step's ``decision_condition`` gates on —
-    exactly the six kinds observed across the N=4 instrumented verticals (ADR-016
-    D2-A3; no speculative future kinds, Rule-of-Three). A 5th vertical with a new
-    shape extends this enum additively (amendment OQ-A1)."""
+    the seven kinds observed across the instrumented verticals (ADR-016 D2-A3; no
+    speculative future kinds, Rule-of-Three). A new vertical shape extends this enum
+    additively (amendment OQ-A1). ``severity_tier`` is the 2nd AT-2 signature's
+    non-money authority gate (PLAN-0074 SD-1; the ADR-0031 D3 gate-kind seam's first
+    concrete pressure)."""
 
     ENV_BAND = "env_band"
     IN_FILE_BAND = "in_file_band"
     RULE_GATE = "rule_gate"
     SCORED_RULE = "scored_rule"
     DOA_TIER = "doa_tier"
+    SEVERITY_TIER = "severity_tier"
     NONE = "none"
 
 
@@ -426,7 +429,7 @@ class StepTiers(BaseModel):
 class DecisionCondition(BaseModel):
     """The discriminated decision-condition facet of a ``Step`` (ADR-016 D2-A3).
 
-    ``gate_kind`` names HOW the step decides (one of the six observed kinds).
+    ``gate_kind`` names HOW the step decides (one of the observed ``GateKind`` kinds).
     ``band_source`` is set iff ``gate_kind`` is a band kind (``env_band`` /
     ``in_file_band``); ``env_var`` names the env band's source only when
     ``band_source == env``. An ``in_file_band`` POINTS AT the existing typed
@@ -536,27 +539,56 @@ set (RF-3) and NEVER an approver (SP-1). Human-authored (never model-emitted).""
 
 
 class ComplianceCriterion(StrEnum):
-    """The per-criterion compliance checks an AT-2 ``rule_gate`` evaluates (ADR-0025 D2),
-    scoped to the observed procurement signature (provisional-until-N>=2)."""
+    """The per-criterion compliance checks an AT-2 ``rule_gate`` evaluates (ADR-0025 D2).
 
+    Grown ADDITIVELY per observed signature (ADR-016 OQ-A1) — the first five are the
+    procurement vendor-hygiene criteria; the GDP/GxP block is the 2nd AT-2 signature's
+    regulatory-quality gate (supply_chain cold-chain disposition, PLAN-0074 Step 4). The
+    two blocks are instance-scoped, NOT a generic vocabulary: an AT-2 vertical extends this
+    enum with its own gate's criteria (the N=2 triangulation finding — what generalised is
+    the GATE (block on any fail, non-waivable), never the criterion vocabulary)."""
+
+    # procurement — vendor hygiene (the 1st AT-2 signature)
     AVL = "avl"
     TAX = "tax"
     CERT = "cert"
     SANCTIONS = "sanctions"
     SINGLE_SOURCE = "single_source"
+    # supply_chain — GDP/GxP regulatory quality (the 2nd AT-2 signature, PLAN-0074)
+    STABILITY_BUDGET = "stability_budget"
+    BATCH_QUARANTINE = "batch_quarantine"
+    LICENSED_DISPOSAL_VENDOR = "licensed_disposal_vendor"
+    COA_CUSTOMS = "coa_customs"
 
 
 class SourcePolicy(StrEnum):
-    """The default supplier-selection policy for an AT-2 ``scored_rule`` (ADR-0025 D2)."""
+    """The default selection policy for an AT-2 ``scored_rule`` (ADR-0025 D2).
+
+    NOT extended by the 2nd AT-2 signature (PLAN-0074 Step 4 — a recorded N=2 finding that
+    CORRECTS the PLAN's ``SourcePolicy += validated_lane`` sketch). The run executor keys
+    provenance on the MEMBER ITSELF (``scored_rule.py``: ``rule.default_source is
+    ON_CONTRACT`` decides whether the winner's ``on_contract`` flag satisfies the default),
+    so a third member would be scored as "off-contract by construction" — inverting the
+    provenance of any vertical that used it. This enum is therefore NOT freely extensible
+    while the executor is binary: supply_chain's disposition lanes reuse ``on_contract`` (a
+    pre-qualified GDP lane) and the deviation path grows on :class:`ExceptionPolicy` (a pure
+    label the executor never keys on). Input to the SD-3 genericization PLAN."""
 
     ON_CONTRACT = "on_contract"
     OFF_CONTRACT = "off_contract"
 
 
 class ExceptionPolicy(StrEnum):
-    """The logged-exception policy when the default source cannot be used (ADR-0025 D2)."""
+    """The logged-exception policy when the default source cannot be used (ADR-0025 D2).
+
+    Additive per signature (ADR-016 OQ-A1): ``rfq_avl_logged`` is procurement's off-AVL
+    sourcing exception; ``deviation_quarantine_logged`` is supply_chain's GDP deviation path
+    (an off-lane disposition is quarantined + logged, never silently taken). The run executor
+    reads this as a LABEL only (it stamps ``source_path: exception_policy``), so growth here
+    is safe — unlike :class:`SourcePolicy` (see above)."""
 
     RFQ_AVL_LOGGED = "rfq_avl_logged"
+    DEVIATION_QUARANTINE_LOGGED = "deviation_quarantine_logged"
 
 
 class RelaxableConstraint(StrEnum):
@@ -700,10 +732,95 @@ class ComplianceGate(BaseModel):
     rules: list[ComplianceRule] = Field(min_length=1, description="the per-criterion rules (>=1)")
 
 
-AT2Governance = Annotated[DoaLadder | ScoredRule | ComplianceGate, Field(discriminator="kind")]
+class ExcursionSeverity(StrEnum):
+    """The ordinal severity of a cold-chain excursion — the NON-MONEY authority quantity a
+    ``severity_tier`` gate routes on (ADR-0025 D2 / ADR-0031 D3 gate-kind seam / PLAN-0074
+    SD-1). Declaration order is ASCENDING (negligible < minor < major < critical); a
+    ``SeverityLadder`` tier floor ranks by this order — the non-money analog of
+    ``DoaTier.min_amount``'s ``Decimal`` order. Scoped to the observed supply_chain
+    cold-chain-disposition signature — PROVISIONAL-UNTIL-N>=2 (genericization gated on the
+    ADR-0025 D7 re-trigger, the same discipline as the procurement AT-2 enums)."""
+
+    NEGLIGIBLE = "negligible"
+    MINOR = "minor"
+    MAJOR = "major"
+    CRITICAL = "critical"
+
+
+SEVERITY_BY_RANK: tuple[ExcursionSeverity, ...] = tuple(ExcursionSeverity)
+"""Ascending severity order (enum declaration order) — the ordinal a ``SeverityLadder`` tier
+floor ranks by, so ``SEVERITY_BY_RANK.index(sev)`` is its rank (NEGLIGIBLE=0). The non-money
+analog of the ``Decimal`` spend order a ``DoaLadder`` ranks by (ADR-0025 D2 / PLAN-0074 SD-1)."""
+
+
+class SeverityTier(BaseModel):
+    """One tier of a severity-authority ladder: an excursion whose severity falls in this
+    tier's half-open ordinal band ``[min_severity, next_min)`` routes to ``approver_role``
+    (ADR-0025 D2 / PLAN-0074 SD-1). The severity is a CLOSED ordinal (``ExcursionSeverity``),
+    never money — a ``severity_tier`` gate authorises on patient-safety / regulatory severity,
+    not spend, so ``DoaLadder`` cannot represent it (money-typed by construction)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    min_severity: ExcursionSeverity = Field(
+        description="inclusive severity floor of this tier (ordinal; ranks by SEVERITY_BY_RANK)"
+    )
+    approver_role: RoleId = Field(description="role authorised to approve within this tier")
+    note: str = Field(
+        default="",
+        description="optional human note for this tier — NON-AUTHORITATIVE free-text (never a "
+        "gate input; scoped-prose-lint-guarded so a severity/role token cannot be smuggled in, "
+        "ADR-0025 D4). The authoritative tier is min_severity + approver_role.",
+    )
+
+
+class SeverityLadder(BaseModel):
+    """A tiered severity-authority ladder (the ``severity_tier`` content, ADR-0025 D2 /
+    ADR-0031 D3 gate-kind seam / PLAN-0074 SD-1) — the fourth AT-2 gate kind, and the first
+    with a NON-MONEY authority quantity.
+
+    Total + unambiguous by construction (the ordinal analog of ``DoaLadder``): ``tiers``
+    non-empty with the first floor at the LOWEST severity (``NEGLIGIBLE``) and
+    strictly-increasing ordinal floors, so every ``ExcursionSeverity`` maps to exactly one
+    half-open ordinal band ``[min_i, min_{i+1})`` (top tier unbounded). No emergency-waiver in
+    v1 (the waiver is procurement-shaped — PLAN-0074 SD-1). Scoped to the observed signature,
+    PROVISIONAL-UNTIL-N>=2 (ADR-0025 D2 discipline; genericization gated on the D7 re-trigger)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kind: Literal["severity_tier"] = "severity_tier"
+    tiers: list[SeverityTier] = Field(
+        min_length=1, description="the severity tiers, ascending by ordinal floor"
+    )
+
+    @model_validator(mode="after")
+    def _validate_ladder(self) -> Self:
+        """Total-cover, strictly-monotonic ordinal ladder (the ordinal analog of
+        ``DoaLadder._validate_ladder``, ADR-0025 D3): the first tier's floor is the LOWEST
+        severity (total cover from ``NEGLIGIBLE``), and floors strictly increase by ordinal
+        rank (no equal / overlapping tiers)."""
+        ranks = [SEVERITY_BY_RANK.index(t.min_severity) for t in self.tiers]
+        if ranks[0] != 0:
+            raise ValueError(
+                f"SeverityLadder: the first tier's min_severity must be the lowest severity "
+                f"'{SEVERITY_BY_RANK[0].value}' (total cover from the floor); got "
+                f"'{self.tiers[0].min_severity.value}' — ADR-0025 D3 / PLAN-0074 SD-1"
+            )
+        if any(nxt <= cur for cur, nxt in pairwise(ranks)):
+            raise ValueError(
+                f"SeverityLadder: tier min_severity must be STRICTLY increasing (no overlap / "
+                f"equal tiers); got {[t.min_severity.value for t in self.tiers]} — ADR-0025 D3"
+            )
+        return self
+
+
+AT2Governance = Annotated[
+    DoaLadder | ScoredRule | ComplianceGate | SeverityLadder, Field(discriminator="kind")
+]
 """The discriminated AT-2 governance-content union, keyed to a step's ``gate_kind`` via the
-``kind`` literal (ADR-0025 D2). One field, not four bare ``Optional``s — a leaked variant
-is one test, not four (Alternative 3 rejected)."""
+``kind`` literal (ADR-0025 D2; the ``severity_tier`` arm added by PLAN-0074, the 2nd AT-2
+signature). One field, not five bare ``Optional``s — a leaked variant is one test, not five
+(Alternative 3 rejected)."""
 
 
 class SoDConstraint(BaseModel):
@@ -988,6 +1105,8 @@ def _at2_role_vocab(steps: list[Step]) -> frozenset[str]:
         if isinstance(gc, DoaLadder):
             roles.update(t.approver_role for t in gc.tiers)
             roles.add(gc.emergency_waiver.escalate_to)
+        elif isinstance(gc, SeverityLadder):
+            roles.update(t.approver_role for t in gc.tiers)
     return frozenset(roles)
 
 
@@ -1009,6 +1128,10 @@ def _at2_free_text_surfaces(goal: str, steps: list[Step]) -> Iterator[tuple[str,
         elif isinstance(gc, ScoredRule):
             for crit in gc.criteria:
                 yield crit.note, f"step '{step.step_id}' criterion '{crit.name}' note"
+        elif isinstance(gc, SeverityLadder):
+            for sev_tier in gc.tiers:
+                where = f"step '{step.step_id}' severity tier '{sev_tier.min_severity.value}' note"
+                yield sev_tier.note, where
 
 
 class Procedure(BaseModel):
@@ -1106,6 +1229,49 @@ class Procedure(BaseModel):
                 raise ValueError(
                     f"procedure '{self.procedure_id}': separation_of_duties references unknown "
                     f"step_id(s) {dangling} (known: {sorted(known)}) — ADR-0025 D2"
+                )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_gate_kind_content_correspondence(self) -> Self:
+        """Reject a step whose PRESENT ``governance_content`` does not match its declared
+        ``facet.decision_condition.gate_kind`` (PLAN-0074 AC-16).
+
+        Closes the named two-parallel-mechanisms hazard: the obligation gate keys on the
+        **gate-kind enum** (``draft.py`` ``_AT2_GATE_KINDS``) while the RUN dispatch keys on the
+        **content type** (``governance_step`` ``isinstance``). Nothing forced the two to agree, so
+        a step could declare ``gate_kind: severity_tier`` and carry a ``DoaLadder`` — the run would
+        then route a MONEY ladder while the author (and every reader of the facet) believed a
+        severity gate governed it. ``validate_governance_complete`` refuses that at the run gate;
+        this refuses it at LOAD, which is where an authoring error should surface.
+
+        A TIGHTENING ONLY: a step with **no** content (the drafter's unfilled stub — the whole
+        point of the obligation gate) is untouched. But content PRESENT while the facet is ABSENT
+        is itself rejected (below): the obligation gate keys on the facet, so a facet-less gate
+        owes no content AND no SoD, while the run dispatches on the content type and gates anyway —
+        an authority gate invisible to every facet reader (the s131 review finding; the *omission*
+        half of the hazard, the dangerous direction the earlier version missed)."""
+        for step in self.steps:
+            content = step.governance_content
+            if content is None:
+                continue
+            decision = step.facet.decision_condition if step.facet is not None else None
+            if decision is None:
+                raise ValueError(
+                    f"procedure '{self.procedure_id}': step '{step.step_id}' carries "
+                    f"'{content.kind}' governance_content but declares NO facet gate_kind — the "
+                    "obligation gate keys on the facet (so it would owe neither content nor SoD) "
+                    "while the run dispatches on the content type (so it gates anyway): a gate "
+                    "no facet reader can see. Declare the matching decision_condition — PLAN-0074 "
+                    "AC-16"
+                )
+            if content.kind != decision.gate_kind.value:
+                raise ValueError(
+                    f"procedure '{self.procedure_id}': step '{step.step_id}' declares "
+                    f"gate_kind '{decision.gate_kind.value}' but carries '{content.kind}' "
+                    "governance_content — the declared gate and the typed content must be the same "
+                    "gate (the run dispatches on the CONTENT type; a mismatch would route a gate "
+                    "the author never declared) — PLAN-0074 AC-16"
                 )
         return self
 

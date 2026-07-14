@@ -2977,3 +2977,81 @@ The pre-commit `mypy` hook now also covers `^(services|verticals)/`
 > full offline suite unchanged (2452 / 7). NEXT: the **Phase-3 per-vertical
 > seed-migration PLAN** (PLAN-0062, via `plan-drafter`). Origin: s116
 > `next-work-analyst` re-rank → Cray picked hygiene-first, then Phase-3.
+
+
+---
+
+### Current Focus block removed — session 127 (PLAN-0071 Box-4 economic-impact ฿ facet, all 4 verticals)
+
+> **Session 127, 2026-07-14 (head_commit `a9dbb6f` → `b11ea40`) — PLAN-0071
+> (the Box-4 economic-impact ฿ facet) shipped END-TO-END across all 4 OCT
+> verticals in TWO PRs + CLOSED → `done/`; the reactive AND governed
+> recommenders now append an ADVISORY, trace-carried `economic_impact`
+> `ReasoningStep` (baseline vs governed exposure → net ฿ benefit) — DISCHARGING
+> the ADR-016 self-cancelling Box-4 N≥3 deferral with an OWNED marker (AC-5
+> GREEN at N=4); the ADR-007 D2 "verbatim" envelope stays byte-untouched
+> (zero-collateral).** (STATUS jumped straight here from the ADR-0030-only s126
+> reconcile — the whole ADR-0030 → PLAN-0071 arc was designed to reconcile
+> ONCE, now, at PLAN-0071 close.) **#731 PR1 (`81c7070`, `feat`) — engine
+> core:** a new `services/engine/economic_impact.py`
+> (`EconomicExposure`/`EconomicImpact` models + a NEVER-RAISE
+> `build_economic_steps` emission helper) wired at BOTH `RecommendedAction`
+> composition sites — `recommender._compose_llm_record` (reactive) +
+> `action_step._compose_action` (governed) — appended LAST, never on
+> `_rule_recommend`; the AC-5 ≥3-vertical marker landed RED
+> (`xfail(strict=True)`); a conftest autouse fixture clears the
+> economic-producer registry. Envelope (`services/engine/actions.py`)
+> byte-untouched. **#732 PR2 (`b11ea40`, `feat`) — THE close:** four
+> per-vertical ฿ producers (`verticals/<ns>/economic_impact.py`) — energy
+> `avoided_outage` ฿405,000 / supply_chain `spoilage_avoided` ฿2,120,000 /
+> aquaculture `mortality_avoided` ฿247,000 (all assumptions-first per SD-B/SD-G,
+> every ฿ input a named `assumptions[]` entry, NO ontology/regen/migration);
+> procurement `expedite_tradeoff` derived from the committed-CSV demo ledger
+> (`hero_demo/ledger.py` byte-untouched), `basis_refs` cite the CSV columns,
+> gated on the emergency-failure trigger (OQ-C: a calm-path event → `None`; the
+> hero-PO exemplar stands in for per-event PO anchor resolution, deferred to
+> v2). `discovery._register_vertical` gained a GUARDED optional producer import
+> (`ModuleNotFoundError.name` checked — an absent module is skipped, a broken
+> transitive import surfaces). AC-5 flipped GREEN at N=4; AC-9 GREEN (the real
+> energy producer → one `economic_impact` step, net ฿405,000); the coupled-test
+> audit classified every pin PINNED-UNMODIFIED. **Net (PLAN-0071 COMPLETE):**
+> the Box-4 economic facet is now advisory + trace-carried across all 4
+> verticals — mirroring the vero-lite advisory-trace default (confidence_signal
+> / s74 no-badge / ADR-0030), ZERO ADR-007 D2 envelope change. **draft≠review≠verify:**
+> `plan-drafter` PLAN → Code R2 → Cray SD-A..SD-G → Code build. **Evidence
+> bar:** full suite **2591 passed / 7 skipped / 0 xfailed** WITH Postgres —
+> verified on BOTH the PR head AND the merge commit `b11ea40` (CI is PR-only, so
+> the re-run on the merge commit is the real gate); ruff check + `ruff format
+> --check` + `mypy --strict services/` clean; deterministic-offline — no MS-S1 /
+> host-state. 0 open PRs after this; tree clean (2 pre-existing untracked KEEP);
+> loop-dispatcher DISABLED. PLAN-0071 `git mv`→`done/` this session;
+> `docs/plans/` empty again. Commits: `81c7070` (#731 PR1 engine core) →
+> `b11ea40` (#732 PR2 four ฿ producers + AC-5/AC-9 GREEN + close).
+
+> _Rotation note (session-130 reconcile, 2026-07-14, `docs(status):`):
+> frontmatter bumped to `head_commit 192dc52` (session 130); a new s130
+> Current-Focus block was PREPENDED for the FOUNDATION/GOVERNANCE work
+> (plan-drafter rigor hardening #740 + ADR-0031 "core lifecycle architecture"
+> Accepted #741). **NORMAL reconcile** (no size pressure — comfortably under the
+> R1 ceiling): with s130 prepended, Current Focus held 5 sessions (s130 + s129 +
+> s128 + s127 + s126), so the OLDEST — the whole **session-126** block (ADR-0030
+> Accepted #728: the Box-4 economic-impact ฿ facet — typed, ADVISORY,
+> trace-carried — DISCHARGING the ADR-016 self-cancelling Box-4 N≥3 deferral at
+> N=4; a doc-only, contract-only governance batch, NO code/tests) — was rotated
+> OUT to keep the 4-session window (now s130 + s129 + s128 + s127). Recent
+> Decisions rotated its OLDEST row (2026-07-12 **s120** — `threshold_field`
+> per-entity band shipped END-TO-END, ADR-016 amendment → PLAN-0066 Ready →
+> build #703/#704/#705; procurement `judge_stock` bands each `Part` vs its OWN
+> `reorder_point`) to keep the 10-row window. Both were emitted verbatim in the
+> reconcile reply for the caller to append to
+> `docs/status-archive/2026-h1-status.md` (Bash-side). **Backlog update:** the
+> Box-4 economic-impact ฿ arc stays COMPLETE across engine + UI (through s129);
+> s130 shipped NO feature — it hardened the drafter (#740) and ratified the
+> core-lifecycle architecture (ADR-0031, #741) that pre-designs each core's ONE
+> typed policy-carrying seam for its N≥2 trigger. Prior rotation notes (through
+> the session-129 reconcile) are consolidated into this one (R4). Per the
+> STATUS.md Rotation Policy (R1/R2/R4)._
+
+> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
+
+*Rotated 2026-07-15 (session 131 reconcile — s131 PLAN-0074 entry prepended; CF window kept at 4 sessions [128–131] under the 64 KB R1 ceiling).*

@@ -30,6 +30,51 @@ agents:
       step_kinds: [query, evaluate, action]
       action_handlers: [hold]       # the cold-chain hold handler (no-op stub today)
 
+  # PLAN-0074 Step 4 — the 2nd AT-2 signature's agent (the governed cold-chain DISPOSITION).
+  # A SECOND agent, not a widened `cold_chain_agent`: the sweep's agent stays byte-identical
+  # (its ceiling stays `gated`, its allowlist stays [hold]), and the two operating roles are
+  # genuinely distinct — the sweep DETECTS a breach; this agent runs the QA disposition of the
+  # affected batch. ceiling = auto because `assess` is an auto action (the scored rule selects
+  # the lane deterministically — no human is in that loop); `approve` + `fulfill` stay `gated`
+  # regardless (the human go/no-go, and the ceiling is a MAX, not a default).
+  cold_chain_qa_agent:
+    name: Cold-Chain Quality Disposition Agent
+    llm_model: gpt-oss:20b          # ADR-001 default local model
+    autonomy_ceiling: auto
+    allowed:
+      step_kinds: [query, evaluate, action]
+      # `inspect` for the auto assessment; `escalate` for the gated authority routing;
+      # `hold` for the gated disposition write (a no-op receipt stub today, like the sweep's).
+      action_handlers: [inspect, escalate, hold]
+
+# Human principals the SoD run-check resolves against (ADR-0026 D1/D4). Pure YAML — parsed
+# generically (no ORM, no migration: supply_chain is in-memory synthetic). Human-author-only
+# (H, ADR-0024 D3), never model-emitted. The requester side (`req-coldchain`) holds ONLY
+# `requester`; each approver holds the generic `approver` role the SoD constraint binds
+# `approve` to, PLUS the severity-tier role that picks WHICH approver (the severity_tier
+# resolver, PLAN-0074 Step 3 — SoD only needs "an approver, distinct from the requester").
+#
+# ⚠ ADR-0026 OQ-6 (N>=2): this block makes supply_chain the SECOND principal-bearing vertical,
+# firing the self-cancelling `test_principal_identity_retrigger` marker BY DESIGN. PLAN-0074
+# AC-12 / SD-4 answers it: the baseline moves to two verticals and the shared/core `Person`
+# extraction is filed as a follow-on (extracting it here would double this PLAN's blast radius).
+principals:
+  - person_id: req-coldchain
+    name: "อารีย์ — จนท.ควบคุมลูกโซ่ความเย็น (ผู้แจ้งเหตุ)"
+    roles: [requester]
+  - person_id: appr-qa
+    name: "กมล — จนท.ประกันคุณภาพ"
+    roles: [approver, "จนท.ประกันคุณภาพ"]
+  - person_id: appr-qam
+    name: "สุดา — ผจก.ประกันคุณภาพ"
+    roles: [approver, "ผจก.ประกันคุณภาพ"]
+  - person_id: appr-qp
+    name: "ธนพล — เภสัชกรผู้มีหน้าที่ควบคุม"
+    roles: [approver, "เภสัชกรผู้มีหน้าที่ควบคุม"]
+  - person_id: appr-qdir
+    name: "มยุรี — ผอ.ฝ่ายคุณภาพ"
+    roles: [approver, "ผอ.ฝ่ายคุณภาพ"]
+
 procedures:
   cold_chain_excursion_sweep:
     title: Cold-Chain Excursion Sweep
@@ -100,3 +145,202 @@ procedures:
           output: "hold action proposal per breaching shipment"
           governance: "handler fixed; HUMAN go/no-go on the irreversible write (gated)"
     terminal: hold_breaches
+
+  # ---------------------------------------------------------------------------
+  # PLAN-0074 — THE SECOND AT-2 SIGNATURE (the governance-heavy request->approve->fulfill
+  # archetype, ADR-0025 D7 / ADR-0031 D3 row-3 "Path 2"). Procurement's emergency-sourcing
+  # round was N=1; this is N=2 — and it deliberately presses the seam procurement cannot:
+  #
+  #   THE AUTHORITY QUANTITY IS NOT MONEY.
+  #
+  # A reefer breach does not route to an approver by baht — it routes by PATIENT-SAFETY /
+  # regulatory SEVERITY (how much of the cargo's stability budget the excursion burned).
+  # `DoaLadder` is money-typed by construction (currency + Decimal min_amount), so it cannot
+  # represent this: hence `severity_tier`, the 4th AT-2 gate kind + its own typed content model
+  # (`SeverityLadder`, PLAN-0074 Steps 1-3; Cray-ratified fork, session 131).
+  #
+  # The money is still THERE (each disposition lane has a cost, and the scored rule prices it) —
+  # it is simply NOT what authorises. That contrast is the point of the second signature.
+  #
+  # Shape: intake (query) -> assess (auto action, scored_rule: pick the disposition lane +
+  # STAMP the derived severity, SD-2 action-stamp) -> gdp_gate (evaluate, rule_gate: GDP/GxP
+  # quality — blocks any lane that fails) -> approve (GATED action, severity_tier: the human
+  # authority the severity demands; SoD vs intake) -> fulfill (GATED action: the disposition
+  # write, a no-op receipt stub today). The run SUSPENDS at `approve` (waiting_human) — no
+  # disposition is executed until a human decides (ADR-0007 approve->execute, LOCKED #3).
+  #
+  # The `cold_chain_excursion_sweep` above is UNTOUCHED (byte-identical, AC-9): the sweep
+  # DETECTS the breach; this procedure disposes of the affected batch.
+  cold_chain_excursion_disposition:
+    title: Cold-Chain Excursion Disposition
+    goal: >-
+      A reefer breach has taken a pharma cargo out of its cold chain. Intake the excursion and
+      the affected batch, derive how much of the cargo's stability budget the breach consumed,
+      score the candidate disposition lanes with the authored rule (release against a certificate
+      of analysis, re-ice and expedite, quarantine and rework, or licensed destruction) while the
+      LLM only summarises them, check the GDP quality gate which blocks any lane that fails it,
+      then route the disposition to the human quality authority that the excursion's severity
+      demands — patient safety, never spend — and write nothing until that human decides.
+    run_by: cold_chain_qa_agent
+    trigger: manual                 # L-1: only manual runs in Phase 1
+    steps:
+      - step_id: intake
+        name: Intake the excursion and the affected batch
+        description: >-
+          Read the excursion event and the affected pharma batch, enriched with the batch's
+          excursion scalars (how far above its ceiling, for how long, against the cargo's
+          stability budget), the candidate disposition lanes, and the GDP compliance signals.
+          LLM-assist drafts the incident narrative (advisory); it decides nothing.
+        kind: query
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: "draft the excursion narrative from the event (advisory)"
+          input: "the cold-chain excursion event + the affected batch"
+          output: "the enriched disposition intake (excursion scalars, candidate lanes, GDP signals)"
+      - step_id: assess
+        name: Score the disposition lanes and derive the excursion severity
+        description: >-
+          Score the candidate disposition lanes the intake carried and take the one the authored
+          rule ranks first; stamp the derived excursion severity onto the batch so the downstream
+          authority gate can route it. The RULE picks the lane and the derivation is deterministic
+          — the LLM only summarises the options (governed is not generated).
+        kind: action
+        autonomy: auto              # an auto proposal — the selection is the deterministic rule
+        handler: inspect
+        # AT-2 typed content (ADR-0025 D2). The criteria vocabulary is the shipped scored_rule
+        # executor's (criticality / lead_time / unit_price — it fails CLOSED on any other name);
+        # here they read as LANE properties: how urgent the batch is (amplified by the derived
+        # severity ratio), how long the lane takes, what it costs per unit. `default_source:
+        # on_contract` = the pre-qualified GDP lane; deviating from it is the logged deviation
+        # path (an off-lane disposition is quarantined + logged, never silently taken).
+        # WEIGHTS ARE PROVISIONAL (no design partner has signed the real lane scoring yet).
+        governance_content:
+          kind: scored_rule
+          criteria:
+            - name: criticality
+              weight: "0.5"
+              note: "urgency — a batch that has burned more of its stability budget prefers the faster lane"
+            - name: lead_time
+              weight: "0.2"
+              note: "how long the lane takes to execute"
+            - name: unit_price
+              weight: "0.3"
+              note: "what the lane costs per unit of the batch"
+          default_source: on_contract
+          exception_policy: deviation_quarantine_logged
+        input:
+          from: intake
+        facet:
+          decision_condition:
+            gate_kind: scored_rule
+            note: "pre-qualified GDP lane by default; an off-lane disposition is the logged deviation path"
+          llm_assist: "summarise the candidate disposition lanes (advisory)"
+          input: "intake (the enriched batch)"
+          output: "the selected disposition lane + the stamped excursion severity"
+          governance: "SELECTION = a scored RULE; the severity is DERIVED, never authored by the LLM"
+      - step_id: gdp_gate
+        name: Check the GDP quality gate
+        description: >-
+          Evaluate the batch against the GDP quality rules — stability budget documented, batch
+          quarantined pending disposition, licensed disposal vendor on file, certificate of
+          analysis and customs pack complete. Any failed criterion blocks the disposition.
+          Deterministic: no LLM, no band.
+        kind: evaluate
+        # AT-2 typed content (ADR-0025 D2). A RULE gate, not a numeric band — intentionally
+        # band-less (the GovernanceEvaluateExecutor dispatches it to the deterministic
+        # rule_gate; the base band executor is never called). blocks_po is Literal[True]:
+        # a non-blocking "compliance" rule is unrepresentable by type.
+        governance_content:
+          kind: rule_gate
+          rules:
+            - criterion: stability_budget
+              spec: "batch.stability_budget_ch present and the excursion dose is documented against it"
+            - criterion: batch_quarantine
+              spec: "batch.quarantine_status == quarantined pending the disposition decision"
+            - criterion: licensed_disposal_vendor
+              spec: "the destruction lane names a licensed disposal vendor (GDP Annex-compliant)"
+            - criterion: coa_customs
+              spec: "the release lane carries a valid certificate of analysis + the customs pack"
+        facet:
+          decision_condition:
+            gate_kind: rule_gate
+            note: "GDP quality gate — stability budget, batch quarantine, licensed disposal, certificate and customs"
+          llm_assist: null
+          input: "assess (the batch + its selected lane)"
+          output: "per-criterion pass/fail; a batch failing any criterion is blocked"
+          governance: "blocks the disposition on ANY failed criterion (hard gate, non-waivable)"
+      - step_id: approve
+        name: Severity-tiered quality approval (human gate)
+        description: >-
+          Route the disposition to the human quality authority the excursion's severity demands:
+          a batch that has burned its whole stability budget escalates to the highest quality
+          authority; a light drift does not. The authority follows PATIENT SAFETY, not the cost
+          of the lane — the money the scored rule priced never routes this gate. The LLM drafts
+          the summary (advisory). Separation of duties holds: the operator who raised the
+          excursion cannot be the one who dispositions it. The run suspends until a human decides.
+        kind: action
+        autonomy: gated             # the human go/no-go — never the LLM
+        handler: escalate
+        # AT-2 typed content — the 4th gate kind (ADR-0025 D2 / PLAN-0074 SD-1). The NON-MONEY
+        # authority ladder: an ORDINAL severity floor per tier, total-cover from the lowest
+        # severity, strictly increasing (validated at load). NO emergency waiver in v1 — a waiver
+        # is procurement-shaped, and there is no waiving patient safety. The tiers MIRROR the
+        # quality roles declared in `principals:` above (the resolver binds approver_role -> Person).
+        # PROVISIONAL until a design partner signs the real GDP escalation matrix.
+        governance_content:
+          kind: severity_tier
+          tiers:
+            - min_severity: negligible
+              approver_role: "จนท.ประกันคุณภาพ"
+              note: "a drift well inside the cargo's budget — the quality officer dispositions it"
+            - min_severity: minor
+              approver_role: "ผจก.ประกันคุณภาพ"
+              note: "a real bite out of the budget — the quality manager owns the call"
+            - min_severity: major
+              approver_role: "เภสัชกรผู้มีหน้าที่ควบคุม"
+              note: "the shelf life is materially at risk — only the responsible pharmacist may release or destroy"
+            - min_severity: critical
+              approver_role: "ผอ.ฝ่ายคุณภาพ"
+              note: "the budget is spent and the batch is presumed compromised — the quality director decides"
+        input:
+          from: gdp_gate
+          where:
+            compliant: true
+        facet:
+          decision_condition:
+            gate_kind: severity_tier
+            note: "severity tier — the authority escalates with the excursion's severity, not with its cost"
+          llm_assist: "draft the disposition summary for the approver (advisory, editable)"
+          input: "gdp_gate (the compliant subset)"
+          output: "disposition decision (human)"
+          governance: "severity-tiered authority + SoD; a HUMAN approves — money never routes this gate"
+      - step_id: fulfill
+        name: Execute the approved disposition
+        description: >-
+          Carry out the approved disposition for the batch (a no-op receipt stub until the real
+          carrier / quarantine / disposal handler ships with the design partner). A human-gated
+          write: it only proposes until a human approves, then acts on resume.
+        kind: action
+        autonomy: gated
+        handler: hold
+        input:
+          from: approve
+        facet:
+          decision_condition: { gate_kind: none }   # mechanical write of the approved decision
+          llm_assist: null
+          input: "approve (the approved disposition)"
+          output: "the disposition receipt"
+          governance: "human-gated write (only runs on resume after approval)"
+    terminal: fulfill
+    # AT-2 separation of duties (ADR-0025 D2/D5 — a severity_tier gate REQUIRES it, PLAN-0074
+    # Step 2). The cold-chain operator who raised the excursion (`intake`) must not be the
+    # quality authority who dispositions it (`approve`). Author time = the STRUCTURAL
+    # distinct-steps form; the resolved-PRINCIPAL distinctness (fail-closed on a PK match OR an
+    # alias-collapse) is the LIVE run check (ADR-0026 D4): `required_roles` binds intake ->
+    # requester -> Person and approve -> approver -> Person, and fails closed if either is
+    # unresolvable or the two collapse to one human.
+    separation_of_duties:
+      - distinct_steps: [intake, approve]
+        required_roles:
+          intake: requester
+          approve: approver
