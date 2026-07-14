@@ -13,6 +13,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from services.engine.economic_impact import EconomicImpact
+
 
 class ImpactSide(BaseModel):
     """One side of the ฿-impact ledger (a sourcing path: on-AVL wait vs off-AVL emergency)."""
@@ -55,6 +57,15 @@ class HeroImpactLedger(BaseModel):
     )
     avoided_downtime_thb: Decimal = Field(description="downtime avoided vs the baseline wait")
     net_benefit_thb: Decimal = Field(description="the baseline exposure less the governed exposure")
+    economic_impact: EconomicImpact | None = Field(
+        default=None,
+        description=(
+            "PLAN-0073 (SD-2b): the typed Box-4 economic-impact facet — the same ฿ figures as "
+            "the ledger plus audit-grade provenance (kind / basis_refs / assumptions / "
+            "provisional). Additive + optional (None when no producer grounds a figure); the "
+            "ledger fields above stay byte-identical (ADR-0030 D2 coexist)."
+        ),
+    )
 
 
 class HeroGovernanceAudit(BaseModel):

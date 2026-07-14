@@ -77,6 +77,20 @@ async def test_procurement_producer_expedite_tradeoff_from_csv_columns() -> None
     assert impact.assumptions  # the single disclosed productive_hours_per_day assumption
 
 
+async def test_procurement_producer_fires_on_the_hero_intake_seed() -> None:
+    """PLAN-0073 AC-2 (SD-1a): the ENRICHED hero intake seed carries ``event_type``, so the
+    producer FIRES on the actual governed-run entity (not just a hand-built event dict) — the
+    facet rides the real hero path, not a render-side fabrication. Before SD-1a the seed carried
+    no ``event_type``/``severity`` and the guard returned ``None``."""
+    from verticals.procurement.data_adapter.fastenal_csv import FastenalCsvAdapter
+    from verticals.procurement.hero_demo.run import _intake_seed
+
+    seed = await _intake_seed(FastenalCsvAdapter())
+    impact = await procurement_economic_impact(seed, "procurement")
+    assert impact is not None
+    assert impact.kind == "expedite_tradeoff"
+
+
 async def test_procurement_producer_returns_none_for_calm_path_event() -> None:
     """OQ-C: a non-emergency event has no baseline-vs-governed ฿ tradeoff — facet absent,
     never a guessed figure."""

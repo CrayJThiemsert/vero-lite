@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.models.demo import HeroGovernanceAudit, HeroImpactLedger
 from services.db.session import get_session
+from verticals.procurement.economic_impact import procurement_economic_impact
 from verticals.procurement.hero_demo.governance_audit import build_hero_governance_audit
 from verticals.procurement.hero_demo.ledger import build_hero_impact_ledger
 from verticals.procurement.hero_demo.run import (
@@ -40,6 +41,11 @@ from verticals.procurement.hero_demo.run import (
 )
 
 router = APIRouter(prefix="/demo/hero", tags=["demo"])
+
+# PLAN-0073 (SD-2b): the hero's emergency-sourcing context for the read-time facet. The producer
+# emits the representative emergency-sourcing ฿ exemplar (the hero PO) for a critical-failure
+# trigger and None otherwise (OQ-C) — this is exactly the hero's asset-failure scenario.
+_HERO_IMPACT_TRIGGER = {"event_type": "failure"}
 
 
 @router.get("/governance", response_model=HeroGovernanceAudit)
@@ -61,8 +67,18 @@ async def hero_governance_moment(live: bool = False) -> HeroGovernanceAudit:
 
 @router.get("/impact", response_model=HeroImpactLedger)
 async def hero_impact_ledger() -> HeroImpactLedger:
-    """Return the ฿-impact ledger (baseline vs governed). ALL FIGURES DEMO-GRADE / PROVISIONAL."""
-    return HeroImpactLedger.model_validate(await build_hero_impact_ledger())
+    """Return the ฿-impact ledger (baseline vs governed) PLUS the typed Box-4 ``economic_impact``
+    facet (PLAN-0073 SD-2b). ALL FIGURES DEMO-GRADE / PROVISIONAL.
+
+    The facet is additive + optional: the producer reuses the SAME ``build_hero_impact_ledger``
+    computation, so its ฿ figures equal the ledger's (no drift), while adding audit-grade
+    provenance (kind / basis_refs / assumptions). The ledger fields stay byte-identical
+    (ADR-0030 D2 coexist)."""
+    ledger = await build_hero_impact_ledger()
+    ledger["economic_impact"] = await procurement_economic_impact(
+        _HERO_IMPACT_TRIGGER, "procurement"
+    )
+    return HeroImpactLedger.model_validate(ledger)
 
 
 @router.post("/event", response_model=HeroGovernanceAudit)

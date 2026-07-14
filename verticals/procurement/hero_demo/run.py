@@ -211,6 +211,11 @@ async def _intake_seed(adapter: FastenalCsvAdapter) -> dict[str, Any]:
     quotes = [q for q in await adapter.fetch_objects("Quotation") if q["part_id"] == req["part_id"]]
     return {
         "event_id": failure["event_id"],
+        # PLAN-0073 SD-1a: carry the failure event_type forward so the Box-4 economic-impact
+        # producer's emergency-trigger guard (economic_impact._is_emergency_trigger) FIRES on the
+        # governed run's `source` action (event_type threads intake -> judge -> source). Additive
+        # key; the scored_rule / doa_tier / rule_gate steps never read it (no behaviour change).
+        "event_type": failure["event_type"],
         "object_type": "PurchaseOrder",
         "primary_key": req["po_id"],
         "asset_id": req["asset_id"],

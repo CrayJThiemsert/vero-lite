@@ -139,6 +139,15 @@
 .hero-kpi-value { font-size: 22px; font-weight: 700; font-family: var(--mono); line-height: 1.15; }
 .hero-kpi-sub { font-size: 10px; line-height: 1.4; margin-top: 1px; }
 
+/* PLAN-0073 (SD-3): the Box-4 economic-impact provenance strip — coexists under the ledger. */
+.hero-econ {
+  margin-top: 12px; padding: 10px 12px;
+  background: var(--bg-1); border: 1px solid var(--line); border-radius: var(--r-md);
+}
+.hero-econ-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hero-econ-detail { margin-top: 10px; font-size: 10.5px; line-height: 1.6; }
+.hero-econ-line { margin-top: 2px; }
+
 @media (max-width: 640px) {
   .hero-grid, .hero-ledger-foot { grid-template-columns: 1fr; }
   .hero-ledger { flex-direction: column; }

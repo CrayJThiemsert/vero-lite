@@ -44,6 +44,24 @@ async def test_impact_endpoint_returns_exact_ledger(client: AsyncClient) -> None
     assert _money(body["net_benefit_thb"]) == Decimal("8107500")
 
 
+async def test_impact_endpoint_carries_economic_facet(client: AsyncClient) -> None:
+    """PLAN-0073 AC-1 (SD-2b): ``GET /demo/hero/impact`` additively carries the typed Box-4
+    ``economic_impact`` facet (kind / provisional / assumptions / basis_refs) alongside the
+    byte-identical ledger; the facet's ``net_benefit_thb`` EQUALS the ledger's (same
+    computation — the producer reuses ``build_hero_impact_ledger``, no drift)."""
+    body = (await client.get("/demo/hero/impact")).json()
+    facet = body["economic_impact"]
+    assert facet is not None
+    assert facet["kind"] == "expedite_tradeoff"  # ADR-0030 D3 table
+    assert facet["provisional"] is True
+    assert facet["assumptions"]  # non-empty disclosed modelling assumptions
+    assert len(facet["basis_refs"]) == 4  # the four source CSV columns (OQ-C provenance)
+    # the facet ฿ equals the ledger ฿ from the SAME response cycle (validator-backed, no drift)
+    assert _money(facet["net_benefit_thb"]) == _money(body["net_benefit_thb"])
+    # AC-3 coexistence: the ledger fields are unchanged (the existing exact-ledger test still holds)
+    assert _money(body["net_benefit_thb"]) == Decimal("8107500")
+
+
 async def test_governance_endpoint_binds_shipped_shapes(client: AsyncClient) -> None:
     response = await client.get("/demo/hero/governance")
     assert response.status_code == 200

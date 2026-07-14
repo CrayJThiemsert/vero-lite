@@ -171,23 +171,59 @@
     ]);
   }
 
+  /* ---- PLAN-0073 (SD-3): the typed Box-4 economic-impact PROVENANCE strip. Coexists UNDER
+     the ledger (ADR-0030 D2 — the ledger card is unchanged); the ฿ figure EQUALS the ledger's,
+     so this adds the audit-grade WHY (kind · assumptions · basis_refs), not a new number. An
+     always-visible PROVISIONAL badge (s74 trust-shape) + a "show provenance" toggle reusing the
+     reasoning-trace toggle idiom (the detail starts hidden). ---- */
+  function renderEconomicProvenance(impact) {
+    if (!impact) return null;
+    const detail = h('div', { class: 'hero-econ-detail faint mono' });
+    detail.hidden = true;
+    (impact.assumptions || []).forEach(function (a) {
+      detail.appendChild(h('div', { class: 'hero-econ-line' }, '• ' + a));
+    });
+    (impact.basis_refs || []).forEach(function (r) {
+      detail.appendChild(h('div', { class: 'hero-econ-line' }, 'basis · ' + r));
+    });
+    const toggle = h('button', { class: 'hero-badge hero-toggle', type: 'button' }, 'show provenance');
+    toggle.addEventListener('click', function () {
+      detail.hidden = !detail.hidden;
+      toggle.textContent = detail.hidden ? 'show provenance' : 'hide provenance';
+    });
+    return h('div', { class: 'hero-econ' }, [
+      h('div', { class: 'hero-econ-head' }, [
+        badge(impact.kind, 's-info'),
+        badge('PROVISIONAL', 's-warn'),
+        h('span', { class: 'faint' },
+          'Box-4 economic impact · net benefit ' + thbM(impact.net_benefit_thb) + ' · audit-grade provenance'),
+        toggle
+      ]),
+      detail
+    ]);
+  }
+
   /* ---- the ฿-impact ledger (AC-6): baseline → governed ---- */
   function renderLedger(led) {
     const b = led.baseline, g = led.governed;
+    const body = [
+      h('div', { class: 'hero-ledger' }, [
+        ledgerSide('Baseline — wait on-AVL', b, 's-crit', led.currency),
+        h('div', { class: 'hero-ledger-arrow' }, icon('flow', { width: 18, height: 18 })),
+        ledgerSide('Governed — off-AVL emergency', g, 's-ok', led.currency)
+      ]),
+      h('div', { class: 'hero-ledger-foot' }, [
+        tile('expedite premium', thb(led.expedite_premium_thb), 's-warn', 'price of speed'),
+        tile('avoided downtime', thbM(led.avoided_downtime_thb), 's-ok'),
+        tile('net benefit', thbM(led.net_benefit_thb), 's-ok',
+          'exposure ' + thbM(b.exposure_thb) + ' → ' + thbM(g.exposure_thb))
+      ])
+    ];
+    // PLAN-0073 (SD-3 coexist): the typed facet provenance strip under the ledger, when present.
+    const prov = renderEconomicProvenance(led.economic_impact);
+    if (prov) body.push(prov);
     return card('฿-impact — governed sourcing turned a line-stop into a decision',
-      'GET /demo/hero/impact · server-computed', [
-        h('div', { class: 'hero-ledger' }, [
-          ledgerSide('Baseline — wait on-AVL', b, 's-crit', led.currency),
-          h('div', { class: 'hero-ledger-arrow' }, icon('flow', { width: 18, height: 18 })),
-          ledgerSide('Governed — off-AVL emergency', g, 's-ok', led.currency)
-        ]),
-        h('div', { class: 'hero-ledger-foot' }, [
-          tile('expedite premium', thb(led.expedite_premium_thb), 's-warn', 'price of speed'),
-          tile('avoided downtime', thbM(led.avoided_downtime_thb), 's-ok'),
-          tile('net benefit', thbM(led.net_benefit_thb), 's-ok',
-            'exposure ' + thbM(b.exposure_thb) + ' → ' + thbM(g.exposure_thb))
-        ])
-      ]);
+      'GET /demo/hero/impact · server-computed', body);
   }
   function ledgerSide(title, side, cls, currency) {
     return h('div', { class: 'hero-ledger-side' }, [

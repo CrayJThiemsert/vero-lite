@@ -233,6 +233,28 @@ async def test_authenticated_reject_records_and_completes_with_no_effect(
         assert run is not None and run.status == PipelineRunStatus.COMPLETED.value
 
 
+async def test_event_run_source_trace_carries_economic_facet(
+    hero_client: AsyncClient, read_session: Callable[[], AsyncSession]
+) -> None:
+    """PLAN-0073 AC-2 (SD-1a) — fire-for-real: the event-fired governed run genuinely carries the
+    advisory ``economic_impact`` facet on the PERSISTED ``source`` action's reasoning trace (it
+    rides the real hero run, not a render-side fabrication). The facet reaches the action step
+    because the enriched intake seed threads ``event_type`` through intake → judge → source."""
+    run_id = await _fire_event(hero_client)
+    async with read_session() as s:
+        loaded = await load_run(s, run_id)
+        assert loaded is not None
+        # The governed `source` step is GovernanceActionExecutor._scored_rule: it REPLACES the base
+        # action envelopes with enriched entities and lifts the advisory economic_impact facet onto
+        # the STEP reasoning trace (PLAN-0073 SD-1a), where it durably persists.
+        source = next(sr for sr in loaded.step_results if sr.step_id == "source")
+        kinds = [t.get("kind") for t in (source.reasoning_trace or [])]
+        assert "economic_impact" in kinds, kinds
+        econ = next(t for t in source.reasoning_trace if t.get("kind") == "economic_impact")
+        assert econ["detail"]["kind"] == "expedite_tradeoff"
+        assert econ["detail"]["provisional"] is True
+
+
 async def test_replay_refires_a_fresh_run_after_a_decision(
     hero_client: AsyncClient, read_session: Callable[[], AsyncSession]
 ) -> None:
