@@ -26,7 +26,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
-from typing import Any
+from typing import Any, cast
 
 from services.engine.actions import ControlRef, GovernedDecision
 from services.engine.procedures.doa_tier import DoaTierError, resolve_doa_tier
@@ -219,6 +219,19 @@ class GovernanceActionExecutor:
             for entity in input_set
         ]
         base_outcome = await self.base.execute(step, input_set, ctx)
+        # PLAN-0073 (SD-1a): the base ActionStepExecutor builds the advisory Box-4 economic_impact
+        # facet into each RecommendedAction's reasoning_trace (ADR-0030 / PLAN-0071). This method
+        # REPLACES base_outcome.output below (dropping those action envelopes to thread the selected
+        # spend forward), which would discard the facet — so lift it onto the STEP trace here, where
+        # it persists on the governed run. Advisory + never-raise: an empty list when no producer is
+        # registered or the event does not ground a ฿ figure (it never changes the action).
+        economic_steps: list[dict[str, Any]] = [
+            cast("dict[str, Any]", trace_step)
+            for entry in base_outcome.output
+            if isinstance(entry, Mapping)
+            for trace_step in (entry.get("action") or {}).get("reasoning_trace", [])
+            if isinstance(trace_step, Mapping) and trace_step.get("kind") == "economic_impact"
+        ]
         enriched: list[Any] = [
             {
                 **(entity if isinstance(entity, Mapping) else {"value": entity}),
@@ -231,25 +244,29 @@ class GovernanceActionExecutor:
             }
             for entity, v in zip(input_set, verdicts, strict=True)
         ]
-        trace = list(base_outcome.reasoning_trace) + [
-            {
-                "kind": "scored_rule_selected",
-                "selected_supplier_id": v.selected_supplier_id,
-                "selected_quote_id": v.selected_quote_id,
-                "amount": str(v.amount),
-                "currency": v.currency,
-                "summary": (
-                    f"scored {len(v.ranked)} quotes -> '{v.selected_supplier_id}' "
-                    f"(quote '{v.selected_quote_id}', {v.amount} {v.currency}"
-                    + (
-                        ", off-contract exception -- logged justification required)"
-                        if v.override_required
-                        else ", on-contract default)"
-                    )
-                ),
-            }
-            for v in verdicts
-        ]
+        trace = (
+            list(base_outcome.reasoning_trace)
+            + economic_steps
+            + [
+                {
+                    "kind": "scored_rule_selected",
+                    "selected_supplier_id": v.selected_supplier_id,
+                    "selected_quote_id": v.selected_quote_id,
+                    "amount": str(v.amount),
+                    "currency": v.currency,
+                    "summary": (
+                        f"scored {len(v.ranked)} quotes -> '{v.selected_supplier_id}' "
+                        f"(quote '{v.selected_quote_id}', {v.amount} {v.currency}"
+                        + (
+                            ", off-contract exception -- logged justification required)"
+                            if v.override_required
+                            else ", on-contract default)"
+                        )
+                    ),
+                }
+                for v in verdicts
+            ]
+        )
         audit = {
             **(base_outcome.audit or {}),
             "governed_kind": "scored_rule",
