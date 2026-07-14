@@ -20,7 +20,7 @@ from decimal import Decimal
 from typing import Any, get_args
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from services.engine.procedures.archetypes.template import REGISTRY, instantiate
 from services.engine.procedures.draft import (
@@ -53,6 +53,7 @@ from services.engine.procedures.spec import (
     DoaTier,
     EmergencyWaiverPolicy,
     ExceptionPolicy,
+    ExcursionSeverity,
     GateKind,
     Person,
     PrincipalAlias,
@@ -61,6 +62,8 @@ from services.engine.procedures.spec import (
     ScoredCriterion,
     ScoredRule,
     ServicePrincipal,
+    SeverityLadder,
+    SeverityTier,
     SoDConstraint,
     SourcePolicy,
     Step,
@@ -224,6 +227,8 @@ _AT2_CONTENT_TYPES: frozenset[type[BaseModel]] = frozenset(
         ScoredRule,
         ComplianceRule,
         ComplianceGate,
+        SeverityTier,
+        SeverityLadder,
         SoDConstraint,
     }
 )
@@ -340,7 +345,7 @@ def _dc_step(
     gate_kind: GateKind,
     *,
     handler: str | None = None,
-    governance_content: DoaLadder | ScoredRule | ComplianceGate | None = None,
+    governance_content: DoaLadder | ScoredRule | ComplianceGate | SeverityLadder | None = None,
 ) -> Step:
     """A step carrying a facet ``gate_kind`` (the discriminator the gate reads)."""
     return Step(
@@ -468,15 +473,117 @@ def test_doa_procedure_missing_sod_is_refused() -> None:
 
 
 def test_wrong_variant_at2_is_refused() -> None:
-    """AC-9: a present-but-mismatched variant (ScoredRule on a doa_tier step) is refused."""
-    proc = _doa_procedure(content=_scored(), sod=_SOD)
-    with pytest.raises(ProcedureError, match="governance_content"):
-        validate_governance_complete(proc)
+    """AC-9: a present-but-mismatched variant (ScoredRule on a doa_tier step) is refused.
+
+    Since PLAN-0074 AC-16 the refusal fires at LOAD (the gate_kind <-> content.kind
+    correspondence validator on ``Procedure``), i.e. the mismatched procedure can no longer be
+    CONSTRUCTED — strictly earlier than the run gate this test originally asserted. The run-gate
+    layer still stands behind it (``validate_governance_complete``); it is simply no longer the
+    first door a facet-bearing mismatch reaches."""
+    with pytest.raises(ValidationError, match="governance_content"):
+        _doa_procedure(content=_scored(), sod=_SOD)
 
 
 def test_fully_authored_at2_passes_the_gate() -> None:
     """The second state: matching content on the doa_tier step + a SoD constraint passes."""
     proc = _doa_procedure(content=_ladder(), sod=_SOD)
+    validate_governance_complete(proc)  # no raise
+
+
+# --- PLAN-0074 Step 2: severity_tier (4th AT-2 gate kind) owes content + SoD, like doa_tier ---
+
+
+def _severity_ladder() -> SeverityLadder:
+    return SeverityLadder(
+        tiers=[
+            SeverityTier(min_severity=ExcursionSeverity.NEGLIGIBLE, approver_role="qa_officer"),
+            SeverityTier(min_severity=ExcursionSeverity.CRITICAL, approver_role="qp_release"),
+        ],
+    )
+
+
+def _severity_procedure(
+    *,
+    content: DoaLadder | ScoredRule | ComplianceGate | SeverityLadder | None,
+    sod: list[SoDConstraint],
+) -> Procedure:
+    return Procedure(
+        procedure_id="p",
+        title="P",
+        run_by="a",
+        steps=[
+            Step(step_id="intake", name="Intake", kind=StepKind.QUERY),
+            _dc_step(
+                "approve",
+                StepKind.ACTION,
+                GateKind.SEVERITY_TIER,
+                handler="request_approval",
+                governance_content=content,
+            ),
+        ],
+        separation_of_duties=sod,
+    )
+
+
+def test_governance_todo_severity_tier_action_owes_content() -> None:
+    step = _dc_step("approve", StepKind.ACTION, GateKind.SEVERITY_TIER, handler="request_approval")
+    assert "governance_content" in derive_governance_todo(step)
+
+
+def test_severity_tier_with_matching_ladder_is_filled() -> None:
+    step = _dc_step(
+        "approve",
+        StepKind.ACTION,
+        GateKind.SEVERITY_TIER,
+        handler="request_approval",
+        governance_content=_severity_ladder(),
+    )
+    assert "governance_content" not in unfilled_governance(step)
+
+
+def test_severity_tier_with_wrong_variant_is_unfilled() -> None:
+    """D4 correspondence: a DoaLadder on a severity_tier step is present but mismatched."""
+    step = _dc_step(
+        "approve",
+        StepKind.ACTION,
+        GateKind.SEVERITY_TIER,
+        handler="request_approval",
+        governance_content=_ladder(),
+    )
+    assert "governance_content" in unfilled_governance(step)
+
+
+def test_hollow_severity_missing_content_is_refused() -> None:
+    """AC-5 / D8-analog: a severity_tier step with handler+autonomy filled but
+    governance_content ABSENT is refused — the hollow-but-complete gate closes for the 4th
+    kind too (pre-committed pass/fail)."""
+    proc = _severity_procedure(content=None, sod=_SOD)
+    with pytest.raises(ProcedureError, match="governance_content"):
+        validate_governance_complete(proc)
+
+
+def test_severity_procedure_missing_sod_is_refused() -> None:
+    """AC-5: a severity_tier-bearing procedure with no separation_of_duties is refused —
+    severity_tier is a human authority-approval gate, so requester != approver applies (parity
+    with doa_tier)."""
+    proc = _severity_procedure(content=_severity_ladder(), sod=[])
+    with pytest.raises(ProcedureError, match="separation_of_duties"):
+        validate_governance_complete(proc)
+
+
+def test_severity_wrong_variant_is_refused() -> None:
+    """AC-5: a present-but-mismatched variant (DoaLadder on a severity_tier step) is refused —
+    the money/severity confusion the 4th gate kind exists to prevent.
+
+    Since PLAN-0074 AC-16 this is refused at LOAD (see ``test_wrong_variant_at2_is_refused``):
+    a severity gate carrying a money ladder is now unconstructable, not merely ungated."""
+    with pytest.raises(ValidationError, match="governance_content"):
+        _severity_procedure(content=_ladder(), sod=_SOD)
+
+
+def test_fully_authored_severity_passes_the_gate() -> None:
+    """The second state: matching SeverityLadder on the severity_tier step + a SoD passes."""
+    proc = _severity_procedure(content=_severity_ladder(), sod=_SOD)
     validate_governance_complete(proc)  # no raise
 
 

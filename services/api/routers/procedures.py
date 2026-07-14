@@ -43,6 +43,10 @@ PROCEDURE_ARCHETYPES: dict[str, str] = {
     "scheduled_emergency_sourcing_round": "AT-2",  # procurement — AT-2 on a nightly clock (S1)
     "scheduled_low_stock_reorder_round": "AT-3",  # procurement — AT-3 on a nightly clock (S1)
     "event_emergency_sourcing_round": "AT-2",  # procurement — AT-2 on an asset-failure event
+    # supply_chain — the 2nd AT-2 SIGNATURE (PLAN-0074): a governed cold-chain disposition whose
+    # authority quantity is NON-MONEY (severity_tier, not doa_tier). The procurement entries above
+    # are trigger variants of ONE signature; this is a second one.
+    "cold_chain_excursion_disposition": "AT-2",
 }
 
 # A procedure absent from the catalog map renders with this sentinel rather than

@@ -578,11 +578,13 @@ def validate_governance_complete(procedure: Procedure) -> None:
     constraint on authored specs).
 
     **AT-2 awareness (ADR-0025 D5):** a step on an AT-2 gate kind
-    (``scored_rule`` / ``rule_gate`` / ``doa_tier``) also owes its typed
-    ``governance_content`` (re-derived per step above), and a ``doa_tier``-bearing
-    procedure owes a ``separation_of_duties`` constraint (the procedure-level check
-    below). This closes the run-gate's AT-2 blindness — an empty-DOA / no-criteria /
-    no-compliance-rule / no-SoD AT-2 procedure is no longer judged run-loadable.
+    (``scored_rule`` / ``rule_gate`` / ``doa_tier`` / ``severity_tier``) also owes its
+    typed ``governance_content`` (re-derived per step above), and a procedure bearing a
+    human authority-approval gate (``doa_tier`` spend authority OR ``severity_tier``
+    non-money severity authority, PLAN-0074) owes a ``separation_of_duties`` constraint
+    (the procedure-level check below). This closes the run-gate's AT-2 blindness — an
+    empty-DOA / no-criteria / no-compliance-rule / no-SoD AT-2 procedure is no longer
+    judged run-loadable.
 
     **AC-9 (ADR-0026 D6 hard guarantee 2 / red-team Attack-5; PLAN-0044):** an AT-2
     procedure may not run an ``autonomy: auto`` OPERATIONAL action downstream of a gate
@@ -600,8 +602,8 @@ def validate_governance_complete(procedure: Procedure) -> None:
     if proc_missing:
         raise ProcedureError(
             f"procedure '{procedure.procedure_id}': unfilled procedure-level governance "
-            f"{proc_missing} — a doa_tier procedure requires a separation_of_duties "
-            f"constraint (ADR-0025 D5)"
+            f"{proc_missing} — a doa_tier / severity_tier authority-approval procedure "
+            f"requires a separation_of_duties constraint (ADR-0025 D5 / PLAN-0074)"
         )
     _check_no_auto_downstream_of_gate(procedure)
 

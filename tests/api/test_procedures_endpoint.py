@@ -27,7 +27,11 @@ from services.engine.registry import registry
 # schedule-triggered AT-3 calm-path variant.
 _EXPECTED: dict[str, dict[str, str]] = {
     "energy": {"substation_health_sweep": "AT-1"},
-    "supply_chain": {"cold_chain_excursion_sweep": "AT-1"},
+    "supply_chain": {
+        "cold_chain_excursion_sweep": "AT-1",
+        # PLAN-0074 — the 2nd AT-2 SIGNATURE (non-money authority: severity_tier, not doa_tier).
+        "cold_chain_excursion_disposition": "AT-2",
+    },
     "aquaculture": {"morning_pond_health_round": "AT-1b"},
     "procurement": {
         "emergency_sourcing_round": "AT-2",
@@ -45,8 +49,16 @@ _EXPECTED: dict[str, dict[str, str]] = {
 # fixtures (PLAN-0039 finding #4 / AC-5). PLAN-0070 re-themed energy's judge — the
 # last env_band consumer — to a per-feeder `threshold_field` band, so `env_band` (a
 # valid GateKind) now has NO shipped YAML consumer; the engine path stays test-covered
-# (test_env_band_evaluate.py).
-_LIVE_GATE_KINDS = {"in_file_band", "rule_gate", "scored_rule", "doa_tier", "none"}
+# (test_env_band_evaluate.py). PLAN-0074 adds `severity_tier` — the 4th AT-2 gate kind,
+# whose first (and only) shipped consumer is supply_chain's disposition `approve` step.
+_LIVE_GATE_KINDS = {
+    "in_file_band",
+    "rule_gate",
+    "scored_rule",
+    "doa_tier",
+    "severity_tier",
+    "none",
+}
 
 
 @pytest.fixture
@@ -68,8 +80,9 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
     all_verticals_client: AsyncClient,
 ) -> None:
     """Every discovered vertical's procedures round-trip load_procedures, each
-    carrying the correct catalog archetype — all eight across the four verticals
-    (procurement ships five: two manual + scheduled AT-2 + event AT-2 + scheduled AT-3)."""
+    carrying the correct catalog archetype — all nine across the four verticals
+    (procurement ships five: two manual + scheduled AT-2 + event AT-2 + scheduled AT-3;
+    supply_chain ships two: the AT-1 sweep + the PLAN-0074 AT-2 disposition)."""
     response = await all_verticals_client.get("/procedures")
     assert response.status_code == 200
     payload = response.json()
@@ -90,10 +103,11 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
         for proc in ventry["procedures"]:
             assert proc["archetype"] == _EXPECTED[vname][proc["procedure_id"]]
             total += 1
-    # eight procedures across four verticals: fact-pack #1's five + the PLAN-0055
+    # nine procedures across four verticals: fact-pack #1's five + the PLAN-0055
     # Step 8 scheduled AT-2 + the PLAN-0056 Step 8 event AT-2 + the PLAN-0065 Step 4
-    # scheduled AT-3 calm-path variant (all procurement variants)
-    assert total == 8
+    # scheduled AT-3 calm-path variant (all procurement variants) + the PLAN-0074
+    # supply_chain cold-chain disposition (the 2nd AT-2 SIGNATURE, not a variant)
+    assert total == 9
 
 
 async def test_procedures_all_live_gate_kinds_present(
