@@ -483,20 +483,34 @@ def test_d8_severity_fixture1_structurally_hollow_ladder_rejected(
         SeverityLadder(tiers=tiers)
 
 
-def test_d8_ac16_content_under_a_none_gate_is_refused_at_load() -> None:
-    """AC-16's sharpest case: a step declaring ``gate_kind: none`` that nonetheless CARRIES typed
-    governance content. Both mechanisms read it differently — the obligation gate keys on the
-    FACET (so a `none` gate owes nothing and the step passes as ungoverned), while the run
-    dispatches on the CONTENT TYPE (so it would resolve a severity ladder and route an approver
-    anyway). A gate that no facet reader can see is the definition of a smuggled control; the
-    load-time correspondence check makes it unrepresentable."""
+@pytest.mark.parametrize(
+    "facet",
+    [
+        # the CONTRADICTION half: a facet declaring `none` while carrying a severity ladder.
+        StepFacet(decision_condition=DecisionCondition(gate_kind=GateKind.NONE)),
+        # the OMISSION half (the s131 review finding — the dangerous direction the first version
+        # missed): NO facet at all. The obligation gate keys on the facet, so a facet-less gate
+        # owes neither content NOR SoD; the run dispatches on the content type, so it gates anyway
+        # — an authority gate invisible to every facet reader, with no separation of duties.
+        None,
+    ],
+)
+def test_d8_ac16_severity_content_without_a_matching_facet_is_refused_at_load(
+    facet: StepFacet | None,
+) -> None:
+    """AC-16: a step CARRYING a severity ladder whose facet does not declare `severity_tier` — by
+    contradiction (`gate_kind: none`) or by omission (no facet) — is refused at LOAD. A gate no
+    facet reader can see is a smuggled control: the obligation gate would owe nothing (no content,
+    no SoD) while the run resolves the ladder and routes an approver anyway. Both halves are now
+    unrepresentable, so the fixture builds the procedure with NO separation_of_duties to prove the
+    load validator — not a downstream SoD check — is what refuses it."""
     smuggled = Step(
         step_id="approve",
         name="approve",
         kind=StepKind.ACTION,
         handler="request_approval",
         governance_content=_severity_ladder(),
-        facet=StepFacet(decision_condition=DecisionCondition(gate_kind=GateKind.NONE)),
+        facet=facet,
     )
     with pytest.raises(ValidationError, match="governance_content"):
         Procedure(
@@ -504,7 +518,7 @@ def test_d8_ac16_content_under_a_none_gate_is_refused_at_load() -> None:
             title="Smuggled",
             run_by="a",
             steps=[Step(step_id="intake", name="Intake", kind=StepKind.QUERY), smuggled],
-            separation_of_duties=_SOD,
+            separation_of_duties=[],  # NONE — the load validator must fire on its own
         )
 
 
@@ -523,8 +537,11 @@ def test_d8_ac16_content_under_a_none_gate_is_refused_at_load() -> None:
 def test_d8_severity_fixture2_leak_in_free_text_blocks_load(surface: str, leak: str) -> None:
     """The hole PLAN-0074 Step 1 closed: ``_at2_role_vocab`` / ``_at2_free_text_surfaces`` were
     hardcoded to ``DoaLadder | ScoredRule``, so a SeverityLadder's notes were INVISIBLE to the
-    scoped prose-lint — a role or authority value could be smuggled into the prose a human then
-    copies into the typed field (ADR-0025 D4 leak class 1). Now it blocks load."""
+    scoped prose-lint — an approver-ROLE token or a NUMERIC authority value could be smuggled
+    into the prose a human then copies into the typed field (ADR-0025 D4 leak class 1). Now the
+    surfaces are scanned and those value classes block load. (The ordinal severity WORD itself
+    is DELIBERATELY not denylisted — see the ordinal-word pin test below.)
+    """
     with pytest.raises(ValidationError, match="smuggles a governance value"):
         if surface == "tier_note":
             _severity_procedure(tier_note=leak)
@@ -539,6 +556,20 @@ def test_d8_severity_fixture2_clean_free_text_loads() -> None:
         tier_note="a drift well inside the cargo's budget — the quality officer dispositions it",
         description="route the disposition to the human quality authority the severity demands",
     )
+
+
+def test_d8_severity_fixture2_ordinal_word_is_deliberately_not_denylisted() -> None:
+    """A DELIBERATE, recorded gap (PLAN-0074 Step-1 call, re-affirmed under s131 review): the scoped
+    prose-lint does NOT flag the ordinal severity WORD (``critical`` / ``major`` / ...) in a note.
+    Unlike a role token (a domain-specific string) or a ฿ amount (a number), a severity word is
+    ordinary English with a dual meaning — 'a critical excursion' is normal prose — so denylisting
+    it globally false-positives so hard an author cannot write a goal. The typed ``min_severity``
+    field is the single source of truth and the run gate is the backstop (a word in an unread
+    note is inert), so the residual is acceptable. This test PINS the choice so it is a
+    documented gap, not a silent one — flip it the day a closed-ordinal-word scan proves
+    feasible."""
+    # a tier note naming the ordinal word loads (NOT blocked) — the run-gate-backstopped residual
+    _severity_procedure(tier_note="reserved for a critical excursion that has spent its budget")
 
 
 # --- fixture 3 — identity-collapse (the LIVE run check, on the REAL shipped procedure) -------

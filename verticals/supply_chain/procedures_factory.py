@@ -37,7 +37,16 @@ the step it does not govern — the AT-3 sweep is byte-identical (PLAN-0074 AC-9
 ``sod_steps`` is DERIVED from the spec's own ``separation_of_duties`` constraints, not hardcoded
 (procurement hardcodes ``frozenset({"intake","approve"})`` at ``hero_demo/run.py:278`` — a named
 drift point in PLAN-0074's coordination-point list: a renamed step there silently drops the
-``sod_required`` flag. Deriving it cannot drift.)
+``sod_required`` flag. Deriving it cannot drift on a RENAME.) One residual limitation, recorded for
+the gate-seam follow-on: the registry contract is ``factory() -> Mapping[StepKind, StepExecutor]``
+with no ``procedure`` argument, so both ``sod_steps`` and ``stamp_steps`` are VERTICAL-scoped
+(unioned across every procedure) while the thing they configure is procedure-scoped. Today no
+``step_id`` collides across supply_chain's two procedures, so this is inert; a second procedure
+reusing a step name (``approve`` / ``assess``) would over-mark ``sod_required`` (an audit-flag
+over-mark, never an enforcement gap — the live SoD check reads ``procedure.separation_of_duties``
+directly) or route a stray ``assess`` through the severity stamp (which fails CLOSED). The proper
+fix is to key both on ``(procedure_id, step_id)``, which needs the executor to know its procedure —
+an engine-contract change (the ADR-0031 gate-plugin seam), out of scope here.
 
 Deterministic and host-state-free end to end (PLAN-0062 SD-6; CLAUDE.md §8): synthetic adapter,
 pure band math, pure AT-2 resolution, stubbed advisory prose. Idempotent: a no-op when a
@@ -49,6 +58,8 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any
 
 from services.engine.ontology_meta import load_ontology_meta
@@ -113,7 +124,17 @@ def _latest_breach_reading(
     ]
     if not readings:
         return None
-    return max(readings, key=lambda e: str(e.get("occurred_at", "")))
+
+    def _occurred(e: dict[str, Any]) -> tuple[int, Any]:
+        # Order by the datetime itself (a lexicographic str() sort mis-picks across mixed tz
+        # offsets / naive-vs-aware). A non-datetime column falls back to its string form, ranked
+        # AFTER every real datetime so a malformed row never wins "latest".
+        occurred = e.get("occurred_at")
+        if isinstance(occurred, datetime):
+            return (0, occurred)
+        return (1, str(occurred))
+
+    return max(readings, key=_occurred)
 
 
 async def _intake_seed(adapter: Any) -> list[dict[str, Any]]:
@@ -144,40 +165,63 @@ async def _intake_seed(adapter: Any) -> list[dict[str, Any]]:
     if shipment is None or reading is None:
         return []  # no excursion in the dataset — the run intakes nothing (never a fabricated one)
 
-    magnitude_c = float(reading["measured_value"]) - float(shipment["temp_ceiling"])
+    def _num(row: Mapping[str, Any], key: str) -> Decimal | None:
+        # A required scalar off an adapter row, as an EXACT Decimal. Returns None (-> the seed
+        # intakes nothing, like an absent shipment above) rather than KeyError-ing: this runs
+        # inside the awaited API-lifespan registration, so a raise here would kill startup for an
+        # ontology-legal row that merely omits an OPTIONAL property.
+        if key not in row:
+            return None
+        try:
+            return Decimal(str(row[key]))
+        except (InvalidOperation, TypeError, ValueError):
+            return None
+
+    reading_c = _num(reading, "measured_value")
+    ceiling = _num(shipment, "temp_ceiling")
+    if reading_c is None or ceiling is None:
+        return []
+    magnitude_c = reading_c - ceiling  # EXACT Decimal, never a rounded binary float
     if magnitude_c <= 0:
         return []  # the latest reading is within the cargo's band — nothing to dispose of
 
     return [
         {
             # --- identity (measured) ---
-            "shipment_id": shipment["shipment_id"],
-            "batch_id": shipment["reference"],
-            "cargo_type": shipment["cargo_type"],
-            "facility_id": shipment["facility_id"],
-            "temp_ceiling": shipment["temp_ceiling"],
-            "reading_c": reading["measured_value"],
-            "event_id": reading["event_id"],
+            "shipment_id": shipment.get("shipment_id"),
+            "batch_id": shipment.get("reference"),
+            "cargo_type": shipment.get("cargo_type"),
+            "facility_id": shipment.get("facility_id"),
+            "temp_ceiling": str(ceiling),
+            "reading_c": str(reading_c),
+            "event_id": reading.get("event_id"),
             # --- the severity derivation's inputs (magnitude measured; the rest authored) ---
-            "excursion_magnitude_c": round(magnitude_c, 2),
+            "excursion_magnitude_c": str(magnitude_c),
             "excursion_duration_h": 9,  # authored: how long the reefer stayed out of band
             "stability_budget_ch": 24,  # authored: the vaccine lot's remaining MKT dose budget
             # --- the scored_rule's candidates (authored; ELIGIBLE lanes only — see docstring) ---
-            "qty": shipment["payload_kg"],
+            "qty": str(
+                shipment.get("payload_kg", 1)
+            ),  # optional ontology prop -> .get, never KeyError
             "currency": _CURRENCY,
             "candidate_quotes": [
                 {
+                    # the CHEAP, SLOW lane: rework is inexpensive but takes weeks — the calm choice
+                    # for a mild drift where the batch can wait.
                     "quote_id": "lane-quarantine-rework",
                     "supplier_id": "reworker-bkk-01",
-                    "unit_price": "180.00",
+                    "unit_price": "60.00",
                     "currency": _CURRENCY,
                     "lead_time_days": 21,
                     "on_contract": True,
                 },
                 {
+                    # the FAST, DEAR lane: licensed destruction is quick but costly — chosen
+                    # when the excursion is critical enough that speed (the criticality amplifier)
+                    # outweighs cost. Pricier than rework is what keeps the amplifier load-bearing.
                     "quote_id": "lane-licensed-destruction",
                     "supplier_id": "disposal-licensed-01",
-                    "unit_price": "95.00",
+                    "unit_price": "150.00",
                     "currency": _CURRENCY,
                     "lead_time_days": 3,
                     "on_contract": True,

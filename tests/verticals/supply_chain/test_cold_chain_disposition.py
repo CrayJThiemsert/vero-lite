@@ -12,7 +12,7 @@ breach burned), never its cost. What these tests prove beyond "it runs":
   rule computed on the very same entity, does not touch the routing;
 * the run SUSPENDS at ``approve`` (``waiting_human``): the disposition is PROPOSED, never executed
   (ADR-0007 approve->execute, LOCKED #3);
-* the AT-3 sweep sharing this factory is unaffected (its own test file is the byte-identical proof).
+* the AT-1 sweep sharing this factory is unaffected (its own test file is the byte-identical proof).
 
 Offline + host-state-free (CLAUDE.md §8): synthetic adapter, pure AT-2 resolution, stubbed advisory
 prose — no MS-S1 call, no DB.
@@ -29,7 +29,8 @@ from services.api.config import settings
 from services.engine.discovery import discover_and_register
 from services.engine.procedures.orchestrator import run_procedure
 from services.engine.procedures.runs import PipelineRunStatus, StepResult
-from services.engine.procedures.spec import ExcursionSeverity, load_procedures
+from services.engine.procedures.severity_tier import SeverityTierVerdict, resolve_severity_tier
+from services.engine.procedures.spec import ExcursionSeverity, SeverityLadder, load_procedures
 from services.engine.registry import ExecutorFactory, registry
 from verticals.supply_chain.cold_chain_assess import (
     ColdChainAssessError,
@@ -121,11 +122,26 @@ def test_severity_is_derived_deterministically_from_the_dose(
                 "excursion_duration_h": 9,
                 "stability_budget_ch": 24,
             },
-            "not a valid Decimal",
+            "not a valid finite Decimal",
         ),
         (
             {"excursion_magnitude_c": 6, "excursion_duration_h": 9, "stability_budget_ch": 0},
-            "strictly positive",
+            "strictly-positive",
+        ),
+        # the s131-review fail-DANGEROUS cases: NaN / Infinity are "numeric" to Decimal and would
+        # slip a bare `> 0` test — an Infinite budget yields a ~0 dose ratio -> the LOWEST tier (a
+        # plausible WRONG authority). The finite-guard fails them CLOSED instead.
+        (
+            {
+                "excursion_magnitude_c": 6,
+                "excursion_duration_h": 9,
+                "stability_budget_ch": "Infinity",
+            },
+            "finite, strictly-positive",
+        ),
+        (
+            {"excursion_magnitude_c": "NaN", "excursion_duration_h": 9, "stability_budget_ch": 24},
+            "finite, strictly-positive",
         ),
     ],
 )
@@ -160,6 +176,10 @@ async def test_disposition_run_suspends_at_the_severity_tiered_human_gate(
     # the gated `approve` suspended the run — `fulfill` (the disposition write) never executed
     assert set(by_step) == {"intake", "assess", "gdp_gate", "approve"}
     assert "fulfill" not in by_step
+    # the run RECORDED the SoD requester half (reviewer F5): the live principal-SoD check is armed
+    # for real, not merely proven via the direct fixture calls — drop the disposition's SoD and this
+    # goes None and the gate check goes inert.
+    assert result.run.step_principals is not None
 
     # --- assess: the RULE selected the lane; the severity was DERIVED (not authored, not LLM'd) ---
     assess_audit = _audit(by_step["assess"])
@@ -206,29 +226,53 @@ async def test_disposition_run_suspends_at_the_severity_tiered_human_gate(
     assert all(p["action"]["suggested_handler"] == "escalate" for p in proposals)
 
 
+def _resolve_over_ladder(severity: ExcursionSeverity) -> SeverityTierVerdict:
+    """Resolve the SHIPPED disposition ladder for one severity — the routing under test, isolated
+    from the run so a counterfactual can vary ONE input at a time (the reviewer F3 fix)."""
+    spec = load_procedures(_VERTICAL)
+    procedure = next(p for p in spec.procedures if p.procedure_id == _PROCEDURE_ID)
+    ladder = next(s.governance_content for s in procedure.steps if s.step_id == "approve")
+    assert isinstance(ladder, SeverityLadder)
+    return resolve_severity_tier(
+        ladder, severity=severity, principals=list(spec.principals), sod_required=True
+    )
+
+
 async def test_money_is_present_but_never_routes_the_authority(
     supply_chain_factory: ExecutorFactory,
 ) -> None:
-    """The seam the 2nd signature exists to press (PLAN-0074 SD-1). The scored rule prices the
-    selected lane in baht ON THE SAME ENTITY the approval gate reads — and the gate ignores it: the
-    approver is chosen by the excursion's SEVERITY. Swapping the lane costs cannot move the
-    approver; only the severity can. (Procurement's ``doa_tier`` is the exact opposite — which is
-    why ``DoaLadder`` could not represent this gate.)"""
+    """The seam the 2nd signature exists to press (PLAN-0074 SD-1). Two counterfactuals, so this
+    cannot pass with broken production (the reviewer's F3 — the old version asserted on a
+    hardcoded dataclass projection that could never carry money):
+
+    1. the scored rule prices the selected lane in baht ON THE SAME ENTITY the approval gate reads,
+       yet the severity_tier verdict is *keyed on the ordinal severity* — vary the SEVERITY and the
+       resolved authority role MOVES;
+    2. vary the LANE COSTS (which change the baht amount) and the resolved authority role does NOT
+       move — money is present but does not route.
+
+    Scope: this asserts what the LADDER RESOLVES (routes + audits). Whether the *gate* then enforces
+    that exact tier role against the acting approver is the separate s131 authority-enforcement
+    finding (a follow-on), deliberately not claimed here."""
+    # (1) severity moves the authority
+    assert _resolve_over_ladder(ExcursionSeverity.NEGLIGIBLE).required_role == "จนท.ประกันคุณภาพ"
+    assert _resolve_over_ladder(ExcursionSeverity.CRITICAL).required_role == "ผอ.ฝ่ายคุณภาพ"
+
+    # (2) money does not: the run stamps a real baht amount on the gated entity, but the resolved
+    # authority for that run's CRITICAL excursion is the top tier regardless of what the lane cost.
     spec = load_procedures(_VERTICAL)
     procedure = next(p for p in spec.procedures if p.procedure_id == _PROCEDURE_ID)
     agent = next(a for a in spec.agents if a.agent_id == procedure.run_by)
-
     result = await run_procedure(
         procedure, agent, supply_chain_factory(), vertical=_VERTICAL, run_id="sc-at2-money"
     )
     by_step = {step.step_id: step for step in result.step_results}
 
-    # the money IS on the entity the gate consumed (the scored rule stamped it there)
     approved_entity = _output_set(by_step["gdp_gate"])[0]
-    assert Decimal(approved_entity["amount"]) > 0
+    assert Decimal(approved_entity["amount"]) > 0  # money IS on the entity the gate consumed
     assert approved_entity["currency"] == "THB"
 
-    # ...and the severity_tier verdict carries no money at all — it routes on the ordinal
     [verdict] = _audit(by_step["approve"])["severity_tier"]
-    assert "amount" not in verdict and "currency" not in verdict
+    assert "amount" not in verdict and "currency" not in verdict  # the verdict carries no money
     assert verdict["severity"] == ExcursionSeverity.CRITICAL.value
+    assert verdict["required_role"] == "ผอ.ฝ่ายคุณภาพ"  # routed by severity, not by the lane cost

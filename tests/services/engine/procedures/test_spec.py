@@ -1196,6 +1196,7 @@ def _at2_proc(
                 kind=StepKind.ACTION,
                 description=desc,
                 governance_content=ladder if ladder is not None else _doa_ladder(),
+                facet=StepFacet(decision_condition=DecisionCondition(gate_kind=GateKind.DOA_TIER)),
             ),
         ],
         separation_of_duties=[SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))],
@@ -1279,7 +1280,13 @@ def _severity_at2_proc(*, tier_note: str = "", goal: str | None = None) -> Proce
         steps=[
             Step(step_id="intake", name="Intake", kind=StepKind.QUERY),
             Step(
-                step_id="approve", name="Approve", kind=StepKind.ACTION, governance_content=ladder
+                step_id="approve",
+                name="Approve",
+                kind=StepKind.ACTION,
+                governance_content=ladder,
+                facet=StepFacet(
+                    decision_condition=DecisionCondition(gate_kind=GateKind.SEVERITY_TIER)
+                ),
             ),
         ],
         separation_of_duties=[SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))],

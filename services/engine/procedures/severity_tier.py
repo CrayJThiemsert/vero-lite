@@ -108,9 +108,21 @@ def resolve_severity_tier(
     rank; its ``approver_role`` resolves to the acting :class:`Person` (the first by ``person_id``
     holding that role).
 
-    Does NOT raise when the role resolves to no Person — that is the SoD run-check's fail-closed
-    surface at the gate, kept distinct here. (The absent / unrecognised severity fail-closed is
-    the caller's entity reader, before this resolution.)"""
+    Does NOT raise when the role resolves to no Person — the absent / unrecognised severity
+    fail-closed is the caller's entity reader, before this resolution.
+
+    ⚠ ENFORCEMENT SCOPE (s131 review finding — read before trusting the tier). This resolves +
+    AUDITS which tier a severity routes to (``resolved_tier_id`` / ``required_role`` /
+    ``resolved_approver_id``), but NO current gate path enforces that the acting approver holds the
+    resolved ``required_role``: the live SoD run-check (``principal_sod.check_principal_sod``) only
+    verifies the approver holds the procedure's generic SoD role (``approve: approver``) and is
+    distinct from the requester — it never reads this ladder. So a lower-tier approver can today
+    resolve a gate this ladder routed to a higher tier. This is a KNOWN, pre-existing gap shared
+    with ``doa_tier`` (whose identical docstring was the source of this over-claim); closing it —
+    requiring ``principal.roles ∋ required_role`` (or ``person_id == resolved_approver_id``) at
+    ``resolve_gated_step``, and failing closed on ``resolved_approver_id is None`` — is a follow-on
+    that touches the shipped procurement path, tracked for the gate-seam PLAN. Until then the ladder
+    is an audit-grade ROUTING record, not yet an enforced authority control."""
     sev_rank = SEVERITY_BY_RANK.index(severity)
     tier_idx = max(
         (

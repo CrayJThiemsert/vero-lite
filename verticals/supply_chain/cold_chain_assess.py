@@ -59,13 +59,15 @@ carry one (``info`` | ``warning`` | ``critical`` — the alert-triage vocabulary
 vocabularies from ever being confused for one another (PLAN-0074 Step-4 run-path finding — see
 ``governance_step.EXCURSION_SEVERITY_FIELD``)."""
 
-# The vertical-authored dose->severity ladder (PROVISIONAL, instance-scoped). The excursion's DOSE
-# (magnitude x duration, in C*h) as a FRACTION of the cargo's stability budget: a breach that
-# consumes a quarter of the budget is negligible; one that consumes it whole has blown the batch's
-# shelf life and is critical. Ascending, total-cover: the last band is unbounded (ratio > its floor
-# is CRITICAL), so every non-negative ratio maps to exactly one severity (the ordinal analog of the
-# SeverityLadder's own total-cover invariant). THIS IS THE DATUM A TRANSFORM GRAMMAR WOULD DECLARE
-# (ADR-0031 D3 row-1) — it lives in code today, and that is the finding, not an oversight.
+# The vertical-authored dose->severity ladder (PROVISIONAL, instance-scoped). Each tuple is an
+# INCLUSIVE CEILING on the dose ratio: the excursion's DOSE (magnitude x duration, in C*h) as a
+# FRACTION of the cargo's stability budget, matched by `ratio <= ceiling` (ascending). A breach
+# consuming <=1/4 of the budget is negligible; <=1/2 minor; <=the whole budget (ratio <= 1.0)
+# major; and ABOVE the budget (ratio > 1.0, the unbounded top band) critical — the batch has spent
+# more than its stability budget and is presumed compromised. Total-cover: every non-negative ratio
+# maps to exactly one severity (the ordinal analog of the SeverityLadder's own invariant). THIS IS
+# THE DATUM A TRANSFORM GRAMMAR WOULD DECLARE (ADR-0031 D3 row-1) — it lives in code today, and
+# that is the finding, not an oversight.
 _DOSE_LADDER: tuple[tuple[Decimal, ExcursionSeverity], ...] = (
     (Decimal("0.25"), ExcursionSeverity.NEGLIGIBLE),
     (Decimal("0.50"), ExcursionSeverity.MINOR),
@@ -97,16 +99,20 @@ def _positive_decimal(entity: Mapping[str, Any], key: str) -> Decimal:
         )
     try:
         value = Decimal(str(entity[key]))
+        # NaN / +-Infinity are "numeric" to Decimal and slip a bare `> 0` test (Inf budget -> a
+        # near-zero dose ratio -> the LOWEST tier: a fail-DANGEROUS routing, not a closed door). A
+        # severity that routes a human authority must be a finite, strictly-positive real.
+        if not value.is_finite() or value <= 0:
+            raise ColdChainAssessError(
+                f"cold_chain assess: entity '{key}' must be a finite, strictly-positive number, "
+                f"got {value} — a non-finite / non-positive excursion scalar cannot ground a "
+                "severity (fail closed)"
+            )
     except (InvalidOperation, TypeError, ValueError) as exc:
         raise ColdChainAssessError(
-            f"cold_chain assess: entity '{key}' ({entity[key]!r}) is not a valid Decimal — "
-            "fail closed"
+            f"cold_chain assess: entity '{key}' ({entity[key]!r}) is not a valid finite Decimal "
+            "— fail closed"
         ) from exc
-    if value <= 0:
-        raise ColdChainAssessError(
-            f"cold_chain assess: entity '{key}' must be strictly positive, got {value} — a "
-            "non-positive excursion scalar cannot ground a severity (fail closed)"
-        )
     return value
 
 

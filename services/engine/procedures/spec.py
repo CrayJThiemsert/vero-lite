@@ -1246,20 +1246,32 @@ class Procedure(BaseModel):
         this refuses it at LOAD, which is where an authoring error should surface.
 
         A TIGHTENING ONLY: a step with **no** content (the drafter's unfilled stub — the whole
-        point of the obligation gate) and a step with **no** facet are both untouched. Only a
-        present-and-contradictory pair is rejected."""
+        point of the obligation gate) is untouched. But content PRESENT while the facet is ABSENT
+        is itself rejected (below): the obligation gate keys on the facet, so a facet-less gate
+        owes no content AND no SoD, while the run dispatches on the content type and gates anyway —
+        an authority gate invisible to every facet reader (the s131 review finding; the *omission*
+        half of the hazard, the dangerous direction the earlier version missed)."""
         for step in self.steps:
             content = step.governance_content
-            if content is None or step.facet is None or step.facet.decision_condition is None:
+            if content is None:
                 continue
-            declared = step.facet.decision_condition.gate_kind
-            if content.kind != declared.value:
+            decision = step.facet.decision_condition if step.facet is not None else None
+            if decision is None:
+                raise ValueError(
+                    f"procedure '{self.procedure_id}': step '{step.step_id}' carries "
+                    f"'{content.kind}' governance_content but declares NO facet gate_kind — the "
+                    "obligation gate keys on the facet (so it would owe neither content nor SoD) "
+                    "while the run dispatches on the content type (so it gates anyway): a gate "
+                    "no facet reader can see. Declare the matching decision_condition — PLAN-0074 "
+                    "AC-16"
+                )
+            if content.kind != decision.gate_kind.value:
                 raise ValueError(
                     f"procedure '{self.procedure_id}': step '{step.step_id}' declares "
-                    f"gate_kind '{declared.value}' but carries '{content.kind}' governance_content "
-                    "— the declared gate and the typed content must be the same gate (the run "
-                    "dispatches on the CONTENT type; a mismatch would route a gate the author "
-                    "never declared) — PLAN-0074 AC-16"
+                    f"gate_kind '{decision.gate_kind.value}' but carries '{content.kind}' "
+                    "governance_content — the declared gate and the typed content must be the same "
+                    "gate (the run dispatches on the CONTENT type; a mismatch would route a gate "
+                    "the author never declared) — PLAN-0074 AC-16"
                 )
         return self
 
