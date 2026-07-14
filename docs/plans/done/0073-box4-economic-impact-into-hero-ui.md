@@ -1,6 +1,6 @@
 # PLAN-0073: Box-4 `economic_impact` facet into the hero-demo UI
 
-**Status:** Ready
+**Status:** Complete
 **Owner:** Claude Code
 **Created:** 2026-07-14
 **Related ADRs:** ADR-0030 (ledger+facet coexist, D2; trust-shape D5 — **no ADR change**), ADR-007 (D2 envelope — **unchanged**, facet stays trace-carried)
