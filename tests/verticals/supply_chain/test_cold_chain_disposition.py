@@ -21,13 +21,14 @@ prose — no MS-S1 call, no DB.
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 import pytest
 
 from services.api.config import settings
 from services.engine.discovery import discover_and_register
 from services.engine.procedures.orchestrator import run_procedure
-from services.engine.procedures.runs import PipelineRunStatus
+from services.engine.procedures.runs import PipelineRunStatus, StepResult
 from services.engine.procedures.spec import ExcursionSeverity, load_procedures
 from services.engine.registry import ExecutorFactory, registry
 from verticals.supply_chain.cold_chain_assess import (
@@ -39,6 +40,23 @@ from verticals.supply_chain.procedures_factory import register_supply_chain_proc
 _VERTICAL = "supply_chain"
 _PROCEDURE_ID = "cold_chain_excursion_disposition"
 _COLD_CHAIN_CEILING = 8.0
+
+
+def _audit(step_result: StepResult) -> dict[str, Any]:
+    """The step's audit, proven present — a governed step that emits NO audit is a defect (the
+    audit is what ties each decision to the control that governed it), so fail loudly here."""
+    audit = step_result.audit
+    assert audit is not None, f"step '{step_result.step_id}' emitted no audit"
+    return audit
+
+
+def _output_set(step_result: StepResult) -> list[Any]:
+    """The step's produced rows, proven present (same discipline as :func:`_audit`)."""
+    artifact = step_result.artifact
+    assert artifact is not None, f"step '{step_result.step_id}' produced no artifact"
+    rows = artifact["output_set"]
+    assert isinstance(rows, list)
+    return rows
 
 
 @pytest.fixture
@@ -144,7 +162,7 @@ async def test_disposition_run_suspends_at_the_severity_tiered_human_gate(
     assert "fulfill" not in by_step
 
     # --- assess: the RULE selected the lane; the severity was DERIVED (not authored, not LLM'd) ---
-    assess_audit = by_step["assess"].audit
+    assess_audit = _audit(by_step["assess"])
     assert assess_audit["governed_kind"] == "scored_rule"
     [derivation] = assess_audit["severity_derivation"]
     assert derivation["severity"] == ExcursionSeverity.CRITICAL.value
@@ -156,7 +174,7 @@ async def test_disposition_run_suspends_at_the_severity_tiered_human_gate(
     assert selection["override_required"] is False
 
     # --- gdp_gate: the batch cleared every GDP criterion (a failed one would block it) ---
-    gdp_audit = by_step["gdp_gate"].audit
+    gdp_audit = _audit(by_step["gdp_gate"])
     assert gdp_audit["governed_kind"] == "rule_gate"
     [compliance] = gdp_audit["rule_gate"]
     assert compliance["compliant"] is True
@@ -168,7 +186,7 @@ async def test_disposition_run_suspends_at_the_severity_tiered_human_gate(
     }
 
     # --- approve: the NON-MONEY authority routing (the whole point of the 2nd signature) ---
-    approve_audit = by_step["approve"].audit
+    approve_audit = _audit(by_step["approve"])
     assert approve_audit["governed_kind"] == "severity_tier"
     [verdict] = approve_audit["severity_tier"]
     assert verdict["severity"] == ExcursionSeverity.CRITICAL.value
@@ -183,7 +201,7 @@ async def test_disposition_run_suspends_at_the_severity_tiered_human_gate(
     assert decision["principal_id"] == "appr-qdir"
 
     # the gated action PROPOSED only — nothing was executed (ADR-0007 LOCKED #3)
-    proposals = by_step["approve"].artifact["output_set"]
+    proposals = _output_set(by_step["approve"])
     assert all(p["status"] == "proposed" for p in proposals)
     assert all(p["action"]["suggested_handler"] == "escalate" for p in proposals)
 
@@ -206,11 +224,11 @@ async def test_money_is_present_but_never_routes_the_authority(
     by_step = {step.step_id: step for step in result.step_results}
 
     # the money IS on the entity the gate consumed (the scored rule stamped it there)
-    approved_entity = by_step["gdp_gate"].artifact["output_set"][0]
+    approved_entity = _output_set(by_step["gdp_gate"])[0]
     assert Decimal(approved_entity["amount"]) > 0
     assert approved_entity["currency"] == "THB"
 
     # ...and the severity_tier verdict carries no money at all — it routes on the ordinal
-    [verdict] = by_step["approve"].audit["severity_tier"]
+    [verdict] = _audit(by_step["approve"])["severity_tier"]
     assert "amount" not in verdict and "currency" not in verdict
     assert verdict["severity"] == ExcursionSeverity.CRITICAL.value

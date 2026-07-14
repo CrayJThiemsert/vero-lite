@@ -1233,6 +1233,37 @@ class Procedure(BaseModel):
         return self
 
     @model_validator(mode="after")
+    def _validate_gate_kind_content_correspondence(self) -> Self:
+        """Reject a step whose PRESENT ``governance_content`` does not match its declared
+        ``facet.decision_condition.gate_kind`` (PLAN-0074 AC-16).
+
+        Closes the named two-parallel-mechanisms hazard: the obligation gate keys on the
+        **gate-kind enum** (``draft.py`` ``_AT2_GATE_KINDS``) while the RUN dispatch keys on the
+        **content type** (``governance_step`` ``isinstance``). Nothing forced the two to agree, so
+        a step could declare ``gate_kind: severity_tier`` and carry a ``DoaLadder`` — the run would
+        then route a MONEY ladder while the author (and every reader of the facet) believed a
+        severity gate governed it. ``validate_governance_complete`` refuses that at the run gate;
+        this refuses it at LOAD, which is where an authoring error should surface.
+
+        A TIGHTENING ONLY: a step with **no** content (the drafter's unfilled stub — the whole
+        point of the obligation gate) and a step with **no** facet are both untouched. Only a
+        present-and-contradictory pair is rejected."""
+        for step in self.steps:
+            content = step.governance_content
+            if content is None or step.facet is None or step.facet.decision_condition is None:
+                continue
+            declared = step.facet.decision_condition.gate_kind
+            if content.kind != declared.value:
+                raise ValueError(
+                    f"procedure '{self.procedure_id}': step '{step.step_id}' declares "
+                    f"gate_kind '{declared.value}' but carries '{content.kind}' governance_content "
+                    "— the declared gate and the typed content must be the same gate (the run "
+                    "dispatches on the CONTENT type; a mismatch would route a gate the author "
+                    "never declared) — PLAN-0074 AC-16"
+                )
+        return self
+
+    @model_validator(mode="after")
     def _validate_at2_free_text(self) -> Self:
         """Block load if a ฿-amount / weight / approver-role token is smuggled into an AT-2
         procedure's NON-AUTHORITATIVE free-text (the scoped prose-lint, ADR-0025 D4 /

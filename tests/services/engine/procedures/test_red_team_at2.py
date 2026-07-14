@@ -24,6 +24,15 @@ zero host-state, no MS-S1 (CLAUDE.md §8).
               PLAN-0044 A1b Step 1, ``check_principal_sod`` — exercised in the principal-SoD run
               tests, not this author-time oracle. The literal ``approver_role == requester_role``
               check remains A2-deferred, intentionally NOT asserted here — no false coverage.)
+
+PLAN-0074 Step 6 (AC-14) re-aims all three fixtures at the **4th gate kind** (``severity_tier`` /
+``SeverityLadder`` — the 2nd AT-2 signature's NON-MONEY authority), in the section at the bottom.
+That is not a copy: every guard above is written against ``DoaLadder`` / ``ScoredRule`` /
+``ComplianceGate`` BY NAME (the obligation gate's ``_AT2_GATE_KINDS``, the prose-lint's role
+vocabulary and free-text surface walker), so a new content model is precisely where these attacks
+would silently stop applying. The re-run is the proof that the guards were EXTENDED, not left
+blind — and fixture 3 there drives the LIVE principal-SoD check against the REAL shipped
+supply_chain procedure, so a severity gate provably gets no weaker identity check than a money one.
 """
 
 from __future__ import annotations
@@ -34,6 +43,7 @@ import pytest
 from pydantic import ValidationError
 
 from services.engine.procedures.orchestrator import ProcedureError, validate_governance_complete
+from services.engine.procedures.principal_sod import check_principal_sod
 from services.engine.procedures.spec import (
     Autonomy,
     ComplianceCriterion,
@@ -44,11 +54,16 @@ from services.engine.procedures.spec import (
     DoaTier,
     EmergencyWaiverPolicy,
     ExceptionPolicy,
+    ExcursionSeverity,
     GateKind,
+    Person,
+    PrincipalAlias,
     Procedure,
     RelaxableConstraint,
     ScoredCriterion,
     ScoredRule,
+    SeverityLadder,
+    SeverityTier,
     SoDConstraint,
     SourcePolicy,
     Step,
@@ -61,7 +76,9 @@ from services.engine.procedures.spec import (
 # STRUCTURAL separation of duties (>=2 distinct steps; ADR-0025 D5, A1).
 _SOD = [SoDConstraint(distinct_steps=frozenset({"intake", "approve"}))]
 
-GovContent = DoaLadder | ScoredRule | ComplianceGate
+# Every AT-2 content variant a step may carry — including the PLAN-0074 `severity_tier` arm,
+# so the fixtures can hand a SeverityLadder (or, adversarially, the WRONG variant) to a gate.
+GovContent = DoaLadder | ScoredRule | ComplianceGate | SeverityLadder
 
 
 def _gate_step(
@@ -202,14 +219,18 @@ def test_d8_fixture1_hollow_missing_content_refused() -> None:
 
 def test_d8_fixture1_wrong_variant_refused() -> None:
     """A present-but-mismatched variant (a ScoredRule on a doa_tier step) -> refused (the D4
-    gate_kind <-> content.kind correspondence)."""
+    gate_kind <-> content.kind correspondence).
+
+    PLAN-0074 AC-16 moved this refusal to LOAD: the mismatched procedure is now unconstructable
+    (a pydantic ValidationError from ``Procedure``), rather than constructable-but-refused by the
+    run gate. Strictly stronger — the authoring error surfaces where it is made."""
     wrong = ScoredRule(
         criteria=[ScoredCriterion(name="price", weight=Decimal("1"))],
         default_source=SourcePolicy.ON_CONTRACT,
         exception_policy=ExceptionPolicy.RFQ_AVL_LOGGED,
     )
-    with pytest.raises(ProcedureError, match="governance_content"):
-        validate_governance_complete(_doa_only_procedure(content=wrong, sod=_SOD))
+    with pytest.raises(ValidationError, match="governance_content"):
+        _doa_only_procedure(content=wrong, sod=_SOD)
 
 
 # --- D8 fixture 2 — leak-in-free-text (the scoped prose-lint blocks load; AC-11) ------------
@@ -312,3 +333,290 @@ def test_ac9_shipped_procurement_procedure_passes() -> None:
 # `approver_role == requester_role` check remain RUN-time checks. The principal-collapse check
 # now ships as the LIVE run enforcement (ADR-0026 D4 / PLAN-0044 A1b Step 1, `check_principal_sod`)
 # — exercised in the principal-SoD run tests, not this author-time oracle.
+
+
+# ============================================================================================
+# PLAN-0074 Step 6 (AC-14) — the SAME D8 oracle, aimed at the 4th gate kind (`severity_tier`)
+# ============================================================================================
+#
+# The 2nd AT-2 signature added a gate kind with a NON-MONEY authority (`SeverityLadder`, an
+# ordinal severity ladder — supply_chain's cold-chain disposition). A new typed content model is
+# exactly where the D8 attacks silently stop applying: every guard above is written against
+# DoaLadder / ScoredRule / ComplianceGate by NAME (`isinstance` in the obligation gate, in the
+# prose-lint's role vocabulary, in the free-text surface walker). So the three fixtures are
+# re-run against the new model — not as a copy, but as the proof that the guards were EXTENDED
+# rather than left silently blind to it (the three governance holes PLAN-0074 closed).
+#
+# Fixture 1 — hollow-but-complete:  a severity_tier gate with ABSENT / WRONG-VARIANT content, a
+#             structurally invalid ladder (empty / non-covering / non-monotonic tiers), or no SoD
+#             -> REFUSED (at construction, or by `validate_governance_complete`).
+# Fixture 2 — leak-in-free-text:    a severity/role token smuggled into a SeverityTier note or the
+#             AT-2 step description -> the scoped prose-lint BLOCKS LOAD.
+# Fixture 3 — identity-collapse:    the LIVE principal-SoD run-check, driven against the REAL
+#             SHIPPED disposition procedure — two roles resolving to one human (by PK or by a
+#             declared alias), or an approver who does not hold the required role, is NOT governed.
+
+
+def _severity_ladder(*, tier_note: str = "") -> SeverityLadder:
+    """A valid severity ladder: total-cover from the lowest severity, strictly-increasing ordinal
+    floors. ``tier_note`` is the fixture-2 free-text surface."""
+    return SeverityLadder(
+        tiers=[
+            SeverityTier(
+                min_severity=ExcursionSeverity.NEGLIGIBLE,
+                approver_role="qa_officer",
+                note=tier_note,
+            ),
+            SeverityTier(min_severity=ExcursionSeverity.MAJOR, approver_role="qp_release"),
+        ]
+    )
+
+
+def _severity_procedure(
+    *,
+    content: GovContent | None = None,
+    hollow: bool = False,
+    sod: list[SoDConstraint] | None = None,
+    description: str = "route the disposition to the human quality authority",
+    tier_note: str = "",
+) -> Procedure:
+    """A minimal severity_tier procedure (intake + a severity_tier approval). Unperturbed it loads
+    AND passes the gate — the positive control that keeps the fixtures below honest.
+
+    ``hollow=True`` strips the governance_content entirely (fixture 1's empty-gate attack) — a
+    distinct knob from ``content`` (which SUBSTITUTES a variant), because "absent" and "wrong" are
+    two different attacks and must not be conflated by the fixture itself."""
+    governance_content = None if hollow else (content or _severity_ladder(tier_note=tier_note))
+    approve = _gate_step(
+        "approve",
+        StepKind.ACTION,
+        GateKind.SEVERITY_TIER,
+        handler="request_approval",
+        governance_content=governance_content,
+    )
+    return Procedure(
+        procedure_id="disposition",
+        title="Disposition",
+        run_by="a",
+        goal="dispose of the affected batch under the quality authority its severity demands",
+        steps=[
+            Step(step_id="intake", name="Intake", kind=StepKind.QUERY),
+            approve.model_copy(update={"description": description}),
+        ],
+        separation_of_duties=_SOD if sod is None else sod,
+    )
+
+
+def test_d8_severity_valid_procedure_loads_and_passes_gate() -> None:
+    """The control for the new model: a fully-authored severity_tier procedure (typed ladder +
+    a >=2-step SoD + clean free-text) loads AND passes ``validate_governance_complete`` — so the
+    fixtures below isolate the defect, not an over-strict gate."""
+    validate_governance_complete(_severity_procedure())  # no raise
+
+
+# --- fixture 1 — hollow-but-complete (the obligation gate SEES the new kind) -----------------
+
+
+def test_d8_severity_fixture1_hollow_missing_content_refused() -> None:
+    """The hole PLAN-0074 Step 2 closed: a severity_tier gate with NO governance_content. Had
+    ``_AT2_GATE_KINDS`` not grown, this skeleton would owe nothing and the gate would ACCEPT an
+    empty authority gate — a procedure that looks governed and authorises nobody."""
+    with pytest.raises(ProcedureError, match="governance_content"):
+        validate_governance_complete(_severity_procedure(hollow=True, sod=_SOD))
+
+
+def test_d8_severity_fixture1_wrong_variant_refused() -> None:
+    """A severity_tier gate carrying the WRONG typed variant (a money ladder) — the exact
+    confusion the 4th kind exists to prevent — is refused: the content's ``kind`` discriminator
+    must match the step's gate kind."""
+    money = DoaLadder(
+        currency="THB",
+        tiers=[DoaTier(min_amount=Decimal("0"), approver_role="dept_head")],
+        emergency_waiver=EmergencyWaiverPolicy(
+            relaxes=[RelaxableConstraint.THREE_BID], escalate_to="director"
+        ),
+    )
+    with pytest.raises(ValidationError, match="governance_content"):
+        _severity_procedure(content=money)
+
+
+def test_d8_severity_fixture1_missing_sod_refused() -> None:
+    """A severity_tier procedure with NO separation_of_duties is refused (PLAN-0074 Step 2): the
+    new authority kind owes SoD exactly as doa_tier does — a human authority gate whose requester
+    may also be its approver is not a gate."""
+    with pytest.raises(ProcedureError, match="separation_of_duties"):
+        validate_governance_complete(_severity_procedure(sod=[]))
+
+
+@pytest.mark.parametrize(
+    ("tiers", "why"),
+    [
+        ([], "an EMPTY ladder authorises nobody"),
+        (
+            [SeverityTier(min_severity=ExcursionSeverity.MINOR, approver_role="qa_officer")],
+            "a ladder that does not cover the LOWEST severity leaves a severity unrouted",
+        ),
+        (
+            [
+                SeverityTier(min_severity=ExcursionSeverity.NEGLIGIBLE, approver_role="qa_officer"),
+                SeverityTier(min_severity=ExcursionSeverity.NEGLIGIBLE, approver_role="qp_release"),
+            ],
+            "DUPLICATE floors make the routing ambiguous (two approvers for one severity)",
+        ),
+        (
+            [
+                SeverityTier(min_severity=ExcursionSeverity.NEGLIGIBLE, approver_role="qa_officer"),
+                SeverityTier(min_severity=ExcursionSeverity.CRITICAL, approver_role="qp_release"),
+                SeverityTier(min_severity=ExcursionSeverity.MINOR, approver_role="qa_manager"),
+            ],
+            "NON-MONOTONIC floors would let a worse excursion route to a lower authority",
+        ),
+    ],
+)
+def test_d8_severity_fixture1_structurally_hollow_ladder_rejected(
+    tiers: list[SeverityTier], why: str
+) -> None:
+    """A ladder that is *present* but structurally hollow is unrepresentable — rejected at
+    CONSTRUCTION (the total-cover + strict-monotonicity validator), so it can never reach a run.
+    This is the ordinal analog of DoaLadder's floor-at-zero + strictly-increasing invariant."""
+    with pytest.raises(ValidationError):
+        SeverityLadder(tiers=tiers)
+
+
+def test_d8_ac16_content_under_a_none_gate_is_refused_at_load() -> None:
+    """AC-16's sharpest case: a step declaring ``gate_kind: none`` that nonetheless CARRIES typed
+    governance content. Both mechanisms read it differently — the obligation gate keys on the
+    FACET (so a `none` gate owes nothing and the step passes as ungoverned), while the run
+    dispatches on the CONTENT TYPE (so it would resolve a severity ladder and route an approver
+    anyway). A gate that no facet reader can see is the definition of a smuggled control; the
+    load-time correspondence check makes it unrepresentable."""
+    smuggled = Step(
+        step_id="approve",
+        name="approve",
+        kind=StepKind.ACTION,
+        handler="request_approval",
+        governance_content=_severity_ladder(),
+        facet=StepFacet(decision_condition=DecisionCondition(gate_kind=GateKind.NONE)),
+    )
+    with pytest.raises(ValidationError, match="governance_content"):
+        Procedure(
+            procedure_id="smuggled",
+            title="Smuggled",
+            run_by="a",
+            steps=[Step(step_id="intake", name="Intake", kind=StepKind.QUERY), smuggled],
+            separation_of_duties=_SOD,
+        )
+
+
+# --- fixture 2 — leak-in-free-text (the prose-lint SEES the new model's surfaces) ------------
+
+
+@pytest.mark.parametrize(
+    ("surface", "leak"),
+    [
+        ("tier_note", "escalate anything at or above qp_release"),  # an approver-ROLE token
+        ("tier_note", "the tolerance is 24 degree-hours"),  # a NUMERIC authority value
+        ("description", "route to qp_release when the budget is spent"),  # role token in prose
+        ("description", "escalate above 24 degree-hours of dose"),  # numeric in prose
+    ],
+)
+def test_d8_severity_fixture2_leak_in_free_text_blocks_load(surface: str, leak: str) -> None:
+    """The hole PLAN-0074 Step 1 closed: ``_at2_role_vocab`` / ``_at2_free_text_surfaces`` were
+    hardcoded to ``DoaLadder | ScoredRule``, so a SeverityLadder's notes were INVISIBLE to the
+    scoped prose-lint — a role or authority value could be smuggled into the prose a human then
+    copies into the typed field (ADR-0025 D4 leak class 1). Now it blocks load."""
+    with pytest.raises(ValidationError, match="smuggles a governance value"):
+        if surface == "tier_note":
+            _severity_procedure(tier_note=leak)
+        else:
+            _severity_procedure(description=leak)
+
+
+def test_d8_severity_fixture2_clean_free_text_loads() -> None:
+    """The control: prose that names no role token and no authority value loads fine — the lint
+    is scoped (it is not banning ordinary governance language)."""
+    _severity_procedure(
+        tier_note="a drift well inside the cargo's budget — the quality officer dispositions it",
+        description="route the disposition to the human quality authority the severity demands",
+    )
+
+
+# --- fixture 3 — identity-collapse (the LIVE run check, on the REAL shipped procedure) -------
+
+
+def _shipped_disposition() -> tuple[Procedure, list[Person]]:
+    """The REAL supply_chain disposition + its REAL principals — the fixtures below attack what
+    actually ships, not a synthetic stand-in."""
+    spec = load_procedures("supply_chain")
+    proc = next(p for p in spec.procedures if p.procedure_id == "cold_chain_excursion_disposition")
+    return proc, list(spec.principals)
+
+
+def test_d8_severity_fixture3_governed_control() -> None:
+    """The control: the shipped disposition, with the requester and the severity-resolved approver
+    as DISTINCT humans holding their required roles, IS governed."""
+    proc, principals = _shipped_disposition()
+    verdict = check_principal_sod(
+        proc,
+        principals=principals,
+        principal_aliases=[],
+        step_principals={"intake": "req-coldchain", "approve": "appr-qdir"},
+    )
+    assert verdict.governed is True
+
+
+@pytest.mark.parametrize(
+    ("step_principals", "aliases", "why"),
+    [
+        (
+            {"intake": "req-coldchain", "approve": "req-coldchain"},
+            [],
+            "PK collapse — one human both raises the excursion and dispositions it",
+        ),
+        (
+            {"intake": "req-coldchain", "approve": None},
+            [],
+            "an UNRESOLVED approver never gets waved through",
+        ),
+        (
+            {"intake": "req-coldchain", "approve": "appr-qa"},
+            [
+                PrincipalAlias(
+                    alias_id="same-human", members=frozenset({"req-coldchain", "appr-qa"})
+                )
+            ],
+            "ALIAS collapse — two ids declared to be the same human",
+        ),
+    ],
+)
+def test_d8_severity_fixture3_identity_collapse_is_not_governed(
+    step_principals: dict[str, str | None], aliases: list[PrincipalAlias], why: str
+) -> None:
+    """The LIVE fail-closed run-check (ADR-0026 D4) on the shipped severity_tier procedure: a
+    two-into-one collapse (by PK or by declared alias) or an unresolvable approver yields NO
+    governed verdict — and the gate's caller (``action_step._check_principal_sod``) raises rather
+    than approving. A severity gate does not get a weaker identity check than a money gate."""
+    proc, principals = _shipped_disposition()
+    verdict = check_principal_sod(
+        proc,
+        principals=principals,
+        principal_aliases=aliases,
+        step_principals=step_principals,
+    )
+    assert verdict.governed is False, why
+    assert verdict.violations, "a refusal must say WHY (the structured violation trail)"
+
+
+def test_d8_severity_fixture3_wrong_role_is_not_governed() -> None:
+    """The requester cannot be laundered into the approver slot by identity alone: the approving
+    Person must HOLD the role the SoD constraint binds to ``approve`` (`approver`). req-coldchain
+    holds only `requester`, so resolving it there fails closed on the ROLE — not merely on the
+    two-into-one collapse."""
+    proc, principals = _shipped_disposition()
+    verdict = check_principal_sod(
+        proc,
+        principals=principals,
+        principal_aliases=[],
+        step_principals={"intake": "appr-qa", "approve": "req-coldchain"},
+    )
+    assert verdict.governed is False

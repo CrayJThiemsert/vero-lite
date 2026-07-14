@@ -20,7 +20,7 @@ from decimal import Decimal
 from typing import Any, get_args
 
 import pytest
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from services.engine.procedures.archetypes.template import REGISTRY, instantiate
 from services.engine.procedures.draft import (
@@ -473,10 +473,15 @@ def test_doa_procedure_missing_sod_is_refused() -> None:
 
 
 def test_wrong_variant_at2_is_refused() -> None:
-    """AC-9: a present-but-mismatched variant (ScoredRule on a doa_tier step) is refused."""
-    proc = _doa_procedure(content=_scored(), sod=_SOD)
-    with pytest.raises(ProcedureError, match="governance_content"):
-        validate_governance_complete(proc)
+    """AC-9: a present-but-mismatched variant (ScoredRule on a doa_tier step) is refused.
+
+    Since PLAN-0074 AC-16 the refusal fires at LOAD (the gate_kind <-> content.kind
+    correspondence validator on ``Procedure``), i.e. the mismatched procedure can no longer be
+    CONSTRUCTED — strictly earlier than the run gate this test originally asserted. The run-gate
+    layer still stands behind it (``validate_governance_complete``); it is simply no longer the
+    first door a facet-bearing mismatch reaches."""
+    with pytest.raises(ValidationError, match="governance_content"):
+        _doa_procedure(content=_scored(), sod=_SOD)
 
 
 def test_fully_authored_at2_passes_the_gate() -> None:
@@ -567,10 +572,13 @@ def test_severity_procedure_missing_sod_is_refused() -> None:
 
 
 def test_severity_wrong_variant_is_refused() -> None:
-    """AC-5: a present-but-mismatched variant (DoaLadder on a severity_tier step) is refused."""
-    proc = _severity_procedure(content=_ladder(), sod=_SOD)
-    with pytest.raises(ProcedureError, match="governance_content"):
-        validate_governance_complete(proc)
+    """AC-5: a present-but-mismatched variant (DoaLadder on a severity_tier step) is refused —
+    the money/severity confusion the 4th gate kind exists to prevent.
+
+    Since PLAN-0074 AC-16 this is refused at LOAD (see ``test_wrong_variant_at2_is_refused``):
+    a severity gate carrying a money ladder is now unconstructable, not merely ungated."""
+    with pytest.raises(ValidationError, match="governance_content"):
+        _severity_procedure(content=_ladder(), sod=_SOD)
 
 
 def test_fully_authored_severity_passes_the_gate() -> None:
