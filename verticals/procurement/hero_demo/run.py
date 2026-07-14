@@ -24,9 +24,10 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.engine.actions import ControlRef, GovernedDecision
@@ -52,7 +53,7 @@ from services.engine.procedures.persistence import load_run, run_procedure_persi
 from services.engine.procedures.principal_sod import PrincipalSoDVerdict, check_principal_sod
 from services.engine.procedures.query_router import QueryStepRouter
 from services.engine.procedures.query_step import QueryStepExecutor
-from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
+from services.engine.procedures.runs import PipelineRun, PipelineRunStatus, StepResultStatus
 from services.engine.procedures.spec import Person, Step, StepKind, load_procedures
 from services.engine.registry import RegistryError, registry
 from verticals.procurement.data_adapter.fastenal_csv import FastenalCsvAdapter
@@ -441,12 +442,32 @@ _EVENT_DETECTED = datetime(2026, 7, 8, 9, 41, tzinfo=UTC)
 _EVENT_NOW = datetime(2026, 7, 8, 9, 43, tzinfo=UTC)
 
 
+async def _generation_detected_at(session: AsyncSession) -> datetime:
+    """Deterministic replay generation (PLAN-0072 SD-C) — advance the fixed demo event key by
+    one minute per ALREADY-DECIDED run of the event procedure, so a resolved/rejected showing
+    re-fires a FRESH parked run while a still-parked run keeps returning itself (fire_event
+    ALREADY_FIRED). Generation 0 == the base moment (the PLAN-0057 openers stay unchanged).
+    Clock-free — a COUNT of decided runs, never a wall-clock read (the WSL clock is
+    non-monotonic, project memory project_wsl2_wall_clock_non_monotonic)."""
+    decided = await session.scalar(
+        sa.select(sa.func.count())
+        .select_from(PipelineRun)
+        .where(
+            PipelineRun.procedure_id == _EVENT_PROC_ID,
+            PipelineRun.status != PipelineRunStatus.WAITING_HUMAN.value,
+        )
+    )
+    return _EVENT_DETECTED + timedelta(
+        hours=int(decided or 0)
+    )  # +1 h/gen crosses the 3600 s dedup bucket
+
+
 async def run_hero_event_governance_moment(
     session: AsyncSession,
     adapter: FastenalCsvAdapter | None = None,
     *,
     entity_ids: list[str] | None = None,
-    detected_at: datetime = _EVENT_DETECTED,
+    detected_at: datetime | None = None,
     now: datetime = _EVENT_NOW,
 ) -> dict[str, Any]:
     """Fire the EVENT-triggered emergency-sourcing procedure and capture the parked governance
@@ -468,6 +489,9 @@ async def run_hero_event_governance_moment(
 
     Requires the procurement executor factory registered (API startup / test fixture)."""
     adapter = adapter or FastenalCsvAdapter()
+    if detected_at is None:  # PLAN-0072 SD-C: generation-aware replay (deterministic, clock-free)
+        detected_at = await _generation_detected_at(session)
+        now = detected_at + (_EVENT_NOW - _EVENT_DETECTED)
     spec = load_procedures(_VERTICAL)
     resolve = build_event_resolver(spec, registry.get_procedure_executors(_VERTICAL))
     request = resolve(
@@ -520,6 +544,7 @@ async def run_hero_event_governance_moment(
     seed_req = await _intake_seed(adapter)
     tc = loaded.run.trigger_context or {}
     return {
+        "run_id": outcome.run_id,  # PLAN-0072 Step 3: additive — the run the FE resolves
         "po_id": seed_req["primary_key"],
         "part_id": seed_req["part_id"],
         "supplier_id": scored["selected_supplier_id"],  # DERIVED by the scored rule
@@ -550,7 +575,7 @@ async def build_event_hero_governance_audit(
     adapter: FastenalCsvAdapter | None = None,
     *,
     entity_ids: list[str] | None = None,
-    detected_at: datetime = _EVENT_DETECTED,
+    detected_at: datetime | None = None,
     now: datetime = _EVENT_NOW,
 ) -> dict[str, Any]:
     """The EVENT analogue of :func:`build_live_hero_governance_audit` — the SAME HeroGovernanceAudit

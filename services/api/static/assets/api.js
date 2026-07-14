@@ -96,7 +96,28 @@
     governance: (live) => fetchDemoHero('/demo/hero/governance' + (live ? '?live=true' : '')),
     impact: () => fetchDemoHero('/demo/hero/impact'),
     // PLAN-0057: the event-triggered opener — a POST (persists a governed run via the bridge).
-    event: () => fetchDemoHero('/demo/hero/event', { method: 'POST' })
+    event: () => fetchDemoHero('/demo/hero/event', { method: 'POST' }),
+    // PLAN-0072 (beat 3): read the parked run's proposals (read-only) + resolve the DOA gate
+    // through the REAL production route (authenticated operate POST). resolve() throws an error
+    // carrying .status + .detail so the Act panel renders an honest 401 / 403-with-verdict / 409.
+    runDetail: (runId) => fetchDemoHero('/runs/' + encodeURIComponent(runId)),
+    resolve: async (runId, stepId, decisions) => {
+      const res = await fetch('/runs/' + encodeURIComponent(runId) + '/gate/resolve', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' },
+          (window.OCT && window.OCT.Auth ? window.OCT.Auth.authHeader() : {})),
+        body: JSON.stringify({ step_id: stepId, decisions: decisions })
+      });
+      let data = null;
+      try { data = await res.json(); } catch (e) { /* empty / non-JSON body */ }
+      if (!res.ok) {
+        const d = data && data.detail;
+        const err = new Error((d && (typeof d === 'string' ? d : d.error)) || ('HTTP ' + res.status));
+        err.status = res.status; err.detail = d;
+        throw err;
+      }
+      return data;
+    }
   };
 
   /* ---- LLM control (PLAN-0018): MS-S1 status + warm/sleep ----
