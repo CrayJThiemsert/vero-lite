@@ -126,6 +126,25 @@ one exception is safe" — the hook fires regardless of `permissionMode`
    load-bearing in the draft body, but it is explicitly contingent on
    Cray's ratification.
 
+8. **Verify inherited claims — especially NEGATIVE ones (Lesson #0030).**
+   Your dispatch fact-pack is your starting context, not ground truth. Any
+   *load-bearing negative / precondition claim* you rely on — "X is unbuilt
+   / absent / deferred / a precondition" — must be either (a) confirmed
+   against on-disk code with a `file:line` citation, or (b) flagged in
+   *Residual gaps* as "asserted-not-verified — recommend an
+   `explore-research` check." A negative claim asserted without a citation
+   is a **red flag, not a fact** — it silently shapes the decision and
+   fails safe-looking. When a claim rests on an **older ADR/PLAN's open
+   question, deferral, or precondition**, apply the precedence rule
+   (CLAUDE.md §1 — **newest accepted ADR wins**): do a **targeted, bounded**
+   grep of the *later* ADRs to check whether it was already resolved (e.g.
+   ADR-0024's OQ-8 was decided by ADR-0025). This is a bounded check on the
+   claims you already depend on — NOT license for an open-ended research
+   sweep (that stays upstream, per point 2). If a load-bearing claim can
+   only be resolved by extensive archaeology, surface it in *Surfaced
+   decisions* / *Residual gaps* rather than either trusting it blindly or
+   chasing it inline.
+
 ## Output schema (binding)
 
 Your **final message** — the only thing returned to the caller — must
