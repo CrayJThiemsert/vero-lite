@@ -3849,3 +3849,46 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-11 (s118 CONTINUATION — PLAN-0063 deferrals discharged + PLAN-0064 Ready, #692/#693) [rotated 2026-07-14, session-127 reconcile — 10-row RD window]
 
 | 2026-07-11 | **s118 CONTINUATION — PLAN-0063 deferrals DISCHARGED (`confirmed — prior intact`, no erratum) / #692 PLAN-0064 Ready / #693 hygiene / orphan DB dropped (session 118 cont.)** — Step-5 render check PASSED its pre-committed strings over the REAL dev-DB audit chain (36 rows, breaks []; DOM-asserted + screenshot) + local full suite WITH Postgres **2507/7** (supersedes the 2391/123 degraded run); `vero_lite_test_69fa7362` DROPPED (Cray §8; all 16 checkout-path hash forms re-verified, only the live `bb36873b` remains); **PLAN-0064** (per-step QUERY router for procurement) `plan-drafter`-authored, Code R2 accept, **SD-0..SD-5 Cray-ratified as-rec**, reopens PLAN-0062 AC-7 per ERRATUM 2; PLAN-0004 + PLAN-0012 → `done/` (PLAN-0010 deliberately NOT closed — close-vs-park = Cray decision pending after the s118 ELI-CRAY brief). Full narrative: the Session-118 CF block above | `2694253` (#693 merge) / `e8cba64` (#693 docs) / `f494013` (#692 merge) / `b7e6e40` (#692 Ready) / `docs/plans/0064-per-step-query-router-procurement.md` + `docs/plans/done/{0004,0012}-*.md` |
+
+### Current Focus block removed — Session 124 (Axis-B goal gate GRADUATED v1→v2 per-goal enforcement, PLAN-0069 #721/#722) [rotated 2026-07-14, session-128 reconcile — 4-block CF window]
+
+> **Session 124, 2026-07-13 (head_commit `b55ff43` → `960e988`) — the Axis-B
+> verify-loop goal gate GRADUATED from warn-only v1 to per-goal opt-in
+> ENFORCEMENT: PLAN-0069 shipped END-TO-END (two PRs) + CLOSED → `done/` in one
+> session-124 day (ADR-0018 V2 Accepted #713; #721/#722, `feat`).** Session
+> opener (folded in, #718 `fix`): surfaced `threshold_field` in the read-only
+> Procedures viewer (View F) decision facet — display-only, ZERO engine change
+> — correcting a s123 `was an error` (the `/procedures` payload always carried
+> it; the gap was FRONTEND-only in `view-procedures.js`), so the `/procedures`
+> threshold_field display gap is now **RESOLVED**. **The major deliverable —
+> Axis-B v2:** the Stop-hook goal gate now enforces per-goal opt-in, with every
+> v2 consequence gated behind `if goal.enforce`, so `enforce:false` is
+> byte-for-byte warn-only v1 (AC-3 — every pre-existing goal test passed
+> UNMODIFIED); all 10 ACs met. Two PRs per SD-A: **#721 PR1 (v2 schema,
+> `.claude/hooks/_goal_state.py`):** `schema_version`→2, a new
+> `blocked-pending-human` status, a first-class `enforce` bool + `amendments[]`
+> on the Goal dataclass (closing both build hazards — unknown-field-drop +
+> VALID_STATUSES rejection), a new Amendment dataclass, and SD-D
+> `amendments_seen` on Evaluation. **#722 PR2 (enforce ladder,
+> `.claude/hooks/_goal_gate.py` + `/goal` + goal-evaluator):** the warn→enforce
+> ladder at the three v1 return-None sites (one bounded block → park at
+> `blocked-pending-human`, never twice for the same state), the V2-D4
+> unanswered-dispatch park (never released / silent-pass), the SD-D
+> drift/redirect pure function (positional `amendments_seen`, clock-free — the
+> WSL wall clock is non-monotonic), `goal.md` documenting the enforce flag +
+> amend-ratification + blocked-pending-human handling, and the goal-evaluator's
+> V2-D2 anchor-divergence assessment (refute-not-bless posture UNCHANGED).
+> **Cray ratified SD-A..SD-D via AskUserQuestion, all four as-recommended**
+> (SD-A = 2 PRs / SD-B = same-PR/PR2 / SD-C = no migration / SD-D = positional
+> `amendments_seen`). **draft≠review≠verify:** `plan-drafter` PLAN → Code R2
+> (grounded citations verified) → Cray-ratified SDs → Code build. **Evidence
+> bar:** full suite **2570 passed / 7 skipped** WITH Postgres (verified on the
+> PR2 merge commit `960e988`, CI PR-only); `ruff` + `ruff format` + `mypy
+> --strict` clean; CI `gate` green on #721 (2m37s) + #722 (2m46s);
+> deterministic-offline — no MS-S1 / host-state. PLAN-0069 `git mv`→`done/`
+> this batch. Commit: `960e988` (#722 PR2; the PLAN-0069 close rides the same
+> closeout PR as housekeeping — head_commit stays the feat merge per Q4).
+
+### Recent Decisions row removed — 2026-07-11 (s118 CONTINUATION 2 — PLAN-0010 CLOSED + PLAN-0064 per-step query router #695/#696/#697) [rotated 2026-07-14, session-128 reconcile — 10-row RD window]
+
+| 2026-07-11 | **s118 CONTINUATION 2 — PLAN-0010 CLOSED "shipped + intentionally disabled" (#695) / PLAN-0064 per-step query router BUILT (#696) + CLOSED all 8 ACs → `done/` (#697); draft→R2→SD-ratify→build→close in ONE session-118 day** — #695: Cray-ratified (AskUserQuestion) after the ELI-CRAY brief; AC-1/AC-3/AC-5 ticked (tests/loop/ + the 427-message production run), AC-2/AC-4/AC-6 HONESTLY unticked (operational close over the s76 drift hazard — they become revival-PLAN requirements). #696: `QueryStepRouter` (declaration-presence, SD-1) routes the production procurement factory per step — declared `read_stock` → the SHIPPED `QueryStepExecutor` over the registry-registered `ProcurementSyntheticAdapter` (SD-5); undeclared `intake` → `_SeedQuery` byte-identically; ERRATUM-2 tripwire rewritten in place (SD-4); SD-0 zero engine change; **PLAN-0062 AC-7's deferral DISCHARGED by reference**; `low_stock_reorder_round` end-to-end still NOT production-runnable (fact 9 → Active TODO). Suite **2512/7** local WITH Postgres. Full narrative: the Session-118 CF block above | `869a56d` (#697 merge) / `9a0eb7d` / `fdd6a9b` (#696 merge) / `75ed717` / `0b784f7` (#695 merge) / `3bdef0d` / `services/engine/procedures/query_router.py` + `verticals/procurement/hero_demo/run.py` + `verticals/procurement/procedures.yaml` + `tests/verticals/procurement/test_intake_shadow_parity.py` + `docs/plans/done/0064-per-step-query-router-procurement.md` + `docs/plans/done/0010-phase3-5-scheduled-task-autonomy-loop.md` |

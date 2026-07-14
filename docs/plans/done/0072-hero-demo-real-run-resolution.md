@@ -1,8 +1,8 @@
 # PLAN-0072: Hero-demo real run resolution — beat 3 genuinely resolves the parked DOA gate
 
-**Status:** Ready for execution
+**Status:** Complete
 **Owner:** Claude Code (build + commit); drafted by `plan-drafter` (in-harness, G1/G2-exempt author)
-**Created:** 2026-07-14 (re-scoped same day after Cray ratified SD-A=(b), SD-B=(b), SD-C=(a); SD-D pending — does not block Steps 1–4)
+**Created:** 2026-07-14 · **Completed:** 2026-07-14 (Cray ratified SD-A=(b), SD-B=(b), SD-C=(a), SD-D=(a); built + closed session 128, #734 Ready → #735 build `88e6984`)
 **Related ADRs:** ADR-016 (S2 RF-1 — untouched, see contract check), ADR-0026 (principal SoD), ADR-0029 (event bridge), ADR-007 (reasoning envelope — untouched)
 **Related PLANs:** PLAN-0045 (hero demo), PLAN-0047 (API-key auth + governance pin), PLAN-0053 (RF-1 library guard), PLAN-0054 (operate seam: auth.js, login bar, gate-resolve/cancel), PLAN-0056 (event bridge build), PLAN-0057 (event-triggered opener), PLAN-0058 (reject-at-login /whoami probe)
 
