@@ -1,6 +1,6 @@
 # PLAN-0076: AT-2 follow-on tracking — the gate-plugin seam (F-FACTORY) and F-PIN's remainder (derivation pin)
 
-**Status:** Proposed — Cray ratifies at PR. **STUB / TRACKING PLAN, not a build plan** — it is the durable home for two deferrals Cray ratified in PLAN-0075 (session 132) so neither rots; each real build gets its OWN PLAN (ADR-0031 D4.2).
+**Status:** **Tracking** (ratified by Cray at merge, s133 panel review) — a standing TRACKING PLAN, deliberately OUTSIDE the Proposed→Accepted→`done/` build-PLAN lifecycle: it builds nothing, so it has no "Complete" event. Per **Step T3** it stays in active `docs/plans/` until BOTH tracked deferrals are built (each via its OWN PLAN, ADR-0031 D4.2) or Cray re-adjudicates — archiving it to `done/` while either deferral is open would mislabel open work as *resolved* (the s133 anti-rot + info-arch review). Its presence + the STATUS pointer are made **load-bearing by a guard-test (AC-6)**, so they cannot silently vanish. The durable home for two deferrals Cray ratified in PLAN-0075 (s132) so neither rots; each real build gets its OWN PLAN (ADR-0031 D4.2).
 **Owner:** Claude Code (execution) · Cray (ratification at PR)
 **Created:** 2026-07-15
 **Related ADRs:** ADR-0031 (D3 gate-plugin seam row 3 + row-1 transform grammar; D4.1/D4.2/D4.4 fractal Rule-of-Three; OQ-4 deferral-rot precedent), ADR-0025 (D7 AT-2-generator re-trigger — the marker this PLAN verifies paid), ADR-006 (D4 Rule of Three), ADR-0026 (D4 as amended 2026-07-15 — the enforcement this tracking sits behind). Originating context: **PLAN-0075** (SD-3 + SD-5, the ratified adjudications this PLAN records) and **PLAN-0074** (the 2nd AT-2 signature whose s131 review seeded them; `docs/plans/done/0074-…`).
@@ -224,6 +224,24 @@ Stub-level — these make the tracking real; none of them builds anything.
   home, landed in the same PR or the immediately-following
   `docs(status):` reconcile. Fails if this PLAN merges with no STATUS
   entry.
+- [ ] **AC-6 — the tracker is load-bearing by MECHANISM, not convention
+  (s133 panel, the anti-rot review — Cray-ratified enhancement).** A pure
+  offline guard-test
+  (`tests/services/engine/procedures/test_at2_followon_tracking_guard.py`,
+  the `tests/services/db/test_load_run_ordering_guard.py` static-guard
+  pattern) asserts, while the deferrals are open: **(i)** this PLAN lives
+  in **active** `docs/plans/` (NOT `docs/plans/done/`) — so a premature
+  archive-to-`done/` turns the build **RED**; **(ii)** `docs/STATUS.md`
+  still carries the Active-TODO line naming `PLAN-0076` (AC-5) — so
+  pruning the STATUS pointer turns the build **RED**. Rationale: the OQ-4
+  rot was a promise nothing FAILED on (a doc read, never executed); this
+  converts the PLAN-presence + STATUS-pointer from passively-ignorable
+  into a failing build — the panel's finding that *location is convention,
+  not tripwire, unless a mechanism makes it one*. Retiring the tracker
+  (Step T3) means deleting this guard **in the same PLAN** that archives
+  this one — intentional, never silent. Pass/fail read: the guard is green
+  with the PLAN in `docs/plans/` + the STATUS line present; moving the
+  PLAN to `done/` OR deleting the STATUS line turns it RED.
 
 ## Out of Scope
 
@@ -254,9 +272,10 @@ stay honest. Not implementation detail.
 At R2/commit time, Code performs the AC-2 `main` check
 (`test_at2_signature_retrigger.py` exists; header owns OQ-4, re-armed at
 N=3), confirms the AC-13 marker is green on `main`
-(`test_fpin_residual_procurement_unpinned_marker`), and files the AC-5
-STATUS Active-TODO entry. If either marker is absent/red on `main`,
-escalate to Cray — do not silently repair.
+(`test_fpin_residual_procurement_unpinned_marker`), files the AC-5 STATUS
+Active-TODO entry, and lands the **AC-6 presence guard-test** (green with
+this PLAN in active `docs/plans/` + the STATUS pointer present). If either
+marker is absent/red on `main`, escalate to Cray — do not silently repair.
 
 ### Step T1: WHEN the F-FACTORY trigger next presses — open the seam PLAN
 Trigger to watch for (any one): a supply_chain (or any vertical's) second
@@ -290,7 +309,9 @@ procurement derivation hash landed, that failure is the deferral
 self-cancelling: close F-PIN's tracking here and update the marker in the
 landing PLAN. This PLAN moves to `docs/plans/done/` only when BOTH
 deferrals have been either built (via their own PLANs) or explicitly
-re-adjudicated by Cray.
+re-adjudicated by Cray — and the **AC-6 guard-test is deleted in that
+SAME PLAN** (its RED on a premature archive is the intended forcing
+function, not a regression to route around).
 
 ## Verification
 
