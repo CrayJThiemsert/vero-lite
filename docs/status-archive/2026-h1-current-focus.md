@@ -3055,3 +3055,53 @@ The pre-commit `mypy` hook now also covers `^(services|verticals)/`
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
 
 *Rotated 2026-07-15 (session 131 reconcile — s131 PLAN-0074 entry prepended; CF window kept at 4 sessions [128–131] under the 64 KB R1 ceiling).*
+
+*Rotated 2026-07-15 (session-132 reconcile) — Current Focus block, session 128:*
+
+> **Session 128, 2026-07-14 (head_commit `b11ea40` → `88e6984`) — PLAN-0072
+> (the Palantir-lite hero demo's beat-3 "run it" step) shipped END-TO-END +
+> CLOSED → `done/` in ONE session-128 day (#734 Ready → #735 build): the hero
+> demo's "run it" beat now GENUINELY resolves the parked DOA gate through the
+> REAL production `POST /runs/{id}/gate/resolve` route, rendering the PERSISTED
+> truth — replacing the prior FAKE front-end badge.** `next-work-analyst` ranked
+> the options → Cray picked **D3** (make beat-3 genuinely resolve); `plan-drafter`
+> authored + re-scoped PLAN-0072, Code R2, Cray ratified
+> **SD-A(b)/SD-B(b)/SD-C(a)/SD-D(a)** via AskUserQuestion, then built + closed the
+> same session. **#734 (`85f90ed`, `docs(plans)`) — PLAN-0072 Ready.** **#735
+> (`88e6984`, `feat`) — THE build** (demo wiring, NO engine change). **Backend:**
+> the event opener additively exposes the parked `run_id` on its `hero` dict;
+> **generation-aware replay (SD-C)** — a DECIDED (approved OR rejected → both
+> COMPLETED) fixed-key run bumps `detected_at` by one hour to cross the 3600 s
+> event-dedup bucket and fire a FRESH parked run, clock-free (a COUNT of decided
+> runs). **SD-A(b):** the demo drives the PRODUCTION resolve route with
+> `api_auth_enabled` + a real authenticated `appr-pm` Person (RF-1 end-to-end) —
+> NO new endpoint. **Frontend:** `renderActPanel` reworked — **SD-D(a)** inline
+> login (authenticate THEN sign), **SD-B(b)** Approve AND Reject, renders the
+> persisted `GateResolveResponse` (approve → COMPLETED + SoD tie; reject → the
+> honest shipped semantics "no PO, decision recorded, run completed" — reject =
+> continue+record, NOT a rejected terminal); `api.js` gains `Hero.runDetail` +
+> `Hero.resolve`; `?v=` cache tokens bumped. **Build-discovered production bug
+> (disclosed correction to AC-6):** the resolve endpoint's SoD-403 path did
+> `asdict(exc.verdict)` whose `SoDViolation.constraint_steps` is a frozenset —
+> un-serializable → Starlette 500 MASKED the 403 (procurement is the FIRST
+> frozenset-bearing SoD verdict to reach this HTTP path). Fixed in
+> `services/api/routers/runs.py` (JSON-sanitize the verdict, frozenset → sorted
+> list); **security posture INTACT** — the SoD check fails CLOSED before
+> serialization (run stays parked, `gate_refused` audit written), only the
+> response CODE was wrong, never a bypassed gate. **OQ-4 resolved:** the AC-4
+> reject test proves `event_emergency_sourcing_round`'s downstream steps tolerate
+> an empty executed-effect set (a rejected run resumes to COMPLETED).
+> **draft≠review≠verify:** `plan-drafter` PLAN → Code R2 → Cray SD-A..SD-D → Code
+> build. **Evidence bar:** 5 new AC tests GREEN (approve→COMPLETED / SoD tie
+> persisted / wrong-approver 403 + unauth 401 + still-parked + `gate_refused`
+> audit / reject→COMPLETED no-effect / generation-aware replay); full suite **2596
+> passed / 7 skipped** WITH Postgres — verified on BOTH the PR head AND the merge
+> commit `88e6984` (CI PR-only, so the merge-commit re-run is the real gate); ruff
+> check + `ruff format --check` + `mypy --strict services/` clean; preview
+> (oct-demo-procurement) confirms the new Act panel renders the inline-login UI
+> with no console errors (supporting evidence — the deterministic backend test is
+> the gate). Deterministic-offline (no MS-S1 / host-state); Postgres for the
+> DB-backed AC tests only. 0 open PRs after this; tree clean (2 pre-existing
+> untracked KEEP); loop-dispatcher DISABLED. PLAN-0072 `git mv`→`done/` this
+> session; `docs/plans/` empty again. Commits: `85f90ed` (#734 PLAN-0072 Ready) →
+> `88e6984` (#735 feat build + close).
