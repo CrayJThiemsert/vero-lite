@@ -69,7 +69,8 @@ def test_sod_constraint_id_is_sorted_distinct_steps() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# AC-8 — the doa_tier engine side-effect emission
+# AC-8 / PLAN-0075 SD-6(a) — the doa_tier RUN-TIME routing record (the actor-named
+# governed_decision tie moved to GATE time; see test_procurement_sod_gate for that path)
 # --------------------------------------------------------------------------- #
 
 
@@ -92,10 +93,12 @@ def _principals() -> list[Person]:
     ]
 
 
-async def test_doa_tier_emits_governed_decision_tied_to_control_and_principal() -> None:
-    """The doa_tier route emits a typed governed_decision into the step audit: control_ref
-    {kind:'doa_tier', id: the verdict's resolved_tier_id} + principal_id: the resolved approver
-    (a canonical Person PK). This is the field the hero render joins on."""
+async def test_doa_tier_run_time_emits_routing_record_not_a_principal_tie() -> None:
+    """PLAN-0075 SD-6(a): at RUN time the doa_tier route emits only the ROUTING record
+    (``audit["doa_tier"]`` — the resolved tier + its native-tier approver) and NO principal-naming
+    ``governed_decision``. A suspended run must never name an authority who has not yet acted; the
+    actor-named tie is emitted at GATE time (``resolve_gated_step``), after the tier-authority
+    check passes (test_procurement_sod_gate covers that path)."""
     approve, ctx = _approve_ctx()
     wrapper = GovernanceActionExecutor(
         base=_RecordingBase(), principals=_principals(), sod_steps=frozenset({"intake", "approve"})
@@ -104,14 +107,17 @@ async def test_doa_tier_emits_governed_decision_tied_to_control_and_principal() 
         approve, [{"po_id": "po-1", "amount": "2150000", "currency": "THB"}], ctx
     )
     assert outcome.audit is not None
-    assert outcome.audit["governed_decision"] == [
-        {"control_ref": {"kind": "doa_tier", "id": "ผอ."}, "principal_id": "appr-director"}
-    ]
+    assert "governed_decision" not in outcome.audit  # SD-6(a): no run-time principal-naming tie
+    [verdict] = outcome.audit["doa_tier"]
+    assert verdict["resolved_tier_id"] == "ผอ."
+    assert verdict["resolved_approver_id"] == "appr-director"  # the honest routing record
 
 
-async def test_doa_tier_emits_no_tie_without_a_resolved_approver() -> None:
-    """A tier whose approver_role resolves to no declared Person emits no tie (no principal to
-    name — the unresolved-approver case fails closed at the SoD gate, Step 1, not here)."""
+async def test_doa_tier_routing_record_has_no_approver_when_unresolved() -> None:
+    """A tier whose approver_role resolves to no declared Person still emits its routing record
+    with ``resolved_approver_id`` None (there is no native-tier approver to name). The
+    unresolved / wrong approver is caught at the GATE by the tier-authority run-check, which
+    requires the acting principal to HOLD the role (PLAN-0075 Step 3) — not here."""
     approve, ctx = _approve_ctx()
     wrapper = GovernanceActionExecutor(
         base=_RecordingBase(), principals=[], sod_steps=frozenset({"intake", "approve"})
@@ -120,4 +126,6 @@ async def test_doa_tier_emits_no_tie_without_a_resolved_approver() -> None:
         approve, [{"po_id": "po-1", "amount": "2150000", "currency": "THB"}], ctx
     )
     assert outcome.audit is not None
-    assert outcome.audit["governed_decision"] == []
+    assert "governed_decision" not in outcome.audit
+    [verdict] = outcome.audit["doa_tier"]
+    assert verdict["resolved_approver_id"] is None

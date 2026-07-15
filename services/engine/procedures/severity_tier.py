@@ -37,6 +37,7 @@ from services.engine.procedures.spec import (
     RoleId,
     SeverityLadder,
 )
+from services.engine.procedures.tier_authority import native_approver
 
 
 class SeverityTierError(ProcedureError):
@@ -64,10 +65,10 @@ class SeverityTierVerdict:
 
     ``resolved_tier_id`` is the tier's stable handle — its ``approver_role``. ``required_role``
     is the role that must approve at this tier (== ``approver_role``). ``resolved_approver_id``
-    is the ``person_id`` that role resolves to via the vertical principals (``None`` if no
-    declared :class:`Person` holds it — the fail-closed-on-unresolved-approver is the SoD
-    run-check's job at the gate, not this resolution). The render joins audit → control →
-    principal on these keys."""
+    is the NATIVE-tier ``person_id`` that role routes to (``None`` if no declared :class:`Person`
+    is native to it — the fail-closed-on-a-wrong-or-absent-approver is the tier-authority
+    run-check's job at the gate (PLAN-0075), not this resolution). The render joins audit →
+    control → principal on these keys."""
 
     resolved_tier_id: str
     required_role: RoleId
@@ -105,24 +106,21 @@ def resolve_severity_tier(
     severity (total cover from ``NEGLIGIBLE``) and strictly increasing, so every
     ``ExcursionSeverity`` maps to exactly one half-open band ``[min_i, min_{i+1})`` (top tier
     unbounded). The required tier is the rightmost whose ``min_severity`` rank <= the excursion's
-    rank; its ``approver_role`` resolves to the acting :class:`Person` (the first by ``person_id``
-    holding that role).
+    rank; its ``approver_role`` routes to the NATIVE-tier :class:`Person`
+    (:func:`~services.engine.procedures.tier_authority.native_approver`).
 
-    Does NOT raise when the role resolves to no Person — the absent / unrecognised severity
+    Does NOT raise when the role routes to no Person — the absent / unrecognised severity
     fail-closed is the caller's entity reader, before this resolution.
 
-    ⚠ ENFORCEMENT SCOPE (s131 review finding — read before trusting the tier). This resolves +
-    AUDITS which tier a severity routes to (``resolved_tier_id`` / ``required_role`` /
-    ``resolved_approver_id``), but NO current gate path enforces that the acting approver holds the
-    resolved ``required_role``: the live SoD run-check (``principal_sod.check_principal_sod``) only
-    verifies the approver holds the procedure's generic SoD role (``approve: approver``) and is
-    distinct from the requester — it never reads this ladder. So a lower-tier approver can today
-    resolve a gate this ladder routed to a higher tier. This is a KNOWN, pre-existing gap shared
-    with ``doa_tier`` (whose identical docstring was the source of this over-claim); closing it —
-    requiring ``principal.roles ∋ required_role`` (or ``person_id == resolved_approver_id``) at
-    ``resolve_gated_step``, and failing closed on ``resolved_approver_id is None`` — is a follow-on
-    that touches the shipped procurement path, tracked for the gate-seam PLAN. Until then the ladder
-    is an audit-grade ROUTING record, not yet an enforced authority control."""
+    ✅ ENFORCEMENT SCOPE (closed by PLAN-0075). This resolves + AUDITS which tier a severity
+    routes to (``resolved_tier_id`` / ``required_role`` / ``resolved_approver_id``); the GATE then
+    ENFORCES it — :func:`~services.engine.procedures.tier_authority.check_tier_authority`, invoked
+    from ``resolve_gated_step`` AFTER the SoD check, requires the acting approver to HOLD the
+    resolved ``required_role`` (ADR-0026 D4 (iv)). A lower-tier approver can no longer resolve a
+    gate this ladder routed to a higher tier (a senior who holds the role cumulatively still may —
+    Cray s132 'senior can approve downward'). The identical over-claim shared with ``doa_tier`` is
+    corrected too. What remains open (SD-5 follow-on, F-PIN): the derivation that CHOOSES the
+    severity is only partly pinned — see PLAN-0075 Out of Scope."""
     sev_rank = SEVERITY_BY_RANK.index(severity)
     tier_idx = max(
         (
@@ -140,12 +138,17 @@ def resolve_severity_tier(
     tier = ladder.tiers[tier_idx]
     band_max = ladder.tiers[tier_idx + 1].min_severity if tier_idx + 1 < len(ladder.tiers) else None
     role = tier.approver_role
-    holders = sorted(p.person_id for p in principals if role in p.roles)
+    # NATIVE-TIER routing (PLAN-0075, Cray s132) — the non-money analog of doa_tier: route to the
+    # person for whom this tier is their HIGHEST authority, excluding a senior who holds this role
+    # only cumulatively (they may approve DOWNWARD via tier_authority, but are not routed to).
+    higher_roles = frozenset(t.approver_role for t in ladder.tiers[tier_idx + 1 :])
     return SeverityTierVerdict(
         resolved_tier_id=role,
         required_role=role,
         severity=severity,
         band=SeverityBand(min=tier.min_severity, max=band_max),
         sod_required=sod_required,
-        resolved_approver_id=holders[0] if holders else None,
+        resolved_approver_id=native_approver(
+            role, higher_roles=higher_roles, principals=principals
+        ),
     )

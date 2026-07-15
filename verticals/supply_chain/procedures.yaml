@@ -62,18 +62,24 @@ principals:
   - person_id: req-coldchain
     name: "อารีย์ — จนท.ควบคุมลูกโซ่ความเย็น (ผู้แจ้งเหตุ)"
     roles: [requester]
+  # CUMULATIVE authority roles (PLAN-0075, Cray s132 — "senior can approve downward"): each QA
+  # tier holds its OWN role AND every LOWER tier's, so a senior quality authority satisfies the
+  # tier_authority gate for a lower-severity disposition (exact-match, rank-as-data — SD-1a). The
+  # severity_tier resolver's NATIVE-tier routing still names the tier's own approver (a `critical`
+  # excursion routes to appr-qdir; a `negligible` one to appr-qa) so the audit stays honest.
   - person_id: appr-qa
     name: "กมล — จนท.ประกันคุณภาพ"
     roles: [approver, "จนท.ประกันคุณภาพ"]
   - person_id: appr-qam
     name: "สุดา — ผจก.ประกันคุณภาพ"
-    roles: [approver, "ผจก.ประกันคุณภาพ"]
+    roles: [approver, "ผจก.ประกันคุณภาพ", "จนท.ประกันคุณภาพ"]
   - person_id: appr-qp
     name: "ธนพล — เภสัชกรผู้มีหน้าที่ควบคุม"
-    roles: [approver, "เภสัชกรผู้มีหน้าที่ควบคุม"]
+    roles: [approver, "เภสัชกรผู้มีหน้าที่ควบคุม", "ผจก.ประกันคุณภาพ", "จนท.ประกันคุณภาพ"]
   - person_id: appr-qdir
     name: "มยุรี — ผอ.ฝ่ายคุณภาพ"
-    roles: [approver, "ผอ.ฝ่ายคุณภาพ"]
+    roles:
+      [approver, "ผอ.ฝ่ายคุณภาพ", "เภสัชกรผู้มีหน้าที่ควบคุม", "ผจก.ประกันคุณภาพ", "จนท.ประกันคุณภาพ"]
 
 procedures:
   cold_chain_excursion_sweep:

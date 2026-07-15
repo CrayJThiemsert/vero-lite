@@ -380,11 +380,20 @@ async def run_hero_governance_moment(
 
     governed_decision = list(approve_audit.get("governed_decision", []))
     if approver_id is not None and sod_verdict.governed:
-        # The SoD audit-to-control tie is emitted at gate RESOLUTION (resolve_gated_step); the run
-        # only suspends here, so derive it from the pure run-check (mirrors the offline builder).
+        # Both audit-to-control ties are emitted at gate RESOLUTION (resolve_gated_step); the run
+        # only suspends here, so derive them from the pure checks (mirrors the offline builder).
         governed_decision.append(
             GovernedDecision(
                 control_ref=ControlRef(kind="sod", id=_SOD_CONSTRAINT_ID),
+                principal_id=approver_id,
+            ).model_dump(mode="json")
+        )
+        # PLAN-0075 SD-6(a): the AUTHORITY tie names the acting approver (who holds the resolved
+        # tier role). The run-time audit no longer carries it, so derive it here to match the
+        # engine's gate-time emission (the suspended run itself has no principal-naming tie).
+        governed_decision.append(
+            GovernedDecision(
+                control_ref=ControlRef(kind="doa_tier", id=doa_verdict["resolved_tier_id"]),
                 principal_id=approver_id,
             ).model_dump(mode="json")
         )
@@ -542,6 +551,13 @@ async def run_hero_event_governance_moment(
         governed_decision.append(
             GovernedDecision(
                 control_ref=ControlRef(kind="sod", id=_SOD_CONSTRAINT_ID),
+                principal_id=approver_id,
+            ).model_dump(mode="json")
+        )
+        # PLAN-0075 SD-6(a): authority tie names the acting approver (see the live-hero builder).
+        governed_decision.append(
+            GovernedDecision(
+                control_ref=ControlRef(kind="doa_tier", id=doa_verdict["resolved_tier_id"]),
                 principal_id=approver_id,
             ).model_dump(mode="json")
         )

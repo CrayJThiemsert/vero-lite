@@ -49,7 +49,11 @@ from services.api.models.runs import (
     StepResultView,
 )
 from services.db.session import get_session
-from services.engine.procedures.action_step import PrincipalSoDError, resolve_gated_step
+from services.engine.procedures.action_step import (
+    PrincipalSoDError,
+    TierAuthorityError,
+    resolve_gated_step,
+)
 from services.engine.procedures.orchestrator import ProcedureError
 from services.engine.procedures.persistence import (
     cancel_run,
@@ -323,7 +327,7 @@ async def run_procedure_endpoint(
 
 
 @router.post("/runs/{run_id}/gate/resolve", response_model=GateResolveResponse)
-async def resolve_gate_endpoint(
+async def resolve_gate_endpoint(  # noqa: C901 — a flat sequence of typed error->HTTP mappings (SoD / tier-authority / gate-approver / stale / not-found -> 403/404/409/422), each one branch; PLAN-0075 added the tier-authority arm
     run_id: str,
     req: GateResolveRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -394,6 +398,14 @@ async def resolve_gate_endpoint(
             # sorted list (deterministic).
             detail["verdict"] = json.loads(json.dumps(asdict(exc.verdict), default=sorted))
         raise HTTPException(status_code=403, detail=detail) from exc
+    except TierAuthorityError as exc:
+        # PLAN-0075: the tier-authority run-check refused the gate (the acting approver did not
+        # hold the ladder-resolved tier role) — a 403 like the SoD refusal. TierAuthorityViolation
+        # is all str/None fields (no frozenset), but sanitize defensively for a stable JSON body.
+        ta_detail: dict[str, Any] = {"error": str(exc)}
+        if is_dataclass(exc.verdict) and not isinstance(exc.verdict, type):
+            ta_detail["verdict"] = json.loads(json.dumps(asdict(exc.verdict), default=str))
+        raise HTTPException(status_code=403, detail=ta_detail) from exc
     except ProcedureError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except StaleDataError as exc:

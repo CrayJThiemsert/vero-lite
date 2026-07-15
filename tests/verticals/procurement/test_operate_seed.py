@@ -96,7 +96,10 @@ async def test_seeded_run_is_governed_resolvable_by_distinct_approver(
     assert resolved.artifact is not None
     assert all(e["status"] == "executed" for e in resolved.artifact["output_set"])
     assert resolved.audit is not None
-    # the procurement SoD constraint is [intake, approve] (sorted id 'approve+intake')
+    # At GATE resolution the audit ties name the ACTING approver (PLAN-0075 SD-6a): the SoD tie
+    # (constraint 'approve+intake') AND the authority tie (the ladder-resolved doa_tier, now that
+    # the tier-authority check confirmed appr-pm holds ผจก.จัดซื้อ). Engine order: SoD then authority.
     assert resolved.audit["governed_decision"] == [
-        {"control_ref": {"kind": "sod", "id": "approve+intake"}, "principal_id": "appr-pm"}
+        {"control_ref": {"kind": "sod", "id": "approve+intake"}, "principal_id": "appr-pm"},
+        {"control_ref": {"kind": "doa_tier", "id": "ผจก.จัดซื้อ"}, "principal_id": "appr-pm"},
     ]

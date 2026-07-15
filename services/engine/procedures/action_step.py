@@ -76,6 +76,10 @@ from services.engine.procedures.spec import (
     Procedure,
     Step,
 )
+from services.engine.procedures.tier_authority import (
+    TierAuthorityVerdict,
+    check_tier_authority,
+)
 from services.engine.recommender import (
     ActionRecord,
     approve,
@@ -114,6 +118,27 @@ class PrincipalSoDError(ProcedureError):
         detail = "; ".join(v.detail for v in verdict.violations) or "no detail"
         super().__init__(
             f"run '{run_id}': step '{step_id}' BLOCKED by the principal-SoD run-check "
+            f"({len(verdict.violations)} violation(s)): {detail}"
+        )
+
+
+class TierAuthorityError(ProcedureError):
+    """A gated AT-2 authority step failed the LIVE tier-authority run-check (ADR-0026 D4 (iv);
+    PLAN-0075) — the run is BLOCKED.
+
+    Raising this aborts the gate resolution **before** any approve/execute runs: the acting
+    approver did not hold the ladder-resolved tier role of one or more persisted authority
+    verdicts (a lower-tier approver cannot resolve a gate routed to a higher tier), or the step
+    declared authority content but persisted no verdict (the plain-executor bypass), or the actor
+    is undeclared. ADDITIVE beside :class:`PrincipalSoDError` (LOCKED #2 — the SoD check runs
+    first and is never weakened). Carries the structured :class:`TierAuthorityVerdict` so a caller
+    / read-only render can surface WHICH tier role the approver lacked."""
+
+    def __init__(self, verdict: TierAuthorityVerdict, *, run_id: str, step_id: str) -> None:
+        self.verdict = verdict
+        detail = "; ".join(v.detail for v in verdict.violations) or "no detail"
+        super().__init__(
+            f"run '{run_id}': step '{step_id}' BLOCKED by the tier-authority run-check "
             f"({len(verdict.violations)} violation(s)): {detail}"
         )
 
@@ -366,6 +391,89 @@ def _enforce_principal_sod(
         raise PrincipalSoDError(verdict, run_id=run.run_id, step_id=step_id)
 
 
+def _enforce_tier_authority(
+    target: StepResult,
+    run_id: str,
+    step_id: str,
+    principal: Person,
+    procedure: Procedure | None,
+    principals: list[Person] | None,
+) -> None:
+    """Run the LIVE fail-closed tier-authority run-check for a gate resolution (ADR-0026 D4 (iv);
+    PLAN-0075) — ADDITIVE beside :func:`_enforce_principal_sod`, and run AFTER it (SoD stays the
+    primary check, LOCKED #2). Reads the step's PERSISTED authority verdicts
+    (``target.audit["doa_tier" | "severity_tier"]``, written by the governance executor at run
+    time) plus the gated step's declared ``governance_content`` (when the caller supplied the
+    procedure), and raises :class:`TierAuthorityError` (BLOCK — no approve/execute) unless the
+    acting principal holds the resolved tier role of EVERY verdict. Inert on a non-authority gate
+    (no persisted verdict and no declared authority content)."""
+    audit = target.audit or {}
+    persisted = audit.get("doa_tier") or audit.get("severity_tier") or []
+    content = None
+    if procedure is not None:
+        step = next((s for s in procedure.steps if s.step_id == step_id), None)
+        content = step.governance_content if step is not None else None
+    verdict = check_tier_authority(
+        principal=principal,
+        step_id=step_id,
+        governance_content=content,
+        persisted_verdicts=persisted,
+        declared_principals=principals or [],
+    )
+    if not verdict.governed:
+        raise TierAuthorityError(verdict, run_id=run_id, step_id=step_id)
+
+
+async def _enforce_tier_authority_with_refusal_audit(
+    session: AsyncSession,
+    run_id: str,
+    target: StepResult,
+    step_id: str,
+    principal: Person,
+    procedure: Procedure | None,
+    principals: list[Person] | None,
+) -> None:
+    """Run the live tier-authority check; on a violation, durably audit the refusal (mirroring
+    the SoD refusal, PLAN-0047 Step 5) BEFORE the ``TierAuthorityError`` propagates."""
+    try:
+        _enforce_tier_authority(target, run_id, step_id, principal, procedure, principals)
+    except TierAuthorityError as exc:
+        await append_audit(
+            session,
+            action="gate_refused",
+            actor_person_id=principal.person_id,
+            run_id=run_id,
+            step_id=step_id,
+            payload={
+                "kind": "tier_authority",
+                "violations": [v.detail for v in exc.verdict.violations],
+            },
+        )
+        await session.commit()
+        raise
+
+
+def _authority_governed_decisions(
+    target: StepResult, principal: Person | None
+) -> list[dict[str, Any]]:
+    """The GATE-TIME authority audit-to-control tie (PLAN-0075 SD-6(a)): after the tier-authority
+    check has passed, tie each resolved authority tier to its control + the ACTING principal — so
+    the persisted ``governed_decision`` names who ACTUALLY acted, never the run-time routed-to
+    approver (which stays a trace-level routing record). Empty for a principal-less gate or a step
+    with no persisted authority verdict."""
+    if principal is None:
+        return []
+    audit = target.audit or {}
+    return [
+        GovernedDecision(
+            control_ref=ControlRef(kind=kind, id=verdict["resolved_tier_id"]),
+            principal_id=principal.person_id,
+        ).model_dump(mode="json")
+        for kind in ("doa_tier", "severity_tier")
+        for verdict in audit.get(kind, [])
+    ]
+
+
 def _sod_governed_decisions(
     step_id: str,
     principal: Person | None,
@@ -395,10 +503,15 @@ def _record_governed_decision(
     principal: Person | None,
     procedure: Procedure | None,
 ) -> None:
-    """Record the OQ-5 SoD audit-to-control tie on a GOVERNED gate's resolved step (A1b Step 6,
-    AC-8) — merged into the step audit, never overwriting it. A no-op for a non-SoD / principal-
-    less gate (nothing to tie)."""
-    governed = _sod_governed_decisions(step_id, principal, procedure)
+    """Record the OQ-5 audit-to-control ties on a GOVERNED gate's resolved step (A1b Step 6, AC-8;
+    PLAN-0075 SD-6a) — merged into the step audit, never overwriting it. Combines the SoD tie (the
+    approving principal ↔ the SoD control) with the AUTHORITY ties (the acting principal ↔ each
+    resolved doa_tier / severity_tier control) — both naming who ACTUALLY acted, emitted only after
+    the SoD + tier-authority checks passed. A no-op for a non-SoD, non-authority, or principal-less
+    gate (nothing to tie)."""
+    governed = _sod_governed_decisions(
+        step_id, principal, procedure
+    ) + _authority_governed_decisions(target, principal)
     if governed:
         target.audit = {**(target.audit or {}), "governed_decision": governed}
 
@@ -531,6 +644,15 @@ async def resolve_gated_step(  # noqa: C901 — load-bearing gate driver: precon
     # refusal is itself audited durably before the exception propagates.
     await _enforce_sod_with_refusal_audit(
         session, loaded.run, run_id, step_id, principal, procedure, principals, principal_aliases
+    )
+
+    # The LIVE fail-closed tier-authority run-check (ADR-0026 D4 (iv); PLAN-0075) — ADDITIVE beside
+    # the SoD check and run AFTER it (SoD stays primary, LOCKED #2). It verifies the acting approver
+    # holds the ladder-resolved tier role of every persisted authority verdict, BLOCKING the gate
+    # (no approve/execute, no PO) otherwise — the guarantee ADR-0026 D5 stated but no run path
+    # delivered. Inert on a non-authority gate; a refusal is durably audited before the error.
+    await _enforce_tier_authority_with_refusal_audit(
+        session, run_id, target, step_id, principal, procedure, principals
     )
 
     # ---- Phase 1 (PLAN-0047 Step 4, AC-6): decide + COMMIT the intent -------

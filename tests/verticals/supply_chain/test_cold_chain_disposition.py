@@ -215,10 +215,11 @@ async def test_disposition_run_suspends_at_the_severity_tiered_human_gate(
     assert verdict["sod_required"] is True  # `approve` is SoD-constrained vs `intake` (derived)
     assert verdict["band"] == {"min": "critical", "max": None}  # the unbounded top band
 
-    # the audit ties the decision to the control + the principal that governed it (ADR-0025 OQ-5)
-    [decision] = approve_audit["governed_decision"]
-    assert decision["control_ref"] == {"kind": "severity_tier", "id": "ผอ.ฝ่ายคุณภาพ"}
-    assert decision["principal_id"] == "appr-qdir"
+    # PLAN-0075 SD-6(a): a SUSPENDED run carries NO principal-naming authority tie — the
+    # severity_tier verdict above is the honest ROUTING record (routed to appr-qdir); the
+    # actor-named governed_decision is emitted only at GATE resolution, after the tier-authority
+    # check confirms the acting approver holds ผอ.ฝ่ายคุณภาพ.
+    assert "governed_decision" not in approve_audit
 
     # the gated action PROPOSED only — nothing was executed (ADR-0007 LOCKED #3)
     proposals = _output_set(by_step["approve"])
