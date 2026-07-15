@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-15T21:56:15+07:00
+last_updated: 2026-07-16T00:02:50+07:00
 session: 135
-current_batch: "s135 close-out — PLAN-0077 transform-grammar COMPLETE (5 PRs #754→#758, Proposed→A→B→C→landing); typed anti-eval `derive` grammar shipped + load-gated + execution-bound; seed migration = separate SD-4 PLAN; F-PIN stays OPEN."
+current_batch: "s135 — PLAN-0077 transform-grammar COMPLETE (5 PRs #754→#758) + PLAN-0078 (transform seed-migration) FILED Proposed (#760, all 8 SDs ratified: SD-1=(B) full incl. marquee stamps, SD-6 two-tier parity, SD-7 slim executor, SD-8 one-home amount). Build = next session."
 current_actor: code
-blocked_on: "Nothing blocking. main=ece270a; 0 open PRs; PLAN-0077 arc COMPLETE (grammar built + landed). Loop-dispatcher DISABLED; MS-S1 idle; dev Postgres UP."
-next_action: "No forced next action — PLAN-0077 done. Candidates: the SD-4 transform seed-migration PLAN (flip both verticals' derived halves + F-PIN fold-in, PLAN-0076 Step T2), the Rule-of-Three-blocked AT-2 generator, or fresh work."
-head_commit: ece270a
-recent_commits: [ece270a, 95efcb9, 8808902, 81a8a0f, d94a10d, 832cbc4, e93e9d0, 54551f9, 3e6ee4d, 32449b4]
+blocked_on: "Nothing blocking. main=7cbe08a; 0 open PRs; PLAN-0077 COMPLETE; PLAN-0078 filed Proposed (build not started). Loop-dispatcher DISABLED; MS-S1 idle; dev Postgres UP."
+next_action: "Build PLAN-0078 Phase 1 PR-1 — procurement intake migration (criticality-copy + unit default + compliance map → declared transform; candidate_quotes nest stays seed-side, L-3 partial), oracle-first: land the SD-4 parity harness against the CURRENT seed BEFORE the flip. Then PR-2 supply_chain intake; Phase 2 (stamps, SD-1=(B)) after."
+head_commit: 7cbe08a
+recent_commits: [7cbe08a, b536c0e, a3c86ca, 56fc08b, 43d7e4e, ece270a, 95efcb9, 8808902, 81a8a0f, d94a10d]
 ---
 
 # vero-lite — Project Status
