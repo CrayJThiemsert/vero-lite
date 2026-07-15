@@ -44,7 +44,9 @@ agents:
     # validated against the service_principals block below (spec.py _cross_refs).
     service_principal_ids: [svc-buyer]
     allowed:
-      step_kinds: [query, evaluate, action]
+      # PLAN-0078 PR-1: `transform` joins the allowed kinds so the declared `enrich` step
+      # (the intake seed-migration) can run under this agent (orchestrator step-kind guard).
+      step_kinds: [query, evaluate, action, transform]
       # The procurement action vocabulary the agent may invoke: `emergency_source`
       # for the auto sourcing step; `request_approval` for the gated DOA approval;
       # `issue_po` for the gated PO write; `reorder` for the calm-path; `echo` for
@@ -121,6 +123,40 @@ procedures:
           llm_assist: "enrich / auto-fill the PR from the work-order (advisory draft)"
           input: "purchase requisition / CMMS work-order (the failure signal)"
           output: "enriched PR set"
+      # PLAN-0078 PR-1 — the declared `enrich` transform. Supplies the DERIVED intake fields as
+      # governed data instead of hand-emitting them in `_intake_seed` (hero_demo/run.py): the
+      # `criticality` typed copy of the failure reading (the judge band amplifier + the
+      # scored_rule `criticality` criterion), the `unit` default, and the per-criterion
+      # `compliance` signal the rule_gate reads. Deterministic, engine-generic, row-local; no
+      # LLM, no I/O — the ADR-0031 D3 row-1 transform grammar (governed != generated). All three
+      # intake-bearing procedures carry the SAME step (they share the one seed).
+      - step_id: enrich
+        name: Enrich the requisition (declared transform)
+        description: >-
+          Derive the requisition's criticality (a typed copy of the failure reading), default
+          its unit, and attach the per-criterion compliance signal — as declared transform data,
+          not hand-coded seed emission. Deterministic; no LLM.
+        kind: transform
+        input:
+          from: intake
+        transform:
+          ops:
+            - derive: { target: criticality, expr: { field: measured_value } }
+            - default: { target: unit, value: criticality }
+            - default:
+                target: compliance
+                value:
+                  avl: true
+                  tax: true
+                  cert: true
+                  sanctions: true
+                  single_source: true
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "intake (the seeded requisition)"
+          output: "the requisition enriched with criticality + unit + compliance"
+          governance: "deterministic derivation as declared data (governed != generated)"
       - step_id: judge
         name: Judge criticality
         description: >-
@@ -441,6 +477,40 @@ procedures:
           llm_assist: "enrich / auto-fill the PR from the work-order (advisory draft)"
           input: "purchase requisition / CMMS work-order (the failure signal)"
           output: "enriched PR set"
+      # PLAN-0078 PR-1 — the declared `enrich` transform. Supplies the DERIVED intake fields as
+      # governed data instead of hand-emitting them in `_intake_seed` (hero_demo/run.py): the
+      # `criticality` typed copy of the failure reading (the judge band amplifier + the
+      # scored_rule `criticality` criterion), the `unit` default, and the per-criterion
+      # `compliance` signal the rule_gate reads. Deterministic, engine-generic, row-local; no
+      # LLM, no I/O — the ADR-0031 D3 row-1 transform grammar (governed != generated). All three
+      # intake-bearing procedures carry the SAME step (they share the one seed).
+      - step_id: enrich
+        name: Enrich the requisition (declared transform)
+        description: >-
+          Derive the requisition's criticality (a typed copy of the failure reading), default
+          its unit, and attach the per-criterion compliance signal — as declared transform data,
+          not hand-coded seed emission. Deterministic; no LLM.
+        kind: transform
+        input:
+          from: intake
+        transform:
+          ops:
+            - derive: { target: criticality, expr: { field: measured_value } }
+            - default: { target: unit, value: criticality }
+            - default:
+                target: compliance
+                value:
+                  avl: true
+                  tax: true
+                  cert: true
+                  sanctions: true
+                  single_source: true
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "intake (the seeded requisition)"
+          output: "the requisition enriched with criticality + unit + compliance"
+          governance: "deterministic derivation as declared data (governed != generated)"
       - step_id: judge
         name: Judge criticality
         description: >-
@@ -742,6 +812,40 @@ procedures:
           llm_assist: "enrich / auto-fill the PR from the work-order (advisory draft)"
           input: "purchase requisition / CMMS work-order (the failure signal)"
           output: "enriched PR set"
+      # PLAN-0078 PR-1 — the declared `enrich` transform. Supplies the DERIVED intake fields as
+      # governed data instead of hand-emitting them in `_intake_seed` (hero_demo/run.py): the
+      # `criticality` typed copy of the failure reading (the judge band amplifier + the
+      # scored_rule `criticality` criterion), the `unit` default, and the per-criterion
+      # `compliance` signal the rule_gate reads. Deterministic, engine-generic, row-local; no
+      # LLM, no I/O — the ADR-0031 D3 row-1 transform grammar (governed != generated). All three
+      # intake-bearing procedures carry the SAME step (they share the one seed).
+      - step_id: enrich
+        name: Enrich the requisition (declared transform)
+        description: >-
+          Derive the requisition's criticality (a typed copy of the failure reading), default
+          its unit, and attach the per-criterion compliance signal — as declared transform data,
+          not hand-coded seed emission. Deterministic; no LLM.
+        kind: transform
+        input:
+          from: intake
+        transform:
+          ops:
+            - derive: { target: criticality, expr: { field: measured_value } }
+            - default: { target: unit, value: criticality }
+            - default:
+                target: compliance
+                value:
+                  avl: true
+                  tax: true
+                  cert: true
+                  sanctions: true
+                  single_source: true
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "intake (the seeded requisition)"
+          output: "the requisition enriched with criticality + unit + compliance"
+          governance: "deterministic derivation as declared data (governed != generated)"
       - step_id: judge
         name: Judge criticality
         description: >-

@@ -33,6 +33,10 @@ from typing import Any
 
 import pytest
 
+from services.engine.procedures.governance_pin import (
+    build_governance_snapshot,
+    compute_governance_hash,
+)
 from services.engine.procedures.orchestrator import RunResult, run_procedure
 from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
 from services.engine.procedures.spec import load_procedures
@@ -179,3 +183,59 @@ async def test_intake_enrichment_and_governed_verdicts_parity(procedure_id: str)
     assert by_step["source"].status == StepResultStatus.COMPLETE.value
     assert by_step["compliance"].status == StepResultStatus.COMPLETE.value
     assert by_step["approve"].status == StepResultStatus.WAITING_HUMAN.value
+
+
+async def test_intake_transform_fails_closed_on_missing_source_field() -> None:
+    """AC-4: a missing source field on the migrated ``enrich`` transform refuses the WHOLE step
+    typed (PLAN-0077 SD-7 fail-closed) — it never silently emits an un-enriched row that would
+    mis-band downstream. Demonstrated with a mutated seed dropping ``measured_value`` (the
+    ``criticality`` derive's source): the ``enrich`` step FAILS and the run diverts there, never
+    reaching the ``approve`` gate."""
+    adapter = FastenalCsvAdapter()
+    base = json.loads(json.dumps([await _intake_seed(adapter)], default=str))
+    mutated = [{k: v for k, v in base[0].items() if k != "measured_value"}]
+    result = await _run_to_gate("emergency_sourcing_round", seed_override=mutated)
+    by_step = {s.step_id: s for s in result.step_results}
+
+    assert result.run.status == PipelineRunStatus.FAILED.value
+    assert by_step["enrich"].status == StepResultStatus.FAILED.value
+    assert "approve" not in by_step  # the run diverted at enrich, never reached the gate
+    # the refusal is a TYPED transform refusal, not a silent drop
+    enrich_trace = by_step["enrich"].reasoning_trace
+    assert enrich_trace is not None
+    [trace] = enrich_trace
+    assert "TransformRefusal" in trace["summary"]
+
+
+def test_enrich_transform_pinned_migrated_non_participants_byte_identical() -> None:
+    """AC-5 / AC-6: each migrated procedure's governance snapshot carries the declared ``enrich``
+    transform canonically — it is part of the config hash, so a mid-flight transform edit changes
+    the hash and fails CLOSED at resume, like a ladder edit (``governance_pin.py:96-98``). Every
+    procedure declaring no transform pins with NO ``transform`` key (the only-when-supplied
+    property), so its config hash is byte-identical to before the migration."""
+    spec = load_procedures(_VERTICAL)
+    by_id = {p.procedure_id: p for p in spec.procedures}
+
+    # AC-5: the enrich transform is present + canonical in each migrated procedure's snapshot,
+    # and it contributes to the config hash (stripping it changes the hash -> resume fails closed).
+    for pid in _INTAKE_PROCEDURES:
+        proc = by_id[pid]
+        snapshot = build_governance_snapshot(proc)
+        [enrich_snap] = [s for s in snapshot["steps"] if s["step_id"] == "enrich"]
+        assert enrich_snap["transform"] is not None
+        assert enrich_snap["transform"]["ops"]  # the ops are pinned canonically
+
+        stripped_steps = [
+            s.model_copy(update={"transform": None}) if s.step_id == "enrich" else s
+            for s in proc.steps
+        ]
+        stripped = proc.model_copy(update={"steps": stripped_steps})
+        assert compute_governance_hash(snapshot) != compute_governance_hash(
+            build_governance_snapshot(stripped)
+        )
+
+    # AC-6: the reorder siblings declare no transform -> no `transform` key on any step (their
+    # config hash is unchanged by this migration — the only-when-supplied property).
+    for pid in ("low_stock_reorder_round", "scheduled_low_stock_reorder_round"):
+        snapshot = build_governance_snapshot(by_id[pid])
+        assert all("transform" not in step for step in snapshot["steps"])

@@ -30,6 +30,7 @@ from services.engine.procedures.orchestrator import (
 )
 from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
 from services.engine.procedures.spec import Person, Step, StepKind, load_procedures
+from services.engine.procedures.transform_step import TransformStepExecutor
 from services.engine.registry import registry
 from verticals.procurement.data_adapter import synthetic
 
@@ -91,6 +92,9 @@ def _executors(query_output: list[Any]) -> dict[StepKind, Any]:
         StepKind.QUERY: _Query(query_output),
         StepKind.EVALUATE: _Evaluate(),
         StepKind.ACTION: _Action(),
+        # PLAN-0078 PR-1: the hero procedures now carry a declared `enrich` transform step
+        # (intake -> enrich -> judge), so this stub map binds the shared engine executor too.
+        StepKind.TRANSFORM: TransformStepExecutor(),
     }
 
 
