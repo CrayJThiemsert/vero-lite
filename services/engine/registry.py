@@ -29,6 +29,15 @@ Handler = Callable[[RecommendedAction], Awaitable[dict[str, Any]]]
 # per run/resume request (stateful executors never leak across requests).
 ExecutorFactory = Callable[[], "Mapping[StepKind, StepExecutor]"]
 
+# PLAN-0075 AC-13 (SD-5 provenance fold-in): a vertical's optional derivation-hash
+# provider — a LIVE callable that canonically hashes the constants that DERIVE the
+# authority quantity a gate routes on (supply_chain's severity ladder). It is the
+# inversion-of-control seam that lets the engine fold a vertical's derivation into
+# the run's governance pin WITHOUT importing vertical code: the vertical registers
+# its provider, the engine pulls the string by vertical (:meth:`derivation_hash`).
+# Recomputed each call (never cached) so a run-start↔resolve edit trips the pin.
+DerivationHashProvider = Callable[[], str]
+
 
 class RegistryError(Exception):
     """Raised on a missing lookup or a duplicate registration."""
@@ -44,6 +53,10 @@ class _VerticalEntry:
     # ``handlers``; a handler with no description simply has no entry here.
     descriptions: dict[str, str] = field(default_factory=dict)
     executor_factory: ExecutorFactory | None = None
+    # PLAN-0075 AC-13: the vertical's derivation-hash provider (supply_chain only
+    # today; None = the vertical pins no derivation — the F-PIN residual for
+    # procurement, whose imperative ฿ math has no clean datum to hash).
+    derivation_hash_provider: DerivationHashProvider | None = None
 
 
 class VerticalRegistry:
@@ -119,6 +132,35 @@ class VerticalRegistry:
                 f"no procedure-executor factory registered for vertical '{vertical}'"
             )
         return entry.executor_factory
+
+    def register_derivation_hash(self, vertical: str, provider: DerivationHashProvider) -> None:
+        """Register a vertical's derivation-hash provider (PLAN-0075 AC-13, SD-5 fold-in).
+
+        The provider is a LIVE callable the engine invokes by vertical at run-start and
+        gate-resolve to fold the vertical's severity-derivation constants into the
+        governance pin — so a mid-flight derivation edit fails closed. Explicit
+        registration mirrors the adapter / handler / executor-factory pattern (OQ-6); the
+        engine never imports the vertical's constants directly. Duplicate registration is a
+        :class:`RegistryError`, like the other registrars."""
+        entry = self._verticals.setdefault(vertical, _VerticalEntry())
+        if entry.derivation_hash_provider is not None:
+            raise RegistryError(
+                f"derivation-hash provider already registered for vertical '{vertical}'"
+            )
+        entry.derivation_hash_provider = provider
+
+    def derivation_hash(self, vertical: str) -> str | None:
+        """The live derivation hash for ``vertical`` (recomputed each call), or ``None`` when
+        the vertical pins no derivation (PLAN-0075 AC-13).
+
+        ``None`` is the byte-identical path: a vertical with no provider folds nothing into
+        its governance snapshot, so procurement / energy / aquaculture pins are unchanged.
+        Recomputing (never caching) is what makes a run-start↔resolve derivation edit trip the
+        fail-closed pin, mirroring how the procedure-config hash is itself recomputed live."""
+        entry = self._verticals.get(vertical)
+        if entry is None or entry.derivation_hash_provider is None:
+            return None
+        return entry.derivation_hash_provider()
 
     def verticals(self) -> list[str]:
         """Return the sorted names of every registered vertical."""

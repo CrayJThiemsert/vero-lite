@@ -26,6 +26,8 @@ advisory prose in the base executor — it NEVER derives the severity (governed 
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
@@ -75,6 +77,33 @@ _DOSE_LADDER: tuple[tuple[Decimal, ExcursionSeverity], ...] = (
 )
 _TOP_SEVERITY = ExcursionSeverity.CRITICAL
 """The unbounded top band: a dose ABOVE the last ladder floor (the budget is spent) is critical."""
+
+
+def derivation_hash() -> str:
+    """A canonical sha256 over the severity-DERIVATION constants — :data:`_DOSE_LADDER` AND
+    :data:`_TOP_SEVERITY` (PLAN-0075 AC-13, the ratified SD-5 provenance fold-in).
+
+    Threaded into the ``supply_chain`` run's governance snapshot (the engine pulls it by vertical
+    through the registry hook — ``registry.derivation_hash`` — never importing this module), so a
+    mid-flight (run-start ↔ resolve) derivation edit fails CLOSED at the governance pin and the run
+    record answers "which derivation governed THIS run". **Serialises the constants THEMSELVES**,
+    never a hand-maintained ``derivation_version`` string a deploy can forget to bump.
+
+    Both constants are hashed on purpose: a ladder-tuple-only hash would leave the unbounded
+    ``_TOP_SEVERITY`` critical band un-covered — an edit that re-pointed the top band would slip a
+    tuple-only pin (the drafter finding, AC-13). Deterministic + stable across processes (ordered
+    tuple, ``Decimal`` -> exact ``str``, enum -> ``.value``; ``sort_keys`` on the wrapper dict; no
+    set, no float, no clock — the same discipline the ``governance_pin`` canonicalisation states).
+
+    PROVENANCE-ONLY: this buys mid-flight tamper-evidence + audit provenance; it does NOT close the
+    new-run re-routing threat (a fresh run on already-changed code pins the changed derivation
+    without complaint) — F-PIN stays open (SD-5 tracked follow-on)."""
+    payload = {
+        "dose_ladder": [[str(ceiling), severity.value] for ceiling, severity in _DOSE_LADDER],
+        "top_severity": _TOP_SEVERITY.value,
+    }
+    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 class ColdChainAssessError(ProcedureError):
