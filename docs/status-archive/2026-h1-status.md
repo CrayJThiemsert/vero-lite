@@ -4073,3 +4073,51 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-13 (s124 — Axis-B verify-loop goal gate graduated to enforcement + PLAN-0069 closed) [rotated 2026-07-15, session-133 close-out reconcile — 10-row RD window]
 
 | 2026-07-13 | **s124 — Axis-B verify-loop goal gate GRADUATED warn-only v1 → per-goal opt-in ENFORCEMENT; PLAN-0069 shipped END-TO-END (2 PRs) + CLOSED → `done/` in one session-124 day (ADR-0018 V2 Accepted #713; #721/#722, `feat`); session opener #718 `fix` surfaced `threshold_field` in the read-only Procedures viewer (View F) facet — display-only, RESOLVING the s123 frontend display gap** — every v2 consequence gated behind `if goal.enforce`, so `enforce:false` is byte-for-byte warn-only v1 (AC-3, all pre-existing goal tests UNMODIFIED); all 10 ACs met. **#721 PR1 (`_goal_state.py`):** `schema_version`→2, new `blocked-pending-human` status, first-class `enforce` bool + `amendments[]` on the Goal dataclass (closes both build hazards — unknown-field-drop + VALID_STATUSES rejection), new Amendment dataclass, SD-D `amendments_seen` on Evaluation. **#722 PR2 (`_goal_gate.py` + `/goal` + goal-evaluator):** warn→enforce ladder at the three v1 return-None sites (one bounded block → park at `blocked-pending-human`, never twice for the same state), V2-D4 unanswered-dispatch park (never released / silent-pass), SD-D drift/redirect pure function (positional `amendments_seen`, clock-free — WSL wall clock non-monotonic), `goal.md` + goal-evaluator V2-D2 anchor-divergence (refute-not-bless UNCHANGED). Cray ratified SD-A..SD-D via AskUserQuestion, all four as-rec (SD-A=2 PRs / SD-B=PR2 / SD-C=no migration / SD-D=positional). draft≠review≠verify: `plan-drafter` PLAN → Code R2 (grounded citations verified) → Cray SDs → Code build. Suite **2570/7** WITH Postgres (on merge commit `960e988`, CI PR-only); ruff + `ruff format` + `mypy --strict` clean; CI `gate` green (#721 2m37s / #722 2m46s); no MS-S1 / host-state — pure offline. PLAN-0069 `git mv`→`done/`. Full narrative: the Session-124 CF block above | `960e988` (#722 PR2 merge) / `17ca489` (#721 PR1 merge) / `.claude/hooks/{_goal_state.py,_goal_gate.py}` + the `/goal` command + the `goal-evaluator` subagent doc + `docs/plans/done/0069-*.md` |
+
+### Current Focus block removed — session 130 (ADR-0031 core-lifecycle architecture + plan-drafter rigor hardening) [rotated 2026-07-15, session-135 reconcile — 4-session CF window]
+
+> **Session 130, 2026-07-14 (head_commit `f250593` → `192dc52`) —
+> FOUNDATION/GOVERNANCE session: NO code feature shipped; two docs/config PRs
+> that harden the drafter's rigor and name vero-lite's core-lifecycle
+> architecture.** **(1) #740 (`eea875f`, `chore(drafter)`) — plan-drafter rigor
+> hardening (Lesson #0030 + a feedback memory).** The `plan-drafter` is
+> deliberately bounded (it TRUSTS its dispatch fact-pack), so a stale NEGATIVE
+> claim fed as a given ("OQ-8 unbuilt") nearly drove a WRONG ADR decision. Fix:
+> (a) Lesson #0030 + a feedback memory — verify the fact-pack BEFORE dispatching
+> the drafter, ESPECIALLY negative / precondition claims (**the newest accepted
+> ADR wins on FACTS** — an older ADR's OQ may already be resolved by a later
+> ADR); (b) `.claude/agents/plan-drafter.md` operating-discipline **point 8** (a
+> drafter-side backstop: cite-or-flag negative claims + a targeted supersession
+> grep). Root cause = Code dispatch hygiene, NOT a drafter defect. **(2) #741
+> (`192dc52`, `docs(adr)`) — ADR-0031 "core lifecycle architecture"
+> (Accepted).** Names vero-lite's two extensibility idioms (runtime registries
+> vs closed typed governed enums = the moat spine) and ratifies the principle
+> **"closed governed core + ONE typed, policy-carrying seam per core"** as the
+> answer to multi-vertical scale WITHOUT dissolving the moat. Builds NO seam —
+> it PRE-DESIGNS each core's seam for when its N≥2 trigger fires (the **fractal
+> Rule-of-Three**), with greppable moat tripwires. Seam map (D3): transform
+> StepKind · TriggerDriver/ECA · governance-gate plugin + decision-as-data ·
+> executor auto-discovery fold-in · audit transition taxonomy.
+> **draft≠review≠verify:** `plan-drafter` authored ADR-0031 → Code R2 → Cray
+> ratified OQ-1..4 as-recommended via AskUserQuestion. **First run under the
+> #740 hardening — the drafter CAUGHT OQ-4:** ADR-0025 D7's AT-2-generator CI
+> marker was NEVER built (only the principal-identity mirror exists) — armed as
+> an AC of the future gate-seam / Path-2 PLAN. **Direction (Cray s130):** the
+> hero must GENERATE the governance (AT-2: `doa_tier` / SoD), not compose around
+> it — sequenced as **Path 2** (hand-author a 2nd AT-2 signature on a DIFFERENT
+> vertical pressing a DIFFERENT seam → reach N≥2 → THEN build the AT-2 generator
+> per ADR-0025 D7); the **reframe**: OQ-8 (the typed AT-2 sub-model) is ALREADY
+> BUILT by ADR-0025, so AT-2 generation is an S–M build on shipped spec, not a
+> mega-program. **Grounded by** the private research doc
+> `docs/research/private/2026-07-14-work-lifecycle-cores.md` (the 7-core spine +
+> seam map that grounds ADR-0031; gitignored). Doc/config-only — no `services/`
+> change, no tests, deterministic-offline (no MS-S1 / host-state). 0 open PRs
+> after; tree clean (2 pre-existing untracked KEEP: `.claude/benchmark-results/`,
+> `.claude/launch.json`); MS-S1 idle; dev Postgres UP; loop-dispatcher DISABLED.
+> Open remediations: OQ-4 (arm the ADR-0025 D7 AT-2 marker — Path-2 AC) + OQ-2
+> (executor auto-discovery fold-in — small chore, N≥4, anytime). Commits:
+> `eea875f` (#740 drafter hardening) → `192dc52` (#741 ADR-0031 Accepted).
+
+### Recent Decisions row removed — 2026-07-13 (s125 — event-bridge full-loop live smoke PASS + energy over-current 4th OCT vertical) [rotated 2026-07-15, session-135 reconcile — 10-row RD window]
+
+| 2026-07-13 | **s125 — (1) event-bridge FULL-LOOP live smoke PASS (#724, EVIDENCE per §8) + (2) energy shipped as the 4th OCT vertical on the per-entity FK-parent band substrate (over-CURRENT, PLAN-0070 #725 Ready + #726 feat BUILT + CLOSED→`done/`)** — **#724 (`22365f2`, `docs(logs)`):** the deferred PLAN-0056 AC-12 / PLAN-0057 host-state smoke — on real MS-S1 (`gpt-oss:20b`) the reactive recommender picked `emergency_source` for the procurement CNC line-down event AND propagated through the production fire path (`recommend`→`build_event_resolver`→`fire_event`) into a PERSISTED `event_emergency_sourcing_round` run parked at the DOA `approve` gate (฿288k → `appr-pm`, `svc-buyer` on-behalf `req-planner`); closes the one remaining live seam (s114/115 proved the recommender-level pick). Disposable test DB; `event_bridge_enabled` default False (ship-dark), no prod code changed. **#725 (`9571abb`, `docs(plans)`) PLAN-0070 Ready** (`plan-drafter`-authored, Code R2 PASS all 7 citations, Cray SD-1..SD-6 via AskUserQuestion). **#726 (`b19dce4`, `feat`) BUILT+CLOSED one PR (SD-1):** re-themes energy's `substation_health_sweep` from over-TEMPERATURE → over-CURRENT — `read_readings` gains the FK-parent `join:` (`event_emitted_by_asset`) + `where {measured_kind: current}` + `site_id→asset_site_id` rename; the `judge` migrates `env_band` → `threshold_field: rated_current_a` + `direction: above` (each feeder banded vs its OWN `Asset.rated_current_a`). Demo flip: Feeder Meter A @ 84 A = `ok` under blanket env 90 but `breach` at 105% of its OWN 80 A rating → parks `waiting_human`; inverter (61 A) stays under its 722 A rating. **Energy's judge was the LAST shipped `env_band` consumer — retires here** (the `EnvBandEvaluateExecutor` engine path stays test-covered). NO new ADR / ontology / regen / Alembic (rides Accepted ADR-016 FKP amendment, its pre-recorded energy follow-on); whole change = `synthetic.py` + `procedures.yaml` + tests. Zero functional `services/` change (AC-8; only an SD-5 docstring hunk). Build-discovered coupling (disclosed correction to AC-8): 2 new current readings grew energy events 11→13 → NL-query `gold.yaml` nl-02/03/05 updated to match the data; no prod code. draft≠review≠verify: `plan-drafter` PLAN → Code R2 → Cray SD-1..SD-6 → build. All 9 ACs; suite **2572/7** WITH Postgres (on merge commit `b19dce4`, CI PR-only); ruff + `ruff format` + `mypy --strict` clean; BUILD deterministic-offline (live smoke = #724). Honesty: demo-breadth (Rule-of-Three MET at N=3 by PLAN-0068), not moat-critical. PLAN-0070 `git mv`→`done/`. Full narrative: the Session-125 CF block above | `b19dce4` (HEAD, #726 feat merge) / `9571abb` (#725 PLAN-0070 Ready) / `22365f2` (#724 live-smoke log) / `verticals/energy/{data_adapter/synthetic.py, procedures.yaml}` + `tests/**` + `docs/logs/2026-07-13-event-bridge-full-loop-live-smoke.md` + `docs/plans/done/0070-*.md` |
