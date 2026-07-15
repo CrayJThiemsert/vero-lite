@@ -299,7 +299,14 @@ async def test_read_stock_routes_to_the_shipped_executor_not_the_seed() -> None:
     await register_procurement_procedure_executors()
     executors = registry.get_procedure_executors(_VERTICAL)()
 
-    assert set(executors) == {StepKind.QUERY, StepKind.EVALUATE, StepKind.ACTION}
+    # PLAN-0078 Step 1: TRANSFORM joins the exact key set (shared fieldless executor, all 4
+    # factories, pure-additive — the PR-1 intake flip adds the first declared transform).
+    assert set(executors) == {
+        StepKind.QUERY,
+        StepKind.EVALUATE,
+        StepKind.ACTION,
+        StepKind.TRANSFORM,
+    }
     query = executors[StepKind.QUERY]
     assert isinstance(query, QueryStepRouter), "the production QUERY slot is the router"
     assert isinstance(query.declared, QueryStepExecutor), "declared leg = the shipped executor"

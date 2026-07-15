@@ -55,6 +55,7 @@ from services.engine.procedures.query_router import QueryStepRouter
 from services.engine.procedures.query_step import QueryStepExecutor
 from services.engine.procedures.runs import PipelineRun, PipelineRunStatus, StepResultStatus
 from services.engine.procedures.spec import Person, Step, StepKind, load_procedures
+from services.engine.procedures.transform_step import TransformStepExecutor
 from services.engine.registry import RegistryError, registry
 from verticals.procurement.data_adapter.fastenal_csv import FastenalCsvAdapter
 from verticals.procurement.handlers import register_procurement_handlers
@@ -287,6 +288,10 @@ def _executors(
         StepKind.QUERY: query,
         StepKind.EVALUATE: GovernanceEvaluateExecutor(base=EvaluateStepExecutor()),
         StepKind.ACTION: action,
+        # PLAN-0078 Step 1 (SD-3): the shared fieldless transform executor, registered uniformly
+        # across all 4 factories. Pure-additive at Step 1 — no procedure declares a transform yet;
+        # the PR-1 intake flip adds the first (the `enrich` step between `intake` and `judge`).
+        StepKind.TRANSFORM: TransformStepExecutor(),
     }
 
 
