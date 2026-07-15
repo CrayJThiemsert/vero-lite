@@ -36,6 +36,7 @@ from services.engine.procedures.action_step import (
     ActionStepExecutor,
     GateApproverError,
     PrincipalSoDError,
+    TierAuthorityError,
     resolve_gated_step,
 )
 from services.engine.procedures.evaluate_step import EvaluateStepExecutor
@@ -64,6 +65,7 @@ from services.engine.procedures.spec import (
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
 from verticals.procurement.data_adapter import synthetic
+from verticals.procurement.hero_demo.run import seed_operate_waiting_human_run
 
 # --------------------------------------------------------------------------- #
 # Offline LLM-free fakes (mirrors test_procedure_action_gate / _headline)
@@ -234,6 +236,7 @@ async def test_happy_two_distinct_principals_proceeds(db_engine: AsyncEngine) ->
             principals=[alice, bob],
         )
     assert len(spy.calls) == 1, "a governed gate executes the approved handler"
+    assert resolved.artifact is not None
     assert resolved.artifact["output_set"][0]["status"] == "executed"
     # AC-8 (A1b Step 6): the governed SoD gate emits the typed audit-to-control tie on the
     # resolved step — control_ref {kind:'sod', id: the sorted distinct_steps} + the approver PK.
@@ -402,14 +405,23 @@ async def _run_procurement_to_approve(maker: Any, run_id: str, requester: Person
     return [p["action_id"] for p in (approve_sr.artifact or {}).get("output_set", [])]
 
 
-async def test_procurement_distinct_principals_proceeds(db_engine: AsyncEngine) -> None:
-    """AC-4 / AC-10 — the REAL hero procedure with its AUTHORED principals: requester
-    (req-planner) + a distinct approver (appr-director) pass the live SoD gate."""
+async def test_procurement_senior_approves_downward_governed(db_engine: AsyncEngine) -> None:
+    """PLAN-0075 AC-8 — the blessing test, FIXED. It formerly bound the PLAIN ActionStepExecutor
+    (no doa_tier verdict persisted), so the tier-authority check could not see the resolved tier —
+    the AC-3 plain-executor bypass. Re-harnessed onto the GOVERNANCE executors via the hero seed so
+    the ฿288,000 doa_tier verdict is persisted (resolved tier ผจก.จัดซื้อ, routed to appr-pm).
+
+    A SENIOR approver (appr-director, who holds ผจก.จัดซื้อ CUMULATIVELY — Cray s132 'senior can
+    approve downward') resolves the gate GOVERNED: distinct from the requester (SoD) AND holds the
+    ladder-resolved tier role (tier-authority). Both audit ties name the ACTOR (appr-director) —
+    the SoD tie and the authority tie (PLAN-0075 SD-6a)."""
     maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with maker() as session:
+        result = await seed_operate_waiting_human_run(session, run_id="proc-ok")
     proc, _agent, principals, aliases = _procurement()
-    by_id = {p.person_id: p for p in principals}
-    requester, approver = by_id["req-planner"], by_id["appr-director"]
-    action_ids = await _run_procurement_to_approve(maker, "proc-ok", requester)
+    approver = next(p for p in principals if p.person_id == "appr-director")
+    approve_sr = next(sr for sr in result.step_results if sr.step_id == "approve")
+    action_ids = [p["action_id"] for p in (approve_sr.artifact or {})["output_set"]]
     async with maker() as session:
         resolved = await resolve_gated_step(
             session,
@@ -421,13 +433,42 @@ async def test_procurement_distinct_principals_proceeds(db_engine: AsyncEngine) 
             principals=principals,
             principal_aliases=aliases,
         )
+    assert resolved.artifact is not None
     assert all(e["status"] == "executed" for e in resolved.artifact["output_set"])
-    # AC-8 (A1b Step 6) — the REAL hero gate emits the audit-to-control tie: the procurement SoD
-    # constraint is [intake, approve] (sorted id 'approve+intake'), the approver appr-director.
     assert resolved.audit is not None
     assert resolved.audit["governed_decision"] == [
-        {"control_ref": {"kind": "sod", "id": "approve+intake"}, "principal_id": "appr-director"}
+        {"control_ref": {"kind": "sod", "id": "approve+intake"}, "principal_id": "appr-director"},
+        {"control_ref": {"kind": "doa_tier", "id": "ผจก.จัดซื้อ"}, "principal_id": "appr-director"},
     ]
+
+
+async def test_procurement_junior_approver_refused_by_tier_authority(
+    db_engine: AsyncEngine,
+) -> None:
+    """PLAN-0075 AC-2/AC-8 — the bug this PLAN closes, at the LIVE gate. A JUNIOR approver
+    (appr-buyer, holds only หน.จัดซื้อ — the ฿0-50k tier) is REFUSED at the ฿288,000 gate the
+    ladder routed to ผจก.จัดซื้อ, even though they hold the generic ``approver`` role and are
+    distinct from the requester (so the SoD check ALONE would have let them through). The
+    tier-authority run-check blocks the gate before any approve/execute."""
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with maker() as session:
+        result = await seed_operate_waiting_human_run(session, run_id="proc-junior")
+    proc, _agent, principals, aliases = _procurement()
+    junior = next(p for p in principals if p.person_id == "appr-buyer")
+    approve_sr = next(sr for sr in result.step_results if sr.step_id == "approve")
+    action_ids = [p["action_id"] for p in (approve_sr.artifact or {})["output_set"]]
+    async with maker() as session:
+        with pytest.raises(TierAuthorityError, match="does not hold the ladder-resolved tier role"):
+            await resolve_gated_step(
+                session,
+                "proc-junior",
+                "approve",
+                {aid: "approve" for aid in action_ids},
+                principal=junior,
+                procedure=proc,
+                principals=principals,
+                principal_aliases=aliases,
+            )
 
 
 async def test_procurement_requester_cannot_self_approve(db_engine: AsyncEngine) -> None:
