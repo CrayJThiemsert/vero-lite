@@ -58,6 +58,7 @@ class StepKind(StrEnum):
     EVALUATE = "evaluate"
     ACTION = "action"
     HUMAN_TASK = "human_task"
+    TRANSFORM = "transform"  # PLAN-0077: declare the derivation as data (ADR-016 OQ-A1 additive)
 
 
 class Autonomy(StrEnum):
@@ -397,6 +398,310 @@ class StepInput(BaseModel):
                 if spec.with_read in seen:
                     raise ValueError(f"duplicate join for read '{spec.with_read}'")
                 seen.add(spec.with_read)
+        return self
+
+
+# --- the transform grammar (PLAN-0077; renders ADR-0031 D3 row-1 + ADR-016 Q4 OQ-3) ---
+#
+# "Declare the derivation as data." A `transform` step declares, as typed authored
+# spec surface, the deterministic field derivations that today live in per-vertical
+# seed/executor code. The `derive` op's expression is a CLOSED typed tree (below):
+# there is no node that can express a call, an attribute access, or a string of code,
+# so arbitrary evaluation is UNREPRESENTABLE BY CONSTRUCTION (ADR-0031 D2 tripwire 1;
+# the ADR-0025 D3 unrepresentable-bypass discipline). No StepKind is opened to worker
+# code (tripwire 2); the surface is typed, not free-form (tripwire 3).
+
+TransformArithOp = Literal["add", "sub", "mul", "div", "min", "max"]
+"""The closed arithmetic operator vocabulary of the `derive` expression tree (SD-3).
+`sub`/`div` are binary; `add`/`mul`/`min`/`max` are n-ary (>=2). Exact-`Decimal`
+evaluation, never binary float on an authority quantity (PLAN-0077 SD-3/AC-5)."""
+
+TransformCompareOp = Literal["le", "lt", "ge", "gt", "eq"]
+"""The closed compare operator vocabulary (SD-3; provisional — rides the tree, no
+standalone op). All binary; each yields a boolean."""
+
+_TRANSFORM_EXPR_MAX_DEPTH = 8
+"""SD-3 static depth bound on the `derive` expression tree — a schema property, so an
+unbounded/pathological nesting fails at load, never at run."""
+
+
+class ExprField(BaseModel):
+    """A leaf that reads a source field off the input row (SD-3).
+
+    The ONLY name-lookup node the grammar has — it reads a flat field of the
+    threaded row. There is deliberately no attribute-access, index, or call node."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    field: str = Field(..., description="name of a field on the input row to read")
+
+
+class ExprConst(BaseModel):
+    """A literal leaf (SD-3). Numbers are authored as STRINGS so the executor coerces
+    them via exact `Decimal(str(...))` — never a binary float on an authority quantity."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    const: str | int | bool = Field(
+        ...,
+        description="a JSON-safe literal; author numeric constants as strings for exact Decimal",
+    )
+
+
+class ExprOp(BaseModel):
+    """An interior node: a CLOSED operator applied to sub-expressions (SD-3).
+
+    The operator is a member of a closed enum; `args` are themselves `Expr` nodes.
+    Because the only node types are `field` / `const` / `op`, the tree cannot express
+    a call, an attribute access, or a string of code — arbitrary evaluation is
+    unrepresentable by construction (ADR-0031 D2 tripwire 1)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    op: TransformArithOp | TransformCompareOp = Field(
+        ..., description="a CLOSED operator (arithmetic or compare) — never arbitrary eval"
+    )
+    args: list[Expr] = Field(
+        ..., min_length=1, description="operand sub-expressions (each an Expr node)"
+    )
+
+    @model_validator(mode="after")
+    def _validate_arity(self) -> Self:
+        binary = {"sub", "div", "le", "lt", "ge", "gt", "eq"}
+        nary = {"add", "mul", "min", "max"}
+        if self.op in binary and len(self.args) != 2:
+            raise ValueError(
+                f"transform derive: operator '{self.op}' is binary — needs exactly 2 args "
+                f"(got {len(self.args)})"
+            )
+        if self.op in nary and len(self.args) < 2:
+            raise ValueError(f"transform derive: '{self.op}' needs >=2 args (got {len(self.args)})")
+        return self
+
+
+# The closed expression grammar: a field/const leaf or a closed-operator node. Nothing
+# else is representable — the anti-eval wall is the union's shape, not a runtime check.
+Expr = ExprField | ExprConst | ExprOp
+ExprOp.model_rebuild()
+
+
+def _expr_depth(expr: Expr) -> int:
+    """Nesting depth of an expression tree — a leaf is 1, an op is 1 + max(child)."""
+    if isinstance(expr, ExprOp):
+        return 1 + max(_expr_depth(arg) for arg in expr.args)
+    return 1
+
+
+class DeriveBody(BaseModel):
+    """`derive`: write `target` from a typed expression over the row's fields (SD-3)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    target: str = Field(..., description="output field written on the row")
+    expr: Expr = Field(..., description="the derivation expression (closed typed tree; SD-3)")
+
+    @model_validator(mode="after")
+    def _validate_depth(self) -> Self:
+        depth = _expr_depth(self.expr)
+        if depth > _TRANSFORM_EXPR_MAX_DEPTH:
+            raise ValueError(
+                f"transform derive '{self.target}': expression nests {depth} deep, exceeding "
+                f"the {_TRANSFORM_EXPR_MAX_DEPTH} bound (SD-3)"
+            )
+        return self
+
+
+class DefaultBody(BaseModel):
+    """`default`: write `target` = `value` ONLY when the field is absent (SD-7 authored
+    escape hatch — the engine never invents a default; the author declares one)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    target: str = Field(..., description="output field to fill when absent")
+    value: Any = Field(..., description="the authored default (JSON-safe; scalar or map)")
+
+
+class CoerceBody(BaseModel):
+    """`coerce`: convert an existing `target` field to a v1 target type (SD-2)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    target: str = Field(..., description="existing field to coerce in place")
+    to: Literal["string", "decimal"] = Field(
+        ..., description="v1 coerce target type (string | decimal — the two exercised cases)"
+    )
+
+
+class RenameBody(BaseModel):
+    """`rename`: copy/move `source` to `target` (the thin op; overlaps query
+    `project.fields` — disclosed SD-2)."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    source: str = Field(..., alias="from", description="existing source field")
+    target: str = Field(..., description="output field name")
+
+
+class MapBand(BaseModel):
+    """One band of a `map_value` threshold ladder: `source <= ceiling` maps to `value`.
+
+    `ceiling` is authored as a Decimal string (exact). Bands are ascending; the
+    unbounded top is the mandatory `above` (see :class:`MapValueBody`)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ceiling: str = Field(..., description="inclusive upper bound (Decimal string)")
+    value: str = Field(..., description="banded output value for source <= ceiling")
+
+
+class MapValueBody(BaseModel):
+    """`map_value` (threshold-ladder form): band a numeric `source` into `target` (SD-2).
+
+    The case-2 marquee datum (`_DOSE_LADDER`, cold_chain_assess.py). Bands are strictly
+    ascending by ceiling, ceilings inclusive, and `above` is a MANDATORY unbounded top
+    band so cover is TOTAL — a source above every ceiling always bands (never falls
+    through, the fail-dangerous shape PLAN-0074 fixed)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    target: str = Field(..., description="output field written with the banded value")
+    source: Expr = Field(..., description="the numeric expression to band (typically a field leaf)")
+    bands: list[MapBand] = Field(..., min_length=1, description="ascending inclusive-ceiling bands")
+    above: str = Field(
+        ...,
+        description="MANDATORY unbounded top band — the value when source exceeds every "
+        "ceiling; total cover, never optional",
+    )
+
+    @model_validator(mode="after")
+    def _validate_bands_ascending(self) -> Self:
+        from decimal import Decimal, InvalidOperation
+
+        ceilings: list[Decimal] = []
+        for band in self.bands:
+            try:
+                ceilings.append(Decimal(band.ceiling))
+            except (InvalidOperation, ValueError) as exc:
+                raise ValueError(
+                    f"map_value '{self.target}': band ceiling '{band.ceiling}' is not a decimal"
+                ) from exc
+        if any(nxt <= cur for cur, nxt in pairwise(ceilings)):
+            raise ValueError(
+                f"map_value '{self.target}': band ceilings must be strictly ascending (got "
+                f"{[b.ceiling for b in self.bands]})"
+            )
+        return self
+
+
+class DeriveOp(BaseModel):
+    """A `derive` op entry (single-key discriminated form)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    derive: DeriveBody
+
+
+class DefaultOp(BaseModel):
+    """A `default` op entry."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    default: DefaultBody
+
+
+class CoerceOp(BaseModel):
+    """A `coerce` op entry."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    coerce: CoerceBody
+
+
+class RenameOp(BaseModel):
+    """A `rename` op entry."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    rename: RenameBody
+
+
+class MapValueOp(BaseModel):
+    """A `map_value` op entry."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    map_value: MapValueBody
+
+
+# The v1 op-set (SD-2): each op is a single-key model; the union discriminates
+# structurally (extra="forbid"). Deferred ops (unit_convert / extract / normalize /
+# concat / discrete map_value) are NOT members — zero concrete instances (L-7).
+TransformOp = DeriveOp | DefaultOp | CoerceOp | RenameOp | MapValueOp
+
+
+def _op_target(op: TransformOp) -> str:
+    """The output field an op writes (its `target`)."""
+    if isinstance(op, DeriveOp):
+        return op.derive.target
+    if isinstance(op, DefaultOp):
+        return op.default.target
+    if isinstance(op, CoerceOp):
+        return op.coerce.target
+    if isinstance(op, RenameOp):
+        return op.rename.target
+    return op.map_value.target
+
+
+def _op_produces(op: TransformOp) -> bool:
+    """Whether an op PRODUCES a fresh value (derive / default / map_value) vs transforms
+    an existing field in place (coerce / rename). Two producing ops writing the same
+    target is a dead write (author error) — coerce/rename over an earlier target is fine."""
+    return isinstance(op, DeriveOp | DefaultOp | MapValueOp)
+
+
+def validate_transform_spec(transform: TransformSpec) -> None:
+    """The single structural predicate for a transform declaration (PLAN-0077 L-6).
+
+    Called at THREE sites so load-acceptance and run-dispatch cannot drift: at
+    construction (the :class:`TransformSpec` model validator), at the load gate
+    (``orchestrator.validate_read_bindings``), and at run-compile (Phase B
+    ``plan_transform``). Transform is ontology-INDEPENDENT (row-local), so — unlike
+    the join/project grammar's ``_validate_join_project`` — there is no ontology to
+    resolve against: the per-op invariants (operator arity, expression depth,
+    strictly-ascending inclusive-ceiling bands with a mandatory unbounded top) are
+    enforced by the sub-model validators at construction; this predicate adds the
+    cross-op invariant — no PRODUCING op (derive/default/map_value) writes a target an
+    earlier producing op already wrote (a dead write; coerce/rename over an earlier
+    target is the legitimate pipeline shape)."""
+    produced: set[str] = set()
+    for op in transform.ops:
+        if _op_produces(op):
+            target = _op_target(op)
+            if target in produced:
+                raise ValueError(
+                    f"transform: target '{target}' is produced by more than one "
+                    "derive/default/map_value op (a dead write) — SD-2"
+                )
+            produced.add(target)
+
+
+class TransformSpec(BaseModel):
+    """The typed declarative transform of a `transform` step (PLAN-0077 SD-6).
+
+    An ordered pipeline of `ops`, applied row-local (SD-8) to each threaded input row.
+    Empty is rejected (a transform that derives nothing is not a transform). Two
+    PRODUCING ops (derive/default/map_value) may not write the same target (a dead
+    write); a coerce/rename may operate on an earlier target (the pipeline shape)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ops: list[TransformOp] = Field(
+        ..., min_length=1, description="ordered row-local derivations (non-empty)"
+    )
+
+    @model_validator(mode="after")
+    def _validate_structure(self) -> Self:
+        validate_transform_spec(self)
         return self
 
 
@@ -935,6 +1240,13 @@ class Step(BaseModel):
         "D2). Human-author-only (never on a draft type, D4); the gate_kind POINTS AT it — it "
         "is never stored in the non-authoritative facet (D2-A4).",
     )
+    transform: TransformSpec | None = Field(
+        default=None,
+        description="AUTHORITATIVE typed transform declaration ('declare the derivation as "
+        "data', PLAN-0077); transform steps ONLY. Human-author-only (never on a draft type, "
+        "D3); present only on a `transform`-kind step. Absent on a transform step = an "
+        "unfilled governance stub the review gate shows (derive_governance_todo).",
+    )
 
     def _validate_band_family(self) -> None:
         """The authored band belongs to ``evaluate`` steps only (PLAN-0022 Step 3); a
@@ -974,6 +1286,11 @@ class Step(BaseModel):
         always run auto; ``human_task`` is inherently human.
         """
         self._validate_band_family()
+        if self.transform is not None and self.kind is not StepKind.TRANSFORM:
+            raise ValueError(
+                f"step '{self.step_id}': a transform declaration applies to transform steps "
+                f"only (kind '{self.kind.value}' must not set transform) — PLAN-0077 SD-6"
+            )
         if self.kind is StepKind.ACTION:
             if self.autonomy is None:
                 self.autonomy = Autonomy.GATED

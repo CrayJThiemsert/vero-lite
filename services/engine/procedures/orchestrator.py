@@ -51,6 +51,7 @@ from services.engine.procedures.spec import (
     Step,
     StepKind,
     Trigger,
+    validate_transform_spec,
 )
 
 
@@ -252,6 +253,22 @@ def read_bound_violation(
     return None
 
 
+def _validate_transform_load(step: Step) -> None:
+    """The transform grammar's load gate (PLAN-0077 L-6): the SAME structural predicate
+    the run-compile (Phase B ``plan_transform``) runs, so load-acceptance and
+    run-dispatch cannot drift (the ``_validate_join_project`` no-drift pattern). A
+    transform step with an unfilled (``None``) declaration is a stub the governance
+    gate catches (``validate_governance_complete``), NOT a load-gate refusal."""
+    if step.transform is None:
+        return
+    try:
+        validate_transform_spec(step.transform)
+    except ValueError as exc:
+        raise ProcedureError(
+            f"step '{step.step_id}': invalid transform declaration — {exc}"
+        ) from exc
+
+
 def validate_read_bindings(
     procedure: Procedure,
     agent: Agent,
@@ -286,6 +303,9 @@ def validate_read_bindings(
     """
     allowed_object_types = agent.allowed.object_types
     for step in procedure.steps:
+        if step.kind is StepKind.TRANSFORM:
+            _validate_transform_load(step)
+            continue
         if step.kind is not StepKind.QUERY or step.input is None or not step.input.reads:
             continue
         for object_type in step.input.reads:
