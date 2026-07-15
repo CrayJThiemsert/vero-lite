@@ -63,18 +63,23 @@ principals:
   - person_id: req-planner
     name: "ปรีชา — ผู้วางแผนซ่อมบำรุง (ผู้ขอซื้อ)"
     roles: [requester]
+  # CUMULATIVE authority roles (PLAN-0075, Cray s132 — "senior can approve downward"): each tier
+  # holds its OWN role AND every LOWER tier's role, so a senior satisfies the tier_authority gate
+  # for a lower-tier PO (exact-match enforcement, rank-as-data — NO engine rank primitive, SD-1a).
+  # The doa_tier resolver's NATIVE-tier routing still names the tier's own approver (e.g. ฿288k ->
+  # appr-pm, not the seniors who also hold ผจก.จัดซื้อ) so the audit routing record stays honest.
   - person_id: appr-buyer
     name: "สมหญิง — หน.จัดซื้อ"
     roles: [approver, "หน.จัดซื้อ"]
   - person_id: appr-pm
     name: "นรี — ผจก.จัดซื้อ"
-    roles: [approver, "ผจก.จัดซื้อ"]
+    roles: [approver, "ผจก.จัดซื้อ", "หน.จัดซื้อ"]
   - person_id: appr-plant
     name: "วิชัย — ผจก.โรงงาน"
-    roles: [approver, "ผจก.โรงงาน"]
+    roles: [approver, "ผจก.โรงงาน", "ผจก.จัดซื้อ", "หน.จัดซื้อ"]
   - person_id: appr-director
     name: "เดชา — ผอ.โรงงาน"
-    roles: [approver, "ผอ."]
+    roles: [approver, "ผอ.", "ผจก.โรงงาน", "ผจก.จัดซื้อ", "หน.จัดซื้อ"]
 
 # Service principals — the NON-human actors a `schedule`-triggered run acts as (ADR-0028 SP-4;
 # PLAN-0053 S2 actor model / PLAN-0055 Step 8). A DISTINCT type from `principals` with NO `roles`

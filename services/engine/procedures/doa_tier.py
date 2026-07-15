@@ -26,6 +26,7 @@ from typing import Any
 
 from services.engine.procedures.orchestrator import ProcedureError
 from services.engine.procedures.spec import DoaLadder, Person, PersonId, RoleId
+from services.engine.procedures.tier_authority import native_approver
 
 
 class DoaTierError(ProcedureError):
@@ -129,12 +130,17 @@ def resolve_doa_tier(
     tier = ladder.tiers[tier_idx]
     band_max = ladder.tiers[tier_idx + 1].min_amount if tier_idx + 1 < len(ladder.tiers) else None
     role = tier.approver_role
-    holders = sorted(p.person_id for p in principals if role in p.roles)
+    # NATIVE-TIER routing (PLAN-0075, Cray s132): the routed-to approver is the person for whom
+    # this tier is their HIGHEST authority — excluding a senior who holds this role only
+    # cumulatively (so they may approve DOWNWARD, enforced by tier_authority, not routed to).
+    higher_roles = frozenset(t.approver_role for t in ladder.tiers[tier_idx + 1 :])
     return DoaTierVerdict(
         resolved_tier_id=role,
         required_role=role,
         amount=TierAmount(value=amount, currency=currency),
         band=TierBand(min=tier.min_amount, max=band_max),
         sod_required=sod_required,
-        resolved_approver_id=holders[0] if holders else None,
+        resolved_approver_id=native_approver(
+            role, higher_roles=higher_roles, principals=principals
+        ),
     )
