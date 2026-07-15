@@ -651,3 +651,42 @@ def test_d8_severity_fixture3_wrong_role_is_not_governed() -> None:
         step_principals={"intake": "appr-qa", "approve": "req-coldchain"},
     )
     assert verdict.governed is False
+
+
+# --- F3 (PLAN-0075 AC-5) — an AT-2 AUTHORITY step must be a GATED action -----------------------
+# An auto authority step never reaches the human gate, so the tier-authority run-check (which
+# lives only at resolve_gated_step) never fires — a one-word gated->auto flip on the very step the
+# control hangs on (ADR-016 SP-1). The load-time check makes it unrepresentable.
+
+
+def test_f3_shipped_gated_authority_step_loads() -> None:
+    """Positive control: a valid AT-2 procedure whose doa_tier ``approve`` is a GATED action
+    passes validate_governance_complete (so the negatives below are not vacuous)."""
+    validate_governance_complete(_at2_procedure())  # no raise
+    validate_governance_complete(_severity_procedure())  # the severity_tier surface too
+
+
+def test_f3_auto_doa_authority_step_is_refused_at_load() -> None:
+    """S1: an auto doa_tier ``approve`` fails load via F3 specifically — the step is the ONLY gate
+    (intake + approve), so the sibling auto-downstream-of-a-gate guard does NOT fire; F3 is what
+    catches it. This is F3's unique contribution: an auto authority step with no prior gate."""
+    proc = _at2_procedure()
+    intake = next(s for s in proc.steps if s.step_id == "intake")
+    approve = next(s for s in proc.steps if s.step_id == "approve")
+    bad = proc.model_copy(
+        update={"steps": [intake, approve.model_copy(update={"autonomy": Autonomy.AUTO})]}
+    )
+    with pytest.raises(ProcedureError, match="not a GATED action"):
+        validate_governance_complete(bad)
+
+
+def test_f3_auto_severity_authority_step_is_refused_at_load() -> None:
+    """S3: the same for a severity_tier disposition ``approve`` flipped to auto."""
+    proc = _severity_procedure()
+    steps = [
+        s.model_copy(update={"autonomy": Autonomy.AUTO}) if s.step_id == "approve" else s
+        for s in proc.steps
+    ]
+    bad = proc.model_copy(update={"steps": steps})
+    with pytest.raises(ProcedureError, match="not a GATED action"):
+        validate_governance_complete(bad)

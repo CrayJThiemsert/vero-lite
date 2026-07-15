@@ -606,6 +606,7 @@ def validate_governance_complete(procedure: Procedure) -> None:
             f"requires a separation_of_duties constraint (ADR-0025 D5 / PLAN-0074)"
         )
     _check_no_auto_downstream_of_gate(procedure)
+    _check_authority_step_gated(procedure)
 
 
 def _suspends(step: Step) -> bool:
@@ -679,6 +680,34 @@ def _check_no_auto_downstream_of_gate(procedure: Procedure) -> None:
                 f"{sorted(_AUDIT_TERMINAL_HANDLERS)} may run auto after a gate (it records, it "
                 f"does not act) — gate the step, move it before the gate, or route it through the "
                 f"audit handler."
+            )
+
+
+def _check_authority_step_gated(procedure: Procedure) -> None:
+    """Raise :class:`ProcedureError` if a step carrying AT-2 AUTHORITY content (``doa_tier`` /
+    ``severity_tier``) is not a GATED action (PLAN-0075 AC-5 / F3; ADR-016 SP-1 "silently converts
+    gated->auto").
+
+    An authority ladder routes a human approver by a resolved tier, and that routing is ENFORCED
+    only at the human gate (``resolve_gated_step`` -> the tier-authority run-check, PLAN-0075). An
+    ``auto`` authority step never reaches ``waiting_human`` — it approves + executes inline, so the
+    gate never runs and the tier authority is never enforced (a one-word ``gated``->``auto`` flip
+    on the very step the whole control hangs on). Making it unrepresentable AT LOAD closes that
+    near-miss: the sibling :func:`_check_no_auto_downstream_of_gate` guards auto steps AFTER a
+    gate; this guards the authority step from BEING un-gated. All shipped surfaces already comply.
+    Cross-ref ADR-0025 D6 g2 (a governed decision must reach a human)."""
+    for step in procedure.steps:
+        content = step.governance_content
+        if content is None or content.kind not in ("doa_tier", "severity_tier"):
+            continue
+        if step.kind is not StepKind.ACTION or step.autonomy is not Autonomy.GATED:
+            autonomy_label = step.autonomy.value if step.autonomy is not None else "none"
+            raise ProcedureError(
+                f"step '{step.step_id}': carries AT-2 authority content ('{content.kind}') but is "
+                f"not a GATED action (kind '{step.kind.value}', autonomy "
+                f"'{autonomy_label}') — an authority tier is enforced ONLY at the human "
+                f"gate, so an un-gated authority step bypasses the tier-authority run-check "
+                f"entirely (PLAN-0075 F3 / AC-5; ADR-016 SP-1). Author it as a gated action."
             )
 
 
