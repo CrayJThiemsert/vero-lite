@@ -76,7 +76,12 @@ from services.engine.procedures.query_router import QueryStepRouter
 from services.engine.procedures.query_step import QueryStepExecutor
 from services.engine.procedures.spec import Person, Step, StepKind, load_procedures
 from services.engine.registry import RegistryError, registry
-from verticals.supply_chain.cold_chain_assess import ColdChainAssessExecutor
+from verticals.supply_chain.cold_chain_assess import (
+    ColdChainAssessExecutor,
+)
+from verticals.supply_chain.cold_chain_assess import (
+    derivation_hash as cold_chain_derivation_hash,
+)
 
 _VERTICAL = "supply_chain"
 _ASSESS_STEP = "assess"
@@ -298,3 +303,9 @@ async def register_supply_chain_procedure_executors() -> None:
         }
 
     registry.register_procedure_executors(_VERTICAL, factory)
+    # PLAN-0075 AC-13 (SD-5): pin the severity-DERIVATION constants into every supply_chain run's
+    # governance snapshot — the live provider (never a cached string) so a run-start↔resolve edit
+    # to `_DOSE_LADDER` / `_TOP_SEVERITY` fails closed at the pin. Registered beside the factory
+    # (same idempotency gate); the engine pulls it back by vertical (`registry.derivation_hash`)
+    # without importing this vertical's constants.
+    registry.register_derivation_hash(_VERTICAL, cold_chain_derivation_hash)
