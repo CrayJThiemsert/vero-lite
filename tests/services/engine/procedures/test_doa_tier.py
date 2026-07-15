@@ -133,9 +133,10 @@ def test_resolves_the_approver_person_for_the_tier() -> None:
 
 
 def test_unresolved_approver_is_none_not_a_raise() -> None:
-    """No declared Person holds the tier role -> resolved_approver_id is None (the fail-closed
-    on an unresolvable approver is the SoD run-check's job at the gate, A1b Step 1 — kept
-    distinct here, NOT a doa_tier raise)."""
+    """No declared Person is native to the tier role -> resolved_approver_id is None (the
+    fail-closed on a wrong / absent approver is the tier-authority run-check's job at the gate —
+    PLAN-0075: the acting approver must HOLD the resolved role — kept distinct here, NOT a
+    doa_tier raise)."""
     v = resolve_doa_tier(
         _ladder(), amount=Decimal("288000"), currency="THB", principals=[], sod_required=True
     )

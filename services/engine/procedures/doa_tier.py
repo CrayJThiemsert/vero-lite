@@ -63,10 +63,11 @@ class DoaTierVerdict:
     ``resolved_tier_id`` is the tier's stable handle — its ``approver_role`` (PLAN-0044 SD-1
     decision D1: a DOA tier's stable identity in a ladder is its distinct approver role; the
     band distinguishes tiers numerically). ``required_role`` is the role that must approve at
-    this tier (== ``approver_role``). ``resolved_approver_id`` is the ``person_id`` that role
-    resolves to via the vertical principals (``None`` if no declared :class:`Person` holds it —
-    the fail-closed-on-unresolved-approver is the SoD run-check's job at the gate, A1b Step 1,
-    not this resolution). The render joins audit → control → principal on these keys."""
+    this tier (== ``approver_role``). ``resolved_approver_id`` is the NATIVE-tier ``person_id``
+    that role routes to (``None`` if no declared :class:`Person` is native to it — the
+    fail-closed-on-a-wrong-or-absent-approver is the TIER-AUTHORITY run-check's job at the gate
+    (PLAN-0075: the acting approver must HOLD the resolved tier role), not this resolution). The
+    render joins audit → control → principal on these keys."""
 
     resolved_tier_id: str
     required_role: RoleId
@@ -105,14 +106,16 @@ def resolve_doa_tier(
     ``ladder.tiers`` is validated ascending by floor with the first floor at 0 and strictly
     increasing (total cover from zero spend), so every ``amount >= 0`` maps to exactly one
     half-open band ``[min_i, min_{i+1})`` (top tier unbounded). The required tier is the
-    rightmost whose ``min_amount <= amount``; its ``approver_role`` resolves to the acting
-    :class:`Person` (the first by ``person_id`` holding that role — procurement binds one
-    Person per tier role). The spend is :class:`~decimal.Decimal`, never ``float``.
+    rightmost whose ``min_amount <= amount``; its ``approver_role`` routes to the NATIVE-tier
+    :class:`Person` (:func:`~services.engine.procedures.tier_authority.native_approver` — the
+    person for whom this tier is their HIGHEST authority, so a senior who holds the role only
+    cumulatively is not routed to). The spend is :class:`~decimal.Decimal`, never ``float``.
 
     Raises :class:`DoaTierError` (fail closed — no silent conversion) when ``currency`` differs
     from the ladder's single ``currency``, or when ``amount`` is below the ladder's zero floor
-    (a negative / invalid spend). Does NOT raise when the role resolves to no Person — that is
-    the SoD run-check's fail-closed surface at the gate (A1b Step 1), kept distinct here."""
+    (a negative / invalid spend). Does NOT raise when the role routes to no Person — enforcing
+    that the acting approver HOLDS the resolved tier role is the tier-authority run-check's
+    fail-closed surface at the gate (PLAN-0075), kept distinct here."""
     if currency != ladder.currency:
         raise DoaTierError(
             f"doa_tier: spend currency '{currency}' does not match the DOA ladder currency "

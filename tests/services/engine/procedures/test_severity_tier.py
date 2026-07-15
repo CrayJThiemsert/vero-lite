@@ -137,8 +137,9 @@ def test_resolves_the_approver_person_for_the_tier() -> None:
 
 
 def test_unresolved_approver_is_none_not_a_raise() -> None:
-    """No declared Person holds the tier role → resolved_approver_id is None (the fail-closed on
-    an unresolvable approver is the SoD run-check's job at the gate — kept distinct here)."""
+    """No declared Person is native to the tier role → resolved_approver_id is None (the
+    fail-closed on a wrong / absent approver is the tier-authority run-check's job at the gate,
+    PLAN-0075 — kept distinct here)."""
     v = resolve_severity_tier(
         _ladder(), severity=ExcursionSeverity.MAJOR, principals=[], sod_required=True
     )
