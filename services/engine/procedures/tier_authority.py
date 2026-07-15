@@ -147,12 +147,21 @@ def check_tier_authority(
     (2) an authority step with no persisted verdict -> ``VERDICT_MISSING``;
     (3) any persisted verdict whose ``required_role`` the principal does not hold ->
     ``TIER_ROLE_MISMATCH`` (SD-1(a) exact match; SD-2(i) every verdict)."""
-    if not _is_authority_content(governance_content):
+    # This IS an authority gate if the step declares authority content OR verdicts were persisted.
+    # Keying on the persisted verdicts too means the check enforces even on a procedure-LESS gate
+    # resolution (a legacy / non-SoD caller supplies no procedure — AC-4: "enforcement keys off the
+    # persisted audit, works even procedure-less"); fail-closed, never inert while verdicts exist.
+    content_is_authority = _is_authority_content(governance_content)
+    if not content_is_authority and not persisted_verdicts:
         return TierAuthorityVerdict(governed=True)
 
     violations: list[TierAuthorityViolation] = []
 
-    if principal.person_id not in {p.person_id for p in declared_principals}:
+    # Only assert declared-membership when a roster is supplied (an authority gate always carries
+    # SoD, so the gate always passes the vertical principals; an empty roster = no roster to check
+    # against, so skip rather than spuriously refuse — the per-verdict role check still applies).
+    declared_ids = {p.person_id for p in declared_principals}
+    if declared_ids and principal.person_id not in declared_ids:
         violations.append(
             TierAuthorityViolation(
                 TierAuthorityViolationKind.UNKNOWN_PRINCIPAL,
@@ -163,7 +172,9 @@ def check_tier_authority(
             )
         )
 
-    if not persisted_verdicts:
+    # VERDICT_MISSING fires only when the step DECLARES authority content but nothing persisted
+    # (the plain-executor bypass); a procedure-less resolution with verdicts present skips it.
+    if content_is_authority and not persisted_verdicts:
         violations.append(
             TierAuthorityViolation(
                 TierAuthorityViolationKind.VERDICT_MISSING,

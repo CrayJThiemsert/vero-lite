@@ -28,7 +28,6 @@ from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from typing import Any, cast
 
-from services.engine.actions import ControlRef, GovernedDecision
 from services.engine.procedures.doa_tier import DoaTierError, resolve_doa_tier
 from services.engine.procedures.orchestrator import RunContext, StepExecutor, StepOutcome
 from services.engine.procedures.rule_gate import evaluate_compliance
@@ -218,29 +217,21 @@ class GovernanceActionExecutor:
                     + (
                         f", resolved to '{v.resolved_approver_id}')"
                         if v.resolved_approver_id is not None
-                        else ", no declared approver — SoD run-check fails closed at the gate)"
+                        else ", no native-tier approver — tier-authority enforces at the gate)"
                     )
                 ),
             }
             for v in verdicts
         ]
-        # The OQ-5 audit-to-control side-effect (A1b Step 6, AC-8): tie each resolved tier route
-        # to its control + the resolved approver. Engine-emitted (cannot be authored auto). A
-        # tier whose role resolves to no Person emits no tie (no principal to name — that case
-        # fails closed at the SoD gate, Step 1).
-        governed_decisions = [
-            GovernedDecision(
-                control_ref=ControlRef(kind="doa_tier", id=v.resolved_tier_id),
-                principal_id=v.resolved_approver_id,
-            ).model_dump(mode="json")
-            for v in verdicts
-            if v.resolved_approver_id is not None
-        ]
+        # PLAN-0075 SD-6(a): the principal-naming ``governed_decision`` tie is NO LONGER emitted at
+        # run time — a suspended run must carry NO authority tie naming a principal who has not yet
+        # acted (the run-time ``doa_tier`` verdict list below is the honest ROUTING record). The
+        # actor-named tie is emitted at GATE time, after the tier-authority check passes
+        # (``_record_governed_decision`` -> ``_authority_governed_decisions`` in action_step).
         audit = {
             **(base_outcome.audit or {}),
             "governed_kind": "doa_tier",
             "doa_tier": [v.to_audit() for v in verdicts],
-            "governed_decision": governed_decisions,
         }
         return StepOutcome(output=base_outcome.output, reasoning_trace=trace, audit=audit)
 
@@ -276,25 +267,18 @@ class GovernanceActionExecutor:
                     + (
                         f", resolved to '{v.resolved_approver_id}')"
                         if v.resolved_approver_id is not None
-                        else ", no declared approver — SoD run-check fails closed at the gate)"
+                        else ", no native-tier approver — tier-authority enforces at the gate)"
                     )
                 ),
             }
             for v in verdicts
         ]
-        governed_decisions = [
-            GovernedDecision(
-                control_ref=ControlRef(kind="severity_tier", id=v.resolved_tier_id),
-                principal_id=v.resolved_approver_id,
-            ).model_dump(mode="json")
-            for v in verdicts
-            if v.resolved_approver_id is not None
-        ]
+        # PLAN-0075 SD-6(a): no run-time principal-naming tie (see _doa_tier) — the actor-named
+        # ``governed_decision`` is emitted at GATE time after the tier-authority check passes.
         audit = {
             **(base_outcome.audit or {}),
             "governed_kind": "severity_tier",
             "severity_tier": [v.to_audit() for v in verdicts],
-            "governed_decision": governed_decisions,
         }
         return StepOutcome(output=base_outcome.output, reasoning_trace=trace, audit=audit)
 
