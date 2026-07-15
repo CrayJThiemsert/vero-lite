@@ -56,6 +56,12 @@ STEP_GOVERNANCE_FIELDS = frozenset(
         # reads; stripped at lift, pinned in the governance snapshot).
         "join",
         "project",
+        # PLAN-0077: the transform grammar ("declare the derivation as data") is
+        # top-level authoritative H content (like governance_content) — never
+        # model-emitted; a transform step owes it (derive_governance_todo), it is
+        # pinned in the governance snapshot, and StepDraft has no transform field so
+        # it can never ride a draft (this entry keeps the disjointness test honest).
+        "transform",
     }
 )
 """``Step``-level human-author (H) fields. ``env_var`` lives on the nested
@@ -295,6 +301,11 @@ def derive_governance_todo(step: Step) -> list[str]:
         return owes_at2  # rule_gate owes its ComplianceGate; none owes nothing
     if step.kind is StepKind.ACTION:
         return ["handler", "autonomy", *owes_at2]  # scored_rule/doa_tier add the content
+    if step.kind is StepKind.TRANSFORM:
+        # PLAN-0077: a transform step owes its typed `transform` declaration — an
+        # authored H surface (like governance_content). An unauthored transform step
+        # is caught at the governance-completeness gate, not silently at run.
+        return ["transform"]
     return owes_at2
 
 

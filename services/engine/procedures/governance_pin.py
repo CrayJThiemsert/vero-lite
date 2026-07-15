@@ -50,7 +50,52 @@ import hashlib
 import json
 from typing import Any
 
-from services.engine.procedures.spec import Procedure
+from services.engine.procedures.spec import Procedure, Step
+
+
+def _step_governance_snapshot(step: Step) -> dict[str, Any]:
+    """One step's canonical governance projection.
+
+    The base shape is byte-identical to the pre-PLAN-0077 snapshot. The PLAN-0077
+    ``transform`` key is added ONLY when the step declares a transform (the AC-13
+    only-when-supplied precedent), so a procedure with no transform step pins
+    byte-identically to before — its config hash is unchanged and no persisted run
+    refuses at resume. A mid-flight transform edit changes what a resumed run
+    DERIVES, so a present transform is pinned canonically (``by_alias`` so
+    ``rename.from`` pins as authored) and fails CLOSED at resume, like a ladder edit.
+    """
+    snapshot: dict[str, Any] = {
+        "step_id": step.step_id,
+        "kind": step.kind.value,
+        "autonomy": step.autonomy.value if step.autonomy is not None else None,
+        "handler": step.handler,
+        "governance_content": (
+            step.governance_content.model_dump(mode="json")
+            if step.governance_content is not None
+            else None
+        ),
+        # PLAN-0048 SD-5(b): the declared read surface is governance the moment it is
+        # execution-bound — pinned sorted, like distinct_steps.
+        "reads": (
+            sorted(step.input.reads) if step.input is not None and step.input.reads else None
+        ),
+        # PLAN-0061 Step 2 (Q4): the join/projection grammar changes what a resumed run
+        # reads + how rows merge — pinned canonically (JSON mode, by_alias so `with` pins
+        # as authored); a mid-flight edit fails CLOSED at resume, same as a ladder edit.
+        "join": (
+            [j.model_dump(mode="json", by_alias=True) for j in step.input.join]
+            if step.input is not None and step.input.join
+            else None
+        ),
+        "project": (
+            step.input.project.model_dump(mode="json")
+            if step.input is not None and step.input.project is not None
+            else None
+        ),
+    }
+    if step.transform is not None:
+        snapshot["transform"] = step.transform.model_dump(mode="json", by_alias=True)
+    return snapshot
 
 
 def build_governance_snapshot(
@@ -72,41 +117,7 @@ def build_governance_snapshot(
             }
             for sod in procedure.separation_of_duties
         ],
-        "steps": [
-            {
-                "step_id": step.step_id,
-                "kind": step.kind.value,
-                "autonomy": step.autonomy.value if step.autonomy is not None else None,
-                "handler": step.handler,
-                "governance_content": (
-                    step.governance_content.model_dump(mode="json")
-                    if step.governance_content is not None
-                    else None
-                ),
-                # PLAN-0048 SD-5(b): the declared read surface is governance the
-                # moment it is execution-bound — pinned sorted, like distinct_steps.
-                "reads": (
-                    sorted(step.input.reads)
-                    if step.input is not None and step.input.reads
-                    else None
-                ),
-                # PLAN-0061 Step 2 (Q4): the join/projection grammar changes what a
-                # resumed run reads + how rows merge — pinned canonically (JSON mode,
-                # by_alias so `with` pins as authored); a mid-flight edit fails
-                # CLOSED at resume, same as a ladder edit.
-                "join": (
-                    [j.model_dump(mode="json", by_alias=True) for j in step.input.join]
-                    if step.input is not None and step.input.join
-                    else None
-                ),
-                "project": (
-                    step.input.project.model_dump(mode="json")
-                    if step.input is not None and step.input.project is not None
-                    else None
-                ),
-            }
-            for step in procedure.steps
-        ],
+        "steps": [_step_governance_snapshot(step) for step in procedure.steps],
     }
     # PLAN-0075 AC-13: fold the vertical's derivation hash in only when supplied — keeps every
     # no-derivation vertical's snapshot (and thus its config hash) byte-identical to before.
