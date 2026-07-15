@@ -3997,3 +3997,75 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 *Rotated 2026-07-15 (session-132 reconcile) — Recent Decisions row, session 122:*
 
 | 2026-07-13 | **s122 — Axis-B verify loop GRADUATED to enforcing (ADR-0018 V2, Accepted 2026-07-13, #713) + next build queued (PLAN-0068 Ready — aquaculture per-species DO floors, #712); governance-text batch, NO code shipped** — **#713 ADR-0018 V2 Amendment:** graduates the Axis-B verification loop from v1 (warn-only, D5) to **v2 (enforcing)**, discharging the D5 warn-only deferral + OQ-8 "Blocking-mode promotion", and formalizes **unintentional drift vs deliberate redirect** (a divergence WITH a typed Cray sign-off = redirect/passes, WITHOUT = drift/flagged-or-blocked). SD-0..SD-4 ratified as-rec: SD-0 in-place amendment to ADR-0018 (ADR-0016 discipline — extends not reverses, D1-D7 unchanged) / SD-1 per-goal `enforce` flag (default warn) / SD-2 typed sign-off in an append-only `amendments[]` log + evaluator-detected, deterministically-consequenced divergence / SD-3 goal-gate graduation ONLY (sibling hooks out-of-scope) / SD-4 missing-evidence-under-enforce = pause `blocked-pending-human`, never a silent pass. **draft≠review≠verify:** `plan-drafter` authored → Code R2 (re-verified D5/OQ-8 + `work_fingerprint()` at `_goal_gate.py:152`; confirmed 2 build hazards — `_goal_state.py` DROPS unknown fields on rewrite [v2 fields must be dataclass fields], `VALID_STATUSES` lacks `blocked-pending-human`) → Cray ratified. Grounded by a 2026-07-13 design brief (research through 13 Jul + repo inventory, a private Artifact, NOT a repo file). **The v2 gate/schema BUILD is a follow-on PLAN** (ADR-013 D1). **#712 PLAN-0068 Ready:** the `next-work-analyst`-ranked #1 pick, `plan-drafter`-authored + Code-R2'd + Cray-ratified (SD-0..SD-5; **SD-4 = (b) TWO PRs, a Cray divergence** from the drafter's 1-PR rec) — migrates aquaculture's `morning_pond_health_round` judge from a blanket 4.0 mg/L DO floor to per-species floors via `Pond.do_floor` + a `read_do` FK-parent join (3rd OCT vertical on the per-entity band substrate → **Rule-of-Three MET**, zero engine change, rides ADR-016 FKP-1); Status = Ready, BUILD (PR1 substrate+RED / PR2 migration+tests) NOT started. No MS-S1 / host-state — pure governance-doc batch; suite unchanged. Full narrative: the Session-122 CF block above | `2e2007c` (HEAD, #713 ADR-0018 V2 merge) / `f67b713` (intervening branch-sync merge, inferred from order) / `d40d2f6` (#713 ADR-0018 V2 amendment) / `2c3a05d` (#712 PLAN-0068 Ready merge) / `c443bfd` (#712 PLAN-0068 Ready) / `docs/adr/0018-*.md` (V2 enforcing amendment) + `docs/plans/0068-*.md` (aquaculture per-species DO floors, Ready) |
+
+
+### Current Focus block removed — session 129 (PLAN-0073 Box-4 economic_impact facet in the hero-demo UI) [rotated 2026-07-15, session-133 reconcile — 4-session CF window]
+
+> **Session 129, 2026-07-14 (head_commit `88e6984` → `f250593`) — PLAN-0073
+> (the Box-4 `economic_impact` facet surfaced in the Palantir-lite hero-demo
+> UI) shipped END-TO-END + CLOSED → `done/` in ONE session-129 day (#737 Ready
+> → #738 build): the hero demo's beat-4 (฿) now ALSO carries the typed Box-4
+> `EconomicImpact` facet with audit-grade provenance — previously beat-4
+> rendered ONLY the demo `HeroImpactLedger`.** NO ADR change (ADR-0030 D2
+> ledger + facet coexist; ADR-007 D2 envelope byte-untouched — the facet stays
+> trace-carried). `plan-drafter` authored PLAN-0073, Code R2, Cray ratified
+> **SD-1(a)/SD-2(b)/SD-3** via AskUserQuestion (all as-recommended), then built
+> + closed the same session. **#737 (`cc8516e`, `docs(plans)`) — PLAN-0073
+> Ready.** **#738 (`f250593`, `feat`) — THE build.** **SD-1(a) fire-for-real:**
+> `_intake_seed` now carries `event_type` (from the failure event it already
+> fetches at `run.py:208`) so the Box-4 producer fires INSIDE the governed run.
+> **Build-discovered (the PLAN's OQ-1, resolved empirically via the AC-2 RED
+> test):** the hero `source` step is `GovernanceActionExecutor._scored_rule`,
+> which REPLACES the base action envelopes (to thread the selected spend
+> forward for `doa_tier`) — so it now LIFTS the advisory `economic_impact`
+> trace step onto the persisted step trace, otherwise the facet was computed
+> then DISCARDED. Generalizes to any governed scored_rule action with a
+> registered producer; advisory + never-raise (ADR-0030 D5). **SD-2(b):** `GET
+> /demo/hero/impact` gains an additive optional `economic_impact` field; the
+> producer reuses `build_hero_impact_ledger` so the ฿ figures EQUAL the
+> ledger's (no drift); ledger fields byte-identical. **SD-3 frontend:**
+> `view-hero.js` renders a provenance strip UNDER the unchanged ledger card — a
+> `kind` chip, an always-visible `PROVISIONAL` badge (s74 trust-shape), and a
+> "show provenance" toggle revealing `assumptions[]` + `basis_refs`; `hero.css`
+> (c35) + `view-hero.js` (c36) `?v=` bumped. **Build-discovered (disclosed):**
+> the pre-commit mypy hook caught a `list[Mapping]` vs `list[dict[str,Any]]`
+> type error the first manual `mypy` never ran (the `&&` chain stopped at a
+> `ruff format --check` failure) — fixed with `cast` + annotation.
+> **draft≠review≠verify:** `plan-drafter` PLAN (#737) → Code R2 (anchors
+> re-verified on disk; SD-1a "one line" confirmed) → Cray SD-1(a)/SD-2(b)/SD-3
+> → Code build. **Evidence:** 3 new AC tests GREEN (AC-1 endpoint carries the
+> facet `net_benefit`==ledger + 4 `basis_refs`; AC-2 producer fires on the real
+> hero seed + the persisted governed-run source trace carries the
+> `economic_impact` step; AC-2/AC-3 the existing ledger tests pass UNMODIFIED);
+> AC-4 preview (oct-demo-procurement) renders the strip + working toggle, no
+> console errors; full suite **2599 passed / 7 skipped** WITH Postgres —
+> verified on BOTH the PR head AND the merge commit `f250593` (CI PR-only, so
+> the merge-commit re-run is the real gate); ruff + `ruff format --check` +
+> `mypy --strict services/` clean. 0 open PRs after the close; tree clean (2
+> pre-existing untracked KEEP: `.claude/benchmark-results/`,
+> `.claude/launch.json`); MS-S1 idle; dev Postgres UP; loop-dispatcher DISABLED.
+> PLAN-0073 `git mv`→`done/` this session; `docs/plans/` empty again. Commits:
+> `cc8516e` (#737 PLAN-0073 Ready) → `f250593` (#738 feat build + close).
+
+> _Rotation note (session-132 reconcile, 2026-07-15, `docs(status):`):
+> frontmatter bumped to `head_commit 098b0d9` (session 132); a new s132
+> Current-Focus block was PREPENDED for the GOVERNANCE batch (PLAN-0075
+> Proposed #746 + the ADR-0026 D4 amendment closing the F1 AT-2
+> authority-enforcement gap). With s132 prepended, Current Focus held 5
+> sessions (s132 + s131 + s130 + s129 + s128), so the OLDEST — the whole
+> **session-128** block (PLAN-0072: the Palantir-lite hero demo's beat-3 "run
+> it" step now genuinely resolving the parked DOA gate through the production
+> `POST /runs/{id}/gate/resolve`, #734/#735) — was rotated OUT to keep the
+> 4-session window (now s132 + s131 + s130 + s129). Recent Decisions rotated
+> its OLDEST row (2026-07-13 **s122** — the Axis-B verify loop GRADUATED to
+> enforcing [ADR-0018 V2 Accepted #713] + PLAN-0068 Ready) to keep the 10-row
+> window. Both were emitted verbatim in the reconcile reply for the caller to
+> append to `docs/status-archive/2026-h1-status.md` (Bash-side). Prior rotation
+> notes (through the session-131 reconcile) are consolidated into this one
+> (R4). Per the STATUS.md Rotation Policy (R1/R2/R4)._
+
+> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
+
+### Recent Decisions row removed — 2026-07-13 (s123 — PLAN-0068 aquaculture per-species DO floors) [rotated 2026-07-15, session-133 reconcile — 10-row RD window]
+
+| 2026-07-13 | **s123 — PLAN-0068 (aquaculture per-species DO floors) shipped END-TO-END + CLOSED → `done/` in ONE session-123 day; aquaculture's `morning_pond_health_round` judge now bands each pond's latest reading vs its OWN per-species `do_floor` (joined by the migrated `read_do` FK-parent join) instead of one blanket 4.0 mg/L floor — the 3rd OCT vertical on the per-entity FK-parent band substrate → Rule-of-Three MET (ADR-006), zero engine change (#715/#716)** — TWO PRs (SD-4 = (b), a Cray divergence isolating the DB-migration/first-join-consumer rollback). **#715 PR1 (substrate+RED):** `Pond.do_floor` + per-species seeds (whiteleg 4.0/4.0, tiger_prawn 4.5, tilapia 3.0) + the SD-3 flip seed (event-reading-12, pond-11 @ 4.2 mg/L, 01:55) + a RED-verify vs the unedited YAML. **#716 PR2 (migration+tests):** the `read_do` FK-parent join (`reads:[OperationalEvent, Pond]` + `join:{with:Pond, link:event_emitted_by_pond}`) + the `site_id`→`pond_site_id` declared-collision rename + `judge` `threshold:4.0`→`threshold_field:do_floor` (keeping authored `direction:below` + `watch_margin:1.0` — the FIRST shipped `threshold_field`+`watch_margin` 3-band consumer) + a Step-5 coupled-test audit (8 test files). **Zero engine change** (`git diff main -- services/` empty; rides ADR-016 FKP-1). Demo-visible flip (SD-3/AC-7): pond-11 (tiger_prawn) warms to 4.2 mg/L → `watch` under a blanket 4.0 but `breach` under its own 4.5 floor (aerate set {pond-07} → {pond-07, pond-11}); AC-7/SD-5 pins the SAME 3.4 mg/L reading = breach in a whiteleg pond (floor 4.0) but watch in a tilapia pond (floor 3.0). **draft≠review≠verify:** PR2 RESUMED an interrupted prior-session WIP (`acfcd57`, "migration done, 7 coupled tests pending"); `next-work-analyst` CAUGHT STATUS saying "BUILD NOT started" while the code showed PR1 merged + PR2 WIP — a `superseded by new info` staleness (build landed after the s122 reconcile); the 7 pending coupled-test breaks were ALL PLAN-0068 Step-5 pre-disclosed (fixture adapters not serving Pond → inner join empties / fake read_do rows lacking `do_floor` → per-entity judge fails closed FKP-3 / `threshold==4.0` asserts → `None`+`threshold_field`), no engine bug. Suite **2549/7** WITH Postgres (verified on merge commit `b55ff43`, CI PR-only); ruff + `ruff format --check` + `mypy --strict services/` clean; CI `gate` green on both PRs; no MS-S1 / host-state — pure offline. Disclosed [corrected s124 — `was an error`]: the read-only Procedures viewer (View F, `view-procedures.js`) — NOT the payload — doesn't surface `threshold_field` (a pre-existing FRONTEND s121 supply_chain display gap; the payload always carried it), out of PLAN-0068's zero-engine scope; RESOLVED s124 (#718). PLAN-0068 `git mv`→`done/`. Full narrative: the Session-123 CF block above | `b55ff43` (HEAD, #716 PR2 merge) / `befec8e` (PR2 coupled-test fixes) / `acfcd57` (PR2 WIP migration) / `d4cb9b3` (#715 PR1 merge) / `ec4fe6f` (#715 PR1 substrate) / `verticals/aquaculture/{ontology/aquaculture_v0.yaml (`Pond.do_floor`), procedures.yaml (`read_do` `join:` + `judge` `threshold_field:do_floor`), data_adapter/synthetic.py (per-species do_floor seeds + SD-3 flip reading)}` (+ regenerated `generated/**`) + `docs/plans/done/0068-*.md` |
