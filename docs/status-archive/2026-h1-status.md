@@ -4167,3 +4167,57 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-13 (s126 — ADR-0030 Accepted, Box-4 economic-impact facet) [rotated 2026-07-16, session-136 reconcile — 10-row RD window]
 
 | 2026-07-13 | **s126 — ADR-0030 Accepted (#728): the Box-4 economic-impact ฿ facet — typed, ADVISORY, trace-carried (`economic_impact` `ReasoningStep`, producer-validated `EconomicImpact` detail; ZERO ADR-007 D2 envelope change) — DISCHARGING the ADR-016 self-cancelling N≥3 Box-4 deferral (N=4)** — ONE cross-vertical shape (`baseline` vs `governed` exposure → `net_benefit`) + per-vertical `kind` (avoided_outage / expedite_tradeoff / spoilage_avoided / mortality_avoided). Disclosed `was an error` (§6): the promised N≥3 marker test was NEVER built → enforcement = a ≥3-vertical build-completion AC in the follow-on BUILD PLAN. Doc-only, contract-only batch (no code/tests). `plan-drafter` → Code R2 → Cray SD-1..SD-7 as-rec. Full narrative: the Session-126 CF block above | `a9dbb6f` (HEAD, #728 `docs(adr)` merge) / `docs/adr/0030-*.md` |
+
+## Rotated this reconcile (session-137, 2026-07-16 — building_materials 5th vertical Tier-1 Mirror + the `GET /procedures` spec-less fix, #765)
+
+### Current-Focus block — Session 132 (head_commit `098b0d9`) [rotated 2026-07-16, session-137 reconcile — 4-session CF window]
+
+> **Session 132, 2026-07-15 (head_commit `ff84d9a` → `098b0d9`) —
+> GOVERNANCE / PLANNING batch: NO code shipped; two docs PRs that AUTHOR the
+> AT-2 authority-enforcement fix + its ADR backing.** The **F1 gap** that
+> s131's `next_action` named (spawn_task `task_053edc92`): an AT-2 authority
+> ladder (`DoaLadder` / `SeverityLadder`) RESOLVES + AUDITS which tier/approver
+> a spend or severity should route to, but the run gate never ENFORCED that the
+> acting approver HOLDS that resolved tier role — a lower-tier approver could
+> resolve a top-tier gate, and the persisted audit even NAMED a non-actor.
+> Reproduced against code; scope = the whole AT-2 axis (`doa_tier` on BOTH
+> procurement surfaces + `severity_tier` on supply_chain). **#746 (`5598c02`,
+> `docs(adr+plans)`) — PLAN-0075 Proposed + the ADR-0026 D4 amendment.**
+> **PLAN-0075** (Proposed, awaiting implementation scheduling): a pure
+> `tier_authority` run-check ADDITIVELY beside `check_principal_sod` +
+> gate-time actor-named audit + an **F3** load-time gated-autonomy check +
+> **AC-13** supply_chain derivation-provenance fold-in. **ADR-0026 D4 gains a
+> 4th fail-closed condition** (Accepted, in-place, additive): the acting
+> approver must hold the ladder-resolved tier role, or a declared-authority
+> step with no persisted verdict fails closed. Ratified SDs: **SD-1** =
+> exact-match + **rank-as-authored-data** (no engine `RoleId` rank primitive;
+> cumulative roles in YAML) / **SD-2** = read persisted verdicts, satisfy EVERY
+> verdict / **SD-4** = amend ADR-0026 D4 / **SD-6** = gate-time actor-named
+> audit tie (OQ-5 shape preserved); + a derivation residual-risk caveat (from
+> the specialist review). **3-specialist SD-3/SD-5 review** (architect /
+> security / governance-audit): **SD-3 = keep NARROW, confirmed** — the
+> security fix is orthogonal to the ADR-0031 D3 gate-plugin seam, with the
+> architect's binding condition to durably track the seam follow-on; **SD-5 =
+> adjudicated SPLIT** (Cray) — FOLD IN the supply_chain derivation-provenance
+> half NOW (**AC-13**, **PROVENANCE-ONLY**: hashes `_DOSE_LADDER` +
+> `_TOP_SEVERITY` into the run pin = mid-flight tamper-evidence +
+> which-derivation-governed-this-run, **NOT** a new-run guarantee, **F-PIN is
+> NOT closed**), DEFER procurement's ฿ derivation to a follow-on bound to
+> ADR-0031 D3 row-1 (declare-as-data). Three honesty corrections applied to the
+> just-committed ADR/PLAN (a D4 over-claim; a wrong "cheap mitigation" note;
+> the "different axis" framing → threat-tier). **#747 (`098b0d9`,
+> `docs(status)`) — an interim Active-TODO tracker** for the two Out-of-Scope
+> follow-ons (the F-PIN remainder + the ADR-0031 D3 gate-plugin seam) so they
+> don't rot (the ADR-0031 OQ-4 deferral-rot precedent). **draft≠review≠verify:**
+> `plan-drafter` authored PLAN-0075 + the ADR-0026 amendment → Code R2 (3
+> honesty corrections) → Cray ratified SD-1..SD-6 + adjudicated the SD-5 split
+> → a 3-specialist SD-3/SD-5 review. Doc-only — no `services/` change, no
+> tests, deterministic-offline (no MS-S1 / host-state). **PLAN-0075 stays OPEN
+> in `docs/plans/`** (Proposed, NOT closed — the build is the follow-on). 0
+> open PRs after; loop-dispatcher DISABLED; MS-S1 idle. Commits: `5598c02`
+> (#746 PLAN-0075 Proposed, ADR-0026 D4 amendment `60ad2e3`) → `098b0d9`
+> (HEAD, #747 guardrail Active-TODO tracker).
+
+### Recent Decisions row removed — 2026-07-14 (s127 — PLAN-0071 Box-4 economic-impact ฿ facet shipped across all 4 OCT verticals) [rotated 2026-07-16, session-137 reconcile — 10-row RD window]
+
+| 2026-07-14 | **s127 — PLAN-0071 (the Box-4 economic-impact ฿ facet) shipped END-TO-END across all 4 OCT verticals (2 PRs) + CLOSED → `done/`; the reactive AND governed recommenders now append an ADVISORY, trace-carried `economic_impact` `ReasoningStep` (baseline vs governed exposure → net ฿ benefit) — DISCHARGING the ADR-016 self-cancelling Box-4 N≥3 deferral with an OWNED marker (AC-5 GREEN at N=4); ADR-007 D2 envelope byte-verbatim (#731/#732)** — **#731 PR1 (`81c7070`, `feat`) engine core:** new `services/engine/economic_impact.py` (`EconomicExposure`/`EconomicImpact` + a NEVER-RAISE `build_economic_steps` helper) wired at BOTH `RecommendedAction` sites (`recommender._compose_llm_record` reactive + `action_step._compose_action` governed), appended LAST, never on `_rule_recommend`; AC-5 marker landed RED (`xfail(strict=True)`); conftest autouse clears the producer registry; envelope (`services/engine/actions.py`) byte-untouched. **#732 PR2 (`b11ea40`, `feat`) THE close:** four per-vertical ฿ producers (`verticals/<ns>/economic_impact.py`) — energy `avoided_outage` ฿405k / supply_chain `spoilage_avoided` ฿2.12M / aquaculture `mortality_avoided` ฿247k (assumptions-first per SD-B/SD-G, every ฿ input a named `assumptions[]` entry, NO ontology/regen/migration); procurement `expedite_tradeoff` from the committed-CSV demo ledger (`hero_demo/ledger.py` byte-untouched, `basis_refs` cite CSV columns, gated on the emergency-failure trigger — OQ-C calm-path → `None`, hero-PO exemplar stands in for per-event PO anchor, deferred v2); `discovery._register_vertical` gained a GUARDED optional producer import (`ModuleNotFoundError.name` checked). AC-5 GREEN at N=4; AC-9 GREEN (real energy producer → one `economic_impact` step, net ฿405,000); coupled-test audit = every pin PINNED-UNMODIFIED. draft≠review≠verify: `plan-drafter` PLAN → Code R2 → Cray SD-A..SD-G → build. Suite **2591 passed / 7 skipped / 0 xfailed** WITH Postgres (verified on BOTH PR head + merge commit `b11ea40`, CI PR-only); ruff + `ruff format --check` + `mypy --strict services/` clean; deterministic-offline (no MS-S1 / host-state); 0 open PRs. PLAN-0071 `git mv`→`done/`. Full narrative: the Session-127 CF block above | `b11ea40` (HEAD, #732 PR2 merge) / `81c7070` (#731 PR1 engine core) / `services/engine/economic_impact.py` + `services/engine/{recommender.py, procedures/action_step.py, discovery.py}` + `verticals/{energy,supply_chain,aquaculture,procurement}/economic_impact.py` + `tests/**` (AC-5 ≥3-vertical marker + AC-9) + `docs/plans/done/0071-*.md` |
