@@ -31,9 +31,14 @@ import pytest
 
 from services.api.config import settings
 from services.engine.discovery import discover_and_register
-from services.engine.procedures.orchestrator import RunResult, run_procedure
+from services.engine.procedures.governance_pin import (
+    build_governance_snapshot,
+    compute_governance_hash,
+)
+from services.engine.procedures.orchestrator import RunContext, RunResult, run_procedure
 from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
-from services.engine.procedures.spec import load_procedures
+from services.engine.procedures.spec import Agent, AgentAllowed, Autonomy, load_procedures
+from services.engine.procedures.transform_step import TransformRefusal, TransformStepExecutor
 from services.engine.registry import ExecutorFactory, registry
 from verticals.supply_chain.procedures_factory import register_supply_chain_procedure_executors
 
@@ -163,3 +168,48 @@ async def test_disposition_intake_enrichment_and_verdicts_parity(
     assert by_step["gdp_gate"].status == StepResultStatus.COMPLETE.value
     assert by_step["approve"].status == StepResultStatus.WAITING_HUMAN.value
     assert "fulfill" not in by_step
+
+
+async def test_enrich_transform_fails_closed_on_missing_source_field() -> None:
+    """AC-4: a missing derive source on the migrated ``enrich`` transform refuses the WHOLE step
+    typed (PLAN-0077 SD-7 fail-closed) — it never silently emits a row with no
+    ``excursion_magnitude_c`` that would fail-DANGEROUS at the severity stamp. Demonstrated by
+    running the SHIPPED ``enrich`` step's executor on a row dropping ``reading_c`` (the
+    ``sub``-derive's source)."""
+    spec = load_procedures(_VERTICAL)
+    proc = next(p for p in spec.procedures if p.procedure_id == _PROC)
+    enrich_step = next(s for s in proc.steps if s.step_id == "enrich")
+    agent = Agent(agent_id="t", name="t", autonomy_ceiling=Autonomy.GATED, allowed=AgentAllowed())
+    ctx = RunContext(agent=agent, vertical=_VERTICAL)
+    bad_row = {k: v for k, v in _FROZEN_ENRICHED_INTAKE.items() if k != "reading_c"}
+    with pytest.raises(TransformRefusal):
+        await TransformStepExecutor().execute(enrich_step, [bad_row], ctx)
+
+
+def test_enrich_transform_pinned_sweep_byte_identical() -> None:
+    """AC-5 / AC-6: the disposition's governance snapshot carries the declared ``enrich`` transform
+    canonically — it is part of the config hash, so a mid-flight transform edit changes the hash
+    and fails CLOSED at resume (``governance_pin.py:96-98``). The ``cold_chain_excursion_sweep``
+    (no transform) pins with NO ``transform`` key — byte-identical to before the migration."""
+    spec = load_procedures(_VERTICAL)
+    by_id = {p.procedure_id: p for p in spec.procedures}
+
+    # AC-5: the disposition's enrich transform is present + contributes to the config hash
+    disposition = by_id[_PROC]
+    snapshot = build_governance_snapshot(disposition)
+    [enrich_snap] = [s for s in snapshot["steps"] if s["step_id"] == "enrich"]
+    assert enrich_snap["transform"] is not None
+    assert enrich_snap["transform"]["ops"]  # the ops are pinned canonically
+
+    stripped_steps = [
+        s.model_copy(update={"transform": None}) if s.step_id == "enrich" else s
+        for s in disposition.steps
+    ]
+    stripped = disposition.model_copy(update={"steps": stripped_steps})
+    assert compute_governance_hash(snapshot) != compute_governance_hash(
+        build_governance_snapshot(stripped)
+    )
+
+    # AC-6: the sweep declares no transform -> no `transform` key on any step (byte-identical)
+    sweep_snapshot = build_governance_snapshot(by_id["cold_chain_excursion_sweep"])
+    assert all("transform" not in step for step in sweep_snapshot["steps"])

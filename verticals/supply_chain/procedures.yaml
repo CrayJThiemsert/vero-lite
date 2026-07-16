@@ -42,7 +42,9 @@ agents:
     llm_model: gpt-oss:20b          # ADR-001 default local model
     autonomy_ceiling: auto
     allowed:
-      step_kinds: [query, evaluate, action]
+      # PLAN-0078 PR-2: `transform` joins the allowed kinds so the declared `enrich` step (the
+      # intake seed-migration) can run under this agent (orchestrator step-kind guard).
+      step_kinds: [query, evaluate, action, transform]
       # `inspect` for the auto assessment; `escalate` for the gated authority routing;
       # `hold` for the gated disposition write (a no-op receipt stub today, like the sweep's).
       action_handlers: [inspect, escalate, hold]
@@ -203,6 +205,44 @@ procedures:
           llm_assist: "draft the excursion narrative from the event (advisory)"
           input: "the cold-chain excursion event + the affected batch"
           output: "the enriched disposition intake (excursion scalars, candidate lanes, GDP signals)"
+      # PLAN-0078 PR-2 — the declared `enrich` transform. Supplies the excursion's DERIVED scalars
+      # as governed data instead of hand-emitting them in `_intake_seed` (procedures_factory.py):
+      # the `excursion_magnitude_c` (reading minus the cargo's OWN ceiling, the same number the
+      # severity stamp doses on), the authored `excursion_duration_h` / `stability_budget_ch`
+      # defaults, and the GDP `compliance` signal map the rule_gate reads. Deterministic,
+      # engine-generic, row-local; no LLM, no I/O — the ADR-0031 D3 row-1 transform grammar
+      # (governed != generated). The seed KEEPS the identity reads + the nested `candidate_quotes`
+      # (the PLAN-0077 SD-8 cardinality wall, L-3) + the magnitude<=0 eligibility guard.
+      - step_id: enrich
+        name: Enrich the excursion intake (declared transform)
+        description: >-
+          Derive the excursion magnitude (reading minus the cargo's own ceiling), default the
+          excursion duration + the cargo's stability budget, and attach the GDP compliance signal
+          map — as declared transform data, not hand-coded seed emission. Deterministic; no LLM.
+        kind: transform
+        input:
+          from: intake
+        transform:
+          ops:
+            - derive:
+                target: excursion_magnitude_c
+                expr: { op: sub, args: [{ field: reading_c }, { field: temp_ceiling }] }
+            - default: { target: excursion_duration_h, value: 9 }
+            - default: { target: stability_budget_ch, value: 24 }
+            - default:
+                target: compliance
+                value:
+                  stability_budget: true
+                  batch_quarantine: true
+                  licensed_disposal_vendor: true
+                  coa_customs: true
+            - coerce: { target: excursion_magnitude_c, to: string }
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "intake (the excursion event + affected batch)"
+          output: "the batch enriched with the excursion scalars + GDP compliance signals"
+          governance: "deterministic derivation as declared data (governed != generated)"
       - step_id: assess
         name: Score the disposition lanes and derive the excursion severity
         description: >-
@@ -235,7 +275,7 @@ procedures:
           default_source: on_contract
           exception_policy: deviation_quarantine_logged
         input:
-          from: intake
+          from: enrich              # PLAN-0078 PR-2: assess now reads the enriched row (was: intake)
         facet:
           decision_condition:
             gate_kind: scored_rule

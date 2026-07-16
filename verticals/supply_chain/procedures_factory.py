@@ -147,14 +147,17 @@ async def _intake_seed(adapter: Any) -> list[dict[str, Any]]:
     """Build the disposition intake for the breaching pharma batch — deterministic, offline.
 
     MEASURED (real adapter data): the shipment, its per-cargo ``temp_ceiling``, and the latest
-    reading — so ``excursion_magnitude_c`` is the REAL breach height (reading minus the cargo's own
-    ceiling), the same number the sweep's judge bands on.
+    reading. The breach height ``reading_c - temp_ceiling`` is still computed here for the
+    eligibility guard (a within-band batch intakes nothing), but the ``excursion_magnitude_c``
+    FIELD is now DERIVED by the declared ``enrich`` transform (PLAN-0078 PR-2, execution-bound ✔),
+    via ``sub(reading_c, temp_ceiling)`` — the same number the sweep's judge bands on.
 
-    AUTHORED (the derived/enrichment half a relational read cannot produce — see the
-    :class:`_DispositionSeed` docstring): the excursion's duration, the cargo's stability budget,
-    the ELIGIBLE disposition lanes, and the GDP compliance signals. Provisional until a design
-    partner signs the real cold-chain figures — the same standing as procurement's provisional
-    DOA/scoring values.
+    AUTHORED — MIGRATED to the ``enrich`` transform (PLAN-0078 PR-2, execution-bound ✔): the
+    excursion's duration, the cargo's stability budget (both ``default``s), and the GDP compliance
+    signal map (a ``default`` object). What STAYS seed-side is the ELIGIBLE disposition lanes (the
+    nested ``candidate_quotes`` — the PLAN-0077 SD-8 cardinality wall, L-3) + the identity reads.
+    Provisional until a design partner signs the real cold-chain figures — the same standing as
+    procurement's provisional DOA/scoring values.
 
     **Lane ELIGIBILITY is upstream of the rule** (data-access = (a)): a batch whose stability budget
     is spent does not carry the release lane among its candidates — releasing a compromised pharma
@@ -201,10 +204,12 @@ async def _intake_seed(adapter: Any) -> list[dict[str, Any]]:
             "temp_ceiling": str(ceiling),
             "reading_c": str(reading_c),
             "event_id": reading.get("event_id"),
-            # --- the severity derivation's inputs (magnitude measured; the rest authored) ---
-            "excursion_magnitude_c": str(magnitude_c),
-            "excursion_duration_h": 9,  # authored: how long the reefer stayed out of band
-            "stability_budget_ch": 24,  # authored: the vaccine lot's remaining MKT dose budget
+            # PLAN-0078 PR-2: the excursion's DERIVED scalars (excursion_magnitude_c /
+            # excursion_duration_h / stability_budget_ch) + the GDP `compliance` map are NO LONGER
+            # emitted here — they are the declared `enrich` transform step's data (procedures.yaml,
+            # between `intake` and `assess`; the transform re-derives magnitude via
+            # sub(reading_c, temp_ceiling)). `magnitude_c` is still computed above SOLELY for the
+            # eligibility guard (OQ-1 — a spent-budget batch intakes nothing), never emitted.
             # --- the scored_rule's candidates (authored; ELIGIBLE lanes only — see docstring) ---
             "qty": str(
                 shipment.get("payload_kg", 1)
@@ -233,14 +238,10 @@ async def _intake_seed(adapter: Any) -> list[dict[str, Any]]:
                     "on_contract": True,
                 },
             ],
-            # --- the rule_gate's per-criterion GDP signal map (authored) ---
+            # `quarantine_status` stays seed-side (identity/status the rule_gate's batch_quarantine
+            # criterion reads); the GDP `compliance` signal map moved to the `enrich` transform's
+            # default (PLAN-0078 PR-2).
             "quarantine_status": "quarantined",
-            "compliance": {
-                "stability_budget": True,
-                "batch_quarantine": True,
-                "licensed_disposal_vendor": True,
-                "coa_customs": True,
-            },
         }
     ]
 
