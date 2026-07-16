@@ -130,7 +130,8 @@ _PROCEDURE_EXECUTOR_REGISTRARS: dict[str, Callable[[], Awaitable[None]]] = {
 }
 """Per-vertical procedure-executor factory registration (PLAN-0062 AC-5). Imports stay
 LAZY inside each registrar so booting one vertical never imports another's harness.
-All four shipped verticals now register a factory."""
+All four PROCEDURE-SHIPPING verticals register a factory; the spec-less Tier-1 mirrors
+(building_materials, vet_clinic — no ``procedures.yaml``) register none."""
 
 
 @asynccontextmanager
