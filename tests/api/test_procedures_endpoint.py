@@ -17,7 +17,7 @@ from httpx import ASGITransport, AsyncClient
 
 from services.api.main import app
 from services.engine.discovery import discover_and_register
-from services.engine.procedures.spec import load_procedures
+from services.engine.procedures.spec import load_procedures, procedures_path
 from services.engine.registry import registry
 
 # The eight shipped procedures, vertical → {procedure_id: archetype} (fact-pack
@@ -88,8 +88,11 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
     payload = response.json()
 
     returned = {v["vertical"] for v in payload["verticals"]}
-    # the endpoint loops registry.verticals() (ADR-0023 discovery), not OCT_VERTICAL
-    assert returned == set(registry.verticals())
+    # The endpoint loops registry.verticals() (ADR-0023 discovery), not OCT_VERTICAL —
+    # but SKIPS any discovered vertical shipping no procedures.yaml (a Tier-1 Mirror
+    # scaffold, ADR-0015 D2), which has no procedures to project. So `returned` is the
+    # spec-BEARING subset of the discovered set, never a superset.
+    assert returned <= set(registry.verticals())
     assert returned == set(_EXPECTED)
 
     total = 0
@@ -108,6 +111,33 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
     # scheduled AT-3 calm-path variant (all procurement variants) + the PLAN-0074
     # supply_chain cold-chain disposition (the 2nd AT-2 SIGNATURE, not a variant)
     assert total == 9
+
+
+async def test_procedures_skips_discovered_vertical_without_a_spec(
+    all_verticals_client: AsyncClient,
+) -> None:
+    """A discovered vertical shipping NO procedures.yaml is SKIPPED, not a 500.
+
+    Regression guard: ``vero-lite new-vertical`` scaffolds a Tier-1 Mirror (ADR-0015
+    D2) — ontology + adapter + handlers, no spec — and ADR-0023 import-scan discovery
+    registers it regardless. Before this fix ``GET /procedures`` called
+    ``load_procedures`` unconditionally and died with FileNotFoundError on the first
+    such vertical, breaking the read surface for every OTHER vertical.
+    """
+    discovered = set(registry.verticals())
+    spec_less = {v for v in discovered if not procedures_path(v).exists()}
+    # SELF-CANCELLING: building_materials (the 5th vertical, a Tier-1 Mirror) is what
+    # exercises this path today. If it ever gains a procedures.yaml this fires — re-point
+    # the guard at another spec-less vertical (or a fixture); do NOT just delete it.
+    assert (
+        "building_materials" in spec_less
+    ), "no spec-less vertical left to exercise the skip path — re-point this guard"
+
+    response = await all_verticals_client.get("/procedures")
+    assert response.status_code == 200
+    returned = {v["vertical"] for v in response.json()["verticals"]}
+    assert not (spec_less & returned)  # skipped, never projected
+    assert (discovered - spec_less) == returned  # every spec-BEARING vertical still shows
 
 
 async def test_procedures_all_live_gate_kinds_present(
