@@ -62,6 +62,7 @@ from services.engine.procedures.spec import (
     StepKind,
     load_procedures,
 )
+from services.engine.procedures.transform_step import TransformStepExecutor
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
 from verticals.procurement.data_adapter import synthetic
@@ -377,6 +378,9 @@ def _procurement_executors() -> dict[StepKind, StepExecutor]:
         StepKind.QUERY: _Query(_failure_events()),
         StepKind.EVALUATE: _Evaluate(),
         StepKind.ACTION: ActionStepExecutor(client_factory=lambda _m: _CyclingChat()),
+        # PLAN-0078 PR-1: the hero procedure now carries a declared `enrich` transform step
+        # (intake -> enrich -> judge), so this map binds the shared engine executor too.
+        StepKind.TRANSFORM: TransformStepExecutor(),
     }
 
 

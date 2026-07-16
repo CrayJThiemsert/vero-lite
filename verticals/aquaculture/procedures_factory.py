@@ -43,6 +43,7 @@ from services.engine.procedures.evaluate_step import EvaluateStepExecutor
 from services.engine.procedures.orchestrator import StepExecutor
 from services.engine.procedures.query_step import QueryStepExecutor
 from services.engine.procedures.spec import StepKind
+from services.engine.procedures.transform_step import TransformStepExecutor
 from services.engine.registry import RegistryError, registry
 
 _VERTICAL = "aquaculture"
@@ -74,6 +75,10 @@ async def register_aquaculture_procedure_executors() -> None:
             ),
             StepKind.EVALUATE: EvaluateStepExecutor(),  # in_file_band — no env wrapper
             StepKind.ACTION: ActionStepExecutor(client_factory=advisory_stub_factory),
+            # PLAN-0078 Step 1 (SD-3): the shared fieldless transform executor, registered
+            # uniformly across all 4 factories. Pure-additive — aquaculture declares no transform
+            # step today, so this is inert until a future flip.
+            StepKind.TRANSFORM: TransformStepExecutor(),
         }
 
     registry.register_procedure_executors(_VERTICAL, factory)

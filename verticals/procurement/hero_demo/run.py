@@ -55,6 +55,7 @@ from services.engine.procedures.query_router import QueryStepRouter
 from services.engine.procedures.query_step import QueryStepExecutor
 from services.engine.procedures.runs import PipelineRun, PipelineRunStatus, StepResultStatus
 from services.engine.procedures.spec import Person, Step, StepKind, load_procedures
+from services.engine.procedures.transform_step import TransformStepExecutor
 from services.engine.registry import RegistryError, registry
 from verticals.procurement.data_adapter.fastenal_csv import FastenalCsvAdapter
 from verticals.procurement.handlers import register_procurement_handlers
@@ -144,12 +145,13 @@ class _SeedQuery:
     hero PO ``fuse``, quotes ``on: part_id``.
 
     What keeps this seed in production is the OTHER half. A relational join emits three
-    FLAT rows and cannot produce the seed's DERIVED fields -- ``compliance`` (the
-    rule_gate signal), the ``criticality`` amplification, the nested
-    ``candidate_quotes`` reshape -- without inventing a transform StepKind (out of
-    scope). So ``intake`` is declared-expressible for the join half (proven) while its
-    production execution stays here, and it is labelled **execution-bound (no)** for the
-    derived fields (LOCKED-9 -- no over-claim).
+    FLAT rows and cannot produce the seed's derived fields. PLAN-0078 PR-1 moved the two
+    that the transform grammar CAN express -- the flat ``criticality`` amplification and
+    the ``unit`` / ``compliance`` defaults -- into the declared ``enrich`` transform step
+    (now execution-bound ✔). The residue that keeps this seed is the cardinality-changing
+    nested ``candidate_quotes`` reshape (execution-bound ✖, the PLAN-0077 SD-8 wall, L-3
+    partial). So ``intake`` is declared-expressible for the join half (proven) + the flat
+    derivations (migrated), while the nest keeps its production execution here.
 
     NEW plain single-type declared reads go through the engine default:
     ``services/engine/procedures/query_step.py`` (declared==dispatched). The three OCT
@@ -200,10 +202,17 @@ def _normalize_quotes(quotes: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 async def _intake_seed(adapter: FastenalCsvAdapter) -> dict[str, Any]:
-    """Assemble the enriched purchase-requisition the run scores (data-access = (a), Cray-confirmed
-    s91): the failure event supplies the criticality reading; the hero PO row supplies the
-    requisition metadata (part / asset / qty -- the GOVERNED supplier + amount + tier are
-    RE-DERIVED by the run, never read from the PO); the quotes are normalised to the rule shape."""
+    """Assemble the purchase-requisition the run scores (data-access = (a), Cray-confirmed s91):
+    the failure event supplies the reading; the hero PO row supplies the requisition metadata
+    (part / asset / qty -- the GOVERNED supplier + amount + tier are RE-DERIVED by the run, never
+    read from the PO); the quotes are normalised to the rule shape.
+
+    PLAN-0078 PR-1: the three DERIVED intake fields the seed used to emit -- ``criticality``
+    (execution-bound ✔), ``unit`` (✔), and the per-criterion ``compliance`` map (✔) -- are now the
+    declared ``enrich`` transform step's data (``procedures.yaml``, between ``intake`` and
+    ``judge``), NOT hand-coded here. The remaining seed residue is the nested ``candidate_quotes``
+    reshape (a cardinality-changing nest the v1 grammar cannot express -- execution-bound ✖, L-3
+    partial) + the raw adapter reads."""
     events = await adapter.fetch_objects("OperationalEvent")
     failure = next(e for e in events if e["event_type"] == "failure")
     pos = {p["po_id"]: p for p in await adapter.fetch_objects("PurchaseOrder")}
@@ -220,27 +229,18 @@ async def _intake_seed(adapter: FastenalCsvAdapter) -> dict[str, Any]:
         "primary_key": req["po_id"],
         "asset_id": req["asset_id"],
         "part_id": req["part_id"],
-        # the reading the judge bands (>= 0.8 -> breach -> the emergency-sourcing path)
+        # the reading the judge bands (>= 0.8 -> breach -> the emergency-sourcing path). Also the
+        # SOURCE the declared `enrich` transform copies into `criticality` (PLAN-0078 PR-1): the
+        # derived `criticality` + `unit` default + per-criterion `compliance` map are NO LONGER
+        # emitted here — they are the `enrich` transform step's declared data (procedures.yaml,
+        # between `intake` and `judge`). NARRATIVE (now expressed by the transform's compliance
+        # default = all True): the hero passes every criterion, so the rule_gate does not block the
+        # PO. RapidMRO is OFF_AVL and is selected via the logged RFQ->AVL exception (the
+        # scored_rule's source_path: exception_policy); the `avl` spec allows "a logged emergency
+        # AVL exception", so `avl` passes VIA that documented exception (coherent with off-AVL).
         "measured_value": failure["measured_value"],
-        "unit": failure.get("unit", "criticality"),
-        # the event criticality that amplifies the scored_rule criticality criterion
-        "criticality": failure["measured_value"],
         "qty": req["qty"],  # the hero-knob qty (3) -> 96,000 x 3 = 288,000
-        "candidate_quotes": _normalize_quotes(quotes),
-        # the per-criterion compliance signal the shipped rule_gate enforces (data-access = (a),
-        # mirroring candidate_quotes -- rule_gate.COMPLIANCE_FIELD = "compliance"). The hero passes
-        # every criterion, so the gate does not block the PO. NARRATIVE: RapidMRO is OFF_AVL and is
-        # selected via the logged RFQ->AVL exception (the scored_rule's source_path:
-        # exception_policy). The `avl` spec explicitly allows "a logged emergency AVL exception", so
-        # the `avl` signal is True VIA that documented exception -- NOT because RapidMRO is on-AVL
-        # (the exception is the reason it passes; coherent with the off-AVL story).
-        "compliance": {
-            "avl": True,  # True via the logged RFQ->AVL emergency exception (off-AVL)
-            "tax": True,
-            "cert": True,
-            "sanctions": True,
-            "single_source": True,
-        },
+        "candidate_quotes": _normalize_quotes(quotes),  # the nested reshape stays seed-side (L-3)
         # requisition metadata for the audit contract (the governed fields are re-derived)
         "order_type": req["order_type"],
         "is_off_avl_override": req["is_off_avl_override"],
@@ -287,6 +287,10 @@ def _executors(
         StepKind.QUERY: query,
         StepKind.EVALUATE: GovernanceEvaluateExecutor(base=EvaluateStepExecutor()),
         StepKind.ACTION: action,
+        # PLAN-0078 Step 1 (SD-3): the shared fieldless transform executor, registered uniformly
+        # across all 4 factories. Pure-additive at Step 1 — no procedure declares a transform yet;
+        # the PR-1 intake flip adds the first (the `enrich` step between `intake` and `judge`).
+        StepKind.TRANSFORM: TransformStepExecutor(),
     }
 
 

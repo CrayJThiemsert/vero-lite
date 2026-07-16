@@ -1,7 +1,10 @@
 """PLAN-0062 Step 4 (PR4) — procurement ``intake``: the join half proven under SHADOW parity (AC-6).
 
-The other three OCT verticals MIGRATED their seed to the declared grammar. procurement's
-``intake`` does not, and this module is why that is an honest call rather than a gap.
+The other three OCT verticals MIGRATED their seed's read to the declared query grammar.
+procurement's ``intake`` KEEPS its relational read as a shadow (this module proves the join
+half is grammar-expressible without flipping it), while PLAN-0078 PR-1 separately migrated the
+seed's flat DERIVED fields (``criticality`` / ``unit`` / ``compliance``) into a declared
+``enrich`` TRANSFORM step — a different grammar from this query-join half.
 
 **Shadow, not migration (SD-C / OQ-3).** Production ``intake`` keeps ``_SeedQuery`` — the
 co-existing hand-written seed. Nothing in the hero YAML, the hero audit contract, the
@@ -9,14 +12,16 @@ production factory, or the scheduled-demo path changes. What these tests prove i
 narrower, checkable claim: **the JOIN HALF of that seed is expressible in the ratified
 grammar, and over the REAL ``FastenalCsvAdapter`` it carries the same information.**
 
-**What the grammar cannot do — asserted, not hand-waved.** ``_intake_seed`` emits ONE row
-with three quotes nested under ``candidate_quotes`` and four DERIVED fields the ontology
-never stored (``compliance``, the ``criticality`` amplification, the harness-owned
-``object_type``/``primary_key``, the ``required_tier_id``→``declared_tier_id`` relabel).
-A relational join emits **three flat rows** and **no derived fields**. Both facts are
-pinned below. That gap is exactly the OQ-3 boundary: intake stays
-**execution-bound ✖** for the derived fields (LOCKED-9). No transform StepKind is
-invented to close it.
+**What the query-join grammar cannot do — asserted, not hand-waved.** A relational join emits
+**three flat rows** and **no derived fields** — it cannot produce the seed's nested
+``candidate_quotes`` reshape, nor the flat derived fields. PLAN-0078 PR-1 closed the FLAT half
+of that gap with the ``enrich`` TRANSFORM grammar (``criticality`` / ``unit`` / ``compliance``
+are now execution-bound ✔), so what a JOIN alone still cannot invent is the nested
+``candidate_quotes`` (the cardinality-changing reshape — PLAN-0077 SD-8 wall) plus the
+harness-owned envelope metadata (``object_type`` / ``primary_key``, the
+``required_tier_id``→``declared_tier_id`` relabel). Those facts are pinned below: the
+``candidate_quotes`` nest keeps ``intake`` **execution-bound ✖** for that residue (LOCKED-9,
+L-3 partial).
 
 **A drift this test also pins.** The procurement ontology declares
 ``PurchaseOrder.part_no`` / ``Quotation.price`` / ``OperationalEvent.equipment_id``,
@@ -96,6 +101,8 @@ _INTAKE_JOIN_INPUT: dict[str, Any] = {
 }
 
 # grammar row key -> `_intake_seed` key, for the fields the JOIN HALF is responsible for.
+# PLAN-0078 PR-1 removed `unit` here: it is no longer a seed-emitted field (the `enrich`
+# transform now DEFAULTS it), so there is no seed counterpart to compare the join row against.
 _BASE_FIELD_MAP = {
     "event_id": "event_id",
     "po_id": "primary_key",
@@ -103,7 +110,6 @@ _BASE_FIELD_MAP = {
     "part_id": "part_id",
     "qty": "qty",
     "measured_value": "measured_value",
-    "unit": "unit",
     "order_type": "order_type",
     "is_off_avl_override": "is_off_avl_override",
     "required_tier_id": "declared_tier_id",
@@ -243,13 +249,20 @@ async def test_derived_fields_are_absent_from_the_grammar_output() -> None:
         assert "price_thb" in row
 
 
-@pytest.mark.parametrize("required", ["compliance", "candidate_quotes", "criticality"])
+@pytest.mark.parametrize("required", ["candidate_quotes"])
 async def test_the_seed_still_supplies_what_the_grammar_cannot(required: str) -> None:
-    """The complement of the assertion above: production ``intake`` is not merely
-    un-migrated, it is un-migratABLE without a transform step. These three fields exist
-    in the seed and have no relational source."""
+    """The complement of the assertion above, NARROWED by PLAN-0078 PR-1. The two flat derived
+    fields the seed used to owe here — ``criticality`` (a typed copy) and the ``compliance`` map
+    (plus the ``unit`` default) — the transform grammar CAN express, and PR-1 migrated them into
+    the declared ``enrich`` step (execution-bound ✔). What remains genuinely un-migratable
+    without a cardinality-changing reshape is the nested ``candidate_quotes`` (the PLAN-0077 SD-8
+    wall, L-3 partial): it exists in the seed and has no flat relational source."""
     seed = await _intake_seed(FastenalCsvAdapter())
     assert required in seed
+    # the migrated flat fields are NO LONGER seed-emitted (they are the enrich transform's data)
+    assert "criticality" not in seed
+    assert "compliance" not in seed
+    assert "unit" not in seed
 
 
 # --------------------------------------------------------------------------- #
@@ -299,7 +312,14 @@ async def test_read_stock_routes_to_the_shipped_executor_not_the_seed() -> None:
     await register_procurement_procedure_executors()
     executors = registry.get_procedure_executors(_VERTICAL)()
 
-    assert set(executors) == {StepKind.QUERY, StepKind.EVALUATE, StepKind.ACTION}
+    # PLAN-0078 Step 1: TRANSFORM joins the exact key set (shared fieldless executor, all 4
+    # factories, pure-additive — the PR-1 intake flip adds the first declared transform).
+    assert set(executors) == {
+        StepKind.QUERY,
+        StepKind.EVALUATE,
+        StepKind.ACTION,
+        StepKind.TRANSFORM,
+    }
     query = executors[StepKind.QUERY]
     assert isinstance(query, QueryStepRouter), "the production QUERY slot is the router"
     assert isinstance(query.declared, QueryStepExecutor), "declared leg = the shipped executor"

@@ -75,6 +75,7 @@ from services.engine.procedures.orchestrator import RunContext, StepExecutor, St
 from services.engine.procedures.query_router import QueryStepRouter
 from services.engine.procedures.query_step import QueryStepExecutor
 from services.engine.procedures.spec import Person, Step, StepKind, load_procedures
+from services.engine.procedures.transform_step import TransformStepExecutor
 from services.engine.registry import RegistryError, registry
 from verticals.supply_chain.cold_chain_assess import (
     ColdChainAssessExecutor,
@@ -300,6 +301,10 @@ async def register_supply_chain_procedure_executors() -> None:
                 ),
                 stamp_steps=frozenset({_ASSESS_STEP}),
             ),
+            # PLAN-0078 Step 1 (SD-3): the shared fieldless transform executor, registered
+            # uniformly across all 4 factories. Pure-additive — supply_chain declares no transform
+            # step today (the PR-2 intake flip adds the first); inert until then.
+            StepKind.TRANSFORM: TransformStepExecutor(),
         }
 
     registry.register_procedure_executors(_VERTICAL, factory)

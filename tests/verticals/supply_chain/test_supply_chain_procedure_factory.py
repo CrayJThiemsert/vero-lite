@@ -75,7 +75,14 @@ async def test_factory_reuses_the_shared_engine_executors(
     Each call still builds a fresh map (the registry Step-2 no-leak contract)."""
     executors = supply_chain_factory()
 
-    assert set(executors) == {StepKind.QUERY, StepKind.EVALUATE, StepKind.ACTION}
+    # PLAN-0078 Step 1: TRANSFORM joins the exact key set (shared fieldless executor, all 4
+    # factories, pure-additive — inert until the PR-2 intake flip declares one).
+    assert set(executors) == {
+        StepKind.QUERY,
+        StepKind.EVALUATE,
+        StepKind.ACTION,
+        StepKind.TRANSFORM,
+    }
 
     # QUERY: routed per step (PLAN-0064 declaration-presence). The sweep's `read_temps` DECLARES
     # reads -> the shipped QueryStepExecutor over the REAL ontology meta (as before); the

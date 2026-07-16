@@ -116,7 +116,14 @@ async def test_factory_binds_the_base_evaluate_executor_not_the_env_wrapper(
     it is the ``env`` half, not a default every factory funnels through."""
     executors = aquaculture_factory()
 
-    assert set(executors) == {StepKind.QUERY, StepKind.EVALUATE, StepKind.ACTION}
+    # PLAN-0078 Step 1: TRANSFORM joins the exact key set (shared fieldless executor, all 4
+    # factories, pure-additive — inert until a procedure declares a transform).
+    assert set(executors) == {
+        StepKind.QUERY,
+        StepKind.EVALUATE,
+        StepKind.ACTION,
+        StepKind.TRANSFORM,
+    }
     query = executors[StepKind.QUERY]
     assert isinstance(query, QueryStepExecutor)
     assert query.meta is not None

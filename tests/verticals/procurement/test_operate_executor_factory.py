@@ -49,7 +49,14 @@ async def test_registration_resolves_the_procurement_factory() -> None:
     await register_procurement_procedure_executors()
 
     execs = registry.get_procedure_executors("procurement")()
-    assert set(execs) == {StepKind.QUERY, StepKind.EVALUATE, StepKind.ACTION}
+    # PLAN-0078 Step 1: TRANSFORM joins the exact key set (shared fieldless executor, all 4
+    # factories, pure-additive — the PR-1 intake flip adds the first declared transform).
+    assert set(execs) == {
+        StepKind.QUERY,
+        StepKind.EVALUATE,
+        StepKind.ACTION,
+        StepKind.TRANSFORM,
+    }
 
 
 async def test_resolve_endpoint_factory_no_longer_409s() -> None:
