@@ -91,9 +91,11 @@ PLAN-0035 / ADR-0022 member (b) established the pattern this ADR follows
 (`services/engine/action_verification.py:1-49`): the advisory local-LLM judge
 "*adds confidence + a trace* and **NEVER overrides the surfaced action**"; it
 is carried as an `action_verification` `ReasoningStep` in `reasoning_trace`,
-**not** as a first-class envelope field. The STATUS design discipline
-reinforces it (`docs/STATUS.md:262`, the s74 "trust shape, NO operator
-confidence badge" TODO): the floor-vs-judge `confidence_signal` is "an
+**not** as a first-class envelope field. The same PLAN-0035 lineage also
+settled the trust-shape question at its SD-3 — the s74 trust-shape /
+no-operator-confidence-badge decision, recorded as a post-archival amendment
+(`docs/plans/done/0035-governed-action-verify-reshape-build.md:576`,
+§"Surfaced decisions (SD-N)"): the floor-vs-judge `confidence_signal` is "an
 engine-internal QA/audit signal kept trace-only (SD-3 option A)"; a
 first-class `verification` field was judged NOT needed for the operator UI,
 reconsidered only if an internal audit/QA dashboard demands it. CLAUDE.md §8
@@ -128,9 +130,10 @@ envelope contract** (`actions.py:11`).
 
 Rationale: this mirrors the repo's only shipped advisory-dimension precedent —
 the PLAN-0035 / ADR-0022 judge is trace-carried and never a field
-(`action_verification.py:8-9, 21-24`) — and the s74 trust-shape discipline
-that explicitly declined a first-class field for an advisory signal
-(`STATUS.md:262`). Honesty note on "typed": under this option the type is
+(`action_verification.py:8-9, 21-24`) — and the s74 trust-shape
+discipline that explicitly declined a first-class field for an advisory
+signal (the PLAN-0035 SD-3 post-archival amendment,
+`0035:576`). Honesty note on "typed": under this option the type is
 enforced **at construction by the producer**, not at the envelope schema
 boundary — `ReasoningStep.detail` remains `dict[str, Any]`
 (`actions.py:24`). That is the same trade the `action_verification` step
@@ -228,8 +231,9 @@ governed action, mirroring judge constraint ② ("adds confidence + a trace and
 NEVER overrides the surfaced action", `action_verification.py:23-24`) and the
 `HeroImpactLedger.provisional` stamp (`demo.py:37-39`). ฿ figures are
 estimates under CLAUDE.md §8's assistive discipline. Any operator-facing
-render inherits the s74 trust-shape rule (`STATUS.md:262`): the ฿ figure is
-grounding for a human decision, never a machine verdict.
+render inherits the s74 trust-shape rule (the PLAN-0035 SD-3 amendment,
+`0035:576`): the ฿ figure is grounding for a human decision, never a
+machine verdict.
 
 ### D6 (SD-6, SURFACED) — Scope: contract-only ADR; the build is a fast-follow PLAN
 
@@ -311,7 +315,8 @@ Cray ratifies the corresponding SD at R2.
   radius across producers, the persistence projection (`actions.py:6-9`), and
   API consumers; contradicts the shipped advisory-dimension precedent
   (`action_verification.py:8-9`) and the s74 trace-only discipline
-  (`STATUS.md:262`) for a facet that is by definition advisory (D5).
+  (the PLAN-0035 SD-3 amendment, `0035:576`) for a facet that is by
+  definition advisory (D5).
 - Why recommended against: pay the contract-amendment cost when a consumer
   that needs first-class aggregation actually exists (OQ-3), not before.
 
@@ -394,8 +399,8 @@ Cray ratifies the corresponding SD at R2.
   audit dashboard needs SQL-side aggregation of ฿ figures, does the persisted
   projection (envelope→entity at `services/db/`, `actions.py:6-9`) gain a
   typed column, or does placement re-open toward Alternative 1? Mirror of the
-  s74 (B) reconsideration note (`STATUS.md:262`) — parked with the same
-  trigger, decided then, not now.
+  s74 (B) reconsideration note (the PLAN-0035 SD-3 amendment, `0035:576`) —
+  parked with the same trigger, decided then, not now.
 - **OQ-4 (currency).** v1 is THB-only (`currency` is carried as an ISO field
   per the ledger precedent, `demo.py:40`); multi-currency normalization is out
   of scope with no trigger defined.
@@ -414,8 +419,10 @@ Cray ratifies the corresponding SD at R2.
   `services/api/static/assets/view-hero.js:174-190` (render)
 - `services/engine/action_verification.py:1-49` — the advisory trace-carried
   precedent (PLAN-0035 / ADR-0022 member (b))
-- `docs/STATUS.md:262` — the s74 trust-shape / no-confidence-badge /
-  trace-only design discipline; `docs/STATUS.md:256` — Rock-3 Box-4 state
+- `docs/plans/done/0035-governed-action-verify-reshape-build.md:576`
+  (§"Surfaced decisions (SD-N)", the SD-3 post-archival amendment) — the s74
+  trust-shape / no-confidence-badge / trace-only design discipline;
+  `docs/STATUS.md:256` — Rock-3 Box-4 state
 - `tests/services/engine/procedures/test_principal_identity_retrigger.py` —
   the ADR-0026 OQ-6 / PLAN-0044 AC-10 marker that WAS built (the mechanism
   contrast for D4)
