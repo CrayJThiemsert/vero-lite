@@ -173,8 +173,9 @@ async def test_disposition_run_suspends_at_the_severity_tiered_human_gate(
 
     assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
     by_step = {step.step_id: step for step in result.step_results}
-    # the gated `approve` suspended the run — `fulfill` (the disposition write) never executed
-    assert set(by_step) == {"intake", "assess", "gdp_gate", "approve"}
+    # the gated `approve` suspended the run — `fulfill` (the disposition write) never executed.
+    # `enrich` (PLAN-0078 PR-2) is the declared transform that now supplies the excursion scalars.
+    assert set(by_step) == {"intake", "enrich", "assess", "gdp_gate", "approve"}
     assert "fulfill" not in by_step
     # the run RECORDED the SoD requester half (reviewer F5): the live principal-SoD check is armed
     # for real, not merely proven via the direct fixture calls — drop the disposition's SoD and this
