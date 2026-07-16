@@ -4221,3 +4221,90 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-14 (s127 — PLAN-0071 Box-4 economic-impact ฿ facet shipped across all 4 OCT verticals) [rotated 2026-07-16, session-137 reconcile — 10-row RD window]
 
 | 2026-07-14 | **s127 — PLAN-0071 (the Box-4 economic-impact ฿ facet) shipped END-TO-END across all 4 OCT verticals (2 PRs) + CLOSED → `done/`; the reactive AND governed recommenders now append an ADVISORY, trace-carried `economic_impact` `ReasoningStep` (baseline vs governed exposure → net ฿ benefit) — DISCHARGING the ADR-016 self-cancelling Box-4 N≥3 deferral with an OWNED marker (AC-5 GREEN at N=4); ADR-007 D2 envelope byte-verbatim (#731/#732)** — **#731 PR1 (`81c7070`, `feat`) engine core:** new `services/engine/economic_impact.py` (`EconomicExposure`/`EconomicImpact` + a NEVER-RAISE `build_economic_steps` helper) wired at BOTH `RecommendedAction` sites (`recommender._compose_llm_record` reactive + `action_step._compose_action` governed), appended LAST, never on `_rule_recommend`; AC-5 marker landed RED (`xfail(strict=True)`); conftest autouse clears the producer registry; envelope (`services/engine/actions.py`) byte-untouched. **#732 PR2 (`b11ea40`, `feat`) THE close:** four per-vertical ฿ producers (`verticals/<ns>/economic_impact.py`) — energy `avoided_outage` ฿405k / supply_chain `spoilage_avoided` ฿2.12M / aquaculture `mortality_avoided` ฿247k (assumptions-first per SD-B/SD-G, every ฿ input a named `assumptions[]` entry, NO ontology/regen/migration); procurement `expedite_tradeoff` from the committed-CSV demo ledger (`hero_demo/ledger.py` byte-untouched, `basis_refs` cite CSV columns, gated on the emergency-failure trigger — OQ-C calm-path → `None`, hero-PO exemplar stands in for per-event PO anchor, deferred v2); `discovery._register_vertical` gained a GUARDED optional producer import (`ModuleNotFoundError.name` checked). AC-5 GREEN at N=4; AC-9 GREEN (real energy producer → one `economic_impact` step, net ฿405,000); coupled-test audit = every pin PINNED-UNMODIFIED. draft≠review≠verify: `plan-drafter` PLAN → Code R2 → Cray SD-A..SD-G → build. Suite **2591 passed / 7 skipped / 0 xfailed** WITH Postgres (verified on BOTH PR head + merge commit `b11ea40`, CI PR-only); ruff + `ruff format --check` + `mypy --strict services/` clean; deterministic-offline (no MS-S1 / host-state); 0 open PRs. PLAN-0071 `git mv`→`done/`. Full narrative: the Session-127 CF block above | `b11ea40` (HEAD, #732 PR2 merge) / `81c7070` (#731 PR1 engine core) / `services/engine/economic_impact.py` + `services/engine/{recommender.py, procedures/action_step.py, discovery.py}` + `verticals/{energy,supply_chain,aquaculture,procurement}/economic_impact.py` + `tests/**` (AC-5 ≥3-vertical marker + AC-9) + `docs/plans/done/0071-*.md` |
+
+## Rotated this reconcile (session-138, 2026-07-16 — PLAN-0078 PR-3 severity re-sequencing + AT-2 N=1 misinformation-kill, #768/#767)
+
+### Current-Focus block — Session 133 (close-out: PLAN-0075 COMPLETE + AC-13 + PLAN-0076 filed) [rotated 2026-07-16, session-138 reconcile — 4-session CF window]
+
+> **Session 133 (close-out), 2026-07-15 (head_commit `76f42cc` → `fac77c7`) —
+> PLAN-0075 COMPLETE (all 13 ACs) + CLOSED → `done/`; AC-13 derivation
+> provenance shipped (#751, `feat`); PLAN-0076 filed as the standing follow-on
+> TRACKER (#752).** With the core (AC-1..AC-12, #749) landed earlier this
+> session, **AC-13** folds supply_chain's severity-derivation constants
+> (`_DOSE_LADDER` + `_TOP_SEVERITY`) into the run governance pin: a per-vertical
+> `registry.derivation_hash` hook threads an optional `derivation_hash` param
+> through the 5 pin call sites, so the persisted pin records WHICH derivation
+> governed a run (mid-flight tamper-evidence + which-derivation-governed-this-run).
+> This is **PROVENANCE-ONLY** — it does **NOT** guarantee a fresh run's
+> derivation, so **F-PIN stays OPEN** (SD-5's residual risk, unchanged); 9
+> offline tests. **PLAN-0075 is now COMPLETE — all 13 ACs — and Code
+> `git mv`→`docs/plans/done/0075-*.md`.** **The two deferrals no longer live on
+> PLAN-0075:** they are homed by **PLAN-0076** (`Status: Tracking`, #752) — a
+> Cray-ratified (s133 4-specialist SD-1 panel) STANDING tracker for the F-PIN
+> remainder + the ADR-0031 D3 gate-plugin seam (F-FACTORY). PLAN-0076 ships an
+> **AC-6 presence guard-test** (`test_at2_followon_tracking_guard.py`) that
+> turns the build RED on a premature archive-to-`done/` or a pruned STATUS
+> pointer — the panel's "location≠tripwire; failing tests are the real
+> anti-rot" finding (guards against the ADR-0031 OQ-4 deferral-rot precedent).
+> **Merge sequence:** #752 merged first (`4a682ab`), then the AC-13 branch was
+> updated onto it (`e726a00` = routine merge-main) and #751 merged (`fac77c7`,
+> HEAD); both gate-verified. **draft≠review≠verify:** AC-13 = Code authored +
+> verified (9 offline tests); PLAN-0076 = `plan-drafter` authored → Code R2 →
+> Cray ratified the 4-specialist panel path; this STATUS reconcile =
+> `status-scribe` authored → Code R2. Post-merge: main=`fac77c7`; 0 open PRs;
+> PLAN-0075 COMPLETE → `done/`; the two follow-ons trigger-gated under PLAN-0076
+> (not scheduled); loop-dispatcher DISABLED; MS-S1 idle. Commits: `0520fb2`
+> (AC-13 feat) → `4a682ab` (#752 merge) → `fac77c7` (HEAD, #751 merge).
+
+
+### Current-Focus block — Session 133 (core: PLAN-0075 AT-2 authority enforcement at the run gate) [rotated 2026-07-16, session-138 reconcile — 4-session CF window]
+
+> **Session 133, 2026-07-15 (head_commit `098b0d9` → `76f42cc`) — PLAN-0075
+> CORE: AT-2 AUTHORITY ENFORCEMENT AT THE RUN GATE shipped (12 of 13 ACs,
+> #749, `feat`); closes the s131-surfaced F1 exploit (`task_053edc92`).** The
+> AT-2 authority ladder (`doa_tier` / `severity_tier`) RESOLVED + AUDITED which
+> tier should approve, but NO run path ENFORCED that the acting approver HELD
+> that tier role — so in the shipped procurement hero a junior (`appr-buyer`,
+> ฿0-50k authority) could resolve a ฿288k / ฿2M gate, and the persisted audit
+> even NAMED an authority who never acted. **The fix:** a pure
+> `tier_authority.check_tier_authority` now runs at `resolve_gated_step` AFTER
+> the SoD check (ADDITIVE — SoD stays primary) and BLOCKS unless the approver
+> holds the ladder-resolved tier role of EVERY persisted verdict — verified at
+> the LIVE DB gate (junior refused; senior approves-down, governed). **Plus:**
+> an **F3** load-time check (an authority step MUST be GATED — AC-5); audit
+> reconciliation to gate-time so the tie names who ACTUALLY acted (SD-6a /
+> AC-6); the **AC-7 truth pass** (7 over-claim sites corrected, verification
+> grep returns zero); and the blessing test re-harnessed (AC-8). **Two
+> Cray-ratified divergences from the merged PLAN:** (1) **CUMULATIVE roles**
+> authored in the shipped YAML — OVERRIDING PLAN-0075's Correction 1 (Cray:
+> "a senior can approve downward", Policy B); (2) **NATIVE-TIER routing**
+> (`native_approver`) — a new consequence Code SURFACED + Cray ratified, so the
+> audit routing record stays on the tier's OWN approver even under cumulative
+> roles (enforcement stays cumulative, routing stays native). **ADR-0026 D4**'s
+> 4th fail-closed condition already merged (#746, AC-12).
+> **draft≠review≠verify:** `plan-drafter` authored PLAN-0075 (Proposed, s132) →
+> Code built + R2 → Cray ratified the two divergences (cumulative-role override
+> + native-tier routing). **Evidence:** full offline suite **2692 passed / 7
+> skipped**; 251 DB+API tests pass; `mypy --strict` clean; the live DB gate
+> confirmed junior-refused / senior-approves-down. **PLAN-0075 stays OPEN in
+> `docs/plans/`** — core landed (12/13 ACs); **AC-13 (derivation provenance) is
+> the deferred follow-up** (`task_cbf139fe`, Cray-ratified split): hash the
+> supply_chain `_DOSE_LADDER` + `_TOP_SEVERITY` into the run governance pin (a
+> 5-call-site pin change needing a vertical-hook design — the engine pin can't
+> import vertical constants; PROVENANCE-ONLY, **F-PIN stays open regardless**),
+> THEN close PLAN-0075 → `done/`. The F-PIN remainder + the ADR-0031 D3
+> gate-plugin seam (F-FACTORY) stay the #747 STATUS Active-TODO. Post-merge:
+> main=`76f42cc`; 0 open PRs; tree clean (2 pre-existing untracked KEEP:
+> `.claude/benchmark-results/`, `.claude/launch.json`); MS-S1 idle; dev Postgres
+> UP; loop-dispatcher DISABLED. Commits: `74d8958` → `899d9a1` → `c8a951a` →
+> `8011613` → `580b9e8` (the 5 PLAN-0075 core build commits, Steps 2-5 + AC-8) →
+> `76f42cc` (HEAD, #749 merge).
+
+
+### Recent Decisions row removed — 2026-07-14 (s129 — PLAN-0073 Box-4 economic_impact facet in the hero-demo UI) [rotated 2026-07-16, session-138 reconcile — 10-row RD window]
+
+| 2026-07-14 | **s129 — PLAN-0073 (the Box-4 `economic_impact` facet surfaced in the Palantir-lite hero-demo UI) shipped END-TO-END + CLOSED → `done/` in ONE session-129 day (#737 Ready → #738 build); beat-4 (฿) now ALSO carries the typed Box-4 `EconomicImpact` facet with audit-grade provenance UNDER the unchanged demo ledger; NO ADR change (ADR-0030 D2 ledger+facet coexist; ADR-007 D2 envelope byte-untouched — facet stays trace-carried)** — Cray ratified SD-1(a)/SD-2(b)/SD-3 via AskUserQuestion (all as-rec). **SD-1(a) fire-for-real:** `_intake_seed` carries `event_type` (from the failure event at `run.py:208`) so the Box-4 producer fires INSIDE the governed run; build-discovered (OQ-1, via the AC-2 RED test) the hero `source` step is `GovernanceActionExecutor._scored_rule` which REPLACES the base action envelopes (threading the selected spend for `doa_tier`) → it now LIFTS the advisory `economic_impact` trace step onto the persisted step trace (else computed-then-discarded); advisory + never-raise (ADR-0030 D5). **SD-2(b):** `GET /demo/hero/impact` gains an additive optional `economic_impact` field; the producer reuses `build_hero_impact_ledger` so the ฿ figures EQUAL the ledger's (no drift, ledger byte-identical). **SD-3:** `view-hero.js` provenance strip under the unchanged ledger card — `kind` chip + always-visible `PROVISIONAL` badge (s74 trust-shape) + "show provenance" toggle → `assumptions[]` + `basis_refs`; `hero.css` c35 / `view-hero.js` c36 `?v=` bumps. Build-discovered (disclosed): pre-commit mypy caught a `list[Mapping]` vs `list[dict[str,Any]]` the first manual `mypy` skipped (the `&&` chain stopped at `ruff format --check`) → fixed with `cast` + annotation. draft≠review≠verify: `plan-drafter` PLAN → Code R2 (anchors re-verified on disk) → Cray SD-1(a)/SD-2(b)/SD-3 → build. 3 new AC tests GREEN (AC-1 endpoint facet `net_benefit`==ledger + 4 `basis_refs`; AC-2 producer fires on the real hero seed + persisted governed-run source trace carries the `economic_impact` step; AC-2/AC-3 existing ledger tests UNMODIFIED); AC-4 preview renders the strip + toggle, no console errors; suite **2599/7** WITH Postgres (verified on BOTH PR head + merge commit `f250593`, CI PR-only); ruff + `ruff format --check` + `mypy --strict services/` clean; deterministic-offline (no MS-S1 / host-state); 0 open PRs. PLAN-0073 `git mv`→`done/`. Full narrative: the Session-129 CF block above | `f250593` (HEAD, #738 feat merge) / `cc8516e` (#737 PLAN-0073 Ready) / `verticals/procurement/hero_demo/**` (`_intake_seed` `event_type` + `economic_impact` endpoint field + producer) + `GovernanceActionExecutor._scored_rule` (lifts the advisory step onto the persisted trace) + the oct-demo-procurement frontend (`view-hero.js` provenance strip, `?v=` bumps) + `tests/**` (3 AC tests) + `docs/plans/done/0073-*.md` |
+
+### Recent Decisions row removed — 2026-07-14 (s128 — PLAN-0072 hero-demo beat-3 real DOA gate resolve) [rotated 2026-07-16, session-138 reconcile — 10-row RD window]
+
+| 2026-07-14 | **s128 — PLAN-0072 (the Palantir-lite hero demo's beat-3 "run it" step) shipped END-TO-END + CLOSED → `done/` in ONE session-128 day (#734 Ready → #735 build); the hero demo's beat-3 now GENUINELY resolves the parked DOA gate through the REAL production `POST /runs/{id}/gate/resolve`, rendering the persisted truth — replacing a FAKE front-end badge; NO engine change** — Cray picked D3 (next-work-analyst-ranked); `plan-drafter` PLAN → Code R2 → Cray SD-A(b)/SD-B(b)/SD-C(a)/SD-D(a) via AskUserQuestion → build. **Backend:** event opener additively exposes the parked `run_id` on its `hero` dict; generation-aware replay (SD-C, clock-free COUNT of decided runs bumps `detected_at` +1h past the 3600 s dedup bucket → a FRESH parked run); SD-A(b) drives the PRODUCTION resolve route with `api_auth_enabled` + a real authenticated `appr-pm` Person (RF-1 end-to-end), NO new endpoint. **Frontend** `renderActPanel` reworked: SD-D(a) inline login (authenticate THEN sign), SD-B(b) Approve AND Reject, renders the persisted `GateResolveResponse` (approve → COMPLETED + SoD tie; reject = continue+record → COMPLETED, NOT a rejected terminal); `api.js` Hero.runDetail/resolve; `?v=` bumps. **Build-discovered prod bug (disclosed AC-6 correction):** the SoD-403 path `asdict`'d a frozenset `SoDViolation.constraint_steps` → un-serializable → Starlette 500 MASKED the 403 (procurement = first frozenset SoD verdict on this HTTP path); fixed in `services/api/routers/runs.py` (frozenset → sorted list), security posture INTACT — SoD fails CLOSED before serialize (run stays parked, `gate_refused` audit), only the response CODE was wrong. OQ-4 resolved (reject test → downstream tolerates empty executed-effect set). draft≠review≠verify: `plan-drafter` PLAN → Code R2 → Cray SD-A..SD-D → build. 5 new AC tests GREEN; suite **2596/7** WITH Postgres (on BOTH PR head + merge commit `88e6984`, CI PR-only); ruff + `ruff format --check` + `mypy --strict services/` clean; deterministic-offline (no MS-S1 / host-state; Postgres for DB-backed ACs only); 0 open PRs. PLAN-0072 `git mv`→`done/`. Full narrative: the Session-128 CF block above | `88e6984` (HEAD, #735 feat merge) / `85f90ed` (#734 PLAN-0072 Ready) / `services/api/routers/runs.py` (SoD-403 JSON-sanitize) + `verticals/procurement/hero_demo/**` (`run_id` expose + generation-aware replay) + the oct-demo-procurement frontend (`renderActPanel`, `api.js` Hero.runDetail/resolve, `?v=` bumps) + `tests/**` (5 AC tests) + `docs/plans/done/0072-*.md` |
