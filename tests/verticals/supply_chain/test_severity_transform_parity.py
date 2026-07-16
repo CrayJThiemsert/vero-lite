@@ -189,7 +189,14 @@ async def test_semantic_run_record_equivalence(supply_chain_factory: ExecutorFac
     assert assess_audit is not None
     [scored] = assess_audit["scored_rule"]
     assert scored["selected_quote_id"] == "lane-licensed-destruction"
-    assert scored["amount"] == {"value": "63000.000", "currency": "THB"}
+    # PLAN-0078 PR-4 re-sequenced the spend: the verdict carries the two FACTORS where it carried
+    # `{"amount": {"value": "63000.000", "currency": "THB"}}`, and the declared `derive_spend`
+    # transform now multiplies them (SD-8(a) one derivation home; the audit form change is
+    # SD-6(ii)). The ฿ itself is still pinned byte-equal — on the ROW, at the gate anchor, in
+    # `test_amount_transform_parity.py`. PR-3's severity assertions below are untouched.
+    assert scored["selected_unit_price"] == "150.00"
+    assert scored["qty"] == "420.0"
+    assert scored["currency"] == "THB"
     assert scored["source_path"] == "default_source"
     assert scored["override_required"] is False
 

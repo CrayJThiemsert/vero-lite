@@ -303,9 +303,16 @@ class TestMarqueeSeverityParity:
 
 
 class TestMarqueeAmountParity:
-    """A declared ``amount = unit_price x qty`` transform reproduces the shipped
-    ``select_scored_supplier`` verdict amount (scored_rule.py:230) value-identically — without
-    touching the scored_rule stamp path (SD-1)."""
+    """A declared ``amount = unit_price x qty`` transform reproduces the spend the shipped
+    ``select_scored_supplier`` verdict resolves, value-identically.
+
+    This fixture was authored to prove the shape was FEASIBLE before the migration — "without
+    touching the scored_rule stamp path (SD-1)". PLAN-0078 PR-4 has since taken that path: the
+    verdict now carries the two FACTORS (``selected_unit_price`` x ``qty``) and the declared
+    transform owns the multiplication, so the comparison is against the factors rather than a
+    product the verdict no longer computes. Kept as the fixture-level check that the grammar's
+    ``mul`` is exact on Decimals; the SHIPPED chain's byte parity is proven over the real
+    procedures in ``test_amount_transform_parity.py``."""
 
     async def test_declared_transform_matches_scored_rule_amount(self) -> None:
         quote = {
@@ -335,5 +342,6 @@ class TestMarqueeAmountParity:
         outcome = await TransformStepExecutor().execute(
             _transform_step(ops), [{"unit_price": "1234.56", "qty": "5"}], _ctx()
         )
-        assert Decimal(outcome.output[0]["amount"]) == verdict.amount
-        assert verdict.amount == Decimal("1234.56") * Decimal("5")  # the scored_rule.py:230 formula
+        spend = verdict.selected_unit_price * verdict.qty  # the derivation the transform now owns
+        assert Decimal(outcome.output[0]["amount"]) == spend
+        assert spend == Decimal("1234.56") * Decimal("5")

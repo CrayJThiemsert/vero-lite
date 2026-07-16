@@ -150,13 +150,18 @@ async def test_intake_enrichment_and_governed_verdicts_parity(procedure_id: str)
     assert judge_artifact is not None
     assert judge_artifact["output_set"] == [{**_FROZEN_ENRICHED_INTAKE, "verdict": "breach"}]
 
-    # (2) scored_rule selection + amount (SELECTION = a rule, never the LLM — governed != generated)
+    # (2) scored_rule selection + spend (SELECTION = a rule, never the LLM — governed != generated)
+    # PLAN-0078 PR-4: the verdict carries the spend's two FACTORS (the declared `derive_spend`
+    # transform multiplies them) where it carried a precomputed `amount` — SD-8(a) / SD-6(ii).
+    # The ฿288,000 itself stays pinned byte-equal at (4) below and in the PR-4 parity harness.
     source_audit = by_step["source"].audit
     assert source_audit is not None
     [scored] = source_audit["scored_rule"]
     assert scored["selected_supplier_id"] == "SUP-RAPIDMRO"
     assert scored["selected_quote_id"] == "QT-SPN-RAPIDMRO"
-    assert scored["amount"] == {"value": "288000", "currency": "THB"}
+    assert scored["selected_unit_price"] == "96000"
+    assert scored["qty"] == "3"
+    assert scored["currency"] == "THB"
     assert scored["source_path"] == "exception_policy"
     assert scored["override_required"] is True
 

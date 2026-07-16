@@ -158,9 +158,13 @@ async def test_disposition_intake_enrichment_and_verdicts_parity(
     assert assess_audit is not None
 
     # (3) scored_rule: the RULE selected the licensed-destruction lane (governed != generated)
+    # PLAN-0078 PR-4: the verdict carries the spend's two FACTORS (the declared `derive_spend`
+    # transform multiplies them) where it carried a precomputed `amount` — SD-8(a) / SD-6(ii).
     [scored] = assess_audit["scored_rule"]
     assert scored["selected_quote_id"] == "lane-licensed-destruction"
-    assert scored["amount"] == {"value": "63000.000", "currency": "THB"}
+    assert scored["selected_unit_price"] == "150.00"
+    assert scored["qty"] == "420.0"
+    assert scored["currency"] == "THB"
     assert scored["source_path"] == "default_source"
     assert scored["override_required"] is False
 

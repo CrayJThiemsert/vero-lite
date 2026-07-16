@@ -39,7 +39,6 @@ from services.engine.procedures.action_step import (
     TierAuthorityError,
     resolve_gated_step,
 )
-from services.engine.procedures.evaluate_step import EvaluateStepExecutor
 from services.engine.procedures.orchestrator import (
     ProcedureError,
     RunContext,
@@ -49,7 +48,7 @@ from services.engine.procedures.orchestrator import (
 )
 from services.engine.procedures.persistence import persist_run
 from services.engine.procedures.principal_sod import SoDViolationKind
-from services.engine.procedures.runs import PipelineRunStatus, StepResultStatus
+from services.engine.procedures.runs import PipelineRunStatus
 from services.engine.procedures.spec import (
     Agent,
     AgentAllowed,
@@ -62,10 +61,8 @@ from services.engine.procedures.spec import (
     StepKind,
     load_procedures,
 )
-from services.engine.procedures.transform_step import TransformStepExecutor
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
-from verticals.procurement.data_adapter import synthetic
 from verticals.procurement.hero_demo.run import seed_operate_waiting_human_run
 
 # --------------------------------------------------------------------------- #
@@ -123,22 +120,6 @@ class _Query:
 
     async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
         return StepOutcome(output=self.output, reasoning_trace=[{"kind": "query", "summary": "r"}])
-
-
-class _Evaluate:
-    """Dispatch: a banded evaluate (``judge``) uses the REAL deterministic executor;
-    the band-less ``compliance`` evaluate tags each entity ``compliant`` (harness seam)."""
-
-    def __init__(self) -> None:
-        self._band = EvaluateStepExecutor()
-
-    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
-        if step.threshold is not None:
-            return await self._band.execute(step, input_set, ctx)
-        return StepOutcome(
-            output=[{**e, "compliant": True} for e in input_set],
-            reasoning_trace=[{"kind": "rule", "summary": "compliance (harness)"}],
-        )
 
 
 @pytest.fixture
@@ -365,48 +346,13 @@ def _procurement() -> tuple[Procedure, Agent, list[Person], list[PrincipalAlias]
     return proc, agent, spec.principals, spec.principal_aliases
 
 
-def _failure_events() -> list[Any]:
-    # JSON-sanitise (datetimes -> ISO strings) so the persisted intake artifact is
-    # JSONB-safe — mirrors the real enriched-PR records intake would emit + persist
-    # (the synthetic events carry a raw datetime the in-memory test never persisted).
-    raw = [e for e in synthetic.operational_events() if e["event_type"] == "failure"]
-    return list(json.loads(json.dumps(raw, default=str)))
-
-
-def _procurement_executors() -> dict[StepKind, StepExecutor]:
-    return {
-        StepKind.QUERY: _Query(_failure_events()),
-        StepKind.EVALUATE: _Evaluate(),
-        StepKind.ACTION: ActionStepExecutor(client_factory=lambda _m: _CyclingChat()),
-        # PLAN-0078 PR-1: the hero procedure now carries a declared `enrich` transform step
-        # (intake -> enrich -> judge), so this map binds the shared engine executor too.
-        StepKind.TRANSFORM: TransformStepExecutor(),
-    }
-
-
-async def _run_procurement_to_approve(maker: Any, run_id: str, requester: Person) -> list[str]:
-    """Drive the real hero procedure to the suspended ``approve`` gate; persist; return
-    the proposed action_ids (the requester recorded on the run via the typed seam)."""
-    spy = _SpyHandler()
-    for handler in ("emergency_source", "request_approval", "issue_po", "echo"):
-        registry.register_handler("procurement", handler, spy)
-    proc, agent, _principals, _aliases = _procurement()
-    result = await run_procedure(
-        proc,
-        agent,
-        _procurement_executors(),
-        vertical="procurement",
-        run_id=run_id,
-        principal=requester,
-    )
-    assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
-    approve_sr = next(sr for sr in result.step_results if sr.step_id == "approve")
-    assert approve_sr.status == StepResultStatus.WAITING_HUMAN.value
-    # The requester (intake) was recorded on the run from the typed ambient principal.
-    assert result.run.step_principals == {"intake": requester.person_id}
-    async with maker() as session:
-        await persist_run(session, result)
-    return [p["action_id"] for p in (approve_sr.artifact or {}).get("output_set", [])]
+# PLAN-0078 PR-4: `_failure_events` / `_procurement_executors` / `_run_procurement_to_approve`
+# (the PLAIN-executor procurement harness) are REMOVED here. PLAN-0075 AC-8 had already migrated
+# the two governed tests below off them onto `seed_operate_waiting_human_run` — citing the
+# "plain-executor bypass" — leaving this one cluster alive for `test_procurement_requester_cannot_
+# self_approve` alone; PR-4 migrated that last test too (the plain executor returns action
+# envelopes at `source`, dropping the row the declared `derive_spend` transform needs), so nothing
+# references the cluster any more. The `_Evaluate` harness dispatch it owned went with it.
 
 
 async def test_procurement_senior_approves_downward_governed(db_engine: AsyncEngine) -> None:
@@ -477,12 +423,25 @@ async def test_procurement_junior_approver_refused_by_tier_authority(
 
 async def test_procurement_requester_cannot_self_approve(db_engine: AsyncEngine) -> None:
     """AC-3 (live) — the requester (req-planner, holds only `requester`) tries to approve
-    their own PO -> ROLE_MISMATCH on the approver step -> blocked, no PO governed."""
+    their own PO -> ROLE_MISMATCH on the approver step -> blocked, no PO governed.
+
+    PLAN-0078 PR-4: re-harnessed onto the GOVERNANCE executors via the hero seed, finishing the
+    migration PLAN-0075 AC-8 began on the two sibling tests above (which cite the same "plain
+    ActionStepExecutor" bypass). Forced, not cosmetic: the plain executor returns ACTION
+    ENVELOPES at `source`, dropping the requisition row — the exact shape `_scored_rule`'s
+    docstring names — so the declared `derive_spend` transform now downstream of it refuses
+    (fail closed, missing `selected_unit_price`) and the run never reaches this gate. The seed
+    already uses `req-planner` as the intake principal, which is precisely this test's requester.
+    """
     maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with maker() as session:
+        result = await seed_operate_waiting_human_run(session, run_id="proc-self")
     proc, _agent, principals, aliases = _procurement()
     by_id = {p.person_id: p for p in principals}
     requester = by_id["req-planner"]
-    action_ids = await _run_procurement_to_approve(maker, "proc-self", requester)
+    assert result.run.step_principals == {"intake": requester.person_id}
+    approve_sr = next(sr for sr in result.step_results if sr.step_id == "approve")
+    action_ids = [p["action_id"] for p in (approve_sr.artifact or {})["output_set"]]
     async with maker() as session:
         with pytest.raises(PrincipalSoDError) as exc:
             await resolve_gated_step(
