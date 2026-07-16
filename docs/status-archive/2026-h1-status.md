@@ -4308,3 +4308,63 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-14 (s128 — PLAN-0072 hero-demo beat-3 real DOA gate resolve) [rotated 2026-07-16, session-138 reconcile — 10-row RD window]
 
 | 2026-07-14 | **s128 — PLAN-0072 (the Palantir-lite hero demo's beat-3 "run it" step) shipped END-TO-END + CLOSED → `done/` in ONE session-128 day (#734 Ready → #735 build); the hero demo's beat-3 now GENUINELY resolves the parked DOA gate through the REAL production `POST /runs/{id}/gate/resolve`, rendering the persisted truth — replacing a FAKE front-end badge; NO engine change** — Cray picked D3 (next-work-analyst-ranked); `plan-drafter` PLAN → Code R2 → Cray SD-A(b)/SD-B(b)/SD-C(a)/SD-D(a) via AskUserQuestion → build. **Backend:** event opener additively exposes the parked `run_id` on its `hero` dict; generation-aware replay (SD-C, clock-free COUNT of decided runs bumps `detected_at` +1h past the 3600 s dedup bucket → a FRESH parked run); SD-A(b) drives the PRODUCTION resolve route with `api_auth_enabled` + a real authenticated `appr-pm` Person (RF-1 end-to-end), NO new endpoint. **Frontend** `renderActPanel` reworked: SD-D(a) inline login (authenticate THEN sign), SD-B(b) Approve AND Reject, renders the persisted `GateResolveResponse` (approve → COMPLETED + SoD tie; reject = continue+record → COMPLETED, NOT a rejected terminal); `api.js` Hero.runDetail/resolve; `?v=` bumps. **Build-discovered prod bug (disclosed AC-6 correction):** the SoD-403 path `asdict`'d a frozenset `SoDViolation.constraint_steps` → un-serializable → Starlette 500 MASKED the 403 (procurement = first frozenset SoD verdict on this HTTP path); fixed in `services/api/routers/runs.py` (frozenset → sorted list), security posture INTACT — SoD fails CLOSED before serialize (run stays parked, `gate_refused` audit), only the response CODE was wrong. OQ-4 resolved (reject test → downstream tolerates empty executed-effect set). draft≠review≠verify: `plan-drafter` PLAN → Code R2 → Cray SD-A..SD-D → build. 5 new AC tests GREEN; suite **2596/7** WITH Postgres (on BOTH PR head + merge commit `88e6984`, CI PR-only); ruff + `ruff format --check` + `mypy --strict services/` clean; deterministic-offline (no MS-S1 / host-state; Postgres for DB-backed ACs only); 0 open PRs. PLAN-0072 `git mv`→`done/`. Full narrative: the Session-128 CF block above | `88e6984` (HEAD, #735 feat merge) / `85f90ed` (#734 PLAN-0072 Ready) / `services/api/routers/runs.py` (SoD-403 JSON-sanitize) + `verticals/procurement/hero_demo/**` (`run_id` expose + generation-aware replay) + the oct-demo-procurement frontend (`renderActPanel`, `api.js` Hero.runDetail/resolve, `?v=` bumps) + `tests/**` (5 AC tests) + `docs/plans/done/0072-*.md` |
+
+## Rotated this reconcile (session-140, 2026-07-16 — the 4-artifact strategic-continuity program: ADR-0032 Accepted + PLAN-0079 Tracking + the STATUS pointer, #770/#771/#769)
+
+### Current-Focus block — Session 135 (close-out: PLAN-0077 transform-grammar build COMPLETE across 5 PRs) [rotated 2026-07-16, session-140 reconcile — 4-session CF window]
+
+> **Session 135 (close-out), 2026-07-15 (head_commit `fac77c7` → `ece270a`) —
+> PLAN-0077 "transform-grammar build" COMPLETE across 5 PRs (renders ADR-0031
+> D3 row-1 + ADR-016 Q4 OQ-3; NO new ADR; the s134 PAUSE never reconciled
+> STATUS, so this fold spans the whole arc).** **#754** (`3e6ee4d`, s134) —
+> PLAN-0077 Proposed (`plan-drafter` → Code R2 → Cray SD-1 = A-refined). **#755
+> Phase A** (`e93e9d0`, s134) — `StepKind.TRANSFORM` + a typed declarative
+> grammar (an anti-eval `derive` expression tree: arbitrary eval UNREPRESENTABLE
+> by construction) + H-governance + a load gate; 41 tests. **#756 Phase B**
+> (`d94a10d`) — `services/engine/procedures/transform_step.py`: `plan_transform`
+> (pure/total compile-or-refuse, shares `validate_transform_spec` with the load
+> gate, L-6) + a frozen, IO/LLM-free, exact-Decimal, fail-closed (div /
+> non-finite / missing-input per SD-7) `TransformStepExecutor` with
+> inclusive-ceiling banding, JSONB-safe output + per-op provenance; 40 tests.
+> **#757 Phase C** (`8808902`) — fixtures end-to-end via `run_procedure` /
+> `run_procedure_persisted` + the marquee value-parity oracle: a declared
+> transform reproduces `derive_excursion_severity`'s severity+ratio and
+> `scored_rule`'s `amount = unit_price × qty` value-identically WITHOUT touching
+> the hardened stamp path (SD-1); 12 tests. **#758 L-8 landing** (`ece270a`,
+> HEAD) — ADR-0031 D3 row-1 "Steps/StepKinds" → "Shipped — see PLAN-0077"
+> (`plan-drafter` authored the Accepted-body edit → Code R2 + committed);
+> PLAN-0077 `git mv`→`docs/plans/done/0077-*.md` in this same close-out PR.
+> **Honest residual (not overclaimed):** the GRAMMAR shipped (declared ✔,
+> load-gated ✔, execution-bound ✔ for the shipped op-set), but the two
+> verticals' seeds stay **execution-bound ✖** for their derived halves; the
+> marquee amount/severity stamps stay code-side by ratified choice (SD-1);
+> `derivation_hash` remains in service; **F-PIN stays OPEN**. Flipping those is
+> the separate **SD-4 parity-guarded seed-migration PLAN** (not yet filed),
+> which also owns the F-PIN fold-in tracked by **PLAN-0076 Step T2**; nothing
+> here retires `derivation_hash` or closes F-PIN. **draft≠review≠verify:** Phase
+> A/B/C = Code authored + verified (93 AC tests); PLAN-0077 + the L-8 edit =
+> `plan-drafter` → Code R2 + committed; this reconcile = `status-scribe` → Code
+> R2. Post-merge: main=`ece270a`; 0 open PRs; loop-dispatcher DISABLED; MS-S1
+> idle; dev Postgres UP. Commits: `3e6ee4d` (#754) → `e93e9d0` (#755 A) →
+> `d94a10d` (#756 B) → `8808902` (#757 C) → `ece270a` (#758 landing, HEAD).
+
+> _Rotation note (session-138 reconcile, 2026-07-16, `docs(status):`):
+> frontmatter → `head_commit 9a5eecf` (session 138); a new **session-138** block
+> was PREPENDED for PLAN-0078 PR-3 (cold-chain severity re-sequencing, #768) +
+> the AT-2 `N=1` misinformation-kill / PLAN-0078 doc-drift reconcile (#767), so
+> the two OLDEST — BOTH **session-133** blocks (the "close-out" AC-13 /
+> PLAN-0076-filed block AND the "core" AT-2 run-gate-enforcement block, #749 /
+> #751 / #752) — rotated OUT (4-session window, now s138 + s137 + s136 + s135)
+> to `docs/status-archive/2026-h1-status.md`. Recent Decisions gained the s138
+> #768 (PR-3) + #767 (misinformation-kill) rows and rotated its two OLDEST
+> (**s129**, 2026-07-14 — PLAN-0073 Box-4 `economic_impact` facet, #737/#738; +
+> **s128**, 2026-07-14 — PLAN-0072 hero-demo beat-3 "run it", #734/#735) to the
+> same archive (10-row window). Prior rotation notes (through the session-137
+> reconcile) are consolidated here (R4). Per the STATUS.md Rotation Policy
+> (R1/R2/R4)._
+
+> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R6)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) (sessions <=46: `2026-h1-current-focus.md`; 2026-06-10 onward: `2026-h1-status.md`) and git history (Tier 3)._
+
+### Recent Decisions row removed — 2026-07-14 (s130 — plan-drafter rigor hardening + ADR-0031 core-lifecycle architecture Accepted) [rotated 2026-07-16, session-140 reconcile — 10-row RD window]
+
+| 2026-07-14 | **s130 — FOUNDATION/GOVERNANCE session (NO feature; 2 docs/config PRs): plan-drafter rigor hardening (#740) + ADR-0031 "core lifecycle architecture" Accepted (#741)** — **#740 (`eea875f`, `chore(drafter)`):** a stale NEGATIVE fact-pack claim ("OQ-8 unbuilt") nearly drove a WRONG ADR decision → Lesson #0030 + a feedback memory (verify the fact-pack, ESPECIALLY negative / precondition claims, BEFORE dispatching the drafter — **the newest accepted ADR wins on FACTS**) + `.claude/agents/plan-drafter.md` operating-discipline **point 8** (a drafter-side backstop: cite-or-flag negative claims + a targeted supersession grep); root cause = Code dispatch hygiene, NOT a drafter defect. **#741 (`192dc52`, `docs(adr)`) — ADR-0031 Accepted:** names vero-lite's two extensibility idioms (runtime registries vs closed typed governed enums = the moat spine) + ratifies **"closed governed core + ONE typed, policy-carrying seam per core"** as multi-vertical scale WITHOUT dissolving the moat; builds NO seam — PRE-DESIGNS each core's seam for its N≥2 trigger (the fractal Rule-of-Three) with greppable moat tripwires; seam map D3 (transform StepKind · TriggerDriver/ECA · governance-gate plugin + decision-as-data · executor auto-discovery fold-in · audit transition taxonomy). draft≠review≠verify: `plan-drafter` authored → Code R2 → Cray OQ-1..4 as-rec (AskUserQuestion). **FIRST run under the #740 hardening CAUGHT OQ-4** (ADR-0025 D7's AT-2-generator CI marker was NEVER built, only the principal-identity mirror exists → armed as a Path-2 AC). Direction (Cray s130): the hero must GENERATE the governance (AT-2) not compose around it → **Path 2** (hand-author a 2nd AT-2 signature on a different vertical/seam → N≥2 → THEN the AT-2 generator, ADR-0025 D7; reframe: OQ-8's typed AT-2 sub-model is ALREADY BUILT by ADR-0025). Doc/config-only — no `services/` / tests, deterministic-offline (no MS-S1 / host-state); 0 open PRs. Full narrative: the Session-130 CF block above | `192dc52` (HEAD, #741 ADR-0031 Accepted) / `eea875f` (#740 drafter hardening) / `docs/adr/0031-core-lifecycle-architecture.md` + `.claude/agents/plan-drafter.md` (point-8 backstop) + `docs/lessons/0030-verify-fact-pack-before-drafter-newest-adr-resolves-oq.md` + `docs/research/private/2026-07-14-work-lifecycle-cores.md` (grounding, gitignored) |
