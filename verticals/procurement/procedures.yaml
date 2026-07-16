@@ -210,8 +210,38 @@ procedures:
             note: "on-contract default; RFQ→AVL only as a logged exception"
           llm_assist: "summarise the candidate quotes (advisory)"
           input: "judge (the breach/critical subset)"
-          output: "candidate quote(s) per critical item"
+          output: "the selected quote's unit price + the resolved quantity per critical item"
           governance: "SELECTION = a scored RULE, never the LLM (governed ≠ generated)"
+      # PLAN-0078 PR-4 — the declared `derive_spend` transform (the ratified SD-8 = (a) one
+      # derivation home). The ฿ the DOA ladder routes on is now GOVERNED DATA: `source` stamps the
+      # two factors the scored rule resolved, and the multiplication happens HERE, in the pinned
+      # procedure, instead of inside `governance_step._scored_rule`. That puts the derivation in
+      # the governance snapshot for free — a mid-flight edit changes the config hash and fails
+      # CLOSED at resume — which is what makes retiring the hand-rolled code hash honest (PR-5).
+      # All three intake-bearing procedures carry the SAME step (they share the one scored rule).
+      - step_id: derive_spend
+        name: Derive the PO spend (declared transform)
+        description: >-
+          Multiply the selected quote's unit price by the resolved order quantity to get the ฿
+          amount the DOA tier routes on — as declared transform data, not a code-side product.
+          Deterministic; no LLM.
+        kind: transform
+        input:
+          from: source
+        transform:
+          ops:
+            - derive:
+                target: amount
+                expr:
+                  op: mul
+                  args: [{ field: selected_unit_price }, { field: selected_qty }]
+            - coerce: { target: amount, to: string }
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "source (the selected quote's unit price + the resolved quantity)"
+          output: "the ฿ spend the downstream DOA tier resolves"
+          governance: "deterministic derivation as declared data (governed != generated)"
       # NOTE (Step-3 / Step-7 seam): `compliance` is an evaluate step for facet
       # fidelity, but per-criterion compliance is a RULE gate, not a numeric band —
       # so it is intentionally band-less here (loads + validates via load_procedures),
@@ -557,8 +587,38 @@ procedures:
             note: "on-contract default; RFQ->AVL only as a logged exception"
           llm_assist: "summarise the candidate quotes (advisory)"
           input: "judge (the breach/critical subset)"
-          output: "candidate quote(s) per critical item"
+          output: "the selected quote's unit price + the resolved quantity per critical item"
           governance: "SELECTION = a scored RULE, never the LLM (governed != generated)"
+      # PLAN-0078 PR-4 — the declared `derive_spend` transform (the ratified SD-8 = (a) one
+      # derivation home). The ฿ the DOA ladder routes on is now GOVERNED DATA: `source` stamps the
+      # two factors the scored rule resolved, and the multiplication happens HERE, in the pinned
+      # procedure, instead of inside `governance_step._scored_rule`. That puts the derivation in
+      # the governance snapshot for free — a mid-flight edit changes the config hash and fails
+      # CLOSED at resume — which is what makes retiring the hand-rolled code hash honest (PR-5).
+      # All three intake-bearing procedures carry the SAME step (they share the one scored rule).
+      - step_id: derive_spend
+        name: Derive the PO spend (declared transform)
+        description: >-
+          Multiply the selected quote's unit price by the resolved order quantity to get the ฿
+          amount the DOA tier routes on — as declared transform data, not a code-side product.
+          Deterministic; no LLM.
+        kind: transform
+        input:
+          from: source
+        transform:
+          ops:
+            - derive:
+                target: amount
+                expr:
+                  op: mul
+                  args: [{ field: selected_unit_price }, { field: selected_qty }]
+            - coerce: { target: amount, to: string }
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "source (the selected quote's unit price + the resolved quantity)"
+          output: "the ฿ spend the downstream DOA tier resolves"
+          governance: "deterministic derivation as declared data (governed != generated)"
       - step_id: compliance
         name: Check per-criterion compliance
         description: >-
@@ -892,8 +952,38 @@ procedures:
             note: "on-contract default; RFQ->AVL only as a logged exception"
           llm_assist: "summarise the candidate quotes (advisory)"
           input: "judge (the breach/critical subset)"
-          output: "candidate quote(s) per critical item"
+          output: "the selected quote's unit price + the resolved quantity per critical item"
           governance: "SELECTION = a scored RULE, never the LLM (governed != generated)"
+      # PLAN-0078 PR-4 — the declared `derive_spend` transform (the ratified SD-8 = (a) one
+      # derivation home). The ฿ the DOA ladder routes on is now GOVERNED DATA: `source` stamps the
+      # two factors the scored rule resolved, and the multiplication happens HERE, in the pinned
+      # procedure, instead of inside `governance_step._scored_rule`. That puts the derivation in
+      # the governance snapshot for free — a mid-flight edit changes the config hash and fails
+      # CLOSED at resume — which is what makes retiring the hand-rolled code hash honest (PR-5).
+      # All three intake-bearing procedures carry the SAME step (they share the one scored rule).
+      - step_id: derive_spend
+        name: Derive the PO spend (declared transform)
+        description: >-
+          Multiply the selected quote's unit price by the resolved order quantity to get the ฿
+          amount the DOA tier routes on — as declared transform data, not a code-side product.
+          Deterministic; no LLM.
+        kind: transform
+        input:
+          from: source
+        transform:
+          ops:
+            - derive:
+                target: amount
+                expr:
+                  op: mul
+                  args: [{ field: selected_unit_price }, { field: selected_qty }]
+            - coerce: { target: amount, to: string }
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "source (the selected quote's unit price + the resolved quantity)"
+          output: "the ฿ spend the downstream DOA tier resolves"
+          governance: "deterministic derivation as declared data (governed != generated)"
       - step_id: compliance
         name: Check per-criterion compliance
         description: >-

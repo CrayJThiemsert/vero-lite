@@ -285,9 +285,11 @@ class GovernanceActionExecutor:
     async def _scored_rule(
         self, step: Step, rule: ScoredRule, input_set: list[Any], ctx: RunContext
     ) -> StepOutcome:
-        """Deterministically select the supplier per entity's candidate quotes and EMIT the
-        selected spend (``unit_price x qty``) + currency onto the threaded entity, so the downstream
-        approve doa_tier resolves (PLAN-0044 A1b Step 5 -- the section-3 baht-threading fix).
+        """Deterministically select the supplier per entity's candidate quotes and EMIT the spend's
+        two FACTORS (``selected_unit_price`` + ``selected_qty``) + currency onto the threaded
+        entity, so the declared ``derive_spend`` transform downstream can multiply them into the
+        ``amount`` the approve doa_tier resolves (PLAN-0044 A1b Step 5 -- the section-3
+        baht-threading fix; the spend re-sequenced to declared data by PLAN-0078 PR-4 / SD-8(a)).
 
         Unlike :meth:`_doa_tier` (which KEEPS the base envelopes), this REPLACES the output with the
         enriched selected entities -- the whole point of the finding: the shipped ``action``
@@ -318,10 +320,23 @@ class GovernanceActionExecutor:
             for trace_step in (entry.get("action") or {}).get("reasoning_trace", [])
             if isinstance(trace_step, Mapping) and trace_step.get("kind") == "economic_impact"
         ]
+        # PLAN-0078 PR-4 (the ratified SD-8 = (a) one derivation home): stamp the two FACTORS of
+        # the spend, never their product — the declared `derive_spend` transform downstream
+        # multiplies them into `amount`, so the derivation lives ONCE, as governed data.
+        #
+        # `selected_qty` is stamped rather than left for the transform to read off the row (which
+        # SD-8's sketch assumed, "qty already rides the entity"): `_quantity` resolves qty through
+        # a `qty` -> `quantity` -> 1 fallback that the grammar's `default` op CANNOT express (its
+        # value is a literal, spec.py:520-521). A transform re-reading a bare `qty` would silently
+        # multiply by 1 on a row carrying only `quantity` — a LOWER amount routing a LOWER doa_tier
+        # (fail-DANGEROUS, not closed). Stamping what `_quantity` already resolved keeps that
+        # fallback the one place it has always been and makes the divergence unrepresentable.
+        # (Cray-ratified, session 141, against the alternative `default: {target: qty, value: 1}`.)
         enriched: list[Any] = [
             {
                 **(entity if isinstance(entity, Mapping) else {"value": entity}),
-                "amount": str(v.amount),
+                "selected_unit_price": str(v.selected_unit_price),
+                "selected_qty": str(v.qty),
                 "currency": v.currency,
                 "selected_quote_id": v.selected_quote_id,
                 "selected_supplier_id": v.selected_supplier_id,
@@ -338,11 +353,17 @@ class GovernanceActionExecutor:
                     "kind": "scored_rule_selected",
                     "selected_supplier_id": v.selected_supplier_id,
                     "selected_quote_id": v.selected_quote_id,
-                    "amount": str(v.amount),
+                    "selected_unit_price": str(v.selected_unit_price),
+                    "qty": str(v.qty),
                     "currency": v.currency,
+                    # the FACTORS, not the product: the trace renders what this step decided (the
+                    # winner + its price + the resolved quantity); the spend itself is the declared
+                    # transform's output. Formatting `unit_price x qty` here would re-derive the
+                    # spend in code — SD-8's rejected (b), where the derivation lives in two homes.
                     "summary": (
                         f"scored {len(v.ranked)} quotes -> '{v.selected_supplier_id}' "
-                        f"(quote '{v.selected_quote_id}', {v.amount} {v.currency}"
+                        f"(quote '{v.selected_quote_id}', {v.selected_unit_price} {v.currency}"
+                        f"/unit x {v.qty}"
                         + (
                             ", off-contract exception -- logged justification required)"
                             if v.override_required

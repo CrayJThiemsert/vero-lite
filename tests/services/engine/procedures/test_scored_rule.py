@@ -47,6 +47,7 @@ from services.engine.procedures.spec import (
     StepKind,
     load_procedures,
 )
+from services.engine.procedures.transform_step import TransformStepExecutor
 
 # --------------------------------------------------------------------------- #
 # Fixtures — the Fastenal hero quote set + the authored scored_rule
@@ -116,14 +117,20 @@ def _hero_pr() -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 
 
-def test_hero_selects_rapidmro_and_emits_the_spend() -> None:
-    """AC-7 — the critical event picks the fast off-AVL supplier + emits qty x unit_price."""
+def test_hero_selects_rapidmro_and_emits_the_spend_factors() -> None:
+    """AC-7 — the critical event picks the fast off-AVL supplier + emits the spend's two FACTORS.
+
+    PLAN-0078 PR-4 (SD-8(a)): the verdict carries ``selected_unit_price`` and ``qty``, never their
+    product — the declared ``derive_spend`` transform multiplies them, so the derivation has ONE
+    home, as governed data. That the product is still ฿288,000 byte-for-byte is asserted
+    end-to-end in ``test_amount_transform_parity.py``, over the real procedure."""
     v = select_scored_supplier(
         _hero_rule(), _HERO_QUOTES, qty=Decimal("3"), event_criticality=Decimal("0.92")
     )
     assert v.selected_supplier_id == "SUP-RAPIDMRO"
     assert v.selected_quote_id == "QT-SPN-RAPIDMRO"
-    assert v.amount == Decimal("288000")  # 96000 x 3
+    assert v.selected_unit_price == Decimal("96000")
+    assert v.qty == Decimal("3")
     assert v.currency == "THB"
     assert v.on_contract is False
     # RapidMRO is off-contract -> the default (on_contract) was not met -> the logged exception.
@@ -142,7 +149,8 @@ def test_selection_is_deterministic() -> None:
     first = runs[0]
     for v in runs[1:]:
         assert v.selected_quote_id == first.selected_quote_id
-        assert v.amount == first.amount
+        assert v.selected_unit_price == first.selected_unit_price
+        assert v.qty == first.qty
         assert [q.quote_id for q in v.ranked] == [q.quote_id for q in first.ranked]
 
 
@@ -176,7 +184,7 @@ def test_weights_drive_the_pick_not_a_hardcoded_winner() -> None:
         price_rule, _HERO_QUOTES, qty=Decimal("2"), event_criticality=Decimal("0.92")
     )
     assert v.selected_supplier_id == "SUP-NSKBRG-TH"  # cheapest (74000)
-    assert v.amount == Decimal("148000")  # 74000 x 2
+    assert v.selected_unit_price == Decimal("74000")
 
 
 def test_event_criticality_amplifies_lead_time_context_sensitive() -> None:
@@ -202,15 +210,30 @@ def test_event_criticality_amplifies_lead_time_context_sensitive() -> None:
     assert critical.selected_supplier_id == "SUP-RAPIDMRO"  # fastest wins when critical
 
 
-def test_amount_is_unit_price_times_qty() -> None:
+def test_verdict_carries_the_spend_factors_and_never_the_product() -> None:
+    """PLAN-0078 PR-4 (SD-8(a)) — the replacement for ``test_amount_is_unit_price_times_qty``.
+
+    The multiplication this module used to perform is GONE: it is declared data now (the
+    ``derive_spend`` transform), so the verdict carries the two factors and nothing derives the
+    spend in code. ``qty`` rides through untouched and the winner's unit price is independent of
+    it; the product is asserted end-to-end in ``test_amount_transform_parity.py``.
+
+    The ``no amount attribute`` assertion is the STRUCTURAL guard on the re-sequencing itself:
+    re-introducing a code-side ``amount`` here would restore SD-8's rejected alternative (b) — the
+    derivation living in two homes, code and data, free to drift apart silently."""
     one = select_scored_supplier(
         _hero_rule(), _HERO_QUOTES, qty=Decimal("1"), event_criticality=Decimal("0.92")
     )
-    assert one.amount == Decimal("96000")
     three = select_scored_supplier(
         _hero_rule(), _HERO_QUOTES, qty=Decimal("3"), event_criticality=Decimal("0.92")
     )
-    assert three.amount == Decimal("288000")
+    # the winner's unit price is the SAME regardless of qty — only the declared transform scales it
+    assert one.selected_unit_price == three.selected_unit_price == Decimal("96000")
+    assert (one.qty, three.qty) == (Decimal("1"), Decimal("3"))
+    assert not hasattr(three, "amount"), (
+        "ScoredRuleVerdict grew an 'amount' back — the spend derivation must live ONLY in the "
+        "declared derive_spend transform (SD-8(a) one derivation home), never in code beside it"
+    )
 
 
 def test_tie_breaks_by_quote_id() -> None:
@@ -289,7 +312,14 @@ def test_verdict_to_audit_is_json_safe() -> None:
     )
     audit = v.to_audit()
     assert audit["selected_supplier_id"] == "SUP-RAPIDMRO"
-    assert audit["amount"] == {"value": "288000", "currency": "THB"}
+    # PLAN-0078 PR-4 (SD-8(a) + SD-6(ii)): the projection carries the two FACTORS where it used to
+    # carry `{"amount": {"value": "288000", "currency": "THB"}}`. `currency` rode inside that
+    # retired key, so it is top-level now. The verdicts stay identical (SD-6(ii)) and the record
+    # can still answer "why this amount?" — the form is what changed, not the governance.
+    assert audit["selected_unit_price"] == "96000"
+    assert audit["qty"] == "3"
+    assert audit["currency"] == "THB"
+    assert "amount" not in audit
     assert audit["source_path"] == "exception_policy"
     assert len(audit["ranked"]) == 3
     json.dumps(audit)  # must not raise (no Decimal leaks)
@@ -307,7 +337,7 @@ def test_shipped_procurement_source_rule_selects_the_hero_supplier() -> None:
         rule, _HERO_QUOTES, qty=Decimal("3"), event_criticality=Decimal("0.92")
     )
     assert v.selected_supplier_id == "SUP-RAPIDMRO"
-    assert v.amount == Decimal("288000")
+    assert v.selected_unit_price == Decimal("96000")
 
 
 # --------------------------------------------------------------------------- #
@@ -398,16 +428,25 @@ def _controller_principals() -> list[Person]:
     ]
 
 
-async def test_wrapper_emits_spend_and_replaces_output() -> None:
-    """The scored_rule dispatch selects the supplier + writes ``amount``/``currency`` onto the
-    threaded entity (REPLACING the base envelopes) and records the scoring audit."""
+async def test_wrapper_emits_spend_factors_and_replaces_output() -> None:
+    """The scored_rule dispatch selects the supplier + writes the spend's two FACTORS
+    (``selected_unit_price`` / ``selected_qty``) + ``currency`` onto the threaded entity
+    (REPLACING the base envelopes) and records the scoring audit.
+
+    PLAN-0078 PR-4 (SD-8(a)): the step no longer writes ``amount`` — the declared ``derive_spend``
+    transform downstream derives it, so the derivation has ONE home, as governed data.
+    ``selected_qty`` is stamped (not left for the transform to read off the row) so
+    ``_quantity``'s ``qty`` -> ``quantity`` -> ``1`` fallback stays resolved in exactly one
+    place — see the stamp's comment in ``governance_step._scored_rule``."""
     ctx = _ctx()
     base = _FakeBase()
     wrapper = GovernanceActionExecutor(base=base, sod_steps=frozenset({"approve"}))
     outcome = await wrapper.execute(_source_step(), [_hero_pr()], ctx)
     assert base.calls == 1  # the base still ran (advisory judgment + auto action)
     [enriched] = outcome.output
-    assert enriched["amount"] == "288000"  # the emitted spend the doa_tier will resolve
+    assert enriched["selected_unit_price"] == "96000"  # the winner's price the transform scales
+    assert enriched["selected_qty"] == "3"  # the resolved quantity, stamped by _quantity ONCE
+    assert "amount" not in enriched  # the spend is declared data now, not this step's product
     assert enriched["currency"] == "THB"
     assert enriched["selected_supplier_id"] == "SUP-RAPIDMRO"
     assert enriched["source_path"] == "exception_policy"
@@ -422,14 +461,15 @@ async def test_wrapper_emits_spend_and_replaces_output() -> None:
 
 async def test_wrapper_pick_ignores_the_base_output() -> None:
     """The base (the LLM path) cannot change the deterministic pick -- a garbage base output is
-    discarded; the enriched entity still selects RapidMRO + emits 288,000."""
+    discarded; the enriched entity still selects RapidMRO + emits its 96,000/unit x 3 factors."""
     ctx = _ctx()
     wrapper = GovernanceActionExecutor(base=_GarbageBase())
     outcome = await wrapper.execute(_source_step(), [_hero_pr()], ctx)
     [enriched] = outcome.output
     assert "garbage" not in enriched
     assert enriched["selected_supplier_id"] == "SUP-RAPIDMRO"
-    assert enriched["amount"] == "288000"
+    assert enriched["selected_unit_price"] == "96000"
+    assert enriched["selected_qty"] == "3"
 
 
 async def test_wrapper_missing_candidate_quotes_fails_closed() -> None:
@@ -442,21 +482,35 @@ async def test_wrapper_missing_candidate_quotes_fails_closed() -> None:
 
 
 async def test_selected_spend_threads_to_doa_tier_controller() -> None:
-    """The section-3 fix, end to end at the executor seam: ``_scored_rule`` emits the selected
-    spend and ``_doa_tier`` consumes it to resolve the tier -- the amount the shipped
-    ``ActionStepExecutor`` dropped, which left the approve gate unable to route the DOA tier."""
+    """The section-3 fix, end to end at the executor seam — a THREE-step chain since PLAN-0078
+    PR-4: ``_scored_rule`` emits the spend's FACTORS, the declared ``derive_spend`` transform
+    multiplies them into the ``amount``, and ``_doa_tier`` consumes it to resolve the tier — the
+    amount the shipped ``ActionStepExecutor`` dropped, which left the approve gate unable to route
+    the DOA tier.
+
+    The transform step is LOADED FROM the shipped procurement ``procedures.yaml`` rather than
+    hand-authored here, so this asserts that the declaration which actually ships wires the seam;
+    hand-authored ops would let the yaml drift while this test kept passing."""
     ctx = _ctx()
     wrapper = GovernanceActionExecutor(
         base=_FakeBase(),
         principals=_controller_principals(),
         sod_steps=frozenset({"approve"}),
     )
-    # 1. source: scored_rule selects RapidMRO + EMITS the 288,000 THB spend onto the entity.
+    # 1. source: scored_rule selects RapidMRO + EMITS the two spend factors onto the entity.
     src = await wrapper.execute(_source_step(), [_hero_pr()], ctx)
-    assert src.output[0]["amount"] == "288000"
+    assert src.output[0]["selected_unit_price"] == "96000"
+    assert src.output[0]["selected_qty"] == "3"
     assert src.output[0]["currency"] == "THB"
-    # 2. approve: doa_tier consumes the THREADED spend -> resolves the CONTROLLER tier.
-    appr = await wrapper.execute(_approve_step(), src.output, ctx)
+    assert "amount" not in src.output[0]  # the spend is the transform's to derive, not this step's
+    # 2. derive_spend: the SHIPPED declared transform multiplies the factors into the ฿ spend.
+    spec = load_procedures("procurement")
+    proc = next(p for p in spec.procedures if p.procedure_id == "emergency_sourcing_round")
+    derive_spend = next(s for s in proc.steps if s.step_id == "derive_spend")
+    spend = await TransformStepExecutor().execute(derive_spend, src.output, ctx)
+    assert spend.output[0]["amount"] == "288000"
+    # 3. approve: doa_tier consumes the DERIVED spend -> resolves the CONTROLLER tier.
+    appr = await wrapper.execute(_approve_step(), spend.output, ctx)
     assert appr.audit is not None
     assert appr.audit["governed_kind"] == "doa_tier"
     [verdict] = appr.audit["doa_tier"]

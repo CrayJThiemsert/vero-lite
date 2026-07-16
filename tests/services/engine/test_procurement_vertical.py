@@ -98,8 +98,25 @@ def _executors(query_output: list[Any]) -> dict[StepKind, Any]:
     }
 
 
+# PLAN-0078 PR-4: the shipped procedures now declare a `derive_spend` transform that multiplies
+# the two factors `source`'s scored_rule stamps (`selected_unit_price` x `selected_qty` -> the ฿
+# `amount`). This harness stubs `source` as a pass-through over a BARE synthetic event (no
+# `candidate_quotes` — the real scored_rule could not run here even before PR-4), so the factors
+# are seeded directly: they thread `intake -> enrich -> judge -> source` untouched and reach the
+# REAL transform, which is what these orchestration tests need to keep exercising.
+#
+# The factors stand in for a selection this harness never performs; nothing here asserts the ฿.
+# The real scored_rule -> derive_spend chain (and its byte parity) is proven end-to-end in
+# `tests/services/engine/procedures/test_amount_transform_parity.py` over the production factory.
+_STANDIN_SPEND_FACTORS: dict[str, Any] = {"selected_unit_price": "96000", "selected_qty": "3"}
+
+
 def _events(event_type: str) -> list[dict[str, Any]]:
-    return [e for e in synthetic.operational_events() if e["event_type"] == event_type]
+    return [
+        {**e, **_STANDIN_SPEND_FACTORS}
+        for e in synthetic.operational_events()
+        if e["event_type"] == event_type
+    ]
 
 
 def _po(po_id: str) -> dict[str, Any]:

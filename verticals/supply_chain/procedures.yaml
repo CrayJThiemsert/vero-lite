@@ -287,12 +287,13 @@ procedures:
             ratio it was derived from), and the GDP compliance signals
           governance: "deterministic derivation as declared data (governed != generated)"
       - step_id: assess
-        name: Score the disposition lanes and derive the excursion severity
+        name: Score the disposition lanes
         description: >-
-          Score the candidate disposition lanes the intake carried and take the one the authored
-          rule ranks first; stamp the derived excursion severity onto the batch so the downstream
-          authority gate can route it. The RULE picks the lane and the derivation is deterministic
-          — the LLM only summarises the options (governed is not generated).
+          Score the candidate disposition lanes the enriched batch carried and take the one the
+          authored rule ranks first; stamp the selected lane's unit price and the resolved
+          quantity. The RULE picks the lane — the LLM only summarises the options (governed is
+          not generated). The excursion severity this batch's authority gate routes on is derived
+          UPSTREAM by the `enrich` transform (PLAN-0078 PR-3), not here.
         kind: action
         autonomy: auto              # an auto proposal — the selection is the deterministic rule
         handler: inspect
@@ -324,9 +325,37 @@ procedures:
             gate_kind: scored_rule
             note: "pre-qualified GDP lane by default; an off-lane disposition is the logged deviation path"
           llm_assist: "summarise the candidate disposition lanes (advisory)"
-          input: "intake (the enriched batch)"
-          output: "the selected disposition lane + the stamped excursion severity"
-          governance: "SELECTION = a scored RULE; the severity is DERIVED, never authored by the LLM"
+          input: "enrich (the enriched batch, severity already derived)"
+          output: "the selected disposition lane's unit price + the resolved quantity"
+          governance: "SELECTION = a scored RULE, never authored by the LLM"
+      # PLAN-0078 PR-4 — the declared `derive_spend` transform (the ratified SD-8 = (a) one
+      # derivation home). `assess` runs the SAME shared scored rule procurement's `source` does, so
+      # its ฿ re-sequences in lockstep: the step stamps the two factors and the multiplication
+      # happens HERE, as governed data. This batch's authority is routed by the severity_tier (a
+      # NON-money ladder, PLAN-0074), so no DOA tier reads this amount today — it rides the record
+      # as the disposition's cost, and the parity bar pins its byte form all the same.
+      - step_id: derive_spend
+        name: Derive the disposition spend (declared transform)
+        description: >-
+          Multiply the selected lane's unit price by the batch quantity to get the ฿ cost of the
+          disposition — as declared transform data, not a code-side product. Deterministic; no LLM.
+        kind: transform
+        input:
+          from: assess
+        transform:
+          ops:
+            - derive:
+                target: amount
+                expr:
+                  op: mul
+                  args: [{ field: selected_unit_price }, { field: selected_qty }]
+            - coerce: { target: amount, to: string }
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "assess (the selected lane's unit price + the batch quantity)"
+          output: "the ฿ cost of the selected disposition lane"
+          governance: "deterministic derivation as declared data (governed != generated)"
       - step_id: gdp_gate
         name: Check the GDP quality gate
         description: >-

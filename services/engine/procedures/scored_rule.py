@@ -4,8 +4,11 @@ The RUN-side enforcement of the author-time :class:`~services.engine.procedures.
 (the typed AT-2 scored-selection content): given the candidate quotes an emergency-sourcing
 ``source`` step carries (data-access = (a) — intake enriches the requisition with the part's
 candidate quotes, Cray-confirmed session 91), score every quote by the rule's weighted criteria,
-select the winner DETERMINISTICALLY (same inputs -> same pick), and emit the selected quote's
-spend (``unit_price x qty``) so the downstream ``approve`` doa_tier can resolve the DOA tier.
+select the winner DETERMINISTICALLY (same inputs -> same pick), and emit the two FACTORS of the
+selected quote's spend -- ``selected_unit_price`` and ``qty`` -- which the declared ``derive_spend``
+transform multiplies so the downstream ``approve`` doa_tier can resolve the DOA tier. This module
+stopped computing that product in PLAN-0078 PR-4 (the ratified SD-8 = (a) one derivation home):
+the multiplication is governed DATA now, declared in the procedure, not code here.
 The LLM only summarises the quotes (advisory, elsewhere); it NEVER selects (governed != generated,
 ADR-0019 IN-3).
 
@@ -85,16 +88,21 @@ class QuoteScore:
 class ScoredRuleVerdict:
     """The structured, stable-keyed ``scored_rule`` outcome (PLAN-0044 A1b Step 5).
 
-    ``selected_*`` name the deterministic winner; ``amount`` is its spend (``unit_price x qty``)
-    in the quote currency -- the value the downstream approve doa_tier resolves. ``source_path``
-    is the provenance (``default_source`` when the winner satisfies the rule's default policy, else
-    ``exception_policy`` -- the off-AVL override), and ``override_required`` marks when that
-    override owes a logged justification. ``ranked`` is every quote's score (descending) so a
-    read-only render can show WHY the winner won without re-deriving the math."""
+    ``selected_*`` name the deterministic winner; ``selected_unit_price`` x ``qty`` is its spend in
+    the quote currency -- the value the downstream approve doa_tier resolves. This verdict carries
+    the two FACTORS, never their product: PLAN-0078 PR-4 (the ratified SD-8 = (a) one derivation
+    home) moved the multiplication into a declared ``derive_spend`` transform, so the derivation
+    exists ONCE, as governed data. Recomputing it here for the audit would be SD-8's rejected
+    alternative (b) -- a code-side derivation living un-declared beside the data one.
+
+    ``source_path`` is the provenance (``default_source`` when the winner satisfies the rule's
+    default policy, else ``exception_policy`` -- the off-AVL override), and ``override_required``
+    marks when that override owes a logged justification. ``ranked`` is every quote's score
+    (descending) so a read-only render can show WHY the winner won without re-deriving the math."""
 
     selected_quote_id: str
     selected_supplier_id: str
-    amount: Decimal
+    selected_unit_price: Decimal
     currency: str
     qty: Decimal
     on_contract: bool
@@ -104,11 +112,18 @@ class ScoredRuleVerdict:
 
     def to_audit(self) -> dict[str, Any]:
         """JSON-safe projection for the step audit / output_set (JSONB) -- ``Decimal`` -> ``str``
-        so the persisted artifact is serialisable while the authoritative values stay exact."""
+        so the persisted artifact is serialisable while the authoritative values stay exact.
+
+        ``currency`` is a top-level key: it rode inside the retired ``amount`` projection
+        (``{"value": ..., "currency": ...}``) until PR-4 re-sequenced the spend. The audit surface
+        changing FORM while the governed verdicts stay identical is what the ratified SD-6(ii)
+        (semantic run-record equivalence) permits -- and the two factors keep the record able to
+        answer "why this amount?" without re-running the pinned spec."""
         return {
             "selected_quote_id": self.selected_quote_id,
             "selected_supplier_id": self.selected_supplier_id,
-            "amount": {"value": str(self.amount), "currency": self.currency},
+            "selected_unit_price": str(self.selected_unit_price),
+            "currency": self.currency,
             "qty": str(self.qty),
             "on_contract": self.on_contract,
             "source_path": self.source_path,
@@ -179,8 +194,12 @@ def select_scored_supplier(
     The pick is the maximum total score; ties break by ``quote_id`` (stable -> reproducible). The
     LLM is not consulted -- selection is this pure function (governed != generated). Fails CLOSED
     (:class:`ScoredRuleError`) on an empty quote set, a malformed quote, or an uninterpretable
-    criterion. ``event_criticality`` amplifies the ``criticality`` criterion's weight; ``qty``
-    scales the winning unit price to the PO spend the downstream doa_tier resolves.
+    criterion. ``event_criticality`` amplifies the ``criticality`` criterion's weight; ``qty`` is
+    carried through onto the verdict (beside the winner's unit price) as the second factor the
+    declared ``derive_spend`` transform multiplies -- this function no longer multiplies them
+    itself (PR-4 / SD-8(a)). Resolving ``qty`` stays ``governance_step._quantity``'s ONE job, so
+    its ``qty`` -> ``quantity`` -> ``1`` fallback is applied exactly once, here, and the transform
+    never re-discovers it off the row.
     """
     if not quotes:
         raise ScoredRuleError(
@@ -227,7 +246,7 @@ def select_scored_supplier(
     return ScoredRuleVerdict(
         selected_quote_id=winner.quote_id,
         selected_supplier_id=winner.supplier_id,
-        amount=winner.unit_price * qty,
+        selected_unit_price=winner.unit_price,
         currency=winner.currency,
         qty=qty,
         on_contract=winner.on_contract,
