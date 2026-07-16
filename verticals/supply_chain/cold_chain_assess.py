@@ -210,12 +210,31 @@ class ColdChainAssessExecutor:
     :class:`~services.engine.procedures.env_band_step.EnvBandEvaluateExecutor` (LOCKED #5: the
     orchestrator's ``StepKind``-keyed contract is untouched).
 
-    For a step named in ``stamp_steps`` it derives each entity's severity and STAMPS it (plus the
-    derivation's audit projection and the criticality the scored rule amplifies) onto the entity
-    BEFORE delegating to ``inner`` — which is the shipped governance wrapper, so ``assess``'s own
-    ``scored_rule`` gate still runs untouched and its enriched output carries the stamp forward to
-    the ``approve`` ``severity_tier`` gate. Every other step delegates straight through, so the
-    vertical's existing (AT-3) sweep is byte-identical.
+    **SLIMMED to a fail-closed scalar guard by PLAN-0078 PR-3 (the ratified SD-7).** The severity
+    derivation, its ``criticality`` amplifier, the ``severity_derivation`` audit projection and the
+    ``severity_derived`` trace are now DECLARED DATA — the ``enrich`` transform derives them
+    upstream of ``assess`` (``procedures.yaml``, ADR-0031 D3 row-1), so this wrapper no longer
+    derives or stamps anything.
+
+    What it still does, and why SD-7 kept it rather than retiring the executor outright: for a step
+    named in ``stamp_steps`` it VALIDATES the three excursion scalars strictly-positive + finite
+    before delegating. **The transform grammar cannot express that guard** — ``_to_decimal`` accepts
+    negative scalars (``transform_step.py:360-388``), and a negative ratio bands to the LOWEST
+    severity: fail-DANGEROUS, the exact shape PLAN-0074 fixed. Validating here keeps the
+    two-independent-closed-doors posture (this guard + the gate's own ``_severity`` reader), the
+    same shape the ``doa_tier`` ``_spend`` contract has.
+
+    Ordering note (stated, not papered over): the transform derives UPSTREAM, so the guard no longer
+    precedes the derivation — a non-positive scalar now derives a wrong-low severity and is refused
+    here, at ``assess``, BEFORE any gate reads it (``approve`` is downstream; AC-12). The severity
+    is never routed on a value the engine had to guess, which is the invariant that matters.
+
+    Every other step delegates straight through, so the vertical's (AT-3) sweep is byte-identical.
+
+    ``stamp_steps`` keeps its name for now — it names the step this wrapper acts on, which is still
+    true, and renaming it from here would drift the ``sod_steps``/``stamp_steps`` residual note
+    PLAN-0076 T1 tracks (``procedures_factory.py:37-49``) for no functional gain. PR-5 reshapes this
+    module to retire the derivation constants; the rename belongs there.
 
     Render / route only — no external write (ADR-0007 LOCKED #3)."""
 
@@ -226,35 +245,8 @@ class ColdChainAssessExecutor:
         if step.step_id not in self.stamp_steps:
             return await self.inner.execute(step, input_set, ctx)
 
-        derivations = [derive_excursion_severity(entity) for entity in input_set]
-        stamped: list[Any] = [
-            {
-                **entity,
-                SEVERITY_FIELD: d.severity.value,
-                "severity_derivation": d.to_audit(),
-                # the scored rule's `criticality` criterion amplifier (0..1): a batch that has
-                # burned more of its stability budget is more urgent, so the SAME authored rule
-                # prefers the fast disposition lane for a critical excursion and the cheap one for
-                # a negligible drift (governance_step._event_criticality clamps to [0, 1]).
-                "criticality": str(min(Decimal(1), d.ratio)),
-            }
-            for entity, d in zip(input_set, derivations, strict=True)
-        ]
-        outcome = await self.inner.execute(step, stamped, ctx)
-        trace = list(outcome.reasoning_trace) + [
-            {
-                "kind": "severity_derived",
-                "severity": d.severity.value,
-                "summary": (
-                    f"excursion dose {d.dose_ch} C*h (magnitude {d.magnitude_c} C x duration "
-                    f"{d.duration_h} h) against a {d.budget_ch} C*h stability budget -> "
-                    f"severity '{d.severity.value}'"
-                ),
-            }
-            for d in derivations
-        ]
-        audit = {
-            **(outcome.audit or {}),
-            "severity_derivation": [d.to_audit() for d in derivations],
-        }
-        return StepOutcome(output=outcome.output, reasoning_trace=trace, audit=audit)
+        for entity in input_set:
+            _positive_decimal(entity, MAGNITUDE_FIELD)
+            _positive_decimal(entity, DURATION_FIELD)
+            _positive_decimal(entity, BUDGET_FIELD)
+        return await self.inner.execute(step, input_set, ctx)
