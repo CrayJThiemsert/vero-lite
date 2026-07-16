@@ -12,11 +12,12 @@ anchor into a FAILING BUILD:
   (i) the PLAN lives in ACTIVE ``docs/plans/`` (never ``docs/plans/done/``) while the hero is
       neither built nor Cray-declined — a premature archive-to-``done/`` mislabels an open,
       un-commissioned item as *resolved*, turning this RED.
+  (ii) ``docs/STATUS.md`` carries an Active-TODO pointer naming ``PLAN-0079`` — the softest of
+      the two surfaces, since STATUS is volatile + window-rotated and a scribe pass could
+      silently prune the line.
 
-AC-2's SECOND half — ``docs/STATUS.md`` carries a pointer naming ``PLAN-0079`` — is
-**deliberately not here yet**: #769 (the session-138 STATUS reconcile) is open, so STATUS is a
-blocked file and the pointer lands in the first post-#769 STATUS PR (PLAN-0079 AC-4 / SD-3).
-That assertion arms in THAT PR, alongside the pointer it guards. A guard born RED is a broken
+Half (ii) armed in the session-140 STATUS PR (PLAN-0079 AC-4 / SD-3), alongside the pointer it
+guards — #769 had blocked ``docs/STATUS.md`` until then, and a guard born RED is a broken
 tripwire, not a safeguard.
 
 Retiring the tracker is Step T3: when the hero is **built** (its build PLAN merged) or Cray
@@ -57,4 +58,18 @@ def test_plan_0079_lives_in_active_plans_not_done() -> None:
     assert not archived.is_file(), (
         "PLAN-0079 appears under docs/plans/done/ — a tracking stub in done/ reads as 'resolved' "
         "while the hero is un-commissioned. See PLAN-0079 Step T3 + this guard's docstring."
+    )
+
+
+def test_status_still_points_at_plan_0079() -> None:
+    """The STATUS Active-TODO pointer (AC-4) still names PLAN-0079. STATUS is volatile +
+    window-rotated — the softer of this guard's two surfaces — so a scribe pass could silently
+    drop the line, re-orphaning the hero into exactly the no-durable-home state PLAN-0079 was
+    filed to end. This makes the pointer load-bearing."""
+    status = (_REPO_ROOT / "docs" / "STATUS.md").read_text(encoding="utf-8")
+    assert "PLAN-0079" in status, (
+        "docs/STATUS.md no longer references PLAN-0079 — the Active-TODO pointer to the "
+        "building_materials governed-credit hero tracker (AC-4) was pruned, which is how the "
+        "hero rotted out of the backlog the first time. Restore it, or retire the tracker via "
+        "PLAN-0079 Step T3 (and delete this guard in that same PLAN)."
     )
