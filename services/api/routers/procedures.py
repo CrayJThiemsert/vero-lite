@@ -19,7 +19,7 @@ from services.api.models.procedures import (
     ProcedureView,
     VerticalProceduresView,
 )
-from services.engine.procedures.spec import load_procedures
+from services.engine.procedures.spec import load_procedures, procedures_path
 from services.engine.registry import registry
 
 router = APIRouter(tags=["procedures"])
@@ -60,10 +60,20 @@ async def list_procedures() -> ProceduresResponse:
     """Return every discovered vertical's procedures, archetype-annotated.
 
     A read-only projection of ``load_procedures`` over ``registry.verticals()``;
-    no mutation, no DB, no LLM (PLAN-0039 AC-1 / AC-6).
+    no mutation, no DB, no LLM (PLAN-0039 AC-1 / AC-6). A discovered vertical that
+    ships NO ``procedures.yaml`` is skipped — see the loop comment.
     """
     verticals: list[VerticalProceduresView] = []
     for vertical in registry.verticals():
+        # A discovered vertical need NOT ship a procedures spec: `vero-lite new-vertical`
+        # scaffolds a Tier-1 Mirror (ADR-0015 D2) — ontology + adapter + handlers, but no
+        # procedures.yaml — and ADR-0023 import-scan discovery registers it regardless. Such
+        # a vertical has no procedures to project, so SKIP it rather than 500 this read
+        # surface for every OTHER vertical (the whole endpoint used to die on the first
+        # spec-less vertical). An EXPLICIT existence check, NOT a swallowed
+        # FileNotFoundError, so a genuinely unreadable / malformed spec still raises.
+        if not procedures_path(vertical).exists():
+            continue
         spec = load_procedures(vertical)
         procedures = [
             ProcedureView.model_validate(

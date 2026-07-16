@@ -1,0 +1,216 @@
+# vero-lite ontology — building_materials vertical, v0 (DEMO / guess-and-react).
+# 5th vertical — a mid-market building-materials DISTRIBUTOR (ซื้อมา-ขายไป).
+# The governed decision = CUSTOMER CREDIT: a customer's outstanding exposure
+# breaches ABOVE their approved credit limit on a new order (OCT_RECOMMEND_
+# DIRECTION=above), risking bad debt — so a governed, authority-tiered,
+# separated-from-sales credit decision is required.
+#
+# Reshape (per the ADR-008 "may extend" precedent + procurement_v0.yaml): the
+# monitored "Asset" is a COMMERCIAL entity (CustomerAccount), the "Site" is a
+# sales Branch. Mirrors the aquaculture 6-object OCT grammar exactly (Asset ->
+# CustomerAccount, Site -> Branch), so it scaffolds a Tier-1 Mirror demo.
+#
+# >>> EVERY NUMERIC VALUE HERE IS A GUESS — "เดา, รอแก้" (guess-and-react). <<<
+# credit_limit_thb / payment_terms_days / exposure figures are best-guess from
+# public Thai norms (Trade Competition Act 45-day SME credit cap; generic 3-4
+# tier DoA) and are the partner's "correct me" surface.
+
+version: 0
+namespace: building_materials
+
+object_types:
+  CustomerAccount:
+    primary_key: account_id
+    title_key: name
+    description: A trade customer buying on credit — the managed operational unit (the monitored "Asset").
+    properties:
+      account_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      customer_type:
+        type: enum
+        values: [contractor, retailer, project_developer, subdealer]
+      credit_limit_thb:
+        type: float
+        description: >-
+          Per-customer approved credit ceiling (THB) — this account's OWN
+          per-entity band (ADR-016 FKP amendment); outstanding exposure breaches
+          ABOVE it. GUESS — รอแก้.
+      payment_terms_days:
+        type: float
+        description: Agreed credit period in days (Thai SME statutory cap 45; agri 30). GUESS.
+      risk_grade:
+        type: enum
+        values: [a, b, c, d]
+      status:
+        type: enum
+        values: [active, on_hold, suspended]
+      site_id:
+        type: ref
+        target: Branch
+        required: true
+
+  Branch:
+    primary_key: branch_id
+    title_key: name
+    description: A physical sales branch / warehouse grouping one or more CustomerAccounts.
+    properties:
+      branch_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      branch_type:
+        type: enum
+        values: [flagship, regional, satellite]
+      lat:
+        type: float
+      lng:
+        type: float
+
+  OperationalEvent:
+    primary_key: event_id
+    description: Time-stamped credit / order signal concerning a CustomerAccount at a Branch.
+    properties:
+      event_id:
+        type: string
+        required: true
+      event_type:
+        type: enum
+        values: [reading, transition, alarm]
+      severity:
+        type: enum
+        values: [info, warn, error, critical]
+      measured_value:
+        type: float
+        description: Current outstanding credit exposure (open AR + this order), THB.
+      unit:
+        type: string
+      description:
+        type: string
+      occurred_at:
+        type: timestamp
+        required: true
+      account_id:
+        type: ref
+        target: CustomerAccount
+      site_id:
+        type: ref
+        target: Branch
+
+  Alert:
+    primary_key: alert_id
+    title_key: title
+    description: An actionable notification derived from one or more OperationalEvents.
+    properties:
+      alert_id:
+        type: string
+        required: true
+      title:
+        type: string
+        required: true
+      urgency:
+        type: enum
+        values: [low, medium, high, critical]
+      status:
+        type: enum
+        values: [open, acknowledged, resolved]
+      opened_at:
+        type: timestamp
+        required: true
+      resolved_at:
+        type: timestamp
+      reasoning:
+        type: string
+
+  RecommendedAction:
+    primary_key: action_id
+    description: An AI-proposed credit decision awaiting human approval; mirrors the ADR-007 D2 runtime envelope.
+    properties:
+      action_id:
+        type: string
+        required: true
+      action_type:
+        type: enum
+        values: [approve_credit_override, hold_order, require_prepayment, escalate]
+      confidence_score:
+        type: float
+      status:
+        type: enum
+        values: [proposed, approved, rejected, executed]
+      parameters:
+        type: json
+      alert_id:
+        type: ref
+        target: Alert
+        required: true
+      target_account_id:
+        type: ref
+        target: CustomerAccount
+
+  AlertEventLink:
+    primary_key: link_id
+    description: Join object linking an Alert to the OperationalEvent(s) that triggered it (N:M via composition per ADR-008 D4).
+    properties:
+      link_id:
+        type: string
+        required: true
+      created_at:
+        type: timestamp
+        required: true
+      alert_id:
+        type: ref
+        target: Alert
+        required: true
+      event_id:
+        type: ref
+        target: OperationalEvent
+        required: true
+
+link_types:
+  account_at_branch:
+    from: CustomerAccount
+    to: Branch
+    cardinality: many_to_one
+    foreign_key: CustomerAccount.site_id -> Branch.branch_id
+    description: Each CustomerAccount is served by exactly one Branch.
+
+  event_for_account:
+    from: OperationalEvent
+    to: CustomerAccount
+    cardinality: many_to_one
+    foreign_key: OperationalEvent.account_id -> CustomerAccount.account_id
+
+  event_at_branch:
+    from: OperationalEvent
+    to: Branch
+    cardinality: many_to_one
+    foreign_key: OperationalEvent.site_id -> Branch.branch_id
+
+  action_addresses_alert:
+    from: RecommendedAction
+    to: Alert
+    cardinality: many_to_one
+    foreign_key: RecommendedAction.alert_id -> Alert.alert_id
+
+  action_target_account:
+    from: RecommendedAction
+    to: CustomerAccount
+    cardinality: many_to_one
+    foreign_key: RecommendedAction.target_account_id -> CustomerAccount.account_id
+
+  alert_event_link_to_alert:
+    from: AlertEventLink
+    to: Alert
+    cardinality: many_to_one
+    foreign_key: AlertEventLink.alert_id -> Alert.alert_id
+
+  alert_event_link_to_event:
+    from: AlertEventLink
+    to: OperationalEvent
+    cardinality: many_to_one
+    foreign_key: AlertEventLink.event_id -> OperationalEvent.event_id
