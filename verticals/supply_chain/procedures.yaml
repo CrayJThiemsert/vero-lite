@@ -214,11 +214,14 @@ procedures:
       # (governed != generated). The seed KEEPS the identity reads + the nested `candidate_quotes`
       # (the PLAN-0077 SD-8 cardinality wall, L-3) + the magnitude<=0 eligibility guard.
       - step_id: enrich
-        name: Enrich the excursion intake (declared transform)
+        name: Enrich the excursion intake and derive its severity (declared transform)
         description: >-
           Derive the excursion magnitude (reading minus the cargo's own ceiling), default the
-          excursion duration + the cargo's stability budget, and attach the GDP compliance signal
-          map — as declared transform data, not hand-coded seed emission. Deterministic; no LLM.
+          excursion duration + the cargo's stability budget, attach the GDP compliance signal map,
+          and derive the excursion SEVERITY the downstream authority gate routes on — dose
+          (magnitude x duration) over the cargo's stability budget, banded by the declared
+          dose->severity ladder. All as declared transform data, not hand-coded seed emission or
+          an executor stamp. Deterministic; no LLM.
         kind: transform
         input:
           from: intake
@@ -237,11 +240,51 @@ procedures:
                   licensed_disposal_vendor: true
                   coa_customs: true
             - coerce: { target: excursion_magnitude_c, to: string }
+            # PLAN-0078 PR-3 (SD-1 (B) / SD-6 / OQ-5) — the severity derivation, moved off the
+            # `ColdChainAssessExecutor` stamp and declared here. `dose_ch` + `ratio` are
+            # MATERIALIZED as row fields per the ratified OQ-5 (Cray 2026-07-16 = (a)): the record
+            # must answer "why is this batch CRITICAL?" on its own, without re-running the pinned
+            # spec (`transform_provenance` records op/target/row-count, never values). They are
+            # the two values the retired `severity_derivation` audit carried that the row did not.
+            - derive:
+                target: dose_ch
+                expr:
+                  op: mul
+                  args: [{ field: excursion_magnitude_c }, { field: excursion_duration_h }]
+            - derive:
+                target: ratio
+                expr: { op: div, args: [{ field: dose_ch }, { field: stability_budget_ch }] }
+            # THE DATUM (was `cold_chain_assess._DOSE_LADDER`, ADR-0031 D3 row-1): inclusive
+            # ascending ceilings on the dose ratio; `above` is the MANDATORY unbounded top, so
+            # cover is total and a ratio past the budget can never fall through to a low band
+            # (the fail-dangerous shape PLAN-0074 fixed). Declaring it puts the ladder in the
+            # governance pin, which is what makes retiring the `derivation_hash` code-hash
+            # honest in PR-5.
+            - map_value:
+                target: excursion_severity
+                source: { field: ratio }
+                bands:
+                  - { ceiling: "0.25", value: negligible }
+                  - { ceiling: "0.50", value: minor }
+                  - { ceiling: "1.00", value: major }
+                above: critical
+            # the scored rule's [0,1] criterion amplifier: a batch that has burned more of its
+            # stability budget is more urgent, so the SAME authored rule prefers the fast lane for
+            # a critical excursion and the cheap one for a negligible drift. Clamped at 1
+            # (`governance_step._event_criticality` clamps to [0, 1] regardless).
+            - derive:
+                target: criticality
+                expr: { op: min, args: [{ const: "1" }, { field: ratio }] }
+            - coerce: { target: dose_ch, to: string }
+            - coerce: { target: ratio, to: string }
+            - coerce: { target: criticality, to: string }
         facet:
           decision_condition: { gate_kind: none }
           llm_assist: null
           input: "intake (the excursion event + affected batch)"
-          output: "the batch enriched with the excursion scalars + GDP compliance signals"
+          output: >-
+            the batch enriched with the excursion scalars, its derived severity (+ the dose and
+            ratio it was derived from), and the GDP compliance signals
           governance: "deterministic derivation as declared data (governed != generated)"
       - step_id: assess
         name: Score the disposition lanes and derive the excursion severity

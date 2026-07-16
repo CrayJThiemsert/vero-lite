@@ -27,6 +27,7 @@ import pytest
 
 from services.api.config import settings
 from services.engine.discovery import discover_and_register
+from services.engine.procedures.governance_step import EXCURSION_SEVERITY_FIELD
 from services.engine.procedures.orchestrator import run_procedure
 from services.engine.procedures.runs import PipelineRunStatus, StepResult
 from services.engine.procedures.severity_tier import SeverityTierVerdict, resolve_severity_tier
@@ -49,6 +50,16 @@ def _audit(step_result: StepResult) -> dict[str, Any]:
     audit = step_result.audit
     assert audit is not None, f"step '{step_result.step_id}' emitted no audit"
     return audit
+
+
+def _output_row(step_result: StepResult) -> dict[str, Any]:
+    """The step's single output row, proven present (PLAN-0078 PR-3: the severity derivation rides
+    the ROW now that the declared transform owns it, not the executor's audit projection)."""
+    artifact = step_result.artifact
+    assert artifact is not None, f"step '{step_result.step_id}' emitted no artifact"
+    [row] = artifact["output_set"]
+    assert isinstance(row, dict)
+    return row
 
 
 def _output_set(step_result: StepResult) -> list[Any]:
@@ -183,12 +194,26 @@ async def test_disposition_run_suspends_at_the_severity_tiered_human_gate(
     assert result.run.step_principals is not None
 
     # --- assess: the RULE selected the lane; the severity was DERIVED (not authored, not LLM'd) ---
+    # PLAN-0078 PR-3 re-homed the derivation: it was the `ColdChainAssessExecutor`'s
+    # `severity_derivation` audit projection, and is now the declared `enrich` transform's output
+    # riding the row (the executor slimmed to its fail-closed scalar guard, the ratified SD-7). The
+    # INVARIANT under test is unchanged — the severity is derived from real adapter data, never
+    # authored and never LLM'd — so the assertion follows the value to its new home rather than
+    # being dropped. Byte-parity of both is pinned by `test_severity_transform_parity.py`.
     assess_audit = _audit(by_step["assess"])
     assert assess_audit["governed_kind"] == "scored_rule"
-    [derivation] = assess_audit["severity_derivation"]
-    assert derivation["severity"] == ExcursionSeverity.CRITICAL.value
+    assert "severity_derivation" not in assess_audit, (
+        "the retired executor stamp is back — PR-3 moved this derivation into the declared "
+        "transform; two homes for one derivation is the drift SD-1 (B) exists to remove"
+    )
+    assessed = _output_row(by_step["assess"])
+    assert assessed[EXCURSION_SEVERITY_FIELD] == ExcursionSeverity.CRITICAL.value
     # the excursion magnitude is REAL adapter data: the pharma reading minus its OWN cargo ceiling
-    assert Decimal(derivation["magnitude_c"]) > 0
+    assert Decimal(assessed["excursion_magnitude_c"]) > 0
+    # the dose and ratio it was derived FROM are in the record too (the ratified OQ-5): the run
+    # answers "why CRITICAL?" without re-running the pinned spec.
+    assert Decimal(assessed["dose_ch"]) > 0
+    assert Decimal(assessed["ratio"]) > 1  # past the whole stability budget -> the top band
     [selection] = assess_audit["scored_rule"]
     assert selection["selected_quote_id"] == "lane-licensed-destruction"
     assert selection["source_path"] == "default_source"  # a pre-qualified GDP lane, not a deviation

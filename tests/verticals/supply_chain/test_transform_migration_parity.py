@@ -127,17 +127,35 @@ async def test_disposition_intake_enrichment_and_verdicts_parity(
     assert assess_step.input is not None and assess_step.input.from_step is not None
     feeder_artifact = by_step[assess_step.input.from_step].artifact
     assert feeder_artifact is not None
-    assert feeder_artifact["output_set"] == [_FROZEN_ENRICHED_INTAKE]
+    [feeder_row] = feeder_artifact["output_set"]
+    # Every Phase-1 field, byte-equal. Asserted per-field rather than as whole-row equality:
+    # PLAN-0078 PR-3 legitimately ADDS derived fields to this row (the severity + the OQ-5
+    # `dose_ch`/`ratio`), which the ratified SD-1 (B) is precisely the decision to do. AC-7(i)
+    # states the Phase-2 bar in exactly these per-field terms ("output-row byte parity on
+    # excursion_severity + criticality and every Phase-1 field"), so this is the same bar, not a
+    # relaxed one — what is dropped is only "and nothing else", which (B) makes false by design.
+    # The added fields have their own frozen reference in `test_severity_transform_parity.py`.
+    assert {k: feeder_row[k] for k in _FROZEN_ENRICHED_INTAKE} == _FROZEN_ENRICHED_INTAKE
 
-    # (2) the severity STAMP (PR-2 leaves it in the assess executor — Phase 2 territory) reads the
-    # enrich's scalars byte-identically: magnitude 6.6, dose 59.4, ratio 2.475 -> CRITICAL.
+    # (2) the enrich's scalars still dose to the same severity: magnitude 6.6, dose 59.4,
+    # ratio 2.475 -> CRITICAL. This is the Phase-1 concern the assertion was always making — the
+    # enriched magnitude is right BECAUSE it doses to this — so it survives PR-3 by following the
+    # values to their new home. PR-2 read them from the assess executor's `severity_derivation`
+    # audit projection and labelled that "Phase 2 territory"; PR-3 arrived, and the declared
+    # transform now derives them onto the ROW (the executor slimmed to its scalar guard, SD-7).
+    # Authoritative Phase-2 coverage — byte parity + the SD-6 two-tier bar + the OQ-5 value-level
+    # provenance contract — lives in `test_severity_transform_parity.py`; this stays a Phase-1
+    # sanity tie so a magnitude drift cannot pass here and fail only there.
+    assess_artifact = by_step["assess"].artifact
+    assert assess_artifact is not None
+    [assessed] = assess_artifact["output_set"]
+    assert assessed["excursion_magnitude_c"] == "6.6"
+    assert assessed["dose_ch"] == "59.4"
+    assert assessed["ratio"] == "2.475"
+    assert assessed["excursion_severity"] == "critical"
+
     assess_audit = by_step["assess"].audit
     assert assess_audit is not None
-    [derivation] = assess_audit["severity_derivation"]
-    assert derivation["magnitude_c"] == "6.6"
-    assert derivation["dose_ch"] == "59.4"
-    assert derivation["ratio"] == "2.475"
-    assert derivation["severity"] == "critical"
 
     # (3) scored_rule: the RULE selected the licensed-destruction lane (governed != generated)
     [scored] = assess_audit["scored_rule"]
