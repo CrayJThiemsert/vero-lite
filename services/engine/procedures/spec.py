@@ -819,10 +819,15 @@ class StepFacet(BaseModel):
 # author time enforces only the structural invariants below (no principal/role-rank model
 # exists in the engine yet).
 #
-# Rule-of-Three caveat (ADR-0025 D2 / LOCKED-2): AT-2 is N=1
-# (``procurement.emergency_sourcing_round``). These models are scoped tightly to that one
-# observed signature and are PROVISIONAL-UNTIL-N>=2; genericizing them is gated on the D7
-# CI re-trigger. v1 boundary (OQ-A=A1): author + render only — they render read-only.
+# Rule-of-Three caveat (ADR-0025 D2 / LOCKED-2): AT-2 is N=2 — procurement
+# (``emergency_sourcing_round`` + its schedule/event variants = ONE signature, money /
+# ``doa_tier``) and supply_chain (cold-chain disposition, NON-money / ``severity_tier``,
+# PLAN-0074). These models stay INSTANCE-SCOPED: the D7 CI re-trigger FIRED at N=2 and the
+# re-evaluation was PERFORMED (PLAN-0074 SD-3 — resolution: the generator stays deferred;
+# N>=2 PERMITS genericization, it does not mandate it; what DID generalise is the gate
+# SHAPE, not the authority quantity or the criterion vocabulary). The marker re-arms at
+# N=3 (``test_at2_signature_retrigger.py``). v1 boundary (OQ-A=A1): author + render only —
+# they render read-only.
 
 RoleId = str
 """A human approval-role identifier (e.g. ``dept_head``) — a human-authored binding."""
@@ -1043,8 +1048,9 @@ class ExcursionSeverity(StrEnum):
     SD-1). Declaration order is ASCENDING (negligible < minor < major < critical); a
     ``SeverityLadder`` tier floor ranks by this order — the non-money analog of
     ``DoaTier.min_amount``'s ``Decimal`` order. Scoped to the observed supply_chain
-    cold-chain-disposition signature — PROVISIONAL-UNTIL-N>=2 (genericization gated on the
-    ADR-0025 D7 re-trigger, the same discipline as the procurement AT-2 enums)."""
+    cold-chain-disposition signature — INSTANCE-SCOPED by the ADR-0025 D7 resolution answered
+    at N=2 (PLAN-0074 SD-3; the marker re-arms at N=3), the same discipline as the
+    procurement AT-2 enums."""
 
     NEGLIGIBLE = "negligible"
     MINOR = "minor"
@@ -1089,7 +1095,8 @@ class SeverityLadder(BaseModel):
     strictly-increasing ordinal floors, so every ``ExcursionSeverity`` maps to exactly one
     half-open ordinal band ``[min_i, min_{i+1})`` (top tier unbounded). No emergency-waiver in
     v1 (the waiver is procurement-shaped — PLAN-0074 SD-1). Scoped to the observed signature,
-    PROVISIONAL-UNTIL-N>=2 (ADR-0025 D2 discipline; genericization gated on the D7 re-trigger)."""
+    INSTANCE-SCOPED by the ADR-0025 D7 resolution answered at N=2 (D2 discipline; PLAN-0074
+    SD-3 — the marker re-arms at N=3)."""
 
     model_config = ConfigDict(extra="forbid")
 
