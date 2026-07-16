@@ -245,6 +245,28 @@ measured 2026-06-10), not the 256 KB byte cap.
   delete superseded "MERGED"-history entries. Both sections carried
   session-4-era content and were the next-largest bloat source after the
   decisions table.
+- **Ratified extension (Cray, 2026-07-17 — session 141):** *Active TODOs* obey
+  the **same pointer rule as Recent Decisions rows** — an open TODO is a
+  **pointer, not a narrative: ≤ ~600 chars**, naming the tracked artifact that
+  holds the full story (an ADR, a PLAN incl. `done/`, a lesson, a runbook, a
+  code/test docstring) so a reader reaches it in one hop. Rationale: the
+  2026-06-10 extension covered only *deleting `[x]` items*, so **open** items were
+  free to grow — by s141 Active TODOs were 17,181 B / 26% of the file with **zero**
+  `[x]` items to delete, and one item (`Rock 3`) was 5,528 B of history already
+  closed in `docs/plans/done/`.
+  - **The carve-out is binding — it is what makes the rule safe.** An item is
+    trimmed **only after verifying its substance has a tracked home**. An item whose
+    facts live *nowhere else in git* — or only in **gitignored**
+    `docs/research/private/` / `docs/strategy/private/`, or only in a private Tier-0
+    auto-memory — is **not a duplicate**, and is **left at full length until it is
+    rehomed**. Trimming it would delete the fact from the repository, which R4
+    forbids. Three items hit this carve-out at s141 and were left byte-untouched:
+    the s74 demo-card-UX decision (`ADR-0030` cites **STATUS itself** as its
+    authority, and `PLAN-0035` still records the question as open), `Rock 4`'s
+    evidence-asymmetry finding (survives only in gitignored research), and the
+    monotonic `sequence`-column deferral.
+  - **R4 still applies:** the full original is appended to `docs/status-archive/`
+    before the trim lands — move, never drop.
 
 ### R3 — Frontmatter terseness (binding)
 
