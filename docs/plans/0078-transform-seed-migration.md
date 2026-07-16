@@ -69,9 +69,10 @@ fail-closed gate readers).
 > non-positive (`cold_chain_assess.py:119-145`) — the guard-loss hazard SD-7
 > exists to adjudicate; and the `amount` stamp lives in the ENGINE-GENERIC
 > `_scored_rule` branch shared by **four** scored_rule steps across THREE
-> procurement procedures + supply_chain's `assess` (grep-verified:
-> `verticals/procurement/procedures.yaml:160,473,774`;
-> `verticals/supply_chain/procedures.yaml:224,241`) — the SD-8 blast radius.
+> procurement procedures + supply_chain's `assess` (grep-verified, anchors
+> re-verified 2026-07-16 post-Phase-1: `verticals/procurement/procedures.yaml`
+> `kind: scored_rule` at `:196,543,878`; `verticals/supply_chain/procedures.yaml`
+> `kind:` at `:264` + `gate_kind:` at `:281`) — the SD-8 blast radius.
 
 > **Tripwire (inherited from PLAN-0077, absolute).** If execution finds a real
 > derivation the shipped whitelisted op-set cannot honestly express — STOP and
@@ -289,9 +290,10 @@ reversal cost weighed" (`0077:376-379`) — Cray weighed it and ratified (B):
   the winner's `unit_price` onto the entity — the SD-8 re-sequencing.
   **Blast radius (verified):** `_scored_rule` serves FOUR scored_rule steps —
   procurement's three scored_rule-bearing procedures
-  (`verticals/procurement/procedures.yaml:160,473,774` — the hero
+  (`verticals/procurement/procedures.yaml:196,543,878` — the hero
   `emergency_sourcing_round` + its two scheduled/auto variants) and
-  supply_chain's `assess` (`verticals/supply_chain/procedures.yaml:224,241`).
+  supply_chain's `assess` (`verticals/supply_chain/procedures.yaml:264`, whose
+  `gate_kind` sits at `:281`). Anchors re-verified 2026-07-16 post-Phase-1.
   Changing the stamp touches all four; each affected procedure needs its own
   declared `derive_spend` transform (or the SD-8 alternative).
 
@@ -339,10 +341,12 @@ asserted pin change in the retiring PR, not a silent one).
 
 ## Surfaced Decisions
 
-SD-1..SD-5: **RATIFIED by Cray 2026-07-15** (recorded below — no longer open).
-SD-6..SD-8: **OPEN** — Cray ratifies via AskUserQuestion before Phase 2 starts;
-Phase-2 Steps/ACs are written to the recommendations and re-scope mechanically
-if Cray picks otherwise.
+SD-1..SD-8: **ALL RATIFIED by Cray 2026-07-15** via AskUserQuestion (each
+recorded below — none open). Phase-2 Steps/ACs execute on the ratified
+SD-6/SD-7/SD-8. **OQ-5 (`dose_ch`/`ratio` materialization) — RATIFIED by Cray
+2026-07-16: (a) materialize** (see Open Questions); it calibrates SD-6(ii)'s
+"provenance remains complete" clause at the VALUE level and is a Step-4
+precondition.
 
 - **SD-1 — scope fork: marquee stamps in or out. RATIFIED: (B) full migration
   incl. the stamps.** The draft recommended (A) intake-only on three grounds
@@ -478,8 +482,8 @@ if Cray picks otherwise.
 
 Build order = cheapest/lowest-risk gate first; the parity harness lands BEFORE
 each flip (oracle-first); suite green at every PR boundary. Phase 1 executes on
-the ratified SD-2/SD-3/SD-4; **Phase 2 starts only after SD-6 (+ SD-7/SD-8) are
-ratified** and re-scopes mechanically to Cray's picks.
+the ratified SD-2/SD-3/SD-4; **Phase 2 executes on the ratified SD-6/SD-7/SD-8**
+(and, for Step 4, the ratified OQ-5 = (a) materialize).
 
 ### Phase 1 — intake migration (prove the pattern at low risk)
 
@@ -543,7 +547,7 @@ prep PR — executor's call at R2, OQ-2).
    labels move to the yaml transform; the eligibility-predicate follow-on note
    `:158-162` stays); PR per §7.
 
-### Phase 2 — stamp re-sequencing (SD-1 (B); gated on SD-6 ratification)
+### Phase 2 — stamp re-sequencing (SD-1 (B); SD-6/SD-7/SD-8 + OQ-5 ratified)
 
 #### Step 4 — PR-3 severity re-sequencing (SD-6, SD-7; AC-7, AC-9, AC-12): oracle first, then the flip
 1. **Oracle commit:** the Phase-2 parity harness for supply_chain per SD-6 —
@@ -638,37 +642,48 @@ prep PR — executor's call at R2, OQ-2).
 
 ## Acceptance Criteria
 
-Phase 1 executes on the ratified SDs; Phase-2 ACs are written to the SD-6..SD-8
-recommendations and re-scope mechanically if Cray picks otherwise.
+Phase 1 executes on the ratified SDs; Phase-2 ACs execute on the ratified
+SD-6..SD-8 (AC-7 additionally on the ratified OQ-5 = (a) materialize).
 
-- [ ] **AC-1 (registration).** `TransformStepExecutor` registered in all 4
+- [x] **AC-1 (registration).** *(Phase 1 — `d8707ca`.)* `TransformStepExecutor` registered in all 4
   factories (SD-3 ratified); the five exact-key tests updated in lockstep; the
   subset assertion untouched; full suite green with zero behavior change
   before any flip.
-- [ ] **AC-2 (procurement intake parity flip).** The declared `enrich`
+- [x] **AC-2 (procurement intake parity flip).** *(Phase 1 — PR-1 #762 `173d869`;
+  `tests/verticals/procurement/test_transform_migration_parity.py:139`.)* The declared `enrich`
   transform (criticality copy + unit default + compliance map) replaces the
   seed's emission of those fields; the SD-4 zero-tolerance harness proves the
   enriched row set AND the downstream run record (judge/source/compliance/
   approve verdicts, run status) **byte-equal** (Phase-1 tier) to the frozen
   pre-flip reference on the same inputs. The `candidate_quotes` nest + reads +
   metadata stay seed-side, honestly labelled (L-3).
-- [ ] **AC-3 (supply_chain intake parity flip).** The declared `enrich`
+- [x] **AC-3 (supply_chain intake parity flip).** *(Phase 1 — PR-2 #763 `45d6b82`;
+  `tests/verticals/supply_chain/test_transform_migration_parity.py:113`.)* The declared `enrich`
   transform (magnitude derive + defaults + compliance map + coercions)
   replaces the seed's emission of those fields; the harness proves row-set +
   run-record **byte-equality** (Phase-1 tier) including the exact string forms
   (`"4"`-style magnitude). The reads, breach-selection, eligibility guard, and
   lane list stay seed-side.
-- [ ] **AC-4 (fail-closed intact).** A missing/non-coercible source field on a
+- [x] **AC-4 (fail-closed intact).** *(Phase 1 — the per-vertical bar is MET:
+  `test_intake_transform_fails_closed_on_missing_source_field` (procurement,
+  `:188`) + `test_enrich_transform_fails_closed_on_missing_source_field`
+  (supply_chain, `:173`). Phase 2's scalar-posture leg is AC-12's, per SD-7.)*
+  A missing/non-coercible source field on a
   migrated transform refuses the whole step typed (the shipped executor's
   fail-closed posture, PLAN-0077 SD-7) — demonstrated per vertical with a
   mutated fixture row.
-- [ ] **AC-5 (pin coverage).** Each migrated/re-sequenced procedure's
+- [ ] **AC-5 (pin coverage).** *(Phase-1 leg GREEN — both migrated procedures'
+  snapshots assert the `enrich` transform canonically. Stays UNTICKED: the
+  "re-sequenced" leg is Phase 2.)* Each migrated/re-sequenced procedure's
   governance snapshot carries its transform(s) canonically
   (`governance_pin.py:96-98`); a mid-flight transform edit fails closed at
   resume. Every config-hash change (the two intake flips; the severity PR;
   the amount PR's four procedures; the `derivation_hash` key removal) is
   asserted INTENDED, never silently absorbed.
-- [ ] **AC-6 (byte-identical non-participants).** Every procedure declaring no
+- [ ] **AC-6 (byte-identical non-participants).** *(Phase-1 leg GREEN — the
+  reorder siblings + the sweep assert no `transform` key. Stays UNTICKED: Phase
+  2 adds transforms, so the non-participant set shrinks and must be re-swept.)*
+  Every procedure declaring no
   transform — energy, aquaculture, and the untouched procedures in both
   migrated yamls — produces a governance snapshot and config hash
   byte-identical to pre-migration (the only-when-supplied property,
@@ -790,8 +805,20 @@ Pass/fail reads are fixed in each harness BEFORE its flip commit (oracle-first
   row fields, included in the frozen Phase-2 reference — keeping SD-6(ii)'s
   "provenance remains complete" clause true at the VALUE level, not just the
   op level. Alternative: nested-expr only (leaner rows; the WHY values vanish
-  from the record). Decide with SD-6's ratification — it calibrates what
-  "complete provenance" means.
+  from the record). **RATIFIED by Cray 2026-07-16 (AskUserQuestion): (a)
+  materialize** — SD-6(ii)'s "provenance remains complete" binds at the VALUE
+  level. Grounds recorded at ratification (verified at revision):
+  `transform_provenance` carries the op name, target and row count ONLY, never
+  values (`transform_step.py:244-253`; `_op_summary` is "a display concern
+  only", `:184`), and `_eval_expr` returns just the tree's final value
+  (`:332`, written at `:273`) — so under the alternative `dose_ch`/`ratio` are
+  computed and DISCARDED, and answering "why CRITICAL?" would require
+  re-running the pinned spec against the input row. That re-derivation depends
+  on the very guarantee F-PIN leaves open (L-4 / AC-11), and `dose_ch` +
+  `ratio` are traced TODAY by `to_audit()` (`cold_chain_assess.py:161-171`), so
+  dropping them would regress a shipped audit surface — not defer a new one.
+  NOTE: this makes the severity transform THREE ops (`dose_ch`, `ratio`,
+  `excursion_severity`), which is an input to OQ-6 below (executor's call).
 - **OQ-6 (one transform step or two, supply_chain).** Extend the Phase-1
   `enrich` step's op list with the severity ops (ops apply sequentially over
   the working row — `transform_step.py:234-238` — so later ops see the
