@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-16T00:02:50+07:00
-session: 135
-current_batch: "s135 — PLAN-0077 transform-grammar COMPLETE (5 PRs #754→#758) + PLAN-0078 (transform seed-migration) FILED Proposed (#760, all 8 SDs ratified: SD-1=(B) full incl. marquee stamps, SD-6 two-tier parity, SD-7 slim executor, SD-8 one-home amount). Build = next session."
+last_updated: 2026-07-16T08:05:00+07:00
+session: 136
+current_batch: "s136 — PLAN-0078 Phase 1 COMPLETE (intake seed-migration pair, oracle-first, SD-1=(B)): intake enrichment migrated to declared `enrich` transform steps — procurement (#762) + supply_chain (#763), atop a Step-1 uniform-factory landing (d8707ca). Byte-parity green; marquee STAMPS/derivation_hash/F-PIN stay Phase 2."
 current_actor: code
-blocked_on: "Nothing blocking. main=7cbe08a; 0 open PRs; PLAN-0077 COMPLETE; PLAN-0078 filed Proposed (build not started). Loop-dispatcher DISABLED; MS-S1 idle; dev Postgres UP."
-next_action: "Build PLAN-0078 Phase 1 PR-1 — procurement intake migration (criticality-copy + unit default + compliance map → declared transform; candidate_quotes nest stays seed-side, L-3 partial), oracle-first: land the SD-4 parity harness against the CURRENT seed BEFORE the flip. Then PR-2 supply_chain intake; Phase 2 (stamps, SD-1=(B)) after."
-head_commit: 7cbe08a
-recent_commits: [7cbe08a, b536c0e, a3c86ca, 56fc08b, 43d7e4e, ece270a, 95efcb9, 8808902, 81a8a0f, d94a10d]
+blocked_on: "Nothing blocking. main=45d6b82; 0 open PRs; PLAN-0078 Phase 1 COMPLETE (Phase 2 not started). Loop-dispatcher DISABLED; MS-S1 idle; dev Postgres UP."
+next_action: "FIRST reconcile PLAN-0078 doc-drift (SD-6/7/8 ratified in the header but 3 body sections still say OPEN/gated — a 1-line cleanup). THEN build PLAN-0078 Phase 2 (SD-1=(B), the risky half on the PLAN-0075-hardened authority path): PR-3 severity re-seq (slim ColdChainAssessExecutor → fail-closed scalar guard, SD-7) → PR-4 amount re-seq (SD-8 one-home: `_scored_rule` stamps `selected_unit_price`, `derive_spend` transform owns `amount`) → PR-5 derivation_hash retirement + F-PIN rewrite + PLAN-0076 T2 close; each SD-6 two-tier parity-guarded, fresh Cray sign-off/PR."
+head_commit: 45d6b82
+recent_commits: [45d6b82, 2b4abcb, 83f8611, 173d869, 4025305, c6bf5ec, d8707ca, bfc4683, a794b82, 7cbe08a]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,38 @@ recent_commits: [7cbe08a, b536c0e, a3c86ca, 56fc08b, 43d7e4e, ece270a, 95efcb9, 
 ---
 
 ## Current Focus
+
+> **Session 136, 2026-07-16 (head_commit `7cbe08a` → `45d6b82`) — PLAN-0078
+> Phase 1 COMPLETE (the intake seed-migration pair, oracle-first, SD-1=(B)
+> arc): the intake enrichment migrated off the hand-coded seeds into declared
+> `enrich` TRANSFORM steps (ADR-0031 D3 row-1 grammar), across two `feat` PRs
+> atop a Step-1 uniform-factory landing.** **Step 1** (`d8707ca`, zero behavior
+> change) — a shared `TransformStepExecutor` registered uniformly in all 4
+> production factories. **PR-1 #762** (`173d869`, `feat(procurement)`) —
+> procurement intake enrichment → a declared `enrich` transform (`criticality`
+> copy + `unit` default + `compliance` map) across ALL 3 intake-bearing
+> procedures (manual hero + scheduled + event). **PR-2 #763** (`45d6b82`, HEAD,
+> `feat(supply_chain)`) — supply_chain disposition intake → an `enrich`
+> transform (`excursion_magnitude_c` sub-derive + duration/budget defaults + GDP
+> `compliance` map; `assess.input.from` re-pointed intake→enrich). **Each PR is
+> oracle-first (L-2):** a hand-coded FROZEN parity reference proven green
+> PRE-flip, then byte-equal POST-flip (or it does not land) — the enriched row +
+> every governed verdict byte-identical (procurement ฿288,000 / ผจก.จัดซื้อ /
+> appr-pm; supply_chain severity CRITICAL / ผอ.ฝ่ายคุณภาพ / appr-qdir); AC-4
+> fail-closed + AC-5/AC-6 pin coverage per vertical. **Honest residual (NOT
+> overclaimed):** the marquee severity/amount STAMPS stay code-side,
+> `derivation_hash` in service, **F-PIN stays OPEN** — those are **Phase 2**
+> (SD-1=(B): PR-3 severity re-sequencing + PR-4 amount re-sequencing + PR-5
+> `derivation_hash` retirement + F-PIN marker rewrite + PLAN-0076 T2 closure,
+> each SD-6 two-tier parity-guarded). **draft≠review≠verify:** Step 1 + both
+> flips = Code authored + verified (oracle-first harnesses); PLAN-0078 =
+> `plan-drafter` authored → Code R2 → Cray ratified all 8 SDs (s135); each phase
+> PR = fresh Cray AskUserQuestion sign-off before merge; this reconcile =
+> `status-scribe` → Code R2. Full offline suite **2802 passed / 7 skipped**;
+> `mypy --strict` + ruff clean; deterministic-offline (no MS-S1 / host-state).
+> Post-merge: main=`45d6b82`; 0 open PRs; loop-dispatcher DISABLED; MS-S1 idle;
+> dev Postgres UP. Commits: `d8707ca` (Step 1 uniform factory) → `173d869`
+> (#762 PR-1 procurement) → `45d6b82` (#763 PR-2 supply_chain, HEAD).
 
 > **Session 135 (close-out), 2026-07-15 (head_commit `fac77c7` → `ece270a`) —
 > PLAN-0077 "transform-grammar build" COMPLETE across 5 PRs (renders ADR-0031
@@ -170,55 +202,15 @@ recent_commits: [7cbe08a, b536c0e, a3c86ca, 56fc08b, 43d7e4e, ece270a, 95efcb9, 
 > (#746 PLAN-0075 Proposed, ADR-0026 D4 amendment `60ad2e3`) → `098b0d9`
 > (HEAD, #747 guardrail Active-TODO tracker).
 
-> **Session 131, 2026-07-15 (head_commit `192dc52` → `ff84d9a`) — PLAN-0074
-> shipped END-TO-END + CLOSED → `done/` in ONE session-131 day (#744, `feat`):
-> the **2nd AT-2 governed-procedure signature**, reaching **N=2** — de-risking
-> the deferred AT-2 GENERATOR (ADR-0025 D7 / Rule-of-Three) with a SECOND
-> hand-authored exemplar on a DIFFERENT vertical pressing a DIFFERENT seam. The
-> signature = a supply_chain **cold-chain excursion DISPOSITION** whose
-> authority quantity is **NON-MONEY**: a `severity_tier` gate backed by
-> `SeverityLadder` typed content (the **4th AT-2 gate kind**; `DoaLadder` is
-> money-typed by construction and cannot represent non-money authority).**
-> Steps 1-6: the spec / the obligation gate / the RUN path (resolver + dispatch
-> + run-pin) / the procedure + factory / two self-cancelling markers / a
-> red-team oracle + the AC-16 load-time `gate_kind`↔content correspondence
-> check. **3-independent-reviewer adversarial harvest** (governance /
-> correctness / test-honesty lenses) fixed **10 confirmed defects** —
-> highlights: the facet-less "smuggled gate" (AC-16 closed only the
-> CONTRADICTION half, not the dangerous OMISSION half — a `governance_content`
-> with NO facet owed no SoD yet still gated at run); Infinity/NaN
-> fail-DANGEROUS severity routing; a float-rounding crash on a real sub-0.005 °C
-> breach; a KeyError that killed API startup; a degenerate lane set that made
-> the criticality amplifier DEAD CODE. **Corrected the PLAN's own sketch:**
-> `SourcePolicy` is NOT extended (the run executor keys provenance on the member
-> itself, so a 3rd member would invert a vertical's provenance).
-> **draft≠review≠verify:** `plan-drafter` PLAN → Code R2 → Cray SD-1
-> (SeverityLadder) → build → the 3-reviewer harvest → 10 fixes. Full offline
-> suite **2674 passed / 7 skipped**; `mypy --strict` + ruff clean;
-> deterministic-offline throughout (no MS-S1 / host-state). **Follow-on (F1 —
-> Cray-ratified, spawn_task `task_053edc92`, separate session):** the AT-2
-> authority ladder (`doa_tier` + `severity_tier`) RESOLVES + AUDITS which tier
-> approver should act but the gate never ENFORCES that the acting approver HOLDS
-> that tier role — a lower-tier approver can resolve a gate routed to a higher
-> tier (pre-existing across the AT-2 axis, touches the procurement hero, needs
-> an ADR); folded-in siblings: an AT-2 authority step is not required to be
-> `autonomy: gated`, the governance-pin doesn't cover the severity-derivation
-> ladder, the `sod_steps`/`stamp_steps` vertical-union limitation. 0 open PRs
-> after; tree clean (2 pre-existing untracked KEEP: `.claude/benchmark-results/`,
-> `.claude/launch.json`); MS-S1 idle; dev Postgres UP; loop-dispatcher DISABLED.
-> PLAN-0074 `git mv`→`done/` this session. Commits: `d9ffa08` (Step 1) /
-> `bbe994f` (Step 2) / `34c09d6` (Step 3) → Steps 4-6 + the 3-reviewer harvest
-> (`1743ead`, `c67312d`, `bf1916b`, `80df9dd`) → `ff84d9a` (#744 merge).
-
-> _Rotation note (session-135 reconcile, 2026-07-15, `docs(status):`):
-> frontmatter → `head_commit ece270a` (session 135); a new **session-135** block
-> was PREPENDED for the PLAN-0077 transform-grammar arc (#754→#758), so the
-> OLDEST — the whole **session-130** block (plan-drafter rigor #740 + ADR-0031
-> core-lifecycle Accepted #741) — rotated OUT (4-session window, now s135 + s133
-> + s132 + s131) to `docs/status-archive/2026-h1-status.md`. Recent Decisions
-> gained the s135 close-out row and rotated its OLDEST (**s125**, 2026-07-13 —
-> event-bridge live smoke #724 + energy over-current #725/#726) to the same
-> archive (10-row window). Prior rotation notes (through the session-133
+> _Rotation note (session-136 reconcile, 2026-07-16, `docs(status):`):
+> frontmatter → `head_commit 45d6b82` (session 136); a new **session-136** block
+> was PREPENDED for the PLAN-0078 Phase-1 intake seed-migration pair
+> (#762/#763), so the OLDEST — the whole **session-131** block (PLAN-0074, the
+> 2nd AT-2 governed-procedure signature, #744) — rotated OUT (4-session window,
+> now s136 + s135 + s133 + s132) to `docs/status-archive/2026-h1-status.md`.
+> Recent Decisions gained the s136 row and rotated its OLDEST (**s126**,
+> 2026-07-13 — ADR-0030 Box-4 economic-impact facet Accepted #728) to the same
+> archive (10-row window). Prior rotation notes (through the session-135
 > reconcile) are consolidated here (R4). Per the STATUS.md Rotation Policy
 > (R1/R2/R4)._
 
@@ -243,6 +235,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-16 | **s136 — PLAN-0078 Phase 1 COMPLETE (the intake seed-migration pair, oracle-first, SD-1=(B) arc; 2 `feat` PRs #762/#763 atop a Step-1 uniform-factory landing `d8707ca`): the intake enrichment migrated off the hand-coded seeds into declared `enrich` TRANSFORM steps (ADR-0031 D3 row-1 grammar)** — **PR-1 #762** procurement intake (`criticality` copy + `unit` default + `compliance` map, all 3 intake-bearing procedures) + **PR-2 #763** supply_chain disposition intake (`excursion_magnitude_c` sub-derive + duration/budget defaults + GDP `compliance` map; `assess.input.from` re-pointed intake→enrich). Each PR oracle-first (L-2): a FROZEN parity reference green PRE-flip → byte-equal POST-flip (enriched row + every governed verdict byte-identical: procurement ฿288,000/ผจก.จัดซื้อ/appr-pm; supply_chain CRITICAL/ผอ.ฝ่ายคุณภาพ/appr-qdir); AC-4 fail-closed + AC-5/AC-6 pin coverage per vertical. **Honest residual: the marquee severity/amount STAMPS stay code-side, `derivation_hash` in service, F-PIN stays OPEN** — Phase 2 (SD-1=(B): PR-3 severity + PR-4 amount re-sequencing + PR-5 derivation_hash retirement + F-PIN marker rewrite + PLAN-0076 T2 closure, each SD-6 two-tier parity-guarded). draft≠review≠verify: Step 1 + both flips = Code authored+verified (oracle-first); PLAN-0078 = `plan-drafter` → Code R2 → Cray ratified all 8 SDs (s135); each PR = fresh Cray AskUserQuestion sign-off; STATUS = `status-scribe` → Code R2. Full offline suite **2802 passed / 7 skipped**; `mypy --strict` + ruff clean; deterministic-offline (no MS-S1 / host-state). Full narrative: the Session-136 CF block above | `45d6b82` (HEAD, #763 PR-2 supply_chain) / `173d869` (#762 PR-1 procurement) / `d8707ca` (Step 1 uniform factory) / `verticals/{procurement,supply_chain}/**` (declared `enrich` transform seeds) + `tests/**` (oracle-first parity harnesses + AC-4/5/6) + `docs/plans/0078-*.md` (Phase 1 COMPLETE, Phase 2 open) |
 | 2026-07-15 | **s135 close-out — PLAN-0077 "transform-grammar build" COMPLETE (5 PRs #754→#758: Proposed → Phase A → B → C → #758 L-8 landing); renders ADR-0031 D3 row-1 + ADR-016 Q4 OQ-3, NO new ADR (arc spans s134-135)** — the typed anti-eval `derive` transform grammar shipped, load-gated + execution-bound for the shipped op-set (`StepKind.TRANSFORM` + `transform_step.py`; a value-parity oracle reproduces `derive_excursion_severity` + `scored_rule`'s `amount = unit_price × qty` value-identically WITHOUT touching the hardened stamp path, SD-1; 93 AC tests). **Honest residual: the two verticals' seeds stay execution-bound ✖; the marquee stamps stay code-side (SD-1); `derivation_hash` in service; F-PIN stays OPEN** — flipping those = the separate SD-4 parity-guarded seed-migration PLAN (+ the PLAN-0076 Step T2 F-PIN fold-in). draft≠review≠verify: Phase A/B/C = Code authored+verified; PLAN-0077 + the L-8 Accepted-body edit = `plan-drafter` → Code R2 + committed; STATUS = `status-scribe` → Code R2. Full narrative: the Session-135 CF block above | `ece270a` (HEAD, #758 L-8 landing) / `8808902` (#757 C) / `d94a10d` (#756 B) / `e93e9d0` (#755 A) / `3e6ee4d` (#754 Proposed) / `services/engine/procedures/transform_step.py` + `docs/plans/done/0077-*.md` |
 | 2026-07-15 | **s133 close-out — PLAN-0075 COMPLETE (all 13 ACs) + CLOSED → `done/`; AC-13 derivation provenance shipped (#751, `feat`); PLAN-0076 filed as the STANDING follow-on TRACKER (#752, `Status: Tracking`)** — **AC-13** hashes supply_chain `_DOSE_LADDER` + `_TOP_SEVERITY` into the run governance pin via a per-vertical `registry.derivation_hash` hook (optional `derivation_hash` threaded through the 5 pin call sites); **PROVENANCE-ONLY** (mid-flight tamper-evidence + which-derivation-governed-this-run — **F-PIN stays OPEN**); 9 offline tests. PLAN-0075 (core AC-1..AC-12 #749 + AC-13 #751) `git mv`→`done/`. **PLAN-0076** (Cray-ratified s133 4-specialist SD-1 panel) homes the 2 PLAN-0075 deferrals (F-PIN remainder + ADR-0031 D3 gate-plugin / F-FACTORY seam) with an **AC-6 presence guard-test** (`test_at2_followon_tracking_guard.py`, RED on a premature archive-to-`done/` or a pruned STATUS pointer — "location≠tripwire; failing tests are the real anti-rot"). Merge order: #752 (`4a682ab`) then branch-updated #751 (`fac77c7`), both gate-verified. draft≠review≠verify: AC-13 = Code authored+verified; PLAN-0076 = `plan-drafter` → Code R2 → Cray ratified the panel; STATUS = `status-scribe` → Code R2. Full narrative: the Session-133 close-out CF block above | `fac77c7` (HEAD, #751 merge) / `4a682ab` (#752) / `0520fb2` (AC-13 feat) / `docs/plans/done/0075-*.md` + `docs/plans/0076-*.md` + `tests/services/engine/procedures/test_at2_followon_tracking_guard.py` |
 | 2026-07-15 | **s133 — PLAN-0075 core: AT-2 AUTHORITY ENFORCEMENT AT THE RUN GATE shipped (12/13 ACs, #749, `feat`); closes the s131-surfaced F1 exploit (`task_053edc92`)** — the AT-2 ladder (`doa_tier` / `severity_tier`) RESOLVED/AUDITED which tier should approve but no run path ENFORCED the acting approver HELD that role (a junior `appr-buyer`, ฿0-50k, could resolve the procurement hero's ฿288k / ฿2M gate; the audit even NAMED a non-actor). **Fix:** a pure `tier_authority.check_tier_authority` runs at `resolve_gated_step` AFTER the SoD check (ADDITIVE, SoD primary) and BLOCKS unless the approver holds EVERY persisted verdict's ladder-resolved tier role — verified at the LIVE DB gate (junior refused, senior approves-down governed). Plus an F3 load check (authority step must be GATED — AC-5), gate-time audit reconciliation naming who ACTED (SD-6a / AC-6), the AC-7 truth pass (7 over-claim sites corrected, grep zero), the blessing test re-harnessed (AC-8). **Two Cray-ratified divergences:** (1) CUMULATIVE roles in the shipped YAML OVERRIDE PLAN-0075's Correction 1 (Cray "senior approves downward", Policy B); (2) NATIVE-TIER routing (`native_approver`, Code-surfaced) keeps the audit routing on the tier's OWN approver (enforcement cumulative, routing native). ADR-0026 D4's 4th fail-closed condition already merged (#746, AC-12). draft≠review≠verify: `plan-drafter` authored (Proposed, s132) → Code built + R2 → Cray ratified the 2 divergences. Full offline suite **2692 passed / 7 skipped**; 251 DB+API tests pass; `mypy --strict` clean; live DB gate = evidence. **PLAN-0075 stays OPEN** (12/13 ACs); AC-13 (derivation provenance, `task_cbf139fe`) is the deferred follow-up = hash supply_chain `_DOSE_LADDER` + `_TOP_SEVERITY` into the run pin (5 sites, vertical-hook; PROVENANCE-ONLY, F-PIN NOT closed), then close → `done/`; F-PIN remainder + ADR-0031 D3 seam stay the #747 Active-TODO. Full narrative: the Session-133 CF block above | `76f42cc` (HEAD, #749 merge) / `580b9e8`…`9e3d421` (7 core build commits) / `services/**` (`tier_authority.check_tier_authority` + `resolve_gated_step` wiring + F3 load check + gate-time audit reconciliation) + `verticals/{procurement,supply_chain}/**` (cumulative-role YAML + `native_approver`) + `tests/**` (AC-5/6/7/8 + live DB gate) + `docs/plans/0075-*.md` (OPEN, 12/13 ACs) |
@@ -252,7 +245,6 @@ below, and git history.
 | 2026-07-14 | **s129 — PLAN-0073 (the Box-4 `economic_impact` facet surfaced in the Palantir-lite hero-demo UI) shipped END-TO-END + CLOSED → `done/` in ONE session-129 day (#737 Ready → #738 build); beat-4 (฿) now ALSO carries the typed Box-4 `EconomicImpact` facet with audit-grade provenance UNDER the unchanged demo ledger; NO ADR change (ADR-0030 D2 ledger+facet coexist; ADR-007 D2 envelope byte-untouched — facet stays trace-carried)** — Cray ratified SD-1(a)/SD-2(b)/SD-3 via AskUserQuestion (all as-rec). **SD-1(a) fire-for-real:** `_intake_seed` carries `event_type` (from the failure event at `run.py:208`) so the Box-4 producer fires INSIDE the governed run; build-discovered (OQ-1, via the AC-2 RED test) the hero `source` step is `GovernanceActionExecutor._scored_rule` which REPLACES the base action envelopes (threading the selected spend for `doa_tier`) → it now LIFTS the advisory `economic_impact` trace step onto the persisted step trace (else computed-then-discarded); advisory + never-raise (ADR-0030 D5). **SD-2(b):** `GET /demo/hero/impact` gains an additive optional `economic_impact` field; the producer reuses `build_hero_impact_ledger` so the ฿ figures EQUAL the ledger's (no drift, ledger byte-identical). **SD-3:** `view-hero.js` provenance strip under the unchanged ledger card — `kind` chip + always-visible `PROVISIONAL` badge (s74 trust-shape) + "show provenance" toggle → `assumptions[]` + `basis_refs`; `hero.css` c35 / `view-hero.js` c36 `?v=` bumps. Build-discovered (disclosed): pre-commit mypy caught a `list[Mapping]` vs `list[dict[str,Any]]` the first manual `mypy` skipped (the `&&` chain stopped at `ruff format --check`) → fixed with `cast` + annotation. draft≠review≠verify: `plan-drafter` PLAN → Code R2 (anchors re-verified on disk) → Cray SD-1(a)/SD-2(b)/SD-3 → build. 3 new AC tests GREEN (AC-1 endpoint facet `net_benefit`==ledger + 4 `basis_refs`; AC-2 producer fires on the real hero seed + persisted governed-run source trace carries the `economic_impact` step; AC-2/AC-3 existing ledger tests UNMODIFIED); AC-4 preview renders the strip + toggle, no console errors; suite **2599/7** WITH Postgres (verified on BOTH PR head + merge commit `f250593`, CI PR-only); ruff + `ruff format --check` + `mypy --strict services/` clean; deterministic-offline (no MS-S1 / host-state); 0 open PRs. PLAN-0073 `git mv`→`done/`. Full narrative: the Session-129 CF block above | `f250593` (HEAD, #738 feat merge) / `cc8516e` (#737 PLAN-0073 Ready) / `verticals/procurement/hero_demo/**` (`_intake_seed` `event_type` + `economic_impact` endpoint field + producer) + `GovernanceActionExecutor._scored_rule` (lifts the advisory step onto the persisted trace) + the oct-demo-procurement frontend (`view-hero.js` provenance strip, `?v=` bumps) + `tests/**` (3 AC tests) + `docs/plans/done/0073-*.md` |
 | 2026-07-14 | **s128 — PLAN-0072 (the Palantir-lite hero demo's beat-3 "run it" step) shipped END-TO-END + CLOSED → `done/` in ONE session-128 day (#734 Ready → #735 build); the hero demo's beat-3 now GENUINELY resolves the parked DOA gate through the REAL production `POST /runs/{id}/gate/resolve`, rendering the persisted truth — replacing a FAKE front-end badge; NO engine change** — Cray picked D3 (next-work-analyst-ranked); `plan-drafter` PLAN → Code R2 → Cray SD-A(b)/SD-B(b)/SD-C(a)/SD-D(a) via AskUserQuestion → build. **Backend:** event opener additively exposes the parked `run_id` on its `hero` dict; generation-aware replay (SD-C, clock-free COUNT of decided runs bumps `detected_at` +1h past the 3600 s dedup bucket → a FRESH parked run); SD-A(b) drives the PRODUCTION resolve route with `api_auth_enabled` + a real authenticated `appr-pm` Person (RF-1 end-to-end), NO new endpoint. **Frontend** `renderActPanel` reworked: SD-D(a) inline login (authenticate THEN sign), SD-B(b) Approve AND Reject, renders the persisted `GateResolveResponse` (approve → COMPLETED + SoD tie; reject = continue+record → COMPLETED, NOT a rejected terminal); `api.js` Hero.runDetail/resolve; `?v=` bumps. **Build-discovered prod bug (disclosed AC-6 correction):** the SoD-403 path `asdict`'d a frozenset `SoDViolation.constraint_steps` → un-serializable → Starlette 500 MASKED the 403 (procurement = first frozenset SoD verdict on this HTTP path); fixed in `services/api/routers/runs.py` (frozenset → sorted list), security posture INTACT — SoD fails CLOSED before serialize (run stays parked, `gate_refused` audit), only the response CODE was wrong. OQ-4 resolved (reject test → downstream tolerates empty executed-effect set). draft≠review≠verify: `plan-drafter` PLAN → Code R2 → Cray SD-A..SD-D → build. 5 new AC tests GREEN; suite **2596/7** WITH Postgres (on BOTH PR head + merge commit `88e6984`, CI PR-only); ruff + `ruff format --check` + `mypy --strict services/` clean; deterministic-offline (no MS-S1 / host-state; Postgres for DB-backed ACs only); 0 open PRs. PLAN-0072 `git mv`→`done/`. Full narrative: the Session-128 CF block above | `88e6984` (HEAD, #735 feat merge) / `85f90ed` (#734 PLAN-0072 Ready) / `services/api/routers/runs.py` (SoD-403 JSON-sanitize) + `verticals/procurement/hero_demo/**` (`run_id` expose + generation-aware replay) + the oct-demo-procurement frontend (`renderActPanel`, `api.js` Hero.runDetail/resolve, `?v=` bumps) + `tests/**` (5 AC tests) + `docs/plans/done/0072-*.md` |
 | 2026-07-14 | **s127 — PLAN-0071 (the Box-4 economic-impact ฿ facet) shipped END-TO-END across all 4 OCT verticals (2 PRs) + CLOSED → `done/`; the reactive AND governed recommenders now append an ADVISORY, trace-carried `economic_impact` `ReasoningStep` (baseline vs governed exposure → net ฿ benefit) — DISCHARGING the ADR-016 self-cancelling Box-4 N≥3 deferral with an OWNED marker (AC-5 GREEN at N=4); ADR-007 D2 envelope byte-verbatim (#731/#732)** — **#731 PR1 (`81c7070`, `feat`) engine core:** new `services/engine/economic_impact.py` (`EconomicExposure`/`EconomicImpact` + a NEVER-RAISE `build_economic_steps` helper) wired at BOTH `RecommendedAction` sites (`recommender._compose_llm_record` reactive + `action_step._compose_action` governed), appended LAST, never on `_rule_recommend`; AC-5 marker landed RED (`xfail(strict=True)`); conftest autouse clears the producer registry; envelope (`services/engine/actions.py`) byte-untouched. **#732 PR2 (`b11ea40`, `feat`) THE close:** four per-vertical ฿ producers (`verticals/<ns>/economic_impact.py`) — energy `avoided_outage` ฿405k / supply_chain `spoilage_avoided` ฿2.12M / aquaculture `mortality_avoided` ฿247k (assumptions-first per SD-B/SD-G, every ฿ input a named `assumptions[]` entry, NO ontology/regen/migration); procurement `expedite_tradeoff` from the committed-CSV demo ledger (`hero_demo/ledger.py` byte-untouched, `basis_refs` cite CSV columns, gated on the emergency-failure trigger — OQ-C calm-path → `None`, hero-PO exemplar stands in for per-event PO anchor, deferred v2); `discovery._register_vertical` gained a GUARDED optional producer import (`ModuleNotFoundError.name` checked). AC-5 GREEN at N=4; AC-9 GREEN (real energy producer → one `economic_impact` step, net ฿405,000); coupled-test audit = every pin PINNED-UNMODIFIED. draft≠review≠verify: `plan-drafter` PLAN → Code R2 → Cray SD-A..SD-G → build. Suite **2591 passed / 7 skipped / 0 xfailed** WITH Postgres (verified on BOTH PR head + merge commit `b11ea40`, CI PR-only); ruff + `ruff format --check` + `mypy --strict services/` clean; deterministic-offline (no MS-S1 / host-state); 0 open PRs. PLAN-0071 `git mv`→`done/`. Full narrative: the Session-127 CF block above | `b11ea40` (HEAD, #732 PR2 merge) / `81c7070` (#731 PR1 engine core) / `services/engine/economic_impact.py` + `services/engine/{recommender.py, procedures/action_step.py, discovery.py}` + `verticals/{energy,supply_chain,aquaculture,procurement}/economic_impact.py` + `tests/**` (AC-5 ≥3-vertical marker + AC-9) + `docs/plans/done/0071-*.md` |
-| 2026-07-13 | **s126 — ADR-0030 Accepted (#728): the Box-4 economic-impact ฿ facet — typed, ADVISORY, trace-carried (`economic_impact` `ReasoningStep`, producer-validated `EconomicImpact` detail; ZERO ADR-007 D2 envelope change) — DISCHARGING the ADR-016 self-cancelling N≥3 Box-4 deferral (N=4)** — ONE cross-vertical shape (`baseline` vs `governed` exposure → `net_benefit`) + per-vertical `kind` (avoided_outage / expedite_tradeoff / spoilage_avoided / mortality_avoided). Disclosed `was an error` (§6): the promised N≥3 marker test was NEVER built → enforcement = a ≥3-vertical build-completion AC in the follow-on BUILD PLAN. Doc-only, contract-only batch (no code/tests). `plan-drafter` → Code R2 → Cray SD-1..SD-7 as-rec. Full narrative: the Session-126 CF block above | `a9dbb6f` (HEAD, #728 `docs(adr)` merge) / `docs/adr/0030-*.md` |
 ## In-Flight Discussions
 
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.

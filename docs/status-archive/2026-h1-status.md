@@ -4121,3 +4121,49 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-13 (s125 — event-bridge full-loop live smoke PASS + energy over-current 4th OCT vertical) [rotated 2026-07-15, session-135 reconcile — 10-row RD window]
 
 | 2026-07-13 | **s125 — (1) event-bridge FULL-LOOP live smoke PASS (#724, EVIDENCE per §8) + (2) energy shipped as the 4th OCT vertical on the per-entity FK-parent band substrate (over-CURRENT, PLAN-0070 #725 Ready + #726 feat BUILT + CLOSED→`done/`)** — **#724 (`22365f2`, `docs(logs)`):** the deferred PLAN-0056 AC-12 / PLAN-0057 host-state smoke — on real MS-S1 (`gpt-oss:20b`) the reactive recommender picked `emergency_source` for the procurement CNC line-down event AND propagated through the production fire path (`recommend`→`build_event_resolver`→`fire_event`) into a PERSISTED `event_emergency_sourcing_round` run parked at the DOA `approve` gate (฿288k → `appr-pm`, `svc-buyer` on-behalf `req-planner`); closes the one remaining live seam (s114/115 proved the recommender-level pick). Disposable test DB; `event_bridge_enabled` default False (ship-dark), no prod code changed. **#725 (`9571abb`, `docs(plans)`) PLAN-0070 Ready** (`plan-drafter`-authored, Code R2 PASS all 7 citations, Cray SD-1..SD-6 via AskUserQuestion). **#726 (`b19dce4`, `feat`) BUILT+CLOSED one PR (SD-1):** re-themes energy's `substation_health_sweep` from over-TEMPERATURE → over-CURRENT — `read_readings` gains the FK-parent `join:` (`event_emitted_by_asset`) + `where {measured_kind: current}` + `site_id→asset_site_id` rename; the `judge` migrates `env_band` → `threshold_field: rated_current_a` + `direction: above` (each feeder banded vs its OWN `Asset.rated_current_a`). Demo flip: Feeder Meter A @ 84 A = `ok` under blanket env 90 but `breach` at 105% of its OWN 80 A rating → parks `waiting_human`; inverter (61 A) stays under its 722 A rating. **Energy's judge was the LAST shipped `env_band` consumer — retires here** (the `EnvBandEvaluateExecutor` engine path stays test-covered). NO new ADR / ontology / regen / Alembic (rides Accepted ADR-016 FKP amendment, its pre-recorded energy follow-on); whole change = `synthetic.py` + `procedures.yaml` + tests. Zero functional `services/` change (AC-8; only an SD-5 docstring hunk). Build-discovered coupling (disclosed correction to AC-8): 2 new current readings grew energy events 11→13 → NL-query `gold.yaml` nl-02/03/05 updated to match the data; no prod code. draft≠review≠verify: `plan-drafter` PLAN → Code R2 → Cray SD-1..SD-6 → build. All 9 ACs; suite **2572/7** WITH Postgres (on merge commit `b19dce4`, CI PR-only); ruff + `ruff format` + `mypy --strict` clean; BUILD deterministic-offline (live smoke = #724). Honesty: demo-breadth (Rule-of-Three MET at N=3 by PLAN-0068), not moat-critical. PLAN-0070 `git mv`→`done/`. Full narrative: the Session-125 CF block above | `b19dce4` (HEAD, #726 feat merge) / `9571abb` (#725 PLAN-0070 Ready) / `22365f2` (#724 live-smoke log) / `verticals/energy/{data_adapter/synthetic.py, procedures.yaml}` + `tests/**` + `docs/logs/2026-07-13-event-bridge-full-loop-live-smoke.md` + `docs/plans/done/0070-*.md` |
+
+### Current Focus block removed — 2026-07-15 (s131 — PLAN-0074 2nd AT-2 signature shipped + CLOSED, N=2) [rotated 2026-07-16, session-136 reconcile — 4-session CF window]
+
+> **Session 131, 2026-07-15 (head_commit `192dc52` → `ff84d9a`) — PLAN-0074
+> shipped END-TO-END + CLOSED → `done/` in ONE session-131 day (#744, `feat`):
+> the **2nd AT-2 governed-procedure signature**, reaching **N=2** — de-risking
+> the deferred AT-2 GENERATOR (ADR-0025 D7 / Rule-of-Three) with a SECOND
+> hand-authored exemplar on a DIFFERENT vertical pressing a DIFFERENT seam. The
+> signature = a supply_chain **cold-chain excursion DISPOSITION** whose
+> authority quantity is **NON-MONEY**: a `severity_tier` gate backed by
+> `SeverityLadder` typed content (the **4th AT-2 gate kind**; `DoaLadder` is
+> money-typed by construction and cannot represent non-money authority).**
+> Steps 1-6: the spec / the obligation gate / the RUN path (resolver + dispatch
+> + run-pin) / the procedure + factory / two self-cancelling markers / a
+> red-team oracle + the AC-16 load-time `gate_kind`↔content correspondence
+> check. **3-independent-reviewer adversarial harvest** (governance /
+> correctness / test-honesty lenses) fixed **10 confirmed defects** —
+> highlights: the facet-less "smuggled gate" (AC-16 closed only the
+> CONTRADICTION half, not the dangerous OMISSION half — a `governance_content`
+> with NO facet owed no SoD yet still gated at run); Infinity/NaN
+> fail-DANGEROUS severity routing; a float-rounding crash on a real sub-0.005 °C
+> breach; a KeyError that killed API startup; a degenerate lane set that made
+> the criticality amplifier DEAD CODE. **Corrected the PLAN's own sketch:**
+> `SourcePolicy` is NOT extended (the run executor keys provenance on the member
+> itself, so a 3rd member would invert a vertical's provenance).
+> **draft≠review≠verify:** `plan-drafter` PLAN → Code R2 → Cray SD-1
+> (SeverityLadder) → build → the 3-reviewer harvest → 10 fixes. Full offline
+> suite **2674 passed / 7 skipped**; `mypy --strict` + ruff clean;
+> deterministic-offline throughout (no MS-S1 / host-state). **Follow-on (F1 —
+> Cray-ratified, spawn_task `task_053edc92`, separate session):** the AT-2
+> authority ladder (`doa_tier` + `severity_tier`) RESOLVES + AUDITS which tier
+> approver should act but the gate never ENFORCES that the acting approver HOLDS
+> that tier role — a lower-tier approver can resolve a gate routed to a higher
+> tier (pre-existing across the AT-2 axis, touches the procurement hero, needs
+> an ADR); folded-in siblings: an AT-2 authority step is not required to be
+> `autonomy: gated`, the governance-pin doesn't cover the severity-derivation
+> ladder, the `sod_steps`/`stamp_steps` vertical-union limitation. 0 open PRs
+> after; tree clean (2 pre-existing untracked KEEP: `.claude/benchmark-results/`,
+> `.claude/launch.json`); MS-S1 idle; dev Postgres UP; loop-dispatcher DISABLED.
+> PLAN-0074 `git mv`→`done/` this session. Commits: `d9ffa08` (Step 1) /
+> `bbe994f` (Step 2) / `34c09d6` (Step 3) → Steps 4-6 + the 3-reviewer harvest
+> (`1743ead`, `c67312d`, `bf1916b`, `80df9dd`) → `ff84d9a` (#744 merge).
+
+### Recent Decisions row removed — 2026-07-13 (s126 — ADR-0030 Accepted, Box-4 economic-impact facet) [rotated 2026-07-16, session-136 reconcile — 10-row RD window]
+
+| 2026-07-13 | **s126 — ADR-0030 Accepted (#728): the Box-4 economic-impact ฿ facet — typed, ADVISORY, trace-carried (`economic_impact` `ReasoningStep`, producer-validated `EconomicImpact` detail; ZERO ADR-007 D2 envelope change) — DISCHARGING the ADR-016 self-cancelling N≥3 Box-4 deferral (N=4)** — ONE cross-vertical shape (`baseline` vs `governed` exposure → `net_benefit`) + per-vertical `kind` (avoided_outage / expedite_tradeoff / spoilage_avoided / mortality_avoided). Disclosed `was an error` (§6): the promised N≥3 marker test was NEVER built → enforcement = a ≥3-vertical build-completion AC in the follow-on BUILD PLAN. Doc-only, contract-only batch (no code/tests). `plan-drafter` → Code R2 → Cray SD-1..SD-7 as-rec. Full narrative: the Session-126 CF block above | `a9dbb6f` (HEAD, #728 `docs(adr)` merge) / `docs/adr/0030-*.md` |
