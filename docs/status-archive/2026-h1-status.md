@@ -4614,3 +4614,91 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 > it shipped into, where the derivation lived in code and the pin could not
 > reach it. PLAN-0078 changed that world, and the workaround retired with the
 > reason for it.
+
+## Rotated this reconcile (session-144, 2026-07-17 — the PLAN-0078 Step-7 closeout, 12/12 ACs → `done/`, #786)
+
+### Current Focus block removed — Session 140, 2026-07-16 (the 4-artifact strategic-continuity program COMPLETE 4/4 — ADR-0032 + PLAN-0079 + the CLAUDE.md §2 pointer + the STATUS pointer, #770/#771/#773/#772) [rotated 2026-07-17, session-144 reconcile — 4-session CF window]
+
+> **Session 140, 2026-07-16 (head_commit `9a5eecf` → `0523d88`) — the
+> 4-artifact STRATEGIC-CONTINUITY program COMPLETE 4/4 (docs + one guard test
+> only, ZERO code behaviour change): #770 ADR-0032 Accepted · #771 PLAN-0079
+> `Status: Tracking` · #773 the CLAUDE.md §2 direction pointer · #772 the
+> STATUS pointer (PLAN-0079 AC-4); #769 unblocked the lane.** **Why the
+> program exists:** the s137
+> strategic arc lived ONLY in private auto-memories + gitignored
+> `docs/research/private/` — so a parallel session planned BLIND against it,
+> and the `building_materials` governed-credit HERO sat in **NO backlog at
+> all**; the program moves the frame into tracked, greppable artifacts.
+> **(1) #770 → ADR-0032 Accepted** (`5b53bbe`, merge `4a5cfb7`; drafted s139):
+> **D1** the demo→pilot wedge (guess-then-react, zero data at first contact, an
+> offline arm, a 1-KPI charter) · **D2** the 3-shape roadmap + a **BINDING
+> pilot gate** (a shape-2/shape-3 PLAN must cite a live pilot or record Cray's
+> explicit in-session override) · **D3** shape-2 = governed self-improvement,
+> NOT autonomous · **D4** shape-3 = PARK + the moat rule · **D5** positioning
+> ("governed = AI-ready today"; NEVER "AGI-ready" to an ops buyer) · **D6**
+> qualify by SHAPE not domain + the AT-2 **cost class** split. It also **pins
+> the AT-2 fact record** (N=2; D7 fired at N=2; the re-eval was performed; the
+> marker re-arms at N=3) — which is what makes the s138-killed stale-count
+> error class hard to REINTRODUCE. **(2) #771 → PLAN-0079 `Status: Tracking`**
+> (`ad40aef`, merge `754a894`; drafted s139) — homes the `building_materials`
+> governed-credit HERO **with its honest cost**; builds and schedules NOTHING.
+> Ships its AC-2 half-(i) presence guard-test
+> (`test_governed_credit_hero_tracking_guard.py`). **(3) #773 → the CLAUDE.md
+> §2 pointer** (`038efd0`, merge `0523d88` = HEAD) — §2 retitled "Current
+> Focus" → **"Direction & Current Focus"** and given a two-pointer signpost:
+> **standing direction = ADR-0032** (the D1 demo→pilot wedge · the D2-D4
+> 3-shape roadmap + its BINDING pilot gate · the D5-D6 positioning + fit-filter
+> discipline, plus a "read it before planning anything strategic" activity
+> gate) alongside **current state = `docs/STATUS.md`**, with an explicit
+> **"state never overrides direction — §1 precedence"** note. **Scope was CUT
+> at Cray's ratification:** the originally-planned "sanitized strategy doc" was
+> DROPPED once Code surfaced that ADR-0032's own §"Public-repo boundary"
+> already carries the public frame + path-only private refs, and that
+> **ADR-0032 OQ-2 had already RESOLVED "not yet"** on any derived doc
+> ("Rule-of-Three applies to docs too") — a no-precedence restatement of a
+> canonical is itself a drift surface (§1 / ADR-0017 D6), the exact error class
+> this program exists to kill. **Artifact 3 = the §2 pointer ONLY.** **(4)
+> #772** = the PLAN-0079 **AC-4** Active-TODO pointer + its armed guard (its
+> SD-3 timing question, resolved by shipping it). **Enabler → #769, the s138
+> STATUS reconcile** (`437369e`, merge `8ca772b`) — a PARALLEL session's PR,
+> BEHIND `main`; Code updated its branch via the GitHub API (`PUT
+> /pulls/769/update-branch`), the gate re-ran green on the up-to-date tip
+> `8e798db`, then it merged — **which unblocked STATUS**, and is the only
+> reason artifact 4 could land.
+> **draft≠review≠verify:** ADR-0032 + PLAN-0079 = `plan-drafter` authored →
+> Code R2 → Cray ratified + merged; the §2 text = **Cowork authored** (ADR-009
+> D1) → Code R2 + applied + committed (D2) — neither drafting agent may write
+> `CLAUDE.md` (Cowork tier-forbidden, `plan-drafter` hook-denied), so "Cowork
+> drafts the text, Code applies" is the only coherent reading; Code's R2 KEPT
+> the D-number parentheticals against Cowork's drift flag (a stable Accepted
+> ADR's structural labels ≠ a world-tracking COUNT like the #767 "N=1" comment;
+> mapping re-verified against `0032:93-202`) and cleared the retitle by grep
+> (zero referents); this reconcile = `status-scribe` → Code R2. Full offline
+> suite **2810 passed / 7 skipped**; docs + one guard test only — no
+> `services/` change, deterministic-offline (no MS-S1 / host-state). **The
+> direction now lives in THREE places that cannot silently vanish:** the ADR
+> (read at every session start), the STATUS Active-TODO pointer (guard-test RED
+> if pruned), and `CLAUDE.md` §2. Post-merge: main=`0523d88`; 0 open PRs;
+> loop-dispatcher DISABLED; MS-S1 idle (up but COLD — zero calls this session);
+> dev Postgres UP. Commits: `5b53bbe` (#770 ADR-0032) → `4a5cfb7` (#770 merge)
+> → `ad40aef` (#771 PLAN-0079) → `754a894` (#771 merge) → `437369e` (#769 s138
+> reconcile) → `8ca772b` (#769 merge) → `1ad9d88` (#772 reconcile) → `f450042`
+> (#772 merge) → `038efd0` (#773 CLAUDE.md §2) → `0523d88` (HEAD, #773 merge).
+
+### Recent Decisions row removed — 2026-07-16 (s136 — PLAN-0078 Phase 1 COMPLETE, the intake seed-migration pair, #762/#763) [rotated 2026-07-17, session-144 reconcile — 10-row RD window]
+
+> **Archivist's note (session-144).** The row below cites
+> `docs/plans/0078-*.md` in its reference column. That PLAN moved to
+> `docs/plans/done/0078-transform-seed-migration.md` in the very reconcile that
+> rotated this row (session 144, #786). The citation is preserved **verbatim as
+> removed**: an archive is a historical record, and the path was accurate when
+> written. The lineage is intact across the boundary — this row records Phase 1
+> ARRIVING with the honest residual ("the marquee severity/amount STAMPS stay
+> code-side, `derivation_hash` in service, F-PIN stays OPEN — that is Phase 2"),
+> and the s144 Current Focus block records the arc CLOSING at 12/12 ACs. Every
+> residual this row names was discharged by PR-3/PR-4/PR-5 except **F-PIN,
+> which remains OPEN by construction** (PLAN-0078 L-4) — no artifact anywhere
+> records it closed, and PLAN-0076 stays un-archived on its T1 for the same
+> reason.
+
+| 2026-07-16 | **s136 — PLAN-0078 Phase 1 COMPLETE (the intake seed-migration pair, oracle-first, SD-1=(B) arc; 2 `feat` PRs #762/#763 atop a Step-1 uniform-factory landing `d8707ca`): the intake enrichment migrated off the hand-coded seeds into declared `enrich` TRANSFORM steps (ADR-0031 D3 row-1 grammar)** — PR-1 #762 procurement intake + PR-2 #763 supply_chain disposition intake, each oracle-first with a FROZEN parity reference green PRE-flip → byte-equal POST-flip. **Honest residual: the marquee severity/amount STAMPS stay code-side, `derivation_hash` in service, F-PIN stays OPEN** — that is Phase 2. Suite **2802 passed / 7 skipped**. Full narrative: the Session-136 CF block (`docs/status-archive/2026-h1-status.md`) | `45d6b82` (HEAD, #763 PR-2 supply_chain) / `173d869` (#762 PR-1 procurement) / `d8707ca` (Step 1 uniform factory) / `verticals/{procurement,supply_chain}/**` (declared `enrich` transform seeds) + `tests/**` (oracle-first parity harnesses + AC-4/5/6) + `docs/plans/0078-*.md` (Phase 1 COMPLETE, Phase 2 open) |
