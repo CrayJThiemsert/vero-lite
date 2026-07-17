@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-17T14:23:56+07:00
-session: 144
-current_batch: "s144 — PLAN-0078 CLOSED at 12/12 ACs → done/ (#786); the AC-6 vertical sweep was the ONE genuine hole. Suite 2845/7."
+last_updated: 2026-07-17T16:29:15+07:00
+session: 145
+current_batch: "s145 — Option-A frontmatter bump only. Landed since s144: #788 (PLAN-0080 draft) + #789 (R4 archive guard). Body/blocks deferred — the new guard blocks rotation."
 current_actor: code
-blocked_on: "Nothing blocking. main=d8db032; 0 open PRs. Loop-dispatcher DISABLED; MS-S1 idle/COLD (zero calls this session); dev Postgres UP."
-next_action: "PLAN-0078 CLOSED — do not re-open. Ranked next: R4 archive guard + split (585 KB `2026-h1-status.md` vs R4's ~192 KB trigger; no guard exists). Guard FIRST — RED forces the split. Needs Cray's go."
-head_commit: d8db032
-recent_commits: [d8db032, 2340de3, 49ff275, 6ee2aa8, 2057120, 6eea264, 70d25a5, 10bc512, 6e6ec7a, 732fc0a]
+blocked_on: "Full-body reconcile BLOCKED: R4 guard RED — 2026-h1-status.md is 592,577 B = 2.3x the 262,144 cap, and R6 rotation must touch it. main=b369fa6; 0 open PRs."
+next_action: "R4 archive split — needs Cray's go + a ruling: spill into the existing 2026-h1b-status.md (93 KB) or a new -c? Then the full-body reconcile, then PLAN-0080 SD-1/SD-2."
+head_commit: b369fa6
+recent_commits: [b369fa6, f444cd1, 694e8d7, a73cf1e, 4397081, d8db032, 2340de3, 49ff275, 6ee2aa8, 2057120]
 ---
 
 # vero-lite — Project Status
