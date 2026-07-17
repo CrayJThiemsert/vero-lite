@@ -1,12 +1,15 @@
 # PLAN-0078: transform seed-migration — migrate the two shipped verticals' derived fields (the intake halves AND the marquee severity/amount stamps) from execution-bound ✖ to declared `transform` ✔, parity-guarded in two phases
 
-**Status:** Proposed — **SD-1..SD-8 ALL RATIFIED by Cray 2026-07-15** via AskUserQuestion
+**Status:** **COMPLETE** — all 12 ACs met; closed 2026-07-17 (session 144) by the
+Step-7 closeout. **SD-1..SD-8 ALL RATIFIED by Cray 2026-07-15** via AskUserQuestion
 (SD-1 = **(B) full migration incl. the marquee stamps** — an informed risk-appetite
 call against the draft's (A) recommendation, made with the two on-disk findings in
 view; SD-6 = **two-tier parity bar**, SD-7 = **slim `ColdChainAssessExecutor` to a
 fail-closed scalar guard**, SD-8 = **one derivation home** — all as recommended).
-Every SD carries its ratified pick below; the build (5 PRs, two phases) is the next
-session's execution work.
+Every SD carries its ratified pick below. The build shipped in 5 PRs across two
+phases: PR-1 #762, PR-2 #763, PR-3, PR-4 #775, PR-5 #784. **OQ-3 stays OPEN and
+does not block this archive** (its own text says so) — an ADR-0031 D4.4 row
+annotation is a drafter-authored G1 Accepted-body edit, tracked below.
 **Owner:** Claude Code (executes); Cray ratifies the surfaced decisions
 **Created:** 2026-07-15 (revised same day: (A)→(B) re-scope on Cray's ratification)
 **Related ADRs:** **ADR-0031** D3 row-1 (the transform grammar this PLAN puts to
@@ -628,9 +631,9 @@ prep PR — executor's call at R2, OQ-2).
    itself does NOT archive** — T1 (gate-plugin seam) stays open and its AC-6
    guard-test stays. **No artifact records F-PIN closed** (L-4). PR per §7.
 
-#### Step 7 — Closeout (AC-5, AC-6)
+#### Step 7 — Closeout (AC-5, AC-6) — **EXECUTED 2026-07-17 (session 144)**
 - Pin tests: the migrated/re-sequenced procedures' snapshots carry the
-  canonical `transform` key(s) (`governance_pin.py:96-98`) and a mid-flight
+  canonical `transform` key(s) (`governance_pin.py:98-99`) and a mid-flight
   transform edit fails closed at resume (the existing pin-test pattern); every
   NO-transform procedure (energy, aquaculture, and the untouched procedures
   inside the two migrated yamls) pins **byte-identically** to before (AC-6).
@@ -639,6 +642,29 @@ prep PR — executor's call at R2, OQ-2).
   D3 row-1 warrants a "migrated" annotation (D4.4), that is an Accepted-body
   edit → drafter-authored, ratified in one pass (OQ-3 below) — never edited
   in-PLAN.
+
+**As executed (each leg verifiable on disk).** Grounding the six open ACs
+against code — rather than against the "PR-3/PR-4 landed them" claim — found
+**four already satisfied** (AC-7/AC-8/AC-9/AC-12: unticked bookkeeping, not
+open work) and **AC-5 green on every leg**. The single genuine hole was
+**AC-6's**, and it was **not the hole this PLAN predicted**: the non-participant
+set never shrank (see AC-6's note), but energy and aquaculture — the two
+verticals AC-6 names first — had **no step-level `transform`-absence assertion
+anywhere** on shipped yaml. Closed by `test_derivation_pin.py:288` (the
+only-when-supplied property as an IFF over every step of every shipped
+procedure, all four verticals) + `:326` (the non-participant vertical set
+pinned as data, RED if it moves).
+**Both new tests were proven non-vacuous empirically, not by inspection:**
+temporarily declaring a transform in `verticals/energy/procedures.yaml` turned
+`:326` RED (`{'aquaculture'} != {'aquaculture', 'energy'}`), and temporarily
+deleting the only-when-supplied branch from `governance_pin.py` turned `:288`
+RED for supply_chain + procurement. Both probes were reverted; the second is
+the reason `:326` must exist alongside `:288` — with the projection broken,
+energy and aquaculture still **passed**, because a vertical with no transforms
+satisfies the IFF's negative arm no matter what the projection does.
+**AC-9 was re-verified independently** rather than inherited from PR-4's R2
+claim: `_spend` / `_severity` hash identically at `173d869^` and HEAD (md5s in
+AC-9).
 
 ## Acceptance Criteria
 
@@ -672,38 +698,78 @@ SD-6..SD-8 (AC-7 additionally on the ratified OQ-5 = (a) materialize).
   migrated transform refuses the whole step typed (the shipped executor's
   fail-closed posture, PLAN-0077 SD-7) — demonstrated per vertical with a
   mutated fixture row.
-- [ ] **AC-5 (pin coverage).** *(Phase-1 leg GREEN — both migrated procedures'
-  snapshots assert the `enrich` transform canonically. Stays UNTICKED: the
-  "re-sequenced" leg is Phase 2.)* Each migrated/re-sequenced procedure's
-  governance snapshot carries its transform(s) canonically
-  (`governance_pin.py:96-98`); a mid-flight transform edit fails closed at
-  resume. Every config-hash change (the two intake flips; the severity PR;
-  the amount PR's four procedures; the `derivation_hash` key removal) is
-  asserted INTENDED, never silently absorbed.
-- [ ] **AC-6 (byte-identical non-participants).** *(Phase-1 leg GREEN — the
-  reorder siblings + the sweep assert no `transform` key. Stays UNTICKED: Phase
-  2 adds transforms, so the non-participant set shrinks and must be re-swept.)*
-  Every procedure declaring no
-  transform — energy, aquaculture, and the untouched procedures in both
-  migrated yamls — produces a governance snapshot and config hash
-  byte-identical to pre-migration (the only-when-supplied property,
-  `governance_pin.py:59-63`, `:122-125`).
-- [ ] **AC-7 (severity re-sequencing parity — SD-6 tier).** The declared
-  severity transform replaces the executor's stamping; the Phase-2 harness
-  proves (i) output-row byte parity on `excursion_severity` + `criticality`
-  (exact string forms) and every Phase-1 field, and (ii) semantic run-record
-  equivalence — identical assess/gdp_gate/severity_tier outcomes + final run
-  status — and (iii) provenance completeness (every derivation traced, in the
-  transform's form).
-- [ ] **AC-8 (amount re-sequencing parity — SD-6 tier).** Per the ratified
-  SD-8 shape: `amount` is derived by declared transforms downstream of ALL
-  FOUR scored_rule steps; the harness proves output-row byte parity on
-  `amount` (exact string form) in every affected procedure + semantic
-  run-record equivalence incl. the doa_tier resolution; the non-amount
-  scored_rule stamps are unchanged.
-- [ ] **AC-9 (authority invariants — L-6).** `_spend`
+- [x] **AC-5 (pin coverage).** *(Phase-1 leg GREEN. Phase-2 "re-sequenced" leg
+  discharged at Step 7, s144, verified against code. Citation refreshed:
+  `:96-98` → `:98-99`, moved by PR-5's own retirement edits.)* Each
+  migrated/re-sequenced procedure's governance snapshot carries its
+  transform(s) canonically (`governance_pin.py:98-99` — the only-when-supplied
+  branch); a mid-flight transform edit fails closed at resume:
+  `test_derivation_pin.py:188` (a declared-ladder band edit) and `:208` (the
+  unbounded top band — the AC-13 drafter finding, preserved) drive
+  `assert_governance_pin` to an ACTUAL raise, with `:180` the control proving
+  the pin is not trivially always-raising. Every config-hash change (the two
+  intake flips; the severity PR; the amount PR's four procedures; the
+  `derivation_hash` key removal) is asserted INTENDED, never silently absorbed
+  — `test_derivation_pin.py:263` pins each vertical's snapshot to an EXACT
+  top-level key set.
+- [x] **AC-6 (byte-identical non-participants).** *(Phase-1 leg GREEN. Closed at
+  Step 7, s144 — the ONE leg of this PLAN that was genuinely still open.*
+  ***The UNTICKED note's premise was `superseded by new info`, not an error***
+  *(CLAUDE.md §6): it predicted "Phase 2 adds transforms, so the non-participant
+  set shrinks and must be re-swept". Phase 2 in fact added transforms ONLY to
+  procedures that already carried a Phase-1 `enrich` — procurement's three
+  `emergency_sourcing_round` variants and supply_chain's
+  `cold_chain_excursion_disposition` — so the set never moved. The prediction
+  was reasonable and may yet come true, so it is now pinned as DATA rather than
+  re-argued in prose. Citation refreshed: `:59-63` → `:58-68`; `:122-125` was
+  the `derivation_hash` fold-in PR-5 retired and no longer exists.)* Every
+  procedure declaring no transform — energy, aquaculture, and the untouched
+  procedures in both migrated yamls — produces a governance snapshot and config
+  hash byte-identical to pre-migration (the only-when-supplied property,
+  `governance_pin.py:58-68`, branch at `:98-99`). Swept at the STEP level on
+  SHIPPED yaml across all four verticals by `test_derivation_pin.py:288`, with
+  the non-participant VERTICAL set pinned as a tripwire at `:326` (RED if a
+  later phase migrates energy or aquaculture, forcing the sweep to be re-run
+  rather than assumed). **Why this leg was open despite three adjacent
+  assertions:** `test_transform_grammar.py:308` proves the property only on a
+  SYNTHETIC in-test procedure, never that the shipped yaml still has the shape
+  the projection was proved against; the two migration-parity sweeps
+  (`test_transform_migration_parity.py` — supply_chain `:237`, procurement
+  `:246`) cover only the non-participant procedures INSIDE the two migrated
+  verticals; and `test_derivation_pin.py:263` asserts the TOP-LEVEL key set
+  only. Energy and aquaculture — the two verticals this AC names first — were
+  asserted nowhere.
+- [x] **AC-7 (severity re-sequencing parity — SD-6 tier).** *(PR-3; ticked at
+  Step 7, s144 on evidence re-verified against code — NOT on the "PR-3 landed"
+  claim.)* The declared severity transform replaces the executor's stamping
+  (`verticals/supply_chain/procedures.yaml:225`); the Phase-2 harness proves
+  all three legs as separate tests in
+  `tests/verticals/supply_chain/test_severity_transform_parity.py`: (i)
+  output-row byte parity on `excursion_severity` + `criticality` (exact string
+  forms) and every Phase-1 field — `:159`, anchored on the row `assess` outputs
+  and importing PR-2's frozen reference so a Phase-1 drift breaks here too;
+  (ii) semantic run-record equivalence — identical assess/gdp_gate/
+  severity_tier outcomes + final run status — `:180`; and (iii) provenance
+  completeness (every derivation traced, in the transform's form) — `:224`.
+- [x] **AC-8 (amount re-sequencing parity — SD-6 tier).** *(PR-4; ticked at
+  Step 7, s144 on evidence re-verified against code.)* Per the ratified SD-8
+  shape: `amount` is derived by declared transforms downstream of ALL FOUR
+  scored_rule steps — `derive_spend` confirmed present at all four declared
+  sites (`verticals/procurement/procedures.yaml:222`, `:599`, `:964` +
+  `verticals/supply_chain/procedures.yaml:337`). The harness
+  (`tests/services/engine/procedures/test_amount_transform_parity.py`) proves
+  output-row byte parity on `amount` (exact string form) at the gate anchor in
+  every affected procedure — `:184`, parametrized across procurement's three,
+  plus `:239` for supply_chain — and semantic run-record equivalence incl. the
+  doa_tier resolution (`:203`, `:255`); the spend inputs stay recoverable
+  (`:227`, `:276`), and the non-amount scored_rule stamps are unchanged.
+- [x] **AC-9 (authority invariants — L-6).** *(Ticked at Step 7, s144 —
+  independently re-verified, not inherited from the PR-4 R2 claim.)* `_spend`
   (`governance_step.py:47`) and `_severity` (`:81`) are **byte-untouched**
-  (diff-verified at R2 on every Phase-2 PR); exact-Decimal end-to-end; bypass
+  across the whole PLAN-0078 arc: both regions hash identically at `173d869^`
+  (the commit before PR-1) and at HEAD — `_spend` md5
+  `da90b41bb7e38d5dddeead73d1c50aa7` (1908 B), `_severity` md5
+  `5b65519c220c02725503656f6bd7a549` (1328 B). Exact-Decimal end-to-end; bypass
   stays unrepresentable; the PLAN-0074/0075 suites green at every PR boundary.
 - [x] **AC-10 (`derivation_hash` fully retired).** *(PR-5 — grep-clean verified
   0 hits outside `docs/`; the "asserted, intended pin change" leg is
@@ -728,11 +794,20 @@ SD-6..SD-8 (AC-7 additionally on the ratified OQ-5 = (a) materialize).
   retiring PR; PLAN-0076 Step T2 closed in that same PR per T3; PLAN-0076 NOT
   archived (T1 open, AC-6 guard-test stays). **No artifact of this PLAN records
   F-PIN closed.**
-- [ ] **AC-12 (fail-closed scalar posture preserved — SD-7).** Per the
-  ratified SD-7 shape: a non-positive / non-finite excursion scalar still
-  refuses the run BEFORE the severity gate (demonstrated with a mutated
-  fixture row); the door is re-homed or consciously removed by Cray's pick —
-  never silently dropped.
+- [x] **AC-12 (fail-closed scalar posture preserved — SD-7).** *(PR-3; ticked at
+  Step 7, s144 on evidence re-verified against code.)* Per the ratified SD-7
+  shape: a non-positive / non-finite excursion scalar still refuses the run
+  BEFORE the severity gate, demonstrated with a mutated fixture row —
+  `test_non_positive_scalar_refuses_at_assess`
+  (`tests/verticals/supply_chain/test_severity_transform_parity.py:237`) drives
+  an ACTUAL `pytest.raises(ColdChainAssessError)` on a `"-58.0"` magnitude. The
+  door was re-homed, not dropped: SD-7's slim landed and
+  `cold_chain_assess.py:243-245` retains the three `_positive_decimal` guards
+  inside `execute`. **Non-vacuity is load-bearing here and the test records
+  why:** an earlier full-run form of this test passed vacuously because the
+  seed's own eligibility guard filtered the mutated row out before it ever
+  reached the door, so the test drives the ACTION executor directly
+  (`:248-252`).
 
 ## Out of Scope
 
