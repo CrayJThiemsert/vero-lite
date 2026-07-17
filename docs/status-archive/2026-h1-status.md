@@ -4539,3 +4539,78 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 ### Recent Decisions row removed — 2026-07-15 (s133 core — PLAN-0075 AT-2 authority enforcement at the run gate, #749) [rotated 2026-07-17, session-142 reconcile — 10-row RD window]
 
 | 2026-07-15 | **s133 — PLAN-0075 core: AT-2 AUTHORITY ENFORCEMENT AT THE RUN GATE shipped (12/13 ACs, #749, `feat`); closes the s131-surfaced F1 exploit (`task_053edc92`)** — the AT-2 ladder RESOLVED/AUDITED which tier should approve but no run path ENFORCED that the acting approver HELD that role (a junior could resolve the ฿288k/฿2M gate). Fix = `tier_authority.check_tier_authority` at `resolve_gated_step`, additive beside SoD — verified at the LIVE DB gate. **Two Cray-ratified divergences:** cumulative senior roles in YAML (Policy B, overriding Correction 1) + NATIVE-TIER audit routing. Suite **2692 passed / 7 skipped**. Full narrative: the Session-133 CF block (`docs/status-archive/2026-h1-status.md`) | `76f42cc` (HEAD, #749 merge) / `580b9e8`…`9e3d421` (7 core build commits) / `services/**` (`tier_authority.check_tier_authority` + `resolve_gated_step` wiring + F3 load check + gate-time audit reconciliation) + `verticals/{procurement,supply_chain}/**` (cumulative-role YAML + `native_approver`) + `tests/**` (AC-5/6/7/8 + live DB gate) + `docs/plans/0075-*.md` (OPEN, 12/13 ACs) |
+
+### Current Focus block removed — Session 138, 2026-07-16 (PLAN-0078 Phase 2 PR-3 — severity re-sequenced into a declared `enrich` transform, #768; + the AT-2 misinformation-KILL / PLAN-0078 doc-drift reconcile, #767) [rotated 2026-07-17, session-143 reconcile — 4-session CF window]
+
+> **Session 138, 2026-07-16 (head_commit `c52c1ed` → `9a5eecf`) — PLAN-0078
+> Phase 2, PR-3 shipped: cold-chain excursion SEVERITY re-sequenced off the
+> `ColdChainAssessExecutor` stamp into a declared `enrich` transform (#768,
+> `feat`, oracle-first); plus a docs-only AT-2 misinformation-KILL + PLAN-0078
+> doc-drift reconcile (#767).** **PR-3 (the marquee, #768):** the non-money
+> authority the `severity_tier` gate routes on now derives in a governed
+> `enrich` transform (ADR-0031 D3 row-1) — `_DOSE_LADDER` becomes a governed
+> datum IN THE PIN instead of a code constant, the move that makes retiring
+> `derivation_hash` honest in PR-5. **Oracle-first (L-2):** `8214a32` froze
+> `test_severity_transform_parity.py` GREEN against the executor-stamped world
+> (4 passed/1 skipped), then `e6fb07a` flipped and the SAME oracle stayed green
+> unchanged (5 passed) — proving the ratified **SD-6 two-tier bar**: (i)
+> output-row byte parity (excursion_severity="critical" + criticality="1" +
+> every Phase-1 field); (ii) semantic run-record equivalence (scored
+> lane-licensed-destruction / 63000.000 THB, GDP gate, severity_tier
+> critical→ผอ.ฝ่ายคุณภาพ/appr-qdir, run status); (iii) VALUE-level provenance
+> completeness (the ratified **OQ-5** — dose_ch/ratio materialized so the record
+> answers "why CRITICAL?" WITHOUT re-running the pinned spec). **SD-7** =
+> `ColdChainAssessExecutor` SLIMMED to its fail-closed scalar guard (the grammar
+> can't express positivity; a negative ratio bands fail-DANGEROUS). **OQ-6** =
+> EXTEND the enrich step (executor's call — a separate step would break the
+> PLAN-0074 structural test in `test_cold_chain_disposition.py`).
+> **AC-9 (L-6):** `governance_step.py` absent from the diff entirely
+> (`_severity`/`_spend` byte-untouched). **Honest interim redundancy
+> (disclosed):** `_DOSE_LADDER` / `derive_excursion_severity` / the
+> derivation_hash provider stay in code until PR-5 — **F-PIN stays OPEN, nothing
+> records it closed**. **The #767 companion (docs-only, NO behavior change):**
+> s137 planned a building_materials `doa_tier` as "the 2nd money signature
+> (N=2) advancing AT-2" — a FALSE premise. Grounded (next-work-analyst + 4
+> Explore agents, Code-reverified on disk): ADR-0025 D7 counts AT-2-class
+> procedures with NO per-`gate_kind` partition → **N has been 2 since s131**
+> (supply_chain severity_tier, PLAN-0074); the D7 re-trigger already FIRED + was
+> ANSWERED (generator stays deferred, D2 types stay instance-scoped); the marker
+> `test_at2_signature_retrigger.py` re-arms at **N=3** — so a
+> building_materials doa_tier would be signature #3, turning CI RED + OBLIGATING
+> the AT-2 extraction, NOT "advancing toward" it. Root cause = stale code
+> comments in `spec.py` (the 2nd Lesson #0030 instance, this time a code comment
+> the drafter point-8 backstop does NOT cover) + a `main.py` docstring; all
+> corrected from the marker's OWN docstring (quoted, not inferred). Same PR
+> reconciled PLAN-0078 doc-drift (4 "Phase 2 gated on SD-6" body sections — all
+> SD-1..SD-8 ratified 2026-07-15; Phase-1 AC-1..AC-4 ticked, AC-5/AC-6
+> deliberately NOT; scored_rule anchors re-verified) and recorded **OQ-5
+> RATIFIED by Cray 2026-07-16 via AskUserQuestion: (a) materialize**.
+> **draft≠review≠verify:** Code authored + verified both PRs (oracle-first for
+> #768; every #767 claim Code-reverified on disk, catching 2 subagent errors);
+> the finding came from next-work-analyst grounding; Cray ratified OQ-5 +
+> merged. Full offline suite **2808 passed / 7 skipped** (2803→2808 = +5 the new
+> parity module, zero regressions); ruff + `ruff format` + `mypy --strict`
+> clean; deterministic-offline (no MS-S1 / host-state). **Flagged (NOT
+> touched):** `spec.py`'s "no principal/role-rank model exists yet" comment is
+> suspect post-PLAN-0075 (a possible missed 580b9e8 truth-pass site).
+> Post-merge: main=`9a5eecf`; 0 open PRs; **PLAN-0078 stays `Status:
+> Proposed`** (never flip-then-edit; PR-4 amount re-seq next); loop-dispatcher
+> DISABLED; MS-S1 idle; dev Postgres UP. Commits: `120521e` (#767 docs) →
+> `c9e5186` (#767 merge) → `8214a32` (PR-3 oracle) → `e6fb07a` (PR-3 flip) →
+> `9a5eecf` (HEAD, #768 merge).
+
+### Recent Decisions row removed — 2026-07-15 (s135 close-out — PLAN-0077 transform-grammar build COMPLETE, #754→#758) [rotated 2026-07-17, session-143 reconcile — 10-row RD window]
+
+| 2026-07-15 | **s135 close-out — PLAN-0077 "transform-grammar build" COMPLETE (5 PRs #754→#758: Proposed → Phase A → B → C → #758 L-8 landing); renders ADR-0031 D3 row-1 + ADR-016 Q4 OQ-3, NO new ADR (arc spans s134-135)** — the typed anti-eval `derive` transform grammar shipped, load-gated + execution-bound for the shipped op-set (93 AC tests). **Honest residual: the two verticals' seeds stay execution-bound ✖; the marquee stamps stay code-side (SD-1); `derivation_hash` in service; F-PIN stays OPEN** — flipping those = the separate seed-migration PLAN. Full narrative: the Session-135 CF block (`docs/status-archive/2026-h1-status.md`) | `ece270a` (HEAD, #758 L-8 landing) / `8808902` (#757 C) / `d94a10d` (#756 B) / `e93e9d0` (#755 A) / `3e6ee4d` (#754 Proposed) / `services/engine/procedures/transform_step.py` + `docs/plans/done/0077-*.md` |
+
+### Recent Decisions row removed — 2026-07-15 (s133 close-out — PLAN-0075 COMPLETE + PLAN-0076 filed as the standing tracker, #751/#752) [rotated 2026-07-17, session-143 reconcile — 10-row RD window]
+
+| 2026-07-15 | **s133 close-out — PLAN-0075 COMPLETE (all 13 ACs) + CLOSED → `done/`; AC-13 derivation provenance shipped (#751, `feat`); PLAN-0076 filed as the STANDING follow-on TRACKER (#752, `Status: Tracking`)** — AC-13 hashes supply_chain's severity derivation into the run governance pin via a per-vertical `registry.derivation_hash` hook; **PROVENANCE-ONLY** (mid-flight tamper-evidence — **F-PIN stays OPEN**). PLAN-0076 homes the 2 PLAN-0075 deferrals (F-PIN remainder + the ADR-0031 D3 / F-FACTORY seam) behind an AC-6 presence guard-test ("location≠tripwire; failing tests are the real anti-rot"). Full narrative: the Session-133 close-out CF block (`docs/status-archive/2026-h1-status.md`) | `fac77c7` (HEAD, #751 merge) / `4a682ab` (#752) / `0520fb2` (AC-13 feat) / `docs/plans/done/0075-*.md` + `docs/plans/0076-*.md` + `tests/services/engine/procedures/test_at2_followon_tracking_guard.py` |
+
+> **Lineage note (added at the s143 reconcile).** The s133 row above records
+> AC-13's ARRIVAL; the s143 Recent-Decisions row records its RETIREMENT
+> (PLAN-0078 PR-5, `#784`) — the reasoning lineage is intact across this
+> archive boundary. AC-13 was not an error: it was the right call for the world
+> it shipped into, where the derivation lived in code and the pin could not
+> reach it. PLAN-0078 changed that world, and the workaround retired with the
+> reason for it.
