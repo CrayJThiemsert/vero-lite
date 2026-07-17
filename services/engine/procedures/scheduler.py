@@ -55,7 +55,6 @@ from services.engine.procedures.spec import (
     StepKind,
     Trigger,
 )
-from services.engine.registry import registry
 
 NextFireFn = Callable[[str, str, datetime], datetime]
 """Signature of the cron next-fire calculator (``cron.next_fire``) — injected so a test can
@@ -274,11 +273,6 @@ async def fire_due_schedules(
             trigger_context=trigger_context,
             principal=run.owning_person,
             service_principal=run.service_principal,
-            # PLAN-0075 AC-13: resolve the derivation hash by vertical at EVERY run-start path
-            # (None for a vertical that pins none — procurement today, so inert here). Threading
-            # it uniformly keeps the invariant "start + resolve pin the same derivation" true if a
-            # derivation-pinned vertical (supply_chain) ever becomes schedule-triggered.
-            derivation_hash=registry.derivation_hash(run.vertical),
         )
 
         state.last_fired = now

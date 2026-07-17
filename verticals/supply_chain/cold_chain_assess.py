@@ -14,10 +14,24 @@ v1, stamp the derived quantity from the ``assess`` action, mirroring the shipped
 branch's own amount-stamp (``governance_step._scored_rule`` emits the selected quote's spend onto
 the threaded entity so the downstream ``doa_tier`` resolves). This is the non-money analog.
 
-**Recorded finding (PLAN-0074 -> the follow-on transform PLAN).** Building it CONFIRMS ADR-0031
-D3 row-1 case-2 is armed: a real signature needed derived-field intake, and the derivation lives
-in vertical CODE (the ladder below) rather than in the declaration. The ladder is the exact datum
-a transform grammar would declare as data. It is vertical-scoped + provisional until that PLAN.
+**Recorded finding (PLAN-0074 -> the follow-on transform PLAN), now DISCHARGED.** Building it
+CONFIRMED ADR-0031 D3 row-1 case-2 was armed: a real signature needed derived-field intake, and
+the derivation lived in vertical CODE (the ladder below) rather than in the declaration. That is
+no longer true. **PLAN-0078 promoted the ladder to declared data** — ``procedures.yaml``'s
+``enrich`` transform derives ``dose_ch`` / ``ratio`` / ``excursion_severity`` / ``criticality``
+upstream of ``assess``, and the per-step governance pin covers the bands canonically
+(``governance_pin.py``). PR-5 then retired the PLAN-0075 AC-13 ``derivation_hash`` code-hash the
+CODE-side ladder had needed (AC-10).
+
+**Status of the constants below — READ THIS BEFORE EDITING THEM.** :data:`_DOSE_LADDER`,
+:data:`_TOP_SEVERITY`, :class:`SeverityDerivation` and :func:`derive_excursion_severity` are
+**NO LONGER THE PRODUCTION AUTHORITY** — nothing in the run path calls them. They are RETAINED
+(Cray's ratified PLAN-0078 PR-5 call) as the **test-only reference implementation** the grammar
+suites check the declared transform against. **The governing ladder is the one in
+``procedures.yaml``**; editing the tuple below changes NO run's severity. The yaml bands are
+asserted independently, hand-written, by ``test_severity_transform_pin_coverage``
+(``tests/verticals/supply_chain/test_severity_transform_parity.py``) — deliberately NOT by
+importing these constants, so the two cannot drift together unnoticed.
 
 Pure + deterministic: no LLM, no DB, no network (the offline tests are the gate, CLAUDE.md §8).
 Money never enters: the authority quantity is the severity ordinal. The LLM only drafts the
@@ -26,8 +40,6 @@ advisory prose in the base executor — it NEVER derives the severity (governed 
 
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
@@ -61,15 +73,16 @@ carry one (``info`` | ``warning`` | ``critical`` — the alert-triage vocabulary
 vocabularies from ever being confused for one another (PLAN-0074 Step-4 run-path finding — see
 ``governance_step.EXCURSION_SEVERITY_FIELD``)."""
 
-# The vertical-authored dose->severity ladder (PROVISIONAL, instance-scoped). Each tuple is an
+# The dose->severity ladder, as a TEST-ONLY REFERENCE (see the module docstring). Each tuple is an
 # INCLUSIVE CEILING on the dose ratio: the excursion's DOSE (magnitude x duration, in C*h) as a
 # FRACTION of the cargo's stability budget, matched by `ratio <= ceiling` (ascending). A breach
 # consuming <=1/4 of the budget is negligible; <=1/2 minor; <=the whole budget (ratio <= 1.0)
 # major; and ABOVE the budget (ratio > 1.0, the unbounded top band) critical — the batch has spent
 # more than its stability budget and is presumed compromised. Total-cover: every non-negative ratio
-# maps to exactly one severity (the ordinal analog of the SeverityLadder's own invariant). THIS IS
-# THE DATUM A TRANSFORM GRAMMAR WOULD DECLARE (ADR-0031 D3 row-1) — it lives in code today, and
-# that is the finding, not an oversight.
+# maps to exactly one severity (the ordinal analog of the SeverityLadder's own invariant).
+# THIS WAS THE DATUM A TRANSFORM GRAMMAR WOULD DECLARE (ADR-0031 D3 row-1) — and PLAN-0078
+# DECLARED IT: the governing copy is `procedures.yaml`'s `enrich` map_value bands. Editing the
+# tuple below changes no run; it only re-points what the grammar suites compare against.
 _DOSE_LADDER: tuple[tuple[Decimal, ExcursionSeverity], ...] = (
     (Decimal("0.25"), ExcursionSeverity.NEGLIGIBLE),
     (Decimal("0.50"), ExcursionSeverity.MINOR),
@@ -77,33 +90,6 @@ _DOSE_LADDER: tuple[tuple[Decimal, ExcursionSeverity], ...] = (
 )
 _TOP_SEVERITY = ExcursionSeverity.CRITICAL
 """The unbounded top band: a dose ABOVE the last ladder floor (the budget is spent) is critical."""
-
-
-def derivation_hash() -> str:
-    """A canonical sha256 over the severity-DERIVATION constants — :data:`_DOSE_LADDER` AND
-    :data:`_TOP_SEVERITY` (PLAN-0075 AC-13, the ratified SD-5 provenance fold-in).
-
-    Threaded into the ``supply_chain`` run's governance snapshot (the engine pulls it by vertical
-    through the registry hook — ``registry.derivation_hash`` — never importing this module), so a
-    mid-flight (run-start ↔ resolve) derivation edit fails CLOSED at the governance pin and the run
-    record answers "which derivation governed THIS run". **Serialises the constants THEMSELVES**,
-    never a hand-maintained ``derivation_version`` string a deploy can forget to bump.
-
-    Both constants are hashed on purpose: a ladder-tuple-only hash would leave the unbounded
-    ``_TOP_SEVERITY`` critical band un-covered — an edit that re-pointed the top band would slip a
-    tuple-only pin (the drafter finding, AC-13). Deterministic + stable across processes (ordered
-    tuple, ``Decimal`` -> exact ``str``, enum -> ``.value``; ``sort_keys`` on the wrapper dict; no
-    set, no float, no clock — the same discipline the ``governance_pin`` canonicalisation states).
-
-    PROVENANCE-ONLY: this buys mid-flight tamper-evidence + audit provenance; it does NOT close the
-    new-run re-routing threat (a fresh run on already-changed code pins the changed derivation
-    without complaint) — F-PIN stays open (SD-5 tracked follow-on)."""
-    payload = {
-        "dose_ladder": [[str(ceiling), severity.value] for ceiling, severity in _DOSE_LADDER],
-        "top_severity": _TOP_SEVERITY.value,
-    }
-    canonical = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 class ColdChainAssessError(ProcedureError):
@@ -174,6 +160,10 @@ class SeverityDerivation:
 def derive_excursion_severity(entity: Mapping[str, Any]) -> SeverityDerivation:
     """Derive the :class:`ExcursionSeverity` of one excursion, DETERMINISTICALLY (same inputs ->
     same severity; no LLM, no clock, no randomness).
+
+    **TEST-ONLY REFERENCE (PLAN-0078 PR-5) — no run path calls this.** The shipped derivation is
+    the declared ``enrich`` transform in ``procedures.yaml``; this function is the independent
+    reference the grammar suites check that transform against. See the module docstring.
 
     dose = magnitude x duration (C*h above the cargo's ceiling); ratio = dose / stability budget;
     the ratio lands in exactly one band of :data:`_DOSE_LADDER` (total cover, unbounded top).

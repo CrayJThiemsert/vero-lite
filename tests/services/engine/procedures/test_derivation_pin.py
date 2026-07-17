@@ -1,83 +1,81 @@
-"""PLAN-0075 AC-13 (SD-5 provenance fold-in) — the supply_chain severity-DERIVATION
-constants are hashed into the run's governance snapshot.
+"""PLAN-0078 PR-5 (AC-10, AC-11) — the DECLARED-derivation pin marker.
 
-PROVENANCE-ONLY (the ratified SD-5 split): folding the derivation hash into the pin buys
-(i) mid-flight tamper-evidence — a run-start↔resolve edit to ``_DOSE_LADDER`` OR
-``_TOP_SEVERITY`` fails CLOSED at the pin — and (ii) audit provenance (which derivation
-governed THIS run). It does NOT close the new-run re-routing threat: F-PIN stays open
-(procurement's imperative ฿ derivation has no clean datum — the tracked follow-on).
+**What this module used to be, and why it changed.** Under PLAN-0075 AC-13 (the ratified
+SD-5 provenance fold-in) the supply_chain severity ladder lived in vertical CODE, so the
+governance pin — a snapshot of the DECLARATION — could not reach it. The workaround was a
+side-channel ``sha256`` of the code constants, threaded by vertical through a registry hook
+and folded into the snapshot. PLAN-0078 promoted BOTH shipped derivations to declared data
+(supply_chain's severity ladder, PR-3; procurement's ฿ spend, PR-4), so the per-step
+``transform`` key now pins the governing datum itself and the code-hash was retired
+end-to-end in PR-5 (AC-10). This module is its replacement, and it must keep the two
+guarantees the retired suite bought:
+
+* **mid-flight tamper-evidence** — a run-start↔resolve edit to a derivation fails CLOSED at
+  the pin. Preserved here at FULL strength: the tests below drive
+  :func:`assert_governance_pin` until it RAISES, exactly as the retired
+  ``test_mutated_dose_ladder_fails_closed_at_the_pin`` did. (A test that merely compares two
+  config hashes — ``test_transform_grammar.py``'s pin block — proves the hash MOVES, not that
+  the run REFUSES; it does not discharge this.)
+* **the un-bounded top band is covered** — the AC-13 drafter finding, preserved: a ladder that
+  pinned only its enumerated bands would let an edit re-point the unbounded top band
+  silently. The declared form's mandatory ``above`` is asserted to trip the pin too.
+
+**The marker (AC-11, the rewritten SD-5 self-canceller).** The retired marker asserted an
+ASYMMETRY: supply_chain pinned its derivation, procurement did not, because procurement's
+imperative ฿ math had "no clean datum to hash". PLAN-0078 dissolved that premise — the ฿ is
+now ``derive_spend``, declared. So the marker no longer tracks a residual; it asserts the
+END STATE both PRs bought: **every shipped derivation rides the pin as declared data, and no
+code-hash seam survives to compete with it** (:func:`test_declared_derivation_marker`).
+
+**F-PIN is NOT closed by any of this (PLAN-0078 L-4).** The new-run re-routing threat — a
+fresh run on already-changed declared data pins the change without complaint — is an
+architectural property of per-run pinning, orthogonal to where the derivation lives.
+PLAN-0076 Step T2 (the remainder fold-in: retire the code-hash, rewrite this marker) is what
+closes here; the threat itself stays open and tracked, and PLAN-0076 does NOT archive.
 
 Pure + offline (CLAUDE.md §8 — the offline oracle is the gate): no DB, no LLM, no MS-S1.
-The pass/fail reads are AC-13 (a)-(d):
-
-* (a) the supply_chain snapshot carries a deterministic derivation hash, stable across
-  processes (proved by a pinned golden sha256 + a within-process re-compute);
-* (b) a mutated ``_DOSE_LADDER`` OR ``_TOP_SEVERITY`` between run-start and resolve fails
-  closed at the pin (the ``_TOP_SEVERITY`` case is why the hash covers BOTH constants — a
-  ladder-tuple-only hash would leave the unbounded critical band un-pinned);
-* (c) procurement + energy + aquaculture snapshots are byte-identical to before (a vertical
-  that pins no derivation passes ``None`` — no key added, no cross-vertical bleed);
-* (d) a SELF-CANCELLING marker documents the F-PIN residual (procurement un-pinned),
-  tripping when a procurement derivation hash lands and pointing at the follow-on.
 """
 
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from decimal import Decimal
-from pathlib import Path
 
 import pytest
 
-from services.engine.discovery import discover_and_register
-from services.engine.procedures.governance_pin import (
-    build_governance_snapshot,
-    compute_governance_hash,
-    governance_pin_for,
-)
+from services.engine.procedures.governance_pin import build_governance_snapshot, governance_pin_for
 from services.engine.procedures.orchestrator import ProcedureError
 from services.engine.procedures.persistence import assert_governance_pin
 from services.engine.procedures.runs import PipelineRun, PipelineRunStatus
 from services.engine.procedures.spec import (
-    ExcursionSeverity,
+    MapValueBody,
     Procedure,
-    Step,
     StepKind,
-    load_procedures_file,
+    load_procedures,
 )
-from services.engine.registry import RegistryError, registry
-from verticals.procurement.hero_demo.run import register_procurement_procedure_executors
-from verticals.supply_chain import cold_chain_assess
-from verticals.supply_chain.procedures_factory import register_supply_chain_procedure_executors
 
-# The cross-PROCESS stability proof (AC-13 a): the canonical sha256 of the SHIPPED
-# ``_DOSE_LADDER`` + ``_TOP_SEVERITY`` at this baseline. Pinned as a literal because a
-# process-stable hash is exactly what a governance pin needs — if this drifts, either the
-# constants changed (intended: bump this + re-argue) or the serialisation stopped being
-# canonical (a real bug: str-hash randomisation, float, set ordering).
-_GOLDEN = (
-    "5db13dfce2bec97d81326252a2a1a7ec2828ac688c95a732510265c15a5557cc"  # pragma: allowlist secret
-)
+_SUPPLY_CHAIN_PROC = "cold_chain_excursion_disposition"
 
 _TS = datetime(2026, 1, 1, tzinfo=UTC)  # fixed — never the (non-monotonic WSL2) wall clock
 
+# The GOVERNING ladder, hand-written from `verticals/supply_chain/procedures.yaml` — NOT
+# imported from `cold_chain_assess._DOSE_LADDER`. That tuple is a test-only reference since
+# PR-5 (it governs nothing); importing it here would let a yaml edit and a code edit drift
+# together unnoticed — the exact hole PLAN-0075 AC-13 closed by hashing the constants
+# THEMSELVES, and the reason `test_severity_transform_pin_coverage` states the same rule.
+_GOVERNING_BANDS = [("0.25", "negligible"), ("0.50", "minor"), ("1.00", "major")]
+_GOVERNING_ABOVE = "critical"
 
-def _proc() -> Procedure:
-    """A minimal procedure — ``build_governance_snapshot`` only reads its id / steps / SoD, so a
-    one-step stub is enough to exercise the derivation-hash fold-in without any adapter."""
-    return Procedure(
-        procedure_id="cold_chain_excursion_disposition",
-        title="Cold-chain disposition",
-        run_by="a",
-        steps=[Step(step_id="intake", name="Intake", kind=StepKind.QUERY)],
-    )
+
+def _procedure(vertical: str, procedure_id: str) -> Procedure:
+    spec = load_procedures(vertical)
+    return next(p for p in spec.procedures if p.procedure_id == procedure_id)
 
 
 def _run(snapshot: dict[str, object], config_hash: str) -> PipelineRun:
     """A suspended run pinned at ``config_hash`` — constructed in memory (no session, no DB)."""
     return PipelineRun(
-        run_id="run-ac13",
-        procedure_id="cold_chain_excursion_disposition",
+        run_id="run-pr5",
+        procedure_id=_SUPPLY_CHAIN_PROC,
         agent_id="a",
         status=PipelineRunStatus.WAITING_HUMAN.value,
         started_at=_TS,
@@ -87,153 +85,192 @@ def _run(snapshot: dict[str, object], config_hash: str) -> PipelineRun:
     )
 
 
-# --------------------------------------------------------------------------- #
-# AC-13 (a) — a deterministic derivation hash, stable across processes
-# --------------------------------------------------------------------------- #
-
-
-def test_derivation_hash_is_deterministic_and_golden() -> None:
-    """The hash is stable within a process AND equals a pinned golden literal — the constants
-    are serialised THEMSELVES (never a hand-maintained version string), Decimal->exact str,
-    enum->.value, ordered tuple, no clock/set/float, so it reproduces byte-for-byte across
-    processes."""
-    assert cold_chain_assess.derivation_hash() == cold_chain_assess.derivation_hash()
-    assert cold_chain_assess.derivation_hash() == _GOLDEN
-
-
-def test_supply_chain_snapshot_carries_the_derivation_hash() -> None:
-    """The resolved hash rides in the snapshot under ``derivation_hash`` and changes the config
-    hash — so a run pinned WITH it and re-checked WITH it matches, but the un-pinned shape does
-    not (proving the fold-in is load-bearing, not cosmetic)."""
-    h = cold_chain_assess.derivation_hash()
-    proc = _proc()
-    snap = build_governance_snapshot(proc, derivation_hash=h)
-
-    assert snap["derivation_hash"] == h
-    # deterministic: folding the same hash in twice yields the same config hash (the pin invariant)
-    assert compute_governance_hash(snap) == compute_governance_hash(
-        build_governance_snapshot(proc, derivation_hash=h)
+def _severity_ladder(procedure: Procedure) -> MapValueBody:
+    """The declared severity ladder of ``procedure`` — the map_value targeting the field the
+    ``severity_tier`` gate reads. Fails the test loudly if the declaration moved."""
+    for step in procedure.steps:
+        if step.transform is None:
+            continue
+        for op in step.transform.ops:
+            body = getattr(op, "map_value", None)
+            if body is not None and body.target == "excursion_severity":
+                return body
+    raise AssertionError(
+        f"{procedure.procedure_id} declares no 'excursion_severity' map_value — the severity "
+        "derivation left the declaration (PLAN-0078 PR-3 flip regressed, or the step moved)"
     )
-    # load-bearing: the folded-in hash makes the config hash differ from the un-pinned snapshot
-    assert compute_governance_hash(snap) != compute_governance_hash(build_governance_snapshot(proc))
+
+
+def _transform_targets(procedure: Procedure) -> set[str]:
+    """Every field written by any declared transform op on ``procedure``."""
+    targets: set[str] = set()
+    for step in procedure.steps:
+        if step.transform is None:
+            continue
+        for op in step.transform.ops:
+            for body in vars(op).values():
+                target = getattr(body, "target", None)
+                if target is not None:
+                    targets.add(target)
+    return targets
 
 
 # --------------------------------------------------------------------------- #
-# AC-13 (b) — a mid-flight derivation edit fails closed at the pin
+# The governing datum rides the pin (what replaced the code-hash)
+# --------------------------------------------------------------------------- #
+
+
+def test_supply_chain_severity_ladder_rides_the_pin() -> None:
+    """The ladder the ``severity_tier`` gate ultimately routes on is IN the run's governance
+    snapshot, canonically — so "which derivation governed THIS run?" is answered by the run
+    record itself, which is the provenance half of what AC-13's code-hash bought."""
+    procedure = _procedure("supply_chain", _SUPPLY_CHAIN_PROC)
+    snapshot = build_governance_snapshot(procedure)
+
+    ladders = [
+        op["map_value"]
+        for step in snapshot["steps"]
+        if step.get("transform")
+        for op in step["transform"]["ops"]
+        if "map_value" in op and op["map_value"]["target"] == "excursion_severity"
+    ]
+    assert len(ladders) == 1, "exactly one step must declare the severity ladder"
+    [ladder] = ladders
+    assert [(b["ceiling"], b["value"]) for b in ladder["bands"]] == _GOVERNING_BANDS
+    assert ladder["above"] == _GOVERNING_ABOVE, "the unbounded top band must stay total-cover"
+
+
+def test_procurement_spend_derivation_rides_the_pin() -> None:
+    """The ฿ the ``doa_tier`` gate routes on is declared + pinned in EVERY procurement
+    procedure that scores a supplier — the PR-4 (SD-8 (a) "one derivation home") end state,
+    and the reason the retired marker's supply_chain-vs-procurement asymmetry is gone."""
+    spec = load_procedures("procurement")
+    scoring = [p for p in spec.procedures if any(s.step_id == "source" for s in p.steps)]
+    assert scoring, "no procurement procedure scores a supplier — the fixture moved"
+
+    for procedure in scoring:
+        snapshot = build_governance_snapshot(procedure)
+        pinned_targets = {
+            body["target"]
+            for step in snapshot["steps"]
+            if step.get("transform")
+            for op in step["transform"]["ops"]
+            for body in op.values()
+            if isinstance(body, dict) and "target" in body
+        }
+        assert "amount" in pinned_targets, (
+            f"{procedure.procedure_id}: the spend the doa_tier gate reads is not pinned as a "
+            "declared derivation (PLAN-0078 AC-8 regressed)"
+        )
+
+
+# --------------------------------------------------------------------------- #
+# Mid-flight tamper-evidence — preserved at FULL strength (the pin REFUSES)
 # --------------------------------------------------------------------------- #
 
 
 def test_unmutated_derivation_does_not_trip_the_pin() -> None:
-    """The control for (b): an unchanged derivation between run-start and resolve is inert — the
-    pin only fires on a MISMATCH, never on every gate."""
-    proc = _proc()
-    h1 = cold_chain_assess.derivation_hash()
-    snap, pinned = governance_pin_for(proc, derivation_hash=h1)
-    # the same derivation recomputed at resolve (== h1) must NOT raise
-    assert_governance_pin(_run(snap, pinned), proc, context="test", derivation_hash=h1)
+    """The control: an unchanged declaration between run-start and resolve is inert — the pin
+    only fires on a MISMATCH, never on every gate."""
+    procedure = _procedure("supply_chain", _SUPPLY_CHAIN_PROC)
+    snapshot, pinned = governance_pin_for(procedure)
+    assert_governance_pin(_run(snapshot, pinned), procedure, context="test")
 
 
-def test_mutated_dose_ladder_fails_closed_at_the_pin(monkeypatch: pytest.MonkeyPatch) -> None:
-    """A mid-flight ``_DOSE_LADDER`` edit (a re-pointed band ceiling) recomputes to a different
-    hash at resolve, so the pin refuses — the sanctioned cancel-and-restart path."""
-    proc = _proc()
-    h1 = cold_chain_assess.derivation_hash()
-    snap, pinned = governance_pin_for(proc, derivation_hash=h1)
-    run = _run(snap, pinned)
+def test_midflight_ladder_band_edit_fails_closed_at_the_pin() -> None:
+    """A mid-flight ladder edit (a re-pointed band ceiling) recomputes to a different config
+    hash at resolve, so the pin REFUSES — the sanctioned cancel-and-restart path.
 
-    # re-point the top ladder band's ceiling (0.25/0.50/1.00 -> 0.25/0.50/0.99)
-    mutated = cold_chain_assess._DOSE_LADDER[:-1] + ((Decimal("0.99"), ExcursionSeverity.MAJOR),)
-    monkeypatch.setattr(cold_chain_assess, "_DOSE_LADDER", mutated)
-    h2 = cold_chain_assess.derivation_hash()
-    assert h2 != h1
+    This is the declared-data successor to the retired
+    ``test_mutated_dose_ladder_fails_closed_at_the_pin``, and it drives the same assertion
+    (``assert_governance_pin`` raises), not a weaker hash comparison."""
+    procedure = _procedure("supply_chain", _SUPPLY_CHAIN_PROC)
+    snapshot, pinned = governance_pin_for(procedure)
+    run = _run(snapshot, pinned)
 
-    with pytest.raises(ProcedureError, match="governance-config pin mismatch"):
-        assert_governance_pin(run, proc, context="gate resolution", derivation_hash=h2)
-
-
-def test_mutated_top_severity_fails_closed_at_the_pin(monkeypatch: pytest.MonkeyPatch) -> None:
-    """The drafter finding, PROVEN: the SEPARATE ``_TOP_SEVERITY`` top-band constant is hashed
-    too. A ladder-tuple-only hash would NOT change when only the unbounded critical band is
-    re-pointed, and this run would silently resolve under a changed disposition — here it fails
-    closed."""
-    proc = _proc()
-    h1 = cold_chain_assess.derivation_hash()
-    snap, pinned = governance_pin_for(proc, derivation_hash=h1)
-    run = _run(snap, pinned)
-
-    # the top band no longer means CRITICAL — a real weakening of the disposition ladder
-    monkeypatch.setattr(cold_chain_assess, "_TOP_SEVERITY", ExcursionSeverity.MAJOR)
-    h2 = cold_chain_assess.derivation_hash()
-    assert h2 != h1
+    mutated = procedure.model_copy(deep=True)
+    ladder = _severity_ladder(mutated)
+    assert ladder.bands[-1].ceiling == "1.00"  # the band being re-pointed, pinned explicitly
+    ladder.bands[-1].ceiling = "0.99"  # a batch at ratio 1.00 is no longer 'major'
 
     with pytest.raises(ProcedureError, match="governance-config pin mismatch"):
-        assert_governance_pin(run, proc, context="gate resolution", derivation_hash=h2)
+        assert_governance_pin(run, mutated, context="gate resolution")
+
+
+def test_midflight_top_band_edit_fails_closed_at_the_pin() -> None:
+    """The AC-13 drafter finding, PRESERVED across the migration: the unbounded top band is a
+    SEPARATE datum from the enumerated bands. Under the code-hash a ladder-tuple-only hash
+    would not have moved when only ``_TOP_SEVERITY`` was re-pointed; under the declared form
+    the mandatory ``above`` is part of the pinned transform, so the same weakening — the top
+    band no longer meaning CRITICAL — fails closed here too."""
+    procedure = _procedure("supply_chain", _SUPPLY_CHAIN_PROC)
+    snapshot, pinned = governance_pin_for(procedure)
+    run = _run(snapshot, pinned)
+
+    mutated = procedure.model_copy(deep=True)
+    ladder = _severity_ladder(mutated)
+    assert ladder.above == _GOVERNING_ABOVE  # the band being weakened, pinned explicitly
+    ladder.above = "major"  # a batch past its whole stability budget would stop being critical
+
+    with pytest.raises(ProcedureError, match="governance-config pin mismatch"):
+        assert_governance_pin(run, mutated, context="gate resolution")
 
 
 # --------------------------------------------------------------------------- #
-# AC-13 (c) — no cross-vertical bleed
+# AC-11 — the rewritten marker (supersedes the F-PIN residual self-canceller)
 # --------------------------------------------------------------------------- #
 
 
-def test_no_derivation_hash_is_byte_identical() -> None:
-    """The mechanism guaranteeing (c): with no derivation hash supplied (the default, every
-    vertical that pins none), NO key is added — so ``None`` reproduces the pre-AC-13 snapshot
-    exactly."""
-    proc = _proc()
-    assert "derivation_hash" not in build_governance_snapshot(proc)
-    assert build_governance_snapshot(proc) == build_governance_snapshot(proc, derivation_hash=None)
+def test_declared_derivation_marker() -> None:
+    """The AC-11 marker. The retired form asserted supply_chain-pins / procurement-does-not —
+    an asymmetry that rested on procurement's ฿ having "no clean datum to hash". PLAN-0078
+    dissolved that premise by declaring BOTH derivations, so this asserts the end state:
+
+    * supply_chain's severity ladder is declared (its WHY values, ``dose_ch`` / ``ratio``,
+      materialized per the ratified OQ-5 — so the audit surface the retired
+      ``severity_derivation`` payload carried survives the change of form);
+    * procurement's ฿ spend is declared;
+    * and no snapshot carries a competing code-side derivation key
+      (:func:`test_every_snapshot_carries_exactly_the_declared_surface`).
+
+    If a future vertical derives an authority quantity in CODE again, that is not this
+    marker's failure — it is a new ADR-0031 D3 row-1 case-2 signature, and it routes to a
+    PLAN, not to a resurrection of the retired code-hash."""
+    supply_chain = _procedure("supply_chain", _SUPPLY_CHAIN_PROC)
+    assert {"dose_ch", "ratio", "excursion_severity", "criticality"} <= _transform_targets(
+        supply_chain
+    ), "supply_chain's severity derivation (incl. the OQ-5 WHY values) must be declared data"
+
+    spec = load_procedures("procurement")
+    hero = next(p for p in spec.procedures if any(s.step_id == "source" for s in p.steps))
+    assert "amount" in _transform_targets(hero), "procurement's ฿ spend must be declared data"
+
+    for procedure in (supply_chain, hero):
+        assert any(
+            step.kind is StepKind.TRANSFORM for step in procedure.steps
+        ), f"{procedure.procedure_id} declares no transform step"
 
 
-def test_other_verticals_snapshots_unchanged() -> None:
-    """(c) against the REAL shipped specs: procurement / energy / aquaculture carry NO
-    derivation hash (their caller resolves ``None``), so every one of their procedure snapshots
-    is byte-identical to before — no cross-vertical bleed from the supply_chain fold-in."""
-    for vertical in ("procurement", "energy", "aquaculture"):
-        spec = load_procedures_file(
-            Path(f"verticals/{vertical}/procedures.yaml"), vertical=vertical
-        )
-        for procedure in spec.procedures:
-            snap = build_governance_snapshot(procedure)  # None default = the pre-AC-13 shape
-            assert "derivation_hash" not in snap, f"{vertical}/{procedure.procedure_id} bled a hash"
+@pytest.mark.parametrize("vertical", ["supply_chain", "procurement", "energy", "aquaculture"])
+def test_every_snapshot_carries_exactly_the_declared_surface(vertical: str) -> None:
+    """AC-10 + AC-5's "asserted, intended pin change" leg: the governance snapshot's top-level
+    surface is EXACTLY the declared config — procedure id, SoD, steps — and nothing else.
 
+    This is the assertion that makes supply_chain's config-hash change at PR-5 **intended
+    rather than silently absorbed**. Retiring the PLAN-0075 AC-13 code-hash removed a key
+    that supply_chain's snapshot (alone) used to carry; its hash therefore MOVED, and a
+    persisted mid-flight run of that procedure fails closed at resume — the pin working as
+    designed, disclosed in PLAN-0078's "Pin consequence of migrating" section.
 
-# --------------------------------------------------------------------------- #
-# AC-13 (d) — the self-cancelling F-PIN-residual marker
-# --------------------------------------------------------------------------- #
-
-
-async def test_fpin_residual_procurement_unpinned_marker() -> None:
-    """SELF-CANCELLING F-PIN marker (PLAN-0075 AC-13(d) / SD-5). supply_chain pins its severity
-    derivation into the run snapshot; procurement does NOT (its imperative ฿ derivation —
-    ``unit_price`` times ``qty`` — has no clean datum to hash). This asserts BOTH, so it FAILS the
-    moment a procurement derivation hash lands — forcing the F-PIN follow-on tracking to be closed
-    and this marker updated. The failing assertion is the deferral self-cancelling, not a bug."""
-    discover_and_register()
-    await register_supply_chain_procedure_executors()
-    await register_procurement_procedure_executors()
-
-    assert (
-        registry.derivation_hash("supply_chain") is not None
-    ), "supply_chain must pin its severity-derivation constants into the run snapshot (AC-13)"
-    assert registry.derivation_hash("procurement") is None, (
-        "F-PIN RESIDUAL SELF-CANCELLED: a procurement derivation hash now registers. The SD-5 "
-        "deferral rested on procurement's imperative ฿ derivation having no clean datum to hash; "
-        "if one has landed (the follow-on's proper form is 'declare the derivation as data' — see "
-        "PLAN-0075 SD-5 / Out of Scope), close the F-PIN follow-on tracking and update this "
-        "marker. This failure is the deferral self-cancelling, not a test bug."
-    )
-
-
-# --------------------------------------------------------------------------- #
-# The registry vertical hook (the inversion-of-control seam) behaves
-# --------------------------------------------------------------------------- #
-
-
-def test_registry_derivation_hash_hook() -> None:
-    """The engine pulls a vertical's derivation hash by name (``None`` when unregistered), and a
-    duplicate registration is a ``RegistryError`` — the same posture as the other registrars."""
-    assert registry.derivation_hash("nonesuch") is None
-    registry.register_derivation_hash("v", lambda: "abc123")
-    assert registry.derivation_hash("v") == "abc123"
-    with pytest.raises(RegistryError, match="already registered"):
-        registry.register_derivation_hash("v", lambda: "def456")
+    Asserted as an EXACT key set, not as the absence of the retired name: the retired key is
+    one of infinitely many that must not be here, and pinning the whole surface also catches a
+    NEW side-channel key being folded in later — the same failure class, next time round. The
+    derivation itself is pinned one level down, inside ``steps[].transform`` (PLAN-0077)."""
+    spec = load_procedures(vertical)
+    assert spec.procedures, f"{vertical} declares no procedures — the fixture moved"
+    for procedure in spec.procedures:
+        assert set(build_governance_snapshot(procedure)) == {
+            "procedure_id",
+            "separation_of_duties",
+            "steps",
+        }, f"{vertical}/{procedure.procedure_id}: unexpected top-level governance-snapshot key"

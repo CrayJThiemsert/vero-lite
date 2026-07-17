@@ -254,12 +254,12 @@ procedures:
             - derive:
                 target: ratio
                 expr: { op: div, args: [{ field: dose_ch }, { field: stability_budget_ch }] }
-            # THE DATUM (was `cold_chain_assess._DOSE_LADDER`, ADR-0031 D3 row-1): inclusive
-            # ascending ceilings on the dose ratio; `above` is the MANDATORY unbounded top, so
-            # cover is total and a ratio past the budget can never fall through to a low band
-            # (the fail-dangerous shape PLAN-0074 fixed). Declaring it puts the ladder in the
-            # governance pin, which is what makes retiring the `derivation_hash` code-hash
-            # honest in PR-5.
+            # THE DATUM, and since PLAN-0078 PR-5 the ONLY governing copy (ADR-0031 D3 row-1):
+            # inclusive ascending ceilings on the dose ratio; `above` is the MANDATORY unbounded
+            # top, so cover is total and a ratio past the budget can never fall through to a low
+            # band (the fail-dangerous shape PLAN-0074 fixed). These bands ride the governance pin
+            # canonically, which is what let PR-5 retire the PLAN-0075 AC-13 code-hash. The tuple
+            # still in `cold_chain_assess.py` is a TEST-ONLY reference and governs nothing.
             - map_value:
                 target: excursion_severity
                 source: { field: ratio }
