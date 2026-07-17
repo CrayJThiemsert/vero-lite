@@ -326,3 +326,80 @@ convention is separate work, deliberately not done here.
 > exists so there need not be a third.
 
 | 2026-07-16 | **s137 — the 5th vertical `building_materials` scaffolded as a Tier-1 Mirror (ADR-0015 D2) for governed customer CREDIT (#765, `feat`), from a hand-authored GUESSED OCT-shaped ontology; + the latent `GET /procedures` 500 it exposed + fixed** — the reshape is the point: the monitored Asset is a COMMERCIAL entity, so the engine governs a **commercial** decision, not only a physical asset _[the "2nd `doa_tier` signature" framing SUPERSEDED s138/#767: AT-2 is N=2 since s131, so this would be signature #3]_. **The bug (the real find):** `GET /procedures` called `load_procedures` UNCONDITIONALLY → a scaffolded mirror with no `procedures.yaml` 500'd the read surface for EVERY vertical; fix = an explicit `procedures_path().exists()` skip + a self-cancelling guard. **Scope honesty: Tier-1 Mirror ONLY — no spec, no governed-credit hero.** Suite **2803 passed / 7 skipped**. Full narrative: the Session-137 CF block above | `c52c1ed` (HEAD, #765 merge) / `1d523a3` (scaffold + fix) / `verticals/building_materials/**` (guessed OCT ontology + adapter + `echo` handlers, no spec) + `services/api/**` (`GET /procedures` exists-skip) + `tests/**` (`test_procedures_skips_discovered_vertical_without_a_spec`) |
+
+
+## Rotated this reconcile (session-146, 2026-07-17 — PLAN-0080 shipped end to end, #794 trace attribution + #795 ui.md)
+
+### Current-Focus block — Session 142 (the three R2 carve-out TODOs discharged, rehome-then-trim, #780/#778/#779) [rotated 2026-07-17, session-146 reconcile — 4-session CF window]
+
+> **Session 142, 2026-07-17 (head_commit `88e6e11` → `303fd48`) — the THREE
+> R2 carve-out TODOs DISCHARGED in one program (#780 + #778 + #779, docs-only,
+> ZERO behaviour change): each fact REHOMED into a tracked home FIRST, THEN the
+> TODO trimmed to a pointer.** s141's terseness pass ratified the carve-out —
+> _"an item whose facts live nowhere else in git … is left at full length until
+> it is rehomed"_ — and left **three** items byte-untouched under it. **The
+> order is the safety property:** trimming first would have DELETED the fact
+> from the repository, which R4 forbids. **The lesson worth recording: the three
+> homes are deliberately DIFFERENT IN KIND — rehome into the artifact whose
+> READER needs the fact, not whichever doc is nearest.**
+> **(1) #780 (`12e69aa`) — Rock 4's evidence-asymmetry finding →
+> `docs/adr/0025-at2-managerial-layer.md:23-29`:** the bullish ROI numbers for
+> this product category are almost all **vendor-authored**; the independent
+> evidence is **mostly skeptical** — the single most decision-relevant
+> conclusion of the ~48-source s84 research, and it bears on **how vero-lite
+> pitches ROI to a design partner**. It existed in git in exactly ONE place (the
+> STATUS TODO); elsewhere only in **gitignored** `docs/research/private/`. The
+> 3-tag provenance taxonomy is preserved (`[VENDOR-CLAIM]` /
+> `[VENDOR-COMMISSIONED]` / `[INDEPENDENT]` — the middle tag is the trap: an
+> "independent author" is NOT independent evidence when the funding is the
+> vendor's and the "customer" is a modeled composite). Public-repo boundary held
+> per the ADR-0032 precedent: strategic frame only, private research cited **by
+> path only**. Framed as the evidence base explaining why the house's
+> conservative, customer-calibrated ROI posture is correct — **NOT a new
+> decision** (Status/Date/Ratified/Related untouched; no D1-D8 / LOCKED / OQ
+> touched). ADR-0025 is **Accepted** → the body edit was **G1-gated** →
+> `plan-drafter` authored, Code R2'd. Same PR **dropped** the dangling
+> `[[reference_rock4_4box_palantir_demo_research]]` token (a repo-wide grep hit
+> only the STATUS line itself — it pointed at a private Tier-0 auto-memory,
+> resolving nowhere for any reader) for the tracked ADR-0025 anchor.
+> **(2) #778 (`37ab124`) — the monotonic `sequence`-column deferral → the module
+> docstring of `tests/services/db/test_load_run_ordering_guard.py`** (+ a pointer
+> at each of the two wall-clock code sites,
+> `services/engine/procedures/persistence.py` `suspended_step_result` and
+> `services/api/routers/runs.py` `list_runs`). Four facts had no other home (the
+> ROOT-fix framing, the needs-a-migration/own-PLAN sizing, the "unchanged by
+> design → the deferral STANDS" verdict, the DISPLAY-ONLY tolerability
+> argument). **Ordering behaviour unchanged — docstring/comment-only; the
+> deferral explicitly STANDS.**
+> **(3) #779 (`303fd48`) — the s74 demo-card decision →
+> `docs/plans/done/0035-governed-action-verify-reshape-build.md:576`**, a dated
+> **post-archival amendment** at **SD-3** (the very question that PLAN had left
+> open), plus **re-pointing ADR-0030's six `STATUS.md:262` citations** at that
+> amendment. **The durable corollary, now in the runbook: an ADR citing
+> `STATUS.md:<line>` is a DEFECT, not a citation** — it inverts §1 (STATUS is
+> state, never a rule) AND rots by construction (that ref was written at `:262`
+> and had drifted to `:319`). **`docs/runbooks/memory-architecture.md` R2
+> updated** (across #780 + #779): the carve-out clause now records that **"until
+> it is rehomed" is a REAL EXIT — the carve-out defers a trim, it does not grant
+> permanent tenure**, with the ordering rule **rehome → re-point the citers →
+> verify → trim**, all three s142 discharges as worked examples, and the
+> `STATUS.md:<line>` corollary. **Why the PRs interleave:** #778 and #779 were
+> opened ~7h earlier by **parallel s142 sessions** working the same program
+> unaware of each other; #780 merged first and **broke both** (archive-tail + a
+> near-duplicate runbook clause). Code resolved both by **merging main in** (no
+> force-push, no rewriting another session's history): #778's archive section
+> renumbered **part 3 → part 4** (content untouched), and the two near-duplicate
+> runbook bullets **consolidated into one** carrying all three worked examples
+> rather than stating one rule twice. **draft≠review≠verify:** `plan-drafter`
+> authored the G1-gated ADR-0025 edit; Code R2'd + verified + merged; this
+> reconcile = `status-scribe` → Code R2. Full offline suite **2822 passed / 7
+> skipped** on `303fd48` (the merge commit itself, not just the PR); `mypy
+> --strict` not re-run (docs-only work). **Active TODOs left byte-untouched** —
+> all three items are already correctly trimmed to pointers on `main`.
+> Post-merge: main=`303fd48`; 0 open PRs; loop-dispatcher DISABLED; MS-S1
+> idle/COLD — zero calls this session. Commits: `12e69aa` (#780, the ADR-0025
+> rehome) → `37ab124` (#778 merge) → `303fd48` (HEAD, #779 merge).
+
+### Recent-Decisions row — s138 #767 (the AT-2 `N=1` misinformation-KILL + PLAN-0078 doc-drift reconcile) [rotated 2026-07-17, session-146 reconcile — 10-row window]
+
+| 2026-07-16 | **s138 — the AT-2 `N=1` misinformation-KILL + PLAN-0078 doc-drift reconcile (#767, docs-only, NO behavior change): s137's planned building_materials `doa_tier` as "the 2nd money signature (N=2) advancing AT-2" was a FALSE premise — corrected at the source.** ADR-0025 D7 counts with no per-`gate_kind` partition → **N has been 2 since s131**; the marker re-arms at **N=3**, so the hero would be signature #3 → CI RED + OBLIGATING the AT-2 extraction, NOT "advancing toward" it. Root cause = stale `spec.py`/`main.py` comments, all corrected. Same PR reconciled PLAN-0078 doc-drift + recorded OQ-5 RATIFIED (a). Full narrative: the Session-138 CF block (`docs/status-archive/2026-h1f-status.md` — moved there by the s144 R4 split; grep the archive dir, not one file) | `c9e5186` (#767 merge) / `120521e` (docs(procedures) comment/docstring truth-pass) / `9b19f19` (docs(plans) PLAN-0078 drift reconcile + OQ-5) / `services/**` (`spec.py` :822/:1046/:1092 + `main.py:133` corrected) + `docs/plans/0078-*.md` (Phase-1 ACs ticked, OQ-5 RATIFIED) |
