@@ -265,6 +265,17 @@ measured 2026-06-10), not the 256 KB byte cap.
     authority, and `PLAN-0035` still records the question as open), `Rock 4`'s
     evidence-asymmetry finding (survives only in gitignored research), and the
     monotonic `sequence`-column deferral.
+  - **"Until it is rehomed" is the operative clause — the carve-out defers a trim,
+    it does not grant permanent immunity.** Worked example (**`Rock 4`, discharged
+    s142**): its evidence-asymmetry finding was rehomed into
+    `docs/adr/0025-at2-managerial-layer.md:23-29` — public-repo-safe statement,
+    private research cited **by path only** per the ADR-0032 boundary — and **only
+    then** was the TODO trimmed to a pointer. The correct response to a carve-out
+    item is therefore to **rehome it into a tracked artifact and then trim**, not to
+    leave it at full length forever; STATUS is not a home. Note the rehome may be
+    **gated**: ADR-0025 is Accepted, so `plan-drafter` authored the edit and Code
+    R2'd + committed it (G1). **Of the three s141 items, `Rock 4` is discharged; the
+    other two remain live carve-outs** until they are likewise rehomed.
   - **R4 still applies:** the full original is appended to `docs/status-archive/`
     before the trim lands — move, never drop.
 
