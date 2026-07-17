@@ -265,15 +265,27 @@ measured 2026-06-10), not the 256 KB byte cap.
     its authority, and `PLAN-0035` still recorded the question as open), `Rock 4`'s
     evidence-asymmetry finding (survives only in gitignored research), and the
     monotonic `sequence`-column deferral.
-  - **"Until it is rehomed" is a real exit — s74 is the worked example (s142).**
-    The carve-out defers a trim; it does not grant permanent tenure. At **s142** the
-    s74 demo-card item was **rehomed** into
-    `docs/plans/done/0035-governed-action-verify-reshape-build.md:576` (a dated
-    **post-archival amendment** at SD-3 — the very question that PLAN had left open;
-    precedent `414e564` / `done/0008-*.md:593-618`), `ADR-0030`'s six
-    `STATUS.md:262` citations were re-pointed at that amendment, and only **then**
-    was the TODO trimmed to a pointer. **The order is the rule: rehome → re-point the
-    citers → verify → trim.** Trimming first would have deleted the fact.
+  - **"Until it is rehomed" is a real exit — the carve-out defers a trim, it does
+    not grant permanent tenure.** The correct response to a carve-out item is to
+    **rehome it into a tracked artifact and then trim** — never to leave it at full
+    length forever; STATUS is not a home. **The order is the rule: rehome →
+    re-point the citers → verify → trim.** Trimming first would delete the fact.
+    **All three s141 items were discharged at s142** — and their three homes are
+    deliberately different, which is the lesson: *rehome into the artifact whose
+    reader needs the fact, not into whichever doc is nearest.*
+    - **`Rock 4`'s evidence-asymmetry finding** → `docs/adr/0025-at2-managerial-layer.md:23-29`
+      — the ADR that already recorded the same research; a public-repo-safe
+      statement, with the gitignored research cited **by path only** per the
+      ADR-0032 boundary. A rehome may itself be **gated**: ADR-0025 is Accepted, so
+      `plan-drafter` authored the edit and Code R2'd + committed it (G1).
+    - **The s74 demo-card decision** → `docs/plans/done/0035-governed-action-verify-reshape-build.md:576`
+      — a dated **post-archival amendment** at SD-3, the very question that PLAN had
+      left open (precedent `414e564` / `done/0008-*.md:593-618`), plus re-pointing
+      `ADR-0030`'s six `STATUS.md:262` citations at that amendment.
+    - **The monotonic `sequence`-column deferral** → the module docstring of
+      `tests/services/db/test_load_run_ordering_guard.py` — a reader who hits the
+      guard is exactly who needs to know the root fix was deferred and why — plus a
+      pointer back to it at each wall-clock code site.
   - **Corollary — an ADR citing `STATUS.md:<line>` is a defect, not a citation.**
     It inverts §1 (STATUS is state, never a rule) *and* rots on contact: R2/R6
     re-prune STATUS every reconcile, so the anchor decays by construction (the s74
