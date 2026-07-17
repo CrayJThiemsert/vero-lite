@@ -55,6 +55,14 @@ from services.engine.procedures.spec import (
 
 _SUPPLY_CHAIN_PROC = "cold_chain_excursion_disposition"
 
+_ALL_VERTICALS = ["supply_chain", "procurement", "energy", "aquaculture"]
+
+# AC-6's non-participant VERTICAL set: the verticals that declare no transform at all, and so
+# must pin byte-identically to before the migration. Pinned as data (not prose) by
+# `test_the_non_participant_vertical_set_holds` — if a later phase migrates one of these, the
+# census goes RED and forces the sweep to be re-run rather than assumed.
+_NON_PARTICIPANT_VERTICALS = {"energy", "aquaculture"}
+
 _TS = datetime(2026, 1, 1, tzinfo=UTC)  # fixed — never the (non-monotonic WSL2) wall clock
 
 # The GOVERNING ladder, hand-written from `verticals/supply_chain/procedures.yaml` — NOT
@@ -251,7 +259,7 @@ def test_declared_derivation_marker() -> None:
         ), f"{procedure.procedure_id} declares no transform step"
 
 
-@pytest.mark.parametrize("vertical", ["supply_chain", "procurement", "energy", "aquaculture"])
+@pytest.mark.parametrize("vertical", _ALL_VERTICALS)
 def test_every_snapshot_carries_exactly_the_declared_surface(vertical: str) -> None:
     """AC-10 + AC-5's "asserted, intended pin change" leg: the governance snapshot's top-level
     surface is EXACTLY the declared config — procedure id, SoD, steps — and nothing else.
@@ -274,3 +282,80 @@ def test_every_snapshot_carries_exactly_the_declared_surface(vertical: str) -> N
             "separation_of_duties",
             "steps",
         }, f"{vertical}/{procedure.procedure_id}: unexpected top-level governance-snapshot key"
+
+
+@pytest.mark.parametrize("vertical", _ALL_VERTICALS)
+def test_transform_pins_exactly_when_the_step_declares_one(vertical: str) -> None:
+    """AC-6 (byte-identical non-participants) at the STEP level, on SHIPPED yaml.
+
+    The sibling above pins the TOP-LEVEL surface; this pins the level AC-6 actually speaks
+    about. AC-6's guarantee is the only-when-supplied property (``governance_pin.py:98-99``):
+    a step that declares no transform gets no ``transform`` key, so its snapshot — and
+    therefore its config hash — is byte-identical to the pre-PLAN-0077 world and no persisted
+    run refuses at resume.
+
+    Why this existed nowhere before Step 7, despite two sweeps and a grammar test already
+    asserting something adjacent (the AC-6 hole, found by grounding the PLAN against code
+    rather than by reading its Phase-1 "leg GREEN" note):
+
+    * ``test_transform_grammar.py:308`` asserts it on a SYNTHETIC procedure built in-test —
+      it proves the projection function's behaviour, never that the shipped yaml still has
+      the shape the projection was proved against;
+    * the two migration-parity sweeps
+      (``test_transform_migration_parity.py``, supply_chain ``:236`` + procurement ``:244``)
+      assert it only for the non-participant PROCEDURES *inside the two migrated verticals*;
+    * nothing at all covered energy and aquaculture — the two verticals AC-6 names FIRST.
+
+    Asserted as an IFF over every step of every shipped procedure, so it is one property
+    rather than two lists to keep in sync: the negative arm carries AC-6's claim for the
+    non-participants, and the positive arm is what keeps this test from passing vacuously in
+    a world where the projection silently stopped emitting the key at all (which would take
+    AC-5's pin coverage down with it, unnoticed)."""
+    spec = load_procedures(vertical)
+    assert spec.procedures, f"{vertical} declares no procedures — the fixture moved"
+    for procedure in spec.procedures:
+        snapshot = build_governance_snapshot(procedure)
+        for step, step_snapshot in zip(procedure.steps, snapshot["steps"], strict=True):
+            assert ("transform" in step_snapshot) is (step.transform is not None), (
+                f"{vertical}/{procedure.procedure_id}/{step.step_id}: the `transform` key must "
+                f"be present in the governance snapshot EXACTLY when the step declares a "
+                f"transform (only-when-supplied, governance_pin.py:98-99)"
+            )
+
+
+def test_the_non_participant_vertical_set_holds() -> None:
+    """AC-6's tripwire: WHICH verticals are the non-participants is pinned as data.
+
+    PLAN-0078 predicted that Phase 2 would shrink this set ("Phase 2 adds transforms, so the
+    non-participant set shrinks and must be re-swept", AC-6's original parenthetical). That
+    prediction was **superseded by how Phase 2 actually landed** (CLAUDE.md §6 — evolution,
+    not an error): PR-3 and PR-4 added transforms only to procedures that ALREADY carried a
+    Phase-1 ``enrich`` — procurement's three ``emergency_sourcing_round`` variants and
+    supply_chain's ``cold_chain_excursion_disposition`` — so the set never moved.
+
+    It is pinned here rather than re-argued in prose because the prediction was reasonable and
+    could come true next time. A later phase that migrates energy or aquaculture turns this
+    RED, which forces the sweep above to be genuinely re-run rather than assumed still-covered
+    — the house rule that location is convention and only a failing test is a tripwire
+    (PLAN-0076 AC-6's reasoning, applied to the set AC-6 itself enumerates)."""
+    census = {
+        vertical: sum(
+            1
+            for procedure in load_procedures(vertical).procedures
+            for step in procedure.steps
+            if step.transform is not None
+        )
+        for vertical in _ALL_VERTICALS
+    }
+
+    assert {v for v, n in census.items() if n == 0} == _NON_PARTICIPANT_VERTICALS, (
+        f"AC-6's non-participant vertical set moved: {census}. If a vertical was deliberately "
+        f"migrated, re-run the AC-6 sweep and update _NON_PARTICIPANT_VERTICALS in the same "
+        f"pass — do not just widen the constant."
+    )
+    # Non-vacuity: the participants must genuinely declare transforms, else the IFF sweep above
+    # would be asserting the negative arm everywhere and proving nothing about AC-5's coverage.
+    assert census["supply_chain"] and census["procurement"], (
+        f"both migrated verticals must declare transforms — the Phase-1/Phase-2 flips are the "
+        f"reason this module exists: {census}"
+    )
