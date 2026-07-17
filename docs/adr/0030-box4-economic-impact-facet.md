@@ -11,7 +11,7 @@
 
 vero-lite's engine spine — governed generative procedures + per-entity FK-parent
 bands — is closed with Rule-of-Three MET across four shipped verticals (energy,
-procurement, supply_chain, aquaculture; STATUS Rock-3, `docs/STATUS.md:256`).
+procurement, supply_chain, aquaculture — the four spec roots under `verticals/`).
 The single remaining open strategic thread is **Box-4 of the Business Model
 Canvas — the economic-impact (฿) dimension**: today the reasoning trace is
 OPERATIONAL (what happened / why / which gate), not ECONOMIC. Nothing ties a
@@ -422,7 +422,9 @@ Cray ratifies the corresponding SD at R2.
 - `docs/plans/done/0035-governed-action-verify-reshape-build.md:576`
   (§"Surfaced decisions (SD-N)", the SD-3 post-archival amendment) — the s74
   trust-shape / no-confidence-badge / trace-only design discipline;
-  `docs/STATUS.md:256` — Rock-3 Box-4 state
+  `docs/plans/done/0071-box4-economic-impact-facet-build.md` (the build; AC-5
+  GREEN at N=4) + `docs/plans/done/0073-box4-economic-impact-into-hero-ui.md`
+  (surfaced in the hero UI) — the Rock-3 Box-4 state, DONE and archived
 - `tests/services/engine/procedures/test_principal_identity_retrigger.py` —
   the ADR-0026 OQ-6 / PLAN-0044 AC-10 marker that WAS built (the mechanism
   contrast for D4)

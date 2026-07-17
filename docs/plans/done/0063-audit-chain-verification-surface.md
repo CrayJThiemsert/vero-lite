@@ -6,7 +6,7 @@
 **Related ADRs:** none new — this surfaces an **already-shipped, already-tested**
 capability (PLAN-0047 Step 5's `verify_chain`) as a read-only view. **ADR-011 is
 explicitly NOT triggered** (the tripwire below — the full audit *framework* stays gated
-on real partner data, `services/db/audit_log.py:17-18`, `docs/STATUS.md:276`).
+on real partner data, `services/db/audit_log.py:17-18`).
 ADR-016 S2 (RF-1) is cited only to mark the read/write asymmetry in SD-2; ADR-009 D1/D2 +
 ADR-012 D4.3 + ADR-013 D1 govern the authoring/commit boundaries of this document itself.
 **Related PLANs:** PLAN-0047 (`docs/plans/done/0047-pre-pilot-hardening-authn-gate-audit.md`
@@ -34,10 +34,12 @@ calibration analog: small surface over shipped plumbing).
 >
 > **Tripwire — the ADR-011 boundary (read twice, then honor it).** The full audit
 > **framework** — retention, export/download, external anchoring, PDPA subject-access —
-> **stays ADR-011, gated on real partner data** (`services/db/audit_log.py:17-18`;
-> `docs/STATUS.md:276`: "ADR-011 audit stays gated on a REAL partner conversation (R3:
-> SYNTHETIC provenance INFORMS but never TRIGGERS it)"; `docs/STATUS.md:292`: trigger =
-> "first design-partner data / PDPA review"). This PLAN builds a **read-only
+> **stays ADR-011, gated on real partner data** (`services/db/audit_log.py:17-18` — the
+> tracked home of the gate). Two refinements recorded in STATUS at drafting time
+> (2026-07-10), quoted here because ADR-011 is **not yet minted** and this quote is
+> their durable copy: "ADR-011 audit stays gated on a REAL partner conversation (R3:
+> SYNTHETIC provenance INFORMS but never TRIGGERS it)", and the trigger =
+> "first design-partner data / PDPA review". This PLAN builds a **read-only
 > chain-INTEGRITY VERIFICATION view** over the shipped minimal slice and nothing more.
 > If any Step starts to look like retention policy, an export/download surface, external
 > anchoring, or a PDPA subject-access surface — **STOP and raise; do not build.**
@@ -231,8 +233,8 @@ mechanically if Cray picks otherwise.
 
 - ❌ **The ADR-011 audit framework — the tripwire.** No retention policy, no
   export/download surface, no external anchoring, no PDPA subject-access surface
-  (`audit_log.py:17-18`; `STATUS.md:276,292`). A Step drifting toward any of the four
-  = STOP and raise.
+  (`audit_log.py:17-18`; the two STATUS refinements are quoted in the tripwire above).
+  A Step drifting toward any of the four = STOP and raise.
 - ❌ **The heavy hero-demo dossier backlog** — procedure-level KPI/measurement engine
   capability, notification/reporting, questionnaire, kanban. PLAN-0059 already walled
   this off: "That is a heavy engine capability needing its own ADR + PLANs"

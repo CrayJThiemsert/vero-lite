@@ -78,3 +78,15 @@ repos:
         language: system
         files: ^docs/STATUS\.md$
         pass_filenames: false
+
+      # Rotation policy R7: no tracked artifact may cite docs/STATUS.md by line
+      # number — STATUS is state (inverts CLAUDE.md §1 as an authority) and
+      # R2/R6 re-prune it every reconcile, so the anchor rots by construction.
+      # always_run because the guard scans the whole tracked tree (744 files,
+      # ~0.1 s), not just the staged paths.
+      - id: status-citation-guard
+        name: STATUS.md citation guard (R7 — no line-number refs)
+        entry: uv run python tools/check_status_citations.py
+        language: system
+        always_run: true
+        pass_filenames: false
