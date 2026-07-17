@@ -201,6 +201,10 @@ async def list_runs(
     except FileNotFoundError:
         declared = {}  # a vertical shipping no procedures file still lists its runs
 
+    # Sorts on ``started_at``, a wall clock that is not monotonic on this box — so this
+    # order is approximate. Tolerated because the projection is display-only; the root fix
+    # (a monotonic sequence column) is deferred, and why it stands is recorded in
+    # tests/services/db/test_load_run_ordering_guard.py.
     runs = (
         (await session.execute(select(PipelineRun).order_by(PipelineRun.started_at.desc())))
         .scalars()
