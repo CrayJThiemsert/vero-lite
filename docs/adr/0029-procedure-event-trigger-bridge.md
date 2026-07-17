@@ -10,10 +10,12 @@
 
 The moat is the **asset-event trigger**: an OCT anomaly is detected → a **governed
 Procedure run fires automatically**, with a typed non-human service actor and the
-full audit / SoD posture — never a human hand-crank. `docs/STATUS.md:132` names this
-"defensibility on **axis (a) asset-event trigger**", and the procurement hero-demo's
-opening line ("a critical asset fails → *automatically* fire the governed
-emergency-sourcing procedure") is exactly this bridge. Today the engine is
+full audit / SoD posture — never a human hand-crank. The session-72 competitor
+teardown (`docs/research/private/2026-06-22-ai-sourcing-competitor-teardown.md`,
+gitignored — cited by path only per the ADR-0032 public-repo boundary) names this
+"defensibility on **axis (a) asset-event trigger**", and the procurement
+hero-demo's opening line ("a critical asset fails → *automatically* fire the
+governed emergency-sourcing procedure") is exactly this bridge. Today the engine is
 **event-reactive**: every runnable `PipelineRun` is fired by `manual` (human) or, since
 ADR-0028, by `schedule` (a clock). This ADR adds the **third trigger kind** — `event`
 (an anomaly / `Alert`) — moving the engine from clock-driven toward truly
@@ -300,4 +302,9 @@ the Decision above.
 - `docs/adr/0016-governed-procedure-engine.md:1103,:1139` (Phase-4+ event-driven-trigger deferral), `:1197` (`event`/Alert = the Phase-0 path)
 - `docs/adr/0025-at2-managerial-layer.md` D5 (`doa_tier`⟹SoD the event run must honor)
 - `docs/plans/done/0053-adr016-s2-service-principal-build.md` (ServicePrincipal actor model), `docs/plans/done/0055-s1-schedule-trigger-scheduler-build.md` (Step 6 write-ahead idempotency, Step 8 SP-5 on-behalf-of)
-- `docs/STATUS.md:132` (asset-event trigger = defensibility axis (a))
+- `docs/research/private/2026-06-22-ai-sourcing-competitor-teardown.md` (de-risk
+  #2, session 72 — the competitor teardown that found the triple intersection
+  unoccupied and named "defensibility on **axis (a) asset-event trigger**";
+  gitignored, cited **by path only** per the ADR-0032 public-repo boundary.
+  Formerly cited via `docs/STATUS.md`, which was only relaying this source —
+  re-pointed to the primary per rotation policy R7)

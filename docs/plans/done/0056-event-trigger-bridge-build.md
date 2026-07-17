@@ -284,4 +284,9 @@ build gate.
 - `verticals/procurement/procedures.yaml` (`emergency_sourcing_round` + its `doa_tier` gate; `scheduled_emergency_sourcing_round` — the distinct-trigger-variant precedent for Step 8)
 - `docs/adr/0029-procedure-event-trigger-bridge.md` (the governing ADR — SD-1..SD-4)
 - `docs/plans/done/0055-s1-schedule-trigger-scheduler-build.md` (the phased-build template + Steps 6/7/8 patterns)
-- `docs/STATUS.md:132` (asset-event trigger = defensibility axis (a))
+- `docs/research/private/2026-06-22-ai-sourcing-competitor-teardown.md` (de-risk
+  #2, session 72 — the competitor teardown that found the triple intersection
+  unoccupied and named "defensibility on **axis (a) asset-event trigger**";
+  gitignored, cited **by path only** per the ADR-0032 public-repo boundary.
+  Formerly cited via `docs/STATUS.md`, which was only relaying this source —
+  re-pointed to the primary per rotation policy R7)

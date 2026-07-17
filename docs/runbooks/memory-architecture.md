@@ -291,7 +291,8 @@ measured 2026-06-10), not the 256 KB byte cap.
     re-prune STATUS every reconcile, so the anchor decays by construction (the s74
     ref was written at `:262`, had drifted to `:319` by s142). When a carve-out item
     is found with an ADR citing it **through** STATUS, the ADR's citation is part of
-    the rehome — not a follow-up.
+    the rehome — not a follow-up. (This corollary is scoped to the rehome path;
+    the standing, guard-enforced form for **any** tracked artifact is **R7**.)
   - **R4 still applies:** the full original is appended to `docs/status-archive/`
     before the trim lands — move, never drop.
 
@@ -342,6 +343,52 @@ thereby self-limiting; no periodic sweep, no extra process. If a single
 reconcile cannot reach the soft target without pruning *below* the R2 window
 (e.g. one giant new block), the scribe surfaces an SD rather than over-pruning.
 
+### R7 — Never cite STATUS by line number (binding)
+
+A tracked artifact **must never cite `docs/STATUS.md` by line number**
+(`STATUS.md:132`, `STATUS.md:264-286`). Two independent reasons, either
+sufficient on its own:
+
+- **It inverts §1 precedence.** STATUS is *state*; an ADR or PLAN is a *rule*.
+  Per `CLAUDE.md` §1, STATUS "never wins a rule conflict" — so an artifact
+  citing STATUS as its **authority** stands the hierarchy on its head. (R2's
+  carve-out corollary names this for the rehome path; R7 is the standing form.)
+- **The anchor rots by construction.** R2/R6 re-prune STATUS *every* reconcile,
+  so a line number decays on contact. Measured: the s74 ref was written at
+  `:262` and had drifted to `:319` by s142; the 2026-07-17 prune
+  (65,061 → 48,420 B, #777–#780) invalidated **every** pre-existing line-ref in
+  the repo at once — 10 citations across 5 files, all silently wrong.
+
+**What to cite instead**, in order of preference:
+
+1. **The tracked artifact that holds the fact** — an ADR, a PLAN (incl.
+   `done/`), a lesson, a runbook, a code/test docstring. If the fact lives
+   *only* in STATUS, that is exactly the R2 carve-out: **rehome it first**
+   (rehome → re-point the citers → verify → trim). Never cite *through* STATUS.
+2. **If a STATUS reference is genuinely unavoidable** (rare — e.g. narrating
+   STATUS's own history), cite it **by section name**: `docs/STATUS.md`
+   §"Active TODOs". Section names survive a prune; line numbers do not.
+
+**Enforcement:** `tools/check_status_citations.py` — deterministic, fail-closed
+at the commit boundary (mirrors R1's guard). It scans **git-tracked** files via
+`git ls-files`, which is the literal reading of "tracked artifact" and keeps
+gitignored working notes (`.claude/handoffs/`, `docs/research/private/`) out of
+scope by construction.
+
+**Allowlist** — narrative *about* STATUS, not citations *of* it. The guard
+hard-codes these three:
+
+| Path | Why it is exempt |
+|---|---|
+| `docs/STATUS.md` | STATUS narrating its own rotation history — not an external citer. |
+| `docs/runbooks/memory-architecture.md` | This policy. It must be able to state the forbidden pattern to forbid it. |
+| `docs/status-archive/**` | Tier-3 frozen history. **R4 makes this mandatory, not a convenience:** archives are move-only and never rewritten, so a line-ref frozen inside an archived block must stay exactly as written. |
+| `tools/check_status_citations.py`, `tests/tools/test_check_status_citations.py` | The rule's own machinery — the guard must spell the pattern to match it, and its tests must spell it to have anything to catch. |
+
+`docs/plans/done/` is deliberately **not** allowlisted: an archived PLAN is
+still a tracked artifact a reader follows, and exempting `done/` would let an
+active PLAN launder a violation simply by being archived.
+
 ### Responsibility matrix
 
 | Rule | status-scribe | Main Code agent | Pre-commit guard |
@@ -352,6 +399,7 @@ reconcile cannot reach the soft target without pruning *below* the R2 window
 | R4 archive | emits rotated text | **appends to archive file + commits** | — |
 | R5 surgical reads | **binding contract** | — | — |
 | R6 cadence | per-reconcile | serializes spawns | — |
+| R7 no line-refs | cites by section | reviews diff | **fail on `STATUS.md:<n>`** |
 
 ### When to deviate
 

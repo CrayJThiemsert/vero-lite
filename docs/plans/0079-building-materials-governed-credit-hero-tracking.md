@@ -286,6 +286,8 @@ required or appropriate (CLAUDE.md §8).
   re-arm); `tests/services/engine/procedures/test_at2_followon_tracking_guard.py`
   (the guard pattern AC-2 mirrors).
 - STATUS evidence for the no-durable-home finding (read-only; #769 blocks
-  edits): `docs/STATUS.md:264-286` (Active TODOs + Next Steps — no hero
-  entry) vs the volatile-only mentions (`:4-7` frontmatter, `:21-60` s137
-  Current Focus block).
+  edits): as of 2026-07-16, `docs/STATUS.md` §"Active TODOs" and §"Next Steps"
+  carried **no hero entry**, vs the volatile-only mentions in the frontmatter
+  and the s137 Current Focus block. (Cited by section, not by line — STATUS is
+  re-pruned every reconcile, so a line anchor rots: rotation policy R7,
+  `docs/runbooks/memory-architecture.md`.)
