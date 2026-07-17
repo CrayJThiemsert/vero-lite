@@ -6,7 +6,7 @@
 (function () {
   'use strict';
   const O = window.OCT;
-  const { h, clear, icon, badge } = O;
+  const { h, clear, icon, badge, traceKind, traceBadge } = O;
 
   let root, pipeEl;
 
@@ -129,9 +129,9 @@
     const proc = h('div', null, [
       h('div', { class: 'proc-steps' }, steps.map((s, i) =>
         h('div', { class: 'proc-step' }, [
-          h('span', { class: 'proc-n mono ' + kindClass(s.kind) }, i + 1),
+          h('span', { class: 'proc-n mono ' + traceKind(s.kind).cls }, i + 1),
           h('div', { class: 'proc-body' }, [
-            h('span', { class: 'badge ' + kindClass(s.kind), style: { textTransform: 'none', marginBottom: '4px' } }, s.kind),
+            traceBadge(s.kind, { style: { marginBottom: '4px' } }),
             h('div', { class: 'proc-sum' }, s.summary)
           ])
         ])
@@ -186,13 +186,6 @@
   }
   function busy(label) { return h('div', { class: 'result-ctl' }, h('div', { class: 'dc-busy' }, [h('span', { class: 'spinner-sm' }), h('span', { class: 'muted' }, label)])); }
 
-  function kindClass(kind) {
-    const k = String(kind).toLowerCase();
-    if (k.includes('rule')) return 's-warn';
-    if (k.includes('llm') || k.includes('infer')) return 's-info';
-    if (k.includes('ontology') || k.includes('query')) return 's-ok';
-    return 's-neutral';
-  }
   function bandCls(status) { return { proposed: 's-crit', approved: 's-info', executed: 's-ok', rejected: 's-neutral' }[status] || 's-crit'; }
 
   async function mount(container) {

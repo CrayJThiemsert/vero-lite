@@ -303,6 +303,13 @@ body { overflow: hidden; }
 .badge.solid.s-info { background: var(--info); color:#04101f; border-color: transparent; }
 .badge.solid.s-warn { background: var(--warn); color:#1a1203; border-color: transparent; }
 .badge.solid.s-crit { background: var(--crit); color:#fff;    border-color: transparent; }
+/* Unmapped trace kind — raw engine token, NO attribution asserted (PLAN-0080 AC-4).
+   Transparent + dashed is distinct from every s-* above, so `s-neutral` keeps meaning
+   "deliberately labelled neutral" and never "fell through the map". */
+.badge.unmapped {
+  color: var(--tx-2); background: transparent;
+  border-style: dashed; border-color: var(--line-strong);
+}
 
 /* type tag (object-type pill, neutral, distinct from status) */
 .typetag {
