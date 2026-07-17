@@ -1,6 +1,9 @@
 # Code Style
 
 > Style rules enforced by tooling. Violations block commits via pre-commit.
+>
+> **This file is Python-only.** UI / front-end work (the OCT static console) →
+> [`ui.md`](ui.md).
 
 ---
 

@@ -1,5 +1,10 @@
 # PLAN-0013 Step 3 — Claude Design prompt (OCT stakeholder demo UI)
 
+> **Historical record (PLAN-0080 SD-2).** This is the one-shot prompt that
+> generated the UI. The **living** home of the UI design opinion — tone, tokens,
+> component contract, conventions — is now [`docs/conventions/ui.md`](../conventions/ui.md).
+> Body unchanged below for generation provenance.
+
 **Status:** Draft (Code-authored working note — not governance)
 **Owner:** Claude Code (drafter) · Cowork (UX/operator-tone refinement, ADR-009 D1 / ADR-013 advisory) · Cray (runs Claude Design + attaches theme images, Step 4)
 **Created:** 2026-05-30
