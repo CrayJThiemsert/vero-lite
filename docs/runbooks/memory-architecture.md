@@ -261,21 +261,37 @@ measured 2026-06-10), not the 256 KB byte cap.
     auto-memory — is **not a duplicate**, and is **left at full length until it is
     rehomed**. Trimming it would delete the fact from the repository, which R4
     forbids. Three items hit this carve-out at s141 and were left byte-untouched:
-    the s74 demo-card-UX decision (`ADR-0030` cites **STATUS itself** as its
-    authority, and `PLAN-0035` still records the question as open), `Rock 4`'s
+    the s74 demo-card-UX decision (at s141 `ADR-0030` cited **STATUS itself** as
+    its authority, and `PLAN-0035` still recorded the question as open), `Rock 4`'s
     evidence-asymmetry finding (survives only in gitignored research), and the
     monotonic `sequence`-column deferral.
-  - **"Until it is rehomed" is the operative clause — the carve-out defers a trim,
-    it does not grant permanent immunity.** Worked example (**`Rock 4`, discharged
-    s142**): its evidence-asymmetry finding was rehomed into
-    `docs/adr/0025-at2-managerial-layer.md:23-29` — public-repo-safe statement,
-    private research cited **by path only** per the ADR-0032 boundary — and **only
-    then** was the TODO trimmed to a pointer. The correct response to a carve-out
-    item is therefore to **rehome it into a tracked artifact and then trim**, not to
-    leave it at full length forever; STATUS is not a home. Note the rehome may be
-    **gated**: ADR-0025 is Accepted, so `plan-drafter` authored the edit and Code
-    R2'd + committed it (G1). **Of the three s141 items, `Rock 4` is discharged; the
-    other two remain live carve-outs** until they are likewise rehomed.
+  - **"Until it is rehomed" is a real exit — the carve-out defers a trim, it does
+    not grant permanent tenure.** The correct response to a carve-out item is to
+    **rehome it into a tracked artifact and then trim** — never to leave it at full
+    length forever; STATUS is not a home. **The order is the rule: rehome →
+    re-point the citers → verify → trim.** Trimming first would delete the fact.
+    **All three s141 items were discharged at s142** — and their three homes are
+    deliberately different, which is the lesson: *rehome into the artifact whose
+    reader needs the fact, not into whichever doc is nearest.*
+    - **`Rock 4`'s evidence-asymmetry finding** → `docs/adr/0025-at2-managerial-layer.md:23-29`
+      — the ADR that already recorded the same research; a public-repo-safe
+      statement, with the gitignored research cited **by path only** per the
+      ADR-0032 boundary. A rehome may itself be **gated**: ADR-0025 is Accepted, so
+      `plan-drafter` authored the edit and Code R2'd + committed it (G1).
+    - **The s74 demo-card decision** → `docs/plans/done/0035-governed-action-verify-reshape-build.md:576`
+      — a dated **post-archival amendment** at SD-3, the very question that PLAN had
+      left open (precedent `414e564` / `done/0008-*.md:593-618`), plus re-pointing
+      `ADR-0030`'s six `STATUS.md:262` citations at that amendment.
+    - **The monotonic `sequence`-column deferral** → the module docstring of
+      `tests/services/db/test_load_run_ordering_guard.py` — a reader who hits the
+      guard is exactly who needs to know the root fix was deferred and why — plus a
+      pointer back to it at each wall-clock code site.
+  - **Corollary — an ADR citing `STATUS.md:<line>` is a defect, not a citation.**
+    It inverts §1 (STATUS is state, never a rule) *and* rots on contact: R2/R6
+    re-prune STATUS every reconcile, so the anchor decays by construction (the s74
+    ref was written at `:262`, had drifted to `:319` by s142). When a carve-out item
+    is found with an ADR citing it **through** STATUS, the ADR's citation is part of
+    the rehome — not a follow-up.
   - **R4 still applies:** the full original is appended to `docs/status-archive/`
     before the trim lands — move, never drop.
 

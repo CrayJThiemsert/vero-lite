@@ -19,6 +19,13 @@
 > amendment** — **Code executing in parallel, session 73**); **Phase 2** = the advisory
 > local-LLM-judge (**gated on the ADR-0022 amendment**). Per-SD decision stamps are in
 > §"Surfaced decisions"; the phase split is in §"Steps".
+>
+> **Post-archival amendment 2026-07-17 (session 142) — SD-3's Phase-2 reconsideration
+> is ANSWERED.** The "Phase-2 reconsiders a first-class `verification` field" clause
+> above is **closed: the field is NOT needed**; SD-3 settles at **(a) trace-only**
+> (s74 demo-card design review, Cray-approved). Full record + reconsider-trigger:
+> the **SD-3 post-archival amendment** in §"Surfaced decisions (SD-N)". This PLAN is
+> the tracked home of that decision — `ADR-0030` cites it here.
 
 > **Disclosure (ADR-012 D4.3).** The scope, the §B-3 target decomposition, and
 > the code-surface fact-pack originate in **Code's** session-71/72 investigation
@@ -435,6 +442,13 @@ agreement raises confidence; **disagreement keeps the floor's action**; judge-ab
 mode `"(a)-only"` disclosed. The offline oracle stays the gate; a live MS-S1 run is
 Cray-gated evidence, not a gate. (SD-3, AC-7, AC-8; constraints ①②③④) `[impl]`
 
+> **Post-archival amendment 2026-07-17 (session 142).** The SD-3 reconsideration this
+> step calls for is **ANSWERED — the first-class `verification` field is NOT needed**;
+> SD-3 stands at **(a) trace-only**. Settled by the s74 demo-card design review
+> (Cray-approved). Full record, the reconsider-trigger, and the downstream citations:
+> the **SD-3 post-archival amendment** in §"Surfaced decisions (SD-N)" below. Original
+> step wording preserved above.
+
 #### Step 12 — Gate + suite green (Phase 2)
 
 `ruff` + `mypy --strict` clean; full `uv run pytest -q` green (judge **faked**, offline).
@@ -558,6 +572,40 @@ reconcile `docs/STATUS.md`, then `git mv docs/plans/0035-*.md docs/plans/done/`.
   `verification` field on `RecommendedAction` (`Optional`, default `None`, never forced into
   `LlmJudgment`) once the judge adds confidence + mode (Step 11) — a Cray/Code envelope
   decision at that point.
+
+  **Post-archival amendment 2026-07-17 (session 142) — the Phase-2 reconsideration is
+  ANSWERED: the first-class field is NOT needed; SD-3 settles at (a) trace-only.**
+  The Phase-2 reconsideration promised above (and by Step 11) was settled at **session
+  74** by a `show_widget` demo-card design review, Cray-approved ("ตรงใจ ตอบโจทย์").
+  It is recorded **here** because this PLAN is where the question was left open. The
+  session-73 wording above is **preserved verbatim** and its Phase-1 verdict is
+  **unchanged** — this amendment records the **answer**, not a new decision. Until
+  2026-07-17 that answer lived **only** in a `docs/STATUS.md` Active TODO (volatile
+  Tier-1 state) which `ADR-0030` cited as its authority — a §1 precedence inversion
+  (STATUS is state, never a rule) that this amendment closes.
+
+  - **(B) The first-class `verification` envelope field is NOT needed for the operator
+    UI.** SD-3 stands at **(a) — trace-only + reuse**; the ADR-007 D2 envelope is
+    **not** amended. **Reconsider ONLY** if a future **internal audit/QA dashboard**
+    wants confidence as a first-class field — the trace stays sufficient otherwise.
+  - **No operator-facing confidence badge.** The floor-vs-judge `confidence_signal`
+    (Phase 2) is an **engine-internal QA/audit signal kept trace-only (SD-3 option
+    A)**; surfacing it as a badge mis-reads as "the action might be wrong" — it is
+    **not**: member (b) is advisory and **never** changes the action (constraint ②).
+  - **The demo-card trust shape.** The operator recommendation card shows **what /
+    grounded-why / approve gate**, plus a **"show full reasoning trace" toggle**
+    revealing the engine-view (where the floor-vs-judge agreement lives, labelled
+    *audit/QA — not the operator*; reuses the scene-6 why-toggle pattern).
+  - **The reframe.** Users want *what was decided · is it right · why* — answered by
+    the action + grounding (real entity, allow-listed handler, deterministic
+    detection, human approve) + the reasoning trace, **not** a self-reported
+    confidence number.
+
+  *Trigger for any (B) revisit: the next demo / UI round, or a real internal audit/QA
+  dashboard consumer. Downstream consumers of this decision: `ADR-0030` (D1 rationale,
+  D5, Alternative 1, OQ-3 — the advisory-dimension trust-shape precedent) and
+  `docs/plans/done/0036-fastenal-procurement-vertical.md:280-283` (which carries only
+  the negative and defers outward to "the s74 demo-card decision").*
 
 - **SD-4 — ADR need. [Cowork recommends: PLAN-only.]**
   *Question:* record the build in PLAN-0035 with **no ADR change**, **or** a
