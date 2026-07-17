@@ -705,17 +705,29 @@ SD-6..SD-8 (AC-7 additionally on the ratified OQ-5 = (a) materialize).
   (`governance_step.py:47`) and `_severity` (`:81`) are **byte-untouched**
   (diff-verified at R2 on every Phase-2 PR); exact-Decimal end-to-end; bypass
   stays unrepresentable; the PLAN-0074/0075 suites green at every PR boundary.
-- [ ] **AC-10 (`derivation_hash` fully retired).** After PR-5: zero residual
+- [x] **AC-10 (`derivation_hash` fully retired).** *(PR-5 — grep-clean verified
+  0 hits outside `docs/`; the "asserted, intended pin change" leg is
+  `test_derivation_pin.py::test_every_snapshot_carries_exactly_the_declared_surface`,
+  which pins each vertical's snapshot to an EXACT top-level key set rather than
+  the absence of one name — strictly stronger, and it also catches a NEW
+  side-channel key being folded in later.)* After PR-5: zero residual
   `derivation_hash` references in code + tests (grep-clean across the 8
   pass-through files, the provider, the registration, and
   `test_derivation_pin.py`; docs/ archaeology exempt); supply_chain's snapshot
   no longer carries the key (an asserted, intended pin change).
-- [ ] **AC-11 (marker rewritten + T2 closed — F-PIN honesty, L-4 + SD-5).**
-  The F-PIN marker is rewritten in the retiring PR (both verticals None + the
-  supply_chain pin carries the ladder as declared step-transform content);
-  PLAN-0076 Step T2 closed in that same PR per T3; PLAN-0076 NOT archived
-  (T1 open, AC-6 guard-test stays). **No artifact of this PLAN records F-PIN
-  closed.**
+- [x] **AC-11 (marker rewritten + T2 closed — F-PIN honesty, L-4 + SD-5).**
+  *(PR-5. **Rendered against SD-5's literal text on Cray's s143 ruling**: SD-5
+  said the rewritten marker asserts "both verticals' `derivation_hash` is
+  None", which is UNRENDERABLE alongside AC-10's grep-clean — asserting the
+  hook returns `None` requires the hook to exist, and AC-10 retires it. Cray
+  ruled: rewrite the marker with no reference to the retired name; the
+  retirement is its own proof, and the marker asserts the END STATE instead —
+  every shipped derivation rides the pin as declared data. SD-5's intent
+  (prove the code-hash is gone AND the declaration replaced it) is met; only
+  its unrenderable clause is not.)* The F-PIN marker is rewritten in the
+  retiring PR; PLAN-0076 Step T2 closed in that same PR per T3; PLAN-0076 NOT
+  archived (T1 open, AC-6 guard-test stays). **No artifact of this PLAN records
+  F-PIN closed.**
 - [ ] **AC-12 (fail-closed scalar posture preserved — SD-7).** Per the
   ratified SD-7 shape: a non-positive / non-finite excursion scalar still
   refuses the run BEFORE the severity gate (demonstrated with a mutated

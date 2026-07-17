@@ -553,7 +553,6 @@ async def resolve_gated_step(  # noqa: C901 — load-bearing gate driver: precon
     procedure: Procedure | None = None,
     principals: list[Person] | None = None,
     principal_aliases: list[PrincipalAlias] | None = None,
-    derivation_hash: str | None = None,
 ) -> StepResult:
     """Apply a human's approve/reject decisions to a suspended gated action
     (Option 2 — the EXTERNAL gate driver; the shipped ``recommender`` gate,
@@ -637,11 +636,7 @@ async def resolve_gated_step(  # noqa: C901 — load-bearing gate driver: precon
     # surface always does; a procedure-less legacy call on a non-SoD run has no
     # config to compare, and resume re-checks the pin regardless).
     if procedure is not None:
-        # PLAN-0075 AC-13: the derivation hash is recomputed live and folded into the
-        # comparison too, so a run-start↔resolve severity-derivation edit fails closed here.
-        assert_governance_pin(
-            loaded.run, procedure, context="gate resolution", derivation_hash=derivation_hash
-        )
+        assert_governance_pin(loaded.run, procedure, context="gate resolution")
 
     # The LIVE fail-closed principal-SoD run-check (ADR-0026 D4; A1b Step 1) — runs
     # BEFORE any approve/execute so a violation blocks the gate (no PO, no governed

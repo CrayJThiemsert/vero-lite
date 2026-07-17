@@ -557,7 +557,8 @@ class MapBand(BaseModel):
 class MapValueBody(BaseModel):
     """`map_value` (threshold-ladder form): band a numeric `source` into `target` (SD-2).
 
-    The case-2 marquee datum (`_DOSE_LADDER`, cold_chain_assess.py). Bands are strictly
+    The case-2 marquee datum — supply_chain's dose->severity ladder, declared in its
+    `procedures.yaml` since PLAN-0078 PR-3. Bands are strictly
     ascending by ceiling, ceilings inclusive, and `above` is a MANDATORY unbounded top
     band so cover is TOTAL — a source above every ceiling always bands (never falls
     through, the fail-dangerous shape PLAN-0074 fixed)."""

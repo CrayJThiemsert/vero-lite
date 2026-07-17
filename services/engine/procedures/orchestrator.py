@@ -859,7 +859,6 @@ async def run_procedure(
     trigger_context: dict[str, Any] | None = None,
     principal: Person | None = None,
     service_principal: ServicePrincipal | None = None,
-    derivation_hash: str | None = None,
 ) -> RunResult:
     """Run ``procedure`` under ``agent`` over the given per-kind ``executors``.
 
@@ -891,9 +890,7 @@ async def run_procedure(
 
     opened = datetime.now(UTC)
     # PLAN-0047 Step 6 (AC-8): pin the resolved governance config at run start.
-    # PLAN-0075 AC-13: an optional per-vertical derivation hash rides along (None for a
-    # vertical that pins no derivation, so its snapshot stays byte-identical).
-    snapshot, config_hash = governance_pin_for(procedure, derivation_hash=derivation_hash)
+    snapshot, config_hash = governance_pin_for(procedure)
     run = PipelineRun(
         run_id=run_id,
         procedure_id=procedure.procedure_id,

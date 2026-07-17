@@ -97,7 +97,6 @@ async def run_procedure_persisted(
     trigger_context: dict[str, Any] | None = None,
     principal: Person | None = None,
     service_principal: ServicePrincipal | None = None,
-    derivation_hash: str | None = None,
 ) -> RunResult:
     """WRITE-AHEAD run driver (PLAN-0047 Step 4, AC-6).
 
@@ -114,9 +113,7 @@ async def run_procedure_persisted(
     validate_read_bindings_for_vertical(procedure, agent, vertical)
     opened = datetime.now(UTC)
     # PLAN-0047 Step 6 (AC-8): pin the resolved governance config at run start.
-    # PLAN-0075 AC-13: fold in the vertical's derivation hash (None for a vertical that
-    # pins no derivation — snapshot byte-identical); the caller resolved it by vertical.
-    snapshot, config_hash = governance_pin_for(procedure, derivation_hash=derivation_hash)
+    snapshot, config_hash = governance_pin_for(procedure)
     run = PipelineRun(
         run_id=run_id,
         procedure_id=procedure.procedure_id,
@@ -260,9 +257,7 @@ def _has_decidable_proposals(artifact: dict[str, Any]) -> bool:
     )
 
 
-def assert_governance_pin(
-    run: PipelineRun, procedure: Procedure, *, context: str, derivation_hash: str | None = None
-) -> None:
+def assert_governance_pin(run: PipelineRun, procedure: Procedure, *, context: str) -> None:
     """PLAN-0047 Step 6 (AC-8): fail CLOSED when the caller-supplied procedure's
     governance config no longer matches the config pinned at run start.
 
@@ -272,15 +267,15 @@ def assert_governance_pin(
     silent re-pin). A run with no pin (pre-0008 row / legacy library run)
     skips the check — backward compat.
 
-    ``derivation_hash`` (PLAN-0075 AC-13) is recomputed LIVE by the caller and folded
-    into the current-config hash, so a run-start↔resolve edit to a vertical's severity
-    derivation trips this same fail-closed refusal. It must be resolved identically at
-    run-start and here (the caller passes ``registry.derivation_hash(vertical)`` at both);
-    ``None`` reproduces the pre-AC-13 comparison exactly.
+    A vertical's DERIVED authority quantities are covered here through their declaring
+    step's pinned ``transform`` (PLAN-0077/0078): a mid-flight edit to a declared
+    severity ladder or spend derivation changes the config hash and trips this same
+    refusal. PLAN-0078 PR-5 retired the PLAN-0075 AC-13 code-hash side-channel once the
+    last code-side derivation became declared data (AC-10).
     """
     if run.governance_hash is None:
         return
-    _, current_hash = governance_pin_for(procedure, derivation_hash=derivation_hash)
+    _, current_hash = governance_pin_for(procedure)
     if current_hash != run.governance_hash:
         raise ProcedureError(
             f"run '{run.run_id}': governance-config pin mismatch at {context} — the "
@@ -323,7 +318,6 @@ async def resume_run(
     vertical: str,
     principal: Person | None = None,
     service_principal: ServicePrincipal | None = None,
-    derivation_hash: str | None = None,
 ) -> RunResult:
     """Resume a ``waiting_human`` run, reconstructing state purely from the DB.
 
@@ -360,9 +354,10 @@ async def resume_run(
         )
     if not loaded.step_results:
         raise ProcedureError(f"run '{run_id}' has no step results to resume from")
-    # PLAN-0047 Step 6 (AC-8): a mid-flight governance edit fails closed here.
-    # PLAN-0075 AC-13: incl. a supply_chain severity-derivation edit (derivation_hash).
-    assert_governance_pin(run, procedure, context="resume", derivation_hash=derivation_hash)
+    # PLAN-0047 Step 6 (AC-8): a mid-flight governance edit fails closed here — incl. an
+    # edit to a DECLARED derivation (a severity ladder / spend transform), which rides the
+    # pin through its step's `transform` key (PLAN-0078 PR-5 retired the AC-13 code-hash).
+    assert_governance_pin(run, procedure, context="resume")
 
     suspended = suspended_step_result(loaded.step_results)
     if suspended is None:

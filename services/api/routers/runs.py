@@ -314,10 +314,6 @@ async def run_procedure_endpoint(
             run_id=run_id,
             trigger_context=trigger_context,
             principal=auth.person,
-            # PLAN-0075 AC-13: pin the vertical's severity-derivation constants into the run
-            # snapshot (None for a vertical that pins none — byte-identical). Resolved by
-            # vertical through the registry hook so the engine never imports vertical code.
-            derivation_hash=registry.derivation_hash(vertical),
         )
     except ProcedureError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -395,11 +391,6 @@ async def resolve_gate_endpoint(  # noqa: C901 — a flat sequence of typed erro
             procedure=procedure,
             principals=spec.principals,
             principal_aliases=spec.principal_aliases,
-            # PLAN-0075 AC-13: recompute the derivation hash LIVE and fold it into the
-            # gate-resolution pin check — a run-start↔resolve severity-derivation edit fails
-            # closed. Same registry-resolved value the run was started under (manual-only, so
-            # start + resolve are both this HTTP surface).
-            derivation_hash=registry.derivation_hash(vertical),
         )
     except PrincipalSoDError as exc:
         detail: dict[str, Any] = {"error": str(exc)}
@@ -437,8 +428,6 @@ async def resolve_gate_endpoint(  # noqa: C901 — a flat sequence of typed erro
             run_id,
             vertical=vertical,
             principal=auth.person,  # PLAN-0053 AC-3: never-null actor on the resumed continuation
-            # PLAN-0075 AC-13: the resume pin re-check folds in the same live derivation hash.
-            derivation_hash=registry.derivation_hash(vertical),
         )
     except ProcedureError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc

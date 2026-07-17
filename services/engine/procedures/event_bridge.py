@@ -31,7 +31,7 @@ from services.engine.procedures.spec import (
     StepKind,
     VerticalProcedures,
 )
-from services.engine.registry import ExecutorFactory, registry
+from services.engine.registry import ExecutorFactory
 
 _KEY_HEX_LEN = 16
 """sha256 hexdigest truncated to 16 chars (64 bits) — ample for per-vertical event dedup,
@@ -316,9 +316,5 @@ async def fire_event(
         trigger_context={**request.trigger_context, "fired_at": now.isoformat()},
         principal=request.owning_person,
         service_principal=request.service_principal,
-        # PLAN-0075 AC-13: resolve the derivation hash by vertical at this run-start path too
-        # (None for a vertical that pins none — procurement today, so inert). Keeps start+resolve
-        # pinning the same derivation if a derivation-pinned vertical becomes event-triggered.
-        derivation_hash=registry.derivation_hash(request.vertical),
     )
     return EventFireOutcome(request.run_id, EventFireResult.FIRED, run_status=result.run.status)

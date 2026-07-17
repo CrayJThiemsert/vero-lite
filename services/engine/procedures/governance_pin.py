@@ -29,19 +29,21 @@ pin as a ladder edit. Disclosed format consequence: runs pinned BEFORE
 this field existed refuse at resume (the PLAN-0047 sanctioned
 cancel-and-restart path).
 
-Pinned since PLAN-0075 AC-13 (SD-5 provenance fold-in): an OPTIONAL
-``derivation_hash`` — a canonical hash of the vertical constants that
-DERIVE the authority quantity a gate routes on (supply_chain's severity
-ladder + its unbounded top band). The pin covers the ladder itself but not
-what derives its INPUT; folding the derivation hash in buys mid-flight
-tamper-evidence (a run-start↔resolve derivation edit fails closed here) and
-audit provenance ("which derivation governed THIS run"). Threaded as an
-opaque string so this module stays vertical-agnostic — the caller resolves
-it by vertical through the registry hook (``registry.derivation_hash``); a
-vertical that pins no derivation passes ``None`` and its snapshot is
-BYTE-IDENTICAL to before (no key added), so procurement / energy /
-aquaculture are unchanged. PROVENANCE-ONLY: it does NOT close the new-run
-re-routing threat (F-PIN stays open).
+Derivation pinning (history, PLAN-0075 AC-13 → PLAN-0078 PR-5): the
+vertical constants that DERIVE an authority quantity a gate routes on
+(supply_chain's severity ladder + its unbounded top band) were once folded
+in as an OPTIONAL opaque code-hash, because the derivation lived in
+vertical CODE and a snapshot of the DECLARATION could not reach it.
+PLAN-0078 promoted those derivations to declared ``transform`` steps, so
+the per-step ``transform`` key above now pins the ladder itself —
+canonically, by_alias, as the governing datum rather than a hash of a code
+constant. The AC-13 code-hash was retired end-to-end in PR-5 (AC-10); this
+module is once again vertical-agnostic with no derivation parameter to
+thread.
+What the change does NOT buy: F-PIN's new-run re-routing threat stays OPEN
+(a fresh run on already-changed declared data pins the change without
+complaint) — an architectural property of per-run pinning, orthogonal to
+where the derivation lives (PLAN-0078 L-4).
 """
 
 from __future__ import annotations
@@ -98,15 +100,14 @@ def _step_governance_snapshot(step: Step) -> dict[str, Any]:
     return snapshot
 
 
-def build_governance_snapshot(
-    procedure: Procedure, *, derivation_hash: str | None = None
-) -> dict[str, Any]:
+def build_governance_snapshot(procedure: Procedure) -> dict[str, Any]:
     """The canonical, JSON-safe projection of a procedure's governance config.
 
-    ``derivation_hash`` (PLAN-0075 AC-13): an optional, opaque per-vertical hash of the
-    constants that DERIVE the authority quantity a gate routes on. It is added as a key ONLY
-    when supplied — ``None`` (the default, every vertical that pins no derivation) leaves the
-    snapshot byte-identical to the pre-AC-13 shape, so its config hash is unchanged.
+    A procedure's derived fields are pinned through their declaring step's ``transform``
+    key (PLAN-0077), never through a side-channel hash of vertical code: PLAN-0078 PR-5
+    retired the PLAN-0075 AC-13 code-hash parameter once the last vertical derivation
+    (supply_chain's severity ladder) became declared data. The top-level surface is
+    asserted exactly — no side-channel key — in ``test_derivation_pin.py``.
     """
     snapshot: dict[str, Any] = {
         "procedure_id": procedure.procedure_id,
@@ -119,10 +120,6 @@ def build_governance_snapshot(
         ],
         "steps": [_step_governance_snapshot(step) for step in procedure.steps],
     }
-    # PLAN-0075 AC-13: fold the vertical's derivation hash in only when supplied — keeps every
-    # no-derivation vertical's snapshot (and thus its config hash) byte-identical to before.
-    if derivation_hash is not None:
-        snapshot["derivation_hash"] = derivation_hash
     return snapshot
 
 
@@ -134,13 +131,7 @@ def compute_governance_hash(snapshot: dict[str, Any]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def governance_pin_for(
-    procedure: Procedure, *, derivation_hash: str | None = None
-) -> tuple[dict[str, Any], str]:
-    """Convenience: ``(snapshot, hash)`` for pinning at run start.
-
-    ``derivation_hash`` (PLAN-0075 AC-13) is threaded straight into the snapshot; ``None``
-    reproduces the pre-AC-13 pin exactly.
-    """
-    snapshot = build_governance_snapshot(procedure, derivation_hash=derivation_hash)
+def governance_pin_for(procedure: Procedure) -> tuple[dict[str, Any], str]:
+    """Convenience: ``(snapshot, hash)`` for pinning at run start."""
+    snapshot = build_governance_snapshot(procedure)
     return snapshot, compute_governance_hash(snapshot)

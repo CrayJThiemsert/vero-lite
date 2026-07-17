@@ -271,8 +271,8 @@ async def test_non_positive_scalar_refuses_at_assess(
 def test_severity_transform_pin_coverage() -> None:
     """AC-5's Phase-2 leg: once the severity derivation is declared, it rides the governance
     snapshot — so a mid-flight ladder edit changes the config hash and fails CLOSED at resume
-    (``governance_pin.py:96-98``), which is what makes retiring the ``derivation_hash`` code-hash
-    honest in PR-5.
+    (``governance_pin.py``), which is what made retiring the PLAN-0075 AC-13 code-hash honest in
+    PR-5 (AC-10). That refusal is driven to its raise in ``test_derivation_pin.py``.
 
     Asserted structurally (the declared ops carry the ladder), NOT by importing ``_DOSE_LADDER`` —
     importing the constants would let a ladder edit drift both sides together, the exact hole
@@ -293,8 +293,10 @@ def test_severity_transform_pin_coverage() -> None:
         for key, body in op.items()
         if isinstance(body, dict) and "target" in body
     }
-    if "excursion_severity" not in targets:  # pre-flip: the executor still owns the derivation
-        pytest.skip("pre-flip: the severity derivation is not declared yet (PR-3 flip commit)")
+    # The oracle-first skip this carried during the PR-3 two-commit flip is REMOVED (PR-5): the
+    # flip landed, so a missing declaration is now a REGRESSION, and skipping on it would pass
+    # vacuously — the one failure mode this test exists to catch.
+    assert "excursion_severity" in targets, "the severity derivation is no longer declared"
 
     [map_op] = [op["map_value"] for op in transform["ops"] if "map_value" in op]
     assert map_op["target"] == "excursion_severity"
