@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-17T16:29:15+07:00
+last_updated: 2026-07-17T18:58:00+07:00
 session: 145
-current_batch: "s145 — Option-A frontmatter bump only. Landed since s144: #788 (PLAN-0080 draft) + #789 (R4 archive guard). Body/blocks deferred — the new guard blocks rotation."
+current_batch: "s145 — full-body reconcile of the d8db032→ce0f0a1 window: the R4 arc CLOSED end to end (#789 guard → #791/#792 splits) + 2 concurrent-session PRs (#788 PLAN-0080 Draft, #790 bump)."
 current_actor: code
-blocked_on: "Nothing blocking. The R4 split LANDED — guard GREEN, base archive now 22,185 B. The full-body reconcile s145 deferred is UNBLOCKED. Loop-dispatcher DISABLED; MS-S1 COLD; dev Postgres UP."
-next_action: "Full-body reconcile (s144+s145 bodies deferred) — one session should own the STATUS lane for it. R4 is fully clean: both archives split, guard SILENT, no file over the ~192 KB trigger."
-head_commit: 96ef1c4
-recent_commits: [96ef1c4, ba12e1b, b369fa6, f444cd1, 694e8d7, a73cf1e, 4397081, d8db032, 2340de3, 49ff275]
+blocked_on: "Nothing blocking. main=ce0f0a1; 0 open PRs. R4 fully clean — both archives split, guard SILENT. Loop-dispatcher DISABLED; MS-S1 idle/COLD (zero calls); dev Postgres UP."
+next_action: "Nothing scheduled. PLAN-0080 needs Cray to ratify SD-1/SD-2 before ANY execution (Draft; ADR-0007 Accepted-body touch = G1). PLAN-0079 hero needs Cray's commission + SD-1 + SD-2. R4 arc COMPLETE."
+head_commit: ce0f0a1
+recent_commits: [ce0f0a1, 61d072f, f00e4c7, d43f4a8, 96ef1c4, bb369ed, ba12e1b, b369fa6, f444cd1, 694e8d7]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,77 @@ recent_commits: [96ef1c4, ba12e1b, b369fa6, f444cd1, 694e8d7, a73cf1e, 4397081, 
 ---
 
 ## Current Focus
+
+> **Sessions 144 + 145, 2026-07-17 (head_commit `d8db032` → `ce0f0a1`) — the
+> R4 arc: a ratified rule that had NO MECHANISM, closed end to end in one
+> session (#789 → #791 → #792), plus two PRs from a CONCURRENT session (#788,
+> #790).** R4 (`docs/runbooks/memory-architecture.md` §"R4 — Archive, don't
+> drop") sets two numbers — archives stay under a **256 KB cap**; over **~192
+> KB** start a continuation — and **nothing enforced either**: R4's own
+> responsibility-matrix guard column read `—` where R1 and R7 both read `fail`.
+> It had rotted to a **3x breach**. **(1) #789 (`f444cd1` → merge `b369fa6`) —
+> the guard.** `tools/check_archive_size.py`: warns over the 192 KB trigger,
+> **fails over the 256 KB cap**; a `files:`-scoped pre-commit hook (deliberately
+> NOT `always_run` — a byte cap can only be breached by writing the file it
+> caps); 8 contract tests; the R4 matrix row `—` → `fail >256 KB`. Landed GREEN
+> **by design**: the hook does not fire on a commit touching no archive, and CI
+> does not run pre-commit at all. **(2) #791 (`96ef1c4` + `d43f4a8` → merge
+> `f00e4c7`) — the split the guard FORCED.** `2026-h1-status.md` was **592,577 B
+> = 3.01x the trigger, 2.26x the cap**, growing ~7.5 KB per reconcile → split
+> into the **c/d/e/f chain** per Cray's ratified naming rule (**letters ascend
+> with time; the base holds the RECENT window; older spills into the next
+> letter**) — `-b` is NOT the spill target (it holds OLDER content, so spilling
+> newer sections in would break the chronology the letters encode). **Five
+> files, not four:** a 4-way split forces one file to ~97% of the trigger, and
+> the excuse "it's frozen so tight is fine" was **falsified BY THIS SESSION**
+> (the s144 reconcile appended an archivist's note to a supposedly frozen row).
+> Also lands **`test_live_archives_are_within_cap`** — the BINDING half; it
+> could NOT land in #789 (RED at 2.26x), and **that ordering was the point**: a
+> guard whose live assertion is RED cannot merge into a protected main. **(3)
+> #792 (`61d072f` → merge `ce0f0a1`) — the current-focus split + THE RULE
+> RECORDED AS CANON.** `2026-h1-current-focus.md` was 258,346 B (1.31x trigger,
+> ~3,798 B under the cap) and **still receiving appends** (last s132) → split to
+> `b`/`c` + base. **The more important half: Cray's naming rule was living only
+> in commit messages and file headers — canonically invisible, which is EXACTLY
+> how R4 got a guard column of `—` in the first place.** Now in the runbook,
+> with the corollary and the hard-won warning: **which file holds a block is not
+> stable information — grep the directory, never cite a continuation by name
+> from outside the archive** (this session broke three of its own pointers that
+> way). **Result: every archive is now under the ~192 KB TRIGGER (not merely the
+> cap) and the guard is SILENT for the first time.** Rotation archive:
+> `h1b`/`c`/`d`/`e`/`f` (94K–162K) → `2026-h1-status.md` base **22,185 B**;
+> current-focus: `h1b-cf` 164,875 / `h1c-cf` 81,045 → base **18,161 B**. Both
+> bases carry ~174 KB of headroom ≈ 23 reconciles. **Proofs, stated honestly:**
+> #791 proved **exact list equality** of 27 sections; #792 proved **multiset
+> equality** of 30 blockquote blocks (blocks deliberately reordered ACROSS
+> files; order WITHIN each file untouched) — **different proofs, and the PR says
+> so**. Both re-run against HEAD **AFTER pre-commit**, which CHANGED the answer:
+> the end-of-file-fixer stripped one trailing newline per continuation, so the
+> honest claim is *"equal except N trailing newlines, all stripped-equal"*,
+> **NOT byte-identical**. **Two structural facts found by grounding, RECORDED
+> rather than quietly fixed:** (i) `current-focus` has **zero `## ` sections**
+> (it is blockquote blocks) — reusing the sibling's parser would have found 0
+> sections and "split" nothing **while reporting success**; (ii) its header
+> claimed "Session 46 and earlier" but later deep-rotates had appended sessions
+> 116–128 to its bottom — **one file carrying two orderings**. Also: the
+> `session 25` block is **162,822 B, atomic** — `h1b-cf` is large **by
+> necessity, not by packing choice**. **Concurrent-session PRs — NOT session
+> 144's work:** **#788 (`694e8d7`) — PLAN-0080 filed by session 145**, `Status:
+> **Draft** (pending Cray ratification)`: **SD-1 and SD-2 are UNRATIFIED —
+> merging the document did NOT ratify its decisions, and it must NOT be
+> executed**; ⚠ **`docs/conventions/ui.md` does NOT exist** — the PR title names
+> it because the PLAN *proposes* it, not because it shipped. **#790 (`ba12e1b` →
+> merge `bb369ed`) — session 145's STATUS frontmatter-only bump**, merged by
+> session 144 **on Cray's explicit instruction** to clear the STATUS lane; it
+> existed *because of* #789 — its own title says "full reconcile blocked by the
+> R4 guard", the forcing function biting a sibling session within hours, which
+> is what turned the split from hygiene into **unblocking work**. Suite **2855
+> passed / 7 skipped** — re-run BY CODE on the merge commit `ce0f0a1` itself,
+> since CI is PR-only and never tests the merge commit. Post-merge:
+> main=`ce0f0a1`; 0 open PRs; loop-dispatcher DISABLED; MS-S1 idle/COLD (zero
+> calls); dev Postgres UP. Commits: `694e8d7` (#788, session 145) → `f444cd1` →
+> `b369fa6` (#789) → `ba12e1b` → `bb369ed` (#790) → `96ef1c4` + `d43f4a8` →
+> `f00e4c7` (#791) → `61d072f` → `ce0f0a1` (HEAD, #792 merge).
 
 > **Session 144, 2026-07-17 (head_commit `6ee2aa8` → `d8db032`) — PLAN-0078
 > Step 7 CLOSEOUT (#786, docs-only): the transform seed-migration arc CLOSED at
@@ -192,78 +263,23 @@ recent_commits: [96ef1c4, ba12e1b, b369fa6, f444cd1, 694e8d7, a73cf1e, 4397081, 
 > idle/COLD — zero calls this session. Commits: `12e69aa` (#780, the ADR-0025
 > rehome) → `37ab124` (#778 merge) → `303fd48` (HEAD, #779 merge).
 
-> **Session 141, 2026-07-17 (head_commit `0523d88` → `88e6e11`) — PLAN-0078
-> Phase 2 PR-4 COMPLETE (#775, `feat`, oracle-first): the marquee ฿ spend
-> migrates from an execution-bound stamp ✖ to a declared `transform` ✔ per the
-> ratified SD-8 = (a) ONE DERIVATION HOME — `_scored_rule` stops multiplying
-> and stamps the two FACTORS; a declared `derive_spend` transform multiplies
-> them after ALL FOUR shipped scored_rule steps (procurement ×3 + supply_chain
-> `assess`).** **Oracle-first (L-2), two commits:** `fc17d02` froze
-> `test_amount_transform_parity.py` (12 tests, cross-vertical) GREEN against
-> the stamped world → `88e6e11` flipped and the SAME oracle stayed green
-> **UNCHANGED**. **Non-vacuous by construction:** post-flip nothing stamps
-> `amount`, so a transform that failed to run would `KeyError`. Frozen:
-> procurement `96000 × 3 = "288000"` → the [50k,500k) tier → ผจก.จัดซื้อ →
-> `appr-pm`; supply_chain `150.00 × 420.0 = "63000.000"` (Decimal PRESERVES
-> scale 2+1→3 — the BYTE form is pinned, not the value); anchored on the row
-> the AUTHORITY GATE reads (procurement `compliance`, supply_chain `gdp_gate`)
-> — downstream of BOTH amount homes, so it holds in either world. **A
-> ratified-SD refinement, Cray-ratified in-session:** SD-8(a) specified
-> stamping `selected_unit_price` ONLY ("qty already rides the entity") — that
-> was REFUTED by grounding: `_quantity` (`governance_step.py:128`) resolves
-> `qty` → `quantity` → `1`, a fallback the grammar's `default` op CANNOT
-> express (its `value` is a literal, `spec.py:520-521`), so a transform
-> re-reading a bare `qty` would silently multiply by 1 on a `quantity`-only
-> row → lower amount → LOWER doa_tier → under-approval: **fail-DANGEROUS, not
-> fail-closed** (inert today; both verticals carry `qty`). Cray ratified
-> **stamp `selected_qty`** over `default: {target: qty, value: 1}` — the
-> transform multiplies what `_quantity` already resolved, so divergence is
-> unrepresentable and `_quantity` stays the ONE resolution home. **AC-9 proven,
-> not asserted:** `_spend` / `_severity` / `EXCURSION_SEVERITY_FIELD` /
-> `_quantity` / `_candidate_quotes` / `_event_criticality` are BYTE-IDENTICAL
-> to main — by AST source-segment extraction + SHA256, because PR-3's proof
-> (the file absent from the diff) is unavailable to PR-4, which edits
-> `_scored_rule` in that same file. **SD-6(ii)** licensed the audit-form change
-> (the projection carries the two factors + `currency` top-level — they rode
-> inside the retired `amount` map — in place of the product; verdicts
-> identical). **Honest scope creep (2 files the PLAN's 8-12 estimate missed):**
-> `test_procurement_vertical.py` + `test_procurement_sod_gate.py` seed no
-> `candidate_quotes` and stub `source`, so the real scored_rule never ran and
-> nothing consumed the ฿ — unavoidable under SD-8(a) (a declared step under
-> `source` makes any harness that stubs `source` away incoherent). **A
-> PLAN-0075 debt closed in passing:**
-> `test_procurement_requester_cannot_self_approve` was the ONE test AC-8 left
-> on the plain-executor bypass (its 2 siblings were migrated, their docstrings
-> say so) — re-harnessed onto `seed_operate_waiting_human_run`, dead cluster
-> removed. Plus a **PR-3 honesty gap** on the step PR-4 touches: supply_chain
-> `assess` still claimed it "derives the excursion severity" — `enrich` has
-> owned it since PR-3. draft≠review≠verify: Code authored + verified
-> (oracle-first); Cray ratified the `selected_qty` refinement + merged; this
-> reconcile = `status-scribe` → Code R2. Full offline suite **2822 passed / 7
-> skipped** (2810 + the oracle's 12); ruff check + format clean; merge-tree
-> parity verified (`git diff 88e6e11 09714ea` empty); deterministic-offline (no
-> MS-S1 / host-state / DB). **PLAN-0078 stays `Status: Proposed`** (never
-> flip-then-edit). **PR-5 is NOT blocked by PR-4** — its dependency was PR-3,
-> which landed: `derivation_hash` retirement + F-PIN marker rewrite +
-> PLAN-0076 T2 close. Post-merge: main=`09714ea`; 0 open PRs; loop-dispatcher
-> DISABLED; MS-S1 idle; dev Postgres UP. Commits: `fc17d02` (oracle) →
-> `88e6e11` (flip) → `09714ea` (#775 merge, HEAD).
-
-> _Rotation note (session-144 reconcile, 2026-07-17, `docs(status):`):
-> frontmatter → `head_commit d8db032` (session 144 — the #786 merge, the SHA
-> this reconcile makes current). A new **session-144** block was PREPENDED for
-> the PLAN-0078 Step-7 closeout (#786), so the OLDEST — the **session-140**
-> block (the 4-artifact STRATEGIC-CONTINUITY program COMPLETE 4/4: #770
-> ADR-0032 Accepted · #771 PLAN-0079 `Status: Tracking` · #773 the CLAUDE.md §2
-> direction pointer · #772 the STATUS pointer; #769 unblocked the lane) —
-> rotated OUT (4-session window, now s144 + s143 + s142 + s141) to
-> `docs/status-archive/2026-h1-status.md`. Recent Decisions gained ONE row (the
-> PLAN-0078 closeout) and so rotated its OLDEST — **s136 close-out**
-> (2026-07-16, PLAN-0078 Phase 1 COMPLETE, the intake seed-migration pair
-> #762/#763) — to `docs/status-archive/2026-h1-status.md` (10-row window). Note
-> the s140 CF block and the two s140 RD rows (2026-07-16, still in-window)
-> rotate on DIFFERENT schedules — the RD rows now carry the s140 pointer.
-> Prior rotation notes (through the session-143 reconcile) are consolidated
+> _Rotation note (session-145 reconcile, 2026-07-17, `docs(status):`):
+> frontmatter → `head_commit ce0f0a1` (the #792 merge, the SHA this reconcile
+> makes current). A new **sessions-144+145** block was PREPENDED for the R4 arc
+> (#789 → #791 → #792) plus the two concurrent-session PRs (#788, #790), so the
+> OLDEST — the **session-141** block (PLAN-0078 Phase 2 PR-4 COMPLETE, #775,
+> oracle-first: the marquee ฿ spend re-sequenced off the `_scored_rule` stamp
+> onto a declared `derive_spend` transform per the ratified SD-8(a) ONE
+> DERIVATION HOME; the Cray-ratified `selected_qty` refinement) — rotated OUT
+> (4-session window, now s145/144 + s144 + s143 + s142) to the rotation-archive
+> BASE `docs/status-archive/2026-h1-status.md`. Recent Decisions gained ONE row
+> (the R4 arc) and so rotated its OLDEST — **s137** (2026-07-16, the 5th
+> vertical `building_materials` scaffolded as a Tier-1 Mirror, #765, plus the
+> latent `GET /procedures` 500 it exposed + fixed) — to the same base (10-row
+> window). The s141 CF block and the s141 RD row rotate on DIFFERENT schedules
+> — the RD row stays in-window and now points at the ARCHIVE DIRECTORY, not a
+> filename (#792's rule: which file holds a block is not stable information).
+> Prior rotation notes (through the session-144 reconcile) are consolidated
 > here (R4). Per the STATUS.md Rotation Policy (R1/R2/R4)._
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R7)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split.]_
@@ -287,16 +303,16 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-17 | **s144 — the R4 arc CLOSED end to end (#789 guard → #791 + #792 splits): a ratified rule that had NO mechanism now has one, and every archive sits under the ~192 KB TRIGGER — not merely the cap — for the first time.** R4's own responsibility-matrix guard column read `—` where R1/R7 read `fail`; the rotation archive had rotted to **592,577 B = 2.26x the cap**. #789 shipped `tools/check_archive_size.py` (warn >192 KB, **fail >256 KB**, `files:`-scoped hook) GREEN **by design**; the BINDING live assertion (`test_live_archives_are_within_cap`) could only land in #791 **after** the split — a guard whose live assertion is RED cannot merge into a protected main. **Five-file c/d/e/f chain, not four** (a 4-way split lands one file at ~97% of the trigger). #792 split current-focus AND **recorded Cray's naming rule as CANON** — letters ascend with time, the base holds the recent window; **grep the archive dir, never cite a continuation by name**. Proofs DIFFER and say so: #791 = exact list equality (27 sections), #792 = multiset equality (30 blocks, deliberately reordered across files); both re-run AFTER pre-commit → *"equal except N trailing newlines, all stripped-equal"*, **NOT byte-identical**. Suite **2855/7** re-run on the merge commit itself. _[Concurrent session 145: #788 PLAN-0080 `Status: Draft` — SD-1/SD-2 UNRATIFIED, must NOT be executed, and `docs/conventions/ui.md` does NOT exist · #790 frontmatter-only bump, merged on Cray's instruction.]_ Full narrative: the Sessions-144+145 CF block above | `ce0f0a1` (HEAD, #792 merge) / `f00e4c7` (#791) / `b369fa6` (#789) / `694e8d7` (#788) / `tools/check_archive_size.py` + `.pre-commit-config.yaml` + `docs/runbooks/memory-architecture.md` (R4 matrix row `—` → `fail >256 KB` + the naming rule) + `docs/status-archive/**` (the c/d/e/f + b/c-cf chains) |
 | 2026-07-17 | **s144 — PLAN-0078 COMPLETE at 12/12 ACs → `docs/plans/done/0078-transform-seed-migration.md` (#786, docs-only): a FAR smaller closeout than the s143 handoff predicted — 4 of the 6 open ACs (AC-7/8/9/12) were ALREADY SATISFIED on disk (unticked bookkeeping; each tick now cites its test by file:line, and AC-9 was re-verified INDEPENDENTLY rather than inherited from PR-4's R2 claim).** **AC-6 was the ONE genuine hole — and NOT the hole the PLAN described:** the predicted "Phase 2 shrinks the non-participant set" was FALSE on disk (PR-3/PR-4 only touched procedures already carrying a Phase-1 `enrich`) → classified **`superseded by new info`, NOT `was an error`** (CLAUDE.md §6) and pinned as DATA; the REAL hole was energy + aquaculture carrying no step-level `transform`-absence assertion anywhere. Both new tests proven non-vacuous **EMPIRICALLY** (probes reverted). **OQ-3 stays open; PLAN-0076 does NOT archive; F-PIN NOT closed** (L-4). Suite **2845/7** re-run on the merge commit itself. Full narrative: the Session-144 CF block above | `d8db032` (HEAD, #786 merge) / `49ff275` (sweep + ticks + `git mv`) / `docs/plans/done/0078-transform-seed-migration.md` (COMPLETE, archived) + `tests/**` (`test_derivation_pin.py:326` prediction pin + the energy/aquaculture transform census) |
 | 2026-07-17 | **s143 — PLAN-0078 Phase 2 PR-5 COMPLETE (#784, `refactor`), the FINAL PR of the transform seed-migration: the PLAN-0075 AC-13 `derivation_hash` RETIRED end-to-end (AC-10 grep-clean, 0 hits outside `docs/`), the F-PIN marker rewritten (AC-11), PLAN-0076 Step T2 CLOSED.** A DELETION PR by design: AC-13 hashed supply_chain's ladder CONSTANTS into the pin only because the derivation lived in vertical CODE — PR-3/PR-4 declared it, so the reason vanished and the workaround went. Both retired guarantees re-homed at FULL strength (an ACTUAL `assert_governance_pin` raise, not an `h1 != h2` compare). 2 Cray ratifications OVERRODE the drafter (unrenderable AC-11 assert; KEEP the constants test-only). **F-PIN NOT closed; PLAN-0076 does NOT archive** (T1 open, AC-6 armed). Suite **2840/7** re-run on the merge commit itself. _[Siblings reconciled same pass: #783 R7 citation guard · #782 Lesson #0031.]_ Full narrative: the Session-143 CF block above | `6eea264` (HEAD, #784 merge) / `70d25a5` (PR-3 forward-ref fix) / `6e6ec7a` (PLAN-0076 T2) / `732fc0a` (the retirement) / `verticals/supply_chain/**` + `services/engine/procedures/**` (registry seam + `governance_pin` param retired across 8 files) + `tests/**` (exact-snapshot-key-set assertion) + `docs/plans/0078-*.md` (PR-5 COMPLETE) + `docs/plans/0076-*.md` (T2 CLOSED) |
 | 2026-07-17 | **s143 — rotation policy **R7** is BINDING (#783, `chore`): never cite `docs/STATUS.md` by LINE NUMBER — cite the tracked artifact, or STATUS by SECTION NAME; a tripwire + an `always_run` pre-commit hook enforce it repo-wide (10 rotted sites cleaned, RED→GREEN 10 → 0).** _[Sibling #782 (`bc42136`, s142, reconciled s143): Lesson #0031 + the `fan-out-dispatch` skill — split parallel work on the WRITE-SET, not the idea.]_ Full narrative: the Session-143 CF block above | `3bf99bc` (#783 merge) / `abd41d4` (R7 + guard + cleanup) / `bc42136` (#782 merge) / `docs/runbooks/memory-architecture.md` (R7) + `tools/check_status_citations.py` + `docs/lessons/0031-*.md` + `.claude/skills/fan-out-dispatch/` |
 | 2026-07-17 | **s142 — the THREE R2 carve-out TODOs DISCHARGED (#780/#778/#779, docs-only): each fact REHOMED into a tracked home FIRST, THEN trimmed** — Rock 4's evidence-asymmetry finding → ADR-0025 · the `sequence`-column deferral → the ordering-guard docstring (deferral STANDS) · the s74 demo-card SD-3 → the PLAN-0035 `done/` post-archival amendment (+ ADR-0030's `STATUS.md:<line>` citations re-pointed). Runbook R2 now records **"until it is rehomed" is a real exit**, and that an ADR citing `STATUS.md:<line>` is a **defect**. Suite **2822/7**. Full narrative: the Session-142 CF block above | `303fd48` (HEAD, #779) / `37ab124` (#778) / `12e69aa` (#780) / `docs/adr/0025-*.md:23-29` + `docs/plans/done/0035-*.md:576` + `tests/services/db/test_load_run_ordering_guard.py` + `docs/runbooks/memory-architecture.md` (R2) |
-| 2026-07-17 | **s141 — PLAN-0078 Phase 2 PR-4 COMPLETE (#775, `feat`, oracle-first): the marquee ฿ spend re-sequenced off the `_scored_rule` stamp into a declared `derive_spend` transform, per the ratified SD-8=(a) ONE DERIVATION HOME.** Cray-ratified in-session refinement: stamp `selected_qty` (not `selected_unit_price` only) so `_quantity` stays the ONE resolution home. Suite **2822 passed / 7 skipped**; deterministic-offline. **PLAN-0078 stays `Status: Proposed`**; **PR-5 is NOT blocked by PR-4**. Full narrative: the Session-141 CF block above | `09714ea` (HEAD, #775 merge) / `88e6e11` (PR-4 flip) / `fc17d02` (PR-4 oracle) / `verticals/{procurement,supply_chain}/**` (declared `derive_spend` transform) + `services/engine/procedures/governance_step.py` (`_scored_rule` factor stamps) + `tests/**` (`test_amount_transform_parity.py`) + `docs/plans/0078-*.md` (Proposed; PR-4 COMPLETE) |
+| 2026-07-17 | **s141 — PLAN-0078 Phase 2 PR-4 COMPLETE (#775, `feat`, oracle-first): the marquee ฿ spend re-sequenced off the `_scored_rule` stamp into a declared `derive_spend` transform, per the ratified SD-8=(a) ONE DERIVATION HOME.** Cray-ratified in-session refinement: stamp `selected_qty` (not `selected_unit_price` only) so `_quantity` stays the ONE resolution home. Suite **2822 passed / 7 skipped**; deterministic-offline. **PLAN-0078 stays `Status: Proposed`**; **PR-5 is NOT blocked by PR-4**. Full narrative: the Session-141 CF block (rotated to `docs/status-archive/` at the s145 reconcile — grep the archive dir, not one file) | `09714ea` (HEAD, #775 merge) / `88e6e11` (PR-4 flip) / `fc17d02` (PR-4 oracle) / `verticals/{procurement,supply_chain}/**` (declared `derive_spend` transform) + `services/engine/procedures/governance_step.py` (`_scored_rule` factor stamps) + `tests/**` (`test_amount_transform_parity.py`) + `docs/plans/0078-*.md` (Proposed; PR-4 COMPLETE) |
 | 2026-07-16 | **s140 — artifact 3/4 (#773, docs-only): `CLAUDE.md` §2 retitled "Current Focus" → "Direction & Current Focus" + a two-pointer signpost — standing direction = ADR-0032, current state = STATUS, "state never overrides direction" (§1).** The strategic-continuity program is now **COMPLETE 4/4** (#770 ADR · #771 PLAN-0079 · #773 §2 · #772 STATUS pointer). Scope CUT at Cray's ratification: the planned sanitized strategy doc DROPPED (a no-precedence restatement of a canonical is itself a drift surface, §1 / ADR-0017 D6). Suite **2810 passed / 7 skipped**. Full narrative: the Session-140 CF block above | `0523d88` (HEAD, #773 merge) / `038efd0` (§2 pointer) / `CLAUDE.md` §2 + `docs/adr/0032-*.md` |
 | 2026-07-16 | **s140 — the 4-artifact STRATEGIC-CONTINUITY program CLOSED (3 PRs; docs + one guard test, ZERO behaviour change): ADR-0032 Accepted (#770) — the demo→pilot wedge + 3-shape roadmap + a BINDING pilot gate + the PINNED AT-2 fact record (N=2, re-arms at N=3) · PLAN-0079 `Status: Tracking` (#771) — the governed-credit HERO homed with its honest cost, builds NOTHING · the s138 reconcile unblocked (#769) · this AC-4 pointer.** Cause: the s137 arc lived only in auto-memories + gitignored docs, so a parallel session planned BLIND. Suite **2809 passed / 7 skipped**. _[Artifact 3 landed as #773 — see the row above.]_ Full narrative: the Session-140 CF block above | `8ca772b` (HEAD, #769) / `754a894` (#771) / `ad40aef` (PLAN-0079) / `4a5cfb7` (#770) / `5b53bbe` (ADR-0032) / `docs/adr/0032-*.md` + `docs/plans/0079-*.md` + `tests/services/engine/procedures/test_governed_credit_hero_tracking_guard.py` |
 | 2026-07-16 | **s138 — PLAN-0078 Phase 2 PR-3 COMPLETE (#768, `feat`, oracle-first): cold-chain excursion SEVERITY re-sequenced off the `ColdChainAssessExecutor` stamp into a declared `enrich` transform (ADR-0031 D3 row-1) — `_DOSE_LADDER` becomes a governed datum IN THE PIN, the move that makes retiring `derivation_hash` honest in PR-5.** Proved the ratified SD-6 two-tier bar; SD-7 slimmed the executor to its fail-closed guard; OQ-5 ratified (a) materialize. **Honest interim redundancy stays in code until PR-5 — F-PIN stays OPEN.** Suite **2808 passed / 7 skipped**. **PLAN-0078 stays `Status: Proposed`**. Full narrative: the Session-138 CF block (`docs/status-archive/2026-h1f-status.md` — moved there by the s144 R4 split; grep the archive dir, not one file) | `9a5eecf` (HEAD, #768 merge) / `e6fb07a` (PR-3 flip) / `8214a32` (PR-3 oracle) / `verticals/supply_chain/**` (declared `enrich` severity transform + slimmed `ColdChainAssessExecutor` guard) + `tests/**` (`test_severity_transform_parity.py` + 2 re-homed PLAN-0074/PR-2 tests) + `docs/plans/0078-*.md` (Proposed; PR-3 COMPLETE) |
 | 2026-07-16 | **s138 — the AT-2 `N=1` misinformation-KILL + PLAN-0078 doc-drift reconcile (#767, docs-only, NO behavior change): s137's planned building_materials `doa_tier` as "the 2nd money signature (N=2) advancing AT-2" was a FALSE premise — corrected at the source.** ADR-0025 D7 counts with no per-`gate_kind` partition → **N has been 2 since s131**; the marker re-arms at **N=3**, so the hero would be signature #3 → CI RED + OBLIGATING the AT-2 extraction, NOT "advancing toward" it. Root cause = stale `spec.py`/`main.py` comments, all corrected. Same PR reconciled PLAN-0078 doc-drift + recorded OQ-5 RATIFIED (a). Full narrative: the Session-138 CF block (`docs/status-archive/2026-h1f-status.md` — moved there by the s144 R4 split; grep the archive dir, not one file) | `c9e5186` (#767 merge) / `120521e` (docs(procedures) comment/docstring truth-pass) / `9b19f19` (docs(plans) PLAN-0078 drift reconcile + OQ-5) / `services/**` (`spec.py` :822/:1046/:1092 + `main.py:133` corrected) + `docs/plans/0078-*.md` (Phase-1 ACs ticked, OQ-5 RATIFIED) |
-| 2026-07-16 | **s137 — the 5th vertical `building_materials` scaffolded as a Tier-1 Mirror (ADR-0015 D2) for governed customer CREDIT (#765, `feat`), from a hand-authored GUESSED OCT-shaped ontology; + the latent `GET /procedures` 500 it exposed + fixed** — the reshape is the point: the monitored Asset is a COMMERCIAL entity, so the engine governs a **commercial** decision, not only a physical asset _[the "2nd `doa_tier` signature" framing SUPERSEDED s138/#767: AT-2 is N=2 since s131, so this would be signature #3]_. **The bug (the real find):** `GET /procedures` called `load_procedures` UNCONDITIONALLY → a scaffolded mirror with no `procedures.yaml` 500'd the read surface for EVERY vertical; fix = an explicit `procedures_path().exists()` skip + a self-cancelling guard. **Scope honesty: Tier-1 Mirror ONLY — no spec, no governed-credit hero.** Suite **2803 passed / 7 skipped**. Full narrative: the Session-137 CF block above | `c52c1ed` (HEAD, #765 merge) / `1d523a3` (scaffold + fix) / `verticals/building_materials/**` (guessed OCT ontology + adapter + `echo` handlers, no spec) + `services/api/**` (`GET /procedures` exists-skip) + `tests/**` (`test_procedures_skips_discovered_vertical_without_a_spec`) |
 
 ## In-Flight Discussions
 
