@@ -4480,3 +4480,62 @@ Two Active TODOs removed from `docs/STATUS.md`. The first is **discharged** (the
 > Two defects motivated the re-point, both recorded in the runbook's R2 corollary: an ADR citing volatile Tier-1 state **inverts §1** (STATUS is state, never a rule), and any `STATUS.md:<line>` anchor **rots by construction** — this one was written at `:262` and had already drifted to `:319`.
 
 - [ ] **Demo card UX — "trust shape", NO operator confidence badge (s74 design, Cray-approved).** For the next demo round's operator recommendation card: show **what / grounded-why / approve gate** + a **"show full reasoning trace" toggle** that reveals the engine-view (where the floor-vs-judge agreement lives, labelled *audit/QA — not the operator*; reuses the scene-6 why-toggle pattern). **No operator-facing confidence badge** — the floor-vs-judge `confidence_signal` (PLAN-0035 Phase 2) is an **engine-internal QA/audit signal kept trace-only (SD-3 option A)**; surfacing it as a badge mis-reads as "the action might be wrong" (it is **not** — member (b) is advisory, never changes the action). The **(B) first-class `verification` envelope field is NOT needed for the operator UI** — reconsider **only** if a future internal audit/QA dashboard wants confidence as a first-class field (trace stays sufficient otherwise). Settled via a show_widget design review (s74; Cray: "ตรงใจ ตอบโจทย์"). The reframe: users want *what was decided · is it right · why* — answered by the action + grounding (real entity, allow-listed handler, deterministic detection, human approve) + the reasoning trace, **not** a self-reported confidence number. *(Trigger: the next demo / UI round; pairs with any (B) reconsideration.)*
+
+## Rotated this reconcile (session-142, 2026-07-17 — the three R2 carve-out TODOs discharged, rehome-then-trim, #780/#778/#779)
+
+### Current-Focus block — Session 137 (the `building_materials` 5th vertical Tier-1 Mirror + the `GET /procedures` spec-less fix, #765) [rotated 2026-07-17, session-142 reconcile — 4-session CF window]
+
+> **Session 137, 2026-07-16 (head_commit `45d6b82` → `c52c1ed`) — the 5th
+> vertical `building_materials` SCAFFOLDED as a Tier-1 Mirror (ADR-0015 D2)
+> for governed customer CREDIT at a mid-market distributor (#765, `feat`),
+> from a hand-authored GUESSED OCT-shaped ontology via `vero-lite
+> new-vertical`; plus the latent `GET /procedures` 500 the scaffold exposed
+> + fixes.** **The reshape is the point:** the monitored **Asset is a
+> COMMERCIAL entity** — `CustomerAccount` with its own per-entity
+> `credit_limit_thb` band — and **Site is a sales `Branch`** (the ADR-008
+> "may extend" precedent procurement already uses), demonstrating the engine
+> governs a **commercial** decision, not only a physical asset.
+> Strategically this was believed to be the intended **2nd `doa_tier` (money)
+> signature** target, advancing the AT-2 Rule-of-Three; but that lands with the
+> HERO, not this mirror. _[SUPERSEDED s138/#767: the "N=1 → toward N=2" framing
+> was FALSE — AT-2 is N=2 since s131 (PLAN-0074) and the marker re-arms at N=3,
+> so a building_materials `doa_tier` would be signature #3 (CI RED, obligates
+> the AT-2 extraction), not a step toward N=2; the stale `spec.py:822` comment
+> is corrected. Belief-at-the-time kept for lineage per §6.]_ **The bug is the real find:** `GET /procedures` looped
+> `registry.verticals()` and called `load_procedures` UNCONDITIONALLY →
+> `FileNotFoundError` (500) on the first discovered vertical shipping no
+> `procedures.yaml`. `new-vertical` scaffolds exactly that (mirror tier:
+> ontology + adapter + handlers, no spec) and ADR-0023 import-scan discovery
+> registers it regardless → **the whole read surface died for every OTHER
+> vertical the moment a mirror was scaffolded**; the 4 shipped verticals
+> never hit it because each hand-authored a spec. **Fix** = an EXPLICIT
+> `procedures_path().exists()` skip (deliberately NOT a swallowed
+> `FileNotFoundError` — a malformed spec still raises) + a self-cancelling
+> regression guard (`test_procedures_skips_discovered_vertical_without_a_spec`)
+> that fires if building_materials ever gains a spec. **Scope honesty (NOT
+> overclaimed):** Tier-1 Mirror ONLY — **no `procedures.yaml`, no
+> governed-credit hero**. The 3-part spine (a deterministic exposure band +
+> a hard `rule_gate` for KYC/overdue-AR + `doa_tier` + SoD + audit) is the
+> FOLLOW-ON and is what makes the governance real rather than a bare
+> approval form; handler = the scaffold's `echo` stub; synthetic data = a
+> demo draft; every ฿ value is a marked GUESS; `verticals/*/generated/`
+> stays gitignored. **draft≠review≠verify:** Code authored + verified (the
+> ontology guess, the fix, the guard); the offline gate + the live mirror
+> are the evidence; Cray ratified the vertical choice + the fix approach +
+> the merge; this reconcile = `status-scribe` → Code R2. Full offline suite
+> **2803 passed / 7 skipped** (2802→2803 = the new guard); ruff + `ruff
+> format --check` + `mypy --strict services/` clean. **Live-verified
+> end-to-end on the DETERMINISTIC rule path** (the map renders the branch +
+> the 250k→550k breach timeline; the anomaly view renders the reasoning
+> trace `550000 >= 500000, crossed=true` + the "requires human approval"
+> gate) — **no MS-S1 call, no host-state**. **PLAN-0078 Phase 2 is UNTOUCHED
+> and still pending** (a separate track — not conflated here). Post-merge:
+> main=`c52c1ed`; 0 open PRs; gate PASS (2m48s) + the merge tree verified
+> byte-identical to the gate-tested tip `1d523a3` (the CI-is-PR-only hazard
+> neutralised); loop-dispatcher DISABLED; MS-S1 idle; dev Postgres UP.
+> Commits: `1d523a3` (the scaffold + the `GET /procedures` fix) → `c52c1ed`
+> (HEAD, #765 merge).
+
+### Recent Decisions row removed — 2026-07-15 (s133 core — PLAN-0075 AT-2 authority enforcement at the run gate, #749) [rotated 2026-07-17, session-142 reconcile — 10-row RD window]
+
+| 2026-07-15 | **s133 — PLAN-0075 core: AT-2 AUTHORITY ENFORCEMENT AT THE RUN GATE shipped (12/13 ACs, #749, `feat`); closes the s131-surfaced F1 exploit (`task_053edc92`)** — the AT-2 ladder RESOLVED/AUDITED which tier should approve but no run path ENFORCED that the acting approver HELD that role (a junior could resolve the ฿288k/฿2M gate). Fix = `tier_authority.check_tier_authority` at `resolve_gated_step`, additive beside SoD — verified at the LIVE DB gate. **Two Cray-ratified divergences:** cumulative senior roles in YAML (Policy B, overriding Correction 1) + NATIVE-TIER audit routing. Suite **2692 passed / 7 skipped**. Full narrative: the Session-133 CF block (`docs/status-archive/2026-h1-status.md`) | `76f42cc` (HEAD, #749 merge) / `580b9e8`…`9e3d421` (7 core build commits) / `services/**` (`tier_authority.check_tier_authority` + `resolve_gated_step` wiring + F3 load check + gate-time audit reconciliation) + `verticals/{procurement,supply_chain}/**` (cumulative-role YAML + `native_approver`) + `tests/**` (AC-5/6/7/8 + live DB gate) + `docs/plans/0075-*.md` (OPEN, 12/13 ACs) |
