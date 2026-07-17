@@ -221,10 +221,14 @@ class ColdChainAssessExecutor:
 
     Every other step delegates straight through, so the vertical's (AT-3) sweep is byte-identical.
 
-    ``stamp_steps`` keeps its name for now — it names the step this wrapper acts on, which is still
-    true, and renaming it from here would drift the ``sod_steps``/``stamp_steps`` residual note
-    PLAN-0076 T1 tracks (``procedures_factory.py:37-49``) for no functional gain. PR-5 reshapes this
-    module to retire the derivation constants; the rename belongs there.
+    ``stamp_steps`` keeps its name — it names the step this wrapper acts on, which is still true,
+    and renaming it from here would drift the ``sod_steps``/``stamp_steps`` residual note PLAN-0076
+    **T1** tracks (``procedures_factory.py``) for no functional gain. PR-3 wrote that the rename
+    belonged to "PR-5, which reshapes this module to retire the derivation constants" — that
+    forward reference did NOT come true: PR-5 retired the AC-13 code-hash but **kept** the
+    constants as a test-only reference (Cray's ratification, overriding the drafter's recommended
+    retire), so no reshape happened to carry the rename. The rename stays where the note itself
+    says it belongs: **T1's gate-plugin-seam PLAN**, which owns that residual.
 
     Render / route only — no external write (ADR-0007 LOCKED #3)."""
 
