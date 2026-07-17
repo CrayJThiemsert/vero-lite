@@ -91,6 +91,30 @@ commits. Go back to step 3 below and move the shared write out.
 
 You pay N sessions of tokens and get serial wall-clock. Never `--admin`.
 
+## Two fixes the s142 siblings added (they lived the collision; adopt both)
+
+**1. `gh pr list --state open` — at session start AND again immediately before merging.**
+The cheapest habit there is, and it would have caught this batch. The Rock-4 session
+reported: *"I skipped it, merged first, and broke two green PRs. Finding a sibling PR
+early is trivial; finding it after your merge is three merge commits of rework."* Sessions
+started ~7 hours apart worked the same program unaware of each other. A spawned session
+cannot see its siblings — but it CAN see their PRs.
+
+**2. Fix the SURFACE, not the schedule.** Serialising a batch treats the symptom once;
+removing the shared surface removes it for every future batch. The archive-tail collision
+here is a property of R4's *one flat archive file* design — *"N branches tail-appending to
+ONE flat file conflict 100% of the time … not fixable by better session behaviour."* When
+you spot a structurally collision-prone surface, prefer fixing it (split the file, give
+each task its own section/file, make the append idempotent) over scheduling around it
+forever.
+
+**And the shape a merge tool cannot save you from:** two sessions independently wrote
+**near-duplicate paragraphs stating the same rule** with different examples. Git will
+happily take either side — or both — leaving the doc stating one rule twice. **A textual
+merge cannot detect a semantic duplicate.** If two chips could both plausibly author the
+same policy/prose, that is not a merge risk; it is the same "shared write" defect wearing
+a disguise. Only one task writes the rule.
+
 ## When fanning out IS right
 
 Real disjointness, verified — not assumed:
