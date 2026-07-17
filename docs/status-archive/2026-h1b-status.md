@@ -3,9 +3,21 @@
 > **Period covered:** 2026 H1 earlier half — rotated Current Focus blocks from
 > 2026-06-11 (session-53 reconcile) → 2026-06-15 (session-61 reconcile); rotated
 > Recent Decisions rows dated 2026-05-10 → 2026-06-09 (back to the project's
-> first ADRs). **Sibling:** the recent half lives in
-> [`2026-h1-status.md`](2026-h1-status.md) (CF rotated 2026-06-16 → 2026-06-26;
-> decisions dated 2026-06-10 → 2026-06-21).
+> first ADRs).
+>
+> **Sibling chain (letters ascend with time; the base file holds the RECENT
+> window):** this file is the OLDEST link. Everything after it lives in
+> [`2026-h1c-status.md`](2026-h1c-status.md) (2026-06-10 → 2026-06-29) →
+> [`2026-h1d-status.md`](2026-h1d-status.md) (→ 2026-07-07) →
+> [`2026-h1e-status.md`](2026-h1e-status.md) (→ 2026-07-11) →
+> [`2026-h1f-status.md`](2026-h1f-status.md) (→ 2026-07-16) →
+> [`2026-h1-status.md`](2026-h1-status.md) (base, newest — rotations append
+> there). _[Updated 2026-07-17, session 144: this line used to name
+> `2026-h1-status.md` alone as "the recent half", with a window ending
+> 2026-06-26. Both had gone stale — that file had grown to 592,577 B (2.26x
+> R4's cap) carrying content through 2026-07-17, and session 144's split
+> (#789's guard forced it) turned the recent half into the four-file chain
+> above.]_
 
 This is the **`-b` continuation file** created per R4's archive size escape
 (`docs/runbooks/memory-architecture.md`: "if a half-year file would exceed

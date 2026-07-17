@@ -124,6 +124,56 @@ def test_missing_directory_is_not_a_failure(
     assert _run(guard, monkeypatch, tmp_path / "absent") == 0
 
 
+def test_live_archives_are_within_cap(guard: ModuleType) -> None:
+    """The repo's actual archives must respect their own policy — the R4 analogue of
+    ``test_live_status_is_within_hard_ceiling``.
+
+    **This is the binding check.** The pre-commit hook is the local half: it is
+    ``files:``-scoped, skippable with ``--no-verify``, and CI does not run pre-commit at
+    all (``ci.yml`` runs ruff / mypy / alembic / pytest). This test runs in CI on every
+    PR, where none of those escapes reach it.
+
+    It could not land with the guard in #789: ``2026-h1-status.md`` was 592,577 B —
+    2.26x the cap — so this assertion was RED until the session-144 split made it green.
+    That ordering was the point, not an accident: a guard whose own live assertion is
+    RED cannot merge into a protected main, so the mechanism landed first and the split
+    second.
+
+    Asserted against the CAP, not the split trigger, deliberately — mirroring R1, whose
+    live test pins the hard ceiling and lets the soft target warn. ``2026-h1-current-focus.md``
+    sits over the trigger and under the cap; whether to split it too is Cray's open call,
+    and pinning the trigger here would pre-empt it."""
+    archive = REPO_ROOT / "docs" / "status-archive"
+    assert archive.is_dir(), "the archive directory moved — R4's rotation target"
+    oversized = {
+        p.name: p.stat().st_size
+        for p in sorted(archive.glob("*.md"))
+        if p.stat().st_size > guard.HARD_CAP_BYTES
+    }
+    assert not oversized, (
+        f"archive files over R4's {guard.HARD_CAP_BYTES:,}-byte cap: {oversized}. "
+        f"Split per R4: letters ascend with time, the base file keeps the RECENT window, "
+        f"older content spills into the next letter (Cray-ratified, session 144)."
+    )
+
+
+def test_live_archive_chain_is_greppable_as_one_corpus(guard: ModuleType) -> None:
+    """Every archive file is reachable by a single glob — the property R4's Tier-3
+    contract ("grep + windowed reads only") actually rests on.
+
+    The split traded one 592 KB file for a chain. That is only safe if the chain is
+    discoverable: a reader who greps ``docs/status-archive/*.md`` must still see the whole
+    corpus. Pinned because the failure mode is silent — a continuation dropped somewhere
+    else would leave greps quietly incomplete rather than erroring."""
+    archive = REPO_ROOT / "docs" / "status-archive"
+    names = {p.name for p in archive.glob("*.md")}
+    assert {
+        "2026-h1b-status.md",
+        "2026-h1-status.md",
+    } <= names, f"the archive chain's endpoints are missing from the glob: {sorted(names)}"
+    assert all(p.stat().st_size > 0 for p in archive.glob("*.md")), "an empty archive file"
+
+
 def test_thresholds_match_the_ratified_r4_numbers(guard: ModuleType) -> None:
     """R4 fixes both numbers verbatim ("stay under the 256 KB byte cap ... if a
     half-year file would exceed ~192 KB, start a `-b` continuation file"). Pinned so a
