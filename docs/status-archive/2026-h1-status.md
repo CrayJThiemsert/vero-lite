@@ -248,3 +248,81 @@ convention is separate work, deliberately not done here.
 > reason.
 
 | 2026-07-16 | **s136 — PLAN-0078 Phase 1 COMPLETE (the intake seed-migration pair, oracle-first, SD-1=(B) arc; 2 `feat` PRs #762/#763 atop a Step-1 uniform-factory landing `d8707ca`): the intake enrichment migrated off the hand-coded seeds into declared `enrich` TRANSFORM steps (ADR-0031 D3 row-1 grammar)** — PR-1 #762 procurement intake + PR-2 #763 supply_chain disposition intake, each oracle-first with a FROZEN parity reference green PRE-flip → byte-equal POST-flip. **Honest residual: the marquee severity/amount STAMPS stay code-side, `derivation_hash` in service, F-PIN stays OPEN** — that is Phase 2. Suite **2802 passed / 7 skipped**. Full narrative: the Session-136 CF block (`docs/status-archive/2026-h1-status.md`) | `45d6b82` (HEAD, #763 PR-2 supply_chain) / `173d869` (#762 PR-1 procurement) / `d8707ca` (Step 1 uniform factory) / `verticals/{procurement,supply_chain}/**` (declared `enrich` transform seeds) + `tests/**` (oracle-first parity harnesses + AC-4/5/6) + `docs/plans/0078-*.md` (Phase 1 COMPLETE, Phase 2 open) |
+
+## Rotated this reconcile (session-145, 2026-07-17 — the full-body reconcile of the `d8db032` → `ce0f0a1` window: the R4 arc closed end to end, #789/#791/#792)
+
+### Current Focus block removed — Session 141, 2026-07-17 (PLAN-0078 Phase 2 PR-4 — the marquee ฿ spend migrated to a declared transform, #775) [rotated 2026-07-17, session-145 reconcile — 4-session CF window]
+
+> **Session 141, 2026-07-17 (head_commit `0523d88` → `88e6e11`) — PLAN-0078
+> Phase 2 PR-4 COMPLETE (#775, `feat`, oracle-first): the marquee ฿ spend
+> migrates from an execution-bound stamp ✖ to a declared `transform` ✔ per the
+> ratified SD-8 = (a) ONE DERIVATION HOME — `_scored_rule` stops multiplying
+> and stamps the two FACTORS; a declared `derive_spend` transform multiplies
+> them after ALL FOUR shipped scored_rule steps (procurement ×3 + supply_chain
+> `assess`).** **Oracle-first (L-2), two commits:** `fc17d02` froze
+> `test_amount_transform_parity.py` (12 tests, cross-vertical) GREEN against
+> the stamped world → `88e6e11` flipped and the SAME oracle stayed green
+> **UNCHANGED**. **Non-vacuous by construction:** post-flip nothing stamps
+> `amount`, so a transform that failed to run would `KeyError`. Frozen:
+> procurement `96000 × 3 = "288000"` → the [50k,500k) tier → ผจก.จัดซื้อ →
+> `appr-pm`; supply_chain `150.00 × 420.0 = "63000.000"` (Decimal PRESERVES
+> scale 2+1→3 — the BYTE form is pinned, not the value); anchored on the row
+> the AUTHORITY GATE reads (procurement `compliance`, supply_chain `gdp_gate`)
+> — downstream of BOTH amount homes, so it holds in either world. **A
+> ratified-SD refinement, Cray-ratified in-session:** SD-8(a) specified
+> stamping `selected_unit_price` ONLY ("qty already rides the entity") — that
+> was REFUTED by grounding: `_quantity` (`governance_step.py:128`) resolves
+> `qty` → `quantity` → `1`, a fallback the grammar's `default` op CANNOT
+> express (its `value` is a literal, `spec.py:520-521`), so a transform
+> re-reading a bare `qty` would silently multiply by 1 on a `quantity`-only
+> row → lower amount → LOWER doa_tier → under-approval: **fail-DANGEROUS, not
+> fail-closed** (inert today; both verticals carry `qty`). Cray ratified
+> **stamp `selected_qty`** over `default: {target: qty, value: 1}` — the
+> transform multiplies what `_quantity` already resolved, so divergence is
+> unrepresentable and `_quantity` stays the ONE resolution home. **AC-9 proven,
+> not asserted:** `_spend` / `_severity` / `EXCURSION_SEVERITY_FIELD` /
+> `_quantity` / `_candidate_quotes` / `_event_criticality` are BYTE-IDENTICAL
+> to main — by AST source-segment extraction + SHA256, because PR-3's proof
+> (the file absent from the diff) is unavailable to PR-4, which edits
+> `_scored_rule` in that same file. **SD-6(ii)** licensed the audit-form change
+> (the projection carries the two factors + `currency` top-level — they rode
+> inside the retired `amount` map — in place of the product; verdicts
+> identical). **Honest scope creep (2 files the PLAN's 8-12 estimate missed):**
+> `test_procurement_vertical.py` + `test_procurement_sod_gate.py` seed no
+> `candidate_quotes` and stub `source`, so the real scored_rule never ran and
+> nothing consumed the ฿ — unavoidable under SD-8(a) (a declared step under
+> `source` makes any harness that stubs `source` away incoherent). **A
+> PLAN-0075 debt closed in passing:**
+> `test_procurement_requester_cannot_self_approve` was the ONE test AC-8 left
+> on the plain-executor bypass (its 2 siblings were migrated, their docstrings
+> say so) — re-harnessed onto `seed_operate_waiting_human_run`, dead cluster
+> removed. Plus a **PR-3 honesty gap** on the step PR-4 touches: supply_chain
+> `assess` still claimed it "derives the excursion severity" — `enrich` has
+> owned it since PR-3. draft≠review≠verify: Code authored + verified
+> (oracle-first); Cray ratified the `selected_qty` refinement + merged; this
+> reconcile = `status-scribe` → Code R2. Full offline suite **2822 passed / 7
+> skipped** (2810 + the oracle's 12); ruff check + format clean; merge-tree
+> parity verified (`git diff 88e6e11 09714ea` empty); deterministic-offline (no
+> MS-S1 / host-state / DB). **PLAN-0078 stays `Status: Proposed`** (never
+> flip-then-edit). **PR-5 is NOT blocked by PR-4** — its dependency was PR-3,
+> which landed: `derivation_hash` retirement + F-PIN marker rewrite +
+> PLAN-0076 T2 close. Post-merge: main=`09714ea`; 0 open PRs; loop-dispatcher
+> DISABLED; MS-S1 idle; dev Postgres UP. Commits: `fc17d02` (oracle) →
+> `88e6e11` (flip) → `09714ea` (#775 merge, HEAD).
+
+### Recent Decisions row removed — 2026-07-16 (s137 — the 5th vertical `building_materials` scaffolded as a Tier-1 Mirror + the `GET /procedures` spec-less 500 fix, #765) [rotated 2026-07-17, session-145 reconcile — 10-row RD window]
+
+> **Archivist's note (session-145 reconcile).** The row below ends
+> `Full narrative: the Session-137 CF block above`. That pointer was already
+> **stale in place before this rotation**: the s137 CF block was itself rotated
+> out at the session-142 reconcile, so "above" stopped resolving then, and the
+> s144 R4 split subsequently moved the block into this chain. The row is
+> preserved **verbatim as removed** — R4 is move-never-rewrite, and the text was
+> accurate when it was written. To find the block: **grep
+> `docs/status-archive/`, not a filename** — which file holds it is an artifact
+> of where the ~192 KB bar fell (the naming rule + this exact caveat are now
+> canon in `docs/runbooks/memory-architecture.md` §R4, recorded by #792). This
+> is the second archivist's note in this archive for the same cause; the rule
+> exists so there need not be a third.
+
+| 2026-07-16 | **s137 — the 5th vertical `building_materials` scaffolded as a Tier-1 Mirror (ADR-0015 D2) for governed customer CREDIT (#765, `feat`), from a hand-authored GUESSED OCT-shaped ontology; + the latent `GET /procedures` 500 it exposed + fixed** — the reshape is the point: the monitored Asset is a COMMERCIAL entity, so the engine governs a **commercial** decision, not only a physical asset _[the "2nd `doa_tier` signature" framing SUPERSEDED s138/#767: AT-2 is N=2 since s131, so this would be signature #3]_. **The bug (the real find):** `GET /procedures` called `load_procedures` UNCONDITIONALLY → a scaffolded mirror with no `procedures.yaml` 500'd the read surface for EVERY vertical; fix = an explicit `procedures_path().exists()` skip + a self-cancelling guard. **Scope honesty: Tier-1 Mirror ONLY — no spec, no governed-credit hero.** Suite **2803 passed / 7 skipped**. Full narrative: the Session-137 CF block above | `c52c1ed` (HEAD, #765 merge) / `1d523a3` (scaffold + fix) / `verticals/building_materials/**` (guessed OCT ontology + adapter + `echo` handlers, no spec) + `services/api/**` (`GET /procedures` exists-skip) + `tests/**` (`test_procedures_skips_discovered_vertical_without_a_spec`) |
