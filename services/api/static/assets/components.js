@@ -54,6 +54,9 @@
     bolt: '<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/>',
     grid: '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
     receipt: '<path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6"/>',
+    // `person` is the trace-badge HUMAN actor glyph (PLAN-0080 L-4). Deliberately not
+    // `check` — check already means "Approve"/"Dispatched" on the action buttons.
+    person: '<circle cx="12" cy="8" r="3.5"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/>',
     dot: '<circle cx="12" cy="12" r="4"/>'
   };
   function icon(name, attrs) {
@@ -142,12 +145,34 @@
   }
 
   /* ---- reasoning trace stepper ---- */
-  function kindClass(kind) {
-    const k = String(kind).toLowerCase();
-    if (k.includes('rule')) return 's-warn';
-    if (k.includes('llm') || k.includes('infer')) return 's-info';
-    if (k.includes('ontology') || k.includes('query')) return 's-ok';
-    return 's-neutral';
+  // The attribution channel. A kind resolves against the ONE registry in
+  // trace-kinds.js (PLAN-0080 AC-1) — no substring sniffing, which was dishonest in
+  // BOTH directions: it left 14 of 16 procedure-engine kinds unattributed AND
+  // coloured `scored_rule_selected` as if it were the recommender's `rule_check`.
+  // An unknown kind degrades VISIBLY (AC-4): raw token, `unmapped` style, and NO
+  // actor claimed — asserting an attribution we do not have is the exact dishonesty
+  // this replaces.
+  function traceKind(kind) {
+    const raw = String(kind == null ? '' : kind);
+    const e = (window.OCT_TRACE_KINDS || {})[raw];
+    if (!e) return { label: raw, cls: 'unmapped', actor: 'unknown', unmapped: true };
+    return { label: e.label, cls: e.cls, actor: e.actor, unmapped: false };
+  }
+  // colour = mechanism (theme.css semantics), glyph = actor (L-4). `data-actor` is the
+  // probe-able channel: icon() silently falls back to `dot` for an unknown name, so the
+  // SVG alone cannot be asserted against.
+  function traceBadge(kind, opts) {
+    opts = opts || {};
+    const t = traceKind(kind);
+    const glyph = (window.OCT_TRACE_ACTOR_GLYPH || {})[t.actor];
+    const el = h('span', {
+      class: 'badge ' + t.cls,
+      style: Object.assign({ textTransform: 'none' }, opts.style || {}),
+      title: t.unmapped ? 'unmapped trace kind — raw engine token' : String(kind),
+      dataset: { actor: t.actor }
+    }, t.label);
+    if (glyph) el.insertBefore(icon(glyph, { width: 11, height: 11 }), el.firstChild);
+    return el;
   }
   function reasoningTrace(steps) {
     const wrap = h('ol', { class: 'trace' });
@@ -156,12 +181,12 @@
       const detailBox = hasDetail ? h('div', { class: 'trace-detail' }, kvDump(s.detail)) : null;
       const item = h('li', { class: 'trace-step' }, [
         h('div', { class: 'trace-rail' }, [
-          h('span', { class: 'trace-node ' + kindClass(s.kind) }, String(i + 1)),
+          h('span', { class: 'trace-node ' + traceKind(s.kind).cls }, String(i + 1)),
           h('span', { class: 'trace-line' })
         ]),
         h('div', { class: 'trace-body' }, [
           h('div', { class: 'trace-top' }, [
-            h('span', { class: 'badge ' + kindClass(s.kind), style: { textTransform: 'none' } }, s.kind),
+            traceBadge(s.kind),
             s.step_id ? h('span', { class: 'faint mono', style: { fontSize: '10.5px' } }, s.step_id) : null,
             hasDetail ? h('button', { class: 'trace-toggle', onClick: (e) => {
               const open = item.classList.toggle('open');
@@ -214,6 +239,6 @@
   window.OCT = window.OCT || {};
   Object.assign(window.OCT, {
     h, clear, icon, badge, typeTag, entityChip, fmtValue, fmtTimestamp, detailRows,
-    reasoningTrace, kvDump, loadingState, errorState
+    reasoningTrace, traceKind, traceBadge, kvDump, loadingState, errorState
   });
 })();

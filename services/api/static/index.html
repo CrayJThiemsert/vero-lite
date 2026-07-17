@@ -11,7 +11,7 @@
        Same-origin local query string — no CDN, offline-safe: the static server
        serves the file and ignores the query, so the cached ?v=<token> URL is
        reused offline with zero external request (AC-12). -->
-  <link rel="stylesheet" href="assets/theme.css?v=c24" />
+  <link rel="stylesheet" href="assets/theme.css?v=c37" />
   <link rel="stylesheet" href="assets/views.css?v=c24" />
   <link rel="stylesheet" href="assets/story.css?v=c24" />
   <link rel="stylesheet" href="assets/hero.css?v=c35" />
@@ -36,15 +36,18 @@
   <!-- data + logic (order matters) — ?v= token shared with the CSS above -->
   <script src="assets/mock.js?v=c24"></script>
   <script src="assets/api.js?v=c35"></script>
-  <script src="assets/components.js?v=c29"></script>
+  <!-- trace-kinds MUST precede components.js: it defines window.OCT_TRACE_KINDS, the
+       ONE registry components.js traceKind() reads (PLAN-0080 AC-1). -->
+  <script src="assets/trace-kinds.js?v=c37"></script>
+  <script src="assets/components.js?v=c37"></script>
   <script src="assets/motion.js?v=c24"></script>
   <script src="assets/llm-control.js?v=c24"></script>
   <script src="assets/view-map.js?v=c24"></script>
   <script src="assets/view-anomaly.js?v=c24"></script>
   <script src="assets/view-ask.js?v=c24"></script>
-  <script src="assets/view-flow.js?v=c24"></script>
+  <script src="assets/view-flow.js?v=c37"></script>
   <script src="assets/intake-view.js?v=c24"></script>
-  <script src="assets/view-story.js?v=c25"></script>
+  <script src="assets/view-story.js?v=c37"></script>
   <script src="assets/gate-fixture.js?v=c24"></script>
   <script src="assets/intake-procedures.js?v=c24"></script>
   <script src="assets/view-procedures.js?v=c25"></script>

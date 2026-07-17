@@ -66,19 +66,24 @@
      reasoning traces map to REAL engine kinds (ADR-010 IN-4) — the
      AC-6/AC-9 honesty anchor reused by scene 2 (card) + scene 3 (DAG).
      ============================================================ */
+  /* PLAN-0080 Step 3: these are the CANONICAL engine kinds, not demo shorthand. They
+     used to read 'query'/'rule'/'llm', which only coloured correctly because the old
+     substring sniff matched them — the ":66" honesty claim above was aspirational.
+     The label map is exactly the engine vocabulary (no demo aliases), so the story
+     view now renders the same labels an operator sees on a real run. */
   const TRACE = {
     happy: [
-      { kind: 'query', step_id: 'ingest', summary: 'Read DO, biomass and aerator state for pond P-12', detail: { stream: 'do_mg_l', latest: 4.6 } },
-      { kind: 'rule', step_id: 'trend-guard', summary: 'DO trend −0.16 mg/L·min over 18 min — projected to cross the 4.0 action line in ~70 min', detail: { action_line: 4.0, eta_min: 70 } },
-      { kind: 'query', step_id: 'cross-check', summary: 'Probe-B reads 4.7 mg/L (Δ0.1); calibration 6 d → sensor confidence HIGH', detail: { probe_b: 4.7, calib_days: 6, confidence: 'HIGH' } },
-      { kind: 'llm', step_id: 'compose', summary: 'Composed action: pre-start Aerator-A, ramp to 60%, notify shift-lead', detail: { confidence: 0.86, ramp: '60%' } }
+      { kind: 'ontology_query', step_id: 'ingest', summary: 'Read DO, biomass and aerator state for pond P-12', detail: { stream: 'do_mg_l', latest: 4.6 } },
+      { kind: 'rule_check', step_id: 'trend-guard', summary: 'DO trend −0.16 mg/L·min over 18 min — projected to cross the 4.0 action line in ~70 min', detail: { action_line: 4.0, eta_min: 70 } },
+      { kind: 'ontology_query', step_id: 'cross-check', summary: 'Probe-B reads 4.7 mg/L (Δ0.1); calibration 6 d → sensor confidence HIGH', detail: { probe_b: 4.7, calib_days: 6, confidence: 'HIGH' } },
+      { kind: 'llm_inference', step_id: 'compose', summary: 'Composed action: pre-start Aerator-A, ramp to 60%, notify shift-lead', detail: { confidence: 0.86, ramp: '60%' } }
     ],
     fault: [
-      { kind: 'query', step_id: 'ingest', summary: 'Read DO, biomass and aerator state for pond P-12', detail: { stream: 'do_mg_l', latest: 4.6 } },
-      { kind: 'rule', step_id: 'trend-guard', summary: 'DO trend −0.16 mg/L·min over 18 min — projected to cross the 4.0 action line in ~70 min', detail: { action_line: 4.0, eta_min: 70 } },
-      { kind: 'query', step_id: 'cross-check', summary: 'Probe-B reads 4.7 mg/L (Δ0.1); calibration 6 d → sensor confidence HIGH', detail: { probe_b: 4.7, calib_days: 6, confidence: 'HIGH' } },
-      { kind: 'llm', step_id: 'compose', summary: 'LLM compose returned low confidence (0.41 < 0.70 gate) — not trusted; rerouting to the deterministic fail-safe', detail: { confidence: 0.41, gate: 0.70, decision: 'reroute' } },
-      { kind: 'rule', step_id: 'fail-safe', summary: 'Deterministic fail-safe SOP-DO-01: DO<4.6 & trend↓ ⇒ Aerator-A ON 100%', detail: { sop: 'SOP-DO-01', output: 'Aerator-A ON 100%' } }
+      { kind: 'ontology_query', step_id: 'ingest', summary: 'Read DO, biomass and aerator state for pond P-12', detail: { stream: 'do_mg_l', latest: 4.6 } },
+      { kind: 'rule_check', step_id: 'trend-guard', summary: 'DO trend −0.16 mg/L·min over 18 min — projected to cross the 4.0 action line in ~70 min', detail: { action_line: 4.0, eta_min: 70 } },
+      { kind: 'ontology_query', step_id: 'cross-check', summary: 'Probe-B reads 4.7 mg/L (Δ0.1); calibration 6 d → sensor confidence HIGH', detail: { probe_b: 4.7, calib_days: 6, confidence: 'HIGH' } },
+      { kind: 'llm_inference', step_id: 'compose', summary: 'LLM compose returned low confidence (0.41 < 0.70 gate) — not trusted; rerouting to the deterministic fail-safe', detail: { confidence: 0.41, gate: 0.70, decision: 'reroute' } },
+      { kind: 'rule_check', step_id: 'fail-safe', summary: 'Deterministic fail-safe SOP-DO-01: DO<4.6 & trend↓ ⇒ Aerator-A ON 100%', detail: { sop: 'SOP-DO-01', output: 'Aerator-A ON 100%' } }
     ]
   };
   const PROP = {
