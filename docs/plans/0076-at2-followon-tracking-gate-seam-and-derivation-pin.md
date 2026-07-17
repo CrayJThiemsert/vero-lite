@@ -127,15 +127,22 @@ filing this stub at all.
 
 ### (B) F-PIN's remainder — after the AC-13 provenance fold-in (SD-5)
 
-**What landed (PLAN-0075 AC-13 — PROVENANCE-ONLY).** supply_chain's
-`_DOSE_LADDER` + `_TOP_SEVERITY` are hashed into the run's governance
-snapshot via a live per-vertical provider (`registry.py:39`
-`DerivationHashProvider`; `cold_chain_assess.py:82` `derivation_hash()`;
-threaded through `build_governance_snapshot(procedure, *,
-derivation_hash=None)`, `governance_pin.py:56-58`). This buys (i)
-**mid-flight tamper-evidence** (a run-start↔resolve derivation mismatch
-fails closed at the pin) and (ii) **audit provenance** (which derivation
-governed THIS run). **It does not close F-PIN.**
+**What landed (PLAN-0075 AC-13 — PROVENANCE-ONLY), and what SUPERSEDED it.**
+supply_chain's `_DOSE_LADDER` + `_TOP_SEVERITY` were hashed into the run's
+governance snapshot via a live per-vertical provider, threaded through
+`build_governance_snapshot`. This bought (i) **mid-flight tamper-evidence**
+(a run-start↔resolve derivation mismatch fails closed at the pin) and (ii)
+**audit provenance** (which derivation governed THIS run). **It did not
+close F-PIN.**
+
+> **SUPERSEDED 2026-07-17 by PLAN-0078 PR-5 (Step T2, CLOSED).** That
+> code-hash existed only because the derivation lived in CODE, where a
+> snapshot of the DECLARATION could not reach it. Both shipped derivations
+> are now declared data, the per-step `transform` key pins them directly,
+> and the code-hash is retired end-to-end (AC-10) — so every symbol named in
+> the paragraph above is GONE from the tree. Both guarantees (i)+(ii) are
+> preserved in declared form; see Step T2. **This is evolution, not an
+> error** — AC-13 was the right call for the world it shipped into.
 
 **What remains open (F-PIN is NOT closed — do not record it as closed
 anywhere):**
@@ -146,8 +153,13 @@ anywhere):**
    derivation BEFORE a run starts is pinned as normal, without complaint
    (`governance_pin.py` module docstring `:43-44` discloses this
    verbatim).
-2. **Procurement's imperative ฿ derivation.** `unit_price × qty` math —
-   no clean datum to hash; exactly why AC-13 EXCLUDED procurement.
+2. ~~**Procurement's imperative ฿ derivation.** `unit_price × qty` math —
+   no clean datum to hash; exactly why AC-13 EXCLUDED procurement.~~
+   **RESOLVED 2026-07-17 (PLAN-0078 PR-4, Step T2).** The premise was that
+   the ฿ math had no clean datum. Declaring it produced one: `derive_spend`
+   (`amount = mul(selected_unit_price, qty)`), which rides the pin like any
+   other declared derivation. **Item 1 above is what remains — and it is
+   the whole of what "F-PIN is open" now means.**
 
 **Honest deferral rationale (the C3 correction — the earlier "different
 axis" framing was RETRACTED; both SD-5 reviewers rejected it).** The
@@ -159,28 +171,35 @@ was exploitable by an ordinary operational user (a junior approver, no
 code change).
 
 **Proper form (load-bearing): "declare the derivation as data," NOT "hash
-more code."** `verticals/supply_chain/cold_chain_assess.py:70-71` states
-verbatim that `_DOSE_LADDER` "IS THE DATUM A TRANSFORM GRAMMAR WOULD
-DECLARE (ADR-0031 D3 row-1) — it lives in code today, and that is the
-finding, not an oversight" (constants at `:73-78`). Once the derivation is
-promoted to **declared governance data** (a transform StepKind — ADR-0031
-D3 row-1), the EXISTING pin covers it for free (the snapshot already
-serialises each step's typed `governance_content`,
-`governance_pin.py:81-85`), and a hand-rolled procurement code-hash would
-be throwaway work. **Dependency:** F-PIN's remainder is therefore
-genuinely BLOCKED-BY / folds into the future **ADR-0031 D3 row-1
-transform-grammar PLAN** (row-1's own trigger: a second vertical with
-messy-intake derived fields; case 1, procurement's `_SeedQuery` residue,
-is already on disk).
+more code." — VINDICATED, then EXECUTED (PLAN-0077 + PLAN-0078; T2 CLOSED).**
+`cold_chain_assess.py` stated verbatim that `_DOSE_LADDER` "IS THE DATUM A
+TRANSFORM GRAMMAR WOULD DECLARE (ADR-0031 D3 row-1) — it lives in code today,
+and that is the finding, not an oversight". The prediction that followed —
+promote the derivation to declared governance data and *"the EXISTING pin
+covers it for free… a hand-rolled procurement code-hash would be throwaway
+work"* — **held on both counts**: the pin needed no new mechanism, and the
+AC-13 code-hash was retired as the throwaway it was predicted to be. This is
+the reason T2 was written as a fold-in rather than a build. **Dependency
+(discharged):** F-PIN's remainder was BLOCKED-BY the ADR-0031 D3 row-1
+transform-grammar PLAN; row-1's trigger fired, PLAN-0077 shipped the grammar,
+and PLAN-0078 migrated both verticals onto it.
 
-**The standing tripwire (already in place).** The AC-13(d)
-self-cancelling marker
-`tests/services/engine/procedures/test_derivation_pin.py::test_fpin_residual_procurement_unpinned_marker`
-(`:205-224`): it passes now (supply_chain pinned, procurement un-pinned)
-and **FAILS the moment a procurement derivation hash lands**, with a
-failure message routing through PLAN-0075 SD-5 / Out of Scope — which
-point at THIS follow-on. **This PLAN is where that marker points.** The
-failing assertion is the deferral self-cancelling, not a test bug.
+**The standing tripwire — FIRED AS DESIGNED, then rewritten (T2/T3).** The
+AC-13(d) self-cancelling marker
+(`test_derivation_pin.py::test_fpin_residual_procurement_unpinned_marker`)
+asserted supply_chain-pinned + procurement-un-pinned, and was built to fail
+the moment procurement's derivation became pinnable — routing whoever hit it
+back to THIS PLAN. That is exactly what PLAN-0078 did: the deferral
+self-cancelled rather than rotted, which is the mechanism working, not a
+regression. Per **T3** the marker was **rewritten in the PLAN that closed the
+tracking it guarded** (PLAN-0078 PR-5 — never deleted, skipped, or weakened);
+`test_derivation_pin.py` now asserts the end state both derivations reached.
+
+**What still points HERE:** T1 / F-FACTORY only (its tripwires are in section
+(A)), plus the AC-6 guard-test that keeps this PLAN + its STATUS pointer
+load-bearing. F-PIN's new-run threat remains open with **no self-cancelling
+marker of its own** — by construction: no test can detect a derivation that
+changed before any run started. It is tracked by this document, deliberately.
 
 ## Acceptance Criteria
 
@@ -291,15 +310,49 @@ PLAN-0074's coordination-point enumeration; update the D3 row on landing
 (D4.4).
 
 ### Step T2: WHEN the transform-grammar PLAN opens — fold F-PIN's remainder in
-Trigger: ADR-0031 D3 row-1's case-2 (a second vertical with messy-intake
-derived fields) fires, or a design partner requires deploy-time
-derivation governance (which would also revisit the threat-tier
-rationale — a Cray call). Response: the transform-grammar PLAN promotes
-`_DOSE_LADDER`/`_TOP_SEVERITY` (and procurement's ฿ derivation) to
-declared governance data; the existing pin then covers them via
-`governance_content` for free; retire the AC-13 code-hash provider and
-update/retire the self-cancelling marker in the same PLAN. F-PIN closes
-THERE, not here.
+**STATUS: CLOSED 2026-07-17 (session 143) by PLAN-0078 PR-5** — per Step T3's
+rule that a marker may only be rewritten in the PLAN that closes the tracking
+it guards. **This closes the REMAINDER FOLD-IN ONLY. F-PIN itself is NOT
+closed** — see the "What remains open" note below, which stands unchanged.
+
+*Trigger (recorded as fired):* ADR-0031 D3 row-1's case-2 (a second vertical
+with messy-intake derived fields) fired, and PLAN-0077 shipped the transform
+grammar; PLAN-0078 then migrated both shipped verticals onto it.
+
+*Response, as executed (each leg verifiable on disk):*
+
+1. **The derivations are declared governance data.** supply_chain's
+   `_DOSE_LADDER`/`_TOP_SEVERITY` → the `enrich` transform's `map_value` bands
+   + mandatory `above` (`verticals/supply_chain/procedures.yaml`, PLAN-0078
+   PR-3); procurement's imperative ฿ → the `derive_spend` transform
+   (`verticals/procurement/procedures.yaml`, PR-4). The "no clean datum to
+   hash" premise that scoped AC-13 to supply_chain is **dissolved**, not
+   worked around.
+2. **The existing pin covers them for free** — exactly as this Step predicted:
+   `_step_governance_snapshot` pins `step.transform` canonically + by_alias
+   (`services/engine/procedures/governance_pin.py`).
+3. **The AC-13 code-hash provider is retired end-to-end** (PLAN-0078 AC-10):
+   provider, registration, the registry seam, the `governance_pin` parameter,
+   and the pass-through across all 8 files — grep-clean outside `docs/`.
+4. **The self-cancelling marker is REWRITTEN, never deleted/skipped/weakened**
+   (T3): `tests/services/engine/procedures/test_derivation_pin.py`. Its retired
+   form asserted the supply_chain-pins / procurement-does-not ASYMMETRY; that
+   premise is gone, so it now asserts the end state — every shipped derivation
+   rides the pin as declared data. The mid-flight fail-closed guarantee it
+   guarded is re-homed at full strength (the replacement drives
+   `assert_governance_pin` to its raise, incl. the unbounded top band — the
+   AC-13 drafter finding, preserved in declared form).
+
+*What did NOT close, and must not be recorded as closed:* the **new-run
+re-routing threat** (item 1 of "What remains open" below). It is an
+architectural property of per-run pinning — a fresh run on already-changed
+declared data pins the change without complaint — and is orthogonal to WHERE
+the derivation lives, so declaring the derivation could never have closed it.
+PLAN-0078 L-4 states the same. **F-PIN stays open and tracked.**
+
+*Consequence for this PLAN's own lifecycle:* T2 is discharged, T1
+(F-FACTORY) is **not** — so per T3 this PLAN does **not** archive, and the
+AC-6 guard-test stays armed.
 
 ### Step T3: Keep the tripwires honest (standing)
 Neither marker may be deleted, skipped, or weakened without closing the

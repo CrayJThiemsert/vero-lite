@@ -20,8 +20,8 @@ the derivation lived in vertical CODE (the ladder below) rather than in the decl
 no longer true. **PLAN-0078 promoted the ladder to declared data** — ``procedures.yaml``'s
 ``enrich`` transform derives ``dose_ch`` / ``ratio`` / ``excursion_severity`` / ``criticality``
 upstream of ``assess``, and the per-step governance pin covers the bands canonically
-(``governance_pin.py``). PR-5 then retired the PLAN-0075 AC-13 ``derivation_hash`` code-hash the
-CODE-side ladder had needed (AC-10).
+(``governance_pin.py``). PR-5 then retired the PLAN-0075 AC-13 code-hash the CODE-side ladder
+had needed (AC-10).
 
 **Status of the constants below — READ THIS BEFORE EDITING THEM.** :data:`_DOSE_LADDER`,
 :data:`_TOP_SEVERITY`, :class:`SeverityDerivation` and :func:`derive_excursion_severity` are

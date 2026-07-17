@@ -270,8 +270,8 @@ def assert_governance_pin(run: PipelineRun, procedure: Procedure, *, context: st
     A vertical's DERIVED authority quantities are covered here through their declaring
     step's pinned ``transform`` (PLAN-0077/0078): a mid-flight edit to a declared
     severity ladder or spend derivation changes the config hash and trips this same
-    refusal. PLAN-0078 PR-5 retired the PLAN-0075 AC-13 ``derivation_hash`` side-channel
-    once the last code-side derivation became declared data (AC-10).
+    refusal. PLAN-0078 PR-5 retired the PLAN-0075 AC-13 code-hash side-channel once the
+    last code-side derivation became declared data (AC-10).
     """
     if run.governance_hash is None:
         return
