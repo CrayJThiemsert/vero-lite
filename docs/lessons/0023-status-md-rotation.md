@@ -117,8 +117,12 @@ Otherwise the agent will faithfully execute its way into this incident.
   canonical rule (R1–R6) this lesson motivates; placement per the ADR-0017 D5
   knowledge-placement rule (durable learning → this lesson; canonical
   operational rule → the runbook that owns the Tier model).
-- `docs/status-archive/2026-h1-current-focus.md` — the first rotation artifact
-  (sessions ≤46), created by the acute fix (#243), path ratified by policy R4.
+- `docs/status-archive/2026-h1-current-focus.md` — the first rotation artifact,
+  created by the acute fix (#243), path ratified by policy R4. _[Two corrections,
+  2026-07-17: it is now the base of a **chain** (`-b`/`-c` continuations) after
+  the session-144 R4 split, so grep the archive directory rather than this
+  filename; and "sessions ≤46" was never quite true — later deep-rotates appended
+  sessions 116–128 to it.]_
 - `.claude/agents/status-scribe.md` — carries the superseded rule 5 wording this
   lesson corrects; Code hardens per the dispatch follow-on (terse frontmatter,
   prune-to-window, surgical reads).

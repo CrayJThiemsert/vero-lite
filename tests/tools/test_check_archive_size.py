@@ -140,9 +140,14 @@ def test_live_archives_are_within_cap(guard: ModuleType) -> None:
     second.
 
     Asserted against the CAP, not the split trigger, deliberately — mirroring R1, whose
-    live test pins the hard ceiling and lets the soft target warn. ``2026-h1-current-focus.md``
-    sits over the trigger and under the cap; whether to split it too is Cray's open call,
-    and pinning the trigger here would pre-empt it."""
+    live test pins the hard ceiling and lets the soft target warn. A file may sit over the
+    trigger without being wrong: the ``session 25`` block is 162,823 B and indivisible, so
+    whichever file holds it is large by necessity, not by packing choice.
+
+    _(Kept at the cap after the session-144 splits took every live archive under the
+    TRIGGER too. Tightening this to the trigger would pin a property that is currently
+    true by luck of where the blocks fell, and would turn the next legitimate oversized
+    block into a spurious failure.)_"""
     archive = REPO_ROOT / "docs" / "status-archive"
     assert archive.is_dir(), "the archive directory moved — R4's rotation target"
     oversized = {

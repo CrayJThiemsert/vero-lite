@@ -4,7 +4,7 @@ session: 145
 current_batch: "s145 — Option-A frontmatter bump only. Landed since s144: #788 (PLAN-0080 draft) + #789 (R4 archive guard). Body/blocks deferred — the new guard blocks rotation."
 current_actor: code
 blocked_on: "Nothing blocking. The R4 split LANDED — guard GREEN, base archive now 22,185 B. The full-body reconcile s145 deferred is UNBLOCKED. Loop-dispatcher DISABLED; MS-S1 COLD; dev Postgres UP."
-next_action: "Full-body reconcile (s144+s145 bodies deferred). Open Cray call: split 2026-h1-current-focus.md (258,346 B — over R4's trigger, under cap, so it warns forever) or accept the warning."
+next_action: "Full-body reconcile (s144+s145 bodies deferred) — one session should own the STATUS lane for it. R4 is fully clean: both archives split, guard SILENT, no file over the ~192 KB trigger."
 head_commit: 96ef1c4
 recent_commits: [96ef1c4, ba12e1b, b369fa6, f444cd1, 694e8d7, a73cf1e, 4397081, d8db032, 2340de3, 49ff275]
 ---
@@ -266,7 +266,7 @@ recent_commits: [96ef1c4, ba12e1b, b369fa6, f444cd1, 694e8d7, a73cf1e, 4397081, 
 > Prior rotation notes (through the session-143 reconcile) are consolidated
 > here (R4). Per the STATUS.md Rotation Policy (R1/R2/R4)._
 
-> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R7)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout: sessions <=46 in `2026-h1-current-focus.md`; 2026-06-10 onward in a **sibling chain whose letters ascend with time** — `2026-h1b` → `2026-h1c` → `2026-h1d` → `2026-h1e` → `2026-h1f` → `2026-h1-status.md` (the base; rotations append THERE). **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split.]_
+> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R7)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split.]_
 
 ## Prior focus (archived)
 

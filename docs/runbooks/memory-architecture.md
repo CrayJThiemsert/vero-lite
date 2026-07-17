@@ -313,13 +313,40 @@ entirely; see Lesson #23 §3.)
   greppable, tracked archive costs one paste at rotation time and keeps Tier-3
   lookup cheap. (Git history remains the ultimate Tier-3 record either way —
   nothing is ever lost by rotation.)
-- **File cadence:** the existing `2026-h1-current-focus.md` is ratified as-is.
+- **File cadence:** the existing `2026-h1-current-focus.md` is ratified as-is
+  — the *name*, which the session-144 split preserved for the base while adding
+  `-b`/`-c` continuations under the naming rule below. _[Its self-description
+  "sessions ≤46" was already false before that split: later deep-rotates had
+  appended sessions 116–128 to its bottom, leaving one file carrying two
+  orderings. The chain now gives each file one coherent window.]_
   From 2026 H2: one file per half-year, `docs/status-archive/<YYYY>-h<N>-status.md`,
   carrying TWO sections — rotated Current Focus blocks AND rotated Recent
   Decisions rows (newest at top, each tagged with its rotation date).
 - **Archive size escape:** archives are Tier-3 (grep + windowed reads only,
   never whole-file Read), but stay under the 256 KB byte cap for sanity: if a
-  half-year file would exceed **~192 KB**, start a `-b` continuation file.
+  half-year file would exceed **~192 KB**, start a continuation file.
+  **Enforced since 2026-07-17 by `tools/check_archive_size.py`** (#789): warns
+  over ~192 KB, **fails over 256 KB** at the commit boundary, with
+  `test_live_archives_are_within_cap` as the binding half (pre-commit is
+  skippable and CI does not run it; that test is not).
+- **Continuation naming (Cray-ratified, session 144).** **Letters ascend with
+  time; the base file always holds the RECENT window; older content spills into
+  the next letter.** So a chain reads `<YYYY>-h<N>b` → `-h<N>c` → … →
+  `<YYYY>-h<N>-status.md` (base, newest — **rotations append THERE**). This
+  extends the original text, which said only "start a `-b` continuation" and
+  assumed one split would ever suffice; by session 144 the recent-window file
+  had reached **592,577 B (2.26x the cap)** and needed four continuations, not
+  one. Corollary, and the reason `-b` is not simply reused as the spill target:
+  `-b` holds content OLDER than the base's, so spilling newer sections into it
+  would break the chronology the letters encode.
+  **Which file holds a given block is not stable information — grep the
+  directory, never cite a continuation by name from outside the archive.** A
+  split moves blocks between files; every pointer that named one is rot the
+  moment the bar moves (session 144 broke three of its own this way and had to
+  repair them in the same PR).
+  Live chains: `2026-h1b/c/d/e/f-status.md` → `2026-h1-status.md`; and the
+  separate Current-Focus-only `2026-h1b/c-current-focus.md` →
+  `2026-h1-current-focus.md`. Same scheme, two distinct corpora.
 - Deleting STATUS content **without** archiving remains forbidden (the
   `status-scribe` adversarial-hardening posture is amended to "rotation per
   this policy is the sanctioned path", not abandoned).
