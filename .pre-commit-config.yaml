@@ -79,6 +79,19 @@ repos:
         files: ^docs/STATUS\.md$
         pass_filenames: false
 
+      # Rotation policy R4 (archive size escape): docs/status-archive/*.md stay
+      # under a 256 KB cap; over ~192 KB, start a continuation file. R4 was the
+      # one size-bearing rule with no mechanism (its matrix guard column read
+      # "—") and rotted to a 3x breach by s144. files:-scoped, NOT always_run:
+      # a byte cap can only be breached by writing to the file it caps, unlike
+      # R7 below, whose violation can be authored anywhere.
+      - id: archive-size-guard
+        name: status-archive size guard (R4 — 256 KB cap / 192 KB split)
+        entry: uv run python tools/check_archive_size.py
+        language: system
+        files: ^docs/status-archive/.*\.md$
+        pass_filenames: false
+
       # Rotation policy R7: no tracked artifact may cite docs/STATUS.md by line
       # number — STATUS is state (inverts CLAUDE.md §1 as an authority) and
       # R2/R6 re-prune it every reconcile, so the anchor rots by construction.

@@ -396,7 +396,7 @@ active PLAN launder a violation simply by being archived.
 | R1 ceiling | — (no Bash) | `stat` check | **fail >64 KB** |
 | R2 window | **prunes every reconcile** | reviews diff | — |
 | R3 frontmatter | **writes terse** | reviews diff | — |
-| R4 archive | emits rotated text | **appends to archive file + commits** | — |
+| R4 archive | emits rotated text | **appends to archive file + commits** | **fail >256 KB** |
 | R5 surgical reads | **binding contract** | — | — |
 | R6 cadence | per-reconcile | serializes spawns | — |
 | R7 no line-refs | cites by section | reviews diff | **fail on `STATUS.md:<n>`** |
