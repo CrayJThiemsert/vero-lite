@@ -25,6 +25,28 @@ Scope + limits, stated honestly:
   the same reason and is **not** detected — compare those ``sorted``.
 * An in-memory ``RunResult`` is unaffected: the orchestrator appends ``step_results`` in
   execution order, so ``result.step_results[-1]`` is legitimate and is not scanned.
+
+Why this guards the hazard instead of removing it — the deferral, and why it STANDS:
+
+A monotonic per-run ``sequence`` column on ``step_results`` would remove this hazard at its
+ROOT rather than guard against it, and that remains the right fix. It needs a DB migration,
+so it deserves its own PLAN (PLAN-0062-independent) — none is drafted. Until one is,
+``load_run``'s wall-clock ``ORDER BY created_at`` is **unchanged by design**: the deferral
+STANDS, and this guard is what holds the line in the meantime.
+
+What makes the deferral tolerable rather than urgent is that both surviving wall-clock
+orderings are **DISPLAY-ONLY**. #678 moved the production consumers (``resume_run``,
+``GET /runs/{id}``) off list position and onto STATUS selection; what still sorts on a
+wall clock is:
+
+* ``load_run`` itself — ``order_by(StepResult.created_at, ...)`` in
+  ``services/engine/procedures/persistence.py`` (the ordering this guard covers).
+* the run list — ``order_by(PipelineRun.started_at.desc())`` in
+  ``services/api/routers/runs.py`` (a newest-first read-only projection).
+
+Both render rows a human reads; neither decides what a run does next. That is the whole
+of the deferral's safety margin — if a correctness path ever starts depending on either
+ordering, the sequence-column PLAN stops being optional.
 """
 
 from __future__ import annotations

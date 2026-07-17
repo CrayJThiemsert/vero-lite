@@ -226,6 +226,11 @@ def suspended_step_result(step_results: list[StepResult]) -> StepResult | None:
     step. Resuming from it re-runs an already-executed gate (duplicate side effects)
     or fails closed on its undecided proposals.
 
+    That ordering is left on the wall clock **by design** — the root fix (a monotonic
+    per-run ``sequence`` column) needs a migration and its own PLAN. The deferral and
+    why it stands are recorded in ``tests/services/db/test_load_run_ordering_guard.py``,
+    which also statically forbids the positional read across the tree.
+
     Fails CLOSED on ambiguity. A run advances one gate at a time, so at most one
     step result is unresumed; two means the persisted rows are inconsistent. Picking
     either would resume from the wrong step — firing a handler a human never
