@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Ratified:** 2026-06-29 (Jirachai Thiemsert / Cray, session 87) — all 6 Open Questions adjudicated as-recommended; see § Open Questions.
-**Amendment log:** 2026-07-15 — **RATIFIED (Cray, session 132)**: **D4 gains a 4th fail-closed condition** — tier-authority at the gate (the acting approver must hold the **ladder-resolved tier role**; a declared-authority step with **no persisted verdict** also fails closed) + the `RoleId`-rank stance (rank = **authored data** via cumulative role sets — NO engine rank primitive; reconciles D5's "resolved role rank" phrasing) + the every-verdict fan-out rule + the gate-time **actor-named** audit tie (OQ-5 minimal shape preserved). Full text in §"Amendment (2026-07-15)" at the end of this file. Status **stays Accepted**. Implementing PLAN: PLAN-0075.
+**Amendment log:** 2026-07-15 — **RATIFIED (Cray, session 132)**: **D4 gains a 4th fail-closed condition** — tier-authority at the gate (the acting approver must hold the **ladder-resolved tier role**; a declared-authority step with **no persisted verdict** also fails closed) + the `RoleId`-rank stance (rank = **authored data** via cumulative role sets — NO engine rank primitive; reconciles D5's "resolved role rank" phrasing) + the every-verdict fan-out rule + the gate-time **actor-named** audit tie (OQ-5 minimal shape preserved). Full text in §"Amendment (2026-07-15)" at the end of this file. Status **stays Accepted**. Implementing PLAN: PLAN-0075. **Pointer (2026-07-18):** superseded in part by **ADR-0033** (shared-ontology mechanism) — OQ-6 CLOSED by extraction; see §"Pointer note (2026-07-18)" at the end of this file (appended, so this file's existing line anchors stay stable).
 **Date:** 2026-06-29
 **Deciders:** Jirachai Thiemsert (founder) — ratifies the construct AND adjudicates the Open Questions (§ Open Questions)
 **Related:** ADR-0025 (the AT-2 / managerial-process layer — **this ADR IMPLEMENTS its D5/D6 semantics; it does NOT re-decide them** — the principal-identity SoD, the four D6 hard guarantees, the fail-closed-on-alias-collapse rule are FIXED here, never weakened; ADR-0025 D5/D6 + the four hard guarantees, `:84-97`; Alternative 5 = role-label SoD REJECTED, `:179-182`; D8 red-team fixture 3 = identity-collapse + un-gated-audit → fail closed, `:110-112`); ADR-0008 (the YAML ontology grammar — the home for the first-class `Person`/`Principal` resolvable object); ADR-0007 (the `RecommendedAction` approve→execute write gate — **the only external write path, untouched**: run-enforcement routes / suspends / blocks / audits, it does **not** issue the real PO); ADR-016 (the governed procedure engine — D2 the `Step`/`Procedure`/`Agent` grammar; the `StepExecutor` Protocol + the orchestrator run path this ADR's A1b executors extend, **not a new engine**; D2-A4 the descriptive `facet:` stays non-authoritative); ADR-0024 D3 (the "governed ≠ generated" partition — principals + role bindings are **H** human-author-only governance data, never model-emitted); ADR-006 D4 (Rule of Three — the gate on the `Person` core-vs-per-vertical scope, OQ-6); ADR-011 (the deferred audit-framework — OQ-5 keeps the human-principal field minimal so it does not pre-empt it); ADR-009 D1/D2 (the in-harness `plan-drafter` drafts ungated, only Code commits); ADR-012 D4.3 / ADR-013 (author≠reviewer; phased authority). Consuming work: a follow-on PLAN (its own dispatch) for the A1a→A1b build.
@@ -194,3 +194,29 @@ The enforcement reads the **persisted engine-written verdicts** on the gated ste
 The authority `GovernedDecision` (control kind `doa_tier` / `severity_tier`) is emitted at **gate time**, after the tier-authority check passes, naming the principal who **ACTED** — the persisted audit never names an authority who never acted. The ladder's routed-to record stays **trace-level** (the run's reasoning trace keeps "resolved to '<person>'" as an honest routing record). The **OQ-5 minimal shape is preserved** — no envelope change: `GovernedDecision` remains one required principal key + the governing-control reference.
 
 *Amendment drafted by the in-harness `plan-drafter` subagent (ADR-013 D1 phased authority; author≠reviewer separation INTACT per ADR-012 D4.3); the four decisions ratified by Cray (session 132, adjudicating PLAN-0075 SD-1/SD-2/SD-4/SD-6); Code R2-reviews + commits via a `docs/*` PR (ADR-009 D2). Implementing PLAN: `docs/plans/0075-at2-authority-enforcement.md`. AI-assisted; no `Co-Authored-By` per CLAUDE.md §7.*
+
+---
+
+## Pointer note (2026-07-18) — superseded in part by ADR-0033; OQ-6 CLOSED by extraction
+
+> **OQ-6 is CLOSED.** The per-vertical-`Person` deferral OQ-6 resolved
+> (`:116` — per-vertical now + "an enforceable N≥2 re-evaluation flag for
+> the shared/core extraction") has run its designed course: the re-trigger
+> effectively FIRED (two principal-bearing verticals — procurement,
+> supply_chain), and **ADR-0033** — codifying Cray's SD-E=(b-ii)
+> ratification (s147) — performs the shared/core extraction: `Person` is
+> promoted to an ADR-0008 `object_type` at the shared `core` home, passing
+> **through** (not around) the `:164` out-of-scope gate that deferred
+> exactly this behind the N≥2 re-trigger. The `:95` ontology-layer framing
+> and the Implementation-Note-1 "`Person`/`Principal` ontology object
+> (ADR-0008 grammar)" framing (`:157`) are HONORED, not reversed.
+>
+> **One consequence is SUPERSEDED:** the "Low blast radius" line (`:89` —
+> "introduces no new generation surface … leaves the ADR-0008 ontology
+> codegen path untouched") no longer holds — ADR-0033 IS a new generation
+> surface (the shared-doc pre-pass + a committed shared `Person`
+> module/ORM + a `person` table + Alembic migration, SD-I=(b)). Every other
+> decision in this ADR — D1–D6, the 2026-07-15 amendment, the
+> run-enforcement semantics — **stands unchanged**. Implementing PLAN for
+> the extraction: PLAN-0082. This note is appended (not inserted) so
+> existing `file:line` citations of this ADR remain valid.

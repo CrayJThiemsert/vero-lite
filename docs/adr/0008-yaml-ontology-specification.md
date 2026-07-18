@@ -3,7 +3,7 @@
 **Status:** Accepted
 **Date:** 2026-05-13
 **Deciders:** Jirachai Thiemsert (founder)
-**Related:** ADR-006 (vertical plugin architecture, D1 + pattern 1), ADR-007 (OCT engine contracts, paired), CLAUDE.md §3
+**Related:** ADR-006 (vertical plugin architecture, D1 + pattern 1), ADR-007 (OCT engine contracts, paired), CLAUDE.md §3. **Extended by ADR-0033 (2026-07-18)** — shared-ontology mechanism; see §"Pointer note (2026-07-18)" at the end of this file (appended, so this file's existing line anchors stay stable).
 
 ## Context
 
@@ -201,3 +201,26 @@ Paired with ADR-007. PLAN-003 (Batch 4) will:
 - Write `services/engine/code_generator.py` (emit 5 artifacts)
 - Write `verticals/energy/ontology/energy_v0.yaml` (first concrete
   instantiation — the actual moat-building task)
+
+---
+
+## Pointer note (2026-07-18) — extended by ADR-0033 (shared-ontology mechanism)
+
+> **Extended, NOT amended in place** — D2/D3/D5 above stand as written for
+> per-vertical docs. **ADR-0033** codifies the shared/core ontology
+> construct: a repo-level shared home (`ontology/core_v0.yaml`) with the
+> reserved `core` namespace token (a SEMANTIC reservation — the L1 namespace
+> pattern already admits the token; enforcement is grammar prose +
+> validator/CLI convention, ADR-0033 D1); the explicit `imports:` grammar
+> key + shared-doc pre-pass resolution with qualified `core.<Type>` `ref`
+> targets (ADR-0033 D2); and a constrained-collection type-system extension
+> the D3 table cannot express — a `set` type with `items:` +
+> `constraints: {min_length}` plus a `closed:` strict-object knob
+> (ADR-0033 D3). The D3 deferral "`shared property` … Add when 3+ verticals
+> request them" (`:79-80`) is consciously re-argued in ADR-0033 D6 **for
+> `Person` only** (the ADR-0026 OQ-6 N≥2 re-trigger fired; the mechanism
+> itself ships at N=1 consumer, consciously accepted — not genericized).
+> Known drift, recorded there too (ADR-0033 D7): the D5 5-artifact table
+> reflects the v0 baseline; the shipped generator emits 7 artifacts (ORM at
+> a committed destination + context pack). This note is appended (not
+> inserted) so existing `file:line` citations of this ADR remain valid.
