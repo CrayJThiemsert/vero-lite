@@ -68,7 +68,17 @@ def fastenal_hero_procedure() -> tuple[Procedure, Agent]:
 
 
 async def load_fastenal_principals(adapter: FastenalCsvAdapter | None = None) -> list[Person]:
-    """The Fastenal principals from ``person.csv`` (the SoD / DOA-approver identities)."""
+    """The Fastenal principals from ``person.csv`` (the SoD / DOA-approver identities).
+
+    This is procurement's SECOND, DELIBERATE roster source — the Fastenal-LIVE-run demo's
+    principals (English roles, ฿200,000 Manager ceiling), DISTINCT from the shipped vertical's
+    ``procedures.yaml`` ``principals:`` roster (Thai DOA tiers, the default demo). The two are NOT
+    redundant copies: different ``person_id``s, role vocabularies, and demo flows (this one runs
+    only via ``hero_demo/run.py``). PLAN-0082 Step 5 unified the ``Person`` TYPE — both rosters now
+    instantiate the ONE shared generated ``core.Person`` (``Person`` here is ``spec.Person`` = the
+    re-exported shared type) — but the DATA stays two per-org rosters (AC-5 re-scope, Cray s150:
+    neither is retired; retiring either would delete a demo, which AC-5's own "verdicts may not
+    change" bar forbids)."""
     adapter = adapter or FastenalCsvAdapter()
     return [
         Person(person_id=row["person_id"], name=row["name"], roles=frozenset(row["roles"]))
