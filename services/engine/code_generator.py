@@ -245,6 +245,15 @@ def _sql_type(
         type_name, target_def = _resolve_ref(prop_def["target"], object_types, imported)
         target_pk = target_def["primary_key"]
         return f"TEXT REFERENCES {_snake(type_name)}({target_pk})"
+    if ptype == "set":
+        # ADR-0033 D3 / OQ-1=(a): a set-of-scalars persists as JSONB; a min_length
+        # constraint becomes a jsonb_array_length CHECK (defense-in-depth — the
+        # Pydantic layer is the load-bearing enforcement).
+        constraints = prop_def.get("constraints") or {}
+        min_len = constraints.get("min_length")
+        if isinstance(min_len, int) and not isinstance(min_len, bool) and min_len > 0:
+            return f"JSONB CHECK (jsonb_array_length({prop_name}) >= {min_len})"
+        return "JSONB"
     return _SQL_SCALAR_TYPE[ptype]
 
 
@@ -303,26 +312,38 @@ def emit_sql(
 # ---------------------------------------------------------------------------
 
 
+# Scalar YAML type -> JSON Schema fragment (ref resolves to its PK string).
+_JSONSCHEMA_SCALAR: dict[str, dict[str, Any]] = {
+    "string": {"type": "string"},
+    "int": {"type": "integer"},
+    "float": {"type": "number"},
+    "bool": {"type": "boolean"},
+    "timestamp": {"type": "string", "format": "date-time"},
+    "date": {"type": "string", "format": "date"},
+    "json": {"type": "object"},
+    "ref": {"type": "string"},
+}
+
+
 def _jsonschema_field(prop_def: dict[str, Any]) -> dict[str, Any]:
     ptype = prop_def["type"]
-    if ptype == "string":
-        return {"type": "string"}
-    if ptype == "int":
-        return {"type": "integer"}
-    if ptype == "float":
-        return {"type": "number"}
-    if ptype == "bool":
-        return {"type": "boolean"}
-    if ptype == "timestamp":
-        return {"type": "string", "format": "date-time"}
-    if ptype == "date":
-        return {"type": "string", "format": "date"}
     if ptype == "enum":
         return {"type": "string", "enum": list(prop_def["values"])}
-    if ptype == "json":
-        return {"type": "object"}
-    # ref
-    return {"type": "string"}
+    if ptype == "set":
+        # ADR-0033 D3: a set-of-scalars -> a unique-item array (minItems/maxItems
+        # from the collection constraints).
+        schema: dict[str, Any] = {
+            "type": "array",
+            "items": _jsonschema_field({"type": prop_def["items"]}),
+            "uniqueItems": True,
+        }
+        constraints = prop_def.get("constraints") or {}
+        if "min_length" in constraints:
+            schema["minItems"] = constraints["min_length"]
+        if "max_length" in constraints:
+            schema["maxItems"] = constraints["max_length"]
+        return schema
+    return dict(_JSONSCHEMA_SCALAR[ptype])
 
 
 def emit_jsonschema(doc: dict[str, Any], output_path: Path) -> Path:
@@ -415,6 +436,9 @@ def _ts_field_type(prop_def: dict[str, Any]) -> str:
     ptype = prop_def["type"]
     if ptype == "enum":
         return " | ".join(f"'{v}'" for v in prop_def["values"])
+    if ptype == "set":
+        # ADR-0033 D3: a set-of-scalars -> an array of the element type.
+        return f"{_TS_SCALAR_TYPE[prop_def['items']]}[]"
     return _TS_SCALAR_TYPE[ptype]
 
 
@@ -481,15 +505,16 @@ _ORM_SQLALCHEMY_IMPORT: dict[str, str] = {
 }
 
 
-def _orm_used_imports(object_types: dict[str, Any]) -> tuple[set[str], bool, set[str]]:
-    """Return (datetime_imports, needs_any, sqlalchemy_imports) the doc actually uses.
+def _orm_used_imports(object_types: dict[str, Any]) -> tuple[set[str], bool, bool, set[str]]:
+    """Return (datetime_imports, needs_any, needs_jsonb, sqlalchemy_imports) used.
 
-    ``json`` needs ``typing.Any`` (for ``dict[str, Any]``) + ``JSONB`` (from the
-    postgresql dialect, emitted separately when ``needs_any``). Each ``ref`` pulls in
-    ``ForeignKey`` + ``Index``.
+    ``json`` needs ``typing.Any`` (for ``dict[str, Any]``) + ``JSONB``; a ``set``
+    (ADR-0033 D3) needs ``JSONB`` only (mapped ``list[<item>]``). Each ``ref`` pulls
+    in ``ForeignKey`` + ``Index``.
     """
     datetime_set: set[str] = set()
     needs_any = False
+    needs_jsonb = False
     sqlalchemy_set: set[str] = set()
     for obj_def in object_types.values():
         for prop_def in (obj_def.get("properties") or {}).values():
@@ -500,11 +525,15 @@ def _orm_used_imports(object_types: dict[str, Any]) -> tuple[set[str], bool, set
                 datetime_set.add("date")
             elif ptype == "json":
                 needs_any = True
-                continue  # JSONB import handled separately (needs_any)
+                needs_jsonb = True
+                continue  # JSONB from the dialect, Any from typing
+            elif ptype == "set":
+                needs_jsonb = True
+                continue  # JSONB from the dialect (no typing.Any)
             sqlalchemy_set.add(_ORM_SQLALCHEMY_IMPORT[ptype])
             if ptype == "ref":
                 sqlalchemy_set.update({"ForeignKey", "Index"})
-    return datetime_set, needs_any, sqlalchemy_set
+    return datetime_set, needs_any, needs_jsonb, sqlalchemy_set
 
 
 def _orm_column_def(
@@ -517,12 +546,18 @@ def _orm_column_def(
     """One ``mapped_column`` field as a list of source lines (wrapped if > 100 cols,
     mirroring the hand-authored ORM's ruff-clean formatting)."""
     ptype = prop_def["type"]
-    py_type = _ORM_PY_TYPE[ptype]
+    if ptype == "set":
+        py_type = f"list[{_ORM_PY_TYPE[prop_def['items']]}]"
+    else:
+        py_type = _ORM_PY_TYPE[ptype]
     if ptype == "ref":
         type_name, target_def = _resolve_ref(prop_def["target"], object_types, imported)
         target_pk = target_def["primary_key"]
         col_args = [f'Text, ForeignKey("{_snake(type_name)}.{target_pk}")']
-    elif ptype == "json":
+    elif ptype in ("json", "set"):
+        # ADR-0033 D3 / OQ-1=(a): a set-of-scalars persists as JSONB (mapped
+        # list[<item>]); the jsonb_array_length CHECK is omitted like other ORM
+        # constraints (parity guard covers types, not constraints).
         col_args = ["JSONB"]
     else:
         col_args = [_ORM_COLUMN_TYPE[ptype]]
@@ -574,7 +609,7 @@ def emit_orm(
     order, like the other five emitters.
     """
     object_types = doc.get("object_types") or {}
-    datetime_imports, needs_any, sqlalchemy_imports = _orm_used_imports(object_types)
+    datetime_imports, needs_any, needs_jsonb, sqlalchemy_imports = _orm_used_imports(object_types)
 
     lines: list[str] = [
         '"""Generated SQLAlchemy ORM models from ontology YAML — do not edit by hand."""',
@@ -587,7 +622,7 @@ def emit_orm(
     if datetime_imports or needs_any:
         lines.append("")
     lines.append(f"from sqlalchemy import {', '.join(sorted(sqlalchemy_imports))}")
-    if needs_any:
+    if needs_jsonb:
         lines.append("from sqlalchemy.dialects.postgresql import JSONB")
     lines.append("from sqlalchemy.orm import Mapped, mapped_column")
     lines.append("")

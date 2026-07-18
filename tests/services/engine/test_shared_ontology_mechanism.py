@@ -9,10 +9,18 @@ mechanism lives in ``test_ontology_validator.py``.
 
 from __future__ import annotations
 
+import ast
 from pathlib import Path
 from typing import Any
 
-from services.engine.code_generator import _load_imports, emit_orm, emit_sql
+from services.engine.code_generator import (
+    _load_imports,
+    emit_orm,
+    emit_sql,
+    generate_all,
+)
+
+_CORE_ONTOLOGY = Path(__file__).parents[3] / "ontology" / "core_v0.yaml"
 
 
 def _importing_doc() -> dict[str, Any]:
@@ -84,3 +92,30 @@ def test_within_doc_ref_still_resolves(tmp_path: Path) -> None:
     out = tmp_path / "schema.sql"
     emit_sql(doc, out)
     assert "REFERENCES site(site_id)" in out.read_text()
+
+
+# ---------- ADR-0033 D3: set -> JSONB across the emitters (PLAN-0082 Step 4a) ----------
+
+
+def test_shared_person_generates_full_artifact_set(tmp_path: Path) -> None:
+    """PLAN-0082 Step 4a: generating the shipped ontology/core_v0.yaml emits every
+    artifact with the `set` roles handled per emitter — SQL JSONB + jsonb_array_length
+    CHECK, ORM Mapped[list[str]] over JSONB, JSON Schema unique array + minItems, TS
+    string[]. The generated ORM parses as valid Python."""
+    out = tmp_path / "core" / "generated"
+    outputs = generate_all(_CORE_ONTOLOGY, out)
+
+    sql = outputs["sql"].read_text()
+    assert "roles JSONB CHECK (jsonb_array_length(roles) >= 1) NOT NULL" in sql
+
+    orm = outputs["orm"].read_text()
+    ast.parse(orm)
+    assert "from sqlalchemy.dialects.postgresql import JSONB" in orm
+    assert "roles: Mapped[list[str]] = mapped_column(JSONB, nullable=False)" in orm
+
+    js = outputs["jsonschema"].read_text()
+    assert '"uniqueItems": true' in js
+    assert '"minItems": 1' in js
+
+    ts = outputs["typescript"].read_text()
+    assert "roles: string[];" in ts
