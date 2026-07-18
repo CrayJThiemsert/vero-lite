@@ -468,3 +468,60 @@ convention is separate work, deliberately not done here.
 
 | 2026-07-16 | **s140 — the 4-artifact STRATEGIC-CONTINUITY program CLOSED (3 PRs; docs + one guard test, ZERO behaviour change): ADR-0032 Accepted (#770) — the demo→pilot wedge + 3-shape roadmap + a BINDING pilot gate + the PINNED AT-2 fact record (N=2, re-arms at N=3) · PLAN-0079 `Status: Tracking` (#771) — the governed-credit HERO homed with its honest cost, builds NOTHING · the s138 reconcile unblocked (#769) · this AC-4 pointer.** Cause: the s137 arc lived only in auto-memories + gitignored docs, so a parallel session planned BLIND. Suite **2809 passed / 7 skipped**. _[Artifact 3 landed as #773 — see the row above.]_ Full narrative: the Session-140 CF block above | `8ca772b` (HEAD, #769) / `754a894` (#771) / `ad40aef` (PLAN-0079) / `4a5cfb7` (#770) / `5b53bbe` (ADR-0032) / `docs/adr/0032-*.md` + `docs/plans/0079-*.md` + `tests/services/engine/procedures/test_governed_credit_hero_tracking_guard.py` |
 | 2026-07-16 | **s138 — PLAN-0078 Phase 2 PR-3 COMPLETE (#768, `feat`, oracle-first): cold-chain excursion SEVERITY re-sequenced off the `ColdChainAssessExecutor` stamp into a declared `enrich` transform (ADR-0031 D3 row-1) — `_DOSE_LADDER` becomes a governed datum IN THE PIN, the move that makes retiring `derivation_hash` honest in PR-5.** Proved the ratified SD-6 two-tier bar; SD-7 slimmed the executor to its fail-closed guard; OQ-5 ratified (a) materialize. **Honest interim redundancy stays in code until PR-5 — F-PIN stays OPEN.** Suite **2808 passed / 7 skipped**. **PLAN-0078 stays `Status: Proposed`**. Full narrative: the Session-138 CF block (`docs/status-archive/2026-h1f-status.md` — moved there by the s144 R4 split; grep the archive dir, not one file) | `9a5eecf` (HEAD, #768 merge) / `e6fb07a` (PR-3 flip) / `8214a32` (PR-3 oracle) / `verticals/supply_chain/**` (declared `enrich` severity transform + slimmed `ColdChainAssessExecutor` guard) + `tests/**` (`test_severity_transform_parity.py` + 2 re-homed PLAN-0074/PR-2 tests) + `docs/plans/0078-*.md` (Proposed; PR-3 COMPLETE) |
+
+## Rotated this reconcile (session-150, 2026-07-19 — PLAN-0082 shared-ontology arc COMPLETE + archived, PLAN-0081 folded, #809-812)
+
+### Current-Focus block — Session 144 (PLAN-0078 Step 7 CLOSEOUT, 12/12 ACs → `done/`, #786) [rotated 2026-07-19, session-150 reconcile — 4-newest-sessions CF window]
+
+> **Session 144, 2026-07-17 (head_commit `6ee2aa8` → `d8db032`) — PLAN-0078
+> Step 7 CLOSEOUT (#786, docs-only): the transform seed-migration arc CLOSED at
+> **12/12 ACs** and ARCHIVED → `docs/plans/done/0078-transform-seed-migration.md`.**
+> **The headline is that the closeout was FAR smaller than the s143 handoff
+> predicted — and why.** **(1) Four of the six open ACs were ALREADY SATISFIED
+> on disk** (AC-7/AC-8/AC-9/AC-12) — unticked BOOKKEEPING, not open work. The
+> s143 handoff warned "do NOT tick them from the PR-3/PR-4 landed claim —
+> verify against code"; that warning was right to DEMAND the verification, and
+> the verification came back GREEN. Each tick now cites its satisfying test by
+> file:line, every anchor resolved on a fresh read. **AC-9 was re-verified
+> INDEPENDENTLY** rather than inherited from PR-4's R2 claim: `_spend` /
+> `_severity` hash identically at `173d869^` and HEAD. **(2) AC-6 was the ONE
+> genuine hole — and NOT the hole the PLAN described.** The PLAN predicted
+> "Phase 2 adds transforms, so the non-participant set shrinks and must be
+> re-swept". **FALSE on disk:** PR-3/PR-4 added transforms only to procedures
+> that ALREADY carried a Phase-1 `enrich`, so the set never moved. Classified
+> **`superseded by new info`, NOT `was an error`** (CLAUDE.md §6) — the
+> prediction was reasonable and may yet come true, so it is now pinned as
+> **DATA** (`test_derivation_pin.py:326`) rather than re-argued in prose. **The
+> REAL hole:** energy + aquaculture — the two verticals AC-6 names FIRST — had
+> **no step-level `transform`-absence assertion anywhere**;
+> `test_transform_grammar.py:308` proved it only on a SYNTHETIC procedure, the
+> two parity sweeps covered only non-participant procedures INSIDE the migrated
+> verticals, and `test_derivation_pin.py:263` asserts the TOP-LEVEL key set
+> only. **(3) Both new tests proven non-vacuous EMPIRICALLY, not by
+> inspection:** temporarily declaring a transform in energy's yaml turned the
+> census RED; temporarily deleting the only-when-supplied branch from
+> `governance_pin.py` turned the sweep RED for supply_chain + procurement. Both
+> probes REVERTED. The second probe is exactly **why the census must exist
+> ALONGSIDE the sweep**: with the projection broken, energy/aquaculture still
+> PASSED — a vertical with no transforms satisfies the IFF's negative arm
+> regardless. **(4) Stale citations refreshed** against `governance_pin.py`
+> post-PR-5 (137 lines): AC-5's `:96-98`→`:98-99`; AC-6's `:59-63`→`:58-68`,
+> and `:122-125` **DROPPED** (the `derivation_hash` fold-in PR-5 retired; `:121`
+> is now the `steps` list). **(5) Deliberately NOT closed:** **OQ-3 stays open**
+> (the ADR-0031 D4.4 row annotation = a drafter-authored G1 Accepted-body edit;
+> its own text says non-blocking) · **PLAN-0076 does NOT archive** — T1 /
+> F-FACTORY stays open, its AC-6 guard stays ARMED · **no artifact records F-PIN
+> closed** (L-4). **Order honored:** `Status:` flipped Proposed→COMPLETE in the
+> SAME pass as the body edits (never flip-then-edit — the G1 lift is per-diff);
+> the `git mv` to `done/` landed AFTER the sweep + ticks, per Step 7's own order
+> and the s143 refusal precedent. Suite **2845 passed / 7 skipped** (was 2840/7
+> at `6ee2aa8`) — re-run BY CODE on the merge commit `d8db032` itself, since CI
+> is PR-only and never tests the merge commit. Post-merge: main=`d8db032`; 0
+> open PRs; loop-dispatcher DISABLED; MS-S1 idle/COLD (zero calls this session);
+> dev Postgres UP. Commits: `49ff275` (the sweep + ticks + `git mv`) → `2340de3`
+> → `d8db032` (HEAD, #786 merge).
+
+### Recent-Decisions rows — s141 PLAN-0078 PR-4 (#775) + s140 artifact-3/4 (#773) [rotated 2026-07-19, session-150 reconcile — 10-row window]
+
+| 2026-07-17 | **s141 — PLAN-0078 Phase 2 PR-4 COMPLETE (#775, `feat`, oracle-first): the marquee ฿ spend re-sequenced off the `_scored_rule` stamp into a declared `derive_spend` transform, per the ratified SD-8=(a) ONE DERIVATION HOME.** Cray-ratified in-session refinement: stamp `selected_qty` (not `selected_unit_price` only) so `_quantity` stays the ONE resolution home. Suite **2822 passed / 7 skipped**; deterministic-offline. **PLAN-0078 stays `Status: Proposed`**; **PR-5 is NOT blocked by PR-4**. Full narrative: the Session-141 CF block (rotated to `docs/status-archive/` at the s145 reconcile — grep the archive dir, not one file) | `09714ea` (HEAD, #775 merge) / `88e6e11` (PR-4 flip) / `fc17d02` (PR-4 oracle) / `verticals/{procurement,supply_chain}/**` (declared `derive_spend` transform) + `services/engine/procedures/governance_step.py` (`_scored_rule` factor stamps) + `tests/**` (`test_amount_transform_parity.py`) + `docs/plans/0078-*.md` (Proposed; PR-4 COMPLETE) |
+| 2026-07-16 | **s140 — artifact 3/4 (#773, docs-only): `CLAUDE.md` §2 retitled "Current Focus" → "Direction & Current Focus" + a two-pointer signpost — standing direction = ADR-0032, current state = STATUS, "state never overrides direction" (§1).** The strategic-continuity program is now **COMPLETE 4/4** (#770 ADR · #771 PLAN-0079 · #773 §2 · #772 STATUS pointer). Scope CUT at Cray's ratification: the planned sanitized strategy doc DROPPED (a no-precedence restatement of a canonical is itself a drift surface, §1 / ADR-0017 D6). Suite **2810 passed / 7 skipped**. Full narrative: the Session-140 CF block above | `0523d88` (HEAD, #773 merge) / `038efd0` (§2 pointer) / `CLAUDE.md` §2 + `docs/adr/0032-*.md` |
