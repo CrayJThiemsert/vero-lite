@@ -797,3 +797,206 @@ object_types:
     captured = capsys.readouterr()
     assert ret == 0
     assert "OK: 1 file(s) valid" in captured.err
+
+
+# ---------- ADR-0033 D3: `set` collection + `closed:` knob (PLAN-0082 Step 2) ----------
+
+_CORE_ONTOLOGY_PATH = Path(__file__).parents[3] / "ontology" / "core_v0.yaml"
+
+_SET_HAPPY_YAML = """\
+version: 0
+namespace: core
+object_types:
+  Person:
+    primary_key: person_id
+    closed: true
+    properties:
+      person_id:
+        type: string
+        required: true
+      roles:
+        type: set
+        items: string
+        required: true
+        constraints:
+          min_length: 1
+"""
+
+
+def test_set_type_happy_path(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """ADR-0033 D3: a `set` property with `items` + a min_length constraint, under
+    a `closed:` object, validates clean (L1 + L2) — the shared Person shape."""
+    yaml_path = _write(tmp_path, "set_ok.yaml", _SET_HAPPY_YAML)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 0
+    assert "OK: 1 file(s) valid" in captured.err
+
+
+def test_l1_set_missing_items(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """ADR-0033 D3 (L1): a `set` property MUST declare `items` (the allOf gate)."""
+    body = """\
+version: 0
+namespace: core
+object_types:
+  Person:
+    primary_key: person_id
+    properties:
+      person_id:
+        type: string
+        required: true
+      roles:
+        type: set
+        required: true
+"""
+    yaml_path = _write(tmp_path, "set_no_items.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+    assert _LINE_COL_RE.search(captured.err)
+    assert "items" in captured.err
+
+
+def test_l1_set_non_scalar_items_rejected(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ADR-0033 D3 (L1): `items` is scalar-only — a `ref` element type is rejected."""
+    body = """\
+version: 0
+namespace: core
+object_types:
+  Person:
+    primary_key: person_id
+    properties:
+      person_id:
+        type: string
+        required: true
+      roles:
+        type: set
+        items: ref
+        required: true
+"""
+    yaml_path = _write(tmp_path, "set_bad_items.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+
+
+def test_l2_set_bad_min_length(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """ADR-0033 D3 (L2): a `set` min_length must be a non-negative integer."""
+    body = """\
+version: 0
+namespace: core
+object_types:
+  Person:
+    primary_key: person_id
+    properties:
+      person_id:
+        type: string
+        required: true
+      roles:
+        type: set
+        items: string
+        constraints:
+          min_length: -1
+"""
+    yaml_path = _write(tmp_path, "set_bad_min.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "non-negative integer" in captured.err
+    assert _LINE_COL_RE.search(captured.err)
+
+
+def test_l2_set_max_below_min(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """ADR-0033 D3 (L2): max_length must not fall below min_length."""
+    body = """\
+version: 0
+namespace: core
+object_types:
+  Person:
+    primary_key: person_id
+    properties:
+      person_id:
+        type: string
+        required: true
+      roles:
+        type: set
+        items: string
+        constraints:
+          min_length: 3
+          max_length: 1
+"""
+    yaml_path = _write(tmp_path, "set_max_below_min.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "below min_length" in captured.err
+
+
+def test_closed_knob_accepted(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """ADR-0033 D3 (L1): the object-level `closed:` boolean knob is accepted."""
+    body = """\
+version: 0
+namespace: core
+object_types:
+  Person:
+    primary_key: person_id
+    closed: true
+    properties:
+      person_id:
+        type: string
+        required: true
+"""
+    yaml_path = _write(tmp_path, "closed_ok.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 0
+    assert "OK: 1 file(s) valid" in captured.err
+
+
+def test_l1_closed_non_bool_rejected(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """ADR-0033 D3 (L1): `closed:` must be a boolean."""
+    body = """\
+version: 0
+namespace: core
+object_types:
+  Person:
+    primary_key: person_id
+    closed: "yes"
+    properties:
+      person_id:
+        type: string
+        required: true
+"""
+    yaml_path = _write(tmp_path, "closed_bad.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "error(s) across" in captured.err
+
+
+def test_backward_compat_no_new_keys_unchanged(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ADR-0033 D2/D3 backward-compat invariant: a doc declaring NONE of the new
+    keys (`set`/`items`/`closed`) validates exactly as before — the additions are
+    purely additive (the `_VALID_YAML` energy fixture is unchanged grammar)."""
+    yaml_path = _write(tmp_path, "legacy.yaml", _VALID_YAML)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 0
+    assert "OK: 1 file(s) valid" in captured.err
+
+
+def test_core_ontology_validates(capsys: pytest.CaptureFixture[str]) -> None:
+    """PLAN-0082 Step 2: the shipped shared/core ontology (`ontology/core_v0.yaml`,
+    namespace `core`, defining the shared `Person` with the `set` roles + `closed:`
+    knob) validates clean under the extended L1 + L2 grammar (ADR-0033 D1/D3)."""
+    assert _CORE_ONTOLOGY_PATH.is_file(), f"missing shared ontology: {_CORE_ONTOLOGY_PATH}"
+    ret = main([str(_CORE_ONTOLOGY_PATH)])
+    captured = capsys.readouterr()
+    assert ret == 0, captured.err
+    assert "OK: 1 file(s) valid" in captured.err
