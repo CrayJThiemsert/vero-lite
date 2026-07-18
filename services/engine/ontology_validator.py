@@ -286,6 +286,67 @@ def _check_property(
                     message=f"enum property {prop_name!r} requires non-empty values list",
                 )
             )
+    if ptype == "set":
+        findings.extend(_check_set_constraints(file, obj_name, prop_name, prop_def, pl, pc))
+    return findings
+
+
+def _check_set_constraints(
+    file: str,
+    obj_name: str,
+    prop_name: str,
+    prop_def: dict[str, Any],
+    line: int,
+    col: int,
+) -> list[OntologyError]:
+    """ADR-0033 D3 (L2): a ``set`` property's collection-cardinality constraints
+    (``min_length`` / ``max_length``, when present) must be non-negative integers,
+    and ``max_length`` must not fall below ``min_length``. The ``items`` scalar
+    element type + its presence are enforced at L1; the emitter maps ``set`` ->
+    ``frozenset[<item>]`` with the ``min_length`` bound (ADR-0033 D3)."""
+    constraints = prop_def.get("constraints")
+    if not isinstance(constraints, dict):
+        return []
+    findings: list[OntologyError] = []
+    bounds: dict[str, int] = {}
+    for key in ("min_length", "max_length"):
+        val = constraints.get(key)
+        if val is None:
+            continue
+        if not isinstance(val, int) or isinstance(val, bool) or val < 0:
+            findings.append(
+                SemanticValidationError(
+                    file=file,
+                    object_type=obj_name,
+                    property=prop_name,
+                    yaml_line=line,
+                    yaml_col=col,
+                    message=(
+                        f"set property {prop_name!r} constraint {key} must be a "
+                        f"non-negative integer, got {val!r}"
+                    ),
+                )
+            )
+        else:
+            bounds[key] = val
+    if (
+        "min_length" in bounds
+        and "max_length" in bounds
+        and bounds["max_length"] < bounds["min_length"]
+    ):
+        findings.append(
+            SemanticValidationError(
+                file=file,
+                object_type=obj_name,
+                property=prop_name,
+                yaml_line=line,
+                yaml_col=col,
+                message=(
+                    f"set property {prop_name!r} max_length {bounds['max_length']} "
+                    f"is below min_length {bounds['min_length']}"
+                ),
+            )
+        )
     return findings
 
 

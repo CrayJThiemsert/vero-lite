@@ -1,0 +1,62 @@
+# vero-lite ontology — shared/core home (namespace: core).
+#
+# Conforms to ADR-008 D2 grammar, EXTENDED by ADR-0033 (shared-ontology
+# mechanism). This is the repo-level SHARED ontology home (SD-F=(a), Cray
+# s148) — visibly NOT a vertical (not under verticals/) and NOT engine-owned.
+# The `core` namespace token is RESERVED: only this shared doc may declare it;
+# no vertical may claim it (ADR-0033 D1).
+#
+# It defines exactly ONE shared object_type — Person — promoted from the
+# spec-layer convenience (services/engine/procedures/spec.py:1359) to an
+# ADR-0008 ontology object_type (SD-E=(b-ii)). The mechanism ships at N=1
+# consumer, consciously (ADR-0033 D6 Rule-of-Three re-argument); no second
+# shared object_type is authored here.
+#
+# H-partition (ADR-0024 D3): a principal is never MODEL-emitted (the LLM axis);
+# the Person TYPE is codegen-emitted from this human-authored YAML (a different
+# axis — ADR-0033 D4). Roster DATA stays per-vertical + human-authored.
+#
+# `roles` uses the ADR-0033 D3 constrained-collection extension: a `set` of
+# scalar `items` with a `min_length` constraint (-> frozenset[RoleId] min>=1,
+# spec.py:1374-1378); `closed: true` -> extra="forbid" (spec.py:1367). The
+# set-of-scalars persists as JSONB (ADR-0033 OQ-1=(a), Cray s149).
+
+version: 0
+namespace: core
+
+object_types:
+  Person:
+    primary_key: person_id
+    title_key: name
+    closed: true
+    description: >-
+      A first-class, human-authored principal identity — the resolvable human
+      who holds approval role(s) (ADR-0026 D1/D2). Promoted from the procedures
+      spec layer to a shared ontology object_type (ADR-0033 / SD-E=(b-ii)); it
+      supersedes the role-label near-misses (they point at a Person, they do
+      not re-store the identity). Human-author-only (H, ADR-0024 D3) — a
+      principal is never model-emitted.
+    properties:
+      person_id:
+        type: string
+        required: true
+        description: >-
+          canonical identity key (PK) — the resolved-principal identity SoD
+          compares (ADR-0026 D1); a bare PK match is the first OQ-3 collapse
+          trigger.
+      name:
+        type: string
+        required: true
+        description: the human's name (display).
+      roles:
+        type: set
+        items: string
+        required: true
+        constraints:
+          min_length: 1
+        description: >-
+          the approval role(s) this principal holds (>=1) — the role->principal
+          binding the step->required-role map resolves against (ADR-0026 D2;
+          OQ-1=(a)). A set of RoleId scalars; persists as JSONB (ADR-0033
+          OQ-1=(a)); the generated Pydantic layer is the load-bearing
+          enforcement (min>=1 + extra="forbid").
