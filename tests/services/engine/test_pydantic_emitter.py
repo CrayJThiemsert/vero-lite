@@ -9,10 +9,14 @@ checked via Python ``text.count`` (in-process), not subprocess grep.
 from __future__ import annotations
 
 import ast
+import importlib.util
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
+
+import pydantic
+import pytest
 
 from services.engine.code_generator import emit_pydantic
 
@@ -83,3 +87,81 @@ def test_pydantic_emitter_passes_ruff(tmp_path: Path) -> None:
         "All checks passed!" in result.stdout or result.stdout == ""
     ), f"ruff stdout: {result.stdout!r}; stderr: {result.stderr!r}"
     assert result.returncode == 0
+
+
+# ---------- ADR-0033 D3: the `set` collection + `closed:` knob (PLAN-0082 Step 3) ----------
+
+
+def _person_doc() -> dict[str, Any]:
+    """The shared core `Person` shape (ADR-0033 D3/D4) — a `closed:` object with a
+    constrained `set` property; mirrors ontology/core_v0.yaml."""
+    return {
+        "version": 0,
+        "namespace": "core",
+        "object_types": {
+            "Person": {
+                "primary_key": "person_id",
+                "closed": True,
+                "properties": {
+                    "person_id": {"type": "string", "required": True},
+                    "name": {"type": "string", "required": True},
+                    "roles": {
+                        "type": "set",
+                        "items": "string",
+                        "required": True,
+                        "constraints": {"min_length": 1},
+                    },
+                },
+            },
+        },
+        "link_types": {},
+    }
+
+
+def test_pydantic_emitter_set_and_closed_source(tmp_path: Path) -> None:
+    """ADR-0033 D3: a `set` property emits `frozenset[<item>]` + a `Field(min_length=)`,
+    and `closed: true` emits `model_config = ConfigDict(extra="forbid")`; the import
+    line grows to include ConfigDict + Field."""
+    out = tmp_path / "models.py"
+    emit_pydantic(_person_doc(), out)
+    text = out.read_text()
+    ast.parse(text)
+    assert "from pydantic import BaseModel, ConfigDict, Field" in text
+    assert 'model_config = ConfigDict(extra="forbid")' in text
+    assert "roles: frozenset[str] = Field(min_length=1)" in text
+    assert "person_id: str" in text
+
+
+def test_pydantic_emitter_set_closed_passes_ruff(tmp_path: Path) -> None:
+    out = tmp_path / "models.py"
+    emit_pydantic(_person_doc(), out)
+    result = subprocess.run(
+        [sys.executable, "-m", "ruff", "check", str(out)],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert (
+        "All checks passed!" in result.stdout or result.stdout == ""
+    ), f"ruff stdout: {result.stdout!r}; stderr: {result.stderr!r}"
+    assert result.returncode == 0
+
+
+def test_pydantic_emitter_constraints_enforce_at_runtime(tmp_path: Path) -> None:
+    """AC-2 (the load-bearing half): the EMITTED `Person` enforces its constraints —
+    an empty role set (min_length=1) and an unknown field (extra="forbid") are both
+    REJECTED by the generated model, never a hand-written shim (ADR-0033 D3)."""
+    out = tmp_path / "models.py"
+    emit_pydantic(_person_doc(), out)
+    spec = importlib.util.spec_from_file_location("gen_core_person", out)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+
+    person = module.Person(person_id="p1", name="A", roles={"dept_head"})
+    assert isinstance(person.roles, frozenset)
+
+    with pytest.raises(pydantic.ValidationError):
+        module.Person(person_id="p1", name="A", roles=set())  # min_length=1
+    with pytest.raises(pydantic.ValidationError):
+        module.Person(person_id="p1", name="A", roles={"r"}, bogus=1)  # extra="forbid"

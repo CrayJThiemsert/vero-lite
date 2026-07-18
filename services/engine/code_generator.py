@@ -87,7 +87,37 @@ def _py_field_type(prop_def: dict[str, Any]) -> str:
         values = prop_def["values"]
         literals = ", ".join(f'"{v}"' for v in values)
         return f"Literal[{literals}]"
+    if ptype == "set":
+        # ADR-0033 D3: a `set` of scalar `items` -> frozenset[<item>] (immutable
+        # set semantics matching the shipped Person.roles frozenset).
+        return f"frozenset[{_PY_SCALAR_TYPE[prop_def['items']]}]"
     return _PY_SCALAR_TYPE[ptype]
+
+
+def _py_field_constraints(prop_def: dict[str, Any]) -> list[str]:
+    """ADR-0033 D3: collection-cardinality constraints -> ``Field(...)`` kwargs.
+    ``min_length`` / ``max_length`` map to the matching Pydantic ``Field`` args."""
+    constraints = prop_def.get("constraints") or {}
+    args: list[str] = []
+    for key in ("min_length", "max_length"):
+        if key in constraints:
+            args.append(f"{key}={constraints[key]}")
+    return args
+
+
+def _py_field_line(prop_name: str, prop_def: dict[str, Any]) -> str:
+    """One Pydantic field-annotation line — ``required`` optionality (ADR-0008 D3)
+    plus any ``Field(...)`` constraints (ADR-0033 D3)."""
+    py_type = _py_field_type(prop_def)
+    field_args = _py_field_constraints(prop_def)
+    if prop_def.get("required", False):
+        if field_args:
+            return f"    {prop_name}: {py_type} = Field({', '.join(field_args)})"
+        return f"    {prop_name}: {py_type}"
+    if field_args:
+        joined = ", ".join(["default=None", *field_args])
+        return f"    {prop_name}: {py_type} | None = Field({joined})"
+    return f"    {prop_name}: {py_type} | None = None"
 
 
 def _py_used_imports(object_types: dict[str, Any]) -> tuple[set[str], set[str]]:
@@ -112,6 +142,12 @@ def emit_pydantic(doc: dict[str, Any], output_path: Path) -> Path:
     """Write Pydantic v2 models for every object_type to ``output_path``."""
     object_types = doc.get("object_types") or {}
     datetime_imports, typing_imports = _py_used_imports(object_types)
+    needs_field = any(
+        _py_field_constraints(prop_def)
+        for obj_def in object_types.values()
+        for prop_def in (obj_def.get("properties") or {}).values()
+    )
+    needs_configdict = any(obj_def.get("closed") for obj_def in object_types.values())
 
     lines: list[str] = [
         '"""Generated Pydantic models from ontology YAML — do not edit by hand."""',
@@ -125,22 +161,26 @@ def emit_pydantic(doc: dict[str, Any], output_path: Path) -> Path:
         lines.append(f"from typing import {', '.join(sorted(typing_imports))}")
     if datetime_imports or typing_imports:
         lines.append("")
-    lines.append("from pydantic import BaseModel")
+    pydantic_imports = ["BaseModel"]
+    if needs_configdict:
+        pydantic_imports.append("ConfigDict")
+    if needs_field:
+        pydantic_imports.append("Field")
+    lines.append(f"from pydantic import {', '.join(sorted(pydantic_imports))}")
     lines.append("")
 
     for obj_name, obj_def in object_types.items():
         lines.append("")
         lines.append(f"class {obj_name}(BaseModel):")
-        props = obj_def.get("properties") or {}
-        if not props:
+        body_start = len(lines)
+        if obj_def.get("closed"):
+            # ADR-0033 D3: `closed: true` -> Pydantic unknown-field rejection
+            # (the shipped Person's extra="forbid", spec.py:1367).
+            lines.append('    model_config = ConfigDict(extra="forbid")')
+        for prop_name, prop_def in (obj_def.get("properties") or {}).items():
+            lines.append(_py_field_line(prop_name, prop_def))
+        if len(lines) == body_start:
             lines.append("    pass")
-            continue
-        for prop_name, prop_def in props.items():
-            py_type = _py_field_type(prop_def)
-            if prop_def.get("required", False):
-                lines.append(f"    {prop_name}: {py_type}")
-            else:
-                lines.append(f"    {prop_name}: {py_type} | None = None")
     body = "\n".join(lines).rstrip() + "\n"
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(body)
