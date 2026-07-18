@@ -1000,3 +1000,116 @@ def test_core_ontology_validates(capsys: pytest.CaptureFixture[str]) -> None:
     captured = capsys.readouterr()
     assert ret == 0, captured.err
     assert "OK: 1 file(s) valid" in captured.err
+
+
+# ---------- ADR-0033 D2: imports + qualified cross-doc refs (PLAN-0082 Step 3b) ----------
+
+
+def test_imports_qualified_ref_resolves(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """ADR-0033 D2: a vertical declaring `imports: [core]` with a `ref: core.Person`
+    validates clean — the qualified target resolves against the shared ontology."""
+    body = """\
+version: 0
+namespace: procurement
+imports: [core]
+object_types:
+  PurchaseOrder:
+    primary_key: po_id
+    properties:
+      po_id:
+        type: string
+        required: true
+      approver:
+        type: ref
+        target: core.Person
+"""
+    yaml_path = _write(tmp_path, "importing.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 0, captured.err
+    assert "OK: 1 file(s) valid" in captured.err
+
+
+def test_imports_unknown_token_rejected(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """ADR-0033 D2 (L2): an `imports:` token other than the reserved `core` fails closed."""
+    body = """\
+version: 0
+namespace: procurement
+imports: [bogus]
+object_types:
+  X:
+    primary_key: x_id
+    properties:
+      x_id:
+        type: string
+"""
+    yaml_path = _write(tmp_path, "badimport.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "not a known shared namespace" in captured.err
+
+
+def test_qualified_ref_missing_shared_type_rejected(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ADR-0033 D2 (L2): a qualified ref to a type absent from the shared doc fails."""
+    body = """\
+version: 0
+namespace: procurement
+imports: [core]
+object_types:
+  X:
+    primary_key: x_id
+    properties:
+      x_id:
+        type: string
+      approver:
+        type: ref
+        target: core.Ghost
+"""
+    yaml_path = _write(tmp_path, "badref.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "does not resolve to an object_type in the 'core'" in captured.err
+
+
+def test_qualified_ref_without_import_rejected(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    """ADR-0033 D2 (L2): a qualified ref whose namespace is not in `imports:` fails."""
+    body = """\
+version: 0
+namespace: procurement
+object_types:
+  X:
+    primary_key: x_id
+    properties:
+      x_id:
+        type: string
+      approver:
+        type: ref
+        target: core.Person
+"""
+    yaml_path = _write(tmp_path, "noimport.yaml", body)
+    ret = main([str(yaml_path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "not declared in imports" in captured.err
+
+
+def test_reserved_core_namespace_guarded(
+    capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    """ADR-0033 D1: a vertical (path under verticals/) may NOT claim `namespace: core`."""
+    path = tmp_path / "verticals" / "evil" / "ontology" / "evil_v0.yaml"
+    path.parent.mkdir(parents=True)
+    path.write_text(
+        "version: 0\nnamespace: core\nobject_types:\n"
+        "  X:\n    primary_key: x_id\n    properties:\n      x_id:\n        type: string\n"
+    )
+    ret = main([str(path)])
+    captured = capsys.readouterr()
+    assert ret == 1
+    assert "reserved for the shared ontology" in captured.err
