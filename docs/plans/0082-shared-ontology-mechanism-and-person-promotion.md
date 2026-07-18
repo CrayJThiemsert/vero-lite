@@ -1,19 +1,31 @@
 # PLAN-0082: The shared-ontology mechanism + `Person` promotion (the PLAN-0081 dependency)
 
-**Status:** Draft — SD-F / SD-G / SD-H / SD-I (carried OPEN from PLAN-0081,
-letters preserved for lineage) + **SD-K** (new — this PLAN's scope boundary)
-+ OQ-1 (carried) await Cray adjudication in THIS PLAN's SD round (the
-PLAN-0081 SD-A..E precedent).
+**Status:** Draft — **SD round CLOSED (Cray, s148, typed AskUserQuestion):
+SD-F=(a) · SD-G=(b)+(c) · SD-H=(a) · SD-I=(b — override, see record) ·
+SD-K(i)=(a) · SD-K(ii)=(a) · OQ-1=ONE new shared-ontology ADR.** All seven
+are ratified inputs — recorded, not re-litigated. Ready to execute once the
+Step-1 ADR (next free number — likely ADR-0033) + its two pointer-note
+edits merge (AC-1). One NEW open question (OQ-2 — the `person`-table
+population story SD-I=(b) creates) is surfaced for build-time resolution;
+it does not block the ADR dispatch.
 **Owner:** Claude Code (execution) · Cray (SD adjudication + ratification)
 **Created:** 2026-07-18
-**Related ADRs:** **ADR-0008 (PRIMARY — its per-vertical YAML-ontology
-grammar is AMENDED by the shared-ontology construct this PLAN builds; the
-amendment must merge BEFORE any grammar/codegen change ships — CLAUDE.md §8,
-AC-1)**, ADR-0026 (its `:89` "no new generation surface / codegen path
-untouched" consequence is SUPERSEDED by SD-E=(b-ii); its OQ-6 per-vertical
-deferral `:116` is CLOSED by this extraction; its `:95` ontology-layer
-framing + `:157` "ontology object (ADR-0008 grammar)" Implementation Note
-are what SD-E=(b-ii) honors), ADR-006 (D4 Rule of Three — satisfied for the
+**Related ADRs:** **the NEW shared-ontology ADR (PRIMARY — OQ-1 RESOLVED,
+Cray s148: ONE new ADR codifies the construct; next free number — highest
+on disk is ADR-0032, 0014 is WITHDRAWN, so likely ADR-0033 — authored by a
+SEPARATE plan-drafter dispatch; it must merge BEFORE any grammar/codegen/
+ORM change ships — CLAUDE.md §8, AC-1)**, ADR-0008 (its per-vertical
+grammar is EXTENDED by the new ADR, NOT amended in place; ADR-0008 gets a
+pointer note — a G1 Accepted-body edit authored WITH the new ADR, ratified
+one-pass — recording that the shared-ontology construct is codified there;
+its `:79-80` `shared property` Rule-of-Three deferral is consciously
+re-argued in the new ADR), ADR-0026 (gets the matching pointer/supersession
+note: its `:89` "no new generation surface / codegen path untouched"
+consequence is SUPERSEDED by SD-E=(b-ii) and its OQ-6 per-vertical deferral
+`:116` is CLOSED by this extraction — both recorded in the note pointing to
+the new ADR; its `:95` ontology-layer framing + `:157` "ontology object
+(ADR-0008 grammar)" Implementation Note are what SD-E=(b-ii) honors),
+ADR-006 (D4 Rule of Three — satisfied for the
 `Person` PATTERN at N=3; consciously in TENSION for the mechanism at N=1,
 see Out of Scope), ADR-0024 (D3 governed ≠ generated — the H-partition
 nuance in Step 1), ADR-0031 (D4.2 own-PLAN rule — the SPLIT's cited
@@ -21,7 +33,9 @@ precedent), ADR-0032 (D6 honest-cost discipline). Related PLANs:
 **PLAN-0081 (the parent — it DEPENDS on this PLAN; its Step 9 shrinks to
 the `building_materials` migration once this PLAN ships)**, PLAN-0074/0075
 (the shipped SoD + tier-authority machinery whose behavior this PLAN must
-preserve), PLAN-0031 B1 (the committed-ORM Option-B precedent AC-3 reuses).
+preserve), PLAN-0031 B1 (the committed-ORM Option-B precedent AC-3/AC-7
+reuse; SD-I=(b) forces its deferred B1-DP-1 second-ORM-layout follow-up —
+Step 4).
 
 > **Mandate.** This PLAN exists by **Cray's SD-J = SPLIT ratification
 > (s147, typed AskUserQuestion)** on PLAN-0081's highest-order structural
@@ -37,7 +51,17 @@ preserve), PLAN-0031 B1 (the committed-ORM Option-B precedent AC-3 reuses).
 > still lists SD-J as open (`0081:15-18,760-782`) — the ratification
 > postdates its last fold. Classified `superseded by new info`, not `was an
 > error`; PLAN-0081 needs its own fold (a separate drafter pass) to record
-> SD-J=SPLIT and shrink Step 9 — outside this PLAN's write scope.*
+> SD-J=SPLIT, shrink Step 9, and re-point its AC-7 — outside this PLAN's
+> write scope.*
+>
+> *Fold (s148): Cray's SD-round rulings recorded — SD-F/G/H/I, SD-K(i)/(ii),
+> and OQ-1 are now RESOLVED inputs (typed AskUserQuestion picks = ratified;
+> see Surfaced Decisions for the full record). SD-I=(b) is an OVERRIDE of
+> this drafter's (a) recommendation — classified `superseded by new info`
+> (the PLAN-0081 SD-D precedent), NOT `was an error` — and its scope
+> consequence (committed ORM + `person` DB table + Alembic migration) is
+> threaded through Goal, Out of Scope, AC-3/AC-7, Step 4, Verification, and
+> the NEW OQ-2 below.*
 
 ## Goal
 
@@ -47,12 +71,16 @@ generator + CLI (SD-G) — and use it to **promote `Person` from a spec-layer
 convenience to an ADR-0008 ontology `object_type` generated at that shared
 home**, reconciling the shipped spec-layer `Person`
 (`services/engine/procedures/spec.py:1359`) down to **exactly one
-authoritative type** (SD-H), placing the generated module at a
-committed-vs-gitignored home per precedent (SD-I), and **migrating the two
+authoritative type** (SD-H=(a): delete + re-export), placing the generated
+module at a COMMITTED home per precedent AND — per **Cray's SD-I=(b)
+override** — shipping a committed shared-`Person` ORM plus a `person` DB
+table with its Alembic migration (the repo's SECOND committed generated
+ORM and its first ontology-object migration outside the energy schema —
+the honest scope cost, stated plainly), and **migrating the two
 EXISTING principal-bearing verticals (`procurement`, `supply_chain`) onto
-the shared `Person`** with governance behavior preserved (SD-K) — all
-behind a **preceding ADR-0008 grammar amendment** (AC-1; authored by a
-SEPARATE dispatch per the OQ-1 path Cray sequences — no ADR is authored in
+the shared `Person`** with governance behavior preserved (SD-K(i)=(a)) —
+all behind **ONE preceding NEW shared-ontology ADR** (OQ-1 resolved, Cray
+s148; authored by a SEPARATE dispatch — no ADR is authored in
 this PLAN). End state: PLAN-0081's hero build only has to land
 `building_materials` on an already-shipped, already-proven shared `Person`
 (its Step 9 residue). Honest cost, stated plainly (ADR-0032 D6): this is a
@@ -66,6 +94,25 @@ in view (SD-E record, `0081:655-660`).
 shipped codegen model is **strictly per-vertical**, and **no shared/
 cross-vertical ontology home exists** — SD-E=(b-ii) INVENTS the mechanism;
 this PLAN builds that invention.
+
+*Fold re-verification (s148, `main` db4d866, this drafter): the SD-I=(b)
+and OQ-1 load-bearing anchors were re-read from disk this fold —
+`_ORM_COMMITTED_DEST = {"energy": Path("services/db/models.py")}` is still
+energy-only (`code_generator.py:736-742`, including the B1-DP-1 comment
+`:740-741`: "How a 2nd vertical's ORM is laid out … is a deferred
+Rule-of-Three decision" — SD-I=(b) now forces that call, Step 4); the
+Alembic chain is 11 revisions (`alembic.ini:6` → `alembic/versions/`) and
+ontology-OBJECT tables exist ONLY in `0001_initial_energy_schema.py`
+(site/alert/asset/operational_event/recommended_action/alert_event_link) —
+revisions 0002–0011 create engine-runtime tables (pipeline_runs/
+step_results, action_identity, audit_log, schedule_states) or alter energy
+columns; NO `person` table exists anywhere (DB identity today = `person_id`
+STRINGS on `action_identity`, `services/db/identity.py:20-34` — a
+hand-authored engine-governance table, not a roster); and the highest ADR
+on disk is ADR-0032 (0014 WITHDRAWN), so the new shared-ontology ADR takes
+the next free number — likely ADR-0033. All other anchors in this section
+are carried from the s147 draft pass (verified then on `main` fa4f6c6)
+unless marked otherwise.*
 
 - `generate_all(yaml_path, output_dir)` loads exactly ONE ontology YAML per
   run (`services/engine/code_generator.py:745-763`) over a single-doc
@@ -160,47 +207,59 @@ this PLAN builds that invention.
   (`procurement`, `supply_chain` — PLAN-0081 AC-11's targets,
   `0081:273-285`), proving the mechanism end-to-end on shipped,
   test-covered consumers BEFORE the hero build stacks on top. That
-  boundary is SD-K — surfaced below with this drafter's recommendation,
-  not decided.
+  boundary is SD-K(i) — **RESOLVED (a) by Cray (s148)**: procurement +
+  supply_chain migrate HERE; `building_materials` stays PLAN-0081 Step 9.
 - Rosters remain **per-vertical, per-org demo DATA** (PLAN-0081 Out of
   Scope, `0081:363-368`): what unifies is the `Person` TYPE (one generated
   definition), procurement's dual roster SOURCE (one canonical remains),
   and the loading/index seam — never a cross-vertical roster merge and
   never cross-vertical identity semantics (ADR-0026 OQ-3=(c) untouched).
+  The SD-I=(b) `person` TABLE does not change this: it is a typed STORE,
+  not a cross-vertical identity merge — whether/how per-vertical roster
+  DATA seeds it is OQ-2, and no seeding shape may introduce cross-vertical
+  identity semantics.
 
 ## Acceptance Criteria
 
-Renumbered into this PLAN's own scheme; each maps from a PLAN-0081 AC
-almost verbatim (SD-J's own words, `0081:770`). Test artifacts are landed
+Renumbered into this PLAN's own scheme; AC-1..AC-6 each map from a
+PLAN-0081 AC almost verbatim (SD-J's own words, `0081:770`); AC-7 is NEW —
+created by Cray's SD-I=(b) override (s148). Test artifacts are landed
 by Code at build time (this drafter cannot write `tests/` — the PLAN-0079
 AC-2 precedent).
 
 | This PLAN | Maps from | Substance |
 |---|---|---|
-| AC-1 | 0081 AC-12 | ADR-first ordering gate |
+| AC-1 | 0081 AC-12 | ADR-first ordering gate (now: ONE new ADR + two pointer notes) |
 | AC-2 | 0081 AC-13 | mechanism works end-to-end |
-| AC-3 | 0081 AC-14 | reproducibility + committed home |
+| AC-3 | 0081 AC-14 | reproducibility + committed home (extended by SD-I=(b)) |
 | AC-4 | 0081 AC-15 | exactly one authoritative `Person` |
 | AC-5 | 0081 AC-11 | existing-vertical migration, behavior preserved |
-| AC-6 | 0081 AC-7/9c | OQ-6 marker transformation (contingent on SD-K(ii)) |
+| AC-6 | 0081 AC-7/9c | OQ-6 marker transformation (owned HERE — SD-K(ii)=(a)) |
+| AC-7 | NEW — SD-I=(b) | `person` DB table + Alembic migration (committed-ORM DB surface) |
 
-- [ ] **AC-1 — the ADR-0008 grammar amendment lands FIRST (CLAUDE.md §8:
+- [ ] **AC-1 — the NEW shared-ontology ADR lands FIRST (CLAUDE.md §8:
   the ADR is merged before the related implementation PR).** Pass/fail
-  read: the shared-ontology grammar construct — the SD-F namespace/home
-  reservation + the SD-G discovery/resolution mechanism + the Step-1
-  type-system extension for constrained collection properties — is
-  **Accepted** (in an ADR-0008 amendment or a new ADR, per the OQ-1 path
-  Cray sequences) and MERGED before any Step 2–6 grammar/codegen change
-  ships. G1-gated: plan-drafter authors in a SEPARATE dispatch, Code
-  commits, ratified in ONE pass (never flip Status then edit body).
+  read: **ONE new shared-ontology ADR** (OQ-1 resolved, Cray s148; next
+  free number — likely ADR-0033) codifying the SD-F=(a) home/namespace
+  reservation + the SD-G=(b)+(c) `imports:`/pre-pass mechanism + the
+  Step-1 type-system extension for constrained collection properties +
+  the SD-I=(b) committed-ORM contract for the shared home is **Accepted**
+  and MERGED, **together with its two pointer-note edits** (ADR-0008 +
+  ADR-0026 — both G1 Accepted-body edits authored WITH the new ADR,
+  ratified in ONE pass, never flip Status then edit body), before any
+  Step 2–7 grammar/codegen/ORM/migration change ships. G1-gated:
+  plan-drafter authors in a SEPARATE dispatch, Code commits.
   Verified at R2 by PR ordering, not by a pytest artifact. Fails if any
-  grammar/codegen change ships ahead of its ADR.
+  grammar/codegen/ORM/migration change ships ahead of its ADR, or if the
+  pointer notes are dropped (leaving ADR-0008/0026 silently stale).
 - [ ] **AC-2 — the shared-ontology mechanism WORKS end-to-end.** Pass/fail
-  read: a shared/core ontology YAML at the SD-F-ratified home, defining
+  read: the shared ontology YAML at `ontology/core_v0.yaml` with the
+  reserved `core` namespace (SD-F=(a)), defining
   `Person` as an ADR-0008 `object_type`, generates a shared `Person` type
-  via the extended generator/CLI (exact invocation per SD-G), and a
-  cross-vertical reference to the shared type resolves via the
-  SD-G-ratified mechanism WITHOUT the `KeyError` the shipped within-doc
+  via the extended generator/CLI, and a
+  cross-vertical reference to the shared type resolves via the ratified
+  `imports:` + pre-pass mechanism (SD-G=(b)+(c))
+  WITHOUT the `KeyError` the shipped within-doc
   resolution would raise (`code_generator.py:163,435`). Code lands a
   generate-then-import test: the generated shared `Person` is importable
   and its fields match the YAML definition **including the load-bearing
@@ -214,14 +273,20 @@ AC-2 precedent).
   follow the committed-vs-gitignored discipline — reference artifacts
   gitignored-reproducible (`.gitignore:41-42` / ADR-0008 `:101`);
   runtime-imported code at a COMMITTED path (the `_ORM_COMMITTED_DEST` /
-  B1 Option-B precedent, `code_generator.py:736-742`) — per the
-  SD-I-ratified verdict; and a codegen re-run is idempotent (regenerating
-  from an unchanged YAML produces no diff — Code lands the check). Fails
+  B1 Option-B precedent, `code_generator.py:736-742`) — which under
+  **SD-I=(b)** now INCLUDES the shared `Person` ORM:
+  `_ORM_COMMITTED_DEST` is EXTENDED with the shared-doc entry (the layout
+  pick is the forced B1-DP-1 call — Step 4); and a codegen re-run is
+  idempotent (regenerating
+  from an unchanged YAML produces no diff — Code lands the check). The DB
+  table + Alembic migration themselves are AC-7 — split out so this AC
+  stays the reproducibility/committed-home gate. Fails
   if runtime-imported code lands under a gitignored path, or if
   regeneration is not reproducible.
 - [ ] **AC-4 — the spec-layer `Person` is RECONCILED: exactly ONE
   authoritative `Person` type remains.** Pass/fail read: after Step 5, the
-  SD-H-ratified end state holds — there are NOT two competing `Person`
+  SD-H=(a) end state (delete + re-export) holds — there are NOT two
+  competing `Person`
   types; every consumer (`VerticalProcedures.principals` `spec.py:1660` +
   parse `:1789`, `check_principal_sod` `principal_sod.py:118`, `auth.py:49`
   `_principal_index`) resolves to the generated shared type (directly or
@@ -229,7 +294,7 @@ AC-2 precedent).
   a second independent `class Person(BaseModel)` definition reappears
   outside the generated home. Fails on any two-`Person` collision.
 - [ ] **AC-5 — the two existing verticals migrate onto the shared `Person`
-  with behavior preserved (scope per SD-K(i)).** Pass/fail read:
+  with behavior preserved (scope per SD-K(i)=(a)).** Pass/fail read:
   procurement + supply_chain resolve their principals as instances of the
   generated shared type; procurement's **dual roster source is unified**
   (the `procedures.yaml:64` block vs `person.csv` via
@@ -244,9 +309,9 @@ AC-2 precedent).
   `check_tier_authority`). Fails if any existing governance verdict
   changes, or if a per-vertical `Person` TYPE survives alongside the
   shared one.
-- [ ] **AC-6 — the OQ-6 marker is transformed honestly (contingent on
-  SD-K(ii); if Cray assigns the marker to PLAN-0081, this AC drops and
-  PLAN-0081 AC-7 stands).** Pass/fail read:
+- [ ] **AC-6 — the OQ-6 marker is transformed honestly (owned HERE —
+  SD-K(ii)=(a), Cray s148; PLAN-0081's pending fold re-points its AC-7 to
+  its Step-9 residue).** Pass/fail read:
   `test_principal_identity_retrigger.py` changes FROM the N-count
   re-trigger (`:43,:80`) INTO an assertion that the shared generated
   `Person` **is the one type every principal-bearing vertical's roster
@@ -258,6 +323,32 @@ AC-2 precedent).
   was **PERFORMED — by THIS PLAN, with PLAN-0081 landing the 3rd vertical
   on the shared home**. Fails if the baseline is merely extended/re-armed,
   or if the lineage record is dropped.
+- [ ] **AC-7 (NEW — created by Cray's SD-I=(b) override, s148) — the
+  shared `Person` ships a DB surface: committed ORM + `person` table +
+  Alembic migration.** Pass/fail read: the generated shared-`Person` ORM
+  lives at its committed destination (registered in
+  `_ORM_COMMITTED_DEST`, per AC-3); a new Alembic revision — the 12th in
+  the chain, and the FIRST creating an ontology-object table outside the
+  energy schema (verified this fold: `0001_initial_energy_schema.py` is
+  the only ontology-object revision today) — creates the `person` table
+  matching the generated ORM, and applies cleanly under the repo's
+  disposable test-DB pattern (Code lands the check per the existing
+  DB-test discipline; DB-backed checks skip when Postgres is down, so
+  this check must be RUN green on the PR head, not skip-passed). Runtime
+  principal resolution (`auth.py:49` et al.) stays roster-fed under this
+  PLAN: the table ships without a decided population path — OQ-2 owns
+  those mechanics — and no runtime consumer may start REQUIRING table
+  population before OQ-2 resolves. Honest scope cost, stated plainly
+  (ADR-0032 D6): this is the repo's SECOND committed generated ORM (only
+  `energy` registers one today) and its first non-energy ontology-object
+  migration — the DB/migration blast radius Cray consciously accepted in
+  the SD-I=(b) override. Fails if the ORM lands gitignored, if the
+  migration hand-drifts from the generated ORM, or if the table silently
+  becomes load-bearing at runtime.
+  *(Structural note, flagged for R2: this drafter split the DB surface
+  into its own AC rather than overloading AC-3 — AC-3 keeps the
+  reproducibility/committed-home discipline, AC-7 owns the table +
+  migration + empty-safe bar. Collapse into AC-3 at R2 if Code prefers.)*
 
 ## Out of Scope
 
@@ -266,13 +357,17 @@ AC-2 precedent).
   vertical.
 - ❌ **The hero build itself** (PLAN-0081 Steps 1–8: spine, reshape seam,
   factory wiring, endpoint re-points, the D7 re-evaluation).
-- ❌ **Authoring any ADR.** The ADR-0008 grammar amendment + the ADR-0026
-  `:89`/OQ-6 supersession record are AC-1's pinned dependency, authored by
-  a SEPARATE plan-drafter dispatch after Cray sequences OQ-1. This PLAN
-  only pins the ordering.
-- ❌ **A `Person` DB/ORM table** — if SD-I resolves (a), per the drafter
-  recommendation. (If Cray picks SD-I=(b), a follow-on scope amendment to
-  this PLAN adds it consciously — never silently.)
+- ❌ **Authoring any ADR.** OQ-1 = (Cray, s148) ONE NEW shared-ontology ADR
+  (likely ADR-0033) that both ADR-0008 + ADR-0026 point to, plus its two G1
+  pointer-note edits (ADR-0008 grammar reference; ADR-0026 `:89` supersession
+  + OQ-6 closure) — authored by a SEPARATE plan-drafter dispatch, merged
+  before impl (AC-1). This PLAN only pins the ordering.
+- ⏩ **A `Person` DB/ORM table is now IN SCOPE (SD-I=(b), Cray s148).** The
+  original draft deferred this "unless Cray picks (b), via a conscious
+  follow-on amendment" — this fold IS that conscious amendment: the committed
+  ORM + `person` table + Alembic migration are AC-7 (+ the AC-3 extension +
+  Step 4). Still OUT: POPULATING the table (OQ-2 — runtime stays roster-fed)
+  and any cross-vertical identity semantics (ADR-0026 OQ-3=(c) untouched).
 - ❌ **Genericizing beyond `Person`.** The shared mechanism ships with
   `Person` as its N=1 consumer — a Rule-of-Three tension **consciously
   accepted** by SD-E=(b-ii) (ADR-0008 `:79-80` deferred `shared property`
@@ -291,32 +386,36 @@ AC-2 precedent).
 ## Steps
 
 ### Step 1: The ADR dependency — pinned first gate (AC-1; NOT authored here)
-Block all grammar/codegen work behind the Accepted ADR (the OQ-1 path Cray
-sequences: two in-place amendments vs one new shared-ontology ADR vs
-ADR-0008 amendment + ADR-0026 note). The amendment's content obligations,
-as grounded by this PLAN (handed to the authoring dispatch as its
-fact-pack): **(i)** the SD-F shared home + reserved namespace token — noting
-the reservation is semantic (D2 prose + validator/CLI), since L1 already
-admits the token syntactically (`ontology_schema.json:15-18`); **(ii)** the
-SD-G discovery/resolution grammar (e.g. the `imports:` key + pre-pass
-semantics, per the ratified option); **(iii)** the TYPE-SYSTEM extension
-for constrained collection-valued properties — `roles:
-frozenset[RoleId]` min≥1 is unexpressible in the D3 table today
-(`0008:65-77` vs `spec.py:1374-1378`) — or an equivalent
-constraint construct; **(iv)** the conscious re-argument of the `:79-80`
-`shared property` Rule-of-Three deferral (mechanism at N=1 consumer);
-**(v)** the ADR-0026 `:89` supersession record + OQ-6 closure-by-extraction
-(`:116`); **(vi)** the ADR-0024 D3 H-partition clarification — the `Person`
-TYPE becomes codegen-emitted while roster DATA stays human-authored
-("never model-emitted" in the shipped docstrings means LLM-emission; the
-two axes must not be conflated, and the H markers survive the move);
-**(vii)** optionally reconcile D5's 5-artifact table with the shipped 7
-emitters (`code_generator.py:756-762`) — a known drift, Cray/dispatch's
-call.
+Block all grammar/codegen/ORM work behind the Accepted ADR. OQ-1 is
+RESOLVED (Cray, s148): **ONE NEW shared-ontology ADR** (likely ADR-0033)
+that both ADR-0008 + ADR-0026 point to, plus its two G1 pointer-note edits
+(ratified one-pass) — NOT two in-place amendments. The new ADR's content
+obligations, as grounded by this PLAN (handed to the authoring dispatch as
+its fact-pack): **(i)** the SD-F shared home + reserved namespace token —
+noting the reservation is semantic (D2 prose + validator/CLI), since L1
+already admits the token syntactically (`ontology_schema.json:15-18`);
+**(ii)** the SD-G discovery/resolution grammar (the `imports:` key +
+pre-pass semantics); **(iii)** the TYPE-SYSTEM extension for constrained
+collection-valued properties — `roles: frozenset[RoleId]` min≥1 is
+unexpressible in the D3 table today (`0008:65-77` vs `spec.py:1374-1378`) —
+or an equivalent constraint construct; **(iv)** the SD-I=(b) committed-ORM
+contract for the shared home — the shared ontology's runtime ORM generates
+to a COMMITTED path and backs a DB table, extending ADR-0008 D5's
+generation contract beyond the per-vertical gitignored default; **(v)** the
+conscious re-argument of the `:79-80` `shared property` Rule-of-Three
+deferral (mechanism at N=1 consumer); **(vi)** the ADR-0026 `:89`
+supersession record + OQ-6 closure-by-extraction (`:116`); **(vii)** the
+ADR-0024 D3 H-partition clarification — the `Person` TYPE becomes
+codegen-emitted while roster DATA stays human-authored ("never
+model-emitted" in the shipped docstrings means LLM-emission; the two axes
+must not be conflated, and the H markers survive the move); **(viii)**
+optionally reconcile D5's 5-artifact table with the shipped 7 emitters
+(`code_generator.py:756-762`) — a known drift, Cray/dispatch's call.
 
 ### Step 2: The shared ontology home + reserved namespace (SD-F)
-Create the shared/core ontology YAML at the SD-F-ratified path with the
-reserved namespace, defining `Person` as an ADR-0008 `object_type`:
+Create the shared/core ontology YAML at `ontology/core_v0.yaml` (SD-F=(a),
+Cray s148) with the reserved `core` namespace, defining `Person` as an
+ADR-0008 `object_type`:
 `person_id` (primary key), `name`, `roles` (via the Step-1(iii) construct,
 min≥1), carrying the spec-layer semantics (`spec.py:1369-1378`) including
 description text and the H-partition provenance comments. L1 + L2
@@ -324,10 +423,10 @@ validation extended to cover the shared doc (the `vero-lite validate`
 surface follows the SD-G invocation shape).
 
 ### Step 3: Extend the generator + CLI for shared-doc discovery + cross-vertical resolution (SD-G)
-Per the SD-G-ratified mechanism (drafter-recommended shape: the explicit
-`imports:` grammar key as the declared, greppable surface + a shared-doc
-pre-pass that emits ONE shared module which vertical generation imports —
-never a per-vertical re-embed): extend `load_doc`/`generate_all`
+Per SD-G=(b)+(c) (Cray, s148) — the explicit `imports:` grammar key as the
+declared, greppable surface + a shared-doc pre-pass that emits ONE shared
+module which vertical generation imports (never a per-vertical re-embed):
+extend `load_doc`/`generate_all`
 (`code_generator.py:71-76,745-763`) and the CLI path wiring
 (`cli.py:22-23,37-52`) so the shared doc is discoverable, validatable, and
 generable; cross-vertical `ref` resolution routes through the mechanism
@@ -336,24 +435,31 @@ extended only as far as the shared doc needs (the Pydantic emitter is the
 load-bearing one; which other emitters run for the shared doc is a build
 detail Code records at R2).
 
-### Step 4: Generate the shared `Person` at its committed home (SD-I, AC-3)
-Run the extended codegen → the generated shared `Person` module. Its home
-follows the SD-I verdict + the B1 Option-B precedent
-(`code_generator.py:736-742`): runtime-imported code at a COMMITTED path;
-reference artifacts gitignored-reproducible. Land the idempotent-regen
-check (unchanged YAML → zero diff).
+### Step 4: Generate the shared `Person` + ship the DB surface (SD-I=(b), AC-3 + AC-7)
+Run the extended codegen → the generated shared `Person` module at a
+COMMITTED path (extend `_ORM_COMMITTED_DEST`, `code_generator.py:736-742`;
+reference artifacts stay gitignored-reproducible), and land the
+idempotent-regen check (unchanged YAML → zero diff, AC-3). Extending
+`_ORM_COMMITTED_DEST` with the shared-doc entry forces the deferred B1-DP-1
+2nd-ORM-layout call (`code_generator.py:740-741`) — drafter-recommended: a
+separate committed module (e.g. `services/db/person.py`) preserving per-doc
+YAML→ORM parity (`services/db/identity.py:1-8`), Code finalizes at R2.
+Author the Alembic revision (the 12th; the first ontology-object table
+outside the energy schema) creating the `person` table (AC-7). Population
+is NOT built here — OQ-2 owns it; the table ships empty and runtime stays
+roster-fed.
 
-### Step 5: Reconcile the spec-layer `Person` (SD-H, AC-4)
-Per the SD-H verdict (drafter-recommended (a): DELETE the class at
-`spec.py:1359-1378` and RE-EXPORT the generated type from the spec-layer
-import path so every consumer keeps its import): exactly one authoritative
+### Step 5: Reconcile the spec-layer `Person` (SD-H=(a), AC-4)
+Per SD-H=(a) (Cray, s148): DELETE the class at `spec.py:1359-1378` and
+RE-EXPORT the generated type from the spec-layer import path so every
+consumer keeps its import — exactly one authoritative
 definition remains. Handle the satellites explicitly: `PersonId`/`RoleId`
 aliases (`spec.py:833,839`) stay or move with the re-export coherently;
 `PrincipalAlias` + `ServicePrincipal` stay spec-layer and continue to
 reference the (now generated) `Person`'s id-space; the H-partition
 docstrings are preserved. Code lands the AC-4 grep guard.
 
-### Step 6: Migrate procurement + supply_chain onto the shared `Person` (SD-K(i), AC-5) + transform the marker (SD-K(ii), AC-6)
+### Step 6: Migrate procurement + supply_chain onto the shared `Person` (SD-K(i)=(a), AC-5) + transform the marker (SD-K(ii)=(a), AC-6)
 Type-source unification for both verticals (with SD-H=(a) the imports may
 be near-no-ops — the LOAD-BEARING work is procurement's dual-roster
 unification: `procedures.yaml:64` vs `person.csv` via
@@ -361,18 +467,21 @@ unification: `procedures.yaml:64` vs `person.csv` via
 `hero_demo/run.py` wiring (lines carried from `0081:840-841` — Code
 verifies on disk at build), `supply_chain/procedures_factory.py:272,295`,
 and `auth.py:49` if the seam moves. Behavior bar: AC-5 — existing test
-assertions unmodified, verdicts unchanged. If SD-K(ii) = here: transform
-`test_principal_identity_retrigger.py` per AC-6 with the lineage record.
+assertions unmodified, verdicts unchanged. Transform
+`test_principal_identity_retrigger.py` per AC-6 with the lineage record
+(owned here — SD-K(ii)=(a), Cray s148).
 
 ### Step 7: Coordination + verification pass
 Full offline suite green; the AC-2 generate-then-import test, AC-3
-idempotence check, AC-4 grep guard, AC-5 migration bar, AC-6 marker (if
-owned here) all present; diff inspection at R2 confirms the engine touch
-is bounded to the named mechanism + reconciliation + migration scopes with
-governance semantics untouched. Closeout records: PLAN-0081 is UNBLOCKED
-(its Step 9 residue = `building_materials` only) and PLAN-0081's own fold
-(recording SD-J=SPLIT + the shrink) is flagged as the parent's next
-drafting action. This PLAN archives to `done/` per Plan Flow.
+idempotence check, AC-4 grep guard, AC-5 migration bar, AC-6 marker, and
+the AC-7 DB surface (migration applied green on the PR head) all present;
+diff inspection at R2 confirms the engine touch is bounded to the named
+mechanism + reconciliation + migration scopes with governance semantics
+untouched. Closeout records: OQ-2 resolved-or-explicitly-deferred;
+PLAN-0081 is UNBLOCKED (its Step 9 residue = `building_materials` only) and
+PLAN-0081's own fold (recording SD-J=SPLIT + the shrink + re-pointing its
+AC-7 per SD-K(ii)=(a)) is flagged as the parent's next drafting action.
+This PLAN archives to `done/` per Plan Flow.
 
 ## Verification
 
@@ -383,12 +492,15 @@ mechanism; cross-vertical resolution without the shipped `KeyError`;
 constraints emitter-expressed), the idempotent-regen check + committed-home
 discipline (AC-3), the one-`Person` grep guard (AC-4), the migration
 behavior bar (AC-5: existing SoD/tier/gate-resolve assertions unmodified),
-and the transformed marker with preserved lineage (AC-6, per SD-K(ii)).
-**AC-1 is R2/process-verified, not a pytest artifact:** the ADR merged
-BEFORE the implementation PR, checked by PR ordering. Everything is
-deterministic-offline — no MS-S1, no live host-state, no DB (SD-I=(a)
-recommendation; a DB surface enters only via a conscious SD-I=(b) verdict).
-CI RED states, if any, are intra-branch only; the merged PR is green.
+the transformed marker with preserved lineage (AC-6 — owned here,
+SD-K(ii)=(a)), plus the AC-7 DB surface (the Alembic migration RUN green on
+the PR head under the disposable test-DB pattern, `tests.db_support` — NOT
+skip-passed when Postgres is down). **AC-1 is R2/process-verified, not a
+pytest artifact:** the new ADR + its two pointer-note edits merged BEFORE
+the implementation PR, checked by PR ordering. The codegen/mechanism suite
+stays deterministic-offline (no MS-S1, no live host-state); only AC-7's
+migration check touches the DB. CI RED states, if any, are intra-branch
+only; the merged PR is green.
 
 ## Surfaced Decisions
 
@@ -403,11 +515,18 @@ re-opened here:**
 - **SD-J — RESOLVED = (b) SPLIT:** this PLAN is that verdict executed.
   Record + the absorb-vs-split option set: `0081:760-782`.
 
-**Open (Cray adjudication — recommended, not decided). SD-F..SD-I carry
-their PLAN-0081 letters, option sets, recommendations, and rejected-
-alternatives lineage forward VERBATIM in substance (restated compactly
-here; the parent's fuller prose at the cited lines governs on any
-wording doubt). SD-K is new — this PLAN's own boundary.**
+**Resolved this PLAN's SD round (Cray, s148, typed AskUserQuestion):
+SD-F=(a), SD-G=(b)+(c), SD-H=(a), SD-I=(b) [OVERRIDE of the drafter's (a)],
+SD-K(i)=(a), SD-K(ii)=(a).** The option sets + drafter recommendations +
+rejected-alternatives lineage below are KEPT verbatim as the REASONING
+RECORD — each "Drafter recommendation: (x)" is now Cray's ratified pick,
+EXCEPT SD-I where Cray overrode (a)→(b). SD-I's override is classified
+`superseded by new info` (the PLAN-0081 SD-D precedent): the drafter's (a)
+remains internally sound, declined on scope-appetite grounds — Cray chose
+the more foundational/complete option with the DB/migration blast-radius
+cost in view. SD-K was new — this PLAN's own boundary; both parts resolved
+=(a). The parent's fuller prose at the cited `0081:` lines governs on any
+wording doubt.
 
 - **SD-F — WHERE the shared/core ontology file lives + its namespace**
   (`0081:689-705`). ADR-0008 D2 fixes `namespace: <vertical_name>`
@@ -468,6 +587,9 @@ wording doubt). SD-K is new — this PLAN's own boundary.**
   drags migrations + the DB surface into an already-heavy identity
   refactor. **Why Cray:** it decides whether the identity model enters the
   DB/migration blast radius — a scope call, not a mechanics call.
+  **→ RESOLVED = (b) (Cray, s148) — OVERRIDE of this recommendation;
+  `superseded by new info` (PLAN-0081 SD-D precedent). Consequences
+  threaded: Out-of-Scope flip, AC-3 + AC-7, Step 4, Step 1(iv), OQ-2.**
 - **SD-K (NEW — this PLAN's scope boundary vs PLAN-0081; two sub-parts):**
   **(i) WHICH verticals migrate HERE.** Options: **(a)** this PLAN
   migrates the two EXISTING principal-bearing verticals (procurement +
@@ -493,23 +615,30 @@ wording doubt). SD-K is new — this PLAN's own boundary.**
 
 ## Open questions (surfaced, not decided)
 
-- **OQ-1 — the ADR path (carried from PLAN-0081, `0081:786-810`,
-  substance unchanged).** The ADR work is substantial and load-bearing:
-  **(i)** the ADR-0026 `:89` supersession ("introduces no new generation
-  surface … leaves … the ADR-0008 ontology codegen path untouched" — no
-  longer holds) + the OQ-6 closure-by-extraction record (`:116`, honoring
-  `:95`/`:157`); **(ii)** the ADR-0008 grammar amendment (SD-F reservation
-  + SD-G mechanism + the Step-1(iii) type-system extension + the `:79-80`
-  deferral re-argument). Both are G1-gated (plan-drafter authors, Code
-  commits, ratified in ONE pass — never flip Status then edit body) and
-  both must PRECEDE the implementation PR (CLAUDE.md §8; AC-1). **What
-  Cray decides:** the exact path — two in-place amendments (the ADR-0022 /
-  ADR-016 precedent) vs one NEW shared-ontology ADR both existing ADRs
-  point to vs an ADR-0008 amendment + an ADR-0026 note — and its
-  sequencing (this PLAN carries the ADR work as its Step-1 gate, per the
-  SPLIT structure OQ-1 itself anticipated: "a SPLIT PLAN would carry the
-  ADR work as its own first step"). A separate dispatch authors the ADR
-  after Cray sequences; nothing is authored here.
+- **OQ-1 — RESOLVED (Cray, s148): ONE NEW shared-ontology ADR that both
+  ADR-0008 + ADR-0026 point to (NOT two in-place amendments).** The ADR
+  work is substantial + load-bearing: the new ADR (likely ADR-0033)
+  codifies the SD-F home/namespace, the SD-G `imports:`+pre-pass mechanism,
+  the Step-1(iii) type-system extension, the SD-I=(b) committed-ORM
+  contract, and the `:79-80` deferral re-argument; plus two G1 pointer-note
+  edits — ADR-0008 (grammar reference) + ADR-0026 (`:89` supersession +
+  OQ-6 closure-by-extraction `:116`, honoring `:95`/`:157`). All three (new
+  ADR + two notes) are ratified one-pass (never flip Status then edit body)
+  and merge BEFORE the implementation PR (CLAUDE.md §8; AC-1). A separate
+  plan-drafter dispatch authors them; nothing ADR-shaped is authored here.
+- **OQ-2 (NEW — opened by SD-I=(b)) — the `person` table's population
+  story.** The committed ORM + table ship EMPTY (AC-7 is empty-safe;
+  runtime principal resolution stays roster-fed). HOW the table gets
+  populated is undecided. Recommended shape: an explicit, idempotent,
+  per-vertical seed script (never load-on-startup); rows carry
+  source-vertical/org provenance; uniqueness scoped so same-named
+  principals from different orgs never merge; the rosters
+  (`procedures.yaml` `principals:` + procurement's `person.csv`) stay the
+  canonical demo DATA + the runtime source until this resolves. HARD
+  constraint: the table is a typed STORE, not a cross-vertical merge —
+  ADR-0026 OQ-3=(c) stays untouched. Code proposes the shape at Step-4
+  build; Cray ratifies. AC-7 passes with the table empty, so OQ-2 never
+  blocks the mechanism.
 
 ## References
 
@@ -546,6 +675,14 @@ wording doubt). SD-K is new — this PLAN's own boundary.**
   `tests/services/engine/procedures/test_principal_identity_retrigger.py:43,49,71,80`.
   *Carried from PLAN-0081, not re-verified:* `hero_demo/run.py`
   `:347-358,:380-382,:542-550,:666,:738-749`.
+- DB-surface anchors (verified this fold, s148 — `main` db4d866):
+  `alembic.ini:6`; `alembic/versions/` (11 revisions; the only
+  ontology-object table is `0001_initial_energy_schema.py`; runtime tables
+  in 0002/0005/0007/0011); `services/db/identity.py:1-8,20-34` (stores
+  `person_id` strings, not a roster); `_ORM_COMMITTED_DEST` energy-only at
+  `code_generator.py:736-742` (the deferred B1-DP-1 2nd-ORM-layout call
+  `:740-741`); next free ADR number = 0033 (highest Accepted = 0032; 0014
+  WITHDRAWN).
 
 ---
 
@@ -569,3 +706,15 @@ wording doubt). SD-K is new — this PLAN's own boundary.**
 > file written; no shell run; no commit. Independent review: Code (R2) at
 > PR; ratification: Cray (SD-F..SD-K + OQ-1). Author≠reviewer separation:
 > **INTACT**. Uncommitted draft — Code commits per ADR-009 D2.
+>
+> **Fold (s148): Cray's SD-round rulings recorded** — SD-F=(a), SD-G=(b)+(c),
+> SD-H=(a), **SD-I=(b) OVERRIDE**, SD-K(i)=(a), SD-K(ii)=(a), OQ-1 = one new
+> shared-ontology ADR; OQ-2 newly surfaced (the `person` table's population
+> story). Verified this fold on `main` db4d866: next free ADR = 0033,
+> `_ORM_COMMITTED_DEST` energy-only, the alembic chain's only ontology-object
+> table (`0001_initial_energy_schema.py`). Authored across two `plan-drafter`
+> passes — the first L1-halted at 15/28 edits having authored the full
+> remaining punch list; **Code applied the drafter-authored punch list after
+> a git-commit L1-reset, then R2'd the whole file** + re-verified the new
+> anchors. Author (plan-drafter) ≠ applicator/reviewer (Code) — separation
+> INTACT.
