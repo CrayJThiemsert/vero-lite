@@ -18,6 +18,7 @@ from services.engine.code_generator import (
     emit_orm,
     emit_sql,
     generate_all,
+    load_doc,
 )
 
 _CORE_ONTOLOGY = Path(__file__).parents[3] / "ontology" / "core_v0.yaml"
@@ -119,3 +120,34 @@ def test_shared_person_generates_full_artifact_set(tmp_path: Path) -> None:
 
     ts = outputs["typescript"].read_text()
     assert "roles: string[];" in ts
+
+
+# ---------- ADR-0033 D5 / SD-I=(b): the committed shared Person ORM (PLAN-0082 Step 4b) ----------
+
+_COMMITTED_PERSON_ORM = Path(__file__).parents[3] / "services" / "db" / "person.py"
+
+
+def test_committed_person_orm_is_reproducible(tmp_path: Path) -> None:
+    """AC-3: the committed services/db/person.py is byte-reproducible from
+    ontology/core_v0.yaml — idempotent regeneration, no hand edits (the shared ORM
+    lands at a COMMITTED path, ADR-0033 D5, but stays generator-owned)."""
+    committed = _COMMITTED_PERSON_ORM.read_text()
+    fresh = tmp_path / "person.py"
+    emit_orm(load_doc(_CORE_ONTOLOGY), fresh)
+    assert fresh.read_text() == committed
+
+
+def test_core_orm_columns_match_generated_ddl(tmp_path: Path) -> None:
+    """Core parity (mirrors the energy DDL<->ORM guard, core-scoped): the shared
+    Person ORM's columns match core's generated DDL; roles is a JSONB column."""
+    from services.db.person import Person
+
+    out = tmp_path / "schema.sql"
+    emit_sql(load_doc(_CORE_ONTOLOGY), out)
+    ddl = out.read_text()
+
+    assert {c.name for c in Person.__table__.columns} == {"person_id", "name", "roles"}
+    assert str(Person.__table__.c.roles.type) == "JSONB"
+    assert Person.__table__.c.roles.nullable is False
+    assert "CREATE TABLE person (" in ddl
+    assert "roles JSONB" in ddl

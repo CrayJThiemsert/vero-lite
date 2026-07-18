@@ -40,6 +40,9 @@ scratch/
 
 # Ontology codegen outputs (ADR-008 D5; reproducible from <name>_v0.yaml)
 verticals/*/generated/
+# Shared/core ontology codegen outputs (ADR-0033 D5; the committed shared ORM
+# lands at services/db/person.py, NOT here — the reference artifacts are gitignored).
+ontology/generated/
 
 # Strategy (confidential — see ADR-006 D2)
 # Company-specific opportunity analysis, design partner names, deal structure.
