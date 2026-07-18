@@ -42,7 +42,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from ruamel.yaml import YAML
 
-from services.engine.procedures.person_model import Person
+from services.engine.procedures.person_model import Person as Person  # re-export (SD-H=(a))
 from services.engine.procedures.prose_lint import governance_prose_lint
 
 ThresholdDirection = Literal["below", "above"]
