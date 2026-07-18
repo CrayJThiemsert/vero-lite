@@ -12,12 +12,16 @@ home exists today; the shipped codegen model is strictly per-vertical),
 EXTENDING `code_generator.py` + `cli.py`, and (per CLAUDE.md §8) landing a
 preceding **ADR-0008 grammar amendment**. A second conscious scope
 expansion, chosen with the full grounded cost in view.
-Still open: **SD-F…SD-J** (b-ii's own sub-forks, incl. **SD-J
-absorb-vs-split — the highest-order structural fork**) + **OQ-1** (now
-EXPANDED: substantial ADR work — an ADR-0026 amendment AND the ADR-0008
-amendment) — below.
-**Owner:** Claude Code (execution) · Cray (SD-F…SD-J adjudication +
-ratification)
+**SD-F…SD-J RESOLVED + SHIPPED (Cray s147/s148 → built s149/s150):**
+SD-J=(b) SPLIT ratified (s147) → the b-ii shared-ontology work became its
+OWN dependency PLAN, **PLAN-0082 — now COMPLETE + archived**
+(`docs/plans/done/0082-*.md`; ADR-0033 Accepted #803 + Steps 2–7, #804–811).
+SD-F/G/H/I + SD-K + OQ-1 were resolved + executed THERE, not here. This
+PLAN's Step 9 accordingly **shrinks to the `building_materials` migration**
+onto the already-shipped shared `Person` (below); its AC-7 (the OQ-6
+Person-marker transform) is **DONE by PLAN-0082 AC-6** (#810) — re-pointed
+below.
+**Owner:** Claude Code (execution) · Cray (ratification)
 **Created:** 2026-07-18
 **Related ADRs:** **ADR-0008 (PRIMARY — its per-vertical YAML-ontology
 grammar is AMENDED by the SD-E=(b-ii) shared-ontology construct; the
@@ -34,6 +38,25 @@ T1 trigger is MET by this build, see Step 8), PLAN-0074/0075 (the 2nd AT-2
 signature + tier-authority enforcement, reused), PLAN-0077 (SD-8 row-local
 wall, honored), PLAN-0078 (declared-transform precedent, mirrored), PLAN-0062
 (executor-factory wiring pattern), PLAN-0068 (per-entity band exemplar).
+
+> **Fold (s150) — SD-J=SPLIT executed; the shared-ontology dependency SHIPPED.**
+> When this PLAN was last folded (s147) its highest-order fork SD-J was still
+> open. Cray ratified **SD-J=(b) SPLIT** (s147, AskUserQuestion): the b-ii
+> shared-ontology mechanism + `Person` promotion split out into **PLAN-0082**,
+> which is now **COMPLETE + archived** (`done/0082-*.md`) — ADR-0033 Accepted
+> (#803) + Steps 2–7 (#804–811, s149–s150). Consequences threaded into this PLAN:
+> **(1)** Step 9 shrinks from "extract + migrate all three verticals" to landing
+> **only `building_materials`** on the shipped shared `Person` (Step 9 below).
+> **(2)** PLAN-0081's mechanism-side ACs are satisfied by the dependency — **AC-12
+> / AC-13 / AC-14 / AC-15** (ADR-first / mechanism / reproducibility / one-`Person`)
+> map onto PLAN-0082's **AC-1 / AC-2 / AC-3 / AC-4** (all ✅ in `done/0082-*.md`),
+> and **AC-7** (the OQ-6 Person-marker transform) is **PLAN-0082 AC-6** (#810, ✅),
+> re-pointed below. When building_materials is built, VERIFY these against
+> `done/0082-*.md` rather than re-executing them. **(3)** OQ-1 (the ADR path) is
+> resolved — one new shared-ontology ADR (ADR-0033), not the two in-place
+> amendments this PLAN once anticipated. *(This is a Draft-PLAN fold by Code —
+> NOT G2-gated; no code shipped. Classified `superseded by new info`: the s147
+> body predates SD-J's ratification + PLAN-0082's build.)*
 
 > **Mandate.** PLAN-0079 Step T1 fired this session: Cray commissioned the
 > hero (AskUserQuestion, s146) and resolved SD-1 (**trip N=3 in-PLAN — do not
@@ -235,19 +258,20 @@ PLAN-0079 AC-2 precedent.
   record's form (argument + verdict + what generalised). Fails if the
   marker is silently bumped without the recorded argument, or if CI merges
   RED.
-- [ ] **AC-7 — the OQ-6 Person marker TRANSFORMS (Step 9, SD-D=(a)): the
-  deferral is CLOSED, not re-deferred.** Pass/fail read: Code lands the
-  marker transformation — `test_principal_identity_retrigger.py` changes
-  FROM a "FAIL when an Nth vertical ships a per-vertical `Person`"
-  re-trigger INTO an assertion that the shared/core `Person` home **is the
-  one used across all principal-bearing verticals** (no re-arm at N=4; a
-  future vertical adding principals onto the shared home is the INTENDED
-  state, and a regression REINTRODUCING a per-vertical roster home fails).
-  The module docstring preserves the honest lineage: the N=2 firing was
-  answered (per-vertical re-confirmed + follow-on filed, PLAN-0074 AC-12),
-  and at N=3 the extraction was **PERFORMED** (this PLAN; ADR-006 D4
-  satisfied). Fails if the baseline is merely extended/re-armed, or if the
-  lineage record is dropped.
+- [ ] **AC-7 — the OQ-6 Person marker TRANSFORMS — RE-POINTED (s150): DONE by
+  PLAN-0082 AC-6 (#810), owned there per SD-K(ii)=(a) (Cray s148).** The
+  transformation SHIPPED in PLAN-0082 Step 6: `test_principal_identity_retrigger.py`
+  now asserts the shared generated `core.Person` **is the one type every
+  principal-bearing vertical's roster parses into** (no re-arm at N=4; a
+  regression reintroducing a per-vertical `Person` fails), with the honest
+  lineage preserved (N=2 fired PLAN-0074 AC-12 → answered → N=3 extraction
+  PERFORMED by PLAN-0082, not this PLAN). **This PLAN's residue:** when
+  building_materials ships its `principals:` (Step 9), its roster must parse
+  into that same shared `Person` — the transformed marker already covers it
+  (it parametrizes over every discovered principal-bearing vertical), so
+  there is nothing to re-transform; the invariant simply must stay green when
+  building_materials lands. Verify against `done/0082-*.md` AC-6, do not
+  re-execute.
 - [ ] **AC-8 — the endpoint coordination points are consciously re-pointed
   (ii + iii).** Pass/fail read: in the same PR,
   `tests/api/test_procedures_endpoint.py` `_EXPECTED` gains
@@ -505,7 +529,7 @@ closeout:
   MET; PLAN-0076's own process owns the seam-PLAN opening (scope not
   reassigned, `0079:137-141`).
 
-### Step 9: Extract the shared/core `Person` home + migrate all three verticals (SD-D=(a), Cray s146 — the scope-expanding override)
+### Step 9: Land `building_materials` on the already-shipped shared `Person` (SD-J=SPLIT — the mechanism shipped in PLAN-0082, `done/0082-*.md`)
 Shipping `principals:` (unavoidable — SoD + `doa_tier` gate-resolve require
 resolvable `Person`s, ADR-0026 D4 / the RF-1 finding) makes
 building_materials the THIRD principal-bearing vertical, firing
@@ -516,10 +540,17 @@ framing (this couples an identity refactor to the hero build; the shape
 PLAN-0074 SD-4 avoided at N=2) — so ADR-006 D4 Rule of Three is satisfied
 by EXTRACTION, not by another recorded deferral. This marker was NOT in
 the dispatch's four coordination points — it is coordination point (v).
-*(SD-J note: this step as written renders the ABSORB structure — all of
-b-ii inside this PLAN. If Cray's SD-J verdict is SPLIT, 9a moves to a
-dependency PLAN and this step shrinks to the migration — see SD-J below;
-the sub-step content is the same work either way.)* Sub-steps:
+**SD-J=(b) SPLIT was ratified (Cray s147): 9a moved to the dependency PLAN
+(PLAN-0082) and SHIPPED there — this step shrank to the building_materials
+migration.** Sub-step status after the split (the 9a–9d detail below is
+retained as the historical work description; most now read as DONE-in-PLAN-0082):
+**9a** (build the shared mechanism + `Person` type/ORM/table + spec reconcile) =
+**DONE, PLAN-0082 Steps 2–5** (#804–809), codified by ADR-0033 (#803); **9b** =
+the **ONLY residue for this PLAN** — land `building_materials` on the shared
+`Person` (procurement + supply_chain were migrated in PLAN-0082 Step 6, #810);
+**9c** (marker transform) = **DONE, PLAN-0082 AC-6** (#810; AC-7 re-pointed above);
+**9d** (the ADR path) = **DONE**, OQ-1 resolved to ADR-0033, not two amendments.
+Sub-steps (historical detail — read as the record of what PLAN-0082 built):
 
 - **9a — Build the ontology-layer shared home (SD-E=(b-ii)).**
   *(Historical lineage: the first draft gated this on "Cray adjudicates
@@ -757,29 +788,23 @@ SEQUENCES SD-F…SD-I and the OQ-1 ADR path.**
   identity refactor that is already this PLAN's heaviest scope. Why Cray:
   it decides whether the identity model enters the DB/migration blast
   radius — a scope call, not a mechanics call.
-- **SD-J (STRUCTURAL — flag prominently: the highest-order sub-fork; its
-  verdict SEQUENCES SD-F…SD-I and the OQ-1 ADR path) — ABSORB b-ii into
-  PLAN-0081 Step 9, or SPLIT it into its own ADR-0008-amendment +
-  shared-ontology PLAN that PLAN-0081 DEPENDS on?** b-ii is arguably a
-  foundational capability — a new ontology subsystem — currently coupled
-  to the hero build. Options: **(a) ABSORB** — Step 9 as written; one
-  PLAN, no cross-PLAN sequencing, but it couples the new subsystem to the
-  hero (the coupling shape PLAN-0074 SD-4 avoided at N=2, now
-  compounded), makes the completing PR much harder to review, and holds
-  the hero hostage to the mechanism (and vice versa). **(b) SPLIT** — a
-  dedicated shared-ontology PLAN (own Goal/ACs/Steps — AC-12/13/14/15 map
-  onto it almost verbatim) that PLAN-0081 depends on; this PLAN's Step 9
-  shrinks to the migration (9b–9d) onto the by-then-shipped shared home
-  (cf. the ADR-0031 D4.2 own-PLAN rule already cited in this PLAN's
-  header). The sub-step content is the same work either way — SD-J
-  decides its PLAN topology, not its substance (Step 9's own SD-J note
-  says the same). **Drafter recommendation: (b) SPLIT** — b-ii has its
-  own ADR, its own acceptance surface, and its own failure modes; the
-  ADR-first ordering (AC-12) already forces a sequence point, and a split
-  keeps both PRs reviewable. Honest cost of (b): one more PLAN, a
-  dependency edge, and the hero waits on the mechanism landing. Why Cray:
-  PLAN topology + sequencing is Cray's routing authority — this fork
-  decides what "this PLAN" even means and orders every other sub-fork.
+- **SD-J (STRUCTURAL — the highest-order sub-fork) — RESOLVED = (b) SPLIT
+  (Cray s147, AskUserQuestion), and now EXECUTED.** The b-ii shared-ontology
+  mechanism + `Person` promotion split into a dedicated dependency PLAN,
+  **PLAN-0082 — COMPLETE + archived** (`done/0082-*.md`; ADR-0033 #803 +
+  Steps 2–7, #804–811). PLAN-0081's AC-12/13/14/15 mapped onto PLAN-0082's
+  AC-1/2/3/4 (all ✅ there), its AC-7 became PLAN-0082 AC-6 (#810), and this
+  PLAN's Step 9 shrank to the `building_materials` migration onto the shipped
+  shared home. *Option set kept for lineage:* **(a) ABSORB** (Step 9 as
+  originally written — one PLAN, but it coupled the new subsystem to the hero,
+  the shape PLAN-0074 SD-4 avoided at N=2) was declined; **(b) SPLIT**
+  (drafter-recommended) was ratified — b-ii has its own ADR (ADR-0033), its
+  own acceptance surface, and the ADR-first ordering already forced a sequence
+  point, so the split kept both PRs reviewable. **Why Cray:** PLAN topology +
+  sequencing is Cray's routing authority; this fork decided what "this PLAN"
+  means and ordered every other sub-fork. Honest cost paid as forecast: one
+  more PLAN + a dependency edge; the hero now waits only on landing
+  building_materials on an already-proven shared `Person`.
 
 ## Open questions (surfaced, not decided)
 
