@@ -13,9 +13,13 @@ import ast
 from pathlib import Path
 from typing import Any
 
+import pytest
+from pydantic import ValidationError
+
 from services.engine.code_generator import (
     _load_imports,
     emit_orm,
+    emit_pydantic,
     emit_sql,
     generate_all,
     load_doc,
@@ -151,3 +155,55 @@ def test_core_orm_columns_match_generated_ddl(tmp_path: Path) -> None:
     assert Person.__table__.c.roles.nullable is False
     assert "CREATE TABLE person (" in ddl
     assert "roles JSONB" in ddl
+
+
+# ---------- ADR-0033 D4 / SD-H=(a): the committed shared Person PYDANTIC re-export
+# (PLAN-0082 Step 5) ----------
+
+_REPO_ROOT = Path(__file__).parents[3]
+_COMMITTED_PERSON_MODEL = _REPO_ROOT / "services" / "engine" / "procedures" / "person_model.py"
+
+
+def test_committed_person_pydantic_is_reproducible(tmp_path: Path) -> None:
+    """AC-3 (Step 5, SD-H=(a)): the committed services/engine/procedures/person_model.py is
+    byte-reproducible from ontology/core_v0.yaml — the RE-EXPORTED shared Person stays
+    generator-owned (no hand edits), mirroring the committed-ORM guard above
+    (test_committed_person_orm_is_reproducible). The Pydantic emitter routes here via
+    _PYDANTIC_COMMITTED_DEST["core"] under generate_all."""
+    committed = _COMMITTED_PERSON_MODEL.read_text()
+    fresh = tmp_path / "person_model.py"
+    emit_pydantic(load_doc(_CORE_ONTOLOGY), fresh)
+    assert fresh.read_text() == committed
+
+
+def test_exactly_one_pydantic_person_definition() -> None:
+    """AC-4 (SD-H=(a)): after the spec-layer Person is deleted + re-exported, EXACTLY ONE
+    Pydantic ``class Person(BaseModel)`` definition exists in committed source — the generated
+    shared type at services/engine/procedures/person_model.py. A regression that reintroduces a
+    second independent Person (a per-vertical copy, or un-deleting the spec-layer class) fails
+    here. (The SQLAlchemy ``class Person(Base)`` ORM is a different base and is not matched;
+    gitignored ``generated/`` reference artifacts are excluded.)"""
+    needle = "class Person(BaseModel)"
+    hits = sorted(
+        p.relative_to(_REPO_ROOT).as_posix()
+        for root in ("services", "verticals")
+        for p in (_REPO_ROOT / root).rglob("*.py")
+        if "/generated/" not in p.as_posix() and needle in p.read_text(encoding="utf-8")
+    )
+    assert hits == ["services/engine/procedures/person_model.py"], hits
+
+
+def test_spec_person_is_the_generated_shared_type() -> None:
+    """AC-4/AC-2 (SD-H=(a)): ``spec.Person`` resolves to the generated shared type (the
+    re-export), NOT a second hand-written definition — and the re-exported type still enforces
+    the load-bearing constraints the shipped spec Person carried (``roles`` non-empty +
+    unknown-field rejection), now EMITTER-expressed from core_v0.yaml, never a hand shim."""
+    from services.engine.procedures import person_model, spec
+
+    assert spec.Person is person_model.Person
+    with pytest.raises(ValidationError):  # roles min_length>=1
+        spec.Person(person_id="p1", name="A", roles=frozenset())
+    with pytest.raises(ValidationError):  # extra="forbid"
+        spec.Person(person_id="p1", name="A", roles=frozenset({"approver"}), rank="x")
+    ok = spec.Person(person_id="p1", name="A", roles=frozenset({"approver"}))
+    assert ok.roles == frozenset({"approver"})

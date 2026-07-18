@@ -873,6 +873,17 @@ _ORM_COMMITTED_DEST: dict[str, Path] = {
     "core": Path("services/db/person.py"),
 }
 
+# Committed-Pydantic destinations (PLAN-0082 Step 5 / ADR-0033 D5, SD-H=(a)).
+# The shared `core` ontology's Pydantic Person is RUNTIME code too — the procedures spec
+# layer re-exports it (spec.py) and auth.py / principal_sod.py import it — so, like the
+# committed ORM above, it must generate to a COMMITTED path, not the gitignored
+# ontology/generated/models.py. Keyed by ontology NAMESPACE (`core` for the shared doc);
+# every vertical keeps the gitignored default. The generated module stays generator-owned
+# (a reproducibility guard holds it byte-identical to core_v0.yaml — no hand edits).
+_PYDANTIC_COMMITTED_DEST: dict[str, Path] = {
+    "core": Path("services/engine/procedures/person_model.py"),
+}
+
 
 def generate_all(yaml_path: Path, output_dir: Path) -> dict[str, Path]:
     """Run every emitter against ``yaml_path``; return name -> output path map.
@@ -886,7 +897,9 @@ def generate_all(yaml_path: Path, output_dir: Path) -> dict[str, Path]:
     namespace = doc.get("namespace", "")
     imported = _load_imports(doc)  # ADR-0033 D2: cross-doc ref resolution sources
     outputs: dict[str, Path] = {}
-    outputs["pydantic"] = emit_pydantic(doc, output_dir / "models.py")
+    outputs["pydantic"] = emit_pydantic(
+        doc, _PYDANTIC_COMMITTED_DEST.get(namespace, output_dir / "models.py")
+    )
     outputs["sql"] = emit_sql(doc, output_dir / "schema.sql", imported)
     outputs["jsonschema"] = emit_jsonschema(doc, output_dir / "schema.json")
     outputs["mcp"] = emit_mcp(doc, output_dir / "mcp_tools.json")

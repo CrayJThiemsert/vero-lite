@@ -42,6 +42,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from ruamel.yaml import YAML
 
+from services.engine.procedures.person_model import Person
 from services.engine.procedures.prose_lint import governance_prose_lint
 
 ThresholdDirection = Literal["below", "above"]
@@ -1356,26 +1357,19 @@ class PrincipalAlias(BaseModel):
     )
 
 
-class Person(BaseModel):
-    """A first-class, human-authored principal identity — the resolvable human who holds
-    approval role(s) (ADR-0026 D1/D2). Lives in the procedures spec layer beside ``Agent`` (the
-    MACHINE actor that *runs* a procedure), following ADR-0008 ontology-grammar conventions; it
-    supersedes the procurement role-label near-misses (``ApprovalTier.approver_role`` /
-    ``PurchaseOrder.approver_chain``) — those point at a ``Person``, they do not re-store the
-    identity. Human-author-only (H, ADR-0024 D3) — a principal is never model-emitted."""
-
-    model_config = ConfigDict(extra="forbid")
-
-    person_id: PersonId = Field(
-        description="canonical identity key (PK) — the resolved-principal identity SoD compares "
-        "(ADR-0026 D1); a bare PK match is the first OQ-3 collapse trigger"
-    )
-    name: str = Field(description="the human's name (display)")
-    roles: frozenset[RoleId] = Field(
-        min_length=1,
-        description="the approval role(s) this principal holds (>=1) — the role->principal "
-        "binding the step->required-role map resolves against (ADR-0026 D2; OQ-1=(a))",
-    )
+# ``Person`` — the first-class, human-authored principal identity (the resolvable human who
+# holds approval role(s), ADR-0026 D1/D2) — is now the GENERATED shared ``core.Person``
+# (ADR-0033 D4/D5, PLAN-0082 Step 5, SD-H=(a)): promoted from this spec-layer convenience to an
+# ADR-0008 ontology ``object_type`` at ``ontology/core_v0.yaml``, emitted to the committed
+# ``person_model.py`` and RE-EXPORTED here (the module import above) so every consumer keeps its
+# ``spec.Person`` import and exactly ONE authoritative definition remains. It still supersedes
+# the procurement role-label near-misses (``ApprovalTier.approver_role`` /
+# ``PurchaseOrder.approver_chain``) — those point at a ``Person``, they do not re-store the
+# identity. Human-author-only (H, ADR-0024 D3) — a principal is never MODEL-emitted (the LLM
+# axis); the roster DATA stays human-authored while the TYPE is codegen-emitted (a DISTINCT
+# axis — ADR-0033 Step 1(vii); the two must not be conflated). The generated model carries the
+# load-bearing constraints (``extra="forbid"`` + ``roles`` min_length>=1) verbatim from the YAML
+# (``person_id``/``name``/``roles`` — the id-space is ``PersonId``/``RoleId``, str aliases below).
 
 
 class ServicePrincipal(BaseModel):
