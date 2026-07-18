@@ -1,6 +1,6 @@
 # PLAN-0080: trace-attribution legibility (deterministic kind→label map) + `docs/conventions/ui.md`
 
-**Status:** Draft (pending Cray ratification)
+**Status:** **Complete** — shipped end to end in s146 (#794 PR-A `6a2a42d`; #795 PR-B `8737b0a`); all 9 ACs verified GREEN against `main` at the s147 closeout; SD-1(c) + SD-2(iii) Cray-ratified (s146). Archived to `done/`.
 **Owner:** Claude Code (executor) · `plan-drafter` (author) · Cray (ratifier)
 **Created:** 2026-07-17
 **Related ADRs:** ADR-0007 (OCT engine contracts — the `ReasoningStep`/`AuditMetadata` pins), ADR-0017 (D5 knowledge routing, D6 derived-artifact precedence), ADR-0026 (D6 governed-decision audit tie), ADR-0032 (D1(3) offline arm, D4 agent-interop PARK, D5 attribution trust anchor, OQ-2 doc Rule-of-Three)
@@ -20,6 +20,45 @@
 > Cray's AskUserQuestion ratification of the badge **colour-axis split**
 > (colour = mechanism, glyph = actor — L-4). SD-1/SD-2 remain unratified and
 > go to Cray at the PR.
+
+> **Closeout (session 147, 2026-07-18, `main = fa4f6c6`).** PLAN-0080 shipped
+> in s146 across two PRs (#794 `feat(ui)` deterministic trace-kind attribution +
+> the AST tripwire; #795 `docs(conventions)` canonical `ui.md`), but the Status
+> header + AC checkboxes were never reconciled. This closeout re-verified all 9
+> ACs on a fresh disk read and ticks them:
+> - **AC-1** ✅ `kindClass` / `includes('rule')` = **0 hits** in
+>   `services/api/static/assets/`; `trace-kinds.js` (`window.OCT_TRACE_KINDS`) is
+>   the single source, consumed by `components.js:155` (`traceKind`) +
+>   `view-flow.js:132`.
+> - **AC-2** ✅ `components.js:155-171` `traceKind` renders the label + the
+>   `data-actor` glyph channel (L-4); raw token kept in `title`. (Preview probes
+>   run at ship time — PR-A body.)
+> - **AC-3** ✅ `tests/api/test_trace_kind_labels.py` present; `trace-kinds.js`
+>   carries the `TRACE_KINDS_JSON_BEGIN/END` block + a closed-set `actor` on
+>   every entry.
+> - **AC-4** ✅ `theme.css:309` `.badge.unmapped`; `trace-kinds.js:22-23` — an
+>   unmapped kind ⇒ NO glyph + `data-actor="unknown"`.
+> - **AC-5** ✅ **as-scoped (F-4):** the `TRACE` entries fed to
+>   `O.reasoningTrace` (`view-story.js:74-88`, used at `:307,:597`) are
+>   normalized to canonical kinds (`ontology_query`/`rule_check`/`llm_inference`),
+>   documented `:69-73`. The AC's literal grep read ("0 matches") was
+>   recognized-impossible-as-written; the surviving `kind:` at `:90-91` (`PROP`
+>   recommendation cards), `:93` (`KIND_BADGE`), `:405-410` (pipeline DAG) are
+>   separate local vocabularies NOT fed to `reasoningTrace` — carved out by
+>   AC-5's own blast-radius note.
+> - **AC-6** ✅ `docs/conventions/ui.md` present ("Canonical, tracked").
+> - **AC-7** ✅ `docs/design/0013-oct-demo-claude-design-prompt.md:5` header
+>   annotation → `ui.md`; body untouched.
+> - **AC-8** ✅ static-asset only — `trace-kinds.js` loaded as a plain `<script>`
+>   (`index.html:41`), no new `fetch`.
+> - **AC-9** ✅ `?v=c37` cache-bust on `trace-kinds.js` + `theme.css`
+>   (`index.html:14,41`).
+>
+> **Findings stay recorded, NOT closed by this PLAN** (they route elsewhere):
+> F-1 (ADR-0007 `actor_kind` 3-vs-4 drift → ADR-011 / an ADR-0007 amendment
+> batch), F-2 (`query.py:19-29` suspected `aggregate`/`outcome` drop → its own
+> PLAN, unverified), F-3 (fact-pack erosion class). OQ-1 (LLM-narrated advisory
+> layer) stays an Open Question, nothing scheduled.
 
 ## Origin
 
@@ -329,13 +368,13 @@ Each AC states its pre-committed pass/fail read. "Preview probe" = a
 `.claude/launch.json`; `?v=` bumped first per §6c) — execution-time evidence,
 not CI.
 
-- [ ] **AC-1 — one map, one source.** A single kind→label map exists as one
+- [x] **AC-1 — one map, one source.** A single kind→label map exists as one
   static-asset source of truth; both `components.js` and `view-flow.js` consume
   it; the duplicated substring sniff is gone.
   **Read:** `Grep kindClass services/api/static/assets/` → 0 definition sites
   remain (helper renamed) or exactly 1 shared site; `Grep "includes('rule')"
   services/api/static/assets/` → 0 matches.
-- [ ] **AC-2 — mapped kinds render plain English + the actor glyph; raw token
+- [x] **AC-2 — mapped kinds render plain English + the actor glyph; raw token
   preserved.** The badge for a mapped kind shows the label (e.g.
   `gate_principal_recorded` → "Human resolved the gate") **and carries the
   actor glyph per L-4** (colour stays mechanism-semantic); the raw kind token
@@ -347,7 +386,7 @@ not CI.
   `gate_principal_recorded`, AND `badge.dataset.actor === 'human'` with an
   SVG glyph child present. Same probe on View B for `llm_inference` → label +
   `s-info` class retained + `data-actor === 'llm'` + glyph present.
-- [ ] **AC-3 — the anti-rot tripwire.** A Python test (proposed:
+- [x] **AC-3 — the anti-rot tripwire.** A Python test (proposed:
   `tests/api/test_trace_kind_labels.py`) scans `services/engine/**/*.py` for
   literal kind emissions (both the raw-dict `"kind": "..."` and the typed
   `kind="..."` forms), and asserts **set equality** between the scanned
@@ -363,7 +402,7 @@ not CI.
   (2) add a fake `"kind": "zz_new_kind"` emitter line in a scratch engine file
   → RED; (3) set one entry's `actor` to an out-of-set value (e.g. `"robot"`)
   → RED. All reverted before merge.
-- [ ] **AC-4 — unknown kinds degrade visibly and honestly.** An unmapped kind
+- [x] **AC-4 — unknown kinds degrade visibly and honestly.** An unmapped kind
   renders its raw token verbatim in a dedicated *unmapped* style (dashed
   outline + tooltip "unmapped trace kind — raw engine token") that is visually
   distinct from every `s-*` semantic class — never silently `s-neutral`
@@ -377,7 +416,7 @@ not CI.
   container: badge `classList` contains the unmapped class and none of
   `s-ok/s-info/s-warn/s-crit/s-neutral`; badge text === `zz_unmapped_probe`;
   `badge.dataset.actor === 'unknown'`; zero SVG glyph children on the badge.
-- [ ] **AC-5 — view-story normalized.** `view-story.js`'s synthetic trace
+- [x] **AC-5 — view-story normalized.** `view-story.js`'s synthetic trace
   kinds (`query`/`rule`/`llm`, `:71-81`) are normalized to canonical kinds
   (`ontology_query`/`rule_check`/`llm_inference`) so the story view renders
   mapped labels, and the map stays exactly the engine vocabulary (no demo
@@ -387,7 +426,7 @@ not CI.
   view trace: zero unmapped badges. (The `:400-405` pipeline-diagram `kind`
   fields are a *different, local* vocabulary not fed to `reasoningTrace` —
   out of AC-5's blast radius; touch them only if trivially safe.)
-- [ ] **AC-6 — `docs/conventions/ui.md` exists and is canonical.** It covers,
+- [x] **AC-6 — `docs/conventions/ui.md` exists and is canonical.** It covers,
   with `file:line` anchors: (1) purpose + canonical status + the L-3 OQ-2
   accounting; (2) the `theme.css:50-93` token vocabulary + semantic status
   classes; (3) the `window.OCT` component contract (`components.js:214-218`)
@@ -405,15 +444,15 @@ not CI.
   **Read:** an 11-item checklist pass over the merged file — each item present
   with its anchor; `docs/conventions/` is not gate-blocked (G1/G2 scope =
   `docs/adr/` + `docs/plans/` only), so Code writes it directly.
-- [ ] **AC-7 — 0013 prompt annotated, not rewritten (SD-2 (iii)).** One-line
+- [x] **AC-7 — 0013 prompt annotated, not rewritten (SD-2 (iii)).** One-line
   header annotation pointing at `ui.md`; no body change.
   **Read:** diff shows exactly the header line(s) added; body untouched.
-- [ ] **AC-8 — no live-model or network dependency introduced (ADR-0032
+- [x] **AC-8 — no live-model or network dependency introduced (ADR-0032
   D1(3), `0032:110`).** The map is a static asset; no new fetches beyond the
   existing static/`/meta` surface; nothing in this PLAN touches MS-S1.
   **Read:** `Grep "fetch(" ` over changed asset files → no new non-static
   endpoints vs `main` (diff review in R2).
-- [ ] **AC-9 — cache-bust honoured.** The shared `?v=` token in
+- [x] **AC-9 — cache-bust honoured.** The shared `?v=` token in
   `services/api/static/index.html` is bumped in the same PR that changes
   assets (runbook `:700-705`).
   **Read:** PR diff contains the token bump.
