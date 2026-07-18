@@ -1,13 +1,19 @@
 # PLAN-0082: The shared-ontology mechanism + `Person` promotion (the PLAN-0081 dependency)
 
-**Status:** Draft — **SD round CLOSED (Cray, s148, typed AskUserQuestion):
-SD-F=(a) · SD-G=(b)+(c) · SD-H=(a) · SD-I=(b — override, see record) ·
-SD-K(i)=(a) · SD-K(ii)=(a) · OQ-1=ONE new shared-ontology ADR.** All seven
-are ratified inputs — recorded, not re-litigated. Ready to execute once the
-Step-1 ADR (next free number — likely ADR-0033) + its two pointer-note
-edits merge (AC-1). One NEW open question (OQ-2 — the `person`-table
-population story SD-I=(b) creates) is surfaced for build-time resolution;
-it does not block the ADR dispatch.
+**Status:** **COMPLETE (Step 7 closeout, s150)** — all 7 ACs satisfied + ticked with
+fresh on-disk evidence (the Closeout Verification block below the AC list). Shipped across
+ADR-0033 (#803, Accepted, merged FIRST per AC-1) + impl PRs: Steps 2–4 (#804–808), Step 5
+(#809 — the spec-layer `Person` reconciled onto the committed generated `core.Person`),
+Step 6 (#810 — procurement + supply_chain migrated + the OQ-6 marker transformed). **SD round
+(Cray, s148):** SD-F=(a) · SD-G=(b)+(c) · SD-H=(a) · SD-I=(b — override) · SD-K(i)=(a) ·
+SD-K(ii)=(a) · OQ-1=ONE new shared-ontology ADR — all executed. **One build-time RE-SCOPE
+(Cray, s150): AC-5's "retire one of procurement's dual roster sources" was a MISREAD** —
+`procedures.yaml` (Thai SoD roster) and `person.csv` (the Fastenal LIVE-run roster) are
+DISTINCT demos, not redundant copies; neither retired (Closeout block). **OQ-2 (the
+`person`-table population story) stays OPEN + explicitly deferred** — the table ships empty,
+runtime stays roster-fed. PLAN-0081 is now UNBLOCKED (its Step 9 residue = `building_materials`
+on the shared home); PLAN-0081's own fold (SD-J=SPLIT record + Step-9 shrink + AC-7 re-point)
+is its next drafting action.
 **Owner:** Claude Code (execution) · Cray (SD adjudication + ratification)
 **Created:** 2026-07-18
 **Related ADRs:** **the NEW shared-ontology ADR (PRIMARY — OQ-1 RESOLVED,
@@ -237,7 +243,7 @@ AC-2 precedent).
 | AC-6 | 0081 AC-7/9c | OQ-6 marker transformation (owned HERE — SD-K(ii)=(a)) |
 | AC-7 | NEW — SD-I=(b) | `person` DB table + Alembic migration (committed-ORM DB surface) |
 
-- [ ] **AC-1 — the NEW shared-ontology ADR lands FIRST (CLAUDE.md §8:
+- [x] **AC-1 — the NEW shared-ontology ADR lands FIRST (CLAUDE.md §8:
   the ADR is merged before the related implementation PR).** Pass/fail
   read: **ONE new shared-ontology ADR** (OQ-1 resolved, Cray s148; next
   free number — likely ADR-0033) codifying the SD-F=(a) home/namespace
@@ -252,7 +258,7 @@ AC-2 precedent).
   Verified at R2 by PR ordering, not by a pytest artifact. Fails if any
   grammar/codegen/ORM/migration change ships ahead of its ADR, or if the
   pointer notes are dropped (leaving ADR-0008/0026 silently stale).
-- [ ] **AC-2 — the shared-ontology mechanism WORKS end-to-end.** Pass/fail
+- [x] **AC-2 — the shared-ontology mechanism WORKS end-to-end.** Pass/fail
   read: the shared ontology YAML at `ontology/core_v0.yaml` with the
   reserved `core` namespace (SD-F=(a)), defining
   `Person` as an ADR-0008 `object_type`, generates a shared `Person` type
@@ -268,7 +274,7 @@ AC-2 precedent).
   amended grammar, never by a hand-written shim). Fails if the shared type
   is hand-written rather than generated, or if "resolution" duplicates the
   object_type into each vertical's own doc.
-- [ ] **AC-3 — reproducibility + the generated module's home are handled,
+- [x] **AC-3 — reproducibility + the generated module's home are handled,
   not left ambient.** Pass/fail read: the shared generated artifacts
   follow the committed-vs-gitignored discipline — reference artifacts
   gitignored-reproducible (`.gitignore:41-42` / ADR-0008 `:101`);
@@ -283,7 +289,7 @@ AC-2 precedent).
   stays the reproducibility/committed-home gate. Fails
   if runtime-imported code lands under a gitignored path, or if
   regeneration is not reproducible.
-- [ ] **AC-4 — the spec-layer `Person` is RECONCILED: exactly ONE
+- [x] **AC-4 — the spec-layer `Person` is RECONCILED: exactly ONE
   authoritative `Person` type remains.** Pass/fail read: after Step 5, the
   SD-H=(a) end state (delete + re-export) holds — there are NOT two
   competing `Person`
@@ -293,7 +299,7 @@ AC-2 precedent).
   via the SD-H re-export), and Code lands a grep-level guard that FAILS if
   a second independent `class Person(BaseModel)` definition reappears
   outside the generated home. Fails on any two-`Person` collision.
-- [ ] **AC-5 — the two existing verticals migrate onto the shared `Person`
+- [x] **AC-5 — the two existing verticals migrate onto the shared `Person`
   with behavior preserved (scope per SD-K(i)=(a)).** Pass/fail read:
   procurement + supply_chain resolve their principals as instances of the
   generated shared type; procurement's **dual roster source is unified**
@@ -309,7 +315,7 @@ AC-2 precedent).
   `check_tier_authority`). Fails if any existing governance verdict
   changes, or if a per-vertical `Person` TYPE survives alongside the
   shared one.
-- [ ] **AC-6 — the OQ-6 marker is transformed honestly (owned HERE —
+- [x] **AC-6 — the OQ-6 marker is transformed honestly (owned HERE —
   SD-K(ii)=(a), Cray s148; PLAN-0081's pending fold re-points its AC-7 to
   its Step-9 residue).** Pass/fail read:
   `test_principal_identity_retrigger.py` changes FROM the N-count
@@ -323,7 +329,7 @@ AC-2 precedent).
   was **PERFORMED — by THIS PLAN, with PLAN-0081 landing the 3rd vertical
   on the shared home**. Fails if the baseline is merely extended/re-armed,
   or if the lineage record is dropped.
-- [ ] **AC-7 (NEW — created by Cray's SD-I=(b) override, s148) — the
+- [x] **AC-7 (NEW — created by Cray's SD-I=(b) override, s148) — the
   shared `Person` ships a DB surface: committed ORM + `person` table +
   Alembic migration.** Pass/fail read: the generated shared-`Person` ORM
   lives at its committed destination (registered in
@@ -349,6 +355,62 @@ AC-2 precedent).
   into its own AC rather than overloading AC-3 — AC-3 keeps the
   reproducibility/committed-home discipline, AC-7 owns the table +
   migration + empty-safe bar. Collapse into AC-3 at R2 if Code prefers.)*
+
+## Closeout Verification (Step 7, s150) — every AC ticked against fresh on-disk evidence
+
+Verified on `main c94d089` (the #810 merge commit); full offline suite **2888 passed /
+7 skipped** re-run on the merge commit itself (CI is PR-only — it never tests the merge
+commit). Each AC's satisfying artifact:
+
+- **AC-1** ✅ — ADR-0033 (`docs/adr/0033-shared-ontology-mechanism.md`, **Accepted**) merged
+  FIRST (#803) with its two pointer-note edits (ADR-0008 + ADR-0026), before any impl PR.
+  Process-verified by PR ordering (#803 → #804–810).
+- **AC-2** ✅ — `tests/services/engine/test_shared_ontology_mechanism.py`: `_load_imports`
+  resolves `core`; `emit_sql`/`emit_orm` resolve the qualified `core.Person` ref with no
+  `KeyError`; generating `core_v0.yaml` emits the full artifact set with the `set`/`closed`
+  constraints EMITTER-expressed (`roles` non-empty + unknown-field rejection), never a shim.
+- **AC-3** ✅ — `test_committed_person_orm_is_reproducible` (ORM) +
+  `test_committed_person_pydantic_is_reproducible` (Pydantic, #809): both committed modules are
+  byte-reproducible from `core_v0.yaml`; the Pydantic committed home was added via
+  `_PYDANTIC_COMMITTED_DEST` (Step 5), parallel to `_ORM_COMMITTED_DEST`.
+- **AC-4** ✅ — `test_exactly_one_pydantic_person_definition` (#809): exactly one committed
+  `class Person(BaseModel)` (the generated `services/engine/procedures/person_model.py`); the
+  spec-layer class was deleted + re-exported (SD-H=(a)). Proven non-vacuous empirically (a temp
+  duplicate → RED, reverted).
+- **AC-5** ✅ (with a re-scope) — every roster resolves to the shared type: Step 5's re-export
+  kept every import path identical, so `auth.py:49`, `supply_chain/procedures_factory.py:272`,
+  and `hero_demo/run.py` already read the shared seam — nothing to re-point. Full suite green with
+  EVERY existing SoD / tier-authority / gate-resolve assertion UNMODIFIED (behavior bar; the
+  Fastenal ฿288,000 → CONTROLLER live-roster test passes). **RE-SCOPE (Cray, s150): the "unify
+  procurement's dual roster source — retire one" clause was a MISREAD.** `procedures.yaml:64`
+  (Thai DOA-tier roster, the shipped vertical's SoD) and `person.csv` via `load_fastenal_principals`
+  (English roles, the Fastenal LIVE-run demo — `hero_demo/run.py` only, built in-code and
+  deliberately not a `procedures.yaml` entry) are DISTINCT demo rosters, NOT redundant copies.
+  Retiring either deletes a demo — which AC-5's own "verdicts may not change" bar forbids.
+  **Neither retired**; `load_fastenal_principals`' docstring documents it as the deliberate second
+  source. Classified `superseded by new info` (the drafter's fact-pack carried the `run.py` wiring
+  "not independently re-verified", `:189`).
+- **AC-6** ✅ — `test_principal_identity_retrigger.py` (#810) transformed from the N-count
+  re-trigger into the shared-type invariant
+  (`test_every_principal_bearing_vertical_parses_into_the_shared_person` +
+  `test_spec_person_is_the_shared_generated_type`); no re-arm at N=4; the lineage docstring is
+  preserved in full. Proven non-vacuous empirically (flipping the expected type → RED, reverted).
+- **AC-7** ✅ — `services/db/person.py` (committed ORM, registered in
+  `_ORM_COMMITTED_DEST["core"]`) + `alembic/versions/0012_person_table.py` +
+  `tests/services/db/test_person_migration.py::test_person_migration_applies_and_matches_orm`
+  (#808): the migration RAN GREEN on dev Postgres (not skip-passed) — the `person` table
+  (person_id/name `text`, roles `jsonb`, all NOT NULL) matches the generated ORM. The table ships
+  EMPTY; runtime stays roster-fed (OQ-2).
+
+**OQ-2 (the `person`-table population story) — OPEN, explicitly deferred.** The committed ORM +
+table ship empty (AC-7 is empty-safe); how the table gets populated is undecided. Recommended shape
+unchanged (an idempotent per-vertical seed with source-org provenance, no cross-vertical merge —
+ADR-0026 OQ-3=(c) untouched). Gates nothing; Code proposes when a consumer needs population.
+
+**Downstream:** PLAN-0081 is UNBLOCKED — its Step 9 shrinks to landing `building_materials` on the
+already-shipped, already-proven shared `Person`. PLAN-0081's own fold (record SD-J=SPLIT, shrink
+Step 9, re-point its AC-7 per SD-K(ii)=(a)) is the parent's next drafting action. A STATUS reconcile
+for the #803–810 batch (STATUS still reads s148) is also due.
 
 ## Out of Scope
 
