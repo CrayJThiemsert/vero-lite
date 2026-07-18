@@ -28,6 +28,12 @@
       "type": "object",
       "additionalProperties": {"$ref": "#/$defs/linkType"},
       "propertyNames": {"pattern": "^[a-z][a-z0-9_]*$"}
+    },
+    "imports": {
+      "type": "array",
+      "items": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+      "uniqueItems": true,
+      "description": "ADR-0033 D2: optional shared-ontology imports (namespace tokens). v0: the only legal member is the reserved `core` token (enforced at L2). Absent = pre-ADR-0033 grammar (byte-identical load)."
     }
   },
   "$defs": {
@@ -80,8 +86,8 @@
         },
         "target": {
           "type": "string",
-          "pattern": "^[A-Z][A-Za-z0-9]*$",
-          "description": "Required when type == ref; names another object_type."
+          "pattern": "^([a-z][a-z0-9_]*\\.)?[A-Z][A-Za-z0-9]*$",
+          "description": "Required when type == ref; names another object_type. ADR-0033 D2: may be qualified `<namespace>.<Type>` (cross-doc, resolved against an imported shared doc); unqualified = within-doc."
         },
         "items": {
           "enum": ["string", "int", "float", "bool"],

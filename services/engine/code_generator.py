@@ -76,6 +76,44 @@ def load_doc(yaml_path: Path) -> dict[str, Any]:
     return loaded
 
 
+# ADR-0033 D1/D2: the reserved shared-ontology namespaces + their doc homes. v0
+# ships exactly one — `core` at the repo-level shared home. A vertical declaring
+# `imports: [core]` resolves qualified `core.<Type>` refs against this doc.
+_SHARED_ONTOLOGY_PATHS: dict[str, Path] = {
+    "core": Path(__file__).parents[2] / "ontology" / "core_v0.yaml",
+}
+
+
+def _load_imports(doc: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """ADR-0033 D2 (the shared-doc pre-pass, resolution half): load the object_types
+    of each declared import namespace, keyed by namespace, for cross-doc ref
+    resolution during generation. L2 validation has already checked the tokens +
+    targets, so an unknown token here is skipped (the emitter never re-validates)."""
+    imported: dict[str, dict[str, Any]] = {}
+    for raw in doc.get("imports") or []:
+        path = _SHARED_ONTOLOGY_PATHS.get(str(raw))
+        if path is None or not path.is_file():
+            continue
+        shared = load_doc(path)
+        imported[str(raw)] = shared.get("object_types") or {}
+    return imported
+
+
+def _resolve_ref(
+    target: str,
+    object_types: dict[str, Any],
+    imported: dict[str, dict[str, Any]] | None,
+) -> tuple[str, dict[str, Any]]:
+    """ADR-0033 D2: resolve a ref ``target`` -> ``(bare_type_name, target_def)``.
+    A qualified ``<ns>.<Type>`` resolves against ``imported[ns]`` (the shared doc);
+    an unqualified target resolves within the local doc. The bare type name (never
+    the qualified string) is what ``_snake`` maps to the referenced table."""
+    if "." in target:
+        ns, type_name = target.split(".", 1)
+        return type_name, (imported or {})[ns][type_name]
+    return target, object_types[target]
+
+
 # ---------------------------------------------------------------------------
 # Pydantic emitter
 # ---------------------------------------------------------------------------
@@ -192,17 +230,21 @@ def emit_pydantic(doc: dict[str, Any], output_path: Path) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def _sql_type(prop_name: str, prop_def: dict[str, Any], object_types: dict[str, Any]) -> str:
+def _sql_type(
+    prop_name: str,
+    prop_def: dict[str, Any],
+    object_types: dict[str, Any],
+    imported: dict[str, dict[str, Any]] | None = None,
+) -> str:
     ptype = prop_def["type"]
     if ptype == "enum":
         values = prop_def["values"]
         choices = ", ".join(f"'{v}'" for v in values)
         return f"TEXT CHECK ({prop_name} IN ({choices}))"
     if ptype == "ref":
-        target = prop_def["target"]
-        target_def = object_types[target]
+        type_name, target_def = _resolve_ref(prop_def["target"], object_types, imported)
         target_pk = target_def["primary_key"]
-        return f"TEXT REFERENCES {_snake(target)}({target_pk})"
+        return f"TEXT REFERENCES {_snake(type_name)}({target_pk})"
     return _SQL_SCALAR_TYPE[ptype]
 
 
@@ -211,8 +253,9 @@ def _sql_column_line(
     prop_def: dict[str, Any],
     primary_key: str,
     object_types: dict[str, Any],
+    imported: dict[str, dict[str, Any]] | None = None,
 ) -> str:
-    sql_type = _sql_type(prop_name, prop_def, object_types)
+    sql_type = _sql_type(prop_name, prop_def, object_types, imported)
     parts = [f"  {prop_name} {sql_type}"]
     if prop_name == primary_key:
         parts.append("PRIMARY KEY")
@@ -221,7 +264,11 @@ def _sql_column_line(
     return " ".join(parts)
 
 
-def emit_sql(doc: dict[str, Any], output_path: Path) -> Path:
+def emit_sql(
+    doc: dict[str, Any],
+    output_path: Path,
+    imported: dict[str, dict[str, Any]] | None = None,
+) -> Path:
     """Write Postgres DDL (CREATE TABLE + CREATE INDEX) to ``output_path``."""
     object_types = doc.get("object_types") or {}
     lines: list[str] = [
@@ -235,7 +282,7 @@ def emit_sql(doc: dict[str, Any], output_path: Path) -> Path:
         props = obj_def.get("properties") or {}
         lines.append(f"CREATE TABLE {table} (")
         col_lines = [
-            _sql_column_line(prop_name, prop_def, pk, object_types)
+            _sql_column_line(prop_name, prop_def, pk, object_types, imported)
             for prop_name, prop_def in props.items()
         ]
         lines.append(",\n".join(col_lines))
@@ -465,15 +512,16 @@ def _orm_column_def(
     prop_def: dict[str, Any],
     primary_key: str,
     object_types: dict[str, Any],
+    imported: dict[str, dict[str, Any]] | None = None,
 ) -> list[str]:
     """One ``mapped_column`` field as a list of source lines (wrapped if > 100 cols,
     mirroring the hand-authored ORM's ruff-clean formatting)."""
     ptype = prop_def["type"]
     py_type = _ORM_PY_TYPE[ptype]
     if ptype == "ref":
-        target = prop_def["target"]
-        target_pk = object_types[target]["primary_key"]
-        col_args = [f'Text, ForeignKey("{_snake(target)}.{target_pk}")']
+        type_name, target_def = _resolve_ref(prop_def["target"], object_types, imported)
+        target_pk = target_def["primary_key"]
+        col_args = [f'Text, ForeignKey("{_snake(type_name)}.{target_pk}")']
     elif ptype == "json":
         col_args = ["JSONB"]
     else:
@@ -510,7 +558,11 @@ def _orm_table_args(table: str, ref_cols: list[str]) -> list[str]:
     return ["    __table_args__ = (", *[f"        {entry}," for entry in entries], "    )"]
 
 
-def emit_orm(doc: dict[str, Any], output_path: Path) -> Path:
+def emit_orm(
+    doc: dict[str, Any],
+    output_path: Path,
+    imported: dict[str, dict[str, Any]] | None = None,
+) -> Path:
     """Write SQLAlchemy 2.0 declarative ORM models for every object_type.
 
     PLAN-0031 (Group B / B1) — the 6th emitter. Generates the SQLAlchemy ORM from the
@@ -556,7 +608,7 @@ def emit_orm(doc: dict[str, Any], output_path: Path) -> Path:
             lines.append("    pass")
             continue
         for prop_name, prop_def in props.items():
-            lines.extend(_orm_column_def(prop_name, prop_def, pk, object_types))
+            lines.extend(_orm_column_def(prop_name, prop_def, pk, object_types, imported))
 
     body = "\n".join(lines).rstrip() + "\n"
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -792,12 +844,15 @@ def generate_all(yaml_path: Path, output_dir: Path) -> dict[str, Path]:
     """
     doc = load_doc(yaml_path)
     vertical = output_dir.parent.name
+    imported = _load_imports(doc)  # ADR-0033 D2: cross-doc ref resolution sources
     outputs: dict[str, Path] = {}
     outputs["pydantic"] = emit_pydantic(doc, output_dir / "models.py")
-    outputs["sql"] = emit_sql(doc, output_dir / "schema.sql")
+    outputs["sql"] = emit_sql(doc, output_dir / "schema.sql", imported)
     outputs["jsonschema"] = emit_jsonschema(doc, output_dir / "schema.json")
     outputs["mcp"] = emit_mcp(doc, output_dir / "mcp_tools.json")
     outputs["typescript"] = emit_typescript(doc, output_dir / "types.ts")
-    outputs["orm"] = emit_orm(doc, _ORM_COMMITTED_DEST.get(vertical, output_dir / "orm.py"))
+    outputs["orm"] = emit_orm(
+        doc, _ORM_COMMITTED_DEST.get(vertical, output_dir / "orm.py"), imported
+    )
     outputs["context_pack"] = emit_context_pack(doc, output_dir / "context_pack.md")
     return outputs

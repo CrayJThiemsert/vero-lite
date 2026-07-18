@@ -53,6 +53,39 @@ _FK_RE = re.compile(
     r"([A-Z][A-Za-z0-9]*)\.([a-z][a-z0-9_]*)\s*->\s*([A-Z][A-Za-z0-9]*)\.([a-z][a-z0-9_]*)"
 )
 
+# ADR-0033 D1/D2: the reserved shared-ontology namespaces and their doc homes.
+# v0 ships exactly one — `core` at the repo-level shared home. A vertical may not
+# claim a reserved token (the reservation is validator/CLI-enforced, not L1).
+_SHARED_NAMESPACES: dict[str, Path] = {
+    "core": Path(__file__).parents[2] / "ontology" / "core_v0.yaml",
+}
+
+
+def _load_imported_object_types(
+    imports: Any,
+) -> tuple[dict[str, dict[str, Any]], list[str]]:
+    """ADR-0033 D2: load ``object_types`` for each declared import namespace.
+    Returns ``(namespace -> object_types, illegal-tokens)`` — a token that is not
+    a known reserved shared namespace (v0: only ``core``) is illegal (fail closed)."""
+    imported: dict[str, dict[str, Any]] = {}
+    illegal: list[str] = []
+    if not isinstance(imports, list):
+        return imported, illegal
+    for raw in imports:
+        token = str(raw)
+        path = _SHARED_NAMESPACES.get(token)
+        if path is None or not path.is_file():
+            illegal.append(token)
+            continue
+        try:
+            shared = _load_yaml(path)
+        except Exception:
+            illegal.append(token)
+            continue
+        objs = shared.get("object_types") if isinstance(shared, dict) else None
+        imported[token] = objs if isinstance(objs, dict) else {}
+    return imported, illegal
+
 
 def _load_schema() -> dict[str, Any]:
     with _SCHEMA_PATH.open() as fh:
@@ -223,7 +256,11 @@ def _check_foreign_key(
 
 
 def _check_object_type(
-    file: str, obj_name: str, obj_def: dict[str, Any], object_types: dict[str, Any]
+    file: str,
+    obj_name: str,
+    obj_def: dict[str, Any],
+    object_types: dict[str, Any],
+    imported: dict[str, dict[str, Any]],
 ) -> list[OntologyError]:
     findings: list[OntologyError] = []
     props = _props_of(obj_def)
@@ -242,10 +279,53 @@ def _check_object_type(
                 )
             )
     for prop_name, prop_def in props.items():
-        findings.extend(_check_property(file, obj_name, prop_name, prop_def, object_types))
+        findings.extend(
+            _check_property(file, obj_name, prop_name, prop_def, object_types, imported)
+        )
     findings.extend(_check_quantity_bindings(file, obj_name, obj_def))
     findings.extend(_check_enrichment(file, obj_name, obj_def, object_types))
     return findings
+
+
+def _check_ref_target(
+    file: str,
+    obj_name: str,
+    prop_name: str,
+    target: str,
+    object_types: dict[str, Any],
+    imported: dict[str, dict[str, Any]],
+    line: int,
+    col: int,
+) -> list[OntologyError]:
+    """Resolve a ``ref`` target. ADR-0033 D2: a qualified ``<ns>.<Type>`` resolves
+    against an imported shared doc (the ns must be declared in ``imports:`` and the
+    type must exist there); an unqualified target resolves within the local doc.
+    Fail closed here — never the shipped codegen ``KeyError``."""
+    if "." in target:
+        ns, type_name = target.split(".", 1)
+        if ns not in imported:
+            msg = f"ref target {target!r} references namespace {ns!r} not declared in imports:"
+        elif type_name not in imported[ns]:
+            msg = (
+                f"ref target {target!r} does not resolve to an object_type in the "
+                f"{ns!r} shared ontology"
+            )
+        else:
+            return []
+    elif target in object_types:
+        return []
+    else:
+        msg = f"ref target {target!r} does not resolve to a defined object_type"
+    return [
+        SemanticValidationError(
+            file=file,
+            object_type=obj_name,
+            property=prop_name,
+            yaml_line=line,
+            yaml_col=col,
+            message=msg,
+        )
+    ]
 
 
 def _check_property(
@@ -254,6 +334,7 @@ def _check_property(
     prop_name: str,
     prop_def: Any,
     object_types: dict[str, Any],
+    imported: dict[str, dict[str, Any]],
 ) -> list[OntologyError]:
     if not isinstance(prop_def, dict):
         return []
@@ -262,16 +343,9 @@ def _check_property(
     ptype = prop_def.get("type")
     if ptype == "ref":
         target = prop_def.get("target")
-        if isinstance(target, str) and target and target not in object_types:
-            findings.append(
-                SemanticValidationError(
-                    file=file,
-                    object_type=obj_name,
-                    property=prop_name,
-                    yaml_line=pl,
-                    yaml_col=pc,
-                    message=(f"ref target {target!r} does not resolve to a defined object_type"),
-                )
+        if isinstance(target, str) and target:
+            findings.extend(
+                _check_ref_target(file, obj_name, prop_name, target, object_types, imported, pl, pc)
             )
     if ptype == "enum":
         values = prop_def.get("values")
@@ -618,12 +692,56 @@ def _check_enrichment(
     return findings
 
 
+def _check_imports(file: str, doc: Any, illegal_imports: list[str]) -> list[OntologyError]:
+    """ADR-0033 D1/D2 L2: each ``imports:`` token must be a known reserved shared
+    namespace (v0: only ``core``); and a vertical doc may not claim the reserved
+    ``core`` namespace — only the shared home declares it."""
+    findings: list[OntologyError] = []
+    if illegal_imports:
+        line, col = _walk_lc(doc, ["imports"])
+        for token in illegal_imports:
+            findings.append(
+                SemanticValidationError(
+                    file=file,
+                    object_type="",
+                    property="imports",
+                    yaml_line=line,
+                    yaml_col=col,
+                    message=(
+                        f"imports token {token!r} is not a known shared namespace "
+                        f"(ADR-0033 v0: only 'core')"
+                    ),
+                )
+            )
+    if doc.get("namespace") == "core" and "verticals" in Path(file).parts:
+        line, col = _walk_lc(doc, ["namespace"])
+        findings.append(
+            SemanticValidationError(
+                file=file,
+                object_type="",
+                property="namespace",
+                yaml_line=line,
+                yaml_col=col,
+                message=(
+                    "namespace 'core' is reserved for the shared ontology "
+                    "(ADR-0033 D1); a vertical may not claim it"
+                ),
+            )
+        )
+    return findings
+
+
 def _validate_l2(file: str, doc: Any) -> list[OntologyError]:
     findings: list[OntologyError] = []
     raw_objects = doc.get("object_types")
     raw_links = doc.get("link_types")
     object_types: dict[str, Any] = raw_objects if isinstance(raw_objects, dict) else {}
     link_types: dict[str, Any] = raw_links if isinstance(raw_links, dict) else {}
+
+    # ADR-0033 D1/D2: resolve declared imports + guard the reserved `core` namespace.
+    imported, illegal_imports = _load_imported_object_types(doc.get("imports"))
+    findings.extend(_check_imports(file, doc, illegal_imports))
+
     for link_name, link_def in link_types.items():
         if not isinstance(link_def, dict):
             continue
@@ -632,7 +750,7 @@ def _validate_l2(file: str, doc: Any) -> list[OntologyError]:
     for obj_name, obj_def in object_types.items():
         if not isinstance(obj_def, dict):
             continue
-        findings.extend(_check_object_type(file, obj_name, obj_def, object_types))
+        findings.extend(_check_object_type(file, obj_name, obj_def, object_types, imported))
     return findings
 
 
