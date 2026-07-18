@@ -863,10 +863,15 @@ def emit_context_pack(doc: dict[str, Any], output_path: Path) -> Path:
 # Committed-ORM destinations (PLAN-0031 B1 / B1-DP-1, resolved Option B 2026-06-18).
 # The SQLAlchemy ORM is a RUNTIME dependency (services/db + alembic import it), so —
 # unlike the other five gitignored reference artifacts under verticals/<ns>/generated/ —
-# it must be generated to a COMMITTED path. Energy's ORM is services/db/models.py. How a
-# 2nd vertical's ORM is laid out (central per-vertical module vs a committed per-vertical
-# generated file) is a deferred Rule-of-Three decision — the B1-DP-1 follow-up.
-_ORM_COMMITTED_DEST: dict[str, Path] = {"energy": Path("services/db/models.py")}
+# it must be generated to a COMMITTED path. Energy's ORM is services/db/models.py. The
+# shared `core` ontology's ORM (the shared Person — ADR-0033 D5 / SD-I=(b)) is the SECOND
+# committed ORM: a separate committed module (services/db/person.py) — the B1-DP-1
+# 2nd-ORM-layout call resolved per-doc (PLAN-0082 Step 4). Keyed by ontology NAMESPACE
+# (== the vertical directory name for verticals, ADR-0008 D2; `core` for the shared doc).
+_ORM_COMMITTED_DEST: dict[str, Path] = {
+    "energy": Path("services/db/models.py"),
+    "core": Path("services/db/person.py"),
+}
 
 
 def generate_all(yaml_path: Path, output_dir: Path) -> dict[str, Path]:
@@ -878,7 +883,7 @@ def generate_all(yaml_path: Path, output_dir: Path) -> dict[str, Path]:
     ``output_dir / 'orm.py'`` for a vertical with no committed ORM yet).
     """
     doc = load_doc(yaml_path)
-    vertical = output_dir.parent.name
+    namespace = doc.get("namespace", "")
     imported = _load_imports(doc)  # ADR-0033 D2: cross-doc ref resolution sources
     outputs: dict[str, Path] = {}
     outputs["pydantic"] = emit_pydantic(doc, output_dir / "models.py")
@@ -887,7 +892,7 @@ def generate_all(yaml_path: Path, output_dir: Path) -> dict[str, Path]:
     outputs["mcp"] = emit_mcp(doc, output_dir / "mcp_tools.json")
     outputs["typescript"] = emit_typescript(doc, output_dir / "types.ts")
     outputs["orm"] = emit_orm(
-        doc, _ORM_COMMITTED_DEST.get(vertical, output_dir / "orm.py"), imported
+        doc, _ORM_COMMITTED_DEST.get(namespace, output_dir / "orm.py"), imported
     )
     outputs["context_pack"] = emit_context_pack(doc, output_dir / "context_pack.md")
     return outputs

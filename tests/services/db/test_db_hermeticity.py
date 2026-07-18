@@ -38,6 +38,7 @@ _HEAD_TABLES = {
     "asset",
     "audit_log",
     "operational_event",
+    "person",
     "pipeline_runs",
     "recommended_action",
     "schedule_states",
