@@ -309,6 +309,17 @@ and the `procedures_factory.py:37-49` residual note; seed it from
 PLAN-0074's coordination-point enumeration; update the D3 row on landing
 (D4.4).
 
+> **Trigger FIRED (session 151, 2026-07-19) — the seam PLAN is NOT yet opened
+> (that stays Cray's call).** The "third AT-2 signature fires the N=3 re-trigger
+> marker" condition is now MET: PLAN-0081 shipped
+> `building_materials.governed_credit_release` (the 3rd AT-2 signature), which
+> re-armed `test_at2_signature_retrigger.py` and obligated the ADR-0025 D7
+> re-evaluation (performed; verdict Cray-ratified — generator stays deferred,
+> marker re-arms at N=4). This RECORDS that T1's watched trigger has pressed;
+> per ADR-0031 D4.1 the seam map "is not a roadmap" and D4.1 does not compel a
+> build, so opening the dedicated gate-plugin-seam PLAN remains a conscious
+> Cray decision. PLAN-0076 stays `Status: Tracking` and its guard stays armed.
+
 ### Step T2: WHEN the transform-grammar PLAN opens — fold F-PIN's remainder in
 **STATUS: CLOSED 2026-07-17 (session 143) by PLAN-0078 PR-5** — per Step T3's
 rule that a marker may only be rewritten in the PLAN that closes the tracking

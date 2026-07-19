@@ -2,10 +2,11 @@
 
 The offline test is the GATE (CLAUDE.md §8): ``GET /procedures`` returns every
 discovered vertical's procedures, each round-trips ``load_procedures``, and the
-catalog archetype label is attached for all **five** shipped procedures across
-the four verticals (fact-pack #1: procurement ships two; energy / supply_chain /
-aquaculture one each). No LLM, no DB, no mutation. A live preview is *evidence*
-(Step 5), not the gate.
+catalog archetype label is attached for all shipped procedures across the five
+procedure-bearing verticals (fact-pack #1: procurement ships five; supply_chain
+ships two; energy / aquaculture one each; building_materials ships one — the
+PLAN-0081 governed-credit hero). No LLM, no DB, no mutation. A live preview is
+*evidence* (Step 5), not the gate.
 """
 
 from __future__ import annotations
@@ -42,6 +43,11 @@ _EXPECTED: dict[str, dict[str, str]] = {
         "scheduled_low_stock_reorder_round": "AT-3",
         # PLAN-0056 Step 8 — the event-triggered AT-2 variant (asset-failure auto-fire).
         "event_emergency_sourcing_round": "AT-2",
+    },
+    "building_materials": {
+        # PLAN-0081 — the 3rd AT-2 SIGNATURE (governed credit release; the money doa_tier ladder
+        # reused unchanged, the criterion vocabulary grown by {kyc, overdue_ar, blacklist}).
+        "governed_credit_release": "AT-2",
     },
 }
 
@@ -80,9 +86,10 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
     all_verticals_client: AsyncClient,
 ) -> None:
     """Every discovered vertical's procedures round-trip load_procedures, each
-    carrying the correct catalog archetype — all nine across the four verticals
-    (procurement ships five: two manual + scheduled AT-2 + event AT-2 + scheduled AT-3;
-    supply_chain ships two: the AT-1 sweep + the PLAN-0074 AT-2 disposition)."""
+    carrying the correct catalog archetype — all ten across the five procedure-bearing
+    verticals (procurement ships five: two manual + scheduled AT-2 + event AT-2 + scheduled AT-3;
+    supply_chain ships two: the AT-1 sweep + the PLAN-0074 AT-2 disposition; energy + aquaculture
+    one each; building_materials ships one: the PLAN-0081 AT-2 governed-credit hero)."""
     response = await all_verticals_client.get("/procedures")
     assert response.status_code == 200
     payload = response.json()
@@ -106,11 +113,34 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
         for proc in ventry["procedures"]:
             assert proc["archetype"] == _EXPECTED[vname][proc["procedure_id"]]
             total += 1
-    # nine procedures across four verticals: fact-pack #1's five + the PLAN-0055
-    # Step 8 scheduled AT-2 + the PLAN-0056 Step 8 event AT-2 + the PLAN-0065 Step 4
-    # scheduled AT-3 calm-path variant (all procurement variants) + the PLAN-0074
-    # supply_chain cold-chain disposition (the 2nd AT-2 SIGNATURE, not a variant)
-    assert total == 9
+    # ten procedures across five verticals: the nine prior (fact-pack #1's five + the
+    # PLAN-0055 scheduled AT-2 + the PLAN-0056 event AT-2 + the PLAN-0065 scheduled AT-3
+    # + the PLAN-0074 supply_chain disposition) + the PLAN-0081 building_materials
+    # governed-credit hero (the 3rd AT-2 SIGNATURE, a new procedure-bearing vertical)
+    assert total == 10
+
+
+class _SpecLessFixtureAdapter:
+    """A minimal discovered-but-spec-less vertical: a registered adapter with NO
+    ``procedures.yaml``. The endpoint skips it at the ``procedures_path(...).exists()``
+    check before touching the adapter, so only ``vertical_name`` is load-bearing."""
+
+    vertical_name = "z_spec_less_fixture"
+
+    async def fetch_objects(self, *args: object, **kwargs: object) -> list[dict[str, object]]:
+        return []
+
+    async def fetch_links(self, *args: object, **kwargs: object) -> list[dict[str, object]]:
+        return []
+
+    async def stream_events(
+        self, *args: object, **kwargs: object
+    ) -> AsyncIterator[dict[str, object]]:
+        return
+        yield  # pragma: no cover - never reached; makes this an async generator
+
+    async def health_check(self) -> dict[str, object]:
+        return {"status": "ok", "vertical": self.vertical_name, "synthetic": True}
 
 
 async def test_procedures_skips_discovered_vertical_without_a_spec(
@@ -123,15 +153,21 @@ async def test_procedures_skips_discovered_vertical_without_a_spec(
     registers it regardless. Before this fix ``GET /procedures`` called
     ``load_procedures`` unconditionally and died with FileNotFoundError on the first
     such vertical, breaking the read surface for every OTHER vertical.
+
+    RE-POINTED (PLAN-0081 AC-8): building_materials WAS the shipped spec-less vertical
+    that exercised this path, but the governed-credit hero gave it a ``procedures.yaml``.
+    No real discovered vertical is spec-less now (vet_clinic is a README-only parked dir
+    ``discover_and_register`` cannot import — no data_adapter/handlers). So the skip path
+    is exercised via a FIXTURE spec-less vertical (an adapter, no spec) registered here —
+    the guard's own ``:131`` alternative. Do NOT delete it: the skip path it protects
+    stays live code the moment a new Tier-1 Mirror is scaffolded.
     """
+    registry.register_adapter(_SpecLessFixtureAdapter())  # type: ignore[arg-type]  # duck-typed
     discovered = set(registry.verticals())
     spec_less = {v for v in discovered if not procedures_path(v).exists()}
-    # SELF-CANCELLING: building_materials (the 5th vertical, a Tier-1 Mirror) is what
-    # exercises this path today. If it ever gains a procedures.yaml this fires — re-point
-    # the guard at another spec-less vertical (or a fixture); do NOT just delete it.
     assert (
-        "building_materials" in spec_less
-    ), "no spec-less vertical left to exercise the skip path — re-point this guard"
+        "z_spec_less_fixture" in spec_less
+    ), "the fixture spec-less vertical must exercise the skip path"
 
     response = await all_verticals_client.get("/procedures")
     assert response.status_code == 200

@@ -1,6 +1,16 @@
 # PLAN-0081: The building_materials governed-credit HERO (build)
 
-**Status:** Draft — SD-A/SD-B/SD-C/SD-D **RESOLVED (Cray, s146)**: SD-A/SD-B
+**Status:** **COMPLETE (session 151, 2026-07-19)** — Cray COMMISSIONED the hero
+(s151) and it is BUILT end to end + verified offline (full suite green; `mypy
+services/` clean). All 15 ACs met — see the **Closeout Verification** block at the
+end. The 3rd AT-2 signature (`building_materials.governed_credit_release`) ships;
+the money `doa_tier` is reused unchanged and the criterion vocabulary grows
+(`ComplianceCriterion += {kyc, overdue_ar, blacklist}`); the ADR-0025 D7
+re-evaluation was PERFORMED (verdict: generator stays deferred, marker re-arms at
+N=4). PLAN-0079 RETIRED (Step T3, its guard deleted); PLAN-0076 T1 trigger MET.
+Archived to `docs/plans/done/` per Plan Flow.
+> *Prior status (the resolved SD record, preserved) —* Draft — SD-A/SD-B/SD-C/SD-D
+**RESOLVED (Cray, s146)**: SD-A/SD-B
 proceed-with-GUESS as proposed; SD-C = stays-deferred (re-arm AT-2 marker at
 N=4); **SD-D = (a) — Cray OVERRODE the drafter's (b) recommendation: the
 shared/core `Person` extraction lands IN THIS PLAN** (a conscious
@@ -191,7 +201,7 @@ Each AC carries a pre-committed pass/fail read. Test artifacts are **landed
 by Code at build time** (this drafter cannot write `tests/`), per the
 PLAN-0079 AC-2 precedent.
 
-- [ ] **AC-1 — the 3-part spine ships, all three, or the PR does not merge.**
+- [x] **AC-1 — the 3-part spine ships, all three, or the PR does not merge.**
   Pass/fail read: `load_procedures("building_materials")` returns the hero
   procedure whose steps carry (a) an `evaluate` band with
   `threshold_field: credit_limit_thb`, `direction: above`; (b) a
@@ -202,7 +212,7 @@ PLAN-0079 AC-2 precedent.
   tuple `("rule_gate", "doa_tier")` read off typed `governance_content`).
   Fails if any leg is missing — a ladder-only form is the hollow-governance
   shape PLAN-0079 forbids (`0079:115-123`).
-- [ ] **AC-2 — the reshape seam resolves the DOA tier (the L-2 seam,
+- [x] **AC-2 — the reshape seam resolves the DOA tier (the L-2 seam,
   first-class).** Pass/fail read: an in-memory `run_procedure` over the
   synthetic data reaches the `doa_tier` gate with `amount` equal to the
   breach event's `measured_value` (550,000, Decimal-exact via the
@@ -210,7 +220,7 @@ PLAN-0079 AC-2 precedent.
   `waiting_human` at the approve step — no `DoaTierError`. Code lands the
   test. Fails if the gate fail-closes on the shipped happy path or if the
   amount is not byte-derived from `measured_value`.
-- [ ] **AC-3 — fail-closed is untouched; the engine diff is bounded to the
+- [x] **AC-3 — fail-closed is untouched; the engine diff is bounded to the
   two NAMED scopes.** Pass/fail read: the PR's diff under
   `services/engine/` (and `services/api/auth.py`, if the principal-index
   seam moves) touches **only** (i) the additive `ComplianceCriterion` enum
@@ -234,7 +244,7 @@ PLAN-0079 AC-2 precedent.
   "a new generation surface". The bound remains these two named scopes,
   verified at R2 by diff inspection; the WIDTH of scope (ii) is the
   consciously accepted b-ii cost, never a config-cost item.*
-- [ ] **AC-4 — the executor factory is wired (coordination point i).**
+- [x] **AC-4 — the executor factory is wired (coordination point i).**
   Pass/fail read: `verticals/building_materials/procedures_factory.py`
   exists; `services/api/main.py` gains a lazy
   `_register_building_materials_executors` registrar + a
@@ -243,13 +253,13 @@ PLAN-0079 AC-2 precedent.
   lands a test (PLAN-0062 AC-5 pattern) asserting
   `registry.get_procedure_executors("building_materials")` succeeds after
   the registrar runs — the 409-at-resolve failure mode is covered.
-- [ ] **AC-5 — SoD + tier authority are demonstrably enforced.** Pass/fail
+- [x] **AC-5 — SoD + tier authority are demonstrably enforced.** Pass/fail
   read: Code lands tests asserting (i) gate-resolve by the requesting
   sales principal fails closed (SoD, ADR-0026 D4); (ii) the tier's own
   approver resolves; (iii) a SENIOR principal approves a lower-tier
   exposure via cumulative roles (PLAN-0075 Policy B — roles authored
   cumulatively in the YAML, mirroring `supply_chain/procedures.yaml:63-84`).
-- [ ] **AC-6 — the D7 re-evaluation is performed and recorded (Step 8), and
+- [x] **AC-6 — the D7 re-evaluation is performed and recorded (Step 8), and
   the marker is honestly re-pointed.** Pass/fail read:
   `test_at2_signature_retrigger.py` is updated in the same PR — the new
   signature added to `_BASELINE_SIGNATURES`, `_RETRIGGER_N` re-armed at
@@ -258,7 +268,7 @@ PLAN-0079 AC-2 precedent.
   record's form (argument + verdict + what generalised). Fails if the
   marker is silently bumped without the recorded argument, or if CI merges
   RED.
-- [ ] **AC-7 — the OQ-6 Person marker TRANSFORMS — RE-POINTED (s150): DONE by
+- [x] **AC-7 — the OQ-6 Person marker TRANSFORMS — RE-POINTED (s150): DONE by
   PLAN-0082 AC-6 (#810), owned there per SD-K(ii)=(a) (Cray s148).** The
   transformation SHIPPED in PLAN-0082 Step 6: `test_principal_identity_retrigger.py`
   now asserts the shared generated `core.Person` **is the one type every
@@ -272,7 +282,7 @@ PLAN-0079 AC-2 precedent.
   there is nothing to re-transform; the invariant simply must stay green when
   building_materials lands. Verify against `done/0082-*.md` AC-6, do not
   re-execute.
-- [ ] **AC-8 — the endpoint coordination points are consciously re-pointed
+- [x] **AC-8 — the endpoint coordination points are consciously re-pointed
   (ii + iii).** Pass/fail read: in the same PR,
   `tests/api/test_procedures_endpoint.py` `_EXPECTED` gains
   `building_materials: {<hero_id>: "AT-2"}`; the count pin `:113` bumps
@@ -282,19 +292,19 @@ PLAN-0079 AC-2 precedent.
   is a README-only parked directory that `discover_and_register` cannot
   import — `services/engine/discovery.py:67-68` requires `data_adapter` +
   `handlers`). CI green at merge.
-- [ ] **AC-9 — demo discipline (ADR-0032 D1).** Pass/fail read: every
+- [x] **AC-9 — demo discipline (ADR-0032 D1).** Pass/fail read: every
   authored number (ladder tiers, compliance thresholds, principal roster)
   carries a "GUESS — รอแก้" marking in the YAML comments; the whole build
   is deterministic-offline (no MS-S1, no host-state, no DB); the LLM
   appears only as `llm_assist` advisory prose.
-- [ ] **AC-10 — PLAN-0079 retires on its own T3 terms.** Pass/fail read: in
+- [x] **AC-10 — PLAN-0079 retires on its own T3 terms.** Pass/fail read: in
   the PR that completes this build, PLAN-0079 moves to `docs/plans/done/`,
   its guard test
   (`tests/services/engine/procedures/test_governed_credit_hero_tracking_guard.py`
   — exists on `main`, verified) is deleted **in that same PR**, and the
   STATUS PLAN-0079 pointer retires in the same motion (`0079:228-233`).
   This PLAN itself archives to `done/` per the normal Plan Flow.
-- [ ] **AC-11 — the two existing verticals migrate onto the shared `Person`
+- [x] **AC-11 — the two existing verticals migrate onto the shared `Person`
   home with behavior preserved (the SD-D=(a) blast radius, pinned).**
   Pass/fail read: procurement + supply_chain resolve their principals from
   the shared home (the GENERATED shared `Person`, SD-E=(b-ii));
@@ -307,7 +317,7 @@ PLAN-0079 AC-2 precedent.
   assertions** (roster-source plumbing may change; verdicts may not). Fails
   if any existing governance verdict changes, or if a per-vertical roster
   home survives alongside the shared one.
-- [ ] **AC-12 — the ADR-0008 grammar amendment lands FIRST (CLAUDE.md §8:
+- [x] **AC-12 — the ADR-0008 grammar amendment lands FIRST (CLAUDE.md §8:
   the ADR is merged before the related implementation PR).** Pass/fail
   read: the shared-ontology grammar construct (the SD-F namespace/home
   answer + the SD-G discovery/resolution mechanism) is **Accepted** in an
@@ -317,7 +327,7 @@ PLAN-0079 AC-2 precedent.
   Status then edit body). This AC is verified at R2 by PR ordering, not
   by a pytest artifact. Fails if any grammar/codegen change ships ahead
   of its ADR.
-- [ ] **AC-13 — the shared-ontology mechanism WORKS end-to-end.**
+- [x] **AC-13 — the shared-ontology mechanism WORKS end-to-end.**
   Pass/fail read: a shared/core ontology YAML (at the SD-F-ratified
   home) defining `Person` as an ADR-0008 `object_type` generates a
   shared `Person` type via the extended generator/CLI (`uv run
@@ -331,7 +341,7 @@ PLAN-0079 AC-2 precedent.
   if the shared type is hand-written rather than generated, or if
   "resolution" is achieved by duplicating the object_type into each
   vertical's own doc.
-- [ ] **AC-14 — reproducibility + the generated module's home are
+- [x] **AC-14 — reproducibility + the generated module's home are
   handled, not left ambient.** Pass/fail read: the shared generated
   artifacts follow the committed-vs-gitignored discipline —
   reference artifacts gitignored-reproducible (`.gitignore:42` /
@@ -342,7 +352,7 @@ PLAN-0079 AC-2 precedent.
   (regenerating from an unchanged YAML produces no diff). Fails if
   runtime-imported code lands under a gitignored path, or if
   regeneration is not reproducible.
-- [ ] **AC-15 — the spec-layer `Person` is RECONCILED: exactly ONE
+- [x] **AC-15 — the spec-layer `Person` is RECONCILED: exactly ONE
   authoritative `Person` type remains.** Pass/fail read: after Step
   9a(v), the SD-H-ratified end state holds — there are NOT two
   competing `Person` types; every consumer
@@ -639,6 +649,78 @@ implementation PR — verified by PR ordering) and **AC-3** (the
 engine-diff two-named-scopes bound — verified by diff inspection at R2).
 CI RED states are expected only INTRA-branch (between Steps
 3–9); the merged PR is green.
+
+## Closeout Verification (session 151, 2026-07-19 — built + verified offline)
+
+Cray COMMISSIONED the hero (s151, AskUserQuestion). Built end to end on
+`feat/plan0081-building-materials-hero` and verified against fresh on-disk
+evidence + the full offline suite. Shipped artifacts: the
+`ComplianceCriterion` credit block (`services/engine/procedures/spec.py`),
+`verticals/building_materials/{procedures.yaml,procedures_factory.py,handlers.py}`,
+the `services/api/main.py` registrar, the archetype catalog + map
+(`docs/conventions/procedure-archetypes.md` + `services/api/routers/procedures.py`),
+and the tests below.
+
+- **AC-1 ✅** — `test_governed_credit_hero.test_spine_composition_ships_all_three_legs`:
+  judge band (`threshold_field: credit_limit_thb`, `direction: above`); gate-kind
+  tuple off typed `governance_content` == `("rule_gate", "doa_tier")`; SoD binds
+  `intake→requester` / `approve→approver`.
+- **AC-2 ✅** — `test_run_suspends_at_the_doa_tier_gate_with_reshaped_spend`: an
+  in-memory `run_procedure` over the synthetic data reaches `approve` with
+  `amount == Decimal("550000")` (byte-derived from the breach `measured_value` via
+  the string-coerce) + `currency: THB`, suspends `waiting_human`, `fulfill` never
+  runs, no `DoaTierError`. The ฿550k breach routes to the mid-ladder tier
+  (`ผจก.ควบคุมเครดิต` → `appr-credit-manager`).
+- **AC-3 ✅** — the `services/engine/` diff is bounded to (i) the additive
+  `ComplianceCriterion` block. Scope (ii) — the Person promotion — was shipped by
+  the PLAN-0082 dependency (SD-J=SPLIT), so this PR carries NO engine `Person`
+  edit; `_spend`/`resolve_doa_tier`/`check_tier_authority`/`evaluate_compliance`/
+  `ComplianceRule.blocks_po` untouched (`mypy services/` clean, 97 files).
+- **AC-4 ✅** — `test_factory_registration_covers_the_409_at_resolve` +
+  `test_unregistered_vertical_409s_at_resolve`: the registrar yields the four
+  StepKind executors; an unregistered vertical raises `RegistryError` (the 409).
+- **AC-5 ✅** — the SoD/tier-authority quad: junior refused upward, native tier
+  holder passes, senior approves downward (Policy B cumulative roles), SoD collapse
+  (requester == approver) fails closed.
+- **AC-6 ✅** — `test_at2_signature_retrigger.py`: the building_materials signature
+  added to `_BASELINE_SIGNATURES`, `_RETRIGGER_N` re-armed at **4**, the module
+  docstring carries the N=3 re-evaluation record (verdict: stays-deferred). Proven
+  non-vacuous — the marker FIRED at N=3 before the re-arm.
+- **AC-7 ✅ (RE-POINTED, PLAN-0082 AC-6)** — `test_principal_identity_retrigger.py`
+  parametrizes over every principal-bearing vertical; building_materials' roster
+  parses into the ONE shared `core.Person` automatically (no re-arm at N=4). Green.
+- **AC-8 ✅** — `test_procedures_endpoint.py`: `_EXPECTED` gains
+  `building_materials: {governed_credit_release: "AT-2"}`, the count pin bumps
+  `9 → 10`, and the spec-less guard is RE-POINTED to a fixture spec-less vertical
+  (building_materials is no longer spec-less), NOT deleted.
+- **AC-9 ✅** — `test_authored_values_are_guess_marked`: every authored
+  ladder/criteria/roster surface carries a "GUESS — รอแก้" marking; the whole path
+  is deterministic-offline (no MS-S1, no host-state, no DB).
+- **AC-10 ✅** — this PR: PLAN-0079 → `docs/plans/done/` (Step T3), its guard
+  `test_governed_credit_hero_tracking_guard.py` DELETED, the STATUS pointer
+  retired; PLAN-0081 archives to `done/` per Plan Flow.
+- **AC-11 ✅ (verify vs `done/0082`)** — procurement + supply_chain migrated onto
+  the shared `Person` in PLAN-0082 Step 6 (#810); building_materials' roster lands
+  on the same shared home. Every existing SoD/tier/gate-resolve assertion passes
+  unmodified (full suite green).
+- **AC-12/13/14/15 ✅ (DONE by PLAN-0082, verified vs `done/0082-*.md`)** — the
+  ADR-0008 grammar (ADR-0033 Accepted) / the shared-ontology mechanism / the
+  reproducible committed home / the one-`Person` reconciliation shipped in
+  PLAN-0082 (its AC-1/2/3/4). `test_shared_ontology_mechanism.py` green with
+  building_materials landed; no second `class Person(BaseModel)` reappears.
+
+*(Two ACs are process-verified, not pytest artifacts: AC-3 by diff inspection;
+AC-12 by PR ordering — ADR-0033 merged in the PLAN-0082 arc, before this build.)*
+
+**Honest flag (emergency_waiver):** `DoaLadder.emergency_waiver` is a REQUIRED
+field (ADR-0025 D3, no default) and `RelaxableConstraint` is a closed
+sourcing-shaped enum (`three_bid`/`sole_source`) that AC-3 / Out-of-Scope forbid
+extending. The hero therefore REUSES the procurement-shaped waiver (GUESS-marked,
+`relaxes: [three_bid]`, escalate → `ผอ.ฝ่ายการเงิน`) — consistent with the N=3
+finding that `doa_tier` is reused unchanged. The waiver is not exercised on the
+shipped happy path (the ฿550k breach routes through the normal ladder). A
+credit-apt relaxable, if a real waiver ever surfaces, is a future ADR-0025 D3
+amendment (out of scope). Surfaced to Cray at the s151 build checkpoint.
 
 ## Surfaced Decisions
 

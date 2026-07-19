@@ -855,10 +855,12 @@ class ComplianceCriterion(StrEnum):
 
     Grown ADDITIVELY per observed signature (ADR-016 OQ-A1) — the first five are the
     procurement vendor-hygiene criteria; the GDP/GxP block is the 2nd AT-2 signature's
-    regulatory-quality gate (supply_chain cold-chain disposition, PLAN-0074 Step 4). The
-    two blocks are instance-scoped, NOT a generic vocabulary: an AT-2 vertical extends this
-    enum with its own gate's criteria (the N=2 triangulation finding — what generalised is
-    the GATE (block on any fail, non-waivable), never the criterion vocabulary)."""
+    regulatory-quality gate (supply_chain cold-chain disposition, PLAN-0074 Step 4); the
+    credit-compliance block is the 3rd AT-2 signature's gate (building_materials
+    governed-credit hero, PLAN-0081 Step 2). The blocks are instance-scoped, NOT a generic
+    vocabulary: an AT-2 vertical extends this enum with its own gate's criteria (the N=2
+    triangulation finding, re-confirmed at N=3 — what generalised is the GATE (block on any
+    fail, non-waivable), never the criterion vocabulary; PLAN-0081 Step 8 / ADR-0025 D7)."""
 
     # procurement — vendor hygiene (the 1st AT-2 signature)
     AVL = "avl"
@@ -871,6 +873,10 @@ class ComplianceCriterion(StrEnum):
     BATCH_QUARANTINE = "batch_quarantine"
     LICENSED_DISPOSAL_VENDOR = "licensed_disposal_vendor"
     COA_CUSTOMS = "coa_customs"
+    # building_materials — customer-credit compliance (the 3rd AT-2 signature, PLAN-0081)
+    KYC = "kyc"
+    OVERDUE_AR = "overdue_ar"
+    BLACKLIST = "blacklist"
 
 
 class SourcePolicy(StrEnum):
