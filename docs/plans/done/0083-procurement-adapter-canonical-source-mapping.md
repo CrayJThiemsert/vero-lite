@@ -1,6 +1,6 @@
 # PLAN-0083: Procurement adapter canonical source mapping (ontology↔CSV drift fix, option c1)
 
-**Status:** Accepted — ready to execute (fix-option c1 + SD-1..SD-4 Cray-ratified 2026-07-19)
+**Status:** Complete — built + verified offline + merged (#818), 2026-07-19
 **Owner:** Claude Code (executor) — drafted by `plan-drafter` (see Authorship disclosure below)
 **Created:** 2026-07-19
 **Related ADRs:** ADR-016 (mapping layer absorbs source diversity — the design anchor), ADR-007 (DataAdapter contract), ADR-0023 (zero-`services/`-core-edit discipline)
@@ -138,12 +138,12 @@ vs `query_step.py:583-603`) closes for this vertical.
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 Canonical emission:** `fetch_objects` returns rows keyed by canonical
+- [x] **AC-1 Canonical emission:** `fetch_objects` returns rows keyed by canonical
   ontology property names for every core-set drifted column — a test asserts, per
   served type, the exact emitted key set (set-equality pin) and that no raw
   denylisted name (`part_id`, `price_thb`, `asset_id`, `site`, `asset_type`,
   `lead_time_days`) appears in emitted object rows.
-- [ ] **AC-2 Tripwire, non-vacuous:** the full drift set is covered by a coverage
+- [x] **AC-2 Tripwire, non-vacuous:** the full drift set is covered by a coverage
   tripwire test that asserts (i) per-type emitted-key set-equality against pinned
   canonical sets, (ii) every declared **required** property of each served
   procurement type is present in its emitted rows (`Equipment`: `equipment_id`,
@@ -155,7 +155,7 @@ vs `query_step.py:583-603`) closes for this vertical.
   proven by a probe: a permanent test case feeding a doctored raw-keyed row set
   through the check and asserting it goes RED, plus a one-shot build-time probe
   (temporarily drop one rename map entry → tripwire RED → revert).
-- [ ] **AC-3 Behavior preserved:** the procurement hero run still reaches its
+- [x] **AC-3 Behavior preserved:** the procurement hero run still reaches its
   `doa_tier`/SoD approval gate (`waiting_human`; `verticals/procurement/procedures.yaml:301`,
   `:318`); `test_hero_run.py`, `test_calm_path_production_runnability.py`,
   `test_hero_ledger.py`, `test_transform_migration_parity.py`,
@@ -165,17 +165,51 @@ vs `query_step.py:583-603`) closes for this vertical.
   adapter-facing tests (`test_fastenal_csv_adapter.py`,
   `test_intake_shadow_parity.py`) receive **mechanical** key-name updates with all
   expected values unchanged.
-- [ ] **AC-4 Full gates:** full offline suite green, re-run on the merge commit
+- [x] **AC-4 Full gates:** full offline suite green, re-run on the merge commit
   (CI is PR-only — the merge commit is never tested otherwise); `mypy` clean under
   the repo's strict config (`pyproject.toml:82-84`); `ruff` clean.
-- [ ] **AC-5 Invariant:** NO `verticals/procurement/ontology/` edit, NO
+- [x] **AC-5 Invariant:** NO `verticals/procurement/ontology/` edit, NO
   generated-artifact change, NO `services/` code edit — the diff is adapter +
   vertical (`verticals/procurement/`) + tests only (rides under ADR-016,
   adapter-scoped).
-- [ ] **AC-6 SD resolutions recorded:** SD-1…SD-4 resolutions are recorded in the
+- [x] **AC-6 SD resolutions recorded:** SD-1…SD-4 resolutions are recorded in the
   Surfaced Decisions section above (Cray-ratified 2026-07-19, stamped per SD); this
   box ticks at closeout once execution confirms the build matches the stamped
   resolutions.
+
+## Closeout Verification (session 152, 2026-07-19)
+
+- **AC-1 (canonical emission) — MET.** `verticals/procurement/data_adapter/fastenal_csv.py`
+  adds `_COLUMN_RENAMES` applied on the `fetch_objects` path; asserted by
+  `tests/verticals/procurement/test_fastenal_adapter_canonical_coverage.py::test_emitted_keys_match_the_pinned_canonical_set`
+  (per-type set-equality) + `::test_no_renamed_away_raw_name_is_emitted`.
+- **AC-2 (tripwire, non-vacuous) — MET.** The new coverage module pins (i) per-type
+  set-equality, (ii) declared-required-props coverage, (iii) rename-target ontology
+  validity, (iv) the Equipment type-key, + the SD-4b ฿-defer pin + a permanent
+  non-vacuity probe (`test_probe_denylist_check_is_non_vacuous`). Proven non-vacuous
+  EMPIRICALLY: dropped the Quotation `price_thb→price` rename →
+  `test_emitted_keys_match...[Quotation]` went RED → reverted.
+- **AC-3 (behavior preserved) — MET.** Full procurement suite 74 passed +
+  box-4/API/DB 56 passed, byte-unchanged; the hero run still parks `waiting_human`
+  at the doa_tier/SoD gate. Only the two adapter-facing tests
+  (`test_fastenal_csv_adapter.py`, `test_intake_shadow_parity.py`) received
+  mechanical canonical-key updates (values unchanged).
+- **AC-4 (full gates) — MET.** Full offline suite **2915 passed / 7 skipped**
+  (baseline 2896 + 19 new tripwire cases); `mypy --strict services/ verticals/`
+  clean (142 files); `ruff` clean; CI `gate` PASS on #818.
+- **AC-5 (invariant) — MET.** `git diff --stat` = 7 files, all
+  `verticals/procurement/` + `tests/verticals/procurement/` — zero `services/`,
+  zero ontology YAML, zero generated artifacts.
+- **AC-6 (SD resolutions recorded) — MET.** SD-1..SD-4 stamped in the Surfaced
+  Decisions section (Cray-ratified 2026-07-19); execution confirmed each (SD-1
+  `Equipment` served; SD-2 parallel `_COLUMN_RENAMES` dict; SD-3 shadow-parity
+  mechanical rename; SD-4a `PurchaseOrder.asset_id→equipment_id`; SD-4b ฿-columns
+  pinned raw).
+- **R2 scope correction (recorded honestly):** the PLAN Step-2 file list
+  under-scoped `verticals/procurement/hero_demo/governance_audit.py:177/179` (it
+  reads the renamed PO columns off the CSV adapter); Code caught it via grounding +
+  grep and included it — within AC-5's `verticals/procurement/` scope, so no scope
+  breach.
 
 ## Out of Scope
 
