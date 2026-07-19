@@ -1,6 +1,25 @@
 # PLAN-0079: Tracking — the building_materials governed-credit HERO (the 2nd money `doa_tier` = AT-2 signature #3)
 
-**Status:** **Tracking** — a standing TRACKING PLAN per the Cray-ratified s133
+**Status:** **RETIRED (Step T3 executed, session 151, 2026-07-19)** — the
+`building_materials` governed-credit HERO this tracker homed is **BUILT**: Cray
+COMMISSIONED it (session 151) and PLAN-0081 shipped it end to end (the 3rd AT-2
+signature — `building_materials.governed_credit_release`, the money `doa_tier`
+reused unchanged + the credit-compliance criterion block, `ComplianceCriterion
++= {kyc, overdue_ar, blacklist}`). Per Step T3 this tracker moves to
+`docs/plans/done/` AND its guard test
+(`tests/services/engine/procedures/test_governed_credit_hero_tracking_guard.py`)
+is deleted in that SAME PR (the PLAN-0081 completing PR), and the STATUS
+Active-TODO pointer retires in the same motion. The **honest cost was paid as
+tracked**: the hero tripped the AT-2 signature re-trigger at N=3, the ADR-0025
+D7 re-evaluation was PERFORMED (verdict Cray-ratified: generator stays deferred,
+marker re-arms at N=4) — never a config-cost item (ADR-0032 D6). PLAN-0076 T1's
+trigger ("a third AT-2 signature fires the N=3 re-trigger marker") is now MET;
+PLAN-0076's own process owns the gate-seam extraction question (scope not
+reassigned here).
+> *Historical record (the tracking mandate, as it stood while OPEN) preserved
+> below unchanged — it is the archaeology of why the hero could not rot out of
+> the backlog.*
+**Prior Status:** **Tracking** — a standing TRACKING PLAN per the Cray-ratified s133
 convention (PLAN-0076 precedent: "location ≠ tripwire; failing tests are the
 real anti-rot"), deliberately OUTSIDE the Proposed→Accepted→`done/` build-PLAN
 lifecycle. It **builds nothing and schedules nothing** — it HOMES the

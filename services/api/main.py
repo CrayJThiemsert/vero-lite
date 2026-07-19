@@ -122,16 +122,26 @@ async def _register_supply_chain_executors() -> None:
     await register_supply_chain_procedure_executors()
 
 
+async def _register_building_materials_executors() -> None:
+    from verticals.building_materials.procedures_factory import (
+        register_building_materials_procedure_executors,
+    )
+
+    await register_building_materials_procedure_executors()
+
+
 _PROCEDURE_EXECUTOR_REGISTRARS: dict[str, Callable[[], Awaitable[None]]] = {
     "aquaculture": _register_aquaculture_executors,
     "energy": _register_energy_executors,
     "procurement": _register_procurement_executors,
     "supply_chain": _register_supply_chain_executors,
+    "building_materials": _register_building_materials_executors,
 }
 """Per-vertical procedure-executor factory registration (PLAN-0062 AC-5). Imports stay
 LAZY inside each registrar so booting one vertical never imports another's harness.
-All four PROCEDURE-SHIPPING verticals register a factory; the spec-less Tier-1 mirrors
-(building_materials, vet_clinic — no ``procedures.yaml``) register none."""
+All five PROCEDURE-SHIPPING verticals register a factory (building_materials joined at
+PLAN-0081 — the governed-credit hero); the remaining spec-less Tier-1 mirror
+(vet_clinic — no ``procedures.yaml``) registers none."""
 
 
 @asynccontextmanager

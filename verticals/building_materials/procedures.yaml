@@ -1,0 +1,271 @@
+# vero-lite procedure spec — building_materials vertical, v0 (PLAN-0081 — the governed-credit HERO).
+# The 5th vertical's headline: a trade customer's outstanding credit exposure breaches ABOVE their
+# approved credit limit on a new order, and the release decision runs the full governed AT-2 spine —
+# a deterministic per-entity exposure band, a hard credit-compliance rule_gate (KYC / overdue-AR /
+# blacklist), then a doa_tier human approval with SoD (sales REQUESTS, credit-control APPROVES) and
+# the engine audit — using the shipped machinery unchanged. A distinct spec layer from the ADR-008
+# ontology (building_materials_v0.yaml is untouched): agents + procedures, NOT object_types.
+# `agents` / `procedures` are MAPS keyed by id (house YAML style).
+#
+# This is AT-2 SIGNATURE #3 (ADR-0025 D7). It REUSES the money doa_tier ladder unchanged (THB and
+# all) — no new gate kind, no new authority quantity — and grows only the criterion vocabulary
+# (`ComplianceCriterion += {kyc, overdue_ar, blacklist}`, the axis the N=2 finding established as
+# per-instance forever). The D7 re-evaluation is performed + recorded at PLAN-0081 Step 8
+# (`test_at2_signature_retrigger.py`): the generator stays deferred, the marker re-arms at N=4.
+#
+# GOVERNED != GENERATED (the guardrail across every step): the LLM only DRAFTS/SUMMARISES. It NEVER
+# sets the exposure band (authored), NEVER waives a compliance criterion (the rule_gate blocks on any
+# fail, non-waivable by type), and NEVER approves (the human doa_tier gate). Each step carries the
+# structured 5-FACET annotation (input · decision-condition · llm-assist · output · governance) as
+# the typed `facet:` field (ADR-016 D2); the typed Step fields stay source of truth (D2-A2).
+#
+# >>> EVERY AUTHORED NUMBER / ROLE / ROSTER HERE IS A GUESS — "เดา, รอแก้" (ADR-0032 D1 <<<
+# guess-then-react). The ladder tiers, the compliance criteria signals, and the principal roster are
+# best-guess demo values — the partner's "correct me" surface. Deterministic-offline: no MS-S1, no
+# host-state, no DB; the LLM appears only as advisory `llm_assist` prose.
+
+namespace: building_materials
+version: 0
+
+agents:
+  credit_control_agent:
+    name: Governed Credit Control Agent
+    llm_model: gpt-oss:20b          # ADR-001 default local model
+    # ceiling = gated: the only actions here are the gated approve (doa_tier) + the gated fulfill
+    # write (human go/no-go). No auto action, so the ceiling never needs to reach `auto`.
+    autonomy_ceiling: gated
+    allowed:
+      # `transform` joins the allowed kinds so the declared `reshape` step (the measured_value ->
+      # amount/currency L-2 seam) runs under this agent (orchestrator step-kind guard).
+      step_kinds: [query, evaluate, action, transform]
+      # `escalate` for the gated doa_tier routing (propose the credit decision to the tier's
+      # authority); `approve_credit_override` for the gated terminal write (the approved credit
+      # release, a no-op receipt stub today). Both are building_materials RecommendedAction
+      # action_type vocabulary (building_materials_v0.yaml:137-139).
+      action_handlers: [escalate, approve_credit_override]
+
+# Human principals the SoD run-check resolves against (ADR-0026 D1/D4). Pure YAML — parsed generically
+# into the shared generated `core.Person` (PLAN-0082; building_materials is the 3rd principal-bearing
+# vertical, landing on the SAME shared home procurement + supply_chain migrated onto). Human-author-only
+# (H, ADR-0024 D3), never model-emitted. The requester side (`req-sales`) holds ONLY `requester`; each
+# approver holds the generic `approver` role the SoD constraint binds `approve` to, PLUS its DOA-tier
+# role (the tier role picks WHICH approver — SoD only needs "an approver, distinct from the requester").
+# GUESS roster — รอแก้.
+principals:
+  - person_id: req-sales
+    name: "อนุชา — พนักงานขาย (ผู้ขอปล่อยเครดิต)"
+    roles: [requester]
+  # CUMULATIVE authority roles (PLAN-0075 Policy B, Cray s132 — "senior can approve downward"): each
+  # tier holds its OWN role AND every LOWER tier's, so a senior credit authority satisfies the
+  # tier_authority gate for a lower-tier exposure (exact-match, rank-as-data — SD-1a). The doa_tier
+  # resolver's NATIVE-tier routing still names the tier's own approver (the ฿550,000 breach routes to
+  # appr-credit-manager, the [250k,1M) tier) so the audit routing record stays honest.
+  - person_id: appr-credit-officer
+    name: "กนกวรรณ — จนท.เครดิต"
+    roles: [approver, "จนท.เครดิต"]
+  - person_id: appr-credit-manager
+    name: "ภาสกร — ผจก.ควบคุมเครดิต"
+    roles: [approver, "ผจก.ควบคุมเครดิต", "จนท.เครดิต"]
+  - person_id: appr-finance-director
+    name: "วรพงษ์ — ผอ.ฝ่ายการเงิน"
+    roles: [approver, "ผอ.ฝ่ายการเงิน", "ผจก.ควบคุมเครดิต", "จนท.เครดิต"]
+
+procedures:
+  governed_credit_release:
+    title: Governed Credit Release
+    goal: >-
+      A trade customer's outstanding credit exposure has breached ABOVE their approved credit limit
+      on a new order. Read each account's latest exposure reading joined to its OWN credit limit,
+      judge the exposure against that per-account ceiling, reshape the breach into the flat spend the
+      authority gate reads, check the hard credit-compliance gate (KYC on file, no overdue AR,
+      not blacklisted) which blocks the release on any fail, then route the compliant release to the
+      human credit authority the exposure's size demands — sales REQUESTS, credit-control APPROVES
+      (SoD) — and write nothing until that human decides. The LLM drafts the summary (advisory); it
+      decides nothing.
+    run_by: credit_control_agent
+    trigger: manual                 # L-1: only manual runs in Phase 1 (the PLAN-0019 precedent)
+    steps:
+      - step_id: intake
+        name: Read the latest credit exposure per account
+        description: Latest reading per CustomerAccount joined to its own credit limit (event_type=reading), by occurred_at.
+        kind: query
+        input:                          # declared latest-per-group + FK-parent join (ADR-016 FKP)
+          reads: [OperationalEvent, CustomerAccount]
+          where:
+            event_type: reading         # the exposure readings; a non-reading event carries no
+                                        # measured_value, so an unfiltered latest-per-group would
+                                        # hand the judge an unreadable row
+          join:
+            - { with: CustomerAccount, link: event_for_account }   # brings each account's credit_limit_thb onto its readings (ADR-016 FKP)
+          project:
+            latest_per: event_for_account   # FK OperationalEvent.account_id -> CustomerAccount.account_id
+            order_by: occurred_at
+            fields:
+              site_id: account_site_id      # the declared OperationalEvent/CustomerAccount site_id collision (join-key account_id is exempt)
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "latest OperationalEvent (event_type=reading) per CustomerAccount via event_for_account, by occurred_at"
+          output: "one latest exposure row per account (each carrying its credit_limit_thb)"
+      - step_id: judge
+        name: Judge exposure vs the account's own credit limit
+        description: >-
+          Tag each account's verdict vs ITS OWN credit_limit_thb — breach (exposure at/above the
+          limit) vs ok. OCT_RECOMMEND_DIRECTION=above (credit exposure breaches OVER the ceiling).
+        kind: evaluate
+        threshold_field: credit_limit_thb   # each account bands vs its OWN per-entity limit (joined by intake)
+        direction: above                    # exposure breaches OVER the credit ceiling
+        facet:
+          # in_file_band POINTS AT the typed threshold_field/direction above — breach OVER each
+          # account's own limit — it does NOT re-store them (D2-A3).
+          decision_condition: { gate_kind: in_file_band, band_source: in_file }
+          llm_assist: null
+          input: "intake set (each row carries its account's credit_limit_thb)"
+          output: "per-account verdict {breach=exposure at/above its own limit, ok}"
+          governance: "verdict = pure function of the reading + the authored per-entity (in_file) band"
+      - step_id: reshape
+        name: Reshape the breach exposure into a governed spend (declared transform)
+        description: >-
+          Bridge exposure-as-a-monitored-reading to exposure-as-a-governed-spend: derive the flat
+          `amount` the doa_tier gate routes on from the breach's `measured_value`, default the
+          `currency`, and attach the per-criterion credit-compliance signal map the rule_gate reads —
+          all as declared transform data, not a bespoke executor. Deterministic; no LLM. Row-local
+          (the PLAN-0077 SD-8 wall is never approached).
+        kind: transform
+        input:
+          from: judge               # the named-input fan-out: only the breach subset
+          where:
+            verdict: breach
+        transform:
+          ops:
+            # the identity derive: the doa_tier `_spend()` reads a flat `amount` off the entity and
+            # fails CLOSED without it (governance_step.py). measured_value IS the exposure the tier
+            # routes on (procurement's `derive: {target: criticality, expr: {field: measured_value}}`
+            # precedent).
+            - derive: { target: amount, expr: { field: measured_value } }
+            # the ontology `unit` is already THB, but the gate contract wants the flat `currency`
+            # key (governance_step.py `_spend()` reads entity["currency"]).
+            - default: { target: currency, value: THB }
+            # the per-criterion credit-compliance signal map the rule_gate executor reads
+            # (the supply_chain enrich `default: {target: compliance, ...}` precedent). GUESS —
+            # default-true so the shipped happy path releases; the partner wires the real KYC /
+            # AR-aging / blacklist feeds.
+            - default:
+                target: compliance
+                value:
+                  kyc: true
+                  overdue_ar: true
+                  blacklist: true
+            # coerce amount to string so `Decimal(str(...))` is byte-exact on the authority
+            # threshold (the PLAN-0078 byte-form discipline).
+            - coerce: { target: amount, to: string }
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "judge (the breach subset — each row carries measured_value)"
+          output: "the breach enriched with the flat amount/currency spend + the credit-compliance signal map"
+          governance: "deterministic derivation as declared data (governed != generated)"
+      - step_id: credit_gate
+        name: Check the credit-compliance gate
+        description: >-
+          Evaluate the account against the hard credit-compliance rules — KYC/identity verification
+          on file and current, no invoice past due beyond terms + grace, and the account not
+          suspended / not on the credit blacklist. Any failed criterion blocks the release.
+          Deterministic: no LLM, no band.
+        kind: evaluate
+        # AT-2 typed content (ADR-0025 D2) — the 3rd AT-2 signature's rule_gate. A RULE gate, not a
+        # numeric band — intentionally band-less (the GovernanceEvaluateExecutor dispatches it to the
+        # deterministic rule_gate; the base band executor is never called). blocks_po is Literal[True]:
+        # a non-blocking "compliance" rule is unrepresentable by type. Criteria GUESS — รอแก้.
+        governance_content:
+          kind: rule_gate
+          rules:
+            - criterion: kyc
+              spec: "customer.kyc_status == verified and current (identity + business registration on file)"
+            - criterion: overdue_ar
+              spec: "no invoice past due beyond the account's payment_terms_days + grace"
+            - criterion: blacklist
+              spec: "account.status != suspended and the customer is not on the credit blacklist"
+        input:
+          from: reshape
+        facet:
+          decision_condition:
+            gate_kind: rule_gate
+            note: "credit-compliance gate — KYC · overdue AR · blacklist"
+          llm_assist: null
+          input: "reshape (the breach + its compliance signal map)"
+          output: "per-criterion pass/fail; an account failing any criterion is blocked"
+          governance: "blocks the release on ANY failed criterion (hard gate, non-waivable)"
+      - step_id: approve
+        name: Tiered DOA credit approval (human gate)
+        description: >-
+          Route the compliant release to the human credit authority the exposure's ฿ size demands.
+          The LLM drafts the justification + exec-summary (advisory). Separation of duties holds:
+          the salesperson who requested the release cannot be the one who approves it. The run
+          suspends at waiting_human; the human approves/rejects a concrete recommendation.
+        kind: action
+        autonomy: gated             # the human go/no-go — never the LLM
+        handler: escalate
+        # AT-2 typed content (ADR-0025 D2/D3) — the money doa_tier ladder REUSED UNCHANGED (the N=3
+        # finding: no new authority quantity). The tiers route on the FULL exposure (not the
+        # over-limit increment). The ฿550,000 shipped breach lands mid-ladder at the [250k,1M) tier
+        # (ผจก.ควบคุมเครดิต) — the demo shows tiering, not always-the-top. Money is Decimal (quoted to
+        # avoid float). GUESS ladder — รอแก้.
+        governance_content:
+          kind: doa_tier
+          currency: THB
+          tiers:
+            - { min_amount: "0", approver_role: "จนท.เครดิต" }
+            - { min_amount: "250000", approver_role: "ผจก.ควบคุมเครดิต" }
+            - { min_amount: "1000000", approver_role: "ผอ.ฝ่ายการเงิน" }
+          # DoaLadder REQUIRES an emergency_waiver (ADR-0025 D3 — it is not optional). REUSED from the
+          # procurement money-authority shape (the N=3 finding: doa_tier is reused unchanged, not
+          # re-invented). A credit override escalates the approver + forces a logged justification —
+          # it NEVER skips a gate. `relaxes` is the CLOSED sourcing-constraint enum (three_bid /
+          # sole_source, ADR-0025 D3 — cannot name compliance/SoD); a credit-apt relaxable, if a real
+          # waiver ever surfaces, is a future ADR-0025 D3 amendment, out of scope here. GUESS — รอแก้.
+          emergency_waiver:
+            relaxes: [three_bid]
+            escalate_to: "ผอ.ฝ่ายการเงิน"
+            requires_justification: true
+        input:
+          from: credit_gate
+          where:
+            compliant: true
+        facet:
+          decision_condition:
+            gate_kind: doa_tier
+            note: "DOA tier band (฿) — escalates the approver above the band; routes on the full exposure"
+          llm_assist: "draft the credit justification + the approver exec-summary (advisory, editable)"
+          input: "credit_gate (the compliant subset)"
+          output: "credit-release approval decision (human)"
+          governance: "tiered DOA + SoD (requester != approver); a HUMAN approves — the LLM never does"
+      - step_id: fulfill
+        name: Execute the approved credit release
+        description: >-
+          Carry out the approved credit release for the account (a no-op receipt stub until the real
+          ERP/credit-ledger handler ships with the design partner). A human-gated write: it only
+          proposes until a human approves, then acts on resume. action_type approve_credit_override.
+        kind: action
+        autonomy: gated
+        handler: approve_credit_override
+        input:
+          from: approve
+        facet:
+          decision_condition: { gate_kind: none }   # mechanical write of the approved decision
+          llm_assist: null
+          input: "approve (the approved release)"
+          output: "the credit-release receipt"
+          governance: "human-gated write (only runs on resume after approval)"
+    terminal: fulfill
+    # AT-2 separation of duties (ADR-0025 D2/D5 — a doa_tier gate REQUIRES it). The salesperson who
+    # requested the release (`intake`) must not be the credit authority who approves it (`approve`).
+    # Author time = the STRUCTURAL distinct-steps form; the resolved-PRINCIPAL distinctness (fail-closed
+    # on a PK match OR an alias-collapse) is the LIVE run check (ADR-0026 D4): `required_roles` binds
+    # intake -> requester -> Person and approve -> approver -> Person, and fails closed if either is
+    # unresolvable or the two collapse to one human.
+    separation_of_duties:
+      - distinct_steps: [intake, approve]
+        required_roles:
+          intake: requester
+          approve: approver

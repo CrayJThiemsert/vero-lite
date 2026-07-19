@@ -44,8 +44,29 @@ D7 re-trigger's whole point is that N>=2 forces the question. It was asked at th
 * The generator's abstain guard grew to cover the new kind instead (``generator/pipeline.py``
   ``_AT2_ONLY_KINDS``, PLAN-0074 Step 3) — proven by ``test_generator_pipeline.py``.
 
-So the marker re-arms at **N=3**: a third distinct signature would mean three hand-authored
-governance shapes and no extraction, which Rule-of-Three (ADR-006 D4) does not permit.
+**N=3 REACHED — re-evaluated again, not deferred in silence (PLAN-0081 Step 8, Cray SD-C).**
+``building_materials.governed_credit_release`` (the governed-credit hero) shipped the 3rd
+distinct signature. The re-trigger FIRED and the question was asked a second time:
+
+* **Resolution: the AT-2 generator STAYS deferred and abstaining; the marker re-arms at N=4.**
+  The 3rd signature is the WEAKEST possible extraction datum, so it does not disturb the N=2
+  finding — it is the argument FOR staying deferred, not against. It introduces NO new gate kind
+  and NO new authority quantity: it REUSES the money ``doa_tier`` ladder unchanged (THB and all),
+  pairs it with a rule_gate whose composition is a strict SUBSET of procurement's (``rule_gate
+  -> doa_tier``, no scored_rule), and grows only the criterion vocabulary (``ComplianceCriterion
+  += {kyc, overdue_ar, blacklist}``) — the exact axis N=2 already established as per-instance
+  forever. What DID generalise is again the GATE SHAPE (a rule gate blocks, a tiered human gate
+  authorises, SoD holds).
+* It also FIRES PLAN-0076 T1's own named trigger ("a third AT-2 signature fires the N=3
+  re-trigger marker") — so the AT-2-generator / gate-plugin-seam extraction question now has a
+  live owner (PLAN-0076 T1) and does not need this marker to force it. Rule-of-Three (ADR-006 D4)
+  is honoured by the WEAKNESS of this datum, not violated: three hand-authored shapes, yes, but
+  the third taught the engine nothing a generator could extract that the first two had not
+  already shown to be per-instance.
+
+So the marker re-arms at **N=4**: a fourth distinct signature — a genuinely NEW gate kind or
+authority quantity, not another criterion-vocabulary variant — is the datum that would exhaust
+these two answers and make the extraction due under Rule-of-Three.
 
 Pure-offline (no DB, no LLM, no MS-S1 — CLAUDE.md §8). The failing assertion is the deferral
 SELF-CANCELLING, not a test bug.
@@ -78,12 +99,20 @@ from services.engine.procedures.spec import (
     load_procedures_file,
 )
 
-_RETRIGGER_N = 3
+_RETRIGGER_N = 4
 """The distinct-signature count at which the AT-2-generator deferral self-cancels (ADR-0025 D7;
-re-armed here by PLAN-0074 after the N=2 firing was answered — see the module docstring). At a
-THIRD signature the per-instance types are a Rule-of-Three violation and the extraction is due."""
+re-armed here by PLAN-0081 after the N=3 firing was answered — see the module docstring). At a
+FOURTH signature the per-instance types are a Rule-of-Three violation and the extraction is due."""
 
 _BASELINE_SIGNATURES = [
+    (
+        "building_materials",
+        ("rule_gate", "doa_tier"),
+        (
+            ("rule_gate", ("blacklist", "kyc", "overdue_ar")),
+            ("doa_tier", ("THB",)),
+        ),
+    ),
     (
         "procurement",
         ("scored_rule", "rule_gate", "doa_tier"),
@@ -106,13 +135,16 @@ _BASELINE_SIGNATURES = [
         ),
     ),
 ]
-"""The N=2 baseline the D7 re-evaluation was performed against (PLAN-0074 SD-3): the same three
-gates composed twice, but on a MONEY authority and a NON-MONEY one — AND distinct governed-enum
-surfaces (procurement's vendor-hygiene criteria vs supply_chain's GDP criteria; the money currency
-vs the ordinal severity floors). Sorted by vertical. Keying on this surface (not just the gate
-composition) is the reviewer-F4 fix: a THIRD procedure that reused the same gate composition but
-pressed a NEW criterion/policy/severity vocabulary (a capex board gate, a warehouse-contamination
-ladder) would otherwise key identically to an existing signature and never trip the re-trigger."""
+"""The N=3 baseline the D7 re-evaluation was performed against (PLAN-0081 Step 8; sorted by
+vertical, so building_materials leads). Three distinct signatures: the SHARED finding is that the
+GATE COMPOSITION generalises while the per-instance surfaces do not. building_materials REUSES the
+money ``doa_tier`` (THB) unchanged and pairs it with a rule_gate on a NEW criterion vocabulary
+(credit: blacklist/kyc/overdue_ar) — no scored_rule, a strictly SIMPLER shape than procurement's,
+which is exactly why it is the weakest extraction datum (no new gate kind, no new authority
+quantity). Keying on the governed-enum SURFACE (not just the gate composition) is the reviewer-F4
+fix: a procedure reusing an existing gate composition but pressing a NEW criterion/policy/severity
+vocabulary would otherwise key identically to an existing signature and never trip the
+re-trigger."""
 
 
 def _at2_gate_kinds(procedure: Procedure) -> tuple[str, ...]:

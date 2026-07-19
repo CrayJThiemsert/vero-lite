@@ -28,12 +28,13 @@ router = APIRouter(tags=["procedures"])
 # server-side, in one place). Canonical source is
 # docs/conventions/procedure-archetypes.md; this is a read-only derived MIRROR
 # (CLAUDE.md §4 canonical→derived). A 5th vertical extends this map ADDITIVELY —
-# the catalog grows first, the map mirrors it; never the reverse. Eight shipped
-# procedures across the four instrumented verticals (PLAN-0039 fact-pack #1:
+# the catalog grows first, the map mirrors it; never the reverse. Ten shipped
+# procedures across the five procedure-bearing verticals (PLAN-0039 fact-pack #1:
 # procurement ships two manual; energy / supply_chain / aquaculture one each) plus
 # the PLAN-0055 Step 8 schedule-triggered AT-2 variant, the PLAN-0056 Step 8
-# event-triggered AT-2 variant, and the PLAN-0065 Step 4 schedule-triggered AT-3
-# variant (all procurement).
+# event-triggered AT-2 variant, the PLAN-0065 Step 4 schedule-triggered AT-3
+# variant (all procurement), the PLAN-0074 supply_chain AT-2 disposition, and the
+# PLAN-0081 building_materials AT-2 governed-credit hero.
 PROCEDURE_ARCHETYPES: dict[str, str] = {
     "substation_health_sweep": "AT-1",  # energy — anomaly→action
     "cold_chain_excursion_sweep": "AT-1",  # supply_chain — anomaly→action
@@ -47,6 +48,10 @@ PROCEDURE_ARCHETYPES: dict[str, str] = {
     # authority quantity is NON-MONEY (severity_tier, not doa_tier). The procurement entries above
     # are trigger variants of ONE signature; this is a second one.
     "cold_chain_excursion_disposition": "AT-2",
+    # building_materials — the 3rd AT-2 SIGNATURE (PLAN-0081): a governed credit release. The money
+    # doa_tier ladder is REUSED unchanged; only the criterion vocabulary grows ({kyc, overdue_ar,
+    # blacklist}). A genuinely third signature, on a fifth vertical.
+    "governed_credit_release": "AT-2",
 }
 
 # A procedure absent from the catalog map renders with this sentinel rather than
