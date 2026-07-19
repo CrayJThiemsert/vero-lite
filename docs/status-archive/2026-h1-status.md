@@ -525,3 +525,82 @@ convention is separate work, deliberately not done here.
 
 | 2026-07-17 | **s141 — PLAN-0078 Phase 2 PR-4 COMPLETE (#775, `feat`, oracle-first): the marquee ฿ spend re-sequenced off the `_scored_rule` stamp into a declared `derive_spend` transform, per the ratified SD-8=(a) ONE DERIVATION HOME.** Cray-ratified in-session refinement: stamp `selected_qty` (not `selected_unit_price` only) so `_quantity` stays the ONE resolution home. Suite **2822 passed / 7 skipped**; deterministic-offline. **PLAN-0078 stays `Status: Proposed`**; **PR-5 is NOT blocked by PR-4**. Full narrative: the Session-141 CF block (rotated to `docs/status-archive/` at the s145 reconcile — grep the archive dir, not one file) | `09714ea` (HEAD, #775 merge) / `88e6e11` (PR-4 flip) / `fc17d02` (PR-4 oracle) / `verticals/{procurement,supply_chain}/**` (declared `derive_spend` transform) + `services/engine/procedures/governance_step.py` (`_scored_rule` factor stamps) + `tests/**` (`test_amount_transform_parity.py`) + `docs/plans/0078-*.md` (Proposed; PR-4 COMPLETE) |
 | 2026-07-16 | **s140 — artifact 3/4 (#773, docs-only): `CLAUDE.md` §2 retitled "Current Focus" → "Direction & Current Focus" + a two-pointer signpost — standing direction = ADR-0032, current state = STATUS, "state never overrides direction" (§1).** The strategic-continuity program is now **COMPLETE 4/4** (#770 ADR · #771 PLAN-0079 · #773 §2 · #772 STATUS pointer). Scope CUT at Cray's ratification: the planned sanitized strategy doc DROPPED (a no-precedence restatement of a canonical is itself a drift surface, §1 / ADR-0017 D6). Suite **2810 passed / 7 skipped**. Full narrative: the Session-140 CF block above | `0523d88` (HEAD, #773 merge) / `038efd0` (§2 pointer) / `CLAUDE.md` §2 + `docs/adr/0032-*.md` |
+
+## Rotated this reconcile (session-151, 2026-07-19 — PLAN-0081 building_materials governed-credit hero BUILT, the 3rd AT-2 signature, #814)
+
+### Current-Focus block — Sessions 144 + 145 (the R4 archive-guard arc + splits #788–792) [rotated 2026-07-19, session-151 reconcile — 4-newest-sessions CF window]
+
+> **Sessions 144 + 145, 2026-07-17 (head_commit `d8db032` → `ce0f0a1`) — the
+> R4 arc: a ratified rule that had NO MECHANISM, closed end to end in one
+> session (#789 → #791 → #792), plus two PRs from a CONCURRENT session (#788,
+> #790).** R4 (`docs/runbooks/memory-architecture.md` §"R4 — Archive, don't
+> drop") sets two numbers — archives stay under a **256 KB cap**; over **~192
+> KB** start a continuation — and **nothing enforced either**: R4's own
+> responsibility-matrix guard column read `—` where R1 and R7 both read `fail`.
+> It had rotted to a **3x breach**. **(1) #789 (`f444cd1` → merge `b369fa6`) —
+> the guard.** `tools/check_archive_size.py`: warns over the 192 KB trigger,
+> **fails over the 256 KB cap**; a `files:`-scoped pre-commit hook (deliberately
+> NOT `always_run` — a byte cap can only be breached by writing the file it
+> caps); 8 contract tests; the R4 matrix row `—` → `fail >256 KB`. Landed GREEN
+> **by design**: the hook does not fire on a commit touching no archive, and CI
+> does not run pre-commit at all. **(2) #791 (`96ef1c4` + `d43f4a8` → merge
+> `f00e4c7`) — the split the guard FORCED.** `2026-h1-status.md` was **592,577 B
+> = 3.01x the trigger, 2.26x the cap**, growing ~7.5 KB per reconcile → split
+> into the **c/d/e/f chain** per Cray's ratified naming rule (**letters ascend
+> with time; the base holds the RECENT window; older spills into the next
+> letter**) — `-b` is NOT the spill target (it holds OLDER content, so spilling
+> newer sections in would break the chronology the letters encode). **Five
+> files, not four:** a 4-way split forces one file to ~97% of the trigger, and
+> the excuse "it's frozen so tight is fine" was **falsified BY THIS SESSION**
+> (the s144 reconcile appended an archivist's note to a supposedly frozen row).
+> Also lands **`test_live_archives_are_within_cap`** — the BINDING half; it
+> could NOT land in #789 (RED at 2.26x), and **that ordering was the point**: a
+> guard whose live assertion is RED cannot merge into a protected main. **(3)
+> #792 (`61d072f` → merge `ce0f0a1`) — the current-focus split + THE RULE
+> RECORDED AS CANON.** `2026-h1-current-focus.md` was 258,346 B (1.31x trigger,
+> ~3,798 B under the cap) and **still receiving appends** (last s132) → split to
+> `b`/`c` + base. **The more important half: Cray's naming rule was living only
+> in commit messages and file headers — canonically invisible, which is EXACTLY
+> how R4 got a guard column of `—` in the first place.** Now in the runbook,
+> with the corollary and the hard-won warning: **which file holds a block is not
+> stable information — grep the directory, never cite a continuation by name
+> from outside the archive** (this session broke three of its own pointers that
+> way). **Result: every archive is now under the ~192 KB TRIGGER (not merely the
+> cap) and the guard is SILENT for the first time.** Rotation archive:
+> `h1b`/`c`/`d`/`e`/`f` (94K–162K) → `2026-h1-status.md` base **22,185 B**;
+> current-focus: `h1b-cf` 164,875 / `h1c-cf` 81,045 → base **18,161 B**. Both
+> bases carry ~174 KB of headroom ≈ 23 reconciles. **Proofs, stated honestly:**
+> #791 proved **exact list equality** of 27 sections; #792 proved **multiset
+> equality** of 30 blockquote blocks (blocks deliberately reordered ACROSS
+> files; order WITHIN each file untouched) — **different proofs, and the PR says
+> so**. Both re-run against HEAD **AFTER pre-commit**, which CHANGED the answer:
+> the end-of-file-fixer stripped one trailing newline per continuation, so the
+> honest claim is *"equal except N trailing newlines, all stripped-equal"*,
+> **NOT byte-identical**. **Two structural facts found by grounding, RECORDED
+> rather than quietly fixed:** (i) `current-focus` has **zero `## ` sections**
+> (it is blockquote blocks) — reusing the sibling's parser would have found 0
+> sections and "split" nothing **while reporting success**; (ii) its header
+> claimed "Session 46 and earlier" but later deep-rotates had appended sessions
+> 116–128 to its bottom — **one file carrying two orderings**. Also: the
+> `session 25` block is **162,822 B, atomic** — `h1b-cf` is large **by
+> necessity, not by packing choice**. **Concurrent-session PRs — NOT session
+> 144's work:** **#788 (`694e8d7`) — PLAN-0080 filed by session 145**, `Status:
+> **Draft** (pending Cray ratification)`: **SD-1 and SD-2 are UNRATIFIED —
+> merging the document did NOT ratify its decisions, and it must NOT be
+> executed**; ⚠ **`docs/conventions/ui.md` does NOT exist** — the PR title names
+> it because the PLAN *proposes* it, not because it shipped. **#790 (`ba12e1b` →
+> merge `bb369ed`) — session 145's STATUS frontmatter-only bump**, merged by
+> session 144 **on Cray's explicit instruction** to clear the STATUS lane; it
+> existed *because of* #789 — its own title says "full reconcile blocked by the
+> R4 guard", the forcing function biting a sibling session within hours, which
+> is what turned the split from hygiene into **unblocking work**. Suite **2855
+> passed / 7 skipped** — re-run BY CODE on the merge commit `ce0f0a1` itself,
+> since CI is PR-only and never tests the merge commit. Post-merge:
+> main=`ce0f0a1`; 0 open PRs; loop-dispatcher DISABLED; MS-S1 idle/COLD (zero
+> calls); dev Postgres UP. Commits: `694e8d7` (#788, session 145) → `f444cd1` →
+> `b369fa6` (#789) → `ba12e1b` → `bb369ed` (#790) → `96ef1c4` + `d43f4a8` →
+> `f00e4c7` (#791) → `61d072f` → `ce0f0a1` (HEAD, #792 merge).
+
+### Recent-Decisions row — s142 (the THREE R2 carve-out TODOs DISCHARGED, #780/#778/#779) [rotated 2026-07-19, session-151 reconcile — 10-row window]
+
+| 2026-07-17 | **s142 — the THREE R2 carve-out TODOs DISCHARGED (#780/#778/#779, docs-only): each fact REHOMED into a tracked home FIRST, THEN trimmed** — Rock 4's evidence-asymmetry finding → ADR-0025 · the `sequence`-column deferral → the ordering-guard docstring (deferral STANDS) · the s74 demo-card SD-3 → the PLAN-0035 `done/` post-archival amendment (+ ADR-0030's `STATUS.md:<line>` citations re-pointed). Runbook R2 now records **"until it is rehomed" is a real exit**, and that an ADR citing `STATUS.md:<line>` is a **defect**. Suite **2822/7**. Full narrative: the Session-142 CF block (rotated to `docs/status-archive/` at the s146 reconcile — grep the archive dir, not one file) | `303fd48` (HEAD, #779) / `37ab124` (#778) / `12e69aa` (#780) / `docs/adr/0025-*.md:23-29` + `docs/plans/done/0035-*.md:576` + `tests/services/db/test_load_run_ordering_guard.py` + `docs/runbooks/memory-architecture.md` (R2) |
