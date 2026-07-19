@@ -16,11 +16,14 @@ Design (PLAN-0045 SD / dossier §9):
 * **Decimal-safe THB** (AC-1): every money column is parsed to :class:`~decimal.Decimal` (never
   ``float``) so the DOA-tier resolution + the ฿-impact ledger stay exact on an authority
   threshold (mirrors the ``doa_tier`` executor's Decimal discipline, ADR-0026).
-* **Standalone Fastenal-named types** (AC-1): ``fetch_objects`` serves the dataset's own type
-  names (``Asset`` / ``Part`` / ``Supplier`` / ``PurchaseOrder`` / ``ApprovalTier`` / ``Person``)
-  keyed by the CSV column names verbatim — zero field translation (the consumers read the raw
-  dicts). ``fetch_links`` returns the 2 explicit link files **plus** the 4 inline-FK links
-  synthesised from ``purchase_order.csv`` (dataset §"ingestion mapping").
+* **Canonical ontology vocabulary** (AC-1; PLAN-0083 c1): ``fetch_objects`` serves the canonical
+  OCT type + property names the ontology declares (``Equipment`` / ``Part`` / ``Supplier`` /
+  ``PurchaseOrder`` / ``ApprovalTier`` / ``Person``), translating the raw Fastenal CSV column
+  names via ``_COLUMN_RENAMES`` — the adapter is the per-vertical source-diversity-absorbing
+  layer (ADR-016: "the mapping layer absorbs source diversity; connectors-in-the-procedure OUT").
+  ``fetch_links`` returns the 2 explicit link files **plus** the 4 inline-FK links synthesised
+  from ``purchase_order.csv`` (dataset §"ingestion mapping"), addressing raw CSV columns
+  positionally — the link paths stay raw (SD-2).
 * **No event stream** (v1): ``stream_events`` is an empty async iterator — the CSV demo dataset
   is a static snapshot.
 
@@ -75,7 +78,7 @@ def _roles(value: str) -> list[str]:
 
 # object_type -> (csv filename, {column: coercion}); unlisted columns stay ``str``.
 _OBJECT_FILES: dict[str, tuple[str, dict[str, _Coerce]]] = {
-    "Asset": ("asset.csv", {"downtime_cost_per_hour_thb": _dec}),
+    "Equipment": ("asset.csv", {"downtime_cost_per_hour_thb": _dec}),
     "Part": (
         "part.csv",
         {"on_contract_unit_price_thb": _dec, "emergency_expedite_unit_price_thb": _dec},
@@ -95,6 +98,24 @@ _OBJECT_FILES: dict[str, tuple[str, dict[str, _Coerce]]] = {
         "quotation.csv",
         {"price_thb": _dec, "lead_time_days": _int, "on_contract": _bool},
     ),
+}
+
+# object_type -> {raw CSV column -> canonical ontology property}. PLAN-0083 (c1): the adapter is
+# the per-vertical source-diversity-absorbing layer (ADR-016 — "the mapping layer absorbs source
+# diversity; connectors-in-the-procedure OUT"), so it translates the raw Fastenal CSV column names
+# to the canonical OCT names the ontology deliberately adopted (procurement_v0.yaml:25 — "mirror
+# aquaculture, Asset->Equipment, Site->Plant"). Applied on the ``fetch_objects`` path ONLY (SD-2 =
+# (b)); the coercion keys above stay raw (they are applied first, keyed to the CSV) and the link
+# paths address raw CSV columns positionally, so both are unaffected. The ฿-columns (``total_thb`` /
+# ``max_thb`` / ``min_thb``) are DELIBERATELY not renamed (SD-4b DEFER): the governed amount is
+# re-derived, never read from the PO, so renaming them buys no generic-join value and would churn
+# the box-4 provenance surface — they are pinned raw in the canonical-coverage tripwire.
+_COLUMN_RENAMES: dict[str, dict[str, str]] = {
+    "Equipment": {"asset_id": "equipment_id", "asset_type": "equipment_type", "site": "site_id"},
+    "Part": {"part_id": "part_no"},
+    "PurchaseOrder": {"part_id": "part_no", "asset_id": "equipment_id"},  # SD-4a
+    "OperationalEvent": {"asset_id": "equipment_id", "site": "site_id"},
+    "Quotation": {"part_id": "part_no", "price_thb": "price", "lead_time_days": "lead_time"},
 }
 
 # Explicit link files: link_type -> (filename, from_col, to_col, {prop_col: coercion}).
@@ -155,7 +176,11 @@ class FastenalCsvAdapter:
         if spec is None:
             return []
         filename, coercions = spec
-        return _read_rows(filename, coercions)[:limit]
+        rows = _read_rows(filename, coercions)[:limit]
+        renames = _COLUMN_RENAMES.get(object_type)
+        if renames:
+            rows = [{renames.get(col, col): val for col, val in row.items()} for row in rows]
+        return rows
 
     async def fetch_links(
         self,

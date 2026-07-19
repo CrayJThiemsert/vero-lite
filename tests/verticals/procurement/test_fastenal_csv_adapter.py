@@ -56,7 +56,7 @@ async def test_health_check_reports_ok() -> None:
 
 async def test_fetch_objects_serves_the_five_types_plus_person() -> None:
     adapter = FastenalCsvAdapter()
-    for object_type in ("Asset", "Part", "Supplier", "PurchaseOrder", "ApprovalTier", "Person"):
+    for object_type in ("Equipment", "Part", "Supplier", "PurchaseOrder", "ApprovalTier", "Person"):
         objects = await adapter.fetch_objects(object_type)
         assert objects, f"{object_type} should be non-empty"
         assert all(isinstance(obj, dict) for obj in objects)
@@ -67,7 +67,7 @@ async def test_fetch_objects_unknown_type_is_empty() -> None:
 
 
 async def test_fetch_objects_respects_limit() -> None:
-    objects = await FastenalCsvAdapter().fetch_objects("Asset", limit=2)
+    objects = await FastenalCsvAdapter().fetch_objects("Equipment", limit=2)
     assert len(objects) == 2
 
 
@@ -90,12 +90,12 @@ async def test_hero_purchase_order_round_trips() -> None:
 
 async def test_hero_asset_and_part_present() -> None:
     adapter = FastenalCsvAdapter()
-    assets = await adapter.fetch_objects("Asset")
-    down = _by_pk(assets, "asset_id", "AST-CNC-014")
+    assets = await adapter.fetch_objects("Equipment")
+    down = _by_pk(assets, "equipment_id", "AST-CNC-014")
     assert down["status"] == "DOWN"
     assert down["downtime_cost_per_hour_thb"] == 85000
     parts = await adapter.fetch_objects("Part")
-    _by_pk(parts, "part_id", "PRT-SPN-700")
+    _by_pk(parts, "part_no", "PRT-SPN-700")
 
 
 async def test_controller_tier_band_round_trips() -> None:
@@ -147,7 +147,7 @@ async def test_operational_event_failure_present() -> None:
     events = await FastenalCsvAdapter().fetch_objects("OperationalEvent")
     fail = _by_pk(events, "event_id", "EVT-CNC-014-FAIL")
     assert fail["event_type"] == "failure"
-    assert fail["asset_id"] == "AST-CNC-014"
+    assert fail["equipment_id"] == "AST-CNC-014"  # PLAN-0083: canonical (was asset_id)
     assert isinstance(fail["measured_value"], float)
     assert fail["measured_value"] == 0.92
 
@@ -156,9 +156,9 @@ async def test_quotation_offavl_is_the_hero_price() -> None:
     quotes = await FastenalCsvAdapter().fetch_objects("Quotation")
     rapid = _by_pk(quotes, "quote_id", "QT-SPN-RAPIDMRO")
     assert rapid["supplier_id"] == "SUP-RAPIDMRO"
-    assert rapid["price_thb"] == Decimal("96000")
-    assert isinstance(rapid["price_thb"], Decimal)
-    assert rapid["lead_time_days"] == 2
+    assert rapid["price"] == Decimal("96000")  # PLAN-0083: canonical (was price_thb)
+    assert isinstance(rapid["price"], Decimal)
+    assert rapid["lead_time"] == 2  # PLAN-0083: canonical (was lead_time_days)
     assert rapid["on_contract"] is False
 
 
