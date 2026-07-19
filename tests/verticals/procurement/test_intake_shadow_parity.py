@@ -23,13 +23,14 @@ harness-owned envelope metadata (``object_type`` / ``primary_key``, the
 ``candidate_quotes`` nest keeps ``intake`` **execution-bound ✖** for that residue (LOCKED-9,
 L-3 partial).
 
-**A drift this test also pins.** The procurement ontology declares
-``PurchaseOrder.part_no`` / ``Quotation.price`` / ``OperationalEvent.equipment_id``,
-while the real CSVs emit ``part_id`` / ``price_thb`` / ``asset_id``. The load gate checks
-**declared** properties; the executor merges **runtime** keys. So the declaration must
-rename the four ontology-declared ``PurchaseOrder``∩``Quotation`` collisions
-(``currency`` · ``part_no`` · ``quote_id`` · ``supplier_id``) even though only
-``supplier_id`` collides at runtime — and renaming it is what keeps each quote's own
+**A drift this test used to pin — now FIXED (PLAN-0083 c1).** The procurement ontology declares
+``PurchaseOrder.part_no`` / ``Quotation.price`` / ``OperationalEvent.equipment_id``; the raw CSVs
+emit ``part_id`` / ``price_thb`` / ``asset_id``. PLAN-0083 moved that translation INTO the
+``FastenalCsvAdapter`` (the source-diversity-absorbing layer, ADR-016), so ``fetch_objects`` now
+serves the canonical names and the declared-vs-runtime seam is closed for procurement. The
+declaration still renames the ontology-declared ``PurchaseOrder``∩``Quotation`` collisions
+(``currency`` · ``part_no`` · ``quote_id`` · ``supplier_id``): now that ``part_no`` appears at
+runtime on BOTH sides, its projection rename is genuinely load-bearing — it keeps each quote's own
 supplier instead of letting the PO's supplier win all three rows.
 
 Deterministic, offline, no LLM, no DB (SD-6 / LOCKED-6): the real CSV adapter, the real
@@ -79,16 +80,17 @@ _VERTICAL = "procurement"
 # The declared JOIN HALF of `_intake_seed`, in the ratified PLAN-0061 grammar.
 #   * base    = the singleton failure event (`where` narrows it to one row)
 #   * fuse    = the hero PO — the ontology-undeclarable positional fusion (OQ-4 warns)
-#   * on      = quotes keyed on part_id (the PO CSV carries NO quote_id — PLAN fact 5)
-#   * fields  = the four ontology-declared PO∩Quotation collisions, renamed away as the
-#               load gate requires; `part_no` never appears at runtime (ontology drift),
-#               so its rename is a declared no-op.
+#   * on      = quotes keyed on part_no (canonical since PLAN-0083; the PO CSV carries NO quote_id
+#               — PLAN fact 5)
+#   * fields  = the four ontology-declared PO∩Quotation collisions, renamed away as the load gate
+#               requires; since PLAN-0083 `part_no` DOES appear at runtime, so its rename is now
+#               load-bearing (not a no-op).
 _INTAKE_JOIN_INPUT: dict[str, Any] = {
     "reads": ["OperationalEvent", "PurchaseOrder", "Quotation"],
     "where": {"event_type": "failure"},
     "join": [
         {"with": "PurchaseOrder", "fuse": True, "where": {"po_id": _HERO_PO}},
-        {"with": "Quotation", "on": {"left": "part_id", "right": "part_id"}},
+        {"with": "Quotation", "on": {"left": "part_no", "right": "part_no"}},
     ],
     "project": {
         "fields": {
@@ -103,11 +105,14 @@ _INTAKE_JOIN_INPUT: dict[str, Any] = {
 # grammar row key -> `_intake_seed` key, for the fields the JOIN HALF is responsible for.
 # PLAN-0078 PR-1 removed `unit` here: it is no longer a seed-emitted field (the `enrich`
 # transform now DEFAULTS it), so there is no seed counterpart to compare the join row against.
+# PLAN-0083: the grammar-row (LHS) keys are the adapter's CANONICAL names (equipment_id / part_no);
+# the seed (RHS) keeps its own raw output keys (asset_id / part_id — Out of Scope), so the map is
+# now canonical->raw for those two.
 _BASE_FIELD_MAP = {
     "event_id": "event_id",
     "po_id": "primary_key",
-    "asset_id": "asset_id",
-    "part_id": "part_id",
+    "equipment_id": "asset_id",
+    "part_no": "part_id",
     "qty": "qty",
     "measured_value": "measured_value",
     "order_type": "order_type",
@@ -120,7 +125,7 @@ _QUOTE_FIELD_MAP = {
     "quotation_id": "quote_id",
     "quote_supplier_id": "supplier_id",
     "quote_currency": "currency",
-    "lead_time_days": "lead_time_days",
+    "lead_time": "lead_time_days",  # PLAN-0083: grammar canonical -> seed raw key
     "on_contract": "on_contract",
 }
 
@@ -203,9 +208,9 @@ def test_the_declared_intake_join_passes_the_load_gate() -> None:
 async def test_join_half_is_information_parity_with_the_seed() -> None:
     """AC-6, the positive half: every join-half field the seed derives from the CSVs is
     reproduced by the grammar, over the REAL adapter — base fields on every row, and the
-    three quotes matched by id. ``price_thb`` (str, coerced from ``Decimal`` at the
-    adapter boundary by ``_json_safe``) equals ``unit_price`` (``Decimal``) exactly —
-    the normalization ``_normalize_quotes`` performs by hand."""
+    three quotes matched by id. ``price`` (canonical since PLAN-0083; str, coerced from
+    ``Decimal`` at the adapter boundary by ``_json_safe``) equals ``unit_price`` (``Decimal``)
+    exactly — the normalization ``_normalize_quotes`` performs by hand."""
     rows = await _grammar_rows()
     seed = await _intake_seed(FastenalCsvAdapter())
 
@@ -223,8 +228,8 @@ async def test_join_half_is_information_parity_with_the_seed() -> None:
         quote = by_id[row["quotation_id"]]
         for grammar_key, seed_key in _QUOTE_FIELD_MAP.items():
             assert row[grammar_key] == quote[seed_key], grammar_key
-        # price_thb -> unit_price: exact, no float round-trip
-        assert Decimal(row["price_thb"]) == quote["unit_price"]
+        # price -> unit_price: exact, no float round-trip (PLAN-0083: canonical `price`)
+        assert Decimal(row["price"]) == quote["unit_price"]
 
     # the join kept EACH quote's supplier — the PO's supplier did not win all three rows
     assert {row["quote_supplier_id"] for row in rows} == {
@@ -244,9 +249,9 @@ async def test_derived_fields_are_absent_from_the_grammar_output() -> None:
     for row in rows:
         for derived in _DERIVED_FIELDS:
             assert derived not in row, f"{derived!r} is derived — the grammar must not invent it"
-        # the seed's normalized quote key never appears; the raw CSV column does
+        # the seed's normalized quote key never appears; the adapter's canonical column does
         assert "unit_price" not in row
-        assert "price_thb" in row
+        assert "price" in row  # PLAN-0083: canonical (was price_thb)
 
 
 @pytest.mark.parametrize("required", ["candidate_quotes"])

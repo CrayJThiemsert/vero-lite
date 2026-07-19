@@ -174,9 +174,9 @@ async def _audit_for_po(
 
     return {
         "po_id": po["po_id"],
-        "part_id": po["part_id"],
+        "part_id": po["part_no"],  # PLAN-0083: audit output key stays; read canonical (was part_id)
         "supplier_id": po["supplier_id"],
-        "asset_id": po["asset_id"],
+        "asset_id": po["equipment_id"],  # PLAN-0083: audit output key stays; read canonical (SD-4a)
         "order_type": po["order_type"],
         "is_off_avl_override": po["is_off_avl_override"],
         "amount": {"value": str(amount), "currency": _CURRENCY},

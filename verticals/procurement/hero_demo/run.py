@@ -192,9 +192,9 @@ def _normalize_quotes(quotes: list[dict[str, Any]]) -> list[dict[str, Any]]:
         {
             "quote_id": q["quote_id"],
             "supplier_id": q["supplier_id"],
-            "unit_price": q["price_thb"],
+            "unit_price": q["price"],  # PLAN-0083: canonical (was price_thb)
             "currency": q.get("currency", _CURRENCY),
-            "lead_time_days": q["lead_time_days"],
+            "lead_time_days": q["lead_time"],  # PLAN-0083: canonical (was lead_time_days)
             "on_contract": q["on_contract"],
         }
         for q in quotes
@@ -217,7 +217,7 @@ async def _intake_seed(adapter: FastenalCsvAdapter) -> dict[str, Any]:
     failure = next(e for e in events if e["event_type"] == "failure")
     pos = {p["po_id"]: p for p in await adapter.fetch_objects("PurchaseOrder")}
     req = pos[_HERO_PO]
-    quotes = [q for q in await adapter.fetch_objects("Quotation") if q["part_id"] == req["part_id"]]
+    quotes = [q for q in await adapter.fetch_objects("Quotation") if q["part_no"] == req["part_no"]]
     return {
         "event_id": failure["event_id"],
         # PLAN-0073 SD-1a: carry the failure event_type forward so the Box-4 economic-impact
@@ -227,8 +227,10 @@ async def _intake_seed(adapter: FastenalCsvAdapter) -> dict[str, Any]:
         "event_type": failure["event_type"],
         "object_type": "PurchaseOrder",
         "primary_key": req["po_id"],
-        "asset_id": req["asset_id"],
-        "part_id": req["part_id"],
+        # PLAN-0083 (c1): the seed's OWN output keys ("asset_id"/"part_id") stay as this seed's
+        # downstream contract (Out of Scope); only the adapter READS flip to canonical names.
+        "asset_id": req["equipment_id"],  # SD-4a
+        "part_id": req["part_no"],
         # the reading the judge bands (>= 0.8 -> breach -> the emergency-sourcing path). Also the
         # SOURCE the declared `enrich` transform copies into `criticality` (PLAN-0078 PR-1): the
         # derived `criticality` + `unit` default + per-criterion `compliance` map are NO LONGER

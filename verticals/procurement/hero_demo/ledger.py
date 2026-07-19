@@ -45,12 +45,14 @@ async def build_hero_impact_ledger(adapter: FastenalCsvAdapter | None = None) ->
     """
     adapter = adapter or FastenalCsvAdapter()
     hero_po = _sole(await adapter.fetch_objects("PurchaseOrder"), "po_id", _HERO_PO)
-    part_id: str = hero_po["part_id"]
+    part_id: str = hero_po["part_no"]  # PLAN-0083: canonical (was part_id)
     qty: int = hero_po["qty"]
     governed_supplier: str = hero_po["supplier_id"]
-    governed_part_cost: Decimal = hero_po["total_thb"]
+    governed_part_cost: Decimal = hero_po["total_thb"]  # SD-4b DEFER: ฿-column stays raw
 
-    asset = _sole(await adapter.fetch_objects("Asset"), "asset_id", hero_po["asset_id"])
+    # PLAN-0083 (c1 / SD-1 + SD-4a): the adapter serves the canonical type `Equipment` keyed by
+    # `equipment_id`; the hero PO carries the canonical `equipment_id` (was `asset_id`).
+    asset = _sole(await adapter.fetch_objects("Equipment"), "equipment_id", hero_po["equipment_id"])
     downtime_per_hour: Decimal = asset["downtime_cost_per_hour_thb"]
 
     links = await adapter.fetch_links("part_suppliable_by_supplier", from_pk=part_id)
@@ -69,7 +71,7 @@ async def build_hero_impact_ledger(adapter: FastenalCsvAdapter | None = None) ->
     return {
         "provisional": True,
         "currency": _CURRENCY,
-        "asset_id": asset["asset_id"],
+        "asset_id": asset["equipment_id"],  # PLAN-0083: ledger output key stays; read canonical
         "part_id": part_id,
         "qty": qty,
         "productive_hours_per_day": _PRODUCTIVE_HOURS_PER_DAY,
