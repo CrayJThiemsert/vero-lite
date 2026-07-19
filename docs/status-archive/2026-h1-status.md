@@ -604,3 +604,51 @@ convention is separate work, deliberately not done here.
 ### Recent-Decisions row — s142 (the THREE R2 carve-out TODOs DISCHARGED, #780/#778/#779) [rotated 2026-07-19, session-151 reconcile — 10-row window]
 
 | 2026-07-17 | **s142 — the THREE R2 carve-out TODOs DISCHARGED (#780/#778/#779, docs-only): each fact REHOMED into a tracked home FIRST, THEN trimmed** — Rock 4's evidence-asymmetry finding → ADR-0025 · the `sequence`-column deferral → the ordering-guard docstring (deferral STANDS) · the s74 demo-card SD-3 → the PLAN-0035 `done/` post-archival amendment (+ ADR-0030's `STATUS.md:<line>` citations re-pointed). Runbook R2 now records **"until it is rehomed" is a real exit**, and that an ADR citing `STATUS.md:<line>` is a **defect**. Suite **2822/7**. Full narrative: the Session-142 CF block (rotated to `docs/status-archive/` at the s146 reconcile — grep the archive dir, not one file) | `303fd48` (HEAD, #779) / `37ab124` (#778) / `12e69aa` (#780) / `docs/adr/0025-*.md:23-29` + `docs/plans/done/0035-*.md:576` + `tests/services/db/test_load_run_ordering_guard.py` + `docs/runbooks/memory-architecture.md` (R2) |
+
+## Rotated this reconcile (session-152, 2026-07-19 — PLAN-0083 c1 procurement adapter canonical mapping CLOSED, #818/#819)
+
+### Current Focus block — Session 146 (PLAN-0080 trace-attribution legibility + the canonical `docs/conventions/ui.md`, #794/#795) [rotated 2026-07-19, session-152 reconcile — 4-newest-sessions CF window]
+
+> **Session 146, 2026-07-17 (head_commit `6249f52` → `8737b0a`) — PLAN-0080
+> shipped end to end in two PRs: trace-attribution legibility + the canonical
+> `docs/conventions/ui.md`.** The reasoning-trace badge had stopped telling the
+> truth: a substring sniff (`kind.includes('rule')`) left **14 of 16
+> procedure-engine kinds** on an unattributed neutral badge, and
+> `scored_rule_selected` / `rule_gate_evaluated` matched `'rule'` and borrowed
+> the recommender's `rule_check` colour. **(1) #794 (`6a2a42d`, `feat(ui)`) —
+> deterministic attribution + an anti-rot tripwire.** ONE shared
+> kind→{label,cls,actor} registry (`services/api/static/assets/trace-kinds.js`,
+> `window.OCT_TRACE_KINDS`, **23 kinds**) is read by BOTH the browser and a CI
+> tripwire. L-4 (Cray-ratified) split the signal onto **two axes, two channels**:
+> colour = mechanism (existing `theme.css` semantics — the demo look is
+> UNCHANGED), a small glyph = actor (`{human,llm,engine}` via `data-actor`).
+> Unmapped kinds degrade VISIBLY — raw token, dashed `.badge.unmapped`, NO
+> glyph, `data-actor="unknown"`. The AST tripwire
+> (`tests/api/test_trace_kind_labels.py`) scans `services/engine` + `verticals`
+> and asserts SET-EQUALITY, proven non-vacuous by 3 RED mutations. SD-1(c) (keep
+> `ReasoningStep.kind: str`) + SD-2(iii) (0013 prompt annotated, not rewritten)
+> Cray-ratified. **(2) #795 (`8737b0a`, `docs(conventions)`) — the canonical UI
+> convention.** New `docs/conventions/ui.md` (11 items per AC-6, each with a live
+> `file:line` anchor: tokens, the `window.OCT` contract, the trace-kind channel,
+> the `html:`-only security rule, no-build-step + `?v=` cache-bust,
+> ontology-driven principle, control-tower tone, provenance classes, the 0013
+> relation, a `Step.kind`-vs-trace-`kind` glossary). AC-7: the 0013 design prompt
+> got a one-line header annotation (body untouched); `code-style.md` gained a
+> "UI work → ui.md" pointer. Canonical, not derived (ADR-0017 D5) + outside
+> G1/G2 gate scope → Code authored it directly. **The reusable lesson (F-4):** a
+> live preview probe against a REAL completed governed run REFUTED the PLAN's
+> offline-draft claim "the engine is the only emitter" — `verticals/` seed
+> executors emit `query`, unmapped, on the governed spine in 9/9 runs → added as
+> kind #23, the tripwire's scan root widened to `verticals/`, the leaking
+> definition-side `StepKind` token labelled (NOT fixed). Two more offline-draft
+> errors caught by the same grounding: AC-3's regex would have absorbed non-trace
+> `kind=` kwargs (`ControlRef`, `EconomicImpact`) → became an AST scan; AC-5's
+> grep read was impossible as written (view-story has 5 `kind` vocabularies) →
+> scoped to the TRACE block. Full offline suite **2860 passed / 7 skipped** re-run
+> on BOTH merge commits. Post-merge: main=`8737b0a`; 0 open PRs; loop-dispatcher
+> DISABLED; MS-S1 idle/COLD — zero calls this session. Commits: `6a2a42d` (#794,
+> Subject A) → `8737b0a` (HEAD, #795 merge, Subject B).
+
+### Recent Decisions row — s143 R7 (never cite `docs/STATUS.md` by line number, #783) [rotated 2026-07-19, session-152 reconcile — 10-row window]
+
+| 2026-07-17 | **s143 — rotation policy **R7** is BINDING (#783, `chore`): never cite `docs/STATUS.md` by LINE NUMBER — cite the tracked artifact, or STATUS by SECTION NAME; a tripwire + an `always_run` pre-commit hook enforce it repo-wide (10 rotted sites cleaned, RED→GREEN 10 → 0).** _[Sibling #782 (`bc42136`, s142, reconciled s143): Lesson #0031 + the `fan-out-dispatch` skill — split parallel work on the WRITE-SET, not the idea.]_ Full narrative: the Session-143 CF block above | `3bf99bc` (#783 merge) / `abd41d4` (R7 + guard + cleanup) / `bc42136` (#782 merge) / `docs/runbooks/memory-architecture.md` (R7) + `tools/check_status_citations.py` + `docs/lessons/0031-*.md` + `.claude/skills/fan-out-dispatch/` |
