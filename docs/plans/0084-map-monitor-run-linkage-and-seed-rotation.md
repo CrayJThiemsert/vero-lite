@@ -10,6 +10,10 @@
 > Drafted by the in-harness `plan-drafter` subagent (ADR-013 D1); outline + fact-pack
 > originated by Code (session 155), ratified scope by Cray via AskUserQuestion.
 > Independent review: Code (R2) + Cray at PR merge.
+> **Amended 2026-07-20 (same session, post-#825):** SD-A…SD-E ratifications folded in
+> by `plan-drafter` from Code's post-ratification dispatch. SD-B and SD-D were ratified
+> WIDER than the draft recommendations — Step 4b and the Step 5 rework are amendment
+> content, not annotation. R2 = Code; Cray at PR merge.
 
 ## Goal
 
@@ -125,7 +129,23 @@ beats.
   appr-pm" beat is tuned to ฿288,000/TIER-CTRL). Default seed behaviour must stay
   byte-identical (see AC-3's precise wording) and rotation is opt-in.
 
-## Surfaced decisions (drafter recommends — Cray ratifies before Step 1)
+**Post-ratification grounding (Code, s155; re-confirmed on disk by the drafter at amendment time)**
+- `link_asset_uses_part.csv` row `LNK-AUP-003,AST-CNC-009,PRT-SPN-700,2` — CNC-009
+  already links to the HERO part, so its rotation PO can reuse `PRT-SPN-700` and the
+  EXISTING 3 quotations serve it. CNC-009's fixture cost = 1 PO row + 1 failure-event
+  row (no new part / quote rows).
+- `part.csv`: PRT-SPN-700 (Spindle Bearing Set 70mm) — on-contract ฿42,000 /
+  emergency-expedite ฿78,500 per SET.
+- The literal `CNC-Line-07` appears in FOUR files repo-wide (drafter re-grep at
+  amendment time — the dispatch said three; the fourth is
+  `docs/status-archive/2026-h1e-status.md`, also historical): `run.py` (:456), the
+  archived `docs/plans/done/0057-event-triggered-hero-opener.md` (DO NOT edit), the
+  status archive (DO NOT edit), and this PLAN. **No test pins the literal.** BUT the
+  event dedup key / `event_run_id` DERIVES from `entity_ids`, so tests may pin the
+  resulting run-id SHAPE without containing the literal — Step 4b's grep covers this
+  before assuming zero test churn.
+
+## Surfaced decisions — ALL RESOLVED (Cray, 2026-07-20 s155, AskUserQuestion; per-SD stamps below)
 
 ### SD-A — `subject` field shape + exposure surface
 
@@ -141,6 +161,10 @@ the run is about). Values are data-driven from `_intake_seed` (`"Equipment"` +
 list-only exposure — saves nothing real and forecloses the detail header.
 **Why Cray:** this becomes the demo-visible linkage vocabulary and a
 forward-compatible read-model field (PLAN-0052 lineage) — an API-surface commitment.
+**RESOLVED/RATIFIED (Cray, 2026-07-20 s155, AskUserQuestion): as recommended** — typed
+`RunSubjectRef {object_type, primary_key}` under `trigger_context["subject"]`,
+projected on BOTH list (`RunSummaryView`) and detail. PLAN change: none — Step 2
+already carries this shape.
 
 ### SD-B — which assets become rotatable + the exact fixture rows
 
@@ -157,6 +181,14 @@ line that names the required approver.
 **Alternatives:** all 4 (author a CNC-009 PO too); or a minimal single alternate asset.
 **Why Cray:** fixture values are demo-narrative content (฿ amounts, tier optics) — the
 rehearsal script is Cray's.
+**RESOLVED/RATIFIED (Cray, 2026-07-20 s155, AskUserQuestion): ทั้ง 4 ตัว — ALL FOUR
+non-hero assets rotatable (WIDER than the 3-asset recommendation; AST-CNC-009 is IN).**
+The exclusion rationale is retired by post-ratification ground: CNC-009 already links
+to the hero part (`LNK-AUP-003`), so its PO reuses `PRT-SPN-700` + the existing 3
+quotes — fixture cost 1 PO row + 1 failure-event row, not a new part/quote set. PLAN
+change: Step 5 reworked to 4 assets incl. the CNC-009 PO-reuse design (the ฿/tier
+value is a Step-5 authoring choice, not a new SD); AC-7 now covers all 4; AC-8 gains
+the impact-ledger PO-read grounding check.
 
 ### SD-C — map marker semantics + which statuses light it
 
@@ -170,6 +202,9 @@ is honest for the brief pre-gate window.
 **Alternatives:** reuse the anomaly ring (cheaper, semantic collision); `waiting_human`
 only (a running run would be invisible again — the original bug in miniature).
 **Why Cray:** the marker is demo-stage vocabulary Cray narrates live.
+**RESOLVED/RATIFIED (Cray, 2026-07-20 s155, AskUserQuestion): as recommended** —
+distinct "governed run in flight" marker; lights for `waiting_human` + `running`;
+never terminal states. PLAN change: none — Step 3 already implements this set.
 
 ### SD-D — event-fired path stamping (`POST /demo/hero/event`)
 
@@ -189,6 +224,14 @@ post-fire mutation of the persisted `trigger_context` — overwrites an engine-o
 provenance stamp from outside the engine, an integrity smell.
 **Why Cray:** whether both demo entry points must light the map in v1 is a rehearsal
 priority call, and (d) touches a ratified PLAN-0057 pin.
+**RESOLVED/RATIFIED (Cray, 2026-07-20 s155, AskUserQuestion): รวม re-pin ใน PLAN นี้เลย —
+execute option (d) IN THIS PLAN (WIDER than the defer recommendation); both demo entry
+points light the map in v1.** PLAN change: new Step 4b — the `_EVENT_ASSET_ID` re-pin
+(vertical constant only; the engine bridge builder stays untouched, so the engine
+Out-of-Scope line HOLDS) + the API-side `entity_ids`→`subject` projection-resolve +
+the test-surface grep + the PLAN-0057 OQ-1 supersession recorded in this PLAN. AC-2
+extended (legacy `CNC-Line-07` runs project `subject=None` fail-soft); new AC-9
+(event-path live check); Out-of-Scope last line flipped.
 
 ### SD-E — multi-run display on one asset
 
@@ -202,6 +245,9 @@ a NEW run); an unbounded list degrades the panel by Thursday.
 **Alternatives:** list all (unbounded growth); newest-only (hides the accumulation an
 operator might need to cancel).
 **Why Cray:** panel real estate during a live demo is a presentation call.
+**RESOLVED/RATIFIED (Cray, 2026-07-20 s155, AskUserQuestion): as recommended** —
+newest-first, cap 5, "+N more — open Monitor" tail; marker on ≥ 1 in-flight run. PLAN
+change: none — Step 3's panel section already specifies this.
 
 ## Acceptance Criteria
 
@@ -211,6 +257,10 @@ operator might need to cancel).
 - [ ] **AC-2 Projection tests:** `subject` present when stamped; `None` for legacy /
   unstamped runs (backward compat with runs already persisted in demo DBs); malformed
   `subject` blobs project as `None` (fail-soft), covered on list AND detail (per SD-A).
+  **Extended per SD-D (d):** the Step 4b `entity_ids`→`subject` resolve is covered
+  too — an event run whose entity id resolves to exactly one ontology object projects
+  that subject; legacy event runs with the OLD `CNC-Line-07` id (already persisted in
+  demo DBs) project `subject=None` fail-soft — never an error.
 - [ ] **AC-3 Default-seed compatibility:** the default invocation
   (`python scripts/seed_operate_demo.py`) produces a run identical to today's **except
   the additive `trigger_context["subject"]` key**: same intake seed dict, same hero
@@ -230,16 +280,24 @@ operator might need to cancel).
 - [ ] **AC-6 ui.md conformance:** no hardcoded asset/run ids in JS (linkage fully
   data-driven from `/runs` + `/meta`); `?v=` tokens bumped on every edited asset in
   `index.html`.
-- [ ] **AC-7 Rotation:** `--asset <id>` seeds the named asset's PO end-to-end
-  (scored_rule has real quote candidates; run parks at `waiting_human`); stdout names
-  the resolved DOA tier + the approver the operator must log in as; an unknown /
+- [ ] **AC-7 Rotation (ALL FOUR non-hero assets — SD-B as ratified):** `--asset <id>`
+  seeds the named asset's PO end-to-end for EACH of AST-CNC-009, AST-PRESS-03,
+  AST-ROBOT-21, AST-CONV-05 (scored_rule has real quote candidates — CNC-009 via the
+  hero part's existing 3 quotes; run parks at `waiting_human`); stdout names the
+  resolved DOA tier + the approver the operator must log in as; an unknown /
   non-rotatable asset id fails with a clear message listing the rotatable ids
   (data-driven from the fixtures, not a hardcoded list).
-- [ ] **AC-8 Fixture blast radius:** with the new failure/quote rows,
+- [ ] **AC-8 Fixture blast radius:** with the new failure/quote/PO rows,
   `test_intake_shadow_parity` + `test_fastenal_csv_adapter` +
   `test_transform_migration_parity` (and the rest of `tests/verticals/procurement/`)
   pass; `GET /recommendations` output is unchanged (reading-derived only —
-  actions.py:182).
+  actions.py:182); the impact ledger's ฿ figures are unchanged by the new CNC-009 PO
+  row (grounded per Step 5 — whether `build_hero_impact_ledger` reads ALL PO rows or
+  only `_HERO_PO`).
+- [ ] **AC-9 Event-path live check (8101 demo — SD-D (d)):** `POST /demo/hero/event`
+  → map marker lights on AST-CNC-014 → node panel lists the event run → "Open in
+  Monitor" opens THAT exact run — **with the connection strip reading `LIVE`** (same
+  rigor + silent-mock caveat as AC-4).
 
 ## Out of Scope
 
@@ -247,16 +305,19 @@ operator might need to cancel).
   class stays out).
 - ❌ Auth/audit on `/runs` or `/query` (the separate read-path-governance candidate,
   s154/s155 analysis).
-- ❌ Engine (`services/engine/`) changes of any kind — including extending the event
-  bridge's `trigger_context` builder (see SD-D).
+- ❌ Engine (`services/engine/`) changes of any kind — this exclusion HOLDS under
+  SD-D (d): the event bridge's `trigger_context` builder stays UNTOUCHED (it stamps
+  whatever `entity_ids` it receives, event_bridge.py:198-204); only the VERTICAL
+  constant (`run.py:456`) + the API-side projection (`routers/runs.py`) move.
 - ❌ Coupling to the `/recommendations` reactive path (run markers are a parallel,
   independent signal; `recomputeFlags` semantics untouched).
 - ❌ Runbook rewrite beyond a short §-note on rotation + approver tiers
   (`docs/runbooks/run-oct-demo.md`).
 - ❌ Other verticals (energy etc.) — energy runs simply carry no `subject` and light
   nothing, by construction (same code path as SD-D's defer).
-- ❌ Event-path map lighting, if Cray ratifies SD-D (a) — recorded as the named
-  follow-up (d).
+- ~~Event-path map lighting, if Cray ratifies SD-D (a)~~ — **FLIPPED IN SCOPE:**
+  SD-D resolved (d)-in-plan (Step 4b + AC-9). Line retained struck-through for the
+  amendment audit trail.
 
 ## Steps
 
@@ -265,6 +326,10 @@ operator might need to cancel).
 Present SD-A…SD-E to Cray (AskUserQuestion). No implementation before ratification —
 SD-B decides fixture content, SD-D decides Step 1's breadth. Record ratified picks in
 this PLAN (checkbox edits per step).
+
+**SATISFIED — 2026-07-20 (s155, AskUserQuestion):** all five SDs ratified; resolutions
+recorded in the per-SD stamps above. SD-B and SD-D landed WIDER than recommended →
+Step 4b (new) + the Step 5 rework below are the resulting amendment content.
 
 ### Step 1: Subject stamp on the seed path
 
@@ -324,6 +389,47 @@ down while static served / temporary 500) — record both observations.
 - Bump `?v=` for `view-monitor.js` + `app.js`.
 **Verify:** AC-4 end-to-end click-through; the selected row is `run-row-<id>`.
 
+### Step 4b: Event-path lighting — SD-D (d) re-pin + projection-resolve
+
+*(Amendment content — added when Cray ratified SD-D wider than the draft's defer
+recommendation.)*
+
+- **Re-pin the vertical constant:** `_EVENT_ASSET_ID = "AST-CNC-014"` (run.py:456;
+  today `"CNC-Line-07"`). This is the VERTICAL's detected-entity id — the engine's
+  `event_bridge.py` builder is untouched (it stamps whatever `entity_ids` it receives,
+  :198-204), so the Out-of-Scope engine exclusion holds. State this in the PR body.
+- **PLAN-0057 OQ-1 supersession — recorded HERE:** PLAN-0057 OQ-1 pinned the detected
+  entity as `CNC-Line-07` (spindle-bearing seizure narrative). SD-D (d) supersedes
+  that pin with the ontology pk `AST-CNC-014`, so the bridge's `entity_ids` become
+  honest ontology references. The archived
+  `docs/plans/done/0057-event-triggered-hero-opener.md` and
+  `docs/status-archive/2026-h1e-status.md` are historical — DO NOT edit them; this
+  paragraph is the durable record of the supersession.
+- **Test-surface grep BEFORE assuming zero churn:** no test pins the literal
+  `CNC-Line-07` (re-grepped at amendment time — Verified ground), but the event dedup
+  key → `event_run_id` DERIVES from `entity_ids`: grep `event_run_id` / `run-event` /
+  the dedup-key builder's test surface (`event_bridge` tests + the PLAN-0057
+  integration tests) and fix any run-id-SHAPE pins the re-pin moves.
+- **Projection half (API-side — allowed):** extend Step 2's `_subject_of`
+  (`routers/runs.py`) — when a run has NO `subject` key but `trigger == "event"` with
+  `entity_ids`, resolve each id against the ACTIVE vertical's ontology objects
+  (`/meta` types + the adapter's object pks — data-driven, NEVER a hardcoded id map,
+  ui.md). Exactly one match of a known type → project that subject; zero / ambiguous →
+  `None` (fail-soft — legacy `CNC-Line-07` runs in demo DBs resolve to nothing and
+  project `None`, never error). With the re-pin, `entity_ids=["AST-CNC-014"]` resolves
+  to `Equipment` honestly.
+- **Build-time decision (executor decides at implementation — NOT a new SD):**
+  resolve cost — per-request adapter scan vs a lazily-built cached pk→object_type
+  index. *Drafter recommendation:* the cached lazy index — adapter objects are
+  per-process CSV memory loaded at boot (actions.py:197-202), static per process, so
+  the index is correct and O(1) per run row on the list endpoint; a per-request scan
+  is acceptable if measured trivial at demo scale. Record the pick in the PR body.
+- **Beat-1 "sense" cue:** the trigger cue (run.py:591-596) now displays
+  `AST-CNC-014` — fold one line into the Step 6 runbook §-note (within its existing
+  scope, not a rewrite).
+**Verify:** AC-9 live click-through; AC-2's event-projection cases; the test-surface
+grep findings recorded in the PR body.
+
 ### Step 5: Seed rotation (opt-in CLI + fixtures)
 
 - **Parameterize** `_intake_seed(adapter, *, po_id: str = _HERO_PO)` (or asset-keyed —
@@ -342,10 +448,22 @@ down while static served / temporary 500) — record both observations.
   rotatable assets; document the choice in `--help`). stdout gains: resolved tier + the
   approver to log in as (read from the parked run's `approve` step `doa_tier` audit —
   `resolved_tier_id` / `resolved_approver_id`, the run.py:541-542 read pattern).
-- **Fixtures** (per ratified SD-B): add failure-event rows (measured ≥ 0.8) +
-  3 quotation rows per rotatable part to `operational_event.csv` / `quotation.csv`,
-  following the EXISTING CSV headers verbatim (the adapter maps to canonical names —
-  PLAN-0083). Keep the hero rows byte-identical.
+- **Fixtures (SD-B as ratified: ALL FOUR non-hero assets):**
+  - AST-PRESS-03 / AST-ROBOT-21 / AST-CONV-05 (already PO-backed): 1 failure-event row
+    each (asset-matched, measured ≥ 0.8 so the judge bands breach) + 3 quotation rows
+    for each part (PRT-HYD-450 / PRT-SVO-220 / PRT-BLT-110), mirroring the hero's
+    3-quote comparison shape.
+  - AST-CNC-009 (no PO today): 1 failure-event row + 1 NEW PO row REUSING the hero
+    part `PRT-SPN-700` (already linked: `link_asset_uses_part.csv` LNK-AUP-003) so the
+    EXISTING 3 quotations serve it — no new part / quote rows. *Step-5 authoring
+    choice (Cray can tweak at PR review — NOT a new SD):* propose
+    `qty 1 × ฿78,500` (the part's emergency-expedite unit price) = **฿78,500 total →
+    expected TIER-MGR** (fixture precedent: ฿19,000 and ฿99,000 both land TIER-MGR),
+    distinct from the hero's ฿288,000/TIER-CTRL, so the 5-asset rotation spans
+    SUP → MGR ×3 → CTRL. Executor VERIFIES the landed tier against the DOA ladder in
+    `procedures.yaml` before pinning the row's `required_tier_id`.
+  - All rows follow the EXISTING CSV headers verbatim (the adapter maps to canonical
+    names — PLAN-0083). Keep the hero rows byte-identical.
 - **Blast-radius re-check (named in Verified ground):** run
   `tests/verticals/procurement/` — specifically `test_intake_shadow_parity` (the
   declared `where: {"event_type": "failure"}` filter vs multi-row fixtures),
