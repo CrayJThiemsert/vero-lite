@@ -280,6 +280,205 @@ tier-matched approver (a หน.จัดซื้อ would be under-tier).
 
 ---
 
+## 3c. The config-pin beat — stage the fail-closed refusal ON PURPOSE (PLAN-0047 Step 6)
+
+§3b ends with a clean approve. This section stages the **refusal**: an operator tries to
+approve a parked run whose governance rules **changed underneath it**, and the engine says
+no. It is the most differentiating 90 seconds in the procurement demo — ADR-0032 D5 names
+trust / attribution / legibility as *the hard part*, and a per-run governance pin is exactly
+that: the system can prove **which rulebook governed which decision**, and refuses to let a
+decision framed under the old one be rubber-stamped under the new one.
+
+> **Why this needs staging.** You have probably already met this banner **by accident** — a
+> dev DB carries `waiting_human` runs seeded in earlier sessions, governance has since moved
+> (PLAN-0075 / 0081 / 0082 / 0083 all touched `doa_tier` / SoD / `ComplianceCriterion`), so
+> approving any stale run 409s. Unstaged, that reads to an audience as **a bug**. Staged, it
+> is the punchline. The sequence below makes the "before" and the "after" both visible on
+> purpose, in that order.
+
+### What is actually pinned (so you can answer the follow-up question)
+
+At run start `run_procedure_persisted` writes a canonical snapshot of the procedure's
+governance surface **plus its sha256** onto the run row
+(`services/engine/procedures/persistence.py:125-126`). At **gate resolution** and again at
+**resume**, the engine recomputes that hash from the procedure it was handed and fails closed
+on a mismatch — `services/engine/procedures/action_step.py:639` (context `"gate resolution"`)
+and `persistence.py:360` (context `"resume"`); the guard + banner text is
+`persistence.py:260-287`. The HTTP layer maps the resulting `ProcedureError` to **409**
+(`services/api/routers/runs.py:413-414` resolve, `:432-433` resume).
+
+The snapshot (`services/engine/procedures/governance_pin.py:103-123`) covers
+**`separation_of_duties`** (distinct steps + the step→required-role map) and, per step,
+**`kind` / `autonomy` / `handler` / the typed AT-2 `governance_content`** (the DOA ladder
+itself), plus `reads` / `join` / `project` / `transform`. It deliberately does **not** cover
+prose — retitling a procedure leaves the hash byte-identical, so the pin only ever fires on a
+real governance change. It also does not pin the `principals` roster: a personnel change must
+apply immediately (`governance_pin.py:19-22`).
+
+Every procedure hashes **independently**. On unmodified `main`:
+
+```
+emergency_sourcing_round            eb4aa90c3496…   <- the operate-demo hero
+event_emergency_sourcing_round      594596cccc6a…
+scheduled_emergency_sourcing_round  5cb26744115a…
+```
+
+Print them yourself at any point — offline, no DB, no MS-S1:
+
+```bash
+cd ~/work/vero-lite && source .venv/bin/activate
+python - <<'PY'
+from services.engine.procedures.governance_pin import governance_pin_for
+from services.engine.procedures.spec import load_procedures
+for p in load_procedures("procurement").procedures:
+    print(f"{p.procedure_id:40s} {governance_pin_for(p)[1][:12]}…")
+PY
+```
+
+### Preconditions — provision TWO operator keys
+
+The config change below **re-routes the ฿288,000 requisition to a more senior approver**, so
+the post-change run needs `appr-plant` (วิชัย — ผจก.โรงงาน) as well as the `appr-pm`
+(นรี — ผจก.จัดซื้อ) key §3b already uses. Generate two raw keys + their sha256:
+
+```bash
+cd ~/work/vero-lite && source .venv/bin/activate
+python -c "import secrets,hashlib; [print(r, secrets.token_urlsafe(24)) for r in ('appr-pm','appr-plant')]"
+# hash each raw key: python -c "import hashlib,sys; print(hashlib.sha256(sys.argv[1].encode()).hexdigest())" <raw>
+```
+
+Boot the demo with both mapped (otherwise identical to §3b — port **8101**, auth ON,
+self-seeding):
+
+```bash
+OCT_VERTICAL=procurement \
+API_AUTH_ENABLED=true \
+OCT_DEMO_SEED_OPERATE=true \
+API_KEYS='{"<sha256-appr-pm>": "appr-pm", "<sha256-appr-plant>": "appr-plant"}' \
+exec uvicorn services.api.main:app --port 8101
+```
+
+### Act 1 — the loop works (config v1)
+
+Boot auto-seeds `run-operate-demo`. Seed a **second** run now, under the same v1 config — this
+is the one the rule change will catch:
+
+```bash
+cd ~/work/vero-lite && source .venv/bin/activate
+python scripts/seed_operate_demo.py run-pinned-v1
+```
+
+```
+seeded 'run-pinned-v1' -> status waiting_human
+open the OCT Monitor (View H), log in as an approver (e.g. appr-pm), and operate it.
+```
+
+In the Monitor, log in as **`appr-pm`** and take `run-operate-demo` through the §3b
+round-trip → **completed**. Say the line out loud: *"฿288,000 sits in the ผจก.จัดซื้อ band,
+so นรี is the tier-matched approver. Requester ≠ approver. Clean."* Leave `run-pinned-v1`
+**parked** at its `approve` gate.
+
+### Act 2 — the rules change (v1 → v2)
+
+An audit finding tightens the ladder: the plant-manager floor drops **฿500,000 → ฿250,000**.
+The edit is scoped to the hero procedure's block (lines 98–370) so the other four procedures'
+hashes stay untouched:
+
+```bash
+cd ~/work/vero-lite
+sed -i '98,370 s/{ min_amount: "500000", approver_role/{ min_amount: "250000", approver_role/' \
+  verticals/procurement/procedures.yaml
+git diff --stat verticals/procurement/procedures.yaml
+```
+
+```
+ verticals/procurement/procedures.yaml | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+```
+
+> **If that diff comes back EMPTY, the line range has drifted — stop and re-find it.** The
+> `98,370` range is what scopes the edit to the hero block: `min_amount: "500000"` appears in
+> **three** procedures (today lines 306 / 666 / 1031), and only the first is the hero's.
+> Recover with `grep -n 'min_amount: "500000"' verticals/procurement/procedures.yaml` and use
+> the FIRST hit. A silent no-op leaves every hash unmoved and Act 3 with no punchline — check
+> this diff before you narrate.
+
+Show the one-line `git diff` on screen — that *is* the demo's visual. Re-run the hash printer:
+`emergency_sourcing_round` moves **`eb4aa90c3496…` → `ef13dad1374b…`**; the other four are
+unchanged.
+
+> **No restart needed.** `_spec_for` calls `load_procedures(vertical)` **per request** with no
+> caching (`services/api/routers/runs.py:82-84`), and `procedures_path` resolves the YAML
+> relative to the server's CWD (`services/engine/procedures/spec.py:1755-1757`). The very next
+> gate POST already reads the new ladder. Do not restart — restarting would re-run the boot
+> seed and muddy the story.
+
+### Act 3 — the punchline: the parked run is refused (409)
+
+Still logged in as `appr-pm`, select **`run-pinned-v1`** and **Submit decisions**. The operate
+UI surfaces, inline:
+
+```
+Conflict (409): run 'run-pinned-v1': governance-config pin mismatch at gate resolution —
+the procedure's governance config (hash ef13dad1374b…) no longer matches the config this
+run was started under (hash eb4aa90c3496…). Refusing to proceed (PLAN-0047 Step 6
+fail-closed): cancel this run and start a fresh one under the current config; the pinned
+snapshot on the run row records exactly which config governed it.
+```
+
+Both hashes are on screen. The narration: *"This approval was framed under the old ladder.
+The ladder changed. The engine will not let a human resolve it under a rulebook the decision
+was never framed against — and the run row still records exactly which rulebook that was."*
+
+`GET /runs/run-pinned-v1` shows the pinned snapshot carrying the **฿500,000** floor while the
+YAML on disk now says ฿250,000 — the run is its own evidence.
+
+### Act 4 — the sanctioned path (config v2)
+
+The refusal names the only supported recovery: **cancel and re-run**. There is no silent
+re-pin, by design.
+
+1. **Cancel run** on `run-pinned-v1` in the Monitor → `cancelled`.
+2. Seed a fresh run, now pinned under v2:
+
+   ```bash
+   python scripts/seed_operate_demo.py run-fresh-v2
+   ```
+
+3. Approve it as **`appr-plant`** → the run resumes to `issue_po` → **completed**.
+
+> **Optional second beat (a *different* refusal).** Try `run-fresh-v2` as **`appr-pm`** first:
+> that fails **403 tier-authority**, not 409 — under v2 the ฿288,000 requisition resolved to
+> ผจก.โรงงาน, and the check compares the acting approver against the **persisted** verdict
+> (`action_step.py:125-131`, raise at `:424`). Two refusals, two distinct causes: *"the rules
+> moved"* (409) versus *"you are not senior enough under the current rules"* (403). Powerful
+> if the room is technical; skip it if you are short on time.
+
+### Restore
+
+```bash
+cd ~/work/vero-lite
+git checkout -- verticals/procurement/procedures.yaml
+```
+
+> **The revert is itself a config change.** Any run still parked under v2 (e.g. a leftover
+> `run-fresh-v2`) will now 409 for the mirror-image reason. That is the mechanism working, not
+> a fault — and it is precisely the accident described at the top of this section. Cancel or
+> drain parked runs before you revert, or start the next rehearsal from a clean demo DB
+> (drop + `alembic upgrade head`, §3b "Reseed").
+
+> **Can this be staged without editing the shipped YAML?** Not today, and it does not need to
+> be. There is no env override, no test-only config path and no seed parameter: `load_procedures`
+> takes only a vertical name (`spec.py:1805-1807`), `procedures_path` is a hardcoded relative
+> path (`spec.py:1755-1757`), and `seed_operate_waiting_human_run` accepts only `run_id` +
+> `adapter` (`verticals/procurement/hero_demo/run.py:705-710`). Because the spec load is
+> uncached, the live edit is instant, surgical (one line) and reverts with one `git checkout` —
+> and it is *more* honest than simulating a prior pin, because the current config genuinely did
+> change. Resist the temptation to rewrite `pipeline_runs.governance_hash` directly to fake a
+> stale pin: it would stage the same banner while proving nothing about the guard.
+
+---
+
 ## 4. Open it in a browser
 
 uvicorn binds `127.0.0.1` by default. **WSL2 forwards `localhost` to Windows**,
