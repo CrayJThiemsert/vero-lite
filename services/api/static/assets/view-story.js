@@ -87,7 +87,7 @@
     ]
   };
   const PROP = {
-    happy: { title: 'Pre-start Aerator-A — ramp to 60%', meta: 'Aerator-A · pond P-12 · confidence 86%', kind: 'llm' },
+    happy: { title: 'Pre-start Aerator-A — ramp to 60%', meta: 'Aerator-A · pond P-12', kind: 'llm' },
     fault: { title: 'Aerator-A ON 100% — SOP-DO-01 (fail-safe)', meta: 'Aerator-A · pond P-12 · deterministic fail-safe', kind: 'rule' }
   };
   const KIND_BADGE = { rule: 's-warn', llm: 's-info', query: 's-ok' };
@@ -306,14 +306,18 @@
       clear(traceWrap);
       traceWrap.appendChild(O.reasoningTrace(mode === 'fault' ? TRACE.fault : TRACE.happy));
     }
+    // NO operator-facing confidence badge on the happy path (docs/plans/done/
+    // 0035-governed-action-verify-reshape-build.md:591-602, Cray-ratified s74 /
+    // re-recorded s142): `confidence_signal` is an engine-internal QA/audit
+    // signal kept TRACE-only — surfacing it as a badge mis-reads as "the action
+    // might be wrong", which it is not. The fault branch stays: it narrates the
+    // fail-safe REROUTE MECHANISM (a gate the action crossed), not a
+    // self-reported score for the operator to second-guess.
     function renderConf() {
       clear(confEl);
       if (mode === 'fault') {
         confEl.appendChild(h('span', { class: 'badge s-warn', style: { textTransform: 'none' } }, 'AI 0.41 ↓ → rule fail-safe'));
         confEl.appendChild(h('span', { class: 'gc-det mono' }, 'deterministic'));
-      } else {
-        confEl.appendChild(h('div', { class: 'gc-conf-top' }, [h('span', { class: 'eyebrow' }, 'Confidence'), h('span', { class: 'mono' }, '86%')]));
-        confEl.appendChild(h('div', { class: 'meter' }, h('i', { style: { width: '86%' } })));
       }
     }
     function renderEntities() {
