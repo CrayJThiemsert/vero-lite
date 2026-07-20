@@ -201,11 +201,13 @@ def _normalize_quotes(quotes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     ]
 
 
-async def _intake_seed(adapter: FastenalCsvAdapter) -> dict[str, Any]:
+async def _intake_seed(adapter: FastenalCsvAdapter, *, po_id: str = _HERO_PO) -> dict[str, Any]:
     """Assemble the purchase-requisition the run scores (data-access = (a), Cray-confirmed s91):
-    the failure event supplies the reading; the hero PO row supplies the requisition metadata
+    the failure event supplies the reading; the ``po_id`` row supplies the requisition metadata
     (part / asset / qty -- the GOVERNED supplier + amount + tier are RE-DERIVED by the run, never
-    read from the PO); the quotes are normalised to the rule shape.
+    read from the PO); the quotes are normalised to the rule shape. ``po_id`` defaults to the
+    hero PO (PLAN-0084 Step 5 rotation: a rotated seed passes another asset's PO; every other
+    caller -- including the event/sharing builders -- keeps today's hero behaviour untouched).
 
     PLAN-0078 PR-1: the three DERIVED intake fields the seed used to emit -- ``criticality``
     (execution-bound ✔), ``unit`` (✔), and the per-criterion ``compliance`` map (✔) -- are now the
@@ -214,9 +216,16 @@ async def _intake_seed(adapter: FastenalCsvAdapter) -> dict[str, Any]:
     reshape (a cardinality-changing nest the v1 grammar cannot express -- execution-bound ✖, L-3
     partial) + the raw adapter reads."""
     events = await adapter.fetch_objects("OperationalEvent")
-    failure = next(e for e in events if e["event_type"] == "failure")
     pos = {p["po_id"]: p for p in await adapter.fetch_objects("PurchaseOrder")}
-    req = pos[_HERO_PO]
+    req = pos[po_id]
+    # PLAN-0084 Step 5: the failure pick is ASSET-KEYED (the PO's equipment), never first-row —
+    # the fixture now ships one failure event per rotatable asset, so a positional pick would
+    # be row-order-dependent. The default path still lands EVT-CNC-014-FAIL, by key (AC-3).
+    failure = next(
+        e
+        for e in events
+        if e["event_type"] == "failure" and e["equipment_id"] == req["equipment_id"]
+    )
     quotes = [q for q in await adapter.fetch_objects("Quotation") if q["part_no"] == req["part_no"]]
     return {
         "event_id": failure["event_id"],
@@ -453,7 +462,11 @@ async def build_live_hero_governance_audit(
 
 _EVENT_KIND = "emergency_source"  # = RecommendedAction.suggested_handler (PLAN-0056 Step 6)
 _EVENT_PROC_ID = "event_emergency_sourcing_round"
-_EVENT_ASSET_ID = "CNC-Line-07"  # OQ-1 (PLAN-0057): the detected asset (spindle-bearing seizure)
+# PLAN-0084 Step 4b (SD-D (d), Cray-ratified s155): the detected-entity id IS the ontology pk
+# (Equipment ``AST-CNC-014``) — superseding PLAN-0057 OQ-1's opaque ``"CNC-Line-07"`` so the
+# bridge's engine-stamped ``entity_ids`` become honest ontology references the ``/runs``
+# subject projection resolves data-driven (the bridge builder itself is untouched).
+_EVENT_ASSET_ID = "AST-CNC-014"
 _EVENT_REQUESTER_ID = "req-planner"  # SP-5: the owning human = the SoD requester on `intake`
 _EVENT_SOURCE = "event-fired"
 # Fixed demo-grade timestamps (deterministic render; the run is event-keyed + idempotent, so a
@@ -707,6 +720,7 @@ async def seed_operate_waiting_human_run(
     *,
     run_id: str = "run-operate-demo",
     adapter: FastenalCsvAdapter | None = None,
+    asset_id: str | None = None,
 ) -> RunResult:
     """Seed a PERSISTED procurement ``waiting_human`` run for the Control-leg operate demo
     (PLAN-0054 Step 6c) -- the gate the Monitor (View H) shows + a distinct approver resolves.
@@ -739,7 +753,21 @@ async def seed_operate_waiting_human_run(
     agent = next(a for a in spec.agents if a.agent_id == proc.run_by)
     principals = list(spec.principals)
     requester = next(p for p in principals if "requester" in p.roles)
-    seed = json.loads(json.dumps([await _intake_seed(adapter)], default=str))
+    # PLAN-0084 Step 5 rotation: an explicit asset resolves to ITS PurchaseOrder row
+    # (data-driven from the adapter -- rotatable = exactly one PO; never a hardcoded list).
+    po_id = _HERO_PO
+    if asset_id is not None:
+        pos = await adapter.fetch_objects("PurchaseOrder")
+        matches = [p["po_id"] for p in pos if p["equipment_id"] == asset_id]
+        if len(matches) != 1:
+            rotatable = sorted({p["equipment_id"] for p in pos})
+            raise ValueError(
+                f"asset {asset_id!r} matches {len(matches)} PurchaseOrder rows -- "
+                f"rotatable assets (exactly one PO each): {rotatable}"
+            )
+        po_id = matches[0]
+    seed_dict = await _intake_seed(adapter, po_id=po_id)
+    seed = json.loads(json.dumps([seed_dict], default=str))
     return await run_procedure_persisted(
         session,
         proc,
@@ -747,6 +775,13 @@ async def seed_operate_waiting_human_run(
         _executors(advisory_stub_factory, principals, seed),
         vertical=_VERTICAL,
         run_id=run_id,
-        trigger_context={"source": "operate-demo-seed", "triggered_by": requester.person_id},
+        trigger_context={
+            "source": "operate-demo-seed",
+            "triggered_by": requester.person_id,
+            # PLAN-0084 Step 1: the map<->monitor linkage subject -- the ontology ref of
+            # the asset this run concerns, from the COMPUTED intake seed (never a literal
+            # id). Additive; every pre-existing key above is untouched (AC-3).
+            "subject": {"object_type": "Equipment", "primary_key": seed_dict["asset_id"]},
+        },
         principal=requester,
     )

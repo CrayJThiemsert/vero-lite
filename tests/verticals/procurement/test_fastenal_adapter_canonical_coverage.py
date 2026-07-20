@@ -51,6 +51,10 @@ _CANONICAL_KEYS: dict[str, set[str]] = {
         "on_contract_unit_price_thb",
         "emergency_expedite_unit_price_thb",
         "criticality",
+        # PLAN-0084 SD-F: the calm-path low-stock fields — this adapter is now the
+        # PRIMARY procurement adapter, so read_stock -> judge_stock band over it.
+        "stock_qty",
+        "reorder_point",
     },
     "Supplier": {"supplier_id", "name", "avl_status", "region", "on_contract"},
     "PurchaseOrder": {

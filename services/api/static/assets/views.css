@@ -162,6 +162,17 @@
 .tl-tick.tl-decision-tick { font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
 .tl-tick.tl-decision-tick.s-ok { color: var(--ok); } .tl-tick.tl-decision-tick.s-info { color: var(--info); }
 
+/* PLAN-0084: the DISTINCT "governed run in flight" marker (SD-C) — a slow-breathing
+   dashed amber ring, visually separate from the red anomaly .halo pulse above
+   ("anomaly detected" ≠ "governed run awaiting a human"). */
+.mnode .run-halo { animation: runHaloBreathe 2.6s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+@keyframes runHaloBreathe { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+/* PLAN-0084: the panel "Governed runs · in flight" section (SD-E) */
+.gov-runs .gov-run-row { display: flex; align-items: center; gap: 9px; padding: 7px 11px; margin: 6px 0; border-radius: var(--r-md); background: var(--bg-1); border: 1px solid var(--line); }
+.gov-runs .grr-id { flex: 1; font-size: 11.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gov-runs .gov-open, .gov-runs .gov-more { white-space: nowrap; }
+.gov-runs .gov-more { width: 100%; justify-content: center; margin-top: 4px; }
+
 /* resolved map node — static green ring (no red pulse) + green selection glow */
 .mnode .halo.resolved { animation: none; opacity: .92; }
 .mnode.sel.flagged.resolved circle:first-of-type { animation-name: nodeGlowOk; }

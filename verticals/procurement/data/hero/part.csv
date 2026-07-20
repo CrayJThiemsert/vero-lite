@@ -1,6 +1,6 @@
-part_id,name,category,unit,on_contract_unit_price_thb,emergency_expedite_unit_price_thb,criticality
-PRT-SPN-700,Spindle Bearing Set 70mm,BEARING,SET,42000,78500,CRITICAL
-PRT-BLT-110,Drive Belt 110XL,BELT,EA,1800,3600,MED
-PRT-HYD-450,Hydraulic Seal Kit 450,SEAL,SET,9500,18000,HIGH
-PRT-SVO-220,Servo Motor 2.2kW,MOTOR,EA,56000,99000,HIGH
-PRT-CTR-880,Tool Holder Collet 880,COLLET,EA,2400,4200,LOW
+part_id,name,category,unit,on_contract_unit_price_thb,emergency_expedite_unit_price_thb,criticality,stock_qty,reorder_point
+PRT-SPN-700,Spindle Bearing Set 70mm,BEARING,SET,42000,78500,CRITICAL,0,1
+PRT-BLT-110,Drive Belt 110XL,BELT,EA,1800,3600,MED,150,160
+PRT-HYD-450,Hydraulic Seal Kit 450,SEAL,SET,9500,18000,HIGH,8,12
+PRT-SVO-220,Servo Motor 2.2kW,MOTOR,EA,56000,99000,HIGH,2,1
+PRT-CTR-880,Tool Holder Collet 880,COLLET,EA,2400,4200,LOW,60,20

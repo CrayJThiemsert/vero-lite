@@ -471,11 +471,44 @@ git checkout -- verticals/procurement/procedures.yaml
 > be. There is no env override, no test-only config path and no seed parameter: `load_procedures`
 > takes only a vertical name (`spec.py:1805-1807`), `procedures_path` is a hardcoded relative
 > path (`spec.py:1755-1757`), and `seed_operate_waiting_human_run` accepts only `run_id` +
-> `adapter` (`verticals/procurement/hero_demo/run.py:705-710`). Because the spec load is
+> `adapter` + the PLAN-0084 `asset_id` rotation arg (`verticals/procurement/hero_demo/run.py`,
+> none of which selects a config). Because the spec load is
 > uncached, the live edit is instant, surgical (one line) and reverts with one `git checkout` —
 > and it is *more* honest than simulating a prior pin, because the current config genuinely did
 > change. Resist the temptation to rewrite `pipeline_runs.governance_hash` directly to fake a
 > stale pin: it would stage the same banner while proving nothing about the guard.
+
+## 3d. Map↔Monitor linkage + seed rotation (PLAN-0084 — short note, not a rewrite)
+
+A seeded/event-fired run now **lights its asset's node on the Operational Map (View A)**
+with a dashed amber "governed run in flight" ring (distinct from the red anomaly ring);
+clicking the node opens a **"Governed runs · in flight"** panel with an
+**"Open in Monitor →"** button that jumps to that exact run in View H. The map's
+procurement objects are the Fastenal hero dataset (SD-F): the 5 `AST-*` assets under the
+Rayong plant — the same vocabulary the hero beats narrate.
+
+**Rotation** — repeat rehearsals can stage a different problem asset:
+
+```bash
+python scripts/seed_operate_demo.py --asset AST-ROBOT-21   # a chosen asset
+python scripts/seed_operate_demo.py --rotate               # day-indexed non-hero pick
+```
+
+stdout names the DOA tier + the approver to log in as. Tier→approver for the shipped
+fixtures (from the authored ladder; cumulative roles per PLAN-0075):
+
+| asset | ฿ total | ladder tier | log in as |
+|---|---|---|---|
+| AST-CONV-05 | 7,200 | หน.จัดซื้อ | `appr-buyer` |
+| AST-PRESS-03 | 19,000 | หน.จัดซื้อ | `appr-buyer` |
+| AST-CNC-009 | 78,500 | ผจก.จัดซื้อ | `appr-pm` |
+| AST-ROBOT-21 | 99,000 | ผจก.จัดซื้อ | `appr-pm` |
+| AST-CNC-014 (hero) | 288,000 | ผจก.จัดซื้อ | `appr-pm` |
+
+The beat-1 "sense" cue now names **`AST-CNC-014`** (the event-path detected entity is the
+ontology pk since PLAN-0084 Step 4b, superseding PLAN-0057 OQ-1's `CNC-Line-07`). And on
+every beat: **the connection strip must read `LIVE`** — the UI silently serves embedded
+demo data on any backend error, and the strip is the only tell.
 
 ---
 

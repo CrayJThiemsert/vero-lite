@@ -39,6 +39,7 @@ ontology, no MS-S1.
 
 from __future__ import annotations
 
+import json
 import warnings
 from decimal import Decimal
 from typing import Any
@@ -78,7 +79,10 @@ from verticals.procurement.hero_demo.run import (
 _VERTICAL = "procurement"
 
 # The declared JOIN HALF of `_intake_seed`, in the ratified PLAN-0061 grammar.
-#   * base    = the singleton failure event (`where` narrows it to one row)
+#   * base    = the singleton HERO failure event. PLAN-0084 ships one failure event per
+#               rotatable asset, so `event_type` alone now matches 5 rows — the `where`
+#               gains the hero's asset key (multi-key where = AND, `matches_where`),
+#               mirroring the seed's own asset-keyed pick and keeping the base singular.
 #   * fuse    = the hero PO — the ontology-undeclarable positional fusion (OQ-4 warns)
 #   * on      = quotes keyed on part_no (canonical since PLAN-0083; the PO CSV carries NO quote_id
 #               — PLAN fact 5)
@@ -87,7 +91,7 @@ _VERTICAL = "procurement"
 #               load-bearing (not a no-op).
 _INTAKE_JOIN_INPUT: dict[str, Any] = {
     "reads": ["OperationalEvent", "PurchaseOrder", "Quotation"],
-    "where": {"event_type": "failure"},
+    "where": {"event_type": "failure", "equipment_id": "AST-CNC-014"},
     "join": [
         {"with": "PurchaseOrder", "fuse": True, "where": {"po_id": _HERO_PO}},
         {"with": "Quotation", "on": {"left": "part_no", "right": "part_no"}},
@@ -347,6 +351,11 @@ async def test_read_stock_routes_to_the_shipped_executor_not_the_seed() -> None:
         {**{k: v for k, v in row.items() if k != "stock_qty"}, "measured_value": row["stock_qty"]}
         for row in raw
     ]
+    # PLAN-0084 SD-F: the registered adapter is now the FastenalCsvAdapter, whose Part
+    # rows carry Decimal ฿ fields; the executor's output is JSON-sanitized (Decimal ->
+    # str, loss-free — the project's standing JSONB pattern), so sanitize the expected
+    # side identically before comparing.
+    expected = json.loads(json.dumps(expected, default=str))
     assert (
         stock.output == expected
     ), "declared read_stock = the registered adapter's Part rows, projected"

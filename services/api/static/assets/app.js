@@ -148,6 +148,8 @@
     document.addEventListener('oct:goto', (e) => {
       const d = e.detail || {};
       if (d.view === 'B' && d.action && O.ViewAnomaly) O.ViewAnomaly.setFocus(d.action);
+      // PLAN-0084: map-node → Monitor jump — pre-mount focus, the same pattern as view B.
+      if (d.view === 'H' && d.run && O.ViewMonitor && O.ViewMonitor.focusRun) O.ViewMonitor.focusRun(d.run);
       go(d.view).then(() => {
         if (d.view === 'C' && d.ask && O.ViewAsk) setTimeout(() => O.ViewAsk.ask(d.ask), 120);
       });

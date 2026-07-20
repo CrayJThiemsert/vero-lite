@@ -274,11 +274,18 @@ async def test_scheduled_calm_path_fires_and_parks_at_reorder_gate(
     assert not (loaded.run.step_principals or {}).get("intake")
 
     # the judge banded the PROJECTED Part rows per-part vs each Part's OWN reorder_point
-    # (ADR-016 TF-1 / PLAN-0066 SD-4b): all three seed parts breach their own points
-    # (spindle 0<=1, filter 40<=100, v-belt 150<=200 — the flip part a blanket-100 would miss).
+    # (ADR-016 TF-1 / PLAN-0066 SD-4b). Since PLAN-0084 SD-F the registered adapter is the
+    # FastenalCsvAdapter (FIVE parts): spindle 0<=1, belt 150<=160 (the flip part a
+    # blanket-100 would miss) and seal-kit 8<=12 breach; servo 2>1 and collet 60>20 are ok.
     judge_sr = next(sr for sr in loaded.step_results if sr.step_id == "judge_stock")
     assert judge_sr.artifact is not None
-    assert [e["verdict"] for e in judge_sr.artifact["output_set"]] == ["breach", "breach", "breach"]
+    assert sorted(e["verdict"] for e in judge_sr.artifact["output_set"]) == [
+        "breach",
+        "breach",
+        "breach",
+        "ok",
+        "ok",
+    ]
 
     # AC-9 — the SD-P6 trigger_context stamp rides on the persisted run.
     tc = loaded.run.trigger_context

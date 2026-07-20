@@ -1,3 +1,7 @@
 event_id,event_type,severity,measured_value,unit,description,occurred_at,asset_id,site
 EVT-CNC-014-FAIL,failure,critical,0.92,criticality,CNC Machining Center #14 spindle bearing failure — line down; on-hand spare exhausted,2026-06-30T09:15:00Z,AST-CNC-014,Rayong-EEC-Plant1
 EVT-CNC-014-BASE,reading,info,0.30,criticality,CNC Machining Center #14 operating nominally,2026-06-30T06:00:00Z,AST-CNC-014,Rayong-EEC-Plant1
+EVT-CNC-009-FAIL,failure,critical,0.88,criticality,CNC Machining Center #9 spindle bearing failure — line down; on-hand spare exhausted,2026-06-30T10:05:00Z,AST-CNC-009,Rayong-EEC-Plant1
+EVT-PRESS-03-FAIL,failure,critical,0.86,criticality,Stamping Press 300T hydraulic seal failure — press down; seal kit not in stock,2026-06-30T10:20:00Z,AST-PRESS-03,Rayong-EEC-Plant1
+EVT-ROBOT-21-FAIL,failure,critical,0.84,criticality,Weld Robot Cell 21 servo motor failure — cell down; motor not in stock,2026-06-30T10:35:00Z,AST-ROBOT-21,Rayong-EEC-Plant1
+EVT-CONV-05-FAIL,failure,critical,0.82,criticality,Main Line Conveyor 05 drive belt failure — line stopped; belt not in stock,2026-06-30T10:50:00Z,AST-CONV-05,Rayong-EEC-Plant1

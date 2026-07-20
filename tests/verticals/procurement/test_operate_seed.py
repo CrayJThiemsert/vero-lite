@@ -103,3 +103,69 @@ async def test_seeded_run_is_governed_resolvable_by_distinct_approver(
         {"control_ref": {"kind": "sod", "id": "approve+intake"}, "principal_id": "appr-pm"},
         {"control_ref": {"kind": "doa_tier", "id": "ผจก.จัดซื้อ"}, "principal_id": "appr-pm"},
     ]
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0084 — AC-3 (default byte-compat + subject stamp) and AC-7 (rotation).
+# --------------------------------------------------------------------------- #
+
+
+async def test_intake_seed_default_is_hero_and_asset_keyed() -> None:
+    """AC-3 (no DB needed) — the DEFAULT intake seed is the hero requisition, its
+    failure event picked by ASSET KEY (``EVT-CNC-014-FAIL``) even though the fixture
+    now ships one failure event per rotatable asset — never by row order."""
+    from verticals.procurement.data_adapter.fastenal_csv import FastenalCsvAdapter
+    from verticals.procurement.hero_demo.run import _intake_seed
+
+    seed = await _intake_seed(FastenalCsvAdapter())
+    assert seed["primary_key"] == "PO-2026-0412"
+    assert seed["asset_id"] == "AST-CNC-014"
+    assert seed["event_id"] == "EVT-CNC-014-FAIL"
+    assert seed["event_type"] == "failure"
+    assert seed["qty"] == 3  # the hero knob: 3 x 96,000 = ฿288,000
+    assert seed["measured_value"] == 0.92
+
+
+async def test_seed_default_trigger_context_is_additive_only(db_engine: AsyncEngine) -> None:
+    """AC-3 — the default invocation's ``trigger_context`` is today's, plus ONLY the
+    additive ``subject`` stamp (from the computed seed, not a literal)."""
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with maker() as session:
+        result = await seed_operate_waiting_human_run(session, run_id="operate-ac3")
+    tc = result.run.trigger_context or {}
+    assert tc["source"] == "operate-demo-seed"
+    assert tc["triggered_by"] == "req-planner"
+    assert tc["subject"] == {"object_type": "Equipment", "primary_key": "AST-CNC-014"}
+    assert set(tc) == {"source", "triggered_by", "subject"}, "additive ONLY — no other new keys"
+
+
+async def test_seed_rotation_parks_every_rotatable_asset(db_engine: AsyncEngine) -> None:
+    """AC-7 — every rotatable asset (exactly one PO — DATA-DRIVEN, never a hardcoded
+    list) seeds end-to-end to ``waiting_human`` with its own subject stamp, and the
+    parked doa audit names the tier + approver the seed script's stdout reports."""
+    from verticals.procurement.data_adapter.fastenal_csv import FastenalCsvAdapter
+
+    pos = await FastenalCsvAdapter().fetch_objects("PurchaseOrder")
+    assets = sorted({p["equipment_id"] for p in pos})
+    assert len(assets) == 5, "4 original + the PLAN-0084 CNC-009 fixture PO"
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    for i, asset in enumerate(assets):
+        async with maker() as session:
+            result = await seed_operate_waiting_human_run(
+                session, run_id=f"operate-rot-{i}", asset_id=asset
+            )
+        assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value, asset
+        tc = result.run.trigger_context or {}
+        assert tc["subject"] == {"object_type": "Equipment", "primary_key": asset}
+        approve_sr = next(sr for sr in result.step_results if sr.step_id == "approve")
+        [doa] = (approve_sr.audit or {})["doa_tier"]
+        assert doa["resolved_tier_id"], asset
+        assert doa["resolved_approver_id"], asset
+
+
+async def test_seed_unknown_asset_fails_listing_rotatable(db_engine: AsyncEngine) -> None:
+    """AC-7 — an unknown asset id fails with a clear error listing the rotatable ids."""
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    async with maker() as session:
+        with pytest.raises(ValueError, match="rotatable assets"):
+            await seed_operate_waiting_human_run(session, run_id="operate-bad", asset_id="AST-NOPE")

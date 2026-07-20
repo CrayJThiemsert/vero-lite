@@ -13,6 +13,10 @@
   let selected = null;        // { type, id }
   let anomalyAssetIds = [];   // primary keys flagged by recommendations
   let resolvedAssetIds = [];  // flagged keys whose decision is executed (resolved)
+  // PLAN-0084: in-flight governed runs keyed 'ObjectType|pk' (from /runs subject) —
+  // a PARALLEL signal to the recommendation flags above, never coupled to them.
+  let runsByAsset = {};
+  const RUN_INFLIGHT = { waiting_human: 1, running: 1 };  // SD-C: never terminal states
 
   function geoColor(i) {
     const hues = [210, 150, 35, 280, 0];
@@ -69,6 +73,28 @@
     try { await O.loadRecommendations(); } catch (e) {}
     try { await O.loadObjects('OperationalEvent'); } catch (e) {}
     recomputeFlags();
+    // PLAN-0084 Step 3: governed-run flags from /runs — a DIRECT fetch (the Monitor
+    // getJSON precedent), NEVER O.API.request, which silently serves mock data on any
+    // failure (api.js fallback). A runs-read failure must mean "no markers", not fake
+    // markers: on any error the map renders fully with zero run flags (AC-5).
+    try { computeRunFlags(await getRunsJSON()); } catch (e) { runsByAsset = {}; }
+  }
+
+  async function getRunsJSON() {
+    const res = await fetch('/runs');
+    const ct = res.headers.get('content-type') || '';
+    if (!res.ok || !ct.includes('json')) throw new Error('runs unavailable');
+    return res.json();
+  }
+
+  function computeRunFlags(payload) {
+    runsByAsset = {};
+    ((payload && payload.runs) || []).forEach(r => {
+      const s = r.subject;
+      if (!s || !s.object_type || !s.primary_key || !RUN_INFLIGHT[r.status]) return;
+      const key = s.object_type + '|' + s.primary_key;   // exact type+pk, data-driven
+      (runsByAsset[key] = runsByAsset[key] || []).push(r);
+    });
   }
 
   function recomputeFlags() {
@@ -174,6 +200,7 @@
       const sp = O.Onto.statusProp(assetType);
       const flagged = anomalyAssetIds.includes(aId);
       const resolved = resolvedAssetIds.includes(aId);
+      const govRuns = runsByAsset[assetType + '|' + aId] || [];
       // tether
       const ln = document.createElementNS(NS, 'line');
       ln.setAttribute('x1', p.x); ln.setAttribute('y1', p.y);
@@ -182,7 +209,7 @@
       layerLinks.appendChild(ln);
       // satellite group
       const gg = document.createElementNS(NS, 'g');
-      gg.setAttribute('class', 'mnode asset' + (flagged ? ' flagged' : '') + (resolved ? ' resolved' : '') + (isSel(assetType, aId) ? ' sel' : ''));
+      gg.setAttribute('class', 'mnode asset' + (flagged ? ' flagged' : '') + (resolved ? ' resolved' : '') + (govRuns.length ? ' gov' : '') + (isSel(assetType, aId) ? ' sel' : ''));
       gg.style.cursor = 'pointer';
       const statusCls = sp ? O.Onto.statusClass(a[sp.name]) : 's-neutral';
       const col = statusVar(statusCls);
@@ -194,6 +221,17 @@
         halo.setAttribute('class', 'halo' + (resolved ? ' resolved' : '')); halo.setAttribute('fill', 'none');
         halo.setAttribute('stroke', resolved ? 'var(--ok)' : 'var(--crit)'); halo.setAttribute('stroke-width', '1.5');
         gg.appendChild(halo);
+      }
+      if (govRuns.length) {
+        // PLAN-0084 SD-C: the DISTINCT "governed run in flight" marker — a dashed amber
+        // ring, deliberately separate from the red anomaly halo above ("anomaly detected"
+        // ≠ "governed run awaiting a human" — attribution legibility, PLAN-0080).
+        const gr = document.createElementNS(NS, 'circle');
+        gr.setAttribute('cx', ax); gr.setAttribute('cy', ay); gr.setAttribute('r', 12);
+        gr.setAttribute('class', 'run-halo'); gr.setAttribute('fill', 'none');
+        gr.setAttribute('stroke', 'var(--warn)'); gr.setAttribute('stroke-width', '1.5');
+        gr.setAttribute('stroke-dasharray', '3 3');
+        gg.appendChild(gr);
       }
       const c = document.createElementNS(NS, 'circle');
       c.setAttribute('cx', ax); c.setAttribute('cy', ay); c.setAttribute('r', 6.5);
@@ -312,6 +350,33 @@
           'Investigate in Anomaly & Decision', icon('arrow', { width: 14, height: 14 })
         ])
       ].filter(Boolean)));
+    }
+
+    // PLAN-0084: the node's in-flight governed runs → jump to the EXACT run in Monitor.
+    // Newest-first (the /runs list order), capped per SD-E; the tail line opens Monitor
+    // unfiltered. Fully data-driven from /runs `subject` — no hardcoded ids (ui.md).
+    const nodeRuns = runsByAsset[type + '|' + id] || [];
+    if (nodeRuns.length) {
+      const CAP = 5;
+      const rows = nodeRuns.slice(0, CAP).map(r =>
+        h('div', { class: 'gov-run-row' }, [
+          h('span', { class: 'mono grr-id', title: r.run_id }, r.run_id),
+          O.badge(r.status),
+          h('button', {
+            class: 'btn sm gov-open',
+            onClick: () => document.dispatchEvent(new CustomEvent('oct:goto', { detail: { view: 'H', run: r.run_id } }))
+          }, ['Open in Monitor ', icon('arrow', { width: 13, height: 13 })])
+        ]));
+      if (nodeRuns.length > CAP) {
+        rows.push(h('button', {
+          class: 'btn sm gov-more',
+          onClick: () => document.dispatchEvent(new CustomEvent('oct:goto', { detail: { view: 'H' } }))
+        }, '+' + (nodeRuns.length - CAP) + ' more — open Monitor'));
+      }
+      card.appendChild(h('div', { class: 'detail-children gov-runs' }, [
+        h('div', { class: 'eyebrow', style: { marginBottom: '8px' } }, 'Governed runs · in flight'),
+        ...rows
+      ]));
     }
 
     card.appendChild(h('div', { class: 'detail-body' }, O.detailRows(type, obj)));
