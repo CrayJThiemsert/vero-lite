@@ -468,7 +468,10 @@ grep findings recorded in the PR body.
   `tests/verticals/procurement/` — specifically `test_intake_shadow_parity` (the
   declared `where: {"event_type": "failure"}` filter vs multi-row fixtures),
   `test_fastenal_csv_adapter`, `test_transform_migration_parity`; plus assert
-  `GET /recommendations` unchanged (AC-8).
+  `GET /recommendations` unchanged (AC-8). The NEW CNC-009 PO row widens this:
+  **ground whether `build_hero_impact_ledger` reads ALL PurchaseOrder rows or only
+  `_HERO_PO` BEFORE asserting the ledger unchanged** — a new PO row must not move
+  the ฿ ledger figures; adapter link/PO tests re-run.
 **Verify:** AC-3 (default byte-compat test), AC-7 (rotated seed live: log in as the
 stdout-named approver, resolve the gate), AC-8.
 
@@ -479,8 +482,9 @@ stdout-named approver, resolve the gate), AC-8.
   (`vero-postgres`), demo `DATABASE_URL`, `OCT_VERTICAL=procurement`. Local demo stack
   only — no MS-S1, no host-state change (CLAUDE.md §8).
 - `docs/runbooks/run-oct-demo.md`: short §-note — rotation flags, the tier→approver
-  table for the rotatable assets, and the "strip must read LIVE" check (Out-of-Scope
-  boundary: a note, not a rewrite).
+  table for the rotatable assets, the beat-1 "sense" cue now naming `AST-CNC-014`
+  (Step 4b re-pin), and the "strip must read LIVE" check (Out-of-Scope boundary:
+  a note, not a rewrite).
 - PR referencing PLAN-0084; after merge + Cray confirmation,
   `git mv docs/plans/0084-*.md docs/plans/done/`.
 
@@ -494,3 +498,5 @@ How we know it worked, in one line each:
 3. AC-7 rotated seed shows a DIFFERENT problem node + a different approver tier on a
    second rehearsal pass.
 4. AC-1/AC-8 keep the whole tree green — the linkage is additive, nothing regressed.
+5. AC-9's event-fired click-through proves BOTH demo entry points light the map
+   (SD-D (d) as ratified), with the engine untouched.
