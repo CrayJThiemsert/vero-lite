@@ -14,6 +14,9 @@
 > by `plan-drafter` from Code's post-ratification dispatch. SD-B and SD-D were ratified
 > WIDER than the draft recommendations — Step 4b and the Step 5 rework are amendment
 > content, not annotation. R2 = Code; Cray at PR merge.
+> **Amended 2026-07-20 (second fold, mid-build):** SD-F added — a build-time discovery
+> (registered adapter ≠ the narrated CSV dataset) ratified by Cray during execution;
+> folded by `plan-drafter` from Code's dispatch. R2 = Code; Cray at PR merge.
 
 ## Goal
 
@@ -145,6 +148,20 @@ beats.
   resulting run-id SHAPE without containing the literal — Step 4b's grep covers this
   before assuming zero test churn.
 
+**Mid-build correction (SD-F discovery — classified `was an error` per CLAUDE.md §6)**
+- The ground above ASSUMED View A renders the hero CSV assets. **FALSE on disk at the
+  time of drafting:** the registry-registered procurement adapter was the scaffold-era
+  `ProcurementSyntheticAdapter` (`equip-*` pks, 4 assets, own Plant rows), while the
+  hero surfaces / operate seed / runbook narrate the Fastenal CSV (`AST-*`, 5 assets)
+  — two DISJOINT pk vocabularies. The demo was already split-brain (map showed
+  `equip-cnc-07`; the G-tab narrates `AST-CNC-014`), and the subject stamp could light
+  nothing. Classification: **was an error** — the original grounding checked the CSV
+  fixtures and the UI code paths but never checked WHICH adapter discovery registers
+  (`register_procurement_adapter`). Fixed by SD-F below; drafter re-confirmed the fix
+  on disk at fold time (`verticals/procurement/data_adapter/__init__.py:5,109-111`
+  registers `FastenalCsvAdapter` as primary; `data/hero/plant.csv` exists with the
+  `Rayong-EEC-Plant1` geo row).
+
 ## Surfaced decisions — ALL RESOLVED (Cray, 2026-07-20 s155, AskUserQuestion; per-SD stamps below)
 
 ### SD-A — `subject` field shape + exposure surface
@@ -249,6 +266,62 @@ operator might need to cancel).
 newest-first, cap 5, "+N more — open Monitor" tail; marker on ≥ 1 in-flight run. PLAN
 change: none — Step 3's panel section already specifies this.
 
+### SD-F — which adapter is procurement's registered primary (mid-build discovery)
+
+**Discovered (during the build, s155):** the PLAN's ground assumed View A renders the
+hero CSV assets — false; the registered adapter was the scaffold-era
+`ProcurementSyntheticAdapter` (`equip-*` pks) while every hero surface narrates the
+Fastenal CSV (`AST-*`). See the "Mid-build correction" block in Verified ground
+(classified `was an error`).
+**Question:** which adapter does `register_procurement_adapter` register — i.e. which
+dataset IS procurement's operational reality across ALL views?
+**Alternatives offered (recorded for the trail):** full swap (Fastenal primary
+everywhere); demo-boot-only swap (Code's recommendation at ask time); keep-split,
+land-code-only.
+**Why Cray:** which dataset the whole vertical presents is product/demo-narrative
+identity — not an implementation detail.
+**RESOLVED/RATIFIED (Cray, 2026-07-20 s155, AskUserQuestion): Fastenal เป็น adapter
+หลักของ procurement ทั้งหมด** — `FastenalCsvAdapter` becomes procurement's PRIMARY
+adapter everywhere (not demo-gated): `register_procurement_adapter`
+(`verticals/procurement/data_adapter/__init__.py`) now registers it; the synthetic
+adapter + `synthetic.py` stay in-tree for direct-module test harnesses only.
+
+**PLAN change (all SHIPPED in the build — recorded here, not pending):**
+1. **Plant fixture** — the map's geo anchor: new
+   `verticals/procurement/data/hero/plant.csv` (one row, `plant_id: Rayong-EEC-Plant1`
+   MATCHING the asset/event rows' canonical `site_id` refs) + `_OBJECT_FILES["Plant"]`
+   with lat/lng float coercions. Without it the map renders "No mappable objects".
+2. **Calm-path fields** — `part.csv` gains `stock_qty,reorder_point` (+ `_int`
+   coercions): the declared `read_stock → judge_stock` chain runs over the REGISTERED
+   adapter, and Fastenal lacked the band fields. Values preserve the synthetic
+   semantics EXACTLY: hero spare 0/1 breach; `PRT-BLT-110` 150/160 = the PLAN-0066
+   AC-6 >100 flip case; seal-kit 8/12 breach; servo 2/1 ok; collet 60/20 ok.
+3. **Test repins** (AC-8 blast radius, all updated + green):
+   `test_calm_path_production_runnability` (3→5 rows, PRT-* verdict map, flip part
+   re-pointed); `test_scheduled_procurement_demo` (verdict list 3→5);
+   `test_fastenal_adapter_canonical_coverage[Part]` (the PLAN-0083 set-equality
+   tripwire caught the new keys — added to the pin, tripwire working as designed);
+   `test_intake_shadow_parity` read_stock expected-side now JSON-sanitized (Fastenal
+   Part rows carry Decimal ฿ fields; executor output is Decimal→str sanitized).
+4. **Unknown-type behavior verified:** Fastenal `fetch_objects` returns `[]` for
+   types it does not serve (Alert / RecommendedAction / ComplianceRule) — count chips
+   show 0, nothing 500s; `stream_events` is an empty iterator → `GET /recommendations`
+   stays empty, MATCHING the observed pre-swap procurement demo (View B "All clear")
+   — no behavioral regression on the reactive path.
+5. **Bonus effect:** SD-D (d)'s event resolve works BECAUSE the registry index is now
+   Fastenal — `entity_ids=["AST-CNC-014"]` resolves. Live-proven: the event-fired run
+   projects `subject {Equipment, AST-CNC-014}` and lights the map (AC-9 observed
+   PASS); the map panel showed BOTH the event run and the seeded run newest-first
+   (SD-E observed live).
+
+**Live evidence (Code, port 8101, strip `LIVE` — cited for the record; AC boxes stay
+UNTICKED until Code's closeout with fresh evidence):** AC-4 full click-through
+(`run-row-run-s155-linkage` selected in View H); AC-5 (`/runs` forced 500 → 5 nodes,
+zero markers, no mock fallback, no error state); AC-7 (`--asset AST-ROBOT-21` → ฿99k →
+`appr-pm`; `--asset AST-CONV-05` → ฿7.2k → `appr-buyer`; unknown asset lists the 5
+rotatable ids); legacy fail-soft with a REAL pre-build run (`run-operate-demo` →
+`subject: null`, renders fine); zero console errors.
+
 ## Acceptance Criteria
 
 - [ ] **AC-1 Offline gate:** full suite green (baseline 2915 passed / 7 skipped at
@@ -293,7 +366,12 @@ change: none — Step 3's panel section already specifies this.
   pass; `GET /recommendations` output is unchanged (reading-derived only —
   actions.py:182); the impact ledger's ฿ figures are unchanged by the new CNC-009 PO
   row (grounded per Step 5 — whether `build_hero_impact_ledger` reads ALL PO rows or
-  only `_HERO_PO`).
+  only `_HERO_PO`). **Extended per SD-F (adapter-swap repins):**
+  `test_calm_path_production_runnability` (3→5 rows),
+  `test_scheduled_procurement_demo` (verdict list 3→5), and
+  `test_fastenal_adapter_canonical_coverage[Part]` (the PLAN-0083 set-equality
+  tripwire pin gains `stock_qty`/`reorder_point` — tripwire working as designed) are
+  part of this AC's green set.
 - [ ] **AC-9 Event-path live check (8101 demo — SD-D (d)):** `POST /demo/hero/event`
   → map marker lights on AST-CNC-014 → node panel lists the event run → "Open in
   Monitor" opens THAT exact run — **with the connection strip reading `LIVE`** (same
@@ -368,6 +446,9 @@ In `assets/view-map.js`:
   and whose `status` ∈ the SD-C set. Purely data-driven (AC-6).
 - Node rendering: distinct in-flight marker per SD-C (visually separate from the
   anomaly ring class).
+- **Object source (SD-F):** the map's `/meta` + `/objects` set is the Fastenal CSV via
+  the registry-registered PRIMARY adapter (`AST-*` pks + the `plant.csv` geo anchor) —
+  the `runFlags` pk match runs against THIS vocabulary.
 - `renderDetail` (:280): after the anomaly banner block (:295-315), add a "Governed
   runs" section when `runFlags` has the node's pk — per run: run id (mono), status
   badge, "Open in Monitor →" button firing
@@ -484,7 +565,8 @@ stdout-named approver, resolve the gate), AC-8.
 - `docs/runbooks/run-oct-demo.md`: short §-note — rotation flags, the tier→approver
   table for the rotatable assets, the beat-1 "sense" cue now naming `AST-CNC-014`
   (Step 4b re-pin), and the "strip must read LIVE" check (Out-of-Scope boundary:
-  a note, not a rewrite).
+  a note, not a rewrite). *Landed during the build as §3d (all four items); the §3c
+  seed-signature aside was corrected in passing.*
 - PR referencing PLAN-0084; after merge + Cray confirmation,
   `git mv docs/plans/0084-*.md docs/plans/done/`.
 
