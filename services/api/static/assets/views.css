@@ -200,11 +200,12 @@
 .dc-head { padding: 16px 18px 4px; }
 .dc-title { margin: 0 0 7px; font-size: 18px; font-weight: 600; letter-spacing: .005em; }
 .dc-desc { margin: 0 0 16px; color: var(--tx-1); font-size: 13.5px; line-height: 1.55; max-width: 70ch; }
-.dc-metarow { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; padding-bottom: 6px; }
-.dc-conf-top, .dc-handler { display: flex; align-items: baseline; justify-content: space-between; }
-.dc-handler { flex-direction: column; align-items: flex-start; gap: 6px; }
-.dc-conf-top { margin-bottom: 7px; }
-.dc-conf-val { font-size: 14px; font-weight: 600; color: var(--tx-0); }
+/* Single column: the confidence half of this row was REMOVED (no operator-facing
+   confidence badge — docs/plans/done/0035-governed-action-verify-reshape-build.md
+   :591-602), leaving the handler alone. Its `.dc-conf*` rules went with it. Do not
+   reintroduce either. */
+.dc-metarow { display: grid; grid-template-columns: 1fr; gap: 18px; padding-bottom: 6px; }
+.dc-handler { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .dc-handler-v { font-size: 13px; color: var(--tx-0); background: var(--bg-inset); border: 1px solid var(--line); padding: 3px 8px; border-radius: 4px; }
 
 .dc-section { padding: 16px 18px; border-top: 1px solid var(--line-soft); }

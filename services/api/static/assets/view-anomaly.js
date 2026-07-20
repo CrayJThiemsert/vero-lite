@@ -1,7 +1,8 @@
 /* ============================================================
    View B — Anomaly & Decision  (the headline "show me WHY")
-   Decision card: confidence, status, affected entities, the
+   Decision card: status, suggested handler, affected entities, the
    reasoning trace as a vertical stepper, live Approve → Execute.
+   Deliberately NO operator-facing confidence badge — see decisionCard().
    ============================================================ */
 (function () {
   'use strict';
@@ -27,7 +28,6 @@
   }
 
   function decisionCard(rec) {
-    const conf = Math.round((rec.confidence || 0) * 100);
     const card = h('div', { class: 'card decision-card', dataset: { action: rec.action_id } });
 
     // ---- header band ----
@@ -43,14 +43,13 @@
     const head = h('div', { class: 'dc-head' }, [
       h('h2', { class: 'dc-title' }, rec.title),
       h('p', { class: 'dc-desc' }, rec.description),
+      // NO operator-facing confidence badge (docs/plans/done/0035-governed-action-
+      // verify-reshape-build.md:591-602, Cray-ratified s74 / re-recorded s142).
+      // `rec.confidence` is an engine-internal QA/audit signal kept TRACE-only — a
+      // badge here mis-reads as "the action might be wrong", which it is not: the
+      // advisory signal never changes the action. The operator card is
+      // what / grounded-why / approve gate; the trace below carries the rest.
       h('div', { class: 'dc-metarow' }, [
-        h('div', { class: 'dc-conf' }, [
-          h('div', { class: 'dc-conf-top' }, [
-            h('span', { class: 'eyebrow' }, 'Confidence'),
-            h('span', { class: 'dc-conf-val mono' }, conf + '%')
-          ]),
-          h('div', { class: 'meter' }, h('i', { style: { width: conf + '%' } }))
-        ]),
         h('div', { class: 'dc-handler' }, [
           h('span', { class: 'eyebrow' }, 'Suggested handler'),
           h('span', { class: 'mono dc-handler-v' }, rec.suggested_handler || '—')

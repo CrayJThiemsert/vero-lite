@@ -326,8 +326,11 @@
 .gc-head { padding: 14px; display: flex; flex-direction: column; gap: 9px; }
 .gc-title { margin: 0; font-size: 15px; font-weight: 600; }
 .gc-desc { margin: 0; font-size: 12px; color: var(--tx-1); line-height: 1.4; }
+/* .gc-conf holds the fault-mode fail-safe badge only. The happy-path
+   "Confidence NN%" + meter was REMOVED (no operator-facing confidence badge —
+   docs/plans/done/0035-governed-action-verify-reshape-build.md:591-602), so its
+   `.gc-conf-top` row went with it. Do not reintroduce either. */
 .gc-conf { display: flex; flex-direction: column; gap: 5px; }
-.gc-conf-top { display: flex; justify-content: space-between; align-items: center; }
 .gc-det { font-size: 10px; color: var(--tx-3); }
 .gc-handler { display: flex; flex-direction: column; gap: 2px; }
 .gc-handler .mono { font-size: 11.5px; color: var(--tx-1); }
