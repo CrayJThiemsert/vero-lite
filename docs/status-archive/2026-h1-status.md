@@ -652,3 +652,44 @@ convention is separate work, deliberately not done here.
 ### Recent Decisions row — s143 R7 (never cite `docs/STATUS.md` by line number, #783) [rotated 2026-07-19, session-152 reconcile — 10-row window]
 
 | 2026-07-17 | **s143 — rotation policy **R7** is BINDING (#783, `chore`): never cite `docs/STATUS.md` by LINE NUMBER — cite the tracked artifact, or STATUS by SECTION NAME; a tripwire + an `always_run` pre-commit hook enforce it repo-wide (10 rotted sites cleaned, RED→GREEN 10 → 0).** _[Sibling #782 (`bc42136`, s142, reconciled s143): Lesson #0031 + the `fan-out-dispatch` skill — split parallel work on the WRITE-SET, not the idea.]_ Full narrative: the Session-143 CF block above | `3bf99bc` (#783 merge) / `abd41d4` (R7 + guard + cleanup) / `bc42136` (#782 merge) / `docs/runbooks/memory-architecture.md` (R7) + `tools/check_status_citations.py` + `docs/lessons/0031-*.md` + `.claude/skills/fan-out-dispatch/` |
+
+### Current Focus block — Sessions 147 + 148 (PLAN-0081 opened + reshaped #797/#798; PLAN-0080 CLOSED OUT + archived #799) [rotated 2026-07-20, session-155 reconcile — 4-newest-sessions CF window]
+
+> **Sessions 147 + 148, 2026-07-18 (head_commit `8737b0a` → `0b67f76`) —
+> PLAN-0081 opened + reshaped (s147, #797+#798) and PLAN-0080 CLOSED OUT +
+> archived (s148, #799); all three PRs `docs(plans)`, ZERO code/behaviour
+> change.** **(s147) The PLAN-0081 arc — the `building_materials`
+> governed-credit HERO. #797 (`e03e56f`)** filed PLAN-0081 as `Status: Draft`
+> — the BUILD plan Cray COMMISSIONED via PLAN-0079 Step T1 (SD-1 = trip AT-2
+> signature **N=3** in-PLAN, do NOT wait for PLAN-0076 T1; SD-2 = ride the
+> existing `measured_value` exposure field). SD-A/B/C/D resolved (Cray, s146).
+> **#798 (`46a6ec2` → merge `fa4f6c6`)** folded in Cray's **SD-E=(b-ii)** +
+> ratified **SD-J=SPLIT** (both via AskUserQuestion). SD-E=(b-ii) = promote
+> `Person` to an ADR-0008 ontology `object_type` at a NEW shared/core ontology
+> home. **The grounded crux:** the shipped codegen model is strictly
+> per-vertical — NO shared/cross-vertical ontology home exists — so b-ii
+> **INVENTS** the mechanism, it does not reuse one. **SD-J=SPLIT** = b-ii
+> becomes its OWN new PLAN (+ a preceding ADR-0008 grammar amendment as its
+> gate); PLAN-0081 Step 9 shrinks to the migration onto the shared `Person`
+> that new PLAN ships. New AC-12/13/14/15 + surfaced sub-forks SD-F…SD-J +
+> expanded OQ-1. **PLAN-0081 stays `Status: Draft` — no code shipped.**
+> **(s148) The PLAN-0080 closeout — #799 (`81f307b` → merge `0b67f76`).**
+> PLAN-0080 (trace-attribution legibility + the canonical
+> `docs/conventions/ui.md`) had shipped end-to-end in s146 (#794 `feat(ui)` +
+> #795 `docs(conventions)`) but its Status header still read "Draft (pending
+> Cray ratification)" with all **9 ACs unticked**, and it was never archived.
+> This closeout flipped Status → **Complete**, re-verified ALL 9 ACs against
+> `main` on a FRESH disk read (each with `file:line` evidence), ticked them,
+> and `git mv`'d it to `docs/plans/done/`. **AC-5 ticked as-scoped (Finding
+> F-4):** the `TRACE` entries fed to `O.reasoningTrace` are normalized to
+> canonical kinds; the surviving `kind:` tokens in PROP cards / KIND_BADGE /
+> the pipeline DAG are separate local vocabularies the AC carved out. Findings
+> **F-1/F-2/F-3 + OQ-1 stay recorded, NOT closed**. No code/behaviour change;
+> SD-1(c)/SD-2(iii) were Cray-ratified in s146. Post-merge: main=`0b67f76`;
+> 0 open PRs; loop-dispatcher DISABLED; MS-S1 idle/COLD — zero calls this
+> session (docs-only). Commits: `e03e56f` (#797) → `46a6ec2` → `fa4f6c6`
+> (#798 merge) → `81f307b` (#799 closeout) → `0b67f76` (HEAD, #799 merge).
+
+### Recent Decisions row — s143 PLAN-0078 Phase 2 PR-5 (the `derivation_hash` retirement, #784) [rotated 2026-07-20, session-155 reconcile — 10-row window]
+
+| 2026-07-17 | **s143 — PLAN-0078 Phase 2 PR-5 COMPLETE (#784, `refactor`), the FINAL PR of the transform seed-migration: the PLAN-0075 AC-13 `derivation_hash` RETIRED end-to-end (AC-10 grep-clean, 0 hits outside `docs/`), the F-PIN marker rewritten (AC-11), PLAN-0076 Step T2 CLOSED.** A DELETION PR by design: AC-13 hashed supply_chain's ladder CONSTANTS into the pin only because the derivation lived in vertical CODE — PR-3/PR-4 declared it, so the reason vanished and the workaround went. Both retired guarantees re-homed at FULL strength (an ACTUAL `assert_governance_pin` raise, not an `h1 != h2` compare). 2 Cray ratifications OVERRODE the drafter (unrenderable AC-11 assert; KEEP the constants test-only). **F-PIN NOT closed; PLAN-0076 does NOT archive** (T1 open, AC-6 armed). Suite **2840/7** re-run on the merge commit itself. _[Siblings reconciled same pass: #783 R7 citation guard · #782 Lesson #0031.]_ Full narrative: the Session-143 CF block above | `6eea264` (HEAD, #784 merge) / `70d25a5` (PR-3 forward-ref fix) / `6e6ec7a` (PLAN-0076 T2) / `732fc0a` (the retirement) / `verticals/supply_chain/**` + `services/engine/procedures/**` (registry seam + `governance_pin` param retired across 8 files) + `tests/**` (exact-snapshot-key-set assertion) + `docs/plans/0078-*.md` (PR-5 COMPLETE) + `docs/plans/0076-*.md` (T2 CLOSED) |
