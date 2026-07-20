@@ -257,7 +257,11 @@
     gNode.appendChild(dot);
     // label plate
     const fo = document.createElementNS(NS, 'foreignObject');
-    fo.setAttribute('x', p.x + 18); fo.setAttribute('y', p.y - 26); fo.setAttribute('width', 240); fo.setAttribute('height', 56);
+    // Label plate sits BELOW the node: the asset satellites always fan into the upper
+    // hemisphere (angles centered on -90°, see the arc above), so the space beneath the
+    // site is the only region guaranteed clear of them — placing the plate up-and-right
+    // let the rightmost satellite (~ -30°) collide with the label (map-legibility fix).
+    fo.setAttribute('x', p.x + 18); fo.setAttribute('y', p.y + 14); fo.setAttribute('width', 240); fo.setAttribute('height', 56);
     const plate = h('div', { class: 'site-plate', xmlns: 'http://www.w3.org/1999/xhtml' }, [
       h('div', { class: 'sp-name' }, label),
       h('div', { class: 'sp-meta mono' }, [
