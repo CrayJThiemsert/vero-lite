@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-20T16:32:23+07:00
+last_updated: 2026-07-20T20:48:32+07:00
 session: 155
-current_batch: "s153-155 — #822 demo-beat runbook §3c (config-pin fail-closed as Beat 06); s154 Cerebras-KB strategy read (no commits, 4 verdicts confirmed vs the real article); s155 #823 fix(ui) operator confidence badge REMOVED from both cards (story scene-2 + View-B live rec.confidence)."
+current_batch: "s153-155 — #822 demo-beat runbook §3c; s154 Cerebras-KB strategy read (0 commits); #823 operator confidence badge REMOVED; late s155 = the PLAN-0084 arc: filed #825 → all 5 SDs Cray-resolved #826 → BUILT end-to-end #827 (map↔monitor run linkage + opt-in seed rotation + the SD-F Fastenal-adapter swap)."
 current_actor: code
-blocked_on: "Nothing blocking. main=4edfa3f; 0 open PRs. loop-dispatcher DISABLED; MS-S1 idle/COLD (zero calls across s153/154/155)."
-next_action: "Rehearse the demo on 8101 (staged run fresh, dated today); then Cray's call among: predict-beat minimal increment (advisory-only free, routing-affecting reopens ADR-0019), read-path governance on /query (15 ungoverned endpoints; real cost = a Cray design call on read events entering the globally-serialized O(n) audit chain), the PLAN-0076 T1 gate-seam PLAN (trigger MET since s151), and the AT-2 stale-N doc-drift cleanup."
-head_commit: 4edfa3f
-recent_commits: [4edfa3f, ffb251b, f09cc99, d8057fb, b1d7f5a, b45f5c4, 90a2afb, 0248ec1, 1b0184e, 0e0d12f]
+blocked_on: "Nothing blocking. main=25b31e2; 0 open PRs. loop-dispatcher DISABLED; MS-S1 idle/COLD (zero calls all day)."
+next_action: "⭐ rehearse the demo on 8101 (the staged runs from the build are live: run-s155-linkage + run-s155-rotated + run-s155-conv + the event-fired run; reseed if stale — runs date 2026-07-20); then PLAN-0084 closeout (tick ACs + archive) after the rehearsal passes; then Cray's pick among predict-beat (advisory free / routing reopens ADR-0019), read-path governance on /query, PLAN-0076 T1 gate-seam, AT-2 stale-N doc-drift cleanup (Active TODO)."
+head_commit: 25b31e2
+recent_commits: [25b31e2, 64119b9, 45fcba1, e5f3ede, f6bb12c, edf922d, 628bfa1, 1b2c05c, 8439e6d, affc7d0]
 ---
 
 # vero-lite — Project Status
@@ -18,10 +18,13 @@ recent_commits: [4edfa3f, ffb251b, f09cc99, d8057fb, b1d7f5a, b45f5c4, 90a2afb, 
 
 ## Current Focus
 
-> **Sessions 153 + 154 + 155, 2026-07-20 (head_commit `a53c6ed` → `4edfa3f`) —
+> **Sessions 153 + 154 + 155, 2026-07-20 (head_commit `a53c6ed` → `25b31e2`) —
 > the demo-beat runbook staged (#822), a strategy read that CUT the tempting
-> part (s154, zero commits), and the operator confidence badge REMOVED from
-> both cards that carried it (#823).** **(s153) Two docs PRs, no code.** **#821
+> part (s154, zero commits), the operator confidence badge REMOVED from
+> both cards that carried it (#823), and the late-s155 PLAN-0084 arc: filed
+> (#825) → all 5 SDs Cray-resolved (#826) → BUILT end-to-end (#827) —
+> map↔monitor run linkage + opt-in seed rotation + the SD-F Fastenal-adapter
+> swap.** **(s153) Two docs PRs, no code.** **#821
 > (`0248ec1` → merge `b45f5c4`, `docs(status)`)** was a housekeeping prune:
 > the "Standard partner-intake form" Active TODO CLOSED (the deliverable
 > exists and is canonical at `docs/conventions/partner-intake-form.md:8`; its
@@ -108,9 +111,80 @@ recent_commits: [4edfa3f, ffb251b, f09cc99, d8057fb, b1d7f5a, b45f5c4, 90a2afb, 
 > to `fallback()`), so a rehearsal can pass entirely against fake data — **the
 > only tell is the connection strip.** Post-merge: main=`4edfa3f`; 0 open PRs;
 > loop-dispatcher DISABLED; MS-S1 idle/COLD (zero calls across all three
-> sessions). Commits: `0248ec1` (#821) → `b45f5c4` (#821 merge) → `90a2afb`
-> (#822) → `b1d7f5a` → `d8057fb` (#822 merge) → `f09cc99` → `ffb251b` (#823) →
-> `4edfa3f` (HEAD, #823 merge).
+> sessions). Morning commits: `0248ec1` (#821) → `b45f5c4` (#821 merge) →
+> `90a2afb` (#822) → `b1d7f5a` → `d8057fb` (#822 merge) → `f09cc99` →
+> `ffb251b` (#823) → `4edfa3f` (#823 merge).
+> **(s155 late) The PLAN-0084 arc — filed, SD-ratified, and BUILT end-to-end
+> in one afternoon/evening (#825 → #826 → #827).** **#825 (`1b2c05c` → merge
+> `628bfa1`, `docs(plans)`) filed PLAN-0084** (`Status: Draft`): map↔monitor
+> run linkage + opt-in seed rotation — the demo-coherence ask Cray made
+> mid-rehearsal; scope Cray-ratified via AskUserQuestion ("Flow + หมุน asset
+> เดิม"; server-side object injection REJECTED) + PLAN-first routing. Authored
+> by plan-drafter from Code's grounded dispatch; the drafter corrected Code's
+> own fact-pack TWICE (RunSummaryView, not "RunListItem"; the event path's
+> engine-side `trigger_context` stamp pinning CNC-Line-07, which matches no
+> map pk). **#826 (`edf922d` + `f6bb12c` → merge `e5f3ede`, `docs(plans)`)
+> resolved ALL FIVE SDs** (Cray, AskUserQuestion): SD-A typed subject on
+> list+detail; **SD-B ALL FOUR non-hero assets rotatable (wider than rec** —
+> CNC-009 cheap because `link_asset_uses_part` LNK-AUP-003 already binds it
+> to the hero part); SD-C a distinct "governed run in flight" marker,
+> waiting_human+running; **SD-D execute option (d) IN-PLAN (wider than rec)**
+> — both demo entry points light the map, the `_EVENT_ASSET_ID` re-pin
+> superseding PLAN-0057 OQ-1; SD-E newest-first cap 5. Step 0 SATISFIED. Two
+> commits because the L1 same-file loop-detect interrupted the drafter's
+> batch (3 restating edits landed in commit 2 after the counter reset — fully
+> disclosed in the PR). **#827 (`45fcba1` + `64119b9` → merge `25b31e2`,
+> `feat(demo)`) BUILT PLAN-0084 end-to-end + SD-F.** The build: seed stamps
+> `trigger_context["subject"]` from the computed intake seed; `RunSubjectRef`
+> + optional `subject` projected fail-soft on RunSummaryView AND
+> RunDetailView; the map ingests `/runs` via a Monitor-style direct fetch
+> (never the mock-fallback O.API path); assets with in-flight runs get the
+> dashed amber ring; the node panel gains "Governed runs · in flight" with
+> per-run "Open in Monitor →" buttons; `ViewMonitor.focusRun` + the
+> `oct:goto {view:'H', run}` wire; Step 4b re-pin + the entity_ids→subject
+> projection through a lazily-cached pk→object_type index (data-driven, no id
+> map); rotation via `--asset`/`--rotate` with an ASSET-KEYED failure pick
+> (row-order dependency killed); fixtures = one failure event per rotatable
+> asset + 3 quotes each for three previously quote-less parts + the CNC-009
+> PO (฿78,500 → the 50k–500k band); runbook §3d (rotation flags, the
+> live-verified tier→approver table, the beat-1 cue now naming AST-CNC-014,
+> the "strip must read LIVE" rule). **SD-F — the headline finding,
+> Cray-ratified mid-build: the PLAN's grounding was WRONG (`was an error`,
+> recorded in the PLAN)** — the map never rendered the hero CSV: the
+> registered procurement adapter was the scaffold-era synthetic set
+> (`equip-*`, 4 anonymous assets) while every hero surface narrates Fastenal
+> (`AST-*`, 5 named assets) — the demo was already split-brain and the
+> subject could light nothing. Cray: **"Fastenal เป็น adapter หลักของ
+> procurement ทั้งหมด"** — `register_procurement_adapter` (discovery) now
+> registers the `FastenalCsvAdapter`; the swap required the `plant.csv` geo
+> anchor (without it the map has no mappable objects), `stock_qty`/
+> `reorder_point` on `part.csv` (the calm-path chain runs over the registered
+> adapter; synthetic semantics preserved EXACTLY incl. the PLAN-0066 AC-6
+> >100 flip case as PRT-BLT-110 150/160), and four test repins (the
+> PLAN-0083 canonical-coverage tripwire caught the new Part keys — working
+> as designed; calm-path 3→5 rows; scheduled-demo verdicts; shadow-parity
+> expected side JSON-sanitized for Decimal). Fastenal serves `[]` for
+> unserved types + streams no events → GET /recommendations stays empty,
+> matching the observed pre-swap demo; the synthetic adapter stays in-tree
+> for direct-module harnesses. **Live verification (port 8101, strip LIVE,
+> zero console errors):** AC-4 full click-through (map node → panel → button
+> → View H with `run-row-run-s155-linkage` SELECTED); AC-9 (POST
+> /demo/hero/event → the event run projects subject {Equipment, AST-CNC-014}
+> and lights the map; the panel listed event + seeded runs newest-first);
+> AC-5 (/runs forced 500 → map renders fully, zero markers, no mock
+> fallback); AC-7 live (ROBOT-21 ฿99k→appr-pm; CONV-05 ฿7.2k→appr-buyer — a
+> genuinely different tier; unknown asset lists the 5 rotatable); AC-2
+> legacy fail-soft proven with the REAL morning run (subject: null). AC-1:
+> full offline suite **2922 passed / 7 skipped**, re-run and CONFIRMED on the
+> merge commit `25b31e2` itself (CI is PR-only, so the merge commit is otherwise
+> never tested) — baseline 2915 + 7 new tests; mypy strict 142 files; ruff clean.
+> **PLAN-0084 status: Draft, all 6 SDs resolved, ACs deliberately UNTICKED —
+> closeout (tick + archive) is a named next step after Cray's rehearsal
+> passes on the new build.** Post-merge: main=`25b31e2`; 0 open PRs;
+> loop-dispatcher DISABLED; MS-S1 idle/COLD (zero calls all day). Late-s155
+> commits: `1b2c05c` (#825) → `628bfa1` (#825 merge) → `edf922d` + `f6bb12c`
+> (#826) → `e5f3ede` (#826 merge) → `45fcba1` + `64119b9` (#827) →
+> `25b31e2` (HEAD, #827 merge).
 
 > **Session 152, 2026-07-19 (head_commit `9422c40` → `a53c6ed`) — PLAN-0083
 > (fix option c1) BUILT + verified + archived: the procurement ontology↔CSV
@@ -240,23 +314,20 @@ recent_commits: [4edfa3f, ffb251b, f09cc99, d8057fb, b1d7f5a, b45f5c4, 90a2afb, 
 > `92f0019` (#809) → `c94d089` (#810) → `e059303` (#811) → `043da3c` (HEAD,
 > #812 merge).
 
-> _Rotation note (session-155 reconcile, 2026-07-20, `docs(status):`):
-> **STATUS was THREE sessions behind** — #821 bumped only `last_updated` (a
-> pure TODO prune, correctly excluded per Q4 semantics), so s152 was the last
-> real reconcile. Frontmatter → `head_commit 4edfa3f` (the #823 `fix(ui)` merge,
-> the newest SUBSTANTIVE commit — Q4 recipe `git log -1 --invert-grep
-> --grep='^docs(status):'`). ONE COMBINED **Sessions 153 + 154 + 155** block was
-> PREPENDED (house style, cf. "Sessions 147 + 148" / "149 + 150"): #822's demo-
-> beat runbook §3c had never been reflected in STATUS, s154 shipped zero commits
-> (Cerebras-KB strategy read), s155 shipped #823. So the OLDEST — the **Sessions
-> 147 + 148** block (PLAN-0081 opened + reshaped #797/#798; PLAN-0080 closed out
-> + archived #799) — rotated OUT (4-session window, now s153/154/155 + s152 +
-> s151 + s149/150) to the rotation-archive BASE
-> `docs/status-archive/2026-h1-status.md`. Recent Decisions gained ONE row
-> (s153-155 batch) and so rotated its ONE OLDEST — the **s143** PLAN-0078 Phase-2
-> PR-5 row (#784) — to the same base (10-row window). Prior rotation notes
-> (through the session-152 reconcile) are consolidated here (R4). Per the
-> STATUS.md Rotation Policy (R1/R2/R4)._
+> _Rotation note (session-155 EVENING reconcile, 2026-07-20, `docs(status):`):
+> the SAME session 155 continued past the morning reconcile and shipped the
+> PLAN-0084 arc (#825 → #826 → #827), so the existing **Sessions 153 + 154 +
+> 155** block was EXTENDED IN PLACE (head_commit range now `a53c6ed` →
+> `25b31e2`, the #827 `feat(demo)` merge, the newest SUBSTANTIVE commit — Q4
+> recipe) — NO new CF block, NO CF rotation (4-session window unchanged:
+> s153/154/155 + s152 + s151 + s149/150). Recent Decisions gained ONE row (the
+> late-s155 PLAN-0084 arc) and so rotated its ONE OLDEST — the **s144**
+> PLAN-0078 closeout row (#786) — to the rotation-archive BASE
+> `docs/status-archive/2026-h1-status.md`. [Morning reconcile, consolidated:
+> the combined s153/154/155 block's PREPEND rotated OUT the **Sessions 147 +
+> 148** CF block and the **s143** PLAN-0078 Phase-2 PR-5 row (#784), both to
+> the same base.] Prior rotation notes (through the s155 morning reconcile)
+> are consolidated here (R4). Per the STATUS.md Rotation Policy (R1/R2/R4)._
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R7)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split.]_
 
@@ -279,6 +350,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-20 | **s155 (late) — PLAN-0084 shipped end-to-end in one arc (#825 `docs(plans)` filed Draft → #826 `docs(plans)` all 5 SDs Cray-resolved [SD-B all-four-rotatable + SD-D both-entry-points, both WIDER than rec] → #827 `feat(demo)` BUILT): map↔monitor run linkage (runs stamp `trigger_context["subject"]`; fail-soft `subject` on RunSummaryView/RunDetailView; the map ingests `/runs` direct-fetch [never the mock-fallback O.API path], dashed amber in-flight ring, node-panel "Governed runs · in flight" + "Open in Monitor →" via `ViewMonitor.focusRun`/`oct:goto`) + opt-in seed rotation (`--asset`/`--rotate`, asset-keyed failure pick, all 4 non-hero assets).** **Headline = SD-F, Cray-ratified mid-build — the PLAN's grounding `was an error`: the registered procurement adapter was scaffold-era synthetic (`equip-*`) while every hero surface narrates Fastenal (`AST-*`) — split-brain demo; `register_procurement_adapter` now registers the `FastenalCsvAdapter`** (plant.csv geo anchor + part.csv stock fields; synthetic semantics preserved EXACTLY incl. the PLAN-0066 AC-6 flip case; 4 test repins — the PLAN-0083 canonical-coverage tripwire caught the new keys, WORKING AS DESIGNED). Live 8101 verification: strip LIVE, zero console errors, AC-4 full click-through + AC-9 event-run lights the map + AC-5 no-fallback + AC-7 tier rotation + AC-2 legacy fail-soft. Suite **2922/7** (2915 + 7 new); mypy strict 142 files; ruff clean. PLAN-0084 stays Draft, ACs deliberately UNTICKED — closeout after Cray's rehearsal passes. Full narrative: the Sessions 153+154+155 CF block above | `25b31e2` (HEAD, #827 merge) / `45fcba1` + `64119b9` (build) / `e5f3ede` (#826 merge) / `628bfa1` (#825 merge) / `docs/plans/0084-map-monitor-run-linkage-and-seed-rotation.md` (Draft, 6/6 SDs resolved) + `verticals/procurement/data_adapter/__init__.py:99` + `docs/runbooks/run-oct-demo.md` §3d |
 | 2026-07-20 | **s153-155 — #822 `docs(runbook)` staged the config-pin fail-closed refusal as a deliberate demo beat (run-oct-demo.md §3c, Beat 06, PLAN-0047 Step 6); s154 ZERO commits (Cerebras-KB strategy read: predict+warn = existing Shape-1 IF deterministic, artifact-KB = D3 Shape-2 pilot-gated, org-wide ingestion CUT, reframe = "governed retrieval over the decision record"); #823 `fix(ui)` REMOVED the operator confidence badge from BOTH cards — story scene-2 (hardcoded 86%) and View-B `decisionCard()` (LIVE `rec.confidence`, the load-bearing one) — executing the ratified s74 trust shape.** Trace/fault-mode/DAG confidence KEPT by design. Static assets only; suite **2915/7** re-run on the merge commit `4edfa3f`; live 8101 check `LIVE` with a `confidence: 0.86` fixture. **4 claim-vs-code corrections:** naive-RAG comparison ALREADY run (PLAN-0027 — lean RAG TIES governed on accuracy at 3-15x lower latency) · "actions router fully governed" is overstated · the determinism line is ADR-0019:50-57 + ADR-010 IN-3, NOT ADR-0031 · a 4th AT-2 signature is UNBUILDABLE (no vertical has the substrate). Full narrative: the Sessions 153+154+155 CF block above | `4edfa3f` (HEAD, #823 merge) / `ffb251b` + `f09cc99` (badge removal) / `d8057fb` (#822 merge) / `b45f5c4` (#821 merge) / `docs/runbooks/run-oct-demo.md` §3c + `services/api/static/assets/view-anomaly.js` + `view-story.js` |
 | 2026-07-19 | **s152 — PLAN-0083 (fix c1) BUILT + verified + archived (#818 `feat`, #819 `docs(plans)`): the procurement ontology↔CSV column drift CLOSED at the `FastenalCsvAdapter` seam — `_COLUMN_RENAMES` on the `fetch_objects` path maps raw Fastenal CSV → canonical ontology names (type key `Asset`→`Equipment` [SD-1] + 5 columns [`part_id`→`part_no`, `price_thb`→`price`, `asset_id`→`equipment_id`, `site`→`site_id`, `lead_time_days`→`lead_time`] + `PurchaseOrder.asset_id`→`equipment_id` [SD-4a]; ฿-columns DEFERRED raw [SD-4b]), so every consumer sees ONE canonical vocabulary.** Rides under ADR-016's LOCKED "mapping absorbs source diversity" boundary — zero-core-edit (no ADR / ontology YAML / regen / `services/` engine edit; ADR-0023), diff = adapter + vertical + tests only. A `test_fastenal_adapter_canonical_coverage.py` tripwire pins per-type set-equality + required-props + rename-target validity + the SD-4b ฿-defer, non-vacuous EMPIRICALLY (dropped a rename → RED → reverted); R2 added the under-scoped `governance_audit.py:177/179`. Suite **2915/7** (2896 + 19); mypy strict + ruff clean; CI gate PASS on #818. Full narrative: the Session-152 CF block above | `a53c6ed` (#818 merge) / `a211651` (build) / `5140ee3` (HEAD, #819 merge) / `docs/plans/done/0083-*.md` (archived) + `tests/verticals/procurement/test_fastenal_adapter_canonical_coverage.py` |
 | 2026-07-19 | **s151 — PLAN-0081 BUILT end to end (#814, `feat(building_materials)`): the `building_materials` governed-credit HERO — the 3rd AT-2 signature (`building_materials.governed_credit_release`), Cray-commissioned this session. An exposure breach above the account's own `credit_limit_thb` routes the full governed AT-2 spine (per-entity band → `rule_gate` KYC/overdue-AR/blacklist → `doa_tier` approval + SoD); the ฿550,000 breach routes mid-ladder.** The 3rd signature REUSES the money `doa_tier` ladder UNCHANGED (no new gate kind / authority quantity) — only `ComplianceCriterion += {kyc, overdue_ar, blacklist}` grows; engine diff bounded to that additive `spec.py` block (the `Person` promotion was PLAN-0082's, already on main). **ADR-0025 D7 re-eval PERFORMED at N=3** (Cray-ratified: generator stays deferred, marker re-arms N=4). Closeout: PLAN-0079 tracking stub RETIRED (Step T3) + guard test DELETED; PLAN-0076 T1 gate-seam trigger recorded MET (seam PLAN un-opened); PLAN-0081 archived at 15/15 ACs. Suite **2896/7** re-run on the merge commit `9422c40`; mypy strict + ruff clean. Full narrative: the Session-151 CF block above | `9422c40` (HEAD, #814 merge) / `a46bef8` (build) / `docs/plans/done/0081-*.md` (archived, 15/15) + `tests/verticals/building_materials/test_governed_credit_hero.py` |
@@ -288,7 +360,6 @@ below, and git history.
 | 2026-07-18 | **s147 — PLAN-0081 arc (#797 Draft + #798 SD-E=(b-ii) fold / SD-J=SPLIT ratified, both `docs(plans)`): #797 filed the `building_materials` governed-credit HERO BUILD plan as `Status: Draft` (Cray COMMISSIONED via PLAN-0079 T1 — SD-1=trip AT-2 N=3 in-PLAN, SD-2=ride `measured_value`).** #798 folded Cray's **SD-E=(b-ii)** (promote `Person` to a NEW shared/core ADR-0008 `object_type` — the shipped codegen is strictly per-vertical, so b-ii INVENTS the mechanism) + ratified **SD-J=SPLIT** (b-ii → its OWN new PLAN + a preceding ADR-0008 grammar amendment as gate; PLAN-0081 Step 9 shrinks to the migration). New AC-12/13/14/15 + SD-F…SD-J + expanded OQ-1; **PLAN-0081 stays Draft — no code shipped.** Full narrative: the Sessions-147+148 CF block above | `fa4f6c6` (#798 merge) / `46a6ec2` (SD-E fold) / `e03e56f` (#797 Draft) / `docs/plans/0081-*.md` (Draft) |
 | 2026-07-17 | **s146 — PLAN-0080 shipped end to end (#794 `feat(ui)` + #795 `docs(conventions)`): the reasoning-trace badge's substring sniff (`kind.includes('rule')`, mis-attributing 14/16 engine kinds) → ONE shared kind→{label,cls,actor} registry (`trace-kinds.js`, 23 kinds) read by BOTH the browser and an AST set-equality tripwire; colour=mechanism (theme.css UNCHANGED) + glyph=actor, unmapped kinds degrade visibly. + canonical `docs/conventions/ui.md` (11 anchored items).** **F-4:** a live probe refuted the offline "engine-only emitter" claim — `verticals/` seed executors emit `query` unmapped 9/9 → kind #23, scan root widened. Suite **2860/7** on BOTH merge commits. Full narrative: the Session-146 CF block above | `8737b0a` (#795 merge) / `6a2a42d` (#794) / `services/api/static/assets/trace-kinds.js` + `tests/api/test_trace_kind_labels.py` + `docs/conventions/ui.md` |
 | 2026-07-17 | **s144 — the R4 arc CLOSED end to end (#789 guard → #791 + #792 splits): a ratified rule that had NO mechanism now has one, and every archive sits under the ~192 KB TRIGGER — not merely the cap — for the first time.** R4's own responsibility-matrix guard column read `—` where R1/R7 read `fail`; the rotation archive had rotted to **592,577 B = 2.26x the cap**. #789 shipped `tools/check_archive_size.py` (warn >192 KB, **fail >256 KB**, `files:`-scoped hook) GREEN **by design**; the BINDING live assertion (`test_live_archives_are_within_cap`) could only land in #791 **after** the split — a guard whose live assertion is RED cannot merge into a protected main. **Five-file c/d/e/f chain, not four** (a 4-way split lands one file at ~97% of the trigger). #792 split current-focus AND **recorded Cray's naming rule as CANON** — letters ascend with time, the base holds the recent window; **grep the archive dir, never cite a continuation by name**. Proofs DIFFER and say so: #791 = exact list equality (27 sections), #792 = multiset equality (30 blocks, deliberately reordered across files); both re-run AFTER pre-commit → *"equal except N trailing newlines, all stripped-equal"*, **NOT byte-identical**. Suite **2855/7** re-run on the merge commit itself. _[Concurrent session 145: #788 PLAN-0080 `Status: Draft` — SD-1/SD-2 UNRATIFIED, must NOT be executed, and `docs/conventions/ui.md` does NOT exist · #790 frontmatter-only bump, merged on Cray's instruction.]_ Full narrative: the Sessions-144+145 CF block above | `ce0f0a1` (HEAD, #792 merge) / `f00e4c7` (#791) / `b369fa6` (#789) / `694e8d7` (#788) / `tools/check_archive_size.py` + `.pre-commit-config.yaml` + `docs/runbooks/memory-architecture.md` (R4 matrix row `—` → `fail >256 KB` + the naming rule) + `docs/status-archive/**` (the c/d/e/f + b/c-cf chains) |
-| 2026-07-17 | **s144 — PLAN-0078 COMPLETE at 12/12 ACs → `docs/plans/done/0078-transform-seed-migration.md` (#786, docs-only): a FAR smaller closeout than the s143 handoff predicted — 4 of the 6 open ACs (AC-7/8/9/12) were ALREADY SATISFIED on disk (unticked bookkeeping; each tick now cites its test by file:line, and AC-9 was re-verified INDEPENDENTLY rather than inherited from PR-4's R2 claim).** **AC-6 was the ONE genuine hole — and NOT the hole the PLAN described:** the predicted "Phase 2 shrinks the non-participant set" was FALSE on disk (PR-3/PR-4 only touched procedures already carrying a Phase-1 `enrich`) → classified **`superseded by new info`, NOT `was an error`** (CLAUDE.md §6) and pinned as DATA; the REAL hole was energy + aquaculture carrying no step-level `transform`-absence assertion anywhere. Both new tests proven non-vacuous **EMPIRICALLY** (probes reverted). **OQ-3 stays open; PLAN-0076 does NOT archive; F-PIN NOT closed** (L-4). Suite **2845/7** re-run on the merge commit itself. Full narrative: the Session-144 CF block above | `d8db032` (HEAD, #786 merge) / `49ff275` (sweep + ticks + `git mv`) / `docs/plans/done/0078-transform-seed-migration.md` (COMPLETE, archived) + `tests/**` (`test_derivation_pin.py:326` prediction pin + the energy/aquaculture transform census) |
 
 ## In-Flight Discussions
 
