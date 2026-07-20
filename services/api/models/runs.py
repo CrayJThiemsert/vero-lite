@@ -101,6 +101,19 @@ class StepDetailView(BaseModel):
     )
 
 
+class RunSubjectRef(BaseModel):
+    """The ontology object a run concerns — the map↔monitor linkage ref (PLAN-0084).
+
+    Projected from the persisted ``trigger_context``: the seed path stamps it
+    explicitly (``trigger_context["subject"]``); an event-fired run resolves it
+    from the engine-stamped ``entity_ids`` when exactly one id matches a known
+    ontology object. Absent (``None``) for legacy / unstamped / unresolvable runs.
+    """
+
+    object_type: str = Field(description="Ontology object type name (e.g. Equipment)")
+    primary_key: str = Field(description="The object's primary-key value")
+
+
 class RunSummaryView(BaseModel):
     """One run's summary row for the monitor list (read-only projection)."""
 
@@ -125,6 +138,11 @@ class RunSummaryView(BaseModel):
         description="Declared step count from the current spec, if the procedure still ships",
     )
     steps_waiting: int = Field(description="Recorded steps currently at waiting_human")
+    subject: RunSubjectRef | None = Field(
+        default=None,
+        description="The ontology object this run concerns (PLAN-0084 map↔monitor "
+        "linkage) — None for legacy / unstamped / unresolvable runs",
+    )
 
 
 class RunsListResponse(BaseModel):
@@ -157,6 +175,10 @@ class RunDetailView(BaseModel):
     updated_at: datetime = Field(description="Last status transition")
     suspended_step: str | None = Field(
         default=None, description="The step awaiting a human when status is waiting_human"
+    )
+    subject: RunSubjectRef | None = Field(
+        default=None,
+        description="The ontology object this run concerns (see RunSummaryView.subject)",
     )
     proposals: list[ProposalView] = Field(
         default_factory=list,

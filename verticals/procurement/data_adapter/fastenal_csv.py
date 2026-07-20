@@ -78,10 +78,21 @@ def _roles(value: str) -> list[str]:
 
 # object_type -> (csv filename, {column: coercion}); unlisted columns stay ``str``.
 _OBJECT_FILES: dict[str, tuple[str, dict[str, _Coerce]]] = {
+    # Plant: the geo-bearing map anchor (PLAN-0084 SD-F — this adapter is now the
+    # PRIMARY procurement adapter, so it must serve the map's geo type; its plant_id
+    # matches the asset/event rows' site refs, canonical `site_id` post-rename).
+    "Plant": ("plant.csv", {"lat": _float, "lng": _float}),
     "Equipment": ("asset.csv", {"downtime_cost_per_hour_thb": _dec}),
     "Part": (
         "part.csv",
-        {"on_contract_unit_price_thb": _dec, "emergency_expedite_unit_price_thb": _dec},
+        # stock_qty/reorder_point: the calm-path low-stock fields (PLAN-0084 SD-F —
+        # the declared read_stock -> judge_stock chain now runs over THIS adapter).
+        {
+            "on_contract_unit_price_thb": _dec,
+            "emergency_expedite_unit_price_thb": _dec,
+            "stock_qty": _int,
+            "reorder_point": _int,
+        },
     ),
     "Supplier": ("supplier.csv", {"on_contract": _bool}),
     "PurchaseOrder": (

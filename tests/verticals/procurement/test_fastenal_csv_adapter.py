@@ -51,7 +51,8 @@ async def test_health_check_reports_ok() -> None:
     assert result["status"] == "ok"
     assert result["vertical"] == "procurement"
     assert result["csv_backed"] is True
-    assert result["object_counts"]["PurchaseOrder"] == 4
+    # 5 since PLAN-0084 Step 5: the 4 originals + the CNC-009 rotation PO (PO-2026-0413)
+    assert result["object_counts"]["PurchaseOrder"] == 5
 
 
 async def test_fetch_objects_serves_the_five_types_plus_person() -> None:

@@ -44,11 +44,13 @@ from services.api.models.runs import (
     RunProcedureRequest,
     RunProcedureResponse,
     RunsListResponse,
+    RunSubjectRef,
     RunSummaryView,
     StepDetailView,
     StepResultView,
 )
 from services.db.session import get_session
+from services.engine.ontology_meta import load_ontology_meta
 from services.engine.procedures.action_step import (
     PrincipalSoDError,
     TierAuthorityError,
@@ -149,6 +151,91 @@ def _proposals(suspended: StepResult | None) -> list[ProposalView]:
     return views
 
 
+def _subject_of(trigger_context: dict[str, Any] | None) -> RunSubjectRef | None:
+    """Fail-soft projection of the PLAN-0084 map↔monitor ``subject`` stamp.
+
+    Missing key / non-dict / missing or non-str / empty members all project
+    ``None`` (legacy runs in demo DBs must render, never error — AC-2).
+    """
+    raw = (trigger_context or {}).get("subject")
+    if not isinstance(raw, dict):
+        return None
+    object_type = raw.get("object_type")
+    primary_key = raw.get("primary_key")
+    if not isinstance(object_type, str) or not object_type:
+        return None
+    if not isinstance(primary_key, str) or not primary_key:
+        return None
+    return RunSubjectRef(object_type=object_type, primary_key=primary_key)
+
+
+# vertical -> {pk value -> object_type} over the adapter's objects. Lazily built ONCE
+# per process per vertical: adapter objects are per-process CSV/in-memory state loaded
+# at boot (the same source GET /objects serves — actions.py list_objects), so the index
+# is static and O(1) per run row afterwards. PLAN-0084 Step 4b (SD-D (d)).
+_SUBJECT_PK_INDEX: dict[str, dict[str, str]] = {}
+
+
+async def _subject_pk_index(vertical: str) -> dict[str, str]:
+    """pk→object_type over the active vertical's ontology objects — DATA-DRIVEN
+    (``/meta`` types + the adapter's rows; never a hardcoded id map, ui.md).
+
+    Fail-soft: any load error caches an empty index (event runs then project
+    ``subject=None``, never error). A pk seen under TWO types is dropped —
+    resolution must be exact.
+    """
+    cached = _SUBJECT_PK_INDEX.get(vertical)
+    if cached is not None:
+        return cached
+    index: dict[str, str] = {}
+    try:
+        meta = load_ontology_meta(vertical)
+        adapter = registry.get_adapter(vertical)
+        ambiguous: set[str] = set()
+        for ot in meta.object_types:
+            if not ot.primary_key:
+                continue
+            for obj in await adapter.fetch_objects(ot.name):
+                pk = obj.get(ot.primary_key)
+                if not isinstance(pk, str) or not pk or pk in ambiguous:
+                    continue
+                if pk in index and index[pk] != ot.name:
+                    ambiguous.add(pk)
+                    del index[pk]
+                    continue
+                index[pk] = ot.name
+    except Exception:
+        index = {}
+    _SUBJECT_PK_INDEX[vertical] = index
+    return index
+
+
+async def _resolve_subject(trigger_context: dict[str, Any] | None) -> RunSubjectRef | None:
+    """The run's subject: the explicit stamp, else the event-path resolve (PLAN-0084 4b).
+
+    An event-fired run carries engine-stamped ``entity_ids`` and no ``subject`` key
+    (the bridge builder is engine-owned — untouched). When exactly ONE id resolves
+    to a known ontology object, project that; zero or >1 → ``None`` (a legacy
+    pre-re-pin ``"CNC-Line-07"`` resolves to nothing and stays ``None``, never 500s).
+    """
+    stamped = _subject_of(trigger_context)
+    if stamped is not None:
+        return stamped
+    tc = trigger_context or {}
+    if tc.get("trigger") != "event":
+        return None
+    entity_ids = tc.get("entity_ids")
+    if not isinstance(entity_ids, list):
+        return None
+    index = await _subject_pk_index(settings.oct_vertical)
+    hits = [
+        RunSubjectRef(object_type=index[eid], primary_key=eid)
+        for eid in entity_ids
+        if isinstance(eid, str) and eid in index
+    ]
+    return hits[0] if len(hits) == 1 else None
+
+
 def _trigger_of(trigger_context: dict[str, Any] | None) -> str:
     """The trigger discriminator recorded on the run — ``manual`` when unstamped
     (forward-compat: the S1 scheduler will stamp ``schedule``)."""
@@ -235,6 +322,7 @@ async def list_runs(
             steps_recorded=recorded.get(r.run_id, 0),
             steps_total=declared.get(r.procedure_id),
             steps_waiting=waiting.get(r.run_id, 0),
+            subject=await _resolve_subject(r.trigger_context),
         )
         for r in runs
     ]
@@ -273,6 +361,7 @@ async def get_run(
         started_at=run.started_at,
         updated_at=run.updated_at,
         suspended_step=suspended.step_id if suspended is not None else None,
+        subject=await _resolve_subject(run.trigger_context),
         proposals=_proposals(suspended),
         steps=_detail_step_views(loaded.step_results),
     )

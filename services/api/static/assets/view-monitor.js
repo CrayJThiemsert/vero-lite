@@ -664,6 +664,17 @@
     if (state.selected) startDetailPoll();
   }
 
+  /* PLAN-0084 Step 4 — pre-mount focus (the ViewAnomaly.setFocus pattern, app.js):
+     set the selection BEFORE go('H') mounts; mount's own
+     `if (state.selected) await loadDetail(true)` then renders that run selected. */
+  function focusRun(runId) {
+    if (!runId) return;
+    state.selected = String(runId);
+    state.detailData = null;
+    state.decisions = {};
+    state.operateMsg = null;
+  }
+
   window.OCT = window.OCT || {};
-  window.OCT.ViewMonitor = { mount };
+  window.OCT.ViewMonitor = { mount, focusRun };
 })();
