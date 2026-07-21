@@ -1,13 +1,15 @@
 # PLAN-0087: The gate-seam criterion-vocabulary extraction — a vertical declares its own `rule_gate` vocabulary; the engine stops owning it
 
-**Status:** Draft — **SD-1 … SD-3 RATIFIED by Cray (typed, 2026-07-21, session 158),
-all three as recommended: SD-1 = (a) vocabulary-only · SD-2 = (a) no preceding ADR ·
-SD-3 = (a) `ExceptionPolicy` stays closed.** Step 0 is discharged; implementation is
-unblocked from Step 1. House discipline: this PLAN stays `Draft` until Complete (an
-`Accepted`-status PLAN is G1-gated for closeout).
+**Status:** **COMPLETE — all 8 ACs met; shipped as PR #840 (merge `c6eec65`), archived
+to `done/` in session 159 (2026-07-21).** SD-1 … SD-3 were RATIFIED by Cray (typed,
+2026-07-21, session 158), all three as recommended: SD-1 = (a) vocabulary-only ·
+SD-2 = (a) no preceding ADR · SD-3 = (a) `ExceptionPolicy` stays closed. House
+discipline observed: this PLAN went `Draft → Complete` and was **never** flipped to
+`Accepted` (an `Accepted`-status PLAN is G1-gated for its own closeout).
 **Owner:** Claude Code (executes + commits per ADR-009 D2) · Cray (SD ratification +
 PR merge)
 **Created:** 2026-07-21 (session 158)
+**Closed:** 2026-07-21 (session 159) — see "Closeout" below.
 **Related ADRs:** ADR-0031 (D3 row-3 gate-plugin seam — the frame; the moat tripwires
 3/4 immediately above D3 — the constraint; D4.1–D4.4 — the discipline), ADR-0025
 (D2 typed AT-2 content + the provisional-until-N≥2 caveat; D3 unrepresentable bypass —
@@ -402,7 +404,7 @@ is whether this design *needs* one.
 
 Each with a pre-committed pass/fail read (fixed here, before the build).
 
-- [ ] **AC-1 — the engine-edit-per-vertical pressure is discharged, proven by
+- [x] **AC-1 — the engine-edit-per-vertical pressure is discharged, proven by
   test.** A fixture vertical spec carrying a **novel** criterion id (one that
   appears nowhere in `services/`) loads through `load_procedures_file` and
   `evaluate_compliance` gates on it (passes when its signal is true, blocks when
@@ -413,7 +415,7 @@ Each with a pre-committed pass/fail read (fixed here, before the build).
   static-guard pattern; the executor may embed the grep as an in-test assertion).
   Fails if shipping the fixture vocabulary would have required touching anything
   under `services/`.
-- [ ] **AC-2 — the migration is behaviour-preserving: no shipped procedure's
+- [x] **AC-2 — the migration is behaviour-preserving: no shipped procedure's
   governance hash moves.** Pass/fail read: the existing pinned-hash suites
   (`tests/services/db/test_governance_pin.py`, `test_derivation_pin.py`, the
   per-vertical migration-parity tests) are green **with no pinned constant edited
@@ -423,14 +425,14 @@ Each with a pre-committed pass/fail read (fixed here, before the build).
   discipline, PLAN-0078/PLAN-0086 precedent). Parked runs keep resuming by
   construction (the pinned per-step bytes are unchanged; the declaration block is
   outside the pin surface, `governance_pin.py:19-22` precedent).
-- [ ] **AC-3 — the closed-by-type guarantees survive (ADR-0025 D3).** Pass/fail
+- [x] **AC-3 — the closed-by-type guarantees survive (ADR-0025 D3).** Pass/fail
   read: `RelaxableConstraint` (`spec.py:918-923`) is byte-unchanged;
   `EmergencyWaiverPolicy.relaxes` remains typed to it (mypy strict green proves no
   `str` path in); `blocks_po: Literal[True]` unchanged; the existing D3 test suite
   (red-team fixtures incl. `test_red_team_at2.py`) green after the mechanical
   constructor updates. Fails if any declared criterion id can be named in
   `relaxes`, or if any D3 validator is loosened.
-- [ ] **AC-4 — the tripwire-4 defense holds mechanically, not rhetorically.**
+- [x] **AC-4 — the tripwire-4 defense holds mechanically, not rhetorically.**
   Pass/fail read: three negative load tests are green — (i) a criterion id with
   whitespace/prose (e.g. `"vendor must have three quotes"`) is refused by pattern;
   (ii) an undeclared-but-well-formed criterion in a rule is refused by membership;
@@ -438,7 +440,7 @@ Each with a pre-committed pass/fail read (fixed here, before the build).
   Plus: the declaration is H-discipline — `compliance_criteria` is reachable from
   no draft type (the ADR-0025 D4 disjointness check extends/covers it). Fails if
   any free-string path onto the governed spine survives.
-- [ ] **AC-5 — the census pin's fate is argued, not drifted.** Pass/fail read: the
+- [x] **AC-5 — the census pin's fate is argued, not drifted.** Pass/fail read: the
   `_BASELINE_SIGNATURES` block (`test_at2_signature_retrigger.py:150-188`) is
   **byte-identical** in the diff (the 4-signature census and its enum-surface
   fingerprints are unchanged — same strings, same order); the reader change is
@@ -449,7 +451,7 @@ Each with a pre-committed pass/fail read (fixed here, before the build).
   PLAN-0087") without altering the N=2/N=3/N=4 history;
   `test_at2_generator_deferral_retrigger` stays armed for signature #5. Fails if
   the baseline moved or the reader changed what it fingerprints.
-- [ ] **AC-6 — the ownership guard stays load-bearing; no re-homing occurs, and
+- [x] **AC-6 — the ownership guard stays load-bearing; no re-homing occurs, and
   that is argued.** `test_at2_extraction_obligation_is_owned` requires re-homing
   only if PLAN-0076 archives. It does **not** archive in this PLAN under either
   SD-1 branch: F-PIN's remainder (§B item 1) is open by construction, and
@@ -459,7 +461,7 @@ Each with a pre-committed pass/fail read (fixed here, before the build).
   `docs/plans/`; its Step T1 carries the new PLAN-0087 annotation (Step 8) and
   **still contains the literal string `"N=4"`**. Fails if any guard is deleted,
   skipped, weakened, or if the annotation drops the N=4 record.
-- [ ] **AC-7 — ADR-0031 D4.4 is paid: the D3 row-3 row is updated on landing.**
+- [x] **AC-7 — ADR-0031 D4.4 is paid: the D3 row-3 row is updated on landing.**
   The row's current-state column records the criterion-vocabulary extraction as
   shipped ("criterion vocabulary: declared per vertical — see PLAN-0087"), notes
   that the instances pressed a narrower shape than the full pre-designed plugin
@@ -470,7 +472,7 @@ Each with a pre-committed pass/fail read (fixed here, before the build).
   following `docs(adr):` PR. Pass/fail read: the updated row is on `main` within
   the landing sequence; a stale row (extraction shipped, row silent) is a FAIL —
   *"a stale map is worse than no map."*
-- [ ] **AC-8 — the second pressure point is recorded, not built.** Pass/fail read:
+- [x] **AC-8 — the second pressure point is recorded, not built.** Pass/fail read:
   PLAN-0076 §A (via the Step 8 annotation) names `scored_rule._KNOWN_CRITERIA` as
   the executor-keyed sibling vocabulary with its own trigger (the first vertical
   demanding an out-of-set scored criterion; the fail-closed `ScoredRuleError` at
@@ -478,6 +480,47 @@ Each with a pre-committed pass/fail read (fixed here, before the build).
   not ship here (executor semantics per criterion; zero extensions to date). The
   `_weights` fail-closed test stays green. Fails if the sibling pressure is
   scoped out silently or if `_KNOWN_CRITERIA` is opened without its own design.
+
+## Closeout (session 159, 2026-07-21T20:02+07:00)
+
+**Shipped as PR [#840](https://github.com/CrayJThiemsert/vero-lite/pull/840)** — merge
+commit `c6eec65`; build commits `e45d379` (this PLAN, Draft) → `57e6839` (SD ratification,
+Steps 0–1) → `069cdf7` (Steps 2–5, the flip + the enum retirement) → `d9a0ad1` (Step 6,
+the AC-1 proof pair) → `16c3622` / `bdd07ed` / `4f9cb7a` (Step 8 i/ii/iii).
+
+Every AC above was re-read against **fresh on-disk evidence at closeout** — not carried
+over from the build session's notes (CLAUDE.md §6 "Verification is hygiene, not a
+verdict": the label requires both the pre-committed pass/fail read *and* a fresh
+artifact). The closeout reads, in the order performed:
+
+| AC | Closeout read (session 159) | Result |
+|---|---|---|
+| AC-1 | Repo-wide grep for `zzz_fixture_only_sourcing_check` → **exactly one file**, `test_declared_criterion_vocabulary.py`; its three proof tests present (`..._loads_and_gates_with_zero_engine_diff`, `..._undeclared_twin_is_refused_at_load`, `..._is_confined_to_this_module`) | ✅ |
+| AC-2 | `git diff --name-only 8682b9c c6eec65` → the four `rule_gate` verticals' YAMLs only; **`energy` + `aquaculture` absent from the diff entirely**; grep of the whole diff for `sha256` / `config_hash` → **no match** | ✅ |
+| AC-3 | `RelaxableConstraint` (`spec.py:911`) and `blocks_po: Literal[True]` (`spec.py:1043`) present and unchanged; `ComplianceCriterion` survives in `services/` **only as the retirement note** (`spec.py:870`) and one historical comment (`draft.py:101`); `mypy --strict services/` clean (98 files) | ✅ |
+| AC-4 | The three negative load tests present and green (`..._prose_shaped_criterion_is_refused_by_type`, `..._undeclared_criterion_is_refused_by_membership`, `..._rule_gate_with_no_declaration_is_refused`), plus the H-discipline test `test_compliance_criteria_is_a_human_authored_governance_field` | ✅ |
+| AC-5 | The `#840` diff of `test_at2_signature_retrigger.py` carries **no `±` line inside `_BASELINE_SIGNATURES`** — only the docstring landing note and the deliberate reader change (`rule.criterion` in place of `rule.criterion.value`) | ✅ |
+| AC-6 | `"N=4"` present **3×** in PLAN-0076; PLAN-0076 **still in active `docs/plans/`** (not archived by this closeout — deliberate: T1 is only partially discharged and §B item 1 is open by construction); both guard tests green in the full run | ✅ |
+| AC-7 | ADR-0031 D3 row 3 on `main` reads *"Criterion vocabulary: shipped — see PLAN-0087"* with the plugin-unit half recorded as still pre-designed and tracked at PLAN-0076 T1 | ✅ |
+| AC-8 | `_KNOWN_CRITERIA` recorded in PLAN-0076 §A with its trigger and its fail-closed `ScoredRuleError` tripwire, and with the reason it did not ship here (executor semantics per scored criterion) | ✅ |
+
+**Gate (Step 7) re-run at closeout, on `main = c6eec65`:** full suite **2954 passed /
+7 skipped** (169.91s) · `mypy --strict services/` **clean, 98 source files**. Matches the
+build session's figures exactly — `confirmed — prior intact`.
+
+**Deliberately NOT done, and why (carried forward, not dropped):**
+
+- **PLAN-0076 is NOT archived.** Its Step T1 keeps the procedure-aware `ExecutorFactory`
+  half, and §B item 1 (F-PIN's new-run re-routing threat) is open by construction. The
+  AC-6 presence guard therefore stays ARMED and **no guard re-homing occurred** — re-homing
+  is owed only when PLAN-0076 itself archives (PLAN-0076 Step T3).
+- **`scored_rule._KNOWN_CRITERIA` was not opened** — zero extension pressure to date, and
+  its shape is `derive`-grammar-like rather than vocabulary-like (AC-8).
+- **The stale `N=2` / `N=3` doc drift in ADR-0025 D7 and ADR-0032 was NOT folded in here.**
+  Session 157 expected this PLAN to carry it; it did not — AC-7 obligated exactly one
+  ADR-0031 table row and nothing more. The item remains open in STATUS and needs its own
+  small `plan-drafter` dispatch (both are G1-gated Accepted-ADR body edits). Recorded here
+  so the expectation and the outcome do not silently diverge.
 
 ## Out of Scope
 

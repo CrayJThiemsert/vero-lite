@@ -726,3 +726,18 @@ convention is separate work, deliberately not done here.
 > 148** CF block and the **s143** PLAN-0078 Phase-2 PR-5 row (#784), both to
 > the same base.] Prior rotation notes (through the s155 morning reconcile)
 > are consolidated here (R4). Per the STATUS.md Rotation Policy (R1/R2/R4)._
+
+| 2026-07-18 | **s148 — PLAN-0080 COMPLETE + archived (#799, `docs(plans)`): the trace-attribution + `ui.md` PLAN (shipped end-to-end s146 via #794/#795) closed out — Status → Complete, all 9 ACs re-verified against `main` on a fresh disk read (each with file:line evidence) + ticked, `git mv` → `docs/plans/done/`.** AC-5 ticked as-scoped (**F-4**: only the `TRACE` entries fed to `O.reasoningTrace` are canonical-normalized; PROP-card / KIND_BADGE / DAG `kind:` tokens are separate local vocabularies the AC carved out). Findings **F-1/F-2/F-3 + OQ-1 stay recorded, NOT closed**; no code/behaviour change. Full narrative: the Sessions-147+148 CF block above | `0b67f76` (HEAD, #799 merge) / `81f307b` (closeout) / `docs/plans/done/0080-*.md` (COMPLETE, archived) |
+
+> _Rotation note (session-156 reconcile, 2026-07-21, `docs(status):`): added the
+> **Session 156** CF block (the AI-Transition View-1 / Rung-1 arc) and rotated
+> the OLDEST CF block — **Sessions 149 + 150** (PLAN-0082 shared-ontology, #801–
+> 812) — to the Current-Focus rotation base
+> `docs/status-archive/2026-h1-current-focus.md`. Recent Decisions gained TWO
+> rows (the PLAN-0085 Rung-1 arc + the rehearsal/closeout/AI-Transition-frame)
+> and rotated its TWO OLDEST — the **s146** PLAN-0080 row (#794/#795) and the
+> **s144** R4-arc row (#792) — to the rotation base
+> `docs/status-archive/2026-h1-status.md`. Window after this reconcile: CF = 4
+> blocks (s156 + s153/154/155 + s152 + s151); RD = 10 rows. Prior rotation notes
+> (through the s155 evening reconcile) are consolidated in the rotation archive
+> (R4). Per the STATUS.md Rotation Policy (R1/R2/R4)._
