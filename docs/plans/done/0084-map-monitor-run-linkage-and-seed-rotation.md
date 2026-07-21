@@ -1,6 +1,6 @@
 # PLAN-0084: Map↔Monitor Run Linkage + Seed Rotation
 
-**Status:** Draft
+**Status:** Complete (closed out 2026-07-21, session 156 — all 9 ACs ticked with evidence below)
 **Owner:** Claude Code (executes + commits per ADR-009 D2)
 **Created:** 2026-07-20 (session 155, demo-rehearsal ask)
 **Related ADRs:** ADR-0029 (event bridge), ADR-009 D1/D2 (authoring / commit boundary)
@@ -324,17 +324,17 @@ rotatable ids); legacy fail-soft with a REAL pre-build run (`run-operate-demo` �
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 Offline gate:** full suite green (baseline 2915 passed / 7 skipped at
+- [x] **AC-1 Offline gate:** full suite green (baseline 2915 passed / 7 skipped at
   `8439e6d` — re-baseline at execution HEAD) + `mypy` strict + `ruff` clean, per
   CLAUDE.md §8. Scope = whole tree, not the changed subset.
-- [ ] **AC-2 Projection tests:** `subject` present when stamped; `None` for legacy /
+- [x] **AC-2 Projection tests:** `subject` present when stamped; `None` for legacy /
   unstamped runs (backward compat with runs already persisted in demo DBs); malformed
   `subject` blobs project as `None` (fail-soft), covered on list AND detail (per SD-A).
   **Extended per SD-D (d):** the Step 4b `entity_ids`→`subject` resolve is covered
   too — an event run whose entity id resolves to exactly one ontology object projects
   that subject; legacy event runs with the OLD `CNC-Line-07` id (already persisted in
   demo DBs) project `subject=None` fail-soft — never an error.
-- [ ] **AC-3 Default-seed compatibility:** the default invocation
+- [x] **AC-3 Default-seed compatibility:** the default invocation
   (`python scripts/seed_operate_demo.py`) produces a run identical to today's **except
   the additive `trigger_context["subject"]` key**: same intake seed dict, same hero
   PO / part / quotes / ฿288,000 / TIER-CTRL / approver, same run behaviour; zero
@@ -342,25 +342,25 @@ rotatable ids); legacy fail-soft with a REAL pre-build run (`run-operate-demo` �
   test asserting the intake seed dict + the non-`subject` trigger_context keys are
   unchanged, and that the default failure-event pick is EVT-CNC-014-FAIL **by
   asset-keyed selection, not row order** (Step 5).
-- [ ] **AC-4 Live linkage check (8101 demo):** seed → map shows the marker on the
+- [x] **AC-4 Live linkage check (8101 demo):** seed → map shows the marker on the
   correct node → node panel → "Open in Monitor" → Monitor opens with THAT exact run
   selected (`data-testid="run-row-<id>"` focused/selected) — **with the connection
   strip reading `LIVE`** (api.js silently serves mock data on backend errors; a
   `degraded` strip invalidates the check).
-- [ ] **AC-5 Graceful degradation:** with `/runs` unreachable, the map renders fully
+- [x] **AC-5 Graceful degradation:** with `/runs` unreachable, the map renders fully
   with zero run markers — no mock fallback for runs, no console-visible breakage, no
   broken panel.
-- [ ] **AC-6 ui.md conformance:** no hardcoded asset/run ids in JS (linkage fully
+- [x] **AC-6 ui.md conformance:** no hardcoded asset/run ids in JS (linkage fully
   data-driven from `/runs` + `/meta`); `?v=` tokens bumped on every edited asset in
   `index.html`.
-- [ ] **AC-7 Rotation (ALL FOUR non-hero assets — SD-B as ratified):** `--asset <id>`
+- [x] **AC-7 Rotation (ALL FOUR non-hero assets — SD-B as ratified):** `--asset <id>`
   seeds the named asset's PO end-to-end for EACH of AST-CNC-009, AST-PRESS-03,
   AST-ROBOT-21, AST-CONV-05 (scored_rule has real quote candidates — CNC-009 via the
   hero part's existing 3 quotes; run parks at `waiting_human`); stdout names the
   resolved DOA tier + the approver the operator must log in as; an unknown /
   non-rotatable asset id fails with a clear message listing the rotatable ids
   (data-driven from the fixtures, not a hardcoded list).
-- [ ] **AC-8 Fixture blast radius:** with the new failure/quote/PO rows,
+- [x] **AC-8 Fixture blast radius:** with the new failure/quote/PO rows,
   `test_intake_shadow_parity` + `test_fastenal_csv_adapter` +
   `test_transform_migration_parity` (and the rest of `tests/verticals/procurement/`)
   pass; `GET /recommendations` output is unchanged (reading-derived only —
@@ -372,7 +372,7 @@ rotatable ids); legacy fail-soft with a REAL pre-build run (`run-operate-demo` �
   `test_fastenal_adapter_canonical_coverage[Part]` (the PLAN-0083 set-equality
   tripwire pin gains `stock_qty`/`reorder_point` — tripwire working as designed) are
   part of this AC's green set.
-- [ ] **AC-9 Event-path live check (8101 demo — SD-D (d)):** `POST /demo/hero/event`
+- [x] **AC-9 Event-path live check (8101 demo — SD-D (d)):** `POST /demo/hero/event`
   → map marker lights on AST-CNC-014 → node panel lists the event run → "Open in
   Monitor" opens THAT exact run — **with the connection strip reading `LIVE`** (same
   rigor + silent-mock caveat as AC-4).
@@ -582,3 +582,51 @@ How we know it worked, in one line each:
 4. AC-1/AC-8 keep the whole tree green — the linkage is additive, nothing regressed.
 5. AC-9's event-fired click-through proves BOTH demo entry points light the map
    (SD-D (d) as ratified), with the engine untouched.
+
+## Closeout evidence (2026-07-21, session 156 — per-AC, dated)
+
+Pass/fail read fixed before the runs (CLAUDE.md §6/§11): AC-1 = suite green at
+closeout HEAD + CI-scope mypy/ruff clean; AC-6 = zero grep hits for asset/run
+literals in the three edited JS files + bumped `?v=` tokens; live ACs = the s155
+recorded observations (:317-323) corroborated by the 2026-07-21 rehearsal pass.
+
+- **AC-1 (fresh, 2026-07-21 @ `19f5caa`):** full suite **2922 passed / 7 skipped**
+  (160.65s, disposable test DB); `mypy --strict services/` clean (97 files, CI-exact
+  invocation); `ruff check .` clean on the tracked tree (sole finding =
+  `.claude/benchmark-results/` — an untracked local KEEP dir CI never sees);
+  `ruff format --check .` = 451 files already formatted.
+- **AC-2 / AC-3 / AC-8 (fresh, same suite run):** the projection tests
+  (stamped / legacy-None / malformed-None, list+detail, event-resolve cases), the
+  default-seed byte-compat test, and the named blast-radius tests
+  (`test_intake_shadow_parity`, `test_fastenal_csv_adapter`,
+  `test_transform_migration_parity`, `test_calm_path_production_runnability`,
+  `test_scheduled_procurement_demo`, `test_fastenal_adapter_canonical_coverage`)
+  are all inside the green 2922. Live corroboration for AC-2: `GET /runs`
+  (2026-07-20/21, port 8101) shows stamped subjects on the seeded runs, the
+  event-fired run projecting `{Equipment, AST-CNC-014}` via the entity_ids resolve,
+  and the legacy `run-operate-demo` projecting `subject: null` fail-soft.
+- **AC-4 (s155 recorded + 2026-07-21 rehearsal):** s155 full click-through
+  (`run-row-run-s155-linkage` selected in View H, strip `LIVE`, recorded at
+  :317-323); Cray's 2026-07-21 morning rehearsal walked Beats 1–5 on 8101 over this
+  exact path and passed (typed ratification, session 156).
+- **AC-5 (s155 recorded):** `/runs` forced 500 → map rendered fully, zero markers,
+  no mock fallback, no error state (:319). Not re-forced at closeout (would require
+  degrading the live demo server); the runs data path is untouched since #827 —
+  the only later change (#829) moved SVG label geometry only.
+- **AC-6 (fresh, 2026-07-21):** grep for `AST-` / `run-s155` / `run-operate` /
+  `Rayong` literals across `view-map.js`, `view-monitor.js`, `app.js` = zero hits
+  (positive-control grep on `runsByAsset` hits); tokens bumped: `view-map.js?v=c39`
+  (#829), `view-monitor.js?v=c35`, `app.js?v=c30` (#827).
+- **AC-7 (s155 all-four + fresh partial 2026-07-20):** s155 recorded all four
+  non-hero assets end-to-end (:320-322, incl. unknown-asset error listing the 5
+  rotatable ids); re-seed `run-s156-conv --asset AST-CONV-05` (2026-07-20 evening)
+  freshly reproduced ฿7.2k → `หน.จัดซื้อ` → `log in as 'appr-buyer'` on stdout.
+- **AC-9 (s155 recorded + live corroboration):** s155 `POST /demo/hero/event` →
+  subject resolve → map lit → panel listed event + seeded runs newest-first (SD-E)
+  → "Open in Monitor" opened that run (:311-315); the same event run remained live
+  in `/runs` with its resolved subject through 2026-07-21.
+
+**Rehearsal gate (the reason closeout waited):** the demo rehearsal was performed by
+Cray on 2026-07-21 morning against this build (Beats 1–5 incl. the new map→monitor
+opening beat) and ratified as passed — the rehearsal itself is part of this evidence,
+as intended by the s155 handoff.
