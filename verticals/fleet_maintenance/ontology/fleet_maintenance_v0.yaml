@@ -1,0 +1,217 @@
+# vero-lite ontology — fleet_maintenance vertical, v0 (DEMO / guess-and-react).
+# 6th vertical — a Thai trucking operator (รถรับจ้าง: หัวลาก + หกล้อ, สายแหลมฉบัง/อีสาน).
+# The governed decision = REPAIR SPEND: a truck breaks down and the repair quote lands
+# AT/ABOVE the truck's minor-repair ceiling (OCT_RECOMMEND_DIRECTION=above), so the spend
+# stops being "ช่างเคาะเอง" and becomes a governed, authority-tiered, separated-from-the-
+# requester decision.
+#
+# Reshape (per the ADR-008 "may extend" precedent + building_materials_v0.yaml): the
+# monitored "Asset" is a Truck, the "Site" is a Depot. Mirrors the aquaculture 6-object
+# OCT grammar exactly (Asset -> Truck, Site -> Depot), so it scaffolds a Tier-1 Mirror demo.
+#
+# >>> EVERY NUMERIC VALUE HERE IS A GUESS — "เดา, รอแก้" (guess-and-react). <<<
+# Narrative provenance (PLAN-0086 AC-3): the fleet mix (หัวลากสิบกว่าคัน / หกล้อยี่สิบปลายๆ),
+# the GPS stream, the breakdown pain event, and the three-rung approval ladder all come from
+# the dirtied customer narrative; the ฿ VALUES come from the customer-question log, never
+# from this file's imagination.
+
+version: 0
+namespace: fleet_maintenance
+
+object_types:
+  Truck:
+    primary_key: truck_id
+    title_key: plate
+    description: A revenue vehicle in the fleet — the managed operational unit (the monitored "Asset").
+    properties:
+      truck_id:
+        type: string
+        required: true
+      plate:
+        type: string
+        required: true
+      truck_class:
+        type: enum
+        # narrative: "รถหัวลากก็มีอยู่สิบกว่าคัน หกล้อก็... น่าจะยี่สิบปลายๆ"
+        values: [tractor_head, six_wheeler, trailer]
+      odometer_km:
+        type: float
+        description: Latest odometer reading (km) from the installed GPS/telematics unit ("รถผมติด GPS ไว้แล้วนะ").
+      minor_repair_ceiling_thb:
+        type: float
+        description: >-
+          Per-truck ฿ ceiling under which the head mechanic just fixes it and no governed run
+          is needed ("ซ่อมนิดหน่อยๆ ผมให้ต้อมเคาะเลย"); a quote AT/ABOVE it breaches into the
+          governed ladder — this truck's OWN per-entity band (ADR-016 FKP amendment).
+          GUESS — รอแก้ (value sourced from the customer-question log, not invented).
+      status:
+        type: enum
+        values: [in_service, roadside_breakdown, in_garage, retired]
+      site_id:
+        type: ref
+        target: Depot
+        required: true
+
+  Depot:
+    primary_key: depot_id
+    title_key: name
+    description: A yard / partner garage the fleet is based at or routed to for repair.
+    properties:
+      depot_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+      depot_type:
+        type: enum
+        values: [home_yard, partner_garage, roadside_point]
+      lat:
+        type: float
+      lng:
+        type: float
+
+  OperationalEvent:
+    primary_key: event_id
+    description: Time-stamped maintenance / breakdown signal concerning a Truck at a Depot.
+    properties:
+      event_id:
+        type: string
+        required: true
+      event_type:
+        type: enum
+        values: [reading, transition, alarm]
+      severity:
+        type: enum
+        values: [info, warn, error, critical]
+      measured_value:
+        type: float
+        description: Quoted repair spend for this event (THB) — what the governed ladder routes on.
+      unit:
+        type: string
+      description:
+        type: string
+      occurred_at:
+        type: timestamp
+        required: true
+      truck_id:
+        type: ref
+        target: Truck
+      site_id:
+        type: ref
+        target: Depot
+
+  Alert:
+    primary_key: alert_id
+    title_key: title
+    description: An actionable notification derived from one or more OperationalEvents.
+    properties:
+      alert_id:
+        type: string
+        required: true
+      title:
+        type: string
+        required: true
+      urgency:
+        type: enum
+        values: [low, medium, high, critical]
+      status:
+        type: enum
+        values: [open, acknowledged, resolved]
+      opened_at:
+        type: timestamp
+        required: true
+      resolved_at:
+        type: timestamp
+      reasoning:
+        type: string
+
+  RecommendedAction:
+    primary_key: action_id
+    description: An AI-proposed repair decision awaiting human approval; mirrors the ADR-007 D2 runtime envelope.
+    properties:
+      action_id:
+        type: string
+        required: true
+      action_type:
+        type: enum
+        # narrative-grounded vocabulary: approve the spend; dispatch a replacement truck
+        # ("ต้องไปวิ่งเต้นจ้างรถคอกแถวนั้นมาถ่ายของ"); tow to a partner garage; escalate the ladder.
+        values: [approve_repair_spend, dispatch_replacement_truck, tow_to_partner_garage, escalate]
+      confidence_score:
+        type: float
+      status:
+        type: enum
+        values: [proposed, approved, rejected, executed]
+      parameters:
+        type: json
+      alert_id:
+        type: ref
+        target: Alert
+        required: true
+      target_truck_id:
+        type: ref
+        target: Truck
+
+  AlertEventLink:
+    primary_key: link_id
+    description: Join object linking an Alert to the OperationalEvent(s) that triggered it (N:M via composition per ADR-008 D4).
+    properties:
+      link_id:
+        type: string
+        required: true
+      created_at:
+        type: timestamp
+        required: true
+      alert_id:
+        type: ref
+        target: Alert
+        required: true
+      event_id:
+        type: ref
+        target: OperationalEvent
+        required: true
+
+link_types:
+  truck_at_depot:
+    from: Truck
+    to: Depot
+    cardinality: many_to_one
+    foreign_key: Truck.site_id -> Depot.depot_id
+    description: Each Truck is based at exactly one Depot.
+
+  event_for_truck:
+    from: OperationalEvent
+    to: Truck
+    cardinality: many_to_one
+    foreign_key: OperationalEvent.truck_id -> Truck.truck_id
+
+  event_at_depot:
+    from: OperationalEvent
+    to: Depot
+    cardinality: many_to_one
+    foreign_key: OperationalEvent.site_id -> Depot.depot_id
+
+  action_addresses_alert:
+    from: RecommendedAction
+    to: Alert
+    cardinality: many_to_one
+    foreign_key: RecommendedAction.alert_id -> Alert.alert_id
+
+  action_target_truck:
+    from: RecommendedAction
+    to: Truck
+    cardinality: many_to_one
+    foreign_key: RecommendedAction.target_truck_id -> Truck.truck_id
+
+  alert_event_link_to_alert:
+    from: AlertEventLink
+    to: Alert
+    cardinality: many_to_one
+    foreign_key: AlertEventLink.alert_id -> Alert.alert_id
+
+  alert_event_link_to_event:
+    from: AlertEventLink
+    to: OperationalEvent
+    cardinality: many_to_one
+    foreign_key: AlertEventLink.event_id -> OperationalEvent.event_id

@@ -877,6 +877,12 @@ class ComplianceCriterion(StrEnum):
     KYC = "kyc"
     OVERDUE_AR = "overdue_ar"
     BLACKLIST = "blacklist"
+    # fleet_maintenance — repair-spend sourcing hygiene (PLAN-0086). NOT a 4th AT-2 signature:
+    # the doa_tier ladder is reused unchanged, and this single criterion is the vertical's own
+    # instance-scoped vocabulary exactly as the N=2/N=3 finding predicts. It is the gate the
+    # roadside `emergency_waiver` RELAXES (`relaxes: [three_bid]`) — the customer's own
+    # "ซื้อร้านข้างทางไปเลย" bypass, made explicit and logged instead of invisible.
+    THREE_QUOTE = "three_quote"
 
 
 class SourcePolicy(StrEnum):

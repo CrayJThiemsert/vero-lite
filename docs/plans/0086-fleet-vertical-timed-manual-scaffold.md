@@ -1,6 +1,9 @@
 # PLAN-0086: Fleet-Maintenance Vertical — Timed Manual Scaffold (AI-Transition View-2 Grounding)
 
-**Status:** Draft (SD-1…SD-3 await Cray ratification at Step 0; the timed window opens at Step 1)
+**Status:** Complete — all 7 ACs satisfied (session 157, 2026-07-21). SD-1…SD-3 ratified at
+Step 0 (2026-07-21 s156); the timed window ran 14:49:52 → 15:33:09 (+07:00) and closed at the
+first AC-2 pass. Measurement pack in the Closeout section below; full instruments gitignored
+under `docs/research/private/`. Awaiting `git mv` to `done/` after PR merge + Cray confirmation.
 **Owner:** Claude Code (executes + commits per ADR-009 D2) + Cray (simulated customer: delivers the dirtied narrative, answers the question log)
 **Created:** 2026-07-21 (session 156, ratified View-2 sequence)
 **Related ADRs:** ADR-0032 (D6 fit filter, D5 positioning honesty, D1(3) offline-arm discipline, public-repo boundary), ADR-0025 (DoaLadder REQUIRES an emergency_waiver), ADR-0023 (import-scan discovery), ADR-0015 D2 (the Tier-1 `new-vertical` scaffold — deliberately NOT used here), ADR-0030 (advisory never-raise precedent), ADR-009 D1/D2 (authoring / commit boundary)
@@ -235,36 +238,173 @@ procedure; the tire/PM calm-path stays a named, unscheduled follow-on measuring 
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 Offline gate:** full suite green including the census-tripwire update
+- [x] **AC-1 Offline gate:** full suite green including the census-tripwire update
   (`_EXPECTED` fleet entry, `total == 11`, archetype map entry) + `mypy --strict
   services/` + `ruff check` / `ruff format --check` at CI scope, re-baselined at
   execution HEAD (the offline oracle is the gate).
-- [ ] **AC-2 Live boot + park + advisory:** `OCT_VERTICAL=fleet_maintenance` boots; a
+  **EVIDENCE:** baseline at `219a134` re-measured before the clock started —
+  2927 passed / 7 skipped, matching the #833 build figure (`confirmed — prior
+  intact`). At the fleet build: `mypy --strict services/` → *Success: no issues
+  found in 98 source files*; `ruff check .` and `ruff format --check .` (CI's
+  exact commands) clean — the single remaining `ruff` finding is
+  `.claude/benchmark-results/analyze_dump.py` S108, an UNTRACKED local file from
+  session 48 that a CI checkout does not contain. **A SECOND census tripwire
+  fired** and is resolved — see the AC-1 note below.
+
+  > **AC-1 note — the second tripwire (the census under-counted).** The Verified
+  > ground named `test_procedures_endpoint.py` as the only repo-wide hard-fail
+  > and hedged that "AC-1's full-suite run is the real oracle if a second
+  > tripwire exists". It does:
+  > `tests/services/engine/procedures/test_at2_signature_retrigger.py` (the
+  > ADR-0025 D7 AT-2-generator re-trigger) fired at N=4. That firing was NOT
+  > resolved by Code — it was escalated to Cray with both readings laid out, and
+  > **Cray ratified (typed, 2026-07-21) that the deferral is CANCELLED and the
+  > extraction is DUE**, on the ground that four consecutive verticals have now
+  > each required an engine-level `ComplianceCriterion` extension. The marker's
+  > `len(signatures) < _RETRIGGER_N` guard is retired and REPLACED (never
+  > deleted) by `test_at2_extraction_obligation_is_owned`, which fails if
+  > PLAN-0076 (Step T1, the standing owner) is archived or loses its record of
+  > this firing. PLAN-0076 T1 carries the matching entry. The extraction itself
+  > is explicitly NOT performed here — see Out of Scope.
+- [x] **AC-2 Live boot + park + advisory:** `OCT_VERTICAL=fleet_maintenance` boots; a
   seeded run parks `waiting_human` at the doa_tier gate with the advisory
   `ReasoningStep` ALREADY in the persisted approve-step trace — grounded FLEET
   reasons from the run's own data, `detail.model` arm disclosure
   (`deterministic`/stub), and NO confidence key in any operator-surfaced field
   (PLAN-0085 AC-2/AC-8 discipline). Proven by reading the persisted run, then
   corroborated in the Monitor gate panel (connection strip `LIVE`).
-- [ ] **AC-3 Narrative fidelity:** every ฿ threshold, role, and rule in
+  **EVIDENCE (the clock's finish line — 2026-07-21T15:33:09+07:00):** booted on
+  :8102, startup log `verticals discovered: aquaculture, building_materials,
+  energy, fleet_maintenance, procurement, supply_chain; active='fleet_maintenance'`.
+  `POST /procedures/governed_repair_approval/run` → `run-b9c0804b52f0`, status
+  `waiting_human`, `suspended_step: approve`, steps intake/judge/reshape/quote_gate
+  complete and `fulfill` never reached. Re-read via `GET /runs/{id}`: the persisted
+  approve trace is `['action_proposed', 'doa_tier_resolved',
+  'advisory_recommendation']` — advisory APPENDED after the governed records —
+  with `detail.model = "deterministic"`, `detail.resolved_approver_id =
+  "appr-fleet-manager-wirat"`, and reasons carrying the run's own figures
+  (`48000.0 THB` → band `{min: 5000, max: 50000}` → `ผจก.เดินรถ`). Monitor
+  corroboration: strip `LIVE · SAME-ORIGIN`, vertical `fleet_maintenance`, gate
+  panel rendering the **Advisory** block labelled "shown, never routes /
+  deterministic" with all three reasons; Cray reviewed the panel and confirmed
+  ("Advisory ดูโอเค").
+
+  > **Confidence-key sub-claim, stated precisely rather than glossed.** The GATE
+  > ADVISORY carries **zero** confidence keys (verified key-by-key over the
+  > persisted run). Three `confidence` keys DO exist elsewhere in that run, all on
+  > the action proposal — `action.confidence = 0.5` plus its own `confidence_note`
+  > citing ADR-010 IN-3 ("advisory only … never used to gate approval or
+  > execution"). That value is hard-coded in the SHARED
+  > `services/engine/procedures/advisory_stub.py:59`, so it is byte-identical
+  > across all six verticals and long pre-dates fleet. The PLAN-0085 AC-2/AC-8
+  > discipline this AC invokes is about the gate advisory, which is clean; "no
+  > confidence key anywhere in the run" would have been a false claim and is not
+  > made.
+- [x] **AC-3 Narrative fidelity:** every ฿ threshold, role, and rule in
   `procedures.yaml` is traceable to a sentence in the DIRTIED narrative or to a
   logged customer answer (question-log entry) — recorded as a spot-auditable mapping
   table in the closeout. Nothing invented silently.
-- [ ] **AC-4 Existing verticals byte-identical:** no file of the five existing
+  **EVIDENCE:** the mapping table below, plus four tests that assert it against the
+  shipped YAML rather than against prose
+  (`test_shipped_ladder_matches_the_customer_answer`,
+  `test_emergency_waiver_relaxes_the_constraint_the_customer_described`,
+  `test_requester_holds_no_approver_role`,
+  `test_narrative_provenance_block_is_present`), and a provenance header in
+  `verticals/fleet_maintenance/procedures.yaml` citing Q1/Q3/Q4 inline.
+
+  | authored value | source | kind |
+  |---|---|---|
+  | tiers `0 / 5000 / 50000` THB | question-log **Q1** — "ต้อมเคาะได้ถึง 5 พัน วิรัชถึง 5 หมื่น เกินนั้นผมเอง" | answer |
+  | roles ช่างใหญ่ / ผจก.เดินรถ / เจ้าของกิจการ | narrative — "ให้ต้อมเคาะเลย / ให้พี่วิรัช ผู้จัดการเดินรถ / ต้องมาถึงผม" | sentence |
+  | SoD `intake ↔ approve` | narrative — "ผมตั้งกฎเหล็กเลยนะ คนทำเรื่องเบิกห้ามเป็นคนอนุมัติเอง" | sentence |
+  | requester = ช่างใหญ่; วิรัช approves down (cumulative roles) | question-log **Q3** — "ต้อมตั้งเรื่อง วิรัชเคาะแทน" | answer |
+  | `rule_gate` criterion `three_quote` | question-log **Q4** — "เทียบราคาเกินสองหมื่น สามเจ้า" | answer (partial — see AC-3 gap note) |
+  | `emergency_waiver.relaxes: [three_bid]` | narrative — "รถเสียหน้างานทีไร กติกามันพังหมด … ซ่อมไปก่อน ซื้อร้านข้างทางไปเลย" | sentence |
+  | `emergency_waiver.escalate_to: เจ้าของกิจการ` | narrative — "โทรหาผม 'เฮียๆ รถเสีย เอาไงดี' … ผมก็เออๆ ซ่อมไปก่อน" | sentence |
+  | truck ceiling `5000` THB (fixture) | question-log **Q1** (the same boundary) | answer |
+  | breach quote `48000` THB (fixture) | narrative — "ค่าซ่อมอีก ไม่รู้กี่หมื่น" (a customer-stated RANGE; the exact figure is a fixture choice inside it, picked to land mid-ladder) | sentence + disclosed choice |
+  | routine quotes `3200` / `1800` (fixtures) | narrative — "ปกติพวกผ้าเบรก ไส้กรอง ผมซื้อเจ๊หงส์กับ ส.เจริญยนต์" | sentence |
+  | truck plate, home-yard lat/lng | **GUESS — รอแก้**, marked in-file; the customer explicitly could not recall the plate ("ทะเบียนจำไม่ได้ละ") and never gave a yard location | disclosed guess |
+
+  > **AC-3 gap note — 2 of the 4 customer answers could not be fully encoded, and
+  > this is the run's most valuable finding.** Q4's rule has two halves
+  > ("เทียบราคา **เกินสองหมื่น** สามเจ้า"); only "three quotes" is representable — a
+  > `rule_gate` criterion is pass/fail on a supplied signal and carries no
+  > threshold field, and ADR-0025 D4 forbids smuggling the ฿ figure into its
+  > prose, so the ฿20,000 trigger has nowhere to live in the typed spec. Q2 is the
+  > same shape: `EmergencyWaiver` has fields for `relaxes` / `escalate_to` /
+  > `requires_justification` but none for the ฿10,000 cap or the ratification
+  > window. Both gaps are recorded in the question log AND surfaced to the reader
+  > in `verticals/fleet_maintenance/README.md` as an explicit "stated but NOT
+  > enforced" table. A narrative→pipeline tool that silently dropped the
+  > un-modellable half would be worse than no tool, because the customer would
+  > believe the system enforces something it does not.
+- [x] **AC-4 Existing verticals byte-identical:** no file of the five existing
   verticals or the engine changes semantics; the pinned governance hashes of all
   previously-shipped procedures are unchanged (reuse the PLAN-0085 pinned-hash test
   pattern — parked runs keep resuming).
-- [ ] **AC-5 Advisory fence, flipped for fleet (L-B):** the adapted PLAN-0085 fence
+  **EVIDENCE:** proven by construction and by the gate. `git diff --stat` over the
+  whole change set touches **zero** files under `verticals/energy|procurement|
+  supply_chain|aquaculture|building_materials|vet_clinic` — the only `verticals/`
+  paths in the change are the new `verticals/fleet_maintenance/` tree. The single
+  engine edit is `services/engine/procedures/spec.py` +6 lines, a purely ADDITIVE
+  `ComplianceCriterion` enum member (no existing member renamed, reordered or
+  removed), which cannot alter another procedure's governance hash. The shipped
+  pinned-hash suites (`tests/services/db/test_governance_pin.py`,
+  `test_derivation_pin.py`, the per-vertical migration-parity tests) are green in
+  the AC-1 run — parked runs keep resuming.
+
+  > **AC-4 deviation note — the census said "package + 3 wire points"; that is
+  > FALSE for any vertical whose gate needs an unnamed criterion.** Shipping fleet
+  > required extending the CLOSED shared `ComplianceCriterion` enum in engine code.
+  > This follows established practice — the enum's own docstring codifies that each
+  > AT-2 vertical extends it with instance-scoped criteria (the N=2 finding,
+  > re-confirmed at N=3 by PLAN-0081) — so nothing was invented. But it means a new
+  > vertical is NOT self-contained, and it is the same recurrence that decided the
+  > D7 firing (see AC-1's note). Recorded in the seam ledger as a deviation row.
+- [x] **AC-5 Advisory fence, flipped for fleet (L-B):** the adapted PLAN-0085 fence
   set passes with advisory-on as the DEFAULT arm: advisory PRESENT in the parked
   approve trace, approve-step `audit` payload byte-identical vs a `builder=None`
   baseline arm, raise-injection cannot fail/park/divert the run (never-raise,
   ADR-0030 D5).
-- [ ] **AC-6 Measurement pack complete + internally consistent:** phase times sum ≈
+  **EVIDENCE:** `tests/verticals/fleet_maintenance/test_governed_repair_hero.py`
+  — `test_advisory_is_present_and_grounded_by_default` (present by default, model
+  arm disclosed, grounded in the run's own ฿ figure, no confidence key),
+  `test_audit_is_byte_identical_without_the_advisory` (A/B arms; the only delta
+  anywhere is the single trace entry), `test_a_raising_advisory_builder_cannot_
+  break_the_run` (never-raise). 14 fleet tests green.
+
+  > **AC-5 finding — where "never-raise" actually lives.** The first draft of the
+  > raise-injection fence FAILED, and the red was the test's, not the engine's: it
+  > replaced the whole builder with a foreign object whose `build()` raises. The
+  > never-raise guarantee is implemented INSIDE `GateAdvisoryBuilder.build`, which
+  > catches everything; the call site in `governance_step.py` awaits it with no
+  > guard of its own. PLAN-0085's own fence injects by SUBCLASSING and breaking
+  > `_entry` — the contract that exists — and the fleet fence now matches it. The
+  > finding is carried forward because it is real: **"never-raise" covers the
+  > shipped builder and its subclasses, not an arbitrary injected one.** A future
+  > scaffolder that let a generated vertical supply its own builder would sit
+  > outside the guarantee; either the call site grows a guard, or the tool must
+  > only ever wire `GateAdvisoryBuilder`.
+- [x] **AC-6 Measurement pack complete + internally consistent:** phase times sum ≈
   wall total (interruptions accounted); every hand-written file and hand-wire appears
   in the seam ledger with exactly one tag; every question has trigger + answer;
   summary table, ledger summary, and question-log summary land in the closeout.
-- [ ] **AC-7 Honesty caveat:** the lower-bound caveat appears co-located with the
+  **EVIDENCE:** the three summaries below. Arithmetic: wall 14:49:52 → 15:33:09 =
+  **43m17s**; interruptions **15m38s** (1m34s + 3m07s + 2m10s awaiting the four
+  customer answers, + 8m48s stopped on the D7 governance escalation); hands-on
+  **27m39s**. 14 seam-ledger rows, each with exactly one tag. 4 questions, each with
+  trigger + answer (Q2 partial, explicitly marked). Full artifacts stay gitignored
+  at `docs/research/private/2026-07-21-fleet-scaffold-{timing-log,seam-ledger,
+  question-log}.md`.
+- [x] **AC-7 Honesty caveat:** the lower-bound caveat appears co-located with the
   headline number EVERYWHERE it is recorded (closeout, STATUS, any pitch note).
+  **EVIDENCE:** the caveat is co-located with the number in the timing log (block
+  quote directly under the headline), in the closeout summary below, and is required
+  in the STATUS entry. Its wording: *Code drafted the pre-dirtied narrative, so the
+  measurement is a LOWER BOUND on true blind intake; Cray's dirtying plus the
+  four-question intake log partially restore validity; it also measures an operator
+  with deep prior knowledge of this codebase.*
 
 ## Out of Scope
 
@@ -364,3 +504,89 @@ Under SD-1(a): PR referencing PLAN-0086; after merge + Cray confirmation,
    advisory shown-never-routes fence holds on the new one.
 4. AC-6 + AC-7 make the number usable: internally consistent, honestly caveated —
    the scaffolder PLAN can be written from the ledger alone.
+
+## Closeout — the measurement pack (session 157, 2026-07-21)
+
+### 1. The headline number
+
+> **A rambling customer monologue → a live, governed, human-gated pipeline on a 6th
+> vertical: 27 minutes 39 seconds of hands-on work** (wall 43m17s, minus 15m38s of
+> customer-answer waits and one governance escalation).
+>
+> **Caveat (binding, AC-7 — never quote the number without it):** Code drafted the
+> pre-dirtied narrative, so this is a **LOWER BOUND on true blind intake**. Cray's
+> dirtying and the four-question intake log partially restore validity. It also
+> measures an operator with deep prior knowledge of this codebase — and even so the
+> ADR-0025 D4 prose guardrail cost three parse round trips, and the ADR-0025 D7
+> marker could not be cleared by an operator at all.
+
+| # | phase | wall | hands-on |
+|---|---|---|---|
+| 0 | template study (8 files, 878 lines) | 1m15s | 1m15s |
+| 1 | first narrative read → gap extraction | 1m09s | 1m09s |
+| 5 | ontology objects (+ handlers, adapter, factory) | 1m34s | 1m34s |
+| 5b | fixtures (`synthetic.py`), unblocked by Q1 | 1m09s | 1m09s |
+| 6 | **`procedures.yaml` — the money spine** | **4m41s** | **4m41s** |
+| 7 | the 3 external hand-wires + 3 stale-comment fixes | 1m25s | 1m25s |
+| 7b | CLI validate + generate (7 artifacts) | 2m02s | 2m02s |
+| 8 | tests + README + offline gate | 8m22s | 8m22s |
+| 8b | full-suite gate run | 2m22s | 2m22s |
+| 9 | live boot → fire → park → advisory in Monitor | 3m39s | 3m39s |
+| | **TOTAL** | **43m17s** | **27m39s** |
+
+### 2. Seam-ledger summary — what a scaffolder tool could and could not generate
+
+14 rows, one tag each. **`[scaffolder-can-generate]`: 6** — `__init__.py`,
+`handlers.py`, `data_adapter/__init__.py`, `procedures_factory.py`, the `main.py`
+registrar, the `PROCEDURE_ARCHETYPES` entry, the census-test update.
+**`[needs-human-judgment]`: 5** — the ontology YAML (3 concentrated decisions: which
+noun is the Asset, which property is the per-entity band, what the action vocabulary
+is), `synthetic.py` values, `procedures.yaml`, the README, and the D7 marker.
+**`[one-time-only]`: 2** — the CLI codegen floor, the engine enum extension.
+
+The four findings that matter most for the tool PLAN:
+
+1. **The emission floor already exists and is nearly free.** `vero-lite validate` +
+   `generate` emitted all 7 artifacts in 2m02s with zero correction rounds. The
+   tool's value is therefore NOT "emit more code" — it is (a) monologue → well-formed
+   ontology YAML and (b) the money spine, which the CLI does not touch at all.
+2. **The money spine is the whole cost.** `procedures.yaml` took longer than the
+   other seven files combined and was the only one that failed to load — three times,
+   all from ADR-0025 D4 (no currency amounts in free text), a guardrail that is
+   invisible until tripped and that reports only ONE offending field per parse. A
+   generator must lint its own prose for currency before emitting.
+3. **The hard part is the intake form, not the emission.** 5 of 8 files were authored
+   while all four customer questions were still outstanding. Only the spine and the
+   fixtures truly block on the customer.
+4. **There is a governance ceiling that automation cannot cross.** The D7 marker
+   demanded a Rule-of-Three re-argument. A tool cannot make that judgment; its correct
+   behaviour is detect → STOP → hand the human a pre-built comparison table.
+
+### 3. Question-log summary — the intake-form spec
+
+4 questions, all at the same moment (immediately after the first read), all
+`procedures.yaml`-blocking. Findings:
+
+* **The ladder came back in ONE sentence** with no prompting for units or currency —
+  ask it as a single open question, not three.
+* **A compound question loses its non-numeric half.** Q2 asked for a cap, a ratifier
+  and a window; the answer supplied the cap only. The tool must re-ask unanswered
+  sub-questions individually rather than treat one number as a complete answer.
+* **The customer described mechanisms he had no name for.** "ต้อมตั้งเรื่อง วิรัชเคาะแทน"
+  is exactly PLAN-0075 Policy B cumulative roles. The intake form should ask in the
+  customer's frame and let the mapping happen downstream.
+* **The narrative is an unsectioned monologue**, not the 6 tidy sections the SD-2
+  template assumed — rules, vocabulary and tangents interleave in the same
+  paragraphs. Intake cannot be a section-by-section walk; it must be
+  extract-everything-then-gap-fill, with the gap list computed up front.
+* **2 of 4 answers were not fully encodable** (AC-3 gap note). The tool needs an
+  explicit "stated but not enforced" register, and that register belongs in the
+  README where the next human will read it.
+
+### 4. Deviations from the PLAN's Verified ground
+
+| deviation | disposition |
+|---|---|
+| The census said "exactly 3 mandatory hand-wires outside the package". True for code, but each wire point also carries **counted prose** — 3 comment corrections were needed, one already stale before this run. | recorded (seam ledger); no scope change |
+| `ComplianceCriterion` is a CLOSED shared enum; fleet's gate needed a member no prior vertical named, so the engine was edited. | additive; follows the documented per-instance pattern; AC-4 unaffected |
+| A **second** census tripwire exists (`test_at2_signature_retrigger.py`, ADR-0025 D7). | escalated to Cray, ratified, resolved — see AC-1 note; extraction owned by PLAN-0076 T1 |
