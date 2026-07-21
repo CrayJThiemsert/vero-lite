@@ -510,6 +510,28 @@ ontology pk since PLAN-0084 Step 4b, superseding PLAN-0057 OQ-1's `CNC-Line-07`)
 every beat: **the connection strip must read `LIVE`** — the UI silently serves embedded
 demo data on any backend error, and the strip is the only tell.
 
+## 3e. The advisory gate recommendation (PLAN-0085 — short note, not a rewrite)
+
+At the `approve` gate the Monitor now shows an **Advisory** block between the "Waiting
+on a human" banner and the proposal row — grounded reasons answering *why this landed on
+THIS approver's desk* (spend vs the ladder band → tier → approver, SoD, the
+escalate-never-skip waiver posture, the scored-rule quote basis). It is **shown, never
+routes** (ADR-0019:50-57): the gate resolves byte-identically with or without it. Narrate
+it as "the system briefs the approver in plain language before they sign" — it makes the
+first-time operator read of the procedure card friendlier (a panic-reducer), without ever
+deciding for them.
+
+- **No score, by design** — reasons, not a confidence number (the s74 trust shape,
+  PR #823). The `Advisory` header carries a `deterministic` sublabel = the producing arm
+  (SD-2): the default demo arm builds the reasons from the run's own verdicts, **no
+  MS-S1, no network** (offline-safe, ADR-0032 D1(3)). A live-LLM arm exists behind the
+  seam but is opt-in + §8-gated and is **never** wired on the demo path.
+- **Every seeded/HTTP/scheduled/event run** carries it (procurement); it is absent on the
+  legacy pre-PLAN-0085 runs already parked in a demo DB (persisted before the build) —
+  reseed if you want it live on an old run.
+- **Failure is invisible** — the builder never raises (ADR-0030 D5): if it ever fails the
+  block simply does not render and the gate is untouched.
+
 ---
 
 ## 4. Open it in a browser
