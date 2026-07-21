@@ -187,6 +187,9 @@ diff against. The maintenance cost is the smallest of any vertical class we ship
 (in-memory synthetic, no migrations).
 **Why Cray:** repo maintenance surface vs demo-portfolio value is a portfolio call,
 not an engineering derivation.
+**RESOLVED/RATIFIED (Cray, 2026-07-21 s156, AskUserQuestion): (a)** — commit via
+normal PR flow; the vertical lands in-tree as the 6th demo asset and the scaffolder
+PLAN's diff-reference.
 
 ### SD-2 — Timing granularity
 
@@ -205,6 +208,9 @@ natural grain: one checkpoint per generatable part.
 **Why Cray:** the number is Cray's pitch artifact — granularity determines what claim
 it can honestly support ("narrative → pipeline in X hours, of which the tool
 eliminates Y").
+**RESOLVED/RATIFIED (Cray, 2026-07-21 s156, AskUserQuestion): (a)** — per
+template-section checkpoints (~9 rows: 6 narrative-template phases + wiring + tests +
+live-verify).
 
 ### SD-3 — Procedure scope
 
@@ -223,6 +229,9 @@ in now would blur both measurements into neither. Defer it as a named candidate
 follow-on (not scheduled here).
 **Why Cray:** experiment-portfolio design — which number the pitch needs first is
 Cray's call.
+**RESOLVED/RATIFIED (Cray, 2026-07-21 s156, AskUserQuestion): (a)** — ONE hero
+procedure; the tire/PM calm-path stays a named, unscheduled follow-on measuring the
+"extend an existing vertical" number.
 
 ## Acceptance Criteria
 
@@ -285,6 +294,14 @@ SD-1 decides the landing (PR vs scratch), SD-2 the checkpoint template, SD-3 the
 procedure count. Record ratified picks as per-SD stamps (PLAN-0084/0085 pattern).
 Pre-create the three measurement artifacts (empty, with the SD-2 checkpoint template)
 so the clock never waits on scaffolding the instruments.
+
+**SATISFIED — 2026-07-21 (s156, AskUserQuestion):** all three SDs ratified, every
+pick = the draft recommendation ((a)/(a)/(a): commit via PR / ~9-row template-section
+checkpoints / one hero procedure). The dirtied narrative was delivered
+2026-07-21T14:20:45+07:00 (before this ratification — logged as the delivery stamp;
+the hands-on clock starts at Step-1 pre-flight completion, not at file arrival,
+since Step 0 is untimed by construction). Measurement artifacts pre-created at the
+SD-2 granularity in `docs/research/private/` (gitignored).
 
 ### Step 1: INPUT GATE — the dirtied narrative (timing starts at delivery)
 
