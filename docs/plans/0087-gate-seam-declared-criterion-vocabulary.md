@@ -1,7 +1,9 @@
 # PLAN-0087: The gate-seam criterion-vocabulary extraction — a vertical declares its own `rule_gate` vocabulary; the engine stops owning it
 
-**Status:** Draft — SD-1…SD-3 await Cray ratification at Step 0 (no implementation
-before it). House discipline: this PLAN stays `Draft` until Complete (an
+**Status:** Draft — **SD-1 … SD-3 RATIFIED by Cray (typed, 2026-07-21, session 158),
+all three as recommended: SD-1 = (a) vocabulary-only · SD-2 = (a) no preceding ADR ·
+SD-3 = (a) `ExceptionPolicy` stays closed.** Step 0 is discharged; implementation is
+unblocked from Step 1. House discipline: this PLAN stays `Draft` until Complete (an
 `Accepted`-status PLAN is G1-gated for closeout).
 **Owner:** Claude Code (executes + commits per ADR-009 D2) · Cray (SD ratification +
 PR merge)
@@ -281,9 +283,21 @@ closed engine enum — a declared criterion id **cannot** be named in `relaxes` 
 type spaces are disjoint by construction), so compliance stays non-waivable by type
 no matter what a vertical declares. AC-3 pins this.
 
-## Surfaced decisions (SD-N — Cray ratifies at Step 0; recommendations are contingent, not chosen)
+## Surfaced decisions (SD-N — ALL THREE RATIFIED by Cray, typed, 2026-07-21, session 158)
 
-### SD-1 — The scope fork: vocabulary-only, or fold in the procedure-aware `ExecutorFactory`?
+> **Ratification record.** Cray ratified SD-1, SD-2 and SD-3 **all as recommended**,
+> in one typed instruction, after reading PR #840 (which carried the three
+> recommendations with their alternatives). This is a typed Cray pick, not a Code
+> inference or a silence-implies-consent. The recommendations below were written
+> *contingent*; they are now *chosen*, and the per-SD stamps record which.
+
+### SD-1 — The scope fork: vocabulary-only, or fold in the procedure-aware `ExecutorFactory`? — **RESOLVED = (a)**
+
+> **RESOLVED (Cray, typed, 2026-07-21, session 158): (a) — this PLAN ships the
+> criterion-vocabulary extraction only.** The procedure-aware `ExecutorFactory` half
+> stays tracked at PLAN-0076 T1 as its explicitly-open remainder, with its named
+> triggers armed (a live `step_id` collision; the gate-shape 4-edit pain biting in a
+> real PLAN). Step 8's annotation records T1 as **partially discharged**.
 
 PLAN-0076 T1 bundles two things whose evidence is not equally strong.
 
@@ -315,7 +329,16 @@ PLAN-0076 T1 bundles two things whose evidence is not equally strong.
   is worth pre-paying while the tree is open — portfolio sequencing, not an
   engineering derivation.
 
-### SD-2 — Does an ADR land first?
+### SD-2 — Does an ADR land first? — **RESOLVED = (a)**
+
+> **RESOLVED (Cray, typed, 2026-07-21, session 158): (a) — no preceding standalone
+> ADR.** The PLAN lands inside already-ratified authority (ADR-0025 D2's own
+> "genericization gated behind the D7 re-trigger" clause, consumed when D7 fired at
+> N=4 and Cray cancelled it; ADR-0031 D4.2's delegation of each seam to its own
+> PLAN), and carries the D4.4 row amendment at landing (AC-7). Alternative (b) — a
+> preceding **ADR-0034** — was declined. **Consequence, binding:** AC-7 is now the
+> only governance-record obligation this PLAN owes ADR-0031, and it is not optional;
+> a shipped extraction with a silent D3 row is a FAIL.
 
 CLAUDE.md §8 binds: ADRs merge before the related implementation PR. The question
 is whether this design *needs* one.
@@ -350,7 +373,13 @@ is whether this design *needs* one.
   obligation because no ADR text is contradicted (that is the (a) claim; picking
   (b) rejects the claim).
 
-### SD-3 — `ExceptionPolicy`: open alongside, or stay closed?
+### SD-3 — `ExceptionPolicy`: open alongside, or stay closed? — **RESOLVED = (a)**
+
+> **RESOLVED (Cray, typed, 2026-07-21, session 158): (a) — `ExceptionPolicy` stays
+> closed in the engine**, recorded as the named label-class candidate with its own
+> trigger (its 2nd extension). It stays in Out of Scope; `_content_enum_surface`'s
+> scored_rule branch is therefore NOT touched, which keeps the AC-5 reader change at
+> its deliberate minimum (the rule_gate branch only).
 
 - **(a) — RECOMMENDED: stays closed in the engine; recorded as the named
   label-class candidate with its own trigger (its 2nd extension).** It is
@@ -485,14 +514,17 @@ Each with a pre-committed pass/fail read (fixed here, before the build).
 
 ## Steps
 
-### Step 0: SD ratification gate (blocking)
+### Step 0: SD ratification gate (blocking) — **DISCHARGED 2026-07-21 (session 158)**
 
-Present SD-1…SD-3 to Cray (AskUserQuestion). No implementation before ratification.
-Record picks as per-SD stamps (the PLAN-0084/0085/0086 pattern). If SD-2 = (b), this
-PLAN blocks until ADR-0034 merges; if SD-1 = (b), draft the fold-in scope addendum
-first.
+Present SD-1…SD-3 to Cray. No implementation before ratification. Record picks as
+per-SD stamps (the PLAN-0084/0085/0086 pattern). If SD-2 = (b), this PLAN blocks
+until ADR-0034 merges; if SD-1 = (b), draft the fold-in scope addendum first.
 
-### Step 1: Baseline capture (the pre-committed pass read is fixed here)
+> **DISCHARGED.** Cray ratified all three as recommended in one typed instruction
+> (SD-1 = (a), SD-2 = (a), SD-3 = (a)) after reading PR #840. Neither blocking
+> branch fired: no ADR-0034 gate, no fold-in addendum. **Step 1 is unblocked.**
+
+### Step 1: Baseline capture (the pre-committed pass read is fixed here) — **DISCHARGED 2026-07-21 (session 158)**
 
 Run the pinned-hash suites + the retrigger module + the full suite at execution
 HEAD and record green (the `confirmed — prior intact` baseline). Re-run the
@@ -500,6 +532,30 @@ HEAD and record green (the `confirmed — prior intact` baseline). Re-run the
 Current State — a set mismatch means the tree moved since drafting: stop and
 re-ground before editing. Verification: baseline figures recorded in the working
 notes; census set-equality confirmed.
+
+> **DISCHARGED — baseline green, census set-equality CONFIRMED** (Code, session 158,
+> at branch `docs/plan0087-gate-seam-criterion-vocabulary`, tree = `main` `8682b9c`
+> + this docs-only PLAN):
+>
+> - **Suite: 2943 passed / 7 skipped** — identical to the `8682b9c` figure carried in
+>   from PLAN-0086's close, so the pre-existing baseline is `confirmed — prior intact`
+>   (not a re-measurement that found drift). The pinned-hash suites
+>   (`test_governance_pin`, `test_derivation_pin`), the retrigger module, and the
+>   AC-6 presence guard all ride inside this run and are green.
+> - **Census set-equality: EXACT.** `services/` yields precisely the two sites this
+>   PLAN's Current State enumerates — `spec.py:853` (definition), `spec.py:1039`
+>   (`ComplianceRule.criterion` field) — and nothing else; the member consumer remains
+>   `rule_gate.py:135-136` alone. `tests/` yields exactly the five constructor/import
+>   modules enumerated for Step 4 (`test_at2_signature_retrigger.py:115,348`,
+>   `test_rule_gate.py:41,60-68`, `test_red_team_at2.py:49,137`,
+>   `test_draft_lift_governance.py:48,592`, `test_spec.py:23,850`) plus the two
+>   prose-only hero-test docstrings. **The tree has not moved since drafting** — the
+>   Step 1 stop-and-re-ground condition did NOT fire.
+> - **Process note (recorded so it is not repeated at Steps 2–7):** the first attempt
+>   at this baseline ran the pinned-hash subset CONCURRENTLY with the full suite and
+>   produced two spurious `asyncpg` failures in `test_governance_pin.py`. The test DB
+>   is scoped per checkout — **one `pytest` per checkout**. Those results were
+>   discarded, not diagnosed; the figures above come from a single clean run.
 
 ### Step 2: The declaration home + validator (engine side, additive)
 
