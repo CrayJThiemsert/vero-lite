@@ -37,6 +37,7 @@ from services.engine.ontology_meta import load_ontology_meta
 from services.engine.procedures.action_step import ActionStepExecutor, ClientFactory
 from services.engine.procedures.evaluate_step import EvaluateStepExecutor
 from services.engine.procedures.event_bridge import build_event_resolver, fire_event
+from services.engine.procedures.gate_advisory import GateAdvisoryBuilder
 from services.engine.procedures.governance_step import (
     GovernanceActionExecutor,
     GovernanceEvaluateExecutor,
@@ -259,12 +260,20 @@ async def _intake_seed(adapter: FastenalCsvAdapter, *, po_id: str = _HERO_PO) ->
     }
 
 
+# PLAN-0085 SD-3 (as ratified): the advisory fires at EVERY doa_tier gate this
+# vertical runs — seed, HTTP, scheduled, event — because every entrypoint builds its
+# executors HERE. Default = on (the frozen builder is immutable/shareable); passing
+# advisory_builder=None explicitly disables it (the AC-4 baseline arm in tests).
+_DEFAULT_GATE_ADVISORY = GateAdvisoryBuilder()
+
+
 def _executors(
     client_factory: ClientFactory,
     principals: list[Person],
     seed: list[Any],
     *,
     declared_query: StepExecutor | None = None,
+    advisory_builder: GateAdvisoryBuilder | None = _DEFAULT_GATE_ADVISORY,
 ) -> dict[StepKind, StepExecutor]:
     """The per-kind executors for the live run: QUERY seeds the requisition (routed per step
     when a ``declared_query`` leg is supplied -- PLAN-0064, below); EVALUATE is the AT-2
@@ -287,6 +296,9 @@ def _executors(
         base=ActionStepExecutor(client_factory=client_factory),
         principals=principals,
         sod_steps=frozenset({"intake", "approve"}),
+        # PLAN-0085 SD-1(b)/SD-3: procurement is the only vertical supplying the
+        # advisory builder in v1 — other verticals pass None and stay byte-identical.
+        advisory_builder=advisory_builder,
     )
     seed_query: StepExecutor = _SeedQuery(seed)
     query: StepExecutor = (
@@ -710,6 +722,9 @@ async def register_procurement_procedure_executors(
             declared_query=QueryStepExecutor(
                 adapter=registered_adapter, object_type_names=object_type_names, meta=meta
             ),
+            # PLAN-0085 SD-2(b): the _executors default supplies the deterministic-arm
+            # GateAdvisoryBuilder (grounded reasons, no network, no MS-S1); the live
+            # arm stays opt-in behind the seam and is NEVER wired here.
         )
 
     registry.register_procedure_executors(_VERTICAL, factory)

@@ -269,6 +269,36 @@
     }, kids);
   }
 
+  function advisoryBlock(run) {
+    // PLAN-0085 SD-4: the advisory gate recommendation — grounded REASONS, never a
+    // score (L-C / the s74 trust shape, PLAN-0035; the PR #823 discipline: no
+    // confidence number renders on any operator surface). Data-driven from the
+    // suspended step's persisted trace (kind 'advisory_recommendation'); rendering
+    // never generates content. detail.model is the SD-2 arm disclosure sublabel.
+    const step = (run.steps || []).find(s => s.step_id === run.suspended_step);
+    const entry = step && (step.reasoning_trace || []).find(
+      e => e && e.kind === 'advisory_recommendation');
+    if (!entry) return null;
+    const d = entry.detail || {};
+    const reasons = Array.isArray(d.reasons) ? d.reasons : [];
+    return h('div', {
+      class: 'mon-advisory', 'data-testid': 'gate-advisory',
+      style: { border: '1px solid var(--line)', borderRadius: '8px',
+               padding: '8px 10px', margin: '8px 0' }
+    }, [
+      h('div', { class: 'mon-advisory-top', style: { display: 'flex', gap: '6px', alignItems: 'center' } }, [
+        icon('spark', { width: 13, height: 13 }),
+        h('b', null, 'Advisory'),
+        h('span', { class: 'faint', style: { fontSize: '11px' } }, 'shown, never routes'),
+        d.model ? h('span', { class: 'faint mono', style: { fontSize: '11px', marginLeft: 'auto' }, title: 'producing arm' }, d.model) : null
+      ].filter(Boolean)),
+      reasons.length
+        ? h('ul', { class: 'mon-advisory-reasons', style: { margin: '6px 0 2px', paddingLeft: '18px', fontSize: '12px' } },
+            reasons.map(r => h('li', null, r)))
+        : h('div', { class: 'faint' }, entry.summary || '')
+    ]);
+  }
+
   function proposalPanel(run) {
     const operate = state.mode === 'operate';
     const proposals = run.proposals || [];
@@ -291,9 +321,12 @@
         h('b', null, 'Waiting on a human'),
         run.suspended_step ? h('span', { class: 'faint mono' }, 'step "' + run.suspended_step + '"') : null
       ].filter(Boolean)),
+      // PLAN-0085 SD-4: the advisory sits above the proposal rows + Submit — the
+      // approver reads WHY this landed on their desk before deciding.
+      advisoryBlock(run),
       rows.length ? h('div', { class: 'mon-props' }, rows)
                   : h('div', { class: 'faint' }, 'No decidable proposals at this gate.')
-    ];
+    ].filter(Boolean);
     if (operate && rows.length) {
       // the resolve endpoint requires an explicit decision per proposal (no silent default)
       const allDecided = proposals.every(p => state.decisions[p.action_id]);
