@@ -1,6 +1,6 @@
 # PLAN-0085: Advisory Gate Recommendation (AI-Transition Rung 1)
 
-**Status:** Draft
+**Status:** Complete (closed out 2026-07-21, session 156 — built #833, all 8 ACs ticked with evidence below; Cray confirmed the live advisory at the gate)
 **Owner:** Claude Code (executes + commits per ADR-009 D2)
 **Created:** 2026-07-21 (session 156, post-rehearsal AI-Transition arc)
 **Related ADRs:** ADR-0019 (shown-not-routing boundary — the load-bearing fence), ADR-010 IN-3 (confidence is advisory, never gates), ADR-0030 (advisory dimension = trace-carried precedent), ADR-007 D2 (envelope untouched), ADR-0032 (D1(3) offline-arm discipline, D5 positioning honesty), ADR-009 D1/D2 (authoring / commit boundary)
@@ -297,39 +297,39 @@ exactly that judgment.
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 Offline gate:** full suite green + `mypy --strict services/` +
+- [x] **AC-1 Offline gate:** full suite green + `mypy --strict services/` +
   `ruff check` / `ruff format --check` clean — CI scope (whole tree), re-baselined at
   execution HEAD (CLAUDE.md §8; offline oracle is the gate).
-- [ ] **AC-2 Advisory persisted at run time:** a fresh seeded run
+- [x] **AC-2 Advisory persisted at run time:** a fresh seeded run
   (`python scripts/seed_operate_demo.py`) parks at `waiting_human` with the advisory
   `ReasoningStep` ALREADY in the persisted trace of the approve step (or the SD-1
   ratified location) — proven by reading the persisted run, not the renderer;
   `detail` carries the producing arm (`model`), grounded reason content from the
   run's own data, and NO numeric confidence field surfaced to the operator (L-C).
-- [ ] **AC-3 Never-raise:** with the advisory builder forced to raise (test double),
+- [x] **AC-3 Never-raise:** with the advisory builder forced to raise (test double),
   the run proceeds byte-identically to baseline — same statuses, same park, same
   audit; the advisory is absent or degraded, never an error step, never FAILED, never
   a divert (economic_impact.py:118-148 contract; orchestrator untouched).
-- [ ] **AC-4 No routing delta:** advisory-on vs advisory-off runs are identical in
+- [x] **AC-4 No routing delta:** advisory-on vs advisory-off runs are identical in
   everything but the advisory trace entry — same gate reached, same
   `doa_tier_resolved` tier + approver resolution (PLAN-0075 baseline), **byte-identical
   approve-step `audit` payload** vs baseline; the advice writes ONLY to
   `reasoning_trace`, never to `audit`/artifact. This is the L-B fence as a test.
-- [ ] **AC-5 Trace-kind registry green:** `tests/api/test_trace_kind_labels.py` passes
+- [x] **AC-5 Trace-kind registry green:** `tests/api/test_trace_kind_labels.py` passes
   with the SD-5 outcome (new row + tripwire pin updated if a new kind; no change if
   reuse). No unmapped-kind rendering for the advisory entry.
-- [ ] **AC-6 Hash discipline (arm depends on SD-1):** under SD-1(b) — a test asserts
+- [x] **AC-6 Hash discipline (arm depends on SD-1):** under SD-1(b) — a test asserts
   the governance snapshot/hash of ALL touched procedures is byte-identical pre/post
   (parked runs keep resuming). Under SD-1(a) — the demo-reset note is executed and
   verified: parked-run refusal (assert_governance_pin, persistence.py:260-287) is
   CALLED OUT in the PR + runbook, existing parked runs drained/cancelled before
   merge, boot self-seed confirmed re-seeding — never silently discovered.
-- [ ] **AC-7 Live UI check (8101 demo, if SD-4 = gate-panel block):** seed → Monitor
+- [x] **AC-7 Live UI check (8101 demo, if SD-4 = gate-panel block):** seed → Monitor
   gate panel shows the advisory block (reasons, actor glyph, arm sublabel; NO
   score) above Submit; full trace entry visible via the toggle — **with the
   connection strip reading `LIVE`** (api.js silently serves mock on backend errors; a
   `degraded` strip invalidates the check). `?v=` bumped on every edited asset.
-- [ ] **AC-8 L-C conformance:** grep-verified — no confidence number/percentage/meter
+- [x] **AC-8 L-C conformance:** grep-verified — no confidence number/percentage/meter
   rendered in any operator-facing advisory surface added by this PLAN (the #823
   discipline holds); comments at the render site cite the s74 decision.
 
@@ -446,3 +446,54 @@ How we know it worked, in one line each:
    announced, executed event (SD-1(a)).
 5. AC-5/AC-8 keep the attribution + trust-shape disciplines (PLAN-0080, L-C) intact
    under the first llm-actor CONTENT producer.
+
+## Closeout evidence (2026-07-21, session 156 — per-AC, dated)
+
+Built in [#833](https://github.com/CrayJThiemsert/vero-lite/pull/833) (`e45f0fb`).
+Pass/fail read fixed before the runs (CLAUDE.md §6/§11). Live corroboration on the
+merged-main demo server (port 8101, strip `LIVE`).
+
+- **AC-1 (fresh @ execution HEAD):** full suite **2927 passed / 7 skipped** (2922
+  baseline + 5 new, 165s, disposable test DB); `mypy --strict services/` clean (98
+  files, CI-exact); `ruff check .` + `ruff format --check .` clean on the tracked tree
+  (the sole `ruff check` finding is the untracked local `.claude/benchmark-results/`,
+  never in CI).
+- **AC-2 (test + live):** `test_advisory_rides_the_parked_approve_trace` asserts the
+  advisory `ReasoningStep` is in the PERSISTED approve-step trace of a parked run, with
+  `detail.model` + grounded reasons + a recursive no-`confidence` check. Live:
+  `GET /runs/run-advisory-demo` shows the entry with 4 grounded reasons,
+  `model: deterministic`, zero `confidence` keys, and an audit block clean of the word
+  "advisory".
+- **AC-3 (test):** `test_raising_builder_cannot_harm_the_run_and_no_routing_delta` runs
+  an `_ExplodingBuilder` — statuses/step-ids byte-match baseline, the advisory degrades
+  to absent (never an error step / FAILED / divert).
+- **AC-4 (test — the L-B fence):** same test — the approve-step `audit` is
+  `json.dumps(sort_keys=True)`-identical across baseline / advisory-on / exploding arms;
+  the on-run's approve trace = baseline's trace + exactly one `advisory_recommendation`
+  entry.
+- **AC-5 (test):** `tests/api/test_trace_kind_labels.py` green with the new
+  `advisory_recommendation` row (actor `llm`); the set-equality tripwire pin extended,
+  no unmapped-kind rendering.
+- **AC-6 (test — SD-1(b) arm):** `test_governance_pins_unchanged_by_the_advisory_wiring`
+  asserts the pinned hash prefixes of all three touched procedures are unchanged
+  (`eb4aa90c3496` / `594596cccc6a` / `5cb26744115a`) — parked runs keep resuming, no
+  409 blast radius.
+- **AC-7 (live, Cray-confirmed):** on 8101 (strip `LIVE`), the Monitor gate panel renders
+  the advisory block in DOM order `mon-gate-top → gate-advisory → mon-props` (verified via
+  `getBoundingClientRect`/`nextElementSibling`): spark (llm) glyph, `deterministic` arm
+  sublabel, 4 reasons, NO score. `view-monitor.js` + `trace-kinds.js` bumped to `?v=c40`.
+  **Cray reviewed the live block and confirmed it** — noting it makes the first-time
+  operator read of the procedure card friendlier and reduces panic (the Step-6 Cray
+  confirmation gate).
+- **AC-8 (test + live):** the recursive `_assert_no_confidence` in the builder tests +
+  the live JSON check show no confidence number anywhere in the advisory; the render site
+  cites the s74 decision in a comment (the #823 discipline).
+- **Runbook §-note (Step 6):** `docs/runbooks/run-oct-demo.md` §3e added (the advisory
+  beat, the no-score/offline-arm framing, the never-raise invisibility, the LIVE-strip
+  rule) — a note, not a rewrite.
+
+**Product signal (recorded, not scope):** Cray's confirmation surfaced an unplanned
+value — the advisory doubles as an **onboarding aid**: a new operator who previously
+could not tell "what is what" on a procedure card now reads a plain-language *why this is
+on my desk*. This connects Rung 1 to the onboarding-ladder direction and is a candidate
+input when reshaping the View-2 scaffolder (the ratified next step).
