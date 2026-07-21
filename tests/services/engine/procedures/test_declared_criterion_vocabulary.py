@@ -20,11 +20,13 @@ Pure-offline (no DB, no LLM, no MS-S1 — CLAUDE.md §8).
 from __future__ import annotations
 
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
 from services.engine.procedures.draft import VERTICAL_GOVERNANCE_FIELDS
+from services.engine.procedures.rule_gate import COMPLIANCE_FIELD, evaluate_compliance
 from services.engine.procedures.spec import (
     Agent,
     ComplianceGate,
@@ -40,6 +42,7 @@ from services.engine.procedures.spec import (
     StepFacet,
     StepKind,
     VerticalProcedures,
+    load_procedures_file,
 )
 
 _AGENT = Agent(agent_id="ops", name="Ops")
@@ -171,3 +174,120 @@ def test_compliance_criteria_is_a_human_authored_governance_field() -> None:
     judged against. There is no `VerticalProceduresDraft`, so — like the principal fields — the
     guard is the named H set rather than a per-draft field check."""
     assert "compliance_criteria" in VERTICAL_GOVERNANCE_FIELDS
+
+
+# --- AC-1: the proof pair — the engine-edit-per-vertical pressure is GONE ---------
+#
+# The three tests below are the PLAN's acceptance proof, not extra coverage. AC-1's
+# pre-committed read is: a fixture vertical carrying a criterion that appears NOWHERE in
+# `services/` (i) loads through the real `load_procedures_file` and gates through the real
+# `evaluate_compliance`, (ii) its undeclared twin is refused at load, and (iii) a repo grep
+# for that criterion matches only this module. Together they say: shipping a brand-new gate
+# vocabulary required zero engine diff. Under the retired `ComplianceCriterion` enum, the
+# fixture below was simply unloadable without editing `spec.py`.
+
+_NOVEL_CRITERION = "zzz_fixture_only_sourcing_check"
+"""Deliberately not a plausible real criterion: it must never be added to a shipped vertical,
+because :func:`test_novel_criterion_is_confined_to_this_module` asserts it appears nowhere
+else in the repo. That assertion is what makes the other two tests mean "no engine diff"
+rather than merely "a criterion works"."""
+
+_FIXTURE_YAML = """\
+namespace: fixturevert
+version: 0
+
+agents:
+  fixture_agent:
+    name: Fixture Agent
+    allowed:
+      step_kinds: [query, evaluate]
+
+compliance_criteria: [{criteria}]
+
+procedures:
+  fixture_gate_check:
+    title: Fixture Gate Check
+    goal: >-
+      Evaluate a candidate against a vocabulary this vertical declared for itself.
+    run_by: fixture_agent
+    trigger: manual
+    steps:
+      - step_id: intake
+        name: Intake
+        kind: query
+      - step_id: gate
+        name: Gate
+        kind: evaluate
+        governance_content:
+          kind: rule_gate
+          rules:
+            - criterion: {criterion}
+              spec: "the fixture predicate — non-authoritative display text"
+        facet:
+          decision_condition: {{ gate_kind: rule_gate }}
+"""
+
+
+def _write_fixture(tmp_path: Path, *, declared: str) -> Path:
+    path = tmp_path / "procedures.yaml"
+    path.write_text(
+        _FIXTURE_YAML.format(criteria=declared, criterion=_NOVEL_CRITERION), encoding="utf-8"
+    )
+    return path
+
+
+def test_novel_criterion_loads_and_gates_with_zero_engine_diff(tmp_path: Path) -> None:
+    """AC-1(i). The full real path: `load_procedures_file` parses a vertical whose gate names a
+    criterion the engine has never heard of, and `evaluate_compliance` then gates on it —
+    passing on an explicit truthy signal, BLOCKING on a false one and on an ABSENT one (an
+    unverifiable blocking criterion can never be waved through; ADR-0025 D3 fail-closed)."""
+    spec = load_procedures_file(
+        _write_fixture(tmp_path, declared=_NOVEL_CRITERION), vertical="fixturevert"
+    )
+    gate = spec.procedures[0].steps[1].governance_content
+    assert isinstance(gate, ComplianceGate)
+    assert [r.criterion for r in gate.rules] == [_NOVEL_CRITERION]
+
+    passing = evaluate_compliance(gate, {COMPLIANCE_FIELD: {_NOVEL_CRITERION: True}})
+    assert passing.compliant and passing.failed_criteria == []
+
+    failing = evaluate_compliance(gate, {COMPLIANCE_FIELD: {_NOVEL_CRITERION: False}})
+    assert not failing.compliant and failing.failed_criteria == [_NOVEL_CRITERION]
+
+    absent = evaluate_compliance(gate, {COMPLIANCE_FIELD: {}})
+    assert not absent.compliant and absent.failed_criteria == [_NOVEL_CRITERION]
+
+
+def test_novel_criterion_undeclared_twin_is_refused_at_load(tmp_path: Path) -> None:
+    """AC-1(ii). The SAME fixture, declaring a different id — so the gate's criterion is
+    well-formed but undeclared. Refused at load, with a message that names the vertical, the
+    offender and the declared set. This is what keeps the vocabulary closed: the vertical may
+    choose its own words, but it may not use one it never wrote down."""
+    with pytest.raises(ValidationError) as exc:
+        load_procedures_file(
+            _write_fixture(tmp_path, declared="something_else"), vertical="fixturevert"
+        )
+    msg = str(exc.value)
+    assert _NOVEL_CRITERION in msg
+    assert "something_else" in msg
+
+
+def test_novel_criterion_is_confined_to_this_module() -> None:
+    """AC-1(iii) — the static guard that gives the two tests above their meaning. If this
+    fixture criterion ever appears in `services/` or in a shipped vertical, then the "zero
+    engine diff" claim above is no longer being proven by anything, and this test says so
+    before the claim quietly rots. Mirrors the `test_load_run_ordering_guard.py` pattern."""
+    root = Path(__file__).resolve().parents[4]
+    hits = sorted(
+        p.relative_to(root).as_posix()
+        for d in ("services", "tests", "verticals")
+        for p in (root / d).rglob("*")
+        if p.is_file()
+        and p.suffix in {".py", ".yaml", ".yml"}
+        and _NOVEL_CRITERION in p.read_text(encoding="utf-8", errors="ignore")
+    )
+    assert hits == [Path(__file__).resolve().relative_to(root).as_posix()], (
+        f"the AC-1 fixture criterion leaked outside this module: {hits}. It must exist ONLY "
+        "here — its absence from services/ is what proves a new vertical's vocabulary needs "
+        "no engine edit."
+    )
