@@ -302,3 +302,46 @@ exactly once, verified by exact list equality at split time, not by a byte-sum e
 > Postgres UP (localhost:5442). Commits: `5e45eb6` (#808 merge, s149 tip) →
 > `92f0019` (#809) → `c94d089` (#810) → `e059303` (#811) → `043da3c` (HEAD,
 > #812 merge).
+
+### Current Focus block removed — session 151 (PLAN-0081 building_materials governed-credit HERO, the 3rd AT-2 signature, #814) [rotated 2026-07-21, session-157 reconcile — 4-block window]
+
+> **Session 151, 2026-07-19 (head_commit `043da3c` → `9422c40`) — PLAN-0081
+> BUILT end to end: the `building_materials` governed-credit HERO — the **3rd
+> AT-2 signature** (`building_materials.governed_credit_release`) — then
+> PLAN-0079's tracking stub RETIRED (Step T3) + PLAN-0081 archived; governance
+> behaviour UNCHANGED (#814).** Cray COMMISSIONED the hero this session
+> (AskUserQuestion, after next-work-analyst ranked it #1); PLAN-0079 Step T1 was
+> already fired (s146), so this session paid the BUILD. **The hero:** an
+> exposure breach ABOVE the account's own `credit_limit_thb` routes the full
+> governed AT-2 spine — per-entity band → `rule_gate` (KYC / overdue-AR /
+> blacklist) → `doa_tier` human approval + SoD (sales requests, credit-control
+> approves); steps intake → judge → reshape → credit_gate → approve → fulfill;
+> the ฿550,000 shipped breach routes mid-ladder (`ผจก.ควบคุมเครดิต`), demoing
+> tiering not just the top. **The 3rd signature REUSES, it does not re-invent:**
+> the money `doa_tier` ladder is reused UNCHANGED (no new gate kind, no new
+> authority quantity) — only the criterion vocabulary grows (`ComplianceCriterion
+> += {kyc, overdue_ar, blacklist}`). **The ADR-0025 D7 re-evaluation was
+> PERFORMED at N=3** (verdict Cray-ratified: the generator stays deferred,
+> `test_at2_signature_retrigger.py` re-arms at N=4). **Engine diff bounded** to
+> the additive `ComplianceCriterion` block (`spec.py`) — the `Person` promotion
+> was PLAN-0082's dependency (already on main), so this PR carried NO engine
+> `Person` edit; principals parse into the shared `core.Person` and the
+> one-`Person` guard holds. **Coordination:** the endpoint pin bumped 9 → 10
+> procedures + the spec-less guard re-pointed to a fixture vertical
+> (building_materials is no longer spec-less); the archetype catalog + map gained
+> the 3rd AT-2 signature; new AC tests
+> `tests/verticals/building_materials/test_governed_credit_hero.py`
+> (AC-1/2/4/5/9 — the in-memory run reaches the `doa_tier` gate, `waiting_human`).
+> **Closeout (AC-10):** PLAN-0079 tracking stub RETIRED (Step T3) → `done/`, its
+> guard test `test_governed_credit_hero_tracking_guard.py` DELETED, the STATUS
+> Active-TODO pointer retired; **PLAN-0076 T1's gate-seam trigger recorded MET**
+> (its own process owns the seam PLAN — not opened here); PLAN-0081 archived →
+> `done/` at 15/15 ACs + a Closeout Verification block. **Honest flag:**
+> `DoaLadder` REQUIRES an `emergency_waiver` (ADR-0025 D3) and
+> `RelaxableConstraint` is a closed enum AC-3 forbids extending, so the
+> procurement-shaped waiver is reused (GUESS-marked, not exercised on the happy
+> path). **Verification:** full offline suite **2896 passed / 7 skipped** (re-run
+> on the merge commit `9422c40`); `mypy --strict services/ verticals/` clean;
+> ruff clean; CI `gate` PASS — deterministic-offline, MS-S1 never called, no
+> host-state. Post-merge: main=`9422c40`; 0 open PRs; loop-dispatcher DISABLED.
+> Commits: `a46bef8` (#814) → `9422c40` (HEAD, #814 merge).

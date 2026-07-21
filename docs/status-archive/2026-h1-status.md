@@ -705,3 +705,24 @@ convention is separate work, deliberately not done here.
 ### Recent Decisions row — s144 R4 archive-size guard arc closed (#789 #791 #792) [rotated 2026-07-21, session-156 reconcile — 10-row window]
 
 | 2026-07-17 | **s144 — the R4 arc CLOSED end to end (#789 guard → #791 + #792 splits): a ratified rule that had NO mechanism now has one, and every archive sits under the ~192 KB TRIGGER — not merely the cap — for the first time.** R4's own responsibility-matrix guard column read `—` where R1/R7 read `fail`; the rotation archive had rotted to **592,577 B = 2.26x the cap**. #789 shipped `tools/check_archive_size.py` (warn >192 KB, **fail >256 KB**, `files:`-scoped hook) GREEN **by design**; the BINDING live assertion (`test_live_archives_are_within_cap`) could only land in #791 **after** the split — a guard whose live assertion is RED cannot merge into a protected main. **Five-file c/d/e/f chain, not four** (a 4-way split lands one file at ~97% of the trigger). #792 split current-focus AND **recorded Cray's naming rule as CANON** — letters ascend with time, the base holds the recent window; **grep the archive dir, never cite a continuation by name**. Proofs DIFFER and say so: #791 = exact list equality (27 sections), #792 = multiset equality (30 blocks, deliberately reordered across files); both re-run AFTER pre-commit → *"equal except N trailing newlines, all stripped-equal"*, **NOT byte-identical**. Suite **2855/7** re-run on the merge commit itself. _[Concurrent session 145: #788 PLAN-0080 `Status: Draft` — SD-1/SD-2 UNRATIFIED, must NOT be executed, and `docs/conventions/ui.md` does NOT exist · #790 frontmatter-only bump, merged on Cray's instruction.]_ Full narrative: the Sessions-144+145 CF block above | `ce0f0a1` (HEAD, #792 merge) / `f00e4c7` (#791) / `b369fa6` (#789) / `694e8d7` (#788) / `tools/check_archive_size.py` + `.pre-commit-config.yaml` + `docs/runbooks/memory-architecture.md` (R4 matrix row `—` → `fail >256 KB` + the naming rule) + `docs/status-archive/**` (the c/d/e/f + b/c-cf chains) |
+
+### Recent Decisions row — s147 PLAN-0081 arc (#797 Draft + #798 SD-E fold / SD-J SPLIT) [rotated 2026-07-21, session-157 reconcile — 10-row window]
+
+| 2026-07-18 | **s147 — PLAN-0081 arc (#797 Draft + #798 SD-E=(b-ii) fold / SD-J=SPLIT ratified, both `docs(plans)`): #797 filed the `building_materials` governed-credit HERO BUILD plan as `Status: Draft` (Cray COMMISSIONED via PLAN-0079 T1 — SD-1=trip AT-2 N=3 in-PLAN, SD-2=ride `measured_value`).** #798 folded Cray's **SD-E=(b-ii)** (promote `Person` to a NEW shared/core ADR-0008 `object_type` — the shipped codegen is strictly per-vertical, so b-ii INVENTS the mechanism) + ratified **SD-J=SPLIT** (b-ii → its OWN new PLAN + a preceding ADR-0008 grammar amendment as gate; PLAN-0081 Step 9 shrinks to the migration). New AC-12/13/14/15 + SD-F…SD-J + expanded OQ-1; **PLAN-0081 stays Draft — no code shipped.** Full narrative: the Sessions-147+148 CF block above | `fa4f6c6` (#798 merge) / `46a6ec2` (SD-E fold) / `e03e56f` (#797 Draft) / `docs/plans/0081-*.md` (Draft) |
+
+### Rotation note — session-155 EVENING reconcile [rotated 2026-07-21, session-157 reconcile — 2-note window]
+
+> _Rotation note (session-155 EVENING reconcile, 2026-07-20, `docs(status):`):
+> the SAME session 155 continued past the morning reconcile and shipped the
+> PLAN-0084 arc (#825 → #826 → #827), so the existing **Sessions 153 + 154 +
+> 155** block was EXTENDED IN PLACE (head_commit range now `a53c6ed` →
+> `25b31e2`, the #827 `feat(demo)` merge, the newest SUBSTANTIVE commit — Q4
+> recipe) — NO new CF block, NO CF rotation (4-session window unchanged:
+> s153/154/155 + s152 + s151 + s149/150). Recent Decisions gained ONE row (the
+> late-s155 PLAN-0084 arc) and so rotated its ONE OLDEST — the **s144**
+> PLAN-0078 closeout row (#786) — to the rotation-archive BASE
+> `docs/status-archive/2026-h1-status.md`. [Morning reconcile, consolidated:
+> the combined s153/154/155 block's PREPEND rotated OUT the **Sessions 147 +
+> 148** CF block and the **s143** PLAN-0078 Phase-2 PR-5 row (#784), both to
+> the same base.] Prior rotation notes (through the s155 morning reconcile)
+> are consolidated here (R4). Per the STATUS.md Rotation Policy (R1/R2/R4)._
