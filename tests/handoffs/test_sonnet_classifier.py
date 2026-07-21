@@ -432,6 +432,32 @@ def test_system_prompt_carries_the_completion_consistency_rule() -> None:
     assert "spurious pauses are preferred over spurious proceeds" in prompt
 
 
+def test_system_prompt_reserves_cray_only_actions_out_of_proceed() -> None:
+    """The session-159 calibration fix: a step RESERVED FOR CRAY (merging a PR,
+    ratifying a decision/SD, approving a draft, anything a PLAN's Owner line
+    assigns to Cray) is a natural stop, never a PROCEED next action.
+
+    Why this is worth a contract test rather than left to the completion rule
+    above: ``stop_continuation._proceed_block`` passes this classifier's
+    ``reason`` back to the main agent VERBATIM as the continuation instruction,
+    so a reason naming a Cray-reserved step reads to the agent as an instruction
+    to PERFORM it. On 2026-07-21 the classifier returned proceed with the reason
+    "Merge PR #841" on a turn whose recent activity stated the agent was waiting
+    on Cray's merge decision. The agent declined and asked Cray directly — but
+    nothing deterministic would have caught it: ``pretooluse_git_deny``'s regex
+    is anchored on ``git`` so ``gh pr merge`` never matches, and that gate
+    permits the main Code agent in any case. The prompt is the only layer that
+    can hold this line, so pin it."""
+    prompt = sc._build_system_prompt("registry text here")
+    assert "RESERVED FOR CRAY" in prompt
+    assert "Merging a PR" in prompt
+    # The pass-through mechanic is the REASON for the rule — if this sentence is
+    # dropped the rule reads as arbitrary and is likely to be edited away.
+    assert "VERBATIM" in prompt
+    # The rule must resolve to PAUSE, not merely "be careful".
+    assert "return PAUSE and never name it in a reason" in prompt
+
+
 # --- Step 5b: config-file fallback (defeats Claude Desktop env-strip) ---
 
 
