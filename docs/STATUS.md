@@ -194,174 +194,6 @@ recent_commits: [e55f2b8, c6eec65, 4f9cb7a, bdd07ed, 16c3622, d9a0ad1, 069cdf7, 
 > BUILT — head_commit of record) → `63009c3` (#834 closeout, main HEAD);
 > `recent_commits` interleaves the five merge commits.
 
-> **Sessions 153 + 154 + 155, 2026-07-20 (head_commit `a53c6ed` → `25b31e2`) —
-> the demo-beat runbook staged (#822), a strategy read that CUT the tempting
-> part (s154, zero commits), the operator confidence badge REMOVED from
-> both cards that carried it (#823), and the late-s155 PLAN-0084 arc: filed
-> (#825) → all 5 SDs Cray-resolved (#826) → BUILT end-to-end (#827) —
-> map↔monitor run linkage + opt-in seed rotation + the SD-F Fastenal-adapter
-> swap.** **(s153) Two docs PRs, no code.** **#821
-> (`0248ec1` → merge `b45f5c4`, `docs(status)`)** was a housekeeping prune:
-> the "Standard partner-intake form" Active TODO CLOSED (the deliverable
-> exists and is canonical at `docs/conventions/partner-intake-form.md:8`; its
-> per-vertical generalization is deferred to Rule of Three **BY DESIGN, not
-> incomplete**), plus the stale `ADR-011+` / `PLAN-002 (>=ADR-014)` pointers
-> dropped from Next Steps 1 and 3 — Next Steps had been **contradicting Active
-> TODOs two sections up** (both were already corrected at s141). It
-> deliberately did NOT bump session/head_commit/recent_commits (pure prune, Q4
-> semantics), which is why s152 stayed the last real reconcile. **#822
-> (`90a2afb` → merge `d8057fb`, `docs(runbook)`)** is the SUBSTANTIVE one and
-> had never been reflected in STATUS until now: `docs/runbooks/run-oct-demo.md`
-> §3c stages the **config-pin fail-closed refusal as a deliberate demo beat
-> (Beat 06)** per PLAN-0047 Step 6 — the refusal is the product, so it gets
-> rehearsed, not hidden. Both PRs sat blocked mid-session on a GitHub-Actions
-> outage and landed when CI recovered (~09:34 +07).
-> **(s154) ZERO repo commits — strategic analysis only.** Cray brought the
-> Cerebras enterprise-knowledge-base article and asked whether vero-lite should
-> adopt that approach to grow beyond governance into org-wide monitoring +
-> prediction + warning-with-alternatives. Code read **ADR-0032 first** (the §2
-> mandated pre-strategic read), then ran 4 read-only specialists in parallel,
-> all grounded `file:line` against code. Verdicts: (1) predict+warn+alternatives
-> is **NOT a new direction** — it is OCT feature 3 / Shape-1, passing the D6 fit
-> filter IF prediction stays **deterministic**; (2) a KB over vero-lite's OWN
-> governed artifacts is **D3 Shape-2 fuel verbatim** → pilot-gated by OQ-1; (3)
-> org-wide Slack/wiki ingestion is the only genuinely new part **and the part to
-> CUT** (fails D6 ~0/4, hits the named refused archetype, DPO-veto surface); (4)
-> the surviving reframe = **"governed retrieval over the decision record — an
-> answer an auditor accepts"**. The live blog URL 500'd everywhere, so Cray
-> saved the page manually and Code re-verified the digest-based analysis against
-> the real article: **all 4 verdicts `confirmed — prior intact`**, deltas were
-> refinements only. Highest-value delta: the blog gives its authn/authz/audit
-> layer ONE bullet and zero design detail — **retrieval quality is the published
-> commodity; governance OF retrieval is the uncovered lane.** Artifacts are
-> gitignored under `docs/research/private/cerebras/`.
-> **(s155, this session) `next-work-analyst` + the badge removal (#823,
-> `fix(ui)`).** A full 4-agent Explore fan-out ranked post-rehearsal work; Cray
-> commissioned item #1. **#823 (`f09cc99` + `ffb251b` → merge `4edfa3f`) removed
-> the operator-facing confidence badge from BOTH cards that carried it**,
-> executing the already-ratified demo-card trust shape
-> (`docs/plans/done/0035-governed-action-verify-reshape-build.md:591-602`,
-> Cray-approved s74, re-recorded s142, cited by ADR-0030: "No operator-facing
-> confidence badge"). `f09cc99` removed the hardcoded "Confidence 86%" + meter
-> from the story-mode scene-2 governed-action card and the same number from the
-> proposal-card meta; **`ffb251b` removed the same badge from the View-B
-> "Anomaly & Decision" card, where it was driven by a LIVE `rec.confidence` —
-> the more load-bearing instance**, since that file is the operator
-> recommendation card the decision actually names. **KEPT by design:** confidence
-> inside the reasoning trace (trace-only is the point), the fault-mode `AI 0.41
-> ↓ → rule fail-safe` badge (it narrates the reroute MECHANISM, not a self-graded
-> score), and the DAG task-detail row (engine-view). `.dc-metarow` collapsed from
-> a 2-column grid to 1 so the handler fills the row rather than stranding a dead
-> half; orphaned `.gc-conf-top` / `.dc-conf-top` / `.dc-conf-val` rules removed;
-> comments at every site cite the decision so the badge is not reintroduced.
-> Files: `view-story.js`, `view-anomaly.js`, `story.css`, `views.css`,
-> `index.html` (cache tokens bumped) — **static assets only**, no engine/API/
-> contract change, ADR-007 D2 envelope untouched. **Verification:** full offline
-> suite **2915 passed / 7 skipped** on each commit AND re-run on the merge commit
-> `4edfa3f` (CI is PR-only, so the merge commit is otherwise never tested); mypy
-> clean (97 files); ruff clean; CI `gate` PASS on #823. Live browser check on
-> port 8101 with the connection strip reading **`LIVE`** (not `degraded`): the
-> View-B card rendered through the real `decisionCard()` path with a fixture
-> deliberately carrying `confidence: 0.86` — proving the badge is gone **even
-> when the signal IS present**; `.dc-handler` measured 414/414 px against its row.
-> **Four claim-vs-code corrections surfaced by the grounding pass (the session's
-> durable finding):** **(a)** the s154 research note recommended running a
-> naive-RAG comparison "before building anything", but **PLAN-0027 ALREADY ran
-> it** (scored 2026-06-16, `benchmarks/procedure_baseline/REPORT.md:697-771`) and
-> the answer is that arm (c) lean RAG **TIES** arm (a) governed on entity+action
-> accuracy (97.5% vs 97.5–100%) at **3–15x lower latency** — the moat claim was
-> already relocated OFF raw accuracy ONTO the governance layer; **(b)** "the
-> actions router is fully governed" is an **overstatement** — `append_audit` is
-> called once in a failure-alert helper, approve/execute never call it, and that
-> router's own GET endpoints are as ungoverned as `/query`; **(c)** the
-> "ADR-0031 tripwire" cited for a learned forecaster is the **wrong ADR** —
-> ADR-0031's tripwires are eval/open-StepKind/untyped/enum-widening, while the
-> real determinism line is **ADR-0019:50-57 + ADR-010 IN-3**, and a deterministic
-> trend projection sits on the **PERMITTED** side so long as it stays advisory;
-> **(d)** a 4th AT-2 signature is currently **unbuildable** — no vertical has the
-> substrate (energy + aquaculture are AT-1/AT-1b with no principals, no SoD, zero
-> money/authority ontology fields; vet_clinic is a parked README) — and ADR-0032
-> D1/D6 argues against scoping one absent a named partner. **Also flagged for the
-> demo:** the UI **silently serves MOCK data on any backend error**
-> (`services/api/static/assets/api.js:37-39` routes any non-ok/non-JSON response
-> to `fallback()`), so a rehearsal can pass entirely against fake data — **the
-> only tell is the connection strip.** Post-merge: main=`4edfa3f`; 0 open PRs;
-> loop-dispatcher DISABLED; MS-S1 idle/COLD (zero calls across all three
-> sessions). Morning commits: `0248ec1` (#821) → `b45f5c4` (#821 merge) →
-> `90a2afb` (#822) → `b1d7f5a` → `d8057fb` (#822 merge) → `f09cc99` →
-> `ffb251b` (#823) → `4edfa3f` (#823 merge).
-> **(s155 late) The PLAN-0084 arc — filed, SD-ratified, and BUILT end-to-end
-> in one afternoon/evening (#825 → #826 → #827).** **#825 (`1b2c05c` → merge
-> `628bfa1`, `docs(plans)`) filed PLAN-0084** (`Status: Draft`): map↔monitor
-> run linkage + opt-in seed rotation — the demo-coherence ask Cray made
-> mid-rehearsal; scope Cray-ratified via AskUserQuestion ("Flow + หมุน asset
-> เดิม"; server-side object injection REJECTED) + PLAN-first routing. Authored
-> by plan-drafter from Code's grounded dispatch; the drafter corrected Code's
-> own fact-pack TWICE (RunSummaryView, not "RunListItem"; the event path's
-> engine-side `trigger_context` stamp pinning CNC-Line-07, which matches no
-> map pk). **#826 (`edf922d` + `f6bb12c` → merge `e5f3ede`, `docs(plans)`)
-> resolved ALL FIVE SDs** (Cray, AskUserQuestion): SD-A typed subject on
-> list+detail; **SD-B ALL FOUR non-hero assets rotatable (wider than rec** —
-> CNC-009 cheap because `link_asset_uses_part` LNK-AUP-003 already binds it
-> to the hero part); SD-C a distinct "governed run in flight" marker,
-> waiting_human+running; **SD-D execute option (d) IN-PLAN (wider than rec)**
-> — both demo entry points light the map, the `_EVENT_ASSET_ID` re-pin
-> superseding PLAN-0057 OQ-1; SD-E newest-first cap 5. Step 0 SATISFIED. Two
-> commits because the L1 same-file loop-detect interrupted the drafter's
-> batch (3 restating edits landed in commit 2 after the counter reset — fully
-> disclosed in the PR). **#827 (`45fcba1` + `64119b9` → merge `25b31e2`,
-> `feat(demo)`) BUILT PLAN-0084 end-to-end + SD-F.** The build: seed stamps
-> `trigger_context["subject"]` from the computed intake seed; `RunSubjectRef`
-> + optional `subject` projected fail-soft on RunSummaryView AND
-> RunDetailView; the map ingests `/runs` via a Monitor-style direct fetch
-> (never the mock-fallback O.API path); assets with in-flight runs get the
-> dashed amber ring; the node panel gains "Governed runs · in flight" with
-> per-run "Open in Monitor →" buttons; `ViewMonitor.focusRun` + the
-> `oct:goto {view:'H', run}` wire; Step 4b re-pin + the entity_ids→subject
-> projection through a lazily-cached pk→object_type index (data-driven, no id
-> map); rotation via `--asset`/`--rotate` with an ASSET-KEYED failure pick
-> (row-order dependency killed); fixtures = one failure event per rotatable
-> asset + 3 quotes each for three previously quote-less parts + the CNC-009
-> PO (฿78,500 → the 50k–500k band); runbook §3d (rotation flags, the
-> live-verified tier→approver table, the beat-1 cue now naming AST-CNC-014,
-> the "strip must read LIVE" rule). **SD-F — the headline finding,
-> Cray-ratified mid-build: the PLAN's grounding was WRONG (`was an error`,
-> recorded in the PLAN)** — the map never rendered the hero CSV: the
-> registered procurement adapter was the scaffold-era synthetic set
-> (`equip-*`, 4 anonymous assets) while every hero surface narrates Fastenal
-> (`AST-*`, 5 named assets) — the demo was already split-brain and the
-> subject could light nothing. Cray: **"Fastenal เป็น adapter หลักของ
-> procurement ทั้งหมด"** — `register_procurement_adapter` (discovery) now
-> registers the `FastenalCsvAdapter`; the swap required the `plant.csv` geo
-> anchor (without it the map has no mappable objects), `stock_qty`/
-> `reorder_point` on `part.csv` (the calm-path chain runs over the registered
-> adapter; synthetic semantics preserved EXACTLY incl. the PLAN-0066 AC-6
-> >100 flip case as PRT-BLT-110 150/160), and four test repins (the
-> PLAN-0083 canonical-coverage tripwire caught the new Part keys — working
-> as designed; calm-path 3→5 rows; scheduled-demo verdicts; shadow-parity
-> expected side JSON-sanitized for Decimal). Fastenal serves `[]` for
-> unserved types + streams no events → GET /recommendations stays empty,
-> matching the observed pre-swap demo; the synthetic adapter stays in-tree
-> for direct-module harnesses. **Live verification (port 8101, strip LIVE,
-> zero console errors):** AC-4 full click-through (map node → panel → button
-> → View H with `run-row-run-s155-linkage` SELECTED); AC-9 (POST
-> /demo/hero/event → the event run projects subject {Equipment, AST-CNC-014}
-> and lights the map; the panel listed event + seeded runs newest-first);
-> AC-5 (/runs forced 500 → map renders fully, zero markers, no mock
-> fallback); AC-7 live (ROBOT-21 ฿99k→appr-pm; CONV-05 ฿7.2k→appr-buyer — a
-> genuinely different tier; unknown asset lists the 5 rotatable); AC-2
-> legacy fail-soft proven with the REAL morning run (subject: null). AC-1:
-> full offline suite **2922 passed / 7 skipped**, re-run and CONFIRMED on the
-> merge commit `25b31e2` itself (CI is PR-only, so the merge commit is otherwise
-> never tested) — baseline 2915 + 7 new tests; mypy strict 142 files; ruff clean.
-> **PLAN-0084 status: Draft, all 6 SDs resolved, ACs deliberately UNTICKED —
-> closeout (tick + archive) is a named next step after Cray's rehearsal
-> passes on the new build.** Post-merge: main=`25b31e2`; 0 open PRs;
-> loop-dispatcher DISABLED; MS-S1 idle/COLD (zero calls all day). Late-s155
-> commits: `1b2c05c` (#825) → `628bfa1` (#825 merge) → `edf922d` + `f6bb12c`
-> (#826) → `e5f3ede` (#826 merge) → `45fcba1` + `64119b9` (#827) →
-> `25b31e2` (HEAD, #827 merge).
-
 > _Rotation note (session-159 reconcile, 2026-07-21, `docs(status):`): added
 > the **Sessions 158 + 159** CF block (PLAN-0087 BUILT #840 → CLOSED + archived
 > #841) and rotated the OLDEST CF block — **Session 152** (PLAN-0083, the
@@ -371,11 +203,19 @@ recent_commits: [e55f2b8, c6eec65, 4f9cb7a, bdd07ed, 16c3622, d9a0ad1, 069cdf7, 
 > row (the PLAN-0087 build+closeout arc) and rotated its ONE OLDEST — the
 > **s148** PLAN-0080 closeout row (#799) — to the rotation base
 > `docs/status-archive/2026-h1-status.md`. The **session-156** rotation note was
-> itself rotated to the same base (R4 consolidation). Window after this
-> reconcile: CF = 4 blocks (s158/159 + s157 + s156 + s153/154/155); RD = 10
-> rows. **R1 headroom note:** STATUS is now ~62 KB against the 64 KB ceiling —
-> the next reconcile will need a DEEPER rotate (the s153/154/155 block is the
-> obvious candidate at ~12 KB). Per the STATUS.md Rotation Policy (R1/R2/R4)._
+> itself rotated to the same base (R4 consolidation). **Amended later the same
+> session (the R1 headroom follow-up, `docs(status):`): the `Sessions 153 + 154 +
+> 155` CF block (~12.8 KB) was ALSO rotated** to the Current-Focus base. This was
+> not a judgement call about headroom — it is what **R2 already required**:
+> the canonical rule keeps *"blocks from the **4 most-recent sessions**, capped at
+> 8 blocks (blocks ≠ sessions)"* (`docs/runbooks/memory-architecture.md` R2), and
+> the 4 most-recent sessions are 159 / 158 / 157 / 156, so the s153-155 block was
+> already **outside** the window when this reconcile ran. The first pass held it
+> back on a "keep 4 CF **blocks**" reading of the file's own practice; the runbook
+> is canonical and wins (CLAUDE.md §1). Window after the amendment: **CF = 3
+> blocks covering the 4 newest sessions** (s158/159 + s157 + s156 — well under the
+> 8-block cap); RD = 10 rows. **STATUS: 63,159 B → 50,390 B**, against the 64 KB
+> R1 ceiling. Per the STATUS.md Rotation Policy (R1/R2/R4)._
 >
 > _Rotation note (session-157 reconcile, 2026-07-21, `docs(status):`): added the
 > **Session 157** CF block (PLAN-0086 — the timed manual scaffold of vertical #6
