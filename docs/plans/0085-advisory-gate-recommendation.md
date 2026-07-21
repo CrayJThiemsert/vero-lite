@@ -204,6 +204,9 @@ level too — no parked-run casualties. Emission MUST happen in the propose path
 **Why Cray:** (a) vs (b) trades governance-draft visibility against hash blast
 radius — how visible the advisory step should be in the authored procedure surface is
 a product/demo-narrative call, and (a) forces a demo-reset event.
+**RESOLVED/RATIFIED (Cray, 2026-07-21 s156, AskUserQuestion): (b)** — advisory
+emitted inside the existing approve/gate propose path; zero YAML change, zero hash
+change, AC-6 runs its hash-identical arm.
 
 ### SD-2 — LLM path for v1
 
@@ -228,6 +231,9 @@ MUST carry the producing arm (`model` from `ChatResult` — `"stub"` vs a real m
 id) so the record never overstates which arm ran.
 **Why Cray:** how much "real LLM" Rung 1 must contain to support the AI-Transition
 pitch honestly is a positioning call (ADR-0032 D5 discipline).
+**RESOLVED/RATIFIED (Cray, 2026-07-21 s156, AskUserQuestion): (b)** — stub-first
+through the ChatClient seam; default arm deterministic grounded reasons; live MS-S1
+opt-in, §8-gated, never in the demo room; mandatory `detail.model` arm disclosure.
 
 ### SD-3 — Scope across sibling procedures
 
@@ -243,6 +249,9 @@ verticals stay byte-identical. Under **(a)**: manual-only first (one hash re-pin
 not three).
 **Why Cray:** whether the scheduled/event demo entry points should show the advisory
 in v1 is a rehearsal-priority call (same class as PLAN-0084 SD-D).
+**RESOLVED/RATIFIED (Cray, 2026-07-21 s156, AskUserQuestion — folded into the SD-1
+pick): all three procedures** via SD-1(b)'s shared factory/executor; other verticals
+stay byte-identical through the constructor-argument opt-in guard.
 
 ### SD-4 — UI surface
 
@@ -260,6 +269,9 @@ never generates at render time).
 **Alternative:** trace-only (cheaper, invisible in the demo beat).
 **Why Cray:** the gate panel is the demo's decision moment — what the approver sees
 there is presentation vocabulary Cray narrates live.
+**RESOLVED/RATIFIED (Cray, 2026-07-21 s156, AskUserQuestion): gate-panel block +
+trace** — compact advisory block above Submit (reasons prose, actor glyph, arm
+sublabel, NO score) + full entry behind the existing trace toggle.
 
 ### SD-5 — Trace kind
 
@@ -278,6 +290,10 @@ until the live arm first ships — is defensible and is Cray's call.
 **Why Cray:** the actor glyph is the attribution channel PLAN-0080 built to never
 overstate; whether the stub arm may render under the llm glyph (with disclosure) is
 exactly that judgment.
+**RESOLVED/RATIFIED (Cray, 2026-07-21 s156, AskUserQuestion): NEW kind
+`advisory_recommendation`, actor `llm`, with the disclosure mitigation** —
+`detail.model` arm disclosure (SD-2) + the SD-4 arm sublabel; registry row + the
+`test_trace_kind_labels` tripwire pin updated (PLAN-0080 AC-3 mechanics).
 
 ## Acceptance Criteria
 
@@ -351,6 +367,11 @@ Present SD-1…SD-5 to Cray (AskUserQuestion). No implementation before ratifica
 SD-1 decides the wiring shape + whether AC-6 runs its hash-identical or demo-reset
 arm; SD-4/SD-5 decide the UI + registry work. Record ratified picks in this PLAN
 (per-SD stamps, PLAN-0084 pattern).
+
+**SATISFIED — 2026-07-21 (s156, AskUserQuestion):** all five SDs ratified, every
+pick = the draft recommendation (SD-3 folded into the SD-1 question by construction);
+resolutions recorded in the per-SD stamps above. AC-6 runs the hash-identical arm;
+no amendment content resulted (all steps were drafted contingent on these picks).
 
 ### Step 1: Advisory builder module (never-raise)
 
