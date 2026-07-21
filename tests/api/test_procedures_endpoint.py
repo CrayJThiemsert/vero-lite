@@ -21,7 +21,7 @@ from services.engine.discovery import discover_and_register
 from services.engine.procedures.spec import load_procedures, procedures_path
 from services.engine.registry import registry
 
-# The eight shipped procedures, vertical → {procedure_id: archetype} (fact-pack
+# The eleven shipped procedures, vertical → {procedure_id: archetype} (fact-pack
 # #1 / docs/conventions/procedure-archetypes.md). procurement ships five:
 # two manual + the PLAN-0055 Step 8 schedule-triggered AT-2 variant + the
 # PLAN-0056 Step 8 event-triggered AT-2 variant + the PLAN-0065 Step 4
@@ -48,6 +48,12 @@ _EXPECTED: dict[str, dict[str, str]] = {
         # PLAN-0081 — the 3rd AT-2 SIGNATURE (governed credit release; the money doa_tier ladder
         # reused unchanged, the criterion vocabulary grown by {kyc, overdue_ar, blacklist}).
         "governed_credit_release": "AT-2",
+    },
+    "fleet_maintenance": {
+        # PLAN-0086 — the timed manual scaffold (6th vertical). The money doa_tier ladder is reused
+        # unchanged again (repair spend, THB); notable as the first vertical wired with the
+        # PLAN-0085 gate advisory ON from day one, not as a new AT-2 signature.
+        "governed_repair_approval": "AT-2",
     },
 }
 
@@ -86,10 +92,11 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
     all_verticals_client: AsyncClient,
 ) -> None:
     """Every discovered vertical's procedures round-trip load_procedures, each
-    carrying the correct catalog archetype — all ten across the five procedure-bearing
+    carrying the correct catalog archetype — all eleven across the six procedure-bearing
     verticals (procurement ships five: two manual + scheduled AT-2 + event AT-2 + scheduled AT-3;
     supply_chain ships two: the AT-1 sweep + the PLAN-0074 AT-2 disposition; energy + aquaculture
-    one each; building_materials ships one: the PLAN-0081 AT-2 governed-credit hero)."""
+    one each; building_materials ships one: the PLAN-0081 AT-2 governed-credit hero;
+    fleet_maintenance ships one: the PLAN-0086 AT-2 governed-repair hero)."""
     response = await all_verticals_client.get("/procedures")
     assert response.status_code == 200
     payload = response.json()
@@ -113,11 +120,12 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
         for proc in ventry["procedures"]:
             assert proc["archetype"] == _EXPECTED[vname][proc["procedure_id"]]
             total += 1
-    # ten procedures across five verticals: the nine prior (fact-pack #1's five + the
+    # eleven procedures across six verticals: the ten prior (fact-pack #1's five + the
     # PLAN-0055 scheduled AT-2 + the PLAN-0056 event AT-2 + the PLAN-0065 scheduled AT-3
-    # + the PLAN-0074 supply_chain disposition) + the PLAN-0081 building_materials
-    # governed-credit hero (the 3rd AT-2 SIGNATURE, a new procedure-bearing vertical)
-    assert total == 10
+    # + the PLAN-0074 supply_chain disposition + the PLAN-0081 building_materials
+    # governed-credit hero) + the PLAN-0086 fleet_maintenance governed-repair hero (a new
+    # procedure-bearing vertical; the ladder is reused, so no new AT-2 signature)
+    assert total == 11
 
 
 class _SpecLessFixtureAdapter:

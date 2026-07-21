@@ -320,6 +320,41 @@ PLAN-0074's coordination-point enumeration; update the D3 row on landing
 > build, so opening the dedicated gate-plugin-seam PLAN remains a conscious
 > Cray decision. PLAN-0076 stays `Status: Tracking` and its guard stays armed.
 
+> **Trigger FIRED A SECOND TIME — and this time the deferral is CANCELLED
+> (session 157, 2026-07-21, PLAN-0086; Cray-ratified, typed).** `N=4` was
+> reached: PLAN-0086 shipped `fleet_maintenance.governed_repair_approval`, the
+> 4th distinct AT-2 signature, which fired
+> `test_at2_signature_retrigger.py`. Unlike the `N=3` pressing, the answer was
+> **not** "re-arm" — the AT-2-generator deferral (ADR-0025 D7) is **cancelled
+> and the extraction is DUE**.
+>
+> *Why this firing was different.* By gate SHAPE fleet taught nothing new (its
+> composition and authority quantity are byte-identical to
+> building_materials'; only the criterion vocabulary differs — the axis N=2
+> already fixed as per-instance). What decided it was the OTHER axis: shipping
+> fleet required extending the closed shared `ComplianceCriterion` enum in
+> engine code, making **four consecutive verticals, four engine-level enum
+> extensions**. The recurring pressure is not a gate composition — it is the
+> engine bending to admit each instance's vocabulary. Cray's stated rationale:
+> accept the cost now for future flexibility.
+>
+> *What this obligates (T1's response, still to be opened as its own PLAN).*
+> The best-evidenced extraction is narrower and better-supported than "build an
+> AT-2 generator": stop requiring an engine edit per vertical (open /
+> per-vertical criterion vocabulary), inside the ADR-0031 D4.2 gate-plugin-seam
+> frame — procedure-aware `ExecutorFactory`, `sod_steps`/`stamp_steps` keyed on
+> `(procedure_id, step_id)`, retiring the `hero_demo/run.py` hardcode.
+> **PLAN-0086 deliberately did NOT perform any of it** — it is a
+> vertical-scaffold PLAN, and framework surgery inside it would have been out of
+> scope and destructive to its own timed measurement. A new PLAN is G2-gated for
+> Code, so the seam PLAN must be drafted by `plan-drafter` / Cowork and
+> committed separately (ADR-009 D1/D2).
+>
+> PLAN-0076 stays `Status: Tracking`, T1 stays OPEN, and the retrigger module's
+> new `test_at2_extraction_obligation_is_owned` guard now fails if this PLAN is
+> archived or loses this record — a cancelled deferral with no owner is strictly
+> worse than the deferral was.
+
 ### Step T2: WHEN the transform-grammar PLAN opens — fold F-PIN's remainder in
 **STATUS: CLOSED 2026-07-17 (session 143) by PLAN-0078 PR-5** — per Step T3's
 rule that a marker may only be rewritten in the PLAN that closes the tracking

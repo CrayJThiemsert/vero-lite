@@ -28,8 +28,8 @@ router = APIRouter(tags=["procedures"])
 # server-side, in one place). Canonical source is
 # docs/conventions/procedure-archetypes.md; this is a read-only derived MIRROR
 # (CLAUDE.md §4 canonical→derived). A 5th vertical extends this map ADDITIVELY —
-# the catalog grows first, the map mirrors it; never the reverse. Ten shipped
-# procedures across the five procedure-bearing verticals (PLAN-0039 fact-pack #1:
+# the catalog grows first, the map mirrors it; never the reverse. Eleven shipped
+# procedures across the six procedure-bearing verticals (PLAN-0039 fact-pack #1:
 # procurement ships two manual; energy / supply_chain / aquaculture one each) plus
 # the PLAN-0055 Step 8 schedule-triggered AT-2 variant, the PLAN-0056 Step 8
 # event-triggered AT-2 variant, the PLAN-0065 Step 4 schedule-triggered AT-3
@@ -52,6 +52,11 @@ PROCEDURE_ARCHETYPES: dict[str, str] = {
     # doa_tier ladder is REUSED unchanged; only the criterion vocabulary grows ({kyc, overdue_ar,
     # blacklist}). A genuinely third signature, on a fifth vertical.
     "governed_credit_release": "AT-2",
+    # fleet_maintenance — PLAN-0086 (the timed manual scaffold). The money doa_tier ladder is REUSED
+    # unchanged AGAIN (repair spend in THB); no new authority quantity, no new trace kind. Notable
+    # not as a new signature but as the first vertical wired with the PLAN-0085 gate advisory ON
+    # from day one (L-B: readable on day one).
+    "governed_repair_approval": "AT-2",
 }
 
 # A procedure absent from the catalog map renders with this sentinel rather than

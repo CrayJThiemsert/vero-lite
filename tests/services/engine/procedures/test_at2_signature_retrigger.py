@@ -64,9 +64,42 @@ distinct signature. The re-trigger FIRED and the question was asked a second tim
   the third taught the engine nothing a generator could extract that the first two had not
   already shown to be per-instance.
 
-So the marker re-arms at **N=4**: a fourth distinct signature — a genuinely NEW gate kind or
-authority quantity, not another criterion-vocabulary variant — is the datum that would exhaust
-these two answers and make the extraction due under Rule-of-Three.
+So the marker re-armed at **N=4**: a fourth distinct signature would exhaust these two answers and
+make the extraction due under Rule-of-Three.
+
+**N=4 REACHED — and the deferral is CANCELLED, not re-armed a third time (PLAN-0086, Cray-ratified
+2026-07-21).** ``fleet_maintenance.governed_repair_approval`` shipped the 4th distinct signature.
+The re-trigger FIRED and the question was put to Cray with BOTH readings laid out, because this
+firing is not like the two before it:
+
+* **The reading that says fleet should NOT count.** By gate SHAPE fleet teaches nothing: its
+  composition ``(rule_gate, doa_tier)`` is byte-identical to building_materials', its authority
+  quantity is the same THB ``doa_tier``, and the only delta is one criterion (``three_quote``). By
+  the N=3 wording above — "a genuinely NEW gate kind or authority quantity, not another
+  criterion-vocabulary variant" — fleet is excluded. It is a strictly WEAKER datum than N=3, which
+  was itself argued as the weakest possible.
+* **The reading that won.** The marker's mechanical key counts the governed-enum SURFACE
+  deliberately (the reviewer-F4 fix), and the surface is where the pressure actually shows: shipping
+  fleet REQUIRED extending the closed shared ``ComplianceCriterion`` enum in engine code. That is
+  **four consecutive verticals, four engine-level enum extensions**. The one thing that recurred in
+  ALL FOUR instances is not a gate composition — it is the engine bending to admit an instance's
+  vocabulary. Rule-of-Three is about repeated PRESSURE on shared code, and by that measure the
+  evidence is now overwhelming rather than thin.
+
+* **Resolution (Cray, typed, 2026-07-21): the AT-2-generator deferral is CANCELLED. The extraction
+  is DUE.** Rationale as given: accept the cost now in exchange for future flexibility. The
+  best-evidenced extraction is NOT "build an AT-2 generator" in the abstract — it is to stop
+  requiring an engine edit per vertical (open / per-vertical criterion vocabulary), with the
+  ADR-0031 D3 gate-plugin seam as the wider frame.
+* **Owner: PLAN-0076 Step T1 (F-FACTORY)**, the standing owner of the gate-plugin-seam work
+  (ADR-0031 D4.2). Its trigger is recorded as having pressed a second time, this time cancelling
+  rather than re-arming. PLAN-0086 deliberately did NOT perform the extraction: it is a
+  vertical-scaffold PLAN, and doing framework surgery inside it would have been both out of scope
+  and destructive to its own measurement.
+* Consequently the ``len(signatures) < _RETRIGGER_N`` guard is RETIRED (there is no threshold left
+  to stay under) and REPLACED, never deleted, by
+  :func:`test_at2_extraction_obligation_is_owned` — which fails if the owning PLAN is archived or
+  loses its record of this firing. The census pin above stays armed for signature #5.
 
 Pure-offline (no DB, no LLM, no MS-S1 — CLAUDE.md §8). The failing assertion is the deferral
 SELF-CANCELLING, not a test bug.
@@ -100,9 +133,19 @@ from services.engine.procedures.spec import (
 )
 
 _RETRIGGER_N = 4
-"""The distinct-signature count at which the AT-2-generator deferral self-cancels (ADR-0025 D7;
-re-armed here by PLAN-0081 after the N=3 firing was answered — see the module docstring). At a
-FOURTH signature the per-instance types are a Rule-of-Three violation and the extraction is due."""
+"""The distinct-signature count at which the AT-2-generator deferral self-cancels (ADR-0025 D7).
+
+**REACHED, and the deferral is CANCELLED** (PLAN-0086, Cray-ratified 2026-07-21). This constant is
+retained as the historical threshold that fired; it no longer guards anything, because there is
+nothing left to defer. The obligation it used to hold is now OWNED — see
+:func:`test_at2_extraction_obligation_is_owned` and the module docstring's N=4 section."""
+
+_OWNING_PLAN = Path("docs/plans/0076-at2-followon-tracking-gate-seam-and-derivation-pin.md")
+"""The PLAN that owns the extraction now that the deferral has self-cancelled. PLAN-0076 Step T1
+(F-FACTORY) is the standing owner of the gate-plugin-seam / AT-2-extraction work (ADR-0031 D4.2);
+its trigger fired once at N=3 (recorded, deferral re-armed) and again at N=4 (recorded, deferral
+CANCELLED). Kept as a path so the guard below fails if the PLAN is archived to ``done/`` while the
+obligation is still open — an unowned obligation is exactly how a deferral rots."""
 
 _BASELINE_SIGNATURES = [
     (
@@ -110,6 +153,14 @@ _BASELINE_SIGNATURES = [
         ("rule_gate", "doa_tier"),
         (
             ("rule_gate", ("blacklist", "kyc", "overdue_ar")),
+            ("doa_tier", ("THB",)),
+        ),
+    ),
+    (
+        "fleet_maintenance",
+        ("rule_gate", "doa_tier"),
+        (
+            ("rule_gate", ("three_quote",)),
             ("doa_tier", ("THB",)),
         ),
     ),
@@ -232,26 +283,40 @@ def test_the_two_signatures_differ_in_their_authority_gate() -> None:
 
 
 def test_at2_generator_deferral_retrigger() -> None:
-    """AC-11 (ADR-0025 D7 / ADR-0031 OQ-4): the AT-2-generator re-trigger, RE-ARMED at N=3 after
-    PLAN-0074 answered the N=2 firing (module docstring: generator stays deferred + abstaining, D2
-    types stay instance-scoped, the triangulation findings feed the follow-on extraction PLAN).
-    FAILS the moment a THIRD distinct signature ships."""
+    """AC-11 (ADR-0025 D7 / ADR-0031 OQ-4): the AT-2 signature census, pinned.
+
+    The deferral this marker used to guard is CANCELLED (N=4 reached, PLAN-0086) — so this test no
+    longer asks "have we hit N yet". It still pins the CENSUS, because the next signature to ship
+    must be argued against a current baseline, not a stale one. A moved baseline still means: stop,
+    and re-argue what the new signature teaches."""
     signatures = _distinct_at2_signatures()
     assert signatures == _BASELINE_SIGNATURES, (
         "the AT-2 signature baseline moved — the D7 re-evaluation recorded in this module's "
         f"docstring was performed against {_BASELINE_SIGNATURES}, so it no longer holds. Re-argue "
         "it (do not just update this list)."
     )
-    assert len(signatures) < _RETRIGGER_N, (
-        f"ADR-0025 D7 N>={_RETRIGGER_N} RE-TRIGGER FIRED: {len(signatures)} distinct AT-2 "
-        f"signatures now ship ({signatures}) — the AT-2-generator deferral was already "
-        "re-evaluated "
-        "ONCE at N=2 (PLAN-0074 SD-3: generator stays deferred + abstaining because the authority "
-        "quantity, the criterion vocabulary and the provenance policy all proved per-instance). A "
-        "THIRD hand-authored signature exhausts that answer under Rule-of-Three (ADR-006 D4): "
-        "extract the generic AT-2 framework / the ADR-0031 D3 gate-plugin seam, or re-argue the "
-        "deferral in a follow-on ADR — then update this marker. This failure is the deferral "
-        "SELF-CANCELLING, not a test bug."
+
+
+def test_at2_extraction_obligation_is_owned() -> None:
+    """The replacement for the retired ``len(signatures) < _RETRIGGER_N`` guard (PLAN-0086).
+
+    N=4 fired and the deferral self-cancelled, so there is no longer a threshold to stay under —
+    the extraction is DUE. What must not rot now is its OWNERSHIP. PLAN-0076 Step T1 (F-FACTORY) is
+    the standing owner of the gate-plugin-seam / AT-2-extraction work; this guard fails if that
+    PLAN is archived to ``done/`` (T1 discharged only on paper) or if its record of the N=4 firing
+    is removed. A cancelled deferral with no owner is strictly worse than the deferral was."""
+    assert _OWNING_PLAN.exists(), (
+        f"{_OWNING_PLAN} is gone from docs/plans/ — the ADR-0025 D7 deferral was CANCELLED at N=4 "
+        "(PLAN-0086, Cray-ratified 2026-07-21) and PLAN-0076 Step T1 owns the extraction that "
+        "resulted. If T1 has genuinely been discharged by a landed gate-plugin-seam PLAN, re-home "
+        "this guard onto that PLAN in the SAME change that archives this one — never delete it."
+    )
+    text = _OWNING_PLAN.read_text(encoding="utf-8")
+    assert "N=4" in text, (
+        f"{_OWNING_PLAN} no longer records the N=4 firing. Step T1's trigger pressed a SECOND time "
+        "when fleet_maintenance shipped (PLAN-0086) and, unlike the N=3 pressing, that firing "
+        "CANCELLED the deferral rather than re-arming it. That distinction is the whole reason the "
+        "extraction is now due — it must stay written down."
     )
 
 

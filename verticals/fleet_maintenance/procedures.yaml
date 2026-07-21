@@ -1,0 +1,272 @@
+# vero-lite procedure spec — fleet_maintenance vertical, v0 (PLAN-0086 — the governed-repair HERO).
+# The 6th vertical's headline: a truck breaks down mid-route, the garage quotes a repair AT/ABOVE the
+# truck's minor-repair ceiling, and the spend runs the full governed AT-2 spine — a deterministic
+# per-truck ceiling band, a hard sourcing-hygiene rule_gate (3 competing quotes above ฿20,000), then
+# a doa_tier human approval with SoD (the head mechanic REQUESTS, the fleet manager APPROVES) and the
+# engine audit — using the shipped machinery unchanged. A distinct spec layer from the ADR-008
+# ontology (fleet_maintenance_v0.yaml is untouched): agents + procedures, NOT object_types.
+#
+# NOT a 4th AT-2 signature: the money doa_tier ladder is REUSED unchanged (THB and all), no new
+# authority quantity, no new gate kind, no new trace kind. Only the criterion vocabulary grows by ONE
+# instance-scoped member (`ComplianceCriterion += {three_quote}`) — exactly the per-instance axis the
+# N=2 finding established and PLAN-0081 re-confirmed at N=3 (ADR-0025 D7).
+#
+# PLAN-0086 L-B — day-one readability: this is the FIRST vertical whose factory ships the PLAN-0085
+# gate advisory ON (`advisory_builder=GateAdvisoryBuilder()`), so the parked approve step carries a
+# grounded, never-raise explanation of WHY the run stopped. The advisory DECIDES nothing.
+#
+# GOVERNED != GENERATED (the guardrail across every step): the LLM only DRAFTS/SUMMARISES. It NEVER
+# sets the repair ceiling (authored), NEVER waives the quote-comparison criterion (the rule_gate
+# blocks on any fail, non-waivable by type), and NEVER approves (the human doa_tier gate).
+#
+# >>> NARRATIVE PROVENANCE (PLAN-0086 AC-3) — every ฿, role and rule below traces to the DIRTIED <<<
+# customer narrative or to a logged customer answer. Nothing here was invented:
+#   ladder ฿5,000 / ฿50,000 ............ customer answer Q1 ("ต้อมเคาะได้ถึง 5 พัน วิรัชถึง 5 หมื่น เกินนั้นผมเอง")
+#   the three roles ..................... narrative — "ให้ต้อมเคาะเลย / ให้พี่วิรัช ผู้จัดการเดินรถ / ต้องมาถึงผม"
+#   requester = ช่างใหญ่, approver = ผจก.เดินรถ ... customer answer Q3 ("ต้อมตั้งเรื่อง วิรัชเคาะแทน")
+#   SoD itself .......................... narrative — "ผมตั้งกฎเหล็กเลยนะ คนทำเรื่องเบิกห้ามเป็นคนอนุมัติเอง"
+#   three_quote ฿20,000 / 3 vendors ..... customer answer Q4 ("เทียบราคาเกินสองหมื่น สามเจ้า")
+#   emergency waiver .................... narrative — "รถเสียหน้างานทีไร กติกามันพังหมด ... ซ่อมไปก่อน
+#                                          ซื้อร้านข้างทางไปเลย"; cap ฿10,000 from customer answer Q2;
+#                                          escalate_to = the owner, who is who the driver phones (narrative).
+
+namespace: fleet_maintenance
+version: 0
+
+agents:
+  fleet_maintenance_agent:
+    name: Governed Fleet Maintenance Agent
+    llm_model: gpt-oss:20b          # ADR-001 default local model
+    # ceiling = gated: the only actions here are the gated approve (doa_tier) + the gated fulfill
+    # write (human go/no-go). No auto action, so the ceiling never needs to reach `auto`.
+    autonomy_ceiling: gated
+    allowed:
+      step_kinds: [query, evaluate, action, transform]
+      # `escalate` for the gated doa_tier routing; `approve_repair_spend` for the gated terminal
+      # write. Both are fleet_maintenance RecommendedAction action_type vocabulary
+      # (fleet_maintenance_v0.yaml) and both are registered in handlers.py ACTION_TYPES.
+      action_handlers: [escalate, approve_repair_spend]
+
+# Human principals the SoD run-check resolves against (ADR-0026 D1/D4). Human-author-only
+# (H, ADR-0024 D3), never model-emitted.
+#
+# The requester side (`req-mechanic-tom`) holds ONLY `requester` — the customer's own กฎเหล็ก:
+# whoever files the claim cannot approve it. CUMULATIVE authority roles (PLAN-0075 Policy B —
+# "senior can approve downward"): each tier holds its OWN role AND every LOWER tier's. That is
+# precisely how the customer's Q3 answer ("ต้อมตั้งเรื่อง วิรัชเคาะแทน") is encoded — the fleet
+# manager carries `ช่างใหญ่` so he can approve down into the mechanic's own tier when the mechanic
+# is the one who filed.
+#
+# NOTE on the ฿0 tier: the customer's ungoverned floor and the ladder's bottom rung are the SAME
+# number by construction (Q1). A repair under ฿5,000 never enters a governed run at all — the judge
+# bands it `ok` against the truck's `minor_repair_ceiling_thb` — so the `ช่างใหญ่` tier exists for
+# ladder completeness and for the downward-approval case, not as a live routing target.
+principals:
+  - person_id: req-mechanic-tom
+    name: "ต้อม — ช่างใหญ่ (ผู้ตั้งเรื่องเบิก)"
+    roles: [requester]
+  - person_id: appr-fleet-manager-wirat
+    name: "วิรัช — ผจก.เดินรถ"
+    roles: [approver, "ผจก.เดินรถ", "ช่างใหญ่"]
+  - person_id: appr-owner
+    name: "เฮีย — เจ้าของกิจการ"
+    roles: [approver, "เจ้าของกิจการ", "ผจก.เดินรถ", "ช่างใหญ่"]
+
+procedures:
+  governed_repair_approval:
+    title: Governed Repair Approval
+    goal: >-
+      A truck is off the road and the garage has quoted a repair at or above that truck's
+      minor-repair ceiling. Read each truck's latest quoted repair joined to its own ceiling, judge
+      the quote against that per-truck ceiling, reshape the breach into the flat spend the authority
+      gate reads, check the sourcing-hygiene gate (a large repair needs three competing quotes — the
+      threshold is authored in the typed rule, never in this prose) which blocks the spend on
+      failure, then route the compliant spend to the human
+      authority the quote's size demands — the head mechanic REQUESTS, the fleet manager or the owner
+      APPROVES (SoD) — and write nothing until that human decides. The LLM drafts the summary
+      (advisory); it decides nothing.
+    run_by: fleet_maintenance_agent
+    trigger: manual                 # L-1: only manual runs in Phase 1 (the PLAN-0019 precedent)
+    steps:
+      - step_id: intake
+        name: Read the latest quoted repair per truck
+        description: Latest reading per Truck joined to its own minor-repair ceiling (event_type=reading), by occurred_at.
+        kind: query
+        input:                          # declared latest-per-group + FK-parent join (ADR-016 FKP)
+          reads: [OperationalEvent, Truck]
+          where:
+            event_type: reading         # the quote readings; a non-reading event carries no
+                                        # measured_value, so an unfiltered latest-per-group would
+                                        # hand the judge an unreadable row
+          join:
+            - { with: Truck, link: event_for_truck }   # brings each truck's minor_repair_ceiling_thb onto its readings (ADR-016 FKP)
+          project:
+            latest_per: event_for_truck   # FK OperationalEvent.truck_id -> Truck.truck_id
+            order_by: occurred_at
+            fields:
+              site_id: truck_site_id      # the declared OperationalEvent/Truck site_id collision (join-key truck_id is exempt)
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "latest OperationalEvent (event_type=reading) per Truck via event_for_truck, by occurred_at"
+          output: "one latest quoted-repair row per truck (each carrying its minor_repair_ceiling_thb)"
+      - step_id: judge
+        name: Judge the quote vs the truck's own minor-repair ceiling
+        description: >-
+          Tag each truck's verdict vs ITS OWN minor_repair_ceiling_thb — breach (quote at/above the
+          ceiling, so the head mechanic can no longer just fix it) vs ok. OCT_RECOMMEND_DIRECTION=above.
+        kind: evaluate
+        threshold_field: minor_repair_ceiling_thb   # each truck bands vs its OWN ceiling (joined by intake)
+        direction: above                            # the quote breaches OVER the ceiling
+        facet:
+          decision_condition: { gate_kind: in_file_band, band_source: in_file }
+          llm_assist: null
+          input: "intake set (each row carries its truck's minor_repair_ceiling_thb)"
+          output: "per-truck verdict {breach=quote at/above its own ceiling, ok}"
+          governance: "verdict = pure function of the quote + the authored per-entity (in_file) band"
+      - step_id: reshape
+        name: Reshape the breaching quote into a governed spend (declared transform)
+        description: >-
+          Bridge the quote-as-a-monitored-reading to the quote-as-a-governed-spend: derive the flat
+          `amount` the doa_tier gate routes on from the breach's `measured_value`, default the
+          `currency`, and attach the sourcing-hygiene signal map the rule_gate reads — all as
+          declared transform data, not a bespoke executor. Deterministic; no LLM. Row-local.
+        kind: transform
+        input:
+          from: judge               # the named-input fan-out: only the breach subset
+          where:
+            verdict: breach
+        transform:
+          ops:
+            # the identity derive: the doa_tier `_spend()` reads a flat `amount` off the entity and
+            # fails CLOSED without it (governance_step.py). measured_value IS the quote the tier
+            # routes on.
+            - derive: { target: amount, expr: { field: measured_value } }
+            # the ontology `unit` is already THB, but the gate contract wants the flat `currency`
+            # key (governance_step.py `_spend()` reads entity["currency"]).
+            - default: { target: currency, value: THB }
+            # the sourcing-hygiene signal map the rule_gate executor reads. GUESS — default-true so
+            # the shipped happy path releases; the partner wires the real quote-capture feed (today
+            # this signal lives in a LINE group and น้องเมย์'s notebook — that IS the pain).
+            - default:
+                target: compliance
+                value:
+                  three_quote: true
+            # coerce amount to string so `Decimal(str(...))` is byte-exact on the authority
+            # threshold (the PLAN-0078 byte-form discipline).
+            - coerce: { target: amount, to: string }
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "judge (the breach subset — each row carries measured_value)"
+          output: "the breach enriched with the flat amount/currency spend + the sourcing signal map"
+          governance: "deterministic derivation as declared data (governed != generated)"
+      - step_id: quote_gate
+        name: Check the sourcing-hygiene gate
+        description: >-
+          Evaluate the quoted repair against the customer's own sourcing rule — a large repair must
+          have three competing quotes on file. A failed criterion blocks the spend. Deterministic:
+          no LLM, no band.
+        kind: evaluate
+        # AT-2 typed content (ADR-0025 D2). A RULE gate, not a numeric band — intentionally band-less
+        # (the GovernanceEvaluateExecutor dispatches it to the deterministic rule_gate; the base band
+        # executor is never called). blocks_po is Literal[True]: a non-blocking "compliance" rule is
+        # unrepresentable by type.
+        governance_content:
+          kind: rule_gate
+          rules:
+            # NOTE (PLAN-0086 finding): the customer's rule has TWO halves — "three competing
+            # quotes" AND "above ฿20,000". Only the first half is representable: a rule_gate
+            # criterion is pass/fail on a supplied signal and carries no threshold field, and
+            # ADR-0025 D4 forbids smuggling the amount into this prose. The ฿ half therefore lives
+            # in whatever feed computes `compliance.three_quote` — today the reshape default.
+            # Logged in the question log as an un-modelled customer value alongside the Q2 cap.
+            - criterion: three_quote
+              spec: "a large repair has three competing quotes on file before the spend is authorised"
+        input:
+          from: reshape
+        facet:
+          decision_condition:
+            gate_kind: rule_gate
+            note: "sourcing-hygiene gate — three competing quotes on a large repair"
+          llm_assist: null
+          input: "reshape (the breach + its sourcing signal map)"
+          output: "per-criterion pass/fail; a repair failing the quote rule is blocked"
+          governance: "blocks the spend on a failed criterion (hard gate, non-waivable by type); the roadside emergency_waiver is the ONLY relaxation and it escalates + demands a written reason"
+      - step_id: approve
+        name: Tiered DOA repair approval (human gate)
+        description: >-
+          Route the compliant repair spend to the human authority the ฿ size demands. The LLM drafts
+          the justification + exec-summary (advisory). Separation of duties holds: the head mechanic
+          who filed the claim cannot be the one who approves it. The run suspends at waiting_human;
+          the human approves/rejects a concrete recommendation.
+        kind: action
+        autonomy: gated             # the human go/no-go — never the LLM
+        handler: escalate
+        # AT-2 typed content (ADR-0025 D2/D3) — the money doa_tier ladder REUSED UNCHANGED. Tiers
+        # route on the FULL quote. The ฿48,000 shipped breach lands mid-ladder at the [5k, 50k) tier
+        # (ผจก.เดินรถ) — the demo shows tiering, not always-the-top. Money is Decimal (quoted to
+        # avoid float). Tier values = customer answer Q1.
+        governance_content:
+          kind: doa_tier
+          currency: THB
+          tiers:
+            - { min_amount: "0", approver_role: "ช่างใหญ่" }
+            - { min_amount: "5000", approver_role: "ผจก.เดินรถ" }
+            - { min_amount: "50000", approver_role: "เจ้าของกิจการ" }
+          # DoaLadder REQUIRES an emergency_waiver (ADR-0025 D3 — it is not optional). Here it is not
+          # a template borrowing: the customer described this bypass unprompted ("รถเสียหน้างานทีไร
+          # กติกามันพังหมด ... ซ่อมไปก่อน ซื้อร้านข้างทางไปเลย"). `relaxes: [three_bid]` is the CLOSED
+          # RelaxableConstraint enum and it is the EXACT constraint a roadside repair breaks — there
+          # is no time to collect three quotes on the hard shoulder. It escalates the approver and
+          # forces a logged justification; it NEVER skips a gate.
+          #
+          # UNMODELLED (customer answer Q2, no schema field): the ฿10,000 emergency cap and the
+          # after-the-fact ratification window. `EmergencyWaiver` carries relaxes / escalate_to /
+          # requires_justification only. Recorded in the question log; a capped waiver would be a
+          # future ADR-0025 D3 amendment, out of scope here.
+          emergency_waiver:
+            relaxes: [three_bid]
+            escalate_to: "เจ้าของกิจการ"
+            requires_justification: true
+        input:
+          from: quote_gate
+          where:
+            compliant: true
+        facet:
+          decision_condition:
+            gate_kind: doa_tier
+            note: "DOA tier band (฿) — escalates the approver above the band; routes on the full quote"
+          llm_assist: "draft the repair justification + the approver exec-summary (advisory, editable)"
+          input: "quote_gate (the compliant subset)"
+          output: "repair-spend approval decision (human)"
+          governance: "tiered DOA + SoD (requester != approver); a HUMAN approves — the LLM never does"
+      - step_id: fulfill
+        name: Execute the approved repair spend
+        description: >-
+          Carry out the approved repair authorisation for the truck (a no-op receipt stub until the
+          real garage/ERP handler ships with the design partner). A human-gated write: it only
+          proposes until a human approves, then acts on resume. action_type approve_repair_spend.
+        kind: action
+        autonomy: gated
+        handler: approve_repair_spend
+        input:
+          from: approve
+        facet:
+          decision_condition: { gate_kind: none }   # mechanical write of the approved decision
+          llm_assist: null
+          input: "approve (the approved repair)"
+          output: "the repair-authorisation receipt"
+          governance: "human-gated write (only runs on resume after approval)"
+    terminal: fulfill
+    # AT-2 separation of duties (ADR-0025 D2/D5 — a doa_tier gate REQUIRES it). This is the
+    # customer's own กฎเหล็ก, stated unprompted and with its origin story ("เคยโดนช่างโกงอะไหล่ไป
+    # เป็นแสน"): the head mechanic who filed the claim (`intake`) must not be the authority who
+    # approves it (`approve`). Author time = the STRUCTURAL distinct-steps form; the resolved-
+    # PRINCIPAL distinctness (fail-closed on a PK match OR an alias-collapse) is the LIVE run check
+    # (ADR-0026 D4).
+    separation_of_duties:
+      - distinct_steps: [intake, approve]
+        required_roles:
+          intake: requester
+          approve: approver
