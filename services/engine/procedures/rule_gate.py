@@ -132,8 +132,12 @@ def evaluate_compliance(gate: ComplianceGate, candidate: Mapping[str, Any]) -> C
         )
     results = [
         RuleResult(
-            criterion=rule.criterion.value,
-            passed=_signal_true(signals.get(rule.criterion.value)),
+            # PLAN-0087: `criterion` is a declared CriterionId (a plain str) since the
+            # vocabulary left engine code — no `.value` to unwrap. The lookup itself is
+            # unchanged: this was always a plain string key into the signal map, which is
+            # exactly why opening the vocabulary is behaviourally inert.
+            criterion=rule.criterion,
+            passed=_signal_true(signals.get(rule.criterion)),
             spec=rule.spec,
         )
         for rule in gate.rules

@@ -46,7 +46,6 @@ from services.engine.procedures.orchestrator import ProcedureError, validate_gov
 from services.engine.procedures.principal_sod import check_principal_sod
 from services.engine.procedures.spec import (
     Autonomy,
-    ComplianceCriterion,
     ComplianceGate,
     ComplianceRule,
     DecisionCondition,
@@ -133,9 +132,7 @@ def _at2_procedure(
         default_source=SourcePolicy.ON_CONTRACT,
         exception_policy=ExceptionPolicy.RFQ_AVL_LOGGED,
     )
-    gate = ComplianceGate(
-        rules=[ComplianceRule(criterion=ComplianceCriterion.AVL, spec="supplier on the AVL")]
-    )
+    gate = ComplianceGate(rules=[ComplianceRule(criterion="avl", spec="supplier on the AVL")])
     steps = [
         Step(step_id="intake", name="Intake", kind=StepKind.QUERY),
         _gate_step(

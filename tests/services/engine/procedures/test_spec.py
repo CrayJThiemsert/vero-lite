@@ -20,7 +20,6 @@ from services.engine.procedures.spec import (
     AgentAllowed,
     Autonomy,
     BandSource,
-    ComplianceCriterion,
     ComplianceGate,
     ComplianceRule,
     DecisionCondition,
@@ -847,7 +846,7 @@ def test_waiver_justification_cannot_be_disabled() -> None:
 
 
 def test_compliance_rule_always_blocks_po() -> None:
-    rule = ComplianceRule(criterion=ComplianceCriterion.AVL, spec="supplier on the AVL")
+    rule = ComplianceRule(criterion="avl", spec="supplier on the AVL")
     assert rule.blocks_po is True
     with pytest.raises(ValidationError):
         # D3: a non-blocking 'compliance' rule is unrepresentable (blocks_po is Literal[True])

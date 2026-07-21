@@ -70,6 +70,12 @@ principals:
     name: "วรพงษ์ — ผอ.ฝ่ายการเงิน"
     roles: [approver, "ผอ.ฝ่ายการเงิน", "ผจก.ควบคุมเครดิต", "จนท.เครดิต"]
 
+# PLAN-0087: this vertical's DECLARED rule_gate criterion vocabulary — the closed set that
+# used to live in engine code as `ComplianceCriterion`'s building_materials block. Customer
+# credit compliance, the 3rd AT-2 signature (PLAN-0081). Every `criterion:` named by a
+# rule_gate below must appear here or the spec is refused at load.
+compliance_criteria: [kyc, overdue_ar, blacklist]
+
 procedures:
   governed_credit_release:
     title: Governed Credit Release

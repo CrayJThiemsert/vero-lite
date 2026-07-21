@@ -95,13 +95,26 @@ no ``VerticalProceduresDraft`` (principals are not a generated surface), so thes
 by the recursive TYPE-disjointness test (``Person`` / ``PrincipalAlias`` unreachable from any
 draft type) rather than a per-draft field check."""
 
+VERTICAL_GOVERNANCE_FIELDS = frozenset({"compliance_criteria"})
+"""``VerticalProcedures``-level H fields that are NOT principal-identity (PLAN-0087):
+``compliance_criteria`` is the vertical's declared rule_gate criterion vocabulary — the
+governance surface that used to live in engine code as the closed ``ComplianceCriterion``
+enum. Human-authored: a generator may never invent the vocabulary its own gate is judged
+against. Kept as its own set rather than folded into
+:data:`PRINCIPAL_GOVERNANCE_FIELDS` (whose name and docstring are specifically about
+identity) so each set still says what it guards. Like the principal fields, it is guarded
+structurally rather than per-draft: there is no ``VerticalProceduresDraft``, so no draft
+type can carry it."""
+
 GOVERNANCE_FIELDS = (
     STEP_GOVERNANCE_FIELDS
     | PROCEDURE_GOVERNANCE_FIELDS
     | AGENT_GOVERNANCE_FIELDS
     | PRINCIPAL_GOVERNANCE_FIELDS
+    | VERTICAL_GOVERNANCE_FIELDS
 )
-"""The full never-generate (H) field set across Step / Procedure / Agent / principal (D3)."""
+"""The full never-generate (H) field set across Step / Procedure / Agent / principal /
+vertical (D3)."""
 
 
 # --- the restricted draft types (G fields only) ---------------------------------

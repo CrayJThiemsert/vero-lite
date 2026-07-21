@@ -101,6 +101,18 @@ firing is not like the two before it:
   :func:`test_at2_extraction_obligation_is_owned` — which fails if the owning PLAN is archived or
   loses its record of this firing. The census pin above stays armed for signature #5.
 
+**THE EXTRACTION LANDED — PLAN-0087 (2026-07-21).** The obligation the N=4 firing created has
+been paid on its criterion-vocabulary axis: ``ComplianceCriterion`` is retired from engine code
+and each vertical now DECLARES its own ``rule_gate`` vocabulary in its ``procedures.yaml``, so a
+new AT-2 vertical ships with zero engine diff. Two consequences for this module, both
+deliberate: :func:`_content_enum_surface` reads ``rule.criterion`` directly (it is a declared
+``CriterionId`` string now, not an enum member) — the fingerprint it produces is UNCHANGED, so
+``_BASELINE_SIGNATURES`` below stays byte-identical and the census pin still fires on a genuine
+5th signature; and PLAN-0076 Step T1 is now PARTIALLY discharged — its remaining half is the
+procedure-aware ``ExecutorFactory`` (SD-1 = (a), Cray-ratified), which is why
+:func:`test_at2_extraction_obligation_is_owned` still points at PLAN-0076 and PLAN-0076 has NOT
+archived.
+
 Pure-offline (no DB, no LLM, no MS-S1 — CLAUDE.md §8). The failing assertion is the deferral
 SELF-CANCELLING, not a test bug.
 """
@@ -112,7 +124,6 @@ from pathlib import Path
 
 from services.engine.procedures.orchestrator import _is_at2_procedure
 from services.engine.procedures.spec import (
-    ComplianceCriterion,
     ComplianceGate,
     ComplianceRule,
     DecisionCondition,
@@ -222,7 +233,11 @@ def _content_enum_surface(procedure: Procedure) -> tuple[tuple[str, tuple[str, .
         if gc is None:
             continue
         if gc.kind == "rule_gate":
-            members = tuple(sorted(rule.criterion.value for rule in gc.rules))
+            # PLAN-0087: `criterion` is a declared CriterionId (plain str) since the vocabulary
+            # left engine code — no `.value` to unwrap. The FINGERPRINT is unchanged: the same
+            # ids in the same sorted order, so `_BASELINE_SIGNATURES` below stays byte-identical
+            # and the census pin still fires on a genuine 5th signature.
+            members = tuple(sorted(rule.criterion for rule in gc.rules))
         elif gc.kind == "scored_rule":
             members = tuple(sorted((gc.default_source.value, gc.exception_policy.value)))
         elif gc.kind == "doa_tier":
@@ -344,9 +359,7 @@ def _procurement_shaped_procedure(criteria: list[str]) -> Procedure:
         default_source=SourcePolicy.ON_CONTRACT,
         exception_policy=ExceptionPolicy.RFQ_AVL_LOGGED,
     )
-    gate = ComplianceGate(
-        rules=[ComplianceRule(criterion=ComplianceCriterion(c), spec="x") for c in criteria]
-    )
+    gate = ComplianceGate(rules=[ComplianceRule(criterion=c, spec="x") for c in criteria])
     ladder = DoaLadder(
         currency="THB",
         tiers=[DoaTier(min_amount=Decimal("0"), approver_role="dept_head")],

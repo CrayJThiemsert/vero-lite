@@ -850,39 +850,32 @@ DISTINCT from ``PersonId``: a service id is NEVER a member of the SoD ``Person``
 set (RF-3) and NEVER an approver (SP-1). Human-authored (never model-emitted)."""
 
 
-class ComplianceCriterion(StrEnum):
-    """The per-criterion compliance checks an AT-2 ``rule_gate`` evaluates (ADR-0025 D2).
+CriterionId = Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]{1,47}$")]
+"""A compliance-criterion identifier a vertical DECLARES for its own ``rule_gate``
+(PLAN-0087). Unlike the other id aliases here (``RoleId`` / ``PersonId`` — bare ``str``
+by convention), this one is PATTERN-CONSTRAINED, deliberately: it is the first of the
+three legs answering ADR-0031 moat tripwire 4 (*"flipping a closed governed enum to
+accept free strings"*). A prose sentence, a ฿ amount, a role token, or anything with
+whitespace/uppercase/punctuation is **unrepresentable as a criterion id by type** —
+so the vocabulary opening is not a free-string opening. The other two legs are
+membership (a rule may only name an id its vertical declared —
+:meth:`VerticalProcedures._validate_compliance_criteria`) and the verified census
+finding that no engine behaviour keys on a criterion member (it is a label:
+``rule_gate.py`` uses it as a plain string key into the compliance-signal map).
 
-    Grown ADDITIVELY per observed signature (ADR-016 OQ-A1) — the first five are the
-    procurement vendor-hygiene criteria; the GDP/GxP block is the 2nd AT-2 signature's
-    regulatory-quality gate (supply_chain cold-chain disposition, PLAN-0074 Step 4); the
-    credit-compliance block is the 3rd AT-2 signature's gate (building_materials
-    governed-credit hero, PLAN-0081 Step 2). The blocks are instance-scoped, NOT a generic
-    vocabulary: an AT-2 vertical extends this enum with its own gate's criteria (the N=2
-    triangulation finding, re-confirmed at N=3 — what generalised is the GATE (block on any
-    fail, non-waivable), never the criterion vocabulary; PLAN-0081 Step 8 / ADR-0025 D7)."""
+Human-authored (H, ADR-0024 D3 / ADR-0025 D4) — never model-emitted; guarded by
+``VERTICAL_GOVERNANCE_FIELDS`` (``draft.py``)."""
 
-    # procurement — vendor hygiene (the 1st AT-2 signature)
-    AVL = "avl"
-    TAX = "tax"
-    CERT = "cert"
-    SANCTIONS = "sanctions"
-    SINGLE_SOURCE = "single_source"
-    # supply_chain — GDP/GxP regulatory quality (the 2nd AT-2 signature, PLAN-0074)
-    STABILITY_BUDGET = "stability_budget"
-    BATCH_QUARANTINE = "batch_quarantine"
-    LICENSED_DISPOSAL_VENDOR = "licensed_disposal_vendor"
-    COA_CUSTOMS = "coa_customs"
-    # building_materials — customer-credit compliance (the 3rd AT-2 signature, PLAN-0081)
-    KYC = "kyc"
-    OVERDUE_AR = "overdue_ar"
-    BLACKLIST = "blacklist"
-    # fleet_maintenance — repair-spend sourcing hygiene (PLAN-0086). NOT a 4th AT-2 signature:
-    # the doa_tier ladder is reused unchanged, and this single criterion is the vertical's own
-    # instance-scoped vocabulary exactly as the N=2/N=3 finding predicts. It is the gate the
-    # roadside `emergency_waiver` RELAXES (`relaxes: [three_bid]`) — the customer's own
-    # "ซื้อร้านข้างทางไปเลย" bypass, made explicit and logged instead of invisible.
-    THREE_QUOTE = "three_quote"
+
+# RETIRED by PLAN-0087: ``class ComplianceCriterion(StrEnum)`` lived here and held the
+# criterion vocabulary of every AT-2 vertical — procurement's vendor hygiene, supply_chain's
+# GDP/GxP block (PLAN-0074), building_materials' credit block (PLAN-0081), fleet_maintenance's
+# ``three_quote`` (PLAN-0086). Four verticals, four engine edits: that recurrence — not any
+# gate SHAPE — is what cancelled the ADR-0025 D7 deferral at N=4. The vocabulary is now
+# DECLARED per vertical (``VerticalProcedures.compliance_criteria``) and validated at load, so
+# a new vertical's gate needs no engine diff at all. See :data:`CriterionId` for why this is
+# not the ADR-0031 tripwire-4 "free strings" move, and the module docstring of
+# ``tests/services/engine/procedures/test_at2_signature_retrigger.py`` for the full N=4 record.
 
 
 class SourcePolicy(StrEnum):
@@ -1036,7 +1029,12 @@ class ComplianceRule(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    criterion: ComplianceCriterion = Field(description="the compliance criterion checked")
+    criterion: CriterionId = Field(
+        description="the compliance criterion checked — an id this vertical DECLARED in its "
+        "`compliance_criteria` block (PLAN-0087). Was a closed engine-owned enum member until "
+        "the N=4 extraction; membership is now validated at load against the vertical's own "
+        "declaration, so the set is still closed — it just closes per vertical."
+    )
     spec: str = Field(
         min_length=1,
         description="the human-authored predicate for this criterion (rendered read-only in "
@@ -1679,6 +1677,14 @@ class VerticalProcedures(BaseModel):
         "Phase B) — human-author-only (H, ADR-0024 D3), never generated. Absent => empty (every "
         "existing vertical unchanged).",
     )
+    compliance_criteria: list[CriterionId] = Field(
+        default_factory=list,
+        description="this vertical's DECLARED rule_gate criterion vocabulary (PLAN-0087) — a "
+        "closed set, authored here instead of in the engine's code. MANDATORY for a vertical "
+        "that ships any rule_gate content; absent => empty, which leaves every vertical without "
+        "a rule_gate (energy, aquaculture) untouched. Human-author-only (H, ADR-0024 D3 / "
+        "ADR-0025 D4), never generated.",
+    )
 
     @model_validator(mode="after")
     def _validate_principals(self) -> Self:
@@ -1697,6 +1703,51 @@ class VerticalProcedures(BaseModel):
                     f"vertical '{self.vertical}': principal_alias '{alias.alias_id}' references "
                     f"unknown person_id(s) {dangling} (known: {sorted(known)}) — ADR-0026 D4"
                 )
+        return self
+
+    @model_validator(mode="after")
+    def _validate_compliance_criteria(self) -> Self:
+        """Criterion-vocabulary integrity (PLAN-0087) — the membership leg of the ADR-0031
+        tripwire-4 answer, in the same shape and failure philosophy as
+        :meth:`_validate_principals`: the set stays CLOSED, it just closes per vertical
+        instead of in engine code. A criterion a vertical never declared is an AUTHORING
+        ERROR caught at load, never a silently-passing free string.
+
+        Declared-but-unused ids are permitted (a vocabulary may pre-declare), exactly as an
+        unreferenced ``Person`` is permitted.
+        """
+        declared = list(self.compliance_criteria)
+        dupes = sorted({c for c in declared if declared.count(c) > 1})
+        if dupes:
+            raise ValueError(
+                f"vertical '{self.vertical}': duplicate compliance_criteria {dupes} — PLAN-0087"
+            )
+        known = set(declared)
+
+        used: set[str] = set()
+        for procedure in self.procedures:
+            for step in procedure.steps:
+                content = step.governance_content
+                if content is None or content.kind != "rule_gate":
+                    continue
+                # StrEnum today, a plain CriterionId after the Step-4 flip: str() is the value
+                # in BOTH worlds. (Never test membership on the raw enum member — Enum.__hash__
+                # hashes the NAME, so `member in {"avl"}` is False even though `member == "avl"`.)
+                used.update(str(rule.criterion) for rule in content.rules)
+
+        if used and not known:
+            raise ValueError(
+                f"vertical '{self.vertical}': ships rule_gate content naming {sorted(used)} but "
+                "declares no compliance_criteria — the vocabulary is authored in the vertical's "
+                "procedures.yaml, not in engine code (PLAN-0087)"
+            )
+        dangling = sorted(used - known)
+        if dangling:
+            raise ValueError(
+                f"vertical '{self.vertical}': rule_gate names undeclared criterion(s) {dangling} "
+                f"(declared: {sorted(known)}) — declare them in compliance_criteria or fix the "
+                "rule (PLAN-0087)"
+            )
         return self
 
     @model_validator(mode="after")
@@ -1797,6 +1848,10 @@ def parse_procedures(doc: dict[str, Any], *, vertical: str) -> VerticalProcedure
         # Service principals are LIST-shaped (like principals): non-human actors for non-human
         # triggers (ADR-016 S2 / PLAN-0053 Phase B). Absent key => empty (every vertical unchanged).
         service_principals=doc.get("service_principals") or [],
+        # PLAN-0087: the vertical's declared rule_gate criterion vocabulary — a flat list of
+        # CriterionId. Absent key => empty, which is legal ONLY for a vertical that ships no
+        # rule_gate content (_validate_compliance_criteria refuses the combination otherwise).
+        compliance_criteria=doc.get("compliance_criteria") or [],
     )
 
 
