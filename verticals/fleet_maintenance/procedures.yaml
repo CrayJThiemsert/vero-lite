@@ -72,6 +72,13 @@ principals:
     name: "เฮีย — เจ้าของกิจการ"
     roles: [approver, "เจ้าของกิจการ", "ผจก.เดินรถ", "ช่างใหญ่"]
 
+# PLAN-0087: this vertical's DECLARED rule_gate criterion vocabulary — the closed set that
+# used to live in engine code as `ComplianceCriterion`'s fleet_maintenance block. Repair-spend
+# sourcing hygiene (PLAN-0086). This is the vertical whose single added member made it four
+# consecutive engine edits and decided the N=4 cancellation — it is now authored HERE, and a
+# 7th vertical adds its own vocabulary the same way, with zero engine diff.
+compliance_criteria: [three_quote]
+
 procedures:
   governed_repair_approval:
     title: Governed Repair Approval

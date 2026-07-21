@@ -38,7 +38,6 @@ from services.engine.procedures.spec import (
     Agent,
     AgentAllowed,
     Autonomy,
-    ComplianceCriterion,
     ComplianceGate,
     ComplianceRule,
     Step,
@@ -56,17 +55,11 @@ def _hero_gate() -> ComplianceGate:
     per-criterion rules, each blocking the PO on failure (blocks_po is Literal[True])."""
     return ComplianceGate(
         rules=[
-            ComplianceRule(
-                criterion=ComplianceCriterion.AVL, spec="supplier.avl_status == approved"
-            ),
-            ComplianceRule(criterion=ComplianceCriterion.TAX, spec="supplier.tax_id present"),
-            ComplianceRule(
-                criterion=ComplianceCriterion.CERT, spec="supplier.cert_status == valid"
-            ),
-            ComplianceRule(criterion=ComplianceCriterion.SANCTIONS, spec="not sanctioned"),
-            ComplianceRule(
-                criterion=ComplianceCriterion.SINGLE_SOURCE, spec="single-source justified"
-            ),
+            ComplianceRule(criterion="avl", spec="supplier.avl_status == approved"),
+            ComplianceRule(criterion="tax", spec="supplier.tax_id present"),
+            ComplianceRule(criterion="cert", spec="supplier.cert_status == valid"),
+            ComplianceRule(criterion="sanctions", spec="not sanctioned"),
+            ComplianceRule(criterion="single_source", spec="single-source justified"),
         ]
     )
 

@@ -45,7 +45,6 @@ from services.engine.procedures.spec import (
     AgentAllowed,
     Autonomy,
     BandSource,
-    ComplianceCriterion,
     ComplianceGate,
     ComplianceRule,
     DecisionCondition,
@@ -589,7 +588,7 @@ def test_fully_authored_severity_passes_the_gate() -> None:
 
 def test_compliance_criterion_import_is_used() -> None:
     """A rule_gate evaluate owes a ComplianceGate; a matching one fills it."""
-    gate = ComplianceGate(rules=[ComplianceRule(criterion=ComplianceCriterion.AVL, spec="on AVL")])
+    gate = ComplianceGate(rules=[ComplianceRule(criterion="avl", spec="on AVL")])
     step = _dc_step("compliance", StepKind.EVALUATE, GateKind.RULE_GATE, governance_content=gate)
     assert "governance_content" not in unfilled_governance(step)
 

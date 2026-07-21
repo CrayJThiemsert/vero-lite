@@ -83,6 +83,12 @@ principals:
     roles:
       [approver, "ผอ.ฝ่ายคุณภาพ", "เภสัชกรผู้มีหน้าที่ควบคุม", "ผจก.ประกันคุณภาพ", "จนท.ประกันคุณภาพ"]
 
+# PLAN-0087: this vertical's DECLARED rule_gate criterion vocabulary — the closed set that
+# used to live in engine code as `ComplianceCriterion`'s supply_chain block. GDP/GxP
+# regulatory quality, the 2nd AT-2 signature (PLAN-0074). Every `criterion:` named by a
+# rule_gate below must appear here or the spec is refused at load.
+compliance_criteria: [stability_budget, batch_quarantine, licensed_disposal_vendor, coa_customs]
+
 procedures:
   cold_chain_excursion_sweep:
     title: Cold-Chain Excursion Sweep

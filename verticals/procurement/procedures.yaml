@@ -94,6 +94,12 @@ service_principals:
   - service_principal_id: svc-buyer
     name: "Auto Buyer (บอทจัดซื้ออัตโนมัติ — ตัว trigger รอบกลางคืน)"
 
+# PLAN-0087: this vertical's DECLARED rule_gate criterion vocabulary — the closed set that
+# used to live in engine code as `ComplianceCriterion`'s procurement block. Vendor hygiene,
+# the 1st AT-2 signature. Every `criterion:` named by a rule_gate below must appear here or
+# the spec is refused at load; the set is closed per vertical, not global.
+compliance_criteria: [avl, tax, cert, sanctions, single_source]
+
 procedures:
   emergency_sourcing_round:
     title: Emergency Sourcing Round
