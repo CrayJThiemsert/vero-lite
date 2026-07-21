@@ -243,3 +243,62 @@ exactly once, verified by exact list equality at split time, not by a byte-sum e
 > untracked KEEP); loop-dispatcher DISABLED. PLAN-0072 `git mv`→`done/` this
 > session; `docs/plans/` empty again. Commits: `85f90ed` (#734 PLAN-0072 Ready) →
 > `88e6984` (#735 feat build + close).
+
+### Current Focus block removed — sessions 149 + 150 (PLAN-0082 shared-ontology mechanism + Person promotion, #801–812) [rotated 2026-07-21, session-156 reconcile — 4-block window]
+
+> **Sessions 149 + 150, 2026-07-19 (head_commit `0b67f76` → `043da3c`) —
+> PLAN-0082 (the shared-ontology mechanism + `Person` promotion) BUILT
+> end-to-end, then COMPLETE + archived, across both sessions (#801–812), with
+> PLAN-0081 folded — and governance behaviour UNCHANGED throughout.** **The moat
+> piece:** a shared `core` ontology home + an `imports:` grammar with cross-doc
+> `core.<Type>` resolution + a `set`/`closed` type-system extension across all
+> emitters + a shared `Person` (type + committed ORM + `person` table + Alembic
+> migration) reconciled down to exactly ONE definition. **(s149 — build half,
+> #801–808).** Filed PLAN-0082 `Status: Draft` (#801) + folded the SD-round
+> (#802 — SD-F/G/H/I/K + OQ-1); **ADR-0033 Accepted (#803, `6dd6464`)** — the
+> shared-ontology ADR + ADR-0008/0026 pointer notes, OQ-1=(a) JSONB. Steps 2–4:
+> **#804** `ontology/core_v0.yaml` + the reserved `core` namespace + set/closed
+> L1/L2; **#805** the Pydantic emitter (set→`frozenset` / closed→`extra=forbid`);
+> **#806** the `imports:` grammar + qualified cross-doc `core.<Type>` resolution
+> (no KeyError); **#807** set→JSONB across the SQL/ORM/JSON-Schema/TS emitters;
+> **#808 (`5e45eb6`)** the committed shared Person ORM `services/db/person.py` +
+> the `person` table + Alembic `0012` — RAN GREEN on dev Postgres. Additive
+> throughout — zero shipped-behaviour change. **(s150 — reconciliation half,
+> #809–812).** **Step 5 (#809)** reconciled the spec-layer `Person` onto the
+> committed generated `core.Person` (SD-H=(a) = delete + re-export; Cray s150
+> design = a1): the committed-dest mechanism was extended to the Pydantic emitter
+> (`_PYDANTIC_COMMITTED_DEST["core"] → services/engine/procedures/person_model.py`),
+> parallel to the committed ORM; the AC-4 one-`Person` grep guard was proven
+> non-vacuous empirically. **A CI-scope miss caught + fixed:** the offline gate
+> ran only the 3 changed files + engine/db tests, but CI runs `mypy services/`
+> STRICT tree-wide — `--no-implicit-reexport` flagged 12 consumers of the plain
+> re-export → fixed with the redundant-alias idiom (`import Person as Person`);
+> lesson recorded (the offline gate must match CI scope). **Step 6 (#810)**
+> migrated procurement + supply_chain onto the shared type (AC-5) + transformed
+> the OQ-6 marker (AC-6). **Grounding collapsed the handoff's "LARGE dual-roster"
+> work to SMALL:** AC-5's TYPE-unification was ALREADY satisfied by Step 5's
+> re-export (every roster parses into the one shared `spec.Person`;
+> `auth.py`/factory/`run.py` already read the shared seam — nothing to
+> re-point). **AC-5 RE-SCOPE (Cray s150):** the "retire one of procurement's dual
+> roster sources" clause was a MISREAD — `procedures.yaml` (the Thai SoD roster)
+> and `person.csv` via `load_fastenal_principals` (the Fastenal LIVE-run demo
+> roster) are DISTINCT demos, not redundant copies; retiring either deletes a
+> demo (violates AC-5's own "verdicts may not change" bar). Neither retired,
+> documented; classified **`superseded by new info`** (CLAUDE.md §6). The marker
+> became a shared-type invariant (no re-arm at N=4), non-vacuity proven. **Step 7
+> (#811, `e059303`)** — PLAN-0082 COMPLETE: all 7 ACs ticked against fresh
+> on-disk evidence + a Closeout Verification block, `git mv` →
+> `docs/plans/done/0082-*.md`. **PLAN-0081 fold (#812)** — SD-J=SPLIT resolved +
+> executed: Step 9 shrunk to the `building_materials` residue, AC-7 re-pointed to
+> PLAN-0082 AC-6, AC-12/13/14/15 → PLAN-0082 AC-1/2/3/4, OQ-1 → ADR-0033;
+> **PLAN-0081 stays `Status: Draft`.** **Verification:** full offline suite
+> **2888 passed / 7 skipped**, re-run on EACH merge commit; every existing
+> SoD/tier/gate-resolve assertion UNMODIFIED. **OQ-2 (the `person`-table
+> population story) stays OPEN + explicitly deferred** (the table ships empty,
+> runtime roster-fed). **PLAN-0081 is UNBLOCKED** (Step 9 = land
+> building_materials on the shared `Person`); the hero build stays uncommissioned
+> beyond PLAN-0079's tracking stub. Post-merge: main=`043da3c`; 0 open PRs;
+> loop-dispatcher DISABLED; MS-S1 idle/COLD (zero calls all session); dev
+> Postgres UP (localhost:5442). Commits: `5e45eb6` (#808 merge, s149 tip) →
+> `92f0019` (#809) → `c94d089` (#810) → `e059303` (#811) → `043da3c` (HEAD,
+> #812 merge).
