@@ -95,6 +95,24 @@ collides across supply_chain's two procedures, so it is **inert**
 (`procedures_factory.py:43-44` states this; a stray `assess` through the
 severity stamp additionally fails CLOSED).
 
+**A SIBLING vocabulary pressure, recorded here so it is tracked rather than lost
+(PLAN-0087 AC-8).** `ComplianceCriterion` was not the only engine-owned criterion
+vocabulary. `services/engine/procedures/scored_rule.py:53-59` holds
+`_KNOWN_CRITERIA = frozenset({"criticality", "lead_time", "unit_price"})` — the
+`scored_rule` gate's vocabulary — whose own comment says *"a future AT-2 vertical
+EXTENDS this map, never a silent mis-score"*. **PLAN-0087 deliberately did NOT open
+it**, and the reason is a real design difference, not scope-trimming: unlike a
+`rule_gate` criterion (a pure label the engine uses as a string key — which is why
+opening it was behaviourally inert), each scored criterion carries **executor
+semantics** (`criticality` is scored by lead-time readiness, `scored_rule.py:22-23`,
+amplified by `event_criticality` at `:197`). Opening it means "a declared criterion
+needs a declared scoring rule" — a `derive`-grammar-shaped problem. **Its extension
+pressure to date is ZERO** (both scored-rule verticals fit inside the original three
+names), so Rule-of-Three does not order it yet. **Its trigger:** the first vertical
+that demands a scored criterion outside the set — and it is self-announcing, because
+`_weights` (`:169-181`) fails CLOSED with `ScoredRuleError` rather than mis-scoring
+silently. When it fires, it routes here.
+
 **Trigger status.** The D3 row-3 N≥2 trigger (the 2nd AT-2 signature) HAS
 fired — PLAN-0074 merged. But ADR-0031 D4.1 does not COMPEL a build (the
 seam map is not a roadmap), and D4.2 gives the seam its own PLAN. This
@@ -354,6 +372,41 @@ PLAN-0074's coordination-point enumeration; update the D3 row on landing
 > new `test_at2_extraction_obligation_is_owned` guard now fails if this PLAN is
 > archived or loses this record — a cancelled deferral with no owner is strictly
 > worse than the deferral was.
+
+> **T1 PARTIALLY DISCHARGED — the criterion-vocabulary half shipped as PLAN-0087
+> (session 158, 2026-07-21).** The extraction the `N=4` firing made due has been paid
+> on the axis the evidence actually supported: `ComplianceCriterion` is retired from
+> engine code, each vertical DECLARES its own `rule_gate` vocabulary in its
+> `procedures.yaml` (`VerticalProcedures.compliance_criteria`, membership-validated at
+> load), and a new AT-2 vertical now ships its gate with **zero engine diff** — proven,
+> not asserted, by PLAN-0087 AC-1's proof pair (a fixture criterion that exists nowhere
+> in `services/` loads and gates, with a static guard keeping it that way).
+>
+> *Scope, and why the split.* **SD-1 = (a), Cray-ratified (typed, session 158):** the
+> vocabulary half only. **The F-FACTORY half — the procedure-aware `ExecutorFactory`,
+> `sod_steps`/`stamp_steps` keyed on `(procedure_id, step_id)` — REMAINS OPEN and is
+> still owned here**, with its named triggers armed (a live `step_id` collision; the
+> gate-shape 4-edit pain biting in a real PLAN). Its evidence never matched the
+> vocabulary half's: it is an **inert audit display-flag over-mark with zero live
+> collisions**, whereas the vocabulary pressure was 4 engine edits in 4 consecutive
+> verticals. Building it now would be abstraction ahead of pressure — the thing
+> ADR-0031 D4.1 forbids.
+>
+> *Anchor drift corrected while shipping PLAN-0087 (§A above is stale on both counts):*
+> procurement's `sod_steps` hardcode is at `verticals/procurement/hero_demo/run.py:298`,
+> not `:278`; and **three** verticals now DERIVE `sod_steps` from their spec's own
+> `separation_of_duties` (`supply_chain/procedures_factory.py:244`,
+> `building_materials/procedures_factory.py:64`,
+> `fleet_maintenance/procedures_factory.py:61`) — only procurement's hero demo still
+> hardcodes. So F-FACTORY's *hardcode-drift* half is **N=1 and shrinking** (the vertical
+> template fixed it by convention) while its *vertical-scoping* half is **N=3 and
+> unchanged**. A future seam PLAN should argue the second, not the first.
+>
+> *Consequence for this PLAN's lifecycle:* it does **NOT** archive. T1 is partial and
+> F-PIN's remainder (§B item 1) is open by construction, so per Step T3 both the
+> `test_at2_extraction_obligation_is_owned` guard and the AC-6 presence guard stay
+> armed and stay pointed here. **No guard re-homing occurred, deliberately** — re-homing
+> is required only when this PLAN archives.
 
 ### Step T2: WHEN the transform-grammar PLAN opens — fold F-PIN's remainder in
 **STATUS: CLOSED 2026-07-17 (session 143) by PLAN-0078 PR-5** — per Step T3's
