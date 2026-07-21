@@ -29,6 +29,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any, cast
 
 from services.engine.procedures.doa_tier import DoaTierError, resolve_doa_tier
+from services.engine.procedures.gate_advisory import GateAdvisoryBuilder
 from services.engine.procedures.orchestrator import RunContext, StepExecutor, StepOutcome
 from services.engine.procedures.rule_gate import evaluate_compliance
 from services.engine.procedures.scored_rule import ScoredRuleError, select_scored_supplier
@@ -174,6 +175,10 @@ class GovernanceActionExecutor:
     base: StepExecutor
     principals: list[Person] = field(default_factory=list)
     sod_steps: frozenset[str] = field(default_factory=frozenset)
+    # PLAN-0085 SD-1(b): the optional advisory builder — verticals that do not supply
+    # it stay byte-identical (None = today's behavior). Trace-only by construction:
+    # its entries are appended to reasoning_trace in _doa_tier and NEVER to audit.
+    advisory_builder: GateAdvisoryBuilder | None = None
 
     async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
         gc = step.governance_content
@@ -223,6 +228,14 @@ class GovernanceActionExecutor:
             }
             for v in verdicts
         ]
+        # PLAN-0085 SD-1(b): the advisory gate recommendation — appended to the TRACE
+        # only (shown, never routes; L-B). The builder never raises (ADR-0030 D5), so a
+        # failing advisory cannot fail, park, or divert the run; the audit block below
+        # is byte-identical with or without it (the AC-4 fence).
+        if self.advisory_builder is not None:
+            trace = trace + await self.advisory_builder.build(
+                step=step, ladder=ladder, verdicts=verdicts, input_set=input_set, ctx=ctx
+            )
         # PLAN-0075 SD-6(a): the principal-naming ``governed_decision`` tie is NO LONGER emitted at
         # run time — a suspended run must carry NO authority tie naming a principal who has not yet
         # acted (the run-time ``doa_tier`` verdict list below is the honest ROUTING record). The

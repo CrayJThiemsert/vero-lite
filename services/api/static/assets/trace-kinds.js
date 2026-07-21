@@ -54,6 +54,7 @@
     "transform_provenance": { "label": "Deterministic transform", "cls": "s-neutral", "actor": "engine" },
     "economic_impact": { "label": "Economic-impact estimate (deterministic)", "cls": "s-neutral", "actor": "engine" },
     "action_verification": { "label": "Action verification (deterministic)", "cls": "s-warn", "actor": "engine" },
+    "advisory_recommendation": { "label": "Advisory recommendation (shown, never routes)", "cls": "s-info", "actor": "llm" },
     "read_refused": { "label": "Read refused (governance)", "cls": "s-crit", "actor": "engine" },
     "error": { "label": "Step error", "cls": "s-crit", "actor": "engine" }
   }
