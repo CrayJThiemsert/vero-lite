@@ -345,3 +345,33 @@ exactly once, verified by exact list equality at split time, not by a byte-sum e
 > ruff clean; CI `gate` PASS — deterministic-offline, MS-S1 never called, no
 > host-state. Post-merge: main=`9422c40`; 0 open PRs; loop-dispatcher DISABLED.
 > Commits: `a46bef8` (#814) → `9422c40` (HEAD, #814 merge).
+
+> **Session 152, 2026-07-19 (head_commit `9422c40` → `a53c6ed`) — PLAN-0083
+> (fix option c1) BUILT + verified + archived: the procurement ontology↔CSV
+> column drift is CLOSED at the adapter seam (#818).** The `FastenalCsvAdapter`
+> now translates raw Fastenal CSV columns → canonical ontology names via
+> `_COLUMN_RENAMES` on the `fetch_objects` path — the type key
+> `Asset`→`Equipment` (SD-1) plus columns `part_id`→`part_no`,
+> `price_thb`→`price`, `asset_id`→`equipment_id`, `site`→`site_id`,
+> `lead_time_days`→`lead_time`, and `PurchaseOrder.asset_id`→`equipment_id`
+> (SD-4a); the ฿-columns (`total_thb`/`min_thb`/`max_thb`) are DEFERRED raw
+> (SD-4b). So every consumer now sees ONE canonical vocabulary (the ontology's),
+> closing the bring-your-own-data seam. **Rides under ADR-016's LOCKED boundary**
+> ("the mapping layer absorbs source diversity; connectors-in-the-procedure OUT")
+> — **no new ADR, no ontology YAML edit, no generated regen, no `services/`
+> engine edit** (ADR-0023 zero-core-edit; diff = adapter + vertical + tests only).
+> A new coverage tripwire (`test_fastenal_adapter_canonical_coverage.py`) pins
+> per-type set-equality + required-props + rename-target ontology validity + the
+> type-key + the SD-4b ฿-defer, proven non-vacuous EMPIRICALLY (dropped a rename
+> → RED → reverted). Cray COMMISSIONED C3 this session via `next-work-analyst`
+> (which ranked the drift item), then ratified (c1) + SD-1..SD-4 via
+> AskUserQuestion. **R2 caught** that the PLAN under-scoped
+> `governance_audit.py:177/179` (reads the renamed PO columns off the adapter) —
+> added, within AC-5 scope. **Verification:** full offline suite **2915 passed /
+> 7 skipped** (baseline 2896 + 19 tripwire); `mypy --strict services/ verticals/`
+> clean (142 files); ruff clean; CI gate PASS on #818. Deterministic-offline;
+> MS-S1 never called; dev Postgres UP (localhost:5442). Post-merge: main=`5140ee3`;
+> 0 open PRs; loop-dispatcher DISABLED. Also **#816** pruned the stale ORM-emitter
+> Active-TODO (resolved by PLAN-0082 Step 4). Commits: `a211651` (#818 build) →
+> `a53c6ed` (#818 merge) → `8b76da2` (#819 closeout) → `5140ee3` (HEAD, #819
+> merge).
