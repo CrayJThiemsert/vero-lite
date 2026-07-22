@@ -385,12 +385,32 @@ PLAN-0074's coordination-point enumeration; update the D3 row on landing
 > *Scope, and why the split.* **SD-1 = (a), Cray-ratified (typed, session 158):** the
 > vocabulary half only. **The F-FACTORY half — the procedure-aware `ExecutorFactory`,
 > `sod_steps`/`stamp_steps` keyed on `(procedure_id, step_id)` — REMAINS OPEN and is
-> still owned here**, with its named triggers armed (a live `step_id` collision; the
-> gate-shape 4-edit pain biting in a real PLAN). Its evidence never matched the
-> vocabulary half's: it is an **inert audit display-flag over-mark with zero live
-> collisions**, whereas the vocabulary pressure was 4 engine edits in 4 consecutive
-> verticals. Building it now would be abstraction ahead of pressure — the thing
-> ADR-0031 D4.1 forbids.
+> still owned here**, with its named triggers armed (an **observable** SoD over-mark —
+> see the s160 correction below; the gate-shape 4-edit pain biting in a real PLAN). Its
+> evidence never matched the vocabulary half's: it is an **inert audit display-flag
+> over-mark that is not yet observable**, whereas the vocabulary pressure was 4 engine
+> edits in 4 consecutive verticals. Building it now would be abstraction ahead of
+> pressure — the thing ADR-0031 D4.1 forbids.
+>
+> *Correction (session 165, 2026-07-23) — this paragraph previously read "zero live
+> collisions", and that was **wrong**.* `tests/services/engine/procedures/test_sod_step_id_scope_guard.py:30-37`
+> (session 160) established on disk that **collisions already exist**: procurement
+> ships five procedures in one file and reuses `intake` and `approve` across three of
+> them. **What is actually zero is the OVER-MARK** — all three declare the identical
+> `distinct_steps: [intake, approve]`, so the per-vertical union equals each
+> per-procedure set and the flattening cannot be observed. The distinction is
+> load-bearing *for this PLAN specifically*, because T1's first named trigger was
+> worded "a live `step_id` collision" — read literally, that trigger had **already
+> fired**, which was never the intent. The trigger is therefore restated above as an
+> **observable over-mark**: one procedure reusing `approve` without declaring it
+> SoD-constrained. The s160 guard is what now turns RED when that happens.
+>
+> *What is NOT corrected: the ADR-0031 D4.1 citation stands.* A session-165 grounding
+> pass proposed that D4.1 was miscited because "T1's trigger already fired twice
+> (N=3 s151, N=4 s157)". **Refuted against the text above:** those firings are the
+> **AT-2-signature / criterion-vocabulary** axis, and that obligation was *discharged*
+> by PLAN-0087. F-FACTORY carries its own, still-unfired triggers, so D4.1's
+> "must also show its trigger fired" bar is exactly the applicable rule.
 >
 > *Anchor drift corrected while shipping PLAN-0087 (§A above is stale on both counts):*
 > procurement's `sod_steps` hardcode is at `verticals/procurement/hero_demo/run.py:298`,
