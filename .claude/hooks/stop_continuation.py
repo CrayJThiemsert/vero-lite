@@ -47,6 +47,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -257,6 +258,195 @@ def _proceed_block(reason: str) -> dict[str, Any]:
     }
 
 
+# Meta-continuation vocabulary: words that describe the ACT of continuing
+# rather than WHAT to do. A reason built entirely from these names no next
+# action. Deliberately narrow — every genuine action verb (merge, commit,
+# run, write, fix, read, reconcile, ...) is absent, so it stays a FLOOR and
+# never becomes a specificity judge. See _reason_is_contentless.
+_META_REASON_TOKENS = frozenset(
+    {
+        # continuation verbs
+        "continue",
+        "continues",
+        "continuing",
+        "proceed",
+        "proceeds",
+        "proceeding",
+        "resume",
+        "resumes",
+        "resuming",
+        "keep",
+        "keeps",
+        "keeping",
+        "go",
+        "goes",
+        "going",
+        "carry",
+        "carrying",
+        "start",
+        "starting",
+        "begin",
+        "beginning",
+        # generic work nouns
+        "work",
+        "works",
+        "working",
+        "task",
+        "tasks",
+        "step",
+        "steps",
+        "item",
+        "items",
+        "action",
+        "actions",
+        "thing",
+        "things",
+        "job",
+        "jobs",
+        "piece",
+        "pieces",
+        "part",
+        "parts",
+        "bit",
+        "bits",
+        # sequence / position
+        "next",
+        "following",
+        "remaining",
+        "further",
+        "more",
+        "rest",
+        "ahead",
+        "forward",
+        "onward",
+        "then",
+        "now",
+        "first",
+        "second",
+        "last",
+        "again",
+        "another",
+        "other",
+        "others",
+        # generic completion
+        "finish",
+        "finishes",
+        "finishing",
+        "complete",
+        "completes",
+        "completing",
+        "completion",
+        "done",
+        "wrap",
+        "wrapping",
+        # modality / filler / function words
+        "a",
+        "an",
+        "the",
+        "to",
+        "with",
+        "on",
+        "in",
+        "of",
+        "for",
+        "and",
+        "or",
+        "at",
+        "by",
+        "from",
+        "as",
+        "is",
+        "are",
+        "was",
+        "were",
+        "be",
+        "been",
+        "it",
+        "its",
+        "this",
+        "that",
+        "these",
+        "those",
+        "there",
+        "here",
+        "up",
+        "out",
+        "i",
+        "we",
+        "you",
+        "agent",
+        "session",
+        "turn",
+        "do",
+        "does",
+        "doing",
+        "should",
+        "must",
+        "can",
+        "could",
+        "will",
+        "would",
+        "shall",
+        "may",
+        "might",
+        "need",
+        "needs",
+        "needed",
+        "let",
+        "lets",
+        "us",
+        "please",
+        "still",
+        "yet",
+        "just",
+        "simply",
+        "current",
+        "currently",
+        "ongoing",
+        "pending",
+        "open",
+        "active",
+        "normal",
+        "normally",
+        "ready",
+        "safe",
+        "ok",
+        "okay",
+    }
+)
+
+
+def _reason_is_contentless(reason: str) -> bool:
+    """True when ``reason`` names no concrete next action.
+
+    The Stop hook passes a ``proceed`` reason back to the agent VERBATIM
+    as its continuation instruction (:func:`_proceed_block`), and the
+    classifier prompt requires a proceed reason to NAME the next action.
+    Nothing enforced that. A model that wants ``proceed`` but has no
+    action to name can satisfy the JSON schema with a placeholder —
+    session 160 observed the reason ``"Continue to the next work step"``
+    on a turn whose only real next step was Cray's decision, and the
+    agent read it as an order to invent work. #843 does not cover this
+    shape: that paragraph forbids NAMING a Cray-reserved step, and a
+    contentless reason names nothing at all.
+
+    The demotion is free of judgement calls because **a contentless
+    reason is worthless even when ``proceed`` is correct** — the reason
+    IS the instruction, so an instruction that says nothing cannot be
+    the right output either way. This is therefore a FLOOR, not a
+    specificity judge: it rejects only reasons built entirely from
+    meta-continuation vocabulary, never a weak-but-substantive one
+    (``"Continue running the test and mypy suite on the merged commit"``
+    — the OTHER session-159 directive — keeps ``run``/``test``/``mypy``/
+    ``commit`` and passes).
+
+    Non-ASCII reasons pass: ``\\w`` is Unicode-aware, so Thai or any
+    other script yields tokens outside the ASCII meta set.
+    """
+    tokens = re.findall(r"\w+", reason.lower())
+    return not any(token not in _META_REASON_TOKENS for token in tokens)
+
+
 # PLAN-0009 Step 4 §5 budget reminder template (verbatim) — kept in this
 # module so the dispatch instruction is self-contained. If Step 4 §5 is
 # ever edited, mirror the change here AND update test_stop_continuation
@@ -385,10 +575,23 @@ def main() -> int:
     verdict = decision.get("decision")
 
     if verdict == "proceed":
+        # Contentless-reason floor (session 160). The reason is emitted
+        # VERBATIM as the agent's continuation instruction, so one that
+        # names no action is demoted to pause — see _reason_is_contentless.
+        # A missing `reason` key lands here too: the old "continue" default
+        # was itself contentless.
+        reason = str(decision.get("reason") or "")
+        if _reason_is_contentless(reason):
+            print(
+                "stop_continuation: demoted a contentless proceed reason to " f"pause: {reason!r}",
+                file=sys.stderr,
+            )
+            _reset_chain()
+            return 0
         chain["depth"] += 1
         chain["last_proceed_ts"] = _now_iso()
         _save_chain(chain)
-        print(json.dumps(_proceed_block(decision.get("reason", "continue"))))
+        print(json.dumps(_proceed_block(reason)))
         return 0
 
     if verdict == "dispatch":
