@@ -27,6 +27,7 @@ from verticals.fleet_maintenance.procedures_factory import (
 _VERTICAL = "fleet_maintenance"
 _PROC_ID = "pm_service_round"
 _HERO_ID = "governed_repair_approval"
+_SCHEDULED_ID = "scheduled_pm_service_round"  # PLAN-0090 — this path's scheduled twin
 
 
 async def _run(run_id: str):  # type: ignore[no-untyped-def]  # the orchestrator's result dataclass
@@ -129,11 +130,17 @@ async def test_pm_calm_path_does_not_disturb_the_at2_hero() -> None:
     """AC-3: additivity — the second procedure leaves the first intact.
 
     Both procedures ride ONE per-StepKind executor mapping, so a calm-path change could in
-    principle reach the hero. This pins the vertical's shape (exactly two procedures, one AT-2
-    with its full apparatus and one AT-3 with none) so a regression is named, not inferred.
+    principle reach the hero. This pins the vertical's shape (one AT-2 with its full apparatus,
+    the AT-3 calm paths with none) so a regression is named, not inferred.
+
+    _[PLAN-0090: the set grew to THREE — `scheduled_pm_service_round` joined, the AT-3 calm
+    path's scheduled twin. This pin going RED on that addition is the guard working as designed
+    (its own docstring: "a regression is named, not inferred"), the same class as the #850
+    census tripwire. Only the census line moved; every behavioural assertion below is
+    byte-untouched, which is the half that actually protects the hero.]_
     """
     spec = load_procedures(_VERTICAL)
-    assert {p.procedure_id for p in spec.procedures} == {_HERO_ID, _PROC_ID}
+    assert {p.procedure_id for p in spec.procedures} == {_HERO_ID, _PROC_ID, _SCHEDULED_ID}
 
     hero = next(p for p in spec.procedures if p.procedure_id == _HERO_ID)
     # the hero keeps its AT-2 apparatus, untouched by the extension

@@ -28,15 +28,15 @@ router = APIRouter(tags=["procedures"])
 # explicit map, server-side, in one place). Canonical source is
 # docs/conventions/procedure-archetypes.md; this is a read-only derived MIRROR
 # (CLAUDE.md §4 canonical→derived). A 7th vertical extends this map ADDITIVELY —
-# the catalog grows first, the map mirrors it; never the reverse. Twelve shipped
+# the catalog grows first, the map mirrors it; never the reverse. Thirteen shipped
 # procedures across the six procedure-bearing verticals (PLAN-0039 fact-pack #1:
 # procurement ships two manual; energy / supply_chain / aquaculture one each) plus
 # the PLAN-0055 Step 8 schedule-triggered AT-2 variant, the PLAN-0056 Step 8
 # event-triggered AT-2 variant, the PLAN-0065 Step 4 schedule-triggered AT-3
 # variant (all procurement), the PLAN-0074 supply_chain AT-2 disposition, the
 # PLAN-0081 building_materials AT-2 governed-credit hero, the PLAN-0086
-# fleet_maintenance AT-2 governed-repair hero, and the PLAN-0089
-# fleet_maintenance AT-3 PM calm path.
+# fleet_maintenance AT-2 governed-repair hero, the PLAN-0089
+# fleet_maintenance AT-3 PM calm path, and its PLAN-0090 SCHEDULED twin.
 #
 # KEYED ON THE PAIR, NOT THE BARE ID. A `procedure_id` is unique only WITHIN a
 # vertical — the spec cross-refs resolve per-vertical, and `ScheduleState` already
@@ -74,11 +74,17 @@ PROCEDURE_ARCHETYPES: dict[tuple[str, str], str] = {
     # procurement's stock below a reorder point) — which is what showed AT-3's signature is the
     # per-entity band + single human gate, not the stock semantics.
     ("fleet_maintenance", "pm_service_round"): "AT-3",
+    # fleet_maintenance — PLAN-0090, the SCHEDULED twin of the calm path above. Not a new
+    # archetype and not a new signature: the steps are byte-identical to the manual path's,
+    # and only the trigger differs (06:00 daily, as the `svc-fleet-scheduler` service
+    # principal). It is catalogued separately because a `procedure_id` is what the map,
+    # ScheduleState and SD-P3 skip-if-in-flight all key on.
+    ("fleet_maintenance", "scheduled_pm_service_round"): "AT-3",
 }
 
 # A procedure absent from the catalog map renders with this sentinel rather than
 # failing the read — surfacing "this shipped without a catalogued archetype"
-# instead of a 500 (defensive; all twelve shipped procedures are mapped today).
+# instead of a 500 (defensive; all thirteen shipped procedures are mapped today).
 _UNCATALOGUED = "uncatalogued"
 
 

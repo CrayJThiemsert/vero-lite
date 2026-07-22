@@ -47,7 +47,7 @@ archetype below preserves this.
 | **AT-1** `anomaly→action` | sense → judge(band) → gated action on breach | `energy`, `supply_chain`, `aquaculture` (core) | 1 deterministic band; 1 human gate on the irreversible write; handler fixed |
 | **AT-1b** `+ watch + summary` (AT-1 variant) | AT-1 **+** watch→gated proposal **+** auto summary terminal | `aquaculture.morning_pond_health_round` | AT-1 + ADR-0019 watch→gated escalation + an auto (un-gated) terminal receipt |
 | **AT-2** `request→approve→fulfill` | intake → (judge) → select(scored rule) → compliance(rule gate) → **tiered authority gate**(human) → fulfill(write) → (audit) | `procurement.emergency_sourcing_round` (manual); `procurement.scheduled_emergency_sourcing_round` (S1 schedule-triggered variant); **`supply_chain.cold_chain_excursion_disposition`** (the 2nd SIGNATURE — non-money authority, PLAN-0074); **`building_materials.governed_credit_release`** (the 3rd SIGNATURE — money authority reused, new criterion vocabulary, PLAN-0081); **`fleet_maintenance.governed_repair_approval`** (the 4th SIGNATURE — money authority reused again, `three_quote`, PLAN-0086) | per-criterion rule gate + a tiered human authority gate + SoD + traceable audit. **The authority QUANTITY is per-instance:** ฿ spend (`doa_tier`, procurement + building_materials + fleet_maintenance) or excursion severity (`severity_tier`, supply_chain); **the criterion vocabulary is per-instance too** (vendor-hygiene / GDP / credit-compliance / three-quote) |
-| **AT-3** `monitor→reorder` | read(measure) → judge(per-entity threshold) → gated action on breach | `procurement.low_stock_reorder_round` (manual); `procurement.scheduled_low_stock_reorder_round` (S1 schedule-triggered); **`fleet_maintenance.pm_service_round`** (manual — the 2nd VERTICAL to carry AT-3, and the first to band a NON-stock measure, PLAN-0089) | deterministic per-entity band + single-tier human approval |
+| **AT-3** `monitor→reorder` | read(measure) → judge(per-entity threshold) → gated action on breach | `procurement.low_stock_reorder_round` (manual); `procurement.scheduled_low_stock_reorder_round` (S1 schedule-triggered); **`fleet_maintenance.pm_service_round`** (manual — the 2nd VERTICAL to carry AT-3, and the first to band a NON-stock measure, PLAN-0089); **`fleet_maintenance.scheduled_pm_service_round`** (schedule-triggered — the same spine on a 06:00 daily clock, PLAN-0090) | deterministic per-entity band + single-tier human approval |
 
 ---
 
@@ -188,6 +188,16 @@ service-due point. The direction is per-instance; the signature is not.
     same vertical's AT-2 `governed_repair_approval`, on one shared engine + agent. The
     threshold is stored **absolute** (`last_service + interval`), never as an interval: the
     fields-only projection grammar has no arithmetic to compute one.
+  - `fleet_maintenance.scheduled_pm_service_round` (3 steps, `trigger: schedule`,
+    PLAN-0090) — the **scheduled twin** of the row above: fired 06:00 daily (`Asia/Bangkok`)
+    by the scheduler daemon as the `svc-fleet-scheduler` service principal, on behalf of
+    `req-mechanic-tom` (SP-5, accountability parity — no SoD role consumes it, PLAN-0065
+    SD-5(b)). It reads the odometers, judges, and PARKS at the same human `schedule_service`
+    go/no-go (RF-3 — a service actor can never book the service itself). Its steps are
+    **byte-identical** to the manual path's below `steps:` (proven, not asserted): a DISTINCT
+    `procedure_id`, never a trigger flip, so the manual path stays runnable and SD-P3
+    skip-if-in-flight keys cleanly. **The cadence is a trigger property, not a governance
+    one** — same agent, same ceiling, same single gate, same absence of doa_tier / SoD.
 - **Governance signature:** a deterministic per-entity band; a single human
   approval tier (no emergency waiver, no escalated DOA, no SoD).
 

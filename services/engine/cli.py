@@ -9,8 +9,11 @@ vero-lite`` (commit 7).
 from __future__ import annotations
 
 import asyncio
+import importlib
 import sys
+from collections.abc import Awaitable, Callable
 from pathlib import Path
+from typing import cast
 
 import typer
 
@@ -117,18 +120,63 @@ def new_vertical(
     )
 
 
+# Per-vertical procedure-executor factory registration for the scheduler daemon (PLAN-0090 L3).
+# MIRRORS ``_PROCEDURE_EXECUTOR_REGISTRARS`` in services/api/main.py rather than importing it:
+# ``services/engine/`` must not depend on ``services/api/``, and importing the app would drag
+# FastAPI into daemon startup. The two vertical sets are pinned EQUAL by
+# ``tests/services/engine/test_cli_registrars.py`` (AC-4), so a 7th vertical wired into one and
+# not the other goes RED instead of silently un-fireable. Module paths resolve LAZILY, so booting
+# one vertical never imports another's harness — the main.py property this mirrors.
+_PROCEDURE_EXECUTOR_REGISTRARS: dict[str, tuple[str, str]] = {
+    "aquaculture": (
+        "verticals.aquaculture.procedures_factory",
+        "register_aquaculture_procedure_executors",
+    ),
+    "energy": (
+        "verticals.energy.procedures_factory",
+        "register_energy_procedure_executors",
+    ),
+    "procurement": (
+        "verticals.procurement.hero_demo.run",
+        "register_procurement_procedure_executors",
+    ),
+    "supply_chain": (
+        "verticals.supply_chain.procedures_factory",
+        "register_supply_chain_procedure_executors",
+    ),
+    "building_materials": (
+        "verticals.building_materials.procedures_factory",
+        "register_building_materials_procedure_executors",
+    ),
+    "fleet_maintenance": (
+        "verticals.fleet_maintenance.procedures_factory",
+        "register_fleet_maintenance_procedure_executors",
+    ),
+}
+
+
 async def _register_executor_factory(vertical: str) -> None:
-    """Register the vertical's procedure-executor factory (OQ-6: explicit, not auto-discovered;
-    a fire would 409 at resolve without it). Only procurement ships one today; energy has none
-    by design — the daemon still runs + ticks, it just cannot fire that vertical's runs.
+    """Register the vertical's procedure-executor factory (OQ-6: explicit, not auto-discovered).
+
+    Without it the daemon does not merely fail to fire: :func:`_run_scheduler` asks the registry
+    for the factory UNGUARDED, so an unregistered vertical raises ``RegistryError`` at STARTUP,
+    before the daemon ever ticks. Until PLAN-0090 this dispatch was hardcoded to procurement,
+    which is precisely the shape that failure took for the other five procedure-bearing verticals
+    — recorded only by a docstring that had itself gone stale. The AC-4 set-equality test is the
+    structural replacement for that docstring.
 
     Note: the vertical's action *handlers* are registered separately by ``discover_and_register``
     (see :func:`_run_scheduler`) — a fired run's action steps resolve their handlers via the
     registry, so the daemon must register both."""
-    if vertical == "procurement":
-        from verticals.procurement.hero_demo.run import register_procurement_procedure_executors
-
-        await register_procurement_procedure_executors()
+    entry = _PROCEDURE_EXECUTOR_REGISTRARS.get(vertical)
+    if entry is None:
+        return
+    module_name, attr = entry
+    registrar = cast(
+        "Callable[[], Awaitable[None]]",
+        getattr(importlib.import_module(module_name), attr),
+    )
+    await registrar()
 
 
 async def _run_scheduler(vertical: str, interval_seconds: float) -> None:

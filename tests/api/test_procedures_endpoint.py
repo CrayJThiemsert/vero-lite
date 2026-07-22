@@ -27,7 +27,7 @@ from services.engine.discovery import discover_and_register
 from services.engine.procedures.spec import VerticalProcedures, load_procedures, procedures_path
 from services.engine.registry import registry
 
-# The twelve shipped procedures, vertical → {procedure_id: archetype} (fact-pack
+# The thirteen shipped procedures, vertical → {procedure_id: archetype} (fact-pack
 # #1 / docs/conventions/procedure-archetypes.md). procurement ships five:
 # two manual + the PLAN-0055 Step 8 schedule-triggered AT-2 variant + the
 # PLAN-0056 Step 8 event-triggered AT-2 variant + the PLAN-0065 Step 4
@@ -70,6 +70,10 @@ _EXPECTED: dict[str, dict[str, str]] = {
         # BELOW a reorder point). The inverted direction is the point: AT-3's signature is the
         # per-entity band + single human gate, not the stock semantics.
         "pm_service_round": "AT-3",
+        # PLAN-0090 — the SCHEDULED twin of the calm path above: same three-step spine
+        # (byte-identical below `steps:`), same AT-3 archetype; only the trigger differs
+        # (06:00 daily, fired as the `svc-fleet-scheduler` service principal).
+        "scheduled_pm_service_round": "AT-3",
     },
 }
 
@@ -108,12 +112,12 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
     all_verticals_client: AsyncClient,
 ) -> None:
     """Every discovered vertical's procedures round-trip load_procedures, each
-    carrying the correct catalog archetype — all twelve across the six procedure-bearing
+    carrying the correct catalog archetype — all thirteen across the six procedure-bearing
     verticals (procurement ships five: two manual + scheduled AT-2 + event AT-2 + scheduled AT-3;
     supply_chain ships two: the AT-1 sweep + the PLAN-0074 AT-2 disposition; energy + aquaculture
     one each; building_materials ships one: the PLAN-0081 AT-2 governed-credit hero;
-    fleet_maintenance ships two: the PLAN-0086 AT-2 governed-repair hero + the
-    PLAN-0089 AT-3 PM calm path)."""
+    fleet_maintenance ships three: the PLAN-0086 AT-2 governed-repair hero + the
+    PLAN-0089 AT-3 PM calm path + its PLAN-0090 scheduled twin)."""
     response = await all_verticals_client.get("/procedures")
     assert response.status_code == 200
     payload = response.json()
@@ -137,13 +141,14 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
         for proc in ventry["procedures"]:
             assert proc["archetype"] == _EXPECTED[vname][proc["procedure_id"]]
             total += 1
-    # twelve procedures across six verticals: the eleven prior (fact-pack #1's five + the
+    # thirteen procedures across six verticals: the twelve prior (fact-pack #1's five + the
     # PLAN-0055 scheduled AT-2 + the PLAN-0056 event AT-2 + the PLAN-0065 scheduled AT-3
     # + the PLAN-0074 supply_chain disposition + the PLAN-0081 building_materials
-    # governed-credit hero + the PLAN-0086 fleet_maintenance governed-repair hero) + the
-    # PLAN-0089 fleet_maintenance PM calm path (the SECOND procedure on an existing
-    # vertical — no new vertical, and AT-3's first non-stock band)
-    assert total == 12
+    # governed-credit hero + the PLAN-0086 fleet_maintenance governed-repair hero + the
+    # PLAN-0089 fleet_maintenance PM calm path) + the PLAN-0090 SCHEDULED twin of that
+    # calm path — the same spine, byte-identical below `steps:`, differing only in HOW a
+    # run starts (trigger + schedule descriptor)
+    assert total == 13
 
 
 class _SpecLessFixtureAdapter:
