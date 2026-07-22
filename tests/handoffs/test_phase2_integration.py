@@ -637,7 +637,13 @@ def test_stop_proceed_increments_chain_depth(stub_env: dict[str, str]) -> None:
     in the persisted state file.
     """
     stub_env["ANTHROPIC_API_KEY"] = "sk-int-fake-key"  # pragma: allowlist secret
-    with _mock_sonnet_server({"decision": "proceed", "matched_rows": [], "reason": "go"}) as (
+    # The reason must name a real next action: a contentless one (the old
+    # "go") is demoted to pause by the session-160 floor in
+    # stop_continuation._reason_is_contentless, which would reset the chain
+    # instead of incrementing it and mask what this test actually measures.
+    with _mock_sonnet_server(
+        {"decision": "proceed", "matched_rows": [], "reason": "run the suite"}
+    ) as (
         url,
         _log,
     ):

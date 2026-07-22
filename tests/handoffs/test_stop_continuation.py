@@ -699,6 +699,140 @@ def test_dispatch_instruction_includes_scoped_context_discipline(
 
 
 # ---------------------------------------------------------------------------
+# Contentless-reason floor (session 160).
+#
+# The session-159 incident (#843) was calibrated in the classifier PROMPT: a
+# step reserved for Cray must never be NAMED in a proceed reason. Session 160
+# hit the complementary shape — a proceed whose reason names NOTHING
+# ("Continue to the next work step") on a turn whose only next step was Cray's
+# decision. #843's rule has nothing to bite on there, and its contract test is
+# four substring assertions on the prompt, so it stays green. These tests pin
+# the DETERMINISTIC floor that does catch it.
+# ---------------------------------------------------------------------------
+
+
+_CONTENTLESS_REASONS = [
+    "Continue to the next work step",  # the session-160 live repro, verbatim
+    "continue",  # the pre-existing default when `reason` was absent
+    "",
+    "   ",
+    "Proceed with the next step.",
+    "Keep going.",
+    "There is more work to do",
+    "Continue working on the remaining items",
+    "Finish the task",
+]
+
+_SUBSTANTIVE_REASONS = [
+    # The OTHER session-159 directive — a real next action; must NOT demote.
+    "Continue running the test and mypy suite on the merged commit",
+    "Merge PR #841",
+    "tests pass, safe to continue",  # the pre-existing regression fixture
+    "Reconcile docs/STATUS.md after the merge",
+    "Commit the hook change on a fix/ branch",
+    # Non-ASCII must pass the floor: the tokenizer is Unicode-aware, so Thai
+    # tokens are never in the ASCII meta set.
+    "รัน pytest ต่อให้ครบ",
+]
+
+
+@pytest.mark.parametrize("reason", _CONTENTLESS_REASONS)
+def test_reason_is_contentless_detects_placeholders(reason: str) -> None:
+    assert _stop._reason_is_contentless(reason) is True
+
+
+@pytest.mark.parametrize("reason", _SUBSTANTIVE_REASONS)
+def test_reason_is_contentless_keeps_real_next_actions(reason: str) -> None:
+    """The floor must not become a specificity judge — anything naming a real
+    verb or referent survives."""
+    assert _stop._reason_is_contentless(reason) is False
+
+
+def test_contentless_proceed_is_demoted_to_pause(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """The session-160 repro: proceed + a reason that names no action emits
+    nothing (behaves exactly like pause)."""
+    _patch_classify(
+        monkeypatch,
+        {
+            "decision": "proceed",
+            "matched_rows": [],
+            "reason": "Continue to the next work step",
+        },
+    )
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    assert out == ""
+
+
+def test_contentless_proceed_demotion_resets_the_chain(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """Demotion is pause-shaped end to end: the chain resets rather than
+    incrementing, so a run of vacuous proceeds cannot walk the depth up."""
+    inproc_env["chain"].write_text(
+        json.dumps({"depth": 5, "last_proceed_ts": ""}), encoding="utf-8"
+    )
+    _patch_classify(
+        monkeypatch,
+        {"decision": "proceed", "matched_rows": [], "reason": "Keep going."},
+    )
+    _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    chain = json.loads(inproc_env["chain"].read_text(encoding="utf-8"))
+    assert chain["depth"] == 0
+
+
+def test_proceed_without_a_reason_key_is_demoted(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """A missing `reason` used to fall back to the literal "continue" — itself
+    a contentless instruction. It now demotes instead of emitting it."""
+    _patch_classify(monkeypatch, {"decision": "proceed", "matched_rows": []})
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    assert out == ""
+
+
+def test_substantive_proceed_survives_the_floor(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """Calibration pin: the floor is narrow. The other session-159 continuation
+    ("run the suite on the merged commit") is a genuine next action and must
+    still reach the agent verbatim."""
+    reason = "Continue running the test and mypy suite on the merged commit"
+    _patch_classify(
+        monkeypatch,
+        {"decision": "proceed", "matched_rows": [], "reason": reason},
+    )
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    parsed = json.loads(out)
+    assert parsed["decision"] == "block"
+    assert parsed["reason"] == reason
+
+
+def test_meta_token_set_excludes_real_action_verbs() -> None:
+    """Guard the floor's own vocabulary: if a genuine action verb ever lands in
+    the meta set, real continuations start silently dying as pauses."""
+    for verb in (
+        "merge",
+        "commit",
+        "push",
+        "run",
+        "write",
+        "read",
+        "fix",
+        "test",
+        "reconcile",
+        "archive",
+        "draft",
+        "verify",
+    ):
+        assert verb not in _stop._META_REASON_TOKENS
+
+
+# ---------------------------------------------------------------------------
 # PLAN-0011 / Lesson #15 §5 — AC-4 mock-input assertion
 #
 # Most dispatch-arm tests above short-circuit at ``classify()`` to keep them

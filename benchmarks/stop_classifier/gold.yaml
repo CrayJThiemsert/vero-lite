@@ -12,7 +12,7 @@
 # model must classify through them.
 
 cases:
-  # --- pause-gold (10) -------------------------------------------------------
+  # --- pause-gold (11) -------------------------------------------------------
   - id: pause-complete-merged
     expected: pause
     description: The session-56 observed failure class - work finished, PRs merged, clean tree.
@@ -115,6 +115,35 @@ cases:
           simple but duplicates validation; a shared generic adapter inverts
           that. I am genuinely unsure which fits the Rule of Three better at
           this stage, and the choice locks in the plugin API surface.
+
+  - id: pause-long-batch-then-question
+    expected: pause
+    description: >
+      Session-160 fidelity case. A LARGE completed work batch followed by a
+      question to Cray — the shape that escaped `pause-question-to-cray`,
+      whose turns are short and purely interrogative. The excerpt window is
+      dominated by evidence of activity, with the question only at the tail,
+      which pulls hard toward proceed. Nothing here is a next action: the
+      candidates are explicitly unratified, so the pick belongs to Cray.
+    transcript_turns:
+      - role: user
+        text: "sync ก่อน"
+      - role: assistant
+        text: |
+          Synced and verified against the handoff's pinned expectations:
+          main = 0090161, 0 open PRs, pytest 2955 passed / 7 skipped in
+          181.42s, mypy --strict services/ clean across 98 source files,
+          wc -c docs/STATUS.md = 51045, working tree clean apart from the
+          two KEEP untracked paths. Only 7 skips (not ~123) means dev
+          Postgres is up, so the DB-backed tests really ran. Everything
+          matches: confirmed - prior intact.
+      - role: assistant
+        text: |
+          Nothing is ordered. The remaining items are candidates the handoff
+          marks UNRATIFIED: the two tripwire proposals, the stale-N-count
+          doc-drift dispatch, the fleet tire/PM calm-path procedure, the
+          Active-TODO trim, and the autonomy-triggers approval row.
+          จะให้เริ่มตัวไหนครับ?
 
   # --- proceed-gold (8) ------------------------------------------------------
   - id: proceed-commit-after-green
