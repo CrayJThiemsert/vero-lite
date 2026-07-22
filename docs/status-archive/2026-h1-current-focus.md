@@ -543,3 +543,62 @@ exactly once, verified by exact list equality at split time, not by a byte-sum e
 > commits: `1b2c05c` (#825) → `628bfa1` (#825 merge) → `edf922d` + `f6bb12c`
 > (#826) → `e5f3ede` (#826 merge) → `45fcba1` + `64119b9` (#827) →
 > `25b31e2` (HEAD, #827 merge).
+
+> **Session 156, 2026-07-21 (head_commit `25b31e2` → `2f46fc9`) — a morning
+> map-label UI fix, a long-carried demo rehearsal finally PERFORMED (the
+> PLAN-0084 closeout gate), and the AI-Transition View-1 / Rung-1 arc built
+> end-to-end in ONE day: PLAN-0085 "Advisory Gate Recommendation" filed (#831)
+> → all 5 SDs Cray-ratified (#832) → BUILT (#833) → closed out (#834).**
+> **(morning UI fix — #829, `19f5caa`, `fix(ui)`.)** On the Operational Map
+> (View A) the site label plate overlapped the rightmost asset satellite node;
+> the plate moved BELOW the node (the asset fan is always the upper hemisphere),
+> `view-map.js ?v=c39` — live-verified on 8101 (0 overlaps, strip LIVE).
+> **(the rehearsal — the closeout gate.)** Cray performed the demo rehearsal
+> (Beats 1-5 on 8101, incl. the new PLAN-0084 map→monitor opening beat) —
+> carried s153→154→155, finally run, ratified "ok" = PASS. No commit: it IS the
+> AC-4/closeout evidence for **#830** (`ad39774`, `docs(plans)`) — PLAN-0084
+> closed out, all 9 ACs ticked with dated evidence, archived to `done/` (the
+> PLAN was Draft, so Code closed it directly). (The rehearsal-artifact PREP +
+> Beat-06 wording was corrected + republished, but that is a gitignored
+> claude.ai working note, not a repo commit.) **(the two-view AI-Transition
+> frame — Cray-opened after the rehearsal.)** Two views: (1) an LLM at the
+> approval gate, (2) a narrative→pipeline scaffolder. Cray ratified a SEQUENCE —
+> capture a discussion note → build View-1 (Rung 1) → reshape View-2 against
+> Rung-1's result → build View-2 — under the umbrella thesis **AI Transition =
+> governance human in/on-the-loop → first-stage AI automation**. Captured in the
+> gitignored note
+> `.claude/handoffs/session-156/2026-07-21-0851-code-session156-discussion-ai-transition-two-views.md`
+> (binds nothing). **(PLAN-0085 — the View-1 / Rung-1 arc, filed → SDs → built →
+> closed, one day.)** **#831** (`8809776`, `docs(plans)`) filed PLAN-0085
+> "Advisory Gate Recommendation (AI-Transition Rung 1)" `Status: Draft` by
+> `plan-drafter` (grounded by 3 Explore fan-outs + Code's OQ-1 read; the drafter
+> corrected the dispatch twice, both re-verified at R2). **#832** (`d679036`,
+> `docs(plans)`) — Step 0: all 5 SDs Cray-ratified (AskUserQuestion), every pick
+> = the draft recommendation — **SD-1(b)** emit INSIDE the `doa_tier` gate
+> propose path (ZERO hash change), **SD-2(b)** stub-first deterministic arm +
+> opt-in live MS-S1 seam, **SD-3** all three procedures, **SD-4** gate-panel
+> advisory block, **SD-5** new trace kind `advisory_recommendation` (actor
+> `llm`). **#833 (`2f46fc9`, `feat(engine)`) BUILT:** an advisory recommendation
+> with grounded reasons at procurement's `doa_tier` approval gate — **SHOWN,
+> never routes** (the ADR-0019:50-57 fence, now CI-pinned: byte-identical
+> approve audit advisory-on / off / exploding-builder). New module
+> `services/engine/procedures/gate_advisory.py` (never-raise, ADR-0030 D5
+> pattern), wired via `GovernanceActionExecutor` + the procurement `_executors`
+> default; a Monitor gate-panel block (reasons, spark glyph, arm sublabel, NO
+> score — the L-C/#823 trust shape) + the new trace kind + a PLAN-0080 tripwire
+> pin. Suite **2927/7**, mypy/ruff clean, live-verified on 8101 (strip LIVE, the
+> run parks with the advisory persisted). **#834** (`63009c3`, `docs(plans)`) —
+> PLAN-0085 closeout: all 8 ACs ticked, runbook §3e added, archived to `done/`.
+> Cray confirmed the live advisory and surfaced an UNPLANNED value — it doubles
+> as an **onboarding aid** (a first-time operator reads a plain-language "why
+> this is on my desk", reducing panic), recorded as a signal for the View-2
+> scaffolder reshape. **A model-economy policy** was ratified (a private memory,
+> not a repo change): Fable reserved for complex planning/research, Opus 4.8 +
+> Extra for execution/coding-to-plan. Post-merge: main=`63009c3` (head_commit
+> pins `2f46fc9`, the #833 build — the last SUBSTANTIVE code commit, mirroring
+> the s155 head-of-record convention; #834 is a `docs(plans)` closeout); 0 open
+> PRs; loop-dispatcher DISABLED; MS-S1 idle/COLD (the advisory arm is stub-first
+> deterministic — zero live calls). Commits (per-PR): `19f5caa` (#829) →
+> `ad39774` (#830) → `8809776` (#831) → `d679036` (#832) → `2f46fc9` (#833
+> BUILT — head_commit of record) → `63009c3` (#834 closeout, main HEAD);
+> `recent_commits` interleaves the five merge commits.

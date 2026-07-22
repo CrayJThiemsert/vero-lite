@@ -741,3 +741,5 @@ convention is separate work, deliberately not done here.
 > blocks (s156 + s153/154/155 + s152 + s151); RD = 10 rows. Prior rotation notes
 > (through the s155 evening reconcile) are consolidated in the rotation archive
 > (R4). Per the STATUS.md Rotation Policy (R1/R2/R4)._
+
+| 2026-07-18 | **s149 — PLAN-0082 shared-ontology mechanism BUILT (Steps 2-4 behind ADR-0033, #803-808): ADR-0033 Accepted (shared `core` home + `imports:` grammar + set/closed types + shared Person committed-ORM contract); `core_v0.yaml` + set/closed L1/L2 (#804), Pydantic emitter (#805), imports/cross-doc resolution (#806), set→JSONB emitters (#807), committed Person ORM + `person` table + Alembic 0012 migration ran green (#808).** Additive — zero shipped-behaviour change. Full narrative: the Sessions 149+150 CF block above | `5e45eb6` (#808) / `6dd6464` (#803) / `ontology/core_v0.yaml` + `services/db/person.py` + `alembic/versions/0012_person_table.py` |
