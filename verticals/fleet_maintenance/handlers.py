@@ -26,6 +26,7 @@ ACTION_TYPES: tuple[str, ...] = (
     "dispatch_replacement_truck",
     "tow_to_partner_garage",
     "escalate",
+    "schedule_pm_service",
 )
 """The fleet_maintenance ontology ``RecommendedAction.action_type`` enum — the real action
 vocabulary, registered as no-op stubs alongside ``echo``."""
@@ -46,6 +47,11 @@ ACTION_DESCRIPTIONS: dict[str, str] = {
     "escalate": (
         "Route the repair-spend decision to a higher tier of human authority (the DOA ladder) "
         "when the quote demands it."
+    ),
+    "schedule_pm_service": (
+        "Book the truck in for its routine interval service after a single human go/no-go — the "
+        "calm-path terminal write. Routine maintenance, NOT a breakdown response: no DOA ladder, "
+        "no emergency waiver."
     ),
 }
 """Per-handler when-to-pick descriptions surfaced to the reactive judgment prompt (PLAN-0060).

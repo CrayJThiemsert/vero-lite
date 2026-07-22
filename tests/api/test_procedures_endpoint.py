@@ -65,6 +65,11 @@ _EXPECTED: dict[str, dict[str, str]] = {
         # unchanged again (repair spend, THB); notable as the first vertical wired with the
         # PLAN-0085 gate advisory ON from day one, not as a new AT-2 signature.
         "governed_repair_approval": "AT-2",
+        # PLAN-0089 — the AT-3 PM calm path: the 2nd vertical to carry AT-3, and the first instance
+        # banding a NON-stock measure (odometer km ABOVE a service-due point, vs procurement's stock
+        # BELOW a reorder point). The inverted direction is the point: AT-3's signature is the
+        # per-entity band + single human gate, not the stock semantics.
+        "pm_service_round": "AT-3",
     },
 }
 
@@ -131,12 +136,13 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
         for proc in ventry["procedures"]:
             assert proc["archetype"] == _EXPECTED[vname][proc["procedure_id"]]
             total += 1
-    # eleven procedures across six verticals: the ten prior (fact-pack #1's five + the
+    # twelve procedures across six verticals: the eleven prior (fact-pack #1's five + the
     # PLAN-0055 scheduled AT-2 + the PLAN-0056 event AT-2 + the PLAN-0065 scheduled AT-3
     # + the PLAN-0074 supply_chain disposition + the PLAN-0081 building_materials
-    # governed-credit hero) + the PLAN-0086 fleet_maintenance governed-repair hero (a new
-    # procedure-bearing vertical; the ladder is reused, so no new AT-2 signature)
-    assert total == 11
+    # governed-credit hero + the PLAN-0086 fleet_maintenance governed-repair hero) + the
+    # PLAN-0089 fleet_maintenance PM calm path (the SECOND procedure on an existing
+    # vertical — no new vertical, and AT-3's first non-stock band)
+    assert total == 12
 
 
 class _SpecLessFixtureAdapter:

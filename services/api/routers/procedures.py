@@ -28,14 +28,15 @@ router = APIRouter(tags=["procedures"])
 # explicit map, server-side, in one place). Canonical source is
 # docs/conventions/procedure-archetypes.md; this is a read-only derived MIRROR
 # (CLAUDE.md §4 canonical→derived). A 7th vertical extends this map ADDITIVELY —
-# the catalog grows first, the map mirrors it; never the reverse. Eleven shipped
+# the catalog grows first, the map mirrors it; never the reverse. Twelve shipped
 # procedures across the six procedure-bearing verticals (PLAN-0039 fact-pack #1:
 # procurement ships two manual; energy / supply_chain / aquaculture one each) plus
 # the PLAN-0055 Step 8 schedule-triggered AT-2 variant, the PLAN-0056 Step 8
 # event-triggered AT-2 variant, the PLAN-0065 Step 4 schedule-triggered AT-3
 # variant (all procurement), the PLAN-0074 supply_chain AT-2 disposition, the
-# PLAN-0081 building_materials AT-2 governed-credit hero, and the PLAN-0086
-# fleet_maintenance AT-2 governed-repair hero.
+# PLAN-0081 building_materials AT-2 governed-credit hero, the PLAN-0086
+# fleet_maintenance AT-2 governed-repair hero, and the PLAN-0089
+# fleet_maintenance AT-3 PM calm path.
 #
 # KEYED ON THE PAIR, NOT THE BARE ID. A `procedure_id` is unique only WITHIN a
 # vertical — the spec cross-refs resolve per-vertical, and `ScheduleState` already
@@ -68,6 +69,11 @@ PROCEDURE_ARCHETYPES: dict[tuple[str, str], str] = {
     # not as a new signature but as the first vertical wired with the PLAN-0085 gate advisory ON
     # from day one (L-B: readable on day one).
     ("fleet_maintenance", "governed_repair_approval"): "AT-2",
+    # fleet_maintenance — PLAN-0089, the AT-3 calm path. The 2nd vertical to carry AT-3 and the
+    # first instance banding a NON-stock measure (odometer km above a service-due point, vs
+    # procurement's stock below a reorder point) — which is what showed AT-3's signature is the
+    # per-entity band + single human gate, not the stock semantics.
+    ("fleet_maintenance", "pm_service_round"): "AT-3",
 }
 
 # A procedure absent from the catalog map renders with this sentinel rather than

@@ -45,7 +45,9 @@ agents:
       # `escalate` for the gated doa_tier routing; `approve_repair_spend` for the gated terminal
       # write. Both are fleet_maintenance RecommendedAction action_type vocabulary
       # (fleet_maintenance_v0.yaml) and both are registered in handlers.py ACTION_TYPES.
-      action_handlers: [escalate, approve_repair_spend]
+      # PLAN-0089 adds `schedule_pm_service` — the AT-3 calm path's routine terminal write. Same
+      # agent, same ceiling: the calm path is a CADENCE contrast, not an authority one.
+      action_handlers: [escalate, approve_repair_spend, schedule_pm_service]
 
 # Human principals the SoD run-check resolves against (ADR-0026 D1/D4). Human-author-only
 # (H, ADR-0024 D3), never model-emitted.
@@ -277,3 +279,104 @@ procedures:
         required_roles:
           intake: requester
           approve: approver
+
+  # ---------------------------------------------------------------------------
+  # PLAN-0089 — the AT-3 calm path: the ROUTINE contrast to the AT-2 hero above.
+  #
+  # Same vertical, same engine, same agent — deliberately opposite governance signature. The hero
+  # is an emergency: a per-truck ฿ ceiling breached, a hard sourcing gate, a tiered DOA ladder with
+  # SoD and an emergency waiver. This is a truck quietly passing its service interval: one
+  # deterministic per-truck km band, ONE human go/no-go, and nothing else. No doa_tier, no SoD, no
+  # rule_gate, no waiver, no compliance criteria — that absence IS the AT-3 signature
+  # (docs/conventions/procedure-archetypes.md AT-3). The pair is the same contrast procurement
+  # ships between `emergency_sourcing_round` and `low_stock_reorder_round`, now on a 2nd vertical.
+  #
+  # Ported hand-written from the procurement AT-3 donor (PLAN-0089 M-2: manual arm, no generator),
+  # with the band direction INVERTED — procurement breaches BELOW a reorder point, a truck breaches
+  # ABOVE its service-due odometer.
+  #
+  # >>> NARRATIVE PROVENANCE (PLAN-0086 AC-3 convention, carried by PLAN-0089 AC-6) <<<
+  #   the routine-PM thread ..... narrative — "ปกติพวกผ้าเบรก ไส้กรอง ผมซื้อเจ๊หงส์กับ ส.เจริญยนต์
+  #                               เป็นหลัก" + "เปลี่ยนไส้กรองน้ำมันเครื่องตามระยะ"
+  #   100,000 km interval ....... customer answer, PLAN-0089 M-5 Q1 ("เข้าศูนย์ทุกแสนกิโลฯ")
+  #   per-truck due points ...... GUESS — รอแก้ (each truck's last-service odometer has NO
+  #                               narrative source; see data_adapter/synthetic.py)
+  #
+  # STATED BUT NOT MODELLED (recorded, never silently dropped — README gaps register): the
+  # customer's real tire pain is PER-TIRE ("ผมไม่รู้เลยนะว่าเส้นไหนวิ่งไปกี่กิโล ยางเก่าหายไปไหนหมด")
+  # — which tire ran how far, and where old tires go. That needs mount/rotation/position data no
+  # shipped source carries (the GPS stream is per-TRUCK). So this path is honestly per-truck and
+  # named `pm_service_round`, never `tire_*`: naming it for tires without a Tire object would be
+  # exactly the silently-dropped-half-a-rule failure the vertical's README warns against.
+  pm_service_round:
+    title: PM Service Due Round
+    goal: >-
+      The routine maintenance calm-path on the same engine + agent as the governed-repair hero:
+      read each truck's odometer, judge it against THAT truck's own next-service-due point, and
+      book the due set in for service after a single human go/no-go. The contrast to the hero —
+      routine, single-tier, no DOA ladder, no separation of duties, no emergency waiver — on one
+      shared governed procedure engine. The LLM drafts nothing here and decides nothing.
+    run_by: fleet_maintenance_agent
+    trigger: manual                 # PLAN-0089 SD-1 (Cray-ratified): manual. The nightly odometer
+                                    # sweep is a named follow-on PLAN, not a deletion.
+    steps:
+      - step_id: read_odometer
+        name: Read each truck's odometer
+        description: Every Truck with its latest odometer reading and its own next-service-due point.
+        kind: query
+        input:                          # the declared single-read (PLAN-0048 shape, PLAN-0064 router)
+          reads: [Truck]
+          # Rename-project odometer_km -> measured_value so the shipped EvaluateStepExecutor reads
+          # the numeric band field (the PLAN-0065 SD-2 pattern). Select/rename ONLY: no arithmetic,
+          # no join, no LLM. next_service_due_km and every other Truck field are KEPT; odometer_km
+          # is MOVED. That no-arithmetic property is exactly why next_service_due_km must be stored
+          # ABSOLUTE rather than as an interval — there is nowhere to compute last_service + 100000.
+          project:
+            fields:
+              odometer_km: measured_value
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "declared read: Truck -> measured_value (renamed from odometer_km), next_service_due_km per truck"
+          output: "one odometer reading per truck (each carrying its own next_service_due_km)"
+      - step_id: judge_service_due
+        name: Judge the odometer vs the truck's own service-due point
+        description: >-
+          Tag each truck's verdict vs ITS OWN next_service_due_km — breach (odometer at/above the
+          due point, so the truck is due for its interval service) vs ok. Per-truck banding via
+          threshold_field (ADR-016 TF-1), deterministic, no LLM.
+        kind: evaluate
+        threshold_field: next_service_due_km   # each truck bands vs its OWN due point
+        direction: above                       # the odometer breaches OVER the due point
+        facet:
+          # in_file_band POINTS AT the typed threshold_field/direction above — no re-store (D2-A3).
+          decision_condition: { gate_kind: in_file_band, band_source: in_file }
+          llm_assist: null
+          input: "read_odometer set (each row carries its truck's next_service_due_km)"
+          output: "per-truck verdict {breach=odometer at/above its own due point, ok}"
+          governance: "verdict = pure function of the odometer + the authored per-entity (in_file) band"
+      - step_id: schedule_service
+        name: Book the due trucks in for interval service
+        description: >-
+          Propose a routine service booking per due truck; a single human go/no-go approves it
+          (the routine, single-tier calm-path — no emergency waiver, no escalated DOA, no SoD).
+          action_type schedule_pm_service (a no-op receipt stub until the design partner's garage
+          integration lands).
+        kind: action
+        autonomy: gated
+        handler: schedule_pm_service
+        input:
+          from: judge_service_due
+          where:
+            verdict: breach
+        facet:
+          decision_condition:
+            gate_kind: none
+            note: "routine interval service booking — no authority tier, no gate content"
+          llm_assist: null
+          input: "judge_service_due (the due subset)"
+          output: "the service booking"
+          governance: "single-tier human approval (the calm contrast to the hero DOA ladder); a HUMAN books the service"
+    terminal: schedule_service
+    # NO separation_of_duties by design: AT-3 has no DOA tier, so ADR-0025 D5's SoD requirement
+    # does not attach. The hero above carries it; this deliberately does not.

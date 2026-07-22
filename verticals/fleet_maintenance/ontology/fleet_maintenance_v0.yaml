@@ -44,6 +44,18 @@ object_types:
           is needed ("ซ่อมนิดหน่อยๆ ผมให้ต้อมเคาะเลย"); a quote AT/ABOVE it breaches into the
           governed ladder — this truck's OWN per-entity band (ADR-016 FKP amendment).
           GUESS — รอแก้ (value sourced from the customer-question log, not invented).
+      next_service_due_km:
+        type: float
+        description: >-
+          The ABSOLUTE odometer point at which this truck's next interval service falls due —
+          the AT-3 calm path's per-entity band (PLAN-0089), the `reorder_point` analogue.
+          Absolute, NOT an interval: the judge compares the projected `measured_value`
+          (odometer_km) against this field directly, and the projection grammar is a fields-only
+          rename with no arithmetic — there is nowhere to compute `last_service + interval`.
+          Computed per truck as `last_service_odometer + 100,000` — the 100,000 km interval is a
+          logged customer answer ("เข้าศูนย์ทุกแสนกิโลฯ", PLAN-0089 M-5 Q1); each truck's
+          LAST-SERVICE odometer is GUESS — รอแก้ (no narrative source).
+          Distinct from minor_repair_ceiling_thb, which is money-typed and cannot serve a km band.
       status:
         type: enum
         values: [in_service, roadside_breakdown, in_garage, retired]
@@ -137,7 +149,18 @@ object_types:
         type: enum
         # narrative-grounded vocabulary: approve the spend; dispatch a replacement truck
         # ("ต้องไปวิ่งเต้นจ้างรถคอกแถวนั้นมาถ่ายของ"); tow to a partner garage; escalate the ladder.
-        values: [approve_repair_spend, dispatch_replacement_truck, tow_to_partner_garage, escalate]
+        # PLAN-0089 adds `schedule_pm_service` — the AT-3 calm path's routine terminal verb. The four
+        # verbs above are all EMERGENCY vocabulary (breakdown responses + the hero's DOA routing and
+        # approved write); a routine interval booking terminating in one of them would misread in the
+        # run record and in the LLM's proposal menu (handlers.py — the enum IS the menu).
+        values:
+          [
+            approve_repair_spend,
+            dispatch_replacement_truck,
+            tow_to_partner_garage,
+            escalate,
+            schedule_pm_service,
+          ]
       confidence_score:
         type: float
       status:

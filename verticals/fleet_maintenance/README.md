@@ -2,7 +2,7 @@
 
 **Status:** Hand-written under the PLAN-0086 timed-scaffold measurement — deliberately NOT produced by `vero-lite new-vertical` (that scaffolds a Tier-1 recommend/breach mirror only, ADR-0015 D2, and using any generator for the parts a future scaffolder tool must replace would have contaminated the measurement).
 **Asset-role:** `Truck` · **Site-role:** `Depot` · **Breach direction:** `above` the truck's own `minor_repair_ceiling_thb`
-**Archetype:** AT-2 (`governed_repair_approval`) — the money `doa_tier` ladder REUSED unchanged; not a new AT-2 signature.
+**Archetypes:** AT-2 (`governed_repair_approval`) — the money `doa_tier` ladder REUSED unchanged, not a new AT-2 signature · AT-3 (`pm_service_round`, PLAN-0089) — the routine calm path, and AT-3's first non-stock band.
 **First vertical shipping the PLAN-0085 gate advisory ON by default** (PLAN-0086 L-B — readable on day one).
 
 > ⚠ The synthetic dataset in `data_adapter/synthetic.py` is a demo fixture. Every ฿ figure traces to the simulated customer's own words or to a logged intake answer — see the provenance header in `procedures.yaml`.
@@ -25,6 +25,20 @@ The owner already has rules. He states them plainly: the head mechanic settles s
 6. **fulfill** — the approved authorisation write (a no-op receipt stub until the design partner's garage/ERP integration lands).
 
 The roadside bypass the owner described is modelled rather than ignored: the ladder's `emergency_waiver` relaxes the three-quote requirement, escalates the approver, and demands a written justification. It never skips the gate.
+
+### The calm path — `pm_service_round` (AT-3, PLAN-0089)
+
+The same vertical also runs the *routine* story, on the same engine and the same agent:
+
+1. **read_odometer** — every truck's odometer, rename-projected to `measured_value`, each row carrying that truck's own `next_service_due_km`.
+2. **judge_service_due** — odometer vs that truck's own due point, `direction: above`. Past the mark, the truck is due.
+3. **schedule_service** — one human go/no-go books the due trucks in. The run suspends here.
+
+The contrast to the hero is the point, and it is a contrast in *governance*, not just in subject matter: no DOA ladder, no separation of duties, no sourcing gate, no emergency waiver, no advisory. Just one deterministic band and one human. That absence **is** the AT-3 signature — and because the advisory is `doa_tier`-only by construction, the calm gate never enters it at all.
+
+Note the fleet reads differently to each procedure: the hero flags `truck-01` (a ฿48,000 roadside breakdown), the calm path flags `truck-02` (3,140 km past its service interval). Two procedures, two trucks, one engine.
+
+The service interval — 100,000 km, every class — is a logged customer answer. Each truck's *last-service* odometer, from which its absolute due point is computed, is a `GUESS — รอแก้`.
 
 ## Run this vertical
 
@@ -53,3 +67,4 @@ Recorded here deliberately — a governed system that silently drops half a cust
 |---|---|---|
 | Price-compare large repairs across three vendors | the three-quote requirement | the ฿ threshold that triggers it — a `rule_gate` criterion is pass/fail on a supplied signal and carries no threshold field |
 | Roadside emergencies may proceed before approval | the waiver's escalation + mandatory justification | the ฿ cap on such spend, and the after-the-fact ratification window — `EmergencyWaiver` has no fields for either |
+| Know which tyre ran how far, and where old tyres go ("ผมไม่รู้เลยนะว่าเส้นไหนวิ่งไปกี่กิโล ยางเก่าหายไปไหนหมด") | **nothing** — see right | the whole rule. This pain is genuinely **per-tyre**, and per-tyre km needs mount / rotation / position data that no shipped source carries: the GPS stream is per-**truck**. PLAN-0089 therefore shipped the honest per-truck PM path and named it `pm_service_round`, never `tire_*` — naming it for tyres without a `Tire` object would be exactly the silently-dropped-half-a-rule failure this table exists to prevent. Parked pending a design-partner data source. |
