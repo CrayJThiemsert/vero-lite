@@ -602,3 +602,63 @@ exactly once, verified by exact list equality at split time, not by a byte-sum e
 > `ad39774` (#830) → `8809776` (#831) → `d679036` (#832) → `2f46fc9` (#833
 > BUILT — head_commit of record) → `63009c3` (#834 closeout, main HEAD);
 > `recent_commits` interleaves the five merge commits.
+
+> **Session 157, 2026-07-21 (head_commit `2f46fc9` → `79358c6`) — PLAN-0086
+> COMPLETE: the AI-Transition **View-2** scaffolder run as a TIMED MANUAL
+> baseline — a rambling, deliberately-dirtied customer monologue carried to a
+> live, governed, human-gated pipeline on a 6th vertical (`fleet_maintenance`,
+> #838), shipped with its measurement pack; and the ADR-0025 D7 AT-2-generator
+> deferral CANCELLED at N=4.**
+> **(the headline number — it MUST NOT be quoted without its caveat; AC-7 makes
+> that binding.)** Narrative → governed pipeline in **27 minutes 39 seconds
+> hands-on** (wall 43m17s minus 6m51s of customer-answer waits and 8m48s stopped
+> on a governance escalation). **Caveat (AC-7, binding):** Code drafted the
+> pre-dirtied narrative, so this is a **LOWER BOUND on true blind intake** —
+> Cray's dirtying plus the four-question intake log partially restore validity,
+> and it measures an operator with deep prior knowledge of this codebase.
+> **(what shipped.)** `verticals/fleet_maintenance/` — an 8-file package
+> HAND-WRITTEN from the `building_materials` template (`vero-lite new-vertical`
+> was banned by the measurement protocol). Asset=Truck, Site=Depot; AT-2
+> `governed_repair_approval`: intake → judge (per-truck repair ceiling) →
+> reshape → quote_gate (`rule_gate`) → approve (money `doa_tier` + SoD) →
+> fulfill. **First vertical shipping the PLAN-0085 gate advisory ON by default**
+> (PLAN-0086 L-B — the parked gate explains itself on day one). Plus 14 tests,
+> the 3 mandatory hand-wires, and an additive `ComplianceCriterion +=
+> three_quote` engine change.
+> **(ADR-0025 D7 — the AT-2-generator deferral is CANCELLED; Cray-ratified,
+> typed.)** Shipping fleet fired `test_at2_signature_retrigger` at N=4. Code
+> ESCALATED rather than patched — the marker says "re-argue it, do not just
+> update this list", and the fix Code judged correct was also the fix that turned
+> Code's own red green. Both readings went to Cray: by gate SHAPE fleet teaches
+> nothing new (composition and authority quantity identical to
+> `building_materials`'), but it is the FOURTH consecutive vertical to require an
+> engine-level `ComplianceCriterion` extension — and repeated pressure on shared
+> code is what Rule-of-Three actually watches. Cray's rationale: accept the cost
+> now for future flexibility. The `len(signatures) < _RETRIGGER_N` guard is
+> RETIRED and REPLACED (never deleted) by `test_at2_extraction_obligation_is_owned`
+> (same module), which fails if PLAN-0076 — the standing owner via Step T1 — is
+> archived or loses its record. **The extraction itself is NOT done — it needs
+> its own PLAN, G2-gated, so `plan-drafter` must author it.** That is the most
+> important open thread out of this session.
+> **(the finding that outlives the number.)** Two of the four customer rules
+> could NOT be fully encoded: the quote-comparison ฿ threshold has nowhere to
+> live (a `rule_gate` criterion is pass/fail on a supplied signal and carries no
+> threshold field, and ADR-0025 D4 forbids the amount in prose), and
+> `EmergencyWaiver` has no fields for the emergency cap or the ratification
+> window. Both are recorded in the question log and surfaced to readers in the
+> vertical README as an explicit "stated but NOT enforced" table — a
+> narrative→pipeline tool that silently dropped the un-modellable half would be
+> worse than no tool.
+> **Verification:** offline gate at execution HEAD **2943 passed / 7 skipped**,
+> **re-run GREEN on the merge commit `79358c6` itself** (2943/7 — CI is PR-only,
+> so the merge commit is otherwise never tested); baseline re-measured at
+> `219a134` before the clock started (2927/7, matching the #833 figure —
+> `confirmed — prior intact`); `mypy --strict services/` clean (98 files);
+> `ruff check .` + `ruff format --check .` clean at CI scope; CI `gate` PASS on
+> #838 (3m7s; 17 files, +1825/−40). **AC-4 by construction** — the diff touches ZERO files under the
+> five existing verticals. Live: `run-b9c0804b52f0` parks `waiting_human` at
+> `approve` with the advisory persisted (grounded fleet reasons, `model:
+> deterministic`, no confidence key in the advisory), corroborated in the Monitor
+> gate panel and confirmed by Cray. PLAN-0086 archives to `done/` in the
+> follow-on closeout PR. Commits: `a2ef45e` (#838) → `79358c6` (HEAD, #838
+> merge).
