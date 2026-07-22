@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-21T20:05:00+07:00
-session: 159
-current_batch: "s159 — PLAN-0087 COMPLETE + archived at 8/8 (#841); its criterion-vocabulary half shipped s158 (#840): a vertical DECLARES its rule_gate vocabulary → a new AT-2 vertical needs ZERO engine diff."
+last_updated: 2026-07-22T11:47:46+07:00
+session: 160
+current_batch: "s160 — 4 PRs: the Stop-hook contentless-reason FLOOR (#844, complements #843), the AT-2 N=4 doc drift + a new step_id-scope guard (#845), and 2 Accepted-ADR body corrections by plan-drafter (#846)."
 current_actor: code
-blocked_on: "Nothing blocking. main=c6eec65; #841 the only open PR; closeout gate re-run 2954/7 + mypy strict clean (98 files); loop-dispatcher DISABLED; MS-S1 idle/COLD; dev Postgres UP."
-next_action: "Nothing ordered — 3 UNRATIFIED candidates: (1) the stale-N-count doc-drift plan-drafter dispatch (G1-gated), (2) the 2 s159 tripwires (step_id collision; AC-6 F-PIN arm), (3) the fleet tire/PM calm path."
-head_commit: e55f2b8
-recent_commits: [e55f2b8, c6eec65, 4f9cb7a, bdd07ed, 16c3622, d9a0ad1, 069cdf7, 57e6839, e45d379, 8682b9c]
+blocked_on: "Nothing blocking. main=0c9cdeb; 0 open PRs; merge-commit gate 2977/7 + mypy strict clean (98 files); loop-dispatcher DISABLED; MS-S1 idle/COLD; dev Postgres UP."
+next_action: "Nothing ordered — 3 candidates: (1) Active-TODO trim (~4.66 KB, all trimmable), (2) fleet tire/PM calm path (G2-gated PLAN + 3 SDs), (3) autonomy-triggers row (Cowork). Tripwire B NOT built (refuted)."
+head_commit: 0c9cdeb
+recent_commits: [0c9cdeb, d7bbb8b, c42abe4, b5272e2, 25110c8, 66b9707, 532d3e4, 0090161, c8f7184, 89990fd]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,110 @@ recent_commits: [e55f2b8, c6eec65, 4f9cb7a, bdd07ed, 16c3622, d9a0ad1, 069cdf7, 
 ---
 
 ## Current Focus
+
+> **Session 160, 2026-07-22 (head_commit `e55f2b8` → `0c9cdeb`) — a four-PR
+> hook-hardening + doc-truth session: the Stop-hook classifier gained a
+> **contentless-reason FLOOR** (#844) complementing the s159
+> Cray-reserved-step rule (#843), the stale **AT-2 `N=4`** count was corrected
+> everywhere it had drifted and the real `step_id` invariant pinned by a new
+> guard (#845), and two Accepted-ADR bodies were corrected by `plan-drafter`
+> (#846).**
+> **(#843, `c8f7184` → merge `0090161`, `fix(hooks)` — recorded LATE.)** This
+> landed in session 159, but the s159 reconcile never mentioned it (it was
+> written before the PR existed; the s159 handoff flags the omission
+> explicitly). The Stop-hook classifier prompt now treats **a step reserved for
+> Cray as a natural stop, never a PROCEED next action**, pinned by a contract
+> test proven non-vacuous by strip → RED → restore.
+> **(#844, `532d3e4` → merge `c42abe4`, `fix(hooks)` — the CONTENTLESS-REASON
+> FLOOR.)** The hook passes the classifier's `proceed` reason back to the agent
+> **verbatim as its continuation instruction**, and the prompt requires that
+> reason to NAME the next action — nothing enforced it. Session 160 observed the
+> reason `"Continue to the next work step"` on a turn whose only real next step
+> was Cray's decision among unratified candidates. **This is the COMPLEMENTARY
+> shape to #843, not a regression of it:** #843 forbids *naming* a
+> Cray-reserved step; a contentless reason names nothing, so #843's rule has
+> nothing to bite on, and its contract test is four substring assertions on the
+> prompt (behaviourally blind). New `_reason_is_contentless()` demotes such a
+> verdict to pause. The design call that keeps it free of judgement: **a
+> contentless reason is worthless even when `proceed` is CORRECT**, because the
+> reason IS the instruction. It is a FLOOR, not a specificity judge —
+> `_META_REASON_TOKENS` excludes every real action verb (guard-tested), and the
+> OTHER s159 directive ("Continue running the test and mypy suite on the merged
+> commit") still passes verbatim as the committed calibration pin. A **missing
+> `reason` key** now demotes too (the old fallback was the literal
+> `"continue"`). Also adds the gold case `pause-long-batch-then-question`:
+> `gpt-oss:20b` already answers the existing short-question case correctly
+> (19/20), so the live miss is a **fixture FIDELITY gap, not a model gap** —
+> real payloads are a large work batch with the question only at the tail of the
+> 8-turn / 3072-byte window. **+20 tests.**
+> **(#845, `66b9707` + `b5272e2` → merge `d7bbb8b`, `chore` — the stale AT-2
+> N-count, plus a new guard.)** AT-2 is **N=4** (`procurement` /
+> `supply_chain` / `building_materials` / `fleet_maintenance` declare a
+> `rule_gate` vocabulary; `energy` + `aquaculture` do not). Corrected in
+> `spec.py` (×3 sites), `docs/conventions/procedure-archetypes.md`, and **the
+> test module's own docstring** — the last two were NOT in the original scope:
+> the drift was wider than recorded, and PLAN-0086 had shipped
+> `fleet_maintenance` **without extending the archetype catalog** (its
+> Quick-reference row and Instances list still enumerated three signatures —
+> fixed in `b5272e2`, found during #846's R2). **Two corrections worth keeping
+> as facts, not prose:** (a) `_RETRIGGER_N` is **retired and guards nothing**
+> (its own docstring says so) — the live tripwire is the `_BASELINE_SIGNATURES`
+> set-equality assertion, RED on a FIFTH signature; (b) PLAN-0087's "zero live
+> `step_id` collisions today" is **wrong** — collisions already exist
+> (`procurement` reuses `intake` / `approve` across three procedures); what is
+> zero is the **over-mark**. New
+> `tests/services/engine/procedures/test_sod_step_id_scope_guard.py` pins the
+> real invariant (a step is in the vertical-flat `sod_steps` union **iff** its
+> OWN procedure declares it), because `GovernanceStepExecutor.sod_steps` is a
+> bare per-vertical `frozenset[str]` with no procedure key and nothing raises on
+> an over-mark; it carries a second test so the guard cannot silently become
+> vacuous. This hardens the premise **PLAN-0076 Step T1 (F-FACTORY)** defers on.
+> **(#846, `25110c8` → merge `0c9cdeb`, `docs(adr)` — two Accepted-ADR body
+> corrections, authored by the `plan-drafter` subagent (G1-gated), Code R2.)**
+> **ADR-0032**'s "Where vero-lite stands" is a STATE snapshot and had drifted on
+> more than N: it still said `building_materials` was a Tier-1 Mirror with **no
+> `procedures.yaml`** and an unbuilt hero, counted four verticals, and did not
+> know `fleet_maintenance` existed. It now reads six verticals, the
+> governed-credit hero BUILT (PLAN-0081), fleet named, the full N=4 arc, and
+> **symbolic anchors replacing the rotted line-number ones**. Its
+> positive-consequences bullet — which claimed the ADR record makes exactly this
+> stale-N-count error class harder to reintroduce, **while itself being stale**
+> — was rewritten to say the durable guard is **the test, not the prose** ("the
+> tripwire is CI; the ADR is the narrative"). **ADR-0025 D7's decision text was
+> deliberately NOT rewritten** ("N ≥ 2" is the faithful 2026-06-28 record;
+> editing a decision to match later events destroys the reasoning lineage) — a
+> dated **outcome amendment** was appended instead, following the amendment
+> precedent already in that ADR. **Attribution corrected by the drafter against
+> Code's own dispatch:** **Cray** cancelled the D7 deferral, typed, 2026-07-21
+> (s157), at the PLAN-0086 N=4 escalation; PLAN-0087 only **executed** the
+> answer.
+> **(deliberately NOT built.)** The second s159 tripwire — **tripwire B, the
+> PLAN-0076 AC-6 F-PIN arm** — was NOT built: the grounding REFUTED its
+> mechanism. The guard checks **file presence, not T1 text**, so it cannot
+> self-release; it can only be deleted by hand, and a tripwire against a hand
+> deletion buys nothing.
+> **Verification:** both new tripwires proven non-vacuous **empirically** —
+> backed up to `/tmp`, broken, **RED confirmed**, then restored **from the
+> backup, never from git** (the s159 trap: a `git checkout` restore wipes the
+> uncommitted edit under test and the run still prints a pass),
+> `md5sum`-verified. Merge-commit gate against a pass/fail read fixed **BEFORE**
+> the run — expected `2955 + 20 + 2 = 2977`; actual on `0c9cdeb` = **2977 passed
+> / 7 skipped** (164.66s) + `mypy --strict services/` clean (98 files) ⇒
+> `confirmed — prior intact`. Branch protection is **`strict: true`** —
+> discovered while landing the stack (each remaining PR went `BEHIND` after a
+> merge and needed a re-sync + a fresh `gate` run); it substantially closes the
+> old "CI is PR-only, so the merge commit is never tested" gap. Grounding for
+> the whole session came from a **5-agent Explore fan-out over 6 candidates**
+> (the `next-work-analyst` skill), which is what surfaced the corrections above.
+> Deterministic-offline: **MS-S1 idle/COLD, zero calls**, no host-state change;
+> dev Postgres UP; loop-dispatcher DISABLED; **0 open PRs**; working tree clean
+> but for the 2 KEEP untracked paths (`.claude/benchmark-results/`,
+> `.claude/launch.json`). Commits: `c8f7184` → `0090161` (#843 merge) →
+> `532d3e4` → `c42abe4` (#844 merge) → `66b9707` + `b5272e2` → `d7bbb8b` (#845
+> merge) → `25110c8` → `0c9cdeb` (#846 merge, head_commit of record). The three
+> `Merge remote-tracking branch 'origin/main'` sync commits (`d852ab1`,
+> `329bfac`, `39a37d4`) are strict-mode re-sync noise and are excluded from
+> `recent_commits`.
 
 > **Sessions 158 + 159, 2026-07-21 (head_commit `79358c6` → `e55f2b8`) —
 > PLAN-0087 BUILT (#840) then CLOSED OUT + archived at 8/8 ACs (#841): the
@@ -135,65 +239,28 @@ recent_commits: [e55f2b8, c6eec65, 4f9cb7a, bdd07ed, 16c3622, d9a0ad1, 069cdf7, 
 > follow-on closeout PR. Commits: `a2ef45e` (#838) → `79358c6` (HEAD, #838
 > merge).
 
-> **Session 156, 2026-07-21 (head_commit `25b31e2` → `2f46fc9`) — a morning
-> map-label UI fix, a long-carried demo rehearsal finally PERFORMED (the
-> PLAN-0084 closeout gate), and the AI-Transition View-1 / Rung-1 arc built
-> end-to-end in ONE day: PLAN-0085 "Advisory Gate Recommendation" filed (#831)
-> → all 5 SDs Cray-ratified (#832) → BUILT (#833) → closed out (#834).**
-> **(morning UI fix — #829, `19f5caa`, `fix(ui)`.)** On the Operational Map
-> (View A) the site label plate overlapped the rightmost asset satellite node;
-> the plate moved BELOW the node (the asset fan is always the upper hemisphere),
-> `view-map.js ?v=c39` — live-verified on 8101 (0 overlaps, strip LIVE).
-> **(the rehearsal — the closeout gate.)** Cray performed the demo rehearsal
-> (Beats 1-5 on 8101, incl. the new PLAN-0084 map→monitor opening beat) —
-> carried s153→154→155, finally run, ratified "ok" = PASS. No commit: it IS the
-> AC-4/closeout evidence for **#830** (`ad39774`, `docs(plans)`) — PLAN-0084
-> closed out, all 9 ACs ticked with dated evidence, archived to `done/` (the
-> PLAN was Draft, so Code closed it directly). (The rehearsal-artifact PREP +
-> Beat-06 wording was corrected + republished, but that is a gitignored
-> claude.ai working note, not a repo commit.) **(the two-view AI-Transition
-> frame — Cray-opened after the rehearsal.)** Two views: (1) an LLM at the
-> approval gate, (2) a narrative→pipeline scaffolder. Cray ratified a SEQUENCE —
-> capture a discussion note → build View-1 (Rung 1) → reshape View-2 against
-> Rung-1's result → build View-2 — under the umbrella thesis **AI Transition =
-> governance human in/on-the-loop → first-stage AI automation**. Captured in the
-> gitignored note
-> `.claude/handoffs/session-156/2026-07-21-0851-code-session156-discussion-ai-transition-two-views.md`
-> (binds nothing). **(PLAN-0085 — the View-1 / Rung-1 arc, filed → SDs → built →
-> closed, one day.)** **#831** (`8809776`, `docs(plans)`) filed PLAN-0085
-> "Advisory Gate Recommendation (AI-Transition Rung 1)" `Status: Draft` by
-> `plan-drafter` (grounded by 3 Explore fan-outs + Code's OQ-1 read; the drafter
-> corrected the dispatch twice, both re-verified at R2). **#832** (`d679036`,
-> `docs(plans)`) — Step 0: all 5 SDs Cray-ratified (AskUserQuestion), every pick
-> = the draft recommendation — **SD-1(b)** emit INSIDE the `doa_tier` gate
-> propose path (ZERO hash change), **SD-2(b)** stub-first deterministic arm +
-> opt-in live MS-S1 seam, **SD-3** all three procedures, **SD-4** gate-panel
-> advisory block, **SD-5** new trace kind `advisory_recommendation` (actor
-> `llm`). **#833 (`2f46fc9`, `feat(engine)`) BUILT:** an advisory recommendation
-> with grounded reasons at procurement's `doa_tier` approval gate — **SHOWN,
-> never routes** (the ADR-0019:50-57 fence, now CI-pinned: byte-identical
-> approve audit advisory-on / off / exploding-builder). New module
-> `services/engine/procedures/gate_advisory.py` (never-raise, ADR-0030 D5
-> pattern), wired via `GovernanceActionExecutor` + the procurement `_executors`
-> default; a Monitor gate-panel block (reasons, spark glyph, arm sublabel, NO
-> score — the L-C/#823 trust shape) + the new trace kind + a PLAN-0080 tripwire
-> pin. Suite **2927/7**, mypy/ruff clean, live-verified on 8101 (strip LIVE, the
-> run parks with the advisory persisted). **#834** (`63009c3`, `docs(plans)`) —
-> PLAN-0085 closeout: all 8 ACs ticked, runbook §3e added, archived to `done/`.
-> Cray confirmed the live advisory and surfaced an UNPLANNED value — it doubles
-> as an **onboarding aid** (a first-time operator reads a plain-language "why
-> this is on my desk", reducing panic), recorded as a signal for the View-2
-> scaffolder reshape. **A model-economy policy** was ratified (a private memory,
-> not a repo change): Fable reserved for complex planning/research, Opus 4.8 +
-> Extra for execution/coding-to-plan. Post-merge: main=`63009c3` (head_commit
-> pins `2f46fc9`, the #833 build — the last SUBSTANTIVE code commit, mirroring
-> the s155 head-of-record convention; #834 is a `docs(plans)` closeout); 0 open
-> PRs; loop-dispatcher DISABLED; MS-S1 idle/COLD (the advisory arm is stub-first
-> deterministic — zero live calls). Commits (per-PR): `19f5caa` (#829) →
-> `ad39774` (#830) → `8809776` (#831) → `d679036` (#832) → `2f46fc9` (#833
-> BUILT — head_commit of record) → `63009c3` (#834 closeout, main HEAD);
-> `recent_commits` interleaves the five merge commits.
-
+> _Rotation note (session-160 reconcile, 2026-07-22, `docs(status):`): added
+> the **Session 160** CF block (the four-PR arc — #843 the Cray-reserved-step
+> classifier rule, recorded LATE / #844 the Stop-hook contentless-reason FLOOR /
+> #845 the AT-2 `N=4` correction + the new `step_id`-scope guard / #846 the two
+> Accepted-ADR body corrections) and rotated the OLDEST CF block — **Session
+> 156** (the morning map-label UI fix #829, the long-carried demo rehearsal
+> PERFORMED + the PLAN-0084 closeout #830, and the PLAN-0085 advisory-gate arc
+> filed → ratified → built → closed, #831-#834) — to the Current-Focus rotation
+> base `docs/status-archive/2026-h1-current-focus.md`. Rotating it is what **R2
+> requires**, not a headroom judgement: the 4 most-recent sessions are now
+> 160 / 159 / 158 / 157, so the s156 block fell **outside** the window. Recent
+> Decisions gained ONE row (the s160 four-PR arc) and rotated its ONE OLDEST —
+> the **s149** PLAN-0082 shared-ontology-mechanism row (#803-#808) — to the
+> rotation base `docs/status-archive/2026-h1-status.md`. Window after this
+> reconcile: **CF = 3 blocks covering the 4 newest sessions** (s160 + s158/159 +
+> s157 — well under the 8-block cap); RD = 10 rows. **STATUS: 51,045 B → 56,272
+> B** (caller-measured, not estimated), against the 64 KB R1 ceiling — the net
+> growth is a four-PR block replacing a smaller one; the Active-TODO trim
+> (~4.66 KB, all four oversized items verified to have a tracked home) is the
+> standing headroom lever if the soft 48 KB target is wanted back. Per the
+> STATUS.md Rotation Policy (R1/R2/R4)._
+>
 > _Rotation note (session-159 reconcile, 2026-07-21, `docs(status):`): added
 > the **Sessions 158 + 159** CF block (PLAN-0087 BUILT #840 → CLOSED + archived
 > #841) and rotated the OLDEST CF block — **Session 152** (PLAN-0083, the
@@ -251,6 +318,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-22 | **s160 — four PRs hardening the Stop hook and the AT-2 doc record. #844 the CONTENTLESS-REASON FLOOR (a `proceed` reason naming no action is demoted to pause — the COMPLEMENTARY shape to #843, which landed s159 unrecorded); #845 AT-2 corrected to N=4 + a new cross-procedure `step_id`-scope guard; #846 (`plan-drafter`, G1) ADR-0032 re-grounded + a dated ADR-0025 D7 OUTCOME amendment, its "N ≥ 2" decision text deliberately NOT rewritten.** Two premises now pinned in code, not prose: `_RETRIGGER_N` is retired and guards nothing, and PLAN-0087's "zero live `step_id` collisions" is wrong (the OVER-MARK is what is zero) — both carried by the guard docstrings cited right. Tripwire B NOT built (mechanism refuted). Merge-commit gate `0c9cdeb`: **2977/7** + mypy strict 98 files, against a pass/fail read fixed BEFORE the run. Full narrative: the Session-160 CF block above | `0c9cdeb` (#846 merge, head_commit of record) / `d7bbb8b` (#845) / `c42abe4` (#844) / `0090161` (#843) / `tests/services/engine/procedures/test_sod_step_id_scope_guard.py` + `tests/services/engine/procedures/test_at2_signature_retrigger.py` + `docs/adr/0025-at2-managerial-layer.md` (D7 amendment) |
 | 2026-07-21 | **s158 + s159 — PLAN-0087 BUILT (#840) then CLOSED at 8/8 ACs + archived (#841 `docs(plans)`): the ADR-0031 D3 gate seam's CRITERION-VOCABULARY half — `ComplianceCriterion` RETIRED from engine code; a vertical DECLARES its own `rule_gate` vocabulary in `procedures.yaml` (`VerticalProcedures.compliance_criteria`, pattern-typed + membership-validated at load), so a new AT-2 vertical ships its gate with ZERO engine diff — PROVEN by AC-1's fixture-criterion pair (loads + gates from outside `services/`; the undeclared twin refused), not prose.** Behaviour-preserving — no pinned governance hash moved. **Cray-ratified SD-1 = (a) (typed): the procedure-aware `ExecutorFactory` half is OUT of scope and stays owned by PLAN-0076 T1 → PLAN-0076 does NOT archive, its AC-6 guard stays ARMED, no re-homing.** ADR-0031 D3 row 3 updated per D4.4. Closeout gate on `main=c6eec65`: **2954/7** (169.91s) + mypy strict 98 files, matching the build. Full narrative: the Sessions 158+159 CF block above | `c6eec65` (#840 merge) / `e55f2b8` (head_commit of record, #841) / `services/engine/procedures/spec.py` + `tests/services/engine/procedures/test_declared_criterion_vocabulary.py` + `docs/plans/done/0087-gate-seam-declared-criterion-vocabulary.md` (COMPLETE, 8/8) |
 | 2026-07-21 | **s157 — PLAN-0086 COMPLETE (#838 `feat(verticals)`): the narrative→pipeline scaffolder run as a TIMED MANUAL baseline — a dirtied customer monologue → a live, governed, human-gated pipeline on the 6th vertical `fleet_maintenance` in 27m39s hands-on (wall 43m17s − 6m51s answer-waits − 8m48s escalation). AC-7 caveat, BINDING and never to be dropped: Code drafted the pre-dirtied narrative → LOWER BOUND on blind intake, operator knows this codebase.** AT-2 `governed_repair_approval` = the 4th signature; first vertical with the PLAN-0085 gate advisory ON by default; additive `ComplianceCriterion += three_quote`. **ADR-0025 D7 AT-2-generator deferral CANCELLED at N=4 (Cray-ratified, typed — 4th consecutive vertical forcing an engine-level criterion extension); the `_RETRIGGER_N` guard RETIRED + REPLACED by `test_at2_extraction_obligation_is_owned` (PLAN-0076 T1 = standing owner). The extraction PLAN is UNOPENED — G2-gated → `plan-drafter`.** 2 of 4 customer rules un-encodable (quote-comparison ฿ threshold has no home on a `rule_gate` criterion; `EmergencyWaiver` lacks cap/ratification fields) — surfaced in the vertical README's "stated but NOT enforced" table. Suite **2943/7**; mypy strict 98 files; ruff clean; live `run-b9c0804b52f0` parks `waiting_human` at `approve`. Full narrative: the Session-157 CF block above | `79358c6` (HEAD, #838 merge) / `a2ef45e` (build) / `verticals/fleet_maintenance/` + `tests/services/engine/procedures/test_at2_signature_retrigger.py` (guard replacement) + `docs/plans/0086-fleet-vertical-timed-manual-scaffold.md` (closeout pending) |
 | 2026-07-21 | **s156 — PLAN-0085 "Advisory Gate Recommendation (AI-Transition Rung 1)" filed → 5 SDs Cray-ratified → BUILT → closed, ONE day (#831 Draft `docs(plans)` / #832 SDs `docs(plans)` / #833 `feat(engine)` / #834 closeout `docs(plans)`): an advisory recommendation with grounded reasons at procurement's `doa_tier` approval gate — SHOWN, NEVER routes (the ADR-0019:50-57 fence, now CI-pinned: byte-identical approve audit advisory on/off/exploding-builder).** All 5 SDs = the draft rec (AskUserQuestion): SD-1(b) emit INSIDE the gate propose path (ZERO hash change), SD-2(b) stub-first deterministic arm + opt-in live MS-S1 seam, SD-3 all three procedures, SD-4 gate-panel advisory block, SD-5 new trace kind `advisory_recommendation` (actor `llm`). New `gate_advisory.py` (never-raise, ADR-0030 D5) wired via `GovernanceActionExecutor` + procurement `_executors`; Monitor gate-panel block, NO score (the L-C/#823 trust shape). Suite **2927/7**; mypy/ruff clean; live-verified 8101. Unplanned value (Cray): the advisory doubles as an ONBOARDING aid → recorded as a signal for the View-2 reshape. Full narrative: the Session-156 CF block above | `2f46fc9` (#833 BUILT, head_commit of record) / `63009c3` (#834 closeout, main HEAD) / `8809776` (#831) / `d679036` (#832) / `services/engine/procedures/gate_advisory.py` + `docs/plans/done/0085-*.md` (archived, 8/8) + `docs/runbooks/run-oct-demo.md` §3e |
@@ -260,7 +328,6 @@ below, and git history.
 | 2026-07-19 | **s152 — PLAN-0083 (fix c1) BUILT + verified + archived (#818 `feat`, #819 `docs(plans)`): the procurement ontology↔CSV column drift CLOSED at the `FastenalCsvAdapter` seam — `_COLUMN_RENAMES` on the `fetch_objects` path maps raw Fastenal CSV → canonical ontology names (type key `Asset`→`Equipment` [SD-1] + 5 columns [`part_id`→`part_no`, `price_thb`→`price`, `asset_id`→`equipment_id`, `site`→`site_id`, `lead_time_days`→`lead_time`] + `PurchaseOrder.asset_id`→`equipment_id` [SD-4a]; ฿-columns DEFERRED raw [SD-4b]), so every consumer sees ONE canonical vocabulary.** Rides under ADR-016's LOCKED "mapping absorbs source diversity" boundary — zero-core-edit (no ADR / ontology YAML / regen / `services/` engine edit; ADR-0023), diff = adapter + vertical + tests only. A `test_fastenal_adapter_canonical_coverage.py` tripwire pins per-type set-equality + required-props + rename-target validity + the SD-4b ฿-defer, non-vacuous EMPIRICALLY (dropped a rename → RED → reverted); R2 added the under-scoped `governance_audit.py:177/179`. Suite **2915/7** (2896 + 19); mypy strict + ruff clean; CI gate PASS on #818. Full narrative: the Session-152 CF block above | `a53c6ed` (#818 merge) / `a211651` (build) / `5140ee3` (HEAD, #819 merge) / `docs/plans/done/0083-*.md` (archived) + `tests/verticals/procurement/test_fastenal_adapter_canonical_coverage.py` |
 | 2026-07-19 | **s151 — PLAN-0081 BUILT end to end (#814, `feat(building_materials)`): the `building_materials` governed-credit HERO — the 3rd AT-2 signature (`building_materials.governed_credit_release`), Cray-commissioned this session. An exposure breach above the account's own `credit_limit_thb` routes the full governed AT-2 spine (per-entity band → `rule_gate` KYC/overdue-AR/blacklist → `doa_tier` approval + SoD); the ฿550,000 breach routes mid-ladder.** The 3rd signature REUSES the money `doa_tier` ladder UNCHANGED (no new gate kind / authority quantity) — only `ComplianceCriterion += {kyc, overdue_ar, blacklist}` grows; engine diff bounded to that additive `spec.py` block (the `Person` promotion was PLAN-0082's, already on main). **ADR-0025 D7 re-eval PERFORMED at N=3** (Cray-ratified: generator stays deferred, marker re-arms N=4). Closeout: PLAN-0079 tracking stub RETIRED (Step T3) + guard test DELETED; PLAN-0076 T1 gate-seam trigger recorded MET (seam PLAN un-opened); PLAN-0081 archived at 15/15 ACs. Suite **2896/7** re-run on the merge commit `9422c40`; mypy strict + ruff clean. Full narrative: the Session-151 CF block above | `9422c40` (HEAD, #814 merge) / `a46bef8` (build) / `docs/plans/done/0081-*.md` (archived, 15/15) + `tests/verticals/building_materials/test_governed_credit_hero.py` |
 | 2026-07-19 | **s150 — PLAN-0082 COMPLETE + archived (Steps 5-7, #809-811) + PLAN-0081 fold (#812): the reconciliation half of the shared-ontology arc — spec-layer `Person` reconciled to ONE generated `core.Person` (#809, SD-H=(a) + `_PYDANTIC_COMMITTED_DEST`), procurement+supply_chain migrated + OQ-6 marker transformed (#810), PLAN closed out at 7/7 ACs + archived (#811); PLAN-0081 folded (SD-J=SPLIT resolved, Step 9 shrunk).** AC-5 dual-roster "retire one" RE-SCOPED (misread — distinct demos, neither retired). CI-scope lesson (mypy strict re-export). OQ-2 deferred. Full narrative: the Sessions 149+150 CF block above | `043da3c` (HEAD, #812) / `e059303` (#811) / `docs/plans/done/0082-*.md` |
-| 2026-07-18 | **s149 — PLAN-0082 shared-ontology mechanism BUILT (Steps 2-4 behind ADR-0033, #803-808): ADR-0033 Accepted (shared `core` home + `imports:` grammar + set/closed types + shared Person committed-ORM contract); `core_v0.yaml` + set/closed L1/L2 (#804), Pydantic emitter (#805), imports/cross-doc resolution (#806), set→JSONB emitters (#807), committed Person ORM + `person` table + Alembic 0012 migration ran green (#808).** Additive — zero shipped-behaviour change. Full narrative: the Sessions 149+150 CF block above | `5e45eb6` (#808) / `6dd6464` (#803) / `ontology/core_v0.yaml` + `services/db/person.py` + `alembic/versions/0012_person_table.py` |
 
 ## In-Flight Discussions
 
