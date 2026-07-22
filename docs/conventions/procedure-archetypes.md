@@ -46,7 +46,7 @@ archetype below preserves this.
 |---|---|---|---|
 | **AT-1** `anomaly→action` | sense → judge(band) → gated action on breach | `energy`, `supply_chain`, `aquaculture` (core) | 1 deterministic band; 1 human gate on the irreversible write; handler fixed |
 | **AT-1b** `+ watch + summary` (AT-1 variant) | AT-1 **+** watch→gated proposal **+** auto summary terminal | `aquaculture.morning_pond_health_round` | AT-1 + ADR-0019 watch→gated escalation + an auto (un-gated) terminal receipt |
-| **AT-2** `request→approve→fulfill` | intake → (judge) → select(scored rule) → compliance(rule gate) → **tiered authority gate**(human) → fulfill(write) → (audit) | `procurement.emergency_sourcing_round` (manual); `procurement.scheduled_emergency_sourcing_round` (S1 schedule-triggered variant); **`supply_chain.cold_chain_excursion_disposition`** (the 2nd SIGNATURE — non-money authority, PLAN-0074); **`building_materials.governed_credit_release`** (the 3rd SIGNATURE — money authority reused, new criterion vocabulary, PLAN-0081) | per-criterion rule gate + a tiered human authority gate + SoD + traceable audit. **The authority QUANTITY is per-instance:** ฿ spend (`doa_tier`, procurement + building_materials) or excursion severity (`severity_tier`, supply_chain); **the criterion vocabulary is per-instance too** (vendor-hygiene / GDP / credit-compliance) |
+| **AT-2** `request→approve→fulfill` | intake → (judge) → select(scored rule) → compliance(rule gate) → **tiered authority gate**(human) → fulfill(write) → (audit) | `procurement.emergency_sourcing_round` (manual); `procurement.scheduled_emergency_sourcing_round` (S1 schedule-triggered variant); **`supply_chain.cold_chain_excursion_disposition`** (the 2nd SIGNATURE — non-money authority, PLAN-0074); **`building_materials.governed_credit_release`** (the 3rd SIGNATURE — money authority reused, new criterion vocabulary, PLAN-0081); **`fleet_maintenance.governed_repair_approval`** (the 4th SIGNATURE — money authority reused again, `three_quote`, PLAN-0086) | per-criterion rule gate + a tiered human authority gate + SoD + traceable audit. **The authority QUANTITY is per-instance:** ฿ spend (`doa_tier`, procurement + building_materials + fleet_maintenance) or excursion severity (`severity_tier`, supply_chain); **the criterion vocabulary is per-instance too** (vendor-hygiene / GDP / credit-compliance / three-quote) |
 | **AT-3** `monitor→reorder` | read_stock → judge(reorder point) → gated reorder | `procurement.low_stock_reorder_round` (manual); `procurement.scheduled_low_stock_reorder_round` (S1 schedule-triggered) | deterministic reorder-point band + single-tier human approval |
 
 ---
@@ -126,6 +126,19 @@ passes each gate.
     criteria are per-instance; the GATE shape generalises). The ฿550,000 shipped breach lands
     mid-ladder (`ผจก.ควบคุมเครดิต`, the `[250k, 1M)` tier) — the demo shows tiering, not
     always-the-top.
+  - `fleet_maintenance.governed_repair_approval` (6 steps, `trigger: manual`, PLAN-0086) — **the
+    4th AT-2 SIGNATURE** (an emergency roadside breakdown: a repair quote above the truck's minor-
+    repair ceiling needs governed approval). `intake`(latest event per truck, the truck's
+    `minor_repair_ceiling_thb` joined on) `→ judge`(per-entity band vs that ceiling,
+    `direction: above`) `→ reshape`(the same declared-transform seam — derives the flat
+    `amount`/`currency` + the compliance signal map) `→ quote_gate`(**`rule_gate`** — `three_quote`)
+    `→ approve`(**`doa_tier`** — ฿ tiers + emergency waiver, human, SoD: `[intake, approve]`)
+    `→ fulfill`(gated write). **What it proved by being the 4th:** by gate SHAPE, nothing — the
+    composition and the money authority quantity are byte-identical to building_materials'. What it
+    proved was a COST fact: a fourth vertical meant a fourth ENGINE edit to the closed criterion
+    enum, and that recurrence — not any generalising gate — is what cancelled the ADR-0025 D7
+    deferral (see § Forward — how this feeds the generative-procedures arc). It is also the first
+    vertical shipping the PLAN-0085 gate advisory ON.
 - **Governance signature (the credibility musts, L-6):**
   - **Selection is a scored RULE**, never the LLM (the LLM only summarises the candidates);
     the pre-qualified default path by default, a deviation only as a logged exception.
