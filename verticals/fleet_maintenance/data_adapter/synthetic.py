@@ -19,6 +19,23 @@ logged customer answer, never invented:
 * the hero truck's PLATE is a GUESS — รอแก้: the customer explicitly could not recall it
   ("หกล้อทะเบียนจำไม่ได้ละ"). Home-yard coordinates are likewise a GUESS (the narrative gives
   ROUTES — แหลมฉบัง / อีสาน — never a base location).
+
+PLAN-0089 (the AT-3 PM calm path) adds ``next_service_due_km`` per truck and a THIRD truck.
+Provenance splits cleanly, and the split is the point:
+
+* the 100,000 km service INTERVAL is a logged customer answer ("เข้าศูนย์ทุกแสนกิโลฯ" — the
+  PLAN-0089 M-5 Q1 intake round, one fixed interval across every truck class).
+* each truck's LAST-SERVICE odometer — from which ``next_service_due_km = last_service +
+  100,000`` — is GUESS — รอแก้. The dirtied narrative carries the routine-PM THREAD
+  ("ปกติพวกผ้าเบรก ไส้กรอง...", "เปลี่ยนไส้กรองน้ำมันเครื่องตามระยะ") but NO km figures at all,
+  so every due point below is a fixture choice the design partner re-feeds.
+* truck-03 is a GUESS — รอแก้ in full (plate, class, odometer, last service). It exists so the
+  calm-path sweep reads THREE trucks rather than two (PLAN-0089 SD-3's Cray-ratified sub-choice)
+  — one due, two not — instead of a 2-row demo where half the fleet is always flagged.
+
+NOTE the deliberate non-overlap: the calm path flags truck-02, the AT-2 hero flags truck-01. The
+two procedures watch different trucks for different reasons, so the demo shows a fleet with both
+a routine and an emergency story in flight — not one truck carrying everything.
 """
 
 from __future__ import annotations
@@ -50,7 +67,13 @@ def depot_records() -> list[dict[str, Any]]:
 
 
 def truck_records() -> list[dict[str, Any]]:
-    """Return the synthetic Truck records (the monitored assets)."""
+    """Return the synthetic Truck records (the monitored assets).
+
+    ``next_service_due_km`` is ABSOLUTE (``last_service + 100,000``), never an interval — the
+    AT-3 judge compares the projected ``measured_value`` against it directly and the projection
+    grammar is a fields-only rename with no arithmetic. Exactly ONE truck is due (truck-02), so
+    the calm path has a breach set and a healthy contrast set.
+    """
     return [
         {
             "truck_id": "truck-01",
@@ -59,6 +82,9 @@ def truck_records() -> list[dict[str, Any]]:
             "truck_class": "six_wheeler",
             "odometer_km": 412_580.0,
             "minor_repair_ceiling_thb": 5000.0,  # Q1
+            # last service 400,000 (GUESS — รอแก้) + the 100,000 km interval (M-5 Q1).
+            # 412,580 < 500,000 -> NOT due: the hero's breakdown truck is not also PM-flagged.
+            "next_service_due_km": 500_000.0,
             "status": "roadside_breakdown",
             "site_id": "depot-01",
         },
@@ -68,6 +94,24 @@ def truck_records() -> list[dict[str, Any]]:
             "truck_class": "tractor_head",
             "odometer_km": 688_140.0,
             "minor_repair_ceiling_thb": 5000.0,  # Q1
+            # last service 585,000 (GUESS — รอแก้) + the 100,000 km interval (M-5 Q1).
+            # 688,140 >= 685,000 -> DUE, 3,140 km overdue. The high-mileage tractor head running
+            # past its interval is the calm path's whole story.
+            "next_service_due_km": 685_000.0,
+            "status": "in_service",
+            "site_id": "depot-01",
+        },
+        {
+            # PLAN-0089 SD-3 sub-choice (Cray-ratified): the third truck, so the calm-path sweep
+            # reads three and flags one. GUESS — รอแก้ in full; no narrative source.
+            "truck_id": "truck-03",
+            "plate": "82-9012 กรุงเทพมหานคร",
+            "truck_class": "six_wheeler",
+            "odometer_km": 254_300.0,
+            "minor_repair_ceiling_thb": 5000.0,
+            # last service 200,000 (GUESS — รอแก้) + the 100,000 km interval.
+            # 254,300 < 300,000 -> NOT due, 45,700 km of headroom.
+            "next_service_due_km": 300_000.0,
             "status": "in_service",
             "site_id": "depot-01",
         },
@@ -94,6 +138,23 @@ def operational_events() -> list[dict[str, Any]]:
             ),
             "occurred_at": datetime(2026, 7, 1, 2, 0, tzinfo=UTC),
             "truck_id": "truck-01",
+            "site_id": "depot-01",
+        },
+        {
+            # PLAN-0089: truck-03's routine below-ceiling service quote. Keeps the third truck
+            # visible to the HERO's intake too (latest event per truck) as a plain `ok` row —
+            # it grows the sweep's read set without touching the breach set (still truck-01 only).
+            "event_id": "event-reading-04",
+            "event_type": "reading",
+            "severity": "info",
+            "measured_value": 2400.0,
+            "unit": "THB",
+            "description": (
+                "เปลี่ยนผ้าเบรกหลัง ใบเสนอราคา 2,400 บาท (ร้านประจำ) — ต่ำกว่าเพดาน 5,000 บาท "
+                "ช่างใหญ่เคาะเองได้."
+            ),
+            "occurred_at": datetime(2026, 7, 2, 8, 15, tzinfo=UTC),
+            "truck_id": "truck-03",
             "site_id": "depot-01",
         },
         {

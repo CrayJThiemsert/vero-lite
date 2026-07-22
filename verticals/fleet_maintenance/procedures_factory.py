@@ -6,10 +6,12 @@ repair-spend HERO; the 6th vertical, hand-written under the timed-scaffold measu
 registration for ``fleet_maintenance``, wired active-vertical-scoped at API startup
 (``services/api/main.py``).
 
-The vertical ships ONE procedure — the AT-2 governed ``governed_repair_approval`` (PLAN-0086 SD-3a:
-one hero procedure; the tire/PM calm path is a named, unscheduled follow-on) — so every slot is a
-wrapper that governs the step it owns and falls through untouched for the rest. Mirrors the
-building_materials factory exactly, with ONE deliberate difference:
+The vertical ships TWO procedures — the AT-2 governed ``governed_repair_approval`` (PLAN-0086) and
+the AT-3 calm path ``pm_service_round`` (PLAN-0089, which discharged the tire/PM follow-on SD-3a
+deferred) — so every slot is a wrapper that governs the step it owns and falls through untouched
+for the rest. This factory needed NO change to gain the second procedure: it is keyed by StepKind,
+not by procedure, and the calm path uses only QUERY / EVALUATE / ACTION, all already registered.
+Mirrors the building_materials factory exactly, with ONE deliberate difference:
 
 * ``ACTION`` — :class:`GovernanceActionExecutor` is constructed with
   ``advisory_builder=GateAdvisoryBuilder()`` (PLAN-0086 L-B, the PLAN-0085 wire). This vertical
