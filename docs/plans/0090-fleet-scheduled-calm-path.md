@@ -199,7 +199,7 @@ are fine; only the procedure-executor factory dispatch is procurement-hardcoded.
   mirroring `services/api/main.py:97-146`, and delete the stale docstring sentence. Cray chose
   this over a 4-line fleet-only branch and over splitting it into its own PR.
 
-## Surfaced decisions (SD-N — Cray rules at Step 0; recommendations are contingent, not chosen)
+## Surfaced decisions (SD-N — **both RATIFIED by Cray, 2026-07-22 s163; Step 0 discharged**)
 
 ### SD-1 — The service principal's id + display name
 
@@ -218,6 +218,11 @@ agent-scoped).
 **Why Cray:** naming is an established Cray call in this repo (PLAN-0089 SD-3 pinned
 `pm_service_round` over `tire_*`; PLAN-0065 named the donor SP) — the name lands in every
 audit record the demo shows.
+
+> **RATIFIED — `svc-fleet-scheduler`** (Cray, typed AskUserQuestion, 2026-07-22 s163) — the
+> recommendation as written, neither alternative taken. The display name follows the house
+> style named above; the executor authors it in the vertical's Thai voice, alongside the
+> existing `principals` entries. **Step 0 discharged for SD-1.**
 
 ### SD-2 — Measure this build, or not?
 
@@ -238,6 +243,14 @@ rejected outright (violates the PLAN-0086/0089 measurement discipline).
 
 **Why Cray:** whether the pitch needs a third number — and whether a ~15-minute-class
 measurement is worth its protocol overhead this cycle — is portfolio judgment (ADR-0032 D5).
+
+> **RATIFIED — YES, run it timed** (Cray, typed AskUserQuestion, 2026-07-22 s163). The
+> MS-1…MS-6 protocol below is therefore **ACTIVE and binding via AC-7** — and it was
+> pre-committed *before* this ratification, which is precisely what makes the number usable:
+> the protocol could not have been shaped to flatter a result it had not seen. **AC-7 is
+> live, not struck.** The MS-6 caveat travels with the number everywhere it is recorded, and
+> the number is never summed with PLAN-0086's 27m39s or PLAN-0089's ~14 min.
+> **Step 0 discharged for SD-2.**
 
 ## The measurement protocol (pre-committed; ACTIVE iff SD-2 resolves YES — binding via AC-7)
 
@@ -352,6 +365,12 @@ Present SD-1 (SP naming) and SD-2 (measure or not) to Cray via AskUserQuestion; 
 stamps inline in this PLAN (the PLAN-0086/0089 pattern). L1–L3 are already LOCKED — restate,
 do not re-ask. If SD-2 = yes, pre-create the gitignored timing artifact with the MS-4
 checkpoint template before any authoring. No implementation before ratification.
+
+> **DISCHARGED 2026-07-22 (s163), before any authoring.** SD-1 = `svc-fleet-scheduler`;
+> SD-2 = yes, timed. Both by typed AskUserQuestion; L1–L3 were already LOCKED pre-draft and
+> were restated, not re-asked. The gitignored timing artifact was pre-created with the MS-4
+> checkpoint template as this step requires. **Step 1 (pre-flight, untimed) may begin; the
+> MS-3 clock does not start until Step 2.**
 
 ### Step 1: Pre-flight (untimed)
 
