@@ -78,7 +78,7 @@ PROCEDURE_ARCHETYPES: dict[tuple[str, str], str] = {
 
 # A procedure absent from the catalog map renders with this sentinel rather than
 # failing the read — surfacing "this shipped without a catalogued archetype"
-# instead of a 500 (defensive; all eleven shipped procedures are mapped today).
+# instead of a 500 (defensive; all twelve shipped procedures are mapped today).
 _UNCATALOGUED = "uncatalogued"
 
 

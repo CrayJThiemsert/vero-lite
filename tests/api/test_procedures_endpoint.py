@@ -5,8 +5,8 @@ discovered vertical's procedures, each round-trips ``load_procedures``, and the
 catalog archetype label is attached for all shipped procedures across the six
 procedure-bearing verticals (fact-pack #1: procurement ships five; supply_chain
 ships two; energy / aquaculture one each; building_materials ships one — the
-PLAN-0081 governed-credit hero; fleet_maintenance ships one — the PLAN-0086
-governed-repair hero). No LLM, no DB, no mutation. A live preview is
+PLAN-0081 governed-credit hero; fleet_maintenance ships two — the PLAN-0086
+governed-repair hero and the PLAN-0089 PM calm path). No LLM, no DB, no mutation. A live preview is
 *evidence* (Step 5), not the gate.
 
 The archetype label is looked up on the ``(vertical, procedure_id)`` PAIR, never
@@ -27,7 +27,7 @@ from services.engine.discovery import discover_and_register
 from services.engine.procedures.spec import VerticalProcedures, load_procedures, procedures_path
 from services.engine.registry import registry
 
-# The eleven shipped procedures, vertical → {procedure_id: archetype} (fact-pack
+# The twelve shipped procedures, vertical → {procedure_id: archetype} (fact-pack
 # #1 / docs/conventions/procedure-archetypes.md). procurement ships five:
 # two manual + the PLAN-0055 Step 8 schedule-triggered AT-2 variant + the
 # PLAN-0056 Step 8 event-triggered AT-2 variant + the PLAN-0065 Step 4
@@ -108,11 +108,12 @@ async def test_procedures_returns_all_discovered_verticals_and_archetypes(
     all_verticals_client: AsyncClient,
 ) -> None:
     """Every discovered vertical's procedures round-trip load_procedures, each
-    carrying the correct catalog archetype — all eleven across the six procedure-bearing
+    carrying the correct catalog archetype — all twelve across the six procedure-bearing
     verticals (procurement ships five: two manual + scheduled AT-2 + event AT-2 + scheduled AT-3;
     supply_chain ships two: the AT-1 sweep + the PLAN-0074 AT-2 disposition; energy + aquaculture
     one each; building_materials ships one: the PLAN-0081 AT-2 governed-credit hero;
-    fleet_maintenance ships one: the PLAN-0086 AT-2 governed-repair hero)."""
+    fleet_maintenance ships two: the PLAN-0086 AT-2 governed-repair hero + the
+    PLAN-0089 AT-3 PM calm path)."""
     response = await all_verticals_client.get("/procedures")
     assert response.status_code == 200
     payload = response.json()
