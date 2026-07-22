@@ -846,3 +846,43 @@ Each was trimmed only after its tracked home was verified on disk (the R2 carve-
 - [ ] **Bounded/incremental chain verification (PLAN-0063 SD-4 follow-up, s118).** `GET /audit/verify` walks the WHOLE chain O(n) on demand — accepted at pilot scale, documented in the endpoint docstring (`services/api/routers/audit.py:13-16`). Future work = a checkpointed head / verify-since-anchor design; anchor storage ≈ external anchoring — **do not build without re-reading the tripwire: `docs/plans/done/0063-audit-chain-verification-surface.md:564` + `services/api/routers/audit.py:19`.** _[Corrected s141: this item used to say "ADR-011 tripwire territory" — **ADR-011 does not exist** (`docs/adr/` jumps 0010 → 0012; it is an earmark only); the tripwire text lives at the two anchors above.]_ *(s118; #688/#690)*
 - [ ] **DEFERRED: a monotonic `sequence` column on `step_results` — the ROOT fix for `load_run`'s wall-clock ordering.** Needs a DB migration → its own PLAN (PLAN-0062-independent); none drafted. `ORDER BY created_at` is **unchanged by design**, so **the deferral STANDS**; both surviving orderings are **DISPLAY-ONLY**, so not urgent. Full detail — ROOT-vs-guard, why it is tolerable, the static AST guard holding the line: the module docstring of `tests/services/db/test_load_run_ordering_guard.py`, pointed to from both code sites. _[s161 UPDATE — **the deferral STANDS and this PLAN is still UNOPENED**: **PLAN-0088** (#848) is the first PLAN to read runs *in aggregate*, and it was written DELIBERATELY not to depend on either ordering — order-insensitive aggregates only, day-or-coarser buckets, no cross-row wall-clock arithmetic, plus its own AC-3 AST tripwire forbidding `ORDER BY` on raw wall-clock columns. The un-defer trigger is unchanged and now has a named watch-point: the pinned doctrine (`test_load_run_ordering_guard.py:29-49`) says *"if a correctness path ever starts depending on either ordering, the sequence-column PLAN stops being optional"* — so any Group-B / ordering-sensitive read proposed on top of the substrate re-opens this item FIRST.]_ *(rehomed s142; s117; #678/#680/#684)*
 - [ ] **Demo card UX — "trust shape", NO operator confidence badge (s74 design, Cray-approved).** The operator card shows **what / grounded-why / approve gate** + a "show full reasoning trace" toggle; **no confidence badge** (`confidence_signal` is engine-internal QA, trace-only), and the **(B) first-class `verification` field is NOT needed** — SD-3 settles at (a). Full record + rationale + the reconsider-trigger: **`docs/plans/done/0035-governed-action-verify-reshape-build.md:576`** — the s142 post-archival amendment ANSWERING SD-3's Phase-2 question; `ADR-0030` cites it. *(Trigger: the next demo / UI round.)*
+
+---
+
+## Rotated this reconcile (session-163 second arc, 2026-07-22 — the PLAN-0090 pass)
+
+### Recent-Decisions row rotated out of the 10-row window — s152 / PLAN-0083 (#818, #819) [rotated 2026-07-22, session-163 second-arc reconcile]
+
+| 2026-07-19 | **s152 — PLAN-0083 (fix c1) BUILT + verified + archived (#818 `feat`, #819 `docs(plans)`): the procurement ontology↔CSV column drift CLOSED at the `FastenalCsvAdapter` seam — `_COLUMN_RENAMES` on the `fetch_objects` path maps raw Fastenal CSV → canonical ontology names, so every consumer sees ONE canonical vocabulary.** Zero-core-edit under ADR-016's LOCKED "mapping absorbs source diversity" boundary (ADR-0023); a `test_fastenal_adapter_canonical_coverage.py` tripwire pins per-type set-equality, non-vacuous EMPIRICALLY. Full narrative: the Session-152 CF block, rotated to `docs/status-archive/2026-h1-current-focus.md` | `a53c6ed` (#818 merge) / `a211651` (build) / `5140ee3` (HEAD, #819 merge) / `docs/plans/done/0083-*.md` (archived) + `tests/verticals/procurement/test_fastenal_adapter_canonical_coverage.py` |
+
+### Rotation note rotated (R4 consolidation) — the session-161 note [rotated 2026-07-22, session-163 second-arc reconcile]
+
+> _Rotation note (session-161 reconcile, 2026-07-22, `docs(status):`): added the
+> **Session 161** CF block (PLAN-0088 filed Draft, #848 — the cross-run read
+> substrate + run-insight readers; the L1/L2 forks Cray-ratified by typed
+> selection) and rotated the OLDEST CF block — **Session 157** (PLAN-0086, the
+> timed manual scaffold of the 6th vertical `fleet_maintenance` #838 + the
+> ADR-0025 D7 AT-2-generator deferral CANCELLED at N=4) — to the Current-Focus
+> rotation base `docs/status-archive/2026-h1-current-focus.md`. Rotating it is
+> what **R2 requires**, not a headroom judgement: the 4 most-recent sessions are
+> now 161 / 160 / 159 / 158, so the s157 block fell **outside** the window.
+> Recent Decisions gained ONE row (the s161 PLAN-0088 arc) and rotated its ONE
+> OLDEST — the **s150** row (PLAN-0082 Steps 5-7 + the PLAN-0081 fold,
+> #809-#812) — to the rotation base `docs/status-archive/2026-h1-status.md`. The
+> **session-157** rotation note was itself rotated to the same base (R4
+> consolidation): the trail had been carrying **three** notes rather than two
+> because the s160 reconcile deliberately left it — that dispatch scoped exactly
+> one CF block + one RD row, and silently dropping an un-instructed block was the
+> exact failure mode that session existed to fix — so this pass instructs it
+> explicitly. Because this pass also ADDS a note, the trail stays at **three**
+> (s161 + s160 + s159): converging to two needs a SECOND note rotated, which was
+> not instructed here. Nothing is violated — the runbook sets no note-count rule
+> (grep-verified this session); "two" is the file's own habit, not R2.
+> Window after this reconcile: **CF = 3
+> blocks covering the 4 newest sessions** (s161 + s160 + s158/159 — well under
+> the 8-block cap); RD = 10 rows. **STATUS: 56,272 B → 59,697 B**
+> (caller-measured, not estimated), against the 64 KB R1 ceiling — the standing
+> headroom levers remain the Active-TODO trim (~4.66 KB) and the oversized RD
+> rows (~1,200-1,600 chars each against the ~600 target), both R4-gated on
+> appending the full originals to the archive first. Per the STATUS.md Rotation
+> Policy (R1/R2/R4)._
