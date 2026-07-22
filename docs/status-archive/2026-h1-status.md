@@ -743,3 +743,18 @@ convention is separate work, deliberately not done here.
 > (R4). Per the STATUS.md Rotation Policy (R1/R2/R4)._
 
 | 2026-07-18 | **s149 — PLAN-0082 shared-ontology mechanism BUILT (Steps 2-4 behind ADR-0033, #803-808): ADR-0033 Accepted (shared `core` home + `imports:` grammar + set/closed types + shared Person committed-ORM contract); `core_v0.yaml` + set/closed L1/L2 (#804), Pydantic emitter (#805), imports/cross-doc resolution (#806), set→JSONB emitters (#807), committed Person ORM + `person` table + Alembic 0012 migration ran green (#808).** Additive — zero shipped-behaviour change. Full narrative: the Sessions 149+150 CF block above | `5e45eb6` (#808) / `6dd6464` (#803) / `ontology/core_v0.yaml` + `services/db/person.py` + `alembic/versions/0012_person_table.py` |
+
+> _Rotation note (session-157 reconcile, 2026-07-21, `docs(status):`): added the
+> **Session 157** CF block (PLAN-0086 — the timed manual scaffold of vertical #6
+> `fleet_maintenance`, #838) and rotated the OLDEST CF block — **Session 151**
+> (PLAN-0081 `building_materials` governed-credit hero, #814) — to the
+> Current-Focus rotation base `docs/status-archive/2026-h1-current-focus.md`.
+> Recent Decisions gained ONE row (the PLAN-0086 / ADR-0025-D7-cancellation arc)
+> and rotated its ONE OLDEST — the **s147** PLAN-0081 arc row (#797/#798) — to
+> the rotation base `docs/status-archive/2026-h1-status.md`. The **session-155
+> EVENING** rotation note was itself rotated to the same base (R4
+> consolidation). Window after this reconcile: CF = 4 blocks (s157 + s156 +
+> s153/154/155 + s152); RD = 10 rows. Per the STATUS.md Rotation Policy
+> (R1/R2/R4)._
+
+| 2026-07-19 | **s150 — PLAN-0082 COMPLETE + archived (Steps 5-7, #809-811) + PLAN-0081 fold (#812): the reconciliation half of the shared-ontology arc — spec-layer `Person` reconciled to ONE generated `core.Person` (#809, SD-H=(a) + `_PYDANTIC_COMMITTED_DEST`), procurement+supply_chain migrated + OQ-6 marker transformed (#810), PLAN closed out at 7/7 ACs + archived (#811); PLAN-0081 folded (SD-J=SPLIT resolved, Step 9 shrunk).** AC-5 dual-roster "retire one" RE-SCOPED (misread — distinct demos, neither retired). CI-scope lesson (mypy strict re-export). OQ-2 deferred. Full narrative: the Sessions 149+150 CF block above | `043da3c` (HEAD, #812) / `e059303` (#811) / `docs/plans/done/0082-*.md` |

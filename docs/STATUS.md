@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-22T11:47:46+07:00
-session: 160
-current_batch: "s160 — 4 PRs: the Stop-hook contentless-reason FLOOR (#844, complements #843), the AT-2 N=4 doc drift + a new step_id-scope guard (#845), and 2 Accepted-ADR body corrections by plan-drafter (#846)."
+last_updated: 2026-07-22T13:33:53+07:00
+session: 161
+current_batch: "s161 — 1 PR: PLAN-0088 filed Draft (#848, docs(plans)) — the cross-run read substrate + run-insight readers; Group A only, Group B proven-expressible but deliberately NOT built."
 current_actor: code
-blocked_on: "Nothing blocking. main=0c9cdeb; 0 open PRs; merge-commit gate 2977/7 + mypy strict clean (98 files); loop-dispatcher DISABLED; MS-S1 idle/COLD; dev Postgres UP."
-next_action: "Nothing ordered — 3 candidates: (1) Active-TODO trim (~4.66 KB, all trimmable), (2) fleet tire/PM calm path (G2-gated PLAN + 3 SDs), (3) autonomy-triggers row (Cowork). Tripwire B NOT built (refuted)."
-head_commit: 0c9cdeb
-recent_commits: [0c9cdeb, d7bbb8b, c42abe4, b5272e2, 25110c8, 66b9707, 532d3e4, 0090161, c8f7184, 89990fd]
+blocked_on: "Nothing blocking. main=e6bb8c8; 0 open PRs; tree clean apart from the 2 KEEP untracked; loop-dispatcher DISABLED; MS-S1 idle/COLD (zero calls); dev Postgres UP."
+next_action: "Nothing ordered — 4 candidates: (1) PLAN-0088 Step 1 (the substrate), (2) Active-TODO trim (~4.66 KB) + the oversized RD rows, (3) fleet tire/PM calm path (G2 PLAN + 3 SDs), (4) autonomy-triggers row (Cowork)."
+head_commit: e6bb8c8
+recent_commits: [e6bb8c8, 0dce906, d2c82fe, 42839ca, 0c9cdeb, d7bbb8b, c42abe4, b5272e2, 25110c8, 66b9707]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,79 @@ recent_commits: [0c9cdeb, d7bbb8b, c42abe4, b5272e2, 25110c8, 66b9707, 532d3e4, 
 ---
 
 ## Current Focus
+
+> **Session 161, 2026-07-22 (head_commit `0c9cdeb` → `e6bb8c8`) — a one-PR
+> strategy-to-PLAN session: PLAN-0088 filed Draft (#848, `docs(plans)`) — the
+> cross-run read substrate + run-insight readers. Cray's opening question (once
+> we have enough pipeline-run data, how do those data + the ontology feed an LLM
+> to create customer value?) grounded out to ONE architectural shape, not a menu
+> of features: the repo records everything PER-RUN and aggregates NOTHING across
+> runs.**
+> **(the grounded finding.)** `pipeline_runs` / `step_results` already carry
+> `step_principals`, `governance_snapshot`/`_hash`, `duration_ms`, `artifact`,
+> `reasoning_trace` and `audit` per run — but the only SQL aggregate anywhere in
+> `services/` is the audit-chain length count
+> (`services/api/routers/audit.py:54`), and `GET /runs`
+> (`services/api/routers/runs.py:273-331`) materializes **every** run into
+> Python and counts steps in dicts. That read path does not survive the "enough
+> run data" premise, so the substrate — not a feature list — is the work.
+> **(two forks Cray ratified by typed selection; they are the PLAN's LOCKED
+> constraints.)** **L1 — "Group A" is NOT Shape 2** (NL query over runs, ฿ ROI
+> narrative, bottleneck / cycle-time, audit-readiness): it emits no typed
+> improvement proposal, so it extends Shape 1's `monitor` leg and does **not**
+> trip the **ADR-0032 D2 pilot gate**. The separation test is **mechanical, not
+> documentary** — AC-11 is a static guard over the substrate, the insights
+> router and the run-query compiler asserting no write primitive, no import of a
+> five-symbol proposal/write-path deny-list (each symbol verified on disk), and
+> no `sqlalchemy` import engine-side. **L2 — build Group A and *prove* the
+> substrate can express Group B's questions; do NOT build Group B.** Group B
+> (band/DoA recalibration, refusal mining, procedure generation) **is** Shape 2
+> and stays pilot-gated; the proof is four executable query-shape tests (AC-10),
+> not prose.
+> **(two hazards PINNED, not inherited.)** **Run ordering is unsound by the
+> code's own admission** (`runs.py:291-294`: `started_at` "is a wall clock that
+> is not monotonic on this box"), and the deferral doctrine pinned in
+> `tests/services/db/test_load_run_ordering_guard.py:29-49` says the
+> monotonic-sequence-column fix deserves its own PLAN — *"if a correctness path
+> ever starts depending on either ordering, the sequence-column PLAN stops being
+> optional."* PLAN-0088 therefore stays on the safe side: order-insensitive
+> aggregates only, day-or-coarser buckets, no cross-row wall-clock arithmetic,
+> plus an AST tripwire (AC-3) forbidding `ORDER BY` on raw wall-clock columns.
+> **The sequence-column PLAN is explicitly still UNOPENED.** Second hazard:
+> **cross-currency sums are made unrepresentable, not merely checked** — the ฿
+> rollup's group key structurally includes `currency`
+> (`EconomicImpact.currency`, `economic_impact.py:63`; THB-only in v1 per
+> ADR-0030 OQ-4) and the report model carries **no cross-currency total field**.
+> **(process note — the drafter corrected the reviewer three times and was right
+> each time.)** The PLAN was authored by the in-harness `plan-drafter` (ADR-013
+> D1) from a Code-authored, Cray-ratified dispatch; Code reviewed it against the
+> code in **two rounds** and ordered three amendments (corpus vertical scoping,
+> test-corpus size, a runnable predicate for AC-11). The drafter corrected two
+> line ranges in Code's own dispatch and — substantively — the framing of the
+> currency risk: Code's R2 tied it to vertical separation; the drafter separated
+> cross-vertical **scope** (a business-honesty risk → stamp the report with the
+> declared vertical) from cross-currency **summation** (a correctness risk → key
+> on the facet's own `currency`). Vertical separation was never the right guard
+> for currency, even accidentally.
+> **(also this session, no commit — recorded because it is evidence for a
+> standing candidate.)** The Stop hook emitted a directive `reason` **twice** on
+> turns where nothing had been ordered: first *"Continue drafting ADR-0032
+> content"* (work Code is G1-gate-forbidden to do), then *"Proceed with
+> reconciling the status of s160 and rotating the s157 note"* (real pending work,
+> but picking one branch of a two-option question Code had just put to Cray).
+> Code declined both. **Neither shape is caught by #844's contentless-reason
+> floor** — both name a concrete action, and the floor only demotes a reason that
+> names none. Direct material for the still-missing
+> `.claude/autonomy-triggers.md` approval/merge row.
+> **Verification:** #848 is docs-only (1 file, +505 lines) — CI `gate` PASS in
+> 3m12s, SHA-verified (run head == PR head ==
+> `0dce906c48395ce9e11dee71e6503f030eda0066`) before merge; no suite re-run
+> needed (docs-only). Artifact:
+> `docs/plans/0088-cross-run-read-substrate-and-run-insight-readers.md`, **Status
+> `Draft`** — deliberately not `Accepted`, which would G1-gate the PLAN's own
+> closeout. Commits: `0dce906` (build) → `e6bb8c8` (HEAD of `main`, #848 merge,
+> head_commit of record — `docs(plans):` counts as substantive; only
+> `docs(status):` is excluded).
 
 > **Session 160, 2026-07-22 (head_commit `e55f2b8` → `0c9cdeb`) — a four-PR
 > hook-hardening + doc-truth session: the Stop-hook classifier gained a
@@ -179,66 +252,36 @@ recent_commits: [0c9cdeb, d7bbb8b, c42abe4, b5272e2, 25110c8, 66b9707, 532d3e4, 
 > `16c3622` → `bdd07ed` → `4f9cb7a` → `c6eec65` (HEAD of `main`, #840 merge) →
 > `e55f2b8` (#841 closeout, head_commit of record).
 
-> **Session 157, 2026-07-21 (head_commit `2f46fc9` → `79358c6`) — PLAN-0086
-> COMPLETE: the AI-Transition **View-2** scaffolder run as a TIMED MANUAL
-> baseline — a rambling, deliberately-dirtied customer monologue carried to a
-> live, governed, human-gated pipeline on a 6th vertical (`fleet_maintenance`,
-> #838), shipped with its measurement pack; and the ADR-0025 D7 AT-2-generator
-> deferral CANCELLED at N=4.**
-> **(the headline number — it MUST NOT be quoted without its caveat; AC-7 makes
-> that binding.)** Narrative → governed pipeline in **27 minutes 39 seconds
-> hands-on** (wall 43m17s minus 6m51s of customer-answer waits and 8m48s stopped
-> on a governance escalation). **Caveat (AC-7, binding):** Code drafted the
-> pre-dirtied narrative, so this is a **LOWER BOUND on true blind intake** —
-> Cray's dirtying plus the four-question intake log partially restore validity,
-> and it measures an operator with deep prior knowledge of this codebase.
-> **(what shipped.)** `verticals/fleet_maintenance/` — an 8-file package
-> HAND-WRITTEN from the `building_materials` template (`vero-lite new-vertical`
-> was banned by the measurement protocol). Asset=Truck, Site=Depot; AT-2
-> `governed_repair_approval`: intake → judge (per-truck repair ceiling) →
-> reshape → quote_gate (`rule_gate`) → approve (money `doa_tier` + SoD) →
-> fulfill. **First vertical shipping the PLAN-0085 gate advisory ON by default**
-> (PLAN-0086 L-B — the parked gate explains itself on day one). Plus 14 tests,
-> the 3 mandatory hand-wires, and an additive `ComplianceCriterion +=
-> three_quote` engine change.
-> **(ADR-0025 D7 — the AT-2-generator deferral is CANCELLED; Cray-ratified,
-> typed.)** Shipping fleet fired `test_at2_signature_retrigger` at N=4. Code
-> ESCALATED rather than patched — the marker says "re-argue it, do not just
-> update this list", and the fix Code judged correct was also the fix that turned
-> Code's own red green. Both readings went to Cray: by gate SHAPE fleet teaches
-> nothing new (composition and authority quantity identical to
-> `building_materials`'), but it is the FOURTH consecutive vertical to require an
-> engine-level `ComplianceCriterion` extension — and repeated pressure on shared
-> code is what Rule-of-Three actually watches. Cray's rationale: accept the cost
-> now for future flexibility. The `len(signatures) < _RETRIGGER_N` guard is
-> RETIRED and REPLACED (never deleted) by `test_at2_extraction_obligation_is_owned`
-> (same module), which fails if PLAN-0076 — the standing owner via Step T1 — is
-> archived or loses its record. **The extraction itself is NOT done — it needs
-> its own PLAN, G2-gated, so `plan-drafter` must author it.** That is the most
-> important open thread out of this session.
-> **(the finding that outlives the number.)** Two of the four customer rules
-> could NOT be fully encoded: the quote-comparison ฿ threshold has nowhere to
-> live (a `rule_gate` criterion is pass/fail on a supplied signal and carries no
-> threshold field, and ADR-0025 D4 forbids the amount in prose), and
-> `EmergencyWaiver` has no fields for the emergency cap or the ratification
-> window. Both are recorded in the question log and surfaced to readers in the
-> vertical README as an explicit "stated but NOT enforced" table — a
-> narrative→pipeline tool that silently dropped the un-modellable half would be
-> worse than no tool.
-> **Verification:** offline gate at execution HEAD **2943 passed / 7 skipped**,
-> **re-run GREEN on the merge commit `79358c6` itself** (2943/7 — CI is PR-only,
-> so the merge commit is otherwise never tested); baseline re-measured at
-> `219a134` before the clock started (2927/7, matching the #833 figure —
-> `confirmed — prior intact`); `mypy --strict services/` clean (98 files);
-> `ruff check .` + `ruff format --check .` clean at CI scope; CI `gate` PASS on
-> #838 (3m7s; 17 files, +1825/−40). **AC-4 by construction** — the diff touches ZERO files under the
-> five existing verticals. Live: `run-b9c0804b52f0` parks `waiting_human` at
-> `approve` with the advisory persisted (grounded fleet reasons, `model:
-> deterministic`, no confidence key in the advisory), corroborated in the Monitor
-> gate panel and confirmed by Cray. PLAN-0086 archives to `done/` in the
-> follow-on closeout PR. Commits: `a2ef45e` (#838) → `79358c6` (HEAD, #838
-> merge).
-
+> _Rotation note (session-161 reconcile, 2026-07-22, `docs(status):`): added the
+> **Session 161** CF block (PLAN-0088 filed Draft, #848 — the cross-run read
+> substrate + run-insight readers; the L1/L2 forks Cray-ratified by typed
+> selection) and rotated the OLDEST CF block — **Session 157** (PLAN-0086, the
+> timed manual scaffold of the 6th vertical `fleet_maintenance` #838 + the
+> ADR-0025 D7 AT-2-generator deferral CANCELLED at N=4) — to the Current-Focus
+> rotation base `docs/status-archive/2026-h1-current-focus.md`. Rotating it is
+> what **R2 requires**, not a headroom judgement: the 4 most-recent sessions are
+> now 161 / 160 / 159 / 158, so the s157 block fell **outside** the window.
+> Recent Decisions gained ONE row (the s161 PLAN-0088 arc) and rotated its ONE
+> OLDEST — the **s150** row (PLAN-0082 Steps 5-7 + the PLAN-0081 fold,
+> #809-#812) — to the rotation base `docs/status-archive/2026-h1-status.md`. The
+> **session-157** rotation note was itself rotated to the same base (R4
+> consolidation): the trail had been carrying **three** notes rather than two
+> because the s160 reconcile deliberately left it — that dispatch scoped exactly
+> one CF block + one RD row, and silently dropping an un-instructed block was the
+> exact failure mode that session existed to fix — so this pass instructs it
+> explicitly. Because this pass also ADDS a note, the trail stays at **three**
+> (s161 + s160 + s159): converging to two needs a SECOND note rotated, which was
+> not instructed here. Nothing is violated — the runbook sets no note-count rule
+> (grep-verified this session); "two" is the file's own habit, not R2.
+> Window after this reconcile: **CF = 3
+> blocks covering the 4 newest sessions** (s161 + s160 + s158/159 — well under
+> the 8-block cap); RD = 10 rows. **STATUS: 56,272 B → 59,697 B**
+> (caller-measured, not estimated), against the 64 KB R1 ceiling — the standing
+> headroom levers remain the Active-TODO trim (~4.66 KB) and the oversized RD
+> rows (~1,200-1,600 chars each against the ~600 target), both R4-gated on
+> appending the full originals to the archive first. Per the STATUS.md Rotation
+> Policy (R1/R2/R4)._
+>
 > _Rotation note (session-160 reconcile, 2026-07-22, `docs(status):`): added
 > the **Session 160** CF block (the four-PR arc — #843 the Cray-reserved-step
 > classifier rule, recorded LATE / #844 the Stop-hook contentless-reason FLOOR /
@@ -283,19 +326,6 @@ recent_commits: [0c9cdeb, d7bbb8b, c42abe4, b5272e2, 25110c8, 66b9707, 532d3e4, 
 > blocks covering the 4 newest sessions** (s158/159 + s157 + s156 — well under the
 > 8-block cap); RD = 10 rows. **STATUS: 63,159 B → 50,390 B**, against the 64 KB
 > R1 ceiling. Per the STATUS.md Rotation Policy (R1/R2/R4)._
->
-> _Rotation note (session-157 reconcile, 2026-07-21, `docs(status):`): added the
-> **Session 157** CF block (PLAN-0086 — the timed manual scaffold of vertical #6
-> `fleet_maintenance`, #838) and rotated the OLDEST CF block — **Session 151**
-> (PLAN-0081 `building_materials` governed-credit hero, #814) — to the
-> Current-Focus rotation base `docs/status-archive/2026-h1-current-focus.md`.
-> Recent Decisions gained ONE row (the PLAN-0086 / ADR-0025-D7-cancellation arc)
-> and rotated its ONE OLDEST — the **s147** PLAN-0081 arc row (#797/#798) — to
-> the rotation base `docs/status-archive/2026-h1-status.md`. The **session-155
-> EVENING** rotation note was itself rotated to the same base (R4
-> consolidation). Window after this reconcile: CF = 4 blocks (s157 + s156 +
-> s153/154/155 + s152); RD = 10 rows. Per the STATUS.md Rotation Policy
-> (R1/R2/R4)._
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R7)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split.]_
 
@@ -318,6 +348,7 @@ below, and git history.
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-22 | **s161 — PLAN-0088 filed Draft (#848, `docs(plans)`): the cross-run read substrate + run-insight readers. Grounding: the repo records everything PER-RUN but aggregates NOTHING across runs (the only SQL aggregate in `services/` is the audit-chain count; `GET /runs` materializes every run in Python). Two Cray-ratified TYPED forks are the PLAN's LOCKED constraints — L1: "Group A" (NL-over-runs, ฿ ROI, bottleneck/cycle-time, audit-readiness) is NOT Shape 2 and does NOT trip the ADR-0032 D2 pilot gate, and the separation is proven by a STATIC guard (AC-11), not prose; L2: build Group A + PROVE the substrate expresses Group B (4 executable query-shape tests, AC-10) but do NOT build Group B — it stays pilot-gated.** Wall-clock ordering hazard PINNED not inherited (order-insensitive aggregates, coarse buckets, an AC-3 AST tripwire) — the sequence-column PLAN stays UNOPENED; cross-currency sums made UNREPRESENTABLE (group key includes `currency`, no total field). Docs-only, CI gate PASS SHA-verified. Full narrative: the Session-161 CF block above | `e6bb8c8` (#848 merge, head_commit of record) / `0dce906` (build) / `docs/plans/0088-cross-run-read-substrate-and-run-insight-readers.md` (Draft) |
 | 2026-07-22 | **s160 — four PRs hardening the Stop hook and the AT-2 doc record. #844 the CONTENTLESS-REASON FLOOR (a `proceed` reason naming no action is demoted to pause — the COMPLEMENTARY shape to #843, which landed s159 unrecorded); #845 AT-2 corrected to N=4 + a new cross-procedure `step_id`-scope guard; #846 (`plan-drafter`, G1) ADR-0032 re-grounded + a dated ADR-0025 D7 OUTCOME amendment, its "N ≥ 2" decision text deliberately NOT rewritten.** Two premises now pinned in code, not prose: `_RETRIGGER_N` is retired and guards nothing, and PLAN-0087's "zero live `step_id` collisions" is wrong (the OVER-MARK is what is zero) — both carried by the guard docstrings cited right. Tripwire B NOT built (mechanism refuted). Merge-commit gate `0c9cdeb`: **2977/7** + mypy strict 98 files, against a pass/fail read fixed BEFORE the run. Full narrative: the Session-160 CF block above | `0c9cdeb` (#846 merge, head_commit of record) / `d7bbb8b` (#845) / `c42abe4` (#844) / `0090161` (#843) / `tests/services/engine/procedures/test_sod_step_id_scope_guard.py` + `tests/services/engine/procedures/test_at2_signature_retrigger.py` + `docs/adr/0025-at2-managerial-layer.md` (D7 amendment) |
 | 2026-07-21 | **s158 + s159 — PLAN-0087 BUILT (#840) then CLOSED at 8/8 ACs + archived (#841 `docs(plans)`): the ADR-0031 D3 gate seam's CRITERION-VOCABULARY half — `ComplianceCriterion` RETIRED from engine code; a vertical DECLARES its own `rule_gate` vocabulary in `procedures.yaml` (`VerticalProcedures.compliance_criteria`, pattern-typed + membership-validated at load), so a new AT-2 vertical ships its gate with ZERO engine diff — PROVEN by AC-1's fixture-criterion pair (loads + gates from outside `services/`; the undeclared twin refused), not prose.** Behaviour-preserving — no pinned governance hash moved. **Cray-ratified SD-1 = (a) (typed): the procedure-aware `ExecutorFactory` half is OUT of scope and stays owned by PLAN-0076 T1 → PLAN-0076 does NOT archive, its AC-6 guard stays ARMED, no re-homing.** ADR-0031 D3 row 3 updated per D4.4. Closeout gate on `main=c6eec65`: **2954/7** (169.91s) + mypy strict 98 files, matching the build. Full narrative: the Sessions 158+159 CF block above | `c6eec65` (#840 merge) / `e55f2b8` (head_commit of record, #841) / `services/engine/procedures/spec.py` + `tests/services/engine/procedures/test_declared_criterion_vocabulary.py` + `docs/plans/done/0087-gate-seam-declared-criterion-vocabulary.md` (COMPLETE, 8/8) |
 | 2026-07-21 | **s157 — PLAN-0086 COMPLETE (#838 `feat(verticals)`): the narrative→pipeline scaffolder run as a TIMED MANUAL baseline — a dirtied customer monologue → a live, governed, human-gated pipeline on the 6th vertical `fleet_maintenance` in 27m39s hands-on (wall 43m17s − 6m51s answer-waits − 8m48s escalation). AC-7 caveat, BINDING and never to be dropped: Code drafted the pre-dirtied narrative → LOWER BOUND on blind intake, operator knows this codebase.** AT-2 `governed_repair_approval` = the 4th signature; first vertical with the PLAN-0085 gate advisory ON by default; additive `ComplianceCriterion += three_quote`. **ADR-0025 D7 AT-2-generator deferral CANCELLED at N=4 (Cray-ratified, typed — 4th consecutive vertical forcing an engine-level criterion extension); the `_RETRIGGER_N` guard RETIRED + REPLACED by `test_at2_extraction_obligation_is_owned` (PLAN-0076 T1 = standing owner). The extraction PLAN is UNOPENED — G2-gated → `plan-drafter`.** 2 of 4 customer rules un-encodable (quote-comparison ฿ threshold has no home on a `rule_gate` criterion; `EmergencyWaiver` lacks cap/ratification fields) — surfaced in the vertical README's "stated but NOT enforced" table. Suite **2943/7**; mypy strict 98 files; ruff clean; live `run-b9c0804b52f0` parks `waiting_human` at `approve`. Full narrative: the Session-157 CF block above | `79358c6` (HEAD, #838 merge) / `a2ef45e` (build) / `verticals/fleet_maintenance/` + `tests/services/engine/procedures/test_at2_signature_retrigger.py` (guard replacement) + `docs/plans/0086-fleet-vertical-timed-manual-scaffold.md` (closeout pending) |
@@ -327,7 +358,6 @@ below, and git history.
 | 2026-07-20 | **s153-155 — #822 `docs(runbook)` staged the config-pin fail-closed refusal as a deliberate demo beat (run-oct-demo.md §3c, Beat 06, PLAN-0047 Step 6); s154 ZERO commits (Cerebras-KB strategy read: predict+warn = existing Shape-1 IF deterministic, artifact-KB = D3 Shape-2 pilot-gated, org-wide ingestion CUT, reframe = "governed retrieval over the decision record"); #823 `fix(ui)` REMOVED the operator confidence badge from BOTH cards — story scene-2 (hardcoded 86%) and View-B `decisionCard()` (LIVE `rec.confidence`, the load-bearing one) — executing the ratified s74 trust shape.** Trace/fault-mode/DAG confidence KEPT by design. Static assets only; suite **2915/7** re-run on the merge commit `4edfa3f`; live 8101 check `LIVE` with a `confidence: 0.86` fixture. **4 claim-vs-code corrections:** naive-RAG comparison ALREADY run (PLAN-0027 — lean RAG TIES governed on accuracy at 3-15x lower latency) · "actions router fully governed" is overstated · the determinism line is ADR-0019:50-57 + ADR-010 IN-3, NOT ADR-0031 · a 4th AT-2 signature is UNBUILDABLE (no vertical has the substrate). Full narrative: the Sessions 153+154+155 CF block above | `4edfa3f` (HEAD, #823 merge) / `ffb251b` + `f09cc99` (badge removal) / `d8057fb` (#822 merge) / `b45f5c4` (#821 merge) / `docs/runbooks/run-oct-demo.md` §3c + `services/api/static/assets/view-anomaly.js` + `view-story.js` |
 | 2026-07-19 | **s152 — PLAN-0083 (fix c1) BUILT + verified + archived (#818 `feat`, #819 `docs(plans)`): the procurement ontology↔CSV column drift CLOSED at the `FastenalCsvAdapter` seam — `_COLUMN_RENAMES` on the `fetch_objects` path maps raw Fastenal CSV → canonical ontology names (type key `Asset`→`Equipment` [SD-1] + 5 columns [`part_id`→`part_no`, `price_thb`→`price`, `asset_id`→`equipment_id`, `site`→`site_id`, `lead_time_days`→`lead_time`] + `PurchaseOrder.asset_id`→`equipment_id` [SD-4a]; ฿-columns DEFERRED raw [SD-4b]), so every consumer sees ONE canonical vocabulary.** Rides under ADR-016's LOCKED "mapping absorbs source diversity" boundary — zero-core-edit (no ADR / ontology YAML / regen / `services/` engine edit; ADR-0023), diff = adapter + vertical + tests only. A `test_fastenal_adapter_canonical_coverage.py` tripwire pins per-type set-equality + required-props + rename-target validity + the SD-4b ฿-defer, non-vacuous EMPIRICALLY (dropped a rename → RED → reverted); R2 added the under-scoped `governance_audit.py:177/179`. Suite **2915/7** (2896 + 19); mypy strict + ruff clean; CI gate PASS on #818. Full narrative: the Session-152 CF block above | `a53c6ed` (#818 merge) / `a211651` (build) / `5140ee3` (HEAD, #819 merge) / `docs/plans/done/0083-*.md` (archived) + `tests/verticals/procurement/test_fastenal_adapter_canonical_coverage.py` |
 | 2026-07-19 | **s151 — PLAN-0081 BUILT end to end (#814, `feat(building_materials)`): the `building_materials` governed-credit HERO — the 3rd AT-2 signature (`building_materials.governed_credit_release`), Cray-commissioned this session. An exposure breach above the account's own `credit_limit_thb` routes the full governed AT-2 spine (per-entity band → `rule_gate` KYC/overdue-AR/blacklist → `doa_tier` approval + SoD); the ฿550,000 breach routes mid-ladder.** The 3rd signature REUSES the money `doa_tier` ladder UNCHANGED (no new gate kind / authority quantity) — only `ComplianceCriterion += {kyc, overdue_ar, blacklist}` grows; engine diff bounded to that additive `spec.py` block (the `Person` promotion was PLAN-0082's, already on main). **ADR-0025 D7 re-eval PERFORMED at N=3** (Cray-ratified: generator stays deferred, marker re-arms N=4). Closeout: PLAN-0079 tracking stub RETIRED (Step T3) + guard test DELETED; PLAN-0076 T1 gate-seam trigger recorded MET (seam PLAN un-opened); PLAN-0081 archived at 15/15 ACs. Suite **2896/7** re-run on the merge commit `9422c40`; mypy strict + ruff clean. Full narrative: the Session-151 CF block above | `9422c40` (HEAD, #814 merge) / `a46bef8` (build) / `docs/plans/done/0081-*.md` (archived, 15/15) + `tests/verticals/building_materials/test_governed_credit_hero.py` |
-| 2026-07-19 | **s150 — PLAN-0082 COMPLETE + archived (Steps 5-7, #809-811) + PLAN-0081 fold (#812): the reconciliation half of the shared-ontology arc — spec-layer `Person` reconciled to ONE generated `core.Person` (#809, SD-H=(a) + `_PYDANTIC_COMMITTED_DEST`), procurement+supply_chain migrated + OQ-6 marker transformed (#810), PLAN closed out at 7/7 ACs + archived (#811); PLAN-0081 folded (SD-J=SPLIT resolved, Step 9 shrunk).** AC-5 dual-roster "retire one" RE-SCOPED (misread — distinct demos, neither retired). CI-scope lesson (mypy strict re-export). OQ-2 deferred. Full narrative: the Sessions 149+150 CF block above | `043da3c` (HEAD, #812) / `e059303` (#811) / `docs/plans/done/0082-*.md` |
 
 ## In-Flight Discussions
 
@@ -346,7 +376,7 @@ below, and git history.
 - [ ] **PLAN-0075 follow-ons — homed by PLAN-0076 (`Status: Tracking`, filed #752, s133): T1, the ADR-0031 D3 gate-plugin seam (F-FACTORY), is now **PARTIALLY discharged** — its criterion-vocabulary half shipped as PLAN-0087 (s158, PR #840; PLAN-0087 itself COMPLETE + archived s159, #841), its procedure-aware-`ExecutorFactory` half stays OPEN and owned here — **PLAN-0076 itself stays in active `docs/plans/`, its AC-6 guard ARMED, no re-homing**; Step T2's F-PIN remainder CLOSED s143 (#784, PLAN-0078 PR-5).** _[T2 closed ≠ F-PIN closed: **F-PIN itself stays OPEN** (`docs/plans/done/0078-transform-seed-migration.md` L-4 — PLAN-0078 closed s144 COMPLETE at 12/12 and archived, but **no artifact records F-PIN closed**) — only T2's remainder fold-in closed, so **PLAN-0076 does NOT archive** and its guard stays ARMED.]_ A guardrail against the ADR-0031 OQ-4 deferral-rot precedent (s133 4-specialist panel); PLAN-0075 itself is **COMPLETE — all 13 ACs — and CLOSED → `docs/plans/done/0075-*.md`**. Full detail: `docs/plans/0076-at2-followon-tracking-gate-seam-and-derivation-pin.md` — F-FACTORY `:61-127`. **Guard:** PLAN-0076's AC-6 presence guard-test (`tests/services/engine/procedures/test_at2_followon_tracking_guard.py`) turns the build RED on a premature archive-to-`done/` or a pruned STATUS pointer ("location≠tripwire; failing tests are the real anti-rot"). *(PLAN-0075 = #749/#751 → `done/`; PLAN-0076 = #752, `Status: Tracking`; T2 closed by #784.)*
 - [ ] **Rock 3 — Box-4 economics + the procedure→ontology data-binding gap (O-2) — open ONLY for the O-2 residue; every other leg is DONE + archived.** **Closed:** Q3 ontology data-binding (PLAN-0046) · the Q4 generic query executor (PLAN-0048) · the Q4 join/projection grammar (ADR-016 Q4 amendment #659 + PLAN-0061) · the per-vertical seed migration (PLAN-0062) · the per-entity `threshold_field` band arc (PLAN-0066/0067/0068/0070) · **Box-4 BUILT (PLAN-0071, AC-5 GREEN at N=4) + SURFACED IN THE HERO UI (PLAN-0073)** — all → `docs/plans/done/`. **The one OPEN residue:** procurement's `intake` is declared-expressible ✔ under shadow parity, but **production execution stays the co-existing `_SeedQuery` ✖ for derived fields** — `docs/plans/done/0062-per-vertical-seed-migration.md:348`, the SD-C co-exist decision `:54-60`, `:291-295`. **Now homed by the transform arc:** **PLAN-0077** (transform grammar, COMPLETE → `done/0077-*.md`) + **PLAN-0078** (**COMPLETE at 12/12 ACs, CLOSED s144 #786 → `done/0078-*.md`** — the Step-7 closeout swept AC-5/AC-6 and archived it; do NOT re-open) — the fold-in is named at `docs/plans/0076-*.md:170-174`, what stays seed-side at `docs/plans/done/0078-transform-seed-migration.md:150-155`. *(s84 strategy discussion; the Box-4 leg is DONE — the residue is the O-2 data-binding leg only.)*
 - [ ] **Bounded/incremental chain verification (PLAN-0063 SD-4 follow-up, s118).** `GET /audit/verify` walks the WHOLE chain O(n) on demand — accepted at pilot scale, documented in the endpoint docstring (`services/api/routers/audit.py:13-16`). Future work = a checkpointed head / verify-since-anchor design; anchor storage ≈ external anchoring — **do not build without re-reading the tripwire: `docs/plans/done/0063-audit-chain-verification-surface.md:564` + `services/api/routers/audit.py:19`.** _[Corrected s141: this item used to say "ADR-011 tripwire territory" — **ADR-011 does not exist** (`docs/adr/` jumps 0010 → 0012; it is an earmark only); the tripwire text lives at the two anchors above.]_ *(s118; #688/#690)*
-- [ ] **DEFERRED: a monotonic `sequence` column on `step_results` — the ROOT fix for `load_run`'s wall-clock ordering.** Needs a DB migration → its own PLAN (PLAN-0062-independent); none drafted. `ORDER BY created_at` is **unchanged by design**, so **the deferral STANDS**; both surviving orderings are **DISPLAY-ONLY**, so not urgent. Full detail — ROOT-vs-guard, why it is tolerable, the static AST guard holding the line: the module docstring of `tests/services/db/test_load_run_ordering_guard.py`, pointed to from both code sites. *(rehomed s142; s117; #678/#680/#684)*
+- [ ] **DEFERRED: a monotonic `sequence` column on `step_results` — the ROOT fix for `load_run`'s wall-clock ordering.** Needs a DB migration → its own PLAN (PLAN-0062-independent); none drafted. `ORDER BY created_at` is **unchanged by design**, so **the deferral STANDS**; both surviving orderings are **DISPLAY-ONLY**, so not urgent. Full detail — ROOT-vs-guard, why it is tolerable, the static AST guard holding the line: the module docstring of `tests/services/db/test_load_run_ordering_guard.py`, pointed to from both code sites. _[s161 UPDATE — **the deferral STANDS and this PLAN is still UNOPENED**: **PLAN-0088** (#848) is the first PLAN to read runs *in aggregate*, and it was written DELIBERATELY not to depend on either ordering — order-insensitive aggregates only, day-or-coarser buckets, no cross-row wall-clock arithmetic, plus its own AC-3 AST tripwire forbidding `ORDER BY` on raw wall-clock columns. The un-defer trigger is unchanged and now has a named watch-point: the pinned doctrine (`test_load_run_ordering_guard.py:29-49`) says *"if a correctness path ever starts depending on either ordering, the sequence-column PLAN stops being optional"* — so any Group-B / ordering-sensitive read proposed on top of the substrate re-opens this item FIRST.]_ *(rehomed s142; s117; #678/#680/#684)*
 - [ ] **Rock 4 — s84 deep research DELIVERED → O-sequence locked.** Cray locked **O-1 → O-3 → O-2 → O-4**. **O-1** (Box-4 ฿ pitch) **DONE** · **O-3 = ADR-0025 Accepted** · **O-4 = PARK** (agent-interop; `docs/adr/0032-*.md:169` D4 — option-only, un-park = a counterparty's *written* pull). **Remaining: O-2 only** (economic-impact facet + Q3 data-binding = Rock 3). Full detail: `docs/adr/0025-at2-managerial-layer.md:19` (O-sequence + Box-3 fit) + `:23-29` (the **evidence-asymmetry** finding — bullish ROI all vendor-authored, independent mostly skeptical — rehomed s142). *(s84 Cray ask)*
 - [ ] **PLAN-0005 deferred-foundational revisit register** — six Phase 2 "simple thing first" simplifications are production-foundational and must be picked back up at the right batch boundary, not silently forgotten. **Full table (all six rows + their triggers + where each lands): `docs/plans/done/0005-oct-engine-runtime-layer.md:390` §8.1** — which itself instructs this STATUS entry to be a pointer. *(per Cray note 2026-05-21)*
 - [ ] **Demo card UX — "trust shape", NO operator confidence badge (s74 design, Cray-approved).** The operator card shows **what / grounded-why / approve gate** + a "show full reasoning trace" toggle; **no confidence badge** (`confidence_signal` is engine-internal QA, trace-only), and the **(B) first-class `verification` field is NOT needed** — SD-3 settles at (a). Full record + rationale + the reconsider-trigger: **`docs/plans/done/0035-governed-action-verify-reshape-build.md:576`** — the s142 post-archival amendment ANSWERING SD-3's Phase-2 question; `ADR-0030` cites it. *(Trigger: the next demo / UI round.)*
