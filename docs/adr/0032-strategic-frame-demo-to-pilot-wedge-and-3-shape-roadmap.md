@@ -44,28 +44,51 @@ session start, an ADR is the one artifact class that makes a strategic frame
 first-class and session-visible. ADR-005 (the vet→OCT pivot) is the standing
 precedent that strategy of this magnitude is ADR material.
 
-### Where vero-lite stands (grounded 2026-07-16)
+### Where vero-lite stands (grounded 2026-07-16; re-grounded 2026-07-22)
+
+_[Re-grounded 2026-07-22 (session 160): this subsection is a STATE snapshot,
+not a decision record — it is corrected in place when the world moves; the
+D1–D6 decisions, the pilot gate, the positioning frame, and the fit filter
+are untouched by any re-grounding. This pass supersedes the 2026-07-16
+snapshot, which pre-dated PLAN-0081 (the building_materials governed-credit
+hero), PLAN-0086 (the sixth vertical, fleet_maintenance), and PLAN-0087 (the
+declared-criterion-vocabulary gate seam).]_
 
 - **Shape 1 is shipped.** The governed `monitor→decide→approve→act` engine
-  runs across four fully-instrumented synthetic verticals — electrical grid
-  (energy), cold-chain (supply_chain), aquaculture biology, and money
-  (procurement + its bespoke governed hero) — plus a fifth **Tier-1 Mirror**
-  (ADR-0015 D2), `verticals/building_materials/` (#765): scaffolded guessed
-  ontology, `echo` handler stub, **no `procedures.yaml`**, live-verified on
-  the deterministic rule path. Its governed-credit hero is **not built** and
-  is deliberately **not scheduled by this ADR** (a separate tracking-stub
-  PLAN will home it).
-- **AT-2 state (fact-critical — a stale version of this cost a PR, #767):**
-  AT-2 is **N=2** — procurement (`emergency_sourcing_round` + its
-  schedule/event variants = **one** signature, money / `doa_tier`) and
+  runs across **six** synthetic verticals, every one shipping a
+  `procedures.yaml` — electrical grid (energy), cold-chain (supply_chain),
+  aquaculture biology, money (procurement + its bespoke governed hero),
+  building_materials (entered as a Tier-1 Mirror, ADR-0015 D2, #765; its
+  governed-credit hero `governed_credit_release` is now **built**,
+  PLAN-0081), and fleet_maintenance (a timed manual scaffold from a customer
+  narrative, PLAN-0086; its hero is `governed_repair_approval`). energy and
+  aquaculture ship procedures but no `rule_gate`.
+- **AT-2 state (fact-critical — a stale version of this cost a PR, #767, and
+  the 2026-07-16 snapshot of this very bullet went stale the same way):**
+  AT-2 is **N=4** — procurement (`emergency_sourcing_round` + its
+  schedule/event variants = **one** signature, money / `doa_tier`),
   supply_chain (cold-chain disposition, non-money / `severity_tier`,
-  PLAN-0074). The ADR-0025 D7 CI re-trigger **fired at N=2** and the
-  re-evaluation was **performed** (PLAN-0074 SD-3 — the generator stays
-  deferred; **N≥2 permits genericization, it does not mandate it**). The
-  marker **re-arms at N=3**
-  (`tests/services/engine/procedures/test_at2_signature_retrigger.py`;
-  grounded at `services/engine/procedures/spec.py:822-830` as corrected by
-  #767).
+  PLAN-0074), building_materials (`governed_credit_release` — money
+  `doa_tier` reused, a **new** criterion vocabulary, PLAN-0081), and
+  fleet_maintenance (`governed_repair_approval` — money `doa_tier` reused,
+  `three_quote`, PLAN-0086). The ADR-0025 D7 re-trigger **fired at N=2 and
+  again at N=3**; each re-evaluation was **performed** and the generator
+  stayed deferred (PLAN-0074 SD-3; PLAN-0081 Step 8 — both Cray-ratified).
+  At **N=4 the deferral was CANCELLED, not re-armed** (Cray, typed,
+  2026-07-21, at the PLAN-0086 escalation). What recurred was **not** a gate
+  shape finally generalising — it was four verticals each needing an engine
+  edit to a closed criterion enum; PLAN-0087 answered by retiring
+  `ComplianceCriterion` from engine code so each vertical **declares** its
+  own vocabulary (`VerticalProcedures.compliance_criteria`,
+  membership-validated at load) and a fifth vertical ships its gate with
+  zero engine diff. The generator itself still abstains on AT-2; the
+  residual extraction item is the procedure-aware `ExecutorFactory`, owned
+  by PLAN-0076 Step T1 (F-FACTORY). The live tripwire is the
+  `_BASELINE_SIGNATURES` set-equality assertion in
+  `tests/services/engine/procedures/test_at2_signature_retrigger.py` (RED on
+  a fifth signature); the grounding comment is the Rule-of-Three caveat
+  comment in `services/engine/procedures/spec.py` (symbolic anchors on
+  purpose — the 2026-07-16 line-number anchor rotted).
 - **Partner-facing capability is further along than older gap-docs said:**
   NL-query is built (`services/api/routers/query.py`,
   `services/engine/nl_query.py`) and a real per-vertical CSV adapter exists
@@ -105,8 +128,9 @@ is far lower-friction than supplying, and it inverts the #1 enterprise fear
    path (ADR-0015 D2, `vero-lite new-vertical` + ontology YAML + regen) is
    config-cheap; a bespoke governed hero mirrors
    `verticals/procurement/hero_demo/`. Zero engine build either way — but
-   an AT-2-gated hero carries the D6 cost caveat (it is signature #3, not
-   config-cost). Every guessed value is marked "guess — correct me."
+   an AT-2-gated hero carries the D6 cost caveat (it is the next AT-2
+   signature, not config-cost). Every guessed value is marked "guess —
+   correct me."
 3. **Run the deterministic offline arm.** No live-model or network
    dependency in the room — a hiccup cannot collapse the demo (this also
    keeps the demo inside the §8 host-state discipline: no live run needed).
@@ -161,10 +185,12 @@ ratified form:
 
 Relationship to AT-2: shape 2 is the AT-2 generator **recursed** (input
 widened from a founder narrative to the ontology's own feedback stream). It
-does **not** reopen the ADR-0025 D7 / PLAN-0074 SD-3 decision — the
-generator stays deferred, the marker re-arms at N=3, and this ADR schedules
-nothing against it. Shape 2 names the direction that work grows toward once
-D2's pilot gate supplies fuel.
+does **not** reopen the ADR-0025 D7 / PLAN-0074 SD-3 decision, and this ADR
+schedules nothing against it — the arc's current state (fired at N=2 and
+N=3, cancelled at N=4) is snapshot material, recorded in the Context AT-2
+paragraph and in ADR-0025 D7's dated amendment, not restated here. Shape 2
+names the direction that work grows toward once D2's pilot gate supplies
+fuel.
 
 ### D4 — Shape 3 (governed agent-interop) is PARK
 
@@ -211,7 +237,7 @@ build:
 3. Is "anomaly" defined by a **threshold/band**?
 4. Is the outcome a **governed approval action** (DOA/SoD)?
 
-**Domain is free; the shape is not.** The four fully-instrumented verticals
+**Domain is free; the shape is not.** The fully-instrumented verticals
 span electrical grid / cold-chain / aquaculture biology / money — and the
 building_materials mirror extends the reach to a *commercial* asset
 (`CustomerAccount` with its own credit band, the ADR-008 "may extend"
@@ -221,10 +247,10 @@ config cost.
 - **All four YES → proceed.** Mirror ≈ days; a bespoke **non-AT-2** hero
   (AT-1 anomaly→action / AT-3 calm-path) ≈ 1–2 weeks, zero engine build.
   An **AT-2-gated** hero (money `doa_tier` or non-money `severity_tier`) is
-  a **different cost class**: it is AT-2 signature **#3** — it trips the
-  re-armed marker, turns CI RED, and obligates the ADR-0025 D7
-  re-evaluation (see the Context AT-2 paragraph) — never scope it as a
-  config-cost item.
+  a **different cost class**: it is the **next AT-2 signature** — it moves
+  the `_BASELINE_SIGNATURES` census pin, turns CI RED, and obligates the
+  new signature to be re-argued against the current baseline (see the
+  Context AT-2 paragraph) — never scope it as a config-cost item.
 - **Any NO → reshape, don't accept.** Non-fitting archetypes — multi-party
   negotiation, scheduling/optimization (a solver is un-declarable-as-data, an
   ADR-0031 tripwire), document/OCR extraction (parked since ADR-005) — get
@@ -255,9 +281,15 @@ config cost.
   partner-facing material by rule.
 - D2's single gate stops speculative shape-2/shape-3 build pressure cold: any
   PLAN proposing such work must show a real pilot (or cite OQ-1's resolution).
-- The AT-2 fact record (N=2, fired, performed, re-arms at N=3) is now stated
-  in an ADR, making the stale-N-count class of error (the one #767 killed)
-  harder to reintroduce.
+- The AT-2 fact record is stated in an ADR — but the durable guard against
+  the stale-N-count class of error (the one #767 killed) is **the test, not
+  this prose**: the `_BASELINE_SIGNATURES` set-equality assertion in
+  `tests/services/engine/procedures/test_at2_signature_retrigger.py` turns
+  RED the moment the signature census moves. This ADR's Context record is a
+  dated snapshot that must be **re-grounded when the count moves** — as it
+  was on 2026-07-22, when the original 2026-07-16 version of this very
+  bullet had itself gone stale. The tripwire is CI; the ADR is the
+  narrative.
 
 ### Negative (the honest costs)
 
@@ -284,9 +316,10 @@ config cost.
 
 - Zero code changes. ADR-0025 D7 / PLAN-0074 SD-3 stand untouched; the
   building_materials Tier-1 Mirror stands as shipped and needs nothing.
-- The governed-credit hero remains unscheduled — it is neither claimed as
-  built nor put in a backlog by this ADR (its true cost is coupled to the
-  N=3 obligation; a separate tracking-stub PLAN homes it).
+- The governed-credit hero was left unscheduled by this ADR — neither
+  claimed as built nor put in a backlog here. It has since been **built**
+  under its own PLAN (`governed_credit_release`, PLAN-0081) — exactly the
+  separate-PLAN path this bullet reserved; this ADR still schedules nothing.
 - The gitignored companions remain canonical for partner-facing operational
   detail; this ADR does not absorb them.
 
@@ -383,11 +416,17 @@ outcome.
   `docs/research/private/2026-07-16-hero-shaping-checklist.md`
 - Session-137 ADDENDUM handoff (gitignored) — the un-plannability evidence +
   the AT-2 N-count correction record
-- Code anchors (verified 2026-07-16): `services/engine/procedures/spec.py:822-830`
-  (AT-2 N=2, re-arms at N=3, per #767);
+- Code anchors (re-verified 2026-07-22, session 160; **symbolic on
+  purpose** — the original line-number anchor rotted): the Rule-of-Three
+  caveat comment in `services/engine/procedures/spec.py` (AT-2 N=4) and
+  `VerticalProcedures.compliance_criteria` in the same file (the PLAN-0087
+  declared vocabulary); the `_BASELINE_SIGNATURES` set-equality assertion in
   `tests/services/engine/procedures/test_at2_signature_retrigger.py` (the
-  re-armed marker); `verticals/building_materials/` (Tier-1 Mirror, no
-  `procedures.yaml`, #765); `verticals/procurement/hero_demo/` (the bespoke
+  live tripwire — RED on a fifth signature);
+  `verticals/building_materials/procedures.yaml` (`governed_credit_release`,
+  PLAN-0081) + `verticals/fleet_maintenance/procedures.yaml`
+  (`governed_repair_approval`, PLAN-0086);
+  `verticals/procurement/hero_demo/` (the bespoke
   hero structure); `verticals/procurement/data_adapter/fastenal_csv.py` (the
   real CSV adapter); `services/api/routers/query.py` +
   `services/engine/nl_query.py` (NL-query, built);
