@@ -821,15 +821,21 @@ class StepFacet(BaseModel):
 # author time enforces only the structural invariants below (no principal/role-rank model
 # exists in the engine yet).
 #
-# Rule-of-Three caveat (ADR-0025 D2 / LOCKED-2): AT-2 is N=2 — procurement
+# Rule-of-Three caveat (ADR-0025 D2 / LOCKED-2): AT-2 is N=4 — procurement
 # (``emergency_sourcing_round`` + its schedule/event variants = ONE signature, money /
-# ``doa_tier``) and supply_chain (cold-chain disposition, NON-money / ``severity_tier``,
-# PLAN-0074). These models stay INSTANCE-SCOPED: the D7 CI re-trigger FIRED at N=2 and the
-# re-evaluation was PERFORMED (PLAN-0074 SD-3 — resolution: the generator stays deferred;
-# N>=2 PERMITS genericization, it does not mandate it; what DID generalise is the gate
-# SHAPE, not the authority quantity or the criterion vocabulary). The marker re-arms at
-# N=3 (``test_at2_signature_retrigger.py``). v1 boundary (OQ-A=A1): author + render only —
-# they render read-only.
+# ``doa_tier``), supply_chain (cold-chain disposition, NON-money / ``severity_tier``,
+# PLAN-0074), building_materials (governed credit release, PLAN-0081) and
+# fleet_maintenance (governed repair approval, PLAN-0086). These models stay
+# INSTANCE-SCOPED: the D7 CI re-trigger FIRED at N=2 and again at N=3, and each
+# re-evaluation was PERFORMED (PLAN-0074 SD-3 / PLAN-0081 — resolution both times: the
+# generator stays deferred; N>=2 PERMITS genericization, it does not mandate it; what DID
+# generalise is the gate SHAPE, not the authority quantity or the criterion vocabulary).
+# At N=4 the D7 deferral was CANCELLED — not re-armed — because the recurrence that
+# cancelled it was four verticals needing four ENGINE edits to the closed criterion enum,
+# which PLAN-0087 retired in favour of a per-vertical DECLARED vocabulary. The marker
+# constant no longer guards anything; what turns RED on a 5th signature is the
+# ``_BASELINE_SIGNATURES`` equality assertion in ``test_at2_signature_retrigger.py``.
+# v1 boundary (OQ-A=A1): author + render only — they render read-only.
 
 RoleId = str
 """A human approval-role identifier (e.g. ``dept_head``) — a human-authored binding."""
@@ -1061,8 +1067,9 @@ class ExcursionSeverity(StrEnum):
     ``SeverityLadder`` tier floor ranks by this order — the non-money analog of
     ``DoaTier.min_amount``'s ``Decimal`` order. Scoped to the observed supply_chain
     cold-chain-disposition signature — INSTANCE-SCOPED by the ADR-0025 D7 resolution answered
-    at N=2 (PLAN-0074 SD-3; the marker re-arms at N=3), the same discipline as the
-    procurement AT-2 enums."""
+    at N=2 (PLAN-0074 SD-3) and re-affirmed at N=3 (PLAN-0081); the D7 deferral was then
+    CANCELLED at N=4 (PLAN-0087) WITHOUT genericizing these, so the scoping stands — the
+    same discipline as the procurement AT-2 enums."""
 
     NEGLIGIBLE = "negligible"
     MINOR = "minor"
@@ -1108,7 +1115,8 @@ class SeverityLadder(BaseModel):
     half-open ordinal band ``[min_i, min_{i+1})`` (top tier unbounded). No emergency-waiver in
     v1 (the waiver is procurement-shaped — PLAN-0074 SD-1). Scoped to the observed signature,
     INSTANCE-SCOPED by the ADR-0025 D7 resolution answered at N=2 (D2 discipline; PLAN-0074
-    SD-3 — the marker re-arms at N=3)."""
+    SD-3), re-affirmed at N=3 (PLAN-0081) and left scoped when the D7 deferral was CANCELLED
+    at N=4 (PLAN-0087)."""
 
     model_config = ConfigDict(extra="forbid")
 

@@ -195,22 +195,27 @@ demo bands vs authored per-procedure bands) the schema must preserve.
   `ArchetypeTemplate` registry, ADR-0024 D2). The Rule-of-Three gate (≥3 verticals)
   is satisfied (N=4: aquaculture / energy / procurement / supply_chain).
 - **Remaining frontier — AT-2 generation (deferred, ADR-0024 D7 / ADR-0025 D7):** the generator
-  triangulates AT-1 across 3+ verticals. **AT-2 reached N=3 on 2026-07-19** (PLAN-0081):
+  triangulates AT-1 across 3+ verticals. **AT-2 reached N=4 on 2026-07-21** (PLAN-0086):
   `procurement.emergency_sourcing_round` (money authority) + `supply_chain.cold_chain_excursion_disposition`
   (severity authority) + `building_materials.governed_credit_release` (money authority reused, a NEW
-  compliance-criterion vocabulary) are three distinct SIGNATURES — the schedule/event-triggered
+  compliance-criterion vocabulary) + `fleet_maintenance.governed_repair_approval` (money authority
+  reused again, `three_quote`) are four distinct SIGNATURES — the schedule/event-triggered
   procurement variants are the same signature, not further instances. **The D7 re-trigger FIRED at
-  N=3 and was re-evaluated, not deferred in silence (PLAN-0081 Step 8, Cray-ratified):** the
-  generator STAYS deferred + abstaining and the marker re-arms at N=4. The 3rd signature is the
-  WEAKEST possible extraction datum — it introduces no new gate kind, no new authority quantity (the
-  money `doa_tier` is reused unchanged, THB and all), and grows only the criterion vocabulary — the
-  exact axis the N=2 finding already established as per-instance forever; and it fires PLAN-0076 T1's
-  own named trigger, so the extraction question has a live owner. The generator **still abstains** on
-  AT-2 (`generator/pipeline.py` `_AT2_ONLY_KINDS`): N≥2 *permits* the genericization the D7
-  re-trigger guards, it does not mandate it. What N=2 revealed and N=3 re-confirmed — the authority
+  N=2 and again at N=3, and each time was re-evaluated, not deferred in silence (PLAN-0074 SD-3 /
+  PLAN-0081 Step 8, both Cray-ratified):** the generator STAYED deferred + abstaining. **At N=4 the
+  D7 deferral was CANCELLED (PLAN-0087)** — and note WHAT cancelled it: not a gate SHAPE finally
+  generalising, but the recurring cost of four verticals needing four ENGINE edits to a closed
+  criterion enum. The answer was to let a vertical DECLARE its own `rule_gate` vocabulary
+  (`VerticalProcedures.compliance_criteria`, membership-validated at load), so a 5th vertical ships
+  its gate with zero engine diff. The marker constant is **retired and guards nothing**; what turns
+  RED on a 5th signature is the `_BASELINE_SIGNATURES` equality assertion in
+  `test_at2_signature_retrigger.py`. The generator **still abstains** on AT-2
+  (`generator/pipeline.py` `_AT2_ONLY_KINDS`): N≥2 *permits* the genericization the D7 re-trigger
+  guarded, it does not mandate it. What N=2 revealed and N=3/N=4 re-confirmed — the authority
   quantity is per-instance (money vs severity), the compliance criterion vocabulary is per-instance
-  (vendor-hygiene / GDP / credit), but the GATE shapes generalised unchanged — is the input to that
-  extraction PLAN.
+  (vendor-hygiene / GDP / credit / three-quote), but the GATE shapes generalised unchanged — is the
+  input to the remaining extraction question (the procedure-aware `ExecutorFactory`), which is owned
+  by **PLAN-0076 T1**, not by this catalog.
 
 ## Sources / related
 
