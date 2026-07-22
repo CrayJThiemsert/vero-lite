@@ -1,6 +1,6 @@
 # PLAN-0090: Fleet Scheduled PM Calm Path — the AT-3 Scheduled Variant (`scheduled_pm_service_round`)
 
-**Status:** Draft
+**Status:** COMPLETE (7/7 ACs, closed out 2026-07-22 session 163)
 _(Never `Accepted`: that status G1-gates a PLAN's own closeout — the PLAN-0087/PLAN-0089 precedent.)_
 **Owner:** Claude Code (executes + commits per ADR-009 D2) + Cray (rules SD-1/SD-2 at Step 0)
 **Created:** 2026-07-22 (session 163)
@@ -287,7 +287,7 @@ measurement is worth its protocol overhead this cycle — is portfolio judgment 
 All gates are offline (CLAUDE.md §8 — the offline oracle is the gate); AC-6 is live *evidence*,
 never a CI gate. Every pass/fail read below is fixed here, before the run.
 
-- [ ] **AC-1 Offline gate + census 12 → 13 (owns the census tripwire):** full suite green at
+- [x] **AC-1 Offline gate + census 12 → 13 (owns the census tripwire):** full suite green at
   execution HEAD with the census updates — catalog entry first
   (`docs/conventions/procedure-archetypes.md` AT-3 row + §AT-3 instance list), then the
   `PROCEDURE_ARCHETYPES` pair `("fleet_maintenance", "scheduled_pm_service_round"): "AT-3"`,
@@ -295,14 +295,14 @@ never a CI gate. Every pass/fail read below is fixed here, before the run.
   (§ census above — all named sites plus a fresh repo sweep; check `prose_lint.py` coverage
   first). Plus `mypy --strict services/` and `ruff check` / `ruff format --check` at CI scope
   (the whole tree, not the changed subset).
-- [ ] **AC-2 Spec loads with the scheduled wiring (offline):** `load_procedures
+- [x] **AC-2 Spec loads with the scheduled wiring (offline):** `load_procedures
   ("fleet_maintenance")` green with the new procedure — schedule descriptor present iff
   `trigger: schedule`; `service_principal_ids` ↔ `service_principals` and `owning_person_id` ↔
   `principals` cross-refs resolve; the AT-3 absence properties hold on the new procedure (no
   `doa_tier`, no `separation_of_duties`, no compliance criteria, and its steps are the same
   three-step spine as `pm_service_round`). A negative control: a copy of the spec with
   `trigger: schedule` and **no** `schedule:` block (or a bogus timezone) fails loudly at load.
-- [ ] **AC-3 Fired-run park (offline, owns the run-through test):** driving the shipped
+- [x] **AC-3 Fired-run park (offline, owns the run-through test):** driving the shipped
   resolver path (`sync_schedule_states` registers the `(fleet_maintenance,
   scheduled_pm_service_round)` `ScheduleState` row; `build_resolver` resolves the SD-1 service
   actor per SP-4), a fired run completes `read_odometer → judge_service_due`, parks
@@ -312,7 +312,7 @@ never a CI gate. Every pass/fail read below is fixed here, before the run.
   `tests/services/db/test_scheduled_procurement_demo.py` (note both live under
   `tests/services/db/` — Hard rule 5's skip-count tell applies). No advisory entry is expected
   or asserted (Hard rule 3).
-- [ ] **AC-4 The generic CLI fix (L3):** `_register_executor_factory` dispatches over all
+- [x] **AC-4 The generic CLI fix (L3):** `_register_executor_factory` dispatches over all
   **six** factory-bearing verticals via a mapping mirroring `services/api/main.py` (lazy
   imports preserved — the CLI must not import every vertical at startup); the stale docstring
   sentence is gone; and a new **coverage tripwire test** asserts the CLI mapping's vertical set
@@ -322,21 +322,21 @@ never a CI gate. Every pass/fail read below is fixed here, before the run.
   fleet_maintenance` reaches "OK: scheduler …" startup output instead of raising
   `RegistryError` (the corrected failure mode above). Implementation detail (dict-in-`cli.py`
   vs a shared module) is the executor's call; the tripwire test is not.
-- [ ] **AC-5 Additivity:** the AT-2 hero suite and the PLAN-0089 calm-path suite
+- [x] **AC-5 Additivity:** the AT-2 hero suite and the PLAN-0089 calm-path suite
   (`tests/verticals/fleet_maintenance/`) green **unmodified**; the shipped pinned-hash /
   governance-pin suites green (expected by construction — the pin has no agent/schedule key,
   `governance_pin.py:58-120` — but guarded anyway; if any existing hash moves, STOP and
   surface, never re-pin silently); `git diff` over the change set touches **no** file of the
   five other verticals, no `services/engine/` file except `cli.py`, and no `services/api/`
   file except `routers/procedures.py`.
-- [ ] **AC-6 Local daemon smoke (evidence, not a gate; NOT host-state — Hard rule 4):** on the
+- [x] **AC-6 Local daemon smoke (evidence, not a gate; NOT host-state — Hard rule 4):** on the
   local demo stack (local uvicorn-seeded Postgres at host port 5442), run the scheduler daemon
   for `fleet_maintenance`, confirm the ScheduleState row registers, force a fire per the
   PLAN-0055 Step-8 donor mechanics (backdate the persisted next-fire state — **never** edit the
   L1 cron to force a smoke), and read the persisted run back from Postgres:
   `waiting_human` at `schedule_service`, service actor recorded, verdicts matching the offline
   run. No MS-S1, no Cray gate.
-- [ ] **AC-7 The measurement (IFF SD-2 = yes; struck with a note if no):** the run is executed
+- [x] **AC-7 The measurement (IFF SD-2 = yes; struck with a note if no):** the run is executed
   under MS-1…MS-6 *as pre-committed above* — clock per MS-3, rows per MS-4 — and the **MS-6
   caveat appears co-located with the number everywhere it is recorded** (closeout, STATUS, any
   pitch note). A protocol deviation is recorded as a deviation, never retro-fitted.
@@ -474,3 +474,72 @@ PR referencing PLAN-0090 (branch + PR, CLAUDE.md §7); after merge + Cray confir
 > never-edit-the-cron-to-force-a-smoke rule in AC-6 (live-test trigger-freshness discipline);
 > (6) the MS-1…MS-6 protocol pre-committed in-draft so an SD-2 "yes" activates it unchanged;
 > (7) `prose_lint.py` flagged for the census sweep.
+
+---
+
+## Closeout (2026-07-22, session 163 — COMPLETE at 7/7)
+
+Merged as **#856** (`db398bf` build → `a3ef955` merge). Every row below was read from **fresh
+on-disk artifacts at the merge commit**, not from the build session's memory. The merge commit's
+tree is **byte-identical** to the tested commit's — `git rev-parse a3ef955^{tree}` ==
+`git rev-parse db398bf^{tree}` == `d085400b9bc5a469a176df40e01806f121651ae6` — so the live AC-6
+evidence taken pre-merge *is* merge-commit evidence, proven rather than assumed.
+
+### Merge-commit gate, against the pass/fail read fixed BEFORE the run
+
+`pytest tests/` = **2994 passed / 7 skipped** (173.17s) · `mypy --strict services/` clean, **98
+files** · `ruff check` at CI scope **All checks passed** · `ruff format --check` 466 files
+formatted. Expected 2984 baseline + 10 new tests = 2994; hit exactly ⇒ **`confirmed — prior
+intact`**. (7 skips ⇒ the DB was connected — Hard rule 5's tell. A ~141-skip run would have
+meant the gate never touched Postgres.)
+
+### AC evidence
+
+| AC | Evidence |
+|---|---|
+| **AC-1** census 12 → 13 | Canonical catalog first (`procedure-archetypes.md` AT-3 row + §AT-3 instance entry), then the mirror pair, `_EXPECTED`, `assert total == 13`, and a **repo-wide sweep** — the only surviving `twelve` tokens are a historical clause ("the twelve prior"), `prose_lint.py`'s own regex, and `test_cli_e2e.py`'s `len(tools) == 12`, which counts **MCP tools generated from 6 object types**, not procedures. Gate green as above. |
+| **AC-2** spec loads | `tests/verticals/fleet_maintenance/test_scheduled_pm_calm_path.py` — 6 tests: descriptor values (L1/L2), both cross-refs resolve, the AT-3 absence properties asserted **against the manual path** rather than literals, and two negative controls (missing `schedule:` block; bogus IANA zone) that fail loudly. |
+| **AC-3** fired-run park **+ human resolution** | `tests/services/db/test_scheduled_fleet_calm_path.py` — 3 tests through the shipped resolver path: fires, parks `waiting_human` at `schedule_service`, verdicts `['breach','ok','ok']`, `actor_kind: "service"` on behalf of `req-mechanic-tom`; **a human `Person` then approves and the run resumes to COMPLETED**; and no advisory / `doa_tier_resolved` / `governed_kind` anywhere. _[See deviation D-2: the human-resolution half was written at closeout, after the clock stopped.]_ |
+| **AC-4** the generic CLI fix | `cli.py` now dispatches over a six-vertical map with lazy module resolution; the false docstring sentence is gone. `tests/services/engine/test_cli_registrars.py` pins the CLI set `==` `main.py:_PROCEDURE_EXECUTOR_REGISTRARS` and additionally asserts every target resolves (the lazy string form cannot fail at import). **Proven non-vacuous:** removing a vertical from the map turned it RED, then the file was restored from a `/tmp` backup **byte-identically** (`cmp -s` clean) — never `git checkout`. Live pass read: the daemon reached its tick loop, which is strictly past the `RegistryError` that used to abort startup. |
+| **AC-5** additivity | Diff budget held **exactly**: the only `services/engine/` file is `cli.py`, the only `services/api/` file is `routers/procedures.py`, and no file of the five other verticals is touched. Governance-pin suites green — expected by construction (`governance_pin.py` snapshots no agent / `service_principals` / `schedule` key), and no pinned hash moved. _[Deviation D-1: one census line in the PLAN-0089 suite had to move; every behavioural assertion there is byte-untouched.]_ |
+| **AC-6** local daemon smoke | Run `fleet_maintenance:scheduled_pm_service_round@2026-07-22T13:22:07.905503+00:00`, read back from Postgres (host port 5442) after the daemon was stopped: `read_odometer` complete → `judge_service_due` complete (`['breach','ok','ok']`) → `schedule_service` **`waiting_human`**; audit `run_started` with `actor_service_principal_id = svc-fleet-scheduler`, `actor_kind = "service"`, `on_behalf_of.owning_person_id = req-mechanic-tom`; `trigger_context` carrying `cron "0 6 * * *"` + `Asia/Bangkok`. **The daemon computed `next_fire` = 06:00 Asia/Bangkok from the cron unaided** and re-armed to the next slot after firing. The fire was forced by **backdating the persisted slot, never by editing the cron**. Local boot; no MS-S1; no Cray gate (Hard rule 4). |
+| **AC-7** the measurement | Executed under MS-1…MS-6 exactly as pre-committed **before** SD-2 was ratified. **16m13s hands-on, no interruptions** — YAML 2m19s · catalog+census 2m44s · CLI+tests 5m16s · gate 3m55s · smoke 1m59s. Artifact (gitignored): `docs/research/private/2026-07-22-fleet-scheduled-timing-log.md`. Both deviations are recorded there as deviations, not retro-fitted. |
+
+### The number, and the caveat that is part of it
+
+**16m13s hands-on** to put an existing governed calm path on a clock.
+
+> **MS-6 — binding, never quote the number without it.** A **LOWER BOUND** under maximally
+> favourable conditions: the same operator who built the manual path (PLAN-0089), deep
+> familiarity with the codebase, every piece of scheduler machinery already shipped (PLAN-0055),
+> a shipped donor instance to copy, and all design decisions pre-ratified (L1–L3, SD-1, SD-2).
+> It does **not** measure machinery construction, blind intake, or a fresh operator. **Never
+> present it summed with PLAN-0086's 27m39s or PLAN-0089's ~14 min** — three different claims
+> measured under three different conditions, companions rather than addends.
+
+Further understated by **deviation D-2**: part of AC-3 was written after the clock stopped and
+is not inside the figure.
+
+### Deviations (recorded, not absorbed)
+
+- **D-1 — AC-5's "green UNMODIFIED" could not hold literally.**
+  `test_pm_calm_path_does_not_disturb_the_at2_hero` pins the vertical's procedure-id set by
+  **set-equality**, so a third procedure turns it RED by construction. That is the guard working
+  as designed — its own docstring says *"so a regression is named, not inferred"* — and AC-5
+  exists to protect the **hero**, whose every behavioural assertion is byte-untouched. Only the
+  census line moved, with an inline note recording why.
+- **D-2 — part of AC-3 landed after the clock.** AC-3 requires that a human resolution completes
+  the run; the build proved the park but not the resume. The gap was caught at closeout and
+  closed then — outside MS-3's window by the clock's own pre-committed definition. Disclosed
+  because a number that silently excludes required work is worse than a slower honest one.
+
+### Deliberately left undone
+
+Everything in Out of Scope above stands. Worth restating: a first-class `Tire` object stays
+**parked on a data source**, not on effort; the **scaffolder-tool PLAN still does not exist** (a
+forward reference from PLAN-0086, not a filed artifact); and the `scheduler_wiring.py:128-130`
+multi-SP "schedule picks its actor" refinement keeps first-declared-SP semantics.
+
+One small pre-existing papercut surfaced and was **not** fixed here, being out of budget: a bare
+`ruff check .` on a dev box flags `.claude/benchmark-results/analyze_dump.py` (S108). That path
+is **untracked**, so CI never sees it — the CI-scope run is clean.

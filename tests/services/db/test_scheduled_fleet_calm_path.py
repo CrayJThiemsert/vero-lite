@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from datetime import UTC, datetime
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -26,8 +27,9 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 
 from services.db.audit_log import AuditLog
 from services.db.base import Base
-from services.engine.procedures.persistence import load_run, suspended_step_result
-from services.engine.procedures.runs import PipelineRunStatus
+from services.engine.procedures.action_step import resolve_gated_step
+from services.engine.procedures.persistence import load_run, resume_run, suspended_step_result
+from services.engine.procedures.runs import PipelineRun, PipelineRunStatus
 from services.engine.procedures.scheduler import FireResult, fire_due_schedules
 from services.engine.procedures.scheduler_wiring import (
     build_resolver,
@@ -35,7 +37,7 @@ from services.engine.procedures.scheduler_wiring import (
     sync_schedule_states,
 )
 from services.engine.procedures.schedules import ScheduleState
-from services.engine.procedures.spec import Trigger, load_procedures
+from services.engine.procedures.spec import Person, Trigger, load_procedures
 from services.engine.registry import registry
 from tests.db_support import create_test_engine
 
@@ -157,6 +159,64 @@ async def test_scheduled_fleet_calm_path_fires_and_parks_at_the_service_gate(
     assert tc["trigger"] == Trigger.SCHEDULE.value
     assert tc["cron"] == "0 6 * * *"
     assert tc["actor"] == _SP_ID
+
+
+async def test_a_human_resolution_completes_the_scheduled_run(
+    session: AsyncSession, fleet_registered: None
+) -> None:
+    """The other half of AC-3: the park is a pause, not a dead end.
+
+    A parked run that no human can finish would be a worse demo than no automation at all, so
+    the go/no-go is exercised end to end: an authored `Person` approves the proposals on the
+    gate and the run resumes to COMPLETED. AT-3 carries no SoD constraint, so any authored human
+    satisfies the gate — RF-1's requirement is that the resolver be a real `Person` object, which
+    is exactly what keeps the service actor out.
+    """
+    spec = load_procedures(_VERTICAL)
+    proc = next(p for p in spec.procedures if p.procedure_id == _PROC_ID)
+    agent = next(a for a in spec.agents if a.agent_id == proc.run_by)
+    resolve = build_resolver(spec, registry.get_procedure_executors(_VERTICAL))
+    state = await _sync_and_arm(session)
+
+    [outcome] = await fire_due_schedules(session, [state], now=NOW, resolve=resolve)
+    assert outcome.run_status == PipelineRunStatus.WAITING_HUMAN.value
+
+    approver: Person = next(p for p in spec.principals if "approver" in p.roles)
+
+    loaded = await load_run(session, outcome.run_id)
+    assert loaded is not None
+    suspended = suspended_step_result(loaded.step_results)
+    assert suspended is not None
+    assert suspended.step_id == _GATED_STEP
+    output_set: list[dict[str, Any]] = (suspended.artifact or {}).get("output_set", [])
+    decisions = {
+        p["action"]["id"]: "approve" for p in output_set if isinstance(p.get("action"), dict)
+    }
+    assert decisions, "the service gate produced no decidable proposals"
+
+    await resolve_gated_step(
+        session,
+        outcome.run_id,
+        _GATED_STEP,
+        decisions,
+        principal=approver,
+        procedure=proc,
+        principals=spec.principals,
+        principal_aliases=spec.principal_aliases,
+    )
+    result = await resume_run(
+        session,
+        proc,
+        agent,
+        registry.get_procedure_executors(_VERTICAL)(),
+        outcome.run_id,
+        vertical=_VERTICAL,
+        principal=approver,
+    )
+    assert result.run.status == PipelineRunStatus.COMPLETED.value
+
+    run = await session.get(PipelineRun, outcome.run_id)
+    assert run is not None and run.status == PipelineRunStatus.COMPLETED.value
 
 
 async def test_scheduled_fleet_run_carries_no_at2_apparatus(
