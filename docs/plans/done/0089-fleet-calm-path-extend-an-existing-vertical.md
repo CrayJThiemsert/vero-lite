@@ -1,7 +1,9 @@
 # PLAN-0089: Fleet PM Calm Path — the "Extend an Existing Vertical" Measurement
 
-**Status:** Draft — SD-1…SD-3 below are OPEN (Cray explicitly declined to pre-answer them,
-session 161); no implementation before Step-0 ratification.
+**Status:** **COMPLETE** — 6/6 ACs met, closed out + archived session 162 (2026-07-22).
+SD-1…SD-3 were all ratified by Cray (typed, AskUserQuestion, s161) and are recorded
+inline below. Built as PR #852 (merge commit `a8d679d`). See **Closeout** at the end.
+_(Never `Accepted`: that status G1-gates a PLAN's own closeout — the PLAN-0087 precedent.)_
 **Owner:** Claude Code (executes + commits per ADR-009 D2) + Cray (ratifies the SDs at Step 0;
 answers the pre-committed intake question(s) in-character as the simulated customer)
 **Created:** 2026-07-22 (session 161)
@@ -284,13 +286,13 @@ the AC-3 hero suite with the pre-decided drop-if-red fallback.
 All gates are offline (CLAUDE.md §8 — the offline oracle is the gate); AC-5 is live *evidence*,
 never a CI gate.
 
-- [ ] **AC-1 Offline gate + census (owns the census tripwire):** full suite green at execution
+- [x] **AC-1 Offline gate + census (owns the census tripwire):** full suite green at execution
   HEAD including the census updates — `_EXPECTED` fleet entry `"pm_service_round": "AT-3"`
   (`tests/api/test_procedures_endpoint.py:29-58`), `assert total == 11` → `12` (`:128`), and the
   `PROCEDURE_ARCHETYPES` mirror entry (`services/api/routers/procedures.py:38-60`) — plus
   `mypy --strict services/` and `ruff check` / `ruff format --check` at CI scope (the whole
   tree, not the changed subset).
-- [ ] **AC-2 Calm-path parked run (offline, owns the run-through tests):** an in-memory run of
+- [x] **AC-2 Calm-path parked run (offline, owns the run-through tests):** an in-memory run of
   `pm_service_round` completes `read_odometer → judge_service_due`, parks `waiting_human` at the
   gated `schedule_service` step with the breach set = exactly the due truck(s), and a human
   resolution completes the run. Donor patterns: `tests/api/test_calm_path_run_endpoint.py`,
@@ -298,24 +300,24 @@ never a CI gate.
   expected to carry **no advisory entry** (`doa_tier`-only —
   `services/engine/procedures/gate_advisory.py:108-138`); the test asserts park + resolution +
   breach-set and does not reference the advisory either way.
-- [ ] **AC-3 Additivity (owns the hero guard):** the AT-2 hero suite
+- [x] **AC-3 Additivity (owns the hero guard):** the AT-2 hero suite
   (`tests/verticals/fleet_maintenance/`) green **unmodified**; the shipped pinned-hash /
   governance-pin suites green (parked runs keep resuming — a new procedure and an
   ontology-property addition must not move any existing procedure's hash); `git diff` over the
   change set touches no file of the five other verticals and no engine file beyond the
   `PROCEDURE_ARCHETYPES` mirror line.
-- [ ] **AC-4 The measurement (binding — the PLAN-0086 AC-7 analogue):** the run is executed
+- [x] **AC-4 The measurement (binding — the PLAN-0086 AC-7 analogue):** the run is executed
   under M-1…M-6 *as pre-committed above* — clock boundaries per M-3, checkpoint rows per M-4
   with consistent arithmetic, intake logged per M-5 — and the **M-6 caveat appears co-located
   with the number everywhere it is recorded** (closeout, STATUS, any pitch note). A protocol
   deviation is recorded as a deviation, never retro-fitted into the protocol.
-- [ ] **AC-5 Live park (evidence, not a gate):** boot `OCT_VERTICAL=fleet_maintenance` on the
+- [x] **AC-5 Live park (evidence, not a gate):** boot `OCT_VERTICAL=fleet_maintenance` on the
   local demo stack (local uvicorn + local Docker Postgres — per PLAN-0086 Step 6 precedent
   `0086:482-487`: no MS-S1, no host-state change under §8's definition), fire
   `pm_service_round`, confirm the park by reading the persisted run. Pre-authorized by Cray at
   Step 0 so the clock never waits on a go; the clock stops at first pass (M-3). If the go is
   declined, AC-5 is dropped and M-3's fallback finish line applies.
-- [ ] **AC-6 Provenance (the PLAN-0086 AC-3 convention):** every newly-authored value
+- [x] **AC-6 Provenance (the PLAN-0086 AC-3 convention):** every newly-authored value
   (`next_service_due_km` values, handler prose, any third-truck fixture) traces to the dirtied
   narrative's PM/consumables thread or to a logged intake answer, or is marked `GUESS — รอแก้`
   in-file; the fleet README gains the calm-path section, and any newly-discovered
@@ -326,6 +328,13 @@ never a CI gate.
 
 - ❌ **The `PROCEDURE_ARCHETYPES` global re-keying fix** — the bare-`procedure_id` collision
   hazard is real but **filed separately**; this PLAN only picks a non-colliding name.
+  _[CLOSED at closeout: shipped as **PR #850** (`514dc1f`), which landed BEFORE this build. The
+  map is now `dict[tuple[str, str], str]` keyed on `(vertical, procedure_id)` with an
+  `archetype_for()` accessor and a set-equality tripwire. Consequence for this PLAN: the "Verified
+  ground" block above and its ⚠ KNOWN-EXPIRY note are **historical** — the map row landed as the
+  pair `("fleet_maintenance", "pm_service_round"): "AT-3"`, and #850's tripwire went RED mid-build
+  until the catalog entry existed, exactly as designed. The body is left as written; this note is
+  the forward correction.]_
 - ❌ **The scheduled variant** (SD-1(b), if the recommendation holds): schedule descriptor,
   `service_principals` block, `agent.service_principal_ids`, the `cli.py:120-131` branch, and
   the host-state daemon smoke — a named follow-on PLAN.
@@ -413,6 +422,76 @@ Cray confirmation, `git mv docs/plans/0089-*.md docs/plans/done/`.
    the companion figure to PLAN-0086's, honestly labelled.
 4. AC-6: every new value has a named source — the vertical's provenance discipline survives its
    first extension.
+
+---
+
+## Closeout (session 162, 2026-07-22 — COMPLETE, 6/6)
+
+Built as **PR #852** (`2904d77` build + `610061b` prose sync → merge `a8d679d`). ACs re-read
+against **fresh on-disk evidence at the merge commit**, not from the build session's memory.
+
+### The measured number
+
+**~14 minutes hands-on** (15:25:01 → 15:39:00), per-step rows in the gitignored
+`docs/research/private/2026-07-22-fleet-extension-timing-log.md`.
+
+> **M-6, binding — never quote the number without it.** This is the marginal cost of a governed
+> calm-path extension under **maximally favourable** conditions: the same operator that built the
+> vertical, on a codebase it knows deeply, hand-porting a shipped donor archetype into an engine
+> needing **zero** change, from a narrative already read in session 157. It is a **LOWER BOUND**
+> on extension by a fresh operator. It does NOT measure blind intake (that is PLAN-0086's number,
+> with its own caveat), novel-archetype authoring, generator-assisted extension (SD-2's rejected
+> arm), or scheduler onboarding (SD-1's rejected arm). **Never present it summed with PLAN-0086's
+> 27m39s as one workflow** — they are companions, not addends.
+
+The pitch pair, stated the only way it is honest: *"narrative → a new governed vertical: ~28 min;
+adding a routine governed path to that vertical: ~14 min."* Two numbers, two claims, never one.
+
+Finish-line comparability: AC-5 **did** land (below), so the finish line matches PLAN-0086's
+live-park boundary. An earlier draft of this closeout carried a shorter-finish-line caveat; it is
+**withdrawn**, not silently dropped.
+
+### AC evidence
+
+| AC | Evidence read at closeout |
+|---|---|
+| AC-1 | Full gate on merge commit `a8d679d`: **2978 passed / 8 skipped**, `mypy --strict services/` clean (98 files), `ruff check .` + `ruff format --check .` clean. Census: `PROCEDURE_ARCHETYPES` = **12 entries** on main; `_EXPECTED` carries `pm_service_round: "AT-3"`; `assert total == 12`. |
+| AC-2 | `tests/verticals/fleet_maintenance/test_pm_calm_path.py` (4 tests) green — end-to-end on the production factory, parking `WAITING_HUMAN` at `schedule_service`, verdicts `{truck-01: ok, truck-02: breach, truck-03: ok}`, rename MOVES `odometer_km`. |
+| AC-3 | **`git diff df1982a..a8d679d -- services/engine/` is EMPTY** — the zero-engine-diff claim proven, not asserted. Whole surface = 10 files / 409 insertions, all vertical + catalog + mirror + tests; the only `services/` file is the `procedures.py` mirror. Hero suite green **unmodified**; no pinned governance hash moved. |
+| AC-4 | Timing log exists with per-step rows, wall/hands-on split, and **two pre-clock deviations recorded rather than retro-fitted** (the #850 work; a duplicate-PLAN-0089 detour — session 162 drafted its own before discovering s161 had already filed and merged one, discarded unfiled). |
+| AC-5 | Live park achieved: `run-0c69e3054102`, read back from Postgres — `waiting_human` at `schedule_service`, verdicts matching the offline run, handler `schedule_pm_service`, trace kinds `['action_proposed']` only, **no** `advisory_recommendation`, **no** `doa_tier_resolved`, **no** `governed_kind`. The persisted record independently confirms the AT-3 absence properties. |
+| AC-6 | 10 `GUESS — รอแก้` markers in `synthetic.py`, 3 in the ontology. Interval = logged customer answer (M-5 Q1); every per-truck last-service odometer = GUESS. The per-tyre gap is **parked by name** in the README gaps register. |
+
+### What the build taught that the PLAN did not predict
+
+1. **The advisory is absent by CONSTRUCTION, not by never-raising.** The PLAN's own "Advisory
+   finding" said `GateAdvisoryBuilder` is `doa_tier`-only, which is true but understates it:
+   `GovernanceActionExecutor.execute` branches on `step.governance_content` and delegates straight
+   to the base executor when there is none (`services/engine/procedures/governance_step.py:183-191`);
+   the builder is invoked only inside `_doa_tier` (`:235-238`). The calm path never reaches the
+   advisory code path at all. Asserted in the AC-2 module, and confirmed live in AC-5.
+2. **AT-3's catalog entry was too narrow.** It read "read stock, judge against a reorder point" —
+   stock semantics baked into an archetype whose signature is actually *per-entity band + single
+   human gate*. This instance inverts the direction (odometer **above** a ceiling, not stock
+   **below** a floor), which forced the generalization to "read a measure, judge against a
+   per-entity threshold". The catalog was widened at Step 2, canonical-before-mirror.
+3. **Counted prose is wider than the two known spots.** A sweep found **five** stale hardcoded
+   counts, not the two tracked as follow-ups. The lesson is the sweep, not the count — landed as
+   `610061b`.
+
+### Deliberately left undone
+
+- **The scheduled variant** (SD-1(b)) — a named follow-on PLAN. Its verified extra cost is
+  recorded in SD-1 so that PLAN starts grounded: a `schedule:` descriptor, the missing
+  `service_principals:` block, `agent.service_principal_ids`, the `cli.py` branch, and a live
+  daemon smoke (host-state).
+- **A first-class `Tire` object** (SD-3(b)) — parked pending a design-partner per-tyre data
+  source. The customer's real pain is per-tyre; no shipped source can feed it, and inventing
+  per-tyre numbers would violate the provenance discipline. Recorded in the README gaps register,
+  which is why the procedure is named `pm_service_round` and never `tire_*`.
+- **The generator-assisted arm** (SD-2(b)) — belongs to the scaffolder-tool PLAN, which needs this
+  build as its in-tree manual reference for a generated-vs-hand-written diff.
+- **`scored_rule._KNOWN_CRITERIA`** — untouched; no extension pressure from this PLAN.
 
 ---
 
