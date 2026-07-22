@@ -662,3 +662,68 @@ exactly once, verified by exact list equality at split time, not by a byte-sum e
 > gate panel and confirmed by Cray. PLAN-0086 archives to `done/` in the
 > follow-on closeout PR. Commits: `a2ef45e` (#838) → `79358c6` (HEAD, #838
 > merge).
+
+---
+
+## Rotated this reconcile (session-163 second arc, 2026-07-22 — the PLAN-0090 pass)
+
+### Current-Focus block — Sessions 158 + 159 (PLAN-0087, the ADR-0031 D3 gate seam's criterion-vocabulary half, #840/#841) [rotated 2026-07-22, session-163 second-arc reconcile — 4-session CF window]
+
+Rotated because **R2 requires it**, not as a headroom judgement: with the Session-163 block added, the 4 most-recent sessions are 163 / 162 / 161 / 160, so this block fell outside the window.
+
+> **Sessions 158 + 159, 2026-07-21 (head_commit `79358c6` → `e55f2b8`) —
+> PLAN-0087 BUILT (#840) then CLOSED OUT + archived at 8/8 ACs (#841): the
+> ADR-0031 D3 gate seam's **criterion-vocabulary half** is SHIPPED —
+> `ComplianceCriterion` is RETIRED from engine code and a vertical now
+> **declares** its own `rule_gate` vocabulary, so a new AT-2 vertical ships its
+> gate with ZERO engine diff.**
+> **(what shipped — s158, #840.)** `VerticalProcedures.compliance_criteria:
+> list[CriterionId]` (`spec.py`) — pattern-constrained by the `CriterionId`
+> type and membership-validated at load by `_validate_compliance_criteria`;
+> only the four `rule_gate` verticals were migrated (`energy` + `aquaculture`
+> YAMLs are absent from the diff entirely).
+> **(the claim is PROVEN, not asserted.)** AC-1's proof pair: a fixture
+> criterion `zzz_fixture_only_sourcing_check` that exists NOWHERE under
+> `services/` loads through the real `load_procedures_file` and gates through
+> the real `evaluate_compliance`, while its undeclared twin is REFUSED at load;
+> a repo-grep static guard keeps the id confined to that one test module.
+> **Behaviour-preserving:** no pinned governance hash moved — the declaration
+> block sits outside the pin surface (the `principals` precedent).
+> **(the scope split — Cray-ratified SD-1 = (a), typed.)** This discharges the
+> criterion-vocabulary half of **PLAN-0076 Step T1 (F-FACTORY)** only; the
+> procedure-aware `ExecutorFactory` half stays OPEN and still owned by
+> PLAN-0076, so **PLAN-0076 does NOT archive** and its AC-6 presence guard
+> stays ARMED — **no guard re-homing occurred, deliberately**. ADR-0031 D3
+> row 3 was updated on landing per D4.4 — exactly one table row, which was
+> AC-7's whole obligation.
+> **(the closeout — s159, #841.)** `git mv docs/plans/0087-*.md
+> docs/plans/done/`, Status `Draft` → **COMPLETE** (never flipped to
+> `Accepted` — an `Accepted`-status PLAN is G1-gated for its own closeout), all
+> 8 ACs ticked, plus a new **Closeout** section recording (a) the evidence read
+> at closeout time and (b) what was deliberately left undone. Every AC was
+> re-read against **fresh on-disk evidence** rather than carried over from the
+> build session's notes — CLAUDE.md §6 ("Verification is hygiene, not a
+> verdict") double-gates `confirmed — prior intact` on the pre-committed
+> pass/fail read AND a fresh artifact.
+> **(deliberately NOT done, and recorded as such in the PLAN.)** PLAN-0076 is
+> **NOT** archived (T1's factory half open; §B item 1 — F-PIN's new-run
+> re-routing threat — open by construction), so its guard stays armed.
+> `scored_rule._KNOWN_CRITERIA` was NOT opened: zero extension pressure to
+> date, and its shape is `derive`-grammar-like, not vocabulary-like. The stale
+> `N=2`/`N=3` doc drift in ADR-0025 D7 + ADR-0032 was NOT folded in — s157
+> expected it to ride along with PLAN-0087's G1-gated edits, but AC-7 obligated
+> that one ADR-0031 row and nothing more; it now needs its own small
+> `plan-drafter` dispatch.
+> **Verification:** the suite walked **2943/7 → 2951/7 → 2954/7** across the
+> build and re-ran GREEN on the merge commit `c6eec65`. Gate re-run at closeout
+> on `main = c6eec65`: full suite **2954 passed / 7 skipped** (169.91s) and
+> `mypy --strict services/` clean (98 source files) — **matching the build
+> session exactly**; the four doc-reading guard tests re-ran green after the
+> `git mv` (84 passed). Deterministic-offline: **MS-S1 idle/COLD, zero calls in
+> both sessions**, no host-state change, no demo/dev server started; dev
+> Postgres `vero-postgres` UP (localhost:5442 — evidenced by only 7 skips).
+> `main` protected; **#841 is the only open PR**; loop-dispatcher DISABLED;
+> working tree clean but for the 2 KEEP untracked paths
+> (`.claude/benchmark-results/`, `.claude/launch.json`). Commits: `d9a0ad1` →
+> `16c3622` → `bdd07ed` → `4f9cb7a` → `c6eec65` (HEAD of `main`, #840 merge) →
+> `e55f2b8` (#841 closeout, head_commit of record).
