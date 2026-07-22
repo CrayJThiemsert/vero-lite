@@ -330,7 +330,7 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   multi-narrative / multi-procedure batch mode (mirrors ADR-0024 OQ-6:
   one-vertical-per-run).
 
-## Surfaced decisions (SD-1…SD-4 — Cray ratifies at Step 0; recommendations are contingent, not chosen)
+## Surfaced decisions (SD-1…SD-4 — **RATIFIED by Cray 2026-07-22, session 165, typed AskUserQuestion — all four as-recommended**)
 
 ### SD-1 — Does the narrative→ontology-YAML stage need its own ADR?
 
@@ -356,6 +356,14 @@ human confirm, STOP — that is a new authoring invariant and gets its own ADR b
 the stage ships. What makes this Cray's call: it sets where the governance-artifact
 boundary sits for all future authoring surfaces, not just this one.
 
+**RATIFIED: (c) — PLAN-level design decision, no ADR, with the promotion tripwire
+above armed.** (Cray, 2026-07-22, session 165, typed AskUserQuestion.) Consequence
+for the critical path: **Step 2 does not wait for an ADR** — Steps 1–7 are
+executable end to end once Step 0 lands. The tripwire is binding on the build: if
+the ontology stage is found to need LLM-emitted *structure* beyond the fixed
+6-object / 7-link_type grammar, or any unratified vocabulary landing without a
+human confirm, the build STOPS and this ruling is re-opened as (a).
+
 ### SD-2 — v1 breadth: which of the three worked shapes?
 
 **Question:** create-a-vertical (PLAN-0086) vs add-a-calm-path (PLAN-0089) vs
@@ -372,6 +380,10 @@ Alternatives: all-three (rejected: triples surface on the thinnest evidence);
 create+scheduled (rejected: the scheduled seam's hard part — `Schedule`
 governance pins — was measured but never ledgered). What makes this Cray's call:
 it is a bet on where the next pilot conversation actually lands.
+
+**RATIFIED: create only.** (Cray, 2026-07-22, session 165, typed AskUserQuestion.)
+The calm-path (PLAN-0089) and scheduled (PLAN-0090) shapes stay Out of Scope for
+v1; adding either requires a fresh seam spec first, not just effort.
 
 ### SD-3 — The intake form's shape and re-ask discipline
 
@@ -407,6 +419,13 @@ in the manual run — is exactly the part that must be deterministic). What make
 this Cray's call: the intake form *is* the customer-facing motion; its feel in a
 real conversation is founder judgment, not derivable from four data points.
 
+**RATIFIED: the typed required-slot checklist operated as an interview loop**, with
+the three slot classes and the sub-slot re-ask discipline exactly as specified
+above. (Cray, 2026-07-22, session 165, typed AskUserQuestion.) This ruling *is*
+Step 1's design: the checklist and gap detection are deterministic, the LLM's
+intake role is bounded to narrative pre-fill *proposals*, and one number is never
+accepted as a full answer.
+
 ### SD-4 — Counted prose
 
 **Question:** three comments along the tool's write path carry hard-coded counts;
@@ -424,13 +443,36 @@ lowest value. What makes this Cray's call: it is a repo-wide authoring conventio
 (the same class as the Tier-0 "N=1-comment drift" lesson), not a local
 implementation choice.
 
+**RATIFIED: stop writing counts into comments; a load-bearing count must be an
+executable assertion.** (Cray, 2026-07-22, session 165, typed AskUserQuestion.) The
+scope discipline above holds — this PLAN converts or removes only the three counts
+in files the wire-writer touches, plus the `main.py` docstring count (row 7). No
+repo-wide sweep.
+
 ## Steps
 
-### Step 0 — Cray adjudicates SD-1…SD-4
+### Step 0 — Cray adjudicates SD-1…SD-4 — ✅ **DONE (2026-07-22, session 165)**
 
 Record the four rulings in this PLAN (edit under its Draft status). No build
 before Step 0 lands; SD-1's ruling gates whether Step 2 needs an ADR first
 (CLAUDE.md §8: ADR merged before related implementation).
+
+**Outcome — all four ratified as-recommended** (Cray, typed AskUserQuestion):
+**SD-1 = (c)** PLAN-level, no ADR, promotion tripwire armed · **SD-2 = create
+only** · **SD-3 = typed required-slot checklist as an interview loop** ·
+**SD-4 = stop counted prose; load-bearing counts become executable assertions.**
+Each ruling is recorded inline at its own SD above. **Consequence: no ADR blocks
+this PLAN — Steps 1–7 are executable end to end, deterministic-offline.**
+
+**Sequencing correction found while grounding Step 0** (Explore fan-out against
+code, session 165 — *not* a drafter error; it is an emergent ordering constraint
+the printed Step order hides): **Step 1 has a forward dependency on Step 4.**
+Step 1's checklist is derived from "(AT-2 obligations × ontology judgment slots ×
+fixture value slots)", but no AT-2 `ArchetypeTemplate` exists yet — `REGISTRY` at
+`archetypes/template.py:254` is `(AT1, AT1B, AT3)` — and the first one is authored
+in Step 4. So Step 4's template shape must be **designed first or co-designed with
+Step 1**, not deferred to its printed position. Execution order is therefore
+**4-shape → 1 → 2 → 3 → 4-emit → 5 → 6 → 7**, not the literal 1→7.
 
 ### Step 1 — Intake engine (`services/engine/scaffolder/intake.py`)
 
@@ -445,8 +487,9 @@ record (AC-7). Oracle: AC-1, AC-2.
 
 Skeleton from the 6-object grammar + 7 link_types; the three judgment slots +
 mined enums filled only from confirmed intake; then invoke `vero-lite validate` +
-`generate` into the scratch tree and require EXIT 0. (If SD-1 = (a)/(b), this step
-waits for that ADR.) Oracle: AC-3.
+`generate` into the scratch tree and require EXIT 0. (~~If SD-1 = (a)/(b), this step
+waits for that ADR.~~ — **resolved: SD-1 = (c), no ADR; this step does not wait.**)
+Oracle: AC-3.
 
 ### Step 3 — Package emitter
 
