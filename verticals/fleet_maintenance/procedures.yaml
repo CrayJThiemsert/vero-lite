@@ -40,6 +40,13 @@ agents:
     # ceiling = gated: the only actions here are the gated approve (doa_tier) + the gated fulfill
     # write (human go/no-go). No auto action, so the ceiling never needs to reach `auto`.
     autonomy_ceiling: gated
+    # PLAN-0090 (ADR-0028 SP-4): the service actor a SCHEDULE-triggered run acts AS. The 06:00
+    # `scheduled_pm_service_round` has no human requester — it fires as this declared service
+    # principal (run_started audit -> actor_kind:"service") and then PARKS at the human gate.
+    # RF-3 keeps the approver seam typed `Person`, so a service actor can never resolve its own
+    # go/no-go by construction. Cross-ref validated against the service_principals block below
+    # (spec.py _cross_refs).
+    service_principal_ids: [svc-fleet-scheduler]
     allowed:
       step_kinds: [query, evaluate, action, transform]
       # `escalate` for the gated doa_tier routing; `approve_repair_spend` for the gated terminal
@@ -73,6 +80,16 @@ principals:
   - person_id: appr-owner
     name: "เฮีย — เจ้าของกิจการ"
     roles: [approver, "เจ้าของกิจการ", "ผจก.เดินรถ", "ช่างใหญ่"]
+
+# Service principals — the NON-human actors a `schedule`-triggered run acts as (ADR-0028 SP-4;
+# PLAN-0090). A DISTINCT type from `principals`, with NO `roles`: a service principal FIRES a run
+# but can NEVER approve a gate. The 06:00 `scheduled_pm_service_round` runs as
+# `svc-fleet-scheduler`; its `schedule_service` step still parks for a human, exactly as the
+# manual path does. Cross-ref: each id here must back an `Agent.service_principal_ids` reference
+# (spec.py _cross_refs).
+service_principals:
+  - service_principal_id: svc-fleet-scheduler
+    name: "Fleet PM Scheduler (บอทรอบตรวจระยะอัตโนมัติ — ตัว trigger รอบเช้า 06:00)"
 
 # PLAN-0087: this vertical's DECLARED rule_gate criterion vocabulary — the closed set that
 # used to live in engine code as `ComplianceCriterion`'s fleet_maintenance block. Repair-spend
@@ -317,8 +334,108 @@ procedures:
       routine, single-tier, no DOA ladder, no separation of duties, no emergency waiver — on one
       shared governed procedure engine. The LLM drafts nothing here and decides nothing.
     run_by: fleet_maintenance_agent
-    trigger: manual                 # PLAN-0089 SD-1 (Cray-ratified): manual. The nightly odometer
-                                    # sweep is a named follow-on PLAN, not a deletion.
+    trigger: manual                 # PLAN-0089 SD-1 (Cray-ratified): manual. The follow-on
+                                    # PLAN landed as PLAN-0090 — `scheduled_pm_service_round`
+                                    # below, the SAME spine on a 06:00 daily clock. This manual
+                                    # path is NOT deleted: a distinct procedure_id keeps both
+                                    # runnable (a trigger flip would have broken manual runs).
+    steps:
+      - step_id: read_odometer
+        name: Read each truck's odometer
+        description: Every Truck with its latest odometer reading and its own next-service-due point.
+        kind: query
+        input:                          # the declared single-read (PLAN-0048 shape, PLAN-0064 router)
+          reads: [Truck]
+          # Rename-project odometer_km -> measured_value so the shipped EvaluateStepExecutor reads
+          # the numeric band field (the PLAN-0065 SD-2 pattern). Select/rename ONLY: no arithmetic,
+          # no join, no LLM. next_service_due_km and every other Truck field are KEPT; odometer_km
+          # is MOVED. That no-arithmetic property is exactly why next_service_due_km must be stored
+          # ABSOLUTE rather than as an interval — there is nowhere to compute last_service + 100000.
+          project:
+            fields:
+              odometer_km: measured_value
+        facet:
+          decision_condition: { gate_kind: none }
+          llm_assist: null
+          input: "declared read: Truck -> measured_value (renamed from odometer_km), next_service_due_km per truck"
+          output: "one odometer reading per truck (each carrying its own next_service_due_km)"
+      - step_id: judge_service_due
+        name: Judge the odometer vs the truck's own service-due point
+        description: >-
+          Tag each truck's verdict vs ITS OWN next_service_due_km — breach (odometer at/above the
+          due point, so the truck is due for its interval service) vs ok. Per-truck banding via
+          threshold_field (ADR-016 TF-1), deterministic, no LLM.
+        kind: evaluate
+        threshold_field: next_service_due_km   # each truck bands vs its OWN due point
+        direction: above                       # the odometer breaches OVER the due point
+        facet:
+          # in_file_band POINTS AT the typed threshold_field/direction above — no re-store (D2-A3).
+          decision_condition: { gate_kind: in_file_band, band_source: in_file }
+          llm_assist: null
+          input: "read_odometer set (each row carries its truck's next_service_due_km)"
+          output: "per-truck verdict {breach=odometer at/above its own due point, ok}"
+          governance: "verdict = pure function of the odometer + the authored per-entity (in_file) band"
+      - step_id: schedule_service
+        name: Book the due trucks in for interval service
+        description: >-
+          Propose a routine service booking per due truck; a single human go/no-go approves it
+          (the routine, single-tier calm-path — no emergency waiver, no escalated DOA, no SoD).
+          action_type schedule_pm_service (a no-op receipt stub until the design partner's garage
+          integration lands).
+        kind: action
+        autonomy: gated
+        handler: schedule_pm_service
+        input:
+          from: judge_service_due
+          where:
+            verdict: breach
+        facet:
+          decision_condition:
+            gate_kind: none
+            note: "routine interval service booking — no authority tier, no gate content"
+          llm_assist: null
+          input: "judge_service_due (the due subset)"
+          output: "the service booking"
+          governance: "single-tier human approval (the calm contrast to the hero DOA ladder); a HUMAN books the service"
+    terminal: schedule_service
+    # NO separation_of_duties by design: AT-3 has no DOA tier, so ADR-0025 D5's SoD requirement
+    # does not attach. The hero above carries it; this deliberately does not.
+
+  # PLAN-0090: the SCHEDULED variant of `pm_service_round` — the same AT-3 calm path, on a clock.
+  #
+  # A DISTINCT procedure_id, NOT a trigger flip (the donor's reasoning, procurement's
+  # `scheduled_low_stock_reorder_round`): `trigger` is a single enum and a schedule descriptor is
+  # present IFF trigger == schedule, so flipping the manual one would break its manual runs; and
+  # SD-P3 skip-if-in-flight keys on procedure_id.
+  #
+  # The steps below are the SAME three-step spine as the manual path, reused verbatim. That is
+  # the point of this procedure: the ONLY difference between the two is HOW a run starts. Cadence
+  # is a trigger property, never a governance one — same agent, same ceiling, same single human
+  # gate, same absence of doa_tier / SoD / criteria.
+  scheduled_pm_service_round:
+    title: PM Service Due Round (scheduled)
+    goal: >-
+      The routine maintenance calm-path on a daily clock: automatically read each truck's odometer
+      on behalf of the head mechanic, judge it against THAT truck's own next-service-due point,
+      and propose the service booking for the due set — then PARK for a single human go/no-go.
+      The automated run proposes; a human approves. No truck is ever booked in without a person
+      saying yes — the clock only decides WHEN to look, never WHAT to do.
+    run_by: fleet_maintenance_agent
+    trigger: schedule
+    schedule:
+      cron: "0 6 * * *"              # L1 (Cray-ratified, typed, s163): 06:00 daily, before the day
+                                     # shift rolls out. The odometer moves every day a truck runs,
+                                     # so a daily sweep matches the signal — and a clock is the
+                                     # cadence contrast to the event-fired hero.
+      timezone: Asia/Bangkok         # SD-P1: per-schedule IANA tz, validated vs zoneinfo at load
+      owning_person_id: req-mechanic-tom   # L2 (Cray-ratified, typed, s163), via PLAN-0065 SD-5(b):
+                                           # NOT REQUIRED here — this AT-3 path has no doa_tier and
+                                           # no separation_of_duties, so a headless run fails
+                                           # nothing closed and the gate authenticates its own human
+                                           # resolver (RF-1). Carried for accountability parity: the
+                                           # audit record names the human behind an unattended
+                                           # sweep. It is NOT an SoD requester; no SoD role
+                                           # consumes it.
     steps:
       - step_id: read_odometer
         name: Read each truck's odometer
