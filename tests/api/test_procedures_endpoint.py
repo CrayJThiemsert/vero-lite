@@ -2,11 +2,16 @@
 
 The offline test is the GATE (CLAUDE.md §8): ``GET /procedures`` returns every
 discovered vertical's procedures, each round-trips ``load_procedures``, and the
-catalog archetype label is attached for all shipped procedures across the five
+catalog archetype label is attached for all shipped procedures across the six
 procedure-bearing verticals (fact-pack #1: procurement ships five; supply_chain
 ships two; energy / aquaculture one each; building_materials ships one — the
-PLAN-0081 governed-credit hero). No LLM, no DB, no mutation. A live preview is
+PLAN-0081 governed-credit hero; fleet_maintenance ships one — the PLAN-0086
+governed-repair hero). No LLM, no DB, no mutation. A live preview is
 *evidence* (Step 5), not the gate.
+
+The archetype label is looked up on the ``(vertical, procedure_id)`` PAIR, never
+the bare id — a bare id is unique only within a vertical. See
+``test_same_procedure_id_in_two_verticals_keeps_its_own_archetype``.
 """
 
 from __future__ import annotations
@@ -17,8 +22,9 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from services.api.main import app
+from services.api.routers import procedures as procedures_router
 from services.engine.discovery import discover_and_register
-from services.engine.procedures.spec import load_procedures, procedures_path
+from services.engine.procedures.spec import VerticalProcedures, load_procedures, procedures_path
 from services.engine.registry import registry
 
 # The eleven shipped procedures, vertical → {procedure_id: archetype} (fact-pack
@@ -26,6 +32,11 @@ from services.engine.registry import registry
 # two manual + the PLAN-0055 Step 8 schedule-triggered AT-2 variant + the
 # PLAN-0056 Step 8 event-triggered AT-2 variant + the PLAN-0065 Step 4
 # schedule-triggered AT-3 calm-path variant.
+#
+# Vertical-keyed, and now load-bearing twice: the per-procedure archetype assertion
+# below AND the `(vertical, procedure_id)` set-equality pin on PROCEDURE_ARCHETYPES
+# (`test_archetype_map_is_keyed_by_vertical_procedure_pair`). A bare `procedure_id`
+# is NOT a unique key across verticals — see that test's docstring.
 _EXPECTED: dict[str, dict[str, str]] = {
     "energy": {"substation_health_sweep": "AT-1"},
     "supply_chain": {
@@ -233,6 +244,97 @@ async def test_procedures_typed_authoritative_band_passes_through(
     assert energy_judge["direction"] == "above"
     energy_dc = energy_judge["facet"]["decision_condition"]
     assert energy_dc["gate_kind"] == "in_file_band"
+
+
+async def test_archetype_map_is_keyed_by_vertical_procedure_pair() -> None:
+    """The catalog mirror is keyed on ``(vertical, procedure_id)`` — a set-equality
+    tripwire against BOTH the shipped specs and this module's ``_EXPECTED`` pin.
+
+    A bare-``procedure_id`` key is unrepresentable here by construction: the assertion
+    compares against pairs, so a map that drops the vertical fails outright. The set
+    equality (not a subset check) is the anti-rot half — a procedure that ships without
+    a catalog entry, and a map entry naming a vertical/procedure that no longer ships,
+    both go RED instead of silently rendering ``uncatalogued`` in the console.
+    """
+    discover_and_register()
+    shipped = {
+        (vertical, proc.procedure_id)
+        for vertical in registry.verticals()
+        if procedures_path(vertical).exists()
+        for proc in load_procedures(vertical).procedures
+    }
+    assert set(procedures_router.PROCEDURE_ARCHETYPES) == shipped
+    assert procedures_router.PROCEDURE_ARCHETYPES == {
+        (vertical, pid): archetype
+        for vertical, procs in _EXPECTED.items()
+        for pid, archetype in procs.items()
+    }
+
+
+async def test_same_procedure_id_in_two_verticals_keeps_its_own_archetype(
+    all_verticals_client: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two verticals shipping the SAME bare ``procedure_id`` each get their OWN archetype.
+
+    Regression guard for a latent cross-vertical collision. ``procedure_id`` is unique
+    only WITHIN a vertical (``services/engine/procedures/schedules.py:31-33``, whose
+    ``ScheduleState`` already encodes the pair as its ``UniqueConstraint``), but the
+    archetype mirror used to be a ``dict[str, str]`` keyed on the bare id, GLOBALLY across
+    verticals. Two verticals naming a procedure identically — e.g. both shipping a calm
+    path called ``low_stock_reorder_round`` — would silently collide: one vertical's label
+    served for the other's procedure, no error, no 500, just a wrong badge in the console.
+
+    Built end-to-end through the real ``list_procedures`` handler (not just the lookup
+    helper) on a synthetic two-vertical registry whose specs deliberately COLLIDE on
+    ``_SHARED_ID`` while carrying different archetypes. Under bare-id keying the map
+    cannot even express both entries, so this goes RED.
+    """
+    shared_id = "colliding_round"
+    donor = load_procedures("procurement")
+    proc = next(p for p in donor.procedures if p.procedure_id == "low_stock_reorder_round")
+    # model_copy, not re-validation: we are re-labelling an ALREADY-VALID procedure, and
+    # the spec's cross-ref validators are not what is under test here.
+    collided = proc.model_copy(update={"procedure_id": shared_id})
+    specs: dict[str, VerticalProcedures] = {
+        "v_alpha": donor.model_copy(update={"vertical": "v_alpha", "procedures": [collided]}),
+        "v_beta": donor.model_copy(update={"vertical": "v_beta", "procedures": [collided]}),
+    }
+
+    monkeypatch.setattr(registry, "verticals", lambda: sorted(specs))
+    monkeypatch.setattr(procedures_router, "load_procedures", lambda v: specs[v])
+    # every synthetic vertical is spec-BEARING, so none is skipped at the existence check
+    monkeypatch.setattr(procedures_router, "procedures_path", lambda v: procedures_path("energy"))
+    monkeypatch.setattr(
+        procedures_router,
+        "PROCEDURE_ARCHETYPES",
+        {("v_alpha", shared_id): "AT-3", ("v_beta", shared_id): "AT-1"},
+    )
+
+    payload = (await all_verticals_client.get("/procedures")).json()
+    rendered = {
+        (ventry["vertical"], proc["procedure_id"]): proc["archetype"]
+        for ventry in payload["verticals"]
+        for proc in ventry["procedures"]
+    }
+    assert rendered == {("v_alpha", shared_id): "AT-3", ("v_beta", shared_id): "AT-1"}
+
+
+def test_archetype_for_is_vertical_scoped() -> None:
+    """The lookup helper never answers from the bare id alone.
+
+    The same ``procedure_id`` under a DIFFERENT vertical is a miss (``uncatalogued``),
+    not a silent hit on some other vertical's label — the unit-level statement of the
+    end-to-end guard above.
+    """
+    assert procedures_router.archetype_for("procurement", "low_stock_reorder_round") == "AT-3"
+    assert procedures_router.archetype_for("energy", "substation_health_sweep") == "AT-1"
+    # a real procedure_id, asked for under a vertical that does not ship it
+    assert (
+        procedures_router.archetype_for("energy", "low_stock_reorder_round")
+        == procedures_router._UNCATALOGUED
+    )
+    assert procedures_router.archetype_for("procurement", "no_such_procedure") == "uncatalogued"
 
 
 async def test_procedures_advertised_in_openapi(all_verticals_client: AsyncClient) -> None:
