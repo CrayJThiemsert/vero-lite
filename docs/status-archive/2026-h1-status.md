@@ -886,3 +886,53 @@ Each was trimmed only after its tracked home was verified on disk (the R2 carve-
 > rows (~1,200-1,600 chars each against the ~600 target), both R4-gated on
 > appending the full originals to the archive first. Per the STATUS.md Rotation
 > Policy (R1/R2/R4)._
+
+<!-- rotated 2026-07-22, session-164 reconcile -->
+
+> _Rotation note (session-163 reconcile, 2026-07-22, `docs(status):`): added
+> the **Session 162** CF block (the four-PR arc — #850 the
+> `PROCEDURE_ARCHETYPES` re-key and #851 PLAN-0089 filed, both merged during
+> s161 and recorded LATE; #852 the AT-3 calm path BUILT; #853 the closeout,
+> merged at the s163 open) and rotated **NO CF block**: Current Focus now holds
+> **4 blocks covering sessions 162 / 161 / 160 / 159** (s158+159 share one
+> block) — exactly the 4-most-recent-sessions window and well under the 8-block
+> cap, so R2 requires no CF rotation this pass. Recent Decisions gained ONE row
+> (the s162 PLAN-0089 arc, written as a ≤600-char pointer from birth) and
+> rotated its ONE OLDEST — the **s151** PLAN-0081 governed-credit-HERO row
+> (#814) — to the rotation base `docs/status-archive/2026-h1-status.md`. The
+> rotation-note trail was carrying **three** (s161 + s160 + s159); this pass
+> rotates **two out** (the s159 and s160 notes, to the same base) and adds one,
+> so 3 − 2 + 1 = **2**, restoring the file's own habit (the runbook sets no
+> note-count rule). One Active TODO was **RETIRED as discharged, not trimmed**:
+> the "AT-2 stale `N=2` / `N=3` signature counts — doc drift across three
+> artifacts" item is **FALSE as of session 160** — all three named artifacts
+> were verified correct on disk (`services/engine/procedures/spec.py` states
+> **N=4**, its surviving N=2/N=3 tokens being correctly-framed historical
+> narrative of the firing arc; `docs/adr/0025-at2-managerial-layer.md` carries a
+> dated 2026-07-22 **outcome amendment**, its "N ≥ 2" decision text deliberately
+> PRESERVED rather than drift; `docs/adr/0032-*.md` is re-grounded to N=4) —
+> discharged by **#845 / #846 (s160)**. Its full original text was emitted
+> verbatim to the caller for the archive (R4).
+> **PASS 2, same session and same PR — the R2 pointer-rule TRIM.** The 9 older
+> Recent-Decisions rows (the s162 row was written to the rule at birth) and the
+> 6 over-length Active TODOs were compressed to ≤ ~600-char pointers. **Counts
+> are UNCHANGED — RD stays 10 rows, Active TODOs stay 13 items:** this is
+> compression, not deletion, and every pre-trim original was appended to
+> `docs/status-archive/2026-h1-status.md` BEFORE the trim landed (R4). Each item
+> was trimmed **only after its tracked home was verified on disk** (PLAN-0087 +
+> PLAN-0076 §A, PLAN-0076, PLAN-0062/0077/0078, the
+> `tests/services/db/test_load_run_ordering_guard.py` module docstring,
+> PLAN-0063 + the `services/api/routers/audit.py` SD-4 docstring, and the
+> PLAN-0035 §SD-3 post-archival amendment). The ~600 budget is measured on the
+> **Decision cell**, never the Reference column — R2's own wording ("full detail
+> lives in the referenced ADR/PLAN/PR, which every row already links") makes the
+> link the thing the rule preserves, so it cannot be what the budget consumes.
+> **One carve-out HIT, retained verbatim at full length:** the s156
+> model-economy ratification lives only in a private Tier-0 auto-memory, so it is
+> not a duplicate and stays at full length until rehomed. **STATUS across both
+> passes: 59,697 B → 61,616 B (reconcile) → 53,758 B (trim)** — caller-measured,
+> not estimated — against the 64 KB R1 ceiling. Still above the 48 KB soft
+> target, which the next reconcile inherits as its standing lever. Per the
+> STATUS.md Rotation Policy (R1/R2/R4)._
+
+| 2026-07-20 | **s153-155 — #822 `docs(runbook)` staged the config-pin fail-closed refusal as a deliberate demo beat (run-oct-demo.md §3c, Beat 06); s154 ZERO commits (Cerebras-KB strategy read: artifact-KB = D3 Shape-2, pilot-gated; reframe = "governed retrieval over the decision record"); #823 `fix(ui)` REMOVED the operator confidence badge from BOTH cards, executing the ratified s74 trust shape.** Trace/fault-mode/DAG confidence KEPT by design; 4 claim-vs-code corrections recorded. Full narrative: the Sessions 153+154+155 CF block, rotated to `docs/status-archive/2026-h1-current-focus.md` | `4edfa3f` (HEAD, #823 merge) / `ffb251b` + `f09cc99` (badge removal) / `d8057fb` (#822 merge) / `b45f5c4` (#821 merge) / `docs/runbooks/run-oct-demo.md` §3c + `services/api/static/assets/view-anomaly.js` + `view-story.js` |

@@ -727,3 +727,109 @@ Rotated because **R2 requires it**, not as a headroom judgement: with the Sessio
 > (`.claude/benchmark-results/`, `.claude/launch.json`). Commits: `d9a0ad1` →
 > `16c3622` → `bdd07ed` → `4f9cb7a` → `c6eec65` (HEAD of `main`, #840 merge) →
 > `e55f2b8` (#841 closeout, head_commit of record).
+
+<!-- rotated 2026-07-22, session-164 reconcile -->
+
+> **Session 160, 2026-07-22 (head_commit `e55f2b8` → `0c9cdeb`) — a four-PR
+> hook-hardening + doc-truth session: the Stop-hook classifier gained a
+> **contentless-reason FLOOR** (#844) complementing the s159
+> Cray-reserved-step rule (#843), the stale **AT-2 `N=4`** count was corrected
+> everywhere it had drifted and the real `step_id` invariant pinned by a new
+> guard (#845), and two Accepted-ADR bodies were corrected by `plan-drafter`
+> (#846).**
+> **(#843, `c8f7184` → merge `0090161`, `fix(hooks)` — recorded LATE.)** This
+> landed in session 159, but the s159 reconcile never mentioned it (it was
+> written before the PR existed; the s159 handoff flags the omission
+> explicitly). The Stop-hook classifier prompt now treats **a step reserved for
+> Cray as a natural stop, never a PROCEED next action**, pinned by a contract
+> test proven non-vacuous by strip → RED → restore.
+> **(#844, `532d3e4` → merge `c42abe4`, `fix(hooks)` — the CONTENTLESS-REASON
+> FLOOR.)** The hook passes the classifier's `proceed` reason back to the agent
+> **verbatim as its continuation instruction**, and the prompt requires that
+> reason to NAME the next action — nothing enforced it. Session 160 observed the
+> reason `"Continue to the next work step"` on a turn whose only real next step
+> was Cray's decision among unratified candidates. **This is the COMPLEMENTARY
+> shape to #843, not a regression of it:** #843 forbids *naming* a
+> Cray-reserved step; a contentless reason names nothing, so #843's rule has
+> nothing to bite on, and its contract test is four substring assertions on the
+> prompt (behaviourally blind). New `_reason_is_contentless()` demotes such a
+> verdict to pause. The design call that keeps it free of judgement: **a
+> contentless reason is worthless even when `proceed` is CORRECT**, because the
+> reason IS the instruction. It is a FLOOR, not a specificity judge —
+> `_META_REASON_TOKENS` excludes every real action verb (guard-tested), and the
+> OTHER s159 directive ("Continue running the test and mypy suite on the merged
+> commit") still passes verbatim as the committed calibration pin. A **missing
+> `reason` key** now demotes too (the old fallback was the literal
+> `"continue"`). Also adds the gold case `pause-long-batch-then-question`:
+> `gpt-oss:20b` already answers the existing short-question case correctly
+> (19/20), so the live miss is a **fixture FIDELITY gap, not a model gap** —
+> real payloads are a large work batch with the question only at the tail of the
+> 8-turn / 3072-byte window. **+20 tests.**
+> **(#845, `66b9707` + `b5272e2` → merge `d7bbb8b`, `chore` — the stale AT-2
+> N-count, plus a new guard.)** AT-2 is **N=4** (`procurement` /
+> `supply_chain` / `building_materials` / `fleet_maintenance` declare a
+> `rule_gate` vocabulary; `energy` + `aquaculture` do not). Corrected in
+> `spec.py` (×3 sites), `docs/conventions/procedure-archetypes.md`, and **the
+> test module's own docstring** — the last two were NOT in the original scope:
+> the drift was wider than recorded, and PLAN-0086 had shipped
+> `fleet_maintenance` **without extending the archetype catalog** (its
+> Quick-reference row and Instances list still enumerated three signatures —
+> fixed in `b5272e2`, found during #846's R2). **Two corrections worth keeping
+> as facts, not prose:** (a) `_RETRIGGER_N` is **retired and guards nothing**
+> (its own docstring says so) — the live tripwire is the `_BASELINE_SIGNATURES`
+> set-equality assertion, RED on a FIFTH signature; (b) PLAN-0087's "zero live
+> `step_id` collisions today" is **wrong** — collisions already exist
+> (`procurement` reuses `intake` / `approve` across three procedures); what is
+> zero is the **over-mark**. New
+> `tests/services/engine/procedures/test_sod_step_id_scope_guard.py` pins the
+> real invariant (a step is in the vertical-flat `sod_steps` union **iff** its
+> OWN procedure declares it), because `GovernanceStepExecutor.sod_steps` is a
+> bare per-vertical `frozenset[str]` with no procedure key and nothing raises on
+> an over-mark; it carries a second test so the guard cannot silently become
+> vacuous. This hardens the premise **PLAN-0076 Step T1 (F-FACTORY)** defers on.
+> **(#846, `25110c8` → merge `0c9cdeb`, `docs(adr)` — two Accepted-ADR body
+> corrections, authored by the `plan-drafter` subagent (G1-gated), Code R2.)**
+> **ADR-0032**'s "Where vero-lite stands" is a STATE snapshot and had drifted on
+> more than N: it still said `building_materials` was a Tier-1 Mirror with **no
+> `procedures.yaml`** and an unbuilt hero, counted four verticals, and did not
+> know `fleet_maintenance` existed. It now reads six verticals, the
+> governed-credit hero BUILT (PLAN-0081), fleet named, the full N=4 arc, and
+> **symbolic anchors replacing the rotted line-number ones**. Its
+> positive-consequences bullet — which claimed the ADR record makes exactly this
+> stale-N-count error class harder to reintroduce, **while itself being stale**
+> — was rewritten to say the durable guard is **the test, not the prose** ("the
+> tripwire is CI; the ADR is the narrative"). **ADR-0025 D7's decision text was
+> deliberately NOT rewritten** ("N ≥ 2" is the faithful 2026-06-28 record;
+> editing a decision to match later events destroys the reasoning lineage) — a
+> dated **outcome amendment** was appended instead, following the amendment
+> precedent already in that ADR. **Attribution corrected by the drafter against
+> Code's own dispatch:** **Cray** cancelled the D7 deferral, typed, 2026-07-21
+> (s157), at the PLAN-0086 N=4 escalation; PLAN-0087 only **executed** the
+> answer.
+> **(deliberately NOT built.)** The second s159 tripwire — **tripwire B, the
+> PLAN-0076 AC-6 F-PIN arm** — was NOT built: the grounding REFUTED its
+> mechanism. The guard checks **file presence, not T1 text**, so it cannot
+> self-release; it can only be deleted by hand, and a tripwire against a hand
+> deletion buys nothing.
+> **Verification:** both new tripwires proven non-vacuous **empirically** —
+> backed up to `/tmp`, broken, **RED confirmed**, then restored **from the
+> backup, never from git** (the s159 trap: a `git checkout` restore wipes the
+> uncommitted edit under test and the run still prints a pass),
+> `md5sum`-verified. Merge-commit gate against a pass/fail read fixed **BEFORE**
+> the run — expected `2955 + 20 + 2 = 2977`; actual on `0c9cdeb` = **2977 passed
+> / 7 skipped** (164.66s) + `mypy --strict services/` clean (98 files) ⇒
+> `confirmed — prior intact`. Branch protection is **`strict: true`** —
+> discovered while landing the stack (each remaining PR went `BEHIND` after a
+> merge and needed a re-sync + a fresh `gate` run); it substantially closes the
+> old "CI is PR-only, so the merge commit is never tested" gap. Grounding for
+> the whole session came from a **5-agent Explore fan-out over 6 candidates**
+> (the `next-work-analyst` skill), which is what surfaced the corrections above.
+> Deterministic-offline: **MS-S1 idle/COLD, zero calls**, no host-state change;
+> dev Postgres UP; loop-dispatcher DISABLED; **0 open PRs**; working tree clean
+> but for the 2 KEEP untracked paths (`.claude/benchmark-results/`,
+> `.claude/launch.json`). Commits: `c8f7184` → `0090161` (#843 merge) →
+> `532d3e4` → `c42abe4` (#844 merge) → `66b9707` + `b5272e2` → `d7bbb8b` (#845
+> merge) → `25110c8` → `0c9cdeb` (#846 merge, head_commit of record). The three
+> `Merge remote-tracking branch 'origin/main'` sync commits (`d852ab1`,
+> `329bfac`, `39a37d4`) are strict-mode re-sync noise and are excluded from
+> `recent_commits`.
