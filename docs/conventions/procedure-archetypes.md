@@ -46,7 +46,7 @@ archetype below preserves this.
 |---|---|---|---|
 | **AT-1** `anomaly→action` | sense → judge(band) → gated action on breach | `energy`, `supply_chain`, `aquaculture` (core) | 1 deterministic band; 1 human gate on the irreversible write; handler fixed |
 | **AT-1b** `+ watch + summary` (AT-1 variant) | AT-1 **+** watch→gated proposal **+** auto summary terminal | `aquaculture.morning_pond_health_round` | AT-1 + ADR-0019 watch→gated escalation + an auto (un-gated) terminal receipt |
-| **AT-2** `request→approve→fulfill` | intake → (judge) → select(scored rule) → compliance(rule gate) → **tiered authority gate**(human) → fulfill(write) → (audit) | `procurement.emergency_sourcing_round` (manual); `procurement.scheduled_emergency_sourcing_round` (S1 schedule-triggered variant); **`supply_chain.cold_chain_excursion_disposition`** (the 2nd SIGNATURE — non-money authority, PLAN-0074); **`building_materials.governed_credit_release`** (the 3rd SIGNATURE — money authority reused, new criterion vocabulary, PLAN-0081) | per-criterion rule gate + a tiered human authority gate + SoD + traceable audit. **The authority QUANTITY is per-instance:** ฿ spend (`doa_tier`, procurement + building_materials) or excursion severity (`severity_tier`, supply_chain); **the criterion vocabulary is per-instance too** (vendor-hygiene / GDP / credit-compliance) |
+| **AT-2** `request→approve→fulfill` | intake → (judge) → select(scored rule) → compliance(rule gate) → **tiered authority gate**(human) → fulfill(write) → (audit) | `procurement.emergency_sourcing_round` (manual); `procurement.scheduled_emergency_sourcing_round` (S1 schedule-triggered variant); **`supply_chain.cold_chain_excursion_disposition`** (the 2nd SIGNATURE — non-money authority, PLAN-0074); **`building_materials.governed_credit_release`** (the 3rd SIGNATURE — money authority reused, new criterion vocabulary, PLAN-0081); **`fleet_maintenance.governed_repair_approval`** (the 4th SIGNATURE — money authority reused again, `three_quote`, PLAN-0086) | per-criterion rule gate + a tiered human authority gate + SoD + traceable audit. **The authority QUANTITY is per-instance:** ฿ spend (`doa_tier`, procurement + building_materials + fleet_maintenance) or excursion severity (`severity_tier`, supply_chain); **the criterion vocabulary is per-instance too** (vendor-hygiene / GDP / credit-compliance / three-quote) |
 | **AT-3** `monitor→reorder` | read_stock → judge(reorder point) → gated reorder | `procurement.low_stock_reorder_round` (manual); `procurement.scheduled_low_stock_reorder_round` (S1 schedule-triggered) | deterministic reorder-point band + single-tier human approval |
 
 ---
@@ -126,6 +126,19 @@ passes each gate.
     criteria are per-instance; the GATE shape generalises). The ฿550,000 shipped breach lands
     mid-ladder (`ผจก.ควบคุมเครดิต`, the `[250k, 1M)` tier) — the demo shows tiering, not
     always-the-top.
+  - `fleet_maintenance.governed_repair_approval` (6 steps, `trigger: manual`, PLAN-0086) — **the
+    4th AT-2 SIGNATURE** (an emergency roadside breakdown: a repair quote above the truck's minor-
+    repair ceiling needs governed approval). `intake`(latest event per truck, the truck's
+    `minor_repair_ceiling_thb` joined on) `→ judge`(per-entity band vs that ceiling,
+    `direction: above`) `→ reshape`(the same declared-transform seam — derives the flat
+    `amount`/`currency` + the compliance signal map) `→ quote_gate`(**`rule_gate`** — `three_quote`)
+    `→ approve`(**`doa_tier`** — ฿ tiers + emergency waiver, human, SoD: `[intake, approve]`)
+    `→ fulfill`(gated write). **What it proved by being the 4th:** by gate SHAPE, nothing — the
+    composition and the money authority quantity are byte-identical to building_materials'. What it
+    proved was a COST fact: a fourth vertical meant a fourth ENGINE edit to the closed criterion
+    enum, and that recurrence — not any generalising gate — is what cancelled the ADR-0025 D7
+    deferral (see § Forward — how this feeds the generative-procedures arc). It is also the first
+    vertical shipping the PLAN-0085 gate advisory ON.
 - **Governance signature (the credibility musts, L-6):**
   - **Selection is a scored RULE**, never the LLM (the LLM only summarises the candidates);
     the pre-qualified default path by default, a deviation only as a logged exception.
@@ -195,22 +208,27 @@ demo bands vs authored per-procedure bands) the schema must preserve.
   `ArchetypeTemplate` registry, ADR-0024 D2). The Rule-of-Three gate (≥3 verticals)
   is satisfied (N=4: aquaculture / energy / procurement / supply_chain).
 - **Remaining frontier — AT-2 generation (deferred, ADR-0024 D7 / ADR-0025 D7):** the generator
-  triangulates AT-1 across 3+ verticals. **AT-2 reached N=3 on 2026-07-19** (PLAN-0081):
+  triangulates AT-1 across 3+ verticals. **AT-2 reached N=4 on 2026-07-21** (PLAN-0086):
   `procurement.emergency_sourcing_round` (money authority) + `supply_chain.cold_chain_excursion_disposition`
   (severity authority) + `building_materials.governed_credit_release` (money authority reused, a NEW
-  compliance-criterion vocabulary) are three distinct SIGNATURES — the schedule/event-triggered
+  compliance-criterion vocabulary) + `fleet_maintenance.governed_repair_approval` (money authority
+  reused again, `three_quote`) are four distinct SIGNATURES — the schedule/event-triggered
   procurement variants are the same signature, not further instances. **The D7 re-trigger FIRED at
-  N=3 and was re-evaluated, not deferred in silence (PLAN-0081 Step 8, Cray-ratified):** the
-  generator STAYS deferred + abstaining and the marker re-arms at N=4. The 3rd signature is the
-  WEAKEST possible extraction datum — it introduces no new gate kind, no new authority quantity (the
-  money `doa_tier` is reused unchanged, THB and all), and grows only the criterion vocabulary — the
-  exact axis the N=2 finding already established as per-instance forever; and it fires PLAN-0076 T1's
-  own named trigger, so the extraction question has a live owner. The generator **still abstains** on
-  AT-2 (`generator/pipeline.py` `_AT2_ONLY_KINDS`): N≥2 *permits* the genericization the D7
-  re-trigger guards, it does not mandate it. What N=2 revealed and N=3 re-confirmed — the authority
+  N=2 and again at N=3, and each time was re-evaluated, not deferred in silence (PLAN-0074 SD-3 /
+  PLAN-0081 Step 8, both Cray-ratified):** the generator STAYED deferred + abstaining. **At N=4 the
+  D7 deferral was CANCELLED (PLAN-0087)** — and note WHAT cancelled it: not a gate SHAPE finally
+  generalising, but the recurring cost of four verticals needing four ENGINE edits to a closed
+  criterion enum. The answer was to let a vertical DECLARE its own `rule_gate` vocabulary
+  (`VerticalProcedures.compliance_criteria`, membership-validated at load), so a 5th vertical ships
+  its gate with zero engine diff. The marker constant is **retired and guards nothing**; what turns
+  RED on a 5th signature is the `_BASELINE_SIGNATURES` equality assertion in
+  `test_at2_signature_retrigger.py`. The generator **still abstains** on AT-2
+  (`generator/pipeline.py` `_AT2_ONLY_KINDS`): N≥2 *permits* the genericization the D7 re-trigger
+  guarded, it does not mandate it. What N=2 revealed and N=3/N=4 re-confirmed — the authority
   quantity is per-instance (money vs severity), the compliance criterion vocabulary is per-instance
-  (vendor-hygiene / GDP / credit), but the GATE shapes generalised unchanged — is the input to that
-  extraction PLAN.
+  (vendor-hygiene / GDP / credit / three-quote), but the GATE shapes generalised unchanged — is the
+  input to the remaining extraction question (the procedure-aware `ExecutorFactory`), which is owned
+  by **PLAN-0076 T1**, not by this catalog.
 
 ## Sources / related
 

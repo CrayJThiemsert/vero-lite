@@ -9,8 +9,14 @@ delivery pressure — ADR-0031 OQ-4 assigned this marker to the PLAN that adds t
 This module is it:
 
 * it counts **distinct AT-2 SIGNATURES** shipped across ``verticals/*/procedures.yaml``, and
-* it **FAILS when a THIRD appears** — forcing the AT-2-generator deferral to be re-argued rather
-  than accreting a third hand-authored copy in silence.
+* it **FAILS whenever that set stops matching** :data:`_BASELINE_SIGNATURES` — today a FIFTH
+  signature — forcing the AT-2-generator question to be re-argued rather than accreting another
+  hand-authored copy in silence.
+
+**Read the threshold off** :data:`_BASELINE_SIGNATURES`, **not off** ``_RETRIGGER_N``. That
+constant is retired (see its own docstring): it records the historical threshold that fired and
+guards nothing, because the deferral it guarded was CANCELLED at N=4. The live tripwire is the
+set-equality assertion in :func:`test_at2_generator_deferral_retrigger`.
 
 **Signatures, not procedure entries (the counting trap this marker exists to avoid).** Procurement
 ships THREE AT-2 procedure entries — ``emergency_sourcing_round`` plus its schedule- and
@@ -197,8 +203,9 @@ _BASELINE_SIGNATURES = [
         ),
     ),
 ]
-"""The N=3 baseline the D7 re-evaluation was performed against (PLAN-0081 Step 8; sorted by
-vertical, so building_materials leads). Three distinct signatures: the SHARED finding is that the
+"""The N=4 baseline as of PLAN-0086 (sorted by vertical, so building_materials leads). The N=3
+snapshot of this same list is what the PLAN-0081 Step 8 D7 re-evaluation was performed against;
+fleet_maintenance was the fourth. Four distinct signatures: the SHARED finding is that the
 GATE COMPOSITION generalises while the per-instance surfaces do not. building_materials REUSES the
 money ``doa_tier`` (THB) unchanged and pairs it with a rule_gate on a NEW criterion vocabulary
 (credit: blacklist/kyc/overdue_ar) — no scored_rule, a strictly SIMPLER shape than procurement's,
