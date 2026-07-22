@@ -24,45 +24,67 @@ from services.engine.registry import registry
 
 router = APIRouter(tags=["procedures"])
 
-# Catalog-derived procedure_id → archetype map (OQ-5 option a — an explicit map,
-# server-side, in one place). Canonical source is
+# Catalog-derived (vertical, procedure_id) → archetype map (OQ-5 option a — an
+# explicit map, server-side, in one place). Canonical source is
 # docs/conventions/procedure-archetypes.md; this is a read-only derived MIRROR
-# (CLAUDE.md §4 canonical→derived). A 5th vertical extends this map ADDITIVELY —
+# (CLAUDE.md §4 canonical→derived). A 7th vertical extends this map ADDITIVELY —
 # the catalog grows first, the map mirrors it; never the reverse. Eleven shipped
 # procedures across the six procedure-bearing verticals (PLAN-0039 fact-pack #1:
 # procurement ships two manual; energy / supply_chain / aquaculture one each) plus
 # the PLAN-0055 Step 8 schedule-triggered AT-2 variant, the PLAN-0056 Step 8
 # event-triggered AT-2 variant, the PLAN-0065 Step 4 schedule-triggered AT-3
-# variant (all procurement), the PLAN-0074 supply_chain AT-2 disposition, and the
-# PLAN-0081 building_materials AT-2 governed-credit hero.
-PROCEDURE_ARCHETYPES: dict[str, str] = {
-    "substation_health_sweep": "AT-1",  # energy — anomaly→action
-    "cold_chain_excursion_sweep": "AT-1",  # supply_chain — anomaly→action
-    "morning_pond_health_round": "AT-1b",  # aquaculture — AT-1 + watch + summary
-    "emergency_sourcing_round": "AT-2",  # procurement — request→approve→fulfill (hero)
-    "low_stock_reorder_round": "AT-3",  # procurement — monitor→reorder (calm-path)
-    "scheduled_emergency_sourcing_round": "AT-2",  # procurement — AT-2 on a nightly clock (S1)
-    "scheduled_low_stock_reorder_round": "AT-3",  # procurement — AT-3 on a nightly clock (S1)
-    "event_emergency_sourcing_round": "AT-2",  # procurement — AT-2 on an asset-failure event
+# variant (all procurement), the PLAN-0074 supply_chain AT-2 disposition, the
+# PLAN-0081 building_materials AT-2 governed-credit hero, and the PLAN-0086
+# fleet_maintenance AT-2 governed-repair hero.
+#
+# KEYED ON THE PAIR, NOT THE BARE ID. A `procedure_id` is unique only WITHIN a
+# vertical — the spec cross-refs resolve per-vertical, and `ScheduleState` already
+# encodes that natural identity as `UniqueConstraint(vertical, procedure_id)`
+# (services/engine/procedures/schedules.py:31-33). A bare-id map therefore had a
+# latent cross-vertical collision: two verticals shipping the same procedure name
+# (a second `low_stock_reorder_round` calm path is the obvious near-miss) would
+# silently serve one vertical's archetype label for the other's procedure, with no
+# error. The pair key makes that unrepresentable, and matches the canonical
+# catalog, which has always written these as `<vertical>.<procedure_id>`.
+PROCEDURE_ARCHETYPES: dict[tuple[str, str], str] = {
+    ("energy", "substation_health_sweep"): "AT-1",  # anomaly→action
+    ("supply_chain", "cold_chain_excursion_sweep"): "AT-1",  # anomaly→action
+    ("aquaculture", "morning_pond_health_round"): "AT-1b",  # AT-1 + watch + summary
+    ("procurement", "emergency_sourcing_round"): "AT-2",  # request→approve→fulfill (hero)
+    ("procurement", "low_stock_reorder_round"): "AT-3",  # monitor→reorder (calm-path)
+    ("procurement", "scheduled_emergency_sourcing_round"): "AT-2",  # AT-2 on a nightly clock (S1)
+    ("procurement", "scheduled_low_stock_reorder_round"): "AT-3",  # AT-3 on a nightly clock (S1)
+    ("procurement", "event_emergency_sourcing_round"): "AT-2",  # AT-2 on an asset-failure event
     # supply_chain — the 2nd AT-2 SIGNATURE (PLAN-0074): a governed cold-chain disposition whose
     # authority quantity is NON-MONEY (severity_tier, not doa_tier). The procurement entries above
     # are trigger variants of ONE signature; this is a second one.
-    "cold_chain_excursion_disposition": "AT-2",
+    ("supply_chain", "cold_chain_excursion_disposition"): "AT-2",
     # building_materials — the 3rd AT-2 SIGNATURE (PLAN-0081): a governed credit release. The money
     # doa_tier ladder is REUSED unchanged; only the criterion vocabulary grows ({kyc, overdue_ar,
     # blacklist}). A genuinely third signature, on a fifth vertical.
-    "governed_credit_release": "AT-2",
+    ("building_materials", "governed_credit_release"): "AT-2",
     # fleet_maintenance — PLAN-0086 (the timed manual scaffold). The money doa_tier ladder is REUSED
     # unchanged AGAIN (repair spend in THB); no new authority quantity, no new trace kind. Notable
     # not as a new signature but as the first vertical wired with the PLAN-0085 gate advisory ON
     # from day one (L-B: readable on day one).
-    "governed_repair_approval": "AT-2",
+    ("fleet_maintenance", "governed_repair_approval"): "AT-2",
 }
 
 # A procedure absent from the catalog map renders with this sentinel rather than
 # failing the read — surfacing "this shipped without a catalogued archetype"
-# instead of a 500 (defensive; all seven shipped procedures are mapped today).
+# instead of a 500 (defensive; all eleven shipped procedures are mapped today).
 _UNCATALOGUED = "uncatalogued"
+
+
+def archetype_for(vertical: str, procedure_id: str) -> str:
+    """The catalog archetype label for one procedure, scoped to its vertical.
+
+    The single read point of :data:`PROCEDURE_ARCHETYPES`. Scoping is the whole
+    contract: `procedure_id` is unique only within a vertical, so the lookup key is
+    the pair — never the bare id (see the map comment). An uncatalogued procedure
+    gets :data:`_UNCATALOGUED` rather than a 500.
+    """
+    return PROCEDURE_ARCHETYPES.get((vertical, procedure_id), _UNCATALOGUED)
 
 
 @router.get("/procedures", response_model=ProceduresResponse)
@@ -89,7 +111,7 @@ async def list_procedures() -> ProceduresResponse:
             ProcedureView.model_validate(
                 {
                     **proc.model_dump(),
-                    "archetype": PROCEDURE_ARCHETYPES.get(proc.procedure_id, _UNCATALOGUED),
+                    "archetype": archetype_for(spec.vertical, proc.procedure_id),
                 }
             )
             for proc in spec.procedures
