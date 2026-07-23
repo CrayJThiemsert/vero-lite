@@ -13,7 +13,7 @@ import importlib
 import sys
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import cast
+from typing import Annotated, cast
 
 import typer
 
@@ -118,6 +118,84 @@ def new_vertical(
         "  3. Verify the map, NL query, and the breach -> recommend -> approve "
         "-> execute lifecycle.\n"
     )
+
+
+# Registered as `scaffold` but NOT named `scaffold` at module scope: that name is
+# already bound to the `services.engine.scaffold` module imported above, which
+# `new_vertical` calls into (`scaffold.RecommendConfig`). Shadowing it would break
+# that command at runtime, which is why the command name is passed explicitly.
+@app.command("scaffold")
+def scaffold_from_narrative(
+    namespace: str,
+    narrative: Annotated[
+        Path | None,
+        typer.Option(help="Free-text customer narrative to derive the question queue from."),
+    ] = None,
+    intake: Annotated[
+        Path | None,
+        typer.Option(help="A typed IntakeRecord JSON (partially or fully answered)."),
+    ] = None,
+    plan_only: Annotated[
+        bool,
+        typer.Option(
+            "--plan-only", help="Print the open question queue + file manifest; write nothing."
+        ),
+    ] = False,
+) -> None:
+    """Scaffold a vertical package from a customer narrative (PLAN-0091).
+
+    Covers the seam ``new-vertical`` declares out of scope: it starts BEFORE the
+    ontology exists. ``new-vertical`` stays the ADR-0015 D2 Tier-1 Mirror vehicle
+    and is deliberately not overloaded.
+
+    Refuses to touch an existing ``verticals/<namespace>/`` — there is no
+    overwrite path in v1, so a mis-typed namespace cannot damage a shipped
+    vertical. Performs no git operations, ever.
+    """
+    from services.engine.scaffolder.intake import (
+        IntakeRecord,
+        format_queue,
+        open_questions,
+        required_slots,
+        unenforced_register,
+    )
+
+    target = Path("verticals") / namespace
+    if target.exists():
+        sys.stderr.write(
+            f"ERROR: {target}/ already exists — scaffold refuses to overwrite an existing "
+            f"vertical (no overwrite path in v1). Choose a new namespace.\n"
+        )
+        raise typer.Exit(code=2)
+
+    if intake is not None:
+        record = IntakeRecord.model_validate_json(intake.read_text(encoding="utf-8"))
+    else:
+        narrative_text = narrative.read_text(encoding="utf-8") if narrative is not None else ""
+        record = IntakeRecord(namespace=namespace, narrative=narrative_text)
+
+    checklist = required_slots()
+    still_open = open_questions(record, checklist)
+
+    sys.stderr.write(f"Scaffold plan for vertical {namespace!r}\n\n")
+    sys.stderr.write(f"Open questions ({len(still_open)} of {len(checklist)} slots):\n")
+    sys.stderr.write(format_queue(still_open) + "\n\n")
+
+    register = unenforced_register(record, checklist)
+    if register:
+        sys.stderr.write(
+            "Stated but NOT enforced (no schema field — these land in the README register):\n"
+        )
+        sys.stderr.write(format_queue(register) + "\n\n")
+
+    if plan_only:
+        sys.stderr.write("--plan-only: nothing written.\n")
+        raise typer.Exit(code=0)
+
+    # Emission stages land in Steps 2-4; until then the command is intake-only
+    # and exits non-zero rather than pretending it scaffolded something.
+    sys.stderr.write("Emission is not wired yet (PLAN-0091 Steps 2-4). Re-run with --plan-only.\n")
+    raise typer.Exit(code=3)
 
 
 # Per-vertical procedure-executor factory registration for the scheduler daemon (PLAN-0090 L3).
