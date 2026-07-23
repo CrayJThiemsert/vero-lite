@@ -390,6 +390,27 @@ def inproc_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> dict[str, Pat
     }
 
 
+@pytest.fixture
+def inproc_capture(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, inproc_env: dict[str, Path]
+) -> Path:
+    """Layer a WORKING Telegram stub over ``inproc_env`` and return the capture
+    path (PLAN-0092 AC-2).
+
+    ``inproc_env`` deliberately points the script at a nonexistent path so the
+    ping no-ops for every test that does not assert on it; this fixture opts a
+    single test into the real argv-capture pattern used by ``stub_env``.
+    Depends on ``inproc_env`` so the module reload happens first.
+    """
+    stub_script = tmp_path / "telegram_stub_inproc.sh"
+    capture_file = tmp_path / "telegram_capture_inproc.txt"
+    stub_script.write_text(STUB_TELEGRAM, encoding="utf-8")
+    stub_script.chmod(0o755)
+    monkeypatch.setenv("CLAUDE_TELEGRAM_SCRIPT", str(stub_script))
+    monkeypatch.setenv("TELEGRAM_STUB_CAPTURE", str(capture_file))
+    return capture_file
+
+
 def _patch_classify(monkeypatch: pytest.MonkeyPatch, verdict: dict[str, Any]) -> None:
     """Monkey-patch the classifier to return the canned verdict."""
     monkeypatch.setattr(_sc, "classify", lambda payload: verdict)
@@ -425,47 +446,41 @@ def _dispatch_verdict(
     }
 
 
-# --- Happy: dispatch emits block with instruction ---
+# --- A' (PLAN-0092): dispatch emits NO order, pings a suggestion instead ---
 
 
-def test_dispatch_plan_emits_block_with_instruction(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+def test_dispatch_emits_no_block_and_pings_the_suggestion(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path], inproc_capture: Path
 ) -> None:
+    """PLAN-0092 AC-1 + AC-2: the dispatch verdict is a suggestion, not an order.
+
+    Nothing goes to stdout (the stop fires normally); the would-be routing is
+    delivered to Cray as one Telegram ping carrying all five payload fields.
+    """
     _patch_classify(monkeypatch, _dispatch_verdict())
     rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
     assert rc == 0
-    parsed = json.loads(out)
-    assert parsed["decision"] == "block"
-    assert parsed["hookSpecificOutput"]["hookEventName"] == "Stop"
-    reason = parsed["reason"]
-    # Instruction header references the auto-handoff system + spec
-    assert "AUTO-HANDOFF DISPATCH" in reason
-    assert "PLAN-0009 Step 5c" in reason
-    # Cited classifier match + reason
-    assert "D2" in reason
-    assert "agreed plan needs structuring" in reason
-    # Routing detail
-    assert "plan-drafter" in reason
-    assert "artifact_kind: plan" in reason
-    assert "PLAN-0011" in reason  # task_summary surfaced
-    # Pre-spawn discipline (Step 4 §4)
-    assert "docs/plans" in reason  # artifact dir resolved correctly
-    assert "target_number" in reason or "NNNN" in reason
-    # Budget reminder (Step 4 §5)
-    assert "OUTPUT BUDGET REMINDER" in reason
-    assert "≤ 1k tokens" in reason
-    assert "disclosure stamp" in reason
-    # Commit boundary reminder
-    assert "G5" in reason or "composed" in reason or "cannot commit" in reason
-    assert "PR" in reason
-    # Override clause
-    assert "Override" in reason or "override" in reason
-    assert "misroute" in reason or "spurious" in reason
+    assert out == ""  # AC-1: no block directive — the agent is never ordered
+
+    assert inproc_capture.exists(), "dispatch suggestion ping not sent"
+    body = inproc_capture.read_text(encoding="utf-8")
+    # AC-2: all five routing fields survive into the suggestion.
+    assert "stop_dispatch_suggestion" in body
+    assert "plan-drafter" in body
+    assert "artifact_kind: plan" in body
+    assert "PLAN-0011" in body  # task_summary surfaced
+    assert "D2" in body  # matched rows
+    assert "agreed plan needs structuring" in body  # classifier reason
+    # The ping must read as advisory, never as an instruction to spawn.
+    assert "suggestion" in body.lower()
+    assert "AUTO-HANDOFF DISPATCH" not in body
+    assert "OUTPUT BUDGET REMINDER" not in body
 
 
-def test_dispatch_adr_routes_to_docs_adr(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+def test_dispatch_suggestion_carries_adr_routing(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path], inproc_capture: Path
 ) -> None:
+    """The ADR route survives the demotion — Cray still sees WHICH artifact kind."""
     _patch_classify(
         monkeypatch,
         _dispatch_verdict(
@@ -476,20 +491,24 @@ def test_dispatch_adr_routes_to_docs_adr(
     )
     rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
     assert rc == 0
-    parsed = json.loads(out)
-    reason = parsed["reason"]
-    assert "artifact_kind: adr" in reason
-    assert "docs/adr" in reason
-    assert "D1" in reason
-    assert "ADR-0015" in reason
+    assert out == ""
+    body = inproc_capture.read_text(encoding="utf-8")
+    assert "artifact_kind: adr" in body
+    assert "D1" in body
+    assert "ADR-0015" in body
 
 
-# --- Chain-cap interaction: dispatch counts as proceed ---
+# --- Chain-cap interaction: dispatch now behaves as a pause (PLAN-0092 L4) ---
 
 
-def test_dispatch_increments_chain_depth(
+def test_dispatch_resets_chain_depth(
     monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
 ) -> None:
+    """PLAN-0092 L4: a suggestion is a natural stop, so the chain RESETS.
+
+    (Before the demotion this incremented — a dispatch counted toward the cap
+    the same as a proceed, because it continued the agent's loop.)
+    """
     # Seed chain at depth 3
     inproc_env["chain"].write_text(
         json.dumps({"depth": 3, "last_proceed_ts": ""}), encoding="utf-8"
@@ -497,8 +516,7 @@ def test_dispatch_increments_chain_depth(
     _patch_classify(monkeypatch, _dispatch_verdict())
     _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
     chain = json.loads(inproc_env["chain"].read_text(encoding="utf-8"))
-    assert chain["depth"] == 4
-    assert chain["last_proceed_ts"]  # timestamp recorded
+    assert chain["depth"] == 0
 
 
 def test_dispatch_respects_chain_cap(
@@ -577,6 +595,27 @@ def test_dispatch_demoted_to_pause_resets_chain(
     assert chain["depth"] == 0
 
 
+def test_malformed_dispatch_sends_no_suggestion_ping(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path], inproc_capture: Path
+) -> None:
+    """PLAN-0092: the malformed-meta path stays SILENT.
+
+    A demoted dispatch has no coherent routing to suggest, so it must not
+    ping — otherwise the demotion trades a spurious order for spurious noise.
+    """
+    bad_verdict = {
+        "decision": "dispatch",
+        "matched_rows": ["D1"],
+        "reason": "broken",
+        "dispatch": "this should be an object",
+    }
+    _patch_classify(monkeypatch, bad_verdict)
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    assert out == ""
+    assert not inproc_capture.exists(), "malformed dispatch must not ping"
+
+
 # --- Pre-existing behaviors unchanged by dispatch arm ---
 
 
@@ -632,19 +671,18 @@ def test_unknown_verdict_treated_as_pause(
 # --- Adversarial: dispatch with empty matched_rows still works ---
 
 
-def test_dispatch_with_empty_matched_rows_still_dispatches(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+def test_dispatch_with_empty_matched_rows_still_pings(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path], inproc_capture: Path
 ) -> None:
     """Classifier emits dispatch without citing a D-row (unlikely but allowed
-    by contract since reason is the citation fallback). Hook still emits the
-    block with the matched_rows section showing (none cited).
+    by contract since reason is the citation fallback). The suggestion still
+    pings, with the matched-rows field showing (none cited).
     """
     _patch_classify(monkeypatch, _dispatch_verdict(matched_rows=[]))
     rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
     assert rc == 0
-    parsed = json.loads(out)
-    assert parsed["decision"] == "block"
-    assert "(none cited)" in parsed["reason"]
+    assert out == ""
+    assert "(none cited)" in inproc_capture.read_text(encoding="utf-8")
 
 
 # --- Re-entry guard still applies to dispatch arm ---
@@ -672,30 +710,10 @@ def test_dispatch_skipped_under_reentry_guard(
     assert classifier_called["n"] == 0
 
 
-# --- Instruction template structure sanity ---
-
-
-def test_dispatch_instruction_includes_step4_references(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
-) -> None:
-    """Instruction cites Step 4 sections so the main agent can cross-reference."""
-    _patch_classify(monkeypatch, _dispatch_verdict())
-    _, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
-    reason = json.loads(out)["reason"]
-    assert "Step 4 §1" in reason  # routing
-    assert "Step 4 §4" in reason  # pre-spawn discipline
-    assert "Step 4 §3" in reason  # post-spawn discipline
-
-
-def test_dispatch_instruction_includes_scoped_context_discipline(
-    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
-) -> None:
-    """Instruction tells the agent not to inline file contents (Step 4 §2)."""
-    _patch_classify(monkeypatch, _dispatch_verdict())
-    _, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
-    reason = json.loads(out)["reason"]
-    assert "scoped_context" in reason
-    assert "do NOT inline" in reason or "do not inline" in reason.lower()
+# (The two spawn-order template tests that lived here were DELETED by
+# PLAN-0092 Step 1: they pinned `_build_dispatch_instruction`'s Step 4 §1-§4
+# routing text, and SD-B removed that builder outright. The suggestion's own
+# content contract is asserted by the two A' tests above.)
 
 
 # ---------------------------------------------------------------------------

@@ -13,20 +13,24 @@ Fires on every ``Stop`` event. Three responsibilities:
    the L1/L4 asymmetry ELI-CTO (Cray's iterative STATUS-editing
    workflow would otherwise false-positive at 6 edits per session).
 2. **Chain-cap fail-safe (PLAN §Step 4).** Tracks consecutive
-   ``proceed`` / ``dispatch`` decisions in ``.claude/state/stop-chain.json``
+   ``proceed`` decisions in ``.claude/state/stop-chain.json``
    against ``$CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`` (default 8). On cap-hit:
    emits no block (lets the stop fire), pings Telegram with
    ``"cap reached"`` per OQ-E option (b), and resets the chain.
    Re-entry guarded by the harness ``stop_hook_active`` flag.
-3. **Auto-handoff dispatch (PLAN-0009 Step 5c-1).** When the Sonnet
-   classifier returns ``decision == "dispatch"`` (governance-drafting
-   need matching a D-row in the registry), the hook emits a ``block``
-   directive whose ``reason`` instructs the main Code agent to spawn
-   the ``plan-drafter`` subagent via the Step 4 §1 R4 routing + §5
-   budget reminder template. The main agent invokes the ``Agent`` tool
-   on its next turn (the hook itself cannot spawn — only the main
-   agent in its own loop can). Counts toward chain-cap same as
-   ``proceed`` (a dispatch is semantically a continuation + instruction).
+   (``dispatch`` no longer counts toward the cap — see 3; the goal-gate
+   V1 directive still does.)
+3. **Dispatch suggestion (PLAN-0009 Step 5c-1, DEMOTED by PLAN-0092).**
+   When the classifier returns ``decision == "dispatch"`` (governance-
+   drafting need matching a D-row in the registry), the hook emits
+   **nothing**: the stop fires with pause semantics (chain **reset**) and
+   the classifier's routing — subagent, artifact_kind, task_summary,
+   matched D-rows, reason — is delivered to Cray as a single Telegram
+   ping. It is a **suggestion, never an order**; Cray routes it.
+   Malformed metadata stays silent (no ping, no directive).
+   *Was:* a ``block`` directive instructing the main agent to spawn
+   ``plan-drafter``. Demoted after 14 recorded misfires / 0 recorded
+   valid fires across ~2 months live (PLAN-0092; Cray-ratified 2026-07-23).
 
 The Sonnet pause/proceed/dispatch classifier is invoked via
 ``_sonnet_classifier.classify`` (PLAN §Step 5 + PLAN-0009 Step 5c-1).
@@ -155,6 +159,35 @@ def _format_cap_message(payload: dict[str, Any]) -> str:
     return f"[vero-lite/{event}] depth={depth} / cap={cap}\n" f"ts: {ts}\n" f"{reason}"
 
 
+def _format_dispatch_suggestion(payload: dict[str, Any]) -> str:
+    """Build the Telegram body for an A' dispatch suggestion (PLAN-0092 SD-A).
+
+    Deliberately NOT the cap shape: ``depth=``/``cap=`` are meaningless for a
+    suggestion and would bury the five routing fields Cray reads on a phone.
+    The wording is advisory on purpose — this channel must never read as an
+    instruction to spawn.
+    """
+    rows = payload.get("matched_rows") or []
+    matched = ", ".join(str(r) for r in rows) if rows else "(none cited)"
+    return (
+        f"[vero-lite/{payload.get('event')}] classifier suggestion — not an order\n"
+        f"ts: {payload.get('ts', '')}\n"
+        f"subagent: {payload.get('subagent', '')}\n"
+        f"artifact_kind: {payload.get('artifact_kind', '')}\n"
+        f"task_summary: {payload.get('task_summary', '')}\n"
+        f"matched_rows: {matched}\n"
+        f"reason: {str(payload.get('reason') or '').strip()}\n"
+        "Route it yourself if it is right; ignoring it is the default (PLAN-0092)."
+    )
+
+
+def _format_message(payload: dict[str, Any]) -> str:
+    """Dispatch to the formatter for this payload's event kind."""
+    if payload.get("event") == "stop_dispatch_suggestion":
+        return _format_dispatch_suggestion(payload)
+    return _format_cap_message(payload)
+
+
 def _ping_telegram(message: dict[str, Any]) -> None:
     """Best-effort Telegram ping. Never raises; the hook flow continues.
 
@@ -165,7 +198,7 @@ def _ping_telegram(message: dict[str, Any]) -> None:
     script = _telegram_script()
     if not script.exists():
         return
-    body = _format_cap_message(message)
+    body = _format_message(message)
     cmd = bash_argv(script, body)
     env = env_with_wslenv_passthrough(_FORWARDED_ENV)
 
@@ -447,75 +480,27 @@ def _reason_is_contentless(reason: str) -> bool:
     return not any(token not in _META_REASON_TOKENS for token in tokens)
 
 
-# PLAN-0009 Step 4 §5 budget reminder template (verbatim) — kept in this
-# module so the dispatch instruction is self-contained. If Step 4 §5 is
-# ever edited, mirror the change here AND update test_stop_continuation
-# fixtures asserting the template content.
-_PLAN_DRAFTER_BUDGET_REMINDER = (
-    "OUTPUT BUDGET REMINDER: per the plan-drafter output schema, your "
-    "final message should be ≤ 1k tokens total — use the artifact-path-"
-    "only pattern (cite the path you wrote; do NOT inline the artifact "
-    "body). The disclosure stamp and surfaced-decisions section are "
-    "mandatory; do not silently downgrade either."
-)
-
-
-def _build_dispatch_instruction(
-    dispatch: dict[str, str],
+def _dispatch_suggestion_payload(
+    dispatch: dict[str, Any],
     matched_rows: list[str],
     classifier_reason: str,
-) -> str:
-    """Build the continuation instruction the main agent reads on its next turn.
+) -> dict[str, Any]:
+    """Build the suggestion payload Cray receives instead of a spawn order.
 
-    The instruction encodes:
-    * **Why** dispatch fired (matched D-rows + classifier reason)
-    * **What** subagent to spawn + artifact_kind + task_summary
-    * **Pre-spawn** discipline (enumerate ``docs/{adr,plans}/`` first
-      to pick a free ``NNNN``) per Step 4 §4 "Pre-spawn validation"
-    * **Budget reminder** verbatim from Step 4 §5
-    * **Commit boundary** reminder: subagent cannot commit; main agent
-      handles PR-flow per CLAUDE.md §7
-    * **Override** clause: if the agent's judgment differs from the
-      classifier (e.g., the dispatch is misrouted), fall back to a
-      plain pause (do NOT spawn) — the classifier is conservative-by-
-      default but the main agent owns the final routing call.
+    PLAN-0092 (A'): the classifier's routing judgment is preserved verbatim —
+    subagent, artifact_kind, task_summary, the matched D-rows and the reason —
+    but it is delivered as advice on a side channel, not as a continuation
+    instruction the agent must adversarially decline. Cray routes it.
     """
-    subagent = dispatch["subagent"]
-    artifact_kind = dispatch["artifact_kind"]
-    task_summary = dispatch["task_summary"]
-    matched_str = ", ".join(matched_rows) if matched_rows else "(none cited)"
-    artifact_dir = "docs/adr" if artifact_kind == "adr" else "docs/plans"
-
-    return (
-        f"AUTO-HANDOFF DISPATCH (PLAN-0009 Step 5c). The classifier "
-        f"matched {matched_str} and identified a governance-drafting need:\n"
-        f'  "{classifier_reason}"\n\n'
-        f"Per Step 4 §1 R4 routing, spawn the `{subagent}` subagent via "
-        f"the Agent tool with the following parameters:\n"
-        f"  - subagent_type: {subagent}\n"
-        f"  - artifact_kind: {artifact_kind}\n"
-        f"  - task_summary: {task_summary}\n\n"
-        f"Pre-spawn discipline (Step 4 §4):\n"
-        f"  1. Enumerate `{artifact_dir}/` to pick the next free NNNN; pass "
-        f"it down as target_number (subagent does NOT enumerate).\n"
-        f"  2. Construct scoped_context from prior explore-research findings "
-        f"or facts already in your context — do NOT inline full file contents "
-        f"(the subagent has Read).\n"
-        f"  3. Include the budget reminder verbatim in the dispatch payload:\n\n"
-        f"{_PLAN_DRAFTER_BUDGET_REMINDER}\n\n"
-        f"Post-spawn discipline (Step 4 §3):\n"
-        f"  - The subagent returns a final message with the artifact path + "
-        f"a bounded summary. Reference the path in your reply; do NOT echo "
-        f"the artifact body.\n"
-        f"  - YOU commit the draft via PR per CLAUDE.md §7. The subagent "
-        f"cannot commit (G5 binds — composed identity gate denies any git "
-        f"op from a subagent regardless of CLAUDE_TIER inheritance).\n\n"
-        f"Override clause: if you believe the classifier misrouted this "
-        f"(e.g., the task is not actually governance-drafting, or no D-row "
-        f"actually fits), do NOT spawn — instead, surface the misroute in a "
-        f"short reply so Cray can review the trigger. Spurious dispatches "
-        f"are worse than spurious pauses (they consume a subagent spawn)."
-    )
+    return {
+        "event": "stop_dispatch_suggestion",
+        "ts": _now_iso(),
+        "subagent": str(dispatch.get("subagent", "")),
+        "artifact_kind": str(dispatch.get("artifact_kind", "")),
+        "task_summary": str(dispatch.get("task_summary", "")),
+        "matched_rows": matched_rows,
+        "reason": classifier_reason,
+    }
 
 
 def _cap_reached_payload(depth: int, cap: int) -> dict[str, Any]:
@@ -595,27 +580,34 @@ def main() -> int:
         return 0
 
     if verdict == "dispatch":
-        # PLAN-0009 Step 5c-1 auto-handoff arm. Defensive: the classifier
-        # already validates dispatch metadata + fails closed to pause on any
-        # schema violation, but if a malformed dispatch reaches here (e.g.,
-        # future classifier-helper regression), demote to pause locally so
-        # the hook never emits a malformed instruction.
+        # PLAN-0092 (A'): a dispatch is a SUGGESTION, not an order. The arm
+        # emits no directive — the stop fires normally (pause semantics, chain
+        # RESET) and the classifier's routing goes to Cray as one Telegram
+        # ping. Rationale: 14 recorded misfires / 0 recorded valid fires, in
+        # four shapes across two failure families — the classifier can see
+        # neither disk state nor in-flight work (no model upgrade fixes that),
+        # and mention-as-intent is a prompt-rule race lost since PLAN-0034.
+        # A misfired suggestion costs one ping; a misfired order cost a turn
+        # of adversarial declining. This also honors the arm's own stated
+        # preference that spurious dispatches are worse than spurious pauses.
+        #
+        # Malformed metadata stays SILENT (no ping): there is no coherent
+        # routing to suggest, so the demotion must not trade a spurious order
+        # for spurious noise.
         dispatch_meta = decision.get("dispatch")
         if not isinstance(dispatch_meta, dict):
             _reset_chain()
             return 0
         matched_rows_raw = decision.get("matched_rows") or []
         matched_rows = [str(r) for r in matched_rows_raw if isinstance(matched_rows_raw, list)]
-        classifier_reason = decision.get("reason", "")
-        instruction = _build_dispatch_instruction(
-            dispatch_meta,
-            matched_rows,
-            str(classifier_reason),
+        _ping_telegram(
+            _dispatch_suggestion_payload(
+                dispatch_meta,
+                matched_rows,
+                str(decision.get("reason", "")),
+            )
         )
-        chain["depth"] += 1
-        chain["last_proceed_ts"] = _now_iso()
-        _save_chain(chain)
-        print(json.dumps(_proceed_block(instruction)))
+        _reset_chain()
         return 0
 
     # "pause" (or any unrecognized verdict, fail-closed) → no block; reset the
