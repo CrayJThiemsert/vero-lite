@@ -221,10 +221,6 @@ def scaffold_from_narrative(
             "--plan-only", help="Print the open question queue + file manifest; write nothing."
         ),
     ] = False,
-    root: Annotated[
-        Path,
-        typer.Option(help="Tree to emit into. Defaults to the CWD (the repo checkout)."),
-    ] = Path("."),
 ) -> None:
     """Scaffold a vertical package from a customer narrative (PLAN-0091).
 
@@ -244,6 +240,12 @@ def scaffold_from_narrative(
         unenforced_register,
     )
 
+    # CWD-relative, like `validate` / `generate` (ADR-0015 D2). Deliberately no
+    # --root flag: the emitters take an explicit root, but the COMMAND must resolve
+    # the same way the floor it invokes does, and a root that could differ from the
+    # CWD would split-brain against `check_ceiling`'s repo_root. Tests chdir into a
+    # staged tree, which is the resolution rule the command actually runs under.
+    root = Path(".")
     target = root / "verticals" / namespace
     if target.exists():
         sys.stderr.write(
