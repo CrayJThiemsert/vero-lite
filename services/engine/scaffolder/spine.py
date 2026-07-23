@@ -30,6 +30,7 @@ rather than a parse round-trip after the fact.
 from __future__ import annotations
 
 from decimal import Decimal, InvalidOperation
+from pathlib import Path
 from typing import Any
 
 from pydantic import ValidationError
@@ -228,6 +229,19 @@ def emit_procedures(record: IntakeRecord, ontology_doc: dict[str, Any]) -> dict[
     _assert_agreement(steps)
     _assert_prose_clean(doc, record)
     return doc
+
+
+def write_procedures(record: IntakeRecord, ontology_doc: dict[str, Any], root: Path) -> Path:
+    """Write the emitted ``procedures.yaml`` under ``root`` and return its path.
+
+    A sibling of ``write_ontology`` / ``write_package`` so no caller has to re-implement
+    the dump: the CLI doing its own ``YAML().dump`` is how a settings drift (width,
+    unicode, flow style) between the tool and its own tests starts.
+    """
+    from services.engine.scaffolder.ontology import dump_yaml
+
+    path = root / "verticals" / record.namespace / "procedures.yaml"
+    return dump_yaml(emit_procedures(record, ontology_doc), path)
 
 
 def _gate_fields(
