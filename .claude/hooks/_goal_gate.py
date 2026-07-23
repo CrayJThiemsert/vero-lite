@@ -300,7 +300,9 @@ def _divergence_decision(goal: Goal) -> str:
 
 
 # ADR-0018 D6: the spawn-instruction template lives verbatim in-module (the
-# _PLAN_DRAFTER_BUDGET_REMINDER precedent) so the dispatch payload contract —
+# precedent was stop_continuation's _PLAN_DRAFTER_BUDGET_REMINDER, since
+# removed with the classifier dispatch arm's demotion — PLAN-0092) so the
+# dispatch payload contract —
 # pointers + machine outputs only; narration is not evidence — is fixed here,
 # not improvised per call.
 _EVALUATOR_DISPATCH_TEMPLATE = (

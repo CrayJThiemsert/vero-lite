@@ -111,43 +111,63 @@ pre-spend the main agent's budget (`_handle_agent_completion`). L2 resets
 on a passing nodeid; L4 on a successful command. Loop-type taxonomy above
 is Cowork-scoped; Code refines in Phase 2.
 
-## Auto-handoff triggers (Phase 3 — LIVE per PLAN-0009 Step 5c-1)
+## Auto-handoff triggers (Phase 3 — DEMOTED TO SUGGESTION per PLAN-0092, 2026-07-23)
 
-When ANY of the rows below matches the agent's recent activity at a
-`Stop` event, the Sonnet classifier returns `decision: dispatch`
-(instead of `pause`). The `Stop` hook (`stop_continuation.py`) then
-emits a `block` directive whose `reason` is a formatted instruction
-that the main Code agent reads on its next turn, spawning the named
-subagent via the `Agent` tool per PLAN-0009 Step 4 §1 R4 routing +
-§5 budget reminder template.
+**A Stop-side `dispatch` is a SUGGESTION, not an order (PLAN-0092, option A′,
+Cray-ratified 2026-07-23).** When ANY of the rows below matches the agent's
+recent activity at a `Stop` event, the classifier still returns
+`decision: dispatch` — the classifier is unchanged — but the `Stop` hook
+(`stop_continuation.py`) now emits **no directive at all**. The stop fires with
+pause semantics (the stop-chain is **reset**, not incremented) and the routing
+the classifier proposed — subagent, artifact_kind, task_summary, the matched
+D-rows and the reason — is delivered to Cray as a single Telegram ping
+(`stop_dispatch_suggestion`). **Cray routes it; the agent is never instructed
+to spawn.** Malformed dispatch metadata stays silent — no directive, no ping.
 
-The classifier itself does **not** spawn the subagent; only the main
-agent can invoke `Agent`. The hook is the courier of the instruction,
-not the actor. This preserves the ADR-009 D2 / ADR-013 D2 boundary:
-all spawn decisions remain inside the main Code agent's turn loop,
-where the composed G5 check (`pretooluse_git_deny.py`) gates them.
+*Was, until PLAN-0092:* the hook emitted a `block` directive whose `reason` was
+a formatted instruction to spawn the named subagent per PLAN-0009 Step 4 §1 R4
+routing + §5 budget reminder template. **Why demoted:** 14 recorded misfires and
+0 recorded valid fires across ~2 months live, in four shapes spanning two
+failure families — the classifier can see neither disk state nor in-flight work
+(a knowledge gap no model upgrade closes), and mention-as-intent is a
+prompt-rule race already lost since PLAN-0034. A misfired suggestion costs one
+ping; a misfired order cost a turn of adversarial declining. This is the
+literal form of the design preference stated below: spurious dispatches are
+worse than spurious pauses. **The D-rows below are retained** — they still
+document *when* a suggestion fires.
+
+The classifier never spawned the subagent itself; only the main agent can
+invoke `Agent`. Post-PLAN-0092 the hook is not even the courier of an
+instruction — it is a notifier. The ADR-009 D2 / ADR-013 D2 boundary is
+preserved a fortiori: all spawn decisions remain inside the main Code agent's
+turn loop, where the composed G5 check (`pretooluse_git_deny.py`) gates them.
 
 | # | Trigger | Subagent | Artifact kind |
 |---|---------|----------|---------------|
 | D1 | Cray ratifies a decision (in-conversation, no in-flight ADR draft) that warrants a new ADR | plan-drafter | adr |
 | D2 | A multi-step plan needs to be drafted before execution (scope agreed, steps not yet structured) | plan-drafter | plan |
 
-**Override clause (binding for the main agent):** if the agent's
-judgment differs from the classifier (the dispatch was misrouted, the
-work is not actually governance-drafting, or no D-row actually fits),
-the agent does **not** spawn — instead, surface the misroute in a
-short reply so Cray can review the trigger. Spurious dispatches are
-worse than spurious pauses (they consume a subagent spawn).
+**Override clause (retained, now largely moot):** the agent is no longer
+instructed to spawn, so there is nothing to override — a suggestion that does
+not fit is simply not acted on. The clause survives as the standing rule for
+any future re-promotion: if the agent's judgment differs from the classifier
+(the dispatch was misrouted, the work is not actually governance-drafting, or
+no D-row actually fits), the agent does **not** spawn — instead, surface the
+misroute in a short reply so Cray can review the trigger. Spurious dispatches
+are worse than spurious pauses (they consume a subagent spawn) — the principle
+PLAN-0092 made structural.
 
 **Conservative bias (classifier policy):** when in doubt between PAUSE
 and DISPATCH, the classifier chooses PAUSE — same conservatism that
 informs the proceed-vs-pause boundary. Spurious-pause-over-spurious-
 dispatch is the design preference (PLAN-0009 Step 5c §Design).
 
-**Chain-cap interaction:** a `dispatch` outcome counts toward the
-stop-chain depth the same as a `proceed` (the dispatch is semantically
-a continuation + instruction). At cap-hit, the Telegram alert fires
-and the chain resets, same as the proceed-path cap behavior.
+**Chain-cap interaction (revised by PLAN-0092):** a `dispatch` outcome
+**resets** the stop-chain, exactly like a `pause` — it is a natural stop, not a
+continuation, so it no longer counts toward the cap. (Before the demotion it
+incremented like a `proceed`, because it continued the agent's loop with an
+instruction.) At cap-hit the Telegram alert fires and the chain resets, same as
+the proceed-path cap behavior; the V1 goal-gate directive still counts.
 
 **Why these are not always-pause rows.** The G/C/H/L rows above are
 always-pause because they cross hard governance/safety boundaries that
@@ -209,15 +229,18 @@ Telegram + the verdict trail are the channel of record.
   paused with correct `matched_rows` G1/G2/C2 + 1/1 routine work
   proceeded). The classifier fails **closed** (pause + Telegram) on
   any unreachable / malformed-output path — 7 fail-paths covered.
-- **Stop-side dispatch decisions (PLAN-0009 Step 5c-1, LIVE):** the
-  Sonnet classifier now returns one of three decisions —
-  `proceed` / `pause` / `dispatch`. The `dispatch` decision is paired
-  with a `dispatch: {subagent, artifact_kind, task_summary}`
-  sub-object that the `Stop` hook formats into a continuation
-  instruction. Allowed `subagent` value today: `plan-drafter` only;
-  allowed `artifact_kind` values: `adr` / `plan`. Schema violations in
-  the dispatch metadata fail-closed to `pause` per the conservative
-  policy. See the Auto-handoff triggers section above for the D-rows.
+- **Stop-side dispatch decisions (PLAN-0009 Step 5c-1; DEMOTED per
+  PLAN-0092):** the classifier still returns one of three decisions —
+  `proceed` / `pause` / `dispatch` — and `dispatch` is still paired with a
+  `dispatch: {subagent, artifact_kind, task_summary}` sub-object. **What
+  changed is only the hook's interpretation:** that sub-object is now
+  formatted into a Telegram **suggestion** to Cray
+  (`stop_dispatch_suggestion`), not a continuation instruction to the agent,
+  and the stop fires with the chain reset. Allowed `subagent` value today:
+  `plan-drafter` only; allowed `artifact_kind` values: `adr` / `plan`. Schema
+  violations in the dispatch metadata fail-closed to a silent `pause` (no
+  ping) per the conservative policy. See the Auto-handoff triggers section
+  above for the D-rows and the demotion rationale.
 - **PreToolUse classifier dispatch (PLAN-0009 Step 5c-2, LIVE):**
   `.claude/hooks/pretooluse_classifier_dispatch.py` invokes the same
   classifier from the `PreToolUse` hook for `Write|Edit` events whose
@@ -257,4 +280,4 @@ Telegram + the verdict trail are the channel of record.
 
 ---
 
-*Last updated: 2026-06-21 (Session 72 — PLAN-0034 Step 5 / SD-3 = (a) PLAN-only: annotated the **Auto-handoff triggers** §(NOTE) + the **PreToolUse classifier dispatch** bullet to record the prong-2 scope refinement — `pretooluse_classifier_dispatch.py` short-circuits on the G5 `agent_id`/`agent_type` signal so a `plan-drafter` subagent's uncommitted draft-write of a fresh `docs/(adr|plans)/NNNN-*.md` is exempt from the project-level classifier arm (governed by H2 `pretooluse_plan_subagent_write_deny.py` + G5 + PR review), while the main-agent write stays G2-gated. Annotation only — no new row, no row-count change; G5 / ADR-009 D2 / ADR-013 D2 untouched. Impl shipped #397 / `c69b6e2`; cross-link PLAN-0034. Cowork-drafted (ADR-009 D1), Code commits (D2). Previous: 2026-06-10 (Session 51 — PLAN-0021 Step 5 / ADR-0018 T3: added the **Verification-loop triggers** section with the V1 row — gate-emitted deterministic dispatch by `_goal_gate.py`, NOT classifier-mediated; classifier `subagent` values unchanged; chain-cap shared; warn-only v1. Previous: 2026-06-08 (Session 45 — L1 path-class threshold refinement: `l1_threshold_for` (6 code / 15 prose-doc) + subagent-completion L1 reset (`_handle_agent_completion`), after L1 false-fired on multi-section governance authoring; Cray-approved per-diff self-modification. See `docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md`. Previous: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-2: PreToolUse classifier dispatch LIVE via `pretooluse_classifier_dispatch.py`; G1/G2 enforcement rows expanded with PreToolUse arm citation; "How the classifier reads this file" §flipped from "deferred to 5c-2" to "LIVE in 5c-2". Same-session: Step 5c-1 added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" §with the 3rd decision value `dispatch`. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*
+*Last updated: 2026-07-23 (Session 167 — PLAN-0092 (option A′, Cray-ratified): the Stop-side `dispatch` verdict DEMOTED from an order to a suggestion. Annotated the **Auto-handoff triggers** section header + intro (the hook now emits no directive; the routing goes to Cray as a `stop_dispatch_suggestion` Telegram ping; the stop fires with the chain RESET), the **Override clause** (retained but largely moot — nothing to override when nothing is ordered), the **Chain-cap interaction** paragraph (a dispatch now resets the chain like a pause, no longer counts toward the cap; the V1 goal-gate directive still does), and the **Stop-side dispatch decisions** bullet (only the hook's interpretation changed — the classifier is byte-unchanged and still returns `dispatch`). **D1/D2 rows retained** — they still document when a suggestion fires. Evidence: 14 recorded misfires / 0 recorded valid fires across ~2 months live, in four shapes spanning two failure families (knowledge: the classifier sees neither disk nor in-flight state — no model upgrade fixes it; judgment: mention-as-intent, a prompt-rule race lost since PLAN-0034). No ADR amendment — the arm's order-emitting behavior had zero ADR backing; PLAN-0092 is the governance record. Drafted by `plan-drafter` (ADR-009 D1), Code R2 + commits (D2). Previous: 2026-06-21 (Session 72 — PLAN-0034 Step 5 / SD-3 = (a) PLAN-only: annotated the **Auto-handoff triggers** §(NOTE) + the **PreToolUse classifier dispatch** bullet to record the prong-2 scope refinement — `pretooluse_classifier_dispatch.py` short-circuits on the G5 `agent_id`/`agent_type` signal so a `plan-drafter` subagent's uncommitted draft-write of a fresh `docs/(adr|plans)/NNNN-*.md` is exempt from the project-level classifier arm (governed by H2 `pretooluse_plan_subagent_write_deny.py` + G5 + PR review), while the main-agent write stays G2-gated. Annotation only — no new row, no row-count change; G5 / ADR-009 D2 / ADR-013 D2 untouched. Impl shipped #397 / `c69b6e2`; cross-link PLAN-0034. Cowork-drafted (ADR-009 D1), Code commits (D2). Previous: 2026-06-10 (Session 51 — PLAN-0021 Step 5 / ADR-0018 T3: added the **Verification-loop triggers** section with the V1 row — gate-emitted deterministic dispatch by `_goal_gate.py`, NOT classifier-mediated; classifier `subagent` values unchanged; chain-cap shared; warn-only v1. Previous: 2026-06-08 (Session 45 — L1 path-class threshold refinement: `l1_threshold_for` (6 code / 15 prose-doc) + subagent-completion L1 reset (`_handle_agent_completion`), after L1 false-fired on multi-section governance authoring; Cray-approved per-diff self-modification. See `docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md`. Previous: 2026-05-26 (Session 13 — PLAN-0009 Step 5c-2: PreToolUse classifier dispatch LIVE via `pretooluse_classifier_dispatch.py`; G1/G2 enforcement rows expanded with PreToolUse arm citation; "How the classifier reads this file" §flipped from "deferred to 5c-2" to "LIVE in 5c-2". Same-session: Step 5c-1 added **Auto-handoff triggers** section with D1/D2 rows + extended "How the classifier reads this file" §with the 3rd decision value `dispatch`. Previous: 2026-05-24 (Session 10 — PLAN-0008 Step 6 / Wave 2 completion: status banner flipped to Phase-2 LIVE; G1/G2/G3/G4 + C1/C2/C3 marked **Live** via `_sonnet_classifier.py`; L1–L4 marked **Live** via loop-detect + observer + Stop reset; "How the classifier reads this file" §flipped from spec → live with conservatism-probe evidence. Earlier: row C4 added 2026-05-24 — deterministic enforcement of Cowork research landing-zone rule after N=2 incident pattern; mirrors ADR-013 D2 precedent).*
