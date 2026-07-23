@@ -128,6 +128,15 @@ from __future__ import annotations
 from decimal import Decimal
 from pathlib import Path
 
+from services.engine.procedures.at2_signature import (
+    at2_gate_kinds as _at2_gate_kinds,
+)
+from services.engine.procedures.at2_signature import (
+    content_enum_surface as _content_enum_surface,
+)
+from services.engine.procedures.at2_signature import (
+    distinct_at2_signatures,
+)
 from services.engine.procedures.orchestrator import _is_at2_procedure
 from services.engine.procedures.spec import (
     ComplianceGate,
@@ -216,65 +225,25 @@ vocabulary would otherwise key identically to an existing signature and never tr
 re-trigger."""
 
 
-def _at2_gate_kinds(procedure: Procedure) -> tuple[str, ...]:
-    """The AT-2 gate kinds this procedure composes, in step order — the shape half of its
-    signature. Read off the TYPED ``governance_content`` (the authoritative field), never the
-    non-authoritative facet prose."""
-    return tuple(
-        step.governance_content.kind
-        for step in procedure.steps
-        if step.governance_content is not None
-    )
-
-
-def _content_enum_surface(procedure: Procedure) -> tuple[tuple[str, tuple[str, ...]], ...]:
-    """The GOVERNED-ENUM SURFACE each AT-2 content presses, per step — its kind plus the sorted
-    closed-enum member VALUES it names (the reviewer-F4 discriminator). This is the D2 type-system
-    footprint Rule-of-Three actually cares about: two procedures sharing a gate composition but
-    naming different criteria / policies / severity floors are DIFFERENT signatures. Deliberately
-    excludes free instance detail (weights, Thai role strings, tier count) so trigger variants of
-    ONE signature — identical content — collapse to an identical surface and never over-split."""
-    surface: list[tuple[str, tuple[str, ...]]] = []
-    for step in procedure.steps:
-        gc = step.governance_content
-        if gc is None:
-            continue
-        if gc.kind == "rule_gate":
-            # PLAN-0087: `criterion` is a declared CriterionId (plain str) since the vocabulary
-            # left engine code — no `.value` to unwrap. The FINGERPRINT is unchanged: the same
-            # ids in the same sorted order, so `_BASELINE_SIGNATURES` below stays byte-identical
-            # and the census pin still fires on a genuine 5th signature.
-            members = tuple(sorted(rule.criterion for rule in gc.rules))
-        elif gc.kind == "scored_rule":
-            members = tuple(sorted((gc.default_source.value, gc.exception_policy.value)))
-        elif gc.kind == "doa_tier":
-            members = (gc.currency,)  # the money surface; a new currency = new pressure
-        elif gc.kind == "severity_tier":
-            members = tuple(sorted(tier.min_severity.value for tier in gc.tiers))
-        else:
-            members = ()
-        surface.append((gc.kind, members))
-    return tuple(surface)
-
-
+# PLAN-0091 Step 6: the three fingerprint helpers moved to
+# `services/engine/procedures/at2_signature.py` so the scaffolder's
+# governance-ceiling detector and this census share ONE implementation — a tool
+# that predicted signatures with its own copy could disagree with the very test
+# it exists to warn about. Imported under their original private names so every
+# call site below stays byte-identical.
+#
+# `_BASELINE_SIGNATURES` and both assertions did NOT move. The engine module is
+# the fingerprint FUNCTION only; the baseline and the decision to fail stay here,
+# where a reader looking for the tripwire will find them.
+#
+# The extracted scanner takes an explicit root (the scaffolder fingerprints a
+# scratch tree); this wrapper supplies the CWD, preserving the previous
+# behaviour exactly for every caller below.
 def _distinct_at2_signatures() -> (
     list[tuple[str, tuple[str, ...], tuple[tuple[str, tuple[str, ...]], ...]]]
 ):
-    """Every distinct AT-2 signature shipped, sorted. Globs only ``verticals/*`` (never the
-    ``.claude/worktrees`` copies), and dedups trigger variants of one signature (see module
-    docstring). A procedure that :func:`_is_at2_procedure` calls AT-2 but that carries no typed
-    governance content (an SoD-only procedure) keys to an empty gate tuple — counted, but never
-    silently merged with a gate-bearing one."""
-    signatures: set[tuple[str, tuple[str, ...], tuple[tuple[str, tuple[str, ...]], ...]]] = set()
-    for path in sorted(Path("verticals").glob("*/procedures.yaml")):
-        vertical = path.parent.name
-        spec = load_procedures_file(path, vertical=vertical)
-        for procedure in spec.procedures:
-            if _is_at2_procedure(procedure):
-                signatures.add(
-                    (vertical, _at2_gate_kinds(procedure), _content_enum_surface(procedure))
-                )
-    return sorted(signatures)
+    """Every distinct AT-2 signature shipped, sorted (see :mod:`at2_signature`)."""
+    return distinct_at2_signatures(Path())
 
 
 def test_trigger_variants_are_one_signature_not_three() -> None:
