@@ -18,20 +18,42 @@ equality elsewhere — prose may differ, structure may not. Asserted:
 * the spine's AT-2 gate signature — equal to the shipped
   `("rule_gate", ("three_quote",)), ("doa_tier", ("THB",))` baseline row,
 * the governance VALUES against the recorded Q1-Q4 answers,
-* the wire entries against the in-tree ones.
+* the wire entries against the in-tree ones,
+* **row 4** (`data_adapter/__init__.py`) — the one row the ledger claims equality
+  for — as STRUCTURAL equality modulo namespace: same AST once docstrings are
+  stripped and the namespace token is normalized.
 
-**Honestly NOT asserted, and why:** the donor's narrative-mined per-object
-properties (`truck_class`, `odometer_km`, `plate`, `depot_type`) are customer
-detail no generic emitter can invent — mining them from free text is exactly
-the LLM surface this PLAN keeps OUT of the value path. The tool emits the
-grammar skeleton and the judgment slots; the domain columns remain human work,
-and the README gap register is where the tool says so. Claiming a fuller match
-than that would be the failure mode this test exists to prevent.
+**Why row 4 is structural equality and not literal bytes.** The AC's own wording
+scopes it "modulo namespace" and adds "prose may differ, structure may not", and
+literal bytes are not merely hard here — they are *wrong*. The donor's docstring
+records that it was "Hand-written from the building_materials adapter (NOT
+``vero-lite new-vertical`` — banned by the PLAN-0086 measurement protocol)". A
+tool that emitted that sentence would be emitting a false provenance claim about
+its own output. So the oracle compares what the AC actually cares about — the
+code — and lets the provenance prose differ, honestly.
+
+**The domain columns, and what their assertion does and does not prove.** The
+donor's `truck_class` / `odometer_km` / `plate` / `depot_type` are customer
+detail no generic emitter can invent, and mining them from free text is exactly
+the LLM surface this PLAN keeps OUT of the value path. They now reach the
+ontology the only admissible way: **the operator types them**, through the
+`ontology.asset_properties` / `ontology.site_properties` /
+`ontology.asset_title_key` intake slots.
+
+That makes `test_property_sets_match_the_donor` a test of the **emitter's
+plumbing**, NOT evidence that the tool derived the donor's schema — the donor's
+own columns are supplied to it as answers. Said plainly so nobody reads it as
+more: *given a human who supplies the domain columns, the tool can express the
+donor's shape exactly.* What remains genuinely un-derived is the same thing as
+before — knowing WHICH columns a fleet has. The tool asks; it does not guess.
+Claiming a fuller match than that would be the failure mode this test exists to
+prevent.
 """
 
 from __future__ import annotations
 
 import ast
+import inspect
 import json
 import shutil
 from pathlib import Path
@@ -44,10 +66,11 @@ from services.engine.procedures.at2_signature import (
     content_enum_surface,
 )
 from services.engine.procedures.spec import load_procedures_file
+from services.engine.registry import registry
 from services.engine.scaffolder.ceiling import check_ceiling
 from services.engine.scaffolder.intake import IntakeRecord
 from services.engine.scaffolder.ontology import emit_ontology, run_floor, write_ontology
-from services.engine.scaffolder.package import emit_package, write_package
+from services.engine.scaffolder.package import class_prefix, emit_package, write_package
 from services.engine.scaffolder.spine import emit_procedures
 from services.engine.scaffolder.wire import write_wires
 
@@ -117,10 +140,77 @@ def test_same_file_set_as_the_donor(regenerated: Path) -> None:
         for p in regen.rglob("*")
         if p.is_file() and p.suffix in {".py", ".md"}
     }
-    # The donor also ships procedures_factory.py (Step 5's wire-writer target,
-    # emitted per-vertical) — recorded as the one known gap rather than hidden
-    # by weakening the comparison.
-    assert regen_files == donor_files - {"procedures_factory.py"}
+    assert regen_files == donor_files
+
+
+def _skeleton(source: str, namespace: str) -> str:
+    """The AST with docstrings stripped and the namespace token normalized away.
+
+    Normalization happens on the SOURCE before parsing, and to a valid identifier
+    (``nsx`` / ``Nsx``) rather than a placeholder like ``<ns>`` — the token appears
+    in import paths and class names, where a non-identifier would not parse.
+    Comments never survive ``ast.parse``, so this compares code, not annotation.
+    """
+    text = source.replace(class_prefix(namespace), "Nsx").replace(namespace, "nsx")
+    tree = ast.parse(text)
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Module | ast.ClassDef | ast.FunctionDef | ast.AsyncFunctionDef):
+            continue
+        first = node.body[0] if node.body else None
+        if (
+            isinstance(first, ast.Expr)
+            and isinstance(first.value, ast.Constant)
+            and isinstance(first.value.value, str)
+        ):
+            node.body.pop(0)
+    return ast.dump(tree)
+
+
+def test_row_4_adapter_is_structurally_equal_to_the_donor(regenerated: Path) -> None:
+    """AC-7 row 4: the one row the ledger claims equality for.
+
+    Structural, not literal-byte — see the module docstring for why literal bytes
+    would require emitting a false provenance claim. Everything the AC means by
+    "structure" is here: the class, every method and its full parameter list, and
+    the registrar body.
+    """
+    regen = (regenerated / "verticals" / "fleet_regen" / "data_adapter" / "__init__.py").read_text(
+        encoding="utf-8"
+    )
+    donor = (DONOR / "data_adapter" / "__init__.py").read_text(encoding="utf-8")
+    assert _skeleton(regen, "fleet_regen") == _skeleton(donor, "fleet_maintenance")
+
+
+def test_the_emitted_registrar_binds_to_the_real_register_adapter_signature(
+    regenerated: Path,
+) -> None:
+    """The emitted package must be LOADABLE, not merely parseable.
+
+    This guards a bug that shipped and that nothing caught: the emitter called
+    ``registry.register_adapter(_VERTICAL, SyntheticAdapter())`` — two arguments
+    against a one-argument signature — so a scaffolded vertical raised ``TypeError``
+    the moment anything imported and called its registrar. Every existing package
+    test only ``ast.parse``s the emitted text, and a syntactically perfect call to a
+    wrong signature parses fine.
+
+    So this binds the emitted call against the REAL bound signature rather than
+    re-asserting the argument count, which would just restate the emitter.
+    """
+    source = (regenerated / "verticals" / "fleet_regen" / "data_adapter" / "__init__.py").read_text(
+        encoding="utf-8"
+    )
+    calls = [
+        node
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "register_adapter"
+    ]
+    assert len(calls) == 1, "the adapter registers itself exactly once"
+    inspect.signature(registry.register_adapter).bind(
+        *[object()] * len(calls[0].args),
+        **{kw.arg: object() for kw in calls[0].keywords if kw.arg},
+    )
 
 
 def test_ontology_object_and_link_sets_match_the_donor(golden: IntakeRecord) -> None:
@@ -128,6 +218,51 @@ def test_ontology_object_and_link_sets_match_the_donor(golden: IntakeRecord) -> 
     emitted = emit_ontology(golden)
     assert set(emitted["object_types"]) == set(donor["object_types"])
     assert set(emitted["link_types"]) == set(donor["link_types"])
+
+
+def test_property_sets_match_the_donor(golden: IntakeRecord) -> None:
+    """AC-7a: with the operator supplying the domain columns, every object type's
+    property SET equals the donor's — including the columns the emitter has no way
+    to invent. See the module docstring for what this does and does not prove."""
+    donor = _donor_ontology()
+    emitted = emit_ontology(golden)
+    for name in ("Truck", "Depot"):
+        assert set(emitted["object_types"][name]["properties"]) == set(
+            donor["object_types"][name]["properties"]
+        ), name
+
+
+def test_title_key_and_enum_values_match_the_donor(golden: IntakeRecord) -> None:
+    """The shape a set-comparison cannot see: the donor titles a Truck by `plate`
+    (and has no `name` column at all), and its `status` vocabulary is the customer's
+    four, not the emitter's generic active/inactive."""
+    donor = _donor_ontology()
+    emitted = emit_ontology(golden)
+    truck = emitted["object_types"]["Truck"]
+    assert truck["title_key"] == donor["object_types"]["Truck"]["title_key"] == "plate"
+    assert "name" not in truck["properties"]
+    assert (
+        truck["properties"]["status"]["values"]
+        == donor["object_types"]["Truck"]["properties"]["status"]["values"]
+    )
+    assert (
+        emitted["object_types"]["Depot"]["properties"]["depot_type"]["values"]
+        == donor["object_types"]["Depot"]["properties"]["depot_type"]["values"]
+    )
+
+
+def test_the_synthetic_rows_carry_the_ontologys_own_title_and_status(
+    golden: IntakeRecord, regenerated: Path
+) -> None:
+    """The two files must not be able to disagree: an operator-chosen title_key that
+    reached the ontology but not `synthetic.py` would leave every demo row missing a
+    column the ontology declares REQUIRED."""
+    source = (
+        regenerated / "verticals" / "fleet_regen" / "data_adapter" / "synthetic.py"
+    ).read_text(encoding="utf-8")
+    assert '"plate": f"TODO-plate-' in source
+    assert '"status": "in_service"' in source
+    assert '"name": f"TODO-name-' not in source
 
 
 def test_the_band_property_lands_on_the_asset_as_in_the_donor(golden: IntakeRecord) -> None:

@@ -80,6 +80,76 @@ def _split_list(value: str) -> list[str]:
     return [part.strip() for part in value.replace("\n", ",").split(",") if part.strip()]
 
 
+SCALAR_TYPES: frozenset[str] = frozenset({"string", "float", "int", "bool"})
+"""The closed type vocabulary an operator may type for a domain column.
+
+Closed on purpose. An open vocabulary would need something to interpret an
+unrecognised word, and the only thing available to interpret it is the model — which
+is exactly what must not touch this surface (SD-1)."""
+
+
+class DomainPropertyError(RuntimeError):
+    """Raised when a domain-column answer does not parse.
+
+    Refusing is the behaviour, not a fallback: a column the tool cannot parse must
+    become neither a silently-dropped column nor a guessed type. The operator sees
+    the malformed entry and retypes it.
+    """
+
+
+def _split_top_level(value: str) -> list[str]:
+    """Split on commas that are NOT inside ``enum(...)`` parentheses."""
+    parts: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    for ch in value:
+        if ch == "(":
+            depth += 1
+        elif ch == ")":
+            depth -= 1
+        if ch == "," and depth == 0:
+            parts.append("".join(buf))
+            buf = []
+        else:
+            buf.append(ch)
+    parts.append("".join(buf))
+    return [part.strip() for part in parts if part.strip()]
+
+
+def parse_domain_properties(answer: str | None) -> dict[str, dict[str, Any]]:
+    """Parse ``name:type`` domain columns from one operator answer.
+
+    ``plate:string, truck_class:enum(tractor_head|six_wheeler|trailer), odometer_km:float``
+
+    Enum members are separated by ``|`` rather than ``,`` so the outer list stays
+    unambiguously comma-separated — the operator never has to think about escaping.
+    An empty or absent answer yields ``{}``: the customer has no extra columns, which
+    is a legitimate answer and not a gap.
+    """
+    if not answer or not answer.strip():
+        return {}
+
+    properties: dict[str, dict[str, Any]] = {}
+    for part in _split_top_level(answer):
+        name, sep, spec = part.partition(":")
+        name, spec = name.strip(), spec.strip()
+        if not sep or not name or not spec:
+            raise DomainPropertyError(f"expected `name:type`, got {part.strip()!r}")
+        if spec.startswith("enum(") and spec.endswith(")"):
+            values = [v.strip() for v in spec[len("enum(") : -1].split("|") if v.strip()]
+            if not values:
+                raise DomainPropertyError(f"enum column {name!r} lists no values")
+            properties[name] = {"type": "enum", "values": values}
+        elif spec in SCALAR_TYPES:
+            properties[name] = {"type": spec}
+        else:
+            raise DomainPropertyError(
+                f"unknown type {spec!r} for column {name!r} — "
+                f"expected one of {sorted(SCALAR_TYPES)} or enum(a|b|c)"
+            )
+    return properties
+
+
 def emit_ontology(record: IntakeRecord) -> dict[str, Any]:
     """Build the ontology document for ``record``.
 
@@ -100,35 +170,57 @@ def emit_ontology(record: IntakeRecord) -> dict[str, Any]:
     a, s = _key(asset), _key(site)
     asset_pk, site_pk = f"{a}_id", f"{s}_id"
 
+    # AC-7a: the customer's own domain columns, operator-typed. Absent is a valid
+    # answer — the skeleton is emitted without them rather than with invented ones.
+    asset_title = str(record.confirmed_value("ontology.asset_title_key") or "name")
+    asset_domain = parse_domain_properties(record.confirmed_value("ontology.asset_properties"))
+    site_domain = parse_domain_properties(record.confirmed_value("ontology.site_properties"))
+
+    # The title property is emitted as required under whatever name the operator
+    # chose, and `name` is NOT also emitted when they chose something else: the
+    # donor's Truck has `plate` and no `name`, and a spare unused string column is
+    # exactly the kind of plausible-looking noise this tool must not produce.
+    asset_properties: dict[str, Any] = {
+        asset_pk: {"type": "string", "required": True},
+        asset_title: {"type": "string"},
+    }
+    asset_properties.update(asset_domain)
+    # The title property is REQUIRED however the operator happened to type it in the
+    # domain list — a nullable title_key is a broken object type, not a preference.
+    # Re-applied in place, so the property keeps its declared position.
+    asset_properties[asset_title] = {**asset_properties[asset_title], "required": True}
+    # The band property and the site ref are structural, so they are written AFTER
+    # the domain columns and win any collision: they are what the spine reads.
+    asset_properties[band_property] = {
+        "type": "float",
+        "description": (
+            "This entity's OWN per-entity band (ADR-016 FKP amendment) — the judge "
+            "compares each row against this field, not a shared scalar."
+        ),
+    }
+    asset_properties.setdefault("status", {"type": "enum", "values": ["active", "inactive"]})
+    asset_properties["site_id"] = {"type": "ref", "target": site, "required": True}
+
+    site_properties: dict[str, Any] = {
+        site_pk: {"type": "string", "required": True},
+        "name": {"type": "string", "required": True},
+    }
+    site_properties.update(site_domain)
+    site_properties.setdefault("lat", {"type": "float"})
+    site_properties.setdefault("lng", {"type": "float"})
+
     object_types: dict[str, Any] = {
         asset: {
             "primary_key": asset_pk,
-            "title_key": "name",
+            "title_key": asset_title,
             "description": f"The managed operational unit (the monitored Asset) — {asset}.",
-            "properties": {
-                asset_pk: {"type": "string", "required": True},
-                "name": {"type": "string", "required": True},
-                band_property: {
-                    "type": "float",
-                    "description": (
-                        "This entity's OWN per-entity band (ADR-016 FKP amendment) — the judge "
-                        "compares each row against this field, not a shared scalar."
-                    ),
-                },
-                "status": {"type": "enum", "values": ["active", "inactive"]},
-                "site_id": {"type": "ref", "target": site, "required": True},
-            },
+            "properties": asset_properties,
         },
         site: {
             "primary_key": site_pk,
             "title_key": "name",
             "description": f"A location the {asset} belongs to or is routed to.",
-            "properties": {
-                site_pk: {"type": "string", "required": True},
-                "name": {"type": "string", "required": True},
-                "lat": {"type": "float"},
-                "lng": {"type": "float"},
-            },
+            "properties": site_properties,
         },
         "OperationalEvent": {
             "primary_key": "event_id",
