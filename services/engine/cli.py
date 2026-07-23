@@ -13,11 +13,14 @@ import importlib
 import sys
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import Annotated, cast
+from typing import TYPE_CHECKING, Annotated, cast
 
 import typer
 
 from services.engine import code_generator, ontology_validator, scaffold
+
+if TYPE_CHECKING:  # import-time cost stays off every other command's path
+    from services.engine.scaffolder.intake import IntakeRecord
 
 app = typer.Typer(help="vero-lite ontology engine CLI", no_args_is_help=True)
 
@@ -120,6 +123,83 @@ def new_vertical(
     )
 
 
+def _emit_scaffold(record: IntakeRecord, namespace: str, root: Path) -> None:
+    """Emit the vertical: ontology -> package -> procedures -> ceiling check -> wires.
+
+    Split out of the command so the ORDER is readable in one screen, because the order
+    is load-bearing rather than incidental: the governance-ceiling check runs after the
+    procedures document exists (it needs the signature) but **before** any wire is
+    written, so a stop leaves the four shared wire files untouched. A ceiling stop that
+    had already code-modded ``services/api/main.py`` would be a stop in name only.
+
+    Every write is uncommitted working-tree output (PLAN-0091: no git operations, ever);
+    Code reviews and commits it via PR.
+    """
+    import tempfile
+
+    from services.engine.scaffolder.ceiling import GovernanceCeilingError, check_ceiling
+    from services.engine.scaffolder.ontology import (
+        DomainPropertyError,
+        OntologyEmissionError,
+        emit_ontology,
+        write_ontology,
+    )
+    from services.engine.scaffolder.package import write_package
+    from services.engine.scaffolder.spine import emit_procedures, write_procedures
+    from services.engine.scaffolder.wire import WireError, write_wires
+
+    try:
+        ontology_doc = emit_ontology(record)
+    except OntologyEmissionError as exc:
+        sys.stderr.write(
+            "REFUSING TO EMIT — these judgment slots are unanswered or unconfirmed:\n"
+            + "".join(f"  - {slot}\n" for slot in exc.open_slots)
+            + "They are customer vocabulary calls; no default is safe, because a wrong "
+            "default is indistinguishable from an answer once it is on disk.\n"
+        )
+        raise typer.Exit(code=3) from exc
+    except DomainPropertyError as exc:
+        sys.stderr.write(f"REFUSING TO EMIT — a domain column did not parse: {exc}\n")
+        raise typer.Exit(code=3) from exc
+
+    procedures_doc = emit_procedures(record, ontology_doc)
+    procedure_id = next(iter(procedures_doc["procedures"]))
+
+    # The designed-in ceiling: detect, STOP, and hand a human a pre-built argument.
+    # The tool never clears a governance tripwire on its own.
+    with tempfile.TemporaryDirectory() as scratch:
+        try:
+            check_ceiling(namespace, procedures_doc, repo_root=Path.cwd(), scratch=Path(scratch))
+        except GovernanceCeilingError as exc:
+            sys.stderr.write(exc.report.render() + "\n")
+            raise typer.Exit(code=4) from exc
+
+    written: list[Path] = [write_ontology(record, root)]
+    written.extend(write_package(record, ontology_doc, root))
+    written.append(write_procedures(record, ontology_doc, root))
+
+    try:
+        wires = write_wires(namespace, procedure_id, procedures_doc, root)
+    except WireError as exc:
+        sys.stderr.write(
+            f"Package written, but wiring failed: {exc}\n"
+            f"The package under verticals/{namespace}/ is intact; re-run the wiring once "
+            f"the target files are present.\n"
+        )
+        raise typer.Exit(code=5) from exc
+
+    sys.stderr.write(f"Wrote {len(written)} package files:\n")
+    for path in written:
+        sys.stderr.write(f"  {path}\n")
+    sys.stderr.write(f"\nWired {len(wires)} shared files:\n")
+    for rel in wires:
+        sys.stderr.write(f"  {rel}\n")
+    sys.stderr.write(
+        f"\nAll output is UNCOMMITTED working-tree changes — review the diff before "
+        f"committing. Procedure id: {procedure_id!r}\n"
+    )
+
+
 # Registered as `scaffold` but NOT named `scaffold` at module scope: that name is
 # already bound to the `services.engine.scaffold` module imported above, which
 # `new_vertical` calls into (`scaffold.RecommendConfig`). Shadowing it would break
@@ -141,6 +221,10 @@ def scaffold_from_narrative(
             "--plan-only", help="Print the open question queue + file manifest; write nothing."
         ),
     ] = False,
+    root: Annotated[
+        Path,
+        typer.Option(help="Tree to emit into. Defaults to the CWD (the repo checkout)."),
+    ] = Path("."),
 ) -> None:
     """Scaffold a vertical package from a customer narrative (PLAN-0091).
 
@@ -160,7 +244,7 @@ def scaffold_from_narrative(
         unenforced_register,
     )
 
-    target = Path("verticals") / namespace
+    target = root / "verticals" / namespace
     if target.exists():
         sys.stderr.write(
             f"ERROR: {target}/ already exists — scaffold refuses to overwrite an existing "
@@ -170,6 +254,17 @@ def scaffold_from_narrative(
 
     if intake is not None:
         record = IntakeRecord.model_validate_json(intake.read_text(encoding="utf-8"))
+        # The emitters key every write off `record.namespace`, while the guard above
+        # checks the ARGUMENT. Letting the two differ would route the write past the
+        # refuse-to-overwrite guard entirely and land on whatever the file names —
+        # potentially a shipped vertical. Refuse rather than silently pick a winner.
+        if record.namespace != namespace:
+            sys.stderr.write(
+                f"ERROR: --intake declares namespace {record.namespace!r} but the argument "
+                f"says {namespace!r}. They must match: the overwrite guard checks the "
+                f"argument and every emitter writes to the record's namespace.\n"
+            )
+            raise typer.Exit(code=2)
     else:
         narrative_text = narrative.read_text(encoding="utf-8") if narrative is not None else ""
         record = IntakeRecord(namespace=namespace, narrative=narrative_text)
@@ -192,10 +287,7 @@ def scaffold_from_narrative(
         sys.stderr.write("--plan-only: nothing written.\n")
         raise typer.Exit(code=0)
 
-    # Emission stages land in Steps 2-4; until then the command is intake-only
-    # and exits non-zero rather than pretending it scaffolded something.
-    sys.stderr.write("Emission is not wired yet (PLAN-0091 Steps 2-4). Re-run with --plan-only.\n")
-    raise typer.Exit(code=3)
+    _emit_scaffold(record, namespace, root)
 
 
 # Per-vertical procedure-executor factory registration for the scheduler daemon (PLAN-0090 L3).
