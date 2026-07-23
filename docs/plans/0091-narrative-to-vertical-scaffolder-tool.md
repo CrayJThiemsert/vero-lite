@@ -103,7 +103,7 @@ What the tool actually buys, grounded in the measurements rather than asserted:
 | Restricted draft types + governance-field disjointness | `services/engine/procedures/draft.py:123` (`StepDraft`), `:171` (`ProcedureDraft`), `:186` (`GovernanceStub`), `:109-115` (`GOVERNANCE_FIELDS` union incl. `:98` `VERTICAL_GOVERNANCE_FIELDS = {compliance_criteria}`) | **Reuse.** The LLM emission surface stays exactly this. |
 | Deterministic prose-lint (numerics / currency / handler names / approval verbs) | `services/engine/procedures/prose_lint.py:133`, `:217` | **Reuse pre-emit** (Step 4). |
 | API exposure of the generator | `services/api/routers/procedure_draft.py:62-70` | **Untouched.** The CLI path does not alter the router or its abstain behaviour. |
-| AT-2 abstain guard in the API pipeline | `services/engine/procedures/generator/pipeline.py:82` (`_AT2_ONLY_KINDS`), `:190` | **Untouched — but only under SD-5 (a).** The classify catalog is built from `REGISTRY.values()` (`:225`) and the label route resolves through the same dict (`:253`/`:258`), so central registration changes this path whether or not the tool calls it. See SD-5. |
+| AT-2 abstain guard in the API pipeline | `services/engine/procedures/generator/pipeline.py:82` (`_AT2_ONLY_KINDS`), `:190` | **Untouched — guaranteed by the ratified SD-5 (a).** The classify catalog is built from `REGISTRY.values()` (`:225`) and the label route resolves through the same dict (`:253`/`:258`), so *central* registration would change this path whether or not the tool called it. (a) keeps the AT-2 template out of `REGISTRY` entirely, so this path is byte-unchanged. |
 | Codegen floor: ontology YAML → 7 artifacts, EXIT 0, 2m02s measured | `uv run vero-lite validate` / `generate` (console script `pyproject.toml:44-45`) | **Invoke** (ledger row 10: `[one-time-only]` — the floor, never re-implemented). |
 | Tier-1 Mirror scaffolder | `services/engine/scaffold.py:876` (`scaffold_vertical`), CLI seam "Requires the ontology … to exist first" (`services/engine/cli.py:84-85`) | **Untouched as a command** (ADR-0015 D2 stays); internals reused where they fit. The new tool starts *before* the ontology exists — exactly the seam `new-vertical` starts after. |
 | Per-vertical declared criterion vocabulary (no engine enum) | `services/engine/procedures/spec.py:876-884` (RETIRED note), `:1688` (`compliance_criteria`), `:1717` (`_validate_compliance_criteria`) | **Rely on.** A new AT-2 vertical ships with **zero engine diff** (correction 1). |
@@ -340,7 +340,7 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   multi-narrative / multi-procedure batch mode (mirrors ADR-0024 OQ-6:
   one-vertical-per-run).
 
-## Surfaced decisions (SD-1…SD-4 — **RATIFIED by Cray 2026-07-22, session 165, typed AskUserQuestion — all four as-recommended**; **SD-5 OPEN**, surfaced session 166)
+## Surfaced decisions (SD-1…SD-4 — **RATIFIED by Cray 2026-07-22, session 165, typed AskUserQuestion — all four as-recommended**; **SD-5 RATIFIED (a)** by Cray 2026-07-23, session 166, typed — also as-recommended. **All five closed; nothing in this PLAN awaits a decision.**)
 
 ### SD-1 — Does the narrative→ontology-YAML stage need its own ADR?
 
@@ -461,7 +461,7 @@ scope discipline above holds — this PLAN converts or removes only the three co
 in files the wire-writer touches, plus the `main.py` docstring count (row 7). No
 repo-wide sweep.
 
-### SD-5 — Where does the AT-2 template live? (**OPEN — surfaced session 166, awaiting Cray**)
+### SD-5 — Where does the AT-2 template live? (**RATIFIED (a)** — surfaced + adjudicated session 166)
 
 **Why this is surfaced late.** Step 4's design note (below) promised the scaffolder
 would instantiate the AT-2 template **directly**, "rather than growing the S1 classify
@@ -506,6 +506,36 @@ implementation detail. **Tripwire (binding either way):** if the build finds the
 scaffolder cannot produce a valid AT-2 spine without central registration, STOP and
 re-open this SD rather than registering centrally by default.
 
+**RATIFIED: (a) — a separate scaffolder-owned registry. The AT-2 template is
+constructed and instantiated by `services/engine/scaffolder/` and is NEVER inserted
+into `services.engine.procedures.archetypes.template.REGISTRY`.** (Cray, 2026-07-23,
+session 166, typed.) Binding consequences for the build:
+
+1. **`REGISTRY` is not touched.** `pipeline.py:225`'s classify catalog, the `:253`
+   membership test, and the `:258` instantiation therefore see exactly the AT-1 family
+   they see today — the API classify path is **byte-unchanged**, and ADR-0024 D7's
+   "AT-2 routes to hand-author (the abstain path, D5)" stays literally true on that
+   surface.
+2. **SD-1 = (c) stands undisturbed — no ADR gates this PLAN.** (a) was chosen partly
+   because it is the only option that does not re-open Step 0.
+3. **`test_archetype_templates.py:37` (`set(REGISTRY) == set(AT1_FAMILY)`) never
+   fires**, and its family-invariant framing (`:11`, `template.py:255-257`) stays
+   accurate. **Do not edit that test.** If a diff to it appears necessary, that is the
+   tripwire below firing — stop, do not "fix" the assertion.
+4. **The tripwire above stays ARMED.** If the build finds the scaffolder cannot produce
+   a valid AT-2 spine without central registration, **STOP and re-open this SD** —
+   registering centrally by default is forbidden, and doing so via (c) would also
+   re-open SD-1's no-ADR ruling.
+5. **Step 4 is unblocked** and no longer waits on anything.
+
+**Deliberately left as build-time detail (not decided here):** whether the scaffolder's
+AT-2 template is a module-level constant, a builder function, or a small tool-local
+registry dict is an implementation choice for Step 4 — (a) constrains only that it must
+not enter the shared `REGISTRY`. The `ArchetypeTemplate` **type** is reused as-is
+(`template.py:108-146`: `archetype_id` / `title` / `description` / `base` / `slots` /
+`terminal_slot`, `extra="forbid"`); (a) is about registration, not about forking the
+artifact.
+
 ## Steps
 
 ### Step 0 — Cray adjudicates SD-1…SD-4 — ✅ **DONE (2026-07-22, session 165)**
@@ -521,13 +551,14 @@ only** · **SD-3 = typed required-slot checklist as an interview loop** ·
 Each ruling is recorded inline at its own SD above. **Consequence: no ADR blocks
 this PLAN — Steps 1–7 are executable end to end, deterministic-offline.**
 
-⚠️ **Qualified session 166 — Step 0 is done, but one new decision is open.** The
-"no ADR" consequence holds under **SD-5 (a) or (b)**; **SD-5 (c) would re-open it**
-(accepting AT-2 into the API classify surface contradicts ADR-0024 D7/D5 as shipped).
-SD-5 is a *placement* decision the s165 adjudication never saw, because the promise it
-would have tested — Step 4's "the abstain guard stays as-is" — was not verified against
-`pipeline.py` until session 166. **Steps 1, 2, 3 are unaffected and executable now;
-Step 4 is the only one that waits.**
+**Session 166 — one further decision was surfaced and closed the same day.** SD-5 (the
+AT-2 template's *placement*) was a decision the s165 adjudication never saw, because the
+promise it would have tested — Step 4's "the abstain guard stays as-is" — was not
+verified against `pipeline.py` until session 166. **Cray ratified SD-5 = (a)
+(2026-07-23, typed):** the template is scaffolder-owned and never enters the shared
+`REGISTRY`. **The "no ADR" consequence therefore stands unchanged** — (a) was chosen
+partly because it is the only option that does not re-open Step 0. **All of Steps 1–7
+are now executable end to end; nothing in this PLAN awaits a decision.**
 
 **Sequencing note (session 165 claim, CORRECTED by a session-166 grounding pass).**
 The s165 Explore fan-out asserted a **hard** ordering constraint: "**Step 1 has a
@@ -588,28 +619,34 @@ latest-per-asset ordering + the README with the gap register. Oracle: AC-4.
 ### Step 4 — The AT-2 template + spine emitter
 
 Add one `ArchetypeTemplate` for the row-11 spine, reusing the D4
-signature-agreement machinery. ⚠️ **BLOCKED ON SD-5 — read it first.** The original
-design note here promised the API pipeline's abstain guard (`pipeline.py:82,190`)
-would stay as-is because the scaffolder instantiates the AT-2 template **directly,
-operator-confirmed**, "rather than growing the S1 classify surface". **A session-166
-grounding pass found that promise is structurally false if the template is
-registered in the shared `REGISTRY`** (`pipeline.py:225` builds the classify catalog
-from `REGISTRY.values()`; `:253/:258` route by label through the same dict) — see
-SD-5 for the evidence and the three options. The *intent* — operator-confirmed direct
-instantiation, satisfying ADR-0024 D5, with classify unchanged — survives intact under
-SD-5 (a); it is the **placement** that must be decided, not the intent. Growing
-classify to AT-2 stays deliberately deferred until the API path wants it.
+signature-agreement machinery. ✅ **UNBLOCKED — SD-5 ratified (a): the template is
+owned by `services/engine/scaffolder/` and NEVER enters the shared `REGISTRY`.**
+The original design note here promised the API pipeline's abstain guard
+(`pipeline.py:82,190`) would stay as-is because the scaffolder instantiates the AT-2
+template **directly, operator-confirmed**, "rather than growing the S1 classify
+surface". A session-166 grounding pass found that promise is structurally false **if
+the template is registered centrally** (`pipeline.py:225` builds the classify catalog
+from `REGISTRY.values()`; `:253/:258` route by label through the same dict) — **(a)
+resolves it by construction:** nothing enters `REGISTRY`, so the classify path is
+byte-unchanged and the promise holds as written. The intent — operator-confirmed
+direct instantiation satisfying ADR-0024 D5, classify untouched — is preserved
+exactly. Growing classify to AT-2 stays deliberately deferred until the API path
+wants it. **The SD-5 tripwire is ARMED:** if a valid AT-2 spine turns out to be
+impossible without central registration, STOP and re-open SD-5.
 
 **Second finding (session 166) — one unbudgeted RED test this PLAN never named.**
 `tests/services/engine/procedures/test_archetype_templates.py:37` asserts
 `set(REGISTRY) == set(AT1_FAMILY)` with `AT1_FAMILY = ["AT-1", "AT-1b", "AT-3"]`
-(`:31`) — it goes **RED the moment an AT-2 template is registered centrally**, along
-with the family-invariant framing in its module docstring (`:11`, "NO AT-2-only kind")
-and `template.py:255-257` ("the AT-1 family only (D7)"). Under **SD-5 (a) this test
-never fires** (nothing enters `REGISTRY`); under **(b)/(c) it must be re-argued, not
-silently updated** — and the AT-2 template needs its own agreement test, since
+(`:31`) — it would go **RED the moment an AT-2 template is registered centrally**,
+along with the family-invariant framing in its module docstring (`:11`, "NO AT-2-only
+kind") and `template.py:255-257` ("the AT-1 family only (D7)"). **Under the ratified
+SD-5 (a) this test never fires** — nothing enters `REGISTRY`, and its framing stays
+accurate. **Treat any need to edit it as the SD-5 tripwire firing, not as a test to
+update.** (Had (b)/(c) been chosen it would have had to be re-argued, and the AT-2
+template would have needed its own agreement test, since
 `test_archetype_agreement_signature` (`:81-93`) encodes "no AT-2-only kind" as the
-*family* invariant. Related pre-existing drift to fix or note while here:
+*family* invariant — a cost that helped decide (a).) Related pre-existing drift to fix
+or note while here:
 `test_archetype_templates.py:32` `AT2_ONLY_KINDS` omits `GateKind.SEVERITY_TIER`,
 which both `pipeline.py:82-84` and `draft.py:283-285` include.
 
