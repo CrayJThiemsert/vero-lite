@@ -2,28 +2,137 @@
   "namespace": "fleet_maintenance",
   "narrative": "(see fleet_shaped_narrative.txt — the answers below are the Q1-Q4 customer answers already recorded in-tree by PLAN-0086, not new facts)",
   "answers": [
-    {"slot_id": "ontology.asset_noun", "value": "Truck", "confirmed": true, "guess": false},
-    {"slot_id": "ontology.site_noun", "value": "Depot", "confirmed": true, "guess": false},
-    {"slot_id": "ontology.band_property", "value": "minor_repair_ceiling_thb", "confirmed": true, "guess": false},
-    {"slot_id": "ontology.action_types", "value": "approve_repair_spend, dispatch_replacement_truck, tow_to_partner_garage, escalate, schedule_pm_service", "confirmed": true, "guess": false},
-
-    {"slot_id": "band.judge.threshold", "value": "per-entity", "confirmed": true, "guess": false},
-    {"slot_id": "band.judge.direction", "value": "above", "confirmed": true, "guess": false},
-
-    {"slot_id": "governance.rule_gate.criteria", "value": "three_quote", "confirmed": true, "guess": false},
-    {"slot_id": "governance.rule_gate.criteria.threshold", "value": "20000", "confirmed": true, "guess": false},
-
-    {"slot_id": "governance.approve.currency", "value": "THB", "confirmed": true, "guess": false},
-    {"slot_id": "governance.approve.tiers", "value": "0:head_mechanic, 5000:fleet_manager, 50000:owner", "confirmed": true, "guess": false},
-    {"slot_id": "governance.approve.waiver.relaxes", "value": "three_bid", "confirmed": true, "guess": false},
-    {"slot_id": "governance.approve.waiver.ratifier", "value": "owner", "confirmed": true, "guess": false},
-    {"slot_id": "governance.approve.waiver.cap", "value": "10000", "confirmed": true, "guess": false},
-    {"slot_id": "governance.approve.waiver.window", "value": "next business day", "confirmed": true, "guess": false},
-    {"slot_id": "governance.approve.sod.requester", "value": "head_mechanic", "confirmed": true, "guess": false},
-
-    {"slot_id": "fixture.asset_count", "value": "6", "confirmed": true, "guess": true},
-    {"slot_id": "fixture.band_value", "value": "20000", "confirmed": true, "guess": true},
-    {"slot_id": "fixture.breach_value", "value": "48000", "confirmed": true, "guess": false},
-    {"slot_id": "fixture.normal_value", "value": "1200", "confirmed": true, "guess": true}
+    {
+      "slot_id": "ontology.asset_noun",
+      "value": "Truck",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "ontology.site_noun",
+      "value": "Depot",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "ontology.band_property",
+      "value": "minor_repair_ceiling_thb",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "ontology.action_types",
+      "value": "approve_repair_spend, dispatch_replacement_truck, tow_to_partner_garage, escalate, schedule_pm_service",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "band.judge.threshold",
+      "value": "per-entity",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "band.judge.direction",
+      "value": "above",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "governance.rule_gate.criteria",
+      "value": "three_quote",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "governance.rule_gate.criteria.threshold",
+      "value": "20000",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "governance.approve.currency",
+      "value": "THB",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "governance.approve.tiers",
+      "value": "0:head_mechanic, 5000:fleet_manager, 50000:owner",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "governance.approve.waiver.relaxes",
+      "value": "three_bid",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "governance.approve.waiver.ratifier",
+      "value": "owner",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "governance.approve.waiver.cap",
+      "value": "10000",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "governance.approve.waiver.window",
+      "value": "next business day",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "governance.approve.sod.requester",
+      "value": "head_mechanic",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "fixture.asset_count",
+      "value": "6",
+      "confirmed": true,
+      "guess": true
+    },
+    {
+      "slot_id": "fixture.band_value",
+      "value": "20000",
+      "confirmed": true,
+      "guess": true
+    },
+    {
+      "slot_id": "fixture.breach_value",
+      "value": "48000",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "fixture.normal_value",
+      "value": "1200",
+      "confirmed": true,
+      "guess": true
+    },
+    {
+      "slot_id": "ontology.asset_title_key",
+      "value": "plate",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "ontology.asset_properties",
+      "value": "truck_class:enum(tractor_head|six_wheeler|trailer), odometer_km:float, next_service_due_km:float, status:enum(in_service|roadside_breakdown|in_garage|retired)",
+      "confirmed": true,
+      "guess": false
+    },
+    {
+      "slot_id": "ontology.site_properties",
+      "value": "depot_type:enum(home_yard|partner_garage|roadside_point)",
+      "confirmed": true,
+      "guess": false
+    }
   ]
 }

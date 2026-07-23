@@ -55,9 +55,18 @@ class SlotKind(StrEnum):
     thing that owes it; a missing ``FIXTURE_VALUE`` is emittable as a marked guess;
     an ``UNMODELLED`` slot is never emitted into YAML at all — it is recorded in the
     README register so the customer's fact survives the schema's silence.
+
+    ``ONTOLOGY_DOMAIN`` is the fourth case and deliberately not any of the other
+    three: the customer's own domain columns (``plate``, ``truck_class``,
+    ``odometer_km``). A missing one emits **nothing** — not a stub, not a guess.
+    There is no safe default for a column that does not exist, and inferring the set
+    from the narrative is precisely the LLM surface this tool keeps out of the value
+    path (SD-1). So the operator types them or the vertical simply does without them,
+    and the README gap register carries the silence.
     """
 
     ONTOLOGY_JUDGMENT = "ontology_judgment"
+    ONTOLOGY_DOMAIN = "ontology_domain"
     GOVERNANCE_VALUE = "governance_value"
     FIXTURE_VALUE = "fixture_value"
     UNMODELLED = "unmodelled"
@@ -283,6 +292,35 @@ _ONTOLOGY_JUDGMENTS: tuple[tuple[str, str, str], ...] = (
     ),
 )
 
+# The domain-column slots (AC-7a). OPTIONAL by construction — unlike the four
+# judgments above, an unanswered domain slot does not block emission; the vertical
+# is simply emitted without those columns. They exist because the golden donor's
+# `truck_class` / `odometer_km` / `plate` / `depot_type` are real customer detail
+# that has to enter SOMEWHERE, and the only admissible somewhere is an operator's
+# keyboard: mining them out of the narrative would put the LLM back on the value
+# path (SD-1's promotion tripwire), and defaulting them would fabricate a schema.
+_ONTOLOGY_DOMAIN: tuple[tuple[str, str, str, str], ...] = (
+    (
+        "asset_title_key",
+        "Asset.title_key",
+        "title_key",
+        "สินทรัพย์แสดงชื่อด้วย property อะไร (เช่น ทะเบียนรถ)? เว้นว่าง = ใช้ `name`",
+    ),
+    (
+        "asset_properties",
+        "Asset",
+        "properties",
+        "สินทรัพย์มีคอลัมน์อะไรอีกบ้าง? รูปแบบ `ชื่อ:ชนิด` คั่นด้วย comma "
+        "(ชนิด: string / float / int / bool / enum(a|b|c))",
+    ),
+    (
+        "site_properties",
+        "Site",
+        "properties",
+        "สถานที่มีคอลัมน์อะไรอีกบ้าง? รูปแบบเดียวกับของสินทรัพย์",
+    ),
+)
+
 # The synthetic-fixture value slots (AC-4): every numeric literal in the emitted
 # synthetic.py must trace to one of these or carry the GUESS marker.
 _FIXTURE_VALUES: tuple[tuple[str, str], ...] = (
@@ -355,6 +393,17 @@ def required_slots(steps: Sequence[Step] | None = None) -> list[Slot]:
                 kind=SlotKind.ONTOLOGY_JUDGMENT,
                 owed_by=owner,
                 schema_field=sub,
+            )
+        )
+
+    for sub, owner, field, question in _ONTOLOGY_DOMAIN:
+        slots.append(
+            Slot(
+                slot_id=f"ontology.{sub}",
+                question=question,
+                kind=SlotKind.ONTOLOGY_DOMAIN,
+                owed_by=owner,
+                schema_field=field,
             )
         )
 
