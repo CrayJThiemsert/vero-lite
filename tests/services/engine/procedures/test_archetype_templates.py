@@ -9,8 +9,8 @@ The offline gate for the ``ArchetypeTemplate`` artifact (ADR-0024 D2). Pure-Pyth
 * **AC-A8 / D4** — each template's ``gate_kind`` sequence matches the AT-1-family
   governance signature: the sole ``judge`` (evaluate) slot is a band kind, every
   other slot is ``none``, and NO AT-2-only kind (``scored_rule`` / ``rule_gate`` /
-  ``doa_tier``) appears (a v1 skeleton that would need one is an abstain, never a
-  down-classified AT-3).
+  ``doa_tier`` / ``severity_tier``) appears (a v1 skeleton that would need one is an
+  abstain, never a down-classified AT-3).
 * The instantiated skeleton leaves every human-author (H) governance value ABSENT
   (OQ-C C1: the schema-correct stub, never an in-field sentinel).
 """
@@ -20,6 +20,7 @@ from __future__ import annotations
 import pytest
 
 from services.engine.procedures.archetypes.template import REGISTRY, instantiate
+from services.engine.procedures.generator import pipeline
 from services.engine.procedures.spec import (
     BandSource,
     GateKind,
@@ -29,7 +30,12 @@ from services.engine.procedures.spec import (
 )
 
 AT1_FAMILY = ["AT-1", "AT-1b", "AT-3"]
-AT2_ONLY_KINDS = {GateKind.SCORED_RULE, GateKind.RULE_GATE, GateKind.DOA_TIER}
+AT2_ONLY_KINDS = {
+    GateKind.SCORED_RULE,
+    GateKind.RULE_GATE,
+    GateKind.DOA_TIER,
+    GateKind.SEVERITY_TIER,
+}
 
 
 def test_registry_is_the_at1_family_with_variant_bases() -> None:
@@ -38,6 +44,24 @@ def test_registry_is_the_at1_family_with_variant_bases() -> None:
     assert REGISTRY["AT-1"].base is None
     assert REGISTRY["AT-1b"].base == "AT-1"
     assert REGISTRY["AT-3"].base == "AT-1"
+
+
+def test_at2_only_kinds_mirrors_the_classify_abstain_guard() -> None:
+    """Anti-drift tripwire: this module's ``AT2_ONLY_KINDS`` is a local copy of the
+    classify-time abstain guard's set, and must never silently diverge from it.
+
+    It drifted once already — ``severity_tier`` (the 4th AT-2 gate kind, PLAN-0074)
+    was added to ``pipeline._AT2_ONLY_KINDS`` but not here, leaving
+    ``test_archetype_agreement_signature`` under-strength for two PLANs. Prose in the
+    module docstring did not catch it; this assertion does.
+
+    Deliberately NOT asserted against ``draft._AT2_GATE_KINDS``: that is a *distinct*
+    concept (the obligation side — which kinds owe typed ``governance_content``), as
+    ``draft.py`` says in its own docstring, and PLAN-0074 grew the two under separate
+    ACs. They happen to hold the same members today; pinning them equal would encode
+    an invariant the design explicitly denies.
+    """
+    assert AT2_ONLY_KINDS == set(pipeline._AT2_ONLY_KINDS)
 
 
 @pytest.mark.parametrize("archetype_id", AT1_FAMILY)
