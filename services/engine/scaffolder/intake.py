@@ -263,6 +263,14 @@ _BAND_QUESTIONS: dict[str, str] = {
 # are emitted ONLY from confirmed intake.
 _ONTOLOGY_JUDGMENTS: tuple[tuple[str, str, str], ...] = (
     ("asset_noun", "Asset", "หน่วยสินทรัพย์ที่ลูกค้าพูดถึงคืออะไร (เช่น รถบรรทุก, บ่อ, คลัง)?"),
+    # DEVIATION from the PLAN's "three judgment slots", surfaced not silent
+    # (Step 2 build, session 167). The grammar's Site object is NOT mechanically
+    # derivable: the golden donor names it `Depot`, and AC-7 asserts the emitted
+    # object SET matches the committed one, so emitting a generic `Site` would
+    # fail the diff-oracle by construction. It is the same KIND of judgment as
+    # the Asset noun (a customer-vocabulary naming call the ledger simply did not
+    # enumerate separately), so it is asked, never guessed.
+    ("site_noun", "Site", "สถานที่ที่สินทรัพย์สังกัดอยู่เรียกว่าอะไร (เช่น อู่, ศูนย์, คลัง)?"),
     (
         "band_property",
         "Asset.band_property",
