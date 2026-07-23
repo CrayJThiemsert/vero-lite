@@ -1039,3 +1039,99 @@ Rotated because **R2 requires it**, not as a headroom judgement: with the Sessio
 > TODOs plus the remaining RD rows are already at pointer length. **STATUS:
 > 55,745 B** (caller-measured, not estimated), against the 64 KB R1
 > ceiling. Per the STATUS.md Rotation Policy (R1/R2/R4)._
+
+## Rotated this reconcile (session-167, 2026-07-23 — the autonomy fork RESOLVED, A′ demotes the dispatch arm, #870/#871)
+
+### Current Focus block removed — Session 163 (second arc), 2026-07-22 (PLAN-0090, the fleet AT-3 scheduled calm path) [rotated 2026-07-23, session-167 reconcile — 4-block CF window]
+
+> **Session 163 (second arc), 2026-07-22 (head_commit `1b942f5` → `1ce3546`) —
+> a four-PR arc that filed, BUILT and CLOSED **PLAN-0090** inside one session:
+> the fleet AT-3 **scheduled** calm path. Headline —
+> `scheduled_pm_service_round` fires at 06:00 Asia/Bangkok as the
+> `svc-fleet-scheduler` service principal and PARKS at the gated
+> `schedule_service` for a human (RF-3), and its steps are **BYTE-IDENTICAL** to
+> the manual `pm_service_round` — PROVEN, not asserted, by
+> `test_spine_is_byte_identical_to_the_manual_path`, which compares dumped
+> models, so a changed projection / `threshold_field` / direction / handler /
+> autonomy / facet on either path goes RED. **Cadence is a trigger property, not
+> a governance one:** the only difference between the two procedures is HOW a
+> run starts.**
+> **(#854, `06a93f0` → merge `2d34d80`, `docs(status)`.)** The s162 reconcile,
+> bundled with the **R2 pointer-rule trim**: 9 RD rows + 6 Active TODOs
+> compressed to ≤600-char pointers, and one Active TODO **RETIRED as discharged
+> because it was FALSE, not stale** — s160's #845/#846 had already corrected all
+> three artifacts it named. 59,697 → 53,758 B; headroom 5,839 → 11,778.
+> **(#855, `bd44842` + `5e88450` → merge `20f2585`, `docs(plans)`.)** PLAN-0090
+> filed, with the Step-0 SD ratifications recorded inline. The path is a
+> **DISTINCT `procedure_id`, never a trigger flip** — the procurement donor's own
+> reasoning: `trigger` is a single enum and a schedule descriptor is present IFF
+> `trigger == schedule`, so flipping the manual path would break its manual runs,
+> and SD-P3 skip-if-in-flight keys on `procedure_id`. The manual path stays
+> runnable. The spine was **extracted** from the manual path at authoring time
+> rather than retyped, so the byte-identity above is by construction.
+> **(#856, `db398bf` → merge `a3ef955`, `feat(fleet_maintenance)` — the build,
+> plus the L3 generic CLI fix.)** **A CORRECTED claim, recorded as an error and
+> not silently dropped:** Code's own dispatch said an unwired fleet daemon "ticks
+> but 409s at resolve". It does not — `_run_scheduler` calls
+> `registry.get_procedure_executors()` **unguarded** (`cli.py:151`) and the
+> registry raises `RegistryError` (`registry.py:114-121`), so the daemon
+> **CRASHED AT STARTUP** for five of six verticals and never ticked at all. The
+> `plan-drafter` caught it at drafting; Code verified both files at R2. The fix
+> **replaces a rotted docstring with an assertion**: `_register_executor_factory`
+> now dispatches over a six-vertical map **mirroring** (never importing)
+> `services/api/main.py:_PROCEDURE_EXECUTOR_REGISTRARS` — `services/engine/` must
+> not depend on `services/api/`, and importing the app would drag FastAPI into
+> daemon startup — with a **set-equality tripwire** pinning the two vertical sets
+> equal, so a 7th vertical wired into one and not the other goes RED. Proven
+> **non-vacuous**: a vertical was removed from the map → RED → restored from a
+> `/tmp` backup byte-identically (`cmp -s` clean), never `git checkout`.
+> **(#857, `5f49023` → merge `1ce3546`, `docs(plans)`.)** Closed out **COMPLETE
+> at 7/7** and archived to `docs/plans/done/0090-fleet-scheduled-calm-path.md`.
+> **THE MEASUREMENT: 16m13s hands-on**, no interruptions (YAML 2m19s /
+> catalog+census 2m44s / CLI+tests 5m16s / gate 3m55s / smoke 1m59s). The MS-1…
+> MS-6 protocol was written into the PLAN **before** Cray ratified SD-2, so it
+> could not have been shaped around a result it had not seen; the artifact is
+> gitignored — `docs/research/private/2026-07-22-fleet-scheduled-timing-log.md`,
+> cited by path only. **THE MS-6 CAVEAT IS BINDING AND TRAVELS WITH THE NUMBER
+> WHEREVER IT IS WRITTEN, INCLUDING HERE:** 16m13s is a **LOWER BOUND** under
+> maximally favourable conditions — the same operator who built the manual path,
+> a shipped donor to copy, all scheduler machinery already shipped, every
+> decision pre-ratified. It does **NOT** measure machinery construction, blind
+> intake, or a fresh operator, and it is **NEVER** to be presented summed with
+> PLAN-0086's 27m39s or PLAN-0089's ~14 min — three claims under three
+> conditions, companions not addends.
+> **Two deviations, recorded as deviations rather than absorbed. D-1:** AC-5's
+> "the PLAN-0089 suite stays green UNMODIFIED" could not hold literally — that
+> suite pins the vertical's procedure-id set by SET-EQUALITY, so a third
+> procedure turns it RED by construction (the guard working as designed; every
+> behavioural assertion about the hero is byte-untouched, only the census line
+> moved). **D-2:** part of AC-3 ("a human resolution completes it") was written
+> **after the clock stopped** and is therefore NOT inside the 16m13s — disclosed
+> because a number that silently excludes required work is worse than a slower
+> honest one.
+> **Live evidence (AC-6) — and it is evidence, never a gate.** The daemon
+> registered the schedule, computed `next_fire` = 06:00 Asia/Bangkok **from the
+> cron unaided**, fired on a **backdated slot** (never an edited cron), parked at
+> `schedule_service` with verdicts `['breach','ok','ok']` — identical to the
+> offline run AND to PLAN-0089's manual run — recording `actor_kind: "service"`
+> on behalf of `req-mechanic-tom`, then re-armed to the next slot. **A local boot
+> is NOT a host-state action** (CLAUDE.md §8 scopes that to MS-S1 and
+> host/global config; s161 recorded over-applying it here as an error).
+> **The merge-commit gate, against a pass/fail read fixed BEFORE the run:**
+> `a3ef955` = **2994 passed / 7 skipped**, `mypy --strict` clean at 98 files,
+> ruff clean at CI scope — expected 2984 baseline + 10 new tests = 2994, hit
+> exactly ⇒ **`confirmed — prior intact`**; **2995/7** after the closeout's added
+> test. The merge commit's tree is **byte-identical** to the tested commit's
+> (both `d085400b9bc5a469a176df40e01806f121651ae6`), so the pre-merge live
+> evidence IS merge-commit evidence — proven, not assumed.
+> **Cray-ratified typed selections (AskUserQuestion), all BEFORE the work they
+> govern:** L1 cron `0 6 * * *` Asia/Bangkok · L2 `owning_person_id:
+> req-mechanic-tom` (accountability parity, PLAN-0065 SD-5(b); NOT an SoD
+> requester) · L3 fix `cli.py` generically · SD-1 `svc-fleet-scheduler` · SD-2
+> yes, timed. STATUS: 55,745 B.
+> **(Stop-hook misfires — BACKFILLED session 165, 2026-07-23; this record was the
+> doc gap s164 named and did not close.)** The Stop hook fired **3× on nothing
+> ordered** during this session, the same count and the same shape as s71 and s164.
+> Code declined each via the trigger's own override clause. Recorded late, so the
+> tally is reconstructed from the s163/s164 handoffs rather than from a
+> contemporaneous note — flagged as such rather than presented as fresh evidence.
