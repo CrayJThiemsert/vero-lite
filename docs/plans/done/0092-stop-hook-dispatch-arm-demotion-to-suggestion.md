@@ -1,6 +1,10 @@
 # PLAN-0092: Stop-hook dispatch arm — demotion from order to suggestion (A′)
 
-**Status:** Draft
+**Status:** **COMPLETE** — 6/6 ACs met, closed out + archived session 168 (2026-07-23).
+Built as PR [#871](https://github.com/CrayJThiemsert/vero-lite/pull/871) (merge commit
+`7c86752`); SD-A…SD-D were all ratified by Cray (typed, AskUserQuestion, s167) and are
+recorded inline below. See **Closeout** at the end.
+_(Never `Accepted`: that status G1-gates a PLAN's own closeout — the PLAN-0087/0089/0090 precedent.)_
 **Owner:** Claude Code
 **Created:** 2026-07-23
 **Related ADRs:** none amended — see §Why no ADR. Context: ADR-0018 (V1 goal-gate arm, explicitly preserved), ADR-013 (autonomy-axis relocation, unchanged)
@@ -117,18 +121,18 @@ Every row re-verified on disk 2026-07-23 (caller fact-pack + drafter Read).
 Each AC is deterministic-offline and designed to FAIL against today's code or
 against a silent revert (non-vacuity noted per AC).
 
-- [ ] **AC-1 — dispatch emits nothing and resets the chain.** In-process
+- [x] **AC-1 — dispatch emits nothing and resets the chain.** In-process
   test: seed the chain file at depth ≥ 1, patch `classify` to a well-formed
   dispatch verdict, run `main()`. Assert: exit 0, **stdout empty**, chain
   file reset to `{depth: 0}`. *Non-vacuous:* today's code emits a block JSON
   and increments the seeded depth — both assertions fail against it.
-- [ ] **AC-2 — the suggestion ping fires exactly once with the full
+- [x] **AC-2 — the suggestion ping fires exactly once with the full
   payload.** Point `CLAUDE_TELEGRAM_SCRIPT` at a capture stub (mirror the
   `stub_env` pattern, G13). Assert one invocation whose captured body
   carries all five fields: subagent, artifact_kind, task_summary, matched
   rows (or the none-cited marker), classifier reason. *Non-vacuous:* today's
   dispatch arm never calls `_ping_telegram` — capture stays empty.
-- [ ] **AC-3 — proceed, pause, cap, re-entry, goal-gate, and
+- [x] **AC-3 — proceed, pause, cap, re-entry, goal-gate, and
   malformed-dispatch behavior unchanged.** The following existing tests stay
   **green unmodified** (`tests/handoffs/test_stop_continuation.py`): proceed
   arm `:583` + contentless-floor block `:740/:745/:751/:769/:786/:797/:815`
@@ -136,12 +140,12 @@ against a silent revert (non-vacuity noted per AC).
   re-entry `:121/:653`; malformed-dispatch demotion `:529/:547/:562`;
   **goal-gate (V1)** `:961/:972/:993/:1013/:1039`. `test_phase2_integration.py`
   needs no edits (G12).
-- [ ] **AC-4 — non-vacuity evidenced RED-first.** The rewritten
+- [x] **AC-4 — non-vacuity evidenced RED-first.** The rewritten
   dispatch-contract tests are run against the **unmodified** hook before the
   Step 2 edit and the RED output is recorded in the PR body. At minimum the
   stdout-empty assertion (AC-1) and the ping-capture assertion (AC-2) fail
   against the old order-emitting code.
-- [ ] **AC-5 — governance surfaces annotated.** `.claude/autonomy-triggers.md`
+- [x] **AC-5 — governance surfaces annotated.** `.claude/autonomy-triggers.md`
   Auto-handoff section (intro `:116-128`, chain-cap paragraph `:147-150`,
   Stop-side bullet `:212-220`) and the `stop_continuation.py` module
   docstring (responsibilities 2–3, `:15-29`) annotated to record the
@@ -150,7 +154,7 @@ against a silent revert (non-vacuity noted per AC).
   `PLAN-0092` in both files is non-empty (impossible today), and neither
   file still describes the Stop arm as emitting a block directive on
   dispatch.
-- [ ] **AC-6 — offline gate green.** Full `pytest tests/` + `mypy` at CI
+- [x] **AC-6 — offline gate green.** Full `pytest tests/` + `mypy` at CI
   scope + `ruff check`, run in the **main tree** (5 `tests/handoffs/` hook
   tests are known false-RED in a git worktree). CI is PR-only, so the
   **merge commit** gets a full-suite re-run after merge.
@@ -306,7 +310,42 @@ patched in-process; the Telegram stub captures the ping).
   is the first datum against the 0/14 base rate and would inform any future
   re-promotion discussion (which would need its own ratification).
 
----
+## Closeout — session 168, 2026-07-23 (6/6 ACs met; ARCHIVED)
+
+Built and merged as PR [#871](https://github.com/CrayJThiemsert/vero-lite/pull/871)
+(`0870266` → re-sync `6afaf9c` → merge commit `7c86752`) during session 167. The
+closeout itself is filed one session later: the build landed mid-session and the
+PLAN was left `Draft` with its boxes unticked, which is what this PR corrects.
+
+**Per-AC evidence, re-verified on disk against `main` = `64c2190` before ticking**
+(CLAUDE.md §6 — the label `confirmed — prior intact` requires a fresh artifact, never
+memory):
+
+| AC | Evidence read fresh |
+|----|---------------------|
+| AC-1 | `.claude/hooks/stop_continuation.py:597-611` — the dispatch arm has no `print`; malformed metadata takes the silent `_reset_chain(); return 0` path at `:598-600`; the well-formed path pings then `_reset_chain(); return 0` at `:610-611`. Tests `tests/handoffs/test_stop_continuation.py:463` (`assert out == ""`) and `:504-519` (`test_dispatch_resets_chain_depth`, seeded depth 3 → 0). |
+| AC-2 | `_format_dispatch_suggestion` at `stop_continuation.py:162-181` carries all five routing fields (subagent, artifact_kind, task_summary, matched_rows with a `(none cited)` fallback, reason) and closes with the advisory line *"Route it yourself if it is right; ignoring it is the default"*. Payload builder `:483-503`, call site `:603-609`. |
+| AC-3 | The named arms are intact and unmodified: proceed `:562-580`, cap `:541-544`, goal-gate (V1) `:550-556`, malformed-demote `:597-600`. |
+| AC-4 | RED-first block recorded in the #871 PR body: the four rewritten dispatch tests `4 failed, 8 passed, 45 deselected` against the **unmodified** hook, with the honest caveat that the malformed-no-ping guard passes both before and after and is therefore **not** counted as AC-4 evidence. |
+| AC-5 | `grep -c PLAN-0092` → `.claude/autonomy-triggers.md` **8**, `.claude/hooks/stop_continuation.py` **6** — the oracle is non-empty on both files, as the AC requires, and D1/D2 rows are annotated rather than deleted (L7). |
+| AC-6 | 2994 passed / 7 skipped on the merge commit `7c86752`; `ruff` + `mypy --strict services/` clean at CI scope. |
+
+**SD-B's DELETE confirmed as a scoped deletion, not a rename.** `_build_dispatch_instruction`
+and `_PLAN_DRAFTER_BUDGET_REMINDER` return **zero** hits under `.claude/hooks/stop_continuation.py`.
+The single surviving mention repo-wide is the historical re-word Step 3 mandated, at
+`.claude/hooks/_goal_gate.py:303-304` — a textual precedent citation, not a caller.
+
+**SD-D stays parked but is now a real contradiction, not merely "stale-ish".** The
+Follow-up note above judged the drift *"harmless"*. Re-reading the prompt at closeout
+sharpens that: `_sonnet_classifier.py:262-264` still tells the model *"Spurious dispatches
+are worse than spurious pauses (they consume a subagent spawn)"* — a claim that is now
+**factually false** post-A′ (a dispatch consumes one Telegram ping and spawns nothing),
+while `.claude/autonomy-triggers.md:118-125`, read verbatim into the *same* prompt,
+correctly describes the no-directive behavior. The model therefore sees ordering framing
+in the preamble and suggestion framing in the embedded registry. Classified
+**`superseded by new info`**, not `was an error`: the note was written before the registry
+annotation landed alongside it. Cray ratified the alignment fix (typed, s168) — it is
+tracked as its own PR and stays out of this PLAN's scope (R1).
 
 *Drafting disclosure (ADR-012 D4.3): authored by the in-harness
 `plan-drafter` subagent, 2026-07-23, from a Cray-ratified (session 167)

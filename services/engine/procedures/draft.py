@@ -295,10 +295,11 @@ def derive_governance_todo(step: Step) -> list[str]:
     from ``(gate_kind, kind)`` (ADR-0024 OQ-C / AC-A7; extended for AT-2 by ADR-0025 D5).
     A ``judge`` (evaluate) owes its band value (threshold+direction for an in-file band;
     env_var for an env band); an ``action`` owes a ``handler`` and an autonomy confirm; and
-    a step on an **AT-2 gate kind** (``scored_rule`` / ``rule_gate`` / ``doa_tier``) also
-    owes its typed ``governance_content`` (the matching DoaLadder / ScoredRule /
-    ComplianceGate — D5). The list is the review gate's "YOU must author" worklist;
-    ``validate_governance_complete`` re-derives it (it never trusts a stored copy)."""
+    a step on an **AT-2 gate kind** (``scored_rule`` / ``rule_gate`` / ``doa_tier`` /
+    ``severity_tier``) also owes its typed ``governance_content`` (the matching
+    DoaLadder / ScoredRule / ComplianceGate / SeverityLadder — D5). The list is the
+    review gate's "YOU must author" worklist; ``validate_governance_complete``
+    re-derives it (it never trusts a stored copy)."""
     gate_kind = _step_gate_kind(step)
     owes_at2 = ["governance_content"] if gate_kind in _AT2_GATE_KINDS else []
     if step.kind is StepKind.EVALUATE:
