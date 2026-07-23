@@ -1,6 +1,6 @@
 ---
 name: code-operational-policy
-description: Tier 2 (Code) tactical operating policy for vero-lite — when to turn git worktree mode ON vs OFF, how to render a transcript handoff to Chat/Cowork, and the plan-first discipline for costly / host-state / irreversible / multi-step execution (read the result-producing code first, stage a plan, pre-commit the pass/fail read, run once, verify; + the Axis-B /goal habit for verification tasks). Use when deciding worktree isolation, handing off a transcript, OR planning a host-state run / live benchmark / multi-step verification. Other tiers do not need this.
+description: Tier 2 (Code) tactical operating policy for vero-lite — when to turn git worktree mode ON vs OFF, how to render a transcript handoff to Chat/Cowork, the dispatch-quality discipline (Frontier + oracle-scoped accelerator + REJECT-if blocks, the 4-move follow-up vocabulary, the pre-close counterexample step), and the plan-first discipline for costly / host-state / irreversible / multi-step execution (read the result-producing code first, stage a plan, pre-commit the pass/fail read, run once, verify; + the Axis-B /goal habit for verification tasks). Use when deciding worktree isolation, handing off a transcript, authoring a Cowork / plan-drafter / subagent dispatch, following up on a subagent's partial return, closing an acceptance criterion, OR planning a host-state run / live benchmark / multi-step verification. Other tiers do not need this.
 ---
 
 # Tier 2 (Code) operational policy
@@ -30,6 +30,66 @@ or Cowork for follow-up, render the full raw transcript via
 (gitignored working note) and **always state the export file path in the reply**.
 
 Procedure + options: [`docs/runbooks/transcript-handoff.md`](../../../docs/runbooks/transcript-handoff.md).
+
+## Dispatch quality — hold the goal, arm the oracle
+
+Discipline for authoring a Cowork / `plan-drafter` / subagent dispatch, and for
+the follow-up turns when the return comes back partial. Rationale + provenance
+(the 4-prompt conjecture-refutation episode + the s166 two-model analysis):
+Lesson #0032. How-to, not binding rules.
+
+### Three blocks a substantive dispatch should carry
+
+1. **§ Frontier — one paragraph, near the top.** State the edge of the known:
+   "the furthest solved point is ___; what nobody has cracked is ___." Close it
+   with the anti-anchoring sentence, verbatim: **"You are permitted to propose
+   that an item in this fact-pack should be ELIMINATED, not automated or
+   preserved."** A fact-pack of N manual seams silently anchors a drafter into
+   automating all N; the escape hatch must be granted explicitly. (Worked
+   precedent: the s164 scaffolder dispatch's "the seam no longer exists — do
+   not design around it".)
+2. **Accelerator clause — scoped by oracle strength.** Over the parts covered
+   by a strong offline oracle (tests + mypy + the offline gate): "Attempt the
+   structurally bold solution first; the suite is the safety net." Models
+   default to hedged, incremental designs; this is the explicit override — and
+   it is ONLY safe where a wrong bold attempt is caught free. Never attach it
+   to weak-oracle parts (strategy, prose, governance judgment): ambition
+   without an oracle buys confident wrongness.
+3. **REJECT-if list — inside the return contract.** "The caller will REJECT
+   the return if: …" + the fake-done forms named for THIS task. Standing
+   entries: an AC satisfied by mocking the thing under test · TODO / `pass`
+   stubs in delivered code · a check that passes because it was skipped · a
+   "works in principle" claim with no `file:line` grounding. Naming the forms
+   up front moves the catch from the caller's R2 into the drafter's self-check
+   — one round-trip cheaper.
+
+### The 4-move follow-up vocabulary (the return came back partial)
+
+Invariant: **the goal stays constant; only process pressure rises.** Silently
+accepting a narrower result IS renegotiating the goal — if the goal genuinely
+changed, that is a typed Cray ratification (`/goal amend`), never drift.
+
+- **M1 — the dispatch itself**: goal + ceiling + shape + Frontier (above).
+- **M2 — reject by name**: restate the goal VERBATIM, then name the partial
+  form returned — "this is a conditional result; the goal is an unconditional
+  X." Named rejection beats "please improve".
+- **M3 — strategy before retry**: "State the structural reason the last
+  attempt failed, and derive the new strategy from it. Do not re-run a variant
+  of the same approach." (Deliberately a conversational move, NOT a hook — a
+  hook can only verify a strategy paragraph EXISTS, which invites ritual
+  compliance.)
+- **M4 — terminate the partial ratchet**: "Enough partial results — finish
+  complete, or declare blocked and name the specific blocker." A human call
+  made with full context; deliberately NOT a counter or detector.
+
+### The counterexample step — before closing an AC
+
+Before marking an AC done, spend one line testing the ORACLE, not the code:
+"Construct a test that passes today AND would still pass if <the AC's
+behavior> were silently broken." A mutation counts only if it changes behavior
+the AC claims to protect — comments, formatting, and dead code do not. If such
+a test is constructible, the AC's oracle is vacuous: fix the test before
+closing. Same family as the non-vacuity probe — you must SEE the RED.
 
 ## Plan-first for costly / host-state / irreversible / multi-step work
 
@@ -77,5 +137,6 @@ second perspective for free. Warn-only v1 (never blocks) → pure upside.
 - `CLAUDE.md` §11 (constitutional pointer), §8 (host-state ASK-Cray gate)
 - Lesson #3 (worktree lifecycle traps + prevention checklist)
 - Lesson #0026 (interpret-before-run: pre-commit what each outcome means)
+- Lesson #0032 (ambition scales with the oracle; hold the goal; the two work regimes)
 - ADR-0018 / PLAN-0021 (Axis-B `/goal` verification loop); the `goal` skill
 - `docs/runbooks/transcript-handoff.md`; the `ms-s1-ollama` skill (host-state mechanics)
