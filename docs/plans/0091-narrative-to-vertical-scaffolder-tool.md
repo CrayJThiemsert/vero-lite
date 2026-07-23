@@ -201,13 +201,13 @@ Every LLM-touching stage runs behind recorded fixtures in tests; MS-S1 is never
 required for any AC. A single live smoke is *evidence only*, Cray-gated — see
 § Verification for what it would catch that fixtures cannot.
 
-- [ ] **AC-1 — the command exists and is inert-safe.** `vero-lite scaffold` is
+- [x] **AC-1 — the command exists and is inert-safe.** `vero-lite scaffold` is
   registered on the existing app (`pyproject.toml:44-45`); `--help` and a dry-run
   (`--plan-only`: print the derived question queue + file manifest, write nothing)
   work offline with deterministic exit codes; the command **refuses to run** if
   `verticals/<ns>/` already exists (no overwrite path in v1). Verified via the CLI
   test runner.
-- [ ] **AC-2 — intake derives the complete question set up front, with mechanical
+- [x] **AC-2 — intake derives the complete question set up front, with mechanical
   re-ask discipline.** A typed `IntakeRecord` + a deterministic **required-slot
   checklist** derived from (the AT-2 template's obligation set × the ontology's
   three judgment slots × the synthetic-fixture value slots). On a committed
@@ -219,7 +219,7 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   "cap = ฿10,000" to the emergency-waiver question fills exactly the cap sub-slot;
   the ratifier and window sub-slots remain **individually open** and re-surface.
   One number is never treated as a full answer.
-- [ ] **AC-3 — ontology emission is mechanical where the ledger says it is, and
+- [x] **AC-3 — ontology emission is mechanical where the ledger says it is, and
   refuses to guess where it says judgment lives.** The emitter produces the 6-object
   OCT skeleton + all 7 link_types from the grammar alone; the three judgment slots
   (Asset noun · per-entity band property · `RecommendedAction.action_type`
@@ -228,7 +228,7 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   open queue printed, it does not default. The emitted YAML passes the invoked
   floor: `vero-lite validate` + `generate` EXIT 0 into a scratch tree (row 10:
   invoked, never re-implemented).
-- [ ] **AC-4 — package emission with no fabricated numbers.** Rows 1/3/4/5 files are
+- [x] **AC-4 — package emission with no fabricated numbers.** Rows 1/3/4/5 files are
   emitted from the ontology (`__init__.py`, `handlers.py` with
   `ACTION_TYPES` == the ontology enum + registrar-name convention,
   `data_adapter/__init__.py`, `procedures_factory.py` incl.
@@ -241,7 +241,7 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   walk-through) generated and the human parts (problem statement, the
   **"stated but NOT enforced" register** — fed by the intake queue's unanswered
   non-schema sub-slots, e.g. Q2's ratifier/window) clearly stubbed.
-- [ ] **AC-5 — the money spine, structure generated, values human, lint pre-paid.**
+- [x] **AC-5 — the money spine, structure generated, values human, lint pre-paid.**
   An AT-2 `ArchetypeTemplate` exists (Step 4) modelling row 11's fixed spine
   (intake → judge → reshape → rule_gate → approve → fulfill + SoD + terminal); the
   emitted `procedures.yaml` round-trips `load_procedures`; its gate signature
@@ -253,7 +253,7 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   shipped free-text lint (`prose_lint.py:133/:217`) **before** writing, so the
   golden fixture emits with **zero** ADR-0025 D4 parse round-trips (the manual run
   ate three).
-- [ ] **AC-6 — all four wires, by construction.** The wire-writer produces the
+- [x] **AC-6 — all four wires, by construction.** The wire-writer produces the
   registrar wrapper + entry in `services/api/main.py:141` **and** the mirror entry
   in `services/engine/cli.py:130` (lazy-import convention preserved — row 7), the
   `PROCEDURE_ARCHETYPES` entry (`procedures.py:50`, classified from gate content,
@@ -276,7 +276,8 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   wire entries equal to the in-tree ones. Byte-equality is asserted **only** where
   the ledger claims it (row 4: `data_adapter/__init__.py` modulo namespace) —
   prose may differ, structure may not.
-- [ ] **AC-8 — the governance ceiling, exercised not asserted.** The tool computes
+  **CLOSEOUT — PARTIAL (session 167).** Asserted and green (`tests/services/engine/scaffolder/test_golden_e2e.py`): the ontology object SET and link_type SET, the band property on the Asset, the `ACTION_TYPES` set, the spine gate signature equal to the shipped baseline row, the governance values against the recorded Q1-Q4 answers, and the wire entries; the set assertions were PROBED non-vacuous (swapping the asset noun to `Lorry` diverges both sets). **NOT met, and named rather than papered over:** (a) the donor's narrative-mined per-object properties (`truck_class`, `odometer_km`, `plate`, `depot_type`) are not emitted — mining them from free text is the LLM surface this PLAN deliberately keeps OUT of the value path, so this may be a scope correction rather than a gap; (b) `procedures_factory.py` is not emitted, so the file-set assertion excludes it BY NAME; (c) the row-4 byte-equality (`data_adapter/__init__.py` modulo namespace) was not asserted.
+- [x] **AC-8 — the governance ceiling, exercised not asserted.** The tool computes
   the would-be AT-2 signature of the spine it is about to emit using **the same
   fingerprint key** as the census (Step 6 extracts the key helpers so the two
   cannot drift), compares against the shipped baseline, and — since any new
@@ -289,7 +290,7 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   test: a synthetic would-be-5th-signature intake ⇒ stop + table + zero writes to
   `tests/`; the fleet golden fixture (a baseline member) passes through without
   firing.
-- [ ] **AC-9 — hard non-capabilities hold.** Test-asserted where mechanically
+- [x] **AC-9 — hard non-capabilities hold.** Test-asserted where mechanically
   possible, review-asserted otherwise: zero git operations; zero procedure-run
   firing; zero writes to any **existing** `verticals/*/procedures.yaml`
   (ADR-0024 `:147`); the full AC suite passes with MS-S1 unreachable.
@@ -309,6 +310,7 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   **correct** (six keys in `_EXPECTED`). Disposing these four sites, no further stale
   count is reachable along the tool's write path.
 
+  **CLOSEOUT — PARTIAL (session 167).** The SD-4 disposition is implemented and green (`dispose_counted_prose`, idempotent, with the executable `assert total ==` pin bumped instead of the prose being recounted) and it caught a real stale tally the single-space pattern had missed. **NOT met:** the wire-writer applies the disposition only to `tests/api/test_procedures_endpoint.py`. The fourth counted site named by this AC — the `services/api/main.py` registrar-module docstring count — is left untouched.
 ## Out of Scope
 
 - ❌ **Auto-commit / any git operation.** Output is uncommitted working-tree files;
@@ -713,3 +715,64 @@ evidence. Then — separately, Cray-gated, evidence-not-gate — at most one liv
   against a committed, hand-built donor the tool's spec was measured on. If the
   regenerated fleet does not structurally match the real one, the tool is wrong —
   not the oracle.
+
+## Closeout — session 167, 2026-07-23 (8/10 ACs met; NOT archived)
+
+**Built and merged as seven PRs**, each gate-green and SHA-verified against the
+head it ran on: #873 Step 1 (intake engine + `vero-lite scaffold`) · #874 Step 2
+(ontology emitter + the invoked floor) · #875 Step 3 (package emitter) · #876
+Step 4 (the AT-2 spine) · #877 Step 5 (wire-writer) · #878 Step 6 (ceiling
+detector) · #879 Step 7 (golden diff-oracle). `main` = `f28c8e3`.
+
+**Verification of record.** Full suite on the merge commit `f28c8e3`:
+**3083 passed / 7 skipped** — the session began at 2994, and every step's delta
+matched its new-test count exactly (+16 / +12 / +14 / +12 / +14 / +8 / +13).
+`ruff check .` and `mypy --strict services/` (106 files) clean at CI scope.
+**MS-S1 was never contacted in any step** — the tool has no code path that could
+(AC-9, asserted structurally).
+
+**SD-5's tripwire never fired.** `AT2_SPINE` is scaffolder-owned and absent from
+the shared `REGISTRY`; `test_archetype_templates.py` is untouched and its
+`set(REGISTRY) == set(AT1_FAMILY)` assertion is green. The Step-6 extraction
+moved the fingerprint FUNCTION only — `_BASELINE_SIGNATURES` and both census
+assertions stayed byte-identical, and all four in-file call sites were preserved
+by importing the helpers back under their original private names.
+
+### Why this is NOT archived to `done/`
+
+AC-7 and AC-10 are **partial** (see their notes above). Archiving a PLAN with two
+unmet ACs would record a completion that did not happen — the exact failure the
+tool's own no-fabrication scanner exists to prevent, applied to governance rather
+than to demo numbers. The remainders are small and named; whether they are built,
+re-scoped, or dropped is Cray's call, not a bookkeeping step.
+
+### Deviations, recorded not absorbed
+
+1. **A FOURTH ontology judgment slot** — `ontology.site_noun` (the PLAN names
+   three). The grammar's Site object is not mechanically derivable: the donor
+   names it `Depot`, and AC-7 asserts the object SET matches, so a generic `Site`
+   would fail the diff-oracle by construction. Same KIND of judgment as the Asset
+   noun; asked rather than guessed. Shipped in #874, flagged in its PR body.
+2. **`AT2_ONLY_KINDS` drift noted, not fixed** —
+   `test_archetype_templates.py:32` omits `GateKind.SEVERITY_TIER`, which
+   `pipeline.py:82-84` and `draft.py:283-285` include. The PLAN said "fix or
+   note"; noting, because that file is the one the SD-5 tripwire guards and
+   editing it alongside the AT-2 work would muddy the signal the tripwire exists
+   to send. Belongs in its own small PR.
+
+### Findings the build produced (each caught by running the thing, not reading it)
+
+- **The trace-kind guard fired on the emitter's governance dicts** (`doa_tier`,
+  `rule_gate`). Its docstring says such a collision "forces a conscious call.
+  That is intended." The call: these are governance-content discriminators, not
+  trace kinds, so the content is now built through the TYPED models — which also
+  closed a latent bug, since `DoaLadder` REQUIRES an `emergency_waiver` and the
+  raw-dict path would have emitted a ladder without one that fails at load.
+- **The pre-emit prose lint was initially too broad** — it used the generator's
+  `prose_lint` and refused language the shipped donor itself uses. The loader's
+  own AT-2 check uses the SCOPED `governance_prose_lint`; the emitter now matches.
+- **The first emission did not load** — `run_by` named an agent no `agents` block
+  declared. Caught by the round-trip test invoking the real `load_procedures`.
+- **A CI-only test failure** — an AC-1 assertion read Typer's rich-rendered
+  `--help` text, which wraps differently per terminal. Replaced with an assertion
+  over the registered Click parameters, which no renderer can wrap.
