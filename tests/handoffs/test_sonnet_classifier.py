@@ -458,6 +458,48 @@ def test_system_prompt_reserves_cray_only_actions_out_of_proceed() -> None:
     assert "return PAUSE and never name it in a reason" in prompt
 
 
+def test_system_prompt_describes_dispatch_as_a_suggestion_not_an_order() -> None:
+    """SD-D, parked at PLAN-0092 and settled here: the prompt must not contradict
+    the arm it feeds.
+
+    A' demoted the Stop hook's ``dispatch`` verdict from an order to a suggestion —
+    no directive, chain reset, one Telegram ping to Cray. The classifier itself was
+    left byte-unchanged under that PLAN's R1 scope lock, so its preamble kept
+    describing DISPATCH as an auto-handoff "the agent should NOT pause for" and
+    justified conservatism with "they consume a subagent spawn". Post-A' the agent
+    DOES pause and nothing is spawned.
+
+    That mattered because ``.claude/autonomy-triggers.md`` is read VERBATIM into the
+    same prompt, and the registry already described the no-directive behaviour
+    correctly — so the model was being handed ordering framing in the preamble and
+    suggestion framing in the embedded registry, in one call.
+    """
+    prompt = sc._build_system_prompt("registry text here")
+    assert "ROUTING SUGGESTION" in prompt
+    assert "not an\n      instruction to the agent" in prompt
+    assert "PLAN-0092" in prompt
+    # The false cost claim is gone, and its replacement is true.
+    assert "consume a subagent spawn" not in prompt
+    assert "one notification to Cray" in prompt
+    # The conservative bias survives the rewording — 14 recorded misfires earned it.
+    assert "When in doubt between PAUSE and DISPATCH, choose PAUSE" in prompt
+
+
+def test_the_dispatch_decision_value_and_schema_are_unchanged() -> None:
+    """The demotion is an interpretation change, not a protocol change.
+
+    ``stop_continuation`` still branches on ``decision == "dispatch"`` and still
+    formats the ping from the ``dispatch`` metadata block, so a reworded prompt that
+    also renamed the verdict or dropped the metadata would silence the suggestion
+    channel entirely — the failure this pins against.
+    """
+    prompt = sc._build_system_prompt("registry text here")
+    assert '"decision": "proceed" | "pause" | "dispatch"' in prompt
+    assert '"subagent": "plan-drafter"' in prompt
+    assert '"artifact_kind": "adr" | "plan"' in prompt
+    assert "the dispatch arm is fail-closed" in prompt
+
+
 # --- Step 5b: config-file fallback (defeats Claude Desktop env-strip) ---
 
 
