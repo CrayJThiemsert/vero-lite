@@ -25,10 +25,12 @@ import ast
 from pathlib import Path
 from typing import Any
 
+from services.engine.procedures.spec import StepKind
 from services.engine.scaffolder.intake import (
     IntakeRecord,
     SlotKind,
     required_slots,
+    spine_steps,
 )
 
 GUESS_MARKER = "# GUESS — รอแก้"
@@ -189,6 +191,15 @@ def emit_synthetic(record: IntakeRecord, ontology_doc: dict[str, Any]) -> str:
     asset_pk = ontology_doc["object_types"][asset]["primary_key"]
     site_pk = ontology_doc["object_types"][site]["primary_key"]
 
+    # Read off the emitted ontology rather than re-deriving from the record, so the
+    # two files cannot disagree. They previously could: `name` and `status: active`
+    # were hardcoded here, and an operator-chosen title_key (the donor's `plate`) or
+    # status vocabulary would have produced synthetic rows missing the ontology's own
+    # REQUIRED title column.
+    asset_title = str(ontology_doc["object_types"][asset]["title_key"])
+    site_title = str(ontology_doc["object_types"][site]["title_key"])
+    asset_status = str(ontology_doc["object_types"][asset]["properties"]["status"]["values"][0])
+
     count, count_note = _fixture_value(record, "fixture.asset_count", "3")
     band, band_note = _fixture_value(record, "fixture.band_value", "20000")
     breach, breach_note = _fixture_value(record, "fixture.breach_value", "48000")
@@ -217,7 +228,7 @@ _NORMAL_VALUE = {normal}{normal_note}
 
 def {_key_fn(site)}() -> list[dict[str, Any]]:
     """The demo {site} rows."""
-    return [{{"{site_pk}": "site-1", "name": "TODO — the customer's own site name"}}]
+    return [{{"{site_pk}": "site-1", "{site_title}": "TODO — the customer's own site name"}}]
 
 
 def {_key_fn(asset)}() -> list[dict[str, Any]]:
@@ -225,9 +236,9 @@ def {_key_fn(asset)}() -> list[dict[str, Any]]:
     return [
         {{
             "{asset_pk}": f"asset-{{i}}",
-            "name": f"TODO-name-{{i}}",
+            "{asset_title}": f"TODO-{asset_title}-{{i}}",
             "{band_property}": _BAND_VALUE,
-            "status": "active",
+            "status": "{asset_status}",
             "site_id": "site-1",
         }}
         for i in range(_ASSET_COUNT)
@@ -347,29 +358,191 @@ def _key_fn(noun: str) -> str:
     return f"{_key(noun)}s"
 
 
+_FACTORY_SLOTS: dict[StepKind, str] = {
+    StepKind.QUERY: """            StepKind.QUERY: QueryStepExecutor(
+                adapter=adapter, object_type_names=object_type_names, meta=meta
+            ),""",
+    StepKind.EVALUATE: """            StepKind.EVALUATE: GovernanceEvaluateExecutor(
+                base=EvaluateStepExecutor()  # in_file threshold_field band — no env wrapper
+            ),""",
+    StepKind.ACTION: """            StepKind.ACTION: GovernanceActionExecutor(
+                base=ActionStepExecutor(client_factory=advisory_stub_factory),
+                principals=principals,
+                sod_steps=sod_steps,
+                # Trace-only, never-raise gate advisory (ADR-0030 D5) — the fleet donor's
+                # one structural addition over the building_materials template.
+                advisory_builder=GateAdvisoryBuilder(),
+            ),""",
+    StepKind.TRANSFORM: """            StepKind.TRANSFORM: TransformStepExecutor(),""",
+}
+"""The executor body per :class:`StepKind`, copied from the shipped donor factories.
+
+Only the kinds the spine actually uses are emitted (see :func:`factory_step_kinds`),
+which is what "StepKind slots computed from the spine" means: a spine that grew or
+lost a kind changes the emitted factory, rather than the factory silently pinning a
+shape the spine no longer has."""
+
+_FACTORY_SLOT_ORDER: tuple[StepKind, ...] = (
+    StepKind.QUERY,
+    StepKind.EVALUATE,
+    StepKind.ACTION,
+    StepKind.TRANSFORM,
+)
+"""Emission order — fixed, so the output is deterministic regardless of spine order."""
+
+
+def factory_step_kinds() -> list[StepKind]:
+    """The StepKind slots the emitted factory must map, DERIVED from the row-11 spine.
+
+    Derived rather than hardcoded for the same reason the donor derives ``sod_steps``
+    from the spec: a hardcoded copy is a second source of truth that drifts silently.
+    An unmapped StepKind is not a lint error — it is a run that dies at dispatch.
+    """
+    kinds = {step.kind for step in spine_steps()}
+    return [kind for kind in _FACTORY_SLOT_ORDER if kind in kinds]
+
+
+def emit_procedures_factory(ns: str) -> str:
+    """Row 7/9 — the procedure-executor factory the wire-writer registers.
+
+    Without this file the scaffolded package is **not loadable**: ``wire.py`` writes a
+    registrar entry pointing at ``verticals.<ns>.procedures_factory``, so the emitted
+    package referenced a module that was never written. ``discover_and_register``
+    registers adapters and handlers only (OQ-6), so the HTTP run/resume surface 409s
+    until a vertical registers a factory explicitly — this is that registration.
+    """
+    slots = "\n".join(_FACTORY_SLOTS[kind] for kind in factory_step_kinds())
+    return f'''"""The deterministic ``{ns}`` procedure-executor factory (scaffolded — PLAN-0091).
+
+``discover_and_register`` registers adapters + handlers only (OQ-6), so the HTTP
+run/resume surface 409s ("no procedure-executor factory") until a vertical registers
+one explicitly. This is that registration for ``{ns}``, wired active-vertical-scoped
+at API startup (``services/api/main.py``).
+
+Every slot is a wrapper that governs the step it owns and falls through untouched for
+the rest. ``sod_steps`` is DERIVED from the spec's own ``separation_of_duties``
+constraints, not hardcoded — a renamed step cannot silently drop the ``sod_required``
+flag. Deterministic and host-state-free end to end (CLAUDE.md §8): synthetic adapter,
+pure band math, pure AT-2 resolution, stubbed advisory prose. Idempotent: a no-op when
+a ``{ns}`` factory is already registered.
+"""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any
+
+from services.engine.ontology_meta import load_ontology_meta
+from services.engine.procedures.action_step import ActionStepExecutor
+from services.engine.procedures.advisory_stub import advisory_stub_factory
+from services.engine.procedures.evaluate_step import EvaluateStepExecutor
+from services.engine.procedures.gate_advisory import GateAdvisoryBuilder
+from services.engine.procedures.governance_step import (
+    GovernanceActionExecutor,
+    GovernanceEvaluateExecutor,
+)
+from services.engine.procedures.orchestrator import StepExecutor
+from services.engine.procedures.query_step import QueryStepExecutor
+from services.engine.procedures.spec import Person, StepKind, load_procedures
+from services.engine.procedures.transform_step import TransformStepExecutor
+from services.engine.registry import RegistryError, registry
+
+_VERTICAL = "{ns}"
+
+
+def _sod_steps(procedures: Any) -> frozenset[str]:
+    """Every SoD-constrained step across the vertical's procedures — DERIVED, never
+    hardcoded (the ``sod_required`` flag cannot drift when a step is renamed)."""
+    return frozenset(
+        step_id
+        for procedure in procedures
+        for constraint in procedure.separation_of_duties
+        for step_id in constraint.distinct_steps
+    )
+
+
+async def {registrar_name(ns, "procedure_executors")}() -> None:
+    """Register the deterministic ``{ns}`` procedure-executor factory.
+
+    See module docstring."""
+    try:
+        registry.get_procedure_executors(_VERTICAL)
+        return  # already registered — idempotent
+    except RegistryError:
+        pass
+
+    # The registry's adapter, not a fresh construction: the lifespan warms it
+    # (``fetch_objects("OperationalEvent")``) so the demo time-anchor is process-stable.
+    adapter = registry.get_adapter(_VERTICAL)
+    meta = load_ontology_meta(_VERTICAL)
+    object_type_names = frozenset(object_type.name for object_type in meta.object_types)
+
+    spec = load_procedures(_VERTICAL)
+    principals: list[Person] = list(spec.principals)
+    sod_steps = _sod_steps(spec.procedures)
+
+    def factory() -> Mapping[StepKind, StepExecutor]:
+        # Built fresh per run/resume request (the registry Step-2 contract — a stateful
+        # executor must never leak across requests); adapter + meta + principals are
+        # immutable read-only data captured once at registration.
+        return {{
+{slots}
+        }}
+
+    registry.register_procedure_executors(_VERTICAL, factory)
+'''
+
+
 def emit_package(record: IntakeRecord, ontology_doc: dict[str, Any]) -> dict[str, str]:
     """The full emitted file set, keyed by path relative to ``verticals/<ns>/``."""
     ns = record.namespace
     return {
         "__init__.py": f'"""{ns} vertical (scaffolded — PLAN-0091)."""\n',
         "handlers.py": emit_handlers(record, ontology_doc),
+        "procedures_factory.py": emit_procedures_factory(ns),
         "data_adapter/__init__.py": _emit_adapter(ns),
         "data_adapter/synthetic.py": emit_synthetic(record, ontology_doc),
         "README.md": emit_readme(record),
     }
 
 
+def class_prefix(namespace: str) -> str:
+    """``fleet_maintenance`` -> ``FleetMaintenance`` — the adapter class-name convention.
+
+    Kept beside :func:`registrar_name` for the same reason: the emitted class name
+    and the emitted registrar body must not be able to disagree.
+    """
+    return "".join(part.capitalize() for part in namespace.split("_"))
+
+
 def _emit_adapter(ns: str) -> str:
-    """Row 4 — the adapter. Structurally identical across verticals by design."""
+    """Row 4 — the adapter. Structurally identical across verticals by design.
+
+    **This is the row the ledger claims byte-equality for**, so it is emitted as a
+    literal namespace-swap of the shipped donor rather than a simplified lookalike.
+    That is not cosmetic: the earlier short form diverged from the
+    :class:`~services.engine.data_adapter.DataAdapter` protocol on every method
+    (``fetch_objects`` without ``filter_expr``/``limit``, ``stream_events`` without
+    ``event_type``/``since``, no ``fetch_links``, no ``health_check``) and its
+    registrar called ``registry.register_adapter`` with **two** arguments against a
+    one-argument signature — so the scaffolded vertical raised ``TypeError`` the
+    moment anything imported and called it. No test caught that, because the package
+    tests only ``ast.parse`` the emitted text; they never execute it.
+    """
+    prefix = class_prefix(ns)
     return f'''"""{ns} vertical — synthetic DataAdapter (scaffolded — PLAN-0091).
 
 Structurally identical to every shipped vertical's adapter; only the object
 sources differ, which is the "swap the ontology + adapter" claim made concrete.
+
+``{registrar_name(ns, "adapter")}`` registers an instance on the process-wide
+registry (OQ-6: explicit registration).
 """
 
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from datetime import datetime
 from typing import Any
 
 from services.engine import demo_events
@@ -380,6 +553,7 @@ _VERTICAL = "{ns}"
 
 
 def _operational_events() -> list[dict[str, Any]]:
+    """The per-process live OperationalEvent view (PLAN-0015 D1/D2)."""
     return demo_events.events(_VERTICAL, synthetic.operational_events)
 
 
@@ -389,23 +563,65 @@ _OBJECT_SOURCES = {{
 }}
 
 
-class SyntheticAdapter:
-    """Deterministic synthetic DataAdapter — no external I/O."""
+class {prefix}SyntheticAdapter:
+    """Deterministic synthetic DataAdapter for the {ns} vertical.
 
-    vertical_name = _VERTICAL
+    Conforms structurally to ``services.engine.data_adapter.DataAdapter``.
+    No external I/O — every call returns the synthetic dataset, so demos
+    and tests are reproducible.
+    """
 
-    async def fetch_objects(self, object_type: str) -> list[dict[str, Any]]:
+    vertical_name = "{ns}"
+
+    async def fetch_objects(
+        self,
+        object_type: str,
+        filter_expr: str | None = None,
+        limit: int = 1000,  # structural: the protocol's default page size
+    ) -> list[dict[str, Any]]:
+        """Return synthetic object dicts for ``object_type`` (unknown -> empty)."""
         source = _OBJECT_SOURCES.get(object_type)
-        return list(source()) if source else []
+        if source is None:
+            return []
+        return source()[:limit]
 
-    async def stream_events(self) -> AsyncIterator[dict[str, Any]]:
+    async def fetch_links(
+        self,
+        link_type: str,
+        from_pk: str | None = None,
+        to_pk: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Return link dicts for ``link_type`` (Phase 2 synthetic: none)."""
+        return []
+
+    async def stream_events(
+        self,
+        event_type: str,
+        since: datetime | None = None,
+    ) -> AsyncIterator[dict[str, Any]]:
+        """Yield synthetic OperationalEvent dicts of ``event_type``."""
         for event in _operational_events():
+            if event["event_type"] != event_type:
+                continue
+            if since is not None and event["occurred_at"] < since:
+                continue
             yield event
 
+    async def health_check(self) -> dict[str, Any]:
+        """Report adapter status and the synthetic record counts."""
+        return {{
+            "status": "ok",
+            "vertical": self.vertical_name,
+            "synthetic": True,
+            "object_counts": {{name: len(src()) for name, src in _OBJECT_SOURCES.items()}},
+        }}
 
-def {registrar_name(ns, "adapter")}() -> None:
-    """Register the adapter on the process-wide registry (OQ-6: explicit)."""
-    registry.register_adapter(_VERTICAL, SyntheticAdapter())
+
+def {registrar_name(ns, "adapter")}() -> {prefix}SyntheticAdapter:
+    """Register a fresh {prefix}SyntheticAdapter on the process-wide registry."""
+    adapter = {prefix}SyntheticAdapter()
+    registry.register_adapter(adapter)
+    return adapter
 '''
 
 

@@ -16,12 +16,15 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from services.engine.scaffolder.intake import IntakeAnswer, IntakeRecord
+from services.engine.scaffolder.intake import IntakeAnswer, IntakeRecord, spine_steps
 from services.engine.scaffolder.ontology import emit_ontology
 from services.engine.scaffolder.package import (
     GUESS_MARKER,
     TRACE_PREFIX,
+    class_prefix,
     emit_package,
+    emit_procedures_factory,
+    factory_step_kinds,
     registrar_name,
     untraced_numerics,
     write_package,
@@ -75,12 +78,13 @@ def test_scanner_ignores_numbers_in_comments_and_identifiers() -> None:
 # --- AC-4: the emitted package ----------------------------------------------
 
 
-def test_emits_rows_1_3_4_5_and_the_readme() -> None:
+def test_emits_rows_1_3_4_5_7_and_the_readme() -> None:
     record = _fully_answered()
     files = emit_package(record, emit_ontology(record))
     assert set(files) == {
         "__init__.py",
         "handlers.py",
+        "procedures_factory.py",
         "data_adapter/__init__.py",
         "data_adapter/synthetic.py",
         "README.md",
@@ -194,13 +198,55 @@ def test_readme_human_parts_are_visibly_stubbed() -> None:
     assert "OCT_VERTICAL=fleet_demo" in readme  # the mechanical half IS generated
 
 
+# --- the procedure-executor factory (AC-4) ------------------------------------
+
+
+def test_factory_step_kinds_are_derived_from_the_spine() -> None:
+    """AC-4 says the StepKind slots are "computed from the spine", so this asserts the
+    derivation rather than the answer — a hardcoded list would pass a value check while
+    silently ignoring a spine that changed."""
+    assert set(factory_step_kinds()) == {step.kind for step in spine_steps()}
+
+
+def test_the_factory_maps_every_derived_step_kind() -> None:
+    """An unmapped StepKind is not a lint error — it is a run that dies at dispatch, so
+    the emitted mapping is checked against the derivation it claims to follow."""
+    source = emit_procedures_factory("fleet_demo")
+    mapped = {
+        node.attr
+        for node in ast.walk(ast.parse(source))
+        if isinstance(node, ast.Attribute)
+        and isinstance(node.value, ast.Name)
+        and node.value.id == "StepKind"
+    }
+    assert mapped == {kind.name for kind in factory_step_kinds()}
+
+
+def test_the_factory_registrar_name_matches_the_wire_writers_expectation() -> None:
+    """``wire.py`` writes a registrar entry naming this function; if the two disagree the
+    vertical registers nothing and fails only at run time with a RegistryError."""
+    source = emit_procedures_factory("fleet_demo")
+    assert f"async def {registrar_name('fleet_demo', 'procedure_executors')}()" in source
+
+
+def test_the_factory_registers_under_its_own_namespace() -> None:
+    source = emit_procedures_factory("fleet_demo")
+    assert '_VERTICAL = "fleet_demo"' in source
+    assert "registry.register_procedure_executors(_VERTICAL, factory)" in source
+
+
+def test_class_prefix_is_the_donors_pascal_case_convention() -> None:
+    assert class_prefix("fleet_maintenance") == "FleetMaintenance"
+    assert class_prefix("energy") == "Energy"
+
+
 # --- writing -----------------------------------------------------------------
 
 
 def test_write_package_lands_only_under_the_given_root(tmp_path: Path) -> None:
     record = _fully_answered()
     written = write_package(record, emit_ontology(record), tmp_path)
-    assert len(written) == 5
+    assert len(written) == 6
     for path in written:
         assert tmp_path in path.parents
     repo_root = Path(__file__).resolve().parents[4]
