@@ -1,6 +1,11 @@
 # PLAN-0091: Narrative→Vertical Scaffolder Tool v1 — `vero-lite scaffold` (the create shape)
 
-**Status:** Draft
+**Status:** **COMPLETE** — 10/10 ACs met, closed out + archived session 168 (2026-07-23).
+Built as seven PRs in s167 (#873–#879) and completed by four more in s168 (#883–#885, plus
+#884's CLI wiring); `main` = `c2b92c5`, full suite 3109 passed / 7 skipped on the merge commit.
+SD-1…SD-5 were all Cray-ratified (typed, AskUserQuestion), as was the s168 ruling to BUILD the
+two partial ACs rather than re-scope them. See **Closeout — session 168** at the end.
+_(Never `Accepted`: that status G1-gates a PLAN's own closeout — the PLAN-0087/0089/0090/0092 precedent.)_
 **Owner:** both (Claude Code executes; Cray adjudicates SD-1…SD-4 at Step 0)
 **Created:** 2026-07-22
 **Related ADRs:** ADR-0024 (binding generation constraints — the ratified half), ADR-0025 (D4 no-currency-in-free-text; D7 marker lineage), ADR-0015 (D2 Tier-1 Mirror seam), ADR-0021 (classify-don't-synthesize), ADR-0031 (gate-plugin-seam frame; tripwire-4), ADR-0032 (D1 wedge / D2 pilot gate / D5 honesty), ADR-006 (D4 Rule of Three)
@@ -241,6 +246,17 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   walk-through) generated and the human parts (problem statement, the
   **"stated but NOT enforced" register** — fed by the intake queue's unanswered
   non-schema sub-slots, e.g. Q2's ratifier/window) clearly stubbed.
+
+  **CLOSEOUT CORRECTION (session 168, #883) — this box was ticked while the AC was
+  not met.** The text above requires `procedures_factory.py` "incl.
+  `advisory_builder=GateAdvisoryBuilder()` and StepKind slots computed from the spine";
+  neither `procedures_factory` nor `GateAdvisoryBuilder` appeared anywhere under
+  `services/engine/scaffolder/` at s167 close. The gap was recorded only under AC-7(b),
+  so the s167 count of "8/10" was really 7/10. Classified **`was an error`**, not
+  `superseded by new info` — the AC text never changed, so this is not evolution.
+  #883 makes it true: the factory is emitted with the named kwarg, and its StepKind
+  slots are DERIVED from the row-11 spine (`factory_step_kinds`) rather than hardcoded,
+  with a test asserting the derivation rather than the answer.
 - [x] **AC-5 — the money spine, structure generated, values human, lint pre-paid.**
   An AT-2 `ArchetypeTemplate` exists (Step 4) modelling row 11's fixed spine
   (intake → judge → reshape → rule_gate → approve → fulfill + SoD + terminal); the
@@ -262,7 +278,7 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   existing equality pin `tests/services/engine/test_cli_registrars.py` and the
   procedures-endpoint census both go GREEN — the same tests that hard-fail on a
   missed wire today.
-- [ ] **AC-7 — the golden diff-oracle: regenerate fleet.** From a committed, typed
+- [x] **AC-7 — the golden diff-oracle: regenerate fleet.** From a committed, typed
   intake fixture carrying the Q1–Q4 answers + the three ontology judgments (the
   answers are in-tree facts already: the ladder `[0,5k)/[5k,50k)/[50k,∞)`, waiver
   cap ฿10k relaxing `three_bid`, requester=ช่างใหญ่ with approve-down (PLAN-0075
@@ -277,6 +293,27 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   the ledger claims it (row 4: `data_adapter/__init__.py` modulo namespace) —
   prose may differ, structure may not.
   **CLOSEOUT — PARTIAL (session 167).** Asserted and green (`tests/services/engine/scaffolder/test_golden_e2e.py`): the ontology object SET and link_type SET, the band property on the Asset, the `ACTION_TYPES` set, the spine gate signature equal to the shipped baseline row, the governance values against the recorded Q1-Q4 answers, and the wire entries; the set assertions were PROBED non-vacuous (swapping the asset noun to `Lorry` diverges both sets). **NOT met, and named rather than papered over:** (a) the donor's narrative-mined per-object properties (`truck_class`, `odometer_km`, `plate`, `depot_type`) are not emitted — mining them from free text is the LLM surface this PLAN deliberately keeps OUT of the value path, so this may be a scope correction rather than a gap; (b) `procedures_factory.py` is not emitted, so the file-set assertion excludes it BY NAME; (c) the row-4 byte-equality (`data_adapter/__init__.py` modulo namespace) was not asserted.
+
+  **CLOSEOUT — MET (session 168, #883).** All three remainders closed, and closing them
+  surfaced that the framing above understated the problem: (b) was not a file-set
+  bookkeeping gap — **the emitted package could not load**. `wire.py` registered
+  `verticals.<ns>.procedures_factory`, a module `emit_package` never wrote; and the emitted
+  adapter's registrar called `registry.register_adapter` with **two** arguments against a
+  one-argument signature, so a scaffolded vertical raised `TypeError` the moment anything
+  imported it. Nothing caught either, because the package tests only `ast.parse` the emitted
+  text. (a) is closed the way it had to be: the donor's domain columns now enter through
+  **operator-typed intake slots** (`ontology.asset_properties` / `site_properties` /
+  `asset_title_key`, `SlotKind.ONTOLOGY_DOMAIN`), not narrative mining — mining would put the
+  model back on the value path and trip SD-1's promotion tripwire. Stated honestly: supplying
+  the donor's own columns as answers makes the property-set assertion a test of the emitter's
+  PLUMBING, not evidence the tool *derived* the schema. (c) is asserted as STRUCTURAL equality
+  modulo namespace rather than literal bytes, and that is a correction rather than a
+  weakening: the donor's docstring records that it was "Hand-written … NOT `vero-lite
+  new-vertical`", so a tool emitting those bytes would emit a **false provenance claim about
+  its own output**. The AC's own "prose may differ, structure may not" is the reading that
+  survives. Non-vacuity probed twice (one changed default reddens the row-4 oracle; restoring
+  the two-argument call reddens both new guards with `TypeError: too many positional
+  arguments`), restored from `/tmp` and verified `cmp -s` byte-identical.
 - [x] **AC-8 — the governance ceiling, exercised not asserted.** The tool computes
   the would-be AT-2 signature of the spine it is about to emit using **the same
   fingerprint key** as the census (Step 6 extracts the key helpers so the two
@@ -294,7 +331,7 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   possible, review-asserted otherwise: zero git operations; zero procedure-run
   firing; zero writes to any **existing** `verticals/*/procedures.yaml`
   (ADR-0024 `:147`); the full AC suite passes with MS-S1 unreachable.
-- [ ] **AC-10 — counted prose is disposed per SD-4's ratified option** in the files
+- [x] **AC-10 — counted prose is disposed per SD-4's ratified option** in the files
   this tool's wire-writer touches. **Scope corrected session 166 — cite the whole
   counted narrative, not one line of it:** the module docstring's per-vertical tally
   runs `tests/api/test_procedures_endpoint.py:5-9` (**not** `:5-6`), the test docstring
@@ -311,6 +348,31 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   count is reachable along the tool's write path.
 
   **CLOSEOUT — PARTIAL (session 167).** The SD-4 disposition is implemented and green (`dispose_counted_prose`, idempotent, with the executable `assert total ==` pin bumped instead of the prose being recounted) and it caught a real stale tally the single-space pattern had missed. **NOT met:** the wire-writer applies the disposition only to `tests/api/test_procedures_endpoint.py`. The fourth counted site named by this AC — the `services/api/main.py` registrar-module docstring count — is left untouched.
+
+  **CLOSEOUT — MET (session 168, #885).** The remainder was not "add main.py to the targets
+  dict": doing only that would have been a **no-op**. The shipped pattern matches
+  `<vertical> ships <numberword>` — a PER-MEMBER tally — and scores **zero** on *"All six
+  PROCEDURE-SHIPPING verticals register a factory"*, which counts the COLLECTION. Same rule,
+  different shape. The same blind spot hid a third site inside the file already being
+  disposed (*"across six verticals"*), so the s167 note "applies only to
+  `test_procedures_endpoint.py`" understated it: within that file one of the three named
+  sites was untouched too. `_COUNTED_COLLECTION` now deletes the cardinal, and `main.py`
+  joins the disposition path.
+
+  **One site is reported, not rewritten — deliberately, and asserted as such.** The census
+  comment at `:144-150` carries four interlocking counts in one free-form narrative, each
+  encoding which PLAN contributed which procedure. A regex rewriting that would either mangle
+  the grammar or delete the provenance, and **deleting a shipped file's history to satisfy a
+  tally rule is a worse outcome than the stale tally**. `residual_counted_prose` surfaces it
+  for a human — the same stance the tool takes at a governance tripwire: detect, hand a human
+  the specifics, never clear it yourself. That is the difference between a known gap and a
+  silent one.
+
+  The oracle could not have caught any of this: `assert replaced >= 1` was satisfied by the
+  per-member tallies alone. It is now per-shape, plus a test that the WIRE-WRITER applies the
+  disposition to `main.py` rather than merely that the function can — those two were separate
+  for a whole PLAN, which is how the gap survived.
+
 ## Out of Scope
 
 - ❌ **Auto-commit / any git operation.** Output is uncommitted working-tree files;
@@ -716,7 +778,11 @@ evidence. Then — separately, Cray-gated, evidence-not-gate — at most one liv
   regenerated fleet does not structurally match the real one, the tool is wrong —
   not the oracle.
 
-## Closeout — session 167, 2026-07-23 (8/10 ACs met; NOT archived)
+## Closeout — session 167, 2026-07-23 (recorded 8/10 ACs; actually 7/10 — see the s168 closeout below)
+
+> **Superseded, kept intact.** This section is the s167 record as written; the s168
+> closeout at the end completes it and corrects the count. It is not edited away,
+> because the reasoning that produced a partial close is the thing worth keeping.
 
 **Built and merged as seven PRs**, each gate-green and SHA-verified against the
 head it ran on: #873 Step 1 (intake engine + `vero-lite scaffold`) · #874 Step 2
@@ -738,13 +804,47 @@ moved the fingerprint FUNCTION only — `_BASELINE_SIGNATURES` and both census
 assertions stayed byte-identical, and all four in-file call sites were preserved
 by importing the helpers back under their original private names.
 
-### Why this is NOT archived to `done/`
+### Why this was NOT archived at s167 — and what changed
 
-AC-7 and AC-10 are **partial** (see their notes above). Archiving a PLAN with two
-unmet ACs would record a completion that did not happen — the exact failure the
-tool's own no-fabrication scanner exists to prevent, applied to governance rather
-than to demo numbers. The remainders are small and named; whether they are built,
-re-scoped, or dropped is Cray's call, not a bookkeeping step.
+AC-7 and AC-10 were **partial**. Archiving a PLAN with two unmet ACs would record a
+completion that did not happen — the exact failure the tool's own no-fabrication
+scanner exists to prevent, applied to governance rather than to demo numbers. The
+remainders were small and named; whether they were built, re-scoped, or dropped was
+Cray's call, not a bookkeeping step.
+
+**Cray ruled BUILD (typed, AskUserQuestion, session 168)** — including AC-7(a), on the
+operator-typed route rather than narrative mining. See the s168 closeout below.
+
+## Closeout — session 168, 2026-07-23 (10/10 ACs met; ARCHIVED)
+
+Four PRs, all merged; `main` = `c2b92c5`; full suite **3109 passed / 7 skipped** re-run on
+the merge commit (CI is PR-only, so the merge commit is never otherwise tested), `ruff` +
+`mypy --strict services/` (106 files) clean.
+
+| PR | What |
+|----|------|
+| [#883](https://github.com/CrayJThiemsert/vero-lite/pull/883) | AC-7(b)+(c) — the emitted package made loadable — and AC-7(a) via operator-typed domain columns. Also makes AC-4 true. |
+| [#884](https://github.com/CrayJThiemsert/vero-lite/pull/884) | The `vero-lite scaffold` command wired to the emitters (see Deviation 3). |
+| [#885](https://github.com/CrayJThiemsert/vero-lite/pull/885) | AC-10 — the collection-count shape, plus the reported-not-rewritten residue. |
+| [#886](https://github.com/CrayJThiemsert/vero-lite/pull/886) | Not this PLAN: settles PLAN-0092's parked SD-D, found while re-reading the closeout. |
+
+**The arithmetic held across all six of the session's PRs.** 3083 → 3109, and the
+per-PR deltas (+0 docs, +1, +18, +2, +3, +2) summed to the merge-commit total exactly —
+predicted before the run and matched after it. A mismatch anywhere would have meant a
+silently dropped or duplicated test.
+
+**Non-vacuity was probed, never assumed — six times**, each restoring from `/tmp` and
+verifying `cmp -s` byte-identical (never `git checkout`, which wipes the edit under test
+and produces a false pass). The two that mattered most reproduced defects that had
+actually shipped: restoring the two-argument `register_adapter` call reddened both new
+guards with `TypeError: too many positional arguments`, and disabling the collection
+substitution reddened all three new AC-10 assertions.
+
+**MS-S1 was never contacted.** Every AC remains offline-verifiable.
+
+**What the s167 count got wrong, recorded rather than quietly fixed:** "8/10" was really
+**7/10** — AC-4 was ticked while its own text required a `procedures_factory.py` that did
+not exist. See the AC-4 closeout correction above (`was an error`, not `superseded`).
 
 ### Deviations, recorded not absorbed
 
@@ -758,7 +858,34 @@ re-scoped, or dropped is Cray's call, not a bookkeeping step.
    `pipeline.py:82-84` and `draft.py:283-285` include. The PLAN said "fix or
    note"; noting, because that file is the one the SD-5 tripwire guards and
    editing it alongside the AT-2 work would muddy the signal the tripwire exists
-   to send. Belongs in its own small PR.
+   to send. Belongs in its own small PR. **CLOSED s168 (#882)** — fixed in its own
+   PR as prescribed, with an anti-drift tripwire pinning the local copy to
+   `pipeline._AT2_ONLY_KINDS`. Deliberately NOT pinned to `draft._AT2_GATE_KINDS`:
+   that is a *distinct* concept the design says so in its own docstring, and PLAN-0074
+   grew the two under separate ACs. The SD-5-guarded assertion is byte-unchanged.
+3. **The `vero-lite scaffold` COMMAND was never wired to the emitters** (found and
+   closed s168, #884). Steps 2–4 shipped in #874–#876, but `cli.py` still exited `3`
+   with *"Emission is not wired yet (PLAN-0091 Steps 2-4)"* and wrote nothing — the
+   emitters existed only as a **library**. Found by running the shipped command, not
+   by reading it: the queue rendered and `ls verticals/` showed no new directory.
+
+   **Why every oracle stayed green through a whole PLAN.** The golden e2e calls
+   `emit_ontology` / `write_package` / `emit_procedures` / `write_wires` **directly**,
+   and AC-1 only claims `--help` + `--plan-only`. No test pinned the exit-3 behaviour
+   either way, so nothing objected in either direction. This is the sharpest lesson of
+   the build and it generalises past this PLAN: **a test suite addressed at the library
+   cannot see that the entry point is dead.** The AC set was satisfiable without the
+   tool being usable.
+
+   Wiring it also closed a latent guard bypass that becomes live the moment emission
+   works: the overwrite guard checked `verticals/<argument>` while every emitter writes
+   to `verticals/<record.namespace>`, so an `--intake` file naming a different namespace
+   would route the write **past the guard** onto whatever the file named — potentially a
+   shipped vertical. The two must now match or the command refuses.
+
+   Verified by running it and then importing what it produced: registrar binds
+   (`LiveFleetSyntheticAdapter`), the factory module exists, `fetch_objects('Truck')`
+   returns rows keyed with `plate` and **without** `name`, `health_check` → ok.
 
 ### Findings the build produced (each caught by running the thing, not reading it)
 
