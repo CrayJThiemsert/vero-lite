@@ -25,6 +25,7 @@ from services.engine.scaffolder.wire import (
     bump_total,
     classify_archetype,
     dispose_counted_prose,
+    residual_counted_prose,
     write_wires,
 )
 
@@ -168,13 +169,62 @@ def test_counted_prose_is_disposed_not_recounted() -> None:
 
     Recounting is the failure mode the ruling exists to end — the prose had
     already gone stale on disk while the executable pin stayed honest.
+
+    The assertion is per-SHAPE rather than the old ``replaced >= 1``. That threshold
+    was satisfied by the per-member tallies alone, so it stayed green while the
+    collection counts in this very file went untouched — an oracle that cannot fail
+    for the thing it is supposed to check.
     """
     source = _source("tests/api/test_procedures_endpoint.py")
     out, replaced = dispose_counted_prose(source)
     assert replaced >= 1, "the stale narrative tally was not found"
     assert "ships two" not in out
     assert "ships its own procedures" in out
+    # the collection count in the same file ("across six verticals")
+    assert "six verticals" not in out
+    assert "across verticals" in out
     ast.parse(out)
+
+
+def test_the_fourth_site_in_main_py_is_disposed() -> None:
+    """AC-10's fourth site, and the reason it was reported as untouched.
+
+    ``services/api/main.py``'s registrar docstring says "All six PROCEDURE-SHIPPING
+    verticals register a factory". The per-member pattern scores **zero** on it, so
+    adding main.py to the wire-writer's targets without the collection shape would
+    have been a no-op that looked like a fix.
+    """
+    source = _source("services/api/main.py")
+    assert "All six PROCEDURE-SHIPPING verticals" in source, "the counted site moved"
+    out, replaced = dispose_counted_prose(source)
+    assert replaced >= 1
+    assert "All PROCEDURE-SHIPPING verticals register a factory" in out
+    assert "six PROCEDURE-SHIPPING" not in out
+    ast.parse(out)
+
+
+def test_the_wire_writer_actually_applies_it_to_main_py(staged: Path) -> None:
+    """Disposing in the FUNCTION is not the AC — the AC is that the wire-writer runs it
+    on the file it touches. The two were separate for a whole PLAN."""
+    write_wires("fleet_demo", "governed_truck_approval", _AT2_DOC, staged)
+    out = (staged / "services" / "api" / "main.py").read_text(encoding="utf-8")
+    assert "All PROCEDURE-SHIPPING verticals register a factory" in out
+    assert "six PROCEDURE-SHIPPING" not in out
+
+
+def test_irregular_counted_prose_is_reported_not_rewritten() -> None:
+    """The census comment carries four interlocking counts in one free-form narrative,
+    each encoding which PLAN contributed which procedure.
+
+    A regex that rewrote it would mangle the grammar or delete the provenance, so the
+    tool reports it instead — the same stance it takes at a governance tripwire:
+    detect, hand a human the specifics, never clear it yourself. This asserts the
+    residue is SURFACED, which is the difference between a known gap and a silent one.
+    """
+    out, _ = dispose_counted_prose(_source("tests/api/test_procedures_endpoint.py"))
+    residual = residual_counted_prose(out)
+    assert residual, "the irregular census narrative was neither disposed nor reported"
+    assert any("procedures" in item for item in residual)
 
 
 def test_disposition_is_idempotent() -> None:
