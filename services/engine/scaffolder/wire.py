@@ -141,6 +141,28 @@ _COUNTED_PROSE = re.compile(
     r"(?P<vertical>\w+)(?P<gap>\s+)ships (?:one|two|three|four|five|six|seven|eight|nine|ten)\b"
 )
 
+_NUMBER_WORD = (
+    r"one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|"
+    r"fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty"
+)
+
+# The SECOND counted shape, and the reason AC-10's fourth site was untouched: the
+# per-vertical tally pattern above scores ZERO on "All six PROCEDURE-SHIPPING
+# verticals register a factory" (services/api/main.py) and on "across six verticals"
+# — those count the COLLECTION, not each member. Adding main.py to the targets dict
+# without this would have been a no-op that looked like a fix.
+_COUNTED_COLLECTION = re.compile(
+    rf"\b(?:{_NUMBER_WORD})\s+(?P<rest>(?:[A-Za-z-]+\s+)?verticals?\b)",
+    re.IGNORECASE,
+)
+
+# Any spelled cardinal still adjacent to the census nouns AFTER disposition. Used to
+# REPORT, never to rewrite — see `residual_counted_prose`.
+_RESIDUAL_COUNT = re.compile(
+    rf"\b(?:{_NUMBER_WORD})\s+(?:[A-Za-z-]+\s+)?(?:verticals?|procedures?)\b",
+    re.IGNORECASE,
+)
+
 DISPOSITION_NOTE = (
     "per-vertical counts are deliberately NOT written in prose (PLAN-0091 SD-4): "
     "the executable `assert total ==` pin below is the count of record, because a "
@@ -149,21 +171,53 @@ DISPOSITION_NOTE = (
 
 
 def dispose_counted_prose(source: str) -> tuple[str, int]:
-    """Replace hand-maintained narrative tallies with a pointer (SD-4, AC-10).
+    """Replace hand-maintained narrative tallies with non-counting prose (SD-4, AC-10).
 
-    Returns ``(new_source, replacements)``. The prose is not re-counted — that
-    is the whole ruling: a count a human must maintain in prose is exactly the
-    thing that had already gone stale on disk.
+    Returns ``(new_source, replacements)``. The prose is never re-counted — that is
+    the whole ruling: a count a human must maintain in prose is exactly the thing
+    that had already gone stale on disk.
+
+    Two shapes, because the counted prose in the wired files comes in two:
+
+    * a **per-member** tally — ``supply_chain ships two`` — rewritten to
+      ``supply_chain ships its own procedures``;
+    * a **collection** count — ``All six PROCEDURE-SHIPPING verticals`` — where the
+      cardinal is simply deleted, leaving ``All PROCEDURE-SHIPPING verticals``. Deleting
+      is the whole transform on purpose: anything cleverer has to rewrite the
+      surrounding grammar, and a wire-writer that reflows English in shipped files is
+      one bad match away from mangling a docstring.
     """
     replaced = 0
 
-    def _sub(match: re.Match[str]) -> str:
+    def _sub_member(match: re.Match[str]) -> str:
         nonlocal replaced
         replaced += 1
         return f"{match.group('vertical')}{match.group('gap')}ships its own procedures"
 
-    out = _COUNTED_PROSE.sub(_sub, source)
+    def _sub_collection(match: re.Match[str]) -> str:
+        nonlocal replaced
+        replaced += 1
+        return match.group("rest")
+
+    out = _COUNTED_PROSE.sub(_sub_member, source)
+    out = _COUNTED_COLLECTION.sub(_sub_collection, out)
     return out, replaced
+
+
+def residual_counted_prose(source: str) -> list[str]:
+    """Counted prose the disposer will NOT rewrite, reported for a human to settle.
+
+    Some counted prose is not a regular shape. ``test_procedures_endpoint.py``'s census
+    comment carries four interlocking counts in one free-form narrative ("thirteen
+    procedures … the twelve prior (fact-pack #1's five + …)"), and each one encodes
+    real provenance — which PLAN contributed which procedure. A regex that rewrote it
+    would either mangle the grammar or delete the provenance, and deleting a shipped
+    file's history to satisfy a tally rule is a worse outcome than the stale tally.
+
+    So this reports instead of rewriting, which is the same stance the tool takes at a
+    governance tripwire: detect, hand a human the specifics, never clear it yourself.
+    """
+    return sorted({match.group(0) for match in _RESIDUAL_COUNT.finditer(source)})
 
 
 def write_wires(
@@ -179,7 +233,13 @@ def write_wires(
     """
     archetype = classify_archetype(procedures_doc)
     targets: dict[str, Callable[[str], str]] = {
-        "services/api/main.py": lambda s: add_registrar_entry(s, namespace, mirror=False),
+        # AC-10's fourth counted site lives in this file's registrar docstring
+        # ("All six PROCEDURE-SHIPPING verticals register a factory"), so the
+        # disposition runs here too — it is a collection count, which is why the
+        # per-member pattern alone scored zero on it.
+        "services/api/main.py": lambda s: dispose_counted_prose(
+            add_registrar_entry(s, namespace, mirror=False)
+        )[0],
         "services/engine/cli.py": lambda s: add_registrar_entry(s, namespace, mirror=True),
         "services/api/routers/procedures.py": lambda s: add_procedure_archetype(
             s, namespace, procedure_id, archetype
