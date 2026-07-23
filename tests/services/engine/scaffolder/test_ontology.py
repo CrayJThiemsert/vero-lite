@@ -22,11 +22,59 @@ import pytest
 
 from services.engine.scaffolder.intake import IntakeAnswer, IntakeRecord
 from services.engine.scaffolder.ontology import (
+    DomainPropertyError,
     OntologyEmissionError,
     emit_ontology,
+    parse_domain_properties,
     run_floor,
     write_ontology,
 )
+
+# --- AC-7a: operator-typed domain columns ------------------------------------
+
+
+def test_no_domain_answer_means_no_extra_columns() -> None:
+    """Absent is a legitimate answer — this customer has no extra columns — and must
+    not be confused with an unanswered question that needs a stub."""
+    assert parse_domain_properties(None) == {}
+    assert parse_domain_properties("   ") == {}
+
+
+def test_scalar_and_enum_columns_parse() -> None:
+    parsed = parse_domain_properties(
+        "odometer_km:float, truck_class:enum(tractor_head|six_wheeler|trailer), live:bool"
+    )
+    assert parsed == {
+        "odometer_km": {"type": "float"},
+        "truck_class": {"type": "enum", "values": ["tractor_head", "six_wheeler", "trailer"]},
+        "live": {"type": "bool"},
+    }
+
+
+def test_enum_members_use_pipes_so_the_outer_list_stays_comma_separated() -> None:
+    """The separator choice is the whole reason an operator never has to escape
+    anything: a comma inside enum(...) would silently split one column into two."""
+    parsed = parse_domain_properties("a:enum(x|y), b:string")
+    assert list(parsed) == ["a", "b"]
+    assert parsed["a"]["values"] == ["x", "y"]
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "odometer_km",  # no type at all
+        "odometer_km:",  # empty type
+        ":float",  # no name
+        "odometer_km:number",  # not in the closed vocabulary
+        "truck_class:enum()",  # enum with no members
+    ],
+)
+def test_a_malformed_column_is_refused_not_guessed(bad: str) -> None:
+    """Refusing IS the behaviour. A column the tool cannot parse must become neither
+    a silently-dropped column nor a guessed type — either would put a schema decision
+    somewhere the operator cannot see it."""
+    with pytest.raises(DomainPropertyError):
+        parse_domain_properties(bad)
 
 
 def _record(**overrides: str) -> IntakeRecord:

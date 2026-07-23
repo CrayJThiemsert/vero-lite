@@ -32,13 +32,22 @@ tool that emitted that sentence would be emitting a false provenance claim about
 its own output. So the oracle compares what the AC actually cares about — the
 code — and lets the provenance prose differ, honestly.
 
-**Honestly NOT asserted, and why:** the donor's narrative-mined per-object
-properties (`truck_class`, `odometer_km`, `plate`, `depot_type`) are customer
-detail no generic emitter can invent — mining them from free text is exactly
-the LLM surface this PLAN keeps OUT of the value path. The tool emits the
-grammar skeleton and the judgment slots; the domain columns remain human work,
-and the README gap register is where the tool says so. Claiming a fuller match
-than that would be the failure mode this test exists to prevent.
+**The domain columns, and what their assertion does and does not prove.** The
+donor's `truck_class` / `odometer_km` / `plate` / `depot_type` are customer
+detail no generic emitter can invent, and mining them from free text is exactly
+the LLM surface this PLAN keeps OUT of the value path. They now reach the
+ontology the only admissible way: **the operator types them**, through the
+`ontology.asset_properties` / `ontology.site_properties` /
+`ontology.asset_title_key` intake slots.
+
+That makes `test_property_sets_match_the_donor` a test of the **emitter's
+plumbing**, NOT evidence that the tool derived the donor's schema — the donor's
+own columns are supplied to it as answers. Said plainly so nobody reads it as
+more: *given a human who supplies the domain columns, the tool can express the
+donor's shape exactly.* What remains genuinely un-derived is the same thing as
+before — knowing WHICH columns a fleet has. The tool asks; it does not guess.
+Claiming a fuller match than that would be the failure mode this test exists to
+prevent.
 """
 
 from __future__ import annotations
@@ -209,6 +218,51 @@ def test_ontology_object_and_link_sets_match_the_donor(golden: IntakeRecord) -> 
     emitted = emit_ontology(golden)
     assert set(emitted["object_types"]) == set(donor["object_types"])
     assert set(emitted["link_types"]) == set(donor["link_types"])
+
+
+def test_property_sets_match_the_donor(golden: IntakeRecord) -> None:
+    """AC-7a: with the operator supplying the domain columns, every object type's
+    property SET equals the donor's — including the columns the emitter has no way
+    to invent. See the module docstring for what this does and does not prove."""
+    donor = _donor_ontology()
+    emitted = emit_ontology(golden)
+    for name in ("Truck", "Depot"):
+        assert set(emitted["object_types"][name]["properties"]) == set(
+            donor["object_types"][name]["properties"]
+        ), name
+
+
+def test_title_key_and_enum_values_match_the_donor(golden: IntakeRecord) -> None:
+    """The shape a set-comparison cannot see: the donor titles a Truck by `plate`
+    (and has no `name` column at all), and its `status` vocabulary is the customer's
+    four, not the emitter's generic active/inactive."""
+    donor = _donor_ontology()
+    emitted = emit_ontology(golden)
+    truck = emitted["object_types"]["Truck"]
+    assert truck["title_key"] == donor["object_types"]["Truck"]["title_key"] == "plate"
+    assert "name" not in truck["properties"]
+    assert (
+        truck["properties"]["status"]["values"]
+        == donor["object_types"]["Truck"]["properties"]["status"]["values"]
+    )
+    assert (
+        emitted["object_types"]["Depot"]["properties"]["depot_type"]["values"]
+        == donor["object_types"]["Depot"]["properties"]["depot_type"]["values"]
+    )
+
+
+def test_the_synthetic_rows_carry_the_ontologys_own_title_and_status(
+    golden: IntakeRecord, regenerated: Path
+) -> None:
+    """The two files must not be able to disagree: an operator-chosen title_key that
+    reached the ontology but not `synthetic.py` would leave every demo row missing a
+    column the ontology declares REQUIRED."""
+    source = (
+        regenerated / "verticals" / "fleet_regen" / "data_adapter" / "synthetic.py"
+    ).read_text(encoding="utf-8")
+    assert '"plate": f"TODO-plate-' in source
+    assert '"status": "in_service"' in source
+    assert '"name": f"TODO-name-' not in source
 
 
 def test_the_band_property_lands_on_the_asset_as_in_the_donor(golden: IntakeRecord) -> None:

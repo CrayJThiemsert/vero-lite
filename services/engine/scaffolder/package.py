@@ -191,6 +191,15 @@ def emit_synthetic(record: IntakeRecord, ontology_doc: dict[str, Any]) -> str:
     asset_pk = ontology_doc["object_types"][asset]["primary_key"]
     site_pk = ontology_doc["object_types"][site]["primary_key"]
 
+    # Read off the emitted ontology rather than re-deriving from the record, so the
+    # two files cannot disagree. They previously could: `name` and `status: active`
+    # were hardcoded here, and an operator-chosen title_key (the donor's `plate`) or
+    # status vocabulary would have produced synthetic rows missing the ontology's own
+    # REQUIRED title column.
+    asset_title = str(ontology_doc["object_types"][asset]["title_key"])
+    site_title = str(ontology_doc["object_types"][site]["title_key"])
+    asset_status = str(ontology_doc["object_types"][asset]["properties"]["status"]["values"][0])
+
     count, count_note = _fixture_value(record, "fixture.asset_count", "3")
     band, band_note = _fixture_value(record, "fixture.band_value", "20000")
     breach, breach_note = _fixture_value(record, "fixture.breach_value", "48000")
@@ -219,7 +228,7 @@ _NORMAL_VALUE = {normal}{normal_note}
 
 def {_key_fn(site)}() -> list[dict[str, Any]]:
     """The demo {site} rows."""
-    return [{{"{site_pk}": "site-1", "name": "TODO — the customer's own site name"}}]
+    return [{{"{site_pk}": "site-1", "{site_title}": "TODO — the customer's own site name"}}]
 
 
 def {_key_fn(asset)}() -> list[dict[str, Any]]:
@@ -227,9 +236,9 @@ def {_key_fn(asset)}() -> list[dict[str, Any]]:
     return [
         {{
             "{asset_pk}": f"asset-{{i}}",
-            "name": f"TODO-name-{{i}}",
+            "{asset_title}": f"TODO-{asset_title}-{{i}}",
             "{band_property}": _BAND_VALUE,
-            "status": "active",
+            "status": "{asset_status}",
             "site_id": "site-1",
         }}
         for i in range(_ASSET_COUNT)
