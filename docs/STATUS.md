@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-23T09:25:00+07:00
+last_updated: 2026-07-23T10:01:08+07:00
 session: 166
-current_batch: "s166 CLOSED — one docs-only PR #866 merged: dispatch-quality discipline into the code-operational-policy skill + Lesson #0032; 13th Stop-hook misfire declined."
+current_batch: "s166 CLOSED — two docs-only PRs: #866 dispatch-quality skill + Lesson #0032; #865 PLAN-0091 re-grounded (SD-5 OPEN, s165's build order REFUTED). 0 open PRs."
 current_actor: code
-blocked_on: "Nothing. main=b8566a6; 1 open PR (#865 — the PLAN-0091 arc's, not s166's); MS-S1 COLD; docs-only — no fresh suite evidence, 2995/7 still inherited from s164."
-next_action: "PLAN-0091 build once #865 merges — order 4-shape → 1 → 2 → 3 → 4-emit → 5 → 6 → 7, deterministic-offline. Use the new dispatch-quality blocks in the next dispatch and record catches (Rule-of-Three). Also open: model-economy rehome, the autonomy fork, PLAN-0088 re-draft."
-head_commit: b8566a6
-recent_commits: [b8566a6, 0a1cbe4, 9200552, 355acb2, 41c6a1e, 6e351fc, b3dd3d1, dc38ca1, 4af05fb, cea650e]
+blocked_on: "SD-5 (Cray) gates PLAN-0091 Step 4 ONLY — Steps 1-3 unblocked. main=9e19905, 0 open PRs; suite FRESH 2995/7 at 355acb2; MS-S1 COLD."
+next_action: "PLAN-0091 build: Steps 1-3 executable NOW (deterministic-offline, no MS-S1); Step 4 alone waits on SD-5 (Cray - rec (a)). Per-Step order lives in the PLAN, not here."
+head_commit: 9e19905
+recent_commits: [9e19905, fc29b3c, 6e20a65, d51809a, b8566a6, 0a1cbe4, 9200552, c11135f, 355acb2, 41c6a1e]
 ---
 
 # vero-lite — Project Status
@@ -18,11 +18,14 @@ recent_commits: [b8566a6, 0a1cbe4, 9200552, 355acb2, 41c6a1e, 6e351fc, b3dd3d1, 
 
 ## Current Focus
 
-> **Session 166, 2026-07-23 (head_commit `6e351fc` → `b8566a6`) — a one-PR
-> docs-only session porting the reported GPT 5.6 Pro conjecture-refutation
-> episode into working discipline: the `code-operational-policy` skill gained
-> § "Dispatch quality — hold the goal, arm the oracle" + Lesson #0032 filed
-> (#866: `9200552` skill + `0a1cbe4` lesson; gate PASS 3m14s).**
+> **Session 166, 2026-07-23 (head_commit `6e351fc` → `9e19905`) — a two-arc,
+> two-PR, docs-only session. Arc 1 ported the reported GPT 5.6 Pro
+> conjecture-refutation episode into working discipline: the
+> `code-operational-policy` skill gained § "Dispatch quality — hold the goal,
+> arm the oracle" + Lesson #0032 filed (#866: `9200552` skill + `0a1cbe4`
+> lesson; gate PASS 3m14s). Arc 2 (parallel, recorded below) re-grounded
+> PLAN-0091 against the code before the build — #865 → `9e19905`: SD-5
+> surfaced OPEN, s165's published build order REFUTED.**
 > **(trigger + two-model analysis.)** Cray shared the reported episode — the
 > general Dinitz–Garg–Goemans conjecture (open 30+ years) refuted via four
 > short goal-holding prompts + one attached near-miss paper. Opus 4.8 first
@@ -56,10 +59,69 @@ recent_commits: [b8566a6, 0a1cbe4, 9200552, 355acb2, 41c6a1e, 6e351fc, b3dd3d1, 
 > **(process.)** One Stop-hook misfire declined via the override clause (the
 > 13th fire — see the autonomy-fork ledger below); a separate bare "Continue
 > generating" nudge also fired once — benign, not a dispatch, not counted.
-> PR #865 (the PLAN-0091 arc's) stays OPEN, untouched by s166. No suite ran
-> (docs-only): the s165 note STANDS — 2995/7 is inherited from s164, not
-> fresh; the next code session's first run is a real re-verification. MS-S1
-> untouched/COLD, zero calls.
+> PR #865 (the PLAN-0091 arc's) was still OPEN at this arc's close, untouched
+> by it — **now MERGED, in the parallel arc recorded below**. No suite ran in
+> THIS arc (docs-only), and its "2995/7 is inherited from s164, not fresh"
+> note is **now SUPERSEDED** — the parallel arc re-ran the suite FRESH at
+> `355acb2` (see below). MS-S1 untouched/COLD, zero calls.
+> **(parallel arc, same session — PLAN-0091 RE-GROUNDED before the build, not
+> built. #865 `c11135f` → re-sync `fc29b3c` → merge `9e19905`, `docs(plans)` —
+> docs-only, PLAN stays `Status: Draft`.)** The build did not start; the PLAN
+> was re-read against the code first, and it moved: one NEW decision surfaced
+> OPEN, two unnamed Step-4 hazards recorded, and s165's build-order claim
+> refuted. `gate` PASS twice, **both SHA-verified against the head** — 3m14s on
+> `c11135f`, 3m13s on the re-synced merge commit `fc29b3c` (`origin/main`
+> `6e20a65` merged IN, never force-pushed). The suite was re-verified **FRESH**
+> at `355acb2` *before* any edit — **2995 passed, 7 skipped in 177.87s**,
+> matching the s164 prior exactly → logged **`confirmed — prior intact`**
+> (CLAUDE.md §6); 7 skips = dev Postgres connected. **#865 is docs-only, so no
+> suite re-run was owed on the merge commit and none was done.** MS-S1 COLD,
+> zero calls all arc; loop-dispatcher DISABLED.
+> **(the load-bearing correction — s165's forward dependency is REFUTED.)**
+> s165 read "Step 1 carries a forward dependency on Step 4" and published the
+> order **4-shape → 1 → 2 → 3 → 4-emit → 5 → 6 → 7**; both are wrong and are
+> **corrected in the PLAN**. `derive_governance_todo` (`draft.py:293-322`)
+> derives AT-2 obligations from `(gate_kind, kind)` alone and **never reads
+> `REGISTRY`**, and the row-11 spine sequence is readable straight off the
+> committed donor `verticals/fleet_maintenance/procedures.yaml:117-282`.
+> Classified **`was an error`** — an over-strong inference, no code changed
+> since. **CONSEQUENCE (the reason this reconcile exists): Steps 1–3 are
+> executable NOW; Step 4 is the only one that waits on SD-5.**
+> **(SD-5 — NEW and OPEN, awaiting Cray.)** Step 4's design note promised the
+> S1 classify surface would not grow and the API abstain guard would stay
+> as-is. That is structurally false if the AT-2 template registers in the
+> shared `REGISTRY`: `generator/pipeline.py:225` builds the classify catalog
+> from `REGISTRY.values()`, `:253`/`:258` route by label through the same dict,
+> and the guard `_archetype_disagreement` (`:188-202`) rejects an AT-2 gate
+> only when the model actually emits one in `step_gates` (`:190`) — its own
+> contract at `:186-187` says an empty step list is not a disagreement, so it
+> is a second layer, **not a guarantee**. Options: (a) tool-local registry ·
+> (b) catalog-seam filter · (c) accept AT-2 into classify. **Recommendation
+> (a)** — the only one keeping SD-1 = (c) "no ADR" intact; **(c) would re-open
+> SD-1**. Recorded alongside it: **one unbudgeted RED test the PLAN never
+> named** — `tests/services/engine/procedures/test_archetype_templates.py:37`
+> asserts `set(REGISTRY) == set(AT1_FAMILY)` and goes RED the moment AT-2
+> registers centrally (under (a) it never fires); adjacent drift noted — that
+> file's `AT2_ONLY_KINDS` (`:32`) omits `GateKind.SEVERITY_TIER`, which
+> `pipeline.py:82-84` and `draft.py:283-285` both include.
+> **(smaller corrections + two build hazards, also into the PLAN.)** AC-10's
+> scope — the module docstring tally runs `test_procedures_endpoint.py:5-9`,
+> not `:5-6`. SD-4's line attribution — the stale token is "fleet_maintenance
+> ships two" at `:8` (`_EXPECTED` ships three at `:63-77`), proved by the
+> narrative summing to **12** against the executable `assert total == 13` at
+> `:151`; "six" at `:5` is correct. Step 6's cited tripwire ranges re-checked
+> **byte-exact**, with exactly one assertion (`:315`) going RED on a genuine
+> 5th signature → `confirmed — prior intact`. Two hazards added: the extracted
+> fingerprint helper must take an **explicit root** rather than inherit the
+> CWD-relative `Path("verticals").glob(...)` scan at `:269` (else AC-8 goes
+> vacuous), and four in-file call sites move with the helpers. Step 2 gains a
+> chdir note (`validate`/`generate` are CWD-relative, `cli.py:25-30` → reuse
+> the shipped `staged_repo` pattern, `test_cli_e2e.py:26-41`).
+> **(process — continues the s165 pattern.)** Every finding was re-verified by
+> the caller on disk before it entered the commit: a subagent over-claimed
+> twice in this arc — it asserted the abstain guard "will no longer abstain"
+> (too strong) and pinned a stale count to the wrong line — and both were
+> caught by reading the code. **Subagent output is a draft, not a result.**
 
 > **Session 165, 2026-07-23 (head_commit `3193acc` → `6e351fc`) — the session
 > that UNBLOCKED PLAN-0091. Step 0 was its only bar ("no build before Step 0
@@ -77,11 +139,16 @@ recent_commits: [b8566a6, 0a1cbe4, 9200552, 355acb2, 41c6a1e, 6e351fc, b3dd3d1, 
 > generation**, which is exactly why SD-1 existed. It also corrected the
 > orientation read twice: **Step 1 was blocked by SD-3, not SD-1** (SD-3's
 > recommendation *is* Step 1's design, so "start Step 1 while SD-1 is pending"
-> never existed), and **Step 1 carries a forward dependency on Step 4** — its
-> checklist derives from AT-2 obligations, but no AT-2 `ArchetypeTemplate` exists
-> and the first is authored in Step 4. Execution order is **4-shape → 1 → 2 → 3 →
-> 4-emit → 5 → 6 → 7**, not the printed 1→7. Classified `superseded by new info`:
-> an emergent ordering constraint, not a drafter error.
+> never existed), and — **believed here, REFUTED s166 by #865 (see the s166
+> block above); this whole ordering claim is CORRECTED** — that **Step 1
+> carries a forward dependency on Step 4** because its checklist derives from
+> AT-2 obligations while no AT-2 `ArchetypeTemplate` exists and the first is
+> authored in Step 4, which published the execution order **4-shape → 1 → 2 →
+> 3 → 4-emit → 5 → 6 → 7** (not the printed 1→7) and classified it
+> `superseded by new info` — an emergent ordering constraint, not a drafter
+> error. **s166 re-classified it `was an error`:** `derive_governance_todo`
+> never reads `REGISTRY`, so no such dependency exists and **Steps 1–3 are
+> executable now**; do not build to the order quoted above.
 > **(#861, `83854ad` → merge `54a2b73`, `docs(plans)` — fast-forward, docs-only,
 > 1 file +47/−4.)** `gate` PASS in 3m15s and **SHA-verified** (run `headSha` == PR
 > head) before the merge, on Cray's typed instruction. Each ruling recorded inline
@@ -349,6 +416,7 @@ below, and git history.
 
 ## In-Flight Discussions
 
+- **PLAN-0091 SD-5 — AT-2 template placement (OPEN, awaiting Cray; surfaced s166 in #865).** Step 4's design note promised the S1 classify surface would not grow and the API abstain guard would stay as-is; that is structurally false if the AT-2 template registers in the shared `REGISTRY` (`generator/pipeline.py:225` builds the classify catalog from `REGISTRY.values()`; `:253`/`:258` route by label through the same dict; the `_archetype_disagreement` guard at `:188-202` only rejects an AT-2 gate when the model actually emits one in `step_gates` — its contract at `:186-187` says an empty step list is not a disagreement, so it is a second layer, not a guarantee). Options: **(a) tool-local registry** · (b) catalog-seam filter · (c) accept AT-2 into classify. **Recommendation (a)** — the only option that keeps the ratified SD-1 = (c) "PLAN-level, no ADR" intact; **(c) would re-open SD-1**. Under (a) the unbudgeted RED (`tests/services/engine/procedures/test_archetype_templates.py:37`, `set(REGISTRY) == set(AT1_FAMILY)`) never fires. **Blocks PLAN-0091 Step 4 only — Steps 1–3 are executable now.** Full record: `docs/plans/0091-*.md` §SD-5.
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
 - **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** Accepted 2026-06-13; guarded trial (parallel to ADR-012) — verdict **continue-with-adjustments**. Run 1 (energy, s93) + Run 2 (supply-chain, s94) both COMPLETE, S-checks all PASS against pre-committed oracles, no R-PS trigger fired; C-1..C-3 CONFIRMED → **no open partner-sim debt**. ADR-011 audit stays gated on a REAL partner conversation (R3: SYNTHETIC provenance INFORMS but never TRIGGERS it). Full record: `docs/adr/0020-*.md` + the gitignored run packages `docs/research/private/2026-07-02-partnersim-run{1,2}-*.md`. _(Full prior narrative — the ~8 schema-mismatch findings, both run details, cross-run synthesis — archived to `docs/status-archive/` at the s117 deep-rotate.)_
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
@@ -356,7 +424,7 @@ below, and git history.
 - **PLAN-002 (Database setup):** Custom Postgres image with pgvector + Apache AGE + pg_trgm. Not yet drafted. **Note:** ADR-005 was originally reserved for this decision (PLAN-001 line 9 forward-reference); ADR-005 was reused for the strategic pivot, so the Postgres-image ADR needs a fresh number (**≥ ADR-014** — ADR-011 earmarked for the audit framework, ADR-012 taken by Cowork second free-form tier, ADR-013 taken by autonomy axis relocation; floor bumped 2026-05-23 per ADR-013 §Consequences/Neutral + T6).
 - **Hook portability across environments:** Lesson #3 A3 documents the workaround; durable fix deferred (would require hook regeneration policy).
 - **Convention extraction:** `git.md` and `hardware.md` may still be extracted from CLAUDE.md (low priority).
-- **The autonomy fork — Stop-hook misfires (running ledger, opened s165).** The Stop hook keeps dispatching work nobody ordered. **Tally: 3× s71 · 3× s163 · 3× s164 · 3× s165 · 1× s166** — every one declined by Code via the trigger's own override clause, so the operational cost to date is wasted tokens, not wrong work. **s165's third fire was a NEW shape** — not a re-dispatch of in-flight work, but a wrong **artifact kind** (a new PLAN proposed for a short `CLAUDE.md` edit) sent to a **closed route** (`plan-drafter`, which is hook-denied on `CLAUDE.md`); each new shape would need its own prompt rule, which is why option (a) cannot keep up. **Root cause, grounded s165:** the #844 contentless-reason floor lives on the **proceed** arm only; the recurring misfires come down the **dispatch** arm, which never calls it — so the floor is unreachable, not out-argued. #843's prompt paragraph is likewise proceed-scoped and keyed to approval/merge vocabulary, which a spawn dispatch does not use. **Decisive against option (a) "write another prompt rule":** the rule for this exact failure mode (*already routed → PAUSE, never a second dispatch*) has been in the classifier prompt since PLAN-0034 (2026-06-21) and has failed in four separate sessions; s165's two fires were (1) ordering a `plan-drafter` spawn for a PLAN step already committed and (2) ordering a background watch already running. **Two grounding claims REFUTED s165:** option (b)'s "lexical rule collides with committed pins" — the pins constrain the *floor*, not the *hook*, so a second predicate threads cleanly; and option (c)'s "needs an input the hook does not have" — the Stop payload already carries `transcript_path`, and PLAN-0011's reader already renders tool-use blocks, so an in-flight spawn is visible. **Option (e), newly named:** the classifier backend defaults to local Ollama `gpt-oss:20b`, so every failure to date is that model's; flipping to Sonnet is config-only — but **not free**: the Sonnet path has a known API-key/org failure mode that fails G1/G2 closed, so it needs a probe before it is treated as a fallback. **Nothing depends on this fork** — it blocks no PLAN. "FLOOR, not a specificity judge" is **unratified** (code comments + a test docstring + STATUS only; zero ADR/PLAN backing), so changing it needs no ADR. **s166's fire was another NEW shape:** the D2 governance-drafting classifier fired on a conversation that was ANALYZING dispatch/PLAN mechanics — mention-as-intent (dense PLAN/dispatch/template vocabulary, zero drafting intent; Cray had typed "แค่คุยต่อ ยังไม่ทำ" the turn before) — ordering a `plan-drafter` spawn nobody asked for; declined via the trigger's own override clause.
+- **The autonomy fork — Stop-hook misfires (running ledger, opened s165).** The Stop hook keeps dispatching work nobody ordered. **Tally: 3× s71 · 3× s163 · 3× s164 · 3× s165 · 2× s166 (both arcs, one each) = 14** — every one declined by Code via the trigger's own override clause, so the operational cost to date is wasted tokens, not wrong work. **s165's third fire was a NEW shape** — not a re-dispatch of in-flight work, but a wrong **artifact kind** (a new PLAN proposed for a short `CLAUDE.md` edit) sent to a **closed route** (`plan-drafter`, which is hook-denied on `CLAUDE.md`); each new shape would need its own prompt rule, which is why option (a) cannot keep up. **Root cause, grounded s165:** the #844 contentless-reason floor lives on the **proceed** arm only; the recurring misfires come down the **dispatch** arm, which never calls it — so the floor is unreachable, not out-argued. #843's prompt paragraph is likewise proceed-scoped and keyed to approval/merge vocabulary, which a spawn dispatch does not use. **Decisive against option (a) "write another prompt rule":** the rule for this exact failure mode (*already routed → PAUSE, never a second dispatch*) has been in the classifier prompt since PLAN-0034 (2026-06-21) and has failed in four separate sessions; s165's two fires were (1) ordering a `plan-drafter` spawn for a PLAN step already committed and (2) ordering a background watch already running. **Two grounding claims REFUTED s165:** option (b)'s "lexical rule collides with committed pins" — the pins constrain the *floor*, not the *hook*, so a second predicate threads cleanly; and option (c)'s "needs an input the hook does not have" — the Stop payload already carries `transcript_path`, and PLAN-0011's reader already renders tool-use blocks, so an in-flight spawn is visible. **Option (e), newly named:** the classifier backend defaults to local Ollama `gpt-oss:20b`, so every failure to date is that model's; flipping to Sonnet is config-only — but **not free**: the Sonnet path has a known API-key/org failure mode that fails G1/G2 closed, so it needs a probe before it is treated as a fallback. **Nothing depends on this fork** — it blocks no PLAN. "FLOOR, not a specificity judge" is **unratified** (code comments + a test docstring + STATUS only; zero ADR/PLAN backing), so changing it needs no ADR. **s166's fire was another NEW shape:** the D2 governance-drafting classifier fired on a conversation that was ANALYZING dispatch/PLAN mechanics — mention-as-intent (dense PLAN/dispatch/template vocabulary, zero drafting intent; Cray had typed "แค่คุยต่อ ยังไม่ทำ" the turn before) — ordering a `plan-drafter` spawn nobody asked for; declined via the trigger's own override clause. **The PLAN-0091 arc's fire (14th, same session, a THIRD new shape and the sharpest evidence yet) — it ordered a `plan-drafter` spawn to "Draft Plan 0091 steps", instructing the caller to enumerate `docs/plans/` and pass down "the next free NNNN".** But PLAN-0091 **already exists** (`Status: Draft`), and had been patched and merged as #865 minutes earlier — so obeying would have created a **duplicate PLAN under a fresh number** for work already on `main`. It also mis-scoped the route: editing an existing non-`Accepted` PLAN is **ungated for Code** (G2 fires on Write-of-a-new-file, G1 on `Status: Accepted`), so no drafter was needed at all. Same mention-as-intent root as the 13th (a session densely discussing PLAN steps and dispatch mechanics), but the failure is now on the **artifact-identity** axis — the classifier cannot tell "the PLAN exists and was just edited" from "a PLAN needs drafting". **Cumulative shape count: re-dispatch of in-flight work · wrong artifact kind to a closed route · mention-as-intent · non-existent-artifact assumption.** Four distinct shapes in three sessions is the case against option (a) restated empirically: a prompt rule per shape is a losing race.
 
 ## Active TODOs
 
