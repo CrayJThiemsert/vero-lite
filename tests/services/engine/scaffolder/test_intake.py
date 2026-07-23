@@ -25,7 +25,9 @@ import os
 from collections.abc import Iterator
 from pathlib import Path
 
+import click
 import pytest
+import typer.main
 from typer.testing import CliRunner
 
 from services.engine.cli import app
@@ -69,9 +71,26 @@ def _tree(root: Path) -> set[Path]:
 
 
 def test_scaffold_help_works_offline() -> None:
+    """`--help` renders and exits 0 with no network and no repo state (AC-1)."""
     result = CliRunner().invoke(app, ["scaffold", "--help"])
     assert result.exit_code == 0, f"stderr={result.stderr!r}"
-    assert "--plan-only" in result.stdout
+
+
+def test_scaffold_is_registered_with_its_flags() -> None:
+    """The command + its options exist — asserted against the registered params.
+
+    Deliberately NOT asserted against rendered `--help` text: Typer renders help
+    through rich, whose wrapping and truncation depend on the terminal the run
+    happens to get. A rendered-text assertion passed locally and failed in CI on
+    exactly that difference, which makes it an oracle for the renderer rather
+    than for the command. The parameter list is the property AC-1 actually
+    claims.
+    """
+    command = typer.main.get_command(app)
+    assert isinstance(command, click.Group)
+    scaffold_cmd = command.commands["scaffold"]
+    flags = {opt for param in scaffold_cmd.params for opt in param.opts}
+    assert {"--plan-only", "--narrative", "--intake"} <= flags
 
 
 def test_plan_only_prints_the_queue_and_writes_nothing(staged_repo: Path) -> None:
