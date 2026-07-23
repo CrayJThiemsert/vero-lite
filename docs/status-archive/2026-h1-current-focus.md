@@ -1135,3 +1135,92 @@ Rotated because **R2 requires it**, not as a headroom judgement: with the Sessio
 > Code declined each via the trigger's own override clause. Recorded late, so the
 > tally is reconstructed from the s163/s164 handoffs rather than from a
 > contemporaneous note — flagged as such rather than presented as fresh evidence.
+
+> **Session 164, 2026-07-22 (head_commit `1ce3546` → `f758509`) — a one-PR
+> session whose real product was a REFUTATION, not a build: a 4-agent Explore
+> fan-out re-ranked the five session-163 candidates against code and killed two
+> standing claims before Cray picked the winner by typed AskUserQuestion.
+> PLAN-0091 — the narrative→vertical scaffolder tool v1, `vero-lite scaffold` —
+> is FILED at `Status: Draft`, 10 ACs / 8 Steps, CREATE-SHAPE ONLY, and CANNOT
+> be built until Cray adjudicates its Step 0 (SD-1…SD-4).**
+> **(the open.)** Orientation + a full sync matched the handoff on all six
+> checks: `main=caeda74`, 0 open PRs, **2995 passed / 7 skipped** — the
+> pre-committed read, hit exactly ⇒ `confirmed — prior intact` — `mypy
+> --strict` clean at 98 files, ruff clean at CI scope, STATUS 55,745 B.
+> **(the fan-out — two REFUTATIONS, the session's intellectual headline.)**
+> **(a) The scaffolder was NOT greenfield.** The correct label is
+> **brownfield-with-a-ratified-half**: **ADR-0024 is Accepted** and already pins
+> the generation contract, and **PLAN-0040 already shipped the
+> narrative→procedure pipeline** (`services/engine/procedures/generator/
+> pipeline.py` S0–S6, the archetype REGISTRY, restricted draft types,
+> `prose_lint`); the AT-2 breadth block was CANCELLED at N=4 and PLAN-0087 made
+> a new AT-2 vertical zero-engine-diff. So the genuine gaps are **narrower than
+> "a scaffolder"** — narrative→**ontology YAML** (no ADR covers it) and the
+> **money spine**. **(b) PLAN-0088 has 12 defects, not 6**, and **ADR-0032 D2's
+> pilot gate does NOT block it** — shape 2 is defined by *output*, Group A emits
+> no proposal, and AC-11 enforces exactly that **statically** on five
+> on-disk-verified symbols, so **Cray's L1 classification is correct**. What
+> blocks Step 1 is the PLAN blocking itself: **AC-3 ⊗ AC-12 is a trilemma** —
+> violate AC-3, violate its own Out-of-Scope, or introduce an unwritten `run_id`
+> sort key that breaks `view-map.js`'s newest-first dependency (a **second `GET
+> /runs` consumer** AC-12 never counted). **8 of 14 ACs need rewriting before
+> any code.** Also grounded: **PLAN-0076 T1 is counter-indicated, not merely
+> unqueued** — the PLAN itself calls it an "inert audit display-flag over-mark
+> with zero live collisions", so building it is abstraction ahead of pressure,
+> which **ADR-0031 D4.1 forbids**. **Tire is EXTERNALLY blocked** on a per-tyre
+> data source (the ontology carries zero tyre representation; the GPS stream is
+> per-truck). The multi-SP refinement is unmotivated at **N=0** (only two agents
+> declare an SP, one each). **Cray then picked the scaffolder PLAN by typed
+> AskUserQuestion**, over PLAN-0088 and PLAN-0076 T1.
+> **(#859, `74a49c2` → merge `f758509`, `docs(plans)` — fast-forward, docs-only,
+> 1 file +508.)** The dispatch **carried its spec inline because both spec
+> inputs are gitignored** — the 14-row seam ledger and the 4-question intake log
+> (`docs/research/private/2026-07-21-fleet-scaffold-{seam-ledger,question-log}.md`,
+> cited by path only). Code verified the fact pack **BEFORE** dispatch and found
+> **four drift corrections**, two of which make ledger rows **actively wrong**:
+> **row 12 is DEAD** (`ComplianceCriterion` retired, `spec.py:876-884`;
+> vocabulary is declared per vertical at `:1688`) and **the hand-wire count is
+> 4, not 3** (PLAN-0090's mirror map `services/engine/cli.py:130`, pinned equal
+> by `tests/services/engine/test_cli_registrars.py`). Standing rule for this
+> spec: **cite the ledger, never the PLAN-0086 closeout**, whose tally says 6
+> then enumerates seven (6+5+2=13≠14; the correct split is 7/5/2=14).
+> **R2 found ONE defect, and its source was Code's own dispatch, not the
+> drafter.** The intake round-trip cost was stated as "6m51s of 27m39s ≈ 25%" —
+> **wrong twice over**: none of the interruption time is *inside* the hands-on
+> number (every PLAN-0086 phase row has `wall == hands-on` and the rows sum to
+> 27m38s, so all 6m51s falls in the 15m39s of wall that hands-on excludes), and
+> 1m34s of it was spent **asking while work continued**, not idling. Corrected
+> in place to **6m51s of 43m17s wall (~16%)**, of which **5m17s was
+> fully-blocked idle (~12% of wall)**, with the correction **and its
+> attribution** recorded inline in the PLAN. Everything else verified on disk,
+> including the AT-2 fleet signature AC-7 pins on. **The drafter re-grounded
+> Code's fact pack and reported no fifth drift**, with one precision worth
+> keeping: the AT-2 cancellation **removes the bar but does not pre-approve
+> generation**, so the PLAN makes the **affirmative** case (ADR-0024 OQ-8's
+> typed-content precondition verified MET on disk) rather than citing the
+> cancellation as approval.
+> **(a Stop-hook misfire, observed live — evidence for the still-open autonomy
+> fork.)** The hook dispatched "spawn `plan-drafter`" **while the `plan-drafter`
+> it was asking for was already running**; Code declined via the trigger's own
+> override clause. This is the **3rd misfire this session** and it **cleared
+> BOTH existing layers**: the reason had real content (so #844's
+> contentless-reason floor did not demote it) and it used no approval/merge
+> vocabulary (so #843's prompt paragraph did not catch it). _Doc gap CLOSED
+> (session 165): s163's three are now recorded in the s163 block below._
+> **Correction (session 165):** the "reason had real content so the floor did not
+> demote it" diagnosis is **too generous to the floor**. Grounding found the
+> contentless-reason floor is called only on the **proceed** arm; the s164 fire came
+> down the **dispatch** arm, which never calls it **at any content level**. The floor
+> was not out-argued — it was never reachable. This matters for the fix: a new
+> deterministic layer added to the proceed arm would miss this shape too.
+> **Verification / state:** `gate` PASS in 3m14s and **SHA-verified** (run
+> `headSha` == PR head == `74a49c2`) before the merge, on Cray's typed
+> instruction. **0 open PRs** at close; MS-S1 idle, no host-state change; dev
+> Postgres UP; working tree clean but for the 2 KEEP untracked paths
+> (`.claude/benchmark-results/`, `.claude/launch.json`). Commits: `74a49c2` →
+> `f758509` (#859 merge, head_commit of record). Artifact:
+> `docs/plans/0091-narrative-to-vertical-scaffolder-tool.md`, **Status `Draft`**.
+> **Nothing is ordered next:** PLAN-0091 cannot start until Cray adjudicates
+> SD-1…SD-4, and **SD-1's ruling may require an ADR merged first**; the other
+> live candidates are PLAN-0088's 8-AC re-draft (ungated for Code) and the
+> autonomy fork (a decision, not code).
