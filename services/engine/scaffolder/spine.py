@@ -29,7 +29,10 @@ rather than a parse round-trip after the fact.
 
 from __future__ import annotations
 
+from decimal import Decimal, InvalidOperation
 from typing import Any
+
+from pydantic import ValidationError
 
 from services.engine.procedures.archetypes.template import (
     ArchetypeTemplate,
@@ -37,7 +40,18 @@ from services.engine.procedures.archetypes.template import (
     StepSlot,
 )
 from services.engine.procedures.prose_lint import governance_prose_lint
-from services.engine.procedures.spec import Autonomy, BandSource, GateKind, StepKind
+from services.engine.procedures.spec import (
+    Autonomy,
+    BandSource,
+    ComplianceGate,
+    ComplianceRule,
+    DoaLadder,
+    DoaTier,
+    EmergencyWaiverPolicy,
+    GateKind,
+    RelaxableConstraint,
+    StepKind,
+)
 from services.engine.scaffolder.intake import IntakeRecord
 
 
@@ -249,13 +263,13 @@ def _gate_fields(
     if slot.gate_kind is GateKind.RULE_GATE:
         fields = {"facet": {"decision_condition": {"gate_kind": GateKind.RULE_GATE.value}}}
         if criteria:
-            fields["governance_content"] = {
-                "kind": "rule_gate",
-                "rules": [
-                    {"criterion": c, "spec": f"TODO - the customer's own rule for {c}"}
+            gate = ComplianceGate(
+                rules=[
+                    ComplianceRule(criterion=c, spec=f"TODO - the customer's own rule for {c}")
                     for c in criteria
-                ],
-            }
+                ]
+            )
+            fields["governance_content"] = gate.model_dump(mode="json")
         return fields
 
     if slot.gate_kind is GateKind.DOA_TIER:
@@ -311,36 +325,56 @@ def _criteria(record: IntakeRecord) -> list[str]:
 
 
 def _doa_ladder(record: IntakeRecord) -> dict[str, Any] | None:
-    """The DoaLadder content — emitted only when currency AND tiers are confirmed.
+    """The DoaLadder content — built through the TYPED model, not as a raw dict.
 
-    A partially-answered ladder is emitted as NOTHING rather than as a ladder
-    with invented tiers: a half-authored authority ladder that loads is more
-    dangerous than one the review gate refuses.
+    Two reasons it is typed rather than a dict literal:
+
+    * **Validation at emit time.** ``DoaLadder`` enforces the first floor at 0
+      and strictly-increasing floors, and REQUIRES an ``emergency_waiver``
+      (ADR-0025 D3 — not optional). A raw dict would happily emit a ladder that
+      only fails much later, at load, in a file the operator has already been
+      handed.
+    * A ``{"kind": "doa_tier"}`` dict literal is indistinguishable, to the
+      trace-kind guard that scans ``services/engine``, from a ReasoningStep
+      emission — and these are governance-content discriminators, not trace
+      kinds. Building through the model keeps that guard honest instead of
+      teaching it an exception.
+
+    A ladder that cannot be built validly is emitted as NOTHING: a
+    half-authored authority ladder that loads is more dangerous than one the
+    review gate refuses, because it looks governed and routes on fiction.
     """
     currency = record.confirmed_value("governance.approve.currency")
     tiers_raw = record.confirmed_value("governance.approve.tiers")
-    if not currency or not tiers_raw:
+    relaxes = record.confirmed_value("governance.approve.waiver.relaxes")
+    ratifier = record.confirmed_value("governance.approve.waiver.ratifier")
+    if not currency or not tiers_raw or not relaxes or not ratifier:
         return None
 
-    tiers: list[dict[str, str]] = []
+    tiers: list[DoaTier] = []
     for entry in tiers_raw.split(","):
         if ":" not in entry:
             continue
         amount, role = entry.split(":", 1)
-        tiers.append({"min_amount": amount.strip(), "approver_role": role.strip()})
+        try:
+            tiers.append(DoaTier(min_amount=Decimal(amount.strip()), approver_role=role.strip()))
+        except (InvalidOperation, ValidationError):
+            return None
     if not tiers:
         return None
 
-    ladder: dict[str, Any] = {"kind": "doa_tier", "currency": currency, "tiers": tiers}
-    relaxes = record.confirmed_value("governance.approve.waiver.relaxes")
-    ratifier = record.confirmed_value("governance.approve.waiver.ratifier")
-    if relaxes and ratifier:
-        ladder["emergency_waiver"] = {
-            "relaxes": [r.strip() for r in relaxes.split(",") if r.strip()],
-            "escalate_to": ratifier,
-            "requires_justification": True,
-        }
-    return ladder
+    try:
+        ladder = DoaLadder(
+            currency=currency,
+            tiers=tiers,
+            emergency_waiver=EmergencyWaiverPolicy(
+                relaxes=[RelaxableConstraint(r.strip()) for r in relaxes.split(",") if r.strip()],
+                escalate_to=ratifier,
+            ),
+        )
+    except (ValidationError, ValueError):
+        return None
+    return ladder.model_dump(mode="json")
 
 
 def _terminal_handler(ontology_doc: dict[str, Any]) -> str:
