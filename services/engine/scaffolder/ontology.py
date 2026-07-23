@@ -340,6 +340,19 @@ def emit_ontology(record: IntakeRecord) -> dict[str, Any]:
     }
 
 
+def dump_yaml(doc: dict[str, Any], path: Path) -> Path:
+    """Write ``doc`` to ``path`` with the emitter's YAML settings, creating parents.
+
+    One writer for every emitted YAML file, so the tool cannot dump its ontology and
+    its procedures with different width / unicode / flow-style settings — a drift that
+    shows up as a confusing diff long before anyone suspects the writer.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as stream:
+        _YAML.dump(doc, stream)
+    return path
+
+
 def write_ontology(record: IntakeRecord, root: Path) -> Path:
     """Write the emitted ontology under ``root`` and return its path.
 
@@ -347,10 +360,7 @@ def write_ontology(record: IntakeRecord, root: Path) -> Path:
     scratch tree, and a CWD-relative write would silently target the repo.
     """
     path = root / "verticals" / record.namespace / "ontology" / f"{record.namespace}_v0.yaml"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as stream:
-        _YAML.dump(emit_ontology(record), stream)
-    return path
+    return dump_yaml(emit_ontology(record), path)
 
 
 @contextmanager

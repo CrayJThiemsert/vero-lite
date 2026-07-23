@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -93,6 +94,93 @@ def test_scaffold_is_registered_with_its_flags() -> None:
     assert {"--plan-only", "--narrative", "--intake"} <= flags
 
 
+@pytest.fixture
+def wired_repo(staged_repo: Path) -> Path:
+    """`staged_repo` plus everything a real emission run reads from the checkout.
+
+    Two groups, for two different reasons:
+
+    * the four shared files the wire-writer edits — it refuses to invent a target it
+      cannot find, so a tree without them gets a WireError rather than a half-wired
+      repo;
+    * every shipped ``procedures.yaml`` — the governance-ceiling baseline is read from
+      the CWD's verticals, so an empty tree makes EVERY candidate look like a brand-new
+      AT-2 signature and the run stops at the ceiling. That stop is the detector working
+      correctly on a tree that genuinely has no baseline; it is not the behaviour under
+      test here.
+
+    Copied from the real checkout so both are exercised against the actual anchors and
+    the actual baseline.
+    """
+    repo_root = Path(__file__).resolve().parents[4]
+    for rel in (
+        "services/api/main.py",
+        "services/engine/cli.py",
+        "services/api/routers/procedures.py",
+        "tests/api/test_procedures_endpoint.py",
+    ):
+        dest = staged_repo / rel
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(repo_root / rel, dest)
+
+    for src in sorted((repo_root / "verticals").glob("*/procedures.yaml")):
+        dest = staged_repo / "verticals" / src.parent.name / "procedures.yaml"
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dest)
+    return staged_repo
+
+
+def test_the_command_actually_scaffolds_end_to_end(wired_repo: Path) -> None:
+    """The property no oracle covered: the COMMAND — not the library behind it —
+    turns an intake record into files on disk.
+
+    Every emitter had passing tests while `vero-lite scaffold` printed a queue and
+    exited 3 without writing anything, because the golden e2e calls the emitters
+    directly. This runs the command an operator would run and then looks at the disk.
+    """
+    intake = FIXTURES / "fleet_golden_intake.json"
+    record = IntakeRecord.model_validate_json(intake.read_text(encoding="utf-8"))
+    staged_intake = wired_repo / "intake.json"
+    staged_intake.write_text(
+        record.model_copy(update={"namespace": "fleet_cli"}).model_dump_json(),
+        encoding="utf-8",
+    )
+
+    result = CliRunner().invoke(app, ["scaffold", "fleet_cli", "--intake", str(staged_intake)])
+    assert result.exit_code == 0, f"stderr={result.stderr!r}"
+
+    base = wired_repo / "verticals" / "fleet_cli"
+    for rel in (
+        "__init__.py",
+        "handlers.py",
+        "procedures_factory.py",
+        "procedures.yaml",
+        "data_adapter/__init__.py",
+        "data_adapter/synthetic.py",
+        "README.md",
+        "ontology/fleet_cli_v0.yaml",
+    ):
+        assert (base / rel).is_file(), rel
+
+    # And the shared wires actually carry the new vertical, not just the package.
+    main_py = (wired_repo / "services" / "api" / "main.py").read_text(encoding="utf-8")
+    assert "fleet_cli" in main_py
+
+
+def test_an_intake_namespace_mismatch_is_refused(wired_repo: Path) -> None:
+    """The overwrite guard checks the ARGUMENT; every emitter writes to the RECORD's
+    namespace. Letting them differ routes the write past the guard entirely and onto
+    whatever the file names — so this refuses rather than picking a winner."""
+    staged_intake = wired_repo / "intake.json"
+    staged_intake.write_text(
+        IntakeRecord(namespace="somewhere_else").model_dump_json(), encoding="utf-8"
+    )
+    result = CliRunner().invoke(app, ["scaffold", "fleet_cli", "--intake", str(staged_intake)])
+    assert result.exit_code == 2, f"stderr={result.stderr!r}"
+    assert "must match" in result.stderr
+    assert not (wired_repo / "verticals" / "somewhere_else").exists()
+
+
 def test_plan_only_prints_the_queue_and_writes_nothing(staged_repo: Path) -> None:
     before = _tree(staged_repo)
     result = CliRunner().invoke(
@@ -120,14 +208,20 @@ def test_scaffold_refuses_an_existing_namespace(staged_repo: Path) -> None:
     assert _tree(staged_repo) == before
 
 
-def test_scaffold_does_not_emit_yet_and_says_so(staged_repo: Path) -> None:
-    """Without --plan-only the command exits non-zero rather than claiming success.
+def test_scaffold_refuses_to_emit_with_open_judgment_slots(staged_repo: Path) -> None:
+    """A bare namespace has no confirmed judgments, so the command refuses and writes
+    nothing — a silent exit 0 would read as "scaffolded" to an operator and a script.
 
-    Guards the half-built window: Steps 2-4 wire emission, and until they land a
-    silent exit 0 would read as "scaffolded" to both an operator and a script.
+    This test previously asserted the same exit code for a different reason: emission
+    was unwired, and it was named `..._does_not_emit_yet_and_says_so`. It kept passing
+    after the wiring landed, which is exactly why the name and docstring are corrected
+    rather than left — a test that passes for a reason its own name denies is a test
+    nobody can read.
     """
     result = CliRunner().invoke(app, ["scaffold", "fleet_demo"])
     assert result.exit_code == 3, f"stderr={result.stderr!r}"
+    assert "REFUSING TO EMIT" in result.stderr
+    assert "ontology.asset_noun" in result.stderr
     assert _tree(staged_repo) == {Path("verticals")}
 
 
