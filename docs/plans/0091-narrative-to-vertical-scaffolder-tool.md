@@ -103,7 +103,7 @@ What the tool actually buys, grounded in the measurements rather than asserted:
 | Restricted draft types + governance-field disjointness | `services/engine/procedures/draft.py:123` (`StepDraft`), `:171` (`ProcedureDraft`), `:186` (`GovernanceStub`), `:109-115` (`GOVERNANCE_FIELDS` union incl. `:98` `VERTICAL_GOVERNANCE_FIELDS = {compliance_criteria}`) | **Reuse.** The LLM emission surface stays exactly this. |
 | Deterministic prose-lint (numerics / currency / handler names / approval verbs) | `services/engine/procedures/prose_lint.py:133`, `:217` | **Reuse pre-emit** (Step 4). |
 | API exposure of the generator | `services/api/routers/procedure_draft.py:62-70` | **Untouched.** The CLI path does not alter the router or its abstain behaviour. |
-| AT-2 abstain guard in the API pipeline | `services/engine/procedures/generator/pipeline.py:82` (`_AT2_ONLY_KINDS`), `:190` | **Untouched** (see Step 4 design note). |
+| AT-2 abstain guard in the API pipeline | `services/engine/procedures/generator/pipeline.py:82` (`_AT2_ONLY_KINDS`), `:190` | **Untouched — but only under SD-5 (a).** The classify catalog is built from `REGISTRY.values()` (`:225`) and the label route resolves through the same dict (`:253`/`:258`), so central registration changes this path whether or not the tool calls it. See SD-5. |
 | Codegen floor: ontology YAML → 7 artifacts, EXIT 0, 2m02s measured | `uv run vero-lite validate` / `generate` (console script `pyproject.toml:44-45`) | **Invoke** (ledger row 10: `[one-time-only]` — the floor, never re-implemented). |
 | Tier-1 Mirror scaffolder | `services/engine/scaffold.py:876` (`scaffold_vertical`), CLI seam "Requires the ontology … to exist first" (`services/engine/cli.py:84-85`) | **Untouched as a command** (ADR-0015 D2 stays); internals reused where they fit. The new tool starts *before* the ontology exists — exactly the seam `new-vertical` starts after. |
 | Per-vertical declared criterion vocabulary (no engine enum) | `services/engine/procedures/spec.py:876-884` (RETIRED note), `:1688` (`compliance_criteria`), `:1717` (`_validate_compliance_criteria`) | **Rely on.** A new AT-2 vertical ships with **zero engine diff** (correction 1). |
@@ -294,10 +294,20 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   firing; zero writes to any **existing** `verticals/*/procedures.yaml`
   (ADR-0024 `:147`); the full AC suite passes with MS-S1 unreachable.
 - [ ] **AC-10 — counted prose is disposed per SD-4's ratified option** in the files
-  this tool's wire-writer touches (the three count-carrying comments:
-  `tests/api/test_procedures_endpoint.py:5-6`, `:116`, `:144` + the `main.py`
-  registrar-module docstring count, ledger rows 7/9) — no fourth stale count is
-  possible along the tool's write path.
+  this tool's wire-writer touches. **Scope corrected session 166 — cite the whole
+  counted narrative, not one line of it:** the module docstring's per-vertical tally
+  runs `tests/api/test_procedures_endpoint.py:5-9` (**not** `:5-6`), the test docstring
+  tally runs `:115-120`, the inline comment runs `:144-150`, plus the `main.py`
+  registrar-module docstring count (`main.py:149-155`, ledger rows 7/9). **One of these
+  is stale on disk today, and it is not the one SD-4 named:** `:8` reads
+  "fleet_maintenance ships **two**" while `_EXPECTED` ships **three** (`:63-77` —
+  `governed_repair_approval`, `pm_service_round`, `scheduled_pm_service_round`; the
+  PLAN-0090 twin is missing from the prose) and the sibling docstring at `:119` already
+  says "three". The narrative therefore sums to **12** against the executable
+  `assert total == 13` (`:151`) — arithmetic proof of the drift, and precisely SD-4's
+  point that only the assertion cannot go silently stale. The token "six" at `:5` is
+  **correct** (six keys in `_EXPECTED`). Disposing these four sites, no further stale
+  count is reachable along the tool's write path.
 
 ## Out of Scope
 
@@ -330,7 +340,7 @@ required for any AC. A single live smoke is *evidence only*, Cray-gated — see
   multi-narrative / multi-procedure batch mode (mirrors ADR-0024 OQ-6:
   one-vertical-per-run).
 
-## Surfaced decisions (SD-1…SD-4 — **RATIFIED by Cray 2026-07-22, session 165, typed AskUserQuestion — all four as-recommended**)
+## Surfaced decisions (SD-1…SD-4 — **RATIFIED by Cray 2026-07-22, session 165, typed AskUserQuestion — all four as-recommended**; **SD-5 OPEN**, surfaced session 166)
 
 ### SD-1 — Does the narrative→ontology-YAML stage need its own ADR?
 
@@ -433,8 +443,10 @@ one was stale before PLAN-0086's run even started (ledger row 9).
 **Recommendation: stop writing counts into comments; where a count is load-bearing,
 it must be an executable assertion.** The repo's own pattern already embodies this —
 `assert total == 13` (`test_procedures_endpoint.py:151`) is a count that cannot go
-silently stale; "across the six procedure-bearing verticals" (`:5-6`) is one that
-already has. Scope discipline: this PLAN converts/removes only the three counts in
+silently stale; the module docstring's per-vertical tally (`:5-9`) is one that
+already has. *(Line-attribution corrected session 166 — `was an error`, right
+conclusion pinned to the wrong line: the stale token is "fleet_maintenance ships
+**two**" at `:8`, not "six" at `:5`, which is correct. See AC-10.)* Scope discipline: this PLAN converts/removes only the three counts in
 files the wire-writer touches (+ the `main.py` docstring count, row 7) — not a
 repo-wide sweep. Alternative — the tool owns counted prose (rejected): it
 perpetuates a drift surface with a 100% observed staleness-per-run rate, and prose
@@ -448,6 +460,51 @@ executable assertion.** (Cray, 2026-07-22, session 165, typed AskUserQuestion.) 
 scope discipline above holds — this PLAN converts or removes only the three counts
 in files the wire-writer touches, plus the `main.py` docstring count (row 7). No
 repo-wide sweep.
+
+### SD-5 — Where does the AT-2 template live? (**OPEN — surfaced session 166, awaiting Cray**)
+
+**Why this is surfaced late.** Step 4's design note (below) promised the scaffolder
+would instantiate the AT-2 template **directly**, "rather than growing the S1 classify
+surface", with "the API pipeline's abstain guard … as-is". **A session-166 grounding
+pass refuted that promise against code** — it is not achievable by care, it is
+structurally false if the template is registered in the shared `REGISTRY`:
+
+- **The classify catalog IS `REGISTRY`.** `generator/pipeline.py:225` —
+  `catalog = [(t.archetype_id, t.title, t.description) for t in REGISTRY.values()]`.
+  Registering an AT-2 template puts it in the prompt catalog on the very next
+  API classify call.
+- **The label route accepts whatever is in `REGISTRY`.** `pipeline.py:253` abstains
+  only when `classification.archetype_id … not in REGISTRY`; `:258` then instantiates
+  `REGISTRY[classification.archetype_id]`. Once AT-2 is a member, an "AT-2" label is
+  a *hit*, not an abstain.
+- **The abstain guard is a second layer that does NOT guarantee the old behaviour.**
+  `_archetype_disagreement` (`pipeline.py:188-202`) rejects an AT-2 gate only when the
+  model actually *emits* one in `step_gates` (`:190`); the function's own contract
+  (`:186-187`) states an "empty/extra step list is not itself a disagreement". A
+  narrative labelled AT-2 with no per-step gates therefore passes through.
+
+**Options.**
+- **(a) A separate scaffolder-owned registry / catalog** — the AT-2 template is
+  constructed and instantiated by `services/engine/scaffolder/`, never inserted into
+  `archetypes.template.REGISTRY`. The API classify path is byte-unchanged; ADR-0024 D7's
+  "AT-2 routes to hand-author (the abstain path, D5)" stays literally true.
+- **(b) Register centrally, filter at the catalog seam** — AT-2 joins `REGISTRY`, and
+  `pipeline.py:225` (plus the `:253` membership test) grows an explicit
+  classify-eligibility filter. Shared artifact, one shipped code path modified.
+- **(c) Register centrally, accept AT-2 into the classify surface** — the API path may
+  classify to AT-2. **This contradicts ADR-0024 D7/D5 as shipped and almost certainly
+  needs an ADR**, which would reverse SD-1's "no ADR gates this PLAN".
+
+**Recommendation: (a).** It is the only option that keeps SD-1 = (c) intact (no ADR),
+touches zero shipped classify code, and matches the PLAN's own stated intent — the
+scaffolder instantiates a template it *owns*, operator-confirmed, which trivially
+satisfies ADR-0024 D5's human-confirmed-match requirement. (b) is defensible but edits a
+shipped LLM route for a tool that never needed it; (c) is the largest surface change and
+the only one that re-opens Step 0. **Cray's call because it decides whether the AT-2
+shape becomes a shared engine asset or stays tool-local** — an asset question, not an
+implementation detail. **Tripwire (binding either way):** if the build finds the
+scaffolder cannot produce a valid AT-2 spine without central registration, STOP and
+re-open this SD rather than registering centrally by default.
 
 ## Steps
 
@@ -464,15 +521,38 @@ only** · **SD-3 = typed required-slot checklist as an interview loop** ·
 Each ruling is recorded inline at its own SD above. **Consequence: no ADR blocks
 this PLAN — Steps 1–7 are executable end to end, deterministic-offline.**
 
-**Sequencing correction found while grounding Step 0** (Explore fan-out against
-code, session 165 — *not* a drafter error; it is an emergent ordering constraint
-the printed Step order hides): **Step 1 has a forward dependency on Step 4.**
-Step 1's checklist is derived from "(AT-2 obligations × ontology judgment slots ×
-fixture value slots)", but no AT-2 `ArchetypeTemplate` exists yet — `REGISTRY` at
-`archetypes/template.py:254` is `(AT1, AT1B, AT3)` — and the first one is authored
-in Step 4. So Step 4's template shape must be **designed first or co-designed with
-Step 1**, not deferred to its printed position. Execution order is therefore
-**4-shape → 1 → 2 → 3 → 4-emit → 5 → 6 → 7**, not the literal 1→7.
+⚠️ **Qualified session 166 — Step 0 is done, but one new decision is open.** The
+"no ADR" consequence holds under **SD-5 (a) or (b)**; **SD-5 (c) would re-open it**
+(accepting AT-2 into the API classify surface contradicts ADR-0024 D7/D5 as shipped).
+SD-5 is a *placement* decision the s165 adjudication never saw, because the promise it
+would have tested — Step 4's "the abstain guard stays as-is" — was not verified against
+`pipeline.py` until session 166. **Steps 1, 2, 3 are unaffected and executable now;
+Step 4 is the only one that waits.**
+
+**Sequencing note (session 165 claim, CORRECTED by a session-166 grounding pass).**
+The s165 Explore fan-out asserted a **hard** ordering constraint: "**Step 1 has a
+forward dependency on Step 4**" because its checklist is "(AT-2 obligations ×
+ontology judgment slots × fixture value slots)" and no AT-2 `ArchetypeTemplate`
+exists (`REGISTRY` at `archetypes/template.py:254` is `(AT1, AT1B, AT3)`). **A
+session-166 fan-out refuted the strong form against code** — classify `was an
+error` (an over-strong inference, not a code change since s165):
+
+- The AT-2 obligation set is derivable **without any template**:
+  `derive_governance_todo` (`services/engine/procedures/draft.py:293-322`) computes
+  the owed governance from `(gate_kind, kind)` alone — it never reads `REGISTRY`.
+  The AT-2 leaf value slots are enumerable straight from the typed governance models
+  (`spec.py` `DoaLadder`/`DoaTier`/`EmergencyWaiverPolicy`/`ScoredRule`/
+  `ComplianceGate`/`SeverityLadder`).
+- The row-11 spine **sequence** is already on disk in the golden donor
+  (`verticals/fleet_maintenance/procedures.yaml:117-282`:
+  intake→judge→reshape→rule_gate→approve→fulfill).
+
+**What survives is only the weak form:** a step/gate *sequence* must be fixed before
+per-step obligations are enumerated — and that sequence is **readable off the donor**,
+so Step 1 is **not blocked** on Step 4. The order **4-shape → 1 → 2 → 3 → 4-emit →
+5 → 6 → 7** is a **convenience, not a constraint**; co-designing the AT-2 template
+shape alongside Step 1 remains sensible but is not forced. (See also SD-5 below —
+the *real* Step-4 hazard is the `REGISTRY` classify-coupling, not an ordering one.)
 
 ### Step 1 — Intake engine (`services/engine/scaffolder/intake.py`)
 
@@ -491,6 +571,15 @@ mined enums filled only from confirmed intake; then invoke `vero-lite validate` 
 waits for that ADR.~~ — **resolved: SD-1 = (c), no ADR; this step does not wait.**)
 Oracle: AC-3.
 
+**Session-166 build note (friction, not a blocker): "into the scratch tree" costs a
+chdir.** `vero-lite validate` / `generate` resolve their paths **CWD-relative** with no
+root override — `cli.py:25-30` hardcodes `f"verticals/{vertical}/ontology/…"` and
+`Path(f"verticals/{vertical}/generated")`. Invoking the floor against a scratch tree
+therefore requires staging + `os.chdir`, exactly the shipped pattern in
+`tests/services/engine/test_cli_e2e.py:26-41` (`staged_repo`, chdir in a
+try/finally). Reuse that pattern rather than adding a `--root` flag to the shipped
+commands — ADR-0015 D2 keeps `validate`/`generate` as they are.
+
 ### Step 3 — Package emitter
 
 Rows 1/3/4/5 + the `synthetic.py` skeleton with traceable-or-marked values and
@@ -498,13 +587,33 @@ latest-per-asset ordering + the README with the gap register. Oracle: AC-4.
 
 ### Step 4 — The AT-2 template + spine emitter
 
-Add one `ArchetypeTemplate` for the row-11 spine to
-`services/engine/procedures/archetypes/` (registered; D4 signature-agreement
-machinery reused). **Design note, R2-reviewable:** the API pipeline's abstain guard
-(`pipeline.py:82,190`) stays as-is — the scaffolder instantiates the AT-2 template
-**directly, operator-confirmed** (trivially satisfying ADR-0024 D5's
-human-confirmed-match requirement) rather than growing the S1 classify surface;
-growing classify to AT-2 is deliberately deferred until the API path wants it. The
+Add one `ArchetypeTemplate` for the row-11 spine, reusing the D4
+signature-agreement machinery. ⚠️ **BLOCKED ON SD-5 — read it first.** The original
+design note here promised the API pipeline's abstain guard (`pipeline.py:82,190`)
+would stay as-is because the scaffolder instantiates the AT-2 template **directly,
+operator-confirmed**, "rather than growing the S1 classify surface". **A session-166
+grounding pass found that promise is structurally false if the template is
+registered in the shared `REGISTRY`** (`pipeline.py:225` builds the classify catalog
+from `REGISTRY.values()`; `:253/:258` route by label through the same dict) — see
+SD-5 for the evidence and the three options. The *intent* — operator-confirmed direct
+instantiation, satisfying ADR-0024 D5, with classify unchanged — survives intact under
+SD-5 (a); it is the **placement** that must be decided, not the intent. Growing
+classify to AT-2 stays deliberately deferred until the API path wants it.
+
+**Second finding (session 166) — one unbudgeted RED test this PLAN never named.**
+`tests/services/engine/procedures/test_archetype_templates.py:37` asserts
+`set(REGISTRY) == set(AT1_FAMILY)` with `AT1_FAMILY = ["AT-1", "AT-1b", "AT-3"]`
+(`:31`) — it goes **RED the moment an AT-2 template is registered centrally**, along
+with the family-invariant framing in its module docstring (`:11`, "NO AT-2-only kind")
+and `template.py:255-257` ("the AT-1 family only (D7)"). Under **SD-5 (a) this test
+never fires** (nothing enters `REGISTRY`); under **(b)/(c) it must be re-argued, not
+silently updated** — and the AT-2 template needs its own agreement test, since
+`test_archetype_agreement_signature` (`:81-93`) encodes "no AT-2-only kind" as the
+*family* invariant. Related pre-existing drift to fix or note while here:
+`test_archetype_templates.py:32` `AT2_ONLY_KINDS` omits `GateKind.SEVERITY_TIER`,
+which both `pipeline.py:82-84` and `draft.py:283-285` include.
+
+The
 emitter injects intake values into H-class fields, stubs the unanswered, declares
 `compliance_criteria` per PLAN-0087, and runs `prose_lint` pre-emit. Oracle: AC-5.
 
@@ -524,6 +633,24 @@ set-equality against `_BASELINE_SIGNATURES` must still fire on a genuine 5th
 signature — R2 verifies the assertion is untouched). The tool predicts the would-be
 signature, and on baseline extension STOPS pre-wire-write with the comparison
 table. Oracle: AC-8.
+
+**Session-166 grounding — the tripwire citations are `confirmed — prior intact`**
+(re-checked against a pass/fail read fixed before the run; a passed check is not a
+defect): all four cited ranges are byte-exact on disk — helpers `:219-227` /
+`:230-257`, `_BASELINE_SIGNATURES` `:167-205`, the set-equality `:307-319`, the
+obligation-owned guard `:322-342` — and **exactly one** assertion (`:315`) goes RED on
+a genuine 5th signature, which is what this Step asserts. Two build hazards the Step
+did not name:
+
+1. **Do not inherit the CWD-relative scan.** `_distinct_at2_signatures`
+   (`test_at2_signature_retrigger.py:269`) globs `Path("verticals").glob(…)` relative
+   to the CWD. The tool predicts the signature of a spine it is about to write into a
+   **scratch tree**, so the extracted helper must take an explicit root — extracting
+   the glob as-is would silently fingerprint the repo instead of the scratch tree and
+   make AC-8 vacuous.
+2. **Four in-file call sites move with the helpers** (`:275`, `:290`, `:300` indirect,
+   `:400`, `:403-405`) — the extraction is not a two-line move, and R2 must confirm
+   each call site still resolves to the same values.
 
 ### Step 7 — Golden end-to-end + gate
 
