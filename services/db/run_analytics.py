@@ -63,7 +63,12 @@ from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from services.engine.procedures.runs import PipelineRun, StepResult, StepResultStatus
+from services.engine.procedures.runs import (
+    PipelineRun,
+    PipelineRunStatus,
+    StepResult,
+    StepResultStatus,
+)
 
 # A JSON string that is a plain integer or decimal literal — the only shape the ฿
 # extract-on-read will cast. Anything else (absent, non-numeric, an object) is
@@ -167,6 +172,33 @@ class GateCount(BaseModel):
 
     procedure_id: str = Field(description="the procedure whose gate steps resolved")
     resolved_count: int = Field(description="number of gate steps that reached status 'resolved'")
+
+
+class DwellStat(BaseModel):
+    """Same-row wall span of the runs suspended at ``waiting_human``, per procedure.
+
+    **Read the field descriptions before using this as "how long a human has kept a
+    run waiting" — it is not that.** The span is the SAME-ROW
+    ``updated_at - started_at`` (S4's only sanctioned wall-clock construct), and for
+    a run whose last write was its suspension that measures **start → suspension**,
+    not elapsed-since-suspension. Elapsed-since-suspension would need ``now()``,
+    which is neither deterministic in a test nor trustworthy on this box's clock.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    procedure_id: str = Field(description="the procedure whose runs are suspended")
+    run_count: int = Field(description="runs of this procedure currently at waiting_human")
+    avg_span_seconds: float = Field(
+        description="mean same-row (updated_at - started_at) span, clamped at >= 0"
+    )
+    max_span_seconds: float = Field(
+        description="maximum same-row (updated_at - started_at) span, clamped at >= 0"
+    )
+    negative_clock_spans: int = Field(
+        description="runs whose updated_at precedes started_at — the backward-clock "
+        "cases, clamped to 0 in the stats above and surfaced here, never swallowed"
+    )
 
 
 def _trace_elements() -> sa.TableValuedAlias:
@@ -382,4 +414,41 @@ async def gate_counts(session: AsyncSession) -> list[GateCount]:
     rows = (await session.execute(stmt)).all()
     return [
         GateCount(procedure_id=procedure_id, resolved_count=count) for procedure_id, count in rows
+    ]
+
+
+async def waiting_dwell_stats(session: AsyncSession) -> list[DwellStat]:
+    """Same-row wall spans of the ``waiting_human`` runs, per procedure (O(procedures) rows).
+
+    The span is ``updated_at - started_at`` **on one row** — the only wall-clock
+    arithmetic S4 sanctions, because subtracting two columns of the same row cannot
+    be corrupted by the clock stepping backwards *between* rows. A row whose own
+    clock did step backwards (``updated_at < started_at``) still exists: its span is
+    **clamped to 0** in the stats and **counted** in ``negative_clock_spans``, so the
+    anomaly is reported rather than silently averaged in.
+    """
+    span = sa.func.extract("epoch", PipelineRun.updated_at - PipelineRun.started_at)
+    clamped = sa.func.greatest(span, 0)
+    stmt = (
+        sa.select(
+            PipelineRun.procedure_id,
+            sa.func.count(),
+            sa.func.coalesce(sa.func.avg(clamped), 0),
+            sa.func.coalesce(sa.func.max(clamped), 0),
+            sa.func.count(sa.case((span < 0, 1))),
+        )
+        .where(PipelineRun.status == PipelineRunStatus.WAITING_HUMAN.value)
+        .group_by(PipelineRun.procedure_id)
+        .order_by(PipelineRun.procedure_id)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        DwellStat(
+            procedure_id=procedure_id,
+            run_count=run_count,
+            avg_span_seconds=float(avg),
+            max_span_seconds=float(maximum),
+            negative_clock_spans=negatives,
+        )
+        for procedure_id, run_count, avg, maximum, negatives in rows
     ]

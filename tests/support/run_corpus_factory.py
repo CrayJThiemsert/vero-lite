@@ -61,6 +61,7 @@ class _RunSpec:
     procedure_id: str
     status: str
     started_at: datetime
+    updated_at: datetime
     steps: tuple[_StepSpec, ...]
     step_principals: dict[str, str | None] | None = None
 
@@ -89,6 +90,9 @@ class Corpus:
     gates: dict[str, int]
     # the DISTINCT union of every disclosed ฿ assumption (ADR-0030 D3)
     assumptions: list[str]
+    # procedure_id -> {run_count, spans: list[float] (clamped >= 0), negatives: int}
+    #   over the waiting_human runs only (AC-6)
+    dwell: dict[str, dict[str, Any]]
     # band verdict label -> count (across artifacts) — carried for AC-10 later
     verdicts: dict[str, int] = field(default_factory=dict)
 
@@ -116,6 +120,13 @@ def _make_specs(rng: random.Random, n_runs: int) -> list[_RunSpec]:
         procedure = _PROCEDURES[i % len(_PROCEDURES)]
         status = _STATUSES[i % len(_STATUSES)]
         started_at = _BASE_DAY + timedelta(days=i % _N_DAYS, minutes=rng.randint(0, 600))
+        # A backward-clock subset, deliberately intersected with waiting_human
+        # (i % 5 == 1) so AC-6's negative_clock_spans counter is exercised at all:
+        # 6 % 5 == 1, and every i ≡ 6 (mod 25) keeps that residue.
+        if i % 25 == 6:
+            updated_at = started_at - timedelta(seconds=2)
+        else:
+            updated_at = started_at + timedelta(minutes=5)
         steps: list[_StepSpec] = []
         step_principals: dict[str, str | None] | None = None
         for step_id in _SPINE:
@@ -206,6 +217,7 @@ def _make_specs(rng: random.Random, n_runs: int) -> list[_RunSpec]:
                 procedure_id=procedure,
                 status=status,
                 started_at=started_at,
+                updated_at=updated_at,
                 steps=tuple(steps),
                 step_principals=step_principals,
             )
@@ -225,7 +237,7 @@ def _to_rows(specs: list[_RunSpec]) -> list[PipelineRun | StepResult]:
                 step_principals=spec.step_principals,
                 status=spec.status,
                 started_at=spec.started_at,
-                updated_at=spec.started_at + timedelta(minutes=5),
+                updated_at=spec.updated_at,
             )
         )
         for idx, step in enumerate(spec.steps):
@@ -272,6 +284,20 @@ def _tally_benefit(
         assumptions.add(str(assumption))
 
 
+def _tally_dwell(spec: _RunSpec, dwell: dict[str, dict[str, Any]]) -> None:
+    """Fold one ``waiting_human`` run's SAME-ROW span into the AC-6 tallies.
+
+    Clamped at >= 0, with the backward-clock rows counted rather than averaged in —
+    the same contract ``waiting_dwell_stats`` holds in SQL.
+    """
+    raw = (spec.updated_at - spec.started_at).total_seconds()
+    entry = dwell.setdefault(spec.procedure_id, {"run_count": 0, "spans": [], "negatives": 0})
+    entry["run_count"] += 1
+    entry["spans"].append(max(raw, 0.0))
+    if raw < 0:
+        entry["negatives"] += 1
+
+
 def _expected(specs: list[_RunSpec]) -> Corpus:
     status_counts: dict[str, int] = defaultdict(int)
     procedure_counts: dict[str, int] = defaultdict(int)
@@ -282,12 +308,15 @@ def _expected(specs: list[_RunSpec]) -> Corpus:
     gates: dict[str, int] = defaultdict(int)
     verdicts: dict[str, int] = defaultdict(int)
     assumptions: set[str] = set()
+    dwell: dict[str, dict[str, Any]] = {}
     step_row_count = 0
 
     for spec in specs:
         status_counts[spec.status] += 1
         procedure_counts[spec.procedure_id] += 1
         period_counts[spec.started_at.date().isoformat()] += 1
+        if spec.status == PipelineRunStatus.WAITING_HUMAN.value:
+            _tally_dwell(spec, dwell)
         for step in spec.steps:
             step_row_count += 1
             durations[(spec.procedure_id, step.step_id)].append(step.duration_ms)
@@ -315,6 +344,7 @@ def _expected(specs: list[_RunSpec]) -> Corpus:
         refusals=dict(refusals),
         gates=dict(gates),
         assumptions=sorted(assumptions),
+        dwell=dwell,
         verdicts=dict(verdicts),
     )
 
