@@ -107,9 +107,13 @@ async def test_approver_half_matches_the_corpus_exactly(readiness_client: _Clien
     body = (await readiness_client.http.get("/insights/audit-readiness")).json()
     got = {row["procedure_id"]: row["approver_recorded"] for row in body["gates"]}
     assert got == readiness_client.corpus.gate_approvers
-    # Non-trivial: if the corpus seeded no approvers at all, equality above would
-    # hold vacuously at 0 == 0 and prove nothing about the extraction.
-    assert sum(got.values()) > 0
+    # The equality above is only meaningful while the corpus seeds gates that
+    # resolved WITHOUT an approver. A mutation probe proved the point: with an
+    # approver on every resolved gate, deleting the extraction entirely left this
+    # assertion green, because approver_recorded and resolved_count coincided.
+    resolved = {row["procedure_id"]: row["resolved_count"] for row in body["gates"]}
+    assert got != resolved, "the unattributed sub-subset stopped being seeded"
+    assert all(got[p] < resolved[p] for p in got), "every procedure should show the gap"
 
 
 async def test_refusal_counts_match_the_corpus_exactly(readiness_client: _Client) -> None:

@@ -143,8 +143,15 @@ async def test_gate_counts_exact(seeded: _Seeded) -> None:
     assert {r.procedure_id: r.resolved_count for r in rows} == seeded.corpus.gates
     # AC-7's approver half, against the factory's independent plain-Python tally.
     assert {r.procedure_id: r.approver_recorded for r in rows} == seeded.corpus.gate_approvers
-    # Non-vacuity: 0 == 0 would satisfy the mapping above and prove nothing.
-    assert sum(r.approver_recorded for r in rows) > 0
+    # Non-vacuity, and this assertion is load-bearing — measured, not assumed.
+    # A mutation probe that deleted the approver FILTER (so approver_recorded
+    # collapsed to resolved_count) left the mapping above GREEN, because the
+    # corpus then carried an approver on every resolved gate. The corpus now
+    # seeds an unattributed sub-subset, and THIS is the line that pins it: if the
+    # gap ever stops being seeded, the extraction becomes indistinguishable from
+    # a plain resolved-count and the test above proves nothing.
+    assert seeded.corpus.gate_approvers != seeded.corpus.gates
+    assert 0 < sum(r.approver_recorded for r in rows) < sum(r.resolved_count for r in rows)
 
 
 async def test_approver_half_is_read_from_the_trace_not_step_principals(

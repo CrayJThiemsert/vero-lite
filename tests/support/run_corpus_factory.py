@@ -118,6 +118,27 @@ def _economic_detail(rng: random.Random, currency: str) -> dict[str, Any]:
     return impact.model_dump(mode="json")
 
 
+def _gate_approver(i: int) -> str | None:
+    """Run ``i``'s gate approver, or ``None`` for the UNATTRIBUTED sub-subset.
+
+    Resolved gates are ``i % 3 == 0``. If every one of them carried an approver,
+    ``gate_approvers`` would equal ``gates`` identically and AC-7's approver-half
+    assertion could not tell a real extraction from a plain resolved-count — a
+    mutation probe proved exactly that (deleting the approver FILTER left both
+    value oracles GREEN). So a sub-subset resolves with no approver recorded.
+
+    ``i % 15 == 6`` is a proper subset of ``i % 3 == 0`` (6 % 3 == 0), and its
+    ``i mod 4`` varies across 6, 21, 36, 51 -> 2, 1, 0, 3 — so the gap lands on
+    every procedure rather than pooling on one (the Step-3 intersection lesson).
+
+    Returning ``None`` also exercises the JSONB sharp edge the substrate module
+    documents: a Python ``None`` lands as the JSON scalar ``null``, and
+    ``->>'principal_id'`` yields SQL ``NULL``, which is what the ``IS NOT NULL``
+    test in ``gate_counts`` must exclude.
+    """
+    return None if i % 15 == 6 else f"person-approver-{i % 4}"
+
+
 def _make_specs(rng: random.Random, n_runs: int) -> list[_RunSpec]:
     specs: list[_RunSpec] = []
     for i in range(n_runs):
@@ -187,7 +208,7 @@ def _make_specs(rng: random.Random, n_runs: int) -> list[_RunSpec]:
                 # in run.step_principals. NOTE: the approver half is NOT in
                 # step_principals — see the module note + the PR (AC-2 wording corrected).
                 step_status = StepResultStatus.RESOLVED.value
-                approver = f"person-approver-{i % 4}"
+                approver = _gate_approver(i)
                 requester = f"person-requester-{i % 4}"
                 trace = [
                     {
