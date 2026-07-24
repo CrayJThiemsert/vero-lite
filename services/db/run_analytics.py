@@ -160,15 +160,26 @@ class GateCount(BaseModel):
 def _trace_elements() -> sa.TableValuedAlias:
     """A LATERAL over ``StepResult.reasoning_trace``'s array elements (``value`` column).
 
-    ``jsonb_array_elements`` raises on a scalar/NULL input, so every caller pairs
-    this with ``reasoning_trace IS NOT NULL``; an empty ``[]`` trace yields no rows.
+    Two Postgres/SQLAlchemy sharp edges are handled here, not at the call sites:
 
-    The ``value`` column is typed ``JSONB`` explicitly — an untyped table-valued
-    column rejects ``[...]`` subscripting (``Operator 'getitem' is not supported``).
+    * ``jsonb_array_elements`` raises ``cannot extract elements from a scalar`` on
+      any non-array input, and a Python ``None`` written to a JSONB column lands as
+      the JSON scalar ``null`` — **not** SQL ``NULL`` — so a ``reasoning_trace IS
+      NOT NULL`` filter does not exclude it (and a lateral is evaluated before the
+      ``WHERE`` anyway). The input is therefore guarded by ``jsonb_typeof(...) =
+      'array'``, falling back to an empty array so a non-array trace contributes
+      zero rows instead of raising. This is the never-raise contract in SQL form.
+    * The ``value`` column is typed ``JSONB`` explicitly — an untyped table-valued
+      column rejects ``[...]`` subscripting (``Operator 'getitem' is not supported``).
     """
-    return sa.func.jsonb_array_elements(StepResult.reasoning_trace).table_valued(
-        sa.column("value", JSONB)
+    array_only = sa.case(
+        (
+            sa.func.jsonb_typeof(StepResult.reasoning_trace) == "array",
+            StepResult.reasoning_trace,
+        ),
+        else_=sa.cast(sa.literal("[]"), JSONB),
     )
+    return sa.func.jsonb_array_elements(array_only).table_valued(sa.column("value", JSONB))
 
 
 async def status_rollup(session: AsyncSession) -> list[StatusCount]:
