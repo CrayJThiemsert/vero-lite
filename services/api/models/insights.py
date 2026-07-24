@@ -130,3 +130,67 @@ class FlowReport(BaseModel):
         description="total runs whose updated_at precedes started_at — a backward-clock "
         "anomaly surfaced rather than silently averaged into the spans above"
     )
+
+
+class StatusTally(BaseModel):
+    """Run count for one lifecycle status."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    status: str = Field(description="PipelineRun lifecycle status")
+    run_count: int = Field(description="number of runs in this status")
+
+
+class GateReadiness(BaseModel):
+    """Resolved-gate counts for one procedure, with the approver half."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    procedure_id: str = Field(description="the procedure whose gate steps resolved")
+    resolved_count: int = Field(description="gate steps that reached status 'resolved'")
+    approver_recorded: int = Field(
+        description="of those, how many carry a recorded approver principal in the step "
+        "reasoning trace — the way resolve_gated_step records it, not step_principals "
+        "(which holds the requester half)"
+    )
+
+
+class RefusalTally(BaseModel):
+    """Read-refusal count for one refusal kind."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    refusal_kind: str | None = Field(description="the refusal kind; None if the fact omits it")
+    count: int = Field(description="number of read_refused facts of this kind")
+
+
+class AuditReadinessReport(BaseModel):
+    """The A4 audit-readiness composition — what an auditor asks for first.
+
+    **Split visibility is structural, not conventional (AC-7).** This model
+    carries no ``breaks`` field and must never gain one: the chain verdict is
+    reduced to ``chain_intact`` at the call site and the verbatim break strings
+    are discarded there, so disclosing one through this reader is
+    *unrepresentable* rather than merely avoided — the same technique
+    ``ImpactReport`` uses for the cross-currency total (S7).
+
+    This is strictly narrower than ``GET /audit/verify``, which already discloses
+    ``intact`` to every caller and the verbatim detail only to a credentialed one
+    (SD-2(d)). A4 therefore widens no disclosure and needs no auth dependency of
+    its own — there is nothing here to split.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    vertical: str = Field(
+        description="the deployment vertical this report was produced under (S7 stamp)"
+    )
+    statuses: list[StatusTally] = Field(description="run totals by lifecycle status")
+    gates: list[GateReadiness] = Field(
+        description="resolved-gate counts per procedure, with the approver half"
+    )
+    refusals: list[RefusalTally] = Field(description="read-refusal counts by kind")
+    chain_intact: bool = Field(
+        description="whether the audit hash chain verified end to end; the verbatim break "
+        "detail is deliberately not carried on this report (see the class docstring)"
+    )
