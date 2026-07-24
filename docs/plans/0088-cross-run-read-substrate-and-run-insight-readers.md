@@ -250,6 +250,17 @@ fixed "no matching records" answer is kept verbatim. Surface: a **separate**
 about pumps or about runs?") is a real disambiguation problem that deserves
 its own decision later; v1 does not fake it (see Out of Scope).
 
+*→ SD-9 pointer (2026-07-24 — annotation only; the ratified text above is
+unchanged): surfaced mid-build after Steps 1–4 shipped, the v1 property list
+above exceeds what the Step-1 substrate actually serves (`duration_ms_total`
+has no primitive and none derivable; `started_week` / `agent_id` / `trigger`
+are unserved; no primitive accepts a filter), which collides with the
+"reusing the existing aggregate vocabulary" clause and Step 1's "adds no new
+SQL of its own" line. The resolution — extend the substrate vs narrow the
+property set — is **SD-9** in the Surfaced-decisions block, and Step 5 is
+gated on that typed ruling. This pointer amends nothing; only SD-9's ruling
+can.*
+
 ### S6 — Group-B "proof" ACs: executable query shapes + a mechanical no-proposal guard
 
 The proof that the substrate *carries* Group B is a test suite (AC-10) that
@@ -308,7 +319,7 @@ treatments, because only one of them is enforceable against the data on disk:
 If a real multi-vertical-one-DB deployment ever appears, adding a vertical
 column (a migration) is that deployment's PLAN — not this one.
 
-## Surfaced decisions (SD-1…SD-8 — ✅ ALL RATIFIED by Cray 2026-07-24, session 169, typed AskUserQuestion — adjudicated at Step 0)
+## Surfaced decisions (SD-1…SD-8 — ✅ ALL RATIFIED by Cray 2026-07-24, session 169, typed AskUserQuestion — adjudicated at Step 0 · SD-9 — ⏳ OPEN, surfaced 2026-07-24 mid-build, gates Step 5)
 
 **LOCKED vs SURFACED, stated once:** the four **Locked constraints L1–L4** are
 already Cray-ratified by typed selection (see their own section). They are
@@ -343,6 +354,12 @@ controversy is manufactured to fill the template.
 > - **Consequence: Step 0 is DISCHARGED and PLAN-0088 is BUILD-READY.** Status
 >   stays `Draft` (flips to `Complete` only at closeout, per the Accepted-status
 >   G1 gate). No AC may still read as "contingent on SD-8".
+
+**SD-9 (below) is OUTSIDE this banner's coverage:** it was surfaced
+2026-07-24 *after* the one-pass ruling, mid-build (Steps 1–4 BUILT), when the
+Step-1 substrate's shipped primitive inventory was checked against S5's
+declared A1 properties. It is the block's only ⏳ OPEN item, it gates Step 5,
+and it awaits its own typed ruling — nothing in it reopens SD-1…SD-8.
 
 ### SD-1 — Ratify S1 as written? (substrate location + layering rule)
 
@@ -510,6 +527,142 @@ here — the aggregate readers are order-insensitive, so the trigger stays unfir
 and the sequence-column PLAN stays optional until a genuinely ordering-dependent
 consumer appears.
 
+### SD-9 — The S5 vocabulary gap (⏳ OPEN — surfaced 2026-07-24 mid-build, after Steps 1–4 shipped; gates Step 5)
+
+**Question:** A1's run-corpus descriptor declares v1 properties the shipped
+substrate cannot serve — where does the missing SQL go, and do all five
+dimension properties survive v1?
+
+**The bind, on the record (why this is a fork and not a build detail):** S5
+(ratified as SD-5) declares the v1 descriptor properties `procedure_id`,
+`agent_id`, `status`, `trigger`, `started_week`, and numeric
+`duration_ms_total` / `net_benefit_thb`, with an execute stage that "compiles
+the validated `StructuredQuery` to `run_analytics` substrate calls, reusing
+the existing aggregate vocabulary rather than inventing one"; Step 1's text
+adds that every later step "adds no new SQL of its own". The substrate Step 1
+actually shipped (PR #890, `services/db/run_analytics.py`) exposes exactly
+nine primitives — `status_rollup` (`:243`), `procedure_rollup` (`:254`),
+`period_rollup` (`:267`), `duration_stats` (`:281`), `benefit_rollup`
+(`:309`), `benefit_assumptions` (`:370`), `refusal_counts` (`:402`),
+`gate_counts` (`:419`), `waiting_dwell_stats` (`:460`) — every one a fixed
+global rollup whose only parameter is the session: **no primitive accepts a
+filter or a caller-chosen group key.** Against the declared properties:
+
+- `procedure_id`, `status` — served as single group-by dimensions
+  (`procedure_rollup`, `status_rollup`; a single-dimension filter is a
+  Python row-pick over an O(groups) fetch). **Not served as conjunctive
+  filters:** "how many runs of procedure X failed?" is unanswerable — no
+  procedure×status rollup exists and nothing takes a WHERE from the caller.
+- `duration_ms_total` (per run) — **no primitive, and none derivable.**
+  `duration_stats` is per-`procedure_id` × per-`step_id` **across** runs
+  (count/avg/max); a single run's total cannot be recovered from its output.
+  New SQL required.
+- `started_week` — no week bucket exists (every `date_trunc` in the module
+  is `'day'` — `:274`, `:330`), **but a zero-SQL path exists**: the compiler
+  may fold day buckets to ISO weeks in plain Python — S1 forbids the
+  compiler SQL, sessions, and `sqlalchemy` imports, not arithmetic — and the
+  fold is exact for counts and for ฿ sums/avgs (bucket sums + valued counts
+  recombine exactly).
+- `net_benefit_thb` — **partial.** `benefit_rollup` yields
+  currency × procedure × kind × day buckets; corpus- or procedure-level sums
+  fold exactly and stay per-currency (S7 holds in every A1 answer — no
+  cross-currency figure is representable). True **per-run** figures do not
+  fold: a run whose facets span kinds or currencies appears in multiple
+  buckets.
+- `agent_id` — on the run row (`services/engine/procedures/runs.py:66`) but
+  read by **no** primitive; and the AC-2 factory seeds it **constant**
+  (`tests/support/run_corpus_factory.py:260`, `"synthetic_agent"`), so no
+  exact-value test could discriminate the dimension without factory work
+  too.
+- `trigger` — **no primitive reads `trigger_context`** (`runs.py:67`), the
+  property is not even defined (a free-form JSONB with no pinned kind key),
+  and the factory seeds it constant (`run_corpus_factory.py:261`,
+  `{"triggered_by": "corpus-factory"}`).
+
+Two aggravators, recorded so they are not discovered twice: **(i)**
+`nl_query`'s operation vocabulary includes `list`
+(`services/engine/nl_query.py:139-145`), but LOCKED SD-8 (a) ruled "the
+substrate ships aggregate primitives only" — so under **every** option below
+the run-corpus descriptor excludes `list` (the validator rejects it with a
+validate-and-retry-shaped error); extending the substrate with a listing
+primitive would reopen SD-8 and is off the table. **(ii)** The gap is not
+Step 5's alone: AC-10's four Group-B shapes must be "expressed through the
+substrate's public surface only", and the shipped surface serves **none** of
+them — B1's band-verdict distribution (no primitive touches band artifacts),
+B2's per-tier outcomes/dwell (no tier dimension), B3's refusal kind
+**× procedure** (`refusal_counts` groups by kind only, `:402-416`), B4's
+trigger × outcome (no trigger read). Whatever is ruled here is the precedent
+Step 6 executes under.
+
+One reading correction, for honesty about the ratified text: the Grounding
+NL-query bullet uses "aggregate vocabulary" for `nl_query`'s **operation**
+set (list/count/max/min/avg/sum, `aggregate_property`, `group_by`), so S5's
+"reusing the existing aggregate vocabulary" has a charitable reading — don't
+invent a new *operation* vocabulary — under which the clause is not
+self-contradictory. The bind stands regardless: AC-8 demands exact seeded
+values for properties no shipped primitive serves, and Step 1's "no new SQL"
+sentence leaves Step 5 no sanctioned place to put the missing SQL.
+
+**Options, with consequences:**
+
+- **(a) EXTEND the substrate** — new aggregate primitives in
+  `run_analytics.py` (where SQL lives, per LOCKED S1), an explicit
+  deliverable of Step 5 (or a carved-out Step 4.5 landing first): a
+  filterable run rollup (conjunctive procedure/status dimensions), per-run
+  `duration_ms_total` exposed **only through grouped/aggregate outputs**
+  (the per-run SUM is an inner SQL subquery; fetched rows stay O(groups),
+  so AC-1's statement-capture pin holds and no listing shape appears —
+  SD-8 intact), and a week bucket (`date_trunc('week')`, symmetric with
+  `period_rollup`). S5's clause is amended **by this ruling** to "reusing
+  the existing vocabulary and, where the vocabulary is genuinely absent,
+  extending it — in `run_analytics.py` only, never in a reader or the
+  compiler". AC-3/AC-11 need no new scope — both guards already run over
+  the whole module. **Sub-fork:** **(a1)** extend for all five dimensions —
+  additionally requires *defining* `trigger` (pinning a `trigger_context`
+  key) and giving the AC-2 factory agent/trigger variation; **(a2)** extend
+  only where a real question exists and **ELIMINATE `agent_id` + `trigger`
+  from the v1 descriptor** — both are degenerate today (constant in the
+  factory; single-agent deployments; `trigger` undefined), and AC-10's B4
+  forces the trigger-kind definition later with Group-B fuel as its real
+  driver. Costs: new SQL + tests and a larger Step 5; (a1) additionally a
+  factory redesign and a trigger-kind definition made ahead of its
+  consumer.
+- **(b) NARROW A1 v1 to what the nine primitives serve** — drop
+  `duration_ms_total`, `agent_id`, `trigger`; keep `procedure_id` /
+  `status` (single-dimension only), `net_benefit_thb` (per-currency bucket
+  folds), and `started_week` as a Python fold (or drop it too). Preserves
+  "Step 5 adds no SQL" to the letter. Honest cost: with nothing filterable,
+  A1 v1 answers only *unfiltered single-dimension* rollup questions —
+  functionally the fixed `GET /insights/*` reports behind an LLM — and the
+  preserved invariant dies at Step 6 anyway (aggravator ii), so (b) buys
+  one step of purity at the price of a second SD then, plus a
+  vocabulary-starved first release of the flashiest reader (inverting S3's
+  own payoff argument for shipping A1 last).
+- **(c) SPLIT** — take the zero-SQL `started_week` fold now; adjudicate
+  `duration_ms_total` (and the filter question) separately later. Cost: two
+  rulings where one suffices, and Step 5 either builds twice or ships the
+  (b)-shaped weak reader first.
+
+**Recommendation: (a), in its (a2) trim.** Reasoning: (1) the substrate was
+always going to grow — Step 6 cannot be expressed over the shipped nine
+(aggravator ii) — so the discipline actually worth preserving is S1 + AC-11
+(SQL only in `run_analytics.py`; readers and the compiler own none), not a
+frozen Step-1 inventory; (a) names the real invariant, (b) defends one that
+never held. (2) One ruling covers both collisions: the amended clause is the
+precedent Step 6 executes under without a new SD. (3) (b)'s reader is not
+worth shipping — unfiltered single-dimension NL answers duplicate the fixed
+reports and would misrepresent A1. (4) The two eliminations are honest
+scope, not loss: by the PLAN's own exact-value standard both dimensions are
+unmeasurable today (constant in the AC-2 factory), `trigger` is undefined,
+and reversal is cheap — each is one grouped-count primitive plus a
+descriptor row when a real question appears (B4 names the trigger moment).
+**Consequential edits under every option are applied only after the ruling,
+by its authority — none are made now:** S5's clause (a), AC-1's primitive
+enumeration (a), Step 5's scope line (all options), the AC-2 factory (a1).
+What makes this Cray's typed call and not a drafter's: it amends a ratified
+decision (SD-5), sets the substrate-growth precedent for Step 6, deletes two
+ratified v1 properties, and re-scopes Step 5 mid-build.
+
 ## Acceptance Criteria
 
 All ACs are **offline-testable** (CLAUDE.md §8: offline tests are the gate;
@@ -666,7 +819,7 @@ Surfaced-decisions block. AC-12 is struck (tombstone); AC-1's listing clause and
 paged sizing leg stay gone (they returned only under (b)/(c), which were not
 ruled). **Step 1 is now unblocked.**
 
-### Step 1: The substrate (`services/db/run_analytics.py`) — AC-1, AC-2, AC-3, AC-11
+### Step 1: The substrate (`services/db/run_analytics.py`) — AC-1, AC-2, AC-3, AC-11 — ✅ BUILT (s169, PR #890)
 
 Typed read-only query layer: rollup primitives (status/procedure/period,
 duration stats, ฿ extraction per S2, refusal/gate counts) + Pydantic
@@ -677,29 +830,35 @@ and the AC-11 read-only guard. Per SD-8 (a), ruled 2026-07-24, this step ships
 centre of gravity — every later step consumes it and adds no new SQL of its
 own.
 
-### Step 2: Reader A2 — ฿ ROI rollup + narrative (`GET /insights/impact`) — AC-4, AC-5
+### Step 2: Reader A2 — ฿ ROI rollup + narrative (`GET /insights/impact`) — AC-4, AC-5 — ✅ BUILT (s169, PR #891)
 
 New `services/api/routers/insights.py` (thin; substrate calls only). Rollup
 model + deterministic narrative renderer. Pins the JSONB facet round-trip
 through the real persistence path. First reader by S3's ordering rationale.
 
-### Step 3: Reader A3 — bottleneck / cycle-time (`GET /insights/flow`) — AC-6
+### Step 3: Reader A3 — bottleneck / cycle-time (`GET /insights/flow`) — AC-6 — ✅ BUILT (s169, PR #893)
 
 `duration_ms`-based step latency stats + same-row dwell spans with the
 clamped-negative counter. Zero LLM.
 
-### Step 4: Reader A4 — audit-readiness (`GET /insights/audit-readiness`) — AC-7
+### Step 4: Reader A4 — audit-readiness (`GET /insights/audit-readiness`) — AC-7 — ✅ BUILT (s170, PR #895, merge `7150c07`)
 
 Compose substrate counts with the existing `verify_chain` public verdict.
 Read-only; split visibility preserved.
 
-### Step 5: Reader A1 — NL query over runs (`POST /insights/query`) — AC-8, AC-9, AC-9b
+### Step 5: Reader A1 — NL query over runs (`POST /insights/query`) — AC-8, AC-9, AC-9b — ⛔ GATED on SD-9
 
 Run-corpus descriptor + deterministic `StructuredQuery`→substrate executor in
 `services/engine/run_query.py`; endpoint wiring with pluggable translate/
 phrase; grounding-parity tests offline. The single live smoke (AC-9b) is
 host-state: **explicit Cray go required before any live run**, MS-S1 local
 model only.
+
+**Gate (2026-07-24):** SD-9 — surfaced mid-build — must carry Cray's typed
+ruling before this step starts: S5's declared run-corpus properties are not
+all servable by the shipped Step-1 substrate, and where the missing SQL goes
+(or whether the property set narrows) is that ruling. See the
+Surfaced-decisions block and the SD-9 pointer under S5.
 
 ### Step 6: Group-B carrier proof + close — AC-10, AC-13
 
@@ -722,7 +881,9 @@ after completion.)
 - **Live evidence, not CI:** AC-9b's one MS-S1 smoke, only after explicit Cray
   approval, results recorded in the session handoff — evidence, never a gate.
 - **Done means:** SD-1…SD-8 carry Cray's typed ruling (recorded in the RULINGS
-  banner atop the Surfaced-decisions block; Step 0 DISCHARGED 2026-07-24); all
+  banner atop the Surfaced-decisions block; Step 0 DISCHARGED 2026-07-24) **and
+  SD-9 (surfaced 2026-07-24 mid-build) carries its own typed ruling, with its
+  consequential edits applied by that ruling's authority**; all
   **13 live** ACs ticked — AC-12 is *struck* per SD-8 (a), a tombstone that is
   never built or ticked; guards green in CI; no ADR edited; and the Group-B
   proof suite green while AC-11 simultaneously proves no proposal machinery
@@ -810,3 +971,20 @@ unchanged; no AC ticked. Separation: INTACT — the drafter neither originated
 the s168 diagnosis nor ratifies any SD, and does not commit. Independent
 review: Claude Code (R2 — every added `file:line` spot-checked against disk)
 + Cray at PR merge.
+
+**SD-9 amendment round (2026-07-24, this edit):** amended **in place** by the
+in-harness `plan-drafter` subagent from a Code-authored dispatch carrying the
+s170 diagnosis (S5's declared A1 properties vs the shipped Step-1 primitive
+inventory). This round **resolved no decision**: it surfaced the vocabulary
+gap as **SD-9** (⏳ OPEN — recommendation (a)/(a2), Cray's typed ruling
+pending), annotated the ratified S5 with a pointer (S5's text otherwise
+byte-unchanged), gated Step 5 on the ruling, recorded Steps 1–4 as BUILT
+(#890, #891, #893, #895), and extended "Done means" to require SD-9's ruling.
+The drafter verified the dispatch's unverified claims against disk
+(`agent_id` / `trigger`: on the run row at `runs.py:66-67`, read by no
+primitive, seeded constant by `run_corpus_factory.py:260-261`) and added two
+findings the dispatch lacked (no primitive is filterable; AC-10's B shapes
+are also unserved). SD-1…SD-8 and L1–L4 not reopened; `Status: Draft`
+unchanged; no AC ticked. Separation: INTACT — the drafter did not originate
+the diagnosis, does not rule SD-9, and does not commit. Independent review:
+Claude Code (R2) + Cray at PR merge.
