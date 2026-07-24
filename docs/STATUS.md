@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-24T16:05:00+07:00
-session: 169
-current_batch: "s169 CLOSED — PLAN-0088 re-drafted (#888), SD-1…SD-8 ratified (SD-8 = (a) ELIMINATE, #889), Steps 1–3 BUILT (#890/#891/#893): read substrate + `GET /insights/impact` + `GET /insights/flow`. 0 open."
+last_updated: 2026-07-24T17:24:15+07:00
+session: 170
+current_batch: "s170 CLOSED — PLAN-0088 Step 4 BUILT (#895): reader A4 `GET /insights/audit-readiness` (AC-7); + the owed s169 reconcile (#894), which finally NET-SHRANK STATUS (−596 B). 0 open."
 current_actor: code
-blocked_on: "Nothing. main=9e26195; suite FRESH 3150 re-run on the merge commit; ruff + mypy --strict (109 files) clean; MS-S1 COLD (never contacted); 0 open PRs."
-next_action: "PLAN-0088 Step 4 — reader A4 `GET /insights/audit-readiness` (AC-7): status_rollup + refusal_counts + a NEW gate-count primitive (approver half) + the shipped `verify_chain`; read-only. Then Steps 5–6 (AC-9b is host-state)."
-head_commit: 9e26195
-recent_commits: [9e26195, 0d11da4, 8393af8, 0be589e, b1e12d1, 2fba64b, c209bd9, dd16267, 4ef7b5d, 8d1be34]
+blocked_on: "Nothing. main=7150c07; suite FRESH 3159/7 re-run on the merge commit; ruff + mypy --strict (109 files) clean; MS-S1 COLD (never contacted); 0 open PRs."
+next_action: "PLAN-0088 Step 5 (AC-8/9/9b) — but SCOPE needs a Cray ruling FIRST: S5 says A1 adds no SQL, yet its declared `duration_ms_total` (per-run) + `started_week` have NO shipped primitive (see In-Flight)."
+head_commit: 7150c07
+recent_commits: [7150c07, 501b169, a0d2939, 9e26195, 0d11da4, 8393af8, 0be589e, b1e12d1, 2fba64b, c209bd9]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,81 @@ recent_commits: [9e26195, 0d11da4, 8393af8, 0be589e, b1e12d1, 2fba64b, c209bd9, 
 ---
 
 ## Current Focus
+
+> **Session 170, 2026-07-24 (head_commit `9e26195` → `7150c07`) — the session a
+> MUTATION PROBE caught an oracle that could not fail. PLAN-0088 Step 4 shipped
+> reader A4 at `GET /insights/audit-readiness` (#895), and deleting the approver
+> `FILTER` from `gate_counts` reddened **only** the SQL-shape assertion — **both
+> exact-value oracles stayed GREEN**. Two PRs (#894 the owed s169 reconcile, #895
+> the build), both merged, 0 open at close.**
+> **(the headline — the corpus, not the assertions, was the defect.)** The
+> factory's `approve` branch set `status=RESOLVED` and appended the
+> `gate_principal_recorded` trace **together**, so every resolved gate carried an
+> approver, `gate_approvers` equalled `gates` identically, and extraction was
+> indistinguishable from counting. The `sum(...) > 0` guard only ruled out
+> all-zeros. **Without the SQL-shape test, AC-7 would have been untested while
+> looking green.** Fixed in the second commit (`501b169`): `_gate_approver(i)`
+> returns `None` for `i % 15 == 6`. Both properties of that residue are
+> deliberate — it is a **proper subset** of the resolved set (`6 % 3 == 0`), so
+> those runs really are resolved gates, and its `i mod 4` varies (6, 21, 36, 51 →
+> 2, 1, 0, 3) so the gap lands on **every** procedure rather than pooling on one
+> (procedure is assigned by `i % 4`). That is the Step-3 intersection lesson
+> applied. Returning `None` also exercises the JSONB sharp edge the substrate
+> documents: it lands as the JSON scalar `null`, so `->>'principal_id'` yields SQL
+> `NULL` — exactly what the `IS NOT NULL` test must exclude — while the Python
+> oracle reaches the same answer by a different route. The assertions now pin the
+> **gap** (`gate_approvers != gates`; every procedure shows `approver_recorded <
+> resolved_count`), and **re-probed, the same mutation now reddens THREE oracles
+> instead of one**. Both probes restored from a `/tmp` copy verified
+> byte-identical with `cmp -s`, never `git checkout`.
+> **(#895 — Step 4: AC-7.)** `GET /insights/audit-readiness` — reader A4, zero
+> LLM: run totals by status, resolved-gate counts **with the approver half**,
+> refusal counts by kind, and the chain verdict via the shipped `verify_chain`
+> seam. Three substrate reads plus that seam — the reader adds no SQL of its own
+> (L3) and holds no write primitive (AC-11). Three design calls worth recording:
+> (1) **the approver comes from the TRACE, not `step_principals`** — `gate_counts`
+> gains `approver_recorded`, read from the `gate_principal_recorded` entry that
+> `resolve_gated_step` writes into the step `reasoning_trace`; AC-2's wording
+> remains a known error (flagged for Cray, not self-edited), and the field NAMES
+> its source explicitly so the confusion cannot return quietly. (2) **`EXISTS`,
+> not a join** — a joined lateral yields one row per trace entry, multiplying the
+> step row and **inflating `resolved_count`** silently, since the inflated figure
+> still looks plausible; `EXISTS` asks the same question without changing the row
+> count, so the statement stays O(groups) and AC-1's statement-capture fixture
+> keeps holding. (3) **split visibility is STRUCTURAL** — `verify_chain` returns
+> verbatim break strings, they are reduced to a boolean in the handler and never
+> leave it, and `AuditReadinessReport` has no field that could carry them (plus
+> `extra="forbid"`): disclosure is *unrepresentable*, not merely absent — the
+> technique `ImpactReport` uses for the cross-currency total (S7). Strictly
+> narrower than `GET /audit/verify`, which already gives every caller `intact` and
+> the detail only to a credentialed one (SD-2(d)), so A4 widens nothing and needs
+> no auth dependency.
+> **(#894 — the owed s169 reconcile, and the first prune that NETTED NEGATIVE.)**
+> STATUS was one PR behind: the s169 reconcile (#892) landed BEFORE Step 3 merged
+> (#893). `head_commit` was set to `9e26195`, Step 3 recorded, the stale
+> `next_action` retired. The `status-scribe` draft came back at **58,005 B — an
+> INCREASE of 148 B** over the pre-session 57,857 — and its own estimate (≈57,690)
+> was wrong; **measuring caught it**. An R2 pass then found **all ten**
+> Recent-Decisions rows over the ~600-char pointer budget, and four more were
+> compressed, landing at **57,261 B (−596 net)** — the first net shrink in three
+> sessions, against s168's standing "prune harder" ask. Also corrected **four
+> stale path citations** (`superseded by new info`): three RD rows and the
+> In-Flight autonomy-fork entry cited `docs/plans/0091-*.md` / `0092-*.md`, but
+> both PLANs were archived to `docs/plans/done/` at s168.
+> **(evidence.)** Suite **3150 → 3159 passed / 7 skipped**, re-run in full on the
+> merge commit `7150c07` (CI is PR-only, so merge commits are otherwise never
+> tested). ruff + ruff-format clean; `mypy --strict services/` clean (109 files).
+> **MS-S1 never contacted.**
+> **(process — L1 fired again, and the reset was blocked again.)** The guard
+> denied the 6th edit to `tests/support/run_corpus_factory.py` mid-build, and
+> `git commit` — the documented reset — was blocked because `ruff` was red
+> (`C901`, `_expected` at complexity 11) on that very file: the same shape as
+> s169. Extracting only the predicate did not help — the `if` stayed behind — so
+> the whole tally had to move into a `_tally_gate` helper (the `_tally_dwell`
+> pattern). **Cray adjudicated by typed selection and authorised the shell
+> escape**, applied via a guarded patch script that aborts unless both anchors
+> match exactly. The later corpus fix needed no escape — the first commit had
+> reset the counter.
 
 > **Session 169, 2026-07-24 (head_commit `c2b92c5` → `9e26195`) — the session that
 > made PLAN-0088 ratified and then REAL. The re-draft SURFACED a four-item
@@ -271,111 +346,6 @@ recent_commits: [9e26195, 0d11da4, 8393af8, 0be589e, b1e12d1, 2fba64b, c209bd9, 
 > close; working tree clean but for the 2 standing KEEP untracked paths
 > (`.claude/benchmark-results/`, `.claude/launch.json`).
 
-> **Session 166, 2026-07-23 (head_commit `6e351fc` → `9e19905`) — a two-arc,
-> two-PR, docs-only session. Arc 1 ported the reported GPT 5.6 Pro
-> conjecture-refutation episode into working discipline: the
-> `code-operational-policy` skill gained § "Dispatch quality — hold the goal,
-> arm the oracle" + Lesson #0032 filed (#866: `9200552` skill + `0a1cbe4`
-> lesson; gate PASS 3m14s). Arc 2 (parallel, recorded below) re-grounded
-> PLAN-0091 against the code before the build — #865 → `9e19905`: SD-5
-> surfaced OPEN, s165's published build order REFUTED.**
-> **(trigger + two-model analysis.)** Cray shared the reported episode — the
-> general Dinitz–Garg–Goemans conjecture (open 30+ years) refuted via four
-> short goal-holding prompts + one attached near-miss paper. Opus 4.8 first
-> pass: a 4-prompt decomposition, 5 gaps (G1–G5), 2 already-strong
-> confirmations (the goal-evaluator's refute mandate; `/goal amend`'s drift
-> protection). Mid-session switch to Fable 5 for an adversarial R2: 4 new
-> angles (copy the operator's CONTROL LOOP, not the prompts; the attachment
-> is a near-miss to interrogate, not a template to imitate; dispatches were
-> brake-rich / accelerator-poor; two work regimes) + 3 explicit disagreements
-> with the first pass.
-> **(shipped in #866.)** Skill: the 3 dispatch blocks — § Frontier with the
-> verbatim anti-anchoring sentence ("You are permitted to propose that an
-> item in this fact-pack should be ELIMINATED, not automated or preserved") ·
-> the oracle-scoped accelerator clause · the REJECT-if list of named
-> fake-done forms in the return contract — plus the M1–M4 follow-up
-> vocabulary (goal constant, process pressure rising), the pre-close
-> counterexample step (test the ORACLE, not the code), and description
-> triggers extended so the skill fires on dispatch authoring / partial-return
-> follow-up / AC close. Lesson #0032: ambition ∝ oracle strength; the two
-> work regimes (plan-first execution, already codified §11/Lesson #0026, vs
-> gate-at-checkpoints exploration, named here and mapped to the Fable-tier
-> model-economy policy); what does NOT transfer (survivorship bias ×2,
-> asymmetric error cost, the human judgment core).
-> **(deliberate scope, recorded IN the lesson so it is not re-litigated.)**
-> NO partial-ratchet detector and NO strategy-paragraph hook (both
-> judgment-shaped — M3/M4 stay conversational; a hook can only check a
-> paragraph EXISTS = ritual compliance); the REJECT-if list homed in dispatch
-> return contracts, NOT the G2-gated plan template; promotion to
-> template/convention is Rule-of-Three on recorded catches (every catch gets
-> logged).
-> **(process.)** One Stop-hook misfire declined via the override clause (the
-> 13th fire — see the autonomy-fork ledger below); a separate bare "Continue
-> generating" nudge also fired once — benign, not a dispatch, not counted.
-> PR #865 (the PLAN-0091 arc's) was still OPEN at this arc's close, untouched
-> by it — **now MERGED, in the parallel arc recorded below**. No suite ran in
-> THIS arc (docs-only), and its "2995/7 is inherited from s164, not fresh"
-> note is **now SUPERSEDED** — the parallel arc re-ran the suite FRESH at
-> `355acb2` (see below). MS-S1 untouched/COLD, zero calls.
-> **(parallel arc, same session — PLAN-0091 RE-GROUNDED before the build, not
-> built. #865 `c11135f` → re-sync `fc29b3c` → merge `9e19905`, `docs(plans)` —
-> docs-only, PLAN stays `Status: Draft`.)** The build did not start; the PLAN
-> was re-read against the code first, and it moved: one NEW decision surfaced
-> OPEN, two unnamed Step-4 hazards recorded, and s165's build-order claim
-> refuted. `gate` PASS twice, **both SHA-verified against the head** — 3m14s on
-> `c11135f`, 3m13s on the re-synced merge commit `fc29b3c` (`origin/main`
-> `6e20a65` merged IN, never force-pushed). The suite was re-verified **FRESH**
-> at `355acb2` *before* any edit — **2995 passed, 7 skipped in 177.87s**,
-> matching the s164 prior exactly → logged **`confirmed — prior intact`**
-> (CLAUDE.md §6); 7 skips = dev Postgres connected. **#865 is docs-only, so no
-> suite re-run was owed on the merge commit and none was done.** MS-S1 COLD,
-> zero calls all arc; loop-dispatcher DISABLED.
-> **(the load-bearing correction — s165's forward dependency is REFUTED.)**
-> s165 read "Step 1 carries a forward dependency on Step 4" and published the
-> order **4-shape → 1 → 2 → 3 → 4-emit → 5 → 6 → 7**; both are wrong and are
-> **corrected in the PLAN**. `derive_governance_todo` (`draft.py:293-322`)
-> derives AT-2 obligations from `(gate_kind, kind)` alone and **never reads
-> `REGISTRY`**, and the row-11 spine sequence is readable straight off the
-> committed donor `verticals/fleet_maintenance/procedures.yaml:117-282`.
-> Classified **`was an error`** — an over-strong inference, no code changed
-> since. **CONSEQUENCE (the reason this reconcile exists): Steps 1–3 are
-> executable NOW; Step 4 is the only one that waits on SD-5.**
-> **(SD-5 — NEW and OPEN, awaiting Cray.)** Step 4's design note promised the
-> S1 classify surface would not grow and the API abstain guard would stay
-> as-is. That is structurally false if the AT-2 template registers in the
-> shared `REGISTRY`: `generator/pipeline.py:225` builds the classify catalog
-> from `REGISTRY.values()`, `:253`/`:258` route by label through the same dict,
-> and the guard `_archetype_disagreement` (`:188-202`) rejects an AT-2 gate
-> only when the model actually emits one in `step_gates` (`:190`) — its own
-> contract at `:186-187` says an empty step list is not a disagreement, so it
-> is a second layer, **not a guarantee**. Options: (a) tool-local registry ·
-> (b) catalog-seam filter · (c) accept AT-2 into classify. **Recommendation
-> (a)** — the only one keeping SD-1 = (c) "no ADR" intact; **(c) would re-open
-> SD-1**. Recorded alongside it: **one unbudgeted RED test the PLAN never
-> named** — `tests/services/engine/procedures/test_archetype_templates.py:37`
-> asserts `set(REGISTRY) == set(AT1_FAMILY)` and goes RED the moment AT-2
-> registers centrally (under (a) it never fires); adjacent drift noted — that
-> file's `AT2_ONLY_KINDS` (`:32`) omits `GateKind.SEVERITY_TIER`, which
-> `pipeline.py:82-84` and `draft.py:283-285` both include.
-> **(smaller corrections + two build hazards, also into the PLAN.)** AC-10's
-> scope — the module docstring tally runs `test_procedures_endpoint.py:5-9`,
-> not `:5-6`. SD-4's line attribution — the stale token is "fleet_maintenance
-> ships two" at `:8` (`_EXPECTED` ships three at `:63-77`), proved by the
-> narrative summing to **12** against the executable `assert total == 13` at
-> `:151`; "six" at `:5` is correct. Step 6's cited tripwire ranges re-checked
-> **byte-exact**, with exactly one assertion (`:315`) going RED on a genuine
-> 5th signature → `confirmed — prior intact`. Two hazards added: the extracted
-> fingerprint helper must take an **explicit root** rather than inherit the
-> CWD-relative `Path("verticals").glob(...)` scan at `:269` (else AC-8 goes
-> vacuous), and four in-file call sites move with the helpers. Step 2 gains a
-> chdir note (`validate`/`generate` are CWD-relative, `cli.py:25-30` → reuse
-> the shipped `staged_repo` pattern, `test_cli_e2e.py:26-41`).
-> **(process — continues the s165 pattern.)** Every finding was re-verified by
-> the caller on disk before it entered the commit: a subagent over-claimed
-> twice in this arc — it asserted the abstain guard "will no longer abstain"
-> (too strong) and pinned a stale count to the wrong line — and both were
-> caught by reading the code. **Subagent output is a draft, not a result.**
-
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R7)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split.]_
 
@@ -396,6 +366,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-24 | **s170 — PLAN-0088 Step 4 BUILT (#895): reader A4, audit-readiness at `GET /insights/audit-readiness` (AC-7) — status/gate/refusal counts + the public chain verdict via the shipped `verify_chain` seam; no SQL of its own (L3), zero LLM, split visibility STRUCTURAL (`extra="forbid"`, no field could carry a break string). Headline: a MUTATION PROBE caught an oracle that could not fail — deleting the approver `FILTER` reddened ONLY the SQL-shape assertion, both exact-value oracles stayed GREEN, because the CORPUS (every resolved gate carried an approver), not the assertions, was the defect. Corpus gap `i % 15 == 6` fixed it → the same mutation now reddens THREE oracles. Suite 3150 → **3159**. Full narrative: the Session-170 CF block above | `7150c07` (#895 merge, head_commit of record) / `a0d2939` + `501b169` (build) / `09b90bc` + `06b54cb` (#894, the owed s169 reconcile, −596 B net) / `services/db/run_analytics.py` + `services/api/models/insights.py` + `services/api/routers/insights.py` + `tests/support/run_corpus_factory.py` |
 | 2026-07-24 | **s169 — PLAN-0088's design layer ADJUDICATED: the re-draft (#888) surfaced a four-item JOINTLY-UNSATISFIABLE knot; Cray ratified SD-1…SD-8 in ONE typed pass (#889) — SD-8 = (a) ELIMINATE.** `list_runs_page` + AC-12 STRUCK: the substrate ships aggregate primitives only, `GET /runs` untouched, listing pagination sequenced into the future monotonic-`sequence`-column PLAN. First real-case reading of that deferral's un-defer trigger — and it **DECLINES to fire it** (the aggregate readers are order-insensitive). AC-12 kept as a **tombstone** so AC-1…AC-13 numbering stays stable (live count 13). Second correction, `was an error`: AC-12 undercounted `/runs` consumers — `view-map.js` fetches `/runs` bare and TRUNCATES via a `CAP = 5` slice under a newest-first assumption, so an order change HIDES the newest runs. Step 0 DISCHARGED → build-ready (Status stays `Draft`). Full narrative: the Session-169 CF block above | `dd16267` (#889 merge) / `4ef7b5d` (the rulings) / `8d1be34` (#888 merge) / `3a16238` (the re-draft) / `docs/plans/0088-cross-run-read-substrate-and-run-insight-readers.md` §Surfaced decisions |
 | 2026-07-24 | **s169 — PLAN-0088 Steps 1–3 BUILT (#890, #891, #893): the cross-run read substrate (AC-1/2/3/11) + reader A2, the ฿ ROI rollup at `GET /insights/impact` (AC-4/5) + reader A3, the flow report at `GET /insights/flow` (AC-6).** Seven read-only async primitives (caller-owned `AsyncSession`, mirroring `audit_log.py`); a seeded 250-run × 6-step corpus with a plain-Python oracle independent of the SQL under test; two AST guards with guard-fires-on-what-it-forbids tests. Step 2 **EXTENDED** `benefit_rollup` (L3: readers write no SQL); `ImpactReport` has **no cross-currency total field and must never gain one** (S7). Step 3 added `waiting_dwell_stats`: SAME-ROW `waiting_human` dwell clamped via `GREATEST(span, 0)` + a surfaced `negative_clock_spans` counter, zero LLM — plus the AC-6 "dwell" caveat (start → suspension; flagged for Cray, see In-Flight). Suite 3109 → **3150** (+17/+17/+7), re-run on the merge commit; non-vacuity probed (`/tmp` restore + `cmp -s`); MS-S1 never contacted. Full narrative: the Session-169 CF block above | `9e26195` (#893 merge, head_commit of record) / `0d11da4` (#893 build) / `8393af8` (#891 merge) / `0be589e` (#891 build) / `b1e12d1` (#890 merge) / `c209bd9` + `2fba64b` (#890 builds) / `services/db/run_analytics.py` + `services/api/models/insights.py` + `services/api/routers/insights.py` + `tests/support/run_corpus_factory.py` |
 | 2026-07-23 | **s168 — PLAN-0091 COMPLETE 10/10 + ARCHIVED (#883–#885): closing it exposed that the emitted package could not LOAD and `vero-lite scaffold` wrote NOTHING — both invisible to a green suite (a suite addressed at the library cannot see a dead entry point). Suite 3083 → 3109; honesty correction: s167's "8/10" was 7/10.** Full narrative: the archived PLAN | `c2b92c5` (#886 merge, head_commit of record) / `5865d19` (#885 AC-10) / `4994801` (#884 CLI wiring) / `844eb6d` (#883 AC-7 a/b/c) / `c47232f` (#882) / `b8f011d` (#881) / `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md` (COMPLETE, 10/10) + `services/engine/scaffolder/**` + `services/engine/cli.py` |
@@ -405,12 +376,11 @@ than restated: the Active TODO owns that status.]_
 | 2026-07-23 | **s166 — dispatch-quality discipline shipped (#866, docs-only): the `code-operational-policy` skill gains the 3 dispatch blocks (Frontier/anti-anchoring · oracle-scoped accelerator · REJECT-if) + the M1–M4 follow-up vocabulary + the pre-close counterexample step; Lesson #0032 files the why.** Deliberately NOT built: any hook/detector for M3/M4 (judgment-shaped) — adoption is Rule-of-Three on recorded catches | `b8566a6` (#866 merge, head_commit of record) / `0a1cbe4` + `9200552` / `.claude/skills/code-operational-policy/SKILL.md` + `docs/lessons/0032-ambition-scales-with-oracle-exploration-gated-not-planned.md` |
 | 2026-07-22 | **s164 — PLAN-0091 filed Draft (#859): the narrative→vertical scaffolder (`vero-lite scaffold`), 10 ACs / 8 Steps, create-shape only — BUILD-BLOCKED until Cray adjudicated Step 0.** A 4-agent Explore fan-out REFUTED two claims: the scaffolder is **brownfield-with-a-ratified-half** (ADR-0024 pins the generation contract; PLAN-0040 shipped narrative→procedure), and **PLAN-0088 had 12 defects, not 6** — its own **AC-3 ⊗ AC-12 trilemma** blocked it, not the pilot gate. Both since resolved (s168 / s169) | `f758509` (#859 merge, head_commit of record) / `74a49c2` / `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md` _[path fixed s170]_ |
 | 2026-07-22 | **s163 — PLAN-0090 filed (#855) → BUILT (#856) → COMPLETE 7/7 + archived (#857): `fleet_maintenance.scheduled_pm_service_round`, the AT-3 SCHEDULED calm path — 16m13s hands-on, steps BYTE-IDENTICAL to the manual path (PROVEN by a dumped-model test).** MS-6 BINDING: a LOWER BOUND, never summed with PLAN-0086's 27m39s or PLAN-0089's ~14 min. A DISTINCT `procedure_id`, never a trigger flip. + the L3 CLI fix: the unwired daemon CRASHED at startup (not "409s at resolve"); a set-equality tripwire now mirrors `main.py`. Gate on `a3ef955`: 2994/7. Full narrative: the Session-163 CF block above | `1ce3546` (#857 merge, head_commit of record) / `a3ef955` (#856 build) / `20f2585` (#855) / `2d34d80` (#854 reconcile + trim) / `docs/plans/done/0090-fleet-scheduled-calm-path.md` (COMPLETE, 7/7) |
-| 2026-07-22 | **s162 — PLAN-0089 filed (#851) → BUILT (#852) → COMPLETE 6/6 + archived (#853): `fleet_maintenance.pm_service_round`, the AT-3 calm path, as a measured "extend an existing vertical" experiment — ~14 min hands-on, ZERO engine diff PROVEN (`git diff df1982a..a8d679d -- services/engine/` EMPTY).** M-6 BINDING: a lower bound, never summed with PLAN-0086's 27m39s. + #850 `fix(api)` re-keyed `PROCEDURE_ARCHETYPES` on `(vertical, procedure_id)`. AT-3 GENERALIZED to "a measure vs a per-entity threshold"; N stays 4. Gate on `a8d679d`: 2978/8/5. Full narrative: the Session-162 CF block above | `1b942f5` (#853 merge, head_commit of record) / `a8d679d` (#852 build) / `df1982a` (#851) / `514dc1f` (#850) / `docs/plans/done/0089-fleet-calm-path-extend-an-existing-vertical.md` (COMPLETE, 6/6) |
 
 ## In-Flight Discussions
 
 - **PLAN-0091 — COMPLETE 10/10 and ARCHIVED (s168).** Full record: `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md`. **Two follow-ons it named, neither scheduled:** the **extend shapes** (calm-path + scheduled-variant scaffolding) are **greenfield, not an extension** — s169 re-confirmed the shipped emitters refuse an existing vertical *by construction* (`services/engine/cli.py` + the scaffolder's `wire.py`), and create-only is Cray-ratified SD-2, so this needs a fresh seam spec, not effort; and the census-narrative comment in `tests/api/test_procedures_endpoint.py` is the one counted site the disposer REPORTS rather than rewrites (`residual_counted_prose`) — a human call, left visible on purpose.
-- **PLAN-0088 — RATIFIED and BUILDING: Steps 1–3 shipped (#890/#891/#893); Steps 4–6 open.** SD-1…SD-8 are Cray-ratified (#889); **SD-8 = (a) ELIMINATE** struck `list_runs_page` + AC-12, so the substrate stays aggregate-only, `GET /runs` is untouched, and listing pagination moves to the future monotonic-`sequence`-column PLAN. Group A remains ungated by ADR-0032 D2 (proven by the AC-11 static guard, not prose); Group B stays pilot-gated (L2). Next unambiguous action: **Step 4 — reader A4, audit-readiness at `GET /insights/audit-readiness` (AC-7)** — composes `status_rollup` + `refusal_counts` + a NEW gate-count primitive carrying the approver half + the existing public chain verdict via the shipped `verify_chain` seam; read-only, split visibility preserved. Then Step 5 (AC-8/9/9b — **AC-9b is host-state: explicit Cray go required**), Step 6 (AC-10/AC-13). **Two open questions, flagged for Cray and deliberately NOT self-edited.** (1) **AC-2's wording is wrong about where the gate approver lives.** AC-2 says the factory seeds "gate resolutions with `step_principals` approver halves", but every write to `run.step_principals` (`orchestrator.py`, `persistence.py`) writes the **REQUESTER** half; the approver is recorded by `resolve_gated_step` in three other places — the step `reasoning_trace` (`gate_principal_recorded.principal_id`), `StepResult.audit["governed_decision"].principal_id`, and the `audit_log` `gate_decision` row. The factory seeds it the way the engine actually records it. Steps 1–3 unaffected; it matters for **AC-10's B2**, which must join those three sources. Classified `was an error` in the AC wording. (2) **AC-6's "dwell"** is an AC-wording imprecision, not a code defect — the S4-sanctioned SAME-ROW span measures **start → suspension** for a run whose last write was its suspension, not elapsed-since-suspension; stated at `services/db/run_analytics.py:177-186` + `services/api/models/insights.py:93-102` (detail: the s169 CF block).
+- **PLAN-0088 — RATIFIED and BUILDING: Steps 1–4 shipped (#890/#891/#893/#895); Steps 5–6 open.** SD-1…SD-8 are Cray-ratified (#889); **SD-8 = (a) ELIMINATE** struck `list_runs_page` + AC-12, so the substrate stays aggregate-only, `GET /runs` is untouched, and listing pagination moves to the future monotonic-`sequence`-column PLAN. Group A remains ungated by ADR-0032 D2 (proven by the AC-11 static guard, not prose); Group B stays pilot-gated (L2). **Step 4 SHIPPED (#895)** — reader A4 at `GET /insights/audit-readiness` (AC-7): `EXISTS`-shaped gate counts carrying the approver half, status + refusal counts, and the public chain verdict via the shipped `verify_chain` seam, read-only with split visibility structurally preserved. Remaining: **Step 5 (AC-8/9/9b — AC-9b is host-state: explicit Cray go required; and see (3) below, its scope is not yet settled)**, then Step 6 (AC-10/AC-13). **Four open questions, flagged for Cray and deliberately NOT self-edited.** (1) **AC-2's wording is wrong about where the gate approver lives.** AC-2 says the factory seeds "gate resolutions with `step_principals` approver halves", but every write to `run.step_principals` (`orchestrator.py`, `persistence.py`) writes the **REQUESTER** half; the approver is recorded by `resolve_gated_step` in three other places — the step `reasoning_trace` (`gate_principal_recorded.principal_id`), `StepResult.audit["governed_decision"].principal_id`, and the `audit_log` `gate_decision` row. The factory seeds it the way the engine actually records it, and Step 4's `approver_recorded` reads the TRACE and names that source explicitly so the confusion cannot return quietly. Steps 1–4 unaffected; it matters for **AC-10's B2**, which must join those three sources. Classified `was an error` in the AC wording. (2) **AC-6's "dwell"** is an AC-wording imprecision, not a code defect — the S4-sanctioned SAME-ROW span measures **start → suspension** for a run whose last write was its suspension, not elapsed-since-suspension; stated at `services/db/run_analytics.py:177-186` + `services/api/models/insights.py:93-102` (detail: the s169 CF block). (3) **NEW (s170) — S5 contradicts itself, so Step 5's scope is unsettled.** S5 says the A1 executor "adds no SQL of its own", but the numeric properties S5 itself declares — `duration_ms_total` (per **run**) and `started_week` — have **no shipped primitive**: `duration_stats` is per-**step** and `period_rollup` is per-**day**. Step 5 therefore needs 1–2 NEW substrate primitives, contrary to the "substrate is done, readers add no SQL" framing Steps 2–4 have been operating under. Cray's call: amend S5's wording · add a Step 1.5 · or narrow A1's declared properties. (4) **NEW (s170) — Step 6 needs the Step-1 corpus factory REOPENED.** B2 (per-tier approval outcome) cannot be written against what is seeded: the factory has **never seeded a reject**, hardcodes a single tier `"t1"`, and gives every run an identical `trigger_context` (so B4 has no trigger diversity to measure); refusals are keyed by kind only, not kind × procedure (B3). B2 also needs the hardest query in the PLAN — two-to-three correlated JSONB laterals on the same `StepResult` row, where the current hardest (`benefit_rollup`) joins one.
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
 - **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** Accepted 2026-06-13; guarded trial (parallel to ADR-012) — verdict **continue-with-adjustments**. Run 1 (energy, s93) + Run 2 (supply-chain, s94) both COMPLETE, S-checks all PASS against pre-committed oracles, no R-PS trigger fired; C-1..C-3 CONFIRMED → **no open partner-sim debt**. ADR-011 audit stays gated on a REAL partner conversation (R3: SYNTHETIC provenance INFORMS but never TRIGGERS it). Full record: `docs/adr/0020-*.md` + the gitignored run packages `docs/research/private/2026-07-02-partnersim-run{1,2}-*.md`. _(Full prior narrative — the ~8 schema-mismatch findings, both run details, cross-run synthesis — archived to `docs/status-archive/` at the s117 deep-rotate.)_
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").

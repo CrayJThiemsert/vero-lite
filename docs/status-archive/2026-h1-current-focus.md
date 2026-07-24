@@ -1306,3 +1306,110 @@ Rotated because **R2 requires it**, not as a headroom judgement: with the Sessio
 > Code cannot invoke Cowork — the validator-clean dispatch awaits Cray carrying it
 > across. It separates the Cray-ratified core (Fable = planning/research; Opus 4.8 +
 > Extra = execution) from four private-memory clauses still needing ratification.
+
+### Current Focus block removed — Session 166, 2026-07-23 (the two-arc docs-only session: dispatch-quality discipline + Lesson #0032, #866; and PLAN-0091 re-grounded with SD-5 surfaced, #865) [rotated 2026-07-24, session-170 reconcile — 4-session CF window]
+
+> **Session 166, 2026-07-23 (head_commit `6e351fc` → `9e19905`) — a two-arc,
+> two-PR, docs-only session. Arc 1 ported the reported GPT 5.6 Pro
+> conjecture-refutation episode into working discipline: the
+> `code-operational-policy` skill gained § "Dispatch quality — hold the goal,
+> arm the oracle" + Lesson #0032 filed (#866: `9200552` skill + `0a1cbe4`
+> lesson; gate PASS 3m14s). Arc 2 (parallel, recorded below) re-grounded
+> PLAN-0091 against the code before the build — #865 → `9e19905`: SD-5
+> surfaced OPEN, s165's published build order REFUTED.**
+> **(trigger + two-model analysis.)** Cray shared the reported episode — the
+> general Dinitz–Garg–Goemans conjecture (open 30+ years) refuted via four
+> short goal-holding prompts + one attached near-miss paper. Opus 4.8 first
+> pass: a 4-prompt decomposition, 5 gaps (G1–G5), 2 already-strong
+> confirmations (the goal-evaluator's refute mandate; `/goal amend`'s drift
+> protection). Mid-session switch to Fable 5 for an adversarial R2: 4 new
+> angles (copy the operator's CONTROL LOOP, not the prompts; the attachment
+> is a near-miss to interrogate, not a template to imitate; dispatches were
+> brake-rich / accelerator-poor; two work regimes) + 3 explicit disagreements
+> with the first pass.
+> **(shipped in #866.)** Skill: the 3 dispatch blocks — § Frontier with the
+> verbatim anti-anchoring sentence ("You are permitted to propose that an
+> item in this fact-pack should be ELIMINATED, not automated or preserved") ·
+> the oracle-scoped accelerator clause · the REJECT-if list of named
+> fake-done forms in the return contract — plus the M1–M4 follow-up
+> vocabulary (goal constant, process pressure rising), the pre-close
+> counterexample step (test the ORACLE, not the code), and description
+> triggers extended so the skill fires on dispatch authoring / partial-return
+> follow-up / AC close. Lesson #0032: ambition ∝ oracle strength; the two
+> work regimes (plan-first execution, already codified §11/Lesson #0026, vs
+> gate-at-checkpoints exploration, named here and mapped to the Fable-tier
+> model-economy policy); what does NOT transfer (survivorship bias ×2,
+> asymmetric error cost, the human judgment core).
+> **(deliberate scope, recorded IN the lesson so it is not re-litigated.)**
+> NO partial-ratchet detector and NO strategy-paragraph hook (both
+> judgment-shaped — M3/M4 stay conversational; a hook can only check a
+> paragraph EXISTS = ritual compliance); the REJECT-if list homed in dispatch
+> return contracts, NOT the G2-gated plan template; promotion to
+> template/convention is Rule-of-Three on recorded catches (every catch gets
+> logged).
+> **(process.)** One Stop-hook misfire declined via the override clause (the
+> 13th fire — see the autonomy-fork ledger below); a separate bare "Continue
+> generating" nudge also fired once — benign, not a dispatch, not counted.
+> PR #865 (the PLAN-0091 arc's) was still OPEN at this arc's close, untouched
+> by it — **now MERGED, in the parallel arc recorded below**. No suite ran in
+> THIS arc (docs-only), and its "2995/7 is inherited from s164, not fresh"
+> note is **now SUPERSEDED** — the parallel arc re-ran the suite FRESH at
+> `355acb2` (see below). MS-S1 untouched/COLD, zero calls.
+> **(parallel arc, same session — PLAN-0091 RE-GROUNDED before the build, not
+> built. #865 `c11135f` → re-sync `fc29b3c` → merge `9e19905`, `docs(plans)` —
+> docs-only, PLAN stays `Status: Draft`.)** The build did not start; the PLAN
+> was re-read against the code first, and it moved: one NEW decision surfaced
+> OPEN, two unnamed Step-4 hazards recorded, and s165's build-order claim
+> refuted. `gate` PASS twice, **both SHA-verified against the head** — 3m14s on
+> `c11135f`, 3m13s on the re-synced merge commit `fc29b3c` (`origin/main`
+> `6e20a65` merged IN, never force-pushed). The suite was re-verified **FRESH**
+> at `355acb2` *before* any edit — **2995 passed, 7 skipped in 177.87s**,
+> matching the s164 prior exactly → logged **`confirmed — prior intact`**
+> (CLAUDE.md §6); 7 skips = dev Postgres connected. **#865 is docs-only, so no
+> suite re-run was owed on the merge commit and none was done.** MS-S1 COLD,
+> zero calls all arc; loop-dispatcher DISABLED.
+> **(the load-bearing correction — s165's forward dependency is REFUTED.)**
+> s165 read "Step 1 carries a forward dependency on Step 4" and published the
+> order **4-shape → 1 → 2 → 3 → 4-emit → 5 → 6 → 7**; both are wrong and are
+> **corrected in the PLAN**. `derive_governance_todo` (`draft.py:293-322`)
+> derives AT-2 obligations from `(gate_kind, kind)` alone and **never reads
+> `REGISTRY`**, and the row-11 spine sequence is readable straight off the
+> committed donor `verticals/fleet_maintenance/procedures.yaml:117-282`.
+> Classified **`was an error`** — an over-strong inference, no code changed
+> since. **CONSEQUENCE (the reason this reconcile exists): Steps 1–3 are
+> executable NOW; Step 4 is the only one that waits on SD-5.**
+> **(SD-5 — NEW and OPEN, awaiting Cray.)** Step 4's design note promised the
+> S1 classify surface would not grow and the API abstain guard would stay
+> as-is. That is structurally false if the AT-2 template registers in the
+> shared `REGISTRY`: `generator/pipeline.py:225` builds the classify catalog
+> from `REGISTRY.values()`, `:253`/`:258` route by label through the same dict,
+> and the guard `_archetype_disagreement` (`:188-202`) rejects an AT-2 gate
+> only when the model actually emits one in `step_gates` (`:190`) — its own
+> contract at `:186-187` says an empty step list is not a disagreement, so it
+> is a second layer, **not a guarantee**. Options: (a) tool-local registry ·
+> (b) catalog-seam filter · (c) accept AT-2 into classify. **Recommendation
+> (a)** — the only one keeping SD-1 = (c) "no ADR" intact; **(c) would re-open
+> SD-1**. Recorded alongside it: **one unbudgeted RED test the PLAN never
+> named** — `tests/services/engine/procedures/test_archetype_templates.py:37`
+> asserts `set(REGISTRY) == set(AT1_FAMILY)` and goes RED the moment AT-2
+> registers centrally (under (a) it never fires); adjacent drift noted — that
+> file's `AT2_ONLY_KINDS` (`:32`) omits `GateKind.SEVERITY_TIER`, which
+> `pipeline.py:82-84` and `draft.py:283-285` both include.
+> **(smaller corrections + two build hazards, also into the PLAN.)** AC-10's
+> scope — the module docstring tally runs `test_procedures_endpoint.py:5-9`,
+> not `:5-6`. SD-4's line attribution — the stale token is "fleet_maintenance
+> ships two" at `:8` (`_EXPECTED` ships three at `:63-77`), proved by the
+> narrative summing to **12** against the executable `assert total == 13` at
+> `:151`; "six" at `:5` is correct. Step 6's cited tripwire ranges re-checked
+> **byte-exact**, with exactly one assertion (`:315`) going RED on a genuine
+> 5th signature → `confirmed — prior intact`. Two hazards added: the extracted
+> fingerprint helper must take an **explicit root** rather than inherit the
+> CWD-relative `Path("verticals").glob(...)` scan at `:269` (else AC-8 goes
+> vacuous), and four in-file call sites move with the helpers. Step 2 gains a
+> chdir note (`validate`/`generate` are CWD-relative, `cli.py:25-30` → reuse
+> the shipped `staged_repo` pattern, `test_cli_e2e.py:26-41`).
+> **(process — continues the s165 pattern.)** Every finding was re-verified by
+> the caller on disk before it entered the commit: a subagent over-claimed
+> twice in this arc — it asserted the abstain guard "will no longer abstain"
+> (too strong) and pinned a stale count to the wrong line — and both were
+> caught by reading the code. **Subagent output is a draft, not a result.**
