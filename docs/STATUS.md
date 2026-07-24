@@ -358,18 +358,16 @@ recent_commits: [8393af8, 0be589e, b1e12d1, 2fba64b, c209bd9, dd16267, 4ef7b5d, 
 
 ## Prior focus (archived)
 
-PLAN-003 Phase 1 (ontology engine + 5 emitters), PLAN-0005 Phase 2
-(OCT engine runtime layer), PLAN-0006 (LLM reasoning hook),
-PLAN-0007 Phase 1 (harness autonomy layer — deterministic floor),
-and **PLAN-0008 Phase 2 (harness autonomy layer — probabilistic /
-classifier-mediated engine on top of Phase 1)** are all **merged and
-moved to `docs/plans/done/`**. The Cowork-as-Tier-1 trial that ran as
-the test-bed across the earlier batches **concluded** — ratified
-permanently by **ADR-009** (Cowork = merged Tier 0 + Tier 1 workspace;
-commits stay Code-exclusive). PLAN-004 Phase A (handoff frontmatter
-schema + tooling) also landed; Phase B/C remain deferred (backlog).
-Full detail lives in `docs/plans/done/`, the Recent Decisions table
-below, and git history.
+PLAN-003, PLAN-0005, PLAN-0006, PLAN-0007 and PLAN-0008 are all merged
+and archived to `docs/plans/done/`; the Cowork-as-Tier-1 trial concluded
+and was ratified permanently by **ADR-009** (Cowork = merged Tier 0 +
+Tier 1 workspace; commits stay Code-exclusive). Full detail lives in
+`docs/plans/done/`, the Recent Decisions table below, and git history.
+_[Corrected s169, `was an error`: this paragraph claimed PLAN-004's
+"Phase B/C remain deferred", which both the Next Steps section and the
+Active TODO refute — **Phase A + B are COMPLETE (s35)** and only the
+optional Phase C polish is deferred. The stale sentence is dropped rather
+than restated: the Active TODO owns that status.]_
 
 ## Recent Decisions (last 10)
 
