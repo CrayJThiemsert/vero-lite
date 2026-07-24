@@ -115,7 +115,13 @@ class DurationStat(BaseModel):
 
 
 class BenefitBucket(BaseModel):
-    """Per-``currency`` x per-``procedure_id`` ฿ rollup (S2/S7; provisional per ADR-0030)."""
+    """฿ rollup for one ``currency`` x ``procedure_id`` x facet ``kind`` x ``period``
+    bucket (the AC-4 grouping; S2/S7; provisional per ADR-0030).
+
+    There is deliberately **no** cross-currency total on this model, and no report
+    model may add one: a sum across currencies is unrepresentable by construction
+    (S7 — the reader-side analog of ``doa_tier``'s fail-closed currency rule).
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -123,6 +129,12 @@ class BenefitBucket(BaseModel):
         description="ISO currency of the facet; None if the facet omits it"
     )
     procedure_id: str = Field(description="the procedure whose runs carry the facet")
+    facet_kind: str | None = Field(
+        description="per-vertical semantic label of the impact "
+        "(avoided_outage / expedite_tradeoff / …); None if the facet omits it"
+    )
+    period: str = Field(description="ISO date of the day bucket (date_trunc('day', started_at))")
+    run_count: int = Field(description="distinct runs contributing a facet to this bucket")
     facet_count: int = Field(description="economic_impact facets seen in this bucket")
     figures_missing: int = Field(
         description="facets whose net_benefit_thb was absent or non-numeric (skipped from the sums)"
@@ -249,12 +261,15 @@ async def duration_stats(session: AsyncSession) -> list[DurationStat]:
 
 
 async def benefit_rollup(session: AsyncSession) -> list[BenefitBucket]:
-    """Per-currency x per-procedure ฿ rollup, extract-on-read + never-raise (S2/S7).
+    """฿ rollup grouped by currency x procedure x facet kind x day (AC-4 grouping).
 
     Facets are ``economic_impact`` entries in ``reasoning_trace``; the figure is
     ``detail->>'net_benefit_thb'`` (a JSON string). A figure absent or non-numeric
-    is skipped from the sums and counted in ``figures_missing``. Sums are
-    per-currency only — no cross-currency total is produced (S7).
+    is skipped from the sums and counted in ``figures_missing`` — never an error
+    (S2 never-raise). Sums are per-currency only; no cross-currency total is
+    produced or representable (S7). The period is a ``date_trunc`` **day** bucket,
+    and the result is ordered in Python by the bucket labels — never by the raw
+    wall clock (S4 / AC-3).
     """
     elem = _trace_elements()
     net_text = elem.c.value["detail"]["net_benefit_thb"].astext
@@ -265,10 +280,15 @@ async def benefit_rollup(session: AsyncSession) -> list[BenefitBucket]:
         sa.Numeric,
     )
     currency = elem.c.value["detail"]["currency"].astext
+    facet_kind = elem.c.value["detail"]["kind"].astext
+    day = sa.func.date_trunc("day", PipelineRun.started_at)
     stmt = (
         sa.select(
             currency.label("currency"),
             PipelineRun.procedure_id,
+            facet_kind.label("facet_kind"),
+            day.label("period"),
+            sa.func.count(sa.distinct(PipelineRun.run_id)),
             sa.func.count(),
             sa.func.count(net_numeric),
             sa.func.coalesce(sa.func.sum(net_numeric), 0),
@@ -277,24 +297,60 @@ async def benefit_rollup(session: AsyncSession) -> list[BenefitBucket]:
         .select_from(StepResult)
         .join(PipelineRun, PipelineRun.run_id == StepResult.run_id)
         .join(elem, sa.true())
-        .where(StepResult.reasoning_trace.isnot(None))
         .where(elem.c.value["kind"].astext == _ECONOMIC_IMPACT)
-        .group_by(currency, PipelineRun.procedure_id)
-        .order_by(PipelineRun.procedure_id)
+        .group_by(currency, PipelineRun.procedure_id, facet_kind, day)
     )
     rows = (await session.execute(stmt)).all()
     buckets = [
         BenefitBucket(
             currency=cur,
             procedure_id=procedure_id,
+            facet_kind=kind,
+            period=period.date().isoformat(),
+            run_count=run_count,
             facet_count=facet_count,
             figures_missing=facet_count - valued,
             net_benefit_thb_sum=Decimal(total),
             net_benefit_thb_avg=Decimal(avg),
         )
-        for cur, procedure_id, facet_count, valued, total, avg in rows
+        for cur, procedure_id, kind, period, run_count, facet_count, valued, total, avg in rows
     ]
-    return sorted(buckets, key=lambda b: (b.procedure_id, b.currency or ""))
+    return sorted(
+        buckets,
+        key=lambda b: (b.procedure_id, b.currency or "", b.facet_kind or "", b.period),
+    )
+
+
+async def benefit_assumptions(session: AsyncSession) -> list[str]:
+    """The DISTINCT union of every disclosed modelling assumption across ฿ facets.
+
+    ADR-0030 D3 requires each ฿ figure to disclose its assumptions; a rollup that
+    aggregates figures must therefore disclose the **union** of theirs, or it
+    would present a combined number with less disclosure than its parts. Returns
+    O(distinct assumptions) rows, sorted for a deterministic report.
+
+    Never-raise: a facet whose ``assumptions`` is absent or not an array simply
+    contributes nothing (the same ``jsonb_typeof`` guard the trace lateral uses).
+    """
+    elem = _trace_elements()
+    raw = elem.c.value["detail"]["assumptions"]
+    array_only = sa.case(
+        (sa.func.jsonb_typeof(raw) == "array", raw),
+        else_=sa.cast(sa.literal("[]"), JSONB),
+    )
+    assumption = sa.func.jsonb_array_elements_text(array_only).table_valued("value")
+    # GROUP BY rather than SELECT DISTINCT: same result set, and it keeps this
+    # primitive under the same O(groups) statement-capture proof as the rollups.
+    stmt = (
+        sa.select(assumption.c.value)
+        .select_from(StepResult)
+        .join(elem, sa.true())
+        .join(assumption, sa.true())
+        .where(elem.c.value["kind"].astext == _ECONOMIC_IMPACT)
+        .group_by(assumption.c.value)
+    )
+    rows = (await session.execute(stmt)).all()
+    return sorted(str(value) for (value,) in rows)
 
 
 async def refusal_counts(session: AsyncSession) -> list[RefusalCount]:

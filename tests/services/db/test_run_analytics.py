@@ -101,11 +101,13 @@ async def test_duration_stats_exact(seeded: _Seeded) -> None:
 
 
 async def test_benefit_rollup_exact_and_per_currency(seeded: _Seeded) -> None:
+    """AC-4 grouping: currency x procedure x facet kind x day, exact values."""
     rows = await ra.benefit_rollup(seeded.session)
-    got = {(r.currency, r.procedure_id): r for r in rows}
+    got = {(r.currency, r.procedure_id, r.facet_kind, r.period): r for r in rows}
     assert set(got) == set(seeded.corpus.benefit)
     for key, expected in seeded.corpus.benefit.items():
         bucket = got[key]
+        assert bucket.run_count == len(expected["run_ids"])
         assert bucket.facet_count == expected["facet_count"]
         assert bucket.figures_missing == expected["facet_count"] - expected["valued"]
         assert bucket.net_benefit_thb_sum == Decimal(expected["sum"])
@@ -114,6 +116,12 @@ async def test_benefit_rollup_exact_and_per_currency(seeded: _Seeded) -> None:
                 float(expected["sum"]) / expected["valued"]
             )
         assert bucket.provisional is True
+
+
+async def test_benefit_assumptions_are_the_distinct_union(seeded: _Seeded) -> None:
+    """ADR-0030 D3: a rollup discloses the UNION of its facets' assumptions."""
+    assert await ra.benefit_assumptions(seeded.session) == seeded.corpus.assumptions
+    assert seeded.corpus.assumptions, "the corpus must actually carry assumptions"
 
 
 async def test_currency_buckets_never_combine(seeded: _Seeded) -> None:
@@ -145,6 +153,7 @@ async def test_aggregation_is_pushed_to_sql_not_python(seeded: _Seeded) -> None:
         ra.period_rollup,
         ra.duration_stats,
         ra.benefit_rollup,
+        ra.benefit_assumptions,
         ra.refusal_counts,
         ra.gate_counts,
     )

@@ -80,12 +80,15 @@ class Corpus:
     period_counts: dict[str, int]
     # (procedure_id, step_id) -> list of duration_ms samples
     durations: dict[tuple[str, str], list[int]]
-    # (currency | None, procedure_id) -> {facet_count, valued, sum: Decimal}
-    benefit: dict[tuple[str | None, str], dict[str, Any]]
+    # (currency | None, procedure_id, facet_kind | None, ISO day)
+    #   -> {run_ids: set[str], facet_count, valued, sum: Decimal}  (the AC-4 grouping)
+    benefit: dict[tuple[str | None, str, str | None, str], dict[str, Any]]
     # refusal_kind -> count
     refusals: dict[str, int]
     # procedure_id -> resolved-gate count
     gates: dict[str, int]
+    # the DISTINCT union of every disclosed ฿ assumption (ADR-0030 D3)
+    assumptions: list[str]
     # band verdict label -> count (across artifacts) — carried for AC-10 later
     verdicts: dict[str, int] = field(default_factory=dict)
 
@@ -242,15 +245,43 @@ def _to_rows(specs: list[_RunSpec]) -> list[PipelineRun | StepResult]:
     return rows
 
 
+def _tally_benefit(
+    entry: dict[str, Any],
+    spec: _RunSpec,
+    benefit: dict[tuple[str | None, str, str | None, str], dict[str, Any]],
+    assumptions: set[str],
+) -> None:
+    """Fold one ``economic_impact`` trace entry into the AC-4 grouping tallies."""
+    detail = entry.get("detail", {})
+    key = (
+        detail.get("currency"),
+        spec.procedure_id,
+        detail.get("kind"),
+        spec.started_at.date().isoformat(),
+    )
+    bucket = benefit.setdefault(
+        key, {"run_ids": set(), "facet_count": 0, "valued": 0, "sum": Decimal(0)}
+    )
+    bucket["run_ids"].add(spec.run_id)
+    bucket["facet_count"] += 1
+    net = detail.get("net_benefit_thb")
+    if isinstance(net, str) and _is_numeric(net):
+        bucket["valued"] += 1
+        bucket["sum"] += Decimal(net)
+    for assumption in detail.get("assumptions") or []:
+        assumptions.add(str(assumption))
+
+
 def _expected(specs: list[_RunSpec]) -> Corpus:
     status_counts: dict[str, int] = defaultdict(int)
     procedure_counts: dict[str, int] = defaultdict(int)
     period_counts: dict[str, int] = defaultdict(int)
     durations: dict[tuple[str, str], list[int]] = defaultdict(list)
-    benefit: dict[tuple[str | None, str], dict[str, Any]] = {}
+    benefit: dict[tuple[str | None, str, str | None, str], dict[str, Any]] = {}
     refusals: dict[str, int] = defaultdict(int)
     gates: dict[str, int] = defaultdict(int)
     verdicts: dict[str, int] = defaultdict(int)
+    assumptions: set[str] = set()
     step_row_count = 0
 
     for spec in specs:
@@ -265,17 +296,7 @@ def _expected(specs: list[_RunSpec]) -> Corpus:
             for entry in step.reasoning_trace or []:
                 kind = entry.get("kind")
                 if kind == "economic_impact":
-                    detail = entry.get("detail", {})
-                    currency = detail.get("currency")
-                    key = (currency, spec.procedure_id)
-                    bucket = benefit.setdefault(
-                        key, {"facet_count": 0, "valued": 0, "sum": Decimal(0)}
-                    )
-                    bucket["facet_count"] += 1
-                    net = detail.get("net_benefit_thb")
-                    if isinstance(net, str) and _is_numeric(net):
-                        bucket["valued"] += 1
-                        bucket["sum"] += Decimal(net)
+                    _tally_benefit(entry, spec, benefit, assumptions)
                 elif kind == "read_refused":
                     refusals[str(entry.get("refusal_kind"))] += 1
                 elif kind == "verdict_computed":
@@ -293,6 +314,7 @@ def _expected(specs: list[_RunSpec]) -> Corpus:
         benefit=benefit,
         refusals=dict(refusals),
         gates=dict(gates),
+        assumptions=sorted(assumptions),
         verdicts=dict(verdicts),
     )
 
