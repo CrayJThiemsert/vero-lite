@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-24T17:24:15+07:00
+last_updated: 2026-07-24T18:05:00+07:00
 session: 170
-current_batch: "s170 CLOSED — PLAN-0088 Step 4 BUILT (#895): reader A4 `GET /insights/audit-readiness` (AC-7); + the owed s169 reconcile (#894), which finally NET-SHRANK STATUS (−596 B). 0 open."
+current_batch: "s170 CLOSED — PLAN-0088 Step 4 BUILT (#895, AC-7); the owed s169 reconcile (#894, first NET SHRINK −596 B); then SD-9 surfaced (#897) + RULED (a2) by Cray (#898) — Step 4.5 created, Step 5 un-gated. 0 open."
 current_actor: code
-blocked_on: "Nothing. main=7150c07; suite FRESH 3159/7 re-run on the merge commit; ruff + mypy --strict (109 files) clean; MS-S1 COLD (never contacted); 0 open PRs."
-next_action: "PLAN-0088 Step 5 (AC-8/9/9b) — but SCOPE needs a Cray ruling FIRST: S5 says A1 adds no SQL, yet its declared `duration_ms_total` (per-run) + `started_week` have NO shipped primitive (see In-Flight)."
-head_commit: 7150c07
-recent_commits: [7150c07, 501b169, a0d2939, 9e26195, 0d11da4, 8393af8, 0be589e, b1e12d1, 2fba64b, c209bd9]
+blocked_on: "Nothing. main=46f0ba1; suite FRESH 3159/7 re-run on 7150c07 (the last code-changing commit; #897/#898 are docs-only); ruff + mypy --strict (109 files) clean; MS-S1 COLD; 0 open PRs."
+next_action: "PLAN-0088 Step 4.5 — the SD-9 (a2) substrate extension in `run_analytics.py`: a filterable run rollup (procedure x status), per-run `duration_ms_total` via grouped output only, a week bucket. Then Step 5 (AC-9b is host-state)."
+head_commit: 46f0ba1
+recent_commits: [46f0ba1, a46bec4, 776afee, 27f5af0, 7150c07, 501b169, a0d2939, 9e26195, 0d11da4, 8393af8]
 ---
 
 # vero-lite — Project Status
@@ -92,6 +92,23 @@ recent_commits: [7150c07, 501b169, a0d2939, 9e26195, 0d11da4, 8393af8, 0be589e, 
 > escape**, applied via a guarded patch script that aborts unless both anchors
 > match exactly. The later corpus fix needed no escape — the first commit had
 > reset the counter.
+> **(after the close — SD-9 surfaced (#897), RULED (a2) (#898).)** Step 5 could
+> not be built as specified: S5's declared A1 properties are unservable by the
+> shipped substrate. Two findings resize it beyond a wording bug — **no primitive
+> accepts a parameter at all** (an NL reader that cannot filter is the fixed
+> reports with an LLM in front) and **AC-10's B1–B4 are equally unserved**, so
+> Step 6 hits the same wall: the "substrate is complete, readers add no SQL"
+> premise Steps 2–4 ran on **was never true**, just not load-bearing until now.
+> S5 is ratified as SD-5, so this was a decision, not an edit — **S5's body
+> stayed byte-unchanged** while `plan-drafter` surfaced SD-9 with costed options
+> (and **refuted the dispatch's own fact-pack**: Code wrongly claimed Steps 1–3
+> were already annotated BUILT). Cray ruled **(a2)** — extend the substrate in
+> `run_analytics.py` only; eliminate `agent_id` + `trigger` from v1 as
+> unmeasurable (constant in the AC-2 factory, and `trigger` undefined). **Step
+> 4.5** created; Step 5 un-gated. **Precedent, so Step 6 does not re-litigate it:
+> the invariant is S1 + AC-11 — SQL lives in `run_analytics.py`, readers and the
+> compiler own none — not a frozen primitive inventory.** Full reasoning is
+> §SD-9 in the PLAN; do not restate it here.
 
 > **Session 169, 2026-07-24 (head_commit `c2b92c5` → `9e26195`) — the session that
 > made PLAN-0088 ratified and then REAL. The re-draft SURFACED a four-item
@@ -366,7 +383,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-07-24 | **s170 — PLAN-0088 Step 4 BUILT (#895): reader A4, audit-readiness at `GET /insights/audit-readiness` (AC-7) — status/gate/refusal counts + the public chain verdict via the shipped `verify_chain` seam; no SQL of its own (L3), zero LLM, split visibility STRUCTURAL (`extra="forbid"`, no field could carry a break string). Headline: a MUTATION PROBE caught an oracle that could not fail — deleting the approver `FILTER` reddened ONLY the SQL-shape assertion, both exact-value oracles stayed GREEN, because the CORPUS (every resolved gate carried an approver), not the assertions, was the defect. Corpus gap `i % 15 == 6` fixed it → the same mutation now reddens THREE oracles. Suite 3150 → **3159**. Full narrative: the Session-170 CF block above | `7150c07` (#895 merge, head_commit of record) / `a0d2939` + `501b169` (build) / `09b90bc` + `06b54cb` (#894, the owed s169 reconcile, −596 B net) / `services/db/run_analytics.py` + `services/api/models/insights.py` + `services/api/routers/insights.py` + `tests/support/run_corpus_factory.py` |
+| 2026-07-24 | **s170 — PLAN-0088 Step 4 BUILT (#895): reader A4, audit-readiness at `GET /insights/audit-readiness` (AC-7) — status/gate/refusal counts + the public chain verdict via the shipped `verify_chain` seam; no SQL of its own (L3), zero LLM, split visibility STRUCTURAL (`extra="forbid"`, no field could carry a break string). Headline: a MUTATION PROBE caught an oracle that could not fail — deleting the approver `FILTER` reddened ONLY the SQL-shape assertion, both exact-value oracles stayed GREEN, because the CORPUS (every resolved gate carried an approver), not the assertions, was the defect. Corpus gap `i % 15 == 6` fixed it → the same mutation now reddens THREE oracles. Suite 3150 → **3159**. Then, after the close, **SD-9 surfaced (#897) and RULED (a2) by Cray (#898)**: S5's declared A1 properties are unservable by the shipped substrate, **no primitive accepts a parameter at all**, and AC-10's B1–B4 are equally unserved — so the "substrate is complete" premise Steps 2–4 ran on was never true. Ruling extends the substrate in `run_analytics.py` **only** and eliminates `agent_id` + `trigger` from v1; **Step 4.5** created, Step 5 un-gated. Precedent: the invariant is **S1 + AC-11**, not a frozen primitive inventory. Full narrative: the Session-170 CF block above | `46f0ba1` (#898 merge, head_commit of record) / `a46bec4` (the ruling) / `776afee` + `27f5af0` (#897, SD-9 surfaced) / `7150c07` (#895 merge) / `a0d2939` + `501b169` (Step-4 build) / `09b90bc` + `06b54cb` (#894, the owed s169 reconcile, −596 B net) / `docs/plans/0088-cross-run-read-substrate-and-run-insight-readers.md` §SD-9 + `services/db/run_analytics.py` |
 | 2026-07-24 | **s169 — PLAN-0088's design layer ADJUDICATED: the re-draft (#888) surfaced a four-item JOINTLY-UNSATISFIABLE knot; Cray ratified SD-1…SD-8 in ONE typed pass (#889) — SD-8 = (a) ELIMINATE.** `list_runs_page` + AC-12 STRUCK: the substrate ships aggregate primitives only, `GET /runs` untouched, listing pagination sequenced into the future monotonic-`sequence`-column PLAN. First real-case reading of that deferral's un-defer trigger — and it **DECLINES to fire it** (the aggregate readers are order-insensitive). AC-12 kept as a **tombstone** so AC-1…AC-13 numbering stays stable (live count 13). Second correction, `was an error`: AC-12 undercounted `/runs` consumers — `view-map.js` fetches `/runs` bare and TRUNCATES via a `CAP = 5` slice under a newest-first assumption, so an order change HIDES the newest runs. Step 0 DISCHARGED → build-ready (Status stays `Draft`). Full narrative: the Session-169 CF block above | `dd16267` (#889 merge) / `4ef7b5d` (the rulings) / `8d1be34` (#888 merge) / `3a16238` (the re-draft) / `docs/plans/0088-cross-run-read-substrate-and-run-insight-readers.md` §Surfaced decisions |
 | 2026-07-24 | **s169 — PLAN-0088 Steps 1–3 BUILT (#890, #891, #893): the cross-run read substrate (AC-1/2/3/11) + reader A2, the ฿ ROI rollup at `GET /insights/impact` (AC-4/5) + reader A3, the flow report at `GET /insights/flow` (AC-6).** Seven read-only async primitives (caller-owned `AsyncSession`, mirroring `audit_log.py`); a seeded 250-run × 6-step corpus with a plain-Python oracle independent of the SQL under test; two AST guards with guard-fires-on-what-it-forbids tests. Step 2 **EXTENDED** `benefit_rollup` (L3: readers write no SQL); `ImpactReport` has **no cross-currency total field and must never gain one** (S7). Step 3 added `waiting_dwell_stats`: SAME-ROW `waiting_human` dwell clamped via `GREATEST(span, 0)` + a surfaced `negative_clock_spans` counter, zero LLM — plus the AC-6 "dwell" caveat (start → suspension; flagged for Cray, see In-Flight). Suite 3109 → **3150** (+17/+17/+7), re-run on the merge commit; non-vacuity probed (`/tmp` restore + `cmp -s`); MS-S1 never contacted. Full narrative: the Session-169 CF block above | `9e26195` (#893 merge, head_commit of record) / `0d11da4` (#893 build) / `8393af8` (#891 merge) / `0be589e` (#891 build) / `b1e12d1` (#890 merge) / `c209bd9` + `2fba64b` (#890 builds) / `services/db/run_analytics.py` + `services/api/models/insights.py` + `services/api/routers/insights.py` + `tests/support/run_corpus_factory.py` |
 | 2026-07-23 | **s168 — PLAN-0091 COMPLETE 10/10 + ARCHIVED (#883–#885): closing it exposed that the emitted package could not LOAD and `vero-lite scaffold` wrote NOTHING — both invisible to a green suite (a suite addressed at the library cannot see a dead entry point). Suite 3083 → 3109; honesty correction: s167's "8/10" was 7/10.** Full narrative: the archived PLAN | `c2b92c5` (#886 merge, head_commit of record) / `5865d19` (#885 AC-10) / `4994801` (#884 CLI wiring) / `844eb6d` (#883 AC-7 a/b/c) / `c47232f` (#882) / `b8f011d` (#881) / `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md` (COMPLETE, 10/10) + `services/engine/scaffolder/**` + `services/engine/cli.py` |
