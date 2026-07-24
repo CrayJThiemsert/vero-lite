@@ -179,6 +179,73 @@ async def test_approver_half_is_read_from_the_trace_not_step_principals(
     assert "exists" in sql, "the approver test must stay an EXISTS, never a row-multiplying join"
 
 
+async def test_run_status_rollup_exact(seeded: _Seeded) -> None:
+    """AC-1 extended (Step 4.5): the conjunctive grouping, against the corpus oracle.
+
+    This is the question neither shipped rollup could answer — ``procedure_rollup``
+    and ``status_rollup`` each collapse the dimension the other needs.
+    """
+    rows = await ra.run_status_rollup(seeded.session)
+    got = {(r.procedure_id, r.status): r.run_count for r in rows}
+    assert got == seeded.corpus.run_status_counts
+    # Non-vacuity: the grouping must actually be finer than either 1-D rollup,
+    # or this primitive adds nothing over what Step 1 already shipped.
+    assert len(got) > len(seeded.corpus.procedure_counts)
+    assert len(got) > len(seeded.corpus.status_counts)
+    assert sum(got.values()) == seeded.corpus.run_count
+
+
+async def test_week_rollup_exact(seeded: _Seeded) -> None:
+    """AC-1 extended (Step 4.5): ISO-week buckets, keyed on the week's Monday.
+
+    The oracle computes Mondays in plain Python (`d - timedelta(days=d.weekday())`);
+    if the SQL used a different week convention the two would disagree here rather
+    than silently agreeing on a shared mistake.
+    """
+    rows = await ra.week_rollup(seeded.session)
+    got = {r.period: r.run_count for r in rows}
+    assert got == seeded.corpus.week_counts
+    assert sum(got.values()) == seeded.corpus.run_count
+    # Coarser than the day rollup, and sorted by label (AC-3 — never by raw clock).
+    assert len(got) < len(seeded.corpus.period_counts)
+    assert [r.period for r in rows] == sorted(got)
+
+
+async def test_run_duration_totals_exact(seeded: _Seeded) -> None:
+    """AC-1 extended (Step 4.5): PER-RUN duration totals, aggregated per group.
+
+    ``duration_stats`` is per-step across runs, so it cannot produce these numbers;
+    the oracle sums each run's own steps in Python and aggregates the same way.
+    """
+    rows = await ra.run_duration_totals(seeded.session)
+    got = {(r.procedure_id, r.status): r for r in rows}
+    assert set(got) == set(seeded.corpus.run_duration_totals)
+    for key, totals in seeded.corpus.run_duration_totals.items():
+        bucket = got[key]
+        assert bucket.run_count == len(totals)
+        assert bucket.max_total_ms == max(totals)
+        assert bucket.avg_total_ms == pytest.approx(statistics.mean(totals))
+
+
+async def test_run_duration_totals_never_returns_per_run_rows(seeded: _Seeded) -> None:
+    """SD-8 (a) stays intact: the per-run SUM is an inner subquery, not a listing.
+
+    Returning the inner rows directly would be O(runs) — exactly the listing shape
+    SD-8 eliminated — and would still produce plausible-looking numbers for a
+    caller that aggregated them afterwards in Python. The row count is what
+    distinguishes the two, so it is asserted here rather than inferred.
+    """
+    seeded.statements.clear()
+    rows = await ra.run_duration_totals(seeded.session)
+    assert len(rows) < 50, (
+        f"returned {len(rows)} rows over a {seeded.corpus.run_count}-run corpus — "
+        "the per-run subquery leaked into the result set"
+    )
+    sql = " ".join(seeded.statements).lower()
+    assert "group by" in sql
+    assert "limit" not in sql and "offset" not in sql, "no listing shape (SD-8 (a))"
+
+
 async def test_aggregation_is_pushed_to_sql_not_python(seeded: _Seeded) -> None:
     """The statement-capture proof: every primitive aggregates in SQL (GROUP BY),
     returning O(groups) rows — never O(runs). An in-Python `SELECT *`-then-count
@@ -192,6 +259,12 @@ async def test_aggregation_is_pushed_to_sql_not_python(seeded: _Seeded) -> None:
         ra.benefit_assumptions,
         ra.refusal_counts,
         ra.gate_counts,
+        # Step 4.5 (SD-9 (a2)) — the extension must hold the same property. This
+        # is the assertion that would catch run_duration_totals returning its
+        # per-run inner rows instead of aggregating them.
+        ra.run_status_rollup,
+        ra.week_rollup,
+        ra.run_duration_totals,
     )
     for primitive in primitives:
         seeded.statements.clear()

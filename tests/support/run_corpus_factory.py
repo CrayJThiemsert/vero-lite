@@ -99,6 +99,13 @@ class Corpus:
     dwell: dict[str, dict[str, Any]]
     # band verdict label -> count (across artifacts) — carried for AC-10 later
     verdicts: dict[str, int] = field(default_factory=dict)
+    # (procedure_id, status) -> run count — the CONJUNCTIVE grouping neither
+    #   procedure_rollup nor status_rollup can express (Step 4.5 / SD-9 (a2))
+    run_status_counts: dict[tuple[str, str], int] = field(default_factory=dict)
+    # (procedure_id, status) -> list of PER-RUN summed duration_ms
+    run_duration_totals: dict[tuple[str, str], list[int]] = field(default_factory=dict)
+    # ISO date of the week's MONDAY -> run count (date_trunc('week') semantics)
+    week_counts: dict[str, int] = field(default_factory=dict)
 
 
 def _economic_detail(rng: random.Random, currency: str) -> dict[str, Any]:
@@ -350,6 +357,32 @@ def _tally_gate(
         gate_approvers[spec.procedure_id] += 1
 
 
+def _tally_run(
+    spec: _RunSpec,
+    run_status_counts: dict[tuple[str, str], int],
+    run_duration_totals: dict[tuple[str, str], list[int]],
+    week_counts: dict[str, int],
+) -> None:
+    """Fold one run into the Step-4.5 tallies (SD-9 (a2)).
+
+    Extracted rather than inlined for the reason ``_tally_gate`` was: extra
+    branches in ``_expected``'s loop tip it past ruff's ``C901`` ceiling of 10.
+
+    The week label must match Postgres ``date_trunc('week', …)``, which returns
+    the **Monday** of the week — ``d - timedelta(days=d.weekday())``. Getting
+    this wrong would make the oracle agree with a *different* bucketing than the
+    SQL under test, which is the failure mode an independent oracle exists to
+    prevent.
+    """
+    key = (spec.procedure_id, spec.status)
+    run_status_counts[key] = run_status_counts.get(key, 0) + 1
+    total = sum(step.duration_ms for step in spec.steps)
+    run_duration_totals.setdefault(key, []).append(total)
+    day = spec.started_at.date()
+    monday = day - timedelta(days=day.weekday())
+    week_counts[monday.isoformat()] = week_counts.get(monday.isoformat(), 0) + 1
+
+
 def _expected(specs: list[_RunSpec]) -> Corpus:
     status_counts: dict[str, int] = defaultdict(int)
     procedure_counts: dict[str, int] = defaultdict(int)
@@ -364,10 +397,15 @@ def _expected(specs: list[_RunSpec]) -> Corpus:
     dwell: dict[str, dict[str, Any]] = {}
     step_row_count = 0
 
+    run_status_counts: dict[tuple[str, str], int] = {}
+    run_duration_totals: dict[tuple[str, str], list[int]] = {}
+    week_counts: dict[str, int] = {}
+
     for spec in specs:
         status_counts[spec.status] += 1
         procedure_counts[spec.procedure_id] += 1
         period_counts[spec.started_at.date().isoformat()] += 1
+        _tally_run(spec, run_status_counts, run_duration_totals, week_counts)
         if spec.status == PipelineRunStatus.WAITING_HUMAN.value:
             _tally_dwell(spec, dwell)
         for step in spec.steps:
@@ -399,6 +437,9 @@ def _expected(specs: list[_RunSpec]) -> Corpus:
         assumptions=sorted(assumptions),
         dwell=dwell,
         verdicts=dict(verdicts),
+        run_status_counts=run_status_counts,
+        run_duration_totals=run_duration_totals,
+        week_counts=week_counts,
     )
 
 
