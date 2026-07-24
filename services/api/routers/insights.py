@@ -32,7 +32,13 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.config import settings
-from services.api.models.insights import ImpactBucket, ImpactReport
+from services.api.models.insights import (
+    DwellBucket,
+    FlowReport,
+    ImpactBucket,
+    ImpactReport,
+    StepLatency,
+)
 from services.db import run_analytics
 from services.db.session import get_session
 
@@ -119,4 +125,51 @@ async def impact_rollup(
         figures_missing_total=figures_missing_total,
         assumptions=assumptions,
         narrative=render_impact_narrative(vertical, buckets, assumptions, figures_missing_total),
+    )
+
+
+@router.get("/flow", response_model=FlowReport)
+async def flow_report(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> FlowReport:
+    """Report where governed runs spend time: per-step latency and suspension spans.
+
+    Zero LLM, read-only. Step latency comes from the per-step ``duration_ms``
+    telemetry, never from subtracting timestamps across rows. Suspension spans are
+    same-row ``updated_at - started_at``, clamped at >= 0, with the backward-clock
+    rows counted in ``negative_clock_spans`` rather than averaged in — this box's
+    wall clock is known to step backwards, and the report says so instead of
+    quietly absorbing it.
+    """
+    latency = await run_analytics.duration_stats(session)
+    dwell = await run_analytics.waiting_dwell_stats(session)
+    steps = [
+        StepLatency(
+            procedure_id=row.procedure_id,
+            step_id=row.step_id,
+            sample_count=row.sample_count,
+            avg_ms=row.avg_ms,
+            max_ms=row.max_ms,
+        )
+        for row in latency
+    ]
+    # Slowest-first: a bottleneck report that makes the reader sort it themselves
+    # has not reported the bottleneck. Ordering is applied here, in Python, on a
+    # latency value — never as SQL ORDER BY on a wall-clock column (S4 / AC-3).
+    steps.sort(key=lambda s: (-s.max_ms, s.procedure_id, s.step_id))
+    dwell_buckets = [
+        DwellBucket(
+            procedure_id=row.procedure_id,
+            run_count=row.run_count,
+            avg_span_seconds=row.avg_span_seconds,
+            max_span_seconds=row.max_span_seconds,
+            negative_clock_spans=row.negative_clock_spans,
+        )
+        for row in dwell
+    ]
+    return FlowReport(
+        vertical=settings.oct_vertical,
+        steps=steps,
+        dwell=dwell_buckets,
+        negative_clock_spans=sum(b.negative_clock_spans for b in dwell_buckets),
     )

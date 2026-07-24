@@ -76,3 +76,57 @@ class ImpactReport(BaseModel):
         description="a deterministic, template-rendered summary of this report — "
         "no LLM is involved and every figure it cites is a value on this model"
     )
+
+
+class StepLatency(BaseModel):
+    """Per-``procedure_id`` x per-``step_id`` step latency, from ``duration_ms`` telemetry."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    procedure_id: str = Field(description="the procedure the step belongs to")
+    step_id: str = Field(description="the step within the procedure")
+    sample_count: int = Field(description="step results carrying a duration_ms reading")
+    avg_ms: float = Field(description="mean step latency in milliseconds")
+    max_ms: int = Field(description="slowest observed step latency in milliseconds")
+
+
+class DwellBucket(BaseModel):
+    """Wall span of one procedure's runs currently suspended at ``waiting_human``.
+
+    **The span is `updated_at - started_at` read off a SINGLE row** — the only
+    wall-clock arithmetic this platform trusts, because subtracting two columns of
+    the same row cannot be corrupted by the clock stepping backwards between rows.
+    For a run whose last write was its suspension, that measures **start ->
+    suspension**, NOT elapsed-since-suspension; the latter would need `now()`,
+    which is neither reproducible in a test nor trustworthy on this host.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    procedure_id: str = Field(description="the procedure whose runs are suspended")
+    run_count: int = Field(description="runs of this procedure at waiting_human")
+    avg_span_seconds: float = Field(description="mean same-row span in seconds, clamped at >= 0")
+    max_span_seconds: float = Field(description="longest same-row span in seconds, clamped at >= 0")
+    negative_clock_spans: int = Field(
+        description="runs in this bucket whose updated_at precedes started_at"
+    )
+
+
+class FlowReport(BaseModel):
+    """The A3 bottleneck / cycle-time report — deterministic, zero LLM."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    vertical: str = Field(
+        description="the deployment vertical this report was produced under (S7 stamp)"
+    )
+    steps: list[StepLatency] = Field(
+        description="per-procedure x per-step latency, slowest-first by max_ms"
+    )
+    dwell: list[DwellBucket] = Field(
+        description="per-procedure wall spans of the runs suspended at waiting_human"
+    )
+    negative_clock_spans: int = Field(
+        description="total runs whose updated_at precedes started_at — a backward-clock "
+        "anomaly surfaced rather than silently averaged into the spans above"
+    )
