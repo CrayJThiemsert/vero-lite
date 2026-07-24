@@ -33,13 +33,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.config import settings
 from services.api.models.insights import (
+    AuditReadinessReport,
     DwellBucket,
     FlowReport,
+    GateReadiness,
     ImpactBucket,
     ImpactReport,
+    RefusalTally,
+    StatusTally,
     StepLatency,
 )
 from services.db import run_analytics
+from services.db.audit_log import verify_chain
 from services.db.session import get_session
 
 router = APIRouter(prefix="/insights", tags=["insights"])
@@ -172,4 +177,41 @@ async def flow_report(
         steps=steps,
         dwell=dwell_buckets,
         negative_clock_spans=sum(b.negative_clock_spans for b in dwell_buckets),
+    )
+
+
+@router.get("/audit-readiness", response_model=AuditReadinessReport)
+async def audit_readiness_report(
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AuditReadinessReport:
+    """Compose what an auditor asks for first: coverage, gates, refusals, chain verdict.
+
+    Three substrate reads plus the shipped ``verify_chain`` seam — no SQL of its
+    own (L3), no write primitive (AC-11), zero LLM.
+
+    **Split visibility (AC-7).** ``verify_chain`` returns verbatim break strings.
+    They are reduced to a boolean on the next line and never leave this function,
+    and ``AuditReadinessReport`` has no field that could carry them — so no
+    caller, credentialed or not, can read a break string here. That is strictly
+    narrower than ``GET /audit/verify`` (which discloses ``intact`` to everyone
+    and the detail to a credentialed caller, SD-2(d)), so this reader widens no
+    disclosure and needs no auth dependency of its own.
+    """
+    statuses = await run_analytics.status_rollup(session)
+    gates = await run_analytics.gate_counts(session)
+    refusals = await run_analytics.refusal_counts(session)
+    breaks = await verify_chain(session)
+    return AuditReadinessReport(
+        vertical=settings.oct_vertical,
+        statuses=[StatusTally(status=row.status, run_count=row.run_count) for row in statuses],
+        gates=[
+            GateReadiness(
+                procedure_id=row.procedure_id,
+                resolved_count=row.resolved_count,
+                approver_recorded=row.approver_recorded,
+            )
+            for row in gates
+        ],
+        refusals=[RefusalTally(refusal_kind=row.refusal_kind, count=row.count) for row in refusals],
+        chain_intact=not breaks,
     )

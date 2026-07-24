@@ -141,6 +141,35 @@ async def test_refusal_counts_exact(seeded: _Seeded) -> None:
 async def test_gate_counts_exact(seeded: _Seeded) -> None:
     rows = await ra.gate_counts(seeded.session)
     assert {r.procedure_id: r.resolved_count for r in rows} == seeded.corpus.gates
+    # AC-7's approver half, against the factory's independent plain-Python tally.
+    assert {r.procedure_id: r.approver_recorded for r in rows} == seeded.corpus.gate_approvers
+    # Non-vacuity: 0 == 0 would satisfy the mapping above and prove nothing.
+    assert sum(r.approver_recorded for r in rows) > 0
+
+
+async def test_approver_half_is_read_from_the_trace_not_step_principals(
+    seeded: _Seeded,
+) -> None:
+    """AC-2's wording names the wrong source; the emitted SQL must not follow it.
+
+    Every write to ``run.step_principals`` records the REQUESTER half
+    (``orchestrator.py`` / ``persistence.py``), so an approver count sourced there
+    would be wrong while still returning an entirely plausible number — the
+    failure mode a value assertion alone cannot catch.
+
+    The scan is over the **emitted SQL**, not the module source, and that choice is
+    load-bearing: the source carries ``step_principals`` in its docstrings (it has
+    to — that is where the correction is explained), so a grep over the source
+    would match its own documentation rather than a violation. This is the Step-2
+    lesson applied: never point a forbidden-token scan at a surface that must
+    discuss the token.
+    """
+    seeded.statements.clear()
+    await ra.gate_counts(seeded.session)
+    sql = " ".join(seeded.statements).lower()
+    assert "step_principals" not in sql
+    assert "reasoning_trace" in sql
+    assert "exists" in sql, "the approver test must stay an EXISTS, never a row-multiplying join"
 
 
 async def test_aggregation_is_pushed_to_sql_not_python(seeded: _Seeded) -> None:

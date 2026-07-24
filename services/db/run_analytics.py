@@ -78,6 +78,7 @@ _NUMERIC_TEXT = r"^-?[0-9]+(\.[0-9]+)?$"
 # The reasoning-trace discriminators the substrate reads (never writes).
 _ECONOMIC_IMPACT = "economic_impact"
 _READ_REFUSED = "read_refused"
+_GATE_PRINCIPAL_RECORDED = "gate_principal_recorded"
 
 
 class StatusCount(BaseModel):
@@ -166,12 +167,25 @@ class RefusalCount(BaseModel):
 
 
 class GateCount(BaseModel):
-    """Resolved-gate count for one ``procedure_id`` (steps that reached status ``resolved``)."""
+    """Resolved-gate count for one ``procedure_id`` (steps that reached status ``resolved``).
+
+    ``approver_recorded`` is the **approver half** AC-7 asks for. It is read from
+    the step ``reasoning_trace`` — where ``resolve_gated_step`` actually records
+    it — and deliberately **not** from ``run.step_principals``: every write to
+    that column (``orchestrator.py`` / ``persistence.py``) stores the *requester*
+    half, so an approver count sourced there would be silently wrong. AC-2's
+    wording says otherwise; that is a known error, flagged for Cray rather than
+    self-edited, and it is why this field names its source explicitly.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
     procedure_id: str = Field(description="the procedure whose gate steps resolved")
     resolved_count: int = Field(description="number of gate steps that reached status 'resolved'")
+    approver_recorded: int = Field(
+        description="of those resolved gates, how many carry an approver principal in the step "
+        "reasoning trace (a 'gate_principal_recorded' entry with a principal_id)"
+    )
 
 
 class DwellStat(BaseModel):
@@ -403,9 +417,30 @@ async def refusal_counts(session: AsyncSession) -> list[RefusalCount]:
 
 
 async def gate_counts(session: AsyncSession) -> list[GateCount]:
-    """Resolved-gate counts grouped by ``procedure_id`` (O(procedures) rows)."""
+    """Resolved-gate counts per ``procedure_id``, with the approver half (O(procedures) rows).
+
+    The approver test is an ``EXISTS`` over the trace lateral, **not** a join to
+    it. A joined lateral yields one row per trace entry, which would multiply the
+    step row and inflate ``resolved_count`` — silently, since the inflated number
+    still looks plausible. ``EXISTS`` asks the same question without changing the
+    row count, so the statement stays O(groups) and AC-1's statement-capture
+    fixture keeps holding.
+    """
+    elem = _trace_elements()
+    approver_present = (
+        sa.select(sa.literal(1))
+        .select_from(elem)
+        .where(elem.c.value["kind"].astext == _GATE_PRINCIPAL_RECORDED)
+        .where(elem.c.value["principal_id"].astext.isnot(None))
+        .correlate(StepResult)
+        .exists()
+    )
     stmt = (
-        sa.select(PipelineRun.procedure_id, sa.func.count())
+        sa.select(
+            PipelineRun.procedure_id,
+            sa.func.count(),
+            sa.func.count().filter(approver_present),
+        )
         .join(StepResult, StepResult.run_id == PipelineRun.run_id)
         .where(StepResult.status == StepResultStatus.RESOLVED.value)
         .group_by(PipelineRun.procedure_id)
@@ -413,7 +448,12 @@ async def gate_counts(session: AsyncSession) -> list[GateCount]:
     )
     rows = (await session.execute(stmt)).all()
     return [
-        GateCount(procedure_id=procedure_id, resolved_count=count) for procedure_id, count in rows
+        GateCount(
+            procedure_id=procedure_id,
+            resolved_count=resolved,
+            approver_recorded=approvers,
+        )
+        for procedure_id, resolved, approvers in rows
     ]
 
 

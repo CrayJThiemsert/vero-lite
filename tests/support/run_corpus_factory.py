@@ -88,6 +88,10 @@ class Corpus:
     refusals: dict[str, int]
     # procedure_id -> resolved-gate count
     gates: dict[str, int]
+    # procedure_id -> resolved gates carrying an approver principal in the step trace
+    #   (gate_principal_recorded). NOT step_principals — that column holds the
+    #   REQUESTER half; see the seeding site + the AC-2 wording note.
+    gate_approvers: dict[str, int]
     # the DISTINCT union of every disclosed ฿ assumption (ADR-0030 D3)
     assumptions: list[str]
     # procedure_id -> {run_count, spans: list[float] (clamped >= 0), negatives: int}
@@ -298,6 +302,33 @@ def _tally_dwell(spec: _RunSpec, dwell: dict[str, dict[str, Any]]) -> None:
         entry["negatives"] += 1
 
 
+def _tally_gate(
+    spec: _RunSpec,
+    step: _StepSpec,
+    gates: dict[str, int],
+    gate_approvers: dict[str, int],
+) -> None:
+    """Fold one resolved gate into the AC-7 tallies: the count and the approver half.
+
+    The approver is a ``gate_principal_recorded`` trace entry carrying a
+    ``principal_id`` — the way ``resolve_gated_step`` actually records it, and
+    deliberately **not** ``step_principals``, which holds the REQUESTER half (the
+    AC-2 wording correction; see the seeding site).
+
+    Extracted rather than inlined for the same reason ``_tally_benefit`` and
+    ``_tally_dwell`` are: the two extra branches tip ``_expected``'s loop body past
+    ruff's ``C901`` ceiling of 10.
+    """
+    if step.status != StepResultStatus.RESOLVED.value:
+        return
+    gates[spec.procedure_id] += 1
+    if any(
+        entry.get("kind") == "gate_principal_recorded" and entry.get("principal_id")
+        for entry in step.reasoning_trace or []
+    ):
+        gate_approvers[spec.procedure_id] += 1
+
+
 def _expected(specs: list[_RunSpec]) -> Corpus:
     status_counts: dict[str, int] = defaultdict(int)
     procedure_counts: dict[str, int] = defaultdict(int)
@@ -306,6 +337,7 @@ def _expected(specs: list[_RunSpec]) -> Corpus:
     benefit: dict[tuple[str | None, str, str | None, str], dict[str, Any]] = {}
     refusals: dict[str, int] = defaultdict(int)
     gates: dict[str, int] = defaultdict(int)
+    gate_approvers: dict[str, int] = defaultdict(int)
     verdicts: dict[str, int] = defaultdict(int)
     assumptions: set[str] = set()
     dwell: dict[str, dict[str, Any]] = {}
@@ -320,8 +352,7 @@ def _expected(specs: list[_RunSpec]) -> Corpus:
         for step in spec.steps:
             step_row_count += 1
             durations[(spec.procedure_id, step.step_id)].append(step.duration_ms)
-            if step.status == StepResultStatus.RESOLVED.value:
-                gates[spec.procedure_id] += 1
+            _tally_gate(spec, step, gates, gate_approvers)
             for entry in step.reasoning_trace or []:
                 kind = entry.get("kind")
                 if kind == "economic_impact":
@@ -343,6 +374,7 @@ def _expected(specs: list[_RunSpec]) -> Corpus:
         benefit=benefit,
         refusals=dict(refusals),
         gates=dict(gates),
+        gate_approvers=dict(gate_approvers),
         assumptions=sorted(assumptions),
         dwell=dwell,
         verdicts=dict(verdicts),
