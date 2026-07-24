@@ -102,6 +102,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
   "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+  "host_state: opts a test OUT of the no-live-model guard — it may reach MS-S1. Never run in CI; requires explicit Cray go per CLAUDE.md §8 (see tests/conftest.py::_no_live_model)",
 ]
 
 [tool.coverage.run]

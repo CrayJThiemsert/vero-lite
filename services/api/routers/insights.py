@@ -25,6 +25,7 @@ source without matching its own documentation.
 
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 from typing import Annotated
 
@@ -48,8 +49,10 @@ from services.api.models.insights import (
 from services.db import run_analytics
 from services.db.audit_log import verify_chain
 from services.db.session import get_session
-from services.engine import run_query
+from services.engine import nl_query, run_query
 from services.engine.nl_query import StructuredQuery
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -222,28 +225,46 @@ async def audit_readiness_report(
 
 
 async def translate_run_question(question: str) -> StructuredQuery:
-    """Translate stage — PLUGGABLE (AC-9).
+    """Translate stage — PLUGGABLE (AC-9), wired to the local model (AC-9b).
 
     A module-level seam rather than an inline call, so CI can substitute a
-    schema-shaped stub and exercise the whole pipeline offline. The live
-    implementation is the AC-9b host-state item: it must run against local MS-S1
-    only, because run records carry ``person_id`` (PII / PDPA) and the remote
-    Anthropic API is never used on run data.
+    schema-shaped stub and exercise the whole pipeline offline. The live path
+    below runs against **local MS-S1 only** — ``llm_backend='local'`` selects the
+    Ollama client, and the ``'hosted'`` branch of the shared factory raises rather
+    than reaching the remote API. That is not a preference: run records carry
+    ``person_id`` (PII / PDPA), so run data never leaves the local network.
+
+    Failure is a refusal, not a 500. Both ``QueryTranslationError`` (budget
+    exhausted) and ``OllamaError`` (transport) subclass ``RuntimeError``, and the
+    handler catches it to answer "I couldn't translate that" — so an unreachable
+    MS-S1 degrades the endpoint honestly instead of breaking it.
     """
-    raise NotImplementedError(
-        "live run-corpus translation is AC-9b (host-state, MS-S1 only) and is not wired; "
-        "CI substitutes a stub translator"
+    client = nl_query._build_chat_client()
+    return await run_query.translate_run_query(
+        client, question, retry_budget=settings.llm_retry_budget
     )
 
 
 async def phrase_run_answer(
     question: str, query: StructuredQuery, result: run_query.RunQueryResult
 ) -> str:
-    """Phrase stage — PLUGGABLE (AC-9), and deliberately never reached on empty results."""
-    raise NotImplementedError(
-        "live run-corpus phrasing is AC-9b (host-state, MS-S1 only) and is not wired; "
-        "CI substitutes a stub phraser"
-    )
+    """Phrase stage — PLUGGABLE (AC-9), and deliberately never reached on empty results.
+
+    Degrades to the deterministic phrasing on any failure — including a backend
+    that cannot be constructed at all — because a computed figure is still a
+    grounded answer, and the alternative is a 500 on a question the engine has
+    already answered correctly.
+
+    The model receives only the computed facts, never a run record.
+    """
+    try:
+        client = nl_query._build_chat_client()
+    except (NotImplementedError, ValueError) as exc:
+        logger.warning(
+            "run-corpus phrasing backend unavailable (%s); answering deterministically", exc
+        )
+        return run_query.fallback_run_answer(query, result)
+    return await run_query.phrase_run_answer(client, question, query, result)
 
 
 @router.post("/query", response_model=RunQueryAnswer)
