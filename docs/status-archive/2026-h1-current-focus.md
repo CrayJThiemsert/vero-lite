@@ -1413,3 +1413,92 @@ Rotated because **R2 requires it**, not as a headroom judgement: with the Sessio
 > twice in this arc — it asserted the abstain guard "will no longer abstain"
 > (too strong) and pinned a stale count to the wrong line — and both were
 > caught by reading the code. **Subagent output is a draft, not a result.**
+
+
+## Rotated this reconcile (session-171, 2026-07-24 — the R2 4-session window: s171 in, s167 out)
+
+### Current-Focus block — Session 167 (the autonomy fork resolved + shipped in one session, #870/#871) [rotated 2026-07-24, session-171 reconcile — 4-session CF window]
+
+> **Session 167, 2026-07-23 (head_commit `9e19905` → `7c86752`) — the session
+> that CLOSED the autonomy fork: open since s71, 14 recorded misfires across 5
+> sessions, RESOLVED and SHIPPED in one session. Cray typed-ratified **option
+> A′** — the Stop-hook classifier's `dispatch` verdict is DEMOTED from an
+> ORDER to a SUGGESTION. Two PRs: #870 filed PLAN-0092, #871 built it.**
+> **(the behavior now on `main`.)** On `decision == "dispatch"` the hook emits
+> **no stdout directive**: the stop fires with pause semantics (the stop-chain
+> **RESETS**, no longer increments) and the classifier's routing — subagent,
+> artifact_kind, task_summary, matched D-rows, reason — goes to Cray as one
+> Telegram ping (`stop_dispatch_suggestion`). Malformed dispatch metadata stays
+> **silent**: no directive, no ping.
+> **(the evidence that drove it.)** 14 recorded misfires against **0 recorded
+> valid dispatch-arm fires** across ~2 months live — the caveat recorded
+> honestly in the PLAN: an unrecorded valid fire cannot be fully ruled out. The
+> four shapes span **two failure families** — **knowledge** (shapes 1/4 and part
+> of 2: the classifier can see neither disk state nor in-flight work, so **no
+> model upgrade fixes them**) and **judgment** (shape 3, mention-as-intent: a
+> prompt-rule-per-shape race that PLAN-0034's rule already lost in four
+> consecutive sessions). A′ moots **both families at the arm** — the first
+> structural fix rather than a fifth shape-chasing patch.
+> **(rejected alternatives, recorded IN the PLAN so they are not re-proposed.)**
+> (a) another prompt rule — refuted empirically; (b) deterministic
+> disconfirmers on a still-ordering arm — kills shapes 1/2/4 only, the judgment
+> race survives; (e) the Sonnet backend flip — judgment family only, and it
+> carries a known API-key/org fail-closed mode needing a probe, so the A′ pick
+> **defers** it.
+> **(scope locks honored in the build.)** `_sonnet_classifier.py` is
+> **byte-unchanged** and still returns `dispatch` — only the hook's
+> interpretation changed. The V1 goal-gate arm (`_goal_gate.py`, ADR-0018) and
+> the PreToolUse arm (`pretooluse_classifier_dispatch.py`) are untouched. D1/D2
+> registry rows are **annotated, never deleted** — they still document when a
+> suggestion fires. **No ADR amendment**: the arm's order-emitting behavior had
+> **zero ADR backing** (grep-verified), so **PLAN-0092 IS the governance
+> record**. It stays `Status: Draft` — the ACs are closed by the build, but no
+> closeout PR was filed this session.
+> **(SD-A…SD-D — all Cray-ratified as-recommended, typed.)** SD-A a new compact
+> `stop_dispatch_suggestion` Telegram shape via a formatter branch, not the
+> cap-hit `depth=/cap=` shape · SD-B **DELETE** `_build_dispatch_instruction` +
+> `_PLAN_DRAFTER_BUDGET_REMINDER` rather than repurpose them (order-shaped text
+> must not survive into a suggestion channel) · SD-C **no** env-var escape hatch
+> (`git revert` is the rollback; a flag is a silent path around a typed
+> ratification) · SD-D classifier-prompt wording alignment **PARKED** as a
+> follow-up note.
+> **(route + R2.)** `plan-drafter` drafted the PLAN (ADR-009 D1, the PLAN-0034
+> precedent) → Code R2 → Code commits (D2). R2 verified the drafter's
+> per-function test inventory **line-exact** against
+> `tests/handoffs/test_stop_continuation.py` (100% accurate) and added one
+> catch: `_goal_gate.py`'s ADR-0018 D6 comment cited
+> `_PLAN_DRAFTER_BUDGET_REMINDER` as its in-module-template precedent — a
+> **textual reference, not a caller**, so the drafter's caller-grep was right —
+> re-worded to cite it historically (docs-only; V1 behavior + tests untouched).
+> **(the build ran test-first.)** The four rewritten dispatch tests were run
+> **RED against the unmodified hook** before the Step 2 edit — AC-4 non-vacuity
+> evidence, recorded in the #871 PR body. Honest caveat also recorded: the new
+> malformed-no-ping guard passes both before and after (a forward regression
+> guard on a negative property), so it is **NOT** counted as AC-4 evidence.
+> **(process — two recorded events.)** **L1 loop-detect fired mid-build** (6
+> code-path edits to one test file in a turn). Not thrash — six distinct
+> planned edits, all successful; Code respected the guard, switched off the Edit
+> tool for the final one-character lint fix, then committed (a documented L1
+> reset). The same moment surfaced that the session was still on `main` after
+> the sync — the build branch was created before any commit, so **nothing
+> landed on `main` directly**. **The merges:** Cray twice stated both PRs were
+> merged; Code verified on disk both times and found them still OPEN
+> (`mergedAt: null`, `main` unmoved, no merge event in either timeline, nothing
+> blocking — gate green, 0 required reviews). Code did **not** merge on the
+> strength of the mistaken statement; it surfaced the discrepancy with evidence
+> and asked, **Cray then typed an explicit authorization** (AskUserQuestion),
+> executed in order #870 → #871.
+> **(verification / state.)** `gate` PASS on both PRs, each SHA-verified —
+> 2m59s on `2646456` (#870); 3m3s for #871 against **the re-synced head
+> `6afaf9c`**, not the pre-sync `0870266` (`main` was merged INTO the branch
+> after #870 landed; never force-pushed). Suite **2994 passed / 7 skipped** run
+> twice — on the build branch and again **on the merge commit `7c86752`**
+> (175.24s); against the 2995/7 prior the delta is exactly **−1** (two tests
+> deleted, one added) ⇒ expected, not a regression. 7 skips = dev Postgres
+> connected. Offline gate green at CI scope (`ruff check .` + `ruff format
+> --check .` + `mypy --strict services/`); one clause of honesty — `ruff check
+> .` also flags `.claude/benchmark-results/analyze_dump.py` (S108), an
+> **untracked** file from another workstream that CI never sees and of which
+> nothing is committed. **MS-S1 COLD, zero calls all session.** 0 open PRs at
+> close; working tree clean but for the 2 standing KEEP untracked paths
+> (`.claude/benchmark-results/`, `.claude/launch.json`).
