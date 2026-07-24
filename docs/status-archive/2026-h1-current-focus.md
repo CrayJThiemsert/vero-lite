@@ -1224,3 +1224,85 @@ Rotated because **R2 requires it**, not as a headroom judgement: with the Sessio
 > SD-1…SD-4, and **SD-1's ruling may require an ADR merged first**; the other
 > live candidates are PLAN-0088's 8-AC re-draft (ungated for Code) and the
 > autonomy fork (a decision, not code).
+
+## Rotated this reconcile (session-169, 2026-07-24 — PLAN-0088 ratified + Steps 1-2 built, #888-#891)
+
+### Current Focus block removed — Session 165, 2026-07-23 (the session that UNBLOCKED PLAN-0091; SD-1…SD-4 typed-ratified, #861-#863) [rotated 2026-07-24, session-169 reconcile — 4-session CF window]
+
+> **Session 165, 2026-07-23 (head_commit `3193acc` → `6e351fc`) — the session
+> that UNBLOCKED PLAN-0091. Step 0 was its only bar ("no build before Step 0
+> lands" gates every Step, not just Step 2), and Cray adjudicated all four
+> surfaced decisions by typed AskUserQuestion, each as the drafter recommended:
+> SD-1 = (c) PLAN-level, no ADR, promotion tripwire armed · SD-2 = create only ·
+> SD-3 = the typed required-slot checklist as an interview loop · SD-4 = stop
+> counted prose, load-bearing counts become executable assertions. Three PRs,
+> all merged, all docs-only; 0 open at close.**
+> **(the ranking that preceded it.)** A four-agent Explore fan-out re-ranked the
+> candidate set against code. It found **zero claim-vs-code mismatches** in
+> PLAN-0091 — every load-bearing citation, including the fleet AT-2 signature
+> AC-7 pins on, verified byte-exact — and confirmed both genuine gaps: **no
+> narrative→ontology code path exists** and **no ADR covers ontology
+> generation**, which is exactly why SD-1 existed. It also corrected the
+> orientation read twice: **Step 1 was blocked by SD-3, not SD-1** (SD-3's
+> recommendation *is* Step 1's design, so "start Step 1 while SD-1 is pending"
+> never existed), and — **believed here, REFUTED s166 by #865 (see the s166
+> block above); this whole ordering claim is CORRECTED** — that **Step 1
+> carries a forward dependency on Step 4** because its checklist derives from
+> AT-2 obligations while no AT-2 `ArchetypeTemplate` exists and the first is
+> authored in Step 4, which published the execution order **4-shape → 1 → 2 →
+> 3 → 4-emit → 5 → 6 → 7** (not the printed 1→7) and classified it
+> `superseded by new info` — an emergent ordering constraint, not a drafter
+> error. **s166 re-classified it `was an error`:** `derive_governance_todo`
+> never reads `REGISTRY`, so no such dependency exists and **Steps 1–3 are
+> executable now**; do not build to the order quoted above.
+> **(#861, `83854ad` → merge `54a2b73`, `docs(plans)` — fast-forward, docs-only,
+> 1 file +47/−4.)** `gate` PASS in 3m15s and **SHA-verified** (run `headSha` == PR
+> head) before the merge, on Cray's typed instruction. Each ruling recorded inline
+> at its own SD; Step 2's "waits for that ADR" parenthetical struck through and
+> resolved. **PLAN-0091 is now BUILD-READY and deterministic-offline** — AC-9
+> requires the full AC suite to pass with MS-S1 unreachable.
+> **(#862, `cea650e` → merge `dc38ca1`, `docs(plans)` — fast-forward, docs-only.)** The
+> PLAN-0076 §T1 prose correction: the paragraph read "zero live collisions", which
+> the s160 SoD-scope guard had **already refuted on disk** — collisions exist
+> (procurement reuses `intake`/`approve` across three procedures); what is zero is
+> the **over-mark**. Load-bearing here because T1's first named trigger was worded
+> "a live `step_id` collision" — read literally, **it had already fired**. Restated
+> as an *observable* over-mark. **One proposed correction was REFUTED and
+> deliberately NOT applied:** the claim that the ADR-0031 D4.1 citation was wrong
+> because "T1's trigger fired twice at N=3/N=4" — those firings are the
+> AT-2-signature / criterion-vocabulary axis, **discharged by PLAN-0087**;
+> F-FACTORY's own triggers remain unfired, so D4.1 is the applicable rule. The
+> refutation is written into the PLAN so it is not re-proposed. Guards verified
+> green before commit (9 passed), tripwires intact.
+> **(#863, `4af05fb` → re-sync `b3dd3d1` → merge `6e351fc`, `docs(status)`.)** The
+> s163 Stop-hook misfire **backfill** — the doc gap s164 named and left open — plus
+> a correction to s164's own diagnosis: "the reason had real content so the floor
+> did not demote it" is **too generous to the floor**, which is called only on the
+> **proceed** arm while these misfires arrive on the **dispatch** arm and never
+> reach it *at any content level*. The floor was unreachable, not out-argued — so a
+> new deterministic layer bolted into the proceed arm would miss this shape too.
+> Also opened the running **autonomy-fork ledger** under In-Flight Discussions. This
+> PR was **re-synced by merging `main` INTO the branch** after #862 landed (strict
+> protection; never force-pushed), and was **SHA-verified against the NEW head**
+> `b3dd3d1`, not the pre-re-sync `4af05fb` — the easy mistake when landing a stack.
+> **Verification / state:** all three gates SHA-verified before merge (3m14s /
+> 3m7s / 3m19s). **No full suite ran this session** — every PR was docs-only, so
+> 2995/7 is an INHERITED prior from s164, not fresh evidence, and the next session's
+> first run is a real re-verification. R1 size guard PASSED (52,703 → 59,315 B,
+> ceiling 65,536); R7 citation guard PASSED. **0 open PRs at close**; MS-S1
+> idle/COLD with **zero calls all session**; dev Postgres UP; working tree clean but
+> for the 2 KEEP untracked paths. Three feature branches deleted on merge, so the
+> 14-stale-branch backlog is unchanged.
+> **(process — three Stop-hook misfires, all declined via the trigger's own override
+> clause.)** Two ordered work already done or already running. **The third was a NEW
+> shape:** it proposed opening a *new PLAN* for a 4–8-line `CLAUDE.md` edit and
+> routing it to `plan-drafter` — the one agent **hook-DENIED** from touching
+> `CLAUDE.md`, and a new file under `docs/plans/` would itself trip G2. So the
+> classifier misjudged the **artifact kind** and dispatched to a **closed route**,
+> not merely re-dispatching in-flight work. Evidence that option (a) — another
+> prompt rule — cannot keep up: each new shape would need its own rule.
+> **(open at close, by design.)** The **model-economy rehome** is DISPATCHED but not
+> drafted: `CLAUDE.md` §6 routes a constitutional edit through Cowork drafting, and
+> Code cannot invoke Cowork — the validator-clean dispatch awaits Cray carrying it
+> across. It separates the Cray-ratified core (Fable = planning/research; Opus 4.8 +
+> Extra = execution) from four private-memory clauses still needing ratification.
