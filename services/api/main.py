@@ -17,6 +17,7 @@ from services.api.routers.actions import router as actions_router
 from services.api.routers.admin import router as admin_router
 from services.api.routers.audit import router as audit_router
 from services.api.routers.demo import router as demo_router
+from services.api.routers.insights import router as insights_router
 from services.api.routers.intake import router as intake_router
 from services.api.routers.procedure_draft import router as procedure_draft_router
 from services.api.routers.procedures import router as procedures_router
@@ -234,6 +235,7 @@ app.include_router(procedure_draft_router)
 app.include_router(demo_router)
 app.include_router(runs_router)
 app.include_router(whoami_router)
+app.include_router(insights_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["infrastructure"])
