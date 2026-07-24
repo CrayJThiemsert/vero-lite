@@ -188,6 +188,42 @@ class GateCount(BaseModel):
     )
 
 
+class RunStatusCount(BaseModel):
+    """Run count for one ``procedure_id`` x lifecycle-status pair (Step 4.5 / SD-9 (a2)).
+
+    The conjunctive grouping the shipped Step-1 rollups could not express: neither
+    ``procedure_rollup`` nor ``status_rollup`` can answer "how many runs of
+    procedure X failed?", because each collapses the other dimension. Grouping on
+    both keeps the answer a row lookup and the statement O(procedures x statuses)
+    — no caller-supplied filter, so nothing here weakens AC-1's O(groups) proof.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    procedure_id: str = Field(description="the procedure these runs executed")
+    status: str = Field(description="PipelineRun lifecycle status")
+    run_count: int = Field(description="runs of this procedure in this status")
+
+
+class RunDurationTotal(BaseModel):
+    """Per-run ``duration_ms`` totals, aggregated per procedure x status (Step 4.5).
+
+    ``duration_stats`` is per-**step** across runs, so a single run's total is not
+    recoverable from it. Here the per-run SUM is computed in an **inner subquery**
+    and only its aggregate escapes: the outer statement returns
+    O(procedures x statuses) rows, never one per run, so no listing shape appears
+    (SD-8 (a) stays intact) and the statement-capture fixture keeps holding.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    procedure_id: str = Field(description="the procedure these runs executed")
+    status: str = Field(description="PipelineRun lifecycle status")
+    run_count: int = Field(description="runs contributing a duration total to this bucket")
+    avg_total_ms: float = Field(description="mean of the per-run summed duration_ms")
+    max_total_ms: int = Field(description="largest per-run summed duration_ms")
+
+
 class DwellStat(BaseModel):
     """Same-row wall span of the runs suspended at ``waiting_human``, per procedure.
 
@@ -276,6 +312,84 @@ async def period_rollup(session: AsyncSession) -> list[PeriodCount]:
     rows = (await session.execute(stmt)).all()
     counts = [PeriodCount(period=day.date().isoformat(), run_count=count) for day, count in rows]
     return sorted(counts, key=lambda c: c.period)
+
+
+async def run_status_rollup(session: AsyncSession) -> list[RunStatusCount]:
+    """Run counts grouped by ``procedure_id`` x ``status`` (O(procedures x statuses) rows).
+
+    Step 4.5 / SD-9 (a2). Ordering is by the two label columns, never a wall clock.
+    """
+    stmt = (
+        sa.select(PipelineRun.procedure_id, PipelineRun.status, sa.func.count())
+        .group_by(PipelineRun.procedure_id, PipelineRun.status)
+        .order_by(PipelineRun.procedure_id, PipelineRun.status)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        RunStatusCount(procedure_id=procedure_id, status=status, run_count=count)
+        for procedure_id, status, count in rows
+    ]
+
+
+async def week_rollup(session: AsyncSession) -> list[PeriodCount]:
+    """Run counts grouped by the **ISO week** ``started_at`` bucket (O(weeks) rows).
+
+    Symmetric with ``period_rollup`` and coarser than it, so the S4 skew argument
+    holds a fortiori (a ±1 s clock step cannot move a run across a week boundary
+    that a day bucket would already have absorbed). ``date_trunc('week', …)``
+    yields the Monday of the week; the label is that Monday's ISO date. Sorted in
+    Python by label — never ``ORDER BY`` on the raw column (AC-3).
+    """
+    bucket = sa.func.date_trunc("week", PipelineRun.started_at)
+    stmt = sa.select(bucket, sa.func.count()).group_by(bucket)
+    rows = (await session.execute(stmt)).all()
+    counts = [PeriodCount(period=week.date().isoformat(), run_count=count) for week, count in rows]
+    return sorted(counts, key=lambda c: c.period)
+
+
+async def run_duration_totals(session: AsyncSession) -> list[RunDurationTotal]:
+    """Per-run ``duration_ms`` totals, aggregated per procedure x status (Step 4.5).
+
+    The per-run SUM is an **inner subquery** (`GROUP BY run_id`); the outer
+    statement aggregates *those* totals per procedure x status. That ordering
+    matters: summing in the outer query would multiply nothing but would also
+    never yield a per-run figure, and returning the inner rows directly would be
+    a listing shape — O(runs) — which SD-8 (a) eliminated. Only the aggregate
+    escapes, so fetched rows stay O(groups) and AC-1's statement-capture proof is
+    unweakened.
+    """
+    per_run = (
+        sa.select(
+            StepResult.run_id.label("run_id"),
+            sa.func.sum(StepResult.duration_ms).label("total_ms"),
+        )
+        .where(StepResult.duration_ms.isnot(None))
+        .group_by(StepResult.run_id)
+        .subquery()
+    )
+    stmt = (
+        sa.select(
+            PipelineRun.procedure_id,
+            PipelineRun.status,
+            sa.func.count(),
+            sa.func.avg(per_run.c.total_ms),
+            sa.func.max(per_run.c.total_ms),
+        )
+        .join(per_run, per_run.c.run_id == PipelineRun.run_id)
+        .group_by(PipelineRun.procedure_id, PipelineRun.status)
+        .order_by(PipelineRun.procedure_id, PipelineRun.status)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        RunDurationTotal(
+            procedure_id=procedure_id,
+            status=status,
+            run_count=count,
+            avg_total_ms=float(avg),
+            max_total_ms=int(maximum),
+        )
+        for procedure_id, status, count, avg, maximum in rows
+    ]
 
 
 async def duration_stats(session: AsyncSession) -> list[DurationStat]:
