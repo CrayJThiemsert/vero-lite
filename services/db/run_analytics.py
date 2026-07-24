@@ -57,6 +57,7 @@ statement-capture fixture pins that it stays that way.
 from __future__ import annotations
 
 from decimal import Decimal
+from typing import Any
 
 import sqlalchemy as sa
 from pydantic import BaseModel, ConfigDict, Field
@@ -79,6 +80,17 @@ _NUMERIC_TEXT = r"^-?[0-9]+(\.[0-9]+)?$"
 _ECONOMIC_IMPACT = "economic_impact"
 _READ_REFUSED = "read_refused"
 _GATE_PRINCIPAL_RECORDED = "gate_principal_recorded"
+# A human reject. The principal tie is recorded on BOTH outcomes, so its presence
+# cannot discriminate approve from reject — only this entry can (action_step.py).
+_ACTION_REJECTED = "action_rejected"
+
+# Step-audit / step-artifact keys the substrate reads (Step 6 / AC-10).
+# ``governed_decision`` is an ARRAY of ties, each naming the control it resolved
+# and the principal who acted; ``output_set`` is the judged-entity list an
+# evaluate step writes, each entity carrying its own verdict + reading.
+_GOVERNED_DECISION = "governed_decision"
+_DOA_TIER = "doa_tier"
+_OUTPUT_SET = "output_set"
 
 
 class StatusCount(BaseModel):
@@ -249,6 +261,92 @@ class DwellStat(BaseModel):
         description="runs whose updated_at precedes started_at — the backward-clock "
         "cases, clamped to 0 in the stats above and surfaced here, never swallowed"
     )
+
+
+class VerdictReadingStat(BaseModel):
+    """Band-verdict distribution + the measured readings behind it (AC-10 B1).
+
+    The pairing is the point: a verdict label alone is a bare count, but the
+    reading that PRODUCED it is what band recalibration needs. Both live on the
+    same judged entity (``evaluate_step`` writes ``{**entity, "verdict": ...}``),
+    so neither has to be joined back to the other.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    verdict: str | None = Field(
+        description="band verdict label (breach / watch / ok); None if the entity omits it"
+    )
+    entity_count: int = Field(description="entities judged into this verdict across all band steps")
+    reading_count: int = Field(description="entities whose measured_value was present and numeric")
+    readings_missing: int = Field(
+        description="entities whose measured_value was absent or non-numeric — skipped "
+        "from the stats and counted here, never an error (the S2 never-raise contract)"
+    )
+    avg_reading: Decimal = Field(description="mean measured_value of this verdict's entities")
+    max_reading: Decimal = Field(description="maximum measured_value of this verdict's entities")
+
+
+class GateTierOutcome(BaseModel):
+    """Approval outcome + gate dwell for one resolved DoA tier x outcome (AC-10 B2)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    doa_tier: str | None = Field(
+        description="resolved doa_tier control id, from the step audit's governed_decision "
+        "tie; None if the tie omits it"
+    )
+    outcome: str = Field(
+        description="approved or rejected. A reject is an action_rejected trace entry — "
+        "the gate_principal_recorded tie is written on BOTH outcomes, so it cannot "
+        "discriminate them"
+    )
+    gate_count: int = Field(description="resolved gate steps tied to this tier with this outcome")
+    avg_duration_ms: float = Field(
+        description="mean gate-step duration_ms — a SAME-ROW datum, the only dwell "
+        "measure S4 sanctions (no cross-row wall-clock arithmetic)"
+    )
+    max_duration_ms: int = Field(description="maximum gate-step duration_ms")
+
+
+class RefusalProcedureCount(BaseModel):
+    """Read-refusal count for one ``refusal_kind`` x ``procedure_id`` pair (AC-10 B3)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    refusal_kind: str | None = Field(description="the refusal kind; None if the fact omits it")
+    procedure_id: str = Field(description="the procedure whose run carried the refusal")
+    count: int = Field(description="number of read_refused facts of this kind in this procedure")
+
+
+class TriggerOutcomeCount(BaseModel):
+    """Run count for one ``procedure_id`` x trigger x terminal status triple (AC-10 B4)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    procedure_id: str = Field(description="the procedure these runs executed")
+    trigger: str | None = Field(
+        description="how the run started, from trigger_context->>'trigger' — the shipped "
+        "Trigger vocabulary (manual / schedule / event); None for a run stamped without it"
+    )
+    status: str = Field(description="PipelineRun lifecycle status")
+    run_count: int = Field(description="runs matching this procedure x trigger x status")
+
+
+def _jsonb_array(source: sa.ColumnElement[Any]) -> sa.TableValuedAlias:
+    """A LATERAL over a JSONB array-valued expression (``value`` column).
+
+    The array-guard + explicit ``JSONB`` typing rationale is
+    ``_trace_elements``'; this is the same contract for the step ``audit`` and
+    ``artifact`` sub-arrays the Group-B shapes read. A missing key yields SQL
+    ``NULL`` -> ``jsonb_typeof`` NULL -> the empty-array fallback, so an absent
+    or scalar value contributes zero rows rather than raising.
+    """
+    array_only = sa.case(
+        (sa.func.jsonb_typeof(source) == "array", source),
+        else_=sa.cast(sa.literal("[]"), JSONB),
+    )
+    return sa.func.jsonb_array_elements(array_only).table_valued(sa.column("value", JSONB))
 
 
 def _trace_elements() -> sa.TableValuedAlias:
@@ -605,4 +703,168 @@ async def waiting_dwell_stats(session: AsyncSession) -> list[DwellStat]:
             negative_clock_spans=negatives,
         )
         for procedure_id, run_count, avg, maximum, negatives in rows
+    ]
+
+
+async def verdict_reading_stats(session: AsyncSession) -> list[VerdictReadingStat]:
+    """Band-verdict distribution + per-verdict reading stats (O(verdicts) rows) — AC-10 B1.
+
+    Reads the judged entities out of ``artifact->'output_set'``, where an evaluate
+    step writes ``{**entity, "verdict": ...}`` — so the verdict and the reading that
+    produced it ride the same object and need no join. The reading is extracted with
+    the same never-raise numeric guard the ฿ figure uses (S2): a ``measured_value``
+    that is absent or non-numeric casts to NULL, is ignored by ``avg``/``max``, and
+    is surfaced as ``readings_missing`` rather than raising or silently vanishing.
+    """
+    entity = _jsonb_array(StepResult.artifact[_OUTPUT_SET])
+    verdict = entity.c.value["verdict"].astext
+    reading_text = entity.c.value["measured_value"].astext
+    reading = sa.cast(
+        sa.case((reading_text.op("~")(_NUMERIC_TEXT), reading_text), else_=None),
+        sa.Numeric,
+    )
+    stmt = (
+        sa.select(
+            verdict.label("verdict"),
+            sa.func.count(),
+            sa.func.count(reading),
+            sa.func.coalesce(sa.func.avg(reading), 0),
+            sa.func.coalesce(sa.func.max(reading), 0),
+        )
+        .select_from(StepResult)
+        .join(entity, sa.true())
+        .group_by(verdict)
+        .order_by(verdict)  # a verdict label, never a wall clock (AC-3)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        VerdictReadingStat(
+            verdict=label,
+            entity_count=entities,
+            reading_count=valued,
+            readings_missing=entities - valued,
+            avg_reading=Decimal(avg),
+            max_reading=Decimal(maximum),
+        )
+        for label, entities, valued, avg, maximum in rows
+    ]
+
+
+async def gate_tier_outcomes(session: AsyncSession) -> list[GateTierOutcome]:
+    """Approval outcome + gate dwell grouped by resolved DoA tier (O(tiers x 2) rows) — AC-10 B2.
+
+    The tier comes from the step audit's ``governed_decision`` **array** — the shape
+    ``_record_governed_decision`` persists — filtered to ``control_ref.kind ==
+    'doa_tier'`` so SoD ties in the same array do not leak into the tier grouping.
+
+    The outcome is an ``EXISTS`` over the trace lateral, not a join to it, for the
+    reason ``gate_counts`` documents: a joined lateral yields one row per trace entry
+    and would multiply the gate row, inflating ``gate_count`` and skewing the dwell
+    average — silently, since the inflated figure still looks plausible. It tests for
+    ``action_rejected`` specifically because the ``gate_principal_recorded`` tie is
+    written whether the human approved OR rejected, so presence of a principal cannot
+    discriminate the two.
+
+    Dwell is the gate step's own ``duration_ms`` — a SAME-ROW datum. S4 permits no
+    cross-row wall-clock arithmetic, so this is the only gate-dwell measure available
+    until the monotonic-``sequence``-column PLAN lands.
+    """
+    decision = _jsonb_array(StepResult.audit[_GOVERNED_DECISION])
+    tier = decision.c.value["control_ref"]["id"].astext
+    elem = _trace_elements()
+    rejected = (
+        sa.select(sa.literal(1))
+        .select_from(elem)
+        .where(elem.c.value["kind"].astext == _ACTION_REJECTED)
+        .correlate(StepResult)
+        .exists()
+    )
+    outcome = sa.case((rejected, sa.literal("rejected")), else_=sa.literal("approved"))
+    stmt = (
+        sa.select(
+            tier.label("doa_tier"),
+            outcome.label("outcome"),
+            sa.func.count(),
+            sa.func.coalesce(sa.func.avg(StepResult.duration_ms), 0),
+            sa.func.coalesce(sa.func.max(StepResult.duration_ms), 0),
+        )
+        .select_from(StepResult)
+        .join(decision, sa.true())
+        .where(StepResult.status == StepResultStatus.RESOLVED.value)
+        .where(decision.c.value["control_ref"]["kind"].astext == _DOA_TIER)
+        .group_by(tier, outcome)
+        .order_by(tier, outcome)  # control-id + outcome labels, never a wall clock (AC-3)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        GateTierOutcome(
+            doa_tier=doa_tier,
+            outcome=str(result),
+            gate_count=gate_count,
+            avg_duration_ms=float(avg),
+            max_duration_ms=int(maximum),
+        )
+        for doa_tier, result, gate_count, avg, maximum in rows
+    ]
+
+
+async def refusal_counts_by_procedure(session: AsyncSession) -> list[RefusalProcedureCount]:
+    """Read-refusal counts grouped by kind x ``procedure_id`` (O(kinds x procedures)) — AC-10 B3.
+
+    The procedure dimension is what makes this a refusal-MINING input rather than a
+    total: "which procedure keeps hitting the allowlist" is the improvable question,
+    and ``refusal_counts`` (kind only) cannot express it.
+    """
+    elem = _trace_elements()
+    refusal_kind = elem.c.value["refusal_kind"].astext
+    stmt = (
+        sa.select(
+            refusal_kind.label("refusal_kind"),
+            PipelineRun.procedure_id,
+            sa.func.count(),
+        )
+        .select_from(StepResult)
+        .join(PipelineRun, PipelineRun.run_id == StepResult.run_id)
+        .join(elem, sa.true())
+        .where(StepResult.reasoning_trace.isnot(None))
+        .where(elem.c.value["kind"].astext == _READ_REFUSED)
+        .group_by(refusal_kind, PipelineRun.procedure_id)
+        .order_by(refusal_kind, PipelineRun.procedure_id)  # labels, never a wall clock (AC-3)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        RefusalProcedureCount(refusal_kind=kind, procedure_id=procedure_id, count=count)
+        for kind, procedure_id, count in rows
+    ]
+
+
+async def trigger_outcome_counts(session: AsyncSession) -> list[TriggerOutcomeCount]:
+    """Run counts grouped by procedure x trigger x status (O(the triple)) — AC-10 B4.
+
+    The trigger is ``trigger_context->>'trigger'``, the key both shipped stampers
+    write (``scheduler._trigger_context`` and the event bridge), carrying the
+    ``Trigger`` enum vocabulary. A run stamped without the key groups under NULL
+    rather than being dropped — the frequency of un-stamped runs is itself a fact
+    a procedure-generation input should not hide.
+    """
+    trigger = PipelineRun.trigger_context["trigger"].astext
+    stmt = (
+        sa.select(
+            PipelineRun.procedure_id,
+            trigger.label("trigger"),
+            PipelineRun.status,
+            sa.func.count(),
+        )
+        .group_by(PipelineRun.procedure_id, trigger, PipelineRun.status)
+        .order_by(PipelineRun.procedure_id, trigger, PipelineRun.status)  # labels only (AC-3)
+    )
+    rows = (await session.execute(stmt)).all()
+    return [
+        TriggerOutcomeCount(
+            procedure_id=procedure_id,
+            trigger=trigger_value,
+            status=status,
+            run_count=run_count,
+        )
+        for procedure_id, trigger_value, status, run_count in rows
     ]

@@ -240,12 +240,19 @@ def _gate_outcome(i: int) -> str:
 def _reading(i: int, verdict: str) -> int | None:
     """Run ``i``'s ``measured_value`` for a band artifact, or ``None`` when omitted.
 
-    Band artifacts fall on ``i % 7 == 0``. ``i % 21 == 0`` is a proper subset of
-    that (21 = 3 x 7) whose reading is ABSENT — so B1's never-raise extraction has
-    something to skip and count, and an assertion on the reading stats cannot pass
-    by vacuously seeing every entity.
+    Band artifacts fall on ``i % 7 == 0``, so ``i = 7k``. A sub-subset has its
+    reading ABSENT — so B1's never-raise extraction has something to skip and
+    count, and an assertion on the reading stats cannot pass by vacuously seeing
+    every entity.
+
+    The subset is ``k % 4 == 1``, NOT the more obvious ``i % 21 == 0``: the verdict
+    index is ``7k % 3 = k % 3``, so ``i % 21 == 0`` would mean ``k % 3 == 0`` and
+    EVERY missing reading would pool on the single verdict ``breach``. At ``k % 4 == 1``
+    the verdict index runs 1, 2, 0, 1 over k = 1, 5, 9, 13 — the gap lands on every
+    verdict, so ``readings_missing`` is a real per-verdict figure rather than a
+    constant zero everywhere but one bucket.
     """
-    if i % 21 == 0:
+    if (i // 7) % 4 == 1:
         return None
     return _VERDICT_BASE[verdict] + (i % 10)
 
