@@ -194,3 +194,45 @@ class AuditReadinessReport(BaseModel):
         description="whether the audit hash chain verified end to end; the verbatim break "
         "detail is deliberately not carried on this report (see the class docstring)"
     )
+
+
+class RunQueryRequest(BaseModel):
+    """A plain-language question about the governed runs (A1, AC-9)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(
+        min_length=1, max_length=500, description="the operator's question, in plain language"
+    )
+
+
+class RunQueryAnswer(BaseModel):
+    """An A1 answer plus the grounding evidence behind it.
+
+    ``grounded`` is the honest signal: False means either the question could not
+    be translated into a valid run-corpus query, or it translated fine and
+    matched no runs. In both cases ``answer`` says so rather than inventing a
+    figure, and ``matched`` is 0.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    question: str = Field(description="the question as asked")
+    answer: str = Field(description="the plain-language answer")
+    grounded: bool = Field(
+        description="True only when the answer is backed by at least one matched run"
+    )
+    matched: int = Field(description="runs behind the figure; 0 on the no-records path")
+    structured_query: dict[str, object] | None = Field(
+        default=None,
+        description="the validated query that produced the answer — the grounding receipt; "
+        "None when translation itself failed",
+    )
+    aggregate_value: float | None = Field(
+        default=None, description="the computed aggregate, when the operation was max/avg/sum"
+    )
+    validation_errors: list[str] = Field(
+        default_factory=list,
+        description="semantic rejections in validate-and-retry form; non-empty means the "
+        "question reached a query the run corpus cannot serve",
+    )

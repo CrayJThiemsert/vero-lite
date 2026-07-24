@@ -40,12 +40,16 @@ from services.api.models.insights import (
     ImpactBucket,
     ImpactReport,
     RefusalTally,
+    RunQueryAnswer,
+    RunQueryRequest,
     StatusTally,
     StepLatency,
 )
 from services.db import run_analytics
 from services.db.audit_log import verify_chain
 from services.db.session import get_session
+from services.engine import run_query
+from services.engine.nl_query import StructuredQuery
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -214,4 +218,89 @@ async def audit_readiness_report(
         ],
         refusals=[RefusalTally(refusal_kind=row.refusal_kind, count=row.count) for row in refusals],
         chain_intact=not breaks,
+    )
+
+
+async def translate_run_question(question: str) -> StructuredQuery:
+    """Translate stage — PLUGGABLE (AC-9).
+
+    A module-level seam rather than an inline call, so CI can substitute a
+    schema-shaped stub and exercise the whole pipeline offline. The live
+    implementation is the AC-9b host-state item: it must run against local MS-S1
+    only, because run records carry ``person_id`` (PII / PDPA) and the remote
+    Anthropic API is never used on run data.
+    """
+    raise NotImplementedError(
+        "live run-corpus translation is AC-9b (host-state, MS-S1 only) and is not wired; "
+        "CI substitutes a stub translator"
+    )
+
+
+async def phrase_run_answer(
+    question: str, query: StructuredQuery, result: run_query.RunQueryResult
+) -> str:
+    """Phrase stage — PLUGGABLE (AC-9), and deliberately never reached on empty results."""
+    raise NotImplementedError(
+        "live run-corpus phrasing is AC-9b (host-state, MS-S1 only) and is not wired; "
+        "CI substitutes a stub phraser"
+    )
+
+
+@router.post("/query", response_model=RunQueryAnswer)
+async def run_corpus_query(
+    payload: RunQueryRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> RunQueryAnswer:
+    """Answer a plain-language question about the governed runs (A1).
+
+    translate -> validate -> execute -> phrase, with translate and phrase
+    pluggable. Only the middle two stages are deterministic, and they are the two
+    that touch data: execution reads the substrate and nothing else, so a figure
+    in the answer is always a figure the corpus produced.
+
+    Three refusals are honest rather than helpful. A question that will not
+    translate returns ungrounded with no query. A query the corpus cannot serve
+    returns its validation errors in validate-and-retry form. A query matching
+    nothing short-circuits to the no-records answer **without invoking the phrase
+    stage at all** — there is nothing to phrase, and asking a model to describe an
+    empty result is exactly how a fabricated figure gets in.
+    """
+    try:
+        query = await translate_run_question(payload.question)
+    except (NotImplementedError, RuntimeError):
+        return RunQueryAnswer(
+            question=payload.question,
+            answer="I couldn't translate that into a query over the run records.",
+            grounded=False,
+            matched=0,
+        )
+
+    errors = run_query.validate_run_query(query)
+    if errors:
+        return RunQueryAnswer(
+            question=payload.question,
+            answer="That question reaches for something the run records don't carry.",
+            grounded=False,
+            matched=0,
+            structured_query=query.model_dump(mode="json"),
+            validation_errors=errors,
+        )
+
+    result = await run_query.execute_run_query(session, query)
+    if not result.matched:
+        return RunQueryAnswer(
+            question=payload.question,
+            answer="No runs matched that question.",
+            grounded=False,
+            matched=0,
+            structured_query=query.model_dump(mode="json"),
+        )
+
+    return RunQueryAnswer(
+        question=payload.question,
+        answer=await phrase_run_answer(payload.question, query, result),
+        grounded=True,
+        matched=result.matched,
+        structured_query=query.model_dump(mode="json"),
+        aggregate_value=result.aggregate.value if result.aggregate else None,
     )
