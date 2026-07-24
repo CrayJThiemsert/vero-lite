@@ -436,6 +436,79 @@ explicitly in the block. If STATUS repeatedly cannot fit the window under the
 soft target, that is a signal the *narrative voice* has drifted archival again;
 fix the voice (terser blocks), don't raise the ceiling.
 
+## STATUS.md Update Workflow (rehomed from `docs/STATUS.md`, 2026-07-24)
+
+> **Why it lives here.** This is *procedure*, not *state*. The knowledge-placement
+> rule (ADR-0017 D5) routes a canonical reference you look up deliberately to a
+> runbook — never to the always-read Tier-1 state file. It sat in `docs/STATUS.md`
+> section "Update Workflow" from 2026-05-18 until 2026-07-24 (session-171), where it
+> spent 4,068 B of the R1 size budget on every session read while changing perhaps
+> twice in two months. Moved **verbatim** — nothing below was rewritten. STATUS keeps
+> a one-line pointer stub.
+
+This file is updated when:
+- A commit changes project state significantly
+- A new ADR/PLAN is minted or completed
+- Active priorities shift
+- A batch closes (sync `last_updated` + `current_batch` + `head_commit` + `recent_commits` frontmatter)
+- A session closes (sync all frontmatter fields; archive batch history if needed)
+
+**Update mechanism (locked per STATUS staleness batch 2026-05-18, Hybrid A+B short-term, C long-term):**
+
+- **Per closeout (Option A + Q1(b) discipline):** Closeout drafter includes the line "STATUS.md updated: yes / no / N/A" in their closeout. If `yes`, the closeout's commit batch should include a dedicated `docs(status): …` housekeeping commit (Q3(b/c) pattern) bumping at minimum the `last_updated` and `head_commit` frontmatter fields.
+- **Per batch boundary (Option B full body):** Full body refresh (Current Focus + Recent Decisions + Active TODOs + Next Steps) at batch close, alongside the frontmatter bump.
+- **Per session boundary:** Full body + frontmatter sync; consider archive of prior session's batch history.
+- **Future (Option C, PLAN-004 Phase A):** Validator will flag stale STATUS.md by comparing **frontmatter `last_updated` field** against newest closeout's `created` timestamp (NOT file mtime — mtime is defeated by side-effect commits, e.g. `c85a595` 2026-05-16 normalization sweep that touched STATUS.md body without bumping `last_updated`).
+
+**Q4 `head_commit` semantics (codified 2026-05-18, locked Cray ratification of midflight `2026-05-18-1049` §4 + closeout `2026-05-18-1202` §6.2):**
+
+- `head_commit` = short SHA of the newest **substantive** commit on
+  `origin/main` that STATUS.md content reflects.
+- **Excluded from `head_commit`:** `docs(status): …` housekeeping
+  commits. These commits encode no new repo state — they ARE the
+  STATUS.md freshness marker. Including them in `head_commit` creates
+  a self-defeat where every housekeeping commit makes STATUS.md appear
+  "fresh" to Q4 detection regardless of substantive backlog.
+- **Substantive (included in `head_commit`):** everything else —
+  `docs(lessons):`, `docs(adr):`, `docs(runbook):`, `feat:`, `fix:`,
+  `chore:` (when changing meaningful state), `refactor:`, `test:`, etc.
+  Any commit type that changes durable repo content updates
+  `head_commit` at the next STATUS.md edit.
+- **Reader recipe (returning after a pause):**
+
+  ```bash
+  # Newest substantive commit on origin/main (the value head_commit should hold)
+  git log -1 --format=%h --invert-grep --grep='^docs(status):' origin/main
+
+  # Compare to STATUS.md head_commit field
+  grep -E '^head_commit:' docs/STATUS.md
+  ```
+
+  If the two differ → STATUS.md content is stale relative to substantive
+  repo state. If they match → STATUS.md is fresh.
+
+- **Writer rule (at each STATUS.md update):** Set `head_commit` to the
+  output of `git log -1 --format=%h --invert-grep --grep='^docs(status):' origin/main`
+  *after* the substantive commits of the current batch land but *before*
+  any `docs(status):` housekeeping commit (or, if the STATUS.md edit
+  itself is in a substantive commit like `docs(lessons):`, set
+  `head_commit` to that substantive commit's own SHA — which becomes
+  knowable only post-commit, so the writer typically updates
+  `head_commit` to the *most-recent prior substantive commit* and lets
+  the next batch's first edit catch up).
+- **Two failure modes this rule closes:**
+  1. **mtime trap** (closeout `2026-05-18-1202` §2): side-effect commits
+     that touch STATUS.md body without bumping `last_updated` (e.g.
+     `c85a595` 2026-05-16 normalization sweep) leave the file mtime-fresh
+     but semantically stale. A SHA in `head_commit` cannot drift this way.
+  2. **Housekeeping self-defeat** (closeout `2026-05-18-1202` §6.2 +
+     midflight `2026-05-18-1049` §4): if `head_commit` = own SHA, every
+     `docs(status):` commit makes Q4 say "fresh" regardless of
+     substantive backlog. Excluding `^docs(status):` from the comparison
+     baseline closes this loophole.
+
+Manually edited until Option C lands.
+
 ## Maintenance Schedule
 
 | Cadence | Action |
