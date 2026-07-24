@@ -221,9 +221,10 @@ the safe side of that line instead of crossing it:
 offset pagination inside the substrate — was exactly the consumer this
 tripwire exists to stop, and the draft did not notice; the first bullet above
 ("order-insensitive operations only") already excluded it in the same
-document. That fork is now surfaced, not resolved, at SD-8. S4 itself stands
-unmodified under every SD-8 option — the per-option consequences are stated
-there.*
+document. That fork was surfaced at SD-8 and is now RULED (a) ELIMINATE (Cray,
+2026-07-24) — so this tripwire's consumer is struck, not merely excluded. S4
+itself stood unmodified under every SD-8 option; the per-option consequences
+are stated there.*
 
 ### S5 — A1 binds NL to the runs via a code-owned run-corpus schema + a deterministic SQL executor; separate endpoint
 
@@ -307,7 +308,7 @@ treatments, because only one of them is enforceable against the data on disk:
 If a real multi-vertical-one-DB deployment ever appears, adding a vertical
 column (a migration) is that deployment's PLAN — not this one.
 
-## Surfaced decisions (SD-1…SD-8 — ALL awaiting Cray's typed ratification; adjudicated at Step 0)
+## Surfaced decisions (SD-1…SD-8 — ✅ ALL RATIFIED by Cray 2026-07-24, session 169, typed AskUserQuestion — adjudicated at Step 0)
 
 **LOCKED vs SURFACED, stated once:** the four **Locked constraints L1–L4** are
 already Cray-ratified by typed selection (see their own section). They are
@@ -322,6 +323,26 @@ per decision — the question, the options, a recommendation with reasoning —
 ratifiable in a single typed pass. Where a decision is well-argued and
 uncontroversial, the recommendation says "ratify as written" plainly; no
 controversy is manufactured to fill the template.
+
+> **✅ RULINGS (Cray, 2026-07-24, session 169, typed AskUserQuestion — one
+> pass, per Step 0). This banner is the authoritative inline ruling record for
+> the block.**
+> - **SD-1 … SD-7 — RATIFIED as written**, each as recommended (S1 substrate
+>   location/layering · S2 ฿ extract-on-read · S3 reader order A2→A3→A4→A1 ·
+>   S4 order-insensitive substrate, sequence fix stays deferred · S5 A1
+>   run-corpus descriptor + separate endpoint · S6 Group-B proof standard ·
+>   S7 single-vertical corpus + structural currency safety). No option pulled
+>   for separate discussion.
+> - **SD-8 — RULED (a): ELIMINATE.** `list_runs_page` and AC-12 are struck from
+>   this PLAN; the substrate ships **aggregate primitives only** and `GET /runs`
+>   is **untouched** by this PLAN. Listing pagination is not abandoned — it is
+>   sequenced into the future monotonic-sequence-column PLAN, where newest-first
+>   paging is correct by the monotonic key (per the deferral doctrine,
+>   `tests/services/db/test_load_run_ordering_guard.py:47-49`). AC-3 passes, S4
+>   holds, both `/runs` consumers unchanged, nothing new on the critical path.
+> - **Consequence: Step 0 is DISCHARGED and PLAN-0088 is BUILD-READY.** Status
+>   stays `Draft` (flips to `Complete` only at closeout, per the Accepted-status
+>   G1 gate). No AC may still read as "contingent on SD-8".
 
 ### SD-1 — Ratify S1 as written? (substrate location + layering rule)
 
@@ -404,7 +425,7 @@ never these answers. What makes this Cray's call: the single-vertical stance
 is a business-honesty commitment about what an insights report may claim, and
 the structural currency rule is its correctness twin.
 
-### SD-8 — The pagination fork (NEW — surfaced, NOT resolved; the 2026-07-22 draft resolved it silently and self-contradictorily)
+### SD-8 — The pagination fork (✅ RULED (a) ELIMINATE, Cray 2026-07-24; the 2026-07-22 draft had resolved it silently and self-contradictorily)
 
 **Question:** does this PLAN ship a run-listing pagination primitive at all —
 and if so, ordered how?
@@ -480,6 +501,15 @@ a previously drafted deliverable, decides whether a consumer-visible endpoint
 changes in this PLAN, and sets the first real-case interpretation of the
 guard doctrine's un-defer trigger.
 
+**→ RULED (a) ELIMINATE (Cray, 2026-07-24, session 169, typed AskUserQuestion).**
+`list_runs_page` and AC-12 are struck; the substrate ships aggregate primitives
+only; `GET /runs` is untouched by this PLAN; listing pagination is sequenced
+into the future monotonic-sequence-column PLAN. This is the first real-case
+reading of the deferral doctrine's un-defer trigger, and it declines to fire it
+here — the aggregate readers are order-insensitive, so the trigger stays unfired
+and the sequence-column PLAN stays optional until a genuinely ordering-dependent
+consumer appears.
+
 ## Acceptance Criteria
 
 All ACs are **offline-testable** (CLAUDE.md §8: offline tests are the gate;
@@ -488,9 +518,8 @@ live-model item is explicitly non-CI (AC-9b).
 
 - [ ] **AC-1 — Substrate, SQL-side.** `services/db/run_analytics.py` exposes
   typed read primitives (status/procedure/period rollups, duration stats, ฿
-  rollup, refusal/gate counts — **no listing primitive is assumed here**: a
-  listing primitive exists only under an SD-8 ruling of (b) or (c), and this
-  AC's text follows SD-8's recommended (a)). A seeded-corpus DB test
+  rollup, refusal/gate counts — **no listing primitive** (SD-8 ruled (a)
+  ELIMINATE, 2026-07-24; `list_runs_page`/AC-12 struck)). A seeded-corpus DB test
   (**≥ 250 runs / ≥ 1,250 step rows** via the AC-2 factory) asserts exact
   aggregate values. **The load-bearing proof of the SQL-side property is the
   statement-capture fixture, not the corpus size**: it asserts the rows
@@ -499,8 +528,8 @@ live-model item is explicitly non-CI (AC-9b).
   group count by > 10×, so an accidental O(runs) materialization is
   unmistakable in the capture. (The 2026-07-22 draft's second sizing leg —
   "limit=100 → three pages, exercising AC-12's bounds" — presumed the paged
-  path; it dies under SD-8 (a) and returns only under (b)/(c). The 250 figure
-  stands on the group-domination leg alone.) A larger corpus proves nothing
+  path SD-8 (a) struck; the 250 figure now stands on the group-domination leg
+  alone.) A larger corpus proves nothing
   the fixture cannot, and its cost would land on every CI run forever;
   performance-at-volume is a measured-evidence concern (S2's upgrade-path
   stance), not a CI micro-benchmark.
@@ -580,26 +609,18 @@ live-model item is explicitly non-CI (AC-9b).
   (iii) `run_query.py` imports no `sqlalchemy` symbol at all (S1's layering
   rule, held statically). The insights router registers only read semantics
   (GETs + the query POST whose handler calls substrate reads only).
-- [ ] **AC-12 — `/runs` pagination — CONTINGENT ON SD-8 (fork surfaced, not
-  resolved; recommendation: ELIMINATE).** The 2026-07-22 text — substrate
-  exposes `list_runs_page(limit, offset)`; `GET /runs` gains an optional
-  `limit` whose absence preserves today's exact behavior — silently presumed
-  newest-first paging inside the AC-3-guarded module (jointly unsatisfiable
-  with AC-3 + S4; see SD-8's bind paragraph) and named `view-monitor.js` as
-  the only consumer, missing the stronger one: `view-map.js:84` fetches
-  `/runs` bare and **truncates** to the first 5 in-flight runs per node on a
-  stated newest-first assumption (`nodeRuns.slice(0, CAP)`, `CAP = 5`,
-  `view-map.js:359-365`). Disposition by SD-8's typed ruling: **(a)
-  (recommended)** — this AC is STRUCK; `GET /runs` is untouched by this PLAN
-  and the substrate ships no listing primitive. **(b)** — this AC becomes:
-  `list_runs_page` keyed on `run_id` (stable, non-wall-clock,
-  `services/engine/procedures/runs.py:64`), plus a pin that **neither**
-  shipped consumer is switched onto the paged path (both would regress —
-  census bullet). **(c)** — this AC is BLOCKED until the
-  monotonic-ordering-key PLAN lands, then reads: paginate newest-first by the
-  monotonic key; tests assert page bounds and the unchanged default. This AC
-  must not be built, ticked, or struck until SD-8 carries Cray's typed
-  ruling.
+- ~~**AC-12 — `/runs` pagination.**~~ **ELIMINATED per SD-8 (a)** (Cray,
+  2026-07-24, session 169, typed). The slot is kept as a tombstone so AC-1…AC-13
+  numbering and every cross-reference stay stable; **there is no AC-12 to build,
+  tick, or verify.** The 2026-07-22 text (substrate exposes
+  `list_runs_page(limit, offset)`; `GET /runs` gains an optional `limit`) was
+  jointly unsatisfiable with AC-3 + S4 (SD-8's bind) and undercounted the
+  consumers — `view-map.js:84` fetches `/runs` bare and **truncates** to the
+  first 5 in-flight runs per node on a stated newest-first assumption
+  (`nodeRuns.slice(0, CAP)`, `CAP = 5`, `view-map.js:359-365`). SD-8 struck it:
+  the substrate ships **no** listing primitive and `GET /runs` is untouched by
+  this PLAN. Listing pagination lives in the future monotonic-sequence-column
+  PLAN. **Live AC count: 13** (AC-1…AC-11, AC-9b, AC-13; AC-12 is a tombstone).
 - [ ] **AC-13 — Quality gate.** New code: type hints, `mypy --strict` clean on
   the whole `services/` tree, ruff clean, all request/response models Pydantic
   with `Field(description=…)`.
@@ -635,23 +656,24 @@ live-model item is explicitly non-CI (AC-9b).
 
 ## Steps
 
-### Step 0: Cray adjudicates SD-1…SD-8 (gates every later step)
+### Step 0: Cray adjudicates SD-1…SD-8 (gates every later step) — ✅ DISCHARGED 2026-07-24
 
 One typed pass over the Surfaced-decisions block — the PLAN-0091 Step-0
-pattern (`docs/plans/done/0091-…:605-614`). Each ruling is recorded inline in
-its SD (RATIFIED + date + typed marker). SD-8's ruling fixes AC-12's
-disposition (and, under (b)/(c), restores AC-1's listing clause and its paged
-sizing leg) **before Step 1 starts**; no code is written before Step 0 lands.
+pattern (`docs/plans/done/0091-…:605-614`). **Discharged 2026-07-24 (session
+169, typed AskUserQuestion):** SD-1…SD-7 ratified as written, SD-8 ruled (a)
+ELIMINATE — the authoritative record is the RULINGS banner atop the
+Surfaced-decisions block. AC-12 is struck (tombstone); AC-1's listing clause and
+paged sizing leg stay gone (they returned only under (b)/(c), which were not
+ruled). **Step 1 is now unblocked.**
 
-### Step 1: The substrate (`services/db/run_analytics.py`) — AC-1, AC-2, AC-3, AC-11 (+ AC-12 only under SD-8 (b)/(c))
+### Step 1: The substrate (`services/db/run_analytics.py`) — AC-1, AC-2, AC-3, AC-11
 
 Typed read-only query layer: rollup primitives (status/procedure/period,
 duration stats, ฿ extraction per S2, refusal/gate counts) + Pydantic
 row/report models. Ships **with** its discipline in the same PR: the
 volume corpus factory, the statement-capture fixture, the AC-3 ordering guard,
-and the AC-11 read-only guard. Under SD-8's recommended (a), this step ships
-**no** listing primitive and leaves `GET /runs` untouched; if Cray rules SD-8
-(b) or (c), AC-12 in its ruled form is built here instead. This step is the L3
+and the AC-11 read-only guard. Per SD-8 (a), ruled 2026-07-24, this step ships
+**no** listing primitive and leaves `GET /runs` untouched. This step is the L3
 centre of gravity — every later step consumes it and adds no new SQL of its
 own.
 
@@ -699,9 +721,10 @@ after completion.)
   silently regress to in-Python counting).
 - **Live evidence, not CI:** AC-9b's one MS-S1 smoke, only after explicit Cray
   approval, results recorded in the session handoff — evidence, never a gate.
-- **Done means:** SD-1…SD-8 each carry Cray's typed ruling recorded inline
-  (Step 0); all ACs ticked — AC-12 *disposed* per SD-8's ruling (under (a) it
-  is struck, not ticked); guards green in CI; no ADR edited; and the Group-B
+- **Done means:** SD-1…SD-8 carry Cray's typed ruling (recorded in the RULINGS
+  banner atop the Surfaced-decisions block; Step 0 DISCHARGED 2026-07-24); all
+  **13 live** ACs ticked — AC-12 is *struck* per SD-8 (a), a tombstone that is
+  never built or ticked; guards green in CI; no ADR edited; and the Group-B
   proof suite green while AC-11 simultaneously proves no proposal machinery
   exists.
 
@@ -754,8 +777,8 @@ and does not commit.
 1. **AC-12** — the dispatch flagged the `GET /runs` O(all-runs) gap but did not
    mandate touching the endpoint; this draft adds an optional, non-breaking
    `limit` param + substrate pagination primitive. *(Re-draft 2026-07-24: this
-   addition was the SD-8 contradiction — see the re-draft note. It is now
-   surfaced as SD-8, recommendation ELIMINATE, awaiting Cray's typed ruling.)*
+   addition was the SD-8 contradiction — see the re-draft note. Surfaced as
+   SD-8 and RULED (a) ELIMINATE by Cray 2026-07-24 — the addition is struck.)*
 2. **AC-5's deterministic-narrative-first choice** — the dispatch did not
    specify LLM vs template for the A2 narrative; this draft chooses template
    (no-LLM) for v1, keeping every reader except A1 fully LLM-free.
@@ -775,10 +798,11 @@ and does not commit.
 
 **Re-draft round (2026-07-24, this edit):** re-drafted **in place** by the
 in-harness `plan-drafter` subagent from a Code-authored dispatch carrying the
-session-168 diagnosis. This round **resolved no decision**: it converted the
+session-168 diagnosis. This drafting round **resolved no decision** (Cray ruled
+separately the same day — see the RULINGS banner + Step 0): it converted the
 drafter-resolved S1–S7 into the surfaced SD-1…SD-7, surfaced the pagination
-contradiction as SD-8 (recommendation: eliminate — explicitly awaiting Cray's
-typed ruling), completed the `GET /runs` consumer census (added
+contradiction as SD-8 (recommendation: eliminate — since RULED (a) by Cray),
+completed the `GET /runs` consumer census (added
 `view-map.js`, the truncating dependence), corrected the S1–S6→S1–S7 header,
 made AC-1/AC-12/Step 1 state their SD-8 dependence explicitly, and recorded
 the diagnosis in the re-draft note. L1–L4 were not reopened; `Status: Draft`
