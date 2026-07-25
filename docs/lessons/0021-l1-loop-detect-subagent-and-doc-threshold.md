@@ -70,6 +70,37 @@ Three changes in the loop-detect hooks:
    touched this turn — symmetric with the existing commit-boundary and Stop
    turn-boundary resets. A drafter subagent's edits no longer pre-spend the main
    agent's budget.
+
+   > **⚠️ AMENDED 2026-07-25 (PLAN-0094) — item 2 above WAS AN ERROR, not
+   > superseded.** Classified per CLAUDE.md §6: the distinction matters because
+   > `superseded by new info` would imply the mechanism worked and then the world
+   > moved on. **It never worked.** `_handle_agent_completion` was gated on
+   > `tool_name in ("Task", "Agent")`, but `.claude/settings.json` registered
+   > `PostToolUse` for `Write|Edit` and `Bash` only — and the user-level
+   > `~/.claude/settings.json` carries no `hooks` key at all. **No payload could
+   > ever reach the handler.** It was dead from the moment it shipped and stayed
+   > dead for seven weeks, while this lesson, `.claude/autonomy-triggers.md` row
+   > L1, and the deny message itself all advertised it as live. Session 172 spawned
+   > a subagent specifically to clear an L1 trip, on this advice, and the counter
+   > did not move — the deadlock cost most of a session.
+   >
+   > **How it passed review:** the tests fed `_handle_agent_completion` synthetic
+   > `{"tool_name": "Task"}` payloads directly. Every assertion about the handler's
+   > *behaviour* was true. Nothing asserted that the harness would ever *produce*
+   > such a payload — the gap was one level up, in a JSON file no test read. This
+   > is the **third** live instance of Lesson #0012 §7's meta-lesson: verify the
+   > mechanism, not just the function. The structural fix is
+   > `tests/handoffs/test_settings_hook_wiring.py`, which parses `settings.json`
+   > **as data** and fails on a registration removal alone.
+   >
+   > **The scope was also wrong, independently.** Even correctly wired, resetting
+   > `turn_touched` would have created a **self-unlock path**: the main agent could
+   > clear its own exhausted budget by spawning any zero-edit subagent. PLAN-0094
+   > therefore does not restore item 2 as written — it reroutes the reset to
+   > `SubagentStop` and scopes it to the completing agent's **own** edits, keyed
+   > per `agent_id` (so two parallel subagents cannot clear each other's entries
+   > either). **Cray ratified this divergence from the text above on 2026-07-25**
+   > as a decision, not a diff approval.
 3. **Honest deny message + registry**: the deny reason now reports the *actual*
    path-class threshold and says "in this turn"; `.claude/autonomy-triggers.md`
    row L1 documents all three reset paths (resolving the doc-follow-up #0012 §7
@@ -96,7 +127,12 @@ Three changes in the loop-detect hooks:
 
 - **Authoring a governance doc via a subagent is now safe** up to 15 edits/turn,
   and the subagent's edits reset when it returns. No special handling needed for
-  the common case.
+  the common case. *(Amended PLAN-0094, 2026-07-25: the second clause was false
+  from 2026-06-08 until then — see the §3 item-2 amendment. It is true now, on
+  `SubagentStop`, and only for the subagent's **own** edits. **Never spawn a
+  subagent to clear the main agent's own L1 trip** — that never worked and, by
+  design, still does not; the reliable escapes are a `git commit` of the target
+  or a turn boundary that leaves it untouched.)*
 - **If you still hit L1 on a doc** (≥ 15 edits to one file in one turn), treat it
   as a real signal: you are probably thrashing — batch into one Write, or pause.
 - **Code paths are unchanged (6).** For generated/formatter rewrites, prefer a

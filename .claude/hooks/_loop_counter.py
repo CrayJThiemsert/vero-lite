@@ -193,6 +193,7 @@ class LoopCounter:
     started_at: str
     counters: dict[str, CounterEntry] = field(default_factory=dict)
     turn_touched: list[str] = field(default_factory=list)
+    subagent_touched: dict[str, list[str]] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -200,6 +201,7 @@ class LoopCounter:
             "started_at": self.started_at,
             "counters": {k: v.to_json() for k, v in self.counters.items()},
             "turn_touched": list(self.turn_touched),
+            "subagent_touched": {k: list(v) for k, v in self.subagent_touched.items()},
         }
 
     @classmethod
@@ -214,11 +216,21 @@ class LoopCounter:
         touched: list[str] = []
         if isinstance(touched_raw, list):
             touched = [str(t) for t in touched_raw if isinstance(t, str)]
+        # Additive (PLAN-0094 D1): absent in state written before Step 1, so a
+        # missing key must read as "no subagent edits recorded", never raise —
+        # old and new readers interoperate over the same file.
+        sub_raw = data.get("subagent_touched") or {}
+        subagent: dict[str, list[str]] = {}
+        if isinstance(sub_raw, dict):
+            for agent_id, targets in sub_raw.items():
+                if isinstance(targets, list):
+                    subagent[str(agent_id)] = [t for t in targets if isinstance(t, str)]
         return cls(
             session_id=str(data.get("session_id", "")),
             started_at=str(data.get("started_at", "")),
             counters=counters,
             turn_touched=touched,
+            subagent_touched=subagent,
         )
 
 
@@ -582,10 +594,12 @@ def l1_threshold_for(target_normalized: str) -> int:
 def reset_l1_for_targets(counter: LoopCounter, targets: list[str]) -> list[str]:
     """Reset the L1 counter for each given normalized target; return those cleared.
 
-    Used at the subagent (Agent/Task) completion boundary so a subagent's edits
-    do not consume the main agent's L1 budget for the same file — symmetric with
-    the commit-boundary (:func:`reset` on commit) and Stop turn-boundary
-    (:func:`reset_untouched_l1`) resets.
+    Used at the ``SubagentStop`` completion boundary so a subagent's edits do not
+    consume the main agent's L1 budget for the same file — symmetric with the
+    commit-boundary (:func:`reset` on commit) and Stop turn-boundary
+    (:func:`reset_untouched_l1`) resets. The caller supplies the *completing
+    agent's own* recorded targets (:func:`take_subagent_touched`), never
+    ``turn_touched`` — see PLAN-0094 D1 for why turn scope was a self-unlock path.
     """
     cleared: list[str] = []
     for target in targets:
@@ -607,6 +621,41 @@ def record_turn_touched(counter: LoopCounter, target_normalized: str) -> None:
         return
     if target_normalized not in counter.turn_touched:
         counter.turn_touched.append(target_normalized)
+
+
+def record_subagent_touched(counter: LoopCounter, agent_id: str, target_normalized: str) -> None:
+    """Attribute a Write/Edit to the subagent that performed it (PLAN-0094 D1).
+
+    Keyed per ``agent_id`` so two subagents running in parallel cannot clear each
+    other's entries at completion. Deduplicated per key, like
+    :func:`record_turn_touched`.
+    """
+    if not agent_id or not target_normalized:
+        return
+    targets = counter.subagent_touched.setdefault(agent_id, [])
+    if target_normalized not in targets:
+        targets.append(target_normalized)
+
+
+def take_subagent_touched(counter: LoopCounter, agent_id: str | None) -> list[str]:
+    """Pop and return the targets recorded for a completing subagent.
+
+    ``agent_id`` empty/``None`` is the fail-safe case: the harness did not
+    populate the field, so every recorded subagent entry is drained. That
+    over-clears, but only ever across targets a subagent actually touched —
+    strictly bounded, and preferable to leaving a finished drafter's budget
+    wedged (PLAN-0094 D1). The main agent's own targets are never in this dict,
+    so they cannot be laundered through a spawn.
+    """
+    if agent_id:
+        return counter.subagent_touched.pop(agent_id, [])
+    drained: list[str] = []
+    for targets in counter.subagent_touched.values():
+        for target in targets:
+            if target not in drained:
+                drained.append(target)
+    counter.subagent_touched.clear()
+    return drained
 
 
 def reset_untouched_l1(counter: LoopCounter) -> list[str]:

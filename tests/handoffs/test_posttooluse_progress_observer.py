@@ -589,61 +589,122 @@ def test_non_commit_bash_does_not_reset_l1(tmp_path: Path, monkeypatch: pytest.M
     assert get_count(after, LoopType.FILE_EDIT, "tools/foo.py") == 6  # NOT reset
 
 
-# --- Subagent (Agent/Task) completion L1 reset (Cray E.4 refinement 2026-06-08) ---
+# --- Subagent-completion L1 reset, on SubagentStop, scoped per agent ---------
+#
+# PLAN-0094 D1 (AC-2). Replaces the 2026-06-08 block, which drove the handler
+# through a ``tool_name in ("Task","Agent")`` PostToolUse branch that
+# ``settings.json`` never registered — the tests passed on synthetic payloads
+# while the mechanism was unreachable in production. Two things change:
+#
+#   1. the route is ``SubagentStop`` (pinned as data by
+#      ``test_settings_hook_wiring.py`` so it cannot silently vanish again);
+#   2. the reset is scoped to the *completing subagent's own* recorded edits,
+#      not to ``turn_touched``. Cray ratified the divergence from Lesson #0021
+#      §3 (2026-07-25): turn-scoped semantics were never live, and wiring them
+#      as written would have let the main agent launder its own exhausted budget
+#      through any zero-edit spawn.
 
 
-def _agent(tool_name: str = "Task") -> Payload:
-    return {"tool_name": tool_name, "tool_input": {}, "tool_response": {}}
+def _subagent_stop(agent_id: str | None = "agent-A") -> Payload:
+    payload: Payload = {"hook_event_name": "SubagentStop"}
+    if agent_id is not None:
+        payload["agent_id"] = agent_id
+    return payload
 
 
-def _seed_l1_with_turn_touched(state_path: Path, targets: dict[str, int]) -> None:
-    c = new_counter("s")
-    for target, count in targets.items():
-        for _ in range(count):
-            increment(c, LoopType.FILE_EDIT, target, ActionRecord("t", "Edit", target))
-        c.turn_touched.append(target)
-    save_counter(c, state_path)
+def _write_as_subagent(file_path: str, agent_id: str) -> Payload:
+    """A Write performed inside a subagent — same shared counter, tagged."""
+    payload = _write(file_path)
+    payload["agent_id"] = agent_id
+    return payload
 
 
-@pytest.mark.parametrize("tool_name", ["Task", "Agent"])
-def test_agent_completion_resets_l1_for_touched(stub_env: dict[str, str], tool_name: str) -> None:
-    """A subagent's edits must not pre-spend the main agent's L1 budget: when the
-    Agent/Task tool returns, L1 counters for files touched this turn reset
-    (symmetric with the commit-boundary + Stop turn-boundary resets).
-    """
+def test_subagent_stop_resets_that_agents_own_edits(stub_env: dict[str, str]) -> None:
+    """The restored exit: a drafter's edits stop spending the main agent's budget."""
     state = _state(stub_env)
-    _seed_l1_with_turn_touched(state, {"docs/plans/0019-x.md": 6, "services/x.py": 4})
-    _run(_agent(tool_name), stub_env)
-    c = load_counter(state)
-    assert get_count(c, LoopType.FILE_EDIT, "docs/plans/0019-x.md") == 0
-    assert get_count(c, LoopType.FILE_EDIT, "services/x.py") == 0
-
-
-def test_agent_completion_leaves_untouched_l1_alone(stub_env: dict[str, str]) -> None:
-    """Only files in turn_touched reset; an L1 counter for a file NOT touched
-    this turn is not masked (no over-broad reset).
-    """
-    state = _state(stub_env)
-    c = new_counter("s")
-    for _ in range(6):
-        increment(c, LoopType.FILE_EDIT, "docs/plans/touched.md", ActionRecord("t", "Edit", "x"))
-    c.turn_touched.append("docs/plans/touched.md")
-    for _ in range(5):
-        increment(c, LoopType.FILE_EDIT, "services/untouched.py", ActionRecord("t", "Edit", "y"))
-    # services/untouched.py deliberately NOT in turn_touched
-    save_counter(c, state)
-    _run(_agent("Task"), stub_env)
-    after = load_counter(state)
-    assert get_count(after, LoopType.FILE_EDIT, "docs/plans/touched.md") == 0
-    assert get_count(after, LoopType.FILE_EDIT, "services/untouched.py") == 5
-
-
-def test_agent_completion_no_turn_touched_is_noop(stub_env: dict[str, str]) -> None:
-    state = _state(stub_env)
-    c = new_counter("s")
     for _ in range(3):
-        increment(c, LoopType.FILE_EDIT, "services/x.py", ActionRecord("t", "Edit", "x"))
-    save_counter(c, state)  # turn_touched left empty
-    _run(_agent("Agent"), stub_env)
+        _run(_write_as_subagent("docs/plans/0019-x.md", "agent-A"), stub_env)
+    assert get_count(load_counter(state), LoopType.FILE_EDIT, "docs/plans/0019-x.md") == 3
+
+    _run(_subagent_stop("agent-A"), stub_env)
+
     after = load_counter(state)
-    assert get_count(after, LoopType.FILE_EDIT, "services/x.py") == 3  # unchanged
+    assert get_count(after, LoopType.FILE_EDIT, "docs/plans/0019-x.md") == 0
+
+
+def test_subagent_stop_with_no_recorded_edits_resets_nothing(
+    stub_env: dict[str, str],
+) -> None:
+    """A zero-edit spawn must not clear anything at all."""
+    state = _state(stub_env)
+    for _ in range(6):
+        _run(_write("services/x.py"), stub_env)  # main agent, no agent_id
+    assert get_count(load_counter(state), LoopType.FILE_EDIT, "services/x.py") == 6
+
+    _run(_subagent_stop("agent-never-edited"), stub_env)
+
+    after = load_counter(state)
+    assert get_count(after, LoopType.FILE_EDIT, "services/x.py") == 6
+
+
+def test_subagent_stop_never_clears_the_main_agents_own_target(
+    stub_env: dict[str, str],
+) -> None:
+    """Anti-self-unlock: the main agent cannot launder its budget via a spawn.
+
+    This is the hazard that turn-scoped semantics would have introduced. The
+    subagent's own target clears; the main agent's does not.
+    """
+    state = _state(stub_env)
+    for _ in range(6):
+        _run(_write("services/main_owned.py"), stub_env)
+    for _ in range(2):
+        _run(_write_as_subagent("services/agent_owned.py", "agent-A"), stub_env)
+
+    _run(_subagent_stop("agent-A"), stub_env)
+
+    after = load_counter(state)
+    assert get_count(after, LoopType.FILE_EDIT, "services/agent_owned.py") == 0
+    assert get_count(after, LoopType.FILE_EDIT, "services/main_owned.py") == 6
+
+
+def test_subagent_stop_does_not_clear_a_still_running_siblings_edits(
+    stub_env: dict[str, str],
+) -> None:
+    """Per-agent keying (R2-3): A completing must not clear B's in-flight edits."""
+    state = _state(stub_env)
+    for _ in range(3):
+        _run(_write_as_subagent("services/a.py", "agent-A"), stub_env)
+    for _ in range(4):
+        _run(_write_as_subagent("services/b.py", "agent-B"), stub_env)
+
+    _run(_subagent_stop("agent-A"), stub_env)
+
+    after = load_counter(state)
+    assert get_count(after, LoopType.FILE_EDIT, "services/a.py") == 0
+    assert get_count(after, LoopType.FILE_EDIT, "services/b.py") == 4
+
+
+def test_subagent_stop_without_agent_id_clears_all_subagent_edits(
+    stub_env: dict[str, str],
+) -> None:
+    """Fail-safe: an unpopulated ``agent_id`` over-clears, but only subagent edits.
+
+    Failing toward bounded over-clearing beats leaving a completed drafter's
+    budget wedged — but the blast radius stays inside targets a subagent
+    actually touched, so the main agent's own counter still survives.
+    """
+    state = _state(stub_env)
+    for _ in range(6):
+        _run(_write("services/main_owned.py"), stub_env)
+    for _ in range(3):
+        _run(_write_as_subagent("services/a.py", "agent-A"), stub_env)
+    for _ in range(4):
+        _run(_write_as_subagent("services/b.py", "agent-B"), stub_env)
+
+    _run(_subagent_stop(agent_id=None), stub_env)
+
+    after = load_counter(state)
+    assert get_count(after, LoopType.FILE_EDIT, "services/a.py") == 0
+    assert get_count(after, LoopType.FILE_EDIT, "services/b.py") == 0
+    assert get_count(after, LoopType.FILE_EDIT, "services/main_owned.py") == 6
