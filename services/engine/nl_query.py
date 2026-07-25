@@ -198,6 +198,37 @@ class AggregateResult:
     groups: dict[str, float] = field(default_factory=dict)
 
 
+PHRASED_BY_DETERMINISTIC = "deterministic"
+"""The ``phrased_by`` value for text a deterministic template authored.
+
+Mirrors the ``detail["model"] = "deterministic"`` convention the shipped
+``gate_advisory`` builder already uses to declare which arm produced a result.
+"""
+
+DISCLOSURE_CAP = 300
+"""Truncation cap for a degrade disclosure, matching ``_degraded_step``
+(``services/engine/action_verification.py``)."""
+
+
+@dataclass(frozen=True)
+class PhraseResult:
+    """One phrasing outcome plus the identity of the arm that authored it.
+
+    ``phrased_by`` is ALWAYS present — arm identity is not conditional. It is the
+    live model's name when the model authored ``text``, else
+    :data:`PHRASED_BY_DETERMINISTIC`. ``disclosure`` marks a **degrade** (the LLM
+    arm was attempted and did not author the answer), not determinism itself: a
+    phrasing path that was deterministic *by design* carries ``None``.
+
+    PLAN-0093 SD-1. The bare ``str`` this replaces had no channel to express
+    "a template wrote this, not the model" even in-process.
+    """
+
+    text: str
+    phrased_by: str
+    disclosure: str | None = None
+
+
 @dataclass(frozen=True)
 class NlAnswer:
     """The outcome of one NL query — answer plus its grounding evidence.
@@ -218,6 +249,13 @@ class NlAnswer:
     result_count: int = 0
     aggregate: AggregateResult | None = None
     outcome: QueryOutcome = "answered"
+    # PLAN-0093 AC-5 / SD-1: keyword-only and REQUIRED — deliberately not defaulted
+    # to "deterministic". A default would let a construction site that forgets the
+    # field silently claim a deterministic author, which is the exact failure class
+    # this disclosure exists to kill; required turns a miss into a mypy/construction
+    # error instead of a quiet wrong answer.
+    phrased_by: str = field(kw_only=True)
+    phrase_disclosure: str | None = field(default=None, kw_only=True)
 
 
 class QueryTranslationError(RuntimeError):
@@ -935,6 +973,8 @@ def _clarify_nlanswer(question: str, query: StructuredQuery, units: tuple[str, .
         source_objects=[],
         result_count=0,
         outcome="clarify",
+        # deterministic was the INTENDED arm here — no degrade, so no disclosure.
+        phrased_by=PHRASED_BY_DETERMINISTIC,
     )
 
 
@@ -1023,13 +1063,18 @@ async def _phrase(
     source_objects: list[dict[str, Any]],
     obj_meta: ObjectTypeMeta | None,
     aggregate: AggregateResult | None = None,
-) -> str:
+) -> PhraseResult:
     """Phrase a populated result using only the retrieved records.
 
     Falls back to a deterministic templated answer on any LLM failure, so
     Screen C survives MS-S1/Ollama being down. When ``aggregate`` is set the
     value was computed deterministically — the model must report it exactly,
     never recompute it.
+
+    Returns a :class:`PhraseResult` rather than a bare string so the caller can
+    tell WHICH arm authored the text: every exit names its author, and both
+    degrade branches carry a disclosure (PLAN-0093 AC-4). The degrade stays
+    silent-free — a log line is not a consumer-visible contract.
     """
     facts = source_objects[:_PHRASE_FACT_CAP]
     facts_json = json.dumps(facts, default=str, ensure_ascii=False, indent=2)
@@ -1066,9 +1111,22 @@ async def _phrase(
         )
     except Exception as exc:  # phrasing must degrade, never raise into the handler
         logger.warning("NL-query phrasing failed; using deterministic fallback: %s", exc)
-        return _fallback_answer(query, source_objects, obj_meta, aggregate)
+        return PhraseResult(
+            text=_fallback_answer(query, source_objects, obj_meta, aggregate),
+            phrased_by=PHRASED_BY_DETERMINISTIC,
+            disclosure=f"phrasing degraded to deterministic template: {exc}"[:DISCLOSURE_CAP],
+        )
     answer = result.content.strip()
-    return answer or _fallback_answer(query, source_objects, obj_meta, aggregate)
+    if not answer:
+        # Previously this branch swapped in the template with NO log and no channel
+        # at all — the most silent degrade in the system (PLAN-0093 H4).
+        logger.warning("NL-query phrasing returned empty content; using deterministic fallback")
+        return PhraseResult(
+            text=_fallback_answer(query, source_objects, obj_meta, aggregate),
+            phrased_by=PHRASED_BY_DETERMINISTIC,
+            disclosure="model returned empty content; deterministic template used",
+        )
+    return PhraseResult(text=answer, phrased_by=result.model, disclosure=None)
 
 
 # --- orchestration ---------------------------------------------------------
@@ -1086,6 +1144,7 @@ def _ungrounded(question: str, answer: str, query: StructuredQuery | None = None
         source_objects=[],
         result_count=0,
         outcome="no_data",
+        phrased_by=PHRASED_BY_DETERMINISTIC,
     )
 
 
@@ -1101,6 +1160,7 @@ def _no_data_nlanswer(question: str, query: StructuredQuery) -> NlAnswer:
         source_objects=[],
         result_count=0,
         outcome="no_data",
+        phrased_by=PHRASED_BY_DETERMINISTIC,
     )
 
 
@@ -1200,10 +1260,10 @@ async def answer_question(  # noqa: C901
     # matched). The aggregate is already computed over `matched`, never this slice.
     source_objects = matched[: query.limit] if query.operation == "list" else matched
     source_ids = [_object_id(obj, obj_meta) for obj in source_objects]
-    answer = await _phrase(chat, question, vertical, query, source_objects, obj_meta, aggregate)
+    phrased = await _phrase(chat, question, vertical, query, source_objects, obj_meta, aggregate)
     return NlAnswer(
         question=question,
-        answer=answer,
+        answer=phrased.text,
         grounded=True,
         query=query,
         source_object_type=query.object_type,
@@ -1212,4 +1272,7 @@ async def answer_question(  # noqa: C901
         result_count=len(matched),
         aggregate=aggregate,
         outcome="answered",
+        # The one path where the arm is not known statically - carry what actually ran.
+        phrased_by=phrased.phrased_by,
+        phrase_disclosure=phrased.disclosure,
     )
