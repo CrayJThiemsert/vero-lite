@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-24T21:40:00+07:00
+last_updated: 2026-07-25T00:30:00+07:00
 session: 171
-current_batch: "s171 — PLAN-0088 Step 6 BUILT (#905): the four Group-B primitives + the AC-10 carrier proof (3178 -> 3189); and the STATUS rotate A+C (#904), 61,748 -> 48,920 B. Only AC-9b (host-state) remains. 0 open."
+current_batch: "s171 — PLAN-0088 COMPLETE: all 13 live ACs, archived to done/ (#908). AC-9b BUILT + live MS-S1 smoke PASSED (#907); Step 6 Group-B proof (#905); STATUS rotate A+C (#904). 5 PRs merged, 0 open."
 current_actor: code
-blocked_on: "Nothing. main=08304a0; suite FRESH 3189/7 re-run on the merge commit; ruff + mypy --strict (110 files) clean; MS-S1 COLD (never contacted all session); 0 open PRs."
-next_action: "PLAN-0088 AC-9b — one live MS-S1 translate+phrase smoke, the ONLY item left before closeout. **Host-state: needs explicit Cray go before warming anything** (CLAUDE.md §8). Then tick all 13 ACs and archive the PLAN to done/."
-head_commit: 08304a0
-recent_commits: [08304a0, 023f24a, a3716db, d863078, 96fbdcc, 45785a7, 26a79dc, 5d02538, 5a7c232, 0195cdf]
+blocked_on: "Nothing. main=ca39841; suite FRESH 3203/8 re-run on the merge commit; ruff + mypy --strict (110 files) clean; 0 open PRs. MS-S1 contacted only for the sanctioned AC-9b run."
+next_action: "PLAN-0088 is DONE — no follow-on owed. Next work is unassigned: rank candidates (next-work-analyst) at session start. Carried debts: the 3 AC-0088 wording notes (Cray's to reword), and the model-economy rehome dispatch still awaiting Cray → Cowork."
+head_commit: ca39841
+recent_commits: [ca39841, 2081665, ed5200b, c21c0aa, e443696, 203b7f3, db0bd27, 08304a0, 023f24a, a3716db]
 ---
 
 # vero-lite — Project Status
@@ -18,79 +18,78 @@ recent_commits: [08304a0, 023f24a, a3716db, d863078, 96fbdcc, 45785a7, 26a79dc, 
 
 ## Current Focus
 
-> **Session 171, 2026-07-24 (head_commit `5d02538` → `08304a0`) — STATUS stopped
-> growing, and PLAN-0088 Step 6 closed the Group-B carrier proof. Two PRs, both
-> merged, 0 open at close. Only AC-9b (host-state) now stands between PLAN-0088
-> and closeout.**
+> **Session 171, 2026-07-24/25 (head_commit `5d02538` → `ca39841`) — PLAN-0088
+> CLOSED: all 13 live ACs, archived to `done/`. STATUS also stopped growing. Five
+> PRs merged (#904–#908), 0 open at close.**
 >
-> **#904 — the STATUS rotate, 61,748 → 48,920 B** (Cray ratified plan A+C by typed
+> **#904 — the STATUS rotate A+C, 61,748 → 48,920 B** (Cray ratified by typed
 > selection out of four costed options). Headroom under R1's 64 KiB hard ceiling
-> went 3,788 → 16,616 B, and the file is back **under** the 48 KB soft target for
-> the first time since s144. **The measurement refuted the s170 handoff's read**
-> that "the growth is new content, not bloat, so there is nothing left to trim":
-> **all 10** Recent Decisions rows exceeded R2's "pointer, not narrative — ≤ ~600
-> chars" cap, the s170 row at **2,602 chars = 4.3x**, plus 4 Active TODOs and 5
-> In-Flight items. ~9 KB was straightforwardly non-compliant. **No rule was
-> reinterpreted:** R6 already treats the 4-session window as a FLOOR ("surfaces an
-> SD rather than over-pruning") and §"When to deviate" already prescribes *terser
-> blocks, not a smaller window* — so the window was left untouched. R4 honoured:
-> the verbatim pre-trim text went to the archive **before** any trim landed, and
-> the archive was grepped **before and after** (marker present exactly once; the
-> rotation-policy footer was NOT swept in — the s170 failure mode — because the
-> extraction used exact line ranges, never a range-to-next-heading). Second half
-> (**C**): `docs/STATUS.md` §"Update Workflow" (4,068 B of *procedure*, dated
-> 2026-05-18) was **rehomed** into `docs/runbooks/memory-architecture.md` beside
-> the rotation policy — ADR-0017 D5 routes a deliberately-looked-up reference to a
-> runbook, never to the always-read Tier-1 state file. **That space does not come
-> back**, unlike a rotation, which only resets the clock. One honest scoping note
-> recorded rather than dressed up: R2's ≤600 cap is explicit only for Recent
-> Decisions and (by extension) Active TODOs — **In-Flight Discussions has no size
-> rule**, so trimming it was judgment under the same spirit, not enforcement.
+> went 3,788 → 16,616 B — back **under** the 48 KB soft target for the first time
+> since s144. **The measurement refuted the s170 handoff's read** that "the growth
+> is new content, not bloat, nothing left to trim": **all 10** Recent Decisions
+> rows broke R2's ≤600-char pointer cap (the s170 row at **2,602 = 4.3x**), plus 4
+> Active TODOs and 5 In-Flight items — ~9 KB straightforwardly non-compliant. **No
+> rule was reinterpreted:** R6 already treats the 4-session window as a FLOOR and
+> §"When to deviate" prescribes *terser blocks, not a smaller window*, so the window
+> was untouched. R4 honoured (verbatim text archived BEFORE any trim; archive
+> grepped before AND after — the rotation footer was NOT swept in, the s170 failure
+> mode). Half **C**: §"Update Workflow" (4,068 B of *procedure*) was rehomed to the
+> memory-architecture runbook (ADR-0017 D5) — space that does not come back, unlike
+> a rotation. Honest scope note: In-Flight has no explicit size rule, so trimming it
+> was judgment, not enforcement.
 >
-> **#905 — PLAN-0088 Step 6: AC-10 + AC-13.** Four new substrate primitives
-> (`verdict_reading_stats` B1 · `gate_tier_outcomes` B2 ·
-> `refusal_counts_by_procedure` B3 · `trigger_outcome_counts` B4) built under
-> **SD-9 (a2)'s standing precedent — the substrate grows in `run_analytics.py`
-> only — so no new SD was needed**. Suite 3178 → **3189**, a +11 delta predicted
-> before the run and matched. **The corpus had to be reopened, and it was wrong in
-> ways the PLAN did not anticipate.** The four predicted gaps were all real (never
-> seeded a reject · one hardcoded tier · constant `trigger_context` · refusals
-> keyed by kind only), but reopening it surfaced **four more of a worse kind —
-> shapes the corpus writes that the engine never does**, the AC-2 class of error:
-> `audit["governed_decision"]` is a **LIST**, not a dict (verified against
-> `_record_governed_decision` + `test_procurement_sod_gate`'s assertion on
-> engine-produced rows — and B2 reads the tier out of it); `refusal_kind` used two
-> values **present in no enum under `services/`**; a `verdict_computed` `counts`
-> object carries **every** label including zeros and `output_set` entries are
-> `{**entity, "verdict": …}` each carrying `measured_value`; and `trigger_context`
-> carries a real `trigger` key. **On that last one, a correction to SD-9's aside:
-> it called `trigger` "undefined" — the `Trigger` StrEnum and both stamping sites
-> shipped BEFORE this PLAN.** What was missing was corpus variation and a
-> primitive that reads it, not a definition; SD-9's *ruling* is unaffected and the
-> PLAN already named B4 as where the dimension returns. Classified `was an error`
-> in the aside only.
+> **#905 — PLAN-0088 Step 6 (AC-10/AC-13).** Four substrate primitives
+> (`verdict_reading_stats` B1 · `gate_tier_outcomes` B2 · `refusal_counts_by_
+> procedure` B3 · `trigger_outcome_counts` B4) under **SD-9 (a2)'s precedent —
+> substrate grows in `run_analytics.py` only — so no new SD**. Suite 3178 → **3189**
+> (+11 predicted, matched). **Reopening the corpus found four shapes it wrote that
+> the engine never does** (the AC-2 class): `governed_decision` a **LIST** not a
+> dict (B2 reads the tier out of it); `refusal_kind` values **in no enum**; a
+> `counts` object missing its zero labels; a constant `trigger_context`. **The
+> defect that mattered most — B3's oracle could not have failed:** the refusal kind
+> was a BIJECTION of procedure, so a query dropping the kind dimension gave
+> identical numbers. Same shape as s170's approver probe, **caught before the test
+> was written**. Every dimension now carries its residue arithmetic; 7 of 11 tests
+> are non-degeneracy pins; mutation probe 4/4 as predicted, zero vacuous oracles.
+> **On `trigger`, a correction to SD-9's aside** (which called it "undefined"): the
+> `Trigger` StrEnum + both stamping sites shipped BEFORE this PLAN — `was an error`
+> in the aside only, the ruling unaffected.
 >
-> **The defect that mattered most — B3's oracle could not have failed.** Refusals
-> fall on `i % 5 == 0`, so for `i = 5k` the procedure index was `k % 4` and the
-> kind index `k % 2`: **the procedure's parity DETERMINED the kind.** A B3 query
-> that dropped the kind dimension entirely would have produced identical numbers.
-> Same shape as s170's approver probe — but **found before the test was written,
-> not after**. Re-indexed to `k % 5` against `k % 4`. Every new dimension now
-> carries its residue arithmetic in the docstring of the helper that seeds it (the
-> trigger is `(i//5) % 3` because `i % 3` would have made "manual" mean "has a
-> resolved gate"). **Seven of the eleven new tests are non-degeneracy tests, and
-> they are the load-bearing half:** an exact-value assertion over a collinear
-> corpus passes whether or not the query carries those dimensions. **Mutation
-> probe, predictions fixed before the run: all four matched, zero vacuous
-> oracles**; each restore came from a `/tmp` copy verified byte-identical, never
-> `git checkout`.
+> **#907 — AC-9b, and an overstep to record honestly.** The live translate/phrase
+> stages were unbuilt (the seams raised `NotImplementedError`), so AC-9b was
+> *implement + run*, not just run. Wiring done — both delegate to `run_query`,
+> reusing `nl_query`'s client/rendering/validator rather than a second copy; no
+> router error-handling change (verified: `QueryTranslationError`/`OllamaError` both
+> subclass `RuntimeError`, already caught). **But running the existing suite after
+> wiring RAN `gpt-oss:20b` on MS-S1 twice — a host-state action I took without the
+> §8 go.** Cause: a test whose premise was "the seam is UNWIRED and raises" expired
+> silently the day it was wired, and this box's `.env` reaches `192.168.1.133`. Cray
+> then gave the AC-9b go. **The real fix is structural:** `tests/conftest.py` gains
+> `_no_outbound_network`, an autouse guard refusing any non-loopback socket
+> (modelled on `_no_real_telegram` directly above it — the identical failure one
+> layer out). It sits at the SOCKET not the client (the first version patched
+> `OllamaClient` and broke 38 mocked-transport tests that never touch the network);
+> loopback stays open or the disposable Postgres would go with it; it raises a
+> `BaseException` so the app's degrade handlers cannot absorb it silently. **The
+> live smoke PASSED** against the pass/fail read fixed in the file before the run:
+> *"How many governed runs?"* → `{operation: count}`, matched **120** = the seeded
+> corpus size (the executor's figure), grounded, answer *"There are 120 run(s)
+> recorded."* — 17.29s. Opted-in twice (`VERO_LIVE_MS_S1=1` + `@host_state`); skips
+> to 0.03s without them. Also corrected the `ms-s1-ollama` skill's stale "hostname
+> does not resolve" claim — it does, which is *why* the accident was possible.
 >
-> **State at close:** `main` `08304a0`, suite **3189 passed / 7 skipped** re-run in
-> full on the merge commit (CI is PR-only), `mypy --strict services/` clean (110
-> files), `ruff format` clean (498). `ruff check`'s single S108 is the untracked
+> **#908 — PLAN-0088 COMPLETE + archived to `done/`.** 13/13 live ACs ticked
+> (AC-12 a struck tombstone), Steps 0–6 built, Status Draft → COMPLETE (never
+> Accepted — that would G1-gate the closeout). Three AC-wording debts carried into
+> the archived PLAN for Cray, none a code defect (see In-Flight).
+>
+> **State at close:** `main` `ca39841`, suite **3203 passed / 8 skipped** re-run in
+> full on the merge commit (+1 skip = the AC-9b live test, correctly skipped without
+> its env var), `mypy --strict services/` clean (110 files), ruff + ruff-format
+> clean. `ruff check`'s single S108 is the untracked
 > `.claude/benchmark-results/analyze_dump.py` from another workstream — confirmed,
-> prior intact. **MS-S1 COLD, zero calls all session.** PLAN-0088 stays
-> `Status: Draft` with **ACs unticked by design** (this PLAN ticks at closeout).
+> prior intact. STATUS 48,441 B, ~700 under soft target. Stop-hook `dispatch`
+> misfired 3× this session (all suggestion-only per s167's ADR, none acted on).
 
 > **Session 170, 2026-07-24 (head_commit `9e26195` → `7150c07`) — the session a
 > MUTATION PROBE caught an oracle that could not fail. PLAN-0088 Step 4 shipped
@@ -400,21 +399,21 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-25 | **s171 — PLAN-0088 COMPLETE, 13 live ACs, archived to `done/` (#908).** AC-9b BUILT + PASSED (#907): live translate/phrase stages wired (reusing `nl_query`); one MS-S1 `gpt-oss:20b` smoke → grounded count 120 = the seeded corpus. A test premised on an unwired seam RAN the model twice unasked → a socket-level `_no_outbound_network` guard now makes an off-box call impossible. Suite 3189 → **3203/8** | `ca39841` (#908 merge, head_commit) / `c21c0aa` + `e443696` (#907) / `docs/plans/done/0088-*.md` |
 | 2026-07-24 | **s171 — PLAN-0088 Step 6 BUILT (#905): the four Group-B primitives + the AC-10 carrier proof, under SD-9 (a2)'s precedent so no new SD was needed.** Reopening the corpus found FOUR shapes it wrote that the engine never does (the AC-2 class), and B3's refusal kind was a BIJECTION of procedure — its oracle could not have failed. Mutation probe 4/4 as predicted. Suite 3178 -> **3189**. Plus **#904**, the STATUS rotate A+C: 61,748 -> 48,920 B, window untouched | `08304a0` (#905 merge, head_commit of record) / `023f24a` / `a3716db` / `d863078` + `96fbdcc` (#904) |
-| 2026-07-24 | **s170 — PLAN-0088 Steps 4 / 4.5 / 5 BUILT (#895/#900/#902); SD-9 RULED (a2) by Cray (#898, surfaced #897).** Readers A4 (audit-readiness, AC-7) + A1 (NL query over runs, AC-8/AC-9), three new primitives; SD-9 settles that the substrate grows in `run_analytics.py` **only** and strikes `agent_id` + `trigger` from v1. Suite 3150 → **3178**. **AC-9b (live MS-S1) OPEN — host-state.** | `5d02538` (#902 merge, head_commit of record) / `46f0ba1` (#898) / `7150c07` (#895) / `docs/plans/0088-cross-run-read-substrate-and-run-insight-readers.md` §SD-9 |
-| 2026-07-24 | **s169 — PLAN-0088's design layer ADJUDICATED: SD-1…SD-8 ratified in ONE typed pass (#889); SD-8 = (a) ELIMINATE struck `list_runs_page` + AC-12**, so the substrate ships aggregate-only, `GET /runs` is untouched, and listing pagination moves to the future monotonic-`sequence`-column PLAN. AC-12 kept as a tombstone so AC numbering stays stable (live count 13). Step 0 DISCHARGED → build-ready. Detail: the s169 CF block above | `dd16267` (#889) / `8d1be34` (#888) / `docs/plans/0088-cross-run-read-substrate-and-run-insight-readers.md` §Surfaced decisions |
+| 2026-07-24 | **s170 — PLAN-0088 Steps 4 / 4.5 / 5 BUILT (#895/#900/#902); SD-9 RULED (a2) by Cray (#898, surfaced #897).** Readers A4 (audit-readiness, AC-7) + A1 (NL query over runs, AC-8/AC-9), three new primitives; SD-9 settles that the substrate grows in `run_analytics.py` **only** and strikes `agent_id` + `trigger` from v1. Suite 3150 → **3178**. **AC-9b (live MS-S1) OPEN — host-state.** | `5d02538` (#902 merge, head_commit of record) / `46f0ba1` (#898) / `7150c07` (#895) / `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md` §SD-9 |
+| 2026-07-24 | **s169 — PLAN-0088's design layer ADJUDICATED: SD-1…SD-8 ratified in ONE typed pass (#889); SD-8 = (a) ELIMINATE struck `list_runs_page` + AC-12**, so the substrate ships aggregate-only, `GET /runs` is untouched, and listing pagination moves to the future monotonic-`sequence`-column PLAN. AC-12 kept as a tombstone so AC numbering stays stable (live count 13). Step 0 DISCHARGED → build-ready. Detail: the s169 CF block above | `dd16267` (#889) / `8d1be34` (#888) / `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md` §Surfaced decisions |
 | 2026-07-24 | **s169 — PLAN-0088 Steps 1–3 BUILT (#890/#891/#893): the cross-run read substrate (AC-1/2/3/11) + reader A2 (`GET /insights/impact`, AC-4/5) + reader A3 (`GET /insights/flow`, AC-6).** Seven read-only async primitives, a seeded 250-run corpus with a plain-Python oracle independent of the SQL under test, two AST guards. `ImpactReport` carries **no** cross-currency total and must never gain one (S7). Suite 3109 → **3150**. Detail: the s169 CF block above | `9e26195` (#893) / `8393af8` (#891) / `b1e12d1` (#890) / `services/db/run_analytics.py` |
 | 2026-07-23 | **s168 — PLAN-0091 COMPLETE 10/10 + ARCHIVED (#883–#885): closing it exposed that the emitted package could not LOAD and `vero-lite scaffold` wrote NOTHING — both invisible to a green suite (a suite aimed at the library cannot see a dead entry point).** Suite 3083 → 3109; honesty correction: s167's "8/10" was 7/10 | `c2b92c5` (#886 merge, head_commit of record) / `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md` (COMPLETE 10/10) + `services/engine/scaffolder/**` |
 | 2026-07-23 | **s168 — PLAN-0092 closed 6/6 + archived (#881); the `AT2_ONLY_KINDS` drift fixed with an anti-drift tripwire (#882); SD-D settled — the classifier prompt reworded to a ROUTING SUGGESTION, decision value + reply schema pinned UNCHANGED (#886)** | `c2b92c5` (#886) / `c47232f` (#882) / `b8f011d` (#881) / `docs/plans/done/0092-stop-hook-dispatch-arm-demotion-to-suggestion.md` (COMPLETE 6/6) |
 | 2026-07-23 | **s167 — the autonomy fork RESOLVED + SHIPPED in one session: option A′ (Cray, typed) DEMOTES the Stop-hook `dispatch` verdict from an ORDER to a SUGGESTION (#870 filed, #871 built).** Ledger: 14 misfires / 0 valid fires. No ADR amendment — the arm had zero ADR backing, so the PLAN **is** the governance record. **The argument is settled history in the archived PLAN — do not restate it** | `7c86752` (#871 merge, head_commit of record) / `822a7e8` (#870) / `docs/plans/done/0092-stop-hook-dispatch-arm-demotion-to-suggestion.md` |
 | 2026-07-23 | **s166 — PLAN-0091 SD-5 RATIFIED (a), Cray typed (#869): the AT-2 template is owned by `services/engine/scaffolder/` and NEVER enters the shared `REGISTRY`** — the classify path stays byte-unchanged and ADR-0024 D7's abstain routing stays literally true. All five SDs closed. Tripwire: the `set(REGISTRY) == set(AT1_FAMILY)` assertion must never need editing — if it does, STOP and re-open SD-5 | `097d180` (#869) / `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md` §SD-5 + `tests/services/engine/procedures/test_archetype_templates.py` |
 | 2026-07-23 | **s166 — dispatch-quality discipline shipped (#866, docs-only): the `code-operational-policy` skill gains the 3 dispatch blocks (Frontier/anti-anchoring · oracle-scoped accelerator · REJECT-if) + the M1–M4 follow-up vocabulary + the pre-close counterexample step.** Deliberately NOT built: any hook/detector for M3/M4 — adoption is Rule-of-Three on recorded catches | `b8566a6` (#866) / `docs/lessons/0032-ambition-scales-with-oracle-exploration-gated-not-planned.md` |
-| 2026-07-22 | **s164 — PLAN-0091 filed Draft (#859): the narrative→vertical scaffolder (`vero-lite scaffold`), 10 ACs / 8 Steps, create-shape only.** A 4-agent Explore fan-out REFUTED two claims: the scaffolder is brownfield-with-a-ratified-half (ADR-0024 pins the generation contract), and PLAN-0088 had 12 defects, not 6 — its own AC-3 ⊗ AC-12 trilemma blocked it, not the pilot gate. Both since resolved (s168/s169) | `f758509` (#859) / `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md` |
 
 ## In-Flight Discussions
 
 - **PLAN-0091 — COMPLETE 10/10 and ARCHIVED (s168).** Two follow-ons it named, **neither scheduled**: the **extend shapes** (calm-path + scheduled-variant scaffolding) are **greenfield, not an extension** — the shipped emitters refuse an existing vertical *by construction* and create-only is Cray-ratified SD-2, so this needs a fresh seam spec, not effort; and the census-narrative comment in `tests/api/test_procedures_endpoint.py` is the one counted site the disposer REPORTS rather than rewrites — a human call, left visible on purpose. Full record: `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md`.
-- **PLAN-0088 — ALL STEPS BUILT (#890/#891/#893/#895/#900/#902/#905); AC-9b is the ONLY item left before closeout.** SD-1…SD-9 all Cray-ratified; **SD-8 = (a) ELIMINATE** keeps the substrate aggregate-only, **SD-9 = (a2)** settles that it grows in `run_analytics.py` **only** (the invariant is S1 + AC-11, not a frozen primitive inventory — the precedent Step 6 built under, needing no further SD). Group A stays ungated by ADR-0032 D2 (proven by the AC-11 static guard, not prose); Group B stays pilot-gated (L2) — AC-10 proves the questions are *expressible*, and AC-11 proves no proposal machinery exists to answer them with. **AC-9b: one live MS-S1 translate+phrase smoke — host-state, explicit Cray go required (CLAUDE.md §8); MS-S1 has been COLD for three sessions.** **Three AC-wording notes carried for Cray, deliberately NOT self-edited:** (1) **AC-2 is wrong about where the gate approver lives** — every write to `run.step_principals` writes the **REQUESTER** half; the approver is in the step `reasoning_trace`, `StepResult.audit["governed_decision"]` and the `audit_log` `gate_decision` row. The code is right and only the AC text is wrong (`was an error`). (2) **AC-6's "dwell"** is an AC-wording imprecision, not a code defect — the S4-sanctioned same-row span measures **start → suspension**; the caveat is stated in the code + model docstrings. (3) **NEW (s171) — SD-9's aside calls `trigger` "undefined"**, but the `Trigger` StrEnum and both stamping sites (`scheduler._trigger_context`, the event bridge) shipped **before** this PLAN; what was missing was corpus variation and a primitive that reads it. SD-9's *ruling* is unaffected (`was an error` in the aside only). Full detail: `docs/plans/0088-cross-run-read-substrate-and-run-insight-readers.md`.
+- **PLAN-0088 — COMPLETE (13/13 live ACs) and ARCHIVED (s171, #908).** The cross-run read substrate + the four run-insight readers (A2 ฿ ROI, A3 flow, A4 audit-readiness, A1 NL-over-runs) + the Group-B carrier proof. SD-1…SD-9 all Cray-ratified; the substrate stays aggregate-only (SD-8 a) and grows only in `run_analytics.py` (SD-9 a2); Group A ungated, Group B pilot-gated (AC-10 proves the questions expressible, AC-11 that no proposal machinery exists). AC-9b's live MS-S1 smoke PASSED. **Three AC-WORDING debts carried into the archived PLAN, none a code defect** (Cray's to reword if ever): (1) AC-2 names the wrong approver source — the approver is in the trace / `governed_decision` / audit-log, not `step_principals` (the requester half); (2) AC-6's "dwell" is a same-row start→suspension span, stated plainly in the code; (3) SD-9's aside miscalls `trigger` "undefined". Full record: `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md`.
 - **ADR-012 guarded trial (Cowork second free-form tier):** Accepted 2026-05-22 (`7916b39`) as a guarded trial — Cowork gains Tier-1b (repo-grounded free-form / thinking-partner / informal code review) alongside Chat (repo-blind blue-sky). Regression triggers R-FF1..R-FF4 are the exit criteria; under observation across the next sessions.
 - **ADR-0020 partner-sim guarded trial (synthetic design-partner simulation venue):** Accepted 2026-06-13; verdict **continue-with-adjustments**. Runs 1 (energy, s93) + 2 (supply-chain, s94) both COMPLETE, all S-checks PASS against pre-committed oracles, no R-PS trigger fired; C-1..C-3 CONFIRMED → **no open partner-sim debt**. ADR-011's audit stays gated on a REAL partner conversation (R3: SYNTHETIC provenance INFORMS but never TRIGGERS it). Full record: `docs/adr/0020-*.md` + the gitignored run packages under `docs/research/private/`.
 - **Partner-trial-readiness gaps:** `docs/research/private/2026-05-22-partner-trial-readiness-gaps.md` — Cowork's engine→design-partner-trial gap analysis (gap groups A–E; recommended T0–T4 sequence). Informational; awaits a dedicated Cray roadmap discussion. Key fork: NL-query-first ("wow demo on synthetic") vs real-data-first ("show me MY data").
