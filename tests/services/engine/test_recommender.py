@@ -188,6 +188,58 @@ async def test_recommend_failsafe_record_is_the_rule_path(
     assert record.action.confidence == RULE_CONFIDENCE
 
 
+# --- PLAN-0093 AC-3: the fail-safe SAYS it is a fail-safe -------------------
+
+
+async def test_failsafe_record_discloses_the_failed_llm_arm(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-3: the record states that the LLM arm was attempted and failed — in the
+    returned structure, not only in the logger.warning that already existed."""
+    fake = _FakeChatClient(error=OllamaError("connection refused"))
+    monkeypatch.setattr(_BUILD_CLIENT, lambda: fake)
+
+    record = await recommend(_crossing_event(), "energy")
+
+    assert record is not None
+    disclosures = [
+        s for s in record.action.reasoning_trace if s.step_id == "llm-degrade-disclosure"
+    ]
+    assert len(disclosures) == 1
+    detail = disclosures[0].detail
+    assert detail["recommendation_mode"] == "rule-fail-safe"
+    assert detail["llm_status"] == "OllamaError"
+    assert "connection refused" in str(detail["llm_disclosure"])
+    notes = record.action.audit_metadata.notes
+    assert notes is not None
+    assert "LLM arm was attempted and failed" in notes
+
+
+async def test_degraded_and_by_design_rule_records_are_distinguishable(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-3 tripwire — the point of the whole step. Before PLAN-0093 these two
+    traces were identical (same two rule_check steps, same RULE_CONFIDENCE), so
+    'rule because the model died' could not be told from 'rule by design'."""
+    event = _crossing_event()
+    fake = _FakeChatClient(error=OllamaError("timeout"))
+    monkeypatch.setattr(_BUILD_CLIENT, lambda: fake)
+
+    degraded = await recommend(event, "energy")
+    by_design = _rule_recommend(event, "energy")
+
+    assert degraded is not None
+    assert by_design is not None
+    degraded_ids = [s.step_id for s in degraded.action.reasoning_trace]
+    by_design_ids = [s.step_id for s in by_design.action.reasoning_trace]
+    assert degraded_ids != by_design_ids
+    assert "llm-degrade-disclosure" in degraded_ids
+    assert "llm-degrade-disclosure" not in by_design_ids
+    # the by-design path stays clean — it is an honest rule run, not a degrade,
+    # and must never carry degrade language (_rule_recommend is byte-unchanged).
+    assert by_design.action.audit_metadata.notes is None
+
+
 async def test_recommend_failsafe_on_exhausted_retry_budget(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
