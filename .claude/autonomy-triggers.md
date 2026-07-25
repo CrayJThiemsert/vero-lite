@@ -93,7 +93,7 @@ loop still trips. Cray-approved self-modification (per-diff) on 2026-06-08.
 
 | # | Trigger (same `(tool, target)` ≥ 6 attempts in one session) | Phase 1 | Phase 2 |
 |---|--------------------------------------------------------------|---------|---------|
-| L1 | Same file edited ≥ threshold times in one turn — **path-class threshold** (6 code / 15 prose-doc; see note above) | Manual observation only | **Live** — `pretooluse_loop_detect.py` (gate, `l1_threshold_for`) + `posttooluse_progress_observer.py` (writer + **subagent-completion reset**) + `stop_continuation.py` (turn-boundary reset) |
+| L1 | Same file edited ≥ threshold times in one turn — **path-class threshold** (6 code / 15 prose-doc; see note above) | Manual observation only | **Live** — `pretooluse_loop_detect.py` (gate, `l1_threshold_for`) + `posttooluse_progress_observer.py` (writer + **subagent-completion reset**, live on `SubagentStop` since PLAN-0094; **dead from wiring 2026-06-08 → 2026-07-25**) + `stop_continuation.py` (turn-boundary reset) |
 | L2 | Same test fails ≥ 6 times consecutively | Manual | **Live** — `posttooluse_progress_observer.py` (inline Telegram fire on trigger) |
 | L3 | Same error signature ≥ 6 times | Manual | **Live** — `posttooluse_progress_observer.py` (inline fire; auto-reset deferred — see PLAN-0008 §Step 8) |
 | L4 | Same Bash command pattern fails ≥ 6 times | Manual | **Live** — `pretooluse_loop_detect.py` (gate) + `posttooluse_progress_observer.py` (writer) |
@@ -105,11 +105,28 @@ ping carries `{loop_type, target, last_6_actions}`. State storage:
 turn boundary where the target was NOT touched that turn
 (`stop_continuation.reset_untouched_l1`); (b) a successful `git commit`
 of the file (`posttooluse_progress_observer._apply_commit_reset`); or
-(c) a subagent (`Agent`/`Task`) tool completing — its edits reset the
-turn's touched-file L1 counters so a drafter subagent's edits do not
-pre-spend the main agent's budget (`_handle_agent_completion`). L2 resets
-on a passing nodeid; L4 on a successful command. Loop-type taxonomy above
-is Cowork-scoped; Code refines in Phase 2.
+(c) a **`SubagentStop`** event — the completing subagent's **own** recorded
+edits reset, so a drafter subagent's edits do not pre-spend the main agent's
+budget (`_handle_subagent_stop`). L2 resets on a passing nodeid; L4 on a
+successful command. Loop-type taxonomy above is Cowork-scoped; Code refines
+in Phase 2.
+
+> **⚠️ Correction (PLAN-0094, 2026-07-25) — path (c) was DEAD FROM WIRING for
+> seven weeks.** As shipped 2026-06-08 it read "a subagent (`Agent`/`Task`) tool
+> completing — its edits reset the **turn's** touched-file L1 counters
+> (`_handle_agent_completion`)". Neither half survived verification. **(1) It
+> could never fire:** the handler was gated on `tool_name in ("Task","Agent")`
+> while `settings.json` registered `PostToolUse` for `Write|Edit` and `Bash`
+> only, so no payload could reach it — its tests passed on synthetic payloads
+> with nothing pinning the registration. Session 172 followed this row's "Live"
+> claim into a dead end. **(2) Turn scope was the wrong scope anyway:** clearing
+> `turn_touched` would have let the main agent launder its own exhausted budget
+> through any zero-edit spawn. The reset is now keyed **per `agent_id`**, so it
+> clears only that subagent's targets and two parallel subagents cannot clear
+> each other's (Cray-ratified divergence from Lesson #0021 §3, 2026-07-25).
+> The registration itself is now pinned as data by
+> `tests/handoffs/test_settings_hook_wiring.py` — a handler with no route to it
+> can no longer pass.
 
 ## Auto-handoff triggers (Phase 3 — DEMOTED TO SUGGESTION per PLAN-0092, 2026-07-23)
 
