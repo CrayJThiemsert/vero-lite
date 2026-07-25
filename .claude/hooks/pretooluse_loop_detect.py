@@ -47,6 +47,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     has_triggered,
     l1_threshold_for,
     load_counter,
+    main_session_id,
     normalize_file_path,
     tokenize_bash_command,
 )
@@ -193,7 +194,7 @@ def main() -> int:
         return 0
 
     loop_type, target = match
-    counter = load_counter(_state_path())
+    counter = load_counter(_state_path(), session_id=main_session_id(payload))
     threshold = (
         l1_threshold_for(target) if loop_type is LoopType.FILE_EDIT else LOOP_TRIGGER_THRESHOLD
     )

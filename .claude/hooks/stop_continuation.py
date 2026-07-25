@@ -68,6 +68,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     STATE_DIR,
     clear_turn_touched,
     load_counter,
+    main_session_id,
     reset_untouched_l1,
     save_counter,
 )
@@ -218,14 +219,18 @@ def _ping_telegram(message: dict[str, Any]) -> None:
         pass
 
 
-def _apply_turn_boundary_reset() -> list[str]:
+def _apply_turn_boundary_reset(payload: dict[str, Any] | None = None) -> list[str]:
     """Read state, reset untouched L1 counters, clear turn_touched.
 
     Returns the list of L1 targets that were reset (informational —
     Step 4 does not fire Telegram for reset events; they are by
     definition healthy progress signals).
+
+    ``payload`` supplies the hook's ``session_id`` so a state file left by a
+    previous session is re-minted rather than inherited; omitting it keeps
+    the load session-blind (age-out still applies).
     """
-    counter = load_counter(_state_path())
+    counter = load_counter(_state_path(), session_id=main_session_id(payload or {}))
     reset_targets = reset_untouched_l1(counter)
     clear_turn_touched(counter)
     save_counter(counter, _state_path())
@@ -531,7 +536,7 @@ def main() -> int:
     # Always run the turn-boundary reset first — it is independent of the
     # chain-cap / classifier flow and is the load-bearing Step 4 benefit.
     try:
-        _apply_turn_boundary_reset()
+        _apply_turn_boundary_reset(payload)
     except Exception as exc:  # observer must not block on internal errors
         print(f"stop_continuation: turn-boundary reset failed: {exc}", file=sys.stderr)
 
