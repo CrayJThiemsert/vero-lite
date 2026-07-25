@@ -12,10 +12,20 @@ the agent doesn't rediscover the incantations (and burn tokens) each session.
 ## ⚠️ Host-state gate (binding rule lives elsewhere — do NOT rely on this skill to carry it)
 
 Warming or running a model on MS-S1 is a **host-state change**. The **binding
-rule** is *ASK Cray before warming / running* — it lives in the active PLAN /
-handoff (e.g. PLAN-0020 §5/Phase 2), **not** here (a skill that fails to trigger
-must never silently drop a binding rule — CLAUDE.md §4 bright line). This skill
-only encodes the *mechanics* once you have the go-ahead.
+rule** is *ASK Cray before warming / running* — it lives in **`CLAUDE.md` §8
+Host-State Actions**, **not** here (a skill that fails to trigger must never
+silently drop a binding rule — CLAUDE.md §4 bright line). This skill only encodes
+the *mechanics* once you have the go-ahead.
+
+⚠️ **Corrected 2026-07-25 (session 174).** This section used to point the binding
+rule at "the active PLAN / handoff (e.g. PLAN-0020 §5/Phase 2)". **Superseded, not
+wrong when written**: session 62 (2026-06-16) promoted the rule into `CLAUDE.md` §8
+precisely so it survives when no PLAN is active — the pointer here was simply never
+updated, and PLAN-0020 has since been archived. Cite §8.
+
+**Related:** MS-S1 is also reachable over **SSH** for box-level work (services,
+Docker, scheduled tasks, event logs) — that is the **`ms-s1-admin`** skill, and §8
+covers those changes too.
 
 ## Reach by IP, not hostname
 
