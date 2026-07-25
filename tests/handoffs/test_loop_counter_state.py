@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import sys
 import threading
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,7 @@ HOOKS_DIR = Path(__file__).resolve().parents[2] / ".claude" / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
+    COUNTER_MAX_AGE_HOURS,
     L1_DOC_THRESHOLD,
     LOOP_TRIGGER_THRESHOLD,
     MAX_RECENT_ACTIONS,
@@ -40,10 +42,12 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     is_doc_target,
     l1_threshold_for,
     load_counter,
+    main_session_id,
     new_counter,
     normalize_error_signature,
     normalize_file_path,
     normalize_pytest_nodeid,
+    prune_stale_entries,
     record_turn_touched,
     reset,
     reset_l1_for_targets,
@@ -601,3 +605,213 @@ def test_reset_l1_for_targets_missing_is_noop() -> None:
     c = new_counter("s")
     cleared = reset_l1_for_targets(c, ["never-there.py"])
     assert cleared == []
+
+
+# --- State lifetime: age-out + session boundary (2026-07-25) ---
+#
+# Before this pair the state file was effectively immortal: `load_counter`
+# minted fresh state only on a missing/corrupt file and never compared the
+# recorded session_id, so one observed file held 194 counters spanning
+# 2026-06-23 .. 2026-07-25 — including a past-threshold L2 entry last touched
+# 2026-07-06. L2/L3 re-fire Telegram on EVERY observation past threshold, so
+# such an entry alerts on its next failure weeks later with no ramp.
+
+
+def _stamp(dt: datetime) -> str:
+    """Render a `last_updated` value in the `_now_iso` format."""
+    return dt.strftime("%Y-%m-%dT%H:%M:%S%z")
+
+
+def _aged(counter: LoopCounter, key: str, age_hours: float) -> None:
+    """Backdate an existing entry's `last_updated` by `age_hours`."""
+    counter.counters[key].last_updated = _stamp(datetime.now(UTC) - timedelta(hours=age_hours))
+
+
+def test_prune_drops_entry_older_than_window() -> None:
+    c = new_counter("s")
+    increment(c, LoopType.TEST_FAIL, "tests/x.py::test_a")
+    _aged(c, counter_key(LoopType.TEST_FAIL, "tests/x.py::test_a"), COUNTER_MAX_AGE_HOURS + 1)
+    dropped = prune_stale_entries(c)
+    assert dropped == [counter_key(LoopType.TEST_FAIL, "tests/x.py::test_a")]
+    assert c.counters == {}
+
+
+def test_prune_keeps_entry_inside_window() -> None:
+    c = new_counter("s")
+    increment(c, LoopType.TEST_FAIL, "tests/x.py::test_a")
+    _aged(c, counter_key(LoopType.TEST_FAIL, "tests/x.py::test_a"), COUNTER_MAX_AGE_HOURS - 1)
+    assert prune_stale_entries(c) == []
+    assert get_count(c, LoopType.TEST_FAIL, "tests/x.py::test_a") == 1
+
+
+@pytest.mark.parametrize("stamp", ["", "   ", "not-a-timestamp", "2026-13-99"])
+def test_prune_keeps_entry_with_unreadable_stamp(stamp: str) -> None:
+    """Fail-safe: an unparseable `last_updated` must not licence a drop.
+
+    An entry built directly (not via `increment`) carries `last_updated == ""`.
+    """
+    c = new_counter("s")
+    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    c.counters[counter_key(LoopType.FILE_EDIT, "services/x.py")].last_updated = stamp
+    assert prune_stale_entries(c) == []
+    assert get_count(c, LoopType.FILE_EDIT, "services/x.py") == 1
+
+
+def test_prune_reads_naive_stamp_as_utc() -> None:
+    """A tz-naive stamp must compare, not raise."""
+    c = new_counter("s")
+    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    key = counter_key(LoopType.FILE_EDIT, "services/x.py")
+    naive = datetime.now(UTC).replace(tzinfo=None) - timedelta(hours=COUNTER_MAX_AGE_HOURS + 1)
+    c.counters[key].last_updated = naive.strftime("%Y-%m-%dT%H:%M:%S")
+    assert prune_stale_entries(c) == [key]
+
+
+def test_an_active_loop_never_ages_out() -> None:
+    """The load-bearing property: age-out cannot truncate a LIVE signal.
+
+    `increment` refreshes `last_updated`, so a loop still running stays fresh
+    no matter how small the window — age-out only forgets DORMANT loops.
+    """
+    c = new_counter("s")
+    key = counter_key(LoopType.FILE_EDIT, "services/x.py")
+    for _ in range(LOOP_TRIGGER_THRESHOLD):
+        if key in c.counters:
+            _aged(c, key, 99)  # pretend a long gap since the previous touch...
+        increment(c, LoopType.FILE_EDIT, "services/x.py")  # ...which refreshes it
+    assert prune_stale_entries(c, max_age_hours=0.001) == []
+    assert has_triggered(c, LoopType.FILE_EDIT, "services/x.py")
+
+
+def test_prune_window_is_load_bearing() -> None:
+    """Widening the window keeps what the default drops (proves the bound acts)."""
+    c = new_counter("s")
+    increment(c, LoopType.TEST_FAIL, "tests/x.py::test_a")
+    _aged(c, counter_key(LoopType.TEST_FAIL, "tests/x.py::test_a"), COUNTER_MAX_AGE_HOURS + 1)
+    assert prune_stale_entries(c, max_age_hours=COUNTER_MAX_AGE_HOURS * 100) == []
+    assert prune_stale_entries(c, max_age_hours=COUNTER_MAX_AGE_HOURS) != []
+
+
+def test_load_ages_out_the_observed_incident_shape(tmp_path: Path) -> None:
+    """Regression pin on the real file: a weeks-old past-threshold L2 entry.
+
+    Shape observed 2026-07-25 in `.claude/state/loop-counter.json`:
+    `test_alembic_upgrade_creates_procedure_tables` at count 8 (threshold 6),
+    `last_updated` 2026-07-06 — armed to re-alert on its next failure.
+    """
+    state_path = tmp_path / "loop-counter.json"
+    nodeid = (
+        "tests/services/db/test_procedure_runs.py" "::test_alembic_upgrade_creates_procedure_tables"
+    )
+    c = new_counter("s")
+    for _ in range(8):
+        increment(c, LoopType.TEST_FAIL, nodeid)
+    _aged(c, counter_key(LoopType.TEST_FAIL, nodeid), 19 * 24)  # 19 days
+    increment(c, LoopType.FILE_EDIT, "services/live.py")  # today's work survives
+    save_counter(c, state_path)
+
+    loaded = load_counter(state_path)
+    assert not has_triggered(loaded, LoopType.TEST_FAIL, nodeid)
+    assert get_count(loaded, LoopType.TEST_FAIL, nodeid) == 0
+    assert get_count(loaded, LoopType.FILE_EDIT, "services/live.py") == 1
+
+
+def test_max_age_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CLAUDE_LOOP_COUNTER_MAX_AGE_HOURS", "48")
+    c = new_counter("s")
+    increment(c, LoopType.TEST_FAIL, "tests/x.py::test_a")
+    _aged(c, counter_key(LoopType.TEST_FAIL, "tests/x.py::test_a"), 24)
+    assert prune_stale_entries(c) == []  # inside the widened window
+
+
+@pytest.mark.parametrize("bad", ["", "abc", "0", "-5"])
+def test_max_age_env_override_invalid_falls_back(monkeypatch: pytest.MonkeyPatch, bad: str) -> None:
+    """A typo must not silently restore immortal state."""
+    monkeypatch.setenv("CLAUDE_LOOP_COUNTER_MAX_AGE_HOURS", bad)
+    c = new_counter("s")
+    increment(c, LoopType.TEST_FAIL, "tests/x.py::test_a")
+    _aged(c, counter_key(LoopType.TEST_FAIL, "tests/x.py::test_a"), COUNTER_MAX_AGE_HOURS + 1)
+    assert prune_stale_entries(c) != []
+
+
+def test_load_different_session_id_remints(tmp_path: Path) -> None:
+    state_path = tmp_path / "loop-counter.json"
+    c = new_counter("session-A")
+    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    record_turn_touched(c, "services/x.py")
+    save_counter(c, state_path)
+
+    loaded = load_counter(state_path, session_id="session-B")
+    assert loaded.session_id == "session-B"
+    assert loaded.counters == {}
+    assert loaded.turn_touched == []
+
+
+def test_load_same_session_id_keeps_counters(tmp_path: Path) -> None:
+    state_path = tmp_path / "loop-counter.json"
+    c = new_counter("session-A")
+    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    save_counter(c, state_path)
+    loaded = load_counter(state_path, session_id="session-A")
+    assert get_count(loaded, LoopType.FILE_EDIT, "services/x.py") == 1
+
+
+def test_load_without_session_id_keeps_counters(tmp_path: Path) -> None:
+    """Back-compat: the session check is opt-in; age-out still applies."""
+    state_path = tmp_path / "loop-counter.json"
+    c = new_counter("session-A")
+    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    save_counter(c, state_path)
+    assert get_count(load_counter(state_path), LoopType.FILE_EDIT, "services/x.py") == 1
+
+
+def test_load_empty_recorded_session_id_keeps_counters(tmp_path: Path) -> None:
+    """An empty recorded id carries no session info — it cannot be judged foreign."""
+    state_path = tmp_path / "loop-counter.json"
+    c = new_counter("")
+    c.session_id = ""
+    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    save_counter(c, state_path)
+    loaded = load_counter(state_path, session_id="session-B")
+    assert get_count(loaded, LoopType.FILE_EDIT, "services/x.py") == 1
+
+
+def test_remint_wipes_once_then_settles(tmp_path: Path) -> None:
+    """The stale `pid-<PID>` file is re-minted once, not on every load."""
+    state_path = tmp_path / "loop-counter.json"
+    c = new_counter("pid-59884")
+    increment(c, LoopType.FILE_EDIT, "services/x.py")
+    save_counter(c, state_path)
+
+    first = load_counter(state_path, session_id="real-session")
+    assert first.counters == {}
+    increment(first, LoopType.FILE_EDIT, "services/new.py")
+    save_counter(first, state_path)
+
+    second = load_counter(state_path, session_id="real-session")
+    assert get_count(second, LoopType.FILE_EDIT, "services/new.py") == 1  # survived
+
+
+# --- main_session_id (payload -> session id, subagent-suppressed) ---
+
+
+def test_main_session_id_reads_the_payload() -> None:
+    assert main_session_id({"session_id": "abc-123"}) == "abc-123"
+
+
+def test_main_session_id_is_none_for_a_subagent_call() -> None:
+    """A subagent must never re-mint: it would wipe the parent's live budget."""
+    assert main_session_id({"session_id": "abc-123", "agent_id": "sub-1"}) is None
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [{}, {"session_id": ""}, {"session_id": "   "}, {"session_id": 42}],
+)
+def test_main_session_id_is_none_when_absent_or_unusable(payload: dict[str, object]) -> None:
+    assert main_session_id(payload) is None
+
+
+def test_main_session_id_ignores_blank_agent_id() -> None:
+    """A blank `agent_id` is not a subagent signal (matches the G5 idiom)."""
+    assert main_session_id({"session_id": "abc-123", "agent_id": "  "}) == "abc-123"

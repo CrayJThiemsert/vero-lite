@@ -71,6 +71,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     has_triggered,
     increment,
     load_counter,
+    main_session_id,
     normalize_error_signature,
     normalize_file_path,
     normalize_pytest_nodeid,
@@ -293,7 +294,7 @@ def _handle_write_or_edit(payload: dict[str, Any]) -> None:
     if not target:
         return
 
-    counter = load_counter(_state_path())
+    counter = load_counter(_state_path(), session_id=main_session_id(payload))
     increment(
         counter,
         LoopType.FILE_EDIT,
@@ -319,7 +320,7 @@ def _handle_agent_completion(payload: dict[str, Any]) -> None:
     turn-boundary resets. ``turn_touched`` is left intact so the Stop hook still
     tracks any main-agent edits made afterwards.
     """
-    counter = load_counter(_state_path())
+    counter = load_counter(_state_path(), session_id=main_session_id(payload))
     cleared = reset_l1_for_targets(counter, list(counter.turn_touched))
     if cleared:
         save_counter(counter, _state_path())
@@ -457,7 +458,7 @@ def _handle_bash(payload: dict[str, Any]) -> None:
     stderr = tool_response.get("stderr") or ""
     combined = f"{stdout}\n{stderr}" if stderr else stdout
 
-    counter = load_counter(_state_path())
+    counter = load_counter(_state_path(), session_id=main_session_id(payload))
     changed = False
     changed |= _apply_l4(counter, command, tool_response)
     changed |= _apply_l2(counter, combined)

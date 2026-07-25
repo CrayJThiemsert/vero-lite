@@ -35,7 +35,30 @@ in Step 3); this module exposes ``reset()`` so the observer can clear a
 counter once the signal arrives.
 
 Session-ID source (OQ-A, Cray-approved 2026-05-24):
-``$CLAUDE_SESSION_ID`` -> ``pid-<PID>`` -> ``uuid-<UUID>`` fallback.
+``$CLAUDE_SESSION_ID`` -> ``pid-<PID>`` -> ``uuid-<UUID>`` fallback. Callers
+that hold a hook payload should pass ``session_id=payload["session_id"]``
+to :func:`load_counter` instead of relying on that chain — the harness puts a
+real session id on every hook payload, and the ``pid-<PID>`` fallback is the
+PID of the short-lived hook subprocess (different on every invocation), so it
+can never be compared meaningfully.
+
+**State lifetime (2026-07-25, Cray-approved per-diff).** The state file used
+to be effectively immortal: :func:`load_counter` minted a fresh counter only
+when the file was missing or corrupt, and the recorded ``session_id`` was
+never compared against the live session. Observed consequence — one file held
+194 counters spanning 2026-06-23 .. 2026-07-25, including a past-threshold L2
+entry last touched 2026-07-06 that would re-alert on its next failure weeks
+later (L2/L3 re-fire on *every* observation past threshold). Two independent
+guards now bound the lifetime:
+
+1. **Session boundary** — a recorded ``session_id`` that differs from the
+   caller-supplied one re-mints the counter (:func:`load_counter`).
+2. **Age-out** — entries whose ``last_updated`` is older than
+   :data:`COUNTER_MAX_AGE_HOURS` are dropped on load
+   (:func:`prune_stale_entries`). Age-out needs no session identity at all,
+   so it also covers the case the session check cannot see: ``.claude/state/``
+   is gitignored, so creating a git worktree *copies* the state file, carrying
+   another session's counters into a fresh tree.
 
 Stdlib-only (no Pydantic) — hooks run as subprocesses and must start
 fast without third-party deps.
@@ -49,7 +72,7 @@ import re
 import tempfile
 import uuid
 from dataclasses import asdict, dataclass, field
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from enum import Enum
 from pathlib import Path
 from typing import Any
@@ -71,6 +94,21 @@ MAX_RECENT_ACTIONS = 6  # last_6_actions ring-buffer size
 # error-signature / bash-pattern) cover the code feedback loop more directly.
 # See docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md + ADR-013 / Cray E.4.
 L1_DOC_THRESHOLD = 15
+
+# Age-out window for counter entries (2026-07-25, Cray-approved per-diff).
+# An entry whose ``last_updated`` is older than this is dropped on load.
+#
+# Why 6 hours. Age-out keys on ``last_updated``, which every ``increment``
+# refreshes — so a loop that is still running NEVER ages out, whatever this
+# value is. The only thing the window trades off is how long a *dormant* loop
+# stays remembered. 6 h is (a) comfortably longer than the slowest plausible
+# time-to-threshold, so no live signal is truncated: 6 attempts against a
+# ~15-minute DB / benchmark cycle is ~1.5 h; and (b) well under a day, so
+# nothing survives an overnight gap or bleeds into the next day's session.
+# Override per-process with ``CLAUDE_LOOP_COUNTER_MAX_AGE_HOURS`` (read from
+# the hook's own env, never from ``tool_input`` — same bypass-immunity
+# property as ``CLAUDE_LOOP_COUNTER_PATH``).
+COUNTER_MAX_AGE_HOURS = 6.0
 
 
 class LoopType(str, Enum):
@@ -305,6 +343,31 @@ def resolve_session_id() -> str:
     return f"uuid-{uuid.uuid4()}"
 
 
+def main_session_id(payload: dict[str, Any]) -> str | None:
+    """Session id to compare on load, or ``None`` for a subagent invocation.
+
+    Returns ``None`` when the payload carries a non-empty ``agent_id`` — the
+    signal that the hook fired inside a subagent, the same key
+    ``pretooluse_git_deny`` / ``pretooluse_classifier_dispatch`` use (G5 /
+    PLAN-0034 prong 2; populated live on subagent payloads).
+
+    Why suppress rather than compare: a subagent shares its parent's
+    ``session_id``, so a comparison is *expected* to match and would be a
+    no-op — but if a future harness version scoped the id per subagent
+    instead, every subagent Write would re-mint and wipe the main agent's
+    live L1 budget mid-turn. Returning ``None`` makes that impossible
+    structurally rather than relying on the id staying shared. Age-out still
+    applies on these loads; only the session check is skipped.
+    """
+    agent_id = payload.get("agent_id")
+    if isinstance(agent_id, str) and agent_id.strip():
+        return None
+    session_id = payload.get("session_id")
+    if isinstance(session_id, str) and session_id.strip():
+        return session_id.strip()
+    return None
+
+
 def _now_iso() -> str:
     return datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S%z")
 
@@ -317,27 +380,104 @@ def new_counter(session_id: str | None = None) -> LoopCounter:
     )
 
 
-def load_counter(path: Path | None = None) -> LoopCounter:
+def _max_age_hours() -> float:
+    """Age-out window in hours; ``CLAUDE_LOOP_COUNTER_MAX_AGE_HOURS`` override.
+
+    A malformed or non-positive override falls back to the default rather
+    than disabling the guard — a typo must not silently restore the
+    immortal-state behaviour this replaces.
+    """
+    raw = os.environ.get("CLAUDE_LOOP_COUNTER_MAX_AGE_HOURS")
+    if not raw:
+        return COUNTER_MAX_AGE_HOURS
+    try:
+        hours = float(raw)
+    except ValueError:
+        return COUNTER_MAX_AGE_HOURS
+    return hours if hours > 0 else COUNTER_MAX_AGE_HOURS
+
+
+def _parse_iso(ts: str) -> datetime | None:
+    """Parse a ``_now_iso`` stamp; ``None`` when absent or unparseable.
+
+    A naive stamp is read as UTC so comparisons never raise on mixed
+    awareness. ``None`` is the fail-SAFE answer: callers keep the entry
+    rather than dropping it (an entry built directly, without going
+    through :func:`increment`, has ``last_updated == ""``).
+    """
+    if not ts or not ts.strip():
+        return None
+    try:
+        parsed = datetime.fromisoformat(ts.strip())
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=UTC)
+    return parsed
+
+
+def prune_stale_entries(
+    counter: LoopCounter,
+    max_age_hours: float | None = None,
+    now: datetime | None = None,
+) -> list[str]:
+    """Drop counter entries older than ``max_age_hours``; return dropped keys.
+
+    "Older" means ``last_updated`` — which :func:`increment` refreshes on
+    every observation — so an actively-running loop is never pruned. An
+    entry with a missing or unparseable ``last_updated`` is KEPT (fail-safe:
+    an unreadable stamp must not licence dropping a live signal).
+    """
+    window = _max_age_hours() if max_age_hours is None else max_age_hours
+    cutoff = (now or datetime.now(UTC)) - timedelta(hours=window)
+    dropped: list[str] = []
+    for key in list(counter.counters):
+        stamped = _parse_iso(counter.counters[key].last_updated)
+        if stamped is not None and stamped < cutoff:
+            del counter.counters[key]
+            dropped.append(key)
+    return dropped
+
+
+def load_counter(path: Path | None = None, session_id: str | None = None) -> LoopCounter:
     """Load LoopCounter from disk; mint a fresh one on missing/malformed.
 
     Never raises. A corrupted state file is treated as missing and
     silently replaced on the next save — Phase 2 state is per-session
     and reset on observable progress anyway, so the cost of losing a
     counter is bounded.
+
+    ``session_id`` — pass ``payload["session_id"]`` from the hook payload.
+    When it differs from the ``session_id`` recorded in the file, the file
+    belongs to a previous session and a fresh counter is minted. Omitting it
+    keeps the previous behaviour (load whatever is on disk) *except* that
+    age-out still applies. Callers must NOT pass a subagent's id here: see
+    the ``agent_id`` note at each call site — a subagent shares its parent's
+    ``session_id``, and re-minting on a subagent's invocation would wipe the
+    main agent's live L1 budget.
     """
     p = path or DEFAULT_COUNTER_PATH
     if not p.exists():
-        return new_counter()
+        return new_counter(session_id)
     try:
         raw = p.read_text(encoding="utf-8")
         if not raw.strip():
-            return new_counter()
+            return new_counter(session_id)
         data = json.loads(raw)
     except (json.JSONDecodeError, OSError):
-        return new_counter()
+        return new_counter(session_id)
     if not isinstance(data, dict):
-        return new_counter()
-    return LoopCounter.from_json(data)
+        return new_counter(session_id)
+    counter = LoopCounter.from_json(data)
+    # Session boundary. Both ids must be non-empty to compare — an empty
+    # recorded id carries no session information, so it cannot be judged
+    # foreign; that case is left to age-out. A file recording the old
+    # ``pid-<PID>`` fallback DOES mismatch and is re-minted, once: the mint is
+    # then persisted with the real id, so later loads in the same session match.
+    if session_id and counter.session_id and counter.session_id != session_id:
+        return new_counter(session_id)
+    prune_stale_entries(counter)
+    return counter
 
 
 def save_counter(counter: LoopCounter, path: Path | None = None) -> None:
