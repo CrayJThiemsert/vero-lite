@@ -236,3 +236,14 @@ class RunQueryAnswer(BaseModel):
         description="semantic rejections in validate-and-retry form; non-empty means the "
         "question reached a query the run corpus cannot serve",
     )
+    phrased_by: str = Field(
+        ...,
+        description="which arm authored `answer`: the live model's name, or 'deterministic' "
+        "when a template did. Always present — arm identity is not conditional (PLAN-0093 AC-8)",
+    )
+    phrase_disclosure: str | None = Field(
+        default=None,
+        description="set only when the LLM arm was attempted and did NOT author the answer "
+        "(backend unavailable, transport failure, or an empty response). None on a "
+        "non-degraded path — this marks a DEGRADE, not determinism itself",
+    )
