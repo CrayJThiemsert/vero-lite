@@ -247,13 +247,17 @@ async def translate_run_question(question: str) -> StructuredQuery:
 
 async def phrase_run_answer(
     question: str, query: StructuredQuery, result: run_query.RunQueryResult
-) -> str:
+) -> nl_query.PhraseResult:
     """Phrase stage — PLUGGABLE (AC-9), and deliberately never reached on empty results.
 
     Degrades to the deterministic phrasing on any failure — including a backend
     that cannot be constructed at all — because a computed figure is still a
     grounded answer, and the alternative is a 500 on a question the engine has
     already answered correctly.
+
+    This is the FIRST of the three degrade branches on this path (PLAN-0093 AC-8);
+    the other two live in ``run_query.phrase_run_answer``. Each names the arm that
+    authored the text and discloses when the LLM arm was attempted and did not.
 
     The model receives only the computed facts, never a run record.
     """
@@ -263,7 +267,11 @@ async def phrase_run_answer(
         logger.warning(
             "run-corpus phrasing backend unavailable (%s); answering deterministically", exc
         )
-        return run_query.fallback_run_answer(query, result)
+        return nl_query.PhraseResult(
+            text=run_query.fallback_run_answer(query, result),
+            phrased_by=nl_query.PHRASED_BY_DETERMINISTIC,
+            disclosure=f"phrasing backend unavailable: {exc}"[: nl_query.DISCLOSURE_CAP],
+        )
     return await run_query.phrase_run_answer(client, question, query, result)
 
 
@@ -294,6 +302,9 @@ async def run_corpus_query(
             answer="I couldn't translate that into a query over the run records.",
             grounded=False,
             matched=0,
+            # An honest refusal, deterministic BY DESIGN — the arm is named, and
+            # nothing is disclosed because nothing degraded (PLAN-0093 AC-8).
+            phrased_by=nl_query.PHRASED_BY_DETERMINISTIC,
         )
 
     errors = run_query.validate_run_query(query)
@@ -305,6 +316,7 @@ async def run_corpus_query(
             matched=0,
             structured_query=query.model_dump(mode="json"),
             validation_errors=errors,
+            phrased_by=nl_query.PHRASED_BY_DETERMINISTIC,
         )
 
     result = await run_query.execute_run_query(session, query)
@@ -315,13 +327,18 @@ async def run_corpus_query(
             grounded=False,
             matched=0,
             structured_query=query.model_dump(mode="json"),
+            phrased_by=nl_query.PHRASED_BY_DETERMINISTIC,
         )
 
+    phrased = await phrase_run_answer(payload.question, query, result)
     return RunQueryAnswer(
         question=payload.question,
-        answer=await phrase_run_answer(payload.question, query, result),
+        answer=phrased.text,
         grounded=True,
         matched=result.matched,
         structured_query=query.model_dump(mode="json"),
         aggregate_value=result.aggregate.value if result.aggregate else None,
+        # The only path here where the arm is not known statically.
+        phrased_by=phrased.phrased_by,
+        phrase_disclosure=phrased.disclosure,
     )

@@ -63,6 +63,10 @@ def _to_response(record: ActionRecord) -> RecommendationResponse:
         confidence=action.confidence,
         requires_approval=action.requires_approval,
         suggested_handler=action.suggested_handler,
+        # PLAN-0093 AC-1: actor_kind was already the right discriminator and was
+        # computed on every path — it just never crossed the HTTP boundary.
+        actor_kind=action.audit_metadata.actor_kind,
+        actor=action.audit_metadata.actor,
         reasoning_trace=action.reasoning_trace,
         affected_entities=action.affected_entities,
         approved_at=action.approved_at,

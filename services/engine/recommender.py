@@ -262,7 +262,66 @@ async def recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
             vertical,
             exc,
         )
-        return _rule_recommend(event, vertical)
+        # PLAN-0093 AC-3: the fail-safe record must SAY it is a fail-safe. Without
+        # this it is byte-identical to a rule-by-design run — same two rule_check
+        # steps, same RULE_CONFIDENCE — so a consumer cannot tell "rule because
+        # that is the right answer" from "rule because the model died".
+        return _disclose_llm_degrade(_rule_recommend(event, vertical), exc)
+
+
+_DISCLOSURE_CAP = 300
+"""Truncation cap for a degrade disclosure, matching ``_degraded_step``
+(``services/engine/action_verification.py``) and ``nl_query.DISCLOSURE_CAP``."""
+
+
+def _disclose_llm_degrade(record: ActionRecord | None, exc: Exception) -> ActionRecord | None:
+    """Mark a fail-safe record as the product of a FAILED LLM arm (PLAN-0093 AC-3).
+
+    Appends one disclosure step to the trace and one sentence to
+    ``audit_metadata.notes``. Reuses the existing CI-pinned ``rule_check`` kind
+    (``services/api/static/assets/trace-kinds.js``) rather than minting a new one —
+    the naming of arms belongs to the later two-arm ADR, not here.
+
+    ``_rule_recommend`` itself stays byte-unchanged: it is *also* the honest
+    rule-by-design path (no LLM was ever attempted there) and must not carry
+    degrade language. The disclosure is applied only on the fail-safe edge.
+
+    ``None`` in, ``None`` out — a sub-threshold event yields no record to disclose on.
+    """
+    if record is None:
+        return None
+    action = record.action
+    note = (
+        "The LLM arm was attempted and failed; the deterministic rule fail-safe "
+        f"produced this recommendation ({type(exc).__name__})."
+    )
+    existing = action.audit_metadata.notes
+    record.action = action.model_copy(
+        update={
+            "reasoning_trace": [
+                *action.reasoning_trace,
+                ReasoningStep(
+                    step_id="llm-degrade-disclosure",
+                    kind="rule_check",
+                    summary=(
+                        "LLM arm failed; the deterministic rule fail-safe produced "
+                        "this recommendation (disclosed)."
+                    ),
+                    detail={
+                        "recommendation_mode": "rule-fail-safe",
+                        "llm_status": type(exc).__name__,
+                        "llm_disclosure": (f"LLM arm failed; deterministic fail-safe ran: {exc}")[
+                            :_DISCLOSURE_CAP
+                        ],
+                    },
+                ),
+            ],
+            "audit_metadata": action.audit_metadata.model_copy(
+                update={"notes": f"{existing} {note}".strip() if existing else note}
+            ),
+        }
+    )
+    return record
 
 
 def _rule_recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None:

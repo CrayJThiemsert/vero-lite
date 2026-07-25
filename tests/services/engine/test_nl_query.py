@@ -17,6 +17,7 @@ import pytest
 from services.api.config import settings
 from services.engine.llm.client import ChatResult, OllamaClient, OllamaError
 from services.engine.nl_query import (
+    PHRASED_BY_DETERMINISTIC,
     AggregateResult,
     QueryFilter,
     QueryOperation,
@@ -213,6 +214,79 @@ async def test_phrasing_failure_falls_back_deterministically(energy_adapter: Non
     assert answer.grounded is True
     assert answer.result_count == 2
     assert "Site record(s)" in answer.answer  # deterministic fallback phrasing
+
+
+# --- PLAN-0093 AC-4: the arm that authored the answer is DISCLOSED ----------
+#
+# Before PLAN-0093 every assertion below was impossible to write: _phrase
+# returned a bare str, so "a template wrote this, not the model" had no channel
+# even in-process. `grounded` does not carry it (it is a retrieval signal —
+# proven by the pair test at the bottom of this block).
+
+_SITE_LIST_QUERY = {"object_type": "Site", "operation": "list"}
+
+
+async def test_healthy_phrasing_names_the_model_as_author(energy_adapter: None) -> None:
+    """AC-4: when the model authors the text, phrased_by is the model's name and
+    nothing is disclosed — there was no degrade."""
+    client = _StubQueryClient(query=dict(_SITE_LIST_QUERY))
+    answer = await answer_question("which sites?", "energy", client=client)
+    assert answer.answer == "Grounded answer from the data."  # the model's text
+    assert answer.phrased_by == "stub"  # ChatResult.model, NOT "deterministic"
+    assert answer.phrase_disclosure is None
+
+
+async def test_phrase_exception_discloses_the_degrade(energy_adapter: None) -> None:
+    """AC-4: a transport failure in the phrase stage names the deterministic
+    author AND says so in a returned field — not only in a log line."""
+    client = _StubQueryClient(query=dict(_SITE_LIST_QUERY), raise_on="phrase")
+    answer = await answer_question("which sites?", "energy", client=client)
+    assert answer.phrased_by == PHRASED_BY_DETERMINISTIC
+    assert answer.phrase_disclosure is not None
+    assert "degraded to deterministic template" in answer.phrase_disclosure
+
+
+async def test_phrase_empty_content_discloses_its_own_reason(energy_adapter: None) -> None:
+    """AC-4: the empty-content branch — historically the most silent degrade in
+    the system (no channel AND no log) — discloses, with a reason distinct from
+    the transport-failure branch so the two are tellable apart."""
+    client = _StubQueryClient(query=dict(_SITE_LIST_QUERY), phrase="   ")
+    answer = await answer_question("which sites?", "energy", client=client)
+    assert answer.phrased_by == PHRASED_BY_DETERMINISTIC
+    assert answer.phrase_disclosure is not None
+    assert "empty content" in answer.phrase_disclosure
+    assert "Site record(s)" in answer.answer  # the template actually authored it
+
+
+async def test_deterministic_by_design_paths_carry_no_disclosure(
+    energy_adapter: None,
+) -> None:
+    """AC-4: disclosure marks a DEGRADE, not determinism itself. A path where
+    deterministic phrasing was the intended arm names its author and discloses
+    nothing."""
+    client = _StubQueryClient(raise_on="translate")  # -> _ungrounded
+    answer = await answer_question("anything", "energy", client=client)
+    assert answer.phrased_by == PHRASED_BY_DETERMINISTIC
+    assert answer.phrase_disclosure is None
+
+
+async def test_grounded_does_not_discriminate_the_arm(energy_adapter: None) -> None:
+    """AC-4/AC-5 premise: over the SAME records a healthy run and a degraded run
+    are both grounded=True and differ only in phrased_by. Grounding is a
+    retrieval signal; it never carried arm provenance and still does not."""
+    healthy = await answer_question(
+        "which sites?", "energy", client=_StubQueryClient(query=dict(_SITE_LIST_QUERY))
+    )
+    degraded = await answer_question(
+        "which sites?",
+        "energy",
+        client=_StubQueryClient(query=dict(_SITE_LIST_QUERY), raise_on="phrase"),
+    )
+    assert healthy.grounded is degraded.grounded is True
+    assert healthy.result_count == degraded.result_count == 2
+    assert healthy.phrased_by != degraded.phrased_by
+    assert healthy.phrase_disclosure is None
+    assert degraded.phrase_disclosure is not None
 
 
 async def test_unavailable_backend_is_ungrounded(

@@ -30,6 +30,9 @@ from tests.conftest import OutboundNetworkBlocked
 @dataclass
 class _ChatResult:
     content: str
+    # The real ChatResult carries the serving model's name; the phrase stage now
+    # reads it to name the authoring arm (PLAN-0093 AC-8), so the stub must too.
+    model: str = "stub"
 
 
 @dataclass
@@ -165,9 +168,12 @@ async def test_phrase_hands_the_model_the_computed_figure() -> None:
         object_type="pipeline_run", operation="sum", aggregate_property="net_benefit_thb"
     )
     answer = await run_query.phrase_run_answer(client, "total benefit?", query, _aggregate_result())
-    assert answer == "Runs delivered ฿1500000 in net benefit."
+    assert answer.text == "Runs delivered ฿1500000 in net benefit."
     assert "1500000" in client.prompt_text
     assert "do not recompute" in client.prompt_text
+    # AC-8: the model authored it, so the arm is the model and nothing is disclosed.
+    assert answer.phrased_by == "stub"
+    assert answer.disclosure is None
 
 
 async def test_phrase_degrades_to_the_deterministic_answer() -> None:
@@ -177,7 +183,11 @@ async def test_phrase_degrades_to_the_deterministic_answer() -> None:
         object_type="pipeline_run", operation="sum", aggregate_property="net_benefit_thb"
     )
     answer = await run_query.phrase_run_answer(client, "total benefit?", query, _aggregate_result())
-    assert "1500000" in answer
+    assert "1500000" in answer.text
+    # AC-8 degrade branch 2 of 3: the swap is disclosed, not silent.
+    assert answer.phrased_by == run_query.PHRASED_BY_DETERMINISTIC
+    assert answer.disclosure is not None
+    assert "degraded to the deterministic answer" in answer.disclosure
 
 
 async def test_phrase_degrades_on_an_empty_model_response() -> None:
@@ -186,7 +196,11 @@ async def test_phrase_degrades_on_an_empty_model_response() -> None:
     query = StructuredQuery(object_type="pipeline_run", operation="count")
     result = run_query.RunQueryResult(matched=7, count=7)
     answer = await run_query.phrase_run_answer(client, "how many?", query, result)
-    assert answer == "7 run(s) match that question."
+    assert answer.text == "7 run(s) match that question."
+    # AC-8 degrade branch 3 of 3 — historically the silent one: no channel, no log.
+    assert answer.phrased_by == run_query.PHRASED_BY_DETERMINISTIC
+    assert answer.disclosure is not None
+    assert "empty content" in answer.disclosure
 
 
 # --- PDPA ------------------------------------------------------------------

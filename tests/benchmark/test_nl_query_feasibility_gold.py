@@ -11,7 +11,12 @@ from __future__ import annotations
 from typing import Any
 
 from benchmarks.nl_query_feasibility.harness import load_gold, score_case
-from services.engine.nl_query import AggregateResult, NlAnswer, StructuredQuery
+from services.engine.nl_query import (
+    PHRASED_BY_DETERMINISTIC,
+    AggregateResult,
+    NlAnswer,
+    StructuredQuery,
+)
 
 
 def _answer(
@@ -35,6 +40,9 @@ def _answer(
         source_objects=[],
         result_count=count,
         aggregate=agg,
+        # score_case does not read the arm; the scorer's fixtures are deterministic
+        # by construction (PLAN-0093 SD-1 — required, so a miss cannot pass silently).
+        phrased_by=PHRASED_BY_DETERMINISTIC,
     )
 
 

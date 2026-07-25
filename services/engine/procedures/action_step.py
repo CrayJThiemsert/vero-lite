@@ -283,7 +283,12 @@ class ActionStepExecutor:
     """The real ``action`` StepExecutor (AC A-7). See module docstring."""
 
     client_factory: ClientFactory = _default_client_factory
-    retry_budget: int = 3
+    # PLAN-0093 AC-6: ``None`` means "read settings.llm_retry_budget at use time".
+    # This was a hardcoded 3 that no factory overrode, so LLM_RETRY_BUDGET was
+    # honoured on every reactive path and silently inert on the governed one —
+    # the disclosed configuration was not the operative one. An explicit
+    # constructor value still wins (the nl_query.answer_question idiom).
+    retry_budget: int | None = None
 
     async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
         """Build + route one RecommendedAction per entity in ``input_set``.
@@ -298,13 +303,14 @@ class ActionStepExecutor:
                 "declare a registered handler to propose a RecommendedAction"
             )
         client = self.client_factory(ctx.agent.llm_model)
+        budget = self.retry_budget if self.retry_budget is not None else settings.llm_retry_budget
         auto = step.autonomy is Autonomy.AUTO
         output: list[Any] = []
         trace: list[dict[str, Any]] = []
         for entity in input_set:
             event = dict(entity) if isinstance(entity, Mapping) else {"value": entity}
             judgment = await generate_judgment(
-                client, event, ctx.vertical, retry_budget=self.retry_budget, goal=ctx.goal
+                client, event, ctx.vertical, retry_budget=budget, goal=ctx.goal
             )
             # ADR-0030 / PLAN-0071: the advisory economic-impact facet on the governed
             # action path — the FIRST appended advisory step on this composition; the
