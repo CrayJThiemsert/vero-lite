@@ -45,7 +45,10 @@ from services.db import run_analytics
 from services.engine.llm.prompt import render_untrusted_block
 from services.engine.llm.structured import ChatClient
 from services.engine.nl_query import (
+    DISCLOSURE_CAP,
+    PHRASED_BY_DETERMINISTIC,
     AggregateResult,
+    PhraseResult,
     QueryFilter,
     QueryTranslationError,
     StructuredQuery,
@@ -385,8 +388,12 @@ def fallback_run_answer(query: StructuredQuery, result: RunQueryResult) -> str:
 
 async def phrase_run_answer(
     client: ChatClient, question: str, query: StructuredQuery, result: RunQueryResult
-) -> str:
+) -> PhraseResult:
     """Phrase a populated result from the COMPUTED FACTS ONLY.
+
+    Returns a :class:`PhraseResult` (shared with the ontology NL-query path) rather
+    than a bare string, so the caller can tell WHICH arm authored the text and both
+    degrade branches say so in a returned field (PLAN-0093 AC-8).
 
     The model is handed the matched count and the deterministic aggregate — never
     a run record, which would put ``person_id`` in a prompt (PDPA). It is told to
@@ -419,5 +426,19 @@ async def phrase_run_answer(
         )
     except Exception as exc:  # phrasing must degrade, never raise into the handler
         logger.warning("run-corpus phrasing failed; using the deterministic answer: %s", exc)
-        return fallback_run_answer(query, result)
-    return chat_result.content.strip() or fallback_run_answer(query, result)
+        return PhraseResult(
+            text=fallback_run_answer(query, result),
+            phrased_by=PHRASED_BY_DETERMINISTIC,
+            disclosure=f"phrasing degraded to the deterministic answer: {exc}"[:DISCLOSURE_CAP],
+        )
+    answer = chat_result.content.strip()
+    if not answer:
+        # Previously an empty model response swapped in the deterministic answer
+        # with no log and no channel — symmetric with nl_query's branch (H4b).
+        logger.warning("run-corpus phrasing returned empty content; using the deterministic answer")
+        return PhraseResult(
+            text=fallback_run_answer(query, result),
+            phrased_by=PHRASED_BY_DETERMINISTIC,
+            disclosure="model returned empty content; deterministic answer used",
+        )
+    return PhraseResult(text=answer, phrased_by=chat_result.model, disclosure=None)

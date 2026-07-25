@@ -14,7 +14,9 @@ from typing import Any
 
 import pytest
 
+from services.api.config import settings
 from services.engine.llm.client import ChatResult
+from services.engine.llm.structured import StructuredOutputError
 from services.engine.procedures.action_step import ActionStepExecutor
 from services.engine.procedures.orchestrator import ProcedureError, RunContext
 from services.engine.procedures.spec import Agent, AgentAllowed, Autonomy, Step, StepKind
@@ -220,3 +222,78 @@ async def test_goal_is_threaded_into_action_reasoning() -> None:
 
     system = fake.calls[0]["messages"][0]["content"]
     assert "Run the morning pond health round." in system
+
+
+# --- PLAN-0093 AC-6: the disclosed retry budget is now the operative one ----
+
+
+class _CountingChatClient:
+    """Returns schema-invalid content and NEVER raises, so the structuring retry
+    loop is actually entered.
+
+    A client that RAISES would be the wrong oracle here: ``generate_judgment``'s
+    call-1 reasoning pass sits OUTSIDE the retry loop, so a raiser dies before the
+    loop runs at all and the attempt count would read 0 for reasons that have
+    nothing to do with the budget.
+    """
+
+    def __init__(self) -> None:
+        self.calls: list[dict[str, Any] | None] = []
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        think: bool | None = None,
+        response_format: dict[str, Any] | None = None,
+        temperature: float = 0.0,
+    ) -> ChatResult:
+        self.calls.append(response_format)
+        return _result("not valid json for the judgment schema")
+
+    @property
+    def structuring_attempts(self) -> int:
+        """Calls carrying ``response_format`` — exactly the ones the loop makes."""
+        return sum(1 for response_format in self.calls if response_format is not None)
+
+
+async def test_retry_budget_comes_from_settings_on_the_governed_path(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-6: LLM_RETRY_BUDGET was honoured on every reactive path and silently
+    inert here — ActionStepExecutor hardcoded 3 and no factory ever overrode it,
+    so the disclosed configuration was not the operative one.
+
+    reasoning_mode is pinned by construction: the executor passes none, so
+    generate_judgment's ``"full"`` default applies and call 1 always runs.
+    """
+    registry.register_handler("aquaculture", "aerate", SpyHandler())
+    monkeypatch.setattr(settings, "llm_retry_budget", 2)
+    client = _CountingChatClient()
+    executor = ActionStepExecutor(client_factory=lambda _m: client)
+
+    with pytest.raises(StructuredOutputError):
+        await executor.execute(
+            _action_step(autonomy=Autonomy.GATED), [{"pond": "p7", "event_id": "e7"}], _ctx()
+        )
+
+    assert client.structuring_attempts == 2  # the setting, not the old hardcoded 3
+    assert len(client.calls) == 3  # 1 reasoning (outside the loop) + 2 structuring
+
+
+async def test_explicit_retry_budget_still_wins_over_settings(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-6: reading the setting at use time must not clobber an explicit value."""
+    registry.register_handler("aquaculture", "aerate", SpyHandler())
+    monkeypatch.setattr(settings, "llm_retry_budget", 2)
+    client = _CountingChatClient()
+    executor = ActionStepExecutor(client_factory=lambda _m: client, retry_budget=1)
+
+    with pytest.raises(StructuredOutputError):
+        await executor.execute(
+            _action_step(autonomy=Autonomy.GATED), [{"pond": "p7", "event_id": "e7"}], _ctx()
+        )
+
+    assert client.structuring_attempts == 1
+    assert len(client.calls) == 2

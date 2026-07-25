@@ -26,10 +26,17 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from services.api.main import app
 from services.api.models.insights import RunQueryAnswer
+from services.api.routers import insights as insights_router
 from services.db.base import Base
 from services.db.session import get_session
+from services.engine import run_query
 from services.engine.llm.client import OllamaError
-from services.engine.nl_query import QueryFilter, StructuredQuery
+from services.engine.nl_query import (
+    PHRASED_BY_DETERMINISTIC,
+    PhraseResult,
+    QueryFilter,
+    StructuredQuery,
+)
 from tests.db_support import create_test_engine
 from tests.support.run_corpus_factory import Corpus, build_corpus
 
@@ -44,9 +51,10 @@ class _Phraser:
 
     calls: list[str] = field(default_factory=list)
 
-    async def __call__(self, question: str, query: StructuredQuery, result: object) -> str:
+    async def __call__(self, question: str, query: StructuredQuery, result: object) -> PhraseResult:
         self.calls.append(question)
-        return f"stub answer for: {question}"
+        # PLAN-0093 AC-8: the phrase seam returns the text AND the arm that wrote it.
+        return PhraseResult(text=f"stub answer for: {question}", phrased_by="stub")
 
 
 @dataclass
@@ -107,6 +115,37 @@ async def test_end_to_end_count_is_grounded_in_the_corpus(
     # The grounding receipt travels with the answer.
     assert body["structured_query"]["object_type"] == "pipeline_run"
     assert query_client.phraser.calls == ["how many runs?"]
+    # AC-8: the healthy arm is named and nothing is disclosed — no degrade happened.
+    assert body["phrased_by"] == "stub"
+    assert body["phrase_disclosure"] is None
+
+
+async def test_unconstructible_backend_degrades_and_says_so(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-8, degrade branch 1 of 3 — the one that lives in the router itself.
+
+    When no chat backend can be built at all, the stage still returns the computed
+    figure (a grounded answer), and now names the deterministic author and says the
+    LLM arm was attempted. Before PLAN-0093 this was indistinguishable from a
+    healthy model-phrased answer. Exercised directly rather than through the
+    endpoint, because the endpoint fixture stubs this very seam out.
+    """
+
+    def _no_backend() -> object:
+        raise NotImplementedError("the hosted backend is a seam-only stub")
+
+    monkeypatch.setattr(f"{_ROUTER}.nl_query._build_chat_client", _no_backend)
+
+    phrased = await insights_router.phrase_run_answer(
+        "how many runs?",
+        StructuredQuery(object_type="pipeline_run", operation="count"),
+        run_query.RunQueryResult(matched=7, count=7),
+    )
+    assert phrased.text == "7 run(s) match that question."  # the corpus's own figure
+    assert phrased.phrased_by == PHRASED_BY_DETERMINISTIC
+    assert phrased.disclosure is not None
+    assert "backend unavailable" in phrased.disclosure
 
 
 async def test_query_the_corpus_cannot_serve_returns_retry_shaped_errors(
