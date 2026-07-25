@@ -1,8 +1,9 @@
 # PLAN-0088: Cross-run read substrate and run-insight readers
 
-**Status:** Draft
+**Status:** COMPLETE
 **Owner:** Claude Code
 **Created:** 2026-07-22
+**Completed:** 2026-07-25 (session 171) — all 13 live ACs satisfied (AC-12 struck per SD-8 (a), a tombstone). Steps 0–6 built across PRs #890/#891/#893/#895/#900/#902/#905/#907. AC-9b's live translate+phrase smoke PASSED against MS-S1 `gpt-oss:20b` (120 runs counted, grounded — recorded in PR #907). Offline gate green at CI scope on the merge commits; MS-S1 contacted only for the one sanctioned AC-9b run.
 **Related ADRs:** ADR-0032 (strategic frame — governs scope), ADR-0030 (฿ facet — advisory discipline inherited), ADR-016 (run records), ADR-0026 (step principals / SoD map)
 
 > Provenance: session-161 dispatch. Cray (Tier 3) asked how accumulated
@@ -708,7 +709,7 @@ All ACs are **offline-testable** (CLAUDE.md §8: offline tests are the gate;
 DB-backed tests use the disposable per-checkout test DB). The single
 live-model item is explicitly non-CI (AC-9b).
 
-- [ ] **AC-1 — Substrate, SQL-side.** `services/db/run_analytics.py` exposes
+- [x] **AC-1 — Substrate, SQL-side.** `services/db/run_analytics.py` exposes
   typed read primitives (status/procedure/period rollups, duration stats, ฿
   rollup, refusal/gate counts — **no listing primitive** (SD-8 ruled (a)
   ELIMINATE, 2026-07-24; `list_runs_page`/AC-12 struck)). **This enumeration is
@@ -731,7 +732,7 @@ live-model item is explicitly non-CI (AC-9b).
   the fixture cannot, and its cost would land on every CI run forever;
   performance-at-volume is a measured-evidence concern (S2's upgrade-path
   stance), not a CI micro-benchmark.
-- [ ] **AC-2 — Volume factory.** A deterministic (seeded-RNG) corpus factory
+- [x] **AC-2 — Volume factory.** A deterministic (seeded-RNG) corpus factory
   under `tests/support/` generalizing the `test_monitor_runs.py` direct-ORM
   pattern: ≥ 3 procedures, all run statuses, gate resolutions with
   `step_principals` approver halves, ฿ facets on a known subset (including a
@@ -739,12 +740,12 @@ live-model item is explicitly non-CI (AC-9b).
   `read_refused` audit facts on a known subset, band-verdict artifacts on a
   known subset.
   Reproducible expected values are computable in-test from the seed.
-- [ ] **AC-3 — Ordering tripwire (owns the S4 guard).** A static AST guard
+- [x] **AC-3 — Ordering tripwire (owns the S4 guard).** A static AST guard
   test fails if `run_analytics.py` emits `ORDER BY` on a raw wall-clock column
   (`started_at`/`created_at`/`updated_at`); bucket-label ordering allowed. The
   ±1 s skew tolerance and the day-or-coarser bucketing rule are documented in
   the module docstring and asserted present by the same test.
-- [ ] **AC-4 — A2 rollup.** `GET /insights/impact` returns a typed ฿ rollup
+- [x] **AC-4 — A2 rollup.** `GET /insights/impact` returns a typed ฿ rollup
   grouped by **`currency` × procedure × facet `kind` × period**: run counts,
   summed/averaged `net_benefit_thb` (Decimal end-to-end), `figures_missing`
   count, `provisional: true` at report level, union-of-assumptions
@@ -758,22 +759,22 @@ live-model item is explicitly non-CI (AC-9b).
   facet and asserts extraction equals the emitted Decimal (pins the JSONB
   serialization shape). A malformed facet row is skipped + counted — asserted
   never to raise (ADR-0030 never-raise inherited).
-- [ ] **AC-5 — A2 narrative.** A deterministic (no-LLM) template narrative
+- [x] **AC-5 — A2 narrative.** A deterministic (no-LLM) template narrative
   renders the rollup; a test asserts every figure in the narrative equals the
   rollup value it cites, and that the provisional labeling is present. No
   ADR-0032 D5 forbidden vocabulary anywhere in reader-facing strings
   (asserted by grep-style test over the insights modules).
-- [ ] **AC-6 — A3 flow report.** `GET /insights/flow` returns per-procedure ×
+- [x] **AC-6 — A3 flow report.** `GET /insights/flow` returns per-procedure ×
   per-step `duration_ms` stats (count/avg/max), `waiting_human` dwell from
   same-row spans clamped ≥ 0, and a surfaced `negative_clock_spans` counter.
   Seeded test asserts exact values; no cross-row wall-clock arithmetic exists
   (covered by AC-3's guard scope).
-- [ ] **AC-7 — A4 audit-readiness.** `GET /insights/audit-readiness` composes:
+- [x] **AC-7 — A4 audit-readiness.** `GET /insights/audit-readiness` composes:
   run totals by status, gate-resolution counts (approver half present),
   refusal counts by kind, and the existing public chain verdict via the
   shipped `verify_chain` seam — read-only, split visibility preserved (no
   verbatim break strings). Seeded test asserts exact composition.
-- [ ] **AC-8 — A1 grounding parity.** The run-corpus descriptor + executor
+- [x] **AC-8 — A1 grounding parity.** The run-corpus descriptor + executor
   preserve `nl_query`'s three grounding properties, each with its own test:
   (i) unknown object type / property / non-numeric aggregate rejected with
   validate-and-retry-shaped errors; (ii) execute is deterministic and LLM-free
@@ -781,19 +782,19 @@ live-model item is explicitly non-CI (AC-9b).
   fixed `StructuredQuery`, and exact seeded values come back; (iii) an
   empty result short-circuits to the fixed no-matching-records answer with
   the phrase stage never invoked.
-- [ ] **AC-9 — A1 endpoint.** `POST /insights/query` wires
+- [x] **AC-9 — A1 endpoint.** `POST /insights/query` wires
   translate→validate→execute→phrase with the translate/phrase stages
   pluggable; CI exercises the pipeline end-to-end with a schema-shaped stub
   translator + stub phraser (offline).
-- [ ] **AC-9b — A1 live smoke (host-state, NOT CI).** One live translate+phrase
+- [x] **AC-9b — A1 live smoke (host-state, NOT CI).** One live translate+phrase
   run against local MS-S1 Ollama only. **Requires explicit Cray go before the
   run** (CLAUDE.md §8); never a CI gate; run records carry `person_id` (PII —
   PDPA), so the remote Anthropic API is **never** used on run data.
-- [ ] **AC-10 — Group-B carrier proof (owns the L2 proof).** Four tests — B1
+- [x] **AC-10 — Group-B carrier proof (owns the L2 proof).** Four tests — B1
   band-verdict distribution, B2 per-tier approval outcome + dwell, B3 refusal
   counts by kind × procedure, B4 trigger × outcome frequency — each expressed
   through the substrate's public surface only, asserting exact seeded values.
-- [ ] **AC-11 — Read-only guard (owns the L1 mechanical test).** A static AST
+- [x] **AC-11 — Read-only guard (owns the L1 mechanical test).** A static AST
   guard over `run_analytics.py`, `insights.py`, **and `run_query.py`**
   asserting three concrete predicates — nothing in this guard is prose-only:
   (i) no write primitive (`session.add` / `insert(` / `update(` / `delete(`);
@@ -819,7 +820,7 @@ live-model item is explicitly non-CI (AC-9b).
   the substrate ships **no** listing primitive and `GET /runs` is untouched by
   this PLAN. Listing pagination lives in the future monotonic-sequence-column
   PLAN. **Live AC count: 13** (AC-1…AC-11, AC-9b, AC-13; AC-12 is a tombstone).
-- [ ] **AC-13 — Quality gate.** New code: type hints, `mypy --strict` clean on
+- [x] **AC-13 — Quality gate.** New code: type hints, `mypy --strict` clean on
   the whole `services/` tree, ruff clean, all request/response models Pydantic
   with `Field(description=…)`.
 
@@ -891,7 +892,7 @@ clamped-negative counter. Zero LLM.
 Compose substrate counts with the existing `verify_chain` public verdict.
 Read-only; split visibility preserved.
 
-### Step 4.5: Substrate extension for A1 — AC-1 (extended)
+### Step 4.5: Substrate extension for A1 — AC-1 (extended) — ✅ BUILT (s170, PR #900)
 
 **Created by SD-9's ruling (a2), 2026-07-24.** Carries the SQL that Step 5
 needs and Step 1 did not ship, in `services/db/run_analytics.py` **only**:
@@ -912,7 +913,7 @@ new primitive and record WHICH oracle reddens** — Step 4 shipped an
 approver-half assertion that could not fail because the corpus made two
 readings identical, and these primitives have the same exposure.
 
-### Step 5: Reader A1 — NL query over runs (`POST /insights/query`) — AC-8, AC-9, AC-9b
+### Step 5: Reader A1 — NL query over runs (`POST /insights/query`) — AC-8, AC-9 — ✅ BUILT (s170, PR #902); AC-9b ✅ (s171, PR #907, live smoke PASSED)
 
 Run-corpus descriptor + deterministic `StructuredQuery`→substrate executor in
 `services/engine/run_query.py`; endpoint wiring with pluggable translate/
@@ -927,7 +928,7 @@ no `sqlalchemy` import (AC-11 holds this statically). `operation=list` is
 excluded from the run-corpus vocabulary under LOCKED SD-8; the validator
 rejects it with a validate-and-retry-shaped error.
 
-### Step 6: Group-B carrier proof + close — AC-10, AC-13
+### Step 6: Group-B carrier proof + close — AC-10, AC-13 — ✅ BUILT (s171, PR #905)
 
 The four B-shape query tests over the seeded corpus; final quality gate sweep;
 STATUS update. (Archival `git mv` to `done/` happens per standard plan flow
