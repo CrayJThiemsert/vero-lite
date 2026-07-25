@@ -13,7 +13,7 @@ from typing import Any
 import pytest
 from httpx import AsyncClient
 
-from services.engine.llm.client import ChatResult
+from services.engine.llm.client import ChatResult, OllamaError
 
 
 class _StubQueryClient:
@@ -92,3 +92,73 @@ async def test_query_advertised_in_openapi(client: AsyncClient) -> None:
     """GET /openapi.json advertises the new /query route."""
     paths = (await client.get("/openapi.json")).json()["paths"]
     assert "/query" in paths
+
+
+# --- PLAN-0093 AC-2 / AC-5: outcome + arm provenance cross the HTTP boundary ---
+
+
+class _DegradedPhraseClient(_StubQueryClient):
+    """Translates fine, then fails the phrase call — the degrade AC-5 asserts on."""
+
+    async def chat(
+        self,
+        messages: list[dict[str, str]],
+        *,
+        think: bool | None = None,
+        response_format: dict[str, Any] | None = None,
+        temperature: float = 0.0,
+    ) -> ChatResult:
+        if response_format is None:  # phrase stage
+            raise OllamaError("forced phrase transport failure")
+        return await super().chat(
+            messages, think=think, response_format=response_format, temperature=temperature
+        )
+
+
+async def test_query_outcome_crosses_the_http_boundary(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC-2: `outcome` was already computed by the engine and then dropped by the
+    router's response mapping. It now ships."""
+    _use_stub(monkeypatch, {"object_type": "Asset", "operation": "count"})
+    answered = (await client.post("/query", json={"question": "how many assets?"})).json()
+    assert answered["outcome"] == "answered"
+
+    _use_stub(
+        monkeypatch,
+        {
+            "object_type": "Asset",
+            "operation": "list",
+            "filters": [{"property": "status", "op": "eq", "value": "maintenance"}],
+        },
+    )
+    empty = (
+        await client.post("/query", json={"question": "which assets are in maintenance?"})
+    ).json()
+    assert empty["outcome"] == "no_data"
+    assert empty["grounded"] is False
+
+
+async def test_query_discloses_which_arm_phrased_the_answer(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC-5: over the SAME records a healthy run and a degraded run are both
+    grounded with the same count, and differ only in the arm — the discrimination
+    `grounded` never provided and was never meant to."""
+    query = {"object_type": "Asset", "operation": "count"}
+    _use_stub(monkeypatch, query, phrase="There are 4 assets under management.")
+    healthy = (await client.post("/query", json={"question": "how many assets?"})).json()
+
+    monkeypatch.setattr(
+        "services.engine.nl_query._build_chat_client", lambda: _DegradedPhraseClient(query)
+    )
+    degraded = (await client.post("/query", json={"question": "how many assets?"})).json()
+
+    assert healthy["grounded"] is True
+    assert degraded["grounded"] is True
+    assert healthy["result_count"] == degraded["result_count"] == 4
+    assert healthy["phrased_by"] == "stub"  # the model authored it
+    assert healthy["phrase_disclosure"] is None
+    assert degraded["phrased_by"] == "deterministic"
+    assert degraded["phrase_disclosure"] is not None
+    assert "degraded to deterministic template" in degraded["phrase_disclosure"]

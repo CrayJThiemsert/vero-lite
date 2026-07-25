@@ -27,6 +27,24 @@ class RecommendationResponse(BaseModel):
     confidence: float = Field(..., description="Recommender confidence in [0.0, 1.0]")
     requires_approval: bool = Field(..., description="Whether the action needs approval")
     suggested_handler: str = Field(..., description="Registered handler name for execution")
+    # PLAN-0093 AC-1 / SD-2: the arm discriminator, projected from AuditMetadata.
+    # Deliberately only these two — `governed_decision` carries a canonical Person
+    # `principal_id`, and a disclosure PLAN must not turn the recommendation surface
+    # into a principal-identity surface as a side effect.
+    actor_kind: str = Field(
+        ...,
+        description=(
+            "Which kind of actor authored this recommendation: 'engine' (the deterministic "
+            "rule path), 'llm', or 'human'"
+        ),
+    )
+    actor: str = Field(
+        ...,
+        description=(
+            "The authoring actor's identity: the model name on the LLM path, 'engine' on the "
+            "deterministic rule path"
+        ),
+    )
     reasoning_trace: list[ReasoningStep] = Field(
         default_factory=list, description="The recommender's reasoning steps (the 'why')"
     )

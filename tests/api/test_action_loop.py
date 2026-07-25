@@ -10,12 +10,14 @@ postgres:16-alpine (skips gracefully otherwise via client_with_db).
 
 from __future__ import annotations
 
+import pytest
 import sqlalchemy as sa
 from httpx import AsyncClient
 from sqlalchemy import NullPool
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from services.api.config import settings
+from services.engine.llm.client import ChatResult, OllamaError
 
 
 async def test_recommendations_use_the_faked_llm_path(client: AsyncClient) -> None:
@@ -76,3 +78,40 @@ async def test_full_action_loop_read_recommend_approve_execute(
         await engine.dispose()
     assert row is not None, f"no persisted recommended_action row for {action_id}"
     assert row[0] == "executed"
+
+
+# --- PLAN-0093 AC-1: the authoring arm crosses the HTTP boundary -----------
+
+
+async def test_recommendation_response_names_the_authoring_arm(client: AsyncClient) -> None:
+    """AC-1: `actor_kind`/`actor` were computed on every path and then dropped by
+    the router's response mapping. On the LLM path the response now names the model."""
+    recommendations = (await client.get("/recommendations")).json()["recommendations"]
+    assert recommendations
+    for rec in recommendations:
+        assert rec["actor_kind"] == "llm"
+        assert rec["actor"] == "gpt-oss:20b"
+
+
+async def test_rule_failsafe_recommendation_names_the_engine(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AC-1: when the LLM arm fails, the SAME endpoint says 'engine'. This is the
+    discrimination `confidence` could never provide — the rule path's fixed 0.8 is
+    a perfectly plausible model confidence. The Step-2 trace disclosure rides
+    through to the consumer on the same response."""
+
+    class _RaisingClient:
+        async def chat(self, *args: object, **kwargs: object) -> ChatResult:
+            raise OllamaError("forced transport failure")
+
+    monkeypatch.setattr("services.engine.recommender._build_chat_client", lambda: _RaisingClient())
+
+    recommendations = (await client.get("/recommendations")).json()["recommendations"]
+    assert recommendations
+    for rec in recommendations:
+        assert rec["actor_kind"] == "engine"
+        assert rec["actor"] == "engine"
+        assert "LLM assessment" not in rec["title"]  # the rule path authored it
+        step_ids = [step["step_id"] for step in rec["reasoning_trace"]]
+        assert "llm-degrade-disclosure" in step_ids

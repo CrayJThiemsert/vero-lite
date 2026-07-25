@@ -10,7 +10,7 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from services.engine.nl_query import StructuredQuery
+from services.engine.nl_query import QueryOutcome, StructuredQuery
 
 
 class NlQueryRequest(BaseModel):
@@ -49,4 +49,26 @@ class NlQueryResponse(BaseModel):
     )
     result_count: int = Field(
         default=0, description="How many objects matched the structured query"
+    )
+    outcome: QueryOutcome = Field(
+        ...,
+        description=(
+            "Terminal state of the query: 'answered' | 'no_data' | 'clarify'. Distinct from "
+            "`grounded` so a clarification request is never conflated with 'no records'"
+        ),
+    )
+    phrased_by: str = Field(
+        ...,
+        description=(
+            "Which arm authored `answer`: the live model's name, or 'deterministic' when a "
+            "template did. Always present — arm identity is not conditional (PLAN-0093 AC-5)"
+        ),
+    )
+    phrase_disclosure: str | None = Field(
+        default=None,
+        description=(
+            "Set only when the LLM arm was attempted and did NOT author the answer (transport "
+            "failure or empty response). None on a non-degraded path — this marks a DEGRADE, "
+            "not determinism itself"
+        ),
     )

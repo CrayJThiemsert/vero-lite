@@ -26,6 +26,12 @@ def _to_response(answer: NlAnswer) -> NlQueryResponse:
         source_object_ids=answer.source_object_ids,
         source_objects=answer.source_objects,
         result_count=answer.result_count,
+        # PLAN-0093 AC-2/AC-5: `outcome` and the arm pair were computed by the
+        # engine and then dropped here — a consumer could not tell a template-
+        # phrased answer from a model-phrased one over the same records.
+        outcome=answer.outcome,
+        phrased_by=answer.phrased_by,
+        phrase_disclosure=answer.phrase_disclosure,
     )
 
 
