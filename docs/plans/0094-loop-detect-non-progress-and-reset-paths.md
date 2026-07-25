@@ -237,6 +237,19 @@ the per-agent keying closes the same cross-contamination class D1 exists to
 fix, one level down (R2-3). `turn_touched` and the Stop-hook reset are
 unchanged.
 
+> **RATIFIED by Cray 2026-07-25 (session 173) — this is a decision, not a diff
+> approval.** The scoping fix above **changes what Lesson #0021 §3 recorded as
+> the 2026-06-08 fix**: that lesson describes reset path (c) as resetting "the
+> L1 counters for the files touched this turn", i.e. turn-scoped. Cray ratified
+> the divergence to subagent-scoped-and-per-agent-keyed. Rationale of record:
+> the turn-scoped semantics were never live (no matching event registration), so
+> nothing is being taken away — but wiring them **as written** would have
+> created a self-unlock path (any zero-edit spawn clears the main agent's
+> budget), which is a new hazard, not a restoration. Step 2 must therefore
+> record this in Lesson #0021 as **`was an error`** in the CLAUDE.md §6 sense —
+> the documented mechanism was never real — rather than as `superseded by new
+> info`.
+
 The dead `tool_name in ("Task","Agent")` branch (`:483-484`) is **deleted**,
 and its synthetic-payload tests (`test_posttooluse_progress_observer.py:595-649`)
 are **rewritten** to the new contract (they currently pin the wrong
@@ -554,7 +567,19 @@ PR-only). Update `docs/STATUS.md`; `git mv` this PLAN to `done/` only after
 Cray confirms the live-loop soak raised no regression (the guards run on
 Cray's own working loop — the soak *is* part of verification).
 
-## Open Questions (Cray decisions — the draft proceeds on the recommendations but does not lock them)
+## Open Questions — ALL RESOLVED by Cray 2026-07-25 (session 173)
+
+Both were priced as recommended; the values below are **locked** and Steps 3
+and 5 build to them. Recorded here rather than left open so the committed PLAN
+does not read as awaiting a decision that has been made.
+
+- **OQ-1 → RESOLVED: `G = 3`** (deny at `T+3`). Cray took the recommendation.
+- **OQ-2 → RESOLVED: full fresh budget** after an acknowledged pause (entry
+  deletion, identical to every other reset path). Cray took the recommendation
+  — so no third threshold class is minted, which keeps D5 consistent with this
+  PLAN's own anti-pattern argument.
+
+The original framing of each, retained for the reasoning lineage:
 
 - **OQ-1 — the grace budget `G` (P2).** Recommended **3** (deny at `T+3`):
   large enough to finish a step's tail after a warn (s168 needed 0 more
