@@ -75,10 +75,12 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     normalize_error_signature,
     normalize_file_path,
     normalize_pytest_nodeid,
+    record_subagent_touched,
     record_turn_touched,
     reset,
     reset_l1_for_targets,
     save_counter,
+    take_subagent_touched,
     tokenize_bash_command,
 )
 from _wsl_bridge import bash_argv, env_with_wslenv_passthrough  # noqa: E402
@@ -302,28 +304,46 @@ def _handle_write_or_edit(payload: dict[str, Any]) -> None:
         _now_action(payload.get("tool_name", "Edit"), target),
     )
     record_turn_touched(counter, target)
+    agent_id = payload.get("agent_id")
+    if isinstance(agent_id, str) and agent_id.strip():
+        # PLAN-0094 D1: attribute the edit to the subagent that made it, so its
+        # completion can clear exactly its own targets and nothing else.
+        record_subagent_touched(counter, agent_id.strip(), target)
     # L1 trigger is gated by Step 2 on the NEXT Write/Edit — we do not fire
     # Telegram inline here (Step 2 is the gate).
     save_counter(counter, _state_path())
 
 
-def _handle_agent_completion(payload: dict[str, Any]) -> None:
-    """Subagent (Agent/Task) completion = an L1 reset boundary.
+def _handle_subagent_stop(payload: dict[str, Any]) -> None:
+    """``SubagentStop`` = an L1 reset boundary, scoped to that subagent's edits.
 
     A subagent's ``Write``/``Edit`` calls increment the SAME loop-counter as the
     main agent (they run in the parent session, sharing the state file). Without
-    this, a subagent that makes several edits to one file pre-exhausts the main
-    agent's L1 budget for that file (observed 2026-06-08: a ``plan-drafter``
-    subagent made 6 edits to a PLAN and the main agent could then not add even
-    one). On the Agent/Task tool completing, reset the L1 counters for the files
-    touched so far this turn — symmetric with the commit-boundary and Stop
-    turn-boundary resets. ``turn_touched`` is left intact so the Stop hook still
-    tracks any main-agent edits made afterwards.
+    a reset, a subagent that makes several edits to one file pre-exhausts the
+    main agent's L1 budget for it (observed 2026-06-08: a ``plan-drafter``
+    made 6 edits to a PLAN and the main agent could then not add one).
+
+    **This ran as dead code from 2026-06-08 until PLAN-0094.** The handler was
+    gated on ``tool_name in ("Task", "Agent")``, but ``settings.json`` registered
+    ``PostToolUse`` for ``Write|Edit`` and ``Bash`` only — no payload could ever
+    reach it, while three documents advertised the exit as live.
+    ``tests/handoffs/test_settings_hook_wiring.py`` now pins the registration as
+    data so the class cannot recur.
+
+    Scope is the **completing agent's own** recorded targets, not
+    ``turn_touched``: the turn-scoped form Lesson #0021 §3 described would have
+    let the main agent launder an exhausted budget through any zero-edit spawn
+    (Cray-ratified divergence, 2026-07-25). ``turn_touched`` is left intact so
+    the Stop hook still sees main-agent edits made afterwards.
     """
     counter = load_counter(_state_path(), session_id=main_session_id(payload))
-    cleared = reset_l1_for_targets(counter, list(counter.turn_touched))
-    if cleared:
-        save_counter(counter, _state_path())
+    agent_id = payload.get("agent_id")
+    key = agent_id.strip() if isinstance(agent_id, str) else None
+    targets = take_subagent_touched(counter, key)
+    if not targets:
+        return  # zero-edit subagent: nothing recorded, nothing to clear
+    reset_l1_for_targets(counter, targets)
+    save_counter(counter, _state_path())
 
 
 def _apply_l4(counter: Any, command: str, tool_response: dict[str, Any]) -> bool:
@@ -474,14 +494,18 @@ def main() -> int:
     except json.JSONDecodeError:
         return 0  # fail-open
 
+    # Branch on the EVENT first: this hook is now registered for SubagentStop as
+    # well as PostToolUse, and a SubagentStop payload carries no meaningful
+    # ``tool_name`` to dispatch on (PLAN-0094 D1).
+    event = payload.get("hook_event_name", "")
     tool_name = payload.get("tool_name", "")
     try:
-        if tool_name in ("Write", "Edit"):
+        if event == "SubagentStop":
+            _handle_subagent_stop(payload)
+        elif tool_name in ("Write", "Edit"):
             _handle_write_or_edit(payload)
         elif tool_name == "Bash":
             _handle_bash(payload)
-        elif tool_name in ("Task", "Agent"):
-            _handle_agent_completion(payload)
     except Exception as exc:  # observer must never block on internal error
         print(f"posttooluse_progress_observer: internal error: {exc}", file=sys.stderr)
     return 0

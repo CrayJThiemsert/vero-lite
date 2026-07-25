@@ -91,6 +91,15 @@
             "command": "python .claude/hooks/subagentstop_notify.py"
           }
         ]
+      },
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/posttooluse_progress_observer.py"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
