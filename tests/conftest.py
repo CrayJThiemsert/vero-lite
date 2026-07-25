@@ -1,6 +1,8 @@
 """Shared pytest fixtures."""
 
+import socket
 from collections.abc import Iterator
+from typing import Any
 
 import pytest
 
@@ -81,3 +83,72 @@ def _no_real_telegram(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
     monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
     monkeypatch.setattr(settings, "telegram_notify_enabled", False)
+
+
+class OutboundNetworkBlocked(BaseException):
+    """Raised when the offline suite tries to open a socket off this box.
+
+    A ``BaseException``, deliberately: the application layer catches
+    ``RuntimeError`` (translate) and bare ``Exception`` (phrase) in order to
+    DEGRADE gracefully when a model is unavailable, and ``httpx`` wraps ``OSError``
+    into its own connect errors. If this guard raised any of those, an accidental
+    live call would be silently absorbed by exactly the code paths designed to
+    tolerate an outage — blocked, but with nobody learning it had been attempted.
+    Bypassing all of them makes it loud.
+
+    A test that wants to exercise graceful degradation should install its own stub
+    raising ``OllamaError``. That tests the contract; this guards the network.
+    """
+
+
+#: Loopback only. The suite legitimately talks to the disposable Postgres on
+#: localhost; everything else is off-box and therefore not "offline".
+_LOOPBACK = frozenset({"127.0.0.1", "::1", "localhost", "0.0.0.0", ""})  # noqa: S104
+
+
+@pytest.fixture(autouse=True)
+def _no_outbound_network(request: pytest.FixtureRequest, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Guarantee no test reaches off this box (test isolation).
+
+    The same shape as ``_no_real_telegram`` above, one layer out, and added for the
+    same reason: a dev box whose ``.env`` points at a REACHABLE MS-S1 lets the
+    "offline" suite run a live model. That is not hypothetical. Wiring the AC-9b
+    translate seam turned ``tests/api/test_insights_query.py``'s
+    deliberately-unstubbed case into a live call, and it ran ``gpt-oss:20b`` on
+    MS-S1 twice before anyone noticed — a host-state action, which CLAUDE.md §8
+    requires explicit Cray approval for. Care was not enough; the suite has to be
+    structurally incapable of it.
+
+    **The guard sits at the socket, not at the client.** The first version patched
+    ``OllamaClient``'s methods and broke 38 tests that exercise the client itself
+    against a mocked transport — they never touch the network, so blocking them
+    protected nothing and cost coverage. What actually needs forbidding is the
+    *connection*: a mocked ``httpx`` transport opens no socket, so those tests are
+    untouched, while a real call to MS-S1 (or any remote API) is refused whatever
+    library makes it.
+
+    Note what the guard does NOT rely on: it does not check the model name, the
+    configured host, or reachability. Any of those would make the protection
+    contingent on configuration, and configuration is precisely what varies between
+    CI (no ``.env``) and a dev box (``.env`` pointing at a live host).
+
+    Opt out with ``@pytest.mark.host_state``, which also makes a live run visible in
+    the test id so it can never be mistaken for an offline one.
+    """
+    if request.node.get_closest_marker("host_state"):
+        return
+
+    real_connect = socket.socket.connect
+
+    def _guarded_connect(sock: socket.socket, address: Any, *args: Any, **kwargs: Any) -> Any:
+        # AF_UNIX addresses are plain strings/bytes — on-box by definition.
+        host = str(address[0]) if isinstance(address, tuple) and address else None
+        if host is not None and host not in _LOOPBACK:
+            raise OutboundNetworkBlocked(
+                f"the offline suite tried to connect to {host} — off this box. Stub the "
+                "client in this test, or mark it @pytest.mark.host_state if it is a "
+                "deliberate live run (CLAUDE.md §8 — needs explicit Cray go)."
+            )
+        return real_connect(sock, address, *args, **kwargs)
+
+    monkeypatch.setattr(socket.socket, "connect", _guarded_connect)

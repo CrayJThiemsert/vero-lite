@@ -28,6 +28,7 @@ from services.api.main import app
 from services.api.models.insights import RunQueryAnswer
 from services.db.base import Base
 from services.db.session import get_session
+from services.engine.llm.client import OllamaError
 from services.engine.nl_query import QueryFilter, StructuredQuery
 from tests.db_support import create_test_engine
 from tests.support.run_corpus_factory import Corpus, build_corpus
@@ -154,14 +155,29 @@ async def test_empty_result_short_circuits_without_invoking_the_phrase_stage(
 
 
 async def test_untranslatable_question_is_ungrounded_with_no_query(
-    query_client: _Client,
+    query_client: _Client, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """The unwired live translator raises NotImplementedError; the endpoint degrades.
+    """An unreachable model degrades to an honest ungrounded answer, never a 500.
 
-    No stub is installed here on purpose — this exercises the real default seam,
-    which is the AC-9b host-state stage. It must degrade to an honest ungrounded
-    answer rather than surfacing a 500.
+    The failure is injected at the CHAT CLIENT, so the real translate stage runs —
+    prompt, schema, retry loop and all — and the assertion is about how the handler
+    treats its failure. ``OllamaError`` subclasses ``RuntimeError``, which is what
+    the handler catches.
+
+    _[Rewritten in the AC-9b build. The original installed no stub at all and
+    relied on the seam being **unwired** (``NotImplementedError``), which made it a
+    LIVE call the moment the seam was implemented — it ran ``gpt-oss:20b`` on MS-S1
+    twice before that was noticed. A test whose premise is "the feature does not
+    exist yet" expires silently the day it does. The `_no_live_model` conftest guard
+    now makes that class of accident impossible; this test states its own
+    precondition instead of inheriting one.]_
     """
+
+    class _DeadClient:
+        async def chat(self, *_args: object, **_kwargs: object) -> object:
+            raise OllamaError("MS-S1 unreachable (injected)")
+
+    monkeypatch.setattr(f"{_ROUTER}.nl_query._build_chat_client", lambda: _DeadClient())
     resp = await query_client.http.post("/insights/query", json={"question": "anything"})
     assert resp.status_code == 200
     body = resp.json()

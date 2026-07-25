@@ -23,8 +23,18 @@ only encodes the *mechanics* once you have the go-ahead.
 http://192.168.1.133:11434
 ```
 
-`ms-s1-max` has **no WSL DNS entry** — `http://ms-s1-max:11434` fails to resolve
-from WSL. Always use the IP. Override with `OLLAMA_HOST` if the box moves.
+Always use the IP. Override with `OLLAMA_HOST` if the box moves.
+
+⚠️ **Corrected 2026-07-24 (session 171).** This section used to assert that
+`ms-s1-max` has *no WSL DNS entry* and *fails to resolve*. **Measured, it
+resolves fine** — `getent hosts ms-s1-max` returns `192.168.1.133`. Prefer the IP
+anyway (it does not depend on whatever added that entry), but **never treat the
+hostname as a safety property**: `services/api/config.py` defaults `ollama_host`
+to `http://ms-s1-max:11434`, and the stale claim here made that default read as
+inert-by-default. It is not. A test that reached the default config ran
+`gpt-oss:20b` twice without the §8 go-ahead before anyone noticed. Isolation now
+comes from the `_no_outbound_network` guard in `tests/conftest.py`, which blocks
+every non-loopback socket regardless of host, name resolution or config.
 
 ## The pinned model
 
