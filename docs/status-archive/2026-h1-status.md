@@ -1016,3 +1016,12 @@ _Not a window rotation: the R2 rolling window was untouched (Current Focus keeps
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
 - [ ] Extract `docs/conventions/git.md` from CLAUDE.md (low priority)
 - [ ] Extract `docs/conventions/hardware.md` from CLAUDE.md (low priority)
+
+## Rotated this reconcile (session-173, 2026-07-25 — the loop-detect guard pass, #912/#914)
+
+Recent Decisions rows rotated because **R2 caps the table at the last 10**: the session-172 (PLAN-0093 COMPLETE) and session-173 (loop-detect guard) rows were prepended, so these two session-166 rows fell outside the window.
+
+| Date | Decision | Reference |
+|------|----------|-----------|
+| 2026-07-23 | **s166 — PLAN-0091 SD-5 RATIFIED (a), Cray typed (#869): the AT-2 template is owned by `services/engine/scaffolder/` and NEVER enters the shared `REGISTRY`** — the classify path stays byte-unchanged and ADR-0024 D7's abstain routing stays literally true. All five SDs closed. Tripwire: the `set(REGISTRY) == set(AT1_FAMILY)` assertion must never need editing — if it does, STOP and re-open SD-5 | `097d180` (#869) / `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md` §SD-5 + `tests/services/engine/procedures/test_archetype_templates.py` |
+| 2026-07-23 | **s166 — dispatch-quality discipline shipped (#866, docs-only): the `code-operational-policy` skill gains the 3 dispatch blocks (Frontier/anti-anchoring · oracle-scoped accelerator · REJECT-if) + the M1–M4 follow-up vocabulary + the pre-close counterexample step.** Deliberately NOT built: any hook/detector for M3/M4 — adoption is Rule-of-Three on recorded catches | `b8566a6` (#866) / `docs/lessons/0032-ambition-scales-with-oracle-exploration-gated-not-planned.md` |
