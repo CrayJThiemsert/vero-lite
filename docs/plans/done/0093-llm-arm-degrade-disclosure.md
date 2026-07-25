@@ -1,6 +1,6 @@
 # PLAN-0093: LLM-Arm Degrade Disclosure — no silent arm swap
 
-**Status:** Draft
+**Status:** COMPLETE
 **Owner:** Claude Code
 **Created:** 2026-07-25
 **Related ADRs:** ADR-007 (RecommendedAction envelope / ReasoningStep), ADR-010 (IN-4 fail-safe contract), ADR-0030 (advisory never-raise), ADR-0032 (standing direction — demo→pilot wedge)
@@ -260,7 +260,7 @@ Each AC names the mutation that reddens its test (the counterexample step).
 No AC may be satisfied by asserting on a log line (`recommender.py:259` and
 `nl_query.py:1068` already log today — logs are the failure mode, not the fix).
 
-- [ ] **AC-1 (H1):** `RecommendationResponse` carries **required** additive
+- [x] **AC-1 (H1):** `RecommendationResponse` carries **required** additive
   fields `actor_kind` + `actor`, projected from `record.action.audit_metadata`
   in `_to_response` (`routers/actions.py:55-70`). Test (extend
   `tests/services/engine/test_recommender.py` + `tests/api/test_action_loop.py`
@@ -269,14 +269,14 @@ No AC may be satisfied by asserting on a log line (`recommender.py:259` and
   rule-path one yields `"engine"`/`"engine"`. **RED if** the two projection
   lines are silently removed from `_to_response` — the required response fields
   raise `ValidationError` (no default can mask it).
-- [ ] **AC-2 (H2):** `NlQueryResponse` carries a **required** additive
+- [x] **AC-2 (H2):** `NlQueryResponse` carries a **required** additive
   `outcome: Literal["answered","no_data","clarify"]` mapped in
   `routers/query.py:_to_response`. Test: a question matching zero records
   returns `outcome == "no_data"` with `grounded == False`; an answered one
   returns `"answered"`. **RED if** the mapping is silently removed
   (`ValidationError`) or hardcoded to `"answered"` (the no-data assertion
   fails).
-- [ ] **AC-3 (H3):** a `recommend()` run whose LLM path raises returns a record
+- [x] **AC-3 (H3):** a `recommend()` run whose LLM path raises returns a record
   whose trace **contains** the `llm-degrade-disclosure` step with detail keys
   `recommendation_mode` / `llm_status` / `llm_disclosure`, and whose
   `audit_metadata.notes` carries the degrade sentence; a direct
@@ -285,7 +285,7 @@ No AC may be satisfied by asserting on a log line (`recommender.py:259` and
   set-shaped, not prose). **RED if** the disclosure append in the
   except-branch (`recommender.py:252-265`) is silently removed — the
   step-presence and trace-inequality assertions both fail.
-- [ ] **AC-4 (H4 / SD-1):** `_phrase` returns `PhraseResult` (typed — not a
+- [x] **AC-4 (H4 / SD-1):** `_phrase` returns `PhraseResult` (typed — not a
   bare `str`), and **both** degrade branches disclose: a client that raises
   yields `phrased_by == "deterministic"` + non-None `disclosure`; a client
   returning `content=""` (today's zero-channel, zero-log branch,
@@ -293,7 +293,7 @@ No AC may be satisfied by asserting on a log line (`recommender.py:259` and
   empty-content reason. **RED if** the empty-content branch is silently
   reverted to `answer or _fallback_answer(...)` returning bare text — the
   empty-content disclosure assertion fails (and mypy fails the signature).
-- [ ] **AC-5 (H5):** arm provenance crosses the HTTP boundary:
+- [x] **AC-5 (H5):** arm provenance crosses the HTTP boundary:
   `NlQueryResponse` gains required `phrased_by` + optional `phrase_disclosure`,
   mapped from `NlAnswer`. Test: over the **same** fixture records, a healthy
   stub-model run and a degraded run are both `grounded == True` (H5 preserved
@@ -304,7 +304,7 @@ No AC may be satisfied by asserting on a log line (`recommender.py:259` and
   now-required `phrased_by` (keyword-only, no default — `mypy --strict` and
   construction both fail; the leaking-default failure mode no longer exists
   by SD-1's Cray-ratified required-field design).
-- [ ] **AC-6 (H6):** `settings.llm_retry_budget` is honoured on the governed
+- [x] **AC-6 (H6):** `settings.llm_retry_budget` is honoured on the governed
   procedure path: `ActionStepExecutor.retry_budget` becomes `int | None = None`
   with use-time fallback to `settings.llm_retry_budget` (the exact
   `nl_query.py:1135` idiom); an explicit constructor value still wins. The
@@ -327,13 +327,13 @@ No AC may be satisfied by asserting on a log line (`recommender.py:259` and
   fails closed on exhaustion, unchanged. **RED if** the field is silently
   reverted to the hardcoded `int = 3` (`action_step.py:286`) — the
   structuring-attempt count reads 3 (total `chat` calls 4), not 2.
-- [ ] **AC-7 (L4 guard):** additive-only, verified by the existing gate: full
+- [x] **AC-7 (L4 guard):** additive-only, verified by the existing gate: full
   `pytest tests/` + `mypy --strict services/` + ruff green; no existing
   response field renamed/retyped/removed; `trace-kinds.js` byte-untouched and
   `tests/api/test_trace_kind_labels.py` green without modification. **RED if**
   any existing response field or pinned trace-kind registry entry is silently
   removed — the existing suite and the H8 pin redden.
-- [ ] **AC-8 (H4b — Cray-ratified widening):** the insights run-corpus path
+- [x] **AC-8 (H4b — Cray-ratified widening):** the insights run-corpus path
   discloses identically. `run_query.phrase_run_answer`
   (`services/engine/run_query.py:386-423`) and the router wrapper
   (`routers/insights.py:248-267`) return `PhraseResult` (the same type as
@@ -458,6 +458,38 @@ the named test go RED, restore from a `/tmp` copy of the edited file (never
 - The reversal seam is clean: every change is additive; reverting this PLAN
   removes fields consumers may ignore and restores no silent behavior that
   anything else depends on.
+
+## Outcome (session 172, 2026-07-25)
+
+All 8 ACs met. Shipped in **#911** (`55d2007`), five commits, one per step:
+`7a852e3` Step 1 · `b73b19c` Step 2 · `e0ed8d1` Step 3 · `82e518c` Step 3b ·
+`27ef271` Step 4.
+
+**Evidence.** Suite **3203 → 3217**; every delta was predicted before its run and
+matched. `mypy --strict services/` clean over 110 files; ruff + ruff-format clean
+over 479. `trace-kinds.js` byte-untouched and its pinned test green unmodified
+(AC-7). The full gate was re-run on the merge commit `55d2007` — CI is PR-only,
+so a merge commit is otherwise never tested. No live model was contacted at any
+point; §8 host-state untouched.
+
+**The Step-5 sweep is the load-bearing evidence.** For each of AC-1…AC-6 and
+AC-8 the named counterexample mutation was applied to the working tree, the named
+test confirmed RED, the file restored from a `/tmp` copy (never `git checkout`)
+and confirmed byte-identical and GREEN again. All 7 reddened. No oracle is
+vacuous.
+
+**Two review corrections proved themselves in execution.** (1) `phrased_by`
+required rather than defaulted (Cray-ratified): the moment it landed, a benchmark
+gold-set helper failed loudly with `TypeError` — a fifth `NlAnswer` construction
+site this PLAN had not counted. Under the drafted default it would have passed
+silently while mislabelling its fixtures. (2) The insights widening
+(Cray-ratified): reading the path on disk rather than assuming symmetry with
+`/query` found **three** degrade branches there, not two.
+
+**Carried forward, deliberately not built here:** the 4-mode arm vocabulary
+(`deterministic / assisted / required / shadow`) and its per-step declaration in
+`procedures.yaml`; a durable `append_audit` row for a degrade (SD-3); the fate of
+`StepFacet.llm_assist` (SD-5). All three belong to the two-arm ADR.
 
 ---
 
