@@ -1675,3 +1675,121 @@ Rotated because **R2 requires it**, not as a headroom judgement: with the sessio
 > **`$?` inside `wsl bash -lc` reports 0 through a failed git op** — read a predicate,
 > never the printed message. L1 loop-detect also fired once on `cli.py` (6 edits); the
 > guard was respected, the counter reset via commit, not bypassed.
+
+> **Session 170, 2026-07-24 (head_commit `9e26195` → `7150c07`) — the session a
+> MUTATION PROBE caught an oracle that could not fail. PLAN-0088 Step 4 shipped
+> reader A4 at `GET /insights/audit-readiness` (#895), and deleting the approver
+> `FILTER` from `gate_counts` reddened **only** the SQL-shape assertion — **both
+> exact-value oracles stayed GREEN**. Two PRs (#894 the owed s169 reconcile, #895
+> the build), both merged, 0 open at close.**
+> **(the headline — the corpus, not the assertions, was the defect.)** The
+> factory's `approve` branch set `status=RESOLVED` and appended the
+> `gate_principal_recorded` trace **together**, so every resolved gate carried an
+> approver, `gate_approvers` equalled `gates` identically, and extraction was
+> indistinguishable from counting. The `sum(...) > 0` guard only ruled out
+> all-zeros. **Without the SQL-shape test, AC-7 would have been untested while
+> looking green.** Fixed in the second commit (`501b169`): `_gate_approver(i)`
+> returns `None` for `i % 15 == 6`. Both properties of that residue are
+> deliberate — it is a **proper subset** of the resolved set (`6 % 3 == 0`), so
+> those runs really are resolved gates, and its `i mod 4` varies (6, 21, 36, 51 →
+> 2, 1, 0, 3) so the gap lands on **every** procedure rather than pooling on one
+> (procedure is assigned by `i % 4`). That is the Step-3 intersection lesson
+> applied. Returning `None` also exercises the JSONB sharp edge the substrate
+> documents: it lands as the JSON scalar `null`, so `->>'principal_id'` yields SQL
+> `NULL` — exactly what the `IS NOT NULL` test must exclude — while the Python
+> oracle reaches the same answer by a different route. The assertions now pin the
+> **gap** (`gate_approvers != gates`; every procedure shows `approver_recorded <
+> resolved_count`), and **re-probed, the same mutation now reddens THREE oracles
+> instead of one**. Both probes restored from a `/tmp` copy verified
+> byte-identical with `cmp -s`, never `git checkout`.
+> **(#895 — Step 4: AC-7.)** `GET /insights/audit-readiness` — reader A4, zero
+> LLM: run totals by status, resolved-gate counts **with the approver half**,
+> refusal counts by kind, and the chain verdict via the shipped `verify_chain`
+> seam. Three substrate reads plus that seam — the reader adds no SQL of its own
+> (L3) and holds no write primitive (AC-11). Three design calls worth recording:
+> (1) **the approver comes from the TRACE, not `step_principals`** — `gate_counts`
+> gains `approver_recorded`, read from the `gate_principal_recorded` entry that
+> `resolve_gated_step` writes into the step `reasoning_trace`; AC-2's wording
+> remains a known error (flagged for Cray, not self-edited), and the field NAMES
+> its source explicitly so the confusion cannot return quietly. (2) **`EXISTS`,
+> not a join** — a joined lateral yields one row per trace entry, multiplying the
+> step row and **inflating `resolved_count`** silently, since the inflated figure
+> still looks plausible; `EXISTS` asks the same question without changing the row
+> count, so the statement stays O(groups) and AC-1's statement-capture fixture
+> keeps holding. (3) **split visibility is STRUCTURAL** — `verify_chain` returns
+> verbatim break strings, they are reduced to a boolean in the handler and never
+> leave it, and `AuditReadinessReport` has no field that could carry them (plus
+> `extra="forbid"`): disclosure is *unrepresentable*, not merely absent — the
+> technique `ImpactReport` uses for the cross-currency total (S7). Strictly
+> narrower than `GET /audit/verify`, which already gives every caller `intact` and
+> the detail only to a credentialed one (SD-2(d)), so A4 widens nothing and needs
+> no auth dependency.
+> **(#894 — the owed s169 reconcile, and the first prune that NETTED NEGATIVE.)**
+> STATUS was one PR behind: the s169 reconcile (#892) landed BEFORE Step 3 merged
+> (#893). `head_commit` was set to `9e26195`, Step 3 recorded, the stale
+> `next_action` retired. The `status-scribe` draft came back at **58,005 B — an
+> INCREASE of 148 B** over the pre-session 57,857 — and its own estimate (≈57,690)
+> was wrong; **measuring caught it**. An R2 pass then found **all ten**
+> Recent-Decisions rows over the ~600-char pointer budget, and four more were
+> compressed, landing at **57,261 B (−596 net)** — the first net shrink in three
+> sessions, against s168's standing "prune harder" ask. Also corrected **four
+> stale path citations** (`superseded by new info`): three RD rows and the
+> In-Flight autonomy-fork entry cited `docs/plans/0091-*.md` / `0092-*.md`, but
+> both PLANs were archived to `docs/plans/done/` at s168.
+> **(evidence.)** Suite **3150 → 3159 passed / 7 skipped**, re-run in full on the
+> merge commit `7150c07` (CI is PR-only, so merge commits are otherwise never
+> tested). ruff + ruff-format clean; `mypy --strict services/` clean (109 files).
+> **MS-S1 never contacted.**
+> **(process — L1 fired again, and the reset was blocked again.)** The guard
+> denied the 6th edit to `tests/support/run_corpus_factory.py` mid-build, and
+> `git commit` — the documented reset — was blocked because `ruff` was red
+> (`C901`, `_expected` at complexity 11) on that very file: the same shape as
+> s169. Extracting only the predicate did not help — the `if` stayed behind — so
+> the whole tally had to move into a `_tally_gate` helper (the `_tally_dwell`
+> pattern). **Cray adjudicated by typed selection and authorised the shell
+> escape**, applied via a guarded patch script that aborts unless both anchors
+> match exactly. The later corpus fix needed no escape — the first commit had
+> reset the counter.
+> **(after the close — SD-9 surfaced (#897), RULED (a2) (#898).)** Step 5 could
+> not be built as specified: S5's declared A1 properties are unservable by the
+> shipped substrate. Two findings resize it beyond a wording bug — **no primitive
+> accepts a parameter at all** (an NL reader that cannot filter is the fixed
+> reports with an LLM in front) and **AC-10's B1–B4 are equally unserved**, so
+> Step 6 hits the same wall: the "substrate is complete, readers add no SQL"
+> premise Steps 2–4 ran on **was never true**, just not load-bearing until now.
+> S5 is ratified as SD-5, so this was a decision, not an edit — **S5's body
+> stayed byte-unchanged** while `plan-drafter` surfaced SD-9 with costed options
+> (and **refuted the dispatch's own fact-pack**: Code wrongly claimed Steps 1–3
+> were already annotated BUILT). Cray ruled **(a2)** — extend the substrate in
+> `run_analytics.py` only; eliminate `agent_id` + `trigger` from v1 as
+> unmeasurable (constant in the AC-2 factory, and `trigger` undefined). **Step
+> 4.5** created; Step 5 un-gated. **Precedent, so Step 6 does not re-litigate it:
+> the invariant is S1 + AC-11 — SQL lives in `run_analytics.py`, readers and the
+> compiler own none — not a frozen primitive inventory.** Full reasoning is
+> §SD-9 in the PLAN; do not restate it here.
+> **(#900 — Step 4.5 BUILT, AC-1 extended.)** The three primitives SD-9 (a2)
+> authorised (`run_status_rollup` · `week_rollup` · `run_duration_totals`), in
+> `run_analytics.py` only — see the PLAN's §"Step 4.5". The one design point that
+> generalises: the per-run SUM is an **inner subquery** so only its aggregate
+> escapes; returning the inner rows would be O(runs) — the listing shape SD-8 (a)
+> struck — and would still hand a caller plausible numbers if they re-aggregated
+> in Python, so the **row count** is asserted rather than inferred. Probed one per
+> primitive; each mutation reddened exactly its own exact-value oracle. **The
+> finding worth keeping: statement-capture stayed GREEN through all three — it
+> pins query SHAPE, not value correctness.** Both kinds of test are needed and
+> neither substitutes for the other, which is why Step 4's oracle gap stayed
+> invisible until probed. Suite 3159 → **3163** (+4 predicted, matched). Process
+> slip: the PR body was created with `gh pr create --body` carrying backticks and
+> the shell corrupted it — §7 says `--body-file`, always; repaired via `gh api`.
+> **(#902 — Step 5 BUILT: AC-8 + AC-9; AC-9b still OPEN, host-state.)** Three
+> decisions that generalise, detail in the PR/commit: the run-corpus descriptor
+> **reuses `nl_query`'s validator rather than reimplementing it**, which is what
+> makes S5's "preserved by construction" literally true (two copies falsify it
+> the first time one drifts); the session is typed `Any` because AC-11's guard
+> fails on **any** `sqlalchemy` import, `TYPE_CHECKING` included; and **an empty
+> result short-circuits WITHOUT invoking the phrase stage** — asking a model to
+> describe zero matches is how a fabricated figure gets in, so the stub phraser
+> records whether it ran and the test asserts it did not. `list` is rejected as a
+> *correctable* validation error (SD-8), `min` returns no value rather than a
+> plausible wrong one. Probed 3×, each reddening its own oracle. Suite → **3178**
+> (+15 predicted, matched).
