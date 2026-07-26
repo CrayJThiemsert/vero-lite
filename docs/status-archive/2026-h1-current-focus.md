@@ -1793,3 +1793,76 @@ Rotated because **R2 requires it**, not as a headroom judgement: with the sessio
 > *correctable* validation error (SD-8), `min` returns no value rather than a
 > plausible wrong one. Probed 3×, each reddening its own oracle. Suite → **3178**
 > (+15 predicted, matched).
+
+> **Session 171, 2026-07-24/25 (head_commit `5d02538` → `ca39841`) — PLAN-0088
+> CLOSED: all 13 live ACs, archived to `done/`. STATUS also stopped growing. Five
+> PRs merged (#904–#908), 0 open at close.**
+>
+> **#904 — the STATUS rotate A+C, 61,748 → 48,920 B** (Cray ratified by typed
+> selection out of four costed options). Headroom under R1's 64 KiB hard ceiling
+> went 3,788 → 16,616 B — back **under** the 48 KB soft target for the first time
+> since s144. **The measurement refuted the s170 handoff's read** that "the growth
+> is new content, not bloat, nothing left to trim": **all 10** Recent Decisions
+> rows broke R2's ≤600-char pointer cap (the s170 row at **2,602 = 4.3x**), plus 4
+> Active TODOs and 5 In-Flight items — ~9 KB straightforwardly non-compliant. **No
+> rule was reinterpreted:** R6 already treats the 4-session window as a FLOOR and
+> §"When to deviate" prescribes *terser blocks, not a smaller window*, so the window
+> was untouched. R4 honoured (verbatim text archived BEFORE any trim; archive
+> grepped before AND after — the rotation footer was NOT swept in, the s170 failure
+> mode). Half **C**: §"Update Workflow" (4,068 B of *procedure*) was rehomed to the
+> memory-architecture runbook (ADR-0017 D5) — space that does not come back, unlike
+> a rotation. Honest scope note: In-Flight has no explicit size rule, so trimming it
+> was judgment, not enforcement.
+>
+> **#905 — PLAN-0088 Step 6 (AC-10/AC-13).** Four substrate primitives
+> (`verdict_reading_stats` B1 · `gate_tier_outcomes` B2 · `refusal_counts_by_
+> procedure` B3 · `trigger_outcome_counts` B4) under **SD-9 (a2)'s precedent —
+> substrate grows in `run_analytics.py` only — so no new SD**. Suite 3178 → **3189**
+> (+11 predicted, matched). **Reopening the corpus found four shapes it wrote that
+> the engine never does** (the AC-2 class): `governed_decision` a **LIST** not a
+> dict (B2 reads the tier out of it); `refusal_kind` values **in no enum**; a
+> `counts` object missing its zero labels; a constant `trigger_context`. **The
+> defect that mattered most — B3's oracle could not have failed:** the refusal kind
+> was a BIJECTION of procedure, so a query dropping the kind dimension gave
+> identical numbers. Same shape as s170's approver probe, **caught before the test
+> was written**. Every dimension now carries its residue arithmetic; 7 of 11 tests
+> are non-degeneracy pins; mutation probe 4/4 as predicted, zero vacuous oracles.
+> **On `trigger`, a correction to SD-9's aside** (which called it "undefined"): the
+> `Trigger` StrEnum + both stamping sites shipped BEFORE this PLAN — `was an error`
+> in the aside only, the ruling unaffected.
+>
+> **#907 — AC-9b, and an overstep to record honestly.** The live translate/phrase
+> stages were unbuilt (the seams raised `NotImplementedError`), so AC-9b was
+> *implement + run*, not just run. Wiring done — both delegate to `run_query`,
+> reusing `nl_query`'s client/rendering/validator rather than a second copy; no
+> router error-handling change (verified: `QueryTranslationError`/`OllamaError` both
+> subclass `RuntimeError`, already caught). **But running the existing suite after
+> wiring RAN `gpt-oss:20b` on MS-S1 twice — a host-state action I took without the
+> §8 go.** Cause: a test whose premise was "the seam is UNWIRED and raises" expired
+> silently the day it was wired, and this box's `.env` reaches `192.168.1.133`. Cray
+> then gave the AC-9b go. **The real fix is structural:** `tests/conftest.py` gains
+> `_no_outbound_network`, an autouse guard refusing any non-loopback socket
+> (modelled on `_no_real_telegram` directly above it — the identical failure one
+> layer out). It sits at the SOCKET not the client (the first version patched
+> `OllamaClient` and broke 38 mocked-transport tests that never touch the network);
+> loopback stays open or the disposable Postgres would go with it; it raises a
+> `BaseException` so the app's degrade handlers cannot absorb it silently. **The
+> live smoke PASSED** against the pass/fail read fixed in the file before the run:
+> *"How many governed runs?"* → `{operation: count}`, matched **120** = the seeded
+> corpus size (the executor's figure), grounded, answer *"There are 120 run(s)
+> recorded."* — 17.29s. Opted-in twice (`VERO_LIVE_MS_S1=1` + `@host_state`); skips
+> to 0.03s without them. Also corrected the `ms-s1-ollama` skill's stale "hostname
+> does not resolve" claim — it does, which is *why* the accident was possible.
+>
+> **#908 — PLAN-0088 COMPLETE + archived to `done/`.** 13/13 live ACs ticked
+> (AC-12 a struck tombstone), Steps 0–6 built, Status Draft → COMPLETE (never
+> Accepted — that would G1-gate the closeout). Three AC-wording debts carried into
+> the archived PLAN for Cray, none a code defect (see In-Flight).
+>
+> **State at close:** `main` `ca39841`, suite **3203 passed / 8 skipped** re-run in
+> full on the merge commit (+1 skip = the AC-9b live test, correctly skipped without
+> its env var), `mypy --strict services/` clean (110 files), ruff + ruff-format
+> clean. `ruff check`'s single S108 is the untracked
+> `.claude/benchmark-results/analyze_dump.py` from another workstream — confirmed,
+> prior intact. STATUS 48,441 B, ~700 under soft target. Stop-hook `dispatch`
+> misfired 3× this session (all suggestion-only per s167's ADR, none acted on).
