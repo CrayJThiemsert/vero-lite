@@ -2,13 +2,20 @@
 """PreToolUse hook — gate on L1/L4 loop-detect counters (PLAN-0008 Step 2).
 
 Reads ``.claude/state/loop-counter.json`` via the Step 1 module; for
-``Write``/``Edit`` checks the **L1** counter (same file edited >= 6 times in
-one turn); for ``Bash`` checks the **L4** counter (same tokenized command
-pattern failed >= 6 times — counter is incremented in Step 3 on non-zero
-exit). When the threshold trips (Cray E.4 — 6), fires
-``tools/notify/telegram.sh`` with the payload contract
-``{loop_type, target, last_6_actions}`` and emits a ``deny`` decision
-asking Cray to intervene.
+``Write``/``Edit`` checks the **L1** counter (same file edited repeatedly);
+for ``Bash`` checks the **L4** counter (same tokenized command pattern failed
+>= 6 times — counter is incremented in Step 3 on non-zero exit). When the bar
+trips, fires ``tools/notify/telegram.sh`` with the payload contract
+``{loop_type, target, last_6_actions}`` and emits a ``deny`` decision asking
+Cray to intervene.
+
+**L1 is warn-first since PLAN-0094 P2.** Its path-class threshold
+(``l1_threshold_for`` — 6 code / 15 doc) is now the WARN bar, owned by the
+observer, which pings and hands the agent an advisory but ALLOWS the edit.
+This hook's deny bar is ``l1_deny_threshold_for`` = that threshold plus
+``L1_GRACE_BUDGET`` (3, Cray-ratified OQ-1) — so 9 / 18. **L4 is unchanged**
+and still denies at the flat 6: its unit is already failure-based, so unlike
+L1 it has no false-fire series to grant grace for.
 
 **L2** (test_fail) and **L3** (error_signature) are inherently
 PostToolUse-fed and fire from Step 3 directly — they are NOT enforced
@@ -45,6 +52,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     LoopType,
     counter_key,
     has_triggered,
+    l1_deny_threshold_for,
     l1_threshold_for,
     load_counter,
     main_session_id,
@@ -133,15 +141,41 @@ def _deny_decision(
     target: str,
     count: int,
     threshold: int = LOOP_TRIGGER_THRESHOLD,
+    warn_threshold: int | None = None,
 ) -> dict[str, Any]:
+    """Build the PreToolUse deny payload.
+
+    PLAN-0094 P2 rewrote this message wholesale. Two things it must not do, both
+    learned the hard way: it must not describe the reset paths in terms of the
+    ``Agent`` tool returning (that path was dead code for seven weeks while three
+    documents advertised it live — the F3c finding), and it must not name an exit
+    that has not shipped (the P3 stop-ack is Step 5's; naming it here would
+    recreate the very defect AC-3 closes).
+
+    The AC-3 grep oracle keys on the old message's anchor phrase — the clause
+    that attributed the reset to a subagent's edits landing when the Agent tool
+    returned. That phrase must not reappear anywhere in this file, **including
+    in a comment**, which is why it is described here rather than quoted. The
+    oracle found exactly that mistake in an earlier draft of this docstring.
+    """
+    if warn_threshold is not None and warn_threshold < threshold:
+        stage = (
+            f"You were already warned at {warn_threshold} and had "
+            f"{threshold - warn_threshold} more edits of grace; this is the wall. "
+        )
+    else:
+        stage = ""
     reason = (
-        f"Loop-detect ({loop_type.value}) triggered: same target `{target}` "
-        f"hit {count} times in this turn (Cray E.4 threshold = {threshold}). "
-        f"Last 6 actions captured in the Telegram payload. The counter resets "
-        f"at the turn boundary (a fresh turn that does not touch this target), "
-        f"on git commit of it, or — for a subagent's edits — when the Agent "
-        f"tool returns. Pause and reassess the approach with Cray before "
-        f"retrying — see .claude/autonomy-triggers.md row {loop_type.value}."
+        f"Loop-detect ({loop_type.value}) DENIED: same target `{target}` "
+        f"hit {count} times (deny threshold = {threshold}, Cray E.4). {stage}"
+        f"Last 6 actions captured in the Telegram payload. "
+        f"The counter clears when any of these actually happen: a turn boundary "
+        f"that does NOT touch this target (touching it again keeps the count "
+        f"alive), a git commit containing it, or — for edits a SUBAGENT made — "
+        f"that subagent's own SubagentStop, which clears only the targets it "
+        f"edited itself. Spawning a subagent does NOT clear edits YOU made. "
+        f"Pause and reassess the approach with Cray before retrying — see "
+        f".claude/autonomy-triggers.md row {loop_type.value}."
     )
     return {
         "hookSpecificOutput": {
@@ -195,9 +229,16 @@ def main() -> int:
 
     loop_type, target = match
     counter = load_counter(_state_path(), session_id=main_session_id(payload))
-    threshold = (
-        l1_threshold_for(target) if loop_type is LoopType.FILE_EDIT else LOOP_TRIGGER_THRESHOLD
-    )
+    # PLAN-0094 P2: for L1 the DENY bar is the warn bar plus the grace budget --
+    # the observer owns the warn at ``l1_threshold_for``, this hook owns the wall
+    # at ``l1_deny_threshold_for``. L4 keeps the flat base threshold: its unit is
+    # already failure-based, so it has no false-fire series to grant grace for.
+    if loop_type is LoopType.FILE_EDIT:
+        warn_threshold: int | None = l1_threshold_for(target)
+        threshold = l1_deny_threshold_for(target)
+    else:
+        warn_threshold = None
+        threshold = LOOP_TRIGGER_THRESHOLD
     if not has_triggered(counter, loop_type, target, threshold):
         return 0
 
@@ -208,7 +249,7 @@ def main() -> int:
 
     last_6 = [a.to_json() for a in entry.last_6_actions]
     _ping_telegram(loop_type, target, last_6)
-    print(json.dumps(_deny_decision(loop_type, target, entry.count, threshold)))
+    print(json.dumps(_deny_decision(loop_type, target, entry.count, threshold, warn_threshold)))
     return 0
 
 

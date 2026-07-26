@@ -5,7 +5,7 @@ Covers:
 - Tool/target mapping: Write/Edit -> L1, Bash -> L4, Read/Glob/etc -> no-op
 - Allow path: count below threshold (0, 1, 5), no counter for target,
   fresh state file, missing state file
-- Deny path (path-class thresholds, Cray E.4 refinement 2026-06-08):
+- Deny path (path-class thresholds + the PLAN-0094 P2 grace budget):
   a CODE target denies at the base 6; a DOC / markdown target denies only
   at L1_DOC_THRESHOLD (15) — doc authoring legitimately makes many small
   sequential edits to one file (regression guard for the false-positive
@@ -37,6 +37,9 @@ sys.path.insert(0, str(HOOKS_DIR))
 
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     L1_DOC_THRESHOLD,
+    L1_GRACE_BUDGET,
+    LOOP_TRIGGER_THRESHOLD,
+    MAX_RECENT_ACTIONS,
     ActionRecord,
     LoopType,
     increment,
@@ -53,6 +56,14 @@ Parsed = dict[str, Any] | None
 # false-positive; ``services/api/main.py`` is a representative code path.
 CODE_TARGET = "services/api/main.py"
 DOC_TARGET = "docs/STATUS.md"
+
+# PLAN-0094 P2 — the path-class threshold is now the WARN bar (observer-side,
+# which ALLOWS the edit); this gate denies only at threshold + L1_GRACE_BUDGET.
+# Deny-path tests below seed the DENY bar. The allow-path tests deliberately keep
+# seeding the old flat values: they now assert the GRACE ZONE rather than
+# sub-threshold, which is a wider and still-correct reason for the same assertion.
+_L1_CODE_DENY = LOOP_TRIGGER_THRESHOLD + L1_GRACE_BUDGET
+_L1_DOC_DENY = L1_DOC_THRESHOLD + L1_GRACE_BUDGET
 
 STUB_TELEGRAM = """#!/usr/bin/env bash
 # Stub that writes $1 (argv message) to $TELEGRAM_STUB_CAPTURE.
@@ -186,7 +197,7 @@ def test_allow_when_file_path_not_string(stub_env: dict[str, str]) -> None:
 
 
 def test_deny_l1_code_path_at_threshold(stub_env: dict[str, str]) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, 6)
+    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, _L1_CODE_DENY)
     rc, out = _run(_write(CODE_TARGET), stub_env)
     assert rc == 0
     assert _is_deny(out)
@@ -205,7 +216,7 @@ def test_deny_l1_code_above_threshold(stub_env: dict[str, str]) -> None:
 
 
 def test_deny_edit_tool_treated_same_as_write(stub_env: dict[str, str]) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, 6)
+    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, _L1_CODE_DENY)
     rc_w, out_w = _run(_write(CODE_TARGET), stub_env)
     rc_e, out_e = _run(_edit(CODE_TARGET), stub_env)
     assert _is_deny(out_w) and _is_deny(out_e)
@@ -236,14 +247,14 @@ def test_deny_l1_doc_path_at_doc_threshold(stub_env: dict[str, str]) -> None:
     """A doc target STILL trips — at the higher (finite) doc threshold — so a
     genuinely stuck doc-edit loop is not masked.
     """
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, DOC_TARGET, L1_DOC_THRESHOLD)
+    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, DOC_TARGET, _L1_DOC_DENY)
     rc, out = _run(_write(DOC_TARGET), stub_env)
     assert rc == 0
     assert _is_deny(out)
     reason = out["hookSpecificOutput"]["permissionDecisionReason"]
     assert "L1" in reason
     assert DOC_TARGET in reason
-    assert str(L1_DOC_THRESHOLD) in reason  # message reports the path-class threshold
+    assert str(_L1_DOC_DENY) in reason  # message reports the DENY threshold
 
 
 def test_markdown_anywhere_uses_doc_threshold(stub_env: dict[str, str]) -> None:
@@ -260,7 +271,7 @@ def test_deny_l1_with_windows_unc_path(stub_env: dict[str, str]) -> None:
 
     Seeded at the doc threshold so the doc-class target denies.
     """
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, DOC_TARGET, L1_DOC_THRESHOLD)
+    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, DOC_TARGET, _L1_DOC_DENY)
     unc = "\\\\wsl.localhost\\Ubuntu-24.04\\home\\crayj\\work\\vero-lite\\docs\\STATUS.md"
     rc, out = _run(_write(unc), stub_env)
     assert rc == 0
@@ -268,7 +279,7 @@ def test_deny_l1_with_windows_unc_path(stub_env: dict[str, str]) -> None:
 
 
 def test_deny_l1_with_backslash_path(stub_env: dict[str, str]) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, DOC_TARGET, L1_DOC_THRESHOLD)
+    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, DOC_TARGET, _L1_DOC_DENY)
     rc, out = _run(_write("docs\\STATUS.md"), stub_env)
     assert rc == 0
     assert _is_deny(out)
@@ -320,7 +331,7 @@ def test_l4_uses_base_threshold_for_doc_like_command(stub_env: dict[str, str]) -
 def test_deny_fires_telegram_with_payload(stub_env: dict[str, str], tmp_path: Path) -> None:
     state_path = _state_path_from(stub_env)
     c = new_counter("test-session")
-    for i in range(6):
+    for i in range(_L1_CODE_DENY):
         increment(
             c,
             LoopType.FILE_EDIT,
@@ -339,17 +350,18 @@ def test_deny_fires_telegram_with_payload(stub_env: dict[str, str], tmp_path: Pa
     # Human-readable body (per Lesson #14): argv message, not JSON-on-stdin.
     assert "L1" in body
     assert CODE_TARGET in body
-    assert "attempt-5" in body  # newest action present
-    assert "attempt-0" in body  # oldest of the 6 still in window
-    # All 6 timestamps present → action lines round-tripped through formatter
-    for i in range(6):
+    assert f"attempt-{_L1_CODE_DENY - 1}" in body  # newest action present
+    assert f"attempt-{_L1_CODE_DENY - MAX_RECENT_ACTIONS}" in body  # oldest still in window
+    # Every timestamp still inside the ring buffer round-tripped through the
+    # formatter (the window is the last MAX_RECENT_ACTIONS, not the first six).
+    for i in range(_L1_CODE_DENY - MAX_RECENT_ACTIONS, _L1_CODE_DENY):
         assert f"t{i}" in body
 
 
 def test_deny_still_fires_when_telegram_script_missing(stub_env: dict[str, str]) -> None:
     """Telegram outage must NOT block the gate — deny still emitted."""
     stub_env["CLAUDE_TELEGRAM_SCRIPT"] = "/nonexistent/path/telegram.sh"
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, "x.py", 6)
+    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, "x.py", _L1_CODE_DENY)
     rc, out = _run(_write("x.py"), stub_env)
     assert rc == 0
     assert _is_deny(out)
@@ -421,12 +433,12 @@ def test_l3_counter_does_not_gate_bash(stub_env: dict[str, str]) -> None:
 def test_deny_reason_includes_target_and_count_and_registry_pointer(
     stub_env: dict[str, str],
 ) -> None:
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, "x.py", 7)
+    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, "x.py", 10)
     _, out = _run(_write("x.py"), stub_env)
     assert _is_deny(out)
     reason = out["hookSpecificOutput"]["permissionDecisionReason"]
     assert "x.py" in reason
-    assert "7" in reason
+    assert "10" in reason
     assert ".claude/autonomy-triggers.md" in reason
     assert "Cray E.4" in reason or "threshold" in reason
 
@@ -443,7 +455,7 @@ def test_bypass_permissions_still_denies_at_threshold(stub_env: dict[str, str]) 
     short-circuits on bypass. Uncovered until session-14 Step 6 Phase 1.5
     closeout.
     """
-    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, 6)
+    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, _L1_CODE_DENY)
     payload = {
         "tool_name": "Write",
         "tool_input": {"file_path": CODE_TARGET, "content": "x"},

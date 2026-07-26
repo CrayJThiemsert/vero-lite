@@ -17,7 +17,8 @@ Schema::
           "last_6_actions": [
             {"ts": ISO-8601, "tool": str, "target": str, "result": str}
           ],
-          "last_updated": ISO-8601
+          "last_updated": ISO-8601,
+          "warned_at": ISO-8601 | ""
         }
       }
     }
@@ -25,7 +26,10 @@ Schema::
 Loop types map 1:1 to the L1-L4 rows in ``.claude/autonomy-triggers.md``
 (Cray E.4 / ADR-013):
 
-- L1 — same file edited >= 6 times in one turn
+- L1 — same file edited repeatedly. **Warn-first since PLAN-0094 P2:** the
+  path-class bar (:func:`l1_threshold_for` — 6 code / 15 doc) now WARNS and
+  allows; the deny moves out to :func:`l1_deny_threshold_for`
+  (+ :data:`L1_GRACE_BUDGET`). ``warned_at`` dedupes the warn to once per entry.
 - L2 — same test fails >= 6 times consecutively
 - L3 — same error signature seen >= 6 times
 - L4 — same bash command pattern fails >= 6 times
@@ -95,6 +99,18 @@ MAX_RECENT_ACTIONS = 6  # last_6_actions ring-buffer size
 # See docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md + ADR-013 / Cray E.4.
 L1_DOC_THRESHOLD = 15
 
+# L1 grace budget (PLAN-0094 P2 / OQ-1 — Cray-ratified `G = 3`, 2026-07-25).
+# The path-class threshold T is now the WARN bar, not the deny bar: crossing it
+# pings Telegram and hands the agent an advisory reason, but allows the edit.
+# The deny wall moves to T + G. Rationale for warn-first: ADR-013 row E.4's
+# stated consequence was "pause + Telegram alert" all along, so the hard
+# first-trip deny exceeded its own mandate — this moves L1 back TOWARD the
+# Accepted ADR rather than away from it. `G` prices how much rope a
+# false-positive costs before it walls, which is why it was Cray's call.
+# NOTE: this widens only L1. L4's deny bar is untouched (its unit is already
+# failure-based and it has no recorded false-fire series).
+L1_GRACE_BUDGET = 3
+
 # Age-out window for counter entries (2026-07-25, Cray-approved per-diff).
 # An entry whose ``last_updated`` is older than this is dropped on load.
 #
@@ -153,12 +169,22 @@ class CounterEntry:
     count: int = 0
     last_6_actions: list[ActionRecord] = field(default_factory=list)
     last_updated: str = ""
+    warned_at: str = ""
+    """ISO stamp of the L1 warn ping for this entry, or ``""`` if not yet warned.
+
+    ADDITIVE (PLAN-0094 P2): an older reader ignores the key, and an older state
+    file simply reads back ``""`` — which means "not yet warned", so the first
+    increment after an upgrade warns once and then dedupes. Its only job is that
+    dedupe: the warn fires on CROSSING the bar, and without a stamp every
+    subsequent grace-zone edit would re-ping Cray.
+    """
 
     def to_json(self) -> dict[str, Any]:
         return {
             "count": self.count,
             "last_6_actions": [a.to_json() for a in self.last_6_actions],
             "last_updated": self.last_updated,
+            "warned_at": self.warned_at,
         }
 
     @classmethod
@@ -173,6 +199,7 @@ class CounterEntry:
             count=int(data.get("count", 0)),
             last_6_actions=actions[-MAX_RECENT_ACTIONS:],
             last_updated=str(data.get("last_updated", "")),
+            warned_at=str(data.get("warned_at", "")),
         )
 
 
@@ -589,6 +616,31 @@ def l1_threshold_for(target_normalized: str) -> int:
     -> :data:`LOOP_TRIGGER_THRESHOLD` (the code-thrash base, unchanged).
     """
     return L1_DOC_THRESHOLD if is_doc_target(target_normalized) else LOOP_TRIGGER_THRESHOLD
+
+
+def l1_deny_threshold_for(target_normalized: str) -> int:
+    """The L1 bar at which the gate actually DENIES: warn bar + grace budget.
+
+    Kept as its own function rather than an inline ``+ L1_GRACE_BUDGET`` at the
+    gate, so the warn bar (:func:`l1_threshold_for`, observer-side) and the deny
+    bar (here, gate-side) cannot silently drift apart across two hook processes.
+    """
+    return l1_threshold_for(target_normalized) + L1_GRACE_BUDGET
+
+
+def mark_warned(counter: LoopCounter, loop_type: LoopType, target_normalized: str) -> bool:
+    """Stamp ``warned_at`` for this entry if unstamped; return whether we stamped.
+
+    The return value IS the dedupe: the caller warns only when this returns True,
+    so the ping fires on the crossing edit and never again for the same entry.
+    A reset (turn boundary / commit / ``SubagentStop``) drops the entry entirely,
+    which clears the stamp with it — so a genuinely new loop warns again.
+    """
+    entry = counter.counters.get(counter_key(loop_type, target_normalized))
+    if entry is None or entry.warned_at:
+        return False
+    entry.warned_at = _now_iso()
+    return True
 
 
 def reset_l1_for_targets(counter: LoopCounter, targets: list[str]) -> list[str]:
