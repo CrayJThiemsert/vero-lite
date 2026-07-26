@@ -35,7 +35,7 @@ the step it does not govern — the AT-3 sweep is byte-identical (PLAN-0074 AC-9
   unchanged. Every gated action still SUSPENDS at ``waiting_human`` — nothing is executed.
 
 ``sod_steps`` is DERIVED from the spec's own ``separation_of_duties`` constraints, not hardcoded
-(procurement hardcodes ``frozenset({"intake","approve"})`` at ``hero_demo/run.py:278`` — a named
+(procurement hardcodes ``frozenset({"intake","approve"})`` at ``hero_demo/run.py:298`` — a named
 drift point in PLAN-0074's coordination-point list: a renamed step there silently drops the
 ``sod_required`` flag. Deriving it cannot drift on a RENAME.) One residual limitation, recorded for
 the gate-seam follow-on: the registry contract is ``factory() -> Mapping[StepKind, StepExecutor]``
