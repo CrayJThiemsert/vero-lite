@@ -19,10 +19,12 @@ Deterministic throughout — **no LLM anywhere in the read path** (LOCKED-6,
 governed ≠ generated): this module is the deterministic-disposer half of the
 CaMeL-shaped "LLM proposes, deterministic policy engine disposes" architecture.
 v1 executes SINGLE declared reads only (SD-1, ratified 2026-07-04): multi-read
-joins and projections stay with the hand-written per-vertical seeds —
-deprecate-in-place, never migrated (SD-3; e.g. the procurement hero-demo
-``_SeedQuery`` 3-type join) — until a join grammar is ratified (an ADR-016
-amendment, out of scope here).
+joins and projections stay with the hand-written per-vertical seeds — which
+**CO-EXIST, not deprecated-pending-migration** (PLAN-0062 SD-C / OQ-3, ratified;
+supersedes this module's original PLAN-0048 SD-3 "never migrated" stance, and
+the procurement hero-demo ``_SeedQuery`` is now the router's FALLBACK leg for
+undeclared steps rather than a doomed one — ``hero_demo/run.py:140-162``) —
+until a join grammar is ratified (an ADR-016 amendment, out of scope here).
 
 **Future repair-loop contract (D-N2 — documented, deliberately NOT built).**
 v1 has no execute-validate-retry loop: exactly one dispatch, ever. If one is

@@ -17,8 +17,14 @@
 > PLAN-0075 line cites @ ff84d9a have drifted — current lines are used
 > throughout, symbols are the stable reference). Note: the PLAN-0075
 > AC-13 implementation (`DerivationHashProvider`, `registry.py:39`;
-> `derivation_hash()`, `cold_chain_assess.py:82`) is **present in this
-> tree**; Code confirms its merge state on `origin/main` at R2.
+> `derivation_hash()`, `cold_chain_assess.py:82`) was **present in this
+> tree** at drafting; Code confirms its merge state on `origin/main` at R2.
+> **s175 update:** both symbols were RETIRED by PLAN-0078 PR-5 (s143, #784)
+> and are now grep-clean across `services/` and `tests/`. This provenance
+> note is left standing rather than rewritten — it records what the drafter
+> saw on 2026-07-15, which is the point of a provenance stamp — but a reader
+> must not take it as current state. See the corrected Code-anchors block at
+> the foot of this file.
 
 ## Goal
 
@@ -510,24 +516,39 @@ live/host-state run is required or appropriate.
 - **PLAN-0074** (`docs/plans/done/0074-at2-signature-2-supply-chain-cold-chain-disposition.md`)
   — AC-11 built the re-trigger marker; its coordination-point enumeration
   feeds the future seam PLAN.
-- Code anchors (verified in the drafting worktree, 2026-07-15):
-  `services/engine/registry.py:30` (zero-arg `ExecutorFactory`), `:39`
-  (`DerivationHashProvider`, AC-13);
-  `verticals/procurement/hero_demo/run.py:278` (hardcoded `sod_steps`);
-  `verticals/supply_chain/procedures_factory.py:37-49` (residual note),
-  `:247-255` (`_sod_steps`), `:276`, `:299-301`;
-  `services/engine/procedures/governance_step.py:196,203,247,253`
-  (`sod_required` display flag);
-  `services/engine/procedures/action_step.py:376-378,384,546` (live SoD
-  read + `check_principal_sod` + `resolve_gated_step`; PLAN-0075's
-  `:351-353` @ ff84d9a drifted);
-  `services/engine/procedures/governance_pin.py:43-44,56-58,81-85`
-  (re-routing disclosure; `derivation_hash` param; `governance_content`
-  branch — PLAN-0075's `:59-63` drifted);
-  `verticals/supply_chain/cold_chain_assess.py:70-78,82` ("THIS IS THE
-  DATUM…" comment + constants + `derivation_hash()`; PLAN-0075's
-  `:68-70` drifted);
-  `tests/services/engine/procedures/test_at2_signature_retrigger.py`
-  (OQ-4 marker, re-armed N=3);
-  `tests/services/engine/procedures/test_derivation_pin.py:205-224`
-  (the AC-13(d) self-cancelling F-PIN marker).
+- Code anchors. **Re-verified 2026-07-26 (s175) against `main` — the block below had
+  gone stale on the F-PIN side and is corrected here.** §B already carried its
+  `SUPERSEDED` banner, but this References list (and the drafting-provenance note at
+  the head of this file) were not updated in the same pass, so they still named four
+  symbols PLAN-0078 PR-5 retired. Classified per CLAUDE.md §6 as **`superseded by new
+  info`, not `was an error`**: the anchors were correct when written, and the AC-13
+  retirement they post-date is exactly the tracked work landing. **Line numbers drift;
+  symbols are the stable reference** — re-verify at use.
+  - `services/engine/registry.py:30` (zero-arg `ExecutorFactory`) — the F-FACTORY datum,
+    unchanged.
+  - `verticals/procurement/hero_demo/run.py:298` (hardcoded `sod_steps`) — *was cited
+    `:278`; the same stale anchor was also carried in
+    `verticals/supply_chain/procedures_factory.py`'s residual note and is fixed there
+    in the same commit.*
+  - `verticals/supply_chain/procedures_factory.py:33-50` (residual note), `:244`
+    (`_sod_steps` — *was `:247-255`*), `:273`.
+  - `services/engine/procedures/governance_step.py:201,208,260,266` (`sod_required`
+    display flag) — *was `:196,203,247,253`; all four had drifted.*
+  - `services/engine/procedures/action_step.py:376-378,384,546` (live SoD read +
+    `check_principal_sod` + `resolve_gated_step`) — not re-verified in this pass;
+    treat the symbols as authoritative.
+  - `services/engine/procedures/governance_pin.py:43-44` (the re-routing disclosure —
+    **the live statement of what F-PIN still leaves open**), `:81-85`
+    (`governance_content` branch).
+  - `verticals/supply_chain/cold_chain_assess.py:70-78` ("THIS IS THE DATUM…" comment
+    + constants).
+  - `tests/services/engine/procedures/test_at2_signature_retrigger.py` (OQ-4 marker,
+    re-armed N=3) and `tests/services/engine/procedures/test_derivation_pin.py` — the
+    module survives the migration and preserves the AC-13 drafter finding
+    (`test_midflight_top_band_edit_fails_closed_at_the_pin`), but it is **no longer**
+    "the AC-13(d) self-cancelling F-PIN marker": that marker went with the code-hash.
+  - **RETIRED, cite nothing here (PLAN-0078 PR-5, s143 / #784):**
+    `DerivationHashProvider` (was `registry.py:39`), the `derivation_hash` param (was
+    `governance_pin.py:56-58`), and `derivation_hash()` (was
+    `cold_chain_assess.py:82`). Both symbols are **grep-clean across `services/` and
+    `tests/`** — re-confirmed 2026-07-26. Only `docs/` still mentions them.

@@ -1,8 +1,31 @@
 # PLAN-0094: L1 loop-detect — count non-progress, warn before denying, restore the reset paths
 
-**Status:** Draft
+**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`). Steps 3–6 unbuilt.
 **Owner:** Claude Code
 **Created:** 2026-07-25
+
+> **⚠️ Line citations below drift — re-verify at use (added s175).** This PLAN was
+> written *before* Step 1, which added ~12 lines to `.claude/hooks/_loop_counter.py`.
+> Every citation into that file written pre-Step-1 is now low by roughly that amount,
+> and a handful of others no longer point at what they describe. **Symbols are the
+> stable reference; line numbers are not.** Spot-checked against `main` on 2026-07-26:
+>
+> | Cited | Actual | Note |
+> |---|---|---|
+> | `_loop_counter.py:551-558` (`has_triggered`) | **`:563`** | drifted |
+> | `_loop_counter.py:573-579` (`l1_threshold_for`) | **`:585`** | drifted — **Step 3 changes this bar to `T+G`** |
+> | `_loop_counter.py:582-596` (`reset_l1_for_targets`) | **`:594`** | drifted |
+> | `_loop_counter.py:194` (`turn_touched`) | **`:195`** | drifted — **Step 3 adds `warned_at` as a sibling here** |
+> | `_loop_counter.py:362-364` ("failed") | — | now `agent_id` prose; **wrong target** |
+> | `_loop_counter.py:350-353` ("payloads") | — | now session-id resolution; **wrong target** |
+> | `posttooluse_progress_observer.py:483-484` (dead `Task`/`Agent` branch) | — | branch **deleted** in Step 1; line is now `_handle_bash` |
+> | `_loop_counter.py:84,96` (thresholds `6` / `15`) | `:84,96` | ✅ **exact, and byte-unchanged** |
+> | `posttooluse_progress_observer.py:298-303` (`increment`) | `:300` | ✅ range still covers it |
+> | `pretooluse_loop_detect.py:140-144,149,211` | as cited | ✅ **exact** — the Step 3 targets |
+>
+> Also note the **§Context section describes the deleted `("Task","Agent")` branch in
+> the present tense** (`:98-99`, `:483-484`). That is historically accurate as a record
+> of what Step 1 fixed, but it is not current state.
 **Related ADRs:** ADR-013 (row E.4 — the originating trigger, consequence "pause + Telegram alert", `docs/adr/0013-autonomy-axis-relocation.md:90`; D2 deterministic-deny precedent — cited, not amended), ADR-0018 (warn-only-v1 precedent, cited; its Stop-flow context line at `docs/adr/0018-axis-b-verification-loop.md:66` is descriptive and untouched)
 
 ## Goal
@@ -387,7 +410,7 @@ Each AC names the test that proves it and the mutation that reddens it. All
 are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
 (5 hook tests are known false-RED in a git worktree).
 
-- [ ] **AC-1 — the settings wiring is pinned by a test (the F3c class-killer).**
+- [ ] **AC-1 (PARTIAL — (i)+(iii) CLOSED s174 #917; (ii) closes at Step 4) — the settings wiring is pinned by a test (the F3c class-killer).**
   New `tests/handoffs/test_settings_hook_wiring.py` parses
   `.claude/settings.json` as data and asserts: (i) a `SubagentStop` entry
   whose hooks include `posttooluse_progress_observer.py`; (ii) a
@@ -396,7 +419,7 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   registrations are retained. **RED today** (neither registration exists) —
   and RED forever after against the exact gap that let reset path (c) ship
   dead with green tests.
-- [ ] **AC-2 — SubagentStop resets exactly the completing subagent's
+- [x] **AC-2 (CLOSED s174 #917) — SubagentStop resets exactly the completing subagent's
   edits.** Rewritten tests in
   `tests/handoffs/test_posttooluse_progress_observer.py` (replacing
   `:595-649`): a `SubagentStop` payload resets L1 for the completing agent's
@@ -407,7 +430,7 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   missing `agent_id` clears all recorded subagent entries (the bounded
   fail-safe). **RED** against today's code (no `hook_event_name` branch; the
   old semantics reset by `turn_touched`).
-- [ ] **AC-3 — the three lying surfaces are corrected.** Grep oracle:
+- [ ] **AC-3 (2 of 3 CLOSED s174 #917 — registry row L1 + Lesson #0021 §3; the deny message is Step 3's, per D2's do-not-edit-twice) — the three lying surfaces are corrected.** Grep oracle:
   `PLAN-0094` is non-empty in `.claude/autonomy-triggers.md` **and**
   `docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md`
   (impossible today), and `pretooluse_loop_detect.py` no longer contains the
