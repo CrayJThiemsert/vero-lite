@@ -37,6 +37,58 @@ The bug is in the **harness layer** between Python's process exit and
 the shell variable `$?` that subsequent commands read. It is not a
 project tooling regression.
 
+## 1.1 Mechanism CORRECTED, and the ban relaxed (re-measured 2026-07-26, s175)
+
+§1's *prohibition* has held for over two months and is retained. Its
+*explanation* was wrong, and the wrong explanation cost us a usable tool.
+
+The harness does **not** "fail to propagate exit codes". What happens is that
+`wsl bash -lc '<STR>'` reassembles the argv and passes `<STR>` through **one
+extra shell expansion** before the inner bash ever parses it. A bare `$?` is
+therefore consumed *a layer early* — it never reaches the command whose status
+you wanted. Escape it and it works:
+
+```bash
+wsl bash -lc 'false; echo "rc=$?"'      # → rc=0    ← FABRICATED SUCCESS
+wsl bash -lc 'false; echo "rc=\$?"'     # → rc=1    ← correct
+wsl bash -lc 'cd /etc; echo "$(pwd)"'   # → /home/crayj/work/vero-lite  ← ran BEFORE the cd
+wsl bash -lc 'cd /etc; echo "\$(pwd)"'  # → /etc
+```
+
+**Outer quote style is load-bearing.** With a double-quoted outer argument the
+`\` is eaten before WSL sees it, so `"... \$? ..."` is *still* broken. Use a
+**single-quoted outer argument and write `\$` for every `$`**.
+
+Classified per CLAUDE.md §6 as **`was an error`**, not `superseded by new
+info`: the environment did not change, the diagnosis was wrong from the start.
+It was a *protective* error — banning bare `echo $?` was correct and remains
+correct — but it over-generalized to "exit codes are unreadable here", which
+pushed every dispatch toward stderr-parsing when a two-character fix existed.
+
+## 1.2 The hazard nobody had recorded: stderr **erases** stdout
+
+Measured the same day, and worse than the exit-code artifact because it
+destroys evidence rather than merely misreporting it. The two streams are
+handed file descriptors that **share one file offset**, so they overwrite each
+other byte-for-byte instead of interleaving:
+
+```bash
+wsl bash -lc 'printf "STDOUT_LINE_%02d\n" 1 2 3 4 5 6 7 8; echo SHORT_ERR >&2'
+# → SHORT_ERR          ... and NOTHING else. All 8 stdout lines gone. 3/3 runs.
+
+wsl bash -lc 'exec 2>&1; printf "STDOUT_LINE_%02d\n" 1 2 3 4 5 6 7 8; echo SHORT_ERR >&2'
+# → all 9 lines present.
+```
+
+A **single** stderr line — a git advice message, a deprecation warning — can
+erase an entire stdout, with no error and no marker. Session 175 shipped three
+PRs while silently reading corrupted output; the tell, once you know to look
+for it, is a truncated fragment such as `msert/vero-lite.git` (the tail of
+`CrayJThiemsert/vero-lite.git`) or two messages fused into one line.
+
+**`2>&1` is therefore a correctness requirement in this environment, not a
+style preference.**
+
 ## 2. Why this matters
 
 Acceptance criteria phrased as "expect exit 0" or "validator returns
@@ -105,11 +157,54 @@ not on the runner's exit code:
 If the grep matches: PASS. If not: FAIL (the validator's own stderr
 self-report is the contract, not the harness exit code).
 
+### 3.4 The default idiom — capture to a file, echo the real code, read a slice
+
+Added 2026-07-26. This is the pattern to reach for by default; §3.1–§3.3 remain
+valid for assertions that key on a tool's own stderr self-report.
+
+```bash
+wsl bash -lc 'set -uo pipefail; cd /abs/path || exit 9; ( <CMD> ) >/tmp/run.log 2>&1; rc=\$?; echo "EXIT=\$rc"; tail -30 /tmp/run.log; exit \$rc'
+```
+
+Why each part earns its place:
+
+- **`( ... )` not `{ ...; }`** — a brace group is not a subshell, so an `exit`
+  inside it terminates the whole invocation and silently skips the reporting
+  tail.
+- **`>/tmp/run.log 2>&1`** — one merged stream into one file. Defeats §1.2
+  entirely, and keeps the *full* output available to read later with `sed -n`
+  rather than losing it to truncation.
+- **`rc=\$?` escaped** — per §1.1. Unescaped, this prints `EXIT=` (empty) and
+  the whole idiom is decorative. That happened on this idiom's first real use.
+- **`echo` the code BEFORE the slice** — the failure signal must not itself be
+  truncatable.
+- **`tail`, never `head`** — see §4.
+
+For anything non-trivial, write a `.py`/`.sh` file with the Write tool and
+execute that instead. Zero escaping, and it is re-runnable.
+
 ## 4. Forbidden patterns in dispatches and closeouts
 
 The following wording is **banned** in any dispatch acceptance criteria,
 closeout PASS/FAIL determination, or stop-and-ask trigger:
 
+- **Piping a command whose success matters into `head`/`tail`** (added
+  2026-07-26). The pipeline reports the *truncator's* status — ~always 0 — so a
+  failure reads as success, and the truncation cuts the traceback that would
+  have revealed it. This is not theoretical: in s175 a Python script aborted on
+  an assertion, `| tail -6` cut the traceback, the exit code was swallowed, the
+  run was reported as successful, and the wrong diagnosis was relayed to Cray.
+  If you must pipe, add `set -o pipefail`.
+- **`| head` *under* `pipefail`** — the inverse trap. `head` closes the pipe
+  early, the producer dies of SIGPIPE, and the pipeline reports **141**: a
+  *successful* command turned into a spurious failure. `tail` drains its input
+  and is safe. (This contradicts community advice recommending `head -c` as an
+  output cap; measured here 2026-07-26.)
+- **Newline-separated commands inside `wsl bash -lc "..."`** — newlines do not
+  short-circuit. A failing step in the middle runs on, and the harness sees only
+  the last command's status. Chain with `&&`, or open with `set -euo pipefail`.
+  Measured: `echo A; false; echo B` → `EXIT=0`.
+- **An unescaped `$` inside a `bash -c` string** — see §1.1.
 - `echo $?` followed by an expected value (`echo $?  # expect 0`)
 - "Expect exit N" / "Exit code N" / "Returns 0" without specifying
   HOW the return is observed (reliable method per §3 above)
@@ -145,8 +240,35 @@ If you find yourself reading `$?` in a Code-tab closeout to determine
 PASS/FAIL: **STOP.** Re-run the command capturing stderr and apply §3.1
 or §3.2 instead. Report the reliable signal in the closeout.
 
+## 6.1 Enforcement (added 2026-07-26)
+
+Prose placement is advisory placement (Lesson #0024). Two of the four hazards
+are syntactically detectable, so they are now **enforced** rather than merely
+written down: `posttooluse_progress_observer.py::_shell_hygiene_warning` emits
+an agent-visible advisory after any Bash call that pipes into `head`/`tail`
+without `pipefail`, uses `head` under `pipefail`, or carries an unescaped `$`
+inside a `bash -c` string. Pinned by `tests/handoffs/test_shell_hygiene_advisory.py`.
+
+It is a PostToolUse advisory, not a PreToolUse deny, on purpose: the harm is
+not *running* the command, it is *believing* its output — which is knowable
+only once it has run. It also protects the observer's own signal, since a
+masked failure means L3/L4 see exit 0 and a body with the traceback cut off,
+so the masking silently disarms the loop detection.
+
+**§1.2 is deliberately NOT enforced.** Whether a command will emit stderr is
+not knowable from its text, so a check would either miss most cases or warn on
+every call. `2>&1` stays a discipline, carried by the CLAUDE.md §8 rule.
+
 ## 7. Related
 
+- **CLAUDE.md §8** — the binding one-line rule this lesson is the mechanics for
+- **Lesson #0001 Trap 9** (`${PIPESTATUS[0]}` / `tee` breaks `$?`) — the same
+  mechanism as §4's first bullet, found earlier in a pre-commit context and
+  exemplified with `tee`; this lesson is the general statement
+- **Lesson #0024** (rules must live where the enforcer looks) — the argument
+  for §6.1
+- **Lesson #0004** (WSL `bash -c` variable-expansion trap) — the quoting-layer
+  sibling; §1.1 here is the exit-code instance of that same double-expansion
 - Lesson #5 §3 (schema-fidelity discipline for Chat dispatches) — sister
   pattern: avoid inferred content; this lesson is the runtime-verification
   counterpart

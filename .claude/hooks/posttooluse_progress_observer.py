@@ -561,6 +561,63 @@ def _apply_l3(counter: Any, combined_output: str) -> bool:
     return True
 
 
+#: A pipe into ``head``/``tail`` — the shape that discards the producer's exit status.
+_PIPE_TO_TRUNCATOR_RE = re.compile(r"\|\s*(?:head|tail)\b")
+
+#: ``$?`` / ``$(...)`` inside a ``bash -c`` / ``bash -lc`` string with NO backslash
+#: escape. Under ``wsl bash -lc`` these expand one shell layer too early.
+_UNESCAPED_EXPANSION_RE = re.compile(r"(?<!\\)\$(?:\?|\()")
+_WSL_BASH_C_RE = re.compile(r"\bbash\s+-[a-z]*c\b")
+
+
+def _shell_hygiene_warning(command: str) -> str | None:
+    """Advisory for Bash command shapes that make a FAILURE look like a SUCCESS.
+
+    Every check here fires on a *deliberately typed* shape, never on incidental
+    output, so false positives are cheap and rare. All three were measured in this
+    harness on 2026-07-26 — see ``docs/lessons/0007-harness-exit-code-artifact.md``.
+
+    This lives in the observer rather than a PreToolUse gate on purpose. The harm
+    is not running the command, it is *believing* its output — which is knowable
+    only once the command has run, and is exactly when this fires. It is also
+    self-defence: a masked failure means :func:`_apply_l3` / :func:`_apply_l4` see
+    exit 0 and a truncated body with the traceback cut off, so the masking silently
+    disarms the very loop detection this module exists to provide.
+    """
+    problems: list[str] = []
+    has_pipefail = "pipefail" in command
+
+    if _PIPE_TO_TRUNCATOR_RE.search(command) and not has_pipefail:
+        problems.append(
+            "pipes into head/tail without `set -o pipefail`, so the reported exit "
+            "status is the TRUNCATOR's (~always 0) and a failure reads as success; "
+            "the truncation also cuts the traceback that would have shown it"
+        )
+    if "| head" in command.replace("|head", "| head") and has_pipefail:
+        problems.append(
+            "pipes into `head` under pipefail, which reports 141 (SIGPIPE) when head "
+            "closes the pipe early — that turns a SUCCESSFUL command into a spurious "
+            "failure; use `tail`, which drains its input"
+        )
+    if _WSL_BASH_C_RE.search(command) and _UNESCAPED_EXPANSION_RE.search(command):
+        problems.append(
+            "contains an unescaped `$?`/`$(...)` inside a `bash -c` string; under "
+            "`wsl bash -lc` that expands one shell layer EARLY (measured: `$?` "
+            "reports 0 for a failed command, `$(pwd)` resolves before a preceding "
+            "`cd`) — write `\\$` for every `$`"
+        )
+
+    if not problems:
+        return None
+    return (
+        "Shell-hygiene advisory — the command you just ran "
+        + "; ".join(problems)
+        + ". Do not treat its exit status or output as trustworthy evidence. "
+        "Re-run as: redirect to a file with `2>&1`, echo the real exit code, then "
+        "read a bounded slice of the file (docs/lessons/0007)."
+    )
+
+
 def _handle_bash(payload: dict[str, Any]) -> None:
     """L2/L3/L4: parse Bash output to feed counters + fire L2/L3 Telegram inline."""
     tool_input = payload.get("tool_input") or {}
@@ -583,6 +640,12 @@ def _handle_bash(payload: dict[str, Any]) -> None:
     changed |= _apply_commit_reset(counter, command, tool_response)
     if changed:
         save_counter(counter, _state_path())
+
+    # Emitted last, and independent of the counters: this is about whether the
+    # evidence just produced can be trusted at all, not about loop state.
+    hygiene = _shell_hygiene_warning(command)
+    if hygiene is not None:
+        print(json.dumps({"decision": "block", "reason": hygiene}))
 
 
 def main() -> int:
