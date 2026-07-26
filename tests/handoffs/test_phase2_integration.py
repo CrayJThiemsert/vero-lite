@@ -14,8 +14,10 @@ Coverage map (cross-hook contracts only):
   Stop exits clean (no block); fail-closed when env+file resolution
   fails.
 - **PostToolUse observer → state file → PreToolUse loop-detect**:
-  observer increments L1/L4; PreToolUse reads the same state and denies
-  at threshold 6.
+  observer increments L1/L4; PreToolUse reads the same state. For L1 the
+  ladder is two-stage since PLAN-0094 P2 — the observer WARNS at the
+  path-class bar and the gate denies only at bar + ``L1_GRACE_BUDGET``;
+  L4 still denies at the flat 6.
 - **PostToolUse observer L2/L3 inline Telegram fire on threshold**:
   pytest-fail / traceback accumulation triggers ping at exactly the
   6th observation.
@@ -56,6 +58,8 @@ HOOKS_DIR = REPO_ROOT / ".claude" / "hooks"
 sys.path.insert(0, str(HOOKS_DIR))
 
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
+    L1_GRACE_BUDGET,
+    LOOP_TRIGGER_THRESHOLD,
     ActionRecord,
     LoopType,
     get_count,
@@ -368,28 +372,48 @@ def test_l1_observer_increments_then_pretooluse_denies_at_threshold(
     stub_env: dict[str, str],
     tmp_path: Path,
 ) -> None:
-    """E2E: PostToolUse observer increments L1 across 6 invocations
-    on the same file; the 7th attempt's PreToolUse loop-detect sees
-    count=6 and denies + fires Telegram with the Cray-E.4 payload.
+    """E2E across BOTH hooks: L1 warns at the path-class bar, then denies at +G.
+
+    Rewritten for PLAN-0094 P2. It used to assert that reaching the bar denied on
+    the next PreToolUse; the whole point of P2 is that it no longer does. Rather
+    than bump the seed and keep asserting one stage, this now walks the full
+    two-stage ladder in one test, because the stages live in *different hook
+    processes* communicating only through the state file — the seam where a
+    warn-bar / deny-bar drift would actually hide.
     """
     file_path = str(tmp_path / "integration-target.py")
-    for _ in range(6):
-        rc = _run(
-            POST_OBSERVER_HOOK,
-            _write_payload(file_path, post=True),
-            stub_env,
-        )[0]
-        assert rc == 0
-    # State now has L1 counter at 6 for this target.
-    counter = load_counter(_state(stub_env))
-    assert get_count(counter, LoopType.FILE_EDIT, file_path) == 6, "observer should have reached 6"
+    warn_bar = LOOP_TRIGGER_THRESHOLD  # a .py target is code-class
 
-    # Next attempt's PreToolUse gate must deny.
+    # --- Stage 1: reach the warn bar. The crossing edit warns, and ALLOWS. ---
+    for _ in range(warn_bar):
+        rc, out = _run(POST_OBSERVER_HOOK, _write_payload(file_path, post=True), stub_env)
+        assert rc == 0
+    counter = load_counter(_state(stub_env))
+    assert get_count(counter, LoopType.FILE_EDIT, file_path) == warn_bar
+
+    # The crossing invocation emitted the agent-visible advisory.
+    advisory = json.loads(out)
+    assert advisory["decision"] == "block"
+    warn_body = _capture(stub_env).read_text(encoding="utf-8")
+    assert "stage: warn" in warn_body
+
+    # ...and the gate ALLOWS at the bar. This is the s172 regression, inverted:
+    # the edit that used to be walled here now proceeds.
+    rc, out = _run(PRE_LOOP_HOOK, _write_payload(file_path), stub_env)
+    assert rc == 0
+    assert out.strip() == "", f"gate denied inside the grace zone: {out!r}"
+
+    # --- Stage 2: burn the grace budget. Now it walls. ---
+    for _ in range(L1_GRACE_BUDGET):
+        assert _run(POST_OBSERVER_HOOK, _write_payload(file_path, post=True), stub_env)[0] == 0
+    counter = load_counter(_state(stub_env))
+    assert get_count(counter, LoopType.FILE_EDIT, file_path) == warn_bar + L1_GRACE_BUDGET
+
     rc, out = _run(PRE_LOOP_HOOK, _write_payload(file_path), stub_env)
     assert rc == 0
     parsed = json.loads(out)
     decision = parsed.get("hookSpecificOutput", {}).get("permissionDecision")
-    assert decision == "deny", "L1 at 6 must deny on next PreToolUse"
+    assert decision == "deny", "L1 at the grace bar must deny on the next PreToolUse"
     body = _capture(stub_env).read_text(encoding="utf-8")
     assert "L1" in body
     assert "integration-target.py" in body

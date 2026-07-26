@@ -2,8 +2,16 @@
 """PostToolUse hook — feed the loop-counter from tool outcomes (PLAN-0008 Step 3).
 
 Observes ``Bash``/``Write``/``Edit`` outcomes and writes the state file
-that Step 2 (``pretooluse_loop_detect.py``) reads. Never blocks — this
-hook is observation-only; the deny gate lives in Step 2.
+that Step 2 (``pretooluse_loop_detect.py``) reads. **Never denies a pending
+tool call; may attach advisory feedback** — the deny gate lives in Step 2.
+
+The wording above is deliberate (PLAN-0094 P2). This hook used to say "never
+blocks", which stopped being true in letter when L1 gained warn-first: on
+crossing the L1 warn bar it now emits the PostToolUse ``{"decision": "block",
+"reason": …}`` shape. That shape does NOT undo the write it observes — the
+write has already happened — it feeds the reason into the agent's context.
+So the hook still never *denies* anything, and the docstring says that
+instead of the thing that would read as false.
 
 Counter ops by loop type:
 
@@ -65,13 +73,17 @@ sys.path.insert(0, str(HOOKS_DIR))
 
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     DEFAULT_COUNTER_PATH,
+    L1_GRACE_BUDGET,
     ActionRecord,
     LoopType,
+    counter_key,
     get_count,
     has_triggered,
     increment,
+    l1_threshold_for,
     load_counter,
     main_session_id,
+    mark_warned,
     normalize_error_signature,
     normalize_file_path,
     normalize_pytest_nodeid,
@@ -144,11 +156,22 @@ def _telegram_script() -> Path:
     return DEFAULT_TELEGRAM_SCRIPT
 
 
-def _format_message(loop_type: LoopType, target: str, last_6_actions: list[dict[str, Any]]) -> str:
+def _format_message(
+    loop_type: LoopType,
+    target: str,
+    last_6_actions: list[dict[str, Any]],
+    stage: str | None = None,
+) -> str:
     """Build the human-readable Telegram body from the Cray-E.4 payload contract.
 
     Mirrors Step 2's formatter so both inline (L2/L3 here) and gated
     (L1/L4 in Step 2) alerts present a consistent shape to Cray.
+
+    ``stage`` is optional and additive (PLAN-0094 P2): passing ``"warn"`` adds a
+    ``stage:`` line and softens the trailing instruction, so Cray can tell a
+    first-trip advisory apart from the wall at a glance. Omitting it reproduces
+    the pre-P2 body byte-for-byte, which is why the existing L2/L3 callers are
+    untouched.
     """
     actions_block = (
         "\n".join(
@@ -158,6 +181,16 @@ def _format_message(loop_type: LoopType, target: str, last_6_actions: list[dict[
         )
         or "  (none)"
     )
+    if stage == "warn":
+        return (
+            f"[vero-lite/loop-detect] {loop_type.value} warn\n"
+            f"stage: warn\n"
+            f"target: {target}\n"
+            f"last 6 actions:\n{actions_block}\n"
+            f"Cray: advisory only — the edit was ALLOWED and the agent was told. "
+            f"It denies after {L1_GRACE_BUDGET} more. "
+            f"See .claude/autonomy-triggers.md row {loop_type.value}"
+        )
     return (
         f"[vero-lite/loop-detect] {loop_type.value} triggered\n"
         f"target: {target}\n"
@@ -166,7 +199,12 @@ def _format_message(loop_type: LoopType, target: str, last_6_actions: list[dict[
     )
 
 
-def _ping_telegram(loop_type: LoopType, target: str, last_6_actions: list[dict[str, Any]]) -> None:
+def _ping_telegram(
+    loop_type: LoopType,
+    target: str,
+    last_6_actions: list[dict[str, Any]],
+    stage: str | None = None,
+) -> None:
     """Fire Telegram alert with the Cray-E.4 payload contract.
 
     Graceful no-op if the script is missing or fails — observer never
@@ -177,7 +215,7 @@ def _ping_telegram(loop_type: LoopType, target: str, last_6_actions: list[dict[s
     script = _telegram_script()
     if not script.exists():
         return
-    message = _format_message(loop_type, target, last_6_actions)
+    message = _format_message(loop_type, target, last_6_actions, stage)
     cmd = bash_argv(script, message)
     env = env_with_wslenv_passthrough(_FORWARDED_ENV)
 
@@ -276,6 +314,56 @@ def _extract_traceback_signature(text: str) -> str | None:
     return m.group(1).strip()
 
 
+def _maybe_warn_l1(counter: Any, target: str) -> list[dict[str, Any]] | None:
+    """Decide whether this L1 increment is the one that crosses the warn bar.
+
+    Returns the ``last_6_actions`` payload to ping with, or ``None`` to stay
+    silent. Mutates ``counter`` (stamping ``warned_at``) ONLY when it returns a
+    payload, so the caller can save once and ping once.
+
+    Silent in three distinct cases, all intended: below the bar; already warned
+    for this entry (the ``mark_warned`` stamp — this is what keeps the whole
+    grace zone quiet instead of pinging Cray on every edit); and a missing
+    entry, which cannot happen after ``increment`` but is not worth crashing a
+    non-blocking observer over.
+    """
+    threshold = l1_threshold_for(target)
+    if get_count(counter, LoopType.FILE_EDIT, target) < threshold:
+        return None
+    if not mark_warned(counter, LoopType.FILE_EDIT, target):
+        return None
+    entry = counter.counters.get(counter_key(LoopType.FILE_EDIT, target))
+    if entry is None:  # defensive — increment() guarantees it exists
+        return None
+    return [a.to_json() for a in entry.last_6_actions]
+
+
+def _warn_advisory(target: str, counter: Any) -> dict[str, Any]:
+    """The agent-visible warn, in the PostToolUse ``decision: block`` shape.
+
+    ``block`` here does not undo the write — PostToolUse fires after the tool
+    has already run. It is the documented channel for feeding a reason back into
+    the agent's context, which is exactly what a warn needs to do: the edit
+    stands, and the agent finds out now rather than being walled on its next one.
+
+    Deliberately NOT the PreToolUse ``permissionDecision: "ask"`` shape: an AFK
+    Cray turns "ask" into a block, which is the pause being demoted here.
+    """
+    count = get_count(counter, LoopType.FILE_EDIT, target)
+    return {
+        "decision": "block",
+        "reason": (
+            f"L1 warn on `{target}`: {count} edits of this one target "
+            f"(warn bar = {l1_threshold_for(target)}). The edit was ALLOWED and "
+            f"this is advisory — but {L1_GRACE_BUDGET} more and the gate denies. "
+            f"Reassess the approach now: if the last few edits have been retries "
+            f"of the same failing change rather than distinct forward progress, "
+            f"stop and reconsider, or raise it with Cray. A git commit of this "
+            f"file clears the count."
+        ),
+    }
+
+
 def _handle_write_or_edit(payload: dict[str, Any]) -> None:
     """L1: increment per Write/Edit + record the target as touched this turn.
 
@@ -309,9 +397,18 @@ def _handle_write_or_edit(payload: dict[str, Any]) -> None:
         # PLAN-0094 D1: attribute the edit to the subagent that made it, so its
         # completion can clear exactly its own targets and nothing else.
         record_subagent_touched(counter, agent_id.strip(), target)
-    # L1 trigger is gated by Step 2 on the NEXT Write/Edit — we do not fire
-    # Telegram inline here (Step 2 is the gate).
+    # PLAN-0094 P2 — the WARN stage. Crossing the path-class bar no longer walls
+    # (the gate's deny moved out to T + G); instead this fires once: a Telegram
+    # ping for Cray and an agent-visible advisory. Deliberately inline here
+    # rather than in the gate, because the gate only runs on the NEXT edit --
+    # warning there would cost the agent a whole extra edit before it learns.
+    warned = _maybe_warn_l1(counter, target)
     save_counter(counter, _state_path())
+    if warned is not None:
+        # Emitted AFTER the state write so a crash mid-warn cannot leave the
+        # stamp unsaved and re-ping Cray on the next edit.
+        _ping_telegram(LoopType.FILE_EDIT, target, warned, stage="warn")
+        print(json.dumps(_warn_advisory(target, counter)))
 
 
 def _handle_subagent_stop(payload: dict[str, Any]) -> None:

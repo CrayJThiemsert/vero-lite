@@ -430,7 +430,7 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   missing `agent_id` clears all recorded subagent entries (the bounded
   fail-safe). **RED** against today's code (no `hook_event_name` branch; the
   old semantics reset by `turn_touched`).
-- [ ] **AC-3 (2 of 3 CLOSED s174 #917 — registry row L1 + Lesson #0021 §3; the deny message is Step 3's, per D2's do-not-edit-twice) — the three lying surfaces are corrected.** Grep oracle:
+- [x] **AC-3 (CLOSED — 2 of 3 at s174 #917 [registry row L1 + Lesson #0021 §3], the deny message at s175 Step 3) — the three lying surfaces are corrected.** Grep oracle:
   `PLAN-0094` is non-empty in `.claude/autonomy-triggers.md` **and**
   `docs/lessons/0021-l1-loop-detect-subagent-and-doc-threshold.md`
   (impossible today), and `pretooluse_loop_detect.py` no longer contains the
@@ -443,12 +443,12 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   the rewritten deny message describes the restored reset in `SubagentStop`
   wording and must not re-use the anchor phrase, so the oracle stays
   non-vacuous after the fix.
-- [ ] **AC-4 — warn stage allows; deny moves to the second trip.** Gate
+- [x] **AC-4 (CLOSED s175 Step 3) — warn stage allows; deny moves to the second trip.** Gate
   tests: seeded `count` in `[T, T+G)` → `main()` emits **no** deny JSON
   (edit allowed); seeded `count >= T+G` → deny emitted, with the rewritten
   message naming the real exits. **RED today** — the gate denies at `T`
   (`pretooluse_loop_detect.py:198-211`).
-- [ ] **AC-5 — the warning is agent-visible and fires once.** Observer tests:
+- [x] **AC-5 (CLOSED s175 Step 3) — the warning is agent-visible and fires once.** Observer tests:
   an L1 increment crossing `T` emits the advisory `decision: block` reason on
   stdout exactly once and one Telegram warn ping (capture stub, existing
   `CLAUDE_TELEGRAM_SCRIPT` pattern); further grace-zone edits emit neither.
