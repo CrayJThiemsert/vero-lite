@@ -88,6 +88,14 @@ DEFAULT_COUNTER_PATH = STATE_DIR / "loop-counter.json"
 LOOP_TRIGGER_THRESHOLD = 6  # Cray E.4 — >= 6 attempts triggers pause + Telegram (code-path base)
 MAX_RECENT_ACTIONS = 6  # last_6_actions ring-buffer size
 
+# Cap on distinct content digests remembered per target per turn (PLAN-0094
+# D4 c). Bounds the state file: without it, a long forward-only editing turn
+# would append one digest per edit forever. 32 is well above any plausible
+# single-turn edit count for one file (the doc WARN bar is 15), so the cap
+# cannot silently truncate a live oscillation signal -- it only bounds the
+# pathological case. Eviction is oldest-first (dict insertion order).
+MAX_CONTENT_HASHES = 32
+
 # L1 path-class threshold (Cray E.4 refinement, 2026-06-08). Prose / docs
 # authoring (markdown, ``docs/``) legitimately needs many small sequential edits
 # to ONE file within a single turn — multi-section PLAN / ADR / STATUS / lessons
@@ -162,6 +170,23 @@ class ActionRecord:
         )
 
 
+def _digest_tally(raw: Any) -> dict[str, int]:
+    """Coerce a persisted digest->count map, dropping anything malformed.
+
+    Tolerant by contract (PLAN-0094 D4): these fields are ADDITIVE, so a state
+    file written before Step 4 has no key at all and must read back as an empty
+    map rather than raise. A non-int or non-str member is dropped rather than
+    coerced -- a corrupt tally must not be able to manufacture an increment.
+    """
+    if not isinstance(raw, dict):
+        return {}
+    out: dict[str, int] = {}
+    for k, v in raw.items():
+        if isinstance(k, str) and isinstance(v, int) and not isinstance(v, bool) and v > 0:
+            out[k] = v
+    return out
+
+
 @dataclass
 class CounterEntry:
     """A single ``(loop_type, target)`` counter."""
@@ -179,12 +204,35 @@ class CounterEntry:
     subsequent grace-zone edit would re-ping Cray.
     """
 
+    attempted_edits: dict[str, int] = field(default_factory=dict)
+    """``sha1(old_string) -> times applied``, per target, per TURN (PLAN-0094 D4 b).
+
+    A dict rather than a set (OQ-3 R2): the tally is what the recorded
+    ``ActionRecord.result`` reports as ``repeat xN``, and a set cannot carry N.
+    ADDITIVE and turn-scoped — :func:`clear_turn_scoped` empties it at every
+    Stop, so it measures churn WITHIN a turn, never across a session.
+    """
+
+    content_hashes: dict[str, int] = field(default_factory=dict)
+    """``sha1(file content after the write) -> times seen``, per target, per TURN.
+
+    A digest already present means the file returned to a state it held earlier
+    this turn — oscillation (PLAN-0094 D4 c). Capped at
+    :data:`MAX_CONTENT_HASHES` keys; the oldest insertion is evicted first, so a
+    long forward-only turn cannot grow the state file without bound.
+    """
+
     def to_json(self) -> dict[str, Any]:
         return {
             "count": self.count,
             "last_6_actions": [a.to_json() for a in self.last_6_actions],
             "last_updated": self.last_updated,
             "warned_at": self.warned_at,
+            # Both MUST round-trip: every Stop rewrites the whole document via
+            # this method, so a field the writer forgets is a field the reader
+            # silently loses at the next turn boundary (the AC-9 finding).
+            "attempted_edits": dict(self.attempted_edits),
+            "content_hashes": dict(self.content_hashes),
         }
 
     @classmethod
@@ -200,6 +248,8 @@ class CounterEntry:
             last_6_actions=actions[-MAX_RECENT_ACTIONS:],
             last_updated=str(data.get("last_updated", "")),
             warned_at=str(data.get("warned_at", "")),
+            attempted_edits=_digest_tally(data.get("attempted_edits")),
+            content_hashes=_digest_tally(data.get("content_hashes")),
         )
 
 
@@ -562,9 +612,47 @@ def increment(
     action: ActionRecord | None = None,
 ) -> CounterEntry:
     """Increment ``(loop_type, target)``; append the action to the ring."""
+    return _record(counter, loop_type, target_normalized, action, bump=True)
+
+
+def observe(
+    counter: LoopCounter,
+    loop_type: LoopType,
+    target_normalized: str,
+    action: ActionRecord | None = None,
+) -> CounterEntry:
+    """Record an action WITHOUT incrementing the count (PLAN-0094 D4).
+
+    The record-only sibling of :func:`increment`, which couples the two. L1's
+    unit is now *non-progress*, so a distinct forward edit must still land in
+    the evidence ring and refresh ``last_updated`` -- it just must not score.
+    Splitting the two is what lets "six distinct forward edits leave count == 0"
+    (AC-7) coexist with an evidence trail that still shows all six.
+
+    Refreshing ``last_updated`` is deliberate: an actively-edited target must
+    not age out from under the guard just because its edits are all forward.
+    """
+    return _record(counter, loop_type, target_normalized, action, bump=False)
+
+
+def _record(
+    counter: LoopCounter,
+    loop_type: LoopType,
+    target_normalized: str,
+    action: ActionRecord | None,
+    *,
+    bump: bool,
+) -> CounterEntry:
+    """Shared body of :func:`increment` / :func:`observe`.
+
+    One implementation on purpose: if the ring-buffer or timestamp handling
+    drifted between the counting and non-counting paths, the evidence for a
+    trip would differ from the evidence for the edits that led to it.
+    """
     key = counter_key(loop_type, target_normalized)
     entry = counter.counters.get(key) or CounterEntry()
-    entry.count += 1
+    if bump:
+        entry.count += 1
     if action is not None:
         entry.last_6_actions.append(action)
         if len(entry.last_6_actions) > MAX_RECENT_ACTIONS:
@@ -572,6 +660,56 @@ def increment(
     entry.last_updated = _now_iso()
     counter.counters[key] = entry
     return entry
+
+
+def note_attempted_edit(
+    counter: LoopCounter,
+    loop_type: LoopType,
+    target_normalized: str,
+    digest: str,
+) -> int:
+    """Tally one ``old_string`` digest for this target/turn; return the new total.
+
+    A return of 1 means "first time this turn" (forward); >= 2 means the same
+    operation is being re-applied, which is churn, not progress (PLAN-0094
+    D4 b). Creates the entry if absent so the caller can decide
+    increment-vs-observe from the return value alone.
+    """
+    key = counter_key(loop_type, target_normalized)
+    entry = counter.counters.get(key) or CounterEntry()
+    counter.counters[key] = entry
+    if not digest:
+        return 0
+    entry.attempted_edits[digest] = entry.attempted_edits.get(digest, 0) + 1
+    return entry.attempted_edits[digest]
+
+
+def note_content_hash(
+    counter: LoopCounter,
+    loop_type: LoopType,
+    target_normalized: str,
+    digest: str,
+) -> int:
+    """Tally one post-write content digest for this target/turn; return the total.
+
+    A return >= 2 means the file returned to a state it already held this turn
+    -- oscillation (PLAN-0094 D4 c). Bounded at :data:`MAX_CONTENT_HASHES` keys,
+    evicting oldest-first; eviction can only ever LOSE an oscillation signal,
+    never invent one.
+    """
+    key = counter_key(loop_type, target_normalized)
+    entry = counter.counters.get(key) or CounterEntry()
+    counter.counters[key] = entry
+    if not digest:
+        return 0
+    entry.content_hashes[digest] = entry.content_hashes.get(digest, 0) + 1
+    total = entry.content_hashes[digest]
+    while len(entry.content_hashes) > MAX_CONTENT_HASHES:
+        oldest = next(iter(entry.content_hashes))
+        if oldest == digest:  # never evict the digest we just recorded
+            break
+        del entry.content_hashes[oldest]
+    return total
 
 
 def reset(
@@ -779,3 +917,19 @@ def clear_turn_touched(counter: LoopCounter) -> None:
     so the next turn starts with a clean slate.
     """
     counter.turn_touched = []
+
+
+def clear_turn_scoped(counter: LoopCounter) -> None:
+    """Empty the per-turn non-progress tallies on EVERY surviving entry.
+
+    Sibling to :func:`clear_turn_touched`, called from the same turn-boundary
+    reset (PLAN-0094 D4). ``count`` keeps its lifetime -- the reset paths are
+    unchanged -- but ``attempted_edits`` / ``content_hashes`` must not: they
+    measure churn *within* a turn, so carrying them across a boundary would
+    score a legitimate next-turn re-application of the same ``old_string`` as a
+    repeat. Runs over entries that SURVIVE the reset; the ones that were reset
+    are gone entirely.
+    """
+    for entry in counter.counters.values():
+        entry.attempted_edits = {}
+        entry.content_hashes = {}
