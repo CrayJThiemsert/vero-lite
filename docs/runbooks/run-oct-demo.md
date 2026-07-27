@@ -73,6 +73,91 @@ are behind: `uv run alembic upgrade head`.
 
 ---
 
+## 1a. Run the demo from the image (DB-less) — hand it to someone (PLAN-0095)
+
+§1 + §2 run the demo **from a checkout**. This section runs it from the built
+image instead: on a machine with nothing but Docker, no repo, no Python, no
+database. That is the demo→pilot wedge artifact (ADR-0032 D1).
+
+> **On this dev box, run these from Windows PowerShell.** Docker Desktop's WSL
+> integration is currently off for `ubuntu-24.04`, so `docker` is not on `PATH`
+> inside WSL (the `docker ps` in §1 assumes it is). Everything below is
+> daemon-touching and therefore **host-state** — CLAUDE.md §8 applies.
+
+```powershell
+docker build -t vero-lite-demo \\wsl.localhost\ubuntu-24.04\home\crayj\work\vero-lite
+docker run -d --name vero-demo -p 8000:8000 vero-lite-demo
+```
+
+Then open **http://localhost:8000** (§4 explains why localhost works from
+Windows). Stop with `docker rm -f vero-demo`.
+
+**Verified on the image, session 177 (PLAN-0095 Step 6 — live evidence, not the gate):**
+
+- `GET /health` → **200** `{"status":"ok",…}` about **2 s** after `docker run`.
+- Boot log: `verticals discovered: aquaculture, building_materials, energy,
+  fleet_maintenance, procurement, supply_chain; active='energy'` — all six, from
+  the copied plugin tree.
+- `GET /meta` → the energy ontology JSON (object types + properties), i.e. the
+  map screen has its data.
+- The container runs as **`uid=999(vero)`**, not root, and its `HEALTHCHECK`
+  reports **healthy**.
+
+### The default command never touches Postgres
+
+`DATABASE_URL` is unset inside the container, so it falls back to the code
+default, which points at `localhost:5432` — *inside* the container, where
+nothing listens. Nothing on the boot path opens a connection: engine creation is
+lazy, and the one unconditional data call at startup resolves to the **synthetic**
+adapter for the default `energy` vertical. The demo above was verified with no
+Postgres reachable from the container at all.
+
+**What that costs you:** the read-side demo (map, `/meta`, `/objects`,
+`/recommendations` — features A, B, D of §0) works out of the box. The
+**Approve→Execute round-trip persists to Postgres** (§2), so it needs the compose
+path below, *and* either `-e API_AUTH_ENABLED=false` or provisioned `API_KEYS`
+— `api_auth_enabled` defaults on and gates state-changing routes only, which is
+why the read side needs no env at all.
+
+### One image, different commands — the pilot/production path
+
+The same image composes with a real Postgres. This is what makes the artifact
+grow into production without a rewrite, under either hosting model.
+
+```powershell
+# `--no-deps` if postgres is already up and you do not want compose to recreate it
+docker compose up -d app
+
+# the migration step — same image, different command, no project install needed
+docker compose run --rm app alembic upgrade head
+```
+
+`docker compose run --rm app alembic current` printed **`0012 (head)`** from
+inside the image against the live Postgres (session 177), which exercises the
+whole chain: the `alembic` console script rides in with the main dependency, the
+copied `alembic.ini` supplies `script_location`, and its `prepend_sys_path = .`
+bridges the `services.api.config` import under `WORKDIR /app`.
+
+Standalone, the migration command takes the DB URL as env:
+
+```powershell
+$DB = "postgresql+asyncpg://USER:PASS@HOST:5432/vero_lite"  # pragma: allowlist secret
+docker run --rm -e DATABASE_URL=$DB vero-lite-demo alembic upgrade head
+```
+
+**Cleanup that does not disturb a running dev stack:** `docker compose rm -sf app`
+removes only the app container. Prefer it over `docker compose down`, which would
+stop the `vero-postgres` / `vero-redis` containers §1 depends on. Never pass `-v`
+— the `postgres_data` volume holds dev data.
+
+> **What guards this section.** The image's required content is asserted offline
+> by `tests/docker/test_dockerfile_oracle.py`, which **derives** what must ship
+> from the code rather than mirroring the Dockerfile's text. No acceptance
+> criterion needs a Docker daemon; everything in this section is *evidence*, not
+> the gate. See [PLAN-0095](../plans/0095-docker-image-boot.md).
+
+---
+
 ## 2. Run the **energy** vertical
 
 `OCT_VERTICAL` defaults to `energy`, so no extra env is needed.
