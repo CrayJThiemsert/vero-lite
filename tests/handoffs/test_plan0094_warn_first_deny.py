@@ -18,6 +18,7 @@ false-RED inside a git worktree.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import subprocess
@@ -42,6 +43,7 @@ from _loop_counter import (  # noqa: E402
     l1_deny_threshold_for,
     l1_threshold_for,
     new_counter,
+    note_attempted_edit,
     save_counter,
 )
 
@@ -49,6 +51,15 @@ Payload = dict[str, Any]
 
 CODE_TARGET = "services/api/main.py"
 DOC_TARGET = "docs/STATUS.md"
+
+# The ``old_string`` every ``_edit`` below carries, and its digest. Kept as one
+# constant so ``_seed`` cannot drift out of sync with ``_edit`` — if they
+# disagreed, the seeded state would stop making the crossing edit score and
+# these tests would go green for the wrong reason.
+_EDIT_OLD_STRING = "a"
+_EDIT_OLD_STRING_SHA1 = hashlib.sha1(
+    _EDIT_OLD_STRING.encode("utf-8"), usedforsecurity=False
+).hexdigest()
 
 STUB_TELEGRAM = """#!/usr/bin/env bash
 # Appends $1 (argv message) to $TELEGRAM_STUB_CAPTURE, one record per line,
@@ -76,7 +87,15 @@ def env(tmp_path: Path) -> dict[str, str]:
 
 
 def _seed(env: dict[str, str], target: str, count: int) -> None:
-    """Write a state file with ``count`` recorded L1 edits of ``target``."""
+    """Write a state file with ``count`` recorded L1 edits of ``target``.
+
+    Also registers the digest of ``_edit``'s ``old_string`` in
+    ``attempted_edits``, so the next ``_edit`` of this target reads as a
+    re-applied edit and therefore SCORES. Since PLAN-0094 Step 4 (AC-7) L1
+    counts non-progress rather than touches, so a seeded thrash scenario has to
+    *look* like thrash in the state — a bare number no longer makes the
+    following edit count, and without this the warn bar is never crossed.
+    """
     counter = new_counter(session_id="test-session")
     for _ in range(count):
         increment(
@@ -85,6 +104,7 @@ def _seed(env: dict[str, str], target: str, count: int) -> None:
             target,
             ActionRecord(ts="2026-07-26T00:00:00+0000", tool="Edit", target=target),
         )
+    note_attempted_edit(counter, LoopType.FILE_EDIT, target, _EDIT_OLD_STRING_SHA1)
     save_counter(counter, Path(env["CLAUDE_LOOP_COUNTER_PATH"]))
 
 
@@ -105,7 +125,7 @@ def _edit(file_path: str) -> Payload:
     return {
         "hook_event_name": "PostToolUse",
         "tool_name": "Edit",
-        "tool_input": {"file_path": file_path, "old_string": "a", "new_string": "b"},
+        "tool_input": {"file_path": file_path, "old_string": _EDIT_OLD_STRING, "new_string": "b"},
         "tool_response": {},
     }
 

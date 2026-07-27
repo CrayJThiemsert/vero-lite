@@ -14,6 +14,7 @@ Covers:
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shutil
@@ -33,6 +34,7 @@ import posttooluse_progress_observer as obs  # noqa: E402  — sys.path manipula
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     ActionRecord,
     LoopType,
+    counter_key,
     get_count,
     increment,
     load_counter,
@@ -138,41 +140,67 @@ def _bash(command: str, **resp: Any) -> Payload:
 # --- L1: Write/Edit increment ---
 
 
-def test_l1_write_increments_counter(stub_env: dict[str, str]) -> None:
-    assert _run(_write("docs/STATUS.md"), stub_env) == 0
-    c = load_counter(_state(stub_env))
-    assert get_count(c, LoopType.FILE_EDIT, "docs/STATUS.md") == 1
+def test_l1_forward_write_is_recorded_without_counting(
+    stub_env: dict[str, str], tmp_path: Path
+) -> None:
+    """PLAN-0094 Step 4 replaced the unit: a forward write is seen, not scored.
+
+    Until Step 4 this asserted ``count == 1`` — it was the canonical statement
+    of the OLD unit (touches). AC-7 makes that assertion wrong on purpose.
+    """
+    target = tmp_path / "notes.md"
+    target.write_text("v1\n", encoding="utf-8")
+    assert _run(_write_at(target, "v1\n"), stub_env) == 0
+
+    counter = load_counter(_state(stub_env))
+    key = str(target)
+    assert get_count(counter, LoopType.FILE_EDIT, key) == 0
+    assert len(counter.counters[counter_key(LoopType.FILE_EDIT, key)].last_6_actions) == 1
 
 
-def test_l1_edit_increments_same_counter_as_write(stub_env: dict[str, str]) -> None:
-    _run(_write("docs/STATUS.md"), stub_env)
-    _run(_edit("docs/STATUS.md"), stub_env)
-    c = load_counter(_state(stub_env))
-    assert get_count(c, LoopType.FILE_EDIT, "docs/STATUS.md") == 2
+def test_l1_write_and_edit_share_one_counter(stub_env: dict[str, str], tmp_path: Path) -> None:
+    """A Write and an Edit of one target land on ONE entry, whatever they score."""
+    target = tmp_path / "notes.md"
+    target.write_text("v1\n", encoding="utf-8")
+    _run(_write_at(target, "v1\n"), stub_env)
+    target.write_text("v2\n", encoding="utf-8")
+    _run(_edit_at(target, "anchor", "x"), stub_env)
+
+    counter = load_counter(_state(stub_env))
+    key = counter_key(LoopType.FILE_EDIT, str(target))
+    assert list(counter.counters) == [key]
+    assert len(counter.counters[key].last_6_actions) == 2
 
 
 def test_l1_path_normalization_windows_unc(stub_env: dict[str, str]) -> None:
     unc = "\\\\wsl.localhost\\Ubuntu-24.04\\home\\crayj\\work\\vero-lite\\docs\\STATUS.md"
     _run(_write(unc), stub_env)
     _run(_write("docs/STATUS.md"), stub_env)
-    c = load_counter(_state(stub_env))
-    # Both paths collapse to the same normalized target
-    assert get_count(c, LoopType.FILE_EDIT, "docs/STATUS.md") == 2
+    counter = load_counter(_state(stub_env))
+    # Both paths collapse to the same normalized target: ONE entry, both actions.
+    # Asserted on the key rather than the count so this stays a test of path
+    # normalization and says nothing about what scores.
+    key = counter_key(LoopType.FILE_EDIT, "docs/STATUS.md")
+    assert list(counter.counters) == [key]
+    assert len(counter.counters[key].last_6_actions) == 2
 
 
-def test_l1_does_not_fire_telegram_inline(stub_env: dict[str, str]) -> None:
-    """L1 trigger is gated by Step 2 on the NEXT attempt — Step 3 must NOT
-    fire Telegram for L1, even at count >= 6.
+def test_l1_does_not_fire_telegram_inline(stub_env: dict[str, str], tmp_path: Path) -> None:
+    """L1's deny is gated by Step 2 on the NEXT attempt — this hook must NOT
+    fire Telegram for L1 below the path-class warn bar.
     """
-    # Pre-seed L1 to 5, run one more Write → count becomes 6 but no Telegram
+    # Pre-seed L1 to 5, then one more Write — no Telegram either way.
+    target = tmp_path / "notes.md"  # .md → doc class, warn bar 15
+    target.write_text("v1\n", encoding="utf-8")
     seed = new_counter("s")
     for _ in range(5):
-        increment(seed, LoopType.FILE_EDIT, "docs/STATUS.md", ActionRecord("t", "Edit", "x"))
+        increment(seed, LoopType.FILE_EDIT, str(target), ActionRecord("t", "Edit", "x"))
     save_counter(seed, _state(stub_env))
-    _run(_write("docs/STATUS.md"), stub_env)
+    _run(_write_at(target, "v1\n"), stub_env)
     assert not _capture(stub_env).exists(), "L1 must not fire Telegram inline (Step 2's job)"
-    c = load_counter(_state(stub_env))
-    assert get_count(c, LoopType.FILE_EDIT, "docs/STATUS.md") == 6
+    counter = load_counter(_state(stub_env))
+    # The write is forward progress, so the seeded count is unchanged (AC-7).
+    assert get_count(counter, LoopType.FILE_EDIT, str(target)) == 5
 
 
 def test_l1_ignores_missing_file_path(stub_env: dict[str, str]) -> None:
@@ -190,6 +218,125 @@ def test_l1_records_turn_touched(stub_env: dict[str, str]) -> None:
     _run(_write("x.py"), stub_env)
     c = load_counter(_state(stub_env))
     assert c.turn_touched == ["docs/STATUS.md", "x.py"]
+
+
+# --- PLAN-0094 Step 4: L1 counts NON-PROGRESS, not touches (AC-7 / AC-8) ---
+#
+# Every target here is a real file under ``tmp_path``, never a repo path. (c)
+# hashes the file ON DISK, so pointing these at ``docs/STATUS.md`` would couple
+# the assertions to that file's live content — the trap the s179 handoff flagged.
+
+
+def _write_at(path: Path, content: str) -> Payload:
+    """A successful Write payload; the caller must have already written `content`."""
+    return {
+        "tool_name": "Write",
+        "tool_input": {"file_path": str(path), "content": content},
+        "tool_response": {},
+    }
+
+
+def _edit_at(path: Path, old: str, new: str) -> Payload:
+    """A successful Edit payload with an EXPLICIT ``old_string``.
+
+    Deliberately not the module-level ``_edit`` helper, whose ``old_string`` is
+    the constant ``"a"`` — under (b) that constant makes every second call a
+    "repeat", which would silently turn a forward-progress fixture into a
+    thrash fixture.
+    """
+    return {
+        "tool_name": "Edit",
+        "tool_input": {"file_path": str(path), "old_string": old, "new_string": new},
+        "tool_response": {},
+    }
+
+
+def _entry(env: dict[str, str], target: str) -> Any:
+    return load_counter(_state(env)).counters[counter_key(LoopType.FILE_EDIT, target)]
+
+
+def _sha1(text: str) -> str:
+    return hashlib.sha1(text.encode("utf-8"), usedforsecurity=False).hexdigest()
+
+
+def test_ac7_six_distinct_forward_edits_score_zero(
+    stub_env: dict[str, str], tmp_path: Path
+) -> None:
+    """AC-7 — the s168/s172 regression: distinct forward progress must not count.
+
+    Six successful Edits, each with a distinct ``old_string`` and each advancing
+    the file to new content, leave ``count == 0`` while the evidence ring and
+    ``turn_touched`` still hold everything.
+    """
+    target = tmp_path / "module.py"
+    for i in range(6):
+        target.write_text(f"revision {i}\n" * (i + 1), encoding="utf-8")
+        assert _run(_edit_at(target, f"anchor-{i}", f"replacement-{i}"), stub_env) == 0
+
+    key = str(target)
+    counter = load_counter(_state(stub_env))
+    assert get_count(counter, LoopType.FILE_EDIT, key) == 0
+    entry = counter.counters[counter_key(LoopType.FILE_EDIT, key)]
+    assert len(entry.last_6_actions) == 6, "all six must still be in the evidence ring"
+    # R3 (OQ-3) — a forward edit records the EMPTY result, not "forward": both
+    # formatters bracket ``result`` only when non-empty, so emptiness is what
+    # keeps "[...]" meaning "this row is why you were interrupted".
+    assert [a.result for a in entry.last_6_actions] == [""] * 6
+    assert counter.turn_touched == [key]
+
+
+def test_ac8i_repeated_old_string_counts_once(stub_env: dict[str, str], tmp_path: Path) -> None:
+    """AC-8(i) — the same ``old_string`` re-applied is churn, not progress.
+
+    Content advances between the two calls, so (c) cannot fire and the single
+    increment is attributable to (b) alone.
+    """
+    target = tmp_path / "module.py"
+    target.write_text("first\n", encoding="utf-8")
+    _run(_edit_at(target, "same-anchor", "x"), stub_env)
+    target.write_text("second\n", encoding="utf-8")
+    _run(_edit_at(target, "same-anchor", "y"), stub_env)
+
+    key = str(target)
+    assert get_count(load_counter(_state(stub_env)), LoopType.FILE_EDIT, key) == 1
+    entry = _entry(stub_env, key)
+    assert entry.last_6_actions[-1].result == "repeat x2"
+    # OQ-3 R2 — a dict, not a set: the tally is what the recorded count reads.
+    assert entry.attempted_edits[_sha1("same-anchor")] == 2
+
+
+def test_ac8iii_content_returning_to_prior_state_counts(
+    stub_env: dict[str, str], tmp_path: Path
+) -> None:
+    """AC-8(iii) — oscillation: the file returns to a state it already held.
+
+    Every ``old_string`` is distinct, so (b) cannot fire and the single
+    increment is attributable to (c) alone.
+    """
+    target = tmp_path / "module.py"
+    for i, content in enumerate(("A\n", "B\n", "A\n")):
+        target.write_text(content, encoding="utf-8")
+        _run(_edit_at(target, f"anchor-{i}", "z"), stub_env)
+
+    key = str(target)
+    assert get_count(load_counter(_state(stub_env)), LoopType.FILE_EDIT, key) == 1
+    entry = _entry(stub_env, key)
+    assert entry.last_6_actions[-1].result == "osc x2"
+
+
+def test_ac8_unreadable_target_fails_open(stub_env: dict[str, str], tmp_path: Path) -> None:
+    """(c) must never raise: it runs on EVERY Write/Edit.
+
+    A payload naming a file that does not exist on disk yields no content
+    digest. The hook must still exit 0 and still record the action — losing an
+    oscillation signal is a rounding error next to breaking every edit in the
+    session, which is what a raise in this path would do.
+    """
+    missing = tmp_path / "never-created.py"
+    assert _run(_write_at(missing, "irrelevant"), stub_env) == 0
+    entry = _entry(stub_env, str(missing))
+    assert entry.count == 0
+    assert len(entry.last_6_actions) == 1
 
 
 # --- L4: Bash command pattern ---
@@ -619,11 +766,27 @@ def _write_as_subagent(file_path: str, agent_id: str) -> Payload:
     return payload
 
 
+def _seed_l1(env: dict[str, str], target: str, n: int) -> None:
+    """Put ``n`` on an L1 counter directly, merging into existing state.
+
+    Since PLAN-0094 Step 4 a *forward* Write no longer increments, so the old
+    idiom of driving a counter up by repeating hook calls would now need
+    contrived thrash payloads. These tests are about subagent reset
+    ATTRIBUTION — which target clears when which agent finishes — not about
+    what scores, so the count is staged directly and the hook is called only
+    where the attribution itself is under test.
+    """
+    counter = load_counter(_state(env))
+    for _ in range(n):
+        increment(counter, LoopType.FILE_EDIT, target, ActionRecord("t", "Write", target))
+    save_counter(counter, _state(env))
+
+
 def test_subagent_stop_resets_that_agents_own_edits(stub_env: dict[str, str]) -> None:
     """The restored exit: a drafter's edits stop spending the main agent's budget."""
     state = _state(stub_env)
-    for _ in range(3):
-        _run(_write_as_subagent("docs/plans/0019-x.md", "agent-A"), stub_env)
+    _run(_write_as_subagent("docs/plans/0019-x.md", "agent-A"), stub_env)  # attribute
+    _seed_l1(stub_env, "docs/plans/0019-x.md", 3)
     assert get_count(load_counter(state), LoopType.FILE_EDIT, "docs/plans/0019-x.md") == 3
 
     _run(_subagent_stop("agent-A"), stub_env)
@@ -637,8 +800,7 @@ def test_subagent_stop_with_no_recorded_edits_resets_nothing(
 ) -> None:
     """A zero-edit spawn must not clear anything at all."""
     state = _state(stub_env)
-    for _ in range(6):
-        _run(_write("services/x.py"), stub_env)  # main agent, no agent_id
+    _seed_l1(stub_env, "services/x.py", 6)  # main agent, no agent_id
     assert get_count(load_counter(state), LoopType.FILE_EDIT, "services/x.py") == 6
 
     _run(_subagent_stop("agent-never-edited"), stub_env)
@@ -656,10 +818,9 @@ def test_subagent_stop_never_clears_the_main_agents_own_target(
     subagent's own target clears; the main agent's does not.
     """
     state = _state(stub_env)
-    for _ in range(6):
-        _run(_write("services/main_owned.py"), stub_env)
-    for _ in range(2):
-        _run(_write_as_subagent("services/agent_owned.py", "agent-A"), stub_env)
+    _seed_l1(stub_env, "services/main_owned.py", 6)
+    _run(_write_as_subagent("services/agent_owned.py", "agent-A"), stub_env)
+    _seed_l1(stub_env, "services/agent_owned.py", 2)
 
     _run(_subagent_stop("agent-A"), stub_env)
 
@@ -673,10 +834,10 @@ def test_subagent_stop_does_not_clear_a_still_running_siblings_edits(
 ) -> None:
     """Per-agent keying (R2-3): A completing must not clear B's in-flight edits."""
     state = _state(stub_env)
-    for _ in range(3):
-        _run(_write_as_subagent("services/a.py", "agent-A"), stub_env)
-    for _ in range(4):
-        _run(_write_as_subagent("services/b.py", "agent-B"), stub_env)
+    _run(_write_as_subagent("services/a.py", "agent-A"), stub_env)
+    _seed_l1(stub_env, "services/a.py", 3)
+    _run(_write_as_subagent("services/b.py", "agent-B"), stub_env)
+    _seed_l1(stub_env, "services/b.py", 4)
 
     _run(_subagent_stop("agent-A"), stub_env)
 
@@ -695,12 +856,11 @@ def test_subagent_stop_without_agent_id_clears_all_subagent_edits(
     actually touched, so the main agent's own counter still survives.
     """
     state = _state(stub_env)
-    for _ in range(6):
-        _run(_write("services/main_owned.py"), stub_env)
-    for _ in range(3):
-        _run(_write_as_subagent("services/a.py", "agent-A"), stub_env)
-    for _ in range(4):
-        _run(_write_as_subagent("services/b.py", "agent-B"), stub_env)
+    _seed_l1(stub_env, "services/main_owned.py", 6)
+    _run(_write_as_subagent("services/a.py", "agent-A"), stub_env)
+    _seed_l1(stub_env, "services/a.py", 3)
+    _run(_write_as_subagent("services/b.py", "agent-B"), stub_env)
+    _seed_l1(stub_env, "services/b.py", 4)
 
     _run(_subagent_stop(agent_id=None), stub_env)
 

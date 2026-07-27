@@ -62,6 +62,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     LOOP_TRIGGER_THRESHOLD,
     ActionRecord,
     LoopType,
+    counter_key,
     get_count,
     increment,
     load_counter,
@@ -381,11 +382,19 @@ def test_l1_observer_increments_then_pretooluse_denies_at_threshold(
     processes* communicating only through the state file — the seam where a
     warn-bar / deny-bar drift would actually hide.
     """
-    file_path = str(tmp_path / "integration-target.py")
+    target = tmp_path / "integration-target.py"
+    # The file must EXIST with stable content: since PLAN-0094 Step 4, L1 scores
+    # non-progress, and re-writing a file to content it already holds is the (c)
+    # oscillation signal. A payload naming a non-existent path yields no digest
+    # and would score nothing at all, so the ladder would never leave zero.
+    target.write_text("stable\n", encoding="utf-8")
+    file_path = str(target)
     warn_bar = LOOP_TRIGGER_THRESHOLD  # a .py target is code-class
 
     # --- Stage 1: reach the warn bar. The crossing edit warns, and ALLOWS. ---
-    for _ in range(warn_bar):
+    # warn_bar + 1 calls, not warn_bar: the FIRST write is forward progress
+    # (a content state not yet seen this turn) and deliberately does not score.
+    for _ in range(warn_bar + 1):
         rc, out = _run(POST_OBSERVER_HOOK, _write_payload(file_path, post=True), stub_env)
         assert rc == 0
     counter = load_counter(_state(stub_env))
@@ -578,9 +587,14 @@ def test_l1_counter_survives_when_target_in_turn_touched(
     """E2E: observer records turn_touched on Write/Edit; Stop hook then
     sees the L1 counter's target IS in turn_touched and does NOT reset.
     """
-    file_path = str(tmp_path / "touched-this-turn.py")
-    # Three observer calls increment L1 + record turn_touched.
-    for _ in range(3):
+    target = tmp_path / "touched-this-turn.py"
+    target.write_text("stable\n", encoding="utf-8")
+    file_path = str(target)
+    # Four observer calls, three of which score (the first is forward progress),
+    # so the surviving count is non-zero — otherwise "0 after the Stop" would be
+    # indistinguishable from a reset having happened, and the test would pass
+    # vacuously against the very bug it exists to catch.
+    for _ in range(4):
         _run(POST_OBSERVER_HOOK, _write_payload(file_path, post=True), stub_env)
     # Fail-closed classifier (no API key) so Stop just runs turn-reset + exits.
     rc, _ = _run(STOP_HOOK, {"hook_event_name": "Stop"}, stub_env)
@@ -591,6 +605,39 @@ def test_l1_counter_survives_when_target_in_turn_touched(
     ), "in-turn target must NOT be reset"
     # And turn_touched is cleared so the NEXT turn-boundary will reset.
     assert counter.turn_touched == []
+
+
+def test_turn_boundary_clears_the_turn_scoped_tallies(
+    stub_env: dict[str, str],
+    tmp_path: Path,
+) -> None:
+    """E2E: ``attempted_edits`` / ``content_hashes`` are TURN-scoped (PLAN-0094 D4).
+
+    ``count`` keeps its lifetime across a turn boundary; the tallies must not,
+    or yesterday's ``old_string`` would score as today's repeat. The clearing
+    lives in the Stop hook while the writing lives in the observer, so nothing
+    but a cross-hook test can catch the wiring being absent — which is the
+    'green tests over dead wiring' failure this PLAN exists to avoid.
+    """
+    target = tmp_path / "tallies.py"
+    target.write_text("stable\n", encoding="utf-8")
+    file_path = str(target)
+    for _ in range(2):
+        _run(POST_OBSERVER_HOOK, _write_payload(file_path, post=True), stub_env)
+
+    key = counter_key(LoopType.FILE_EDIT, file_path)
+    before = load_counter(_state(stub_env))
+    assert before.counters[key].content_hashes, "fixture registered no tally to clear"
+    assert get_count(before, LoopType.FILE_EDIT, file_path) == 1
+
+    rc, _ = _run(STOP_HOOK, {"hook_event_name": "Stop"}, stub_env)
+    assert rc == 0
+
+    after = load_counter(_state(stub_env))
+    assert after.counters[key].content_hashes == {}
+    assert after.counters[key].attempted_edits == {}
+    # ...while the count itself, which is NOT turn-scoped, survives.
+    assert get_count(after, LoopType.FILE_EDIT, file_path) == 1
 
 
 def test_l1_counter_resets_when_target_not_in_turn_touched(
