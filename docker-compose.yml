@@ -1,4 +1,20 @@
 services:
+  # Thin consumer of THIS repository's image (PLAN-0095 SD-1): the standalone
+  # image is the artifact, and this service exists to prove the same image
+  # composes with a real Postgres — the pilot→production path. It therefore adds
+  # composition concerns only, and deliberately declares no `command:` so the
+  # image's CMD stays the single definition of how the app runs.
+  app:
+    build: .
+    container_name: vero-app
+    environment:
+      DATABASE_URL: postgresql+asyncpg://vero:vero@postgres:5432/vero_lite  # pragma: allowlist secret
+    ports:
+      - "${API_HOST_PORT:-8000}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:16-alpine
     container_name: vero-postgres
