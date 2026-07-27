@@ -79,13 +79,21 @@ are behind: `uv run alembic upgrade head`.
 image instead: on a machine with nothing but Docker, no repo, no Python, no
 database. That is the demo→pilot wedge artifact (ADR-0032 D1).
 
-> **On this dev box, run these from Windows PowerShell.** Docker Desktop's WSL
-> integration is currently off for `ubuntu-24.04`, so `docker` is not on `PATH`
-> inside WSL (the `docker ps` in §1 assumes it is). Everything below is
-> daemon-touching and therefore **host-state** — CLAUDE.md §8 applies.
+> **Everything below is daemon-touching and therefore host-state** — CLAUDE.md §8
+> applies: get an explicit go before running any of it, and run it once.
+>
+> _[Session 177: these ran from Windows PowerShell against a UNC build context,
+> because Docker Desktop's WSL integration was off for `ubuntu-24.04` and
+> `docker` was not on `PATH` there — which also made §1's own `docker ps`
+> precondition fail. Cray enabled the integration the same session; the bash
+> build above was then **re-run and verified from WSL** (exit 0, image removed
+> afterward), and §1 is honest again. Kept as a note because the symptom
+> (`docker: command not found` inside WSL) has an unobvious cause and a
+> one-toggle fix.]_
 
-```powershell
-docker build -t vero-lite-demo \\wsl.localhost\ubuntu-24.04\home\crayj\work\vero-lite
+```bash
+cd ~/work/vero-lite
+docker build -t vero-lite-demo .
 docker run -d --name vero-demo -p 8000:8000 vero-lite-demo
 ```
 
@@ -124,7 +132,7 @@ why the read side needs no env at all.
 The same image composes with a real Postgres. This is what makes the artifact
 grow into production without a rewrite, under either hosting model.
 
-```powershell
+```bash
 # `--no-deps` if postgres is already up and you do not want compose to recreate it
 docker compose up -d app
 
@@ -140,15 +148,24 @@ bridges the `services.api.config` import under `WORKDIR /app`.
 
 Standalone, the migration command takes the DB URL as env:
 
-```powershell
-$DB = "postgresql+asyncpg://USER:PASS@HOST:5432/vero_lite"  # pragma: allowlist secret
-docker run --rm -e DATABASE_URL=$DB vero-lite-demo alembic upgrade head
+```bash
+DB="postgresql+asyncpg://USER:PASS@HOST:5432/vero_lite"  # pragma: allowlist secret
+docker run --rm -e DATABASE_URL="$DB" vero-lite-demo alembic upgrade head
 ```
 
 **Cleanup that does not disturb a running dev stack:** `docker compose rm -sf app`
 removes only the app container. Prefer it over `docker compose down`, which would
 stop the `vero-postgres` / `vero-redis` containers §1 depends on. Never pass `-v`
 — the `postgres_data` volume holds dev data.
+
+⚠️ **`vero-postgres` and `vero-redis` do not restart themselves.** Neither declares
+a `restart:` policy, so anything that bounces the daemon — including toggling a
+Docker Desktop setting — leaves them `Exited (0)` while other projects' containers
+come back on their own. Nothing is lost (the named volumes are untouched); bring
+them back with `docker start vero-postgres vero-redis`, which rebuilds no image and
+does not touch the `app` service. **The tell that this happened:** a full suite run
+reports ~141 skips instead of **8**. That is the DB being unreachable, not a
+regression.
 
 > **What guards this section.** The image's required content is asserted offline
 > by `tests/docker/test_dockerfile_oracle.py`, which **derives** what must ship
