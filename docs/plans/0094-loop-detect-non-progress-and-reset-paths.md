@@ -1,6 +1,6 @@
 # PLAN-0094: L1 loop-detect — count non-progress, warn before denying, restore the reset paths
 
-**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Steps 4 and 6 remain unbuilt.** Step 4 is the only one still gated on a Cray per-diff `settings.json` approval (the `PostToolUseFailure` registration); Step 5 landed ahead of it because it needs no such diff and no step depends on a later one.
+**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Steps 4 and 6 remain unbuilt.** **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat×N` / `osc×N`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
 **Owner:** Claude Code
 **Created:** 2026-07-25
 
@@ -8,7 +8,10 @@
 > written *before* Step 1, which added ~12 lines to `.claude/hooks/_loop_counter.py`.
 > Every citation into that file written pre-Step-1 is now low by roughly that amount,
 > and a handful of others no longer point at what they describe. **Symbols are the
-> stable reference; line numbers are not.** Spot-checked against `main` on 2026-07-26:
+> stable reference; line numbers are not.** Spot-checked against `main` on 2026-07-26;
+> **four rows re-verified and corrected s179 (2026-07-27) — including one row this
+> table had itself marked "✅ exact", which has since drifted. The table is not
+> self-maintaining; re-check at use.**
 >
 > | Cited | Actual | Note |
 > |---|---|---|
@@ -19,7 +22,10 @@
 > | `_loop_counter.py:362-364` ("failed") | — | now `agent_id` prose; **wrong target** |
 > | `_loop_counter.py:350-353` ("payloads") | — | now session-id resolution; **wrong target** |
 > | `posttooluse_progress_observer.py:483-484` (dead `Task`/`Agent` branch) | — | branch **deleted** in Step 1; line is now `_handle_bash` |
-> | `_loop_counter.py:84,96` (thresholds `6` / `15`) | `:84,96` | ✅ **exact, and byte-unchanged** |
+> | `_loop_counter.py:84,96` (thresholds `6` / `15`) | **`:88,100`** | drifted **since this table was written** — the *values* stay byte-identical (`6` / `15`); re-verified s179 |
+> | `_loop_counter.py:508-524` (`increment` couples count+ring) | **`:558-574`** | drifted |
+> | `_loop_counter.py:634-638` (`clear_turn_touched`) | **`:777-781`** | drifted |
+> | `stop_continuation.py:539` ("the existing reset call") | **`:576`** (call) / **`:224-239`** (`_apply_turn_boundary_reset`) | **wrong target** — `:539` is now a comment in the dispatch-verdict branch |
 > | `posttooluse_progress_observer.py:298-303` (`increment`) | `:300` | ✅ range still covers it |
 > | `pretooluse_loop_detect.py:140-144,149,211` | as cited | ✅ **exact** — the Step 3 targets |
 >
@@ -38,8 +44,12 @@ distinct edits implementing one ratified plan step are indistinguishable from
 six retries of the same failing edit — while the actual thrash shape (retrying
 a broken `old_string`) cannot increment the counter at all, because the
 observer fires only on success. This PLAN (P1) re-keys the L1 count to
-**non-progress** — failed/rejected edits, repeated `old_string` attempts, and
-content-hash oscillation — so distinct forward edits score zero; (P2) demotes
+**non-progress** — ~~failed/rejected edits,~~ repeated `old_string` attempts and
+content-hash oscillation — so distinct forward edits score zero **(the
+failed-edit half is WITHDRAWN s179: the harness emits no event for a failed
+`Edit`, so it cannot be observed — §D4 box; the thrash shape named two
+sentences up stays uncountable, and P1 now delivers only the
+stop-miscounting-forward-progress half)**; (P2) demotes
 the **first** trip to a Telegram ping + agent-visible warning with the edit
 allowed, keeping the deny as a **second**-trip wall; (P3) adds an
 `awaiting_ack` marker cleared by a genuinely-fired `Stop`, so a denied target
@@ -72,14 +82,21 @@ repo file are marked *(caller-verified s173)*.
   record. Consequence: the retry-the-same-broken-`old_string` thrash — the
   exact shape the guard was designed for — **cannot increment L1 at all**.
   L1 today measures forward progress exclusively.
-- **The harness provides the missing event.** `PostToolUseFailure` exists in
+- ~~**The harness provides the missing event.**~~ **REFUTED s179 — see the
+  boxed record under §D4.** The claim was: `PostToolUseFailure` exists in
   Claude Code 2.1.132 *(caller-verified s173, extracted from the harness
   bundle's own schema)* with payload `{hook_event_name, tool_name, tool_input,
   tool_use_id, error, is_interrupt?, duration_ms?}` — note **no
   `tool_response`**; `error: string` is the recordable value (the natural
-  filler for the always-empty `ActionRecord.result`). Wiring it is a new
-  `settings.json` registration → **Cray per-diff approval** (guard
-  self-modification, Lesson #0021 §4).
+  filler for the always-empty `ActionRecord.result`). **A live probe registered
+  under that exact event name never fired.** The harness does **not** provide
+  the missing event, and `ActionRecord.result` therefore stays `""` on the L1
+  path — the one design element that would have populated it is withdrawn.
+  Classification per CLAUDE.md §6: the s173 *claim* was **`was an error`**
+  (a bundle-extracted schema was reported as if it established runtime
+  behavior); the *decision* to design D4(a) on it was **`superseded by new
+  info`** — it was the correct call on the evidence then available, which is
+  precisely why the PLAN made Step 4 probe-first.
 
 ### P2 — the deny is the last hard wall
 
@@ -331,44 +348,112 @@ hardening retained beyond the mandate, not required by it.
 
 ### D4 — P1: count non-progress, not touches
 
+> **⚠️ D4(a) WITHDRAWN — the probe refuted its premise (s179, 2026-07-27).**
+>
+> Step 4's own probe-before-build instruction fired and returned a negative.
+> **A failed `Edit` invokes no hook in this harness build — not
+> `PostToolUseFailure`, and not `PostToolUse` either.** Two independent
+> measurements, one session apart:
+>
+> 1. **s173** — the observer, live on `PostToolUse`: "a successful Write took
+>    the counter to 1; an Edit whose `old_string` did not match left it at 1
+>    with no new action record" (§Context P1, third bullet). Already in this
+>    PLAN — it is what motivated (a).
+> 2. **s179** — a payload-dump probe registered on **both** events at once,
+>    so one run covered both. A successful `Write` dumped
+>    `hook_event_name: "PostToolUse"`, keys `[cwd, duration_ms, effort,
+>    hook_event_name, permission_mode, prompt_id, session_id, tool_input,
+>    tool_name, tool_response, tool_use_id, transcript_path]`, `tool_response`
+>    carrying `[content, filePath, originalFile, structuredPatch, type,
+>    userModified]` and **no `error` key**. An `Edit` whose `old_string` was
+>    absent then failed as designed and dumped **nothing at all**.
+>
+> **The control is what makes this readable.** Without a known-good event in
+> the same run, "no dump" is indistinguishable from "the config never
+> reloaded" — and hook registrations are snapshotted at session start, so a
+> mid-session `settings.json` edit has no effect (measured s178; the probe
+> had to be staged, then armed by a restart). The pass/fail read was fixed
+> **before** the run and the "neither fired" cell was pre-labelled
+> INSUFFICIENT-EVIDENCE, not a pass.
+>
+> **Consequences.** (a) is withdrawn, and with it **AC-1(ii), AC-6, and
+> AC-8(ii)** — every criterion whose subject is a `PostToolUseFailure`
+> payload. The `settings.json` registration is not written, so **Step 4 loses
+> its Cray per-diff gate** (Lesson #0021 §4 applies to guard
+> self-modification; there is now no self-modification to approve). **(b) and
+> (c) survive whole** on the success path, as does the `observe()` /
+> `increment()` split and `clear_turn_scoped()`.
+>
+> **What is permanently lost, stated plainly:** the s169-class thrash —
+> retrying one broken `old_string` — remains **uncountable**, because the
+> harness emits no observation of it. This PLAN's §Goal calls that "the exact
+> shape the guard was designed for". Step 4 now delivers the *other* half:
+> distinct forward edits stop being miscounted as thrash (AC-7). **Re-open
+> trigger:** any future Claude Code build that emits a hook event on a failed
+> tool call — re-probe with the same control-plus-subject shape before
+> believing a schema, whatever its source.
+
 The L1 `count` becomes a count of **non-progress observations**:
 
-- **(a) Failed / rejected edit** — new `PostToolUseFailure` registration,
-  matcher `Write|Edit`, invoking the observer (**`settings.json` diff → Cray
-  per-diff**). Handler branches on `hook_event_name == "PostToolUseFailure"`
-  **before** the tool-name dispatch (the payload also carries
-  `tool_name: "Write"|"Edit"` and must not fall into the success path).
-  Increments L1 with `result = error[:200]` — populating the field that has
-  been `""` on every L1 record since Step 3 shipped. For an Edit failure,
-  also registers `sha1(old_string)` in the per-target attempt set, so (b)
-  sees failed repeats. **Dependency, called out per the fact-pack: (b) cannot
-  see *failed* repeat attempts unless (a) is wired** — the s169-class thrash
-  is only countable at all via this event.
-- **(b) Repeated `old_string`** — per-target, per-turn set of
-  `sha1(old_string)` (additive entry field `attempted_edits`). A successful
-  Edit whose `old_string` hash is already present increments (the same
-  operation re-applied is churn, not progress). Edge accepted, not fixed:
-  sequentially applying one `old_string` to multiple genuine occurrences
-  counts as non-progress — mitigations are `replace_all`, distinct context
-  strings, and P2 itself (the first mis-count now costs a ping, not a block).
+- ~~**(a) Failed / rejected edit**~~ — **WITHDRAWN s179, see the box above.**
+  The design was: a new `PostToolUseFailure` registration, matcher
+  `Write|Edit`, invoking the observer; the handler branching on
+  `hook_event_name == "PostToolUseFailure"` **before** the tool-name dispatch
+  (the payload also carries `tool_name: "Write"|"Edit"` and must not fall into
+  the success path); incrementing L1 with `result = error[:200]`; and
+  registering `sha1(old_string)` in the per-target attempt set so (b) sees
+  failed repeats. The stated dependency — "**(b) cannot see *failed* repeat
+  attempts unless (a) is wired**" — still holds and is now the shape of the
+  loss, not of a build order: (b) sees **successful** repeats only.
+  *Worth keeping for whoever re-opens this:* the "branch before the tool-name
+  dispatch" instruction was load-bearing and remains correct. `main()`
+  dispatches on `tool_name` after its `SubagentStop` check
+  (`posttooluse_progress_observer.py:665`), so a failure payload would have
+  been routed into `_handle_write_or_edit` and counted as a **success** —
+  the opposite of the intent. AC-6's own "payload falls through `main()`"
+  wording understated this; it would not have fallen through, it would have
+  been mis-handled.
+- **(b) Repeated `old_string`** — per-target, per-turn **`dict[str, int]`** of
+  `sha1(old_string) → times applied` (additive entry field `attempted_edits`;
+  a dict rather than a set **per OQ-3 R2**, because the recorded `result`
+  carries the count). A successful Edit whose `old_string` hash is already
+  present increments the L1 counter and bumps its own tally, and records
+  `result = f"repeat×{n}"` (**OQ-3 R1**). The same operation re-applied is
+  churn, not progress. Edge accepted, not fixed: sequentially applying one
+  `old_string` to multiple genuine occurrences counts as non-progress —
+  mitigations are `replace_all`, distinct context strings, and P2 itself (the
+  first mis-count now costs a ping, not a block).
 - **(c) Oscillation** — after each successful Write/Edit, `sha1` of the
   on-disk file content; a hash already seen this turn on this target (the
-  file returned to a prior state) increments; otherwise it is appended
-  (additive entry field `content_hashes`, capped at 32/target/turn).
-- **Distinct successful forward edits score zero.** The action is still
+  file returned to a prior state) increments and records
+  `result = f"osc×{n}"`; otherwise it is recorded at count 1 (additive entry
+  field `content_hashes`, likewise a **`dict[str, int]`** per OQ-3 R2, capped
+  at **32 keys**/target/turn).
+- **Distinct successful forward edits score zero**, and record
+  **`result == ""`** — not `"forward"` (**OQ-3 R3**: both formatters bracket
+  `result` only when non-empty, so an empty value is what keeps `[...]`
+  meaning "this row is why you were interrupted"). The action is still
   appended to the `last_6_actions` ring for evidence, and `turn_touched` is
   still recorded (Stop semantics need it regardless) — a new record-only
   `observe()` op lands beside `increment()` in `_loop_counter.py`, since
-  `increment` couples count+ring (`:508-524`).
+  `increment` couples count+ring (~~`:508-524`~~ → **`:558-574`**, re-verified
+  s179).
 - **Per-turn scoping:** the Stop hook clears `attempted_edits` /
   `content_hashes` on entries that survive the turn (a
-  `clear_turn_scoped()` sibling to `clear_turn_touched`, `:634-638`);
+  `clear_turn_scoped()` sibling to `clear_turn_touched`, ~~`:634-638`~~ →
+  **`_loop_counter.py:777-781`**, re-verified s179);
   `count` keeps today's lifetime (reset paths unchanged). All state fields
   are additive; `from_json` tolerance + the 6 h age-out (#912) mean stale
   schemas self-clear — no migration.
-- **Scope guard:** the `PostToolUseFailure` registration is matcher
-  `Write|Edit` — it feeds **only L1**. L2/L3/L4 semantics are byte-unchanged
-  (they already count failures — the right unit).
+- **Scope guard:** ~~the `PostToolUseFailure` registration is matcher
+  `Write|Edit`~~ — moot with (a) withdrawn; **no new registration ships**.
+  The guarantee it existed to give still holds, and now trivially: Step 4
+  touches `_handle_write_or_edit` only, so it feeds **only L1**, and
+  L2/L3/L4 semantics are byte-unchanged (they already count failures — the
+  right unit, via `PostToolUse` on `Bash`, which *does* fire on a non-zero
+  exit and is read by `_bash_outcome`, `posttooluse_progress_observer.py:263-293`).
+  **This asymmetry is the finding in one line: the harness reports a failed
+  `Bash`, but not a failed `Edit`.**
 
 ### D5 — P3: `awaiting_ack` — the deterministic exit the agent cannot fake
 
@@ -410,15 +495,24 @@ Each AC names the test that proves it and the mutation that reddens it. All
 are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
 (5 hook tests are known false-RED in a git worktree).
 
-- [ ] **AC-1 (PARTIAL — (i)+(iii) CLOSED s174 #917; (ii) closes at Step 4) — the settings wiring is pinned by a test (the F3c class-killer).**
+- [x] **AC-1 (CLOSED — (i)+(iii) at s174 #917; (ii) WITHDRAWN s179) — the settings wiring is pinned by a test (the F3c class-killer).**
   New `tests/handoffs/test_settings_hook_wiring.py` parses
   `.claude/settings.json` as data and asserts: (i) a `SubagentStop` entry
-  whose hooks include `posttooluse_progress_observer.py`; (ii) a
+  whose hooks include `posttooluse_progress_observer.py`; ~~(ii) a
   `PostToolUseFailure` entry, matcher `Write|Edit`, including the same
-  observer; (iii) the existing `PostToolUse` `Write|Edit` + `Bash`
+  observer;~~ (iii) the existing `PostToolUse` `Write|Edit` + `Bash`
   registrations are retained. **RED today** (neither registration exists) —
   and RED forever after against the exact gap that let reset path (c) ship
   dead with green tests.
+  **(ii) WITHDRAWN s179 with D4(a).** The registration is not written, so
+  there is nothing to pin. The module's own scope note (`:17-24`) records
+  that (ii) was *deliberately left unasserted rather than asserted-and-skipped*
+  — "a check that passes because it was skipped is exactly the vacuous form
+  this module was written to kill." **Step 4 must update that docstring** to
+  say withdrawn-on-evidence rather than pending-at-Step-4; leaving it as-is
+  would leave the module claiming a debt that no longer exists. No test is
+  added and none is skipped — the correct closure for a criterion whose
+  subject does not exist.
 - [x] **AC-2 (CLOSED s174 #917) — SubagentStop resets exactly the completing subagent's
   edits.** Rewritten tests in
   `tests/handoffs/test_posttooluse_progress_observer.py` (replacing
@@ -454,23 +548,48 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   `CLAUDE_TELEGRAM_SCRIPT` pattern); further grace-zone edits emit neither.
   **RED today** (the observer never prints and never pings for L1 —
   `:305-306`).
-- [ ] **AC-6 — failed edits finally count.** Observer test: a
+- [~] **AC-6 — ~~failed edits finally count~~ — WITHDRAWN s179, premise
+  refuted.** The criterion was: an observer test in which a
   `PostToolUseFailure` payload (per the s173 schema — `error` string, **no**
   `tool_response`) increments L1 and records `result == error[:200]`
-  (non-empty — the field that has been `""` on every L1 record). **RED
-  today** (no handler; payload falls through `main()`).
+  (non-empty — the field that has been `""` on every L1 record). **The event
+  does not fire** (§D4 box), so the only way to make this test green would be
+  to feed a synthetic payload straight into `main()` — a test that passes
+  while the live path stays dead, which is the precise failure class **AC-1
+  was written to kill**. It is therefore withdrawn rather than weakened.
+  **Consequence carried forward: `ActionRecord.result` stays `""` on every L1
+  record.** It is the only field on the L1 path with no writer, and D4(a) was
+  its only planned one — see the open question at §Open Questions (OQ-3).
 - [ ] **AC-7 — distinct forward progress scores zero (the s168/s172
   regression test).** Observer test: six successful Write/Edits of one
   target with distinct `old_string`s and advancing content hashes leave
   `count == 0` while `turn_touched` contains the target and the ring buffer
   holds the actions. **RED today** (count would read 6 — today's unit is the
   mutation).
-- [ ] **AC-8 — repeats and oscillation count.** Observer tests: (i) the same
+- [ ] **AC-8 (RE-SCOPED s179 — (i)+(iii) stand, (ii) WITHDRAWN) — repeats and oscillation count.** Observer tests: (i) the same
   `old_string` sha1 twice (success path) → `count == 1` after the second;
-  (ii) two `PostToolUseFailure`s carrying the same `old_string` → `count == 2`
-  (the (a)+(b) dependency, otherwise invisible); (iii) a content hash
-  returning to a previously-seen state → increment. **RED** against a build
-  that ships (a) without (b)/(c) or vice versa.
+  ~~(ii) two `PostToolUseFailure`s carrying the same `old_string` →
+  `count == 2` (the (a)+(b) dependency, otherwise invisible);~~ (iii) a
+  content hash returning to a previously-seen state → increment. ~~**RED**
+  against a build that ships (a) without (b)/(c) or vice versa.~~
+  **(ii) WITHDRAWN with D4(a)** — its subject is a `PostToolUseFailure`
+  payload. (i) and (iii) are success-path only and are unaffected; both are
+  **RED today** against touch-counting, which increments on every edit and so
+  cannot produce `count == 1` after two identical `old_string`s. The
+  non-vacuity mutation for the re-scoped AC-8 is therefore **not** "ships (a)
+  without (b)/(c)" — that mutation no longer exists. Replace it with: drop
+  the `attempted_edits` membership check → (i) reddens; drop the
+  `content_hashes` membership check → (iii) reddens; each mutation must
+  redden exactly its own row.
+  **Extended by OQ-3 (s179) — the recorded `result` is asserted, not just the
+  count.** (i) must additionally assert `result == "repeat×2"` on the
+  incrementing record and that `attempted_edits` is a `dict[str, int]` whose
+  value reached 2; (iii) must assert `result == "osc×2"`. **A third row is
+  added: an observed-not-counted forward edit records `result == ""`** — the
+  R3 assertion, and the one that keeps the Telegram bracket meaningful.
+  Non-vacuity for these: hard-code `result=""` on the increment paths → (i)
+  and (iii) redden while the `count` assertions stay green, proving the new
+  rows test the value and not the counter.
 - [x] **AC-9 (CLOSED s177 Step 5) — `awaiting_ack` lifecycle.** Tests across gate + Stop hook: a
   deny writes the marker; a Stop that **fires** (patched classifier →
   `pause`) clears it and resets the target's entry *even though the target
@@ -492,11 +611,35 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   `pytest tests/` + `mypy` at CI scope + `ruff check` in the main tree; the
   existing L2/L3/L4, commit-reset, and Stop turn-boundary test blocks stay
   green **unmodified**; threshold constants byte-unchanged
-  (`_loop_counter.py:84,96`). Non-vacuity sweep: for each of AC-1…AC-9 apply
-  the named mutation in the working tree, watch the named test go RED,
+  (~~`_loop_counter.py:84,96`~~ → **`:88,100`**, re-verified s179 — the
+  **values `6` and `15` are byte-identical**; only the line numbers moved,
+  and the s175 drift table's "✅ exact" row for this entry is now itself
+  drifted). Non-vacuity sweep: for each of AC-1…AC-9 **and AC-11** that is
+  **still live** (AC-1(ii), AC-6 and AC-8(ii) are withdrawn and have no
+  mutation) apply the named mutation in the working tree, watch it go RED,
   restore from a `/tmp` copy (never `git checkout` — it wipes the uncommitted
   work under test), re-run GREEN. CI is PR-only → re-run the full suite on
   each merge commit.
+- [ ] **AC-11 (NEW s179, OQ-3 R4) — the Telegram body tells Cray how close the
+  wall is.** Both alert bodies gain a `count: N/T` line naming the current
+  count and the applicable threshold (path-class aware: `15` for doc targets,
+  `6` for code — `_loop_counter.py:88,100`). Tests: (i) the gate's deny body
+  (`pretooluse_loop_detect.py:_format_message`) contains the count and the
+  threshold actually applied to that target; (ii) the observer's warn body
+  (`posttooluse_progress_observer.py:_format_message`, `stage="warn"`)
+  contains the same line; (iii) **mirror-invariance** — the two bodies' shared
+  lines stay identical, which the observer's own docstring asserts as a design
+  property (*"Mirrors Step 2's formatter"*, `:167-168`) but nothing enforces
+  today. **RED today** — neither body carries a count.
+  **Why this is in scope at all:** the *agent* already receives the number in
+  the inline advisory (`"N edits of this one target (warn bar = N)"`), while
+  **Cray's Telegram ping does not** — the person who has to decide gets less
+  than the process being policed. Measured live s179 (the advisory fired on
+  this PLAN file at 15/15 while the ping shape carried no count).
+  **Scope honesty:** this was raised as *outside* OQ-3 and outside Step 4's
+  original brief; **Cray pulled it in explicitly.** It is the only part of
+  Step 4 that touches the alert surface, and its mutation is: delete the line
+  from one formatter only → (iii) reddens on the mirror, not just (i)/(ii).
 
 ## Out of Scope
 
@@ -565,22 +708,43 @@ additive state ignored. This step is deliberately independent of Step 4 — if
 P1 is delayed, warn-first alone already converts the s172 shape from a wall
 into a ping.
 
-### Step 4: P1 — non-progress counting (D4; AC-6, AC-7, AC-8)
+### Step 4 (RE-SCOPED s179): P1 — non-progress counting (D4 minus (a); AC-7, AC-8(i)/(iii))
 
-`settings.json`: `PostToolUseFailure` matcher-`Write|Edit` entry **[Cray
-per-diff]**. First action after the wiring lands: a **cheap live probe** in
-the worktree (one deliberately mismatched Edit on a scratch file; read the
-state file) confirming the event fires with the s173-extracted schema —
-probe-before-build, since the schema is bundle-extracted, not yet observed
-live. Then: observer failure-handler (a); `attempted_edits` (b) +
-`content_hashes` (c) additive entry fields; `observe()` record-only op;
-`_handle_write_or_edit` increments only on (b)/(c), observes otherwise;
-`clear_turn_scoped()` wired into the Stop hook's existing reset call
-(`stop_continuation.py:539`). Tests per AC-6/7/8, RED-first (AC-7 is the
-regression test for the incident series).
-*Rollback:* revert the PR → touch-counting returns; removing the
-registration returns L1 to success-only blindness (accepted, documented).
-State self-clears via age-out; no migration either direction.
+**The probe ran and returned a refutation — see the §D4 box.** No
+`settings.json` diff ships, (a) is not built, and **this step is no longer
+Cray-gated**. What remains is deterministic-offline:
+
+- `attempted_edits` (b) + `content_hashes` (c) as **additive** entry fields,
+  both **`dict[str, int]`** per OQ-3 R2 (`from_json` tolerance + the 6 h
+  age-out mean stale schemas self-clear; `content_hashes` capped at 32 keys).
+- `observe()` — a record-only op beside `increment()` in `_loop_counter.py`
+  (`:558-574`), since `increment` couples count+ring.
+- `_handle_write_or_edit` **increments only on (b)/(c), observes otherwise**
+  — this is the whole of AC-7 — passing `result` per OQ-3 R1/R3:
+  `f"repeat×{n}"`, `f"osc×{n}"`, or `""`.
+- `clear_turn_scoped()` wired into the Stop hook's existing reset call:
+  `_apply_turn_boundary_reset` (`stop_continuation.py:224-239`, called at
+  `:576`), beside the `clear_turn_touched(counter)` at `:237`.
+  *(The PLAN's original `stop_continuation.py:539` citation is stale — `:539`
+  is now a comment inside the dispatch-verdict branch. Re-verified s179.)*
+- **Both Telegram formatters gain the `count: N/T` line** (OQ-3 R4 / AC-11):
+  `pretooluse_loop_detect.py:_format_message` (`:90-110`, the L1/L4 deny) and
+  `posttooluse_progress_observer.py:_format_message` (`:160-193`, the inline
+  L2/L3 + L1 warn). The second's docstring states it *"Mirrors Step 2's
+  formatter so both … present a consistent shape to Cray"* — so they change
+  **together or the mirror breaks**, and that invariance is itself an AC-11
+  assertion.
+- Update the `test_settings_hook_wiring.py` scope note (`:17-24`) per AC-1(ii).
+
+Tests per **AC-7, AC-8(i)/(iii), and AC-11**, RED-first — AC-7 is the
+regression test for the incident series and is the reason this step is still
+worth building.
+
+*Rollback:* revert the PR → touch-counting returns. State self-clears via
+age-out; no migration either direction. **No registration to remove** — the
+"removing the registration returns L1 to success-only blindness" clause is
+withdrawn with (a); L1 **remains** blind to failed edits either way, which is
+now a harness limit rather than a rollback consequence.
 
 ### Step 5: P3 — `awaiting_ack` (D5; AC-9)
 
@@ -601,11 +765,13 @@ PR-only). Update `docs/STATUS.md`; `git mv` this PLAN to `done/` only after
 Cray confirms the live-loop soak raised no regression (the guards run on
 Cray's own working loop — the soak *is* part of verification).
 
-## Open Questions — ALL RESOLVED by Cray 2026-07-25 (session 173)
+## Open Questions — OQ-1/OQ-2 RESOLVED by Cray 2026-07-25 (s173); **OQ-3 OPEN (raised s179)**
 
-Both were priced as recommended; the values below are **locked** and Steps 3
-and 5 build to them. Recorded here rather than left open so the committed PLAN
-does not read as awaiting a decision that has been made.
+OQ-1 and OQ-2 were priced as recommended; the values below are **locked** and
+Steps 3 and 5 build to them. Recorded here rather than left open so the
+committed PLAN does not read as awaiting a decision that has been made.
+**OQ-3 is new** — it exists only because D4(a) was withdrawn, and Step 4
+cannot be built without answering it.
 
 - **OQ-1 → RESOLVED: `G = 3`** (deny at `T+3`). Cray took the recommendation.
 - **OQ-2 → RESOLVED: full fresh budget** after an acknowledged pause (entry
@@ -631,6 +797,80 @@ The original framing of each, retained for the reasoning lineage:
   threshold class, which rubs against this PLAN's own anti-pattern argument.
   Cray's call because it sets how much rope a twice-suspect target gets while
   Cray may still be AFK after the ack-turn.
+
+### OQ-3 (OPEN, raised s179) — what writes `ActionRecord.result` on the L1 path now?
+
+**Why this is suddenly a question.** `ActionRecord.result` has never been
+populated on the L1 path (§Context P1, second bullet: `_now_action(tool,
+target)` omits it, defaulting to `""` — `_loop_counter.py:134`). D4(a) was its
+**only** planned writer. With (a) withdrawn, Step 4 ships a counter that
+increments on repeats and oscillation while every record in the `last_6_actions`
+evidence ring still says `result: ""`. **Cray reads that ring** — it is what the
+deny message and the Telegram ping point at when the guard walls a target.
+
+**The three options, with the trade-off named:**
+
+- **(a) Leave it `""`.** Zero code. Honest — nothing observed the outcome, so
+  nothing is claimed. Cost: the ring shows six identical-looking `Edit` rows and
+  cannot answer "*why* did this trip?" without re-reading the diff.
+- **(b) Populate with the non-progress reason** that caused the increment —
+  e.g. `"repeat:<sha1[:8]>"` for a (b) hit, `"oscillation:<sha1[:8]>"` for a
+  (c) hit, `""` for an observed-not-counted edit. The ring becomes
+  self-describing: a wall says *which* rule fired, per action. Cost: `result`
+  now means "why this counted", not "how the tool call ended" — a quiet
+  semantic change from L2/L3/L4, which use it for outcomes (`"failed"`,
+  `"error"`, `"failure"`). Note **no decision reads the field anywhere today**
+  (§Context P1), so the change is observably safe; it is a naming/consistency
+  cost, not a behavioral one.
+- **(c) Drop `result` from the L1 path.** Smallest surface, but deletes a field
+  the sibling levels populate, and forecloses (b) later for no gain.
+
+**Recommendation was (b)** — the whole PLAN is about making the guard's *unit*
+mean something; leaving the evidence ring mute keeps the diagnosis manual at
+exactly the moment Cray is interrupted. The semantic drift from L2/L3/L4 is real
+but contained — no reader exists to break, and L1 is genuinely measuring a
+different thing (non-progress) than the levels that record outcomes.
+
+#### OQ-3 → RESOLVED by Cray 2026-07-27 (s179) — (b), with the format corrected
+
+Cray took (b) and ratified four rulings. **The format is NOT the sha1-pointer
+shape originally drafted** — grounding found that shape structurally unable to
+do its job, and Cray took the correction:
+
+**The disqualifying measurement.** The evidence ring is **6 deep**
+(`_loop_counter.py:89`, `MAX_RECENT_ACTIONS = 6`) while the doc-path trip bar is
+**15** (`:100`, `L1_DOC_THRESHOLD = 15`). So when a doc target walls, the ring
+holds the last 6 of 15 increments and **the partner row a `sha1` would point at
+has almost always aged out**. A cross-referential token is evidence only if both
+rows are visible; here they are not. It would spend 16 characters of
+lock-screen width (`pretooluse_loop_detect.py:95` — "so Cray can scan on a phone
+lock-screen preview") to say what the bare word `repeat` already says.
+
+- **R1 — the value is a self-contained COUNT, not a pointer.**
+  `repeat×N` for a (b) hit, `osc×N` for a (c) hit. One row answers "this
+  `old_string` has now been applied N times" with no second row required, and
+  it is half the width.
+- **R2 — `attempted_edits` and `content_hashes` become `dict[str, int]`
+  (`{hash: count}`), not a set / list.** A set cannot carry N. This is a
+  data-shape consequence of R1 and is exactly why OQ-3 blocked the build:
+  retrofitting it later means re-touching every AC-8 assertion. The
+  `content_hashes` cap stays **32/target/turn**, now counted in keys.
+- **R3 — an observed-but-not-counted (forward) edit keeps `result == ""`.**
+  Not `"forward"`. Both Telegram formatters render the bracket **only when
+  `result` is non-empty** (`pretooluse_loop_detect.py:100`,
+  `posttooluse_progress_observer.py:179`), so *the presence of `[...]` is
+  already the signal*. Marking forward edits would put a bracket on all six
+  rows and destroy that signal — strictly more data, strictly less
+  information.
+- **R4 — the Telegram body gains a `count: N/T` line** (see AC-11). Raised as
+  out-of-scope for OQ-3; **Cray pulled it into Step 4.**
+
+**Ruled out, recorded so it is not re-proposed:** putting the literal
+`old_string` text in `result`. It reads far better than any hash, but `result`
+is passed to `_ping_telegram` → `telegram.sh` and **leaves the machine**; the
+formatters truncate `target[:60]` but do **not** truncate `result`, so a long
+match would be emitted whole. Repo content should not exit to a third-party
+message service as a side effect of a loop guard.
 
 ## Verification
 
