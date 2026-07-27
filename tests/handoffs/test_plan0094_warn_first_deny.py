@@ -130,6 +130,25 @@ def _edit(file_path: str) -> Payload:
     }
 
 
+def _mirror_args(count: int | None = None, threshold: int | None = None) -> dict[str, Any]:
+    """Identical inputs for both formatters, for the AC-11(iii) invariance check."""
+    return {
+        "loop_type": LoopType.FILE_EDIT,
+        "target": CODE_TARGET,
+        "last_6_actions": [
+            {"ts": "2026-07-28T00:00:00+0000", "tool": "Edit", "target": CODE_TARGET},
+            {
+                "ts": "2026-07-28T00:00:01+0000",
+                "tool": "Edit",
+                "target": CODE_TARGET,
+                "result": "repeat x2",
+            },
+        ],
+        "count": count,
+        "threshold": threshold,
+    }
+
+
 def _is_deny(stdout: str) -> bool:
     if not stdout:
         return False
@@ -297,3 +316,66 @@ def test_deny_message_does_not_advertise_the_unbuilt_stop_ack(env: dict[str, str
 
     assert "awaiting_ack" not in reason
     assert "stop-ack" not in reason
+
+
+# --------------------------------------------------------------------------- #
+# AC-11 — the Telegram body tells Cray how close the WALL is
+# --------------------------------------------------------------------------- #
+#
+# T is the DENY bar, not the warn bar (Cray-ratified s180). AC-11's stated
+# purpose is "how close is the wall", and the wall is T + G: on the warn body the
+# warn bar would render an uninformative ``6/6``, and on the deny body it would
+# render ``9/6``, which reads as an overflow and never names 9 at all.
+
+
+@pytest.mark.parametrize("target", [CODE_TARGET, DOC_TARGET])
+def test_ac11_deny_body_names_the_count_and_the_deny_bar(target: str, env: dict[str, str]) -> None:
+    """(i) The gate's deny ping carries ``count: N/T`` for the bar it applied."""
+    deny_bar = l1_deny_threshold_for(target)
+    _seed(env, target, deny_bar)
+
+    stdout, _ = _run(GATE, _edit(target), env)
+    assert _is_deny(stdout), f"{target}: expected a deny to ping from"
+
+    body = _pings(env)[-1]
+    assert f"count: {deny_bar}/{deny_bar}" in body
+
+
+def test_ac11_warn_body_names_the_count_and_the_same_deny_bar(env: dict[str, str]) -> None:
+    """(ii) The observer's warn ping carries the same line, still against T + G.
+
+    Reads ``count: 6/9`` on a code target: six of the nine that wall. The warn
+    bar itself is deliberately NOT the denominator — it is already implicit in
+    the fact that a warn fired at all.
+    """
+    warn_bar = l1_threshold_for(CODE_TARGET)
+    deny_bar = l1_deny_threshold_for(CODE_TARGET)
+    _seed(env, CODE_TARGET, warn_bar - 1)
+
+    _run(OBSERVER, _edit(CODE_TARGET), env)
+
+    body = _pings(env)[-1]
+    assert "stage: warn" in body, "fixture did not produce the warn body"
+    assert f"count: {warn_bar}/{deny_bar}" in body
+    assert f"count: {warn_bar}/{warn_bar}" not in body
+
+
+def test_ac11_the_two_formatters_remain_mirrors() -> None:
+    """(iii) Mirror-invariance, asserted rather than merely claimed in a docstring.
+
+    The observer's ``_format_message`` docstring has stated since Step 3 that it
+    *"Mirrors Step 2's formatter"*, but nothing enforced it — and AC-11 changes
+    both, which is exactly when a mirror silently cracks. Called with identical
+    inputs and no ``stage``, the two must be byte-identical, with and without
+    the new count line.
+    """
+    import posttooluse_progress_observer as observer
+    import pretooluse_loop_detect as gate
+
+    with_count = _mirror_args(count=9, threshold=9)
+    assert gate._format_message(**with_count) == observer._format_message(**with_count)
+
+    # ...and omitting the pair still reproduces the pre-AC-11 body on both sides.
+    without = _mirror_args()
+    assert gate._format_message(**without) == observer._format_message(**without)
+    assert "count:" not in gate._format_message(**without)

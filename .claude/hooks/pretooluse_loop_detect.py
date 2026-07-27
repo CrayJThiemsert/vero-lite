@@ -87,12 +87,28 @@ def _telegram_script() -> Path:
     return DEFAULT_TELEGRAM_SCRIPT
 
 
-def _format_message(loop_type: LoopType, target: str, last_6_actions: list[dict[str, Any]]) -> str:
+def _format_message(
+    loop_type: LoopType,
+    target: str,
+    last_6_actions: list[dict[str, Any]],
+    count: int | None = None,
+    threshold: int | None = None,
+) -> str:
     """Build the human-readable Telegram body from the Cray-E.4 payload contract.
 
     Sent as a single ``$1`` argv to ``telegram.sh`` (see Lesson #14 — the
     script reads argv, never stdin). Lines stay short so Cray can scan
     on a phone lock-screen preview.
+
+    ``count`` / ``threshold`` are optional and additive (PLAN-0094 AC-11): supply
+    both and the body gains a ``count: N/T`` line. **T is the DENY bar — the
+    wall — not the warn bar** (Cray-ratified s180): AC-11 exists so the ping
+    says how close the wall is, and on the warn body the warn bar would render
+    the uninformative ``6/6`` while the deny body would render ``9/6``, which
+    reads as an overflow and never names 9 at all. Passing the bar the caller
+    actually applied keeps both bodies reading ``N/9``.
+
+    Omitting both reproduces the pre-AC-11 body byte-for-byte.
     """
     actions_block = (
         "\n".join(
@@ -102,15 +118,25 @@ def _format_message(loop_type: LoopType, target: str, last_6_actions: list[dict[
         )
         or "  (none)"
     )
+    count_line = (
+        f"count: {count}/{threshold}\n" if count is not None and threshold is not None else ""
+    )
     return (
         f"[vero-lite/loop-detect] {loop_type.value} triggered\n"
         f"target: {target}\n"
+        f"{count_line}"
         f"last 6 actions:\n{actions_block}\n"
         f"Cray: pause + reassess — see .claude/autonomy-triggers.md row {loop_type.value}"
     )
 
 
-def _ping_telegram(loop_type: LoopType, target: str, last_6_actions: list[dict[str, Any]]) -> None:
+def _ping_telegram(
+    loop_type: LoopType,
+    target: str,
+    last_6_actions: list[dict[str, Any]],
+    count: int | None = None,
+    threshold: int | None = None,
+) -> None:
     """Fire Telegram alert with the Cray-E.4 payload contract.
 
     Graceful no-op if the script is missing or fails — the gate must
@@ -122,7 +148,7 @@ def _ping_telegram(loop_type: LoopType, target: str, last_6_actions: list[dict[s
     script = _telegram_script()
     if not script.exists():
         return
-    message = _format_message(loop_type, target, last_6_actions)
+    message = _format_message(loop_type, target, last_6_actions, count, threshold)
     cmd = bash_argv(script, message)
     env = env_with_wslenv_passthrough(_FORWARDED_ENV)
 
@@ -266,7 +292,9 @@ def main() -> int:
             print(f"pretooluse_loop_detect: could not arm awaiting_ack: {exc}", file=sys.stderr)
 
     last_6 = [a.to_json() for a in entry.last_6_actions]
-    _ping_telegram(loop_type, target, last_6)
+    # ``threshold`` here is already the bar this branch applied — the L1 deny bar
+    # (T + G) or L4's flat base — so AC-11's line names the wall that just fell.
+    _ping_telegram(loop_type, target, last_6, entry.count, threshold)
     print(json.dumps(_deny_decision(loop_type, target, entry.count, threshold, warn_threshold)))
     return 0
 

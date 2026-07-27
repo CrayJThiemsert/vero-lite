@@ -81,6 +81,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     get_count,
     has_triggered,
     increment,
+    l1_deny_threshold_for,
     l1_threshold_for,
     load_counter,
     main_session_id,
@@ -165,17 +166,29 @@ def _format_message(
     target: str,
     last_6_actions: list[dict[str, Any]],
     stage: str | None = None,
+    count: int | None = None,
+    threshold: int | None = None,
 ) -> str:
     """Build the human-readable Telegram body from the Cray-E.4 payload contract.
 
     Mirrors Step 2's formatter so both inline (L2/L3 here) and gated
-    (L1/L4 in Step 2) alerts present a consistent shape to Cray.
+    (L1/L4 in Step 2) alerts present a consistent shape to Cray. **That mirror
+    is asserted by a test** (PLAN-0094 AC-11 iii), not merely by this docstring:
+    called with identical arguments and no ``stage``, this and Step 2's
+    formatter must return byte-identical strings.
 
     ``stage`` is optional and additive (PLAN-0094 P2): passing ``"warn"`` adds a
     ``stage:`` line and softens the trailing instruction, so Cray can tell a
     first-trip advisory apart from the wall at a glance. Omitting it reproduces
     the pre-P2 body byte-for-byte, which is why the existing L2/L3 callers are
     untouched.
+
+    ``count`` / ``threshold`` are likewise optional and additive (AC-11), and
+    **T is the DENY bar, not the warn bar** (Cray-ratified s180) — so the warn
+    body reads ``count: 6/9``, "six of the nine that wall", rather than the
+    uninformative ``6/6``. The L2/L3 callers deliberately do not pass them:
+    those fire exactly AT their threshold, so the line could only ever render
+    ``6/6`` and would carry no information.
     """
     actions_block = (
         "\n".join(
@@ -185,11 +198,15 @@ def _format_message(
         )
         or "  (none)"
     )
+    count_line = (
+        f"count: {count}/{threshold}\n" if count is not None and threshold is not None else ""
+    )
     if stage == "warn":
         return (
             f"[vero-lite/loop-detect] {loop_type.value} warn\n"
             f"stage: warn\n"
             f"target: {target}\n"
+            f"{count_line}"
             f"last 6 actions:\n{actions_block}\n"
             f"Cray: advisory only — the edit was ALLOWED and the agent was told. "
             f"It denies after {L1_GRACE_BUDGET} more. "
@@ -198,6 +215,7 @@ def _format_message(
     return (
         f"[vero-lite/loop-detect] {loop_type.value} triggered\n"
         f"target: {target}\n"
+        f"{count_line}"
         f"last 6 actions:\n{actions_block}\n"
         f"Cray: pause + reassess — see .claude/autonomy-triggers.md row {loop_type.value}"
     )
@@ -208,6 +226,8 @@ def _ping_telegram(
     target: str,
     last_6_actions: list[dict[str, Any]],
     stage: str | None = None,
+    count: int | None = None,
+    threshold: int | None = None,
 ) -> None:
     """Fire Telegram alert with the Cray-E.4 payload contract.
 
@@ -219,7 +239,7 @@ def _ping_telegram(
     script = _telegram_script()
     if not script.exists():
         return
-    message = _format_message(loop_type, target, last_6_actions, stage)
+    message = _format_message(loop_type, target, last_6_actions, stage, count, threshold)
     cmd = bash_argv(script, message)
     env = env_with_wslenv_passthrough(_FORWARDED_ENV)
 
@@ -481,7 +501,17 @@ def _handle_write_or_edit(payload: dict[str, Any]) -> None:
     if warned is not None:
         # Emitted AFTER the state write so a crash mid-warn cannot leave the
         # stamp unsaved and re-ping Cray on the next edit.
-        _ping_telegram(LoopType.FILE_EDIT, target, warned, stage="warn")
+        # AC-11: T is the DENY bar, read through the SAME function the gate uses
+        # (``_loop_counter.py`` keeps it a function precisely "so the warn bar and
+        # the deny bar cannot silently drift apart across two hook processes").
+        _ping_telegram(
+            LoopType.FILE_EDIT,
+            target,
+            warned,
+            stage="warn",
+            count=get_count(counter, LoopType.FILE_EDIT, target),
+            threshold=l1_deny_threshold_for(target),
+        )
         print(json.dumps(_warn_advisory(target, counter)))
 
 
