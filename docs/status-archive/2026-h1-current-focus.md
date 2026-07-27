@@ -1893,3 +1893,71 @@ Current Focus block rotated because **R2 keeps the 4 most-recent sessions**: add
 > match-exactly-once-or-abort Python replacement (Cray-approved after the pause the
 > deny message asks for) plus a normal commit. That observation became the s173 brief
 > and is the empirical half of the F3c finding above.
+
+> **Session 173, 2026-07-25 (head_commit `ca39841` → `6fb89b8`) — the session that
+> found the loop-detect guard was measuring the wrong quantity. Two PRs merged
+> (#912, #914), 0 open. The headline is not "a guard was tuned" — it is that L1
+> counted only SUCCESSFUL edits, so it was blind to the exact thrash it exists to
+> catch, and one of its three documented escapes had never been wired at all.**
+>
+> **(what shipped.)** **#912** bounds the lifetime of `.claude/state/loop-counter.json`,
+> which was effectively immortal: `load_counter` minted fresh state only on a missing
+> or corrupt file, and the `session_id` it records was written but never compared. Two
+> independent guards now bound it — **age-out** (entries whose `last_updated` is older
+> than `COUNTER_MAX_AGE_HOURS` = 6 h are dropped on load) and a **session boundary**
+> (re-mint when the recorded id differs from the hook payload's). **#914** lands
+> **PLAN-0094** (Draft) + **Lesson #0033**.
+>
+> **(the finding that reframed the work.)** The brief arrived with five findings from
+> s172; all five held, but **three were worse than reported** and two changed the fix.
+> (1) `PostToolUse` fires **only on success**, so a failed Edit never reaches the
+> counter — probed live: a successful Write took it to 1, a mismatched-`old_string`
+> Edit left it at **1**. Six good edits score 6; six retries of one broken anchor score
+> **0**. No threshold value separates those, which is why PLAN-0094 changes none.
+> (2) `session_id` is not unreliable, merely **unread** — it is a required field on every
+> hook payload and three other hooks in this repo already read it. (3) The
+> subagent-completion reset is not "denied", it is **unwired**: `settings.json`
+> registers `PostToolUse` for `Write|Edit` and `Bash` only, so the handler is dead code
+> that has never run — while the registry row L1, Lesson #0021 §3, **and the deny
+> message itself** all still advertise it as live. That last one plausibly explains
+> STATUS's repeated "a subagent inherits the exhausted counter": the agent was
+> following the deny's own advice.
+>
+> **(evidence.)** Suite **3043 passed / 204 skipped**, 5 failed — the documented
+> worktree false-RED set by exact name and count. The 5th touches `stop_continuation.py`,
+> which this change edits, so it was **isolated rather than assumed**: it fails
+> identically with the change removed. `ruff check` + `ruff format --check` clean (497
+> files); `mypy services/` clean (110 files). **Non-vacuity probe:** with the logic
+> neutered and the API kept, **10 of the 27 new tests go red** (8 age-out, 2 session
+> boundary) — they bite on behaviour, not symbol presence. **MS-S1 never contacted.**
+>
+> **(governance — the R2 catch that improved the argument.)** `plan-drafter` authored
+> PLAN-0094; Code R2 returned three corrections, all applied. The material one: the
+> draft's §Why-no-ADR **missed ADR-0013 row E.4** (`0013:90`), which specifies the L1
+> consequence as **"pause + Telegram alert"** — not deny. So the hard deny went
+> **beyond its own Accepted-ADR mandate**, and P2's warn-first moves L1 *toward* E.4
+> rather than away; since E.4 also names the number ("loops > 6 rounds"), keeping 6
+> while fixing the proxy is fidelity, not drift. The second correction killed a
+> **vacuous grep oracle** (AC-3's anchor string does not exist contiguously in source —
+> it is split across an f-string boundary — so the check would have passed forever).
+> Cray ratified OQ-1 `G=3`, OQ-2 full fresh budget, and **SD-2 as a decision, not a
+> diff approval** — it changes what Lesson #0021 §3 recorded as the fix. The
+> ratification was recorded in the PLAN **before** merge so main never carried a
+> document reading "awaiting Cray" on settled points.
+>
+> **(process — two mistakes, both caught and reported.)** A 216-line test block was
+> written into the **main tree** by using the wrong path root, onto the concurrent
+> s172 session's branch; caught because `pytest -k` selected 4 tests instead of ~27.
+> Recovered /tmp-copy-first, then `git checkout --` scoped to that one pathspec after
+> verifying the diff was 100% mine; s172's work was unaffected (its 5 files landed as
+> `82e518c`, without the stray file). Second: the first commit attempt ran pre-commit
+> with a PATH that omitted `uv`, so two hooks failed and **no commit was created** —
+> verified by HEAD, not by the message. #912 then hit `strict` branch protection when
+> s172's PLAN-0093 PRs landed ahead of it, costing a main-merge + full re-gate.
+>
+> **(Tier-0 correction.)** The private memory prescribing "spawn a subagent to reset
+> L1" was describing a mechanism that cannot fire; corrected and classified
+> **`was an error`**, not `superseded`. s172 then independently corroborated it from
+> the other side — it had run that recipe verbatim, synchronously, with the target in
+> `turn_touched`, and the counter did not clear. Static read and live observation
+> converged.

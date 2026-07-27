@@ -1,8 +1,9 @@
 # PLAN-0095: Docker image boot — build + serve the DB-less OCT demo
 
-**Status:** Draft
+**Status:** Complete
 **Owner:** Claude Code (draft authored by the `plan-drafter` subagent — see disclosure at foot; revised after the Cray SD rulings, session 176)
 **Created:** 2026-07-26
+**Completed:** 2026-07-27 (session 177) — Steps 1–5 in [#927](https://github.com/CrayJThiemsert/vero-lite/pull/927), Step 7 in [#928](https://github.com/CrayJThiemsert/vero-lite/pull/928). Step 6 (optional live evidence) ran on Cray's explicit go: the image built for the first time, `/health` answered 200 about two seconds after `docker run` with no database reachable, all six verticals appeared in the boot log, the container ran as `uid=999(vero)` with its `HEALTHCHECK` reporting `healthy`, and `alembic current` printed `0012 (head)` from inside the image against the live Postgres. **OQ-2's residual and OQ-3 are both resolved by that run**; OQ-1 (the hosting model) remains open by design.
 **Related ADRs:** ADR-0032 (D1 demo→pilot wedge — the strategic frame), ADR-006 (vertical plugin layout — why `verticals/` lives outside `services/`), ADR-002 (LAN trust model — *touched* by the hosting question; surfaced in OQ-1, **not decided here**). **No new ADR is proposed** — see OQ-1.
 
 ## Goal
@@ -393,7 +394,7 @@ clean + removal of the `webroot/` scratch dir.
 
 ## Acceptance Criteria
 
-- [ ] **AC-1 — offline oracle exists and passes.** `tests/docker/test_dockerfile_oracle.py`
+- [x] **AC-1 — offline oracle exists and passes.** `tests/docker/test_dockerfile_oracle.py`
   implements O-1 through O-6 and passes against the fixed Dockerfile + compose
   file. *Pass/fail read (pre-committed):* `pytest tests/docker -q` exits `0`,
   run per CLAUDE.md §8 evidence rules (streams merged `2>&1`, escaped `\$?`, no
@@ -401,33 +402,33 @@ clean + removal of the `webroot/` scratch dir.
   + `ruamel.yaml` (a main dependency) only — a Grep for `subprocess|docker`
   over the module shows no tool invocation, and the CI PR run (whose workflow
   has zero Dockerfile references) executes it green.
-- [ ] **AC-2 — born-RED recorded.** The identical oracle, run against the
+- [x] **AC-2 — born-RED recorded.** The identical oracle, run against the
   unmodified Dockerfile + compose file (M-A), fails with **five distinct
   assertion families**: runtime-root coverage, builder-install invariant,
   migration-capability chain, hygiene (USER / HEALTHCHECK / `.dockerignore`),
   and compose-consumes-image. *Pass/fail read:* transcript in the PR body
   showing all five and a non-zero exit.
-- [ ] **AC-3 — anti-tautology.** The oracle module contains **zero** occurrences
+- [x] **AC-3 — anti-tautology.** The oracle module contains **zero** occurrences
   of the string `verticals`. *Pass/fail read:* Grep over the module = 0 matches.
   *Falsifying mutation:* M-C goes RED with no Dockerfile edit — the coverage set
   is derived, not enumerated. Additionally, every oracle carries its
   derivation-status label from the Design table; a presence check presented as
   derived is an R2 reject.
-- [ ] **AC-4 — mutations bite.** M-B through M-J (including the M-H/M-I/M-J
+- [x] **AC-4 — mutations bite.** M-B through M-J (including the M-H/M-I/M-J
   variants) each produce the RED named in the mutation table. *Pass/fail read:*
   mutation transcripts in the PR body, each with non-zero exit naming the right
   oracle; working tree restored clean afterward (scratchpad-restore procedure).
-- [ ] **AC-5 — repo gates, full scope.** Full `ruff` clean, full
+- [x] **AC-5 — repo gates, full scope.** Full `ruff` clean, full
   `mypy services/` clean, **full** `pytest` green offline before push (the
   offline gate matches CI scope — never the changed subset alone). *Pass/fail
   read:* exit `0` on each, evidence rules as AC-1.
-- [ ] **AC-6 — no AC needs a daemon (invariant).** Every AC above is evaluable
+- [x] **AC-6 — no AC needs a daemon (invariant).** Every AC above is evaluable
   with Docker absent — including O-6, which parses YAML and never runs compose;
   daemon actions (image build, container run, compose up, in-container
   migration) appear only in Step 6, explicitly OPTIONAL + Cray-gated, labeled
   *evidence, not gate*. *Pass/fail read:* R2 reviewer inspection of this list +
   Steps.
-- [ ] **AC-7 — ruled-in extensions ship oracle-checked.** The migration chain
+- [x] **AC-7 — ruled-in extensions ship oracle-checked.** The migration chain
   (O-4), the hygiene trio (O-5), and the compose shape (O-6) each exist with
   their named mutations per the table. The uv pin refresh (SD-3d) remains
   deliberately oracle-less — "freshness" is not statically decidable; evidence
