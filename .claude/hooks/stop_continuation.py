@@ -66,6 +66,7 @@ sys.path.insert(0, str(HOOKS_DIR))
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     DEFAULT_COUNTER_PATH,
     STATE_DIR,
+    clear_turn_scoped,
     clear_turn_touched,
     load_counter,
     main_session_id,
@@ -235,6 +236,13 @@ def _apply_turn_boundary_reset(payload: dict[str, Any] | None = None) -> list[st
     counter = load_counter(_state_path(), session_id=main_session_id(payload or {}))
     reset_targets = reset_untouched_l1(counter)
     clear_turn_touched(counter)
+    # PLAN-0094 D4 — ``attempted_edits`` / ``content_hashes`` are TURN-scoped,
+    # unlike ``count`` which keeps its lifetime. Without this the tallies would
+    # accumulate across turns and yesterday's ``old_string`` would score as
+    # today's repeat: non-progress is only meaningful within one push at a
+    # problem. Sits beside ``clear_turn_touched`` because they share one
+    # definition of "the turn ended".
+    clear_turn_scoped(counter)
     save_counter(counter, _state_path())
     return reset_targets
 

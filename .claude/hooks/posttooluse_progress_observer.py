@@ -58,6 +58,7 @@ env-var overrides as Step 2 for parity in test harnesses
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -87,6 +88,9 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     normalize_error_signature,
     normalize_file_path,
     normalize_pytest_nodeid,
+    note_attempted_edit,
+    note_content_hash,
+    observe,
     record_subagent_touched,
     record_turn_touched,
     reset,
@@ -364,8 +368,52 @@ def _warn_advisory(target: str, counter: Any) -> dict[str, Any]:
     }
 
 
+def _sha1(data: bytes) -> str:
+    """Content-addressing digest, not a security primitive.
+
+    ``usedforsecurity=False`` is what says so to the reader and to bandit
+    (ruff ``S324``); collision resistance is irrelevant here — the worst a
+    collision can do is merge two counter buckets.
+    """
+    return hashlib.sha1(data, usedforsecurity=False).hexdigest()
+
+
+def _content_digest(file_path: str) -> str:
+    """``sha1`` of the target's on-disk bytes after the write, or ``""``.
+
+    **Fail-open by construction (PLAN-0094 D4 c).** This runs in the mandatory
+    PostToolUse path of *every* Write and Edit, so a raise here would not cost
+    an oscillation signal — it would break the agent's ability to edit at all,
+    a failure orders of magnitude worse than the one it is detecting. Returning
+    ``""`` degrades to "no (c) signal for this call" and nothing else.
+
+    On-disk rather than payload-derived, and that is now measured rather than
+    assumed: a successful ``Edit``'s ``tool_response`` carries no ``content``
+    key at all, and its ``originalFile`` was null in 78 of 84 recorded results
+    (s180) — so no hermetic post-state is reconstructable for the Edit path.
+    """
+    try:
+        return _sha1(Path(file_path).read_bytes())
+    except (OSError, ValueError):
+        return ""
+
+
 def _handle_write_or_edit(payload: dict[str, Any]) -> None:
-    """L1: increment per Write/Edit + record the target as touched this turn.
+    """L1: score NON-PROGRESS per Write/Edit + record the target as touched.
+
+    **The unit changed in PLAN-0094 Step 4 (AC-7).** This used to increment on
+    every Write/Edit — it counted *touches*, which made six distinct forward
+    edits of one file indistinguishable from six retries of one broken change.
+    It now increments only on an observed non-progress signal:
+
+    - **(b)** the same ``old_string`` re-applied this turn → ``repeat xN``
+    - **(c)** the file returning to content it already held this turn → ``osc xN``
+
+    A distinct forward edit is still *recorded* — evidence ring, timestamp,
+    ``turn_touched`` — via :func:`observe`; it simply does not score, and it
+    records ``result == ""`` (OQ-3 R3: both Telegram formatters bracket
+    ``result`` only when non-empty, so emptiness is what keeps a bracketed row
+    meaning "this is the row that interrupted you").
 
     The turn-touched marker is consumed by Step 4's ``stop_continuation.py``
     on every Stop event to reset L1 counters whose targets were NOT
@@ -373,6 +421,10 @@ def _handle_write_or_edit(payload: dict[str, Any]) -> None:
     marker" rule from PLAN §Step 1. Without this, L1 counters grow
     unbounded across legitimate iterative editing (Cray's STATUS workflow
     risk surfaced in the L1/L4 asymmetry ELI-CTO).
+
+    **Known, accepted hole:** a *failed* Edit is not counted. The harness emits
+    no hook event for one — measured twice, s173 and s179 — so the
+    retry-one-broken-anchor shape is invisible from here (PLAN-0094 §D4 box).
     """
     tool_input = payload.get("tool_input") or {}
     if not isinstance(tool_input, dict):
@@ -385,12 +437,31 @@ def _handle_write_or_edit(payload: dict[str, Any]) -> None:
         return
 
     counter = load_counter(_state_path(), session_id=main_session_id(payload))
-    increment(
+
+    old_string = tool_input.get("old_string")
+    repeats = note_attempted_edit(
         counter,
         LoopType.FILE_EDIT,
         target,
-        _now_action(payload.get("tool_name", "Edit"), target),
+        _sha1(old_string.encode("utf-8")) if isinstance(old_string, str) and old_string else "",
     )
+    seen = note_content_hash(counter, LoopType.FILE_EDIT, target, _content_digest(file_path))
+    # (b) is checked before (c) because it is the more specific diagnosis: a
+    # re-applied old_string will OFTEN also restore a prior content state, and
+    # reporting that as oscillation would name the symptom over the cause.
+    # Either way this is ONE increment for the call, never two.
+    if repeats >= 2:
+        result = f"repeat x{repeats}"
+    elif seen >= 2:
+        result = f"osc x{seen}"
+    else:
+        result = ""
+
+    action = _now_action(payload.get("tool_name", "Edit"), target, result)
+    if result:
+        increment(counter, LoopType.FILE_EDIT, target, action)
+    else:
+        observe(counter, LoopType.FILE_EDIT, target, action)
     record_turn_touched(counter, target)
     agent_id = payload.get("agent_id")
     if isinstance(agent_id, str) and agent_id.strip():
@@ -402,7 +473,10 @@ def _handle_write_or_edit(payload: dict[str, Any]) -> None:
     # ping for Cray and an agent-visible advisory. Deliberately inline here
     # rather than in the gate, because the gate only runs on the NEXT edit --
     # warning there would cost the agent a whole extra edit before it learns.
-    warned = _maybe_warn_l1(counter, target)
+    # Only a SCORING call can cross the bar. After an observe the count is
+    # unchanged, so checking there could at best re-fire a warn already sent —
+    # and at worst warn on a target whose every edit has been forward progress.
+    warned = _maybe_warn_l1(counter, target) if result else None
     save_counter(counter, _state_path())
     if warned is not None:
         # Emitted AFTER the state write so a crash mid-warn cannot leave the
