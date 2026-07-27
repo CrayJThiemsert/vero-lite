@@ -1,6 +1,6 @@
 # PLAN-0094: L1 loop-detect — count non-progress, warn before denying, restore the reset paths
 
-**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Step 4 BUILT except AC-11** (s180, PR #937: `309168e`, merge `0a85b21` — **AC-7 and AC-8(i)/(iii) closed**; L1's unit is now non-progress rather than touches, and `clear_turn_scoped()` is wired into the turn boundary). **AC-11 and Step 6 remain unbuilt.** **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat xN` / `osc xN`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
+**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Step 4 BUILT and MERGED** (s180 — PR #937 `309168e`/merge `0a85b21` closed **AC-7 and AC-8(i)/(iii)**, making L1's unit non-progress rather than touches and wiring `clear_turn_scoped()` into the turn boundary; PR #939 closed **AC-11**, the `count: N/T` line in both Telegram bodies plus the mirror-invariance assertion). **Only Step 6 (closeout, AC-10) remains.** **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat xN` / `osc xN`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
 **Owner:** Claude Code
 **Created:** 2026-07-25
 
@@ -654,7 +654,7 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   restore from a `/tmp` copy (never `git checkout` — it wipes the uncommitted
   work under test), re-run GREEN. CI is PR-only → re-run the full suite on
   each merge commit.
-- [ ] **AC-11 (NEW s179, OQ-3 R4) — the Telegram body tells Cray how close the
+- [x] **AC-11 (NEW s179, OQ-3 R4; CLOSED s180) — the Telegram body tells Cray how close the
   wall is.** Both alert bodies gain a `count: N/T` line naming the current
   count and the applicable threshold (path-class aware: `15` for doc targets,
   `6` for code — `_loop_counter.py:88,100`). Tests: (i) the gate's deny body
@@ -664,7 +664,17 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   contains the same line; (iii) **mirror-invariance** — the two bodies' shared
   lines stay identical, which the observer's own docstring asserts as a design
   property (*"Mirrors Step 2's formatter"*, `:167-168`) but nothing enforces
-  today. **RED today** — neither body carries a count.
+  today. ~~**RED today** — neither body carries a count.~~
+  **T RESOLVED at build time (s180): T is the DENY bar, not the warn bar.**
+  The criterion as drafted was self-contradictory — (i) asked for "the threshold
+  actually applied" (the deny bar, `T+G`) while (ii) asked the warn body for
+  "the same line" (fired at `T`). Cray ruled for the deny bar in both, because
+  AC-11's own stated purpose is *how close the wall is*: the warn bar would
+  render `6/6` on the warn body and `9/6` on the deny body — an overflow that
+  never names 9. Both now read `N/9`, and the observer reads its denominator
+  through `l1_deny_threshold_for`, the same function the gate uses, which
+  `_loop_counter.py:770-777` exists to keep from drifting across the two hook
+  processes.
   **Why this is in scope at all:** the *agent* already receives the number in
   the inline advisory (`"N edits of this one target (warn bar = N)"`), while
   **Cray's Telegram ping does not** — the person who has to decide gets less
@@ -674,6 +684,17 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   original brief; **Cray pulled it in explicitly.** It is the only part of
   Step 4 that touches the alert surface, and its mutation is: delete the line
   from one formatter only → (iii) reddens on the mirror, not just (i)/(ii).
+  *[Built s180, PR #939. The named mutation ran (**N-A**, gate drops the line →
+  (i) and the mirror redden, (ii) survives) alongside three more: **N-B** drops
+  it from the observer's warn branch only → (ii) alone; **N-C** denominates by
+  the warn bar → (ii) alone, caught by an explicit `count: 6/6 not in body`
+  assertion; and **N-D** rewords a shared line that has nothing to do with the
+  count → **the mirror row alone reddens**, which is what proves (iii) is
+  load-bearing on its own terms rather than re-testing the count line from a
+  third angle. `count`/`threshold` are optional on both formatters, so omitting
+  them reproduces the pre-AC-11 body byte-for-byte; the L2/L3 callers
+  deliberately do not pass them, since those fire exactly AT their threshold and
+  the line could only ever read `6/6`.]*
 
 ## Out of Scope
 
