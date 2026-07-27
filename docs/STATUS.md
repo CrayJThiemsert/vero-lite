@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-27T10:30:58+07:00
+last_updated: 2026-07-27T12:16:35+07:00
 session: 177
-current_batch: "s177 — 2 PRs, 0 open: #927 lands PLAN-0095 Steps 1-5 (Dockerfile rewrite + .dockerignore + compose app service + the 10-test offline oracle); #928 adds runbook §1a. PLAN-0095 COMPLETE 7/7, archived to done/. Step 6 live evidence ran on Cray's explicit go. Suite 3296 -> 3306."
+current_batch: "s177 — 5 PRs, 0 open. #927 lands PLAN-0095 Steps 1-5 (Dockerfile rewrite + .dockerignore + compose app service + an 11-test offline oracle); #928 + #929 close PLAN-0095 COMPLETE 7/7 into done/; #930 builds PLAN-0094 Step 5 (awaiting_ack, AC-9); #931 converts runbook §1a to bash after Cray enabled Docker Desktop's WSL integration. Suite 3296 -> 3317."
 current_actor: code
-blocked_on: "Nothing. main=8618081; 0 open PRs; CI gate PASSED on fb0e1f8 and 54f0189 (both SHA-verified pre-merge); full suite re-run GREEN on the #927 merge commit (3306/8), not owed after the docs-only #928. Tree clean but for the 2 standing KEEP untracked paths."
-next_action: "Open. PLAN-0094 Step 5 is the unblocked slice (P3 acknowledged-pause exit, no settings.json diff, closes AC-9); Step 4 still needs Cray's per-diff settings.json approval. Also queued: the CLAUDE.md §6 stale plan-drafter gate claim + the CLAUDE.md:176 dead link (one Cowork trip clears both), and the 3 AC-0088 wording debts."
-head_commit: 8618081
-recent_commits: [8618081, 54f0189, 6ab2c28, fb0e1f8, c0f5935, b7a4382, 77fa734, 2fb8709, 090c2fa, 1c19654]
+blocked_on: "Nothing. main=da0b50b; 0 open PRs; every CI gate SHA-verified pre-merge; full suite re-run GREEN on both code merge commits (#927 -> 3306/8, #930 -> 3317/8), not owed after the docs-only #928/#929/#931. Dev stack healthy on 5442/6379 after the Docker Desktop restart; alembic at 0012 (head). Tree clean but for the 2 standing KEEP untracked paths."
+next_action: "Open. PLAN-0094 Step 4 (P1 non-progress counting) is the next slice but is GATED on Cray's per-diff settings.json approval for the PostToolUseFailure registration; Step 6 closeout additionally needs Cray to confirm a live-loop soak. Also queued: the CLAUDE.md §6 stale plan-drafter gate claim + the CLAUDE.md:176 dead link (one Cowork trip clears both), and the 3 AC-0088 wording debts."
+head_commit: da0b50b
+recent_commits: [da0b50b, 387bef0, 2736acf, c076f7a, 93f59d1, 587f134, cd164f9, 8618081, 54f0189, 6ab2c28]
 ---
 
 # vero-lite — Project Status
@@ -18,12 +18,13 @@ recent_commits: [8618081, 54f0189, 6ab2c28, fb0e1f8, c0f5935, b7a4382, 77fa734, 
 
 ## Current Focus
 
-> **Session 177, 2026-07-27 (head_commit `c0f5935` → `8618081`) — the image
-> builds and boots. Two PRs merged (#927 code, #928 docs), 0 open;
-> **PLAN-0095 COMPLETE 7/7**, archived to `done/`. The `Dockerfile` had not
-> built since the 2026-05-07 scaffold commit; `docker run` now answers
+> **Session 177, 2026-07-27 (head_commit `c0f5935` → `da0b50b`) — the image
+> builds and boots, and the L1 guard gets an exit that cannot be faked. Five
+> PRs merged (#927, #928, #929, #930, #931), 0 open. **PLAN-0095 COMPLETE 7/7**,
+> archived to `done/`; **PLAN-0094 Step 5 BUILT**, AC-9 closed. The `Dockerfile`
+> had not built since the 2026-05-07 scaffold commit; `docker run` now answers
 > `/health` in about two seconds with **no database reachable at all**.
-> Suite 3296 → **3306**.**
+> Suite 3296 → **3317**.**
 >
 > **(what shipped.)** **#927** — Steps 1–5 as ONE PR, because Step 1's oracle
 > is deliberately born-RED and splitting would land a red suite on `main`.
@@ -84,13 +85,64 @@ recent_commits: [8618081, 54f0189, 6ab2c28, fb0e1f8, c0f5935, b7a4382, 77fa734, 
 > throughout (`_logical_lines` drops comments) — logged **`confirmed — prior
 > intact`**; the probe script was the defect.
 >
-> **(finding, reported not fixed.)** Docker Desktop's **WSL integration is off
-> for `ubuntu-24.04`**, so `docker` is not on `PATH` there and Step 6 ran from
-> Windows PowerShell. Consequence worth naming: **§1 of `run-oct-demo.md`
-> itself runs `docker ps` from bash** and would fail today for anyone
-> following it from WSL. §1a notes the situation; §1 is untouched and the
-> integration setting was **not** changed — that is host configuration and
-> needs its own go.
+> **(a finding that was reported, then closed by Cray in the same session.)**
+> Docker Desktop's **WSL integration was off for `ubuntu-24.04`**, so `docker`
+> was not on `PATH` there and Step 6 ran from Windows PowerShell against a UNC
+> build context. The consequence worth naming was that **§1 of
+> `run-oct-demo.md` runs `docker ps` from bash** and would have failed for
+> anyone following it from WSL. Code declined to flip the setting itself even
+> after Cray said go, and said why: the toggle needs a Docker Desktop restart,
+> and `vero-postgres` / `vero-redis` carry **`RestartPolicy=no`**, so they would
+> not come back on their own — a downtime Cray had not asked for. Cray flipped
+> it; the prediction held exactly (both `Exited (0)`, while other projects'
+> `restart: always` containers returned by themselves). Restored with
+> `docker start`, then verified: healthy on 5442 / 6379, `alembic current` still
+> `0012 (head)`, `tests/api` 189 passed / 1 skipped. **#931** converts §1a's
+> three blocks to bash — the bash `docker build` was **re-run and verified from
+> WSL** (exit 0, image removed) rather than inferred — and records the trap the
+> toggle itself demonstrated, including its tell: **a full suite reporting ~141
+> skips instead of 8 is an unreachable DB, not a regression.**
+>
+> **(second half of the session — PLAN-0094 Step 5, the L1 exit an agent cannot
+> fake.)** **#930** builds P3 / **AC-9**. When L1 denies, all three documented
+> exits can be shut at once — the turn boundary is sticky, a commit needs a
+> committable tree the gated file can itself block, and the subagent reset
+> clears only a subagent's own edits — which is why **two of five recorded
+> incidents ended in a Cray-authorised shell escape**. The deny branch now arms
+> `awaiting_ack` (making that gate a **narrow state writer** for the first time)
+> and the Stop hook clears it **only where the stop actually fires** (cap /
+> contentless-proceed demotion / dispatch suggestion / pause), never where the
+> agent is handed back to its own loop (substantive `proceed`, goal-gate
+> directive, re-entry). Unforgeable because a fired stop by construction returns
+> the prompt to Cray. The clear also **overrides the sticky rule** for exactly
+> the armed targets, turning two-turn recovery into one. Step 5 landed **ahead
+> of Step 4** deliberately: Step 4 is gated on a Cray per-diff `settings.json`
+> approval and no step depends on a later one — surfaced, not assumed, and the
+> PLAN's Status line (still reading "Steps 3–6 unbuilt" after Step 3 landed in
+> s175) is corrected in the same PR. Suite 3306 → **3317**.
+>
+> **(what the RED-first run found that the design had not.)** The negative row
+> `test_proceed_does_not_clear_the_marker` went **RED** — which a *missing*
+> feature should not cause. Reason: the always-on turn-boundary reset rewrites
+> the whole state document every Stop, so the marker is **dropped on every path**
+> unless `awaiting_ack` round-trips through `to_json`. Stated as a rule because
+> it generalizes past this field: **additive-and-tolerant was necessary but not
+> sufficient; additive-and-serialized is the requirement.** A field the writer
+> forgets is a field the reader silently loses, and the tolerance contract is
+> exactly what hides it. Evidence discipline: 11 rows, **8 RED-first**; the three
+> negative rows pass trivially against featureless code, so each was proven by a
+> **named mutation** (drop the L1 scope guard / clear inside the re-entry guard /
+> clear on substantive proceed), restored from a scratchpad copy, never
+> `git checkout`. Thresholds **byte-unchanged**, verified by diff.
+>
+> **(an unplanned live demonstration.)** The L1 **warn** fired on
+> `stop_continuation.py` mid-implementation — the guard warning about the file
+> implementing its own fix. Assessed as the warning asks: six edits = helper,
+> import, an import-order self-correction, three call sites — distinct forward
+> progress, no retries of a failing change. That is precisely the false-positive
+> class **Step 4 (P1)** exists to kill, observed in the wild rather than argued
+> from the incident table; under the pre-Step-3 first-strike deny it would have
+> been a wall, not a ping.
 
 > **Session 176, 2026-07-27 (head_commit `04c94e4` → `77fa734`) — the session
 > that went looking for a routing answer and found the fact-pack was wrong.
@@ -393,6 +445,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-27 | **s177 — PLAN-0094 Step 5 BUILT (#930): `awaiting_ack`, the L1 exit an agent cannot fake. AC-9 closed.** When L1 denies, all three documented exits can be shut at once — sticky turn boundary, a commit needing a tree the gated file itself blocks, a subagent reset scoped to the subagent's own edits — which is why **2 of 5 recorded incidents ended in a Cray-authorised shell escape**. The deny branch now arms the marker (that gate becomes a **narrow state writer**) and the Stop hook clears it **only where the stop actually fires** (cap / contentless demotion / dispatch suggestion / pause), never on `proceed`, a goal-gate directive, or re-entry. Also **overrides the sticky rule** for armed targets → two-turn recovery becomes one. **Landed ahead of Step 4 deliberately** (Step 4 is gated on a Cray per-diff `settings.json` approval; no step depends on a later one) — surfaced, not assumed. Key finding the RED-first run forced: a negative row went RED because the turn-boundary reset rewrites the whole document, so **additive-and-tolerant was necessary but not sufficient — additive-and-SERIALIZED is the requirement**. 11 rows, **8 RED-first**; the 3 negative rows proven by named mutations (scratchpad restore, never `git checkout`). Thresholds byte-unchanged. **Live demo, unplanned:** the L1 warn fired on `stop_continuation.py` *while it was being fixed* — 6 distinct forward edits, zero retries = exactly the false-positive class Step 4 exists to kill. Plus **#931**: Cray enabled Docker Desktop's WSL integration (Code declined to flip it itself and said why — `RestartPolicy=no` meant an unasked-for downtime; the prediction held exactly), runbook §1a converts to bash with the build **re-verified from WSL**. Suite 3306 → **3317** | `da0b50b` (#931 merge, head_commit) / `387bef0` / `2736acf` (#930 merge) / `c076f7a` / `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md` §D5 |
 | 2026-07-27 | **s177 — PLAN-0095 COMPLETE 7/7, archived to `done/`: the image builds and boots for the first time since the 2026-05-07 scaffold commit.** #927 lands Steps 1–5 as ONE PR (the oracle is born-RED, so splitting lands a red suite): builder defects **eliminated not repaired** (`--no-install-project`), `python -m uvicorn` for a guaranteed import path, `alembic/` shipped per SD-2, a thin compose `app` consumer per SD-1. The oracle **derives** its COPY set by transitive closure from the app root — born-RED with **5 assertion families**, **12/12 mutations bit** (M-C goes RED with *no Dockerfile edit*), derived set measured exactly `['services','verticals']`. AC-3 ships as a **sibling test**, not the PLAN's reviewer-grep (Cray's call). #928 adds runbook §1a. **Step 6 live, on Cray's go:** build exit 0, `/health` 200 in ~2 s, all six verticals in the boot log, `uid=999(vero)`, HEALTHCHECK `healthy`, `alembic current` → **`0012 (head)` from inside the image**. **OQ-2 residual + OQ-3 RESOLVED; OQ-1 (hosting model) open by design.** Two PLAN departures, both evidence-backed: no `docker compose down` and `--no-deps`, because `vero-postgres`/`vero-redis` were **up 7 days** and §1 depends on them — `StartedAt` byte-identical before/after. Two self-caught errors: the oracle's URL extraction (found by reading, one step before a false RED) and a mis-aimed M-D that hit a **comment** not the `RUN` line — oracle logged `confirmed — prior intact`. Finding, reported not fixed: **Docker Desktop's WSL integration is OFF** for `ubuntu-24.04`, so runbook §1's own `docker ps` precondition fails from WSL today. Suite 3296 → **3306** | `8618081` (#928 merge, head_commit) / `54f0189` / `6ab2c28` (#927 merge) / `fb0e1f8` / `docs/plans/done/0095-docker-image-boot.md` + `tests/docker/test_dockerfile_oracle.py` |
 | 2026-07-27 | **s176 — PLAN-0095 merged as Draft (#925): make the Docker image build + boot the DB-less OCT demo. Nothing built; Steps 1–5 unexecuted.** The grounding sweep (4 Explore agents, 15 items) killed **5 wrong s175-handoff premises** — the first-order boot failure is a plain import (`discovery.py:45`, uncaught at `main.py:166`), **not** the CWD-relative `Path("verticals")`; plus an uncounted **9th** defect (`pyproject.toml:7` `readme` never COPY'd). Cray ruled **SD-1 = both**, **SD-2 = include `alembic/` + document**, **SD-3 = all four** — reframing the PLAN as *ready for development toward production*; SD-1/SD-2 overturned the drafter and are logged `superseded by new info`. Oracle derives the COPY set by **transitive closure from the app root** (not a `verticals` glob — that would break AC-3); **AC-6: no AC needs a Docker daemon**. Finding: **CLAUDE.md §6's plan-drafter gate claim is STALE** — the subagent is exempt by design (`pretooluse_classifier_dispatch.py:301-311`), G2 preserved for Code | `77fa734` (#925 merge, head_commit) / `2fb8709` / `docs/plans/0095-docker-image-boot.md` |
 | 2026-07-26 | **s175 — the harness stopped letting a failed command look like a success.** #923: Lesson #0007's mechanism CORRECTED and reclassified `was an error` (a bare `$` expands one shell layer early; `$?` is not unreadable) + a binding CLAUDE.md §8 rule + a `_shell_hygiene_warning` PostToolUse advisory. #922: PLAN-0094 **Step 3** — warn at T, deny at T+G (9 code / 18 doc), L4 flat 6; AC-3/4/5 closed. #920 pins all six verticals' ACTION factory offline at REGISTRATION; #921 fixes four stale cross-refs. **Cray: demo target = the LIVE-API shape** → Candidate C is the long pole. ADR-009 D1 one-off Code-authors-§8 exception — **not precedent**. Suite 3252 → **3296** | `04c94e4` (#923 merge, head_commit) / `3b3b666` (#922) / `59c81a6` (#921) / `65c6953` (#920) / `docs/lessons/0007-harness-exit-code-artifact.md` |
@@ -402,7 +455,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-07-25 | **s171 — PLAN-0088 COMPLETE, 13 live ACs, archived to `done/` (#908).** AC-9b BUILT + PASSED (#907): live translate/phrase stages wired (reusing `nl_query`); one MS-S1 `gpt-oss:20b` smoke → grounded count 120 = the seeded corpus. A test premised on an unwired seam RAN the model twice unasked → a socket-level `_no_outbound_network` guard now makes an off-box call impossible. Suite 3189 → **3203/8** | `ca39841` (#908 merge, head_commit) / `c21c0aa` + `e443696` (#907) / `docs/plans/done/0088-*.md` |
 | 2026-07-24 | **s171 — PLAN-0088 Step 6 BUILT (#905): the four Group-B primitives + the AC-10 carrier proof, under SD-9 (a2)'s precedent so no new SD was needed.** Reopening the corpus found FOUR shapes it wrote that the engine never does (the AC-2 class), and B3's refusal kind was a BIJECTION of procedure — its oracle could not have failed. Mutation probe 4/4 as predicted. Suite 3178 -> **3189**. Plus **#904**, the STATUS rotate A+C: 61,748 -> 48,920 B, window untouched | `08304a0` (#905 merge, head_commit of record) / `023f24a` / `a3716db` / `d863078` + `96fbdcc` (#904) |
 | 2026-07-24 | **s170 — PLAN-0088 Steps 4 / 4.5 / 5 BUILT (#895/#900/#902); SD-9 RULED (a2) by Cray (#898, surfaced #897).** Readers A4 (audit-readiness, AC-7) + A1 (NL query over runs, AC-8/AC-9), three new primitives; SD-9 settles that the substrate grows in `run_analytics.py` **only** and strikes `agent_id` + `trigger` from v1. Suite 3150 → **3178**. **AC-9b (live MS-S1) OPEN — host-state.** | `5d02538` (#902 merge, head_commit of record) / `46f0ba1` (#898) / `7150c07` (#895) / `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md` §SD-9 |
-| 2026-07-24 | **s169 — PLAN-0088's design layer ADJUDICATED: SD-1…SD-8 ratified in ONE typed pass (#889); SD-8 = (a) ELIMINATE struck `list_runs_page` + AC-12**, so the substrate ships aggregate-only, `GET /runs` is untouched, and listing pagination moves to the future monotonic-`sequence`-column PLAN. AC-12 kept as a tombstone so AC numbering stays stable (live count 13). Step 0 DISCHARGED → build-ready. Detail: the s169 CF block above | `dd16267` (#889) / `8d1be34` (#888) / `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md` §Surfaced decisions |
 
 ## In-Flight Discussions
 
