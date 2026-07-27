@@ -22,8 +22,12 @@ PostToolUse-fed and fire from Step 3 directly — they are NOT enforced
 here because a PreToolUse hook cannot predict pytest nodeids or error
 signatures from the pending tool call.
 
-Step 2 is **read-only** against the state file; Step 3
-(``posttooluse_progress_observer.py``) is the writer.
+Step 2 was **read-only** against the state file until PLAN-0094 Step 5 (P3),
+which makes it a **narrow writer**: on the L1 deny branch only, it arms
+``awaiting_ack`` for the denied target so a ``Stop`` that actually fires can
+grant a deterministic, human-in-the-loop exit. Nothing else here writes, and a
+lost write self-heals — the deny re-fires on the next attempt and re-arms.
+``posttooluse_progress_observer.py`` remains the general writer.
 
 Bypass-immunity: the hook reads its own process env for
 ``CLAUDE_LOOP_COUNTER_PATH`` / ``CLAUDE_TELEGRAM_SCRIPT`` overrides,
@@ -57,6 +61,8 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     load_counter,
     main_session_id,
     normalize_file_path,
+    record_awaiting_ack,
+    save_counter,
     tokenize_bash_command,
 )
 from _wsl_bridge import bash_argv, env_with_wslenv_passthrough  # noqa: E402
@@ -246,6 +252,18 @@ def main() -> int:
     entry = counter.counters.get(key)
     if entry is None:  # defensive — has_triggered True implies entry exists
         return 0
+
+    # PLAN-0094 D5: arm the acknowledged-pause exit, L1 ONLY. L4 keeps the flat
+    # threshold and has no false-fire series, so granting it this reset path
+    # would hand a failing-command loop an exit the PLAN never priced. Wrapped
+    # because the deny is the load-bearing behavior: a state-write failure must
+    # never swallow the wall.
+    if loop_type is LoopType.FILE_EDIT:
+        try:
+            record_awaiting_ack(counter, target)
+            save_counter(counter, _state_path())
+        except OSError as exc:
+            print(f"pretooluse_loop_detect: could not arm awaiting_ack: {exc}", file=sys.stderr)
 
     last_6 = [a.to_json() for a in entry.last_6_actions]
     _ping_telegram(loop_type, target, last_6)

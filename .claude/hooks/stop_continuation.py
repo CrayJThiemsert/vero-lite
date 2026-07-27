@@ -69,8 +69,10 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     clear_turn_touched,
     load_counter,
     main_session_id,
+    reset_l1_for_targets,
     reset_untouched_l1,
     save_counter,
+    take_awaiting_ack,
 )
 from _wsl_bridge import bash_argv, env_with_wslenv_passthrough  # noqa: E402
 
@@ -235,6 +237,41 @@ def _apply_turn_boundary_reset(payload: dict[str, Any] | None = None) -> list[st
     clear_turn_touched(counter)
     save_counter(counter, _state_path())
     return reset_targets
+
+
+def _apply_ack_clear(payload: dict[str, Any] | None = None) -> list[str]:
+    """Grant the acknowledged-pause exit for every armed target (PLAN-0094 D5).
+
+    Called ONLY from paths where the stop actually fires — the turn ends and
+    Cray regains the prompt. The paths that hand the agent back to its own loop
+    (a substantive classifier ``proceed``, a goal-gate directive, the re-entry
+    early return) deliberately do NOT call this: clearing there would let the
+    machinery unlock itself, which is the whole property P3 exists to provide.
+
+    This deliberately **overrides the sticky turn-boundary rule**. The
+    always-on reset above spares any target touched this turn, so a denied file
+    the agent kept editing survived its own pause and recovery cost two turns —
+    the exact shape recorded in the s169 / s170 incidents. For a target Cray has
+    already been pinged about, one turn is the point.
+
+    Errors are swallowed for the same reason the reset above swallows them: a
+    Stop hook must not become a new way for the turn to fail.
+    """
+    counter = load_counter(_state_path(), session_id=main_session_id(payload or {}))
+    targets = take_awaiting_ack(counter)
+    if not targets:
+        return []
+    cleared = reset_l1_for_targets(counter, targets)
+    save_counter(counter, _state_path())
+    return cleared
+
+
+def _ack_clear_guarded(payload: dict[str, Any] | None = None) -> None:
+    """:func:`_apply_ack_clear` with the observer's never-block posture."""
+    try:
+        _apply_ack_clear(payload)
+    except Exception as exc:  # a Stop hook must not fail the turn
+        print(f"stop_continuation: awaiting_ack clear failed: {exc}", file=sys.stderr)
 
 
 def _classify(payload: dict[str, Any]) -> dict[str, Any]:
@@ -546,6 +583,7 @@ def main() -> int:
     if chain["depth"] >= cap:
         _ping_telegram(_cap_reached_payload(chain["depth"], cap))
         _reset_chain()
+        _ack_clear_guarded(payload)  # PLAN-0094 D5 — this stop fires
         return 0  # do not block; let Cray see the stop event
 
     # Goal gate (PLAN-0021 / ADR-0018 D4) — after chain-cap, before the
@@ -577,7 +615,10 @@ def main() -> int:
                 file=sys.stderr,
             )
             _reset_chain()
+            _ack_clear_guarded(payload)  # PLAN-0094 D5 — a demotion IS a fired stop
             return 0
+        # NO ack clear here: a substantive proceed hands the agent back to its
+        # own loop without Cray ever seeing the turn end.
         chain["depth"] += 1
         chain["last_proceed_ts"] = _now_iso()
         _save_chain(chain)
@@ -602,6 +643,7 @@ def main() -> int:
         dispatch_meta = decision.get("dispatch")
         if not isinstance(dispatch_meta, dict):
             _reset_chain()
+            _ack_clear_guarded(payload)  # PLAN-0094 D5 — silent demotion still fires
             return 0
         matched_rows_raw = decision.get("matched_rows") or []
         matched_rows = [str(r) for r in matched_rows_raw if isinstance(matched_rows_raw, list)]
@@ -613,11 +655,13 @@ def main() -> int:
             )
         )
         _reset_chain()
+        _ack_clear_guarded(payload)  # PLAN-0094 D5 — a suggestion lets the stop fire
         return 0
 
     # "pause" (or any unrecognized verdict, fail-closed) → no block; reset the
     # chain so the next session starts fresh.
     _reset_chain()
+    _ack_clear_guarded(payload)  # PLAN-0094 D5 — the canonical fired stop
     return 0
 
 

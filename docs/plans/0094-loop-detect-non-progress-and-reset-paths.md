@@ -1,6 +1,6 @@
 # PLAN-0094: L1 loop-detect — count non-progress, warn before denying, restore the reset paths
 
-**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`). Steps 3–6 unbuilt.
+**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Steps 4 and 6 remain unbuilt.** Step 4 is the only one still gated on a Cray per-diff `settings.json` approval (the `PostToolUseFailure` registration); Step 5 landed ahead of it because it needs no such diff and no step depends on a later one.
 **Owner:** Claude Code
 **Created:** 2026-07-25
 
@@ -471,12 +471,23 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   (the (a)+(b) dependency, otherwise invisible); (iii) a content hash
   returning to a previously-seen state → increment. **RED** against a build
   that ships (a) without (b)/(c) or vice versa.
-- [ ] **AC-9 — `awaiting_ack` lifecycle.** Tests across gate + Stop hook: a
+- [x] **AC-9 (CLOSED s177 Step 5) — `awaiting_ack` lifecycle.** Tests across gate + Stop hook: a
   deny writes the marker; a Stop that **fires** (patched classifier →
   `pause`) clears it and resets the target's entry *even though the target
   was touched this turn* (sticky override); a classifier-`proceed` block
   (substantive reason) does **not** clear; a goal-gate directive does **not**
   clear. **RED today** (no marker exists; the sticky rule keeps the counter).
+  *[Built s177: 11 rows — 4 gate-side, 7 Stop-side. **8 were RED-first**; the
+  three negative rows ("must NOT arm", "must NOT clear") pass trivially against
+  featureless code, so each was proven by a named mutation instead — dropping
+  the L1 scope guard, clearing inside the re-entry guard, and clearing on a
+  substantive proceed each reddened exactly its own row. One finding the
+  RED-first run surfaced that the design had not anticipated: the marker is
+  **dropped on every Stop regardless of path** unless `awaiting_ack` round-trips
+  through `LoopCounter.to_json`, because the always-on turn-boundary reset
+  rewrites the whole document — so the negative rows would have "passed" for
+  the wrong reason. Additive-and-tolerant was necessary but not sufficient;
+  additive-and-**serialized** is the actual requirement.]*
 - [ ] **AC-10 — offline gate green; siblings byte-unchanged.** Full
   `pytest tests/` + `mypy` at CI scope + `ruff check` in the main tree; the
   existing L2/L3/L4, commit-reset, and Stop turn-boundary test blocks stay

@@ -221,6 +221,7 @@ class LoopCounter:
     counters: dict[str, CounterEntry] = field(default_factory=dict)
     turn_touched: list[str] = field(default_factory=list)
     subagent_touched: dict[str, list[str]] = field(default_factory=dict)
+    awaiting_ack: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -229,6 +230,7 @@ class LoopCounter:
             "counters": {k: v.to_json() for k, v in self.counters.items()},
             "turn_touched": list(self.turn_touched),
             "subagent_touched": {k: list(v) for k, v in self.subagent_touched.items()},
+            "awaiting_ack": list(self.awaiting_ack),
         }
 
     @classmethod
@@ -252,12 +254,21 @@ class LoopCounter:
             for agent_id, targets in sub_raw.items():
                 if isinstance(targets, list):
                     subagent[str(agent_id)] = [t for t in targets if isinstance(t, str)]
+        # Additive (PLAN-0094 D5), same tolerance contract as the field above.
+        # This one must ALSO survive the round-trip: every Stop rewrites the
+        # whole document via ``to_json``, so a field the writer forgets is a
+        # field the marker silently loses on the next turn boundary.
+        ack_raw = data.get("awaiting_ack") or []
+        awaiting: list[str] = []
+        if isinstance(ack_raw, list):
+            awaiting = [str(t) for t in ack_raw if isinstance(t, str)]
         return cls(
             session_id=str(data.get("session_id", "")),
             started_at=str(data.get("started_at", "")),
             counters=counters,
             turn_touched=touched,
             subagent_touched=subagent,
+            awaiting_ack=awaiting,
         )
 
 
@@ -730,6 +741,37 @@ def reset_untouched_l1(counter: LoopCounter) -> list[str]:
             del counter.counters[key]
             reset_targets.append(target)
     return reset_targets
+
+
+def record_awaiting_ack(counter: LoopCounter, target_normalized: str) -> None:
+    """Arm the acknowledged-pause exit for a target the L1 gate just denied.
+
+    Written ONLY by the deny branch of ``pretooluse_loop_detect`` and cleared
+    ONLY by a ``Stop`` that actually fires — no agent-side action touches it, so
+    this is not a sanctioned version of the forbidden ``loop-counter.json``
+    hand-edit (Lesson #0021 §4); that prohibition stands verbatim. Deduplicated,
+    because the deny re-fires on every retry and the marker is a set, not a log.
+    """
+    if not target_normalized:
+        return
+    if target_normalized not in counter.awaiting_ack:
+        counter.awaiting_ack.append(target_normalized)
+
+
+def take_awaiting_ack(counter: LoopCounter) -> list[str]:
+    """Pop and return every armed target. Called at a fired ``Stop``.
+
+    The guarantee this buys is "the turn ended and Cray regained the prompt",
+    not "Cray typed an ack token" — a fired stop by construction returns the
+    prompt to Cray, and the agent cannot mint one. The stronger form (parsing an
+    ack out of the user's message) was declined for v1: it reads conversation
+    content, which is injectable, and the weaker form already beats every
+    recorded incident, where Cray was present and typing but no working state
+    transition existed at all.
+    """
+    taken = list(counter.awaiting_ack)
+    counter.awaiting_ack = []
+    return taken
 
 
 def clear_turn_touched(counter: LoopCounter) -> None:

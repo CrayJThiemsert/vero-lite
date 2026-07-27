@@ -1068,3 +1068,172 @@ def test_passed_goal_stands_down_classifier_flow_unchanged(stub_env: dict[str, s
     capture = _capture(stub_env)
     assert capture.exists()
     assert "goal_gate_passed" in capture.read_text(encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# PLAN-0094 Step 5 (P3) — `awaiting_ack`, clear side (AC-9).
+#
+# The deny gate arms the marker; only a stop that ACTUALLY FIRES may clear it.
+# "Fires" means the turn ends and Cray regains the prompt -- an event the agent
+# cannot mint. The paths that return the agent to its own loop without Cray
+# (classifier `proceed`, a goal-gate directive, the re-entry early return) must
+# NOT clear, or the machinery would unlock itself.
+#
+# The clear also OVERRIDES the sticky turn-boundary rule: `reset_untouched_l1`
+# deliberately spares a target touched this turn, which is exactly the shape
+# that made recovery cost two turns in the s169/s170 incidents. For a target
+# Cray has been pinged about, one turn is the point.
+#
+# State is seeded and asserted as JSON on purpose: the persisted document is
+# the contract between the two hooks, and no new module symbol is imported, so
+# this block stays collectable before the implementation lands (RED, not a
+# collection error that would redden the other rows in this file).
+# ---------------------------------------------------------------------------
+
+ACK_TARGET = "services/api/main.py"
+ACK_KEY = f"L1:{ACK_TARGET}"
+
+
+def _seed_ack(state_path: Path, *, touched_this_turn: bool = True) -> None:
+    """Seed a denied target: an L1 entry, the ack marker, and (by default) the
+    target recorded as touched this turn -- the sticky case."""
+    state_path.parent.mkdir(parents=True, exist_ok=True)
+    state_path.write_text(
+        json.dumps(
+            {
+                "session_id": "ack-test",
+                "started_at": "2026-07-27T00:00:00+0000",
+                "counters": {
+                    ACK_KEY: {
+                        "loop_type": "L1",
+                        "target": ACK_TARGET,
+                        "count": 9,
+                        "last_6_actions": [],
+                        "last_updated": "2026-07-27T00:00:00+0000",
+                        "warned_at": "2026-07-27T00:00:00+0000",
+                    }
+                },
+                "turn_touched": [ACK_TARGET] if touched_this_turn else [],
+                "awaiting_ack": [ACK_TARGET],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+
+def _ack_state(state_path: Path) -> tuple[list[str], bool]:
+    """Return (awaiting_ack, l1_entry_still_present)."""
+    data = json.loads(state_path.read_text(encoding="utf-8"))
+    raw = data.get("awaiting_ack") or []
+    marker = [str(t) for t in raw] if isinstance(raw, list) else []
+    return marker, ACK_KEY in (data.get("counters") or {})
+
+
+def test_fired_pause_clears_the_marker_and_overrides_the_sticky_rule(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """The load-bearing row: a stop that fires grants the exit in ONE turn,
+    even though the target was touched this very turn."""
+    _seed_ack(inproc_env["state"], touched_this_turn=True)
+    _patch_classify(monkeypatch, {"decision": "pause", "reason": "cray should look"})
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert (rc, out) == (0, "")
+    marker, entry_present = _ack_state(inproc_env["state"])
+    assert marker == []
+    assert not entry_present
+
+
+def test_proceed_does_not_clear_the_marker(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """A substantive `proceed` returns the agent to its loop without Cray --
+    clearing here would let the machinery unlock itself."""
+    _seed_ack(inproc_env["state"])
+    _patch_classify(
+        monkeypatch,
+        {"decision": "proceed", "reason": "run pytest tests/handoffs and fix the failure"},
+    )
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    assert out  # a continuation block WAS emitted
+    marker, entry_present = _ack_state(inproc_env["state"])
+    assert marker == [ACK_TARGET]
+    assert entry_present
+
+
+def test_goal_gate_directive_does_not_clear_the_marker(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """A goal-gate directive also returns the agent to its loop without Cray."""
+    _seed_ack(inproc_env["state"])
+    monkeypatch.setattr(
+        _stop, "_run_goal_gate", lambda payload: {"decision": "block", "reason": "goal directive"}
+    )
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert rc == 0
+    assert out
+    marker, entry_present = _ack_state(inproc_env["state"])
+    assert marker == [ACK_TARGET]
+    assert entry_present
+
+
+def test_reentry_guard_does_not_clear_the_marker(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """Conservative: inside an existing stop chain the hook touches nothing."""
+    _seed_ack(inproc_env["state"])
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop", "stop_hook_active": True})
+    assert (rc, out) == (0, "")
+    marker, entry_present = _ack_state(inproc_env["state"])
+    assert marker == [ACK_TARGET]
+    assert entry_present
+
+
+def test_contentless_proceed_demotion_clears_the_marker(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """A demoted proceed IS a fired stop -- the turn ends and Cray sees it."""
+    _seed_ack(inproc_env["state"])
+    _patch_classify(monkeypatch, {"decision": "proceed", "reason": "continue"})
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert (rc, out) == (0, "")
+    marker, entry_present = _ack_state(inproc_env["state"])
+    assert marker == []
+    assert not entry_present
+
+
+def test_dispatch_suggestion_clears_the_marker(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """PLAN-0092 demoted dispatch to a suggestion, so the stop fires."""
+    _seed_ack(inproc_env["state"])
+    _patch_classify(
+        monkeypatch,
+        {
+            "decision": "dispatch",
+            "reason": "route to the drafter",
+            "dispatch": {"subagent": "plan-drafter", "artifact_kind": "plan", "task_summary": "x"},
+            "matched_rows": ["G2"],
+        },
+    )
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert (rc, out) == (0, "")
+    marker, entry_present = _ack_state(inproc_env["state"])
+    assert marker == []
+    assert not entry_present
+
+
+def test_cap_hit_clears_the_marker(
+    monkeypatch: pytest.MonkeyPatch, inproc_env: dict[str, Path]
+) -> None:
+    """The chain-cap fail-safe ends the turn and pings Cray -- it fires."""
+    _seed_ack(inproc_env["state"])
+    monkeypatch.setenv("CLAUDE_CODE_STOP_HOOK_BLOCK_CAP", "1")
+    inproc_env["chain"].write_text(
+        json.dumps({"depth": 5, "last_proceed_ts": "2026-07-27T00:00:00+0000"}), encoding="utf-8"
+    )
+    rc, out = _run_inproc(monkeypatch, {"hook_event_name": "Stop"})
+    assert (rc, out) == (0, "")
+    marker, entry_present = _ack_state(inproc_env["state"])
+    assert marker == []
+    assert not entry_present
