@@ -1,6 +1,6 @@
 # PLAN-0094: L1 loop-detect — count non-progress, warn before denying, restore the reset paths
 
-**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Steps 4 and 6 remain unbuilt.** **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated.
+**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Steps 4 and 6 remain unbuilt.** **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat×N` / `osc×N`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
 **Owner:** Claude Code
 **Created:** 2026-07-25
 
@@ -413,18 +413,26 @@ The L1 `count` becomes a count of **non-progress observations**:
   the opposite of the intent. AC-6's own "payload falls through `main()`"
   wording understated this; it would not have fallen through, it would have
   been mis-handled.
-- **(b) Repeated `old_string`** — per-target, per-turn set of
-  `sha1(old_string)` (additive entry field `attempted_edits`). A successful
-  Edit whose `old_string` hash is already present increments (the same
-  operation re-applied is churn, not progress). Edge accepted, not fixed:
-  sequentially applying one `old_string` to multiple genuine occurrences
-  counts as non-progress — mitigations are `replace_all`, distinct context
-  strings, and P2 itself (the first mis-count now costs a ping, not a block).
+- **(b) Repeated `old_string`** — per-target, per-turn **`dict[str, int]`** of
+  `sha1(old_string) → times applied` (additive entry field `attempted_edits`;
+  a dict rather than a set **per OQ-3 R2**, because the recorded `result`
+  carries the count). A successful Edit whose `old_string` hash is already
+  present increments the L1 counter and bumps its own tally, and records
+  `result = f"repeat×{n}"` (**OQ-3 R1**). The same operation re-applied is
+  churn, not progress. Edge accepted, not fixed: sequentially applying one
+  `old_string` to multiple genuine occurrences counts as non-progress —
+  mitigations are `replace_all`, distinct context strings, and P2 itself (the
+  first mis-count now costs a ping, not a block).
 - **(c) Oscillation** — after each successful Write/Edit, `sha1` of the
   on-disk file content; a hash already seen this turn on this target (the
-  file returned to a prior state) increments; otherwise it is appended
-  (additive entry field `content_hashes`, capped at 32/target/turn).
-- **Distinct successful forward edits score zero.** The action is still
+  file returned to a prior state) increments and records
+  `result = f"osc×{n}"`; otherwise it is recorded at count 1 (additive entry
+  field `content_hashes`, likewise a **`dict[str, int]`** per OQ-3 R2, capped
+  at **32 keys**/target/turn).
+- **Distinct successful forward edits score zero**, and record
+  **`result == ""`** — not `"forward"` (**OQ-3 R3**: both formatters bracket
+  `result` only when non-empty, so an empty value is what keeps `[...]`
+  meaning "this row is why you were interrupted"). The action is still
   appended to the `last_6_actions` ring for evidence, and `turn_touched` is
   still recorded (Stop semantics need it regardless) — a new record-only
   `observe()` op lands beside `increment()` in `_loop_counter.py`, since
@@ -573,6 +581,15 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   the `attempted_edits` membership check → (i) reddens; drop the
   `content_hashes` membership check → (iii) reddens; each mutation must
   redden exactly its own row.
+  **Extended by OQ-3 (s179) — the recorded `result` is asserted, not just the
+  count.** (i) must additionally assert `result == "repeat×2"` on the
+  incrementing record and that `attempted_edits` is a `dict[str, int]` whose
+  value reached 2; (iii) must assert `result == "osc×2"`. **A third row is
+  added: an observed-not-counted forward edit records `result == ""`** — the
+  R3 assertion, and the one that keeps the Telegram bracket meaningful.
+  Non-vacuity for these: hard-code `result=""` on the increment paths → (i)
+  and (iii) redden while the `count` assertions stay green, proving the new
+  rows test the value and not the counter.
 - [x] **AC-9 (CLOSED s177 Step 5) — `awaiting_ack` lifecycle.** Tests across gate + Stop hook: a
   deny writes the marker; a Stop that **fires** (patched classifier →
   `pause`) clears it and resets the target's entry *even though the target
@@ -597,11 +614,32 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   (~~`_loop_counter.py:84,96`~~ → **`:88,100`**, re-verified s179 — the
   **values `6` and `15` are byte-identical**; only the line numbers moved,
   and the s175 drift table's "✅ exact" row for this entry is now itself
-  drifted). Non-vacuity sweep: for each of AC-1…AC-9 **that is still live**
-  apply the named mutation in the working tree, watch the named test go RED,
+  drifted). Non-vacuity sweep: for each of AC-1…AC-9 **and AC-11** that is
+  **still live** (AC-1(ii), AC-6 and AC-8(ii) are withdrawn and have no
+  mutation) apply the named mutation in the working tree, watch it go RED,
   restore from a `/tmp` copy (never `git checkout` — it wipes the uncommitted
   work under test), re-run GREEN. CI is PR-only → re-run the full suite on
   each merge commit.
+- [ ] **AC-11 (NEW s179, OQ-3 R4) — the Telegram body tells Cray how close the
+  wall is.** Both alert bodies gain a `count: N/T` line naming the current
+  count and the applicable threshold (path-class aware: `15` for doc targets,
+  `6` for code — `_loop_counter.py:88,100`). Tests: (i) the gate's deny body
+  (`pretooluse_loop_detect.py:_format_message`) contains the count and the
+  threshold actually applied to that target; (ii) the observer's warn body
+  (`posttooluse_progress_observer.py:_format_message`, `stage="warn"`)
+  contains the same line; (iii) **mirror-invariance** — the two bodies' shared
+  lines stay identical, which the observer's own docstring asserts as a design
+  property (*"Mirrors Step 2's formatter"*, `:167-168`) but nothing enforces
+  today. **RED today** — neither body carries a count.
+  **Why this is in scope at all:** the *agent* already receives the number in
+  the inline advisory (`"N edits of this one target (warn bar = N)"`), while
+  **Cray's Telegram ping does not** — the person who has to decide gets less
+  than the process being policed. Measured live s179 (the advisory fired on
+  this PLAN file at 15/15 while the ping shape carried no count).
+  **Scope honesty:** this was raised as *outside* OQ-3 and outside Step 4's
+  original brief; **Cray pulled it in explicitly.** It is the only part of
+  Step 4 that touches the alert surface, and its mutation is: delete the line
+  from one formatter only → (iii) reddens on the mirror, not just (i)/(ii).
 
 ## Out of Scope
 
@@ -676,21 +714,31 @@ into a ping.
 `settings.json` diff ships, (a) is not built, and **this step is no longer
 Cray-gated**. What remains is deterministic-offline:
 
-- `attempted_edits` (b) + `content_hashes` (c) as **additive** entry fields
-  (`from_json` tolerance + the 6 h age-out mean stale schemas self-clear).
+- `attempted_edits` (b) + `content_hashes` (c) as **additive** entry fields,
+  both **`dict[str, int]`** per OQ-3 R2 (`from_json` tolerance + the 6 h
+  age-out mean stale schemas self-clear; `content_hashes` capped at 32 keys).
 - `observe()` — a record-only op beside `increment()` in `_loop_counter.py`
   (`:558-574`), since `increment` couples count+ring.
 - `_handle_write_or_edit` **increments only on (b)/(c), observes otherwise**
-  — this is the whole of AC-7.
+  — this is the whole of AC-7 — passing `result` per OQ-3 R1/R3:
+  `f"repeat×{n}"`, `f"osc×{n}"`, or `""`.
 - `clear_turn_scoped()` wired into the Stop hook's existing reset call:
   `_apply_turn_boundary_reset` (`stop_continuation.py:224-239`, called at
   `:576`), beside the `clear_turn_touched(counter)` at `:237`.
   *(The PLAN's original `stop_continuation.py:539` citation is stale — `:539`
   is now a comment inside the dispatch-verdict branch. Re-verified s179.)*
+- **Both Telegram formatters gain the `count: N/T` line** (OQ-3 R4 / AC-11):
+  `pretooluse_loop_detect.py:_format_message` (`:90-110`, the L1/L4 deny) and
+  `posttooluse_progress_observer.py:_format_message` (`:160-193`, the inline
+  L2/L3 + L1 warn). The second's docstring states it *"Mirrors Step 2's
+  formatter so both … present a consistent shape to Cray"* — so they change
+  **together or the mirror breaks**, and that invariance is itself an AC-11
+  assertion.
 - Update the `test_settings_hook_wiring.py` scope note (`:17-24`) per AC-1(ii).
 
-Tests per **AC-7 and AC-8(i)/(iii)**, RED-first — AC-7 is the regression test
-for the incident series and is the reason this step is still worth building.
+Tests per **AC-7, AC-8(i)/(iii), and AC-11**, RED-first — AC-7 is the
+regression test for the incident series and is the reason this step is still
+worth building.
 
 *Rollback:* revert the PR → touch-counting returns. State self-clears via
 age-out; no migration either direction. **No registration to remove** — the
@@ -777,18 +825,52 @@ deny message and the Telegram ping point at when the guard walls a target.
 - **(c) Drop `result` from the L1 path.** Smallest surface, but deletes a field
   the sibling levels populate, and forecloses (b) later for no gain.
 
-**Recommendation: (b).** The whole PLAN is about making the guard's *unit* mean
-something; leaving the evidence ring mute keeps the diagnosis manual at exactly
-the moment Cray is interrupted. The semantic drift from L2/L3/L4 is real but
-contained — no reader exists to break, and L1 is genuinely measuring a different
-thing (non-progress) than the levels that record outcomes.
+**Recommendation was (b)** — the whole PLAN is about making the guard's *unit*
+mean something; leaving the evidence ring mute keeps the diagnosis manual at
+exactly the moment Cray is interrupted. The semantic drift from L2/L3/L4 is real
+but contained — no reader exists to break, and L1 is genuinely measuring a
+different thing (non-progress) than the levels that record outcomes.
 
-**Cray's call because** it decides what Cray sees in the ring at the moment the
-guard walls, which is a working-experience judgment, not a correctness one — the
-same class as OQ-1's cost/comfort tradeoff. **Step 4's build is blocked on this
-answer**: `_handle_write_or_edit` must pass *something* (or nothing) to
-`_now_action` on the increment paths, and retrofitting the string later means
-re-touching every AC-8 assertion.
+#### OQ-3 → RESOLVED by Cray 2026-07-27 (s179) — (b), with the format corrected
+
+Cray took (b) and ratified four rulings. **The format is NOT the sha1-pointer
+shape originally drafted** — grounding found that shape structurally unable to
+do its job, and Cray took the correction:
+
+**The disqualifying measurement.** The evidence ring is **6 deep**
+(`_loop_counter.py:89`, `MAX_RECENT_ACTIONS = 6`) while the doc-path trip bar is
+**15** (`:100`, `L1_DOC_THRESHOLD = 15`). So when a doc target walls, the ring
+holds the last 6 of 15 increments and **the partner row a `sha1` would point at
+has almost always aged out**. A cross-referential token is evidence only if both
+rows are visible; here they are not. It would spend 16 characters of
+lock-screen width (`pretooluse_loop_detect.py:95` — "so Cray can scan on a phone
+lock-screen preview") to say what the bare word `repeat` already says.
+
+- **R1 — the value is a self-contained COUNT, not a pointer.**
+  `repeat×N` for a (b) hit, `osc×N` for a (c) hit. One row answers "this
+  `old_string` has now been applied N times" with no second row required, and
+  it is half the width.
+- **R2 — `attempted_edits` and `content_hashes` become `dict[str, int]`
+  (`{hash: count}`), not a set / list.** A set cannot carry N. This is a
+  data-shape consequence of R1 and is exactly why OQ-3 blocked the build:
+  retrofitting it later means re-touching every AC-8 assertion. The
+  `content_hashes` cap stays **32/target/turn**, now counted in keys.
+- **R3 — an observed-but-not-counted (forward) edit keeps `result == ""`.**
+  Not `"forward"`. Both Telegram formatters render the bracket **only when
+  `result` is non-empty** (`pretooluse_loop_detect.py:100`,
+  `posttooluse_progress_observer.py:179`), so *the presence of `[...]` is
+  already the signal*. Marking forward edits would put a bracket on all six
+  rows and destroy that signal — strictly more data, strictly less
+  information.
+- **R4 — the Telegram body gains a `count: N/T` line** (see AC-11). Raised as
+  out-of-scope for OQ-3; **Cray pulled it into Step 4.**
+
+**Ruled out, recorded so it is not re-proposed:** putting the literal
+`old_string` text in `result`. It reads far better than any hash, but `result`
+is passed to `_ping_telegram` → `telegram.sh` and **leaves the machine**; the
+formatters truncate `target[:60]` but do **not** truncate `result`, so a long
+match would be emitted whole. Repo content should not exit to a third-party
+message service as a side effect of a loop guard.
 
 ## Verification
 
