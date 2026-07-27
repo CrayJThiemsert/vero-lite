@@ -45,6 +45,7 @@ from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     increment,
     new_counter,
     save_counter,
+    tokenize_bash_command,
 )
 
 Payload = dict[str, Any]
@@ -464,3 +465,80 @@ def test_bypass_permissions_still_denies_at_threshold(stub_env: dict[str, str]) 
     rc, out = _run(payload, stub_env)
     assert rc == 0
     assert _is_deny(out)
+
+
+# --- PLAN-0094 Step 5 (P3) — the `awaiting_ack` marker, write side (AC-9) ---
+#
+# The gate becomes a NARROW state writer here: it appends the denied target to
+# a top-level `awaiting_ack` list so the Stop hook can grant a deterministic,
+# human-in-the-loop exit the agent cannot fake. Read the marker off DISK rather
+# than through the module API -- the persisted shape is the contract the Stop
+# hook consumes, and asserting the JSON keeps this test honest if the
+# dataclass is refactored.
+
+
+def _awaiting_ack(env: dict[str, str]) -> list[str]:
+    """The persisted marker list, or [] when the key is absent."""
+    path = _state_path_from(env)
+    if not path.exists():
+        return []
+    data = json.loads(path.read_text(encoding="utf-8"))
+    raw = data.get("awaiting_ack") or []
+    return [str(t) for t in raw] if isinstance(raw, list) else []
+
+
+def test_deny_records_the_awaiting_ack_marker(stub_env: dict[str, str]) -> None:
+    """A deny must leave a marker the Stop hook can act on."""
+    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, _L1_CODE_DENY)
+    rc, out = _run(
+        {"tool_name": "Write", "tool_input": {"file_path": CODE_TARGET, "content": "x"}},
+        stub_env,
+    )
+    assert rc == 0
+    assert _is_deny(out)
+    assert _awaiting_ack(stub_env) == [CODE_TARGET]
+
+
+def test_repeated_denies_do_not_duplicate_the_marker(stub_env: dict[str, str]) -> None:
+    """The deny re-fires on every retry; the marker must stay a set, not a log."""
+    _seed_counter(_state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, _L1_CODE_DENY)
+    payload = {"tool_name": "Write", "tool_input": {"file_path": CODE_TARGET, "content": "x"}}
+    for _ in range(3):
+        rc, out = _run(payload, stub_env)
+        assert rc == 0
+        assert _is_deny(out)
+    assert _awaiting_ack(stub_env) == [CODE_TARGET]
+
+
+def test_grace_zone_allow_records_no_marker(stub_env: dict[str, str]) -> None:
+    """A warn-stage edit is ALLOWED, so it must not arm the ack exit."""
+    _seed_counter(
+        _state_path_from(stub_env), LoopType.FILE_EDIT, CODE_TARGET, LOOP_TRIGGER_THRESHOLD
+    )
+    rc, out = _run(
+        {"tool_name": "Write", "tool_input": {"file_path": CODE_TARGET, "content": "x"}},
+        stub_env,
+    )
+    assert rc == 0
+    assert out is None
+    assert _awaiting_ack(stub_env) == []
+
+
+def test_l4_deny_does_not_arm_the_l1_ack_exit(stub_env: dict[str, str]) -> None:
+    """Scope guard: the marker drives an L1 reset, so only L1 may write it.
+
+    L4 keeps the flat threshold and has no false-fire series; granting it the
+    ack exit would hand a failing-command loop a reset path this PLAN never
+    priced.
+    """
+    command = "pytest tests/handoffs -q"
+    _seed_counter(
+        _state_path_from(stub_env),
+        LoopType.BASH_PATTERN,
+        tokenize_bash_command(command),
+        LOOP_TRIGGER_THRESHOLD,
+    )
+    rc, out = _run({"tool_name": "Bash", "tool_input": {"command": command}}, stub_env)
+    assert rc == 0
+    assert _is_deny(out)
+    assert _awaiting_ack(stub_env) == []
