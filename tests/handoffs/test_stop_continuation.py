@@ -31,6 +31,7 @@ sys.path.insert(0, str(HOOKS_DIR))
 from _loop_counter import (  # noqa: E402  — sys.path manipulation above
     ActionRecord,
     LoopType,
+    _now_iso,
     counter_key,
     increment,
     load_counter,
@@ -1096,21 +1097,33 @@ ACK_KEY = f"L1:{ACK_TARGET}"
 
 def _seed_ack(state_path: Path, *, touched_this_turn: bool = True) -> None:
     """Seed a denied target: an L1 entry, the ack marker, and (by default) the
-    target recorded as touched this turn -- the sticky case."""
+    target recorded as touched this turn -- the sticky case.
+
+    ``last_updated`` MUST be stamped live, never hardcoded. ``load_counter``
+    runs :func:`prune_stale_entries`, which deletes any entry whose
+    ``last_updated`` is older than ``COUNTER_MAX_AGE_HOURS`` (6 h). A literal
+    date therefore passes only within a six-hour window of the day it was
+    written and fails forever after -- which is exactly what happened here:
+    seeded ``2026-07-27T00:00:00+0000``, green in CI at ~05:16Z, red from
+    06:00Z onward. The failure lands on the two rows that assert the entry
+    SURVIVES, so it reads as "the clear logic is broken" when nothing about
+    the clear logic changed. See ``test_seed_ack_is_stamped_live`` below.
+    """
+    stamp = _now_iso()
     state_path.parent.mkdir(parents=True, exist_ok=True)
     state_path.write_text(
         json.dumps(
             {
                 "session_id": "ack-test",
-                "started_at": "2026-07-27T00:00:00+0000",
+                "started_at": stamp,
                 "counters": {
                     ACK_KEY: {
                         "loop_type": "L1",
                         "target": ACK_TARGET,
                         "count": 9,
                         "last_6_actions": [],
-                        "last_updated": "2026-07-27T00:00:00+0000",
-                        "warned_at": "2026-07-27T00:00:00+0000",
+                        "last_updated": stamp,
+                        "warned_at": stamp,
                     }
                 },
                 "turn_touched": [ACK_TARGET] if touched_this_turn else [],
@@ -1127,6 +1140,25 @@ def _ack_state(state_path: Path) -> tuple[list[str], bool]:
     raw = data.get("awaiting_ack") or []
     marker = [str(t) for t in raw] if isinstance(raw, list) else []
     return marker, ACK_KEY in (data.get("counters") or {})
+
+
+def test_seed_ack_is_stamped_live(tmp_path: Path) -> None:
+    """The seeded entry must survive a real ``load_counter`` -- the guard that
+    keeps this block from silently expiring again.
+
+    This asserts the FIXTURE, not the hook, on purpose. A hardcoded
+    ``last_updated`` is invisible while it is fresh and then reddens two
+    unrelated-looking rows hours later; the failure points at the clear logic
+    rather than at the stamp. Pinning it here means a future hardcode fails
+    HERE, with a message that names the cause.
+    """
+    state = tmp_path / "loop-counter.json"
+    _seed_ack(state)
+    counter = load_counter(state, session_id="ack-test")
+    assert ACK_KEY in counter.counters, (
+        "the seeded L1 entry was pruned on load -- `_seed_ack` must stamp "
+        "`last_updated` live (see COUNTER_MAX_AGE_HOURS in _loop_counter.py)"
+    )
 
 
 def test_fired_pause_clears_the_marker_and_overrides_the_sticky_rule(
