@@ -1,0 +1,21 @@
+# Build-context exclusions for the runtime image (PLAN-0095 Step 2).
+# The floor asserted by tests/docker/test_dockerfile_oracle.py (O-5) is `.env`
+# and `.git`; everything else here is ordinary hygiene and may be extended.
+
+# Version control
+.git
+.gitignore
+
+# Local virtualenv + caches — never belong in a build context
+.venv
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets — CLAUDE.md §8: a secrets file must never enter a build context.
+# `.env.example` is the one tracked `.env*` file, so it is re-included.
+.env
+.env.*
+!.env.example
