@@ -1029,3 +1029,101 @@ Recent Decisions rows rotated because **R2 caps the table at the last 10**: the 
 | 2026-07-23 | **s168 — PLAN-0092 closed 6/6 + archived (#881); the `AT2_ONLY_KINDS` drift fixed with an anti-drift tripwire (#882); SD-D settled — the classifier prompt reworded to a ROUTING SUGGESTION, decision value + reply schema pinned UNCHANGED (#886)** | `c2b92c5` (#886) / `c47232f` (#882) / `b8f011d` (#881) / `docs/plans/done/0092-stop-hook-dispatch-arm-demotion-to-suggestion.md` (COMPLETE 6/6) |
 | 2026-07-24 | **s169 — PLAN-0088 Steps 1–3 BUILT (#890/#891/#893): the cross-run read substrate (AC-1/2/3/11) + reader A2 (`GET /insights/impact`, AC-4/5) + reader A3 (`GET /insights/flow`, AC-6).** Seven read-only async primitives, a seeded 250-run corpus with a plain-Python oracle independent of the SQL under test, two AST guards. `ImpactReport` carries **no** cross-currency total and must never gain one (S7). Suite 3109 → **3150**. Detail: the s169 CF block above | `9e26195` (#893) / `8393af8` (#891) / `b1e12d1` (#890) / `services/db/run_analytics.py` |
 | 2026-07-24 | **s169 — PLAN-0088's design layer ADJUDICATED: SD-1…SD-8 ratified in ONE typed pass (#889); SD-8 = (a) ELIMINATE struck `list_runs_page` + AC-12**, so the substrate ships aggregate-only, `GET /runs` is untouched, and listing pagination moves to the future monotonic-`sequence`-column PLAN. AC-12 kept as a tombstone so AC numbering stays stable (live count 13). Step 0 DISCHARGED → build-ready. Detail: the s169 CF block above | `dd16267` (#889) / `8d1be34` (#888) / `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md` §Surfaced decisions |
+
+---
+
+## Rotated this reconcile (session-179, 2026-07-27 — PLAN-0094 Step 4 re-scoped on its own probe (#933) + the expired-test fix that unblocked main (#934))
+
+The session-174 Current Focus block rotated out under the R2 four-session window, and two session-171/170 Recent Decisions rows fell outside the 10-row cap. **Archival note:** the s174 block's closing sentence — "**AC-1 (ii)** (`PostToolUseFailure` registration) at Step 4" — was **falsified in session 179**; AC-1(ii) is now WITHDRAWN because the event does not fire in this harness build. The block is preserved verbatim as the historical record; the correction lives in the s179 Current Focus block and the In-Flight PLAN-0094 bullet.
+
+### Current Focus block — session 174
+
+> **Session 174, 2026-07-25 (head_commit `6fb89b8` → `a3a9c66`) — the session
+> MS-S1 stopped being an inference appliance and became an administrable host,
+> and the constitution's gated surface was widened to match. Three PRs merged
+> (#916, #917, #918), 0 open. The headline is not "three PRs landed" — it is that
+> a second channel onto the LLM box changed what §8's host-state gate has to
+> cover, and §8's one concrete illustration was pointing at a port.**
+>
+> **(#916 — the channel, and the §4 three-layer split.)** ADR-002 opened TCP
+> 11434 and nothing else, so box-level state on MS-S1 was undiagnosable without
+> walking to the machine. Cray opened a second **LAN-only** channel — OpenSSH on
+> TCP 22, firewall scoped `Domain, Private`, the same scoping as the Ollama rule
+> (it had been `Private`-only, so the box was never publicly exposed). Verified
+> with `ssh -o BatchMode=yes` → `REMOTE_OK` / `CRAY-MS-S1-MAX`; **BatchMode
+> forbids interactive fallback, so that proves publickey auth rather than a
+> silent password prompt** — a distinction a plain `ssh` smoke cannot make. The
+> knowledge then split three ways per the CLAUDE.md §4 placement rule, and **that
+> split is the reusable part**: the **binding rule** stays in `CLAUDE.md` §8, the
+> **setup + four traps + recovery** in `docs/runbooks/ms-s1-ssh-access.md`
+> (Tier 2), and the **task-triggered operating procedure** in a new
+> `.claude/skills/ms-s1-admin/` (Tier 2.6). Neither derived artifact carries the
+> rule — the §4 bright line, since a skill that fails to trigger would silently
+> drop it.
+> **(the trap worth carrying.)** A `$` inside `wsl bash -lc "ssh ms-s1 '...'"`
+> passes through **two** bash layers and is expanded away **with no error** —
+> `Write-Output "got:[$PSVersionTable]"` returned `got:[]`, a silent empty rather
+> than a failure. Escaping survives exactly one layer. The documented answer —
+> write a `.ps1` and pipe it via `powershell -NoProfile -Command -` on stdin, so
+> no shell ever parses the payload — was verified end-to-end. That same probe
+> measured `Elevated=True`: an OpenSSH session for an administrator carries a
+> **full, un-UAC-filtered admin token**. Also a drift fix: `ms-s1-ollama` pointed
+> the binding rule at "the active PLAN / handoff (e.g. PLAN-0020)", which session
+> 62 had already moved into `CLAUDE.md` §8 and which is now archived. Classified
+> per §6 as **`superseded by new info`, not `was an error`**.
+>
+> **(#918 — §8 rescoped, net +1 line.)** The rule's **substance did not change**:
+> "any change to global / host configuration outside the worktree" already gated
+> SSH-borne changes. What failed was the **illustration** — MS-S1 was exemplified
+> as `192.168.1.133:11434`, a *port*, which post-SSH reads as a scope boundary
+> rather than an example, leaving the one concrete anchor a hurried reader takes
+> away as the narrower half of the truth. Three drafting calls: (1) the literal
+> address is **dropped entirely**, not merely the port — §5 Hardware already
+> carries it, and a second copy is the ADR-0017 D6 drift class this edit exists to
+> undo; (2) the verb is **"altering"**, not "any action over SSH" — gating
+> *access* rather than *change* would over-gate read-only diagnostics, a
+> substantive tightening outside the dispatch's remit; (3) an **elevation warning
+> was considered and declined** — it changes no behaviour (§8 already forbids the
+> action without a go, unconditionally) and §8 states no other rule's rationale;
+> the hazard rides on the adjective **"administrative"**. **Honest caveat,
+> ratified knowingly:** this is a hair wider than pure re-illustration — "host
+> *configuration*" arguably did not cover writing an arbitrary file on MS-S1;
+> "the gated surface is the whole host" does. Routing: **Cowork drafted the text**
+> (ADR-009 D1 — Code may not author `CLAUDE.md`, and `plan-drafter` is
+> hook-denied) and corrected Code's reasoning on the elevation fork; **Code R2'd,
+> ruled on two returned flags (both rejected), surfaced the widening, applied and
+> committed** (D2); Cray ratified the exact wording.
+>
+> **(#917 — PLAN-0094 Steps 1+2: the reset that was never wired.)** AC-1 + AC-2,
+> plus AC-3 in part. The subagent-completion L1 reset shipped 2026-06-08 with a
+> handler, green tests and **no event registration that could ever invoke it** —
+> dead for seven weeks while three documents advertised it live; s172 followed
+> that advice and lost most of a session. **Two independent defects, both fixed.**
+> *Route:* a new `SubagentStop` entry, matcher `*`, invoking the observer;
+> `main()` now branches on `hook_event_name` **before** `tool_name`; the dead
+> `("Task","Agent")` branch deleted. *Scope:* the reset clears the completing
+> agent's **own** recorded edits (new additive `subagent_touched:
+> {agent_id: [targets]}` state), not `turn_touched` — restoring the documented
+> turn-scoped form would have created a **self-unlock path**, letting the main
+> agent launder its budget through any zero-edit spawn. Cray ratified that
+> divergence from Lesson #0021 §3 **as a decision**. Class-killer: a new
+> `tests/handoffs/test_settings_hook_wiring.py` parses `settings.json` **as data**
+> and fails on a registration removal alone — it pins the defect class, not the
+> instance.
+> **(evidence.)** RED-first on every new assertion except one, which was **proved
+> non-vacuous by mutation** (reverting to turn-scoped semantics reddens it plus
+> three siblings; the file was restored from a `/tmp` copy, byte-identical, never
+> `git checkout`). Suite **3244 → 3252 passed / 8 skipped** — the exact +8
+> predicted before the run. `mypy` clean (110 files), `ruff` clean (501 files),
+> both run in the **main tree**. Thresholds `6` / `15` **byte-unchanged**. Two ACs
+> deliberately close later, Cray-approved: **AC-1 (ii)** (`PostToolUseFailure`
+> registration) at Step 4, and **AC-3's third surface** (the deny-message anchor in
+> `pretooluse_loop_detect.py`) at Step 3, per D2's do-not-edit-twice instruction.
+> **Steps 3–6 remain unbuilt and are gated on Step 1 soaking on Cray's live loop.**
+
+### Recent Decisions rows — rotated under the 10-row cap
+
+| Date | Decision | Reference |
+|------|----------|-----------|
+| 2026-07-24 | **s171 — PLAN-0088 Step 6 BUILT (#905): the four Group-B primitives + the AC-10 carrier proof, under SD-9 (a2)'s precedent so no new SD was needed.** Reopening the corpus found FOUR shapes it wrote that the engine never does (the AC-2 class), and B3's refusal kind was a BIJECTION of procedure — its oracle could not have failed. Mutation probe 4/4 as predicted. Suite 3178 -> **3189**. Plus **#904**, the STATUS rotate A+C: 61,748 -> 48,920 B, window untouched | `08304a0` (#905 merge, head_commit of record) / `023f24a` / `a3716db` / `d863078` + `96fbdcc` (#904) |
+| 2026-07-24 | **s170 — PLAN-0088 Steps 4 / 4.5 / 5 BUILT (#895/#900/#902); SD-9 RULED (a2) by Cray (#898, surfaced #897).** Readers A4 (audit-readiness, AC-7) + A1 (NL query over runs, AC-8/AC-9), three new primitives; SD-9 settles that the substrate grows in `run_analytics.py` **only** and strikes `agent_id` + `trigger` from v1. Suite 3150 → **3178**. **AC-9b (live MS-S1) OPEN — host-state.** | `5d02538` (#902 merge, head_commit of record) / `46f0ba1` (#898) / `7150c07` (#895) / `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md` §SD-9 |
