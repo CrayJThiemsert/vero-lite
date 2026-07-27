@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-26T21:25:48+07:00
-session: 175
-current_batch: "s175 — 4 PRs, 0 open: #920 pins every vertical's ACTION factory offline; #921 fixes 4 stale cross-refs; #922 PLAN-0094 Step 3 warn-then-deny; #923 makes a masked shell failure unbelievable."
+last_updated: 2026-07-27T08:17:36+07:00
+session: 176
+current_batch: "s176 — 1 PR, 0 open: #925 merges PLAN-0095 (Draft) — make the Docker image build + boot the DB-less OCT demo. Docs-only, 1 file, 702 insertions; nothing built."
 current_actor: code
-blocked_on: "Nothing. main=04c94e4; suite 3296 passed / 8 skipped; mypy 110 files + ruff 501 files clean, run in the main tree; 0 open PRs. Tree clean but for the 2 standing KEEP untracked paths."
-next_action: "PLAN-0094 Step 3 DONE; Steps 4-6 remain — Step 4 needs a settings.json diff, so Cray per-diff approval. Candidate C unblocked by Cray's live-API decision but needs a new PLAN via plan-drafter (G2)."
-head_commit: 04c94e4
-recent_commits: [04c94e4, 6118d24, 3b3b666, 8f868c6, 59c81a6, 924c8d6, 65c6953, ff14137, 3612d33, 1e8e49a]
+blocked_on: "Nothing. main=77fa734; 0 open PRs; CI gate PASSED on 2fb8709 (SHA-verified pre-merge). Docs-only merge — no suite re-run owed or run. Tree clean but for the 2 standing KEEP untracked paths."
+next_action: "Execute PLAN-0095 Steps 1-5 as ONE PR — Step 1's oracle is born-RED, so splitting lands a red suite. Step 6 (live docker build) is host-state, needs a Cray go. Alt track: PLAN-0094 Steps 4-6."
+head_commit: 77fa734
+recent_commits: [77fa734, 2fb8709, 090c2fa, 1c19654, 84f607f, 04c94e4, 6118d24, 3b3b666, 8f868c6, 59c81a6]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,104 @@ recent_commits: [04c94e4, 6118d24, 3b3b666, 8f868c6, 59c81a6, 924c8d6, 65c6953, 
 ---
 
 ## Current Focus
+
+> **Session 176, 2026-07-27 (head_commit `04c94e4` → `77fa734`) — the session
+> that went looking for a routing answer and found the fact-pack was wrong.
+> One PR merged (#925, docs-only), 0 open. PLAN-0095 lands as **Draft** — a
+> plan to make the scaffold-era `Dockerfile` build and boot the synthetic OCT
+> demo with **no database**. Nothing was built: no Dockerfile change, no test,
+> no compose edit, Steps 1–5 unexecuted. The image does **not** boot today.**
+>
+> **(the grounding sweep is the durable half.)** The session opened as a
+> routing question — which of 15 candidate work-items to dispatch. Four Explore
+> agents verified all 15 against code and **five premises carried in from the
+> s175 handoff were wrong**. The load-bearing one: the first-order Docker boot
+> failure is a plain Python import — `importlib.import_module(_VERTICALS_PACKAGE)`
+> at `services/engine/discovery.py:45`, uncaught as the **first line** of
+> `lifespan()` (`services/api/main.py:166`) — **not** the CWD-relative
+> `Path("verticals")` read at `ontology_meta.py:154`, which is real but
+> second-order. Dispatching the drafter on the original fact-pack would have
+> fixed the second-order problem and left the image still unbootable. Also
+> corrected: "8 distinct defects" overstated independence (it is **two** broken
+> `COPY` statements, each with two symptoms, plus hygiene gaps), and a **ninth**
+> defect nobody had counted — `pyproject.toml:7` declares `readme = "README.md"`,
+> never COPY'd, so `uv sync` fails a **second** time even after the
+> package-tree fix.
+>
+> **(a stale gate-route claim in the constitution.)** `CLAUDE.md` §6 says a new
+> PLAN/ADR is PreToolUse-gated for Code **and the in-harness `plan-drafter`**.
+> Measured: `pretooluse_classifier_dispatch.py:301-311` **exempts the
+> `plan-drafter` subagent from the G2 classifier gate by design** (PLAN-0034
+> prong 2, SD-1(a)), short-circuiting *before* the classifier — so it does not
+> depend on MS-S1 being warm. The main Code agent carries no `agent_id` and is
+> still gated, so **G2 is preserved**; only the sentence is wrong. Recorded as a
+> **finding needing a Cowork round-trip** (Code may not author `CLAUDE.md`),
+> alongside the already-tracked `CLAUDE.md:176` dead-link TODO — **not fixed**.
+>
+> **(Cray's ruling reframed the PLAN, it did not just pick options.)** The frame
+> Cray set: the artifact must be shaped so it grows into production **without a
+> rewrite**, under two hosting models (the customer uses an instance we host; we
+> stand up a server at the customer's site) — *"ready for development toward
+> production," not "build production now."* **SD-1 = both** — the standalone
+> image is the artifact, compose is a thin consumer proving it composes with a
+> real Postgres (the "no current consumer" premise died under the production
+> frame). **SD-2 = include `alembic/` + document** — the over-promise concern is
+> answered by documentation, not omission; "one image, different commands"; a
+> separate migration image is the *riskier* shape (version skew). **SD-3 = all
+> four hygiene items IN.** SD-1 and SD-2 **overturned the drafter's own
+> recommendations** and are recorded in-PLAN as **`superseded by new info`**,
+> not `was an error`, with the original analysis preserved as the decision
+> record.
+>
+> **(two R2 rounds — and the drafter caught an error in the reviewer's
+> correction.)** R2 round 1 widened the oracle's AST scan to the verticals tree;
+> the drafter showed a literal `verticals` glob would **break AC-3** — the
+> anti-tautology invariant the same review insisted on (the oracle module must
+> not contain the string at all) — so the correction could not be implemented
+> naively, and it proposed a derived scan set instead. R2 round 2 corrected
+> *that* rule: "top-level packages excluding the test tree" is **three**
+> directories, not the two claimed — `benchmarks/`, `services/`, `tests/`,
+> `verticals/` all carry `__init__.py` — so the behaviour-identity held **by
+> luck, not by construction**, and `benchmarks/` is never COPY'd into the image,
+> making it a latent **false-RED** surface. Replaced with a **transitive closure
+> seeded from the app root**: code that never enters the image cannot fail
+> inside it, so it must not constrain the image.
+>
+> **(the oracle design is the PLAN's real content.)** A test that hardcodes the
+> expected COPY list re-encodes the Dockerfile and passes tautologically
+> forever. Instead **O-1 derives** the required root set from an AST scan and
+> asserts the Dockerfile covers it, with a greppable anti-tautology invariant
+> (AC-3) and a mutation (M-C) that adds a runtime-resolved root with no
+> Dockerfile edit and **must go RED**. O-4/O-5/O-6 carry **binding
+> derivation-status labels** — a presence check presented as derived is an R2
+> reject; `USER` is honestly labelled a presence check because no code source of
+> truth exists. **AC-6 is invariant: no acceptance criterion needs a Docker
+> daemon** (O-6 parses YAML with `ruamel.yaml`, verified a main dependency at
+> `pyproject.toml:23`); every daemon action sits in the optional Cray-gated
+> evidence step.
+>
+> **(the hosting question is surfaced, not drafted.)** *"Customer uses our
+> server"* touches **ADR-002's LAN trust model** —
+> `docs/adr/0002-network-topology.md:76` and `:86` — which defers its own
+> successor **twice** as an unnumbered `ADR-NN`. PLAN-0095 states it can land
+> with that open, because nothing in the image or the compose service selects
+> *where* the image runs. This is now a **live candidate needing its own ADR**.
+>
+> **(one execution trap recorded for whoever builds this.)** The compose
+> sketch's `vero:vero` in-network URL trips the `detect-secrets` pre-commit hook
+> as Basic Auth Credentials and needs an inline `# pragma: allowlist secret` —
+> in the **real `docker-compose.yml` at Step 3**, not only in the PLAN sketch.
+> It is a pattern match, not a leak (`vero:vero` is the already-tracked dev
+> placeholder at `docker-compose.yml:6-7` and `services/api/config.py:39`).
+> Never `--no-verify` (CLAUDE.md §8).
+>
+> **State at close:** `main` `77fa734`, 0 open PRs; tree clean but for the two
+> standing KEEP untracked paths (`.claude/benchmark-results/`,
+> `.claude/launch.json`). CI `gate` PASSED on `2fb8709` in 3m38s and was
+> **SHA-verified** against the PR head before merge. **No suite re-run was owed
+> or performed** — the merge is docs-only (one file, 702 insertions, zero code).
+> **MS-S1 was not contacted; no model warmed or run.** PLAN-0094 Steps 4–6 are
+> untouched and still carry their prior blockers.
 
 > **Session 175, 2026-07-26 (head_commit `a3a9c66` → `04c94e4`) — the session
 > the harness stopped letting a failed command look like a success. Four PRs
@@ -270,26 +368,6 @@ recent_commits: [04c94e4, 6118d24, 3b3b666, 8f868c6, 59c81a6, 924c8d6, 65c6953, 
 > `turn_touched`, and the counter did not clear. Static read and live observation
 > converged.
 
-> **Session 172, 2026-07-25 (head_commit `ca39841` → `9786c63`) — PLAN-0093 COMPLETE
-> 8/8, archived to `done/`. Three PRs merged (#910 plan, #911 build, #913 closeout).**
-> _[Block reconstructed in s173 from git + the s172→s173 handoff, not authored by that
-> session — the narrative is thin on purpose; the archived PLAN is the record.]_
->
-> **(what shipped.)** The LLM-arm degrade disclosure — no silent arm swap. Step 1
-> disclosed which arm phrased an NL answer (`7a852e3`); Step 2 made the rule fail-safe
-> say it is a fail-safe (`b73b19c`); Step 3 + 3b projected the authoring arm over HTTP,
-> including the insights run-corpus path (`e0ed8d1`, `82e518c`); Step 4 fixed
-> `LLM_RETRY_BUDGET` being **inert on the governed path** (`27ef271`). Full record:
-> `docs/plans/done/0093-llm-arm-degrade-disclosure.md`.
->
-> **(what it produced for s173.)** While building Step 1 on
-> `services/engine/nl_query.py` this session hit an L1 deadlock and ran the documented
-> subagent-reset escape verbatim — foreground, target in `turn_touched`. The counter
-> did **not** clear and the next Edit was denied again. It escaped via a
-> match-exactly-once-or-abort Python replacement (Cray-approved after the pause the
-> deny message asks for) plus a normal commit. That observation became the s173 brief
-> and is the empirical half of the F3c finding above.
-
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R7)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split.]_
 
 ## Prior focus (archived)
@@ -309,6 +387,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-27 | **s176 — PLAN-0095 merged as Draft (#925): make the Docker image build + boot the DB-less OCT demo. Nothing built; Steps 1–5 unexecuted.** The grounding sweep (4 Explore agents, 15 items) killed **5 wrong s175-handoff premises** — the first-order boot failure is a plain import (`discovery.py:45`, uncaught at `main.py:166`), **not** the CWD-relative `Path("verticals")`; plus an uncounted **9th** defect (`pyproject.toml:7` `readme` never COPY'd). Cray ruled **SD-1 = both**, **SD-2 = include `alembic/` + document**, **SD-3 = all four** — reframing the PLAN as *ready for development toward production*; SD-1/SD-2 overturned the drafter and are logged `superseded by new info`. Oracle derives the COPY set by **transitive closure from the app root** (not a `verticals` glob — that would break AC-3); **AC-6: no AC needs a Docker daemon**. Finding: **CLAUDE.md §6's plan-drafter gate claim is STALE** — the subagent is exempt by design (`pretooluse_classifier_dispatch.py:301-311`), G2 preserved for Code | `77fa734` (#925 merge, head_commit) / `2fb8709` / `docs/plans/0095-docker-image-boot.md` |
 | 2026-07-26 | **s175 — the harness stopped letting a failed command look like a success.** #923: Lesson #0007's mechanism CORRECTED and reclassified `was an error` (a bare `$` expands one shell layer early; `$?` is not unreadable) + a binding CLAUDE.md §8 rule + a `_shell_hygiene_warning` PostToolUse advisory. #922: PLAN-0094 **Step 3** — warn at T, deny at T+G (9 code / 18 doc), L4 flat 6; AC-3/4/5 closed. #920 pins all six verticals' ACTION factory offline at REGISTRATION; #921 fixes four stale cross-refs. **Cray: demo target = the LIVE-API shape** → Candidate C is the long pole. ADR-009 D1 one-off Code-authors-§8 exception — **not precedent**. Suite 3252 → **3296** | `04c94e4` (#923 merge, head_commit) / `3b3b666` (#922) / `59c81a6` (#921) / `65c6953` (#920) / `docs/lessons/0007-harness-exit-code-artifact.md` |
 | 2026-07-25 | **s174 — MS-S1 stopped being an inference appliance, and CLAUDE.md §8's gated surface was widened to match.** #916 opens OpenSSH on TCP 22, LAN-only (`Domain, Private`), verified with `BatchMode=yes` — which proves publickey auth, not a silent password prompt; the knowledge splits per §4 — rule in §8, how-to in the runbook, procedure in a new `ms-s1-admin` skill. #918 rescopes §8, net +1 line: substance unchanged, its `…:11434` *illustration* was reading as a scope boundary (Cowork drafted → Code R2'd + committed → Cray ratified). #917 lands PLAN-0094 Steps 1+2 — the `SubagentStop` L1 reset, scoped to the completing agent's OWN edits (turn-scoped would be a self-unlock path; Cray ratified the divergence from Lesson #0021 §3); suite 3244 → **3252** | `a3a9c66` (#918 merge, head_commit) / `2cda070` (#917) / `c9050b9` (#916) / `docs/runbooks/ms-s1-ssh-access.md` + `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md` |
 | 2026-07-25 | **s173 — the L1 loop-detect guard: its unit of measurement was wrong and one documented escape was never wired.** #912 bounds the loop-counter state lifetime (age-out 6 h + a session boundary read from the hook payload, which `resolve_session_id` never consulted). #914 lands **PLAN-0094** (Draft) + **Lesson #0033**. Probed live: `PostToolUse` fires only on success, so L1 could not see a failed edit at all — 6 good edits score 6, 6 retries of one broken anchor score 0, so **no threshold separates them** and PLAN-0094 changes none. `_handle_agent_completion` is **dead code** (no `PostToolUse` Task/Agent matcher); the registry row L1, Lesson #0021 §3 and the deny message all still call it live. Cray ratified **OQ-1 `G=3`, OQ-2 full fresh budget, SD-2 subagent-scoped reset** (a decision, not a diff approval — it changes a recorded lesson) | `6fb89b8` (#914 merge, head_commit) / `3383697` + `2d09002` (#912) / `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md` + `docs/lessons/0033-raising-the-threshold-is-not-fixing-the-unit.md` |
@@ -318,10 +397,11 @@ than restated: the Active TODO owns that status.]_
 | 2026-07-24 | **s170 — PLAN-0088 Steps 4 / 4.5 / 5 BUILT (#895/#900/#902); SD-9 RULED (a2) by Cray (#898, surfaced #897).** Readers A4 (audit-readiness, AC-7) + A1 (NL query over runs, AC-8/AC-9), three new primitives; SD-9 settles that the substrate grows in `run_analytics.py` **only** and strikes `agent_id` + `trigger` from v1. Suite 3150 → **3178**. **AC-9b (live MS-S1) OPEN — host-state.** | `5d02538` (#902 merge, head_commit of record) / `46f0ba1` (#898) / `7150c07` (#895) / `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md` §SD-9 |
 | 2026-07-24 | **s169 — PLAN-0088's design layer ADJUDICATED: SD-1…SD-8 ratified in ONE typed pass (#889); SD-8 = (a) ELIMINATE struck `list_runs_page` + AC-12**, so the substrate ships aggregate-only, `GET /runs` is untouched, and listing pagination moves to the future monotonic-`sequence`-column PLAN. AC-12 kept as a tombstone so AC numbering stays stable (live count 13). Step 0 DISCHARGED → build-ready. Detail: the s169 CF block above | `dd16267` (#889) / `8d1be34` (#888) / `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md` §Surfaced decisions |
 | 2026-07-24 | **s169 — PLAN-0088 Steps 1–3 BUILT (#890/#891/#893): the cross-run read substrate (AC-1/2/3/11) + reader A2 (`GET /insights/impact`, AC-4/5) + reader A3 (`GET /insights/flow`, AC-6).** Seven read-only async primitives, a seeded 250-run corpus with a plain-Python oracle independent of the SQL under test, two AST guards. `ImpactReport` carries **no** cross-currency total and must never gain one (S7). Suite 3109 → **3150**. Detail: the s169 CF block above | `9e26195` (#893) / `8393af8` (#891) / `b1e12d1` (#890) / `services/db/run_analytics.py` |
-| 2026-07-23 | **s168 — PLAN-0091 COMPLETE 10/10 + ARCHIVED (#883–#885): closing it exposed that the emitted package could not LOAD and `vero-lite scaffold` wrote NOTHING — both invisible to a green suite (a suite aimed at the library cannot see a dead entry point).** Suite 3083 → 3109; honesty correction: s167's "8/10" was 7/10 | `c2b92c5` (#886 merge, head_commit of record) / `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md` (COMPLETE 10/10) + `services/engine/scaffolder/**` |
 
 ## In-Flight Discussions
 
+- **PLAN-0095 — Draft, merged s176 (#925); Steps 1–5 UNEXECUTED, Step 6 host-state.** Make the scaffold-era `Dockerfile` build and boot the synthetic OCT demo with **no database**. **Nothing is built** — no Dockerfile change, no test, no compose edit; the image does **not** boot today. Root cause is measured, not guessed: the first-order failure is a plain Python import (`importlib.import_module(_VERTICALS_PACKAGE)`, `services/engine/discovery.py:45`, uncaught as the first line of `lifespan()` at `services/api/main.py:166`); the CWD-relative `Path("verticals")` at `ontology_meta.py:154` is real but **second-order**. The defect count is **two broken `COPY` statements** (each with two symptoms) + hygiene gaps + a **ninth** defect found in-session: `pyproject.toml:7` declares `readme = "README.md"`, never COPY'd, so `uv sync` fails a second time even after the package-tree fix. **All three SDs RULED by Cray under a production frame** — *"ready for development toward production," not "build production now,"* across two hosting models (customer uses an instance we host / we stand up a server on-site): **SD-1 = both** (standalone image is the artifact; compose is a thin consumer proving it composes with a real Postgres), **SD-2 = include `alembic/` + document** (one image, different commands; a separate migration image is the riskier shape — version skew), **SD-3 = all four hygiene items IN**. SD-1 + SD-2 overturned the drafter's own recommendations and are in-PLAN as **`superseded by new info`**, not `was an error`, with the original analysis preserved. **The oracle is the PLAN's real content:** O-1 **derives** the required COPY root set by AST **transitive closure seeded from the app root** (a literal `verticals` glob was rejected in R2 — it breaks AC-3, and `benchmarks/` never enters the image, a latent false-RED), with anti-tautology invariant **AC-3** and mutation **M-C** that must go RED; O-4/O-5/O-6 carry binding derivation-status labels (`USER` is honestly a presence check). **AC-6 is invariant: no acceptance criterion needs a Docker daemon** (O-6 parses YAML via `ruamel.yaml`, a main dep at `pyproject.toml:23`); every daemon action sits in the optional Cray-gated evidence step. **Execution trap:** the compose `vero:vero` in-network URL trips `detect-secrets` as Basic Auth Credentials and needs an inline `# pragma: allowlist secret` **in the real `docker-compose.yml` at Step 3** — a pattern match, not a leak (dev placeholder already tracked at `docker-compose.yml:6-7` + `services/api/config.py:39`); never `--no-verify` (CLAUDE.md §8). **Steps 1–5 are ONE PR-sized unit that cannot be split** — Step 1's oracle is deliberately born-RED against the current Dockerfile, so committing it alone lands a red suite. Full record: `docs/plans/0095-docker-image-boot.md`.
+- **Hosting model → ADR-002's LAN trust boundary: a LIVE candidate needing its own ADR (surfaced s176, not drafted).** *"Customer uses our server"* touches ADR-002's LAN trust model — `docs/adr/0002-network-topology.md:76` and `:86` — which defers its own successor **twice** as an unnumbered `ADR-NN`. PLAN-0095 can land with this open, because nothing in the image or the compose service selects *where* the image runs; the question bites when a hosting model is actually chosen. Route: a new ADR via the Cowork/plan-drafter path (G1/G2 — Code may not author it).
 - **PLAN-0094 — Draft; Steps 1–3 BUILT (s174 #917, s175 #922), Steps 4–6 UNBUILT.** The L1 loop-detect restructure: count non-progress instead of touches (P1), warn on the first trip and deny on the second (P2), add an acknowledged-pause exit the agent cannot fake (P3), and wire the subagent-completion reset that had **never been live** (F3c). **Step 1 (F3c) landed:** a `SubagentStop` registration (matcher `*`) plus additive per-`agent_id` `subagent_touched` state, so a completing subagent clears its **own** recorded edits and cannot launder the main agent's budget through a zero-edit spawn. **The soak released Step 3** — Cray reported no anomalies on the live loop. **Step 3 landed (#922, AC-3 final surface / AC-4 / AC-5):** the path-class threshold is now the WARN bar and the deny sits at `T+G` (`G=3`) = **9 code / 18 doc**, L4 untouched at flat 6, `CounterEntry.warned_at` dedupes the warn; the deny message deliberately does **not** name the P3 stop-ack, since P3 ships at Step 5 (test-pinned). **AC-1 (ii)** (`PostToolUseFailure` registration) closes at Step 4. **Ratified inputs are LOCKED:** OQ-1 `G=3`, OQ-2 full fresh budget, and SD-2 — subagent-scoped, per-`agent_id`-keyed reset — ratified as a **decision, not a diff approval**, because it changes what Lesson #0021 §3 recorded as the 2026-06-08 fix. **Every `settings.json` diff needs Cray per-diff approval** (guard self-modification, Lesson #0021 §4). Governance footing: **no ADR amendment** — ADR-0013 row E.4 (`docs/adr/0013-autonomy-axis-relocation.md:90`) specifies the consequence as "pause + Telegram alert", so the hard deny exceeded its own mandate and P2 moves L1 *toward* the ADR. Of the three surfaces that asserted the dead reset path was live, **two were corrected in Step 2** (registry row L1, Lesson #0021 §3) and the third — the deny message in `pretooluse_loop_detect.py` — was rewritten in Step 3, per D2's do-not-edit-twice instruction. All three are now closed. Substrate already shipped in #912; do not re-plan it. Full record: `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md`; the anti-pattern behind it: `docs/lessons/0033-raising-the-threshold-is-not-fixing-the-unit.md`.
 - **PLAN-0093 — COMPLETE 8/8 and ARCHIVED (s172, #913).** The LLM-arm degrade disclosure — no silent arm swap: which arm phrased an NL answer is disclosed, the rule fail-safe says it is a fail-safe, the authoring arm is projected over HTTP (including the insights run-corpus path), and `LLM_RETRY_BUDGET` no longer sits inert on the governed path. No follow-on owed. Full record: `docs/plans/done/0093-llm-arm-degrade-disclosure.md`.
 - **PLAN-0091 — COMPLETE 10/10 and ARCHIVED (s168).** Two follow-ons it named, **neither scheduled**: the **extend shapes** (calm-path + scheduled-variant scaffolding) are **greenfield, not an extension** — the shipped emitters refuse an existing vertical *by construction* and create-only is Cray-ratified SD-2, so this needs a fresh seam spec, not effort; and the census-narrative comment in `tests/api/test_procedures_endpoint.py` is the one counted site the disposer REPORTS rather than rewrites — a human call, left visible on purpose. Full record: `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md`.
@@ -348,6 +428,7 @@ than restated: the Active TODO owns that status.]_
 - [ ] **Custom Postgres image with extensions (pgvector / AGE / pg_trgm) — needs a fresh ADR number + a PLAN; neither drafted.** *[Corrected s141: **PLAN-002 does not exist** ("NOT yet drafted", `docs/plans/done/0005-oct-engine-runtime-layer.md`), and the old "≥ ADR-014" floor is **moot** — ADRs now run to 0032 and `0014-WITHDRAWN.md` exists.]* Context: **`docs/adr/0013-autonomy-axis-relocation.md`** (the floor-bump note) + **`docs/plans/done/0005-*.md`** (trigger: semantic + graph features).
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
 - [ ] **`docs/conventions/git.md` — substance DISCHARGED, one DEAD LINK left, and it needs Cowork.** *[De-duplicated s175: this TODO existed twice — here and as an In-Flight "Convention extraction" bullet; the In-Flight copy is dropped, this row is the single home.]* The extraction's substance is effectively discharged by the **`git-workflow` skill** (`.claude/skills/git-workflow/`, Tier 2.6), so the file may never need to exist. What DOES need fixing: **`CLAUDE.md:176` holds a dead relative link** to the non-existent `docs/conventions/git.md` ("Future canonical: …"). Either extract the file or drop the link — and **either way it is a Cowork round-trip**, since Code may not author `CLAUDE.md` (ADR-009 D1; the s175 #923 exception was scoped to §8 only). *(low priority)*
+- [ ] **`CLAUDE.md` §6's gate-route claim is STALE — needs a Cowork round-trip (found s176, NOT fixed).** §6 "Mechanical overlay" says a new PLAN/ADR is PreToolUse-gated for Code **and the in-harness `plan-drafter`**. Measured: `.claude/hooks/pretooluse_classifier_dispatch.py:301-311` **exempts the `plan-drafter` subagent from the G2 classifier gate by design** (PLAN-0034 prong 2, SD-1(a)) — it short-circuits *before* the classifier, so it does not even depend on MS-S1 being warm. The main Code agent carries no `agent_id` and **is** still gated, so **G2's substance is preserved**; only the sentence is wrong. Same round-trip class as the `CLAUDE.md:176` dead-link row above — Code may not author `CLAUDE.md` (ADR-009 D1; the s175 #923 exception was scoped to §8 only), so batch the two if convenient. *(low priority — a documentation defect, not a guard defect)*
 - [ ] Extract `docs/conventions/hardware.md` from CLAUDE.md (low priority)
 
 ## Next Steps

@@ -1866,3 +1866,30 @@ Rotated because **R2 requires it**, not as a headroom judgement: with the sessio
 > `.claude/benchmark-results/analyze_dump.py` from another workstream — confirmed,
 > prior intact. STATUS 48,441 B, ~700 under soft target. Stop-hook `dispatch`
 > misfired 3× this session (all suggestion-only per s167's ADR, none acted on).
+
+
+---
+
+## Rotated this reconcile (session-176, 2026-07-27 — PLAN-0095 lands as Draft, nothing built, #925)
+
+Current Focus block rotated because **R2 keeps the 4 most-recent sessions**: adding the session-176 block made five, so the oldest (session-172) fell outside the window.
+
+> **Session 172, 2026-07-25 (head_commit `ca39841` → `9786c63`) — PLAN-0093 COMPLETE
+> 8/8, archived to `done/`. Three PRs merged (#910 plan, #911 build, #913 closeout).**
+> _[Block reconstructed in s173 from git + the s172→s173 handoff, not authored by that
+> session — the narrative is thin on purpose; the archived PLAN is the record.]_
+>
+> **(what shipped.)** The LLM-arm degrade disclosure — no silent arm swap. Step 1
+> disclosed which arm phrased an NL answer (`7a852e3`); Step 2 made the rule fail-safe
+> say it is a fail-safe (`b73b19c`); Step 3 + 3b projected the authoring arm over HTTP,
+> including the insights run-corpus path (`e0ed8d1`, `82e518c`); Step 4 fixed
+> `LLM_RETRY_BUDGET` being **inert on the governed path** (`27ef271`). Full record:
+> `docs/plans/done/0093-llm-arm-degrade-disclosure.md`.
+>
+> **(what it produced for s173.)** While building Step 1 on
+> `services/engine/nl_query.py` this session hit an L1 deadlock and ran the documented
+> subagent-reset escape verbatim — foreground, target in `turn_touched`. The counter
+> did **not** clear and the next Edit was denied again. It escaped via a
+> match-exactly-once-or-abort Python replacement (Cray-approved after the pause the
+> deny message asks for) plus a normal commit. That observation became the s173 brief
+> and is the empirical half of the F3c finding above.
