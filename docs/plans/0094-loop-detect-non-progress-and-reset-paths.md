@@ -1,6 +1,6 @@
 # PLAN-0094: L1 loop-detect — count non-progress, warn before denying, restore the reset paths
 
-**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Steps 4 and 6 remain unbuilt.** **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat×N` / `osc×N`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
+**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Step 4 BUILT except AC-11** (s180, PR #937: `309168e`, merge `0a85b21` — **AC-7 and AC-8(i)/(iii) closed**; L1's unit is now non-progress rather than touches, and `clear_turn_scoped()` is wired into the turn boundary). **AC-11 and Step 6 remain unbuilt.** **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat xN` / `osc xN`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
 **Owner:** Claude Code
 **Created:** 2026-07-25
 
@@ -418,7 +418,7 @@ The L1 `count` becomes a count of **non-progress observations**:
   a dict rather than a set **per OQ-3 R2**, because the recorded `result`
   carries the count). A successful Edit whose `old_string` hash is already
   present increments the L1 counter and bumps its own tally, and records
-  `result = f"repeat×{n}"` (**OQ-3 R1**). The same operation re-applied is
+  `result = f"repeat x{n}"` (**OQ-3 R1**). The same operation re-applied is
   churn, not progress. Edge accepted, not fixed: sequentially applying one
   `old_string` to multiple genuine occurrences counts as non-progress —
   mitigations are `replace_all`, distinct context strings, and P2 itself (the
@@ -426,9 +426,27 @@ The L1 `count` becomes a count of **non-progress observations**:
 - **(c) Oscillation** — after each successful Write/Edit, `sha1` of the
   on-disk file content; a hash already seen this turn on this target (the
   file returned to a prior state) increments and records
-  `result = f"osc×{n}"`; otherwise it is recorded at count 1 (additive entry
+  `result = f"osc x{n}"`; otherwise it is recorded at count 1 (additive entry
   field `content_hashes`, likewise a **`dict[str, int]`** per OQ-3 R2, capped
   at **32 keys**/target/turn).
+  **On-disk is now grounded, not merely defaulted (s180).** The s179 handoff
+  left this as the one BLOCKING open item — a successful `Write`'s
+  `tool_response` carries `content` / `originalFile` / `structuredPatch`, so a
+  hermetic payload-derived digest looked available and the next session was to
+  probe `Edit`. It was settled without the probe, from 84 recorded `Edit`
+  results across three sessions: **an `Edit` result carries no `content` key at
+  all** (its keys are `filePath`, `oldString`, `newString`, `replaceAll`,
+  `originalFile`, `structuredPatch`, `userModified`) and **`originalFile` was
+  null in 78 of the 84**, with `structuredPatch` holding 1–2 hunks — a diff, not
+  a state. No post-edit file state is reconstructable from the payload, so the
+  digest must come from disk. *Corroboration for the transcript-as-proxy step:
+  the `Write` keyset measured this way matches the `Write` hook payload
+  measured live in s179, key for key.*
+  The test-hermeticity motive that made the payload attractive is met a better
+  way — the AC-7/AC-8 rows point at `tmp_path` files, so nothing couples to
+  repo content. Reading disk is wrapped fail-open: it runs in the mandatory
+  PostToolUse path of every Write and Edit, where a raise would not cost an
+  oscillation signal but the ability to edit at all.
 - **Distinct successful forward edits score zero**, and record
   **`result == ""`** — not `"forward"` (**OQ-3 R3**: both formatters bracket
   `result` only when non-empty, so an empty value is what keeps `[...]`
@@ -560,13 +578,20 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   **Consequence carried forward: `ActionRecord.result` stays `""` on every L1
   record.** It is the only field on the L1 path with no writer, and D4(a) was
   its only planned one — see the open question at §Open Questions (OQ-3).
-- [ ] **AC-7 — distinct forward progress scores zero (the s168/s172
+- [x] **AC-7 (CLOSED s180) — distinct forward progress scores zero (the s168/s172
   regression test).** Observer test: six successful Write/Edits of one
   target with distinct `old_string`s and advancing content hashes leave
   `count == 0` while `turn_touched` contains the target and the ring buffer
-  holds the actions. **RED today** (count would read 6 — today's unit is the
-  mutation).
-- [ ] **AC-8 (RE-SCOPED s179 — (i)+(iii) stand, (ii) WITHDRAWN) — repeats and oscillation count.** Observer tests: (i) the same
+  holds the actions. ~~**RED today** (count would read 6 — today's unit is the
+  mutation).~~
+  *[Built s180, PR #937 (`309168e`, merge `0a85b21`). RED-first: the row failed
+  `assert 6 == 0` against touch-counting before the change. Every target is a
+  real file under `tmp_path`, never a repo path — (c) reads the file, so
+  pointing it at `docs/STATUS.md` would couple the assertion to that file's
+  live content. Non-vacuity **M-A** (always increment — a whole-feature revert)
+  reddens this row and both AC-8 rows, while the **L2 and L4 rows stay green**,
+  which is the claim that actually needed proving: the blast radius is L1.]*
+- [x] **AC-8 (RE-SCOPED s179, (i)+(iii) CLOSED s180 — (ii) WITHDRAWN) — repeats and oscillation count.** Observer tests: (i) the same
   `old_string` sha1 twice (success path) → `count == 1` after the second;
   ~~(ii) two `PostToolUseFailure`s carrying the same `old_string` →
   `count == 2` (the (a)+(b) dependency, otherwise invisible);~~ (iii) a
@@ -582,14 +607,23 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   `content_hashes` membership check → (iii) reddens; each mutation must
   redden exactly its own row.
   **Extended by OQ-3 (s179) — the recorded `result` is asserted, not just the
-  count.** (i) must additionally assert `result == "repeat×2"` on the
+  count.** (i) must additionally assert `result == "repeat x2"` on the
   incrementing record and that `attempted_edits` is a `dict[str, int]` whose
-  value reached 2; (iii) must assert `result == "osc×2"`. **A third row is
+  value reached 2; (iii) must assert `result == "osc x2"`. **A third row is
   added: an observed-not-counted forward edit records `result == ""`** — the
   R3 assertion, and the one that keeps the Telegram bracket meaningful.
   Non-vacuity for these: hard-code `result=""` on the increment paths → (i)
   and (iii) redden while the `count` assertions stay green, proving the new
   rows test the value and not the counter.
+  *[Built s180, PR #937. Each row isolates ONE signal so the mutations can
+  redden exactly one: (i) advances the content between the two edits so (c)
+  cannot fire, (iii) uses distinct `old_string`s so (b) cannot. All three named
+  mutations behaved as pre-committed — **M-B** (drop the `attempted_edits`
+  check) reddens (i) only, **M-C** (drop `content_hashes`) reddens (iii) only,
+  **M-D** (score correctly but record an empty `result`) reddens both while
+  AC-7 stays green. A fourth row was added beyond the criterion: a payload
+  naming a file absent from disk yields no digest, exits 0, and still records —
+  the fail-open guarantee, which has no test otherwise.]*
 - [x] **AC-9 (CLOSED s177 Step 5) — `awaiting_ack` lifecycle.** Tests across gate + Stop hook: a
   deny writes the marker; a Stop that **fires** (patched classifier →
   `pause`) clears it and resets the target's entry *even though the target
@@ -721,7 +755,7 @@ Cray-gated**. What remains is deterministic-offline:
   (`:558-574`), since `increment` couples count+ring.
 - `_handle_write_or_edit` **increments only on (b)/(c), observes otherwise**
   — this is the whole of AC-7 — passing `result` per OQ-3 R1/R3:
-  `f"repeat×{n}"`, `f"osc×{n}"`, or `""`.
+  `f"repeat x{n}"`, `f"osc x{n}"`, or `""`.
 - `clear_turn_scoped()` wired into the Stop hook's existing reset call:
   `_apply_turn_boundary_reset` (`stop_continuation.py:224-239`, called at
   `:576`), beside the `clear_turn_touched(counter)` at `:237`.
@@ -765,13 +799,15 @@ PR-only). Update `docs/STATUS.md`; `git mv` this PLAN to `done/` only after
 Cray confirms the live-loop soak raised no regression (the guards run on
 Cray's own working loop — the soak *is* part of verification).
 
-## Open Questions — OQ-1/OQ-2 RESOLVED by Cray 2026-07-25 (s173); **OQ-3 OPEN (raised s179)**
+## Open Questions — OQ-1/OQ-2 RESOLVED (s173), OQ-3 RESOLVED (s179); **OQ-4 OPEN (raised s180)**
 
 OQ-1 and OQ-2 were priced as recommended; the values below are **locked** and
 Steps 3 and 5 build to them. Recorded here rather than left open so the
 committed PLAN does not read as awaiting a decision that has been made.
-**OQ-3 is new** — it exists only because D4(a) was withdrawn, and Step 4
-cannot be built without answering it.
+**OQ-3** existed only because D4(a) was withdrawn and Step 4 could not be built
+without answering it; Cray resolved it the same session, and Step 4 built to it.
+**OQ-4 is new and does not block anything** — it asks whether L1 deserves
+investment beyond Step 4, and carries a pre-committed measurement to answer it.
 
 - **OQ-1 → RESOLVED: `G = 3`** (deny at `T+3`). Cray took the recommendation.
 - **OQ-2 → RESOLVED: full fresh budget** after an acknowledged pause (entry
@@ -798,7 +834,7 @@ The original framing of each, retained for the reasoning lineage:
   Cray's call because it sets how much rope a twice-suspect target gets while
   Cray may still be AFK after the ack-turn.
 
-### OQ-3 (OPEN, raised s179) — what writes `ActionRecord.result` on the L1 path now?
+### OQ-3 (RESOLVED s179, BUILT s180) — what writes `ActionRecord.result` on the L1 path now?
 
 **Why this is suddenly a question.** `ActionRecord.result` has never been
 populated on the L1 path (§Context P1, second bullet: `_now_action(tool,
@@ -847,9 +883,17 @@ lock-screen width (`pretooluse_loop_detect.py:95` — "so Cray can scan on a pho
 lock-screen preview") to say what the bare word `repeat` already says.
 
 - **R1 — the value is a self-contained COUNT, not a pointer.**
-  `repeat×N` for a (b) hit, `osc×N` for a (c) hit. One row answers "this
+  `repeat xN` for a (b) hit, `osc xN` for a (c) hit. One row answers "this
   `old_string` has now been applied N times" with no second row required, and
   it is half the width.
+  **ASCII `x`, not the multiplication sign — settled at build time (s180).**
+  ruff `RUF001` rejects `×` as a Latin confusable (measured directly:
+  *"String contains ambiguous `×` (MULTIPLICATION SIGN). Did you mean `x`"*),
+  and `allowed-confusables` in `pyproject.toml` carries only `α`/`β`/`γ` under
+  an explicit PLAN-0019 rationale. Widening a project-wide lint rule to buy one
+  character of lock-screen width was the wrong trade — s179 tried the widening
+  and reverted it. What R1 ratified was a **count**, not a glyph, and the
+  count survives the substitution intact.
 - **R2 — `attempted_edits` and `content_hashes` become `dict[str, int]`
   (`{hash: count}`), not a set / list.** A set cannot carry N. This is a
   data-shape consequence of R1 and is exactly why OQ-3 blocked the build:
@@ -872,6 +916,63 @@ formatters truncate `target[:60]` but do **not** truncate `result`, so a long
 match would be emitted whole. Repo content should not exit to a third-party
 message service as a side effect of a loop guard.
 
+### OQ-4 (OPEN, raised s180 by Cray) — does L1 earn its keep at all?
+
+Not a build blocker; it decides whether L1 gets **further** investment. Cray
+asked it while reviewing AC-7's false-positive rationale: if the guard's whole
+value is the half that AC-7 removes, why keep the mechanism?
+
+**The measured baseline, taken before the Step 4 build** — every session
+transcript in the project directory, **113 sessions, 2026-06-27 → 2026-07-27**:
+
+| | |
+|---|---|
+| L1 **denies** (both wordings: pre-P2 `Loop-detect (…) triggered:` and post-P2 `… DENIED:`) | **0** |
+| L1 **warns** | **3**, all within the final ~2 days |
+| **true positives** (a real loop caught) | **0** |
+
+The three warns fired on `.claude/hooks/stop_continuation.py` (6/6),
+`.claude/hooks/pretooluse_loop_detect.py` (6/6), and this PLAN file (15/15) —
+each a file under sustained legitimate construction during s174–s179, each
+shipped. *(Classified false-positive from context — target under active
+construction, work merged — not by replaying each edit sequence.)*
+
+Two readings that matter more than the average:
+
+1. **All three crossings landed on exactly the old deny bar.** Had P2's grace
+   budget not shipped days earlier they would have been three hard walls,
+   during the most concentrated build sessions of the month. The
+   false-positive rate is **not** flat — it climbs with how much the work
+   concentrates on single files, which is precisely what building
+   infrastructure looks like.
+2. **The guard cannot catch the incident that motivated it.** ADR-013 E.4's
+   trigger is "an agent loops > 6 rounds on the same problem"; the s169 shape
+   (retrying one broken `old_string`) is permanently invisible here per the §D4
+   box. What survives is (b) and (c) — real non-progress signals with, so far,
+   zero observed instances.
+
+**Why it was not resolved by retiring L1 on the spot** (Code's recommendation,
+Cray took it): the *marginal* cost of finishing was lower than the cost of
+retiring. Retiring means an ADR-013 amendment — Cowork-drafted, Cray-ratified —
+plus deleting the code and its test surface; finishing meant AC-7 on top of a
+state layer already merged in #935. And a detector that has been deleted cannot
+be measured, whereas AC-7 changes what the detector *is*: the three firings
+above would not fire under the new unit.
+
+**Pre-committed resolution criterion.** Re-run this measurement after **~20
+sessions** of the post-AC-7 guard. If **true positives are still 0 and there is
+at least one false positive**, dispatch Cowork to draft an ADR-013 amendment
+retiring L1 — noting that **L2/L3/L4 already carry E.4 more faithfully**, since
+they key on "the same *problem*" (same failing test, same error signature, same
+failing command) while L1 keys only on "the same *file*", a distinction
+`_loop_counter.py:105-107` already records in its own rationale.
+
+**Method note for whoever re-runs it:** grep the session transcripts for the
+advisory string `L1 warn on` and for **both** deny wordings. Searching only the
+current wording under-counts — P2 rewrote the deny message wholesale, so the
+pre-P2 form (`triggered:`) has to be recovered from git history, which is how
+the 0 above was established rather than assumed.
+
 ## Verification
 
 - **The offline oracle is the gate** (CLAUDE.md §8): every AC is
@@ -879,11 +980,15 @@ message service as a side effect of a loop guard.
   no MS-S1 involvement anywhere in this PLAN. `tests/handoffs/` verdicts are
   read in the **main tree** (known worktree false-REDs).
 - **Two cheap live checks, both in-worktree and non-host-state, evidence not
-  gate:** (i) the Step 4 `PostToolUseFailure` probe (schema confirmation
-  before building on it); (ii) after Step 3, one deliberate warn-crossing on
+  gate:** ~~(i) the Step 4 `PostToolUseFailure` probe (schema confirmation
+  before building on it)~~ — **(i) RAN in s179 and returned a refutation**
+  (§D4 box), which is what withdrew D4(a); the follow-on probe it staged for
+  the (c) digest source was **not needed** and was never run, because 84
+  recorded `Edit` results settled the question offline (see the (c) bullet
+  under §D4). (ii) after Step 3, one deliberate warn-crossing on
   a scratch file to confirm the advisory reason actually surfaces in the
   agent's context — the channel contract is harness-documented but this
-  project has never used it.
+  project has never used it. **Still unrun.**
 - **Non-vacuity is per-AC and mutation-named** (AC-10): the exact gap this
   PLAN exists to close — green tests over dead wiring — is re-tested against
   itself by AC-1, which fails on registration removal alone, no hook-code
