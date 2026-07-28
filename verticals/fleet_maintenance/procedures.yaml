@@ -382,8 +382,14 @@ procedures:
   #   the routine-PM thread ..... narrative — "ปกติพวกผ้าเบรก ไส้กรอง ผมซื้อเจ๊หงส์กับ ส.เจริญยนต์
   #                               เป็นหลัก" + "เปลี่ยนไส้กรองน้ำมันเครื่องตามระยะ"
   #   100,000 km interval ....... customer answer, PLAN-0089 M-5 Q1 ("เข้าศูนย์ทุกแสนกิโลฯ")
-  #   per-truck due points ...... GUESS — รอแก้ (each truck's last-service odometer has NO
-  #                               narrative source; see data_adapter/synthetic.py)
+  #   per-truck due points ...... DEMO SEED + a real LOAD PATH (PLAN-0096 Step 9 / AC-10). No
+  #                               narrative source carries a km figure, so the fixture values in
+  #                               data_adapter/synthetic.py are seeds — but they are no longer
+  #                               `รอแก้`, because correcting them is no longer a repo edit: the
+  #                               operator's paper PM folder and Wialon export are imported and
+  #                               human-CONFIRMED (pm_import.py -> pm_projection.py), and a
+  #                               confirmed value overlays the seed. Runbook:
+  #                               docs/runbooks/fleet-pm-onboarding.md
   #
   # STATED BUT NOT MODELLED (recorded, never silently dropped — README gaps register): the
   # customer's real tire pain is PER-TIRE ("ผมไม่รู้เลยนะว่าเส้นไหนวิ่งไปกี่กิโล ยางเก่าหายไปไหนหมด")

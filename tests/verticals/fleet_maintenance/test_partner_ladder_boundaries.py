@@ -207,9 +207,19 @@ def test_every_surviving_guess_marker_belongs_to_a_named_later_step() -> None:
     exactly what it was written to do. The anti-rot signal is a failing test, not a comment
     nobody reads, and the update below is the deliberate act it forced.
 
-    ONE stamp survives now: the per-truck PM due points, which Step 9 replaces with the
-    partner's paper PM folder + the Wialon CSV export (AC-10). When that lands, this test
-    fails again and the assertion becomes ``== 0``.
+    **Step 9 landed, and this test failed for the second time — as designed.** The last
+    surviving stamp was the per-truck PM due points, and AC-10 replaced it with a real load
+    path: the paper PM folder + the Wialon CSV export, imported and human-confirmed
+    (``pm_import.py`` -> ``pm_projection.py``). So the assertion is now ``== 0``, which the
+    previous revision of this docstring named in advance as the exact next move. Both of this
+    file's guess stamps are gone, each retired by the step that owned it — `superseded by new
+    info`, not an error in either direction.
+
+    An empty set is the strongest state this tripwire can be in, and also the easiest to
+    weaken by accident, so the two named assertions BELOW outlive it: a re-added stamp for
+    either retired concern fails here even though the count assertion alone would have caught
+    it, because a future step that legitimately adds a NEW stamp would move the count and could
+    otherwise quietly restore an old one in the same edit.
 
     The match is the BARE token, deliberately. A cleverer matcher that exempted "explanatory
     mentions" would be exactly the loophole a stamp could later hide in, so the rule for this file
@@ -219,9 +229,9 @@ def test_every_surviving_guess_marker_belongs_to_a_named_later_step() -> None:
     guess_lines = [
         line for line in _YAML_PATH.read_text(encoding="utf-8").splitlines() if "GUESS" in line
     ]
-    assert len(guess_lines) == 1, guess_lines
-    assert any("per-truck due points" in line for line in guess_lines), guess_lines
-    # Step 4's stamp is gone WITH its fail-open default — asserted here too, so a
-    # re-added default cannot restore the stamp and pass this test by matching the
-    # old expectation.
+    assert len(guess_lines) == 0, guess_lines
+    # Step 9's stamp is gone WITH a real load path behind the value, and Step 4's is gone WITH
+    # its fail-open default. Named individually so that a later step which adds its OWN stamp
+    # (moving the count) cannot restore either of these in the same edit and still pass.
+    assert not any("per-truck due points" in line for line in guess_lines), guess_lines
     assert not any("sourcing-hygiene signal map" in line for line in guess_lines), guess_lines

@@ -19,6 +19,7 @@ from services.db import audit_log as _audit_log  # noqa: F401  (registers audit_
 from services.db import identity as _identity  # noqa: F401  (registers action_identity)
 from services.db import models as _models  # noqa: F401  (registers tables on Base.metadata)
 from services.db import person as _person  # noqa: F401  (registers the shared `person` table)
+from services.db import pm_import as _pm_import  # noqa: F401  (registers pm_import_row)
 from services.db import repair_case as _repair_case  # noqa: F401  (registers repair_case)
 from services.db import (  # noqa: F401  (registers the quote-evidence tables)
     repair_case_evidence as _repair_case_evidence,
