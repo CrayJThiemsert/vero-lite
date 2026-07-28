@@ -1,6 +1,6 @@
 # PLAN-0094: L1 loop-detect — count non-progress, warn before denying, restore the reset paths
 
-**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Step 4 BUILT and MERGED** (s180 — PR #937 `309168e`/merge `0a85b21` closed **AC-7 and AC-8(i)/(iii)**, making L1's unit non-progress rather than touches and wiring `clear_turn_scoped()` into the turn boundary; PR #939 closed **AC-11**, the `count: N/T` line in both Telegram bodies plus the mirror-invariance assertion). **Step 6 EXECUTED s182 — AC-10 CLOSED (all 11 ACs now closed or withdrawn).** The offline gate is green in the main tree, siblings are byte-unchanged, and the **full fresh non-vacuity sweep ran 18/18 clean at Cray's LOCKED full-resweep reading** (see the AC-10 note). **What is still owed is NOT an acceptance criterion:** the `git mv` of this PLAN to `docs/plans/done/` is gated on a **Cray-confirmed live-loop soak** (§Step 6), and the §Verification live-check (ii) — one deliberate warn-crossing on a scratch file — remains unrun. Both are *evidence*, not gates on AC-10, which is why this PLAN can close out while staying in `docs/plans/`. **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat xN` / `osc xN`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
+**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Step 4 BUILT and MERGED** (s180 — PR #937 `309168e`/merge `0a85b21` closed **AC-7 and AC-8(i)/(iii)**, making L1's unit non-progress rather than touches and wiring `clear_turn_scoped()` into the turn boundary; PR #939 closed **AC-11**, the `count: N/T` line in both Telegram bodies plus the mirror-invariance assertion). **Step 6 EXECUTED s182 — AC-10 CLOSED (all 11 ACs now closed or withdrawn).** The offline gate is green in the main tree, siblings are byte-unchanged, and the **full fresh non-vacuity sweep ran 18/18 clean at Cray's LOCKED full-resweep reading** (see the AC-10 note). **The §Verification live-check (ii) RAN s182 and PASSED** — the warn advisory reaches the agent's context, and the crossing incidentally demonstrated Step 4's unit change in the wild (8 write/edit operations scored `count == 6`, not 8) and confirmed the (b)-before-(c) precedence against a probe designed expecting (c). **What is still owed is NOT an acceptance criterion and is now exactly one item:** the `git mv` of this PLAN to `docs/plans/done/` is gated on a **Cray-confirmed live-loop soak** (§Step 6) — evidence, not a gate on AC-10, which is why this PLAN closes out while staying in `docs/plans/`. **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat xN` / `osc xN`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
 **Owner:** Claude Code
 **Created:** 2026-07-25
 
@@ -866,10 +866,11 @@ AC-10 is closed.
 1. **The Cray-confirmed live-loop soak** — gates the `git mv` to `done/` and
    nothing else. It cannot be self-served: the guards run on Cray's own working
    loop, so only Cray can report it.
-2. **The §Verification live-check (ii)** — one deliberate warn-crossing on a
-   scratch file, to confirm the advisory actually reaches the agent's context.
-   Cheap and in-session (the hook is already registered; no restart needed), but
-   it is *evidence*, not an AC.
+2. ~~**The §Verification live-check (ii)**~~ — **DONE s182, PASSED.** One
+   deliberate warn-crossing on a `.py` scratch file: the advisory reached the
+   agent's context, `awaiting_ack` stayed empty (a warn does not arm the ack
+   exit), and the crossing demonstrated Step 4's unit change live — 8
+   write/edit operations scored `count == 6`. Full record in §Verification.
 3. **A judgment call for whoever archives this PLAN: `OQ-4` is OPEN and dated.**
    Its pre-committed criterion is a re-measure "after ~20 sessions" of the
    post-AC-7 guard, with a Cowork-drafted ADR-013 amendment retiring L1 if true
@@ -1068,7 +1069,39 @@ the 0 above was established rather than assumed.
   under §D4). (ii) after Step 3, one deliberate warn-crossing on
   a scratch file to confirm the advisory reason actually surfaces in the
   agent's context — the channel contract is harness-documented but this
-  project has never used it. **Still unrun.**
+  project has never used it. ~~**Still unrun.**~~ **RAN s182 — PASSED, and
+  returned more than it was asked for.**
+  *[The probe: a `.py` scratch file outside the repo (code class, so warn bar
+  `6`, deny bar `9` — margin deliberately preserved), driven by 1 `Write` + 7
+  `Edit`s **inside a single turn**, since `content_hashes` /
+  `attempted_edits` are turn-scoped and `clear_turn_scoped()` would reset them
+  at any Stop. Seven things confirmed, six of them beyond the stated aim:
+  **(1)** the advisory **did** reach the agent's context — the
+  `decision: block` channel works, first use in this project;
+  **(2)** the warn bar read `6`, path-classed correctly;
+  **(3)** the body named the grace correctly ("3 more and the gate denies");
+  **(4)** `warned_at` was stamped, so the dedupe holds the rest of the grace
+  zone silent;
+  **(5)** `awaiting_ack` stayed **EMPTY** — a warn does not arm the ack exit,
+  only a deny does, which is AC-9's scope guard confirmed **live** rather than
+  in-process;
+  **(6) Step 4's unit change, demonstrated in the wild: 8 write/edit
+  operations produced `count == 6`, not 8.** The `Write` and the first `Edit`
+  were distinct forward progress and scored zero (`result == ""`). Under the
+  pre-Step-4 touch-counting unit the same eight operations would have read 8
+  and **denied two operations earlier**;
+  **(7)** the (b)-before-(c) precedence is **real, not just asserted**. The
+  probe was designed expecting (c) oscillation to score, and the ring instead
+  reads `osc x2 · repeat x2 · repeat x2 · repeat x3 · repeat x3 · repeat x4` —
+  once the same `old_string` recurs, (b) claims the row exactly as
+  `_handle_write_or_edit`'s comment says it should ("a re-applied `old_string`
+  will OFTEN also restore a prior content state, and reporting that as
+  oscillation would name the symptom over the cause"). **The prediction was
+  wrong and the code was right** — the design comment now has live behaviour
+  behind it. Tallies corroborate exactly: `attempted_edits` `[3, 4]` for the
+  two `old_string`s, `content_hashes` `[4, 4]` for the two states.
+  **Still owed after this: only the Cray-confirmed live-loop soak**, which
+  gates the `git mv` and nothing else.]*
 - **Non-vacuity is per-AC and mutation-named** (AC-10): the exact gap this
   PLAN exists to close — green tests over dead wiring — is re-tested against
   itself by AC-1, which fails on registration removal alone, no hook-code
