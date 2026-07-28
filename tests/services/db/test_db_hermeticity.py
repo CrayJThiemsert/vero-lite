@@ -42,6 +42,8 @@ _HEAD_TABLES = {
     "pipeline_runs",
     "recommended_action",
     "repair_case",
+    "repair_case_justification",
+    "repair_case_quote",
     "schedule_states",
     "site",
     "step_results",

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -33,11 +34,17 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.api.auth import AuthContext, get_current_principal
 from services.api.config import settings
 from services.api.models.cases import (
+    AddJustificationRequest,
     CaseListResponse,
     CaseResponse,
+    EvidencePackResponse,
+    JustificationResponse,
     OpenCaseRequest,
+    QuoteResponse,
 )
+from services.db.evidence_pack import load_evidence_pack
 from services.db.repair_case import CASE_STATUS_OPEN, RepairCase
+from services.db.repair_case_evidence import RepairCaseJustification, RepairCaseQuote
 from services.db.session import get_session
 
 router = APIRouter(prefix="/api/cases", tags=["repair-cases"])
@@ -74,6 +81,52 @@ async def _load(session: AsyncSession, case_id: str) -> RepairCase:
     if case is None:
         raise HTTPException(status_code=404, detail=f"repair case '{case_id}' not found")
     return case
+
+
+async def _store_upload(
+    file: UploadFile, *, case_id: str, prefix: str, auth: AuthContext, caption: str | None
+) -> dict[str, Any]:
+    """Stream one upload to disk and return its metadata record.
+
+    Shared by the case-photo and quote-attachment routes. Factored out rather than
+    copied because the interesting behaviour here is the FAILURE path — refuse past
+    the ceiling, then delete the partial file — and two copies of that would be two
+    chances for one of them to stop cleaning up.
+    """
+    upload_id = f"{prefix}-{uuid.uuid4().hex[:12]}"
+    suffix = Path(file.filename or "").suffix[:16]
+    relative = Path(case_id) / f"{upload_id}{suffix}"
+    destination = photo_root() / relative
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
+    size = 0
+    limit = settings.repair_case_photo_max_bytes
+    try:
+        with destination.open("wb") as sink:
+            while chunk := await file.read(_CHUNK_BYTES):
+                size += len(chunk)
+                if size > limit:
+                    raise HTTPException(
+                        status_code=413, detail=f"upload exceeds the {limit} byte limit"
+                    )
+                sink.write(chunk)
+    except HTTPException:
+        destination.unlink(missing_ok=True)
+        raise
+
+    entry: dict[str, Any] = {
+        "photo_id": upload_id,
+        "filename": file.filename or f"{upload_id}{suffix}",
+        "content_type": file.content_type or "application/octet-stream",
+        "size_bytes": size,
+        "stored_path": relative.as_posix(),
+        "uploaded_at": datetime.now(UTC).isoformat(),
+    }
+    if caption:
+        entry["caption"] = caption
+    if auth.person_id:
+        entry["uploaded_by"] = auth.person_id
+    return entry
 
 
 @router.post("", response_model=CaseResponse, status_code=201)
@@ -124,41 +177,7 @@ async def attach_photo(
     worse than a failed upload the human can retry.
     """
     case = await _load(session, case_id)
-
-    photo_id = f"photo-{uuid.uuid4().hex[:12]}"
-    suffix = Path(file.filename or "").suffix[:16]
-    relative = Path(case_id) / f"{photo_id}{suffix}"
-    destination = photo_root() / relative
-    destination.parent.mkdir(parents=True, exist_ok=True)
-
-    size = 0
-    limit = settings.repair_case_photo_max_bytes
-    try:
-        with destination.open("wb") as sink:
-            while chunk := await file.read(_CHUNK_BYTES):
-                size += len(chunk)
-                if size > limit:
-                    raise HTTPException(
-                        status_code=413,
-                        detail=f"photo exceeds the {limit} byte limit",
-                    )
-                sink.write(chunk)
-    except HTTPException:
-        destination.unlink(missing_ok=True)
-        raise
-
-    entry: dict[str, Any] = {
-        "photo_id": photo_id,
-        "filename": file.filename or f"{photo_id}{suffix}",
-        "content_type": file.content_type or "application/octet-stream",
-        "size_bytes": size,
-        "stored_path": relative.as_posix(),
-        "uploaded_at": datetime.now(UTC).isoformat(),
-    }
-    if caption:
-        entry["caption"] = caption
-    if auth.person_id:
-        entry["uploaded_by"] = auth.person_id
+    entry = await _store_upload(file, case_id=case_id, prefix="photo", auth=auth, caption=caption)
 
     # Reassign rather than append: SQLAlchemy does not track in-place mutation of a
     # plain JSONB list, so an append would commit nothing and the photo would exist
@@ -189,3 +208,162 @@ async def get_case(
 ) -> CaseResponse:
     """One case by id."""
     return _to_response(await _load(session, case_id))
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0096 Step 3 — the quote evidence pack (AC-4's data half)
+# --------------------------------------------------------------------------- #
+
+
+def _quote_response(quote: RepairCaseQuote) -> QuoteResponse:
+    return QuoteResponse(
+        quote_id=quote.quote_id,
+        case_id=quote.case_id,
+        vendor=quote.vendor,
+        amount_thb=quote.amount_thb,
+        entered_by=quote.entered_by,
+        entered_at=quote.entered_at,
+        note=quote.note,
+        attachment=quote.attachment,
+    )
+
+
+def _justification_response(row: RepairCaseJustification) -> JustificationResponse:
+    return JustificationResponse(
+        justification_id=row.justification_id,
+        case_id=row.case_id,
+        vendor=row.vendor,
+        reason=row.reason,
+        entered_by=row.entered_by,
+        entered_at=row.entered_at,
+    )
+
+
+@router.post("/{case_id}/quotes", response_model=QuoteResponse, status_code=201)
+async def add_quote(
+    case_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    auth: Annotated[AuthContext, Depends(get_current_principal)],
+    vendor: Annotated[str, Form(description="Who quoted")],
+    amount_thb: Annotated[Decimal, Form(description="The quoted figure in THB")],
+    note: Annotated[str | None, Form(description="Optional free text")] = None,
+    entered_by: Annotated[str | None, Form(description="person_id when authn is off")] = None,
+    file: Annotated[
+        UploadFile | None, File(description="The quote document, if it has arrived")
+    ] = None,
+) -> QuoteResponse:
+    """Record one vendor's quote, optionally with its document.
+
+    A multipart form rather than JSON, because the common case is เมย์ attaching the
+    PDF or the photo she was just sent while she keys the amount — one action, one
+    request. The attachment is optional (see the ORM docstring): refusing a quote
+    until the paper arrives would push her back to the notebook this replaces.
+
+    Negative amounts are refused. A negative quote is not a discount, it is a typo or
+    a credit note, and either way it must not reach a DOA ladder that routes on ฿.
+    """
+    await _load(session, case_id)
+    if amount_thb < 0:
+        raise HTTPException(status_code=422, detail="amount_thb must not be negative")
+    if not vendor.strip():
+        raise HTTPException(status_code=422, detail="vendor is required")
+
+    attachment = None
+    if file is not None and file.filename:
+        attachment = await _store_upload(
+            file, case_id=case_id, prefix="quote", auth=auth, caption=None
+        )
+
+    quote = RepairCaseQuote(
+        quote_id=f"quote-{uuid.uuid4().hex[:12]}",
+        case_id=case_id,
+        vendor=vendor.strip(),
+        amount_thb=amount_thb,
+        entered_by=auth.person_id or (entered_by or "").strip() or _UNATTRIBUTED,
+        entered_at=datetime.now(UTC),
+        note=(note or None),
+        attachment=attachment,
+    )
+    session.add(quote)
+    await session.commit()
+    return _quote_response(quote)
+
+
+@router.post("/{case_id}/justifications", response_model=JustificationResponse, status_code=201)
+async def add_justification(
+    case_id: str,
+    req: AddJustificationRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    auth: Annotated[AuthContext, Depends(get_current_principal)],
+) -> JustificationResponse:
+    """Record why this repair could not be three-quote compared (ADR-0034 E-3).
+
+    Append-only: a correction is a NEW entry. The partner's trail is framed as
+    protecting ต้อม and วิรัช — evidence their calls were sound — and a justification
+    that can be quietly rewritten after the fact protects nobody.
+    """
+    await _load(session, case_id)
+    if not req.vendor.strip() or not req.reason.strip():
+        raise HTTPException(
+            status_code=422, detail="both vendor and reason are required for a justification"
+        )
+
+    row = RepairCaseJustification(
+        justification_id=f"just-{uuid.uuid4().hex[:12]}",
+        case_id=case_id,
+        vendor=req.vendor.strip(),
+        reason=req.reason.strip(),
+        entered_by=auth.person_id or (req.entered_by or "").strip() or _UNATTRIBUTED,
+        entered_at=datetime.now(UTC),
+    )
+    session.add(row)
+    await session.commit()
+    return _justification_response(row)
+
+
+@router.get("/{case_id}/evidence", response_model=EvidencePackResponse)
+async def get_evidence_pack(
+    case_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> EvidencePackResponse:
+    """The case's sourcing evidence — facts, not a verdict.
+
+    This is the seam PLAN-0096 Step 4 computes `compliance.three_quote` from. It
+    reports what was recorded and judges nothing, so the ฿30,000 threshold (Q10) can
+    move without changing how evidence is read.
+    """
+    await _load(session, case_id)
+    pack = await load_evidence_pack(session, case_id)
+
+    quotes = list(
+        (
+            await session.execute(
+                select(RepairCaseQuote)
+                .where(RepairCaseQuote.case_id == case_id)
+                .order_by(RepairCaseQuote.entered_at)
+            )
+        ).scalars()
+    )
+    justifications = list(
+        (
+            await session.execute(
+                select(RepairCaseJustification)
+                .where(RepairCaseJustification.case_id == case_id)
+                .order_by(RepairCaseJustification.entered_at)
+            )
+        ).scalars()
+    )
+
+    return EvidencePackResponse(
+        case_id=pack.case_id,
+        quote_count=pack.quote_count,
+        distinct_vendor_count=pack.distinct_vendor_count,
+        vendors=list(pack.vendors),
+        lowest_amount_thb=pack.lowest_amount_thb,
+        has_sole_source_justification=pack.has_sole_source_justification,
+        sole_source_vendor=pack.sole_source_vendor,
+        sole_source_reason=pack.sole_source_reason,
+        attachment_count=pack.attachment_count,
+        quotes=[_quote_response(q) for q in quotes],
+        justifications=[_justification_response(j) for j in justifications],
+    )

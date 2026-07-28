@@ -15,6 +15,7 @@ the trade-off the persona constraints say to refuse by default.
 from __future__ import annotations
 
 from datetime import datetime
+from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
@@ -89,3 +90,113 @@ class CaseListResponse(BaseModel):
 
     cases: list[CaseResponse] = Field(description="The cases, newest-opened first")
     total: int = Field(description="Number of cases returned")
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0096 Step 3 — the quote evidence pack (AC-4's data half)
+# --------------------------------------------------------------------------- #
+
+
+class AddQuoteRequest(BaseModel):
+    """Record one vendor's quote against a case. เมย์ types the amount (Q15)."""
+
+    vendor: str = Field(description="Who quoted — the garage / parts shop / dealer")
+    amount_thb: Decimal = Field(
+        description=(
+            "The quoted figure in THB. Decimal, never float: this is what the DOA "
+            "ladder routes on downstream, and money on an authority threshold is "
+            "exact or it is wrong."
+        )
+    )
+    note: str | None = Field(default=None, description="Optional free text")
+    entered_by: str | None = Field(
+        default=None,
+        description=(
+            "person_id of whoever keyed it. Server-resolved when authentication is "
+            "enabled; the client value is honoured only when it is off."
+        ),
+    )
+
+
+class QuoteResponse(BaseModel):
+    """A recorded quote."""
+
+    quote_id: str = Field(description="Stable id for this quote")
+    case_id: str = Field(description="The case it belongs to")
+    vendor: str = Field(description="Who quoted")
+    amount_thb: Decimal = Field(description="The quoted figure in THB")
+    entered_by: str = Field(description="person_id of whoever keyed it")
+    entered_at: datetime = Field(description="When it was keyed (UTC)")
+    note: str | None = Field(default=None, description="Optional free text")
+    attachment: CasePhoto | None = Field(
+        default=None,
+        description=(
+            "The quote document (PDF / LINE-exported photo / photographed paper), or "
+            "None when the amount was keyed ahead of the paperwork arriving."
+        ),
+    )
+
+
+class AddJustificationRequest(BaseModel):
+    """Record why this repair could not be three-quote compared (ADR-0034 E-3)."""
+
+    vendor: str = Field(description="The sole source being justified")
+    reason: str = Field(
+        description=(
+            "Why, in the operator's own words — rare part, only dealer who stocks it, "
+            "the one shop open at that hour. Nothing parses this; a human reads it."
+        )
+    )
+    entered_by: str | None = Field(
+        default=None, description="person_id; server-resolved when authn is enabled"
+    )
+
+
+class JustificationResponse(BaseModel):
+    """A recorded sole-source justification."""
+
+    justification_id: str = Field(description="Stable id")
+    case_id: str = Field(description="The case it belongs to")
+    vendor: str = Field(description="The sole source being justified")
+    reason: str = Field(description="The written reason")
+    entered_by: str = Field(description="person_id of whoever wrote it")
+    entered_at: datetime = Field(description="When it was written (UTC)")
+
+
+class EvidencePackResponse(BaseModel):
+    """A case's sourcing evidence as FACTS — deliberately not a verdict.
+
+    PLAN-0096 Step 4 turns these into `compliance.three_quote` + `three_quote_basis`
+    against the partner's ฿30,000 threshold. Nothing here decides pass or fail, so
+    that the threshold can move without changing how evidence is read.
+    """
+
+    case_id: str = Field(description="The case")
+    quote_count: int = Field(description="How many quotes are recorded")
+    distinct_vendor_count: int = Field(
+        description=(
+            "How many DIFFERENT vendors those quotes came from. Reported separately "
+            "because three quotes from one vendor is not a price comparison — the "
+            "partner's rule (Q10) is three PLACES."
+        )
+    )
+    vendors: list[str] = Field(description="Vendor names as entered, in entry order")
+    lowest_amount_thb: Decimal | None = Field(
+        default=None, description="Lowest quoted figure, or None when nothing is recorded"
+    )
+    has_sole_source_justification: bool = Field(
+        description="Whether a written sole-source justification exists (ADR-0034 E-3)"
+    )
+    sole_source_vendor: str | None = Field(
+        default=None, description="Vendor named by the most recent justification"
+    )
+    sole_source_reason: str | None = Field(
+        default=None, description="The most recent justification's written reason"
+    )
+    attachment_count: int = Field(description="How many quotes carry a document")
+    quotes: list[QuoteResponse] = Field(
+        default_factory=list, description="The quotes themselves, oldest first"
+    )
+    justifications: list[JustificationResponse] = Field(
+        default_factory=list, description="Every justification, oldest first (append-only)"
+    )
