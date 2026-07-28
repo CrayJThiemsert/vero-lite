@@ -370,6 +370,25 @@ thereby self-limiting; no periodic sweep, no extra process. If a single
 reconcile cannot reach the soft target without pruning *below* the R2 window
 (e.g. one giant new block), the scribe surfaces an SD rather than over-pruning.
 
+**How a rotation must be applied (binding method, added s183).** The slice being
+rotated is identified by its **expected first and last text**, asserted *before*
+anything is written; a mismatch **aborts** and leaves every file untouched.
+Rotation is a two-file transaction — remove from `docs/STATUS.md`, append to
+`docs/status-archive/` — and a half-applied one silently loses history while
+leaving both files individually well-formed. **R4's guard cannot catch this**: it
+is a byte-cap on the archive, so "the block never arrived" and "the block arrived"
+are indistinguishable to it. After the write, verify positively in both
+directions — the rotated text present in the archive **and** absent from STATUS —
+rather than inferring one from the other. Eyeballing a 100-line slice boundary in
+a 57 KB file is not a check.
+
+**Effort note (binding on estimates, not on method).** Writing a new
+Current-Focus block **forces** a rotation, because the R2 window is already full
+at 4 sessions. A STATUS reconcile is therefore **never an XS task**, however
+short the list of defects being fixed: the floor is the rotation transaction plus
+its verification. Measured s183 — a reconcile scoped as "fix 5 stale sentences"
+landed as 4 files / 238 insertions / 138 deletions.
+
 ### R7 — Never cite STATUS by line number (binding)
 
 A tracked artifact **must never cite `docs/STATUS.md` by line number**
@@ -416,6 +435,52 @@ hard-codes these three:
 still a tracked artifact a reader follows, and exempting `done/` would let an
 active PLAN launder a violation simply by being archived.
 
+### R8 — Never cite a PLAN by its pre-archive path (binding)
+
+Completing a PLAN ends in `git mv docs/plans/NNNN-slug.md docs/plans/done/`. That
+one move kills **every** reference to the old path across the repo at once, and
+the rot is invisible: nothing errors, the prose still reads correctly, and a
+reader discovers it only by following the link and landing on nothing.
+
+This is **R7's failure in the opposite direction**. R7 stops artifacts citing
+STATUS by a line number a reconcile will move; R8 stops artifacts citing a PLAN by
+a path archival will move. Both are the same rule underneath — *do not write an
+anchor that rots by construction.*
+
+**The predicate is MOVED, not MISSING** — and that distinction is the whole
+reason the rule is enforceable. Measured on the tree at s183:
+
+| Predicate | Files flagged | Usable as a gate? |
+|---|---|---|
+| "the path does not resolve" | **89** | **No.** Overwhelmingly placeholders (`NNNN-name.md`, `0011-xxx.md`, `x.md`) and forward references to files never written. |
+| "gone from `docs/plans/` **and** present in `docs/plans/done/`" | **29** | **Yes** — every hit a real dead pointer. A placeholder has no twin under `done/`, so it cannot trip. |
+
+**What to write instead:** re-point the reference at `docs/plans/done/<slug>`.
+
+**If you are NARRATING a stale pointer rather than citing one** — a correction
+note, a lesson *about* the rot — name it **descriptively** ("the PLAN-0095
+reference"), never as a literal path. The guard cannot tell narration from
+assertion, so prose about a dead pointer that contains one re-breaks the very
+check it is describing. (Observed s183, twice, in the same session that wrote
+this rule.)
+
+**Enforcement:** `tools/check_plan_archive_refs.py` — deterministic, fail-closed
+at the commit boundary, `always_run` because the violation is authored by moving
+a *different* file than the citer. Fenced code blocks (` ``` `, `~~~`) are
+skipped: a path inside a fence is **data**, not navigation — the measured case is
+a lesson quoting the literal L1 counter key
+`counter["counters"].pop("L1:docs/plans/0010-...")`, where rewriting to `done/`
+would falsify the historical record rather than repair a link.
+
+**Exemptions** — each on principle, not convenience:
+
+| Prefix | Why it is exempt |
+|---|---|
+| `tests/**` | The path is an **argument fed to a hook**, not a link. Several rows assert the *allow* side of a write gate ("`plan-drafter` may write `docs/plans/<x>.md`"), so re-pointing them at `done/` would silently change what the test tests. Tests must also be free to name paths that never exist (`9999-ghost.md`) — that is their input space. |
+| `docs/plans/done/**` | An archived PLAN narrating its own pre-archive path is describing its own history, not pointing at a live file. ~40 archived PLANs do this by construction. |
+| `docs/status-archive/**` | Tier-3 frozen history. Same mandatory reasoning as R7's carve-out: R4 makes archives move-only and never rewritten, so a path frozen inside an archived block must stay exactly as written. |
+| `docs/adr/**` | **TEMPORARY — not a ruling that ADRs may rot.** 8 Accepted ADRs carry pre-archive PLAN references, and `CLAUDE.md`'s G1 gate blocks Code from editing an Accepted ADR's body, so they cannot be repaired from Tier 2. They are queued to ride the parked CLAUDE.md Cowork dispatch. **Remove this prefix in the same change that lands those fixes.** |
+
 ### Responsibility matrix
 
 | Rule | status-scribe | Main Code agent | Pre-commit guard |
@@ -427,6 +492,7 @@ active PLAN launder a violation simply by being archived.
 | R5 surgical reads | **binding contract** | — | — |
 | R6 cadence | per-reconcile | serializes spawns | — |
 | R7 no line-refs | cites by section | reviews diff | **fail on `STATUS.md:<n>`** |
+| R8 no pre-archive PLAN refs | cites `done/` when archived | **re-points citers in the archiving change** | **fail on a moved `docs/plans/<slug>`** |
 
 ### When to deviate
 

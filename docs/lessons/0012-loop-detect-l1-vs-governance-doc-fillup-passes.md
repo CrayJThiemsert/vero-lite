@@ -1,6 +1,6 @@
 # Lesson #12: Loop-detect L1 vs governance-doc fillup passes — batch or surgical-reset, don't full-reset
 
-> **Status:** Codified 2026-05-27 (Session 15b closeout). Pattern first observed live 2026-05-26 Session 14 Phase 2 — `pretooluse_loop_detect.py` denied the 7th successive edit to `docs/plans/0010-step1-message-schema.md` during a Step 6 sign-off pass. Source observation: `docs/research/private/step6-live-ac/scenarioL1-bonus-loop-detect-live-trigger.md`. **Amended 2026-05-29 (vero-bridge Step 2b session) — see §7:** a second, broader failure mode (cross-PR / cross-session accumulation) + the structural fix (commit-boundary reset, PR #84) that makes `git commit` a reliable L1 reset point.
+> **Status:** Codified 2026-05-27 (Session 15b closeout). Pattern first observed live 2026-05-26 Session 14 Phase 2 — `pretooluse_loop_detect.py` denied the 7th successive edit to **PLAN-0010's message-schema plan** during a Step 6 sign-off pass. Source observation: `docs/research/private/step6-live-ac/scenarioL1-bonus-loop-detect-live-trigger.md`. **Amended 2026-05-29 (vero-bridge Step 2b session) — see §7:** a second, broader failure mode (cross-PR / cross-session accumulation) + the structural fix (commit-boundary reset, PR #84) that makes `git commit` a reliable L1 reset point.
 > **Severity:** Low (no data loss; gate behaves correctly per Cray E.4 spec). Friction medium-high if mishandled — wholesale state reset clears L2/L3 progress observations too.
 > **Cross-references:** PLAN-0008 Step 2 (`pretooluse_loop_detect.py` — the L1 deny gate) + Step 3 (`posttooluse_progress_observer.py` — the writer + §7 commit-boundary reset). [[lesson-0014-argv-vs-stdin-contract-drift]] (sibling lesson — Telegram side of the L1 hook; same hook, different failure mode). `.claude/autonomy-triggers.md` row L1. PR #84 (commit-boundary reset fix).
 
@@ -50,7 +50,7 @@ p.write_text(json.dumps(counter, indent=2), encoding="utf-8")
 
 This preserves L2 (test-fail), L3 (error signature), L4 (Bash pattern) counters across the rest of the session — important because those represent real progress observations, not doc-thrash noise.
 
-Validated live 2026-05-26 Session 14 Phase 2 — the 7th edit to `docs/plans/0010-step1-message-schema.md` landed cleanly after a surgical reset.
+Validated live 2026-05-26 Session 14 Phase 2 — the 7th edit to **PLAN-0010's message-schema plan** landed cleanly after a surgical reset.
 
 ### Option C — Pause + reassess (the gate's intended behavior when uncertain)
 

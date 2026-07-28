@@ -103,3 +103,20 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+
+      # Rotation policy R8: no tracked artifact may cite a PLAN by its
+      # PRE-ARCHIVE path. Completing a PLAN ends in `git mv docs/plans/NNNN-*.md
+      # docs/plans/done/`, which kills every reference to the old path at once,
+      # silently — nothing errors and the prose still reads correctly. Same
+      # "anchor rots by construction" failure as R7, opposite direction.
+      # The predicate is MOVED (gone from plans/ AND present in done/), never
+      # MISSING: measured s183, "must resolve" flags 89 files — overwhelmingly
+      # placeholders — while moved-only flags 29, every one a real dead pointer.
+      # always_run because the guard scans the whole tracked tree, and because
+      # the violation is authored by moving a DIFFERENT file than the citer.
+      - id: plan-archive-ref-guard
+        name: PLAN reference guard (R8 — no pre-archive docs/plans/ refs)
+        entry: uv run python tools/check_plan_archive_refs.py
+        language: system
+        always_run: true
+        pass_filenames: false

@@ -3,7 +3,7 @@
 
 This is the machine-checkable counterpart to
 ``docs/conventions/handoff-frontmatter-schema.md`` and codifies D1-D5 of
-PLAN-004 v2 (``docs/plans/0004-handoff-frontmatter-and-dashboard.md``).
+PLAN-004 v2 (``docs/plans/done/0004-handoff-frontmatter-and-dashboard.md``).
 
 Handoff files live under ``.claude/handoffs/session-NN/`` and are
 gitignored by design (Lesson #5 §4). This module and the two CLIs that

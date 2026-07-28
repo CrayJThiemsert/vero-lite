@@ -2,7 +2,7 @@
 """PLAN-0010 loop message schema: parsing + validation (stdlib-only).
 
 This is the machine-checkable counterpart to
-``docs/plans/0010-step1-message-schema.md`` and codifies §2 (filename
+``docs/plans/done/0010-step1-message-schema.md`` and codifies §2 (filename
 pattern), §3 (frontmatter), §4 (body sections), and the
 schema-version-1 fail-closed rule (§3 "Schema-version compatibility").
 

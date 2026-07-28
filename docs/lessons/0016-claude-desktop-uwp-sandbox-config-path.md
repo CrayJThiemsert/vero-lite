@@ -114,7 +114,7 @@ For Phase 1 of PLAN-0012 (Code-side server + Chat-client transport), the deploym
 ## 7. Related artifacts
 
 - `docs/research/private/2026-05-28-oq-b-chat-mcp-spawn-probe.md` §1.1 (UWP sandbox path discovery), §4.1 (this lesson's origin) — gitignored research note
-- `docs/plans/0012-vero-bridge.md` §Open Questions OQ-B — resolved YES contingent on this lesson's mitigations being followed
+- `docs/plans/done/0012-vero-bridge.md` §Open Questions OQ-B — resolved YES contingent on this lesson's mitigations being followed
 - `.claude/handoffs/session-20/2026-05-28-1025-code-session21-midflight.md` §1 "Claude Desktop UWP sandbox" — first written-down articulation of the path (mid-flight working note; this lesson is the codified version)
 - `docs/lessons/0013-claude-desktop-process-env-cache-secret-rotation.md` — sibling Desktop-runtime-context lesson
 
