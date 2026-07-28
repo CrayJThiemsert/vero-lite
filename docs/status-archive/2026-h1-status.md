@@ -1240,3 +1240,111 @@ The session-174 Current Focus block rotated out under the R2 four-session window
 | Date | Decision | Reference |
 |------|----------|-----------|
 | 2026-07-25 | **s171 — PLAN-0088 COMPLETE, 13 live ACs, archived to `done/` (#908).** AC-9b BUILT + PASSED (#907): live translate/phrase stages wired (reusing `nl_query`); one MS-S1 `gpt-oss:20b` smoke → grounded count 120 = the seeded corpus. A test premised on an unwired seam RAN the model twice unasked → a socket-level `_no_outbound_network` guard now makes an off-box call impossible. Suite 3189 → **3203/8** | `ca39841` (#908 merge, head_commit) / `c21c0aa` + `e443696` (#907) / `docs/plans/done/0088-*.md` |
+
+## Rotated this reconcile (session-181, 2026-07-28 — CLAUDE.md full slim landed (#941): footer changelog retired to git history, §6 compressed)
+
+### Current Focus block — rotated under the R2 four-session window
+
+> **Session 176, 2026-07-27 (head_commit `04c94e4` → `77fa734`) — the session
+> that went looking for a routing answer and found the fact-pack was wrong.
+> One PR merged (#925, docs-only), 0 open. PLAN-0095 lands as **Draft** — a
+> plan to make the scaffold-era `Dockerfile` build and boot the synthetic OCT
+> demo with **no database**. Nothing was built: no Dockerfile change, no test,
+> no compose edit, Steps 1–5 unexecuted. The image does **not** boot today.**
+>
+> **(the grounding sweep is the durable half.)** The session opened as a
+> routing question — which of 15 candidate work-items to dispatch. Four Explore
+> agents verified all 15 against code and **five premises carried in from the
+> s175 handoff were wrong**. The load-bearing one: the first-order Docker boot
+> failure is a plain Python import — `importlib.import_module(_VERTICALS_PACKAGE)`
+> at `services/engine/discovery.py:45`, uncaught as the **first line** of
+> `lifespan()` (`services/api/main.py:166`) — **not** the CWD-relative
+> `Path("verticals")` read at `ontology_meta.py:154`, which is real but
+> second-order. Dispatching the drafter on the original fact-pack would have
+> fixed the second-order problem and left the image still unbootable. Also
+> corrected: "8 distinct defects" overstated independence (it is **two** broken
+> `COPY` statements, each with two symptoms, plus hygiene gaps), and a **ninth**
+> defect nobody had counted — `pyproject.toml:7` declares `readme = "README.md"`,
+> never COPY'd, so `uv sync` fails a **second** time even after the
+> package-tree fix.
+>
+> **(a stale gate-route claim in the constitution.)** `CLAUDE.md` §6 says a new
+> PLAN/ADR is PreToolUse-gated for Code **and the in-harness `plan-drafter`**.
+> Measured: `pretooluse_classifier_dispatch.py:301-311` **exempts the
+> `plan-drafter` subagent from the G2 classifier gate by design** (PLAN-0034
+> prong 2, SD-1(a)), short-circuiting *before* the classifier — so it does not
+> depend on MS-S1 being warm. The main Code agent carries no `agent_id` and is
+> still gated, so **G2 is preserved**; only the sentence is wrong. Recorded as a
+> **finding needing a Cowork round-trip** (Code may not author `CLAUDE.md`),
+> alongside the already-tracked `CLAUDE.md:176` dead-link TODO — **not fixed**.
+>
+> **(Cray's ruling reframed the PLAN, it did not just pick options.)** The frame
+> Cray set: the artifact must be shaped so it grows into production **without a
+> rewrite**, under two hosting models (the customer uses an instance we host; we
+> stand up a server at the customer's site) — *"ready for development toward
+> production," not "build production now."* **SD-1 = both** — the standalone
+> image is the artifact, compose is a thin consumer proving it composes with a
+> real Postgres (the "no current consumer" premise died under the production
+> frame). **SD-2 = include `alembic/` + document** — the over-promise concern is
+> answered by documentation, not omission; "one image, different commands"; a
+> separate migration image is the *riskier* shape (version skew). **SD-3 = all
+> four hygiene items IN.** SD-1 and SD-2 **overturned the drafter's own
+> recommendations** and are recorded in-PLAN as **`superseded by new info`**,
+> not `was an error`, with the original analysis preserved as the decision
+> record.
+>
+> **(two R2 rounds — and the drafter caught an error in the reviewer's
+> correction.)** R2 round 1 widened the oracle's AST scan to the verticals tree;
+> the drafter showed a literal `verticals` glob would **break AC-3** — the
+> anti-tautology invariant the same review insisted on (the oracle module must
+> not contain the string at all) — so the correction could not be implemented
+> naively, and it proposed a derived scan set instead. R2 round 2 corrected
+> *that* rule: "top-level packages excluding the test tree" is **three**
+> directories, not the two claimed — `benchmarks/`, `services/`, `tests/`,
+> `verticals/` all carry `__init__.py` — so the behaviour-identity held **by
+> luck, not by construction**, and `benchmarks/` is never COPY'd into the image,
+> making it a latent **false-RED** surface. Replaced with a **transitive closure
+> seeded from the app root**: code that never enters the image cannot fail
+> inside it, so it must not constrain the image.
+>
+> **(the oracle design is the PLAN's real content.)** A test that hardcodes the
+> expected COPY list re-encodes the Dockerfile and passes tautologically
+> forever. Instead **O-1 derives** the required root set from an AST scan and
+> asserts the Dockerfile covers it, with a greppable anti-tautology invariant
+> (AC-3) and a mutation (M-C) that adds a runtime-resolved root with no
+> Dockerfile edit and **must go RED**. O-4/O-5/O-6 carry **binding
+> derivation-status labels** — a presence check presented as derived is an R2
+> reject; `USER` is honestly labelled a presence check because no code source of
+> truth exists. **AC-6 is invariant: no acceptance criterion needs a Docker
+> daemon** (O-6 parses YAML with `ruamel.yaml`, verified a main dependency at
+> `pyproject.toml:23`); every daemon action sits in the optional Cray-gated
+> evidence step.
+>
+> **(the hosting question is surfaced, not drafted.)** *"Customer uses our
+> server"* touches **ADR-002's LAN trust model** —
+> `docs/adr/0002-network-topology.md:76` and `:86` — which defers its own
+> successor **twice** as an unnumbered `ADR-NN`. PLAN-0095 states it can land
+> with that open, because nothing in the image or the compose service selects
+> *where* the image runs. This is now a **live candidate needing its own ADR**.
+>
+> **(one execution trap recorded for whoever builds this.)** The compose
+> sketch's `vero:vero` in-network URL trips the `detect-secrets` pre-commit hook
+> as Basic Auth Credentials and needs an inline `# pragma: allowlist secret` —
+> in the **real `docker-compose.yml` at Step 3**, not only in the PLAN sketch.
+> It is a pattern match, not a leak (`vero:vero` is the already-tracked dev
+> placeholder at `docker-compose.yml:6-7` and `services/api/config.py:39`).
+> Never `--no-verify` (CLAUDE.md §8).
+>
+> **State at close:** `main` `77fa734`, 0 open PRs; tree clean but for the two
+> standing KEEP untracked paths (`.claude/benchmark-results/`,
+> `.claude/launch.json`). CI `gate` PASSED on `2fb8709` in 3m38s and was
+> **SHA-verified** against the PR head before merge. **No suite re-run was owed
+> or performed** — the merge is docs-only (one file, 702 insertions, zero code).
+> **MS-S1 was not contacted; no model warmed or run.** PLAN-0094 Steps 4–6 are
+> untouched and still carry their prior blockers.
+
+### Recent Decisions rows — rotated under the 10-row cap
+
+| Date | Decision | Reference |
+|------|----------|-----------|
+| 2026-07-25 | **s172 — PLAN-0093 COMPLETE 8/8, archived to `done/` (#913): the LLM-arm degrade disclosure, no silent arm swap.** Four steps — disclose which arm phrased an NL answer, make the rule fail-safe say it is a fail-safe, project the authoring arm over HTTP (incl. the insights run-corpus path), and fix `LLM_RETRY_BUDGET` being **inert on the governed path**. Its L1 deadlock on `services/engine/nl_query.py` — where the documented subagent-reset escape was run verbatim and did **not** clear the counter — became the s173 brief and the empirical half of that finding | `9786c63` (#913 merge) / `55d2007` (#911) / `30285bc` (#910) / `docs/plans/done/0093-llm-arm-degrade-disclosure.md` |
