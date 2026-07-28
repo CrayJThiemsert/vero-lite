@@ -186,7 +186,15 @@ matrix's data half.
 
 The evidence feed computes `compliance.three_quote` per ADR-0034 D4: pass ⇔ amount ≤ ฿30,000
 (typed fleet-side config with Q10 provenance — NOT an engine field, NOT in rule prose) OR
-`quote_count ≥ 3` OR sole-source justification logged; stamps `three_quote_basis`. **Remove** the
+**`distinct_vendor_count ≥ 3`** OR sole-source justification logged; stamps `three_quote_basis`.
+
+> **Amended 2026-07-28 (Cray, typed).** This step originally read `quote_count ≥ 3`. Step 3's
+> evidence pack surfaced that three quotes from the SAME garage — a revision, a re-quote, a second
+> phone call — would satisfy that, and the partner's Q10 rule is "สามเจ้า": three *places*. Counting
+> raw quotes would let a repair that was never price-compared satisfy a rule he adopted after being
+> defrauded on parts, which is the hollow-compliance shape the gate exists to prevent. The pack
+> reports both numbers; the gate reads `distinct_vendor_count`, and the audit records both so the
+> partner can see "3 ใบ 2 ร้าน" when a case is blocked. **Remove** the
 reshape `default: {compliance: {three_quote: true}}` — a case-fed breach row always carries the
 computed map, and a missing map now fails CLOSED at the gate (`RuleGateError`), which is correct
 (wiring error, not a pass). Rewrite the rule's authored `spec` prose to name both evidence paths,

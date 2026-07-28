@@ -127,13 +127,25 @@ def _donor_ontology() -> dict:
 # --- AC-7: the diff-oracle --------------------------------------------------
 
 
+#: Files the DONOR has grown since the PLAN-0086 scaffold measurement, which the
+#: Tier-1 scaffolder does not emit and should not. Named individually, with the
+#: reason, so this stays a diff-oracle: an UNEXPLAINED new file still fails here.
+#:
+#: * ``sourcing.py`` — PLAN-0096 Step 4. One operator's ฿ threshold and vendor-count
+#:   rule, typed in the vertical that owns them. A scaffolder cannot invent a
+#:   customer's sourcing policy, and a template that shipped a default one would be
+#:   handing every new vertical a governance rule nobody authored.
+_POST_SCAFFOLD_DONOR_FILES = frozenset({"sourcing.py"})
+
+
 def test_same_file_set_as_the_donor(regenerated: Path) -> None:
-    """The package shape matches; only the generated/ dir differs (codegen output)."""
+    """The package shape matches; only the generated/ dir and the named
+    post-scaffold additions differ."""
     donor_files = {
         p.relative_to(DONOR).as_posix()
         for p in DONOR.rglob("*")
         if p.is_file() and "generated" not in p.parts and p.suffix in {".py", ".md"}
-    }
+    } - _POST_SCAFFOLD_DONOR_FILES
     regen = regenerated / "verticals" / "fleet_regen"
     regen_files = {
         p.relative_to(regen).as_posix()
