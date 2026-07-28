@@ -135,8 +135,16 @@ Evidence-backed (LOCKED by the dispatch unless marked ⊕ = drafter addition):
   `spec.py:1028`; ADR-0034 D4)
 - ❌ ⊕ LINE inbound (bot receiving messages / LINE-photo auto-ingest) — notify is outbound-only;
   quote photos arrive via เมย์'s upload in the case UI
-- ❌ ⊕ Any new `PipelineRunStatus` member or DB migration (ADR-0034 D3/Alt-6 — Text status +
-  JSONB audit suffice)
+- ❌ ⊕ Any new `PipelineRunStatus` member (ADR-0034 D3/Alt-6 — Text status + JSONB audit suffice).
+  **Amended 2026-07-28 (Cray, typed):** this item originally also read "or DB migration". It was a
+  ⊕ drafter addition (not dispatch-LOCKED) whose parenthetical cites ADR-0034 D3/Alt-6 — which is
+  about the **E-2 ratification status**, i.e. Step 5. Read as a blanket Phase-1 ban it would have
+  forced repair cases into a file store or memory, and a case that does not survive a restart
+  cannot support "capture from minute 1" (AC-3) or a KPI that must answer for every baht. Cray was
+  shown both readings and ratified the narrow one: **Step 2 adds the `repair_case` table +
+  `alembic 0013`.** The ban still binds where it was aimed — Step 5 adds NO `PipelineRunStatus`
+  member and NO migration. Naming discipline (ADR-006 Rule of Three, PLAN-0089): the table is
+  `repair_case`, not `case`, because exactly one vertical needs it today.
 
 ## Steps
 

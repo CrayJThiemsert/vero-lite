@@ -14,7 +14,11 @@
     E: { key: 'E', label: 'Build a Vertical', icon: 'spark', mod: () => O.ViewIntake },
     F: { key: 'F', label: 'Procedures', icon: 'receipt', mod: () => O.ViewProcedures },
     G: { key: 'G', label: 'Governance Moment', icon: 'spark', mod: () => O.ViewHero },
-    H: { key: 'H', label: 'Monitor', icon: 'gauge', mod: () => O.ViewMonitor }
+    H: { key: 'H', label: 'Monitor', icon: 'gauge', mod: () => O.ViewMonitor },
+    // PLAN-0096 Step 2: the minute-1 capture surface. Built for a phone, not this
+    // desk console — it lives here so the pilot has ONE app, but it is the only
+    // view whose layout assumes a thumb.
+    I: { key: 'I', label: 'Open a Case', icon: 'spark', mod: () => O.ViewCase }
   };
 
   let stripEl, metaChipsEl, tabsEl, containers = {};

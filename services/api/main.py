@@ -16,6 +16,7 @@ from services.api.models.health import HealthResponse
 from services.api.routers.actions import router as actions_router
 from services.api.routers.admin import router as admin_router
 from services.api.routers.audit import router as audit_router
+from services.api.routers.cases import router as cases_router
 from services.api.routers.demo import router as demo_router
 from services.api.routers.insights import router as insights_router
 from services.api.routers.intake import router as intake_router
@@ -229,6 +230,7 @@ app.include_router(actions_router)
 app.include_router(query_router)
 app.include_router(admin_router)
 app.include_router(audit_router)
+app.include_router(cases_router)
 app.include_router(intake_router)
 app.include_router(procedures_router)
 app.include_router(procedure_draft_router)

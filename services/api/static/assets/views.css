@@ -670,3 +670,52 @@ select.pv-edit { height: 26px; cursor: pointer; }
   .pv-step-desc, .pv-facets { margin-left: 0; padding-left: 0; }
   .pv-zones { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   View I — Open a Case (PLAN-0096 Step 2 / AC-3).
+
+   Mobile-first in the literal sense: this is the ONE view whose primary device is
+   a phone held one-handed at the roadside, so it is a single column with 16px+
+   inputs (iOS zooms the page on focus below 16px, which on a hard shoulder means
+   fighting the layout while a driver waits) and 48px touch targets. It reads as a
+   form, not a console: no hover states, nothing that needs a cursor.
+   ============================================================ */
+.case-wrap { max-width: 560px; margin: 0 auto; padding: 16px 14px 40px; }
+.case-head h2 { margin: 4px 0 2px; font-size: 20px; }
+.case-head h3 { margin: 24px 0 8px; font-size: 15px; opacity: .8; }
+.case-sub { margin: 0 0 14px; font-size: 13px; opacity: .7; line-height: 1.5; }
+
+.case-form { display: flex; flex-direction: column; gap: 6px; }
+.case-label { font-size: 13px; opacity: .75; margin-top: 10px; }
+.case-input {
+  width: 100%; box-sizing: border-box; padding: 12px;
+  font: inherit; font-size: 16px;              /* >=16px: no iOS focus zoom */
+  min-height: 48px;                            /* thumb-sized target */
+  border-radius: 8px; border: 1px solid var(--line, #2a3242);
+  background: var(--panel, #131824); color: inherit;
+}
+textarea.case-input { min-height: 76px; resize: vertical; }
+.case-submit {
+  margin-top: 18px; padding: 15px; min-height: 52px;
+  font: inherit; font-size: 16px; font-weight: 600;
+  border: 0; border-radius: 8px; cursor: pointer;
+  background: var(--accent, #4d8df0); color: #fff;
+}
+.case-submit:disabled { opacity: .55; cursor: default; }
+
+.case-msg:empty { display: none; }
+.case-msg { margin-top: 12px; padding: 11px 12px; border-radius: 8px; font-size: 14px; line-height: 1.5; }
+.case-msg.is-ok { background: rgba(70,179,119,.14); border: 1px solid rgba(70,179,119,.45); }
+.case-msg.is-err { background: rgba(224,86,86,.13); border: 1px solid rgba(224,86,86,.45); }
+
+.case-list { display: flex; flex-direction: column; gap: 8px; }
+.case-empty { font-size: 13px; opacity: .6; padding: 10px 2px; }
+.case-row {
+  padding: 11px 12px; border-radius: 8px;
+  border: 1px solid var(--line, #2a3242); background: var(--panel, #131824);
+}
+.case-row-main { display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+.case-desc { font-size: 13px; opacity: .8; }
+.case-row-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; font-size: 11px; opacity: .6; }
+.case-status { text-transform: uppercase; letter-spacing: .04em; }
+.case-empty.is-err { color: #e05656; opacity: .95; }
