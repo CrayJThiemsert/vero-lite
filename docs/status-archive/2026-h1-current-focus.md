@@ -2346,3 +2346,171 @@ dropped in favour of section headings — one had already rotted onto an unrelat
 > live-check (ii) — one deliberate warn-crossing on a scratch file, to confirm
 > the advisory reaches the agent's context — and a Cray-confirmed live-loop
 > soak, both gating Step 6.
+
+
+<!-- Current-Focus blocks rotated out of docs/STATUS.md by the s187 reconcile (R2: the 4-most-recent-session window) -->
+
+> **Session 183, 2026-07-28 (head_commit `1d0649f` → `5d64a7d`) — the session
+> the gate that records nothing turned out not to be broken. **PLAN-0094 is
+> ARCHIVED** — Cray released the live-loop soak — and the `evaluations: 0`
+> finding carried out of s182 is **diagnosed, not guessed**: the goal gate's
+> most-travelled outcome is its least observable one.**
+>
+> **(the soak — released, and recorded as what it is.)** The `git mv` to
+> `done/` was gated on one thing no session can self-serve: the L1 guards run
+> on **Cray's own working loop**, so only Cray can report whether the new
+> non-progress unit misbehaved. Asked directly, Cray reported **no anomalies**
+> across the sessions run since Step 4 landed (s180). That is the whole of the
+> evidence — a negative report on a live loop, **not a test run** — and it is
+> written into the archived PLAN in those terms rather than dressed up as a
+> gate artifact. **OQ-4 was re-homed to an Active TODO in the same change**,
+> exactly as §Step 6 demanded; it is not buried in `done/`.
+>
+> **(the goal-gate finding — the mechanism is FINE; the observability is not.)**
+> s182 closed with `.claude/state/goal.json` sitting `status: active` and
+> `evaluations: 0` across many Stops, cause unestablished. Four measurements,
+> each fresh on disk:
+> **(1)** `save_goal()` serializes with `sort_keys=True`
+> (`_goal_state.py:406`) but the on-disk key order is `schema_version, goal,
+> source, …` — **not alphabetical**, so that function had **never once written
+> the file**. **(2)** An offline probe replayed `run_goal_gate({})` against a
+> **copy** (via `CLAUDE_GOAL_PATH`, so the evidence artifact was never
+> touched): it imported, parsed all 8 criteria, ran all 4 checks green,
+> dispatched, and **wrote** — `evaluations 0 → 1`. **The gate works today.**
+> **(3)** C1–C4 complete in **32 s** against the harness's **180 s** kill on
+> `stop_continuation.py` (`settings.json:80`), so the timeout theory is
+> **refuted**, not merely doubted. **(4)** Reading the code closes it:
+> `_failing_consequence` under `enforce: false` pings Telegram and
+> `return None` — **no `record_evaluation`, no `save_goal`**
+> (`_goal_gate.py:440-446`) — and *any* failing check routes there
+> (`:491-494`). s182 spent its session running an 18-mutation sweep, in which
+> C1 (`pytest tests/handoffs -q`) goes **red by construction** on every
+> mutated Stop. Every one of those Stops took the silent path.
+>
+> **(why this is a finding and not a shrug.)** `enforce: false` is the default
+> posture and a red check is the *ordinary* mid-work state, so **the most
+> frequently travelled branch of the gate is the only one that leaves no
+> in-repo trail**. `_goal_gate.py` has no logging at all; its sole signal is a
+> Telegram ping that leaves the machine, cannot be audited from the repo, and
+> **no-ops silently if `tools/notify/telegram.sh` is absent**. That is
+> structurally the same defect class PLAN-0094 AC-1 exists to kill — a
+> mechanism that looks live and records nothing. The author knew: the wrapper
+> comment at `stop_continuation.py:600` says "warn-only outcome -> classifier
+> flow unchanged", and `_goal_gate.py:437-439` calls it "v1 — the stop fires".
+> **So the behaviour is ratified, and changing it is an ADR-0018 question, not
+> a patch** — logged as an Active TODO with the recommendation, not fixed
+> here.
+>
+> **(five stale STATUS sites corrected, all `was an error`.)** The grounding
+> sweep found this file asserting the PLAN-0094 §Verification **live-check (ii)
+> is "still unrun"** in **five** places — including `next_action`, which was
+> actively directing the next session to **re-run work that had already
+> passed** at s182 (#945). Also corrected: the PLAN-0036 pointer still named
+> the pre-archive path and called it "merged Draft" when it is `done/` with
+> `Status: Done`.
+>
+> **(the check that was mis-specified caught more than the check that was
+> aimed.)** The pre-committed verification asserted "zero `docs/plans/0094`
+> references" and came back **4** — the Recent-Decisions `Reference` columns,
+> pointing at a path this very change had just deleted. Two *other* assertions
+> in the same run also failed and were **false alarms**: the counts included
+> this session's own narrative *quoting* the defect it was fixing. Rather than
+> patch the thresholds, the check was **generalised** — resolve *every*
+> `docs/plans/…` path in the file against disk — and it immediately found a
+> **fifth** dead pointer nobody was looking for — the **PLAN-0095** reference,
+> stale since that PLAN archived at **s177**, six sessions ago. **A `Reference`
+> column is a navigation aid, not a historical claim**, so the paths were fixed
+> while the decision text was left untouched. Generalising a failed check beat
+> re-tuning it. _(One recursion worth recording: the first draft of this very
+> paragraph quoted the dead path **literally**, which re-broke the sweep it was
+> describing. Prose about a stale pointer must not contain one — the check
+> cannot tell narration from assertion.)_
+>
+> **State at close:** `main` `5d64a7d` → this PR. `pytest tests/handoffs -q`
+> green (31 s), `mypy services/` clean, `ruff` clean at CI scope, thresholds
+> byte-unchanged. **R2 rotation applied** — the s179 Current-Focus block and
+> the s174 Recent-Decisions row moved to `docs/status-archive/`, boundary-
+> asserted before the write so a mismatch would abort rather than half-apply.
+
+> **Session 182, 2026-07-28 (head_commit `1281b5c` → `1d0649f`) — the sweep
+> that re-ran everything instead of citing itself. One PR merged (#943), 0
+> open. **PLAN-0094 Step 6 executed and AC-10 CLOSED** — all 11 ACs are now
+> closed or withdrawn — proved by a **full fresh 18/18 non-vacuity mutation
+> sweep**, plus two stale-doc defects fixed. Gate at close: **3327 passed /
+> 8 skipped**, `mypy services/` clean over **110 source files**, `ruff` clean
+> at CI scope, CI `gate` PASS.**
+>
+> **(the framing that matters — Cray typed the expensive reading.)** Two
+> readings of AC-10's sweep were offered *before* the run: re-confirm
+> AC-1…AC-5 and cite the recorded s177/s180 build-time runs for the rest, or
+> re-run everything fresh. Cray typed the **full re-sweep**. So every
+> mutation below is fresh on-disk evidence, not a citation, and the
+> pre-committed pass/fail read was fixed before the baseline ran.
+>
+> **(18 mutations, 18 clean.)** 11 named by the PLAN (M-A…M-D, N-A…N-D, and
+> AC-9's three) plus **7 derived** for the ACs that name none — AC-1(i),
+> AC-1(iii), AC-2, AC-3, AC-5, and AC-9(d), the goal-gate-directive row that
+> had a negative test but no named mutation. **`missing_red` was EMPTY for
+> all 18**: no predicted-red row stayed green, so no oracle in this surface
+> is vacuous. Sibling invariance held — no L2/L3/L4 row reddened under any
+> mutation. Applied by a **harness script, not the Edit tool**: the files
+> under mutation are the session's own live hooks (python re-reads them per
+> invocation), so an Edit-tool apply would feed the mutated L1 logic the very
+> edit that installed it, and M-A ("always increment") would count the
+> sweep's own edits toward a deny. Restores were `/tmp` copies, never
+> `git checkout`.
+>
+> **(finding 1 — M-A's blast radius is 8 L1 rows, not the 3 first
+> predicted.)** A whole-feature revert must redden every row asserting a
+> specific L1 count or a recorded-but-not-counted edit. This is **neither a
+> code defect nor a PLAN defect**: the session's own prediction was too
+> narrow, and the PLAN's load-bearing claim — L2 and L4 stay green — is
+> **`confirmed — prior intact`**, more strongly than it was stated. Widening
+> was legitimate only because `missing_red` was empty (nothing predicted-red
+> went green) and because the correction runs toward **more** breakage, never
+> less.
+>
+> **(finding 2 — AC-4 additionally reddens AC-11(i), and that is a FEATURE.)**
+> AC-11(i) asserts the deny body names *the threshold actually applied*, so
+> moving the gate onto the warn bar renders `N/6` and the row moves with it —
+> positive evidence that the row reads the applied bar instead of hard-coding
+> a literal.
+>
+> **(finding 3 — the harness's own site-count guard aborted a naive apply.)**
+> The first AC-1(iii) attempt stopped on a site count:
+> `pretooluse_loop_detect.py` is registered at **TWO** PreToolUse sites, not
+> one. A naive apply would have half-installed and reported a result proving
+> nothing — the vacuous-apply form the sweep exists to detect, caught on the
+> sweep's own tooling. `git status` after the abort showed the file fully
+> restored.
+>
+> **(two defects fixed, neither found by the sweep — both by grounding the
+> closeout.)** (a) The scope note in `tests/handoffs/test_settings_hook_wiring.py`
+> had been stale on **four** counts since the s179 D4(a) withdrawal: it still
+> claimed part (ii) is "delivered by Step 4", that Step 4 registers the event
+> after a live schema probe, that its `settings.json` diff carries its own
+> Cray per-diff approval, and that "AC-1 closes when Step 4 adds it" — AC-1
+> was already closed with (ii) withdrawn. Its header also read "Step 1 of 4"
+> for a 6-step PLAN. Rewritten to withdrawn-on-evidence while **keeping the
+> module's anti-vacuity argument intact**. (b) The `L1_DOC_THRESHOLD`
+> citation **drifted a second time** (the `LOOP_TRIGGER_THRESHOLD` pointer has
+> been right since s179). The **values 6 and 15 stay byte-identical at every
+> re-measure** — the invariant has held each time; only the pointer moves.
+>
+> **(what is still OWED, and was deliberately not forced.)** The `git mv` to
+> `docs/plans/done/` stays gated on a **Cray-confirmed live-loop soak** — it
+> cannot be self-served, because the guards run on Cray's own working loop;
+> the PLAN §Verification **live-check (ii)** (one deliberate warn-crossing on
+> a scratch file) is **still unrun**; and **OQ-4 is OPEN with a dated
+> commitment** (re-measure after ~20 sessions; a Cowork-drafted ADR-013
+> amendment retiring L1 if true positives stay 0 with ≥1 false positive).
+> Step 6 now records that OQ-4 must be **re-homed in whatever change finally
+> archives this PLAN**, never buried in `done/`. Both live checks are
+> *evidence*, not gates on AC-10 — which is why the PLAN closes out while
+> staying in `docs/plans/`. _[s183, **`superseded by new info`** — not an
+> error: this paragraph was true when written for #944, and **#945 ran
+> live-check (ii) later the same session** (PASSED). The soak was then
+> released by Cray at s183 and the PLAN is now **archived to `done/`**. The
+> paragraph is annotated rather than rewritten because it correctly records
+> what s182 knew at its reconcile.]_ Merge-commit re-run performed;
+> `git diff 6726b69 HEAD` = **0 bytes**.
