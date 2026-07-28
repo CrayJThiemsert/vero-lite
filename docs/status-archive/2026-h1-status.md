@@ -1127,3 +1127,116 @@ The session-174 Current Focus block rotated out under the R2 four-session window
 |------|----------|-----------|
 | 2026-07-24 | **s171 — PLAN-0088 Step 6 BUILT (#905): the four Group-B primitives + the AC-10 carrier proof, under SD-9 (a2)'s precedent so no new SD was needed.** Reopening the corpus found FOUR shapes it wrote that the engine never does (the AC-2 class), and B3's refusal kind was a BIJECTION of procedure — its oracle could not have failed. Mutation probe 4/4 as predicted. Suite 3178 -> **3189**. Plus **#904**, the STATUS rotate A+C: 61,748 -> 48,920 B, window untouched | `08304a0` (#905 merge, head_commit of record) / `023f24a` / `a3716db` / `d863078` + `96fbdcc` (#904) |
 | 2026-07-24 | **s170 — PLAN-0088 Steps 4 / 4.5 / 5 BUILT (#895/#900/#902); SD-9 RULED (a2) by Cray (#898, surfaced #897).** Readers A4 (audit-readiness, AC-7) + A1 (NL query over runs, AC-8/AC-9), three new primitives; SD-9 settles that the substrate grows in `run_analytics.py` **only** and strikes `agent_id` + `trigger` from v1. Suite 3150 → **3178**. **AC-9b (live MS-S1) OPEN — host-state.** | `5d02538` (#902 merge, head_commit of record) / `46f0ba1` (#898) / `7150c07` (#895) / `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md` §SD-9 |
+
+## Rotated this reconcile (session-180, 2026-07-28 — PLAN-0094 Step 4 COMPLETE: the unit changed from touches to non-progress (#937), two measured PLAN corrections + OQ-4 opened (#938), AC-11's count line + mirror-invariance (#939))
+
+### Current Focus block — session 175
+
+> **Session 175, 2026-07-26 (head_commit `a3a9c66` → `04c94e4`) — the session
+> the harness stopped letting a failed command look like a success. Four PRs
+> merged (#920–#923), 0 open. Two of them are the same defect class at two
+> layers: a guard that fires but says nothing legible (#920), and a shell that
+> reports `0` for a command that failed (#923).**
+>
+> **(#923 — a masked command failure is now impossible to believe silently.)**
+> Cray caught that a `| tail -6` hid a traceback, swallowed an exit code, and a
+> FAILED script was reported successful. Probing found **three** hazards, and
+> the reported one was the smallest. (1) A bare `$` inside `wsl bash -lc`
+> expands **one shell layer early** — `$?` reads `0` for a failed command and
+> `$(pwd)` resolves *before* a preceding `cd`; escaped `\$?` returns the true
+> `1`, but only with a single-quoted outer arg. (2) Unmerged **stderr
+> OVERWRITES stdout** byte-for-byte — one stderr line erased all 8 stdout
+> lines, 3/3 runs — previously unrecorded anywhere in the repo. (3) A pipe into
+> `head`/`tail` reports the **truncator's** status, and the inverse `| head`
+> under `pipefail` yields 141 SIGPIPE. Three changes per the §4 routing rule:
+> Lesson #0007's mechanism **CORRECTED and reclassified `was an error`** (the
+> harness does not "fail to propagate exit codes"; a two-character escape
+> recovers `$?`, and the over-generalization cost two months of stderr-parsing
+> workarounds), a binding **CLAUDE.md §8** rule, and a `_shell_hygiene_warning`
+> **PostToolUse advisory** — deliberately not a PreToolUse deny, because the
+> harm is not running the command but *believing* its output, which is knowable
+> only after it runs. It attaches to a hook already registered for Bash, so
+> `.claude/settings.json` stays untouched. Hazard 2 is deliberately NOT
+> enforced: whether a command emits stderr is not knowable from its text, so a
+> check would either miss most cases or warn on every call. The advisory caught
+> a real bug in the author's own command on its first live use.
+>
+> **(#922 — PLAN-0094 Step 3: L1 warns first, denies on the second trip.
+> Closes AC-3 (final surface), AC-4, AC-5.)** L1's path-class threshold becomes
+> the **WARN** bar (observer ping + agent-visible advisory, edit ALLOWED); the
+> gate denies only at threshold + `L1_GRACE_BUDGET` (3, Cray-ratified OQ-1) =
+> **9 code / 18 doc**. **L4 is untouched** at a flat 6. An additive
+> `CounterEntry.warned_at` dedupes the warn. `.claude/settings.json` NOT
+> touched. **One deliberate deviation from the Step 3 spec, pinned by a test:**
+> the deny message does NOT name the P3 stop-ack, because P3 ships at Step 5
+> and advertising an unbuilt exit would recreate the exact defect AC-3 closes.
+> Non-vacuity by 3 mutations, each RED count predicted before the run and
+> matched. The AC-3 grep oracle caught the author quoting the banned anchor
+> phrase in a docstring; the warn then fired live on the author's own 6th edit
+> mid-implementation.
+>
+> **(#920 — every vertical's ACTION client factory pinned offline.)**
+> `ActionStepExecutor.client_factory` defaults to a **LIVE** `OllamaClient`
+> against MS-S1, so dropping one kwarg from any vertical factory is a silent
+> CLAUDE.md §8 host-state change. A parametrized guard now asserts at
+> **REGISTRATION**, across all six procedure-shipping verticals, that the
+> factory is not the live default and does not produce an `OllamaClient`.
+> **The measurement corrected the draft's own premise:** it claimed five
+> verticals were unguarded, but mutation-testing each showed the existing suite
+> DOES catch it (aquaculture 3 / building_materials 1 / energy 2 /
+> fleet_maintenance 6 / supply_chain 7 failures). The real defect is therefore
+> not absence but **shape** — the signal is opaque (`BaseExceptionGroup:
+> unhandled errors in a TaskGroup`), incidental (only where a vertical happens
+> to own an e2e ACTION test), and pytest-only (the production registrations in
+> `main.py` / `cli.py` run under neither). The assertion is "not the live
+> default", never "is <a specific stub>": procurement injects its own
+> same-named PO-shaped stub.
+>
+> **(#921 — four stale cross-references, found by a five-agent grounding
+> sweep.)** Repo claims verified against code, not against each other.
+> `query_step.py` still asserted the PLAN-0048 SD-3 "deprecate-in-place, never
+> migrated" stance that **PLAN-0062 SD-C overturned**, leaving two engine
+> docstrings in live contradiction; `supply_chain/procedures_factory.py` cited
+> `hero_demo/run.py:278` (actual `:298`); PLAN-0076's Code-anchors block named
+> four symbols PLAN-0078 PR-5 retired (now grep-clean); PLAN-0094 gained a
+> line-citation drift table + AC state. All four classified **`superseded by
+> new info`**, not `was an error`.
+>
+> **Governance, recorded so it does not read as precedent.** ADR-009 D1
+> reserves `CLAUDE.md` authorship to Cowork; Cray granted Code a **one-off,
+> explicitly scoped** exception for the #923 §8 edit — reason given: the
+> problem is important, the context was already warm, and the evidence was in
+> Code's hands. Cray ratified; it is recorded in the CLAUDE.md footer and the
+> PR. **Normal routing is unchanged.** Separately, **Cray settled the
+> demo-target fork: the LIVE-API shape ("แบบ B"), not static-only** — which was
+> gating both Candidate C (the Docker image) and the future MS-S1 hosting ADR,
+> and makes **Candidate C the long pole** rather than an optional alternative.
+> And **PLAN-0094 Step 1's soak reported no anomalies** on Cray's live loop,
+> which released Step 3.
+>
+> **Three deferred corrections applied to this file** (found by the #921 sweep,
+> held back for this reconcile): the **Demo-card UX TODO is
+> closed-with-residue** — the s74 trust shape ships on both the story and
+> monitor surfaces with anti-regression comments citing the PLAN-0035 §SD-3
+> amendment (`story.css`, `view-story.js`, `view-monitor.js`), residue at most
+> one toggle on the monitor step card; **Rock-3 / O-2's wording is corrected**
+> — the derived fields ALREADY migrated to declared `transform` ✔ (PLAN-0078
+> PR-1 #762, AC-2 ticked), so the residue is ONLY the cardinality-changing
+> `candidate_quotes` nest; and the **duplicated `git.md` extraction TODO** is
+> de-duplicated to one row, noting its substance is effectively discharged by
+> the `git-workflow` skill and that **`CLAUDE.md:176` holds a DEAD link** to a
+> non-existent `docs/conventions/git.md` — a **Cowork** round-trip, since the
+> #923 exception was scoped to §8 only.
+>
+> **State at close:** `main` `04c94e4`, suite **3296 passed / 8 skipped**,
+> `mypy services/` clean (110 files), ruff + ruff-format clean (501 files) —
+> all run in the main tree. 0 open PRs; tree clean but for the two standing
+> KEEP untracked paths (`.claude/benchmark-results/`, `.claude/launch.json`).
+
+> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R7)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split.]_
+
+### Recent Decisions rows — rotated under the 10-row cap
+
+| Date | Decision | Reference |
+|------|----------|-----------|
+| 2026-07-25 | **s171 — PLAN-0088 COMPLETE, 13 live ACs, archived to `done/` (#908).** AC-9b BUILT + PASSED (#907): live translate/phrase stages wired (reusing `nl_query`); one MS-S1 `gpt-oss:20b` smoke → grounded count 120 = the seeded corpus. A test premised on an unwired seam RAN the model twice unasked → a socket-level `_no_outbound_network` guard now makes an off-box call impossible. Suite 3189 → **3203/8** | `ca39841` (#908 merge, head_commit) / `c21c0aa` + `e443696` (#907) / `docs/plans/done/0088-*.md` |
