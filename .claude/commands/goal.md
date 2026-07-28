@@ -121,5 +121,5 @@ typed sign-off, recorded as the amendment).
 ## References
 
 - `docs/adr/0018-axis-b-verification-loop.md` (design of record; Accepted)
-- `docs/plans/0021-axis-b-verification-loop-build.md` (build plan)
+- `docs/plans/done/0021-axis-b-verification-loop-build.md` (build plan)
 - `.claude/hooks/_goal_state.py` (schema), `.claude/hooks/_goal_gate.py` (gate)

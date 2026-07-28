@@ -37,7 +37,7 @@ The session-114 driver was not persisted (scratchpad, gone). Reconstructed from 
 
 ## Reference
 
-- PLAN-0060 (`docs/plans/0060-reactive-judgment-handler-catalog.md`); Steps 1-6 shipped PR #655 (`4d54683`).
+- PLAN-0060 (`docs/plans/done/0060-reactive-judgment-handler-catalog.md`); Steps 1-6 shipped PR #655 (`4d54683`).
 - Finding this closes: `docs/logs/2026-07-08-event-bridge-recommender-live-smoke.md`.
 - Related learning: offline fixtures can mask live-model knowledge — one controlled live run is the cheapest catch (and the cheapest confirm of the fix).
 

@@ -71,7 +71,7 @@ pre-migration partition: the v2 midflight + v2.1 dispatch).
 
 ## Reference
 
-- PLAN-004 v2 D6 (two-artifact evidence model spec): `docs/plans/0004-handoff-frontmatter-and-dashboard.md`
+- PLAN-004 v2 D6 (two-artifact evidence model spec): `docs/plans/done/0004-handoff-frontmatter-and-dashboard.md`
 - `docs/logs/README.md` (this directory's purpose)
 - Manifest: `.claude/handoffs/session-10/2026-05-19-0842-code-plan004-batch2-manifest.md`
 - v2 dispatch: `.claude/handoffs/session-10/2026-05-19-1330-chat-plan004-batch2a-bulk-migration-v2.md`

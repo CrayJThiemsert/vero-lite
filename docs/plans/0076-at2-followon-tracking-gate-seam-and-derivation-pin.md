@@ -503,7 +503,7 @@ live/host-state run is required or appropriate.
 
 ## References
 
-- **PLAN-0075** (`docs/plans/0075-at2-authority-enforcement.md`) — SD-3
+- **PLAN-0075** (`docs/plans/done/0075-at2-authority-enforcement.md`) — SD-3
   (`:647-661`) + SD-5 (`:670-699`) ratified adjudications; Out of Scope
   F-PIN-remainder + F-FACTORY bullets (`:486-524`); AC-13 (`:445-478`).
   Source of truth for scope + framing, mirrored here.

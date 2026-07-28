@@ -3,7 +3,7 @@
 
 Subagent-scoped hook wired in ``.claude/agents/plan-drafter.md`` frontmatter
 under ``hooks.PreToolUse`` with matcher ``Write|Edit``. Implements the H2
-contract specified in `docs/plans/0009-step1b-contract-design.md` §5
+contract specified in `docs/plans/done/0009-step1b-contract-design.md` §5
 (write-path allowlist for the ``plan-drafter`` subagent).
 
 Allowed write/edit targets:

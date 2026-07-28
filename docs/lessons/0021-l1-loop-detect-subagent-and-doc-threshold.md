@@ -1,7 +1,7 @@
 # Lesson #21: L1 loop-detect vs subagent-authored governance docs — the structural fix (path-class threshold + subagent-completion reset)
 
 > **Status:** Codified 2026-06-08 (Session 45). Observed live the same session:
-> a `plan-drafter` subagent made 6 edits to `docs/plans/0019-core-procedure-baseline.md`
+> a `plan-drafter` subagent made 6 edits to **PLAN-0019's core-procedure-baseline plan**
 > while formalizing ratified SDs, exhausting the flat L1 threshold (6) **inside
 > the main agent's turn**, so the main agent could not add even ONE of the two
 > remaining edits. Recovery cost two extra turns (sticky reset) and a Cray nudge.

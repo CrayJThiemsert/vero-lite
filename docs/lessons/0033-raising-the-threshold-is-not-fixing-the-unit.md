@@ -100,7 +100,7 @@ Two corollaries:
   and its §6 deferral of the real fix ("A now, B later")
 - [[lesson-0012-loop-detect-l1-vs-governance-doc-fillup-passes]] — the earlier
   recovery-over-retuning decision, and the "verbal ack ≠ unblock" meta-lesson
-- `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md` — the structural
+- `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` — the structural
   fix (non-progress counting, warn-before-deny, the reset paths)
 - `docs/plans/done/0092-stop-hook-dispatch-arm-demotion-to-suggestion.md` — the
   same shape resolved the same way: 14 misfires / 0 valid fires demoted an order

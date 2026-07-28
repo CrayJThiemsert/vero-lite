@@ -87,7 +87,7 @@ the gitignored closeout.
 
 ## Reference
 
-- PLAN-004 v2 D6 (two-artifact evidence model): `docs/plans/0004-handoff-frontmatter-and-dashboard.md`
+- PLAN-004 v2 D6 (two-artifact evidence model): `docs/plans/done/0004-handoff-frontmatter-and-dashboard.md`
 - `docs/logs/README.md` (this directory's purpose)
 - Predecessor summary (Step 2a): `docs/logs/2026-05-19-plan004-batch2a-migration.md`
 - Manifest: `.claude/handoffs/session-10/2026-05-19-0842-code-plan004-batch2-manifest.md`

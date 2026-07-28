@@ -155,7 +155,7 @@ If a re-probe contradicts §1, §2, or §3 above, update this lesson (don't fork
 
 - `docs/research/private/2026-05-28-oq-b-chat-mcp-spawn-probe.md` — full verbatim probe matrix T1–T7 (gitignored)
 - `docs/lessons/0016-claude-desktop-uwp-sandbox-config-path.md` — prerequisite path discovery
-- `docs/plans/0012-vero-bridge.md` §Open Questions — OQ-A pre-decision, OQ-B RESOLVED YES, OQ-T3 refined per this lesson's §3
+- `docs/plans/done/0012-vero-bridge.md` §Open Questions — OQ-A pre-decision, OQ-B RESOLVED YES, OQ-T3 refined per this lesson's §3
 - `.claude/handoffs/session-20/2026-05-28-1025-code-session21-midflight.md` §1 — first written-down (incomplete) version of the cross-tab table; superseded by §1 of this lesson
 
 ---

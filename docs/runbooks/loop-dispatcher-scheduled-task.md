@@ -135,7 +135,7 @@ scan_cycle: ok=N parse_failed=N expired=N dispatch_failed=N poison=N skipped_ide
 
 ## Related
 
-- PLAN-0010: `docs/plans/0010-phase3-5-scheduled-task-autonomy-loop.md`
+- PLAN-0010: `docs/plans/done/0010-phase3-5-scheduled-task-autonomy-loop.md`
 - Archived spec: `docs/plans/done/0010-step1-message-schema.md` §5
   (Phase 4 unblock criteria + 2 bug fix specs)
 - Research: `docs/research/private/2026-05-25-local-scheduled-task-autonomy-loop.md`

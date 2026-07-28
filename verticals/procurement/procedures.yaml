@@ -393,7 +393,7 @@ procedures:
       # the co-existing _SeedQuery byte-identically (PLAN-0062 SD-C carried).
       # Pinned in tests/verticals/procurement/test_intake_shadow_parity.py (the rewritten
       # tripwire — it now fails if a declared read is ever handed the seed again).
-      # See docs/plans/0064-per-step-query-router-procurement.md.
+      # See docs/plans/done/0064-per-step-query-router-procurement.md.
       - step_id: read_stock
         name: Read stock levels
         description: Latest stock reading per stocked Part.

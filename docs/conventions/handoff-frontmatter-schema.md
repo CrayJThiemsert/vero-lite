@@ -1,7 +1,7 @@
 # Handoff Frontmatter Schema
 
 **Status:** Active (PLAN-004 Phase A Batch 1, 2026-05-19)
-**Authority:** `docs/plans/0004-handoff-frontmatter-and-dashboard.md` (D1–D5)
+**Authority:** `docs/plans/done/0004-handoff-frontmatter-and-dashboard.md` (D1–D5)
 **Validator:** `tools/handoffs/validate_handoff.py`
 **Reader:** `tools/handoffs/handoff_status.py`
 
@@ -128,7 +128,7 @@ references_commits:
 
 ## References
 
-- `docs/plans/0004-handoff-frontmatter-and-dashboard.md` (PLAN-004 v2)
+- `docs/plans/done/0004-handoff-frontmatter-and-dashboard.md` (PLAN-004 v2)
 - Lesson #5 §2 (Cray-direct codification path)
 - Lesson #5 §4 (handoffs gitignored by design)
 - Lesson #6 (Code surface → Chat re-dispatch pattern)
