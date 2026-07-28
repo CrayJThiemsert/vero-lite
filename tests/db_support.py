@@ -54,6 +54,7 @@ from services.db import audit_log as _audit_log  # noqa: F401  (registers audit_
 from services.db import identity as _identity  # noqa: F401  (registers action_identity)
 from services.db import models as _models  # noqa: F401  (registers the ontology tables)
 from services.db import person as _person  # noqa: F401  (registers the shared `person` table)
+from services.db import repair_case as _repair_case  # noqa: F401  (registers repair_case)
 from services.engine.procedures import runs as _procedure_runs  # noqa: F401  (registers run tables)
 from services.engine.procedures import (  # noqa: F401  (registers schedule_states)
     schedules as _procedure_schedules,

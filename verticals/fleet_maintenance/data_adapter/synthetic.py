@@ -40,6 +40,17 @@ Provenance splits cleanly, and the split is the point:
   calm-path sweep reads THREE trucks rather than two (PLAN-0089 SD-3's Cray-ratified sub-choice)
   — one due, two not — instead of a 2-row demo where half the fleet is always flagged.
 
+PLAN-0096 Step 2 adds ``case_id`` to the two BREACHING quotes only. Two things about that:
+
+* the routine below-ceiling quotes carry none, on purpose — a ฿1,800 filter change is not a
+  "case", it is the calm path, and stamping a case id on it would inflate the traceability KPI
+  with rows nobody ever opened a case for;
+* these are DEMO case ids. Real cases live in Postgres (``repair_case``, written by the
+  ``/api/cases`` router at minute 1, before any quote exists). The synthetic ids exist so the
+  offline suite can prove the end-to-end link — case id present on the event -> carried by
+  intake -> still on the row the DOA gate routes — without needing a database. Step 3 wires the
+  real case -> quote -> event path; until then, do not read these ids as rows that exist.
+
 NOTE the deliberate non-overlap, unchanged by PLAN-0096 Step 1: the calm path flags truck-02; the
 AT-2 hero flags truck-01 (฿48,000 → owner) and truck-03 (฿15,000 → fleet manager). The two
 procedures still watch different trucks for different reasons, so the demo shows a fleet with both
@@ -194,6 +205,10 @@ def operational_events() -> list[dict[str, Any]]:
             "severity": "warn",
             "measured_value": 15000.0,
             "unit": "THB",
+            # PLAN-0096 Step 2 (AC-3): the case เมย์ opened when ต้อม phoned in the
+            # noise, BEFORE any quote existed. See the module docstring on why the
+            # demo carries case ids at all.
+            "case_id": "case-demo-truck03-gearbox",
             "description": (
                 "เกียร์มีเสียงดังผิดปกติ อู่ประจำเสนอราคาซ่อม 15,000 บาท — เกินเพดาน 5,000 บาท "
                 "ต้องเข้าสายอนุมัติ ระดับ ผจก.เดินรถ."
@@ -208,6 +223,9 @@ def operational_events() -> list[dict[str, Any]]:
             "severity": "critical",
             "measured_value": 48000.0,
             "unit": "THB",
+            # PLAN-0096 Step 2 (AC-3): opened from the roadside at minute 1, well
+            # before the อู่ quoted 48,000 — which is the entire point of the case.
+            "case_id": "case-demo-truck01-axle",
             "description": (
                 "เพลาขาดกลางทางแถวปากช่อง รถจอดข้างทางพร้อมกระเบื้องเต็มคันของห้าง "
                 "ต้องถึงศูนย์กระจายสินค้าโคราชก่อนสี่โมงเย็น — อู่เสนอราคาซ่อม 48,000 บาท "

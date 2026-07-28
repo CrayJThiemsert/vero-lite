@@ -267,6 +267,26 @@ class Settings(BaseSettings):
         ),
     )
 
+    # Repair-case capture (PLAN-0096 Step 2). Photo BYTES live on disk, not in
+    # Postgres: a phone photo is ~1-5 MB and nothing queries inside it, so the DB
+    # row keeps only the metadata. The directory is created on first write.
+    repair_case_photo_dir: str = Field(
+        default="var/repair-case-photos",
+        description=(
+            "Directory for repair-case photo uploads (env REPAIR_CASE_PHOTO_DIR). "
+            "Relative paths resolve from the repo root. Local disk only — PLAN-0096 "
+            "AC-11 forbids any live external call, object storage included."
+        ),
+    )
+    repair_case_photo_max_bytes: int = Field(
+        default=12 * 1024 * 1024,
+        description=(
+            "Per-photo upload ceiling in bytes (env REPAIR_CASE_PHOTO_MAX_BYTES). "
+            "12 MB clears a modern phone photo with headroom; an over-size upload is "
+            "refused with 413 rather than truncated."
+        ),
+    )
+
     # Telegram notify + LLM warm control (PLAN-0014). The notifier pings the
     # operator when an OCT local-LLM call fails because MS-S1 is unreachable;
     # the /warm + /sleep routes load/unload the model. Tokens come from env

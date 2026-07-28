@@ -41,6 +41,7 @@ _HEAD_TABLES = {
     "person",
     "pipeline_runs",
     "recommended_action",
+    "repair_case",
     "schedule_states",
     "site",
     "step_results",
