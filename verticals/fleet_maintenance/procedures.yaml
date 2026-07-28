@@ -1,10 +1,12 @@
 # vero-lite procedure spec — fleet_maintenance vertical, v0 (PLAN-0086 — the governed-repair HERO).
 # The 6th vertical's headline: a truck breaks down mid-route, the garage quotes a repair AT/ABOVE the
 # truck's minor-repair ceiling, and the spend runs the full governed AT-2 spine — a deterministic
-# per-truck ceiling band, a hard sourcing-hygiene rule_gate (3 competing quotes above ฿20,000), then
-# a doa_tier human approval with SoD (the head mechanic REQUESTS, the fleet manager APPROVES) and the
-# engine audit — using the shipped machinery unchanged. A distinct spec layer from the ADR-008
-# ontology (fleet_maintenance_v0.yaml is untouched): agents + procedures, NOT object_types.
+# per-truck ceiling band, a hard sourcing-hygiene rule_gate (3 competing quotes above ฿30,000), then
+# a doa_tier human approval with SoD (the head mechanic REQUESTS, the fleet manager or the owner
+# APPROVES) and the engine audit — using the shipped machinery unchanged. A distinct spec layer from
+# the ADR-008 ontology: agents + procedures, NOT object_types. (PLAN-0096 Step 1 did touch that
+# ontology file, for the one thing a procedure spec cannot carry — the repair-ceiling property's own
+# provenance. The layer separation still holds: no object_type shape changed.)
 #
 # NOT a 4th AT-2 signature: the money doa_tier ladder is REUSED unchanged (THB and all), no new
 # authority quantity, no new gate kind, no new trace kind. Only the criterion vocabulary grows by ONE
@@ -19,16 +21,43 @@
 # sets the repair ceiling (authored), NEVER waives the quote-comparison criterion (the rule_gate
 # blocks on any fail, non-waivable by type), and NEVER approves (the human doa_tier gate).
 #
-# >>> NARRATIVE PROVENANCE (PLAN-0086 AC-3) — every ฿, role and rule below traces to the DIRTIED <<<
-# customer narrative or to a logged customer answer. Nothing here was invented:
-#   ladder ฿5,000 / ฿50,000 ............ customer answer Q1 ("ต้อมเคาะได้ถึง 5 พัน วิรัชถึง 5 หมื่น เกินนั้นผมเอง")
-#   the three roles ..................... narrative — "ให้ต้อมเคาะเลย / ให้พี่วิรัช ผู้จัดการเดินรถ / ต้องมาถึงผม"
-#   requester = ช่างใหญ่, approver = ผจก.เดินรถ ... customer answer Q3 ("ต้อมตั้งเรื่อง วิรัชเคาะแทน")
+# >>> PROVENANCE — every ฿, role and rule below traces to a NAMED source. There are now TWO <<<
+# sources and the difference is load-bearing, so they are kept apart rather than blended:
+#
+# (A) THE DESIGN PARTNER — REAL. 18-question discovery round, 2026-07-28 (PLAN-0096 Step 1).
+#     These came from the operator who will run the pilot. They are NOT guesses, and the `รอแก้`
+#     stamps that used to sit on them are gone precisely because he answered:
+#   ladder 5,001 / 30,001 ............... Q9 ("≤5,000 ต้อม / 5,001–30,000 วิรัช / >30,000 เจ้าของ").
+#                                         He states the rungs with INCLUSIVE ceilings; a DoaLadder
+#                                         band is half-open [min, next) with an INCLUSIVE floor, so
+#                                         his numbers PLUS ONE *are* his rule. That off-by-one is a
+#                                         translation, not a typo — tests/verticals/fleet_maintenance/
+#                                         test_partner_ladder_boundaries.py proves it, and is why
+#                                         nobody may "tidy" these back to round numbers.
+#   per-truck ceiling default 5001 ...... Q8 ("ต้อม ~5,000; some tractor heads stretch a bit") —
+#                                         breach ⇔ quote > ฿5,000, the same inclusive-ceiling
+#                                         translation. Per-truck stretch is already expressible
+#                                         (ADR-016 FKP); the REAL stretch values are a named partner
+#                                         intake question, not ours to invent.
+#   three_quote threshold ฿30,000 ....... Q10 (">30,000" — and it coincides with his own tier). The
+#                                         feed that COMPUTES this signal is PLAN-0096 Step 4; Step 1
+#                                         only stops this file crediting the partner with the
+#                                         simulated customer's ฿20,000.
+#   emergency: NO ฿ cap ................. Q11 — see the emergency_waiver block below. ADR-0034
+#                                         ELIMINATED the cap; it did not defer it.
+#
+# (B) NARRATIVE PROVENANCE (PLAN-0086 AC-3) — the SIMULATED customer: a dirtied narrative persona,
+#     labelled so no reader mistakes it for partner speech. It remains the source for the STRUCTURE
+#     the real partner later corroborated:
+#   the three roles ..................... narrative — "ให้ต้อมเคาะเลย / ให้พี่วิรัช ผู้จัดการเดินรถ / ต้องมาถึงผม";
+#                                         corroborated — the partner's Q9 names the same three people.
+#   requester = ช่างใหญ่, approver = ผจก.เดินรถ ... narrative Q3 ("ต้อมตั้งเรื่อง วิรัชเคาะแทน");
+#                                         corroborated by the partner's Q14 Songkran story, where
+#                                         ต้อม opens his own case and วิรัช still confirms it.
 #   SoD itself .......................... narrative — "ผมตั้งกฎเหล็กเลยนะ คนทำเรื่องเบิกห้ามเป็นคนอนุมัติเอง"
-#   three_quote ฿20,000 / 3 vendors ..... customer answer Q4 ("เทียบราคาเกินสองหมื่น สามเจ้า")
-#   emergency waiver .................... narrative — "รถเสียหน้างานทีไร กติกามันพังหมด ... ซ่อมไปก่อน
-#                                          ซื้อร้านข้างทางไปเลย"; cap ฿10,000 from customer answer Q2;
-#                                          escalate_to = the owner, who is who the driver phones (narrative).
+#   the emergency waiver EXISTING ....... narrative — "รถเสียหน้างานทีไร กติกามันพังหมด ... ซ่อมไปก่อน
+#                                          ซื้อร้านข้างทางไปเลย"; escalate_to = the owner, who is who
+#                                          the driver phones. Its ฿ CAP is (A)-refuted — see below.
 
 namespace: fleet_maintenance
 version: 0
@@ -201,12 +230,14 @@ procedures:
         governance_content:
           kind: rule_gate
           rules:
-            # NOTE (PLAN-0086 finding): the customer's rule has TWO halves — "three competing
-            # quotes" AND "above ฿20,000". Only the first half is representable: a rule_gate
+            # NOTE (PLAN-0086 finding, partner-updated): the rule has TWO halves — "three competing
+            # quotes" AND a ฿ threshold, which the DESIGN PARTNER put at ฿30,000 (Q10), not the
+            # simulated customer's ฿20,000. Only the first half is representable here: a rule_gate
             # criterion is pass/fail on a supplied signal and carries no threshold field, and
             # ADR-0025 D4 forbids smuggling the amount into this prose. The ฿ half therefore lives
-            # in whatever feed computes `compliance.three_quote` — today the reshape default.
-            # Logged in the question log as an un-modelled customer value alongside the Q2 cap.
+            # in whatever feed computes `compliance.three_quote` — today the reshape default below,
+            # and from PLAN-0096 Step 4 the real quote-evidence pack (E-1), which also stamps
+            # `three_quote_basis` and makes a MISSING signal map fail CLOSED.
             - criterion: three_quote
               spec: "a large repair has three competing quotes on file before the spend is authorised"
         input:
@@ -230,16 +261,22 @@ procedures:
         autonomy: gated             # the human go/no-go — never the LLM
         handler: escalate
         # AT-2 typed content (ADR-0025 D2/D3) — the money doa_tier ladder REUSED UNCHANGED. Tiers
-        # route on the FULL quote. The ฿48,000 shipped breach lands mid-ladder at the [5k, 50k) tier
-        # (ผจก.เดินรถ) — the demo shows tiering, not always-the-top. Money is Decimal (quoted to
-        # avoid float). Tier values = customer answer Q1.
+        # route on the FULL quote. Money is Decimal (quoted to avoid float).
+        #
+        # Tier values = the DESIGN PARTNER's Q9 (provenance (A) above), replacing the simulated
+        # customer's ฿5,000 / ฿50,000. Consequence worth stating plainly, because it changes what
+        # the demo shows: under the REAL ladder the ฿48,000 roadside breakdown is no longer a
+        # mid-ladder case — it clears ฿30,000 and lands on the OWNER's desk, which is exactly what
+        # the partner said should happen. The ฿15,000 gearbox quote in data_adapter/synthetic.py is
+        # what now carries the mid-ladder rung (ผจก.เดินรถ), so the demo still shows TIERING rather
+        # than always-the-top.
         governance_content:
           kind: doa_tier
           currency: THB
           tiers:
             - { min_amount: "0", approver_role: "ช่างใหญ่" }
-            - { min_amount: "5000", approver_role: "ผจก.เดินรถ" }
-            - { min_amount: "50000", approver_role: "เจ้าของกิจการ" }
+            - { min_amount: "5001", approver_role: "ผจก.เดินรถ" }
+            - { min_amount: "30001", approver_role: "เจ้าของกิจการ" }
           # DoaLadder REQUIRES an emergency_waiver (ADR-0025 D3 — it is not optional). Here it is not
           # a template borrowing: the customer described this bypass unprompted ("รถเสียหน้างานทีไร
           # กติกามันพังหมด ... ซ่อมไปก่อน ซื้อร้านข้างทางไปเลย"). `relaxes: [three_bid]` is the CLOSED
@@ -247,10 +284,15 @@ procedures:
           # is no time to collect three quotes on the hard shoulder. It escalates the approver and
           # forces a logged justification; it NEVER skips a gate.
           #
-          # UNMODELLED (customer answer Q2, no schema field): the ฿10,000 emergency cap and the
-          # after-the-fact ratification window. `EmergencyWaiver` carries relaxes / escalate_to /
-          # requires_justification only. Recorded in the question log; a capped waiver would be a
-          # future ADR-0025 D3 amendment, out of scope here.
+          # THE ฿ CAP IS ELIMINATED, NOT DEFERRED (partner Q11; ADR-0034). The simulated customer's
+          # ฿10,000 emergency cap was OUR hypothesis, and the real operator refuted it: he has no
+          # cap in his head, because DOWNTIME — not ฿ — is what drives a roadside decision. ADR-0034
+          # records the elimination so it cannot creep back as a "safe default". The control he
+          # actually uses is a reconciliation window ("ไม่เกินอาทิตย์ บัญชีจะเริ่มถามแล้ว") →
+          # `ratification_window_days` (~7), which lands in PLAN-0096 Step 5 per ADR-0034 D2 Door 1
+          # + D3 — NOT here: Step 1 authors no schema field, and a new pin that serialized always
+          # (even as None) would flip EVERY vertical's governance config hash (ADR-0034 D6; the
+          # AC-2 tripwire in tests/verticals/test_governance_config_hash_stability.py).
           emergency_waiver:
             relaxes: [three_bid]
             escalate_to: "เจ้าของกิจการ"

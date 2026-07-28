@@ -5,7 +5,7 @@
 **Archetypes:** AT-2 (`governed_repair_approval`) — the money `doa_tier` ladder REUSED unchanged, not a new AT-2 signature · AT-3 (`pm_service_round`, PLAN-0089) — the routine calm path, and AT-3's first non-stock band.
 **First vertical shipping the PLAN-0085 gate advisory ON by default** (PLAN-0086 L-B — readable on day one).
 
-> ⚠ The synthetic dataset in `data_adapter/synthetic.py` is a demo fixture. Every ฿ figure traces to the simulated customer's own words or to a logged intake answer — see the provenance header in `procedures.yaml`.
+> ⚠ The synthetic dataset in `data_adapter/synthetic.py` is a demo fixture. Every ฿ figure traces to a named source — the **real design partner's** 18-answer discovery round (2026-07-28), the simulated customer's own words, or a logged intake answer. The two sources are kept apart in the provenance header of `procedures.yaml`; the only deliberately-invented figure is the ฿15,000 mid-ladder demo quote, and it says so in place.
 
 ## Problem
 
@@ -36,7 +36,7 @@ The same vertical also runs the *routine* story, on the same engine and the same
 
 The contrast to the hero is the point, and it is a contrast in *governance*, not just in subject matter: no DOA ladder, no separation of duties, no sourcing gate, no emergency waiver, no advisory. Just one deterministic band and one human. That absence **is** the AT-3 signature — and because the advisory is `doa_tier`-only by construction, the calm gate never enters it at all.
 
-Note the fleet reads differently to each procedure: the hero flags `truck-01` (a ฿48,000 roadside breakdown), the calm path flags `truck-02` (3,140 km past its service interval). Two procedures, two trucks, one engine.
+Note the fleet reads differently to each procedure: the hero flags `truck-01` (a ฿48,000 roadside breakdown → the owner's tier) and `truck-03` (a ฿15,000 gearbox quote → the fleet manager's tier); the calm path flags `truck-02` (3,140 km past its service interval). Two procedures, three trucks, one engine — and because the hero's two breaches resolve to *different* rungs, the demo shows the ladder routing rather than a single escalation.
 
 The service interval — 100,000 km, every class — is a logged customer answer. Each truck's *last-service* odometer, from which its absolute due point is computed, is a `GUESS — รอแก้`.
 
@@ -44,7 +44,7 @@ The service interval — 100,000 km, every class — is a logged customer answer
 
 ```dotenv
 OCT_VERTICAL=fleet_maintenance
-OCT_RECOMMEND_THRESHOLD=5000
+OCT_RECOMMEND_THRESHOLD=5001
 OCT_RECOMMEND_DIRECTION=above
 OCT_RECOMMEND_ENTITY_TYPE=Truck
 OCT_RECOMMEND_ENTITY_ID_FIELD=truck_id
@@ -65,6 +65,6 @@ Recorded here deliberately — a governed system that silently drops half a cust
 
 | Customer rule | Enforced | Not enforced |
 |---|---|---|
-| Price-compare large repairs across three vendors | the three-quote requirement | the ฿ threshold that triggers it — a `rule_gate` criterion is pass/fail on a supplied signal and carries no threshold field |
-| Roadside emergencies may proceed before approval | the waiver's escalation + mandatory justification | the ฿ cap on such spend, and the after-the-fact ratification window — `EmergencyWaiver` has no fields for either |
+| Price-compare large repairs across three vendors | the three-quote requirement | the ฿ threshold that triggers it (the partner's Q10: **>฿30,000**) — a `rule_gate` criterion is pass/fail on a supplied signal and carries no threshold field. The threshold moves into the feed that *computes* the signal in **PLAN-0096 Step 4**, which also retires today's fail-open `three_quote: true` default |
+| Roadside emergencies may proceed before approval | the waiver's escalation + mandatory justification | the after-the-fact ratification window — `EmergencyWaiver` has no field for it yet; **PLAN-0096 Step 5** adds `ratification_window_days` per ADR-0034 D2/D3. **The ฿ cap is no longer a gap: the design partner refuted it** (Q11 — downtime, not ฿, drives a roadside call), and ADR-0034 *eliminated* it so it cannot return as a "safe default" |
 | Know which tyre ran how far, and where old tyres go ("ผมไม่รู้เลยนะว่าเส้นไหนวิ่งไปกี่กิโล ยางเก่าหายไปไหนหมด") | **nothing** — see right | the whole rule. This pain is genuinely **per-tyre**, and per-tyre km needs mount / rotation / position data that no shipped source carries: the GPS stream is per-**truck**. PLAN-0089 therefore shipped the honest per-truck PM path and named it `pm_service_round`, never `tire_*` — naming it for tyres without a `Tire` object would be exactly the silently-dropped-half-a-rule failure this table exists to prevent. Parked pending a design-partner data source. |

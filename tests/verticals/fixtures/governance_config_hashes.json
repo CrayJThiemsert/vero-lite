@@ -1,0 +1,22 @@
+{
+  "aquaculture": {
+    "morning_pond_health_round": "b1c36cb92e735aec32ba224987613d41ece558f04fad36b88cd021f124536b97"
+  },
+  "building_materials": {
+    "governed_credit_release": "55ad7b780dfdd97a1d1099418efaf28eef65a20889675bbbe6c900af65f06619"
+  },
+  "energy": {
+    "substation_health_sweep": "120c04dcab833659f2a12e0247dda4d929e57615c4825d42d2501a8f4e30bb98"
+  },
+  "procurement": {
+    "emergency_sourcing_round": "eb4aa90c34968967f96c53c957b5e4b79d97c9edf279b64f19cc399d3a46c7ae",
+    "event_emergency_sourcing_round": "594596cccc6a4112a4d67ad26f7d490f319cbcd1a80592dfee6a35fb69169bb1",
+    "low_stock_reorder_round": "f6bdbcaab61602742036358febb0551e9f6305e05dcb422f07c52de65d95ca6c",
+    "scheduled_emergency_sourcing_round": "5cb26744115a3728aef94815eee41d765c6205d892065dd87c237714c085aed1",
+    "scheduled_low_stock_reorder_round": "48c851ebc6c92f107eceae4aef4e7e6d454eb40712eb12d7e49cf872dc569351"
+  },
+  "supply_chain": {
+    "cold_chain_excursion_disposition": "310d6e193e0526485972eee72f267ca452196a955dbb012ec64736117898bd53",
+    "cold_chain_excursion_sweep": "f86ac31639106166d55f3c1ab0cc3dc0a669c1a692f90a67c1ae48b8ea8078fc"
+  }
+}

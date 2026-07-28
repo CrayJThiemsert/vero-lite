@@ -3,16 +3,23 @@
 Hand-written from the building_materials fixtures (NOT ``vero-lite new-vertical``). Deterministic,
 no external I/O. Shapes match ``fleet_maintenance_v0.yaml``.
 
-Narrative provenance (PLAN-0086 AC-3) — every value below is either a DIRTY-narrative sentence or a
-logged customer answer, never invented:
+Provenance — every value below is either a DIRTY-narrative sentence, a logged simulated-customer
+answer, or (since PLAN-0096 Step 1) a REAL design-partner answer. Never invented:
 
-* ``minor_repair_ceiling_thb = 5000`` — customer-question log **Q1** ("ต้อมเคาะได้ถึง 5 พัน"):
-  at/above this the repair stops being the head mechanic's call and enters the governed ladder.
+* ``minor_repair_ceiling_thb = 5001`` — design partner **Q8** ("ต้อม ~5,000; some tractor heads
+  stretch a bit"). ABOVE ฿5,000 the repair stops being the head mechanic's call and enters the
+  governed ladder; the band breaches at/above the ceiling, so his inclusive "up to 5,000" is
+  authored as 5001. The per-truck stretch values are a NAMED partner intake question — until he
+  gives them, every truck carries the default rather than a number this file made up.
 * the breach quote ``48000`` — narrative "เพลาขาดแถวๆ ปากช่อง ... ค่าซ่อมอีก ไม่รู้กี่หมื่น"
-  (tens of thousands, unspecified). 48,000 sits inside the customer's own "หมื่นๆ" range AND lands
-  mid-ladder in the fleet-manager tier [5k, 50k) — the demo shows TIERING, not always-the-top
-  (the building_materials ฿550,000 precedent). The exact figure is a fixture choice inside a
-  customer-stated range; the closeout records it as such.
+  (tens of thousands, unspecified). 48,000 sits inside the customer's own "หมื่นๆ" range. Under the
+  partner's REAL ladder (Q9) it clears ฿30,000 and now routes to the OWNER — no longer the
+  mid-ladder case it was against the simulated ฿50,000 rung.
+* the breach quote ``15000`` — PLAN-0096 Step 1's deliberate MID-LADDER row, so the demo still
+  shows tiering rather than always-the-top (the building_materials ฿550,000 precedent). A fixture
+  choice, not a partner figure: it exists to exercise the ฿5,001-30,000 วิรัช rung, which the
+  ฿48,000 case vacated. Kept honest by being the ONLY invented ฿ figure here, and by being the
+  first thing the partner will be asked to replace with a real repair he remembers.
 * the two below-ceiling quotes ``3200`` / ``1800`` — narrative "ปกติพวกผ้าเบรก ไส้กรอง ผมซื้อเจ๊หงส์
   กับ ส.เจริญยนต์ เป็นหลัก" (routine consumables, the calm path that never needs a governed run).
 * ปากช่อง / กระเบื้องของห้าง / ศูนย์กระจายสินค้าโคราช / สี่โมงเย็น — narrative, verbatim beats.
@@ -33,8 +40,9 @@ Provenance splits cleanly, and the split is the point:
   calm-path sweep reads THREE trucks rather than two (PLAN-0089 SD-3's Cray-ratified sub-choice)
   — one due, two not — instead of a 2-row demo where half the fleet is always flagged.
 
-NOTE the deliberate non-overlap: the calm path flags truck-02, the AT-2 hero flags truck-01. The
-two procedures watch different trucks for different reasons, so the demo shows a fleet with both
+NOTE the deliberate non-overlap, unchanged by PLAN-0096 Step 1: the calm path flags truck-02; the
+AT-2 hero flags truck-01 (฿48,000 → owner) and truck-03 (฿15,000 → fleet manager). The two
+procedures still watch different trucks for different reasons, so the demo shows a fleet with both
 a routine and an emergency story in flight — not one truck carrying everything.
 """
 
@@ -81,7 +89,7 @@ def truck_records() -> list[dict[str, Any]]:
             "plate": "80-1234 กรุงเทพมหานคร",
             "truck_class": "six_wheeler",
             "odometer_km": 412_580.0,
-            "minor_repair_ceiling_thb": 5000.0,  # Q1
+            "minor_repair_ceiling_thb": 5001.0,  # partner Q8
             # last service 400,000 (GUESS — รอแก้) + the 100,000 km interval (M-5 Q1).
             # 412,580 < 500,000 -> NOT due: the hero's breakdown truck is not also PM-flagged.
             "next_service_due_km": 500_000.0,
@@ -93,7 +101,7 @@ def truck_records() -> list[dict[str, Any]]:
             "plate": "70-5678 กรุงเทพมหานคร",
             "truck_class": "tractor_head",
             "odometer_km": 688_140.0,
-            "minor_repair_ceiling_thb": 5000.0,  # Q1
+            "minor_repair_ceiling_thb": 5001.0,  # partner Q8
             # last service 585,000 (GUESS — รอแก้) + the 100,000 km interval (M-5 Q1).
             # 688,140 >= 685,000 -> DUE, 3,140 km overdue. The high-mileage tractor head running
             # past its interval is the calm path's whole story.
@@ -108,7 +116,7 @@ def truck_records() -> list[dict[str, Any]]:
             "plate": "82-9012 กรุงเทพมหานคร",
             "truck_class": "six_wheeler",
             "odometer_km": 254_300.0,
-            "minor_repair_ceiling_thb": 5000.0,
+            "minor_repair_ceiling_thb": 5001.0,  # partner Q8
             # last service 200,000 (GUESS — รอแก้) + the 100,000 km interval.
             # 254,300 < 300,000 -> NOT due, 45,700 km of headroom.
             "next_service_due_km": 300_000.0,
@@ -119,11 +127,14 @@ def truck_records() -> list[dict[str, Any]]:
 
 
 def operational_events() -> list[dict[str, Any]]:
-    """Return the synthetic OperationalEvent records (routine quotes + the breakdown breach).
+    """Return the synthetic OperationalEvent records (routine quotes + the two breaching quotes).
 
-    The breach is the timeline's FINAL beat so real-time anchoring (PLAN-0015 D1) leaves nothing
-    in the future. ``intake`` reads the LATEST event per truck, so truck-01 is judged on the
-    ฿48,000 breakdown and truck-02 on its routine ฿1,800 service (verdict ``ok``).
+    The ฿48,000 breakdown is the timeline's FINAL beat so real-time anchoring (PLAN-0015 D1) leaves
+    nothing in the future. ``intake`` reads the LATEST event per truck, so truck-01 is judged on
+    that breakdown (→ owner tier), truck-03 on its ฿15,000 gearbox quote (→ fleet-manager tier,
+    the PLAN-0096 Step 1 mid-ladder row) and truck-02 on its routine ฿1,800 service (verdict
+    ``ok``). Two breaches, two different tiers: the demo shows the ladder ROUTING, which a
+    single-breach fixture cannot.
     """
     return [
         {
@@ -141,9 +152,9 @@ def operational_events() -> list[dict[str, Any]]:
             "site_id": "depot-01",
         },
         {
-            # PLAN-0089: truck-03's routine below-ceiling service quote. Keeps the third truck
-            # visible to the HERO's intake too (latest event per truck) as a plain `ok` row —
-            # it grows the sweep's read set without touching the breach set (still truck-01 only).
+            # PLAN-0089: truck-03's routine below-ceiling service quote. Superseded as truck-03's
+            # LATEST reading by the PLAN-0096 ฿15,000 gearbox quote below, so this row now plays
+            # the same part the other routine quotes do: history the demo can scroll back through.
             "event_id": "event-reading-04",
             "event_type": "reading",
             "severity": "info",
@@ -169,6 +180,26 @@ def operational_events() -> list[dict[str, Any]]:
             ),
             "occurred_at": datetime(2026, 7, 3, 3, 30, tzinfo=UTC),
             "truck_id": "truck-02",
+            "site_id": "depot-01",
+        },
+        {
+            # PLAN-0096 Step 1 — the MID-LADDER breach. Under the partner's real Q9 ladder the
+            # ฿48,000 case moved up to the owner's tier, which would have left the demo showing
+            # only ever the top rung. This ฿15,000 gearbox quote lands in [5,001, 30,001) and
+            # routes to วิรัช, so the ladder is visibly a LADDER. The ฿ figure is the one
+            # deliberately-invented number in this file (see the module docstring) — a shape the
+            # partner is meant to correct, not a claim about his fleet.
+            "event_id": "event-reading-05",
+            "event_type": "reading",
+            "severity": "warn",
+            "measured_value": 15000.0,
+            "unit": "THB",
+            "description": (
+                "เกียร์มีเสียงดังผิดปกติ อู่ประจำเสนอราคาซ่อม 15,000 บาท — เกินเพดาน 5,000 บาท "
+                "ต้องเข้าสายอนุมัติ ระดับ ผจก.เดินรถ."
+            ),
+            "occurred_at": datetime(2026, 7, 4, 6, 45, tzinfo=UTC),
+            "truck_id": "truck-03",
             "site_id": "depot-01",
         },
         {
