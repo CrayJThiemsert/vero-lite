@@ -36,6 +36,7 @@ from services.engine.procedures.orchestrator import (
     validate_read_bindings_for_vertical,
     validate_runnable,
 )
+from services.engine.procedures.ratification import RATIFICATION_KEY
 from services.engine.procedures.runs import (
     PipelineRun,
     PipelineRunStatus,
@@ -205,12 +206,27 @@ async def load_run(session: AsyncSession, run_id: str) -> RunResult | None:
     return RunResult(run=run, step_results=list(rows.scalars().all()))
 
 
-# The two statuses a not-yet-resumed step can hold: ``waiting_human`` (suspended at
-# a gate, or escalated on failure with no artifact) and ``resolved`` (its gate was
-# decided; awaiting the resume that threads the decision forward). Every other step
-# of a resumable run is ``complete``, so exactly one step matches.
+# The statuses a not-yet-resumed step can hold: ``waiting_human`` (suspended at
+# a gate, or escalated on failure with no artifact), ``resolved`` (its gate was
+# decided; awaiting the resume that threads the decision forward), and
+# ``resolved_provisional`` (decided FIRST under an authored ratification window —
+# ADR-0034 D3(5); the run advances on it exactly as on ``resolved``, because the
+# effects have already executed and holding the run hostage to a signature that is
+# days out is the precise thing decide-first exists to avoid). Every other step of
+# a resumable run is ``complete``, so exactly one step matches.
 _UNRESUMED_STATUSES = frozenset(
-    {StepResultStatus.WAITING_HUMAN.value, StepResultStatus.RESOLVED.value}
+    {
+        StepResultStatus.WAITING_HUMAN.value,
+        StepResultStatus.RESOLVED.value,
+        StepResultStatus.RESOLVED_PROVISIONAL.value,
+    }
+)
+
+# The statuses that advance a decidable gate. Provisional is here for the reason above;
+# the outstanding obligation rides the step audit and stays queryable after the step is
+# marked ``complete`` (ADR-0034 D3(6)), so advancing does not lose it.
+_ADVANCING_STATUSES = frozenset(
+    {StepResultStatus.RESOLVED.value, StepResultStatus.RESOLVED_PROVISIONAL.value}
 )
 
 
@@ -300,11 +316,20 @@ def _assert_sod_tie_present(run: PipelineRun, procedure: Procedure, suspended: S
         constrained |= set(sod.distinct_steps)
     if suspended.step_id not in constrained:
         return
-    if not (suspended.audit or {}).get("governed_decision"):
+    audit = suspended.audit or {}
+    # A PROVISIONAL resolution satisfies this guard through its attestation block instead of a
+    # tie (ADR-0034 D3(2)/D3(5)). The guard's purpose is to prove the gate came through the
+    # governed resolution path rather than being written directly — and the ratification block
+    # is written by exactly one code path, the provisional branch of ``resolve_gated_step``,
+    # which runs the SAME live SoD check before it. So the evidence is equally strong; demanding
+    # a `governed_decision` here instead would demand the one thing the ADR deliberately
+    # withholds until ratification, and no provisional run could ever advance.
+    if not audit.get("governed_decision") and not audit.get(RATIFICATION_KEY):
         raise ProcedureError(
             f"run '{run.run_id}': resolved step '{suspended.step_id}' is SoD-constrained but "
-            "carries no governed_decision audit tie — refusing to resume (PLAN-0047 Step 3 "
-            "fail-closed; resolve the gate through resolve_gated_step)"
+            "carries neither a governed_decision audit tie nor a provisional ratification "
+            "attestation — refusing to resume (PLAN-0047 Step 3 fail-closed; resolve the gate "
+            "through resolve_gated_step)"
         )
 
 
@@ -407,7 +432,7 @@ async def resume_run(
         # proposals advances ONLY from RESOLVED; a no-decision suspend (empty
         # watch set / non-proposal artifact) keeps the plain-resume contract.
         if _has_decidable_proposals(suspended.artifact):
-            if suspended.status != StepResultStatus.RESOLVED.value:
+            if suspended.status not in _ADVANCING_STATUSES:
                 raise ProcedureError(
                     f"run '{run_id}': step '{suspended.step_id}' suspended with undecided "
                     "proposals — resolve it through resolve_gated_step before resuming "

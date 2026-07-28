@@ -188,6 +188,19 @@ def test_emergency_waiver_relaxes_the_constraint_the_customer_described() -> Non
     assert waiver.requires_justification is True
 
 
+def test_waiver_authors_the_partner_reconciliation_window() -> None:
+    """AC-3 / PLAN-0096 Step 5: the partner named a WINDOW, not a ฿ cap — "ไม่เกินอาทิตย์
+    บัญชีจะเริ่มถามแล้ว" (Q11) — and the shipped waiver authors it as seven days.
+
+    Two things are pinned here, and the second is the one that matters. The value is the
+    partner's own. And the field is only authored NOW, alongside the driver that reads it
+    (``ratify_gated_step``): a window sitting in YAML with no enforcement path behind it would
+    be the PLAN-0094 AC-1 defect class ADR-0034 D3 opens by naming — a governance promise that
+    looks kept from the file and is not kept anywhere else."""
+    waiver = _ladder(_hero(load_procedures(_VERTICAL))).emergency_waiver
+    assert waiver.ratification_window_days == 7
+
+
 def test_requester_holds_no_approver_role() -> None:
     """AC-3: the customer's own กฎเหล็ก ("คนทำเรื่องเบิกห้ามเป็นคนอนุมัติเอง") is structural, not
     just a comment: the head mechanic who files carries ``requester`` and NOTHING else, while the

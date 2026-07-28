@@ -301,16 +301,26 @@ procedures:
           # THE ฿ CAP IS ELIMINATED, NOT DEFERRED (partner Q11; ADR-0034). The simulated customer's
           # ฿10,000 emergency cap was OUR hypothesis, and the real operator refuted it: he has no
           # cap in his head, because DOWNTIME — not ฿ — is what drives a roadside decision. ADR-0034
-          # records the elimination so it cannot creep back as a "safe default". The control he
-          # actually uses is a reconciliation window ("ไม่เกินอาทิตย์ บัญชีจะเริ่มถามแล้ว") →
-          # `ratification_window_days` (~7), which lands in PLAN-0096 Step 5 per ADR-0034 D2 Door 1
-          # + D3 — NOT here: Step 1 authors no schema field, and a new pin that serialized always
-          # (even as None) would flip EVERY vertical's governance config hash (ADR-0034 D6; the
-          # AC-2 tripwire in tests/verticals/test_governance_config_hash_stability.py).
+          # records the elimination so it cannot creep back as a "safe default".
+          #
+          # The control he actually uses is a reconciliation window — "ไม่เกินอาทิตย์ บัญชีจะเริ่มถาม
+          # แล้ว" (Q11) — authored below as `ratification_window_days: 7`. It lands HERE only now,
+          # in PLAN-0096 Step 5 part 2, WITH the driver that enforces it: `resolve_gated_step`'s
+          # provisional branch + `ratify_gated_step` (ADR-0034 D2 Door 1 + D3). Authoring it in
+          # Step 1, when nothing read it, would have been the exact PLAN-0094 AC-1 defect class
+          # ADR-0034 D3 opens by naming — a governance promise living in YAML with no code path
+          # behind it. The number is the partner's own; the enforcement is the point.
+          #
+          # Only-when-supplied (ADR-0034 D6): the field is dropped from the dump when absent, so
+          # the five verticals that never heard of it keep byte-identical governance config
+          # hashes. Setting it here DOES move THIS vertical's hash — deliberately, and only this
+          # one; in-flight fleet runs keep their pin and fail closed on mismatch, as designed.
+          # AC-2 tripwire: tests/verticals/test_governance_config_hash_stability.py.
           emergency_waiver:
             relaxes: [three_bid]
             escalate_to: "เจ้าของกิจการ"
             requires_justification: true
+            ratification_window_days: 7
         input:
           from: quote_gate
           where:
