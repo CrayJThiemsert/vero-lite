@@ -33,12 +33,17 @@ Provenance splits cleanly, and the split is the point:
 * the 100,000 km service INTERVAL is a logged customer answer ("เข้าศูนย์ทุกแสนกิโลฯ" — the
   PLAN-0089 M-5 Q1 intake round, one fixed interval across every truck class).
 * each truck's LAST-SERVICE odometer — from which ``next_service_due_km = last_service +
-  100,000`` — is GUESS — รอแก้. The dirtied narrative carries the routine-PM THREAD
-  ("ปกติพวกผ้าเบรก ไส้กรอง...", "เปลี่ยนไส้กรองน้ำมันเครื่องตามระยะ") but NO km figures at all,
-  so every due point below is a fixture choice the design partner re-feeds.
-* truck-03 is a GUESS — รอแก้ in full (plate, class, odometer, last service). It exists so the
-  calm-path sweep reads THREE trucks rather than two (PLAN-0089 SD-3's Cray-ratified sub-choice)
-  — one due, two not — instead of a 2-row demo where half the fleet is always flagged.
+  100,000`` — is a **DEMO SEED**. The dirtied narrative carries the routine-PM THREAD
+  ("ปกติพวกผ้าเบรก ไส้กรอง...", "เปลี่ยนไส้กรองน้ำมันเครื่องตามระยะ") but NO km figures at all.
+  Since PLAN-0096 Step 9 these numbers are no longer marked ``รอแก้``, and the change is not
+  cosmetic: they are no longer waiting to be corrected IN THIS FILE. The real values arrive
+  through the import + human-confirm path (``pm_import.py`` → ``pm_projection.py``, AC-10;
+  runbook ``docs/runbooks/fleet-pm-onboarding.md``), which OVERLAYS whatever is confirmed on
+  top of the seeds below. Editing them here would be the wrong correction surface.
+* truck-03 is a DEMO SEED in full (plate, class, odometer, last service) — no narrative source.
+  It exists so the calm-path sweep reads THREE trucks rather than two (PLAN-0089 SD-3's
+  Cray-ratified sub-choice) — one due, two not — instead of a 2-row demo where half the fleet
+  is always flagged.
 
 PLAN-0096 Step 2 adds ``case_id`` to the two BREACHING quotes only. Two things about that:
 
@@ -63,6 +68,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
+from verticals.fleet_maintenance import pm_projection
 from verticals.fleet_maintenance.sourcing import compliance_signal_map, compute_three_quote
 
 
@@ -125,7 +131,7 @@ def truck_records() -> list[dict[str, Any]]:
             "truck_class": "six_wheeler",
             "odometer_km": 412_580.0,
             "minor_repair_ceiling_thb": 5001.0,  # partner Q8
-            # last service 400,000 (GUESS — รอแก้) + the 100,000 km interval (M-5 Q1).
+            # last service 400,000 (DEMO SEED) + the 100,000 km interval (M-5 Q1).
             # 412,580 < 500,000 -> NOT due: the hero's breakdown truck is not also PM-flagged.
             "next_service_due_km": 500_000.0,
             "status": "roadside_breakdown",
@@ -137,7 +143,7 @@ def truck_records() -> list[dict[str, Any]]:
             "truck_class": "tractor_head",
             "odometer_km": 688_140.0,
             "minor_repair_ceiling_thb": 5001.0,  # partner Q8
-            # last service 585,000 (GUESS — รอแก้) + the 100,000 km interval (M-5 Q1).
+            # last service 585,000 (DEMO SEED) + the 100,000 km interval (M-5 Q1).
             # 688,140 >= 685,000 -> DUE, 3,140 km overdue. The high-mileage tractor head running
             # past its interval is the calm path's whole story.
             "next_service_due_km": 685_000.0,
@@ -146,13 +152,13 @@ def truck_records() -> list[dict[str, Any]]:
         },
         {
             # PLAN-0089 SD-3 sub-choice (Cray-ratified): the third truck, so the calm-path sweep
-            # reads three and flags one. GUESS — รอแก้ in full; no narrative source.
+            # reads three and flags one. DEMO SEED in full; no narrative source.
             "truck_id": "truck-03",
             "plate": "82-9012 กรุงเทพมหานคร",
             "truck_class": "six_wheeler",
             "odometer_km": 254_300.0,
             "minor_repair_ceiling_thb": 5001.0,  # partner Q8
-            # last service 200,000 (GUESS — รอแก้) + the 100,000 km interval.
+            # last service 200,000 (DEMO SEED) + the 100,000 km interval.
             # 254,300 < 300,000 -> NOT due, 45,700 km of headroom.
             "next_service_due_km": 300_000.0,
             "status": "in_service",
@@ -271,7 +277,27 @@ def operational_events() -> list[dict[str, Any]]:
     ]
 
 
+def truck_view() -> list[dict[str, Any]]:
+    """The Truck records as the ontology serves them: seeds with confirmed PM values on top.
+
+    PLAN-0096 Step 9 / AC-10. ``truck_records`` above stays the pure fixture — it is what
+    the fleet looks like before anyone has confirmed anything — and this is the one place the
+    two are combined, so a reader can see the whole of the overlay in three lines.
+
+    **Why the overlay hangs here rather than on the adapter.** The obvious home was
+    ``data_adapter/__init__.py``, next to the ``demo_events`` wrapper it mirrors. But that
+    file carries a measurement claim: PLAN-0086 AC-7 row 4 records that this hand-written
+    adapter is STRUCTURALLY EQUAL to what the Tier-1 scaffolder emits, and
+    ``test_row_4_adapter_is_structurally_equal_to_the_donor`` holds it to that. Adding a
+    fleet-specific seam there would have retracted a measurement — and the alternative,
+    teaching the scaffolder to emit a PM overlay, would hand every future vertical a
+    workaround for a problem only this one has (its objects come from a fixture rather than
+    a real system). Attaching it to the object SOURCE keeps both facts true.
+    """
+    return pm_projection.apply(truck_records())
+
+
 OBJECT_SOURCES = {
     "Depot": depot_records,
-    "Truck": truck_records,
+    "Truck": truck_view,
 }

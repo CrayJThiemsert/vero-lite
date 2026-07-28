@@ -16,11 +16,15 @@
 # the dirtied customer narrative; the ฿ VALUES come from the customer-question log, never
 # from this file's imagination.
 # PLAN-0096 Step 1 promoted the FIRST property out of guess-land: minor_repair_ceiling_thb is
-# now the real design partner's answer (Q8). Everything still marked GUESS — notably each
-# truck's LAST-SERVICE odometer behind next_service_due_km — stays a guess until Step 9 loads
-# it from his paper PM folder + the Wialon CSV export. The distinction is the point: a blanket
-# "everything is a guess" header, left standing after he has answered, trains him to ignore
-# the correction surface (ADR-0032 D1).
+# now the real design partner's answer (Q8). PLAN-0096 Step 9 promoted the SECOND: the
+# odometer pair behind next_service_due_km is no longer a guess awaiting correction, because
+# it now has a LOAD PATH — the Wialon CSV export and the paper PM folder, imported and
+# human-confirmed (AC-10; runbook docs/runbooks/fleet-pm-onboarding.md). The fixture values in
+# data_adapter/synthetic.py remain demo values, and are labelled DEMO SEED rather than
+# `รอแก้`: the correction no longer happens by editing this repository, it happens by
+# importing his file. The distinction is the point — a blanket "everything is a guess"
+# header, left standing after he has answered, trains him to ignore the correction surface
+# (ADR-0032 D1).
 
 version: 0
 namespace: fleet_maintenance
@@ -64,8 +68,12 @@ object_types:
           (odometer_km) against this field directly, and the projection grammar is a fields-only
           rename with no arithmetic — there is nowhere to compute `last_service + interval`.
           Computed per truck as `last_service_odometer + 100,000` — the 100,000 km interval is a
-          logged customer answer ("เข้าศูนย์ทุกแสนกิโลฯ", PLAN-0089 M-5 Q1); each truck's
-          LAST-SERVICE odometer is GUESS — รอแก้ (no narrative source).
+          logged customer answer ("เข้าศูนย์ทุกแสนกิโลฯ", PLAN-0089 M-5 Q1). The arithmetic is
+          done ONCE, at load, by `verticals/fleet_maintenance/pm_import.py` (PLAN-0096 Step 9):
+          the last-service odometer is loaded from the operator's paper PM folder as a documented
+          onboarding task and only becomes this value once a human CONFIRMS the imported row
+          (AC-10 — Q4 says the telematics figure is approximate, so a machine reading is a claim
+          and never a fact). An unconfirmed import is invisible here by construction.
           Distinct from minor_repair_ceiling_thb, which is money-typed and cannot serve a km band.
       status:
         type: enum

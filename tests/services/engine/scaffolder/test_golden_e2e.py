@@ -135,7 +135,15 @@ def _donor_ontology() -> dict:
 #:   rule, typed in the vertical that owns them. A scaffolder cannot invent a
 #:   customer's sourcing policy, and a template that shipped a default one would be
 #:   handing every new vertical a governance rule nobody authored.
-_POST_SCAFFOLD_DONOR_FILES = frozenset({"sourcing.py"})
+#: * ``pm_import.py`` — PLAN-0096 Step 9. The CSV contract for ONE operator's export
+#:   plus his 100,000 km service interval. Both are answers he gave; a scaffolded
+#:   default would be a made-up column header and a made-up maintenance schedule.
+#: * ``pm_projection.py`` — PLAN-0096 Step 9. The confirmed-PM overlay exists because
+#:   this vertical's ontology is served from a synthetic source and needs a seam for
+#:   human-confirmed values. A vertical whose objects come from a real system has no
+#:   such seam, so emitting one by default would be scaffolding a workaround as if it
+#:   were architecture.
+_POST_SCAFFOLD_DONOR_FILES = frozenset({"sourcing.py", "pm_import.py", "pm_projection.py"})
 
 
 def test_same_file_set_as_the_donor(regenerated: Path) -> None:

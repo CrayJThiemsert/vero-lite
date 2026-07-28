@@ -40,6 +40,7 @@ _HEAD_TABLES = {
     "operational_event",
     "person",
     "pipeline_runs",
+    "pm_import_row",
     "recommended_action",
     "repair_case",
     "repair_case_justification",

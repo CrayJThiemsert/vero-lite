@@ -20,6 +20,7 @@ from services.api.routers.cases import router as cases_router
 from services.api.routers.demo import router as demo_router
 from services.api.routers.insights import router as insights_router
 from services.api.routers.intake import router as intake_router
+from services.api.routers.pm import router as pm_router
 from services.api.routers.procedure_draft import router as procedure_draft_router
 from services.api.routers.procedures import router as procedures_router
 from services.api.routers.query import router as query_router
@@ -209,6 +210,28 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
                         )
             except Exception as exc:  # fail-soft — a seed error must never block the demo boot
                 _boot_logger.warning("operate-demo seed skipped (error): %s", exc)
+    # PLAN-0096 Step 9 / AC-10: load the confirmed-PM view once at boot, so a restart
+    # does not silently revert every truck an operator has already confirmed to its
+    # fixture value. Fail-SOFT and LOUD: the DB-less demo (PLAN-0095) must still boot,
+    # so an unreachable database logs and records the reason on the view rather than
+    # aborting startup — the view then reports itself unloaded instead of pretending
+    # nobody has confirmed anything.
+    if "fleet_maintenance" in known:
+        from verticals.fleet_maintenance import pm_projection
+
+        try:
+            async with async_session() as _pm_session:
+                _pm_loaded = await pm_projection.refresh(_pm_session)
+            _boot_logger.info(
+                "fleet PM overrides loaded: %d truck(s) carry confirmed values", len(_pm_loaded)
+            )
+        except Exception as exc:  # fail-soft — a PM read must never block the demo boot
+            pm_projection.record_unavailable(str(exc))
+            _boot_logger.warning(
+                "fleet PM overrides NOT loaded (%s) — trucks serve fixture values until a "
+                "confirm refreshes the view",
+                exc,
+            )
     # One-shot boot diagnostic: makes a mis-armed PLAN-0014 notifier (e.g. the
     # enable flag left off — otherwise a silent per-call no-op) visible at startup.
     _boot_logger.info(
@@ -231,6 +254,7 @@ app.include_router(query_router)
 app.include_router(admin_router)
 app.include_router(audit_router)
 app.include_router(cases_router)
+app.include_router(pm_router)
 app.include_router(intake_router)
 app.include_router(procedures_router)
 app.include_router(procedure_draft_router)
