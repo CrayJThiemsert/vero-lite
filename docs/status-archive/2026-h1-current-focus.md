@@ -2213,3 +2213,136 @@ dropped in favour of section headings — one had already rotted onto an unrelat
 > copy is Code-fixable). AC-0088 wording debts **grounded this session as 2
 > real, not 3** — debt #2 (AC-6 "dwell") does not reproduce; the AC text already
 > says "same-row spans".
+
+<!-- rotated out of docs/STATUS.md by the s185 reconcile (R2) -->
+> **Session 181, 2026-07-28 (head_commit `767d520` → `85efe52`) — the session
+> the constitution got a third lighter and no rule changed. One PR merged
+> (#941), 0 open. CLAUDE.md full slim: the **11.1 KB footer changelog — ONE
+> physical line, 33.6% of the file — retired to git history** under a NEW
+> convention; §6 compressed; **277 → 261 lines / 33,014 → 21,524 B
+> (−35.2%)** — ~2.8k tokens returned to every session.**
+>
+> **(the trigger was behavioral; the diagnosis was measured.)** Cray observed
+> inconsistent instruction-following. A 2026-07-28 research pass against the
+> official guidance (target < 200 lines; "bloated CLAUDE.md files cause
+> Claude to ignore your actual instructions"; ❌-exclude "information that
+> changes frequently") identified the footer as the anomaly — one physical
+> line of 11,104 B, exactly the frequently-changing class the guidance
+> excludes.
+>
+> **(the safety condition ran BEFORE the cut.)** Cray attached a coverage
+> verification as a precondition: every footer entry diffed against its
+> edit's full commit message (20 commits to scaffold) — every commit body ≥
+> the footer entry, and every companion artifact (Lessons
+> #0007/#0010/#0011/#0026/#0027, ADR-009/012/013/0017/0018/0032, the ms-s1
+> runbook + skills) exists on disk. The footer was a strict summary layer
+> over git history; retiring it loses nothing. The NEW convention: a
+> constitutional edit bumps the footer date ONLY — the edit's commit message
+> is the full record, and `git log --follow -- CLAUDE.md` is the amendment
+> history.
+>
+> **(routing + R2 — five flags, five rulings.)** Cowork drafted (ADR-009 D1,
+> cloud session, K-2 delivery); Code R2'd with a one-for-one E2
+> six-commitment checklist, a binding-rule substance diff, and arithmetic
+> verification, then ruled the returned flags: **α ACCEPT** (Decision + Plan
+> Flows merged into one "Governance Artifact Flow"; 8/8 facts verified),
+> **β ACCEPT** (the ADR-013 T4 sentence dropped — canonical in ADR-013),
+> **γ ACCEPT** (the D2 hook-fact stated once), **δ APPLIED** (Lesson #0027
+> linkified), **ε KEEP** (the tier table is the single in-file ADR-009 D1/D2
+> statement). Cray ratified the wording + the rulings via AskUserQuestion.
+> **No binding rule's substance changed** — verified hunk-by-hunk: 9 hunks,
+> all inside the §6 span + the footer.
+>
+> **(the LOCKED target was unreachable — and the drafter said so.)** Cowork
+> flagged per stop-and-flag, and Code verified the arithmetic: the
+> < 200-line LOCKED target cannot be met in LOCKED scope — outside-§6 alone
+> is 194 lines. Cray ruled option **(b)**: the target restates as **< 20 KB**
+> (now 21.5 KB) and a follow-up extraction pass is queued (new Active TODO).
+>
+> **State at close:** `main` `85efe52`, 0 open PRs. Gate: pytest **3327
+> passed / 8 skipped**, mypy clean (110 files), ruff clean on the tracked
+> tree, CI `gate` PASS. Restart-bridge filed:
+> `.claude/handoffs/session-181/2026-07-28-1027-code-session181-restart-bridge.md`
+> — running sessions hold the pre-edit CLAUDE.md until Claude Desktop
+> restarts. The two standing CLAUDE.md defect TODOs both SURVIVED the slim
+> (re-verified on disk this reconcile): the dead `docs/conventions/git.md`
+> link shifted `:176` → `:160`, the stale plan-drafter gate claim now sits
+> at `CLAUDE.md:112` — line refs updated in their Active TODO rows.
+
+> **Session 180, 2026-07-28 (head_commit `bc7be51` → `767d520`) — the session
+> L1 stopped counting touches and started counting non-progress, and the
+> question of whether L1 should exist at all got a measured baseline. Three PRs
+> merged (#937, #938, #939), **0 open**. **PLAN-0094 Step 4 COMPLETE** (AC-7,
+> AC-8(i)/(iii), AC-11); **OQ-4 opened** with a pre-committed retirement
+> criterion; suite 3318 → **3327**. Only Step 6 (closeout, AC-10) remains.**
+>
+> **(#937 — the unit changed.)** `_handle_write_or_edit` used to increment on
+> every Write/Edit, so six distinct forward edits of one file were
+> indistinguishable from six retries of one broken change. It now increments
+> only on **(b)** a re-applied `old_string` (`repeat xN`) or **(c)** the file
+> returning to content it already held this turn (`osc xN`); a distinct forward
+> edit is recorded via `observe()` with `result == ""`. `clear_turn_scoped()` is
+> wired into the turn boundary. The measurement that makes this real: **all
+> three L1 warns ever recorded would not fire under the new unit.**
+>
+> **(The s179 BLOCKING item was settled WITHOUT the probe it had staged.)**
+> s179 closed planning to register a payload-dump hook and **restart the
+> session** to learn whether `Edit`'s `tool_response` could supply a hermetic
+> digest for (c). Answered instead from **84 recorded `Edit` results** in
+> existing transcripts: an `Edit` result carries **no `content` key at all**,
+> `originalFile` was null in **78 of 84**, and `structuredPatch` holds 1–2
+> hunks — a diff, not a state. Nothing reconstructs the post-edit file, so the
+> PLAN's on-disk hash stood unchanged. **The probe was never run; no restart was
+> spent.** Corroboration for reading transcripts as a proxy for live payloads:
+> the `Write` keyset measured this way matches the `Write` hook payload measured
+> live in s179, key for key.
+>
+> **(#938 — two PLAN corrections, both measured, not inferred.)** The recorded
+> result is ASCII `repeat xN`, not `repeat×N` — **seven sites** carried the
+> multiplication sign **including AC-8's assertion text**, which is a
+> pre-committed pass/fail read, so a test written to the PLAN as it stood could
+> not have linted clean (ruff `RUF001`, measured directly). And (c)'s on-disk
+> digest is now **grounded rather than defaulted**.
+>
+> **(OQ-4 — Cray asked whether L1 should exist at all.)** Baseline measured
+> across **all 113 session transcripts, 2026-06-27 → 2026-07-27: 0 denies, 3
+> warns, 0 true positives.** Two readings recorded: all three warns landed on
+> exactly the *old* deny bar, so without P2's grace budget they would have been
+> three hard walls during the month's most concentrated build work — the
+> false-positive rate is **not flat, it climbs with how much work concentrates
+> on single files**; and the guard **cannot catch the s169 incident that
+> motivated it**. Not retired on the spot because the *marginal* cost of
+> finishing was below the cost of retiring (an ADR-013 amendment plus deleting
+> the test surface, against AC-7 on top of a state layer already merged), and a
+> deleted detector cannot be measured. **Pre-committed criterion: re-measure
+> after ~20 sessions; if true positives are still 0 and there is ≥1 false
+> positive, dispatch Cowork to draft the ADR-013 amendment retiring L1** —
+> L2/L3/L4 already carry E.4 more faithfully, since E.4 says "the same
+> *problem*" while L1 keys only on "the same *file*".
+>
+> **(#939 — AC-11, and a spec that contradicted itself.)** (i) asked the deny
+> body for "the threshold actually applied" (T+G) while (ii) asked the warn body
+> for "the same line" (fires at T). **Cray ruled for the deny bar in both**: the
+> warn body reads `count: 6/9`, "six of the nine that wall". The observer reads
+> its denominator through `l1_deny_threshold_for` — the same function the gate
+> applies — which exists precisely so the two bars cannot drift across two hook
+> processes.
+>
+> **Non-vacuity swept twice, 9 named mutations**, each restored from a `/tmp`
+> copy, never `git checkout`. The two carrying the most weight: **M-A**
+> (whole-feature revert) reddens all three Step-4 rows while **L2 and L4 stay
+> green**, proving the blast radius is L1; and **N-D** rewords a shared line
+> *unrelated to the count* and reddens **only** the mirror row, proving the
+> mirror-invariance assertion stands on its own rather than re-testing the count
+> line from a third angle. **Every merge commit was checked, not assumed** —
+> `git diff <CI-verified-head> HEAD` was **0 bytes** all three times, closing the
+> PR-only-CI hazard by evidence.
+>
+> **State at close:** `main` `767d520`, suite **3327 passed / 8 skipped** (+9),
+> `tests/handoffs/` **710 passed** re-run on the merge commit. 0 open PRs.
+> `.claude/state/goal.json` **CLEARED this session** — it had been armed with
+> the COMPLETED PLAN-0095 goal since s177, five sessions, and was carried
+> unactioned in three prior blocks. Owed and unrun: the PLAN §Verification
+> live-check (ii) — one deliberate warn-crossing on a scratch file, to confirm
+> the advisory reaches the agent's context — and a Cray-confirmed live-loop
+> soak, both gating Step 6.
