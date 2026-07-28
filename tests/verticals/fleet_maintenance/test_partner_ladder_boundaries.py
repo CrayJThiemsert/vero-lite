@@ -199,17 +199,17 @@ def test_the_repair_ceiling_property_no_longer_carries_a_guess_stamp() -> None:
 
 
 def test_every_surviving_guess_marker_belongs_to_a_named_later_step() -> None:
-    """The set-equality tripwire. Two GUESS stamps legitimately survive Step 1, and each is
-    owned by a later PLAN-0096 step:
+    """The set-equality tripwire, and it has already earned its keep.
 
-    * the ``reshape`` fail-open ``compliance.three_quote`` default — Step 4 computes the
-      real signal and deletes it (AC-4's fail-closed case is the oracle);
-    * the per-truck PM due points — Step 9 loads them from the partner's paper PM folder
-      + the Wialon CSV (AC-10).
+    Step 1 left TWO stamps standing, each owned by a later PLAN-0096 step: the ``reshape``
+    fail-open ``compliance.three_quote`` default (Step 4) and the per-truck PM due points
+    (Step 9). When Step 4 landed and deleted the first one, THIS TEST FAILED — which is
+    exactly what it was written to do. The anti-rot signal is a failing test, not a comment
+    nobody reads, and the update below is the deliberate act it forced.
 
-    Asserting the SET rather than a count means a THIRD guess cannot appear unremarked,
-    and it means Steps 4 and 9 must come back here and delete their own line — the anti-rot
-    signal is a failing test, not a comment nobody reads.
+    ONE stamp survives now: the per-truck PM due points, which Step 9 replaces with the
+    partner's paper PM folder + the Wialon CSV export (AC-10). When that lands, this test
+    fails again and the assertion becomes ``== 0``.
 
     The match is the BARE token, deliberately. A cleverer matcher that exempted "explanatory
     mentions" would be exactly the loophole a stamp could later hide in, so the rule for this file
@@ -219,6 +219,9 @@ def test_every_surviving_guess_marker_belongs_to_a_named_later_step() -> None:
     guess_lines = [
         line for line in _YAML_PATH.read_text(encoding="utf-8").splitlines() if "GUESS" in line
     ]
-    assert len(guess_lines) == 2, guess_lines
-    assert any("sourcing-hygiene signal map" in line for line in guess_lines), guess_lines
+    assert len(guess_lines) == 1, guess_lines
     assert any("per-truck due points" in line for line in guess_lines), guess_lines
+    # Step 4's stamp is gone WITH its fail-open default — asserted here too, so a
+    # re-added default cannot restore the stamp and pass this test by matching the
+    # old expectation.
+    assert not any("sourcing-hygiene signal map" in line for line in guess_lines), guess_lines

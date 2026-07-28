@@ -60,7 +60,31 @@ a routine and an emergency story in flight — not one truck carrying everything
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any
+
+from verticals.fleet_maintenance.sourcing import compliance_signal_map, compute_three_quote
+
+
+def _sourcing_signal(
+    amount_thb: int, *, distinct_vendors: int, sole_source: bool
+) -> dict[str, Any]:
+    """The computed sourcing fields for one demo breach row (PLAN-0096 Step 4).
+
+    Runs the REAL ``compute_three_quote`` rather than hard-coding
+    ``{"three_quote": true}``. That matters: the fixture and the live case feed now
+    share ONE implementation of the rule, so a demo row can never quietly disagree
+    with what production would decide about the same numbers. Hard-coding the map
+    here would have re-created the fail-open default this step exists to retire,
+    just relocated one file away.
+    """
+    result = compute_three_quote(
+        amount_thb=Decimal(amount_thb),
+        distinct_vendor_count=distinct_vendors,
+        has_sole_source_justification=sole_source,
+    )
+    _, basis = result
+    return {"compliance": compliance_signal_map(result), "three_quote_basis": basis}
 
 
 def depot_records() -> list[dict[str, Any]]:
@@ -209,6 +233,10 @@ def operational_events() -> list[dict[str, Any]]:
             # noise, BEFORE any quote existed. See the module docstring on why the
             # demo carries case ids at all.
             "case_id": "case-demo-truck03-gearbox",
+            # PLAN-0096 Step 4: ฿15,000 sits UNDER the ฿30,000 comparison threshold,
+            # so the sourcing rule never applies — one quote is enough and the basis
+            # says why. The contrast with truck-01 below is the demo's whole point.
+            **_sourcing_signal(15_000, distinct_vendors=1, sole_source=False),
             "description": (
                 "เกียร์มีเสียงดังผิดปกติ อู่ประจำเสนอราคาซ่อม 15,000 บาท — เกินเพดาน 5,000 บาท "
                 "ต้องเข้าสายอนุมัติ ระดับ ผจก.เดินรถ."
@@ -226,6 +254,11 @@ def operational_events() -> list[dict[str, Any]]:
             # PLAN-0096 Step 2 (AC-3): opened from the roadside at minute 1, well
             # before the อู่ quoted 48,000 — which is the entire point of the case.
             "case_id": "case-demo-truck01-axle",
+            # PLAN-0096 Step 4: ฿48,000 is OVER the threshold, so the rule applies —
+            # and เมย์ collected three separate quotes while the truck sat at the
+            # partner garage. The row passes on `three_quotes`, honestly earned,
+            # where the retired fail-open default used to pass it on nothing at all.
+            **_sourcing_signal(48_000, distinct_vendors=3, sole_source=False),
             "description": (
                 "เพลาขาดกลางทางแถวปากช่อง รถจอดข้างทางพร้อมกระเบื้องเต็มคันของห้าง "
                 "ต้องถึงศูนย์กระจายสินค้าโคราชก่อนสี่โมงเย็น — อู่เสนอราคาซ่อม 48,000 บาท "

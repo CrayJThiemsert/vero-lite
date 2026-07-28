@@ -200,13 +200,21 @@ procedures:
             # the ontology `unit` is already THB, but the gate contract wants the flat `currency`
             # key (governance_step.py `_spend()` reads entity["currency"]).
             - default: { target: currency, value: THB }
-            # the sourcing-hygiene signal map the rule_gate executor reads. GUESS — default-true so
-            # the shipped happy path releases; the partner wires the real quote-capture feed (today
-            # this signal lives in a LINE group and น้องเมย์'s notebook — that IS the pain).
-            - default:
-                target: compliance
-                value:
-                  three_quote: true
+            # NO `default` for `compliance` — PLAN-0096 Step 4 RETIRED it, and its absence is the
+            # governance change this step exists to make.
+            #
+            # It used to read `default: {compliance: {three_quote: true}}`: a fail-OPEN default that
+            # let the shipped happy path release while the real signal still lived in a LINE group
+            # and น้องเมย์'s notebook. Every row it touched passed the sourcing gate whether or not
+            # anyone had compared a single price.
+            #
+            # Now the row arrives carrying the map already, computed by the evidence feed from the
+            # case's own quotes (verticals/fleet_maintenance/sourcing.py — the ฿30,000 threshold and
+            # the three-DISTINCT-vendor rule, Q10). And a row that somehow reaches the gate WITHOUT
+            # a `compliance` map now raises RuleGateError and fails CLOSED, which is correct: a
+            # missing map is a wiring error, not a pass. That is exactly the case the old default
+            # made unreachable.
+            #
             # coerce amount to string so `Decimal(str(...))` is byte-exact on the authority
             # threshold (the PLAN-0078 byte-form discipline).
             - coerce: { target: amount, to: string }
@@ -238,8 +246,14 @@ procedures:
             # in whatever feed computes `compliance.three_quote` — today the reshape default below,
             # and from PLAN-0096 Step 4 the real quote-evidence pack (E-1), which also stamps
             # `three_quote_basis` and makes a MISSING signal map fail CLOSED.
+            # PLAN-0096 Step 4 rewrote this to name BOTH evidence paths. It stays ฿-token-free and
+            # number-free: the threshold and the vendor count are typed config in
+            # verticals/fleet_maintenance/sourcing.py, and ADR-0025 D4's load-time prose lint
+            # rejects an authored surface that smuggles either back into the rule text.
             - criterion: three_quote
-              spec: "a large repair has three competing quotes on file before the spend is authorised"
+              spec: >-
+                a large repair is price-compared across separate vendors before the spend is
+                authorised, or carries a written sole-source justification instead
         input:
           from: reshape
         facet:
