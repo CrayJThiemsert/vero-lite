@@ -1,6 +1,6 @@
 # PLAN-0094: L1 loop-detect — count non-progress, warn before denying, restore the reset paths
 
-**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Step 4 BUILT and MERGED** (s180 — PR #937 `309168e`/merge `0a85b21` closed **AC-7 and AC-8(i)/(iii)**, making L1's unit non-progress rather than touches and wiring `clear_turn_scoped()` into the turn boundary; PR #939 closed **AC-11**, the `count: N/T` line in both Telegram bodies plus the mirror-invariance assertion). **Only Step 6 (closeout, AC-10) remains.** **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat xN` / `osc xN`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
+**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Step 4 BUILT and MERGED** (s180 — PR #937 `309168e`/merge `0a85b21` closed **AC-7 and AC-8(i)/(iii)**, making L1's unit non-progress rather than touches and wiring `clear_turn_scoped()` into the turn boundary; PR #939 closed **AC-11**, the `count: N/T` line in both Telegram bodies plus the mirror-invariance assertion). **Step 6 EXECUTED s182 — AC-10 CLOSED (all 11 ACs now closed or withdrawn).** The offline gate is green in the main tree, siblings are byte-unchanged, and the **full fresh non-vacuity sweep ran 18/18 clean at Cray's LOCKED full-resweep reading** (see the AC-10 note). **What is still owed is NOT an acceptance criterion:** the `git mv` of this PLAN to `docs/plans/done/` is gated on a **Cray-confirmed live-loop soak** (§Step 6), and the §Verification live-check (ii) — one deliberate warn-crossing on a scratch file — remains unrun. Both are *evidence*, not gates on AC-10, which is why this PLAN can close out while staying in `docs/plans/`. **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat xN` / `osc xN`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
 **Owner:** Claude Code
 **Created:** 2026-07-25
 
@@ -22,7 +22,7 @@
 > | `_loop_counter.py:362-364` ("failed") | — | now `agent_id` prose; **wrong target** |
 > | `_loop_counter.py:350-353` ("payloads") | — | now session-id resolution; **wrong target** |
 > | `posttooluse_progress_observer.py:483-484` (dead `Task`/`Agent` branch) | — | branch **deleted** in Step 1; line is now `_handle_bash` |
-> | `_loop_counter.py:84,96` (thresholds `6` / `15`) | **`:88,100`** | drifted **since this table was written** — the *values* stay byte-identical (`6` / `15`); re-verified s179 |
+> | `_loop_counter.py:84,96` (thresholds `6` / `15`) | **`:88,108`** | drifted **twice** — `:84,96` → `:88,100` (s179) → `:88,108` (s182, `L1_DOC_THRESHOLD` only; `:88` has been right since s179). The *values* stay byte-identical (`6` / `15`) at every re-measure — **this row is the standing proof that the invariant holds and only the pointer moves** |
 > | `_loop_counter.py:508-524` (`increment` couples count+ring) | **`:558-574`** | drifted |
 > | `_loop_counter.py:634-638` (`clear_turn_touched`) | **`:777-781`** | drifted |
 > | `stop_continuation.py:539` ("the existing reset call") | **`:576`** (call) / **`:224-239`** (`_apply_turn_boundary_reset`) | **wrong target** — `:539` is now a comment in the dispatch-verdict branch |
@@ -641,23 +641,57 @@ are deterministic-offline; `tests/handoffs/` runs happen in the **main tree**
   rewrites the whole document — so the negative rows would have "passed" for
   the wrong reason. Additive-and-tolerant was necessary but not sufficient;
   additive-and-**serialized** is the actual requirement.]*
-- [ ] **AC-10 — offline gate green; siblings byte-unchanged.** Full
+- [x] **AC-10 (CLOSED s182) — offline gate green; siblings byte-unchanged.** Full
   `pytest tests/` + `mypy` at CI scope + `ruff check` in the main tree; the
   existing L2/L3/L4, commit-reset, and Stop turn-boundary test blocks stay
   green **unmodified**; threshold constants byte-unchanged
-  (~~`_loop_counter.py:84,96`~~ → **`:88,100`**, re-verified s179 — the
-  **values `6` and `15` are byte-identical**; only the line numbers moved,
-  and the s175 drift table's "✅ exact" row for this entry is now itself
-  drifted). Non-vacuity sweep: for each of AC-1…AC-9 **and AC-11** that is
-  **still live** (AC-1(ii), AC-6 and AC-8(ii) are withdrawn and have no
-  mutation) apply the named mutation in the working tree, watch it go RED,
-  restore from a `/tmp` copy (never `git checkout` — it wipes the uncommitted
-  work under test), re-run GREEN. CI is PR-only → re-run the full suite on
-  each merge commit.
+  (~~`_loop_counter.py:84,96`~~ → ~~`:88,100`~~ → **`:88,108`**, re-measured
+  s182 — the **values `6` and `15` are byte-identical**; only the line numbers
+  moved. `LOOP_TRIGGER_THRESHOLD` at `:88` was correct; `L1_DOC_THRESHOLD` had
+  drifted `:100` → `:108`, so the s179 correction to this same citation has now
+  itself drifted once more. The *invariant* has held every time it was
+  re-measured; only the pointer moves). Non-vacuity sweep: for each of
+  AC-1…AC-9 **and AC-11** that is **still live** (AC-1(ii), AC-6 and AC-8(ii)
+  are withdrawn and have no mutation) apply the named mutation in the working
+  tree, watch it go RED, restore from a `/tmp` copy (never `git checkout` — it
+  wipes the uncommitted work under test), re-run GREEN. CI is PR-only → re-run
+  the full suite on each merge commit.
+  *[Closed s182. **Cray LOCKED a FULL FRESH re-sweep** — the cheaper reading
+  ("re-confirm AC-1…AC-5, cite the recorded s177/s180 runs for the rest") was
+  offered and declined before the run, so every mutation below is fresh on-disk
+  evidence, not a citation. **18 mutations, 18 clean**: the 11 named by this
+  PLAN (M-A…M-D, N-A…N-D, AC-9's three) plus 7 derived for the ACs that name
+  none (AC-1(i), AC-1(iii), AC-2, AC-3, AC-5, and AC-9(d) — the goal-gate
+  directive row, which had a negative test but no named mutation).
+  **`missing_red` was EMPTY for all 18** — no predicted-red row stayed green,
+  so no oracle in this PLAN's surface is vacuous. Sibling invariance held: no
+  `test_l2_` / `test_l3_` / `test_l4_` row reddened under any mutation.
+  Applied by a harness script rather than the Edit tool **because the files
+  under mutation are the session's own live hooks** — an Edit-tool apply would
+  feed the mutated L1 logic the very edit that installed it, and M-A
+  ("always increment") would then count the sweep's own edits toward a deny.
+  Three results worth carrying:
+  **(1)** M-A's blast radius is **8 L1 rows, not the 3 first predicted** — a
+  whole-feature revert must redden every row asserting a specific L1 count or a
+  recorded-but-not-counted edit. The PLAN's load-bearing claim (L2 and L4 stay
+  green) is **`confirmed — prior intact`**, and more strongly than it was
+  stated.
+  **(2)** AC-4 additionally reddens **AC-11(i)**, which is a *feature*: AC-11(i)
+  asserts the deny body names "the threshold actually applied", so swapping the
+  gate onto the warn bar moves the body to `N/6` and the row moves with it —
+  positive evidence that AC-11(i) reads the applied bar instead of hard-coding
+  `9`.
+  **(3)** The harness's own site-count guard **aborted** the first AC-1(iii)
+  attempt: `pretooluse_loop_detect.py` is registered at **two** PreToolUse sites,
+  not one. A naive apply would have half-installed and reported a result that
+  proved nothing — the vacuous-apply form this sweep exists to detect, caught on
+  the sweep's own tooling. `git status` after the abort showed the file fully
+  restored.]*
 - [x] **AC-11 (NEW s179, OQ-3 R4; CLOSED s180) — the Telegram body tells Cray how close the
   wall is.** Both alert bodies gain a `count: N/T` line naming the current
   count and the applicable threshold (path-class aware: `15` for doc targets,
-  `6` for code — `_loop_counter.py:88,100`). Tests: (i) the gate's deny body
+  `6` for code — `_loop_counter.py:88,108`, pointer re-measured s182; values
+  unchanged). Tests: (i) the gate's deny body
   (`pretooluse_loop_detect.py:_format_message`) contains the count and the
   threshold actually applied to that target; (ii) the observer's warn body
   (`posttooluse_progress_observer.py:_format_message`, `stage="warn"`)
@@ -819,6 +853,31 @@ mutation sweep with `/tmp`-copy restores; per-PR merge-commit re-runs (CI is
 PR-only). Update `docs/STATUS.md`; `git mv` this PLAN to `done/` only after
 Cray confirms the live-loop soak raised no regression (the guards run on
 Cray's own working loop — the soak *is* part of verification).
+
+**Executed s182 — DONE:** offline gate green in the main tree (`pytest tests/`
+**3327 passed / 8 skipped**, `mypy services/` clean over 110 files, `ruff` clean
+at CI scope); sibling invariance held (no `test_l2_`/`test_l3_`/`test_l4_` row
+reddened under any of the 18 mutations); **18/18 non-vacuity mutations clean,
+all `/tmp`-restored, `missing_red` empty throughout**; `docs/STATUS.md` updated.
+AC-10 is closed.
+
+**Still OWED, and deliberately not forced:**
+
+1. **The Cray-confirmed live-loop soak** — gates the `git mv` to `done/` and
+   nothing else. It cannot be self-served: the guards run on Cray's own working
+   loop, so only Cray can report it.
+2. **The §Verification live-check (ii)** — one deliberate warn-crossing on a
+   scratch file, to confirm the advisory actually reaches the agent's context.
+   Cheap and in-session (the hook is already registered; no restart needed), but
+   it is *evidence*, not an AC.
+3. **A judgment call for whoever archives this PLAN: `OQ-4` is OPEN and dated.**
+   Its pre-committed criterion is a re-measure "after ~20 sessions" of the
+   post-AC-7 guard, with a Cowork-drafted ADR-013 amendment retiring L1 if true
+   positives are still 0 with ≥ 1 false positive. Moving this file to `done/`
+   would bury a live, dated commitment in an archeology directory. Step 6 does
+   not require resolving that — but it should be **re-homed (a STATUS Active
+   TODO or its own tracking stub) in the same change that archives this PLAN**,
+   never silently carried into `done/`.
 
 ## Open Questions — OQ-1/OQ-2 RESOLVED (s173), OQ-3 RESOLVED (s179); **OQ-4 OPEN (raised s180)**
 

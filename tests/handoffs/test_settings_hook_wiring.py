@@ -14,14 +14,23 @@ So these tests read `settings.json` **as data** and fail on a registration
 removal *alone* — no hook-code mutation required. That is the whole point: a
 handler with no route to it must not be able to pass.
 
-**Scope note (PLAN-0094 Step 1 of 4).** AC-1 names three assertions. Parts (i)
-and (iii) are pinned here and are satisfied by Step 1. Part (ii) — a
-``PostToolUseFailure`` entry, matcher ``Write|Edit``, invoking the same observer
-— is delivered by **Step 4**, which registers that event after a live
-schema probe (its ``settings.json`` diff carries its own Cray per-diff
-approval). It is deliberately **not** asserted here rather than being asserted
-and skipped: a check that passes because it was skipped is exactly the vacuous
-form this module was written to kill. AC-1 closes when Step 4 adds it.
+**Scope note (PLAN-0094 AC-1 — CLOSED on (i) + (iii)).** AC-1 named three
+assertions. Parts (i) and (iii) are pinned here and shipped with Step 1. Part
+(ii) — a ``PostToolUseFailure`` entry, matcher ``Write|Edit``, invoking the same
+observer — was **WITHDRAWN at s179 on measured evidence**, together with D4(a):
+a *failed* ``Edit`` invokes **no hook at all** in this harness build — not
+``PostToolUseFailure``, and not ``PostToolUse`` either. Measured twice, one
+session apart: s173's live ``PostToolUse`` observer, and an s179 probe
+registered on both events at once with a successful ``Write`` as the control
+that makes "no dump" readable at all. No such registration is written, so there
+is nothing here to pin.
+
+It stays **unasserted rather than asserted-and-skipped**: a check that passes
+because it was skipped is exactly the vacuous form this module was written to
+kill. Withdrawing the criterion outright — rather than greening it by feeding a
+synthetic payload straight into ``main()`` — is that same discipline applied one
+level up: a test that passes while the live path stays dead is the defect above,
+not a fix for it.
 """
 
 from __future__ import annotations
