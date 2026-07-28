@@ -1961,3 +1961,146 @@ Current Focus block rotated because **R2 keeps the 4 most-recent sessions**: add
 > the other side — it had run that recipe verbatim, synchronously, with the target in
 > `turn_touched`, and the counter did not clear. Static read and live observation
 > converged.
+
+
+---
+
+_Rotated out of `docs/STATUS.md` on 2026-07-28 (session 182), per the R1–R7 rotation policy._
+
+> **Session 177, 2026-07-27 (head_commit `c0f5935` → `da0b50b`) — the image
+> builds and boots, and the L1 guard gets an exit that cannot be faked. Five
+> PRs merged (#927, #928, #929, #930, #931), 0 open. **PLAN-0095 COMPLETE 7/7**,
+> archived to `done/`; **PLAN-0094 Step 5 BUILT**, AC-9 closed. The `Dockerfile`
+> had not built since the 2026-05-07 scaffold commit; `docker run` now answers
+> `/health` in about two seconds with **no database reachable at all**.
+> Suite 3296 → **3317**.**
+>
+> **(what shipped.)** **#927** — Steps 1–5 as ONE PR, because Step 1's oracle
+> is deliberately born-RED and splitting would land a red suite on `main`.
+> The builder defects are **eliminated, not repaired**: `--no-install-project`
+> removes the hatchling build from the image entirely (the image needs neither
+> the wheel nor the console script), which also keeps the dependency layer
+> cacheable. `python -m uvicorn` replaces the bare console script so imports
+> resolve by interpreter contract rather than by uvicorn's internal
+> `sys.path.insert`. Per SD-2 the image also ships `alembic/` + `alembic.ini`;
+> per SD-1 a thin compose `app` service consumes the same image and declares
+> **no `command:`**. **#928** — runbook §1a, the hand-it-to-someone path.
+>
+> **(the oracle derives, it does not mirror.)** `tests/docker/` — 10 tests,
+> stdlib + pytest + `ruamel.yaml`, **no daemon**. O-1 walks a **transitive
+> closure seeded from the app package**, resolving module-level string
+> constants (mandatory — the real defect's call site passes one, so a
+> literal-only scan would miss the very bug that motivates the oracle) and
+> filtering to real top-level directories. Seeding from the app root rather
+> than "every top-level package" is deliberate: `benchmarks/` also carries
+> `__init__.py` but never enters the image. **Born-RED with five distinct
+> assertion families**; **12/12 mutations bit**, each turning exactly one
+> predicted test red. `M-C` is the one that matters — a new runtime-resolved
+> root goes RED **with no Dockerfile edit at all**. The derived set measured
+> exactly `['services', 'verticals']`, no spurious roots. AC-3 ships as a
+> **sibling test module** rather than the PLAN's literal reviewer-grep
+> (Cray's call): a grep is a habit, a test is a gate.
+>
+> **(Step 6 — live evidence, on Cray's explicit go; evidence, never the gate.)**
+> `docker build` exit 0 — the first successful build. `/health` 200 in ~2 s;
+> boot log shows **all six verticals discovered**, which is precisely the
+> `ModuleNotFoundError` that used to abort `lifespan()`; `/meta` serves the
+> energy ontology; the container runs as **`uid=999(vero)`** with its
+> `HEALTHCHECK` reporting **healthy**; `DATABASE_URL` is unset inside, so the
+> DB-less claim is structural, not incidental. `alembic current` printed
+> **`0012 (head)`** from inside the image against the live Postgres, exercising
+> the whole SD-2 chain. **OQ-2's residual and OQ-3 are resolved by that run**
+> (the *containerized* uv:0.11.9 does accept the flag — the dev-box measurement
+> could not establish it); **OQ-1, the hosting model, stays open by design.**
+>
+> **(two deliberate departures from the PLAN's Step 6 sketch.)** A read-only
+> probe first found `vero-postgres` + `vero-redis` **up 7 days** — and §1 of
+> this repo's own runbook depends on them. So `docker compose down` was
+> **not** run (it would stop them); cleanup was `docker compose rm -sf app`,
+> removing only what this session created. `--no-deps` was added because the
+> running containers carry a compose config-hash from a **Linux** path while
+> the invocation came from a **Windows** path, which could have read as
+> "out of date" and recreated them. Verified both directions: postgres's
+> `StartedAt` was **byte-identical** before and after, and no image was left
+> behind.
+>
+> **(two of this session's own errors, caught before they cost anything.)**
+> The oracle's healthcheck URL extraction was wrong — it tokenized on
+> whitespace and `strip()`ped, which cannot cut a leading `urlopen('` — found
+> by **reading before running**, one step before it would have produced a
+> false RED against a correct Dockerfile. And mutation `M-D` did not bite on
+> the first pass: a whole-file substitution hit the **explanatory comment**
+> naming the same flag instead of the `RUN` directive. The oracle was sound
+> throughout (`_logical_lines` drops comments) — logged **`confirmed — prior
+> intact`**; the probe script was the defect.
+>
+> **(a finding that was reported, then closed by Cray in the same session.)**
+> Docker Desktop's **WSL integration was off for `ubuntu-24.04`**, so `docker`
+> was not on `PATH` there and Step 6 ran from Windows PowerShell against a UNC
+> build context. The consequence worth naming was that **§1 of
+> `run-oct-demo.md` runs `docker ps` from bash** and would have failed for
+> anyone following it from WSL. Code declined to flip the setting itself even
+> after Cray said go, and said why: the toggle needs a Docker Desktop restart,
+> and `vero-postgres` / `vero-redis` carry **`RestartPolicy=no`**, so they would
+> not come back on their own — a downtime Cray had not asked for. Cray flipped
+> it; the prediction held exactly (both `Exited (0)`, while other projects'
+> `restart: always` containers returned by themselves). Restored with
+> `docker start`, then verified: healthy on 5442 / 6379, `alembic current` still
+> `0012 (head)`, `tests/api` 189 passed / 1 skipped. **#931** converts §1a's
+> three blocks to bash — the bash `docker build` was **re-run and verified from
+> WSL** (exit 0, image removed) rather than inferred — and records the trap the
+> toggle itself demonstrated, including its tell: **a full suite reporting ~141
+> skips instead of 8 is an unreachable DB, not a regression.**
+>
+> **(second half of the session — PLAN-0094 Step 5, the L1 exit an agent cannot
+> fake.)** **#930** builds P3 / **AC-9**. When L1 denies, all three documented
+> exits can be shut at once — the turn boundary is sticky, a commit needs a
+> committable tree the gated file can itself block, and the subagent reset
+> clears only a subagent's own edits — which is why **two of five recorded
+> incidents ended in a Cray-authorised shell escape**. The deny branch now arms
+> `awaiting_ack` (making that gate a **narrow state writer** for the first time)
+> and the Stop hook clears it **only where the stop actually fires** (cap /
+> contentless-proceed demotion / dispatch suggestion / pause), never where the
+> agent is handed back to its own loop (substantive `proceed`, goal-gate
+> directive, re-entry). Unforgeable because a fired stop by construction returns
+> the prompt to Cray. The clear also **overrides the sticky rule** for exactly
+> the armed targets, turning two-turn recovery into one. Step 5 landed **ahead
+> of Step 4** deliberately: Step 4 is gated on a Cray per-diff `settings.json`
+> approval and no step depends on a later one — surfaced, not assumed, and the
+> PLAN's Status line (still reading "Steps 3–6 unbuilt" after Step 3 landed in
+> s175) is corrected in the same PR. Suite 3306 → **3317**.
+>
+> **(what the RED-first run found that the design had not.)** The negative row
+> `test_proceed_does_not_clear_the_marker` went **RED** — which a *missing*
+> feature should not cause. Reason: the always-on turn-boundary reset rewrites
+> the whole state document every Stop, so the marker is **dropped on every path**
+> unless `awaiting_ack` round-trips through `to_json`. Stated as a rule because
+> it generalizes past this field: **additive-and-tolerant was necessary but not
+> sufficient; additive-and-serialized is the requirement.** A field the writer
+> forgets is a field the reader silently loses, and the tolerance contract is
+> exactly what hides it. Evidence discipline: 11 rows, **8 RED-first**; the three
+> negative rows pass trivially against featureless code, so each was proven by a
+> **named mutation** (drop the L1 scope guard / clear inside the re-entry guard /
+> clear on substantive proceed), restored from a scratchpad copy, never
+> `git checkout`. Thresholds **byte-unchanged**, verified by diff.
+>
+> **(an unplanned live demonstration.)** The L1 **warn** fired on
+> `stop_continuation.py` mid-implementation — the guard warning about the file
+> implementing its own fix. Assessed as the warning asks: six edits = helper,
+> import, an import-order self-correction, three call sites — distinct forward
+> progress, no retries of a failing change. That is precisely the false-positive
+> class **Step 4 (P1)** exists to kill, observed in the wild rather than argued
+> from the incident table; under the pre-Step-3 first-strike deny it would have
+> been a wall, not a ping.
+
+_The two In-Flight bullets below were REPLACED (not rotated) in the same reconcile._
+
+_(a) The PLAN-0095 bullet, `was an error`: it described the PLAN as Draft with Steps 1-5
+unexecuted long after s177 archived it COMPLETE 7/7._
+
+- **PLAN-0095 — Draft, merged s176 (#925); Steps 1–5 UNEXECUTED, Step 6 host-state.** Make the scaffold-era `Dockerfile` build and boot the synthetic OCT demo with **no database**. **Nothing is built** — no Dockerfile change, no test, no compose edit; the image does **not** boot today. Root cause is measured, not guessed: the first-order failure is a plain Python import (`importlib.import_module(_VERTICALS_PACKAGE)`, `services/engine/discovery.py:45`, uncaught as the first line of `lifespan()` at `services/api/main.py:166`); the CWD-relative `Path("verticals")` at `ontology_meta.py:154` is real but **second-order**. The defect count is **two broken `COPY` statements** (each with two symptoms) + hygiene gaps + a **ninth** defect found in-session: `pyproject.toml:7` declares `readme = "README.md"`, never COPY'd, so `uv sync` fails a second time even after the package-tree fix. **All three SDs RULED by Cray under a production frame** — *"ready for development toward production," not "build production now,"* across two hosting models (customer uses an instance we host / we stand up a server on-site): **SD-1 = both** (standalone image is the artifact; compose is a thin consumer proving it composes with a real Postgres), **SD-2 = include `alembic/` + document** (one image, different commands; a separate migration image is the riskier shape — version skew), **SD-3 = all four hygiene items IN**. SD-1 + SD-2 overturned the drafter's own recommendations and are in-PLAN as **`superseded by new info`**, not `was an error`, with the original analysis preserved. **The oracle is the PLAN's real content:** O-1 **derives** the required COPY root set by AST **transitive closure seeded from the app root** (a literal `verticals` glob was rejected in R2 — it breaks AC-3, and `benchmarks/` never enters the image, a latent false-RED), with anti-tautology invariant **AC-3** and mutation **M-C** that must go RED; O-4/O-5/O-6 carry binding derivation-status labels (`USER` is honestly a presence check). **AC-6 is invariant: no acceptance criterion needs a Docker daemon** (O-6 parses YAML via `ruamel.yaml`, a main dep at `pyproject.toml:23`); every daemon action sits in the optional Cray-gated evidence step. **Execution trap:** the compose `vero:vero` in-network URL trips `detect-secrets` as Basic Auth Credentials and needs an inline `# pragma: allowlist secret` **in the real `docker-compose.yml` at Step 3** — a pattern match, not a leak (dev placeholder already tracked at `docker-compose.yml:6-7` + `services/api/config.py:39`); never `--no-verify` (CLAUDE.md §8). **Steps 1–5 are ONE PR-sized unit that cannot be split** — Step 1's oracle is deliberately born-RED against the current Dockerfile, so committing it alone lands a red suite. Full record: `docs/plans/0095-docker-image-boot.md`.
+
+_(b) The hosting-model bullet, superseded: its two ADR-0002 line-number citations were
+dropped in favour of section headings — one had already rotted onto an unrelated bullet._
+
+- **Hosting model → ADR-002's LAN trust boundary: a LIVE candidate needing its own ADR (surfaced s176, not drafted).** *"Customer uses our server"* touches ADR-002's LAN trust model — `docs/adr/0002-network-topology.md:76` and `:86` — which defers its own successor **twice** as an unnumbered `ADR-NN`. PLAN-0095 can land with this open, because nothing in the image or the compose service selects *where* the image runs; the question bites when a hosting model is actually chosen. Route: a new ADR via the Cowork/plan-drafter path (G1/G2 — Code may not author it).
