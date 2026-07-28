@@ -39,7 +39,7 @@ from pathlib import Path
 from typing import Annotated, Any, Literal, Self
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_serializer, model_validator
 from ruamel.yaml import YAML
 
 from services.engine.procedures.person_model import Person as Person  # re-export (SD-H=(a))
@@ -965,6 +965,37 @@ class EmergencyWaiverPolicy(BaseModel):
         "separate; this is the authored rationale, scoped-prose-lint-guarded so a "
         "฿-amount/weight/role token cannot be smuggled in, ADR-0025 D4 / D-129).",
     )
+    ratification_window_days: int | None = Field(
+        default=None,
+        ge=1,
+        description="when set, a waiver-invoked gate resolution MAY be recorded provisionally "
+        "(decide-first) and MUST be ratified firsthand by the escalate_to authority within this "
+        "many days; absent = today's behaviour, with no provisional path representable "
+        "(ADR-0034 D2 Door 1). The ratifier is escalate_to by construction — the waiver already "
+        "escalates to that authority, and in the partner's practice the phone-decider and the "
+        "paperwork-signer are the same person.",
+    )
+
+    @model_serializer(mode="wrap")
+    def _omit_absent_window(self, handler: Any) -> dict[str, Any]:
+        """Drop ``ratification_window_days`` from the dump when it is absent (ADR-0034 D6).
+
+        This is only-when-supplied enforced at the MODEL, which is the level that makes it
+        true for every consumer at once — the governance pin, the step audit, and the API
+        all serialise through here.
+
+        It is load-bearing, not tidiness. ``PipelineRun.governance_hash`` hashes the resolved
+        config, so a field that always serialised (even as ``null``) would change EVERY
+        vertical's hash the moment this model gained it — and every in-flight run would then
+        refuse at resume, because the pin fails CLOSED on a mismatch by design. Five verticals
+        that never heard of this field would have been broken by its mere existence. The
+        oracle is PLAN-0096 AC-2 (cross-vertical hash equality) and AC-6 (this model's own
+        serialisation), and both were RED before this serializer existed.
+        """
+        data: dict[str, Any] = handler(self)
+        if self.ratification_window_days is None:
+            data.pop("ratification_window_days", None)
+        return data
 
 
 class DoaLadder(BaseModel):

@@ -53,6 +53,18 @@ class StepResultStatus(StrEnum):
     # at the waiting_human precondition, idempotent BY STATE), and resume_run
     # advances a decidable gate ONLY from RESOLVED (never on artifact presence).
     RESOLVED = "resolved"
+    # PLAN-0096 Step 5 / ADR-0034 D3(1): a waiver-invoked gate decided FIRST and
+    # ratified after — the roadside reality the partner described as "เคาะก่อน
+    # ทำเอกสารทีหลัง". Effects have executed; the authority named on the attestation
+    # has not yet acted in-system, so no `governed_decision` tie exists yet
+    # (PLAN-0075 SD-6(a) applied honestly). Reachable ONLY when the authored waiver
+    # carries `ratification_window_days`.
+    #
+    # Additive by design: the column is Text, existing rows are unaffected, and
+    # `PipelineRunStatus` is deliberately untouched — a run may COMPLETE while its
+    # ratification is still pending, so the obligation rides the step audit and stays
+    # queryable on finished runs (ADR-0034 D3(6) / Alt-6). No migration.
+    RESOLVED_PROVISIONAL = "resolved_provisional"
     FAILED = "failed"
 
 
