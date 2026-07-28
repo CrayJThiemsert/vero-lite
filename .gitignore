@@ -87,3 +87,10 @@ loop/.failures.json.tmp
 # Probe code (PLAN-0012 OQ-B probe — capability-restricted by contract;
 # DO NOT promote to production; remove from tree after probe cleanup).
 tools/probes/
+
+# PLAN-0096 Step 2 — repair-case photo uploads (settings.repair_case_photo_dir,
+# default var/repair-case-photos). USER CONTENT, and this repo is PUBLIC: a photo
+# of a garage quote carries the vendor's name, the amount, sometimes a person.
+# Assume it is PII (CLAUDE.md §8 PDPA) and keep it structurally uncommittable —
+# the ignore rule is the guard, not the discipline of whoever runs .
+var/
