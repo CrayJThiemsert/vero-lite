@@ -1,6 +1,6 @@
 # PLAN-0094: L1 loop-detect — count non-progress, warn before denying, restore the reset paths
 
-**Status:** Draft — **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Step 4 BUILT and MERGED** (s180 — PR #937 `309168e`/merge `0a85b21` closed **AC-7 and AC-8(i)/(iii)**, making L1's unit non-progress rather than touches and wiring `clear_turn_scoped()` into the turn boundary; PR #939 closed **AC-11**, the `count: N/T` line in both Telegram bodies plus the mirror-invariance assertion). **Step 6 EXECUTED s182 — AC-10 CLOSED (all 11 ACs now closed or withdrawn).** The offline gate is green in the main tree, siblings are byte-unchanged, and the **full fresh non-vacuity sweep ran 18/18 clean at Cray's LOCKED full-resweep reading** (see the AC-10 note). **The §Verification live-check (ii) RAN s182 and PASSED** — the warn advisory reaches the agent's context, and the crossing incidentally demonstrated Step 4's unit change in the wild (8 write/edit operations scored `count == 6`, not 8) and confirmed the (b)-before-(c) precedence against a probe designed expecting (c). **What is still owed is NOT an acceptance criterion and is now exactly one item:** the `git mv` of this PLAN to `docs/plans/done/` is gated on a **Cray-confirmed live-loop soak** (§Step 6) — evidence, not a gate on AC-10, which is why this PLAN closes out while staying in `docs/plans/`. **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat xN` / `osc xN`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
+**Status:** **Complete — ARCHIVED s183.** **Steps 1+2 BUILT and MERGED** (s174, PR #917: `e33f7e0`, `c88d3e8`, merge `2cda070`); **Step 3 BUILT and MERGED** (s175, PR #922 — AC-3/4/5 closed); **Step 5 BUILT** (s177 — AC-9 closed). **Step 4 BUILT and MERGED** (s180 — PR #937 `309168e`/merge `0a85b21` closed **AC-7 and AC-8(i)/(iii)**, making L1's unit non-progress rather than touches and wiring `clear_turn_scoped()` into the turn boundary; PR #939 closed **AC-11**, the `count: N/T` line in both Telegram bodies plus the mirror-invariance assertion). **Step 6 EXECUTED s182 — AC-10 CLOSED (all 11 ACs now closed or withdrawn).** The offline gate is green in the main tree, siblings are byte-unchanged, and the **full fresh non-vacuity sweep ran 18/18 clean at Cray's LOCKED full-resweep reading** (see the AC-10 note). **The §Verification live-check (ii) RAN s182 and PASSED** — the warn advisory reaches the agent's context, and the crossing incidentally demonstrated Step 4's unit change in the wild (8 write/edit operations scored `count == 6`, not 8) and confirmed the (b)-before-(c) precedence against a probe designed expecting (c). **The last item owed — the Cray-confirmed live-loop soak — was RELEASED s183:** asked directly whether the new non-progress unit had produced any anomaly across the sessions run since Step 4 landed, Cray reported **no anomalies**, which discharges the §Step 6 gate on the `git mv` and archives this PLAN. Nothing is owed on the ACs; **OQ-4 remains OPEN and dated** and has been **re-homed to a `docs/STATUS.md` Active TODO in the same change that archived this PLAN**, exactly as §Step 6 requires — it is not buried here. **Step 4 was RE-SCOPED at s179** after its probe-before-build gate returned a refutation: `PostToolUseFailure` does not fire, so design element **D4(a) is withdrawn** and **AC-1(ii), AC-6, and AC-8(ii) are withdrawn with it** (see the boxed record under §D4). Step 4 consequently **no longer carries a `settings.json` diff and is no longer gated on a Cray per-diff approval** — the removal of (a) removed the only gated surface. What remains of Step 4 — (b), (c), `observe()`, `clear_turn_scoped()`, closing **AC-7 + AC-8(i)/(iii)** — is deterministic-offline and ungated. **OQ-3 (opened by the withdrawal, since D4(a) was the only planned writer of `ActionRecord.result`) was RESOLVED by Cray the same session:** `result` carries a self-contained count (`repeat xN` / `osc xN`, `""` for forward edits), `attempted_edits` / `content_hashes` become `dict[str, int]`, and **AC-11 is new** — Cray pulled the `count: N/T` Telegram line into Step 4 scope.
 **Owner:** Claude Code
 **Created:** 2026-07-25
 
@@ -861,24 +861,30 @@ reddened under any of the 18 mutations); **18/18 non-vacuity mutations clean,
 all `/tmp`-restored, `missing_red` empty throughout**; `docs/STATUS.md` updated.
 AC-10 is closed.
 
-**Still OWED, and deliberately not forced:**
+**All three items below are now DISCHARGED — this section is the closing ledger, not a to-do list.**
 
-1. **The Cray-confirmed live-loop soak** — gates the `git mv` to `done/` and
-   nothing else. It cannot be self-served: the guards run on Cray's own working
-   loop, so only Cray can report it.
+1. ~~**The Cray-confirmed live-loop soak**~~ — **RELEASED s183.** It gated the
+   `git mv` to `done/` and nothing else, and it could not be self-served: the
+   guards run on Cray's own working loop, so only Cray could report it. Asked
+   directly whether the new non-progress unit had produced any anomaly across
+   the sessions run since Step 4 landed (s180), Cray reported **no anomalies**.
+   That is the whole of the evidence — a negative report on a live loop, not a
+   test run — and it is recorded here as such rather than dressed up as a gate
+   artifact.
 2. ~~**The §Verification live-check (ii)**~~ — **DONE s182, PASSED.** One
    deliberate warn-crossing on a `.py` scratch file: the advisory reached the
    agent's context, `awaiting_ack` stayed empty (a warn does not arm the ack
    exit), and the crossing demonstrated Step 4's unit change live — 8
    write/edit operations scored `count == 6`. Full record in §Verification.
-3. **A judgment call for whoever archives this PLAN: `OQ-4` is OPEN and dated.**
-   Its pre-committed criterion is a re-measure "after ~20 sessions" of the
-   post-AC-7 guard, with a Cowork-drafted ADR-013 amendment retiring L1 if true
-   positives are still 0 with ≥ 1 false positive. Moving this file to `done/`
-   would bury a live, dated commitment in an archeology directory. Step 6 does
-   not require resolving that — but it should be **re-homed (a STATUS Active
-   TODO or its own tracking stub) in the same change that archives this PLAN**,
-   never silently carried into `done/`.
+3. **`OQ-4` is OPEN and dated — RE-HOMED s183, in this same change.** Its
+   pre-committed criterion is a re-measure "after ~20 sessions" of the
+   post-AC-7 guard (closed s180, so **due ≈ s200**), with a Cowork-drafted
+   ADR-013 amendment retiring L1 if true positives are still 0 with ≥ 1 false
+   positive. Moving this file to `done/` would bury a live, dated commitment in
+   an archeology directory, so the criterion now also lives as a **`docs/STATUS.md`
+   Active TODO** carrying the due-session and the measurement method. The copy
+   below stays authoritative on the *reasoning*; the STATUS row is what keeps
+   the *obligation* visible after archival.
 
 ## Open Questions — OQ-1/OQ-2 RESOLVED (s173), OQ-3 RESOLVED (s179); **OQ-4 OPEN (raised s180)**
 

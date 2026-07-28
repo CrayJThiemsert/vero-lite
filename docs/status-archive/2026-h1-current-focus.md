@@ -2104,3 +2104,112 @@ _(b) The hosting-model bullet, superseded: its two ADR-0002 line-number citation
 dropped in favour of section headings — one had already rotted onto an unrelated bullet._
 
 - **Hosting model → ADR-002's LAN trust boundary: a LIVE candidate needing its own ADR (surfaced s176, not drafted).** *"Customer uses our server"* touches ADR-002's LAN trust model — `docs/adr/0002-network-topology.md:76` and `:86` — which defers its own successor **twice** as an unnumbered `ADR-NN`. PLAN-0095 can land with this open, because nothing in the image or the compose service selects *where* the image runs; the question bites when a hosting model is actually chosen. Route: a new ADR via the Cowork/plan-drafter path (G1/G2 — Code may not author it).
+
+
+<!-- rotated out of docs/STATUS.md by the s183 reconcile (R2) -->
+
+> **Session 179, 2026-07-27 (head_commit `da0b50b` → `bc7be51`) — the session
+> probe-first paid for itself twice: Step 4's own gate refuted the premise Step
+> 4 was designed on, and a suite that was green at merge turned `main` RED three
+> hours later with nobody watching. Two PRs merged (#933, #934), **#935 open**.
+> **D4(a) withdrawn**; **OQ-3 opened and RESOLVED same-session**; suite 3317 →
+> **3318**. (No session 178 entry — s178 committed nothing.)**
+>
+> **(#933 — the refutation, and what it cost.)** Step 4's probe-before-build
+> gate came back negative: **a failed `Edit` invokes NO hook in this harness
+> build** — not `PostToolUseFailure` (the s173 bundle-extracted claim), and not
+> `PostToolUse` either. Two independent measurements one session apart: s173's
+> live `PostToolUse` observer, and an s179 payload-dump probe registered on
+> **both** events at once, so one run covered both. **The control is what made
+> it readable** — the successful `Write` dumped with `tool_response` present and
+> no `error` key, while the failing `Edit` dumped nothing at all; without a
+> known-good event in the same run, "no dump" is indistinguishable from "the
+> config never reloaded". Registrations are snapshotted at session start
+> (measured s178), so the probe had to be staged uncommitted and armed by a
+> restart. Consequence: **D4(a) withdrawn**, and **AC-1(ii), AC-6, AC-8(ii)**
+> with it — AC-6 **withdrawn rather than weakened**, since greening it would
+> mean feeding a synthetic payload straight into `main()`, the exact "green
+> tests over dead wiring" class AC-1 exists to kill. Step 4 thereby **LOST its
+> Cray per-diff `settings.json` gate** (removing (a) removed the only gated
+> surface), and the s169-class thrash — retrying one broken `old_string` —
+> **stays uncountable**; §Goal is corrected to say P1 now delivers only the
+> stop-miscounting-forward-progress half. Per §6: the s173 *schema claim* was
+> **`was an error`** (a bundle-extracted schema reported as if it established
+> runtime behaviour, single-source, self-labelled "not live-observed"); the
+> *decision* to design D4(a) on it was **`superseded by new info`** — which is
+> exactly why Step 4 was written probe-first.
+> **(OQ-3 — opened and ruled the same session.)** D4(a) was the only planned
+> writer of `ActionRecord.result`. Cray took option (b) and ratified: **R1** a
+> self-contained COUNT (`repeat xN` / `osc xN`), NOT the drafted
+> `repeat:<sha1[:8]>` — grounding disqualified the pointer, since the evidence
+> ring is **6** deep (`_loop_counter.py:89`) while the doc trip bar is **15**
+> (`:100`), so the partner row a sha1 names has almost always aged out; **R2**
+> `attempted_edits`/`content_hashes` become `dict[str,int]` (a set cannot carry
+> N); **R3** forward edits keep `result == ""`, since both formatters bracket
+> `result` only when non-empty — **the bracket's presence IS the signal**;
+> **R4** a `count: N/T` line in both Telegram bodies, raised as out-of-scope and
+> **pulled in by Cray as new AC-11**, which also pins mirror-invariance between
+> the two formatters (the observer docstring claimed it; nothing enforced it).
+> Ruled out and recorded: the literal `old_string` text in `result` — it reaches
+> `telegram.sh` and leaves the machine, and the formatters truncate
+> `target[:60]` but not `result`. Plus 4 drifted line citations corrected, one
+> in a row the PLAN's own drift table had marked "exact"
+> (`_loop_counter.py:84,96` → `:88,100`; threshold VALUES `6`/`15` identical).
+>
+> **(#934 — `main` had been RED since 06:00Z and nobody knew.)** Two rows of the
+> Step 5 block failed — **not a regression; the tests expired.** `_seed_ack`
+> hardcoded `last_updated: "2026-07-27T00:00:00+0000"`, but `load_counter` runs
+> `prune_stale_entries`, which drops entries older than `COUNTER_MAX_AGE_HOURS`
+> (6 h) — so the seed survived only inside a six-hour window of the day it was
+> written. **The diagnosis chain is the reusable part:** the same two rows
+> failed on `main` at `490f09e` (2 failed / 62 passed), and `git diff 25239f3
+> 490f09e` was **EMPTY** — the tree CI passed at ~05:16Z is byte-identical to
+> the tree failing at 09:13Z, and every prior PR run was green at its own head,
+> so **nobody merged a red PR: the tests aged out AFTER merge**, which PR-only
+> CI structurally cannot see. The `main`-is-never-tested hazard, firing for
+> real. Proof with **zero code edits**:
+> `CLAUDE_LOOP_COUNTER_MAX_AGE_HOURS=100000` turned the file green. Fix: stamp
+> from `_now_iso()` (the helper the production writer already uses) +
+> `test_seed_ack_is_stamped_live`, a guard asserting the seeded entry survives a
+> real `load_counter` — **deliberately testing the FIXTURE** so a future
+> hardcode fails where the cause is. Non-vacuity: M-1 (re-hardcode) reddens the
+> guard + both original rows; M-2 (early `return` in `_ack_clear_guarded`)
+> reddens 4 rows; both restored from `/tmp`, never `git checkout`. Noted while
+> the bomb was live: the fired-pause row's `assert not entry_present` was being
+> satisfied by the **age-out**, not the clear (`prune_stale_entries` never
+> touches `awaiting_ack`) — but its `marker == []` half kept testing real
+> behaviour, so the row was **never fully vacuous**. Suite 3317 → **3318**.
+>
+> **(#935 — OPEN, the state layer alone.)** `feat(hooks)` `a5dacb0` lands Step
+> 4's **state layer** by itself so the behaviour change reviews separately —
+> **no hook behaviour changes yet**; thresholds and `pyproject.toml`
+> byte-identical to `main`. Two decisions worth carrying: `_digest_tally`
+> **drops** malformed members rather than coercing (a corrupt tally must not
+> manufacture an increment), and the new record-only `observe()` shares one
+> `_record()` body with `increment()` so evidence cannot drift between the
+> counting and non-counting paths. One **reversal**: the first draft spelled
+> `result` with `×`, ruff RUF001 rejected it, and the fix briefly widened
+> `allowed-confusables` — reverted, since R1 ratified a **count, not a glyph**.
+>
+> **(what the next session picks up.)** **Step 4 is HALF BUILT.** Remaining: the
+> observer rewrite (AC-7 — increment only on (b)/(c), observe otherwise), the
+> existing L1 touch-counting test block (it asserts the OLD unit by design),
+> both `_format_message`s + AC-11, wiring `clear_turn_scoped()` into
+> `_apply_turn_boundary_reset` (`stop_continuation.py:224-239`, called at
+> `:576`), then Step 6 closeout. **A design question blocks (c) and needs a
+> probe:** the PLAN says hash the on-disk file, but this session's dump shows a
+> successful `Write`'s `tool_response` already carries
+> `content`/`originalFile`/`structuredPatch` — a hermetic payload-based digest
+> may be available, keeping observer tests off real repo files. **Unmeasured for
+> `Edit`**; measuring needs a hook registration, hence a restart, free at next
+> session's start. Two traps are recorded in the PLAN: the `_edit()` helper's
+> constant `old_string: "a"`, and existing targets pointing at real repo files.
+>
+> **State at close:** `main` `bc7be51`, suite **3318**, **1 open PR (#935)**.
+> Carried, unactioned: `.claude/state/goal.json` still armed with the COMPLETED
+> PLAN-0095 goal (raised three sessions running — Cray's artifact); the
+> `CLAUDE.md` §6 stale plan-drafter gate claim + the `CLAUDE.md:176` dead
+> `docs/conventions/git.md` link (one Cowork trip clears both; the `SKILL.md:62`
+> copy is Code-fixable). AC-0088 wording debts **grounded this session as 2
+> real, not 3** — debt #2 (AC-6 "dwell") does not reproduce; the AC text already
+> says "same-row spans".
