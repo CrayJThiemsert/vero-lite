@@ -18,8 +18,11 @@ What these tests prove:
 * **AC-2** — an in-memory run over the synthetic data reaches ``approve`` with ``amount``
   byte-derived from the breaching quote, SUSPENDS ``waiting_human``, and carries the grounded
   advisory in the persisted approve-step trace (no confidence key anywhere);
-* **AC-3** — narrative fidelity: every ฿ value and role in the shipped YAML matches the customer's
-  logged answers, asserted against the YAML itself so prose drift cannot pass;
+* **AC-3** — provenance fidelity: every ฿ value and role in the shipped YAML matches its logged
+  source answer, asserted against the YAML itself so prose drift cannot pass. Since PLAN-0096
+  Step 1 there are TWO sources — the real design partner's 18-answer discovery round and the
+  PLAN-0086 simulated customer's narrative — and the assertions hold them APART, because a file
+  that blends them starts quoting a person who never spoke;
 * **AC-5** — the advisory fence: present by default, audit byte-identical vs a ``builder=None``
   arm, and a raising builder cannot fail / park / divert the run.
 
@@ -66,14 +69,20 @@ from verticals.fleet_maintenance.procedures_factory import (
 
 _VERTICAL = "fleet_maintenance"
 _PROCEDURE_ID = "governed_repair_approval"
-# The shipped synthetic breach: a ฿48,000 axle repair vs the truck's ฿5,000 ceiling — MID-ladder,
-# so the demo shows tiering rather than always-the-top.
+# The shipped synthetic breaches, both vs the truck's ฿5,001 ceiling. PLAN-0096 Step 1 replaced the
+# simulated customer's ladder with the DESIGN PARTNER's, and that moved the ฿48,000 axle repair off
+# the middle rung and onto the owner's desk — so a second, ฿15,000 breach now carries the
+# mid-ladder case and the demo still shows TIERING rather than always-the-top.
 _BREACH_QUOTE = Decimal("48000.0")
-# The customer's ladder, verbatim from question-log Q1 ("ต้อมเคาะได้ถึง 5 พัน วิรัชถึง 5 หมื่น เกินนั้นผมเอง").
+_MID_LADDER_QUOTE = Decimal("15000.0")
+# The DESIGN PARTNER's ladder (Q9, 2026-07-28 discovery): "≤5,000 ต้อม / 5,001-30,000 วิรัช /
+# >30,000 เจ้าของ". He states inclusive ceilings; a DoaLadder band is half-open [min, next) with an
+# inclusive floor, so his numbers PLUS ONE are his rule. The boundary semantics themselves are
+# proved in test_partner_ladder_boundaries.py — this tuple is the spot-auditable VALUE pin.
 _LADDER_ANSWER = (
     (Decimal("0"), "ช่างใหญ่"),
-    (Decimal("5000"), "ผจก.เดินรถ"),
-    (Decimal("50000"), "เจ้าของกิจการ"),
+    (Decimal("5001"), "ผจก.เดินรถ"),
+    (Decimal("30001"), "เจ้าของกิจการ"),
 )
 
 
@@ -157,9 +166,11 @@ def test_spine_composition_ships_all_three_legs() -> None:
 
 
 def test_shipped_ladder_matches_the_customer_answer() -> None:
-    """AC-3: the ladder in the shipped YAML is the customer's Q1 answer, tier for tier. This is the
-    spot-auditable half of narrative fidelity — a later edit that 'tidies' a threshold silently
-    breaks it, which is exactly the drift PLAN-0086 exists to prevent."""
+    """AC-3: the ladder in the shipped YAML is the DESIGN PARTNER's Q9 answer, tier for tier
+    (PLAN-0096 Step 1 — it was the simulated customer's Q1 until then). This is the spot-auditable
+    half of provenance fidelity — a later edit that 'tidies' 5001 to 5000 silently breaks the
+    partner's own rule, which is exactly the drift this vertical's traceability discipline exists
+    to prevent."""
     ladder = _ladder(_hero(load_procedures(_VERTICAL)))
     assert tuple((t.min_amount, t.approver_role) for t in ladder.tiers) == _LADDER_ANSWER
     assert ladder.currency == "THB"
@@ -189,15 +200,24 @@ def test_requester_holds_no_approver_role() -> None:
     assert "approver" in manager.roles and "ช่างใหญ่" in manager.roles
 
 
-def test_narrative_provenance_block_is_present() -> None:
-    """AC-3: the YAML carries the provenance header mapping every authored ฿/role/rule back to a
-    narrative sentence or a logged customer answer. Unlike the other verticals' 'GUESS — รอแก้'
-    marking, these numbers are NOT guesses — they came from the customer — so the discipline this
-    vertical must carry is TRACEABILITY, and the header is where it lives."""
+def test_provenance_header_separates_partner_answers_from_the_simulated_narrative() -> None:
+    """AC-3, as PLAN-0096 Step 1 sharpened it: the YAML's provenance header maps every authored
+    ฿/role/rule back to a NAMED source, and it keeps the two sources APART.
+
+    That separation is the whole point and it is easy to lose. The vertical now mixes a real design
+    partner's answers (Q8 ceilings / Q9 ladder / Q10 three-quote threshold / Q11 no-cap emergency)
+    with the PLAN-0086 simulated customer's dirtied narrative, which still supplies the STRUCTURE he
+    later corroborated. Blend the two and the file starts quoting a person who never spoke — the
+    precise failure the s185 handoff warned about when the analyst-voice 'แอบใส่' addendum was
+    logged as hypotheses rather than requirements.
+
+    So both markers must survive, and the partner citations must be present by name."""
     yaml_text = Path("verticals/fleet_maintenance/procedures.yaml").read_text(encoding="utf-8")
-    assert "NARRATIVE PROVENANCE" in yaml_text
-    for marker in ("Q1", "Q3", "Q4"):
-        assert marker in yaml_text, f"provenance header lost its {marker} citation"
+    assert "THE DESIGN PARTNER — REAL" in yaml_text
+    assert "NARRATIVE PROVENANCE" in yaml_text, "the simulated-customer source must stay labelled"
+    for marker in ("Q8", "Q9", "Q10", "Q11"):
+        assert marker in yaml_text, f"provenance header lost its partner {marker} citation"
+    assert "Q3" in yaml_text, "the narrative's own SoD/role citation must survive"
 
 
 # --------------------------------------------------------------------------- #
@@ -210,32 +230,41 @@ async def test_run_suspends_at_the_doa_tier_gate_with_reshaped_spend(
 ) -> None:
     """AC-2: intake -> judge -> reshape -> quote_gate -> approve, over the REAL fleet_maintenance
     YAML + ontology + synthetic adapter. The run SUSPENDS at ``approve`` (waiting_human) and
-    ``fulfill`` never runs. The ``amount`` the DOA tier routes on is byte-derived from the breaching
-    quote, and the ฿48,000 lands MID-ladder (the fleet manager), not at the owner."""
+    ``fulfill`` never runs. Each ``amount`` the DOA tier routes on is byte-derived from its
+    breaching quote.
+
+    Since PLAN-0096 Step 1 this run carries TWO breaches that resolve to DIFFERENT rungs — ฿48,000
+    to the owner, ฿15,000 to the fleet manager. Asserting both, keyed by amount rather than by
+    position, is what proves the ladder ROUTES: a single-breach run can be satisfied by a ladder
+    that always returns one tier, and this one cannot."""
     by_step = await _run(fleet_factory, "fleet-at2-e2e")
 
     assert set(by_step) == {"intake", "judge", "reshape", "quote_gate", "approve"}
     assert "fulfill" not in by_step
 
-    reshaped = _output_set(by_step["reshape"])[0]
-    assert Decimal(reshaped["amount"]) == _BREACH_QUOTE
-    assert reshaped["currency"] == "THB"
-    assert reshaped["compliance"] == {"three_quote": True}
+    reshaped = {Decimal(row["amount"]): row for row in _output_set(by_step["reshape"])}
+    assert set(reshaped) == {_BREACH_QUOTE, _MID_LADDER_QUOTE}
+    assert all(row["currency"] == "THB" for row in reshaped.values())
+    assert all(row["compliance"] == {"three_quote": True} for row in reshaped.values())
 
     gate_audit = _audit(by_step["quote_gate"])
     assert gate_audit["governed_kind"] == "rule_gate"
-    [compliance] = gate_audit["rule_gate"]
-    assert compliance["compliant"] is True
-    assert {r["criterion"] for r in compliance["results"]} == {"three_quote"}
+    assert len(gate_audit["rule_gate"]) == 2
+    for compliance in gate_audit["rule_gate"]:
+        assert compliance["compliant"] is True
+        assert {r["criterion"] for r in compliance["results"]} == {"three_quote"}
 
     approve_audit = _audit(by_step["approve"])
     assert approve_audit["governed_kind"] == "doa_tier"
-    [verdict] = approve_audit["doa_tier"]
-    assert verdict["required_role"] == "ผจก.เดินรถ"  # [5k,50k) — tiering, not always-the-top
-    assert verdict["resolved_approver_id"] == "appr-fleet-manager-wirat"
-    assert verdict["sod_required"] is True
-    assert Decimal(verdict["amount"]["value"]) == _BREACH_QUOTE
-    assert verdict["amount"]["currency"] == "THB"
+    verdicts = {Decimal(v["amount"]["value"]): v for v in approve_audit["doa_tier"]}
+    assert set(verdicts) == {_BREACH_QUOTE, _MID_LADDER_QUOTE}
+    # the partner's Q9 ladder, exercised at two rungs by one run
+    assert verdicts[_BREACH_QUOTE]["required_role"] == "เจ้าของกิจการ"
+    assert verdicts[_BREACH_QUOTE]["resolved_approver_id"] == "appr-owner"
+    assert verdicts[_MID_LADDER_QUOTE]["required_role"] == "ผจก.เดินรถ"
+    assert verdicts[_MID_LADDER_QUOTE]["resolved_approver_id"] == "appr-fleet-manager-wirat"
+    assert all(v["sod_required"] is True for v in verdicts.values())
+    assert all(v["amount"]["currency"] == "THB" for v in verdicts.values())
 
     proposals = _output_set(by_step["approve"])
     assert all(p["status"] == "proposed" for p in proposals)
@@ -261,10 +290,19 @@ async def test_advisory_is_present_and_grounded_by_default(
     advisory = next(t for t in trace if t.get("kind") == "advisory_recommendation")
     detail = advisory["detail"]
     assert detail["model"] == "deterministic"
-    assert detail["resolved_approver_id"] == "appr-fleet-manager-wirat"
-    assert detail["tier"] == "ผจก.เดินรถ"
+
+    # The builder describes the FIRST verdict the gate resolved (gate_advisory._reasons reads
+    # verdicts[0]). Tying the assertion to the audit's own first row rather than to a hard-coded
+    # approver keeps this test about GROUNDEDNESS — the advisory must echo what the gate actually
+    # decided — instead of quietly re-encoding the fixture's row order.
+    first = _audit(by_step["approve"])["doa_tier"][0]
+    assert detail["resolved_approver_id"] == first["resolved_approver_id"]
+    assert detail["tier"] == first["required_role"]
     # grounded, not generic: the run's own figure appears in the prose
-    assert any("48000" in reason for reason in detail["reasons"])
+    assert any(first["amount"]["value"] in reason for reason in detail["reasons"])
+    # PLAN-0096 Step 1: two breaches reach this gate, and the advisory DISCLOSES that it is
+    # describing one of them rather than silently presenting the first as the whole picture.
+    assert any("2 candidates reached this gate" in reason for reason in detail["reasons"])
     assert "confidence" not in str(trace)
 
 
@@ -343,8 +381,14 @@ async def test_a_raising_advisory_builder_cannot_break_the_run(
     by_step = await _run(lambda: _executors(_Exploding()), "fleet-fence-raise")
 
     assert set(by_step) == {"intake", "judge", "reshape", "quote_gate", "approve"}
-    [verdict] = _audit(by_step["approve"])["doa_tier"]
-    assert verdict["resolved_approver_id"] == "appr-fleet-manager-wirat"
+    routed = {
+        Decimal(v["amount"]["value"]): v["resolved_approver_id"]
+        for v in _audit(by_step["approve"])["doa_tier"]
+    }
+    assert routed == {
+        _BREACH_QUOTE: "appr-owner",
+        _MID_LADDER_QUOTE: "appr-fleet-manager-wirat",
+    }
     assert "advisory_recommendation" not in [
         t.get("kind") for t in _trace_dicts(by_step["approve"])
     ]
@@ -371,48 +415,73 @@ def test_unregistered_vertical_409s_at_resolve() -> None:
         registry.get_procedure_executors(_VERTICAL)
 
 
-def _persisted_verdict(proc: Procedure, spec: VerticalProcedures) -> dict[str, Any]:
+def _persisted_verdicts(
+    proc: Procedure, spec: VerticalProcedures, *amounts: Decimal
+) -> list[dict[str, Any]]:
     from services.engine.procedures.doa_tier import resolve_doa_tier
 
-    return resolve_doa_tier(
-        _ladder(proc),
-        amount=_BREACH_QUOTE,
-        currency="THB",
-        principals=list(spec.principals),
-        sod_required=True,
-    ).to_audit()
+    return [
+        resolve_doa_tier(
+            _ladder(proc),
+            amount=amount,
+            currency="THB",
+            principals=list(spec.principals),
+            sod_required=True,
+        ).to_audit()
+        for amount in amounts
+    ]
+
+
+def _authority(person_id: str, *amounts: Decimal) -> bool:
+    spec = load_procedures(_VERTICAL)
+    proc = _hero(spec)
+    principal = next(p for p in spec.principals if p.person_id == person_id)
+    return check_tier_authority(
+        principal=principal,
+        step_id="approve",
+        governance_content=_ladder(proc),
+        persisted_verdicts=_persisted_verdicts(proc, spec, *amounts),
+        declared_principals=list(spec.principals),
+    ).governed
 
 
 def test_fleet_manager_resolves_his_native_tier() -> None:
-    """The ฿48,000 quote routes to ผจก.เดินรถ, and วิรัช holds it — he PASSES the tier gate."""
-    spec = load_procedures(_VERTICAL)
-    proc = _hero(spec)
-    manager = next(p for p in spec.principals if p.person_id == "appr-fleet-manager-wirat")
-    verdict = check_tier_authority(
-        principal=manager,
-        step_id="approve",
-        governance_content=_ladder(proc),
-        persisted_verdicts=[_persisted_verdict(proc, spec)],
-        declared_principals=list(spec.principals),
-    )
-    assert verdict.governed is True
+    """The ฿15,000 quote routes to ผจก.เดินรถ, and วิรัช holds it — he PASSES the tier gate.
+
+    This was the ฿48,000 case until PLAN-0096 Step 1; under the partner's real Q9 ladder that
+    amount is the OWNER's, so the mid-ladder row is what exercises วิรัช's native band now."""
+    assert _authority("appr-fleet-manager-wirat", _MID_LADDER_QUOTE) is True
+
+
+def test_fleet_manager_cannot_sign_the_owner_tier_case() -> None:
+    """The other side of the same coin, and coverage the OLD fixture could not express: under the
+    simulated ladder the ฿48,000 breach sat in วิรัช's own band, so nothing in this suite ever
+    exercised a manager reaching ABOVE his authority. The partner's real ladder puts ฿48,000 on the
+    owner's rung — so the tier gate must now REFUSE วิรัช, who holds ช่างใหญ่ and ผจก.เดินรถ
+    cumulatively but not เจ้าของกิจการ.
+
+    Upward is the direction that matters: PLAN-0075 Policy B deliberately allows approving DOWN,
+    and a check that only ever saw downward cases would pass while enforcing nothing."""
+    assert _authority("appr-fleet-manager-wirat", _BREACH_QUOTE) is False
 
 
 def test_owner_approves_downward() -> None:
-    """PLAN-0075 Policy B: the owner holds ผจก.เดินรถ cumulatively, so he PASSES the ฿48,000 gate —
-    'senior can approve downward'. The customer said it plainly: หนักๆ ต้องมาถึงผม, but he can
+    """PLAN-0075 Policy B: the owner holds ผจก.เดินรถ cumulatively, so he PASSES the ฿15,000 gate —
+    'senior can approve downward'. The partner said it plainly (Q9): หนักๆ ต้องมาถึงผม, but he can
     obviously sign for less."""
-    spec = load_procedures(_VERTICAL)
-    proc = _hero(spec)
-    owner = next(p for p in spec.principals if p.person_id == "appr-owner")
-    verdict = check_tier_authority(
-        principal=owner,
-        step_id="approve",
-        governance_content=_ladder(proc),
-        persisted_verdicts=[_persisted_verdict(proc, spec)],
-        declared_principals=list(spec.principals),
-    )
-    assert verdict.governed is True
+    assert _authority("appr-owner", _MID_LADDER_QUOTE) is True
+
+
+def test_the_shipped_run_is_resolvable_only_by_the_owner() -> None:
+    """The governance consequence of the real ladder, stated as the demo actually behaves.
+
+    The shipped run parks with BOTH verdicts persisted, and ``check_tier_authority`` enforces every
+    persisted verdict — so the acting approver must hold the resolved role of the ฿48,000 case AND
+    the ฿15,000 case. Only the owner does. That is not a bug to route around: it is the partner's
+    own rule ("เกิน 30,000 ต้องมาถึงผม") meeting a gate that resolves a whole breach set at once, and
+    it is the fact PLAN-0096's later steps (case capture, per-case gates) have to reckon with."""
+    assert _authority("appr-owner", _BREACH_QUOTE, _MID_LADDER_QUOTE) is True
+    assert _authority("appr-fleet-manager-wirat", _BREACH_QUOTE, _MID_LADDER_QUOTE) is False
 
 
 def test_sod_requester_cannot_be_the_approver() -> None:
