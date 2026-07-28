@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-28T10:27:38+07:00
-session: 181
-current_batch: "s181 — 1 PR merged (#941), 0 open: CLAUDE.md full slim — 11.1 KB footer changelog retired to git history, §6 compressed; 277 -> 261 lines / 33,014 -> 21,524 B (-35.2%)."
+last_updated: 2026-07-28T11:57:05+07:00
+session: 182
+current_batch: "s182 — 1 PR merged (#943), 0 open: PLAN-0094 Step 6 executed, AC-10 CLOSED (all 11 ACs closed or withdrawn) on a full fresh 18/18 non-vacuity sweep; 2 stale-doc defects fixed."
 current_actor: code
-blocked_on: "Nothing blocking. PLAN-0094 Step 6 (closeout, AC-10) is all that remains; it needs a Cray-confirmed live-loop soak + the PLAN §Verification live-check (ii), both unrun."
-next_action: "Restart Claude Desktop so sessions load the slimmed CLAUDE.md (restart-bridge in .claude/handoffs/session-181/), then the CLAUDE.md follow-up extraction dispatch (<20 KB) or PLAN-0094 Step 6."
-head_commit: 85efe52
-recent_commits: [85efe52, 8ffd290, 767d520, 2b9cb6f, 053410a, 02db847, 0a85b21, 309168e, bc7be51, fd31ba9]
+blocked_on: "Nothing blocking. PLAN-0094's git mv to done/ waits on a Cray-confirmed live-loop soak + the PLAN §Verification live-check (ii) — both evidence, not AC gates."
+next_action: "CLAUDE.md follow-up extraction dispatch (Cowork; target <20 KB), or run PLAN-0094's live-check (ii) — one deliberate warn-crossing on a scratch file."
+head_commit: 1d0649f
+recent_commits: [1d0649f, 6726b69, 1281b5c, 7c4e488, 85efe52, 8ffd290, 50ba13a, b616545, 767d520, 2b9cb6f]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,84 @@ recent_commits: [85efe52, 8ffd290, 767d520, 2b9cb6f, 053410a, 02db847, 0a85b21, 
 ---
 
 ## Current Focus
+
+> **Session 182, 2026-07-28 (head_commit `1281b5c` → `1d0649f`) — the sweep
+> that re-ran everything instead of citing itself. One PR merged (#943), 0
+> open. **PLAN-0094 Step 6 executed and AC-10 CLOSED** — all 11 ACs are now
+> closed or withdrawn — proved by a **full fresh 18/18 non-vacuity mutation
+> sweep**, plus two stale-doc defects fixed. Gate at close: **3327 passed /
+> 8 skipped**, `mypy services/` clean over **110 source files**, `ruff` clean
+> at CI scope, CI `gate` PASS.**
+>
+> **(the framing that matters — Cray typed the expensive reading.)** Two
+> readings of AC-10's sweep were offered *before* the run: re-confirm
+> AC-1…AC-5 and cite the recorded s177/s180 build-time runs for the rest, or
+> re-run everything fresh. Cray typed the **full re-sweep**. So every
+> mutation below is fresh on-disk evidence, not a citation, and the
+> pre-committed pass/fail read was fixed before the baseline ran.
+>
+> **(18 mutations, 18 clean.)** 11 named by the PLAN (M-A…M-D, N-A…N-D, and
+> AC-9's three) plus **7 derived** for the ACs that name none — AC-1(i),
+> AC-1(iii), AC-2, AC-3, AC-5, and AC-9(d), the goal-gate-directive row that
+> had a negative test but no named mutation. **`missing_red` was EMPTY for
+> all 18**: no predicted-red row stayed green, so no oracle in this surface
+> is vacuous. Sibling invariance held — no L2/L3/L4 row reddened under any
+> mutation. Applied by a **harness script, not the Edit tool**: the files
+> under mutation are the session's own live hooks (python re-reads them per
+> invocation), so an Edit-tool apply would feed the mutated L1 logic the very
+> edit that installed it, and M-A ("always increment") would count the
+> sweep's own edits toward a deny. Restores were `/tmp` copies, never
+> `git checkout`.
+>
+> **(finding 1 — M-A's blast radius is 8 L1 rows, not the 3 first
+> predicted.)** A whole-feature revert must redden every row asserting a
+> specific L1 count or a recorded-but-not-counted edit. This is **neither a
+> code defect nor a PLAN defect**: the session's own prediction was too
+> narrow, and the PLAN's load-bearing claim — L2 and L4 stay green — is
+> **`confirmed — prior intact`**, more strongly than it was stated. Widening
+> was legitimate only because `missing_red` was empty (nothing predicted-red
+> went green) and because the correction runs toward **more** breakage, never
+> less.
+>
+> **(finding 2 — AC-4 additionally reddens AC-11(i), and that is a FEATURE.)**
+> AC-11(i) asserts the deny body names *the threshold actually applied*, so
+> moving the gate onto the warn bar renders `N/6` and the row moves with it —
+> positive evidence that the row reads the applied bar instead of hard-coding
+> a literal.
+>
+> **(finding 3 — the harness's own site-count guard aborted a naive apply.)**
+> The first AC-1(iii) attempt stopped on a site count:
+> `pretooluse_loop_detect.py` is registered at **TWO** PreToolUse sites, not
+> one. A naive apply would have half-installed and reported a result proving
+> nothing — the vacuous-apply form the sweep exists to detect, caught on the
+> sweep's own tooling. `git status` after the abort showed the file fully
+> restored.
+>
+> **(two defects fixed, neither found by the sweep — both by grounding the
+> closeout.)** (a) The scope note in `tests/handoffs/test_settings_hook_wiring.py`
+> had been stale on **four** counts since the s179 D4(a) withdrawal: it still
+> claimed part (ii) is "delivered by Step 4", that Step 4 registers the event
+> after a live schema probe, that its `settings.json` diff carries its own
+> Cray per-diff approval, and that "AC-1 closes when Step 4 adds it" — AC-1
+> was already closed with (ii) withdrawn. Its header also read "Step 1 of 4"
+> for a 6-step PLAN. Rewritten to withdrawn-on-evidence while **keeping the
+> module's anti-vacuity argument intact**. (b) The `L1_DOC_THRESHOLD`
+> citation **drifted a second time** (the `LOOP_TRIGGER_THRESHOLD` pointer has
+> been right since s179). The **values 6 and 15 stay byte-identical at every
+> re-measure** — the invariant has held each time; only the pointer moves.
+>
+> **(what is still OWED, and was deliberately not forced.)** The `git mv` to
+> `docs/plans/done/` stays gated on a **Cray-confirmed live-loop soak** — it
+> cannot be self-served, because the guards run on Cray's own working loop;
+> the PLAN §Verification **live-check (ii)** (one deliberate warn-crossing on
+> a scratch file) is **still unrun**; and **OQ-4 is OPEN with a dated
+> commitment** (re-measure after ~20 sessions; a Cowork-drafted ADR-013
+> amendment retiring L1 if true positives stay 0 with ≥1 false positive).
+> Step 6 now records that OQ-4 must be **re-homed in whatever change finally
+> archives this PLAN**, never buried in `done/`. Both live checks are
+> *evidence*, not gates on AC-10 — which is why the PLAN closes out while
+> staying in `docs/plans/`. Merge-commit re-run performed;
+> `git diff 6726b69 HEAD` = **0 bytes**.
 
 > **Session 181, 2026-07-28 (head_commit `767d520` → `85efe52`) — the session
 > the constitution got a third lighter and no rule changed. One PR merged
@@ -256,132 +334,6 @@ recent_commits: [85efe52, 8ffd290, 767d520, 2b9cb6f, 053410a, 02db847, 0a85b21, 
 > real, not 3** — debt #2 (AC-6 "dwell") does not reproduce; the AC text already
 > says "same-row spans".
 
-> **Session 177, 2026-07-27 (head_commit `c0f5935` → `da0b50b`) — the image
-> builds and boots, and the L1 guard gets an exit that cannot be faked. Five
-> PRs merged (#927, #928, #929, #930, #931), 0 open. **PLAN-0095 COMPLETE 7/7**,
-> archived to `done/`; **PLAN-0094 Step 5 BUILT**, AC-9 closed. The `Dockerfile`
-> had not built since the 2026-05-07 scaffold commit; `docker run` now answers
-> `/health` in about two seconds with **no database reachable at all**.
-> Suite 3296 → **3317**.**
->
-> **(what shipped.)** **#927** — Steps 1–5 as ONE PR, because Step 1's oracle
-> is deliberately born-RED and splitting would land a red suite on `main`.
-> The builder defects are **eliminated, not repaired**: `--no-install-project`
-> removes the hatchling build from the image entirely (the image needs neither
-> the wheel nor the console script), which also keeps the dependency layer
-> cacheable. `python -m uvicorn` replaces the bare console script so imports
-> resolve by interpreter contract rather than by uvicorn's internal
-> `sys.path.insert`. Per SD-2 the image also ships `alembic/` + `alembic.ini`;
-> per SD-1 a thin compose `app` service consumes the same image and declares
-> **no `command:`**. **#928** — runbook §1a, the hand-it-to-someone path.
->
-> **(the oracle derives, it does not mirror.)** `tests/docker/` — 10 tests,
-> stdlib + pytest + `ruamel.yaml`, **no daemon**. O-1 walks a **transitive
-> closure seeded from the app package**, resolving module-level string
-> constants (mandatory — the real defect's call site passes one, so a
-> literal-only scan would miss the very bug that motivates the oracle) and
-> filtering to real top-level directories. Seeding from the app root rather
-> than "every top-level package" is deliberate: `benchmarks/` also carries
-> `__init__.py` but never enters the image. **Born-RED with five distinct
-> assertion families**; **12/12 mutations bit**, each turning exactly one
-> predicted test red. `M-C` is the one that matters — a new runtime-resolved
-> root goes RED **with no Dockerfile edit at all**. The derived set measured
-> exactly `['services', 'verticals']`, no spurious roots. AC-3 ships as a
-> **sibling test module** rather than the PLAN's literal reviewer-grep
-> (Cray's call): a grep is a habit, a test is a gate.
->
-> **(Step 6 — live evidence, on Cray's explicit go; evidence, never the gate.)**
-> `docker build` exit 0 — the first successful build. `/health` 200 in ~2 s;
-> boot log shows **all six verticals discovered**, which is precisely the
-> `ModuleNotFoundError` that used to abort `lifespan()`; `/meta` serves the
-> energy ontology; the container runs as **`uid=999(vero)`** with its
-> `HEALTHCHECK` reporting **healthy**; `DATABASE_URL` is unset inside, so the
-> DB-less claim is structural, not incidental. `alembic current` printed
-> **`0012 (head)`** from inside the image against the live Postgres, exercising
-> the whole SD-2 chain. **OQ-2's residual and OQ-3 are resolved by that run**
-> (the *containerized* uv:0.11.9 does accept the flag — the dev-box measurement
-> could not establish it); **OQ-1, the hosting model, stays open by design.**
->
-> **(two deliberate departures from the PLAN's Step 6 sketch.)** A read-only
-> probe first found `vero-postgres` + `vero-redis` **up 7 days** — and §1 of
-> this repo's own runbook depends on them. So `docker compose down` was
-> **not** run (it would stop them); cleanup was `docker compose rm -sf app`,
-> removing only what this session created. `--no-deps` was added because the
-> running containers carry a compose config-hash from a **Linux** path while
-> the invocation came from a **Windows** path, which could have read as
-> "out of date" and recreated them. Verified both directions: postgres's
-> `StartedAt` was **byte-identical** before and after, and no image was left
-> behind.
->
-> **(two of this session's own errors, caught before they cost anything.)**
-> The oracle's healthcheck URL extraction was wrong — it tokenized on
-> whitespace and `strip()`ped, which cannot cut a leading `urlopen('` — found
-> by **reading before running**, one step before it would have produced a
-> false RED against a correct Dockerfile. And mutation `M-D` did not bite on
-> the first pass: a whole-file substitution hit the **explanatory comment**
-> naming the same flag instead of the `RUN` directive. The oracle was sound
-> throughout (`_logical_lines` drops comments) — logged **`confirmed — prior
-> intact`**; the probe script was the defect.
->
-> **(a finding that was reported, then closed by Cray in the same session.)**
-> Docker Desktop's **WSL integration was off for `ubuntu-24.04`**, so `docker`
-> was not on `PATH` there and Step 6 ran from Windows PowerShell against a UNC
-> build context. The consequence worth naming was that **§1 of
-> `run-oct-demo.md` runs `docker ps` from bash** and would have failed for
-> anyone following it from WSL. Code declined to flip the setting itself even
-> after Cray said go, and said why: the toggle needs a Docker Desktop restart,
-> and `vero-postgres` / `vero-redis` carry **`RestartPolicy=no`**, so they would
-> not come back on their own — a downtime Cray had not asked for. Cray flipped
-> it; the prediction held exactly (both `Exited (0)`, while other projects'
-> `restart: always` containers returned by themselves). Restored with
-> `docker start`, then verified: healthy on 5442 / 6379, `alembic current` still
-> `0012 (head)`, `tests/api` 189 passed / 1 skipped. **#931** converts §1a's
-> three blocks to bash — the bash `docker build` was **re-run and verified from
-> WSL** (exit 0, image removed) rather than inferred — and records the trap the
-> toggle itself demonstrated, including its tell: **a full suite reporting ~141
-> skips instead of 8 is an unreachable DB, not a regression.**
->
-> **(second half of the session — PLAN-0094 Step 5, the L1 exit an agent cannot
-> fake.)** **#930** builds P3 / **AC-9**. When L1 denies, all three documented
-> exits can be shut at once — the turn boundary is sticky, a commit needs a
-> committable tree the gated file can itself block, and the subagent reset
-> clears only a subagent's own edits — which is why **two of five recorded
-> incidents ended in a Cray-authorised shell escape**. The deny branch now arms
-> `awaiting_ack` (making that gate a **narrow state writer** for the first time)
-> and the Stop hook clears it **only where the stop actually fires** (cap /
-> contentless-proceed demotion / dispatch suggestion / pause), never where the
-> agent is handed back to its own loop (substantive `proceed`, goal-gate
-> directive, re-entry). Unforgeable because a fired stop by construction returns
-> the prompt to Cray. The clear also **overrides the sticky rule** for exactly
-> the armed targets, turning two-turn recovery into one. Step 5 landed **ahead
-> of Step 4** deliberately: Step 4 is gated on a Cray per-diff `settings.json`
-> approval and no step depends on a later one — surfaced, not assumed, and the
-> PLAN's Status line (still reading "Steps 3–6 unbuilt" after Step 3 landed in
-> s175) is corrected in the same PR. Suite 3306 → **3317**.
->
-> **(what the RED-first run found that the design had not.)** The negative row
-> `test_proceed_does_not_clear_the_marker` went **RED** — which a *missing*
-> feature should not cause. Reason: the always-on turn-boundary reset rewrites
-> the whole state document every Stop, so the marker is **dropped on every path**
-> unless `awaiting_ack` round-trips through `to_json`. Stated as a rule because
-> it generalizes past this field: **additive-and-tolerant was necessary but not
-> sufficient; additive-and-serialized is the requirement.** A field the writer
-> forgets is a field the reader silently loses, and the tolerance contract is
-> exactly what hides it. Evidence discipline: 11 rows, **8 RED-first**; the three
-> negative rows pass trivially against featureless code, so each was proven by a
-> **named mutation** (drop the L1 scope guard / clear inside the re-entry guard /
-> clear on substantive proceed), restored from a scratchpad copy, never
-> `git checkout`. Thresholds **byte-unchanged**, verified by diff.
->
-> **(an unplanned live demonstration.)** The L1 **warn** fired on
-> `stop_continuation.py` mid-implementation — the guard warning about the file
-> implementing its own fix. Assessed as the warning asks: six edits = helper,
-> import, an import-order self-correction, three call sites — distinct forward
-> progress, no retries of a failing change. That is precisely the false-positive
-> class **Step 4 (P1)** exists to kill, observed in the wild rather than argued
-> from the incident table; under the pre-Step-3 first-strike deny it would have
-> been a wall, not a ping.
-
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R7)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split.]_
 
 ## Prior focus (archived)
@@ -401,6 +353,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-28 | **s182 — PLAN-0094 Step 6 executed, AC-10 CLOSED (#943): all 11 ACs closed or withdrawn, on a FULL FRESH 18/18 non-vacuity sweep** — Cray typed the full re-sweep rather than citing the recorded s177/s180 runs. 11 PLAN-named mutations + **7 derived** for the ACs that name none; **`missing_red` EMPTY for all 18**; sibling L2/L3/L4 invariance held. Applied by a harness script, not the Edit tool (the mutated files are the session's own live hooks). **M-A's blast radius is 8 L1 rows, not the 3 first predicted** — the session's prediction was too narrow; the PLAN's L2/L4-stay-green claim is `confirmed — prior intact`. AC-4 also reddens AC-11(i) — a FEATURE. Two stale-doc defects fixed. **The `git mv` to `done/` stays Cray-gated** (live-loop soak + live-check (ii)); OQ-4 OPEN | `1d0649f` (#943 merge, head_commit) / `6726b69` / `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 |
 | 2026-07-28 | **s181 — CLAUDE.md full slim (#941): the 11.1 KB footer changelog RETIRED to git history; 277 → 261 lines / 33,014 → 21,524 B (−35.2%).** NEW convention: a constitutional edit bumps the footer date only — the edit's commit message is the full record; `git log --follow -- CLAUDE.md` = amendment history. Coverage verified BEFORE the cut (20 commit bodies ≥ their footer entries; companion artifacts on disk). No binding rule's substance changed (9 hunks, all §6 + footer). The <200-line LOCKED target unreachable (outside-§6 = 194 lines) → Cray ruled (b): target <20 KB + follow-up extraction pass queued | `85efe52` (#941 merge, head_commit) / `8ffd290` / `CLAUDE.md` + `.claude/handoffs/session-181/` |
 | 2026-07-28 | **s180 — PLAN-0094 Step 4 COMPLETE (#937/#938/#939): L1 counts NON-PROGRESS, not touches. AC-7, AC-8(i)/(iii), AC-11 closed.** L1 increments only on a re-applied `old_string` (`repeat xN`) or a return to content already held this turn (`osc xN`); forward edits record `result == ""`; `clear_turn_scoped()` wired into the turn boundary. **All three L1 warns ever recorded would not fire under the new unit.** s179's BLOCKING `tool_response` probe was **answered without being run** (84 recorded `Edit` results: no `content` key, `originalFile` null in 78/84, `structuredPatch` = a diff not a state) — the PLAN's on-disk hash stands, no restart spent. **AC-11: `T` = the DENY bar in BOTH Telegram bodies** (Cray's ruling on a self-contradicting spec). **OQ-4 OPENED — should L1 exist at all?** Baseline over all 113 transcripts: **0 denies, 3 warns, 0 true positives**. **Pre-committed: re-measure after ~20 sessions; TPs still 0 with ≥1 FP → dispatch Cowork to draft the ADR-013 amendment retiring L1.** Suite 3318 → **3327** | `767d520` (#939 merge, head_commit) / `2b9cb6f` / `053410a` (#938) / `0a85b21` (#937) / `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md` §D4 + §OQ-4 |
 | 2026-07-27 | **s179 — PLAN-0094 Step 4 RE-SCOPED on its own probe's refutation (#933); OQ-3 opened + RESOLVED same session.** Measured twice, one session apart: **a failed `Edit` invokes NO hook** — not `PostToolUseFailure`, not `PostToolUse`. **D4(a) withdrawn**, taking **AC-1(ii) / AC-6 / AC-8(ii)** with it (AC-6 withdrawn, not weakened) and with them Step 4's only Cray-gated `settings.json` surface; the s169-class thrash stays **uncountable**. OQ-3 → (b), four rulings: **R1** a self-contained COUNT, not a sha1 pointer (evidence ring 6 vs doc trip bar 15); **R2** `dict[str,int]`; **R3** `result == ""` on forward edits; **R4** → new **AC-11** (Telegram `count: N/T` + formatter mirror-invariance) | `b3c20dd` / `bde43d6` (#933) / `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md` §D4 + §OQ-3 |
@@ -410,13 +363,12 @@ than restated: the Active TODO owns that status.]_
 | 2026-07-27 | **s176 — PLAN-0095 merged as Draft (#925): make the Docker image build + boot the DB-less OCT demo. Nothing built; Steps 1–5 unexecuted.** The grounding sweep (4 Explore agents, 15 items) killed **5 wrong s175-handoff premises** — the first-order boot failure is a plain import (`discovery.py:45`, uncaught at `main.py:166`), **not** the CWD-relative `Path("verticals")`; plus an uncounted **9th** defect (`pyproject.toml:7` `readme` never COPY'd). Cray ruled **SD-1 = both**, **SD-2 = include `alembic/` + document**, **SD-3 = all four** — reframing the PLAN as *ready for development toward production*; SD-1/SD-2 overturned the drafter and are logged `superseded by new info`. Oracle derives the COPY set by **transitive closure from the app root** (not a `verticals` glob — that would break AC-3); **AC-6: no AC needs a Docker daemon**. Finding: **CLAUDE.md §6's plan-drafter gate claim is STALE** — the subagent is exempt by design (`pretooluse_classifier_dispatch.py:301-311`), G2 preserved for Code | `77fa734` (#925 merge, head_commit) / `2fb8709` / `docs/plans/0095-docker-image-boot.md` |
 | 2026-07-26 | **s175 — the harness stopped letting a failed command look like a success.** #923: Lesson #0007's mechanism CORRECTED and reclassified `was an error` (a bare `$` expands one shell layer early; `$?` is not unreadable) + a binding CLAUDE.md §8 rule + a `_shell_hygiene_warning` PostToolUse advisory. #922: PLAN-0094 **Step 3** — warn at T, deny at T+G (9 code / 18 doc), L4 flat 6; AC-3/4/5 closed. #920 pins all six verticals' ACTION factory offline at REGISTRATION; #921 fixes four stale cross-refs. **Cray: demo target = the LIVE-API shape** → Candidate C is the long pole. ADR-009 D1 one-off Code-authors-§8 exception — **not precedent**. Suite 3252 → **3296** | `04c94e4` (#923 merge, head_commit) / `3b3b666` (#922) / `59c81a6` (#921) / `65c6953` (#920) / `docs/lessons/0007-harness-exit-code-artifact.md` |
 | 2026-07-25 | **s174 — MS-S1 stopped being an inference appliance, and CLAUDE.md §8's gated surface was widened to match.** #916 opens OpenSSH on TCP 22, LAN-only (`Domain, Private`), verified with `BatchMode=yes` — which proves publickey auth, not a silent password prompt; the knowledge splits per §4 — rule in §8, how-to in the runbook, procedure in a new `ms-s1-admin` skill. #918 rescopes §8, net +1 line: substance unchanged, its `…:11434` *illustration* was reading as a scope boundary (Cowork drafted → Code R2'd + committed → Cray ratified). #917 lands PLAN-0094 Steps 1+2 — the `SubagentStop` L1 reset, scoped to the completing agent's OWN edits (turn-scoped would be a self-unlock path; Cray ratified the divergence from Lesson #0021 §3); suite 3244 → **3252** | `a3a9c66` (#918 merge, head_commit) / `2cda070` (#917) / `c9050b9` (#916) / `docs/runbooks/ms-s1-ssh-access.md` + `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md` |
-| 2026-07-25 | **s173 — the L1 loop-detect guard: its unit of measurement was wrong and one documented escape was never wired.** #912 bounds the loop-counter state lifetime (age-out 6 h + a session boundary read from the hook payload, which `resolve_session_id` never consulted). #914 lands **PLAN-0094** (Draft) + **Lesson #0033**. Probed live: `PostToolUse` fires only on success, so L1 could not see a failed edit at all — 6 good edits score 6, 6 retries of one broken anchor score 0, so **no threshold separates them** and PLAN-0094 changes none. `_handle_agent_completion` is **dead code** (no `PostToolUse` Task/Agent matcher); the registry row L1, Lesson #0021 §3 and the deny message all still call it live. Cray ratified **OQ-1 `G=3`, OQ-2 full fresh budget, SD-2 subagent-scoped reset** (a decision, not a diff approval — it changes a recorded lesson) | `6fb89b8` (#914 merge, head_commit) / `3383697` + `2d09002` (#912) / `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md` + `docs/lessons/0033-raising-the-threshold-is-not-fixing-the-unit.md` |
 
 ## In-Flight Discussions
 
-- **PLAN-0095 — Draft, merged s176 (#925); Steps 1–5 UNEXECUTED, Step 6 host-state.** Make the scaffold-era `Dockerfile` build and boot the synthetic OCT demo with **no database**. **Nothing is built** — no Dockerfile change, no test, no compose edit; the image does **not** boot today. Root cause is measured, not guessed: the first-order failure is a plain Python import (`importlib.import_module(_VERTICALS_PACKAGE)`, `services/engine/discovery.py:45`, uncaught as the first line of `lifespan()` at `services/api/main.py:166`); the CWD-relative `Path("verticals")` at `ontology_meta.py:154` is real but **second-order**. The defect count is **two broken `COPY` statements** (each with two symptoms) + hygiene gaps + a **ninth** defect found in-session: `pyproject.toml:7` declares `readme = "README.md"`, never COPY'd, so `uv sync` fails a second time even after the package-tree fix. **All three SDs RULED by Cray under a production frame** — *"ready for development toward production," not "build production now,"* across two hosting models (customer uses an instance we host / we stand up a server on-site): **SD-1 = both** (standalone image is the artifact; compose is a thin consumer proving it composes with a real Postgres), **SD-2 = include `alembic/` + document** (one image, different commands; a separate migration image is the riskier shape — version skew), **SD-3 = all four hygiene items IN**. SD-1 + SD-2 overturned the drafter's own recommendations and are in-PLAN as **`superseded by new info`**, not `was an error`, with the original analysis preserved. **The oracle is the PLAN's real content:** O-1 **derives** the required COPY root set by AST **transitive closure seeded from the app root** (a literal `verticals` glob was rejected in R2 — it breaks AC-3, and `benchmarks/` never enters the image, a latent false-RED), with anti-tautology invariant **AC-3** and mutation **M-C** that must go RED; O-4/O-5/O-6 carry binding derivation-status labels (`USER` is honestly a presence check). **AC-6 is invariant: no acceptance criterion needs a Docker daemon** (O-6 parses YAML via `ruamel.yaml`, a main dep at `pyproject.toml:23`); every daemon action sits in the optional Cray-gated evidence step. **Execution trap:** the compose `vero:vero` in-network URL trips `detect-secrets` as Basic Auth Credentials and needs an inline `# pragma: allowlist secret` **in the real `docker-compose.yml` at Step 3** — a pattern match, not a leak (dev placeholder already tracked at `docker-compose.yml:6-7` + `services/api/config.py:39`); never `--no-verify` (CLAUDE.md §8). **Steps 1–5 are ONE PR-sized unit that cannot be split** — Step 1's oracle is deliberately born-RED against the current Dockerfile, so committing it alone lands a red suite. Full record: `docs/plans/0095-docker-image-boot.md`.
-- **Hosting model → ADR-002's LAN trust boundary: a LIVE candidate needing its own ADR (surfaced s176, not drafted).** *"Customer uses our server"* touches ADR-002's LAN trust model — `docs/adr/0002-network-topology.md:76` and `:86` — which defers its own successor **twice** as an unnumbered `ADR-NN`. PLAN-0095 can land with this open, because nothing in the image or the compose service selects *where* the image runs; the question bites when a hosting model is actually chosen. Route: a new ADR via the Cowork/plan-drafter path (G1/G2 — Code may not author it).
-- **PLAN-0094 — Draft; Steps 1–5 ALL BUILT (s174 #917, s175 #922, s177 #930, s180 #935/#937/#939 — Step 4 COMPLETE, AC-7 / AC-8(i)(iii) / AC-11); Step 6 (closeout, AC-10) is all that remains.** The L1 loop-detect restructure: count non-progress instead of touches (P1), warn on the first trip and deny on the second (P2), add an acknowledged-pause exit the agent cannot fake (P3), and wire the subagent-completion reset that had **never been live** (F3c). **Step 1 (F3c) landed:** a `SubagentStop` registration (matcher `*`) plus additive per-`agent_id` `subagent_touched` state, so a completing subagent clears its **own** recorded edits and cannot launder the main agent's budget through a zero-edit spawn. **The soak released Step 3** — Cray reported no anomalies on the live loop. **Step 3 landed (#922, AC-3 final surface / AC-4 / AC-5):** the path-class threshold is now the WARN bar and the deny sits at `T+G` (`G=3`) = **9 code / 18 doc**, L4 untouched at flat 6, `CounterEntry.warned_at` dedupes the warn; the deny message deliberately does **not** name the P3 stop-ack, since P3 ships at Step 5 (test-pinned). **AC-1 (ii) is WITHDRAWN** (s179 #933) — a failed `Edit` invokes no hook at all, so there is nothing to register; **AC-6 + AC-8(ii) fell with it**, and Step 4 no longer carries a gated `settings.json` surface. **Ratified inputs are LOCKED:** OQ-1 `G=3`, OQ-2 full fresh budget, and SD-2 — subagent-scoped, per-`agent_id`-keyed reset — ratified as a **decision, not a diff approval**, because it changes what Lesson #0021 §3 recorded as the 2026-06-08 fix. **Every `settings.json` diff needs Cray per-diff approval** (guard self-modification, Lesson #0021 §4). Governance footing: **no ADR amendment** — ADR-0013 row E.4 (`docs/adr/0013-autonomy-axis-relocation.md:90`) specifies the consequence as "pause + Telegram alert", so the hard deny exceeded its own mandate and P2 moves L1 *toward* the ADR. Of the three surfaces that asserted the dead reset path was live, **two were corrected in Step 2** (registry row L1, Lesson #0021 §3) and the third — the deny message in `pretooluse_loop_detect.py` — was rewritten in Step 3, per D2's do-not-edit-twice instruction. All three are now closed. Substrate already shipped in #912; do not re-plan it. **OQ-4 is OPEN (s180): should L1 exist at all?** Baseline over all 113 session transcripts — **0 denies, 3 warns, 0 true positives**, and the guard cannot catch the s169 incident that motivated it — with a **pre-committed re-measure after ~20 sessions** and a Cowork-drafted ADR-013 amendment retiring L1 if TPs stay 0 with ≥1 FP. Full record: `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md`; the anti-pattern behind it: `docs/lessons/0033-raising-the-threshold-is-not-fixing-the-unit.md`.
+- **PLAN-0095 — COMPLETE 7/7 and ARCHIVED (s177, #927/#928).** The scaffold-era `Dockerfile` builds and boots the DB-less synthetic OCT demo: `/health` 200 in ~2 s, all six verticals discovered, `uid=999(vero)`, `HEALTHCHECK` healthy, and `alembic current` → `0012 (head)` from inside the image. The only thing still open from it is **OQ-1, the hosting model** — already homed in the next bullet, not restated here. Full record: `docs/plans/done/0095-docker-image-boot.md`. _[Corrected s182, `was an error`: this entry still described the PLAN as Draft with "Steps 1–5 UNEXECUTED … the image does not boot today" and cited the pre-archive path — refuted by the s177 row in Recent Decisions above and by the archived PLAN's own `Status: Complete`.]_
+- **Hosting model → ADR-002's LAN trust boundary: a LIVE candidate needing its own ADR (surfaced s176, still not drafted; this is where PLAN-0095's OQ-1 lives).** *"Customer uses our server"* touches ADR-002's LAN trust model — `docs/adr/0002-network-topology.md` defers its own successor **twice** as an unnumbered `ADR-NN`: in **§Consequences → Neutral** (the LAN trust assumption is to be re-evaluated when a first design partner deploys to a real site) and in **§Alternatives Considered → Alternative 3** (Tailscale / WireGuard, to be reconsidered when remote development or design-partner site connectivity becomes a need). Nothing in the image or the compose service selects *where* the image runs, so the question only bites when a hosting model is actually chosen. Route: a new ADR via the Cowork/plan-drafter path (G1/G2 — Code may not author it). _[s182: the two line-number citations here were **dropped, not corrected** — one of them had already rotted onto a PDPA bullet, which is the failure mode the rotation policy's R7 rule names. Cite the ADR's section headings; they survive an edit, line numbers do not.]_
+- **PLAN-0094 — Draft; all six steps BUILT (s174 #917, s175 #922, s177 #930, s180 #935/#937/#939, s182 #943) and AC-10 CLOSED s182 — all 11 ACs are closed or withdrawn. It stays in `docs/plans/` because the `git mv` to `done/` is Cray-gated on a live-loop soak + the PLAN §Verification live-check (ii) — both evidence, not ACs.** The L1 loop-detect restructure: count non-progress instead of touches (P1), warn on the first trip and deny on the second (P2), add an acknowledged-pause exit the agent cannot fake (P3), and wire the subagent-completion reset that had **never been live** (F3c). **Step 1 (F3c) landed:** a `SubagentStop` registration (matcher `*`) plus additive per-`agent_id` `subagent_touched` state, so a completing subagent clears its **own** recorded edits and cannot launder the main agent's budget through a zero-edit spawn. **The soak released Step 3** — Cray reported no anomalies on the live loop. **Step 3 landed (#922, AC-3 final surface / AC-4 / AC-5):** the path-class threshold is now the WARN bar and the deny sits at `T+G` (`G=3`) = **9 code / 18 doc**, L4 untouched at flat 6, `CounterEntry.warned_at` dedupes the warn; the deny message deliberately does **not** name the P3 stop-ack, since P3 ships at Step 5 (test-pinned). **AC-1 (ii) is WITHDRAWN** (s179 #933) — a failed `Edit` invokes no hook at all, so there is nothing to register; **AC-6 + AC-8(ii) fell with it**, and Step 4 no longer carries a gated `settings.json` surface. **Ratified inputs are LOCKED:** OQ-1 `G=3`, OQ-2 full fresh budget, and SD-2 — subagent-scoped, per-`agent_id`-keyed reset — ratified as a **decision, not a diff approval**, because it changes what Lesson #0021 §3 recorded as the 2026-06-08 fix. **Every `settings.json` diff needs Cray per-diff approval** (guard self-modification, Lesson #0021 §4). Governance footing: **no ADR amendment** — ADR-0013 row E.4 (`docs/adr/0013-autonomy-axis-relocation.md:90`) specifies the consequence as "pause + Telegram alert", so the hard deny exceeded its own mandate and P2 moves L1 *toward* the ADR. Of the three surfaces that asserted the dead reset path was live, **two were corrected in Step 2** (registry row L1, Lesson #0021 §3) and the third — the deny message in `pretooluse_loop_detect.py` — was rewritten in Step 3, per D2's do-not-edit-twice instruction. All three are now closed. Substrate already shipped in #912; do not re-plan it. **OQ-4 is OPEN (s180): should L1 exist at all?** Baseline over all 113 session transcripts — **0 denies, 3 warns, 0 true positives**, and the guard cannot catch the s169 incident that motivated it — with a **pre-committed re-measure after ~20 sessions** and a Cowork-drafted ADR-013 amendment retiring L1 if TPs stay 0 with ≥1 FP. Full record: `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md`; the anti-pattern behind it: `docs/lessons/0033-raising-the-threshold-is-not-fixing-the-unit.md`.
 - **PLAN-0093 — COMPLETE 8/8 and ARCHIVED (s172, #913).** The LLM-arm degrade disclosure — no silent arm swap: which arm phrased an NL answer is disclosed, the rule fail-safe says it is a fail-safe, the authoring arm is projected over HTTP (including the insights run-corpus path), and `LLM_RETRY_BUDGET` no longer sits inert on the governed path. No follow-on owed. Full record: `docs/plans/done/0093-llm-arm-degrade-disclosure.md`.
 - **PLAN-0091 — COMPLETE 10/10 and ARCHIVED (s168).** Two follow-ons it named, **neither scheduled**: the **extend shapes** (calm-path + scheduled-variant scaffolding) are **greenfield, not an extension** — the shipped emitters refuse an existing vertical *by construction* and create-only is Cray-ratified SD-2, so this needs a fresh seam spec, not effort; and the census-narrative comment in `tests/api/test_procedures_endpoint.py` is the one counted site the disposer REPORTS rather than rewrites — a human call, left visible on purpose. Full record: `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md`.
 - **PLAN-0088 — COMPLETE (13/13 live ACs) and ARCHIVED (s171, #908).** The cross-run read substrate + the four run-insight readers (A2 ฿ ROI, A3 flow, A4 audit-readiness, A1 NL-over-runs) + the Group-B carrier proof. SD-1…SD-9 all Cray-ratified; the substrate stays aggregate-only (SD-8 a) and grows only in `run_analytics.py` (SD-9 a2); Group A ungated, Group B pilot-gated (AC-10 proves the questions expressible, AC-11 that no proposal machinery exists). AC-9b's live MS-S1 smoke PASSED. **Three AC-WORDING debts carried into the archived PLAN, none a code defect** (Cray's to reword if ever): (1) AC-2 names the wrong approver source — the approver is in the trace / `governed_decision` / audit-log, not `step_principals` (the requester half); (2) AC-6's "dwell" is a same-row start→suspension span, stated plainly in the code; (3) SD-9's aside miscalls `trigger` "undefined". Full record: `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md`.
@@ -444,7 +396,7 @@ than restated: the Active TODO owns that status.]_
 - [ ] **`docs/conventions/git.md` — substance DISCHARGED, one DEAD LINK left, and it needs Cowork.** *[De-duplicated s175: this TODO existed twice — here and as an In-Flight "Convention extraction" bullet; the In-Flight copy is dropped, this row is the single home.]* The extraction's substance is effectively discharged by the **`git-workflow` skill** (`.claude/skills/git-workflow/`, Tier 2.6), so the file may never need to exist. What DOES need fixing: **`CLAUDE.md:160` holds a dead relative link** *(shifted from `:176` by the s181 slim; re-verified on disk s181)* to the non-existent `docs/conventions/git.md` ("Future canonical: …"). Either extract the file or drop the link — and **either way it is a Cowork round-trip**, since Code may not author `CLAUDE.md` (ADR-009 D1; the s175 #923 exception was scoped to §8 only). *(low priority)*
 - [ ] **`CLAUDE.md` §6's gate-route claim is STALE — needs a Cowork round-trip (found s176; SURVIVED the s181 slim verbatim, now `CLAUDE.md:112`; NOT fixed).** §6 "Mechanical overlay" says a new PLAN/ADR is PreToolUse-gated for Code **and the in-harness `plan-drafter`**. Measured: `.claude/hooks/pretooluse_classifier_dispatch.py:301-311` **exempts the `plan-drafter` subagent from the G2 classifier gate by design** (PLAN-0034 prong 2, SD-1(a)) — it short-circuits *before* the classifier, so it does not even depend on MS-S1 being warm. The main Code agent carries no `agent_id` and **is** still gated, so **G2's substance is preserved**; only the sentence is wrong. Same round-trip class as the `CLAUDE.md:160` dead-link row above — Code may not author `CLAUDE.md` (ADR-009 D1; the s175 #923 exception was scoped to §8 only), so batch the two if convenient. *(low priority — a documentation defect, not a guard defect)*
 - [ ] **CLAUDE.md follow-up extraction pass (s181 option b): new Cowork dispatch; target < 20 KB (~18 KB / ~225–235 line floor).** Candidates (Cowork fresh-eyes, s181 completion §6): §11 ¶3 restates the §6 E2 rule → one-line pointer; §10 skills-row annotation duplicates §4's Tier-2.6 row (in-file ADR-0017 D6 drift); §10 docs/logs row's PLAN-004 parenthetical; §9 halves; §3 folds into §1. Materials: `.claude/handoffs/session-181/` (gitignored).
-- [ ] **PLAN-0094 Step 6 (closeout, AC-10) — the only step left, and it is gated on two unrun live checks.** Step 4 completed s180 (#937/#938/#939), so Steps 1–5 are all BUILT. Before AC-10 can close: (i) the **PLAN §Verification live-check (ii)** — one deliberate warn-crossing on a scratch file, to confirm the advisory actually reaches the agent's context — is **still unrun**; and (ii) Cray must confirm a **live-loop soak** on the new non-progress unit. Full detail: `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 + §Verification.
+- [ ] **PLAN-0094 — AC-10 CLOSED s182 (#943); the row stays OPEN because the PLAN has not archived.** Step 6 is executed and all 11 ACs are closed or withdrawn, on a full fresh 18/18 non-vacuity sweep. What remains is **not an acceptance criterion**: (i) Cray must confirm a **live-loop soak** on the new non-progress unit — it cannot be self-served, since the guards run on Cray's own working loop; (ii) the **PLAN §Verification live-check (ii)** — one deliberate warn-crossing on a scratch file, confirming the advisory actually reaches the agent's context — is **still unrun**; both gate only the `git mv` to `docs/plans/done/`. (iii) **OQ-4 stays OPEN with a dated commitment** (re-measure after ~20 sessions; retire L1 via a Cowork-drafted ADR-013 amendment if true positives stay 0 with ≥1 false positive), and Step 6 records that it must be **re-homed in whatever change finally archives this PLAN**, never buried in `done/`. Full detail: `docs/plans/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 + §Verification.
 - [ ] **STATUS rotation-window slack (runbook R2) — OPEN, Cray's call; untouched s180.** The 4-session / 8-block Current Focus window and the file's byte ceiling now bind at the same time: this reconcile rotated the s175 block out to make room and wrote the s180 block to a byte budget rather than to what the session warranted. Widen the window, tighten the per-block cap, or accept the trade — a Cray decision. Policy home: the R1–R7 rotation policy in `docs/runbooks/memory-architecture.md` (Lesson #23).
 - [ ] Extract `docs/conventions/hardware.md` from CLAUDE.md (low priority)
 
