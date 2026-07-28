@@ -719,3 +719,28 @@ textarea.case-input { min-height: 76px; resize: vertical; }
 .case-row-meta { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; font-size: 11px; opacity: .6; }
 .case-status { text-transform: uppercase; letter-spacing: .04em; }
 .case-empty.is-err { color: #e05656; opacity: .95; }
+
+/* --- View I, PLAN-0096 Step 3: the quote evidence pack ---------------------
+   Counts are shown side by side (ใบเสนอราคา vs ร้าน) because three quotes from one
+   garage is not a price comparison, and the operator is the one who can see that at
+   a glance. No pass/fail badge here on purpose: the rule that judges these lands in
+   Step 4, and a verdict rendered here would be a second copy of it, free to drift. */
+.case-row { cursor: pointer; }
+.case-row.is-selected { border-color: var(--accent, #4d8df0); }
+.case-pack {
+  margin: -2px 0 4px; padding: 12px;
+  border: 1px solid var(--line, #2a3242); border-top: 0;
+  border-radius: 0 0 8px 8px; background: rgba(127,127,127,.05);
+  cursor: default;
+}
+.case-pack.is-err { color: #e05656; }
+.pack-counts { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; margin-bottom: 10px; }
+.pack-counts b { font-size: 16px; }
+.pack-flag { color: var(--accent, #4d8df0); }
+.pack-quote {
+  display: flex; justify-content: space-between; gap: 10px; align-items: baseline;
+  padding: 7px 0; border-top: 1px solid var(--line, #2a3242); font-size: 13px;
+}
+.pack-doc { font-size: 11px; opacity: .6; }
+.pack-form { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.pack-form .case-submit { margin-top: 4px; }

@@ -36,6 +36,9 @@
     trucks: [],
     cases: [],
     listError: null,   // set when the LIST could not be read — never shown as 'empty'
+    selected: null,    // case_id whose evidence pack is expanded (Step 3)
+    pack: null,        // the fetched evidence pack, or {error}
+    packMsg: null,     // {kind, text} for the quote form
     busy: false,
     msg: null,        // {kind:'ok'|'err', text}
     els: null
@@ -161,7 +164,7 @@
       return;
     }
     state.cases.forEach(c => {
-      el.appendChild(h('div', { class: 'case-row' }, [
+      const row = h('div', { class: 'case-row', onClick: () => selectCase(c.case_id) }, [
         h('div', { class: 'case-row-main' }, [
           h('b', { class: 'mono' }, c.truck_id),
           h('span', { class: 'case-desc' }, c.description || 'ไม่มีรายละเอียด')
@@ -171,8 +174,114 @@
           h('span', null, `${(c.photos || []).length} รูป`),
           h('span', { class: 'case-status' }, c.status)
         ])
+      ]);
+      if (c.case_id === state.selected) row.classList.add('is-selected');
+      el.appendChild(row);
+      if (c.case_id === state.selected) el.appendChild(renderEvidence());
+    });
+  }
+
+  /* ---- PLAN-0096 Step 3: the quote evidence pack -------------------------
+     This is what replaces "3-quote compare = scrolling LINE, sometimes lost" (Q5).
+     เมย์ types the amount (Q15 — OCR is assistive at most) and attaches whatever
+     arrived: PDF, LINE-exported photo, photographed paper.
+
+     The panel shows `quote_count` AND `distinct_vendor_count` side by side, because
+     three quotes from one garage is not a price comparison and the operator is the
+     one who can see that at a glance. It shows counts only — no pass/fail badge —
+     since the rule that judges them lands in Step 4 and inventing a verdict here
+     would be a second, drifting copy of it.
+     ---------------------------------------------------------------------- */
+  async function selectCase(caseId) {
+    state.selected = state.selected === caseId ? null : caseId;
+    state.pack = null;
+    renderCases();
+    if (!state.selected) return;
+    try {
+      const res = await fetch(`/api/cases/${encodeURIComponent(caseId)}/evidence`,
+        { headers: authHeader() });
+      state.pack = res.ok ? await res.json() : { error: `อ่านหลักฐานไม่ได้ (HTTP ${res.status})` };
+    } catch (_) {
+      state.pack = { error: 'ต่อกับระบบไม่ได้' };
+    }
+    renderCases();
+  }
+
+  async function addQuote(ev) {
+    ev.preventDefault();
+    ev.stopPropagation();
+    const form = ev.target;
+    const vendor = form.querySelector('[name=vendor]').value.trim();
+    const amount = form.querySelector('[name=amount]').value.trim();
+    const fileEl = form.querySelector('[name=qfile]');
+    if (!vendor || !amount) { setPackMsg('err', 'ใส่ชื่อร้านและยอดเงินด้วยครับ'); return; }
+
+    const body = new FormData();
+    body.append('vendor', vendor);
+    body.append('amount_thb', amount);
+    if (fileEl.files && fileEl.files.length) body.append('file', fileEl.files[0]);
+    try {
+      const res = await fetch(`/api/cases/${encodeURIComponent(state.selected)}/quotes`,
+        { method: 'POST', headers: authHeader(), body });
+      if (!res.ok) { setPackMsg('err', `บันทึกใบเสนอราคาไม่สำเร็จ (HTTP ${res.status})`); return; }
+      const id = state.selected;
+      state.selected = null;
+      await selectCase(id);           // refetch the pack so the counts are the server's
+    } catch (_) {
+      setPackMsg('err', 'ต่อกับระบบไม่ได้');
+    }
+  }
+
+  function setPackMsg(kind, text) {
+    state.packMsg = { kind, text };
+    renderCases();
+  }
+
+  function renderEvidence() {
+    const pack = state.pack;
+    if (!pack) return h('div', { class: 'case-pack' }, 'กำลังโหลดหลักฐาน…');
+    if (pack.error) return h('div', { class: 'case-pack is-err' }, pack.error);
+
+    const quoteForm = h('form', { class: 'pack-form', onSubmit: addQuote }, [
+      h('input', { class: 'case-input', name: 'vendor', placeholder: 'ร้าน / อู่' }),
+      h('input', { class: 'case-input', name: 'amount', type: 'text',
+                   inputmode: 'decimal', placeholder: 'ยอดเงิน (บาท)' }),
+      h('input', { class: 'case-input', name: 'qfile', type: 'file',
+                   accept: 'image/*,application/pdf', capture: 'environment' }),
+      h('button', { class: 'case-submit', type: 'submit' }, 'เพิ่มใบเสนอราคา')
+    ]);
+
+    const children = [
+      h('div', { class: 'pack-counts' }, [
+        h('span', null, [h('b', null, String(pack.quote_count)), ' ใบเสนอราคา']),
+        h('span', null, [h('b', null, String(pack.distinct_vendor_count)), ' ร้าน']),
+        h('span', null, `${pack.attachment_count} เอกสารแนบ`),
+        pack.has_sole_source_justification
+          ? h('span', { class: 'pack-flag' }, 'มีเหตุผลซื้อร้านเดียว')
+          : null
+      ].filter(Boolean))
+    ];
+
+    (pack.quotes || []).forEach(q => {
+      children.push(h('div', { class: 'pack-quote' }, [
+        h('span', null, q.vendor),
+        // Always two decimals. The stored value is exact Decimal; a display that
+        // renders 45500.50 as "45,500.5" makes เมย์ second-guess it against the
+        // paper in her hand, which is the opposite of what this panel is for.
+        h('b', { class: 'mono' }, Number(q.amount_thb).toLocaleString('th-TH', {
+          minimumFractionDigits: 2, maximumFractionDigits: 2
+        })),
+        h('span', { class: 'pack-doc' }, q.attachment ? 'มีเอกสาร' : 'ยังไม่มีเอกสาร')
       ]));
     });
+
+    if (state.packMsg) {
+      children.push(h('div', {
+        class: 'case-msg ' + (state.packMsg.kind === 'ok' ? 'is-ok' : 'is-err')
+      }, state.packMsg.text));
+    }
+    children.push(quoteForm);
+    return h('div', { class: 'case-pack', onClick: (e) => e.stopPropagation() }, children);
   }
 
   async function mount(container) {
