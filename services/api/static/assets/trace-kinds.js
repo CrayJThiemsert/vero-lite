@@ -34,6 +34,9 @@
   /* TRACE_KINDS_JSON_BEGIN */
   {
     "gate_principal_recorded": { "label": "Human resolved the gate", "cls": "s-warn", "actor": "human" },
+    "gate_provisionally_recorded": { "label": "Recorded provisionally — ratification owed", "cls": "s-warn", "actor": "human" },
+    "provisional": { "label": "Provisional decision (decide-first)", "cls": "s-warn", "actor": "human" },
+    "ratification_authority": { "label": "Ratifier authority check (deterministic)", "cls": "s-warn", "actor": "engine" },
     "action_executed": { "label": "Human-approved — action executed", "cls": "s-ok", "actor": "human" },
     "action_rejected": { "label": "Human rejected the action", "cls": "s-neutral", "actor": "human" },
     "action_proposed": { "label": "Action proposed — awaiting human", "cls": "s-neutral", "actor": "engine" },
