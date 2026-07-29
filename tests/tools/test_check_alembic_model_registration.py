@@ -257,6 +257,9 @@ def test_every_real_model_module_is_discovered() -> None:
         "services.db.person",
         "services.db.pm_import",
         "services.db.repair_case",
+        # PLAN-0096 Step 8: the close-out record + the repair-order number that the
+        # month-end export keys on (alembic 0017).
+        "services.db.repair_case_closeout",
         "services.db.repair_case_evidence",
         "services.db.repair_case_task",
         "services.engine.procedures.runs",

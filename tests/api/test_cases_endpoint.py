@@ -338,6 +338,12 @@ def test_no_auto_detection_route_exists() -> None:
         # checklist. Human-flipped like every other route here — it records what a
         # person reports, and nothing on it advances a case by itself.
         "/api/cases/{case_id}/tasks",
+        # Added deliberately for PLAN-0096 Step 8 (AC-9): the close-out keying that
+        # the month-end export reads. Same property as every route above — เมย์ types
+        # what the invoice says, and it deliberately does NOT flip the `close_case`
+        # checklist item, because a system-generated flip would put the server's word
+        # in a slot that exists to record a person's.
+        "/api/cases/{case_id}/closeout",
     }
     for path in case_paths:
         assert "detect" not in path and "auto" not in path

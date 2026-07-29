@@ -290,3 +290,68 @@ class EvidencePackResponse(BaseModel):
     justifications: list[JustificationResponse] = Field(
         default_factory=list, description="Every justification, oldest first (append-only)"
     )
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0096 Step 8 — the close-out record (AC-9's source)
+# --------------------------------------------------------------------------- #
+
+
+class CloseOutRequest(BaseModel):
+    """Key the paperwork at ปิดงาน / เก็บเอกสาร (Cray's typed Decision B, s189).
+
+    All three money figures are supplied; none is derived. Back-computing VAT at 7%
+    was explicitly rejected, because not every vendor in this fleet is
+    VAT-registered and a computed rate would invent tax on the ones that are not.
+    """
+
+    tax_invoice_no: str | None = Field(
+        default=None,
+        description=(
+            "เลขที่ใบกำกับภาษี from the vendor's document, or None when the repair "
+            "closed before the invoice arrived. Nullable rather than refused: the "
+            "export reports a missing invoice as an incomplete row, which is the "
+            "honest answer and the thing the KPI is designed to count."
+        ),
+    )
+    amount_pre_vat_thb: Decimal = Field(description="จำนวนเงินก่อน VAT, in THB")
+    vat_thb: Decimal | None = Field(
+        default=None,
+        description=(
+            "The VAT line, or None when the vendor charges no VAT at all. None is "
+            "NOT the same as 0.00 — one means 'not VAT-registered', the other means "
+            "'VAT-registered and this line was exempt', and accounting reads them "
+            "differently."
+        ),
+    )
+    total_thb: Decimal = Field(
+        description=(
+            "จำนวนเงินรวม as printed on the invoice. Refused when it does not equal "
+            "pre-VAT + VAT: a mismatch at this point is a typo, and catching it while "
+            "เมย์ still has the paper in her hand is far cheaper than discovering it "
+            "during a month-end reconciliation against Express."
+        )
+    )
+    entered_by: str | None = Field(
+        default=None, description="Fallback attribution when no authenticated principal is present"
+    )
+
+
+class CloseOutResponse(BaseModel):
+    """A case's close-out, carrying the repair-order number the export keys on."""
+
+    case_id: str = Field(description="The case")
+    repair_order_no: str = Field(
+        description=(
+            "เลขที่ใบแจ้งซ่อม — RC-<year>-<NNNN>, the running sequence reset per year "
+            "(Cray's typed Decision A). Allocated once per case on its first close-out "
+            "and reused by every correction, so the number written on the paper in the "
+            "folder never changes."
+        )
+    )
+    tax_invoice_no: str | None = Field(default=None, description="เลขที่ใบกำกับภาษี, if keyed")
+    amount_pre_vat_thb: Decimal = Field(description="จำนวนเงินก่อน VAT")
+    vat_thb: Decimal | None = Field(default=None, description="VAT, or None for a non-VAT vendor")
+    total_thb: Decimal = Field(description="จำนวนเงินรวม")
+    entered_by: str = Field(description="person_id of whoever keyed it")
+    entered_at: datetime = Field(description="When it was keyed (UTC)")
