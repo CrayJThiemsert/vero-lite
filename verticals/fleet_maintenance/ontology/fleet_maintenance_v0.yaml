@@ -41,6 +41,25 @@ object_types:
       plate:
         type: string
         required: true
+      accounting_code:
+        type: string
+        description: >-
+          รหัสรถ — this truck's code in the operator's accounting system (Express today),
+          AC-9 column 8 of the month-end export. It lives HERE, in the ontology, rather than
+          in an export-side lookup, because the ontology is what the NL-query translate step
+          and every future LLM surface reason over: a code held outside it is invisible to
+          them, which forfeits the point of having a semantic layer at all (Cray, typed s190).
+          Named for the DOMAIN role, not for Express, so a partner who changes accounting
+          systems keeps the property and changes the values — but it is deliberately ONE
+          scalar, not a system-keyed map: exactly one external system exists today, and a
+          map would be an abstraction ahead of pressure (ADR-006) as well as far harder for
+          an LLM to filter on than a plain string.
+          AUTHORED, never measured — entered once at onboarding. Absent = "no code recorded
+          yet", which the export renders as a blank cell and the KPI counts as incomplete.
+          It is never guessed.
+        synonyms:
+          th: [รหัสรถ, รหัสรถในระบบบัญชี]
+          en: [accounting code, vehicle code, express vehicle code]
       truck_class:
         type: enum
         # narrative: "รถหัวลากก็มีอยู่สิบกว่าคัน หกล้อก็... น่าจะยี่สิบปลายๆ"
@@ -82,6 +101,54 @@ object_types:
         type: ref
         target: Depot
         required: true
+
+  Vendor:
+    primary_key: vendor_id
+    title_key: name
+    description: >-
+      A garage / parts shop / dealer the fleet buys repairs from — ผู้ขาย / อู่, the commercial
+      party a repair invoice comes from. An ADR-008 D1 "may extend" object, the same license
+      procurement used to author Supplier at N=1.
+      It exists as a first-class object rather than an export-side lookup for the same reason
+      Truck.accounting_code does: the LLM reasons over the ontology, so a vendor registry held
+      outside it cannot answer "which garage is รหัสผู้ขาย V-07?" (Cray, typed s190).
+      Deliberately NOT the same thing as Depot. A Depot is a PLACE — it carries lat/lng, it
+      lights the map, and Truck.site_id is a required ref to one, so every truck would have to
+      be based at a vendor. Two of Depot's three types (home_yard, roadside_point) are not
+      commercial parties at all, so a vendor code hung there would be null by construction for
+      most rows.
+      **How this reconciles with the free-text `vendor` columns.** `RepairCaseQuote.vendor`,
+      `RepairCaseJustification.vendor` and `RepairCaseCloseout.vendor` stay free text on
+      purpose — เมย์ types what the paper says, and this registry does not gate her. The export
+      resolves a typed name to a row here by the SAME exact, trimmed, case-insensitive match
+      `services/db/evidence_pack.py` already uses; fuzzy matching is refused there because it
+      would MERGE vendors an operator meant to keep apart, and it is refused here for the same
+      reason. A name with no match yields a blank รหัสผู้ขาย and marks that export row
+      incomplete — which is a true statement about the data, not a failure to try harder.
+    properties:
+      vendor_id:
+        type: string
+        required: true
+      name:
+        type: string
+        required: true
+        description: >-
+          The garage's name as the operator writes it — the value เมย์ types into a quote or a
+          close-out, matched exactly (trimmed, case-insensitively) rather than fuzzily.
+        synonyms:
+          th: [ผู้ขาย, อู่, ชื่ออู่, ร้านอะไหล่]
+          en: [vendor, garage, supplier, workshop]
+      accounting_code:
+        type: string
+        description: >-
+          รหัสผู้ขาย — this vendor's code in the operator's accounting system (Express today),
+          AC-9 column 6. OPTIONAL by the partner's own marking — he wrote the column as
+          "รหัสผู้ขาย (ถ้ามี)", and a new vendor is opened in Express by accounting first, so a
+          garage can legitimately be used before it has a code. Absent = blank export cell and
+          an incomplete row, never a guessed code.
+        synonyms:
+          th: [รหัสผู้ขาย, รหัสอู่]
+          en: [vendor code, supplier code, express vendor code]
 
   Depot:
     primary_key: depot_id

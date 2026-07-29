@@ -242,10 +242,49 @@ def test_the_emitted_registrar_binds_to_the_real_register_adapter_signature(
     )
 
 
+#: Object types the DONOR carries that the Tier-1 scaffolder does not emit, and is not
+#: meant to. ``emit_ontology`` builds the fixed six-object OCT grammar (Asset, Site,
+#: OperationalEvent, Alert, RecommendedAction + the link object) and offers no intake
+#: slot for a vertical-specific extension type — that is ADR-008 D1's "may extend"
+#: license, exercised by a human after the scaffold, exactly as procurement did with its
+#: six extension types.
+#:
+#: **This list is hand-maintained ON PURPOSE, and adding to it narrows what the test
+#: below proves.** Each entry is a donor object the golden oracle no longer checks, so a
+#: new one must be a deliberate act with a written reason — never a way to make a red
+#: test green. If this list ever grows past a couple of entries, the honest response is
+#: to give the scaffolder an extension slot, not to keep extending the exemption.
+_DONOR_EXTENSION_OBJECTS = {
+    # PLAN-0096 Step 8 / AC-9 columns 5-6: the garage a repair invoice comes from, added
+    # to the ontology (not to an export-side lookup) so the NL-query translate step and
+    # every future LLM surface can reason over it — Cray's typed s190 decision. A Depot
+    # could not host it: Depot is a PLACE that Truck.site_id requires, and two of its
+    # three types are not commercial parties at all.
+    "Vendor",
+}
+
+
 def test_ontology_object_and_link_sets_match_the_donor(golden: IntakeRecord) -> None:
+    """AC-7: the scaffolder reproduces the donor's OCT grammar, object-for-object.
+
+    Compared against the donor MINUS its declared extension types rather than against the
+    donor whole, because the donor has since grown one the scaffolder cannot emit by
+    design. Stated plainly so nobody reads this as more than it is: this proves the tool
+    reproduces the six-object OCT grammar the donor was scaffolded from — it does not
+    prove the tool can reproduce a vertical that has been extended by hand afterwards,
+    and it never did.
+
+    The assertion stays two-sided. An emitted object the donor lacks still fails, and a
+    donor OCT object the emitter drops still fails; only the named extensions are exempt.
+    """
     donor = _donor_ontology()
     emitted = emit_ontology(golden)
-    assert set(emitted["object_types"]) == set(donor["object_types"])
+    donor_core = set(donor["object_types"]) - _DONOR_EXTENSION_OBJECTS
+    assert _DONOR_EXTENSION_OBJECTS <= set(donor["object_types"]), (
+        "an exemption naming an object the donor no longer has is dead weight hiding a "
+        "real drift — remove it"
+    )
+    assert set(emitted["object_types"]) == donor_core
     assert set(emitted["link_types"]) == set(donor["link_types"])
 
 

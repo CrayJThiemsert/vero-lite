@@ -49,7 +49,12 @@ from services.api.config import settings
 from services.engine.llm.client import OllamaClient, OllamaError, OllamaUnreachableError
 from services.engine.llm.prompt import render_untrusted_block
 from services.engine.llm.structured import ChatClient
-from services.engine.ontology_meta import ObjectTypeMeta, OntologyMeta, load_ontology_meta
+from services.engine.ontology_meta import (
+    ObjectTypeMeta,
+    OntologyMeta,
+    PropertyMeta,
+    load_ontology_meta,
+)
 from services.engine.registry import registry
 
 logger = logging.getLogger(__name__)
@@ -330,18 +335,38 @@ def _query_schema_reasoning_first(type_names: list[str]) -> dict[str, Any]:
     return schema
 
 
+def _property_aliases(prop: PropertyMeta) -> str:
+    """The ``; aka …`` suffix for a property that declares ADR-0027 synonyms.
+
+    Synonyms and nothing else. They are the one enrichment field that answers the
+    question this prompt actually has to answer — *what do humans call this?* — and
+    they are short. ``description`` is deliberately NOT rendered: this ontology's
+    descriptions are multi-line folded scalars carrying provenance and design
+    rationale, and pasting them in would bloat every translate call for content aimed
+    at a human reader of the YAML, not at the model.
+
+    Thai first, because the operators ask in Thai and a property whose only
+    machine-readable name is ``accounting_code`` is unreachable from "รหัสรถ".
+    """
+    if prop.synonyms is None:
+        return ""
+    aliases = [*prop.synonyms.th, *prop.synonyms.en]
+    return f"; aka {', '.join(aliases)}" if aliases else ""
+
+
 def _describe_ontology(meta: OntologyMeta) -> str:
     """Render a compact, trusted description of the queryable schema."""
     lines: list[str] = []
     for obj in meta.object_types:
         props: list[str] = []
         for prop in obj.properties:
+            aka = _property_aliases(prop)
             if prop.type == "enum" and prop.enum:
-                props.append(f"{prop.name} (enum: {'|'.join(prop.enum)})")
+                props.append(f"{prop.name} (enum: {'|'.join(prop.enum)}{aka})")
             elif prop.type == "ref" and prop.target:
-                props.append(f"{prop.name} (ref->{prop.target})")
+                props.append(f"{prop.name} (ref->{prop.target}{aka})")
             else:
-                props.append(f"{prop.name} ({prop.type})")
+                props.append(f"{prop.name} ({prop.type}{aka})")
         title = f", title {obj.title_key}" if obj.title_key else ""
         pk = obj.primary_key or "?"
         lines.append(f"- {obj.name} (primary_key {pk}{title}): " + ", ".join(props))

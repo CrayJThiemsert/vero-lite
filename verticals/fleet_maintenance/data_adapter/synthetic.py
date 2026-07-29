@@ -128,6 +128,7 @@ def truck_records() -> list[dict[str, Any]]:
             "truck_id": "truck-01",
             # GUESS — รอแก้ ("หกล้อทะเบียนจำไม่ได้ละ").
             "plate": "80-1234 กรุงเทพมหานคร",
+            "accounting_code": "T-001",  # DEMO SEED — รหัสรถ, not the partner's real code.
             "truck_class": "six_wheeler",
             "odometer_km": 412_580.0,
             "minor_repair_ceiling_thb": 5001.0,  # partner Q8
@@ -140,6 +141,7 @@ def truck_records() -> list[dict[str, Any]]:
         {
             "truck_id": "truck-02",
             "plate": "70-5678 กรุงเทพมหานคร",
+            "accounting_code": "T-002",  # DEMO SEED — รหัสรถ.
             "truck_class": "tractor_head",
             "odometer_km": 688_140.0,
             "minor_repair_ceiling_thb": 5001.0,  # partner Q8
@@ -155,6 +157,9 @@ def truck_records() -> list[dict[str, Any]]:
             # reads three and flags one. DEMO SEED in full; no narrative source.
             "truck_id": "truck-03",
             "plate": "82-9012 กรุงเทพมหานคร",
+            # NO accounting_code ON PURPOSE — a truck can be in service before accounting
+            # opens it in Express. This is the row that keeps AC-9's KPI non-vacuous: an
+            # export drawn only from coded trucks reports 100% traceable whatever happens.
             "truck_class": "six_wheeler",
             "odometer_km": 254_300.0,
             "minor_repair_ceiling_thb": 5001.0,  # partner Q8
@@ -297,7 +302,47 @@ def truck_view() -> list[dict[str, Any]]:
     return pm_projection.apply(truck_records())
 
 
+def vendor_records() -> list[dict[str, Any]]:
+    """Return the synthetic Vendor records — the garages the fleet buys repairs from.
+
+    The registry the month-end export resolves a typed vendor name against (AC-9 columns
+    5 and 6). Names are matched EXACTLY — trimmed, case-insensitively — the same rule
+    ``services/db/evidence_pack.py`` applies and for the same stated reason: fuzzy matching
+    would merge vendors the operator meant to keep apart.
+
+    ``accounting_code`` is DEMO SEED, not the partner's real Express codes — those arrive
+    with his vendor master (~20-30 coded vendors), and inventing plausible-looking ones here
+    would put fake accounting keys in a public repository.
+
+    **vendor-03 deliberately has no code.** A garage can legitimately be used before
+    accounting opens it in Express — the partner marked the column "รหัสผู้ขาย (ถ้ามี)"
+    himself — so this row is what proves AC-9's KPI is not vacuous: an export built only
+    from coded vendors would report 100% traceable no matter what.
+    """
+    return [
+        {
+            "vendor_id": "vendor-01",
+            # The partner's own contracted garage, named in the narrative.
+            "name": "อู่คู่สัญญา ปากช่อง",
+            "accounting_code": "V-001",  # DEMO SEED
+        },
+        {
+            "vendor_id": "vendor-02",
+            # Named in the quote-provenance comment at the top of this module.
+            "name": "ส.เจริญยนต์",
+            "accounting_code": "V-002",  # DEMO SEED
+        },
+        {
+            "vendor_id": "vendor-03",
+            "name": "เจ๊หงส์",
+            # No accounting_code ON PURPOSE — see the docstring. Used but not yet opened
+            # in Express, which is a real state the export has to report honestly.
+        },
+    ]
+
+
 OBJECT_SOURCES = {
     "Depot": depot_records,
     "Truck": truck_view,
+    "Vendor": vendor_records,
 }
