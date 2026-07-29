@@ -100,6 +100,14 @@ class RepairCaseCloseout(Base):
     case_id: Mapped[str] = mapped_column(
         sa.Text, sa.ForeignKey("repair_case.case_id"), nullable=False
     )
+    #: The garage that actually did the work — AC-9's ผู้ขาย / อู่, and the key the
+    #: authored รหัสผู้ขาย mapping resolves. It is keyed here rather than derived
+    #: from the quote pack because the pack records who QUOTED, not who was used:
+    #: matching a quote to the invoice by amount would be a guess (quotes are
+    #: pre-VAT, the invoice total is not, and an approved higher quote breaks the
+    #: match outright). เมย์ reads it off the same piece of paper as the invoice
+    #: number, so keying it costs nothing and inventing it costs correctness.
+    vendor: Mapped[str] = mapped_column(sa.Text, nullable=False)
     tax_invoice_no: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     amount_pre_vat_thb: Mapped[Decimal] = mapped_column(sa.Numeric(14, 2), nullable=False)
     #: NULL means "this vendor charges no VAT" — NOT ``Decimal("0.00")``.
