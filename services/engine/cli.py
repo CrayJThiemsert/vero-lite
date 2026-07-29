@@ -13,7 +13,7 @@ import importlib
 import sys
 from collections.abc import Awaitable, Callable
 from pathlib import Path
-from typing import TYPE_CHECKING, Annotated, cast
+from typing import TYPE_CHECKING, Annotated, Any, cast
 
 import typer
 
@@ -351,6 +351,34 @@ async def _register_executor_factory(vertical: str) -> None:
     await registrar()
 
 
+#: Verticals that react to their own fired rounds, and how. Hand-wired for the same
+#: reason the executor factories are (project memory
+#: ``project_procedure_executor_factory_not_registered_live``): a vertical that is
+#: not listed simply gets no reaction, which is the correct default — only fleet has
+#: a partner-requested notification on its scheduled round (A3 / AC-8).
+_FIRED_HOOKS: dict[str, tuple[str, str]] = {
+    "fleet_maintenance": ("services.db.pm_due_notify", "notify_pm_due_for_run"),
+}
+
+
+def _fired_hook_for(vertical: str) -> Callable[..., Awaitable[None]] | None:
+    """Resolve this vertical's post-fire reaction, or ``None`` if it has none.
+
+    Imported lazily so the CLI never pulls the notify stack in for a vertical that
+    does not use it, matching how the executor factory is resolved above.
+    """
+    entry = _FIRED_HOOKS.get(vertical)
+    if entry is None:
+        return None
+    module_name, attr = entry
+    producer = getattr(importlib.import_module(module_name), attr)
+
+    async def _hook(session: Any, outcome: Any) -> None:
+        await producer(session, outcome.run_id)
+
+    return _hook
+
+
 async def _run_scheduler(vertical: str, interval_seconds: float) -> None:
     from services.db.session import async_session
     from services.engine.discovery import discover_and_register
@@ -377,7 +405,10 @@ async def _run_scheduler(vertical: str, interval_seconds: float) -> None:
     )
     resolver = build_resolver(spec, factory)
     await run_scheduler_daemon(
-        session_factory=async_session, resolve=resolver, interval_seconds=interval_seconds
+        session_factory=async_session,
+        resolve=resolver,
+        interval_seconds=interval_seconds,
+        on_fired=_fired_hook_for(vertical),
     )
 
 
