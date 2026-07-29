@@ -38,14 +38,24 @@ from services.api.models.cases import (
     CaseListResponse,
     CaseResponse,
     EvidencePackResponse,
+    FlipTaskRequest,
     JustificationResponse,
     OpenCaseRequest,
     QuoteResponse,
+    TaskChainResponse,
+    TaskItemResponse,
 )
 from services.db.evidence_pack import load_evidence_pack
-from services.db.repair_case import CASE_STATUS_OPEN, RepairCase
+from services.db.repair_case import CASE_STATUS_OPEN, WORK_TYPES, RepairCase
 from services.db.repair_case_evidence import RepairCaseJustification, RepairCaseQuote
+from services.db.repair_case_task import TASK_STATUSES, RepairCaseTaskEvent
 from services.db.session import get_session
+from verticals.fleet_maintenance.task_chain import (
+    TASK_CHAIN,
+    chain_state,
+    item_spec,
+    stale_items,
+)
 
 router = APIRouter(prefix="/api/cases", tags=["repair-cases"])
 
@@ -72,6 +82,7 @@ def _to_response(case: RepairCase) -> CaseResponse:
         opened_at=case.opened_at,
         description=case.description,
         status=case.status,
+        work_type=case.work_type,
         photos=list(case.photos or []),
     )
 
@@ -146,6 +157,12 @@ async def open_case(
     if not truck_id:
         raise HTTPException(status_code=422, detail="truck_id is required to open a case")
 
+    if req.work_type not in WORK_TYPES:
+        raise HTTPException(
+            status_code=422,
+            detail=f"work_type must be one of {', '.join(WORK_TYPES)}",
+        )
+
     opened_by = auth.person_id or (req.opened_by or "").strip() or _UNATTRIBUTED
     case = RepairCase(
         case_id=f"case-{uuid.uuid4().hex[:12]}",
@@ -154,6 +171,7 @@ async def open_case(
         opened_at=datetime.now(UTC),
         description=(req.description or None),
         status=CASE_STATUS_OPEN,
+        work_type=req.work_type,
         photos=[],
     )
     session.add(case)
@@ -208,6 +226,133 @@ async def get_case(
 ) -> CaseResponse:
     """One case by id."""
     return _to_response(await _load(session, case_id))
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0096 Step 6 — the thin post-approval task-chain (AC-7)
+# --------------------------------------------------------------------------- #
+
+
+async def _task_events(session: AsyncSession, case_id: str) -> list[RepairCaseTaskEvent]:
+    return list(
+        (
+            await session.execute(
+                select(RepairCaseTaskEvent)
+                .where(RepairCaseTaskEvent.case_id == case_id)
+                .order_by(RepairCaseTaskEvent.at)
+            )
+        ).scalars()
+    )
+
+
+def _chain_response(
+    case: RepairCase, events: list[RepairCaseTaskEvent], *, now: datetime
+) -> TaskChainResponse:
+    """Render the chain for one case — one place where "ค้าง" is decided.
+
+    Both the read endpoint and the sweep go through ``stale_items``, so a nudge can
+    never disagree with the screen the person opens after receiving it.
+    """
+    state = chain_state(events)
+    stale = {item.key for item in stale_items(events, work_type=case.work_type, now=now)}
+    items = [
+        TaskItemResponse(
+            item_key=spec.key,
+            label_th=spec.label_th,
+            mandatory=spec.mandatory,
+            status=state[spec.key].status,
+            actor=state[spec.key].actor,
+            activated_at=state[spec.key].activated_at,
+            last_flip_at=state[spec.key].last_flip_at,
+            variant=state[spec.key].variant,
+            is_stale=spec.key in stale,
+        )
+        # Chain order, not insertion order: the checklist reads as a sequence to the
+        # person working it, and an item added late belongs where the work happens.
+        for spec in TASK_CHAIN
+        if spec.key in state
+    ]
+    return TaskChainResponse(
+        case_id=case.case_id,
+        work_type=case.work_type,
+        items=items,
+        stale_item_keys=[item.item_key for item in items if item.is_stale],
+    )
+
+
+@router.post("/{case_id}/tasks", response_model=TaskChainResponse, status_code=201)
+async def flip_task(
+    case_id: str,
+    req: FlipTaskRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    auth: Annotated[AuthContext, Depends(get_current_principal)],
+) -> TaskChainResponse:
+    """Record one checklist movement and return the whole chain.
+
+    Append-only: this never updates a row. Re-flipping an item — a correction, a
+    reopen — is a NEW row, and the trail keeps both. The same discipline as the
+    quote pack, for the same reason: the trail is framed to the partner as evidence
+    protecting his people, and one that can be quietly rewritten protects nobody.
+
+    Returns the full chain rather than the one row, because the caller's next
+    question is always "so what is outstanding now" — and answering it here means
+    the phone screen cannot drift from what the nudge sweep sees.
+    """
+    case = await _load(session, case_id)
+    try:
+        item_spec(req.item_key)
+    except KeyError:
+        raise HTTPException(
+            status_code=422,
+            detail=f"unknown checklist item '{req.item_key}'",
+        ) from None
+    if req.status not in TASK_STATUSES:
+        raise HTTPException(
+            status_code=422, detail=f"status must be one of {', '.join(TASK_STATUSES)}"
+        )
+
+    session.add(
+        RepairCaseTaskEvent(
+            event_id=f"task-{uuid.uuid4().hex[:12]}",
+            case_id=case_id,
+            item_key=req.item_key,
+            status=req.status,
+            actor=auth.person_id or (req.actor or "").strip() or _UNATTRIBUTED,
+            at=datetime.now(UTC),
+            variant=(req.variant or None),
+            note=(req.note or None),
+        )
+    )
+    await session.commit()
+    return _chain_response(case, await _task_events(session, case_id), now=datetime.now(UTC))
+
+
+@router.get("/{case_id}/tasks", response_model=TaskChainResponse)
+async def get_task_chain(
+    case_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    as_of: datetime | None = None,
+) -> TaskChainResponse:
+    """The case's checklist, with staleness computed at ``as_of`` (default: now).
+
+    Staleness is derived at read time rather than stored, so it cannot go stale
+    itself — there is no flag to forget to clear when an item is completed.
+
+    ``as_of`` exists because "was this late?" is a question about a MOMENT, and two
+    callers need to ask it about a moment that is not now: the month-end export
+    reports what was outstanding at period close, and the scenario suite has to
+    compare this screen against the nudge sweep at one shared instant (comparing
+    them at two different instants would prove nothing). Read-only and side-effect
+    free — it changes what is reported, never what is stored.
+    """
+    case = await _load(session, case_id)
+    moment = as_of or datetime.now(UTC)
+    if moment.tzinfo is None:
+        # A naive value would explode on comparison against the timezone-aware
+        # stored timestamps. Assume UTC rather than 500 — the caller passed a real
+        # instant, they just left the offset off.
+        moment = moment.replace(tzinfo=UTC)
+    return _chain_response(case, await _task_events(session, case_id), now=moment)
 
 
 # --------------------------------------------------------------------------- #

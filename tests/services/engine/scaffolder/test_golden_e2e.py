@@ -143,7 +143,16 @@ def _donor_ontology() -> dict:
 #:   human-confirmed values. A vertical whose objects come from a real system has no
 #:   such seam, so emitting one by default would be scaffolding a workaround as if it
 #:   were architecture.
-_POST_SCAFFOLD_DONOR_FILES = frozenset({"sourcing.py", "pm_import.py", "pm_projection.py"})
+#: * ``task_chain.py`` — PLAN-0096 Step 6. ONE operator's post-approval checklist:
+#:   his eight steps, his labels, and his per-step "ถ้าค้างเกิน" thresholds (A1,
+#:   2026-07-29). The same reason as ``sourcing.py`` — a scaffolder cannot invent a
+#:   customer's workflow, and a template that shipped a default chain would hand every
+#:   new vertical a set of deadlines nobody agreed to. The storage half
+#:   (``services/db/repair_case_task.py``) is deliberately vertical-agnostic and is
+#:   NOT here; only the meaning is operator-specific.
+_POST_SCAFFOLD_DONOR_FILES = frozenset(
+    {"sourcing.py", "pm_import.py", "pm_projection.py", "task_chain.py"}
+)
 
 
 def test_same_file_set_as_the_donor(regenerated: Path) -> None:

@@ -11,6 +11,13 @@
 > Cray (typed Phase-1 = Lean-KPI-first + ADR-first picks, 2026-07-28), Code (dispatch fact-pack);
 > drafter = Cowork. Engine citations verified at `main`=`7b84fa2`; PLAN number 0096 from the
 > dispatch fact-pack — Code re-verifies next-free at commit. Keep Status **Draft** until Complete.
+>
+> **Amendment round 2026-07-29.** The partner's round-2 reply (A1–A7 + 4 dev suggestions,
+> `docs/research/private/2026-07-29-fleet-partner-intake-round2_reply.md`, gitignored) and Cray's
+> FOUR typed decisions (2026-07-29) are recorded in dated blocks below by the in-harness
+> `plan-drafter` (s188 dispatch; Code fact-pack verified at `main`=`98744bd`). Recording edit,
+> not a design pass: original text is preserved or explicitly superseded in marked blocks. Code
+> R2s + commits via PR (ADR-009 D2). Status stays **Draft**.
 
 ## Goal
 
@@ -84,10 +91,42 @@ with the behavior silently broken, fix the test first. TODO/`pass` stubs count a
   actor + timestamp per flip; humans decide everything; a stale item triggers a LINE nudge
   (fake clock + stub transport oracle). No handler automation is added to `fulfill` (its receipt
   stub stays).
+  **Amended 2026-07-29 (partner A1 + Cray, typed — Decision 1).** The guessed 4-item set above is
+  SUPERSEDED — the intake question is answered. The checklist is the partner's REAL 8 steps,
+  A1's table transcribed exactly:
+
+  | ขั้นตอน                      | ใช้จริง              | Optional | ถ้าค้างเกิน                           |
+  | ---------------------------- | -------------------- | -------- | ------------------------------------- |
+  | แจ้งอู่ / ยืนยันอู่ที่จะซ่อม | ✔ ทุกเคส             | ✘        | 30 นาที (รถเสียกลางทาง), 1 วัน (PM)   |
+  | จัดหารถยก                    | เฉพาะรถวิ่งต่อไม่ได้ | ✔        | 1 ชั่วโมง                             |
+  | จัดหารถถ่ายของ               | เฉพาะรถมีสินค้าค้าง  | ✔        | 1 ชั่วโมง                             |
+  | สั่งอะไหล่                   | เฉพาะไม่มีของในสต๊อก | ✔        | 1 วัน                                 |
+  | รออะไหล่                     | เฉพาะสั่งของ         | ✔        | 2 วัน (ของทั่วไป), 5 วัน (อะไหล่ใหญ่) |
+  | เริ่มซ่อม                    | ✔                    | ✘        | 1 วันหลังของครบ                       |
+  | ทดลองวิ่ง / ตรวจรับ          | ✔                    | ✘        | 1 วัน                                 |
+  | ปิดงาน / เก็บเอกสาร          | ✔                    | ✘        | 7 วัน                                 |
+
+  4 mandatory (แจ้งอู่/ยืนยันอู่ · เริ่มซ่อม · ทดลองวิ่ง/ตรวจรับ · ปิดงาน/เก็บเอกสาร) + 4
+  conditional (จัดหารถยก · จัดหารถถ่ายของ · สั่งอะไหล่ · รออะไหล่). The set and its PER-ITEM
+  staleness SLAs (the ถ้าค้างเกิน column, including the two context variants — แจ้งอู่ 30 นาที
+  breakdown / 1 วัน PM; รออะไหล่ 2 วัน general / 5 วัน major part — and เริ่มซ่อม anchored
+  relative to parts-complete per A1, "1 วันหลังของครบ", not to case open) live in a fleet-side
+  AUTHORED CONFIG: editable config, NO template UI — the partner's dev-suggestion #1 template
+  system is declined for Phase 1 per ADR-006 Rule of Three; dev-suggestion #2 (per-step SLA) is
+  absorbed here. Context variants read `repair_case.work_type` (Decision 2, Step 6). The oracle
+  refines accordingly: staleness fires per-item against ITS OWN SLA (fake clock), with both
+  context variants each exercised.
 - [ ] **AC-8 — LINE notify surface (the ONE new outbound channel).** A single notify seam emits:
   approval-needed (gate suspended), ratification-due reminder, ratification-overdue,
   task-chain stale nudge, month-end-export ready. Transport is injected; the offline suite makes
   zero network calls (AC-11). Outbound only — no LINE inbound/bot.
+  **Amended 2026-07-29 (partner A3 + Cray, typed — Decision 4).** Five events → **SIX**: `pm_due`
+  fires when a truck's PM falls due; recipient = a NEW mechanics-group role (กลุ่มช่าง per A3);
+  producer rides the existing 06:00 scheduled sweep (PLAN-0090 precedent); built in Phase 1. The
+  shipped `LineEvent` enum is a closed StrEnum of exactly the five events above
+  (`services/notify/line.py:65-74`) whose docstring requires precisely this decision — a named
+  producer and a named recipient rule — before a sixth member may exist; that decision is now
+  made. The original five events and their role-based routing stand unchanged.
 - [ ] **AC-9 — Month-end export + KPI (the payoff moment).** An Express-entry-shaped monthly
   file: one row per governed repair spend with case, truck, date, vendor, amount, approver (from
   `governed_decision`), `three_quote_basis`, exception labels (emergency
@@ -95,6 +134,24 @@ with the behavior silently broken, fix the test first. TODO/`pass` stubs count a
   fully traceable, computed from the export. Non-vacuity fixture: one deliberately incomplete row
   must drop the KPI below 100% — if it doesn't, the metric is vacuous. Exact column mapping to
   Express entry = named intake question.
+  **Amended 2026-07-29 (partner A2 + Cray, typed — Decision 3).** The exact-column intake
+  question is RESOLVED. Accounting uses Express, keying into หมวด "ค่าใช้จ่ายซ่อมรถ"; one row
+  per vehicle (รถแต่ละคันลงแยกเป็นรายการ — never multiple trucks in one line). The 15 required
+  columns, transcribed exactly from A2: วันที่เอกสาร · วันที่อนุมัติ · เลขที่ใบแจ้งซ่อม ·
+  เลขที่ใบกำกับภาษี · ผู้ขาย / อู่ · รหัสผู้ขาย (ถ้ามี) · ทะเบียนรถ · รหัสรถ ·
+  ประเภทงาน (PM / Breakdown / Accident) · รายการซ่อม · จำนวนเงินก่อน VAT · VAT · จำนวนเงินรวม ·
+  ผู้อนุมัติ · ศูนย์ต้นทุน. The shipped evidence schema cannot fill the invoice trio —
+  `RepairCaseQuote.amount_thb` is a single `Numeric(14, 2)`
+  (`services/db/repair_case_evidence.py:67`) with no VAT split and no tax-invoice field in the
+  file (grep-verified 2026-07-29; Code fact-pack confirms none exists anywhere in the schema) —
+  so, Cray's typed **Decision 3**: a NEW append-only close-out invoice record —
+  เลขที่ใบกำกับภาษี, pre-VAT amount, VAT (**nullable** — small garages may not be
+  VAT-registered), total — keyed by เมย์ at the ปิดงาน / เก็บเอกสาร task-chain step; its own
+  alembic migration rides Step 8. Back-computing VAT at 7% in the export was explicitly
+  **rejected** (typed). ประเภทงาน comes from the new `repair_case.work_type` (Decision 2). The
+  original row-content list above is otherwise preserved — case, truck, date, vendor, amount,
+  approver, `three_quote_basis`, exception labels, justification ref, run id all map into the 15
+  columns + the cover summary.
 - [ ] **AC-10 — PM real data (measured + confirmed).** Wialon **CSV export** import proposes
   odometer values; a human confirm gates any `Truck` update (unconfirmed rows never touch the
   ontology — Q4's imprecision); mangled CSV fails closed. Last-service odometers load manually
@@ -145,6 +202,13 @@ Evidence-backed (LOCKED by the dispatch unless marked ⊕ = drafter addition):
   `alembic 0013`.** The ban still binds where it was aimed — Step 5 adds NO `PipelineRunStatus`
   member and NO migration. Naming discipline (ADR-006 Rule of Three, PLAN-0089): the table is
   `repair_case`, not `case`, because exactly one vertical needs it today.
+- ❌ **Added 2026-07-29 (partner A5; s188 dispatch disposition):** Admin-mapped, remembered
+  Wialon column mapping. NO real export file exists yet (A5); the partner asks that columns be
+  admin-mapped once and remembered ("ควรให้ Admin จับคู่ Field ครั้งแรก แล้วจำ Mapping ไว้")
+  rather than fixed by name, because a Wialon version or template change can rename them.
+  **PARKED until a real file exists** — the Step 9 importer stays fixed-column for now. A5's
+  guessed header set (Vehicle Name · Plate Number · Odometer · Last GPS Time · Driver · Status)
+  is recorded here for when this unparks.
 
 ## Steps
 
@@ -163,6 +227,18 @@ provenance comments rewritten to cite the real answers (Q9/Q10) replacing the sy
 citations; `OCT_RECOMMEND_THRESHOLD` README block aligned. Keep one synthetic mid-ladder breach
 row (~฿15k) beside the ฿48k one so the demo still shows tiering, not always-the-top. Oracle: AC-1
 boundary tests + AC-2 hash equality + golden load.
+
+> **Amended 2026-07-29 (partner A4 + A7).** Two intake items above are resolved:
+> — **A4 (per-truck ceiling stretch values): none initially.** Flat ฿5,000 for every truck at
+> start ("ขอใช้ 5,000 บาท ทุกคันก่อน … เดี๋ยวถ้าใช้จริงแล้วค่อยเพิ่มรายคัน — ดีกว่าเริ่มต้น
+> ซับซ้อน"); the authored default 5001 stands UNCHANGED; per-truck increases arrive later in
+> real use as authored config edits. Drafter proposal (veto-open): the "stretch values loaded at
+> onboarding" sub-task above is thereby **eliminated**, not kept pending — A4 says the values do
+> not exist yet, so there is nothing to load and no onboarding step to preserve.
+> — **A7 (satang / de-minimis): confirmed, nothing changes.** 99% of garage quotes are whole
+> baht (เศษสตางค์ ถ้ามี มาจาก VAT หรือค่าขนส่งอะไหล่, not the quote); the partner states the
+> rule directly — ฿30,000 พอดี = ไม่ต้องเทียบสามเจ้า, ฿30,001 ขึ้นไป = ต้องเทียบ — which
+> CONFIRMS the shipped `"30001"` inclusive floors and closes the de-minimis intake note.
 
 ### Step 2: Case capture from minute 1
 
@@ -218,6 +294,27 @@ confirm the set with the partner), actor+timestamp per flip, staleness clock →
 layer, not engine steps; `fulfill`'s receipt stub is untouched. This is the honest reading of Q2's
 "อยากให้มันวิ่งต่อเอง": nudges and visible state, humans deciding. Oracle: AC-7.
 
+> **Amended 2026-07-29 (partner A1 + Cray, typed — Decisions 1 + 2).** The default item set above
+> is SUPERSEDED by the partner's real 8 steps — 4 mandatory + 4 conditional, with per-item SLAs —
+> transcribed in AC-7's amended table. Shape, per Cray's typed **Decision 1**: the items live in
+> a fleet-side AUTHORED CONFIG — editable config, NO template UI (dev-suggestion #1's template
+> system is declined for Phase 1 per ADR-006 Rule of Three; the rename/reorder/toggle need it
+> describes is met by editing the config). Staleness is a PER-ITEM SLA (dev-suggestion #2
+> absorbed — this retires any single-timeout reading of "staleness clock" above), including the
+> context variants แจ้งอู่ 30 นาที (breakdown) / 1 วัน (PM) and รออะไหล่ 2 วัน (ของทั่วไป) /
+> 5 วัน (อะไหล่ใหญ่), and เริ่มซ่อม's SLA anchored to parts-complete ("1 วันหลังของครบ"), not
+> to case open. The context variants need the work class, so Cray's typed **Decision 2**:
+> `repair_case.work_type` (pm / breakdown / accident) — the shipped table has no such column
+> (`services/db/repair_case.py:68-78`) — alembic migration **0016** approved 2026-07-29 (dev DB
+> at 0015 per the Code fact-pack); one field serves both these SLAs and Step 8's ประเภทงาน
+> column. It rides THIS step as the first consumer in the 6→8 build order (placement is
+> ordering-derived, not a separate typed decision). A1's notes bind the conditional semantics:
+> PM cases mostly skip รถยก/รถถ่ายของ entirely, some jobs (แบต/ยาง) finish on site, some repairs
+> happen at the garage with no tow — a case whose 4 conditional items are all skipped is a
+> NORMAL complete case, not an incomplete one. Build note (Code-verified 2026-07-29):
+> `task_chain` matches only `services/notify/line.py` — the checklist itself is greenfield on
+> the case + notify seam.
+
 ### Step 7: LINE notification channel
 
 One outbound notify seam (module + `tools/notify/line.sh`-style CLI analog beside the existing
@@ -229,6 +326,19 @@ ratification reminders → owner + เมย์; task-chain → เมย์; ex
 contact. Oracle: AC-8 with stub transport; the daily reminder ride-along on the existing 06:00
 scheduled sweep precedent (PLAN-0090) rather than a new scheduler.
 
+> **Amended 2026-07-29 (partner A3 + Cray, typed — Decision 4).** A3's mixed routing —
+> เรื่องอนุมัติ → ส่งเฉพาะคนที่ต้องอนุมัติ · เอกสารค้าง → น้องเมย์ · ใกล้ครบ 7 วัน → น้องเมย์ +
+> ผู้อนุมัติ · ไฟล์สิ้นเดือน → กลุ่ม "บัญชี + Fleet" · PM ถึงกำหนด → กลุ่มช่าง — maps onto the
+> EXISTING role-based `Recipient` / `EVENT_RECIPIENTS` design (`services/notify/line.py:77-101`)
+> with deployment CONFIG only, no code reshape, EXCEPT `pm_due`: the sixth event per Cray's typed
+> **Decision 4** (AC-8 amendment) — new mechanics-group role (กลุ่มช่าง), producer riding the
+> existing 06:00 scheduled sweep (PLAN-0090 precedent), built in Phase 1. The named intake
+> question "existing LINE group vs new OA" is RESOLVED to the extent A3 names recipients — the
+> partner explicitly refuses one-group-for-everything ("ผมไม่อยากให้ทุกอย่างเด้งเข้ากลุ่มเดียว
+> เดี๋ยวคนปิดแจ้งเตือนหมด") — while the OA channel-access token remains an ONBOARDING item; LINE
+> stays disarmed until it exists. Dev-suggestion #4 (event ↔ recipient separation) is already
+> structurally satisfied by the role-based `EVENT_RECIPIENTS` design — recorded, no new scope.
+
 ### Step 8: Month-end export — the KPI's payoff moment
 
 The Express-entry-shaped monthly file (CSV first; exact columns = intake question) per AC-9,
@@ -237,12 +347,47 @@ reading completed + in-flight governed runs, `governed_decision` ties, `three_qu
 (% spend fully traceable) + the proxy (per-case audit-answer completeness) on a cover summary.
 Oracle: AC-9 fixtures incl. the non-vacuity incomplete row.
 
+> **Amended 2026-07-29 (partner A2 + Cray, typed — Decisions 2 + 3).** The exact-column question
+> is RESOLVED — the 15 Express columns are transcribed in AC-9's amendment (one row per vehicle,
+> keyed into หมวด "ค่าใช้จ่ายซ่อมรถ"). Consequences for this step:
+> — **Close-out invoice record (Cray, typed — Decision 3):** the NEW append-only record
+> (เลขที่ใบกำกับภาษี, pre-VAT amount, VAT nullable, total; keyed by เมย์ at ปิดงาน / เก็บเอกสาร)
+> defined in AC-9's amendment — its own alembic migration rides THIS step. Back-computing VAT at
+> 7% in the export: explicitly rejected (typed).
+> — **Vendor codes (A2):** the ~20–30 main vendors already have Express codes; a NEW vendor is
+> opened by accounting in Express FIRST. The export therefore needs a vendor → Express-code
+> AUTHORED mapping (authored config, not name matching).
+> — **รหัสรถ (A2):** no vehicle-code property exists on `Truck`
+> (`verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml:33-84`; whole-file grep clean
+> 2026-07-29) — it arrives as an authored per-truck value via YAML + regen (fleet is in-memory
+> synthetic; no migration).
+> — **ศูนย์ต้นทุน (A2):** no cost-center exists anywhere in the fleet ontology (same grep);
+> its granularity (per truck vs per company) is a NEW named intake follow-up (see Verification)
+> — the column ships; its fill rule awaits the answer.
+> — **ประเภทงาน:** read from `repair_case.work_type` (Decision 2; migration 0016 rides Step 6).
+> — Dev-suggestion #3 (central mapping tables) — disposition assembled from the pieces above,
+> drafter synthesis, veto-open: vendor-code + vehicle-code mappings arrive as authored config in
+> this step; the Wialon ↔ truck mapping is parked with A5 (Out of Scope). No standalone mapping
+> subsystem is built.
+
 ### Step 9: PM real data — Wialon CSV + confirmed load
 
 Importer for the partner's Wialon CSV export (odometer per truck) with the measured+confirmed
 pattern (AC-10); the onboarding runbook step for เมย์'s manual last-service load from the paper PM
 folder; absolute `next_service_due_km` computed at load. PM is the near-daily adoption surface
 (Q3) — this step is what makes the calm path real. Oracle: AC-10.
+
+> **Amended 2026-07-29 (partner A5 + A6).**
+> — **A5:** NO real Wialon export file exists yet; the partner requests admin-mapped,
+> REMEMBERED column mapping rather than fixed column names. PARKED until a real file exists
+> (new Out of Scope item, where his guessed header set is recorded); THIS importer stays
+> fixed-column for now.
+> — **A6 (onboarding-runbook grounding):** last-service odometers are scattered across แฟ้ม PM /
+> ใบงานซ่อม / สมุดของช่าง and ~10–15% are unrecoverable. เมย์ backfills ~30–35 trucks, estimated
+> half a day to one day. A truck with NO recoverable history starts counting from its CURRENT
+> odometer — `next_service_due_km = current + 100,000` — per the partner
+> ("ให้เริ่มนับจากเลขไมล์ปัจจุบันได้เลย ดีกว่าปล่อยไม่มีข้อมูล"). These numbers go into the
+> runbook step verbatim so the onboarding effort estimate is the partner's own, not a guess.
 
 ### Step 10: Verification + confidence sign-off
 
@@ -265,3 +410,23 @@ applies: a partial return that drops any LOCKED scope item above is a conditiona
 for the export (Q6/Q17 follow-up) · LINE delivery target (existing group vs new OA) · task-chain
 item set confirmation · per-truck ceiling stretch values (Q8) · satang-precision note on the
 30,000/30,001 boundary (de-minimis; confirm whole-baht quoting).
+
+**Amended 2026-07-29 (partner round-2 + Cray, typed).** All five named intake questions above are
+dispositioned by the round-2 reply
+(`docs/research/private/2026-07-29-fleet-partner-intake-round2_reply.md`) and Cray's four typed
+decisions:
+
+- Exact Express entry columns → **RESOLVED** (A2): 15 columns, one row per vehicle — transcribed
+  in AC-9's amendment; consequences in Step 8's amendment.
+- LINE delivery target → **RESOLVED to the extent A3 names recipients** (mixed routing, five
+  targets — Step 7's amendment); the OA channel-access token remains an ONBOARDING item, and
+  LINE stays disarmed until it exists.
+- Task-chain item set → **RESOLVED** (A1 + Cray Decision 1): the real 8 steps, 4 mandatory + 4
+  conditional, per-item SLAs — AC-7's amended table.
+- Per-truck ceiling stretch values → **RESOLVED: none initially** (A4): flat ฿5,000 all trucks;
+  the authored default 5001 stands; per-truck increases arrive later in real use.
+- Satang / de-minimis 30,000/30,001 → **CONFIRMED** (A7): 99% whole-baht; ฿30,000 exactly = no
+  comparison, ฿30,001+ = required. The shipped `"30001"` floors stand; nothing changes.
+
+**New named intake follow-up (one):** ศูนย์ต้นทุน (cost-center) granularity — per truck or per
+company? (A2 consequence; Step 8's amendment.)

@@ -334,6 +334,10 @@ def test_no_auto_detection_route_exists() -> None:
         "/api/cases/{case_id}/quotes",
         "/api/cases/{case_id}/justifications",
         "/api/cases/{case_id}/evidence",
+        # Added deliberately for PLAN-0096 Step 6 (AC-7): the post-approval
+        # checklist. Human-flipped like every other route here — it records what a
+        # person reports, and nothing on it advances a case by itself.
+        "/api/cases/{case_id}/tasks",
     }
     for path in case_paths:
         assert "detect" not in path and "auto" not in path

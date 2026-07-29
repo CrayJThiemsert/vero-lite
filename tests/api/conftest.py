@@ -96,19 +96,38 @@ async def client(energy_vertical: None) -> AsyncIterator[AsyncClient]:
 
 
 @pytest.fixture
-async def client_with_db(energy_vertical: None) -> AsyncIterator[AsyncClient]:
-    """An httpx client with get_session overridden by a per-test engine.
+async def api_db_maker() -> AsyncIterator[async_sessionmaker[AsyncSession]]:
+    """A per-test engine on the disposable test DB, as a sessionmaker.
 
-    Binds to the disposable test DB (settings.test_database_url), never the
-    dev/demo DB — the create_all/drop_all round-trip below owns its schema.
+    Factored out of ``client_with_db`` so a test can hold a session on the SAME
+    engine the API is writing through (PLAN-0096 Step 6's scenario suite needs to
+    drive a server-side sweep over rows the HTTP routes just wrote). A second
+    independent engine would work too, but sharing this one keeps the whole
+    scenario inside one create_all/drop_all lifecycle.
     """
     eng = await create_test_engine()
     async with eng.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-    maker = async_sessionmaker(eng, expire_on_commit=False)
+    yield async_sessionmaker(eng, expire_on_commit=False)
+    async with eng.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+    await eng.dispose()
+
+
+@pytest.fixture
+async def client_with_db(
+    energy_vertical: None, api_db_maker: async_sessionmaker[AsyncSession]
+) -> AsyncIterator[AsyncClient]:
+    """An httpx client with get_session overridden by a per-test engine.
+
+    Binds to the disposable test DB (settings.test_database_url), never the
+    dev/demo DB — the create_all/drop_all round-trip in ``api_db_maker`` owns its
+    schema.
+    """
 
     async def _override_session() -> AsyncIterator[AsyncSession]:
-        async with maker() as session:
+        async with api_db_maker() as session:
             yield session
 
     app.dependency_overrides[get_session] = _override_session
@@ -116,7 +135,16 @@ async def client_with_db(energy_vertical: None) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(transport=transport, base_url="http://test") as http:
         yield http
     app.dependency_overrides.clear()
-    async with eng.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.execute(sa.text("DROP TABLE IF EXISTS alembic_version CASCADE"))
-    await eng.dispose()
+
+
+@pytest.fixture
+async def db_session(
+    api_db_maker: async_sessionmaker[AsyncSession],
+) -> AsyncIterator[AsyncSession]:
+    """A session on the same engine the API client writes through.
+
+    For server-side code a test needs to drive directly — a sweep, a report — over
+    rows the HTTP routes created.
+    """
+    async with api_db_maker() as session:
+        yield session
