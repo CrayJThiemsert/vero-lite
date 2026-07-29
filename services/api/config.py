@@ -318,6 +318,45 @@ class Settings(BaseSettings):
             "(env TELEGRAM_NOTIFY_COOLDOWN_S)"
         ),
     )
+    # --- LINE Official Account push (PLAN-0096 Step 7 / AC-8) -------------------
+    # The ONE new outbound channel of the fleet pilot, and a DIFFERENT audience from
+    # the Telegram notifier above: Telegram goes to our own harness chat (hence its
+    # strict no-PII body), LINE goes to the operator's own people about the
+    # operator's own trucks. Secrets from env ONLY (CLAUDE.md §8).
+    line_channel_access_token: str = Field(
+        default="",
+        description=(
+            "LINE Messaging API channel access token for the Official Account "
+            "(env LINE_CHANNEL_ACCESS_TOKEN) — from env only, never committed. LINE "
+            "Notify was discontinued 2025-03-31; this is the OA push API."
+        ),
+    )
+    line_notify_enabled: bool = Field(
+        default=False,
+        description=(
+            "Master switch for LINE push (env LINE_NOTIFY_ENABLED); default off so no "
+            "dev session or offline test can reach a real recipient"
+        ),
+    )
+    line_recipients: str = Field(
+        default="",
+        description=(
+            "JSON object mapping a recipient ROLE to its LINE destination id "
+            '(env LINE_RECIPIENTS), e.g. {"owner":"U…","operator":"U…","accounting":"U…"}. '
+            "Whether these are individual users or one shared group is the partner's "
+            "call and a named intake question; the seam takes either, since the push "
+            "API's `to` field accepts both."
+        ),
+    )
+    line_notify_cooldown_s: float = Field(
+        default=300.0,
+        gt=0.0,
+        description=(
+            "Minimum seconds between pushes of the SAME event kind to the SAME recipient "
+            "(env LINE_NOTIFY_COOLDOWN_S) — a reminder that repeats every sweep is how a "
+            "notification channel gets muted"
+        ),
+    )
     ollama_keep_alive: str = Field(
         default="30m",
         description=(
