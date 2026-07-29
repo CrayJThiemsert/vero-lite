@@ -50,6 +50,16 @@ called ``notify(schedule_id=..., scheduled_for=...)``. Injectable so a test spie
 real Telegram POST, and so the default import stays lazy (the daemon module never hard-depends
 on the notify stack)."""
 
+FiredHook = Callable[[AsyncSession, FireOutcome], Awaitable[None]]
+"""Called once per successfully FIRED schedule, inside the tick's session.
+
+The seam that lets a vertical react to its own round without the daemon learning
+anything about that vertical — the fleet ``pm_due`` push (PLAN-0096 AC-8) is the
+first user. Injected rather than imported because this module holds NO scheduling
+policy and no vertical knowledge, and a hard-coded fleet call here would be the
+first crack in that. Best-effort: a hook that raises is logged and swallowed, never
+killing the tick or the run it is reacting to."""
+
 _log: structlog.stdlib.BoundLogger = structlog.get_logger("scheduler_daemon")
 
 
@@ -83,6 +93,7 @@ class SchedulerDaemon:
         clock: Clock = _utcnow,
         logger: Any = None,
         notify: Notifier | None = None,
+        on_fired: FiredHook | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._load_schedules = load_schedules
@@ -90,6 +101,7 @@ class SchedulerDaemon:
         self._interval = interval_seconds
         self._clock = clock
         self._log = logger if logger is not None else _log
+        self._on_fired = on_fired
         if notify is not None:
             self._notify: Notifier = notify
         else:  # lazy import — keep the daemon module free of a hard notify-stack dependency.
@@ -108,6 +120,20 @@ class SchedulerDaemon:
         async with self._session_factory() as session:
             schedules = await self._load_schedules(session)
             outcomes = await fire_due_schedules(session, schedules, now=now, resolve=self._resolve)
+            if self._on_fired is not None:
+                for outcome in outcomes:
+                    if outcome.result is not FireResult.FIRED:
+                        continue
+                    try:
+                        await self._on_fired(session, outcome)
+                    except Exception:
+                        # The run is already recorded; a reaction that fails must not
+                        # unwind it, hide the outcomes, or stop the remaining hooks.
+                        self._log.exception(
+                            "scheduler.on_fired_failed",
+                            schedule_id=outcome.schedule_id,
+                            run_id=outcome.run_id,
+                        )
         fired = sum(1 for o in outcomes if o.result is FireResult.FIRED)
         skipped = sum(1 for o in outcomes if o.result is FireResult.SKIPPED_IN_FLIGHT)
         recovered = sum(1 for o in outcomes if o.result is FireResult.ALREADY_FIRED)
@@ -184,14 +210,16 @@ async def run_scheduler_daemon(
     resolve: ScheduleResolver,
     load_schedules: ScheduleLoader = load_all_schedules,
     interval_seconds: float = 60.0,
+    on_fired: FiredHook | None = None,
 ) -> None:
     """Programmatic entrypoint (AC-11): construct + run a :class:`SchedulerDaemon` until it is
     signalled to stop. The deployment/CLI wiring (real vertical spec + executor factory behind
-    ``resolve``) is the Step-7 ops posture."""
+    ``resolve``, plus any per-vertical ``on_fired`` reaction) is the Step-7 ops posture."""
     daemon = SchedulerDaemon(
         session_factory=session_factory,
         load_schedules=load_schedules,
         resolve=resolve,
         interval_seconds=interval_seconds,
+        on_fired=on_fired,
     )
     await daemon.run()

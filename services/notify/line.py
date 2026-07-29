@@ -1,6 +1,6 @@
 """LINE Official Account push — the fleet pilot's ONE outbound channel (PLAN-0096 Step 7 / AC-8).
 
-Five events, one seam, outbound only:
+Six events, one seam, outbound only:
 
 ============================  ==================================  ======================
 event                          fires when                          goes to
@@ -13,7 +13,16 @@ event                          fires when                          goes to
 ``task_chain_stale``           a post-approval checklist item has   operator
                                sat untouched
 ``export_ready``               the month-end file is available      owner + accounting
+``pm_due``                     the 06:00 sweep found trucks past    mechanics
+                               their service point
 ============================  ==================================  ======================
+
+**The sixth arrived by decision, not by drift.** This enum was a closed set of five,
+and this docstring required a named producer and a named recipient rule before a
+member could be added. The partner supplied both in round-2 answer A3 —
+"PM ถึงกำหนด → กลุ่มช่าง" — and Cray ratified the AC-8 amendment (typed,
+2026-07-29). The producer is the existing 06:00 scheduled sweep, not a new
+scheduler. A seventh still needs the same two answers.
 
 **LINE Notify is gone.** It was discontinued 2025-03-31, so this is the Messaging API
 push endpoint on an Official Account. Whether the partner wants that OA to message
@@ -63,15 +72,16 @@ _MAX_TEXT = 5000
 
 
 class LineEvent(StrEnum):
-    """The five AC-8 events. A closed set on purpose — every member has a named
-    producer and a named recipient rule, so a sixth cannot arrive without a decision
-    about who receives it."""
+    """The six AC-8 events. A closed set on purpose — every member has a named
+    producer and a named recipient rule, so a seventh cannot arrive without a
+    decision about who receives it."""
 
     APPROVAL_NEEDED = "approval_needed"
     RATIFICATION_DUE = "ratification_due"
     RATIFICATION_OVERDUE = "ratification_overdue"
     TASK_CHAIN_STALE = "task_chain_stale"
     EXPORT_READY = "export_ready"
+    PM_DUE = "pm_due"
 
 
 class Recipient(StrEnum):
@@ -85,6 +95,10 @@ class Recipient(StrEnum):
     OWNER = "owner"
     OPERATOR = "operator"
     ACCOUNTING = "accounting"
+    #: The workshop crew (A3: กลุ่มช่าง). A group rather than a person by the
+    #: partner's own choice — routine servicing is whoever is free, not a named
+    #: individual, and naming one would make the round stop when he is off.
+    MECHANICS = "mechanics"
     #: The approver the DOA ladder actually resolved for THIS spend. Not a fixed
     #: person: a ฿15,000 repair and a ฿48,000 one go to different desks, and sending
     #: both to the owner would recreate the bottleneck the ladder exists to remove.
@@ -92,12 +106,15 @@ class Recipient(StrEnum):
 
 
 #: Event -> who hears about it (Step 7's recipient table, encoded rather than described).
+#: A3 in the partner's own words: "ผมไม่อยากให้ทุกอย่างเด้งเข้ากลุ่มเดียว เดี๋ยวคนปิด
+#: แจ้งเตือนหมด" — five distinct destinations, deliberately.
 EVENT_RECIPIENTS: dict[LineEvent, tuple[Recipient, ...]] = {
     LineEvent.APPROVAL_NEEDED: (Recipient.RESOLVED_APPROVER,),
     LineEvent.RATIFICATION_DUE: (Recipient.OWNER, Recipient.OPERATOR),
     LineEvent.RATIFICATION_OVERDUE: (Recipient.OWNER, Recipient.OPERATOR),
     LineEvent.TASK_CHAIN_STALE: (Recipient.OPERATOR,),
     LineEvent.EXPORT_READY: (Recipient.OWNER, Recipient.ACCOUNTING),
+    LineEvent.PM_DUE: (Recipient.MECHANICS,),
 }
 
 
@@ -216,6 +233,13 @@ def build_message(event: LineEvent, detail: dict[str, Any]) -> str:
             f"รถ {truck} · ขั้นตอน \"{detail.get('task', '—')}\"\n"
             f"ไม่มีความเคลื่อนไหว {detail.get('stale_days', '—')} วัน"
         )
+    if event is LineEvent.PM_DUE:
+        # The whole due SET in one message, not one push per truck: the morning
+        # round is planned as a batch ("which trucks today"), and five separate
+        # pushes at 06:00 is how a group mutes a channel by breakfast.
+        plates = detail.get("plates") or []
+        listed = "\n".join(f"  • {plate}" for plate in plates) or "  • —"
+        return f"🔧 ถึงกำหนดเข้าศูนย์ {len(plates)} คัน\n{listed}\nรอบเช้า — ยืนยันคิวกับอู่ได้เลย"
     return (
         f"📄 ไฟล์สรุปสิ้นเดือนพร้อมแล้ว — {detail.get('period', '—')}\n"
         f"{detail.get('row_count', '—')} รายการ · "
