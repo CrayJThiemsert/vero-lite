@@ -109,7 +109,7 @@ Decide the route from the *nature* of the task, not by default:
 - **Solid, and the only thing left is a confirming second perspective → proceed.** Code approves / executes directly. Don't bounce solid work through a heavier cycle.
 - **Might have gaps, OR genuinely needs creative / adversarial input → build a Cowork dispatch file.** Cowork returns the draft; Code + Cray review. Reserve the heavier cycle for where an independent creative / adversarial lens adds *real* value.
 
-**Mechanical overlay (structural — NOT a quality judgment).** A *new* PLAN or ADR (or editing an Accepted ADR) is **PreToolUse-gated** for Code and the in-harness `plan-drafter` (the G1 / G2 governance gates, scoped to `docs/adr/` + `docs/plans/`); a constitutional edit to this file is not gate-blocked but is **Cowork-drafted by convention** (ADR-009 D1). Either way the work routes through Cowork **regardless of how solid it is** — **Cowork drafts (ungated) → Code commits** (ADR-009 D1/D2). This is mechanical, **not** a finding that the work has gaps. When routing to Cowork, state the solid-vs-needs-creative judgment **explicitly**; never bounce the substance silently.
+**Mechanical overlay (structural — NOT a quality judgment).** A *new* PLAN or ADR (or editing an Accepted ADR) is **PreToolUse-gated for Code** (the G1 / G2 governance gates, scoped to `docs/adr/` + `docs/plans/`); the in-harness `plan-drafter` is exempt from the G2 classifier **by design** (PLAN-0034 prong 2 — it is the one actor for whom those writes are allowed) and is instead **gated by its own fail-closed write-allowlist**, which permits `docs/adr/` + `docs/plans/` only and denies everything else; a constitutional edit to this file is not gate-blocked but is **Cowork-drafted by convention** (ADR-009 D1). Either way the work routes through Cowork **regardless of how solid it is** — **Cowork drafts (ungated) → Code commits** (ADR-009 D1/D2). This is mechanical, **not** a finding that the work has gaps. When routing to Cowork, state the solid-vs-needs-creative judgment **explicitly**; never bounce the substance silently.
 
 | Task | Route | Why |
 |------|-------|-----|
@@ -157,7 +157,7 @@ Deep rationale + the claim-vs-decision worked example: [`docs/lessons/0027-verif
 **PR / issue / release bodies:** Use `--body-file` / `--notes-file`, **never** `--body "$(cat PATH)"` (backticks trigger command substitution + silently corrupt the body).
 **Commit + push hygiene:** Never chain commit with a push to `main` — commit on a branch first, then PR-flow.
 
-→ Mechanics + rationale + recovery (WSL UNC path, `gh api PATCH` body fix, `gh pr edit` caveat, Lessons #4/#10/#11): **`git-workflow` skill** (`.claude/skills/git-workflow/`, loads on demand). Future canonical: [`docs/conventions/git.md`](docs/conventions/git.md) *(see STATUS TODO)*.
+→ Mechanics + rationale + recovery (WSL UNC path, `gh api PATCH` body fix, `gh pr edit` caveat, Lessons #4/#10/#11): **`git-workflow` skill** (`.claude/skills/git-workflow/`, loads on demand) — the standing procedural home (§4 placement rule: binding rules here, task-triggered how-to in the skill). No `docs/conventions/git.md` extraction is planned.
 
 ## 8. Constraints (DO NOT VIOLATE)
 
@@ -171,6 +171,7 @@ Deep rationale + the claim-vs-decision worked example: [`docs/lessons/0027-verif
 ### Code Quality
 
 - All new code: type hints + tests + ruff clean + mypy clean
+- **Every build also ships a scenario test** — it must **drive the real producer into the real consumer on realistic simulated data**; skipping it is not allowed. A mock-fed unit suite agrees with itself by construction: it proves the contract its author imagined, never the one the system produces — a planted seam bug kept all 24 LINE unit tests green while silently severing an approval route; only scenario cases reddened (PRs #960/#961). A test that stubs either side of the seam under test, or a scenario file that drives nothing, does not satisfy this rule.
 - All endpoints: Pydantic request + response models with `Field(description=...)`
 - All ADRs: must be merged before related implementation PR
 
@@ -258,4 +259,4 @@ The **verify-loop hygiene rule** — a re-checked, evidence-backed prior is logg
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-07-28 (session 181). Convention: a constitutional edit bumps this date only — the full record of what changed and why lives in that edit's commit message (`git log --follow -- CLAUDE.md` is the amendment history); durable learnings live in `docs/lessons/`.*
+*Last updated: 2026-07-29 (session 188). Convention: a constitutional edit bumps this date only — the full record of what changed and why lives in that edit's commit message (`git log --follow -- CLAUDE.md` is the amendment history); durable learnings live in `docs/lessons/`.*
