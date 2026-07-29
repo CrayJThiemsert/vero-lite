@@ -31,6 +31,17 @@ _REPO_ROOT = Path(__file__).resolve().parents[3]
 # The migration head's full table set. Must track the registration imports in
 # ``alembic/env.py`` — a table missing here is a table ``create_all`` silently
 # skips and ``drop_all`` silently leaves behind.
+#
+# This list is deliberately hand-maintained: deriving it from ``Base.metadata``
+# would compare metadata against itself and assert nothing. But a hand-maintained
+# expectation checked against a hand-maintained import list can drift in LOCKSTEP
+# and stay green — which is exactly what happened. When ``repair_case_task`` was
+# added to ``alembic/env.py`` but not to ``tests/db_support.py`` (PR #965), this
+# set was ALSO missing ``repair_case_task_event``, so both wrong sides agreed and
+# this test passed throughout. What broke the tie is
+# ``tools/check_alembic_model_registration.py``, which DERIVES the model set from
+# the source rather than restating it — so only one side of this comparison can
+# be wrong at a time now, and it fails loudly when it is.
 _HEAD_TABLES = {
     "action_identity",
     "alert",
@@ -45,6 +56,7 @@ _HEAD_TABLES = {
     "repair_case",
     "repair_case_justification",
     "repair_case_quote",
+    "repair_case_task_event",
     "schedule_states",
     "site",
     "step_results",

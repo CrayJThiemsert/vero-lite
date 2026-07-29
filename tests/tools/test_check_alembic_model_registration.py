@@ -1,14 +1,24 @@
 """The ORM-registration guard — the offline half of the migration lockstep.
 
-The bug it was built from (PR #965) passed 3528 tests and was caught only by CI:
-a new ORM module was never imported by ``alembic/env.py``, so ``Base.metadata``
-did not know its table existed and autogenerate wanted to DROP it. Tests missed
-it because ``Base.metadata.create_all`` knows only what the test module imported;
-nothing offline traverses ``env.py``.
+Two drifts of the same class, both of which shipped, are pinned here:
 
-These cases pin the guard against the two ways it could become useless: failing
-to notice a genuinely unregistered module, and crying wolf on the code generator
-(whose ``__tablename__`` lives inside an emitted string template).
+* **env.py** (PR #965) — a new ORM module was never imported, so ``Base.metadata``
+  did not know its table existed and autogenerate wanted to DROP it. 3528 passing
+  tests missed it: ``create_all`` knows only what the TEST module imported, and
+  nothing offline traverses ``env.py``.
+* **db_support.py** — #965's fix patched env.py only, leaving the test-side list
+  drifted for a whole PR. ``alembic check`` can never see this one: it compares
+  the database against the metadata *env.py* builds, and does not know
+  db_support.py exists.
+
+The second drift also defeated the pre-existing guard for it,
+``test_db_hermeticity.py``, whose ``_HEAD_TABLES`` was hand-maintained and was
+missing the same table — two wrong lists agreeing. This guard DERIVES the model
+set from source, so only one side of that comparison can be wrong at a time.
+
+Beyond catching both, these cases pin the guard against the way it would become
+useless in the other direction: crying wolf on the code generator, whose
+``__tablename__`` lives inside an emitted string template.
 """
 
 from __future__ import annotations
@@ -42,10 +52,25 @@ class {name}(Base):
 '''
 
 
-def _make_tree(root: Path, *, env_imports: str, modules: dict[str, str]) -> None:
-    """A minimal repo-shaped tree: alembic/env.py plus services/db modules."""
+def _make_tree(
+    root: Path,
+    *,
+    env_imports: str,
+    modules: dict[str, str],
+    support_imports: str | None = None,
+) -> None:
+    """A repo-shaped tree: both registration sites plus services/db modules.
+
+    ``support_imports`` defaults to ``env_imports`` because most cases vary one
+    site at a time, and a fixture that silently left the second site empty would
+    make every case fail for the wrong reason.
+    """
     (root / "alembic").mkdir(parents=True)
     (root / "alembic" / "env.py").write_text(env_imports, encoding="utf-8")
+    (root / "tests").mkdir(parents=True, exist_ok=True)
+    (root / "tests" / "db_support.py").write_text(
+        env_imports if support_imports is None else support_imports, encoding="utf-8"
+    )
     for relative, source in modules.items():
         path = root / relative
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -138,6 +163,35 @@ def test_a_fully_registered_tree_passes(tmp_path: Path, monkeypatch) -> None:
     assert main() == 0
 
 
+def test_a_module_registered_in_env_but_not_db_support_still_fails(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """The SECOND drift, reproduced — and the one nothing else can see.
+
+    This is exactly what PR #965's fix left behind: env.py was patched, the
+    test-side list was not, and the gap survived a whole PR. ``alembic check``
+    would never reveal it — it compares the database against the metadata *env.py*
+    builds and does not know db_support.py exists. If this case ever passes, the
+    guard covers only half the class it was widened to cover.
+    """
+    _make_tree(
+        tmp_path,
+        env_imports=(
+            "from services.db import person as _person\n"
+            "from services.db import repair_case_task as _rct\n"
+        ),
+        support_imports="from services.db import person as _person\n",
+        modules={
+            "services/db/person.py": _MODEL,
+            "services/db/repair_case_task.py": _MODEL,
+        },
+    )
+    monkeypatch.setenv("ALEMBIC_GUARD_ROOT", str(tmp_path))
+    monkeypatch.chdir(tmp_path)
+
+    assert main() == 1
+
+
 def test_a_module_with_no_table_is_never_demanded(tmp_path: Path, monkeypatch) -> None:
     """Only table-declaring modules are required in ``env.py``. Demanding more
     would make the guard a nuisance that gets silenced."""
@@ -172,6 +226,21 @@ def test_this_repository_passes_its_own_guard() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_both_real_registration_sites_list_every_model() -> None:
+    """The two real files, checked directly rather than through ``main``.
+
+    A failure here names WHICH site drifted, which ``main``'s exit code alone
+    cannot — and the two fail in completely different ways (a CI ``alembic check``
+    failure versus a DuplicateTableError in a later test run).
+    """
+    models = find_model_modules(_REPO_ROOT)
+    for relative in (Path("alembic") / "env.py", Path("tests") / "db_support.py"):
+        registered = find_registered_modules((_REPO_ROOT / relative).read_text(encoding="utf-8"))
+        assert not (
+            models - registered
+        ), f"{relative.as_posix()} is missing: {sorted(models - registered)}"
 
 
 def test_every_real_model_module_is_discovered() -> None:
