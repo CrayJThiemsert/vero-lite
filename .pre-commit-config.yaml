@@ -120,3 +120,20 @@ repos:
         language: system
         always_run: true
         pass_filenames: false
+
+      # The OFFLINE half of the migration<->ORM lockstep (PR #965). CI's
+      # `alembic check` catches column drift but needs a live database; a
+      # pre-commit hook that fails whenever Postgres is down — or in a worktree,
+      # which has no .env — is one developers learn to bypass. This half needs no
+      # database: it asserts statically that every module declaring a
+      # __tablename__ is imported by alembic/env.py. That is the exact class that
+      # cost a CI round in #965, and the one the test suite structurally cannot
+      # see (Base.metadata.create_all knows only what the TEST module imported;
+      # nothing offline traverses env.py). always_run because the violation is
+      # authored by adding a model file while editing a DIFFERENT one — env.py.
+      - id: alembic-model-registration
+        name: ORM<->alembic registration guard (offline lockstep half)
+        entry: uv run python tools/check_alembic_model_registration.py
+        language: system
+        always_run: true
+        pass_filenames: false
