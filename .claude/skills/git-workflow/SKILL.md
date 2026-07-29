@@ -59,4 +59,3 @@ stale CA bundle. (See the project memory on the WSL git toolchain.)
 - `CLAUDE.md` §7 (binding rules)
 - Lessons #4 (commit-message backtick mangling), #10 (classifier blocks direct
   push to `main`), #11 (`gh pr` body-file backtick trap)
-- `docs/conventions/git.md` *(future canonical, see STATUS TODO)*
