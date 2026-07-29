@@ -152,6 +152,8 @@ with the behavior silently broken, fix the test first. TODO/`pass` stubs count a
   original row-content list above is otherwise preserved — case, truck, date, vendor, amount,
   approver, `three_quote_basis`, exception labels, justification ref, run id all map into the 15
   columns + the cover summary.
+  **Amended 2026-07-29 (s190):** เลขที่ใบแจ้งซ่อม = human-readable `RC-<year>-<NNNN>` per Cray's
+  typed **Decision A** — see Step 8's session-190 amendment block (migration `0017`).
 - [ ] **AC-10 — PM real data (measured + confirmed).** Wialon **CSV export** import proposes
   odometer values; a human confirm gates any `Truck` update (unconfirmed rows never touch the
   ontology — Q4's imprecision); mangled CSV fails closed. Last-service odometers load manually
@@ -305,7 +307,9 @@ layer, not engine steps; `fulfill`'s receipt stub is untouched. This is the hone
 > 5 วัน (อะไหล่ใหญ่), and เริ่มซ่อม's SLA anchored to parts-complete ("1 วันหลังของครบ"), not
 > to case open. The context variants need the work class, so Cray's typed **Decision 2**:
 > `repair_case.work_type` (pm / breakdown / accident) — the shipped table has no such column
-> (`services/db/repair_case.py:68-78`) — alembic migration **0016** approved 2026-07-29 (dev DB
+> (`services/db/repair_case.py:68-78`) *[superseded by new info, s190: shipped by Step 6's build —
+> now `services/db/repair_case.py:86-88`; see Step 8's session-190 amendment]* — alembic migration
+> **0016** approved 2026-07-29 (dev DB
 > at 0015 per the Code fact-pack); one field serves both these SLAs and Step 8's ประเภทงาน
 > column. It rides THIS step as the first consumer in the 6→8 build order (placement is
 > ordering-derived, not a separate typed decision). A1's notes bind the conditional semantics:
@@ -369,6 +373,54 @@ Oracle: AC-9 fixtures incl. the non-vacuity incomplete row.
 > drafter synthesis, veto-open: vendor-code + vehicle-code mappings arrive as authored config in
 > this step; the Wialon ↔ truck mapping is parked with A5 (Out of Scope). No standalone mapping
 > subsystem is built.
+
+> **Amended 2026-07-29 (session 190 — Cray typed, Decision A; findings grounded by Code).** Two
+> typed decisions and five on-disk findings recorded BEFORE migration `0017` is written, because
+> together they change that migration's shape. Citations verified this session at `main`=`7b05f1e`;
+> alembic head today is 0016 (`alembic/versions/0016_repair_case_task_chain.py`), so the close-out
+> record takes **0017** — Code re-verifies next-free at commit.
+> — **The missed column (grounding for Decision A):** AC-9's earlier amendment flagged only the
+> invoice trio as unfillable and MISSED เลขที่ใบแจ้งซ่อม (column 3). `repair_case.case_id` is
+> generated as `case-{uuid.uuid4().hex[:12]}` (`services/api/routers/cases.py:168`) — a UUID no
+> accounting department can key against an Express document. This gap is why Decision A exists,
+> and it had to be settled before `0017` was written rather than after.
+> — **Repair-case number (Cray, typed — Decision A, s190):** Express column 3, เลขที่ใบแจ้งซ่อม,
+> gets a human-readable repair-case number carried on the close-out record in migration `0017`.
+> Format **`RC-<year>-<NNNN>`** (e.g. `RC-2026-0001`), the running sequence **reset per year**.
+> The allocation mechanism — how the running number is issued and how it stays unique under
+> concurrency — is **Code's implementation choice, NOT a PLAN-level pin**: no later reader should
+> treat any particular mechanism as ratified by this PLAN.
+> — **Close-out invoice record (Decision B — typed s189; RESTATED for this step, not re-decided):**
+> the record carries เลขที่ใบกำกับภาษี / pre-VAT amount / VAT (**nullable**) / total, keyed by
+> เมย์ at the ปิดงาน / เก็บเอกสาร (`close_case`) task-chain step; back-computing VAT at 7% was
+> explicitly **rejected** (typed). Same decision AC-9's amendment records as "Decision 3" —
+> restated here so `0017`'s author reads the complete close-out field set (the invoice quartet +
+> Decision A's case number) in one place.
+> — **รหัสรถ mechanism correction (supersedes "via YAML + regen" in the bullet above):**
+> `verticals/fleet_maintenance/generated/` is imported by NOTHING anywhere in the repo, and
+> `next_service_due_km` — present in `verticals/fleet_maintenance/ontology/fleet_maintenance_v0.yaml`
+> — appears in no file under `generated/`: the generated artifacts are stale. The per-truck values
+> the runtime and tests actually consume are hand-written in
+> `verticals/fleet_maintenance/data_adapter/synthetic.py` (`truck_records()`, `:118`). Following
+> the regen line literally would produce a value that never reaches the export. The working edit
+> is **YAML (schema/doc) + `synthetic.py` (the value)**, and no migration — the fleet vertical
+> has no alembic-registered ORM of its own.
+> — **Step 6-amendment citation superseded by new info (not an error):** Step 6's amendment states
+> the shipped table "has no such column (`services/db/repair_case.py:68-78`)" about `work_type`.
+> True when written; Step 6's build then shipped it — `work_type` is at
+> `services/db/repair_case.py:86-88`. Classified **superseded by new info** per CLAUDE.md §6
+> (verify-loop hygiene), and marked in place at the claim so it cannot mislead a `0017` author.
+> — **Greenfield export surface (effort/scope fact):** repo-wide across `services/` +
+> `verticals/`: ZERO occurrences of `csv.writer` / `csv.DictWriter` / `writerow` / `to_csv` /
+> `StreamingResponse`, and no `text/csv` response anywhere; `csv` appears only as a READER
+> (`csv.DictReader` — `verticals/fleet_maintenance/pm_import.py:151`,
+> `verticals/procurement/data_adapter/fastenal_csv.py:157`). There is no export router. This step
+> builds the repo's first export surface — plan it as construction, not wiring.
+> — **A new table costs THREE registrations, not one:** `0017` must be registered in
+> `alembic/env.py`, in `tests/db_support.py`, AND in `_HEAD_TABLES` in
+> `tests/services/db/test_db_hermeticity.py`. The offline guard
+> `tools/check_alembic_model_registration.py` catches the first two; the third fails in the
+> suite. This is the exact defect class that reddened CI at 54 s during s189 (#965 → #966/#967).
 
 ### Step 9: PM real data — Wialon CSV + confirmed load
 
