@@ -28,6 +28,7 @@ from services.api.routers.runs import router as runs_router
 from services.api.routers.whoami import router as whoami_router
 from services.engine.discovery import discover_and_register
 from services.engine.registry import registry
+from services.notify.line import describe_arm_state as describe_line_arm_state
 from services.notify.telegram import describe_arm_state
 
 # uvicorn configures its "uvicorn.error" logger (the startup banner) at INFO with
@@ -235,10 +236,12 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     # One-shot boot diagnostic: makes a mis-armed PLAN-0014 notifier (e.g. the
     # enable flag left off — otherwise a silent per-call no-op) visible at startup.
     _boot_logger.info(
-        "verticals discovered: %s; active=%r; PLAN-0014 Telegram notify: %s",
+        "verticals discovered: %s; active=%r; PLAN-0014 Telegram notify: %s; "
+        "PLAN-0096 LINE notify: %s",
         ", ".join(known),
         vertical,
         describe_arm_state(),
+        describe_line_arm_state(),
     )
     yield
 
