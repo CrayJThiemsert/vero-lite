@@ -532,6 +532,7 @@ def _closeout_response(
     return CloseOutResponse(
         case_id=closeout.case_id,
         repair_order_no=order.repair_order_no,
+        vendor=closeout.vendor,
         tax_invoice_no=closeout.tax_invoice_no,
         amount_pre_vat_thb=closeout.amount_pre_vat_thb,
         vat_thb=closeout.vat_thb,
@@ -601,6 +602,7 @@ async def key_closeout(
     closeout = RepairCaseCloseout(
         closeout_id=f"closeout-{uuid.uuid4().hex[:12]}",
         case_id=case_id,
+        vendor=req.vendor,
         tax_invoice_no=(req.tax_invoice_no or None),
         amount_pre_vat_thb=req.amount_pre_vat_thb,
         vat_thb=req.vat_thb,

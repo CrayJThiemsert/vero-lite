@@ -305,6 +305,14 @@ class CloseOutRequest(BaseModel):
     VAT-registered and a computed rate would invent tax on the ones that are not.
     """
 
+    vendor: str = Field(
+        description=(
+            "ผู้ขาย / อู่ — the garage that actually did the work, read off the same "
+            "document as the invoice number. Required, and deliberately not derived "
+            "from the quote pack: that records who QUOTED, and matching a quote to "
+            "the invoice by amount would be a guess."
+        )
+    )
     tax_invoice_no: str | None = Field(
         default=None,
         description=(
@@ -349,6 +357,7 @@ class CloseOutResponse(BaseModel):
             "folder never changes."
         )
     )
+    vendor: str = Field(description="ผู้ขาย / อู่ — the garage that did the work")
     tax_invoice_no: str | None = Field(default=None, description="เลขที่ใบกำกับภาษี, if keyed")
     amount_pre_vat_thb: Decimal = Field(description="จำนวนเงินก่อน VAT")
     vat_thb: Decimal | None = Field(default=None, description="VAT, or None for a non-VAT vendor")

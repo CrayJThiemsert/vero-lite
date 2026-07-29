@@ -38,6 +38,7 @@ async def _open_case(client: AsyncClient, truck_id: str = "truck-01") -> str:
 
 async def _key_closeout(client: AsyncClient, case_id: str, **body: object) -> dict:
     payload: dict[str, object] = {
+        "vendor": "อู่คู่สัญญา ปากช่อง",
         "amount_pre_vat_thb": "1000.00",
         "vat_thb": "70.00",
         "total_thb": "1070.00",
@@ -136,6 +137,7 @@ async def test_a_total_that_does_not_add_up_is_refused(client_with_db: AsyncClie
     response = await client_with_db.post(
         f"/api/cases/{case_id}/closeout",
         json={
+            "vendor": "อู่คู่สัญญา ปากช่อง",
             "amount_pre_vat_thb": "1000.00",
             "vat_thb": "70.00",
             "total_thb": "1000.00",
@@ -143,6 +145,36 @@ async def test_a_total_that_does_not_add_up_is_refused(client_with_db: AsyncClie
     )
     assert response.status_code == 422
     assert "does not equal" in response.text
+
+
+async def test_the_garage_is_required_and_never_inferred(client_with_db: AsyncClient) -> None:
+    """AC-9 column 5 has no other source, and guessing it would be worse than asking.
+
+    The quote pack records who QUOTED, not who was used; matching a quote to the
+    invoice by amount fails on VAT alone, and fails outright when an approved higher
+    quote was the one accepted. So the close-out refuses to be keyed without it."""
+    case_id = await _open_case(client_with_db)
+    response = await client_with_db.post(
+        f"/api/cases/{case_id}/closeout",
+        json={
+            "amount_pre_vat_thb": "1000.00",
+            "vat_thb": "70.00",
+            "total_thb": "1070.00",
+        },
+    )
+    assert response.status_code == 422
+    assert "vendor" in response.text
+
+
+async def test_the_garage_survives_to_the_export_side(client_with_db: AsyncClient) -> None:
+    """Columns 5 and 6 both key off this value, so it has to round-trip intact —
+    including Thai text, which is what the partner's garage names actually are."""
+    case_id = await _open_case(client_with_db)
+    keyed = await _key_closeout(client_with_db, case_id, vendor="ส.เจริญยนต์")
+
+    assert keyed["vendor"] == "ส.เจริญยนต์"
+    current = await client_with_db.get(f"/api/cases/{case_id}/closeout")
+    assert current.json()["vendor"] == "ส.เจริญยนต์"
 
 
 async def test_no_vat_is_stored_as_null_not_zero(client_with_db: AsyncClient) -> None:
