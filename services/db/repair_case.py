@@ -42,6 +42,16 @@ CASE_STATUS_OPEN = "open"
 CASE_STATUS_CLOSED = "closed"
 CASE_STATUSES = (CASE_STATUS_OPEN, CASE_STATUS_CLOSED)
 
+#: What kind of work the case is (round-2 A2's ประเภทงาน, verbatim from the
+#: partner's Express column list). One field, two consumers: the task-chain's
+#: context-variant SLAs (A1: แจ้งอู่ has 30 minutes on a breakdown, a day on PM)
+#: and the month-end export column. ``breakdown`` is the default because a case
+#: opened in a hurry from a roadside is the one where nobody picks a category.
+WORK_TYPE_BREAKDOWN = "breakdown"
+WORK_TYPE_PM = "pm"
+WORK_TYPE_ACCIDENT = "accident"
+WORK_TYPES = (WORK_TYPE_BREAKDOWN, WORK_TYPE_PM, WORK_TYPE_ACCIDENT)
+
 
 class RepairCase(Base):
     """One human-opened repair case for one truck.
@@ -73,6 +83,9 @@ class RepairCase(Base):
     #: roadside case can be opened one-handed with a photo and nothing typed.
     description: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     status: Mapped[str] = mapped_column(sa.Text, nullable=False, default=CASE_STATUS_OPEN)
+    work_type: Mapped[str] = mapped_column(
+        sa.Text, nullable=False, default=WORK_TYPE_BREAKDOWN, server_default="breakdown"
+    )
     photos: Mapped[list[dict[str, Any]]] = mapped_column(
         JSONB, nullable=False, default=list, server_default="[]"
     )

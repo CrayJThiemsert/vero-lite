@@ -69,6 +69,15 @@ class OpenCaseRequest(BaseModel):
             "when it is not, which is how the offline demo and the test suite run."
         ),
     )
+    work_type: str = Field(
+        default="breakdown",
+        description=(
+            "What kind of work this is: breakdown | pm | accident (the partner's "
+            "ประเภทงาน). Defaults to breakdown — the roadside case is the one nobody "
+            "stops to categorise. Drives the task-chain's context SLAs (แจ้งอู่ is 30 "
+            "minutes on a breakdown, a day on PM) and the month-end export column."
+        ),
+    )
 
 
 class CaseResponse(BaseModel):
@@ -80,6 +89,7 @@ class CaseResponse(BaseModel):
     opened_at: datetime = Field(description="When it was opened (UTC) — the 'minute 1' timestamp")
     description: str | None = Field(default=None, description="Optional free text")
     status: str = Field(description="Case lifecycle state: open | closed")
+    work_type: str = Field(description="breakdown | pm | accident (ประเภทงาน)")
     photos: list[CasePhoto] = Field(
         default_factory=list, description="Attached photo metadata, oldest first"
     )
@@ -161,6 +171,86 @@ class JustificationResponse(BaseModel):
     reason: str = Field(description="The written reason")
     entered_by: str = Field(description="person_id of whoever wrote it")
     entered_at: datetime = Field(description="When it was written (UTC)")
+
+
+class FlipTaskRequest(BaseModel):
+    """Move one post-approval checklist item (PLAN-0096 Step 6 / AC-7).
+
+    One shape for every movement — activating an item, completing it, skipping it.
+    They are the same act (a human reporting what is true now) and the append-only
+    trail records them identically, so a separate "activate" endpoint would only be
+    a second way to write the same row.
+    """
+
+    item_key: str = Field(
+        description=(
+            "Which checklist step: notify_garage | arrange_tow | arrange_cargo_transfer "
+            "| order_parts | wait_parts | start_repair | test_drive | close_case. "
+            "An unknown key is refused — the chain is authored config, not free text."
+        )
+    )
+    status: str = Field(
+        description=(
+            "pending = this item is now live on this case · done = finished · "
+            "skipped = this case does not need it (a tow for a truck that can still "
+            "drive). There is no in_progress: the team tracks 'ค้างอยู่ไหม', and a "
+            "status nobody would flip is a status that lies."
+        )
+    )
+    variant: str | None = Field(
+        default=None,
+        description=(
+            "Flip-time context that changes the deadline — today only 'major_part' on "
+            "the parts steps (ordinary parts wait ~2 days, big ones ~5). Only the "
+            "person doing the flip knows this, which is why it is supplied here and "
+            "not derived."
+        ),
+    )
+    note: str | None = Field(default=None, description="Optional free text; nothing parses it")
+    actor: str | None = Field(
+        default=None, description="person_id; server-resolved when authn is enabled"
+    )
+
+
+class TaskItemResponse(BaseModel):
+    """One checklist item's current state on one case."""
+
+    item_key: str = Field(description="The step key")
+    label_th: str = Field(description="The partner's own label for this step")
+    mandatory: bool = Field(
+        description=(
+            "Whether every case has this step. The four conditional ones are absent "
+            "until a human adds them; a case that skipped all four is complete, not "
+            "incomplete."
+        )
+    )
+    status: str = Field(description="pending | done | skipped — the latest flip")
+    actor: str = Field(description="person_id behind that latest flip")
+    activated_at: datetime = Field(description="When this item entered the chain (UTC)")
+    last_flip_at: datetime = Field(description="When it last moved (UTC)")
+    variant: str | None = Field(default=None, description="Latest variant supplied, if any")
+    is_stale: bool = Field(
+        description=(
+            "Whether this item is past ITS OWN deadline right now. Computed against "
+            "the authored per-item SLA, and only ever true for a pending item whose "
+            "prerequisites are settled — a repair waiting on a legitimate 5-day parts "
+            "order is not late."
+        )
+    )
+
+
+class TaskChainResponse(BaseModel):
+    """A case's post-approval checklist — the state humans read and flip."""
+
+    case_id: str = Field(description="The case")
+    work_type: str = Field(description="breakdown | pm | accident — selects the context SLAs")
+    items: list[TaskItemResponse] = Field(
+        description="Items present on this case, in the partner's chain order"
+    )
+    stale_item_keys: list[str] = Field(
+        default_factory=list,
+        description="Keys currently past deadline — what the LINE nudge is built from",
+    )
 
 
 class EvidencePackResponse(BaseModel):

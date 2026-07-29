@@ -24,6 +24,9 @@ from services.db import repair_case as _repair_case  # noqa: F401  (registers re
 from services.db import (  # noqa: F401  (registers the quote-evidence tables)
     repair_case_evidence as _repair_case_evidence,
 )
+from services.db import (  # noqa: F401  (registers repair_case_task_event)
+    repair_case_task as _repair_case_task,
+)
 from services.db.base import Base
 from services.engine.procedures import runs as _procedure_runs  # noqa: F401  (registers run tables)
 from services.engine.procedures import (  # noqa: F401  (registers schedule_states)
