@@ -37,6 +37,8 @@ from services.api.models.cases import (
     AddJustificationRequest,
     CaseListResponse,
     CaseResponse,
+    CloseOutRequest,
+    CloseOutResponse,
     EvidencePackResponse,
     FlipTaskRequest,
     JustificationResponse,
@@ -47,6 +49,11 @@ from services.api.models.cases import (
 )
 from services.db.evidence_pack import load_evidence_pack
 from services.db.repair_case import CASE_STATUS_OPEN, WORK_TYPES, RepairCase
+from services.db.repair_case_closeout import (
+    RepairCaseCloseout,
+    RepairCaseOrderNumber,
+    allocate_repair_order_no,
+)
 from services.db.repair_case_evidence import RepairCaseJustification, RepairCaseQuote
 from services.db.repair_case_task import TASK_STATUSES, RepairCaseTaskEvent
 from services.db.session import get_session
@@ -512,3 +519,109 @@ async def get_evidence_pack(
         quotes=[_quote_response(q) for q in quotes],
         justifications=[_justification_response(j) for j in justifications],
     )
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0096 Step 8 — the close-out record (AC-9's source)
+# --------------------------------------------------------------------------- #
+
+
+def _closeout_response(
+    closeout: RepairCaseCloseout, order: RepairCaseOrderNumber
+) -> CloseOutResponse:
+    return CloseOutResponse(
+        case_id=closeout.case_id,
+        repair_order_no=order.repair_order_no,
+        tax_invoice_no=closeout.tax_invoice_no,
+        amount_pre_vat_thb=closeout.amount_pre_vat_thb,
+        vat_thb=closeout.vat_thb,
+        total_thb=closeout.total_thb,
+        entered_by=closeout.entered_by,
+        entered_at=closeout.entered_at,
+    )
+
+
+async def _latest_closeout(session: AsyncSession, case_id: str) -> RepairCaseCloseout | None:
+    """The newest close-out keying for a case, or None.
+
+    Newest wins because the table is append-only: a correction is a new row, and
+    every consumer — this endpoint, the month-end export — must agree on which row
+    is current. One query in one place is how they stay agreed.
+    """
+    return (
+        (
+            await session.execute(
+                select(RepairCaseCloseout)
+                .where(RepairCaseCloseout.case_id == case_id)
+                .order_by(RepairCaseCloseout.entered_at.desc())
+                .limit(1)
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+
+@router.post("/{case_id}/closeout", response_model=CloseOutResponse, status_code=201)
+async def key_closeout(
+    case_id: str,
+    req: CloseOutRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    auth: Annotated[AuthContext, Depends(get_current_principal)],
+) -> CloseOutResponse:
+    """Key the ปิดงาน paperwork and return the case's repair-order number.
+
+    **This does not flip the ``close_case`` checklist item, on purpose.** AC-7's
+    storage model is actor-plus-timestamp per human flip; a system-generated flip
+    would put the server's word in a slot that exists to record a person's. เมย์
+    keys the paperwork here and flips the item there — two acts, two rows, both
+    attributable. A UI is free to issue both calls behind one button.
+
+    **The totals must agree.** ``total`` that does not equal pre-VAT + VAT is
+    refused rather than stored: at this point เมย์ still has the invoice in her
+    hand, and the alternative is discovering the discrepancy at month end against
+    Express, where the paper is a filing cabinet away. If real invoices turn out to
+    carry rounding adjustments, this comparison is the one place to relax.
+    """
+    await _load(session, case_id)
+
+    expected_total = req.amount_pre_vat_thb + (req.vat_thb or Decimal("0"))
+    if req.total_thb != expected_total:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"total_thb {req.total_thb} does not equal amount_pre_vat_thb "
+                f"{req.amount_pre_vat_thb} + vat_thb {req.vat_thb or Decimal('0')} "
+                f"= {expected_total}"
+            ),
+        )
+
+    now = datetime.now(UTC)
+    order = await allocate_repair_order_no(session, case_id=case_id, year=now.year, now=now)
+    closeout = RepairCaseCloseout(
+        closeout_id=f"closeout-{uuid.uuid4().hex[:12]}",
+        case_id=case_id,
+        tax_invoice_no=(req.tax_invoice_no or None),
+        amount_pre_vat_thb=req.amount_pre_vat_thb,
+        vat_thb=req.vat_thb,
+        total_thb=req.total_thb,
+        entered_by=auth.person_id or (req.entered_by or "").strip() or _UNATTRIBUTED,
+        entered_at=now,
+    )
+    session.add(closeout)
+    await session.commit()
+    return _closeout_response(closeout, order)
+
+
+@router.get("/{case_id}/closeout", response_model=CloseOutResponse)
+async def get_closeout(
+    case_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> CloseOutResponse:
+    """The case's current close-out — the latest keying, with its order number."""
+    await _load(session, case_id)
+    closeout = await _latest_closeout(session, case_id)
+    order = await session.get(RepairCaseOrderNumber, case_id)
+    if closeout is None or order is None:
+        raise HTTPException(status_code=404, detail=f"case '{case_id}' has no close-out yet")
+    return _closeout_response(closeout, order)
