@@ -2514,3 +2514,55 @@ dropped in favour of section headings — one had already rotted onto an unrelat
 > paragraph is annotated rather than rewritten because it correctly records
 > what s182 knew at its reconcile.]_ Merge-commit re-run performed;
 > `git diff 6726b69 HEAD` = **0 bytes**.
+
+<!-- Current-Focus block rotated out of docs/STATUS.md by the s189 reconcile (R2: the 4-most-recent-session window; the byte ceiling was the binding constraint, not the block count) -->
+> **Session 184→185, 2026-07-28 (head_commit `5d64a7d` → `760ceed`) — the arc
+> where the fleet partner's 18 discovery answers became governance before any
+> code moved. Two PRs merged (#948, #949), 0 open: **ADR-0034 "governed
+> exception family" ACCEPTED** and **PLAN-0096 "fleet flow completion
+> Phase 1, Lean KPI-first" landed as Draft**. Implementation NOT started — it
+> waits on Cray's explicit go.**
+>
+> **(s184 — discovery, two typed picks, and the dispatch.)** The design
+> partner reacted to the fleet-maintenance demo by asking for the flow to be
+> completed. Code built an 18-question discovery instrument plus a
+> partner-facing explainer; the partner answered all 18. Analysis plus Cray's
+> two typed picks framed the work — **Phase 1 = Lean KPI-first, no live
+> APIs**, and **E-3/E-4 route through a small ADR first** — then Code
+> grounded the fact-pack against `spec.py` and dispatched Cowork (dispatch
+> file under `.claude/handoffs/session-184/`). Cowork drafted both artifacts
+> in a CLOUD session (chat delivery; Cray hand-placed the files). Cowork's
+> SURFACED calls: **ONE deferred-ratification run-lifecycle primitive** with
+> per-mechanism doors; **E-3 as an evidence-alternative** (zero engine diff —
+> both dispatch forks rejected on consumer-level grounds); and three
+> eliminations — the emergency ฿-cap (partner-refuted at Q11), E-3 engine
+> work, and a generic exception registry.
+>
+> **(s185 — R2, then ratification.)** Code's R2 re-verified every line-exact
+> + symbol-anchored engine cite at `7b84fa2`; confirmed the fail-open
+> `three_quote: true` reshape default in the fleet `procedures.yaml` (the
+> default PLAN-0096 Step 4 retires); independently web-verified the LINE
+> Notify EOL (2025-03-31 → Messaging API via a LINE OA); and ran all 8
+> dispatch rejection criteria adversarially — none fired. Cray ratified
+> **ADR-0034 Accepted**: three mechanisms — **escalate-never-skip waiver**,
+> **evidence-alternative (E-3)**, the **deferred-ratification primitive
+> (E-2+E-4)** — with SoD + compliance staying NON-waivable; OQ-1 (ratifier =
+> `escalate_to` by construction), OQ-2 (refusal = export flag + LINE
+> reminder, no auto-reverse) and OQ-3 (row field `three_quote_basis`)
+> resolved per the in-file recommendations; and the boundary encoding
+> approved — ladder floors "0"/"5001"/"30001", per-truck ceiling default
+> 5001, so the demo ฿48k breach moves to the owner tier and Step 1 keeps a
+> synthetic ฿15k mid-ladder row.
+>
+> **State at close:** `main` `760ceed`. Offline gate on BOTH PRs: pytest
+> **3343 passed / 8 skipped** — run on each branch AND the re-synced `main` —
+> R7+R8 guards exit 0, ruff clean, CI gate PASS on both. Partner grounding
+> artifacts (gitignored):
+> `docs/research/private/2026-07-28-fleet-partner-discovery-instrument.md` +
+> `2026-07-28-fleet-partner-answers-analysis.md`. Next: PLAN-0096
+> implementation awaits Cray's explicit go — Steps 1–4 need no further gate,
+> Step 5 unblocked (ADR-0034 merged #948). **R2 rotation applied** — the
+> s181 + s180 Current-Focus blocks and the s175 Recent-Decisions row rotate
+> to `docs/status-archive/`.
+
+> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split.]_
