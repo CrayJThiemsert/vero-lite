@@ -31,7 +31,14 @@ reading is a claim, not a fact.
 
 ## A. One-off: load the last-service baseline
 
-Do this once per truck, at onboarding. Budget an hour with the folder.
+Do this once per truck, at onboarding. **The partner's own estimate: ~30–35 trucks,
+half a day to one day.** The numbers are his rather than ours, because an onboarding
+budget we invented would be the first thing to slip.
+
+Expect the folder to be scattered — the last-service odometer lives across แฟ้ม PM,
+ใบงานซ่อม and สมุดของช่าง — and expect **~10–15% of trucks to have no recoverable
+history at all**. That figure is his measurement, and it is a normal onboarding
+outcome, not a data-quality failure. The callout under step 1 is what those trucks do.
 
 1. Make a spreadsheet with exactly two columns:
 
@@ -45,7 +52,29 @@ Do this once per truck, at onboarding. Budget an hour with the folder.
      a plate the fleet does not have is rejected on its own row with a reason, and the
      rest of the file still imports.
    * `last_service_odometer_km` — the odometer **at the last interval service**, not
-     the interval and not today's reading. Thousands separators are fine.
+     the interval and not today's reading. Thousands separators are fine. *(The one
+     exception is a truck with no recoverable history — see the callout below.)*
+
+   > **A truck with no recoverable history: type today's reading.**
+   >
+   > When the last service cannot be found in any of the three places, put that truck's
+   > **current** odometer in `last_service_odometer_km`. The importer then computes
+   > `next_service_due_km = current + 100,000`, which is the partner's instruction:
+   > *"ให้เริ่มนับจากเลขไมล์ปัจจุบันได้เลย ดีกว่าปล่อยไม่มีข้อมูล"*.
+   >
+   > **Name the cost out loud, because the data cannot.** That truck's real service may
+   > already be near, and this baseline can push its first flag up to a full interval
+   > late — the calm path will look quiet for a truck that is not. Two consequences for
+   > เมย์, neither of which the system can carry for her:
+   >
+   > * **Keep the guessed plates on a list outside the system.** A `note` column in the
+   >   CSV will not do it: the importer understands exactly `plate`, `odometer_km` and
+   >   `last_service_odometer_km` (`KNOWN_COLUMNS`) and **drops every other column
+   >   silently**, so a marker typed into the file disappears without a warning.
+   > * **Give those trucks a physical check** at the next convenient stop rather than
+   >   waiting for the flag — and re-import a real `last_service_odometer_km` the moment
+   >   one turns up in a ใบงานซ่อม. A later confirmed row supersedes the guess (latest
+   >   confirmed wins, `services/db/pm_import.py`), so nothing has to be undone.
 
 2. Save as CSV (UTF-8) and upload:
 
