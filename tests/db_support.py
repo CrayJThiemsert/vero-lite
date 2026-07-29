@@ -50,6 +50,11 @@ from services.api.config import _derive_test_database_url, settings
 
 # Registration-only imports — keep in lockstep with ``alembic/env.py`` so that
 # ``Base.metadata`` in a test process always matches the migration head.
+# ENFORCED, no longer a convention: ``tools/check_alembic_model_registration.py``
+# (pre-commit) fails if a module declaring a ``__tablename__`` is missing from
+# either list. It was added after this block silently drifted from env.py for a
+# whole PR — the second time this exact class of gap shipped, the first being the
+# ``action_identity`` omission described above.
 from services.db import audit_log as _audit_log  # noqa: F401  (registers audit_log)
 from services.db import identity as _identity  # noqa: F401  (registers action_identity)
 from services.db import models as _models  # noqa: F401  (registers the ontology tables)
@@ -58,6 +63,9 @@ from services.db import pm_import as _pm_import  # noqa: F401  (registers pm_imp
 from services.db import repair_case as _repair_case  # noqa: F401  (registers repair_case)
 from services.db import (  # noqa: F401  (registers the quote-evidence tables)
     repair_case_evidence as _repair_case_evidence,
+)
+from services.db import (  # noqa: F401  (registers repair_case_task_event)
+    repair_case_task as _repair_case_task,
 )
 from services.engine.procedures import runs as _procedure_runs  # noqa: F401  (registers run tables)
 from services.engine.procedures import (  # noqa: F401  (registers schedule_states)
