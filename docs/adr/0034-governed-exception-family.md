@@ -1,6 +1,7 @@
 # ADR-0034: The governed exception family — three exception mechanisms (escalate-never-skip waiver · evidence-alternative · deferred ratification), grounded in four real customer instances; SoD and compliance stay non-waivable by type
 
 **Status:** Accepted — ratified by Cray 2026-07-28 (session 185, typed AskUserQuestion pick after Code R2); OQ-1 / OQ-2 / OQ-3 resolved per their in-file recommendations in the same pick
+**Amendment log:** 2026-07-29 — **RATIFIED (Cray, typed pick, session 187)**: **D3(3)'s precondition clause + the two D3(3)/D3(4) status-transition sentences ONLY** — the shipped mechanism is obligation/audit-based, not status-based. Full reasoning in §"D3 Amendment (2026-07-29)" (in place, after D3(6)). The ADR Status **stays Accepted**.
 **Date:** 2026-07-28
 **Deciders:** Jirachai Thiemsert (Cray) — ratifies. The ADR-first route and the Phase-1 = Lean-KPI-first scope are already LOCKED (Cray, typed AskUserQuestion picks, 2026-07-28, session 184); this ADR decides the *mechanism design* those picks routed here.
 **Related:** ADR-0025 (D2 typed AT-2 content home; **D3 bypass-unrepresentable** — this ADR EXTENDS the D3 waiver without weakening any unrepresentability; D4 prose-lint; D7 outcome amendment / PLAN-0087 criterion vocabulary), ADR-0026 (D4 live fail-closed run-checks the ratify path REUSES), ADR-0032 (D1 demo→pilot wedge + 1-KPI charter this family serves), ADR-016 (run/persistence layer being extended, not replaced), ADR-007 (approve→execute write gate, untouched), ADR-009 D1/D2 (Cowork drafts ungated; only Code commits), ADR-012 D4.3 (author≠reviewer), PLAN-0075 (SD-6(a): no authority tie names a principal who has not acted — the provisional path's honesty rule), PLAN-0086/0089/0090 (the fleet vertical), **PLAN-0096** (the consuming PLAN, drafted alongside). Substrate (verified on disk at `main`=`7b84fa2`): `services/engine/procedures/spec.py`, `runs.py`, `action_step.py`, `rule_gate.py`, `governance_step.py`, `verticals/fleet_maintenance/procedures.yaml`.
@@ -199,18 +200,41 @@ the dispatch. Every branch below is a named code path with an observable state.)
      principal who has not acted") applied honestly: the attested authority has not acted
      *in-system*. The attestation record is the routing-honest interim.
 3. **Ratification** — a new sibling gate driver `ratify_gated_step(session, run_id, step_id,
-   principal, ...)`: precondition `status == RESOLVED_PROVISIONAL` (idempotent BY STATE, mirroring
-   PLAN-0047 Step 3); RF-1; the ratifier must hold `ratify_by_role` — enforced by REUSING
+   principal, ...)`: **the precondition is the OBLIGATION, not the step status** — an outstanding
+   ratification obligation, `pending` or `overdue` per D3(6)'s pure `ratification_state()`
+   (`RatificationView.is_outstanding`) *(clause amended 2026-07-29 — Cray, typed pick,
+   session 187; see §"D3 Amendment (2026-07-29)". As originally accepted this clause read
+   `status == RESOLVED_PROVISIONAL`)*. The obligation condition is a **strict superset** of the
+   original — a step at `RESOLVED_PROVISIONAL` always carries an outstanding obligation — and it
+   preserves the original clause's stated intent verbatim (idempotent BY STATE, mirroring
+   PLAN-0047 Step 3): a second ratification finds the obligation no longer outstanding and is
+   refused. An `overdue` obligation is **still ratifiable** — overdue is urgency, not expiry; the
+   signature is owed either way, and refusing it late would strand the case in the one state
+   nobody can clear — which is what makes D3(6)'s completed-run promise real. RF-1; the ratifier
+   must hold `ratify_by_role` — enforced by REUSING
    `check_tier_authority` with the ratifier as acting principal (ADR-0026 D4 (iv)); live SoD check
-   (ratifier ≠ requester). On pass: `RESOLVED_PROVISIONAL → RESOLVED`, `ratified_at` +
-   `ratified_by` persisted, and the `governed_decision` tie is emitted NOW, naming the ratifier —
-   the record has caught up. A refusal is durably audited (`gate_refused`) before the error
+   (ratifier ≠ requester). On pass: `ratified_at` + `ratified_by` persisted, and the
+   `governed_decision` tie is emitted NOW, naming the ratifier — the record has caught up. The
+   status flip is **conditional**: only a step still parked at `RESOLVED_PROVISIONAL` flips
+   `RESOLVED_PROVISIONAL → RESOLVED`; a step the run has already advanced past stays `complete` —
+   walking it back would re-enter it into `_UNRESUMED_STATUSES`, making a finished step look like
+   the one the run is suspended at (`suspended_step_result` would resume it a second time or
+   refuse the run as inconsistent). The obligation lives on the audit block, so the status does
+   not need to carry it (D3(6)) *(transition sentence amended 2026-07-29 — same s187 ruling;
+   `action_step.py:1165-1172`; see §"D3 Amendment (2026-07-29)". As originally accepted the transition was
+   stated unconditionally)*. A refusal is durably audited (`gate_refused`) before the error
    propagates, mirroring the existing SoD/tier refusal audits.
 4. **Ratification refused** (the owner declines to ratify): recorded as a terminal
-   `ratification: {refused_at, refused_by}` disposition — the step flips to `RESOLVED` with the
-   refusal on the audit; nothing un-executes (the money is spent; the honest record is a named,
-   exported exception — fail-VISIBLE, not fail-closed, because closed is impossible after the
-   fact). Surfacing beyond the export is OQ-2.
+   `ratification: {refused_at, refused_by}` disposition riding the audit block — with the same
+   conditional status flip as D3(3): only a step still parked at `RESOLVED_PROVISIONAL` flips to
+   `RESOLVED`; a step the run has already advanced past stays `complete` with the refusal on the
+   audit *(sentence amended 2026-07-29 — same s187 ruling; the flip sits after the ratify/refuse
+   fork, `action_step.py:1151-1154`, `:1165-1172`, so it governs both dispositions; see
+   §"D3 Amendment (2026-07-29)". As originally accepted the flip was stated unconditionally)*;
+   nothing
+   un-executes (the money is spent; the honest record is a named, exported exception —
+   fail-VISIBLE, not fail-closed, because closed is impossible after the fact). Surfacing beyond
+   the export is OQ-2.
 5. **Resume:** `resume_run` advances a gate from `RESOLVED_PROVISIONAL` exactly as from `RESOLVED`
    (act-now semantics; the fulfill step proceeds). One named orchestrator change.
 6. **Overdue is COMPUTED, never stored:** a pure function
@@ -220,6 +244,44 @@ the dispatch. Every branch below is a named code path with an observable state.)
    would be a state mutation no principal performed, breaking the audit model. `PipelineRunStatus`
    is untouched — a run may complete while ratification is pending; the obligation rides the step
    audit and stays queryable on completed runs.
+
+### D3 Amendment (2026-07-29): obligation-based ratification precondition + conditional status flip
+
+> **Status of this amendment:** **RATIFIED (Cray, typed pick, session 187).** The ADR's overall
+> Status **stays Accepted**. **Scope: D3(3)'s precondition clause + the two D3(3)/D3(4)
+> status-transition sentences ONLY** — one amendment entry, both halves the same ruling's
+> consequence: the shipped mechanism is obligation/audit-based where the original text described a
+> status-based model. Amended **in place** (the ADR-0016 D2-Amendment in-place precedent; the
+> header log line per ADR-0022).
+
+**(a) Precondition:** the ratification precondition is **the OBLIGATION, not the step status** (an
+outstanding obligation, `pending` or `overdue` per D3(6)'s `ratification_state()`), replacing the
+literal `status == RESOLVED_PROVISIONAL`. Read literally, the original clause contradicted D3(6)
+in the only flow the window exists for: `resume_run` flips every resolved step to `complete` as it
+advances (`services/engine/procedures/persistence.py`), and in the fleet hero the step after
+`approve` is itself gated — so the run always resumes past `approve` within minutes against a
+seven-day authored window, making the owner's signature impossible in exactly the case D3(6)
+promises stays ratifiable. Found by BUILDING the mechanism (PLAN-0096 Step 5), not by review — the
+shipped code (`action_step.py::ratify_gated_step`: `ratification_state(...).is_outstanding`) and
+its discriminating guard test
+(`tests/services/db/test_ratification_matrix.py::test_the_obligation_survives_resume_and_is_ratifiable_afterwards`)
+predate this text catching up.
+
+**(b) Transition:** both sentences stated `RESOLVED_PROVISIONAL → RESOLVED` unconditionally; the
+shipped flip is **conditional** — only a step still parked at `RESOLVED_PROVISIONAL` flips, for
+ratification AND refusal alike (the flip sits after the disposition fork:
+`action_step.py:1151-1154`, `:1165-1172`); a step the run has already advanced past stays
+`complete`, because walking it back would re-enter `_UNRESUMED_STATUSES` and make a finished step
+look like the one the run is suspended at (`suspended_step_result` would resume it a second time
+or refuse the run as inconsistent) — the obligation rides the audit block, so the status need not
+carry it (D3(6)). An oracle-backed design decision (a non-vacuity probe recorded in the
+session-187 close report: restoring the unconditional flip reddens exactly one test), surfaced by
+Code R2 answering the residual flagged in half (a)'s drafting.
+
+The tie-emission rule, the refusal's nothing-un-executes / fail-VISIBLE semantics,
+D3(1)/(2)/(5)/(6), the taxonomy, and the Alternatives are untouched. *Amendment text drafted
+in-harness by `plan-drafter` (ADR-013 D1); Code R2-reviews + commits via a `docs/*` PR
+(ADR-009 D2) — drafter ≠ ratifier, separation intact.*
 
 ### D4 — E-3 routing: an evidence-alternative on the UNCHANGED quote gate (zero engine diff)
 
