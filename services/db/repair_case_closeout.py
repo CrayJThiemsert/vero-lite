@@ -200,10 +200,18 @@ async def allocate_repair_order_no(
     the series skip from 0006 to 0008?" actually cares about.
 
     **Fails closed under a race.** Two concurrent closes can compute the same
-    ``MAX(seq) + 1``; the ``(year, seq)`` unique constraint rejects the loser, whose
-    transaction rolls back and retries. This is deliberately not a lock: at this
-    fleet's volume contention is effectively zero, and a wrong-but-unique number is
-    a far worse failure than a retry.
+    ``MAX(seq) + 1``; a unique constraint rejects the loser, whose transaction rolls
+    back and retries. This is deliberately not a lock: at this fleet's volume
+    contention is effectively zero, and a wrong-but-unique number is a far worse
+    failure than a retry.
+
+    Two constraints stand behind that, and the loser dies on
+    ``uq_repair_case_order_number_no`` rather than on ``(year, seq)`` — they are checked
+    in declaration order and the formatted-number index is declared first. Either is a
+    correct fail-closed; naming the wrong one only misleads whoever next reads a
+    production error. Measured s195 by ``tests/services/db/test_concurrent_writer_races.py``,
+    which also records that the loser BLOCKS on the winner's uncommitted key before it
+    fails, so a caller sees latency and then an error, never a duplicate.
     """
     existing = await session.get(RepairCaseOrderNumber, case_id)
     if existing is not None:

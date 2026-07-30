@@ -179,18 +179,27 @@ async def import_pm_csv(
     return _batch_response(rows)
 
 
-async def _load_batch(session: AsyncSession, batch_id: str) -> list[PmImportRow]:
-    rows = list(
-        (
-            await session.execute(
-                select(PmImportRow)
-                .where(PmImportRow.batch_id == batch_id)
-                .order_by(PmImportRow.row_number)
-            )
-        )
-        .scalars()
-        .all()
+async def _load_batch(
+    session: AsyncSession, batch_id: str, *, for_update: bool = False
+) -> list[PmImportRow]:
+    """The batch's rows in spreadsheet order, optionally locked for a decision.
+
+    ``for_update`` is **opt-in per call site, and defaults off on purpose**. The row
+    lock belongs to the decide path, which reads a row's status and then writes it; the
+    review GET reads and returns, and locking rows there would both mean something the
+    endpoint does not intend and make a read contend with a decision in flight.
+
+    **Why the existing ``order_by`` is load-bearing once locking is on.** Two decisions
+    against the same batch acquire the same rows in the same order — ``row_number``,
+    which is stable — so they queue behind each other instead of deadlocking. A lock
+    added to an unordered select would have introduced that hazard silently.
+    """
+    statement = (
+        select(PmImportRow).where(PmImportRow.batch_id == batch_id).order_by(PmImportRow.row_number)
     )
+    if for_update:
+        statement = statement.with_for_update()
+    rows = list((await session.execute(statement)).scalars().all())
     if not rows:
         raise HTTPException(status_code=404, detail=f"pm import batch '{batch_id}' not found")
     return rows
@@ -213,7 +222,12 @@ async def decide_pm_import(
     session: Annotated[AsyncSession, Depends(get_session)],
 ) -> PmImportBatchResponse:
     """Confirm or decline proposed rows. Only a confirm makes a value visible."""
-    rows = await _load_batch(session, batch_id)
+    # Locked read: the status check below decides whether to write, so an unlocked read
+    # would let two concurrent deciders both observe `proposed` and both pass the guard,
+    # and the later commit would silently overwrite the earlier decision — stamping the
+    # loser's `decided_by` on a row the winner had already ruled on. The guard is a
+    # check-then-act, so the read it acts on has to be the locked one.
+    rows = await _load_batch(session, batch_id, for_update=True)
     by_id = {row.import_row_id: row for row in rows}
     actor = payload.decided_by or auth.person_id or _UNATTRIBUTED
     now = datetime.now(UTC)
@@ -228,7 +242,9 @@ async def decide_pm_import(
         if row.status != PM_STATUS_PROPOSED:
             # Idempotent BY STATE, like the gate drivers: a row already decided is not
             # re-decidable, so a replayed request cannot silently flip a rejection into
-            # a confirmation.
+            # a confirmation. Under the locked read above this now also holds for a
+            # CONCURRENT decision, not just a replayed one: the second decider blocks
+            # until the first commits, then re-reads the decided status and lands here.
             raise HTTPException(
                 status_code=409,
                 detail=(
