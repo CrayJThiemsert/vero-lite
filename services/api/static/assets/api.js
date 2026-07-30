@@ -120,6 +120,22 @@
     }
   };
 
+  /* ---- month-end export cover (PLAN-0096 Step 8 / AC-9): the KPI, rendered ----
+     DIRECT fetch, NO mock fallback, for the same reason as Hero and procedures:
+     the view binds to the shipped reader's cover shape, and a mocked copy would
+     put invented governance numbers on a screen someone is about to believe. An
+     honest "backend required" error offline is the correct behaviour.
+
+     Only the COVER is exposed here. The sibling `.csv` route is deliberately
+     absent: Cray declined a UI button (and a CLI) for the file at s192, and that
+     decision stands — see services/api/routers/exports.py. Adding a download
+     helper to this object would quietly reverse it. */
+  const Exports = {
+    cover: (year, month) =>
+      fetchDemoHero('/api/exports/repair-spend/' + encodeURIComponent(year) +
+        '/' + encodeURIComponent(month) + '/cover')
+  };
+
   /* ---- LLM control (PLAN-0018): MS-S1 status + warm/sleep ----
      These talk to the REAL backend only — NO mock fallback. A mocked
      "resident" would lie about MS-S1, and GET /llm/status already returns a
@@ -265,7 +281,7 @@
 
   window.OCT = window.OCT || {};
   Object.assign(window.OCT, {
-    State, API, Llm, Intake, Draft, Hero, Onto, onConnection, setConnection,
+    State, API, Llm, Intake, Draft, Hero, Exports, Onto, onConnection, setConnection,
     loadMeta, loadObjects, loadAllObjects, loadRecommendations
   });
 })();

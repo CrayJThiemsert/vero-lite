@@ -18,7 +18,12 @@
     // PLAN-0096 Step 2: the minute-1 capture surface. Built for a phone, not this
     // desk console — it lives here so the pilot has ONE app, but it is the only
     // view whose layout assumes a thumb.
-    I: { key: 'I', label: 'Open a Case', icon: 'spark', mod: () => O.ViewCase }
+    I: { key: 'I', label: 'Open a Case', icon: 'spark', mod: () => O.ViewCase },
+    // The month-end KPI (the export cover, rendered). Last because it is the
+    // END of the flow the other tabs walk: a case is opened in I, governed in
+    // F/G/H, and lands here as one row of a number a pilot charter is bound to.
+    // Read-only, and deliberately NOT a download control (s192).
+    J: { key: 'J', label: 'Month-End KPI', icon: 'receipt', mod: () => O.ViewExport }
   };
 
   let stripEl, metaChipsEl, tabsEl, containers = {};
