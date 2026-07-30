@@ -41,6 +41,7 @@ from _goal_gate import (  # noqa: E402
     GATE_ENFORCE_BLOCK_MARKER,
     GATE_PASSED_MARKER,
     GATE_RELEASED_MARKER,
+    GATE_WARN_MARKER,
     _divergence_decision,
     run_goal_gate,
 )
@@ -512,3 +513,198 @@ class TestEnforceFalseParity:
         assert detail.startswith("checks NOT green:")
         assert detail.endswith("(warn-only, stop fires)")
         assert _reload(gate_env).status == STATUS_ACTIVE
+
+
+class TestWarnPathTrail:
+    """PLAN-0097 AC-1…AC-5 — the warn tier's durable trail entry.
+
+    Every trail assertion reloads the goal FROM DISK via ``load_goal`` (the same read
+    path the next Stop's gate uses) rather than inspecting the in-memory ``Goal``. That
+    is the AC's own anti-vacuity clause and it is load-bearing: an in-memory assertion
+    survives deleting the ``save_goal`` call, so it would prove the record was computed
+    and never that it was persisted. ``record_evaluation`` / ``save_goal`` are never
+    mocked — they are the things under test.
+    """
+
+    def test_check_fail_site_records_a_warn_entry(self, gate_env: dict[str, Any]) -> None:
+        """AC-1 — the deterministic check-failure site records, and the Stop still fires."""
+        _seed(new_goal("g", [_check_fail("C1"), _judge("J1")], enforce=False), gate_env)
+
+        assert run_goal_gate({}) is None  # the ratified consequence: never a block
+
+        reloaded = _reload(gate_env)
+        assert reloaded.status == STATUS_ACTIVE
+        entry = reloaded.evaluations[-1]
+        assert entry.evaluator == GATE_WARN_MARKER
+        assert entry.deterministic == {"C1": CHECK_FAIL}
+        assert entry.fingerprint == "fp-A"
+        assert entry.detail.startswith("checks NOT green:")  # SD-2
+        assert [e for e, _ in gate_env["pings"]] == ["warn"]
+
+    def test_judge_residue_site_records_a_warn_entry(self, gate_env: dict[str, Any]) -> None:
+        """AC-2(a) — checks green, a seeded FAIL verdict at the pinned fingerprint."""
+        goal = new_goal("g", [_check_ok("C1"), _judge("J1")], enforce=False)
+        record_evaluation(
+            goal,
+            Evaluation(
+                ts="t1",
+                fingerprint="fp-A",
+                judged={"J1": {"verdict": "FAIL", "reason": "OQ-2 unresolved"}},
+                evaluator=EVALUATOR_NAME,
+            ),
+        )
+        _seed(goal, gate_env)
+
+        assert run_goal_gate({}) is None
+
+        entry = _reload(gate_env).evaluations[-1]
+        assert entry.evaluator == GATE_WARN_MARKER
+        assert entry.detail == "judge residue not PASS and no work since last evaluation"
+
+    def test_drift_site_records_a_warn_entry(self, gate_env: dict[str, Any]) -> None:
+        """AC-2(b) — an enforce:false DIVERGENT drift, the other :565 arrival."""
+        # DIVERGENT with zero ratifying amendments => drift, not redirect (SD-D).
+        _seed(_goal_with_divergence(0, 0, enforce=False), gate_env)
+
+        assert run_goal_gate({}) is None
+
+        entry = _reload(gate_env).evaluations[-1]
+        assert entry.evaluator == GATE_WARN_MARKER
+        assert "DIVERGES" in entry.detail
+
+    def test_a_repeat_warn_at_the_same_fingerprint_is_deduped(
+        self, gate_env: dict[str, Any]
+    ) -> None:
+        """AC-4 (SD-3 = dedup) — one entry per distinct failing state, not per Stop.
+
+        Exact counts, never ``>= 1``: an at-least assertion would pass under the
+        always-append alternative Cray declined, so it could not tell the two designs
+        apart — which is the only thing this test exists to do.
+        """
+        _seed(new_goal("g", [_check_fail("C1")], enforce=False), gate_env)
+
+        assert run_goal_gate({}) is None
+        assert run_goal_gate({}) is None  # same failing state, same fingerprint
+        warns = [e for e in _reload(gate_env).evaluations if e.evaluator == GATE_WARN_MARKER]
+        assert len(warns) == 1
+
+        # A NEW failing state (the work moved) is a new observation and records again.
+        gate_env["monkeypatch"].setattr(_goal_gate, "work_fingerprint", lambda: "fp-B")
+        assert run_goal_gate({}) is None
+        warns = [e for e in _reload(gate_env).evaluations if e.evaluator == GATE_WARN_MARKER]
+        assert [w.fingerprint for w in warns] == ["fp-A", "fp-B"]
+
+    def test_an_empty_fingerprint_always_records(self, gate_env: dict[str, Any]) -> None:
+        """AC-4 tail — git failed, so two failing states are indistinguishable.
+
+        Dedup keys on the fingerprint; with ``""`` there is nothing to key on, and
+        collapsing two unrelated states into one entry would lose the evidence. Fails
+        TOWARD recording, mirroring ``work_fingerprint``'s fail-toward-evaluating.
+        """
+        gate_env["monkeypatch"].setattr(_goal_gate, "work_fingerprint", lambda: "")
+        _seed(new_goal("g", [_check_fail("C1")], enforce=False), gate_env)
+
+        assert run_goal_gate({}) is None
+        assert run_goal_gate({}) is None
+
+        warns = [e for e in _reload(gate_env).evaluations if e.evaluator == GATE_WARN_MARKER]
+        assert len(warns) == 2
+
+    def test_the_enforce_tier_writes_no_warn_entry(self, gate_env: dict[str, Any]) -> None:
+        """AC-6 — the annotation is fenced to the warn tier, asserted directly.
+
+        The PLAN expected mutation M6 (recording under BOTH tiers) to redden the
+        existing ladder tests. It does not: warn entries are invisible to
+        ``_last_decision_evaluation``, so the ladder still blocks-then-parks correctly
+        even when the enforce path is also annotated. That means the fence was an
+        UNTESTED property, and M6 would have passed silently. This asserts it as an
+        exact trail — the only shape that notices an extra entry.
+        """
+        _seed(new_goal("g", [_check_fail("C1")], enforce=True), gate_env)
+
+        directive = run_goal_gate({})
+
+        assert directive is not None and directive["decision"] == "block"
+        entries = _reload(gate_env).evaluations
+        assert [e.evaluator for e in entries] == [GATE_ENFORCE_BLOCK_MARKER]
+
+    def test_the_record_survives_a_dead_telegram_channel(self, gate_env: dict[str, Any]) -> None:
+        """AC-5 — the branch's defect in miniature: the record must not ride on the ping.
+
+        ``_ping_telegram`` is deliberately UN-monkeypatched here, pointed at a script
+        that does not exist, so the real best-effort function runs and silently no-ops.
+        That silent no-op is exactly what made this branch leave no evidence at all.
+        """
+        gate_env["monkeypatch"].undo()  # restore the real _ping_telegram
+        gate_env["monkeypatch"].setenv("CLAUDE_GOAL_PATH", str(gate_env["goal_file"]))
+        gate_env["monkeypatch"].setenv("CLAUDE_TELEGRAM_SCRIPT", "/nonexistent/telegram.sh")
+        gate_env["monkeypatch"].setattr(_goal_gate, "work_fingerprint", lambda: "fp-A")
+        _seed(new_goal("g", [_check_fail("C1")], enforce=False), gate_env)
+
+        assert run_goal_gate({}) is None
+
+        entry = _reload(gate_env).evaluations[-1]
+        assert entry.evaluator == GATE_WARN_MARKER
+
+
+class TestWarnEntriesAreInvisibleToDecisions:
+    """PLAN-0097 AC-3 — the "purely additive" claim, as an invariant the suite proves.
+
+    Both corners were UNTESTED before this PLAN; their pre-change behaviour was derived
+    by code reading, and these tests are what convert that reading into a check.
+    """
+
+    def test_a_warn_entry_does_not_suppress_the_evaluator_dispatch(
+        self, gate_env: dict[str, Any]
+    ) -> None:
+        """Corner (i), the flake corner.
+
+        A red check writes a warn entry at fp-A. The check then goes green (a flake)
+        while the judge is still unresolved and the fingerprint has NOT moved. The gate
+        must still DISPATCH — as it does today, where an empty trail makes
+        ``work_changed`` true. If the warn entry were visible to that read, its matching
+        fingerprint would say "no new work" and the evaluator would never be asked.
+        """
+        goal = new_goal("g", [_check_fail("C1"), _judge("J1")], enforce=False)
+        _seed(goal, gate_env)
+        assert run_goal_gate({}) is None
+        assert _reload(gate_env).evaluations[-1].evaluator == GATE_WARN_MARKER
+
+        # Same fingerprint, but the check now passes — only the judge is outstanding.
+        healed = _reload(gate_env)
+        healed.criteria = [_check_ok("C1"), _judge("J1")]
+        _seed(healed, gate_env)
+
+        directive = run_goal_gate({})
+        assert directive is not None and directive["decision"] == "block"
+        assert _reload(gate_env).evaluations[-1].evaluator == GATE_DISPATCH_MARKER
+
+    def test_a_warn_interlude_does_not_earn_a_second_enforce_block(
+        self, gate_env: dict[str, Any]
+    ) -> None:
+        """Corner (ii), the enforce-flip corner.
+
+        Trail is ``[enforce_block, warn]`` — a block was issued, then the goal ran a
+        while under ``enforce: false``. Flip enforce back on with the state still
+        failing: the ladder must PARK, because a block was already issued for this
+        state. A visible warn entry would hide the block marker from
+        ``_last_was_enforce_block`` and issue a SECOND block, which the ladder's
+        at-most-once bound forbids.
+        """
+        goal = new_goal("g", [_check_fail("C1")], enforce=False)
+        record_evaluation(
+            goal,
+            Evaluation(ts="t1", fingerprint="fp-A", evaluator=GATE_ENFORCE_BLOCK_MARKER),
+        )
+        _seed(goal, gate_env)
+        assert run_goal_gate({}) is None  # warn interlude lands on top of the block marker
+        assert _reload(gate_env).evaluations[-1].evaluator == GATE_WARN_MARKER
+
+        flipped = _reload(gate_env)
+        flipped.enforce = True
+        _seed(flipped, gate_env)
+
+        assert run_goal_gate({}) is None  # parked, NOT a second block
+        reloaded = _reload(gate_env)
+        assert reloaded.status == STATUS_BLOCKED_PENDING_HUMAN
+        assert reloaded.evaluations[-1].evaluator == GATE_BLOCKED_MARKER

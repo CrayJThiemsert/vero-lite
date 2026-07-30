@@ -198,6 +198,15 @@ class Evaluation:
     non-monotonic) and ``divergence`` (the evaluator's V2-D2 anchor-alignment
     verdict — ``{"verdict": "ALIGNED"|"DIVERGENT", "reason": ...}``). Both
     default empty, so a v1 evaluation round-trips unchanged in meaning.
+
+    ``detail`` (PLAN-0097 SD-2, Cray-ratified s195) is the human-readable summary
+    of what the writer observed — the same string the Telegram ping carries. It is
+    FIRST-CLASS for the reason the module docstring gives: an unknown field on disk
+    is silently stripped by the next ``save_goal`` rewrite, so an annotation that
+    only some writers know about would evaporate. Emitted only when non-empty (the
+    ``divergence`` precedent) and tolerated when absent, so no ``schema_version``
+    bump is owed: a stale reader drops it on rewrite, which loses an annotation and
+    never a consequence.
     """
 
     ts: str
@@ -207,6 +216,7 @@ class Evaluation:
     evaluator: str = ""
     amendments_seen: int = 0
     divergence: dict[str, str] | None = None
+    detail: str = ""
 
     def to_json(self) -> dict[str, Any]:
         out: dict[str, Any] = {
@@ -219,6 +229,8 @@ class Evaluation:
         }
         if self.divergence is not None:
             out["divergence"] = dict(self.divergence)
+        if self.detail:
+            out["detail"] = self.detail
         return out
 
     @classmethod
@@ -249,6 +261,7 @@ class Evaluation:
             evaluator=str(data.get("evaluator", "")),
             amendments_seen=amendments_seen,
             divergence=divergence,
+            detail=str(data.get("detail", "")),
         )
 
 

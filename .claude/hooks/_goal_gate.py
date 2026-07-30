@@ -29,7 +29,8 @@ dispatch fires only when every check passes and judge residue remains):
    (fingerprint mismatch) -> append a dispatch-marker trail entry + return
    the dispatch directive (counts toward the same chain-cap in M1).
 5. Check failure, judge FAIL verdict, or fingerprint unchanged after a
-   verdict -> **warn** (``enforce: false`` — D5 warn-only, the stop fires) OR
+   verdict -> **warn + annotate** (``enforce: false`` — D5: append a
+   warn-marker trail entry, ping, and let the stop fire) OR
    the **enforce ladder** (``enforce: true`` — PLAN-0069 L-3: one bounded block,
    then on re-Stop still failing park at ``blocked-pending-human``).
 6. Fingerprint unchanged after an **unanswered dispatch-marker** (the spawn
@@ -40,8 +41,16 @@ dispatch fires only when every check passes and judge residue remains):
 
 **enforce parity (PLAN-0069 AC-3):** every v2 consequence is gated behind
 ``if goal.enforce``; an ``enforce: false`` goal takes the EXACT v1 branches, so
-its return value / status transitions / trail markers / Telegram events are
-identical to v1.
+its return value / status transitions / Telegram events are identical to v1.
+
+*Trail markers are the one exception, and deliberately so (PLAN-0097).* The warn
+tier now appends a ``_goal_gate:warn`` entry that v1 did not write — what AC-3
+protects is the ENFORCE tier's consequences, not the annotation set, and the warn
+entry changes no consequence: it is excluded from every decision read
+(:func:`_last_decision_evaluation`), so the gate's behaviour is identical whether
+warn entries are present or stripped. Recording it is what D5's and V2-D1's
+ratified "warn **+ annotate**" wording asks for; the silence was an artifact of the
+spec sketch, not of the Decision.
 
 **Work-state fingerprint** (the re-dispatch guard): sha256 over
 ``git rev-parse HEAD`` + ``git status --porcelain`` (16 hex chars) — changes
@@ -104,6 +113,10 @@ GATE_RELEASED_MARKER = "_goal_gate:released"
 # V2 (PLAN-0069): the enforce ladder's two rungs.
 GATE_ENFORCE_BLOCK_MARKER = "_goal_gate:enforce_block"
 GATE_BLOCKED_MARKER = "_goal_gate:blocked_pending_human"
+# PLAN-0097: the warn tier's annotation. Named for the Telegram event label it
+# accompanies, so one grep finds both signals of the same event. UNLIKE every other
+# marker here this one records no DECISION — see _last_decision_evaluation.
+GATE_WARN_MARKER = "_goal_gate:warn"
 EVALUATOR_NAME = "goal-evaluator"
 
 PASS_VERDICT = "PASS"  # noqa: S105 — verdict label, not a credential
@@ -369,14 +382,40 @@ def _dispatch_directive(
     }
 
 
+def _last_decision_evaluation(goal: Goal) -> Evaluation | None:
+    """The last trail entry that recorded a DECISION — warn annotations skipped.
+
+    PLAN-0097 Design 4, and the reason the warn entry can be called "purely
+    additive" as an invariant rather than a hope. Every other marker in this file
+    records something the gate later reads back to decide what to do; a warn entry
+    records only that a failing state was observed while the Stop was let through.
+    Feeding one into those reads would change decisions in two corners:
+
+    * the flake corner — a warn entry at fingerprint X would make the next Stop
+      see ``fingerprint == last.fingerprint`` and skip the evaluator dispatch that
+      an empty-trail read performs today;
+    * the enforce-flip corner — a warn interlude between an enforce block and the
+      next failing Stop would hide the block marker from :func:`_last_was_enforce_block`
+      and issue a SECOND block instead of parking.
+
+    Both are consequence changes, which this PLAN must not make. Only the dedup
+    guard in :func:`_record_warn` reads warn entries, and it reads the raw last
+    entry on purpose.
+    """
+    for entry in reversed(goal.evaluations):
+        if entry.evaluator != GATE_WARN_MARKER:
+            return entry
+    return None
+
+
 def _last_was_enforce_block(goal: Goal) -> bool:
-    """True iff the last trail entry is the enforce-block marker — i.e. this
+    """True iff the last DECISION entry is the enforce-block marker — i.e. this
     Stop is the re-Stop AFTER a block was already issued for a failing state.
     The ladder's bound: a block is issued at most once per failing state (the
     marker is the last entry only until new work re-dispatches), so the next
     failing Stop parks instead of re-blocking (AC-5: never blocks twice for the
     same state)."""
-    last = goal.last_evaluation()
+    last = _last_decision_evaluation(goal)
     return last is not None and last.evaluator == GATE_ENFORCE_BLOCK_MARKER
 
 
@@ -430,18 +469,61 @@ def _park_blocked_pending_human(
     )
 
 
+def _record_warn(goal: Goal, fingerprint: str, deterministic: dict[str, str], detail: str) -> None:
+    """Annotate the trail with a warn-tier observation (PLAN-0097).
+
+    **Deduped per failing state** (SD-3, Cray-ratified s195): a repeat warn at the
+    same non-empty fingerprint is skipped, mirroring the ladder's at-most-once-per-state
+    bound, so a Stop-looping session cannot flood the trail. An EMPTY fingerprint
+    always records — ``work_fingerprint()`` returns ``""`` when git fails, and two
+    unrelated failing states would otherwise collapse into one entry; failing toward
+    recording mirrors its fail-toward-evaluating contract.
+
+    Reads the RAW last entry rather than :func:`_last_decision_evaluation` — this is
+    the one place warn entries are legitimately visible, because dedup is about the
+    annotations themselves and not about any decision.
+    """
+    last = goal.last_evaluation()
+    if (
+        last is not None
+        and last.evaluator == GATE_WARN_MARKER
+        and fingerprint
+        and last.fingerprint == fingerprint
+    ):
+        return
+    record_evaluation(
+        goal,
+        Evaluation(
+            ts=_now_iso(),
+            fingerprint=fingerprint,
+            deterministic=deterministic,
+            amendments_seen=len(goal.amendments),
+            evaluator=GATE_WARN_MARKER,
+            detail=detail,
+        ),
+    )
+    save_goal(goal)
+
+
 def _failing_consequence(
     goal: Goal, fingerprint: str, deterministic: dict[str, str], detail: str
 ) -> dict[str, Any] | None:
     """The consequence for a failing state (a check failed, OR judge residue /
     unredirected drift with no new work): the enforce ladder (block once via
-    rung 1, then park via rung 2) under ``enforce: true``, else warn-only (v1 —
-    the stop fires). Returns a block directive, or ``None``."""
+    rung 1, then park via rung 2) under ``enforce: true``, else warn + annotate
+    (v1 — the stop fires). Returns a block directive, or ``None``.
+
+    The warn arm records BEFORE it pings, for the reason the arm exists: the ping is
+    best-effort and no-ops silently when the script is absent, so a record that ran
+    after it would inherit that fragility. This is also the sole warn route, so both
+    call sites are covered by construction.
+    """
     if goal.enforce:
         if _last_was_enforce_block(goal):
             _park_blocked_pending_human(goal, fingerprint, deterministic, detail)
             return None
         return _issue_enforce_block(goal, fingerprint, deterministic, detail)
+    _record_warn(goal, fingerprint, deterministic, detail)
     _ping_telegram("warn", goal.goal, f"{detail} (warn-only, stop fires)")
     return None
 
@@ -465,7 +547,10 @@ def run_goal_gate(payload: dict[str, Any]) -> dict[str, Any] | None:
     checks_all_pass = all(v == CHECK_PASS for v in deterministic.values())
     judges_all_pass = _judges_all_pass(goal)
     fingerprint = work_fingerprint()
-    last = goal.last_evaluation()
+    # Warn annotations are invisible here by design (PLAN-0097 Design 4): they record
+    # no decision, so letting one answer "what happened last?" would change whether a
+    # dispatch fires. See _last_decision_evaluation for the two corners.
+    last = _last_decision_evaluation(goal)
 
     # Step 3 — everything green: goal passed. (drift is only assessable once a
     # divergence verdict exists; a "drift" reading here means judge residue is
