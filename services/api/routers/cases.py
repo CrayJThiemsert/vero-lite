@@ -55,6 +55,7 @@ from services.db.repair_case_closeout import (
     RepairCaseCloseout,
     RepairCaseOrderNumber,
     allocate_repair_order_no,
+    latest_closeout,
 )
 from services.db.repair_case_evidence import (
     RepairCaseAcceptedQuote,
@@ -710,27 +711,6 @@ def _closeout_response(
     )
 
 
-async def _latest_closeout(session: AsyncSession, case_id: str) -> RepairCaseCloseout | None:
-    """The newest close-out keying for a case, or None.
-
-    Newest wins because the table is append-only: a correction is a new row, and
-    every consumer — this endpoint, the month-end export — must agree on which row
-    is current. One query in one place is how they stay agreed.
-    """
-    return (
-        (
-            await session.execute(
-                select(RepairCaseCloseout)
-                .where(RepairCaseCloseout.case_id == case_id)
-                .order_by(RepairCaseCloseout.entered_at.desc())
-                .limit(1)
-            )
-        )
-        .scalars()
-        .first()
-    )
-
-
 @router.post("/{case_id}/closeout", response_model=CloseOutResponse, status_code=201)
 async def key_closeout(
     case_id: str,
@@ -808,7 +788,7 @@ async def get_closeout(
 ) -> CloseOutResponse:
     """The case's current close-out — the latest keying, with its order number."""
     await _load(session, case_id)
-    closeout = await _latest_closeout(session, case_id)
+    closeout = await latest_closeout(session, case_id)
     order = await session.get(RepairCaseOrderNumber, case_id)
     if closeout is None or order is None:
         raise HTTPException(status_code=404, detail=f"case '{case_id}' has no close-out yet")
