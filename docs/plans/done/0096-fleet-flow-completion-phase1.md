@@ -1,6 +1,6 @@
 # PLAN-0096: Fleet flow completion — Phase 1, Lean KPI-first
 
-**Status:** Draft
+**Status:** COMPLETE — 12/12 ACs, archived 2026-07-30 (session 193)
 **Owner:** Claude Code (execution); Cowork drafted (ADR-009 D1, s184 dispatch)
 **Created:** 2026-07-28
 **Related ADRs:** ADR-0034 (governed exception family — Proposed; precondition for Step 5), ADR-0025 (typed AT-2 content + prose-lint), ADR-0026 (live run-checks), ADR-0032 (D1 pilot wedge + 1-KPI charter), ADR-016/ADR-007 (run + write-gate substrate)
@@ -18,6 +18,25 @@
 > `plan-drafter` (s188 dispatch; Code fact-pack verified at `main`=`98744bd`). Recording edit,
 > not a design pass: original text is preserved or explicitly superseded in marked blocks. Code
 > R2s + commits via PR (ADR-009 D2). Status stays **Draft**.
+>
+> **CLOSEOUT 2026-07-30 (session 193) — 12/12, archived.** Step 8's build-order item 5
+> shipped as #982–#986 and Step 10's AC-12 sign-off was written the same session. The
+> AC checkboxes below were ticked in ONE pass at closeout, and that is worth stating
+> plainly: **the tick column was never maintained during the build.** Every AC read
+> `- [ ]` at closeout, including ones shipped seven sessions earlier, while the real
+> record lived in the prose ("**Shipped — PR #975, merged as `d781683`**") and in
+> `docs/STATUS.md`. So a later reader must not reconstruct the delivery order from
+> these ticks — they are all dated 2026-07-30. Each is annotated below with what
+> actually discharged it.
+>
+> **The sign-off itself is NOT in this file.** AC-12's four coverage matrices, seven
+> named residual risks and confidence statement are in
+> `.claude/handoffs/session-193/2026-07-30-2140-code-session193-CLOSE-plan0096-step8-COMPLETE-step10-AC12-signoff.md`
+> — a gitignored working note, per the handoff convention. The residual risks that
+> outlive this PLAN are carried forward into `docs/STATUS.md` rather than left only
+> there; **RR-1** (per-baht approver→case attribution is inference, not data, because
+> `GovernedDecision` carries no timestamp or entity key under `extra="forbid"`) is the
+> ceiling on what AC-9's KPI can honestly claim and is the one to re-read first.
 
 ## Goal
 
@@ -47,21 +66,41 @@ the gate/waiver under test (the LLM stub per CLAUDE.md §8 is the only permitted
 transport/clock injection); for each AC, construct the counterexample — if the test still passes
 with the behavior silently broken, fix the test first. TODO/`pass` stubs count as vacuous.
 
-- [ ] **AC-1 — Real ladder + boundary semantics.** Fleet `doa_tier` floors encode the partner's
+**What actually discharged each AC (closeout 2026-07-30, session 193).** The ticks below
+all carry today's date because the column was never maintained during the build; this
+table is the real delivery record, and the caveats are not decoration — they are the
+part a reader skimming twelve ticks would otherwise miss.
+
+| AC | Discharged by | Caveat |
+|---|---|---|
+| AC-1 | s186 — real partner ladder + boundary tests (#951–#961) | — |
+| AC-2 | s186 — cross-vertical config-hash tripwire | — |
+| AC-3 | s186 — `repair_case` capture, alembic `0013` | — |
+| AC-4 | s186 — quote evidence pack, alembic `0014`; the fail-open `three_quote: true` default KILLED | **RR-3**: the concurrency-race row is a same-instant-tie test, not a concurrent-writer race |
+| AC-5 | s186 — E-2 ratification, incl. the optimistic-lock test | strongest matrix of the four; adversarial-bypass four deep |
+| AC-6 | s186 — only-when-supplied schema discipline | — |
+| AC-7 | s189 — thin task-chain, alembic `0016` (#965) | — |
+| AC-8 | s186 + s189 — LINE notify seam, six events; **outbound-only and DISARMED** | never armed against the live channel |
+| AC-9 | **s193** — export + KPI + cover, #982–#986; bar demonstrated on the real path (`เจ๊หงส์` 100 → 0) | ศูนย์ต้นทุน ships EMPTY (partner granularity unanswered — the PLAN pre-authorises it); **RR-3** no concurrency test |
+| AC-10 | s186 — PM import measured-then-confirmed, alembic `0015` + ontology overlay | **RR-3**: last-write-ordering, not a concurrent race |
+| AC-11 | the suite's existing no-live-model offline guard; `host_state` is the explicit opt-OUT marker | — |
+| AC-12 | **s193** — four matrices, seven residual risks, confidence statement (session-193 handoff) | the sign-off records RR-1 as the ceiling on AC-9's KPI claim |
+
+- [x] **AC-1 — Real ladder + boundary semantics.** Fleet `doa_tier` floors encode the partner's
   inclusive-ceiling phrasing (Q9: ≤5,000 ต้อม / 5,001–30,000 วิรัช / >30,000 owner) with the
   engine's inclusive floors: `"0"` / `"5001"` / `"30001"` THB; per-truck `minor_repair_ceiling_thb`
   default 5001 (breach ⇔ quote > ฿5,000). Boundary oracle: 5,000 → no governed run; 5,001 → วิรัช
   tier; 30,000 → วิรัช tier; 30,001 → owner tier. `GUESS — รอแก้` stamps for ladder + ceilings
   removed; provenance comments cite the REAL partner answers. Counterexample: floors `"5000"`/`"30000"`
   would route 5,000/30,000 one tier too high — the boundary tests fail.
-- [ ] **AC-2 — No cross-vertical drift.** Resolved governance config hashes of procurement,
+- [x] **AC-2 — No cross-vertical drift.** Resolved governance config hashes of procurement,
   supply_chain, building_materials, energy, aquaculture are BYTE-IDENTICAL across the whole
   Phase-1 diff (fixture hash-equality test). Counterexample: an always-serialized new `None` field
   (ADR-0034 D6) flips every hash — this test is the tripwire.
-- [ ] **AC-3 — Case capture from minute 1.** A mobile-first, human-opened case (truck pick +
+- [x] **AC-3 — Case capture from minute 1.** A mobile-first, human-opened case (truck pick +
   photo attach, zero further required typing) exists; the governed run's intake row carries the
   `case_id` so evidence links end-to-end. No auto-detection path exists anywhere (Q1).
-- [ ] **AC-4 — Quote evidence pack + computed signal (E-1 + E-3).** Quotes attach as
+- [x] **AC-4 — Quote evidence pack + computed signal (E-1 + E-3).** Quotes attach as
   PDF / LINE-exported photo / photographed paper with vendor + typed amount; the pack computes the
   `compliance.three_quote` signal and stamps `three_quote_basis`. Decision matrix oracle (real
   `evaluate_compliance`, no mocks): (48,000; 1 quote; no justification) → **blocked**; (48,000; 3
@@ -70,7 +109,7 @@ with the behavior silently broken, fix the test first. TODO/`pass` stubs count a
   under_threshold vs 30,001 → quotes-required; **breach row with NO signal map → `RuleGateError`
   (fail closed)**. Counterexample: today's reshape `default three_quote: true` would pass the
   no-evidence case — that default is removed and the fail-closed test proves it.
-- [ ] **AC-5 — E-2 ratification state machine (ADR-0034 D3), full case-coverage matrix.** All of:
+- [x] **AC-5 — E-2 ratification state machine (ADR-0034 D3), full case-coverage matrix.** All of:
   happy (waiver-invoked provisional resolve → effects execute → `RESOLVED_PROVISIONAL` + audit
   ratification block, NO `governed_decision` tie → ratify by owner within window → `RESOLVED` +
   tie naming the ratifier); boundary (`due_at` edge, `window_days=1` minimum); fail-closed (no
@@ -82,11 +121,11 @@ with the behavior silently broken, fix the test first. TODO/`pass` stubs count a
   `resume_run` advances from `RESOLVED_PROVISIONAL`; `ratification_state(step, now)` returns
   pending/ratified/overdue/refused purely (injected `now`). Counterexample per the dispatch: if
   ratification were silently skipped, the tie-timing test and the overdue-computation test fail.
-- [ ] **AC-6 — Only-when-supplied schema discipline.** A waiver WITHOUT `ratification_window_days`
+- [x] **AC-6 — Only-when-supplied schema discipline.** A waiver WITHOUT `ratification_window_days`
   serializes byte-identically to the pre-change model (serialization + hash test), per ADR-0034
   D6. This is AC-2's schema-level twin; both must exist (one catches YAML drift, one catches
   model-serialization drift).
-- [ ] **AC-7 — Thin task-chain.** Post-approval checklist statuses on the case
+- [x] **AC-7 — Thin task-chain.** Post-approval checklist statuses on the case
   (แจ้งอู่ / รออะไหล่ / รถยก / รถถ่ายของ — set confirmed with partner, intake Q below) with
   actor + timestamp per flip; humans decide everything; a stale item triggers a LINE nudge
   (fake clock + stub transport oracle). No handler automation is added to `fulfill` (its receipt
@@ -116,7 +155,7 @@ with the behavior silently broken, fix the test first. TODO/`pass` stubs count a
   absorbed here. Context variants read `repair_case.work_type` (Decision 2, Step 6). The oracle
   refines accordingly: staleness fires per-item against ITS OWN SLA (fake clock), with both
   context variants each exercised.
-- [ ] **AC-8 — LINE notify surface (the ONE new outbound channel).** A single notify seam emits:
+- [x] **AC-8 — LINE notify surface (the ONE new outbound channel).** A single notify seam emits:
   approval-needed (gate suspended), ratification-due reminder, ratification-overdue,
   task-chain stale nudge, month-end-export ready. Transport is injected; the offline suite makes
   zero network calls (AC-11). Outbound only — no LINE inbound/bot.
@@ -127,7 +166,7 @@ with the behavior silently broken, fix the test first. TODO/`pass` stubs count a
   (`services/notify/line.py:65-74`) whose docstring requires precisely this decision — a named
   producer and a named recipient rule — before a sixth member may exist; that decision is now
   made. The original five events and their role-based routing stand unchanged.
-- [ ] **AC-9 — Month-end export + KPI (the payoff moment).** An Express-entry-shaped monthly
+- [x] **AC-9 — Month-end export + KPI (the payoff moment).** An Express-entry-shaped monthly
   file: one row per governed repair spend with case, truck, date, vendor, amount, approver (from
   `governed_decision`), `three_quote_basis`, exception labels (emergency
   provisional/ratified/overdue/refused; sole-source), justification ref, run id. KPI = % of rows
@@ -160,18 +199,18 @@ with the behavior silently broken, fix the test first. TODO/`pass` stubs count a
   real spend. (2) The governed ฿ amount + vendor provenance now exist — the accepted quote
   (ใบที่ตกลง, alembic `0019`) — but the gate does not read it yet. Both facts, Cray's typed
   decisions, and the corrected build order: Step 8's session-191 amendment block.
-- [ ] **AC-10 — PM real data (measured + confirmed).** Wialon **CSV export** import proposes
+- [x] **AC-10 — PM real data (measured + confirmed).** Wialon **CSV export** import proposes
   odometer values; a human confirm gates any `Truck` update (unconfirmed rows never touch the
   ontology — Q4's imprecision); mangled CSV fails closed. Last-service odometers load manually
   from the paper PM folder as a documented **onboarding task** (runbook step, not code beyond the
   import); `next_service_due_km` computed absolute at load (last_service + 100,000) by the import
   service — the YAML's no-arithmetic constraint is why it must be stored absolute. Kills the
   last-service `GUESS — รอแก้` stamps.
-- [ ] **AC-11 — No live API anywhere.** The full suite passes with no network access: Wialon =
+- [x] **AC-11 — No live API anywhere.** The full suite passes with no network access: Wialon =
   CSV fixtures; LINE = injected transport; Express = file output; LLM = recorded stubs
   (CLAUDE.md §8). A test asserting no outbound socket during the suite run (or the harness's
   existing offline guard) is the oracle.
-- [ ] **AC-12 — Verification sign-off.** Per-component case-coverage matrices (AC-4, AC-5, AC-10
+- [x] **AC-12 — Verification sign-off.** Per-component case-coverage matrices (AC-4, AC-5, AC-10
   minimally: happy / boundary / fail-closed / adversarial-bypass / concurrency-race) reviewed;
   uncovered cases named as residual risk; an explicit confidence statement recorded in the
   closeout — the standard is "we are confident it does what we intend," not "tests pass"

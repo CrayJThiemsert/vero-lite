@@ -165,4 +165,4 @@ confirmations themselves are durable — only the in-process view was missing.
 * `services/db/pm_import.py` — the `pm_import_row` staging table
 * `verticals/fleet_maintenance/pm_projection.py` — where a confirmed value becomes
   something the calm path can see
-* `docs/plans/0096-fleet-flow-completion-phase1.md` §Step 9 / AC-10
+* `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 9 / AC-10
