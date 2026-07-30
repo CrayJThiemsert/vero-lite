@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-30T22:15:00+07:00
-session: 193
-current_batch: "s193 — PLAN-0096 Step 8 item 5 COMPLETE (#982-#986): the month-end export shipped end to end, KPI included. Docs overclaim fixed (#987). Suite 3607 → 3646."
+last_updated: 2026-07-30T21:45:00+07:00
+session: 194
+current_batch: "s194 — #990 repaired ADR-0025's rotted archive pointer; #991 drafted PLAN-0097. Cray ruled the STATUS-size TODO (tighten per-block cap + cut duplicates), applied in this reconcile."
 current_actor: code
-blocked_on: "Nothing blocks the build. Step 10's AC-12 evidence is written; the AC ticks + PLAN archive are the remaining work."
-next_action: "Tick PLAN-0096's ACs against the s193 AC-12 sign-off and archive the PLAN. Then RR-3 (concurrency-race coverage) if it is to be closed, and the ADR-0025 archive pointer repair, which needs the drafter route."
-head_commit: 367c15b
-recent_commits: [367c15b, d986eb4, 367a08e, 4253699, bd3e41d, 0a7e626, ac9641d, 3922aad, 7b03fd8, 1e3b291]
+blocked_on: "Nothing blocks the build. PLAN-0097's SD-2 and SD-3 are unruled, but they gate only that PLAN's own Steps 1-2."
+next_action: "Build the fleet demo showability work — surface the month-end KPI + export in the console UI (Cray picked ordering #3 → #1). PLAN-0097 execution waits on SD-2/SD-3."
+head_commit: b25cc98
+recent_commits: [b25cc98, 6b56203, c2584c8, c9796d4, ad1eca1, 2215c82, c861642, a584f3d, 367c15b, d986eb4]
 ---
 
 # vero-lite — Project Status
@@ -18,73 +18,100 @@ recent_commits: [367c15b, d986eb4, 367a08e, 4253699, bd3e41d, 0a7e626, ac9641d, 
 
 ## Current Focus
 
+> **Session 194, 2026-07-30 (head_commit `367c15b` → `b25cc98`) — two rotted-pointer
+> repairs landed, and Cray ruled the standing STATUS-size TODO.** Two PRs merged
+> (#990, #991), 0 open.
+>
+> **#990 — ADR-0025's archive pointer was wrong by whole FILE, not by offset.** It cited
+> a line range in `docs/status-archive/2026-h1-status.md`; that base was **re-chartered**
+> at the s144 split as the rolling recent window, so the target had long since migrated
+> to a lettered sibling. Repaired by citing `2026-h1c-status.md` **by section heading,
+> with no line numbers** — § "Current-Focus block — Session 84 (cont.; head_commit
+> `f56a6e8`)" — per the house rule that headings survive an edit and line numbers do not.
+> **Pre-existing rot from s144**, whose repair sweep fixed three pointers of this shape
+> and missed one; **not** caused by the s193 R4 split, which preserved every heading.
+> N=1 — no sibling rot in `docs/adr/`. Drafted by `plan-drafter` (ADR-0025 is Accepted →
+> G1-denied to Code), Code R2'd.
+>
+> **#991 — PLAN-0097 drafted (`Status: Draft`), and the finding is that the standing
+> TODO's PREMISE was wrong.** That TODO read the goal gate's silent warn path as
+> *ratified behaviour*, which made any fix an ADR-0018 amendment question. It is not:
+> **D5** says verbatim *"v1 is warn + annotate … records the verdict trail in the goal
+> file"*, and **V2-D1** (ratified 2026-07-13, with the warn path already built)
+> re-describes the default tier as *"warn + annotate + Telegram"*. The spec's step 5
+> omits the record and the implementation followed the sketch — so the silence is an
+> **implementation gap against a ratified Decision, not a ratified design**. **Third
+> instance of this class** (ADR-0034 D3(3) vs D3(6) at s186; D3(3)/D3(4) at s188): a
+> Decision's prose and its own procedural sketch disagreeing, code following the sketch.
+>
+> **Cray typed three calls.** (1) **PLAN-0097 SD-1 = (a): D5 controls** — the trail entry
+> is licensed by ADR-0018 as it stands, no amendment needed; recorded at the PLAN's SD-1
+> and as a discharged gate at Step 0, with Appendix A's contingency amendment retained
+> but marked NOT applied / superseded, and `docs/adr/0018-*.md` untouched. **SD-2 and
+> SD-3 were NOT ruled and stay OPEN.** (2) **STATUS size = tighten the per-block cap +
+> cut duplicated content**, declining both "widen the rotation window" and "accept the
+> trade". (3) **Next build ordering #3 → #1** — the fleet demo showability work
+> (surfacing the month-end KPI + export in the console UI) goes first.
+>
+> **Ruling (2) is applied in this same reconcile.** STATUS measured **59,820 B** against
+> R1's 49,152 B soft target. Runbook §R2 gained a **per-Current-Focus-block cap of
+> ≤ 4,096 B** — the count caps bounded how *many* blocks, never how *large* one may be —
+> and its existing "RD rows are pointers, ≤ ~600 chars" rule was measured **unenforced**,
+> 8 of 10 rows over, worst 2,660 B. This pass rewrites every RD row to that cap, brings
+> each retained block under the new cap, and cuts the PLAN-0096 In-Flight entry to a
+> pointer. **The R2 carve-out bound the work**: nothing was trimmed until its substance
+> was verified present in a tracked file.
+
 > **Session 193, 2026-07-30 (head_commit `5dd8ce6` → `367c15b`) — the session the
 > month-end export went from zero lines to a downloadable file with a KPI that can
-> fail. Six PRs merged (#982–#987), 0 open. PLAN-0096 **Step 8 build-order item 5 is
-> COMPLETE** and **Step 10's AC-12 evidence is written** — four coverage matrices,
-> seven named residual risks, and a confidence statement, in
-> `.claude/handoffs/session-193/` (gitignored).**
+> fail.** Six PRs merged (#982–#987), 0 open. PLAN-0096 **Step 8 item 5 COMPLETE**;
+> **Step 10's AC-12 evidence written** — four coverage matrices, seven named residual
+> risks, a confidence statement, in `.claude/handoffs/session-193/` (gitignored).
 >
-> **The build, in five PRs.** #982 the reader — `ExportRow` / `MonthlyExport` /
-> `load_monthly_export`, whose row set is a UNION: cases with a `gate_decision` in the
-> month, filed on the APPROVAL date, **∪** close-outs in the month with no governed run
-> at all, filed on `entered_at`. That second source is the whole point — a naive export
-> reports 100% traceability *by construction*, because the rows it cannot explain are
-> the rows it never selected. #983 the KPI + cover: **Cray typed rule (ค)** — a row
-> counts only if it was governed AND fully documented; governance-only would score a
-> perfectly-approved repair with no invoice at 100%, paperwork-only would score escaped
-> money as traceable the moment a tidy invoice was keyed. Two columns are deliberately
-> NOT required and both would be bugs if they were: `vat_thb` is NULL for a garage that
-> is not VAT-registered, and `cost_center` ships unfilled, so requiring it would pin the
-> KPI at 0% forever. #984 **Cray typed option (ก)**: persist `three_quote_basis`
-> (alembic `0022`) rather than recompute it — `compute_three_quote` forbids the
-> alternative in its own docstring, and recomputing would answer last month's audit
-> question with this month's threshold *while looking completely filled in*. The value
-> was never lost, only unqueryable: it already rode the persisted step artifact. #985
-> the CSV + router — the repo's **first** export surface (no `csv.writer`, no
-> `text/csv` response existed before it), UTF-8 **with BOM** because Excel on Windows
-> mojibakes Thai without one. #986 the E-2 exception report on the cover.
+> **The build, in five PRs.** #982 the reader, whose row set is a UNION: cases with a
+> `gate_decision` in the month, filed on the APPROVAL date, **∪** close-outs in the
+> month with no governed run at all, filed on `entered_at`. That second source is the
+> whole point — a naive export reports 100% traceability *by construction*, because the
+> rows it cannot explain are the rows it never selected. #983 the KPI + cover: **Cray
+> typed rule (ค)** — a row counts only if it was governed AND fully documented;
+> governance-only would score a perfectly-approved repair with no invoice at 100%,
+> paperwork-only would score escaped money as traceable the moment a tidy invoice was
+> keyed. `vat_thb` and `cost_center` are deliberately NOT required — a garage that is
+> not VAT-registered; and requiring the unfilled `cost_center` would pin the KPI at 0%
+> forever. #984 **Cray typed (ก)**: persist `three_quote_basis` (alembic `0022`) rather
+> than recompute it — recomputing would answer last month's audit question with this
+> month's threshold *while looking completely filled in*. #985 the CSV + router, the
+> repo's **first** export surface, UTF-8 **with BOM** because Excel on Windows mojibakes
+> Thai without one. #986 the E-2 exception report on the cover.
 >
 > **Two defects were found by ORACLES, not by review — the useful half.** A probe
-> mutating `is_fully_traceable` so its governed/outcome guard never fires left the whole
-> suite **GREEN**: the guard was unreachable through `load_monthly_export`, which
-> already nulls the approver when there is no decision, so nothing tested it on its own
-> terms. Four direct predicate tests now do. And the **end-to-end scenario found a real
-> bug**: the hero round decides the demo fixture cases alongside the real one, and
-> rejecting them produced link rows with no approver, no invoice and no amounts —
-> landing in the export as **฿0 Express entries** an accountant would have to key to
-> record that nothing happened. No unit test could have shown it; every fixture built
-> exactly the rows its author had in mind. `is_reportable` now states the rule: money
-> exists → always a row (a REJECTED case *with* a close-out is the worst case in the
-> report); authorised-but-unpaid → a row; neither → not spend.
+> mutating `is_fully_traceable` so its governed/outcome guard never fires left the suite
+> **GREEN**: the guard was unreachable through `load_monthly_export`, which already
+> nulls the approver when there is no decision, so nothing tested it on its own terms;
+> four direct predicate tests now do. And the **end-to-end scenario found a real bug** —
+> the hero round decides the demo fixture cases alongside the real one, and rejecting
+> them produced link rows with no approver, invoice or amounts, landing in the export as
+> **฿0 Express entries** an accountant would have to key to record that nothing
+> happened. No unit test could have shown it; every fixture built exactly the rows its
+> author had in mind. `is_reportable` now states the rule: money exists → always a row
+> (a REJECTED case *with* a close-out is the worst case in the report);
+> authorised-but-unpaid → a row; neither → not spend.
 >
-> **AC-9's non-vacuity bar is demonstrated on the real path**, not asserted: a month of
-> complete rows scores 100.0, and swapping only the garage to `เจ๊หงส์` — who ships with
-> no Express code on purpose — drops it to 0.0. **28 non-vacuity probes** across the
-> five PRs, each restored from a backup copy and diff-verified. Two did not redden and
-> were treated as findings rather than passes; one of those exposed the untested guard
-> above, the other exposed that **a probe whose mutation is a semantic no-op measures
-> nothing while reading as a pass**.
+> **28 non-vacuity probes**, each restored from a backup copy and diff-verified. Two did
+> not redden and were treated as findings rather than passes: one exposed the untested
+> guard above, the other that **a probe whose mutation is a semantic no-op measures
+> nothing while reading as a pass**. AC-9's bar is demonstrated on the real path, not
+> asserted (archived PLAN, §Acceptance Criteria).
 >
-> **Also this session:** #987 corrected a **public-repo** overclaim — README and
+> **Also:** #987 corrected a **public-repo** overclaim — README and
 > `docs/conventions/tech-stack.md` described pgvector + Apache AGE + pg_trgm as the
-> database when `docker-compose.yml` runs stock `postgres:16-alpine` and the extension
-> grep returns zero. STATUS had carried the corrected framing since s141 and it was
-> never propagated to the two files a *reader* hits first. Two dead pointers fell out of
-> the same pass: `tech-stack.md` cited **ADR-005** three times for "custom Postgres
-> image" when ADR-005 is the strategic pivot to OCT, and the README referenced the
-> never-drafted PLAN-002 twice. Suite **3607 → 3646**; `mypy --strict services/` 127 →
-> **130**; dev DB `0021` → **`0022`**, migrated on Cray's explicit go against five
-> criteria fixed before the run. MS-S1 never touched; LINE still disarmed.
->
-> **R2/R4 rotation applied.** The s186→187 Current-Focus block (the oldest of exactly
-> four) and the s179 Recent-Decisions row rotated out. The archive base had returned to
-> **194,232 B** with that block due in, so R4's continuation rule fired: sessions-142→171
-> spilled to the new **`2026-h1g-status.md`** and the base dropped to 46,215 B. All 65
-> section headings were compared for exact equality before and after — no content lost.
-> Every sibling chain pointer was repaired in the same change. **STATUS is 53 KB — under
-> R1's 64 KB ceiling, still over the 48 KB soft target**, which remains the standing
-> Cray-call TODO.
+> database when `docker-compose.yml` runs stock `postgres:16-alpine`. STATUS had carried
+> the corrected framing since s141 and never propagated it to the two files a *reader*
+> hits first; two dead pointers fell out of the same pass. Suite **3607 → 3646**; `mypy
+> --strict services/` 127 → **130**; dev DB `0021` → **`0022`** on Cray's go against five
+> criteria fixed before the run. MS-S1 never touched; LINE still disarmed. **R2/R4
+> rotation applied** — s186→187 block + s179 RD row out; the archive base spilled
+> sessions-142→171 into the new `2026-h1g-status.md` (numbers in the chain note below).
 
 > **Session 192, 2026-07-30 (head_commit `99b752f` → `5dd8ce6`) — the session the
 > case → run link got a real oracle, and the oracle found two defects in code that
@@ -135,168 +162,58 @@ recent_commits: [367c15b, d986eb4, 367a08e, 4253699, bd3e41d, 0a7e626, ac9641d, 
 > 0, CI `gate` pass, merge-commit tree equality `git diff e443cb7 HEAD` = **0
 > bytes**, and the full suite re-run **on the merge commit** (CI is PR-only).
 
-> **Session 191, 2026-07-30 (head_commit `143fe6b` → `99b752f`) — the session a
-> REAL repair case first reached the governed gate.** Three PRs merged (#975–#977),
-> 0 open. Until today the claim "the gate governs real repairs" was **true of the
-> demo and false of the product**: `services/api/routers/cases.py` referenced
-> `OperationalEvent` nowhere, and the only `case_id` that ever reached a run was the
-> hardcoded fixture `case-demo-truck01-axle`. เมย์ could open a case, key quotes and
-> accept one, and the procedure that routes spend never saw any of it.
+> **Session 191, 2026-07-30 (head_commit `143fe6b` → `99b752f`) — the session a REAL
+> repair case first reached the governed gate.** Three PRs merged (#975–#977), 0 open.
+> Until then the claim "the gate governs real repairs" was **true of the demo and false
+> of the product** — `cases.py` referenced `OperationalEvent` nowhere, and the only
+> `case_id` ever reaching a run was the fixture `case-demo-truck01-axle`.
 >
-> **#975 — ใบที่ตกลง, the accepted quote (alembic `0019`).** The primitive whose
-> absence caused two separate defects. The DoA ladder routes on the ฿ figure of a
-> repair, and nothing recorded that figure at the moment it became true:
+> **#975 — ใบที่ตกลง, the accepted quote (alembic `0019`).** The DoA ladder routes on the
+> ฿ figure of a repair, and nothing recorded that figure at the moment it became true:
 > `RepairCaseCloseout.total_thb` is written *after* the work the gate was meant to
-> authorise, and `EvidencePack.lowest_amount_thb` is the *cheapest* quote, which is
-> not what was agreed whenever an approved higher quote wins on lead time. The same
-> absence forced `0018` — nothing recorded WHICH garage was used. One accepted quote
-> answers both, because a quote carries the amount and the vendor together. **Cray
-> typed two decisions:** the reference is a **REQUIRED** foreign key (a free-typed
-> vendor + amount was offered and declined — the figure an authority threshold routes
-> on must trace to evidence somebody recorded), and a **reason is required only when
-> the accepted quote is not the cheapest on file** (the audit question is never "why
-> did you accept a quote", it is "why did you not take the cheapest one"; demanding
-> it always trains the operator to type "ถูกสุด" into the box). A third TABLE, not a
-> flag on the quote row: a flag would have to be `UPDATE`d, breaking the append-only
-> rule these tables exist to hold. The cross-case invariant is enforced by a
-> composite FK — measured: with the router's case filter removed, **Postgres itself**
+> authorise, and `EvidencePack.lowest_amount_thb` is the *cheapest* quote, which is not
+> what was agreed whenever an approved higher quote wins on lead time. The same absence
+> forced `0018` — nothing recorded WHICH garage was used. **Cray typed two decisions:**
+> the reference is a **REQUIRED** foreign key (a free-typed vendor + amount was offered
+> and declined — the figure an authority threshold routes on must trace to evidence
+> somebody recorded), and a **reason is required only when the accepted quote is not the
+> cheapest on file** (the audit question is never "why did you accept a quote", it is
+> "why did you not take the cheapest one"; demanding it always trains the operator to
+> type "ถูกสุด" into the box). A third TABLE, not a flag: a flag would need `UPDATE`,
+> breaking the append-only rule these tables exist to hold. The cross-case invariant is
+> a composite FK — measured: with the router's case filter removed, **Postgres itself**
 > refuses the insert.
 >
 > **#977 — the case → event path**, Option A, mirroring the ratified `pm_projection`
-> seam. **Zero `services/engine/` diff and zero `data_adapter/__init__.py` diff**,
+> seam, with **zero `services/engine/` diff and zero `data_adapter/__init__.py` diff**,
 > both verified — the latter mandatory, since `test_golden_e2e` holds that module
-> structurally equal to the scaffolder's output (PLAN-0086 AC-7 row 4). Only cases
-> with an **accepted** quote are emitted; a case with quotes and no acceptance has no
-> agreed number, and emitting one would mean inventing it. **A real case OUTRANKS the
-> fixture on its own truck and the AT-2 hero narrative moves with it** — Cray typed
-> that over the alternative of parking real cases on unused trucks, which would have
-> hidden the collision until two real cases landed together. Cache invalidation is
-> **fingerprinted, not blanket** (Code's call, veto open): `demo_events` caches its
-> live list per process, and that list also holds the recovery reading Execute
-> appends (PLAN-0015 D2), so a reset on every refresh would silently delete it.
+> structurally equal to the scaffolder's output (PLAN-0086 AC-7 row 4). Only cases with
+> an **accepted** quote are emitted — a case with quotes and no acceptance has no agreed
+> number, and emitting one would mean inventing it. **A real case OUTRANKS the fixture on
+> its own truck and the AT-2 hero narrative moves with it** — Cray typed that over
+> parking real cases on unused trucks, which would have hidden the collision. Cache
+> invalidation is **fingerprinted, not blanket** (Code's call, veto open): `demo_events`
+> caches its live list per process, and that list also holds the recovery reading Execute
+> appends (PLAN-0015 D2), so a blanket reset would silently delete it.
 >
 > **The session's own defect, found by probing rather than by failing.** The scenario
-> suite passed first run; the non-vacuity sweep then returned **GREEN on one probe —
-> a vacuous oracle**. The mutation raised inside the projection's digest, the
-> router's fail-soft refresh swallowed it, and the stream stayed unchanged — which is
-> exactly what the test asserted. **A test that cannot distinguish "correctly skipped"
-> from "crashed and was swallowed" proves nothing**, and this is the same class as
-> the `assert-absence-by-recording` lesson. Fixed by asserting the view is *healthy*
-> (`loaded`, no `last_error`), then re-probed with a mutation producing valid data
-> instead of an exception. Both probes are recorded in the test's docstring.
+> suite passed first run; the sweep then returned **GREEN on one probe — a vacuous
+> oracle**: the mutation raised inside the projection's digest, the router's fail-soft
+> refresh swallowed it, and the stream stayed unchanged — exactly what the test asserted.
+> **A test that cannot distinguish "correctly skipped" from "crashed and was swallowed"
+> proves nothing**, the same class as the `assert-absence-by-recording` lesson. Fixed by
+> asserting the view is *healthy* (`loaded`, no `last_error`); both probes are recorded
+> in the test's docstring.
 >
 > **#976 — the PLAN caught up with reality.** s190 typed "case↔run link = a scalar
-> `run_id`, migration `0019`" and it **never entered the PLAN**; s191 grounding
-> refuted it on three measured reasons (re-fireable runs, per-PROPOSAL approval, the
-> provisional/ratify split) and `0019` shipped as the accepted quote instead. The
-> amendment records AND retires it in one motion, and carries the corrected five-item
-> build order. **The dispatch was wrong and the drafter caught it** — it was told to
-> mark the decision superseded "where it sits", found no such text, and said so;
-> Code confirmed by grep. It also corrected three line ranges the dispatch had wrong.
->
-> **Dev DB migrated `0017` → `0019`** on Cray's go, pre-flighted first:
-> `repair_case_closeout` was verified EMPTY, which is what made `0018`'s NOT NULL
-> `vendor` column safe rather than assumed. Suite **3572 → 3597**.
->
-> **Not built: build-order items 3 and 4.** `repair_case_run_link` + the `on_resolved`
-> seam (which, unlike item 2, DOES need a `services/engine/` diff, and must hook
-> `ratify_gated_step` too or the E-2 path silently drops), and re-keying `latest_per`
-> onto the case — two open cases on one truck still collapse to the newer.
-
-> **Session 189, 2026-07-29 (head_commit `be7d386` → `13aa2f0`) — the session
-> the fleet partner's round-2 answers landed and PLAN-0096 stopped being
-> blocked. Four PRs merged (#965–#968), 0 open: **Steps 1–7 and 9 COMPLETE (8
-> of 10)**. **Five of the seven questions are closed:** A1 built Step 6, A3
-> built `pm_due`, and **A4 + A7 confirmed values that had already shipped** — a
-> flat ฿5,000 ceiling for every truck initially, so the authored `5001` default
-> stands and the per-truck "stretch values" sub-task is **eliminated, not
-> deferred** (those values do not exist yet); and 99% whole-baht quoting,
-> ฿30,000 exactly = no comparison / ฿30,001+ = comparison required, confirming
-> the shipped `"30001"` inclusive floors and closing the satang de-minimis
-> intake note. **A2 is answered, so Step 8 is unblocked rather than blocked** —
-> the only question with build left. A5 is **parked** (no real Wialon export
-> exists yet, and the partner wants an admin-mapped remembered column mapping,
-> so the Step 9 importer stays fixed-column); A6 is a Step 9 *runbook* item,
-> not code. **Nothing blocks the build.**
->
-> **Step 6 (#965) — the partner's chain, not ours.** A1 superseded the PLAN's
-> guessed four-item checklist: the real chain is **8 steps, 4 mandatory + 4
-> conditional**, each carrying its **own** "ถ้าค้างเกิน" threshold rather than
-> one shared timeout — two of them context-dependent (แจ้งอู่ 30 min on a
-> breakdown / 1 day on PM; รออะไหล่ 2 days general / 5 days major part), and
-> เริ่มซ่อม anchored to parts-complete ("1 วันหลังของครบ"). Shipped as a
-> fleet-side **authored config** (`verticals/fleet_maintenance/task_chain.py`);
-> the partner's suggested partner-editable template system was **declined for
-> Phase 1** per ADR-006's Rule of Three. Storage is an **append-only**
-> `repair_case_task_event` trail plus `repair_case.work_type` (alembic
-> **0016**), so AC-7's "actor + timestamp per flip" is the storage model rather
-> than logging bolted onto mutable state; that one `work_type` field serves
-> both these context SLAs and Step 8's ประเภทงาน export column. Plus the
-> staleness sweep into the existing `task_chain_stale` LINE event and
-> `POST|GET /api/cases/{case_id}/tasks`, whose GET takes an optional `as_of`
-> that Step 8's period-close export needs.
->
-> **The anchor rule — Cray typed it, of three options weighed.** A step with
-> prerequisites starts its clock when the prerequisites **this case actually
-> has** are settled; counting from the item's own activation would have nudged
-> เมย์ about starting a repair from day two of an *authorised* five-day
-> major-part wait — against a partner whose own stated failure mode is
-> *"ผมไม่อยากให้ทุกอย่างเด้งเข้ากลุ่มเดียว เดี๋ยวคนปิดแจ้งเตือนหมด"*, with exactly
-> one outbound channel to spend.
->
-> **`pm_due` (#968) — a sixth LINE event, admitted on evidence.** A3 supplied
-> the two things `LineEvent`'s closed-set docstring demanded before a sixth
-> member could exist — a named producer and a named recipient rule — so Cray
-> amended AC-8 from five events to six. The recipient is a **group** (กลุ่มช่าง),
-> not a person, by the partner's choice, and it is **one message per round**
-> listing the due plates, not one push per truck. The producer reads the due
-> set off the **persisted `judge_service_due` verdicts of the run that just
-> fired** — never re-deriving "due" from odometers, because a second
-> implementation of that comparison could disagree with the one the governed
-> run acted on and the message would name a different set than the screen the
-> human approves. Keyed to a run id, so a truck is announced once per round.
-> The scheduler daemon holds no vertical knowledge by design, so it gained an
-> **injected `on_fired` hook**, and `services/engine/cli.py` resolves the fleet
-> producer as that hook — the same hand-wired shape as the executor factories.
->
-> **The unplanned thread (#966 + #967) — the session's most transferable
-> finding.** #965's CI failed at 54 s on the `alembic check` lockstep guard:
-> `alembic/env.py` never imported the new ORM module, so `Base.metadata` did
-> not know the table existed and autogenerate wanted to **DROP** it. **3528
-> passing tests could not see it** — `create_all` knows only what the
-> *importing test module* pulled in, and nothing offline traverses `env.py`.
-> #966 built an offline AST-based guard for that class. Then Cray asked whether
-> `alembic check` really needs a live DB, or whether we could run it and see
-> what was hiding. **Probing instead of reasoning did three things:** it
-> **refuted the premise** of Code's earlier answer (no *dev* DB needed — the
-> disposable per-checkout test DB works, measured at **1.75 s** total); it
-> found a **live drift**, since #965's own fix had patched `env.py` only and
-> left `tests/db_support.py` — the second registration site, whose comment says
-> "keep in lockstep with alembic/env.py" — missing the same module; and closing
-> that revealed the **pre-existing guard had been defeated by co-drift**,
-> because `test_db_hermeticity.py`'s hand-maintained `_HEAD_TABLES` was missing
-> the same table, so two wrong lists agreed and the test stayed green. **The
-> rule that came out of it: a comparison means something only when at most ONE
-> side is hand-maintained.** The widened guard derives the model set from
-> source via AST; `_HEAD_TABLES` stays hand-written **on purpose** (deriving it
-> would compare metadata to itself). The `alembic check` half
-> shipped as a **test, not a hook** (Cray typed it) — a hook's `upgrade head`
-> would collide with a concurrent pytest's `DROP SCHEMA public CASCADE`, and
-> running the suite in the background while editing is normal here.
->
-> **State at close:** `main` `13aa2f0`, 0 open PRs. Suite **3502 → 3552**; ruff
-> check + format clean over **552** files; `mypy --strict services/` clean over
-> **123**; `alembic check` + the registration guard clean; CI `gate` PASS and
-> merge-commit equality **0 bytes** on all four PRs. **Six non-vacuity
-> mutations**, each restored from `/tmp` and diff-verified byte-identical; two
-> load-bearing — a router writing `"PENDING"` for `"pending"`, a pure seam bug,
-> left **all 17 rule-suite cases GREEN** and reddened 5 of 8 scenario cases;
-> emptying the CLI's `_FIRED_HOOKS`, an unwired seam, left the **scenario suite
-> fully green** and reddened only the hook suite. One proves the producer is
-> right, the other proves anything calls it — which is why §8 wants both. **Dev
-> DB migrated 0015 → 0016 on Cray's explicit go.** MS-S1 never touched; LINE
-> still disarmed. **R2 rotation applied** — the s184→s185 Current-Focus block
-> and the s177 PLAN-0095 Recent-Decisions row rotate to `docs/status-archive/`.
+> `run_id`, migration `0019`" and it **never entered the PLAN**; s191 grounding refuted
+> it on three measured reasons (re-fireable runs, per-PROPOSAL approval, the
+> provisional/ratify split) and `0019` shipped as the accepted quote instead. **The
+> dispatch was wrong and the drafter caught it** — told to mark the decision superseded
+> "where it sits", it found no such text and said so; Code confirmed by grep. Dev DB
+> `0017` → `0019` on Cray's go, pre-flighted — `repair_case_closeout` verified EMPTY,
+> which made `0018`'s NOT NULL `vendor` column safe rather than assumed. Suite **3572 →
+> 3597**.
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
 
@@ -317,20 +234,20 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-07-30 | **s193 — PLAN-0096 Step 8 item 5 COMPLETE (#982–#986): the month-end export end to end, with a KPI that can fail.** Row set = governed ∪ escaped money (a naive export reports 100% by construction). **Cray typed (ค)**: traceable = governed AND documented; `vat_thb` and `cost_center` deliberately NOT required, the second because it would pin the KPI at 0% forever. **Cray typed (ก)**: persist `three_quote_basis` (alembic `0022`) — recomputing would answer last month's audit question with this month's threshold *while looking filled in*. Two defects found by ORACLES: a probe showed `is_fully_traceable`'s guard was unreachable-and-untested, and the end-to-end scenario found the demo cases landing as **฿0 Express entries**. AC-9's bar demonstrated on the real path (`เจ๊หงส์` drops it 100 → 0). 28 probes; 2 non-reddening ones recorded as findings. Dev DB → `0022`. Suite 3607 → **3646** | `367c15b` (#987 merge, head_commit) / `367a08e` (#986) / `bd3e41d` (#985) / `ac9641d` (#984) / `7b03fd8` (#983) / `ed09502` (#982) / `.claude/handoffs/session-193/` (AC-12 sign-off) |
-| 2026-07-30 | **s192 — PLAN-0096 Step 8 item 3 COMPLETE (#979): the case → run link, proven on BOTH gate drivers.** `repair_case_run_link` + the `on_resolved` seam on `resolve_gated_step` *and* `ratify_gated_step`. s191's deliberate no-merge (zero tests on the second call site) paid: the hook read `output_set`, so a rejected case was invisible (fix: `decided_entries()` reads `decisions`), and `_outcome` let the run state outrank a refusal. **Cray typed: a refusal is checked FIRST.** Five non-vacuity probes, all RED as predicted. Suite 3597 → **3604** | `5dd8ce6` (#979, head_commit) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
-| 2026-07-30 | **s191 — a REAL repair case now reaches the governed gate (#975–#977).** The accepted quote (ใบที่ตกลง, alembic `0019`) gives the DoA ladder a ฿ figure existing BEFORE the work and tracing to recorded evidence — the primitive whose absence also forced `0018`'s vendor column; Cray typed the required FK + reason-only-when-not-cheapest. The case → event path wires it in with **zero engine and zero adapter-`__init__` diff**, and a real case outranks the fixture, so the AT-2 hero narrative moves. One non-vacuity probe came back GREEN — a vacuous oracle a fail-soft handler was hiding. Dev DB `0017` → `0019`. Suite → **3597** | `99b752f` (#977, head_commit) / `d3f2919` (#976) / `d781683` (#975) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
-| 2026-07-29 | **s189 — PLAN-0096 Steps 1–7 and 9 COMPLETE (8 of 10), #965–#968.** Partner round-2 answers closed 5 of 7. Step 6 = the partner's real 8-step chain (4 mandatory + 4 conditional, per-item staleness, append-only trail, alembic 0016); `pm_due` = a sixth LINE event, group recipient, one message per round, read off persisted `judge_service_due` verdicts. Cray typed the prerequisite-anchored clock + the AC-8 bump. Unplanned (#966/#967): an ORM↔alembic registration guard + `alembic check` lockstep test — **a comparison means something only when at most ONE side is hand-maintained**. Suite 3502 → **3552** | `13aa2f0` (#968 merge, head_commit) / `430cf39` (#967) / `e54cbe8` (#966) / `26e61b3` (#965) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` |
-| 2026-07-29 | **s186→s187 — PLAN-0096 Steps 1–5, 7 and 9 COMPLETE (#951–#961).** Real partner ladder + AC-2 hash tripwire; `repair_case` capture (alembic 0013) + View I; quote evidence pack (0014); **the fail-open `three_quote: true` default KILLED** so the sourcing gate enforces instead of decorating; E-2 deferred ratification built — provisional resolve with the `governed_decision` tie WITHHELD until someone actually signs; PM import measured-then-confirmed (0015 + ontology overlay), retiring the last-service `GUESS` stamps; the LINE OA notify seam, **outbound-only and DISARMED by design**. Cray ratified six things: the `repair_case` table over a ⊕ PLAN line; `distinct_vendor_count` over `quote_count`; the **state-based ratify precondition**, on a **self-contradiction between ADR-0034 D3(3) and D3(6)**; **PM storage = table + ontology overlay** (a table with no overlay would have made AC-10 vacuous); the dev-DB migration to 0015 (verified against the live schema, not `alembic current`); and — on a probe showing that a one-line role-key normalisation leaves **all 24 LINE unit tests GREEN** while only the scenario suite reddens — **a new standing work standard: every build also needs a scenario test driving the REAL producer into the REAL consumer on realistic data; skipping it is not allowed** (#961 = that correction, 8 cases). Suite 3343 → **3502**. **s188 then closed the ADR debt (#962):** ADR-0034 D3 amended so its text matches the shipped mechanism, Status staying `Accepted` — and Code R2 found a **second divergence of the same class** while reviewing it (D3(3) *and* D3(4) stated the status transition unconditionally; the shipped flip is conditional on the step still being parked at `RESOLVED_PROVISIONAL`). Drafted in-harness by the **`plan-drafter` subagent on Cray's typed routing pick**, not a Cowork round-trip — which is itself live evidence that `CLAUDE.md:112`'s claim that editing an Accepted ADR is PreToolUse-gated *for `plan-drafter`* is wrong. **s188 then spent that evidence: a three-edit Cowork round-trip made Cray's scenario-test standard BINDING in `CLAUDE.md` §8, corrected the `:112` gate claim, and retired the `docs/conventions/git.md` extraction by DROP** — Cowork drafted the text, Code re-counted the "24" and the PR pointers before letting them become constitutional text, and applied it (21,524 → 22,424 B; three CLAUDE.md TODOs closed, two of them open since s176) | `eae0f82` (#962 merge, head_commit) / `728da00` (#961 merge) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` / `docs/adr/0034-governed-exception-family.md` §D3 + §"D3 Amendment (2026-07-29)" |
-| 2026-07-28 | **s184→s185 — ADR-0034 "governed exception family" ACCEPTED (#948) + PLAN-0096 "fleet flow completion Phase 1, Lean KPI-first" merged as Draft (#949).** Partner-driven: 18/18 discovery answers → three mechanisms (escalate-never-skip waiver / evidence-alternative E-3 / deferred-ratification primitive E-2+E-4); SoD + compliance stay NON-waivable. Cray resolved OQ-1/OQ-2/OQ-3 per the in-file recommendations and approved the ladder boundary encoding. R2 re-verified all engine cites at `7b84fa2`; all 8 dispatch rejection criteria run adversarially, none fired. Implementation NOT started — awaits Cray's explicit go | `760ceed` (#949 merge, head_commit) / `24c3b45` (#948 merge) / `docs/adr/0034-governed-exception-family.md` / `docs/plans/done/0096-fleet-flow-completion-phase1.md` |
-| 2026-07-28 | **s183 — PLAN-0094 ARCHIVED (Cray released the soak), and the goal-gate `evaluations: 0` finding DIAGNOSED: the gate is not broken, its warn path is unobservable.** Cray reported **no anomalies** on the live loop since Step 4 (s180) — the one thing no session can self-serve — discharging the §Step 6 gate on the `git mv`; **OQ-4 re-homed to an Active TODO in the same change**, never buried in `done/`. The `evaluations: 0` diagnosis rests on four fresh measurements: `save_goal()` writes with `sort_keys=True` while the on-disk key order is **not** alphabetical ⇒ **it never wrote the file**; an offline replay of `run_goal_gate({})` against a `CLAUDE_GOAL_PATH` **copy** dispatched and wrote (`evaluations 0 → 1`) ⇒ **the mechanism works today**; C1–C4 run in **32 s** against the harness's **180 s** kill ⇒ **timeout refuted**; and `_goal_gate.py:440-446` shows `_failing_consequence` under `enforce: false` pinging Telegram and returning `None` with **no `record_evaluation` / `save_goal`**, which *any* failing check reaches (`:491-494`) — and s182's 18-mutation sweep made C1 red by construction on every mutated Stop. **The behaviour is ratified ("v1 — the stop fires"), so changing it is an ADR-0018 question, not a patch** — recommendation logged, not applied. Plus **five stale STATUS sites** corrected (`live-check (ii)` "still unrun" — including a `next_action` that directed a re-run of already-passed work) and the PLAN-0036 pre-archive pointer | `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 + §OQ-4 / `.claude/hooks/_goal_gate.py:440-446,491-494` / `.claude/hooks/stop_continuation.py:600` |
-| 2026-07-28 | **s182 — PLAN-0094 Step 6 executed, AC-10 CLOSED (#943): all 11 ACs closed or withdrawn, on a FULL FRESH 18/18 non-vacuity sweep** — Cray typed the full re-sweep rather than citing the recorded s177/s180 runs. 11 PLAN-named mutations + **7 derived** for the ACs that name none; **`missing_red` EMPTY for all 18**; sibling L2/L3/L4 invariance held. Applied by a harness script, not the Edit tool (the mutated files are the session's own live hooks). **M-A's blast radius is 8 L1 rows, not the 3 first predicted** — the session's prediction was too narrow; the PLAN's L2/L4-stay-green claim is `confirmed — prior intact`. AC-4 also reddens AC-11(i) — a FEATURE. Two stale-doc defects fixed. **The `git mv` to `done/` stays Cray-gated** (live-loop soak + live-check (ii)); OQ-4 OPEN | `1d0649f` (#943 merge, head_commit) / `6726b69` / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 |
-| 2026-07-28 | **s181 — CLAUDE.md full slim (#941): the 11.1 KB footer changelog RETIRED to git history; 277 → 261 lines / 33,014 → 21,524 B (−35.2%).** NEW convention: a constitutional edit bumps the footer date only — the edit's commit message is the full record; `git log --follow -- CLAUDE.md` = amendment history. Coverage verified BEFORE the cut (20 commit bodies ≥ their footer entries; companion artifacts on disk). No binding rule's substance changed (9 hunks, all §6 + footer). The <200-line LOCKED target unreachable (outside-§6 = 194 lines) → Cray ruled (b): target <20 KB + follow-up extraction pass queued | `85efe52` (#941 merge, head_commit) / `8ffd290` / `CLAUDE.md` + `.claude/handoffs/session-181/` |
-| 2026-07-28 | **s180 — PLAN-0094 Step 4 COMPLETE (#937/#938/#939): L1 counts NON-PROGRESS, not touches. AC-7, AC-8(i)/(iii), AC-11 closed.** L1 increments only on a re-applied `old_string` (`repeat xN`) or a return to content already held this turn (`osc xN`); forward edits record `result == ""`; `clear_turn_scoped()` wired into the turn boundary. **All three L1 warns ever recorded would not fire under the new unit.** s179's BLOCKING `tool_response` probe was **answered without being run** (84 recorded `Edit` results: no `content` key, `originalFile` null in 78/84, `structuredPatch` = a diff not a state) — the PLAN's on-disk hash stands, no restart spent. **AC-11: `T` = the DENY bar in BOTH Telegram bodies** (Cray's ruling on a self-contradicting spec). **OQ-4 OPENED — should L1 exist at all?** Baseline over all 113 transcripts: **0 denies, 3 warns, 0 true positives**. **Pre-committed: re-measure after ~20 sessions; TPs still 0 with ≥1 FP → dispatch Cowork to draft the ADR-013 amendment retiring L1.** Suite 3318 → **3327** | `767d520` (#939 merge, head_commit) / `2b9cb6f` / `053410a` (#938) / `0a85b21` (#937) / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §D4 + §OQ-4 |
+| 2026-07-30 | **s194 — two rotted-pointer repairs + Cray's STATUS-size ruling (#990, #991).** #990 fixed ADR-0025's archive pointer (wrong by whole FILE since the s144 re-charter; now cited by section heading, no line numbers). #991 drafted PLAN-0097 — the goal gate's silent warn path is an **implementation gap against ADR-0018 D5/V2-D1**, not ratified design. **Cray typed: SD-1 = (a), D5 controls (SD-2/SD-3 stay OPEN)**; **STATUS size = tighten the per-block cap + cut duplicates** | `b25cc98` (head_commit) / `c2584c8` (#990) / `docs/plans/0097-goal-gate-warn-path-trail.md` / runbook §R2 |
+| 2026-07-30 | **s193 — PLAN-0096 Step 8 item 5 COMPLETE (#982–#986): the month-end export end to end, with a KPI that can fail.** Row set = governed ∪ escaped money (a naive export reports 100% by construction). **Cray typed (ค)** traceable = governed AND documented; **(ก)** persist `three_quote_basis` (alembic `0022`). Two defects found by ORACLES, not review. Suite 3607 → **3646** | `367c15b` (#987 merge, head_commit) / `367a08e` (#986) / `ed09502` (#982) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` |
+| 2026-07-30 | **s192 — PLAN-0096 Step 8 item 3 COMPLETE (#979): the case → run link, proven on BOTH gate drivers.** The hook read `output_set`, so a rejected case was invisible (fix: `decided_entries()` reads `decisions`); `_outcome` let the run state outrank a refusal. **Cray typed: a refusal is checked FIRST.** Five non-vacuity probes, all RED as predicted. Suite → **3604** | `5dd8ce6` (#979, head_commit) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
+| 2026-07-30 | **s191 — a REAL repair case now reaches the governed gate (#975–#977).** The accepted quote (ใบที่ตกลง, alembic `0019`) gives the DoA ladder a ฿ figure existing BEFORE the work and tracing to recorded evidence; Cray typed the required FK + reason-only-when-not-cheapest. The case → event path wires it in with **zero engine and zero adapter-`__init__` diff**. One probe came back GREEN — a vacuous oracle a fail-soft handler was hiding. Suite → **3597** | `99b752f` (#977, head_commit) / `d3f2919` (#976) / `d781683` (#975) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
+| 2026-07-29 | **s189 — PLAN-0096 Steps 1–7 and 9 COMPLETE (8 of 10), #965–#968.** Partner round-2 answers closed 5 of 7 questions. Step 6 = the partner's real 8-step task chain (alembic `0016`); `pm_due` = a sixth LINE event, group recipient, read off persisted `judge_service_due` verdicts. Cray typed the prerequisite-anchored clock + the AC-8 bump. Unplanned (#966/#967): an ORM↔alembic registration guard — **a comparison means something only when at most ONE side is hand-maintained**. Suite → **3552** | `13aa2f0` (#968 merge, head_commit) / `26e61b3` (#965) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` |
+| 2026-07-29 | **s186→s187 — PLAN-0096 Steps 1–5, 7 and 9 COMPLETE (#951–#961); s188 closed the ADR debt (#962).** Six Cray ratifications, incl. the state-based ratify precondition on a **self-contradiction between ADR-0034 D3(3) and D3(6)** — and a second divergence of the same class found at s188 R2. Suite → **3502** | `eae0f82` (#962 merge, head_commit) / `728da00` (#961 merge) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` / `docs/adr/0034-governed-exception-family.md` §D3 + §"D3 Amendment (2026-07-29)" |
+| 2026-07-28 | **s184→s185 — ADR-0034 "governed exception family" ACCEPTED (#948) + PLAN-0096 "fleet flow completion Phase 1, Lean KPI-first" merged as Draft (#949).** Partner-driven: 18/18 discovery answers → three mechanisms (escalate-never-skip waiver / evidence-alternative E-3 / deferred-ratification E-2+E-4); SoD + compliance stay NON-waivable. Cray resolved OQ-1/OQ-2/OQ-3 per the in-file recommendations. All 8 dispatch rejection criteria run adversarially, none fired | `760ceed` (#949 merge, head_commit) / `24c3b45` (#948) / `docs/adr/0034-governed-exception-family.md` |
+| 2026-07-28 | **s183 — PLAN-0094 ARCHIVED (Cray released the live-loop soak), and the goal-gate `evaluations: 0` finding DIAGNOSED: the gate is not broken, its warn path is unobservable.** OQ-4 re-homed to an Active TODO rather than buried in `done/`. _[s194: this row's "the behaviour is ratified" reading was REFUTED — see PLAN-0097.]_ | `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 + §OQ-4 / `docs/plans/0097-goal-gate-warn-path-trail.md` §"The ADR-0018 determination" |
+| 2026-07-28 | **s182 — PLAN-0094 Step 6 executed, AC-10 CLOSED (#943): all 11 ACs closed or withdrawn, on a FULL FRESH 18/18 non-vacuity sweep** — Cray typed the full re-sweep rather than citing the recorded s177/s180 runs. **`missing_red` EMPTY for all 18**; sibling L2/L3/L4 invariance held. **M-A's blast radius is 8 L1 rows, not the 3 first predicted** — the session's prediction was too narrow. Applied by a harness script, not the Edit tool (the mutated files are the session's own live hooks) | `1d0649f` (#943 merge, head_commit) / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 |
+| 2026-07-28 | **s181 — CLAUDE.md full slim (#941): the 11.1 KB footer changelog RETIRED to git history; 33,014 → 21,524 B (−35.2%).** NEW convention: a constitutional edit bumps the footer date only — `git log --follow -- CLAUDE.md` is the amendment history. Coverage verified BEFORE the cut; no binding rule's substance changed. The <200-line LOCKED target was unreachable → Cray ruled (b): target <20 KB + a follow-up extraction pass | `85efe52` (#941 merge, head_commit) / `CLAUDE.md` |
 
 ## In-Flight Discussions
 
-- **PLAN-0096 — COMPLETE 12/12 and ARCHIVED (s193).** The fleet design partner's Phase-1 flow shipped end to end across s186→s193: real governance numbers, case capture from minute 1, the quote evidence pack, the computed sourcing signal that retired a fail-open default, the E-2 ratification window, the measured-then-confirmed PM import, the **outbound-only and DISARMED** LINE OA surface, the partner's real 8-step task chain, and finally the month-end Express export with a KPI whose non-vacuity is demonstrated on the real path. **Four residual risks outlive the PLAN and are the reason this entry is not simply deleted.** (1) **RR-1 — the ceiling on the KPI's honesty:** `GovernedDecision` carries only `{control_ref, principal_id}` under `extra="forbid"`, no timestamp and no per-entity key, so per-baht approver→case attribution is INFERENCE. Sound today because one human resolves a whole gate; silently wrong the day two approvers share a resolution. (2) **RR-3 — concurrency-race is the weakest coverage row** for AC-4, AC-9 and AC-10 (same-instant-tie and last-write-ordering tests, not concurrent-writer races); AC-5 alone has a real optimistic-lock test. (3) **ศูนย์ต้นทุน ships empty** — the per-truck-vs-per-company granularity question is still unanswered, and the KPI deliberately does not require the column or it would sit at 0% forever. (4) **`latest_per` still collapses two open cases on one truck** (item 4, Cray typed (ค) defer) — the older case never reaches the gate, so if it is paid it reports as *ungoverned*, correctly counted against the KPI but for a query-shape reason a reader of the number cannot distinguish from a governance failure. Full record incl. the AC evidence table: `docs/plans/done/0096-fleet-flow-completion-phase1.md`; the AC-12 sign-off (matrices, seven residual risks, confidence statement) is in `.claude/handoffs/session-193/` (gitignored).
+- **PLAN-0096 — COMPLETE 12/12 and ARCHIVED (s193).** The fleet design partner's Phase-1 flow, shipped end to end across s186→s193 — real governance numbers, case capture from minute 1, the quote evidence pack, the sourcing signal that retired a fail-open default, the E-2 ratification window, the PM import, the outbound-only-and-DISARMED LINE OA surface, the 8-step task chain, and the month-end Express export. **Four residual risks outlive the PLAN and are why this entry is not simply deleted — all four are recorded in the archived PLAN, which is where the detail now lives:** RR-1 (per-baht approver→case attribution is INFERENCE, not data — `GovernedDecision` carries no timestamp and no per-entity key; sound while one human resolves a whole gate, silently wrong the day two approvers share a resolution); RR-3 (concurrency-race is the weakest coverage row for AC-4/AC-9/AC-10); ศูนย์ต้นทุน ships EMPTY (partner granularity still unanswered — also an open Active TODO below); and `latest_per` still collapsing two open cases on one truck (item 4, **Cray typed (ค) defer**) — the older case never reaches the gate, so if it is paid it reports as *ungoverned*, which a reader of the number cannot distinguish from a governance failure. Full record: `docs/plans/done/0096-fleet-flow-completion-phase1.md` (§Verification preamble + §Acceptance Criteria for RR-1 / RR-3 / ศูนย์ต้นทุน; §Step 8 for `latest_per`); the AC-12 sign-off is in `.claude/handoffs/session-193/` (gitignored).
 - **PLAN-0095 — COMPLETE 7/7 and ARCHIVED (s177, #927/#928).** The scaffold-era `Dockerfile` builds and boots the DB-less synthetic OCT demo: `/health` 200 in ~2 s, all six verticals discovered, `uid=999(vero)`, `HEALTHCHECK` healthy, and `alembic current` → `0012 (head)` from inside the image. The only thing still open from it is **OQ-1, the hosting model** — already homed in the next bullet, not restated here. Full record: `docs/plans/done/0095-docker-image-boot.md`. _[Corrected s182, `was an error`: this entry still described the PLAN as Draft with "Steps 1–5 UNEXECUTED … the image does not boot today" and cited the pre-archive path — refuted by the s177 row in Recent Decisions above and by the archived PLAN's own `Status: Complete`.]_
 - **Hosting model → ADR-002's LAN trust boundary: a LIVE candidate needing its own ADR (surfaced s176, still not drafted; this is where PLAN-0095's OQ-1 lives).** *"Customer uses our server"* touches ADR-002's LAN trust model — `docs/adr/0002-network-topology.md` defers its own successor **twice** as an unnumbered `ADR-NN`: in **§Consequences → Neutral** (the LAN trust assumption is to be re-evaluated when a first design partner deploys to a real site) and in **§Alternatives Considered → Alternative 3** (Tailscale / WireGuard, to be reconsidered when remote development or design-partner site connectivity becomes a need). Nothing in the image or the compose service selects *where* the image runs, so the question only bites when a hosting model is actually chosen. Route: a new ADR via the Cowork/plan-drafter path (G1/G2 — Code may not author it). _[s182: the two line-number citations here were **dropped, not corrected** — one of them had already rotted onto a PDPA bullet, which is the failure mode the rotation policy's R7 rule names. Cite the ADR's section headings; they survive an edit, line numbers do not.]_
 - **PLAN-0094 — COMPLETE (all 11 ACs closed or withdrawn) and ARCHIVED (s183).** The L1 loop-detect restructure: count non-progress instead of touches (P1), warn at `T` and deny at `T+G` (P2, `G=3` → 9 code / 18 doc), add an acknowledged-pause exit the agent cannot fake (P3), and wire the `SubagentStop` reset that had **never been live**, scoped per-`agent_id` so a zero-edit spawn cannot launder the main agent's budget (F3c). Built across s174 #917, s175 #922, s177 #930, s180 #937/#939, closed out s182 #943 on a **full fresh 18/18 non-vacuity sweep**. Archived at s183 once **Cray released the live-loop soak** (no anomalies) — the one gate no session could self-serve. **The one thing that did NOT archive with it: `OQ-4` (should L1 exist at all?) is OPEN and dated — re-homed to an Active TODO below**, per the PLAN's own §Step 6 instruction never to bury it in `done/`. Full record: `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md`; the anti-pattern behind it: `docs/lessons/0033-raising-the-threshold-is-not-fixing-the-unit.md`.
@@ -361,8 +278,8 @@ than restated: the Active TODO owns that status.]_
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
 - [ ] **CLAUDE.md follow-up extraction pass (s181 option b): new Cowork dispatch; target < 20 KB (~18 KB / ~225–235 line floor).** Candidates (Cowork fresh-eyes, s181 completion §6): §11 ¶3 restates the §6 E2 rule → one-line pointer; §10 skills-row annotation duplicates §4's Tier-2.6 row (in-file ADR-0017 D6 drift); §10 docs/logs row's PLAN-004 parenthetical; §9 halves; §3 folds into §1. Materials: `.claude/handoffs/session-181/` (gitignored). **PARKED s183 by Cray — the dispatch stays UNSENT until two things are settled, and s183 grounded both.** (1) **The unit of `< 20 KB` is load-bearing and unpinned:** `CLAUDE.md` measures **21,524 B / 261 lines**, so the target needs **1,044 B** cut against 20 KiB but **1,524 B** against decimal 20,000 — Cray was asked and declined to rule for now. (2) **The five named candidates cannot reach either target:** measured at **~930–1,000 B** combined, and the row's own "~225–235 line floor" needs **26–36 lines** removed where the five move **~7** (candidates 1–3 are in-line trims that shorten bytes without deleting lines). The genuinely large blocks — `CLAUDE.md:112` (~1,100 B), `:153` (~700 B), `:73` (~800 B) — are **not on the list**. Sending this dispatch as written would repeat the s181 failure of a target that is arithmetically unreachable in scope. ~~Batch the two standing CLAUDE.md defects into whatever dispatch eventually goes out~~ — **DISCHARGED s188**: both rows below are closed, batched into the s188 three-edit Cowork round-trip. _[s188 — **the arithmetic moved AGAINST the target and the row must not be read at its old numbers.** `CLAUDE.md` is now **22,424 B** (+900 B: the §8 scenario-test rule +569, the §6 gate-claim correction +261, the §7 link resolution +70), so the cut needed is **1,944 B** against 20 KiB or **2,424 B** against decimal 20,000 — roughly **double** what this row was written against, while the five named candidates still measure only ~930–1,000 B. Note also that `:112`, one of the three "genuinely large blocks" this row says are **not** on the candidate list, is now ~260 B larger. The growth is Cray-ratified binding-rule substance, not padding — which is the point: **the target and the constitution are pulling in opposite directions, and that is the decision this row is actually parked on**, not the unit question alone.]_
 - [ ] **OQ-4 — should L1 loop-detect exist at all? OPEN with a DATED, pre-committed criterion. RE-HOMED here s183 from PLAN-0094, which archived.** This row exists because the PLAN's own §Step 6 forbade carrying a live dated commitment into `done/`. **The criterion, unchanged:** re-measure after **~20 sessions** of the post-AC-7 guard (AC-7 closed s180) → **due ≈ s200**; if **true positives are still 0 and there is ≥ 1 false positive**, dispatch Cowork to draft an **ADR-013 amendment retiring L1**, noting that L2/L3/L4 already carry row E.4 more faithfully — they key on "the same *problem*" while L1 keys only on "the same *file*". **Baseline already banked (s180, all 113 transcripts 2026-06-27 → 07-27): 0 denies, 3 warns, 0 true positives**, and the guard cannot catch the s169 incident that motivated it. **Measurement method matters:** grep transcripts for `L1 warn on` **and both** deny wordings — searching only the current wording under-counts. Full reasoning: `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §OQ-4. *(Not due yet — premature re-measure burns the pre-commitment on an under-powered sample.)*
-- [ ] **The goal gate's warn path records NOTHING — diagnosed s183, NOT fixed. Cray's call whether this becomes a PLAN.** Under `enforce: false` (the default posture) a failing `check` routes to `_failing_consequence`, which pings Telegram and returns `None` with **no `record_evaluation` and no `save_goal`** (`.claude/hooks/_goal_gate.py:440-446`); *any* failing check reaches it (`:491-494`), and `_goal_gate.py` carries **no logging at all**. So the gate's most frequently travelled branch — a red check mid-work — is its **only** branch that leaves no in-repo trail, and its sole signal leaves the machine and no-ops silently if `tools/notify/telegram.sh` is absent. **The mechanism is NOT broken** (offline replay of `run_goal_gate({})` against a `CLAUDE_GOAL_PATH` copy dispatched and wrote, `evaluations 0 → 1`), and **the behaviour is ratified** — `:437-439` calls it "v1 — the stop fires" and `stop_continuation.py:600` documents the fall-through — so **changing it is an ADR-0018 question routed through Cowork, not a Code patch**. **Recommendation:** worth a small PLAN *if* the Axis-B loop is meant to be auditable after the fact; the cheapest shape is a trail entry on the warn path (no consequence change), which is still a recorded-state change and therefore still gated. **Evidence, if this is picked up:** the s182 `goal.json` sat `status: active` / `evaluations: 0` all session, and the decisive forensic is that `save_goal()` serializes with `sort_keys=True` while the on-disk key order was never alphabetical — it had never written the file. *(Related: the evidence artifact — the s182 `goal.json` with `evaluations: []` under `enforce: false` — was in `/tmp`, which does not survive a reboot, so s186 **archived it** to `.claude/handoffs/session-186/evidence/goal-s182-openq2-evidence.json`. Cray's ruling is still owed.)* _[Corrected s187, `was an error`: this line claimed `.claude/state/goal.json` "still holds the COMPLETED s182 PLAN-0094 goal". It did not — s186 overwrote it with the PLAN-0096 Step-1 goal, so the file this pointed at as preserved evidence had been gone for a session. The live goal file was cleared at s187 once Step 5 closed; the evidence lives at the archived path above.]_
-- [ ] **STATUS rotation-window slack (runbook R2) — OPEN, Cray's call; untouched s180.** The 4-session / 8-block Current Focus window and the file's byte ceiling now bind at the same time: this reconcile rotated the s175 block out to make room and wrote the s180 block to a byte budget rather than to what the session warranted. Widen the window, tighten the per-block cap, or accept the trade — a Cray decision. Policy home: the R1–R8 rotation policy in `docs/runbooks/memory-architecture.md` (Lesson #23).
+- [ ] **The goal gate's warn path records NOTHING — now owned by `docs/plans/0097-goal-gate-warn-path-trail.md` (`Status: Draft`, #991, s194).** Under `enforce: false` a failing check pings Telegram and returns `None` — no `record_evaluation`, no `save_goal` — so the gate's most-travelled branch is its only one leaving no in-repo trail. **The premise this row carried until s194 was WRONG:** that silence is an **implementation gap against ADR-0018 D5 + V2-D1**, not ratified behaviour. **Cray typed SD-1 = (a), D5 controls; SD-2 and SD-3 remain OPEN.** Evidence + the `sort_keys` forensic: PLAN-0097 §"The ADR-0018 determination".
+- [x] **STATUS rotation-window slack (runbook R2) — RULED s194.** Cray typed **tighten the per-block cap + cut duplicated content**, declining both "widen the window" and "accept the trade". Applied the same session: §R2 now carries a **per-Current-Focus-block cap of ≤ 4,096 B**, plus a compliance note that its existing "RD rows are pointers, ≤ ~600 chars" rule was measured **unenforced** (8 of 10 rows over, worst 2,660 B). Policy home: `docs/runbooks/memory-architecture.md` §R2.
 - [ ] Extract `docs/conventions/hardware.md` from CLAUDE.md (low priority)
 
 ## Next Steps

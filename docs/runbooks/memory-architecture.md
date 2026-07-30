@@ -235,10 +235,32 @@ measured 2026-06-10), not the 256 KB byte cap.
   **8 blocks** total (blocks ≠ sessions — session 49 had 3 blocks; the session
   window carries narrative continuity, the block cap bounds multi-block
   sessions). Older blocks rotate to the archive (R4).
+  - **Ratified extension (Cray, 2026-07-30 — session 194): a per-BLOCK byte cap
+    of ≤ 4,096 B.** The count caps above bound how *many* blocks STATUS holds;
+    nothing bounded how *large* one may be, so the file drifted 10,668 B over
+    the R1 soft target with every count rule fully satisfied — the gap this
+    extension closes. Measured at s194: Current Focus was **21,993 B across 4
+    blocks** — s189 **7,038 B**, s193 **5,155 B**, s191 **5,055 B**, s192
+    **3,570 B**. 4 KB is chosen because it leaves the smallest block untouched
+    and bites only the three that bloated; enforcing it recovers **4,960 B**.
+    A block that cannot make its session's point in 4 KB is carrying detail
+    that belongs in the PLAN, ADR or lesson it should be pointing at — the
+    Recent Decisions row rule, applied one section up. **The R2 carve-out binds
+    here too:** a block whose facts have no tracked home is *rehomed first*,
+    never trimmed away (see the carve-out below).
 - **Recent Decisions:** keep the **newest 10 rows**; fix the header to
   **"(last 10)"**. New rows are **pointers, not narratives: ≤ ~600 chars** —
   full detail lives in the referenced ADR/PLAN/PR, which every row already
   links. (The row-terseness rule is what bends the size curve long-term.)
+  - **Compliance note (measured s194) — this rule was written but not
+    enforced.** 8 of 10 rows exceeded it: subtotal **11,427 B**, mean 1,143 B,
+    worst row (s186→187) **2,660 B** — over 4× the cap. Bringing all ten to the
+    stated cap recovers **5,427 B**, which is *compliance with an existing
+    rule*, not a new one. Recorded here because the s194 size ruling was
+    initially framed as needing new policy, and the measurement showed the
+    larger half of the shortfall was unenforced old policy. A reconcile that
+    writes an over-cap row is out of policy; `status-scribe` enforces this
+    structurally — it is Grep-countable, per R1's split of duties.
 - **Ratified extension (Cray, 2026-06-10):** *Active TODOs* — delete `[x]`
   items older than the session window (each is already recorded in Recent
   Decisions and/or git history; drop, no archive needed). *Next Steps* —
