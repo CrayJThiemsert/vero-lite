@@ -34,7 +34,7 @@ in a column accounting reconciles is a rounding report waiting to happen.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 import sqlalchemy as sa
@@ -109,6 +109,20 @@ class RepairCaseCloseout(Base):
     #: number, so keying it costs nothing and inventing it costs correctness.
     vendor: Mapped[str] = mapped_column(sa.Text, nullable=False)
     tax_invoice_no: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    #: วันที่เอกสาร — AC-9 column 1, the date PRINTED ON the vendor's tax invoice
+    #: (Cray, typed s192). A `Date`, not a `DateTime`: the paper carries a calendar
+    #: date and no time, so a timestamp would store a precision the document does
+    #: not have, and month-end would then be keyed on an invented hour.
+    #:
+    #: Deliberately NOT `entered_at`. เมย์ may key a 28 July invoice on 3 August, and
+    #: an export that reported the keying day as the document date would put the row
+    #: in the wrong accounting month while looking perfectly filled in — the failure
+    #: mode a KPI counting completeness cannot see, because nothing is missing.
+    #:
+    #: Nullable, like `tax_invoice_no` and for the same reason: a repair can close
+    #: before the invoice arrives, and the export reports that as an incomplete row
+    #: rather than refusing the close-out.
+    tax_invoice_date: Mapped[date | None] = mapped_column(sa.Date, nullable=True)
     amount_pre_vat_thb: Mapped[Decimal] = mapped_column(sa.Numeric(14, 2), nullable=False)
     #: NULL means "this vendor charges no VAT" — NOT ``Decimal("0.00")``.
     vat_thb: Mapped[Decimal | None] = mapped_column(sa.Numeric(14, 2), nullable=True)
