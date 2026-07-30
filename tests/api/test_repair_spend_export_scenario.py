@@ -39,7 +39,11 @@ from services.api.config import settings
 from services.db.repair_spend_export import CSV_ENCODING, EXPORT_COLUMNS
 from services.engine import demo_events
 from services.engine.procedures import gate_hooks
-from services.engine.procedures.action_step import resolve_gated_step
+from services.engine.procedures.action_step import (
+    WaiverInvocation,
+    ratify_gated_step,
+    resolve_gated_step,
+)
 from services.engine.procedures.spec import load_procedures
 from verticals.fleet_maintenance import case_projection
 from verticals.fleet_maintenance.sourcing import PASSING_BASES
@@ -151,6 +155,62 @@ async def _approve_through_the_gate(
         principals=list(spec.principals),
     )
     assert gate_hooks.failures() == [], "the hook is fail-soft; a swallowed error must show here"
+
+
+async def _resolve_provisionally(client: AsyncClient, session: AsyncSession, case_id: str) -> str:
+    """ต้อม RECORDS a decision เฮีย gave by phone — ADR-0034's E-2 path.
+
+    The recorder is the mechanic, not the owner, and that is the whole shape of it:
+    the approval happened on the shoulder of a road, so the person at a keyboard is
+    recording someone else's authority. No `governed_decision` tie is emitted until
+    that someone signs, which is exactly why the export must read the attested
+    approver from the ratification block instead.
+    """
+    fired = await client.post(f"/procedures/{_HERO}/run", json={}, headers=_HEADERS)
+    assert fired.status_code == 200, fired.text
+    body: dict[str, Any] = fired.json()
+    ours = next(str(p["action_id"]) for p in body["proposals"] if case_id in str(p["action_id"]))
+    decisions = {
+        str(p["action_id"]): ("approve" if str(p["action_id"]) == ours else "reject")
+        for p in body["proposals"]
+    }
+    spec = load_procedures(_VERTICAL)
+    procedure = next(p for p in spec.procedures if p.procedure_id == _HERO)
+    await resolve_gated_step(
+        session,
+        body["run_id"],
+        _GATE_STEP,
+        decisions,
+        _person(_MECHANIC),
+        procedure=procedure,
+        principals=list(spec.principals),
+        waiver_invocation=WaiverInvocation(
+            justification="รถเสียกลางทาง โทรหาเฮียแล้วเคาะมาว่าให้ซ่อมเลย"
+        ),
+    )
+    assert gate_hooks.failures() == []
+    return str(body["run_id"])
+
+
+async def _ratify(session: AsyncSession, run_id: str, *, decision: str = "ratify") -> None:
+    """เฮีย signs afterwards — the ONLY path to `ratify_gated_step`.
+
+    There is no HTTP route for this; `services/api/routers/` has no ratify endpoint,
+    so the driver IS the production surface and calling it directly is the real
+    consumer rather than a shortcut around one.
+    """
+    spec = load_procedures(_VERTICAL)
+    procedure = next(p for p in spec.procedures if p.procedure_id == _HERO)
+    await ratify_gated_step(
+        session,
+        run_id,
+        _GATE_STEP,
+        _person(_OWNER),
+        decision=decision,  # type: ignore[arg-type]
+        procedure=procedure,
+        principals=list(spec.principals),
+    )
+    assert gate_hooks.failures() == []
 
 
 async def _key_closeout(client: AsyncClient, case_id: str, *, vendor: str) -> None:
@@ -337,6 +397,106 @@ async def test_a_month_with_no_spend_is_an_empty_file_not_an_error(
 
     cover = await client_with_db.get("/api/exports/repair-spend/2019/3/cover", headers=_HEADERS)
     assert cover.json()["traceability_pct"] is None, "no spend has no score, never 100"
+
+
+async def test_an_emergency_approval_appears_on_the_cover_as_a_labelled_exception(
+    client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
+) -> None:
+    """Step 10's exception walkthrough: waiver → provisional → the export says so.
+
+    The row is in the file like any other repair — the money was spent and accounting
+    must key it — and the cover names it as an outstanding obligation. Both at once is
+    the point: an export that hid emergency spend would understate the month, and one
+    that only flagged it without listing it would leave accounting nothing to key.
+
+    **ผู้อนุมัติ is เฮีย, not ต้อม.** No `governed_decision` tie exists yet on this
+    path, so a reader that fell back to `audit_log.actor_person_id` would print the
+    mechanic who keyed the record as the person who authorised the spend.
+    """
+    case_id = await _accepted_case(client_with_db)
+    await _resolve_provisionally(client_with_db, db_session, case_id)
+    await _key_closeout(client_with_db, case_id, vendor="อู่คู่สัญญา ปากช่อง")
+
+    year, month = _this_month()
+    cover = (
+        await client_with_db.get(
+            f"/api/exports/repair-spend/{year}/{month}/cover", headers=_HEADERS
+        )
+    ).json()
+
+    assert cover["row_count"] == 1, "emergency spend is still spend — it stays in the file"
+    assert cover["outstanding_ratification_count"] == 1
+    (exception,) = cover["exceptions"]
+    assert exception["case_id"] == case_id
+    assert exception["state"] == "pending"
+    assert exception["approver"] == _OWNER, "the ATTESTED approver, never the recorder"
+    assert exception["total_thb"] == "62000.00"
+    assert exception["justification_ref"], "the tamper-evident handle must be carried"
+
+    got = await client_with_db.get(
+        f"/api/exports/repair-spend/{year}/{month}.csv", headers=_HEADERS
+    )
+    _, rows = _parse(got.content)
+    assert rows[0]["ผู้อนุมัติ"] == _OWNER
+
+
+async def test_ratifying_afterwards_changes_the_label_the_export_shows(
+    client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
+) -> None:
+    """The second half of the exception walkthrough: เฮีย signs, the report moves.
+
+    Same month, same money, same row — only the obligation's standing changes. An
+    export that could not show that would make the whole deferred-ratification
+    mechanism invisible to the person chasing signatures, which is the one job the
+    reconciliation window exists to support.
+    """
+    case_id = await _accepted_case(client_with_db)
+    run_id = await _resolve_provisionally(client_with_db, db_session, case_id)
+    await _key_closeout(client_with_db, case_id, vendor="อู่คู่สัญญา ปากช่อง")
+
+    year, month = _this_month()
+    before = (
+        await client_with_db.get(
+            f"/api/exports/repair-spend/{year}/{month}/cover", headers=_HEADERS
+        )
+    ).json()
+    assert before["exceptions"][0]["state"] == "pending"
+    assert before["outstanding_ratification_count"] == 1
+
+    await _ratify(db_session, run_id)
+
+    after = (
+        await client_with_db.get(
+            f"/api/exports/repair-spend/{year}/{month}/cover", headers=_HEADERS
+        )
+    ).json()
+    assert after["exceptions"][0]["state"] == "ratified"
+    assert after["outstanding_ratification_count"] == 0, "nobody owes a signature any more"
+    assert after["row_count"] == before["row_count"], "the money did not move, only the standing"
+
+
+async def test_an_ordinary_approval_produces_no_exception_entry(
+    client_with_db: AsyncClient, db_session: AsyncSession, fleet_active: None
+) -> None:
+    """The contrast case, without which the two tests above prove nothing.
+
+    If every approval produced an exception entry, `state == "pending"` above would be
+    satisfied by a report that flagged the entire month.
+    """
+    case_id = await _accepted_case(client_with_db)
+    await _approve_through_the_gate(client_with_db, db_session, case_id)
+    await _key_closeout(client_with_db, case_id, vendor="อู่คู่สัญญา ปากช่อง")
+
+    year, month = _this_month()
+    cover = (
+        await client_with_db.get(
+            f"/api/exports/repair-spend/{year}/{month}/cover", headers=_HEADERS
+        )
+    ).json()
+
+    assert cover["row_count"] == 1
+    assert cover["exceptions"] == []
+    assert cover["outstanding_ratification_count"] == 0
 
 
 async def test_an_impossible_month_is_refused(

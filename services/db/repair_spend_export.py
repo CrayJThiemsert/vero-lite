@@ -191,6 +191,22 @@ class MonthlyExport:
         return tuple(row for row in self.rows if row.exception_label in ("pending", "overdue"))
 
     @property
+    def exception_rows(self) -> tuple[ExportRow, ...]:
+        """Every row carrying an E-2 exception label, in report order.
+
+        AC-9's row-content list names the exception labels, the justification ref and
+        the run id, and the s190 amendment maps them onto "the 15 columns + the cover
+        summary" — so they belong HERE rather than as extra CSV columns. Adding them
+        to the file would mean the Express-keyable export stopped being keyable, and
+        an accountant would have to strip columns before importing.
+
+        Bounded by construction: an exception is a waiver-invoked approval, which is
+        the rare path. A month where this list is long is a month somebody should be
+        asked about, which is exactly what an exception report is for.
+        """
+        return tuple(row for row in self.rows if row.exception_label is not None)
+
+    @property
     def total_thb(self) -> Decimal:
         return sum((row.total_thb or Decimal(0) for row in self.rows), Decimal(0))
 
