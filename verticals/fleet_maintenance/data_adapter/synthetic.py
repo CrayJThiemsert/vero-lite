@@ -68,7 +68,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 from typing import Any
 
-from verticals.fleet_maintenance import pm_projection
+from verticals.fleet_maintenance import case_projection, pm_projection
 from verticals.fleet_maintenance.sourcing import compliance_signal_map, compute_three_quote
 
 
@@ -173,14 +173,37 @@ def truck_records() -> list[dict[str, Any]]:
 
 
 def operational_events() -> list[dict[str, Any]]:
-    """Return the synthetic OperationalEvent records (routine quotes + the two breaching quotes).
+    """The OperationalEvent stream: the synthetic fixture with REAL cases layered on.
 
-    The ฿48,000 breakdown is the timeline's FINAL beat so real-time anchoring (PLAN-0015 D1) leaves
-    nothing in the future. ``intake`` reads the LATEST event per truck, so truck-01 is judged on
-    that breakdown (→ owner tier), truck-03 on its ฿15,000 gearbox quote (→ fleet-manager tier,
-    the PLAN-0096 Step 1 mid-ladder row) and truck-02 on its routine ฿1,800 service (verdict
-    ``ok``). Two breaches, two different tiers: the demo shows the ladder ROUTING, which a
-    single-breach fixture cannot.
+    PLAN-0096 Step 8 (build-order item 2). Until this overlay existed a real repair
+    case never reached a governed run at all — เมย์ could open a case, key quotes and
+    accept one, and the procedure that routes spend would never see it.
+
+    **A real case OUTRANKS the fixture, and that is the intended behaviour** (Cray,
+    typed s191). ``intake`` reads the LATEST event per truck, and a case accepted
+    today is later than any fixture beat, so once a real case exists on truck-01 the
+    demo's ฿48,000 hero row stops being what the gate judges. The alternative —
+    parking real cases on trucks the demo does not use — would have hidden the
+    collision in the fixture until two real cases landed on one truck.
+
+    **Why the overlay hangs here rather than on the adapter.** Same reason
+    :func:`truck_view` gives: ``data_adapter/__init__.py`` carries the PLAN-0086 AC-7
+    row 4 measurement claim (it is STRUCTURALLY EQUAL to what the scaffolder emits,
+    and ``test_golden_e2e`` holds it there). Attaching a fleet-specific seam to it
+    would retract a measurement. The object SOURCE is the right home.
+    """
+    return case_projection.apply(_fixture_events(), truck_records())
+
+
+def _fixture_events() -> list[dict[str, Any]]:
+    """The synthetic OperationalEvent records (routine quotes + the two breaching quotes).
+
+    The ฿48,000 breakdown is the FIXTURE's final beat so real-time anchoring (PLAN-0015 D1) leaves
+    nothing in the future. With no real case on file, ``intake`` judges truck-01 on that breakdown
+    (→ owner tier), truck-03 on its ฿15,000 gearbox quote (→ fleet-manager tier, the PLAN-0096
+    Step 1 mid-ladder row) and truck-02 on its routine ฿1,800 service (verdict ``ok``). Two
+    breaches, two different tiers: the demo shows the ladder ROUTING, which a single-breach
+    fixture cannot. A real accepted case supersedes whichever of these shares its truck.
     """
     return [
         {

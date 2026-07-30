@@ -63,6 +63,7 @@ from services.db.repair_case_evidence import (
 )
 from services.db.repair_case_task import TASK_STATUSES, RepairCaseTaskEvent
 from services.db.session import get_session
+from verticals.fleet_maintenance import case_projection
 from verticals.fleet_maintenance.task_chain import (
     TASK_CHAIN,
     chain_state,
@@ -79,6 +80,26 @@ _CHUNK_BYTES = 64 * 1024
 #: explicitly rather than left NULL: "we do not know who opened this" is a fact the
 #: traceability KPI must be able to SEE, not a blank to be mistaken for clean data.
 _UNATTRIBUTED = "unattributed"
+
+
+async def _refresh_case_events(session: AsyncSession) -> None:
+    """Re-project the live cases onto the event stream after an evidence write.
+
+    PLAN-0096 Step 8 (build-order item 2). Called after the three writes that can
+    change what the gate would see: a new quote (moves ``distinct_vendor_count``, and
+    with it the sourcing signal), a new justification (the E-3 alternative), and an
+    acceptance (the governed ฿ figure itself).
+
+    **Fail-SOFT, and loudly on the view rather than at the caller.** The operator's
+    row is already committed by the time this runs; turning a projection hiccup into
+    a 500 would tell เมย์ her quote did not save when it did. The view records why it
+    is stale and ``health_check`` surfaces it — the same contract the PM view and the
+    boot path use.
+    """
+    try:
+        await case_projection.refresh(session)
+    except Exception as exc:  # fail-soft — see the docstring
+        case_projection.record_unavailable(str(exc))
 
 
 def photo_root() -> Path:
@@ -444,6 +465,7 @@ async def add_quote(
     )
     session.add(quote)
     await session.commit()
+    await _refresh_case_events(session)
     return _quote_response(quote)
 
 
@@ -476,6 +498,7 @@ async def add_justification(
     )
     session.add(row)
     await session.commit()
+    await _refresh_case_events(session)
     return _justification_response(row)
 
 
@@ -631,6 +654,7 @@ async def accept_quote(
     )
     session.add(accepted)
     await session.commit()
+    await _refresh_case_events(session)
     return _accepted_response(accepted, quote, lowest_at_acceptance=lowest)
 
 
