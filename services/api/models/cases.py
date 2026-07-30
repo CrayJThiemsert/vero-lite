@@ -284,11 +284,93 @@ class EvidencePackResponse(BaseModel):
         default=None, description="The most recent justification's written reason"
     )
     attachment_count: int = Field(description="How many quotes carry a document")
+    accepted_quote_id: str | None = Field(
+        default=None,
+        description=(
+            "ใบที่ตกลง — the quote actually agreed to, or None when none has been "
+            "accepted yet. The LATEST acceptance; the table is append-only."
+        ),
+    )
+    accepted_amount_thb: Decimal | None = Field(
+        default=None,
+        description=(
+            "The governed figure — what the DOA ladder routes on. Read through the "
+            "accepted quote, never a separately keyed number."
+        ),
+    )
+    accepted_vendor: str | None = Field(
+        default=None, description="The garage whose quote was agreed to"
+    )
+    accepted_reason: str | None = Field(
+        default=None,
+        description=(
+            "Why not the cheapest. None means the cheapest WAS accepted — the write "
+            "path refuses a non-lowest acceptance without a reason, so this absence "
+            "is a fact rather than a gap."
+        ),
+    )
+    accepted_by: str | None = Field(default=None, description="Who agreed to it")
+    accepted_at: datetime | None = Field(default=None, description="When it was agreed (UTC)")
+    lowest_amount_at_acceptance_thb: Decimal | None = Field(
+        default=None,
+        description=(
+            "The cheapest quote on file at the MOMENT of acceptance. Not always "
+            "`lowest_amount_thb`: a cheaper quote arriving later would otherwise make "
+            "a correct decision look unjustified in hindsight."
+        ),
+    )
+    accepted_the_cheapest: bool | None = Field(
+        default=None,
+        description=(
+            "Whether the agreed quote was the cheapest then on file. Three-valued on "
+            "purpose — None means nothing has been accepted, which is a different "
+            "answer from 'yes' and must not be read as one."
+        ),
+    )
     quotes: list[QuoteResponse] = Field(
         default_factory=list, description="The quotes themselves, oldest first"
     )
     justifications: list[JustificationResponse] = Field(
         default_factory=list, description="Every justification, oldest first (append-only)"
+    )
+
+
+class AcceptQuoteRequest(BaseModel):
+    """Record ใบที่ตกลง — which quote this repair was agreed at.
+
+    ``quote_id`` must name a quote already recorded against THIS case (Cray's typed
+    decision, s191). The accepted amount is what an authority threshold routes on,
+    so it has to trace to evidence somebody recorded; when the chosen garage's quote
+    was never keyed, it is keyed first through ``POST /api/cases/{id}/quotes``.
+    """
+
+    quote_id: str = Field(description="The quote being agreed to — must belong to this case")
+    reason: str | None = Field(
+        default=None,
+        description=(
+            "Why this quote and not the cheapest one on file. REQUIRED when the "
+            "accepted quote is not the lowest — that, not 'why did you accept a "
+            "quote', is the question an auditor actually asks."
+        ),
+    )
+    accepted_by: str | None = Field(
+        default=None, description="person_id; server-resolved when authn is enabled"
+    )
+
+
+class AcceptedQuoteResponse(BaseModel):
+    """The case's current ใบที่ตกลง, with the quote it points at."""
+
+    case_id: str = Field(description="The case")
+    accepted_id: str = Field(description="Stable id for this acceptance")
+    quote: QuoteResponse = Field(description="The agreed quote — amount and vendor together")
+    reason: str | None = Field(
+        default=None, description="Why not the cheapest; None when the cheapest was accepted"
+    )
+    accepted_by: str = Field(description="person_id of whoever agreed to it")
+    accepted_at: datetime = Field(description="When it was agreed (UTC)")
+    lowest_amount_at_acceptance_thb: Decimal | None = Field(
+        default=None, description="The cheapest quote on file at that moment"
     )
 
 
