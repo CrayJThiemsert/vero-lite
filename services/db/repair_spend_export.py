@@ -140,6 +140,11 @@ class ExportRow:
     exception_label: str | None
     #: The tamper-evident handle of the audit row holding the run-time justification.
     justification_ref: str | None
+    #: Why this spend passed the sourcing rule — the basis the gate ACTUALLY SAW,
+    #: read from the link row rather than recomputed (alembic ``0022``; Cray, typed
+    #: s193). None for an ungoverned row, which never had a sourcing decision made
+    #: on it at all — an absence the proxy reports rather than papers over.
+    three_quote_basis: str | None
 
 
 @dataclass(frozen=True)
@@ -237,21 +242,21 @@ class CoverSummary:
 
 
 #: The questions an auditor asks of one line of repair spend. Named as data so the
-#: proxy's denominator is inspectable rather than a magic 5 inside a division.
+#: proxy's denominator is inspectable rather than a magic number inside a division.
 #:
-#: `three_quote_basis` — AC-9's "why did this pass sourcing?" — is deliberately ABSENT,
-#: and the reason is a finding, not an oversight: the basis is stamped on the in-memory
-#: event (`case_events.build_event`) and persisted NOWHERE, so the only way to put it in
-#: a report is to recompute it. `compute_three_quote`'s own docstring forbids exactly
-#: that — the basis is recorded "rather than recomputing it later against a threshold
-#: that may since have moved". Recomputing would answer last month's audit question
-#: with this month's threshold and look completely filled in while doing it.
+#: The sourcing question was ABSENT until alembic ``0022``, and the reason it could
+#: not be asked is worth keeping: the basis existed only inside the persisted event
+#: dict, so answering it meant either walking JSONB reasoning traces or recomputing
+#: — and `compute_three_quote` forbids recomputation in its own docstring. Cray typed
+#: option (ก) at s193: persist it at decision time. The question is now askable
+#: because the answer is recorded, not because the reader got cleverer.
 AUDIT_QUESTIONS = (
     "who approved it",
     "when was it approved",
     "which governed run decided it",
     "what paper backs it",
     "why was it an exception",
+    "why did it pass sourcing",
 )
 
 
@@ -262,6 +267,11 @@ def audit_answers(row: ExportRow) -> tuple[bool, ...]:
     no ratification obligation is not missing a justification, and scoring it as
     unanswered would penalise every ordinary approval for the existence of the
     emergency path.
+
+    The sourcing question is NOT given that treatment. An ungoverned row has no basis
+    because no gate ever judged its sourcing, and that is exactly the gap the report
+    exists to surface — scoring it "not applicable" would let escaped money improve
+    the proxy by virtue of having escaped.
     """
     return (
         row.approver is not None,
@@ -269,6 +279,7 @@ def audit_answers(row: ExportRow) -> tuple[bool, ...]:
         row.run_id is not None,
         row.tax_invoice_no is not None and row.document_date is not None,
         row.exception_label is None or row.justification_ref is not None,
+        row.three_quote_basis is not None,
     )
 
 
@@ -434,6 +445,7 @@ async def load_monthly_export(
             RepairCaseRunLink.run_id,
             RepairCaseRunLink.step_id,
             RepairCaseRunLink.outcome,
+            RepairCaseRunLink.three_quote_basis,
             RepairCaseRunLink.linked_at,
             AuditLog.occurred_at,
         )
@@ -449,7 +461,7 @@ async def load_monthly_export(
         .order_by(RepairCaseRunLink.case_id, RepairCaseRunLink.linked_at)
     )
     governed_by_case: dict[str, dict[str, Any]] = {}
-    for case_id, run_id, step_id, outcome, _linked_at, occurred_at in (
+    for case_id, run_id, step_id, outcome, basis, _linked_at, occurred_at in (
         await session.execute(governed_stmt)
     ).all():
         # Ascending `linked_at` means the last write wins: a ratification lands after
@@ -459,6 +471,7 @@ async def load_monthly_export(
             "run_id": run_id,
             "step_id": step_id,
             "outcome": outcome,
+            "three_quote_basis": basis,
             "approved_at": occurred_at,
         }
 
@@ -574,4 +587,5 @@ async def _build_row(
         outcome=outcome,
         exception_label=None if view.state == "none" else view.state,
         justification_ref=_justification_ref_of(audit),
+        three_quote_basis=decision["three_quote_basis"] if decision is not None else None,
     )

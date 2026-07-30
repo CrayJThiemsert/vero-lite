@@ -99,4 +99,24 @@ class RepairCaseRunLink(Base):
     run_id: Mapped[str] = mapped_column(sa.Text, nullable=False)
     step_id: Mapped[str] = mapped_column(sa.Text, nullable=False)
     outcome: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    #: AC-9's "why did this pass sourcing?" — the ``three_quote_basis`` the gate
+    #: ACTUALLY SAW, captured at the moment of decision (Cray, typed s193).
+    #:
+    #: It is stored rather than recomputed at report time because
+    #: ``compute_three_quote`` says so in its own words: the basis is recorded
+    #: "rather than recomputing it later against a threshold that may since have
+    #: moved". A month-end export that re-derived it would answer last month's audit
+    #: question with this month's threshold — and look completely filled in doing it,
+    #: which is the failure mode a completeness KPI structurally cannot see.
+    #:
+    #: The value is not new information: it already rides the persisted step artifact
+    #: inside the ingested event dict, in the same trace step the case id is read
+    #: from. This column only makes it QUERYABLE — a report should not have to walk
+    #: JSONB reasoning traces to answer a standing audit question.
+    #:
+    #: Nullable, because a proposal that is not case-derived carries no event and the
+    #: demo fixtures legitimately have none. NULL means "no sourcing basis was
+    #: recorded for this decision", which is a different fact from any of the four
+    #: real bases and must stay distinguishable from them.
+    three_quote_basis: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     linked_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
