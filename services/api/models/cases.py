@@ -14,7 +14,7 @@ the trade-off the persona constraints say to refuse by default.
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
 from decimal import Decimal
 
 from pydantic import BaseModel, Field
@@ -404,6 +404,17 @@ class CloseOutRequest(BaseModel):
             "honest answer and the thing the KPI is designed to count."
         ),
     )
+    tax_invoice_date: date | None = Field(
+        default=None,
+        description=(
+            "วันที่เอกสาร — the date PRINTED ON the vendor's tax invoice, not the day "
+            "it was keyed. เมย์ routinely keys a July invoice in August, and the "
+            "month-end export decides an accounting month from this value, so reusing "
+            "the keying timestamp would file the row in the wrong month while leaving "
+            "it looking complete. Refused without a tax_invoice_no: an invoice date "
+            "with no invoice is not an incomplete record, it is an incoherent one."
+        ),
+    )
     amount_pre_vat_thb: Decimal = Field(description="จำนวนเงินก่อน VAT, in THB")
     vat_thb: Decimal | None = Field(
         default=None,
@@ -441,6 +452,9 @@ class CloseOutResponse(BaseModel):
     )
     vendor: str = Field(description="ผู้ขาย / อู่ — the garage that did the work")
     tax_invoice_no: str | None = Field(default=None, description="เลขที่ใบกำกับภาษี, if keyed")
+    tax_invoice_date: date | None = Field(
+        default=None, description="วันที่เอกสาร — the date on the invoice itself, if keyed"
+    )
     amount_pre_vat_thb: Decimal = Field(description="จำนวนเงินก่อน VAT")
     vat_thb: Decimal | None = Field(default=None, description="VAT, or None for a non-VAT vendor")
     total_thb: Decimal = Field(description="จำนวนเงินรวม")

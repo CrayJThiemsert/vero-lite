@@ -701,6 +701,7 @@ def _closeout_response(
         repair_order_no=order.repair_order_no,
         vendor=closeout.vendor,
         tax_invoice_no=closeout.tax_invoice_no,
+        tax_invoice_date=closeout.tax_invoice_date,
         amount_pre_vat_thb=closeout.amount_pre_vat_thb,
         vat_thb=closeout.vat_thb,
         total_thb=closeout.total_thb,
@@ -764,6 +765,23 @@ async def key_closeout(
             ),
         )
 
+    # Refuse the INCOHERENT, allow the INCOMPLETE — the same line the total check
+    # draws. A missing invoice is a real state (the repair closed before the paper
+    # arrived) and the export reports it as an incomplete row, which is what the KPI
+    # counts. An invoice DATE with no invoice NUMBER is not a stage of that story:
+    # the date is read off the document that carries the number, so one without the
+    # other means something was mis-keyed, and storing it would put a date the export
+    # files an accounting month on behind a document nobody can produce.
+    if req.tax_invoice_date is not None and not (req.tax_invoice_no or "").strip():
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                "tax_invoice_date was supplied without a tax_invoice_no — an invoice "
+                "date is read off the invoice that carries the number, so one without "
+                "the other is a mis-key rather than an incomplete record"
+            ),
+        )
+
     now = datetime.now(UTC)
     order = await allocate_repair_order_no(session, case_id=case_id, year=now.year, now=now)
     closeout = RepairCaseCloseout(
@@ -771,6 +789,7 @@ async def key_closeout(
         case_id=case_id,
         vendor=req.vendor,
         tax_invoice_no=(req.tax_invoice_no or None),
+        tax_invoice_date=req.tax_invoice_date,
         amount_pre_vat_thb=req.amount_pre_vat_thb,
         vat_thb=req.vat_thb,
         total_thb=req.total_thb,

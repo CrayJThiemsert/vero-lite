@@ -210,6 +210,78 @@ async def test_a_missing_invoice_number_is_recorded_not_refused(
 
 
 # --------------------------------------------------------------------------- #
+# วันที่เอกสาร — AC-9 column 1 (Cray, typed s192; alembic 0021)
+# --------------------------------------------------------------------------- #
+
+
+async def test_the_invoice_date_is_the_one_on_the_paper_not_the_keying_day(
+    client_with_db: AsyncClient,
+) -> None:
+    """The whole reason this column exists rather than reusing ``entered_at``.
+
+    เมย์ keys a July invoice in August routinely. The month-end export decides an
+    accounting month from this value, so if it were the keying timestamp the row
+    would file into the wrong month while looking completely filled in — and a KPI
+    that counts completeness could never flag it. Nothing is missing; it is just
+    wrong. So the stored date must be the one supplied, never derived from
+    ``entered_at``, and this asserts the two are genuinely different values."""
+    case_id = await _open_case(client_with_db)
+
+    keyed = await _key_closeout(
+        client_with_db,
+        case_id,
+        tax_invoice_no="INV-2026-0731",
+        tax_invoice_date="2026-07-28",
+    )
+
+    assert keyed["tax_invoice_date"] == "2026-07-28"
+    assert (
+        keyed["entered_at"][:10] != "2026-07-28"
+    ), "the fixture must not key on the invoice date, or this proves nothing"
+    fetched = await client_with_db.get(f"/api/cases/{case_id}/closeout")
+    assert fetched.json()["tax_invoice_date"] == "2026-07-28", "it must survive the round trip"
+
+
+async def test_a_missing_invoice_date_is_recorded_not_refused(
+    client_with_db: AsyncClient,
+) -> None:
+    """Incomplete is a real state; the export reports it and the KPI counts it.
+
+    Same rule as the missing invoice NUMBER above — a repair can close before the
+    paper arrives, and refusing the close-out until it does sends เมย์ back to the
+    notebook these tables replace."""
+    case_id = await _open_case(client_with_db)
+    keyed = await _key_closeout(client_with_db, case_id, tax_invoice_no="INV-2026-0731")
+    assert keyed["tax_invoice_date"] is None
+
+
+async def test_an_invoice_date_without_an_invoice_number_is_refused(
+    client_with_db: AsyncClient,
+) -> None:
+    """Refuse the INCOHERENT, allow the incomplete — the line the total check draws.
+
+    The date is read off the document that carries the number, so a date with no
+    number means something was mis-keyed. Storing it would give the export an
+    accounting month to file on behind a document nobody can produce — which is
+    worse than a blank, because a blank is visibly incomplete and this is not."""
+    case_id = await _open_case(client_with_db)
+
+    response = await client_with_db.post(
+        f"/api/cases/{case_id}/closeout",
+        json={
+            "vendor": "อู่คู่สัญญา ปากช่อง",
+            "tax_invoice_date": "2026-07-28",
+            "amount_pre_vat_thb": "1000.00",
+            "vat_thb": "70.00",
+            "total_thb": "1070.00",
+        },
+    )
+
+    assert response.status_code == 422
+    assert "tax_invoice_date" in response.text and "tax_invoice_no" in response.text
+
+
+# --------------------------------------------------------------------------- #
 # The deliberate decoupling
 # --------------------------------------------------------------------------- #
 
