@@ -439,10 +439,19 @@ async def test_refused_ratification_leaves_the_approver_blank(db_session: AsyncS
     assert is_fully_traceable(row) is False
 
 
-async def test_rejected_case_names_nobody_as_approver(db_session: AsyncSession) -> None:
-    """A rejected proposal was not approved, whatever else the step's audit carries."""
+async def test_a_rejected_repair_that_was_paid_anyway_is_still_a_row(
+    db_session: AsyncSession,
+) -> None:
+    """The worst case in the whole report: เฮีย said no and the money went out.
+
+    It must never be filtered out by the rule that removes rejected-and-unpaid
+    noise — a close-out is real spend, and this is the shape that most needs seeing.
+    """
     decided_at = datetime(2026, 7, 16, 11, 0, tzinfo=BKK)
     await _seed_case(db_session, case_id="case-rejected")
+    await _seed_closeout(
+        db_session, case_id="case-rejected", entered_at=datetime(2026, 7, 22, 3, 0, tzinfo=UTC)
+    )
     await _seed_governed_run(
         db_session,
         case_id="case-rejected",
@@ -457,6 +466,61 @@ async def test_rejected_case_names_nobody_as_approver(db_session: AsyncSession) 
     (row,) = export.rows
     assert row.outcome == LINK_OUTCOME_REJECTED
     assert row.approver is None
+    assert row.total_thb == Decimal("62000.00"), "the money is real and must be visible"
+    assert is_fully_traceable(row) is False
+
+
+async def test_a_rejected_repair_nobody_paid_for_is_not_a_line_of_spend(
+    db_session: AsyncSession,
+) -> None:
+    """Surfaced by the end-to-end scenario, not by any unit fixture.
+
+    The hero round decides the demo cases alongside the real one, so rejecting them
+    produced link rows with no approver, no invoice and no amounts — landing in the
+    export as ฿0 Express entries an accountant would have to key in order to record
+    that nothing happened. A rejected proposal nobody paid is a governance record,
+    fully visible in the audit trail and in `repair_case_run_link`; it is not spend.
+    """
+    decided_at = datetime(2026, 7, 16, 11, 0, tzinfo=BKK)
+    await _seed_case(db_session, case_id="case-rejected-unpaid")
+    await _seed_governed_run(
+        db_session,
+        case_id="case-rejected-unpaid",
+        run_id="run-rejected-unpaid",
+        decided_at=decided_at,
+        outcome=LINK_OUTCOME_REJECTED,
+        audit=_doa_tie(_APPROVER),
+    )
+
+    export = await load_monthly_export(db_session, year=2026, month=7, now=decided_at)
+
+    assert export.rows == ()
+    assert export.cover_summary().traceability_pct is None
+
+
+async def test_an_approved_repair_with_no_invoice_yet_is_still_a_row(
+    db_session: AsyncSession,
+) -> None:
+    """Cray's decision 3, stated directly: approved 15 July, closed 3 August.
+
+    It is a JULY row with blank invoice fields — not an August row, and not absent
+    until the paperwork lands. The blanks are what the KPI counts against us.
+    """
+    decided_at = datetime(2026, 7, 15, 10, 0, tzinfo=BKK)
+    await _seed_case(db_session, case_id="case-awaiting-invoice")
+    await _seed_governed_run(
+        db_session,
+        case_id="case-awaiting-invoice",
+        run_id="run-awaiting-invoice",
+        decided_at=decided_at,
+        audit=_doa_tie(_APPROVER),
+    )
+
+    export = await load_monthly_export(db_session, year=2026, month=7, now=decided_at)
+
+    (row,) = export.rows
+    assert row.approval_date == date(2026, 7, 15)
+    assert row.total_thb is None and row.tax_invoice_no is None
     assert is_fully_traceable(row) is False
 
 

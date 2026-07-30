@@ -18,6 +18,7 @@ from services.api.routers.admin import router as admin_router
 from services.api.routers.audit import router as audit_router
 from services.api.routers.cases import router as cases_router
 from services.api.routers.demo import router as demo_router
+from services.api.routers.exports import router as exports_router
 from services.api.routers.insights import router as insights_router
 from services.api.routers.intake import router as intake_router
 from services.api.routers.pm import router as pm_router
@@ -288,6 +289,7 @@ app.include_router(demo_router)
 app.include_router(runs_router)
 app.include_router(whoami_router)
 app.include_router(insights_router)
+app.include_router(exports_router)
 
 
 @app.get("/health", response_model=HealthResponse, tags=["infrastructure"])
