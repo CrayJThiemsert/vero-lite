@@ -767,3 +767,67 @@ _Rotated out of `docs/STATUS.md` on 2026-07-28 (session 182), per the R1–R7 ro
 ### Recent-Decisions row — s180 (PLAN-0094 Step 4 COMPLETE; L1 counts NON-PROGRESS, #937/#938/#939) [rotated 2026-07-30, session-194 reconcile — 10-row window]
 
 | 2026-07-28 | **s180 — PLAN-0094 Step 4 COMPLETE (#937/#938/#939): L1 counts NON-PROGRESS, not touches. AC-7, AC-8(i)/(iii), AC-11 closed.** L1 increments only on a re-applied `old_string` (`repeat xN`) or a return to content already held this turn (`osc xN`); forward edits record `result == ""`; `clear_turn_scoped()` wired into the turn boundary. **All three L1 warns ever recorded would not fire under the new unit.** s179's BLOCKING `tool_response` probe was **answered without being run** (84 recorded `Edit` results: no `content` key, `originalFile` null in 78/84, `structuredPatch` = a diff not a state) — the PLAN's on-disk hash stands, no restart spent. **AC-11: `T` = the DENY bar in BOTH Telegram bodies** (Cray's ruling on a self-contradicting spec). **OQ-4 OPENED — should L1 exist at all?** Baseline over all 113 transcripts: **0 denies, 3 warns, 0 true positives**. **Pre-committed: re-measure after ~20 sessions; TPs still 0 with ≥1 FP → dispatch Cowork to draft the ADR-013 amendment retiring L1.** Suite 3318 → **3327** | `767d520` (#939 merge, head_commit) / `2b9cb6f` / `053410a` (#938) / `0a85b21` (#937) / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §D4 + §OQ-4 |
+
+
+---
+
+### Rotated 2026-07-31 (session 195 reconcile)
+
+#### Current-Focus block — Session 191 (head_commit `99b752f`)
+
+> **Session 191, 2026-07-30 (head_commit `143fe6b` → `99b752f`) — the session a REAL
+> repair case first reached the governed gate.** Three PRs merged (#975–#977), 0 open.
+> Until then the claim "the gate governs real repairs" was **true of the demo and false
+> of the product** — `cases.py` referenced `OperationalEvent` nowhere, and the only
+> `case_id` ever reaching a run was the fixture `case-demo-truck01-axle`.
+>
+> **#975 — ใบที่ตกลง, the accepted quote (alembic `0019`).** The DoA ladder routes on the
+> ฿ figure of a repair, and nothing recorded that figure at the moment it became true:
+> `RepairCaseCloseout.total_thb` is written *after* the work the gate was meant to
+> authorise, and `EvidencePack.lowest_amount_thb` is the *cheapest* quote, which is not
+> what was agreed whenever an approved higher quote wins on lead time. The same absence
+> forced `0018` — nothing recorded WHICH garage was used. **Cray typed two decisions:**
+> the reference is a **REQUIRED** foreign key (a free-typed vendor + amount was offered
+> and declined — the figure an authority threshold routes on must trace to evidence
+> somebody recorded), and a **reason is required only when the accepted quote is not the
+> cheapest on file** (the audit question is never "why did you accept a quote", it is
+> "why did you not take the cheapest one"; demanding it always trains the operator to
+> type "ถูกสุด" into the box). A third TABLE, not a flag: a flag would need `UPDATE`,
+> breaking the append-only rule these tables exist to hold. The cross-case invariant is
+> a composite FK — measured: with the router's case filter removed, **Postgres itself**
+> refuses the insert.
+>
+> **#977 — the case → event path**, Option A, mirroring the ratified `pm_projection`
+> seam, with **zero `services/engine/` diff and zero `data_adapter/__init__.py` diff**,
+> both verified — the latter mandatory, since `test_golden_e2e` holds that module
+> structurally equal to the scaffolder's output (PLAN-0086 AC-7 row 4). Only cases with
+> an **accepted** quote are emitted — a case with quotes and no acceptance has no agreed
+> number, and emitting one would mean inventing it. **A real case OUTRANKS the fixture on
+> its own truck and the AT-2 hero narrative moves with it** — Cray typed that over
+> parking real cases on unused trucks, which would have hidden the collision. Cache
+> invalidation is **fingerprinted, not blanket** (Code's call, veto open): `demo_events`
+> caches its live list per process, and that list also holds the recovery reading Execute
+> appends (PLAN-0015 D2), so a blanket reset would silently delete it.
+>
+> **The session's own defect, found by probing rather than by failing.** The scenario
+> suite passed first run; the sweep then returned **GREEN on one probe — a vacuous
+> oracle**: the mutation raised inside the projection's digest, the router's fail-soft
+> refresh swallowed it, and the stream stayed unchanged — exactly what the test asserted.
+> **A test that cannot distinguish "correctly skipped" from "crashed and was swallowed"
+> proves nothing**, the same class as the `assert-absence-by-recording` lesson. Fixed by
+> asserting the view is *healthy* (`loaded`, no `last_error`); both probes are recorded
+> in the test's docstring.
+>
+> **#976 — the PLAN caught up with reality.** s190 typed "case↔run link = a scalar
+> `run_id`, migration `0019`" and it **never entered the PLAN**; s191 grounding refuted
+> it on three measured reasons (re-fireable runs, per-PROPOSAL approval, the
+> provisional/ratify split) and `0019` shipped as the accepted quote instead. **The
+> dispatch was wrong and the drafter caught it** — told to mark the decision superseded
+> "where it sits", it found no such text and said so; Code confirmed by grep. Dev DB
+> `0017` → `0019` on Cray's go, pre-flighted — `repair_case_closeout` verified EMPTY,
+> which made `0018`'s NOT NULL `vendor` column safe rather than assumed. Suite **3572 →
+> 3597**.
+
+#### Recent Decisions row — session 181
+
+| 2026-07-28 | **s181 — CLAUDE.md full slim (#941): the 11.1 KB footer changelog RETIRED to git history; 33,014 → 21,524 B (−35.2%).** NEW convention: a constitutional edit bumps the footer date only — `git log --follow -- CLAUDE.md` is the amendment history. Coverage verified BEFORE the cut; no binding rule's substance changed. The <200-line LOCKED target was unreachable → Cray ruled (b): target <20 KB + a follow-up extraction pass | `85efe52` (#941 merge, head_commit) / `CLAUDE.md` |
