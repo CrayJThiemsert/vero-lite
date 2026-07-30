@@ -36,6 +36,8 @@ once, in the open, where it can be argued with.
 
 from __future__ import annotations
 
+import csv
+import io
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -54,6 +56,9 @@ from services.db.repair_case_closeout import (
     latest_closeout,
 )
 from services.db.repair_case_run_link import (
+    LINK_OUTCOME_APPROVED,
+    LINK_OUTCOME_PROVISIONAL,
+    LINK_OUTCOME_RATIFIED,
     LINK_OUTCOME_REFUSED,
     LINK_OUTCOME_REJECTED,
     RepairCaseRunLink,
@@ -283,6 +288,44 @@ def audit_answers(row: ExportRow) -> tuple[bool, ...]:
     )
 
 
+#: The link outcomes that mean spend was AUTHORISED. A case in one of these states
+#: belongs in the month even before its paperwork lands — Cray's decision 3 requires
+#: exactly that: approved 15 July, closed 3 August, filed as a JULY row with blank
+#: invoice fields.
+APPROVING_LINK_OUTCOMES = (
+    LINK_OUTCOME_APPROVED,
+    LINK_OUTCOME_PROVISIONAL,
+    LINK_OUTCOME_RATIFIED,
+)
+
+
+def is_reportable(row: ExportRow) -> bool:
+    """Whether this decision belongs in a file accounting keys as SPEND.
+
+    Surfaced by the end-to-end scenario, not by any unit test: the hero round decides
+    the demo fixture cases alongside the real one, and rejecting them produced link
+    rows with no approver, no invoice and no amounts. Those were landing in the export
+    as zero-baht Express entries — lines an accountant would have to key into a ledger
+    to record that nothing happened.
+
+    The rule that follows, stated once:
+
+    * **Money exists → always a row**, governed or not. A close-out is real spend, and
+      a REJECTED case that still has one is the worst case in the whole report — the
+      repair the approver declined and somebody paid for anyway. It must never be
+      filtered out by the same rule that removes noise.
+    * **No money, but spend was authorised → a row.** The invoice has not arrived yet;
+      the blank fields are the honest report and the KPI counts them against us.
+    * **No money and no authorisation → not a row.** A rejected proposal that was
+      never paid is a governance record, not a line of spend. It is fully visible in
+      the audit trail and in ``repair_case_run_link``; putting it in an accounting
+      export would mean keying a ฿0 entry to record that nothing happened.
+    """
+    if row.total_thb is not None:
+        return True
+    return row.outcome in APPROVING_LINK_OUTCOMES
+
+
 def is_fully_traceable(row: ExportRow) -> bool:
     """Whether one export row can answer the audit question end to end.
 
@@ -419,6 +462,73 @@ def _truck_index() -> dict[str, dict[str, Any]]:
     return {str(t["truck_id"]): t for t in truck_records()}
 
 
+#: Excel on Windows reads a BOM-less UTF-8 file as the system codepage, which turns
+#: every Thai column header and every vendor name into mojibake. เมย์ opens this file
+#: by double-clicking it, so the BOM is not a nicety — without it the export is
+#: unreadable to the one person who has to key it, while being perfectly valid UTF-8
+#: to every tool that would be used to check it.
+CSV_ENCODING = "utf-8-sig"
+
+
+def _cell(value: object) -> str:
+    """One CSV cell. ``None`` renders as empty — the honest blank the KPI counts.
+
+    ``Decimal`` is rendered by ``str`` and never by ``float``: the column is money
+    that accounting reconciles against paper, and a binary float would introduce a
+    rounding difference in the only place it is guaranteed to be noticed.
+    """
+    if value is None:
+        return ""
+    if isinstance(value, date):
+        return value.isoformat()
+    return str(value)
+
+
+def to_csv(export: MonthlyExport) -> str:
+    """Render the month as Express-keyable CSV — the 15 columns, nothing else.
+
+    **The cover summary is deliberately NOT prepended.** A preamble above the header
+    row is what makes a file human-friendly and machine-hostile: Express keys from
+    this, and any importer would have to be told how many lines to skip — a number
+    that silently becomes wrong the first time the cover grows a line. The cover is
+    served as its own JSON resource instead, so the file stays exactly what it claims
+    to be and the numbers stay machine-readable rather than parsed back out of prose.
+
+    Dates render ISO. The partner's own paperwork is Thai-formatted, but this file is
+    keyed into another system rather than read as a document, and ISO is the one
+    format no locale reinterprets — `03/07/2026` is two different days depending on
+    who opens it.
+    """
+    buffer = io.StringIO()
+    # QUOTE_MINIMAL with the default dialect: `รายการซ่อม` is free text a mechanic
+    # typed and will contain commas, and an unquoted comma there would shift every
+    # later cell one column left for that row only — a corruption that looks like
+    # data rather than like an error.
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow(EXPORT_COLUMNS)
+    for row in export.rows:
+        writer.writerow(
+            [
+                _cell(row.document_date),
+                _cell(row.approval_date),
+                _cell(row.repair_order_no),
+                _cell(row.tax_invoice_no),
+                _cell(row.vendor),
+                _cell(row.vendor_code),
+                _cell(row.plate),
+                _cell(row.truck_code),
+                _cell(row.work_type),
+                _cell(row.description),
+                _cell(row.amount_pre_vat_thb),
+                _cell(row.vat_thb),
+                _cell(row.total_thb),
+                _cell(row.approver),
+                _cell(row.cost_center),
+            ]
+        )
+    return buffer.getvalue()
+
+
 async def load_monthly_export(
     session: AsyncSession,
     *,
@@ -504,7 +614,8 @@ async def load_monthly_export(
             vendor_codes=vendor_codes,
             trucks=trucks,
         )
-        rows.append(row)
+        if is_reportable(row):
+            rows.append(row)
 
     # Stable order: approval date, then case id. Rows without an approval date sort
     # last rather than raising — an ungoverned row has no approval instant and is
