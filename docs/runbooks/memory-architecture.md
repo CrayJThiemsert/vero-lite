@@ -344,7 +344,7 @@ entirely; see Lesson #23 §3.)
   split moves blocks between files; every pointer that named one is rot the
   moment the bar moves (session 144 broke three of its own this way and had to
   repair them in the same PR).
-  Live chains: `2026-h1b/c/d/e/f-status.md` → `2026-h1-status.md`; and the
+  Live chains: `2026-h1b/c/d/e/f/g-status.md` → `2026-h1-status.md`; and the
   separate Current-Focus-only `2026-h1b/c-current-focus.md` →
   `2026-h1-current-focus.md`. Same scheme, two distinct corpora.
 - Deleting STATUS content **without** archiving remains forbidden (the

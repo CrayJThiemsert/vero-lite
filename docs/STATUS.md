@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-30T13:21:31+07:00
-session: 192
-current_batch: "s192 — PLAN-0096 Step 8 item 3 COMPLETE (#979): the case → run link + the `on_resolved` seam, proven on BOTH gate drivers; two real defects caught by the oracle. Suite 3597 → 3604."
+last_updated: 2026-07-30T22:15:00+07:00
+session: 193
+current_batch: "s193 — PLAN-0096 Step 8 item 5 COMPLETE (#982-#986): the month-end export shipped end to end, KPI included. Docs overclaim fixed (#987). Suite 3607 → 3646."
 current_actor: code
-blocked_on: "Nothing blocks the build. Two NON-blocking carry-overs unchanged: cost-center granularity (ship the column unfilled), and two open cases on one truck still collapse to the newer (item 4)."
-next_action: "PLAN-0096 Step 8 item 5 — the month-end Express-shaped export + the KPI + its scenario test, then Step 10. Item 4 (the `latest_per` re-key) stays deferred — Cray typed (ค)."
-head_commit: 5dd8ce6
-recent_commits: [5dd8ce6, e443cb7, 3f2d1c7, 516028a, f335323, 99b752f, d545541, d3f2919, c007388, d781683]
+blocked_on: "Nothing blocks the build. Step 10's AC-12 evidence is written; the AC ticks + PLAN archive are the remaining work."
+next_action: "Tick PLAN-0096's ACs against the s193 AC-12 sign-off and archive the PLAN. Then RR-3 (concurrency-race coverage) if it is to be closed, and the ADR-0025 archive pointer repair, which needs the drafter route."
+head_commit: 367c15b
+recent_commits: [367c15b, d986eb4, 367a08e, 4253699, bd3e41d, 0a7e626, ac9641d, 3922aad, 7b03fd8, 1e3b291]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,74 @@ recent_commits: [5dd8ce6, e443cb7, 3f2d1c7, 516028a, f335323, 99b752f, d545541, 
 ---
 
 ## Current Focus
+
+> **Session 193, 2026-07-30 (head_commit `5dd8ce6` → `367c15b`) — the session the
+> month-end export went from zero lines to a downloadable file with a KPI that can
+> fail. Six PRs merged (#982–#987), 0 open. PLAN-0096 **Step 8 build-order item 5 is
+> COMPLETE** and **Step 10's AC-12 evidence is written** — four coverage matrices,
+> seven named residual risks, and a confidence statement, in
+> `.claude/handoffs/session-193/` (gitignored).**
+>
+> **The build, in five PRs.** #982 the reader — `ExportRow` / `MonthlyExport` /
+> `load_monthly_export`, whose row set is a UNION: cases with a `gate_decision` in the
+> month, filed on the APPROVAL date, **∪** close-outs in the month with no governed run
+> at all, filed on `entered_at`. That second source is the whole point — a naive export
+> reports 100% traceability *by construction*, because the rows it cannot explain are
+> the rows it never selected. #983 the KPI + cover: **Cray typed rule (ค)** — a row
+> counts only if it was governed AND fully documented; governance-only would score a
+> perfectly-approved repair with no invoice at 100%, paperwork-only would score escaped
+> money as traceable the moment a tidy invoice was keyed. Two columns are deliberately
+> NOT required and both would be bugs if they were: `vat_thb` is NULL for a garage that
+> is not VAT-registered, and `cost_center` ships unfilled, so requiring it would pin the
+> KPI at 0% forever. #984 **Cray typed option (ก)**: persist `three_quote_basis`
+> (alembic `0022`) rather than recompute it — `compute_three_quote` forbids the
+> alternative in its own docstring, and recomputing would answer last month's audit
+> question with this month's threshold *while looking completely filled in*. The value
+> was never lost, only unqueryable: it already rode the persisted step artifact. #985
+> the CSV + router — the repo's **first** export surface (no `csv.writer`, no
+> `text/csv` response existed before it), UTF-8 **with BOM** because Excel on Windows
+> mojibakes Thai without one. #986 the E-2 exception report on the cover.
+>
+> **Two defects were found by ORACLES, not by review — the useful half.** A probe
+> mutating `is_fully_traceable` so its governed/outcome guard never fires left the whole
+> suite **GREEN**: the guard was unreachable through `load_monthly_export`, which
+> already nulls the approver when there is no decision, so nothing tested it on its own
+> terms. Four direct predicate tests now do. And the **end-to-end scenario found a real
+> bug**: the hero round decides the demo fixture cases alongside the real one, and
+> rejecting them produced link rows with no approver, no invoice and no amounts —
+> landing in the export as **฿0 Express entries** an accountant would have to key to
+> record that nothing happened. No unit test could have shown it; every fixture built
+> exactly the rows its author had in mind. `is_reportable` now states the rule: money
+> exists → always a row (a REJECTED case *with* a close-out is the worst case in the
+> report); authorised-but-unpaid → a row; neither → not spend.
+>
+> **AC-9's non-vacuity bar is demonstrated on the real path**, not asserted: a month of
+> complete rows scores 100.0, and swapping only the garage to `เจ๊หงส์` — who ships with
+> no Express code on purpose — drops it to 0.0. **28 non-vacuity probes** across the
+> five PRs, each restored from a backup copy and diff-verified. Two did not redden and
+> were treated as findings rather than passes; one of those exposed the untested guard
+> above, the other exposed that **a probe whose mutation is a semantic no-op measures
+> nothing while reading as a pass**.
+>
+> **Also this session:** #987 corrected a **public-repo** overclaim — README and
+> `docs/conventions/tech-stack.md` described pgvector + Apache AGE + pg_trgm as the
+> database when `docker-compose.yml` runs stock `postgres:16-alpine` and the extension
+> grep returns zero. STATUS had carried the corrected framing since s141 and it was
+> never propagated to the two files a *reader* hits first. Two dead pointers fell out of
+> the same pass: `tech-stack.md` cited **ADR-005** three times for "custom Postgres
+> image" when ADR-005 is the strategic pivot to OCT, and the README referenced the
+> never-drafted PLAN-002 twice. Suite **3607 → 3646**; `mypy --strict services/` 127 →
+> **130**; dev DB `0021` → **`0022`**, migrated on Cray's explicit go against five
+> criteria fixed before the run. MS-S1 never touched; LINE still disarmed.
+>
+> **R2/R4 rotation applied.** The s186→187 Current-Focus block (the oldest of exactly
+> four) and the s179 Recent-Decisions row rotated out. The archive base had returned to
+> **194,232 B** with that block due in, so R4's continuation rule fired: sessions-142→171
+> spilled to the new **`2026-h1g-status.md`** and the base dropped to 46,215 B. All 65
+> section headings were compared for exact equality before and after — no content lost.
+> Every sibling chain pointer was repaired in the same change. **STATUS is 53 KB — under
+> R1's 64 KB ceiling, still over the 48 KB soft target**, which remains the standing
+> Cray-call TODO.
 
 > **Session 192, 2026-07-30 (head_commit `99b752f` → `5dd8ce6`) — the session the
 > case → run link got a real oracle, and the oracle found two defects in code that
@@ -230,144 +298,7 @@ recent_commits: [5dd8ce6, e443cb7, 3f2d1c7, 516028a, f335323, 99b752f, d545541, 
 > still disarmed. **R2 rotation applied** — the s184→s185 Current-Focus block
 > and the s177 PLAN-0095 Recent-Decisions row rotate to `docs/status-archive/`.
 
-> **Session 186→187, 2026-07-28/29 (head_commit `760ceed` → `728da00`) — the
-> arc where PLAN-0096 stopped being a document. Ten PRs merged (#951–#961),
-> 0 open: **Steps 1–5, 7 and 9 COMPLETE (6 of 10)**. The fleet vertical now
-> carries the design partner's real governance numbers, captures cases from
-> minute 1 into Postgres, holds a quote evidence pack, **enforces its sourcing
-> rule instead of decorating it**, can record a roadside decision provisionally
-> and chase the signature afterwards, imports the partner's PM history as
-> measured-then-confirmed data, and owns one outbound notify surface — built
-> DISARMED. But the session's most important output is not a feature: **a
-> plausible one-line bug left all 24 LINE unit tests GREEN and reddened only
-> the scenario suite** — and on that measurement Cray set a new standing work
-> standard.**
->
-> **(s186 — Steps 1–4, and Step 5 split in half on purpose.)** Step 1 replaced
-> the PLAN-0086 simulated customer's ladder with the partner's own (floors
-> `"0"`/`"5001"`/`"30001"`, per-truck ceiling 5001) and built the AC-2
-> cross-vertical hash tripwire. Step 2 added `repair_case` + alembic 0013 + a
-> mobile-first View I. Step 3 added the quote evidence pack — two tables and a
-> facts-only read model that states no verdict. **Step 4 is the load-bearing
-> one:** it KILLED the fail-open `default: {compliance: {three_quote: true}}`
-> reshape, which had been passing every repair whether or not anyone compared
-> a price. Cray ratified three things mid-session (the `repair_case` table over
-> a ⊕ PLAN line; `distinct_vendor_count` over the PLAN's `quote_count` —
-> because three quotes from one garage is not "สามเจ้า"; and a dev-DB
-> migration). Step 5 was then split deliberately: part 1 landed the schema, the
-> `RESOLVED_PROVISIONAL` status and the pure `ratification_state`, because
-> **authoring the fleet window before a driver existed would itself have been
-> the PLAN-0094 AC-1 defect class** ADR-0034 D3 exists to prevent.
->
-> **(s187 — Step 5 part 2, and one ADR that contradicted itself.)** The
-> provisional branch, `ratify_gated_step`, the resume advance, and the fleet's
-> `ratification_window_days: 7`. The design's load-bearing choice is an
-> **absence**: no `governed_decision` tie is emitted at provisional time,
-> because the attested authority answered a phone rather than acting in-system,
-> and a tie naming them would be a lie the audit model cannot catch (PLAN-0075
-> SD-6(a)). The tie appears at ratification, naming whoever actually signs; a
-> refusal emits none at all. **The contradiction found by building it:**
-> ADR-0034 **D3(3)** writes the ratify precondition as `status ==
-> RESOLVED_PROVISIONAL`, while **D3(6)** requires ratification to stay possible
-> on an advanced run — and `resume_run` marks every advanced step `complete`.
-> In the fleet hero the step after the gate is *itself* gated, so the run
-> always moves past `approve` within minutes while the window is seven days;
-> read literally, D3(3) makes the owner's signature **impossible in exactly the
-> flow the window exists for**. Cray was shown all four options and typed the
-> **state-based precondition** — the obligation (`pending`|`overdue`), not the
-> step status — which is a strict superset of D3(3) and preserves its stated
-> intent (idempotency BY STATE) verbatim. **The ADR text was amended to match in
-> s188 (#962, `eae0f82`) — and it was not the "one word" s187 predicted.** Code
-> R2 on that amendment found a SECOND divergence of the same class: D3(3) *and*
-> D3(4) both stated the `RESOLVED_PROVISIONAL → RESOLVED` transition
-> **unconditionally**, while the shipped flip is conditional on the step still
-> being parked there — a step the run has advanced past stays `complete`,
-> because walking it back would re-enter `_UNRESUMED_STATUSES` and make a
-> finished step look like the one the run is suspended at
-> (`action_step.py:1165-1172`). Both halves are the same defect: **the shipped
-> mechanism is obligation/audit-based where the ADR text described a
-> status-based model.**
->
-> **(s187 tail — Steps 9 and 7.)** Step 9 (#959) landed PM data import on the
-> shape **Cray typed**: a `pm_import_row` table (**alembic 0015**) *plus* a
-> confirmed-PM **ontology overlay**, chosen over a per-process cache and over a
-> table with no overlay — the rejected third option would have made **AC-10
-> vacuous**, since unconfirmed rows would not touch the ontology and neither
-> would confirmed ones. The parser is pure and fail-closed whole-file /
-> reject-per-row; four API routes and an onboarding runbook ride with it; the
-> fleet's last-service `GUESS` stamps are retired. Cray gave an **explicit go**
-> to migrate the dev DB to 0015, and it was verified **against the live schema,
-> not `alembic current`** — a probe read `information_schema` and confirmed 15
-> columns, `seq` as `bigint … IDENTITY(ALWAYS)`, both indexes + the PK + the
-> unique constraint, 0 rows. *(`alembic current` reports which migration RAN,
-> never what it produced.)* Step 7 (#960) built the **LINE Official Account
-> notify seam**: five AC-8 events, recipients addressed as **ROLES not ids**,
-> per-(event, recipient) cooldowns, `tools/notify/line.sh`, an `.env.example`
-> block — **outbound only, and DISARMED by design**
-> (`LINE_NOTIFY_ENABLED=false`, no token, no recipients), so no test and no dev
-> session can reach a real recipient.
->
-> **(s187 — the measurement that changed the work standard.)** A non-vacuity
-> probe measured that a plausible one-line bug — normalising the LINE recipient
-> role key (`role.replace(".", "")`) — leaves **all 24 mock-fed LINE unit tests
-> GREEN** while silently ensuring the `ผจก.เดินรถ` role never receives an
-> approval request for its entire ฿5,001–30,000 DOA rung. **Only the scenario
-> suite reddened.** Root cause: every LINE unit case feeds a `_DETAIL` dict the
-> test author wrote, so **the suite agrees with itself by construction** — it
-> proves the contract the author IMAGINED, not the one the system produces. On
-> that measurement **Cray set a new standing work standard (typed, not
-> inferred): a passing unit test proves the SEAM works, never that the system
-> does its job — every build also needs a scenario test driving the REAL
-> producer into the REAL consumer on realistic simulated data, and skipping it
-> is not allowed.** #961 is that correction landing: **8 scenario cases** on
-> realistic data, producers wired to consumers. The standard is ADVISORY until
-> it reaches `CLAUDE.md` §8 — a Cowork round-trip, logged below.
->
-> **Two anti-patterns, each worth a sentence because each cost real time.**
-> **"Assert absence by making the test double EXPLODE" does not survive a
-> blanket `except`:** the AC-11 case ("a disarmed channel makes no outbound
-> call") used a raising transport, and removing the arm gate entirely left it
-> GREEN — `_push`'s `except Exception`, correct on its own terms, swallowed the
-> `AssertionError`. Rewritten to **RECORD each call and assert the record is
-> empty**; nothing can swallow that. And **editing a vertical's
-> `data_adapter/__init__.py` retracts a MEASUREMENT** —
-> `test_row_4_adapter_is_structurally_equal_to_the_donor` carries PLAN-0086
-> AC-7's claim that the hand-written adapter equals scaffolder output, so the
-> PM overlay was hung on the object SOURCE
-> (`synthetic.OBJECT_SOURCES["Truck"]`) rather than weakening that test.
-> Future vertical-specific seams go there too.
->
-> **State at close:** `main` `728da00`, 0 open PRs. Full offline gate re-run on
-> **every merge commit** (CI here is PR-only, so a merge commit is otherwise
-> never tested): **3502 passed / 8 skipped** (s185 baseline 3343 → 3438 at
-> #958 → **3470** Step 9 → **3494** Step 7 → **3502** scenarios), `mypy
-> services/ verticals/` clean over **175** files, ruff + format clean, R7/R8
-> exit 0, and `git diff <branch> <merge>` **0 bytes** on all three tail merges
-> (`f7f85ef`↔`1de7b80`, `00b40b2`↔`bc7c8a9`, `a042ce1`↔`728da00`). **AC-2 and
-> AC-6 stayed green through every schema touch** — only the fleet's own
-> governance hash moved, which is the intended and only effect.
-> Non-vacuity discipline held throughout: **eleven probes in session 187
-> alone** (the s187 close report's own count — the figure this block carried
-> before the tail reconcile counted only through #958), each shown RED before
-> its oracle was believed, restored from `/tmp` copies (never `git checkout`)
-> and `diff`-verified clean afterwards — including the one that proves Cray's
-> precondition ruling is guarded by a single discriminating test, the one
-> that flipped `quote_gate` from `failed` back to `complete` when the fail-open
-> default was restored, demonstrating the hole Step 4 closed, and the role-key
-> probe above. Three real
-> defects were found **by running the work**: a JSONB-null-vs-SQL-NULL trap
-> that would have silently broken Step 8's export, a response model dropping
-> fields the router stored, and an un-gitignored photo-upload directory on a
-> PUBLIC repo. `.claude/state/goal.json` **CLEARED this session** — the file
-> does not exist, so no stale goal is armed. **MS-S1 was never touched;
-> everything was deterministic-offline.** **R2 rotation applied at the
-> mid-session reconcile** — the s183 + s182 Current-Focus blocks and the s176
-> Recent-Decisions row rotate to `docs/status-archive/`; both archive files
-> remain under R4's ~192 KB bar. *(This tail reconcile extends the s186→s187
-> block and row in place rather than appending new ones, so it rotates
-> nothing.)*
-
-> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split.]_
+> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
 
 ## Prior focus (archived)
 
@@ -386,6 +317,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-30 | **s193 — PLAN-0096 Step 8 item 5 COMPLETE (#982–#986): the month-end export end to end, with a KPI that can fail.** Row set = governed ∪ escaped money (a naive export reports 100% by construction). **Cray typed (ค)**: traceable = governed AND documented; `vat_thb` and `cost_center` deliberately NOT required, the second because it would pin the KPI at 0% forever. **Cray typed (ก)**: persist `three_quote_basis` (alembic `0022`) — recomputing would answer last month's audit question with this month's threshold *while looking filled in*. Two defects found by ORACLES: a probe showed `is_fully_traceable`'s guard was unreachable-and-untested, and the end-to-end scenario found the demo cases landing as **฿0 Express entries**. AC-9's bar demonstrated on the real path (`เจ๊หงส์` drops it 100 → 0). 28 probes; 2 non-reddening ones recorded as findings. Dev DB → `0022`. Suite 3607 → **3646** | `367c15b` (#987 merge, head_commit) / `367a08e` (#986) / `bd3e41d` (#985) / `ac9641d` (#984) / `7b03fd8` (#983) / `ed09502` (#982) / `.claude/handoffs/session-193/` (AC-12 sign-off) |
 | 2026-07-30 | **s192 — PLAN-0096 Step 8 item 3 COMPLETE (#979): the case → run link, proven on BOTH gate drivers.** `repair_case_run_link` + the `on_resolved` seam on `resolve_gated_step` *and* `ratify_gated_step`. s191's deliberate no-merge (zero tests on the second call site) paid: the hook read `output_set`, so a rejected case was invisible (fix: `decided_entries()` reads `decisions`), and `_outcome` let the run state outrank a refusal. **Cray typed: a refusal is checked FIRST.** Five non-vacuity probes, all RED as predicted. Suite 3597 → **3604** | `5dd8ce6` (#979, head_commit) / `docs/plans/0096-fleet-flow-completion-phase1.md` §Step 8 |
 | 2026-07-30 | **s191 — a REAL repair case now reaches the governed gate (#975–#977).** The accepted quote (ใบที่ตกลง, alembic `0019`) gives the DoA ladder a ฿ figure existing BEFORE the work and tracing to recorded evidence — the primitive whose absence also forced `0018`'s vendor column; Cray typed the required FK + reason-only-when-not-cheapest. The case → event path wires it in with **zero engine and zero adapter-`__init__` diff**, and a real case outranks the fixture, so the AT-2 hero narrative moves. One non-vacuity probe came back GREEN — a vacuous oracle a fail-soft handler was hiding. Dev DB `0017` → `0019`. Suite → **3597** | `99b752f` (#977, head_commit) / `d3f2919` (#976) / `d781683` (#975) / `docs/plans/0096-fleet-flow-completion-phase1.md` §Step 8 |
 | 2026-07-29 | **s189 — PLAN-0096 Steps 1–7 and 9 COMPLETE (8 of 10), #965–#968.** Partner round-2 answers closed 5 of 7. Step 6 = the partner's real 8-step chain (4 mandatory + 4 conditional, per-item staleness, append-only trail, alembic 0016); `pm_due` = a sixth LINE event, group recipient, one message per round, read off persisted `judge_service_due` verdicts. Cray typed the prerequisite-anchored clock + the AC-8 bump. Unplanned (#966/#967): an ORM↔alembic registration guard + `alembic check` lockstep test — **a comparison means something only when at most ONE side is hand-maintained**. Suite 3502 → **3552** | `13aa2f0` (#968 merge, head_commit) / `430cf39` (#967) / `e54cbe8` (#966) / `26e61b3` (#965) / `docs/plans/0096-fleet-flow-completion-phase1.md` |
@@ -395,7 +327,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-07-28 | **s182 — PLAN-0094 Step 6 executed, AC-10 CLOSED (#943): all 11 ACs closed or withdrawn, on a FULL FRESH 18/18 non-vacuity sweep** — Cray typed the full re-sweep rather than citing the recorded s177/s180 runs. 11 PLAN-named mutations + **7 derived** for the ACs that name none; **`missing_red` EMPTY for all 18**; sibling L2/L3/L4 invariance held. Applied by a harness script, not the Edit tool (the mutated files are the session's own live hooks). **M-A's blast radius is 8 L1 rows, not the 3 first predicted** — the session's prediction was too narrow; the PLAN's L2/L4-stay-green claim is `confirmed — prior intact`. AC-4 also reddens AC-11(i) — a FEATURE. Two stale-doc defects fixed. **The `git mv` to `done/` stays Cray-gated** (live-loop soak + live-check (ii)); OQ-4 OPEN | `1d0649f` (#943 merge, head_commit) / `6726b69` / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 |
 | 2026-07-28 | **s181 — CLAUDE.md full slim (#941): the 11.1 KB footer changelog RETIRED to git history; 277 → 261 lines / 33,014 → 21,524 B (−35.2%).** NEW convention: a constitutional edit bumps the footer date only — the edit's commit message is the full record; `git log --follow -- CLAUDE.md` = amendment history. Coverage verified BEFORE the cut (20 commit bodies ≥ their footer entries; companion artifacts on disk). No binding rule's substance changed (9 hunks, all §6 + footer). The <200-line LOCKED target unreachable (outside-§6 = 194 lines) → Cray ruled (b): target <20 KB + follow-up extraction pass queued | `85efe52` (#941 merge, head_commit) / `8ffd290` / `CLAUDE.md` + `.claude/handoffs/session-181/` |
 | 2026-07-28 | **s180 — PLAN-0094 Step 4 COMPLETE (#937/#938/#939): L1 counts NON-PROGRESS, not touches. AC-7, AC-8(i)/(iii), AC-11 closed.** L1 increments only on a re-applied `old_string` (`repeat xN`) or a return to content already held this turn (`osc xN`); forward edits record `result == ""`; `clear_turn_scoped()` wired into the turn boundary. **All three L1 warns ever recorded would not fire under the new unit.** s179's BLOCKING `tool_response` probe was **answered without being run** (84 recorded `Edit` results: no `content` key, `originalFile` null in 78/84, `structuredPatch` = a diff not a state) — the PLAN's on-disk hash stands, no restart spent. **AC-11: `T` = the DENY bar in BOTH Telegram bodies** (Cray's ruling on a self-contradicting spec). **OQ-4 OPENED — should L1 exist at all?** Baseline over all 113 transcripts: **0 denies, 3 warns, 0 true positives**. **Pre-committed: re-measure after ~20 sessions; TPs still 0 with ≥1 FP → dispatch Cowork to draft the ADR-013 amendment retiring L1.** Suite 3318 → **3327** | `767d520` (#939 merge, head_commit) / `2b9cb6f` / `053410a` (#938) / `0a85b21` (#937) / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §D4 + §OQ-4 |
-| 2026-07-27 | **s179 — PLAN-0094 Step 4 RE-SCOPED on its own probe's refutation (#933); OQ-3 opened + RESOLVED same session.** Measured twice, one session apart: **a failed `Edit` invokes NO hook** — not `PostToolUseFailure`, not `PostToolUse`. **D4(a) withdrawn**, taking **AC-1(ii) / AC-6 / AC-8(ii)** with it (AC-6 withdrawn, not weakened) and with them Step 4's only Cray-gated `settings.json` surface; the s169-class thrash stays **uncountable**. OQ-3 → (b), four rulings: **R1** a self-contained COUNT, not a sha1 pointer (evidence ring 6 vs doc trip bar 15); **R2** `dict[str,int]`; **R3** `result == ""` on forward edits; **R4** → new **AC-11** (Telegram `count: N/T` + formatter mirror-invariance) | `b3c20dd` / `bde43d6` (#933) / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §D4 + §OQ-3 |
 
 ## In-Flight Discussions
 
