@@ -1,9 +1,32 @@
 # PLAN-0097: A durable trail entry on the goal gate's warn path
 
-**Status:** Draft
+**Status:** Complete
 **Owner:** Claude Code
 **Created:** 2026-07-30
+**Completed:** 2026-07-31 (session 195) — build [#996](https://github.com/CrayJThiemsert/vero-lite/pull/996)
 **Related ADRs:** ADR-0018 (Axis-B verification loop — D1, D5, §Minimal-prototype spec, §V2 Amendment)
+
+> **COMPLETE — all 7 ACs met, session 195.** Cray ruled the two open sub-decisions:
+> **SD-2 = yes** (first-class `Evaluation.detail`) and **SD-3 = dedup** (on marker +
+> same non-empty fingerprint; empty fingerprint always records). Steps 1–4 shipped in
+> #996; suite 3665 → **3676**, all eight mutations RED against their named tests.
+>
+> **Two findings from execution, recorded because they change what this PLAN claimed:**
+>
+> 1. **AC-6's M6 prediction did not hold.** M6 (recording under both tiers) does *not*
+>    redden the existing ladder tests — warn entries are invisible to
+>    `_last_decision_evaluation`, so the ladder still blocks-then-parks correctly even
+>    when the enforce path is annotated. The fence was therefore an UNTESTED property and
+>    M6 would have passed silently. Closed by adding
+>    `test_the_enforce_tier_writes_no_warn_entry`, an exact-trail assertion — the only
+>    shape that notices an extra entry. M6 reddens it.
+> 2. **The §Residual-gaps AC-3 baselines were correct.** Both corners behaved as the
+>    code reading predicted (flake corner dispatches; enforce-flip corner parks), so the
+>    STOP-and-surface clause did not fire. M3/M3b confirm the exclusion is what holds
+>    them — without it, each corner changes decision.
+>
+> The "~25 lines of production delta" estimate in §Design was low but the right order of
+> magnitude; the cost was Steps 3–4 as anticipated, not the production edit.
 
 > **Drafting provenance + author≠reviewer disclosure (ADR-012 D4.3).** Drafted
 > (uncommitted) by the in-harness `plan-drafter` subagent (ADR-013 D1 phased
@@ -155,7 +178,7 @@ mocking `record_evaluation` or `save_goal`** — those are the things under
 test; every trail assertion reloads the goal file **from disk** via
 `load_goal(goal_file)`, the same read path the next Stop's gate uses.
 
-- [ ] **AC-1 — check-fail site (`:491-494`) records.** Scenario-shaped: real
+- [x] **AC-1 — check-fail site (`:491-494`) records.** Scenario-shaped: real
   `run_goal_gate({})` against a real on-disk goal file (tmp
   `CLAUDE_GOAL_PATH` via the existing `gate_env` fixture,
   `tests/handoffs/test_goal_gate.py:90-103`), a real subprocess check that
@@ -167,7 +190,7 @@ test; every trail assertion reloads the goal file **from disk** via
   on-disk `evaluations` stays `[]` → red. *Vacuity counterexample check:* an
   assertion on the seeded in-memory `Goal` object would survive M1 — which is
   why the AC mandates the disk reload; a mocked `save_goal` cannot fake it.
-- [ ] **AC-2 — judge-residue/drift site (`:565`) records.** Parametrized:
+- [x] **AC-2 — judge-residue/drift site (`:565`) records.** Parametrized:
   (a) checks green + a seeded evaluator FAIL verdict at the pinned
   fingerprint (no new work); (b) `enforce: false` DIVERGENT drift (the
   `test_drift_under_enforce_false_warns` seed shape). Both: return `None` +
@@ -176,7 +199,7 @@ test; every trail assertion reloads the goal file **from disk** via
   (ping + `return None`) → AC-1 reds while AC-2 stays green; **M2b:** the
   symmetric revert at `:565` → AC-2 reds while AC-1 stays green. This proves
   each call site is *independently* oracled (a single-site fix cannot pass).
-- [ ] **AC-3 — decision invariance (the "purely additive" proof).** The
+- [x] **AC-3 — decision invariance (the "purely additive" proof).** The
   gate's decision function is invariant under warn-entry insertion. Two named
   corners, both currently untested (their "today" baseline is derived by code
   reading — see Residual gaps): **(i) the flake corner** — a warn entry at
@@ -192,7 +215,7 @@ test; every trail assertion reloads the goal file **from disk** via
   → corner (ii) double-blocks → red. *NB:* AC-3 alone would pass with
   recording deleted wholesale (no warn entries → trivially invariant) — it is
   non-vacuous only jointly with AC-1/AC-2; M3/M3b are its own reddeners.
-- [ ] **AC-4 — bounded growth (dedup, contingent on SD-3 = dedup).** Two
+- [x] **AC-4 — bounded growth (dedup, contingent on SD-3 = dedup).** Two
   consecutive gate runs in the same failing state at the same pinned
   fingerprint append **exactly one** warn entry (exact-count assert, not
   `>= 1`); re-pin the fingerprint to fp-B (a new failing state) → a second
@@ -200,14 +223,14 @@ test; every trail assertion reloads the goal file **from disk** via
   toward recording, mirroring `work_fingerprint()`'s fail-toward-evaluating
   contract). **Mutation M4:** delete the dedup guard → count 2 → red. (M1
   reds it at count 0.)
-- [ ] **AC-5 — durable when the off-machine channel is dead.** With
+- [x] **AC-5 — durable when the off-machine channel is dead.** With
   `CLAUDE_TELEGRAM_SCRIPT` pointed at a nonexistent path and `_ping_telegram`
   **not** monkeypatched (the real function silently no-ops,
   `_goal_gate.py:152-153` — dispatch fact 8), the on-disk warn entry still
   lands. This is the branch's defect in miniature: the record must not ride
   on the ping. **Mutation M5 = M1 under this fixture** — proves the disk
   record exists independently of the ping path.
-- [ ] **AC-6 — regression inventory: zero silent edits to existing tests.**
+- [x] **AC-6 — regression inventory: zero silent edits to existing tests.**
   The entire existing `tests/handoffs/test_goal_gate.py` suite passes
   **unmodified**. Pre-verified inventory (this draft): the warn-branch tests
   assert pings/status/detail but never trail-emptiness —
@@ -223,7 +246,7 @@ test; every trail assertion reloads the goal file **from disk** via
   (`test_check_fail_blocks_once_then_parks`,
   `test_never_blocks_twice_for_same_state`) redden because the ladder's
   last-entry bookkeeping breaks → red, proving the enforce tier is fenced.
-- [ ] **AC-7 — offline gate + isolation constraint.** Full offline gate green
+- [x] **AC-7 — offline gate + isolation constraint.** Full offline gate green
   at CI scope (full `pytest tests/`, `ruff`, `mypy services/` — not the
   changed subset). Every new test uses the `gate_env` fixture, which pins
   `CLAUDE_GOAL_PATH` to `tmp_path` — **no test may read or write the real
@@ -413,7 +436,11 @@ closeout), `git mv` to `docs/plans/done/`.
   *Why Cray:* two normative sections of an Accepted ADR diverge; deciding
   which controls is ratification authority, and no test suite catches a
   wrong governance reading (the dispatch's no-accelerator clause).
-- **SD-2 — the `detail` field.** *Question:* should the warn entry carry the
+- **SD-2 — the `detail` field. RATIFIED 2026-07-31 (session 195): Cray typed
+  yes.** Built as an optional first-class `Evaluation.detail`, emitted only when
+  non-empty (the `divergence` precedent), tolerant on parse; no `schema_version`
+  bump. The surfacing as drafted, kept for the record:
+  *Question:* should the warn entry carry the
   human-readable detail string (what Telegram gets)? *Recommendation:* yes —
   optional first-class `Evaluation.detail`, emitted when non-empty; without
   it a `:565` entry cannot distinguish drift from judge-residue, and the
@@ -422,7 +449,13 @@ closeout), `git mv` to `docs/plans/done/`.
   `_goal_state.py` untouched). *Why Cray:* it changes the shared schema
   module all three writers (gate, evaluator, `/goal`) use, and accepts a
   named skew residual.
-- **SD-3 — dedup vs always-append.** *Question:* one warn entry per distinct
+- **SD-3 — dedup vs always-append. RATIFIED 2026-07-31 (session 195): Cray typed
+  dedup.** Built as: skip when the raw last entry is a warn marker at the same
+  NON-EMPTY fingerprint; an empty fingerprint always records. AC-4 asserts exact
+  counts, never `>= 1` — an at-least assertion would also pass under the
+  always-append alternative and so could not tell the two designs apart. The
+  surfacing as drafted, kept for the record:
+  *Question:* one warn entry per distinct
   failing state, or one per Stop? *Recommendation:* dedup on (warn-marker,
   same non-empty fingerprint) — bounds trail noise in a Stop-looping session,
   mirrors the ladder's at-most-once-per-state bound (`_last_was_enforce_block`);
