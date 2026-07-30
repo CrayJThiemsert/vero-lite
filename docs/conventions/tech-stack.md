@@ -15,7 +15,7 @@
 | ORM | SQLAlchemy 2.0 (async) | — |
 | Migrations | Alembic | — |
 | Background jobs | Celery + Redis | — |
-| Database | PostgreSQL 16 + pgvector + Apache AGE + pg_trgm | TBD (ADR-005) |
+| Database | PostgreSQL 16 (stock image, no extensions) | — |
 | Frontend (Phase 1) | FastAPI + Jinja2 + HTMX + Alpine.js + Tailwind | — |
 | Frontend (Phase 2, m7+) | Next.js for complex pages | — |
 | LLM (local) | Ollama on MS-S1 MAX | ADR-001 |
@@ -33,7 +33,7 @@
 - Language: Python 3.12+
 - Web framework: FastAPI
 - Validation: Pydantic v2
-- Database: PostgreSQL 16 (extensions TBD via ADR-005)
+- Database: PostgreSQL 16, stock `postgres:16-alpine` (extensions are an OPEN question — no ADR drafted)
 - Local LLM: Ollama on MS-S1 MAX (per ADR-001)
 
 **Open** (subject to revision before Phase 2):
@@ -49,14 +49,14 @@ Brief rationale for non-obvious picks (full reasoning in ADRs where they exist):
 - **Pydantic v2 over v1:** Performance, stricter validation, better error messages
 - **Async SQLAlchemy:** I/O-bound workload (DB + LLM calls), concurrency without threads
 - **HTMX + Alpine over React (Phase 1):** Lower complexity, faster iteration with one developer, Server-Side Rendering by default
-- **PostgreSQL with extensions (not separate stores):** Single source of truth, simpler ops, pgvector + AGE cover vector + graph use cases without adding Qdrant/Neo4j
+- **PostgreSQL as the single store — extensions are a CANDIDATE, not a shipped choice:** the preference, if semantic or graph features are ever needed, is to reach for pgvector + AGE inside Postgres rather than add Qdrant/Neo4j — one source of truth, simpler ops. **None of those extensions is installed today** (`docker-compose.yml` runs stock `postgres:16-alpine`, and a repo-wide grep for `pgvector` / `pg_trgm` / `CREATE EXTENSION` / `cypher` returns zero hits under `services/`, `verticals/`, `tests/`, `alembic/`). Adopting them needs a fresh ADR **and** a PLAN; neither is drafted.
 
 ## References
 
 - ADR-001 — LLM model baseline
 - ADR-002 — Network topology (where MS-S1 MAX fits)
 - ADR-003 — Service port strategy
-- ADR-005 (TBD) — Custom Postgres image with extensions
+- ADR-005 — Strategic pivot to OCT *(NOT the Postgres-image decision: this file previously cited ADR-005 for a custom Postgres image, and that number was already taken by an unrelated accepted ADR. The extensions decision has **no** ADR number reserved — see `docs/STATUS.md` Active TODOs.)*
 
 ## Related
 

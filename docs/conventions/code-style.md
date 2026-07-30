@@ -77,7 +77,7 @@ pre-commit run --all-files
 - Comments explain **why**, not **what**
 - TODO comments include owner and ADR/issue reference:
   ```python
-  # TODO(jirachai): replace with pgvector lookup once ADR-005 lands
+  # TODO(jirachai): replace with a vector lookup once an extensions ADR lands
   ```
 
 ## Anti-Patterns

@@ -30,7 +30,7 @@ See [`CLAUDE.md`](CLAUDE.md) for the full project constitution and [`docs/adr/`]
 | Web framework | FastAPI |
 | Validation | Pydantic v2 |
 | ORM / migrations | SQLAlchemy 2.0 (async) + Alembic |
-| Database | PostgreSQL 16 (+ pgvector + Apache AGE + pg_trgm — PLAN-002) |
+| Database | PostgreSQL 16 (stock image; no extensions installed) |
 | Background jobs | Celery + Redis |
 | LLM (local) | Ollama on MS-S1 MAX (see ADR-001, ADR-002) |
 | LLM (fallback) | Anthropic Claude API |
@@ -88,7 +88,8 @@ vero-lite/
 │   ├── adr/             # Architecture Decision Records
 │   ├── plans/           # Execution plans (active + done/)
 │   └── for_llm/         # Curated context for LLM sessions
-├── ontology/            # YAML ontology — the moat (PLAN-002+)
+├── ontology/            # core YAML ontology (core_v0.yaml) + generated artifacts
+├── verticals/           # per-vertical ontology YAML, adapters, procedures — the moat
 ├── services/
 │   └── api/             # FastAPI app (Pydantic v2)
 ├── tests/               # pytest
