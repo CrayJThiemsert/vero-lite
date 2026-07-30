@@ -24,7 +24,12 @@ from services.engine.economic_impact import EconomicImpact, build_economic_steps
 
 # A minimal representative trigger event per shipped vertical. The producers
 # (assumption-based for energy/supply_chain/aquaculture; committed-CSV for procurement,
-# gated on the emergency-failure trigger per OQ-C) compute the facet from these.
+# gated on the emergency-failure trigger per OQ-C; event-anchored for fleet_maintenance,
+# gated on the partner's ฿30,000 comparison threshold) compute the facet from these.
+#
+# This dict is a CENSUS, not a sample: a vertical that ships a producer belongs here even
+# though the assertion below only needs three. Leaving one out would let its producer rot
+# untested behind an assertion that four other verticals already satisfy.
 _VERTICAL_EVENTS: dict[str, dict[str, object]] = {
     "energy": {
         "event_id": "cov-energy",
@@ -49,6 +54,13 @@ _VERTICAL_EVENTS: dict[str, dict[str, object]] = {
         "event_id": "cov-proc",
         "event_type": "asset_failure",
         "equipment_id": "cnc-01",
+    },
+    "fleet_maintenance": {
+        "event_id": "cov-fleet",
+        "event_type": "reading",
+        "measured_value": 48000.0,
+        "unit": "THB",
+        "truck_id": "truck-01",
     },
 }
 
