@@ -21,6 +21,27 @@
 .hero-title b { font-weight: 700; }
 .hero-title .faint { color: var(--tx-2); font-weight: 400; }
 .hero-badges { display: flex; gap: 6px; flex-wrap: wrap; }
+/* A wrapping sub-line beneath .hero-head. `white-space: normal` is the whole
+   point and is not cosmetic: this subtree inherits `nowrap` (the badge / KV rows
+   need it), so a long descriptive sentence renders as ONE unwrapped line and
+   pushes the whole document into horizontal scroll — measured at 1121px inside a
+   980px column before this rule existed. Place it as a SIBLING of .hero-head,
+   never a child: .hero-head is a flex row, so a child lands beside the title
+   instead of under it. */
+.hero-sub {
+  white-space: normal; max-width: 100%;
+  color: var(--tx-2); font-size: 12px; line-height: 1.5;
+  margin: 0 0 14px;
+}
+/* The last-resort error line, used when `O.errorState` is unavailable. It was
+   referenced by view-hero.js and view-export.js while being defined NOWHERE —
+   found by the CSS-class guard in tests/api/test_export_cover_ui_contract.py on
+   its first run. An unstyled, non-wrapping error message is worst exactly when
+   it fires, so it wraps and reads as an error. */
+.hero-err {
+  white-space: normal; color: var(--danger, #d9534f);
+  font-size: 13px; line-height: 1.5; padding: 10px 12px;
+}
 .hero-scenario {
   color: var(--tx-1); font-size: 13px; line-height: 1.5;
   margin: 0 0 16px; padding: 10px 12px;
