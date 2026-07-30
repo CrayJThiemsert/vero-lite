@@ -131,6 +131,37 @@ class RepairCaseCloseout(Base):
     entered_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
 
 
+async def latest_closeout(session: AsyncSession, case_id: str) -> RepairCaseCloseout | None:
+    """The newest close-out keying for a case, or None.
+
+    Newest wins because the table is append-only: a correction is a new row, and
+    every consumer — the case endpoint, the month-end export — must agree on which
+    row is current. One query in one place is how they stay agreed.
+
+    ``closeout_id`` breaks a same-instant tie, for the reason
+    :func:`services.db.evidence_pack.latest_accepted_quote` states about its own:
+    two keyings sharing a timestamp is genuinely ambiguous, but an arbitrary-yet-
+    STABLE answer still matters, because without the tiebreak the endpoint and the
+    export could each pick a different row from identical data — a disagreement no
+    reader could diagnose from either output.
+    """
+    return (
+        (
+            await session.execute(
+                sa.select(RepairCaseCloseout)
+                .where(RepairCaseCloseout.case_id == case_id)
+                .order_by(
+                    RepairCaseCloseout.entered_at.desc(),
+                    RepairCaseCloseout.closeout_id.desc(),
+                )
+                .limit(1)
+            )
+        )
+        .scalars()
+        .first()
+    )
+
+
 class OrderNumberExhaustedError(RuntimeError):
     """A year ran past ``RC-<year>-9999``.
 
