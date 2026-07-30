@@ -58,6 +58,7 @@ from services.engine.economic_impact import build_economic_steps
 from services.engine.llm.client import OllamaClient
 from services.engine.llm.structured import ChatClient, JudgmentResult, generate_judgment
 from services.engine.llm.trace import build_llm_audit_metadata, build_llm_reasoning_trace
+from services.engine.procedures.gate_hooks import fire_on_resolved
 from services.engine.procedures.orchestrator import (
     ProcedureError,
     RunContext,
@@ -1004,6 +1005,10 @@ async def resolve_gated_step(  # noqa: C901 — load-bearing gate driver: precon
             },
         )
     await session.commit()
+    # PLAN-0096 Step 8 item 3 — AFTER the commit, never before: the hook records a
+    # decision that is already durable, so nothing it does (including failing) can
+    # roll back the human's approval. Fail-soft and recorded; see `gate_hooks`.
+    await fire_on_resolved(session, run_id, target)
     return target
 
 
@@ -1196,4 +1201,9 @@ async def ratify_gated_step(  # noqa: C901 — the sibling gate driver: obligati
         },
     )
     await session.commit()
+    # The SECOND call site, and it is a requirement rather than symmetry: hooking
+    # only `resolve_gated_step` would silently drop every deferred-ratification
+    # decision (ADR-0034 E-2) — the case would carry a `provisional` link forever
+    # and the export would report it as unsigned after someone had signed it.
+    await fire_on_resolved(session, run_id, target)
     return target

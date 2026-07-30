@@ -261,6 +261,9 @@ def test_every_real_model_module_is_discovered() -> None:
         # month-end export keys on (alembic 0017).
         "services.db.repair_case_closeout",
         "services.db.repair_case_evidence",
+        # PLAN-0096 Step 8 item 3: which governed run decided which repair case —
+        # the table AC-9's approval columns are filled from (alembic 0020).
+        "services.db.repair_case_run_link",
         "services.db.repair_case_task",
         "services.engine.procedures.runs",
         "services.engine.procedures.schedules",

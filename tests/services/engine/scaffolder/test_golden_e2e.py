@@ -169,6 +169,13 @@ _POST_SCAFFOLD_DONOR_FILES = frozenset(
         "task_chain.py",
         "case_events.py",
         "case_projection.py",
+        # * `run_link.py` — PLAN-0096 Step 8. Which governed run decided which repair
+        #   CASE: the shape of the audit tie one operator's accountant needs, and the
+        #   knowledge of where a case id hides inside a proposal. The engine-side seam
+        #   it registers against (`services/engine/procedures/gate_hooks.py`) IS
+        #   vertical-agnostic and is deliberately not here — a scaffolded vertical
+        #   gets the hook point, never a guess about what to write through it.
+        "run_link.py",
     }
 )
 
