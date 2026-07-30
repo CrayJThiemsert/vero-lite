@@ -180,6 +180,97 @@ class MonthlyExport:
         """Rows where somebody still owes a signature — pending OR overdue."""
         return tuple(row for row in self.rows if row.exception_label in ("pending", "overdue"))
 
+    @property
+    def total_thb(self) -> Decimal:
+        return sum((row.total_thb or Decimal(0) for row in self.rows), Decimal(0))
+
+    @property
+    def ungoverned_thb(self) -> Decimal:
+        """The baht that never passed a governed run.
+
+        Reported in money as well as in row count because they answer different
+        questions: ten ฿800 rows and one ฿90,000 row are the same count and very
+        different problems, and a count-only cover lets the expensive one hide.
+        """
+        return sum((row.total_thb or Decimal(0) for row in self.ungoverned_rows), Decimal(0))
+
+    def cover_summary(self) -> CoverSummary:
+        """The cover page — AC-9's KPI plus the audit-answer proxy."""
+        answered = sum(sum(audit_answers(row)) for row in self.rows)
+        askable = len(self.rows) * len(AUDIT_QUESTIONS)
+        return CoverSummary(
+            year=self.year,
+            month=self.month,
+            row_count=len(self.rows),
+            traceable_row_count=self.traceable_row_count,
+            traceability_pct=self.traceability_pct,
+            audit_answer_pct=(100.0 * answered / askable) if askable else None,
+            ungoverned_row_count=len(self.ungoverned_rows),
+            ungoverned_thb=self.ungoverned_thb,
+            total_thb=self.total_thb,
+            outstanding_ratification_count=len(self.outstanding_ratifications),
+        )
+
+
+@dataclass(frozen=True)
+class CoverSummary:
+    """The two numbers AC-9 puts on the cover, plus the context they need to be read.
+
+    ``traceability_pct`` is the headline: a row either answers the audit question end
+    to end or it does not. ``audit_answer_pct`` is the softer companion — of all the
+    questions we could ask of this month, what share have an answer — and it exists
+    because the headline is all-or-nothing: a month that went from "nothing recorded"
+    to "everything but the invoice number" shows no movement on the KPI at all, and a
+    partner improving their process deserves to see that it moved.
+    """
+
+    year: int
+    month: int
+    row_count: int
+    traceable_row_count: int
+    traceability_pct: float | None
+    audit_answer_pct: float | None
+    ungoverned_row_count: int
+    ungoverned_thb: Decimal
+    total_thb: Decimal
+    outstanding_ratification_count: int
+
+
+#: The questions an auditor asks of one line of repair spend. Named as data so the
+#: proxy's denominator is inspectable rather than a magic 5 inside a division.
+#:
+#: `three_quote_basis` — AC-9's "why did this pass sourcing?" — is deliberately ABSENT,
+#: and the reason is a finding, not an oversight: the basis is stamped on the in-memory
+#: event (`case_events.build_event`) and persisted NOWHERE, so the only way to put it in
+#: a report is to recompute it. `compute_three_quote`'s own docstring forbids exactly
+#: that — the basis is recorded "rather than recomputing it later against a threshold
+#: that may since have moved". Recomputing would answer last month's audit question
+#: with this month's threshold and look completely filled in while doing it.
+AUDIT_QUESTIONS = (
+    "who approved it",
+    "when was it approved",
+    "which governed run decided it",
+    "what paper backs it",
+    "why was it an exception",
+)
+
+
+def audit_answers(row: ExportRow) -> tuple[bool, ...]:
+    """Which of :data:`AUDIT_QUESTIONS` this row can answer, in order.
+
+    The exception question is answered when there is nothing to explain: a case with
+    no ratification obligation is not missing a justification, and scoring it as
+    unanswered would penalise every ordinary approval for the existence of the
+    emergency path.
+    """
+    return (
+        row.approver is not None,
+        row.approval_date is not None,
+        row.run_id is not None,
+        row.tax_invoice_no is not None and row.document_date is not None,
+        row.exception_label is None or row.justification_ref is not None,
+    )
+
 
 def is_fully_traceable(row: ExportRow) -> bool:
     """Whether one export row can answer the audit question end to end.
