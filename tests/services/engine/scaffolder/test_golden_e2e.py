@@ -161,6 +161,15 @@ def _donor_ontology() -> dict:
 #:   objects are served from a synthetic source and need a seam for rows a human
 #:   recorded. A vertical whose objects come from a real system has no such seam, so
 #:   emitting one by default would scaffold a workaround as if it were architecture.
+#: * ``economic_impact.py`` — session 195. The Box-4 ฿ producer is **opt-in per
+#:   vertical by design**, not an omission the scaffolder should correct:
+#:   ``discovery._register_economic_producer`` states it outright — "an **absent**
+#:   producer module is fine — the ฿ facet is opt-in per vertical" — and two of the six
+#:   shipped verticals still have none. The same reason as ``sourcing.py``: fleet's
+#:   producer is anchored on ONE operator's ฿30,000 comparison threshold (imported from
+#:   ``sourcing.py``) and a ratified recovery fraction, so a scaffolded default would
+#:   hand every new vertical a ฿ model nobody authored — and ฿ figures nobody authored
+#:   are the one thing an advisory economic facet must never emit (ADR-0030 D3).
 _POST_SCAFFOLD_DONOR_FILES = frozenset(
     {
         "sourcing.py",
@@ -176,6 +185,7 @@ _POST_SCAFFOLD_DONOR_FILES = frozenset(
         #   vertical-agnostic and is deliberately not here — a scaffolded vertical
         #   gets the hook point, never a guess about what to write through it.
         "run_link.py",
+        "economic_impact.py",
     }
 )
 
