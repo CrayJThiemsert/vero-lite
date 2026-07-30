@@ -32,7 +32,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Path, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from services.api.models.exports import ExportCoverResponse
+from services.api.models.exports import ExportCoverResponse, ExportExceptionResponse
 from services.db.repair_spend_export import (
     CSV_ENCODING,
     load_monthly_export,
@@ -99,4 +99,22 @@ async def repair_spend_cover(
     the same session and treat a difference as new data, not as a defect.
     """
     export = await load_monthly_export(session, year=year, month=month, now=datetime.now(UTC))
-    return ExportCoverResponse(**asdict(export.cover_summary()))
+    return ExportCoverResponse(
+        **asdict(export.cover_summary()),
+        exceptions=[
+            ExportExceptionResponse(
+                case_id=row.case_id,
+                repair_order_no=row.repair_order_no,
+                # `exception_label` is non-None for every row in `exception_rows` —
+                # that is the property's filter — but narrowing it explicitly keeps
+                # the response model's `str` honest rather than relying on a
+                # `type: ignore` to paper over a guarantee made elsewhere.
+                state=row.exception_label or "unknown",
+                approver=row.approver,
+                total_thb=row.total_thb,
+                justification_ref=row.justification_ref,
+                run_id=row.run_id,
+            )
+            for row in export.exception_rows
+        ],
+    )
