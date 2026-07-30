@@ -233,6 +233,29 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
                 "confirm refreshes the view",
                 exc,
             )
+
+        # PLAN-0096 Step 8 (build-order item 2): load the real repair cases onto the
+        # event stream once at boot, so a restart does not silently drop every case an
+        # operator has already accepted a quote for back to the pure fixture. Same
+        # fail-SOFT-and-LOUD contract as the PM view above, for the same reason: the
+        # DB-less demo (PLAN-0095) must still boot, and an unloaded view must SAY it is
+        # unloaded rather than look like a fleet with no live cases.
+        from verticals.fleet_maintenance import case_projection
+
+        try:
+            async with async_session() as _case_session:
+                _cases_loaded = await case_projection.refresh(_case_session)
+            _boot_logger.info(
+                "fleet live cases loaded: %d case(s) with an accepted quote reach the gate",
+                len(_cases_loaded),
+            )
+        except Exception as exc:  # fail-soft — a case read must never block the demo boot
+            case_projection.record_unavailable(str(exc))
+            _boot_logger.warning(
+                "fleet live cases NOT loaded (%s) — the event stream serves the synthetic "
+                "fixture only until a case write refreshes the view",
+                exc,
+            )
     # One-shot boot diagnostic: makes a mis-armed PLAN-0014 notifier (e.g. the
     # enable flag left off — otherwise a silent per-call no-op) visible at startup.
     _boot_logger.info(

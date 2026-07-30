@@ -150,8 +150,26 @@ def _donor_ontology() -> dict:
 #:   new vertical a set of deadlines nobody agreed to. The storage half
 #:   (``services/db/repair_case_task.py``) is deliberately vertical-agnostic and is
 #:   NOT here; only the meaning is operator-specific.
+#: * ``case_events.py`` — PLAN-0096 Step 8. What counts as a governed spend reading
+#:   for THIS operator: which ฿ figure the ladder routes on (the accepted quote, not
+#:   the cheapest), how the line reads on his Thai timeline, and a severity the map
+#:   colours by. The same reason as ``sourcing.py`` — a scaffolder cannot invent a
+#:   customer's idea of what a repair costs. The storage half
+#:   (``services/db/case_events.py``) is vertical-agnostic and is NOT here.
+#: * ``case_projection.py`` — PLAN-0096 Step 8. The live-case overlay, and the same
+#:   reason as ``pm_projection.py`` verbatim: it exists because this vertical's
+#:   objects are served from a synthetic source and need a seam for rows a human
+#:   recorded. A vertical whose objects come from a real system has no such seam, so
+#:   emitting one by default would scaffold a workaround as if it were architecture.
 _POST_SCAFFOLD_DONOR_FILES = frozenset(
-    {"sourcing.py", "pm_import.py", "pm_projection.py", "task_chain.py"}
+    {
+        "sourcing.py",
+        "pm_import.py",
+        "pm_projection.py",
+        "task_chain.py",
+        "case_events.py",
+        "case_projection.py",
+    }
 )
 
 
