@@ -42,8 +42,10 @@ from services.db.repair_case_run_link import (
     RepairCaseRunLink,
 )
 from services.db.repair_spend_export import (
+    AUDIT_QUESTIONS,
     EXPORT_COLUMNS,
     ExportRow,
+    audit_answers,
     is_fully_traceable,
     load_monthly_export,
     month_bounds,
@@ -117,8 +119,15 @@ async def _seed_closeout(
     tax_invoice_no: str | None = "INV-2026-0042",
     tax_invoice_date: date | None = date(2026, 7, 28),
     closeout_id: str | None = None,
-    order_no: str | None = "RC-2026-0007",
+    seq: int | None = 7,
 ) -> None:
+    """Seed a close-out, and the case's repair-order number unless ``seq`` is None.
+
+    ``seq`` is per-case rather than fixed: `repair_case_order_number` carries UNIQUE
+    on both `repair_order_no` and `(year, seq)`, so a multi-row month needs distinct
+    numbers or the fixture fails on the constraint rather than on the assertion.
+    """
+    order_no = f"RC-2026-{seq:04d}" if seq is not None else None
     session.add(
         RepairCaseCloseout(
             closeout_id=closeout_id or f"co-{case_id}",
@@ -139,7 +148,7 @@ async def _seed_closeout(
                 case_id=case_id,
                 repair_order_no=order_no,
                 year=2026,
-                seq=7,
+                seq=seq,
                 allocated_at=entered_at,
             )
         )
@@ -627,6 +636,245 @@ async def test_latest_closeout_wins_over_the_corrected_one(db_session: AsyncSess
 
     (row,) = export.rows
     assert row.tax_invoice_no == "INV-2026-0099"
+
+
+# --------------------------------------------------------------------------- #
+# The KPI — AC-9's payoff number, and its non-vacuity bar
+# --------------------------------------------------------------------------- #
+
+
+async def _seed_complete_row(
+    session: AsyncSession, *, case_id: str, seq: int, run_id: str, decided_at: datetime
+) -> None:
+    """A row that answers every audit question — the 100% baseline."""
+    await _seed_case(session, case_id=case_id, truck_id="truck-01")
+    await _seed_closeout(
+        session,
+        case_id=case_id,
+        entered_at=datetime(2026, 7, 20, 3, 0, tzinfo=UTC),
+        seq=seq,
+    )
+    await _seed_governed_run(
+        session,
+        case_id=case_id,
+        run_id=run_id,
+        decided_at=decided_at,
+        audit=_doa_tie(_APPROVER),
+    )
+
+
+async def test_a_month_of_complete_rows_scores_one_hundred(db_session: AsyncSession) -> None:
+    """The baseline the non-vacuity bar is measured against.
+
+    Without this, a KPI stuck at 0% would satisfy "an incomplete row drops it below
+    100%" trivially, and the bar would prove nothing.
+    """
+    decided_at = datetime(2026, 7, 15, 10, 0, tzinfo=BKK)
+    await _seed_complete_row(
+        db_session, case_id="case-a", seq=1, run_id="run-a", decided_at=decided_at
+    )
+    await _seed_complete_row(
+        db_session, case_id="case-b", seq=2, run_id="run-b", decided_at=decided_at
+    )
+
+    export = await load_monthly_export(db_session, year=2026, month=7, now=decided_at)
+
+    assert len(export.rows) == 2
+    assert export.traceability_pct == 100.0
+
+
+async def test_one_incomplete_row_drops_the_kpi_below_one_hundred(
+    db_session: AsyncSession,
+) -> None:
+    """**AC-9's non-vacuity bar.** If this does not hold, the metric is vacuous.
+
+    The incomplete row is not invented for the test: `เจ๊หงส์` is a real fixture
+    vendor deliberately shipped with no `accounting_code`, because a garage can be
+    used before accounting opens it in Express. An export built only from coded
+    vendors would report 100% traceable no matter what happened.
+    """
+    decided_at = datetime(2026, 7, 15, 10, 0, tzinfo=BKK)
+    await _seed_complete_row(
+        db_session, case_id="case-complete", seq=1, run_id="run-complete", decided_at=decided_at
+    )
+    # Identical in every respect except the one missing Express code.
+    await _seed_case(db_session, case_id="case-incomplete", truck_id="truck-01")
+    await _seed_closeout(
+        db_session,
+        case_id="case-incomplete",
+        entered_at=datetime(2026, 7, 20, 3, 0, tzinfo=UTC),
+        vendor=_UNCODED_VENDOR,
+        seq=2,
+    )
+    await _seed_governed_run(
+        db_session,
+        case_id="case-incomplete",
+        run_id="run-incomplete",
+        decided_at=decided_at,
+        audit=_doa_tie(_APPROVER),
+    )
+
+    export = await load_monthly_export(db_session, year=2026, month=7, now=decided_at)
+
+    assert len(export.rows) == 2
+    assert export.traceable_row_count == 1
+    assert export.traceability_pct == 50.0
+    assert export.traceability_pct < 100.0
+
+
+async def test_escaped_money_drops_the_kpi_and_shows_in_baht(
+    db_session: AsyncSession,
+) -> None:
+    """Ungoverned spend is the KPI's whole reason for existing.
+
+    The baht figure is asserted alongside the count because they answer different
+    questions — a count-only cover lets one expensive escape hide behind many cheap
+    governed rows.
+    """
+    decided_at = datetime(2026, 7, 15, 10, 0, tzinfo=BKK)
+    await _seed_complete_row(
+        db_session, case_id="case-governed", seq=1, run_id="run-governed", decided_at=decided_at
+    )
+    await _seed_case(db_session, case_id="case-escaped")
+    await _seed_closeout(
+        db_session,
+        case_id="case-escaped",
+        entered_at=datetime(2026, 7, 18, 4, 0, tzinfo=UTC),
+        seq=2,
+    )
+
+    cover = (
+        await load_monthly_export(db_session, year=2026, month=7, now=decided_at)
+    ).cover_summary()
+
+    assert cover.row_count == 2
+    assert cover.traceability_pct == 50.0
+    assert cover.ungoverned_row_count == 1
+    assert cover.ungoverned_thb == Decimal("62000.00")
+    assert cover.total_thb == Decimal("124000.00")
+
+
+async def test_empty_month_reports_none_not_a_perfect_score(db_session: AsyncSession) -> None:
+    """A month nobody spent in has no traceability to report."""
+    cover = (
+        await load_monthly_export(
+            db_session, year=2026, month=3, now=datetime(2026, 7, 31, tzinfo=UTC)
+        )
+    ).cover_summary()
+
+    assert cover.row_count == 0
+    assert cover.traceability_pct is None
+    assert cover.audit_answer_pct is None
+
+
+async def test_audit_proxy_moves_where_the_all_or_nothing_kpi_cannot(
+    db_session: AsyncSession,
+) -> None:
+    """The companion number exists to show partial progress.
+
+    A case that went from "nothing recorded" to "everything but the invoice" is real
+    improvement the headline KPI cannot express — it is 0% either way. If the proxy
+    could not separate them it would be redundant with the KPI and worth deleting.
+    """
+    decided_at = datetime(2026, 7, 15, 10, 0, tzinfo=BKK)
+    # Governed and approved, but no paperwork keyed at all: 3 of 5 questions answered.
+    await _seed_case(db_session, case_id="case-partial")
+    await _seed_governed_run(
+        db_session,
+        case_id="case-partial",
+        run_id="run-partial",
+        decided_at=decided_at,
+        audit=_doa_tie(_APPROVER),
+    )
+
+    export = await load_monthly_export(db_session, year=2026, month=7, now=decided_at)
+
+    (row,) = export.rows
+    assert audit_answers(row) == (True, True, True, False, True)
+    cover = export.cover_summary()
+    assert cover.traceability_pct == 0.0
+    assert cover.audit_answer_pct == pytest.approx(80.0)
+
+
+def _complete_row(**overrides: Any) -> ExportRow:
+    """A hand-built row that answers everything — the base for predicate unit tests."""
+    base: dict[str, Any] = {
+        "document_date": date(2026, 7, 28),
+        "approval_date": date(2026, 7, 15),
+        "repair_order_no": "RC-2026-0007",
+        "tax_invoice_no": "INV-2026-0042",
+        "vendor": _CODED_VENDOR,
+        "vendor_code": "V-001",
+        "plate": "80-1234 กรุงเทพมหานคร",
+        "truck_code": "T-001",
+        "work_type": "breakdown",
+        "description": "เปลี่ยนเพลาหลัง",
+        "amount_pre_vat_thb": Decimal("57943.93"),
+        "vat_thb": Decimal("4056.07"),
+        "total_thb": Decimal("62000.00"),
+        "approver": _APPROVER,
+        "cost_center": None,
+        "case_id": "case-x",
+        "governed": True,
+        "run_id": "run-x",
+        "outcome": LINK_OUTCOME_APPROVED,
+        "exception_label": None,
+        "justification_ref": None,
+    }
+    return ExportRow(**{**base, **overrides})
+
+
+def test_complete_row_is_traceable() -> None:
+    """The predicate's own baseline — without it the two guards below prove nothing."""
+    assert is_fully_traceable(_complete_row()) is True
+
+
+def test_predicate_refuses_an_ungoverned_row_even_when_fully_documented() -> None:
+    """The `governed` guard holds on its OWN contract, not on a caller's care.
+
+    `load_monthly_export` never builds this row — it nulls the approver whenever
+    there is no decision, so the guard is currently unreachable through that path and
+    a probe deleting it stays green. That is precisely why the predicate is tested
+    directly: it is public and pure, its contract must hold for any row handed to it,
+    and if `_build_row` ever starts carrying an approver on an ungoverned row this is
+    what stops escaped money being scored as traceable.
+    """
+    assert is_fully_traceable(_complete_row(governed=False, run_id=None)) is False
+
+
+def test_predicate_refuses_a_rejected_row_even_when_an_approver_is_present() -> None:
+    """Same reasoning for the outcome guard: a rejected proposal was not approved.
+
+    A row carrying both a rejection and an approver is contradictory, and the
+    predicate resolves it the way Cray typed the ordering — the refusal wins.
+    """
+    assert is_fully_traceable(_complete_row(outcome=LINK_OUTCOME_REJECTED)) is False
+    assert is_fully_traceable(_complete_row(outcome="refused")) is False
+
+
+def test_predicate_does_not_require_vat_or_cost_center() -> None:
+    """Both omissions are deliberate and both would be bugs if reversed.
+
+    A garage that is not VAT-registered has no VAT line, and ศูนย์ต้นทุน ships
+    unfilled pending a partner answer — requiring either would score honest rows as
+    untraceable, and requiring `cost_center` would pin the KPI at 0% forever.
+    """
+    assert is_fully_traceable(_complete_row(vat_thb=None)) is True
+    assert is_fully_traceable(_complete_row(cost_center=None)) is True
+
+
+def test_audit_questions_and_answers_stay_the_same_length() -> None:
+    """The proxy's denominator is `len(AUDIT_QUESTIONS)`; a mismatch would skew it."""
+    blank = ExportRow(
+        *(None,) * 15,
+        case_id="c",
+        governed=False,
+        run_id=None,
+        outcome=None,
+        exception_label=None,
+        justification_ref=None,
+    )
+    assert len(audit_answers(blank)) == len(AUDIT_QUESTIONS) == 5
 
 
 #: The Express half of `ExportRow`, positionally aligned with `EXPORT_COLUMNS`.
