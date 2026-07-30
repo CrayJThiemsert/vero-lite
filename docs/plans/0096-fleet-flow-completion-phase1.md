@@ -154,6 +154,12 @@ with the behavior silently broken, fix the test first. TODO/`pass` stubs count a
   columns + the cover summary.
   **Amended 2026-07-29 (s190):** เลขที่ใบแจ้งซ่อม = human-readable `RC-<year>-<NNNN>` per Cray's
   typed **Decision A** — see Step 8's session-190 amendment block (migration `0017`).
+  **Amended 2026-07-30 (s191):** two facts a reader of this AC alone would miss. (1) The approval
+  pair — วันที่อนุมัติ (column 2) + ผู้อนุมัติ (column 14) — currently has NO source for any REAL
+  row: a real repair case never reaches a governed run, so `governed_decision` never fires for
+  real spend. (2) The governed ฿ amount + vendor provenance now exist — the accepted quote
+  (ใบที่ตกลง, alembic `0019`) — but the gate does not read it yet. Both facts, Cray's typed
+  decisions, and the corrected build order: Step 8's session-191 amendment block.
 - [ ] **AC-10 — PM real data (measured + confirmed).** Wialon **CSV export** import proposes
   odometer values; a human confirm gates any `Truck` update (unconfirmed rows never touch the
   ontology — Q4's imprecision); mangled CSV fails closed. Last-service odometers load manually
@@ -421,6 +427,148 @@ Oracle: AC-9 fixtures incl. the non-vacuity incomplete row.
 > `tests/services/db/test_db_hermeticity.py`. The offline guard
 > `tools/check_alembic_model_registration.py` catches the first two; the third fails in the
 > suite. This is the exact defect class that reddened CI at 54 s during s189 (#965 → #966/#967).
+> — *[s191 in-place note: after this block was recorded, session 190 also typed **Decision 9** —
+> case↔run link = a scalar `run_id` column on `repair_case`, migration `0019` — which never
+> entered this PLAN. It is REFUTED and SUPERSEDED unbuilt: `0019` shipped as the accepted-quote
+> table instead, and the case↔run link is now a JOIN TABLE gated behind the case → event path.
+> Do not resurrect the scalar-column shape — see the 2026-07-30 amendment block below.]*
+
+> **Amended 2026-07-30 (session 191 — Cray typed; findings grounded + the s190 case↔run-link
+> decision REFUTED by Code; recorded by the in-harness `plan-drafter`, s191 dispatch).** Session
+> 190 closed this step's foundations — the close-out record + Decision A's `RC-<year>-<NNNN>`
+> number (migration `0017`), the close-out `vendor` column (`0018`, AC-9 column 5 ผู้ขาย / อู่),
+> and Express accounting codes as ontology data (`Truck.accounting_code` + a `Vendor` object,
+> AC-9 columns 6 + 8) — then closed by typing one further decision, **Decision 9**, as the next
+> session's build task: case↔run link = a scalar `run_id` column on `repair_case`, migration
+> `0019`. Grounding that task in s191 REFUTED it before a line was written (three measured
+> reasons below). Decision 9 was typed in-session and never entered this PLAN (the s190 block
+> above records Decision A only); it is recorded AND retired here in one motion so no later
+> reader resurrects the scalar-column shape. The corrected build order at the end of this block
+> supersedes the old Step 8 → Step 10 sequencing. Citations re-verified this session at
+> `main`=`d781683`. Recording edit, not a design pass; Status stays **Draft**.
+> — **The frontier fact every remaining Step-8 item sits behind: a REAL repair case never
+> reaches a governed run.** `POST /api/cases` (`services/api/routers/cases.py:156`; prefix
+> `:73`) writes the row and returns; the router references `OperationalEvent` NOWHERE (grep
+> re-verified s191, zero hits). The only `case_id` that reaches a run is the demo fixture
+> `case-demo-truck01-axle` (`verticals/fleet_maintenance/data_adapter/synthetic.py:267`).
+> Consequence: AC-9's approval columns (วันที่อนุมัติ · ผู้อนุมัติ) have NO source for any real
+> row regardless of join shape, and a case↔run link built today would be NULL in 100% of real
+> rows. **Cray's typed order (s191): build the event path BEFORE the link table.**
+> — **Claim-vs-code, classified `was an error` (CLAUDE.md §6 verify-loop hygiene):**
+> `synthetic.py:56-57` states "Step 3 wires the real case → quote → event path". Step 3 as
+> executed shipped the quote evidence pack and did NOT wire the event path — a forward reference
+> that never landed. That is **`was an error`**, NOT `superseded by new info`: no later fact
+> changed it; it was never true. The comment itself is code, so its correction rides the
+> event-path PR (Code); the classification is recorded here so no reader trusts it meanwhile.
+> — **Why Decision 9's scalar `run_id` cannot be correct — three measured reasons (Code, s191):**
+> (1) a manual run is re-fireable without limit — `services/api/routers/runs.py:370`
+> (`POST /procedures/{procedure_id}/run`) has no idempotency key and no in-flight guard (the
+> router's only "in-flight" mention is the CANCEL docstring, `:547`); fire the hero procedure
+> twice and one still-open case appears in run A and run B, and a scalar column is
+> last-write-wins — silently overwriting the run that actually approved the spend. (2) "the run
+> that APPROVED" is per-PROPOSAL, not per-run —
+> `services/engine/procedures/action_step.py:953-956` builds the final artifact by pairing each
+> proposal with its own APPROVE / reject disposition; one run can approve one case and reject
+> another, and a run pointer cannot tell them apart. (3) the provisional branch splits the
+> moment in two — `action_step.py:971` lands `RESOLVED_PROVISIONAL` and `ratify_gated_step`
+> (`action_step.py:1028`) completes it days later; one value written at first resolve cannot
+> express ADR-0034's E-2 mechanism.
+> — **Revised typed decision (Cray, s191): case↔run link = a JOIN TABLE `repair_case_run_link`
+> (`case_id`, `run_id`, `step_id`, `outcome`, `linked_at`) — DECIDED, NOT BUILT.** There is also
+> no seam to write it today: `on_step_complete`
+> (`services/engine/procedures/orchestrator.py:930`) is engine-internal, and `_FIRED_HOOKS`
+> (`services/engine/cli.py:359`) is scheduler-daemon-only — the API process never reaches
+> either. Smallest seam identified (Code implementation surface, not a PLAN-level pin beyond the
+> stated requirement): an optional `on_resolved` callback on `resolve_gated_step`
+> (`action_step.py:669`), fired after the commit at `action_step.py:1006`, wired by a
+> per-vertical map — and it MUST hook `ratify_gated_step` (`:1028`) too, or the E-2 path
+> silently drops its link rows.
+> — **The root cause behind both `0018` and the missing gate amount — RESOLVED (s191).** The
+> s190 finding: nothing recorded WHICH quote was accepted, so the ฿ figure the DoA ladder routes
+> on had no source before the work was done — `RepairCaseCloseout.total_thb` exists only AFTER
+> the repair the gate was meant to authorise; `EvidencePack.lowest_amount_thb` is explicitly
+> disclaimed for this use (`services/db/evidence_pack.py:52` — "the gate does not") while
+> `verticals/fleet_maintenance/procedures.yaml:278` routes tiers on "the FULL quote". This is
+> the SAME hole `0018` patched with `RepairCaseCloseout.vendor`: the accepted quote carries both
+> the amount and the vendor — had the primitive existed, `0018` would not have been needed.
+> Cray's typed decisions (s191): **(1)** the accepted quote — ใบที่ตกลง — joins the quote pack;
+> typed at the close of s190 as the next session's FIRST task, ahead of the event path. **(2)**
+> the reference is a REQUIRED foreign key — an acceptance must name a quote already recorded
+> against that same case; a free-typed vendor + amount was offered and DECLINED (the accepted
+> amount is what an authority threshold routes on, so it must trace to evidence somebody
+> recorded; when the chosen garage's quote was never keyed, it is keyed first through the
+> existing quote route). **(3)** a reason is required ONLY when the accepted quote is not the
+> cheapest on file at that moment — always-required and never-required were both offered and
+> declined; rationale as typed: the audit question is never "why did you accept a quote", it is
+> "why did you not take the cheapest one", and demanding it always trains the operator to type
+> "ถูกสุด" into the box — compliance text instead of information.
+> **Shipped — PR #975, merged as `d781683`, alembic `0019`:** `RepairCaseAcceptedQuote`
+> (`services/db/repair_case_evidence.py:131`) — append-only, latest row wins; a THIRD table
+> rather than a flag on the quote row, because a flag would have to be UPDATEd (breaking the
+> append-only rule these tables exist to hold) and would permit two rows flagged at once.
+> `0019` also adds `UNIQUE (case_id, quote_id)` on `repair_case_quote`
+> (`alembic/versions/0019_repair_case_accepted_quote.py:53-54`) existing solely as a
+> composite-FK target, so "case A accepted case B's quote" is refused by Postgres rather than
+> by application care (measured s191: with the router's case filter removed, the insert fails
+> with `ForeignKeyViolationError` on `fk_repair_case_accepted_quote_quote`, `0019_…py:67`).
+> `POST`/`GET /api/cases/{case_id}/accepted-quote` (`cases.py:572` / `:637`). `EvidencePack`
+> gains `accepted_quote_id` / `accepted_amount_thb` / `accepted_vendor` / `accepted_reason` /
+> `accepted_by` / `accepted_at`, a DERIVED `lowest_amount_at_acceptance_thb`, and a three-valued
+> `accepted_the_cheapest` (`evidence_pack.py:61-97`). Evidence (Code, s191): 3588 passed / 8
+> skipped (baseline 3572, +16); `ruff` + `ruff format --check` clean over 556 files;
+> `mypy --strict services/` clean over 124; registration guard, R7, R8 exit 0; CI `gate` pass;
+> merge-commit equality 0 bytes; three non-vacuity probes each shown RED and restored
+> byte-identical. **Still not wired:** the gate does not yet READ `accepted_amount_thb` (zero
+> occurrences under `services/engine/`, grep s191) — and cannot until the event path exists.
+> — **The event-path design — SETTLED, Option A: mirror the ratified `pm_projection` seam**
+> (the repo's sanctioned DB → object-source overlay; public surface `refresh` / `apply` /
+> `status` / `reset` / `record_unavailable` / `overrides`,
+> `verticals/fleet_maintenance/pm_projection.py:49-89`; boot refresh with fail-soft
+> `services/api/main.py:220-235`). Files (all three new modules verified ABSENT s191 —
+> construction, not wiring): new `services/db/case_events.py` (read open cases + their evidence
+> packs); new PURE `verticals/fleet_maintenance/case_events.py`
+> (`build_event(case, pack, *, now) -> dict`); new `verticals/fleet_maintenance/case_projection.py`
+> (refresh / apply / status + `demo_events.reset()`); a ~3-line overlay edit in `synthetic.py`'s
+> `operational_events()`; boot refresh in `main.py` beside the PM block; a refresh call in
+> `services/api/routers/cases.py` after `add_quote` / `add_justification` — and now also after
+> the accept route. **Zero `services/engine/` diff. Zero `data_adapter/__init__.py` diff — the
+> latter MANDATORY:** `tests/services/engine/scaffolder/test_golden_e2e.py:206-210` holds that
+> module structurally equal to the regenerated donor (PLAN-0086 AC-7 row 4 — even one extra
+> entry breaks it), and `synthetic.py:292-300` already litigated and REJECTED exactly that move.
+> The event contract a real row must satisfy: `event_id`, `event_type: "reading"`, `severity`,
+> `measured_value`, `unit: "THB"`, `case_id`, `description`, `occurred_at` (tz-aware),
+> `truck_id`, `site_id`, plus `{"compliance": {"three_quote": bool}, "three_quote_basis": …}`
+> from `compute_three_quote` (`verticals/fleet_maintenance/sourcing.py:71`) via
+> `compliance_signal_map` (`:97`) — Step 4 deleted the fail-open `compliance` default, so
+> `rule_gate` fails CLOSED if the block is absent. Read model: `load_evidence_pack`
+> (`evidence_pack.py:100`). The "which quote is the governed amount" decision inside this item
+> is now ANSWERED — the accepted quote (above). Two decisions remain inside it: `demo_events`
+> cache-invalidation semantics; and a real case event on truck-01 will outrank the ฿48,000
+> fixture breach by `occurred_at`, so the AT-2 hero narrative and its tests MOVE.
+> — **`latest_per: event_for_truck` collapses two open cases on one truck**
+> (`procedures.yaml:159`): `_latest_per_group`
+> (`services/engine/procedures/query_step.py:607-648`) keeps exactly one row per group and drops
+> rows whose group key is `None` (`:623`) — two open cases on one truck means the older never
+> reaches the gate, and its link row stays absent forever, indistinguishable from "no run yet".
+> The fix is a VERTICAL-side ontology edit, not an engine change: a `RepairCase` object type +
+> `case_id: {type: string}` on `OperationalEvent` + an `event_for_case` link, then flip
+> `latest_per`. Two tripwires: declare `case_id` as `string`, NEVER `ref` —
+> `services/engine/scaffold.py:163-171` raises `ScaffoldError` when `OperationalEvent` carries
+> more than one non-Site ref — and rows without a `case_id` vanish from intake (`:623` above),
+> so the demo's `ok` contrast set changes visibly. Own PR, gated on the event path landing.
+> — **The corrected build order (supersedes the old Step 8 → Step 10 sequencing):** (1) ~~the
+> accepted-quote primitive~~ — **DONE, PR #975, alembic `0019`**; (2) the case → event path
+> (Option A above); (3) `repair_case_run_link` + the `on_resolved` seam on BOTH
+> `resolve_gated_step` and `ratify_gated_step`; (4) optionally re-key `latest_per` onto the case;
+> (5) then the export, the KPI and the scenario test; then Step 10. Scope honesty, recorded
+> explicitly: this is SEVERAL PRs, not one — "add `run_id`" became a join table, then an event
+> path, then a missing primitive, each caught BEFORE shipping.
+> — **Residual risk, named for Step 10 (NOT resolved here):** `governed_decision` carries no
+> per-entity key and no timestamp — only `{control_ref, principal_id}`
+> (`services/engine/actions.py:52-67`, `extra="forbid"`). If one gate resolution routes two
+> cases into the same tier, the ties are byte-identical. Survivable today (one human resolves
+> the whole gate), but per-baht attribution of approver → case is INFERENCE, not data — and
+> AC-9's KPI claims to measure exactly that. Step 10's sign-off must name it as residual risk.
 
 ### Step 9: PM real data — Wialon CSV + confirmed load
 
