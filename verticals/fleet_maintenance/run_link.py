@@ -5,7 +5,7 @@ the durable result"*; deciding that this means a row in `repair_case_run_link` i
 the vertical's job (ADR-006), so all of the case-shaped knowledge lives here.
 
 **Where the case id actually is** — measured s191 against a real persisted run,
-not inferred. Each proposal in the resolved step's `output_set` carries a full
+not inferred. Each entry in the resolved step's `decisions` list carries a full
 `action`, whose `reasoning_trace` holds a step with `kind == "ontology_query"`
 whose `detail["event"]` is the WHOLE event dict the engine ingested, `case_id`
 included (`services/engine/llm/trace.py`). Keying on `kind` rather than on a trace
@@ -41,7 +41,7 @@ from services.db.repair_case_run_link import (
     LINK_OUTCOME_REJECTED,
     RepairCaseRunLink,
 )
-from services.engine.procedures.gate_hooks import register_on_resolved
+from services.engine.procedures.gate_hooks import decided_entries, register_on_resolved
 from services.engine.procedures.ratification import ratification_state
 from services.engine.procedures.runs import StepResult
 
@@ -81,19 +81,27 @@ def case_id_of(proposal: dict[str, Any]) -> str | None:
 def _outcome(proposal: dict[str, Any], *, ratification: str) -> str:
     """What this case got out of this decision.
 
-    The ratification states dominate the per-proposal status: once an obligation
-    exists, "the handler ran" is no longer the interesting fact — whether anyone
-    has signed for it is.
+    **A refusal is checked FIRST, before any ratification state** (Cray, typed
+    s192). A ratification obligation is created by the run, not by the proposal, so
+    it rides along on every case the same gate touched — including the ones the
+    approver turned down. Letting the run-level state win would stamp a rejected
+    repair `provisional`, and the month-end export would report it as awaiting a
+    signature that nobody will ever give, because there is nothing to sign for: the
+    spend was declined. A rejection is already a complete, traceable decision.
+
+    Above that line the ratification states DO dominate the per-proposal status:
+    once an obligation exists over work that actually happened, "the handler ran" is
+    no longer the interesting fact — whether anyone has signed for it is.
     """
+    if proposal.get("status") != _EXECUTED:
+        return LINK_OUTCOME_REJECTED
     if ratification == "ratified":
         return LINK_OUTCOME_RATIFIED
     if ratification == "refused":
         return LINK_OUTCOME_REFUSED
     if ratification in ("pending", "overdue"):
         return LINK_OUTCOME_PROVISIONAL
-    if proposal.get("status") == _EXECUTED:
-        return LINK_OUTCOME_APPROVED
-    return LINK_OUTCOME_REJECTED
+    return LINK_OUTCOME_APPROVED
 
 
 async def link_resolved_cases(session: AsyncSession, run_id: str, target: StepResult) -> None:
@@ -110,9 +118,12 @@ async def link_resolved_cases(session: AsyncSession, run_id: str, target: StepRe
     state = ratification_state(target.audit, now).state
     seen: set[tuple[str, str]] = set()
 
-    for proposal in (target.artifact or {}).get("output_set") or []:
-        if not isinstance(proposal, dict):
-            continue
+    # `decided_entries`, never `artifact["output_set"]`: the gate threads only the
+    # EXECUTED effects forward, so a resolution that rejected this case would leave
+    # it out entirely and the case would present as never decided. That is the exact
+    # failure `LINK_OUTCOME_REJECTED` exists to prevent, and reading the executed
+    # subset would have made that constant permanently unreachable.
+    for proposal in decided_entries(target):
         case_id = case_id_of(proposal)
         if case_id is None:
             continue

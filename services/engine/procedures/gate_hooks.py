@@ -73,16 +73,36 @@ def failures() -> list[dict[str, str]]:
     return [dict(entry) for entry in _FAILURES]
 
 
-def vertical_of(target: StepResult) -> str | None:
-    """The vertical this resolved step belongs to, read off its own proposals.
+def decided_entries(target: StepResult) -> list[dict[str, Any]]:
+    """Every action this step DECIDED, approved or not — the complete record.
 
-    Returns None when the artifact carries no proposal with a vertical — a step
+    ``artifact["output_set"]`` is the wrong source for an audit consumer and the
+    gate says so in its own words: *"executed effects thread forward; rejects are
+    recorded, not threaded"* (``action_step.py``). ``output_set`` is the subset the
+    NEXT step consumes, so a gate that rejected everything leaves it empty, and a
+    hook reading it would conclude the resolution decided nothing — turning every
+    rejection into a missing row rather than a recorded refusal.
+
+    ``artifact["decisions"]`` is the full per-action list in proposal order, each
+    entry carrying the FINAL status (``executed`` / ``rejected``), which is also the
+    status a consumer actually wants. ``output_set`` remains the fallback for step
+    artifacts that carry no ``decisions`` key at all — an ``auto`` action step never
+    passed through a human gate, so it has proposals but no decision list.
+    """
+    artifact = target.artifact or {}
+    entries = artifact.get("decisions")
+    if not isinstance(entries, list) or not entries:
+        entries = artifact.get("output_set") or []
+    return [entry for entry in entries if isinstance(entry, dict)]
+
+
+def vertical_of(target: StepResult) -> str | None:
+    """The vertical this resolved step belongs to, read off its own decisions.
+
+    Returns None when the step carries no decided action with a vertical — a step
     with nothing to dispatch on, which is a no-op rather than an error.
     """
-    output_set = (target.artifact or {}).get("output_set") or []
-    for entry in output_set:
-        if not isinstance(entry, dict):
-            continue
+    for entry in decided_entries(target):
         action = entry.get("action")
         if isinstance(action, dict):
             vertical = action.get("vertical")
