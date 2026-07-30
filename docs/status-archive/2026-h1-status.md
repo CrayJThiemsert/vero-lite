@@ -666,3 +666,104 @@ _Rotated out of `docs/STATUS.md` on 2026-07-28 (session 182), per the R1–R7 ro
 ### Recent-Decisions row — s179 (PLAN-0094 Step 4 RE-SCOPED on its own probe's refutation, #933) [rotated 2026-07-30, session-193 reconcile — 10-row window]
 
 | 2026-07-27 | **s179 — PLAN-0094 Step 4 RE-SCOPED on its own probe's refutation (#933); OQ-3 opened + RESOLVED same session.** Measured twice, one session apart: **a failed `Edit` invokes NO hook** — not `PostToolUseFailure`, not `PostToolUse`. **D4(a) withdrawn**, taking **AC-1(ii) / AC-6 / AC-8(ii)** with it (AC-6 withdrawn, not weakened) and with them Step 4's only Cray-gated `settings.json` surface; the s169-class thrash stays **uncountable**. OQ-3 → (b), four rulings: **R1** a self-contained COUNT, not a sha1 pointer (evidence ring 6 vs doc trip bar 15); **R2** `dict[str,int]`; **R3** `result == ""` on forward edits; **R4** → new **AC-11** (Telegram `count: N/T` + formatter mirror-invariance) | `b3c20dd` / `bde43d6` (#933) / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §D4 + §OQ-3 |
+
+### Current Focus block — Session 189 (PLAN-0096 Steps 1–7 and 9 COMPLETE, #965–#968) [rotated 2026-07-30, session-194 reconcile — 4-newest-sessions CF window; the OLDEST of exactly four, evicted because a new block forces a rotation]
+
+> **Session 189, 2026-07-29 (head_commit `be7d386` → `13aa2f0`) — the session
+> the fleet partner's round-2 answers landed and PLAN-0096 stopped being
+> blocked. Four PRs merged (#965–#968), 0 open: **Steps 1–7 and 9 COMPLETE (8
+> of 10)**. **Five of the seven questions are closed:** A1 built Step 6, A3
+> built `pm_due`, and **A4 + A7 confirmed values that had already shipped** — a
+> flat ฿5,000 ceiling for every truck initially, so the authored `5001` default
+> stands and the per-truck "stretch values" sub-task is **eliminated, not
+> deferred** (those values do not exist yet); and 99% whole-baht quoting,
+> ฿30,000 exactly = no comparison / ฿30,001+ = comparison required, confirming
+> the shipped `"30001"` inclusive floors and closing the satang de-minimis
+> intake note. **A2 is answered, so Step 8 is unblocked rather than blocked** —
+> the only question with build left. A5 is **parked** (no real Wialon export
+> exists yet, and the partner wants an admin-mapped remembered column mapping,
+> so the Step 9 importer stays fixed-column); A6 is a Step 9 *runbook* item,
+> not code. **Nothing blocks the build.**
+>
+> **Step 6 (#965) — the partner's chain, not ours.** A1 superseded the PLAN's
+> guessed four-item checklist: the real chain is **8 steps, 4 mandatory + 4
+> conditional**, each carrying its **own** "ถ้าค้างเกิน" threshold rather than
+> one shared timeout — two of them context-dependent (แจ้งอู่ 30 min on a
+> breakdown / 1 day on PM; รออะไหล่ 2 days general / 5 days major part), and
+> เริ่มซ่อม anchored to parts-complete ("1 วันหลังของครบ"). Shipped as a
+> fleet-side **authored config** (`verticals/fleet_maintenance/task_chain.py`);
+> the partner's suggested partner-editable template system was **declined for
+> Phase 1** per ADR-006's Rule of Three. Storage is an **append-only**
+> `repair_case_task_event` trail plus `repair_case.work_type` (alembic
+> **0016**), so AC-7's "actor + timestamp per flip" is the storage model rather
+> than logging bolted onto mutable state; that one `work_type` field serves
+> both these context SLAs and Step 8's ประเภทงาน export column. Plus the
+> staleness sweep into the existing `task_chain_stale` LINE event and
+> `POST|GET /api/cases/{case_id}/tasks`, whose GET takes an optional `as_of`
+> that Step 8's period-close export needs.
+>
+> **The anchor rule — Cray typed it, of three options weighed.** A step with
+> prerequisites starts its clock when the prerequisites **this case actually
+> has** are settled; counting from the item's own activation would have nudged
+> เมย์ about starting a repair from day two of an *authorised* five-day
+> major-part wait — against a partner whose own stated failure mode is
+> *"ผมไม่อยากให้ทุกอย่างเด้งเข้ากลุ่มเดียว เดี๋ยวคนปิดแจ้งเตือนหมด"*, with exactly
+> one outbound channel to spend.
+>
+> **`pm_due` (#968) — a sixth LINE event, admitted on evidence.** A3 supplied
+> the two things `LineEvent`'s closed-set docstring demanded before a sixth
+> member could exist — a named producer and a named recipient rule — so Cray
+> amended AC-8 from five events to six. The recipient is a **group** (กลุ่มช่าง),
+> not a person, by the partner's choice, and it is **one message per round**
+> listing the due plates, not one push per truck. The producer reads the due
+> set off the **persisted `judge_service_due` verdicts of the run that just
+> fired** — never re-deriving "due" from odometers, because a second
+> implementation of that comparison could disagree with the one the governed
+> run acted on and the message would name a different set than the screen the
+> human approves. Keyed to a run id, so a truck is announced once per round.
+> The scheduler daemon holds no vertical knowledge by design, so it gained an
+> **injected `on_fired` hook**, and `services/engine/cli.py` resolves the fleet
+> producer as that hook — the same hand-wired shape as the executor factories.
+>
+> **The unplanned thread (#966 + #967) — the session's most transferable
+> finding.** #965's CI failed at 54 s on the `alembic check` lockstep guard:
+> `alembic/env.py` never imported the new ORM module, so `Base.metadata` did
+> not know the table existed and autogenerate wanted to **DROP** it. **3528
+> passing tests could not see it** — `create_all` knows only what the
+> *importing test module* pulled in, and nothing offline traverses `env.py`.
+> #966 built an offline AST-based guard for that class. Then Cray asked whether
+> `alembic check` really needs a live DB, or whether we could run it and see
+> what was hiding. **Probing instead of reasoning did three things:** it
+> **refuted the premise** of Code's earlier answer (no *dev* DB needed — the
+> disposable per-checkout test DB works, measured at **1.75 s** total); it
+> found a **live drift**, since #965's own fix had patched `env.py` only and
+> left `tests/db_support.py` — the second registration site, whose comment says
+> "keep in lockstep with alembic/env.py" — missing the same module; and closing
+> that revealed the **pre-existing guard had been defeated by co-drift**,
+> because `test_db_hermeticity.py`'s hand-maintained `_HEAD_TABLES` was missing
+> the same table, so two wrong lists agreed and the test stayed green. **The
+> rule that came out of it: a comparison means something only when at most ONE
+> side is hand-maintained.** The widened guard derives the model set from
+> source via AST; `_HEAD_TABLES` stays hand-written **on purpose** (deriving it
+> would compare metadata to itself). The `alembic check` half
+> shipped as a **test, not a hook** (Cray typed it) — a hook's `upgrade head`
+> would collide with a concurrent pytest's `DROP SCHEMA public CASCADE`, and
+> running the suite in the background while editing is normal here.
+>
+> **State at close:** `main` `13aa2f0`, 0 open PRs. Suite **3502 → 3552**; ruff
+> check + format clean over **552** files; `mypy --strict services/` clean over
+> **123**; `alembic check` + the registration guard clean; CI `gate` PASS and
+> merge-commit equality **0 bytes** on all four PRs. **Six non-vacuity
+> mutations**, each restored from `/tmp` and diff-verified byte-identical; two
+> load-bearing — a router writing `"PENDING"` for `"pending"`, a pure seam bug,
+> left **all 17 rule-suite cases GREEN** and reddened 5 of 8 scenario cases;
+> emptying the CLI's `_FIRED_HOOKS`, an unwired seam, left the **scenario suite
+> fully green** and reddened only the hook suite. One proves the producer is
+> right, the other proves anything calls it — which is why §8 wants both. **Dev
+> DB migrated 0015 → 0016 on Cray's explicit go.** MS-S1 never touched; LINE
+> still disarmed. **R2 rotation applied** — the s184→s185 Current-Focus block
+> and the s177 PLAN-0095 Recent-Decisions row rotate to `docs/status-archive/`.
+
+### Recent-Decisions row — s180 (PLAN-0094 Step 4 COMPLETE; L1 counts NON-PROGRESS, #937/#938/#939) [rotated 2026-07-30, session-194 reconcile — 10-row window]
+
+| 2026-07-28 | **s180 — PLAN-0094 Step 4 COMPLETE (#937/#938/#939): L1 counts NON-PROGRESS, not touches. AC-7, AC-8(i)/(iii), AC-11 closed.** L1 increments only on a re-applied `old_string` (`repeat xN`) or a return to content already held this turn (`osc xN`); forward edits record `result == ""`; `clear_turn_scoped()` wired into the turn boundary. **All three L1 warns ever recorded would not fire under the new unit.** s179's BLOCKING `tool_response` probe was **answered without being run** (84 recorded `Edit` results: no `content` key, `originalFile` null in 78/84, `structuredPatch` = a diff not a state) — the PLAN's on-disk hash stands, no restart spent. **AC-11: `T` = the DENY bar in BOTH Telegram bodies** (Cray's ruling on a self-contradicting spec). **OQ-4 OPENED — should L1 exist at all?** Baseline over all 113 transcripts: **0 denies, 3 warns, 0 true positives**. **Pre-committed: re-measure after ~20 sessions; TPs still 0 with ≥1 FP → dispatch Cowork to draft the ADR-013 amendment retiring L1.** Suite 3318 → **3327** | `767d520` (#939 merge, head_commit) / `2b9cb6f` / `053410a` (#938) / `0a85b21` (#937) / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §D4 + §OQ-4 |
