@@ -56,6 +56,7 @@ from services.engine.procedures.query_step import QueryStepExecutor
 from services.engine.procedures.spec import Person, StepKind, load_procedures
 from services.engine.procedures.transform_step import TransformStepExecutor
 from services.engine.registry import RegistryError, registry
+from verticals.fleet_maintenance.run_link import register_fleet_run_link_hook
 
 _VERTICAL = "fleet_maintenance"
 
@@ -75,6 +76,13 @@ async def register_fleet_maintenance_procedure_executors() -> None:
     """Register the deterministic ``fleet_maintenance`` procedure-executor factory.
 
     See module docstring."""
+    # PLAN-0096 Step 8 item 3 — armed BEFORE the idempotency guard below, on purpose.
+    # The guard returns early once executors exist, so arming after it would leave the
+    # gate hook disarmed for the rest of the process on any second call — and a
+    # disarmed audit hook fails by writing nothing, which is the quietest failure
+    # shape there is. Re-arming is a dict assignment; doing it twice costs nothing.
+    register_fleet_run_link_hook()
+
     try:
         registry.get_procedure_executors(_VERTICAL)
         return  # already registered — idempotent

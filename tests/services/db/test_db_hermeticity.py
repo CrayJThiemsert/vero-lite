@@ -59,6 +59,7 @@ _HEAD_TABLES = {
     "repair_case_justification",
     "repair_case_order_number",
     "repair_case_quote",
+    "repair_case_run_link",
     "repair_case_task_event",
     "schedule_states",
     "site",

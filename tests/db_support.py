@@ -67,6 +67,9 @@ from services.db import (  # noqa: F401  (registers the close-out + order-number
 from services.db import (  # noqa: F401  (registers the quote-evidence tables)
     repair_case_evidence as _repair_case_evidence,
 )
+from services.db import (  # noqa: F401  (registers repair_case_run_link)
+    repair_case_run_link as _repair_case_run_link,
+)
 from services.db import (  # noqa: F401  (registers repair_case_task_event)
     repair_case_task as _repair_case_task,
 )
