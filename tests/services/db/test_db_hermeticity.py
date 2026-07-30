@@ -54,6 +54,7 @@ _HEAD_TABLES = {
     "pm_import_row",
     "recommended_action",
     "repair_case",
+    "repair_case_accepted_quote",
     "repair_case_closeout",
     "repair_case_justification",
     "repair_case_order_number",

@@ -344,6 +344,12 @@ def test_no_auto_detection_route_exists() -> None:
         # checklist item, because a system-generated flip would put the server's word
         # in a slot that exists to record a person's.
         "/api/cases/{case_id}/closeout",
+        # Added deliberately for PLAN-0096 Step 8: ใบที่ตกลง, the quote this repair
+        # was agreed at — the figure the DOA ladder routes on. Human-recorded like
+        # every route above: it names one of the quotes เมย์ already keyed, and the
+        # server picks nothing (accepting the cheapest automatically would be exactly
+        # the auto-detection this test exists to keep out).
+        "/api/cases/{case_id}/accepted-quote",
     }
     for path in case_paths:
         assert "detect" not in path and "auto" not in path

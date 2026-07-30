@@ -20,7 +20,11 @@ from sqlalchemy.ext.asyncio import async_sessionmaker
 from services.db.base import Base
 from services.db.evidence_pack import load_evidence_pack
 from services.db.repair_case import CASE_STATUS_OPEN, RepairCase
-from services.db.repair_case_evidence import RepairCaseJustification, RepairCaseQuote
+from services.db.repair_case_evidence import (
+    RepairCaseAcceptedQuote,
+    RepairCaseJustification,
+    RepairCaseQuote,
+)
 from tests.db_support import create_test_engine
 
 _BASE_TIME = datetime(2026, 7, 20, 3, 0, tzinfo=UTC)
@@ -263,3 +267,136 @@ async def test_attachment_count_tracks_documents_not_quotes() -> None:
 
     assert pack.quote_count == 2
     assert pack.attachment_count == 1
+
+
+# --------------------------------------------------------------------------- #
+# ใบที่ตกลง — the accepted quote (PLAN-0096 Step 8)
+# --------------------------------------------------------------------------- #
+
+
+def _accepted(case_id: str, n: int, quote_id: str, reason: str | None = None):
+    return RepairCaseAcceptedQuote(
+        accepted_id=f"accepted-{n}",
+        case_id=case_id,
+        quote_id=quote_id,
+        reason=reason,
+        accepted_by="admin-may",
+        accepted_at=_BASE_TIME + timedelta(hours=n),
+    )
+
+
+async def test_a_pack_with_no_acceptance_reports_none_everywhere() -> None:
+    """Quotes on file with nothing agreed yet is a NORMAL mid-flight state.
+
+    Reporting None rather than falling back to the cheapest quote is the whole
+    point: a gate that silently substituted `lowest_amount_thb` would route real
+    spend on a figure nobody agreed to."""
+    maker = await _session_factory()
+    async with maker() as session:
+        session.add(_case())
+        session.add_all([_quote("case-t1", 1, "V1", "100.00")])
+        await session.commit()
+        pack = await load_evidence_pack(session, "case-t1")
+
+    assert pack.accepted_quote_id is None
+    assert pack.accepted_amount_thb is None
+    assert pack.accepted_vendor is None
+    assert pack.lowest_amount_at_acceptance_thb is None
+    assert pack.accepted_the_cheapest is None
+    # The cheapest is still reported — it is a fact about the quotes, and it is
+    # simply not the governed figure.
+    assert pack.lowest_amount_thb == Decimal("100.00")
+
+
+async def test_the_latest_acceptance_wins_and_the_earlier_one_survives() -> None:
+    """Append-only: a change of mind is a new row, and both stay on the record."""
+    maker = await _session_factory()
+    async with maker() as session:
+        session.add(_case())
+        session.add_all(
+            [
+                _quote("case-t1", 1, "ส.เจริญยนต์", "45500.50"),
+                _quote("case-t1", 2, "อู่ริมทางปากช่อง", "51000.00"),
+            ]
+        )
+        await session.commit()
+        session.add_all(
+            [
+                _accepted("case-t1", 1, "quote-1"),
+                _accepted("case-t1", 2, "quote-2", reason="เจ้าแรกปฏิเสธงาน"),
+            ]
+        )
+        await session.commit()
+        pack = await load_evidence_pack(session, "case-t1")
+        rows = list(
+            (
+                await session.execute(
+                    sa.select(RepairCaseAcceptedQuote.accepted_id).order_by(
+                        RepairCaseAcceptedQuote.accepted_at
+                    )
+                )
+            ).scalars()
+        )
+
+    assert pack.accepted_quote_id == "quote-2"
+    assert pack.accepted_vendor == "อู่ริมทางปากช่อง"
+    assert pack.accepted_reason == "เจ้าแรกปฏิเสธงาน"
+    assert rows == ["accepted-1", "accepted-2"], "the superseded acceptance must not be erased"
+
+
+async def test_a_same_instant_tie_resolves_the_same_way_every_read() -> None:
+    """Two acceptances sharing a timestamp is genuinely ambiguous — but not random.
+
+    ``accepted_at`` alone would let the pack, the endpoint and the export each pick
+    a different row from identical data, which is a disagreement no reader could
+    diagnose. The ``accepted_id`` tiebreak buys reproducibility, not correctness."""
+    maker = await _session_factory()
+    async with maker() as session:
+        session.add(_case())
+        session.add_all(
+            [
+                _quote("case-t1", 1, "V1", "100.00"),
+                _quote("case-t1", 2, "V2", "200.00"),
+            ]
+        )
+        await session.commit()
+        tied = _BASE_TIME + timedelta(hours=1)
+        for accepted_id, quote_id in (("accepted-a", "quote-1"), ("accepted-b", "quote-2")):
+            session.add(
+                RepairCaseAcceptedQuote(
+                    accepted_id=accepted_id,
+                    case_id="case-t1",
+                    quote_id=quote_id,
+                    reason="tie",
+                    accepted_by="admin-may",
+                    accepted_at=tied,
+                )
+            )
+        await session.commit()
+
+        first = await load_evidence_pack(session, "case-t1")
+        second = await load_evidence_pack(session, "case-t1")
+
+    assert first.accepted_quote_id == second.accepted_quote_id
+
+
+async def test_acceptance_does_not_leak_between_cases() -> None:
+    """Same discipline the quote pack already holds — asserted for the new row too."""
+    maker = await _session_factory()
+    async with maker() as session:
+        session.add_all([_case("case-a"), _case("case-b")])
+        session.add_all(
+            [
+                _quote("case-a", 1, "V1", "100.00"),
+                _quote("case-b", 2, "V2", "200.00"),
+            ]
+        )
+        await session.commit()
+        session.add(_accepted("case-a", 1, "quote-1"))
+        await session.commit()
+
+        pack_a = await load_evidence_pack(session, "case-a")
+        pack_b = await load_evidence_pack(session, "case-b")
+
+    assert pack_a.accepted_quote_id == "quote-1"
+    assert pack_b.accepted_quote_id is None

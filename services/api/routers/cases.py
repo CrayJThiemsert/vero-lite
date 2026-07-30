@@ -34,6 +34,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.api.auth import AuthContext, get_current_principal
 from services.api.config import settings
 from services.api.models.cases import (
+    AcceptedQuoteResponse,
+    AcceptQuoteRequest,
     AddJustificationRequest,
     CaseListResponse,
     CaseResponse,
@@ -47,14 +49,18 @@ from services.api.models.cases import (
     TaskChainResponse,
     TaskItemResponse,
 )
-from services.db.evidence_pack import load_evidence_pack
+from services.db.evidence_pack import latest_accepted_quote, load_evidence_pack
 from services.db.repair_case import CASE_STATUS_OPEN, WORK_TYPES, RepairCase
 from services.db.repair_case_closeout import (
     RepairCaseCloseout,
     RepairCaseOrderNumber,
     allocate_repair_order_no,
 )
-from services.db.repair_case_evidence import RepairCaseJustification, RepairCaseQuote
+from services.db.repair_case_evidence import (
+    RepairCaseAcceptedQuote,
+    RepairCaseJustification,
+    RepairCaseQuote,
+)
 from services.db.repair_case_task import TASK_STATUSES, RepairCaseTaskEvent
 from services.db.session import get_session
 from verticals.fleet_maintenance.task_chain import (
@@ -516,8 +522,145 @@ async def get_evidence_pack(
         sole_source_vendor=pack.sole_source_vendor,
         sole_source_reason=pack.sole_source_reason,
         attachment_count=pack.attachment_count,
+        accepted_quote_id=pack.accepted_quote_id,
+        accepted_amount_thb=pack.accepted_amount_thb,
+        accepted_vendor=pack.accepted_vendor,
+        accepted_reason=pack.accepted_reason,
+        accepted_by=pack.accepted_by,
+        accepted_at=pack.accepted_at,
+        lowest_amount_at_acceptance_thb=pack.lowest_amount_at_acceptance_thb,
+        accepted_the_cheapest=pack.accepted_the_cheapest,
         quotes=[_quote_response(q) for q in quotes],
         justifications=[_justification_response(j) for j in justifications],
+    )
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0096 Step 8 — ใบที่ตกลง, the accepted quote (the governed amount's source)
+# --------------------------------------------------------------------------- #
+
+
+async def _case_quotes(session: AsyncSession, case_id: str) -> list[RepairCaseQuote]:
+    return list(
+        (
+            await session.execute(
+                select(RepairCaseQuote)
+                .where(RepairCaseQuote.case_id == case_id)
+                .order_by(RepairCaseQuote.entered_at)
+            )
+        ).scalars()
+    )
+
+
+def _accepted_response(
+    accepted: RepairCaseAcceptedQuote,
+    quote: RepairCaseQuote,
+    *,
+    lowest_at_acceptance: Decimal | None,
+) -> AcceptedQuoteResponse:
+    return AcceptedQuoteResponse(
+        case_id=accepted.case_id,
+        accepted_id=accepted.accepted_id,
+        quote=_quote_response(quote),
+        reason=accepted.reason,
+        accepted_by=accepted.accepted_by,
+        accepted_at=accepted.accepted_at,
+        lowest_amount_at_acceptance_thb=lowest_at_acceptance,
+    )
+
+
+@router.post("/{case_id}/accepted-quote", response_model=AcceptedQuoteResponse, status_code=201)
+async def accept_quote(
+    case_id: str,
+    req: AcceptQuoteRequest,
+    session: Annotated[AsyncSession, Depends(get_session)],
+    auth: Annotated[AuthContext, Depends(get_current_principal)],
+) -> AcceptedQuoteResponse:
+    """Record which quote this repair was agreed at — ใบที่ตกลง.
+
+    **This is the number the DOA ladder routes on.** Before it existed, the ฿ figure
+    of a repair was recorded nowhere until the close-out — i.e. after the work the
+    gate was meant to authorise — and the only figure available earlier was the
+    CHEAPEST quote, which is not what was agreed whenever an approved higher quote
+    won on lead time or parts availability.
+
+    **A non-lowest acceptance without a reason is refused (422).** The audit question
+    the partner's people will be asked is never "why did you accept a quote", it is
+    "why did you not take the cheapest one" — so the reason is demanded exactly when
+    that question arises and not otherwise. Refusing at write time rather than
+    flagging at month end is deliberate: right now เมย์ knows the answer, and in four
+    weeks reconstructing it is an archaeology dig through LINE, which is the failure
+    mode this whole flow replaces.
+
+    **Append-only.** Changing the agreed garage is a NEW row; the earlier one stays
+    readable. A trail that can be quietly rewritten protects nobody.
+    """
+    await _load(session, case_id)
+
+    quotes = await _case_quotes(session, case_id)
+    quote = next((q for q in quotes if q.quote_id == req.quote_id), None)
+    if quote is None:
+        # 422 rather than 404: the CASE was found, so this is a bad field in an
+        # otherwise-addressable request. It also covers the cross-case attempt —
+        # a quote belonging to another case is simply not in this case's list, and
+        # the composite FK would reject it anyway. Saying which case it must belong
+        # to beats a foreign-key error surfacing as a 500.
+        raise HTTPException(
+            status_code=422,
+            detail=f"quote '{req.quote_id}' is not recorded against case '{case_id}'",
+        )
+
+    lowest = min((q.amount_thb for q in quotes), default=None)
+    reason = (req.reason or "").strip() or None
+    if lowest is not None and quote.amount_thb > lowest and reason is None:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"quote '{req.quote_id}' at {quote.amount_thb} is not the lowest on file "
+                f"({lowest}) — a reason is required when the cheapest quote is not accepted"
+            ),
+        )
+
+    accepted = RepairCaseAcceptedQuote(
+        accepted_id=f"accepted-{uuid.uuid4().hex[:12]}",
+        case_id=case_id,
+        quote_id=quote.quote_id,
+        reason=reason,
+        accepted_by=auth.person_id or (req.accepted_by or "").strip() or _UNATTRIBUTED,
+        accepted_at=datetime.now(UTC),
+    )
+    session.add(accepted)
+    await session.commit()
+    return _accepted_response(accepted, quote, lowest_at_acceptance=lowest)
+
+
+@router.get("/{case_id}/accepted-quote", response_model=AcceptedQuoteResponse)
+async def get_accepted_quote(
+    case_id: str,
+    session: Annotated[AsyncSession, Depends(get_session)],
+) -> AcceptedQuoteResponse:
+    """The case's current ใบที่ตกลง — the latest acceptance, with its quote."""
+    await _load(session, case_id)
+    accepted = await latest_accepted_quote(session, case_id)
+    if accepted is None:
+        raise HTTPException(status_code=404, detail=f"case '{case_id}' has no accepted quote yet")
+
+    quotes = await _case_quotes(session, case_id)
+    quote = next((q for q in quotes if q.quote_id == accepted.quote_id), None)
+    if quote is None:  # pragma: no cover — the composite FK makes this unreachable
+        raise HTTPException(
+            status_code=500, detail=f"accepted quote '{accepted.quote_id}' has no quote row"
+        )
+    # Recomputed from ``entered_at`` rather than stored on the row: append-only
+    # quotes mean the state at any past instant is reconstructable, and a stored
+    # copy would be one more value that can go stale.
+    return _accepted_response(
+        accepted,
+        quote,
+        lowest_at_acceptance=min(
+            (q.amount_thb for q in quotes if q.entered_at <= accepted.accepted_at),
+            default=None,
+        ),
     )
 
 
