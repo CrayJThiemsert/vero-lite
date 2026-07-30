@@ -53,6 +53,7 @@ from services.engine.procedures.action_step import (
 from services.engine.procedures.persistence import load_run
 from services.engine.procedures.spec import load_procedures
 from verticals.fleet_maintenance import case_projection
+from verticals.fleet_maintenance.sourcing import PASSING_BASES
 
 _VERTICAL = "fleet_maintenance"
 _HERO = "governed_repair_approval"
@@ -279,6 +280,14 @@ async def test_approving_a_real_case_records_which_run_decided_it(
     assert links[0].run_id == run_id
     assert links[0].step_id == _GATE_STEP
     assert links[0].outcome == "approved"
+    # alembic 0022 — AC-9's sourcing column, captured at the moment of decision.
+    # Asserted HERE, against a real round through the real gate, because a fixture
+    # that wrote the column itself would only prove the export can read what the
+    # test just inserted. What has to be true is that the ENGINE's own artifact
+    # carries the basis and the hook finds it — measured, not assumed.
+    assert (
+        links[0].three_quote_basis in PASSING_BASES
+    ), "the gate saw a passing sourcing basis and the link row must carry it"
     assert gate_hooks.failures() == [], "the hook is fail-soft; a swallowed error must show here"
 
 

@@ -54,12 +54,16 @@ _VERTICAL = "fleet_maintenance"
 _EXECUTED = "executed"
 
 
-def case_id_of(proposal: dict[str, Any]) -> str | None:
-    """The repair case one proposal is about, or None if it is not case-derived.
+def _ingested_event(proposal: dict[str, Any]) -> dict[str, Any] | None:
+    """The event dict the engine ingested for one proposal, or None.
 
-    None is the normal answer for the synthetic demo rows — they carry no case —
-    and must stay distinguishable from an error, or the fixture would start
-    manufacturing link rows for cases that do not exist.
+    One walk of the trace, so the case id and the sourcing basis are read from the
+    SAME event rather than from two independent traversals that could, after a
+    future trace change, disagree about which event a link row describes.
+
+    Keyed on ``kind`` rather than on a trace index: the trace grows steps over time
+    and a positional read would break quietly the first time one is inserted ahead
+    of this one.
     """
     action = proposal.get("action")
     if not isinstance(action, dict):
@@ -72,10 +76,42 @@ def case_id_of(proposal: dict[str, Any]) -> str | None:
             continue
         event = detail.get("event")
         if isinstance(event, dict):
-            case_id = event.get("case_id")
-            if isinstance(case_id, str) and case_id:
-                return case_id
+            return event
     return None
+
+
+def case_id_of(proposal: dict[str, Any]) -> str | None:
+    """The repair case one proposal is about, or None if it is not case-derived.
+
+    None is the normal answer for the synthetic demo rows — they carry no case —
+    and must stay distinguishable from an error, or the fixture would start
+    manufacturing link rows for cases that do not exist.
+    """
+    event = _ingested_event(proposal)
+    if event is None:
+        return None
+    case_id = event.get("case_id")
+    return case_id if isinstance(case_id, str) and case_id else None
+
+
+def basis_of(proposal: dict[str, Any]) -> str | None:
+    """The ``three_quote_basis`` the gate saw for this proposal, or None.
+
+    Read from the ingested event rather than recomputed from today's evidence pack
+    — the distinction ``compute_three_quote`` exists to preserve. Recomputing at
+    report time would answer the audit question against whatever the threshold has
+    become, not the one the approval was actually made under.
+
+    Deliberately NOT validated against the known basis vocabulary here. This is an
+    audit trail: if the engine ever writes an unrecognised basis, the honest record
+    is the value it wrote, and coercing it to None would erase the only evidence
+    that something upstream changed.
+    """
+    event = _ingested_event(proposal)
+    if event is None:
+        return None
+    basis = event.get("three_quote_basis")
+    return basis if isinstance(basis, str) and basis else None
 
 
 def _outcome(proposal: dict[str, Any], *, ratification: str) -> str:
@@ -150,6 +186,7 @@ async def link_resolved_cases(session: AsyncSession, run_id: str, target: StepRe
                 run_id=run_id,
                 step_id=target.step_id,
                 outcome=outcome,
+                three_quote_basis=basis_of(proposal),
                 linked_at=now,
             )
         )

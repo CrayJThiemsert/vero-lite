@@ -164,6 +164,7 @@ async def _seed_governed_run(
     audit: dict[str, Any] | None,
     outcome: str = LINK_OUTCOME_APPROVED,
     step_id: str = "approve",
+    three_quote_basis: str | None = "three_quotes",
 ) -> None:
     """A gate decision, exactly as the engine records one.
 
@@ -200,6 +201,7 @@ async def _seed_governed_run(
             run_id=run_id,
             step_id=step_id,
             outcome=outcome,
+            three_quote_basis=three_quote_basis,
             linked_at=decided_at,
         )
     )
@@ -790,10 +792,11 @@ async def test_audit_proxy_moves_where_the_all_or_nothing_kpi_cannot(
     export = await load_monthly_export(db_session, year=2026, month=7, now=decided_at)
 
     (row,) = export.rows
-    assert audit_answers(row) == (True, True, True, False, True)
+    # Approved, run known, sourcing basis recorded — but no paperwork keyed at all.
+    assert audit_answers(row) == (True, True, True, False, True, True)
     cover = export.cover_summary()
     assert cover.traceability_pct == 0.0
-    assert cover.audit_answer_pct == pytest.approx(80.0)
+    assert cover.audit_answer_pct == pytest.approx(100.0 * 5 / 6)
 
 
 def _complete_row(**overrides: Any) -> ExportRow:
@@ -820,6 +823,7 @@ def _complete_row(**overrides: Any) -> ExportRow:
         "outcome": LINK_OUTCOME_APPROVED,
         "exception_label": None,
         "justification_ref": None,
+        "three_quote_basis": "three_quotes",
     }
     return ExportRow(**{**base, **overrides})
 
@@ -873,8 +877,64 @@ def test_audit_questions_and_answers_stay_the_same_length() -> None:
         outcome=None,
         exception_label=None,
         justification_ref=None,
+        three_quote_basis=None,
     )
-    assert len(audit_answers(blank)) == len(AUDIT_QUESTIONS) == 5
+    assert len(audit_answers(blank)) == len(AUDIT_QUESTIONS) == 6
+
+
+async def test_sourcing_basis_is_read_from_the_link_row_not_recomputed(
+    db_session: AsyncSession,
+) -> None:
+    """AC-9's sourcing column carries the basis the GATE saw (alembic `0022`).
+
+    Seeded as `sole_source_justified` while the fixture's evidence would recompute
+    to something else entirely — a recomputing reader would have to disagree with
+    this assertion, which is the whole point of persisting it.
+    """
+    decided_at = datetime(2026, 7, 15, 10, 0, tzinfo=BKK)
+    await _seed_case(db_session, case_id="case-basis")
+    await _seed_closeout(
+        db_session, case_id="case-basis", entered_at=datetime(2026, 7, 20, 3, 0, tzinfo=UTC)
+    )
+    await _seed_governed_run(
+        db_session,
+        case_id="case-basis",
+        run_id="run-basis",
+        decided_at=decided_at,
+        audit=_doa_tie(_APPROVER),
+        three_quote_basis="sole_source_justified",
+    )
+
+    export = await load_monthly_export(db_session, year=2026, month=7, now=decided_at)
+
+    (row,) = export.rows
+    assert row.three_quote_basis == "sole_source_justified"
+    assert audit_answers(row)[5] is True
+
+
+async def test_escaped_money_cannot_answer_the_sourcing_question(
+    db_session: AsyncSession,
+) -> None:
+    """An ungoverned row has no basis, and that must COUNT AGAINST it.
+
+    No gate ever judged its sourcing, which is exactly the gap the report exists to
+    surface. Scoring the absence "not applicable" would let escaped money improve the
+    proxy by virtue of having escaped.
+    """
+    await _seed_case(db_session, case_id="case-escaped-basis")
+    await _seed_closeout(
+        db_session,
+        case_id="case-escaped-basis",
+        entered_at=datetime(2026, 7, 18, 4, 0, tzinfo=UTC),
+    )
+
+    export = await load_monthly_export(
+        db_session, year=2026, month=7, now=datetime(2026, 7, 31, tzinfo=UTC)
+    )
+
+    (row,) = export.rows
+    assert row.three_quote_basis is None
+    assert audit_answers(row)[5] is False
 
 
 #: The Express half of `ExportRow`, positionally aligned with `EXPORT_COLUMNS`.
