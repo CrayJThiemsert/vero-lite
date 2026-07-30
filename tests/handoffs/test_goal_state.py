@@ -374,6 +374,45 @@ class TestV2Schema:
         assert "divergence" not in raw2["evaluations"][0]
         assert raw2["evaluations"][0]["amendments_seen"] == 0
 
+    def test_detail_round_trips_and_is_omitted_when_empty(self, tmp_path: Path) -> None:
+        """PLAN-0097 SD-2 — the warn entry's human-readable detail survives round-trip.
+
+        First-class, not an extra key on the dict: the module's tolerance contract drops
+        unknown fields on rewrite, so a detail only some writers knew about would be
+        silently stripped by the next ``save_goal``. Omitted when empty, following the
+        ``divergence`` precedent, so no ``schema_version`` bump is owed.
+        """
+        goal = new_goal(goal_text="x", criteria=[])
+        record_evaluation(
+            goal, Evaluation(ts="t1", fingerprint="fp1", detail="checks NOT green: C1=fail")
+        )
+        p = tmp_path / "goal.json"
+        save_goal(goal, p)
+        loaded = load_goal(p)
+        assert loaded is not None
+        assert loaded.evaluations[0].detail == "checks NOT green: C1=fail"
+        assert json.loads(p.read_text(encoding="utf-8"))["evaluations"][0]["detail"]
+
+        goal2 = new_goal(goal_text="y", criteria=[])
+        record_evaluation(goal2, Evaluation(ts="t2", fingerprint="fp2"))
+        p2 = tmp_path / "goal2.json"
+        save_goal(goal2, p2)
+        assert "detail" not in json.loads(p2.read_text(encoding="utf-8"))["evaluations"][0]
+
+    def test_a_legacy_entry_without_detail_parses(self, tmp_path: Path) -> None:
+        """PLAN-0097 SD-2 tolerance — every trail entry written before this field
+        existed still loads, with ``detail`` defaulting to empty rather than raising."""
+        doc = {
+            "goal": "x",
+            "status": "active",
+            "evaluations": [{"ts": "t1", "fingerprint": "fp1", "evaluator": "goal-evaluator"}],
+        }
+        p = tmp_path / "goal.json"
+        p.write_text(json.dumps(doc), encoding="utf-8")
+        loaded = load_goal(p)
+        assert loaded is not None
+        assert loaded.evaluations[0].detail == ""
+
     def test_junk_amendment_entries_skipped(self, tmp_path: Path) -> None:
         """Tolerant amendments parse — non-dict and ts-less entries skipped,
         never fatal (mirrors junk-criteria)."""
