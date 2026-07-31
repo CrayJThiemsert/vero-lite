@@ -1139,3 +1139,56 @@ exactly once, verified by exact list equality at split time, not by a byte-sum e
 > project-instructions UI (canonical = repo, UI = sync target). The session 25 /
 > 23+24 / 22 / 20+21 narratives below are retained for archeology.
 >
+
+## Rotated this reconcile (session-196, 2026-07-31 — the wall-clock root-fix reconcile; PLAN-0099 drafted + merged, #1003)
+
+Session 192's Current Focus block, rotated out when session 196's block entered the 4-session window.
+
+> **Session 192, 2026-07-30 (head_commit `99b752f` → `5dd8ce6`) — the session the
+> case → run link got a real oracle, and the oracle found two defects in code that
+> already looked merge-ready.** One PR merged (#979), 0 open. **PLAN-0096 Step 8
+> build-order item 3 is COMPLETE:** `repair_case_run_link` plus the `on_resolved`
+> gate seam, proven on **both** `resolve_gated_step` and `ratify_gated_step`.
+>
+> **The hold was the point.** s191 built item 3 and deliberately did NOT merge it —
+> clean code, `mypy --strict` clean, and **zero tests on the `ratify_gated_step`
+> call site**, which is the entire reason the seam has two call sites. Four scenario
+> tests then came up red with `no principal resolved for constrained step 'intake'`,
+> and that was **not a bug**: `POST /procedures/{id}/run` records `step_principals`
+> from `auth.person`, authn was off, so the round carried no requester and
+> `_enforce_principal_sod` correctly refused the later approval. Fixed **at the
+> cause** — the round now fires as an authenticated ต้อม (`req-mechanic-tom`, a
+> declared fleet principal), so SoD passes on its **merits**, two distinct humans,
+> instead of being skipped. The s191 handoff had proposed dropping to a direct
+> `run_procedure` call; declined, because it would contradict the module's own
+> docstring claim to drive the real run endpoint.
+>
+> **Defect 1 — the hook read the wrong half of the artifact.** `resolve_gated_step`
+> writes `{"output_set": executed_effects, "decisions": decided}` and says why:
+> *"executed effects thread forward; rejects are recorded, not threaded"*. Both
+> `gate_hooks.vertical_of` and `link_resolved_cases` read `output_set`, so a case
+> the approver **turned down** was absent entirely — `LINK_OUTCOME_REJECTED` was
+> unreachable code — and an all-reject round left `output_set` empty, so the hook
+> never dispatched at all. New `gate_hooks.decided_entries()` reads `decisions` (the
+> complete per-action record, carrying the FINAL status), falling back to
+> `output_set` for `auto` steps that never passed a human gate.
+>
+> **Defect 2 was visible ONLY after defect 1 was fixed.** `_outcome` let the
+> run-level ratification state outrank the per-proposal status, stamping a REJECTED
+> case `provisional` — the month-end export would have chased เฮีย for a signature
+> on spend that never happened. **Cray typed the rule: a refusal is checked FIRST** —
+> a declined repair has nothing to ratify and is already a complete, traceable
+> decision; the ratification obligation belongs to the **run**, so it rides along on
+> every case that gate touched, including the ones turned down.
+>
+> **Five non-vacuity probes**, each restored from a backup **copy** and
+> `diff`-verified byte-identical (never `git checkout`): M1 delete the ratify
+> `fire_on_resolved` → exactly the 2 ratification tests; M2 read `output_set` again
+> → exactly the 2 rejection tests; M3 revert the `_outcome` ordering → exactly the
+> waiver-reject test; M4 never arm the hook → all 7; M5 drop the idempotency guard →
+> the double-fire test **and** both ratify tests, via `failures()` catching the
+> swallowed `IntegrityError` — s191's assert-the-component-is-healthy design proving
+> itself non-vacuous. Suite **3597 → 3604** (7 new tests). ruff + ruff format clean,
+> `mypy --strict services/` clean over 127 files, registration guard + R7 + R8 exit
+> 0, CI `gate` pass, merge-commit tree equality `git diff e443cb7 HEAD` = **0
+> bytes**, and the full suite re-run **on the merge commit** (CI is PR-only).
