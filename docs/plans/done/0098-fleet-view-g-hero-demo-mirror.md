@@ -1,7 +1,11 @@
 # PLAN-0098: Fleet View G — the governed-repair hero surface (a `hero_demo/` mirror by function, not by shape)
 
-**Status:** Draft
+**Status:** Complete
 **Owner:** Claude Code
+**Completed:** 2026-07-31 (session 197) — Steps 5–7 shipped in PR #1006 (`687705d`);
+Steps 1–4 in PR #1002. All nine ACs closed; AC-4/AC-6 by empty `git diff`, AC-7/AC-9 by
+the tripwires in `tests/api/test_view_hero_fleet_ui_contract.py`, each shown RED against
+its named counterexample in the Step 6 sweep.
 **Created:** 2026-07-31
 **Related ADRs:** ADR-0030 (Box-4 ฿ facet — D2 coexist, D3 disclosed assumptions), ADR-0031 (D4 corollary 1 — seam trigger), ADR-0032 (D1.2 mirror licence, D6 cost-class), ADR-0025/0026 (AT-2 spine lineage), ADR-0034 (fleet flow context)
 **Drafted-by:** in-harness `plan-drafter` subagent (ADR-013 D1); independent review: Code (R2) + Cray (ratification) — per ADR-012 D4.3. SD-1..3 ratified by Cray (Jirachai Thiemsert) 2026-07-31, session 196. The drafter's AC-6 carve-out (engine-docstring exception) was withdrawn at Code's R2, 2026-07-31 — the debt is paid separately in PR #1000.

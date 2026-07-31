@@ -1251,3 +1251,51 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > sessions-142→171 into the new `2026-h1g-status.md` (numbers in the chain note below).
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
+
+
+<!-- rotated 2026-07-31, session 197 (STATUS reconcile, PR after 687705d) -->
+> **Session 194, 2026-07-30 (head_commit `367c15b` → `b25cc98`) — two rotted-pointer
+> repairs landed, and Cray ruled the standing STATUS-size TODO.** Two PRs merged
+> (#990, #991), 0 open.
+>
+> **#990 — ADR-0025's archive pointer was wrong by whole FILE, not by offset.** It cited
+> a line range in `docs/status-archive/2026-h1-status.md`; that base was **re-chartered**
+> at the s144 split as the rolling recent window, so the target had long since migrated
+> to a lettered sibling. Repaired by citing `2026-h1c-status.md` **by section heading,
+> with no line numbers** — § "Current-Focus block — Session 84 (cont.; head_commit
+> `f56a6e8`)" — per the house rule that headings survive an edit and line numbers do not.
+> **Pre-existing rot from s144**, whose repair sweep fixed three pointers of this shape
+> and missed one; **not** caused by the s193 R4 split, which preserved every heading.
+> N=1 — no sibling rot in `docs/adr/`. Drafted by `plan-drafter` (ADR-0025 is Accepted →
+> G1-denied to Code), Code R2'd.
+>
+> **#991 — PLAN-0097 drafted (`Status: Draft`), and the finding is that the standing
+> TODO's PREMISE was wrong.** That TODO read the goal gate's silent warn path as
+> *ratified behaviour*, which made any fix an ADR-0018 amendment question. It is not:
+> **D5** says verbatim *"v1 is warn + annotate … records the verdict trail in the goal
+> file"*, and **V2-D1** (ratified 2026-07-13, with the warn path already built)
+> re-describes the default tier as *"warn + annotate + Telegram"*. The spec's step 5
+> omits the record and the implementation followed the sketch — so the silence is an
+> **implementation gap against a ratified Decision, not a ratified design**. **Third
+> instance of this class** (ADR-0034 D3(3) vs D3(6) at s186; D3(3)/D3(4) at s188): a
+> Decision's prose and its own procedural sketch disagreeing, code following the sketch.
+>
+> **Cray typed three calls.** (1) **PLAN-0097 SD-1 = (a): D5 controls** — the trail entry
+> is licensed by ADR-0018 as it stands, no amendment needed; recorded at the PLAN's SD-1
+> and as a discharged gate at Step 0, with Appendix A's contingency amendment retained
+> but marked NOT applied / superseded, and `docs/adr/0018-*.md` untouched. **SD-2 and
+> SD-3 were NOT ruled and stay OPEN.** (2) **STATUS size = tighten the per-block cap +
+> cut duplicated content**, declining both "widen the rotation window" and "accept the
+> trade". (3) **Next build ordering #3 → #1** — the fleet demo showability work
+> (surfacing the month-end KPI + export in the console UI) goes first.
+>
+> **Ruling (2) is applied in this same reconcile.** STATUS measured **59,820 B** against
+> R1's 49,152 B soft target. Runbook §R2 gained a **per-Current-Focus-block cap of
+> ≤ 4,096 B** — the count caps bounded how *many* blocks, never how *large* one may be —
+> and its existing "RD rows are pointers, ≤ ~600 chars" rule was measured **unenforced**,
+> 8 of 10 rows over, worst 2,660 B. This pass rewrites every RD row to that cap, brings
+> each retained block under the new cap, and cuts the PLAN-0096 In-Flight entry to a
+> pointer. **The R2 carve-out bound the work**: nothing was trimmed until its substance
+> was verified present in a tracked file.
+
+> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
