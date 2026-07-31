@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-31T15:46:13+07:00
-session: 196
-current_batch: "s196 — FIVE PRs across two concurrent workstreams: #999–#1002 (CSS guard → all 15 assets; EconomicImpact.kind pinned; PLAN-0098 ratified + Steps 1–4 built) + #1003 (PLAN-0099, chip session)."
+last_updated: 2026-07-31T20:40:03+07:00
+session: 197
+current_batch: "s197 — one PR merged (#1006): PLAN-0098 COMPLETE — View G's fleet branch (Steps 5–7), all nine ACs closed, PLAN archived to done/ in the same PR."
 current_actor: code
-blocked_on: "Nothing blocks. 0 PRs open; both s196 workstreams merged clean."
-next_action: "PLAN-0098 Step 5 — the frontend fleet branch in view-hero.js per SD-2 + SD-3(c), then AC-7/AC-9. PLAN-0099 Step 1 (the other workstream's next action) is unstarted."
-head_commit: 8fbf573
-recent_commits: [8fbf573, d28d9ce, 4846d5e, 8e2b290, 88abb3f, 5382052, f936f00, b142fed, 4bb9494, 76d5e2a]
+blocked_on: "Nothing blocks. 0 PRs open once this closeout merges."
+next_action: "PLAN-0099 Step 1 — the forcing tests, RED first; Steps 1–6 finish the fleet-partner block before the primitives block (Cray's s197 sequencing call)."
+head_commit: 687705d
+recent_commits: [687705d, bfd789c, f9d9918, 1dbd972, b4cc8c6, 8fbf573, d28d9ce, 4846d5e, 8e2b290, 88abb3f]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,55 @@ recent_commits: [8fbf573, d28d9ce, 4846d5e, 8e2b290, 88abb3f, 5382052, f936f00, 
 ---
 
 ## Current Focus
+
+> **Session 197, 2026-07-31 (head_commit `1dbd972` → `687705d`) — one PR merged
+> (#1006), 0 open. PLAN-0098 COMPLETE and ARCHIVED in the same PR: View G's fleet
+> branch shipped, all nine ACs closed. Theme, again: the donor's reuse contract was
+> MEASURED, not re-read.**
+>
+> **PLAN-0098's own §D-D was wrong about the donor.** It asserted the joiner
+> `governanceMoment` binds only `doa_tier` / `sod` / `governed_decision`, "all of which
+> fleet produces". It also binds `po_id`, `declared_tier_id`, `is_off_avl_override`
+> (`view-hero.js:42,46,49`), none of which fleet's audit emits — verbatim reuse would
+> have rendered `undefined — display only` in the DOA card in front of an audience. A
+> fleet joiner was written instead; SoD + join cards ARE reused verbatim, and
+> `test_the_fleet_branch_reads_no_procurement_only_field` pins the correction.
+>
+> **Zero new CSS classes** — `EconomicImpact.baseline/governed` map onto the existing
+> `hero-ledger` idiom, so `hero.css` is untouched, #999's class contract needed no
+> allowlist edit, and the `?v=` bump covered exactly one asset (`c36` → `c47`).
+> **AC-4 / AC-6 closed by EMPTY `git diff`** (`services/engine/`,
+> `services/api/models/demo.py`, the donor's own suite) — evidence, not prose. **Five
+> non-vacuity probes**, each an observable behaviour change, each RED against its
+> NAMED test, each restored from a `/tmp` copy and byte-diff verified: a smuggled
+> money literal, a dispatch that stops matching, a reverted cache token, a
+> procurement-only field creeping back, a hidden assumptions strip.
+>
+> **Preview review is evidence, never a gate — and it found a real defect.** Runtime
+> DOM probe on `OCT_VERTICAL=fleet_maintenance`: `undefined`=0, `NaN`=0, `hero-*`
+> overflow=0, assumptions strip `hidden:false` / 144px / 6 lines, `hero-toggle`
+> count=0 (**SD-2 confirmed in the DOM**, stronger than the lexical test). It also
+> caught the authored `three_quote` rule rendering 143 chars of prose right-aligned
+> in a 54px kv cell against a 19px row — moved to its own full-width line (`bfd789c`).
+> **Found but NOT fixed (not this PLAN's):** the page overflows horizontally,
+> `scrollWidth 1825` vs `clientWidth 1382`; all 24 overflowing elements are in the
+> global nav bar, zero `hero-*`. Pre-existing header behaviour, tracked separately.
+>
+> **Cray typed four calls** in a "platform vs dev shop" discussion held BEFORE the work
+> was picked; all four are carried as Active TODOs / `next_action`: (1) **measure the
+> assembly-cost axis BEFORE an ADR argues it** — tripwire first, ADR on the number; (2)
+> **no buyer-model mismatch** — the partners are mid-size regulated operators already,
+> so `CLAUDE.md` §1's "SME" wording is loose phrasing to correct, not a strategy change;
+> (3) **ADR-0032 D2's pilot gate = SATISFIED** (the fleet Phase-1 flow is a real pilot),
+> so its Context snapshot must be **re-grounded**, unlocking shape-2 work — OWED, not
+> done, G1-gated → `plan-drafter`; (4) **finish the fleet block** (PLAN-0098 ✅, then
+> PLAN-0099 Steps 1–6) before the primitives block — insights found along the way may
+> strengthen it.
+>
+> Suite **3700 → 3709** / 8 skipped — skip count unmoved, all 8 host-state/live
+> opt-ins. `ruff` clean over 583; `mypy --strict` clean over 130; R1/R4/R7/R8 +
+> registration guard exit 0. CI `gate` pass 5m56s on `bfd789c`; `git diff bfd789c
+> HEAD` = 0 bytes; full suite re-run on the merge commit = **3709 / 8**.
 
 > **Session 196, 2026-07-31 (head_commit `5382052` → `4846d5e`) — one PR merged
 > (#1003), 0 open. The theme: an intermittent flake root-caused by MEASUREMENT —
@@ -163,50 +212,6 @@ recent_commits: [8fbf573, d28d9ce, 4846d5e, 8e2b290, 88abb3f, 5382052, f936f00, 
 > 130; guard + R1/R4/R7/R8 exit 0; `alembic check` clean, dev DB at `0022`; CI `gate` ×4.
 > **21 non-vacuity probes**, each RED against its named test, restored from `/tmp`.
 
-> **Session 194, 2026-07-30 (head_commit `367c15b` → `b25cc98`) — two rotted-pointer
-> repairs landed, and Cray ruled the standing STATUS-size TODO.** Two PRs merged
-> (#990, #991), 0 open.
->
-> **#990 — ADR-0025's archive pointer was wrong by whole FILE, not by offset.** It cited
-> a line range in `docs/status-archive/2026-h1-status.md`; that base was **re-chartered**
-> at the s144 split as the rolling recent window, so the target had long since migrated
-> to a lettered sibling. Repaired by citing `2026-h1c-status.md` **by section heading,
-> with no line numbers** — § "Current-Focus block — Session 84 (cont.; head_commit
-> `f56a6e8`)" — per the house rule that headings survive an edit and line numbers do not.
-> **Pre-existing rot from s144**, whose repair sweep fixed three pointers of this shape
-> and missed one; **not** caused by the s193 R4 split, which preserved every heading.
-> N=1 — no sibling rot in `docs/adr/`. Drafted by `plan-drafter` (ADR-0025 is Accepted →
-> G1-denied to Code), Code R2'd.
->
-> **#991 — PLAN-0097 drafted (`Status: Draft`), and the finding is that the standing
-> TODO's PREMISE was wrong.** That TODO read the goal gate's silent warn path as
-> *ratified behaviour*, which made any fix an ADR-0018 amendment question. It is not:
-> **D5** says verbatim *"v1 is warn + annotate … records the verdict trail in the goal
-> file"*, and **V2-D1** (ratified 2026-07-13, with the warn path already built)
-> re-describes the default tier as *"warn + annotate + Telegram"*. The spec's step 5
-> omits the record and the implementation followed the sketch — so the silence is an
-> **implementation gap against a ratified Decision, not a ratified design**. **Third
-> instance of this class** (ADR-0034 D3(3) vs D3(6) at s186; D3(3)/D3(4) at s188): a
-> Decision's prose and its own procedural sketch disagreeing, code following the sketch.
->
-> **Cray typed three calls.** (1) **PLAN-0097 SD-1 = (a): D5 controls** — the trail entry
-> is licensed by ADR-0018 as it stands, no amendment needed; recorded at the PLAN's SD-1
-> and as a discharged gate at Step 0, with Appendix A's contingency amendment retained
-> but marked NOT applied / superseded, and `docs/adr/0018-*.md` untouched. **SD-2 and
-> SD-3 were NOT ruled and stay OPEN.** (2) **STATUS size = tighten the per-block cap +
-> cut duplicated content**, declining both "widen the rotation window" and "accept the
-> trade". (3) **Next build ordering #3 → #1** — the fleet demo showability work
-> (surfacing the month-end KPI + export in the console UI) goes first.
->
-> **Ruling (2) is applied in this same reconcile.** STATUS measured **59,820 B** against
-> R1's 49,152 B soft target. Runbook §R2 gained a **per-Current-Focus-block cap of
-> ≤ 4,096 B** — the count caps bounded how *many* blocks, never how *large* one may be —
-> and its existing "RD rows are pointers, ≤ ~600 chars" rule was measured **unenforced**,
-> 8 of 10 rows over, worst 2,660 B. This pass rewrites every RD row to that cap, brings
-> each retained block under the new cap, and cuts the PLAN-0096 In-Flight entry to a
-> pointer. **The R2 carve-out bound the work**: nothing was trimmed until its substance
-> was verified present in a tracked file.
-
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
 
 ## Prior focus (archived)
@@ -226,7 +231,8 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
-| 2026-07-31 | **s196, 2nd workstream (#999–#1002) — PLAN-0098 ratified + Steps 1–4 built; CSS-class guard → all 15 assets; `EconomicImpact.kind` → 5 kinds.** **Cray typed SD-1 (a), SD-2 always-visible, SD-3 = (c), differing from the draft's (a)**: lead with the measured ฿48,000 — the fraud origin story is narrative copy only, never a rendered figure (AC-9 = its oracle). Backend runs the real engine over the spec-loaded ladder via `_HERO_BUILDERS` (ADR-0031 D4 corollary 1 FIRED at N=2). Suite → **3700** | `5382052` / `4bb9494` / `docs/plans/0098-fleet-view-g-hero-demo-mirror.md` |
+| 2026-07-31 | **s197 — PLAN-0098 COMPLETE + ARCHIVED (#1006): View G's fleet branch, all nine ACs.** The donor joiner also binds `po_id`/`declared_tier_id`/`is_off_avl_override`, which fleet never emits (§D-D claimed otherwise) — a fleet joiner was written; SoD + join cards reused. Zero new CSS; AC-4/AC-6 by empty `git diff`; 5 probes RED. **Cray typed 4 calls**: measure assembly-cost first; no buyer-model mismatch; **ADR-0032 D2 pilot gate = SATISFIED** (Context re-ground OWED); fleet before primitives. Suite → **3709** | `687705d` (head_commit) / `docs/plans/done/0098-fleet-view-g-hero-demo-mirror.md` |
+| 2026-07-31 | **s196, 2nd workstream (#999–#1002) — PLAN-0098 ratified + Steps 1–4 built; CSS-class guard → all 15 assets; `EconomicImpact.kind` → 5 kinds.** **Cray typed SD-1 (a), SD-2 always-visible, SD-3 = (c), differing from the draft's (a)**: lead with the measured ฿48,000 — the fraud origin story is narrative copy only, never a rendered figure (AC-9 = its oracle). Backend runs the real engine over the spec-loaded ladder via `_HERO_BUILDERS` (ADR-0031 D4 corollary 1 FIRED at N=2). Suite → **3700** | `5382052` / `4bb9494` / `docs/plans/done/0098-fleet-view-g-hero-demo-mirror.md` |
 | 2026-07-31 | **s196 — PLAN-0099 drafted + merged (#1003): the wall-clock root fix.** An intermittent quote-history flake was **measured**, not inferred — the dev clock steps back 20x/300 s (every step ≥400 ms) against a 90–166 ms window ⇒ ~0.9%/run; the Postgres-`now()` hypothesis was **refuted by construction**. **`<=` → `<` rejected on evidence.** Two worse sites found (the DOA gate via `latest_accepted_quote`; the month-end export). **All 5 SDs Cray-ratified** — store-at-write, backfill marked **reconstructed**, three riders on migration `0023`. No production code changed | `4846d5e` (head_commit) / `docs/plans/0099-wall-clock-root-fix-store-at-write-and-sequence.md` |
 | 2026-07-31 | **s195 — fleet's Box-4 ฿ facet, a REAL PM-confirm race, PLAN-0097 COMPLETE (#994–#997).** **Cray typed** fleet's **event-anchored** ฿30,000 basis + the conservative **15%** recovery fraction. #995 fixed an **unlocked** read-then-write that let two deciders both get a 200 while one overwrote the other (`FOR UPDATE`, no migration). #996/#997 shipped the warn-path trail and archived the PLAN — **SD-2 = yes**, **SD-3 = dedup**. Suite → **3676** | `a8912e0` (#997, head_commit) / `8381c92` (#994) / `fa53911` (#995) / `docs/plans/done/0097-goal-gate-warn-path-trail.md` |
 | 2026-07-30 | **s194 — two rotted-pointer repairs + Cray's STATUS-size ruling (#990, #991).** #990 fixed ADR-0025's archive pointer (wrong by whole FILE since the s144 re-charter; now cited by section heading, no line numbers). #991 drafted PLAN-0097 — the goal gate's silent warn path is an **implementation gap against ADR-0018 D5/V2-D1**, not ratified design. **Cray typed: SD-1 = (a), D5 controls (SD-2/SD-3 stay OPEN)**; **STATUS size = tighten the per-block cap + cut duplicates** | `b25cc98` (head_commit) / `c2584c8` (#990) / `docs/plans/done/0097-goal-gate-warn-path-trail.md` / runbook §R2 |
@@ -235,7 +241,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-07-30 | **s191 — a REAL repair case now reaches the governed gate (#975–#977).** The accepted quote (ใบที่ตกลง, alembic `0019`) gives the DoA ladder a ฿ figure existing BEFORE the work and tracing to recorded evidence; Cray typed the required FK + reason-only-when-not-cheapest. The case → event path wires it in with **zero engine and zero adapter-`__init__` diff**. One probe came back GREEN — a vacuous oracle a fail-soft handler was hiding. Suite → **3597** | `99b752f` (#977, head_commit) / `d3f2919` (#976) / `d781683` (#975) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
 | 2026-07-29 | **s189 — PLAN-0096 Steps 1–7 and 9 COMPLETE (8 of 10), #965–#968.** Partner round-2 answers closed 5 of 7 questions. Step 6 = the partner's real 8-step task chain (alembic `0016`); `pm_due` = a sixth LINE event, group recipient, read off persisted `judge_service_due` verdicts. Cray typed the prerequisite-anchored clock + the AC-8 bump. Unplanned (#966/#967): an ORM↔alembic registration guard — **a comparison means something only when at most ONE side is hand-maintained**. Suite → **3552** | `13aa2f0` (#968 merge, head_commit) / `26e61b3` (#965) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` |
 | 2026-07-29 | **s186→s187 — PLAN-0096 Steps 1–5, 7 and 9 COMPLETE (#951–#961); s188 closed the ADR debt (#962).** Six Cray ratifications, incl. the state-based ratify precondition on a **self-contradiction between ADR-0034 D3(3) and D3(6)** — and a second divergence of the same class found at s188 R2. Suite → **3502** | `eae0f82` (#962 merge, head_commit) / `728da00` (#961 merge) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` / `docs/adr/0034-governed-exception-family.md` §D3 + §"D3 Amendment (2026-07-29)" |
-| 2026-07-28 | **s184→s185 — ADR-0034 "governed exception family" ACCEPTED (#948) + PLAN-0096 "fleet flow completion Phase 1, Lean KPI-first" merged as Draft (#949).** Partner-driven: 18/18 discovery answers → three mechanisms (escalate-never-skip waiver / evidence-alternative E-3 / deferred-ratification E-2+E-4); SoD + compliance stay NON-waivable. Cray resolved OQ-1/OQ-2/OQ-3 per the in-file recommendations. All 8 dispatch rejection criteria run adversarially, none fired | `760ceed` (#949 merge, head_commit) / `24c3b45` (#948) / `docs/adr/0034-governed-exception-family.md` |
 ## In-Flight Discussions
 
 - **PLAN-0096 — COMPLETE 12/12 and ARCHIVED (s193).** The fleet design partner's Phase-1 flow, shipped end to end across s186→s193 — real governance numbers, case capture from minute 1, the quote evidence pack, the sourcing signal that retired a fail-open default, the E-2 ratification window, the PM import, the outbound-only-and-DISARMED LINE OA surface, the 8-step task chain, and the month-end Express export. **Four residual risks outlive the PLAN and are why this entry is not simply deleted — all four are recorded in the archived PLAN, which is where the detail now lives:** RR-1 (per-baht approver→case attribution is INFERENCE, not data — `GovernedDecision` carries no timestamp and no per-entity key; sound while one human resolves a whole gate, silently wrong the day two approvers share a resolution); RR-3 (concurrency-race was the weakest coverage row for AC-4/AC-9/AC-10 — **both named gaps CLOSED s195 by #995**: the PM-confirm race turned out to be a REAL defect, now `FOR UPDATE`, and `allocate_repair_order_no` got the test its docstring implied, which corrected the constraint that docstring named); ศูนย์ต้นทุน ships EMPTY (partner granularity still unanswered — also an open Active TODO below); and `latest_per` still collapsing two open cases on one truck (item 4, **Cray typed (ค) defer**) — the older case never reaches the gate, so if it is paid it reports as *ungoverned*, which a reader of the number cannot distinguish from a governance failure. Full record: `docs/plans/done/0096-fleet-flow-completion-phase1.md` (§Verification preamble + §Acceptance Criteria for RR-1 / RR-3 / ศูนย์ต้นทุน; §Step 8 for `latest_per`); the AC-12 sign-off is in `.claude/handoffs/session-193/` (gitignored).
@@ -255,6 +260,10 @@ than restated: the Active TODO owns that status.]_
 
 ## Active TODOs
 
+- [ ] **ADR-0032's Context snapshot must be RE-GROUNDED — OWED, G1-gated (Cray typed s197).** Cray ruled **D2's pilot gate SATISFIED**: the fleet design partner's Phase-1 flow is a real pilot, so the ADR's Context — which still describes all six verticals as synthetic — is stale, and re-grounding it is what unlocks shape-2 work. ADR-0032 is `Status: Accepted`, so Code may not author the edit: route via `plan-drafter`, Code R2's and commits. Nothing drafted yet. `docs/adr/0032-strategic-frame-demo-to-pilot-wedge-and-3-shape-roadmap.md`.
+- [ ] **Assembly-cost axis — MEASURE it before an ADR argues it (Cray typed s197).** Build the tripwire that puts a number on assembly cost first, *then* draft the ADR on top of that number. The ordering is the ruling; nothing built, no PLAN drafted.
+- [ ] **`CLAUDE.md` §3 names the code generator as the moat; measurement (s197) says the load-bearing primitive is the runtime-interpreted `procedures.yaml`.** `_ORM_COMMITTED_DEST` (`services/engine/code_generator.py:871`) carries only `energy` + `core`; the other five verticals' generated ORMs land on gitignored paths with **zero source importers**, and the generator's own docstring calls them "a gitignored reference artifact". Batch with §1's "SME" wording (Cray s197: the design partners are mid-size regulated operators already — loose phrasing to correct, **not** a strategy change) into one constitutional edit: Cowork drafts the text, Code applies.
+- [ ] **The OCT console's global nav bar overflows its own viewport — measured s197, NOT this PLAN's.** At a 1382 px viewport the page scrolls sideways: `scrollWidth` 1825 vs `clientWidth` 1382. All 24 overflowing elements are in the header (`.llmctl`, Story, Refresh, Warm/Sleep, the MS-S1 indicator, beside ten tab buttons); **zero `hero-*` elements overflow**, so View G's body is clean and this is pre-existing header behaviour, surfaced only because PLAN-0098 Step 7's preview review measured it. Fix = make the header responsive + a Python geometry tripwire (`docs/conventions/ui.md`: no build step, so a UI tripwire must be a Python test; and any new class needs a rule or `tests/api/test_css_class_contract.py` goes RED under set-equality). Recorded here because it is otherwise tracked nowhere in the repo.
 - [ ] **Seam-scoped mutation-testing CI — a PLAN candidate, NOT built.** Surfaced s188 as the one CHECKABLE variant the scenario-test hook rejection does not cover; **rehomed here s191** when its parent `[x]` row was pruned, because STATUS was its only home. A CI job that requires the scenario suite to REDDEN under a seam mutation: ritual compliance cannot fake it, since an empty or stubbed scenario suite stays green under mutation — exactly what a file-existence hook would miss. Rationale: `CLAUDE.md` §8's scenario-test bullet.
 - [ ] **PLAN-0096 partner round-2 — ANSWERED s189; five of seven closed, one non-blocking follow-up open.** A1 → Step 6 built (#965); A3 → `pm_due` built (#968); **A4 + A7 confirmed values already shipped** (flat ฿5,000 ceiling, `"30001"` inclusive floors); A5 **parked** — no real Wialon export exists yet. **A2 is answered and consumed by Step 8** (no longer a gate). **Open, NON-blocking: cost-center (ศูนย์ต้นทุน) granularity — per truck or per company?** Ship the column, fill the rule when it lands. A6 is answered but is a Step 9 *runbook* item. Detail: `docs/plans/done/0096-fleet-flow-completion-phase1.md`.
 - [ ] **The AT-2 extraction — only the F-FACTORY half remains, owned by PLAN-0076 T1.** The criterion-vocabulary half SHIPPED as PLAN-0087 (COMPLETE 8/8, ARCHIVED — #840/#841); ADR-0025 D7's generator deferral was CANCELLED at N=4 (Cray-ratified, typed); SD-1 = (a) keeps the procedure-aware `ExecutorFactory` half with PLAN-0076 T1, guard `test_at2_extraction_obligation_is_owned` ARMED. Full detail: `docs/plans/done/0087-gate-seam-declared-criterion-vocabulary.md` + `docs/plans/0076-*.md` §A.
