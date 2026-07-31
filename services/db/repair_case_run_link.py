@@ -92,6 +92,7 @@ class RepairCaseRunLink(Base):
         sa.UniqueConstraint(
             "case_id", "run_id", "step_id", "outcome", name="uq_repair_case_run_link_decision"
         ),
+        sa.UniqueConstraint("seq", name="uq_repair_case_run_link_seq"),
     )
 
     link_id: Mapped[str] = mapped_column(sa.Text, primary_key=True)
@@ -120,3 +121,12 @@ class RepairCaseRunLink(Base):
     #: real bases and must stay distinguishable from them.
     three_quote_basis: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     linked_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    #: Insertion order, assigned by the database (PLAN-0099 D2 / SD-3(c)). The
+    #: month-end export's ``governed_by_case`` is a last-write-wins dict overwrite
+    #: driven by ascending ``linked_at`` — a latest-wins pick in Python clothing, not
+    #: a display ordering. The pair it decides between is exactly the pair the
+    #: deferred-ratification mechanism creates: a ``provisional`` row and its later
+    #: ``ratified`` one. Under a backward step between them the export reports the
+    #: repair as still provisional after it was signed for, which is the opposite of
+    #: what the ratification exists to record.
+    seq: Mapped[int] = mapped_column(sa.BigInteger, sa.Identity(always=False), nullable=False)

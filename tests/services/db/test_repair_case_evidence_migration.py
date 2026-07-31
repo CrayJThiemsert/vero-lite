@@ -80,6 +80,13 @@ async def test_evidence_migration_applies_and_matches_the_orm() -> None:
         "reason": ("text", "NO"),
         "entered_by": ("text", "NO"),
         "entered_at": ("timestamp with time zone", "NO"),
+        # Added by ``0023`` (PLAN-0099 D2 / SD-3(b)) — the latest-wins pick reads the
+        # LAST justification, and reading it off ``entered_at`` returns an earlier
+        # attempt under a backward clock step. Listed here because this assertion is
+        # an EXACT column set on purpose: it caught this addition, which is what it is
+        # for. ``repair_case_quote`` above is deliberately untouched — it is read as a
+        # set, never as "which row is current", so it needs no sequence.
+        "seq": ("bigint", "NO"),
     }
     # Both hang off repair_case: evidence for a case that does not exist is evidence
     # that counts toward nothing and appears in no UI.
