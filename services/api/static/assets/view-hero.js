@@ -357,7 +357,235 @@
     return card('Act — the human DOA gate', 'a distinct approver authenticates, then signs · SoD (RF-3)', [body]);
   }
 
+  /* ---- FLEET-BRANCH-START · PLAN-0098 Step 5 (fleet_maintenance View G) --------------
+     Keyed on the impact payload's `vertical` discriminant. FleetHeroImpact carries it;
+     HeroImpactLedger cannot (ADR-0030 D2 forbids editing that model), so procurement is
+     the ABSENCE case — never a second literal to keep in sync.
+
+     STATED DEVIATION from the PLAN's D-D. D-D reads: "the joiner (:35-62) binds only
+     doa_tier / sod / governed_decision, all of which fleet produces". Measured, that is
+     not so — governanceMoment also binds po_id (:42), declared_tier_id (:46) and
+     is_off_avl_override (:49), none of which fleet's audit emits. Reusing it verbatim
+     would print "undefined — display only" in the DOA card and "Contrast · undefined"
+     in the contrast line. Hence fleetMoment below. The SoD card and the join card ARE
+     reused verbatim — those two really do read only the shared fields.
+
+     SD-2 (Cray, 2026-07-31): the assumptions strip renders ALWAYS VISIBLE here, never
+     behind the donor's provenance toggle. Fleet's entire governed delta is
+     assumption-derived, so hiding the assumption hides the number's nature.
+
+     SD-3(c) (Cray, 2026-07-31): lead with the MEASURED quote, show the modelled recovery
+     labelled as understated, AND carry the owner's origin story as NARRATIVE COPY ONLY.
+     No money figure is written as a literal anywhere below — every rendered amount flows
+     from the payload through thb(). AC-9 is the lexical fence that keeps it that way.
+
+     No new CSS class is introduced: every class used here already carries a rule in
+     hero.css, so the PLAN-0099-era class contract (tests/api/test_css_class_contract.py)
+     needs no allowlist edit and hero.css is untouched.
+     ---------------------------------------------------------------------------------- */
+
+  function fleetMoment(audit) {
+    const doa = (audit.doa_tier && audit.doa_tier[0]) || {};
+    const sod = audit.sod || {};
+    const gds = audit.governed_decision || [];
+    const doaTie = gds.find((g) => g.control_ref && g.control_ref.kind === 'doa_tier') || null;
+    const sodTie = gds.find((g) => g.control_ref && g.control_ref.kind === 'sod') || null;
+    return {
+      truck: audit.truck_id,
+      caseId: audit.case_id,
+      severity: audit.severity,
+      amount: audit.amount || { value: null, currency: 'THB' },
+      band: doa.band || { min: null, max: null },
+      role: doa.resolved_tier_id,
+      approverId: doa.resolved_approver_id,
+      sodRequired: doa.sod_required,
+      sod: sod,
+      ruleGate: audit.three_quote || null,
+      doaTie: doaTie && {
+        controlId: doaTie.control_ref.id,
+        principalId: doaTie.principal_id,
+        joins: doaTie.control_ref.id === doa.resolved_tier_id
+      },
+      sodTie: sodTie && {
+        controlId: sodTie.control_ref.id,
+        principalId: sodTie.principal_id,
+        joins: sodTie.control_ref.id === sod.constraint_id
+      }
+    };
+  }
+
+  /* the fleet DOA card — the quote decides who signs; no OFF-AVL / CSV-tier nouns */
+  function renderFleetDoaCard(m) {
+    return card('DOA tier — the repair quote decides who signs',
+      'audit["doa_tier"] · deterministic, no LLM', [
+        h('div', { class: 'hero-amount' }, [
+          h('span', { class: 'hero-amount-val' }, thb(m.amount.value)),
+          badge('REPAIR QUOTE · MEASURED', 's-info')
+        ]),
+        h('div', { class: 'hero-cross' }, [
+          h('span', null, thb(m.amount.value)),
+          h('span', { class: 'hero-arrow' }, icon('flow', { width: 14, height: 14 })),
+          h('span', { class: 'faint' }, 'clears the ' + thb(m.band.min) + ' rung →'),
+          h('span', { class: 'hero-role s-crit' }, m.role)
+        ]),
+        h('div', { class: 'hero-grid' }, [
+          kv('truck_id', m.truck || '—', 'mono'),
+          kv('case_id', m.caseId || '—', 'mono'),
+          kv('resolved_tier_id', m.role, 'mono s-crit'),
+          kv('band', '[' + m.band.min + ', ' + (m.band.max == null ? '∞' : m.band.max) + ')', 'mono'),
+          kv('sod_required', String(m.sodRequired), 'mono'),
+          kv('resolved_approver_id', m.approverId || '—', 'mono')
+        ])
+      ]);
+  }
+
+  /* the fleet-only third card: the three-quote rule gate, with its STAMPED basis.
+     Both repairs pass the signal; only the basis says whether the pass was earned by
+     collecting quotes or granted because the rule never applied. A card showing the
+     boolean alone would render those two as the same thing. */
+  function renderFleetRuleGate(hero, contrast) {
+    function gateRow(label, gate) {
+      if (!gate) return h('div', { class: 'hero-join' }, h('span', { class: 'faint' }, label + ' · no rule-gate verdict'));
+      return h('div', { class: 'hero-join' }, [
+        h('span', { class: 'hero-join-kind mono' }, label),
+        badge(gate.signal ? 'PASS' : 'BLOCKED', gate.signal ? 's-ok' : 's-crit'),
+        h('span', { class: 'hero-arrow' }, '←'),
+        h('span', { class: 'hero-chip mono' }, 'basis = ' + (gate.basis || '—')),
+        h('span', { class: 'faint' },
+          gate.basis === 'three_quotes'
+            ? 'earned — the quotes were actually collected'
+            : 'granted — the rule never applied to this repair')
+      ]);
+    }
+    const g = hero.ruleGate;
+    return card('three_quote — the partner’s own กฎเหล็ก, run as a rule gate',
+      'audit["three_quote"] · basis stamped at write time, not recomputed', [
+        gateRow('hero', hero.ruleGate),
+        gateRow('contrast', contrast.ruleGate),
+        h('div', { class: 'hero-grid' }, [
+          kv('criterion', (g && g.criterion) || '—', 'mono'),
+          kv('blocks_po', String(g && g.blocks_po), 'mono'),
+          kv('authored rule', (g && g.spec) || '—', 'faint')
+        ])
+      ]);
+  }
+
+  function renderFleetContrast(cm) {
+    return h('div', { class: 'hero-contrast' }, [
+      h('span', { class: 'hero-contrast-lbl faint' },
+        'Contrast · ' + (cm.caseId || cm.truck || '') + ' ' + thb(cm.amount.value) + ' repair →'),
+      h('span', { class: 'hero-role s-info' }, cm.role),
+      h('span', { class: 'faint' }, '— no escalation to the owner. The gate is data-driven, not hardcoded.')
+    ]);
+  }
+
+  /* SD-2: the assumptions strip, ALWAYS VISIBLE (no toggle, never hidden). */
+  function renderFleetAssumptions(impact) {
+    const detail = h('div', { class: 'hero-econ-detail faint mono' });
+    (impact.assumptions || []).forEach(function (a) {
+      detail.appendChild(h('div', { class: 'hero-econ-line' }, '• ' + a));
+    });
+    (impact.basis_refs || []).forEach(function (r) {
+      detail.appendChild(h('div', { class: 'hero-econ-line' }, 'basis · ' + r));
+    });
+    return h('div', { class: 'hero-econ' }, [
+      h('div', { class: 'hero-econ-head' }, [
+        badge(impact.kind, 's-info'),
+        badge('MODELLED · PROVISIONAL', 's-warn'),
+        h('span', { class: 'faint' },
+          'every figure below the quote is derived — these are the inputs it was derived from')
+      ]),
+      detail
+    ]);
+  }
+
+  function fleetExposureSide(title, side, cls) {
+    const rows = [h('div', null, side.label || '')];
+    const comps = side.components || {};
+    Object.keys(comps).forEach(function (key) {
+      rows.push(h('div', null, key.replace(/_thb$/, '').replace(/_/g, ' ') + ' · ' + thb(comps[key])));
+    });
+    return h('div', { class: 'hero-ledger-side' }, [
+      h('div', { class: 'hero-ledger-title ' + cls }, title),
+      h('div', { class: 'hero-ledger-big ' + cls }, thb(side.exposure_thb)),
+      h('div', { class: 'hero-ledger-detail faint mono' }, rows)
+    ]);
+  }
+
+  /* SD-3(c): the measured quote LEADS; the modelled recovery follows, labelled
+     understated. Two different kinds of number, and the screen says which is which. */
+  function renderFleetMoney(led) {
+    const impact = led.impact;
+    return card('฿-impact — the quote that arrived, and what comparison recovered',
+      'GET /demo/hero/impact · measured quote + modelled recovery, kept apart', [
+        h('div', { class: 'hero-ledger-foot' }, [
+          tile('quoted repair', thb(led.quoted_repair_thb), 's-info', 'MEASURED · off the event itself'),
+          tile('recovered by comparison', thb(impact.net_benefit_thb), 's-ok',
+            'MODELLED · deliberately understated'),
+          tile('governed exposure', thb(impact.governed.exposure_thb), 's-ok',
+            'what the governed path is modelled to cost')
+        ]),
+        h('div', { class: 'hero-ledger' }, [
+          fleetExposureSide('Baseline — pay the quote as sent', impact.baseline, 's-crit'),
+          h('div', { class: 'hero-ledger-arrow' }, icon('flow', { width: 18, height: 18 })),
+          fleetExposureSide('Governed — quote compared before approval', impact.governed, 's-ok')
+        ]),
+        renderFleetAssumptions(impact)
+      ]);
+  }
+
+  /* SD-3(c): the origin story, as NARRATIVE COPY ONLY — the owner's own words, stated
+     unprompted (procedures.yaml). It carries no numeral by construction, so the story
+     cannot smuggle in a figure the payload never supplied. AC-9 fences that edge. */
+  function renderFleetOrigin() {
+    return h('div', { class: 'hero-scenario faint' }, [
+      h('span', null, 'Why this rule exists — the owner’s own words, unprompted: '),
+      h('span', { class: 'mono' }, '“เคยโดนช่างโกงอะไหล่ไปเป็นแสน”'),
+      h('span', null, ' — the loss that wrote the three-quote rule. Narrative only: no figure on this screen is derived from it.')
+    ]);
+  }
+
+  function renderFleet(container, gov, led) {
+    clear(container);
+    const hero = fleetMoment(gov.hero);
+    const contrast = fleetMoment(gov.contrast);
+
+    const head = h('div', { class: 'hero-head' }, [
+      h('div', { class: 'hero-title' }, [
+        icon('receipt', { width: 18, height: 18 }),
+        h('b', null, 'Governance Moment'),
+        h('span', { class: 'faint' }, '· Governed Repair Approval (fleet)')
+      ]),
+      h('div', { class: 'hero-badges' }, [
+        badge(gov.source === 'offline-fixture' ? 'OFFLINE FIXTURE' : String(gov.source),
+          gov.source === 'offline-fixture' ? 's-info' : 's-ok'),
+        badge('DEMO-GRADE · PROVISIONAL', 's-warn')
+      ])
+    ]);
+
+    const scenario = h('div', { class: 'hero-scenario faint' },
+      'A truck (' + hero.truck + ') is off the road on a ' + (hero.severity || 'critical')
+      + ' fault → the roadside garage sends a repair quote of ' + thb(hero.amount.value)
+      + ' → it clears the owner’s ceiling, so the claim cannot be signed by whoever filed it.');
+
+    container.appendChild(head);
+    container.appendChild(scenario);
+    container.appendChild(renderFleetOrigin());
+    container.appendChild(renderFleetDoaCard(hero));
+    container.appendChild(renderSodCard(hero));
+    container.appendChild(renderFleetRuleGate(hero, contrast));
+    container.appendChild(renderJoinCard(hero));
+    container.appendChild(renderFleetContrast(contrast));
+    container.appendChild(renderFleetMoney(led));
+  }
+  /* ---- FLEET-BRANCH-END ------------------------------------------------------------ */
+
   function render(container, gov, ledger, host, live, mode) {
+    // The typed discriminant (FleetHeroImpact.vertical). Procurement is the absence case.
+    if (ledger && ledger.vertical === 'fleet_maintenance') {
+      renderFleet(container, gov, ledger);
+      return;
+    }
     clear(container);
     const hero = governanceMoment(gov.hero);
     const contrast = governanceMoment(gov.contrast);
@@ -437,5 +665,5 @@
     }
   }
 
-  window.OCT.ViewHero = { mount, governanceMoment };
+  window.OCT.ViewHero = { mount, governanceMoment, fleetMoment };
 })();

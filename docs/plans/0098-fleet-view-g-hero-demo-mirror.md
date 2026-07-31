@@ -161,7 +161,7 @@ DB-dependent test that could no-op without Postgres. The offline suite is the
 gate; any preview is evidence only (inheriting
 `tests/api/test_demo_hero_routes.py:1-8` verbatim).
 
-- [ ] **AC-1 (scenario test — CLAUDE.md §8, named: `tests/api/test_demo_hero_routes_fleet.py`).**
+- [x] **AC-1 (scenario test — CLAUDE.md §8, named: `tests/api/test_demo_hero_routes_fleet.py`).**
   With the active vertical pinned to `fleet_maintenance`, `GET /demo/hero/impact`
   returns 200 with: `provisional == true`, `vertical == "fleet_maintenance"`,
   `quoted_repair_thb == 48000`, `impact.kind == "overpay_avoided"`,
@@ -173,41 +173,41 @@ gate; any preview is evidence only (inheriting
   the test pins expected literals (the donor pattern,
   `test_demo_hero_routes.py:39-40`), it never recomputes them from the producer's
   own constants.
-- [ ] **AC-2.** `GET /demo/hero/governance` (fleet): hero resolves ฿48,000 →
+- [x] **AC-2.** `GET /demo/hero/governance` (fleet): hero resolves ฿48,000 →
   approver role `เจ้าของกิจการ`; contrast resolves ฿15,000 → `ผจก.เดินรถ`; SoD
   verdict governed with two distinct principals; a `three_quote` block present
   with a `basis` emitted by the real `compute_three_quote`. **Parity tripwire:**
   the test independently loads the spec via `load_procedures` and asserts the
   response's band floors equal the spec's ladder floors (set-equality against the
   authored source — a builder that restates a rung goes RED when the YAML moves).
-- [ ] **AC-3 (the honesty gate).** (a) Constructing the fleet response model with
+- [x] **AC-3 (the honesty gate).** (a) Constructing the fleet response model with
   `impact.assumptions == []` raises `ValidationError`. (b) When the producer
   returns `None` for the pinned hero event, the endpoint **errors loudly**
   (asserted in-test); it never emits a payload with a fabricated or absent money
   side. Both directions are proven RED by the Step 6 mutations — not merely
   asserted green.
-- [ ] **AC-4 (donor parity — verification hygiene, not a verdict).** The existing
+- [x] **AC-4 (donor parity — verification hygiene, not a verdict).** The existing
   procurement suite `tests/api/test_demo_hero_routes.py` passes with its exact ฿
   assertions unchanged, and `git diff` shows **zero edits** to `HeroImpactLedger`
   / `ImpactSide` / `HeroGovernanceAudit` (ADR-0030 D2; additive-only changes to
   `services/api/models/demo.py`).
-- [ ] **AC-5 (the seam is real).** `services/api/routers/demo.py` carries no
+- [x] **AC-5 (the seam is real).** `services/api/routers/demo.py` carries no
   module-scope `verticals.procurement` import; a subprocess test imports the
   router module fresh and asserts no `verticals.procurement.*` entry appears in
   `sys.modules` until the procurement builder is actually invoked.
-- [ ] **AC-6 (zero engine build — ADR-0032 D1.2).** `git diff --stat` at R2 shows
+- [x] **AC-6 (zero engine build — ADR-0032 D1.2).** `git diff --stat` at R2 shows
   no change under `services/engine/` (checked at review; if implementation
   discovers an engine change is required, that is a **finding to surface**, and
   this PLAN stops for re-ratification rather than absorbing it).
-- [ ] **AC-7 (frontend presence tripwire + cache-bust).** A Python test asserts
+- [x] **AC-7 (frontend presence tripwire + cache-bust).** A Python test asserts
   the fleet branch marker exists in `view-hero.js` and that every asset edited by
   this PLAN carries a bumped `?v=` token in `index.html` (UI tripwires must be
   Python tests — `docs/conventions/ui.md:101-104`). A live preview under
   `OCT_VERTICAL=fleet_maintenance` is **evidence recorded in the PR body, not a
   gate**.
-- [ ] **AC-8.** Full offline gate green at CI scope: `pytest -q` (full suite),
+- [x] **AC-8.** Full offline gate green at CI scope: `pytest -q` (full suite),
   `mypy --strict services/`, `ruff` — not the changed subset only.
-- [ ] **AC-9 (SD-3(c) narrative fence — the fraud story is copy, never a figure).**
+- [x] **AC-9 (SD-3(c) narrative fence — the fraud story is copy, never a figure).**
   A Python test (AC-7's shape — UI tripwires are Python tests,
   `docs/conventions/ui.md:101-104`) extracts the fleet branch of `view-hero.js`
   and asserts it contains **no hardcoded ฿-figure literal**: no digit sequence
