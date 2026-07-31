@@ -32,7 +32,13 @@ from __future__ import annotations
 
 from decimal import Decimal
 
+import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from services.api.routers import cases as cases_router
+from services.db.case_events import governed_case_facts
+from tests.clock_support import Clock, utc
 
 
 async def _open_case(client: AsyncClient, truck_id: str = "truck-01") -> str:
@@ -293,3 +299,209 @@ async def test_a_cheaper_quote_arriving_later_does_not_rewrite_history(
     assert Decimal(str(pack["lowest_amount_thb"])) == Decimal("39000.00")
     assert Decimal(str(pack["lowest_amount_at_acceptance_thb"])) == Decimal("45500.50")
     assert pack["accepted_the_cheapest"] is True
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0099 Step 1 — forcing tests: the clock is DRIVEN, not observed.
+#
+# The test directly above is the un-forced version of the same property, and it
+# passes ~99.1% of the time by luck: the defect needs a backward clock step to land
+# inside a 90-166 ms window, which this box produces about 0.9% of the time. That
+# is what made it an intermittent CI failure instead of a caught bug.
+#
+# Every test below stamps the writes itself, through the REAL HTTP path, so the
+# inversion happens on demand. Each is expected RED against pre-fix code for a
+# stated reason, and that RED is the acceptance evidence — see PLAN-0099 Step 1.
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize(
+    ("step_back_ms", "shape"),
+    [(5.0, "a -5 ms backward step"), (0.0, "an exact tie")],
+)
+async def test_the_acceptance_figure_survives_a_lying_clock(
+    client_with_db: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+    step_back_ms: float,
+    shape: str,
+) -> None:
+    """AC-1. POST and GET must not disagree about the same case.
+
+    เมย์ accepts the only quote she has. A cheaper one is entered afterwards — but
+    the wall clock has stepped backwards in between, so the later quote carries an
+    EARLIER stamp than the acceptance. The derivation admits it, and the case's
+    governed figure silently changes after the fact: the POST said ฿45,500.50 and a
+    later GET says ฿39,000.00 for the same acceptance, with
+    ``accepted_the_cheapest`` flipping to False so a correct decision reads as a
+    control failure.
+
+    RED today at the final assertion (an amount mismatch, not an error).
+    """
+    clock = Clock(utc(hour=9))
+    monkeypatch.setattr(cases_router, "datetime", clock.datetime_class())
+
+    case_id = await _open_case(client_with_db)
+    only = await _add_quote(client_with_db, case_id, "ส.เจริญยนต์", "45500.50")
+
+    clock.set(utc(hour=10))
+    accepted = await _accept(client_with_db, case_id, only)
+    assert accepted.status_code == 201, accepted.text
+    at_write = Decimal(str(accepted.json()["lowest_amount_at_acceptance_thb"]))
+    assert at_write == Decimal("45500.50"), "the write-time answer is the reference"
+
+    clock.back(milliseconds=step_back_ms)
+    await _add_quote(client_with_db, case_id, "อู่ช่างเล็ก", "39000.00")
+
+    assert clock.calls > 0, (
+        "the patched clock was never consulted — the monkeypatch landed on the wrong "
+        "module, so every assertion below would be measuring unpatched behaviour"
+    )
+
+    later = (await client_with_db.get(f"/api/cases/{case_id}/accepted-quote")).json()
+    at_read = Decimal(str(later["lowest_amount_at_acceptance_thb"]))
+    assert at_read == at_write, (
+        f"POST and GET disagree about the same acceptance under {shape}: the write "
+        f"recorded {at_write} and the read derives {at_read}. The figure the DOA "
+        "ladder routes on cannot depend on when it is asked."
+    )
+
+    pack = (await client_with_db.get(f"/api/cases/{case_id}/evidence")).json()
+    assert Decimal(str(pack["lowest_amount_at_acceptance_thb"])) == at_write
+    assert (
+        pack["accepted_the_cheapest"] is True
+    ), "a quote entered AFTER the acceptance made the acceptance look unjustified"
+
+
+async def test_the_accepted_quote_is_never_excluded_from_its_own_comparison(
+    client_with_db: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-2. The boundary case the 63 existing tests leave unpinned.
+
+    A single quote, accepted at the same instant it was entered. The accepted quote
+    must be inside the set it is compared against, so the answer is "yes, the
+    cheapest" — never ``None`` on a case that demonstrably HAS an acceptance.
+
+    **This test is GREEN against pre-fix code, and that is stated rather than
+    hidden.** It is a semantics pin, not a reproduction: its oracle is the rejected
+    ``<`` variant (PLAN-0099 Out of Scope), under which both fields read ``None``
+    and this test goes RED. Recording it now is what stops that "fix" from being
+    made later by someone reading `<=` as an off-by-one.
+    """
+    clock = Clock(utc(hour=9))
+    monkeypatch.setattr(cases_router, "datetime", clock.datetime_class())
+
+    case_id = await _open_case(client_with_db)
+    only = await _add_quote(client_with_db, case_id, "ส.เจริญยนต์", "45500.50")
+    accepted = await _accept(client_with_db, case_id, only)
+    assert accepted.status_code == 201, accepted.text
+    assert clock.calls > 0, "the patched clock was never consulted"
+
+    pack = (await client_with_db.get(f"/api/cases/{case_id}/evidence")).json()
+    assert pack["lowest_amount_at_acceptance_thb"] is not None, (
+        "a case WITH an acceptance reported no comparison figure — the accepted quote "
+        "was excluded from its own comparison set"
+    )
+    assert Decimal(str(pack["lowest_amount_at_acceptance_thb"])) == Decimal("45500.50")
+    assert pack["accepted_the_cheapest"] is True
+
+
+async def test_an_acceptance_is_never_reported_as_uncomparable(
+    client_with_db: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-2, under the failure mode actually observed rather than under a tie.
+
+    **This fixture was not invented — it was caught.** Running the Step 1 tests for
+    the first time (s197), the byte-untouched existing test
+    ``test_the_pack_distinguishes_nothing_accepted_from_accepted_the_cheapest``
+    failed with ``assert None is True``, then passed 5/5 when re-run in isolation.
+    The mechanism is this PLAN's own defect firing naturally on a test the PLAN does
+    not name: a backward clock step between the quote writes and the acceptance
+    leaves ``accepted_at`` EARLIER than every quote's ``entered_at``, the filtered
+    derivation matches nothing, and a case that demonstrably HAS an acceptance
+    reports that its comparison figure is unknown.
+
+    That is a strictly worse shape than the reported flake. There, the case gets the
+    WRONG figure; here it gets NO figure, and ``accepted_the_cheapest`` collapses to
+    ``None`` — the same value that means "nothing has been accepted yet". The month-
+    end KPI counts exactly that difference.
+
+    Forced here with a 400 ms step, the smallest backward jump measured on this box.
+    RED today at the first assertion.
+    """
+    clock = Clock(utc(hour=10))
+    monkeypatch.setattr(cases_router, "datetime", clock.datetime_class())
+
+    case_id = await _open_case(client_with_db)
+    cheap = await _add_quote(client_with_db, case_id, "ส.เจริญยนต์", "45500.50")
+    await _add_quote(client_with_db, case_id, "อู่ริมทางปากช่อง", "51000.00")
+
+    clock.back(milliseconds=400)
+    accepted = await _accept(client_with_db, case_id, cheap)
+    assert accepted.status_code == 201, accepted.text
+    assert clock.calls > 0, "the patched clock was never consulted"
+
+    pack = (await client_with_db.get(f"/api/cases/{case_id}/evidence")).json()
+    assert pack["accepted_quote_id"] == cheap, "the acceptance itself must still be readable"
+    assert pack["lowest_amount_at_acceptance_thb"] is not None, (
+        "a case WITH an acceptance reported no comparison figure at all. Every quote "
+        "was excluded from the comparison because the acceptance carries an earlier "
+        "stamp than all of them — which is a clock artefact, not a fact about the case."
+    )
+    assert pack["accepted_the_cheapest"] is True, (
+        "accepted_the_cheapest collapsed to the value that means 'nothing accepted "
+        "yet' on a case that has an acceptance — the exact conflation the field is "
+        "three-valued to prevent"
+    )
+
+
+async def test_the_gate_reads_the_current_decision_not_the_superseded_one(
+    client_with_db: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-3. The DOA gate's input under a backward clock step.
+
+    The garage is changed after the first acceptance — an ordinary governed outcome,
+    and the table is append-only precisely so both rows survive. If the clock steps
+    backwards in between, the newest row carries the older stamp, and the reader
+    keyed on that stamp hands the gate the SUPERSEDED acceptance: the wrong amount,
+    the wrong vendor, and ``reason=None`` where a reason was actually given.
+
+    That is worse than a display bug. It is the number an authority threshold routes
+    on, so a repair the owner must sign can be presented as one the fleet manager
+    may sign.
+
+    RED today: the assertions read the first acceptance's values.
+    """
+    clock = Clock(utc(hour=9))
+    monkeypatch.setattr(cases_router, "datetime", clock.datetime_class())
+
+    case_id = await _open_case(client_with_db)
+    cheap = await _add_quote(client_with_db, case_id, "ส.เจริญยนต์", "45500.50")
+    dear = await _add_quote(client_with_db, case_id, "อู่ริมทางปากช่อง", "51000.00")
+
+    clock.set(utc(hour=10))
+    first = await _accept(client_with_db, case_id, cheap)
+    assert first.status_code == 201, first.text
+
+    clock.back(milliseconds=5)
+    second = await _accept(client_with_db, case_id, dear, reason="เจ้าแรกปฏิเสธงาน")
+    assert second.status_code == 201, second.text
+    assert clock.calls > 0, "the patched clock was never consulted"
+
+    facts = await governed_case_facts(db_session)
+    ours = next((f for f in facts if f.case_id == case_id), None)
+    assert ours is not None, "the open case with an acceptance is missing from the gate input"
+
+    assert ours.accepted_amount_thb == Decimal("51000.00"), (
+        f"the gate was handed {ours.accepted_amount_thb} — the SUPERSEDED acceptance. "
+        "The operator's current decision is ฿51,000.00 at อู่ริมทางปากช่อง."
+    )
+    assert ours.accepted_vendor == "อู่ริมทางปากช่อง"
+    assert ours.accepted_reason == "เจ้าแรกปฏิเสธงาน", (
+        "the reason went missing with the row: the superseded acceptance was the "
+        "cheapest, so it carries no reason, and the gate reads a dearer repair as "
+        "though nobody had to justify it"
+    )

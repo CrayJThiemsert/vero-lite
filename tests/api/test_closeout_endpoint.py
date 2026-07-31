@@ -22,11 +22,13 @@ from decimal import Decimal
 import pytest
 from httpx import AsyncClient
 
+from services.api.routers import cases as cases_router
 from services.db.repair_case_closeout import (
     ORDER_NO_WIDTH,
     OrderNumberExhaustedError,
     format_repair_order_no,
 )
+from tests.clock_support import Clock, utc
 
 
 async def _open_case(client: AsyncClient, truck_id: str = "truck-01") -> str:
@@ -308,3 +310,70 @@ async def test_a_case_with_no_closeout_reports_404(client_with_db: AsyncClient) 
     case_id = await _open_case(client_with_db)
     response = await client_with_db.get(f"/api/cases/{case_id}/closeout")
     assert response.status_code == 404
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0099 Step 1 — AC-4(a): the correction must survive a lying clock.
+#
+# `test_a_correction_reuses_the_number_it_already_has` above is the un-forced
+# version of this property and passes because the clock usually moves forward.
+# Here the backward step this box actually produces is applied on purpose.
+# --------------------------------------------------------------------------- #
+
+
+async def test_a_correction_keyed_under_a_backward_clock_step_is_still_current(
+    client_with_db: AsyncClient,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-4(a). The newest KEYING is current, whatever the clock says.
+
+    เมย์ keys the paperwork, then re-keys it because the first invoice number was
+    wrong — an ordinary correction, and the table is append-only so both rows
+    survive. If the wall clock steps backwards in between, the correction carries
+    the older stamp and the reader keyed on that stamp serves the row she replaced.
+
+    The consequence is not cosmetic: the close-out total is the figure the month-end
+    export bills against, so an accounting month can report a number the operator
+    already corrected, with the correction sitting in the table unread.
+
+    RED today: the endpoint returns the FIRST keying's invoice number and total.
+    """
+    clock = Clock(utc(hour=9))
+    monkeypatch.setattr(cases_router, "datetime", clock.datetime_class())
+
+    case_id = await _open_case(client_with_db)
+    first = await _key_closeout(
+        client_with_db,
+        case_id,
+        tax_invoice_no="INV-1",
+        amount_pre_vat_thb="1000.00",
+        vat_thb="70.00",
+        total_thb="1070.00",
+    )
+
+    clock.back(milliseconds=5)
+    corrected = await _key_closeout(
+        client_with_db,
+        case_id,
+        tax_invoice_no="INV-2",
+        amount_pre_vat_thb="2000.00",
+        vat_thb="140.00",
+        total_thb="2140.00",
+    )
+    assert corrected["repair_order_no"] == first["repair_order_no"]
+    assert clock.calls > 0, (
+        "the patched clock was never consulted — the monkeypatch landed on the wrong "
+        "module, so this test would be measuring unpatched behaviour"
+    )
+
+    current = await client_with_db.get(f"/api/cases/{case_id}/closeout")
+    assert current.status_code == 200, current.text
+    body = current.json()
+    assert body["tax_invoice_no"] == "INV-2", (
+        f"the endpoint served {body['tax_invoice_no']!r} — the keying that was "
+        "CORRECTED. A correction the operator made is invisible to every reader."
+    )
+    assert Decimal(str(body["total_thb"])) == Decimal("2140.00"), (
+        "the month-end export bills against this total, so a superseded figure here "
+        "is a wrong number in an accounting month"
+    )

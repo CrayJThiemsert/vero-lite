@@ -18,6 +18,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncEngine, async_sessionmaker
 
 from services.db.base import Base
+from services.engine.procedures import orchestrator
 from services.engine.procedures.orchestrator import (
     ProcedureError,
     RunContext,
@@ -42,6 +43,7 @@ from services.engine.procedures.spec import (
     StepInput,
     StepKind,
 )
+from tests.clock_support import Clock, utc
 from tests.db_support import create_test_engine
 
 
@@ -235,6 +237,87 @@ async def test_resume_finds_the_suspended_step_under_a_backward_clock_step(
     # The gate was NOT re-run: only the terminal `summary` action executed.
     assert fresh_executors[StepKind.QUERY].calls == 0  # type: ignore[attr-defined]
     assert fresh_executors[StepKind.ACTION].calls == 1  # type: ignore[attr-defined]
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0099 Step 1 — AC-5: load_run must return EXECUTION order.
+#
+# Note for Step 3, surfaced rather than discovered later: the test directly above
+# asserts the SCRAMBLED order as a fixture *precondition* — deliberately, because
+# its subject is that resume finds the step by STATUS rather than by position. Once
+# Step 3 re-keys `load_run` on `seq`, that precondition assertion becomes false and
+# the test goes RED at line "precondition: the wall-clock ORDER BY no longer yields
+# execution order". That RED is the fix working, not a regression; the assertion is
+# what Step 3 must update. PLAN-0099 AC-5 does not name this test.
+# --------------------------------------------------------------------------- #
+
+
+class _ClockSteppingExec(_Exec):
+    """Runs normally, then steps the wall clock BACKWARDS.
+
+    The orchestrator stamps a step's ``created_at`` before handing it to its
+    executor, so stepping here inverts the NEXT step's stamp against this one — a
+    backward clock step landing mid-run, which is exactly what this box produces on
+    its own about 0.9% of the time and far too rarely to test by waiting.
+    """
+
+    def __init__(self, output: list[Any], clock: Clock, *, milliseconds: float) -> None:
+        super().__init__(output)
+        self._clock = clock
+        self._milliseconds = milliseconds
+
+    async def execute(self, step: Step, input_set: list[Any], ctx: RunContext) -> StepOutcome:
+        outcome = await super().execute(step, input_set, ctx)
+        self._clock.back(milliseconds=self._milliseconds)
+        return outcome
+
+
+async def test_load_run_returns_execution_order_under_a_backward_clock_step(
+    db_engine: AsyncEngine,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-5. The original deferral's subject, stated as a property rather than a caveat.
+
+    ``load_run``'s docstring today calls its own order "best-effort" and tells callers
+    never to infer the suspended step from it. That caveat is honest, and it is also
+    the reason a reader who wants execution order has nowhere to get it: every
+    consumer must either re-derive the order itself or accept a list that is
+    occasionally shuffled.
+
+    RED today: the run's two step results come back reversed.
+    """
+    clock = Clock(utc(hour=9))
+    monkeypatch.setattr(orchestrator, "datetime", clock.datetime_class())
+
+    maker = async_sessionmaker(db_engine, expire_on_commit=False)
+    executors: dict[StepKind, StepExecutor] = {
+        StepKind.QUERY: _ClockSteppingExec([{"pond": "p7"}], clock, milliseconds=1000),
+        StepKind.ACTION: _Exec([{"action": "aerate"}]),
+    }
+
+    result = await run_procedure(
+        _gated_procedure(), _agent(), executors, vertical="aquaculture", run_id="run-order"
+    )
+    assert result.run.status == PipelineRunStatus.WAITING_HUMAN.value
+    async with maker() as session:
+        await persist_run(session, result)
+
+    async with maker() as fresh:
+        loaded = await load_run(fresh, "run-order")
+    assert loaded is not None
+
+    stamps = {sr.step_id: sr.created_at for sr in loaded.step_results}
+    assert stamps["aerate"] < stamps["read"], (
+        "fixture precondition: the clock step did not invert the stamps, so this test "
+        f"would pass without exercising the defect at all (read={stamps['read']}, "
+        f"aerate={stamps['aerate']})"
+    )
+
+    assert [sr.step_id for sr in loaded.step_results] == ["read", "aerate"], (
+        "load_run returned the steps out of execution order because a backward clock "
+        "step inverted their stamps. Execution order is a fact the run knows; it must "
+        "not be re-derived from a clock that lies."
+    )
 
 
 def _step(step_id: str, status: StepResultStatus) -> StepResult:
