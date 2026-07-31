@@ -1028,3 +1028,13 @@ Rotated out when session 196's row entered the last-10 window.
 | Date | Decision | Reference |
 |------|----------|-----------|
 | 2026-07-28 | **s182 — PLAN-0094 Step 6 executed, AC-10 CLOSED (#943): all 11 ACs closed or withdrawn, on a FULL FRESH 18/18 non-vacuity sweep** — Cray typed the full re-sweep rather than citing the recorded s177/s180 runs. **`missing_red` EMPTY for all 18**; sibling L2/L3/L4 invariance held. **M-A's blast radius is 8 L1 rows, not the 3 first predicted** — the session's prediction was too narrow. Applied by a harness script, not the Edit tool (the mutated files are the session's own live hooks) | `1d0649f` (#943 merge, head_commit) / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 |
+
+---
+
+## Recent-Decisions row — s183
+
+Rotated out when session 196's SECOND-workstream row entered the last-10 window.
+
+| Date | Decision | Reference |
+|------|----------|-----------|
+| 2026-07-28 | **s183 — PLAN-0094 ARCHIVED (Cray released the live-loop soak), and the goal-gate `evaluations: 0` finding DIAGNOSED: the gate is not broken, its warn path is unobservable.** OQ-4 re-homed to an Active TODO rather than buried in `done/`. _[s194: this row's "the behaviour is ratified" reading was REFUTED — see PLAN-0097.]_ | `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 + §OQ-4 / `docs/plans/done/0097-goal-gate-warn-path-trail.md` §"The ADR-0018 determination" |

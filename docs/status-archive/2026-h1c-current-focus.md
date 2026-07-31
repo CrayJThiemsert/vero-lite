@@ -1192,3 +1192,62 @@ Session 192's Current Focus block, rotated out when session 196's block entered 
 > `mypy --strict services/` clean over 127 files, registration guard + R7 + R8 exit
 > 0, CI `gate` pass, merge-commit tree equality `git diff e443cb7 HEAD` = **0
 > bytes**, and the full suite re-run **on the merge commit** (CI is PR-only).
+
+---
+
+## Current-Focus block — Session 193
+
+Rotated out when session 196's SECOND workstream block entered the 4-block window (PRs #999–#1002).
+
+> **Session 193, 2026-07-30 (head_commit `5dd8ce6` → `367c15b`) — the session the
+> month-end export went from zero lines to a downloadable file with a KPI that can
+> fail.** Six PRs merged (#982–#987), 0 open. PLAN-0096 **Step 8 item 5 COMPLETE**;
+> **Step 10's AC-12 evidence written** — four coverage matrices, seven named residual
+> risks, a confidence statement, in `.claude/handoffs/session-193/` (gitignored).
+>
+> **The build, in five PRs.** #982 the reader, whose row set is a UNION: cases with a
+> `gate_decision` in the month, filed on the APPROVAL date, **∪** close-outs in the
+> month with no governed run at all, filed on `entered_at`. That second source is the
+> whole point — a naive export reports 100% traceability *by construction*, because the
+> rows it cannot explain are the rows it never selected. #983 the KPI + cover: **Cray
+> typed rule (ค)** — a row counts only if it was governed AND fully documented;
+> governance-only would score a perfectly-approved repair with no invoice at 100%,
+> paperwork-only would score escaped money as traceable the moment a tidy invoice was
+> keyed. `vat_thb` and `cost_center` are deliberately NOT required — a garage that is
+> not VAT-registered; and requiring the unfilled `cost_center` would pin the KPI at 0%
+> forever. #984 **Cray typed (ก)**: persist `three_quote_basis` (alembic `0022`) rather
+> than recompute it — recomputing would answer last month's audit question with this
+> month's threshold *while looking completely filled in*. #985 the CSV + router, the
+> repo's **first** export surface, UTF-8 **with BOM** because Excel on Windows mojibakes
+> Thai without one. #986 the E-2 exception report on the cover.
+>
+> **Two defects were found by ORACLES, not by review — the useful half.** A probe
+> mutating `is_fully_traceable` so its governed/outcome guard never fires left the suite
+> **GREEN**: the guard was unreachable through `load_monthly_export`, which already
+> nulls the approver when there is no decision, so nothing tested it on its own terms;
+> four direct predicate tests now do. And the **end-to-end scenario found a real bug** —
+> the hero round decides the demo fixture cases alongside the real one, and rejecting
+> them produced link rows with no approver, invoice or amounts, landing in the export as
+> **฿0 Express entries** an accountant would have to key to record that nothing
+> happened. No unit test could have shown it; every fixture built exactly the rows its
+> author had in mind. `is_reportable` now states the rule: money exists → always a row
+> (a REJECTED case *with* a close-out is the worst case in the report);
+> authorised-but-unpaid → a row; neither → not spend.
+>
+> **28 non-vacuity probes**, each restored from a backup copy and diff-verified. Two did
+> not redden and were treated as findings rather than passes: one exposed the untested
+> guard above, the other that **a probe whose mutation is a semantic no-op measures
+> nothing while reading as a pass**. AC-9's bar is demonstrated on the real path, not
+> asserted (archived PLAN, §Acceptance Criteria).
+>
+> **Also:** #987 corrected a **public-repo** overclaim — README and
+> `docs/conventions/tech-stack.md` described pgvector + Apache AGE + pg_trgm as the
+> database when `docker-compose.yml` runs stock `postgres:16-alpine`. STATUS had carried
+> the corrected framing since s141 and never propagated it to the two files a *reader*
+> hits first; two dead pointers fell out of the same pass. Suite **3607 → 3646**; `mypy
+> --strict services/` 127 → **130**; dev DB `0021` → **`0022`** on Cray's go against five
+> criteria fixed before the run. MS-S1 never touched; LINE still disarmed. **R2/R4
+> rotation applied** — s186→187 block + s179 RD row out; the archive base spilled
+> sessions-142→171 into the new `2026-h1g-status.md` (numbers in the chain note below).
+
+> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
