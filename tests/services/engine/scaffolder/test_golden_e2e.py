@@ -170,6 +170,15 @@ def _donor_ontology() -> dict:
 #:   ``sourcing.py``) and a ratified recovery fraction, so a scaffolded default would
 #:   hand every new vertical a ฿ model nobody authored — and ฿ figures nobody authored
 #:   are the one thing an advisory economic facet must never emit (ADR-0030 D3).
+#: * ``hero_demo/`` (3 files) — PLAN-0098, session 196. A View G hero is **bespoke per
+#:   design partner**, not a package shape a vertical is entitled to: ADR-0032 D1.2 says
+#:   "a **bespoke** governed hero mirrors ``verticals/procurement/hero_demo/``", and what
+#:   makes it a hero is precisely what cannot be generated — two SPECIFIC repairs pinned
+#:   by event id, one operator's ฿48,000-vs-฿15,000 contrast, that operator's named
+#:   principals, and the origin story behind their own กฎเหล็ก. Only two of six verticals
+#:   have one, and each was hand-built against a real partner's story. A scaffolded
+#:   ``hero_demo/`` would hand a new vertical an empty demo with authored-looking
+#:   structure — the same failure as ``economic_impact.py``'s ฿ figures, one directory up.
 _POST_SCAFFOLD_DONOR_FILES = frozenset(
     {
         "sourcing.py",
@@ -186,6 +195,12 @@ _POST_SCAFFOLD_DONOR_FILES = frozenset(
         #   gets the hook point, never a guess about what to write through it.
         "run_link.py",
         "economic_impact.py",
+        # * `hero_demo/` — PLAN-0098. See the bullet above: a governed hero is bespoke
+        #   per design partner, so the scaffolder emitting one would be generating a
+        #   demo nobody authored.
+        "hero_demo/__init__.py",
+        "hero_demo/impact.py",
+        "hero_demo/governance_audit.py",
     }
 )
 
