@@ -63,7 +63,7 @@ class EconomicImpact(BaseModel):
     currency: str = Field(description="ISO currency code; THB-only in v1 (ADR-0030 OQ-4)")
     kind: str = Field(
         description="per-vertical semantic label (avoided_outage / expedite_tradeoff / "
-        "spoilage_avoided / mortality_avoided)"
+        "spoilage_avoided / mortality_avoided / overpay_avoided)"
     )
     baseline: EconomicExposure = Field(description="the ungoverned / do-nothing exposure")
     governed: EconomicExposure = Field(description="the governed action's exposure")
