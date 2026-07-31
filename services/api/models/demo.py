@@ -9,9 +9,9 @@ here is a business surface, so it cannot be promoted to production by accident.
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from services.engine.economic_impact import EconomicImpact
 
@@ -66,6 +66,90 @@ class HeroImpactLedger(BaseModel):
             "ledger fields above stay byte-identical (ADR-0030 D2 coexist)."
         ),
     )
+
+
+class FleetHeroImpact(BaseModel):
+    """Fleet's View G money payload — a mirror of the donor by FUNCTION, not by shape.
+
+    ``HeroImpactLedger`` above models procurement's two sourcing paths, and every one of
+    its ``ImpactSide`` fields (``supplier_id`` / ``lead_time_days`` / ``downtime_thb`` /
+    ``part_cost_thb``) is a column of a committed CSV. Fleet ships one synthetic adapter
+    and no CSV at all, so filling that shape would mean inventing three modelling inputs
+    with no partner provenance. This model exists instead of a fleet ``ImpactSide``
+    (PLAN-0098 D-A), and ``HeroImpactLedger`` is left byte-for-byte untouched — ADR-0030
+    D2 pins it "stays exactly as built", and that ADR's Alternative 3 explicitly rejects
+    generalizing it.
+
+    **Measured and modelled ฿ are different fields, and that is the whole design.**
+    ``quoted_repair_thb`` is the amount the garage actually quoted — it comes off the
+    event's own ``measured_value`` where ``unit == "THB"``. Every ฿ figure that was
+    *derived* lives inside ``impact``, which is the only model here carrying
+    ``assumptions`` (ADR-0030 D3). A reader can therefore tell, from the shape alone,
+    which number was observed and which was modelled — without trusting a docstring.
+
+    Two structural consequences, both enforced below rather than documented:
+
+    * ``impact`` is **required**, not ``EconomicImpact | None``. A fleet hero payload
+      without its disclosed assumptions cannot be constructed at all.
+    * the validator rejects an empty ``assumptions`` list. Stripping the disclosed 15%
+      comparison-recovery assumption makes this endpoint fail validation instead of
+      quietly rendering a modelled ฿ as though it were measured.
+
+    ALL DERIVED FIGURES ARE PROVISIONAL — advisory, never authoritative (ADR-0030 D5).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    provisional: Literal[True] = Field(
+        description="always true — the derived figures are modelled estimates (ADR-0030 D5)"
+    )
+    vertical: Literal["fleet_maintenance"] = Field(
+        description=(
+            "the vertical this payload describes — also the discriminant the /impact route's "
+            "union and the View G frontend branch on. HeroImpactLedger carries no such field "
+            "by design (ADR-0030 D2 forbids editing it), so procurement is the absence case."
+        )
+    )
+    currency: str = Field(description="ISO currency for every figure (THB)")
+    truck_id: str = Field(description="the truck whose repair is being approved")
+    case_id: str = Field(description="the repair case the quote belongs to")
+    quoted_repair_thb: Decimal = Field(
+        description=(
+            "the MEASURED anchor — the amount the garage quoted, read off the event's own "
+            "measured_value (unit=THB). Not derived, not modelled, not an exemplar."
+        )
+    )
+    impact: EconomicImpact = Field(
+        description=(
+            "the typed Box-4 facet from the registered fleet producer — every DERIVED ฿ "
+            "lives here, alongside the assumptions and basis_refs that disclose how it was "
+            "reached. Required: the money never travels without its provenance."
+        )
+    )
+
+    @model_validator(mode="after")
+    def _money_travels_with_its_disclosure(self) -> FleetHeroImpact:
+        """Reject a payload whose modelled ฿ has lost the assumptions that qualify it.
+
+        The producer names its modelling inputs (`verticals/fleet_maintenance/
+        economic_impact.py`), but nothing downstream forced them to survive. Without this,
+        a refactor that dropped ``assumptions`` would still serve a 200 carrying a
+        confident-looking ฿ figure with no statement that it was modelled at all — which
+        is precisely the failure ADR-0030 D3's disclosure requirement exists to prevent.
+        """
+        if not self.impact.assumptions:
+            raise ValueError(
+                "impact.assumptions is empty — a modelled ฿ figure must ship the modelling "
+                "inputs that produced it (ADR-0030 D3). An unqualified figure reads as "
+                "measured data."
+            )
+        if self.impact.currency != self.currency:
+            raise ValueError(
+                f"currency mismatch: the payload declares {self.currency!r} but the "
+                f"economic-impact facet is in {self.impact.currency!r}. Two currencies in "
+                "one ledger is a rendering bug waiting to be believed."
+            )
+        return self
 
 
 class HeroGovernanceAudit(BaseModel):
