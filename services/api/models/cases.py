@@ -316,7 +316,8 @@ class EvidencePackResponse(BaseModel):
         description=(
             "The cheapest quote on file at the MOMENT of acceptance. Not always "
             "`lowest_amount_thb`: a cheaper quote arriving later would otherwise make "
-            "a correct decision look unjustified in hindsight."
+            "a correct decision look unjustified in hindsight. Read from the "
+            "acceptance row, never re-derived from timestamps."
         ),
     )
     accepted_the_cheapest: bool | None = Field(
@@ -325,6 +326,19 @@ class EvidencePackResponse(BaseModel):
             "Whether the agreed quote was the cheapest then on file. Three-valued on "
             "purpose — None means nothing has been accepted, which is a different "
             "answer from 'yes' and must not be read as one."
+        ),
+    )
+    lowest_at_acceptance_basis: str | None = Field(
+        default=None,
+        description=(
+            "Provenance of the two fields above — `recorded` when the write path "
+            "captured the figure at the instant of acceptance, `reconstructed` when "
+            "migration 0023 derived it afterwards from the append-only quote rows. It "
+            "qualifies BOTH `lowest_amount_at_acceptance_thb` AND "
+            "`accepted_the_cheapest`, because the boolean is computed from the figure "
+            "and there is one stored fact behind them. A reconstructed value is a good "
+            "guess, not a record: the derivation compares wall-clock stamps and can "
+            "name the wrong quote. None only when nothing has been accepted."
         ),
     )
     quotes: list[QuoteResponse] = Field(
@@ -369,8 +383,34 @@ class AcceptedQuoteResponse(BaseModel):
     )
     accepted_by: str = Field(description="person_id of whoever agreed to it")
     accepted_at: datetime = Field(description="When it was agreed (UTC)")
-    lowest_amount_at_acceptance_thb: Decimal | None = Field(
-        default=None, description="The cheapest quote on file at that moment"
+    lowest_amount_at_acceptance_thb: Decimal = Field(
+        description=(
+            "The cheapest quote on file at that moment, read from the acceptance row. "
+            "REQUIRED, not optional: this response only exists when an acceptance "
+            "does, and an acceptance always references a quote, so the set this "
+            "aggregates over is never empty. It used to be nullable while the value "
+            "was re-derived from timestamps, where a backward clock step could match "
+            "no quote at all and report null on a case that HAD an acceptance."
+        )
+    )
+    accepted_the_cheapest: bool = Field(
+        description=(
+            "Whether the agreed quote was the cheapest then on file. Not three-valued "
+            "here, unlike on the evidence pack: the 'nothing accepted yet' case is a "
+            "404 from this endpoint rather than a null in its body."
+        )
+    )
+    lowest_at_acceptance_basis: str = Field(
+        description=(
+            "Provenance of the two fields above — `recorded` when the write path "
+            "captured the figure at the instant of acceptance, `reconstructed` when "
+            "migration 0023 derived it afterwards from the append-only quote rows. It "
+            "qualifies BOTH `lowest_amount_at_acceptance_thb` AND "
+            "`accepted_the_cheapest`, because the boolean is computed from the figure "
+            "and there is one stored fact behind them. A reconstructed value is a good "
+            "guess, not a record: the derivation compares wall-clock stamps and can "
+            "name the wrong quote."
+        )
     )
 
 

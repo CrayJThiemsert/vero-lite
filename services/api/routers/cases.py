@@ -49,7 +49,11 @@ from services.api.models.cases import (
     TaskChainResponse,
     TaskItemResponse,
 )
-from services.db.evidence_pack import latest_accepted_quote, load_evidence_pack
+from services.db.evidence_pack import (
+    compute_accepted_the_cheapest,
+    latest_accepted_quote,
+    load_evidence_pack,
+)
 from services.db.repair_case import CASE_STATUS_OPEN, WORK_TYPES, RepairCase
 from services.db.repair_case_closeout import (
     RepairCaseCloseout,
@@ -58,6 +62,7 @@ from services.db.repair_case_closeout import (
     latest_closeout,
 )
 from services.db.repair_case_evidence import (
+    LOWEST_AT_ACCEPTANCE_RECORDED,
     RepairCaseAcceptedQuote,
     RepairCaseJustification,
     RepairCaseQuote,
@@ -554,6 +559,7 @@ async def get_evidence_pack(
         accepted_at=pack.accepted_at,
         lowest_amount_at_acceptance_thb=pack.lowest_amount_at_acceptance_thb,
         accepted_the_cheapest=pack.accepted_the_cheapest,
+        lowest_at_acceptance_basis=pack.lowest_at_acceptance_basis,
         quotes=[_quote_response(q) for q in quotes],
         justifications=[_justification_response(j) for j in justifications],
     )
@@ -577,11 +583,16 @@ async def _case_quotes(session: AsyncSession, case_id: str) -> list[RepairCaseQu
 
 
 def _accepted_response(
-    accepted: RepairCaseAcceptedQuote,
-    quote: RepairCaseQuote,
-    *,
-    lowest_at_acceptance: Decimal | None,
+    accepted: RepairCaseAcceptedQuote, quote: RepairCaseQuote
 ) -> AcceptedQuoteResponse:
+    """Render an acceptance from the row itself — no timestamp arithmetic anywhere.
+
+    POST and GET both call this with the same row, which is what makes them agree by
+    construction. They used to each pass in their own ``lowest_at_acceptance``: POST
+    handed over the write-time ``min`` (correct) and GET re-derived it from
+    ``entered_at <= accepted_at`` (measured wrong ~0.9 % of the time), so the same
+    case could answer 45500.50 to the write and 39000.00 to the read (PLAN-0099 D1).
+    """
     return AcceptedQuoteResponse(
         case_id=accepted.case_id,
         accepted_id=accepted.accepted_id,
@@ -589,7 +600,16 @@ def _accepted_response(
         reason=accepted.reason,
         accepted_by=accepted.accepted_by,
         accepted_at=accepted.accepted_at,
-        lowest_amount_at_acceptance_thb=lowest_at_acceptance,
+        lowest_amount_at_acceptance_thb=accepted.lowest_amount_at_acceptance_thb,
+        # The shared three-valued rule, narrowed to two. None is unreachable — both
+        # operands are NOT NULL columns and this response only exists when an
+        # acceptance does — and if it somehow occurred, `is True` renders it as "not
+        # the cheapest", which flags the row for a human rather than reassuring them.
+        accepted_the_cheapest=compute_accepted_the_cheapest(
+            quote.amount_thb, accepted.lowest_amount_at_acceptance_thb
+        )
+        is True,
+        lowest_at_acceptance_basis=accepted.lowest_at_acceptance_basis,
     )
 
 
@@ -634,9 +654,17 @@ async def accept_quote(
             detail=f"quote '{req.quote_id}' is not recorded against case '{case_id}'",
         )
 
-    lowest = min((q.amount_thb for q in quotes), default=None)
+    # No ``default=`` — ``quotes`` cannot be empty, because ``quote`` was found in it
+    # above. Saying so here is what makes the stored figure NOT NULL-able below.
+    #
+    # This ``min`` has no timestamp filter and needs none: every quote on file right
+    # now is, by definition, a quote that existed at this instant. That is why the
+    # write path was measured immune to the clock while both readers were not, and why
+    # PLAN-0099 D1 persists this number rather than teaching the readers to re-derive
+    # it more carefully.
+    lowest = min(q.amount_thb for q in quotes)
     reason = (req.reason or "").strip() or None
-    if lowest is not None and quote.amount_thb > lowest and reason is None:
+    if quote.amount_thb > lowest and reason is None:
         raise HTTPException(
             status_code=422,
             detail=(
@@ -652,11 +680,17 @@ async def accept_quote(
         reason=reason,
         accepted_by=auth.person_id or (req.accepted_by or "").strip() or _UNATTRIBUTED,
         accepted_at=datetime.now(UTC),
+        lowest_amount_at_acceptance_thb=lowest,
+        # Stated explicitly at every insert site, because the column carries no
+        # default at any layer (Cray's SD-2 ruling). A default of 'recorded' would
+        # let a reconstructed row pass itself off as a record — the absence of one is
+        # the enforcement, and this keyword is what it enforces.
+        lowest_at_acceptance_basis=LOWEST_AT_ACCEPTANCE_RECORDED,
     )
     session.add(accepted)
     await session.commit()
     await _refresh_case_events(session)
-    return _accepted_response(accepted, quote, lowest_at_acceptance=lowest)
+    return _accepted_response(accepted, quote)
 
 
 @router.get("/{case_id}/accepted-quote", response_model=AcceptedQuoteResponse)
@@ -676,17 +710,12 @@ async def get_accepted_quote(
         raise HTTPException(
             status_code=500, detail=f"accepted quote '{accepted.quote_id}' has no quote row"
         )
-    # Recomputed from ``entered_at`` rather than stored on the row: append-only
-    # quotes mean the state at any past instant is reconstructable, and a stored
-    # copy would be one more value that can go stale.
-    return _accepted_response(
-        accepted,
-        quote,
-        lowest_at_acceptance=min(
-            (q.amount_thb for q in quotes if q.entered_at <= accepted.accepted_at),
-            default=None,
-        ),
-    )
+    # Read from the row, not recomputed. The comparison that stood here —
+    # ``q.entered_at <= accepted.accepted_at`` — is deleted rather than repaired: it
+    # compared two wall-clock stamps, and this box's clock steps backwards, so the
+    # same acceptance could read one figure through POST and a different one through
+    # this GET. Both now read the same stored fact (PLAN-0099 D1).
+    return _accepted_response(accepted, quote)
 
 
 # --------------------------------------------------------------------------- #

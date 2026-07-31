@@ -147,37 +147,46 @@ async def test_event_procurement_run_parks_at_doa_gate(
     assert "fired_at" in tc
 
 
-async def test_gate_is_found_by_status_under_a_backward_clock_step(
+async def test_gate_is_found_by_status_when_the_gate_is_not_last(
     session: AsyncSession, procurement_registered: None
 ) -> None:
-    """Regression pin for an intermittent, full-suite-only failure of the two tests either side
-    of this one. ``load_run`` orders step results by ``created_at`` — a WALL-CLOCK column, and
-    this box's ``datetime.now(UTC)`` was measured stepping BACKWARDS (2 backward steps per 20 s
-    sample, worst -555 ms). Invert it on purpose here: the ``approve`` gate no longer sorts last,
-    so reading ``step_results[-1]`` names the *completed* ``compliance`` step — whose artifact
-    carries no decidable proposal. Selecting by STATUS finds the gate regardless (#678's
-    ``suspended_step_result``, which production already uses).
+    """The ``approve`` gate is identified by STATUS, never by list position.
+
+    **Originally a regression pin for an intermittent, full-suite-only failure of the two
+    tests either side of this one** — and PLAN-0099 D3 removed the thing it was pinning.
+    ``load_run`` ordered step results by ``created_at``, a WALL-CLOCK column, and this box's
+    ``datetime.now(UTC)`` was measured stepping BACKWARDS (2 backward steps per 20 s sample,
+    worst -555 ms). The gate then stopped sorting last on its own, reading
+    ``step_results[-1]`` named the *completed* ``compliance`` step, and its artifact carries
+    no decidable proposal. That is the flake. ``load_run`` now orders by the monotonic
+    ``seq``, so it cannot recur, and the ordering claim itself is pinned by AC-5's
+    ``test_load_run_returns_execution_order_under_a_backward_clock_step``.
+
+    What survives here is the by-STATUS property, and the fixture that forces it now
+    scrambles ``seq`` DIRECTLY. Said plainly: this is no longer a reachable production
+    failure mode, it is the insurance SD-4 kept the positional-read rule for. A hand-built
+    inversion is weaker evidence than one the system produced by itself — which it did, for
+    months, until this migration.
     """
     outcome = await fire_event(session, _resolve_event(), now=NOW)
     assert outcome.run_status == PipelineRunStatus.WAITING_HUMAN.value
 
-    # The clock jumps backwards between `compliance` and the `approve` gate it suspended at.
+    # Move the suspended gate to the FRONT of the run. A negative value rather than a swap
+    # with `compliance`: `seq` is UNIQUE and Postgres checks that per row, so exchanging two
+    # rows in one statement would trip the constraint mid-update.
     await session.execute(
-        sa.text(
-            "UPDATE step_results SET created_at = created_at - interval '1 second' "
-            "WHERE run_id = :run_id AND step_id = :step_id"
-        ),
+        sa.text("UPDATE step_results SET seq = -1 WHERE run_id = :run_id AND step_id = :step_id"),
         {"run_id": outcome.run_id, "step_id": _GATED_STEP},
     )
     await session.commit()
-    session.expire_all()  # re-read the rewritten stamps, not the identity map's
+    session.expire_all()  # re-read the rewritten keys, not the identity map's
 
     loaded = await load_run(session, outcome.run_id)
     assert loaded is not None
     order = [sr.step_id for sr in loaded.step_results]
 
-    # Precondition: the wall-clock ORDER BY no longer yields execution order. The OLD positional
-    # read would have picked `compliance` here and failed on its empty proposal set.
+    # Precondition: the gate must NOT be last, or the positional read this test forbids
+    # would pick it by accident and the assertions below would prove nothing.
     assert order[-1] != _GATED_STEP, "precondition: the inversion must move the gate off last"
     assert order.index(_GATED_STEP) < order.index("compliance")
 

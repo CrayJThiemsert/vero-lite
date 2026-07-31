@@ -35,6 +35,7 @@ from services.db.audit_log import append_audit
 from services.db.base import Base
 from services.db.repair_case import RepairCase
 from services.db.repair_case_closeout import RepairCaseCloseout, RepairCaseOrderNumber
+from services.db.repair_case_evidence import LOWEST_AT_ACCEPTANCE_RECORDED
 from services.db.repair_case_run_link import (
     LINK_OUTCOME_APPROVED,
     LINK_OUTCOME_PROVISIONAL,
@@ -889,6 +890,13 @@ def _complete_row(**overrides: Any) -> ExportRow:
         "exception_label": None,
         "justification_ref": None,
         "three_quote_basis": "three_quotes",
+        # PLAN-0099 D1: the at-acceptance figure, the boolean derived from it, and the
+        # single marker governing both. Spelled out rather than defaulted on the
+        # dataclass, so a row built for a predicate test cannot quietly claim "no
+        # acceptance recorded" while the rest of it describes a fully governed repair.
+        "lowest_amount_at_acceptance_thb": Decimal("57943.93"),
+        "accepted_the_cheapest": True,
+        "lowest_at_acceptance_basis": LOWEST_AT_ACCEPTANCE_RECORDED,
     }
     return ExportRow(**{**base, **overrides})
 
@@ -943,6 +951,11 @@ def test_audit_questions_and_answers_stay_the_same_length() -> None:
         exception_label=None,
         justification_ref=None,
         three_quote_basis=None,
+        # A row with nothing recorded at all — including no acceptance, which is what
+        # None means for all three of these (PLAN-0099 D1).
+        lowest_amount_at_acceptance_thb=None,
+        accepted_the_cheapest=None,
+        lowest_at_acceptance_basis=None,
     )
     assert len(audit_answers(blank)) == len(AUDIT_QUESTIONS) == 6
 

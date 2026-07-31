@@ -38,6 +38,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.routers import cases as cases_router
 from services.db.case_events import governed_case_facts
+from services.db.repair_case_closeout import RepairCaseCloseout
+from services.db.repair_case_evidence import (
+    LOWEST_AT_ACCEPTANCE_RECONSTRUCTED,
+    LOWEST_AT_ACCEPTANCE_RECORDED,
+    RepairCaseAcceptedQuote,
+)
+from services.db.repair_spend_export import load_monthly_export
 from tests.clock_support import Clock, utc
 
 
@@ -505,3 +512,117 @@ async def test_the_gate_reads_the_current_decision_not_the_superseded_one(
         "cheapest, so it carries no reason, and the gate reads a dearer repair as "
         "though nobody had to justify it"
     )
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0099 AC-10 — a reconstructed figure is distinguishable from a recorded one
+# --------------------------------------------------------------------------- #
+
+
+async def test_a_reconstructed_figure_is_distinguishable_from_a_recorded_one(
+    client_with_db: AsyncClient,
+    db_session: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """AC-10: the provenance marker travels to every surface that reads the figure.
+
+    Cray's SD-2 ruling turns on this being true END TO END, not merely stored: NULL
+    would say "not captured", and a plain backfilled number would speak with false
+    authority — so a reconstructed value must arrive at the reader still labelled as
+    a reconstruction. It is a good guess derived from the same wall-clock comparison
+    PLAN-0099 retires, which means it carries that derivation's ~0.9 % chance of
+    naming the wrong quote. Marking it does not remove that risk. It DISCLOSES it, at
+    the point of reading.
+
+    **What this test proves and what it does not.** Migration ``0023`` actually
+    writing ``reconstructed`` onto legacy rows is proven separately, against real
+    alembic, by ``test_0023_backfills_the_legacy_reading_and_marks_it_reconstructed``.
+    Here the legacy row is seeded in the shape that migration leaves, and what is
+    under test is the half Step 3 built: that the marker survives from the row to
+    POST, to GET, to the evidence pack and to the month-end export row. The two
+    together are the end-to-end claim; neither is it alone.
+
+    *Counterexample this is RED against:* give the basis a default of ``recorded`` at
+    any layer — ORM, ``server_default``, or a response model default — and the legacy
+    case reads ``recorded``, which is the marked-number-that-lies failure the ruling
+    exists to prevent.
+    """
+    clock = Clock(utc(day=15, hour=3))
+    monkeypatch.setattr(cases_router, "datetime", clock.datetime_class())
+
+    # --- the RECORDED case: written the way the POST handler writes one -------
+    recorded_case = await _open_case(client_with_db, truck_id="truck-01")
+    cheap = await _add_quote(client_with_db, recorded_case, "ส.เจริญยนต์", "45500.50")
+    await _add_quote(client_with_db, recorded_case, "อู่ริมทางปากช่อง", "51000.00")
+    posted = await _accept(client_with_db, recorded_case, cheap)
+    assert posted.status_code == 201, posted.text
+
+    # --- the RECONSTRUCTED case: the shape 0023 leaves on a legacy row --------
+    legacy_case = await _open_case(client_with_db, truck_id="truck-02")
+    legacy_quote = await _add_quote(client_with_db, legacy_case, "อู่ช่างเล็ก", "62000.00")
+    db_session.add(
+        RepairCaseAcceptedQuote(
+            accepted_id="accepted-legacy",
+            case_id=legacy_case,
+            quote_id=legacy_quote,
+            reason=None,
+            accepted_by="admin-may",
+            accepted_at=clock.now_value,
+            lowest_amount_at_acceptance_thb=Decimal("62000.00"),
+            lowest_at_acceptance_basis=LOWEST_AT_ACCEPTANCE_RECONSTRUCTED,
+        )
+    )
+    # Both cases carry money so both reach the export (``is_reportable``). Inserted
+    # rather than posted: the point here is the acceptance's provenance, and driving
+    # the close-out endpoint would add a second write path to reason about.
+    for n, (case_id, vendor) in enumerate(((recorded_case, "ส.เจริญยนต์"), (legacy_case, "อู่ช่างเล็ก"))):
+        db_session.add(
+            RepairCaseCloseout(
+                closeout_id=f"closeout-{n}",
+                case_id=case_id,
+                vendor=vendor,
+                tax_invoice_no=f"INV-{n}",
+                tax_invoice_date=None,
+                amount_pre_vat_thb=Decimal("1000.00"),
+                vat_thb=Decimal("70.00"),
+                total_thb=Decimal("1070.00"),
+                entered_by="admin-may",
+                entered_at=clock.now_value,
+            )
+        )
+    await db_session.commit()
+
+    got_recorded = await client_with_db.get(f"/api/cases/{recorded_case}/accepted-quote")
+    got_legacy = await client_with_db.get(f"/api/cases/{legacy_case}/accepted-quote")
+    pack_recorded = await client_with_db.get(f"/api/cases/{recorded_case}/evidence")
+    pack_legacy = await client_with_db.get(f"/api/cases/{legacy_case}/evidence")
+    assert got_recorded.status_code == 200, got_recorded.text
+    assert got_legacy.status_code == 200, got_legacy.text
+    assert clock.calls > 0, "the patched clock was never consulted"
+
+    export = await load_monthly_export(db_session, year=2026, month=7, now=utc(day=31))
+    rows = {row.case_id: row for row in export.rows}
+
+    # POST and GET agree — they read one stored fact rather than each deriving one.
+    assert posted.json()["lowest_at_acceptance_basis"] == LOWEST_AT_ACCEPTANCE_RECORDED
+    assert posted.json()["lowest_amount_at_acceptance_thb"] == "45500.50"
+    assert posted.json()["accepted_the_cheapest"] is True
+    assert got_recorded.json() == posted.json(), (
+        "POST and GET disagree about the same acceptance — the defect PLAN-0099 "
+        "reproduced deterministically, where the write recorded 45500.50 and the "
+        "read re-derived 39000.00 from a clock that had stepped backwards"
+    )
+
+    # The legacy row is legible AS a reconstruction, everywhere it is read.
+    assert got_legacy.json()["lowest_at_acceptance_basis"] == LOWEST_AT_ACCEPTANCE_RECONSTRUCTED
+    assert pack_legacy.json()["lowest_at_acceptance_basis"] == LOWEST_AT_ACCEPTANCE_RECONSTRUCTED
+    assert pack_recorded.json()["lowest_at_acceptance_basis"] == LOWEST_AT_ACCEPTANCE_RECORDED
+
+    # ...including in the document accounting actually reads, where the basis sits
+    # beside BOTH the figure and the boolean derived from it (ruling req 1 + req 3).
+    assert rows[recorded_case].lowest_at_acceptance_basis == LOWEST_AT_ACCEPTANCE_RECORDED
+    assert rows[recorded_case].lowest_amount_at_acceptance_thb == Decimal("45500.50")
+    assert rows[recorded_case].accepted_the_cheapest is True
+    assert rows[legacy_case].lowest_at_acceptance_basis == LOWEST_AT_ACCEPTANCE_RECONSTRUCTED
+    assert rows[legacy_case].lowest_amount_at_acceptance_thb == Decimal("62000.00")
+    assert rows[legacy_case].accepted_the_cheapest is True

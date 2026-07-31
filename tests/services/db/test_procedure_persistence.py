@@ -191,14 +191,29 @@ async def test_resume_across_fresh_session_completes(db_engine: AsyncEngine) -> 
     assert len(reloaded.step_results) == 3
 
 
-async def test_resume_finds_the_suspended_step_under_a_backward_clock_step(
+async def test_resume_finds_the_suspended_step_when_it_is_not_last(
     db_engine: AsyncEngine,
 ) -> None:
-    """``load_run`` orders step results by ``created_at`` — a WALL-CLOCK column. A
-    backward clock step (NTP correction, VM/WSL2 host resync) stamps the later step
-    with an earlier time, so the suspended step is no longer last. Resume must find
-    it by STATUS: picking ``step_results[-1]`` would re-run the completed ``read``
-    prefix and re-suspend at the gate, leaving the run stuck at ``waiting_human``.
+    """Resume identifies the suspended step by STATUS, never by list position.
+
+    **This test used to be driven by the wall clock, and PLAN-0099 D3 took that
+    mechanism away.** It skewed ``created_at`` backwards by a second between ``read``
+    and ``aerate``, because ``load_run`` ordered by that column; the suspended step
+    then came back first, and picking ``step_results[-1]`` would re-run the completed
+    ``read`` prefix and re-suspend at the gate, leaving the run stuck at
+    ``waiting_human``. Since ``load_run`` orders by the monotonic ``seq``, skewing the
+    clock scrambles nothing — that is the fix working, and AC-5's own test
+    (:func:`test_load_run_returns_execution_order_under_a_backward_clock_step`) is
+    what pins it.
+
+    So the fixture now scrambles ``seq`` DIRECTLY, and the honest reading of that is
+    stated rather than implied: this is no longer a reachable production failure mode,
+    it is the insurance SD-4 kept the positional-read rule FOR. The property under
+    test is unchanged and still worth holding — ``suspended_step_result`` must not
+    depend on ordering at all, whatever produced it — but a fixture that has to be
+    hand-built is weaker evidence than one the system produces on its own, and
+    pretending otherwise would be the kind of quiet overstatement this PLAN exists to
+    remove.
     """
     maker = async_sessionmaker(db_engine, expire_on_commit=False)
     procedure = _gated_procedure()
@@ -210,11 +225,13 @@ async def test_resume_finds_the_suspended_step_under_a_backward_clock_step(
     async with maker() as session:
         await persist_run(session, result)
 
-    # The clock jumps backwards between `read` and `aerate`.
+    # Move the suspended gate step to the FRONT. A negative value rather than a swap
+    # with `read`: `seq` is UNIQUE and Postgres checks that per row, so a two-row
+    # exchange in one statement would trip the constraint mid-update.
     async with maker() as session:
         await session.execute(
             sa.text(
-                "UPDATE step_results SET created_at = created_at - interval '1 second' "
+                "UPDATE step_results SET seq = -1 "
                 "WHERE run_id = 'run-skew' AND step_id = 'aerate'"
             )
         )
@@ -226,7 +243,7 @@ async def test_resume_finds_the_suspended_step_under_a_backward_clock_step(
     assert [sr.step_id for sr in scrambled.step_results] == [
         "aerate",
         "read",
-    ], "precondition: the wall-clock ORDER BY no longer yields execution order"
+    ], "precondition: the suspended step must NOT be last, or this test proves nothing"
 
     fresh_executors = _executors()
     async with maker() as fresh:
@@ -242,13 +259,14 @@ async def test_resume_finds_the_suspended_step_under_a_backward_clock_step(
 # --------------------------------------------------------------------------- #
 # PLAN-0099 Step 1 — AC-5: load_run must return EXECUTION order.
 #
-# Note for Step 3, surfaced rather than discovered later: the test directly above
-# asserts the SCRAMBLED order as a fixture *precondition* — deliberately, because
-# its subject is that resume finds the step by STATUS rather than by position. Once
-# Step 3 re-keys `load_run` on `seq`, that precondition assertion becomes false and
-# the test goes RED at line "precondition: the wall-clock ORDER BY no longer yields
-# execution order". That RED is the fix working, not a regression; the assertion is
-# what Step 3 must update. PLAN-0099 AC-5 does not name this test.
+# The Step-3 note that stood here has been DISCHARGED, and the outcome is recorded
+# rather than deleted: the test directly above did go RED when `load_run` was re-keyed
+# on `seq`, at the precondition asserting the SCRAMBLED order — exactly as predicted at
+# Step 1, and it was the fix working rather than a regression. Its subject (resume
+# finds the step by STATUS, not by position) is still worth holding, so it was kept
+# and its fixture now scrambles `seq` directly; its docstring states plainly that this
+# makes it insurance rather than a reachable failure mode. PLAN-0099 never named that
+# test, which is why the note was left here for Step 3 to find.
 # --------------------------------------------------------------------------- #
 
 

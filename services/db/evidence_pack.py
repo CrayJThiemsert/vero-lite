@@ -40,6 +40,27 @@ from services.db.repair_case_evidence import (
 )
 
 
+def compute_accepted_the_cheapest(
+    accepted_amount_thb: Decimal | None, lowest_at_acceptance_thb: Decimal | None
+) -> bool | None:
+    """Was the agreed quote the cheapest then on file? One rule, several readers.
+
+    A free function rather than only a property because three surfaces answer this
+    question — the evidence pack, the accepted-quote endpoint and the month-end export
+    — and the SD-2 ruling turns on there being exactly ONE stored fact behind the
+    figure, the boolean and the provenance marker. Three private copies of a one-line
+    comparison is how those surfaces would come to disagree about the same case, and a
+    disagreement between an endpoint and an export is the kind no reader can diagnose
+    from either output.
+
+    Three-valued: None means nothing has been accepted. That is a different answer
+    from "no" and collapsing them would give the reassuring one.
+    """
+    if accepted_amount_thb is None or lowest_at_acceptance_thb is None:
+        return None
+    return accepted_amount_thb == lowest_at_acceptance_thb
+
+
 @dataclass(frozen=True)
 class EvidencePack:
     """What a case's sourcing evidence amounts to, as facts rather than a verdict."""
@@ -74,10 +95,24 @@ class EvidencePack:
     #: The cheapest quote on file AT THE MOMENT OF ACCEPTANCE, which is not always
     #: ``lowest_amount_thb``: a cheaper quote can arrive afterwards, and then the
     #: acceptance looks unjustified against today's numbers while having been the
-    #: cheapest when it was made. Derived here rather than stored — append-only rows
-    #: carry ``entered_at``, so the state at any past instant is reconstructable, and
-    #: a stored copy would be one more thing that can go stale.
+    #: cheapest when it was made.
+    #:
+    #: **Read from the acceptance row, not re-derived** (PLAN-0099 D1 / SD-1). The
+    #: derivation this replaced compared two wall-clock stamps, and the wall clock on
+    #: this box steps backwards >= 400 ms roughly every 15 s — measured wrong in about
+    #: 0.9 % of executions, which is the reported flake and, at the same rate, a wrong
+    #: audit answer. The old argument for deriving was that "a stored copy would be
+    #: one more thing that can go stale"; both tables are append-only with no update
+    #: path, so the set of quotes existing at the instant of acceptance is frozen the
+    #: moment the acceptance row lands, and the stored copy cannot go stale by
+    #: construction.
     lowest_amount_at_acceptance_thb: Decimal | None
+    #: Whether the figure above was RECORDED at acceptance or RECONSTRUCTED by
+    #: migration ``0023`` from the append-only rows (Cray's SD-2 ruling). None only
+    #: when nothing has been accepted. It qualifies ``accepted_the_cheapest`` too —
+    #: that boolean is computed from the figure, so there is one stored fact and one
+    #: marker for it.
+    lowest_at_acceptance_basis: str | None
 
     @property
     def quotes_on_file(self) -> bool:
@@ -91,10 +126,16 @@ class EvidencePack:
         None when nothing has been accepted — deliberately three-valued, because
         "no acceptance recorded" and "accepted the cheapest" are different answers
         to the audit question and a bool would collapse them into the reassuring one.
+
+        Since PLAN-0099 the None case means exactly that and nothing else. It used to
+        also fire when the derivation matched no quote at all, which a backward clock
+        step could cause on a case that HAD an acceptance — so "we could not compare"
+        was reported as "nothing was accepted yet", the reassuring reading, on a case
+        where somebody had in fact committed the fleet's money.
         """
-        if self.accepted_amount_thb is None or self.lowest_amount_at_acceptance_thb is None:
-            return None
-        return self.accepted_amount_thb == self.lowest_amount_at_acceptance_thb
+        return compute_accepted_the_cheapest(
+            self.accepted_amount_thb, self.lowest_amount_at_acceptance_thb
+        )
 
 
 async def load_evidence_pack(session: AsyncSession, case_id: str) -> EvidencePack:
@@ -115,12 +156,18 @@ async def load_evidence_pack(session: AsyncSession, case_id: str) -> EvidencePac
             )
         ).scalars()
     )
+    # Ordered by ``seq`` — insertion order — because ``justifications[-1]`` below is a
+    # latest-wins PICK, not a display list (PLAN-0099 D2 / SD-3(b)). Under a backward
+    # clock step, ordering by ``entered_at`` hands the reader an earlier attempt as
+    # though the operator had just written it. Severity is narrative-only here — the
+    # gate-relevant ``has_sole_source_justification`` is a bare existence check and
+    # order-insensitive — but it is the same disease as the picks around it.
     justifications = list(
         (
             await session.execute(
                 select(RepairCaseJustification)
                 .where(RepairCaseJustification.case_id == case_id)
-                .order_by(RepairCaseJustification.entered_at)
+                .order_by(RepairCaseJustification.seq)
             )
         ).scalars()
     )
@@ -158,14 +205,14 @@ async def load_evidence_pack(session: AsyncSession, case_id: str) -> EvidencePac
         accepted_reason=accepted.reason if accepted else None,
         accepted_by=accepted.accepted_by if accepted else None,
         accepted_at=accepted.accepted_at if accepted else None,
+        # Read, not derived. The comparison that used to stand here —
+        # ``q.entered_at <= accepted.accepted_at`` — is deleted rather than patched:
+        # no operator on two lying stamps produces a true answer, and the write path
+        # already knew the right one.
         lowest_amount_at_acceptance_thb=(
-            min(
-                (q.amount_thb for q in quotes if q.entered_at <= accepted.accepted_at),
-                default=None,
-            )
-            if accepted
-            else None
+            accepted.lowest_amount_at_acceptance_thb if accepted else None
         ),
+        lowest_at_acceptance_basis=(accepted.lowest_at_acceptance_basis if accepted else None),
     )
 
 
@@ -179,21 +226,26 @@ async def latest_accepted_quote(
     must agree on which row is current. One query in one place is how they stay
     agreed, the same reason the close-out reader is a single function.
 
-    ``accepted_id`` breaks a same-instant tie. Two acceptances sharing a timestamp
-    is genuinely ambiguous — no ordering recovers which the operator meant — but an
-    arbitrary-yet-STABLE answer is still worth having: without the tiebreak the
-    pack, the endpoint and the export could each pick a different row from identical
-    data, which is a disagreement no reader could diagnose.
+    **Newest means last-INSERTED, not latest-stamped** (PLAN-0099 D2). This pick feeds
+    ``services.db.case_events.governed_case_facts``, which is the DOA gate's input, so
+    getting it wrong is not a display glitch. Measured s196 on ``accepted_at``: under a
+    -5 ms clock step between two acceptances the gate was handed the SUPERSEDED row —
+    a dearer garage chosen WITH a written reason read back as "accepted the cheapest,
+    no reason needed", so the audit trail inverted its own meaning. With equal stamps
+    the old ``accepted_id.desc()`` tiebreak is a random UUID, and the superseded row
+    won 20 times out of 40.
+
+    A same-instant tie is genuinely ambiguous on a clock. Under a backward step the
+    operator's intent is NOT ambiguous — it is insertion order, and the clock simply
+    lied. ``seq`` is that order, and it is UNIQUE, so this needs no tiebreak: one row
+    comes back, and the pack, the endpoint and the export all get the same one.
     """
     return (
         (
             await session.execute(
                 select(RepairCaseAcceptedQuote)
                 .where(RepairCaseAcceptedQuote.case_id == case_id)
-                .order_by(
-                    RepairCaseAcceptedQuote.accepted_at.desc(),
-                    RepairCaseAcceptedQuote.accepted_id.desc(),
-                )
+                .order_by(RepairCaseAcceptedQuote.seq.desc())
                 .limit(1)
             )
         )

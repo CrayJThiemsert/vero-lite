@@ -364,48 +364,56 @@ async def test_cancel_non_waiting_human_is_409(wired_client: AsyncClient, runs_a
     assert "not cancellable" in second.json()["detail"]
 
 
-async def test_run_view_finds_the_suspended_step_under_a_backward_clock_step(
+async def test_run_view_finds_the_suspended_step_when_the_gate_is_not_last(
     wired_client: AsyncClient, runs_auth: None
 ) -> None:
     """The read projection identifies the gate by STATUS, not by list position.
 
-    load_run orders step results on created_at — a wall-clock column that a
-    backward clock step (NTP correction, VM/WSL2 host resync) can invert. Taking
-    step_results[-1] would name a completed step and expose ITS (empty) output
-    as the pending proposals, hiding the gate a human still has to decide.
+    Taking ``step_results[-1]`` would name a completed step and expose ITS (empty)
+    output as the pending proposals, hiding the gate a human still has to decide.
+
+    **This test was silently vacuous for one commit and the reason is worth keeping.**
+    It used to backdate ``created_at`` and then assert its precondition against a raw
+    ``ORDER BY created_at, step_result_id`` — a copy of what ``load_run`` did, not a
+    call to it. When PLAN-0099 D3 re-keyed ``load_run`` on ``seq``, the precondition
+    kept passing (the raw query really was scrambled) while the projection under test
+    saw a perfectly ordered list, so the by-status rule was no longer being exercised
+    at all. Nothing failed. That is the failure mode: an oracle whose fixture drifts
+    away from the code path it is aiming at reports success either way.
+
+    Both halves are fixed. The scramble is applied to ``seq``, which is what
+    ``load_run`` actually reads, and the precondition is asserted on the list the
+    ENDPOINT was handed rather than on a hand-rolled requery.
     """
     run_id = (
         await wired_client.post(f"/procedures/{_PROCEDURE_ID}/run", json={}, headers=HEADERS)
     ).json()["run_id"]
 
     # A second engine (no schema reset — the first was this test's fixture engine):
-    # backdate the gated step so the wall-clock ORDER BY no longer yields
-    # execution order.
+    # move the gated step to the FRONT of the run. A negative value rather than a swap
+    # with the completed prefix: `seq` is UNIQUE and Postgres checks that per row.
     eng = await create_test_engine()
     try:
         async with eng.begin() as conn:
             await conn.execute(
                 sa.text(
-                    "UPDATE step_results SET created_at = created_at - interval '1 second' "
+                    "UPDATE step_results SET seq = -1 "
                     "WHERE run_id = :run_id AND step_id = :step_id"
                 ),
                 {"run_id": run_id, "step_id": _GATED_STEP},
             )
-        async with eng.connect() as conn:
-            ordered = [
-                row[0]
-                for row in await conn.execute(
-                    sa.text(
-                        "SELECT step_id FROM step_results WHERE run_id = :run_id "
-                        "ORDER BY created_at, step_result_id"
-                    ),
-                    {"run_id": run_id},
-                )
-            ]
     finally:
         await eng.dispose()
+
+    ordered = [
+        step["step_id"]
+        for step in (await wired_client.get(f"/runs/{run_id}", headers=HEADERS)).json()["steps"]
+    ]
     assert len(ordered) > 1, "the run must have a completed prefix for this to be meaningful"
-    assert ordered[-1] != _GATED_STEP, "precondition: the gate no longer sorts last"
+    assert ordered[-1] != _GATED_STEP, (
+        "precondition: the gate must not be last IN THE LIST THE ENDPOINT SEES — "
+        "asserting this against a separate query is how this test went vacuous before"
+    )
 
     detail = await wired_client.get(f"/runs/{run_id}")
     assert detail.status_code == 200

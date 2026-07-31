@@ -149,22 +149,20 @@ async def latest_closeout(session: AsyncSession, case_id: str) -> RepairCaseClos
     every consumer — the case endpoint, the month-end export — must agree on which
     row is current. One query in one place is how they stay agreed.
 
-    ``closeout_id`` breaks a same-instant tie, for the reason
-    :func:`services.db.evidence_pack.latest_accepted_quote` states about its own:
-    two keyings sharing a timestamp is genuinely ambiguous, but an arbitrary-yet-
-    STABLE answer still matters, because without the tiebreak the endpoint and the
-    export could each pick a different row from identical data — a disagreement no
-    reader could diagnose from either output.
+    **Newest means last-INSERTED** (PLAN-0099 D2 / SD-3(a)), for the reason
+    :func:`services.db.evidence_pack.latest_accepted_quote` states about its own pick.
+    Keyed on ``entered_at`` this was one backward clock step away from handing the
+    month-end ฿ figure the row เมย์ had just corrected — and the export would have
+    looked perfectly filled in doing it, which is the failure a completeness KPI
+    structurally cannot see. ``seq`` is UNIQUE, so no tiebreak is needed: identical
+    data yields one row, and the endpoint and the export cannot disagree about which.
     """
     return (
         (
             await session.execute(
                 sa.select(RepairCaseCloseout)
                 .where(RepairCaseCloseout.case_id == case_id)
-                .order_by(
-                    RepairCaseCloseout.entered_at.desc(),
-                    RepairCaseCloseout.closeout_id.desc(),
-                )
+                .order_by(RepairCaseCloseout.seq.desc())
                 .limit(1)
             )
         )
