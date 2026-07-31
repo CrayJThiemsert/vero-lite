@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-07-31T15:24:24+07:00
+last_updated: 2026-07-31T15:46:13+07:00
 session: 196
-current_batch: "s196 — one PR (#1003): PLAN-0099 drafted + merged, the wall-clock root fix, root-caused by MEASUREMENT (a backward clock step), five SDs all Cray-ratified."
+current_batch: "s196 — FIVE PRs across two concurrent workstreams: #999–#1002 (CSS guard → all 15 assets; EconomicImpact.kind pinned; PLAN-0098 ratified + Steps 1–4 built) + #1003 (PLAN-0099, chip session)."
 current_actor: code
-blocked_on: "Nothing blocks. PLAN-0099 is merged with all five SDs ratified; 0 PRs open."
-next_action: "PLAN-0099 Step 1 — write the frozen/stepping-clock forcing tests and capture each RED before touching production code. Note: a concurrent session is mid-build on PLAN-0098 (fleet View G)."
-head_commit: 4846d5e
-recent_commits: [4846d5e, 8e2b290, 88abb3f, 5382052, f936f00, b142fed, 4bb9494, 76d5e2a, f931b8b, 75a4822]
+blocked_on: "Nothing blocks. 0 PRs open; both s196 workstreams merged clean."
+next_action: "PLAN-0098 Step 5 — the frontend fleet branch in view-hero.js per SD-2 + SD-3(c), then AC-7/AC-9. PLAN-0099 Step 1 (the other workstream's next action) is unstarted."
+head_commit: 8fbf573
+recent_commits: [8fbf573, d28d9ce, 4846d5e, 8e2b290, 88abb3f, 5382052, f936f00, b142fed, 4bb9494, 76d5e2a]
 ---
 
 # vero-lite — Project Status
@@ -18,7 +18,7 @@ recent_commits: [4846d5e, 8e2b290, 88abb3f, 5382052, f936f00, b142fed, 4bb9494, 
 
 ## Current Focus
 
-> **Session 196, 2026-07-31 (head_commit `a8912e0` → `4846d5e`) — one PR merged
+> **Session 196, 2026-07-31 (head_commit `5382052` → `4846d5e`) — one PR merged
 > (#1003), 0 open. The theme: an intermittent flake root-caused by MEASUREMENT —
 > which refuted the leading hypothesis and found two sites worse than the reported
 > one.**
@@ -60,6 +60,61 @@ recent_commits: [4846d5e, 8e2b290, 88abb3f, 5382052, f936f00, b142fed, 4bb9494, 
 > **No production code changed** — execution starts at Step 1 (forcing tests, RED
 > first). Numbered 0099 because a concurrent session claimed 0098 (#1001)
 > mid-flight. Full detail: `docs/plans/0099-wall-clock-root-fix-store-at-write-and-sequence.md`.
+
+> **Session 196, 2026-07-31 — SECOND workstream, same session (head_commit `a8912e0` →
+> `5382052`): four PRs merged (#999–#1002). s196 ran TWO concurrent workstreams; this
+> block and the one above are deliberately separate — one merged block would breach the
+> 4,096 B per-block cap. Theme: two vocabulary guards pinned by measurement, then
+> PLAN-0098 ratified and its backend built.**
+>
+> **#999 (`399fbe0`) — the CSS-class guard widened from 1 asset to all 15** (found by
+> glob): 883 defined / 873 applied / **33 undefined** → a two-category allowlist under
+> set equality in both directions — 4 JS lookup hooks (permanent, correct); 29 no-rule,
+> of which 3 sit on inline-styled elements (semantic markers, NOT debt) and 3 are state
+> toggles on a view root nothing reacts to (the likeliest real defects). Four scanner
+> defects each got a permanent test — worst two: `classList.toggle(token, force)`'s
+> boolean second arg read as a class name, and `api.js`'s whole `s-*` vocabulary
+> invisible because it only RETURNS status names, applying no class.
+>
+> **#1000 (`f931b8b`) — `EconomicImpact.kind`'s documented vocabulary pinned to what
+> producers emit** (five kinds now, set equality both directions vs producers found by
+> glob). #994 (s195) had added `overpay_avoided` while the Field description — the one
+> place a reader learns the vocabulary, shipped in the OpenAPI schema — still listed
+> four. Deliberately kept OUT of PLAN-0098 so AC-6 ("zero engine build") stays absolute.
+>
+> **#1001 (`4bb9494`) — PLAN-0098 ratified** (fleet View G, `Status: Draft`): a mirror
+> of `verticals/procurement/hero_demo/` by FUNCTION, not by shape. Cray typed SD-1 (a)
+> unregistered verticals fall back to the procurement hero; SD-2 the assumptions strip
+> is always-visible; **SD-3 = (c), differing from the draft's (a)** — lead with the
+> measured ฿48,000, the partner's fraud origin story rides as narrative copy only,
+> never a rendered figure; AC-9 added as that ruling's oracle. The drafter's AC-6
+> carve-out was withdrawn at Code's R2.
+>
+> **#1002 (`5382052`) — PLAN-0098 Steps 1–4: fleet's View G backend + its vertical
+> seam.** New `FleetHeroImpact` (measured `quoted_repair_thb` vs modelled `impact` —
+> REQUIRED, validator-rejects empty `assumptions`);
+> `verticals/fleet_maintenance/hero_demo/` (3 files) runs the real engine over the
+> spec-loaded ladder — ฿48,000 → เจ้าของกิจการ, ฿15,000 → ผจก.เดินรถ, plus the
+> fleet-only `three_quote` rule-gate card; a lazy `_HERO_BUILDERS` seam in `demo.py`
+> on `settings.oct_vertical` (**ADR-0031 D4 corollary 1 FIRED at N=2**).
+> `HeroImpactLedger` untouched (ADR-0030 D2) — `/impact` unions at the decorator.
+> AC-1/2/3/4/5/6/8 closed — **AC-6 + AC-4 verified by empty `git diff`, not
+> asserted**; Steps 5 (frontend) + AC-7/AC-9 remain. Two deviations recorded, not
+> absorbed: Step 2's "run the real `compute_three_quote`" is impossible (events carry
+> no vendor counts) — the stamped basis is READ per `sourcing.py:79-82`, still
+> satisfying AC-2; and AC-2's set-equality parity cannot hold (2 bands vs 3 rungs) —
+> implemented as the stronger per-side derivation from the loaded spec.
+>
+> **Suite 3676 → 3700 / 8 skipped throughout** — same skip count, nothing silently
+> disabled; ruff + format + `mypy --strict services/` + `alembic check` clean; guards
+> exit 0; CI `gate` pass, merge-commit `git diff` = 0 bytes, and the full suite re-run
+> on every merge commit. **16 non-vacuity probes**, each RED against its NAMED test,
+> restored from `/tmp` and diff-verified; **two probes were themselves defective and
+> read GREEN** before correction — caught only because each is bound to the one test
+> it must redden. The 3 new `hero_demo/` files are named in
+> `_POST_SCAFFOLD_DONOR_FILES` with a prose reason (fleet is the scaffolder's golden
+> donor; a governed hero is bespoke per partner, ADR-0032 D1.2); the exclusion proven
+> surgical — a stray `.py` in the donor still reddens the test.
 
 > **Session 195, 2026-07-31 (head_commit `b25cc98` → `a8912e0`) — four PRs merged
 > (#994–#997), 0 open. The theme: a documented claim that measurement refuted, four
@@ -152,57 +207,6 @@ recent_commits: [4846d5e, 8e2b290, 88abb3f, 5382052, f936f00, b142fed, 4bb9494, 
 > pointer. **The R2 carve-out bound the work**: nothing was trimmed until its substance
 > was verified present in a tracked file.
 
-> **Session 193, 2026-07-30 (head_commit `5dd8ce6` → `367c15b`) — the session the
-> month-end export went from zero lines to a downloadable file with a KPI that can
-> fail.** Six PRs merged (#982–#987), 0 open. PLAN-0096 **Step 8 item 5 COMPLETE**;
-> **Step 10's AC-12 evidence written** — four coverage matrices, seven named residual
-> risks, a confidence statement, in `.claude/handoffs/session-193/` (gitignored).
->
-> **The build, in five PRs.** #982 the reader, whose row set is a UNION: cases with a
-> `gate_decision` in the month, filed on the APPROVAL date, **∪** close-outs in the
-> month with no governed run at all, filed on `entered_at`. That second source is the
-> whole point — a naive export reports 100% traceability *by construction*, because the
-> rows it cannot explain are the rows it never selected. #983 the KPI + cover: **Cray
-> typed rule (ค)** — a row counts only if it was governed AND fully documented;
-> governance-only would score a perfectly-approved repair with no invoice at 100%,
-> paperwork-only would score escaped money as traceable the moment a tidy invoice was
-> keyed. `vat_thb` and `cost_center` are deliberately NOT required — a garage that is
-> not VAT-registered; and requiring the unfilled `cost_center` would pin the KPI at 0%
-> forever. #984 **Cray typed (ก)**: persist `three_quote_basis` (alembic `0022`) rather
-> than recompute it — recomputing would answer last month's audit question with this
-> month's threshold *while looking completely filled in*. #985 the CSV + router, the
-> repo's **first** export surface, UTF-8 **with BOM** because Excel on Windows mojibakes
-> Thai without one. #986 the E-2 exception report on the cover.
->
-> **Two defects were found by ORACLES, not by review — the useful half.** A probe
-> mutating `is_fully_traceable` so its governed/outcome guard never fires left the suite
-> **GREEN**: the guard was unreachable through `load_monthly_export`, which already
-> nulls the approver when there is no decision, so nothing tested it on its own terms;
-> four direct predicate tests now do. And the **end-to-end scenario found a real bug** —
-> the hero round decides the demo fixture cases alongside the real one, and rejecting
-> them produced link rows with no approver, invoice or amounts, landing in the export as
-> **฿0 Express entries** an accountant would have to key to record that nothing
-> happened. No unit test could have shown it; every fixture built exactly the rows its
-> author had in mind. `is_reportable` now states the rule: money exists → always a row
-> (a REJECTED case *with* a close-out is the worst case in the report);
-> authorised-but-unpaid → a row; neither → not spend.
->
-> **28 non-vacuity probes**, each restored from a backup copy and diff-verified. Two did
-> not redden and were treated as findings rather than passes: one exposed the untested
-> guard above, the other that **a probe whose mutation is a semantic no-op measures
-> nothing while reading as a pass**. AC-9's bar is demonstrated on the real path, not
-> asserted (archived PLAN, §Acceptance Criteria).
->
-> **Also:** #987 corrected a **public-repo** overclaim — README and
-> `docs/conventions/tech-stack.md` described pgvector + Apache AGE + pg_trgm as the
-> database when `docker-compose.yml` runs stock `postgres:16-alpine`. STATUS had carried
-> the corrected framing since s141 and never propagated it to the two files a *reader*
-> hits first; two dead pointers fell out of the same pass. Suite **3607 → 3646**; `mypy
-> --strict services/` 127 → **130**; dev DB `0021` → **`0022`** on Cray's go against five
-> criteria fixed before the run. MS-S1 never touched; LINE still disarmed. **R2/R4
-> rotation applied** — s186→187 block + s179 RD row out; the archive base spilled
-> sessions-142→171 into the new `2026-h1g-status.md` (numbers in the chain note below).
-
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
 
 ## Prior focus (archived)
@@ -222,6 +226,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-07-31 | **s196, 2nd workstream (#999–#1002) — PLAN-0098 ratified + Steps 1–4 built; CSS-class guard → all 15 assets; `EconomicImpact.kind` → 5 kinds.** **Cray typed SD-1 (a), SD-2 always-visible, SD-3 = (c), differing from the draft's (a)**: lead with the measured ฿48,000 — the fraud origin story is narrative copy only, never a rendered figure (AC-9 = its oracle). Backend runs the real engine over the spec-loaded ladder via `_HERO_BUILDERS` (ADR-0031 D4 corollary 1 FIRED at N=2). Suite → **3700** | `5382052` / `4bb9494` / `docs/plans/0098-fleet-view-g-hero-demo-mirror.md` |
 | 2026-07-31 | **s196 — PLAN-0099 drafted + merged (#1003): the wall-clock root fix.** An intermittent quote-history flake was **measured**, not inferred — the dev clock steps back 20x/300 s (every step ≥400 ms) against a 90–166 ms window ⇒ ~0.9%/run; the Postgres-`now()` hypothesis was **refuted by construction**. **`<=` → `<` rejected on evidence.** Two worse sites found (the DOA gate via `latest_accepted_quote`; the month-end export). **All 5 SDs Cray-ratified** — store-at-write, backfill marked **reconstructed**, three riders on migration `0023`. No production code changed | `4846d5e` (head_commit) / `docs/plans/0099-wall-clock-root-fix-store-at-write-and-sequence.md` |
 | 2026-07-31 | **s195 — fleet's Box-4 ฿ facet, a REAL PM-confirm race, PLAN-0097 COMPLETE (#994–#997).** **Cray typed** fleet's **event-anchored** ฿30,000 basis + the conservative **15%** recovery fraction. #995 fixed an **unlocked** read-then-write that let two deciders both get a 200 while one overwrote the other (`FOR UPDATE`, no migration). #996/#997 shipped the warn-path trail and archived the PLAN — **SD-2 = yes**, **SD-3 = dedup**. Suite → **3676** | `a8912e0` (#997, head_commit) / `8381c92` (#994) / `fa53911` (#995) / `docs/plans/done/0097-goal-gate-warn-path-trail.md` |
 | 2026-07-30 | **s194 — two rotted-pointer repairs + Cray's STATUS-size ruling (#990, #991).** #990 fixed ADR-0025's archive pointer (wrong by whole FILE since the s144 re-charter; now cited by section heading, no line numbers). #991 drafted PLAN-0097 — the goal gate's silent warn path is an **implementation gap against ADR-0018 D5/V2-D1**, not ratified design. **Cray typed: SD-1 = (a), D5 controls (SD-2/SD-3 stay OPEN)**; **STATUS size = tighten the per-block cap + cut duplicates** | `b25cc98` (head_commit) / `c2584c8` (#990) / `docs/plans/done/0097-goal-gate-warn-path-trail.md` / runbook §R2 |
@@ -231,8 +236,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-07-29 | **s189 — PLAN-0096 Steps 1–7 and 9 COMPLETE (8 of 10), #965–#968.** Partner round-2 answers closed 5 of 7 questions. Step 6 = the partner's real 8-step task chain (alembic `0016`); `pm_due` = a sixth LINE event, group recipient, read off persisted `judge_service_due` verdicts. Cray typed the prerequisite-anchored clock + the AC-8 bump. Unplanned (#966/#967): an ORM↔alembic registration guard — **a comparison means something only when at most ONE side is hand-maintained**. Suite → **3552** | `13aa2f0` (#968 merge, head_commit) / `26e61b3` (#965) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` |
 | 2026-07-29 | **s186→s187 — PLAN-0096 Steps 1–5, 7 and 9 COMPLETE (#951–#961); s188 closed the ADR debt (#962).** Six Cray ratifications, incl. the state-based ratify precondition on a **self-contradiction between ADR-0034 D3(3) and D3(6)** — and a second divergence of the same class found at s188 R2. Suite → **3502** | `eae0f82` (#962 merge, head_commit) / `728da00` (#961 merge) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` / `docs/adr/0034-governed-exception-family.md` §D3 + §"D3 Amendment (2026-07-29)" |
 | 2026-07-28 | **s184→s185 — ADR-0034 "governed exception family" ACCEPTED (#948) + PLAN-0096 "fleet flow completion Phase 1, Lean KPI-first" merged as Draft (#949).** Partner-driven: 18/18 discovery answers → three mechanisms (escalate-never-skip waiver / evidence-alternative E-3 / deferred-ratification E-2+E-4); SoD + compliance stay NON-waivable. Cray resolved OQ-1/OQ-2/OQ-3 per the in-file recommendations. All 8 dispatch rejection criteria run adversarially, none fired | `760ceed` (#949 merge, head_commit) / `24c3b45` (#948) / `docs/adr/0034-governed-exception-family.md` |
-| 2026-07-28 | **s183 — PLAN-0094 ARCHIVED (Cray released the live-loop soak), and the goal-gate `evaluations: 0` finding DIAGNOSED: the gate is not broken, its warn path is unobservable.** OQ-4 re-homed to an Active TODO rather than buried in `done/`. _[s194: this row's "the behaviour is ratified" reading was REFUTED — see PLAN-0097.]_ | `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 + §OQ-4 / `docs/plans/done/0097-goal-gate-warn-path-trail.md` §"The ADR-0018 determination" |
-
 ## In-Flight Discussions
 
 - **PLAN-0096 — COMPLETE 12/12 and ARCHIVED (s193).** The fleet design partner's Phase-1 flow, shipped end to end across s186→s193 — real governance numbers, case capture from minute 1, the quote evidence pack, the sourcing signal that retired a fail-open default, the E-2 ratification window, the PM import, the outbound-only-and-DISARMED LINE OA surface, the 8-step task chain, and the month-end Express export. **Four residual risks outlive the PLAN and are why this entry is not simply deleted — all four are recorded in the archived PLAN, which is where the detail now lives:** RR-1 (per-baht approver→case attribution is INFERENCE, not data — `GovernedDecision` carries no timestamp and no per-entity key; sound while one human resolves a whole gate, silently wrong the day two approvers share a resolution); RR-3 (concurrency-race was the weakest coverage row for AC-4/AC-9/AC-10 — **both named gaps CLOSED s195 by #995**: the PM-confirm race turned out to be a REAL defect, now `FOR UPDATE`, and `allocate_repair_order_no` got the test its docstring implied, which corrected the constraint that docstring named); ศูนย์ต้นทุน ships EMPTY (partner granularity still unanswered — also an open Active TODO below); and `latest_per` still collapsing two open cases on one truck (item 4, **Cray typed (ค) defer**) — the older case never reaches the gate, so if it is paid it reports as *ungoverned*, which a reader of the number cannot distinguish from a governance failure. Full record: `docs/plans/done/0096-fleet-flow-completion-phase1.md` (§Verification preamble + §Acceptance Criteria for RR-1 / RR-3 / ศูนย์ต้นทุน; §Step 8 for `latest_per`); the AC-12 sign-off is in `.claude/handoffs/session-193/` (gitignored).
