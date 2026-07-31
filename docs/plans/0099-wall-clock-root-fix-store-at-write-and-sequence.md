@@ -144,8 +144,7 @@ shape, feeds the month-end export ฿ figure; **SD-3(a) — ratified in, s196**)
 the drafter-observed `justifications[-1]` pick (`evidence_pack.py:135`, ordered
 only by `entered_at` at `:123` — narrative fields only; **SD-3(b) — ratified
 in, s196**), and the export's Python-side last-write-wins on `linked_at`
-(`repair_spend_export.py:587`; **SD-3(c) — OPEN**, gated before Step 2 — see
-§Coverage + SD-3(c)).
+(`repair_spend_export.py:587`; **SD-3(c) — ratified in, s196**).
 
 ### D3 — discharge the original deferral: `sequence` on `step_results`
 
@@ -227,7 +226,7 @@ captured as evidence. Restoration probes restore from a scratch copy, never
 | `services/engine/procedures/persistence.py:204` `load_run` | **FIXED** — `(seq, step_result_id)` (D3; the original deferral) |
 | `services/api/routers/runs.py:296` `/runs` `started_at.desc()` + `services/api/static/assets/view-map.js:364` `CAP = 5` | **KNOWINGLY LEFT** on the wall clock. STATUS names this PLAN as their owner; ownership is discharged by this recorded decision: both render newest-first rows a human reads; a backward step can transiently reorder adjacent rows in a display list; no correctness consumer exists. |
 | Quote/justification list orderings feeding display tuples (`cases.py:525,534,573`; `evidence_pack.py:114`) | **KNOWINGLY LEFT** — display order of lists |
-| `services/db/repair_spend_export.py:587` last-write-wins over ascending `linked_at` (dict overwrite at `:590-602`) | **SD-3(c) — OPEN** (Cray's include ruling predates this site and is not stretched to cover it; Code's reviewer recommendation is include — veto-open). Drafter-verified NOT display, confirmed by Code on disk: the in-code comment (`:593-595`) says "the last write wins … the case's current position"; same disease shape, implemented in Python. See SD-3(c). |
+| `services/db/repair_spend_export.py:587` last-write-wins over ascending `linked_at` (dict overwrite at `:590-602`) | **FIXED** — SD-3(c) RATIFIED by Cray (s196): `repair_case_run_link` gains a `seq` in `0023` and the export re-keys on it. Recorded justification (the reasoning the ratification rests on): drafter-verified NOT display, confirmed by Code on disk — the in-code comment (`:593-595`) says "the last write wins … the case's current position"; same disease shape, implemented in Python. |
 | The remaining wall-clock `order_by` sites under `services/` | **ENUMERATED — complete for the chosen vocabulary.** The R2 probe measured the full widened-scan hit list (ledger below). The limit is stated plainly: the extended `_WALL_CLOCK` set is nine hand-picked column names, so a timestamp column outside that vocabulary is invisible to the scan — the same species of limit that quietly falsified the old enumeration (§Governance). The completeness claim is scoped to the vocabulary, deliberately and visibly; the scan cannot back a broader one. |
 
 ### Measured widened-scan ledger (R2 probe, s196 — the AC-7 baseline)
@@ -249,7 +248,7 @@ exactly 2 hits — see §Governance for why that matters.
 | 2 | `services/db/evidence_pack.py:191` (`latest_accepted_quote`) | **FIXED** (D2 — orders solely by `seq.desc()`, a unique key needing no tiebreak; scan goes silent) |
 | 3 | `services/db/repair_case_closeout.py:151` (`latest_closeout`) | **FIXED** — SD-3(a) RATIFIED (s196); scan goes silent |
 | 4 | `services/db/evidence_pack.py:121` (justifications ordering feeding the `[-1]` pick at `:135`) | **FIXED** — SD-3(b) RATIFIED (s196); scan goes silent |
-| 5 | `services/db/repair_spend_export.py:569` (`governed_by_case` last-write-wins on `linked_at`) | **FIXED** if SD-3(c) is ratified in (OPEN — Code recommends include, veto-open; gated before Step 2); else ALLOWLISTED with the accepted risk stated (never labelled "display") |
+| 5 | `services/db/repair_spend_export.py:569` (`governed_by_case` last-write-wins on `linked_at`) | **FIXED** — SD-3(c) RATIFIED (s196); the export re-keys on `repair_case_run_link.seq`, scan goes silent |
 | 6 | `services/api/routers/runs.py:296` (`/runs` newest-first) | **ALLOWLISTED** — display-only projection (decision recorded above) |
 | 7 | `services/api/routers/cases.py:250` (`/cases` list, `opened_at.desc()` + truncating `limit`) | **ALLOWLISTED** — display list ordering (drafter-verified) |
 | 8 | `services/api/routers/cases.py:523` (quotes list) | **ALLOWLISTED** — display list ordering (drafter-verified at the `:525` argument) |
@@ -258,12 +257,11 @@ exactly 2 hits — see §Governance for why that matters.
 | 11 | `services/db/case_events.py:80` (`governed_case_facts` case ordering) | **ALLOWLISTED** — ordering exists for projection-fingerprint stability, carries a deterministic `case_id` tiebreak, and does not change WHICH facts are reported (drafter-verified at `:82`) |
 | 12 | `services/db/evidence_pack.py:112` (quotes ordering feeding the display tuple) | **ALLOWLISTED** — display order; the `min()` aggregates over it are order-insensitive (drafter-verified at `:114`) |
 
-Post-fix expected state: #1–#4 are silent (locked scope — SD-3(a)/(b) ratified
-s196). With SD-3(c) ratified in, **5 sites silent + 7 allowlist entries**; with
-(c) declined, **4 silent + 8 allowlisted**, where entry #5 states an
-*accepted-risk* reason, never a "display" one. The executor confirms every
-allowlist reason against the surrounding code at allowlist time; finding a
-correctness consumer behind a "display" entry is rejection-grade.
+Post-fix expected state — single and unconditional, every SD-3 pick ratified
+s196: **5 sites silent (#1–#5) + 7 allowlist entries (#6–#12)**. The executor
+confirms every allowlist reason against the surrounding code at allowlist
+time; finding a correctness consumer behind a "display" entry is
+rejection-grade.
 
 ## Acceptance Criteria
 
@@ -297,11 +295,11 @@ oracle goes RED.
   deterministic — a single assertion replaces the 20/40 coin flip.
   *Counterexample applied:* restoring `accepted_at.desc()` as the leading key
   makes the superseded row win the inversion fixture → RED.
-- [ ] **AC-4 — Month-end export under a lying clock** *(scope: (a) locked —
-  SD-3(a) ratified s196; (b) contingent on the open SD-3(c))*: (a) two closeout
+- [ ] **AC-4 — Month-end export under a lying clock** *(both halves locked —
+  SD-3(a) and SD-3(c) ratified s196)*: (a) two closeout
   keyings, second stamped −5 ms; the export/endpoint
   total reads the newest keying — *counterexample:* `entered_at.desc()`
-  restored → RED. (b) If SD-3(c) ratifies the run-link pick in: a provisional
+  restored → RED. (b) A provisional
   row → ratification pair with the ratification stamped −5 ms; the export's
   `governed_by_case` shows the ratification's outcome — *counterexample:*
   last-write-wins over ascending `linked_at` restored → RED. Artifacts: forcing
@@ -338,9 +336,9 @@ oracle goes RED.
   or vocabulary was narrowed to what already passes, which is the fake-done
   form and a rejection, not a pass. Against the post-fix tree every hit is
   either silent-because-fixed (the seq-keyed picks) or in the allowlist with
-  its ledger reason (expected split per §Coverage: 5 silent + 7 allowlisted
-  with SD-3(c) ratified in, 4 + 8 with (c) declined — #1–#4 are silent
-  unconditionally, SD-3(a)/(b) being ratified). (ii) *Comparison shape:* the new check fires on a frozen
+  its ledger reason (expected state per §Coverage, single and unconditional —
+  every SD-3 pick ratified s196: **5 silent + 7 allowlisted**).
+  (ii) *Comparison shape:* the new check fires on a frozen
   snippet of the exact pre-fix `evidence_pack.py:163` shape and stays silent on
   the stored-field read and the `as_of` request-param shape (`cases.py:384`).
   (iii) The existing single-module run-analytics test and the load_run
@@ -400,9 +398,8 @@ oracle goes RED.
 ## Steps
 
 ### Step 1: Forcing tests first — see the RED
-Write the frozen/stepping-clock tests for AC-1, AC-2, AC-3, AC-4(a) and AC-5
-— plus AC-4(b) iff SD-3(c) is ratified in — using the proven monkeypatch shape
-through the real HTTP path. **Pre-committed pass/fail:** each named test is RED against pre-fix
+Write the frozen/stepping-clock tests for AC-1, AC-2, AC-3, AC-4 (both halves)
+and AC-5, using the proven monkeypatch shape through the real HTTP path. **Pre-committed pass/fail:** each named test is RED against pre-fix
 code *for the stated reason* (assertion mismatch on the forced fixture — not
 ERROR/collection failure); output captured as the AC's RED evidence. Cheapest
 gate first; this step touches no production code.
@@ -412,15 +409,16 @@ Add `lowest_amount_at_acceptance_thb` (`Numeric(14,2)`) + the typed
 `lowest_at_acceptance_basis` provenance column (D1 §Provenance — NOT NULL, no
 default at any layer, CHECK-pinned vocabulary) + `seq` (BIGINT, server-assigned
 monotonic) on the locked-scope tables: `repair_case_accepted_quote`,
-`repair_case_closeout`, `repair_case_justification` (SD-3(a)/(b) ratified
-s196), `step_results` — plus `repair_case_run_link` **iff SD-3(c), which gates
-here, is ratified in** (it only changes what `0023` contains). Backfill legacy
+`repair_case_closeout`, `repair_case_justification`, `repair_case_run_link`,
+`step_results` — all SD-3 picks ratified s196; nothing in `0023` is
+contingent. Backfill legacy
 rows: figure via derive-once ∪ {accepted quote itself}, stamped
 `basis = 'reconstructed'` (the SD-2 ruling); `seq` in each table's current
 reader's order (`(accepted_at, accepted_id)` / `(entered_at, closeout_id)` /
-`(created_at, step_result_id)`; other tables per their current reader,
-deterministically tiebroken by primary key). Write the migration test per
-AC-6. **Pass/fail:** AC-6's artifacts green, `PASSED` not `SKIPPED`.
+`(linked_at, primary key)` for the run-link table /
+`(created_at, step_result_id)`; the justification table per its current
+reader, deterministically tiebroken by primary key). Write the migration test
+per AC-6. **Pass/fail:** AC-6's artifacts green, `PASSED` not `SKIPPED`.
 
 ### Step 3: Re-key the code
 POST handler persists the write-time `min` (`cases.py:637` already computes it)
@@ -428,9 +426,10 @@ together with an explicit `basis = 'recorded'`; pack + GET + POST response read
 the stored column and carry the basis adjacent to the figure and
 `accepted_the_cheapest` (D1 §Provenance; the export row likewise); delete both
 comparisons (`evidence_pack.py:163`, `cases.py:686`); re-key
-`latest_accepted_quote`, `latest_closeout` and the justification pick
-(SD-3(a)/(b) ratified) — plus the run-link pick iff SD-3(c) ratifies in — on
-`seq` leading; re-key `load_run` on `(seq, step_result_id)`. **Pass/fail:** Step 1
+`latest_accepted_quote`, `latest_closeout` and the justification pick on `seq`
+leading, and the export's `governed_by_case` ordering on
+`(case_id, RepairCaseRunLink.seq)` in place of `linked_at` — all SD-3 picks
+ratified s196; re-key `load_run` on `(seq, step_result_id)`. **Pass/fail:** Step 1
 tests flip GREEN; the 63 pre-existing tests in the 6 touching files stay green;
 a grep of `services/` finds zero cross-row stored-timestamp comparisons of the
 eliminated shape outside the `0023` backfill.
@@ -509,8 +508,8 @@ tables stamp differently-named columns (`entered_at`, `accepted_at`,
 >   **PLAN-0099 drafted (s196)** — the deferred sequence-column PLAN, widened:
 >   store-at-write for the at-acceptance figure (+ reconstructed-vs-recorded
 >   provenance per the SD-2 ruling), `seq`-keyed latest-wins picks
->   (`latest_accepted_quote` → DOA gate; closeout + justification ratified in,
->   SD-3 a/b; run-link pick OPEN, SD-3 c), `load_run` re-keyed,
+>   (`latest_accepted_quote` → DOA gate; closeout, justification + the export's
+>   run-link pick all ratified in, SD-3 a/b/c), `load_run` re-keyed,
 >   guard widened to comparison + pick shapes. The un-defer trigger did NOT
 >   literally fire; its enumeration was superseded by new info (evidence-pack
 >   sites, 2026-07-30). `/runs` + `view-map.js` CAP=5: knowingly left,
@@ -556,22 +555,20 @@ positional-read rule itself is **retained with a rewritten rationale**
   migration, one pattern, one forcing-test family; leaving the export's ฿
   figure on a coin-flip tiebreak while fixing its documented sibling
   (`repair_case_closeout.py:141-146` cross-references it) would be incoherent.
-- **SD-3(c) `repair_spend_export.py:587` — ⏳ OPEN.** Cray's "include" ruling
-  was typed before (c) existed and is not stretched to cover a site it never
-  saw. The site is drafter-verified and Code-confirmed on disk as a latest-wins
-  pick in Python clothing, NOT a display ordering (`governed_by_case` dict
-  overwrite at `:590-602`; the in-code comment at `:593-595` states
-  last-write-wins): under a backward step between a provisional gate row and
-  its ratification, the month-end export shows the provisional outcome.
-  **Code's reviewer recommendation — attributed to Code, explicitly NOT to
-  Cray, veto-open — is INCLUDE**: it sits on a correctness path more plainly
-  than the site that triggered this investigation (the month-end export is what
-  the partner's accounting reads); the same widened scan already flags it
-  (ledger #5); the cost is one `seq` column on `repair_case_run_link` inside
-  `0023` — no new machinery, no second migration. **Gate: ratified before
-  Step 2**, since it only changes what `0023` contains. AC-4(b) is its
-  contingent forcing test; the Coverage ledger keeps the dual arithmetic
-  (5 + 7 vs 4 + 8) so both outcomes stay costed.
+- **SD-3(c) `repair_spend_export.py:587` — ✅ RATIFIED by Cray (s196):
+  include.** `repair_case_run_link` gains a `seq` in `0023`, and the export's
+  `governed_by_case` stops last-write-winning on `linked_at`. Provenance,
+  preserved honestly as history: the site was drafter-surfaced during the R2
+  revision and Code-confirmed on disk as a latest-wins pick in Python clothing,
+  NOT a display ordering (`governed_by_case` dict overwrite at `:590-602`; the
+  in-code comment at `:593-595` states last-write-wins — under a backward step
+  between a provisional gate row and its ratification, the month-end export
+  shows the provisional outcome). Code recommended include on those grounds
+  (a correctness path the partner's accounting reads; the same widened scan
+  already flags it, ledger #5; one `seq` column, no new machinery, no second
+  migration); **Cray ratified — it is now Cray's decision.** AC-4(b) is its
+  forcing test; the ledger's post-fix arithmetic is the single unconditional
+  5 + 7.
 - **SD-4 — Fate of the positional-read guard rule — ✅ RATIFIED by Cray (s196):
   retain, with rewritten rationale** (select-by-STATUS expresses intent;
   insurance through the migration window). Folded into §Governance (the guard
