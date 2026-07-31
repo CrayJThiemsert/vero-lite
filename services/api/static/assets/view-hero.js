@@ -464,9 +464,12 @@
         gateRow('contrast', contrast.ruleGate),
         h('div', { class: 'hero-grid' }, [
           kv('criterion', (g && g.criterion) || '—', 'mono'),
-          kv('blocks_po', String(g && g.blocks_po), 'mono'),
-          kv('authored rule', (g && g.spec) || '—', 'faint')
-        ])
+          kv('blocks_po', String(g && g.blocks_po), 'mono')
+        ]),
+        // The authored rule is a sentence, not a value. Measured in the hero-kv grid it
+        // rendered right-aligned across 54px against a 19px row — prose wearing a
+        // key-value slot. It reads as what it is on its own full-width line.
+        h('div', { class: 'hero-card-sub faint' }, 'authored rule · ' + ((g && g.spec) || '—'))
       ]);
   }
 
