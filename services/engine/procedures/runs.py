@@ -23,7 +23,17 @@ from datetime import datetime
 from enum import StrEnum
 from typing import Any
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, Integer, Text, text
+from sqlalchemy import (
+    BigInteger,
+    DateTime,
+    ForeignKey,
+    Identity,
+    Index,
+    Integer,
+    Text,
+    UniqueConstraint,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -110,7 +120,10 @@ class StepResult(Base):
     """One step's result within a PipelineRun, incl. the telemetry seam (AC A-9)."""
 
     __tablename__ = "step_results"
-    __table_args__ = (Index("idx_step_results_run_id", "run_id"),)
+    __table_args__ = (
+        Index("idx_step_results_run_id", "run_id"),
+        UniqueConstraint("seq", name="uq_step_results_seq"),
+    )
 
     step_result_id: Mapped[str] = mapped_column(Text, primary_key=True)
     run_id: Mapped[str] = mapped_column(Text, ForeignKey("pipeline_runs.run_id"), nullable=False)
@@ -121,3 +134,15 @@ class StepResult(Base):
     reasoning_trace: Mapped[list[dict[str, Any]] | None] = mapped_column(JSONB)
     audit: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    #: Insertion order, assigned by the database — the long-deferred monotonic
+    #: sequence column (PLAN-0099 D3; the deferral is recorded in
+    #: ``tests/services/db/test_load_run_ordering_guard.py``).
+    #:
+    #: ``load_run`` returns a run's steps in EXECUTION order, and ``created_at`` is a
+    #: wall-clock stamp: a backward step between two steps of one run sorts the later
+    #: one first. The deferral held because nothing read that order for correctness —
+    #: ``suspended_step_result`` deliberately selects by STATUS, and the guard
+    #: statically forbids the positional read. This column removes the need to hold
+    #: that line by discipline: execution order becomes insertion order, which is
+    #: what it always meant.
+    seq: Mapped[int] = mapped_column(BigInteger, Identity(always=False), nullable=False)

@@ -94,7 +94,10 @@ class RepairCaseCloseout(Base):
     """
 
     __tablename__ = "repair_case_closeout"
-    __table_args__ = (sa.Index("idx_repair_case_closeout_case_id", "case_id"),)
+    __table_args__ = (
+        sa.Index("idx_repair_case_closeout_case_id", "case_id"),
+        sa.UniqueConstraint("seq", name="uq_repair_case_closeout_seq"),
+    )
 
     closeout_id: Mapped[str] = mapped_column(sa.Text, primary_key=True)
     case_id: Mapped[str] = mapped_column(
@@ -129,6 +132,14 @@ class RepairCaseCloseout(Base):
     total_thb: Mapped[Decimal] = mapped_column(sa.Numeric(14, 2), nullable=False)
     entered_by: Mapped[str] = mapped_column(sa.Text, nullable=False)
     entered_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    #: Insertion order, assigned by the database (PLAN-0099 D2 / SD-3(a)). The
+    #: correction path is what makes this load-bearing: เมย์ re-keys a mistyped
+    #: invoice, a second row lands, and the month-end ฿ figure accounting reconciles
+    #: against is whichever row ``latest_closeout`` calls current. Keyed on
+    #: ``entered_at``, a backward clock step between the two writes hands the export
+    #: the row เมย์ just corrected — and the export looks perfectly filled in doing
+    #: it, which is the failure a completeness KPI structurally cannot see.
+    seq: Mapped[int] = mapped_column(sa.BigInteger, sa.Identity(always=False), nullable=False)
 
 
 async def latest_closeout(session: AsyncSession, case_id: str) -> RepairCaseCloseout | None:
@@ -138,22 +149,20 @@ async def latest_closeout(session: AsyncSession, case_id: str) -> RepairCaseClos
     every consumer — the case endpoint, the month-end export — must agree on which
     row is current. One query in one place is how they stay agreed.
 
-    ``closeout_id`` breaks a same-instant tie, for the reason
-    :func:`services.db.evidence_pack.latest_accepted_quote` states about its own:
-    two keyings sharing a timestamp is genuinely ambiguous, but an arbitrary-yet-
-    STABLE answer still matters, because without the tiebreak the endpoint and the
-    export could each pick a different row from identical data — a disagreement no
-    reader could diagnose from either output.
+    **Newest means last-INSERTED** (PLAN-0099 D2 / SD-3(a)), for the reason
+    :func:`services.db.evidence_pack.latest_accepted_quote` states about its own pick.
+    Keyed on ``entered_at`` this was one backward clock step away from handing the
+    month-end ฿ figure the row เมย์ had just corrected — and the export would have
+    looked perfectly filled in doing it, which is the failure a completeness KPI
+    structurally cannot see. ``seq`` is UNIQUE, so no tiebreak is needed: identical
+    data yields one row, and the endpoint and the export cannot disagree about which.
     """
     return (
         (
             await session.execute(
                 sa.select(RepairCaseCloseout)
                 .where(RepairCaseCloseout.case_id == case_id)
-                .order_by(
-                    RepairCaseCloseout.entered_at.desc(),
-                    RepairCaseCloseout.closeout_id.desc(),
-                )
+                .order_by(RepairCaseCloseout.seq.desc())
                 .limit(1)
             )
         )

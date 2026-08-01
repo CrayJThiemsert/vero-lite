@@ -22,7 +22,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from dataclasses import fields
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -35,9 +35,11 @@ from services.db.audit_log import append_audit
 from services.db.base import Base
 from services.db.repair_case import RepairCase
 from services.db.repair_case_closeout import RepairCaseCloseout, RepairCaseOrderNumber
+from services.db.repair_case_evidence import LOWEST_AT_ACCEPTANCE_RECORDED
 from services.db.repair_case_run_link import (
     LINK_OUTCOME_APPROVED,
     LINK_OUTCOME_PROVISIONAL,
+    LINK_OUTCOME_RATIFIED,
     LINK_OUTCOME_REJECTED,
     RepairCaseRunLink,
 )
@@ -888,6 +890,13 @@ def _complete_row(**overrides: Any) -> ExportRow:
         "exception_label": None,
         "justification_ref": None,
         "three_quote_basis": "three_quotes",
+        # PLAN-0099 D1: the at-acceptance figure, the boolean derived from it, and the
+        # single marker governing both. Spelled out rather than defaulted on the
+        # dataclass, so a row built for a predicate test cannot quietly claim "no
+        # acceptance recorded" while the rest of it describes a fully governed repair.
+        "lowest_amount_at_acceptance_thb": Decimal("57943.93"),
+        "accepted_the_cheapest": True,
+        "lowest_at_acceptance_basis": LOWEST_AT_ACCEPTANCE_RECORDED,
     }
     return ExportRow(**{**base, **overrides})
 
@@ -942,6 +951,11 @@ def test_audit_questions_and_answers_stay_the_same_length() -> None:
         exception_label=None,
         justification_ref=None,
         three_quote_basis=None,
+        # A row with nothing recorded at all — including no acceptance, which is what
+        # None means for all three of these (PLAN-0099 D1).
+        lowest_amount_at_acceptance_thb=None,
+        accepted_the_cheapest=None,
+        lowest_at_acceptance_basis=None,
     )
     assert len(audit_answers(blank)) == len(AUDIT_QUESTIONS) == 6
 
@@ -1038,3 +1052,67 @@ def test_express_columns_and_row_fields_stay_positionally_aligned() -> None:
     assert names[:15] == list(_EXPRESS_FIELDS)
     # The boundary itself: the 16th field starts provenance, not Express.
     assert names[15] == "case_id"
+
+
+# --------------------------------------------------------------------------- #
+# PLAN-0099 Step 1 — AC-4(b): the export's last-write-wins under a lying clock.
+#
+# `load_monthly_export` collects the month's gate decisions ordered ASCENDING by
+# `linked_at` and overwrites a dict keyed on case_id, so the last row read wins.
+# The in-code comment says why that is correct: "a ratification lands after its
+# provisional row and is the case's current position". It is correct only while the
+# clock moves forward — which, on this box, is not always.
+# --------------------------------------------------------------------------- #
+
+
+async def test_a_ratification_stamped_before_its_provisional_row_still_wins(
+    db_session: AsyncSession,
+) -> None:
+    """AC-4(b). The export must show the case's CURRENT governed position.
+
+    A provisional resolve is decided first and ratified afterwards — the whole point
+    of decide-first (ADR-0034 D3(5)). The ratification is therefore always the later
+    write. If the wall clock steps backwards in between, it carries the earlier
+    ``linked_at``, sorts first, and the provisional row overwrites it.
+
+    What the accounting month then reports is a repair still awaiting a signature
+    that was in fact signed — an exception label on a case that has none, generated
+    by a clock artefact rather than by anything the operator did or failed to do.
+
+    RED today: ``row.outcome`` reads ``provisional``.
+    """
+    decided_at = datetime(2026, 7, 15, 22, 30, tzinfo=BKK)
+    due_at = datetime(2026, 7, 22, 15, 30, tzinfo=UTC)
+    await _seed_case(db_session, case_id="case-clockstep")
+    await _seed_closeout(
+        db_session,
+        case_id="case-clockstep",
+        entered_at=datetime(2026, 7, 21, 3, 0, tzinfo=UTC),
+    )
+    await _seed_governed_run(
+        db_session,
+        case_id="case-clockstep",
+        run_id="run-provisional",
+        decided_at=decided_at,
+        outcome=LINK_OUTCOME_PROVISIONAL,
+        audit=_ratification_block(attested=_APPROVER, due_at=due_at),
+    )
+    # The ratification is written AFTER the provisional row, and stamped BEFORE it —
+    # the measured failure mode, not an invented one.
+    await _seed_governed_run(
+        db_session,
+        case_id="case-clockstep",
+        run_id="run-ratified",
+        decided_at=decided_at - timedelta(milliseconds=5),
+        outcome=LINK_OUTCOME_RATIFIED,
+        audit=_ratification_block(attested=_APPROVER, due_at=due_at, ratified_by=_APPROVER),
+    )
+
+    export = await load_monthly_export(db_session, year=2026, month=7, now=decided_at)
+
+    (row,) = export.rows
+    assert row.outcome == LINK_OUTCOME_RATIFIED, (
+        f"the export reported {row.outcome!r} — the SUPERSEDED provisional row. The "
+        "ratification is in the table, written later, and was skipped because it "
+        "carries an earlier wall-clock stamp."
+    )

@@ -49,6 +49,7 @@ import sqlalchemy as sa
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.db.audit_log import AuditLog
+from services.db.evidence_pack import load_evidence_pack
 from services.db.repair_case import RepairCase
 from services.db.repair_case_closeout import (
     RepairCaseCloseout,
@@ -150,6 +151,23 @@ class ExportRow:
     #: s193). None for an ungoverned row, which never had a sourcing decision made
     #: on it at all — an absence the proxy reports rather than papers over.
     three_quote_basis: str | None
+    #: The cheapest quote on file when this repair was agreed — the figure
+    #: ``accepted_the_cheapest`` is computed from. Stored on the acceptance row since
+    #: PLAN-0099 D1; None when the case has no acceptance.
+    lowest_amount_at_acceptance_thb: Decimal | None
+    #: Whether the agreed quote was the cheapest then on file. Three-valued: None
+    #: means no acceptance was recorded, which is a different answer from "no" and
+    #: must not be read as a "yes".
+    accepted_the_cheapest: bool | None
+    #: RECORDED at acceptance, or RECONSTRUCTED afterwards by migration ``0023`` —
+    #: Cray's SD-2 ruling, and the reason the two fields above are here rather than
+    #: left to the reader to look up. A reconstructed figure was derived from the same
+    #: wall-clock comparison PLAN-0099 retires, so it carries that derivation's ~0.9 %
+    #: chance of naming the wrong quote. Marking it does not remove the risk; it
+    #: DISCLOSES it, at the point of reading, which is the difference between a number
+    #: an accountant can weigh and one that lies to them. It qualifies BOTH fields
+    #: above — one stored fact, one marker, because two markers could disagree.
+    lowest_at_acceptance_basis: str | None
 
 
 @dataclass(frozen=True)
@@ -584,15 +602,20 @@ async def load_monthly_export(
             ),
         )
         .where(AuditLog.occurred_at >= start, AuditLog.occurred_at < end)
-        .order_by(RepairCaseRunLink.case_id, RepairCaseRunLink.linked_at)
+        .order_by(RepairCaseRunLink.case_id, RepairCaseRunLink.seq)
     )
     governed_by_case: dict[str, dict[str, Any]] = {}
     for case_id, run_id, step_id, outcome, basis, _linked_at, occurred_at in (
         await session.execute(governed_stmt)
     ).all():
-        # Ascending `linked_at` means the last write wins: a ratification lands after
-        # its provisional row and is the case's current position, which is exactly
-        # what the export should show.
+        # Ascending `seq` — insertion order — means the last write wins: a ratification
+        # lands after its provisional row and is the case's current position, which is
+        # exactly what the export should show. This is a latest-wins PICK implemented
+        # as a dict overwrite, not a display ordering, so it was keyed on the wall
+        # clock's `linked_at` until PLAN-0099 SD-3(c). The pair it decides between is
+        # precisely the pair deferred ratification creates, days apart in intent and
+        # sometimes milliseconds apart on disk: under a backward step the export
+        # reported a repair as still awaiting a signature it had already received.
         governed_by_case[case_id] = {
             "run_id": run_id,
             "step_id": step_id,
@@ -659,6 +682,12 @@ async def _build_row(
     case = await session.get(RepairCase, case_id)
     closeout = await latest_closeout(session, case_id)
     order = await session.get(RepairCaseOrderNumber, case_id)
+    # The canonical reader rather than a second derivation of ``accepted_the_cheapest``
+    # here: there is exactly one stored fact behind the figure, the boolean and the
+    # basis, and a private copy of the rule is how the export and the endpoint would
+    # come to disagree about the same case. It costs a few extra reads per row on a
+    # month-end batch, which is the cheap side of that trade.
+    pack = await load_evidence_pack(session, case_id)
 
     audit: Mapping[str, Any] | None = None
     if decision is not None:
@@ -715,4 +744,7 @@ async def _build_row(
         exception_label=None if view.state == "none" else view.state,
         justification_ref=_justification_ref_of(audit),
         three_quote_basis=decision["three_quote_basis"] if decision is not None else None,
+        lowest_amount_at_acceptance_thb=pack.lowest_amount_at_acceptance_thb,
+        accepted_the_cheapest=pack.accepted_the_cheapest,
+        lowest_at_acceptance_basis=pack.lowest_at_acceptance_basis,
     )

@@ -21,6 +21,7 @@ from services.db.base import Base
 from services.db.evidence_pack import load_evidence_pack
 from services.db.repair_case import CASE_STATUS_OPEN, RepairCase
 from services.db.repair_case_evidence import (
+    LOWEST_AT_ACCEPTANCE_RECORDED,
     RepairCaseAcceptedQuote,
     RepairCaseJustification,
     RepairCaseQuote,
@@ -274,7 +275,22 @@ async def test_attachment_count_tracks_documents_not_quotes() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _accepted(case_id: str, n: int, quote_id: str, reason: str | None = None):
+def _accepted(
+    case_id: str,
+    n: int,
+    quote_id: str,
+    reason: str | None = None,
+    *,
+    lowest_at_acceptance: str,
+    basis: str = LOWEST_AT_ACCEPTANCE_RECORDED,
+):
+    """Seed one acceptance. ``lowest_at_acceptance`` is keyword-ONLY and REQUIRED.
+
+    Deliberately not defaulted (PLAN-0099 D1): the at-acceptance figure is stored on
+    the row now rather than derived from timestamps, so a default would let a fixture
+    silently disagree with its own quotes and still pass. Every caller states what was
+    cheapest at its moment, which is the fact the test is actually about.
+    """
     return RepairCaseAcceptedQuote(
         accepted_id=f"accepted-{n}",
         case_id=case_id,
@@ -282,6 +298,8 @@ def _accepted(case_id: str, n: int, quote_id: str, reason: str | None = None):
         reason=reason,
         accepted_by="admin-may",
         accepted_at=_BASE_TIME + timedelta(hours=n),
+        lowest_amount_at_acceptance_thb=Decimal(lowest_at_acceptance),
+        lowest_at_acceptance_basis=basis,
     )
 
 
@@ -322,8 +340,14 @@ async def test_the_latest_acceptance_wins_and_the_earlier_one_survives() -> None
         await session.commit()
         session.add_all(
             [
-                _accepted("case-t1", 1, "quote-1"),
-                _accepted("case-t1", 2, "quote-2", reason="เจ้าแรกปฏิเสธงาน"),
+                _accepted("case-t1", 1, "quote-1", lowest_at_acceptance="45500.50"),
+                _accepted(
+                    "case-t1",
+                    2,
+                    "quote-2",
+                    reason="เจ้าแรกปฏิเสธงาน",
+                    lowest_at_acceptance="45500.50",
+                ),
             ]
         )
         await session.commit()
@@ -345,11 +369,18 @@ async def test_the_latest_acceptance_wins_and_the_earlier_one_survives() -> None
 
 
 async def test_a_same_instant_tie_resolves_the_same_way_every_read() -> None:
-    """Two acceptances sharing a timestamp is genuinely ambiguous — but not random.
+    """Two acceptances sharing a timestamp — no longer ambiguous at all.
 
-    ``accepted_at`` alone would let the pack, the endpoint and the export each pick
-    a different row from identical data, which is a disagreement no reader could
-    diagnose. The ``accepted_id`` tiebreak buys reproducibility, not correctness."""
+    This used to buy reproducibility without correctness: ``accepted_at`` tied, and a
+    ``accepted_id.desc()`` tiebreak over a random UUID picked a stable-but-arbitrary
+    winner (measured s196: the SUPERSEDED row won 20 times out of 40). Since
+    PLAN-0099 D2 the pick is keyed on ``seq``, so the answer is the one the operator
+    actually meant — the row inserted LAST — and it is the same answer for the pack,
+    the endpoint and the export because they all read one query.
+
+    The stability assertion is kept, and the winner is now named as well. Asserting
+    only stability would still pass if the pick silently reverted to a coin flip that
+    happened to be deterministic within one read."""
     maker = await _session_factory()
     async with maker() as session:
         session.add(_case())
@@ -361,7 +392,13 @@ async def test_a_same_instant_tie_resolves_the_same_way_every_read() -> None:
         )
         await session.commit()
         tied = _BASE_TIME + timedelta(hours=1)
-        for accepted_id, quote_id in (("accepted-a", "quote-1"), ("accepted-b", "quote-2")):
+        # ``accepted-b`` is written FIRST and ``accepted-a`` LAST, deliberately: the
+        # old ``accepted_id.desc()`` tiebreak would name 'accepted-b' the winner, and
+        # insertion order names 'accepted-a'. Inserting them the other way round would
+        # make both rules agree and the assertion below would prove nothing. Committed
+        # one at a time so insertion order — the thing ``seq`` records — is a fact
+        # about this test rather than about how SQLAlchemy flushes a batch.
+        for accepted_id, quote_id in (("accepted-b", "quote-2"), ("accepted-a", "quote-1")):
             session.add(
                 RepairCaseAcceptedQuote(
                     accepted_id=accepted_id,
@@ -370,14 +407,21 @@ async def test_a_same_instant_tie_resolves_the_same_way_every_read() -> None:
                     reason="tie",
                     accepted_by="admin-may",
                     accepted_at=tied,
+                    lowest_amount_at_acceptance_thb=Decimal("100.00"),
+                    lowest_at_acceptance_basis=LOWEST_AT_ACCEPTANCE_RECORDED,
                 )
             )
-        await session.commit()
+            await session.commit()
 
         first = await load_evidence_pack(session, "case-t1")
         second = await load_evidence_pack(session, "case-t1")
 
     assert first.accepted_quote_id == second.accepted_quote_id
+    assert first.accepted_quote_id == "quote-1", (
+        "the LAST-inserted acceptance ('accepted-a', pointing at quote-1) is the "
+        "case's current position. Reading 'quote-2' means the pick fell back to the "
+        "accepted_id tiebreak — a stable answer to the wrong question"
+    )
 
 
 async def test_acceptance_does_not_leak_between_cases() -> None:
@@ -392,7 +436,7 @@ async def test_acceptance_does_not_leak_between_cases() -> None:
             ]
         )
         await session.commit()
-        session.add(_accepted("case-a", 1, "quote-1"))
+        session.add(_accepted("case-a", 1, "quote-1", lowest_at_acceptance="100.00"))
         await session.commit()
 
         pack_a = await load_evidence_pack(session, "case-a")

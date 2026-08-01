@@ -190,10 +190,20 @@ async def run_procedure_persisted(
 async def load_run(session: AsyncSession, run_id: str) -> RunResult | None:
     """Load a persisted run + its step results (execution order), or ``None``.
 
-    ``created_at`` is a WALL-CLOCK stamp, so this order is best-effort: a backward
-    clock step (an NTP correction, a VM/WSL2 host resync) can stamp a later step
-    with an earlier time. Never infer *which* step a run is suspended at from this
-    order — use :func:`suspended_step_result`, which reads the status.
+    Ordered by ``seq`` — the database-assigned insertion key added in migration
+    ``0023`` (PLAN-0099 D3). This used to order by ``created_at``, a wall-clock stamp
+    that is not monotonic: a backward step (an NTP correction, a VM/WSL2 host resync;
+    measured on this box at >= 400 ms roughly every 15 s) stamps a later step with an
+    earlier time, and the run then reads back out of the order it actually executed
+    in. Execution order IS insertion order, and ``seq`` says so directly instead of
+    inferring it from a clock.
+
+    ``step_result_id`` is retained as a tiebreak although ``seq`` is UNIQUE, so that
+    the order stays total if a future writer ever assigns ``seq`` explicitly.
+
+    Even so, never infer *which* step a run is suspended at from this order — use
+    :func:`suspended_step_result`, which reads the STATUS. That rule is about
+    expressing intent, not about distrusting the ordering (SD-4).
     """
     run = await session.get(PipelineRun, run_id)
     if run is None:
@@ -201,7 +211,7 @@ async def load_run(session: AsyncSession, run_id: str) -> RunResult | None:
     rows = await session.execute(
         select(StepResult)
         .where(StepResult.run_id == run_id)
-        .order_by(StepResult.created_at, StepResult.step_result_id)
+        .order_by(StepResult.seq, StepResult.step_result_id)
     )
     return RunResult(run=run, step_results=list(rows.scalars().all()))
 
@@ -233,16 +243,19 @@ _ADVANCING_STATUSES = frozenset(
 def suspended_step_result(step_results: list[StepResult]) -> StepResult | None:
     """The step a ``waiting_human`` run is suspended at — identified by STATUS.
 
-    Never by list position. :func:`load_run` orders by ``created_at``, a wall-clock
-    stamp that is not monotonic: a backward clock step between two steps of the same
-    run sorts the later one first, and ``step_results[-1]`` then names a *completed*
-    step. Resuming from it re-runs an already-executed gate (duplicate side effects)
-    or fails closed on its undecided proposals.
+    Never by list position — and the rule is RETAINED now that :func:`load_run` orders
+    by the monotonic ``seq`` rather than by ``created_at`` (PLAN-0099 D3 discharges the
+    deferral; SD-4 keeps this rule with a rewritten rationale). Selecting by STATUS
+    expresses what the caller actually means — "the step a human has not yet decided"
+    — whereas selecting by position means it only as long as the ordering happens to
+    agree. The static guard in
+    ``tests/services/db/test_load_run_ordering_guard.py`` still forbids the positional
+    read across the tree.
 
-    That ordering is left on the wall clock **by design** — the root fix (a monotonic
-    per-run ``sequence`` column) needs a migration and its own PLAN. The deferral and
-    why it stands are recorded in ``tests/services/db/test_load_run_ordering_guard.py``,
-    which also statically forbids the positional read across the tree.
+    What the wall clock used to cost, kept as the reason the rule exists: a backward
+    step between two steps of one run sorted the later one first, ``step_results[-1]``
+    then named a *completed* step, and resuming from it re-ran an already-executed
+    gate (duplicate side effects) or failed closed on its undecided proposals.
 
     Fails CLOSED on ambiguity. A run advances one gate at a time, so at most one
     step result is unresumed; two means the persisted rows are inconsistent. Picking
