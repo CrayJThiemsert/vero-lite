@@ -1,7 +1,15 @@
 # PLAN-0099: Wall-Clock Root Fix — Store-at-Write + Monotonic Sequence
 
-**Status:** Draft
+**Status:** Complete
 **Owner:** Claude Code
+**Completed:** 2026-08-01 (session 199) — all six steps shipped as one stack in
+PR [#1008](https://github.com/CrayJThiemsert/vero-lite/pull/1008) (`6a3f2d7`).
+All ten ACs closed. AC-9's gate ran at CI scope with its pass/fail read fixed
+before the run: **3730 passed / 8 skipped / 0 failed**, the eight skips all
+host-state or live opt-ins and none of them a node an AC names — proven
+positively by re-running the named nodes alone (**38 passed, 0 skipped**)
+rather than inferred from their absence among the skips. Seventeen
+non-vacuity probes across Steps 2–4, 17/17 RED against their named tests.
 **Created:** 2026-07-31 (session 196)
 **Related ADRs:** None binding. Governance context: `docs/STATUS.md`
 §'Active TODOs' (the deferral entry — "DEFERRED: a monotonic `sequence` column
@@ -270,7 +278,7 @@ DB test is never satisfaction — see AC-9. Each regression AC states the
 counterexample check applied: the concrete restored-defect under which its
 oracle goes RED.
 
-- [ ] **AC-1 — Stored figure; POST and GET agree under a lying clock.** New
+- [x] **AC-1 — Stored figure; POST and GET agree under a lying clock.** New
   frozen-clock scenario test(s) in `tests/api/test_accepted_quote_endpoint.py`:
   real HTTP writes with the acceptance stamped at-or-before the quote (tie AND
   −5 ms inversion fixtures); assert the response figure is the write-time `min`
@@ -280,14 +288,14 @@ oracle goes RED.
   evidence:* captured RED output against pre-fix code (this test reproduces the
   reported flake deterministically today) + GREEN after; pytest node shown
   `PASSED`, not `SKIPPED`.
-- [ ] **AC-2 — The accepted quote is never excluded from its own set.**
+- [x] **AC-2 — The accepted quote is never excluded from its own set.**
   Equal-stamp fixture, single quote accepted: `accepted_the_cheapest is True`
   and the stored figure equals the accepted amount — never `None`-with-an-
   acceptance. *Counterexample applied:* the rejected `<` variant reads
   `None`/`None` here → RED. This pins the boundary semantics the 63 existing
   tests left unpinned — as a semantics pin on the stored value, not on an
   operator choice.
-- [ ] **AC-3 — The gate input reports the operator's current decision.**
+- [x] **AC-3 — The gate input reports the operator's current decision.**
   Double-acceptance via real HTTP with the second stamped −5 ms *and* an
   exact-tie variant: `governed_case_facts` (`services/db/case_events.py:68-115`)
   reports the **last-inserted** acceptance's amount/vendor/reason (the
@@ -295,7 +303,7 @@ oracle goes RED.
   deterministic — a single assertion replaces the 20/40 coin flip.
   *Counterexample applied:* restoring `accepted_at.desc()` as the leading key
   makes the superseded row win the inversion fixture → RED.
-- [ ] **AC-4 — Month-end export under a lying clock** *(both halves locked —
+- [x] **AC-4 — Month-end export under a lying clock** *(both halves locked —
   SD-3(a) and SD-3(c) ratified s196)*: (a) two closeout
   keyings, second stamped −5 ms; the export/endpoint
   total reads the newest keying — *counterexample:* `entered_at.desc()`
@@ -305,13 +313,13 @@ oracle goes RED.
   last-write-wins over ascending `linked_at` restored → RED. Artifacts: forcing
   tests alongside `tests/api/test_closeout_endpoint.py` /
   `tests/services/db/test_repair_spend_export.py`.
-- [ ] **AC-5 — `load_run` returns execution order under a backward-stepping
+- [x] **AC-5 — `load_run` returns execution order under a backward-stepping
   clock.** Step results persisted through the real save path with a
   monkeypatched clock that steps backwards mid-run; `load_run` returns execution
   order; `suspended_step_result` behaviour unchanged. *Counterexample applied:*
   restoring `order_by(created_at, ...)` flips the order in this fixture → RED.
   This is the deferral's subject, discharged.
-- [ ] **AC-6 — Migration `0023` + backfill.** Alembic head is `0022`
+- [x] **AC-6 — Migration `0023` + backfill.** Alembic head is `0022`
   (`alembic/versions/0022_run_link_three_quote_basis.py`); the new migration is
   `0023`, **additive-only** (append-only tables may hold live dev/demo data — no
   rewrites of existing values, downgrade drops only the new columns). Upgrade on
@@ -327,7 +335,7 @@ oracle goes RED.
   test following the `tests/services/db/test_repair_case_evidence_migration.py`
   convention; `test_migration_orm_lockstep.py` and `test_schema_parity.py`
   green. *Run evidence:* nodes `PASSED`, not `SKIPPED`.
-- [ ] **AC-7 — The guard sees the disease's next instance (widened existing
+- [x] **AC-7 — The guard sees the disease's next instance (widened existing
   machinery, pinned to the measured baseline).** (i) *Pick shape:* the
   run-analytics guard's machinery (`_unwrap` / `_orders_by_wall_clock`,
   existing exemptions kept) widened per D4 to scope `services/` + the extended
@@ -346,7 +354,7 @@ oracle goes RED.
   `step_results` pattern does not satisfy this AC.** *Anti-vacuity oracle:* the
   pinning positives + the pinned 12-hit pre-fix baseline (precedent: both
   guards' `test_the_guard_fires_on_the_pattern_it_forbids`).
-- [ ] **AC-8 — Governance reconciled, honestly worded.** `docs/STATUS.md` §'Active TODOs'
+- [x] **AC-8 — Governance reconciled, honestly worded.** `docs/STATUS.md` §'Active TODOs'
   and the guard docstring's deferral section rewritten per §Governance below;
   classification is `superseded by new info` (CLAUDE.md §6), **not** "was an
   error" — the evidence-pack sites postdate the enumeration (PLAN-0096 Step 8,
@@ -355,14 +363,14 @@ oracle goes RED.
   stated honestly:* wording has no mechanical oracle; the proof is the PR diff
   plus Cray's ratification of the exact text. (Per the accelerator clause, the
   bold-first licence does NOT extend to this AC.)
-- [ ] **AC-9 — Offline gate at CI scope; skips surfaced.** Full `pytest tests/`,
+- [x] **AC-9 — Offline gate at CI scope; skips surfaced.** Full `pytest tests/`,
   `mypy --strict services/`, `ruff check` — green at CI scope, not the changed
   subset. Every DB-backed node named by AC-1…AC-6 shown `PASSED` against the
   real dev Postgres (Docker Desktop, host port 5442; a worktree has no `.env`,
   so DB env must be exported or the run made from a checkout that has one — a
   silent skip is a rejection condition). Evidence: pytest summary lines for the
   named nodes + a `-rs` skip report showing none of them among the skips.
-- [ ] **AC-10 — A reconstructed figure is distinguishable from a recorded one,
+- [x] **AC-10 — A reconstructed figure is distinguishable from a recorded one,
   end to end** *(the SD-2 ruling's req 1 + req 4)*. Migration applied over a
   legacy (pre-`0023`) acceptance fixture: `GET /accepted-quote` **and** the
   month-end export row for that case read `basis = 'reconstructed'`; a new
