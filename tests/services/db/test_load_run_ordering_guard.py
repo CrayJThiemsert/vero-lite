@@ -1,9 +1,10 @@
 """The ``load_run`` ordering invariant, enforced statically across the tree.
 
-``load_run`` orders step results by ``created_at`` — a WALL-CLOCK column. This box's
+``load_run`` orders step results by ``seq`` — a DB-assigned monotonic key (migration
+``0023``, PLAN-0099 D3). It ordered by ``created_at`` until then, and this box's
 ``datetime.now(UTC)`` was measured stepping BACKWARDS (2 backward steps per 20 s sample,
-worst -555 ms), so a later step can sort before an earlier one and ``step_results[-1]``
-then names a *completed* step rather than the one the run is suspended at.
+worst -555 ms), so a later step could sort before an earlier one and ``step_results[-1]``
+then named a *completed* step rather than the one the run is suspended at.
 
 #678 taught the production consumers (``resume_run``, ``GET /runs/{id}``) to select by
 STATUS via ``suspended_step_result``, but the DB tests kept reading by position — which
@@ -26,27 +27,44 @@ Scope + limits, stated honestly:
 * An in-memory ``RunResult`` is unaffected: the orchestrator appends ``step_results`` in
   execution order, so ``result.step_results[-1]`` is legitimate and is not scanned.
 
-Why this guards the hazard instead of removing it — the deferral, and why it STANDS:
+Why the rule is RETAINED now that the root fix has landed (SD-4, ratified s196):
 
-A monotonic per-run ``sequence`` column on ``step_results`` would remove this hazard at its
-ROOT rather than guard against it, and that remains the right fix. It needs a DB migration,
-so it deserves its own PLAN (PLAN-0062-independent) — none is drafted. Until one is,
-``load_run``'s wall-clock ``ORDER BY created_at`` is **unchanged by design**: the deferral
-STANDS, and this guard is what holds the line in the meantime.
+The deferral is DISCHARGED. PLAN-0099 added the monotonic ``seq`` column and re-keyed
+``load_run`` on it, so the ordering this guard was written to survive can no longer be
+scrambled by a clock. The rule stays anyway, for two reasons that have nothing to do
+with distrusting the new ordering:
 
-What makes the deferral tolerable rather than urgent is that both surviving wall-clock
-orderings are **DISPLAY-ONLY**. #678 moved the production consumers (``resume_run``,
-``GET /runs/{id}``) off list position and onto STATUS selection; what still sorts on a
-wall clock is:
+* **Selecting by STATUS expresses the intent; selecting by position only agrees with
+  it.** "The step this run is suspended at" is a statement about state. A positional
+  read means the same thing exactly as long as the ordering happens to cooperate, and
+  says nothing about what the caller wanted — so it is the weaker code even when it is
+  correct.
+* **Insurance through the migration window.** Existing rows were backfilled in the old
+  reader's order and new inserts take their key from the database; a deployment running
+  new code against an un-migrated schema, or a writer assigning ``seq`` explicitly,
+  would reintroduce exactly one instance of the hazard. The guard costs nothing and is
+  already written.
 
-* ``load_run`` itself — ``order_by(StepResult.created_at, ...)`` in
-  ``services/engine/procedures/persistence.py`` (the ordering this guard covers).
+What the wall clock used to cost, kept because it is the reason the rule exists: both
+surviving orderings were display-only, and the safety margin was that no correctness
+path read either. **That margin is what actually failed — not the trigger it was written
+with.** The enumeration was subsystem-scoped AND vocabulary-scoped, and correctness-path
+wall-clock dependence was later built where it could not see: cross-row timestamp
+COMPARISONS, which have no position to scan for, and latest-wins picks on
+differently-named stamp columns feeding the DOA gate. Measured at the fix boundary: the
+three-name vocabulary this guard was born with finds exactly the 2 sites the deferral
+enumerated (``load_run`` itself, now fixed, and the run list below); the nine-name
+vocabulary finds 12. Both scans now live in ``test_run_analytics_ordering_guard.py``,
+which owns the widened ``services/``-wide scan and its audited allowlist (PLAN-0099 D4 /
+AC-7).
+
+Still on the wall clock, KNOWINGLY, as a recorded decision rather than an oversight:
+
 * the run list — ``order_by(PipelineRun.started_at.desc())`` in
-  ``services/api/routers/runs.py`` (a newest-first read-only projection).
+  ``services/api/routers/runs.py``, a newest-first read-only projection, together with
+  its ``view-map.js`` ``CAP = 5`` truncating consumer.
 
-Both render rows a human reads; neither decides what a run does next. That is the whole
-of the deferral's safety margin — if a correctness path ever starts depending on either
-ordering, the sequence-column PLAN stops being optional.
+That renders rows a human reads and decides nothing about what a run does next.
 """
 
 from __future__ import annotations
