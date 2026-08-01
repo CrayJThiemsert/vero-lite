@@ -45,13 +45,19 @@ def compute_accepted_the_cheapest(
 ) -> bool | None:
     """Was the agreed quote the cheapest then on file? One rule, several readers.
 
-    A free function rather than only a property because three surfaces answer this
-    question — the evidence pack, the accepted-quote endpoint and the month-end export
-    — and the SD-2 ruling turns on there being exactly ONE stored fact behind the
-    figure, the boolean and the provenance marker. Three private copies of a one-line
-    comparison is how those surfaces would come to disagree about the same case, and a
-    disagreement between an endpoint and an export is the kind no reader can diagnose
-    from either output.
+    A free function rather than only a property because the accepted-quote endpoint
+    holds the raw acceptance row, not a pack: it passes the quote's amount and the
+    stored figure straight in, and could not reach the property below without building
+    an evidence pack it has no other use for. So two callers reach this directly — that
+    property and the endpoint — serving three read surfaces, because the month-end
+    export answers the question through ``EvidencePack.accepted_the_cheapest`` rather
+    than calling here itself.
+
+    What lives here is not the comparison but the THREE-VALUED rule around it. The SD-2
+    ruling turns on there being exactly ONE stored fact behind the figure, the boolean
+    and the provenance marker; private copies of that rule are how an endpoint and an
+    export would come to disagree about the same case, and such a disagreement is the
+    kind no reader can diagnose from either output.
 
     Three-valued: None means nothing has been accepted. That is a different answer
     from "no" and collapsing them would give the reassuring one.
