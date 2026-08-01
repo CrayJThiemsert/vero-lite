@@ -74,6 +74,13 @@ New-NetFirewallRule `
 - **Security boundary:** Ollama port is closed when laptop joins a "Public" network classification (café, airport, hotel WiFi). Reduced attack surface for the local LLM endpoint.
 - **Reproducibility:** Any new dev machine can be onboarded by adding one `/etc/hosts` line.
 - **PDPA-aligned:** All LLM traffic stays on-prem LAN; never traverses public internet.
+  > **Amended 2026-08-01 by [ADR-0035](0035-hosting-and-exposure-model.md) D1/D2 —
+  > re-affirmed and re-scoped, not retracted.** This claim holds for the **app↔LLM
+  > hop** and is preserved *by construction* under ADR-0035's exposure model (the app
+  > runs on the LAN; MS-S1 is never published, proxied, or tunneled). It was never a
+  > claim about **visitor** traffic: once a surface is published, visitor requests —
+  > including any text a visitor types — do traverse the public internet and a tunnel
+  > vendor's edge. That path is governed by ADR-0035 D1(3) and D6, not by this bullet.
 
 ### Negative
 - **Manual `/etc/hosts` maintenance:** Every WSL distro on every dev machine needs the entry. Mitigated by bootstrap script (`scripts/bootstrap.sh`) and documented in CLAUDE.md.
@@ -84,6 +91,12 @@ New-NetFirewallRule `
 ### Neutral
 - IPv6-first listening (`[::]:11434`) is intentional and correct; IPv4 connections work via dual-stack.
 - LAN trust model assumes the home/office network is reasonably secured (WPA2/WPA3, no untrusted devices). This is fine for Phase 1 but should be re-evaluated when first design partner deploys to a real clinic environment (ADR-NN, future).
+  > **The deferred re-evaluation was PERFORMED on 2026-08-01: the unnumbered `ADR-NN`
+  > is [ADR-0035](0035-hosting-and-exposure-model.md).** It was triggered earlier than
+  > this bullet anticipated — by publishing a demo beyond the LAN, rather than by a
+  > design-partner site deployment. ADR-0035 keeps this LAN trust model intact by never
+  > admitting an inbound path into the LAN at all (outbound-only tunnel, no published
+  > host ports); what it adds is a gate at the edge, in front of the published surface.
 
 ## Persistence Note: WSL2 `/etc/hosts` Regeneration
 
