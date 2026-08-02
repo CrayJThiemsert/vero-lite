@@ -12,12 +12,11 @@
 > here — **never inline the list into `settings.json` prompts** (rejected
 > alternative per ADR-013 D4 — drift risk between the two hook prompts).
 >
-> **What is *deterministic* vs *classifier-mediated*.** Three rows below
-> are enforced deterministically by Phase-1 hooks; they are listed here
-> for the classifier's belt-and-suspenders awareness but the hook is the
-> hard guarantee. The Phase-2 loop-detect (L1–L4) and classifier-mediated
-> governance rows (G1, G2, C1, C2) became live in PLAN-0008 Wave 1 + Step
-> 5 + Wave 2:
+> **What is *deterministic* vs *classifier-mediated*.** The rows below are
+> enforced deterministically by hooks; they are listed here for the
+> classifier's belt-and-suspenders awareness but the hook is the hard
+> guarantee. The Phase-2 loop-detect (L1–L4) and the classifier-mediated
+> governance rows became live in PLAN-0008 Wave 1 + Step 5 + Wave 2:
 >
 > - `git commit / push / merge` from non-Code session — enforced by
 >   `.claude/hooks/pretooluse_git_deny.py` (CLAUDE_TIER env marker; G5).
@@ -25,10 +24,27 @@
 >   by `.claude/hooks/posttooluse_validate_handoff.py` (H1).
 > - `Write|Edit` to `docs/research/` outside `private/` — enforced by
 >   `.claude/hooks/pretooluse_research_path_deny.py` (C4).
+> - **`Write|Edit` to an ADR whose `Status:` line says Accepted (G1), and
+>   `Write` of a not-yet-existing `docs/(adr|plans)/NNNN-*.md` (G2)** —
+>   enforced by `.claude/hooks/pretooluse_governance_gate_deny.py`
+>   (2026-08-01, session 201). The `plan-drafter` subagent is exempt
+>   (PLAN-0034 prong 2); there is no override for the main agent.
 >
-> Rows G3, G4, C3 remain **classifier-mediated** via the Sonnet pause/
-> proceed dispatch on `Stop` events; no deterministic hook covers them
-> (intentional — they require judgment the classifier supplies).
+> **Why G1/G2 moved off the classifier (measured, 2026-08-01).** The hook
+> payload carries the target's *path*, never its *content*, so no model can
+> evaluate G1's actual criterion — it can only infer from the path. Measured
+> on `gpt-oss:20b`: identical input at `temperature 0` returned `proceed` and
+> `pause` on consecutive calls, blank `message.content` on 3/12 runs (each a
+> fail-closed deny with no verdict behind it), `G1` cited against a routine
+> `services/api/routers/insights.py` edit, and `G1` cited against
+> `0014-WITHDRAWN.md`. A hook opens the file, so it is **better informed**
+> than any classifier here, not merely cheaper. Evidence:
+> `docs/research/private/2026-08-01-llm-placement-classifier-eval-and-palantir-aip-pattern.md`.
+>
+> Rows G3, G4, C3 remain **classifier-mediated** via the pause/proceed
+> dispatch on `Stop` events; no deterministic hook covers them (G4 and C3
+> require judgment; G3 is a path predicate that is a candidate for the same
+> treatment and has simply not been moved yet).
 
 > **Classifier backend (2026-06-12, Cray pick (b)):** the judgment calls below
 > are served by **local `gpt-oss:20b` on MS-S1 Ollama** by default (eval:

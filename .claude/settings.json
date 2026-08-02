@@ -25,6 +25,10 @@
           },
           {
             "type": "command",
+            "command": "python .claude/hooks/pretooluse_governance_gate_deny.py"
+          },
+          {
+            "type": "command",
             "command": "python .claude/hooks/pretooluse_loop_detect.py"
           },
           {
