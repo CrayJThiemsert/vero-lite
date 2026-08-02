@@ -104,6 +104,14 @@ with a corresponding entry in `.env.example` and (where applicable) the port all
 - The `${VAR:-default}` syntax is standard POSIX shell parameter expansion and is supported by `docker compose` v2 (which the project requires anyway).
 - This ADR does not specify which ports to use *in production*. Production port selection (Kubernetes services, cloud load balancers, etc.) is a separate concern, deferred to a future ADR when production deployment is on the roadmap.
 
+> **Amended 2026-08-02 by [ADR-0035](0035-hosting-and-exposure-model.md) D2 —
+> the deferred production-port ADR is ADR-0035, and its answer is dissolution.**
+> ADR-0035 D1(1) publishes production through an outbound-only tunnel whose
+> connector reaches each system's containers by name over that system's Docker
+> network, with no `ports:` keys at all — so the production-port question is not
+> answered, it stops existing: production selects no host ports. Port strategy
+> remains a *dev-compose* concern only, exactly where this ADR already governs it.
+
 ## Alternatives Considered
 
 ### Alternative 1: Hardcode different ports in `docker-compose.yml`

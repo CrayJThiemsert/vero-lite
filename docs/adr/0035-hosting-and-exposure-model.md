@@ -74,6 +74,16 @@ Cloudflare Tunnel + MS-S1 stack has been **running in production since ~2026-03 
 the same physical host**. Round 1's own residual — "the tunnel-vendor claims are
 training knowledge I could not verify" — was correct, and this is why.
 
+> **Amended 2026-08-02 — currency correction (Cray-ratified scope):** as of
+> 2026-08-02 the smb-flow tunnel **process is not running** on MS-S1 (Cray's
+> statement — a host-state fact this repo cannot verify; CLAUDE.md §8). The
+> sentence above was accurate when this ADR was drafted; read it now as a **track
+> record**: roughly five months of production operation on the same physical
+> host, plus a still-provisioned substrate — the P1 amendment beneath the
+> prior-art table carries the full re-dating. No decision in this ADR turns on
+> the process being live at the moment of reading, and the exposure PLAN
+> re-confirms every `[ext]` fact on first touch (D1(5)).
+
 Two source classes feed this revision, handled differently:
 
 - **On-disk in this repo, re-verified by the drafter at the cited paths** (marked
@@ -102,6 +112,29 @@ The prior-art facts this revision builds on:
 | P11 | The box currently runs `API_AUTH_ENABLED=false` (s172 `:277-278` `[disk]`), and `/warm` + `/sleep` are **`GET`** routes with side effects. Precision (re-verified): both DO carry `get_current_principal` (`admin.py:174-177`, `:222-223`) — the hazard is that `api_auth_enabled=false` renders the dependency inert (`auth.py:71-72`), at which point a browser prefetch of a `GET` link can unload the model mid-demo | `[disk]` |
 | P12 | **The A-before-B warning (s172):** the public instance's LLM posture was never settled because vero-lite must run a **deterministic arm and an LLM arm side by side**; doing the website first "forces you to guess the LLM posture with no model of 'an arm' to guess from, then revise." The D5 route allowlist is exactly that guess — ruled on explicitly in D5 | `[disk]` s172 `:294-302` |
 
+> **Amended 2026-08-02 — P1 currency correction (Cray-ratified scope; placed below
+> the table because an amendment cannot sit inside a row).** As of 2026-08-02 the
+> smb-flow tunnel **process is not running** on MS-S1 (Cray's statement — a
+> host-state fact this repo cannot verify; CLAUDE.md §8). Read P1's "has run in
+> production since ~2026-03" as a **track record** — roughly five months of
+> production operation up to this ADR's drafting — which stopping the process does
+> not un-prove. The durable substrate P1 lists remains provisioned: the Zero Trust
+> account, the domain on Cloudflare nameservers, and a known-working outbound-only
+> config, which Cray states a fresh vero-lite tunnel may reuse. Everything this ADR
+> builds on P1 stands (the D1(1) pattern evidence, the D3(5) substrate); only the
+> running-process reading is corrected — and D1(5)'s rule that the exposure PLAN
+> re-confirms `[ext]` facts on first touch already anticipated exactly this drift.
+
+> **Amended 2026-08-02 — P5 currency correction (Cray-ratified scope).** The
+> eviction **mechanism** — Ollama on that box is zero-sum; loading a second model
+> evicts the resident one — is a property of the host, unaffected by the tunnel
+> stopping. What is now **unverified either way** is whether `groomflow-unified`
+> is currently resident in Ollama on MS-S1: checking would touch MS-S1 (CLAUDE.md
+> §8 — not authorized), so this ADR asserts **no residency claim in either
+> direction**. The hazard model stands regardless — the neighboring stack can be
+> restarted and re-warmed at any time — and D5(3)'s pre-publication caps and
+> eviction-coexistence check remain required (see the D5(3) amendment).
+
 **Withdrawn, with lineage kept (CLAUDE.md §6 classification):** s172 also claimed
 ADR-0032 states `on-prem` at two irreconcilable scopes and that this ADR must
 adjudicate (s172 `:257-263`). s174's verified finding refuted it: MS-S1 *is* on-prem
@@ -122,6 +155,16 @@ never been asked is the **resource** question — *who is paying for this GPU cy
 and the prior art sharpens that question twice over: the GPU is not merely Cray's
 budget, it is **shared with another project's production model** (P5), and the host
 is not a dev box, it is **a machine already carrying production traffic** (P1/P9).
+
+> **Amended 2026-08-02 — currency correction (Cray-ratified scope):** "a machine
+> already carrying production traffic" is re-dated, not retracted — as of
+> 2026-08-02 the neighboring tunnel process is not running (Cray's statement; see
+> the P1 amendment above). The resource question this paragraph sharpens is
+> unchanged: the GPU is still shared with a neighbor whose stack can be restarted
+> and re-warmed at any time (its model's residency is unverified either way — the
+> P5 amendment), and the 24/7-server posture is a separate claim (P9 `[ext]`)
+> that the tunnel stopping neither proves nor refutes. The framing stands; only
+> the present tense is corrected.
 
 The genuinely new hard part after the re-scope (L9) is separation: what is
 **portal-level and permanent** (ingress, gate, subdomain convention, per-system
@@ -249,6 +292,20 @@ reopens this ADR):
    fact (P5's eviction hazard is the sharpest instance; D5 owns vero-lite's side of
    it).
 
+   > **Amended 2026-08-02 — currency correction (Cray-ratified scope):** two
+   > present-state phrases above are re-dated, not retracted. As of 2026-08-02 the
+   > smb-flow tunnel **process is not running** on MS-S1 (Cray's statement), so
+   > read "carries a production tunnel stack" as: carried one for roughly five
+   > months and retains the provisioned substrate — account, domain, known-working
+   > config (the P1 amendment, Context); and read "the host carries another
+   > project's production traffic" as a **standing co-tenancy property, not a
+   > moment-in-time claim** — the neighboring stack's assets remain on the host and
+   > it can be restarted at any time (whether its model is currently resident is
+   > unverified either way — the P5 amendment, Context). Nothing in this item
+   > changes: MS-S1 remains the serving host, the §8 gate and the do-no-harm duty
+   > stand, and this item's own rule — the exposure PLAN re-confirms `[ext]` facts
+   > on first touch — is the mechanism that absorbs exactly this drift.
+
 **Only properties PLAN-0095 actually demonstrated are claimed** for the vero-lite
 image (its OQ-2/OQ-3 evidence boundary): builds, boots DB-less in ~2 s, serves the
 demo, runs nonroot with a passing healthcheck, migrates in-image against a live
@@ -296,6 +353,15 @@ changes**, free — and the revision dispatch re-opened the comparison. Re-decid
    infrastructure first. On a host carrying another project's production traffic
    (D1(5)), keeping unauthenticated load off the box entirely is worth more than it
    was in round 1's one-app picture.
+
+   > **Amended 2026-08-02 — currency correction (rides with the D1(5) amendment):**
+   > "a host carrying another project's production traffic" is a standing
+   > co-tenancy property, not a moment-in-time claim — as of 2026-08-02 the
+   > neighboring tunnel process is not running, but its stack can return at any
+   > time (see the D1(5) amendment). The enforcement-point argument survives on
+   > grounds that do not depend on the neighbor being live right now: keeping
+   > unauthenticated load off the box also protects Cray's own compute and the
+   > demo's responsiveness. This ground's conclusion is unchanged.
 2. **No secret we mint.** There is no shared password to distribute, store, rotate,
    or leak — round 1's own top-listed negative ("a leak is invisible until the GPU
    bill says otherwise") is *eliminated* rather than mitigated. Revocation is
@@ -312,6 +378,15 @@ changes**, free — and the revision dispatch re-opened the comparison. Re-decid
    inherits the gate by adding a policy, not by inventing an auth story.
 5. **Substrate already in production** (P1 `[ext]`): the Zero Trust account and
    Cloudflare-managed domain exist; the marginal setup is a policy, not a stack.
+
+   > **Amended 2026-08-02 — currency note (Cray-ratified scope; deliberately
+   > lighter than its siblings):** the body of this ground is about the
+   > **substrate**, and that claim stands — the Zero Trust account and the
+   > Cloudflare-managed domain remain provisioned (P1 amendment, Context). Only
+   > the heading's "already in production" framing is re-dated: as of 2026-08-02
+   > the tunnel process that used this substrate is not running (Cray's
+   > statement). The ground's force is unchanged — the marginal setup being "a
+   > policy, not a stack" never depended on the neighbor's process being live.
 
 Costs, stated honestly: a one-time-PIN fetch adds friction to first entry (for a
 hand-picked demo audience, acceptable — arguably a professionalism signal); visitor
@@ -374,6 +449,21 @@ layers (all config, zero app code, per L1):
    itself — PLAN-0093). The exposure PLAN's live evidence must include an
    **eviction-coexistence check** (observe the neighboring model's residency during
    a vero-lite LLM call — Cray-gated, §8).
+
+   > **Amended 2026-08-02 — currency correction (Cray-ratified scope): the premise
+   > is re-grounded; the requirement is unchanged.** "The exposure victim is a
+   > *third party's production system*" was written while the neighboring tunnel
+   > stack was running; as of 2026-08-02 that process is stopped, and whether
+   > `groomflow-unified` is currently resident in Ollama is **unverified either
+   > way** (checking touches MS-S1 — CLAUDE.md §8, not authorized; see the P5
+   > amendment, Context). The caps remain a **pre-publication requirement** on
+   > grounds independent of the neighbor being live right now: (i) a shared link, a
+   > prefetching browser, or a crawler acquiring the URL; (ii) the caps also
+   > protect Cray's own compute and the demo's responsiveness; (iii) the neighbor
+   > can be restarted at any time — a cap that must be added back later is a cap
+   > that should never have been removed. The **eviction-coexistence check**
+   > (Cray-gated, §8) remains required — it is precisely the step that converts the
+   > unverified residency into live evidence.
 4. **An edge-compatible LLM timeout profile (P4).** Defaults verified on disk:
    `llm_request_timeout_s=120.0` × `llm_retry_budget=3` (`config.py:106-118`) — a
    worst case of minutes, far beyond the tunnel edge's fixed proxy read ceiling
@@ -717,6 +807,16 @@ the recommendation stated, and each is now binding. **OQ-4 stays open by design.
   members, not demo guests) — and ADR-002's Alternative 3 already deferred
   Tailscale once. Both lose to a pattern already running in production on the
   target host for five months (P1 `[ext]`).
+
+> **Amended 2026-08-02 — currency correction (Cray-ratified scope):** as of
+> 2026-08-02 the smb-flow tunnel process is not running (see the P1 amendment,
+> Context), so read "already running in production … for five months" as a
+> **track record**: roughly five months of production operation on the target
+> host, plus a still-provisioned substrate (Zero Trust account, domain,
+> known-working config). Stopping the process does not un-prove the pattern, and
+> neither competitor gains ground from it: ngrok still has no production track
+> record on this host, and Funnel still publishes with no visitor gate. The
+> rejection stands.
 
 ## References
 
