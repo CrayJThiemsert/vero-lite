@@ -1,7 +1,7 @@
 """Tests for ``.claude/hooks/pretooluse_governance_gate_deny.py``.
 
 The deterministic G1 + G2 gate. Every status shape asserted here was measured
-against the 35 committed ADRs on 2026-08-01 (session 201) — the emphasis
+against the 35 committed ADRs on 2026-08-02 (session 201) — the emphasis
 variant and the template's option-menu are real files, not imagined edge cases.
 
 Two kinds of test live here on purpose:

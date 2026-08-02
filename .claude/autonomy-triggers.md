@@ -27,10 +27,10 @@
 > - **`Write|Edit` to an ADR whose `Status:` line says Accepted (G1), and
 >   `Write` of a not-yet-existing `docs/(adr|plans)/NNNN-*.md` (G2)** —
 >   enforced by `.claude/hooks/pretooluse_governance_gate_deny.py`
->   (2026-08-01, session 201). The `plan-drafter` subagent is exempt
+>   (2026-08-02, session 201). The `plan-drafter` subagent is exempt
 >   (PLAN-0034 prong 2); there is no override for the main agent.
 >
-> **Why G1/G2 moved off the classifier (measured, 2026-08-01).** The hook
+> **Why G1/G2 moved off the classifier (measured, 2026-08-02).** The hook
 > payload carries the target's *path*, never its *content*, so no model can
 > evaluate G1's actual criterion — it can only infer from the path. Measured
 > on `gpt-oss:20b`: identical input at `temperature 0` returned `proceed` and
@@ -39,7 +39,7 @@
 > `services/api/routers/insights.py` edit, and `G1` cited against
 > `0014-WITHDRAWN.md`. A hook opens the file, so it is **better informed**
 > than any classifier here, not merely cheaper. Evidence:
-> `docs/research/private/2026-08-01-llm-placement-classifier-eval-and-palantir-aip-pattern.md`.
+> `docs/research/private/2026-08-02-llm-placement-classifier-eval-and-palantir-aip-pattern.md`.
 >
 > Rows G3, G4, C3 remain **classifier-mediated** via the pause/proceed
 > dispatch on `Stop` events; no deterministic hook covers them (G4 and C3

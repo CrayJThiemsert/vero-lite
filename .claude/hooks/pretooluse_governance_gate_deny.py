@@ -9,8 +9,8 @@ criteria are pure predicates:
 * **G2** — "Consume / earmark an ADR or PLAN number". Decided by the target
   path matching ``docs/(adr|plans)/NNNN-*.md`` and **not yet existing**.
 
-Why deterministic (session 201, 2026-08-01 — measured, see
-``docs/research/private/2026-08-01-llm-placement-classifier-eval-and-palantir-aip-pattern.md``):
+Why deterministic (session 201, 2026-08-02 — measured, see
+``docs/research/private/2026-08-02-llm-placement-classifier-eval-and-palantir-aip-pattern.md``):
 
 The classifier payload carries the target's *path*, never its *content*, so no
 model of any size can evaluate G1's actual criterion — it can only infer from
