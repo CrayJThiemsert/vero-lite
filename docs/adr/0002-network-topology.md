@@ -128,6 +128,15 @@ Then `wsl --shutdown` from PowerShell host and re-open WSL.
 - **Cons:** Third-party dependency; additional auth surface; overkill for local dev
 - **Why rejected:** Premature for Phase 1. Will be reconsidered when remote development or design partner site connectivity becomes a need (likely ADR-NN, month 4+).
 
+> **Amended 2026-08-02 by [ADR-0035](0035-hosting-and-exposure-model.md) D2 —
+> the deferred reconsideration has occurred.** The `ADR-NN, month 4+` this
+> bullet pointed at is ADR-0035: the reconsideration happened in its
+> D3/Alternatives — remote exposure is decided there as an outbound-only tunnel
+> with a vendor-edge gate (ADR-0035 D1/D3), and Tailscale specifically was
+> re-examined and rejected in ADR-0035 Alternative 11 (Funnel publishes with no
+> visitor gate; its access model targets tailnet members, not demo guests).
+> This bullet's dev-LAN rejection stands unchanged.
+
 ### Alternative 4: Open firewall port to Public profile too
 - **Pros:** Works on any network without thinking
 - **Cons:** Massive security hole — exposes LLM to anyone on café WiFi who can scan port 11434
