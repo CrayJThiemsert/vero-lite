@@ -9,6 +9,9 @@ status + content-type, not shell exit codes).
 
 from __future__ import annotations
 
+import re
+from pathlib import Path
+
 from httpx import AsyncClient
 
 
@@ -56,3 +59,80 @@ async def test_unknown_path_is_404_not_500(client: AsyncClient) -> None:
     """An unknown path falls through the static mount to a clean 404."""
     response = await client.get("/no-such-asset.js")
     assert response.status_code == 404
+
+
+# --- header geometry census (session 202) -----------------------------------
+#
+# The nav bar overflowed because `theme.css`'s responsive ladder was written for
+# a five-tab header ("A-E nav", its own comment) while `app.js` grew to ten
+# registered views. Nothing connected the two, so each added tab silently ate
+# headroom until the header ran 443px past the viewport (s197: scrollWidth 1825
+# vs clientWidth 1382).
+#
+# The fix re-measured the ladder against the real census. This pins the census
+# the measurement was taken against, so the NEXT added tab reddens a test
+# instead of silently re-breaking the bar. It is deliberately a set-equality
+# assertion, not a count: swapping one tab for another still changes what was
+# measured.
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+ASSETS = REPO_ROOT / "services" / "api" / "static" / "assets"
+
+#: The tab census `theme.css`'s breakpoints were measured against (2026-08-03).
+#: Changing this set REQUIRES re-running the geometry measurement and updating
+#: the breakpoint block in theme.css — see its comment for the recorded numbers.
+MEASURED_TAB_CENSUS = frozenset("ABCDEFGHIJ")
+
+
+def _registered_view_keys() -> frozenset[str]:
+    """The view keys `app.js` actually registers, read from source."""
+    source = (ASSETS / "app.js").read_text(encoding="utf-8")
+    start = source.index("const VIEWS = {")
+    # The block ends at the first line that closes it at column 2 ("  };").
+    end = source.index("\n  };", start)
+    return frozenset(re.findall(r"key:\s*'([A-Z])'", source[start:end]))
+
+
+def test_tab_census_matches_the_measured_header_ladder() -> None:
+    """The registered tabs must equal the census the CSS ladder was measured for.
+
+    Fails loudly on an added, removed, or renamed tab — the exact drift that
+    produced the overflow, and which no existing test could see.
+    """
+    registered = _registered_view_keys()
+    assert registered == MEASURED_TAB_CENSUS, (
+        f"app.js registers {sorted(registered)} but theme.css's responsive "
+        f"ladder was measured against {sorted(MEASURED_TAB_CENSUS)}. Re-run the "
+        f"header geometry measurement at 1280/1366/1440/1680/1920, update the "
+        f"breakpoint block in theme.css (and its recorded numbers), then update "
+        f"MEASURED_TAB_CENSUS. Do not just widen this set."
+    )
+
+
+def test_header_ladder_collapses_inactive_tab_labels_by_default() -> None:
+    """The inactive-label collapse must stay a default, not a small-screen rung.
+
+    Measured at ten tabs: the full-label header needs 2253px, so it fits no
+    ordinary desktop (1920 overflowed by 95px, 1440 by 411px). The collapse
+    therefore fires below 2300px rather than the original 1360px. If someone
+    restores a narrow breakpoint, the bar silently overflows again at 1440 —
+    which is the single most common demo width.
+    """
+    css = (ASSETS / "theme.css").read_text(encoding="utf-8")
+    match = re.search(
+        r"@media \(max-width: (\d+)px\) \{[^}]*\.tab:not\(\.active\)[^}]*"
+        r"span:not\(\.key\):not\(\.badge-dot\)[^}]*display:\s*none",
+        css,
+        re.DOTALL,
+    )
+    assert match is not None, (
+        "theme.css no longer collapses inactive tab labels at any breakpoint — "
+        "with ten tabs the header cannot fit without it."
+    )
+    breakpoint_px = int(match.group(1))
+    assert breakpoint_px >= 2253, (
+        f"the inactive-tab-label collapse fires at max-width {breakpoint_px}px, "
+        f"but the measured full-label header width is 2253px. Between those two "
+        f"widths every tab renders its label and the bar overflows (measured: "
+        f"411px at 1440, 95px at 1920)."
+    )

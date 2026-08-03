@@ -186,16 +186,35 @@ body { overflow: hidden; }
    right edge. The vertical-context chips give way first (see .meta-chips). */
 .header .right { display: flex; align-items: center; gap: 4px; padding-right: 12px; flex: 0 0 auto; }
 
-/* The header is dense (brand + A–E nav + the always-on VERTICAL identity chip +
-   MS-S1 status). Two things are protected at EVERY width: the VERTICAL chip
+/* The header is dense (brand + the A–J nav + the always-on VERTICAL identity chip
+   + MS-S1 status). Two things are protected at EVERY width: the VERTICAL chip
    (multiple verticals run side-by-side on different ports — it must always be
    clear which one this window is) and the MS-S1 status (it gates NL query +
    Build-a-Vertical during a live demo). Below the widths where everything fits,
    shed by IMPORTANCE: drop the redundant NS / version chips + the brand subtitle
-   + the Refresh label; then collapse the NON-active tab labels to their A–E keys
+   + the Refresh label; then collapse the NON-active tab labels to their A–J keys
    (the active screen keeps its label); then — only on very small screens — the
    active label too. The VERTICAL chip is the give-zone of last resort
-   (min-width:0; overflow:hidden on .meta-chips) so the MS-S1 status never clips. */
+   (min-width:0; overflow:hidden on .meta-chips) so the MS-S1 status never clips.
+
+   BREAKPOINTS ARE MEASURED, NOT ESTIMATED (2026-08-03, ten registered views).
+   The ladder below was originally written for a FIVE-tab header; `app.js` now
+   registers ten (A–J), and the rungs were never re-measured — which is the whole
+   defect (s197: scrollWidth 1825 vs clientWidth 1382, all 24 overflowing elements
+   in this bar). Measured on the real page at ten tabs:
+
+     · natural header width, every label + every chip .......... 2253px
+     · 2560 viewport ........................ fits, overflow 0
+     · 1920 viewport ........................ overflow  95px
+     · 1440 viewport ........................ overflow 411px  <- the old rung gap
+     · tab strip: full labels 1369px -> keys 478px (recovers ~890px)
+
+   So the full-label layout does not fit any ordinary desktop, and collapsing the
+   inactive labels is the DEFAULT rather than a small-screen concession. Full
+   labels return only above 2300px, where they were measured to fit with margin.
+   The tab census is pinned by a set-equality tripwire in
+   tests/api/test_static_ui.py — adding a tab K reddens it and forces a
+   re-measurement rather than silently re-breaking this bar. */
 @media (max-width: 1499px) {
   .header .meta-chips .chip.mono { display: none; }          /* keep VERTICAL; drop NS + version */
   .brand .wordmark span { display: none; }                   /* brand → "OCT" (drop the subtitle) */
@@ -203,7 +222,7 @@ body { overflow: hidden; }
   #globalRefresh svg { width: 14px; height: 14px; }
   .tab { padding: 0 11px; }
 }
-@media (max-width: 1360px) {
+@media (max-width: 2299px) {
   .tab:not(.active) > span:not(.key):not(.badge-dot) { display: none; }  /* inactive tabs → keys */
   .tab:not(.active) { padding: 0 10px; gap: 0; }
 }
