@@ -146,3 +146,50 @@ def test_pretooluse_loop_detect_gate_is_retained() -> None:
         f"pretooluse_loop_detect lost a PreToolUse registration; got "
         f"{sorted(map(str, matchers))}"
     )
+
+
+def test_governance_gate_deny_is_registered_for_write_and_edit() -> None:
+    """G1/G2 are enforced by a hook, so the REGISTRATION is the enforcement.
+
+    The module docstring's failure mode applied to a gate rather than a
+    handler: a deny hook that is never invoked denies nothing, and every test
+    of its ``evaluate()`` would still pass. Pin the route.
+    """
+    matchers = {
+        entry.get("matcher")
+        for entry in _entries_invoking("PreToolUse", "pretooluse_governance_gate_deny.py")
+    }
+    assert "Write|Edit" in {str(m) for m in matchers}, (
+        f"the deterministic G1/G2 gate lost its PreToolUse registration — "
+        f"Accepted ADRs and fresh ADR/PLAN numbers are now ungated; got "
+        f"{sorted(map(str, matchers))}"
+    )
+
+
+def test_classifier_dispatch_is_not_re_registered_on_pretooluse() -> None:
+    """The classifier's PreToolUse arm was retired (session 202) — keep it out.
+
+    ``pretooluse_classifier_dispatch.py`` detected exactly one thing: the
+    G1/G2 signature. Once ``pretooluse_governance_gate_deny.py`` decided those
+    two rows by reading the file, the arm became a redundant model call on
+    every governance ``Write``/``Edit`` — and it was decided by
+    ``gpt-oss:20b``, measured at self-consistency 0/4 at ``temperature 0`` with
+    blank output on 3/12 runs.
+
+    It was also **broader than its own spec**: it paused Accepted PLANs, which
+    neither the registry's G1 row nor ``CLAUDE.md`` §6 ever claimed (both say
+    ADR). See ``test_g1_does_not_fire_on_an_accepted_plan``.
+
+    The script and its unit tests are deliberately kept on disk — this is an
+    unwiring, not a deletion, so it is cheap to reverse. That is exactly why
+    the registration needs a test: nothing else would notice it coming back,
+    and re-wiring it would silently restore a non-deterministic model call to
+    the governance hot path.
+    """
+    entries = _entries_invoking("PreToolUse", "pretooluse_classifier_dispatch.py")
+    assert not entries, (
+        "pretooluse_classifier_dispatch.py is registered on PreToolUse again. "
+        "It is redundant with the deterministic G1/G2 gate and re-introduces a "
+        "non-deterministic model call. If this is intentional, retire this test "
+        "with the reasoning, do not just delete the assertion."
+    )
