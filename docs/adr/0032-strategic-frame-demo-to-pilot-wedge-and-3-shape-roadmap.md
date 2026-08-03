@@ -44,7 +44,7 @@ session start, an ADR is the one artifact class that makes a strategic frame
 first-class and session-visible. ADR-005 (the vet→OCT pivot) is the standing
 precedent that strategy of this magnitude is ADR material.
 
-### Where vero-lite stands (grounded 2026-07-16; re-grounded 2026-07-22)
+### Where vero-lite stands (grounded 2026-07-16; re-grounded 2026-07-22, 2026-08-03)
 
 _[Re-grounded 2026-07-22 (session 160): this subsection is a STATE snapshot,
 not a decision record — it is corrected in place when the world moves; the
@@ -54,15 +54,35 @@ snapshot, which pre-dated PLAN-0081 (the building_materials governed-credit
 hero), PLAN-0086 (the sixth vertical, fleet_maintenance), and PLAN-0087 (the
 declared-criterion-vocabulary gate seam).]_
 
-- **Shape 1 is shipped.** The governed `monitor→decide→approve→act` engine
-  runs across **six** synthetic verticals, every one shipping a
-  `procedures.yaml` — electrical grid (energy), cold-chain (supply_chain),
-  aquaculture biology, money (procurement + its bespoke governed hero),
-  building_materials (entered as a Tier-1 Mirror, ADR-0015 D2, #765; its
-  governed-credit hero `governed_credit_release` is now **built**,
-  PLAN-0081), and fleet_maintenance (a timed manual scaffold from a customer
-  narrative, PLAN-0086; its hero is `governed_repair_approval`). energy and
-  aquaculture ship procedures but no `rule_gate`.
+_[Re-grounded 2026-08-03 (session 202): this pass supersedes the 2026-07-22
+snapshot, which pre-dated the fleet PM calm path and its scheduled variant
+(PLAN-0089, PLAN-0090), the fleet Phase-1 flow completion (PLAN-0096), the
+fleet View G governed-repair hero surface (PLAN-0098), and the session-197
+ruling (Cray, typed) that D2's pilot gate is SATISFIED — the fleet design
+partner's Phase-1 flow is a real pilot. Same charter as the 2026-07-22 note:
+state only — the D1–D6 decisions, the pilot gate, the positioning frame, and
+the fit filter are untouched by this pass.]_
+
+- **Shape 1 is shipped — and the estate is no longer purely synthetic.**
+  The governed `monitor→decide→approve→act` engine runs across **six**
+  verticals, every one shipping a `procedures.yaml` — electrical grid
+  (energy), cold-chain (supply_chain), aquaculture biology, money
+  (procurement + its bespoke governed hero), building_materials (entered as
+  a Tier-1 Mirror, ADR-0015 D2, #765; its governed-credit hero
+  `governed_credit_release` is now **built**, PLAN-0081), and
+  fleet_maintenance. Five of the six remain synthetic;
+  **fleet_maintenance is the design partner's real Phase-1 pilot** (D2's
+  pilot gate ruled SATISFIED — Cray, typed, session 197). Fleet entered as
+  a timed manual scaffold from a customer narrative (PLAN-0086; its hero is
+  `governed_repair_approval`), then grew the PM calm path and its scheduled
+  variant (PLAN-0089, PLAN-0090) and the Phase-1 Lean KPI-first flow —
+  real-use evaluation shape, every input by human-initiated capture or CSV
+  export + human confirm: case capture, the quote evidence pack, LINE
+  notify, the month-end traceability export, measured-then-confirmed PM
+  import, all bound to the partner's 1-KPI charter (% of repair spend
+  fully traceable; PLAN-0096) — plus the View G governed-repair hero
+  surface (PLAN-0098). energy and aquaculture ship procedures but no
+  `rule_gate`.
 - **AT-2 state (fact-critical — a stale version of this cost a PR, #767, and
   the 2026-07-16 snapshot of this very bullet went stale the same way):**
   AT-2 is **N=4** — procurement (`emergency_sourcing_round` + its
@@ -89,12 +109,18 @@ declared-criterion-vocabulary gate seam).]_
   a fifth signature); the grounding comment is the Rule-of-Three caveat
   comment in `services/engine/procedures/spec.py` (symbolic anchors on
   purpose — the 2026-07-16 line-number anchor rotted).
-- **Partner-facing capability is further along than older gap-docs said:**
-  NL-query is built (`services/api/routers/query.py`,
-  `services/engine/nl_query.py`) and a real per-vertical CSV adapter exists
-  (`verticals/procurement/data_adapter/fastenal_csv.py`). The genuine gap is
-  the dbt/SQLMesh auto-canonicalization layer — a funded Phase-2
-  deliverable, never a pilot precondition.
+- **Partner-facing capability:** NL-query is built
+  (`services/api/routers/query.py`, `services/engine/nl_query.py`), and
+  real per-vertical ingest/export surfaces exist — procurement's CSV
+  adapter (`verticals/procurement/data_adapter/fastenal_csv.py`) and the
+  fleet pilot's pair, the measured-then-confirmed PM import
+  (`services/db/pm_import.py`) and the month-end repair-spend export
+  (`services/db/repair_spend_export.py`), both PLAN-0096. The genuine gap
+  is still the dbt/SQLMesh auto-canonicalization layer — a funded Phase-2
+  deliverable, and its 2026-07-16 framing ("never a pilot precondition")
+  is now **borne out**, not predicted: the fleet pilot reached D2's gate
+  on CSV export + human confirm, with no canonicalization layer built
+  (PLAN-0096's Lean KPI-first shape).
 
 ### Public-repo boundary
 
