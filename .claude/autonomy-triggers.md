@@ -64,11 +64,31 @@ the matching event type fires) or surface via handoff, and wait.
 
 | # | Trigger | Phase 1 enforcement | Phase 2 + 3 enforcement |
 |---|---------|---------------------|---------------------|
-| G1 | Mutate any ADR with `Status: Accepted` | Advisory (agent judgment) | **Live** — `_sonnet_classifier.py` (Sonnet @ `Stop` via `stop_continuation.py`; **also @ `PreToolUse`** via `pretooluse_classifier_dispatch.py` per PLAN-0009 Step 5c-2) |
-| G2 | Consume / earmark an ADR or PLAN number | Advisory | **Live** — `_sonnet_classifier.py` (Stop + **PreToolUse** per Step 5c-2) |
+| G1 | Mutate any ADR with `Status: Accepted` | Advisory (agent judgment) | **Deterministic** — `pretooluse_governance_gate_deny.py` @ `PreToolUse` reads the target's `**Status:**` line (2026-08-03, session 202). `_sonnet_classifier.py` still evaluates this row @ `Stop`; its **PreToolUse arm was retired** — see the note below the table |
+| G2 | Consume / earmark an ADR or PLAN number | Advisory | **Deterministic** — `pretooluse_governance_gate_deny.py` @ `PreToolUse` matches a not-yet-existing `docs/(adr\|plans)/NNNN-*.md`. `_sonnet_classifier.py` still evaluates this row @ `Stop`; PreToolUse arm retired as above |
 | G3 | Read / touch `docs/strategy/private/**` | Advisory + gitignored at FS layer | **Live** — `_sonnet_classifier.py` (Stop only — no Pre-tool signature) |
 | G4 | Scope override past ratified tier boundaries (Tier 0/1/1b/2 per ADR-009) | Advisory | **Live** — `_sonnet_classifier.py` (Stop only) |
 | G5 | `git commit` / `git push` / `git merge` | **Deterministic** (`pretooluse_git_deny.py`, ADR-009 D2 / ADR-013 D2) | Deterministic + classifier mirror (composed identity gate per PLAN-0009 Step 5a) |
+
+> **G1/G2 PreToolUse arm retired (2026-08-03, session 202).**
+> `pretooluse_classifier_dispatch.py` is **no longer registered** in
+> `.claude/settings.json`. It detected exactly one thing — the G1/G2 signature —
+> so once `pretooluse_governance_gate_deny.py` decided both rows by *reading the
+> file*, the arm was a redundant model call on every governance `Write`/`Edit`,
+> answered by a backend measured at self-consistency **0/4** at `temperature 0`
+> with blank output on **3/12** runs (session 201).
+>
+> It was also **broader than this table's own G1 row**: its path regex matched
+> `docs/(adr|plans)/NNNN-*.md`, so it paused Accepted **PLANs** — which neither
+> the G1 row above nor `CLAUDE.md` §6 ever claimed (both say *ADR*). Retiring it
+> removed that over-reach; G1's specified ADR-only scope is unchanged and is now
+> pinned by `test_g1_does_not_fire_on_an_accepted_plan`.
+>
+> The script and its unit tests remain on disk — this is an unwiring, not a
+> deletion, so it is cheap to reverse. The registration itself is pinned by
+> `test_classifier_dispatch_is_not_re_registered_on_pretooluse`, because this
+> file is fed **verbatim** into the classifier's system prompt: a stale row here
+> actively tells the model to claim a row it no longer owns.
 
 ### Config / dependency / wording boundaries — from Chat additions
 

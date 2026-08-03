@@ -159,6 +159,43 @@ def test_g2_silent_for_unnumbered_doc(tmp_path: Path) -> None:
     assert gate.evaluate(_payload("docs/plans/README.md", tool="Write"), repo_root=tmp_path) is None
 
 
+def test_g1_does_not_fire_on_an_accepted_plan(tmp_path: Path) -> None:
+    """G1 is scoped to ADRs **by design** — an Accepted PLAN is not gated.
+
+    This pins a deliberate scope decision, not an oversight, so record why.
+
+    G1 is specified as ADR-only in both governing sources: the registry row
+    reads "Mutate any **ADR** with ``Status: Accepted``"
+    (``.claude/autonomy-triggers.md``), and ``CLAUDE.md`` §6 says "(or editing
+    an Accepted **ADR**)". This gate implements exactly that — its G1 branch
+    tests ``rel.startswith("docs/adr/")``.
+
+    The retired ``pretooluse_classifier_dispatch.py`` arm was **broader** than
+    either source: its ``_GOVERNANCE_PATH_RE`` matched
+    ``docs/(adr|plans)/NNNN-*.md``, so it paused Accepted PLANs too — an
+    over-reach no registry row ever claimed, and the source of the recorded
+    friction where a PLAN flipped to Accepted could no longer have its own
+    closeout edited. Unwiring that arm (session 202) removed the over-reach and
+    left the specified scope intact.
+
+    So this assertion is the *complement* of ``test_g2_silent_for_existing_plan``
+    above, whose docstring deferred the Accepted case to "a different row's
+    business". There is no longer a different row. If G1 should cover PLANs, the
+    registry row and CLAUDE.md change first, then this test.
+    """
+    _write(
+        tmp_path,
+        "docs/plans/0099-live.md",
+        "# PLAN\n\n**Status:** Accepted — ratified by Cray\n",
+    )
+    assert gate.evaluate(_payload("docs/plans/0099-live.md"), repo_root=tmp_path) is None
+    # ...while the same status on an ADR *is* gated — the scope line is the
+    # directory, and this half fails if that line ever silently moves.
+    _write(tmp_path, "docs/adr/0099-live.md", "# ADR\n\n**Status:** Accepted — ratified by Cray\n")
+    reason = gate.evaluate(_payload("docs/adr/0099-live.md"), repo_root=tmp_path)
+    assert reason is not None and "G1" in reason
+
+
 # --- exemption + protocol ---------------------------------------------------
 
 
