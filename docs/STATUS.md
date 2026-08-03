@@ -1,12 +1,12 @@
 ---
 last_updated: 2026-08-03T12:41:00+07:00
 session: 202
-current_batch: "s202 — six PRs merged (#1013–#1018): G1/G2 now deterministic, ADR-0035 D2 amendments complete, ADR-0032 Context re-ground, PLAN-0100 drafted, OCT nav-bar overflow fixed for the dev profile."
+current_batch: "s202 — seven PRs merged (#1013–#1018, #1020): G1/G2 now deterministic, ADR-0035 D2 amendments complete, ADR-0032 Context re-ground, PLAN-0100 drafted, nav-bar overflow fixed for the dev profile, CLAUDE.md §3 names the runtime procedure spine."
 current_actor: code
 blocked_on: "Nothing blocks Code. PLAN-0100 execution is gated on Cray ruling SD-1..SD-5."
 next_action: "Cray rules PLAN-0100's SD-1..SD-5 (SD-1 = published DB posture, load-bearing) before execution starts. Undrafted: the ADR-0035 D7 tenant-key PLAN — no ordering mandated between the two."
-head_commit: ef2c898
-recent_commits: [ef2c898, 54dfc7d, 4b9c77f, 1e3275c, 8bdefe3, 0c48531, 0856fd4, d7d0f5c, 3f4bd8a, bfcf8db]
+head_commit: 40d65d9
+recent_commits: [40d65d9, ff0fcb2, ef2c898, 54dfc7d, 4b9c77f, 1e3275c, 8bdefe3, 0c48531, 0856fd4, d7d0f5c]
 ---
 
 # vero-lite — Project Status
@@ -18,9 +18,10 @@ recent_commits: [ef2c898, 54dfc7d, 4b9c77f, 1e3275c, 8bdefe3, 0c48531, 0856fd4, 
 
 ## Current Focus
 
-> **Session 202, 2026-08-03 (head_commit `6a3f2d7` → `ef2c898`) — six PRs merged
-> (#1013–#1018), 0 open. The theme: a governance gate stops asking a
-> non-deterministic oracle, and ADR-0035's follow-on work opens.**
+> **Session 202, 2026-08-03 (head_commit `6a3f2d7` → `40d65d9`) — seven PRs merged
+> (#1013–#1018, #1020); this reconcile is the one still open. The theme: a
+> governance gate stops asking a non-deterministic oracle, and ADR-0035's
+> follow-on work opens.**
 >
 > **#1013 / #1016 — G1/G2 are now DETERMINISTIC.**
 > `.claude/hooks/pretooluse_governance_gate_deny.py` reads the target's own
@@ -55,6 +56,16 @@ recent_commits: [ef2c898, 54dfc7d, 4b9c77f, 1e3275c, 8bdefe3, 0c48531, 0856fd4, 
 > `max-width:1360px` → `2299px`. Verified **0 overflow** at
 > 1280/1366/1440/1680/1920/2400. Two tripwires, both probe-proven RED. The
 > published-profile half stays open as PLAN-0100 AC-3.
+>
+> **#1020 — `CLAUDE.md` §3 rewritten: the runtime procedure spine is named as the
+> primitive.** §3 called the ontology + code generator "the moat" and never
+> mentioned `procedures.yaml` being interpreted at load; it now leads with
+> ADR-0032 D6's `monitor→decide→approve→act` identity. Codegen is **rescoped, not
+> denied** — only `energy`/`core` emit committed code. Cowork drafted (§6
+> convention) and returned **four corrections to Code's fact-pack**, all confirmed
+> before applying. `docs/conventions/glossary.md` carried the same stale framing
+> and was corrected with it. **The "SME wording in §1" half is struck** — see the
+> Active TODO; it has no referent.
 >
 > CI `gate` pass ×6. Offline at the last PR: `ruff` clean over `services/` +
 > `tests/`, `mypy --strict` clean over 130 files, suite **3411 passed / 370
