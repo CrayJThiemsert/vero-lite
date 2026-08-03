@@ -20,7 +20,7 @@
 - **Founder:** Jirachai Thiemsert (solo developer, GitHub: `CrayJThiemsert`)
 - **License:** Apache 2.0
 - **Repository:** https://github.com/CrayJThiemsert/vero-lite (Public)
-- **Strategy:** Build the moat first (YAML ontology + code generator + 3 OCT features = vertical plugin architecture per ADR-006) → 2 enterprise design partners → revenue. Template-first multi-vertical (Rule of Three; abstraction extracted only after 3 working verticals).
+- **Strategy:** Build the moat first (YAML ontology + runtime procedure spine + 3 OCT features = vertical plugin architecture per ADR-006) → 2 enterprise design partners → revenue. Template-first multi-vertical (Rule of Three; abstraction extracted only after 3 working verticals).
 
 ### Precedence (when sources conflict)
 
@@ -46,11 +46,24 @@ If a tier instruction conflicts with an accepted ADR, the tier instruction is st
 
 ## 3. Architecture Mental Model
 
-Three-layer ontology engine:
+vero-lite is a **`monitor→decide→approve→act` engine**, not a general workflow platform
+(ADR-0032 D6).
+
+**The primitive — the runtime procedure spine.** A vertical's behaviour is *declared*, not
+coded: `verticals/<name>/procedures.yaml`, parsed and cross-validated **at runtime**
+(`services/engine/procedures/spec.py` → `load_procedures` → `VerticalProcedures`; a malformed
+spec fails loudly at load, never mid-run). No code is generated for it. This is the mechanism
+that carries a new vertical.
+
+**The substrate — three layers the spine runs on:**
 
 1. **Mapping layer** — dbt/SQLMesh translates raw sources → canonical records
-2. **Semantic layer** (the moat) — YAML ontology = single source of truth
-   - Generates: Pydantic models, SQL DDL, JSON Schema, MCP tools, TypeScript types
+2. **Semantic layer** — YAML ontology = single source of truth for object shape. Generates
+   Pydantic models, SQL DDL, JSON Schema, MCP tools, TypeScript types, ORM, context pack
+   (`services/engine/code_generator.py`). Live and load-bearing — but only the `energy` and
+   `core` ontologies emit **committed** code (`_ORM_COMMITTED_DEST`, `_PYDANTIC_COMMITTED_DEST`);
+   every other output is a **gitignored reference artifact** (`verticals/*/generated/`,
+   `ontology/generated/`).
 3. **Action layer** — FastAPI functions tied to objects with permissions + audit trail
 
 ## 4. Memory Architecture
@@ -259,4 +272,4 @@ The **verify-loop hygiene rule** — a re-checked, evidence-backed prior is logg
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-07-29 (session 188). Convention: a constitutional edit bumps this date only — the full record of what changed and why lives in that edit's commit message (`git log --follow -- CLAUDE.md` is the amendment history); durable learnings live in `docs/lessons/`.*
+*Last updated: 2026-08-03 (session 202). Convention: a constitutional edit bumps this date only — the full record of what changed and why lives in that edit's commit message (`git log --follow -- CLAUDE.md` is the amendment history); durable learnings live in `docs/lessons/`.*

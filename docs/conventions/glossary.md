@@ -21,9 +21,10 @@
 | **Object Explorer** | Foundry-style UI for browsing/querying canonical objects |
 | **Time travel** | Query the state of objects at a past point in time (audit trail core feature) |
 | **Mapping layer** | dbt/SQLMesh translates raw sources → canonical records (per `CLAUDE.md` §3) |
-| **Semantic layer** | YAML ontology = single source of truth (the moat) |
+| **Semantic layer** | YAML ontology = single source of truth for object shape (per `CLAUDE.md` §3) |
 | **Action layer** | FastAPI functions tied to objects with permissions + audit trail |
-| **The moat** | YAML ontology + code generator — vero-lite's defensibility vs. generic CRUD platforms |
+| **Runtime procedure spine** | A vertical's behaviour declared in `verticals/<name>/procedures.yaml` and interpreted at runtime (`load_procedures` → `VerticalProcedures`), not generated into code — the primitive that carries a new vertical (per `CLAUDE.md` §3) |
+| **The moat** | YAML ontology + runtime procedure spine — vero-lite's defensibility vs. generic CRUD platforms. Codegen is a real mechanism serving the `energy` and `core` ontologies, not the moat itself (corrected s202; see `CLAUDE.md` §3) |
 | **Design partner** | Early customer (vet clinic) co-developing features in exchange for discounted/free access |
 | **PDPA** | Thailand Personal Data Protection Act — clinical data assumed PII |
 | **AIP / Foundry / Apollo** | Palantir product names; vero-lite borrows architectural patterns |
