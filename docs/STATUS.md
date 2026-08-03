@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-01T09:46:00+07:00
-session: 199
-current_batch: "s199 — one PR merged (#1008): PLAN-0099 COMPLETE, all six steps as one stack, all ten ACs closed. Separately, the MS-S1 hosting ADR's trigger FIRED on Cray's stated intent and the row moved from In-Flight Discussions to an Active TODO."
+last_updated: 2026-08-03T12:41:00+07:00
+session: 202
+current_batch: "s202 — six PRs merged (#1013–#1018): G1/G2 now deterministic, ADR-0035 D2 amendments complete, ADR-0032 Context re-ground, PLAN-0100 drafted, OCT nav-bar overflow fixed for the dev profile."
 current_actor: code
-blocked_on: "Nothing blocks. 0 PRs open once this closeout merges."
-next_action: "The MS-S1 hosting ADR — trigger FIRED s199. Route via plan-drafter (G1/G2, Code may not author it); Cray's four pre-dispatch answers are named in the Active TODO row. The OCT nav-bar overflow is now a dependency of any public demo link, not cosmetic."
-head_commit: 6a3f2d7
-recent_commits: [6a3f2d7, f3a7b11, 62c5461, 4b45fde, 5dd1214, 8b2c04e, 2252ac9, 2ed45b9, 27a79cc, 687705d]
+blocked_on: "Nothing blocks Code. PLAN-0100 execution is gated on Cray ruling SD-1..SD-5."
+next_action: "Cray rules PLAN-0100's SD-1..SD-5 (SD-1 = published DB posture, load-bearing) before execution starts. Undrafted: the ADR-0035 D7 tenant-key PLAN — no ordering mandated between the two."
+head_commit: ef2c898
+recent_commits: [ef2c898, 54dfc7d, 4b9c77f, 1e3275c, 8bdefe3, 0c48531, 0856fd4, d7d0f5c, 3f4bd8a, bfcf8db]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,53 @@ recent_commits: [6a3f2d7, f3a7b11, 62c5461, 4b45fde, 5dd1214, 8b2c04e, 2252ac9, 
 ---
 
 ## Current Focus
+
+> **Session 202, 2026-08-03 (head_commit `6a3f2d7` → `ef2c898`) — six PRs merged
+> (#1013–#1018), 0 open. The theme: a governance gate stops asking a
+> non-deterministic oracle, and ADR-0035's follow-on work opens.**
+>
+> **#1013 / #1016 — G1/G2 are now DETERMINISTIC.**
+> `.claude/hooks/pretooluse_governance_gate_deny.py` reads the target's own
+> `**Status:**` line instead of asking the local-LLM classifier, which was
+> **measured** non-deterministic: the same input at `temperature 0` returned both
+> `proceed` and `pause`, self-consistency **0/4**, blank output **3/12**. #1016 then
+> unwired the classifier's now-redundant G1/G2 PreToolUse arm
+> (`pretooluse_classifier_dispatch.py`) from `settings.json` — it was also **broader
+> than its own spec**, pausing Accepted PLANs, which neither the registry's G1 row
+> nor `CLAUDE.md` §6 ever claimed (both say ADR). `plan-drafter` stays exempt; the
+> main agent gets no override. Three tests pin the new topology.
+>
+> **#1014 — ADR-0035 D2's four pointer amendments now all EXIST** (ADR-002 ×3,
+> ADR-0003 ×1), plus **nine currency notes** re-dating ADR-0035's own present-tense
+> claims about the MS-S1 Cloudflare Tunnel — which Cray confirms is **not running**.
+> 117 insertions, **0 deletions**: pure appends, no prior text rewritten.
+>
+> **#1015 — ADR-0032's Context snapshot RE-GROUND (third pass), discharging the s197
+> debt.** "six synthetic verticals" → six verticals of which five are synthetic and
+> `fleet_maintenance` is the design partner's real Phase-1 pilot.
+>
+> **#1017 — PLAN-0100 drafted** (`Status: Draft`, 12 ACs, 6 phases): the ADR-0035
+> exposure PLAN. Per **Cray's s202 ruling** it absorbs the UI work D5(2) implies,
+> because ADR-0035's "Env only — no code" is contradicted by its own D5(2).
+> **SD-1..SD-5 are unruled and execution does not start without them** — SD-1
+> (published DB posture: DB-less vs synthetic Postgres) is load-bearing: it decides
+> which tabs the public sees, and every allowlist row hangs off it.
+>
+> **#1018 — the OCT nav-bar overflow is FIXED for the dev profile.** `theme.css`'s
+> responsive ladder was written for a **five**-tab header while `app.js` registers
+> **ten**; measured natural width **2253 px**, so the inactive-label collapse moves
+> `max-width:1360px` → `2299px`. Verified **0 overflow** at
+> 1280/1366/1440/1680/1920/2400. Two tripwires, both probe-proven RED. The
+> published-profile half stays open as PLAN-0100 AC-3.
+>
+> CI `gate` pass ×6. Offline at the last PR: `ruff` clean over `services/` +
+> `tests/`, `mypy --strict` clean over 130 files, suite **3411 passed / 370
+> skipped**; `tests/handoffs/` **762 / 2** at #1016. **Honest gap:** the 370 skips
+> are the Postgres-down shape (dev DB not up on **5442**), so the offline gate did
+> **not** match CI scope — CI is the check that did. Four of the six PRs are
+> docs-only. Three dispatch fact-packs were refuted by the drafter and corrected
+> before use (unmerged-branch reads, a stale date, a wrong route attribution) —
+> each was Code's error, not the drafter's.
 
 > **Session 199, 2026-08-01 (head_commit `2ed45b9` → `6a3f2d7`) — one PR merged
 > (#1008), 0 open. PLAN-0099 COMPLETE and ARCHIVED: the wall-clock root fix, all
@@ -206,53 +253,6 @@ recent_commits: [6a3f2d7, f3a7b11, 62c5461, 4b45fde, 5dd1214, 8b2c04e, 2252ac9, 
 > donor; a governed hero is bespoke per partner, ADR-0032 D1.2); the exclusion proven
 > surgical — a stray `.py` in the donor still reddens the test.
 
-> **Session 195, 2026-07-31 (head_commit `b25cc98` → `a8912e0`) — four PRs merged
-> (#994–#997), 0 open. The theme: a documented claim that measurement refuted, four
-> times in four places.**
->
-> **#994 — fleet's Box-4 ฿ facet, the last config-shaped half of ADR-0032 D1.** Fifth
-> economic producer, first **event-anchored** one: procurement's OQ-C fell back to a hero
-> PO (its events carry a criticality score, not a ฿ anchor), but a fleet repair-quote
-> event *is* the money (`measured_value`, `unit == "THB"`) — baseline = an uncompared
-> price, governed = the same repair after the three-vendor comparison the partner adopted
-> after being defrauded on parts. **Cray typed the basis** (event-anchored + the
-> partner's own ฿30,000 threshold, over an assumptions-first exemplar and a DB read empty
-> at `row_count: 0`) **and the 15% recovery fraction** over a fraud-sized 25%. The
-> threshold is **imported from `sourcing.py`**, so producer and gate cannot drift; no ADR
-> amendment needed (ADR-0030 D3 leaves `kind` a free `str`). `test_golden_e2e`'s donor
-> oracle fired as designed; the exclusion is **surgical**.
->
-> **#995 — a REAL production defect, not a hardening.** `decide_pm_import` read a row's
-> status then wrote it on an **unlocked** read, so two deciders could both observe
-> `proposed`, both pass the 409 guard, and the later commit would overwrite the earlier
-> decision — stamping the loser's `decided_by` on a row someone else had ruled on,
-> **while both callers got a 200**. The guard's own "idempotent BY STATE" comment was
-> true for a *replay*, false for a *race*. Fixed with `FOR UPDATE` on the decide path's
-> read only (the review GET must not lock), no migration — Code's call over a version
-> column, veto open.
->
-> **#996 / #997 — PLAN-0097 built and CLOSED (7/7 ACs, archived).** The warn arm was the
-> only terminal outcome in `_goal_gate.py` that wrote nothing; it now records before it
-> pings. Load-bearing is what the entry is **invisible to**: `_last_decision_evaluation`
-> excludes warn entries from every decision read, or two untested corners change
-> behaviour (flake would skip a dispatch; enforce-flip would double-block). **Cray typed
-> SD-2 = yes** (first-class `Evaluation.detail`) **and SD-3 = dedup** (marker + same
-> non-empty fingerprint; empty always records).
->
-> **The theme, four times.** The allocator docstring named the wrong constraint; AC-6
-> predicted M6 would redden the ladder tests and it does not, so the enforce fence was an
-> **untested** property M6 would have passed silently; the s194 RR-3 estimate was
-> over-scoped; and **two of eight mutation probes were themselves defective** — one
-> mutated the wrong site (its anchor recurs earlier), the other was a deletion wearing
-> another probe's label. Both showed **GREEN as vacuous oracles**. Also measured: a
-> two-session DB race test fails by **hanging**, not reddening, unless the parked task is
-> unwound in a `finally` and bounded with Postgres `lock_timeout`.
->
-> Suite **3656 → 3676** / 8 skipped, re-run per merge commit, `git diff <ci-head> HEAD` =
-> 0 bytes ×4. ruff + format clean over 576 files, `mypy --strict services/` clean over
-> 130; guard + R1/R4/R7/R8 exit 0; `alembic check` clean, dev DB at `0022`; CI `gate` ×4.
-> **21 non-vacuity probes**, each RED against its named test, restored from `/tmp`.
-
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
 
 ## Prior focus (archived)
@@ -272,6 +272,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-03 | **s202 — G1/G2 made DETERMINISTIC (#1013/#1016); ADR-0035 D2's amendments COMPLETE (#1014); ADR-0032 Context re-ground (#1015); PLAN-0100 drafted (#1017); nav-bar overflow fixed (#1018).** The classifier was *measured* non-deterministic at `temperature 0` (self-consistency 0/4, 3/12 blank), so the gate now reads the target's `**Status:**` line and the classifier's G1/G2 arm is unwired. **Cray typed: PLAN-0100 absorbs the UI work D5(2) implies.** SD-1..SD-5 unruled → execution gated | `ef2c898` (head_commit) / [#1018](https://github.com/CrayJThiemsert/vero-lite/pull/1018) / `docs/adr/0035-hosting-and-exposure-model.md` / `docs/plans/0100-exposure-published-demo-surface.md` |
 | 2026-08-01 | **s199 — PLAN-0099 COMPLETE (10/10 ACs) and ARCHIVED; the MS-S1 hosting ADR's trigger FIRED.** Six-commit stack merged as one PR: stored at-acceptance figure + provenance, both wall-clock comparisons deleted, five picks re-keyed on `seq`, the ordering guard widened to `services/`. AC-9 proven positively (named nodes re-run alone, 38/0) rather than inferred from the skip total. **Cray ratified all four veto-open calls as-is.** Separately, Cray's stated intent to show the demo over the internet fired two of OQ-1's four conditions; row moved In-Flight → Active TODO, initial lean **B1** | `6a3f2d7` (head_commit) / [#1008](https://github.com/CrayJThiemsert/vero-lite/pull/1008) / `docs/plans/done/0099-wall-clock-root-fix-store-at-write-and-sequence.md` |
 | 2026-07-31 | **s197 — PLAN-0098 COMPLETE + ARCHIVED (#1006): View G's fleet branch, all nine ACs.** The donor joiner also binds `po_id`/`declared_tier_id`/`is_off_avl_override`, which fleet never emits (§D-D claimed otherwise) — a fleet joiner was written; SoD + join cards reused. Zero new CSS; AC-4/AC-6 by empty `git diff`; 5 probes RED. **Cray typed 4 calls**: measure assembly-cost first; no buyer-model mismatch; **ADR-0032 D2 pilot gate = SATISFIED** (Context re-ground OWED); fleet before primitives. Suite → **3709** | `687705d` (head_commit) / `docs/plans/done/0098-fleet-view-g-hero-demo-mirror.md` |
 | 2026-07-31 | **s196, 2nd workstream (#999–#1002) — PLAN-0098 ratified + Steps 1–4 built; CSS-class guard → all 15 assets; `EconomicImpact.kind` → 5 kinds.** **Cray typed SD-1 (a), SD-2 always-visible, SD-3 = (c), differing from the draft's (a)**: lead with the measured ฿48,000 — the fraud origin story is narrative copy only, never a rendered figure (AC-9 = its oracle). Backend runs the real engine over the spec-loaded ladder via `_HERO_BUILDERS` (ADR-0031 D4 corollary 1 FIRED at N=2). Suite → **3700** | `5382052` / `4bb9494` / `docs/plans/done/0098-fleet-view-g-hero-demo-mirror.md` |
@@ -281,11 +282,11 @@ than restated: the Active TODO owns that status.]_
 | 2026-07-30 | **s193 — PLAN-0096 Step 8 item 5 COMPLETE (#982–#986): the month-end export end to end, with a KPI that can fail.** Row set = governed ∪ escaped money (a naive export reports 100% by construction). **Cray typed (ค)** traceable = governed AND documented; **(ก)** persist `three_quote_basis` (alembic `0022`). Two defects found by ORACLES, not review. Suite 3607 → **3646** | `367c15b` (#987 merge, head_commit) / `367a08e` (#986) / `ed09502` (#982) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` |
 | 2026-07-30 | **s192 — PLAN-0096 Step 8 item 3 COMPLETE (#979): the case → run link, proven on BOTH gate drivers.** The hook read `output_set`, so a rejected case was invisible (fix: `decided_entries()` reads `decisions`); `_outcome` let the run state outrank a refusal. **Cray typed: a refusal is checked FIRST.** Five non-vacuity probes, all RED as predicted. Suite → **3604** | `5dd8ce6` (#979, head_commit) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
 | 2026-07-30 | **s191 — a REAL repair case now reaches the governed gate (#975–#977).** The accepted quote (ใบที่ตกลง, alembic `0019`) gives the DoA ladder a ฿ figure existing BEFORE the work and tracing to recorded evidence; Cray typed the required FK + reason-only-when-not-cheapest. The case → event path wires it in with **zero engine and zero adapter-`__init__` diff**. One probe came back GREEN — a vacuous oracle a fail-soft handler was hiding. Suite → **3597** | `99b752f` (#977, head_commit) / `d3f2919` (#976) / `d781683` (#975) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
-| 2026-07-29 | **s189 — PLAN-0096 Steps 1–7 and 9 COMPLETE (8 of 10), #965–#968.** Partner round-2 answers closed 5 of 7 questions. Step 6 = the partner's real 8-step task chain (alembic `0016`); `pm_due` = a sixth LINE event, group recipient, read off persisted `judge_service_due` verdicts. Cray typed the prerequisite-anchored clock + the AC-8 bump. Unplanned (#966/#967): an ORM↔alembic registration guard — **a comparison means something only when at most ONE side is hand-maintained**. Suite → **3552** | `13aa2f0` (#968 merge, head_commit) / `26e61b3` (#965) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` |
+
 ## In-Flight Discussions
 
 - **PLAN-0096 — COMPLETE 12/12 and ARCHIVED (s193).** The fleet design partner's Phase-1 flow, shipped end to end across s186→s193 — real governance numbers, case capture from minute 1, the quote evidence pack, the sourcing signal that retired a fail-open default, the E-2 ratification window, the PM import, the outbound-only-and-DISARMED LINE OA surface, the 8-step task chain, and the month-end Express export. **Four residual risks outlive the PLAN and are why this entry is not simply deleted — all four are recorded in the archived PLAN, which is where the detail now lives:** RR-1 (per-baht approver→case attribution is INFERENCE, not data — `GovernedDecision` carries no timestamp and no per-entity key; sound while one human resolves a whole gate, silently wrong the day two approvers share a resolution); RR-3 (concurrency-race was the weakest coverage row for AC-4/AC-9/AC-10 — **both named gaps CLOSED s195 by #995**: the PM-confirm race turned out to be a REAL defect, now `FOR UPDATE`, and `allocate_repair_order_no` got the test its docstring implied, which corrected the constraint that docstring named); ศูนย์ต้นทุน ships EMPTY (partner granularity still unanswered — also an open Active TODO below); and `latest_per` still collapsing two open cases on one truck (item 4, **Cray typed (ค) defer**) — the older case never reaches the gate, so if it is paid it reports as *ungoverned*, which a reader of the number cannot distinguish from a governance failure. Full record: `docs/plans/done/0096-fleet-flow-completion-phase1.md` (§Verification preamble + §Acceptance Criteria for RR-1 / RR-3 / ศูนย์ต้นทุน; §Step 8 for `latest_per`); the AC-12 sign-off is in `.claude/handoffs/session-193/` (gitignored).
-- **PLAN-0095 — COMPLETE 7/7 and ARCHIVED (s177, #927/#928).** The scaffold-era `Dockerfile` builds and boots the DB-less synthetic OCT demo: `/health` 200 in ~2 s, all six verticals discovered, `uid=999(vero)`, `HEALTHCHECK` healthy, and `alembic current` → `0012 (head)` from inside the image. The only thing still open from it is **OQ-1, the hosting model** — now an Active TODO below, its trigger having FIRED at s199; not restated here. Full record: `docs/plans/done/0095-docker-image-boot.md`. _[Corrected s182, `was an error`: this entry still described the PLAN as Draft with "Steps 1–5 UNEXECUTED … the image does not boot today" and cited the pre-archive path — refuted by the s177 row in Recent Decisions above and by the archived PLAN's own `Status: Complete`.]_
+- **PLAN-0095 — COMPLETE 7/7 and ARCHIVED (s177, #927/#928).** The scaffold-era `Dockerfile` builds and boots the DB-less synthetic OCT demo: `/health` 200 in ~2 s, all six verticals discovered, `uid=999(vero)`, `HEALTHCHECK` healthy, and `alembic current` → `0012 (head)` from inside the image. **OQ-1, the hosting model — the last thing open from it — is now CLOSED**, answered by **ADR-0035** (Accepted s200; its D2 pointer amendments completed s202, #1014); the exposure work it opened lives in PLAN-0100, not here. Full record: `docs/plans/done/0095-docker-image-boot.md`. _[Corrected s182, `was an error`: this entry still described the PLAN as Draft with "Steps 1–5 UNEXECUTED … the image does not boot today" and cited the pre-archive path — refuted by the s177 row in Recent Decisions above and by the archived PLAN's own `Status: Complete`.]_
 - **PLAN-0094 — COMPLETE (all 11 ACs closed or withdrawn) and ARCHIVED (s183).** The L1 loop-detect restructure: count non-progress instead of touches (P1), warn at `T` and deny at `T+G` (P2, `G=3` → 9 code / 18 doc), add an acknowledged-pause exit the agent cannot fake (P3), and wire the `SubagentStop` reset that had **never been live**, scoped per-`agent_id` so a zero-edit spawn cannot launder the main agent's budget (F3c). Built across s174 #917, s175 #922, s177 #930, s180 #937/#939, closed out s182 #943 on a **full fresh 18/18 non-vacuity sweep**. Archived at s183 once **Cray released the live-loop soak** (no anomalies) — the one gate no session could self-serve. **The one thing that did NOT archive with it: `OQ-4` (should L1 exist at all?) is OPEN and dated — re-homed to an Active TODO below**, per the PLAN's own §Step 6 instruction never to bury it in `done/`. Full record: `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md`; the anti-pattern behind it: `docs/lessons/0033-raising-the-threshold-is-not-fixing-the-unit.md`.
 - **PLAN-0093 — COMPLETE 8/8 and ARCHIVED (s172, #913).** The LLM-arm degrade disclosure — no silent arm swap: which arm phrased an NL answer is disclosed, the rule fail-safe says it is a fail-safe, the authoring arm is projected over HTTP (including the insights run-corpus path), and `LLM_RETRY_BUDGET` no longer sits inert on the governed path. No follow-on owed. Full record: `docs/plans/done/0093-llm-arm-degrade-disclosure.md`.
 - **PLAN-0091 — COMPLETE 10/10 and ARCHIVED (s168).** Two follow-ons it named, **neither scheduled**: the **extend shapes** (calm-path + scheduled-variant scaffolding) are **greenfield, not an extension** — the shipped emitters refuse an existing vertical *by construction* and create-only is Cray-ratified SD-2, so this needs a fresh seam spec, not effort; and the census-narrative comment in `tests/api/test_procedures_endpoint.py` is the one counted site the disposer REPORTS rather than rewrites — a human call, left visible on purpose. Full record: `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md`.
@@ -300,12 +301,15 @@ than restated: the Active TODO owns that status.]_
 
 ## Active TODOs
 
-- [ ] **MS-S1 hosting ADR — TRIGGER FIRED s199 (Cray's stated intent); this is where PLAN-0095's OQ-1 now lives.** OQ-1 pinned four conditions that would fire it; Cray named **two directly**: expose the demo *beyond the LAN* so interested parties can see it over the internet, and *measure MS-S1 call performance over the internet* to inform scaling design. (The other two — tenancy for hosted customers, TLS/authn posture — follow rather than gate.) Until s199 this row read "a LIVE candidate … still not drafted" and sat in **In-Flight Discussions**, while the handoff record said trigger-gated-do-not-touch; that contradiction, and the fact that the reconciling detail lived only in a gitignored handoff and an archived PLAN's OQ block, is why it is now a TODO with its trigger stated inline (the **OQ-4 row's precedent**, below). **What it must decide:** ADR-002's LAN trust model defers its own successor **twice** as an unnumbered `ADR-NN` — in **§Consequences → Neutral** (re-evaluate when a first design partner deploys to a real site) and **§Alternatives Considered → Alternative 3** (Tailscale / WireGuard). **Four questions are Cray's, not the drafter's, and belong in the dispatch — the fact-pack must carry them answered:** (1) **B1 vs B2** — B1 = app public / MS-S1 stays on LAN; B2 = the Ollama endpoint itself reachable over the internet. **Cray's initial lean is B1** (typed s199, veto open pending the ADR's own analysis): B1 answers the scaling question at a fraction of the risk, since Ollama carries no authn of its own and B2 contradicts ADR-002's "LLM traffic stays on-prem LAN" directly. (2) **Do read routes need authn?** Today `api_auth_enabled` defaults **true** but covers **state-changing routes only** (`services/api/config.py`) — `/warm` and `/sleep` ARE protected, reads are not; for a public demo that may be correct, but it must be a decision rather than a default nobody looked at. (3) **PDPA scope** — ADR-0032 D2's pilot gate was ruled SATISFIED at s197, so the system is no longer purely synthetic; public exposure now has a PDPA dimension that did not exist when OQ-1 was written (s177). (4) **Tenancy.** **Route:** a new ADR via the Cowork / `plan-drafter` path (G1/G2 — Code may not author it), Code R2s and commits. **Dependency that changed with the trigger:** the OCT nav-bar overflow row below stops being cosmetic — it is a demo-quality blocker for any link sent to an outsider. **Deployable artifact already exists:** PLAN-0095's image builds and boots DB-less and is hosting-agnostic by construction (all config via env), so the remaining work is deciding *where and how open*, not building. **Why this row states its trigger inline** rather than leaving it in the archived PLAN: `docs/lessons/0034-deliberate-gate-outside-the-scanned-surface.md` — a gate recorded outside the surface a backlog scan reads is indistinguishable from an oversight, which is exactly what happened to this item between s177 and s199. Full record: `docs/plans/done/0095-docker-image-boot.md` §OQ-1; `docs/adr/0002-network-topology.md`.
+- [x] **MS-S1 hosting/exposure ADR — DISCHARGED. ADR-0035 Accepted s200; its D2 pointer amendments COMPLETE s202 (#1014).** PLAN-0095's OQ-1 is answered: one domain on MS-S1, a subdomain per system, published through an edge-gated, outbound-only tunnel — the ADR-002 + ADR-0003 successor those ADRs deferred twice as an unnumbered `ADR-NN`, whose pointers now exist (ADR-002 ×3, ADR-0003 ×1). **Read the ADR, never a restatement here** — including its **nine currency notes**, which re-date its present-tense Cloudflare-Tunnel claims: the tunnel is **not running today**. `docs/adr/0035-hosting-and-exposure-model.md`.
 
-- [ ] **ADR-0032's Context snapshot must be RE-GROUNDED — OWED, G1-gated (Cray typed s197).** Cray ruled **D2's pilot gate SATISFIED**: the fleet design partner's Phase-1 flow is a real pilot, so the ADR's Context — which still describes all six verticals as synthetic — is stale, and re-grounding it is what unlocks shape-2 work. ADR-0032 is `Status: Accepted`, so Code may not author the edit: route via `plan-drafter`, Code R2's and commits. Nothing drafted yet. `docs/adr/0032-strategic-frame-demo-to-pilot-wedge-and-3-shape-roadmap.md`.
-- [ ] **Assembly-cost axis — MEASURE it before an ADR argues it (Cray typed s197).** Build the tripwire that puts a number on assembly cost first, *then* draft the ADR on top of that number. The ordering is the ruling; nothing built, no PLAN drafted.
-- [ ] **`CLAUDE.md` §3 names the code generator as the moat; measurement (s197) says the load-bearing primitive is the runtime-interpreted `procedures.yaml`.** `_ORM_COMMITTED_DEST` (`services/engine/code_generator.py:871`) carries only `energy` + `core`; the other five verticals' generated ORMs land on gitignored paths with **zero source importers**, and the generator's own docstring calls them "a gitignored reference artifact". Batch with §1's "SME" wording (Cray s197: the design partners are mid-size regulated operators already — loose phrasing to correct, **not** a strategy change) into one constitutional edit: Cowork drafts the text, Code applies.
-- [ ] **The OCT console's global nav bar overflows its own viewport — measured s197, NOT this PLAN's.** At a 1382 px viewport the page scrolls sideways: `scrollWidth` 1825 vs `clientWidth` 1382. All 24 overflowing elements are in the header (`.llmctl`, Story, Refresh, Warm/Sleep, the MS-S1 indicator, beside ten tab buttons); **zero `hero-*` elements overflow**, so View G's body is clean and this is pre-existing header behaviour, surfaced only because PLAN-0098 Step 7's preview review measured it. Fix = make the header responsive + a Python geometry tripwire (`docs/conventions/ui.md`: no build step, so a UI tripwire must be a Python test; and any new class needs a rule or `tests/api/test_css_class_contract.py` goes RED under set-equality). Recorded here because it is otherwise tracked nowhere in the repo.
+- [ ] **PLAN-0100 — the ADR-0035 exposure PLAN. DRAFTED s202 (#1017): `Status: Draft`, 12 ACs, 6 phases. EXECUTION IS GATED on Cray ruling SD-1..SD-5.** **SD-1 is load-bearing** — the published deployment's DB posture, (a) DB-less vs (b) synthetic Postgres — because it decides which tabs the published profile registers and every allowlist row hangs off it; the rest cannot be finalized around an unruled SD-1. Per **Cray's s202 ruling** the PLAN absorbs the UI work D5(2) implies, since ADR-0035's "Env only — no code" is contradicted by its own D5(2). It also carries the **published-profile half of the nav-bar work as AC-3**. `docs/plans/0100-exposure-published-demo-surface.md`.
+- [ ] **The tenant-key PLAN (ADR-0035 D7 (i)–(vii)) — UNDRAFTED.** ADR-0035 mandates **no ordering** between this and PLAN-0100, so neither blocks the other and this one is startable independently. Route: `plan-drafter` (G2 — Code may not author a new PLAN), Code R2s and commits. `docs/adr/0035-hosting-and-exposure-model.md` §D7.
+
+- [x] **ADR-0032's Context snapshot RE-GROUNDED — DONE s202 (#1015), third pass.** "six synthetic verticals" → six verticals of which five are synthetic and `fleet_maintenance` is the design partner's real Phase-1 pilot. Discharges the OWED debt created when Cray ruled **D2's pilot gate SATISFIED** at s197. `docs/adr/0032-strategic-frame-demo-to-pilot-wedge-and-3-shape-roadmap.md`.
+- [ ] **Assembly-cost axis — MEASURE it before an ADR argues it (Cray typed s197); nothing built, no PLAN drafted.** Build the tripwire that puts a number on assembly cost first, *then* draft the ADR on top of that number — the ordering is the ruling. **The series measured so far is banked HERE because it is banked NOWHERE ELSE in the repo — no test, no doc, no PLAN holds it:** churn per vertical went **1:1.8 → 1:6 → 1:1.1**, i.e. **spiky, not falling**, which is the shape any ADR on this axis has to argue against. Left unbanked it survives only in session memory and dies at the next context reset; a tripwire that recomputes it is what makes it evidence rather than a recollection.
+- [ ] **`CLAUDE.md` §3 names the code generator as the moat; measurement (s197) says the load-bearing primitive is the runtime-interpreted `procedures.yaml`.** `_ORM_COMMITTED_DEST` (`services/engine/code_generator.py:871`) carries only `energy` + `core`; the other five verticals' generated ORMs land on gitignored paths with **zero source importers**, and the generator's own docstring calls them "a gitignored reference artifact". One constitutional edit, §3 only: Cowork drafts the text, Code applies. _[Corrected s202, `was an error` — **this row's batched-in "§1's 'SME' wording" half HAS NO REFERENT and is struck**: the string `SME` has never existed in `CLAUDE.md` (`git log -S "SME" -- CLAUDE.md` returns **zero** commits), and §1 in fact reads "2 **enterprise** design partners". The s197 Current Focus block records the same mistaken premise; both rows are corrected once, here. **Cray's actual s197 point is untouched and needs no edit** — the partners are mid-size regulated operators, which is what §1 already says. Scope is therefore §3 alone.]_
+- [x] **The OCT console's global nav bar overflowed its own viewport — FIXED for the dev profile s202 (#1018).** Root cause was **not** the header's content but its ladder: `theme.css`'s responsive breakpoints were written for a **five**-tab header while `app.js` registers **ten**. Measured natural width **2253 px**, so the inactive-label collapse threshold moves `max-width:1360px` → `2299px`; verified **0 overflow** at 1280/1366/1440/1680/1920/2400. Two Python geometry tripwires, both probe-proven RED (`docs/conventions/ui.md`: no build step, so a UI tripwire must be a Python test; a new class needs a rule or `tests/api/test_css_class_contract.py` goes RED under set-equality). **The published-profile half remains OPEN as PLAN-0100 AC-3.**
 - [ ] **Seam-scoped mutation-testing CI — a PLAN candidate, NOT built.** Surfaced s188 as the one CHECKABLE variant the scenario-test hook rejection does not cover; **rehomed here s191** when its parent `[x]` row was pruned, because STATUS was its only home. A CI job that requires the scenario suite to REDDEN under a seam mutation: ritual compliance cannot fake it, since an empty or stubbed scenario suite stays green under mutation — exactly what a file-existence hook would miss. Rationale: `CLAUDE.md` §8's scenario-test bullet.
 - [ ] **PLAN-0096 partner round-2 — ANSWERED s189; five of seven closed, one non-blocking follow-up open.** A1 → Step 6 built (#965); A3 → `pm_due` built (#968); **A4 + A7 confirmed values already shipped** (flat ฿5,000 ceiling, `"30001"` inclusive floors); A5 **parked** — no real Wialon export exists yet. **A2 is answered and consumed by Step 8** (no longer a gate). **Open, NON-blocking: cost-center (ศูนย์ต้นทุน) granularity — per truck or per company?** Ship the column, fill the rule when it lands. A6 is answered but is a Step 9 *runbook* item. Detail: `docs/plans/done/0096-fleet-flow-completion-phase1.md`.
 - [ ] **The AT-2 extraction — only the F-FACTORY half remains, owned by PLAN-0076 T1.** The criterion-vocabulary half SHIPPED as PLAN-0087 (COMPLETE 8/8, ARCHIVED — #840/#841); ADR-0025 D7's generator deferral was CANCELLED at N=4 (Cray-ratified, typed); SD-1 = (a) keeps the procedure-aware `ExecutorFactory` half with PLAN-0076 T1, guard `test_at2_extraction_obligation_is_owned` ARMED. Full detail: `docs/plans/done/0087-gate-seam-declared-criterion-vocabulary.md` + `docs/plans/0076-*.md` §A.

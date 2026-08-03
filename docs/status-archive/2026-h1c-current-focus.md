@@ -1299,3 +1299,50 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > was verified present in a tracked file.
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
+
+> **Session 195, 2026-07-31 (head_commit `b25cc98` → `a8912e0`) — four PRs merged
+> (#994–#997), 0 open. The theme: a documented claim that measurement refuted, four
+> times in four places.**
+>
+> **#994 — fleet's Box-4 ฿ facet, the last config-shaped half of ADR-0032 D1.** Fifth
+> economic producer, first **event-anchored** one: procurement's OQ-C fell back to a hero
+> PO (its events carry a criticality score, not a ฿ anchor), but a fleet repair-quote
+> event *is* the money (`measured_value`, `unit == "THB"`) — baseline = an uncompared
+> price, governed = the same repair after the three-vendor comparison the partner adopted
+> after being defrauded on parts. **Cray typed the basis** (event-anchored + the
+> partner's own ฿30,000 threshold, over an assumptions-first exemplar and a DB read empty
+> at `row_count: 0`) **and the 15% recovery fraction** over a fraud-sized 25%. The
+> threshold is **imported from `sourcing.py`**, so producer and gate cannot drift; no ADR
+> amendment needed (ADR-0030 D3 leaves `kind` a free `str`). `test_golden_e2e`'s donor
+> oracle fired as designed; the exclusion is **surgical**.
+>
+> **#995 — a REAL production defect, not a hardening.** `decide_pm_import` read a row's
+> status then wrote it on an **unlocked** read, so two deciders could both observe
+> `proposed`, both pass the 409 guard, and the later commit would overwrite the earlier
+> decision — stamping the loser's `decided_by` on a row someone else had ruled on,
+> **while both callers got a 200**. The guard's own "idempotent BY STATE" comment was
+> true for a *replay*, false for a *race*. Fixed with `FOR UPDATE` on the decide path's
+> read only (the review GET must not lock), no migration — Code's call over a version
+> column, veto open.
+>
+> **#996 / #997 — PLAN-0097 built and CLOSED (7/7 ACs, archived).** The warn arm was the
+> only terminal outcome in `_goal_gate.py` that wrote nothing; it now records before it
+> pings. Load-bearing is what the entry is **invisible to**: `_last_decision_evaluation`
+> excludes warn entries from every decision read, or two untested corners change
+> behaviour (flake would skip a dispatch; enforce-flip would double-block). **Cray typed
+> SD-2 = yes** (first-class `Evaluation.detail`) **and SD-3 = dedup** (marker + same
+> non-empty fingerprint; empty always records).
+>
+> **The theme, four times.** The allocator docstring named the wrong constraint; AC-6
+> predicted M6 would redden the ladder tests and it does not, so the enforce fence was an
+> **untested** property M6 would have passed silently; the s194 RR-3 estimate was
+> over-scoped; and **two of eight mutation probes were themselves defective** — one
+> mutated the wrong site (its anchor recurs earlier), the other was a deletion wearing
+> another probe's label. Both showed **GREEN as vacuous oracles**. Also measured: a
+> two-session DB race test fails by **hanging**, not reddening, unless the parked task is
+> unwound in a `finally` and bounded with Postgres `lock_timeout`.
+>
+> Suite **3656 → 3676** / 8 skipped, re-run per merge commit, `git diff <ci-head> HEAD` =
+> 0 bytes ×4. ruff + format clean over 576 files, `mypy --strict services/` clean over
+> 130; guard + R1/R4/R7/R8 exit 0; `alembic check` clean, dev DB at `0022`; CI `gate` ×4.
+> **21 non-vacuity probes**, each RED against its named test, restored from `/tmp`.
