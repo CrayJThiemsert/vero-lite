@@ -52,7 +52,18 @@ class RepairCaseTaskEvent(TenantKeyMixin, Base):
     """One status flip of one checklist item on one repair case."""
 
     __tablename__ = "repair_case_task_event"
-    __table_args__ = (sa.Index("idx_repair_case_task_event_case_id", "case_id"),)
+    __table_args__ = (
+        sa.Index("idx_repair_case_task_event_case_id", "case_id"),
+        # ``seq`` is the latest-wins key, declared UNIQUE so that "the current row
+        # for this item" is a single-row answer by SCHEMA rather than by hope.
+        # Identity is ``BY DEFAULT``, not ``ALWAYS``, because migration ``0025``
+        # writes explicit values to backfill legacy rows in the old reader's order;
+        # this constraint is what stops such a write landing on a value that exists.
+        # Scoped ``(tenant_id, seq)`` per PLAN-0101 SD-3 — the counter is per-TABLE,
+        # so no gap-free per-tenant monotonicity is implied. See services/db/tenant.py,
+        # "What (tenant_id, seq) does NOT promise".
+        sa.UniqueConstraint("tenant_id", "seq", name="uq_repair_case_task_event_seq"),
+    )
 
     event_id: Mapped[str] = mapped_column(sa.Text, primary_key=True)
     case_id: Mapped[str] = mapped_column(
@@ -64,3 +75,13 @@ class RepairCaseTaskEvent(TenantKeyMixin, Base):
     at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
     variant: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     note: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    #: Insertion order, assigned by the database (PLAN-0099 D2 pattern; migration
+    #: ``0025``). ``chain_state`` reduces these rows to "current status per item",
+    #: and reading that off ``at`` means a backward clock step — measured on this box
+    #: at 20 per 300 s, every one >= 400 ms — returns the SUPERSEDED flip as though
+    #: it were the operator's latest word. The consequence is not cosmetic: the
+    #: reduced status drives the staleness nudge, so a finished step gets chased
+    #: forever, or a reopened one silently stops being chased. A same-instant tie is
+    #: genuinely ambiguous on a clock; under a backward step the operator's intent is
+    #: still recoverable, because it is insertion order — and this column is that.
+    seq: Mapped[int] = mapped_column(sa.BigInteger, sa.Identity(always=False), nullable=False)

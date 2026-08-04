@@ -51,15 +51,30 @@ def _flip(
     at: datetime,
     actor: str = "person-may",
     variant: str | None = None,
+    seq: int | None = None,
 ) -> RepairCaseTaskEvent:
+    """One flip row. ``seq`` defaults to CREATION order — the reduction key.
+
+    These objects are never persisted, so the database cannot assign ``seq`` and the
+    builder must. Defaulting it to creation order is what the cases below already
+    meant: every one lists its flips in the order they happened, and the same-instant
+    ties (four events at ``_T0`` is a normal shape here) already resolved by the
+    ascending ``ev-NNNN`` counter, so this reproduces their existing answers exactly
+    rather than re-interpreting them.
+
+    Pass ``seq`` explicitly to express an insertion order that DISAGREES with ``at`` —
+    the wall-clock-stepped-backwards case (migration ``0025``).
+    """
+    ordinal = next(_counter)
     return RepairCaseTaskEvent(
-        event_id=f"ev-{next(_counter):04d}",
+        event_id=f"ev-{ordinal:04d}",
         case_id="case-test",
         item_key=item_key,
         status=status,
         actor=actor,
         at=at,
         variant=variant,
+        seq=ordinal if seq is None else seq,
     )
 
 
@@ -292,6 +307,59 @@ def test_the_reduction_does_not_depend_on_the_order_rows_come_back_in() -> None:
     first = _flip("notify_garage", TASK_STATUS_PENDING, at=_T0)
     second = _flip("notify_garage", TASK_STATUS_DONE, at=_T0 + timedelta(minutes=10))
     assert chain_state([second, first]) == chain_state([first, second])
+
+
+def test_the_reduction_follows_insertion_order_when_the_clock_disagrees() -> None:
+    """The rule half of migration ``0025``: ``seq`` decides, ``at`` only reports.
+
+    เมย์ marks the garage call done, and the wall clock happens to step backwards
+    (measured on this box at 20 times per 300 s, every step >= 400 ms) so the DONE
+    row carries an EARLIER stamp than the PENDING row it supersedes. Sorting on
+    ``at`` returns the pending row as though it were her latest word.
+
+    The wiring half — real HTTP writes, real sweep, a real nudge that does or does
+    not fire — is ``tests/api/test_task_chain_scenario.py``. This case pins the rule
+    on its own so a regression names the reducer rather than the router.
+    """
+    activated = _flip("notify_garage", TASK_STATUS_PENDING, at=_T0, actor="person-may", seq=1)
+    finished = _flip(
+        "notify_garage",
+        TASK_STATUS_DONE,
+        at=_T0 - timedelta(milliseconds=500),
+        actor="person-tom",
+        seq=2,
+    )
+
+    state = chain_state([activated, finished])["notify_garage"]
+    assert state.status == TASK_STATUS_DONE, "the later INSERT is current, whatever the clock says"
+    assert state.actor == "person-tom"
+    assert (
+        stale_items(
+            [activated, finished], work_type=WORK_TYPE_BREAKDOWN, now=_T0 + timedelta(days=30)
+        )
+        == []
+    ), "and a step reduced to done is never nudged about again"
+
+
+def test_a_flip_row_without_a_seq_is_refused_rather_than_ordered_on_the_clock() -> None:
+    """No silent fallback to ``at`` — that would be the defect wearing a seatbelt.
+
+    ``seq`` is NOT NULL since ``0025``, so a row arriving without one was never
+    persisted. Quietly reverting such a row to wall-clock ordering would put a nudge
+    decision back on the lying key with nothing downstream able to tell.
+    """
+    # Built directly rather than through ``_flip``, which always assigns one.
+    unpersisted = RepairCaseTaskEvent(
+        event_id="ev-no-seq",
+        case_id="case-test",
+        item_key="notify_garage",
+        status=TASK_STATUS_PENDING,
+        actor="person-may",
+        at=_T0,
+    )
+    assert unpersisted.seq is None, "the premise: an unflushed row has no database-assigned seq"
+    with pytest.raises(ValueError, match="seq"):
+        chain_state([unpersisted])
 
 
 def test_a_variant_set_once_survives_later_flips_that_do_not_repeat_it() -> None:

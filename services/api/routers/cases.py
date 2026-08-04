@@ -279,7 +279,11 @@ async def _task_events(session: AsyncSession, case_id: str) -> list[RepairCaseTa
             await session.execute(
                 select(RepairCaseTaskEvent)
                 .where(RepairCaseTaskEvent.case_id == case_id)
-                .order_by(RepairCaseTaskEvent.at)
+                # Insertion order, not the wall clock. ``chain_state`` re-sorts on
+                # ``seq`` regardless, so this is coherence rather than correctness —
+                # but an ``at`` ordering here would read as though the clock were
+                # still the key, which is the belief migration 0025 exists to end.
+                .order_by(RepairCaseTaskEvent.seq)
             )
         ).scalars()
     )

@@ -141,4 +141,8 @@ async def test_the_task_event_migration_matches_its_orm() -> None:
         "note": ("text", "YES"),
         # Added by revision 0024 (PLAN-0101 / ADR-0035 D7(ii)).
         "tenant_id": ("text", "NO"),
+        # Added by revision 0025. ``at`` above is the reported instant; THIS is the
+        # key "current status per item" is reduced on, because the wall clock was
+        # measured stepping backwards and a superseded flip could win.
+        "seq": ("bigint", "NO"),
     }
