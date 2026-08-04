@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-04T18:30:00+07:00
-session: 204
-current_batch: "s204 — three PRs merged (#1026–#1028) with the closeout #1029 open: PLAN-0101's tenant key shipped end to end (12/12 ACs, archived), and the bash -c escaping remedy now states both halves."
+last_updated: 2026-08-04T21:08:33+07:00
+session: 205
+current_batch: "s205 — three PRs merged (#1031–#1033): OQ-4 CLOSED (Cray typed RETIRE L1), PLAN-0100's fold-in makes SD-1..SD-5 askable, three misfiled archive rows relocated."
 current_actor: code
-blocked_on: "Nothing blocks Code. PLAN-0100 execution is gated on Cray ruling SD-1..SD-5."
-next_action: "PLAN-0102 (retire L1) — plan-drafter draft under review; Cray ratifies, then Code executes the excision. Then PLAN-0100 — fold in the s203/s204/s205 findings, then Cray rules SD-1..SD-5."
-head_commit: 22202f2
-recent_commits: [22202f2, 170d0d2, 892f377, f6f5cb0, eeb121d, c5f39e8, e549e98, 017cf94, df1660f, 65baf54]
+blocked_on: "Nothing blocks Code. PLAN-0100 execution is gated on Cray ruling SD-1..SD-5; PLAN-0102's excision is gated on Cray ratifying it."
+next_action: "PLAN-0102 (retire L1) awaits Cray ratification; PLAN-0100 awaits Cray filling its five Ruling: slots (fold-in SHIPPED #1032); #1034 (chip-authored) needs review."
+head_commit: d86bb1d
+recent_commits: [d86bb1d, 954d4ad, 3b07c16, b1e2ed3, c99132c, 27a6961, da633a1, 1365bc7, 734feae, 74b6a94]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,53 @@ recent_commits: [22202f2, 170d0d2, 892f377, f6f5cb0, eeb121d, c5f39e8, e549e98, 
 ---
 
 ## Current Focus
+
+> **Session 205, 2026-08-04 (head_commit `22202f2` → `d86bb1d`) — three PRs merged
+> (#1031–#1033); #1034 open from a chip session, unreviewed here. Theme:
+> answering an overdue question corrected two errors in the record it was built on.**
+>
+> _[**#1035 and #1036 also merged during this window, from PARALLEL sessions — not
+> s205's work**, and recorded only so `head_commit` above reconciles with something a
+> reader can find; those sessions own their narratives. **#1035** keys fleet task-chain
+> state on insertion order rather than the wall clock, shipping alembic **`0025`**, so
+> head is no longer `0024`; it is the same wall-clock-ordering bug family as the
+> `/api/cases` defect s205 found and chipped (#1034, still open) but a **different
+> query** (`cases.py:279` vs `:255`), so the two do not collide. **#1036** reworks
+> migration `0024` to backfill a populated `audit_log`.]_
+>
+> **OQ-4 CLOSED — Cray typed RETIRE L1 (2026-08-04); PLAN-0102 is the vehicle (#1031).**
+> Re-measured over **130** transcripts keyed on **structural hook-emission paths**, not
+> substring, with a **positive control that passed 3/3** — a zero was pre-committed as
+> unreportable unless the method first re-found three known-present warns. **True
+> positives = 0 in both eras.** Post-AC-7: **0 denies, 0 organic warns** (the lone warn
+> was an induced self-test), so the "≥ 1 false positive" arm could not fire: the literal
+> criterion is **unfireable by construction** — AC-7 left the guard inert, and a detector
+> that never fires cannot produce the false positive its own retirement trigger requires.
+>
+> **Running it corrected two errors in the record it was built on.** (1) The s180
+> baseline's **"0 denies" was wrong — ≥ 56 measured** over 19 days / 4,201 Write-Edit ops
+> (**~1.33 %** of all edits hard-walled), and that is a **floor** — 30-day retention had
+> already deleted 06-27 → 07-04 of the baseline's own span. Root cause: **three** deny
+> wordings existed, not two — lesson 0012 quotes `in this **session**` while every live
+> emission says `in this **turn**`, so s180 searched for a string no transcript contains;
+> its warn count (3) was right because that string came from the hook source. Classified
+> **was an error**, not superseded (§6). (2) The criterion's **prescribed remedy was
+> mis-premised**: it called for an ADR-013 amendment, but `0013:90` states trigger E.4 as
+> "the same *problem*" and never names L1, and `0013:333-336` delegates stateful
+> loop-detection to PLAN-0008+. **L1 has zero ADR backing ⇒ no amendment**; PLAN-0102 is
+> the governance record, on the PLAN-0092 precedent. Method + the four traps that nearly
+> skewed it: `docs/lessons/0035-negative-measurement-needs-a-positive-control.md`.
+>
+> **PLAN-0100's fold-in (#1032) makes SD-1..SD-5 askable.** Five empty `Ruling:` slots +
+> **AC-13** (the adjudication record) + BLOCKED-ON-SD markers; the H/I/J inconsistency
+> reconciled by **dropping Tab H from SD-1's promise** — its backend is **mixed**, not
+> DB-posture-contingent; `54dfc7d`'s measurement table folded in **verbatim** (dev half
+> discharged, published half open); SD-4 restated **published-profile-only**.
+>
+> **The archive relocation (#1033) found its own recorded blocker false.** Three misfiled
+> s196/s197 Recent-Decisions rows moved `h1g` → base. The Current-Focus chain split the
+> move was said to depend on is a **separate corpus**, and the rotation base had ~109 KB
+> of headroom throughout — the dependency never existed.
 
 > **Session 204, 2026-08-04 (head_commit `592124b` → `22202f2`) — three PRs merged
 > (#1026–#1028), one open (#1029, CI green, awaiting merge). Theme: the ADR-0035 D7
@@ -179,47 +226,6 @@ recent_commits: [22202f2, 170d0d2, 892f377, f6f5cb0, eeb121d, c5f39e8, e549e98, 
 > before use (unmerged-branch reads, a stale date, a wrong route attribution) —
 > each was Code's error, not the drafter's.
 
-> **Session 199, 2026-08-01 (head_commit `2ed45b9` → `6a3f2d7`) — one PR merged
-> (#1008), 0 open. PLAN-0099 COMPLETE and ARCHIVED: the wall-clock root fix, all
-> six steps landing as a single six-commit stack.** The at-acceptance lowest quote
-> is now stored at write time with a `recorded`/`reconstructed` provenance marker,
-> both cross-row wall-clock comparisons are **deleted** rather than patched, and
-> five latest-wins picks are re-keyed on a DB-assigned `seq`. All ten ACs closed.
->
-> **AC-9's gate ran with its pass/fail read fixed before the run:** 3730 passed /
-> 8 skipped / 0 failed; the eight skips are all host-state or live opt-ins and none
-> is a node an AC names. That last clause was proven **positively** — the named
-> nodes were re-run alone (38 passed, 0 skipped) rather than inferred from their
-> absence among the skips, because a correct total can hide a wrong skip: one node
-> starting to skip while another stops leaves the count at 8 either way. `ruff`
-> clean over 586, `mypy --strict services/` clean over 130, five offline guards
-> exit 0, CI `gate` pass, merge-commit `git diff` = **0 bytes**, and the full suite
-> re-run on the merge commit (3730/8/0) since CI here is PR-only.
->
-> **Cray ratified all four veto-open calls as-is** (typed): the stored figure stays
-> NOT NULL, `seq` keeps UNIQUE on all five tables, the export row keeps figure +
-> boolean + basis together, and `compute_accepted_the_cheapest` stays shared. Only
-> the last carried an action — a docstring that claimed three callers where two
-> reach it directly. Grounding the other three surfaced a coupling the veto list
-> did not show: `cases.py` narrows `bool | None` to `bool` on the stated grounds
-> that both operands are NOT NULL **columns**, so relaxing the DB constraint would
-> silently change what the endpoint reports, not merely loosen a schema rule.
->
-> **Separately — the MS-S1 hosting ADR's trigger FIRED.** Cray named two of
-> PLAN-0095 OQ-1's four conditions directly (expose the demo beyond the LAN; test
-> MS-S1 call performance over the internet, to inform scaling). The row had been
-> sitting in In-Flight Discussions, not Active TODOs — it was **4 of 5** of the
-> items s183 grouped as trigger-gated that were Active TODOs, and the odd one out.
-> Its wording ("a LIVE candidate … still not drafted") also read as actionable
-> while the handoff record said do-not-touch, and the reconciling fact — the
-> trigger, and that it had not fired — lived only in a gitignored handoff and an
-> archived PLAN's OQ block. Moved to an Active TODO with the trigger stated inline,
-> following the OQ-4 row's precedent. Cray's initial lean is **B1** (app public,
-> MS-S1 stays on LAN), veto open pending the ADR's own analysis. **The generalised
-> rule is `docs/lessons/0034-deliberate-gate-outside-the-scanned-surface.md`** — a
-> decision NOT to act needs the same recording discipline as an action, and its
-> home is the list where someone would look for it if they thought it was missing.
-
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
 
 ## Prior focus (archived)
@@ -239,6 +245,8 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-04 | **s205 — OQ-4 ANSWERED: NO; Cray typed RETIRE L1 (#1031).** 130 transcripts, structural hook paths not substring, **positive control 3/3**, true positives **0** in both eras ⇒ the criterion is **unfireable by construction**. Two corrections to the record it was built on: s180's "0 denies" was **wrong — ≥ 56 measured** (a floor; three deny wordings existed, not two), and **ADR-013 never backed L1** ⇒ no amendment, **PLAN-0102** is the vehicle | `74b6a94` (#1031) / `docs/lessons/0035-negative-measurement-needs-a-positive-control.md` |
+| 2026-08-04 | **s205 — PLAN-0100 fold-in (#1032) + archive relocation (#1033).** Five empty `Ruling:` slots + **AC-13** + BLOCKED-ON-SD markers make SD-1..SD-5 **askable**; H/I/J reconciled by **dropping Tab H from SD-1's promise** (mixed backend, not DB-posture-contingent); `54dfc7d`'s table folded in verbatim; SD-4 is **published-profile-only**. #1033 moved three misfiled s196/s197 rows `h1g` → base — the recorded blocker was **false** | `27a6961` (head_commit) / `734feae` / `da633a1` / `docs/plans/0100-exposure-published-demo-surface.md` |
 | 2026-08-04 | **s204 — PLAN-0101 COMPLETE 12/12 and ARCHIVED (#1028/#1029): the ADR-0035 D7 tenant key, end to end.** 21 tables carry `tenant_id`, all **12** uniques re-scoped (read from built metadata, not source text), revision `0024` with a symmetric downgrade. **Cray typed four calls** — unbind SD-2's letter, a **synthetic second-tenant fixture**, **SD-3 rider 3 reversed** to scope the audit reads. Two consequences the riders never named: a composite FK must move with its widened target (**335 errors, one root**), and audit scoping is **four** sites. Suite **3817 / 0 / 8** | `22202f2` (head_commit) / [#1028](https://github.com/CrayJThiemsert/vero-lite/pull/1028) / `docs/plans/done/0101-tenant-key-column.md` |
 | 2026-08-04 | **s204 — the `bash -c` escaping remedy was stated in HALVES in three places at once (#1026/#1027).** A pytest run read `EXIT=0` with two tests RED: the advisory named `\$`-escaping but not the SINGLE-quoted outer argument, so following it literally kept double quotes and fabricated a zero. The hook advisory gains a **4th predicate** (any `$` inside a double-quoted `bash -c` argument, escaped or not) and `CLAUDE.md` §8 now states **both** halves. **§8 and lesson 0007 §1.1 were correct throughout — only the enforcement was half-built.** | `e549e98` (#1027) / `017cf94` (#1026) / `docs/lessons/0007-harness-exit-code-artifact.md` §6.1 |
 | 2026-08-04 | **s203 — PLAN-0101 drafted (#1021), its Step 1 SHIPPED (#1022), four stale claims retired (#1023).** All three SDs are ADR-0035 D7 describing what does not exist: the D7(iv) "session/repository seam" (grep `tenant` in `services/` = **0**), "the reproducibility guard" (there are **three**), D7(vi)'s **2** uniques (census = **12**). Steps 2–6 BLOCKED-ON-SD. A probe CONFIRMED `alembic check` sees a new column but **not** a `server_default`. Suite **3792 / 8** | `592124b` (head_commit) / [#1022](https://github.com/CrayJThiemsert/vero-lite/pull/1022) / `docs/plans/done/0101-tenant-key-column.md` |
@@ -247,14 +255,12 @@ than restated: the Active TODO owns that status.]_
 | 2026-07-31 | **s197 — PLAN-0098 COMPLETE + ARCHIVED (#1006): View G's fleet branch, all nine ACs.** The donor joiner also binds `po_id`/`declared_tier_id`/`is_off_avl_override`, which fleet never emits (§D-D claimed otherwise) — a fleet joiner was written; SoD + join cards reused. Zero new CSS; AC-4/AC-6 by empty `git diff`; 5 probes RED. **Cray typed 4 calls**: measure assembly-cost first; no buyer-model mismatch; **ADR-0032 D2 pilot gate = SATISFIED** (Context re-ground OWED); fleet before primitives. Suite → **3709** | `687705d` (head_commit) / `docs/plans/done/0098-fleet-view-g-hero-demo-mirror.md` |
 | 2026-07-31 | **s196, 2nd workstream (#999–#1002) — PLAN-0098 ratified + Steps 1–4 built; CSS-class guard → all 15 assets; `EconomicImpact.kind` → 5 kinds.** **Cray typed SD-1 (a), SD-2 always-visible, SD-3 = (c), differing from the draft's (a)**: lead with the measured ฿48,000 — the fraud origin story is narrative copy only, never a rendered figure (AC-9 = its oracle). Backend runs the real engine over the spec-loaded ladder via `_HERO_BUILDERS` (ADR-0031 D4 corollary 1 FIRED at N=2). Suite → **3700** | `5382052` / `4bb9494` / `docs/plans/done/0098-fleet-view-g-hero-demo-mirror.md` |
 | 2026-07-31 | **s196 — PLAN-0099 drafted + merged (#1003): the wall-clock root fix.** An intermittent quote-history flake was **measured**, not inferred — the dev clock steps back 20x/300 s (every step ≥400 ms) against a 90–166 ms window ⇒ ~0.9%/run; the Postgres-`now()` hypothesis was **refuted by construction**. **`<=` → `<` rejected on evidence.** Two worse sites found (the DOA gate via `latest_accepted_quote`; the month-end export). **All 5 SDs Cray-ratified** — store-at-write, backfill marked **reconstructed**, three riders on migration `0023`. No production code changed | `4846d5e` (head_commit) / `docs/plans/done/0099-wall-clock-root-fix-store-at-write-and-sequence.md` |
-| 2026-07-31 | **s195 — fleet's Box-4 ฿ facet, a REAL PM-confirm race, PLAN-0097 COMPLETE (#994–#997).** **Cray typed** fleet's **event-anchored** ฿30,000 basis + the conservative **15%** recovery fraction. #995 fixed an **unlocked** read-then-write that let two deciders both get a 200 while one overwrote the other (`FOR UPDATE`, no migration). #996/#997 shipped the warn-path trail and archived the PLAN — **SD-2 = yes**, **SD-3 = dedup**. Suite → **3676** | `a8912e0` (#997, head_commit) / `8381c92` (#994) / `fa53911` (#995) / `docs/plans/done/0097-goal-gate-warn-path-trail.md` |
-| 2026-07-30 | **s194 — two rotted-pointer repairs + Cray's STATUS-size ruling (#990, #991).** #990 fixed ADR-0025's archive pointer (wrong by whole FILE since the s144 re-charter; now cited by section heading, no line numbers). #991 drafted PLAN-0097 — the goal gate's silent warn path is an **implementation gap against ADR-0018 D5/V2-D1**, not ratified design. **Cray typed: SD-1 = (a), D5 controls (SD-2/SD-3 stay OPEN)**; **STATUS size = tighten the per-block cap + cut duplicates** | `b25cc98` (head_commit) / `c2584c8` (#990) / `docs/plans/done/0097-goal-gate-warn-path-trail.md` / runbook §R2 |
 
 ## In-Flight Discussions
 
 - **PLAN-0096 — COMPLETE 12/12 and ARCHIVED (s193).** The fleet design partner's Phase-1 flow, shipped end to end across s186→s193 — real governance numbers, case capture from minute 1, the quote evidence pack, the sourcing signal that retired a fail-open default, the E-2 ratification window, the PM import, the outbound-only-and-DISARMED LINE OA surface, the 8-step task chain, and the month-end Express export. **Four residual risks outlive the PLAN and are why this entry is not simply deleted — all four are recorded in the archived PLAN, which is where the detail now lives:** RR-1 (per-baht approver→case attribution is INFERENCE, not data — `GovernedDecision` carries no timestamp and no per-entity key; sound while one human resolves a whole gate, silently wrong the day two approvers share a resolution); RR-3 (concurrency-race was the weakest coverage row for AC-4/AC-9/AC-10 — **both named gaps CLOSED s195 by #995**: the PM-confirm race turned out to be a REAL defect, now `FOR UPDATE`, and `allocate_repair_order_no` got the test its docstring implied, which corrected the constraint that docstring named); ศูนย์ต้นทุน ships EMPTY (partner granularity still unanswered — also an open Active TODO below); and `latest_per` still collapsing two open cases on one truck (item 4, **Cray typed (ค) defer**) — the older case never reaches the gate, so if it is paid it reports as *ungoverned*, which a reader of the number cannot distinguish from a governance failure. Full record: `docs/plans/done/0096-fleet-flow-completion-phase1.md` (§Verification preamble + §Acceptance Criteria for RR-1 / RR-3 / ศูนย์ต้นทุน; §Step 8 for `latest_per`); the AC-12 sign-off is in `.claude/handoffs/session-193/` (gitignored).
 - **PLAN-0095 — COMPLETE 7/7 and ARCHIVED (s177, #927/#928).** The scaffold-era `Dockerfile` builds and boots the DB-less synthetic OCT demo: `/health` 200 in ~2 s, all six verticals discovered, `uid=999(vero)`, `HEALTHCHECK` healthy, and `alembic current` → `0012 (head)` from inside the image. **OQ-1, the hosting model — the last thing open from it — is now CLOSED**, answered by **ADR-0035** (Accepted s200; its D2 pointer amendments completed s202, #1014); the exposure work it opened lives in PLAN-0100, not here. Full record: `docs/plans/done/0095-docker-image-boot.md`. _[Corrected s182, `was an error`: this entry still described the PLAN as Draft with "Steps 1–5 UNEXECUTED … the image does not boot today" and cited the pre-archive path — refuted by the s177 row in Recent Decisions above and by the archived PLAN's own `Status: Complete`.]_
-- **PLAN-0094 — COMPLETE (all 11 ACs closed or withdrawn) and ARCHIVED (s183).** The L1 loop-detect restructure: count non-progress instead of touches (P1), warn at `T` and deny at `T+G` (P2, `G=3` → 9 code / 18 doc), add an acknowledged-pause exit the agent cannot fake (P3), and wire the `SubagentStop` reset that had **never been live**, scoped per-`agent_id` so a zero-edit spawn cannot launder the main agent's budget (F3c). Built across s174 #917, s175 #922, s177 #930, s180 #937/#939, closed out s182 #943 on a **full fresh 18/18 non-vacuity sweep**. Archived at s183 once **Cray released the live-loop soak** (no anomalies) — the one gate no session could self-serve. **The one thing that did NOT archive with it: `OQ-4` (should L1 exist at all?) is OPEN and dated — re-homed to an Active TODO below**, per the PLAN's own §Step 6 instruction never to bury it in `done/`. Full record: `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md`; the anti-pattern behind it: `docs/lessons/0033-raising-the-threshold-is-not-fixing-the-unit.md`.
+- **PLAN-0094 — COMPLETE (all 11 ACs closed or withdrawn) and ARCHIVED (s183).** The L1 loop-detect restructure: count non-progress instead of touches (P1), warn at `T` and deny at `T+G` (P2, `G=3` → 9 code / 18 doc), add an acknowledged-pause exit the agent cannot fake (P3), and wire the `SubagentStop` reset that had **never been live**, scoped per-`agent_id` so a zero-edit spawn cannot launder the main agent's budget (F3c). Built across s174 #917, s175 #922, s177 #930, s180 #937/#939, closed out s182 #943 on a **full fresh 18/18 non-vacuity sweep**. Archived at s183 once **Cray released the live-loop soak** (no anomalies) — the one gate no session could self-serve. **The one thing that did NOT archive with it: `OQ-4` (should L1 exist at all?) was re-homed to an Active TODO below**, per the PLAN's own §Step 6 instruction never to bury it in `done/` — **and is now ANSWERED s205: NO. Cray typed RETIRE; PLAN-0102 is the vehicle. Read that row, not this line.** Full record: `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md`; the anti-pattern behind it: `docs/lessons/0033-raising-the-threshold-is-not-fixing-the-unit.md`.
 - **PLAN-0093 — COMPLETE 8/8 and ARCHIVED (s172, #913).** The LLM-arm degrade disclosure — no silent arm swap: which arm phrased an NL answer is disclosed, the rule fail-safe says it is a fail-safe, the authoring arm is projected over HTTP (including the insights run-corpus path), and `LLM_RETRY_BUDGET` no longer sits inert on the governed path. No follow-on owed. Full record: `docs/plans/done/0093-llm-arm-degrade-disclosure.md`.
 - **PLAN-0091 — COMPLETE 10/10 and ARCHIVED (s168).** Two follow-ons it named, **neither scheduled**: the **extend shapes** (calm-path + scheduled-variant scaffolding) are **greenfield, not an extension** — the shipped emitters refuse an existing vertical *by construction* and create-only is Cray-ratified SD-2, so this needs a fresh seam spec, not effort; and the census-narrative comment in `tests/api/test_procedures_endpoint.py` is the one counted site the disposer REPORTS rather than rewrites — a human call, left visible on purpose. Full record: `docs/plans/done/0091-narrative-to-vertical-scaffolder-tool.md`.
 - **PLAN-0088 — COMPLETE (13/13 live ACs) and ARCHIVED (s171, #908).** The cross-run read substrate + the four run-insight readers (A2 ฿ ROI, A3 flow, A4 audit-readiness, A1 NL-over-runs) + the Group-B carrier proof. SD-1…SD-9 all Cray-ratified; the substrate stays aggregate-only (SD-8 a) and grows only in `run_analytics.py` (SD-9 a2); Group A ungated, Group B pilot-gated (AC-10 proves the questions expressible, AC-11 that no proposal machinery exists). AC-9b's live MS-S1 smoke PASSED. **Three AC-WORDING debts carried into the archived PLAN, none a code defect** (Cray's to reword if ever): (1) AC-2 names the wrong approver source — the approver is in the trace / `governed_decision` / audit-log, not `step_principals` (the requester half); (2) AC-6's "dwell" is a same-row start→suspension span, stated plainly in the code; (3) SD-9's aside miscalls `trigger` "undefined". Full record: `docs/plans/done/0088-cross-run-read-substrate-and-run-insight-readers.md`.
@@ -270,7 +276,7 @@ than restated: the Active TODO owns that status.]_
 
 - [x] **MS-S1 hosting/exposure ADR — DISCHARGED. ADR-0035 Accepted s200; its D2 pointer amendments COMPLETE s202 (#1014).** PLAN-0095's OQ-1 is answered, and the ADR-002 / ADR-0003 pointers deferred twice as an unnumbered `ADR-NN` now exist. **Read the ADR, never a restatement here** — including its **nine currency notes**: the Cloudflare Tunnel is **not running today**. `docs/adr/0035-hosting-and-exposure-model.md`.
 
-- [ ] **PLAN-0100 — the ADR-0035 exposure PLAN. DRAFTED s202 (#1017): `Status: Draft`, 12 ACs, 6 phases. EXECUTION IS GATED on Cray ruling SD-1..SD-5.** **SD-1 is load-bearing** — the published deployment's DB posture, (a) DB-less vs (b) synthetic Postgres — because it decides which tabs the published profile registers and every allowlist row hangs off it. Per **Cray's s202 ruling** the PLAN absorbs the UI work D5(2) implies, and it carries the **published-profile half of the nav-bar work as AC-3**. _[s203: Phase 0 Step 1 has **no `Ruling:` slot** — PLAN-0101 carries one under every SD from the start — so Phase 0 must *author* the adjudication record rather than fill it; and its AC-3 measurement table currently lives only in a commit body.]_ _[s204: **SD-4's published half is not answerable as written** — it turns on a published `UI_PROFILE` that exists **only inside this PLAN** (0 occurrences anywhere else in the repo), so the profile must be built, or SD-4 re-scoped, before a ruling on it can mean anything. Fold this in with the s203 findings before the SD round goes to Cray.]_ `docs/plans/0100-exposure-published-demo-surface.md`.
+- [ ] **PLAN-0100 — the ADR-0035 exposure PLAN. DRAFTED s202 (#1017): `Status: Draft`, 12 ACs, 6 phases. EXECUTION IS GATED on Cray ruling SD-1..SD-5.** **SD-1 is load-bearing** — the published deployment's DB posture, (a) DB-less vs (b) synthetic Postgres — because it decides which tabs the published profile registers and every allowlist row hangs off it. Per **Cray's s202 ruling** the PLAN absorbs the UI work D5(2) implies, and it carries the **published-profile half of the nav-bar work as AC-3**. _[s203: Phase 0 Step 1 has **no `Ruling:` slot** — PLAN-0101 carries one under every SD from the start — so Phase 0 must *author* the adjudication record rather than fill it; and its AC-3 measurement table currently lives only in a commit body.]_ _[s204: **SD-4's published half is not answerable as written** — it turns on a published `UI_PROFILE` that exists **only inside this PLAN** (0 occurrences anywhere else in the repo), so the profile must be built, or SD-4 re-scoped, before a ruling on it can mean anything. Fold this in with the s203 findings before the SD round goes to Cray.]_ _[s205: **the fold-in SHIPPED (#1032) and the s203/s204 findings above are DISCHARGED** — the PLAN now carries five empty `Ruling:` slots, **AC-13** (the adjudication record), BLOCKED-ON-SD markers, and `54dfc7d`'s measurement table verbatim; **Tab H was dropped from SD-1's promise** (mixed backend, not DB-posture-contingent). All that remains is Cray filling the five slots.]_ `docs/plans/0100-exposure-published-demo-surface.md`.
 - [x] **PLAN-0101 — the ADR-0035 D7 tenant-key column. COMPLETE and ARCHIVED (s204).** Drafted s203 (#1021), Step 1 shipped (#1022), SD-1..SD-3 ruled by Cray (#1025), Steps 2–6 shipped as one PR (#1028 — CI forces them together: an ORM carrying `tenant_id` without revision `0024` reddens on autogenerate drift). All **12** ACs closed; 21 tables carry the key, all 12 unique constraints re-scoped, revision `0024` with a symmetric downgrade. Two consequences the SD-3 riders had not named surfaced during the build and are recorded in the PLAN's closeout: a **composite FK must move with its widened target** (335 suite errors, one root), and the audit-chain scoping is **four** sites rather than the two Cray's call named — `append_audit`'s head lookup is a correctness requirement of the widened constraint, not optional hardening. `docs/plans/done/0101-tenant-key-column.md`.
 
 - [x] **ADR-0032's Context snapshot RE-GROUNDED — DONE s202 (#1015), third pass.** Discharges the OWED debt created when Cray ruled **D2's pilot gate SATISFIED** at s197. `docs/adr/0032-strategic-frame-demo-to-pilot-wedge-and-3-shape-roadmap.md`.

@@ -142,14 +142,50 @@ class ChainItemState:
     actor: str
 
 
+def _insertion_order(event: RepairCaseTaskEvent) -> int:
+    """The reduction key: ``seq``, never the wall clock.
+
+    Raises rather than falling back to ``at`` when ``seq`` is missing. A fallback
+    would be the defect wearing a seatbelt: it would restore wall-clock ordering on
+    exactly the rows whose provenance we could not confirm, and do it silently — the
+    reduced status looks the same either way, and nothing downstream could tell that
+    a nudge decision had been made on the lying key. ``seq`` is NOT NULL in the
+    schema, so a row reaching here without one was never persisted (a hand-built
+    ORM object in a test), and that is a defect in the caller worth a loud failure.
+    """
+    if event.seq is None:
+        raise ValueError(
+            f"task event {event.event_id!r} has no seq — 'current status' is reduced on "
+            "database insertion order, and a row without one cannot be placed in it. "
+            "A persisted row always has seq (NOT NULL since migration 0025); a "
+            "hand-built RepairCaseTaskEvent must assign one explicitly."
+        )
+    return event.seq
+
+
 def chain_state(events: list[RepairCaseTaskEvent]) -> dict[str, ChainItemState]:
     """Reduce flip rows to per-item current state. Pure; order-insensitive input.
 
-    Ties on ``at`` break by ``event_id`` so two flips in the same microsecond
-    still reduce deterministically.
+    **"Latest" is database insertion order (``seq``), never ``at``.** ``at`` is a
+    Python ``datetime.now(UTC)`` stamp, and this box's clock was measured stepping
+    BACKWARDS 20 times per 300 s, every step >= 400 ms (PLAN-0099). Reducing on it
+    meant a backward step between two flips of the SAME item made the SUPERSEDED
+    flip win — and because this feeds ``stale_items``, the consequence is an
+    operational one in both directions: a finished step nudged about forever
+    (the muting failure this module exists to avoid), or a reopened step that
+    silently stops being chased. The old ``event_id`` tiebreak protected neither:
+    ``at`` led the sort, so on an inversion it was never consulted, and it is a
+    ``uuid4`` anyway. See migration ``0025``.
+
+    ``at`` is still what the chain REPORTS — ``activated_at`` and ``last_flip_at``
+    are the human-facing instants and the SLA arithmetic's inputs. Re-keying fixes
+    WHICH row is current; it does not claim the stored instants are exact. Under a
+    backward step ``activated_at`` (the first-inserted row's stamp) can sit a few
+    hundred milliseconds after ``last_flip_at``, which is the clock being wrong
+    about when, against thresholds measured in half-hours and days.
     """
     state: dict[str, ChainItemState] = {}
-    for event in sorted(events, key=lambda e: (e.at, e.event_id)):
+    for event in sorted(events, key=_insertion_order):
         prior = state.get(event.item_key)
         activated_at = prior.activated_at if prior else event.at
         variant = event.variant if event.variant is not None else (prior.variant if prior else None)

@@ -940,6 +940,32 @@ _Both session-196 Current Focus blocks, rotated out together: adding the s203 bl
 <!-- Recent-Decisions row rotated out of docs/STATUS.md by the s203 reconcile (R2: newest 10 rows) -->
 | 2026-07-30 | **s191 — a REAL repair case now reaches the governed gate (#975–#977).** The accepted quote (ใบที่ตกลง, alembic `0019`) gives the DoA ladder a ฿ figure existing BEFORE the work and tracing to recorded evidence; Cray typed the required FK + reason-only-when-not-cheapest. The case → event path wires it in with **zero engine and zero adapter-`__init__` diff**. One probe came back GREEN — a vacuous oracle a fail-soft handler was hiding. Suite → **3597** | `99b752f` (#977, head_commit) / `d3f2919` (#976) / `d781683` (#975) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
 
+<!-- RELOCATED 2026-08-04 (session 205): the two sections below were rotated by the s196 and s197 reconciles but appended to 2026-h1g-status.md, whose declared period ends 2026-07-24 (session-171). Moved here per the runbook rule that rotations append to the base (memory-architecture.md R6). Content is byte-identical to what h1g held; placed before the s204 section so the base stays chronological. The matching s196/s197 Current-Focus blocks were already in this file. -->
+
+## Rotated this reconcile (session-196, 2026-07-31 — the wall-clock root-fix reconcile; PLAN-0099 drafted + merged, #1003)
+
+### Recent Decisions row
+
+Rotated out when session 196's row entered the last-10 window.
+
+| Date | Decision | Reference |
+|------|----------|-----------|
+| 2026-07-28 | **s182 — PLAN-0094 Step 6 executed, AC-10 CLOSED (#943): all 11 ACs closed or withdrawn, on a FULL FRESH 18/18 non-vacuity sweep** — Cray typed the full re-sweep rather than citing the recorded s177/s180 runs. **`missing_red` EMPTY for all 18**; sibling L2/L3/L4 invariance held. **M-A's blast radius is 8 L1 rows, not the 3 first predicted** — the session's prediction was too narrow. Applied by a harness script, not the Edit tool (the mutated files are the session's own live hooks) | `1d0649f` (#943 merge, head_commit) / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 |
+
+---
+
+## Recent-Decisions row — s183
+
+Rotated out when session 196's SECOND-workstream row entered the last-10 window.
+
+| Date | Decision | Reference |
+|------|----------|-----------|
+| 2026-07-28 | **s183 — PLAN-0094 ARCHIVED (Cray released the live-loop soak), and the goal-gate `evaluations: 0` finding DIAGNOSED: the gate is not broken, its warn path is unobservable.** OQ-4 re-homed to an Active TODO rather than buried in `done/`. _[s194: this row's "the behaviour is ratified" reading was REFUTED — see PLAN-0097.]_ | `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 + §OQ-4 / `docs/plans/done/0097-goal-gate-warn-path-trail.md` §"The ADR-0018 determination" |
+
+
+<!-- rotated 2026-07-31, session 197 (STATUS reconcile, PR after 687705d) -->
+| 2026-07-28 | **s184→s185 — ADR-0034 "governed exception family" ACCEPTED (#948) + PLAN-0096 "fleet flow completion Phase 1, Lean KPI-first" merged as Draft (#949).** Partner-driven: 18/18 discovery answers → three mechanisms (escalate-never-skip waiver / evidence-alternative E-3 / deferred-ratification E-2+E-4); SoD + compliance stay NON-waivable. Cray resolved OQ-1/OQ-2/OQ-3 per the in-file recommendations. All 8 dispatch rejection criteria run adversarially, none fired | `760ceed` (#949 merge, head_commit) / `24c3b45` (#948) / `docs/adr/0034-governed-exception-family.md` |
+
 ## Rotated this reconcile (session-204, 2026-08-04 — PLAN-0101's tenant key end to end (#1026-#1029), and the half-stated escaping remedy)
 
 > **Session 197, 2026-07-31 (head_commit `1dbd972` → `687705d`) — one PR merged
@@ -995,3 +1021,60 @@ _Both session-196 Current Focus blocks, rotated out together: adding the s203 bl
 <!-- Recent-Decisions rows rotated out of docs/STATUS.md by the s204 reconcile (R2: newest 10 rows) -->
 | 2026-07-30 | **s193 — PLAN-0096 Step 8 item 5 COMPLETE (#982–#986): the month-end export end to end, with a KPI that can fail.** Row set = governed ∪ escaped money (a naive export reports 100% by construction). **Cray typed (ค)** traceable = governed AND documented; **(ก)** persist `three_quote_basis` (alembic `0022`). Two defects found by ORACLES, not review. Suite 3607 → **3646** | `367c15b` (#987 merge, head_commit) / `367a08e` (#986) / `ed09502` (#982) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` |
 | 2026-07-30 | **s192 — PLAN-0096 Step 8 item 3 COMPLETE (#979): the case → run link, proven on BOTH gate drivers.** The hook read `output_set`, so a rejected case was invisible (fix: `decided_entries()` reads `decisions`); `_outcome` let the run state outrank a refusal. **Cray typed: a refusal is checked FIRST.** Five non-vacuity probes, all RED as predicted. Suite → **3604** | `5dd8ce6` (#979, head_commit) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
+
+
+## Rotated this reconcile (session-205, 2026-08-04 — OQ-4 CLOSED and the s180 deny baseline corrected (#1031), PLAN-0100's fold-in (#1032), the s196/s197 archive relocation (#1033))
+
+### Current Focus block — session 199
+
+Rotated out when session 205's block entered the 4-session R2 window.
+
+> **Session 199, 2026-08-01 (head_commit `2ed45b9` → `6a3f2d7`) — one PR merged
+> (#1008), 0 open. PLAN-0099 COMPLETE and ARCHIVED: the wall-clock root fix, all
+> six steps landing as a single six-commit stack.** The at-acceptance lowest quote
+> is now stored at write time with a `recorded`/`reconstructed` provenance marker,
+> both cross-row wall-clock comparisons are **deleted** rather than patched, and
+> five latest-wins picks are re-keyed on a DB-assigned `seq`. All ten ACs closed.
+>
+> **AC-9's gate ran with its pass/fail read fixed before the run:** 3730 passed /
+> 8 skipped / 0 failed; the eight skips are all host-state or live opt-ins and none
+> is a node an AC names. That last clause was proven **positively** — the named
+> nodes were re-run alone (38 passed, 0 skipped) rather than inferred from their
+> absence among the skips, because a correct total can hide a wrong skip: one node
+> starting to skip while another stops leaves the count at 8 either way. `ruff`
+> clean over 586, `mypy --strict services/` clean over 130, five offline guards
+> exit 0, CI `gate` pass, merge-commit `git diff` = **0 bytes**, and the full suite
+> re-run on the merge commit (3730/8/0) since CI here is PR-only.
+>
+> **Cray ratified all four veto-open calls as-is** (typed): the stored figure stays
+> NOT NULL, `seq` keeps UNIQUE on all five tables, the export row keeps figure +
+> boolean + basis together, and `compute_accepted_the_cheapest` stays shared. Only
+> the last carried an action — a docstring that claimed three callers where two
+> reach it directly. Grounding the other three surfaced a coupling the veto list
+> did not show: `cases.py` narrows `bool | None` to `bool` on the stated grounds
+> that both operands are NOT NULL **columns**, so relaxing the DB constraint would
+> silently change what the endpoint reports, not merely loosen a schema rule.
+>
+> **Separately — the MS-S1 hosting ADR's trigger FIRED.** Cray named two of
+> PLAN-0095 OQ-1's four conditions directly (expose the demo beyond the LAN; test
+> MS-S1 call performance over the internet, to inform scaling). The row had been
+> sitting in In-Flight Discussions, not Active TODOs — it was **4 of 5** of the
+> items s183 grouped as trigger-gated that were Active TODOs, and the odd one out.
+> Its wording ("a LIVE candidate … still not drafted") also read as actionable
+> while the handoff record said do-not-touch, and the reconciling fact — the
+> trigger, and that it had not fired — lived only in a gitignored handoff and an
+> archived PLAN's OQ block. Moved to an Active TODO with the trigger stated inline,
+> following the OQ-4 row's precedent. Cray's initial lean is **B1** (app public,
+> MS-S1 stays on LAN), veto open pending the ADR's own analysis. **The generalised
+> rule is `docs/lessons/0034-deliberate-gate-outside-the-scanned-surface.md`** — a
+> decision NOT to act needs the same recording discipline as an action, and its
+> home is the list where someone would look for it if they thought it was missing.
+
+---
+
+### Recent-Decisions rows — s195, s194
+
+Rotated out when session 205's two rows entered the last-10 window.
+
+| 2026-07-31 | **s195 — fleet's Box-4 ฿ facet, a REAL PM-confirm race, PLAN-0097 COMPLETE (#994–#997).** **Cray typed** fleet's **event-anchored** ฿30,000 basis + the conservative **15%** recovery fraction. #995 fixed an **unlocked** read-then-write that let two deciders both get a 200 while one overwrote the other (`FOR UPDATE`, no migration). #996/#997 shipped the warn-path trail and archived the PLAN — **SD-2 = yes**, **SD-3 = dedup**. Suite → **3676** | `a8912e0` (#997, head_commit) / `8381c92` (#994) / `fa53911` (#995) / `docs/plans/done/0097-goal-gate-warn-path-trail.md` |
+| 2026-07-30 | **s194 — two rotted-pointer repairs + Cray's STATUS-size ruling (#990, #991).** #990 fixed ADR-0025's archive pointer (wrong by whole FILE since the s144 re-charter; now cited by section heading, no line numbers). #991 drafted PLAN-0097 — the goal gate's silent warn path is an **implementation gap against ADR-0018 D5/V2-D1**, not ratified design. **Cray typed: SD-1 = (a), D5 controls (SD-2/SD-3 stay OPEN)**; **STATUS size = tighten the per-block cap + cut duplicates** | `b25cc98` (head_commit) / `c2584c8` (#990) / `docs/plans/done/0097-goal-gate-warn-path-trail.md` / runbook §R2 |
