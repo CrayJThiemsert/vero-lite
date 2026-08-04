@@ -42,6 +42,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 #: Width of the running part of ``RC-<year>-<NNNN>``. Fixed-width zero padding is
 #: what makes the series sort correctly as text anywhere it is displayed; the
@@ -51,7 +52,7 @@ ORDER_NO_WIDTH = 4
 ORDER_NO_PREFIX = "RC"
 
 
-class RepairCaseOrderNumber(Base):
+class RepairCaseOrderNumber(TenantKeyMixin, Base):
     """The human-readable repair-order number for one case — Cray's Decision A.
 
     It exists because ``repair_case.case_id`` is a UUID (``case-{uuid4hex[:12]}``)
@@ -71,8 +72,15 @@ class RepairCaseOrderNumber(Base):
 
     __tablename__ = "repair_case_order_number"
     __table_args__ = (
-        sa.UniqueConstraint("repair_order_no", name="uq_repair_case_order_number_no"),
-        sa.UniqueConstraint("year", "seq", name="uq_repair_case_order_number_year_seq"),
+        # PLAN-0101 SD-3: both re-scoped, tenant_id joined. The repair-order
+        # series is per customer — two operators may each run RC-2026-0001, and
+        # under one shared database that must not be a collision. `seq` here is a
+        # plain allocated integer, NOT an Identity column, so the per-table
+        # counter caveat does not apply to this pair.
+        sa.UniqueConstraint("tenant_id", "repair_order_no", name="uq_repair_case_order_number_no"),
+        sa.UniqueConstraint(
+            "tenant_id", "year", "seq", name="uq_repair_case_order_number_year_seq"
+        ),
     )
 
     case_id: Mapped[str] = mapped_column(
@@ -84,7 +92,7 @@ class RepairCaseOrderNumber(Base):
     allocated_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
 
 
-class RepairCaseCloseout(Base):
+class RepairCaseCloseout(TenantKeyMixin, Base):
     """One close-out keying for one repair case. Append-only; latest row wins.
 
     ``vat_thb`` is NULLABLE on purpose: a vendor who charges no VAT has no VAT line,
@@ -96,7 +104,10 @@ class RepairCaseCloseout(Base):
     __tablename__ = "repair_case_closeout"
     __table_args__ = (
         sa.Index("idx_repair_case_closeout_case_id", "case_id"),
-        sa.UniqueConstraint("seq", name="uq_repair_case_closeout_seq"),
+        # PLAN-0101 SD-3: re-scoped, tenant_id joined. Identity-backed counter is
+        # per-TABLE — no gap-free per-tenant monotonicity is implied; see
+        # services/db/tenant.py, "What (tenant_id, seq) does NOT promise".
+        sa.UniqueConstraint("tenant_id", "seq", name="uq_repair_case_closeout_seq"),
     )
 
     closeout_id: Mapped[str] = mapped_column(sa.Text, primary_key=True)

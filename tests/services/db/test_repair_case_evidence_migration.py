@@ -72,6 +72,9 @@ async def test_evidence_migration_applies_and_matches_the_orm() -> None:
         "entered_at": ("timestamp with time zone", "NO"),
         "note": ("text", "YES"),
         "attachment": ("jsonb", "YES"),
+        # Added by revision 0024 (PLAN-0101 / ADR-0035 D7(ii)) — the same exactness
+        # that caught ``seq`` below catches this.
+        "tenant_id": ("text", "NO"),
     }
     assert justification == {
         "justification_id": ("text", "NO"),
@@ -87,6 +90,8 @@ async def test_evidence_migration_applies_and_matches_the_orm() -> None:
         # for. ``repair_case_quote`` above is deliberately untouched — it is read as a
         # set, never as "which row is current", so it needs no sequence.
         "seq": ("bigint", "NO"),
+        # Added by revision 0024 (PLAN-0101 / ADR-0035 D7(ii)).
+        "tenant_id": ("text", "NO"),
     }
     # Both hang off repair_case: evidence for a case that does not exist is evidence
     # that counts toward nothing and appears in no UI.

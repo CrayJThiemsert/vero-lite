@@ -48,14 +48,28 @@ async def verify_audit_chain(
     hash. Fine at pilot scale; a bounded verify is a documented follow-up (SD-4).
     The verdict is always computed from the real full walk; SD-2(d) only governs
     whether the verbatim ``breaks`` detail is disclosed to THIS caller.
+
+    **All three reads are tenant-scoped together** (PLAN-0101 SD-3 rider 3).
+    ``verify_chain`` and the head lookup are Cray's session-204 call; the row
+    COUNT is Code's extension of it, approved 2026-08-04 — scoping two of the
+    three would ship a report reading "N rows verified, intact" where N counted
+    rows the walk never looked at. That is not a smaller fix than doing all
+    three, it is a new way to be wrong.
     """
     breaks = await verify_chain(session)
     rows_verified = (
-        await session.execute(sa.select(sa.func.count()).select_from(AuditLog))
+        await session.execute(
+            sa.select(sa.func.count())
+            .select_from(AuditLog)
+            .where(AuditLog.tenant_id == settings.tenant_id)
+        )
     ).scalar_one()
     head_hash = (
         await session.execute(
-            sa.select(AuditLog.row_hash).order_by(AuditLog.audit_id.desc()).limit(1)
+            sa.select(AuditLog.row_hash)
+            .where(AuditLog.tenant_id == settings.tenant_id)
+            .order_by(AuditLog.audit_id.desc())
+            .limit(1)
         )
     ).scalar_one_or_none()
 

@@ -143,18 +143,37 @@ def test_committed_person_orm_is_reproducible(tmp_path: Path) -> None:
 
 def test_core_orm_columns_match_generated_ddl(tmp_path: Path) -> None:
     """Core parity (mirrors the energy DDL<->ORM guard, core-scoped): the shared
-    Person ORM's columns match core's generated DDL; roles is a JSONB column."""
+    Person ORM's columns match core's generated DDL; roles is a JSONB column.
+
+    ``tenant_id`` is in the expected set because PLAN-0101 SD-2(b) rules that the
+    generator emits the infra column onto every class — and this guard is *why*
+    ``emit_sql`` had to move in the same step as ``emit_orm``: the ORM gaining a
+    column the DDL lacks reddens here, so the two emitters cannot drift apart.
+    """
     from services.db.person import Person
 
     out = tmp_path / "schema.sql"
     emit_sql(load_doc(_CORE_ONTOLOGY), out)
     ddl = out.read_text()
 
-    assert {c.name for c in Person.__table__.columns} == {"person_id", "name", "roles"}
+    assert {c.name for c in Person.__table__.columns} == {
+        "person_id",
+        "name",
+        "roles",
+        "tenant_id",
+    }
     assert str(Person.__table__.c.roles.type) == "JSONB"
     assert Person.__table__.c.roles.nullable is False
     assert "CREATE TABLE person (" in ddl
     assert "roles JSONB" in ddl
+    # Both sides of the tenant key, asserted together — an ORM-only or DDL-only
+    # tenant column is the exact drift this guard exists to catch.
+    assert Person.__table__.c.tenant_id.nullable is False
+    assert "tenant_id TEXT NOT NULL" in ddl
+    # SD-1(b): the stamp is Python-side. A server_default would be invisible to
+    # `alembic check` (measured, PLAN-0101 Step 1.4), so assert its absence here.
+    assert Person.__table__.c.tenant_id.server_default is None
+    assert "tenant_id TEXT NOT NULL DEFAULT" not in ddl
 
 
 # ---------- ADR-0033 D4 / SD-H=(a): the committed shared Person PYDANTIC re-export

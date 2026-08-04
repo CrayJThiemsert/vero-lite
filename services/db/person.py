@@ -5,9 +5,10 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 
-class Person(Base):
+class Person(TenantKeyMixin, Base):
     __tablename__ = "person"
 
     person_id: Mapped[str] = mapped_column(Text, primary_key=True)

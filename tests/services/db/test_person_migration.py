@@ -63,4 +63,8 @@ async def test_person_migration_applies_and_matches_orm() -> None:
         "person_id": ("text", "NO"),
         "name": ("text", "NO"),
         "roles": ("jsonb", "NO"),
+        # Added by revision 0024 (PLAN-0101 / ADR-0035 D7(ii)), not by 0012. This
+        # test upgrades to HEAD, so it sees every later revision's columns too —
+        # the set is the schema as it stands, not as 0012 left it.
+        "tenant_id": ("text", "NO"),
     }

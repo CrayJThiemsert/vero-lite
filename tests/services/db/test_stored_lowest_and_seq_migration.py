@@ -232,11 +232,18 @@ async def test_0023_backfills_the_legacy_reading_and_marks_it_reconstructed() ->
         async with verify.begin() as conn:
             await conn.execute(
                 sa.text(
+                    # ``tenant_id`` is stated because this is a RAW insert and PLAN-0101
+                    # SD-1(b) put the stamp on the ORM column default, not on a
+                    # server_default — so a raw write has no layer to fall back on and
+                    # dies on NOT NULL. That is the ruling working, not a test needing a
+                    # workaround: the same failure is what a forgotten stamp in
+                    # production code would look like.
                     "INSERT INTO repair_case_accepted_quote (accepted_id, case_id, "
                     "quote_id, reason, accepted_by, accepted_at, "
-                    "lowest_amount_at_acceptance_thb, lowest_at_acceptance_basis) "
+                    "lowest_amount_at_acceptance_thb, lowest_at_acceptance_basis, "
+                    "tenant_id) "
                     "VALUES ('acc-new', 'case-legacy-a', 'q-a-later-cheaper', NULL, "
-                    "'tom', :t, 39000.00, 'recorded')"
+                    "'tom', :t, 39000.00, 'recorded', 'default')"
                 ),
                 {"t": _T0 + timedelta(minutes=20)},
             )
@@ -313,17 +320,19 @@ async def test_0023_leaves_the_provenance_column_with_no_default_to_hide_behind(
         async with verify.begin() as conn:
             await conn.execute(
                 sa.text(
+                    # ``tenant_id`` stated on every raw insert past 0024 — see the note
+                    # on the ``acc-new`` insert above.
                     "INSERT INTO repair_case (case_id, truck_id, opened_by, opened_at, "
-                    "status, work_type, photos) VALUES ('case-ck', 'truck-01', 'somchai', "
-                    ":t, 'open', 'breakdown', '[]'::jsonb)"
+                    "status, work_type, photos, tenant_id) VALUES ('case-ck', 'truck-01', "
+                    "'somchai', :t, 'open', 'breakdown', '[]'::jsonb, 'default')"
                 ),
                 {"t": _T0},
             )
             await conn.execute(
                 sa.text(
                     "INSERT INTO repair_case_quote (quote_id, case_id, vendor, amount_thb, "
-                    "entered_by, entered_at) VALUES ('q-ck', 'case-ck', 'อู่ช่างเล็ก', "
-                    "1000.00, 'may', :t)"
+                    "entered_by, entered_at, tenant_id) VALUES ('q-ck', 'case-ck', "
+                    "'อู่ช่างเล็ก', 1000.00, 'may', :t, 'default')"
                 ),
                 {"t": _T0},
             )
@@ -331,11 +340,18 @@ async def test_0023_leaves_the_provenance_column_with_no_default_to_hide_behind(
             async with verify.begin() as conn:
                 await conn.execute(
                     sa.text(
+                        # ``tenant_id`` is supplied HERE for a reason beyond making the
+                        # insert legal: without it this statement would still raise
+                        # IntegrityError, but for NOT NULL rather than for the CHECK this
+                        # test exists to prove — the assertion at the end of the test
+                        # names the constraint precisely so that substitution cannot
+                        # pass silently, and this keeps it from having to fire at all.
                         "INSERT INTO repair_case_accepted_quote (accepted_id, case_id, "
                         "quote_id, reason, accepted_by, accepted_at, "
-                        "lowest_amount_at_acceptance_thb, lowest_at_acceptance_basis) "
+                        "lowest_amount_at_acceptance_thb, lowest_at_acceptance_basis, "
+                        "tenant_id) "
                         "VALUES ('acc-ck', 'case-ck', 'q-ck', NULL, 'tom', :t, 1000.00, "
-                        "'derived')"
+                        "'derived', 'default')"
                     ),
                     {"t": _T0},
                 )

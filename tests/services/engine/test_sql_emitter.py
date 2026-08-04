@@ -78,3 +78,19 @@ def test_sql_emitter_primary_key_and_constraints(tmp_path: Path) -> None:
     assert "status TEXT CHECK (status IN ('active', 'retired'))" in text
     assert "REFERENCES site(site_id)" in text
     assert "CREATE INDEX idx_asset_site_ref ON asset(site_ref);" in text
+
+
+def test_sql_emitter_appends_the_tenant_key_to_every_table(tmp_path: Path) -> None:
+    """PLAN-0101 SD-2(b) / AC-1: the tenant key lands on EVERY generated table —
+    counted, not spot-checked, so a table added later cannot quietly skip it.
+
+    SD-1(b) rules the stamp Python-side, so the DDL carries NO ``DEFAULT``: an
+    unstamped write must fail ``NOT NULL`` loudly. That absence is asserted here
+    because the Step-1.4 measurement showed ``alembic check`` cannot see a
+    ``server_default`` drift back in — the tooling will never catch it for us.
+    """
+    out = tmp_path / "schema.sql"
+    emit_sql(_doc(), out)
+    text = out.read_text()
+    assert text.count("  tenant_id TEXT NOT NULL") == text.count("\nCREATE TABLE ")
+    assert "tenant_id TEXT NOT NULL DEFAULT" not in text

@@ -8,9 +8,10 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 
-class Asset(Base):
+class Asset(TenantKeyMixin, Base):
     __tablename__ = "asset"
     __table_args__ = (Index("idx_asset_site_id", "site_id"),)
 
@@ -24,7 +25,7 @@ class Asset(Base):
     site_id: Mapped[str] = mapped_column(Text, ForeignKey("site.site_id"), nullable=False)
 
 
-class Site(Base):
+class Site(TenantKeyMixin, Base):
     __tablename__ = "site"
 
     site_id: Mapped[str] = mapped_column(Text, primary_key=True)
@@ -34,7 +35,7 @@ class Site(Base):
     lng: Mapped[float | None] = mapped_column(Double)
 
 
-class OperationalEvent(Base):
+class OperationalEvent(TenantKeyMixin, Base):
     __tablename__ = "operational_event"
     __table_args__ = (
         Index("idx_operational_event_asset_id", "asset_id"),
@@ -53,7 +54,7 @@ class OperationalEvent(Base):
     site_id: Mapped[str | None] = mapped_column(Text, ForeignKey("site.site_id"))
 
 
-class Alert(Base):
+class Alert(TenantKeyMixin, Base):
     __tablename__ = "alert"
 
     alert_id: Mapped[str] = mapped_column(Text, primary_key=True)
@@ -65,7 +66,7 @@ class Alert(Base):
     reasoning: Mapped[str | None] = mapped_column(Text)
 
 
-class RecommendedAction(Base):
+class RecommendedAction(TenantKeyMixin, Base):
     __tablename__ = "recommended_action"
     __table_args__ = (
         Index("idx_recommended_action_alert_id", "alert_id"),
@@ -81,7 +82,7 @@ class RecommendedAction(Base):
     target_asset_id: Mapped[str | None] = mapped_column(Text, ForeignKey("asset.asset_id"))
 
 
-class AlertEventLink(Base):
+class AlertEventLink(TenantKeyMixin, Base):
     __tablename__ = "alert_event_link"
     __table_args__ = (
         Index("idx_alert_event_link_alert_id", "alert_id"),

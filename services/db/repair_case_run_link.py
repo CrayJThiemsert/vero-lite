@@ -37,6 +37,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 #: What a link row records about how the run treated this case. Closed set, and
 #: deliberately NOT the step's status: a step is one thing, but a gate resolution
@@ -56,7 +57,7 @@ LINK_OUTCOMES = (
 )
 
 
-class RepairCaseRunLink(Base):
+class RepairCaseRunLink(TenantKeyMixin, Base):
     """One (case, run, step) decision. Append-only; newest row is the position.
 
     **Neither key carries a foreign key, and that is one decision, not two.** This
@@ -89,10 +90,19 @@ class RepairCaseRunLink(Base):
         # not double-count a case in the KPI, and the constraint says so rather than
         # asking the callback to be careful. A RATIFICATION is a different outcome
         # on the same three keys, so it still lands.
+        # PLAN-0101 SD-3: re-scoped, tenant_id joined.
         sa.UniqueConstraint(
-            "case_id", "run_id", "step_id", "outcome", name="uq_repair_case_run_link_decision"
+            "tenant_id",
+            "case_id",
+            "run_id",
+            "step_id",
+            "outcome",
+            name="uq_repair_case_run_link_decision",
         ),
-        sa.UniqueConstraint("seq", name="uq_repair_case_run_link_seq"),
+        # PLAN-0101 SD-3: re-scoped, tenant_id joined. Identity-backed counter is
+        # per-TABLE — no gap-free per-tenant monotonicity is implied; see
+        # services/db/tenant.py, "What (tenant_id, seq) does NOT promise".
+        sa.UniqueConstraint("tenant_id", "seq", name="uq_repair_case_run_link_seq"),
     )
 
     link_id: Mapped[str] = mapped_column(sa.Text, primary_key=True)

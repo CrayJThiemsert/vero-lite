@@ -50,6 +50,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 #: How a row's ``lowest_amount_at_acceptance_thb`` came to be there (PLAN-0099 D1
 #: §Provenance, on Cray's SD-2 ruling). Closed set, pinned by a CHECK constraint
@@ -69,7 +70,7 @@ LOWEST_AT_ACCEPTANCE_BASES = (
 )
 
 
-class RepairCaseQuote(Base):
+class RepairCaseQuote(TenantKeyMixin, Base):
     """One vendor's quote for one repair case.
 
     ``attachment`` is a single JSONB metadata record (the same shape a case photo
@@ -92,7 +93,10 @@ class RepairCaseQuote(Base):
         # to remember. Same discipline as ``repair_case_order_number``'s keys —
         # state the invariant as a constraint, not as a comment asking future code
         # to be careful.
-        sa.UniqueConstraint("case_id", "quote_id", name="uq_repair_case_quote_case_quote"),
+        # PLAN-0101 SD-3: re-scoped, tenant_id joined.
+        sa.UniqueConstraint(
+            "tenant_id", "case_id", "quote_id", name="uq_repair_case_quote_case_quote"
+        ),
     )
 
     quote_id: Mapped[str] = mapped_column(sa.Text, primary_key=True)
@@ -118,7 +122,7 @@ class RepairCaseQuote(Base):
     )
 
 
-class RepairCaseJustification(Base):
+class RepairCaseJustification(TenantKeyMixin, Base):
     """A written reason why this repair could not be three-quote compared.
 
     The partner's Q10 answer named this himself: a rare part or a single vendor gets
@@ -135,7 +139,10 @@ class RepairCaseJustification(Base):
     __tablename__ = "repair_case_justification"
     __table_args__ = (
         sa.Index("idx_repair_case_justification_case_id", "case_id"),
-        sa.UniqueConstraint("seq", name="uq_repair_case_justification_seq"),
+        # PLAN-0101 SD-3: re-scoped, tenant_id joined. Identity-backed counter is
+        # per-TABLE — no gap-free per-tenant monotonicity is implied; see
+        # services/db/tenant.py, "What (tenant_id, seq) does NOT promise".
+        sa.UniqueConstraint("tenant_id", "seq", name="uq_repair_case_justification_seq"),
     )
 
     justification_id: Mapped[str] = mapped_column(sa.Text, primary_key=True)
@@ -157,7 +164,7 @@ class RepairCaseJustification(Base):
     seq: Mapped[int] = mapped_column(sa.BigInteger, sa.Identity(always=False), nullable=False)
 
 
-class RepairCaseAcceptedQuote(Base):
+class RepairCaseAcceptedQuote(TenantKeyMixin, Base):
     """ใบที่ตกลง — which quote this repair was actually agreed at.
 
     **The primitive whose absence caused two separate gaps.** The DOA ladder routes
@@ -195,9 +202,24 @@ class RepairCaseAcceptedQuote(Base):
     __tablename__ = "repair_case_accepted_quote"
     __table_args__ = (
         sa.Index("idx_repair_case_accepted_quote_case_id", "case_id"),
+        # PLAN-0101 SD-3, FORCED consequence — not a free choice. This FK targets
+        # `uq_repair_case_quote_case_quote`, which SD-3 widened to
+        # (tenant_id, case_id, quote_id); a composite FK must match a unique
+        # constraint EXACTLY, so leaving it at two columns makes Postgres refuse to
+        # create the table outright ("there is no unique constraint matching given
+        # keys"). SD-3's census flagged this site as "exists as a composite-FK
+        # target"; this is what that flag cashes out to.
+        #
+        # The widening is also a strengthening: an accepted quote can now only
+        # reference a quote belonging to the SAME tenant, enforced by the schema
+        # rather than by the write path remembering to check.
         sa.ForeignKeyConstraint(
-            ["case_id", "quote_id"],
-            ["repair_case_quote.case_id", "repair_case_quote.quote_id"],
+            ["tenant_id", "case_id", "quote_id"],
+            [
+                "repair_case_quote.tenant_id",
+                "repair_case_quote.case_id",
+                "repair_case_quote.quote_id",
+            ],
             name="fk_repair_case_accepted_quote_quote",
         ),
         # The provenance vocabulary, stated as a constraint rather than as a
@@ -215,7 +237,12 @@ class RepairCaseAcceptedQuote(Base):
         # has to write explicit values to backfill legacy rows in the old reader's
         # order — so an explicit write remains possible, and this constraint is what
         # stops one from ever landing on a value that already exists.
-        sa.UniqueConstraint("seq", name="uq_repair_case_accepted_quote_seq"),
+        # PLAN-0101 SD-3: re-scoped, tenant_id joined. The explicit-write hazard
+        # above is unchanged — the pair still stops a hand-written value landing on
+        # one that exists. What it does NOT add is gap-free per-tenant
+        # monotonicity: the counter is per-TABLE. See services/db/tenant.py,
+        # "What (tenant_id, seq) does NOT promise".
+        sa.UniqueConstraint("tenant_id", "seq", name="uq_repair_case_accepted_quote_seq"),
     )
 
     accepted_id: Mapped[str] = mapped_column(sa.Text, primary_key=True)

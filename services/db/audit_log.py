@@ -10,9 +10,21 @@ decision, handler receipt, resume, SoD refusal), protected by
   migration for the pilot cutover; the app's own credential is item-6
   remainder);
 * a **per-row hash chain**: ``row_hash = sha256(canonical(prev_hash + row
-  fields))`` with a UNIQUE index on ``prev_hash`` — the chain is linear by
-  construction, and :func:`verify_chain` detects any in-place mutation or
-  splice even by an actor strong enough to drop the trigger.
+  fields))`` with a UNIQUE index on ``(tenant_id, prev_hash)`` — the chain is
+  linear **within a tenant** by construction, and :func:`verify_chain` detects
+  any in-place mutation or splice even by an actor strong enough to drop the
+  trigger.
+
+**On the tenant scope (PLAN-0101 SD-3 + Cray's session-204 call).** The UNIQUE
+index was ``(prev_hash)`` and the chain was one global line; widening it to
+``(tenant_id, prev_hash)`` makes it one line PER TENANT. Under one database per
+deployment the two are the same chain, so nothing observable changes today — but
+the *claim* changes, which is why this wording moved with the constraint rather
+than after it. Both reads in this module are tenant-scoped to match: the head
+lookup in :func:`append_audit` and the walk in :func:`verify_chain`. Scoping the
+walk without the head would be the incoherent half — a second tenant's first
+append would link onto the first tenant's head and the scoped walk would then
+report that as a chain break.
 
 The full audit *framework* (retention, export, external anchoring, PDPA
 surface) stays ADR-011, gated on real partner data.
@@ -30,7 +42,9 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
+from services.api.config import settings
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 GENESIS_HASH = "0" * 64
 """``prev_hash`` of the first row — the chain anchor."""
@@ -52,7 +66,7 @@ FOR EACH ROW EXECUTE FUNCTION audit_log_block_mutation();
 """
 
 
-class AuditLog(Base):
+class AuditLog(TenantKeyMixin, Base):
     """One governance-relevant transition, hash-chained to its predecessor.
 
     Hand-authored engine-governance table (like ``pipeline_runs`` /
@@ -62,9 +76,13 @@ class AuditLog(Base):
 
     __tablename__ = "audit_log"
     __table_args__ = (
-        # The chain is LINEAR by construction: two writers extending the same
-        # predecessor cannot both commit (the rare loser retries/raises).
-        sa.UniqueConstraint("prev_hash", name="uq_audit_log_prev_hash"),
+        # The chain is LINEAR WITHIN A TENANT by construction: two writers
+        # extending the same predecessor cannot both commit (the rare loser
+        # retries/raises). PLAN-0101 SD-3 rider 3 widened this from ("prev_hash");
+        # the concurrency property it closes — the genesis race with nothing to
+        # lock — is preserved, now per tenant. Equivalent today under one database
+        # per deployment.
+        sa.UniqueConstraint("tenant_id", "prev_hash", name="uq_audit_log_prev_hash"),
         sa.Index("idx_audit_log_run_id", "run_id"),
     )
 
@@ -146,11 +164,21 @@ async def append_audit(
     land in the SAME transaction (the Step-4 decision-before-effect ordering
     extends to the audit trail). The chain head is read ``FOR UPDATE``, which
     serialises concurrent appenders; the residual genesis race (empty table —
-    nothing to lock) is closed by the UNIQUE(prev_hash) constraint.
+    nothing to lock) is closed by the UNIQUE(tenant_id, prev_hash) constraint.
+
+    The head lookup is tenant-scoped (PLAN-0101 SD-3 rider 3). This is a
+    correctness requirement of the widened constraint rather than an optional
+    hardening: an unscoped head would hand a second tenant's first append the
+    FIRST tenant's ``row_hash`` as its ``prev_hash``, producing one chain
+    interleaved across tenants where the schema now promises one per tenant —
+    and :func:`verify_chain`, scoped, would report that linkage as a break.
+    Reading a process-wide setting is not per-request tenant resolution, so this
+    stays inside ADR-0035 D7(vii)'s non-goals.
     """
     head = (
         await session.execute(
             sa.select(AuditLog.row_hash)
+            .where(AuditLog.tenant_id == settings.tenant_id)
             .order_by(AuditLog.audit_id.desc())
             .limit(1)
             .with_for_update()
@@ -183,11 +211,27 @@ async def append_audit(
 
 
 async def verify_chain(session: AsyncSession) -> list[str]:
-    """Walk the whole chain; return a list of human-readable breaks (empty =
+    """Walk THIS TENANT's chain; return a list of human-readable breaks (empty =
     intact). Detects in-place mutation (recomputed ``row_hash`` mismatch) and
     splice/reorder (``prev_hash`` linkage break) — the tamper-evidence that
-    holds even against an actor strong enough to drop the block trigger."""
-    rows = (await session.execute(sa.select(AuditLog).order_by(AuditLog.audit_id))).scalars().all()
+    holds even against an actor strong enough to drop the block trigger.
+
+    Tenant-scoped per PLAN-0101 SD-3 rider 3, in lockstep with the widened
+    UNIQUE(tenant_id, prev_hash) and with :func:`append_audit`'s head lookup. A
+    walk that spanned tenants would recompute a linear expectation against rows
+    from two independent chains and report every crossing as a break.
+    """
+    rows = (
+        (
+            await session.execute(
+                sa.select(AuditLog)
+                .where(AuditLog.tenant_id == settings.tenant_id)
+                .order_by(AuditLog.audit_id)
+            )
+        )
+        .scalars()
+        .all()
+    )
     breaks: list[str] = []
     expected_prev = GENESIS_HASH
     for row in rows:

@@ -53,12 +53,29 @@ def _emit(tmp_path: Path) -> str:
 
 def test_orm_emitter_classes_bound_to_base(tmp_path: Path) -> None:
     text = _emit(tmp_path)
-    assert "class Asset(Base):" in text
-    assert "class Site(Base):" in text
+    assert "class Asset(TenantKeyMixin, Base):" in text
+    assert "class Site(TenantKeyMixin, Base):" in text
     assert '__tablename__ = "asset"' in text
     assert '__tablename__ = "site"' in text
     assert "from services.db.base import Base" in text
     assert "do not edit by hand" in text
+
+
+def test_orm_emitter_mixes_in_the_tenant_key(tmp_path: Path) -> None:
+    """PLAN-0101 SD-2(b) / AC-1: every emitted class carries the tenant key, and it
+    arrives by MIXIN rather than an inline ``mapped_column`` in the template.
+
+    The mixin shape is the assertion, not an implementation detail: an inline copy
+    here would be a SECOND definition of the column (the 14 hand-written tables
+    already inherit ``services/db/tenant.py``'s), free to drift from it silently.
+    The negative half is what pins that — the emitter must not write its own
+    ``tenant_id: Mapped[...]`` line.
+    """
+    text = _emit(tmp_path)
+    assert "from services.db.tenant import TenantKeyMixin" in text
+    assert text.count("class ") == text.count("(TenantKeyMixin, Base):")
+    assert "tenant_id: Mapped[" not in text
+    assert "settings.tenant_id" not in text
 
 
 def test_orm_emitter_type_mapping(tmp_path: Path) -> None:

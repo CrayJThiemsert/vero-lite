@@ -34,6 +34,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 #: The case lifecycle. Deliberately small: the partner's Q2 answer asked for
 #: visible state + nudges, not workflow automation, and PLAN-0096 Step 6 grows the
@@ -53,7 +54,7 @@ WORK_TYPE_ACCIDENT = "accident"
 WORK_TYPES = (WORK_TYPE_BREAKDOWN, WORK_TYPE_PM, WORK_TYPE_ACCIDENT)
 
 
-class RepairCase(Base):
+class RepairCase(TenantKeyMixin, Base):
     """One human-opened repair case for one truck.
 
     ``photos`` is JSONB rather than a child table: a photo is a small metadata

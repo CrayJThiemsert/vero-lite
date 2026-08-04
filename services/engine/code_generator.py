@@ -37,6 +37,15 @@ from typing import Any
 
 from ruamel.yaml import YAML
 
+# The tenant key (ADR-0035 D7 / PLAN-0101 SD-2(b)). Duplicated as a literal rather
+# than imported from ``services.db.tenant`` on purpose: this module is a LEAF —
+# it imports nothing from ``services.*`` — and pulling the mixin in for one string
+# would reverse the layering (engine -> db) and drag SQLAlchemy + pydantic-settings
+# into the generator. The two spellings cannot silently disagree anyway:
+# ``test_schema_parity`` compares the ORM's column set (which gets the name from the
+# mixin) against this emitter's DDL, so a mismatch is a RED guard, not a latent bug.
+TENANT_COLUMN_NAME = "tenant_id"
+
 _PY_SCALAR_TYPE: dict[str, str] = {
     "string": "str",
     "int": "int",
@@ -294,6 +303,13 @@ def emit_sql(
             _sql_column_line(prop_name, prop_def, pk, object_types, imported)
             for prop_name, prop_def in props.items()
         ]
+        # PLAN-0101 SD-2(b): the tenant key is an INFRA column, appended after the
+        # ontology's own properties. It moves here in lockstep with `emit_orm` —
+        # `test_schema_parity` compares the ORM's column SET against this DDL, so a
+        # tenant column on one side and not the other is a red guard, not a choice.
+        # No DEFAULT: SD-1(b) keeps the stamp Python-side so an unstamped write
+        # fails NOT NULL loudly (see services/db/tenant.py).
+        col_lines.append(f"  {TENANT_COLUMN_NAME} TEXT NOT NULL")
         lines.append(",\n".join(col_lines))
         lines.append(");")
         lines.append("")
@@ -627,6 +643,7 @@ def emit_orm(
     lines.append("from sqlalchemy.orm import Mapped, mapped_column")
     lines.append("")
     lines.append("from services.db.base import Base")
+    lines.append("from services.db.tenant import TenantKeyMixin")
 
     for obj_name, obj_def in object_types.items():
         table = _snake(obj_name)
@@ -634,7 +651,14 @@ def emit_orm(
         props = obj_def.get("properties") or {}
         lines.append("")
         lines.append("")
-        lines.append(f"class {obj_name}(Base):")
+        # PLAN-0101 SD-2(b): the tenant key arrives by MIXIN, not by an inline
+        # `mapped_column` in this template. Emitting the mixin keeps exactly one
+        # definition of the column in the tree (services/db/tenant.py) — shared with
+        # the 14 hand-written tables — where an inline copy here would be a second
+        # definition free to drift. This is still the SD-2(b) generator special-case:
+        # the emitter decides every class carries it, unlike rejected option (c)
+        # where a new generated class would inherit it without the generator knowing.
+        lines.append(f"class {obj_name}(TenantKeyMixin, Base):")
         lines.append(f'    __tablename__ = "{table}"')
         ref_cols = [pn for pn, pd in props.items() if pd["type"] == "ref"]
         lines.extend(_orm_table_args(table, ref_cols))

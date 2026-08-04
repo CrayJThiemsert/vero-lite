@@ -38,6 +38,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 
 class PipelineRunStatus(StrEnum):
@@ -78,7 +79,7 @@ class StepResultStatus(StrEnum):
     FAILED = "failed"
 
 
-class PipelineRun(Base):
+class PipelineRun(TenantKeyMixin, Base):
     """A run of a Procedure — the additive run-time record (ADR-016 D2)."""
 
     __tablename__ = "pipeline_runs"
@@ -116,13 +117,16 @@ class PipelineRun(Base):
     __mapper_args__ = {"version_id_col": version}  # noqa: RUF012
 
 
-class StepResult(Base):
+class StepResult(TenantKeyMixin, Base):
     """One step's result within a PipelineRun, incl. the telemetry seam (AC A-9)."""
 
     __tablename__ = "step_results"
     __table_args__ = (
         Index("idx_step_results_run_id", "run_id"),
-        UniqueConstraint("seq", name="uq_step_results_seq"),
+        # PLAN-0101 SD-3: re-scoped, tenant_id joined. The counter is per-TABLE,
+        # so this does NOT promise gap-free per-tenant monotonicity — see
+        # services/db/tenant.py, "What (tenant_id, seq) does NOT promise".
+        UniqueConstraint("tenant_id", "seq", name="uq_step_results_seq"),
     )
 
     step_result_id: Mapped[str] = mapped_column(Text, primary_key=True)
