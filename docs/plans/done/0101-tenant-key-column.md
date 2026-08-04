@@ -1,6 +1,6 @@
 # PLAN-0101: The tenant-key column — `tenant_id` on every committed persistence table
 
-**Status:** Draft
+**Status:** Complete (2026-08-04, session 204 — all 12 ACs closed)
 **Owner:** Claude Code (implementation) + Cray (SD rulings)
 **Created:** 2026-08-04
 **Related ADRs:** ADR-0035 (D7 — the tenant key, L4), ADR-0032 (demo→pilot wedge context)
@@ -124,20 +124,20 @@ sub-item can be silently dropped — the stated reason D7 enumerated them.
 **AC-10–AC-12 are scope additions past D7's enumeration** — AC-10 from SD-2's
 ruling (session 203), AC-11/AC-12 from the session-204 amendments.
 
-- [ ] **AC-1 (D7(i)):** *"teach the generator to emit the column for the committed
+- [x] **AC-1 (D7(i)):** *"teach the generator to emit the column for the committed
   ORMs and update the reproducibility guard"* — implemented per the **SD-2 ruling**.
   The regenerated `services/db/models.py` and `services/db/person.py` carry
   `tenant_id`; **all three guards** (G-a, G-b, G-c) are green in the same commit,
   and `emit_sql` moves in the same step as `emit_orm` whenever the ORM gains a
   column (G-b makes that non-optional). G-b's expected set at
   `test_shared_ontology_mechanism.py:153` is updated to include `tenant_id`.
-- [ ] **AC-2 (D7(ii)):** *"add the column to the hand-written models"* — all 14
+- [x] **AC-2 (D7(ii)):** *"add the column to the hand-written models"* — all 14
   hand-written tables (21 minus the 7 generated) across the 10 hand-written
   modules carry `tenant_id` (Text, NOT NULL): `runs.py` (2), `schedules.py` (1),
   `audit_log.py` (1), `identity.py` (1), `pm_import.py` (1), `repair_case.py` (1),
   `repair_case_closeout.py` (2), `repair_case_evidence.py` (3),
   `repair_case_run_link.py` (1), `repair_case_task.py` (1).
-- [ ] **AC-3 (D7(iii)):** *"ship one Alembic revision in the measured-safe shape —
+- [x] **AC-3 (D7(iii)):** *"ship one Alembic revision in the measured-safe shape —
   add nullable → backfill `'default'` → NOT NULL"* — **one** revision, id `0024`
   (`down_revision "0023"`; head verified at
   `alembic/versions/0023_stored_lowest_and_monotonic_seq.py:64-65`), covering all
@@ -146,7 +146,7 @@ ruling (session 203), AC-11/AC-12 from the session-204 amendments.
   `alter_column(..., nullable=False)`). Whether a `server_default` is retained
   after the backfill follows the SD-1 ruling (see the folded question in SD-1).
   Downgrade is symmetric.
-- [ ] **AC-4 (D7(iv)):** *"stamp writes from `settings.tenant_id` at the
+- [x] **AC-4 (D7(iv)):** *"stamp writes from `settings.tenant_id` at the
   session/repository seam"* — implemented per the **SD-1 ruling**. A
   `tenant_id: str` settings field (env `TENANT_ID`, default `"default"`,
   `Field(description=...)`) exists in `services/api/config.py` beside
@@ -156,7 +156,7 @@ ruling (session 203), AC-11/AC-12 from the session-204 amendments.
   config hash is byte-identical with `TENANT_ID` set and unset (the
   only-when-supplied discipline: a new settings field must not change every
   existing config hash).
-- [ ] **AC-5 (D7(v)):** *"add a set-equality guard test asserting every
+- [x] **AC-5 (D7(v)):** *"add a set-equality guard test asserting every
   `__tablename__` model carries `tenant_id` (a new table cannot silently opt
   out)"* — the guard is **structurally non-vacuous**, i.e. it fails when a new
   table ships without `tenant_id` through *either* hole:
@@ -176,7 +176,7 @@ ruling (session 203), AC-11/AC-12 from the session-204 amendments.
   registry-only walk misses a model module no test imports — vacuous, rejected.
   The A==B pairing closes both holes: a new un-imported file grows A and breaks
   A==B; a new imported table without the column breaks step 3.
-- [ ] **AC-6 (D7(vi)):** *"rule on every natural-key unique constraint that a
+- [x] **AC-6 (D7(vi)):** *"rule on every natural-key unique constraint that a
   tenant column re-scopes — concretely `uq_schedule_states_vertical_procedure` on
   `(vertical, procedure_id)` (`schedules.py:36-38`): under one-DB-per-deployment it
   is unaffected, but the PLAN must decide (not discover) whether `tenant_id` joins
@@ -186,11 +186,11 @@ ruling (session 203), AC-11/AC-12 from the session-204 amendments.
   The PLAN's census must never carry fewer than 12 entries and must include the
   column-level `unique=True` at `services/db/pm_import.py:82`, which a
   `UniqueConstraint(` grep cannot see.
-- [ ] **AC-7 (D7(vii)):** *"build **no** per-request tenant resolution, no
+- [x] **AC-7 (D7(vii)):** *"build **no** per-request tenant resolution, no
   row-level security, no tenant-scoped authn — those are T2-full and are
   explicitly not this decision"* — verified by absence: no request-scoped tenant
   parameter, no `POLICY`/RLS DDL, no authn change lands in this PLAN's diff.
-- [ ] **AC-8 (scenario test — CLAUDE.md §8, binding):** a scenario test drives the
+- [x] **AC-8 (scenario test — CLAUDE.md §8, binding):** a scenario test drives the
   **real producer into the real consumer on realistic simulated data**: with
   `TENANT_ID` set to a non-default value (e.g. `"scenario-acme"`), it drives an
   existing end-to-end flow (a synthetic-event → procedure-run path that writes at
@@ -205,7 +205,7 @@ ruling (session 203), AC-11/AC-12 from the session-204 amendments.
   steps marked BLOCKED-ON-SD begin. This PLAN stays `Status: Draft` until Complete
   (an Accepted-status PLAN becomes G1-gated and Code cannot edit its own closeout).
   **CLOSED 2026-08-04 (session 203)** — all three ruled; Steps 2–6 are unblocked.
-- [ ] **AC-10 (deployment metadata + the semantic-surface guard — added by SD-2's
+- [x] **AC-10 (deployment metadata + the semantic-surface guard — added by SD-2's
   ruling, session 203; negative guard AMENDED 2026-08-04, session 204):**
   `OntologyMeta` (`services/engine/ontology_meta.py`) carries `tenant_id`, served
   by the existing `GET /meta` route (`services/api/routers/actions.py`), so a
@@ -264,7 +264,7 @@ ruling (session 203), AC-11/AC-12 from the session-204 amendments.
   emit `filters: [{property: "tenant_id", ...}]`). That is exactly Cray's stated
   worry (call 2) answered at the ruled layer — made **explicit and asserted** by
   this guard plus AC-11, rather than incidental.
-- [ ] **AC-11 (LLM-path isolation guard — ADDED 2026-08-04, session 204):** a test
+- [x] **AC-11 (LLM-path isolation guard — ADDED 2026-08-04, session 204):** a test
   asserting `_validate_query` (`services/engine/nl_query.py:491-511`) **rejects**
   a `StructuredQuery` whose `filters[].property` names `tenant_id`, via the
   corrective-feedback error path at `:504-509`. This converts "the LLM cannot ask
@@ -278,7 +278,7 @@ ruling (session 203), AC-11/AC-12 from the session-204 amendments.
   fails loudly). **No AC-7/D7(vii) breach:** this asserts an *absence* — it builds
   no tenant resolution, no RLS, no authn. Attribution: the protection mandate is
   Cray's (call 2); the specific test design is a Code proposal (session 204).
-- [ ] **AC-12 (the synthetic two-tenant fixture — ADDED 2026-08-04, session 204;
+- [x] **AC-12 (the synthetic two-tenant fixture — ADDED 2026-08-04, session 204;
   fixture proposed directly by Cray, call 3, to prove the changes actually work
   rather than waiting for a real second customer):** a fixture writing rows as
   **two distinct tenants** into the disposable test DB **through the real seam** —
@@ -752,11 +752,54 @@ test DB. **Note the blind spot both tools share:** they will confirm the columns
    head lookup see only tenant A's rows; tenant B's rows neither break A's chain
    nor appear as its head.
 
-### Step 7 — Closeout
+### Step 7 — Closeout — **DONE (session 204, 2026-08-04)**
 
-Full offline gate at CI scope (`mypy services/`, full `tests/`, ruff), PR per
-CLAUDE.md §7, then `git mv` to `docs/plans/done/` after merge. Status flips
-Draft → Complete at closeout only.
+Full offline gate at CI scope, PR per CLAUDE.md §7, `git mv` to
+`docs/plans/done/`, Status flipped Draft → Complete.
+
+**What shipped, by PR:**
+
+| PR | Steps | ACs closed |
+|---|---|---|
+| [#1021](https://github.com/CrayJThiemsert/vero-lite/pull/1021) | PLAN drafted | — |
+| [#1022](https://github.com/CrayJThiemsert/vero-lite/pull/1022) | Step 1 | AC-4 (settings field + governance-pin guard) |
+| [#1025](https://github.com/CrayJThiemsert/vero-lite/pull/1025) | Step 0 | AC-9 (adjudication record) |
+| [#1028](https://github.com/CrayJThiemsert/vero-lite/pull/1028) | Steps 2–6 | AC-1, AC-2, AC-3, AC-5, AC-6, AC-7, AC-8, AC-10, AC-11, AC-12 |
+
+**Final gate (session 204, on the #1028 head):** `tests/` **3817 passed / 0 failed
+/ 8 skipped**; `mypy --strict` clean over **131** files; `ruff` clean over
+`services/` + `tests/` + `alembic/`; `alembic check` clean;
+`tools/check_alembic_model_registration.py` clean. CI `gate` pass 5m41s.
+
+**Two consequences the SD-3 riders did not name, both surfaced by the work rather
+than by review — recorded here because the next PLAN that widens a unique
+constraint will meet them again:**
+
+1. **A composite FK must move with its target.**
+   `fk_repair_case_accepted_quote_quote` references
+   `uq_repair_case_quote_case_quote`, and PostgreSQL requires a composite FK to
+   match a unique constraint EXACTLY — so widening the target alone makes it
+   refuse the table outright (335 suite errors, one root). SD-3's census had
+   already flagged that row as "exists as a composite-FK target"; nothing had
+   translated the flag into an action. The FK now carries `tenant_id` on both
+   sides, which additionally makes a cross-tenant quote reference impossible in
+   schema rather than merely discouraged in the write path.
+2. **The audit-chain scoping is FOUR sites, not the two Cray's call named.**
+   `append_audit`'s head lookup is a correctness requirement of the widened
+   constraint, not an optional hardening: unscoped, a second tenant's first append
+   takes the first tenant's `row_hash` as its `prev_hash`, producing one chain
+   interleaved across tenants where the schema now promises one per tenant — and
+   the scoped walk would then report that linkage as a break. `rows_verified` is
+   Code's extension of the two-site call (Cray approved 2026-08-04): scoping two
+   of three would ship a report reading "N rows verified, intact" where N counted
+   rows the walk never looked at.
+
+**The measurement worth carrying forward.** The Step-6 probe planted a
+`server_default` on the migration and read both oracles in one run: the new
+`test_tenant_key_migration.py` went **RED**, `alembic check` stayed **GREEN at
+exit 0**. That reproduces Step 1.4's finding live with a positive control on the
+other side — SD-1(b)'s "no `server_default`" is not merely untested elsewhere, it
+is *provably invisible* to the tooling that looks like it should catch it.
 
 ## Verification
 
