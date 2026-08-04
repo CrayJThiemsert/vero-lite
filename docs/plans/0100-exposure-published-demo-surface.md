@@ -10,8 +10,18 @@
 > ruling and the "PLAN-0100 owns the UI work" scope are Cray's typed picks, not
 > drafter inferences. Every `file:line` below was re-verified on disk by the
 > drafter at drafting time (branch `docs/plan-0100-exposure`, clean tree).
-> Independent review: Code (R2) at PR; ratification: Cray. Author≠reviewer
-> separation: **INTACT**. Uncommitted draft — Code commits per ADR-009 D2.
+> Committed as `1e3275c`, merged as PR #1017.
+>
+> **Fold-in pass (session 205, `plan-drafter`, fresh dispatch).** Four verified
+> findings folded in place: (1) `**Ruling:**` slots + AC-13 + BLOCKED-ON-SD
+> markers on the PLAN-0101 adjudication pattern; (2) the Tab-H vs Tabs-I/J
+> basis split applied consistently to the excluded table and SD-1; (3) the
+> `54dfc7d` (PR #1018) measurement table recorded under AC-3 — dev half
+> discharged, published half open; (4) SD-4 restated published-profile-only.
+> No SD is ruled here — all five `**Ruling:**` slots are empty, awaiting Cray.
+> Every new `file:line` re-verified on disk at fold-in. Independent review:
+> Code (R2) at PR; ratification: Cray. Author≠reviewer separation: **INTACT**
+> — Code commits per ADR-009 D2.
 
 ## Goal
 
@@ -113,7 +123,7 @@ published surface (D5(2)).
 | `/intake/*` (all three) | D5(2) | Tab E **not registered** (`app.js:14` gated); story "Go live" beat must not fire (`view-story.js:907` — scripted fallback if one exists, else launcher hidden; Step 1 census decides which, and the guard-registry tripwire pins it either way) |
 | `/procedures/draft/*` (all three) | this PLAN — SD-2 | draft-authoring wizard entries not rendered (`intake-procedures.js:158-201` call sites guarded) |
 | `/demo/hero/event` | D5(2) (F4) | Tab G event-mode control not rendered (`view-hero.js:658` branch gated) |
-| everything else (`/intake/generate` included above; `/api/exports/*`, `/cases*`, monitor writes, any route not in the allow table) | default-deny | Tab-level dispositions for H/I/J resolve with SD-1 + Step 1 census; any tab whose entire backend is excluded is not registered in the published profile |
+| everything else (`/intake/generate` included above; `/api/exports/*`, `/cases*`, Tab H's off-list routes — GET `/runs` `view-monitor.js:168`, POST `/runs/{id}/cancel` `view-monitor.js:148`, GET `/audit/verify` `view-monitor.js:488` — and any route not in the allow table) | default-deny | **Tabs I/J resolve with SD-1 + Step 1 census (BLOCKED-ON-SD-1); Tab H resolves with the Step 1 census alone** — its exclusions are default-deny, not DB-posture (see SD-1's scope note; two of H's routes are already on the allow table: `/runs/{id}` `view-monitor.js:235`, `/runs/{id}/gate/resolve` `view-monitor.js:133`, so H's backend is *not* entirely excluded); any tab whose entire backend is excluded is not registered in the published profile |
 
 ## Acceptance Criteria
 
@@ -143,15 +153,56 @@ degrade, or writer under test.
   1920**, `document.scrollingElement.scrollWidth <= clientWidth` and the header
   contains no horizontally clipped element, **in both profiles** — measured via
   the established preview_eval geometry procedure and recorded as a measurement
-  table in this PLAN's closeout (the s197 baseline: `scrollWidth 1825` vs
-  `clientWidth 1382`, all 24 overflowing elements in the nav). The responsive
-  ladder (`theme.css:189-213`) is rebuilt for the real tab census — it is
-  written for an "A–E nav" of five tabs while `app.js:9-26` registers ten; the
-  published profile still renders ≥8, so **hiding alone is not accepted as the
-  fix** (see SD-4). Plus a committed Python tripwire in
+  table in this PLAN (dev half below; published half at closeout; the s197
+  baseline: `scrollWidth 1825` vs `clientWidth 1382`, all 24 overflowing
+  elements in the nav). The drafting-time responsive ladder (then
+  `theme.css:189-213`, pre-`54dfc7d`) was written for an "A–E nav" of five
+  tabs while `app.js:9-26` registers ten; the published profile still renders
+  ≥8, so **hiding alone is not accepted as the fix** (see SD-4 — restated at
+  fold-in). Plus a committed Python tripwire in
   `tests/api/test_static_ui.py`: extract the `VIEWS` keys from `app.js` and
   assert **set-equality** with the pinned census the ladder was measured
   against — adding tab K reddens the test and forces re-measurement.
+
+  **Status at fold-in (s205): the dev half is DISCHARGED by `54dfc7d`
+  (PR #1018); the published half stays OPEN** — it is not constructible until
+  Step 2 lands `ui_profile` (verified at fold-in: zero `UI_PROFILE|ui_profile`
+  matches under `services/`). `54dfc7d` rebuilt the ladder for the ten-tab
+  census — the inactive-label collapse rung moved from `max-width 1360px` to
+  `2299px` (now `theme.css:225`) — and both tripwires this AC asks for
+  **already exist**, proven non-vacuous by probe:
+  `test_tab_census_matches_the_measured_header_ladder`
+  (`tests/api/test_static_ui.py:96`) and
+  `test_header_ladder_collapses_inactive_tab_labels_by_default`
+  (`tests/api/test_static_ui.py:112`). Do not re-run the dev pass (Step 4).
+  Measurement record, **verbatim from `54dfc7d`'s commit body** — "Measured on
+  the real page (ten tabs, 2026-08-03), not estimated":
+
+  ```
+    natural header width, every label + every chip ....... 2253px
+    2560 viewport ................................ fits, overflow 0
+    1920 viewport ................................ overflow  95px
+    1440 viewport ................................ overflow 411px
+    tab strip: full labels 1369px -> keys 478px (recovers ~890px)
+  ```
+
+  "Verified at the five widths PLAN-0100 AC-3 pins, against a pass/fail read
+  fixed before the run (scrollWidth <= clientWidth AND no clipped header
+  element)":
+
+  ```
+    1280 -> 0 overflow, 0 clipped     1680 -> 0 overflow, 0 clipped
+    1366 -> 0 overflow, 0 clipped     1920 -> 0 overflow, 0 clipped (was 95)
+    1440 -> 0 overflow, 0 clipped (was 411)
+    2400 -> 0 overflow, full labels correctly return above the breakpoint
+  ```
+
+  `54dfc7d`'s own scope statement: "Partially discharges PLAN-0100 AC-3. The
+  published-profile half of that AC stays open until UI_PROFILE exists
+  (PLAN-0100 Phase 1); this covers the dev profile, which is the only one that
+  exists today and was the one measured broken." This AC closes only when the
+  published-profile pass is recorded here alongside the dev table (Step 4,
+  under SD-4's ruling).
 - [ ] **AC-4 (published env profile).** The published compose project pins every
   value in §Pinned values. Closed by `tests/deploy/test_published_compose.py`
   parsing the committed compose + env files (set-equality on the pinned keys;
@@ -214,6 +265,14 @@ degrade, or writer under test.
   below names the exact ADR-0035 lines and proposed replacement text, and the
   closeout confirms Code routed it as a separate artifact. This PLAN's diff
   touches no file under `docs/adr/`.
+- [ ] **AC-13 (adjudication record — the PLAN-0101 AC-9 pattern).** The five
+  `**Ruling:**` slots in §Surfaced decisions are filled with Cray's typed
+  rulings (value + date) **before** any step marked BLOCKED-ON-SD begins
+  (Step 1's I/J allowlist-row finalization; Steps 3, 8, 9; Step 4's
+  published-profile half). Closed by the filled slots themselves — Step 1's
+  Output line points at them. This PLAN stays `Status: Draft` until Complete
+  (an Accepted-status PLAN becomes G1-gated and Code cannot edit its own
+  closeout).
 
 ## Out of Scope
 
@@ -254,15 +313,25 @@ separately Cray-gated** (CLAUDE.md §8).
   the existing Zero Trust account or gets its own. Phases 0–4 proceed without
   it; only Phase 5 needs the portal to exist.
 - Complete the UI-route census: grep `assets/*.js` for every fetch outside the
-  `api.js` wrappers (Tabs H/I/J and the insights caller were not fully walked
-  at drafting); finalize the H/I/J rows of the allowlist tables under SD-1's
-  ratified answer; confirm whether Tab C gates on `/llm/status` and whether
-  the story surface has a scripted fallback for its live-extract beat.
+  `api.js` wrappers (Tabs I/J and the insights caller were not fully walked at
+  drafting; Tab H received a bounded fold-in walk, s205 — five call sites,
+  recorded in the excluded table and SD-1's scope note — which this census
+  re-verifies and completes). Finalize the **I/J** rows of the allowlist
+  tables under SD-1's ratified answer (**BLOCKED-ON-SD-1**). Dispose of
+  **Tab H** here in the census, on its own default-deny basis (SD-1's ruling
+  cannot dispose of it — see SD-1's scope note): propose
+  degrade-vs-not-registered in this step's PR; SD-1's answer bears on H only
+  for whichever of its reads the walk shows to be DB-backed. Confirm whether
+  Tab C gates on `/llm/status` and whether the story surface has a scripted
+  fallback for its live-extract beat.
 - Re-verify the fact anchors this PLAN inherits (F4/F5, `auth.py:71-72`,
   `admin.py:174-179,222-223`) against the working tree — Step 0 hygiene, not
   suspicion (CLAUDE.md §6).
-- Output: the completed tables in this PLAN (one PR), Cray adjudication of
-  SD-1..SD-5 recorded inline.
+- Output: the completed tables in this PLAN (one PR). Cray's adjudication of
+  SD-1..SD-5 lands as typed rulings (value + date) in the five `**Ruling:**`
+  slots under §Surfaced decisions — AC-13 is the adjudication record. No step
+  marked BLOCKED-ON-SD (Step 1's I/J row finalization; Steps 3, 8, 9; Step 4's
+  published-profile half) begins before those slots are filled.
 
 ### Phase 1 — The published UI profile (offline; the s202 ruling)
 
@@ -274,17 +343,26 @@ to `Settings` (env `UI_PROFILE`, valid per `config.py:30-35`) with
 implementation must make the profile available before header/tab construction —
 mechanism is the implementer's choice, behavior is pinned by AC-1/AC-2).
 
-**Step 3: Gate the excluded-backend controls.** Apply the §census disposition
-column: Tab E not registered; `.llmctl` not mounted; wizard entries not
-rendered; hero event mode not rendered; story live-extract beat guarded. Ship
-the AC-1 guard-registry tripwire in the same PR (the registry is the census
-table, executable).
+**Step 3: Gate the excluded-backend controls (BLOCKED-ON-SD-2 — the wizard
+disposition; BLOCKED-ON-SD-1 — the census-surfaced tab set).** Apply the
+§census disposition column: Tab E not registered; `.llmctl` not mounted;
+wizard entries not rendered (SD-2's ruling decides whether all three draft
+routes' entries go, or `instantiate`'s survives); hero event mode not
+rendered; story live-extract beat guarded — plus the Tab I/J dispositions from
+SD-1's ruling and Tab H's census disposition from Step 1. Ship the AC-1
+guard-registry tripwire in the same PR (the registry is the census table,
+executable).
 
-**Step 4: Nav-bar ladder rebuild (AC-3, blocking).** Rebuild
-`theme.css:189-213` for the real tab census in both profiles; measure at the
-five pinned widths via preview_eval **before and after** (one batched edit per
-the measured-CSS procedure); commit the census set-equality tripwire; record
-the measurement table in this PLAN.
+**Step 4: Nav-bar ladder — published-profile half only (AC-3, blocking;
+BLOCKED-ON-SD-4 as restated).** The dev half of this step is **already done —
+do not re-run it**: PR #1018 (`54dfc7d`) rebuilt the ladder for the ten-tab
+census (collapse rung now `theme.css:225`), measured before/after at the five
+pinned widths against a pre-fixed pass/fail read, and committed both tripwires
+probe-proven — the measurement table is recorded under AC-3. What remains:
+once Step 2 lands `ui_profile`, execute SD-4's ruled option for the published
+profile — measure at the five pinned widths via preview_eval against the same
+pre-fixed pass/fail read, and record the published-profile measurement table
+under AC-3 alongside the dev one.
 
 **Step 5: The D6 banner (AC-9).** Published-profile persistent notice with the
 six pinned elements; source tripwire; wording to R2 against ADR-0032 D5.
@@ -304,7 +382,9 @@ untouched.
 
 ### Phase 3 — The published compose project + allowlist edge (offline)
 
-**Step 8: `deploy/published/`.** A committed compose project: `app` (the
+**Step 8: `deploy/published/` (BLOCKED-ON-SD-1 — DB posture; BLOCKED-ON-SD-2 —
+draft-route allowlist contents; BLOCKED-ON-SD-3 — whether the in-compose proxy
+exists at all).** A committed compose project: `app` (the
 PLAN-0095 image) + an `nginx:alpine` proxy that is the **only** thing the
 connector reaches — deny-by-default allowlist (404 for everything else), per-IP
 `limit_req` (10/min burst 20) on the LLM routes, network `vero_oct`, named
@@ -313,7 +393,8 @@ volume `prompt-log`, **no `ports:` keys on any service**, the pinned env file
 runbook; `.env.example` gains the two `LLM_*` names it lacks today, `.env.example:17,45,55`
 context). DB posture per SD-1. Ship AC-4/AC-5/AC-6(a,b) tests in the same PR.
 
-**Step 9: Local compose smoke (dev box — not host-state).** Bring the published
+**Step 9: Local compose smoke (dev box — not host-state; BLOCKED-ON-SD-3 —
+the AC-6(c) proxy cases presume the in-compose proxy).** Bring the published
 project up on the Legion dev box; execute the AC-6(c)/AC-7 proxy cases against
 the pre-written pass/fail read; record the transcript in the PR.
 
@@ -388,6 +469,10 @@ Must contain, verbatim obligations from D6:
 
 ## Surfaced decisions (for Cray at ratification)
 
+Rulings land in the `**Ruling:**` slots below as Cray's typed value + date
+(AC-13 — the PLAN-0101 adjudication pattern). No step marked BLOCKED-ON-SD
+begins until all five slots are filled.
+
 - **SD-1 — Published deployment DB posture.** (a) **DB-less** (no postgres
   service; F4 bounded by construction *and* the allowlist; Tabs I/J and other
   DB-backed surfaces hidden in the published profile — census completes the
@@ -397,27 +482,79 @@ Must contain, verbatim obligations from D6:
   wedge motion, and the full governed-loop demo remains a Cray-driven
   screen-share. This is Cray's call because it sets which tabs the public
   ever sees.
+
+  **Scope of this ruling (fold-in, s205 — the H/I/J bases differ).** This SD
+  disposes of **Tab I (Open a Case → `/cases*`, `app.js:21`) and Tab J
+  (Month-End KPI → `/api/exports/*`, `app.js:26`)** plus any other DB-backed
+  surface the Step-1 census surfaces. It does **not** dispose of **Tab H
+  (Monitor, `app.js:17`)**, whichever way it is ruled: H never goes through
+  the `api.js` seam (zero `monitor` hits in `api.js`; `view-monitor.js:86-92`
+  ships its own raw `postOperate` over `fetch`), and its off-list routes are
+  excluded by **default-deny**, not by DB posture — a bounded fold-in walk
+  found GET `/runs` (`view-monitor.js:168`), POST `/runs/{id}/cancel`
+  (`view-monitor.js:148`) and GET `/audit/verify` (`view-monitor.js:488`) off
+  the allow table, while GET `/runs/{id}` (`view-monitor.js:235`) and POST
+  `/runs/{id}/gate/resolve` (`view-monitor.js:133`) are **on** it, so H's
+  backend is neither entirely excluded nor SD-1-contingent. H's disposition
+  (degrade vs not-registered) resolves in the Step 1 census; only any of H's
+  reads shown to be DB-backed inherit this ruling.
+
+  **Ruling:** — awaiting Cray (typed value + date).
 - **SD-2 — `/procedures/draft/*` disposition.** Not named in D5(2); same intake
   family. **Recommendation: exclude all three** — classify/build are
   unauthenticated MS-S1 inference (F3 `0035:185`), instantiate is deterministic
   but is authoring surface, not demo script; the published wedge demo does not
   hand anonymous visitors a procedure-authoring wizard. Alternative: allow
   instantiate only (zero-LLM). Cray's call because it widens D5(2)'s named set.
+
+  **Ruling:** — awaiting Cray (typed value + date).
 - **SD-3 — Allowlist enforcement point.** In-compose deny-by-default nginx
   (recommended: offline-testable, vendor-independent, satisfies "vero-lite's
   edge", carries the per-IP cap as pure config) vs vendor WAF path rules
   (config lives portal-side, not testable offline, silently driftable).
   Cray's call because it places a new service in the published stack.
-- **SD-4 — Nav-bar fix depth.** Removals-only (published profile drops ~2
-  clusters; measured deficit 443 px at 1382 px viewport makes this unlikely to
-  clear, and the dev profile stays broken) vs **ladder rebuild for the real
-  census, both profiles (recommended)** — pinned by measurement + the census
-  tripwire, per AC-3. Cray's call because "blocking before any link is shared"
-  is Cray's bar to move.
+
+  **Ruling:** — awaiting Cray (typed value + date).
+- **SD-4 — Nav-bar fix depth (RESTATED at fold-in, s205 — published profile
+  only).** The question as originally drafted — removals-only (published
+  profile drops ~2 clusters; measured deficit 443 px at 1382 px viewport makes
+  this unlikely to clear, and the dev profile stays broken) vs ladder rebuild
+  for the real census, both profiles (recommended) — is no longer askable:
+  **PR #1018 (`54dfc7d`) shipped the recommended option for the dev profile**
+  (ladder rebuilt for the ten-tab census, measured green at all five pinned
+  widths — table under AC-3 — with both tripwires committed and probe-proven),
+  and removals-only was already rejected by that measurement. Neither original
+  option is live. What remains is the **published-profile half**, which
+  **cannot be measured today**: AC-3 requires measurement in both profiles,
+  and the published profile is not constructible until Step 2 lands
+  `ui_profile` (verified at fold-in: zero `UI_PROFILE|ui_profile` matches
+  under `services/`). The restated question — once `UI_PROFILE=published`
+  exists: (a) **measure-to-confirm (recommended)** — run the AC-3 pass against
+  the `54dfc7d` ladder unchanged and accept green as the published-half
+  discharge; the published profile only removes header content, so the rebuilt
+  ladder is expected to clear a fortiori, and the census tripwire already pins
+  the tab set — a red measurement re-opens fix depth as a bounded follow-up
+  rather than silently; vs (b) re-tune the ladder for the published census
+  **before** measuring — the published profile drops the `.llmctl` cluster and
+  ≥2 tabs, freeing width (the `54dfc7d` record: "tab strip: full labels
+  1369px -> keys 478px (recovers ~890px)") that could keep full labels at
+  widths where the dev profile collapses to keys. Cray's call because
+  "blocking before any link is shared" is Cray's bar to move.
+
+  **Ruling:** — awaiting Cray (typed value + date).
+
 - **SD-5 — Dev-profile geometry as blocking.** AC-3 as drafted measures both
   profiles. The strictly-ADR-0035 reading only blocks the published link.
-  **Recommendation: keep both** — same fix, one measurement pass. Cray may
-  relax to published-only without touching anything else.
+  **Updated at fold-in (s205):** the dev half is already measured green
+  (`54dfc7d`, table under AC-3), so this ruling no longer schedules any work —
+  it sets the standing **bar**: under "keep both", a future dev-profile
+  regression (e.g. a tab K reddening the census tripwire) blocks link-sharing
+  until re-measured; under "published-only", it does not.
+  **Recommendation: keep both** — the two committed tripwires already guard
+  the dev census + collapse breakpoint at zero marginal cost. Cray may relax
+  to published-only without touching anything else.
+
+  **Ruling:** — awaiting Cray (typed value + date).
 
 ## Verification
 
@@ -425,7 +562,8 @@ Must contain, verbatim obligations from D6:
   `test_llm_inflight_cap.py`, `test_prompt_log.py`, extended
   `test_static_ui.py`, `tests/deploy/test_published_compose.py`) green in the
   full-scope offline gate (full `mypy services/` + full `tests/`); the AC-3
-  measurement table recorded; the AC-6(c)/Step 9 smoke transcript in its PR.
+  measurement tables recorded (dev half recorded at fold-in from `54dfc7d`;
+  published half at closeout); the AC-6(c)/Step 9 smoke transcript in its PR.
 - Live: the two Phase 5 artifacts, judged **only** against the pass/fail reads
   fixed in Step 10 — no post-hoc reinterpretation; INSUFFICIENT-EVIDENCE ≠ pass.
 - Closeout: every AC checked with its closing artifact linked; allowlist
