@@ -17,6 +17,15 @@ Three claims the revision makes, each with its own oracle here:
    second half (nothing was OVER-dropped) is the one that catches real mistakes,
    because an over-dropping downgrade looks identical to a correct one until
    somebody runs it against data.
+4. **It runs over a POPULATED ``audit_log``** — added 2026-08-04 (session 205)
+   after the shipped revision was found unable to. Claims 1-3 were all proven
+   against an EMPTY database, and that is exactly why the defect shipped green:
+   ``audit_log_no_mutation`` is a ``FOR EACH ROW`` trigger, so it never fires on
+   zero rows, and the original ``UPDATE audit_log SET tenant_id`` backfill was
+   therefore never once executed against a row by this suite. One seeded row is
+   the whole difference between a vacuous pass and a real one — the same
+   agrees-with-itself-by-construction shape CLAUDE.md §8 exists to catch, in a
+   migration fixture rather than in a mock.
 
 DB-backed: SKIPS when Postgres is down (``create_test_engine``), and a skip is
 never counted as satisfaction.
@@ -24,19 +33,26 @@ never counted as satisfaction.
 
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import sqlalchemy as sa
 from sqlalchemy import NullPool
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncConnection, AsyncSession, create_async_engine
 
 from services.api.config import settings
+from services.db.audit_log import GENESIS_HASH, AuditLog, compute_row_hash, verify_chain
 from tests.db_support import create_test_engine
 
 _REPO_ROOT = Path(__file__).resolve().parents[3]
+
+#: Fixed instant for the seeded chain — timestamptz round-trips microseconds
+#: losslessly, which is what lets ``verify_chain`` recompute byte-identically.
+_AUDIT_T0 = datetime(2026, 7, 20, 3, 0, tzinfo=UTC)
 
 #: The twenty-one mapped tables, copied as a LITERAL rather than derived from
 #: ``Base.metadata``. Deriving it would make this test agree with the ORM by
@@ -253,3 +269,145 @@ async def test_0024_reverses_cleanly_proven_by_reversing_it() -> None:
     assert (
         again.returncode == 0
     ), f"the chain no longer walks forward after a downgrade — 0024 left residue:\n{again.stderr}"
+
+
+async def _seed_audit_chain(conn: AsyncConnection) -> list[tuple[str, str]]:
+    """Two REAL chained audit rows at revision 0023, hashed with the real function.
+
+    Hand-rolled hashes would let this fixture agree with itself: the point is that
+    ``verify_chain`` — the actual tamper-evidence consumer — still passes AFTER the
+    migration, and that is only meaningful if it would have passed before.
+    """
+    rows: list[tuple[str, str]] = []
+    prev = GENESIS_HASH
+    for index, action in enumerate(("run.start", "gate.decision")):
+        occurred_at = _AUDIT_T0 + timedelta(seconds=index)
+        payload = {"note": f"seed-{index}"}
+        row_hash = compute_row_hash(
+            prev_hash=prev,
+            occurred_at=occurred_at,
+            actor_person_id="person-may",
+            action=action,
+            run_id="run-1",
+            step_id="gate",
+            payload=payload,
+        )
+        await conn.execute(
+            sa.text(
+                "INSERT INTO audit_log (occurred_at, actor_person_id, action, run_id, "
+                "step_id, payload, prev_hash, row_hash) VALUES (:t, 'person-may', "
+                ":action, 'run-1', 'gate', CAST(:payload AS jsonb), :prev, :rh)"
+            ),
+            {
+                "t": occurred_at,
+                "action": action,
+                "payload": json.dumps(payload),
+                "prev": prev,
+                "rh": row_hash,
+            },
+        )
+        rows.append((prev, row_hash))
+        prev = row_hash
+    return rows
+
+
+async def test_0024_migrates_a_populated_audit_log_without_breaking_its_chain() -> None:
+    """Claim 4 — the one an empty database structurally cannot make.
+
+    ``audit_log`` carries a ``BEFORE UPDATE ... FOR EACH ROW`` block trigger, so the
+    three-phase backfill every other table uses is not merely slow there, it aborts
+    the migration outright. With zero rows the trigger never fires, which is why the
+    original revision passed this suite while being unable to migrate any real
+    deployment. One seeded row is the entire difference.
+
+    The oracle is ``verify_chain``, the real tamper-evidence consumer, not a column
+    comparison: it recomputes every ``row_hash`` from stored fields and walks the
+    ``prev_hash`` linkage, so it fails if the backfill altered anything hashed. The
+    row count is asserted first because a walk over zero rows returns "intact"
+    vacuously — the exact hole this test was written to close.
+    """
+    engine = await create_test_engine()
+    await engine.dispose()
+
+    to_0023 = _alembic("upgrade", "0023")
+    assert to_0023.returncode == 0, f"alembic upgrade 0023 failed:\n{to_0023.stderr}"
+
+    seed = create_async_engine(settings.test_database_url, poolclass=NullPool)
+    try:
+        async with seed.begin() as conn:
+            seeded = await _seed_audit_chain(conn)
+    finally:
+        await seed.dispose()
+
+    to_head = _alembic("upgrade", "head")
+    assert to_head.returncode == 0, (
+        "0024 could not migrate a populated audit_log — this is the shipped defect "
+        f"(one row is enough to trigger it):\n{to_head.stderr}"
+    )
+
+    verify = create_async_engine(settings.test_database_url, poolclass=NullPool)
+    try:
+        async with verify.connect() as conn:
+            stored = [
+                (row[0], row[1], row[2])
+                for row in (
+                    await conn.execute(
+                        sa.text(
+                            "SELECT tenant_id, prev_hash, row_hash FROM audit_log "
+                            "ORDER BY audit_id"
+                        )
+                    )
+                ).all()
+            ]
+            default_after = (
+                await conn.execute(
+                    sa.text(
+                        "SELECT column_default FROM information_schema.columns "
+                        "WHERE table_name = 'audit_log' AND column_name = 'tenant_id'"
+                    )
+                )
+            ).scalar_one()
+        async with AsyncSession(verify) as session:
+            walked = (
+                await session.execute(
+                    sa.select(sa.func.count())
+                    .select_from(AuditLog)
+                    .where(AuditLog.tenant_id == settings.tenant_id)
+                )
+            ).scalar_one()
+            breaks = await verify_chain(session)
+    finally:
+        await verify.dispose()
+
+    assert walked == 2, (
+        "verify_chain walks only THIS tenant's rows, and over zero rows it reports "
+        "'intact' vacuously — the backfilled tenant_id must match settings.tenant_id "
+        "or the assertion below proves nothing"
+    )
+    assert breaks == [], f"the backfill broke the tamper-evident chain: {breaks}"
+    # Byte-identical hashes: tenant_id is not among compute_row_hash's canonical
+    # fields, so populating it must leave every stored hash untouched.
+    assert [(prev, rh) for _tenant, prev, rh in stored] == seeded
+    assert {tenant for tenant, _prev, _rh in stored} == {"default"}
+    # The transient default did not survive — SD-1(b)'s requirement, on the one
+    # table that had to reach it by a different route than the other twenty.
+    assert default_after is None, (
+        "audit_log.tenant_id kept a server_default — the DROP DEFAULT after the "
+        "transient-default ADD COLUMN is what keeps SD-1(b) intact"
+    )
+
+    # Replayable WITH the rows still there. The revision's own comment claims a
+    # future append-only table missing from _UPDATE_BLOCKED_TABLES would break this
+    # "in exactly the way it did the first time" — that claim needs an oracle, and a
+    # cycle run on an empty database would not be one.
+    down = _alembic("downgrade", "0023")
+    assert down.returncode == 0, f"downgrade over a populated audit_log failed:\n{down.stderr}"
+    replay = _alembic("upgrade", "head")
+    assert replay.returncode == 0, f"re-upgrade over a populated audit_log failed:\n{replay.stderr}"
+
+    replayed = create_async_engine(settings.test_database_url, poolclass=NullPool)
+    try:
+        async with AsyncSession(replayed) as session:
+            assert await verify_chain(session) == [], "the replay broke the chain"
+    finally:
+        await replayed.dispose()
