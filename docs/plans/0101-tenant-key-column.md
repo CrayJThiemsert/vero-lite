@@ -20,10 +20,14 @@ stamped process-wide from `settings.tenant_id` (env `TENANT_ID`) exactly like
 `oct_vertical` (`services/api/config.py:179-185`), discharging ADR-0035 D7
 sub-items (i)–(vii) one-for-one so none is silently dropped. The key never enters
 the governance pin (it must never reach the resolved-procedures hash), and this
-PLAN builds **no** per-request tenancy, RLS, or tenant authn (D7(vii)). Three
-architecture/governance decisions are surfaced for Cray in §Surfaced decisions —
-implementation steps that depend on them are marked **BLOCKED-ON-SD** and do not
-start until the ruling slots are filled.
+PLAN builds **no** per-request tenancy, RLS, or tenant authn (D7(vii)).
+
+**All three surfaced decisions were ruled by Cray on 2026-08-04 (session 203), so every
+step is unblocked** — SD-1 = a column-level Python default with **no** `server_default`;
+SD-2 = a generator special-case that keeps the ontology clean, **plus** the tenant exposed
+as deployment metadata on `/meta` (new **AC-10**); SD-3 = `tenant_id` joins **all twelve**
+unique constraints, against the Code recommendation and with three riders Step 4 must
+carry. Step 1 shipped in session 203 (#1022).
 
 ## Context (what is settled, what this PLAN decides)
 
@@ -175,12 +179,22 @@ sub-item can be silently dropped — the stated reason D7 enumerated them.
   `tenant_id == "scenario-acme"`. **Anti-mock clause:** a test that patches or
   substitutes the session factory, the stamping seam, or the models under test
   does **not** satisfy this AC; nor does asserting only that the column exists.
-- [ ] **AC-9 (adjudication record):** the three `**Ruling:**` slots in §Surfaced
+- [x] **AC-9 (adjudication record):** the three `**Ruling:**` slots in §Surfaced
   decisions are filled with Cray's typed rulings (value + date) **before** the
   steps marked BLOCKED-ON-SD begin. This PLAN stays `Status: Draft` until Complete
   (an Accepted-status PLAN becomes G1-gated and Code cannot edit its own closeout).
+  **CLOSED 2026-08-04 (session 203)** — all three ruled; Steps 2–6 are unblocked.
+- [ ] **AC-10 (deployment metadata — added by SD-2's ruling):** `OntologyMeta`
+  (`services/engine/ontology_meta.py`) carries `tenant_id`, served by the existing
+  `GET /meta` route (`services/api/routers/actions.py`), so a reader can tell which
+  customer a deployment serves **without** the key entering any generated semantic
+  surface. Guarded by a test asserting the field is present and reflects
+  `settings.tenant_id`, plus a **negative** assertion that no generated artifact
+  under `ontology/generated/` or `verticals/*/generated/` mentions `tenant_id` —
+  the leak this AC exists to prevent is the one option (a) would have caused, so
+  the guard has to watch for it rather than trust the choice.
 
-## Surfaced decisions (for Cray — unruled; recommendations are Code-side input only)
+## Surfaced decisions — ALL THREE RULED by Cray, 2026-08-04 (session 203)
 
 ### SD-1 (load-bearing) — where does the write-stamp happen?
 
@@ -227,7 +241,16 @@ reported none for `server_default`. So a retained `server_default` is invisible 
 **both** `alembic check` and `--autogenerate`, on top of silently absorbing an
 unstamped write. All three of the recommendation's stated reasons hold.
 
-**Ruling:** _(unruled)_
+**Ruling: (b) — a column-level Python `default=lambda: settings.tenant_id`, centralized
+through SD-2's mechanism, and NO retained `server_default`.** Cray, typed 2026-08-04
+(session 203). Rationale as recommended: column defaults apply to both ORM and Core
+inserts, so the option-(a) bypass (a Core `session.execute(insert(...))` skipping the
+flush event) does not exist; the lambda keeps the read late-bound and therefore
+testable; and dropping `server_default` means a hypothetical unstamped raw-SQL write
+fails NOT NULL **loudly** rather than landing silently as `'default'` — which the Step-1.4
+measurement shows no tooling would catch, since neither `alembic check` nor
+`--autogenerate` sees `server_default` drift. The folded question is thereby answered:
+**no `server_default` after the backfill.**
 
 ### SD-2 — how does the generator emit a non-ontology column?
 
@@ -254,7 +277,27 @@ inside the generator module where `0035:667-669` says to sequence it, and unlike
 (c) it satisfies D7(i)'s letter. If Cray prefers (c), the deviation from D7(i)'s
 wording should be recorded in the ruling slot as an accepted re-interpretation.
 
-**Ruling:** _(unruled)_
+**Ruling: (b) — special-case `tenant_id` inside `emit_orm` (+ `emit_sql`, which moves in
+the same step), the ontology staying clean — PLUS surface the tenant as DEPLOYMENT
+METADATA on `/meta`.** Cray, typed 2026-08-04 (session 203).
+
+Cray asked whether the ontology should carry `tenant_id` too, so that many verticals and
+many customers do not become confusing. **The answer is no, and the reasoning runs the
+opposite way to the intuition:** `tenant_id` is not a property of a domain object — an
+`Asset` has the same shape for every customer, which is the entire reason one ontology
+serves them all. The tenant is a property of the *deployment*. Putting it in the ontology
+would leak an infrastructure field into all five generated semantic surfaces, and two of
+those are read by a model: the **MCP tool definitions** and the **NL-query context pack**,
+where `tenant_id` would become domain vocabulary the LLM can reason and filter on. ADR-0035
+has effectively already ruled this — it states the key must never enter the
+resolved-procedures hash, i.e. it is *not* part of the semantic/governance surface.
+
+**But the underlying concern is legitimate, and it is answered at the right layer.** This
+PLAN therefore also adds `tenant_id` to `OntologyMeta` (`services/engine/ontology_meta.py`),
+served by the existing `GET /meta` route (`services/api/routers/actions.py`) that the UI
+already re-skins from — so "which customer is this deployment serving?" is answerable
+without touching object shape. This is a read of a process-wide setting, **not** per-request
+tenant resolution, so it does not breach D7(vii). Scope addition tracked as **AC-10**.
 
 ### SD-3 — which of the 12 unique constraints does `tenant_id` join?
 
@@ -304,7 +347,41 @@ multi-tenant ADR whose trigger is a second concurrently-hosted customer. Record
 the "reviewed, deliberately unchanged" verdict per constraint in Step 4 so D7(vi)
 is discharged by decision, not by omission.
 
-**Ruling:** _(unruled)_
+**Ruling: `tenant_id` joins ALL TWELVE.** Cray, typed 2026-08-04 (session 203) —
+**against** the Code recommendation above, which is retained verbatim so the reasoning
+that was weighed and set aside stays legible. Cray's basis: make the schema
+forward-compatible with a second concurrently-hosted customer now, rather than pay a
+migration later on tables that will by then hold production rows.
+
+**Three consequences Step 4 must handle, not discover** — each grounded on disk at ruling
+time, not inferred:
+
+1. **#12 needs a shape change, not a list edit.** `services/db/pm_import.py`'s `seq` is a
+   column-level `unique=True`, so joining `tenant_id` means replacing it with a *named*
+   composite `UniqueConstraint` in `__table_args__`. Pick the name explicitly — an
+   unnamed composite is what made this site invisible to the census in the first place.
+2. **The Identity-`seq` family gains a promise the sequence generator does not keep.**
+   `GENERATED ... AS IDENTITY` counters are per-*table*, so under any future shared DB each
+   tenant's `seq` view is gap-ful (tenants interleave one counter). `(tenant_id, seq)`
+   uniqueness is still *correct*; what it must not do is invite a reader to assume
+   gap-free per-tenant monotonicity. State that where the constraint is defined.
+3. **`uq_audit_log_prev_hash` is load-bearing beyond uniqueness, and two call sites are
+   global.** `services/db/audit_log.py` documents the UNIQUE index as what makes the chain
+   "linear by construction", and its append path says the concurrency race with "nothing to
+   lock" is *closed by that constraint*. Widening it to `(tenant_id, prev_hash)` keeps that
+   property **per tenant**, which is equivalent today under one DB per deployment — but the
+   head lookup in `services/api/routers/audit.py` and `verify_chain`'s walk are **not**
+   tenant-scoped. They stay correct while one tenant occupies a database and would read a
+   second tenant's rows as a chain break. Step 4 records this as a known, bounded
+   consequence; scoping those reads is **out of scope here** (it is per-tenant query
+   behaviour, adjacent to D7(vii)'s non-goals) and belongs to the multi-tenant ADR whose
+   trigger is a second concurrently-hosted customer. The `audit_log.py` module docstring's
+   "linear by construction" wording must be amended in the same step, or it becomes a stale
+   claim the moment the constraint widens.
+
+Step 4 still records a per-row verdict for all twelve, per D7(vi)'s decide-not-discover
+requirement — the verdict is now "re-scoped: `tenant_id` joined" for each, with the three
+riders above attached to their rows.
 
 ## Out of Scope
 
@@ -323,11 +400,16 @@ is discharged by decision, not by omission.
 
 ## Steps
 
-### Step 0 — Adjudication record (BLOCKS Steps 2–6)
+### Step 0 — Adjudication record — **DONE (session 203, 2026-08-04)**
 
-Present §Surfaced decisions to Cray; fill the three `**Ruling:**` slots with the
-typed rulings (value + date). No implementation for the blocked steps until this
-lands (AC-9). Step 1 is not blocked and can run in parallel.
+All three `**Ruling:**` slots filled with Cray's typed rulings. **Steps 2–6 are
+unblocked.** Summary, with the full reasoning in §Surfaced decisions:
+
+| SD | Ruling | Note |
+|---|---|---|
+| SD-1 | **(b)** column `default=lambda: settings.tenant_id`, **no** `server_default` | as recommended; the Step-1.4 measurement is its evidence |
+| SD-2 | **(b)** generator special-case (`emit_orm` + `emit_sql`), ontology stays clean, **plus** `tenant_id` on `/meta` | the `/meta` half is new scope → **AC-10** |
+| SD-3 | **join ALL TWELVE** | **against** the Code recommendation; three riders attached, see SD-3 |
 
 ### Step 1 — Settings field + the `alembic check` probe (no SD dependency)
 
@@ -346,38 +428,67 @@ lands (AC-9). Step 1 is not blocked and can run in parallel.
    (`vero_lite`, at `0022`) and every per-checkout test DB were left untouched; the
    probe DB was dropped.
 
-### Step 2 — Teach the generator (BLOCKED-ON-SD-2; discharges AC-1)
+### Step 2 — Teach the generator (UNBLOCKED by SD-2; discharges AC-1 + AC-10)
 
-Implement the SD-2 ruling in `services/engine/code_generator.py`; move `emit_sql`
-in the same change whenever the ORM gains a column the DDL lacks (G-b);
-regenerate `services/db/models.py` + `services/db/person.py`; update G-a
-(byte-equality re-baselines via regeneration, never hand edits), G-b (`:153`
-expected set), and confirm G-c green. One commit — the `0035:667-669` coordination
-cost is sequenced here, not discovered.
+Special-case `tenant_id` in `services/engine/code_generator.py` per SD-2's ruling —
+`emit_orm` **and** `emit_sql` move in the same change (G-b makes that non-optional the
+moment the ORM gains a column the DDL lacks). Regenerate `services/db/models.py` +
+`services/db/person.py`; update G-a (byte-equality re-baselines via regeneration, never
+hand edits), G-b's expected column set, and confirm G-c green. One commit — the
+`0035:667-669` coordination cost is sequenced here, not discovered.
 
-### Step 3 — Hand-written models (BLOCKED-ON-SD-1/SD-2 shape only; discharges AC-2)
+Also in this step, per SD-2's ruling: add `tenant_id` to `OntologyMeta` and ship AC-10's
+guard, **including its negative half** — no generated artifact under
+`ontology/generated/` or `verticals/*/generated/` may mention `tenant_id`. That guard is
+what keeps the ontology clean by construction rather than by intention.
 
-Add `tenant_id` (Text, NOT NULL, stamped per the SD-1 ruling's mechanism) to the
-14 hand-written tables listed in AC-2. If SD-1/SD-2 compose into a shared mixin,
-this is one import per module; otherwise 14 `mapped_column` additions.
+### Step 3 — Hand-written models (UNBLOCKED; discharges AC-2)
 
-### Step 4 — The unique-constraint verdicts (BLOCKED-ON-SD-3; discharges AC-6)
+Add `tenant_id` (Text, NOT NULL) to the 14 hand-written tables listed in AC-2, carrying
+SD-1's `default=lambda: settings.tenant_id`. SD-1(b) + SD-2(b) compose into a single
+`TenantKeyMixin` holding both the column and its Python-side default, so this is one
+import per module rather than 14 `mapped_column` additions — and a future table that
+forgets the mixin is caught by AC-5's set-equality guard, not by review.
 
-Apply the SD-3 ruling. For every one of the 12 census rows, record in the code
-review (and in this PLAN's closeout) either "re-scoped: `tenant_id` joined" with
-the migration change, or "reviewed, deliberately unchanged" with the one-line
-reason — decide, not discover.
+### Step 4 — The unique-constraint verdicts (UNBLOCKED by SD-3; discharges AC-6)
 
-### Step 5 — Alembic revision `0024` (BLOCKED-ON-SD-1 for the server_default clause; discharges AC-3)
+**SD-3 ruled: `tenant_id` joins all twelve.** Record a per-row verdict for each of the 12
+census rows in the code review and this PLAN's closeout — "re-scoped: `tenant_id` joined"
+plus the migration change — so D7(vi) is discharged by decision, not omission.
+
+Handle SD-3's three riders here rather than discovering them:
+
+1. **#12 (`services/db/pm_import.py`)** — replace the column-level `unique=True` with a
+   **named** composite `UniqueConstraint` in `__table_args__`. Name it explicitly; the
+   unnamed column-level form is exactly what hid this site from the original census.
+2. **The Identity-`seq` family** — note at each constraint that the counter is
+   per-*table*, so `(tenant_id, seq)` uniqueness must not be read as a promise of
+   gap-free per-tenant monotonicity.
+3. **`uq_audit_log_prev_hash`** — widening it preserves the "closed by the UNIQUE
+   constraint" concurrency property **per tenant**, equivalent today under one DB per
+   deployment. Record that the head lookup in `services/api/routers/audit.py` and
+   `verify_chain`'s walk remain **global** and are correct only while one tenant occupies
+   a database — scoping them is out of scope here and belongs to the multi-tenant ADR.
+   **Amend `services/db/audit_log.py`'s "linear by construction" docstring in this same
+   step**, or the widening silently makes it a false claim.
+
+### Step 5 — Alembic revision `0024` (UNBLOCKED; discharges AC-3)
 
 One revision, `down_revision "0023"`, all 21 tables, measured-safe shape per the
 `0023_*.py:140-168` template: `add_column(nullable=True)` → backfill `'default'`
-→ `alter_column(nullable=False)`; retain or drop `server_default` per the SD-1
-ruling + the Step 1.4 probe result; symmetric downgrade. Run
-`tools/check_alembic_model_registration.py` and `alembic check` against the
-disposable test DB.
+→ `alter_column(nullable=False)`; symmetric downgrade. **Per SD-1's ruling, NO
+`server_default` is retained** — an unstamped write must fail NOT NULL loudly, and the
+Step-1.4 measurement is why: neither `alembic check` nor `--autogenerate` would ever
+report a `server_default` that drifted back in.
 
-### Step 6 — The set-equality guard + scenario test (BLOCKED-ON-SD-1; discharges AC-5, AC-8)
+This revision also carries SD-3's twelve constraint re-scopes, including #12's
+column-level → named-composite shape change. Run
+`tools/check_alembic_model_registration.py` and `alembic check` against the disposable
+test DB. **Note the blind spot both tools share:** they will confirm the columns and the
+`Identity` columns, and say nothing about `server_default` either way — so "no
+`server_default`" is a claim the tooling cannot check for you. Assert it directly.
+
+### Step 6 — The set-equality guard + scenario test (UNBLOCKED; discharges AC-5, AC-8)
 
 1. Implement the AC-5 guard exactly as specified (AST-walk set A == mapper set B,
    then per-table `tenant_id` presence).
