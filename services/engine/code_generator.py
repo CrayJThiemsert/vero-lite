@@ -606,7 +606,7 @@ def emit_orm(
     ``services.db.base.Base``. CHECK constraints are omitted (enum validity at the
     Pydantic layer; the parity guard covers types, not constraints) — schema-equivalent
     to the prior hand-authored ORM. Deterministic, ordered by ``object_types`` insertion
-    order, like the other five emitters.
+    order, like the other six emitters.
     """
     object_types = doc.get("object_types") or {}
     datetime_imports, needs_any, needs_jsonb, sqlalchemy_imports = _orm_used_imports(object_types)
@@ -862,8 +862,13 @@ def emit_context_pack(doc: dict[str, Any], output_path: Path) -> Path:
 
 # Committed-ORM destinations (PLAN-0031 B1 / B1-DP-1, resolved Option B 2026-06-18).
 # The SQLAlchemy ORM is a RUNTIME dependency (services/db + alembic import it), so —
-# unlike the other five gitignored reference artifacts under verticals/<ns>/generated/ —
-# it must be generated to a COMMITTED path. Energy's ORM is services/db/models.py. The
+# unlike the gitignored reference artifacts under verticals/<ns>/generated/ —
+# it must be generated to a COMMITTED path. (Deliberately uncounted: how many of the
+# seven emitters land on a gitignored path is NAMESPACE-dependent — `core` commits both
+# its ORM and its Pydantic, so five of its outputs are gitignored, while every other
+# namespace gitignores six. A fixed number here goes stale the next time a destination
+# is committed, which is exactly what happened to the "other five" this replaced.)
+# Energy's ORM is services/db/models.py. The
 # shared `core` ontology's ORM (the shared Person — ADR-0033 D5 / SD-I=(b)) is the SECOND
 # committed ORM: a separate committed module (services/db/person.py) — the B1-DP-1
 # 2nd-ORM-layout call resolved per-doc (PLAN-0082 Step 4). Keyed by ontology NAMESPACE
@@ -890,7 +895,7 @@ def generate_all(yaml_path: Path, output_dir: Path) -> dict[str, Path]:
 
     The ORM emitter writes to the vertical's **committed** ORM destination
     (``_ORM_COMMITTED_DEST``) when one is registered — it is runtime code, not a
-    gitignored reference artifact like the other five (falls back to
+    gitignored reference artifact like the rest (falls back to
     ``output_dir / 'orm.py'`` for a vertical with no committed ORM yet).
     """
     doc = load_doc(yaml_path)

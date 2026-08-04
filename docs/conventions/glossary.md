@@ -13,7 +13,7 @@
 | Term | Meaning |
 |------|---------|
 | **Ontology** | YAML files defining canonical objects, properties, relationships, and actions for a vertical |
-| **Vertical** | A specific domain (vet clinic, pharmacy, dental clinic, etc.) |
+| **Vertical** | A specific domain (energy operator, industrial supply chain, fleet maintenance, procurement, etc.) |
 | **Generator** | Code that reads ontology YAML and emits Pydantic models, SQL DDL, MCP tools, TS types |
 | **MCP** | Model Context Protocol — standard for exposing tools/resources to LLM agents |
 | **HITL** | Human-In-The-Loop — required before destructive AI actions |
@@ -25,7 +25,7 @@
 | **Action layer** | FastAPI functions tied to objects with permissions + audit trail |
 | **Runtime procedure spine** | A vertical's behaviour declared in `verticals/<name>/procedures.yaml` and interpreted at runtime (`load_procedures` → `VerticalProcedures`), not generated into code — the primitive that carries a new vertical (per `CLAUDE.md` §3) |
 | **The moat** | YAML ontology + runtime procedure spine — vero-lite's defensibility vs. generic CRUD platforms. Codegen is a real mechanism serving the `energy` and `core` ontologies, not the moat itself (corrected s202; see `CLAUDE.md` §3) |
-| **Design partner** | Early customer (vet clinic) co-developing features in exchange for discounted/free access |
+| **Design partner** | Early customer co-developing features in exchange for discounted/free access. Phase 1 targets two enterprise partners (`CLAUDE.md` §1); `fleet_maintenance` is the one real Phase-1 pilot, the other verticals being synthetic (corrected s203 — the row named the vet clinic, which ADR-005 parked) |
 | **PDPA** | Thailand Personal Data Protection Act — clinical data assumed PII |
 | **AIP / Foundry / Apollo** | Palantir product names; vero-lite borrows architectural patterns |
 | **Cray** | Cray-Legion5Pro dev machine (Win11 + WSL2 Ubuntu) |
