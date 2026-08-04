@@ -834,3 +834,108 @@ _Rotated out of `docs/STATUS.md` on 2026-07-28 (session 182), per the R1–R7 ro
 
 <!-- Recent-Decisions row rotated out of docs/STATUS.md by the s202 reconcile (R2: newest 10 rows) -->
 | 2026-07-29 | **s189 — PLAN-0096 Steps 1–7 and 9 COMPLETE (8 of 10), #965–#968.** Partner round-2 answers closed 5 of 7 questions. Step 6 = the partner's real 8-step task chain (alembic `0016`); `pm_due` = a sixth LINE event, group recipient, read off persisted `judge_service_due` verdicts. Cray typed the prerequisite-anchored clock + the AC-8 bump. Unplanned (#966/#967): an ORM↔alembic registration guard — **a comparison means something only when at most ONE side is hand-maintained**. Suite → **3552** | `13aa2f0` (#968 merge, head_commit) / `26e61b3` (#965) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` |
+
+### Rotated 2026-08-04 (session 203 reconcile — PLAN-0101 drafted with three unruled SDs + its Step 1 shipped + four stale claims retired, #1021–#1023)
+
+_Both session-196 Current Focus blocks, rotated out together: adding the s203 block made the window span five sessions, and R2 keeps the four newest. The block-byte cap was not the binding constraint here (each was under 4,096 B) — the session window was._
+
+> **Session 196, 2026-07-31 (head_commit `5382052` → `4846d5e`) — one PR merged
+> (#1003), 0 open. The theme: an intermittent flake root-caused by MEASUREMENT —
+> which refuted the leading hypothesis and found two sites worse than the reported
+> one.**
+>
+> **The failure.** `test_accepted_quote_endpoint.py::test_a_cheaper_quote_arriving_later_does_not_rewrite_history`
+> failed once in three full-suite runs. **The leading hypothesis was refuted by
+> construction:** Postgres `now()` / transaction-start is not involved — there is no
+> `server_default` on any timestamp column; both stamps are Python
+> `datetime.now(UTC)`, in separate requests and separate transactions. **Measured
+> instead:** the dev box's clock steps **backwards 20x per 300 s, every step
+> ≥ 400 ms** (worst −592 ms) against a vulnerable window of **90–166 ms** ⇒ **~0.9%
+> flake per execution**, matching the observed 1-in-3. Reproduced deterministically
+> three ways, incl. a frozen clock through the real HTTP path — which also exposed
+> **POST and GET disagreeing about the same case** (`45500.50` vs `39000.00`).
+>
+> **`<=` → `<` was tried and REJECTED on evidence:** all 63 tests in the 6 touching
+> files pass either way (a coverage gap in itself), and the swap fixes only the tie
+> that cannot occur in production, does nothing for the inversion that does, and
+> breaks the equal-stamp case. **Two further sites, both worse than the reported
+> one:** `latest_accepted_quote` feeds the DOA gate via `governed_case_facts`, so a
+> backward step reports the **superseded** acceptance (wrong ฿, wrong vendor, the
+> operator's stated reason dropped); and `repair_spend_export.py:587`
+> sorts-then-overwrites, so the month-end export can show a provisional gate outcome
+> instead of its ratification.
+>
+> **The un-defer trigger did NOT literally fire** — both orderings it enumerates
+> remain display-only, as s169 found. What failed is the safety-margin *argument*,
+> whose enumeration was scoped by subsystem **and** by column vocabulary: the
+> PLAN-0088 guard machinery flags **2** sites repo-wide on its current 3-name
+> vocabulary (exactly the pair the docstring named) and **12** once the repair-case
+> column names are added. Classified **`superseded by new info`** per `CLAUDE.md`
+> §6, not "was an error".
+>
+> **PLAN-0099 merged (#1003), five SDs all Cray-ratified:** SD-1 store-at-write
+> (eliminate the re-derivation); SD-2 backfill marks the value **reconstructed**,
+> not recorded (a third option neither drafted alternative offered); SD-3 (a)
+> `latest_closeout` (b) `justifications[-1]` (c) `repair_spend_export.py:587` all
+> ride migration `0023`; SD-4 retain the positional-read rule, rewritten rationale.
+> **No production code changed** — execution starts at Step 1 (forcing tests, RED
+> first). Numbered 0099 because a concurrent session claimed 0098 (#1001)
+> mid-flight. Full detail: `docs/plans/done/0099-wall-clock-root-fix-store-at-write-and-sequence.md`.
+
+> **Session 196, 2026-07-31 — SECOND workstream, same session (head_commit `a8912e0` →
+> `5382052`): four PRs merged (#999–#1002). s196 ran TWO concurrent workstreams; this
+> block and the one above are deliberately separate — one merged block would breach the
+> 4,096 B per-block cap. Theme: two vocabulary guards pinned by measurement, then
+> PLAN-0098 ratified and its backend built.**
+>
+> **#999 (`399fbe0`) — the CSS-class guard widened from 1 asset to all 15** (found by
+> glob): 883 defined / 873 applied / **33 undefined** → a two-category allowlist under
+> set equality in both directions — 4 JS lookup hooks (permanent, correct); 29 no-rule,
+> of which 3 sit on inline-styled elements (semantic markers, NOT debt) and 3 are state
+> toggles on a view root nothing reacts to (the likeliest real defects). Four scanner
+> defects each got a permanent test — worst two: `classList.toggle(token, force)`'s
+> boolean second arg read as a class name, and `api.js`'s whole `s-*` vocabulary
+> invisible because it only RETURNS status names, applying no class.
+>
+> **#1000 (`f931b8b`) — `EconomicImpact.kind`'s documented vocabulary pinned to what
+> producers emit** (five kinds now, set equality both directions vs producers found by
+> glob). #994 (s195) had added `overpay_avoided` while the Field description — the one
+> place a reader learns the vocabulary, shipped in the OpenAPI schema — still listed
+> four. Deliberately kept OUT of PLAN-0098 so AC-6 ("zero engine build") stays absolute.
+>
+> **#1001 (`4bb9494`) — PLAN-0098 ratified** (fleet View G, `Status: Draft`): a mirror
+> of `verticals/procurement/hero_demo/` by FUNCTION, not by shape. Cray typed SD-1 (a)
+> unregistered verticals fall back to the procurement hero; SD-2 the assumptions strip
+> is always-visible; **SD-3 = (c), differing from the draft's (a)** — lead with the
+> measured ฿48,000, the partner's fraud origin story rides as narrative copy only,
+> never a rendered figure; AC-9 added as that ruling's oracle. The drafter's AC-6
+> carve-out was withdrawn at Code's R2.
+>
+> **#1002 (`5382052`) — PLAN-0098 Steps 1–4: fleet's View G backend + its vertical
+> seam.** New `FleetHeroImpact` (measured `quoted_repair_thb` vs modelled `impact` —
+> REQUIRED, validator-rejects empty `assumptions`);
+> `verticals/fleet_maintenance/hero_demo/` (3 files) runs the real engine over the
+> spec-loaded ladder — ฿48,000 → เจ้าของกิจการ, ฿15,000 → ผจก.เดินรถ, plus the
+> fleet-only `three_quote` rule-gate card; a lazy `_HERO_BUILDERS` seam in `demo.py`
+> on `settings.oct_vertical` (**ADR-0031 D4 corollary 1 FIRED at N=2**).
+> `HeroImpactLedger` untouched (ADR-0030 D2) — `/impact` unions at the decorator.
+> AC-1/2/3/4/5/6/8 closed — **AC-6 + AC-4 verified by empty `git diff`, not
+> asserted**; Steps 5 (frontend) + AC-7/AC-9 remain. Two deviations recorded, not
+> absorbed: Step 2's "run the real `compute_three_quote`" is impossible (events carry
+> no vendor counts) — the stamped basis is READ per `sourcing.py:79-82`, still
+> satisfying AC-2; and AC-2's set-equality parity cannot hold (2 bands vs 3 rungs) —
+> implemented as the stronger per-side derivation from the loaded spec.
+>
+> **Suite 3676 → 3700 / 8 skipped throughout** — same skip count, nothing silently
+> disabled; ruff + format + `mypy --strict services/` + `alembic check` clean; guards
+> exit 0; CI `gate` pass, merge-commit `git diff` = 0 bytes, and the full suite re-run
+> on every merge commit. **16 non-vacuity probes**, each RED against its NAMED test,
+> restored from `/tmp` and diff-verified; **two probes were themselves defective and
+> read GREEN** before correction — caught only because each is bound to the one test
+> it must redden. The 3 new `hero_demo/` files are named in
+> `_POST_SCAFFOLD_DONOR_FILES` with a prose reason (fleet is the scaffolder's golden
+> donor; a governed hero is bespoke per partner, ADR-0032 D1.2); the exclusion proven
+> surgical — a stray `.py` in the donor still reddens the test.
+
+<!-- Recent-Decisions row rotated out of docs/STATUS.md by the s203 reconcile (R2: newest 10 rows) -->
+| 2026-07-30 | **s191 — a REAL repair case now reaches the governed gate (#975–#977).** The accepted quote (ใบที่ตกลง, alembic `0019`) gives the DoA ladder a ฿ figure existing BEFORE the work and tracing to recorded evidence; Cray typed the required FK + reason-only-when-not-cheapest. The case → event path wires it in with **zero engine and zero adapter-`__init__` diff**. One probe came back GREEN — a vacuous oracle a fail-soft handler was hiding. Suite → **3597** | `99b752f` (#977, head_commit) / `d3f2919` (#976) / `d781683` (#975) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
