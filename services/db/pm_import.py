@@ -74,14 +74,22 @@ class PmImportRow(TenantKeyMixin, Base):
         sa.Index("idx_pm_import_row_batch_id", "batch_id"),
         # The projection's read: confirmed rows for a truck, newest first by seq.
         sa.Index("idx_pm_import_row_truck_status", "truck_id", "status"),
+        # PLAN-0101 SD-3 rider 1 — a SHAPE change, not a list edit. This was a
+        # column-level `unique=True` on `seq`, which is why a `UniqueConstraint(`
+        # census returned 11 of 12 and looked complete: an anonymous column-level
+        # constraint is invisible to that grep and Postgres names it itself. It is
+        # now an explicitly NAMED composite so the next census can see it and the
+        # migration has a name to drop and recreate.
+        # Identity-backed counter is per-TABLE — no gap-free per-tenant
+        # monotonicity is implied; see services/db/tenant.py, "What
+        # (tenant_id, seq) does NOT promise".
+        sa.UniqueConstraint("tenant_id", "seq", name="uq_pm_import_row_seq"),
     )
 
     import_row_id: Mapped[str] = mapped_column(sa.Text, primary_key=True)
     #: Database-assigned monotonic order — see the module docstring on why this is not
     #: a timestamp. ``always=True`` so no caller can supply one and break monotonicity.
-    seq: Mapped[int] = mapped_column(
-        sa.BigInteger, sa.Identity(always=True), nullable=False, unique=True
-    )
+    seq: Mapped[int] = mapped_column(sa.BigInteger, sa.Identity(always=True), nullable=False)
     #: Groups the rows that came from one uploaded file, so a human reviews an import
     #: as the document it was rather than as loose readings.
     batch_id: Mapped[str] = mapped_column(sa.Text, nullable=False)

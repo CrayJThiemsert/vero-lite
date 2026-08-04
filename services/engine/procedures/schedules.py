@@ -35,7 +35,11 @@ class ScheduleState(TenantKeyMixin, Base):
 
     __tablename__ = "schedule_states"
     __table_args__ = (
-        UniqueConstraint("vertical", "procedure_id", name="uq_schedule_states_vertical_procedure"),
+        # PLAN-0101 SD-3: re-scoped, tenant_id joined. Two customers each running
+        # the same vertical's same procedure are two schedules, not a collision.
+        UniqueConstraint(
+            "tenant_id", "vertical", "procedure_id", name="uq_schedule_states_vertical_procedure"
+        ),
     )
 
     schedule_id: Mapped[str] = mapped_column(Text, primary_key=True)

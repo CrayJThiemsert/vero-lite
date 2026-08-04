@@ -123,7 +123,10 @@ class StepResult(TenantKeyMixin, Base):
     __tablename__ = "step_results"
     __table_args__ = (
         Index("idx_step_results_run_id", "run_id"),
-        UniqueConstraint("seq", name="uq_step_results_seq"),
+        # PLAN-0101 SD-3: re-scoped, tenant_id joined. The counter is per-TABLE,
+        # so this does NOT promise gap-free per-tenant monotonicity — see
+        # services/db/tenant.py, "What (tenant_id, seq) does NOT promise".
+        UniqueConstraint("tenant_id", "seq", name="uq_step_results_seq"),
     )
 
     step_result_id: Mapped[str] = mapped_column(Text, primary_key=True)

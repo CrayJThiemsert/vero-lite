@@ -27,6 +27,24 @@ out of the ontology is load-bearing rather than tidy — the ontology is the
 allowlist ``nl_query._validate_query`` checks a model-authored filter against, so
 a key the ontology does not declare is one an LLM cannot name, and cross-tenant
 selection stays inexpressible through the NL-query path.
+
+What ``(tenant_id, seq)`` does NOT promise (SD-3 rider 2)
+---------------------------------------------------------
+
+Six unique constraints in this codebase are single-column keys over a
+``GENERATED ... AS IDENTITY`` ``seq``, and SD-3 widened all of them to
+``(tenant_id, seq)``. The pairing is *correct* — it can only ever weaken a
+uniqueness guarantee, never strengthen one — but it invites a reading it does not
+support, so each of those six sites points back here.
+
+**The counter is per-TABLE, not per-tenant.** Postgres allocates ``IDENTITY``
+values from one sequence shared by every row of the table. Under a future shared
+database the tenants therefore interleave a single counter, and each tenant's own
+view of ``seq`` is **gap-ful**: tenant A might see 1, 3, 4, 8. So
+``(tenant_id, seq)`` guarantees *no duplicate seq within a tenant* and nothing
+more. It is **not** a promise of gap-free per-tenant monotonicity, and any code
+that infers "rows are contiguous" or "max(seq) == count(rows)" from it is wrong —
+today by luck (one tenant per database), later by construction.
 """
 
 from __future__ import annotations
