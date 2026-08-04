@@ -33,8 +33,10 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from services.api.config import settings
+from services.api.routers import cases as cases_router
 from services.db.task_chain_sweep import sweep_stale_tasks
 from services.notify.line import reset_cooldown
+from tests.clock_support import Clock
 
 #: Distinct from any other role id in the suite, so a nudge landing in the wrong
 #: inbox cannot pass by coincidence.
@@ -323,6 +325,102 @@ async def test_the_append_only_trail_keeps_every_flip_and_its_actor(
     )
     assert len(rows) == 3, "an append-only trail keeps the correction AND what it corrected"
     assert {row.actor for row in rows} == {"person-may", "person-tom"}
+
+
+# --------------------------------------------------------------------------- #
+# The wall clock stepping backwards between two flips of the SAME item
+#
+# PLAN-0099 measured this box's ``datetime.now(UTC)`` stepping BACKWARDS 20 times
+# per 300 s, every step >= 400 ms. ``chain_state`` reduced flip rows to "current
+# state" by sorting on that clock, so a backward step between two flips of one
+# item made the SUPERSEDED flip win. The ``event_id`` tiebreak never rescued it:
+# ``at`` is the leading key, so on an inversion the tiebreak is not even consulted
+# — and ``event_id`` is ``uuid4``-derived anyway, so on an exact tie it is a coin
+# flip rather than a tiebreak.
+#
+# Both cases below FORCE the inversion rather than wait for it (PLAN-0099 D5): at
+# ~0.9 % per vulnerable window a happy-path test passes 99.1 % of the time and
+# proves nothing. Both drive the real HTTP writer into the real sweep.
+# --------------------------------------------------------------------------- #
+
+
+async def test_a_finished_step_is_not_nudged_when_the_clock_stepped_back(
+    client_with_db: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """เมย์ confirms the garage — and the clock lies about when she did it.
+
+    The garage call is activated, then confirmed done a moment later while the wall
+    clock happens to step backwards. Reducing "current state" on that clock puts the
+    ``pending`` row last and the chain reports work that is FINISHED as outstanding
+    — so the sweep nudges เมย์ about a step she already completed, forever, every
+    time it runs. That is the partner's stated pilot-killer
+    ("เดี๋ยวคนปิดแจ้งเตือนหมด") reached by arithmetic rather than by a wrong rule.
+
+    RED before the fix: ``stale_found == 1`` and a push naming แจ้งอู่.
+    """
+    clock = Clock(_T0)
+    monkeypatch.setattr(cases_router, "datetime", clock.datetime_class())
+
+    case_id = await _open_breakdown_case(client_with_db, truck_id="truck-71")
+    await _flip(client_with_db, case_id, "notify_garage", "pending")
+    clock.back(milliseconds=500)
+    chain = await _flip(client_with_db, case_id, "notify_garage", "done")
+
+    assert clock.calls > 0, (
+        "the clock was never consulted — the patch missed the module that stamps "
+        "``at``, and every assertion below would pass without forcing anything"
+    )
+    garage = next(item for item in chain["items"] if item["item_key"] == "notify_garage")
+    assert garage["status"] == "done", (
+        "the LAST flip เมย์ made is the current state; a backward clock step is the "
+        "clock being wrong about when, never the operator being wrong about what"
+    )
+
+    recorder = _Recorder()
+    report = await sweep_stale_tasks(
+        db_session, now=_T0 + timedelta(minutes=40), transport=recorder.transport()
+    )
+    assert report.stale_found == 0, "a completed step is not outstanding work"
+    assert recorder.pushes == [], "nudging about finished work is how the channel gets muted"
+
+
+async def test_a_reopened_step_is_still_chased_when_the_clock_stepped_back(
+    client_with_db: AsyncClient, db_session: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The same inversion the other way round — and this one fails SILENTLY.
+
+    เมย์ marks the tow done, then reopens it because the truck is still on the road
+    (the correction flow ``test_the_append_only_trail_keeps_every_flip_and_its_actor``
+    already covers on a well-behaved clock). With the clock stepping back between the
+    two flips, the reduced state reports ``done`` and the truck simply stops being
+    chased — no nudge, no error, nothing on any screen to notice.
+
+    Worth pinning separately from its sibling: the over-nudge case announces itself
+    to a human within a day, this one is only ever discovered by a truck sitting in a
+    yard that nobody is asking about.
+
+    RED before the fix: ``stale_found == 0`` and no push.
+    """
+    clock = Clock(_T0)
+    monkeypatch.setattr(cases_router, "datetime", clock.datetime_class())
+
+    case_id = await _open_breakdown_case(client_with_db, truck_id="truck-72")
+    await _flip(client_with_db, case_id, "arrange_tow", "done", actor="person-may")
+    clock.back(milliseconds=500)
+    chain = await _flip(client_with_db, case_id, "arrange_tow", "pending", actor="person-tom")
+
+    assert clock.calls > 0, "the clock was never consulted — the patch missed the stamping module"
+    tow = next(item for item in chain["items"] if item["item_key"] == "arrange_tow")
+    assert tow["status"] == "pending", "the reopen is the operator's latest word on the tow"
+    assert tow["actor"] == "person-tom", "and it names who reopened it, not who closed it"
+
+    recorder = _Recorder()
+    report = await sweep_stale_tasks(
+        db_session, now=_T0 + timedelta(hours=2), transport=recorder.transport()
+    )
+    assert report.stale_found == 1, "a reopened tow is outstanding work past its 1-hour SLA"
+    assert "จัดหารถยก" in recorder.texts[0]
+    assert "truck-72" in recorder.texts[0]
 
 
 async def test_an_unknown_checklist_item_is_refused(client_with_db: AsyncClient) -> None:

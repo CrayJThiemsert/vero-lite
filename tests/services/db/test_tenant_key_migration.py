@@ -67,7 +67,11 @@ _TABLES = (
     "step_results",
 )
 
-#: ``constraint name -> the columns it must cover, in order``, as of 0024.
+#: ``constraint name -> the columns it must cover, in order`` — the FULL census at
+#: head, which is why it outgrows the twelve 0024 itself re-scoped. Entries added by
+#: a later revision are born tenant-scoped and never needed re-scoping; they are
+#: listed here because this census is what stops an untenanted natural key appearing
+#: anywhere in the schema, not only in 0024's diff.
 _EXPECTED_UNIQUES = {
     "uq_audit_log_prev_hash": ["tenant_id", "prev_hash"],
     "uq_pm_import_row_seq": ["tenant_id", "seq"],
@@ -85,6 +89,8 @@ _EXPECTED_UNIQUES = {
         "outcome",
     ],
     "uq_repair_case_run_link_seq": ["tenant_id", "seq"],
+    # Added by 0025 (the task-chain latest-wins fix), born tenant-scoped.
+    "uq_repair_case_task_event_seq": ["tenant_id", "seq"],
     "uq_schedule_states_vertical_procedure": ["tenant_id", "vertical", "procedure_id"],
     "uq_step_results_seq": ["tenant_id", "seq"],
 }
