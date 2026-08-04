@@ -37,6 +37,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 #: What a link row records about how the run treated this case. Closed set, and
 #: deliberately NOT the step's status: a step is one thing, but a gate resolution
@@ -56,7 +57,7 @@ LINK_OUTCOMES = (
 )
 
 
-class RepairCaseRunLink(Base):
+class RepairCaseRunLink(TenantKeyMixin, Base):
     """One (case, run, step) decision. Append-only; newest row is the position.
 
     **Neither key carries a foreign key, and that is one decision, not two.** This

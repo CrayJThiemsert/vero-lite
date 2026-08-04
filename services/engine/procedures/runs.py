@@ -38,6 +38,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 
 class PipelineRunStatus(StrEnum):
@@ -78,7 +79,7 @@ class StepResultStatus(StrEnum):
     FAILED = "failed"
 
 
-class PipelineRun(Base):
+class PipelineRun(TenantKeyMixin, Base):
     """A run of a Procedure — the additive run-time record (ADR-016 D2)."""
 
     __tablename__ = "pipeline_runs"
@@ -116,7 +117,7 @@ class PipelineRun(Base):
     __mapper_args__ = {"version_id_col": version}  # noqa: RUF012
 
 
-class StepResult(Base):
+class StepResult(TenantKeyMixin, Base):
     """One step's result within a PipelineRun, incl. the telemetry seam (AC A-9)."""
 
     __tablename__ = "step_results"

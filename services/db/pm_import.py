@@ -38,6 +38,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 #: Imported, awaiting a human. Invisible to the ontology.
 PM_STATUS_PROPOSED = "proposed"
@@ -53,7 +54,7 @@ PM_STATUSES = (PM_STATUS_PROPOSED, PM_STATUS_CONFIRMED, PM_STATUS_REJECTED)
 REASON_UNKNOWN_PLATE = "unknown_plate"
 
 
-class PmImportRow(Base):
+class PmImportRow(TenantKeyMixin, Base):
     """One proposed PM value for one truck, from one imported file.
 
     ``truck_id`` is nullable because a row can name a plate the fleet does not have —

@@ -15,9 +15,10 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 
-class ActionIdentity(Base):
+class ActionIdentity(TenantKeyMixin, Base):
     """Who approved / executed a reactive-loop action (AC-1 identity recording).
 
     One merge-idempotent row per executed action; ``approved_by`` /

@@ -50,6 +50,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 #: How a row's ``lowest_amount_at_acceptance_thb`` came to be there (PLAN-0099 D1
 #: §Provenance, on Cray's SD-2 ruling). Closed set, pinned by a CHECK constraint
@@ -69,7 +70,7 @@ LOWEST_AT_ACCEPTANCE_BASES = (
 )
 
 
-class RepairCaseQuote(Base):
+class RepairCaseQuote(TenantKeyMixin, Base):
     """One vendor's quote for one repair case.
 
     ``attachment`` is a single JSONB metadata record (the same shape a case photo
@@ -118,7 +119,7 @@ class RepairCaseQuote(Base):
     )
 
 
-class RepairCaseJustification(Base):
+class RepairCaseJustification(TenantKeyMixin, Base):
     """A written reason why this repair could not be three-quote compared.
 
     The partner's Q10 answer named this himself: a rare part or a single vendor gets
@@ -157,7 +158,7 @@ class RepairCaseJustification(Base):
     seq: Mapped[int] = mapped_column(sa.BigInteger, sa.Identity(always=False), nullable=False)
 
 
-class RepairCaseAcceptedQuote(Base):
+class RepairCaseAcceptedQuote(TenantKeyMixin, Base):
     """ใบที่ตกลง — which quote this repair was actually agreed at.
 
     **The primitive whose absence caused two separate gaps.** The DOA ladder routes

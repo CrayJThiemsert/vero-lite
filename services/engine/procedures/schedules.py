@@ -20,9 +20,10 @@ from sqlalchemy import DateTime, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 
-class ScheduleState(Base):
+class ScheduleState(TenantKeyMixin, Base):
     """The persisted clock of one ``schedule``-triggered procedure (ADR-0028 SD-P5).
 
     ``last_fired`` / ``next_fire`` are nullable: a freshly-registered schedule has no fire

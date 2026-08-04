@@ -31,6 +31,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 GENESIS_HASH = "0" * 64
 """``prev_hash`` of the first row — the chain anchor."""
@@ -52,7 +53,7 @@ FOR EACH ROW EXECUTE FUNCTION audit_log_block_mutation();
 """
 
 
-class AuditLog(Base):
+class AuditLog(TenantKeyMixin, Base):
     """One governance-relevant transition, hash-chained to its predecessor.
 
     Hand-authored engine-governance table (like ``pipeline_runs`` /

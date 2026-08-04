@@ -42,6 +42,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 #: Width of the running part of ``RC-<year>-<NNNN>``. Fixed-width zero padding is
 #: what makes the series sort correctly as text anywhere it is displayed; the
@@ -51,7 +52,7 @@ ORDER_NO_WIDTH = 4
 ORDER_NO_PREFIX = "RC"
 
 
-class RepairCaseOrderNumber(Base):
+class RepairCaseOrderNumber(TenantKeyMixin, Base):
     """The human-readable repair-order number for one case — Cray's Decision A.
 
     It exists because ``repair_case.case_id`` is a UUID (``case-{uuid4hex[:12]}``)
@@ -84,7 +85,7 @@ class RepairCaseOrderNumber(Base):
     allocated_at: Mapped[datetime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
 
 
-class RepairCaseCloseout(Base):
+class RepairCaseCloseout(TenantKeyMixin, Base):
     """One close-out keying for one repair case. Append-only; latest row wins.
 
     ``vat_thb`` is NULLABLE on purpose: a vendor who charges no VAT has no VAT line,

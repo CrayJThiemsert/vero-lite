@@ -37,6 +37,7 @@ import sqlalchemy as sa
 from sqlalchemy.orm import Mapped, mapped_column
 
 from services.db.base import Base
+from services.db.tenant import TenantKeyMixin
 
 #: The full status vocabulary. ``pending`` = entered the chain, ``done`` /
 #: ``skipped`` = a human reported the outcome. Reopening a mis-flipped item is a
@@ -47,7 +48,7 @@ TASK_STATUS_SKIPPED = "skipped"
 TASK_STATUSES = (TASK_STATUS_PENDING, TASK_STATUS_DONE, TASK_STATUS_SKIPPED)
 
 
-class RepairCaseTaskEvent(Base):
+class RepairCaseTaskEvent(TenantKeyMixin, Base):
     """One status flip of one checklist item on one repair case."""
 
     __tablename__ = "repair_case_task_event"
