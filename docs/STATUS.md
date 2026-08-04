@@ -5,8 +5,8 @@ current_batch: "s205 — three PRs merged (#1031–#1033): OQ-4 CLOSED (Cray typ
 current_actor: code
 blocked_on: "Nothing blocks Code. PLAN-0100 execution is gated on Cray ruling SD-1..SD-5; PLAN-0102's excision is gated on Cray ratifying it."
 next_action: "PLAN-0102 (retire L1) awaits Cray ratification; PLAN-0100 awaits Cray filling its five Ruling: slots (fold-in SHIPPED #1032); #1034 (chip-authored) needs review."
-head_commit: 27a6961
-recent_commits: [27a6961, da633a1, 1365bc7, 734feae, 74b6a94, b9671ce, 000d468, 711a131, a4e58a8, 13a7721]
+head_commit: 3b07c16
+recent_commits: [3b07c16, b1e2ed3, c99132c, 27a6961, da633a1, 1365bc7, 734feae, 74b6a94, b9671ce, 000d468]
 ---
 
 # vero-lite — Project Status
@@ -18,9 +18,16 @@ recent_commits: [27a6961, da633a1, 1365bc7, 734feae, 74b6a94, b9671ce, 000d468, 
 
 ## Current Focus
 
-> **Session 205, 2026-08-04 (head_commit `22202f2` → `27a6961`) — three PRs merged
-> (#1031–#1033); #1034 is open but is a chip session's, unreviewed here. Theme:
+> **Session 205, 2026-08-04 (head_commit `22202f2` → `3b07c16`) — three PRs merged
+> (#1031–#1033); #1034 / #1036 open from other sessions, unreviewed here. Theme:
 > answering an overdue question corrected two errors in the record it was built on.**
+>
+> _[**#1035 also merged during this window, from a PARALLEL session — not s205's
+> work.** It keys fleet task-chain state on insertion order rather than the wall clock,
+> shipping alembic **`0025`**, so head is no longer `0024`. Noted only so `head_commit`
+> above reconciles; that session owns its own narrative. Same bug family as the
+> `/api/cases` ordering defect s205 found and chipped (#1034, still open) — different
+> query, `cases.py:279` vs `:255`, so the two do not collide.]_
 >
 > **OQ-4 CLOSED — Cray typed RETIRE L1 (2026-08-04); PLAN-0102 is the vehicle (#1031).**
 > Re-measured over **130** transcripts keyed on **structural hook-emission paths**, not
