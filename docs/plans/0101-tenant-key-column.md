@@ -208,10 +208,24 @@ fails NOT NULL loudly instead of silently landing as `'default'`.
 NULL column keep a `server_default='default'` after the AC-3 backfill? D7(iii) is
 silent. It matters only if the chosen stamping can be bypassed: a retained
 `server_default` converts "unstamped write" from a loud NOT NULL failure into a
-silent `'default'` row. *Lead-to-verify, not settled fact:* Code has a recorded
-observation that `alembic check` detects `sa.Identity` but does **not** detect
-`server_default` drift — if true, a retained `server_default` is also invisible to
-that guard. **Step 1 verifies this empirically before the ruling is executed.**
+silent `'default'` row.
+
+**MEASURED (Step 1.4, 2026-08-04, session 203) — the lead is CONFIRMED.** On a
+throwaway `vero_lite_probe` DB at head, with a positive control proving the tool
+works:
+
+| Probe | Result |
+|---|---|
+| baseline | `No new upgrade operations detected` (exit 0) — uncontaminated |
+| **positive control** — a new column on a model, absent in DB | `FAILED: New upgrade operations detected: [('add_column', None, 'action_identity', …)]` (exit **255**) |
+| **`server_default="probe-default"`** on an existing model column, absent in DB | `No new upgrade operations detected` (exit **0**) — **NOT detected** |
+| corroboration — `alembic revision --autogenerate` on the same state | emitted a revision whose `upgrade()` and `downgrade()` are both `pass` — **empty** |
+
+The positive control is what makes the negative meaningful: `alembic check` was
+demonstrably able to detect drift on the same DB in the same session, and still
+reported none for `server_default`. So a retained `server_default` is invisible to
+**both** `alembic check` and `--autogenerate`, on top of silently absorbing an
+unstamped write. All three of the recommendation's stated reasons hold.
 
 **Ruling:** _(unruled)_
 
@@ -325,11 +339,12 @@ lands (AC-9). Step 1 is not blocked and can run in parallel.
 3. Guard test: the governance pin / resolved-procedures config hash is
    byte-identical with and without `TENANT_ID` set (AC-4's never-enters-the-pin
    clause, and the only-when-supplied hash discipline).
-4. **Empirical probe for SD-1's folded question:** on the disposable test DB,
-   verify whether `alembic check` flags a `server_default` discrepancy between
-   model metadata and a live table (the recorded observation says it detects
-   `sa.Identity` but not `server_default` drift — currently *unverified*). Record
-   the measured answer in this PLAN before executing the SD-1 ruling.
+4. **Empirical probe for SD-1's folded question — DONE (session 203).** Measured on
+   a throwaway `vero_lite_probe` DB at head, with a positive control: `alembic check`
+   does **not** detect `server_default` drift, and `--autogenerate` emits an empty
+   revision for it. Full result table in SD-1's folded question above. The dev DB
+   (`vero_lite`, at `0022`) and every per-checkout test DB were left untouched; the
+   probe DB was dropped.
 
 ### Step 2 — Teach the generator (BLOCKED-ON-SD-2; discharges AC-1)
 
