@@ -15,6 +15,16 @@ measured in this harness on 2026-07-26 and recorded in
 3. An unescaped ``$?`` / ``$(...)`` inside a ``bash -c`` string — under
    ``wsl bash -lc`` this expands one shell layer early. Measured: ``$?`` reports 0
    for a failed command; ``$(pwd)`` resolves before a preceding ``cd``.
+4. Any ``$`` inside a **double-quoted** ``bash -c`` argument, escaped or not (added
+   2026-08-04, session 204). Lesson 0007 §1.1 already recorded that the outer quote
+   style is load-bearing — the outer layer eats one level of backslash, so
+   ``"... \\$? ..."`` reaches the inner bash bare — but shape 3's predicate requires
+   the ``$`` to carry NO backslash, so the dutifully-escaped-under-double-quotes form
+   sailed past silently. That is the half of the remedy nobody enforced, and a whole
+   session ran on it: escaping added, quotes left double, fabricated zeros read over
+   two RED tests, and the conclusion drawn that the *rule* was broken. Lesson #0024 —
+   a rule has to live where the enforcer looks, and half a remedy is the half that
+   gets followed.
 
 Why the advisory is PostToolUse rather than a PreToolUse deny: the harm is not
 running the command, it is *believing* its output. That is knowable only after it
@@ -62,6 +72,21 @@ EARLY_EXPANSION = [
     "bash -c 'echo $(date)'",
 ]
 
+# A DOUBLE-quoted outer argument, where the backslash escape is eaten before WSL
+# re-assembles the argv — so `\$?` behaves exactly like a bare `$?`. Escaping is
+# necessary but NOT sufficient; the quote style is the other half of the remedy.
+# Measured 2026-08-04 (session 204): with a double-quoted outer, `\$?` after a
+# failing command printed 0 and `\$V` after `V=hello` printed empty; the identical
+# text under a SINGLE-quoted outer printed 1 and `hello`.
+DOUBLE_QUOTED_OUTER = [
+    'wsl bash -lc "false; echo rc=\\$?"',
+    'wsl bash -lc "V=hello; echo v=\\$V"',
+    'wsl bash -lc "pytest -q > /tmp/r.log 2>&1; echo EXIT=\\$?"',
+    # Bare `$` under a double-quoted outer is broken for the same reason; this one
+    # is caught by BOTH predicates, which is fine — the advisory lists all problems.
+    'wsl bash -lc "cd /etc && echo $(pwd)"',
+]
+
 # --- shapes that MUST NOT warn ---------------------------------------------- #
 
 CLEAN = [
@@ -76,8 +101,15 @@ CLEAN = [
     # head/tail as the SOLE command (no pipe) is not a masking shape.
     "tail -30 /tmp/run.log",
     "head -20 README.md",
-    # Escaped expansion inside bash -c is the CORRECT form.
+    # Escaped expansion inside bash -c is the CORRECT form — but ONLY because the
+    # outer argument is SINGLE-quoted. The same text with double quotes is broken
+    # and must warn (see DOUBLE_QUOTED_OUTER).
     "wsl bash -lc 'false; echo rc=\\$?'",
+    # A double-quoted outer with NO `$` at all is perfectly fine — the hazard is the
+    # expansion, not the quote style on its own. Without this case the new predicate
+    # would be free to fire on most ordinary commands and become noise.
+    'wsl bash -lc "cd /home/crayj/work/vero-lite && git log --oneline -3"',
+    'wsl bash -lc "grep -rn needle services/ > /tmp/out.txt 2>&1"',
 ]
 
 
@@ -101,6 +133,21 @@ def test_unescaped_expansion_in_bash_c_warns(command: str) -> None:
     warning = _shell_hygiene_warning(command)
     assert warning is not None, f"no advisory for early expansion: {command!r}"
     assert "one shell layer EARLY" in warning
+
+
+@pytest.mark.parametrize("command", DOUBLE_QUOTED_OUTER)
+def test_double_quoted_outer_with_a_dollar_warns(command: str) -> None:
+    """Escaping alone is NOT the remedy — the outer quote style is the other half.
+
+    This is the shape the advisory was blind to: ``_UNESCAPED_EXPANSION_RE`` requires
+    the ``$`` to carry no backslash, so a dutifully-escaped ``"... \\$? ..."`` under
+    double quotes slipped through silently while behaving exactly like the unescaped
+    form. A session read fabricated zeros over two RED tests on this shape and then
+    concluded the *rule* was broken rather than its own usage of it.
+    """
+    warning = _shell_hygiene_warning(command)
+    assert warning is not None, f"no advisory for a double-quoted outer: {command!r}"
+    assert "SINGLE-quoted" in warning
 
 
 @pytest.mark.parametrize("command", CLEAN)
