@@ -27,6 +27,8 @@ from httpx import AsyncClient
 
 from services.api.config import settings
 from services.api.main import app
+from services.api.routers import cases as cases_router
+from tests.clock_support import Clock, utc
 
 
 @pytest.fixture(autouse=True)
@@ -137,12 +139,30 @@ async def test_photos_on_a_missing_case_404(client_with_db: AsyncClient) -> None
 
 
 async def test_cases_list_newest_first_and_filter_by_truck(
-    client_with_db: AsyncClient,
+    client_with_db: AsyncClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """เมย์'s working view: what came in, most recent at the top, filterable to the
-    truck someone is phoning about."""
+    truck someone is phoning about.
+
+    The two opens are stamped through a DRIVEN clock rather than the box's own. That
+    is not decoration: read against the real clock this test asserted a property the
+    endpoint does not have. Two opens land 1-2 ms apart, this box's wall clock steps
+    backwards ~0.067/s (PLAN-0099), and the stamps could tie or invert — so the
+    assertion below passed ~99% of the time and failed the rest, which is the flake
+    this file's ordering fix was chasing. Five minutes apart states the property the
+    endpoint really does guarantee — newest stamp on top — with the clock's
+    misbehaviour taken out of the question rather than gambled on.
+    """
+    clock = Clock(utc(hour=9))
+    monkeypatch.setattr(cases_router, "datetime", clock.datetime_class())
+
     first = await _open_case(client_with_db, "truck-01")
+    clock.shift(minutes=5)
     second = await _open_case(client_with_db, "truck-03")
+    assert clock.calls >= 2, (
+        "the patch must have landed on the WRITE path — against the real clock this "
+        "test is the intermittent one it replaced, and it would read green here"
+    )
 
     listed = (await client_with_db.get("/api/cases")).json()
     assert listed["total"] == 2
@@ -150,6 +170,47 @@ async def test_cases_list_newest_first_and_filter_by_truck(
 
     filtered = (await client_with_db.get("/api/cases", params={"truck_id": "truck-03"})).json()
     assert [c["case_id"] for c in filtered["cases"]] == [second["case_id"]]
+
+
+async def test_tied_open_stamps_still_list_in_one_stable_order(
+    client_with_db: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Eight cases opened on a FROZEN clock all tie on ``opened_at`` — and the list
+    must still be the same list every time เมย์ refreshes it.
+
+    This is the property the ``case_id`` tiebreak actually buys, asserted directly
+    instead of left to the planner: with ``opened_at`` tied the sort key IS
+    ``case_id``, so the answer is ``sorted(...)`` exactly. It matters because the
+    endpoint truncates with ``limit`` — an unstable tie lets a boundary case flicker
+    on and off page 1 between two reads of data that did not change.
+
+    **Why eight cases and not two.** Without the tiebreak, tied rows come back in
+    whatever order the planner produces; for two rows that matches ``sorted`` half
+    the time, so a two-row probe green-lights the defect every other run — the exact
+    disease this test exists to cure. Eight ties put a false pass at 1/8! ≈ 0.002%,
+    so deleting ``RepairCase.case_id`` from the ``order_by`` turns this RED
+    deterministically rather than intermittently.
+
+    What this does NOT assert: that the tied order reflects which case was opened
+    first. ``case_id`` is a random UUID, so it cannot — see the endpoint's docstring
+    and PLAN-0099 §Coverage, which records that trade deliberately.
+    """
+    clock = Clock(utc(hour=9))
+    monkeypatch.setattr(cases_router, "datetime", clock.datetime_class())
+
+    opened = [(await _open_case(client_with_db, f"truck-{i:02d}"))["case_id"] for i in range(8)]
+    assert clock.calls >= len(opened), "the clock patch must have landed on the WRITE path"
+
+    listed = (await client_with_db.get("/api/cases")).json()
+    assert (
+        len({c["opened_at"] for c in listed["cases"]}) == 1
+    ), "the fixture only means anything if every stamp genuinely tied"
+    assert [c["case_id"] for c in listed["cases"]] == sorted(opened)
+
+    again = (await client_with_db.get("/api/cases")).json()
+    assert [c["case_id"] for c in again["cases"]] == [
+        c["case_id"] for c in listed["cases"]
+    ], "same data, same page — the refresh stability the truncating `limit` needs"
 
 
 async def test_get_missing_case_404(client_with_db: AsyncClient) -> None:

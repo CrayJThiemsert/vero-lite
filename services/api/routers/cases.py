@@ -251,8 +251,27 @@ async def list_cases(
     truck_id: str | None = None,
     limit: int = 50,
 ) -> CaseListResponse:
-    """List cases, newest first, optionally for one truck."""
-    stmt = select(RepairCase).order_by(RepairCase.opened_at.desc()).limit(max(1, min(limit, 500)))
+    """List cases, newest first, optionally for one truck.
+
+    ``case_id`` breaks the tie so the page is REPEATABLE across refreshes. This box's
+    wall clock steps backwards (PLAN-0099 measured it), so two cases opened in the
+    same millisecond tie on ``opened_at`` — and an untied sort leaves their relative
+    order to the planner. With the truncating ``limit`` below, that lets a boundary
+    case flicker on and off page 1 between two reads of unchanged data. Same shape,
+    and the same reason, as the ordering in ``services/db/case_events.py``.
+
+    What the tiebreak deliberately does NOT buy: ``case_id`` is a random UUID, so a
+    tied page is stable but its order is arbitrary, and a backward clock step between
+    two opens can still invert two genuinely different stamps. Recovering true
+    insertion order needs a monotonic ``seq``; PLAN-0099 §Coverage weighed exactly
+    that for this endpoint and recorded it KNOWINGLY LEFT — this is a display list a
+    human reads, and no correctness consumer reads its order.
+    """
+    stmt = (
+        select(RepairCase)
+        .order_by(RepairCase.opened_at.desc(), RepairCase.case_id)
+        .limit(max(1, min(limit, 500)))
+    )
     if truck_id:
         stmt = stmt.where(RepairCase.truck_id == truck_id)
     cases = list((await session.execute(stmt)).scalars())

@@ -235,7 +235,12 @@ _ALLOWLIST: dict[tuple[str, str], tuple[int, str]] = {
         "GET /api/cases — newest-first display list. It carries a truncating `limit`, "
         "so a backward step could in principle push a boundary case off the first "
         "page; that is a paging artefact on a screen a human is reading, and no "
-        "correctness consumer reads this order.",
+        "correctness consumer reads this order. Since s205 it carries a `case_id` "
+        "tiebreak, so a TIED page is at least repeatable across refreshes — the "
+        "flicker above is now only reachable through a backward step, not through "
+        "two opens in the same millisecond. The tiebreak does not make the entry "
+        "stale: `case_id` is a random UUID, so the pick is still wall-clock-keyed "
+        "and this stays an allowlisted display ordering rather than a silenced one.",
     ),
     ("services/api/routers/cases.py", "entered_at"): (
         3,
