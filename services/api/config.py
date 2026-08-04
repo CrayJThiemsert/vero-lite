@@ -183,6 +183,25 @@ class Settings(BaseSettings):
             "and the vertical the routers serve (e.g. 'energy' | 'supply_chain')"
         ),
     )
+
+    # The tenant key (ADR-0035 D7 / PLAN-0101 Step 1). A CUSTOMER ORGANISATION —
+    # not a deployment (two deployments for one customer keep one key) and not a
+    # vertical instance (that is oct_vertical above; conflating them breaks the
+    # moment one customer runs two verticals). Process-wide exactly like
+    # oct_vertical, which is what keeps ADR-0035's L4 "light": per-request tenancy
+    # would collide with the process-scoped vertical (auth.py:82) and the
+    # hand-wired executor factories (main.py:103-156).
+    # It is a plain settings field and is NOT part of the governance pin — it must
+    # never reach the resolved-procedures hash (guarded by
+    # tests/services/engine/procedures/test_tenant_key_not_in_governance_pin.py).
+    tenant_id: str = Field(
+        default="default",
+        description=(
+            "Customer-organisation slug stamped onto every persisted row "
+            "(ADR-0035 D7). Defaults to 'default' so existing dev/test flows are "
+            "untouched; the public demo deployment sets TENANT_ID=demo"
+        ),
+    )
     oct_recommend_threshold: float = Field(
         default=90.0,
         description=(
