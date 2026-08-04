@@ -939,3 +939,59 @@ _Both session-196 Current Focus blocks, rotated out together: adding the s203 bl
 
 <!-- Recent-Decisions row rotated out of docs/STATUS.md by the s203 reconcile (R2: newest 10 rows) -->
 | 2026-07-30 | **s191 — a REAL repair case now reaches the governed gate (#975–#977).** The accepted quote (ใบที่ตกลง, alembic `0019`) gives the DoA ladder a ฿ figure existing BEFORE the work and tracing to recorded evidence; Cray typed the required FK + reason-only-when-not-cheapest. The case → event path wires it in with **zero engine and zero adapter-`__init__` diff**. One probe came back GREEN — a vacuous oracle a fail-soft handler was hiding. Suite → **3597** | `99b752f` (#977, head_commit) / `d3f2919` (#976) / `d781683` (#975) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
+
+## Rotated this reconcile (session-204, 2026-08-04 — PLAN-0101's tenant key end to end (#1026-#1029), and the half-stated escaping remedy)
+
+> **Session 197, 2026-07-31 (head_commit `1dbd972` → `687705d`) — one PR merged
+> (#1006), 0 open. PLAN-0098 COMPLETE and ARCHIVED in the same PR: View G's fleet
+> branch shipped, all nine ACs closed. Theme, again: the donor's reuse contract was
+> MEASURED, not re-read.**
+>
+> **PLAN-0098's own §D-D was wrong about the donor.** It asserted the joiner
+> `governanceMoment` binds only `doa_tier` / `sod` / `governed_decision`, "all of which
+> fleet produces". It also binds `po_id`, `declared_tier_id`, `is_off_avl_override`
+> (`view-hero.js:42,46,49`), none of which fleet's audit emits — verbatim reuse would
+> have rendered `undefined — display only` in the DOA card in front of an audience. A
+> fleet joiner was written instead; SoD + join cards ARE reused verbatim, and
+> `test_the_fleet_branch_reads_no_procurement_only_field` pins the correction.
+>
+> **Zero new CSS classes** — `EconomicImpact.baseline/governed` map onto the existing
+> `hero-ledger` idiom, so `hero.css` is untouched, #999's class contract needed no
+> allowlist edit, and the `?v=` bump covered exactly one asset (`c36` → `c47`).
+> **AC-4 / AC-6 closed by EMPTY `git diff`** (`services/engine/`,
+> `services/api/models/demo.py`, the donor's own suite) — evidence, not prose. **Five
+> non-vacuity probes**, each an observable behaviour change, each RED against its
+> NAMED test, each restored from a `/tmp` copy and byte-diff verified: a smuggled
+> money literal, a dispatch that stops matching, a reverted cache token, a
+> procurement-only field creeping back, a hidden assumptions strip.
+>
+> **Preview review is evidence, never a gate — and it found a real defect.** Runtime
+> DOM probe on `OCT_VERTICAL=fleet_maintenance`: `undefined`=0, `NaN`=0, `hero-*`
+> overflow=0, assumptions strip `hidden:false` / 144px / 6 lines, `hero-toggle`
+> count=0 (**SD-2 confirmed in the DOM**, stronger than the lexical test). It also
+> caught the authored `three_quote` rule rendering 143 chars of prose right-aligned
+> in a 54px kv cell against a 19px row — moved to its own full-width line (`bfd789c`).
+> **Found but NOT fixed (not this PLAN's):** the page overflows horizontally,
+> `scrollWidth 1825` vs `clientWidth 1382`; all 24 overflowing elements are in the
+> global nav bar, zero `hero-*`. Pre-existing header behaviour, tracked separately.
+>
+> **Cray typed four calls** in a "platform vs dev shop" discussion held BEFORE the work
+> was picked; all four are carried as Active TODOs / `next_action`: (1) **measure the
+> assembly-cost axis BEFORE an ADR argues it** — tripwire first, ADR on the number; (2)
+> **no buyer-model mismatch** — the partners are mid-size regulated operators already,
+> so `CLAUDE.md` §1's "SME" wording is loose phrasing to correct, not a strategy change;
+> (3) **ADR-0032 D2's pilot gate = SATISFIED** (the fleet Phase-1 flow is a real pilot),
+> so its Context snapshot must be **re-grounded**, unlocking shape-2 work — OWED, not
+> done, G1-gated → `plan-drafter`; (4) **finish the fleet block** (PLAN-0098 ✅, then
+> PLAN-0099 Steps 1–6) before the primitives block — insights found along the way may
+> strengthen it.
+>
+> Suite **3700 → 3709** / 8 skipped — skip count unmoved, all 8 host-state/live
+> opt-ins. `ruff` clean over 583; `mypy --strict` clean over 130; R1/R4/R7/R8 +
+> registration guard exit 0. CI `gate` pass 5m56s on `bfd789c`; `git diff bfd789c
+> HEAD` = 0 bytes; full suite re-run on the merge commit = **3709 / 8**.
+
+
+<!-- Recent-Decisions rows rotated out of docs/STATUS.md by the s204 reconcile (R2: newest 10 rows) -->
+| 2026-07-30 | **s193 — PLAN-0096 Step 8 item 5 COMPLETE (#982–#986): the month-end export end to end, with a KPI that can fail.** Row set = governed ∪ escaped money (a naive export reports 100% by construction). **Cray typed (ค)** traceable = governed AND documented; **(ก)** persist `three_quote_basis` (alembic `0022`). Two defects found by ORACLES, not review. Suite 3607 → **3646** | `367c15b` (#987 merge, head_commit) / `367a08e` (#986) / `ed09502` (#982) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` |
+| 2026-07-30 | **s192 — PLAN-0096 Step 8 item 3 COMPLETE (#979): the case → run link, proven on BOTH gate drivers.** The hook read `output_set`, so a rejected case was invisible (fix: `decided_entries()` reads `decisions`); `_outcome` let the run state outrank a refusal. **Cray typed: a refusal is checked FIRST.** Five non-vacuity probes, all RED as predicted. Suite → **3604** | `5dd8ce6` (#979, head_commit) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
