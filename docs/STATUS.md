@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-04T21:08:33+07:00
+last_updated: 2026-08-05T00:06:40+07:00
 session: 205
-current_batch: "s205 — three PRs merged (#1031–#1033): OQ-4 CLOSED (Cray typed RETIRE L1), PLAN-0100's fold-in makes SD-1..SD-5 askable, three misfiled archive rows relocated."
+current_batch: "s205 — three parallel-session PRs merged (#1034 cases-list tiebreak, #1035 seq-keyed chain state + alembic 0025, #1036 0024 audit_log backfill); 0 PRs open; none of the three is s205's work."
 current_actor: code
-blocked_on: "Nothing blocks Code. PLAN-0100 execution is gated on Cray ruling SD-1..SD-5; PLAN-0102's excision is gated on Cray ratifying it."
-next_action: "PLAN-0102 (retire L1) awaits Cray ratification; PLAN-0100 awaits Cray filling its five Ruling: slots (fold-in SHIPPED #1032); #1034 (chip-authored) needs review."
-head_commit: d86bb1d
-recent_commits: [d86bb1d, 954d4ad, 3b07c16, b1e2ed3, c99132c, 27a6961, da633a1, 1365bc7, 734feae, 74b6a94]
+blocked_on: "Nothing blocks Code — 0 PRs open. PLAN-0100 execution is gated on Cray ruling SD-1..SD-5; PLAN-0102's excision is gated on Cray ratifying it."
+next_action: "PLAN-0102 (retire L1) awaits Cray ratification; PLAN-0100 awaits Cray filling its five Ruling: slots; the assembly-cost metric still needs a reproducible definition."
+head_commit: bcab1f4
+recent_commits: [bcab1f4, 0c05dba, c632ba4, e9b6194, 318187f, d86bb1d, 022125d, 51e27b2, 9a8c5b6, 954d4ad]
 ---
 
 # vero-lite — Project Status
@@ -18,18 +18,14 @@ recent_commits: [d86bb1d, 954d4ad, 3b07c16, b1e2ed3, c99132c, 27a6961, da633a1, 
 
 ## Current Focus
 
-> **Session 205, 2026-08-04 (head_commit `22202f2` → `d86bb1d`) — three PRs merged
-> (#1031–#1033); #1034 open from a chip session, unreviewed here. Theme:
+> **Session 205, 2026-08-04 (head_commit `22202f2` → `bcab1f4`) — three PRs merged
+> (#1031–#1033), all s205's own work. Theme:
 > answering an overdue question corrected two errors in the record it was built on.**
 >
-> _[**#1035 and #1036 also merged during this window, from PARALLEL sessions — not
-> s205's work**, and recorded only so `head_commit` above reconciles with something a
-> reader can find; those sessions own their narratives. **#1035** keys fleet task-chain
-> state on insertion order rather than the wall clock, shipping alembic **`0025`**, so
-> head is no longer `0024`; it is the same wall-clock-ordering bug family as the
-> `/api/cases` defect s205 found and chipped (#1034, still open) but a **different
-> query** (`cases.py:279` vs `:255`), so the two do not collide. **#1036** reworks
-> migration `0024` to backfill a populated `audit_log`.]_
+> _[Three PARALLEL-session PRs — **#1034, #1035, #1036 — also landed in this window and
+> are NOT s205's work**: #1034 from the chip session s205 spawned, #1035 and #1036 from
+> one other session. They carry head to `bcab1f4` and alembic head to **`0025`**; their
+> authors wrote the record, and **Recent Decisions** below carries all three.]_
 >
 > **OQ-4 CLOSED — Cray typed RETIRE L1 (2026-08-04); PLAN-0102 is the vehicle (#1031).**
 > Re-measured over **130** transcripts keyed on **structural hook-emission paths**, not
@@ -245,6 +241,9 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-04 | **#1034 (chip-authored, NOT s205) — `/api/cases` list order is now REPEATABLE, not newest-first.** A `case_id` tiebreak on `opened_at.desc()` ends cross-refresh flicker at the `limit` boundary, but `case_id` is a **random UUID**: it buys **repeatability, NOT newest-first correctness — 50.5 % over 20,000 reps**. True order needs a monotonic `seq`, which PLAN-0099 §Coverage had already weighed here and **KNOWINGLY LEFT (ledger #7)**; **Cray ratified keeping that** — same `uuid4`-tiebreak trap as #1035, opposite right answers (display list ⇒ leave it, correctness path ⇒ `seq`) | `bcab1f4` ([#1034](https://github.com/CrayJThiemsert/vero-lite/pull/1034)) / `services/api/routers/cases.py:272` / `docs/plans/done/0099-wall-clock-root-fix-store-at-write-and-sequence.md` |
+| 2026-08-04 | **#1035 (parallel session, NOT s205) — task-chain state re-keyed onto a DB-assigned monotonic `seq`; alembic head is now `0025`.** `chain_state` sorted flips on `at`, a wall-clock stamp, so a backward clock step let the **superseded** flip win; the `event_id` tiebreak never fired because `at` led the sort (and it is a `uuid4` anyway). It feeds `stale_items` → the LINE nudge sweep, so **both directions were live failures**: a finished step nudged forever, a reopened one silently un-chased. PLAN-0099 D2; `(tenant_id, seq)` unique per PLAN-0101 SD-3 | `3b07c16` ([#1035](https://github.com/CrayJThiemsert/vero-lite/pull/1035)) / `verticals/fleet_maintenance/task_chain.py` + `services/api/routers/cases.py:305` / alembic `0025` |
+| 2026-08-04 | **#1036 (parallel session, NOT s205) — `0024` could not migrate a POPULATED `audit_log`.** Its backfill `UPDATE` trips `0007`'s `audit_log_no_mutation` **FOR EACH ROW** trigger; CI was green only because every fixture built an **empty** DB where a row trigger never fires — **a test that could not fail, not a flaky one**. Amended (**Cray-ratified** exception to never-edit-a-shipped-revision — nothing later can rescue a migration that blocks the chain) to a transient `ADD COLUMN … NOT NULL DEFAULT` + `DROP DEFAULT`: no `UPDATE`, so append-only never lapses. Dev DB `0022`→`0025`, 136 rows intact | `d86bb1d` (#1036) / `docs/plans/done/0101-tenant-key-column.md` |
 | 2026-08-04 | **s205 — OQ-4 ANSWERED: NO; Cray typed RETIRE L1 (#1031).** 130 transcripts, structural hook paths not substring, **positive control 3/3**, true positives **0** in both eras ⇒ the criterion is **unfireable by construction**. Two corrections to the record it was built on: s180's "0 denies" was **wrong — ≥ 56 measured** (a floor; three deny wordings existed, not two), and **ADR-013 never backed L1** ⇒ no amendment, **PLAN-0102** is the vehicle | `74b6a94` (#1031) / `docs/lessons/0035-negative-measurement-needs-a-positive-control.md` |
 | 2026-08-04 | **s205 — PLAN-0100 fold-in (#1032) + archive relocation (#1033).** Five empty `Ruling:` slots + **AC-13** + BLOCKED-ON-SD markers make SD-1..SD-5 **askable**; H/I/J reconciled by **dropping Tab H from SD-1's promise** (mixed backend, not DB-posture-contingent); `54dfc7d`'s table folded in verbatim; SD-4 is **published-profile-only**. #1033 moved three misfiled s196/s197 rows `h1g` → base — the recorded blocker was **false** | `27a6961` (head_commit) / `734feae` / `da633a1` / `docs/plans/0100-exposure-published-demo-surface.md` |
 | 2026-08-04 | **s204 — PLAN-0101 COMPLETE 12/12 and ARCHIVED (#1028/#1029): the ADR-0035 D7 tenant key, end to end.** 21 tables carry `tenant_id`, all **12** uniques re-scoped (read from built metadata, not source text), revision `0024` with a symmetric downgrade. **Cray typed four calls** — unbind SD-2's letter, a **synthetic second-tenant fixture**, **SD-3 rider 3 reversed** to scope the audit reads. Two consequences the riders never named: a composite FK must move with its widened target (**335 errors, one root**), and audit scoping is **four** sites. Suite **3817 / 0 / 8** | `22202f2` (head_commit) / [#1028](https://github.com/CrayJThiemsert/vero-lite/pull/1028) / `docs/plans/done/0101-tenant-key-column.md` |
@@ -252,9 +251,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-04 | **s203 — PLAN-0101 drafted (#1021), its Step 1 SHIPPED (#1022), four stale claims retired (#1023).** All three SDs are ADR-0035 D7 describing what does not exist: the D7(iv) "session/repository seam" (grep `tenant` in `services/` = **0**), "the reproducibility guard" (there are **three**), D7(vi)'s **2** uniques (census = **12**). Steps 2–6 BLOCKED-ON-SD. A probe CONFIRMED `alembic check` sees a new column but **not** a `server_default`. Suite **3792 / 8** | `592124b` (head_commit) / [#1022](https://github.com/CrayJThiemsert/vero-lite/pull/1022) / `docs/plans/done/0101-tenant-key-column.md` |
 | 2026-08-03 | **s202 — G1/G2 made DETERMINISTIC (#1013/#1016); ADR-0035 D2's amendments COMPLETE (#1014); ADR-0032 Context re-ground (#1015); PLAN-0100 drafted (#1017); nav-bar overflow fixed (#1018).** The classifier was *measured* non-deterministic at `temperature 0` (self-consistency 0/4, 3/12 blank), so the gate now reads the target's `**Status:**` line and the classifier's G1/G2 arm is unwired. **Cray typed: PLAN-0100 absorbs the UI work D5(2) implies.** SD-1..SD-5 unruled → execution gated | `ef2c898` (head_commit) / [#1018](https://github.com/CrayJThiemsert/vero-lite/pull/1018) / `docs/adr/0035-hosting-and-exposure-model.md` / `docs/plans/0100-exposure-published-demo-surface.md` |
 | 2026-08-01 | **s199 — PLAN-0099 COMPLETE (10/10 ACs) and ARCHIVED; the MS-S1 hosting ADR's trigger FIRED.** Six-commit stack merged as one PR: stored at-acceptance figure + provenance, both wall-clock comparisons deleted, five picks re-keyed on `seq`, the ordering guard widened to `services/`. AC-9 proven positively (named nodes re-run alone, 38/0) rather than inferred from the skip total. **Cray ratified all four veto-open calls as-is.** Separately, Cray's stated intent to show the demo over the internet fired two of OQ-1's four conditions; row moved In-Flight → Active TODO, initial lean **B1** | `6a3f2d7` (head_commit) / [#1008](https://github.com/CrayJThiemsert/vero-lite/pull/1008) / `docs/plans/done/0099-wall-clock-root-fix-store-at-write-and-sequence.md` |
-| 2026-07-31 | **s197 — PLAN-0098 COMPLETE + ARCHIVED (#1006): View G's fleet branch, all nine ACs.** The donor joiner also binds `po_id`/`declared_tier_id`/`is_off_avl_override`, which fleet never emits (§D-D claimed otherwise) — a fleet joiner was written; SoD + join cards reused. Zero new CSS; AC-4/AC-6 by empty `git diff`; 5 probes RED. **Cray typed 4 calls**: measure assembly-cost first; no buyer-model mismatch; **ADR-0032 D2 pilot gate = SATISFIED** (Context re-ground OWED); fleet before primitives. Suite → **3709** | `687705d` (head_commit) / `docs/plans/done/0098-fleet-view-g-hero-demo-mirror.md` |
-| 2026-07-31 | **s196, 2nd workstream (#999–#1002) — PLAN-0098 ratified + Steps 1–4 built; CSS-class guard → all 15 assets; `EconomicImpact.kind` → 5 kinds.** **Cray typed SD-1 (a), SD-2 always-visible, SD-3 = (c), differing from the draft's (a)**: lead with the measured ฿48,000 — the fraud origin story is narrative copy only, never a rendered figure (AC-9 = its oracle). Backend runs the real engine over the spec-loaded ladder via `_HERO_BUILDERS` (ADR-0031 D4 corollary 1 FIRED at N=2). Suite → **3700** | `5382052` / `4bb9494` / `docs/plans/done/0098-fleet-view-g-hero-demo-mirror.md` |
-| 2026-07-31 | **s196 — PLAN-0099 drafted + merged (#1003): the wall-clock root fix.** An intermittent quote-history flake was **measured**, not inferred — the dev clock steps back 20x/300 s (every step ≥400 ms) against a 90–166 ms window ⇒ ~0.9%/run; the Postgres-`now()` hypothesis was **refuted by construction**. **`<=` → `<` rejected on evidence.** Two worse sites found (the DOA gate via `latest_accepted_quote`; the month-end export). **All 5 SDs Cray-ratified** — store-at-write, backfill marked **reconstructed**, three riders on migration `0023`. No production code changed | `4846d5e` (head_commit) / `docs/plans/done/0099-wall-clock-root-fix-store-at-write-and-sequence.md` |
 
 ## In-Flight Discussions
 
