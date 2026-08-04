@@ -11,6 +11,15 @@
 > Reviewer: Cray at PR merge (author≠reviewer per ADR-012 D4.3). Every `file:line`
 > anchor below was opened on disk at draft time against `main` = `ffb8860`, except
 > where explicitly marked *lead-to-verify*.
+>
+> **Amended 2026-08-04 (session 204)** by the same `plan-drafter` subagent from the
+> session-204 Code dispatch: four typed Cray calls (recorded in §Session-204
+> amendment record) narrow AC-10 to a fail-closed carve-out, add AC-11/AC-12, and
+> pull the two audit-chain reads into scope. The amendment's load-bearing anchors
+> (`code_generator.py:908`, `services/engine/cli.py:32-33`,
+> `test_schema_parity.py:110`, `nl_query.py:357-373` + `:491-511`,
+> `audit_log.py:190`, `audit.py:54-60`, `ci.yml:61` + `:68-71`, `runs.py:148`)
+> were re-opened on disk at amendment time.
 
 ## Goal
 
@@ -28,6 +37,16 @@ SD-2 = a generator special-case that keeps the ontology clean, **plus** the tena
 as deployment metadata on `/meta` (new **AC-10**); SD-3 = `tenant_id` joins **all twelve**
 unique constraints, against the Code recommendation and with three riders Step 4 must
 carry. Step 1 shipped in session 203 (#1022).
+
+**Amended 2026-08-04 (session 204) — four typed Cray calls** (full attribution +
+the Code findings behind them: §Session-204 amendment record): build Steps 2–6
+now; AC-10's negative guard narrows to a **fail-closed carve-out** (its original
+blanket letter was unsatisfiable next to AC-1 — Code finding F1 — and Cray
+declined to be bound by the earlier framing's letter); a **synthetic
+second-tenant fixture** proves the changes behaviorally (new **AC-12**, plus a new
+LLM-path isolation guard **AC-11**); and the audit-chain's two global reads are
+scoped **in this PLAN**, reversing part of SD-3 rider 3. The AC count is now
+**twelve**. Steps 2–5 are **one atomic PR** (Code finding F11).
 
 ## Context (what is settled, what this PLAN decides)
 
@@ -102,6 +121,8 @@ start this PLAN without waiting on PLAN-0100's SD-1 ruling.
 
 Each AC quotes the D7 sub-item it discharges (source: `0035:570-584`), so no
 sub-item can be silently dropped — the stated reason D7 enumerated them.
+**AC-10–AC-12 are scope additions past D7's enumeration** — AC-10 from SD-2's
+ruling (session 203), AC-11/AC-12 from the session-204 amendments.
 
 - [ ] **AC-1 (D7(i)):** *"teach the generator to emit the column for the committed
   ORMs and update the reproducibility guard"* — implemented per the **SD-2 ruling**.
@@ -184,17 +205,116 @@ sub-item can be silently dropped — the stated reason D7 enumerated them.
   steps marked BLOCKED-ON-SD begin. This PLAN stays `Status: Draft` until Complete
   (an Accepted-status PLAN becomes G1-gated and Code cannot edit its own closeout).
   **CLOSED 2026-08-04 (session 203)** — all three ruled; Steps 2–6 are unblocked.
-- [ ] **AC-10 (deployment metadata — added by SD-2's ruling):** `OntologyMeta`
-  (`services/engine/ontology_meta.py`) carries `tenant_id`, served by the existing
-  `GET /meta` route (`services/api/routers/actions.py`), so a reader can tell which
-  customer a deployment serves **without** the key entering any generated semantic
-  surface. Guarded by a test asserting the field is present and reflects
-  `settings.tenant_id`, plus a **negative** assertion that no generated artifact
-  under `ontology/generated/` or `verticals/*/generated/` mentions `tenant_id` —
-  the leak this AC exists to prevent is the one option (a) would have caused, so
-  the guard has to watch for it rather than trust the choice.
+- [ ] **AC-10 (deployment metadata + the semantic-surface guard — added by SD-2's
+  ruling, session 203; negative guard AMENDED 2026-08-04, session 204):**
+  `OntologyMeta` (`services/engine/ontology_meta.py`) carries `tenant_id`, served
+  by the existing `GET /meta` route (`services/api/routers/actions.py`), so a
+  reader can tell which customer a deployment serves **without** the key entering
+  any generated **semantic** surface. Safe per Code finding F6:
+  `_describe_ontology` (`services/engine/nl_query.py:357-373`) iterates only
+  `meta.object_types` and never renders top-level `OntologyMeta` fields, so the
+  `/meta` addition cannot leak into the LLM prompt. Guarded by a test asserting
+  the field is present and reflects `settings.tenant_id`, **plus the negative
+  half, amended to a named carve-out**:
 
-## Surfaced decisions — ALL THREE RULED by Cray, 2026-08-04 (session 203)
+  > No generated artifact under `ontology/generated/` or `verticals/*/generated/`
+  > may mention `tenant_id` — **except `orm.py` and `schema.sql`**, which SD-2's
+  > ruling *requires* to carry it (`emit_orm` + `emit_sql` move together).
+
+  The carve-out shape (rather than a positive list of the five semantic surfaces
+  — Pydantic, JSON Schema, MCP tools, TypeScript types, context pack) is
+  deliberate: it is **fail-closed**. A future 8th emitter is watched by default; a
+  positive list of five would let it escape silently.
+
+  **Why the amendment (Code findings F1–F3, session 204; Cray call 2).** The
+  original negative half read: *"a **negative** assertion that no generated
+  artifact under `ontology/generated/` or `verticals/*/generated/` mentions
+  `tenant_id`"* — retained here as lineage and classified **superseded by new
+  info** (CLAUDE.md §6), because on-disk facts made it undischargeable:
+
+  - **F1 — unsatisfiable next to AC-1.** `emit_sql` writes
+    `verticals/<ns>/generated/schema.sql` (`code_generator.py:908` via
+    `generate_all`; CLI `_output_dir` → `verticals/{vertical}/generated`,
+    `services/engine/cli.py:32-33`), and G-c
+    (`tests/services/db/test_schema_parity.py:110`) asserts strict set equality
+    `set(orm[table]) == set(columns)`. SD-2's ruling moves `emit_sql` in the same
+    step — so `schema.sql` MUST contain `tenant_id`, and the blanket "no generated
+    artifact mentions it" could never be checked off.
+  - **F2 — internal contradiction.** The AC's own intent sentence said "without
+    the key entering any generated **semantic** surface"; its guard sentence
+    widened to a directory glob. The narrow reading was the AC's stated intent;
+    the glob was a drafting slip.
+  - **F3 — wrong detector.** The stated purpose is catching "the leak option (a)
+    would have caused" — but `orm.py` and `schema.sql` carry `tenant_id` under
+    BOTH option (a) and the ruled option (b), contributing zero discriminating
+    signal. Only the five semantic surfaces distinguish (a) from (b).
+
+  Cray declined to be bound by the letter of the earlier framing — typed
+  2026-08-04, session 204 (translated): *"we're not concerned with following the
+  intent of the previous ruling literally — if there is a more effective way to
+  prevent this concern, we welcome the change."*
+
+  **Reframed purpose (this is not a tidiness rule).** This guard is **the
+  cross-tenant protection** at the layer where it is enforceable today. Per Code
+  finding F5, the ontology is an *allowlist of what the LLM may name*:
+  `_validate_query` rejects any `filters[].property` not in the ontology's
+  property list (`services/engine/nl_query.py:504-509`), so keeping `tenant_id`
+  OUT of the semantic surfaces makes cross-tenant selection **inexpressible**
+  through the LLM path — putting it IN would make it expressible (the model could
+  emit `filters: [{property: "tenant_id", ...}]`). That is exactly Cray's stated
+  worry (call 2) answered at the ruled layer — made **explicit and asserted** by
+  this guard plus AC-11, rather than incidental.
+- [ ] **AC-11 (LLM-path isolation guard — ADDED 2026-08-04, session 204):** a test
+  asserting `_validate_query` (`services/engine/nl_query.py:491-511`) **rejects**
+  a `StructuredQuery` whose `filters[].property` names `tenant_id`, via the
+  corrective-feedback error path at `:504-509`. This converts "the LLM cannot ask
+  across tenants" from an **emergent** property into an **asserted** one —
+  grounding is Code finding F4: the NL-query path never writes SQL (0 raw-SQL
+  execution sites across `services/`); the flow is question → constrained
+  generation → `StructuredQuery` → `_validate_query` → `adapter.fetch_objects` →
+  Python-side `_filter_matches`, so the validator's property allowlist is the
+  chokepoint. **Non-vacuous:** it goes RED the day anyone adds `tenant_id` to an
+  ontology YAML (the property would then validate, and the rejection assertion
+  fails loudly). **No AC-7/D7(vii) breach:** this asserts an *absence* — it builds
+  no tenant resolution, no RLS, no authn. Attribution: the protection mandate is
+  Cray's (call 2); the specific test design is a Code proposal (session 204).
+- [ ] **AC-12 (the synthetic two-tenant fixture — ADDED 2026-08-04, session 204;
+  fixture proposed directly by Cray, call 3, to prove the changes actually work
+  rather than waiting for a real second customer):** a fixture writing rows as
+  **two distinct tenants** into the disposable test DB **through the real seam** —
+  the real `async_session` factory plus SD-1's late-bound column default. No
+  process restart is needed (Code finding F12): `default=lambda:
+  settings.tenant_id` evaluates at INSERT time, and the repo idiom
+  `monkeypatch.setattr(settings, "tenant_id", ...)` is already used by Step 1's
+  shipped guard
+  (`tests/services/engine/procedures/test_tenant_key_not_in_governance_pin.py`).
+  Three proofs:
+  1. **Positive control for SD-3 (discharges F10).** After Step 4's re-scope, two
+     tenants each hold an equal `seq` value (e.g. `seq=1`) under a re-scoped
+     unique key; before the re-scope, the same row pair raises `IntegrityError`.
+     Under one tenant, all twelve re-scopes are a **100% behavioral no-op** no
+     test can distinguish (Code finding F10) — this fixture is the ONLY source of
+     behavioral evidence for Cray's own SD-3 ruling. The committed assertion is
+     the GREEN-after state (it reddens if the re-scope is ever reverted); the
+     RED-before observation is recorded in the PR body per the Step-6.2 probe
+     convention. *Drafting note (proposal, not a ruling):* use an
+     `Identity(always=False)` site — `step_results.seq` (`runs.py:148`,
+     `uq_step_results_seq` at `runs.py:125`) accepts an explicit `seq`; census #12
+     is `always=True` and would need `OVERRIDING SYSTEM VALUE`.
+  2. **Two-tenant write stamping.** Each batch lands with its own `tenant_id`
+     through the real session factory. This **extends AC-8's scenario** rather
+     than replacing it; AC-8's anti-mock clause carries over verbatim.
+  3. **Characterization of the remaining global reads — record, do NOT raise.**
+     Assert the *current* global behaviour of the un-scoped read sites (a global
+     read sees both tenants' rows), so any future change to them is visible in a
+     diff rather than silent — recording, never raising, so a blanket `except`
+     cannot swallow it. Grounding: `verify_chain` was fully global at amendment
+     time (`services/db/audit_log.py:190` — no WHERE at all; Code finding F8, now
+     scoped by the rider-3 amendment), and the raw read census is 50 `select(`
+     hits across 16 files in `services/`, **unclassified** (Code finding F9 — see
+     the rider-3 amendment for the caveats).
+
+## Surfaced decisions — ALL THREE RULED by Cray, 2026-08-04 (session 203); amended session 204 (§Session-204 amendment record below)
 
 ### SD-1 (load-bearing) — where does the write-stamp happen?
 
@@ -383,6 +503,97 @@ Step 4 still records a per-row verdict for all twelve, per D7(vi)'s decide-not-d
 requirement — the verdict is now "re-scoped: `tenant_id` joined" for each, with the three
 riders above attached to their rows.
 
+**AMENDMENT to rider 3 (2026-08-04, session 204) — the two audit-chain reads are
+now IN scope.** Cray typed the reversal (call 4, §Session-204 amendment record):
+*also add the read filter at the audit-chain's 2 sites in this PLAN.* Rider 3's
+clause —
+
+> "scoping those reads is **out of scope here** (it is per-tenant query
+> behaviour, adjacent to D7(vii)'s non-goals) and belongs to the multi-tenant ADR
+> whose trigger is a second concurrently-hosted customer"
+
+— is retained verbatim in the rider above and classified **superseded by new
+info** (CLAUDE.md §6 "Verification is hygiene, not a verdict": keep the reasoning
+lineage; the clause was a defensible reading at ruling time, not an error). What
+replaces it:
+
+- **The two sites.** The head lookup in `services/api/routers/audit.py`
+  (`sa.select(AuditLog.row_hash).order_by(AuditLog.audit_id.desc()).limit(1)`,
+  `:56-60`) and `verify_chain` (`services/db/audit_log.py:190` —
+  `sa.select(AuditLog).order_by(AuditLog.audit_id)` with **no WHERE clause at
+  all**; Code finding F8). Each gains a **process-wide filter reading
+  `settings.tenant_id`**, plus a two-tenant test proving isolation (via AC-12's
+  fixture: tenant B's rows neither break tenant A's chain nor appear as its
+  head).
+- **Why this does not breach D7(vii)** — recorded explicitly: D7(vii) forbids
+  **per-request** tenant resolution, RLS DDL, and tenant-scoped authn. A
+  process-wide filter reading a settings constant is none of those — it is the
+  **read-side mirror of D7(iv)'s mandated write-side stamp**.
+- **The other ~48 read sites remain global and out of scope for this PLAN.** The
+  raw census (Code finding F9, session 204): **50 raw `select(` hits across 16
+  files** in `services/` — run_analytics.py 19, cases.py 5,
+  repair_spend_export.py 4, evidence_pack.py 3, audit.py 2, runs.py 2,
+  audit_log.py 2, repair_case_closeout.py 2, task_chain_sweep.py 2,
+  event_bridge.py 2, scheduler.py 2, pm.py 1, case_events.py 1, pm_import.py 1,
+  persistence.py 1, scheduler_daemon.py 1. **Unclassified** — classifying it is
+  itself work, and the raw count may include non-DB `select(` calls. **Not a bug
+  today:** one deployment = one DB = one tenant, so every one of them is correct
+  as written.
+- *Drafting proposal (not a ruling):* the `rows_verified` count beside the head
+  lookup (`audit.py:54`, `sa.select(sa.func.count()).select_from(AuditLog)`)
+  feeds the same verification response; if the chain walk is tenant-scoped while
+  the count stays global, the response mixes scopes. Cray's call named **two**
+  sites, so the count stays formally out of scope unless ratified — the executor
+  should surface at PR review whether it moves with the head lookup or is
+  recorded under AC-12(iii)'s characterization.
+
+### Session-204 amendment record — four Cray calls + the Code findings behind them
+
+**Attribution discipline (binding for this section):** *Cray typed it* → only the
+four calls below, 2026-08-04 (session 204). *Code found it on disk* → findings
+F1–F12, session 204, each with `file:line` evidence. *Drafting judgment* → marked
+"drafting note/proposal" wherever it appears. A Code finding is never relabeled
+as a Cray decision.
+
+**Cray's four typed calls (2026-08-04, session 204):**
+
+1. **Build PLAN-0101 Steps 2–6 now** — chosen from a grounded ranked next-work
+   pass over 5 candidates.
+2. **On the AC-10 conflict: Cray declined to be bound by the letter of SD-2's
+   earlier framing.** Cray's words (translated): *"we're not concerned with
+   following the intent of the previous ruling literally — if there is a more
+   effective way to prevent this concern, we welcome the change."* Cray's actual
+   worry, in Cray's own framing: **without `tenant_id` recorded in the ontology,
+   a future LLM processing ontology data might sweep across tenants and mix them,
+   producing inaccurate results.** Discharged by the amended AC-10 + new AC-11:
+   per F5 the ontology is the allowlist of what the LLM may name, so keeping the
+   key OUT is what makes cross-tenant selection inexpressible — now explicit and
+   asserted rather than incidental.
+3. **Use a synthetic second-tenant fixture for testing** rather than waiting for
+   a real second customer — Cray proposed this directly, to prove the changes
+   actually work → **AC-12**.
+4. **Also add the read filter at the audit-chain's 2 sites in this PLAN** —
+   reversing SD-3 rider 3's "scoping those reads is out of scope here" → the
+   rider-3 amendment above.
+
+**Code's grounded findings (session 204; F1, F6, F8, F11 and the AC-12(i)
+writability check were re-opened on disk at amendment time):**
+
+| # | Finding | Evidence |
+|---|---|---|
+| F1 | AC-10's blanket negative half is **unsatisfiable** next to AC-1 | `emit_sql` → `output_dir / "schema.sql"` (`code_generator.py:908` via `generate_all`); CLI `_output_dir` → `verticals/{vertical}/generated` (`services/engine/cli.py:32-33`); G-c strict set equality (`tests/services/db/test_schema_parity.py:110`) |
+| F2 | AC-10 self-contradicts: intent says "generated **semantic** surface", guard globbed whole directories | superseded quote preserved in AC-10 |
+| F3 | The blanket guard is the **wrong detector**: `orm.py`/`schema.sql` carry `tenant_id` under both SD-2 options (a) and (b) | only the 5 semantic surfaces discriminate |
+| F4 | The NL-query path **never writes SQL**; unknown filter properties are rejected with corrective feedback | `services/engine/nl_query.py:491-511`, rejection at `:504-509`; 0 raw-SQL execution sites across `services/` |
+| F5 | The ontology is an **allowlist of what the LLM may name** → `tenant_id` OUT = cross-tenant selection inexpressible; IN = expressible | corollary of F4; the basis of AC-10's reframe + AC-11 |
+| F6 | AC-10's `/meta` addition is **safe**: the prompt renders only `meta.object_types`, never top-level `OntologyMeta` fields | `_describe_ontology`, `services/engine/nl_query.py:357-373` |
+| F7 | **Zero of the 7 vertical data adapters touch a database** (all in-memory / CSV) | grep over `verticals/*/data_adapter/` for sqlalchemy / async_session / asyncpg / get_session → nothing |
+| F8 | `verify_chain` is **fully global** | `services/db/audit_log.py:190` — `sa.select(AuditLog).order_by(AuditLog.audit_id)`, no WHERE |
+| F9 | Read census: **50 raw `select(` hits / 16 files** — unclassified; may include non-DB calls; NOT a bug today | per-file counts in the rider-3 amendment |
+| F10 | Under one tenant, SD-3's twelve re-scopes are a **100% behavioral no-op** — the two-tenant fixture is the only positive control | AC-12(i) |
+| F11 | **CI forces Steps 2–5 into ONE pull request** — ORM with `tenant_id` but no revision `0024` goes RED on autogenerate drift | `.github/workflows/ci.yml:61` (`alembic upgrade head`) + `:68-71` (`alembic check`) |
+| F12 | The write path is **already testable at two tenants**: SD-1's default is late-bound; the `monkeypatch.setattr(settings, "tenant_id", ...)` idiom already ships | `tests/services/engine/procedures/test_tenant_key_not_in_governance_pin.py`; `runs.py:148` (`Identity(always=False)` — explicit `seq` insert is legal) |
+
 ## Out of Scope
 
 - ❌ **Per-request tenant resolution, row-level security, tenant-scoped authn** —
@@ -397,8 +608,21 @@ riders above attached to their rows.
   this PLAN.
 - ❌ **Backfilling any value other than `'default'`** — no existing deployment
   carries a non-default tenant.
+- ❌ **Scoping the other ~48 raw `select(` sites** *(added session 204)* — Cray
+  call 4 named exactly **two** sites (the audit-chain head lookup +
+  `verify_chain`); the rest of the F9 census remains global (correct today: one
+  deployment = one DB = one tenant) and belongs to the future multi-tenant ADR.
+  AC-12(iii) characterizes them — record, not raise — so they cannot drift
+  silently.
 
 ## Steps
+
+> **Sequencing constraint (Code finding F11, session 204) — Steps 2–5 are ONE
+> pull request.** CI runs `alembic upgrade head` then `alembic check` on every PR
+> (`.github/workflows/ci.yml:61` + `:68-71`): a PR where the ORM carries
+> `tenant_id` but revision `0024` is absent goes RED on autogenerate drift. Steps
+> 2/3/4/5 are therefore one atomic unit per CI — **one branch, one commit per
+> step, one PR**. Do not split them.
 
 ### Step 0 — Adjudication record — **DONE (session 203, 2026-08-04)**
 
@@ -438,9 +662,13 @@ hand edits), G-b's expected column set, and confirm G-c green. One commit — th
 `0035:667-669` coordination cost is sequenced here, not discovered.
 
 Also in this step, per SD-2's ruling: add `tenant_id` to `OntologyMeta` and ship AC-10's
-guard, **including its negative half** — no generated artifact under
-`ontology/generated/` or `verticals/*/generated/` may mention `tenant_id`. That guard is
-what keeps the ontology clean by construction rather than by intention.
+guard, **including its negative half in the AMENDED carve-out shape** (session 204) — no
+generated artifact under `ontology/generated/` or `verticals/*/generated/` may mention
+`tenant_id` **except `orm.py` and `schema.sql`**, the two SD-2's own ruling requires to
+carry it. (The original blanket form was unsatisfiable next to AC-1 — Code finding F1;
+full reasoning in AC-10.) That guard is what keeps the five semantic surfaces clean by
+construction rather than by intention — and per F5 it **is** the cross-tenant
+protection at the enforceable layer, not tidiness.
 
 ### Step 3 — Hand-written models (UNBLOCKED; discharges AC-2)
 
@@ -450,7 +678,7 @@ SD-1's `default=lambda: settings.tenant_id`. SD-1(b) + SD-2(b) compose into a si
 import per module rather than 14 `mapped_column` additions — and a future table that
 forgets the mixin is caught by AC-5's set-equality guard, not by review.
 
-### Step 4 — The unique-constraint verdicts (UNBLOCKED by SD-3; discharges AC-6)
+### Step 4 — The unique-constraint verdicts + the s204 audit-read scoping (UNBLOCKED by SD-3; discharges AC-6)
 
 **SD-3 ruled: `tenant_id` joins all twelve.** Record a per-row verdict for each of the 12
 census rows in the code review and this PLAN's closeout — "re-scoped: `tenant_id` joined"
@@ -466,11 +694,19 @@ Handle SD-3's three riders here rather than discovering them:
    gap-free per-tenant monotonicity.
 3. **`uq_audit_log_prev_hash`** — widening it preserves the "closed by the UNIQUE
    constraint" concurrency property **per tenant**, equivalent today under one DB per
-   deployment. Record that the head lookup in `services/api/routers/audit.py` and
+   deployment. ~~Record that the head lookup in `services/api/routers/audit.py` and
    `verify_chain`'s walk remain **global** and are correct only while one tenant occupies
-   a database — scoping them is out of scope here and belongs to the multi-tenant ADR.
-   **Amend `services/db/audit_log.py`'s "linear by construction" docstring in this same
-   step**, or the widening silently makes it a false claim.
+   a database — scoping them is out of scope here and belongs to the multi-tenant ADR.~~
+   *(Struck 2026-08-04, session 204 — superseded by new info: Cray call 4 pulled the
+   scoping IN. Lineage + full reasoning in §SD-3's rider-3 amendment.)* **Instead, scope
+   both reads in this step:** the head lookup
+   (`services/api/routers/audit.py:56-60`) and `verify_chain`
+   (`services/db/audit_log.py:190`) each gain a **process-wide filter reading
+   `settings.tenant_id`** — the read-side mirror of D7(iv)'s write-side stamp, not
+   per-request resolution, so no D7(vii) breach. The two-tenant isolation proof lands
+   with AC-12's fixture in Step 6. **Amend `services/db/audit_log.py`'s "linear by
+   construction" docstring in this same step**, or the widening silently makes it a
+   false claim.
 
 ### Step 5 — Alembic revision `0024` (UNBLOCKED; discharges AC-3)
 
@@ -488,7 +724,7 @@ test DB. **Note the blind spot both tools share:** they will confirm the columns
 `Identity` columns, and say nothing about `server_default` either way — so "no
 `server_default`" is a claim the tooling cannot check for you. Assert it directly.
 
-### Step 6 — The set-equality guard + scenario test (UNBLOCKED; discharges AC-5, AC-8)
+### Step 6 — The guards, the scenario + the two-tenant fixture (UNBLOCKED; discharges AC-5, AC-8, AC-11, AC-12)
 
 1. Implement the AC-5 guard exactly as specified (AST-walk set A == mapper set B,
    then per-table `tenant_id` presence).
@@ -499,6 +735,22 @@ test DB. **Note the blind spot both tools share:** they will confirm the columns
    observations in the PR body.
 3. Implement the AC-8 scenario test through the real seam with the anti-mock
    clause honored.
+4. *(Added session 204)* **AC-11 guard:** assert `_validate_query` rejects a
+   `StructuredQuery` whose filter names `tenant_id`
+   (`services/engine/nl_query.py:504-509` path), with the corrective feedback
+   naming the invalid property.
+5. *(Added session 204)* **AC-12 fixture (Cray call 3):** the synthetic
+   two-tenant fixture with its three proofs — the SD-3 positive control
+   (committed GREEN-after assertion + RED-before observation recorded in the PR
+   body, mirroring the Step-6.2 probe convention), two-tenant write stamping
+   through the real seam (extends AC-8; anti-mock clause carries over), and the
+   record-don't-raise characterization of the remaining global reads. Tenant
+   switching uses SD-1's late-bound default +
+   `monkeypatch.setattr(settings, "tenant_id", ...)` (F12) — no process restart.
+6. *(Added session 204)* **Scoped-read isolation proof:** with the fixture in
+   place, prove Step 4's audit-chain filters — tenant A's `verify_chain` walk and
+   head lookup see only tenant A's rows; tenant B's rows neither break A's chain
+   nor appear as its head.
 
 ### Step 7 — Closeout
 
@@ -508,8 +760,9 @@ Draft → Complete at closeout only.
 
 ## Verification
 
-- All nine ACs check off; each D7 sub-item (i)–(vii) is traceable to its AC by the
-  quoted text.
+- All **twelve** ACs check off; each D7 sub-item (i)–(vii) is traceable to its AC
+  by the quoted text (AC-10–AC-12 are post-D7 scope additions — SD-2's ruling and
+  the session-204 amendments).
 - The AC-5 guard's two RED probes are recorded (Step 6.2) — the guard is proven
   non-vacuous, not assumed.
 - The AC-8 scenario run shows real rows in at least `pipeline_runs`,
@@ -521,3 +774,17 @@ Draft → Complete at closeout only.
   resolved-procedures hash.
 - SD ruling slots are filled with typed rulings; the 12-row constraint table
   carries a per-row verdict.
+- *(Session 204)* AC-10's carve-out guard is green: none of the five semantic
+  surfaces (Pydantic, JSON Schema, MCP tools, TypeScript types, context pack)
+  mentions `tenant_id`; `orm.py` + `schema.sql` are the only exempt generated
+  artifacts.
+- *(Session 204)* AC-11 proves `_validate_query` rejects a `tenant_id` filter;
+  AC-12's three proofs are recorded, including the SD-3 positive-control
+  RED-before observation in the PR body (F10) and the record-don't-raise
+  characterization of the remaining global reads (F8/F9).
+- *(Session 204)* The two scoped audit-chain reads
+  (`services/api/routers/audit.py:56-60`, `services/db/audit_log.py:190`) prove
+  two-tenant isolation via AC-12's fixture; the other ~48 read sites are recorded
+  as remaining global.
+- *(Session 204)* Steps 2–5 landed as **one** PR (F11's CI constraint) — the PR
+  history shows one branch, one commit per step.
