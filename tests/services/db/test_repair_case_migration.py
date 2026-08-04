@@ -76,6 +76,11 @@ async def test_repair_case_migration_applies_and_matches_orm() -> None:
         # shaped, and a backfill that guessed otherwise would be inventing history.
         "work_type": ("text", "NO"),
         "photos": ("jsonb", "NO"),
+        # Added by revision 0024 (PLAN-0101 / ADR-0035 D7(ii)). NOT NULL with NO
+        # default at any layer — SD-1(b) put the stamp on the ORM column default so
+        # an unstamped write fails loudly rather than landing under a value nobody
+        # chose.
+        "tenant_id": ("text", "NO"),
     }
     assert {"idx_repair_case_truck_id", "idx_repair_case_status"} <= indexes
 
@@ -134,4 +139,6 @@ async def test_the_task_event_migration_matches_its_orm() -> None:
         # variant that changes the deadline.
         "variant": ("text", "YES"),
         "note": ("text", "YES"),
+        # Added by revision 0024 (PLAN-0101 / ADR-0035 D7(ii)).
+        "tenant_id": ("text", "NO"),
     }
