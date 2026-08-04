@@ -673,6 +673,19 @@ _PIPE_TO_TRUNCATOR_RE = re.compile(r"\|\s*(?:head|tail)\b")
 _UNESCAPED_EXPANSION_RE = re.compile(r"(?<!\\)\$(?:\?|\()")
 _WSL_BASH_C_RE = re.compile(r"\bbash\s+-[a-z]*c\b")
 
+#: A ``bash -c`` / ``bash -lc`` argument opened with a DOUBLE quote, which makes any
+#: ``$`` inside it unsafe *whether or not* it is backslash-escaped — the outer layer
+#: strips one level of escaping before WSL re-assembles the argv, so ``"... \$? ..."``
+#: reaches the inner bash as a bare ``$?`` and expands a layer early exactly like the
+#: unescaped form. Lesson 0007 §1.1 states the remedy in two halves ("a SINGLE-quoted
+#: outer argument AND ``\$`` for every ``$``"); this pattern exists because the half
+#: about quote style was enforced nowhere, and a session that dutifully added ``\$``
+#: while keeping double quotes read fabricated zeros over two RED tests and went on to
+#: diagnose the rule itself as broken. Lesson #0024: a rule has to live where the
+#: enforcer looks, and half a remedy is the half that gets followed.
+_BASH_C_DOUBLE_QUOTED_RE = re.compile(r"\bbash\s+-[a-z]*c\s+\"")
+_ANY_DOLLAR_RE = re.compile(r"\$")
+
 
 def _shell_hygiene_warning(command: str) -> str | None:
     """Advisory for Bash command shapes that make a FAILURE look like a SUCCESS.
@@ -708,7 +721,19 @@ def _shell_hygiene_warning(command: str) -> str | None:
             "contains an unescaped `$?`/`$(...)` inside a `bash -c` string; under "
             "`wsl bash -lc` that expands one shell layer EARLY (measured: `$?` "
             "reports 0 for a failed command, `$(pwd)` resolves before a preceding "
-            "`cd`) — write `\\$` for every `$`"
+            "`cd`) — the remedy has TWO halves and needs BOTH: a SINGLE-quoted outer "
+            "argument AND `\\$` for every `$`"
+        )
+    if _BASH_C_DOUBLE_QUOTED_RE.search(command) and _ANY_DOLLAR_RE.search(command):
+        problems.append(
+            "puts a `$` inside a DOUBLE-quoted `bash -c` argument, where escaping "
+            "does NOT save you: the outer layer eats one level of backslash, so "
+            "`\\$?` arrives at the inner bash as a bare `$?` and expands a layer "
+            "early anyway — a FAILED command still reports 0 and `\\$VAR` still "
+            "comes back empty (measured). Use a SINGLE-quoted outer argument "
+            "(`bash -lc '...'`) AND keep `\\$` for every `$` — both halves, neither "
+            "alone; for anything whose output is evidence, write a script with the "
+            "Write tool and run that instead"
         )
 
     if not problems:

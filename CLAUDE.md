@@ -209,15 +209,18 @@ Deep rationale + the claim-vs-decision worked example: [`docs/lessons/0027-verif
 ### Command Output Is Evidence — Do Not Corrupt It
 
 - Running a command via `wsl bash -lc` can silently hand you a **fabricated
-  success** or a **partial read**. Three measured shapes: a bare `$` inside the
-  string expands one shell layer early (so `$?` reports `0` for a failed
-  command); unmerged `stderr` **overwrites** `stdout` byte-for-byte (one stderr
-  line can erase the entire output); and a pipe into `head`/`tail` reports the
-  *truncator's* exit status while cutting the traceback.
+  success** or a **partial read**. Three measured shapes: a `$` inside the
+  string expands one shell layer early — **escaping alone does not save you**
+  (so `$?` reports `0` for a failed command); unmerged `stderr` **overwrites**
+  `stdout` byte-for-byte (one stderr line can erase the entire output); and a
+  pipe into `head`/`tail` reports the *truncator's* exit status while cutting
+  the traceback.
 - Therefore, whenever a command's result is **evidence for a claim**: merge
-  streams with **`2>&1`**, escape **`\$`** for every `$`, chain with **`&&`**
-  (newlines do not short-circuit), and **never pipe into `head`/`tail`** —
-  redirect to a file, echo the real exit code, then read a bounded slice.
+  streams with **`2>&1`**, escape **`\$`** for every `$` **inside a
+  single-quoted outer argument — a double-quoted outer eats the backslash, so
+  both halves are required**, chain with **`&&`** (newlines do not
+  short-circuit), and **never pipe into `head`/`tail`** — redirect to a file,
+  echo the real exit code, then read a bounded slice.
 - This binding rule lives here because the hazard fires on ordinary Bash calls
   in **every** session, where a task-triggered skill would not load. Mechanics,
   the measured probes, and the enforcement hook: [`docs/lessons/0007-harness-exit-code-artifact.md`](docs/lessons/0007-harness-exit-code-artifact.md).
@@ -272,4 +275,4 @@ The **verify-loop hygiene rule** — a re-checked, evidence-backed prior is logg
 ---
 
 *Constitution = stable. Volatile state in `docs/STATUS.md`.*
-*Last updated: 2026-08-03 (session 202). Convention: a constitutional edit bumps this date only — the full record of what changed and why lives in that edit's commit message (`git log --follow -- CLAUDE.md` is the amendment history); durable learnings live in `docs/lessons/`.*
+*Last updated: 2026-08-04 (session 204). Convention: a constitutional edit bumps this date only — the full record of what changed and why lives in that edit's commit message (`git log --follow -- CLAUDE.md` is the amendment history); durable learnings live in `docs/lessons/`.*

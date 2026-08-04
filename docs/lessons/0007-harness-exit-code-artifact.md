@@ -249,6 +249,23 @@ an agent-visible advisory after any Bash call that pipes into `head`/`tail`
 without `pipefail`, uses `head` under `pipefail`, or carries an unescaped `$`
 inside a `bash -c` string. Pinned by `tests/handoffs/test_shell_hygiene_advisory.py`.
 
+**A fourth shape added 2026-08-04 (session 204): any `$` — escaped or not — inside a
+DOUBLE-quoted `bash -c` argument.** §1.1 above already stated that the outer quote
+style is load-bearing, but the enforcement built for it only fired on an *unescaped*
+`$`, so the escaped-under-double-quotes form was invisible to the very check meant to
+police it. That gap ran a whole session: the agent followed the advisory's own wording
+("write `\$` for every `$`"), kept the outer quotes double, read `EXIT=0` over a run
+with two RED tests, and went on to conclude that CLAUDE.md §8 prescribed an
+ineffective fix — a wrong diagnosis that came within one step of an unnecessary
+constitutional amendment. The substance of §1.1 was correct throughout; only its
+enforcement was half-built.
+
+The generalisable point, and the reason this is recorded rather than quietly patched:
+**when a remedy has two required halves, stating one of them is worse than stating
+neither.** A half-remedy is followed confidently and fails silently, whereas no
+remedy at least leaves the reader looking. Both the advisory text and the predicate
+now name both halves — a SINGLE-quoted outer argument AND `\$` for every `$`.
+
 It is a PostToolUse advisory, not a PreToolUse deny, on purpose: the harm is
 not *running* the command, it is *believing* its output — which is knowable
 only once it has run. It also protects the observer's own signal, since a
