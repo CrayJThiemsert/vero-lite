@@ -940,6 +940,32 @@ _Both session-196 Current Focus blocks, rotated out together: adding the s203 bl
 <!-- Recent-Decisions row rotated out of docs/STATUS.md by the s203 reconcile (R2: newest 10 rows) -->
 | 2026-07-30 | **s191 — a REAL repair case now reaches the governed gate (#975–#977).** The accepted quote (ใบที่ตกลง, alembic `0019`) gives the DoA ladder a ฿ figure existing BEFORE the work and tracing to recorded evidence; Cray typed the required FK + reason-only-when-not-cheapest. The case → event path wires it in with **zero engine and zero adapter-`__init__` diff**. One probe came back GREEN — a vacuous oracle a fail-soft handler was hiding. Suite → **3597** | `99b752f` (#977, head_commit) / `d3f2919` (#976) / `d781683` (#975) / `docs/plans/done/0096-fleet-flow-completion-phase1.md` §Step 8 |
 
+<!-- RELOCATED 2026-08-04 (session 205): the two sections below were rotated by the s196 and s197 reconciles but appended to 2026-h1g-status.md, whose declared period ends 2026-07-24 (session-171). Moved here per the runbook rule that rotations append to the base (memory-architecture.md R6). Content is byte-identical to what h1g held; placed before the s204 section so the base stays chronological. The matching s196/s197 Current-Focus blocks were already in this file. -->
+
+## Rotated this reconcile (session-196, 2026-07-31 — the wall-clock root-fix reconcile; PLAN-0099 drafted + merged, #1003)
+
+### Recent Decisions row
+
+Rotated out when session 196's row entered the last-10 window.
+
+| Date | Decision | Reference |
+|------|----------|-----------|
+| 2026-07-28 | **s182 — PLAN-0094 Step 6 executed, AC-10 CLOSED (#943): all 11 ACs closed or withdrawn, on a FULL FRESH 18/18 non-vacuity sweep** — Cray typed the full re-sweep rather than citing the recorded s177/s180 runs. **`missing_red` EMPTY for all 18**; sibling L2/L3/L4 invariance held. **M-A's blast radius is 8 L1 rows, not the 3 first predicted** — the session's prediction was too narrow. Applied by a harness script, not the Edit tool (the mutated files are the session's own live hooks) | `1d0649f` (#943 merge, head_commit) / `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 |
+
+---
+
+## Recent-Decisions row — s183
+
+Rotated out when session 196's SECOND-workstream row entered the last-10 window.
+
+| Date | Decision | Reference |
+|------|----------|-----------|
+| 2026-07-28 | **s183 — PLAN-0094 ARCHIVED (Cray released the live-loop soak), and the goal-gate `evaluations: 0` finding DIAGNOSED: the gate is not broken, its warn path is unobservable.** OQ-4 re-homed to an Active TODO rather than buried in `done/`. _[s194: this row's "the behaviour is ratified" reading was REFUTED — see PLAN-0097.]_ | `docs/plans/done/0094-loop-detect-non-progress-and-reset-paths.md` §Step 6 + §OQ-4 / `docs/plans/done/0097-goal-gate-warn-path-trail.md` §"The ADR-0018 determination" |
+
+
+<!-- rotated 2026-07-31, session 197 (STATUS reconcile, PR after 687705d) -->
+| 2026-07-28 | **s184→s185 — ADR-0034 "governed exception family" ACCEPTED (#948) + PLAN-0096 "fleet flow completion Phase 1, Lean KPI-first" merged as Draft (#949).** Partner-driven: 18/18 discovery answers → three mechanisms (escalate-never-skip waiver / evidence-alternative E-3 / deferred-ratification E-2+E-4); SoD + compliance stay NON-waivable. Cray resolved OQ-1/OQ-2/OQ-3 per the in-file recommendations. All 8 dispatch rejection criteria run adversarially, none fired | `760ceed` (#949 merge, head_commit) / `24c3b45` (#948) / `docs/adr/0034-governed-exception-family.md` |
+
 ## Rotated this reconcile (session-204, 2026-08-04 — PLAN-0101's tenant key end to end (#1026-#1029), and the half-stated escaping remedy)
 
 > **Session 197, 2026-07-31 (head_commit `1dbd972` → `687705d`) — one PR merged
