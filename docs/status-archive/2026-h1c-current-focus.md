@@ -1346,3 +1346,64 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > 0 bytes ×4. ruff + format clean over 576 files, `mypy --strict services/` clean over
 > 130; guard + R1/R4/R7/R8 exit 0; `alembic check` clean, dev DB at `0022`; CI `gate` ×4.
 > **21 non-vacuity probes**, each RED against its named test, restored from `/tmp`.
+
+
+> **Session 202, 2026-08-03 (head_commit `6a3f2d7` → `40d65d9`) — seven PRs merged
+> (#1013–#1018, #1020); this reconcile is the one still open. The theme: a
+> governance gate stops asking a non-deterministic oracle, and ADR-0035's
+> follow-on work opens.**
+>
+> **#1013 / #1016 — G1/G2 are now DETERMINISTIC.**
+> `.claude/hooks/pretooluse_governance_gate_deny.py` reads the target's own
+> `**Status:**` line instead of asking the local-LLM classifier, which was
+> **measured** non-deterministic: the same input at `temperature 0` returned both
+> `proceed` and `pause`, self-consistency **0/4**, blank output **3/12**. #1016 then
+> unwired the classifier's now-redundant G1/G2 PreToolUse arm
+> (`pretooluse_classifier_dispatch.py`) from `settings.json` — it was also **broader
+> than its own spec**, pausing Accepted PLANs, which neither the registry's G1 row
+> nor `CLAUDE.md` §6 ever claimed (both say ADR). `plan-drafter` stays exempt; the
+> main agent gets no override. Three tests pin the new topology.
+>
+> **#1014 — ADR-0035 D2's four pointer amendments now all EXIST** (ADR-002 ×3,
+> ADR-0003 ×1), plus **nine currency notes** re-dating ADR-0035's own present-tense
+> claims about the MS-S1 Cloudflare Tunnel — which Cray confirms is **not running**.
+> 117 insertions, **0 deletions**: pure appends, no prior text rewritten.
+>
+> **#1015 — ADR-0032's Context snapshot RE-GROUND (third pass), discharging the s197
+> debt.** "six synthetic verticals" → six verticals of which five are synthetic and
+> `fleet_maintenance` is the design partner's real Phase-1 pilot.
+>
+> **#1017 — PLAN-0100 drafted** (`Status: Draft`, 12 ACs, 6 phases): the ADR-0035
+> exposure PLAN. Per **Cray's s202 ruling** it absorbs the UI work D5(2) implies,
+> because ADR-0035's "Env only — no code" is contradicted by its own D5(2).
+> **SD-1..SD-5 are unruled and execution does not start without them** — SD-1
+> (published DB posture: DB-less vs synthetic Postgres) is load-bearing: it decides
+> which tabs the public sees, and every allowlist row hangs off it.
+>
+> **#1018 — the OCT nav-bar overflow is FIXED for the dev profile.** `theme.css`'s
+> responsive ladder was written for a **five**-tab header while `app.js` registers
+> **ten**; measured natural width **2253 px**, so the inactive-label collapse moves
+> `max-width:1360px` → `2299px`. Verified **0 overflow** at
+> 1280/1366/1440/1680/1920/2400. Two tripwires, both probe-proven RED. The
+> published-profile half stays open as PLAN-0100 AC-3.
+>
+> **#1020 — `CLAUDE.md` §3 rewritten: the runtime procedure spine is named as the
+> primitive.** §3 called the ontology + code generator "the moat" and never
+> mentioned `procedures.yaml` being interpreted at load; it now leads with
+> ADR-0032 D6's `monitor→decide→approve→act` identity. Codegen is **rescoped, not
+> denied** — only `energy`/`core` emit committed code. Cowork drafted (§6
+> convention) and returned **four corrections to Code's fact-pack**, all confirmed
+> before applying. `docs/conventions/glossary.md` carried the same stale framing
+> and was corrected with it. **The "SME wording in §1" half is struck** — see the
+> Active TODO; it has no referent.
+>
+> CI `gate` pass ×6. Offline at the last PR: `ruff` clean over `services/` +
+> `tests/`, `mypy --strict` clean over 130 files, suite **3411 passed / 370
+> skipped**; `tests/handoffs/` **762 / 2** at #1016. **Honest gap:** the 370 skips
+> are the Postgres-down shape (dev DB not up on **5442**), so the offline gate did
+> **not** match CI scope — CI is the check that did. Four of the six PRs are
+> docs-only. Three dispatch fact-packs were refuted by the drafter and corrected
+> before use (unmerged-branch reads, a stale date, a wrong route attribution) —
+> each was Code's error, not the drafter's.
+
+> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_

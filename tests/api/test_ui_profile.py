@@ -34,6 +34,25 @@ from services.api.main import _UI_PROFILE_META_DEV
 
 _INDEX = Path("services/api/static/index.html")
 _API_JS = Path("services/api/static/assets/api.js")
+_APP_JS = Path("services/api/static/assets/app.js")
+
+#: AC-9 — the six elements ADR-0035 D6 obliges the persistent notice to carry,
+#: each pinned by its own substring.
+#:
+#: Individually, not as one "is there a banner" check, because the realistic
+#: failure is a REWORD that drops one line — most likely the Cloudflare sentence,
+#: which reads like vendor detail rather than an obligation. Keyed by the
+#: obligation so the assertion message names what went missing, not just that
+#: something did.
+_D6_NOTICE_ELEMENTS = {
+    "what is retained (typed text)": "What you type is retained",
+    "for how long (90 days)": "90 days",
+    "who reads it (the operator)": "read only by the operator",
+    "the gate processes the email via Cloudflare": "Cloudflare",
+    "traffic transits the vendor edge": "vendor edge",
+    "the demo is synthetic": "synthetic",
+    "enter no real personal data": "real personal data",
+}
 
 
 # --------------------------------------------------------------------------- #
@@ -148,6 +167,72 @@ async def test_the_served_index_contains_no_inline_script(client: AsyncClient) -
     body = re.sub(r"<!--.*?-->", "", body, flags=re.DOTALL)
     inline = [m.group(0) for m in re.finditer(r"<script(?![^>]*\ssrc=)[^>]*>", body)]
     assert not inline, f"inline <script> found in the served index: {inline}"
+
+
+# --------------------------------------------------------------------------- #
+# AC-9 — the D6 persistent notice
+# --------------------------------------------------------------------------- #
+
+
+def _notice_block() -> str:
+    """The banner's source block, from the profile guard to its closing brace.
+
+    Sliced rather than searched whole-file so the element assertions cannot be
+    satisfied by the same words appearing somewhere else in ``app.js`` — and so
+    the guard and the text are proven to be in the SAME block, which is the
+    property AC-9 actually needs.
+    """
+    source = _APP_JS.read_text(encoding="utf-8")
+    marker = "if (O.State.uiProfile === 'published') {"
+    assert marker in source, (
+        f"the D6 notice must be guarded by {marker!r} in {_APP_JS} — without the "
+        "guard it would render on the dev console too, and AC-9 requires it absent there"
+    )
+    start = source.index(marker)
+    end = source.index("\n    }", start)
+    return source[start:end]
+
+
+def test_the_d6_notice_carries_all_six_elements() -> None:
+    """Every D6 obligation appears inside the profile-guarded banner block.
+
+    A source-level tripwire, per `docs/conventions/ui.md:104` — this repo has no
+    build step and no JS test runner, so a UI tripwire must be a Python test.
+    Stated plainly because it matters for what this proves: the banner is
+    client-rendered, so this asserts the SOURCE carries the six elements. That the
+    browser actually paints them is verified live in the PR, not here.
+    """
+    block = _notice_block()
+    missing = [name for name, text in _D6_NOTICE_ELEMENTS.items() if text not in block]
+    assert not missing, f"the D6 notice is missing these obligations: {missing}"
+
+
+def test_the_d6_notice_is_not_dismissable() -> None:
+    """No close control inside the notice block.
+
+    D6 makes the in-app notice the load-bearing consent-capture point precisely
+    because the vendor gate page cannot be relied on to render text this repo can
+    verify. A dismiss button would turn a required disclosure into an optional one
+    — and would look like a UX improvement in review.
+    """
+    block = _notice_block()
+    for control in ("onClick", "dismiss", "close", "hidden"):
+        assert (
+            control not in block
+        ), f"the D6 notice block contains {control!r} — it must be persistent"
+
+
+def test_the_dev_profile_renders_no_notice() -> None:
+    """AC-9's absence half: the guard is an equality against 'published'.
+
+    Asserted on the guard rather than by rendering, for the same reason as above.
+    A truthiness check (`if (O.State.uiProfile)`) would render the banner on the
+    dev console, where 'dev' is also truthy — which is the one way this could be
+    wrong while still looking guarded.
+    """
+    source = _APP_JS.read_text(encoding="utf-8")
+    assert "if (O.State.uiProfile === 'published') {" in source
+    assert "if (O.State.uiProfile)" not in source
 
 
 def test_the_ui_profile_is_read_before_the_first_paint() -> None:
