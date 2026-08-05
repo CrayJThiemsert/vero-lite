@@ -233,9 +233,12 @@ degrade, or writer under test.
   tabs, the `.llmctl` cluster, and the wizard render exactly as today. Closed by
   the same test module (default-profile assertions) + the existing
   `tests/api/test_static_ui.py` suite staying green.
-- [ ] **AC-3 (nav-bar overflow — BLOCKING before any link is shared,
-  `0035:883-887`).** At pinned viewport widths **1280 / 1366 / 1440 / 1680 /
-  1920**, `document.scrollingElement.scrollWidth <= clientWidth` and the header
+- [x] **AC-3 (nav-bar overflow — BLOCKING before any link is shared,
+  `0035:883-887`) — CLOSED 2026-08-05. Dev half discharged by `54dfc7d`
+  (PR #1018); published half measured green at all five widths in Step 4 under
+  SD-4's ruled option (a), with a non-vacuity probe proving the instrument can go
+  red. Both tables below; read the published half's scope caveat.** At pinned
+  viewport widths **1280 / 1366 / 1440 / 1680 / 1920**, `document.scrollingElement.scrollWidth <= clientWidth` and the header
   contains no horizontally clipped element, **in both profiles** — measured via
   the established preview_eval geometry procedure and recorded as a measurement
   table in this PLAN (dev half below; published half at closeout; the s197
@@ -288,6 +291,49 @@ degrade, or writer under test.
   exists today and was the one measured broken." This AC closes only when the
   published-profile pass is recorded here alongside the dev table (Step 4,
   under SD-4's ruling).
+
+  **PUBLISHED-PROFILE HALF — measured 2026-08-05 (session 207), Step 4, under
+  SD-4's ruled option (a) "measure-to-confirm".** Fresh server, never a reload:
+  `oct-demo-published` (`UI_PROFILE=published`, port 8104). Profile confirmed at
+  the page, not assumed — `<meta name="ui-profile">` read back `published`.
+  Same pass/fail read as the dev half, **fixed before the run, not adjusted after**:
+  `document.scrollingElement.scrollWidth <= clientWidth` AND no horizontally
+  clipped header element (`scrollWidth > clientWidth + 1` on any header descendant).
+
+  ```
+    viewport   page sW/cW    overflow   header sW/cW   clipped   hdr nodes scanned
+    1280       1280 / 1280        0px    1280 / 1280         0                  73
+    1366       1366 / 1366        0px    1366 / 1366         0                  73
+    1440       1440 / 1440        0px    1440 / 1440         0                  73
+    1680       1680 / 1680        0px    1680 / 1680         0                  73
+    1920       1920 / 1920        0px    1920 / 1920         0                  73
+  ```
+
+  **Non-vacuity probe — the instrument was proven able to go RED before its
+  greens were accepted.** At a 600 px viewport (deliberately outside the pinned
+  set): page overflow **289 px**, header `scrollWidth` 889 vs `clientWidth` 600,
+  **1 clipped element** (`.meta-chips`, `scrollWidth` 120 vs `clientWidth` 8), and
+  the tab buttons collapsed 152 px → **36 px**, showing the responsive ladder
+  actually engages. Both halves of the criterion fire, so the five greens are not
+  a detector that cannot fail.
+
+  ⚠️ **Instrument correction, recorded because it nearly produced a false pass.**
+  The first probe selected the header with `document.querySelector('header')`,
+  which returns **null** — the element carries `class="header"` and is not a
+  `<header>` tag. That scan walked **zero** nodes and reported `clipped: 0`, which
+  would have read as a pass. The `hdr nodes scanned` column above exists so this
+  cannot recur silently: a row showing `0` scanned is a **void measurement**, not
+  a clean one.
+
+  ⚠️ **Scope of this discharge — read before treating AC-3 as closed forever.**
+  This was measured **before Step 3's removals land**: `.llmctl` is still mounted,
+  all **ten** tabs are still registered, and the D6 notice is present. So it
+  measures the published profile at its **maximum header width demand**, which is
+  the strict form of SD-4(a)'s own premise ("the published profile only removes
+  header content, so the rebuilt ladder is expected to clear a fortiori").
+  Step 3 removes and never adds, so it cannot invalidate these numbers.
+  **Tripwire:** if any later change *adds* header content to the published
+  profile, this measurement is void and must be re-run.
 - [ ] **AC-4 (published env profile).** The published compose project pins every
   value in §Pinned values. Closed by `tests/deploy/test_published_compose.py`
   parsing the committed compose + env files (set-equality on the pinned keys;
@@ -549,16 +595,21 @@ the census table, executable) — and note the registry must now pin **three mor
 controls than the drafting census listed.
 
 **Step 4: Nav-bar ladder — published-profile half only (AC-3, blocking;
-BLOCKED-ON-SD-4 — RELEASED 2026-08-05, ruled (a) measure-to-confirm).** The dev
-half of this step is **already done —
-do not re-run it**: PR #1018 (`54dfc7d`) rebuilt the ladder for the ten-tab
-census (collapse rung now `theme.css:225`), measured before/after at the five
-pinned widths against a pre-fixed pass/fail read, and committed both tripwires
-probe-proven — the measurement table is recorded under AC-3. What remains:
-once Step 2 lands `ui_profile`, execute SD-4's ruled option for the published
-profile — measure at the five pinned widths via preview_eval against the same
-pre-fixed pass/fail read, and record the published-profile measurement table
-under AC-3 alongside the dev one.
+BLOCKED-ON-SD-4 — RELEASED 2026-08-05, ruled (a) measure-to-confirm).**
+✅ **COMPLETE 2026-08-05 (session 207).** The dev half was **already done — not
+re-run**: PR #1018 (`54dfc7d`) rebuilt the ladder for the ten-tab census
+(collapse rung now `theme.css:225`), measured before/after at the five pinned
+widths against a pre-fixed pass/fail read, and committed both tripwires
+probe-proven. The published half was executed here under SD-4's ruled option (a):
+fresh `oct-demo-published` server on port 8104 (never a reload), profile
+confirmed **at the page** via the `<meta name="ui-profile">` tag rather than
+assumed, measured at the five pinned widths against the **same** pre-fixed
+pass/fail read — **0 overflow and 0 clipped at every width** — plus a 600 px
+non-vacuity probe that drove the instrument red (289 px page overflow, 1 clipped
+element, tab buttons 152 → 36 px). Both measurement tables, the instrument
+correction that nearly produced a false pass, and the scope caveat (measured
+*before* Step 3's removals, i.e. at maximum header width demand) are recorded
+under **AC-3**, which is now closed.
 
 **Step 5: The D6 banner (AC-9).** Published-profile persistent notice with the
 six pinned elements; source tripwire; wording to R2 against ADR-0032 D5.
