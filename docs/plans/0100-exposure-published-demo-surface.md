@@ -22,6 +22,21 @@
 > Every new `file:line` re-verified on disk at fold-in. Independent review:
 > Code (R2) at PR; ratification: Cray. Author≠reviewer separation: **INTACT**
 > — Code commits per ADR-009 D2.
+>
+> **SD-sitting pass (session 207, Code, 2026-08-05).** ⚠️ The line above —
+> "all five slots are empty" — describes the s205 state and is **superseded**:
+> **all five SDs are now ruled** (Cray, typed 2026-08-05), and AC-13 is closed.
+> Folded in the same pass: **finding C-3** (four allow-table rows the ruled DB
+> posture cannot serve, two of them justified by a consumer this table excludes —
+> the C-1 shape mirrored); **SD-3 restated and re-ruled** (ADR-0035 names no
+> proxy; `cloudflared` ingress + the zone's Cloudflare rate-limiting rule win;
+> **no `nginx` service**); the per-IP cap **re-pinned** to the Free-plan grammar
+> measured on the zone; **Step 9's pass/fail read written** (AC-6(c) required it in
+> advance and it was owed-but-unwritten); three `api.js` citations corrected.
+> ⚠️ **Author≠reviewer separation is ABSENT on this pass** — Code both found C-3
+> and wrote the fold-in, under no subagent drafting. The rulings are Cray's typed
+> values; the surrounding analysis is not independently reviewed. A reviewer pass
+> over C-3, the SD-3 restatement, and the Step 9 read is owed before Step 8 starts.
 
 ## Goal
 
@@ -64,7 +79,7 @@ backends and their live UI consumers:
 | `GET /warm`, `GET /sleep` (`admin.py:174-179`, `:222-223` — keyed GETs, but the dependency goes inert when `api_auth_enabled=false`, `auth.py:71-72`) | `.llmctl` header cluster — `llm-control.js:114` (warm), `:144` (sleep); mounted `app.js:56-57`; styled `theme.css:239`; wrappers `api.js:157-158` |
 | `POST /intake/extract`, `GET /intake/defaults`, `POST /intake/generate` | Tab E "Build a Vertical" (`app.js:14`; view registered `intake-view.js:411`; calls `intake-view.js:160,355`); **story surface** "Go live" beat calls `/intake/extract` (`view-story.js:907`; wrappers `api.js:181-185`) |
 | `POST /procedures/draft/{classify,build,instantiate}` (this PLAN's ruling — see SD-2) | Draft-authoring wizard `intake-procedures.js:158,181,201` (wrappers `api.js:196-206`) |
-| `POST /demo/hero/event` (the unauthenticated DB write — F4, `0035:186`) | Tab G event mode — `view-hero.js:658` (wrapper `api.js:99`) |
+| `POST /demo/hero/event` (the unauthenticated DB write — F4, `0035:186`) | Tab G event mode — `view-hero.js:658` (wrapper `api.js:106` — citation corrected s207; the drafting census said `:99`) |
 
 Controls whose backends **stay on the allowlist but are keyed** (approve/execute
 `api.js:63-64` → e.g. `actions.py:224-228`; gate-resolve `api.js:105`) are
@@ -91,7 +106,7 @@ calls can still be incomplete with respect to the routes that make the feature
 | `OLLAMA_HOST` | `http://host.docker.internal:11434` | D5(5) `0035:480-483`; default is a dev hosts-file name `config.py:79-82`; mechanism is `[ext]` — re-confirmed in Phase 5 |
 | `LLM_REQUEST_TIMEOUT_S` | `25` | D5(4) `0035:467-475`; field `config.py:114-118`; valid env name — no `env_prefix`, case-insensitive `config.py:30-35`; absent from `.env.example` today |
 | `LLM_RETRY_BUDGET` | `1` | D5(4); field `config.py:106-113` |
-| Per-IP rate cap, LLM routes | 10 req/min, burst 20 | D5(3) `0035:441-451` |
+| Per-IP rate cap, LLM routes | **2 requests / 10 s, mitigation 10 s** (≈ 12/min sustained), as the zone's single Cloudflare rate-limiting rule | **Re-pinned under SD-3's ruling (Cray, 2026-08-05).** D5(3) `0035:441-451` *recommended* "10/min, burst 20" — that is nginx `limit_req` grammar (`rate=10r/m burst=20`), and the ADR never names an implementation. Cloudflare's Free plan offers a **10 s counting period and 10 s mitigation timeout only, and has no burst concept** (measured on the zone — see SD-3). `0035:446` states the numbers as "recommended defaults **for the exposure PLAN to pin**"; the ADR's binding requirement is that a per-IP cap *exists* before publishing, which this satisfies on the three grounds `0035:460-463` gives. **No ADR amendment owed** (AC-12 unchanged). |
 | Global in-flight LLM cap | 1, fast-fail to the deterministic arm with the PLAN-0093 disclosure | D5(3) — no substrate exists (F5 `0035:187`; re-verified this pass: only LINE notify throttling, `services/notify/line.py:133,294-330`), so this is app code (see §ADR amendment) |
 | Prompt-log retention | 90 days rolling, Cray-only reader, 30-day DSR honor, **no IP / headers / gate identity stored** | D6, ratified OQ-2 `0035:693-695` — restated, not re-decided |
 | `UI_PROFILE` (new setting `ui_profile`) | `published` on the published deployment; default `dev` | This PLAN (s202 ruling); env name valid per `config.py:30-35` |
@@ -116,13 +131,13 @@ published surface (D5(2)).
 | `/meta` | GET | deterministic | UI boot (`api.js:60`, served `actions.py:209-212`); carries `ui_profile` after Phase 1 |
 | `/objects/{type}` | GET | deterministic | Tabs A/D reads (`api.js:61`) |
 | `/recommendations` | GET | deterministic | Tab B read (`api.js:62`) |
-| `/recommendations/{id}/approve`, `/{id}/execute` | POST | deterministic | **keyed** (`actions.py:227`); operator-driven demo beat |
+| `/recommendations/{id}/approve` | POST | deterministic | **keyed** (`actions.py:230-247`); operator-driven demo beat. DB-free — mutates the process-local `_action_store` (`actions.py:47`) only. **`/{id}/execute` was split off this row and excluded under SD-1** — see the excluded table |
 | `/whoami` | GET | deterministic | **keyed** — the reject-at-login probe (PLAN-0058, `auth.js:39`). Added at the Step-1 census (s206): it was in neither table, so it fell to default-deny — see §Step 1 finding C-1. Without it **no key can be stored**, and every keyed row in this table becomes undrivable |
 | `/query` | POST | **assisted** | the wedge's NL query (`api.js:65`); capped + logged; carries the PLAN-0093 disclosure |
-| `/insights/query` | POST | **assisted** (first candidate to flip to deterministic on P5 evidence) | LLM-before-first-DB-read (`0035:194-200`); capped + logged |
+| ~~`/insights/query`~~ | — | — | **EXCLUDED under SD-1 (Cray, 2026-08-05)** — moved to the excluded table. It reads the run corpus from Postgres (`insights.py:283` session dep, `:348` `execute_run_query`), which the DB-less posture cannot serve. Arm posture was beside the point: even pinned deterministic it would 500 rather than return its designed `"No runs matched that question."` refusal (`insights.py:349-357`) |
 | `/procedures` | GET | deterministic | Tab F browse (`api.js:74`) |
-| `/demo/hero/governance`, `/demo/hero/impact` | GET | deterministic | Tab G read modes (`api.js:96-97`) |
-| `/runs/{id}`, `/runs/{id}/gate/resolve` | GET / POST | deterministic | Tab G beat 3 (`api.js:103,105`); resolve is **keyed** |
+| `/demo/hero/governance`, `/demo/hero/impact` | GET | deterministic | Tab G read modes (`api.js:103-104` — citation corrected s207; the drafting census said `96-97`). DB-free by construction: `demo.py:36-37` states it outright — *"The two READ views are deterministic + offline (no mutation, no DB, no LLM)"* |
+| ~~`/runs/{id}`, `/runs/{id}/gate/resolve`~~ | — | — | **EXCLUDED under SD-1 (Cray, 2026-08-05)** — moved to the excluded table. Two independent reasons, either one sufficient — see finding C-3 |
 | `/llm/status` | GET | deterministic | read-only residency probe, never warms (INV-1, `api.js:156`); tentative — kept because Ask gates on MS-S1 status (`theme.css:184-186`); Step 1 census confirms the dependency, else it drops |
 
 **Excluded (do not exist on the published surface; UI disposition owed by Phase 1):**
@@ -133,7 +148,8 @@ published surface (D5(2)).
 | `/intake/*` (all three) | D5(2) | Tab E **not registered** (`app.js:14` gated); story "Go live" beat must not fire (`view-story.js:907` — scripted fallback if one exists, else launcher hidden; Step 1 census decides which, and the guard-registry tripwire pins it either way) |
 | `/procedures/draft/*` (all three) | this PLAN — SD-2 | draft-authoring wizard entries not rendered (`intake-procedures.js:158-201` call sites guarded) |
 | `/demo/hero/event` | D5(2) (F4) | Tab G event-mode control not rendered (`view-hero.js:658` branch gated) |
-| everything else (`/intake/generate` included above; `/api/exports/*`, `/cases*`, Tab H's off-list routes — GET `/runs` `view-monitor.js:168` **and also `view-map.js:84`, a Tab A caller the drafting census missed — see finding C-2**, POST `/runs/{id}/cancel` `view-monitor.js:148`, GET `/audit/verify` `view-monitor.js:488` — and any route not in the allow table) | default-deny | **Tabs I/J resolve with SD-1 + Step 1 census (BLOCKED-ON-SD-1); Tab H resolves with the Step 1 census alone** — its exclusions are default-deny, not DB-posture (see SD-1's scope note; two of H's routes are already on the allow table: `/runs/{id}` `view-monitor.js:235`, `/runs/{id}/gate/resolve` `view-monitor.js:133`, so H's backend is *not* entirely excluded); any tab whose entire backend is excluded is not registered in the published profile |
+| `POST /recommendations/{id}/execute`, `GET /runs/{id}`, `POST /runs/{id}/gate/resolve`, `POST /insights/query` | **SD-1's DB-less ruling** (Cray, 2026-08-05) — see finding C-3 | All four are DB-backed and there is **no global exception handler anywhere in `services/api/`**, so under the DB-less posture each returns an **unhandled 500**, not a typed degrade. Published-profile UI disposition: **Tab B's Execute control not rendered** (Approve stays — it is DB-free); Tab G's Act panel is already unreachable (it mounts only in event mode, `view-hero.js:641`, and event mode is excluded above); the Ask/insights entry point for `/insights/query` not rendered. Guard-registry tripwire (AC-1) pins all three |
+| everything else (`/intake/generate` included above; `/api/exports/*`, `/cases*`, Tab H's off-list routes — GET `/runs` `view-monitor.js:168` **and also `view-map.js:84`, a Tab A caller the drafting census missed — see finding C-2**, POST `/runs/{id}/cancel` `view-monitor.js:148`, GET `/audit/verify` `view-monitor.js:488` — and any route not in the allow table) | default-deny | **Tabs I/J: NOT REGISTERED** (SD-1 ruled (a), Cray 2026-08-05 — the BLOCKED-ON-SD-1 marker here is released). **Tab H still resolves in the Step 1 census on its own default-deny basis** — but the s205 note that "two of H's routes are already on the allow table … so H's backend is *not* entirely excluded" is **no longer true**: SD-1's C-3 disposition moved `/runs/{id}` (`view-monitor.js:235`) and `/runs/{id}/gate/resolve` (`view-monitor.js:133`) to the excluded table, so **every** Tab H backend route is now off the allow table. By this row's own closing rule — *any tab whose entire backend is excluded is not registered* — H's census disposition is now determined rather than open. Classified **superseded by new info** (the ruling changed the facts), not an error in the s205 note |
 
 ## Acceptance Criteria
 
@@ -224,12 +240,21 @@ degrade, or writer under test.
   `docker-compose.yml:12-13,25-26,38-39` — and stays as-is per ADR-0003). Closed
   by the same test module (YAML parse, assert no `ports` key anywhere).
 - [ ] **AC-6 (allowlist enforced + census-complete).** The published surface is
-  default-deny. Closed by: (a) a set-equality test asserting the proxy config's
-  allow rules exactly equal the table above; (b) a census tripwire asserting
-  every route string fetched anywhere in `assets/*.js` is ∈ (allow ∪ excluded)
-  — a new UI fetch to an unlisted route reddens it; (c) a documented local
-  compose smoke on the dev box (not host-state): excluded routes → 404 at the
-  proxy, allowed → served; pass/fail read written into the step before running.
+  default-deny. Closed by: (a) a set-equality test asserting the **committed
+  `cloudflared` ingress config's** allow rules exactly equal the table above, and
+  that the config's final entry is the catch-all `http_status:404` (SD-3's ruling
+  — the target is the ingress file, not an nginx config; a remotely-managed
+  token-only tunnel would void this AC and is forbidden by Step 8); (b) a census
+  tripwire asserting every route string fetched anywhere in `assets/*.js` is ∈
+  (allow ∪ excluded) — a new UI fetch to an unlisted route reddens it; (c) a
+  documented local compose smoke on the dev box (not host-state): excluded routes
+  → 404 at the edge, allowed → served; **pass/fail read written into Step 9 in
+  advance — done, fixed 2026-08-05.**
+  ⚠️ **Scope limit, stated so the closeout cannot overstate it:** (a) covers the
+  route allowlist only. The **per-IP rate cap lives in the Cloudflare zone**, which
+  is portal-side and has no file in this repo — **no offline test can close it.**
+  It closes on AC-6(c) case 4 plus a screenshot of the configured rule, and if
+  case 4 cannot run locally it is deferred to Step 11 and recorded as not covered.
 - [ ] **AC-7 (caps — scenario-tested).** The global in-flight LLM cap of 1
   fast-fails to the deterministic arm with the PLAN-0093 disclosure. Closed by
   `tests/api/test_llm_inflight_cap.py`: boot the **real ASGI app**, point
@@ -238,10 +263,15 @@ degrade, or writer under test.
   responses, deliberately slow), fire two concurrent `POST /query` with
   realistic demo-script questions; assert the second returns fast (< 5 s) with
   the deterministic-arm disclosure while the first completes on the LLM arm;
-  assert both produce prompt-log rows with correct outcome states. The per-IP
-  rate cap (10/min burst 20) is proxy config: closed by the AC-6(a) config
-  test + a rate-limit case in the AC-6(c) local smoke (burst 21 requests,
-  assert the 21st is rejected at the proxy).
+  assert both produce prompt-log rows with correct outcome states. **The per-IP
+  rate cap is NOT closed here and NOT closed by AC-6(a)** — under SD-3's ruling it
+  is a Cloudflare zone rule with no file in this repo. It closes on AC-6(c) case 4
+  (drive `POST /query` past the pinned threshold from one IP; assert rejection **at
+  the edge**, and recovery after the 10 s mitigation window), or, if the local
+  smoke does not sit behind the Cloudflare edge, on Step 11 with that deferral
+  recorded explicitly. The in-flight cap (app code) and the per-IP cap (zone
+  config) are **separate obligations with separate evidence** — a green AC-7 says
+  nothing about the per-IP cap.
 - [ ] **AC-8 (prompt-log writer — scenario-tested).** Same harness as AC-7:
   drive `POST /query` and `POST /insights/query` end-to-end; assert one JSONL
   line each with **key set exactly equal to** {ts_utc, route, vertical, text,
@@ -275,7 +305,9 @@ degrade, or writer under test.
   below names the exact ADR-0035 lines and proposed replacement text, and the
   closeout confirms Code routed it as a separate artifact. This PLAN's diff
   touches no file under `docs/adr/`.
-- [ ] **AC-13 (adjudication record — the PLAN-0101 AC-9 pattern).** The five
+- [x] **AC-13 (adjudication record — the PLAN-0101 AC-9 pattern) — CLOSED
+  2026-08-05: all five slots carry Cray's typed ruling + date; every
+  BLOCKED-ON-SD marker is marked RELEASED at its step.** The five
   `**Ruling:**` slots in §Surfaced decisions are filled with Cray's typed
   rulings (value + date) **before** any step marked BLOCKED-ON-SD begins
   (Step 1's I/J allowlist-row finalization; Steps 3, 8, 9; Step 4's
@@ -327,7 +359,8 @@ separately Cray-gated** (CLAUDE.md §8).
   drafting; Tab H received a bounded fold-in walk, s205 — five call sites,
   recorded in the excluded table and SD-1's scope note — which this census
   re-verifies and completes). Finalize the **I/J** rows of the allowlist
-  tables under SD-1's ratified answer (**BLOCKED-ON-SD-1**). Dispose of
+  tables under SD-1's ratified answer (**BLOCKED-ON-SD-1 — RELEASED 2026-08-05;
+  ruled (a), so Tabs I/J are not registered**). Dispose of
   **Tab H** here in the census, on its own default-deny basis (SD-1's ruling
   cannot dispose of it — see SD-1's scope note): propose
   degrade-vs-not-registered in this step's PR; SD-1's answer bears on H only
@@ -373,6 +406,48 @@ published surface would look correct while behaving wrongly.
   off-list reads. Deliberately **not** raised as a sixth SD: the safe default is
   already implemented, and inflating the all-or-nothing SD gate for a question
   with a working default would block five ruled steps on a sixth cosmetic one.
+  **RESOLVED at the SD sitting (Cray, 2026-08-05): `GET /runs` is NOT added.**
+  SD-1's DB-less ruling answers it structurally rather than by preference — runs
+  live in Postgres (`runs.py:343` `load_run`), so a DB-less deployment has no run
+  corpus to mark the map with; an allow row would buy a 500 in place of a clean
+  empty state. The `view-map.js:80` degrade stands as the designed behaviour.
+
+- **C-3 — four allow-table rows cannot be served by the posture SD-1 rules, and
+  two of them were justified by a consumer the same table excludes.** Found at
+  the SD sitting (s207) by tracing every allow-table handler for a DB session
+  dependency, because SD-1's recommendation and the allow table had never been
+  checked *against each other*. Two independent defects, either one sufficient:
+  - **DB-backed under a DB-less posture (hard 500).** `POST /recommendations/{id}/execute`
+    (`actions.py:253` session dep → `:267` `persist_executed_action`, no
+    `try/except` around it), `GET /runs/{id}` (`runs.py:336,343`),
+    `POST /runs/{id}/gate/resolve` (`runs.py:426,454,474,512`), and
+    `POST /insights/query` (`insights.py:283,348`). The app itself **boots fine**
+    without Postgres — the engine is lazy (`services/db/session.py:1-6`) and all
+    three lifespan DB touches are fail-soft (`main.py:265,282,305`, comments at
+    `:269,:294` naming "the DB-less demo (PLAN-0095) must still boot"), verified
+    live in s177 (`docs/runbooks/run-oct-demo.md:114-121`). But there is **no
+    global exception handler or middleware anywhere in `services/api/`**, so each
+    of these four routes returns an unhandled 500 rather than degrading. The
+    sharp one is `execute`: the allow table called it "operator-driven demo beat",
+    so Approve would succeed and Execute would 500 — **the Tab B loop dying at its
+    last step, in front of the audience the wedge exists to impress.**
+  - **The reachability inversion (holds regardless of DB posture).** The runs pair
+    was justified in the allow table as *"Tab G beat 3"*. Beat 3's Act panel mounts
+    only in event mode — `view-hero.js:641`, `if (mode === 'event') container.appendChild(renderActPanel(...))`
+    — and `renderActPanel` is the pair's only Tab G caller (`view-hero.js:317,320`).
+    Event mode fires `O.Hero.event()` (`view-hero.js:658`) → `POST /demo/hero/event`,
+    which **this table excludes**. So on the published surface those two rows had
+    **zero Tab G callers**, and their only surviving caller is Tab H, whose
+    registration this PLAN leaves undecided. **This is C-1 mirrored:** C-1 was a
+    route *missing* that made a feature undrivable; C-3 is two routes *present*
+    whose reachability path is excluded. The generalisation at §census —
+    completeness w.r.t. routes a feature **calls** ≠ completeness w.r.t. routes
+    that make it **reachable** — cuts in both directions, and neither direction is
+    visible from the table alone.
+  - **Disposition:** all four moved to the excluded table under SD-1's ruling.
+    Method note for the closeout: the drafting census walked *UI call sites →
+    routes*; C-3 needed the orthogonal walk, *routes → handler DB dependency*.
+    Neither walk finds the other's defect.
 - Output: the completed tables in this PLAN (one PR). Cray's adjudication of
   SD-1..SD-5 lands as typed rulings (value + date) in the five `**Ruling:**`
   slots under §Surfaced decisions — AC-13 is the adjudication record. No step
@@ -389,18 +464,22 @@ to `Settings` (env `UI_PROFILE`, valid per `config.py:30-35`) with
 implementation must make the profile available before header/tab construction —
 mechanism is the implementer's choice, behavior is pinned by AC-1/AC-2).
 
-**Step 3: Gate the excluded-backend controls (BLOCKED-ON-SD-2 — the wizard
-disposition; BLOCKED-ON-SD-1 — the census-surfaced tab set).** Apply the
-§census disposition column: Tab E not registered; `.llmctl` not mounted;
-wizard entries not rendered (SD-2's ruling decides whether all three draft
-routes' entries go, or `instantiate`'s survives); hero event mode not
-rendered; story live-extract beat guarded — plus the Tab I/J dispositions from
-SD-1's ruling and Tab H's census disposition from Step 1. Ship the AC-1
-guard-registry tripwire in the same PR (the registry is the census table,
-executable).
+**Step 3: Gate the excluded-backend controls (BLOCKED-ON-SD-1 / -SD-2 — both
+RELEASED 2026-08-05).** Apply the §census disposition column, now fully
+determined: Tab E not registered; `.llmctl` not mounted; **all three** draft-wizard
+entries not rendered (SD-2 ruled exclude-all — `instantiate`'s entry does not
+survive); hero event mode not rendered; story live-extract beat guarded; **Tabs
+I/J not registered** (SD-1(a)); Tab H per Step 1's census, where the runs pair's
+exclusion now leaves "not registered" as its only coherent option. **New under
+SD-1's C-3 disposition:** Tab B's **Execute** control not rendered (Approve stays
+— it is DB-free), and the insights/Ask entry point for `/insights/query` not
+rendered. Ship the AC-1 guard-registry tripwire in the same PR (the registry is
+the census table, executable) — and note the registry must now pin **three more**
+controls than the drafting census listed.
 
 **Step 4: Nav-bar ladder — published-profile half only (AC-3, blocking;
-BLOCKED-ON-SD-4 as restated).** The dev half of this step is **already done —
+BLOCKED-ON-SD-4 — RELEASED 2026-08-05, ruled (a) measure-to-confirm).** The dev
+half of this step is **already done —
 do not re-run it**: PR #1018 (`54dfc7d`) rebuilt the ladder for the ten-tab
 census (collapse rung now `theme.css:225`), measured before/after at the five
 pinned widths against a pre-fixed pass/fail read, and committed both tripwires
@@ -428,21 +507,69 @@ untouched.
 
 ### Phase 3 — The published compose project + allowlist edge (offline)
 
-**Step 8: `deploy/published/` (BLOCKED-ON-SD-1 — DB posture; BLOCKED-ON-SD-2 —
-draft-route allowlist contents; BLOCKED-ON-SD-3 — whether the in-compose proxy
-exists at all).** A committed compose project: `app` (the
-PLAN-0095 image) + an `nginx:alpine` proxy that is the **only** thing the
-connector reaches — deny-by-default allowlist (404 for everything else), per-IP
-`limit_req` (10/min burst 20) on the LLM routes, network `vero_oct`, named
-volume `prompt-log`, **no `ports:` keys on any service**, the pinned env file
-(no secrets — `API_KEYS` provisioning stays env-local, documented in the
-runbook; `.env.example` gains the two `LLM_*` names it lacks today, `.env.example:17,45,55`
-context). DB posture per SD-1. Ship AC-4/AC-5/AC-6(a,b) tests in the same PR.
+**Step 8: `deploy/published/` (BLOCKED-ON-SD-1 / -SD-2 / -SD-3 — all three
+RELEASED 2026-08-05).** A committed compose project with **exactly two services**:
+`app` (the PLAN-0095 image) + `cloudflared` (**no `nginx`** — SD-3's ruling). No
+`postgres` service (SD-1). Specifics:
+- **`cloudflared` runs as a locally-managed tunnel** so its `config.yml` is
+  **committed in this repo** — that file is AC-6(a)'s set-equality target. Its
+  `ingress:` block lists exactly the allow table's routes and ends with the
+  mandatory catch-all `- service: http_status:404`, which **is** the
+  deny-by-default enforcement. Do **not** use a bare `TUNNEL_TOKEN`
+  remotely-managed tunnel: that moves the ingress map into the dashboard, out of
+  the repo, and silently voids AC-6(a).
+- **Free-plan expression caveat.** Confirm at implementation time whether the
+  ingress rules need `hostname` scoping or path-only suffices; the working
+  fallback is path-only (the zone's other app is n8n, which serves `/rest/` and
+  `/webhook/` — no collision with `/query`). Record which was used.
+- **The per-IP cap is NOT in this compose** — it is the zone's single Cloudflare
+  rate-limiting rule (§Pinned values). Step 8's PR body records the rule's
+  configured values; the rule itself is portal-side (see SD-3's ⚠️).
+- network `vero_oct`, named volume `prompt-log`, **no `ports:` keys on any
+  service**, the pinned env file (no secrets — `API_KEYS` provisioning stays
+  env-local, documented in the runbook; `.env.example` gains the two `LLM_*`
+  names it lacks today, `.env.example:17,45,55` context).
+- ⚠️ **The `/whoami` allow row (finding C-1) must appear in the ingress config.**
+  AC-6(a)'s set-equality closes on it, but it is called out here because omitting
+  it makes the demo **unloginable** while every test that does not model login
+  still passes.
+Ship AC-4/AC-5/AC-6(a,b) tests in the same PR.
 
 **Step 9: Local compose smoke (dev box — not host-state; BLOCKED-ON-SD-3 —
-the AC-6(c) proxy cases presume the in-compose proxy).** Bring the published
-project up on the Legion dev box; execute the AC-6(c)/AC-7 proxy cases against
-the pre-written pass/fail read; record the transcript in the PR.
+RELEASED 2026-08-05).** Bring the published project up on the Legion dev box and
+execute the AC-6(c) cases against the pass/fail read below, **fixed here before
+the run** (AC-6(c) requires it written into the step in advance; it was owed and
+unwritten until s207). Record the full transcript in the PR.
+
+> **Pass/fail read for Step 9 — fixed 2026-08-05, before any run.**
+> Judged only against these; no post-hoc reinterpretation. Any case not observed
+> is **INSUFFICIENT-EVIDENCE, not a pass**.
+> 1. **Allowed routes are served.** `GET /health`, `GET /meta`, `GET /whoami`
+>    (without a key), `GET /objects/{type}`, `GET /recommendations`,
+>    `GET /procedures`, `GET /demo/hero/governance`, `GET /demo/hero/impact`,
+>    `GET /llm/status`, `GET /` and one `/assets/*` asset each return a
+>    **non-404** status through the connector. `/whoami` keyless may return 401 —
+>    **401 is a PASS** (the route exists and fails closed); **404 is a FAIL** (it
+>    is being denied at the edge, which is exactly the C-1 defect).
+> 2. **Excluded routes are denied.** `POST /demo/hero/event`, `GET /warm`,
+>    `GET /sleep`, `POST /intake/generate`, `POST /procedures/draft/classify`,
+>    `GET /runs`, `POST /recommendations/x/execute`, `GET /runs/x`,
+>    `POST /insights/query`, and one route that exists in the app but appears in
+>    **neither** table, each return **404** — and the app logs **no** request for
+>    them, proving the denial happened at the edge and not in the app.
+> 3. **The DB-less posture degrades where SD-1 says it does.** With no postgres
+>    service running, case 1 is fully green — i.e. no allowed route 500s. A 500
+>    on any allowed route is a **FAIL** and means the allow table still carries a
+>    DB-backed row (the C-3 class).
+> 4. **Rate cap.** Drive `POST /query` from one IP faster than the pinned
+>    threshold; assert requests beyond it are rejected **at the edge** (Cloudflare
+>    block response, not a vero-lite response body) and that a request after the
+>    10 s mitigation window succeeds again. ⚠️ If the smoke runs against a local
+>    compose that the Cloudflare edge does not front, this case **cannot** be
+>    executed locally — then it is explicitly deferred to Step 11 and recorded as
+>    **not covered here**, never silently dropped.
+> 5. **No `ports:` exposure.** `docker compose ps` shows no published host port
+>    for any service; the only reachable path is through the connector.
 
 ### Phase 4 — Governance artifacts (offline)
 
@@ -545,7 +672,22 @@ begins until all five slots are filled.
   (degrade vs not-registered) resolves in the Step 1 census; only any of H's
   reads shown to be DB-backed inherit this ruling.
 
-  **Ruling:** — awaiting Cray (typed value + date).
+  **Ruling: (a) DB-less — and strike the four allow-table rows the posture cannot
+  serve. — Cray, 2026-08-05.** The ruling was taken against finding **C-3**, which
+  was surfaced *before* the sitting precisely because the recommendation and the
+  allow table had never been checked against each other. Consequences, recorded so
+  the closeout cannot rediscover them: the published demo is **read + approve, not
+  execute** — the governed approve→**execute** round trip and the gate-resolve beat
+  are the Cray-driven screen-share, which is what SD-1's own recommendation text
+  argued for (`:526-528`); Tabs I/J are **not registered** (Step 1's BLOCKED-ON-SD-1
+  row finalization is hereby released to that answer); `/insights/query` leaves the
+  published surface, so **`/query` is the only published LLM route** — the per-IP
+  cap and the prompt log now have one published consumer, not two (the writer stays
+  wired to both routes in code, so AC-8 is unchanged — it tests the writer, not the
+  allowlist). Tab H's disposition is still the Step-1 census's to make on its own
+  default-deny basis, but with the runs pair now excluded, **every** Tab H backend
+  route is off the allow table, which makes "not registered" the only coherent
+  option left for it.
 - **SD-2 — `/procedures/draft/*` disposition.** Not named in D5(2); same intake
   family. **Recommendation: exclude all three** — classify/build are
   unauthenticated MS-S1 inference (F3 `0035:185`), instantiate is deterministic
@@ -553,14 +695,48 @@ begins until all five slots are filled.
   hand anonymous visitors a procedure-authoring wizard. Alternative: allow
   instantiate only (zero-LLM). Cray's call because it widens D5(2)'s named set.
 
-  **Ruling:** — awaiting Cray (typed value + date).
-- **SD-3 — Allowlist enforcement point.** In-compose deny-by-default nginx
-  (recommended: offline-testable, vendor-independent, satisfies "vero-lite's
-  edge", carries the per-IP cap as pure config) vs vendor WAF path rules
-  (config lives portal-side, not testable offline, silently driftable).
-  Cray's call because it places a new service in the published stack.
+  **Ruling: exclude all three (the recommended option). — Cray, 2026-08-05.**
+  Step 3 therefore hides **all** draft-wizard entries (`intake-procedures.js:158,181,201`);
+  `instantiate`'s entry does not survive.
+- **SD-3 — Allowlist enforcement point. RESTATED at the sitting (s207) — the
+  two-option framing was wrong, and neither drafted option won.** As drafted this
+  SD asked: in-compose deny-by-default **nginx** (recommended) vs **vendor WAF**
+  path rules. Two facts found at the sitting collapsed that framing:
+  1. **ADR-0035 never names nginx** — not once in the file. It says only "a
+     default-deny route allowlist **at vero-lite's edge**" (`0035:436`) and
+     "rate limiting lives at the edge" (`0035:675`). What the ADR forecloses is
+     rate limiting **inside `services/`** (F5 stays true); it does not mandate a
+     proxy service. nginx was this PLAN's addition, not the ADR's ruling.
+  2. **The two jobs have different best answers.** `cloudflared` — already
+     required by D1, so not a new service — supports **locally-managed tunnels
+     with an ingress config file**, **path matching**, and a **mandatory
+     catch-all** that can return `http_status:404`. That is deny-by-default,
+     natively, **as a file in this repo** (so AC-6(a) set-equality and offline
+     testing both survive). It cannot rate limit. Cloudflare **can** rate limit,
+     but only within the Free plan's grammar.
 
-  **Ruling:** — awaiting Cray (typed value + date).
+  **Measured on the zone at the sitting** (`cray-n8n.com`, Free — screenshots read
+  by Cray, 2026-08-05): **Rate limiting rules 0/1 used**, **Custom rules 0/5 used**.
+  The single free rate-limiting rule is **unclaimed**, so nothing had to be retired
+  to free it. Free-plan limits (Cloudflare docs, read the same day): 1 rate-limiting
+  rule, IP-only counting, **10 s counting period only**, **10 s mitigation only**,
+  expression fields limited (Hostname availability **unconfirmed** — deferred to
+  Step 8, with path-only scoping as the working fallback since `/query` does not
+  collide with the zone's other app).
+
+  **Ruling: enforce at the `cloudflared` edge — ingress allowlist with a catch-all
+  404 (config file committed in this repo) + the zone's Cloudflare rate-limiting
+  rule for the per-IP cap. NO nginx service. — Cray, 2026-08-05.** The published
+  stack gains **no new service**. Consequences: the per-IP numbers are re-pinned to
+  the Free-plan grammar (§Pinned values — no ADR amendment owed, `0035:446` states
+  them as recommendations *for this PLAN to pin*); AC-6(a)'s set-equality target is
+  the **committed cloudflared ingress config**, not an nginx config; Step 8 drops
+  the `nginx:alpine` service; Step 9's proxy cases run against cloudflared.
+  ⚠️ **The rate-limiting rule itself lives in the Cloudflare zone, which is
+  portal-side and outside this repo** — so, unlike the ingress file, it **cannot**
+  be closed by an offline test. It is closed by AC-6(c)'s smoke plus a screenshot
+  of the rule in the closeout, and it is a **standing drift risk** named here so the
+  closeout does not record it as covered.
 - **SD-4 — Nav-bar fix depth (RESTATED at fold-in, s205 — published profile
   only).** The question as originally drafted — removals-only (published
   profile drops ~2 clusters; measured deficit 443 px at 1382 px viewport makes
@@ -587,7 +763,12 @@ begins until all five slots are filled.
   widths where the dev profile collapses to keys. Cray's call because
   "blocking before any link is shared" is Cray's bar to move.
 
-  **Ruling:** — awaiting Cray (typed value + date).
+  **Ruling: (a) measure-to-confirm — run AC-3 against the `54dfc7d` ladder
+  unchanged; do not re-tune first. — Cray, 2026-08-05.** Step 4 is therefore a
+  single measurement run against the pass/fail read already fixed at `:199-201`,
+  with the dev table already recorded. A red measurement re-opens fix depth as a
+  bounded follow-up rather than silently — that escape hatch is what makes (a) safe
+  to take before the evidence exists.
 
 - **SD-5 — Dev-profile geometry as blocking.** AC-3 as drafted measures both
   profiles. The strictly-ADR-0035 reading only blocks the published link.
@@ -600,7 +781,10 @@ begins until all five slots are filled.
   the dev census + collapse breakpoint at zero marginal cost. Cray may relax
   to published-only without touching anything else.
 
-  **Ruling:** — awaiting Cray (typed value + date).
+  **Ruling: keep both. — Cray, 2026-08-05.** Schedules no work: the dev half is
+  already measured green and the two tripwires are already committed. It sets the
+  standing bar — a future dev-profile regression blocks link-sharing until
+  re-measured. Relaxing to published-only later touches nothing else.
 
 ## Verification
 
