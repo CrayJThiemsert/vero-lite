@@ -74,6 +74,15 @@ operator's provisioned key. The hide/remove rule applies to **excluded**
 backends only — a 404 from a route that "does not exist" is incoherence; a 401
 from a governed route is the product working.
 
+⚠️ **That last argument had a hole until the s206 census closed it** (finding
+C-1 below): the operator's key is *provisioned* by a `/whoami` probe
+(`auth.js:39`), and `/whoami` appeared in **neither** table — so the paragraph
+above rested on a route the same section default-denied. The allow row is now
+present. Recorded rather than silently patched because the shape is worth
+carrying: an allowlist that is complete with respect to the routes a **feature**
+calls can still be incomplete with respect to the routes that make the feature
+**reachable**.
+
 ## Pinned values (this PLAN pins them; ADR-0035 only recommended)
 
 | Knob | Pinned value | Source of the recommendation |
@@ -108,6 +117,7 @@ published surface (D5(2)).
 | `/objects/{type}` | GET | deterministic | Tabs A/D reads (`api.js:61`) |
 | `/recommendations` | GET | deterministic | Tab B read (`api.js:62`) |
 | `/recommendations/{id}/approve`, `/{id}/execute` | POST | deterministic | **keyed** (`actions.py:227`); operator-driven demo beat |
+| `/whoami` | GET | deterministic | **keyed** — the reject-at-login probe (PLAN-0058, `auth.js:39`). Added at the Step-1 census (s206): it was in neither table, so it fell to default-deny — see §Step 1 finding C-1. Without it **no key can be stored**, and every keyed row in this table becomes undrivable |
 | `/query` | POST | **assisted** | the wedge's NL query (`api.js:65`); capped + logged; carries the PLAN-0093 disclosure |
 | `/insights/query` | POST | **assisted** (first candidate to flip to deterministic on P5 evidence) | LLM-before-first-DB-read (`0035:194-200`); capped + logged |
 | `/procedures` | GET | deterministic | Tab F browse (`api.js:74`) |
@@ -123,7 +133,7 @@ published surface (D5(2)).
 | `/intake/*` (all three) | D5(2) | Tab E **not registered** (`app.js:14` gated); story "Go live" beat must not fire (`view-story.js:907` — scripted fallback if one exists, else launcher hidden; Step 1 census decides which, and the guard-registry tripwire pins it either way) |
 | `/procedures/draft/*` (all three) | this PLAN — SD-2 | draft-authoring wizard entries not rendered (`intake-procedures.js:158-201` call sites guarded) |
 | `/demo/hero/event` | D5(2) (F4) | Tab G event-mode control not rendered (`view-hero.js:658` branch gated) |
-| everything else (`/intake/generate` included above; `/api/exports/*`, `/cases*`, Tab H's off-list routes — GET `/runs` `view-monitor.js:168`, POST `/runs/{id}/cancel` `view-monitor.js:148`, GET `/audit/verify` `view-monitor.js:488` — and any route not in the allow table) | default-deny | **Tabs I/J resolve with SD-1 + Step 1 census (BLOCKED-ON-SD-1); Tab H resolves with the Step 1 census alone** — its exclusions are default-deny, not DB-posture (see SD-1's scope note; two of H's routes are already on the allow table: `/runs/{id}` `view-monitor.js:235`, `/runs/{id}/gate/resolve` `view-monitor.js:133`, so H's backend is *not* entirely excluded); any tab whose entire backend is excluded is not registered in the published profile |
+| everything else (`/intake/generate` included above; `/api/exports/*`, `/cases*`, Tab H's off-list routes — GET `/runs` `view-monitor.js:168` **and also `view-map.js:84`, a Tab A caller the drafting census missed — see finding C-2**, POST `/runs/{id}/cancel` `view-monitor.js:148`, GET `/audit/verify` `view-monitor.js:488` — and any route not in the allow table) | default-deny | **Tabs I/J resolve with SD-1 + Step 1 census (BLOCKED-ON-SD-1); Tab H resolves with the Step 1 census alone** — its exclusions are default-deny, not DB-posture (see SD-1's scope note; two of H's routes are already on the allow table: `/runs/{id}` `view-monitor.js:235`, `/runs/{id}/gate/resolve` `view-monitor.js:133`, so H's backend is *not* entirely excluded); any tab whose entire backend is excluded is not registered in the published profile |
 
 ## Acceptance Criteria
 
@@ -327,6 +337,42 @@ separately Cray-gated** (CLAUDE.md §8).
 - Re-verify the fact anchors this PLAN inherits (F4/F5, `auth.py:71-72`,
   `admin.py:174-179,222-223`) against the working tree — Step 0 hygiene, not
   suspicion (CLAUDE.md §6).
+
+**Census findings — the SD-free half, discharged in session 206.** Both were
+found by walking `assets/*.js` call sites against the two tables above, and both
+are `was an error` in the drafting census rather than drift: neither call site
+has changed. Both are recorded here because each is a *silent* failure — the
+published surface would look correct while behaving wrongly.
+
+- **C-1 — `/whoami` was default-denied, which makes the published demo
+  unloginable.** `auth.js:39` probes `GET /whoami` with the entered key *before*
+  storing a session (PLAN-0058 reject-at-login); `auth.js:40-45` throws on any
+  non-OK response, so `sessionStorage.setItem` at `:46` never runs. Under the
+  allowlist as drafted the proxy would 404 that probe, the operator would see
+  `"Login failed — invalid operator key (HTTP 404)"`, and **no key could ever be
+  stored** — leaving approve/execute and gate-resolve undrivable even though both
+  sit on the allow table as keyed routes. **Disposition: added to the allow
+  table** (row above). This applies the PLAN's own §keyed-routes ruling — keyed
+  routes stay allowed and fail closed with an honest 401 — to a route the census
+  missed; it is not a new call, and Cray can veto it by striking the row.
+- **C-2 — Tab A calls `GET /runs` directly, and the census attributed that route
+  to Tab H alone.** `view-map.js:84` fetches `/runs` outside the `api.js`
+  wrappers **deliberately** (`:76-79`: `O.API.request` would serve *mock* run
+  markers on failure, and a fake governance marker is worse than none). Tab A is
+  registered and allowed on the published surface, and `/runs` is default-denied,
+  so on the published profile Tab A loses its run flags. **Disposition: no change
+  proposed, and no code change needed** — `view-map.js:80` already catches and
+  renders zero flags, which is AC-5's designed degrade. The excluded row now
+  names this call site so AC-6(b)'s census tripwire (every route string fetched
+  anywhere in `assets/*.js` ∈ allow ∪ excluded) can go green honestly rather than
+  by omission.
+  **⚠️ One question for Cray, demo-quality not safety:** the published Tab A will
+  render *no* governed-run markers on the map. That is safe and already the
+  code's behaviour, so it blocks nothing — but if the demo narrative wants those
+  markers, `GET /runs` needs an allow row, which also hands Tab H one of its
+  off-list reads. Deliberately **not** raised as a sixth SD: the safe default is
+  already implemented, and inflating the all-or-nothing SD gate for a question
+  with a working default would block five ruled steps on a sixth cosmetic one.
 - Output: the completed tables in this PLAN (one PR). Cray's adjudication of
   SD-1..SD-5 lands as typed rulings (value + date) in the five `**Ruling:**`
   slots under §Surfaced decisions — AC-13 is the adjudication record. No step
