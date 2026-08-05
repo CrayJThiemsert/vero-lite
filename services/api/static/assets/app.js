@@ -41,6 +41,28 @@
     ]);
     app.appendChild(stripEl);
 
+    // ---- D6 persistent notice (PLAN-0100 Step 5; ADR-0035 D6) ----
+    // Published profile only, and NOT dismissable. D6 makes the in-app notice the
+    // load-bearing consent-capture point precisely because the vendor gate page is
+    // capability this repo cannot verify — a close button would turn a required
+    // disclosure into an optional one.
+    //
+    // Carries all six D6 elements (retained text / 90 days / operator-only reader /
+    // Cloudflare processes the email / vendor-edge transit / synthetic, enter nothing
+    // real). Wording reviewed against ADR-0032 D5's vocabulary rules; the six are
+    // pinned individually by tests/api/test_ui_profile.py, so a reword that drops ONE
+    // reddens on that element rather than passing a "is there a banner" check.
+    if (O.State.uiProfile === 'published') {
+      app.appendChild(h('div', { class: 'd6-notice', role: 'note' }, [
+        h('b', null, 'Demo data is synthetic — please do not enter real personal data.'),
+        ' ',
+        h('span', null,
+          'What you type is retained for 90 days and read only by the operator. ' +
+          'Access is gated by Cloudflare, which processes your email address, and ' +
+          'traffic transits the vendor edge.')
+      ]));
+    }
+
     // ---- header ----
     const header = h('div', { class: 'header' });
     header.appendChild(h('div', { class: 'brand' }, [
