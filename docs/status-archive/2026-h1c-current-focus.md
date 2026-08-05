@@ -1407,3 +1407,60 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > each was Code's error, not the drafter's.
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
+
+> **Session 203, 2026-08-04 (head_commit `40d65d9` → `592124b`) — three PRs merged
+> (#1021–#1023), 0 open. Theme: the ADR-0035 D7 tenant-key PLAN opens, and all three
+> of its SDs are the ADR describing something that does not exist.**
+>
+> **#1021 — PLAN-0101 drafted** (`Status: Draft`, 9 ACs): AC-1..AC-7 each quote their
+> D7 sub-item **verbatim** so none can be silently dropped, plus a binding scenario
+> test and an adjudication record. `plan-drafter` authored (G2), Code R2'd. It carries
+> a `**Ruling:** _(unruled)_` slot under every SD **from the start** — the thing
+> PLAN-0100 omitted, which is why PLAN-0100's Phase 0 must now *author* its record.
+>
+> **Three SDs surfaced UNRULED; Steps 2–6 are BLOCKED-ON-SD.** **SD-1 (load-bearing) —
+> the write-stamp site:** D7(iv) names a "session/repository seam" that **does not
+> exist**: `services/db/session.py` is 24 lines of engine + `async_sessionmaker` +
+> `get_session()`, and a case-insensitive `tenant` grep across `services/` returned
+> **0 matches**, so `settings.tenant_id` did not exist either — D7 states both in the
+> present tense. **SD-2, emitting a non-ontology column:** `emit_orm` builds each class
+> body as a pure function of the ontology's `properties`, and **three** committed
+> guards enforce that purity where D7(i) says "the reproducibility guard", singular.
+> **SD-3, which uniques `tenant_id` joins:** D7(vi) names **2**; the census is **12**,
+> and the 12th is a column-level `unique=True` in `services/db/pm_import.py` that a
+> `UniqueConstraint(` grep cannot see — so that census returns 11 and looks complete.
+> Two families are non-mechanical: the six Identity-`seq` sites, and an audit chain.
+>
+> **#1022 — Step 1, the only SD-free step:** the `tenant_id` setting, a `.env.example`
+> entry, a 3-leg guard test over a **discovered** (globbed, not hardcoded) vertical
+> census, and the Step-1.4 probe. **The probe CONFIRMED a lead by measurement** on a
+> throwaway `vero_lite_probe` DB: baseline clean → a new model column IS detected
+> (`add_column`, exit **255**) → a `server_default` on the model but absent in the DB
+> is **NOT** (exit **0**). **The `add_column` leg is the positive control** — without
+> it, exit 0 cannot be told from a broken invocation. Unblocks SD-1's folded
+> `server_default` question; dev + all four test DBs untouched, the probe DB dropped.
+>
+> **Two non-vacuity probes, restored from `/tmp`:** a `settings` read folded into the
+> step snapshot → **12 RED**; a constant `"tenant_scoped": True` → **6 RED on the name
+> leg, both value legs GREEN** — which is what shows leg 3 closes a real hole rather
+> than restating legs 1–2. **Measured, not asserted:** `test_derivation_pin.py` stayed
+> green (15 passed) under *both*, because its tripwire watches only the **top** level.
+>
+> **#1023 — four stale-claim chores.** `code_generator.py`'s "other five" at **three**
+> sites (the s202 handoff listed two): one → "six" (the emitter count is fixed at 7),
+> the two artifact sites **de-numbered** rather than renumbered — how many outputs are
+> gitignored is **namespace-dependent**, so any fixed number re-stales. Plus
+> `glossary.md`'s two parked-vertical rows, a stale `[ ]` TODO flipped, and **OQ-4's
+> "(Not due yet)" removed — it is NOW DUE**. **Also corrected:** "ADR-0035 mandates no
+> ordering" is **not in the ADR** — it originates in PLAN-0100.
+>
+> **Cray typed:** start the tenant-key PLAN now, not after PLAN-0100's SD-1 (they are
+> independent); guard scope = tenant-shaped **names**, not step-level set-equality;
+> started `vero-postgres` (5442) / stopped `smb-dev-postgres`; #1021 merges first.
+>
+> CI `gate` ×3. Offline at CI scope with Dev Postgres up: **3792 passed / 8 skipped /
+> 0 failed**, ruff clean, 448 formatted, `mypy --strict` over 130 files. Collected
+> totals reconcile against the DB-down run — **3781 both ways** — so the **370 → 8**
+> skip collapse is the database coming up, not a coverage change.
+
+> _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
