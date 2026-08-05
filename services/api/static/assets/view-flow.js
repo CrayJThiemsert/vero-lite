@@ -176,9 +176,18 @@
         wrap.replaceWith(busy('Approving…')); try { const u = await O.API.approve(rec.action_id); rec.status = u.status || 'approved'; } catch (e) {} render();
       } }, [icon('check', { width: 14, height: 14 }), 'Approve']));
     } else if (rec.status === 'approved') {
-      wrap.appendChild(h('button', { class: 'btn ok sm', onClick: async () => {
-        wrap.replaceWith(busy('Executing…')); try { const r = await O.API.execute(rec.action_id); rec.status = r.status || 'executed'; rec._receipt = r.handler_receipt; } catch (e) {} render();
-      } }, [icon('play', { width: 14, height: 14 }), 'Execute']));
+      // PLAN-0100 Step 3 / SD-1's C-3 disposition — SECOND Execute call site.
+      // PLAN-0100's Step 3 list named only Tab B's; this one (Tab D) was found by
+      // grepping O.API.execute across every asset file rather than trusting it.
+      // Tab D IS on the published surface, so leaving this ungated would have left
+      // the very 500 C-3 was raised to remove.
+      if (O.isPublished()) {
+        wrap.appendChild(h('div', { class: 'result-done muted' }, [icon('check', { width: 14, height: 14 }), 'Approved — execution not in this demo']));
+      } else {
+        wrap.appendChild(h('button', { class: 'btn ok sm', onClick: async () => {
+          wrap.replaceWith(busy('Executing…')); try { const r = await O.API.execute(rec.action_id); rec.status = r.status || 'executed'; rec._receipt = r.handler_receipt; } catch (e) {} render();
+        } }, [icon('play', { width: 14, height: 14 }), 'Execute']));
+      }
     } else if (rec.status === 'executed') {
       wrap.appendChild(h('div', { class: 'result-done' }, [icon('check', { width: 14, height: 14 }), 'Dispatched' + (rec._receipt && rec._receipt.work_order_id ? ' · ' + rec._receipt.work_order_id : '')]));
     }

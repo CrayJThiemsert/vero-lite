@@ -217,7 +217,11 @@ mocking the thing under test; where a local stand-in appears (AC-6/AC-7) it
 stands in for the **upstream dependency** (Ollama), never for the route, cap,
 degrade, or writer under test.
 
-- [ ] **AC-1 (published UI coherence — the s202 ruling).** With
+- [x] **AC-1 (published UI coherence — the s202 ruling) — CLOSED 2026-08-05 by
+  Step 3**, with two additions the drafted text below does not name (Tab D's
+  Execute and the hero "▶ Run live" toggle) and one deletion (the insights entry
+  point, which has no UI caller). Guard registry + the live paired-profile check
+  are recorded under Step 3. With
   `UI_PROFILE=published`, no control whose backend is excluded is rendered: no
   Tab E, no `.llmctl` cluster, no draft-authoring wizard entries, no hero
   event-mode control, no story live-extract firing. Closed by
@@ -229,7 +233,12 @@ degrade, or writer under test.
   `O.Hero.event`) the test greps `assets/*.js` call sites and asserts the set
   of call sites **exactly equals** a pinned registry in which every entry names
   its profile guard — a new unguarded call site reddens the test.
-- [ ] **AC-2 (dev profile unchanged).** With `UI_PROFILE` unset/`dev`, all ten
+- [x] **AC-2 (dev profile unchanged) — CLOSED 2026-08-05.** Verified as the paired
+  control of Step 3's published check rather than on its own: the same driving on a
+  fresh dev server still renders all ten tabs, the `.llmctl` cluster, the wizard
+  toggle, both hero toggles and the Execute button, with no console errors. That
+  pairing is what makes the published result non-vacuous — an absence proves
+  nothing unless the presence is demonstrated under identical conditions. With `UI_PROFILE` unset/`dev`, all ten
   tabs, the `.llmctl` cluster, and the wizard render exactly as today. Closed by
   the same test module (default-profile assertions) + the existing
   `tests/api/test_static_ui.py` suite staying green.
@@ -582,17 +591,61 @@ implementation must make the profile available before header/tab construction �
 mechanism is the implementer's choice, behavior is pinned by AC-1/AC-2).
 
 **Step 3: Gate the excluded-backend controls (BLOCKED-ON-SD-1 / -SD-2 — both
-RELEASED 2026-08-05).** Apply the §census disposition column, now fully
-determined: Tab E not registered; `.llmctl` not mounted; **all three** draft-wizard
-entries not rendered (SD-2 ruled exclude-all — `instantiate`'s entry does not
-survive); hero event mode not rendered; story live-extract beat guarded; **Tabs
-I/J not registered** (SD-1(a)); Tab H per Step 1's census, where the runs pair's
-exclusion now leaves "not registered" as its only coherent option. **New under
-SD-1's C-3 disposition:** Tab B's **Execute** control not rendered (Approve stays
-— it is DB-free), and the insights/Ask entry point for `/insights/query` not
-rendered. Ship the AC-1 guard-registry tripwire in the same PR (the registry is
-the census table, executable) — and note the registry must now pin **three more**
-controls than the drafting census listed.
+RELEASED 2026-08-05).** ✅ **COMPLETE 2026-08-05 (session 207).**
+
+**Scope as executed — the drafted list was wrong in three places, every one found
+by enumerating from the code instead of trusting it.** Recorded because it is this
+session's recurring shape: a list inherited from a census is not an enumeration.
+
+*Tab-level* — dropped from the view registry **itself** (`app.js`) rather than
+hidden at render time, so containers, `buildTabs()`, `go()`'s unknown-key fallback
+and the `oct:goto` listener are all correct by construction instead of each needing
+its own branch: **E** (intake), **H** (every runs route it calls — C-3 moved its
+last two allowed routes out, so nothing of its backend survives), **I** and **J**
+(SD-1(a), DB-backed).
+
+*Control-level* — seven sites, each guarded by one exported predicate,
+`O.isPublished()`:
+
+| Control | Site | Note |
+|---|---|---|
+| `.llmctl` cluster | `app.js` | |
+| Draft-authoring wizard | `view-procedures.js` | ⚠️ **lives inside Tab F, which STAYS registered** — dropping Tab E does not cover it. Mode toggle hidden **and** `mountEdit()` refuses |
+| Hero **event-mode** toggle | `view-hero.js` | |
+| Hero **"▶ Run live"** toggle | `view-hero.js` | 🔴 **NOT in the drafted list.** Added after the Step-9 review: it drives a full live procedure run that raises `ProcedureError` with no global handler ⇒ an unhandled 500 in front of a partner, and it is an anonymous, uncapped MS-S1 call. The offline fixture renders the whole narrative, so hiding it costs the demo nothing |
+| Execute — Tab B | `view-anomaly.js` | drafted |
+| **Execute — Tab D** | `view-flow.js` | 🔴 **NOT in the drafted list.** Found by grepping `O.API.execute`; Tab D is ON the published surface, so the drafted list would have shipped the exact 500 C-3 was raised to remove |
+| Story "Go live" | `view-story.js` | Launcher STAYS — a scripted fallback exists (`showDraft(false)`), which is the branch this PLAN's own rule selects. Button hidden **and** the call guarded |
+
+**Dropped from the drafted list: the "insights/Ask entry point".** `/insights/query`
+has **zero UI callers** anywhere in `assets/*.js` — the control this PLAN told Step 3
+to hide does not exist. The route stays excluded; nothing renders it.
+
+**AC-1 guard registry shipped** (`tests/api/test_ui_profile.py`), keyed
+(wrapper, call file) → (count, guard file). The **count** is load-bearing: file-set
+equality alone stays green when a second unguarded call is added to a file already
+listed. The guard file is named separately from the call file because they often
+differ — Tab E's three intake calls are guarded from `app.js`.
+
+⚠️ **Two instrument bugs this step hit, both worth carrying.** (1) The registry's
+first version counted **four** `O.Intake.extract` "call sites" in `view-story.js`,
+three of which were the comments explaining the fourth — it now strips comments and
+requires call syntax. (2) A route glob written inside a `//` comment in `app.js`
+reddened `test_css_class_contract` **in a file this change never touched**: that
+guard strips block comments *before* line comments, the reverse of the JS
+tokenizer, so a slash-star inside a line comment blanked ~150 lines of real code
+from its scan and hid an applied class. The browser was never affected — only the
+guard was fooled. Worked around by rewording; the ordering flaw is filed as its own
+work item.
+
+**Verified live, both profiles, fresh servers (never a reload), with the paired
+control that makes the result non-vacuous** — identical driving, only the profile
+differs: dev renders 10 tabs, `.llmctl`, "Authoring gate", "⚡ Event opener",
+"▶ Run live", and — after clicking Approve — an **Execute** button reading
+"Approved — ready to execute"; published renders 6 tabs (A,B,C,D,F,G), no
+`.llmctl`, no wizard toggle, no hero toggles, and after the **same** Approve
+**no Execute at all**, with "Approved — execution is operator-driven and not part
+of this public demo". Zero console errors on the dev profile.
 
 **Step 4: Nav-bar ladder — published-profile half only (AC-3, blocking;
 BLOCKED-ON-SD-4 — RELEASED 2026-08-05, ruled (a) measure-to-confirm).**

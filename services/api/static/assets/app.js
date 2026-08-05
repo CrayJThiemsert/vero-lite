@@ -6,7 +6,10 @@
   const O = window.OCT;
   const { h, clear, icon } = O;
 
-  const VIEWS = {
+  // The full ten-tab census. PLAN-0100's tables cite this block, so every entry
+  // stays here even when the published profile drops it — the census must remain
+  // readable in one place.
+  const ALL_VIEWS = {
     A: { key: 'A', label: 'Operational Map', icon: 'map', mod: () => O.ViewMap },
     B: { key: 'B', label: 'Anomaly & Decision', icon: 'anomaly', mod: () => O.ViewAnomaly, dot: true },
     C: { key: 'C', label: 'Ask', icon: 'ask', mod: () => O.ViewAsk },
@@ -25,6 +28,39 @@
     // Read-only, and deliberately NOT a download control (s192).
     J: { key: 'J', label: 'Month-End KPI', icon: 'receipt', mod: () => O.ViewExport }
   };
+
+  // PLAN-0100 Step 3 — tabs whose ENTIRE backend is off the published allowlist.
+  //   E  the three intake routes         D5(2)
+  //   H  every runs route it calls       default-deny (and SD-1's C-3 disposition
+  //      moved its last two allowed routes, GET runs-by-id + gate-resolve, to the
+  //      excluded table, so nothing of H's backend survives)
+  //   I  the api-cases routes            SD-1(a) — DB-backed
+  //   J  the api-exports routes          SD-1(a) — DB-backed
+  //
+  // Route names above are written WITHOUT a glob on purpose. A slash immediately
+  // followed by a star opens a block comment as far as any naive stripper is
+  // concerned, and the CSS-class contract test strips comments before scanning
+  // for applied classes. Writing the intake route with a trailing glob here
+  // silently swallowed everything from that line to the next block-comment close
+  // ~150 lines below — including the `strip-msg` class on the status strip — and
+  // reddened test_css_class_contract, a test this change never went near.
+  // (Written out in words rather than shown as an example, because an example
+  // would re-arm the very trap. The first fix removed the globs from the list
+  // above but left one inside the sentence explaining them, and the test stayed
+  // red — the explanation was still the bug.)
+  //
+  // Filtered out of VIEWS ITSELF rather than hidden at buildTabs(), so every
+  // downstream consumer is correct by construction and no second branch can be
+  // forgotten: containers are never built, buildTabs() cannot render the tab,
+  // go() already falls back to 'A' for an unknown key (so a deep-linked #E is
+  // handled), and the oct:goto listener cannot route into a dead view.
+  const PUBLISHED_EXCLUDED_VIEWS = ['E', 'H', 'I', 'J'];
+
+  const VIEWS = O.isPublished()
+    ? Object.fromEntries(
+        Object.entries(ALL_VIEWS).filter(([k]) => PUBLISHED_EXCLUDED_VIEWS.indexOf(k) === -1)
+      )
+    : ALL_VIEWS;
 
   let stripEl, metaChipsEl, tabsEl, containers = {};
   let current = null;
@@ -76,7 +112,10 @@
     header.appendChild(h('div', { class: 'spacer' }));
     const rightEl = h('div', { class: 'right' });
     // MS-S1 LLM control (PLAN-0018): residency indicator + warm/sleep, before Refresh.
-    if (O.LlmControl && O.LlmControl.mount) O.LlmControl.mount(rightEl);
+    // PLAN-0100 Step 3: NOT mounted on the published profile — its two backends
+    // (/warm, /sleep) are excluded by D5(2)/P11, and an anonymous visitor must not
+    // be handed a control that unloads the model mid-demo.
+    if (!O.isPublished() && O.LlmControl && O.LlmControl.mount) O.LlmControl.mount(rightEl);
     // Story-mode launcher (PLAN-0033 C0): additive overlay, coexists with Views A–E.
     if (O.ViewStory && O.ViewStory.mountLauncher) O.ViewStory.mountLauncher(rightEl);
     rightEl.appendChild(
