@@ -8,7 +8,7 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from starlette.responses import Response
+from starlette.responses import FileResponse, HTMLResponse, Response
 from starlette.types import Scope
 
 from services.api.config import settings
@@ -85,8 +85,29 @@ _OCT_CSP = "; ".join(
 )
 
 
+# --- The UI-profile boot injection (PLAN-0100 Step 2) ---
+# The published profile must be knowable BEFORE the first paint: ``app.js`` calls
+# ``buildTabs()`` before ``initMeta()``, so a profile arriving over ``/meta``
+# would land after the header was already built — and any fetch-based mechanism
+# has to answer "what if the fetch fails?", whose only safe answer on a public
+# deployment is the restrictive profile, which would then strip the console for a
+# developer whose backend merely hiccuped. Serving the value inside the document
+# removes the question rather than answering it.
+#
+# It rides a ``<meta>`` tag and NOT an inline ``<script>`` because ``_OCT_CSP``
+# pins ``script-src 'self'``: an inline script would be silently blocked, leaving
+# the value undefined and the UI defaulting to the FULL console — the exact
+# exposure AC-1 exists to prevent. A meta tag executes nothing, so the CSP has no
+# opinion about it and the header keeps its "no inline script" invariant.
+_UI_PROFILE_META_DEV = '<meta name="ui-profile" content="dev" />'
+
+
+def _ui_profile_meta(profile: str) -> str:
+    return f'<meta name="ui-profile" content="{profile}" />'
+
+
 class _StaticFilesWithCSP(StaticFiles):
-    """StaticFiles that stamps a Content-Security-Policy on every served file.
+    """StaticFiles that stamps a CSP on every served file and profiles the index.
 
     Overriding ``get_response`` covers the ``html=True`` index lookup, the
     ``assets/`` bundle, and 404s alike, scoping the header to the UI mount so it
@@ -95,8 +116,39 @@ class _StaticFilesWithCSP(StaticFiles):
 
     async def get_response(self, path: str, scope: Scope) -> Response:
         response = await super().get_response(path, scope)
+        if isinstance(response, FileResponse) and str(response.path).endswith("index.html"):
+            response = self._profiled_index(response)
         response.headers["Content-Security-Policy"] = _OCT_CSP
         return response
+
+    def _profiled_index(self, response: FileResponse) -> Response:
+        """Rewrite the index's profile tag, or hand back the file untouched.
+
+        The dev profile takes the fast path deliberately: it is the default, and
+        not rewriting it keeps ``FileResponse``'s ETag/Last-Modified handling for
+        every existing flow.
+        """
+        if settings.ui_profile == "dev":
+            return response
+        html = Path(response.path).read_text(encoding="utf-8")
+        if _UI_PROFILE_META_DEV not in html:
+            # Fail loud rather than serve a published page still marked "dev".
+            # Silence here is the failure mode that matters: the page would look
+            # perfectly normal while carrying the wrong profile.
+            raise RuntimeError(
+                "index.html no longer contains the ui-profile anchor "
+                f"{_UI_PROFILE_META_DEV!r} — the PLAN-0100 boot injection cannot "
+                "be applied. Restore the tag or update _UI_PROFILE_META_DEV."
+            )
+        profiled = HTMLResponse(
+            html.replace(_UI_PROFILE_META_DEV, _ui_profile_meta(settings.ui_profile))
+        )
+        # The body no longer matches the file on disk, so the file's validators
+        # would be wrong; without them the browser stops issuing conditional
+        # requests for the index, which is also what keeps a profile change from
+        # being served out of a stale cache.
+        profiled.headers["Cache-Control"] = "no-store"
+        return profiled
 
 
 async def _register_aquaculture_executors() -> None:

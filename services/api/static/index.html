@@ -6,6 +6,20 @@
   <link rel="icon" type="image/svg+xml" href="assets/favicon.svg" />
   <title>OCT · Operational Control Tower</title>
   <meta name="description" content="Operational Control Tower — an ontology-driven operations console: see your assets, understand a flagged anomaly, approve a governed action, and ask grounded questions of your own data." />
+  <!-- PLAN-0100 Step 2 — the UI profile, readable BEFORE the first paint.
+       The on-disk default is "dev"; the server rewrites this exact tag when
+       UI_PROFILE=published (services/api/main.py _StaticFilesWithCSP._profiled_index).
+
+       A <meta> and NOT an inline <script>: the served CSP is script-src 'self'
+       (main.py _OCT_CSP), so an inline script would be silently blocked — and a
+       profile that fails to arrive falls back to the FULL console, which is the
+       wrong direction on a public deployment. A meta tag executes nothing, so
+       CSP never touches it.
+
+       tests/api/test_ui_profile.py pins this tag's exact on-disk text: editing
+       it without updating the server rewrite reddens that test rather than
+       silently disabling the injection. -->
+  <meta name="ui-profile" content="dev" />
   <!-- Asset cache-busting: bump the ?v= token on ANY assets/* edit so a NORMAL
        browser reload picks up the change (no hard-refresh needed during review).
        Same-origin local query string — no CDN, offline-safe: the static server
@@ -35,7 +49,7 @@
 
   <!-- data + logic (order matters) — ?v= token shared with the CSS above -->
   <script src="assets/mock.js?v=c24"></script>
-  <script src="assets/api.js?v=c45"></script>
+  <script src="assets/api.js?v=c46"></script>
   <!-- trace-kinds MUST precede components.js: it defines window.OCT_TRACE_KINDS, the
        ONE registry components.js traceKind() reads (PLAN-0080 AC-1). -->
   <script src="assets/trace-kinds.js?v=c41"></script>

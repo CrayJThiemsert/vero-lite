@@ -13,7 +13,14 @@
     recommendations: [],
     connection: 'live', // live | degraded | down
     usingMock: false,
-    view: 'A'
+    view: 'A',
+    // PLAN-0100 Step 2 — which UI surface this page is: 'dev' | 'published'.
+    // Read SYNCHRONOUSLY at script-eval time from the <meta> tag the server
+    // injects, so it is already settled when app.js calls buildTabs() — which
+    // runs before initMeta(), and therefore before /meta could have answered.
+    // Absent tag falls back to 'dev', matching the on-disk index and every
+    // offline/bundled context; the server is what makes it 'published'.
+    uiProfile: (document.querySelector('meta[name="ui-profile"]') || {}).content || 'dev'
   };
 
   const listeners = [];
