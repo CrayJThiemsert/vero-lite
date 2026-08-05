@@ -5,8 +5,10 @@ not "tests pass"), so this module drives the REAL ``resolve_gated_step`` / ``rat
 over the REAL ``verticals/fleet_maintenance`` hero — its authored ladder, its authored waiver,
 its authored principals, its own ``ratification_window_days: 7`` — against a real Postgres
 round-trip. Nothing about the gate or the waiver is mocked; the only fakes are the LLM stub the
-factory already installs offline and the injected ``now`` that makes the window boundary
-addressable without touching a clock (CLAUDE.md §8).
+factory already installs offline and the two ways the window boundary is made addressable
+without reading a live clock (CLAUDE.md §8): ``ratify_gated_step`` takes an injected ``now``,
+while ``resolve_gated_step`` — which has no such parameter — is driven against a frozen
+``tests.clock_support.Clock`` patched over its module's ``datetime``.
 
 Why the fleet hero rather than an inline fixture: the run carries TWO breaches that resolve to
 DIFFERENT rungs (฿48,000 → เจ้าของกิจการ, ฿15,000 → ผจก.เดินรถ), so the tier checks below have
@@ -47,6 +49,7 @@ from services.api.config import settings
 from services.db.audit_log import AuditLog
 from services.db.base import Base
 from services.engine.discovery import discover_and_register
+from services.engine.procedures import action_step
 from services.engine.procedures.action_step import (
     GateApproverError,
     PrincipalSoDError,
@@ -68,6 +71,7 @@ from services.engine.procedures.spec import (
     load_procedures,
 )
 from services.engine.registry import ExecutorFactory, registry
+from tests.clock_support import Clock, utc
 from tests.db_support import create_test_engine
 from verticals.fleet_maintenance.procedures_factory import (
     register_fleet_maintenance_procedure_executors,
@@ -241,7 +245,7 @@ async def _audit_actions(db_engine: AsyncEngine, run_id: str) -> list[str]:
 
 
 async def test_provisional_resolve_executes_effects_and_withholds_the_tie(
-    db_engine: AsyncEngine, fleet_factory: ExecutorFactory
+    db_engine: AsyncEngine, fleet_factory: ExecutorFactory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """AC-5 happy, first half: the record says a decision was made, and is honest about who has
     NOT yet acted.
@@ -254,9 +258,15 @@ async def test_provisional_resolve_executes_effects_and_withholds_the_tie(
     absence: a tie here would assert the owner acted in-system when all he did was answer a
     phone (PLAN-0075 SD-6(a))."""
     proc, action_ids = await _run_to_gate(db_engine, fleet_factory, "rat-happy")
-    before = datetime.now(UTC)
+    # ``resolve_gated_step`` takes no ``now=`` (unlike its ``ratify`` sibling), so the
+    # deadline was previously bracketed between two wall-clock reads. Under WSL2 that
+    # clock steps BACKWARDS — measured in PLAN-0099 at ~0.067/s, and observed here as a
+    # ``due_at`` landing 1.69 s BEFORE the ``before`` that precedes it in program order.
+    # The bracket was never the property under test: what this asserts is that the
+    # deadline is exactly one authored window past the decision instant.
+    clock = Clock(utc())
+    monkeypatch.setattr(action_step, "datetime", clock.datetime_class())
     target = await _resolve_provisionally(db_engine, "rat-happy", proc, action_ids)
-    after = datetime.now(UTC)
 
     assert target.status == StepResultStatus.RESOLVED_PROVISIONAL.value
     assert len(target.artifact["output_set"]) == 2, "the approved effects executed"
@@ -271,11 +281,14 @@ async def test_provisional_resolve_executes_effects_and_withholds_the_tie(
     assert block["ratify_by_role"] == _OWNER_ROLE
     assert block["justification_ref"], "the obligation must point at its stated reason"
 
+    assert clock.calls, (
+        "fixture precondition: the patched clock was never read, so the equality below "
+        "would hold for any implementation — the patch missed its target module"
+    )
     due_at = datetime.fromisoformat(block["due_at"])
-    assert before + timedelta(days=_AUTHORED_WINDOW_DAYS) <= due_at
-    assert due_at <= after + timedelta(days=_AUTHORED_WINDOW_DAYS)
+    assert due_at == clock.now_value + timedelta(days=_AUTHORED_WINDOW_DAYS)
 
-    view = ratification_state(target.audit, datetime.now(UTC))
+    view = ratification_state(target.audit, clock.now_value)
     assert view.state == "pending"
     assert view.is_outstanding
 
@@ -375,17 +388,25 @@ async def test_overdue_at_the_instant_past_due_and_still_ratifiable(
 
 
 async def test_minimum_authored_window_of_one_day(
-    db_engine: AsyncEngine, fleet_factory: ExecutorFactory
+    db_engine: AsyncEngine, fleet_factory: ExecutorFactory, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """AC-5 boundary: ``ge=1`` is the floor, and a vertical that authors it gets a one-day
-    deadline computed through the same helper — no off-by-one, no special case."""
+    deadline computed through the same helper — no off-by-one, no special case.
+
+    Asserted as an EQUALITY against a frozen clock. The previous form allowed anything in
+    ``(23h, 24h]``, which is a whole hour of slack in a test whose stated subject is an
+    off-by-one — and its upper bound was a zero-margin wall-clock read that a backward
+    step alone could redden."""
     proc = _reauthored_window(1)
     _, action_ids = await _run_to_gate(db_engine, fleet_factory, "rat-one", procedure=proc)
+    clock = Clock(utc())
+    monkeypatch.setattr(action_step, "datetime", clock.datetime_class())
     target = await _resolve_provisionally(db_engine, "rat-one", proc, action_ids)
 
+    assert clock.calls, "fixture precondition: the patched clock was never read"
     block = target.audit[RATIFICATION_KEY]
     due_at = datetime.fromisoformat(block["due_at"])
-    assert timedelta(hours=23) < due_at - datetime.now(UTC) <= timedelta(days=1)
+    assert due_at == clock.now_value + timedelta(days=1)
 
 
 # --------------------------------------------------------------------------- #
