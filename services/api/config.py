@@ -1,6 +1,6 @@
 """Application configuration via environment variables."""
 
-from typing import Self
+from typing import Literal, Self
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -200,6 +200,26 @@ class Settings(BaseSettings):
             "Customer-organisation slug stamped onto every persisted row "
             "(ADR-0035 D7). Defaults to 'default' so existing dev/test flows are "
             "untouched; the public demo deployment sets TENANT_ID=demo"
+        ),
+    )
+    # PLAN-0100 Step 2 — which UI surface this process serves. "published" is the
+    # public demo profile, which renders no control whose backend that deployment
+    # excludes (AC-1); "dev" is today's full console and stays the default so
+    # every existing flow is untouched (AC-2).
+    #
+    # Typed as a Literal, not a plain str, DELIBERATELY: an unrecognised value
+    # must fail the process at boot rather than fall back. A silent fallback here
+    # resolves the wrong way round — a typo'd UI_PROFILE on the PUBLIC deployment
+    # would serve the full dev console, which is the exact exposure this PLAN
+    # exists to prevent. A loud boot failure is recoverable; a quiet leak is not.
+    ui_profile: Literal["dev", "published"] = Field(
+        default="dev",
+        description=(
+            "Which UI surface to serve: 'dev' (full console, the default) or "
+            "'published' (public demo — excluded-backend controls not rendered). "
+            "Served to the browser two ways: injected into index.html as a "
+            "<meta name='ui-profile'> tag so it is readable BEFORE the first "
+            "paint, and carried on /meta as the API-visible contract"
         ),
     )
     oct_recommend_threshold: float = Field(
