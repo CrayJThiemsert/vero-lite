@@ -147,6 +147,19 @@ class OntologyMeta(BaseModel):
     version: int | None = None
     object_types: list[ObjectTypeMeta]
     link_types: list[LinkTypeMeta]
+    # PLAN-0100 Step 2. A DEPLOYMENT fact, not an ontology one — it rides here
+    # because /meta is the UI's single boot fetch, and duplicating that fetch for
+    # one string would buy nothing. Deliberately NOT the mechanism the first
+    # paint depends on (that is the injected <meta> tag — see main.py): this is
+    # the API-visible contract, so the profile is assertable by an HTTP test and
+    # readable by any non-browser client.
+    #
+    # ``load_ontology_meta`` leaves the default in place; the route stamps the
+    # configured value, which keeps this module free of any settings import.
+    ui_profile: str = Field(
+        default="dev",
+        description="UI surface this deployment serves: 'dev' or 'published'",
+    )
 
 
 def ontology_path(vertical: str) -> Path:
