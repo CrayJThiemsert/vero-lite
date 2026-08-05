@@ -92,12 +92,48 @@ L1 lives in **four** live hooks, not three — `stop_continuation.py` imports
 `reset_untouched_l1` (`:74`) and calls it in its turn-boundary reset (`:237`).
 Its test module was already on the list; the hook itself was not.
 
+**Three further corrections, found at R2 in session 206 — classified `was an
+error`, not `superseded by new info`:** none of the three sites below changed
+after drafting (`awaiting_ack` landed in PLAN-0094 D5, weeks earlier), so this
+is a scope miss, not drift. All three shared one root cause worth naming,
+because it will recur on the next excision PLAN: **the missed sites carry no
+`L1` or `loop` token in their names.** `awaiting_ack`, `clear_turn_scoped` and
+`_apply_commit_reset` are reachable only by walking the call graph backwards
+from `LoopType.FILE_EDIT` — a name-keyed grep cannot see them, and the
+session-205 census was name-keyed. The three:
+
+1. **The acknowledged-pause (`awaiting_ack`) subsystem was entirely unscoped**
+   while Step 5 removed one of its two dependencies. Left as drafted, this
+   PLAN **kills the Stop hook outright**: Step 5 deletes `reset_l1_for_targets`
+   from `_loop_counter.py`, but `stop_continuation.py:73` still imports it at
+   module load — an `ImportError` no `try/except` catches, taking the chain-cap
+   fail-safe, the classifier and auto-handoff down with it. Those are the three
+   arms this PLAN's own row promised to leave untouched.
+2. **Step 3 and Step 5 contradicted each other over `_apply_commit_reset`.**
+   Step 3 called `_handle_bash` "untouched", but `_handle_bash:769` calls
+   `_apply_commit_reset`, whose body is pure L1 (`LoopType.FILE_EDIT` at
+   `:644-645`). Step 5's removal of the enum member turns that into an
+   `AttributeError` that `main()`'s blanket `except Exception` (`:798-799`)
+   **swallows** — so `save_counter` (`:771`) silently stops running and the
+   surviving L2/L3/L4 counters stop persisting. AC-6 would catch it; nothing in
+   the Steps would have predicted it.
+3. **Line ranges had drifted** — `_apply_turn_boundary_reset` is `:225-247`,
+   not `:226-243`, and `_maybe_warn_l1` is at `:341`, not `~:355`. Step 4's
+   range also over-reached: `:70-74` spans `load_counter` and `main_session_id`,
+   which the surviving code still needs. **Steps below now name identifiers, not
+   line ranges** — a range is a stale-by-construction citation in a file the
+   PLAN is itself about to edit.
+
+Every identifier added to the scope below was re-verified L1-only against its
+full consumer set before being listed (session 206), not inherited from the
+row above it.
+
 | Site | L1 material | Post-retirement fate |
 |---|---|---|
-| `.claude/hooks/_loop_counter.py` | `LoopType.FILE_EDIT = "L1"` (`:145`); `l1_threshold_for` (`:761`); L1 commit-reset keying (`:807`); `record_turn_touched` (`:814`), `record_subagent_touched` (`:827`), `take_subagent_touched` (`:841`), `reset_untouched_l1` (`:862`), `clear_turn_touched` (`:915`); `turn_touched`/`subagent_touched` state fields (`:272-273`) + their (de)serialization; the L1 warn ledger (`warned_at`, `:197-205`) and non-progress tallies (`attempted_edits`/`content_hashes`, `:207-223`) | **Excise L1 helpers + enum member.** Keep everything L2/L3/L4 touches. See the "excise behaviour, tolerate schema" rule in Step 5. **Never delete the file** — shared state layer. |
-| `.claude/hooks/pretooluse_loop_detect.py` | Write/Edit branch of `_resolve_target` (`:228-235`, the only mapping to `FILE_EDIT`); the warn-grace stage of `_deny_decision` (`:193-199`); L1 imports | **Excise the Write/Edit branch + grace stage.** Keep the file and the whole Bash/L4 gate path — deleting a snapshotted hook script breaks every later Edit in a session (known hazard). |
-| `.claude/hooks/posttooluse_progress_observer.py` | `_handle_write_or_edit` (`:421-515` — entirely L1: non-progress scoring, touched recording, warn stage), `_handle_subagent_stop` (`:518-547` — entirely L1), `_maybe_warn_l1` (`~:355`), `_warn_advisory` (`:365-388`), the Write/Edit + SubagentStop dispatch branches in `main()` (`:792-795`) | **Excise the L1 handlers + dispatch branches.** Keep `_handle_bash` (`:750-777`) whole — L2/L3/L4 feeding, commit-reset, shell-hygiene warning all live there. Never delete the file. |
-| `.claude/hooks/stop_continuation.py` | `reset_untouched_l1` import (`:74`) + turn-boundary reset call (`:226-243` incl. `clear_turn_touched` at `:238`) | **Excise the L1 reset block only.** Chain-cap fail-safe, classifier, auto-handoff arms untouched. |
+| `.claude/hooks/_loop_counter.py` | `LoopType.FILE_EDIT = "L1"` (`:145`); `L1_GRACE_BUDGET` (`:120`); `l1_threshold_for` (`:761`), `l1_deny_threshold_for` (`:770`); `reset_l1_for_targets` (`:795`, keys on `FILE_EDIT` at `:807`); `note_attempted_edit` (`:665`), `note_content_hash` (`:687`), `mark_warned` (`:780`); `record_turn_touched` (`:814`), `record_subagent_touched` (`:827`), `take_subagent_touched` (`:841`), `reset_untouched_l1` (`:862`), `clear_turn_touched` (`:915`), `clear_turn_scoped` (`:922`); **`record_awaiting_ack` (`:884`), `take_awaiting_ack` (`:899`)**; `turn_touched`/`subagent_touched` state fields (`:272-273`) + **`awaiting_ack` (`:274`)** + their (de)serialization (`:281-283`, `:294-321`); the L1 warn ledger (`warned_at`, `:197-205`) and non-progress tallies (`attempted_edits`/`content_hashes`, `:207-223`) | **Excise L1 helpers + enum member.** Keep everything L2/L3/L4 touches. See the "excise behaviour, tolerate schema" rule in Step 5. **Never delete the file** — shared state layer. |
+| `.claude/hooks/pretooluse_loop_detect.py` | Write/Edit branch of `_resolve_target` (`:228-235`, the only mapping to `FILE_EDIT`); the warn-grace stage of `_deny_decision` (`:193-199`); the L1-only threshold branch (`:264-273`, `l1_threshold_for`/`l1_deny_threshold_for`); **the arm-awaiting-ack block (`:282-292`, guarded by `if loop_type is LoopType.FILE_EDIT` and commented "L1 ONLY")**; L1 imports incl. `record_awaiting_ack` (`:64`); the L1 half of the module docstring (`:2-30`, esp. `:16` and `:26-27`) | **Excise the Write/Edit branch + grace stage + threshold branch + the awaiting-ack arm.** Keep the file and the whole Bash/L4 gate path — deleting a snapshotted hook script breaks every later Edit in a session (known hazard). |
+| `.claude/hooks/posttooluse_progress_observer.py` | `_handle_write_or_edit` (`:421-515` — entirely L1: non-progress scoring, touched recording, warn stage), `_handle_subagent_stop` (`:518-547` — entirely L1), `_maybe_warn_l1` (**`:341`**, not `~:355`), `_warn_advisory` (`:365-388`), the Write/Edit + SubagentStop dispatch branches in `main()` (`:792-795`); **`_apply_commit_reset` (`:627-647`) — pure L1 (`LoopType.FILE_EDIT` at `:644-645`) despite living on the Bash path — plus its single call site inside `_handle_bash` (`:769`)**; L1 imports incl. `L1_GRACE_BUDGET` (`:77`), `mark_warned` (`:88`), `note_attempted_edit`/`note_content_hash` (`:92-93`) | **Excise the L1 handlers + dispatch branches + `_apply_commit_reset` and its call line.** Keep the **rest** of `_handle_bash` (`:750-777`) — L2/L3/L4 feeding and shell-hygiene — but it is **not** untouched: exactly one line (`:769`) leaves. Never delete the file. |
+| `.claude/hooks/stop_continuation.py` | **Two** L1 subsystems, not one. (a) The turn-boundary reset: `_apply_turn_boundary_reset` (**`:225-247`**, not `:226-243` — the range must include `clear_turn_scoped` at `:245` and `save_counter` at `:246`), incl. `reset_untouched_l1` (`:237`) and `clear_turn_touched` (`:238`), called from `:584`. (b) **The acknowledged-pause exit (PLAN-0094 D5) — missed by the session-205 census because nothing in its name says "L1": `_apply_ack_clear` (`:250-274`, calling `take_awaiting_ack` at `:269` and `reset_l1_for_targets` at `:272`) and its wrapper `_ack_clear_guarded` (`:277-282`), plus every call site of the wrapper.** Imports: `clear_turn_scoped` (`:69`), `clear_turn_touched` (`:70`), `reset_l1_for_targets` (`:73`), `reset_untouched_l1` (`:74`), `take_awaiting_ack` (`:76`) — **but NOT `load_counter` (`:71`) or `main_session_id` (`:72`), which the surviving code still uses.** | **Excise both L1 blocks and their five imports.** ⚠️ Removing (a) without (b) is the one way this PLAN bricks the harness: Step 5 deletes `reset_l1_for_targets`, so leaving the `:73` import is an `ImportError` at module load that **no `try/except` catches** — the chain-cap fail-safe, classifier and auto-handoff all die with it. Those three arms are untouched **only if (b) goes too**. |
 | `.claude/settings.json` | PreToolUse `Write\|Edit` → `pretooluse_loop_detect.py` (`:30-33`); PostToolUse `Write\|Edit` → `posttooluse_progress_observer.py` (`:45-48`); SubagentStop `*` → `posttooluse_progress_observer.py` (`:94-102`) | **ELIMINATE all three registrations** (see below). Retain: PreToolUse `Bash` → loop_detect (`:13-16`, the L4 gate); PostToolUse `Write\|Edit` → `posttooluse_validate_handoff.py` (`:42-44`); PostToolUse `Bash` → observer (`:51-59`); SubagentStop `plan-drafter` → `subagentstop_notify.py` (`:84-93`). |
 | `tests/handoffs/` (8 files carry L1 material) | `test_pretooluse_loop_detect.py` (mixed L1/L4), `test_plan0094_warn_first_deny.py` (L1-only), `test_posttooluse_progress_observer.py` (mixed), `test_loop_counter_state.py` (mixed), `test_stop_continuation.py` (mixed), `test_phase2_integration.py` (mixed), `test_settings_hook_wiring.py:88-98` (pins the SubagentStop→observer registration **whose only purpose is the L1 reset** — must be inverted, not left green vacuously), `test_sonnet_classifier.py:59-61,201-209` (**fixture-only** — synthetic registry/verdict strings; no L1 behaviour; no change required) | Delete the L1-only module; excise L1 cases from mixed modules; invert the wiring pin; add the PLAN-0102 retirement tests (Step 7). |
 | `.claude/autonomy-triggers.md` | Row L1 (`:132`), path-class-threshold note (`:119-128`), reset-paths note (`:140-148` — L1 paths a/b/c), the PLAN-0094 correction box (`:150+`), L1 mentions in the Phase-2 intro (`:111-117`) | Remove the row + rewrite the notes for L2/L3/L4-only; record the retirement in the footer per the file's own amendment convention (PLAN-0092 precedent at `:336`). |
@@ -211,12 +247,15 @@ controls prove the harness can still surface a firing after.
   exists. (Note this AC keys on *liveness claims* in *current-truth documents*
   — not on the string "L1", which legitimately survives in history.)
 - [ ] **AC-9 — the excision left no dead code (hygiene, not the retirement
-  proof).** The removed identifiers — `FILE_EDIT`, `l1_threshold_for`,
-  `l1_deny_threshold_for`, `reset_untouched_l1`, `reset_l1_for_targets`,
-  `record_turn_touched`, `record_subagent_touched`, `take_subagent_touched`,
-  `clear_turn_touched`, `note_attempted_edit`, `note_content_hash`,
+  proof).** The removed identifiers — `FILE_EDIT`, `L1_GRACE_BUDGET`,
+  `l1_threshold_for`, `l1_deny_threshold_for`, `reset_untouched_l1`,
+  `reset_l1_for_targets`, `record_turn_touched`, `record_subagent_touched`,
+  `take_subagent_touched`, `clear_turn_touched`, `clear_turn_scoped`,
+  `note_attempted_edit`, `note_content_hash`, `mark_warned`,
+  `record_awaiting_ack`, `take_awaiting_ack`, `awaiting_ack`,
   `_handle_write_or_edit`, `_handle_subagent_stop`, `_maybe_warn_l1`,
-  `_warn_advisory` — have zero remaining call sites or imports under
+  `_warn_advisory`, `_apply_commit_reset`, `_apply_turn_boundary_reset`,
+  `_apply_ack_clear`, `_ack_clear_guarded` — have zero remaining call sites or imports under
   `.claude/hooks/` and `tests/handoffs/`, and ruff + mypy are clean (unused
   imports/symbols would flag). This AC is explicitly **subordinate**: ACs 1–3
   and 6 prove the retirement; this one only proves the diff is finished. It
@@ -227,6 +266,33 @@ controls prove the harness can still surface a firing after.
   tests false-RED (a 6th failure is real and must be chased). The Step-1
   pre-change RED probe outputs are preserved in the PR body as the
   before/after evidence pair.
+- [ ] **AC-11 — the survivors still run (the two collateral-damage guards).**
+  Added at R2 in session 206 because the two scope gaps found there are both
+  **green-while-broken**: neither changes an exit code, so ACs 1–10 as written
+  would all have passed over a bricked harness. Two prongs, each with its own
+  RED:
+  - **(a) `stop_continuation.py` still imports, and its three surviving arms
+    still fire.** Drive the Stop hook with synthetic payloads and assert the
+    chain-cap fail-safe, the classifier dispatch and the auto-handoff arm each
+    still produce their existing output. **RED when:** the `:73`
+    `reset_l1_for_targets` import is left behind after Step 5 deletes the
+    function — the module raises `ImportError` before any arm runs, so all
+    three assertions fail at once. This is the prong that would have caught
+    Gap A.
+  - **(b) the Bash path still persists L2/L3/L4 across a `git commit`.** Drive
+    the observer with a **successful `git commit`** payload whose combined
+    output also carries an L2 or L3 signature, then assert the count reached
+    **the state file on disk**, not just the in-memory counter. **RED when:**
+    `_apply_commit_reset` survives Step 5's removal of `LoopType.FILE_EDIT` —
+    it raises `AttributeError` at `:769`, `main()`'s blanket handler swallows
+    it, `save_counter` (`:771`) never runs, and the on-disk count stays at its
+    prior value while the hook still exits 0. This is the prong that would have
+    caught Gap B, and it is the reason the assertion reads the **file** rather
+    than the return value.
+
+  Both prongs are asserted post-excision only; neither needs a Step-1 baseline,
+  because each carries a positive control by construction (the surviving arm /
+  the surviving counter is itself the thing that must still produce output).
 
 ## Out of Scope
 
@@ -272,9 +338,12 @@ Preserve the captured outputs as test-fixture comments and in the PR body
 
 Remove the Write/Edit branch of `_resolve_target` (`:228-235`), the
 `warn_threshold` grace-stage in `_deny_decision` (`:193-199`, L1-only — L4 has
-no warn stage), and the now-unused L1 imports. The Bash/L4 path must be
-behaviourally byte-equivalent: same threshold, same deny payload shape, same
-Telegram contract. The file stays.
+no warn stage), **the L1-only threshold branch (`:264-273`) and the
+arm-awaiting-ack block (`:282-292`, whose own comment reads "L1 ONLY")**, and
+the now-unused L1 imports **including `record_awaiting_ack` (`:64`)**. Rewrite
+the L1 half of the module docstring (`:2-30`) so the file's stated contract
+matches its behaviour. The Bash/L4 path must be behaviourally byte-equivalent:
+same threshold, same deny payload shape, same Telegram contract. The file stays.
 
 ### Step 3: Excise the observer — `posttooluse_progress_observer.py`
 
@@ -282,26 +351,77 @@ Remove `_handle_write_or_edit`, `_handle_subagent_stop`, `_maybe_warn_l1`,
 `_warn_advisory`, `_content_digest`/`_sha1` if their only remaining callers
 were L1 (verify before deleting — keep anything L3 signature-hashing uses),
 the `Write`/`Edit` and `SubagentStop` branches of `main()` (`:792-795`), and
-the L1 imports. `_handle_bash` (`:750-777`) — L2/L3/L4 feeding, commit-reset,
-shell-hygiene — is untouched. The file stays.
+the L1 imports.
 
-### Step 4: Excise the Stop-hook L1 reset — `stop_continuation.py`
+**Also remove `_apply_commit_reset` (`:627-647`) and its one call line inside
+`_handle_bash` (`:769`).** An earlier draft of this Step called `_handle_bash`
+"untouched" and that was wrong: `_apply_commit_reset` sits on the Bash path but
+its body is pure L1 (`LoopType.FILE_EDIT` at `:644-645`), so Step 5's removal of
+the enum member raises `AttributeError` inside it. ⚠️ **That error is swallowed**
+by `main()`'s blanket `except Exception` (`:798-799`) — the hook keeps exiting 0
+while `save_counter` (`:771`) never runs, so the *surviving* L2/L3/L4 counters
+stop persisting with no visible symptom. This is the PLAN's most dangerous
+green-while-broken shape after the Step-1 vacuity hazard, and it is invisible to
+any test that only checks exit codes.
 
-Remove the turn-boundary L1 reset block (`:226-243`) and the
-`reset_untouched_l1` / `clear_turn_touched` imports (`:70-74`). Chain-cap,
-classifier, and auto-handoff arms untouched. Update the module docstring's
-numbered responsibilities (`:2-13`) so the file's contract matches its
-behaviour.
+Everything else in `_handle_bash` (`:750-777`) — L2/L3/L4 feeding and the
+shell-hygiene warning — survives byte-equivalent. The file stays.
+
+### Step 4: Excise BOTH Stop-hook L1 subsystems — `stop_continuation.py`
+
+⚠️ **This Step has two halves and the second one is load-bearing.** Removing
+only the first half leaves the hook importing a function Step 5 deletes, which
+is an `ImportError` at module load — the one failure mode in this PLAN that no
+`try/except` catches and that takes the chain-cap fail-safe, the classifier and
+auto-handoff down with it.
+
+**(a) The turn-boundary reset.** Remove `_apply_turn_boundary_reset`
+(**`:225-247`** — the range must reach `clear_turn_scoped` at `:245` and
+`save_counter` at `:246`, both of which are orphaned otherwise) and its call
+site at `:584`.
+
+**(b) The acknowledged-pause exit (PLAN-0094 D5).** Remove `_apply_ack_clear`
+(`:250-274`) and `_ack_clear_guarded` (`:277-282`), plus **every call site of
+`_ack_clear_guarded`** — grep for it rather than trusting this list, since its
+callers are exactly the paths where the stop actually fires.
+
+**Imports — by identifier, never by line range.** Remove `clear_turn_scoped`
+(`:69`), `clear_turn_touched` (`:70`), `reset_l1_for_targets` (`:73`),
+`reset_untouched_l1` (`:74`), `take_awaiting_ack` (`:76`). **Keep
+`load_counter` (`:71`) and `main_session_id` (`:72`)** — an earlier draft cited
+the range `:70-74`, which swallows both, and the surviving code still calls
+them.
+
+Chain-cap, classifier, and auto-handoff arms untouched — **which is true only
+once (b) is also removed.** Update the module docstring's numbered
+responsibilities (`:2-13`) so the file's contract matches its behaviour.
 
 ### Step 5: Excise the shared state layer — `_loop_counter.py`
 
-Remove: `LoopType.FILE_EDIT` (`:145`), `l1_threshold_for` (`:761`) +
-`l1_deny_threshold_for`, `reset_untouched_l1` (`:862`), `reset_l1_for_targets`,
+⚠️ **Ordering constraint — this Step lands LAST, and in the same commit as
+Steps 2–4.** It deletes the shared symbols those Steps stop calling; run it
+first, or split it into its own commit, and the intermediate tree is a harness
+that fails to import. There is no useful "Step 5 only" checkpoint.
+
+Remove: `LoopType.FILE_EDIT` (`:145`), `L1_GRACE_BUDGET` (`:120`),
+`l1_threshold_for` (`:761`) + `l1_deny_threshold_for` (`:770`),
+`reset_untouched_l1` (`:862`), `reset_l1_for_targets` (`:795`),
 `record_turn_touched` (`:814`), `record_subagent_touched` (`:827`),
 `take_subagent_touched` (`:841`), `clear_turn_touched` (`:915`),
-`note_attempted_edit`, `note_content_hash`, `mark_warned` (verify L1-only
-before removing), `L1_GRACE_BUDGET`, and the `turn_touched` /
-`subagent_touched` fields + their (de)serialization (`:272-282`, `:294-320`).
+`clear_turn_scoped` (`:922`), **`record_awaiting_ack` (`:884`),
+`take_awaiting_ack` (`:899`)**, `note_attempted_edit` (`:665`),
+`note_content_hash` (`:687`), `mark_warned` (`:780`), and the `turn_touched` /
+`subagent_touched` / **`awaiting_ack`** fields + their (de)serialization
+(`:272-283`, `:294-321`).
+
+**All sixteen were re-verified L1-only against their full consumer set in
+session 206** — `mark_warned` reaches only `_maybe_warn_l1` (`observer:357`);
+`note_attempted_edit`/`note_content_hash` only `_handle_write_or_edit`
+(`observer:462,468`); `clear_turn_scoped` only `_apply_turn_boundary_reset`
+(`stop_continuation:245`); `record_awaiting_ack` only the L1-guarded arm block
+(`loop_detect:289`); `take_awaiting_ack` only `_apply_ack_clear`
+(`stop_continuation:269`). The earlier "verify L1-only before removing" hedge on
+`mark_warned` is now discharged rather than deferred to the executor.
 **Rule for this file: excise behaviour, tolerate schema** — the loader must
 skip unknown counter-key prefixes and ignore the removed top-level keys
 fail-open (AC-5), consistent with its existing additive-fields contract
@@ -332,6 +452,15 @@ because all four scripts remain live for their surviving duties.
 - Extend/confirm the AC-6 scenario in `test_phase2_integration.py` (or the new
   module) so the E.4 payload contract and the L4 seventh-attempt deny are
   asserted end-to-end on realistic simulated output.
+- **Add the two AC-11 collateral-damage guards** — prong (a) driving
+  `stop_continuation.py`'s three surviving arms, prong (b) asserting the
+  observer's Bash path still reaches the **state file on disk** across a
+  successful `git commit`. Put (a) beside the existing
+  `test_stop_continuation.py` cases and (b) beside the surviving `_handle_bash`
+  cases in `test_posttooluse_progress_observer.py`, so both sit with the
+  behaviour they protect rather than in the retirement module. **Prove each RED
+  before accepting it green** — restore the offending line from a scratch copy,
+  observe the failure, restore from `/tmp` and never `git checkout`.
 
 ### Step 8: Docs — registry, live-claim sweep
 
