@@ -11,9 +11,20 @@ from fastapi import APIRouter
 
 from services.api.config import settings
 from services.api.models.query import NlQueryRequest, NlQueryResponse
-from services.engine.nl_query import NlAnswer, answer_question
+from services.engine.llm import prompt_log
+from services.engine.nl_query import PHRASED_BY_DETERMINISTIC, NlAnswer, answer_question
 
 router = APIRouter(tags=["nl-query"])
+
+
+def arm_of(phrased_by: str | None) -> str:
+    """Which arm authored the text, as the prompt log records it (D6).
+
+    ``phrased_by`` carries the MODEL NAME when the LLM authored and the sentinel
+    when the template did, so the log's coarse ``arm`` is derived rather than
+    stored twice — the two can never disagree.
+    """
+    return "deterministic" if phrased_by in (None, PHRASED_BY_DETERMINISTIC) else "llm"
 
 
 def _to_response(answer: NlAnswer) -> NlQueryResponse:
@@ -39,4 +50,15 @@ def _to_response(answer: NlAnswer) -> NlQueryResponse:
 async def nl_query(request: NlQueryRequest) -> NlQueryResponse:
     """Answer a plain-language operational question, grounded in ontology data."""
     answer = await answer_question(request.question, settings.oct_vertical)
+    # PLAN-0100 Step 7 — recorded AFTER the answer so `outcome` and `arm` describe
+    # what actually happened, including a degrade to the deterministic arm. No-op
+    # unless PROMPT_LOG_ENABLED, and never raises (see prompt_log.record).
+    prompt_log.record(
+        route="/query",
+        vertical=settings.oct_vertical,
+        text=request.question,
+        model=settings.ollama_default_model,
+        outcome=answer.outcome or "unknown",
+        arm=arm_of(answer.phrased_by),
+    )
     return _to_response(answer)

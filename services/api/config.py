@@ -202,6 +202,44 @@ class Settings(BaseSettings):
             "untouched; the public demo deployment sets TENANT_ID=demo"
         ),
     )
+    # PLAN-0100 Step 6 (ADR-0035 D5(3)) — process-wide concurrent LLM requests.
+    # 0 disables the cap; the published deployment pins 1.
+    #
+    # DEFAULT READING, stated so it can be corrected: the PLAN's pinned-values
+    # table gives this row a single value (1) without naming a dev default, while
+    # its sibling PROMPT_LOG_ENABLED row spells out "true on published, default
+    # false". Read here the same way — a published resource posture, not a global
+    # behaviour change — so dev and CI are untouched, matching Step 7's explicit
+    # "default-off" rule. If Cray meant 1 everywhere, this default is the one line
+    # to change.
+    llm_max_inflight: int = Field(
+        default=0,
+        ge=0,
+        description=(
+            "Maximum concurrent LLM requests process-wide; 0 = unlimited. Over "
+            "the cap a request FAILS FAST to the deterministic arm with the "
+            "PLAN-0093 disclosure rather than queueing — a visitor waiting "
+            "behind someone else's generation experiences a hang, which is what "
+            "the cap exists to prevent. Published demo pins 1"
+        ),
+    )
+    # PLAN-0100 Step 7 (ADR-0035 D6). Default-OFF so dev and CI never write a
+    # byte; the published deployment sets true + the named-volume path.
+    prompt_log_enabled: bool = Field(
+        default=False,
+        description=(
+            "Append what visitors typed to a rolling 90-day JSONL log "
+            "(published demo only). The row schema is CLOSED — no IP, no "
+            "headers, no gate identity (ADR-0035 D6, ratified OQ-2)"
+        ),
+    )
+    prompt_log_dir: str = Field(
+        default="/var/log/vero/prompt-log",
+        description=(
+            "Directory for the prompt log's per-day JSONL files; the published "
+            "compose mounts the named volume 'prompt-log' here"
+        ),
+    )
     oct_recommend_threshold: float = Field(
         default=90.0,
         description=(
