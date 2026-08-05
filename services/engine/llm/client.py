@@ -22,10 +22,14 @@ rule — it is a documented caller contract, repeated in ``structured.py``.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
+
+from services.api.config import settings
 
 
 class OllamaError(RuntimeError):
@@ -49,6 +53,59 @@ class OllamaUnreachableError(OllamaError):
     uses the narrower type to drive the "power MS-S1 on" Telegram notification
     while preserving the fail-safe (ADR-010 IN-4).
     """
+
+
+class OllamaBusyError(OllamaError):
+    """The process-wide in-flight cap was already full (PLAN-0100 Step 6, D5(3)).
+
+    A **subclass of** :class:`OllamaError` on purpose: every existing
+    ``except OllamaError`` site — the recommender fail-safe, the ``nl_query``
+    translate-catch, the phrasing degrade — already routes to the deterministic
+    arm and already emits a PLAN-0093 disclosure carrying the exception text. So
+    the cap needs no new degrade path; it reuses the one whose whole purpose is
+    "the LLM arm did not author this, and here is why".
+
+    That is also why the message below is written for a reader: it is not a log
+    line, it lands verbatim in the disclosure a demo visitor can see.
+    """
+
+
+#: Requests currently inside :meth:`OllamaClient.chat`, process-wide.
+#:
+#: A plain int, not an ``asyncio.Semaphore``, for two reasons. The cap must
+#: **fast-fail**, never queue — a visitor who waits behind someone else's
+#: 30-second generation experiences a hang, which is the outcome D5(3) exists to
+#: prevent; a semaphore's natural verb is ``acquire`` and waiting is its default.
+#: And a semaphore is bound to the loop it was created on, so a module-level one
+#: breaks across the fresh event loop each test gets.
+#:
+#: The check-then-increment below is atomic because there is no ``await``
+#: between them: asyncio cannot preempt a coroutine mid-statement-sequence.
+_inflight: int = 0
+
+
+def _current_inflight() -> int:
+    """Test seam — the live in-flight count."""
+    return _inflight
+
+
+@asynccontextmanager
+async def _inflight_slot(limit: int) -> AsyncIterator[None]:
+    """Hold one of ``limit`` process-wide LLM slots, or fail fast.
+
+    ``limit <= 0`` disables the cap entirely (the dev default).
+    """
+    global _inflight
+    if limit > 0 and _inflight >= limit:
+        raise OllamaBusyError(
+            "another request is already using the demo's single LLM slot; "
+            "answered from the deterministic path instead"
+        )
+    _inflight += 1
+    try:
+        yield
+    finally:
+        _inflight -= 1
 
 
 @dataclass(frozen=True)
@@ -124,7 +181,15 @@ class OllamaClient:
         if response_format is not None:
             body["format"] = response_format
 
-        payload = await self._request_json("POST", "/api/chat", json=body)
+        # The in-flight cap is read HERE rather than injected per client, because
+        # eight call sites construct an OllamaClient and a cap that has to be
+        # passed correctly at each of them is a cap that is one forgotten argument
+        # away from being silently off. One chokepoint cannot be bypassed.
+        #
+        # Pattern B's two calls (reason, then structure) each take and release a
+        # slot in turn; they are sequential, so a request never blocks itself.
+        async with _inflight_slot(settings.llm_max_inflight):
+            payload = await self._request_json("POST", "/api/chat", json=body)
         return _parse_chat_payload(payload, self._model)
 
     async def _request_json(

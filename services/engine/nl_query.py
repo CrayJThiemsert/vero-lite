@@ -46,7 +46,12 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, ValidationError
 
 from services.api.config import settings
-from services.engine.llm.client import OllamaClient, OllamaError, OllamaUnreachableError
+from services.engine.llm.client import (
+    OllamaBusyError,
+    OllamaClient,
+    OllamaError,
+    OllamaUnreachableError,
+)
 from services.engine.llm.prompt import render_untrusted_block
 from services.engine.llm.structured import ChatClient
 from services.engine.ontology_meta import (
@@ -1157,8 +1162,20 @@ async def _phrase(
 # --- orchestration ---------------------------------------------------------
 
 
-def _ungrounded(question: str, answer: str, query: StructuredQuery | None = None) -> NlAnswer:
-    """Build an ungrounded answer (translation/retrieval failed — no invention)."""
+def _ungrounded(
+    question: str,
+    answer: str,
+    query: StructuredQuery | None = None,
+    *,
+    disclosure: str | None = None,
+) -> NlAnswer:
+    """Build an ungrounded answer (translation/retrieval failed — no invention).
+
+    ``disclosure`` is opt-in and defaults to None so every existing caller keeps
+    its exact contract. Today the one caller that supplies it is the PLAN-0100
+    in-flight cap, where the distinction is the point: "I couldn't translate that"
+    reads as *your question was the problem*, when in fact the demo was busy.
+    """
     return NlAnswer(
         question=question,
         answer=answer,
@@ -1170,6 +1187,7 @@ def _ungrounded(question: str, answer: str, query: StructuredQuery | None = None
         result_count=0,
         outcome="no_data",
         phrased_by=PHRASED_BY_DETERMINISTIC,
+        phrase_disclosure=disclosure,
     )
 
 
@@ -1228,9 +1246,16 @@ async def answer_question(  # noqa: C901
 
             await notify_llm_unreachable()
         logger.warning("NL-query translation failed for '%s': %s", vertical, exc)
+        # PLAN-0100 AC-7: the in-flight cap degrades here, and a visitor told only
+        # "I couldn't translate that" would reasonably conclude their QUESTION was
+        # rejected. Narrowed to OllamaBusyError on purpose — every other translate
+        # failure keeps its existing disclosure-free contract, so this adds a
+        # degrade explanation without silently restating PLAN-0093 for all of them.
+        busy = isinstance(exc, OllamaBusyError)
         return _ungrounded(
             question,
             "I couldn't translate that question into a query over the operational data.",
+            disclosure=(f"LLM arm unavailable: {exc}"[:DISCLOSURE_CAP] if busy else None),
         )
 
     obj_meta = type_index.get(query.object_type)

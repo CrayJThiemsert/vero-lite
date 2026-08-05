@@ -46,10 +46,12 @@ from services.api.models.insights import (
     StatusTally,
     StepLatency,
 )
+from services.api.routers.query import arm_of
 from services.db import run_analytics
 from services.db.audit_log import verify_chain
 from services.db.session import get_session
 from services.engine import nl_query, run_query
+from services.engine.llm import prompt_log
 from services.engine.nl_query import StructuredQuery
 
 logger = logging.getLogger(__name__)
@@ -279,6 +281,30 @@ async def phrase_run_answer(
 async def run_corpus_query(
     payload: RunQueryRequest,
     session: Annotated[AsyncSession, Depends(get_session)],
+) -> RunQueryAnswer:
+    """Answer a question about the governed runs, and log what was asked (D6).
+
+    The answering itself is :func:`_answer_run_corpus_query`. The split exists so
+    the prompt log has ONE chokepoint: that function has five return points —
+    three of them honest refusals — and a log call per return is a log call one
+    future early-return away from a silently unrecorded question.
+    """
+    answer = await _answer_run_corpus_query(payload, session)
+    # PLAN-0100 Step 7. No-op unless PROMPT_LOG_ENABLED; never raises.
+    prompt_log.record(
+        route="/insights/query",
+        vertical=settings.oct_vertical,
+        text=payload.question,
+        model=settings.ollama_default_model,
+        outcome="grounded" if answer.grounded else "ungrounded",
+        arm=arm_of(answer.phrased_by),
+    )
+    return answer
+
+
+async def _answer_run_corpus_query(
+    payload: RunQueryRequest,
+    session: AsyncSession,
 ) -> RunQueryAnswer:
     """Answer a plain-language question about the governed runs (A1).
 
