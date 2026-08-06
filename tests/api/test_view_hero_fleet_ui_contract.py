@@ -108,7 +108,7 @@ def _fleet_branch_code(branch: str) -> str:
     comments before line comments — the reverse of how JavaScript tokenises, so a ``/*``
     written inside a ``//`` comment opened a phantom block that swallowed everything down
     to the next ``*/``. ``view-hero.js`` is the file this module scans and it does carry a
-    ``/*`` inside a string literal (line 664, the ``/demo/hero/*`` route glob), so this
+    ``/*`` inside a string literal (line 678, the ``/demo/hero/*`` route glob), so this
     was one badly-placed comment away from the absence checks below going vacuous.
     Comments are blanked character-for-character rather than removed outright: collapsing
     them would glue the surrounding lines into tokens present in neither.

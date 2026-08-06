@@ -83,7 +83,7 @@ def strip_js_comments(src: str) -> str:
     STRING LITERAL, neither of them a comment:
 
         view-case.js:250   accept: 'image/*,application/pdf'
-        view-hero.js:664   '… the hero-demo endpoints (/demo/hero/*) require …'
+        view-hero.js:678   '… the hero-demo endpoints (/demo/hero/*) require …'
 
     Blanking from there to EOF deleted 82 lines of ``view-case.js`` and 8 of
     ``view-hero.js`` from the scan, taking 11 class applications with them. Those

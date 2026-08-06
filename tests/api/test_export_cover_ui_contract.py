@@ -84,8 +84,8 @@ def _contract() -> dict[str, list[str]]:
 #: Comment stripping is shared — ``tests.api.js_source``. This module used to keep
 #: its own copy, which stripped block comments before line comments and so read a
 #: ``/*`` inside a ``//`` comment as a real block opener. ``api.js`` is scanned by
-#: the CSV guard below and contains exactly that shape at line 74, which put lines
-#: 74-92 of it beyond the guard's reach. ``test_the_comment_stripper_is_not_vacuous``
+#: the CSV guard below and contains exactly that shape at line 87, which put lines
+#: 87-105 of it beyond the guard's reach. ``test_the_comment_stripper_is_not_vacuous``
 #: is what keeps the shared version honest here — if it ever eats real code, this
 #: module goes RED rather than making the CSV guard silently unfalsifiable.
 
