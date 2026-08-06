@@ -31,6 +31,7 @@ from pydantic import ValidationError
 
 from services.api.config import Settings, settings
 from services.api.main import _UI_PROFILE_META_DEV
+from tests.api.js_source import strip_js_comments
 
 _INDEX = Path("services/api/static/index.html")
 _API_JS = Path("services/api/static/assets/api.js")
@@ -296,20 +297,28 @@ def _wrappers() -> set[str]:
     return {wrapper for wrapper, _ in _GUARD_REGISTRY}
 
 
-def _strip_js_comments(source: str) -> str:
-    """Drop ``/* */`` blocks and ``//`` tails so a guard cannot match PROSE.
-
-    Learned the hard way twice: session 206 shipped a no-inline-script guard that
-    matched ``<script>`` inside its own HTML comment, and this very registry first
-    counted four ``O.Intake.extract`` "call sites" in ``view-story.js`` when three
-    of them were the comments explaining why the fourth is guarded. A tripwire that
-    counts its own documentation is measuring the wrong thing.
-
-    ``://`` is spared so a URL in a comment or string does not truncate the line
-    before a real call on it.
-    """
-    source = re.sub(r"/\*.*?\*/", "", source, flags=re.S)
-    return re.sub(r"(?<!:)//[^\n]*", "", source)
+#: Comment stripping is ``tests.api.js_source.strip_js_comments``, shared with the
+#: three other modules that scan these assets as text. The reason this scan needs
+#: it at all is worth keeping: session 206 shipped a no-inline-script guard that
+#: matched ``<script>`` inside its own HTML comment, and this very registry first
+#: counted four ``O.Intake.extract`` "call sites" in ``view-story.js`` when three
+#: of them were the comments explaining why the fourth is guarded. A tripwire that
+#: counts its own documentation is measuring the wrong thing.
+#:
+#: The local copy this replaces removed block comments BEFORE line comments, which
+#: is the reverse of how JavaScript tokenises — a ``/*`` written inside a ``//``
+#: comment opened a phantom block that ran to the next ``*/``. It also DELETED
+#: comments rather than blanking them, which can splice ``O.Hero.event/*x*/(`` into
+#: a call site that exists in no file; the shared helper blanks, so it cannot.
+#:
+#: One property of the local copy is NOT reproduced here: its ``(?<!:)`` spared
+#: ``://`` so a URL would not truncate the line before a real call. That is a real
+#: difference, so it was measured rather than waved through — on today's assets no
+#: line puts a registered wrapper call after a ``://``, and all three strippers
+#: (the local one, the shared one, and the string-aware follow-up) produce the same
+#: twelve observed entries. The shared helper reaching the same end structurally,
+#: by treating quoted strings as opaque, is a SEPARATE change still in review; until
+#: it lands, a URL followed by a call on one line would be missed here.
 
 
 def test_excluded_wrapper_call_sites_exactly_equal_the_registry() -> None:
@@ -323,7 +332,7 @@ def test_excluded_wrapper_call_sites_exactly_equal_the_registry() -> None:
     observed: dict[tuple[str, str], int] = {}
     scanned = 0
     for path in sorted(_ASSETS.glob("*.js")):
-        source = _strip_js_comments(path.read_text(encoding="utf-8"))
+        source = strip_js_comments(path.read_text(encoding="utf-8"))
         scanned += 1
         for wrapper in _wrappers():
             # Require call syntax, not a mention: `O.Hero.event(` is a call,

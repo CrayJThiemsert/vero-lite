@@ -6,8 +6,14 @@ so a CI tripwire for the UI has to be a Python test that reads the source. Every
 one of those scans must first drop comment CONTENT, or a class name (or a route,
 or a field) merely *mentioned in prose* reads as if the code used it.
 
-Three modules had each grown their own copy of that stripper, and all three had
-the same defect: they removed block comments first, then line comments.
+FOUR modules had each grown their own copy of that stripper, and all four had the
+same defect: they removed block comments first, then line comments.
+
+The fourth is worth naming, because it says something about the shape of this bug:
+``test_ui_profile.py`` grew its copy in PLAN-0100 Step 3, *while this fix was being
+written*, in the same session. Nobody copied a known-bad function — each author
+independently reached for the obvious two-line regex pair, which is exactly why the
+right fix is one shared helper rather than four corrected copies.
 
     without_block = re.sub(r"/\\*.*?\\*/", ..., src, flags=re.DOTALL)
     return re.sub(r"//[^\\n]*", ..., without_block)
