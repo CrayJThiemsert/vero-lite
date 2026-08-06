@@ -1,0 +1,90 @@
+# The PUBLISHED OCT demo project (PLAN-0100 Step 8 / ADR-0035).
+#
+# EXACTLY TWO SERVICES: `app` + `cloudflared`. There is deliberately no `nginx`
+# (SD-3's ruling — the rate cap is a Cloudflare zone rule, not an nginx
+# `limit_req`) and no `postgres` (SD-1's DB-less ruling). The dev
+# `docker-compose.yml` at the repo root is unaffected and keeps its published
+# ports per ADR-0003.
+#
+# NO `ports:` KEY ON ANY SERVICE — that is AC-5, and it is the point of the whole
+# topology: the only way in is through the tunnel, so a host firewall mistake
+# cannot expose `app` directly (D1(1), 0035:266-274).
+
+name: vero-published
+
+services:
+  # Same image as the dev project and the same contract: this service adds
+  # composition concerns only and declares NO `command:`, so the image's CMD
+  # stays the single definition of how the app runs (PLAN-0095 SD-1).
+  app:
+    build:
+      context: ../..
+    container_name: vero-published-app
+    env_file:
+      - published.env
+    # OLLAMA_HOST is pinned to host.docker.internal (§Pinned values). Docker
+    # Desktop resolves that name on its own; the Linux engine does NOT, and
+    # without this line every LLM call on a Linux host fails DNS and silently
+    # degrades to the deterministic arm — a demo that looks like it is working.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - prompt-log:/var/log/vero/prompt-log
+    networks:
+      - vero_oct
+    restart: unless-stopped
+
+  cloudflared:
+    # This system's OWN connector, in this system's OWN compose project — the
+    # D4/L5 amendment's reading (a), ratified in #1057 (Cray's typed ruling).
+    image: cloudflare/cloudflared:2025.8.1
+    container_name: vero-published-cloudflared
+    # Locally-managed tunnel: the ingress map lives in the committed config.yml,
+    # NOT in the Cloudflare dashboard. A bare `tunnel --token …` run would void
+    # AC-6(a) — see the header of cloudflared/config.yml.
+    command: tunnel --config /etc/cloudflared/config.yml run
+    volumes:
+      - ./cloudflared/config.yml:/etc/cloudflared/config.yml:ro
+      # The tunnel credentials are a SECRET and never enter this repo
+      # (CLAUDE.md §8). Required, not defaulted: a missing value must fail the
+      # `up` loudly rather than mount something unintended.
+      - ${CLOUDFLARED_CREDENTIALS_FILE:?set CLOUDFLARED_CREDENTIALS_FILE to the tunnel credentials JSON on the host}:/etc/cloudflared/credentials.json:ro
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - vero_oct
+    restart: unless-stopped
+
+networks:
+  # THE ANTI-BYPASS BOUNDARY (review finding 3). `app` joins this network and
+  # nothing else, and the ONLY other member is vero-lite's own `cloudflared`.
+  #
+  # ⚠️ NO OTHER CONNECTOR MAY JOIN `vero_oct`. A second connector on this network
+  # reaches `app:8000` directly and skips the ingress allowlist entirely — and it
+  # would produce BYTE-IDENTICAL AC-6(a) output, because AC-6(a) reads the
+  # committed config file and cannot see who else is on the wire. Step 9 proves
+  # the topology; this comment states it.
+  #
+  # Not `internal: true`: `cloudflared` must reach Cloudflare's edge outbound.
+  # The inbound protection is the absence of `ports:`, not network isolation.
+  #
+  # 🔴 READ BEFORE COPYING THIS FILE FOR A SECOND VERTICAL. The fixed
+  # `name: vero_oct` is PLAN-0100's pinned value and is correct while exactly one
+  # published system exists. It does NOT survive being instantiated twice: two
+  # compose projects both declaring `name: vero_oct` join the SAME Docker network,
+  # so each system's connector could reach the other's `app:8000` and skip that
+  # system's allowlist entirely. ADR-0035 `0035:490-493` names a shared network as
+  # a condition under which "the arrangement has drifted and this ADR is reopened".
+  # The second system must therefore either drop this `name:` key (letting compose
+  # scope the network per project) or carry a per-system name — a decision the
+  # follow-on PLAN owns, NOT something to change here on the way past.
+  vero_oct:
+    name: vero_oct
+    driver: bridge
+
+volumes:
+  # ADR-0035 D6: 90-day rolling prompt log, Cray-only reader, no IP / headers /
+  # gate identity stored. A named volume so the rows survive a container replace.
+  prompt-log:
+    name: vero-published-prompt-log
