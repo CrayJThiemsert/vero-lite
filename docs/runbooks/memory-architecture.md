@@ -369,6 +369,21 @@ entirely; see Lesson #23 §3.)
   Live chains: `2026-h1b/c/d/e/f/g-status.md` → `2026-h1-status.md`; and the
   separate Current-Focus-only `2026-h1b/c-current-focus.md` →
   `2026-h1-current-focus.md`. Same scheme, two distinct corpora.
+  - ⚠️ **SCOPED EXCEPTION — the Current-Focus chain appends to the NEWEST LETTER,
+    not to its base (Cray-ratified, 2026-08-06, session 212).** The rule above
+    still governs the **`-status.md`** chain, whose base is the live append target
+    and whose header says so. It does **not** govern the **`-current-focus.md`**
+    chain: that base reached **190,527 B** — hard against the ~192 KB bar — and
+    stopped taking appends on 2026-07-29 (s189). Every Current-Focus rotation
+    **since s196 (`d28d9ce`, 2026-07-31) has landed in `2026-h1c-current-focus.md`**
+    — five reconciles before this ruling and this one. Cray ruled the **practice
+    correct and this text stale**: for the Current-Focus chain the newest letter
+    holds the newest content, and the base is legacy. The rationale is contiguity —
+    `h1c` already carries s192…s206 unbroken, and re-pointing appends at the base
+    would scatter one continuous run across two files. **Consequence to accept
+    openly:** for this chain the letters no longer encode "older", so the corollary
+    above is suspended *here* and holds *only* for `-status.md`. Anyone extending
+    either chain reads this bullet first.
 - Deleting STATUS content **without** archiving remains forbidden (the
   `status-scribe` adversarial-hardening posture is amended to "rotation per
   this policy is the sanctioned path", not abandoned).
