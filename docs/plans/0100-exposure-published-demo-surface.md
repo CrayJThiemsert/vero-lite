@@ -154,7 +154,7 @@ published surface (D5(2)).
 | `/health` | GET | deterministic | healthcheck |
 | `/meta` | GET | deterministic | UI boot (`api.js:67`, served `actions.py:209-212`); carries `ui_profile` after Phase 1 |
 | `/objects/{type}` | GET | deterministic | Tabs A/D reads (`api.js:68`) |
-| `/recommendations` | GET | **assisted** ⚠️ **CORRECTED s207-R2 — was `deterministic`, which was WRONG** | Tab B read (`api.js:69`). `recommender.py:194-195` states it outright: *"Recommend an action for an OperationalEvent — **LLM-backed** (ADR-010 D5)"*; the deterministic rule path (`_rule_recommend`, `:252-269`) is the **`except` fail-safe**, not the primary path. **See open item OI-1 below — this route is currently neither capped nor prompt-logged, which D6 requires of a published LLM route.** |
+| `/recommendations` | GET | **deterministic — PINNED** ⚠️ **RE-RULED s209 (OI-1 = option (b)); was `assisted` s207-R2, was `deterministic` at drafting for the WRONG reason** | **Tab A** read (`api.js:69`) — the fan-out fires from `view-map.js:73` on the **default landing view**, not first on Tab B (corrected s209). `recommender.py:194-195` is LLM-backed **on the dev profile**; on the **published** profile `llm.arm_policy.deterministic_arm_pinned` routes it to `_rule_recommend` **by design**, and the record says so (`arm-pin-disclosure`, `recommendation_mode="rule-by-design"` — deliberately distinct from the fail-safe's `rule-fail-safe`). The advisory ฿ facet (ADR-0030) rides the pinned path (Cray, same ruling). Revising a per-route arm posture is **in-bounds without reopening the ADR** — `0035:578-584` declares this list PROVISIONAL and revisable. **OI-1 below is RULED: this is no longer a published LLM route, so D6's cap + prompt-log obligations do not attach to it.** |
 | `/recommendations/{id}/approve` | POST | deterministic | **keyed** (`actions.py:230-247`); operator-driven demo beat. DB-free — mutates the process-local `_action_store` (`actions.py:47`) only. **`/{id}/execute` was split off this row and excluded under SD-1** — see the excluded table |
 | `/whoami` | GET | deterministic | **keyed** — the reject-at-login probe (PLAN-0058, `auth.js:39`). Added at the Step-1 census (s206): it was in neither table, so it fell to default-deny — see §Step 1 finding C-1. Without it **no key can be stored**, and every keyed row in this table becomes undrivable |
 | `/query` | POST | **assisted** | the wedge's NL query (`api.js:72`); capped + logged; carries the PLAN-0093 disclosure |
@@ -177,14 +177,57 @@ published surface (D5(2)).
 
 ## Open items surfaced after ratification (OI)
 
-- 🔴 **OI-1 — `GET /recommendations` is a published LLM route that is neither
+- ✅ **OI-1 — RULED 2026-08-06 (Cray, typed): option (b), in PRINCIPLE form.**
+  **The ruling:** *on the published profile, an LLM call the visitor did not ask
+  for is not made; any route whose LLM invocation is INVOLUNTARY runs the
+  deterministic arm instead.* Stated as a principle rather than a one-route
+  patch so the next involuntary route is governed without a fresh OI. **The ฿
+  facet stays** (Cray, same ruling): `build_economic_steps` is deterministic and
+  never-raises (ADR-0030 D5), so pinning the *LLM arm* must not cost the Box-4
+  economic facet.
+  **Shipped s209:** `services/engine/llm/arm_policy.py` (the predicate + the
+  principle in its docstring) · `recommender.recommend(..., visitor_initiated=False)`
+  — keyword-only, defaulting to the **fail-closed** direction so a new caller that
+  never considered the question is pinned · `_disclose_rule_by_design` (reuses the
+  CI-pinned `rule_check` kind — **no new trace kind, no UI label owed, no asset
+  cache-bust**) · `tests/api/test_published_arm_pin.py`.
+  **Why (b) and not (a):** (a) collides with D6's **closed** row schema — `text` is
+  *"the visitor-typed free-text field(s) verbatim"* (`0035:594`) and an involuntary
+  route has none — so (a) would have pulled a **D6 field-set amendment to an
+  Accepted ADR** (G1-denied for Code) into Step 8's critical path. (b) needed **no
+  ADR change**: `0035:578-584` already declares the per-route arm list PROVISIONAL
+  and revisable. (b) also aligns the published surface with **ADR-0032 D1(3)** —
+  *"run the deterministic offline arm … a hiccup cannot collapse the demo"* — and
+  dissolves the Telegram-paging and Step-9 timeout hazards below rather than
+  merely bounding them. **No settings seam had to be built**: `settings.ui_profile`
+  already ships and is already load-bearing (`config.py:215`, `main.py:132`,
+  `actions.py:218`) — the PLAN's "needs a settings seam that does not exist today"
+  was stale.
+  **What is NOT changed by this ruling:** `POST /query` stays **assisted** (the
+  visitor types it, so D6 attaches naturally and the rate cap bounds it), and
+  Step 8 still owes the `LLM_MAX_INFLIGHT` pin for that route.
+
+  <details><summary>The original finding, kept as the record (s207-R2)</summary>
+
+  ⚠️ **Snapshot — read the line citations below as *as-of s207-R2*.** They predate
+  the s209 pin commit, which added imports and a branch to `recommender.py` and
+  shifted every `recommender.py:NNN` number in this block. They are preserved
+  un-renumbered on purpose: this is the record of what was found, not a live
+  pointer. The live behaviour is described in the ruling above.
+
+  🔴 **`GET /recommendations` is a published LLM route that is neither
   rate-capped nor prompt-logged. Found s207-R2 by an independent reviewer; NOT
   covered by any SD ruling, and it needs a decision before Step 8.**
   `recommender.py:194-195` — *"Recommend an action for an OperationalEvent —
   **LLM-backed** (ADR-010 D5)"*; the deterministic rule path (`_rule_recommend`,
   `:252-269`) is the `except` fail-safe. Consequences, all live in today's code:
-  - An anonymous visitor's **first Tab B load after every container start** fans
-    out unauthenticated MS-S1 inference. This is precisely the F2/F3 exposure D5
+  - An anonymous visitor's **first page load after every container start** fans
+    out unauthenticated MS-S1 inference. ⚠️ **CORRECTED s209 — this read "first
+    Tab B load", which understated the exposure:** the fan-out is on **Tab A, the
+    default landing view** (`app.js:173` `go(VIEWS[hash] ? hash : 'A')` →
+    `view-map.js:73`), so it fires before the visitor clicks anything. Same shape
+    as finding C-2, which caught `view-map.js:84` for `/runs` but missed `:73`
+    for `/recommendations`. This is precisely the F2/F3 exposure D5
     exists to bound — *"the gate is the only thing between the internet and
     MS-S1's GPU"* (`0035:499-501`).
   - The Cloudflare rate rule is scoped to the LLM routes as pinned; **as long as
@@ -209,6 +252,8 @@ published surface (D5(2)).
   chosen silently.
   **Not raised as a sixth SD** — the SD gate is closed and all five are ruled;
   this is a post-ratification finding and is tracked here instead.
+
+  </details>
 
 ## Acceptance Criteria
 
@@ -544,13 +589,14 @@ degrade, or writer under test.
   below names the exact ADR-0035 lines and proposed replacement text, and the
   closeout confirms Code routed it as a separate artifact. This PLAN's diff
   touches no file under `docs/adr/`.
-  ⚠️ **Widened s207-R2 — and one entry is now BLOCKING, which it was not before.**
-  The D4/L5 connector-ownership conflict (the fourth entry) is not a
+  ⚠️ **Widened s207-R2 — one entry was BLOCKING; ✅ DISCHARGED 2026-08-06.**
+  The D4/L5 connector-ownership conflict (the fourth entry) was not a
   documentation-tidying amendment like the other three: SD-3's ruling relocates
   the connector across a boundary the ADR assigns to the portal repo, and
-  `0035:473-476`'s own drift trigger fires. **Step 8 must not start until that
-  amendment is routed and ratified.** The other three entries remain
-  record-and-route-later.
+  `0035:473-476`'s own drift trigger fired. It was routed as its own artifact and
+  ratified in **#1057** (Cray's typed reading **(a)**), so **Step 8's ADR blocker
+  is cleared** and its `BLOCKED` marker is released. The other three entries
+  remain record-and-route-later.
 - [x] **AC-13 (adjudication record — the PLAN-0101 AC-9 pattern) — CLOSED
   2026-08-05: all five slots carry Cray's typed ruling + date; every
   BLOCKED-ON-SD marker is marked RELEASED at its step.** The five
@@ -811,9 +857,15 @@ untouched.
 RELEASED 2026-08-05).** A committed compose project with **exactly two services**:
 `app` (the PLAN-0095 image) + `cloudflared` (**no `nginx`** — SD-3's ruling). No
 `postgres` service (SD-1). Specifics:
-🔴 **BLOCKED — do not start.** The D4/L5 connector-ownership amendment
-(§ADR amendment owed) must be routed and ratified first. Under reading (b) this
-step's shape changes materially, so building now risks rework.
+✅ **RELEASED 2026-08-06 — both blockers are discharged.** (1) The D4/L5
+connector-ownership amendment was routed and ratified as its own PR (**#1057**,
+Cray's typed reading **(a)**: vero-lite's `cloudflared` *is* this system's
+connector in its own compose project), so the shape this step builds is settled.
+(2) **OI-1 was ruled the same day** — option **(b)**, see §Open items:
+`/recommendations` is pinned deterministic on the published profile, so this step
+inherits **no** cap-or-log work for it. ⚠️ What this step still owes on its own:
+**pin `OCT_VERTICAL`** (§Pinned values, still UNPINNED) and pin
+`LLM_MAX_INFLIGHT` for `/query`, which remains `assisted`.
 
 - **`cloudflared` runs as a locally-managed tunnel** so its `config.yml` is
   **committed in this repo** — that file is AC-6(a)'s set-equality target. Its
@@ -944,9 +996,14 @@ unwritten until s207). Record the full transcript in the PR.
 >    transcript and diagnose from it.
 > 4. **Arm posture — the allow table's third column, unchecked by v1.** Assert
 >    from response fields: `/query` carries `phrased_by` / the PLAN-0093
->    disclosure; `/recommendations` carries its disclosure consistent with the
->    corrected **assisted** posture. ⚠️ Blocked on **OI-1** — do not run this case
->    until OI-1 is decided, and record which option was taken.
+>    disclosure; `/recommendations` carries a trace step with
+>    `step_id="arm-pin-disclosure"` and `detail.recommendation_mode ==
+>    "rule-by-design"`, and **`confidence == 0.8`** (`RULE_CONFIDENCE`), matching
+>    its **deterministic — PINNED** posture. ⚠️ **A `rule-fail-safe` mode here is a
+>    FAILURE of this case, not a pass** — it would mean the container reached the
+>    LLM path and degraded, i.e. the pin did not fire. ✅ **OI-1 unblocked
+>    2026-08-06 — the option taken was (b), pin the involuntary route
+>    deterministic** (Cray, typed; see §Open items).
 > 5. **Prompt log on the deployed container.** After case 1's `POST /query`,
 >    assert a JSONL line exists under `PROMPT_LOG_DIR` on the named volume with
 >    the closed D6 field set. `prompt_log.record` never raises by design
