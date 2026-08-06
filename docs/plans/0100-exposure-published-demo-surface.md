@@ -415,6 +415,14 @@ degrade, or writer under test.
 - [ ] **AC-6 (allowlist enforced + census-complete).** The published surface is
   default-deny. ✅ **(a) and (b) CLOSED 2026-08-06 (session 209); (c) remains open
   and belongs to Step 9** — the checkbox therefore stays unticked, deliberately.
+  ⚠️ **(c) is HALF met as of the session-212 run, and half is not met — see the
+  Step 9 RUN RECORD.** (c) has two clauses: *"excluded routes → 404 at the edge,
+  allowed → served"*. The first is now proven against the **real `cloudflared`
+  matcher** (24/24 excluded resolve to the catch-all, with the anchor mutation
+  flipping `/insights/query` to prove the probe discriminates). The second is
+  **not** — the dev box has no `cloudflared` and no tunnel credentials, so the
+  project never started and nothing was ever served. A half-met (c) does not tick
+  AC-6; the served half rides to Step 11.
   Two notes worth carrying, both from a non-vacuity probe run at closeout rather
   than from review:
   **(1) The tests evaluate cloudflared's semantics, not Python's convenience.**
@@ -967,10 +975,17 @@ unwritten until s207). Record the full transcript in the PR.
 > **Topology this read assumes.** A locally-managed `cloudflared` fronting the
 > published compose project, reachable over the tunnel. If no tunnel can be
 > established (the portal repo is out of scope and the domain is unnamed until
-> Phase 5), the **sanctioned offline fallback** is `cloudflared tunnel ingress
-> validate` + per-route `cloudflared tunnel ingress rule <url>` — account-free and
-> deterministic. It closes cases 2 and 7 only; cases 1, 3–6 are then **deferred to
-> Step 11 and recorded as not covered**, never silently dropped.
+> Phase 5), the **sanctioned offline fallback** is `cloudflared tunnel --config F
+> ingress validate` + per-route `cloudflared tunnel --config F ingress rule <url>`
+> — account-free and deterministic. It closes cases 2 and 7 only; cases 1, 3–6 are
+> then **deferred to Step 11 and recorded as not covered**, never silently dropped.
+> ⚠️ **Flag position corrected 2026-08-06 from the trailing
+> `ingress validate --config F` this box carried until the run:** on `cloudflared
+> 2025.8.1` the trailing form is a usage error that validates nothing **and still
+> exits 0**, so the mistake is invisible to any runner that reads `$?`. Judge these
+> two commands on their **output text**, never on their exit status. `cloudflared`
+> was also **not installed** on the dev box — see `deploy/published/README.md` for
+> the install-free invocation through the image the compose project already pins.
 >
 > **Case 0 — preflight (gates every other case).** `docker compose ps` shows
 > **both** services `running`/`healthy`, and **no `postgres` service at all**.
@@ -985,13 +1000,21 @@ unwritten until s207). Record the full transcript in the PR.
 >    `GET /objects/<a type the deployed vertical actually has>` → **200** with a
 >    **non-empty** array (every adapter returns `[]` for an unknown type, so a
 >    literal placeholder proves nothing) · `GET /procedures` → **200** non-empty ·
->    `GET /demo/hero/governance` → **200** · **`GET /demo/hero/governance?live=true`
->    → 200** (the published Tab G still renders "▶ Run live" at
->    `view-hero.js:610-614`, which mounts in *manual* mode — only *event* mode is
->    excluded; this param drives a full live procedure run that raises
->    `ProcedureError` at `run.py:387` if the gate does not suspend, and with no
->    global exception handler that is an unhandled 500 in front of the partner) ·
->    `GET /demo/hero/impact` → **200** · `GET /llm/status` → **200**.
+>    `GET /llm/status` → **200**.
+>    ⚠️ **The three `/demo/hero/*` GET rows this case carried until 2026-08-06 are
+>    now CASE 2 rows** (`governance`, `governance?live=true`, `impact`).
+>    *Superseded by new info, not an error in v2*: v2 was fixed 2026-08-05 and Step
+>    8 excluded the hero surface the next day on Cray's typed ruling — energy owns
+>    no hero builder, so `routers/demo.py`'s `_builders()` would serve a **Fastenal
+>    hero under an energy banner**. The committed edge already agrees
+>    (`cloudflared/config.yml` carries no `/demo/hero` pattern; `:90-96` records
+>    why) and so does the committed suite
+>    (`tests/deploy/test_published_compose.py:111-112` lists both as must-deny).
+>    The `?live=true` row's rationale is void along with them: it argued from *"the
+>    published Tab G still renders ▶ Run live"*, and **Tab G is no longer registered
+>    on this profile** (`app.js` `PUBLISHED_EXCLUDED_VIEWS` gains `G`). Left
+>    unreconciled, an operator reading this case literally would have recorded
+>    **three FAILs against an edge behaving exactly as Step 8 intends**.
 >    **Both POST rows, which v1 omitted entirely:**
 >    `POST /query` with a real demo-script question → **200**, non-empty `answer`,
 >    a `phrased_by` value present (this is the wedge; v1 never drove it) ·
@@ -1005,7 +1028,12 @@ unwritten until s207). Record the full transcript in the PR.
 >    the C-1 defect. **Positive control:** keyed `/whoami` → **200** with non-null
 >    `person_id`; this is the only evidence the demo is loginable at all.
 > 2. **Excluded routes are denied — exact 404, and proven to be denied at the edge.**
->    `POST /demo/hero/event` · `GET /warm` · `GET /sleep` ·
+>    `POST /demo/hero/event` · **`GET /demo/hero/governance`** ·
+>    **`GET /demo/hero/governance?live=true`** · **`GET /demo/hero/impact`**
+>    (these three moved down from case 1 on 2026-08-06 — see the ⚠️ there; note
+>    that `cloudflared` matches **Path only**, so the `?live=true` row is not a
+>    distinct edge rule and is expected to resolve identically to its bare form) ·
+>    `GET /warm` · `GET /sleep` ·
 >    `POST /intake/extract` · `GET /intake/defaults` · `POST /intake/generate` ·
 >    `POST /procedures/draft/classify` · `POST /procedures/draft/build` ·
 >    **`POST /procedures/draft/instantiate`** (SD-2 ruled exclude-all, and this is
@@ -1070,6 +1098,58 @@ unwritten until s207). Record the full transcript in the PR.
 > excluded controls are absent; `_OCT_CSP` is stamped only on the static mount
 > (`main.py:117-122`), so no case checks the header survives the edge on the JSON
 > API; and nothing asserts the tunnel fronts only the intended service.
+
+**Step 9 RUN RECORD — 2026-08-06, session 212. Outcome: the sanctioned offline
+fallback was taken; cases 2 and 7 CLOSE, everything else is NOT COVERED. AC-6
+stays unticked.**
+
+*Why the fallback and not the full smoke.* Probed before anything was run: the
+dev box has `docker` (29.6.1, daemon up) and `curl`, but **no `cloudflared`
+binary**, no `CLOUDFLARED_CREDENTIALS_FILE`, and no `~/.cloudflared`. The compose
+declares that variable required-with-no-default, so `up` cannot start the project
+at all, and case 0 — which gates every other case — is unreachable. Standing up a
+real tunnel needs a Cloudflare account action and a domain that ADR-0035 D1(3)
+places in the portal repo, which does not exist yet. So the read's own fallback
+clause applies, exactly as it was written in advance.
+
+| Case | Verdict | Evidence |
+|---|---|---|
+| 0 preflight | **NOT COVERED** | project cannot start (no tunnel credentials) |
+| 1 allowed routes **served** | **NOT COVERED** — deferred to Step 11 | nothing was served; no app ran |
+| 2 excluded routes denied | **PASS** | 24/24 excluded → `http_status:404`; 11/11 allowed → `http://app:8000` |
+| 3 DB-less posture | **NOT COVERED** — deferred to Step 11 | needs a running container's boot log |
+| 4 arm posture | **NOT COVERED** — deferred to Step 11 | needs a live `/recommendations` response |
+| 5 prompt log on the volume | **NOT COVERED** — deferred to Step 11 | needs a live `POST /query` |
+| 6 rate cap | **NOT COVERED** — cannot run locally by the read's own terms | needs the Cloudflare edge |
+| 7 tunnel loaded the committed config | **PASS** (in its offline form) | `cloudflared 2025.8.1`; `Validating rules from …/config.yml` → `OK` |
+| 8 no `ports:` exposure | **NOT COVERED** | depends on case 0 |
+
+⚠️ **Case 2's edge-denial clause is closed in its *rule-resolution* form only.**
+The committed edge resolves every excluded probe to the catch-all — that is the
+allowlist proven against the real `cloudflared` matcher rather than against a
+Python restatement of it. What the fallback **cannot** supply is the clause's
+own positive control: "the app logs no request for any of them, **and** the same
+transcript shows an allowed request present in `docker compose logs app`". No app
+log exists. That half rides to Step 11 with case 1.
+
+**Non-vacuity DEMONSTRATED, not asserted.** The matrix was run a second time
+against a **copy** of `config.yml` in `/tmp` (the committed file was never
+mutated — verified in the same transcript: the copy shows `- path: /query`, the
+committed file still shows `- path: ^/query$`) with the `^…$` anchors stripped.
+`/insights/query` — the leak SD-1 excludes — **flipped** from `http_status:404`
+to `http://app:8000`, matching rule #10 `path: /query`. So the 35 PASS rows are
+evidence the instrument *discriminates*, not merely that it *ran*.
+
+**Two committed defects the run found, both fixed in the same PR.** (1) The
+fallback command was written `tunnel ingress validate --config F` here and twice
+in `deploy/published/README.md`; the flag belongs on `tunnel`, and the wrong form
+**exits 0** while validating nothing — a silent false pass for anyone who scores
+it on `$?`. (2) The fallback assumed a host `cloudflared`; the README now carries
+the install-free invocation through the pinned image, since installing one is a
+host-state change under CLAUDE.md §8.
+
+**What Step 11 now inherits:** cases 0, 1, 3, 4, 5, 6, 8 — i.e. everything that
+requires the project actually running behind a real edge.
 
 ### Phase 4 — Governance artifacts (offline)
 

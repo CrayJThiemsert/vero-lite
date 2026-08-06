@@ -69,16 +69,37 @@ docker compose -f deploy/published/docker-compose.yml up -d
 fully deterministic. This is Step 9's sanctioned fallback when no tunnel can be
 established:
 
+⚠️ **`--config` goes on `tunnel`, BEFORE the subcommand — and getting it wrong
+exits 0.** Measured 2026-08-06 (Step 9) on `cloudflared 2025.8.1`: the trailing
+form `tunnel ingress validate --config F` prints `Incorrect Usage: flag provided
+but not defined: -config`, validates **nothing**, and still returns **exit 0**. A
+runner that trusts the exit code records a PASS for a command that never ran.
+Assert on the **output text** (`OK`, or the `service:` line), never on `$?`.
+
 ```bash
-cloudflared tunnel ingress validate --config deploy/published/cloudflared/config.yml
+cloudflared tunnel --config deploy/published/cloudflared/config.yml ingress validate
 ```
 
 ```bash
-cloudflared tunnel ingress rule --config deploy/published/cloudflared/config.yml https://example.invalid/insights/query
+cloudflared tunnel --config deploy/published/cloudflared/config.yml ingress rule https://example.invalid/insights/query
 ```
 
 The second should report the **catch-all** rule. A route that resolves to
 `http://app:8000` when it appears in PLAN-0100's *excluded* table is a leak.
+
+### If `cloudflared` is not installed on the host
+
+It was not on the Legion dev box at Step 9, and installing it is a host-state
+change (CLAUDE.md §8). Run the **image this project already pins** instead — no
+install, nothing left behind, and it is by construction the same binary the
+`cloudflared` service runs:
+
+```bash
+docker run --rm -v "$(pwd)/deploy/published/cloudflared":/etc/cloudflared:ro cloudflare/cloudflared:2025.8.1 tunnel --config /etc/cloudflared/config.yml ingress validate
+```
+
+Mount read-only, as above: the evaluation must never be able to edit the file it
+is evaluating.
 
 ## What is NOT here
 
