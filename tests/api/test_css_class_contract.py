@@ -595,7 +595,7 @@ def test_a_quoted_comment_marker_survives_the_strip_on_purpose() -> None:
     Before quoted strings were opaque, ``'/*' not in stripped`` was a fair proxy
     for "block comments were removed". It is not any more: three lines in the
     shipped assets legitimately keep a ``/*`` (``view-case.js`` 250 and 297,
-    ``view-hero.js`` 664). Two tests still make that assertion and both are scoped
+    ``view-hero.js`` 678). Two tests still make that assertion and both are scoped
     to files with no such literal — this records WHY that scoping now matters.
     """
     src = (

@@ -99,7 +99,7 @@ def strip_js_comments(src: str) -> str:
     The consequence to know about: ``'/*' not in strip_js_comments(src)`` is no
     longer a valid way to ask "were the block comments removed?". Three lines in
     the shipped assets legitimately keep a ``/*`` after stripping (``view-case.js``
-    250 and 297, ``view-hero.js`` 664). Two tests make that assertion and both are
+    250 and 297, ``view-hero.js`` 678). Two tests make that assertion and both are
     scoped to files with no such literal, so both still hold — but a third file
     added to either list would need the question asked a different way.
     """
