@@ -44,6 +44,7 @@ from services.engine.action_verification import (
 from services.engine.actions import AuditMetadata, EntityRef, ReasoningStep, RecommendedAction
 from services.engine.economic_impact import build_economic_steps
 from services.engine.entity_resolution import event_subject_ref, resolve_affected_entities
+from services.engine.llm.arm_policy import deterministic_arm_pinned
 from services.engine.llm.client import OllamaClient, OllamaUnreachableError
 from services.engine.llm.structured import ChatClient, JudgmentResult, generate_judgment
 from services.engine.llm.trace import build_llm_audit_metadata, build_llm_reasoning_trace
@@ -191,7 +192,9 @@ def _compose_llm_record(
     return ActionRecord(action=action)
 
 
-async def recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None:
+async def recommend(
+    event: dict[str, Any], vertical: str, *, visitor_initiated: bool = False
+) -> ActionRecord | None:
     """Recommend an action for an OperationalEvent — LLM-backed (ADR-010 D5).
 
     Returns a proposed ActionRecord for a triggering event, or ``None``
@@ -202,9 +205,25 @@ async def recommend(event: dict[str, Any], vertical: str) -> ActionRecord | None
     seam-only hosted backend — it falls back to the deterministic rule
     path (``_rule_recommend``) and **never raises into the runtime loop**
     (ADR-010 IN-4 / PLAN-0006 §6.6).
+
+    ``visitor_initiated`` feeds the published-profile arm pin
+    (``llm.arm_policy.deterministic_arm_pinned`` — PLAN-0100 OI-1). It defaults
+    to ``False`` because this function's only caller is the **involuntary**
+    ``GET /recommendations`` fan-out; a future visitor-initiated caller passes
+    ``True`` explicitly. Defaulting the other way would silently un-pin the
+    principle for every new caller.
     """
     if not _is_recommendation_trigger(event):
         return None
+    if deterministic_arm_pinned(visitor_initiated=visitor_initiated):
+        # PLAN-0100 OI-1 (Cray, 2026-08-06): the published profile does not fire an
+        # LLM call the visitor did not ask for. This is rule-BY-DESIGN, not a
+        # fail-safe — it must not carry degrade language (see _disclose_rule_by_design).
+        # The ฿ facet is deterministic + never-raises (ADR-0030 D5), so it rides along.
+        pinned = _rule_recommend(event, vertical)
+        if pinned is None:
+            return None
+        return _disclose_rule_by_design(pinned, await build_economic_steps(event, vertical))
     try:
         client = _build_chat_client()
         result = await generate_judgment(
@@ -315,6 +334,62 @@ def _disclose_llm_degrade(record: ActionRecord | None, exc: Exception) -> Action
                         ],
                     },
                 ),
+            ],
+            "audit_metadata": action.audit_metadata.model_copy(
+                update={"notes": f"{existing} {note}".strip() if existing else note}
+            ),
+        }
+    )
+    return record
+
+
+def _disclose_rule_by_design(
+    record: ActionRecord, economic_steps: list[ReasoningStep]
+) -> ActionRecord:
+    """Mark a record as rule-BY-DESIGN — the published-profile arm pin (PLAN-0100 OI-1).
+
+    The counterpart to ``_disclose_llm_degrade``, and it exists for the same
+    reason that one does: without a positive disclosure this record is
+    **byte-identical** to a fail-safe record — same two ``rule_check`` steps,
+    same ``RULE_CONFIDENCE`` — so a consumer could not tell "rule because the
+    profile pins it" from "rule because the model died". The two disclosures are
+    deliberately distinguishable by ``step_id`` **and** by
+    ``detail["recommendation_mode"]``; assert on those by name, never on the
+    mere presence of a ``rule_check`` step.
+
+    Reuses the CI-pinned ``rule_check`` kind
+    (``services/api/static/assets/trace-kinds.js``) rather than minting a new
+    trace kind, exactly as ``_disclose_llm_degrade`` does — a new kind would owe
+    a UI label and an asset cache-bust.
+
+    The advisory ฿ facet (ADR-0030) is deterministic and never-raises, so it
+    rides the pinned path (Cray, 2026-08-06) and stays **appended last**,
+    matching the LLM path's convention (PLAN-0071 AC-6(b)).
+    """
+    action = record.action
+    note = (
+        "The published profile pins the deterministic arm for LLM calls the visitor did "
+        "not initiate; no LLM was attempted (PLAN-0100 OI-1)."
+    )
+    existing = action.audit_metadata.notes
+    record.action = action.model_copy(
+        update={
+            "reasoning_trace": [
+                *action.reasoning_trace,
+                ReasoningStep(
+                    step_id="arm-pin-disclosure",
+                    kind="rule_check",
+                    summary=(
+                        "Published profile: the deterministic arm is pinned by design; "
+                        "no LLM call was made (disclosed)."
+                    ),
+                    detail={
+                        "recommendation_mode": "rule-by-design",
+                        "arm_pin": "published-profile",
+                        "visitor_initiated": False,
+                    },
+                ),
+                *economic_steps,
             ],
             "audit_metadata": action.audit_metadata.model_copy(
                 update={"notes": f"{existing} {note}".strip() if existing else note}
