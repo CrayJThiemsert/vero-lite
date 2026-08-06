@@ -1,7 +1,8 @@
 # STATUS.md — archived Current Focus blocks (2026 H1, continuation)
 
-> **Period covered:** sessions 26 → 46 (newest-at-top within this file)
-> **Sibling chain (letters ascend with time; the base holds the RECENT window):** [`2026-h1b-current-focus.md`](2026-h1b-current-focus.md) (session 25) → [`2026-h1c-current-focus.md`](2026-h1c-current-focus.md) (sessions 26–46) → [`2026-h1-current-focus.md`](2026-h1-current-focus.md) (sessions 116–128, base). This chain is **Current-Focus-only** and is SEPARATE from the rotation archive's `2026-h1b/c/d/e/f-status.md` chain — same letter scheme, different corpus.
+> ✅ **THIS FILE IS THE LIVE APPEND TARGET for Current-Focus rotations** (Cray-ratified 2026-08-06, session 212; runbook R4's scoped exception). New blocks go at the **BOTTOM**, in rotation order.
+> **Period covered:** an original sessions 26 → 46 body (newest-at-top *within that body*), then **s192 onward appended at the bottom in rotation order** — s192–s196, s202–s206 as of s212. _[The old header claimed "sessions 26 → 46" alone; that was already false by s196 and is corrected here rather than restated.]_
+> **Sibling chain — for THIS chain the NEWEST LETTER holds the NEWEST content** (the opposite of the `-status.md` chain): [`2026-h1b-current-focus.md`](2026-h1b-current-focus.md) (session 25) → [`2026-h1-current-focus.md`](2026-h1-current-focus.md) (**legacy base, closed to appends** — it stalled at 190,527 B against R4's ~192 KB bar) → [`2026-h1c-current-focus.md`](2026-h1c-current-focus.md) (this file, live). This chain is **Current-Focus-only** and is SEPARATE from the rotation archive's `2026-h1b/c/d/e/f/g-status.md` chain — same letter scheme, different corpus, **and now different append rules**.
 
 
 Archived `## Current Focus` session blocks, rotated out of `docs/STATUS.md` on 2026-06-10
@@ -1556,3 +1557,52 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > s196/s197 Recent-Decisions rows moved `h1g` → base. The Current-Focus chain split the
 > move was said to depend on is a **separate corpus**, and the rotation base had ~109 KB
 > of headroom throughout — the dependency never existed.
+
+> **Session 206, 2026-08-05 (head_commit `bcab1f4` → `296cc34`) — six PRs merged
+> (#1040–#1045), one open for Cray (#1046). Theme: every defect found this session
+> was one that leaves the system LOOKING correct.**
+>
+> **PLAN-0102 was one ratification away from bricking the harness (#1040).** An R2
+> pass found three scope gaps. The sharp one: the acknowledged-pause (`awaiting_ack`)
+> subsystem was **entirely unscoped** while Step 5 removed one of its two
+> dependencies — `stop_continuation.py:73` would still import a deleted function at
+> module load, an `ImportError` **no `try/except` catches**, taking the chain-cap
+> fail-safe, the classifier and auto-handoff down with it. Steps 3 and 5 also
+> contradicted each other over `_apply_commit_reset`, whose `AttributeError` is
+> **swallowed** by the observer's blanket handler — L2/L3/L4 would stop persisting
+> while the hook still exits 0. **One root cause for all three: none of the missed
+> identifiers carries an `L1` or `loop` token in its name**, so the name-keyed census
+> could not see them. New **AC-11** carries two prongs that go RED on exactly these,
+> because ACs 1–10 would all have passed over a bricked harness.
+>
+> **PLAN-0100's "blocked" slice was half unblocked — and all of it shipped.** STATUS
+> read *execution gated on SD-1..SD-5*; the PLAN's own text gates only steps marked
+> BLOCKED-ON-SD. **Six SD-free items shipped**: the Step-1 census (#1043), `ui_profile`
+> + its two delivery seams (#1042), the in-flight cap + prompt log (#1044), the D6
+> banner (#1045). **Cray chose server-injection for the boot seam; the carrier had to
+> change from `<script>` to `<meta>`** — `_OCT_CSP` pins `script-src 'self'`, so an
+> inline script is silently blocked and the profile would fall back to the FULL
+> console. Every property the decision was made for survives.
+>
+> **The census found the published demo unloginable (#1043).** `/whoami` was in
+> **neither** allowlist table, so it fell to default-deny — but `auth.js:39` probes it
+> to provision the operator key, so approve/execute and gate-resolve would have been
+> undrivable *while sitting on the allow table as keyed routes*. The PLAN's own
+> keyed-routes paragraph rested on a route the same section denied. Generalises: **an
+> allowlist complete for the routes a feature CALLS can be incomplete for the routes
+> that make it REACHABLE.**
+>
+> **The unowned wall-clock intermittent is closed (#1041)** — and the reported framing
+> was wrong in a useful way: not two clocks, but **one clock sampled twice** on a
+> non-monotonic host. Bracket → equality against a frozen `Clock`; a planted
+> **1-second** defect reddens both tests, which the old bracket could not catch at all.
+>
+> **Two silent failures the gates caught, not review:** `uvicorn.Config` applies a
+> **global** logging `dictConfig` (`propagate=False` on `uvicorn.error`), so a test
+> stub broke a `caplog` assertion three files away while the line it wanted still
+> reached stderr — only the full-suite run saw it. And a CSS custom property that does
+> not exist **fails silently**, so the D6 banner's first draft would have rendered in
+> an inherited colour with nothing to redden.
+>
+> Gate at CI scope on every merge, including each merge commit (CI is PR-only and
+> never tests those): suite **3826 → 3847**, ruff + `mypy --strict` clean throughout.
