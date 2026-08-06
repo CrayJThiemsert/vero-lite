@@ -27,15 +27,19 @@ never affected — it parses the file correctly; only the guard was fooled. The 
 applied then was to reword the comment, which left the trap armed for the next
 person. This module is the actual fix.
 
-Scope, stated honestly — this reads comments only, not the full JS grammar. It has
-no model of string, template, or regex literals, so ``'https://example.com'`` is
-treated as starting a line comment and the rest of that line is blanked. That is
-the behaviour the previous strippers had too, and it is safe in the direction that
-matters here: these guards ask "is this name present in the CODE?", so blanking
-too much can only cause a FALSE PASS on the line it eats, never a false failure
-elsewhere — whereas the ordering bug above blanked *150 lines at a time* and did
-produce a false failure. Widening to literal-awareness is a separate change with a
-real blast radius; it is a known gap, not an oversight.
+Scope, stated honestly — this models comments and QUOTED STRINGS, not the full JS
+grammar. Three cases, and the split between them is deliberate:
+
+* Single- and double-quoted strings are OPAQUE: a ``//`` or ``/*`` inside one is
+  data. This is what makes ``'http://…'`` and ``'image/*,application/pdf'`` safe.
+* TEMPLATE literals are deliberately NOT opaque. Three assets build stylesheets
+  inside backticks, and the callers rely on this function to strip the ``/* … */``
+  comments in that CSS — ``test_the_stripper_removes_comments_without_eating_code``
+  asserts exactly that. Opacity cannot be applied uniformly for that reason.
+* REGEX literals are not modelled. Telling ``/re/`` from division needs parser
+  context, and no asset currently contains a regex literal carrying a comment
+  marker. This is the remaining gap, and it is small: a regex would have to embed
+  ``//`` or ``/*`` to matter.
 """
 
 from __future__ import annotations
@@ -80,38 +84,83 @@ def strip_js_comments(src: str) -> str:
     files parse fine in the browser; only a stripper with no model of string
     literals sees an opener. Requiring a closer is what keeps them visible.
 
-    Which leaves ONE trap of the s207 shape still armed, named here rather than
-    hidden: a ``/*`` inside a string literal that DOES have a later ``*/`` would
-    blank the span between them. Today neither instance above has one, so this is
-    latent, not live. Closing it means teaching the scanner that a quoted string is
-    opaque — a wider change, because three assets build CSS inside TEMPLATE
-    literals whose ``/* … */`` comments the callers rely on this stripper to
-    remove, so "literals are opaque" cannot be applied uniformly.
+    Quoted strings are skipped whole, so a comment marker inside one is data and
+    survives into the output. That is what closes the remaining trap of the s207
+    shape: a ``/*`` inside a string that DOES have a later ``*/`` would otherwise
+    blank the span between them. Neither live instance has a closer today, so that
+    was latent rather than firing — it is fixed here on purpose, not by accident.
+
+    The consequence to know about: ``'/*' not in strip_js_comments(src)`` is no
+    longer a valid way to ask "were the block comments removed?". Three lines in
+    the shipped assets legitimately keep a ``/*`` after stripping (``view-case.js``
+    250 and 297, ``view-hero.js`` 664). Two tests make that assertion and both are
+    scoped to files with no such literal, so both still hold — but a third file
+    added to either list would need the question asked a different way.
     """
     out = list(src)
-    end_of_source = len(src)
     i = 0
-
-    def blank(start: int, stop: int) -> None:
-        for k in range(start, stop):
-            if out[k] != "\n":
-                out[k] = " "
-
-    while i < end_of_source:
-        if src[i] == "/" and i + 1 < end_of_source:
-            nxt = src[i + 1]
-            if nxt == "/":
-                newline = src.find("\n", i)
-                stop = end_of_source if newline == -1 else newline
-                blank(i, stop)
-                i = stop
+    while i < len(src):
+        comment = _comment_span(src, i)
+        if comment is not None:
+            start, stop = comment
+            for k in range(start, stop):
+                if out[k] != "\n":
+                    out[k] = " "
+            i = stop
+            continue
+        if src[i] in "'\"":
+            closer = _closing_quote(src, i)
+            if closer != -1:
+                i = closer + 1
                 continue
-            if nxt == "*":
-                closer = src.find("*/", i + 2)
-                if closer != -1:
-                    blank(i, closer + 2)
-                    i = closer + 2
-                    continue
         i += 1
-
     return "".join(out)
+
+
+def _comment_span(src: str, start: int) -> tuple[int, int] | None:
+    """``(start, stop)`` of the comment opening at ``start``, or ``None`` if none does.
+
+    Split out from the scan loop so each function stays readable — and so the two
+    comment forms' end conditions sit side by side, where the asymmetry between
+    them is visible: a line comment runs to the newline OR to end of file, while a
+    block comment requires its ``*/`` and otherwise does not open at all.
+    """
+    if src[start] != "/" or start + 1 >= len(src):
+        return None
+    following = src[start + 1]
+    if following == "/":
+        newline = src.find("\n", start)
+        return (start, len(src) if newline == -1 else newline)
+    if following == "*":
+        closer = src.find("*/", start + 2)
+        return None if closer == -1 else (start, closer + 2)
+    return None
+
+
+def _closing_quote(src: str, opener: int) -> int:
+    """Index of the quote closing the literal opened at ``opener``, or -1 if none.
+
+    Bounded to the opener's own LINE, and that bound is the whole reason quote
+    handling is safe to add without a JavaScript parser: a single- or
+    double-quoted JS string cannot contain a raw newline. So a quote character
+    that is not really opening a string — an apostrophe in ``don't`` inside a
+    template literal, say — can never make this function skip past the end of the
+    line it sits on, and the worst case is that one line is not scanned for
+    comment openers.
+
+    ``\\'`` and ``\\\\`` are honoured, so ``'it\\'s'`` closes at the last quote
+    rather than the middle one.
+    """
+    quote = src[opener]
+    i = opener + 1
+    while i < len(src):
+        char = src[i]
+        if char == "\\":
+            i += 2
+            continue
+        if char == "\n":
+            return -1
+        if char == quote:
+            return i
+        i += 1
+    return -1
