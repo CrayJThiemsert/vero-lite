@@ -499,6 +499,117 @@ def test_the_stripper_needs_a_closer_before_it_treats_a_slash_star_as_a_comment(
     )
 
 
+def test_a_block_opener_inside_a_string_literal_does_not_open_a_block() -> None:
+    """The trap the previous fix left latent, closed: a quoted string is DATA.
+
+    ``view-case.js`` carries ``accept: 'image/*,application/pdf'`` and
+    ``view-hero.js`` the ``/demo/hero/*`` route glob, both inside string literals.
+    Neither has a ``*/`` after it today, which is the only reason a stripper with
+    no model of strings survived them — add one block comment below either line and
+    the span in between silently leaves the scan, which is precisely the s207
+    failure wearing a different opener.
+    """
+    src = (
+        "h('input', { accept: 'image/*,application/pdf' });\n"
+        "h('b', { class: 'inside-the-span' });\n"
+        "/* an ordinary block comment further down the file */\n"
+        "h('i', { class: 'after-the-block' });\n"
+    )
+    applied = _applied_classes(strip_js_comments(src))
+    assert "inside-the-span" in applied, (
+        "a `/*` inside a string literal reached forward to a real block comment's "
+        "`*/` and blanked everything between them. Quoted strings must be opaque to "
+        "the comment scanner."
+    )
+    assert "after-the-block" in applied, "the scan lost the code below the real block comment"
+
+
+def test_a_line_comment_marker_inside_a_string_literal_is_not_a_comment() -> None:
+    """``'http://www.w3.org/2000/svg'`` is an SVG namespace, not a comment.
+
+    Measured: this exact literal appears in ``components.js``, ``view-map.js`` and
+    ``view-story.js``. Without string opacity the ``//`` in it blanks the rest of
+    its line, so anything applied after the URL on that line is invisible to every
+    scan built on this stripper.
+    """
+    src = "h('div', { xmlns: 'http://www.w3.org/2000/svg', class: 'after-url' });\n"
+    applied = _applied_classes(strip_js_comments(src))
+    assert "after-url" in applied, (
+        "the `//` inside a URL string was read as a line comment and blanked the "
+        "rest of the line, hiding the class applied after it."
+    )
+
+
+def test_string_opacity_is_bounded_to_one_line() -> None:
+    """An apostrophe that is not a string opener must not run past its own line.
+
+    A single- or double-quoted JS string cannot contain a raw newline, so the
+    search for a closing quote stops at the line end. That bound is what makes
+    quote handling safe without a real parser: prose like ``don't`` inside a
+    TEMPLATE literal (which this stripper deliberately does not treat as opaque)
+    would otherwise pair with the next apostrophe anywhere below it.
+
+    Note what actually goes wrong when the bound is missing, because it is not the
+    obvious thing: skipping a string does not BLANK anything, so no code vanishes.
+    What is lost is the comment scanner's view of the openers inside the skipped
+    span — the block comment below is never stripped, and the class name quoted in
+    its prose is then read as an applied class. That is the assertion here.
+    """
+    src = (
+        "const s = `don't`;\n"
+        "/* the old markup was h('b', { class: 'quoted-in-prose' }) */\n"
+        "h('i', { class: 'real' });\n"
+    )
+    applied = _applied_classes(strip_js_comments(src))
+    assert "quoted-in-prose" not in applied, (
+        "an unmatched apostrophe opened a string span that ran past the end of its "
+        "line and swallowed the `/*` below it, so the block comment was never "
+        "stripped and its prose was scanned as code."
+    )
+    assert "real" in applied, "the scan lost the genuine class application"
+
+
+def test_an_escaped_quote_does_not_close_the_string_early() -> None:
+    """``'don\\'t /*'`` is one string, not a string followed by a block opener.
+
+    Without escape handling the literal closes at the escaped quote, the scanner
+    resumes mid-string, and the ``/*`` it then finds opens a phantom block that
+    runs to the next real ``*/``. Same failure as s207, reached through the quote
+    branch instead of the comment branch.
+    """
+    src = (
+        "h('b', { title: 'don\\'t /*', class: 'has-escape' });\n"
+        "h('i', { class: 'inside-span' });\n"
+        "/* a real block comment, whose closer the phantom would reach */\n"
+    )
+    applied = _applied_classes(strip_js_comments(src))
+    assert {"has-escape", "inside-span"} <= set(applied), (
+        f"an escaped quote closed the string early and the `/*` after it opened a "
+        f"phantom block; found only {sorted(applied)}"
+    )
+
+
+def test_a_quoted_comment_marker_survives_the_strip_on_purpose() -> None:
+    """Pins the behaviour change, so nobody 'fixes' it back.
+
+    Before quoted strings were opaque, ``'/*' not in stripped`` was a fair proxy
+    for "block comments were removed". It is not any more: three lines in the
+    shipped assets legitimately keep a ``/*`` (``view-case.js`` 250 and 297,
+    ``view-hero.js`` 678). Two tests still make that assertion and both are scoped
+    to files with no such literal — this records WHY that scoping now matters.
+    """
+    src = (
+        "h('input', { accept: 'image/*,application/pdf' });\n"
+        "/* a real block comment, whose closer the marker above would reach */\n"
+    )
+    stripped = strip_js_comments(src)
+    assert "image/*" in stripped, (
+        "a comment marker inside a string literal was blanked. It is data — the "
+        "browser sends it as a MIME type — and blanking it is how the scan loses "
+        "the code around it."
+    )
+
+
 def test_the_stripper_blanks_a_comment_rather_than_deleting_it() -> None:
     """Deleting a comment FABRICATES identifiers out of the code on either side.
 
