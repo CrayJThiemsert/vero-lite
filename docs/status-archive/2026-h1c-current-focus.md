@@ -1513,3 +1513,46 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > Final gate: `tests/` **3817 passed / 0 failed / 8 skipped**, `mypy --strict` clean over
 > **131** files, `ruff` + `alembic check` clean, CI `gate` 5m41s. **7 non-vacuity probes,
 > every RED observed**, restored from `/tmp`, never `git checkout`.
+
+> **Session 205, 2026-08-04 (head_commit `22202f2` → `bcab1f4`) — three PRs merged
+> (#1031–#1033), all s205's own work. Theme:
+> answering an overdue question corrected two errors in the record it was built on.**
+>
+> _[Three PARALLEL-session PRs — **#1034, #1035, #1036 — also landed in this window and
+> are NOT s205's work**: #1034 from the chip session s205 spawned, #1035 and #1036 from
+> one other session. They carry head to `bcab1f4` and alembic head to **`0025`**; their
+> authors wrote the record, and **Recent Decisions** below carries all three.]_
+>
+> **OQ-4 CLOSED — Cray typed RETIRE L1 (2026-08-04); PLAN-0102 is the vehicle (#1031).**
+> Re-measured over **130** transcripts keyed on **structural hook-emission paths**, not
+> substring, with a **positive control that passed 3/3** — a zero was pre-committed as
+> unreportable unless the method first re-found three known-present warns. **True
+> positives = 0 in both eras.** Post-AC-7: **0 denies, 0 organic warns** (the lone warn
+> was an induced self-test), so the "≥ 1 false positive" arm could not fire: the literal
+> criterion is **unfireable by construction** — AC-7 left the guard inert, and a detector
+> that never fires cannot produce the false positive its own retirement trigger requires.
+>
+> **Running it corrected two errors in the record it was built on.** (1) The s180
+> baseline's **"0 denies" was wrong — ≥ 56 measured** over 19 days / 4,201 Write-Edit ops
+> (**~1.33 %** of all edits hard-walled), and that is a **floor** — 30-day retention had
+> already deleted 06-27 → 07-04 of the baseline's own span. Root cause: **three** deny
+> wordings existed, not two — lesson 0012 quotes `in this **session**` while every live
+> emission says `in this **turn**`, so s180 searched for a string no transcript contains;
+> its warn count (3) was right because that string came from the hook source. Classified
+> **was an error**, not superseded (§6). (2) The criterion's **prescribed remedy was
+> mis-premised**: it called for an ADR-013 amendment, but `0013:90` states trigger E.4 as
+> "the same *problem*" and never names L1, and `0013:333-336` delegates stateful
+> loop-detection to PLAN-0008+. **L1 has zero ADR backing ⇒ no amendment**; PLAN-0102 is
+> the governance record, on the PLAN-0092 precedent. Method + the four traps that nearly
+> skewed it: `docs/lessons/0035-negative-measurement-needs-a-positive-control.md`.
+>
+> **PLAN-0100's fold-in (#1032) makes SD-1..SD-5 askable.** Five empty `Ruling:` slots +
+> **AC-13** (the adjudication record) + BLOCKED-ON-SD markers; the H/I/J inconsistency
+> reconciled by **dropping Tab H from SD-1's promise** — its backend is **mixed**, not
+> DB-posture-contingent; `54dfc7d`'s measurement table folded in **verbatim** (dev half
+> discharged, published half open); SD-4 restated **published-profile-only**.
+>
+> **The archive relocation (#1033) found its own recorded blocker false.** Three misfiled
+> s196/s197 Recent-Decisions rows moved `h1g` → base. The Current-Focus chain split the
+> move was said to depend on is a **separate corpus**, and the rotation base had ~109 KB
+> of headroom throughout — the dependency never existed.
