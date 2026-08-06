@@ -311,14 +311,14 @@ def _wrappers() -> set[str]:
 #: comments rather than blanking them, which can splice ``O.Hero.event/*x*/(`` into
 #: a call site that exists in no file; the shared helper blanks, so it cannot.
 #:
-#: One property of the local copy is NOT reproduced here: its ``(?<!:)`` spared
-#: ``://`` so a URL would not truncate the line before a real call. That is a real
-#: difference, so it was measured rather than waved through — on today's assets no
-#: line puts a registered wrapper call after a ``://``, and all three strippers
-#: (the local one, the shared one, and the string-aware follow-up) produce the same
-#: twelve observed entries. The shared helper reaching the same end structurally,
-#: by treating quoted strings as opaque, is a SEPARATE change still in review; until
-#: it lands, a URL followed by a call on one line would be missed here.
+#: The local copy also carried a ``(?<!:)`` that spared ``://`` so a URL would not
+#: truncate the line before a real call. The shared helper reaches that end
+#: structurally instead, by treating single- and double-quoted strings as opaque —
+#: which covers the case that actually occurs (a URL in a string literal) rather
+#: than any ``://`` anywhere. Measured, not assumed: on today's assets no line puts
+#: a registered wrapper call after a ``://`` at all, and the local stripper, the
+#: shared one, and the shared one WITHOUT string opacity all produce the same twelve
+#: observed entries.
 
 
 def test_excluded_wrapper_call_sites_exactly_equal_the_registry() -> None:
