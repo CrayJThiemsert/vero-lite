@@ -601,14 +601,28 @@
     const srcCls = gov.source === 'offline-fixture' ? 's-info' : 's-ok';
 
     // PLAN-0057 (AC-3): the manual ↔ event opener toggle.
-    const modeToggle = h('button', { class: 'hero-badge hero-toggle', type: 'button' },
-      mode === 'event' ? '↩ Manual opener' : '⚡ Event opener');
-    modeToggle.addEventListener('click', function () {
-      mount(host, { mode: mode === 'event' ? 'manual' : 'event' });
-    });
+    // PLAN-0100 Step 3: not rendered on the published profile — event mode fires
+    // POST /demo/hero/event, the unauthenticated DB write D5(2) excludes (F4).
+    const published = O.isPublished();
+    let modeToggle = null;
+    if (!published) {
+      modeToggle = h('button', { class: 'hero-badge hero-toggle', type: 'button' },
+        mode === 'event' ? '↩ Manual opener' : '⚡ Event opener');
+      modeToggle.addEventListener('click', function () {
+        mount(host, { mode: mode === 'event' ? 'manual' : 'event' });
+      });
+    }
     // The offline/live toggle applies to the manual opener only.
+    // PLAN-0100 Step 3, BEYOND the PLAN's drafted Step-3 list — added s207 after an
+    // adversarial review of the Step 9 read flagged it. "▶ Run live" drives
+    // GET /demo/hero/governance?live=true, i.e. a full live procedure run that
+    // raises ProcedureError (run.py:387) when the gate does not suspend; with no
+    // global exception handler in services/api/ that is an unhandled 500 in front
+    // of a design partner. It is also an anonymous, uncapped, unlogged MS-S1 call.
+    // The default (offline fixture) already renders the whole narrative, so hiding
+    // the toggle costs the demo nothing.
     let liveToggle = null;
-    if (mode !== 'event') {
+    if (mode !== 'event' && !published) {
       liveToggle = h('button', { class: 'hero-badge hero-toggle', type: 'button' },
         live ? '↺ Offline fixture' : '▶ Run live');
       liveToggle.addEventListener('click', function () { mount(host, { mode: 'manual', live: !live }); });

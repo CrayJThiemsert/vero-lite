@@ -23,6 +23,19 @@
     uiProfile: (document.querySelector('meta[name="ui-profile"]') || {}).content || 'dev'
   };
 
+  // PLAN-0100 Step 3 (ADR-0035 D5(2), the s202 UI ruling) — the ONE predicate
+  // every published-profile guard asks. Deliberately a single exported token
+  // rather than repeating `State.uiProfile === 'published'` at each site: AC-1's
+  // guard registry greps for `isPublished` to prove each excluded-backend call
+  // site is guarded, and a scattered literal comparison would be invisible to it.
+  //
+  // Why controls are HIDDEN and not merely allowed to fail: under the published
+  // allowlist these backends do not exist at all, so a rendered control that
+  // 404s is incoherence — the product showing an operator a button for a
+  // capability the deployment does not have. A KEYED route that 401s is
+  // different and stays visible: that is the product working.
+  function isPublished() { return State.uiProfile === 'published'; }
+
   const listeners = [];
   function onConnection(fn) { listeners.push(fn); }
   function setConnection(c) {
@@ -289,6 +302,7 @@
   window.OCT = window.OCT || {};
   Object.assign(window.OCT, {
     State, API, Llm, Intake, Draft, Hero, Exports, Onto, onConnection, setConnection,
+    isPublished,
     loadMeta, loadObjects, loadAllObjects, loadRecommendations
   });
 })();

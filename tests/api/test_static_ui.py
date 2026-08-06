@@ -85,9 +85,20 @@ MEASURED_TAB_CENSUS = frozenset("ABCDEFGHIJ")
 
 
 def _registered_view_keys() -> frozenset[str]:
-    """The view keys `app.js` actually registers, read from source."""
+    """The view keys `app.js` actually registers, read from source.
+
+    Reads ``ALL_VIEWS`` — the full ten-tab census — deliberately, not the profile
+    filtered ``VIEWS`` that PLAN-0100 Step 3 derives from it. The ladder this
+    census guards has to accommodate the WIDEST header the app can render, which
+    is the dev profile's ten tabs; measuring it against the published profile's
+    six would let a tab be added to the census unnoticed as long as the published
+    profile happened to drop it.
+
+    (Before Step 3 the literal was ``const VIEWS = {``. The rename is why this
+    helper changed — the census itself did not.)
+    """
     source = (ASSETS / "app.js").read_text(encoding="utf-8")
-    start = source.index("const VIEWS = {")
+    start = source.index("const ALL_VIEWS = {")
     # The block ends at the first line that closes it at column 2 ("  };").
     end = source.index("\n  };", start)
     return frozenset(re.findall(r"key:\s*'([A-Z])'", source[start:end]))
