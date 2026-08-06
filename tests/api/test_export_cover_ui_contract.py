@@ -40,6 +40,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from services.api.models.exports import ExportCoverResponse, ExportExceptionResponse
+from tests.api.js_source import strip_js_comments
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _ASSETS = _REPO_ROOT / "services" / "api" / "static" / "assets"
@@ -80,16 +81,13 @@ def _contract() -> dict[str, list[str]]:
     return json.loads(src[start:end])
 
 
-def _strip_js_comments(src: str) -> str:
-    """Drop /* block */ and // line comments so a prose mention is not a match.
-
-    Deliberately simple: these two assets contain no string literal carrying a
-    comment marker. ``test_the_comment_stripper_is_not_vacuous`` is what keeps
-    that assumption honest — if the stripper ever eats real code, it goes RED
-    rather than making the CSV guard below silently unfalsifiable.
-    """
-    without_block = re.sub(r"/\*.*?\*/", " ", src, flags=re.DOTALL)
-    return re.sub(r"//[^\n]*", " ", without_block)
+#: Comment stripping is shared — ``tests.api.js_source``. This module used to keep
+#: its own copy, which stripped block comments before line comments and so read a
+#: ``/*`` inside a ``//`` comment as a real block opener. ``api.js`` is scanned by
+#: the CSV guard below and contains exactly that shape at line 87, which put lines
+#: 87-105 of it beyond the guard's reach. ``test_the_comment_stripper_is_not_vacuous``
+#: is what keeps the shared version honest here — if it ever eats real code, this
+#: module goes RED rather than making the CSV guard silently unfalsifiable.
 
 
 def test_cover_contract_block_is_not_vacuous() -> None:
@@ -157,7 +155,7 @@ def _property_accesses(receiver: str) -> set[str]:
     src = _VIEW_JS.read_text(encoding="utf-8")
     start = src.index(_JSON_BEGIN)
     end = src.index(_JSON_END) + len(_JSON_END)
-    code = _strip_js_comments(src[:start] + src[end:])
+    code = strip_js_comments(src[:start] + src[end:])
     return set(re.findall(rf"\b{re.escape(receiver)}\.([a-z_][a-z0-9_]*)\b", code))
 
 
@@ -220,7 +218,7 @@ def test_the_spa_actually_loads_the_view() -> None:
         "would mount an undefined module. Add the script tag (before app.js, with a "
         "?v= cache-bust token)."
     )
-    app_js = _strip_js_comments((_ASSETS / "app.js").read_text(encoding="utf-8"))
+    app_js = strip_js_comments((_ASSETS / "app.js").read_text(encoding="utf-8"))
     assert "O.ViewExport" in app_js, (
         "app.js does not register the Month-End KPI view in its VIEWS map, so the "
         "asset loads but no tab reaches it."
@@ -237,7 +235,7 @@ def test_the_export_ui_never_reaches_the_csv_route() -> None:
     build goes red and whoever wrote it has to reverse the decision on purpose.
     """
     for path in (_VIEW_JS, _API_JS):
-        code = _strip_js_comments(path.read_text(encoding="utf-8"))
+        code = strip_js_comments(path.read_text(encoding="utf-8"))
         assert ".csv" not in code, (
             f"{path.name} references the .csv export route in CODE (not a comment).\n\n"
             "Cray declined a UI download button for the month-end file at s192 (see "
@@ -271,7 +269,7 @@ def test_every_css_class_the_view_uses_is_actually_defined() -> None:
     the console was clean. A browser measurement caught it, and this test is what
     makes the next one cheap.
     """
-    src = _strip_js_comments(_VIEW_JS.read_text(encoding="utf-8"))
+    src = strip_js_comments(_VIEW_JS.read_text(encoding="utf-8"))
     used: set[str] = set()
     # `class: 'a b'` and the literal half of `class: 'a ' + dynamic`.
     for literal in re.findall(r"class:\s*'([^']*)'", src):
@@ -309,7 +307,7 @@ def test_the_css_class_scan_sees_the_real_stylesheets() -> None:
 
 def test_the_comment_stripper_is_not_vacuous() -> None:
     """If the stripper ate the code, the CSV guard above would pass unfalsifiably."""
-    stripped = _strip_js_comments(_VIEW_JS.read_text(encoding="utf-8"))
+    stripped = strip_js_comments(_VIEW_JS.read_text(encoding="utf-8"))
     assert "O.Exports.cover" in stripped, (
         "the comment stripper removed the view's own fetch call — every guard built "
         "on it is now vacuous. Fix the stripper before trusting this module."

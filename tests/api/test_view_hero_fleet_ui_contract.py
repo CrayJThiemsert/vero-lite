@@ -38,6 +38,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.api.js_source import strip_js_comments
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _STATIC = _REPO_ROOT / "services" / "api" / "static"
 _VIEW_HERO = _STATIC / "assets" / "view-hero.js"
@@ -90,10 +92,6 @@ def _fleet_branch(source: str) -> str:
     return source[start:end]
 
 
-_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
-_LINE_COMMENT = re.compile(r"//[^\n]*")
-
-
 def _fleet_branch_code(branch: str) -> str:
     """The fleet branch with comment prose removed — what the browser actually executes.
 
@@ -104,16 +102,20 @@ def _fleet_branch_code(branch: str) -> str:
 
     The slice begins INSIDE the opening banner comment, because the start marker lives in
     it — so the banner is dropped up to its closing delimiter before the ordinary strip.
-    Comments are blanked newline-for-newline rather than removed outright: collapsing them
-    would glue the surrounding lines into tokens present in neither.
+
+    The strip itself is ``tests.api.js_source``, shared with the two other modules that
+    scan these assets. This function used to carry its own copy, which removed block
+    comments before line comments — the reverse of how JavaScript tokenises, so a ``/*``
+    written inside a ``//`` comment opened a phantom block that swallowed everything down
+    to the next ``*/``. ``view-hero.js`` is the file this module scans and it does carry a
+    ``/*`` inside a string literal (line 678, the ``/demo/hero/*`` route glob), so this
+    was one badly-placed comment away from the absence checks below going vacuous.
+    Comments are blanked character-for-character rather than removed outright: collapsing
+    them would glue the surrounding lines into tokens present in neither.
     """
-
-    def _blank(match: re.Match[str]) -> str:
-        return "\n" * match.group(0).count("\n")
-
     banner_end = branch.find("*/")
     body = branch[banner_end + 2 :] if banner_end != -1 else branch
-    return _LINE_COMMENT.sub("", _BLOCK_COMMENT.sub(_blank, body))
+    return strip_js_comments(body)
 
 
 @pytest.fixture(scope="module")
