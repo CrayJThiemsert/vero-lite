@@ -369,15 +369,53 @@ degrade, or writer under test.
   is portal-side and has no file in this repo — **no offline test can close it.**
   It closes on AC-6(c) case 4 plus a screenshot of the configured rule, and if
   case 4 cannot run locally it is deferred to Step 11 and recorded as not covered.
-- [ ] **AC-7 (caps — scenario-tested).** The global in-flight LLM cap of 1
-  fast-fails to the deterministic arm with the PLAN-0093 disclosure. Closed by
+- [x] **AC-7 (caps — scenario-tested) — CLOSED 2026-08-06 (session 208).** The
+  global in-flight LLM cap of 1 fast-fails to the deterministic arm with the
+  PLAN-0093 disclosure. Closed by
   `tests/api/test_llm_inflight_cap.py`: boot the **real ASGI app**, point
   `OLLAMA_HOST` at a **real local HTTP server speaking the Ollama chat contract
   with controllable latency** (the upstream stand-in — realistic simulated
   responses, deliberately slow), fire two concurrent `POST /query` with
-  realistic demo-script questions; assert the second returns fast (< 5 s) with
-  the deterministic-arm disclosure while the first completes on the LLM arm;
-  assert both produce prompt-log rows with correct outcome states. **The per-IP
+  realistic demo-script questions; assert **the pair completes within the
+  upstream delay + a 5 s fast-fail budget** with exactly one carrying the
+  deterministic-arm disclosure and exactly one authored by the LLM arm;
+  assert both produce prompt-log rows with correct outcome states.
+
+  ⚠️ **Two clauses of this AC were AMENDED at closeout, on Cray's typed ruling
+  (2026-08-06), because they were written in a form no honest test can assert.**
+  Recorded here rather than quietly satisfied, since amending an AC to fit the
+  evidence is otherwise indistinguishable from lowering the bar:
+
+  1. *"the second returns fast (< 5 s)"* → **the bound is on the gathered pair
+     (`< upstream_delay + 5 s`), not on the capped request alone.** Timing the
+     capped request by itself means timing a coroutine whose completion order the
+     event loop does not promise; this repo has already been bitten by
+     wall-clock-shaped assertions. The test says so in place: *"A loose bound,
+     not a bracket."*
+  2. *"the first completes on the LLM arm"* → **exactly one of the pair is
+     LLM-authored.** "The first" is not identifiable — whichever coroutine
+     reaches the client first wins the slot — so an ordering assertion would be
+     flaky by construction, not strict.
+
+  **And one clause was genuinely UNMET and has now been built** (it was not an
+  AC-wording problem): the module made **no prompt-log assertion at all**, and no
+  other test in the repo asserted the outcome/arm pair under the cap. Added at
+  closeout: the D6 log is enabled into a temp dir, both rows are read back, and
+  the arms must be exactly `{deterministic, llm}` with outcomes inside the
+  engine's vocabulary. The row logged for each verbatim question must match the
+  arm its own response reported — asserting each side separately would stay green
+  if the writer swapped the two, which is precisely a log that lies.
+
+  **Evidence (session 208):** `tests/api/test_llm_inflight_cap.py` → **3 passed**.
+  **Non-vacuity demonstrated, not assumed:** mutating the router to log a
+  hardcoded `arm="llm"` (a change to real output — every row then claims the LLM
+  authored it) drove the new assertion **RED**
+  (`['llm', 'llm'] == ['deterministic', 'llm']`) while **every pre-existing
+  assertion in the module stayed green**, proving the added clause catches what
+  none of the others could. The captured log confirmed the app still degraded
+  correctly under the mutation — only the *record* lied. Restored from a `/tmp`
+  copy (never `git checkout`); re-run **3 passed**, `git diff` on the mutated file
+  empty. **The per-IP
   rate cap is NOT closed here and NOT closed by AC-6(a)** — under SD-3's ruling it
   is a Cloudflare zone rule with no file in this repo. It closes on AC-6(c) case 4
   (drive `POST /query` past the pinned threshold from one IP; assert rejection **at
@@ -386,7 +424,8 @@ degrade, or writer under test.
   recorded explicitly. The in-flight cap (app code) and the per-IP cap (zone
   config) are **separate obligations with separate evidence** — a green AC-7 says
   nothing about the per-IP cap.
-- [ ] **AC-8 (prompt-log writer — scenario-tested).** Same harness as AC-7:
+- [x] **AC-8 (prompt-log writer — scenario-tested) — CLOSED 2026-08-06
+  (session 208).** Same harness as AC-7:
   drive `POST /query` and `POST /insights/query` end-to-end; assert one JSONL
   line each with **key set exactly equal to** {ts_utc, route, vertical, text,
   model, outcome, arm} (D6 `0035:592-599`) — set-equality, so storing an IP,
@@ -394,20 +433,106 @@ degrade, or writer under test.
   input; assert nothing is written when `PROMPT_LOG_ENABLED=false`. Rotation:
   plant files > 90 days old, invoke the rotation path, assert old deleted /
   young kept.
-- [ ] **AC-9 (banner).** With `UI_PROFILE=published` the UI renders a persistent
+
+  **Evidence (session 208):** `tests/api/test_prompt_log.py` → **6 passed, 0
+  skipped, exit 0**. All six clauses verified individually against the module by
+  an independent reviewer before the tick, not inferred from the suite being
+  green.
+
+  ⚠️ **The `/insights/query` clause is the one that needed care, and it is why
+  this AC was closed with Postgres UP rather than on the ordinary offline run.**
+  `test_insights_query_is_logged_too` takes `client_with_db`, which
+  `pytest.skip`s when Postgres is unreachable (`tests/db_support.py`) — and it is
+  the **sole** coverage of that half of the AC. On a no-Docker offline run this
+  AC would close on five of six clauses while reporting a clean green, the exact
+  shape of a void row reading as a clean one. The closing run therefore used
+  `-rs` to force skip reasons into the output and confirmed **no test skipped**.
+  Anyone re-closing this must do the same or record the deferral explicitly.
+
+  Set-equality is the load-bearing clause and it holds in the strong form: the
+  D6 field set is written as an **independent literal** in the test rather than
+  imported from `prompt_log.FIELDS`, with a separate test pinning the two
+  together — so widening the constant cannot widen the assertion with it.
+- [x] **AC-9 (banner) — CLOSED 2026-08-06 (session 208).** With
+  `UI_PROFILE=published` the UI renders a persistent
   notice carrying all six D6 elements (typed text retained · 90 days · operator
   is sole reader · the gate processes the visitor's email via Cloudflare ·
   traffic transits the vendor's edge · demo is synthetic — enter no real
   personal data), absent in `dev`. Closed by a source-level Python tripwire
   (six-element presence + profile guard) in `tests/api/test_ui_profile.py`;
   final wording reviewed against ADR-0032 D5 vocabulary at R2.
-- [ ] **AC-10 (governance artifacts).** A **populated** RoPA-lite instance
+
+  **The R2 wording review this AC demands was performed at closeout by an
+  independent reviewer** (it had never been done — and note `app.js` carried an
+  in-source comment *asserting* the review's outcome, written by the author in
+  the same commit as the banner, before any review existed). **Result: PASS** —
+  the notice contains neither term ADR-0032 D5 rules out ("AGI-ready",
+  "self-modifying") and makes no capability claim at all. All six obligations are
+  carried; nothing is missing.
+
+  ⚠️ **The reviewer's fair objection, recorded rather than smoothed:** D5 supplies
+  *positive* vocabulary rules for **positioning material aimed at an operations
+  buyer**, not for a data-processing notice. So "reviewed against D5 vocabulary"
+  is near-vacuous for this artifact class — the duty reduces to "contains neither
+  prohibited term". The check is real but narrower than this AC's phrasing
+  implies, and a future reader should not go looking for a richer standard.
+
+  **Tripwire hardened at closeout (s208), because two of its pins did not pin
+  what they claimed.** `"Cloudflare"` stayed green through a reword to *"Access
+  is gated by Cloudflare."* — which deletes *"which processes your email
+  address"*, i.e. the actual D6 duty — and `"real personal data"` survives the
+  sentence being negated. Both now pin the obligation's own words. The module's
+  docstring named a reword as the realistic failure while pinning the vendor's
+  name, which that failure does not touch.
+
+  **Evidence:** `tests/api/test_ui_profile.py` → **17 passed** after hardening.
+
+  **One reported blocker was REFUTED at closeout, not accepted:** the review
+  flagged `app.js?v=c47` as a stale cache-bust against `theme.css?v=c49`, which
+  would mean a returning visitor loads a cached bundle with no banner. `git`
+  shows the opposite — Step 5 bumped **both** its edited assets
+  (`theme.css c48→c49`, `app.js c45→c46`) and Step 3 later bumped
+  `app.js c46→c47`. The `cNN` token is a **per-file** counter, not a shared build
+  number (one commit set theme.css to c49 and app.js to c46), so `c47` is
+  current and the banner ships in it. Recorded because the misreading is an easy
+  one to repeat — the comment in `index.html` calls the token "shared with the
+  CSS above".
+- [x] **AC-10 (governance artifacts) — CLOSED 2026-08-06 (session 208).** A
+  **populated** RoPA-lite instance
   exists (template `docs/conventions/partner-ropa-lite.md` §6 `:80`, §8 `:101`;
   demo posture: vero-lite = controller, Cloudflare = named recipient/processor
   per `0035:612-618`), and the runbook section below is complete — including the
   **manual purge command** (`0035:608-610`) and the 30-day DSR path. Closed by
   file existence + R2 review (no test can verify prose; the reviewer checks the
   D6 numbers appear verbatim).
+
+  **R2 review performed at closeout by an independent reviewer (session 208) —
+  the reviewer's specific duty, "the D6 numbers appear verbatim", returned ZERO
+  mismatches** across every number and named role ADR-0035 D6 states: the seven
+  stored fields; the *"Explicitly NOT stored by us: IP address, request headers,
+  any gate identity"* line; **visitor email addresses**; append-only JSONL per
+  day on a named volume; **90 days rolling** (verbatim in the RoPA, the runbook,
+  and `RETENTION_DAYS = 90` in code); **"Who may read: Cray (Jirachai Thiemsert)
+  only"** character-for-character; the three-part deletion path with **30 days**;
+  and vero-lite = controller / Cloudflare = named recipient/processor.
+
+  Populated, not a filled-in template: no placeholder tokens survive. The one
+  empty section (§9, the DSR action log) states why it is empty — *"Empty is the
+  correct state before exposure."* Template §6 and §8 are genuinely resolved
+  rather than copied: §6 disposes of its open SD-5 explicitly, and §8 answers its
+  *"say so — it's the core finding"* prompt with the strongest passage in the
+  artifact (**no subject identifier is stored at all**, so a visitor's record
+  cannot be located — stated as a finding, not hidden).
+
+  The manual purge command and the 30-day DSR path are **runnable commands, not
+  prose**, and the purge's evidence is a pre/post count rather than the exit code
+  — `find -delete` exits 0 when it matches nothing.
+
+  ⚠️ **The one clause that was NOT met at review, now fixed:** this AC points at
+  *"the runbook section below"*, and that section's own purge command still read
+  `prompts-*.jsonl`. See the correction recorded there. The shipped runbook was
+  always correct; the PLAN's copy was not, which is why the AC pointed at the
+  wrong artifact being complete.
 - [ ] **AC-11 (live evidence — Cray-gated, single step).** The P4 edge-timeout
   measurement and the P5 eviction-coexistence check are executed **once**, after
   explicit Cray go, against pass/fail reads fixed in Step 10 **before** the run,
@@ -893,9 +1018,17 @@ Pass/fail reads, fixed before the run:
 
 Must contain, verbatim obligations from D6:
 - **Manual purge command** (`0035:608-610`), operating on the named volume:
-  `docker compose -p vero-oct exec app find /var/log/vero/prompt-log -name 'prompts-*.jsonl' -delete`
+  `docker compose -p vero-oct exec app find /var/log/vero/prompt-log -name 'prompt-*.jsonl' -delete`
   — plus a date-scoped variant for partial purges. (Purge of log **files**; the
   underlying rotation function is AC-8-tested.)
+  ⚠️ **Corrected s208, `was an error`: this drafted `prompts-*.jsonl` (plural).**
+  The shipped writer names files `prompt-YYYY-MM-DD.jsonl`
+  (`prompt_log.py` `_FILE_PREFIX = "prompt-"`), so the drafted command matched
+  **zero files and exited 0** — a purge that reports success while deleting
+  nothing, on the one command a DSR obligation depends on. The shipped runbook
+  (`docs/runbooks/published-demo-operations.md`) already carried the correct name
+  *and* flagged the correction rather than applying it silently; this PLAN's copy
+  had not been updated to match.
 - **DSR path (30 days):** locate + delete matching prompt-log lines/files;
   remove the requester's email from the vendor allowlist; file the vendor-side
   deletion request; note the action in the RoPA instance.
