@@ -1,6 +1,6 @@
 ---
 name: next-work-analyst
-description: Rank the candidate next-work items by efficiency-to-quality (value × effort × dependency × design-readiness), grounded against the ACTUAL code / ADRs / PLANs (not the handoff's prose), then deliver the ranked recommendation ELI-CRAY (Thai). Use at the start of a new session after reading a handoff, when choosing what to build next, when Cray asks "what should I do next / จะทำอะไรต่อ / จัดลำดับงาน", or whenever prioritizing a candidate list. Gathers candidates from STATUS + the just-closed PLAN's Out-of-Scope + the handoff §NEXT, fans out Explore agents to VERIFY each candidate against code, scores + ranks, and ends with a recommendation + a question — it never decides for Cray.
+description: Rank the candidate next-work items by efficiency-to-quality (value × effort × dependency × design-readiness), grounded against the ACTUAL code / ADRs / PLANs (not the handoff's prose), then deliver the ranked recommendation ELI-CRAY (Thai) — cut BOTH overall and by the four work streams (demo→pilot / harness-governance debt / primitives / marketing-FDE): every candidate carries a stream tag, and the readout adds a per-stream best-next-move plus a cross-stream balance note. Use at the start of a new session after reading a handoff, when choosing what to build next, when Cray asks "what should I do next / จะทำอะไรต่อ / จัดลำดับงาน / เลือกงานจากสายไหนดี", or whenever prioritizing a candidate list. Gathers candidates from STATUS + the just-closed PLAN's Out-of-Scope + the handoff §NEXT + the 4-stream registry's carriers, fans out Explore agents to VERIFY each candidate against code, scores + ranks, and ends with a recommendation + a question — it never decides for Cray.
 model: fable
 effort: xhigh
 ---
@@ -19,11 +19,20 @@ single clear recommendation + a closing question. **Never** decide for Cray
 
 ## Step 1 — Gather the candidate set
 
-Pull candidates from all three sources and dedupe:
+Pull candidates from all four sources and dedupe:
 - `docs/STATUS.md` frontmatter `next_action` + the Current Focus "candidates/deferred" lines.
 - The **Out of Scope** / **v2 sequels** section of the PLAN that just closed (and any
   `docs/plans/*.md` still active — grep their Status).
 - The orientation **handoff §NEXT / §2** (gitignored working note in `.claude/handoffs/`).
+- The **4-stream registry** — read it live from `.claude/skills/stream-status/SKILL.md`
+  (that table is CANONICAL for stream definitions; never copy it into this skill — one
+  registry, ADR-0017 D6 derived-artifact discipline) and pull **stream 4's candidates**
+  from its carrier doc `docs/strategy/private/2026-08-06-marketing-fde-plan-synthesis.md`
+  §4 (asset roadmap) + §6 (open questions) — a source the three sources above never see.
+
+**Tag every candidate with its stream** (1 demo→pilot · 2 harness/governance debt ·
+3 primitives · 4 marketing/FDE · X cross-stream). A candidate that fits no stream is a
+registry-maintenance signal — surface it rather than forcing a tag.
 
 List each candidate as a one-liner. Do not rank yet.
 
@@ -70,9 +79,15 @@ Deliver (Thai, ELI-CRAY = why → steps → expected):
 2. **ทำไม** — the strategic spine (tie to the moat / demo arc / design-partner goal), not
    just per-item pros. Name the ordering constraints that force the sequence.
 3. **The `value × effort × dependency × design-readiness` table** (grounded, with the ✅/❌
-   design-readiness column — that column is usually the decider).
+   design-readiness column — that column is usually the decider — **plus a stream column**).
 4. **เจาะแต่ละตัว** — 2–3 lines each with the file:line evidence from Step 2.
 5. Any **claim-vs-code mismatch** found in grounding, stated honestly.
+6. **มุมมองรายสาย** — the top-ranked candidate of EACH stream (one line each) + a
+   **balance note** naming any stream that is starved (no viable candidate), fully
+   Cray-gated (nothing Code can advance), or parked by decision — so the cross-stream
+   picture is a choice, not an accident. The OVERALL ranking still decides the #1 pick;
+   the per-stream view informs, never overrides — **stream fairness is not a scoring
+   axis, value is** (a starved stream is surfaced, not artificially promoted).
 
 Reuse the `eli-cray` skill's voice for the explanation; don't re-derive it.
 
@@ -86,6 +101,9 @@ that too (that routes through the drafter — CLAUDE.md §6). Keep the veto open
 
 ## References
 - CLAUDE.md §6 (routing: proceed vs Cowork-dispatch; verification-is-hygiene), §2 (vision / moat).
+- The `stream-status` skill — CANONICAL 4-stream registry (this skill reads it, reports
+  state-only there vs rank-here division of labor); stream 4's carrier doc is gitignored
+  (pricing) — quote in chat, never into tracked files.
 - The `eli-cray` skill (explanation voice); the `code-operational-policy` skill (plan-first).
 - Memories: `feedback_verify_doc_forward_reference_vs_code`, `feedback_status_shorthand_not_next_action`,
   `feedback_attribution_honesty_proceed_signals`, `project_wsl_git_toolchain` (Glob/Grep not Bash-find).
