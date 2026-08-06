@@ -38,21 +38,30 @@ _API_JS = Path("services/api/static/assets/api.js")
 _APP_JS = Path("services/api/static/assets/app.js")
 
 #: AC-9 — the six elements ADR-0035 D6 obliges the persistent notice to carry,
-#: each pinned by its own substring.
+#: each pinned by its own substring. Seven entries, not six: D6's sixth element
+#: ("the demo is synthetic — enter no real personal data") is two independent
+#: claims, and a reword can drop either one alone.
 #:
 #: Individually, not as one "is there a banner" check, because the realistic
 #: failure is a REWORD that drops one line — most likely the Cloudflare sentence,
 #: which reads like vendor detail rather than an obligation. Keyed by the
 #: obligation so the assertion message names what went missing, not just that
 #: something did.
+#:
+#: ⚠️ Each substring pins the OBLIGATION, never a token that survives the
+#: obligation being dropped (s208 R2). Two originally did not: pinning
+#: ``"Cloudflare"`` stayed green through a reword to "Access is gated by
+#: Cloudflare." — which deletes *"which processes your email address"*, the
+#: actual D6 duty — and ``"real personal data"`` survives the sentence being
+#: negated. A tripwire for a reword must pin the words a reword would take.
 _D6_NOTICE_ELEMENTS = {
     "what is retained (typed text)": "What you type is retained",
     "for how long (90 days)": "90 days",
     "who reads it (the operator)": "read only by the operator",
-    "the gate processes the email via Cloudflare": "Cloudflare",
+    "the gate processes the email via Cloudflare": "Cloudflare, which processes your email address",
     "traffic transits the vendor edge": "vendor edge",
-    "the demo is synthetic": "synthetic",
-    "enter no real personal data": "real personal data",
+    "the demo is synthetic": "Demo data is synthetic",
+    "enter no real personal data": "do not enter real personal data",
 }
 
 

@@ -23,11 +23,13 @@ from __future__ import annotations
 import asyncio
 import json
 import time
+from pathlib import Path
 
 import pytest
 from httpx import AsyncClient
 
 from services.api.config import settings
+from services.api.routers.query import arm_of
 from services.engine.llm import client as llm_client
 from services.engine.ontology_meta import load_ontology_meta
 from tests.support.ollama_stub import ollama_stub
@@ -58,11 +60,52 @@ _QUESTIONS = (
 )
 
 
+#: The engine's whole `outcome` vocabulary (`nl_query.py`). "unknown" is NOT in
+#: it — that is the router's fallback when the engine dropped `outcome`, so a row
+#: carrying it records that the pipeline lost the state rather than any state.
+_OUTCOMES = frozenset({"answered", "no_data", "clarify"})
+
+
 @pytest.fixture
 def _local_llm(monkeypatch: pytest.MonkeyPatch) -> None:
     """Point the app at the stand-in and cap it at one slot."""
     monkeypatch.setattr(settings, "llm_backend", "local")
     monkeypatch.setattr(settings, "llm_max_inflight", 1)
+
+
+@pytest.fixture
+def _prompt_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Enable the D6 prompt log into a temp dir — never the configured path.
+
+    AC-7's second half. The cap must be visible in the OPERATOR's record, not
+    only in the visitor's response: a degrade that is honest on the wire and
+    absent from the log leaves the operator unable to tell a capped demo from a
+    quiet one, which is the half D6 exists to provide.
+    """
+    target = tmp_path / "prompt-log"
+    monkeypatch.setattr(settings, "prompt_log_enabled", True)
+    monkeypatch.setattr(settings, "prompt_log_dir", str(target))
+    return target
+
+
+def _rows(directory: Path) -> list[dict[str, object]]:
+    rows: list[dict[str, object]] = []
+    for path in sorted(directory.glob("prompt-*.jsonl")):
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                rows.append(json.loads(line))
+    return rows
+
+
+def _arm_of_response(response: dict[str, object]) -> str:
+    """The arm the LOG would derive for this response, from the same signal.
+
+    Deliberately routed through the shipped ``arm_of`` rather than reimplemented:
+    a second copy of the derivation would agree with itself while disagreeing
+    with the writer, which is the defect this assertion is meant to catch.
+    """
+    phrased_by = response.get("phrased_by")
+    return arm_of(phrased_by if isinstance(phrased_by, str) else None)
 
 
 async def _ask(http: AsyncClient, question: str) -> dict[str, object]:
@@ -72,7 +115,10 @@ async def _ask(http: AsyncClient, question: str) -> dict[str, object]:
 
 
 async def test_the_cap_lets_one_through_and_degrades_the_other(
-    client: AsyncClient, _local_llm: None, monkeypatch: pytest.MonkeyPatch
+    client: AsyncClient,
+    _local_llm: None,
+    _prompt_log: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Two concurrent questions, one LLM slot: one is served, one degrades fast."""
     async with ollama_stub(delay=_UPSTREAM_DELAY_S, content=_translatable()) as stub:
@@ -100,20 +146,59 @@ async def test_the_cap_lets_one_through_and_degrades_the_other(
         f"leave the visitor unable to tell a cap from an outage: {degraded[0]!r}"
     )
 
-    # And exactly one reached the data. The disclosure above is the visitor-facing
-    # half; this is the behavioural half — without it the pair would look identical
-    # to two failed translations that happened to disclose differently.
-    assert [r["grounded"] for r in (first, second)].count(
-        True
-    ) == 1, "exactly one request should have been served by the LLM arm"
+    # Exactly one was AUTHORED by the LLM arm. Asserted through `phrased_by` —
+    # the signal the prompt log itself derives `arm` from — and not through
+    # `grounded`: grounded means the answer reached real records, which a
+    # template-phrased answer over the same records also does. Using it as an arm
+    # proxy would stay green if the degrade stopped changing the author at all.
+    arms = [_arm_of_response(r) for r in (first, second)]
+    assert arms.count("llm") == 1, f"expected exactly one LLM-phrased answer, got {arms}"
+
+    # And exactly one reached the data — a separate claim from the one above,
+    # kept because without it the pair would look identical to two failed
+    # translations that happened to disclose differently.
+    assert [r["grounded"] for r in (first, second)].count(True) == 1
 
     # Both still answered. The cap degrades; it never fails a request.
     assert first["answer"] and second["answer"]
 
     # A loose bound, not a bracket: the point is that the capped request did not
     # QUEUE behind the 1s upstream, and a tight assertion here would be the
-    # wall-clock shape this repo has already been bitten by.
+    # wall-clock shape this repo has already been bitten by. AC-7's text was
+    # amended to this bound (Cray, s208) rather than the test tightened to its
+    # original "< 5 s on the capped request", which would have required timing a
+    # coroutine whose completion order the event loop does not promise.
     assert elapsed < _UPSTREAM_DELAY_S + _FAST_FAIL_BUDGET_S
+
+    # AC-7's second half — the cap is visible in the operator's D6 record too.
+    # Recorded AFTER the answer, so `arm` describes what happened rather than
+    # what was attempted.
+    rows = _rows(_prompt_log)
+    assert len(rows) == 2, f"expected one logged row per request, got {len(rows)}"
+    assert sorted(str(r["arm"]) for r in rows) == ["deterministic", "llm"], (
+        "the log must show exactly one degrade — reading the log is the only way "
+        f"an operator can tell the cap fired at all: {[r['arm'] for r in rows]}"
+    )
+    outcomes = {str(r["outcome"]) for r in rows}
+    assert outcomes <= _OUTCOMES, (
+        f"outcome outside the engine's vocabulary {sorted(_OUTCOMES)}: {sorted(outcomes)} "
+        "— 'unknown' here means the router's fallback fired and the pipeline "
+        "dropped the state"
+    )
+
+    # The two witnesses tied together by the verbatim question. Asserting the
+    # pair on each side separately would stay green if the writer swapped the
+    # arms between the two rows, which is precisely a log that lies.
+    arm_by_question = {str(r["text"]): str(r["arm"]) for r in rows}
+    assert set(arm_by_question) == set(
+        _QUESTIONS
+    ), f"the log did not record both questions verbatim: {sorted(arm_by_question)}"
+    for response, question in ((first, _QUESTIONS[0]), (second, _QUESTIONS[1])):
+        assert arm_by_question[question] == _arm_of_response(response), (
+            f"the row logged for {question!r} reports arm "
+            f"{arm_by_question[question]!r} while its response reports "
+            f"{_arm_of_response(response)!r} — the record contradicts the answer"
+        )
 
 
 async def test_without_the_cap_both_reach_the_upstream(
