@@ -27,6 +27,7 @@ from services.api.routers.procedures import router as procedures_router
 from services.api.routers.query import router as query_router
 from services.api.routers.runs import router as runs_router
 from services.api.routers.whoami import router as whoami_router
+from services.db.session import async_session
 from services.engine.discovery import discover_and_register
 from services.engine.registry import registry
 from services.notify.line import describe_arm_state as describe_line_arm_state
@@ -212,6 +213,65 @@ the remaining spec-less Tier-1 mirror (vet_clinic — no ``procedures.yaml``) re
 none."""
 
 
+def _is_environment_absent(exc: Exception) -> bool:
+    """Is this boot-load failure "no database here", or "this code is wrong"?
+
+    The policy seam for the two fail-soft projection loads below. Both keep booting
+    either way — PLAN-0095's DB-less demo depends on it — but they must not keep
+    REPORTING both the same way, which is the hole that let PLAN-0096 Step 8/9 sit dead
+    for a whole release: an ``UnboundLocalError`` landed in the same handler as an
+    unreachable Postgres and logged the same reassuring "serving fixture values" line.
+
+    Return ``True`` for the expected, environmental causes (an operator running the demo
+    with no database is not a defect). Return ``False`` for anything that means the code
+    itself is broken — those get ERROR + a traceback + a ``BUG:``-prefixed status reason,
+    so ``health_check`` and the boot log both say so.
+
+    TODO(Cray): write the policy. The stub below is deliberately the CURRENT behaviour
+    (absorb everything as environmental), so the tree stays green until you replace it —
+    which also means the distinction is inert until then. Things worth deciding:
+
+      * ``OSError`` / ``ConnectionRefusedError`` — the raw "nothing is listening" case.
+      * ``sqlalchemy.exc.SQLAlchemyError`` — note asyncpg connect failures arrive
+        WRAPPED as ``InterfaceError``/``OperationalError`` (both ``DBAPIError``), so
+        catching ``OSError`` alone will miss them.
+      * ``sqlalchemy.exc.ProgrammingError`` is also a ``SQLAlchemyError`` but usually
+        means "schema not migrated" — environmental or defect? Your call.
+      * ``NameError`` (incl. ``UnboundLocalError``), ``AttributeError``, ``TypeError``
+        are the family that must return ``False`` — that is the regression this exists
+        to make loud.
+
+    Add the ``sqlalchemy.exc`` import at module scope when you fill this in.
+    """
+    return True
+
+
+def _absorb_boot_load_failure(
+    record_unavailable: Callable[[str], None],
+    exc: Exception,
+    *,
+    what: str,
+    degraded: str,
+) -> None:
+    """Log + record a boot-time projection load failure, telling the two causes apart.
+
+    Fail-soft either way, never with the same message. An absent database is expected,
+    so it warns and says what the operator now sees instead; a programming error keeps
+    the process alive while making itself impossible to mistake for one.
+    """
+    if _is_environment_absent(exc):
+        record_unavailable(str(exc))
+        _boot_logger.warning("%s NOT loaded (%s) — %s", what, exc, degraded)
+        return
+    record_unavailable(f"BUG: {exc!r}")
+    _boot_logger.error(
+        "%s NOT loaded — a PROGRAMMING error, not an unreachable database; %s",
+        what,
+        degraded,
+        exc_info=True,
+    )
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
     """Auto-discover + register all verticals at startup (import-scan over
@@ -246,7 +306,12 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
         # (a fixed run_id, skipped if present), and FAIL-SOFT (a seed error logs +
         # never blocks the demo boot — the Monitor just shows no run).
         if settings.oct_demo_seed_operate:
-            from services.db.session import async_session
+            # These stay lazy (vertical-specific harnesses). ``async_session`` must NOT
+            # join them: Python binds locals at COMPILE time, so a local import here
+            # would make the name function-local for the whole of ``lifespan`` — and the
+            # fleet block below, which does not run under this branch, would then raise
+            # UnboundLocalError straight into its fail-soft handler and silently skip
+            # both projection refreshes. It is imported at module scope for that reason.
             from services.engine.procedures.persistence import load_run
             from verticals.procurement.hero_demo.run import seed_operate_waiting_human_run
 
@@ -280,11 +345,11 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
                 "fleet PM overrides loaded: %d truck(s) carry confirmed values", len(_pm_loaded)
             )
         except Exception as exc:  # fail-soft — a PM read must never block the demo boot
-            pm_projection.record_unavailable(str(exc))
-            _boot_logger.warning(
-                "fleet PM overrides NOT loaded (%s) — trucks serve fixture values until a "
-                "confirm refreshes the view",
+            _absorb_boot_load_failure(
+                pm_projection.record_unavailable,
                 exc,
+                what="fleet PM overrides",
+                degraded="trucks serve fixture values until a confirm refreshes the view",
             )
 
         # PLAN-0096 Step 8 (build-order item 2): load the real repair cases onto the
@@ -303,11 +368,14 @@ async def lifespan(_app: FastAPI) -> AsyncIterator[None]:
                 len(_cases_loaded),
             )
         except Exception as exc:  # fail-soft — a case read must never block the demo boot
-            case_projection.record_unavailable(str(exc))
-            _boot_logger.warning(
-                "fleet live cases NOT loaded (%s) — the event stream serves the synthetic "
-                "fixture only until a case write refreshes the view",
+            _absorb_boot_load_failure(
+                case_projection.record_unavailable,
                 exc,
+                what="fleet live cases",
+                degraded=(
+                    "the event stream serves the synthetic fixture only until a case "
+                    "write refreshes the view"
+                ),
             )
     # One-shot boot diagnostic: makes a mis-armed PLAN-0014 notifier (e.g. the
     # enable flag left off — otherwise a silent per-call no-op) visible at startup.
