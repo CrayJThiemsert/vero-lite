@@ -268,16 +268,31 @@ def test_every_committed_adr_exposes_a_parseable_status_line() -> None:
     assert not missing, f"ADRs with no parseable **Status:** line: {missing}"
 
 
-def test_the_known_non_accepted_adrs_are_exactly_the_template_and_the_withdrawn_one() -> None:
+def test_the_non_accepted_adrs_are_exactly_the_expected_set() -> None:
     """Pins the discrimination that no prompt size could buy. If a genuinely
     Proposed ADR lands this reddens — update the expectation deliberately; that
-    is the point, not an inconvenience."""
+    is the point, not an inconvenience.
+
+    Renamed from ``…_are_exactly_the_template_and_the_withdrawn_one``: that name
+    encoded a membership that was only ever true while no ADR was in flight, so
+    it went stale the first time one was. The set below is the live expectation.
+
+    ⚠️ **ADR-0036 is here because it is IN FLIGHT, not because it is exempt.**
+    When Cray ratifies it `Proposed → Accepted`, that same edit must REMOVE this
+    entry — leaving it would silently re-broaden the exemption to a file the G1
+    gate should by then be guarding. The entry and the status line move together,
+    in one commit, in both directions.
+    """
     not_accepted = {
         p.name
         for p in _committed_adrs()
         if not gate.status_is_accepted(p.read_text(encoding="utf-8"))
     }
-    assert not_accepted == {"0000-template.md", "0014-WITHDRAWN.md"}
+    assert not_accepted == {
+        "0000-template.md",
+        "0014-WITHDRAWN.md",
+        "0036-vertical-as-system-multi-vertical-demo-portal.md",
+    }
 
 
 def test_the_real_accepted_adrs_are_actually_gated() -> None:
