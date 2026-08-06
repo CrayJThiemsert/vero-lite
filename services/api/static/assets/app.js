@@ -31,11 +31,22 @@
 
   // PLAN-0100 Step 3 — tabs whose ENTIRE backend is off the published allowlist.
   //   E  the three intake routes         D5(2)
+  //   G  the two hero-demo read routes   Step 8 (Cray, 2026-08-06) — see below
   //   H  every runs route it calls       default-deny (and SD-1's C-3 disposition
   //      moved its last two allowed routes, GET runs-by-id + gate-resolve, to the
   //      excluded table, so nothing of H's backend survives)
   //   I  the api-cases routes            SD-1(a) — DB-backed
   //   J  the api-exports routes          SD-1(a) — DB-backed
+  //
+  // G is excluded for a DIFFERENT reason from the other four, and the difference
+  // matters: its backend is not DB-bound and would serve fine. It is dropped
+  // because the hero is BESPOKE PER DESIGN PARTNER (ADR-0032 D1.2) and this
+  // deployment pins OCT_VERTICAL=energy, which owns no hero. The dispatch in
+  // routers/demo.py falls back to procurement's builders at REQUEST time, so
+  // leaving G on would serve a Fastenal procurement hero under an energy banner —
+  // a mismatch a partner reads as a bug. Each published system therefore tells ONE
+  // story: this one is the three OCT features, and the governed hero ships on the
+  // procurement system when that one is stood up.
   //
   // Route names above are written WITHOUT a glob on purpose. A slash immediately
   // followed by a star opens a block comment as far as any naive stripper is
@@ -54,7 +65,7 @@
   // forgotten: containers are never built, buildTabs() cannot render the tab,
   // go() already falls back to 'A' for an unknown key (so a deep-linked #E is
   // handled), and the oct:goto listener cannot route into a dead view.
-  const PUBLISHED_EXCLUDED_VIEWS = ['E', 'H', 'I', 'J'];
+  const PUBLISHED_EXCLUDED_VIEWS = ['E', 'G', 'H', 'I', 'J'];
 
   const VIEWS = O.isPublished()
     ? Object.fromEntries(

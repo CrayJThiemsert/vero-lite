@@ -1,0 +1,99 @@
+# cloudflared ingress for the PUBLISHED OCT demo surface (PLAN-0100 Step 8).
+#
+# THIS FILE IS THE ENFORCEMENT. It is AC-6(a)'s set-equality target: the `path:`
+# patterns below must exactly equal PLAN-0100's published allow table, and the
+# final entry must be the catch-all `http_status:404`. That catch-all IS the
+# deny-by-default rule (D5(2)) — anything not matched above it does not exist on
+# the published surface.
+#
+# LOCALLY-MANAGED TUNNEL, ON PURPOSE (SD-3's ruling). Do NOT convert this to a
+# remotely-managed `TUNNEL_TOKEN` tunnel: that moves the ingress map into the
+# Cloudflare dashboard, out of this repo, and silently voids AC-6(a) — the test
+# would keep passing against a file the running tunnel no longer reads.
+#
+# EVERY `path:` IS ANCHORED AT BOTH ENDS, and that is load-bearing rather than
+# stylistic. cloudflared matches Path as an UNANCHORED regex
+# (`r.Path.Regexp.MatchString` in cloudflared's ingress/rule.go), so an
+# unanchored `path: /query` would ALSO admit `/insights/query` — which SD-1
+# excludes — and `path: /recommendations` would admit `/recommendations/{id}/execute`.
+# An unanchored allowlist passes set-equality while admitting excluded routes,
+# which is why AC-6(a) asserts anchoring as well as membership.
+#
+# THE METHOD COLUMN IS NOT ENFORCEABLE HERE. The ingress Rule struct carries only
+# Hostname, Path, Service, Handlers, Config — there is no method field, so a path
+# allow admits ALL methods on that path. The allowlist stays expressible because
+# path alone separates every allowed route from every excluded one; PLAN-0100's
+# Method column is documentation, and no test may assume method filtering exists.
+#
+# NO `hostname:` KEY, deliberately. The published domain is unnamed until Phase 5,
+# and a placeholder would make `cloudflared tunnel ingress rule <url>` report
+# misses that are artifacts of the placeholder rather than of the allowlist. A
+# rule without `hostname` matches any host, which is correct here: the tunnel only
+# ever receives traffic for the hostname its own DNS route points at.
+
+tunnel: vero-oct-published
+credentials-file: /etc/cloudflared/credentials.json
+
+ingress:
+  # --- the SPA itself ------------------------------------------------------- #
+  - path: ^/$
+    service: http://app:8000
+  - path: ^/assets/.+$
+    service: http://app:8000
+
+  # --- deterministic reads --------------------------------------------------- #
+  - path: ^/health$
+    service: http://app:8000
+  - path: ^/meta$
+    service: http://app:8000
+  - path: ^/objects/[^/]+$
+    service: http://app:8000
+  - path: ^/procedures$
+    service: http://app:8000
+  - path: ^/llm/status$
+    service: http://app:8000
+
+  # Tab A read. Deterministic-PINNED on this profile (OI-1 = option (b), ruled
+  # 2026-08-06): the fan-out fires from view-map.js on the default landing view,
+  # so the visitor never asked for it — llm.arm_policy routes it to the rule arm
+  # by design. Not a published LLM route; D6's cap + prompt-log do not attach.
+  - path: ^/recommendations$
+    service: http://app:8000
+
+  # --- keyed routes ---------------------------------------------------------- #
+  # The reject-at-login probe. WITHOUT THIS ROW THE DEMO IS UNLOGINABLE — no key
+  # can be stored, and every keyed row below becomes undrivable — while every
+  # test that does not model login still passes (PLAN-0100 Step 1 finding C-1).
+  - path: ^/whoami$
+    service: http://app:8000
+
+  # Operator-driven approve beat. DB-free: mutates the process-local _action_store
+  # only. `/{id}/execute` is EXCLUDED under SD-1 (DB-backed, and there is no global
+  # exception handler, so it would 500 rather than degrade) — the `/approve$`
+  # anchor is what keeps it out.
+  - path: ^/recommendations/[^/]+/approve$
+    service: http://app:8000
+
+  # --- the assisted route ----------------------------------------------------- #
+  # The wedge. Stays `assisted` after OI-1 because the VISITOR TYPES IT, so
+  # ADR-0035 D6's prompt-log obligation attaches naturally and the per-IP zone cap
+  # bounds it. `^…$` keeps the SD-1-excluded `/insights/query` out.
+  - path: ^/query$
+    service: http://app:8000
+
+  # --- deny by default (MUST be last) ----------------------------------------- #
+  # Everything else: /warm, /sleep, the three intake routes, the procedure-draft
+  # routes, ALL THREE /demo/hero routes, /recommendations/{id}/execute, the runs
+  # routes, /insights/query, the exports + cases routes, /audit/verify — and any
+  # route not listed above.
+  #
+  # ⚠️ /demo/hero/governance and /demo/hero/impact are denied here DELIBERATELY,
+  # and for a different reason from everything else on this line. Their backend is
+  # offline + DB-free and would serve fine. They are off because the governed hero
+  # is BESPOKE PER DESIGN PARTNER (ADR-0032 D1.2) and this system pins
+  # OCT_VERTICAL=energy, which owns no hero builder — routers/demo.py would fall
+  # back to procurement's, serving a Fastenal hero under an energy banner. The
+  # hero ships on the procurement system when that one is stood up. Tab G is
+  # correspondingly not registered on this profile (app.js PUBLISHED_EXCLUDED_VIEWS),
+  # so nothing in the UI fetches what this rule denies.
+  - service: http_status:404

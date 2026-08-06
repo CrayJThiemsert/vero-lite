@@ -299,7 +299,7 @@ _GUARD_REGISTRY: dict[tuple[str, str], tuple[int, str]] = {
 
 #: The ten-tab census, and the four the published profile drops.
 _ALL_VIEW_KEYS = set("ABCDEFGHIJ")
-_PUBLISHED_EXCLUDED_VIEWS = {"E", "H", "I", "J"}
+_PUBLISHED_EXCLUDED_VIEWS = {"E", "G", "H", "I", "J"}
 
 
 def _wrappers() -> set[str]:
@@ -387,7 +387,7 @@ def test_the_single_guard_predicate_is_exported_and_reads_the_profile() -> None:
     assert "isPublished," in api_source, "isPublished must be exported on window.OCT"
 
 
-def test_published_profile_drops_exactly_the_four_fully_excluded_tabs() -> None:
+def test_published_profile_drops_exactly_the_five_excluded_tabs() -> None:
     """Tab gating is done by filtering VIEWS itself, so downstream is automatic."""
     app_source = _APP_JS.read_text(encoding="utf-8")
 
@@ -399,8 +399,10 @@ def test_published_profile_drops_exactly_the_four_fully_excluded_tabs() -> None:
     assert excluded == _PUBLISHED_EXCLUDED_VIEWS, (
         f"published-profile tab exclusions drifted: {sorted(excluded)} != "
         f"{sorted(_PUBLISHED_EXCLUDED_VIEWS)} — SD-1(a) drops I/J (DB-backed), "
-        "SD-2 context drops E (/intake/*), and H's last two allowed routes moved "
-        "to the excluded table under C-3"
+        "SD-2 context drops E (/intake/*), H's last two allowed routes moved "
+        "to the excluded table under C-3, and Step 8 drops G because the hero is "
+        "bespoke per design partner (ADR-0032 D1.2) while this deployment pins "
+        "OCT_VERTICAL=energy, which owns no hero builder"
     )
     assert "const VIEWS = O.isPublished()" in app_source, (
         "VIEWS must be filtered at definition so containers, buildTabs(), go()'s "

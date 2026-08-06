@@ -135,7 +135,7 @@ calls can still be incomplete with respect to the routes that make the feature
 | `UI_PROFILE` (new setting `ui_profile`) | `published` on the published deployment; default `dev` | This PLAN (s202 ruling); env name valid per `config.py:30-35` |
 | `PROMPT_LOG_ENABLED` / `PROMPT_LOG_DIR` (new) | `true` / `/var/log/vero/prompt-log` (named volume `prompt-log`) on published; default `false` / same path | D6 `0035:600-602` |
 | Published compose network name | `vero_oct` — ⚠️ **restated s207-R2.** As drafted this row read "the network **the portal repo's connector** joins", which SD-3's ruling contradicts: under (ii) **vero-lite ships its own `cloudflared`**. Under the amendment's reading (a) this network carries `app` + vero-lite's own connector and **no other connector joins it** (finding 3 — a second connector on this network reaches `app:8000` and bypasses the ingress allowlist entirely). Under reading (b) the original wording returns. **Pin the final wording when the D4/L5 amendment is ratified** — see §ADR amendment owed | This PLAN + D4 `0035:419-423` |
-| `OCT_VERTICAL` | ⚠️ **UNPINNED — owed.** Added s207-R2 because the DB-less boot guarantee depends on it: the two *unwrapped* startup calls (`main.py:234` `fetch_objects`, `:242` `registrar()`) are DB-free for the **`energy`** default (`config.py:179-180`), which is what the independent review verified. The published demo shows the **procurement** hero (`/demo/hero/*`), so if it runs `OCT_VERTICAL=procurement` the DB-less boot claim is **unverified for the vertical actually deployed** | This PLAN — Step 8 must pin it **and** re-verify those two call sites for whichever vertical is pinned |
+| `OCT_VERTICAL` | ✅ **PINNED `energy` — Cray, typed, 2026-08-06 (Step 8).** The s207-R2 framing that stood here was **superseded by new info**, not wrong at the time: it asked whether pinning `procurement` would cost the DB-less boot guarantee, and the answer measured at Step 8 is *no* — procurement's adapter and its executor registrar (`hero_demo/run.py:656-732`) open no session, and `run.py` contains no session-opening primitive at all. **The DB posture was never the discriminator.** What decided it is a different measurement: procurement's PRIMARY adapter is the `FastenalCsvAdapter` (`data_adapter/__init__.py:99-113`, PLAN-0084 SD-F), whose `stream_events` is an **empty async iterator by design** (`fastenal_csv.py:243-251`, *"ships no OperationalEvent stream (v1)"*). `_populate_store` streams `"reading"` **before** any arm choice (`actions.py:186`), so under `procurement` the store never fills and `GET /recommendations` returns `[]` — on **both** profiles, tunable by no setting. That would leave Tab A, the **default landing view** (`app.js:171-173`), blank and Step 9 case 1's approve beat with no id to drive. Energy streams real events and exactly **one** breaches (`OVERTEMP_READING_CELSIUS = 96.5` ≥ the pinned `90.0`), which is the dataset's stated design (`synthetic.py:18-21`). The `OCT_RECOMMEND_*` defaults **are** energy's, so this deployment overrides none of them | This PLAN, on **Cray's typed ruling** — which is authority enough for the pin on its own. ⚠️ The *"procurement becomes a second system rather than a re-pin"* framing rests on **ADR-0036, still `Proposed`**; nothing in Step 8 depends on it, and per CLAUDE.md §8 that ADR must merge before any PR that implements its decisions |
 
 ## The PROVISIONAL route allowlist + per-route arm posture
 
@@ -160,7 +160,7 @@ published surface (D5(2)).
 | `/query` | POST | **assisted** | the wedge's NL query (`api.js:72`); capped + logged; carries the PLAN-0093 disclosure |
 | ~~`/insights/query`~~ | — | — | **EXCLUDED under SD-1 (Cray, 2026-08-05)** — moved to the excluded table. It reads the run corpus from Postgres (`insights.py:283` session dep, `:348` `execute_run_query`), which the DB-less posture cannot serve. Arm posture was beside the point: even pinned deterministic it would 500 rather than return its designed `"No runs matched that question."` refusal (`insights.py:349-357`) |
 | `/procedures` | GET | deterministic | Tab F browse (`api.js:81`) |
-| `/demo/hero/governance`, `/demo/hero/impact` | GET | deterministic | Tab G read modes (`api.js:103-104` — citation corrected s207; the drafting census said `96-97`). DB-free by construction: `demo.py:36-37` states it outright — *"The two READ views are deterministic + offline (no mutation, no DB, no LLM)"* |
+| ~~`/demo/hero/governance`, `/demo/hero/impact`~~ | — | — | **EXCLUDED at Step 8 (Cray, typed, 2026-08-06)** — moved to the excluded table. The reason is **not** the DB posture that excluded the other four: these two remain DB-free by construction (`demo.py:36-37`). See the excluded table for the actual reason |
 | ~~`/runs/{id}`, `/runs/{id}/gate/resolve`~~ | — | — | **EXCLUDED under SD-1 (Cray, 2026-08-05)** — moved to the excluded table. Two independent reasons, either one sufficient — see finding C-3 |
 | `/llm/status` | GET | deterministic | read-only residency probe, never warms (INV-1, `api.js:163`); tentative — kept because Ask gates on MS-S1 status (`theme.css:184-186`); Step 1 census confirms the dependency, else it drops |
 
@@ -172,6 +172,7 @@ published surface (D5(2)).
 | `/intake/*` (all three) | D5(2) | Tab E **not registered** (`app.js:14` gated); story "Go live" beat must not fire (`view-story.js:907` — scripted fallback if one exists, else launcher hidden; Step 1 census decides which, and the guard-registry tripwire pins it either way) |
 | `/procedures/draft/*` (all three) | this PLAN — SD-2 | draft-authoring wizard entries not rendered (`intake-procedures.js:158-201` call sites guarded) |
 | `/demo/hero/event` | D5(2) (F4) | Tab G event-mode control not rendered (`view-hero.js:658` branch gated) |
+| `GET /demo/hero/governance`, `GET /demo/hero/impact` | **Step 8 (Cray, typed, 2026-08-06)** — the arm-posture/route list is declared PROVISIONAL and revisable without reopening the ADR (`0035:578-584`), which is the same standing this row uses | **Tab G NOT REGISTERED** (`app.js` `PUBLISHED_EXCLUDED_VIEWS` gains `G`). ⚠️ **A different reason from every other row in this table** — these two are offline and DB-free and would serve fine. They are off because the governed hero is **bespoke per design partner** (ADR-0032 D1.2) while this deployment pins `OCT_VERTICAL=energy`, which owns **no hero builder**: `_HERO_BUILDERS` holds only `procurement` and `fleet_maintenance` (`demo.py:132-135`) and `_builders()` falls back to procurement's at **request** time (`:61`, `:149`), so leaving Tab G on would serve a Fastenal procurement hero under an energy banner — a mismatch a partner reads as a defect. The hero ships on the **procurement system**, and this is the first row whose disposition is scoped to *this system* rather than to the published surface in general |
 | `POST /recommendations/{id}/execute`, `GET /runs/{id}`, `POST /runs/{id}/gate/resolve`, `POST /insights/query` | **SD-1's DB-less ruling** (Cray, 2026-08-05) — see finding C-3 | All four are DB-backed and there is **no global exception handler anywhere in `services/api/`**, so under the DB-less posture each returns an **unhandled 500**, not a typed degrade. Published-profile UI disposition: **Tab B's Execute control not rendered** (Approve stays — it is DB-free); Tab G's Act panel is already unreachable (it mounts only in event mode, `view-hero.js:641`, and event mode is excluded above); the Ask/insights entry point for `/insights/query` not rendered. Guard-registry tripwire (AC-1) pins all three |
 | everything else (`/intake/generate` included above; `/api/exports/*`, `/cases*`, Tab H's off-list routes — GET `/runs` `view-monitor.js:168` **and also `view-map.js:84`, a Tab A caller the drafting census missed — see finding C-2**, POST `/runs/{id}/cancel` `view-monitor.js:148`, GET `/audit/verify` `view-monitor.js:488` — and any route not in the allow table) | default-deny | **Tabs I/J: NOT REGISTERED** (SD-1 ruled (a), Cray 2026-08-05 — the BLOCKED-ON-SD-1 marker here is released). **Tab H still resolves in the Step 1 census on its own default-deny basis** — but the s205 note that "two of H's routes are already on the allow table … so H's backend is *not* entirely excluded" is **no longer true**: SD-1's C-3 disposition moved `/runs/{id}` (`view-monitor.js:235`) and `/runs/{id}/gate/resolve` (`view-monitor.js:133`) to the excluded table, so **every** Tab H backend route is now off the allow table. By this row's own closing rule — *any tab whose entire backend is excluded is not registered* — H's census disposition is now determined rather than open. Classified **superseded by new info** (the ruling changed the facts), not an error in the s205 note |
 
@@ -388,18 +389,48 @@ degrade, or writer under test.
   Step 3 removes and never adds, so it cannot invalidate these numbers.
   **Tripwire:** if any later change *adds* header content to the published
   profile, this measurement is void and must be re-run.
-- [ ] **AC-4 (published env profile).** The published compose project pins every
-  value in §Pinned values. Closed by `tests/deploy/test_published_compose.py`
-  parsing the committed compose + env files (set-equality on the pinned keys;
-  asserts `API_AUTH_ENABLED=true`, `LLM_REQUEST_TIMEOUT_S=25`,
-  `LLM_RETRY_BUDGET=1`, `OLLAMA_HOST`, `UI_PROFILE=published`,
-  `PROMPT_LOG_ENABLED=true`).
-- [ ] **AC-5 (no published ports).** No service in the published compose file
-  carries a `ports:` key (D1(1) `0035:266-274`; the dev compose publishes three —
-  `docker-compose.yml:12-13,25-26,38-39` — and stays as-is per ADR-0003). Closed
-  by the same test module (YAML parse, assert no `ports` key anywhere).
+- [x] **AC-4 (published env profile) — CLOSED 2026-08-06 (session 209).** The
+  published compose project pins every value in §Pinned values. Closed by
+  `tests/deploy/test_published_compose.py` parsing the committed compose + env
+  files (set-equality on the pinned keys; asserts `API_AUTH_ENABLED=true`,
+  `LLM_REQUEST_TIMEOUT_S=25`, `LLM_RETRY_BUDGET=1`, `OLLAMA_HOST`,
+  `UI_PROFILE=published`, `PROMPT_LOG_ENABLED=true`, plus the two this step owed:
+  `OCT_VERTICAL=energy` and `LLM_MAX_INFLIGHT=1`).
+  ⚠️ **Scope limit, so the closeout cannot overstate it:** this parses the
+  committed **file**. It cannot see the running container's env — an
+  `API_AUTH_ENABLED=false` supplied at `docker run` time would leave every keyed
+  route open to anonymous visitors and every assertion here would still pass.
+  Step 9 case 1's keyless `/whoami` → **401** is the only thing that catches that,
+  which is why a **200** there is written as a FAIL rather than a curiosity. A
+  companion test also asserts the compose file actually **loads** the env file —
+  a pinned file nothing reads pins nothing.
+- [x] **AC-5 (no published ports) — CLOSED 2026-08-06 (session 209).** No service
+  in the published compose file carries a `ports:` key (D1(1) `0035:266-274`; the
+  dev compose publishes three — `docker-compose.yml:12-13,25-26,38-39` — and stays
+  as-is per ADR-0003). Closed by the same test module (YAML parse, assert no
+  `ports` key anywhere), together with two structural assertions that make the
+  posture legible rather than incidental: the service set is **exactly**
+  `{app, cloudflared}` (no `postgres` per SD-1, no `nginx` per SD-3) and `app`
+  joins **only** `vero_oct`.
 - [ ] **AC-6 (allowlist enforced + census-complete).** The published surface is
-  default-deny. Closed by: (a) a set-equality test asserting the **committed
+  default-deny. ✅ **(a) and (b) CLOSED 2026-08-06 (session 209); (c) remains open
+  and belongs to Step 9** — the checkbox therefore stays unticked, deliberately.
+  Two notes worth carrying, both from a non-vacuity probe run at closeout rather
+  than from review:
+  **(1) The tests evaluate cloudflared's semantics, not Python's convenience.**
+  Matching uses `re.search` — an unanchored search, mirroring
+  `r.Path.Regexp.MatchString` — never `re.fullmatch`. With `fullmatch` a pattern
+  that had lost its `^` would still pass the test while leaking in production.
+  **(2) The enforcement assertions read the COMMITTED FILE, not the table.** They
+  did not at first: the anchoring and deny tests were parametrized over the test
+  module's own constant, which is anchored by construction. Stripping the anchors
+  off `^/query$` in `config.yml` reddened **only** the set-equality test, catching
+  it incidentally — the dedicated anchoring assertion was **vacuous**. After the
+  fix the same mutation reddens **four** tests, including
+  `the_excluded_routes_are_denied[/insights/query]`, the actual leak SD-1 excludes.
+  A positive control (`test_the_anchors_are_load_bearing`) is now shipped inside
+  the suite so that distinction cannot silently regress.
+  Closed by: (a) a set-equality test asserting the **committed
   `cloudflared` ingress config's** allow rules exactly equal the table above, and
   that the config's final entry is the catch-all `http_status:404` (SD-3's ruling
   — the target is the ingress file, not an nginx config; a remotely-managed
@@ -863,9 +894,15 @@ Cray's typed reading **(a)**: vero-lite's `cloudflared` *is* this system's
 connector in its own compose project), so the shape this step builds is settled.
 (2) **OI-1 was ruled the same day** — option **(b)**, see §Open items:
 `/recommendations` is pinned deterministic on the published profile, so this step
-inherits **no** cap-or-log work for it. ⚠️ What this step still owes on its own:
-**pin `OCT_VERTICAL`** (§Pinned values, still UNPINNED) and pin
-`LLM_MAX_INFLIGHT` for `/query`, which remains `assisted`.
+inherits **no** cap-or-log work for it.
+✅ **BOTH of this step's own debts are now DISCHARGED** (2026-08-06):
+`OCT_VERTICAL` is pinned **`energy`** on Cray's typed ruling (§Pinned values — and
+the measurement that decided it is recorded there, because it was **not** the
+DB-posture question the row originally asked), and `LLM_MAX_INFLIGHT=1` is written
+into `deploy/published/published.env` — it had existed only as PLAN prose, since
+the setting defaults to `0` = unlimited (`config.py:235`) and no committed file
+set it. The published surface also **drops `/demo/hero/*`** at this step (see both
+route tables): energy owns no hero builder, so Tab G is not registered.
 
 - **`cloudflared` runs as a locally-managed tunnel** so its `config.yml` is
   **committed in this repo** — that file is AC-6(a)'s set-equality target. Its
