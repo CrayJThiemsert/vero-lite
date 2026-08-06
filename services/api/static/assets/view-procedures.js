@@ -212,6 +212,13 @@
       class: 'pv-modetab' + (state.mode === mode ? ' active' : ''),
       onClick: () => { if (state.mode !== mode) mount(root.parentElement, { mode: mode }); }
     }, label);
+    // PLAN-0100 Step 3: the whole toggle is dropped on the published profile —
+    // "Authoring gate" is the only way into mountEdit(), whose three draft
+    // backends SD-2 excludes. mountEdit() keeps its own refusal as a backstop, so
+    // the call is unreachable even if some future path re-enters that mode; this
+    // is the AC-1 half — do not RENDER a control for a capability the deployment
+    // does not have.
+    if (O.isPublished()) return h('div', { class: 'pv-modetoggle' }, [tab('read', 'Shipped')]);
     return h('div', { class: 'pv-modetoggle' }, [tab('read', 'Shipped'), tab('edit', 'Authoring gate')]);
   }
 
@@ -654,6 +661,19 @@
     clear(subEl);
     clear(bodyEl);
     const v = (O.State.meta && O.State.meta.vertical) || 'draft';
+    // PLAN-0100 Step 3 / SD-2 (Cray ruled exclude ALL THREE draft routes): the
+    // authoring wizard's backends — POST /procedures/draft/{classify,build,
+    // instantiate} — do not exist on the published surface. Note this wizard lives
+    // inside Tab F, which STAYS registered, so dropping Tab E does not cover it;
+    // it needs its own guard.
+    if (O.isPublished()) {
+      bodyEl.appendChild(O.errorState(
+        'Authoring is not part of this demo',
+        'This published surface is read-only for procedures — drafting a new one ' +
+        'runs against the operator console, not here.', null
+      ));
+      return;
+    }
     if (O.IntakeProcedures && O.IntakeProcedures.mount) {
       O.IntakeProcedures.mount(bodyEl, {
         vertical: v,

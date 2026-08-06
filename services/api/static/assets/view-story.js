@@ -812,14 +812,25 @@
     ]));
     root.appendChild(h('div', { class: 'intake-sentence' }, '“' + SAMPLE_SENTENCE + '”'));
 
-    const statusLine = h('div', { class: 'intake-status muted' }, 'Two ways to draft — both safe on stage.');
+    // PLAN-0100 Step 3: on the published profile the "Go live" path is not offered
+    // at all — it calls O.Intake.extract (POST /intake/extract), which D5(2)
+    // excludes. The PLAN's rule was "scripted fallback if one exists, else launcher
+    // hidden"; a fallback DOES exist (goLive()'s own cached-draft path), so the
+    // LAUNCHER STAYS and only this one beat loses its live arm. The cached draft is
+    // the whole narrative — nothing in the story is lost.
+    const publishedStory = O.isPublished();
+    const statusLine = h('div', { class: 'intake-status muted' },
+      publishedStory ? 'Drafted from the cached skeleton — safe on stage.' : 'Two ways to draft — both safe on stage.');
     root.appendChild(h('div', { class: 'intake-paths' }, [
       h('button', { class: 'btn primary sm', onClick: () => showDraft(false) }, [icon('grid', { width: 14, height: 14 }), 'Use cached draft']),
-      h('span', { class: 'ca-or muted' }, 'or'),
-      h('button', { class: 'btn ghost sm', onClick: goLive }, [icon('bolt', { width: 14, height: 14 }), 'Go live (MS-S1)']),
+      publishedStory ? null : h('span', { class: 'ca-or muted' }, 'or'),
+      publishedStory ? null : h('button', { class: 'btn ghost sm', onClick: goLive }, [icon('bolt', { width: 14, height: 14 }), 'Go live (MS-S1)']),
       h('span', { class: 'flex' }), statusLine
     ]));
-    const resil = h('div', { class: 'intake-resilience' }, [icon('bolt', { width: 13, height: 13 }), 'Live path = hard timeout → cached fallback. The fallback reads as deliberate, never a stall.']);
+    const resil = h('div', { class: 'intake-resilience' }, [icon('bolt', { width: 13, height: 13 }),
+      publishedStory
+        ? 'This public demo drafts from the cached skeleton; the live MS-S1 path runs on the operator console.'
+        : 'Live path = hard timeout → cached fallback. The fallback reads as deliberate, never a stall.']);
     root.appendChild(resil);
 
     const draftWrap = h('div', { class: 'intake-draft' });
@@ -883,6 +894,12 @@
     // when the operator resets/leaves; liveInFlight guards double-clicks.
     function goLive() {
       if (!scope || liveInFlight) return;
+      // PLAN-0100 Step 3 — structural backstop. The button above is already not
+      // rendered on the published profile; this makes the EXCLUDED CALL itself
+      // unreachable, so a future caller cannot reintroduce a request to a route
+      // the published allowlist 404s. Hiding a control and disabling the call are
+      // different guarantees and this beat carries both.
+      if (O.isPublished()) { showDraft(false); return; }
       const gen = liveGen;
       liveInFlight = true;
       statusLine.className = 'intake-status s-info';

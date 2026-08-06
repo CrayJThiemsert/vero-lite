@@ -31,6 +31,7 @@ from pydantic import ValidationError
 
 from services.api.config import Settings, settings
 from services.api.main import _UI_PROFILE_META_DEV
+from tests.api.js_source import strip_js_comments
 
 _INDEX = Path("services/api/static/index.html")
 _API_JS = Path("services/api/static/assets/api.js")
@@ -250,3 +251,170 @@ def test_the_ui_profile_is_read_before_the_first_paint() -> None:
         f"{_API_JS} — a later, async read would land after buildTabs()"
     )
     assert 'meta[name="ui-profile"]' in state_literal
+
+
+# --------------------------------------------------------------------------- #
+# AC-1(b) — the guard registry (PLAN-0100 Step 3)
+# --------------------------------------------------------------------------- #
+
+_ASSETS = Path("services/api/static/assets")
+
+#: Every call site of an excluded-backend wrapper, and WHERE its published-profile
+#: guard lives. The guard is often in a different file from the call — hiding Tab E
+#: guards ``intake-view.js``'s three calls from ``app.js`` — so each entry names its
+#: guard file explicitly rather than assuming the two coincide.
+#:
+#: Keyed by (wrapper, call file) -> (call count, guard file). The COUNT is
+#: load-bearing: set-equality on files alone would stay green if a second,
+#: unguarded call to the same wrapper were added to a file already on the list.
+#:
+#: ``O.API.execute`` is here because of SD-1's C-3 disposition, and it is the entry
+#: that justifies the whole mechanism: PLAN-0100's drafted Step-3 list named only
+#: Tab B's Execute. Grepping the wrapper found a SECOND call site in Tab D
+#: (``view-flow.js``) — a tab that stays on the published surface — which the
+#: drafted list would have left rendering a control whose backend 500s.
+_GUARD_REGISTRY: dict[tuple[str, str], tuple[int, str]] = {
+    ("O.Llm.warm", "llm-control.js"): (1, "app.js"),
+    ("O.Llm.sleep", "llm-control.js"): (1, "app.js"),
+    ("O.Intake.defaults", "intake-view.js"): (1, "app.js"),
+    ("O.Intake.extract", "intake-view.js"): (1, "app.js"),
+    ("O.Intake.extract", "view-story.js"): (1, "view-story.js"),
+    ("O.Intake.generate", "intake-view.js"): (1, "app.js"),
+    ("O.Draft.classify", "intake-procedures.js"): (1, "view-procedures.js"),
+    ("O.Draft.build", "intake-procedures.js"): (1, "view-procedures.js"),
+    ("O.Draft.instantiate", "intake-procedures.js"): (1, "view-procedures.js"),
+    ("O.Hero.event", "view-hero.js"): (1, "view-hero.js"),
+    ("O.API.execute", "view-anomaly.js"): (1, "view-anomaly.js"),
+    ("O.API.execute", "view-flow.js"): (1, "view-flow.js"),
+}
+
+#: The ten-tab census, and the four the published profile drops.
+_ALL_VIEW_KEYS = set("ABCDEFGHIJ")
+_PUBLISHED_EXCLUDED_VIEWS = {"E", "H", "I", "J"}
+
+
+def _wrappers() -> set[str]:
+    return {wrapper for wrapper, _ in _GUARD_REGISTRY}
+
+
+#: Comment stripping is ``tests.api.js_source.strip_js_comments``, shared with the
+#: three other modules that scan these assets as text. The reason this scan needs
+#: it at all is worth keeping: session 206 shipped a no-inline-script guard that
+#: matched ``<script>`` inside its own HTML comment, and this very registry first
+#: counted four ``O.Intake.extract`` "call sites" in ``view-story.js`` when three
+#: of them were the comments explaining why the fourth is guarded. A tripwire that
+#: counts its own documentation is measuring the wrong thing.
+#:
+#: The local copy this replaces removed block comments BEFORE line comments, which
+#: is the reverse of how JavaScript tokenises — a ``/*`` written inside a ``//``
+#: comment opened a phantom block that ran to the next ``*/``. It also DELETED
+#: comments rather than blanking them, which can splice ``O.Hero.event/*x*/(`` into
+#: a call site that exists in no file; the shared helper blanks, so it cannot.
+#:
+#: One property of the local copy is NOT reproduced here: its ``(?<!:)`` spared
+#: ``://`` so a URL would not truncate the line before a real call. That is a real
+#: difference, so it was measured rather than waved through — on today's assets no
+#: line puts a registered wrapper call after a ``://``, and all three strippers
+#: (the local one, the shared one, and the string-aware follow-up) produce the same
+#: twelve observed entries. The shared helper reaching the same end structurally,
+#: by treating quoted strings as opaque, is a SEPARATE change still in review; until
+#: it lands, a URL followed by a call on one line would be missed here.
+
+
+def test_excluded_wrapper_call_sites_exactly_equal_the_registry() -> None:
+    """A new call site to an excluded backend reddens this — that is the point.
+
+    Scans every ``assets/*.js`` for each registered wrapper and compares the
+    observed (wrapper, file, count) triples against the pinned registry. Adding a
+    call in a NEW file changes the key set; adding a SECOND call in a file already
+    listed changes its count. Both are caught.
+    """
+    observed: dict[tuple[str, str], int] = {}
+    scanned = 0
+    for path in sorted(_ASSETS.glob("*.js")):
+        source = strip_js_comments(path.read_text(encoding="utf-8"))
+        scanned += 1
+        for wrapper in _wrappers():
+            # Require call syntax, not a mention: `O.Hero.event(` is a call,
+            # `O.Hero.event` in prose is not.
+            n = source.count(wrapper + "(")
+            if n:
+                observed[(wrapper, path.name)] = n
+
+    # Non-vacuity: if the glob matched nothing, every set below is trivially equal.
+    assert scanned > 10, f"expected the asset directory to be populated, scanned {scanned}"
+
+    expected = {key: count for key, (count, _) in _GUARD_REGISTRY.items()}
+    assert observed == expected, (
+        "excluded-backend call sites drifted from the pinned registry.\n"
+        f"  unregistered / changed: {sorted(set(observed.items()) - set(expected.items()))}\n"
+        f"  registered but missing: {sorted(set(expected.items()) - set(observed.items()))}\n"
+        "Every call to an excluded backend must be guarded by O.isPublished() and "
+        "recorded here — see PLAN-0100 Step 3 and finding C-3."
+    )
+
+
+def test_every_registered_guard_file_actually_carries_the_guard() -> None:
+    """The registry names a guard file per call site; the token must be there."""
+    for (wrapper, call_file), (_, guard_file) in sorted(_GUARD_REGISTRY.items()):
+        source = (_ASSETS / guard_file).read_text(encoding="utf-8")
+        assert "O.isPublished()" in source, (
+            f"{wrapper} is called from {call_file} and the registry says its "
+            f"published-profile guard lives in {guard_file}, but that file does "
+            "not call O.isPublished()"
+        )
+
+
+def test_the_single_guard_predicate_is_exported_and_reads_the_profile() -> None:
+    """One predicate, not a literal comparison scattered across the assets.
+
+    If a guard were written as ``State.uiProfile === 'published'`` inline, the
+    registry test above would still pass while the guard became invisible to any
+    future audit that greps for the token.
+    """
+    api_source = _API_JS.read_text(encoding="utf-8")
+    assert "function isPublished()" in api_source
+    assert "State.uiProfile === 'published'" in api_source
+    assert "isPublished," in api_source, "isPublished must be exported on window.OCT"
+
+
+def test_published_profile_drops_exactly_the_four_fully_excluded_tabs() -> None:
+    """Tab gating is done by filtering VIEWS itself, so downstream is automatic."""
+    app_source = _APP_JS.read_text(encoding="utf-8")
+
+    all_keys = set(re.findall(r"^\s{4}([A-J]): \{ key:", app_source, re.M))
+    assert all_keys == _ALL_VIEW_KEYS, f"the ten-tab census drifted: {sorted(all_keys)}"
+
+    excluded_literal = app_source.split("const PUBLISHED_EXCLUDED_VIEWS = ", 1)[1].split("]", 1)[0]
+    excluded = set(re.findall(r"'([A-J])'", excluded_literal))
+    assert excluded == _PUBLISHED_EXCLUDED_VIEWS, (
+        f"published-profile tab exclusions drifted: {sorted(excluded)} != "
+        f"{sorted(_PUBLISHED_EXCLUDED_VIEWS)} — SD-1(a) drops I/J (DB-backed), "
+        "SD-2 context drops E (/intake/*), and H's last two allowed routes moved "
+        "to the excluded table under C-3"
+    )
+    assert "const VIEWS = O.isPublished()" in app_source, (
+        "VIEWS must be filtered at definition so containers, buildTabs(), go()'s "
+        "unknown-key fallback and the oct:goto listener are all correct by "
+        "construction rather than each needing its own branch"
+    )
+
+
+def test_every_edited_asset_got_a_cache_bust() -> None:
+    """A stale ``?v=`` serves the OLD file, so a browser check would verify nothing."""
+    index = _INDEX.read_text(encoding="utf-8")
+    for name, minimum in (
+        ("api.js", 47),
+        ("app.js", 47),
+        ("view-anomaly.js", 26),
+        ("view-flow.js", 38),
+        ("view-procedures.js", 26),
+        ("view-hero.js", 48),
+        ("view-story.js", 39),
+    ):
+        match = re.search(rf"assets/{re.escape(name)}\?v=c(\d+)", index)
+        assert match, f"{name} is not versioned in index.html"
+        assert int(match.group(1)) >= minimum, (
+            f"{name} is served at ?v=c{match.group(1)} but Step 3 edited it at "
+            f"c{minimum} — a stale cache-bust serves the pre-Step-3 file"
+        )

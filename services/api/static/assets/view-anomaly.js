@@ -103,9 +103,20 @@
       const approve = h('button', { class: 'btn primary', onClick: () => doApprove(rec, footer, card) }, [icon('check'), 'Approve']);
       right.appendChild(reject); right.appendChild(approve);
     } else if (status === 'approved') {
-      left.appendChild(h('span', { class: 'dc-hint ok-text' }, [icon('check', { width: 14, height: 14 }), 'Approved — ready to execute']));
-      const exec = h('button', { class: 'btn ok', onClick: () => doExecute(rec, footer, card) }, [icon('play'), 'Execute']);
-      right.appendChild(exec);
+      // PLAN-0100 Step 3 / SD-1's C-3 disposition: POST /recommendations/{id}/execute
+      // is DB-backed (actions.py:253,267) and excluded from the published allowlist,
+      // so on the published profile the loop ends at Approve. Rendering Execute here
+      // would 500 in front of the audience the wedge exists to impress — the exact
+      // defect C-3 was raised for. The state is narrated honestly instead of the
+      // control silently vanishing.
+      if (O.isPublished()) {
+        left.appendChild(h('span', { class: 'dc-hint muted' }, [icon('check', { width: 14, height: 14 }),
+          'Approved — execution is operator-driven and not part of this public demo']));
+      } else {
+        left.appendChild(h('span', { class: 'dc-hint ok-text' }, [icon('check', { width: 14, height: 14 }), 'Approved — ready to execute']));
+        const exec = h('button', { class: 'btn ok', onClick: () => doExecute(rec, footer, card) }, [icon('play'), 'Execute']);
+        right.appendChild(exec);
+      }
     } else if (status === 'rejected') {
       left.appendChild(h('span', { class: 'dc-hint muted' }, [icon('x', { width: 14, height: 14 }), 'Dismissed — no action taken']));
       const undo = h('button', { class: 'btn ghost sm', onClick: () => { rec.status = 'proposed'; renderActions(footer, rec, card); updateBand(card, rec); } }, 'Undo');
