@@ -102,9 +102,36 @@ The 23 lost include `strip-msg`, which is what reddened the allowlist.
 
 The two figures differ because today's `app.js` is longer than it was; the
 reproduction is not a correction of the historical number, it is a different tree.
-Session 207 independently measured the same 33–202 span and counted 22 rather than
-23 class applications — a one-token divergence, unreconciled, and recorded here
-rather than averaged away.
+
+### The reconciliation, which turned out to *be* the lesson
+
+Two sessions measured that span independently and agreed on 170 lines but not on
+the class count: 23 against 22. The gap was worth chasing, and it did not come from
+a differently-worded injection. **The two probes counted different populations,
+and nothing in either output said so:**
+
+| probe | counts | lost |
+|---|---|---|
+| ad-hoc, written to model the guard | whole `class: '…'` attribute **strings** | 22 |
+| `_applied_classes` — the guard's **own** extractor | individual class **tokens** | **23** |
+
+Three tokens the ad-hoc probe could not see: `mono`, because `class: 'chip mono'`
+(`app.js:180-181`) is one attribute string but two tokens; and `active` and `spin`,
+because they are applied by `classList.toggle('active', …)` (`:156`, `:189`) and
+`classList.add('spin')` (`:196`), which a `class: '…'` regex cannot match at all.
+Against that, the ad-hoc probe counted `strip` as lost when it is not — `stripEl.className = 'strip' + …`
+re-applies it at `app.js:211`, **after** the phantom closer at 202, so it was never
+inside the swallowed span.
+
+**23 is the number, because it is the one the guard itself would report.**
+
+And note the shape of the error, because it is this lesson's own claim arriving
+from a new direction: the ad-hoc probe was a **reimplementation** of an extractor
+that already existed a few lines away. It returned a plausible number in the right
+ballpark and was wrong twice over. A probe written to check a guard, by
+reimplementing what the guard does, is simply **a second convergent copy** — the
+exact defect this lesson is about, reappearing in the instrument built to measure
+it.
 
 **The measured second instance.** Grepping for the shape found it still live in a
 different file — `api.js:87` (as of `bac8f69`; it was `:74` before
@@ -202,8 +229,17 @@ they do not have.
 - **Grade every number you write down.** A contemporaneous figure from a tree that
   was never committed and a figure reproduced on a named commit are different kinds
   of claim, and a lesson that flattens them teaches the reader to trust both
-  equally. Where two measurements disagree, record the disagreement rather than
-  picking one.
+  equally. Where two measurements disagree, chase it — the disagreement here was one
+  token wide and both reasons for it were real defects.
+- **When you probe a guard, run the guard's OWN extractor — do not reimplement
+  it.** A reimplementation is a second convergent copy, which is the defect this
+  whole lesson is about, and it fails the same silent way: it answers a narrower
+  question than the guard does while its output looks identical. Session 207 hit
+  this shape three times in one session (a `querySelector` returning null and
+  reporting `clipped: 0` from a scan of zero nodes; the registry counting four
+  `O.Intake.extract` call sites when three were comments; and the 22-vs-23 above) —
+  every time, the probe was narrower than the thing it stood in for, and **nothing
+  about its output said so.**
 - **Measure the delta of a preprocessing change across the whole scanned corpus
   before adjusting any test.** Both wrong turns above were caught this way, and
   neither would have been caught by the suite — it was green for both.
