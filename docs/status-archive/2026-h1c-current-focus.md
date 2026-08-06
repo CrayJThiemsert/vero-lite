@@ -1464,3 +1464,52 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > skip collapse is the database coming up, not a coverage change.
 
 > _Older content rotates out of this file per the **STATUS.md Rotation Policy (R1-R8)** in [`docs/runbooks/memory-architecture.md`](runbooks/memory-architecture.md) (Lesson #23): Current Focus keeps the 4 newest sessions (<=8 blocks); Recent Decisions keeps the last 10 rows. Rotated blocks/rows live in [`docs/status-archive/`](status-archive/) and git history (Tier 3). Layout — **two separate chains, both with letters ascending with time and the base holding the recent window**: the rotation archive `2026-h1b` → `c` → `d` → `e` → `f` → `g` → `2026-h1-status.md`, and the Current-Focus-only `2026-h1b` → `c` → `2026-h1-current-focus.md`. Rotations append to the two bases. **Grep the directory, not a filename** — the chain is one corpus and which file holds a given block is an artifact of where the ~192 KB R4 bar happened to fall. _[Chain created 2026-07-17 (s144): the single `2026-h1-status.md` had reached 592,577 B, 2.3x R4's cap, and the new guard (#789) forced the split. `g` added 2026-07-30 (s193): the base had returned to 194,232 B with a ~10.7 KB block due to rotate in, so sessions-142→171 spilled and the base dropped to 46,215 B.]_
+
+
+> **Session 204, 2026-08-04 (head_commit `592124b` → `22202f2`) — three PRs merged
+> (#1026–#1028), one open (#1029, CI green, awaiting merge). Theme: the ADR-0035 D7
+> tenant key lands end to end, and a remedy stated in halves fabricated a green run.**
+>
+> **PLAN-0101 Steps 2–6 COMPLETE, 12/12 ACs, ARCHIVED (#1028/#1029).** 21 tables carry
+> `tenant_id`; all **12** uniques re-scoped (unscoped **0**, anonymous **0**, read from
+> the **built SQLAlchemy metadata**, not source text); revision `0024` = 21 tables ×
+> three phases + 12 drop/recreates, downgrade proven by *running* it. **Two consequences
+> SD-3's riders never named, both found by the work, not by review:** a composite FK
+> **must move with its widened target** (Postgres demands an exact match — **335 suite
+> errors from one root**), and audit-chain scoping is **four** sites, not the two Cray's
+> call named, because `append_audit`'s head lookup is a **correctness requirement** of
+> the widened constraint. Closeout: `docs/plans/done/0101-tenant-key-column.md`.
+>
+> **Four Cray calls reshaped it mid-flight** (attributed in the PLAN): unbind SD-2's
+> letter once AC-10's negative guard proved undischargeable; name the real worry — a
+> future LLM over ontology data sweeping tenants; a **synthetic second-tenant fixture**
+> not a real second customer; **SD-3 rider 3 reversed** to scope the audit reads here.
+>
+> **That worry got a measured answer that INVERTS the intuition.** The NL-query path never
+> writes SQL (**0** raw-SQL execution sites in `services/`) and `_validate_query` checks
+> every filter property against the ontology's property list — **the ontology is the
+> allowlist of what a model may name**: `tenant_id` **in** makes cross-tenant selection
+> *expressible*, **out** keeps it inexpressible (AC-11 asserts it). Nor is the fixture
+> convenience — under one tenant the twelve re-scopes are a **100% behavioural no-op**, so
+> the second tenant is the positive control for Cray's own ruling.
+>
+> **Banked:** a planted `server_default`, read against both oracles in one run, turned
+> `test_tenant_key_migration.py` **RED** while `alembic check` stayed **GREEN at exit 0**
+> — SD-1(b)'s "no `server_default`" is **provably invisible** to the tool that looks like
+> it should catch it. **Read-site census: 50** raw `select(` hits over **16** files in
+> `services/`, UNCLASSIFIED — not a bug today (one deployment = one DB = one tenant); four
+> are now tenant-scoped, the rest owed to a future multi-tenant ADR, AC-12(iii) records them.
+>
+> **An unplanned harness-hygiene detour (#1026/#1027).** A pytest run reported `EXIT=0`
+> with two tests RED. The remedy has **two required halves** — a SINGLE-quoted outer
+> argument **and** `\$` for every `$` — compressed to **one half in three places at once**:
+> the memory index, the hook advisory, `CLAUDE.md` §8. Code followed it literally, kept
+> double quotes, read a **fabricated zero**, and came within one step of an unnecessary
+> constitutional amendment; only the pytest summary three lines below contradicted it.
+> **§8 and lesson 0007 §1.1 were correct throughout — only the enforcement was half-built.**
+> Recorded: *a two-half remedy stated as one half is worse than stating neither* —
+> `docs/lessons/0007-harness-exit-code-artifact.md` §6.1.
+>
+> Final gate: `tests/` **3817 passed / 0 failed / 8 skipped**, `mypy --strict` clean over
+> **131** files, `ruff` + `alembic check` clean, CI `gate` 5m41s. **7 non-vacuity probes,
+> every RED observed**, restored from `/tmp`, never `git checkout`.
