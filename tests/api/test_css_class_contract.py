@@ -38,6 +38,8 @@ import re
 from functools import lru_cache
 from pathlib import Path
 
+from tests.api.js_source import strip_js_comments
+
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _STATIC = _REPO_ROOT / "services" / "api" / "static"
 _ASSETS = _STATIC / "assets"
@@ -169,20 +171,12 @@ def _allowed_undefined() -> frozenset[str]:
 # --------------------------------------------------------------------------- #
 
 
-def _blank_preserving_lines(match: re.Match[str]) -> str:
-    """Replace a comment with spaces, keeping its newlines.
-
-    Collapsing a multi-line block comment to a single space shifts every line
-    number after it. This module reports ``file:line`` in its failure messages,
-    so a stripper that eats newlines makes the report point at the wrong code.
-    """
-    return re.sub(r"[^\n]", " ", match.group(0))
-
-
-def _strip_js_comments(src: str) -> str:
-    """Drop comment CONTENT so prose is not scanned, without moving any line."""
-    without_block = re.sub(r"/\*.*?\*/", _blank_preserving_lines, src, flags=re.DOTALL)
-    return re.sub(r"//[^\n]*", _blank_preserving_lines, without_block)
+#: Comment stripping lives in ``tests.api.js_source`` — shared with the other two
+#: modules that scan these assets as text. It blanks comments character-for-
+#: character rather than removing them, which is what keeps the ``file:line`` in
+#: the failure messages below pointing at the right code: those line numbers are
+#: derived from a character OFFSET into the stripped source, so a stripper that
+#: collapses a comment makes every report after it wrong by that comment's size.
 
 
 def _class_selectors_in(css: str) -> set[str]:
@@ -260,7 +254,7 @@ def _undefined_classes() -> dict[str, str]:
     defined = _defined_css_classes()
     undefined: dict[str, str] = {}
     for js in _asset_files():
-        src = _strip_js_comments(js.read_text(encoding="utf-8"))
+        src = strip_js_comments(js.read_text(encoding="utf-8"))
         for token, line in _applied_classes(src).items():
             if token in defined or token.endswith("-"):
                 continue
@@ -377,7 +371,7 @@ def test_every_asset_that_builds_dom_contributes_class_tokens() -> None:
     """
     silent_but_building: list[str] = []
     for js in _asset_files():
-        src = _strip_js_comments(js.read_text(encoding="utf-8"))
+        src = strip_js_comments(js.read_text(encoding="utf-8"))
         if _applied_classes(src):
             continue
         if re.search(r"createElement|innerHTML|appendChild", src):
@@ -397,7 +391,7 @@ def test_the_scan_sees_status_classes_returned_by_a_factory() -> None:
     guarded vacuously, and the failure is silent: the module still passes, it just
     stops covering the vocabulary every view concatenates onto its elements.
     """
-    src = _strip_js_comments((_ASSETS / "api.js").read_text(encoding="utf-8"))
+    src = strip_js_comments((_ASSETS / "api.js").read_text(encoding="utf-8"))
     applied = _applied_classes(src)
     for status in ("s-ok", "s-warn", "s-crit", "s-neutral"):
         assert status in applied, (
@@ -411,7 +405,7 @@ def test_the_comment_stripper_preserves_every_line() -> None:
     """A stripper that eats newlines makes every reported file:line point at the wrong code."""
     for js in _asset_files():
         raw = js.read_text(encoding="utf-8")
-        assert _strip_js_comments(raw).count("\n") == raw.count("\n"), (
+        assert strip_js_comments(raw).count("\n") == raw.count("\n"), (
             f"the comment stripper changed {js.name}'s line count. Every file:line this "
             "module reports is now off by the size of the comments above it."
         )
@@ -419,7 +413,7 @@ def test_the_comment_stripper_preserves_every_line() -> None:
 
 def test_the_stripper_removes_comments_without_eating_code() -> None:
     """The other direction: if it ate the code, every scan built on it is vacuous."""
-    src = _strip_js_comments((_ASSETS / "view-monitor.js").read_text(encoding="utf-8"))
+    src = strip_js_comments((_ASSETS / "view-monitor.js").read_text(encoding="utf-8"))
     assert "/*" not in src and "*/" not in src, "block comments survived the stripper"
     # view-monitor.js is the hard case: its injected stylesheet is a template
     # literal full of CSS, and CSS comments use the same delimiters as JS ones.
@@ -431,6 +425,97 @@ def test_the_stripper_removes_comments_without_eating_code() -> None:
             "around the injected stylesheet, and every guard in this module built on "
             "the stripped source is now unfalsifiable."
         )
+
+
+def test_a_block_opener_inside_a_line_comment_does_not_blank_the_code_below() -> None:
+    """Regression for s207: this cost a session, and the failure named the wrong thing.
+
+    The stripper used to run two passes — block comments, then line comments. That
+    is the reverse of how JavaScript tokenises: whichever opener comes FIRST wins,
+    so a ``/*`` written inside a ``//`` comment is prose, not a block opener.
+
+    A line comment in ``app.js`` mentioning a route glob (``/intake/`` + ``*``) was
+    therefore read as opening a block, which ran on to the next ``*/`` about 150
+    lines below and deleted a ``class: 'strip-msg'`` application from the scan.
+    ``test_the_allowlist_is_exactly_the_undefined_set`` went red claiming
+    ``strip-msg`` was "no longer undefined" — in a file the change under test had
+    never touched, pointing at the allowlist rather than at the stripper. The
+    browser was fine throughout; only the guard was fooled. The fix at the time was
+    to reword the comment, which left the trap armed for whoever came next.
+
+    Both orderings are asserted, because each is a way for one comment form to eat
+    the other, and fixing only the first would leave the guard half-blind.
+    """
+    line_comment_first = (
+        "// see the /intake/* route family for the other half of this\n"
+        "h('span', { class: 'after-line-comment' }, msg);\n"
+        "/* a genuine block comment, whose */\n"
+        "h('span', { class: 'after-real-block' }, msg);\n"
+    )
+    applied = _applied_classes(strip_js_comments(line_comment_first))
+    assert "after-line-comment" in applied, (
+        "a `/*` inside a `//` comment swallowed the code below it. The stripper is "
+        "removing block comments before line comments again — the s207 bug. Classes "
+        "vanish from the scan in files nobody edited, and the allowlist equality "
+        "test blames the allowlist for it."
+    )
+    assert (
+        "after-real-block" in applied
+    ), "the phantom block ran past a REAL block comment's closer and kept eating."
+
+    block_comment_first = (
+        "/* a banner mentioning a // line comment, then showing the old markup:\n"
+        "   h('span', { class: 'quoted-in-block' }, msg)  <- prose, not code */\n"
+        "h('span', { class: 'after-block-comment' }, msg);\n"
+    )
+    applied = _applied_classes(strip_js_comments(block_comment_first))
+    assert "after-block-comment" in applied, (
+        "a `//` inside a block comment ended the block early, so the block never "
+        "closed where it should and ate the code after it."
+    )
+    assert "quoted-in-block" not in applied, (
+        "a class name quoted inside a block comment reached the scan as if the code "
+        "applied it. The `//` in that comment terminated the block early."
+    )
+
+
+def test_the_stripper_needs_a_closer_before_it_treats_a_slash_star_as_a_comment() -> None:
+    """``'image/*,application/pdf'`` is a MIME type, not an unterminated comment.
+
+    Measured, not hypothetical: treating a ``/*`` with no ``*/`` after it as a
+    comment running to end of file blanked 82 lines of ``view-case.js`` (whose
+    file-input ``accept`` attribute carries that literal) and 8 of ``view-hero.js``
+    (the ``/demo/hero/*`` route glob), taking 11 class applications out of the scan
+    with them. Both files parse perfectly in the browser.
+    """
+    src = (
+        "h('input', { class: 'up', accept: 'image/*,application/pdf' });\n"
+        "h('b', { class: 'below' });\n"
+    )
+    applied = _applied_classes(strip_js_comments(src))
+    assert {"up", "below"} <= set(applied), (
+        f"a `/*` inside a string literal with no closer was treated as a comment and "
+        f"blanked the rest of the source; found only {sorted(applied)}"
+    )
+
+
+def test_the_stripper_blanks_a_comment_rather_than_deleting_it() -> None:
+    """Deleting a comment FABRICATES identifiers out of the code on either side.
+
+    ``test_export_cover_ui_contract`` proves the SPA registers the Month-End KPI
+    view by asserting ``'O.ViewExport' in app_js``. A stripper that removed a
+    comment instead of blanking it would let ``O.View/* … */Export`` satisfy that —
+    a token present nowhere in the file, evidencing a registration that does not
+    exist. Blanking is what keeps the two halves apart.
+    """
+    stripped = strip_js_comments("O.View/* a note between the halves */Export")
+    assert "O.ViewExport" not in stripped, (
+        "the stripper deleted a comment instead of blanking it, gluing the code on "
+        "either side into an identifier that appears in no asset."
+    )
+    assert (
+        "O.View" in stripped and "Export" in stripped
+    ), "the stripper ate the real code around the comment, not just the comment."
 
 
 def test_the_scan_ignores_the_toggle_force_argument() -> None:
@@ -458,7 +543,7 @@ def test_the_codebase_still_uses_only_single_quoted_classes() -> None:
     """
     offenders: list[str] = []
     for js in _asset_files():
-        src = _strip_js_comments(js.read_text(encoding="utf-8"))
+        src = strip_js_comments(js.read_text(encoding="utf-8"))
         if re.search(r"class:\s*[\"`]", src) or re.search(r"className\s*\+?=\s*[\"`]", src):
             offenders.append(js.name)
     assert not offenders, (
