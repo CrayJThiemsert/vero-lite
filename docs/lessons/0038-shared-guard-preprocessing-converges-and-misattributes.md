@@ -61,10 +61,10 @@ and correcting four copies leaves the fifth author to re-derive it next month.
 
 ## Half two — the failure reddens in someone else's name
 
-Session 207's account of the original incident: a line comment in `app.js`
-mentioned a route glob reading as `/intake/` + `*`. The block pass took that `/*`
-for a real opener and blanked to the next `*/` roughly 150 lines below, which
-removed a `class: 'strip-msg'` application from the scan. The result:
+The original incident: a line comment in `app.js` mentioned a route glob reading as
+`/intake/` + `*`. The block pass took that `/*` for a real opener and blanked to the
+next `*/` far below, removing a `class: 'strip-msg'` application from the scan. The
+result:
 
 > `test_the_allowlist_is_exactly_the_undefined_set` FAILED —
 > the allowlist names classes that are no longer undefined: `['strip-msg']`
@@ -77,7 +77,34 @@ step both of them run before anything is compared. The browser was fine througho
 it parses the file correctly. Only the guard was fooled.
 
 The workaround applied at the time was to reword the comment in `app.js`. That
-made the suite green and left the trap armed.
+made the suite green and left the trap armed. It also did not work the first time:
+the first reword removed the globs from the route list but left one inside the
+sentence *explaining* the hazard, and the test stayed red — the explanation was
+still the bug. That story is committed at `app.js:47-50`, in the prose that
+replaced the trigger.
+
+### How big the span actually was — and why the number needs a grade
+
+The original text **is not in git at all**: session 207 walked all 13 revisions of
+`app.js` reachable from `--all` and none contain the glob, because both rewords
+happened before the commit. So the contemporaneous figure cannot be recovered by
+reading history. Two numbers exist and they are not the same kind of thing:
+
+| figure | grade |
+|---|---|
+| **~150 lines** | the contemporaneous record, written into `app.js:45` during the incident. Not reproducible — the tree it described was never committed. |
+| **170 lines (33–202), 23 class applications** | **reproduced** on `bac8f69` by re-arming the trap in memory and running the old block-first stripper. Re-runnable. |
+
+The reproduction is the one to quote, because it is checkable. Injecting the glob
+into the route list at `app.js:33` opens a phantom block that the block pass closes
+at line 202 — **170 lines** — and the class scan drops from 24 applications to 1.
+The 23 lost include `strip-msg`, which is what reddened the allowlist.
+
+The two figures differ because today's `app.js` is longer than it was; the
+reproduction is not a correction of the historical number, it is a different tree.
+Session 207 independently measured the same 33–202 span and counted 22 rather than
+23 class applications — a one-token divergence, unreconciled, and recorded here
+rather than averaged away.
 
 **The measured second instance.** Grepping for the shape found it still live in a
 different file — `api.js:87` (as of `bac8f69`; it was `:74` before
@@ -93,6 +120,19 @@ whole function — were invisible to every scan built on the stripper**, includi
 `test_the_export_ui_never_reaches_the_csv_route`, the structural guard on a typed
 Cray decision. Nothing was red. The guard was simply not looking at that region,
 and had not been for as long as the comment had said what it said.
+
+Independently verified: session 207 located the comment **by content rather than by
+line number**, measured the same 87–105 span, and confirmed that `fetchProcedures`
+is present in the raw source but does not survive the old block-first stripper.
+
+**And the sharpest corroboration of half two comes from that session's own
+experience.** During PLAN-0100 Step 3 they *read* that exact comment — it was
+`api.js:73-74` then — while surveying the API wrappers, and did not register it as
+a phantom opener. They had the defective line on screen while hunting for this
+class of bug in a neighbouring file, and it was still invisible. That is what "the
+failure never names the transform" costs in practice: it is not that people are
+careless, it is that a comment which *reads* as documentation gives the eye no
+reason to parse it as code.
 
 ## What the fix had to get right, measured rather than assumed
 
@@ -114,8 +154,9 @@ Requiring a closer is what keeps them visible.
 **2. "Deleting the comment is the same as blanking it."** It is not. Delete, and
 `O.View/* note */Export` becomes `O.ViewExport` — an identifier present nowhere in
 the file, and exactly the string `test_export_cover_ui_contract` reads to prove the
-SPA registers a view. The fourth copy deleted; migrating it to a blanking helper
-closed a fabrication path that had never fired.
+SPA registers a view. The fourth copy **deleted** comments rather than blanking
+them; migrating it to a blanking helper closed a fabrication path that had never
+fired.
 
 **3. The property that was dropped on purpose, and measured first.** The fourth
 copy's `(?<!:)` spared `://` so a URL would not truncate a line before a real call.
@@ -154,7 +195,15 @@ they do not have.
 - **When a guard reddens naming a file your change never touched, suspect its
   preprocessing before you touch the thing it names.** The assertion names what it
   compared, not what corrupted the input. Rewording the source until the guard goes
-  quiet is the failure mode to watch for in yourself.
+  quiet is the failure mode to watch for in yourself — and note how sticky it is:
+  the first reword here left the trigger inside the sentence *explaining* the
+  trigger, and the test stayed red. If the remedy is "say it differently", the
+  cause has not been found yet.
+- **Grade every number you write down.** A contemporaneous figure from a tree that
+  was never committed and a figure reproduced on a named commit are different kinds
+  of claim, and a lesson that flattens them teaches the reader to trust both
+  equally. Where two measurements disagree, record the disagreement rather than
+  picking one.
 - **Measure the delta of a preprocessing change across the whole scanned corpus
   before adjusting any test.** Both wrong turns above were caught this way, and
   neither would have been caught by the suite — it was green for both.
