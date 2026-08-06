@@ -3,7 +3,7 @@
 **Status:** Draft
 **Owner:** Claude Code (execution) + Cray (gates: ratification, live-evidence go, allowlist revision)
 **Created:** 2026-08-03
-**Related ADRs:** ADR-0035 (owner contract, `0035:875-887`), ADR-0032 (D1 wedge / D5 vocabulary), ADR-002 + ADR-0003 (amended-in-place context), ADR-007 (write gate — untouched). Related PLANs: PLAN-0095 (the image), PLAN-0093 (arm disclosure the degrade path rides), PLAN-0018 (llmctl), PLAN-0047 (authn seam), PLAN-0017/0040 (the intake/draft surfaces this PLAN hides in the published profile).
+**Related ADRs:** ADR-0035 (owner contract, `0035:978-990`), ADR-0032 (D1 wedge / D5 vocabulary), ADR-002 + ADR-0003 (amended-in-place context), ADR-007 (write gate — untouched). Related PLANs: PLAN-0095 (the image), PLAN-0093 (arm disclosure the degrade path rides), PLAN-0018 (llmctl), PLAN-0047 (authn seam), PLAN-0017/0040 (the intake/draft surfaces this PLAN hides in the published profile).
 
 > **Drafting provenance (ADR-012 D4.3 / ADR-013 D1).** Drafted by the in-harness
 > `plan-drafter` subagent from a Code-authored session-202 dispatch; the s202 UI
@@ -73,15 +73,15 @@ makes the published surface coherent**: every control whose backend the allowlis
 excludes is hidden/removed in the published profile (the dev profile keeps them),
 so no visible button 404s in front of exactly the audience the wedge exists to
 impress. The nav-bar overflow fix is a **blocking** acceptance criterion before
-any link is shared (`0035:883-887`). The live tunnel evidence (edge-timeout
+any link is shared (`0035:986-990`). The live tunnel evidence (edge-timeout
 measurement, eviction-coexistence check) is a single Cray-gated step with
 pass/fail reads fixed before the run (CLAUDE.md §8).
 
 ### The correction this PLAN absorbs (Cray ruling, session 202)
 
-ADR-0035 D5(5) closes with "**Env only — no code**" (`0035:484`), and its D5
-preamble says "all config, zero app code, per L1" (`0035:433`). **Both are
-contradicted by the ADR's own D5(2)** (`0035:436-440`): D5(2) rules that
+ADR-0035 D5(5) closes with "**Env only — no code**" (`0035:563`), and its D5
+preamble says "all config, zero app code, per L1" (`0035:502`). **Both are
+contradicted by the ADR's own D5(2)** (`0035:515-519`): D5(2) rules that
 `/intake/*` and `/warm`+`/sleep` "do not exist on the published surface — not
 'exist but are patched'" — but the shipped UI mounts controls that call them
 (census below). Excluding routes at the edge while leaving their controls on
@@ -102,7 +102,7 @@ backends and their live UI consumers:
 | `GET /warm`, `GET /sleep` (`admin.py:174-179`, `:222-223` — keyed GETs, but the dependency goes inert when `api_auth_enabled=false`, `auth.py:71-72`) | `.llmctl` header cluster — `llm-control.js:114` (warm), `:144` (sleep); mounted `app.js:56-57`; styled `theme.css:239`; wrappers `api.js:164-165` |
 | `POST /intake/extract`, `GET /intake/defaults`, `POST /intake/generate` | Tab E "Build a Vertical" (`app.js:14`; view registered `intake-view.js:411`; calls `intake-view.js:160,355`); **story surface** "Go live" beat calls `/intake/extract` (`view-story.js:907`; wrappers `api.js:188-192`) |
 | `POST /procedures/draft/{classify,build,instantiate}` (this PLAN's ruling — see SD-2) | Draft-authoring wizard `intake-procedures.js:158,181,201` (wrappers `api.js:203-210`) |
-| `POST /demo/hero/event` (the unauthenticated DB write — F4, `0035:186`) | Tab G event mode — `view-hero.js:658` (wrapper `api.js:106` — citation corrected s207; the drafting census said `:99`) |
+| `POST /demo/hero/event` (the unauthenticated DB write — F4, `0035:196`) | Tab G event mode — `view-hero.js:658` (wrapper `api.js:106` — citation corrected s207; the drafting census said `:99`) |
 
 Controls whose backends **stay on the allowlist but are keyed** (approve/execute
 `api.js:70-71` → e.g. `actions.py:224-228`; gate-resolve `api.js:112`) are
@@ -125,21 +125,21 @@ calls can still be incomplete with respect to the routes that make the feature
 
 | Knob | Pinned value | Source of the recommendation |
 |---|---|---|
-| `API_AUTH_ENABLED` | `true` | D5(5) `0035:476-479`; setting exists `config.py:53-61` |
-| `OLLAMA_HOST` | `http://host.docker.internal:11434` | D5(5) `0035:480-483`; default is a dev hosts-file name `config.py:79-82`; mechanism is `[ext]` — re-confirmed in Phase 5 |
-| `LLM_REQUEST_TIMEOUT_S` | `25` | D5(4) `0035:467-475`; field `config.py:114-118`; valid env name — no `env_prefix`, case-insensitive `config.py:30-35`; absent from `.env.example` today |
+| `API_AUTH_ENABLED` | `true` | D5(5) `0035:555-558`; setting exists `config.py:53-61` |
+| `OLLAMA_HOST` | `http://host.docker.internal:11434` | D5(5) `0035:559-562`; default is a dev hosts-file name `config.py:79-82`; mechanism is `[ext]` — re-confirmed in Phase 5 |
+| `LLM_REQUEST_TIMEOUT_S` | `25` | D5(4) `0035:546-554`; field `config.py:114-118`; valid env name — no `env_prefix`, case-insensitive `config.py:30-35`; absent from `.env.example` today |
 | `LLM_RETRY_BUDGET` | `1` | D5(4); field `config.py:106-113` |
-| Per-IP rate cap, LLM routes | **10 requests / 10 s, mitigation 10 s**, as the zone's single Cloudflare rate-limiting rule. ⚠️ **Raised from the 2/10 s first drafted at the sitting — needs Cray's nod, because it is ~6× the ADR's recommended sustained rate.** Reason: review finding 6 — Free counts **per IP with no burst allowance**, so a partner org behind one NAT egress IP shares one counter and 2/10 s hard-blocks the room mid-demo. The threshold is therefore set to tolerate a demo room, not to minimise sustained rate. **What actually bounds MS-S1 is the global in-flight cap of 1** (D5(3), shipped in Step 6), which serialises LLM work regardless of this number; a crawler or prefetch storm — the threat `0035:460-463` names — still trips 10/10 s cold. If Cray prefers the stricter reading, 2/10 s is a one-field change in the Cloudflare rule and needs no code | **Re-pinned under SD-3's ruling (Cray, 2026-08-05).** D5(3) `0035:441-451` *recommended* "10/min, burst 20" — that is nginx `limit_req` grammar (`rate=10r/m burst=20`), and the ADR never names an implementation. Cloudflare's Free plan offers a **10 s counting period and 10 s mitigation timeout only, and has no burst concept** (measured on the zone — see SD-3). `0035:446` states the numbers as "recommended defaults **for the exposure PLAN to pin**"; the ADR's binding requirement is that a per-IP cap *exists* before publishing, which this satisfies on the three grounds `0035:460-463` gives. **No ADR amendment owed** (AC-12 unchanged). |
-| Global in-flight LLM cap | 1, fast-fail to the deterministic arm with the PLAN-0093 disclosure | D5(3) — no substrate exists (F5 `0035:187`; re-verified this pass: only LINE notify throttling, `services/notify/line.py:133,294-330`), so this is app code (see §ADR amendment) |
-| Prompt-log retention | 90 days rolling, Cray-only reader, 30-day DSR honor, **no IP / headers / gate identity stored** | D6, ratified OQ-2 `0035:693-695` — restated, not re-decided |
+| Per-IP rate cap, LLM routes | **10 requests / 10 s, mitigation 10 s**, as the zone's single Cloudflare rate-limiting rule. ⚠️ **Raised from the 2/10 s first drafted at the sitting — needs Cray's nod, because it is ~6× the ADR's recommended sustained rate.** Reason: review finding 6 — Free counts **per IP with no burst allowance**, so a partner org behind one NAT egress IP shares one counter and 2/10 s hard-blocks the room mid-demo. The threshold is therefore set to tolerate a demo room, not to minimise sustained rate. **What actually bounds MS-S1 is the global in-flight cap of 1** (D5(3), shipped in Step 6), which serialises LLM work regardless of this number; a crawler or prefetch storm — the threat `0035:539-542` names — still trips 10/10 s cold. If Cray prefers the stricter reading, 2/10 s is a one-field change in the Cloudflare rule and needs no code | **Re-pinned under SD-3's ruling (Cray, 2026-08-05).** D5(3) `0035:520-530` *recommended* "10/min, burst 20" — that is nginx `limit_req` grammar (`rate=10r/m burst=20`), and the ADR never names an implementation. Cloudflare's Free plan offers a **10 s counting period and 10 s mitigation timeout only, and has no burst concept** (measured on the zone — see SD-3). `0035:525` states the numbers as "recommended defaults **for the exposure PLAN to pin**"; the ADR's binding requirement is that a per-IP cap *exists* before publishing, which this satisfies on the three grounds `0035:539-542` gives. **No ADR amendment owed** (AC-12 unchanged). |
+| Global in-flight LLM cap | 1, fast-fail to the deterministic arm with the PLAN-0093 disclosure | D5(3) — no substrate exists (F5 `0035:197`; re-verified this pass: only LINE notify throttling, `services/notify/line.py:133,294-330`), so this is app code (see §ADR amendment) |
+| Prompt-log retention | 90 days rolling, Cray-only reader, 30-day DSR honor, **no IP / headers / gate identity stored** | D6, ratified OQ-2 `0035:787-789` — restated, not re-decided |
 | `UI_PROFILE` (new setting `ui_profile`) | `published` on the published deployment; default `dev` | This PLAN (s202 ruling); env name valid per `config.py:30-35` |
-| `PROMPT_LOG_ENABLED` / `PROMPT_LOG_DIR` (new) | `true` / `/var/log/vero/prompt-log` (named volume `prompt-log`) on published; default `false` / same path | D6 `0035:513-515` |
-| Published compose network name | `vero_oct` — ⚠️ **restated s207-R2.** As drafted this row read "the network **the portal repo's connector** joins", which SD-3's ruling contradicts: under (ii) **vero-lite ships its own `cloudflared`**. Under the amendment's reading (a) this network carries `app` + vero-lite's own connector and **no other connector joins it** (finding 3 — a second connector on this network reaches `app:8000` and bypasses the ingress allowlist entirely). Under reading (b) the original wording returns. **Pin the final wording when the D4/L5 amendment is ratified** — see §ADR amendment owed | This PLAN + D4 `0035:409-413` |
+| `PROMPT_LOG_ENABLED` / `PROMPT_LOG_DIR` (new) | `true` / `/var/log/vero/prompt-log` (named volume `prompt-log`) on published; default `false` / same path | D6 `0035:600-602` |
+| Published compose network name | `vero_oct` — ⚠️ **restated s207-R2.** As drafted this row read "the network **the portal repo's connector** joins", which SD-3's ruling contradicts: under (ii) **vero-lite ships its own `cloudflared`**. Under the amendment's reading (a) this network carries `app` + vero-lite's own connector and **no other connector joins it** (finding 3 — a second connector on this network reaches `app:8000` and bypasses the ingress allowlist entirely). Under reading (b) the original wording returns. **Pin the final wording when the D4/L5 amendment is ratified** — see §ADR amendment owed | This PLAN + D4 `0035:419-423` |
 | `OCT_VERTICAL` | ⚠️ **UNPINNED — owed.** Added s207-R2 because the DB-less boot guarantee depends on it: the two *unwrapped* startup calls (`main.py:234` `fetch_objects`, `:242` `registrar()`) are DB-free for the **`energy`** default (`config.py:179-180`), which is what the independent review verified. The published demo shows the **procurement** hero (`/demo/hero/*`), so if it runs `OCT_VERTICAL=procurement` the DB-less boot claim is **unverified for the vertical actually deployed** | This PLAN — Step 8 must pin it **and** re-verify those two call sites for whichever vertical is pinned |
 
 ## The PROVISIONAL route allowlist + per-route arm posture
 
-**This list is PROVISIONAL by design** (D5's P12 ruling, `0035:486-497`): the
+**This list is PROVISIONAL by design** (D5's P12 ruling, `0035:573-584`): the
 first live measurement (P4 timeout, P5 eviction behavior) may revise it —
 including any arm posture — **without reopening ADR-0035**. Revisions are made
 by editing this table in a follow-up PR with the live-evidence artifact cited.
@@ -186,7 +186,7 @@ published surface (D5(2)).
   - An anonymous visitor's **first Tab B load after every container start** fans
     out unauthenticated MS-S1 inference. This is precisely the F2/F3 exposure D5
     exists to bound — *"the gate is the only thing between the internet and
-    MS-S1's GPU"* (`0035:430-432`).
+    MS-S1's GPU"* (`0035:499-501`).
   - The Cloudflare rate rule is scoped to the LLM routes as pinned; **as long as
     that scope names only `/query`, this route is uncapped.**
   - **No prompt-log row is written** (`query.py` records; `actions.py` does not),
@@ -243,7 +243,7 @@ degrade, or writer under test.
   the same test module (default-profile assertions) + the existing
   `tests/api/test_static_ui.py` suite staying green.
 - [x] **AC-3 (nav-bar overflow — BLOCKING before any link is shared,
-  `0035:883-887`) — CLOSED 2026-08-05. Dev half discharged by `54dfc7d`
+  `0035:986-990`) — CLOSED 2026-08-05. Dev half discharged by `54dfc7d`
   (PR #1018); published half measured green at all five widths in Step 4 under
   SD-4's ruled option (a), with a non-vacuity probe proving the instrument can go
   red. Both tables below; read the published half's scope caveat.** At pinned
@@ -350,7 +350,7 @@ degrade, or writer under test.
   `LLM_RETRY_BUDGET=1`, `OLLAMA_HOST`, `UI_PROFILE=published`,
   `PROMPT_LOG_ENABLED=true`).
 - [ ] **AC-5 (no published ports).** No service in the published compose file
-  carries a `ports:` key (D1(1) `0035:256-264`; the dev compose publishes three —
+  carries a `ports:` key (D1(1) `0035:266-274`; the dev compose publishes three —
   `docker-compose.yml:12-13,25-26,38-39` — and stays as-is per ADR-0003). Closed
   by the same test module (YAML parse, assert no `ports` key anywhere).
 - [ ] **AC-6 (allowlist enforced + census-complete).** The published surface is
@@ -389,7 +389,7 @@ degrade, or writer under test.
 - [ ] **AC-8 (prompt-log writer — scenario-tested).** Same harness as AC-7:
   drive `POST /query` and `POST /insights/query` end-to-end; assert one JSONL
   line each with **key set exactly equal to** {ts_utc, route, vertical, text,
-  model, outcome, arm} (D6 `0035:505-512`) — set-equality, so storing an IP,
+  model, outcome, arm} (D6 `0035:592-599`) — set-equality, so storing an IP,
   header, or identity reddens the test; assert `text` is the verbatim typed
   input; assert nothing is written when `PROMPT_LOG_ENABLED=false`. Rotation:
   plant files > 90 days old, invoke the rotation path, assert old deleted /
@@ -404,8 +404,8 @@ degrade, or writer under test.
 - [ ] **AC-10 (governance artifacts).** A **populated** RoPA-lite instance
   exists (template `docs/conventions/partner-ropa-lite.md` §6 `:80`, §8 `:101`;
   demo posture: vero-lite = controller, Cloudflare = named recipient/processor
-  per `0035:525-531`), and the runbook section below is complete — including the
-  **manual purge command** (`0035:521-523`) and the 30-day DSR path. Closed by
+  per `0035:612-618`), and the runbook section below is complete — including the
+  **manual purge command** (`0035:608-610`) and the 30-day DSR path. Closed by
   file existence + R2 review (no test can verify prose; the reviewer checks the
   D6 numbers appear verbatim).
 - [ ] **AC-11 (live evidence — Cray-gated, single step).** The P4 edge-timeout
@@ -423,7 +423,7 @@ degrade, or writer under test.
   The D4/L5 connector-ownership conflict (the fourth entry) is not a
   documentation-tidying amendment like the other three: SD-3's ruling relocates
   the connector across a boundary the ADR assigns to the portal repo, and
-  `0035:421-424`'s own drift trigger fires. **Step 8 must not start until that
+  `0035:473-476`'s own drift trigger fires. **Step 8 must not start until that
   amendment is routed and ratified.** The other three entries remain
   record-and-route-later.
 - [x] **AC-13 (adjudication record — the PLAN-0101 AC-9 pattern) — CLOSED
@@ -439,7 +439,7 @@ degrade, or writer under test.
 
 ## Out of Scope
 
-- ❌ **The tenant-key PLAN — D7 (i)–(vii) in their entirety** (`0035:570-584`).
+- ❌ **The tenant-key PLAN — D7 (i)–(vii) in their entirety** (`0035:657-671`).
   ADR-0035 mandates **no ordering** between the two PLANs. Answering the
   dispatch's question directly: under SD-1(a) (DB-less published deployment)
   nothing persists, so `tenant_id` is not on this PLAN's critical path; even
@@ -447,7 +447,7 @@ degrade, or writer under test.
   ships a **commented** `# TENANT_ID=demo — activate when the tenant-key PLAN
   lands (ADR-0035 D7)` line in the published env file and takes no dependency
   either way.
-- ❌ **The portal repo bootstrap** (`0035:868-874`): Access policies, the `portal.`
+- ❌ **The portal repo bootstrap** (`0035:962-968`): Access policies, the `portal.`
   landing surface, and the cross-system ingress map. ⚠️ **Narrowed s207-R2 — this
   bullet previously excluded "the `cloudflared` connector, ingress map" outright,
   which SD-3's ruling now contradicts**: under (ii) vero-lite ships its own
@@ -459,7 +459,7 @@ degrade, or writer under test.
   (an Access one-time-PIN allowlist for the demo audience).
 - ❌ **Editing ADR-0035** (Cray's s202 ruling: record the amendment, route it
   separately) — and any other `docs/adr/` change.
-- ❌ **Pilot posture** (D8 `0035:589-621`): per-route `Depends`, IdP/JWT, real
+- ❌ **Pilot posture** (D8 `0035:676-708`): per-route `Depends`, IdP/JWT, real
   data, off-LAN LLM endpoints — all future artifacts.
 - ❌ **The dev compose file and dev UX**: `docker-compose.yml` keeps its ports
   (ADR-0003); the dev profile keeps every control.
@@ -474,7 +474,7 @@ separately Cray-gated** (CLAUDE.md §8).
 ### Phase 0 — Preconditions (offline)
 
 **Step 1: Restate OQ-4 + complete the census.**
-- **OQ-4 restated (required here by `0035:702-704`): the portal domain is
+- **OQ-4 restated (required here by `0035:796-798`): the portal domain is
   DELIBERATELY OPEN and non-blocking by construction (L6).** No artifact in
   this PLAN may reference a domain. Trigger: "the portal repo is stood up" —
   at that moment Cray picks the name and confirms whether the portal shares
@@ -868,7 +868,7 @@ repo stood up (OQ-4 trigger fires — Cray names the domain); **explicit Cray go
 recorded before any command touches MS-S1** (CLAUDE.md §8 — the gate covers
 deploying the compose project, warming anything, and every SSH command).
 One visit, minimized, under the D1(5) do-no-harm duty; also re-confirms the
-`[ext]` facts on first touch (`0035:282-307`): Docker Desktop 24/7 posture,
+`[ext]` facts on first touch (`0035:292-317`): Docker Desktop 24/7 posture,
 `host.docker.internal` reachability, tunnel substrate.
 
 Pass/fail reads, fixed before the run:
@@ -885,14 +885,14 @@ Pass/fail reads, fixed before the run:
   The artifact is the timeline. Decision rule, fixed now: **if a single capped
   call evicts a resident neighbor model, every `assisted` row in the allowlist
   drops to `deterministic` until Cray re-rules** (the P12 bounded iteration,
-  `0035:486-497`).
+  `0035:573-584`).
 - Closeout: allowlist revised-or-confirmed (AC-11), measurement tables into
   this PLAN, then Draft → Complete → `git mv` to `done/`.
 
 ## Runbook section (lands as `docs/runbooks/published-demo-operations.md`)
 
 Must contain, verbatim obligations from D6:
-- **Manual purge command** (`0035:521-523`), operating on the named volume:
+- **Manual purge command** (`0035:608-610`), operating on the named volume:
   `docker compose -p vero-oct exec app find /var/log/vero/prompt-log -name 'prompts-*.jsonl' -delete`
   — plus a date-scoped variant for partial purges. (Purge of log **files**; the
   underlying rotation function is AC-8-tested.)
@@ -911,20 +911,20 @@ Must contain, verbatim obligations from D6:
   published UI profile to hide the excluded controls, and D5(3)'s in-flight cap
   is app code (no substrate existed, F5) — both owned by PLAN-0100, per Cray's
   s202 ruling."*
-- `0035:433` — "(all config, zero app code, per L1)" — same qualification: L1's
+- `0035:502` — "(all config, zero app code, per L1)" — same qualification: L1's
   ban is on per-route **authn** code, which remains honored (zero new
   `Depends`); it was never a ban on UI-coherence or cap code.
-- `0035:631-634` (Consequences: "env + edge config + a log writer + a banner")
+- `0035:718-721` (Consequences: "env + edge config + a log writer + a banner")
   — extend the enumeration with "+ the published UI profile + the in-flight
   cap", which the Consequences line half-acknowledged already.
-- 🔴 **`0035:414-418` + `0035:421-424` + `0035:868-874` — the connector-ownership
+- 🔴 **`0035:424-428` + `0035:473-476` + `0035:962-968` — the connector-ownership
   boundary. ADDED s207-R2, and this one BLOCKS Step 8.** D4/L5 assigns the
   `cloudflared` connector config and the ingress map to the **portal repo**, with
   vero-lite contributing *"**only** its image (PLAN-0095) and its own compose
   project"*. SD-3's ruling puts a `cloudflared` service **and** a committed
   `config.yml` **and** tunnel credentials inside vero-lite — which is more than
   "one subdomain + one Access policy + one compose project", the exact condition
-  `0035:421-424` names as drift: *"If a future system needs more than that, the
+  `0035:473-476` names as drift: *"If a future system needs more than that, the
   arrangement has drifted and **this ADR is reopened**."*
   Proposed amendment (two readings, Cray picks): **(a)** vero-lite's `cloudflared`
   **is** this system's connector, declared in vero-lite's own compose project, and
@@ -991,7 +991,7 @@ begins until all five slots are filled.
   option left for it.
 - **SD-2 — `/procedures/draft/*` disposition.** Not named in D5(2); same intake
   family. **Recommendation: exclude all three** — classify/build are
-  unauthenticated MS-S1 inference (F3 `0035:185`), instantiate is deterministic
+  unauthenticated MS-S1 inference (F3 `0035:195`), instantiate is deterministic
   but is authoring surface, not demo script; the published wedge demo does not
   hand anonymous visitors a procedure-authoring wizard. Alternative: allow
   instantiate only (zero-LLM). Cray's call because it widens D5(2)'s named set.
@@ -1004,8 +1004,8 @@ begins until all five slots are filled.
   SD asked: in-compose deny-by-default **nginx** (recommended) vs **vendor WAF**
   path rules. Two facts found at the sitting collapsed that framing:
   1. **ADR-0035 never names nginx** — not once in the file. It says only "a
-     default-deny route allowlist **at vero-lite's edge**" (`0035:436`) and
-     "rate limiting lives at the edge" (`0035:675`). What the ADR forecloses is
+     default-deny route allowlist **at vero-lite's edge**" (`0035:515`) and
+     "rate limiting lives at the edge" (`0035:769`). What the ADR forecloses is
      rate limiting **inside `services/`** (F5 stays true); it does not mandate a
      proxy service. nginx was this PLAN's addition, not the ADR's ruling.
   2. **The two jobs have different best answers.** `cloudflared` — already
@@ -1041,10 +1041,10 @@ begins until all five slots are filled.
   | 1 | cloudflared `Path` is an **unanchored regex** (`r.Path.Regexp.MatchString`, verified in cloudflared's `ingress/rule.go`) — a rule `path: /query` also admits the SD-1-excluded `/insights/query` | **FIXED by spec** — Step 8 mandates fully anchored patterns (`^/query$`) and an AC-6(a) assertion that every pattern is anchored at both ends |
   | 2 | ingress has **no HTTP-method matching at all** (the Rule struct has only Hostname, Path, Service, Handlers, Config), so the allow table's **Method column is not edge-enforceable** | **FIXED by spec, with a stated limit** — the allowlist is expressible because path alone separates every allowed route from every excluded one (`^/recommendations$` and `^/recommendations/[^/]+/approve$` do not match `…/execute`). Step 8 states that a path allow implies **all methods** on that path, and AC-6(b) must treat the Method column as documentation, not enforcement |
   | 3 | **Allowlist bypass:** if the portal's connector also joins `vero_oct`, it reaches `app:8000` directly and the ingress allowlist is skipped entirely — AC-6(a) cannot see this | **FIXED by spec** — Step 8 pins the topology: `app` joins **only** an internal network with no connector but vero-lite's own; the ingress config is the sole path to it. AC-6(c) case must prove it |
-  | 4 | **D4/L5 boundary:** `0035:414-418` makes the connector config + ingress map the **portal repo's property** — vero-lite "contributes **only** its image and its own compose project". A committed `config.yml` + tunnel credentials in vero-lite crosses that line, and `0035:421-424`'s drift trigger says *"the arrangement has drifted and this ADR is reopened"* | 🔴 **NOT fixable by spec — ADR debt.** Added to §ADR amendment owed and to AC-12. Step 8 must not start until that amendment is routed |
-  | 5 | **Vendor-branded 429.** Free cannot customise the block response ("custom response … Pro plans and above"), so a rate-limited partner sees a Cloudflare page — the same harm `0035:472-475` legislated against for vendor 524s: *"never a vendor 524 in front of exactly the audience the wedge exists to impress"* | 🔴 **ACCEPTED CONSEQUENCE.** Not mitigated. Escape hatch if it bites: Pro (~$20/mo) restores a custom response |
+  | 4 | **D4/L5 boundary:** `0035:424-428` makes the connector config + ingress map the **portal repo's property** — vero-lite "contributes **only** its image and its own compose project". A committed `config.yml` + tunnel credentials in vero-lite crosses that line, and `0035:473-476`'s drift trigger says *"the arrangement has drifted and this ADR is reopened"* | 🔴 **NOT fixable by spec — ADR debt.** Added to §ADR amendment owed and to AC-12. Step 8 must not start until that amendment is routed |
+  | 5 | **Vendor-branded 429.** Free cannot customise the block response ("custom response … Pro plans and above"), so a rate-limited partner sees a Cloudflare page — the same harm `0035:551-554` legislated against for vendor 524s: *"never a vendor 524 in front of exactly the audience the wedge exists to impress"* | 🔴 **ACCEPTED CONSEQUENCE.** Not mitigated. Escape hatch if it bites: Pro (~$20/mo) restores a custom response |
   | 6 | **NAT + no burst.** Free counts by IP with no burst allowance, so a partner org behind one egress IP shares the counter — a handful of near-simultaneous questions hard-blocks the room | 🔴 **PARTIALLY MITIGATED by threshold choice, not removed.** See §Pinned values: the threshold is set to tolerate a demo room rather than to minimise sustained rate. A burst allowance does not exist on Free at any threshold |
-  | 7 | **One free rule per zone** ⇒ system N+1 gets no cap, against L9's "accept an unnamed third without redesign" (`0035:227-230`) | 🔴 **ACCEPTED CONSEQUENCE**, recorded for the portal repo's own planning. Out of scope here |
+  | 7 | **One free rule per zone** ⇒ system N+1 gets no cap, against L9's "accept an unnamed third without redesign" (`0035:237-240`) | 🔴 **ACCEPTED CONSEQUENCE**, recorded for the portal repo's own planning. Out of scope here |
 
   Other consequences of the ruling: AC-6(a)'s set-equality target is the **committed
   cloudflared ingress config**, not an nginx config; Step 8 drops the `nginx:alpine`
