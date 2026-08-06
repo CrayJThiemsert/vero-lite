@@ -38,6 +38,16 @@ CLAUDE.md §8 (host-state gate; residency; assistive-AI posture). Prior-art hand
 > at PR; ratification: Cray. Author≠reviewer separation: **INTACT**. Uncommitted
 > draft — Code commits per ADR-009 D2.
 
+> **Amendment pass 2026-08-06 (session 208; drafted in-harness by `plan-drafter`
+> from a Code dispatch).** Two distinct kinds of marker, inline at each site —
+> read the label before treating one as ruled: **(i)** the D4/L5
+> connector-ownership reconciliation + the restated D4 acceptance shape —
+> **Cray's typed ruling, 2026-08-06, reading (a)**; **(ii)** three factual
+> corrections proposed by PLAN-0100 §"ADR amendment owed" — **PLAN-proposed, not
+> Cray-typed**, ratified with this amendment's PR. `Status:` is unchanged: this
+> is an amendment to an Accepted ADR, not a re-ratification. Author≠reviewer
+> separation: **INTACT** (drafter authored; Code R2 + Cray review at PR).
+
 ## Context
 
 ### Why now
@@ -418,10 +428,69 @@ governed write surface still demands real API keys (D5/D8).
   stays domain-ignorant (D1(3)) and portal-ignorant. The portal repo's scaffolding
   is **out of scope here by dispatch** — this ADR fixes the arrangement's shape, not
   its files.
+
+  > **Amended 2026-08-06 — connector-ownership reconciliation (Cray's typed
+  > ruling, session 208: reading (a)).** This bullet and Implementation Note 1
+  > gave the connector config *and* the ingress map to the portal repo — while
+  > Implementation Note 2 was already assigning the **route allowlist** to
+  > vero-lite's exposure PLAN. Those two assignments were in tension from
+  > ratification day; the exposure PLAN (PLAN-0100,
+  > `docs/plans/0100-exposure-published-demo-surface.md`) made it concrete when
+  > its SD-3 ruling (Cray, 2026-08-05, §Surfaced decisions: enforce the
+  > allowlist at the `cloudflared` edge — ingress allowlist + catch-all
+  > `http_status:404`, config committed in this repo, **no** `nginx`) left a
+  > connector as the only edge vero-lite owns. **Ruling (a), Cray, typed,
+  > 2026-08-06: vero-lite's `cloudflared` IS this system's connector, declared
+  > in vero-lite's own compose project; the portal repo owns the ingress map
+  > *across systems*, while each system owns its *own* route allowlist.**
+  > Reading (b) — relocate the ingress allowlist to the portal repo, vero-lite
+  > shipping only the allow *table* as a contract — was **rejected** (it voids
+  > PLAN-0100 AC-6(a)'s offline set-equality and re-opens SD-3). This is the ADR
+  > reconciled with itself, not a reversal. The split, restated:
+  > **portal repo** = the **cross-system** ingress map — this bullet's
+  > parenthetical narrows to "the only place *subdomain→system* bindings exist"
+  > (still the only domain-bearing layer, D1(3)) — plus the Access policies, the
+  > `portal.` landing surface, and its own connector for it. **Each system** =
+  > its own connector service + its own committed, path-scoped route-allowlist
+  > config + its own tunnel credentials (secret-held, **never committed** —
+  > CLAUDE.md §8), all ordinary members of its own compose project.
+  > "Contributes **only** its image and its own compose project" survives
+  > verbatim — the connector now lives *inside* that compose project; what
+  > vero-lite still never contributes is domain knowledge, Access policy, or
+  > cross-system routing, so D1(3)/L6 domain-ignorance still binds: the
+  > committed ingress config must stay domain-free (mechanics = PLAN-0100
+  > Step 8). Singular "the connector" — the first bullet above and D1(1) — now
+  > reads **distributively**: each system's own connector joins that system's
+  > network (P3's by-name, no-ports mechanism is unchanged). Isolation is
+  > strengthened, not weakened: one compose project + one network per system, no
+  > cross-system sharing, a system cannot address its neighbours' containers —
+  > and no single shared connector holds membership in every system's network
+  > any more, so a compromised connector reaches exactly one system. Corollary
+  > (binding — PLAN-0100 SD-3 review finding 3): **no other system's connector
+  > may ever join this system's network** — a foreign connector on the network
+  > reaches the app by name and bypasses the route allowlist entirely.
+
 - **Acceptance shape for L9's "no redesign" clause:** admitting system N+1 =
   one subdomain (DNS/ingress entry) + one Access policy + one compose project on its
   own network. If a future system needs more than that, the arrangement has drifted
   and this ADR is reopened.
+
+  > **Amended 2026-08-06 — acceptance shape RESTATED (rides with the
+  > reading-(a) ruling above; Cray, session 208).** Restated so the drift
+  > trigger cannot fire on the very arrangement just ruled — the pre-amendment
+  > sentence silently counted the connector as portal-side furniture, so under
+  > reading (a) a literal reading would have tripped it. The shape is now:
+  > admitting system N+1 = **one subdomain (DNS/ingress entry, portal-side) +
+  > one Access policy (portal-side) + one compose project on its own network —
+  > which, under reading (a), contains that system's own connector, its
+  > committed route-allowlist config, and its secret-held tunnel credentials as
+  > ordinary members**. The portal-side cost of a new system is unchanged at
+  > exactly two artifacts; everything else the system brings rides inside the
+  > one compose project it was always required to bring. The trigger keeps its
+  > teeth for real drift: a system that needs a **per-system change in the
+  > portal repo**, a second Access policy, a shared network, or any portal-side
+  > artifact beyond the two named ⇒ the arrangement has drifted and this ADR is
+  > reopened.
 
 ### Part II — vero-lite-specific decisions (the first tenant)
 
@@ -431,6 +500,16 @@ F2/F3/F5 mean the gate is the only thing between the internet and MS-S1's GPU �
 P5 re-classifies the risk: an anonymous LLM call does not merely spend Cray's
 compute, it can **evict another project's warmed production model**. Ruling, in
 layers (all config, zero app code, per L1):
+
+> **Amended 2026-08-06 — factual correction (PLAN-proposed by PLAN-0100 §"ADR
+> amendment owed"; NOT Cray-typed — it records Cray's s202 ownership ruling and
+> is ratified with this amendment's PR).** "All config, zero app code"
+> overstates. L1's ban is on per-route **authn** code, and it remains honored —
+> zero new `Depends(...)` — but it was never a ban on UI-coherence or cap code:
+> item 2's exclusions require **published-UI-profile code** to hide the excluded
+> controls, and item 3's in-flight cap is **app code** (no substrate existed —
+> F5). Both are owned by PLAN-0100, per Cray's s202 ruling. Same correction at
+> item 5's "Env only — no code."
 
 1. **The gate (D3)** — first layer.
 2. **A default-deny route allowlist at vero-lite's edge** — the published surface
@@ -482,6 +561,14 @@ layers (all config, zero app code, per L1):
    name; the container-on-MS-S1 mechanism is external prior art, verified live by
    the exposure PLAN; Ollama's `0.0.0.0` listen is already ADR-002's own binding,
    `0002:64-66`). Env only — no code.
+
+   > **Amended 2026-08-06 — factual correction (PLAN-proposed by PLAN-0100
+   > §"ADR amendment owed"; NOT Cray-typed — ratified with this amendment's
+   > PR).** The two settings above are env-only, but the published surface's
+   > **full** diff is not code-free: item 2's exclusions require the published
+   > UI profile to hide the excluded controls, and item 3's in-flight cap is app
+   > code (no substrate existed, F5) — both owned by PLAN-0100, per Cray's s202
+   > ruling. See the matching correction under this D5's preamble.
 
 **The P12 ruling — the allowlist is a labelled provisional, by design.** s172's
 sharpest warning: publishing before the arm model exists forces a guess at the LLM
@@ -632,6 +719,13 @@ through the portal; it authorizes nothing about publishing a pilot.**
   **already a proven 24/7 server**, with **zero authn code changes** in `services/`
   (L1 honored: vero-lite's exposure diff is env + edge config + a log writer + a
   banner, all owned by the exposure PLAN).
+
+  > **Amended 2026-08-06 — factual correction (PLAN-proposed by PLAN-0100 §"ADR
+  > amendment owed"; NOT Cray-typed — ratified with this amendment's PR).** The
+  > enumeration is two items short: the exposure diff is env + edge config + a
+  > log writer + a banner **+ the published UI profile + the in-flight cap**
+  > (D5(2)/D5(3) as corrected there). "Zero authn code changes" stands — L1's
+  > ban is on per-route authn code, which remains honored.
 - The portal is permanent infrastructure: system N+1 costs one subdomain + one
   Access policy + one compose project (D4) — the arrangement, not the demo, is the
   durable asset (L9).
@@ -872,6 +966,15 @@ ADR merges before implementation starts):
    host-state change — explicit Cray go before any command runs (§8; P9 lowers the
    surprise, not the gate), planned under the D1(5) do-no-harm duty to the
    co-tenant production stack.
+
+   > **Amended 2026-08-06 — connector-ownership reconciliation (Cray's typed
+   > ruling, session 208, reading (a) — full text at D4).** "The `cloudflared`
+   > connector + ingress map" narrows to: the **cross-system** ingress map
+   > (subdomain→system bindings — still the only domain-bearing layer, D1(3))
+   > plus the portal's **own** connector for `portal.`. Each system's connector
+   > service, committed route-allowlist config, and secret-held tunnel
+   > credentials are that system's property, inside its own compose project —
+   > for vero-lite, owned by the exposure PLAN (note 2).
 2. **The vero-lite exposure PLAN (this repo).** Owns: the published compose
    project's env profile (`API_AUTH_ENABLED=true`, the `OLLAMA_HOST` override, the
    P4 timeout/retry profile — D5(4)/(5)), the route allowlist **with a declared
@@ -885,6 +988,17 @@ ADR merges before implementation starts):
    exposure PLAN's critical path, OUT of this ADR's decision set — the measurement
    is real, `docs/STATUS.md` §'Active TODOs', and a public link is a first-impression
    surface, but a CSS fix is not an architecture decision).
+
+   > **Amended 2026-08-06 — rides with the reading-(a) ruling (Cray, session
+   > 208).** The exposure PLAN is PLAN-0100
+   > (`docs/plans/0100-exposure-published-demo-surface.md`). The route allowlist
+   > this note already assigned to vero-lite is now explicitly **edge-shaped**:
+   > the PLAN also owns vero-lite's own `cloudflared` connector service and its
+   > committed, path-scoped, domain-ignorant ingress config (allowlist +
+   > catch-all 404 — the SD-3 ruling), plus the tunnel credentials (secret-held,
+   > never committed — CLAUDE.md §8). This note and note 1 were the two halves
+   > of the tension the D4 amendment reconciles: the route allowlist was
+   > vero-lite's from ratification day — only the connector's address changed.
 3. **The tenant-key PLAN (this repo).** Owns D7 (i)–(vii) exactly as enumerated.
 
 Deployment configuration files, the Alembic migration, the CSS fix, and the portal
