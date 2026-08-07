@@ -53,17 +53,19 @@ Exit code is 0 only when every check passes.
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 import sys
 import tempfile
+from contextlib import nullcontext
 from pathlib import Path
+from typing import Any
 
 #: Paths on the deploy host. Fixed by Cray's session-213 decision (the checkout
 #: location and the staging directory), not discovered — a deploy that guesses
 #: where the checkout lives is a deploy that can update the wrong tree.
 _HOST_CHECKOUT = r"C:\projects\vero-lite"
 _HOST_COMPOSE = r"C:\projects\vero-lite\deploy\published\docker-compose.yml"
-_HOST_STAGING = r"C:\vero-staging\app.tar"
 
 #: Names that MUST agree with `docker-compose.yml`. They are literals here
 #: because this script is stdlib-only by design (an operator runs it outside the
@@ -118,22 +120,25 @@ class Runner:
         self.execute = execute
         self.log: list[list[str]] = []
 
-    def run(self, argv: list[str], *, capture: bool = True) -> str:
+    def run(self, argv: list[str], *, stdin_path: Path | None = None) -> str:
         """Run `argv` with NO shell. Returns stdout (stripped), or "" when planning."""
         self.log.append(argv)
         if not self.execute:
-            print(f"  would run: {' '.join(argv)}")
+            suffix = f"  < {stdin_path}" if stdin_path else ""
+            print(f"  would run: {' '.join(argv)}{suffix}")
             return ""
         # S603: every argv this script builds is literals plus the operator's own
         # `--host` / `--smoke-url`, and `shell=False` is the point of the design —
         # it is what removes the quoting-hazard class entirely. Running programs
         # IS the job here; there is no untrusted input to sanitise.
-        completed = subprocess.run(  # noqa: S603
-            argv,
-            capture_output=capture,
-            text=True,
-            check=False,
-        )
+        with stdin_path.open("rb") if stdin_path else nullcontext(None) as source:
+            completed = subprocess.run(  # noqa: S603
+                argv,
+                stdin=source,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
         if completed.returncode != 0:
             # stderr is merged into the message rather than left on its own
             # stream: through an intervening `wsl bash -lc` an unmerged stderr
@@ -154,21 +159,38 @@ class CommandFailedError(RuntimeError):
 def _ssh(host: str, *remote: str) -> list[str]:
     """An ssh argv. `remote` is passed as separate words, never a joined string.
 
-    Nothing here is quoted for a remote shell on purpose: every remote command
-    this script issues is built from literals with no `$`, no inner quotes and no
-    pipes, which is what keeps it safe to send. A step that needs more than that
-    belongs in a `.ps1` piped over stdin (see the `ms-s1-admin` skill), not
-    inlined here.
+    ⚠️ The no-shell guarantee stops at THIS process. ssh joins the remaining words
+    and the deploy host's shell parses the result — and that shell is **PowerShell**
+    (measured 2026-08-08: `echo %COMSPEC%` comes back literal, so it is not cmd).
+    Every remote command must therefore be literals a PowerShell would leave alone:
+    no quotes, no `$`, no separators, **and no braces**.
+
+    Braces are the one that actually bit. `docker inspect --format={{.Id}}` — the
+    form every runbook and every docker doc uses — reaches the host as
+    `unknown shorthand flag: 'e' in -encodedCommand`, because PowerShell takes
+    `{...}` for a script block. So this script never sends `--format`: it asks for
+    plain JSON and parses it here, where no shell is involved at all.
+
+    Anything that genuinely needs more belongs in a `.ps1` piped over stdin (see
+    the `ms-s1-admin` skill), not inlined here.
     """
     return ["ssh", host, *remote]
 
 
+def _first_object(raw: str) -> dict[str, Any]:
+    """`docker inspect` always returns a JSON array; take its one element."""
+    if not raw:
+        return {}
+    parsed = json.loads(raw)
+    return parsed[0] if isinstance(parsed, list) and parsed else {}
+
+
 def _local_image_id(run: Runner) -> str:
-    return run.run(["docker", "image", "inspect", _LIVE_TAG, "--format={{.Id}}"])
+    return str(_first_object(run.run(["docker", "image", "inspect", _LIVE_TAG])).get("Id", ""))
 
 
 def _remote_image_id(run: Runner, host: str, tag: str) -> str:
-    return run.run(_ssh(host, "docker", "image", "inspect", tag, "--format={{.Id}}"))
+    return str(_first_object(run.run(_ssh(host, "docker", "image", "inspect", tag))).get("Id", ""))
 
 
 def build_and_ship(run: Runner, host: str, repo_root: Path) -> str:
@@ -211,11 +233,15 @@ def build_and_ship(run: Runner, host: str, repo_root: Path) -> str:
         )
 
     print("\n== 3. ship the image ==")
+    # Piped into `docker load` on stdin rather than scp'd to a staging path. That
+    # removes a Windows path from the command line, removes the scp step, and
+    # removes the dependency on a staging directory existing — which a read-only
+    # probe could not even confirm (the `cmd /c if exist` test came back rc=0 and
+    # silent, i.e. inconclusive, which is not a pass).
     with tempfile.TemporaryDirectory() as tmp:
-        tar = str(Path(tmp) / "app.tar")
-        run.run(["docker", "save", _LIVE_TAG, "-o", tar])
-        run.run(["scp", tar, f"{host}:{_HOST_STAGING}"])
-    run.run(_ssh(host, "docker", "load", "-i", _HOST_STAGING))
+        tar = Path(tmp) / "app.tar"
+        run.run(["docker", "save", _LIVE_TAG, "-o", str(tar)])
+        run.run(_ssh(host, "docker", "load"), stdin_path=tar)
 
     remote_id = _remote_image_id(run, host, _LIVE_TAG)
     if run.execute:
@@ -290,7 +316,9 @@ def assert_running_image(run: Runner, host: str, expected_id: str) -> None:
     if not run.execute:
         print("  would compare the running container's image against the loaded id")
         return
-    running = run.run(_ssh(host, "docker", "inspect", _APP_CONTAINER, "--format={{.Image}}"))
+    running = str(
+        _first_object(run.run(_ssh(host, "docker", "inspect", _APP_CONTAINER))).get("Image", "")
+    )
     check(
         "running container uses the new image",
         bool(expected_id) and running == expected_id,
@@ -320,19 +348,16 @@ def smoke(run: Runner, host: str, smoke_url: str | None) -> None:
     # Read the image's OWN healthcheck verdict rather than shipping a probe over
     # ssh. The Dockerfile already runs `/health` on a schedule, and that verdict
     # is the one `depends_on: condition: service_healthy` gates the connector on —
-    # so this reports the same fact the topology already acts on.
+    # so this reports the same fact the topology already acts on, instead of a
+    # second opinion about it.
     #
-    # It is also the only form that is SAFE to send: an inlined `python -c …`
-    # carries inner quotes and a `;`, and ssh hands the remote shell one joined
-    # string to re-parse. The no-shell guarantee holds on THIS side of the
-    # connection only; a remote command must therefore be literals with no
-    # quotes, no `$` and no separators, which `--format=` satisfies and a
-    # one-liner does not.
-    health = run.run(
-        _ssh(host, "docker", "inspect", _APP_CONTAINER, "--format={{.State.Health.Status}}")
-    )
+    # Read out of plain JSON for the reason `_ssh`'s docstring gives: an inlined
+    # `python -c …` carries quotes and a `;`, and `--format={{…}}` carries braces
+    # PowerShell reads as a script block. Both are re-parsed on the far side.
+    state = _first_object(run.run(_ssh(host, "docker", "inspect", _APP_CONTAINER)))
+    verdict = str(state.get("State", {}).get("Health", {}).get("Status", ""))
     if run.execute:
-        check("app healthcheck reports healthy", health == "healthy", health or "<no verdict>")
+        check("app healthcheck reports healthy", verdict == "healthy", verdict or "<no verdict>")
 
     if smoke_url is None:
         print("  (no --smoke-url given — skipping the edge check)")
