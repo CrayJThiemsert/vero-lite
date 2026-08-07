@@ -75,3 +75,23 @@ jobs:
           DATABASE_URL: postgresql+asyncpg://vero:vero@localhost:5432/vero_lite # pragma: allowlist secret
           TEST_DATABASE_URL: postgresql+asyncpg://vero:vero@localhost:5432/vero_lite_test # pragma: allowlist secret
         run: uv run --no-sync pytest -q
+
+      # The suite above cannot catch a missing RUNTIME dependency: it runs in the
+      # dev venv, which carries every dev extra and everything they drag in. The
+      # shipped image installs `--no-dev`, so the two dependency sets differ and
+      # nothing compared them. That gap shipped an image that could not
+      # `import services.api.main` at all for ten days, while every test stayed
+      # green (python-multipart arrived only as a transitive dep of the `mcp` dev
+      # extra; FastAPI resolves multipart route signatures at import time).
+      #
+      # This step reproduces the IMAGE's dependency set exactly — same flags as
+      # the Dockerfile — and imports the entry module. It runs LAST and into its
+      # own UV_PROJECT_ENVIRONMENT so it cannot strip the dev venv the steps above
+      # depend on (project memory: a bare `uv sync` without the dev extra
+      # uninstalls pytest/ruff/mypy mid-job).
+      - name: Runtime dependency closure boots the app (--no-dev, as the image installs it)
+        env:
+          UV_PROJECT_ENVIRONMENT: /tmp/vero-runtime-venv
+        run: |
+          uv sync --frozen --no-dev --no-install-project
+          /tmp/vero-runtime-venv/bin/python -c "import services.api.main; print('runtime import OK')"

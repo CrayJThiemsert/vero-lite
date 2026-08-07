@@ -8,6 +8,16 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115.0",
+  # RUNTIME, not optional. FastAPI resolves Form/File/UploadFile route signatures
+  # AT IMPORT TIME, so one multipart route (services/api/routers/cases.py, the
+  # PLAN-0096 photo capture) makes this a hard dependency of the whole app —
+  # `import services.api.main` raises without it, before any request exists.
+  # It had been reaching the dev environment only as a transitive dependency of
+  # `mcp` (a dev extra), so the `--no-dev` image silently lost it and could not
+  # boot, while all 3943 tests stayed green in a venv that happened to have it.
+  # The "runtime dependency closure" step in .github/workflows/ci.yml is what
+  # now catches this class rather than this instance.
+  "python-multipart>=0.0.9",
   "uvicorn[standard]>=0.30.0",
   "pydantic>=2.9.0",
   "pydantic-settings>=2.5.0",
