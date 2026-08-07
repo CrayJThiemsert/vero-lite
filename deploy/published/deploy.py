@@ -199,7 +199,8 @@ def build_and_ship(run: Runner, host: str, repo_root: Path) -> str:
     # and must not fail the run.
     try:
         run.run(_ssh(host, "docker", "tag", _LIVE_TAG, _PREV_TAG))
-        check("rollback point tagged", True, _PREV_TAG)
+        if run.execute:
+            check("rollback point tagged", True, _PREV_TAG)
     except CommandFailedError as exc:
         check(
             "rollback point tagged",
@@ -217,13 +218,12 @@ def build_and_ship(run: Runner, host: str, repo_root: Path) -> str:
     run.run(_ssh(host, "docker", "load", "-i", _HOST_STAGING))
 
     remote_id = _remote_image_id(run, host, _LIVE_TAG)
-    check(
-        "image transferred intact",
-        run.execute is False or (bool(local_id) and local_id == remote_id),
-        f"local {local_id[:19]}… vs host {remote_id[:19]}…"
-        if run.execute
-        else "not checked while planning",
-    )
+    if run.execute:
+        check(
+            "image transferred intact",
+            bool(local_id) and local_id == remote_id,
+            f"local {local_id[:19]}… vs host {remote_id[:19]}…",
+        )
     return local_id
 
 
@@ -317,26 +317,22 @@ def smoke(run: Runner, host: str, smoke_url: str | None) -> None:
             "no host-port binding in `compose ps`",
         )
 
+    # Read the image's OWN healthcheck verdict rather than shipping a probe over
+    # ssh. The Dockerfile already runs `/health` on a schedule, and that verdict
+    # is the one `depends_on: condition: service_healthy` gates the connector on —
+    # so this reports the same fact the topology already acts on.
+    #
+    # It is also the only form that is SAFE to send: an inlined `python -c …`
+    # carries inner quotes and a `;`, and ssh hands the remote shell one joined
+    # string to re-parse. The no-shell guarantee holds on THIS side of the
+    # connection only; a remote command must therefore be literals with no
+    # quotes, no `$` and no separators, which `--format=` satisfies and a
+    # one-liner does not.
     health = run.run(
-        _ssh(
-            host,
-            "docker",
-            "compose",
-            "-f",
-            _HOST_COMPOSE,
-            "-p",
-            _PROJECT,
-            "exec",
-            "-T",
-            "app",
-            "python",
-            "-c",
-            "import urllib.request;print(urllib.request.urlopen('http://127.0.0.1:8000/health').read().decode())",
-        )
+        _ssh(host, "docker", "inspect", _APP_CONTAINER, "--format={{.State.Health.Status}}")
     )
     if run.execute:
-        answered = '"status"' in health and "ok" in health
-        check("app answers /health internally", answered, health[:60])
+        check("app healthcheck reports healthy", health == "healthy", health or "<no verdict>")
 
     if smoke_url is None:
         print("  (no --smoke-url given — skipping the edge check)")
