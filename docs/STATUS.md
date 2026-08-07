@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-06T19:10:00+07:00
-session: 212
-current_batch: "s212 — #1067: PLAN-0100 Step 9 ran as its own sanctioned OFFLINE FALLBACK (no cloudflared/creds on the box). Cases 2+7 PASS, 0/1/3-6/8 NOT COVERED; 3 committed defects fixed. Still 10 of 13."
+last_updated: 2026-08-07T23:23:49+07:00
+session: 213
+current_batch: "s213 — four PRs (#1069–#1072), 0 open: the published OCT demo is LIVE behind Cloudflare Access. None came from a failing test; the shipped image could not boot since 2026-07-28."
 current_actor: code
-blocked_on: "Nothing blocks PLAN-0100 Step 11 — Step 9's uncovered cases are recorded and inherited, not gated."
-next_action: "PLAN-0100 Step 11 — it now owns cases 0/1/3-6/8 + case 2's positive-control half. Cray owes: ADR-0036 ratification + its 3 OQs, the per-IP cap 2→10 req/10s nod, AC-12."
-head_commit: a22ff8e
-recent_commits: [a22ff8e, 4a88f37, 97ba1ed, 62b9e09, 8bd331d, 4d67124, efaaeb3, 1557141, 5b1522c, 72a2c6b]
+blocked_on: "PLAN-0100 Step 11 — Cray must rule the service-token vs ADR-0035 D3 composition (a second Access policy is a named drift trigger); Access returns 302 on every path."
+next_action: "PLAN-0102 (retire L1 loop-detect) is the top UNGATED item; stream-1 work is Cray-gated. Cray's s214 call: return to stream 1 — make the Legion→MS-S1 deploy path repeatable."
+head_commit: 07e9603
+recent_commits: [07e9603, fe1d018, a5cd32a, 6e6563a, 9601f06, e2c255a, 3be0595, 580c6fa, 349dc75, 98e9c4a]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,53 @@ recent_commits: [a22ff8e, 4a88f37, 97ba1ed, 62b9e09, 8bd331d, 4d67124, efaaeb3, 
 ---
 
 ## Current Focus
+
+> **Session 213, 2026-08-07 (head_commit `a22ff8e` → `07e9603`) — four PRs merged
+> (#1069, #1070, #1071, #1072), 0 open. Theme: the session that stood the published
+> demo up for real — and NOT ONE of the four defects came from a failing test.**
+>
+> **The demo is LIVE** at the `oct-energy` subdomain behind Cloudflare Access
+> (one-time-PIN email allowlist), verified end-to-end in a browser by Cray. Every
+> defect was found by touching a layer of reality nobody had touched before —
+> docs → config → image → deploy host → edge.
+>
+> 🔴 **#1071 — `python-multipart` is a RUNTIME dependency, and the shipped image
+> could not boot; it had not been able to since 2026-07-28.** It reached the dev
+> venv only via `mcp` (a **dev** extra); the image installs `--no-dev`. FastAPI
+> resolves multipart routes at *import* time, so `import services.api.main` raised.
+> **3943 tests were green over a container that could not start.** The fix ships
+> **a CI step that reproduces the image's dependency set and imports the entry
+> module** — it guards the *class*, not the instance.
+>
+> **#1069 — `API_KEYS` had no way into the container.** `env_file` loads
+> `published.env` and nothing else, and compose does not forward the host
+> environment, so the secret the README told operators to provision was silently
+> dropped: the demo was unloginable no matter what the host exported. Bare
+> pass-through added, deliberately optional. **#1070** adds the bring-up runbook +
+> `verify_tunnel_credentials.py` and fixes **7** `docker compose -p vero-oct`
+> invocations in the operations runbook — the project is `vero-published`, so **all
+> three PDPA deletion paths were unexecutable**. **#1072** folds in 7 corrections
+> from executing the runbook for real, plus **13 tests for the verifier** (it
+> shipped with none).
+>
+> **Step 11 is BLOCKED on a governance ruling nobody knew was needed — SURFACED,
+> NOT RULED.** PLAN-0100 Step 11's case list asserts exact statuses (`/health` →
+> 200, keyless `/whoami` → *exactly* 401 — which the PLAN calls the only thing that
+> catches `API_AUTH_ENABLED=false` in the running container); through the ratified
+> Access gate **every path returns 302** (measured on seven paths; the redirect
+> metadata carries `"service_token_status": false`). The remedy is a service token,
+> which Cloudflare requires be a **second Access policy** — and ADR-0035's
+> acceptance shape names "a second Access policy" as a drift trigger. **ADR-0035 D3
+> and the case list are each correct and were written at different times — a
+> composition problem, not a defect in either.** **PLAN-0100 stays 10 of 13; AC-6
+> unticked** ((c)'s "allowed → served" clause is still unproven).
+>
+> Verification: the full offline gate at CI scope **four times**, once per PR; final
+> `ruff format --check` clean (612 files) · `mypy services/` clean (133) ·
+> **3956 passed / 8 skipped / 0 failed**, the count pre-committed before every run.
+> Non-vacuity demonstrated for all **9** guards added (mutations restored from
+> `/tmp` copies, never `git checkout`). The shipped image proven identical across
+> machines via `docker image inspect` after `save`/`scp`/`load`.
 
 > **Session 212, 2026-08-06 (head_commit `8bd331d` → `a22ff8e`) — one PR merged
 > (#1067), 0 open. Theme: the run that could not run still told the truth — and all
@@ -230,65 +277,6 @@ recent_commits: [a22ff8e, 4a88f37, 97ba1ed, 62b9e09, 8bd331d, 4d67124, efaaeb3, 
 > 2 → 10 req/10s** nod. Step 8 also still owes an **unpinned `OCT_VERTICAL`**;
 > Step 9 follows Step 8.
 
-> **Session 207, 2026-08-05 (head_commit `296cc34` → `5621266`) — one PR merged
-> (#1049), 0 open. Theme: a ratified plan's own recommendation and its own allow
-> table had never been checked against each other, and an unreviewed fold-in got
-> two of its own claims wrong.**
->
-> _[The s206 tail also merged **#1046** (Step 10 — RoPA + the published-demo
-> runbook), **#1047** (`0c9348a` — the s206 STATUS reconcile itself, which is why
-> the s206 block below stops where it does) and **#1048** (lessons
-> **0036**/**0037**); the s206 block below predates all three.]_
->
-> **Step 4 COMPLETE, AC-3 CLOSED:** the published profile measured green at all
-> five pinned widths — **0 overflow, 0 clipped** — under SD-4's option (a),
-> *before* Step 3's removals, i.e. at maximum header width demand. A 600 px
-> **non-vacuity probe** drove the instrument red first. ⚠️ The initial probe's
-> `querySelector('header')` returned **null** (the element is `class="header"`),
-> scanning **zero** nodes and reporting a clean "0 clipped" — the table now carries
-> a **nodes-scanned column** so a void row cannot pass as a clean one.
->
-> **Cray ruled all five SDs (typed 2026-08-05); AC-13 is CLOSED and every
-> BLOCKED-ON-SD marker is RELEASED.** SD-1 = (a) DB-less · SD-2 = exclude all
-> three draft routes · SD-4 = (a) measure-to-confirm · SD-5 = keep both. **SD-3
-> was restated before it was ruled: ADR-0035 never names nginx** — it says only
-> "at vero-lite's edge" and that "rate limiting lives at the edge", which forbids
-> rate limiting *inside* `services/` rather than mandating a proxy. Cray ruled
-> **(ii): stay with `cloudflared`** (ingress allowlist + catch-all 404, config
-> committed) plus the zone's Cloudflare rate-limiting rule — **no nginx service**.
->
-> **Finding C-3 — four allow-table rows the ruled DB-less posture cannot serve.**
-> Tracing every allow-table handler for a DB session dependency found
-> `/recommendations/{id}/execute`, `/runs/{id}`, `/runs/{id}/gate/resolve` and
-> `/insights/query`, and there is **no global exception handler anywhere in
-> `services/api/`** — so each returns an unhandled **500, not a degrade**.
-> Sharpest: the allow table called `execute` the "operator-driven demo beat", so
-> **Approve would succeed and Execute would 500** — the Tab B loop dying at its
-> last step. The runs pair also fails a second, DB-independent way: justified as
-> "Tab G beat 3", but that panel mounts only in event mode (`view-hero.js:641`)
-> and event mode is excluded — **zero callers**. This is **C-1 mirrored**: C-1
-> was a route *missing* that made a feature undrivable; C-3 is routes *present*
-> whose reachability path is excluded. Method note: the drafting census walked
-> *UI call sites → routes*; C-3 needed *routes → handler DB dependency*, and
-> **neither walk finds the other's defect**.
->
-> **An R2 pass with three independent adversarial reviewers discharged the
-> author≠reviewer separation the fold-in owed — and it paid for itself.** C-3
-> survived **5/5**. But SD-3's ruling drew **six findings**, three of which the
-> spec cannot remove: a **blocking D4/L5 ADR debt** (the ADR assigns the connector
-> + ingress map to the portal repo, so `0035:421-424`'s drift trigger fires), a
-> vendor-branded 429 on Free, and NAT-shared-IP with no burst. And **Step 9's
-> pass/fail read scored 4/5 against a completely dead app** — its "non-404" bar
-> let a crashed container pass four cases at once — so it was rewritten as **v2**.
->
-> **Two of the PLAN's own claims were retracted.** `GET /recommendations` was
-> pinned `deterministic` but is **LLM-backed** (`recommender.py:194-195`), so the
-> recorded consequence "`/query` is the only published LLM route" was **false**;
-> it is tracked now as **OI-1** — the route is neither rate-capped nor
-> prompt-logged, and each failure pages Cray via `notify_llm_unreachable`. And
-> ~14 `api.js` citations were stale by exactly **+7**: the fold-in corrected three
-> instances without recognising the shift was **systematic**.
-
 ## Prior focus (archived)
 
 PLAN-003, PLAN-0005, PLAN-0006, PLAN-0007 and PLAN-0008 are all merged
@@ -306,6 +294,7 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-07 | **s213 — the published OCT demo is LIVE behind Cloudflare Access (#1069–#1072); PLAN-0100 Step 11 is now BLOCKED on an unruled composition question.** `python-multipart` was a RUNTIME dep absent from the shipped image, which could not boot since 2026-07-28 while **3943 tests stayed green**; the fix adds a CI step that rebuilds the image's dependency set and imports the entry module. Step 11's exact-status cases cannot hold when Access returns **302 on every path**; the service-token remedy needs a **second Access policy** — ADR-0035's acceptance shape names that a drift trigger. **SURFACED, unruled; still 10 of 13** | `fe1d018` ([#1072](https://github.com/CrayJThiemsert/vero-lite/pull/1072)) / `6e6563a` ([#1071](https://github.com/CrayJThiemsert/vero-lite/pull/1071)) / `docs/plans/0100-exposure-published-demo-surface.md` |
 | 2026-08-06 | **s212 — PLAN-0100 Step 9 RAN as its own sanctioned OFFLINE FALLBACK (#1067): cases 2 + 7 PASS, cases 0/1/3–6/8 NOT COVERED → inherited by Step 11.** No `cloudflared` binary, no credentials, and case 0 gates all the others. **Non-vacuity DEMONSTRATED** — anchors stripped on a `/tmp` copy flipped the excluded `/insights/query` to `http://app:8000`. **AC-6 unticked, still 10 of 13**: (c)'s "allowed → served" half is unproven, nothing was ever served. Three committed defects fixed — a stale served-200 case list, a `tunnel ingress validate` flag order that exits **0** validating nothing, a host-install assumption | `4a88f37` ([#1067](https://github.com/CrayJThiemsert/vero-lite/pull/1067)) / `docs/plans/0100-exposure-published-demo-surface.md` |
 | 2026-08-06 | **s209 cont. — PLAN-0100 Step 8 SHIPPED (#1063): AC-4/5/6(a)(b) CLOSED, 8 → 10 of 13.** Greenfield `deploy/published/` + `tests/deploy/` (**69 tests**); Tab G dropped on the published profile (`?v=c48`). **`OCT_VERTICAL` pinned `energy` (Cray typed)** — the DB posture was **not** the discriminator: `FastenalCsvAdapter.stream_events` is an **empty async iterator by design**, so procurement's `GET /recommendations` returns `[]` on both profiles and Tab A lands blank. AC-6 stays unticked on purpose ((c) = Step 9). A non-vacuity probe caught a **vacuous test inside the change itself** | `1557141` ([#1063](https://github.com/CrayJThiemsert/vero-lite/pull/1063)) / `deploy/published/` / `docs/plans/0100-exposure-published-demo-surface.md` |
 | 2026-08-06 | **s209 cont. — ADR-0036 DRAFTED `Proposed` (#1065): a deployed vertical instance IS a "system" under ADR-0035 L9/D4.** ADR-0035 defines "system" by what one owns (`0035:478-493`), and a vertical instance satisfies every clause with **zero engine change** ⇒ the multi-vertical demo is N systems + a `portal.` picker, and **D4's reopening trigger does not fire**; in-process multi-vertical serving is a recorded **non-goal** (`auth.py:82`). ⚠️ Ratifying `Proposed → Accepted` **must remove `0036` from `test_the_non_accepted_adrs_are_exactly_the_expected_set` in the same edit** | `8bd331d` (head_commit) / [#1065](https://github.com/CrayJThiemsert/vero-lite/pull/1065) / `docs/adr/0036-vertical-as-system-multi-vertical-demo-portal.md` |
@@ -315,7 +304,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-06 | **s208 — ADR-0035 D4/L5 AMENDED (#1057): PLAN-0100 Step 8's ADR blocker is CLEARED.** **Cray typed reading (a)** — vero-lite's `cloudflared` **is** this system's connector in its own compose project; the portal owns the ingress map *across* systems; each system owns its *own* route allowlist. (b) rejected: voids AC-6(a), re-opens SD-3. Two drafter SDs also typed: **SD-1** restate D4's acceptance to count each system's own connector; **SD-2** keep "no other system's connector may join this system's network". Same PR renumbered **81 line numbers / 45 citations** — no guard test covers ADR line cites | `a8e04c3` ([#1057](https://github.com/CrayJThiemsert/vero-lite/pull/1057)) / `docs/adr/0035-hosting-and-exposure-model.md` |
 | 2026-08-06 | **s208 — the DB-less boot guarantee was holding for the WRONG REASON (#1056).** `async_session` imported inside a nested `lifespan` branch but used by the `if "fleet_maintenance" in known:` block below ⇒ Python bound it **function-local** ⇒ **every** boot not taking the procurement-seed branch (**including plain `energy`**) raised `UnboundLocalError` at both call sites. `tests/test_startup_log.py` exercised the broken path and **passed** — the fail-soft handler absorbed a *code bug* as if it were an *environment absence*. Deliberate open seam: `_is_environment_absent(exc)` is a documented `return True` stub **Cray chose to author personally** | `5f07c6a` ([#1056](https://github.com/CrayJThiemsert/vero-lite/pull/1056)) / `services/api/main.py` |
 | 2026-08-05 | **s207 — Cray ruled all five PLAN-0100 SDs (#1049): AC-13 CLOSED, every BLOCKED-ON-SD marker RELEASED.** SD-1 (a) DB-less · SD-2 exclude the three draft routes · **SD-3 (ii) `cloudflared` — ADR-0035 never names nginx** · SD-4 (a) · SD-5 keep both. ⚠️ The R2 pass found **C-3: four allowed routes need a DB and there is NO global exception handler ⇒ unhandled 500, not degrade** — Approve succeeds, **Execute 500s**. Two of the PLAN's own claims retracted: `GET /recommendations` is **LLM-backed** (⇒ **OI-1**); ~14 `api.js` cites stale by **+7**. **Steps 3/4 free; Step 8 gated on a D4/L5 ADR-0035 amendment** | `5621266` (head_commit) / [#1049](https://github.com/CrayJThiemsert/vero-lite/pull/1049) / `docs/plans/0100-exposure-published-demo-surface.md` |
-| 2026-08-05 | **s206 tail — PLAN-0100 Step 10 shipped and two lessons landed (#1046, #1048).** #1046 creates `docs/compliance/` (the RoPA instance, written in Cray's voice as controller) + `docs/runbooks/published-demo-operations.md`. #1048 adds lessons **0036** (the tiebreak pairing) and **0037** (the three-axis blind spot). **#1047** also merged in this window and is **not characterised in this record**. All three landed after STATUS was last written, so the s206 row below does not carry them | `d865b75` ([#1046](https://github.com/CrayJThiemsert/vero-lite/pull/1046)) / `b045adf` ([#1048](https://github.com/CrayJThiemsert/vero-lite/pull/1048)) / `docs/runbooks/published-demo-operations.md` |
 
 ## In-Flight Discussions
 
@@ -331,7 +319,7 @@ than restated: the Active TODO owns that status.]_
 
 ## Active TODOs
 
-- [ ] **PLAN-0100 — the ADR-0035 exposure PLAN. 10 of 13; Step 9 done only PARTIALLY (offline fallback; cases 2 + 7 PASS — see the s212 CF block).** **Live now: Step 11**, which owns the uncovered cases **0, 1, 3–6, 8** plus case 2's positive-control half. **AC-6 stays unticked** — (c)'s "allowed → served" clause is unproven. **Cray owes three reads:** ADR-0036 ratification (+ its 3 OQs), the per-IP cap **2 → 10 req/10s** nod, **AC-12**. Everything else — SD-1..SD-5, OI-1, C-3, `OCT_VERTICAL`, `llm_max_inflight` — is history; read the PLAN: `docs/plans/0100-exposure-published-demo-surface.md`.
+- [ ] **PLAN-0100 — the ADR-0035 exposure PLAN. 10 of 13. The demo is LIVE** at the `oct-energy` subdomain behind Cloudflare Access (s213, browser-verified by Cray). **Step 11 is now BLOCKED** — its case list asserts exact statuses (keyless `/whoami` → *exactly* 401), but through the Access gate **every path returns 302**, and the service-token remedy requires a **second Access policy**, which ADR-0035's acceptance shape names a drift trigger. That is **SURFACED s213, unruled — Cray owes the call**, on top of three older reads: ADR-0036 ratification (+ its 3 OQs), the per-IP cap **2 → 10 req/10s** nod, **AC-12**. Step 11 still owns Step 9's uncovered cases **0, 1, 3–6, 8** plus case 2's positive-control half; **AC-6 stays unticked** — (c)'s "allowed → served" clause is unproven. Everything else — SD-1..SD-5, OI-1, C-3, `OCT_VERTICAL`, `llm_max_inflight` — is history; read the PLAN: `docs/plans/0100-exposure-published-demo-surface.md`.
 - [ ] **Assembly-cost axis — MEASURE it before an ADR argues it (Cray typed s197); nothing built, no PLAN drafted.** Build the tripwire that puts a number on assembly cost first, *then* draft the ADR on top of that number — the ordering is the ruling. **The series measured so far is banked HERE because it is banked NOWHERE ELSE in the repo — no test, no doc, no PLAN holds it:** churn per vertical went **1:1.8 → 1:6 → 1:1.1**, i.e. **spiky, not falling**, which is the shape any ADR on this axis has to argue against. Left unbanked it survives only in session memory and dies at the next context reset; a tripwire that recomputes it is what makes it evidence rather than a recollection.
 - [ ] **Seam-scoped mutation-testing CI — a PLAN candidate, NOT built.** Surfaced s188 as the one CHECKABLE variant the scenario-test hook rejection does not cover; **rehomed here s191** when its parent `[x]` row was pruned, because STATUS was its only home. A CI job that requires the scenario suite to REDDEN under a seam mutation: ritual compliance cannot fake it, since an empty or stubbed scenario suite stays green under mutation — exactly what a file-existence hook would miss. Rationale: `CLAUDE.md` §8's scenario-test bullet.
 - [ ] **PLAN-0096 partner round-2 — ANSWERED s189; five of seven closed, one non-blocking follow-up open.** A1 → Step 6 built (#965); A3 → `pm_due` built (#968); **A4 + A7 confirmed values already shipped** (flat ฿5,000 ceiling, `"30001"` inclusive floors); A5 **parked** — no real Wialon export exists yet. **A2 is answered and consumed by Step 8** (no longer a gate). **Open, NON-blocking: cost-center (ศูนย์ต้นทุน) granularity — per truck or per company?** Ship the column, fill the rule when it lands. A6 is answered but is a Step 9 *runbook* item. Detail: `docs/plans/done/0096-fleet-flow-completion-phase1.md`.
