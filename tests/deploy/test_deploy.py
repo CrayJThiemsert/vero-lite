@@ -92,6 +92,8 @@ if name == "ssh":
     if rest[:3] == ["docker", "image", "inspect"]:
         out(ctl["remote_id"])
     if rest[:2] == ["docker", "inspect"]:
+        if any("Health" in a for a in rest):
+            out(ctl.get("health", "healthy"))
         out(ctl["running_id"])
     if rest[:2] == ["docker", "compose"] and "ps" in rest:
         out(ctl.get("ps", "vero-published-app  running\\nvero-published-cloudflared  running\\n"))
@@ -382,6 +384,53 @@ def test_without_execute_nothing_runs_at_all(deploy: ModuleType, stage) -> None:
     code, calls = stage(deploy, ["--host", "fake-host"])
     assert calls == [], f"planning invoked real programs: {calls}"
     assert code == 0
+
+
+@posix_only
+def test_a_plan_records_no_verdicts_at_all(deploy: ModuleType, stage) -> None:
+    """A plan checked nothing, so it must not be able to report a PASS.
+
+    The first draft recorded `rollback point tagged: PASS` during a plan and
+    closed with "2 checks, 0 FAIL" at exit 0 — a run that proved nothing reading
+    exactly like a run that proved something. Found by reading the plan's real
+    output, not by review.
+    """
+    stage(deploy, ["--host", "fake-host"])
+    assert deploy._results == [], f"planning recorded verdicts it never earned: {deploy._results}"
+
+
+@posix_only
+def test_no_remote_command_carries_anything_a_shell_would_reparse(
+    deploy: ModuleType, stage
+) -> None:
+    """The no-shell guarantee holds on THIS side only — ssh hands over a string.
+
+    `subprocess.run` with a list argv means nothing is re-parsed locally, but ssh
+    joins the remaining words and the REMOTE shell parses the result. So every
+    remote command has to survive that: literals, no quotes, no `$`, no
+    separators. An inlined `python -c "…;…"` does not, and one shipped in the
+    first draft.
+
+    This guards the class rather than that one command: any future step that
+    inlines a script, a pipe or a variable reddens here.
+    """
+    _, calls = stage(
+        deploy,
+        ["--host", "fake-host", "--execute"],
+        head_after=_HEAD_AFTER,
+        changed=[deploy._CONNECTOR_CONFIG],
+    )
+    remote = [c for c in calls if c[0] == "ssh"]
+    assert remote, "no ssh call was made — the scenario is vacuous"
+    hazards = set("\"'$;|&`<>()")
+    for call in remote:
+        for word in call[2:]:  # skip "ssh" and the host alias
+            bad = hazards & set(word)
+            assert not bad, (
+                f"remote word {word!r} contains {sorted(bad)}, which the host's "
+                "shell will re-parse. Build it from literals, or pipe a .ps1 over "
+                "stdin (see the ms-s1-admin skill) — do not inline it here"
+            )
 
 
 def test_execute_cannot_run_without_an_explicit_host(deploy: ModuleType) -> None:
