@@ -57,6 +57,10 @@ _ALLOWED_DOMAINS = frozenset(
         "cloudflareaccess.com",
         "cfargotunnel.com",
         "github.com",
+        # The registry the Dockerfile pulls `uv` from. Added when the bring-up
+        # runbook started naming the base images a build has to fetch — a vendor
+        # domain, added on purpose, which is the only way this set should grow.
+        "ghcr.io",
         "example.com",
     }
 )

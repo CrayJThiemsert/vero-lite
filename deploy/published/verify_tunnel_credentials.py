@@ -38,12 +38,22 @@ from pathlib import Path
 _UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 _HEX32 = re.compile(r"^[0-9a-fA-F]{32}$")
 
-#: cloudflared writes these three. Older builds also emit ``TunnelName``; it is
-#: accepted but not required, and anything else is reported so a hand-edited file
-#: — or a TUNNEL_TOKEN blob pasted in by mistake — is caught rather than
-#: silently tolerated.
+#: cloudflared writes these three, and they are what the tunnel actually needs.
 _REQUIRED = frozenset({"AccountTag", "TunnelID", "TunnelSecret"})
-_OPTIONAL = frozenset({"TunnelName"})
+
+#: Keys cloudflared may also emit. Tolerated, never required.
+#:
+#: ``Endpoint`` is here because the first real ``tunnel create`` reddened this
+#: check: 2025.8.1 writes it (empty on a standard account) and the allowlist,
+#: written from the classic three-key shape, had never seen it. Measured, not
+#: assumed — which is the only reason it is safe to widen. ``TunnelName`` comes
+#: from older builds.
+#:
+#: The strictness is deliberate and stays: an unexpected key is how a
+#: hand-edited file, or a TUNNEL_TOKEN blob pasted in by mistake, gets caught
+#: instead of silently tolerated. Widening this set is a decision, not a
+#: convenience — add a key only after seeing cloudflared itself write it.
+_OPTIONAL = frozenset({"TunnelName", "Endpoint"})
 
 _results: list[tuple[str, bool, str]] = []
 
