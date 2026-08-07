@@ -22,6 +22,29 @@ services:
     container_name: vero-published-app
     env_file:
       - published.env
+    environment:
+      # API_KEYS maps sha256(raw-key) -> person_id and is a SECRET, so it can never
+      # join published.env — that file is committed and is AC-4's parse target
+      # (CLAUDE.md §8). A BARE pass-through takes the value from the host
+      # environment or an uncommitted deploy/published/.env, so the secret reaches
+      # the container without ever entering the repo.
+      #
+      # ⚠️ WITHOUT THIS KEY THE VARIABLE NEVER REACHES THE CONTAINER. `env_file`
+      # loads published.env and nothing else, and compose does not forward the
+      # host environment on its own — so the demo was unloginable no matter what
+      # the operator exported, and Step 9 case 1's positive control (keyed
+      # /whoami -> 200, "the only evidence the demo is loginable at all") could
+      # never pass. README.md documented the provisioning and the plumbing was
+      # missing.
+      #
+      # DELIBERATELY OPTIONAL, unlike CLOUDFLARED_CREDENTIALS_FILE below. A
+      # `${API_KEYS:?…}` form would fail `up` when the key is absent, and that
+      # contradicts the committed contract: README.md and published.env:8-12 both
+      # state that with API_AUTH_ENABLED=true and no API_KEYS the demo boots,
+      # serves every unkeyed route, and returns 401 from /whoami — "the correct,
+      # and Step 9-asserted, behaviour". Fail-closed here would make a documented
+      # state unreachable.
+      - API_KEYS
     # OLLAMA_HOST is pinned to host.docker.internal (§Pinned values). Docker
     # Desktop resolves that name on its own; the Linux engine does NOT, and
     # without this line every LLM call on a Linux host fails DNS and silently

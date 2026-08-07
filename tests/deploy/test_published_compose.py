@@ -222,6 +222,20 @@ def _served_by(url: str, patterns: set[str]) -> bool:
     return any(re.search(pattern, url) for pattern in patterns)
 
 
+def _app_environment_names() -> set[str]:
+    """The env-var NAMES the app service declares under `environment:`.
+
+    Compose accepts both the list form (``- API_KEYS``) and the map form
+    (``API_KEYS: ${API_KEYS}``). Reading only one of them would make the caller
+    quietly vacuous the day someone reformats the file — the assertion would keep
+    passing against an `environment:` block it can no longer see.
+    """
+    env = _compose()["services"]["app"].get("environment", [])
+    if isinstance(env, dict):
+        return set(env)
+    return {str(item).split("=", 1)[0] for item in env}
+
+
 # --------------------------------------------------------------------------- #
 # AC-4 — the published env profile
 # --------------------------------------------------------------------------- #
@@ -252,6 +266,45 @@ def test_ac4_no_secret_is_committed() -> None:
             f"{forbidden} is a SECRET and must never enter a committed file "
             "(CLAUDE.md §8) — provision it env-local on the host"
         )
+
+
+def test_the_app_can_actually_receive_api_keys_from_the_host() -> None:
+    """The other half of `test_ac4_no_secret_is_committed`, and it was missing.
+
+    Keeping API_KEYS out of published.env is only half a design: the container
+    still has to be able to RECEIVE it. `env_file` loads published.env and nothing
+    else, and compose does not forward the host environment on its own — so
+    without a pass-through the demo is unloginable no matter what the operator
+    exports, and Step 9 case 1's positive control (keyed ``/whoami`` -> 200, the
+    only evidence the demo is loginable at all) can never pass.
+
+    Asserted as a NAME, never a value: the point is that the plumbing exists, and
+    `test_no_api_key_digest_is_committed_in_the_compose_file` guards the other
+    direction.
+    """
+    assert "API_KEYS" in _app_environment_names(), (
+        "the app service must declare API_KEYS under `environment:` so the host's "
+        "value reaches the container. README.md documents provisioning it "
+        "env-local, but env_file only loads published.env — without this entry the "
+        "variable is silently dropped and every keyed route stays 401 forever"
+    )
+
+
+def test_no_api_key_digest_is_committed_in_the_compose_file() -> None:
+    """The pass-through must stay a NAME — a value here would be a committed secret.
+
+    `test_ac4_no_secret_is_committed` reads published.env; nothing read the compose
+    file, which is the other place an operator in a hurry would paste the map.
+    A SHA-256 digest is 64 hex characters, so the shape is greppable without this
+    test needing to know any real key.
+    """
+    text = _COMPOSE.read_text(encoding="utf-8")
+    digests = re.findall(r"\b[0-9a-fA-F]{64}\b", text)
+    assert not digests, (
+        f"{_COMPOSE} contains {len(digests)} SHA-256-shaped literal(s) — API_KEYS "
+        "maps sha256(raw-key) -> person_id and is a SECRET (CLAUDE.md §8). The "
+        "compose file may name the variable, never carry its value"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -333,6 +386,33 @@ def test_ac6a_the_tunnel_is_locally_managed() -> None:
         "config.yml must declare a locally-managed tunnel (tunnel + credentials-file). "
         "A remotely-managed TUNNEL_TOKEN tunnel keeps the ingress map in the Cloudflare "
         "dashboard, where this test cannot see it and would keep passing regardless"
+    )
+
+
+def test_no_ingress_rule_binds_a_hostname() -> None:
+    """ADR-0035 D1(3)/L6 domain-ignorance, asserted rather than left to discipline.
+
+    The domain lives in exactly one layer — DNS at the vendor plus the portal
+    repo's cross-system ingress map — and *"nothing in this repo may reference the
+    portal domain"* (0035:280-285). That is what makes a domain change cost a DNS
+    re-point and no application change at all (L6, 0035:231).
+
+    ``config.yml`` implements it by carrying no ``hostname:`` key, and until now
+    only a comment said so. This test asserts the SHAPE that would let a domain in,
+    never a domain value — so it is committable in a public repo and stays correct
+    across any rename. A rule without ``hostname`` matches any host, which is
+    right here: the tunnel only ever receives traffic for the hostname its own DNS
+    route points at.
+
+    RED when: any ingress rule gains a ``hostname:`` key.
+    """
+    bound = [rule for rule in _ingress_rules() if "hostname" in rule]
+    assert not bound, (
+        f"{_INGRESS} binds a hostname on {len(bound)} rule(s): {bound!r}. "
+        "ADR-0035 D1(3) keeps the domain out of this repo entirely — a hostname "
+        "here pins the deployment to one domain, so moving domains stops being a "
+        "DNS re-point and becomes a code change, and the value itself leaks the "
+        "domain into a public repo"
     )
 
 
