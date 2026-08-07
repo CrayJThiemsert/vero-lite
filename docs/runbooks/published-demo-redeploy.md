@@ -152,31 +152,51 @@ The manual sequence, for the case where Python is unavailable or the script itse
 is what is suspect. Run each command **from a file**, never typed inline into an
 `ssh "…"` string.
 
+🔴 **Two rules, both measured on this host on 2026-08-08 — the first draft of this
+section broke both and every remote command in it failed.**
+
+1. **Never send `--format={{…}}` to the host.** The remote shell is **PowerShell**
+   (`ssh <host> 'echo %COMSPEC%'` returns the string unexpanded, so it is not cmd),
+   and PowerShell reads `{…}` as a script block. `docker version --format={{.Server.Version}}`
+   comes back as `unknown shorthand flag: 'e' in -encodedCommand`. Ask for plain
+   JSON instead and read the field yourself — `docker inspect <thing>` with no
+   `--format` returns the whole object, exit 0.
+2. **`git -C <path>`, not `cd <path> && git`.** Chaining with `&&` inside an `ssh`
+   argument hands the chaining to that same shell.
+
+Local half:
+
 ```bash
-docker compose -f deploy/published/docker-compose.yml build app
-docker image inspect vero-published-app:latest --format="{{.Id}}"     # note this
+CLOUDFLARED_CREDENTIALS_FILE=/nonexistent/placeholder docker compose -f deploy/published/docker-compose.yml build app
+docker image inspect vero-published-app:latest --format="{{.Id}}"     # local only — note this
 docker save vero-published-app:latest -o /tmp/app.tar
-scp /tmp/app.tar <host>:C:/vero-staging/app.tar
 ```
+
+The placeholder is required: compose interpolates the **whole** file before
+deciding what to build, and the connector declares that variable
+required-with-no-default, so a bare `build app` exits 1 without ever building.
+
+Remote half — the tar goes in on **stdin**, so there is no staging path to create
+and no Windows path in any command:
 
 ```bash
 ssh <host> docker tag vero-published-app:latest vero-published-app:prev
-ssh <host> docker load -i C:\vero-staging\app.tar
-ssh <host> docker image inspect vero-published-app:latest --format="{{.Id}}"   # must equal the above
+ssh <host> docker load < /tmp/app.tar
+ssh <host> docker image inspect vero-published-app:latest
 ssh <host> git -C C:\projects\vero-lite pull --ff-only
 ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\docker-compose.yml -p vero-published up -d
-ssh <host> docker inspect vero-published-app --format="{{.Image}}"    # must equal the id above
+ssh <host> docker inspect vero-published-app
 ```
+
+Read `.Id` out of the third command's JSON and `.Image` out of the sixth's. **They
+must be equal, and equal to the local id** — the first pair proves the transfer,
+the second proves the deploy took effect.
 
 If `cloudflared/config.yml` changed in that pull, add:
 
 ```bash
 ssh <host> docker compose -f C:\projects\vero-lite\deploy\published\docker-compose.yml -p vero-published up -d --force-recreate cloudflared
 ```
-
-⚠️ **`git -C <path>`, not `cd <path> && git`.** Chaining with `&&` inside an `ssh`
-argument hands the chaining to the remote shell, which on a Windows host is not
-the shell you are thinking of.
 
 ---
 
@@ -192,6 +212,35 @@ working origin.
 | **200** | 🔴 **a security failure** — Access is not applied to this hostname |
 
 A `200` is not a better result than a `302`. It means the demo is open.
+
+---
+
+## 7b. What the first real run looked like (measured 2026-08-08)
+
+Recorded so the next operator can tell "worked" from "ran". Deploying `d0a2808`
+over the image session 213 had shipped:
+
+```
+rollback point tagged                : PASS  (vero-published-app:prev)
+image transferred intact             : PASS  (local sha256:153324a2995c… vs host sha256:153324a2995c…)
+host checkout updated                : PASS  (9601f068 -> d0a28080, 14 files)
+running container uses the new image : PASS  (container sha256:153324a2995c… vs loaded sha256:153324a2995c…)
+both services present                : PASS
+no published host port               : PASS
+app healthcheck reports healthy      : PASS  (healthy)
+edge gate is in front                : PASS  (HTTP 302)
+
+=== 8 checks, 0 FAIL ===
+```
+
+Verified independently of that ledger, by reading the host directly: the container
+**id** changed (`11b0fb7201be…` → `45f6440a2d48…`, i.e. a genuinely new container,
+`Up 45 seconds` against the previous `Up 10 hours`), its `.Image` moved
+`4c88145c8653…` → `153324a2995c…`, `:prev` now holds `4c88145c8653…` — the old
+image, so rollback is live — and both `/health` and `/` answer `302` at the edge.
+
+The connector was **not** recreated, correctly: none of the 14 changed files was
+`cloudflared/config.yml`.
 
 ---
 
