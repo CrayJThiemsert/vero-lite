@@ -183,6 +183,39 @@ def test_every_host_read_path_exists_and_the_compose_really_reads_it(
     ), "the ingress config is listed as host-read but is no longer bind-mounted"
 
 
+def test_every_required_compose_variable_has_a_build_placeholder(
+    deploy: ModuleType, compose_text: str
+) -> None:
+    """A local build interpolates the WHOLE compose file, connector included.
+
+    Measured 2026-08-08: `docker compose -f … config` with no
+    `CLOUDFLARED_CREDENTIALS_FILE` exits 1 — "required variable … is missing a
+    value" — so the build step cannot run without a placeholder for every
+    `${VAR:?…}` the file declares, even though building the app touches none of
+    them.
+
+    Read out of the compose file rather than listed here, so a NEW required
+    variable reddens this instead of silently reintroducing the same failure. The
+    script's own comment described this hazard for a whole PR while the code did
+    not handle it; a comment is not a guard.
+    """
+    # Comment lines are stripped first. The compose file EXPLAINS the `${VAR:?…}`
+    # form in a comment arguing against using it for `API_KEYS` — matching the
+    # prose would have this guard demand a placeholder for a variable nothing
+    # declares.
+    declarations = "\n".join(
+        line for line in compose_text.splitlines() if not line.lstrip().startswith("#")
+    )
+    required = set(re.findall(r"\$\{([A-Z_][A-Z0-9_]*):\?", declarations))
+    assert required, "no required-with-no-default variable found — has the compose changed shape?"
+    missing = required - set(deploy._BUILD_PLACEHOLDERS)
+    assert not missing, (
+        f"the compose file requires {sorted(missing)} but deploy.py supplies no "
+        "build-time placeholder for it, so `compose build` will exit 1 before it "
+        "builds anything"
+    )
+
+
 def test_the_connector_config_is_one_of_the_host_read_paths(deploy: ModuleType) -> None:
     """It gets special treatment (force-recreate), so it must be in the base set."""
     assert deploy._CONNECTOR_CONFIG in deploy._HOST_READ_PATHS
