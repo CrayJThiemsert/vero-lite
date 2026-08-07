@@ -63,9 +63,21 @@ def out(text, code=0):
     sys.stdout.write(text)
     sys.exit(code)
 
+def as_image(image_id):
+    return json.dumps([{"Id": image_id, "RepoTags": ["vero-published-app:latest"]}])
+
+def as_container(image_id, health):
+    return json.dumps([{"Image": image_id, "State": {"Health": {"Status": health}}}])
+
 if name == "docker":
     if args[:2] == ["image", "inspect"]:
-        out(ctl["local_id"])
+        out(as_image(ctl["local_id"]))
+    if args[:1] == ["save"] and "-o" in args:
+        # Really write the tar: the script pipes it into `docker load` on stdin,
+        # so a fake that only printed would make the next step raise
+        # FileNotFoundError instead of exercising the transfer.
+        open(args[args.index("-o") + 1], "wb").write(b"FAKE-IMAGE-TAR")
+        out("")
     out("")
 
 if name == "scp":
@@ -90,11 +102,9 @@ if name == "ssh":
             sys.exit(1)
         out("")
     if rest[:3] == ["docker", "image", "inspect"]:
-        out(ctl["remote_id"])
+        out(as_image(ctl["remote_id"]))
     if rest[:2] == ["docker", "inspect"]:
-        if any("Health" in a for a in rest):
-            out(ctl.get("health", "healthy"))
-        out(ctl["running_id"])
+        out(as_container(ctl["running_id"], ctl.get("health", "healthy")))
     if rest[:2] == ["docker", "compose"] and "ps" in rest:
         out(ctl.get("ps", "vero-published-app  running\\nvero-published-cloudflared  running\\n"))
     if rest[:2] == ["docker", "compose"] and "exec" in rest:
@@ -413,6 +423,14 @@ def test_no_remote_command_carries_anything_a_shell_would_reparse(
 
     This guards the class rather than that one command: any future step that
     inlines a script, a pipe or a variable reddens here.
+
+    ⚠️ Braces are in the set because of what the first live run measured on
+    2026-08-08. The remote shell is **PowerShell**, and `--format={{.Id}}` — the
+    form every docker doc and every runbook uses — arrives as
+    `unknown shorthand flag: 'e' in -encodedCommand`. The first version of this
+    guard listed quotes, `$` and separators but NOT braces, so it went green over
+    the exact command that failed. Read as `docker inspect` with no `--format`,
+    parsed as JSON here, where no shell is involved.
     """
     _, calls = stage(
         deploy,
@@ -422,7 +440,7 @@ def test_no_remote_command_carries_anything_a_shell_would_reparse(
     )
     remote = [c for c in calls if c[0] == "ssh"]
     assert remote, "no ssh call was made — the scenario is vacuous"
-    hazards = set("\"'$;|&`<>()")
+    hazards = set("\"'$;|&`<>(){}")
     for call in remote:
         for word in call[2:]:  # skip "ssh" and the host alias
             bad = hazards & set(word)
