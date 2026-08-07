@@ -1264,8 +1264,11 @@ Must contain, verbatim obligations from D6:
 - `0035:718-721` (Consequences: "env + edge config + a log writer + a banner")
   — extend the enumeration with "+ the published UI profile + the in-flight
   cap", which the Consequences line half-acknowledged already.
-- 🔴 **`0035:424-428` + `0035:473-476` + `0035:962-968` — the connector-ownership
-  boundary. ADDED s207-R2, and this one BLOCKS Step 8.** D4/L5 assigns the
+- ✅ **`0035:424-428` + `0035:473-476` + `0035:962-968` — the connector-ownership
+  boundary. ADDED s207-R2; it BLOCKED Step 8 — DISCHARGED 2026-08-05 in #1057
+  (Cray typed reading **(a)**), and Step 8 shipped s209 cont. in #1063.** The
+  entry is kept, not deleted: it is `superseded by new info`, and the reasoning
+  below is the lineage of the amendment that landed. D4/L5 assigns the
   `cloudflared` connector config and the ingress map to the **portal repo**, with
   vero-lite contributing *"**only** its image (PLAN-0095) and its own compose
   project"*. SD-3's ruling puts a `cloudflared` service **and** a committed
@@ -1279,8 +1282,11 @@ Must contain, verbatim obligations from D6:
   each system owns its *own* route allowlist; or **(b)** the ingress allowlist
   moves to the portal repo and vero-lite ships only the allow **table** as the
   contract — which voids AC-6(a)'s offline set-equality and re-opens SD-3.
-  ⚠️ Until this is routed and ratified, **Step 8 must not start** — building
-  against a boundary the ADR forbids would have to be undone.
+  ~~⚠️ Until this is routed and ratified, **Step 8 must not start** — building
+  against a boundary the ADR forbids would have to be undone.~~ **HISTORY** —
+  reading (a) was ratified in #1057 and Step 8 shipped in #1063. Nothing in this
+  bullet gates anything today; the three bullets **above** it are the ones still
+  unrouted under AC-12.
 - Route: G1-gated Accepted-body edit → per house rule it rides an in-context
   Cray approval in its own small `docs/*` PR (never flip-then-edit); Code owns
   routing. This PLAN's diff does not touch the ADR.

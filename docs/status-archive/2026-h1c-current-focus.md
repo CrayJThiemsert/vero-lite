@@ -1606,3 +1606,63 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 >
 > Gate at CI scope on every merge, including each merge commit (CI is PR-only and
 > never tests those): suite **3826 → 3847**, ruff + `mypy --strict` clean throughout.
+
+<!-- rotated 2026-08-07, session 213 (STATUS reconcile — the published OCT demo went LIVE behind Cloudflare Access; #1069–#1072) -->
+> **Session 207, 2026-08-05 (head_commit `296cc34` → `5621266`) — one PR merged
+> (#1049), 0 open. Theme: a ratified plan's own recommendation and its own allow
+> table had never been checked against each other, and an unreviewed fold-in got
+> two of its own claims wrong.**
+>
+> _[The s206 tail also merged **#1046** (Step 10 — RoPA + the published-demo
+> runbook), **#1047** (`0c9348a` — the s206 STATUS reconcile itself, which is why
+> the s206 block below stops where it does) and **#1048** (lessons
+> **0036**/**0037**); the s206 block below predates all three.]_
+>
+> **Step 4 COMPLETE, AC-3 CLOSED:** the published profile measured green at all
+> five pinned widths — **0 overflow, 0 clipped** — under SD-4's option (a),
+> *before* Step 3's removals, i.e. at maximum header width demand. A 600 px
+> **non-vacuity probe** drove the instrument red first. ⚠️ The initial probe's
+> `querySelector('header')` returned **null** (the element is `class="header"`),
+> scanning **zero** nodes and reporting a clean "0 clipped" — the table now carries
+> a **nodes-scanned column** so a void row cannot pass as a clean one.
+>
+> **Cray ruled all five SDs (typed 2026-08-05); AC-13 is CLOSED and every
+> BLOCKED-ON-SD marker is RELEASED.** SD-1 = (a) DB-less · SD-2 = exclude all
+> three draft routes · SD-4 = (a) measure-to-confirm · SD-5 = keep both. **SD-3
+> was restated before it was ruled: ADR-0035 never names nginx** — it says only
+> "at vero-lite's edge" and that "rate limiting lives at the edge", which forbids
+> rate limiting *inside* `services/` rather than mandating a proxy. Cray ruled
+> **(ii): stay with `cloudflared`** (ingress allowlist + catch-all 404, config
+> committed) plus the zone's Cloudflare rate-limiting rule — **no nginx service**.
+>
+> **Finding C-3 — four allow-table rows the ruled DB-less posture cannot serve.**
+> Tracing every allow-table handler for a DB session dependency found
+> `/recommendations/{id}/execute`, `/runs/{id}`, `/runs/{id}/gate/resolve` and
+> `/insights/query`, and there is **no global exception handler anywhere in
+> `services/api/`** — so each returns an unhandled **500, not a degrade**.
+> Sharpest: the allow table called `execute` the "operator-driven demo beat", so
+> **Approve would succeed and Execute would 500** — the Tab B loop dying at its
+> last step. The runs pair also fails a second, DB-independent way: justified as
+> "Tab G beat 3", but that panel mounts only in event mode (`view-hero.js:641`)
+> and event mode is excluded — **zero callers**. This is **C-1 mirrored**: C-1
+> was a route *missing* that made a feature undrivable; C-3 is routes *present*
+> whose reachability path is excluded. Method note: the drafting census walked
+> *UI call sites → routes*; C-3 needed *routes → handler DB dependency*, and
+> **neither walk finds the other's defect**.
+>
+> **An R2 pass with three independent adversarial reviewers discharged the
+> author≠reviewer separation the fold-in owed — and it paid for itself.** C-3
+> survived **5/5**. But SD-3's ruling drew **six findings**, three of which the
+> spec cannot remove: a **blocking D4/L5 ADR debt** (the ADR assigns the connector
+> + ingress map to the portal repo, so `0035:421-424`'s drift trigger fires), a
+> vendor-branded 429 on Free, and NAT-shared-IP with no burst. And **Step 9's
+> pass/fail read scored 4/5 against a completely dead app** — its "non-404" bar
+> let a crashed container pass four cases at once — so it was rewritten as **v2**.
+>
+> **Two of the PLAN's own claims were retracted.** `GET /recommendations` was
+> pinned `deterministic` but is **LLM-backed** (`recommender.py:194-195`), so the
+> recorded consequence "`/query` is the only published LLM route" was **false**;
+> it is tracked now as **OI-1** — the route is neither rate-capped nor
+> prompt-logged, and each failure pages Cray via `notify_llm_unreachable`. And
+> ~14 `api.js` citations were stale by exactly **+7**: the fold-in corrected three
+> instances without recognising the shift was **systematic**.
