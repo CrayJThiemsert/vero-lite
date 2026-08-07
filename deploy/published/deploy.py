@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -93,6 +94,14 @@ _HOST_READ_PATHS = (
     "deploy/published/cloudflared/config.yml",
 )
 
+#: Placeholder values for every `${VAR:?…}` the compose file declares required.
+#: They exist only so a LOCAL build can interpolate the file — the app image
+#: neither reads nor embeds them, and the real values live on the deploy host.
+#: `tests/deploy/test_deploy.py` reads the compose file for required variables and
+#: asserts this covers every one, so a new required variable cannot silently
+#: reintroduce the failure this closes.
+_BUILD_PLACEHOLDERS = {"CLOUDFLARED_CREDENTIALS_FILE": "/nonexistent/build-time-placeholder"}
+
 #: The one whose change ALSO requires recreating the connector. A bind mount
 #: shows the new file on disk immediately, but cloudflared reads its config once
 #: at start — so `up -d` alone leaves the old ingress map live, with nothing to
@@ -120,11 +129,19 @@ class Runner:
         self.execute = execute
         self.log: list[list[str]] = []
 
-    def run(self, argv: list[str], *, stdin_path: Path | None = None) -> str:
+    def run(
+        self,
+        argv: list[str],
+        *,
+        stdin_path: Path | None = None,
+        env: dict[str, str] | None = None,
+    ) -> str:
         """Run `argv` with NO shell. Returns stdout (stripped), or "" when planning."""
         self.log.append(argv)
         if not self.execute:
             suffix = f"  < {stdin_path}" if stdin_path else ""
+            if env:
+                suffix += f"  (env: {', '.join(sorted(env))})"
             print(f"  would run: {' '.join(argv)}{suffix}")
             return ""
         # S603: every argv this script builds is literals plus the operator's own
@@ -138,6 +155,7 @@ class Runner:
                 capture_output=True,
                 text=True,
                 check=False,
+                env={**os.environ, **env} if env else None,
             )
         if completed.returncode != 0:
             # stderr is merged into the message rather than left on its own
@@ -200,8 +218,10 @@ def build_and_ship(run: Runner, host: str, repo_root: Path) -> str:
     # compose interpolates the WHOLE file before deciding what to build, and the
     # cloudflared service declares CLOUDFLARED_CREDENTIALS_FILE required — so a
     # build fails without it even though building the app touches neither the
-    # variable nor the connector. Nothing is created at this path: volumes are
-    # materialised at container-create time, not at build.
+    # variable nor the connector. Measured 2026-08-08: `compose config` without it
+    # exits 1 with "required variable … is missing a value". Nothing is created at
+    # the placeholder path; volumes are materialised at container-create time, not
+    # at build.
     run.run(
         [
             "docker",
@@ -211,6 +231,7 @@ def build_and_ship(run: Runner, host: str, repo_root: Path) -> str:
             "build",
             "app",
         ],
+        env=_BUILD_PLACEHOLDERS,
     )
     local_id = _local_image_id(run)
     print(f"  local image: {local_id or '<planning>'}")
