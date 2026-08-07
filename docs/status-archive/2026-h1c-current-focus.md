@@ -1666,3 +1666,64 @@ Rotated out when session 196's SECOND workstream block entered the 4-block windo
 > prompt-logged, and each failure pages Cray via `notify_llm_unreachable`. And
 > ~14 `api.js` citations were stale by exactly **+7**: the fold-in corrected three
 > instances without recognising the shift was **systematic**.
+
+<!-- rotated 2026-08-08, session 214 (STATUS reconcile — the repeatable deploy procedure, and the first live redeploy; #1073-#1078) -->
+> **Session 208, 2026-08-06 (head_commit `5621266` → `c0f08b8`) — three PRs merged
+> (#1056–#1058), 0 open. Theme: a fail-soft handler was holding the DB-less boot
+> guarantee for the wrong reason, and an AC table read 4 of 13 while its own handoff
+> claimed 10.**
+>
+> **#1056 — every non-procurement boot was raising `UnboundLocalError`, and the test
+> suite passed anyway.** `async_session` was imported inside a nested branch of
+> `lifespan` but used by the separate `if "fleet_maintenance" in known:` block below,
+> so Python bound the name **function-local**: any boot not taking the
+> procurement-seed branch — **including the plain `energy` default** — raised at
+> **both** call sites. `tests/test_startup_log.py` had been exercising the broken
+> path all along and **passing**, because the fail-soft handler absorbed it. So the
+> DB-less boot guarantee **was holding for the wrong reason**: a handler swallowing
+> a *code bug* rather than an *environment absence*. The fix leaves a deliberate
+> open seam — `_is_environment_absent(exc)` is a documented `return True` stub that
+> **Cray chose to author personally**; it is behaviour-neutral today and nothing
+> else in the repo tracks it.
+>
+> **#1057 — ADR-0035 D4/L5 amended; PLAN-0100 Step 8's ADR blocker is CLEARED.**
+> **Cray's typed ruling, 2026-08-06: reading (a)** — vero-lite's `cloudflared` **is**
+> this system's connector in its own compose project; the portal repo owns the
+> ingress map *across systems*; each system owns its *own* route allowlist. Reading
+> (b) was **rejected** (it voids AC-6(a) and re-opens SD-3). The amendment is framed
+> as the ADR **reconciled with itself**: Implementation Note 1 gave connector + map
+> to the portal while Note 2 already gave the route allowlist to vero-lite. Two
+> drafter-surfaced decisions were **also typed by Cray**: **SD-1** restate D4's
+> acceptance shape to count *each system's own* connector (otherwise the ADR's own
+> drift trigger fires on the arrangement just ruled), **SD-2** keep the binding
+> corollary that **no other system's connector may join this system's network**. The
+> same PR renumbered **81 line numbers across 45 PLAN-0100 citations** with a
+> self-verifying script (old line content must be byte-identical to new, or abort) —
+> **no guard test validates ADR line citations**, so that drift would have rotted
+> silently.
+>
+> **#1058 — PLAN-0100 AC-7/8/9/10 CLOSED: 4 of 13 → 8 of 13, and two of the four came
+> back NOT-CLOSEABLE.** The work had shipped in s206 (Steps 5/6/7/10) and the AC
+> table was simply never ticked — the s207 handoff claimed "10 of 13 closed" while
+> the checkboxes read **4**. Every AC was verified clause-by-clause by independent
+> **refuting** reviewers. **AC-7:** two clauses were **unassertable as written** and
+> were amended on Cray's typed ruling ("< 5 s" on one coroutine whose completion
+> order the event loop does not promise; "the first" is not identifiable), and a
+> third was **genuinely unmet and built** — no prompt-log assertion existed anywhere
+> under the cap; non-vacuity was shown by mutating the router to log a hardcoded
+> `arm="llm"`, which reddened **only** the new assertion. **AC-8** closed **with
+> Postgres up on purpose** — its `/insights/query` half is the sole coverage and
+> silently **skips** otherwise. **AC-9's** required ADR-0032 D5 wording review **had
+> never been performed**: done, **PASS**, and its tripwire hardened (pinning
+> `"Cloudflare"` survived a reword that deletes the actual D6 duty). **AC-10** fixed
+> a purge command reading `prompts-*.jsonl` against a writer emitting `prompt-` — it
+> matched **zero** files and **exited 0**.
+>
+> **OI-1 got worse, not clearer.** The LLM fan-out fires on **Tab A, the default
+> landing view** — not first on Tab B as previously recorded — so the exposure sits
+> on the page every visitor lands on; and option **(a)** collides with a **closed**
+> prompt-log row schema whose `text` is defined as *the visitor's typed input*,
+> which `/recommendations` has none of. Cray owes two calls: **OI-1** (three options
+> in the PLAN's §Open items; **(c) conflicts with D6**) and the **per-IP rate cap
+> 2 → 10 req/10s** nod. Step 8 also still owes an **unpinned `OCT_VERTICAL`**;
+> Step 9 follows Step 8.
