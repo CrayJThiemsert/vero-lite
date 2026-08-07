@@ -1188,6 +1188,46 @@ Pass/fail reads, fixed before the run:
 - Closeout: allowlist revised-or-confirmed (AC-11), measurement tables into
   this PLAN, then Draft → Complete → `git mv` to `done/`.
 
+> 🔴 **BLOCKER FOUND 2026-08-07 (session 213) — the case list cannot run through
+> the Access gate as written.**
+>
+> The system was stood up for the first time this session (tunnel created,
+> subdomain routed, Access application + allowlist policy created, project up on
+> the deploy host). Measured against the live edge: **every path returns `302` to
+> the Access login**, including the ones whose rows assert an exact status —
+> `/health` → `200`, and keyless `/whoami` → *exactly* `401`, which the case list
+> calls the only thing that catches `API_AUTH_ENABLED=false` in the running
+> container. Seven paths were probed; all seven redirected. Cloudflare states the
+> missing piece itself: the redirect's metadata carries
+> `"service_token_status": false`.
+>
+> This is not a defect in either artifact. **ADR-0035 D3 (Access, ratified) and
+> this case list are each correct and were written at different times**; composed,
+> they do not run. It could not have been found by reading — only by putting the
+> gate up before the tunnel and probing.
+>
+> **The remedy is a service token, and it is Cray's ruling, not Code's.**
+> Cloudflare's UI states that service tokens require the **Service Auth** action
+> rather than `Allow` — i.e. a *second policy* on the application — while
+> ADR-0035's acceptance shape names *"a second Access policy"* as a condition
+> under which "the arrangement has drifted and this ADR is reopened". Whether that
+> clause is about per-system onboarding cost (making a test-automation token a
+> different axis) or about literal policy count is a reading only Cray can give.
+> Options, none of them free: one policy and no scripted probes; a permanent
+> second policy plus an ADR amendment; or a temporary second policy for this run,
+> whose evidence then describes a configuration that no longer exists and must say
+> so.
+>
+> **Settled in passing, so Step 11 need not re-derive them:**
+> `tunnel: <name>` resolves from the credentials file alone — the connector logs a
+> non-fatal ERR about the missing `cert.pem` and connects anyway, so the
+> account-wide origin cert stays off the deploy host. Case 0's shape was also
+> observed green (two services, `app` healthy, no `postgres`, no published host
+> port, `/health` answering `{"status":"ok",…}` on the internal network). **That
+> observation is NOT case 0 closed** — it was taken before the Step 10 reads were
+> fixed and under a configuration still missing the rate cap and `API_KEYS`; it is
+> recorded as orientation, and the case still runs for real under Step 11.
+
 ## Runbook section (lands as `docs/runbooks/published-demo-operations.md`)
 
 Must contain, verbatim obligations from D6:

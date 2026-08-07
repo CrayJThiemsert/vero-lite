@@ -95,47 +95,82 @@ the only later remedies are "delete the rule and rewrite it" or "pay for a plan 
 rules". PLAN-0100 also leaves open whether the free plan's expression editor accepts a
 path-only form at all — settle that when the rule is created and record the answer.
 
-### 2.3 `tunnel:` by name or by UUID
+### 2.3 `tunnel:` by name or by UUID — SETTLED, keep the name
 
-`deploy/published/cloudflared/config.yml` declares `tunnel: vero-oct-published` — a
-**name**. cloudflared resolves a name through the account origin certificate
-(`~/.cloudflared/cert.pem`), which lives on whichever machine ran `tunnel login` and is
-**not** normally on the deploy host.
+**Not a decision any more.** This section previously predicted that
+`tunnel: vero-oct-published` — a **name** rather than a UUID — would need the account
+origin certificate (`cert.pem`) on the deploy host, and told you to prove it before
+choosing. It was proved on 2026-08-07, and **the prediction was wrong in the safe
+direction**: the name form works with the credentials file alone.
 
-* **Name** — keeps the file readable, but the deploy host then needs `cert.pem`, which
-  grants account-wide authority rather than one tunnel's.
-* **UUID** — the run is cert-free and the credentials file can be matched to the config
-  offline (`verify_tunnel_credentials.py` cross-checks it). Costs a small PR to change the
-  committed file.
+Measured, from the deploy host's own connector log:
 
-This is a prediction, not a measurement: nobody has yet run the tunnel from a host with no
-`cert.pem`. **Prove it before deciding** — §5 says how.
+```
+INF Starting tunnel tunnelID=91339db6-…
+ERR Cannot determine default origin certificate path. No file cert.pem in […]
+INF Tunnel connection … ip=198.41.200.33
+```
+
+cloudflared reads the TunnelID out of the **credentials file**; the missing-cert line is
+logged at ERR but is **not fatal**, and the connector goes on to register with the edge.
+
+So: **keep `tunnel: <name>` and keep `cert.pem` on the workstation.** That is the safer
+end state — `cert.pem` carries account-wide authority (it can create and delete tunnels
+and DNS records), and nothing on the deploy host needs it.
+
+One consequence to keep in view: `verify_tunnel_credentials.py` will always report
+`config tunnel: matches credentials — FAIL` while the config names the tunnel, because a
+name cannot be matched to a UUID offline. **That single FAIL is expected**; treat any
+*other* FAIL as real.
 
 ---
 
 ## 3. Create the tunnel
 
-Run these wherever a browser is available. The tunnel belongs to the **account**, not to
-the machine, so creating it on a workstation and copying the credentials to the deploy
-host is normal and avoids installing `cloudflared` on the deploy host at all.
+**Run these on a machine with a browser — NOT on the deploy host.** `login` needs one, and
+the tunnel belongs to the **account**, not the machine, so creating it on a workstation and
+copying only the credentials onward is normal.
+
+⚠️ **`cloudflared` is not installed on either machine, and installing it on the deploy host
+would be a CLAUDE.md §8 host-state change.** It does not have to be: the commands below run
+the **same pinned image the compose file already uses**, so nothing is installed anywhere.
+(A single static binary from Cloudflare's releases works too — pick the version the compose
+pins so the tool and the runtime agree.)
+
+Three flags carry the whole thing, and each was learned by getting it wrong first:
+
+| flag | why |
+|---|---|
+| `-v "$HOME/.cloudflared":/.cloudflared` | `--user <uid>` names a uid that is **not in the image's passwd**, so `HOME` falls back to `/` and cloudflared's default config dir becomes `/.cloudflared` — root-owned. Mount **where it will actually write**. `--origincert` sets where the *cert* goes; it does **not** move the config dir. |
+| `-w /.cloudflared` | `login` also writes a temporary `cloudflared_priv.pem` into the **current directory**, and the image's `WorkingDir` (`/home/nonroot`) is not writable by that uid. |
+| `--user 1000:1000` | so the files land owned by you rather than root. Substitute your own `id -u`/`id -g`. |
+
+`docker image inspect <image> --format "{{.Config.WorkingDir}} {{.Config.User}}"` answers
+both of the first two in one command — worth running before forcing `--user` on any image.
 
 ```bash
-cloudflared tunnel login
+mkdir -p ~/.cloudflared
 ```
 
-Pick the zone in the browser. This writes `~/.cloudflared/cert.pem` — account-wide
-authority. Keep it on the workstation; §2.3 is the decision about whether it ever needs to
-travel.
+```bash
+docker run --rm -it --user 1000:1000 -w /.cloudflared -v "$HOME/.cloudflared":/.cloudflared cloudflare/cloudflared:2025.8.1 tunnel --origincert /.cloudflared/cert.pem login
+```
+
+In a container it cannot open a browser, so it **prints a URL**; open that, pick the zone,
+and `cert.pem` lands in `~/.cloudflared/`. That file is **account-wide authority** — keep it
+on the workstation and do not copy it onward (§2.3).
 
 ```bash
-cloudflared tunnel create vero-oct-published
+docker run --rm --user 1000:1000 -w /.cloudflared -v "$HOME/.cloudflared":/.cloudflared cloudflare/cloudflared:2025.8.1 tunnel --origincert /.cloudflared/cert.pem create vero-oct-published
 ```
 
 🔴 **The name must be exactly `vero-oct-published`** — `config.yml` pins it. A different
 name means editing a committed file, which is a PR, not a workaround.
 
-The command prints the path of a new `<UUID>.json`. That file is the tunnel's credentials
-and it is a **secret**: never commit it, never paste it into a chat or a ticket.
+The command prints the UUID and writes `~/.cloudflared/<UUID>.json`. **That** file is the
+tunnel's credentials and it is the secret that travels: never commit it, never paste it
+into a chat or a ticket. A leftover `cloudflared_priv.pem` is a login temp file and can be
+deleted.
 
 ---
 
@@ -162,28 +197,43 @@ public commit.
 
 ## 5. Prove the tunnel can actually run
 
-Two checks, in this order. The first is offline and free; the second is the only real test.
+Offline, free, and worth running **on the deploy host** rather than the workstation — it
+proves that machine can read the mounted config, which is the half that actually varies:
 
 ```bash
-cloudflared tunnel --config deploy/published/cloudflared/config.yml ingress validate
+docker run --rm -v <REPO>/deploy/published/cloudflared:/etc/cloudflared:ro cloudflare/cloudflared:2025.8.1 tunnel --config /etc/cloudflared/config.yml ingress validate
 ```
+
+Expect the literal word **`OK`**. Swap `ingress validate` for
+`ingress rule https://example.invalid/<path>` to check any single route: an allowed one
+answers `service: http://app:8000`, an excluded one `service: http_status:404`. Probing one
+of each is worth the extra ten seconds — it shows the config *discriminates* rather than
+merely parsing.
 
 ⚠️ **`--config` goes on `tunnel`, before the subcommand.** The trailing form
 `tunnel ingress validate --config F` prints `Incorrect Usage`, validates nothing, and
-**still exits 0** (measured on 2025.8.1). Judge this on the output text — `OK` — never on
-`$?`. If `cloudflared` is not installed, run the image the compose already pins; see
-`deploy/published/README.md`.
+**still exits 0** (measured on 2025.8.1). Judge this on the output text, never on `$?`.
 
-Then run the tunnel **on the deploy host**, which is where §2.3's prediction is settled: a
-name-form config with no `cert.pem` either resolves or it does not, and that is a fact
-about that host, not about the config file.
+⚠️ **Getting the pinned image onto the deploy host may not be a `docker pull`.** On a
+Windows host driven over SSH, Docker Desktop's credential helper needs an interactive
+desktop session and fails with *"A specified logon session does not exist"* — even for an
+anonymous pull of a public image, and even when a console session is signed in. If that
+bites, `docker save` the image on the workstation, `scp` the tar, and `docker load` it;
+the same route works for the app image (§7).
 
 ---
 
 ## 6. Route the subdomain, gate it, cap it
 
+🔴 **Order matters, and the hazard is easy to miss.** The DNS route below makes the
+hostname **live immediately**. While the tunnel is stopped a visitor gets a harmless `530`
+— but the moment §9 starts it, the demo is reachable by anyone who knows the name. **Create
+the Access policy before bringing anything up.** Doing it in this order also buys a free
+check: Access answers `302` *before* the request ever reaches the tunnel, so you can prove
+the gate works while the demo is still switched off.
+
 ```bash
-cloudflared tunnel route dns vero-oct-published <SUBDOMAIN>
+docker run --rm --user 1000:1000 -w /.cloudflared -v "$HOME/.cloudflared":/.cloudflared cloudflare/cloudflared:2025.8.1 tunnel --origincert /.cloudflared/cert.pem route dns vero-oct-published <SUBDOMAIN>
 ```
 
 `config.yml` deliberately carries **no `hostname:` key** (D1(3)), so the DNS route is the
@@ -191,10 +241,24 @@ only thing that binds this subdomain to this system. A rule without `hostname` m
 host, which is correct: the tunnel only ever receives traffic for the hostname its own
 route points at.
 
-**Access policy** — Zero Trust → Access → Applications → add a self-hosted application for
-`<SUBDOMAIN>`, policy = allow, with an **email allowlist** and **one-time PIN** as the
-login method (ADR-0035 D3, ratified). One-time PIN is built in; no external identity
-provider is required.
+### Access policy (ADR-0035 D3, ratified)
+
+**Zero Trust → Access controls → Applications → Create new application → Self-hosted and
+private → Public DNS.** (Login methods live under **Integrations → Identity providers**;
+One-time PIN is there by default and no external IdP is needed.)
+
+| field | value |
+|---|---|
+| Application name | e.g. `vero-oct-<vertical>` |
+| Session Duration | 24 hours — one PIN covers a day of demoing |
+| Subdomain / Domain | the `oct-<vertical-id>` label and the apex |
+| Path | empty — gate the whole host |
+| Policy Action | **Allow** |
+| Policy Include | **Emails** (or *Emails ending in* for a whole partner org) |
+
+🔴 **Never set the policy to "All authenticated users" or "Everyone".** With One-time PIN as
+the login method, "authenticated" means *anyone who can receive mail at any address they
+type* — that is an open door wearing a lock.
 
 Two consequences worth stating to whoever asks for the link:
 
@@ -203,29 +267,68 @@ Two consequences worth stating to whoever asks for the link:
 * those addresses become **personal data processed at the vendor** (`0035:401-405`), and the
   free plan has a seat limit.
 
-**Rate limiting rule** — zone → Security → Security rules → Rate limiting rules, using the
-value from §2.1 and the scope from §2.2. There is no file for this in the repo, so no test
-can close it; PLAN-0100 requires a **screenshot of the configured rule** as the closeout
-artifact.
+**Verify before going further** — this works with the tunnel still stopped:
 
-On the free plan the block response carries Cloudflare branding. That is a known,
-accepted cost recorded in PLAN-0100's residual risks, not a defect to chase.
+```bash
+curl -sS -o /dev/null -D - https://<SUBDOMAIN>/health
+```
+
+`302` with a `location:` at `<TEAM>.cloudflareaccess.com` means the gate is live. A `530`
+means Access is **not** applied and the request went straight through to the tunnel.
+
+### 🔴 Access also blocks automation — and that collides with Step 11
+
+Access gates every client, not just browsers. A plain `curl` gets `302`, so **PLAN-0100
+Step 11's case list cannot run through the edge as written**: every row asserts an exact
+status and body (`/health` → `200`, keyless `/whoami` → *exactly* `401`), and all of them
+return `302` instead. Cloudflare says so itself — the redirect's own metadata carries
+`"service_token_status": false`.
+
+The standard remedy is a **service token**, and this is where it gets governed rather than
+merely technical:
+
+* Cloudflare's own UI warns that service tokens need the **Service Auth** action, not
+  `Allow` — i.e. **a second policy** on the application;
+* ADR-0035's acceptance shape names *"a second Access policy"* as a condition under which
+  *"the arrangement has drifted and this ADR is reopened"*.
+
+**Do not resolve this by quietly adding the policy.** It needs Cray's read of whether that
+clause is about per-system onboarding cost (in which case a test-automation token is a
+different axis) or literal policy count. Options are one policy and no scripted probes; a
+permanent second policy plus an ADR amendment; or a temporary second policy for the Step 11
+run, which then has to be recorded as evidence describing a configuration that no longer
+exists.
+
+### Rate limiting rule
+
+Zone → **Security → Security rules → Rate limiting rules**, using the value from §2.1 and
+the scope from §2.2. There is no file for this in the repo, so no test can close it;
+PLAN-0100 requires a **screenshot of the configured rule** as the closeout artifact.
+
+On the free plan the block response carries Cloudflare branding, and the zone gets **one**
+rule — confirmed on the dashboard as `0/1 rules`. That is a known, accepted cost recorded in
+PLAN-0100's residual risks, not a defect to chase.
+
+⚠️ With Access already restricting the audience to an allowlist, the cap is no longer the
+only thing standing between the demo and the internet. It can follow the first bring-up
+rather than block it.
 
 ---
 
 ## 7. Get the source onto the deploy host
 
 The published compose builds the app from source (`build: context: ../..`) and declares no
-`image:`, so the deploy host needs a checkout. The repository is public, so a clone needs
-no credentials.
+`image:`, so the deploy host needs **a checkout**. The repository is public, so the clone
+itself needs no credentials.
 
 ```bash
 ssh <host> 'powershell -NoProfile -Command -' < deploy.ps1
 ```
 
 Drive it from a script file rather than an inline command: a `$` inside an inlined
-`ssh … "…"` is eaten by the intervening shells and vanishes with no error. The script does
-the clone-or-pull and then the bring-up:
+`ssh … "…"` is eaten by the intervening shells and vanishes with no error — and inline
+double quotes are dropped too, which arrives as a *syntax* error in whatever language you
+were quoting and sends you debugging the wrong layer.
 
 ```powershell
 $root = "C:\projects\vero-lite"
@@ -234,15 +337,37 @@ if (-not (Test-Path $root)) {
 }
 Set-Location $root
 git pull --ff-only
-docker compose -f deploy/published/docker-compose.yml up -d --build
 ```
 
-⚠️ **The image that runs is built on the deploy host, not the one tested on the
-workstation.** Same Dockerfile and same commit, so it should be identical — but that is an
-expectation, not a proof. When "the tested artifact is the shipped artifact" starts to
-matter (a paying pilot, an incident), switch to a registry or a `docker save`/`load`; the
-compose accepts an `image:` alongside `build:`, and `up` skips the build when that image is
-already present, so the switch does not disturb the topology.
+🔴 **Do not add `--build` on a Windows deploy host driven over SSH.** The build must pull
+`python:3.12-slim` and `ghcr.io/astral-sh/uv:0.11.9`, and Docker Desktop's credential helper
+cannot run without an interactive desktop session — it fails with *"A specified logon
+session does not exist"* even for anonymous pulls of public images, and even while a console
+session is signed in. (So this is not something auto-login fixes.)
+
+**Build on the workstation and ship the image instead.** It sidesteps the credential helper
+entirely and gives the stronger guarantee — the artifact that runs is provably the one that
+was tested:
+
+```bash
+CLOUDFLARED_CREDENTIALS_FILE=/nonexistent/placeholder docker compose -f deploy/published/docker-compose.yml build app
+docker save vero-published-app:latest -o /tmp/app.tar     # ~67 MB
+scp /tmp/app.tar <host>:C:/<staging>/app.tar
+ssh <host> 'docker load -i C:\<staging>\app.tar'
+```
+
+The dummy `CLOUDFLARED_CREDENTIALS_FILE` is needed because compose interpolates the **whole
+file** before deciding what to build, and the cloudflared service declares that variable
+required. Nothing is created at that path; volumes are materialised at container-create
+time, not at build.
+
+Then compare `docker image inspect vero-published-app --format "{{.Id}}"` on both machines —
+**equal ids prove the transfer, and that is the actual guarantee.** Do not use "a rebuild
+produced the same id" as a check: buildkit's provenance attestation makes the id identify a
+*build*, not its content, so it changes every time even when every layer is a cache hit.
+
+`docker compose up` builds only when the image is missing, so a pre-loaded image is used as
+is — no compose change is required to adopt this.
 
 ---
 
@@ -272,7 +397,44 @@ principals will 403 an unknown id**, so a second system must use one of its own.
 
 Without `API_KEYS` the demo boots, serves every unkeyed route, and returns 401 from
 `/whoami`. That is the documented, correct state — not a fault — which is why the compose
-passes the variable through optionally rather than requiring it.
+passes the variable through optionally rather than requiring it. A first bring-up without
+it is a reasonable way to separate "does the stack come up" from "does login work".
+
+⚠️ **Write `.env` without a byte-order mark.** A BOM makes the first variable name
+`\ufeffCLOUDFLARED_CREDENTIALS_FILE`, so compose's required-variable check fails for a
+reason nobody would guess from the message. On Windows, PowerShell's `Set-Content -Encoding
+utf8` and `Out-File -Encoding utf8` both emit one; `[System.IO.File]::WriteAllText` with a
+`UTF8Encoding($false)` does not. Verify by reading the first bytes — they must be the
+variable name, not `EF BB BF`.
+
+Cheapest possible gate before starting anything, and it renders the whole file with the
+variables substituted:
+
+```bash
+docker compose -f deploy/published/docker-compose.yml config --quiet
+```
+
+### 🔴 Windows inherits a much wider ACL than the file deserves
+
+A credentials file created on Linux lands `0400`. The same file copied to `C:\…` inherits
+the drive's default ACL, which was measured as **`BUILTIN\Users: Read`** and
+**`NT AUTHORITY\Authenticated Users: Modify`** — every local account can read the tunnel
+secret, and any authenticated one can replace it.
+
+Tighten it deliberately:
+
+```
+icacls C:\<secrets-dir> /inheritance:r /grant:r "BUILTIN\Administrators:(OI)(CI)F" "NT AUTHORITY\SYSTEM:(OI)(CI)F"
+```
+
+⚠️ **Then re-run `docker compose up` and confirm the bind mount still works.** Docker
+Desktop reads the file through its own file-sharing path; stripping `Authenticated Users`
+may break that, and you want to find out in the same sitting rather than at the next
+restart.
+
+Put the file **outside every git worktree** — `C:\projects\vero-lite` is a repo, so the
+secrets directory must not live under it. `verify_tunnel_credentials.py` refuses a path
+inside a worktree for exactly this reason.
 
 ---
 
@@ -290,9 +452,34 @@ Both services `running`/`healthy`, **no `postgres` service**, and **no published
 port** on anything. That is PLAN-0100's Step 11 case 0, and it gates every other case: if
 `app` is not up, the downstream cases are void rather than passing.
 
+### What a healthy first run looked like (measured 2026-08-07)
+
+Recorded so the next person can tell "working" from "started but wrong" without guessing:
+
+* compose creates the network, the `prompt-log` volume and two containers; `app` reaches
+  `healthy` before `cloudflared` is started (the compose `depends_on` condition);
+* `ps` shows `app` with `8000/tcp` and `cloudflared` with **no ports at all** — the `8000`
+  is the image's `EXPOSE`, not a published host port, and the distinction is the whole
+  point of AC-5;
+* the connector logs `Starting tunnel tunnelID=…` followed by an **ERR about a missing
+  `cert.pem`** and then connects anyway — that error is expected and non-fatal (§2.3);
+* the app logs `verticals discovered: … active='energy'`, both notifiers **DISARMED**, and
+  **two `Connection refused` warnings** about fleet PM overrides and fleet live cases.
+  Those two are the DB-less fail-soft path doing its job, not a failure;
+* `docker compose exec app` fetching `http://127.0.0.1:8000/health` returns
+  `{"status":"ok",…}` — the app answers on its own network even while the public edge
+  answers `302`.
+
+**Then re-run the §6 verification.** With the tunnel now live, `302` on every path proves
+Access is in front of a *working* origin; a `200` would mean the gate is not applied and the
+demo is open. Probe several paths, not one — and drive the loop from a **script file**, or a
+variable that fails to expand will silently send every request to `/` and you will conclude
+you tested seven things when you tested one.
+
 From here the measured run is Step 11's, against pass/fail reads fixed **before** it
 starts. Do not improvise them at the console — that is precisely what the fixed-in-advance
-rule exists to prevent.
+rule exists to prevent. Note §6's finding first: as written, those reads cannot run through
+the Access gate at all.
 
 ---
 
