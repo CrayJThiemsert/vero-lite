@@ -4,12 +4,25 @@
 > PLAN-0100: bring-up, teardown, the prompt-log deletion paths D6 obliges, and the
 > protocol for the one Cray-gated live run.
 >
-> ⚠️ **The deployment this describes does not exist yet.** Phase 3 (`deploy/published/`)
-> and Phase 5 (the live run) are still owed. This runbook is written **before** exposure
+> ⚠️ **Not yet running anywhere.** Phase 5 (the live run, PLAN-0100 Step 11) is still
+> owed, and nothing has been deployed. This runbook was written **before** exposure
 > because two of its sections — the deletion paths and the Phase-5 pass/fail reads — are
 > worth nothing if written afterwards: the first is a compliance obligation that must be
 > executable on day 1, and the second stops a live result from being graded into whatever
 > it happened to produce.
+>
+> _[Corrected s213, `superseded by new info`: this note also listed **Phase 3
+> (`deploy/published/`)** as owed. It shipped in **#1063** (Step 8) — the compose project,
+> `published.env` and the ingress allowlist are all committed, which is why the commands
+> below now name the project the compose file actually declares. The same edit fixed
+> **seven** invocations that passed `-p vero-oct`: that project name matches nothing —
+> `docker-compose.yml` declares `name: vero-published`, and `vero_oct` is the **network**.
+> Every deletion path below was therefore unexecutable as written, which is the one
+> failure this file exists to prevent.]_
+>
+> **Standing it up the first time is a different job** and lives in
+> [`published-demo-bring-up.md`](published-demo-bring-up.md) — tunnel, subdomain, Access
+> policy, rate cap, getting the source onto the host. This file starts once it is running.
 >
 > Companion record: [`docs/compliance/ropa-published-demo.md`](../compliance/ropa-published-demo.md).
 
@@ -43,7 +56,7 @@ mtimes and would silently resurrect expired rows).
 never be more than 90 days old:
 
 ```bash
-docker compose -p vero-oct exec app ls -1 /var/log/vero/prompt-log
+docker compose -p vero-published exec app ls -1 /var/log/vero/prompt-log
 ```
 
 ### 1.2 Manual purge (full)
@@ -58,11 +71,11 @@ exact silent failure this dataset's controls exist to prevent, so verify the cou
 and after rather than trusting the exit code:
 
 ```bash
-docker compose -p vero-oct exec app sh -c 'ls -1 /var/log/vero/prompt-log/prompt-*.jsonl | wc -l'
+docker compose -p vero-published exec app sh -c 'ls -1 /var/log/vero/prompt-log/prompt-*.jsonl | wc -l'
 ```
 
 ```bash
-docker compose -p vero-oct exec app find /var/log/vero/prompt-log -name 'prompt-*.jsonl' -delete
+docker compose -p vero-published exec app find /var/log/vero/prompt-log -name 'prompt-*.jsonl' -delete
 ```
 
 Re-run the count: it must be `0`. `find -delete` exits 0 when it matches nothing, so the
@@ -73,13 +86,13 @@ count is the evidence and the exit code is not.
 One day:
 
 ```bash
-docker compose -p vero-oct exec app rm -f /var/log/vero/prompt-log/prompt-2026-08-04.jsonl
+docker compose -p vero-published exec app rm -f /var/log/vero/prompt-log/prompt-2026-08-04.jsonl
 ```
 
 A month:
 
 ```bash
-docker compose -p vero-oct exec app find /var/log/vero/prompt-log -name 'prompt-2026-08-*.jsonl' -delete
+docker compose -p vero-published exec app find /var/log/vero/prompt-log -name 'prompt-2026-08-*.jsonl' -delete
 ```
 
 These purge **files**. To remove individual lines, see the DSR path below.
@@ -99,13 +112,13 @@ the vendor plus a content search over what they typed.
 -insensitive, and check the count before deleting anything:
 
 ```bash
-docker compose -p vero-oct exec app grep -ric 'SEARCH-TERM' /var/log/vero/prompt-log/
+docker compose -p vero-published exec app grep -ric 'SEARCH-TERM' /var/log/vero/prompt-log/
 ```
 
 **Step 2 — delete the matching lines** (keeping every other line in that day's file):
 
 ```bash
-docker compose -p vero-oct exec app sh -c "for f in /var/log/vero/prompt-log/prompt-*.jsonl; do grep -iv 'SEARCH-TERM' \"\$f\" > \"\$f.tmp\" && mv \"\$f.tmp\" \"\$f\"; done"
+docker compose -p vero-published exec app sh -c "for f in /var/log/vero/prompt-log/prompt-*.jsonl; do grep -iv 'SEARCH-TERM' \"\$f\" > \"\$f.tmp\" && mv \"\$f.tmp\" \"\$f\"; done"
 ```
 
 Re-run Step 1: the count must be `0`. If the request is broad enough that per-line

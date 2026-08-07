@@ -45,6 +45,60 @@ _COMPOSE = _DEPLOY / "docker-compose.yml"
 _ENV = _DEPLOY / "published.env"
 _INGRESS = _DEPLOY / "cloudflared" / "config.yml"
 _ASSETS = Path("services/api/static/assets")
+_RUNBOOKS = sorted(Path("docs/runbooks").glob("published-demo-*.md"))
+
+#: Registrable domains the published-deploy docs are allowed to name. Anything
+#: else is treated as a leak of the real domain, which ADR-0035 D1(3) forbids
+#: this repo from carrying. Extending this set is a deliberate act — add the
+#: vendor or reference domain you mean, never the deployment's own.
+_ALLOWED_DOMAINS = frozenset(
+    {
+        "cloudflare.com",
+        "cloudflareaccess.com",
+        "cfargotunnel.com",
+        "github.com",
+        "example.com",
+    }
+)
+
+#: Trailing labels treated as a real TLD. An allowlist rather than a denylist of
+#: file extensions, because the dotted-token shape is shared by far more than
+#: filenames: `sys.argv`, `cert.pem` and `rule.go` all look like hostnames to a
+#: pattern, and no denylist of extensions excludes them. Deliberately omits the
+#: ccTLDs that collide with extensions this repo uses (`.sh`, `.py`, `.md`,
+#: `.ts`) — a domain under one of those would slip, which the test's docstring
+#: states rather than hides.
+_TLDS = frozenset(
+    {
+        "ai",
+        "app",
+        "biz",
+        "cloud",
+        "co",
+        "com",
+        "dev",
+        "info",
+        "io",
+        "link",
+        "net",
+        "online",
+        "org",
+        "page",
+        "site",
+        "systems",
+        "tech",
+        "th",
+        "tools",
+        "uk",
+        "us",
+        "xyz",
+    }
+)
+
+#: A dotted, all-lowercase token — the shape a hostname takes in prose, a URL or
+#: a shell command. Case-sensitive on purpose: `r.Path.Regexp.MatchString` is not
+#: a hostname, and requiring lowercase is what tells them apart without a list.
+_DOTTED = re.compile(r"\b[a-z0-9][a-z0-9-]*(?:\.[a-z0-9][a-z0-9-]*)+\b")
 
 #: AC-6(a)'s set-equality target — PLAN-0100's published allow table expressed as
 #: the anchored cloudflared patterns that implement it. Editing this set without
@@ -386,6 +440,98 @@ def test_ac6a_the_tunnel_is_locally_managed() -> None:
         "config.yml must declare a locally-managed tunnel (tunnel + credentials-file). "
         "A remotely-managed TUNNEL_TOKEN tunnel keeps the ingress map in the Cloudflare "
         "dashboard, where this test cannot see it and would keep passing regardless"
+    )
+
+
+def _deploy_docs() -> list[Path]:
+    """Every committed file the published deployment is described by."""
+    return [p for p in sorted(_DEPLOY.rglob("*")) if p.is_file()] + list(_RUNBOOKS)
+
+
+def _registrable_domains(text: str) -> set[str]:
+    """The last two labels of every hostname-shaped token in `text`."""
+    found: set[str] = set()
+    for token in _DOTTED.findall(text):
+        labels = token.split(".")
+        if len(labels) < 2:
+            continue
+        # Only a recognised TLD counts. This is what separates `cloudflare.com`
+        # from `sys.argv`, `cert.pem`, `app.js` and `2025.8.1` — all of which have
+        # the same dotted shape and none of which end in a TLD.
+        if labels[-1] not in _TLDS:
+            continue
+        found.add(".".join(labels[-2:]))
+    return found
+
+
+def test_no_unknown_domain_appears_in_the_deploy_docs() -> None:
+    """ADR-0035 D1(3), widened from `config.yml` to everything that describes the deploy.
+
+    `test_no_ingress_rule_binds_a_hostname` guards the ingress file. It cannot see
+    a runbook, a README or an env file — and a bring-up runbook is exactly where a
+    real hostname wants to be pasted, because that is the value the operator is
+    holding while writing it.
+
+    Written as an ALLOWLIST of registrable domains rather than a search for the
+    real one, which is the only form that is committable in a public repo: the
+    test never has to know the domain in order to reject it, and it keeps working
+    across a rename.
+
+    Honest limit: this is a tripwire, not a proof. A hostname split across lines,
+    written in mixed case, or ending in a TLD outside `_TLDS` slips through. It
+    catches the realistic accident — a pasted URL or command — which is the
+    failure mode that actually happens.
+
+    RED when: any file under `deploy/` or a `published-demo-*` runbook names a
+    registrable domain outside `_ALLOWED_DOMAINS`.
+    """
+    leaks: dict[str, set[str]] = {}
+    for path in _deploy_docs():
+        try:
+            text = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:  # pragma: no cover — no binaries live here today
+            continue
+        unknown = _registrable_domains(text) - _ALLOWED_DOMAINS
+        if unknown:
+            leaks[str(path)] = unknown
+    assert not leaks, (
+        f"unexpected domain(s) in the published-deploy docs: {leaks}. ADR-0035 D1(3) "
+        "keeps the domain out of this repo entirely — it belongs in DNS and the portal "
+        "repo's ingress map, and nowhere else. Use a placeholder such as <DOMAIN>. If "
+        "the name is a legitimate vendor or reference domain, add it to _ALLOWED_DOMAINS "
+        "deliberately"
+    )
+
+
+def test_the_runbooks_name_the_compose_project_the_compose_file_declares() -> None:
+    """A `docker compose -p <name>` that matches nothing fails by doing nothing.
+
+    Found the hard way: the operations runbook drove all three of its PDPA
+    prompt-log deletion paths through `-p vero-oct`, while the compose file
+    declares `name: vero-published` (`vero_oct` is the NETWORK). Every one of
+    those commands would have selected no project — and `docker compose exec`
+    against a project that does not exist is an error the operator sees, but
+    `find -delete` inside it never runs, which is the deletion silently not
+    happening.
+
+    Reads the project name from the COMPOSE FILE, never from a constant here, so
+    renaming the project reddens this instead of leaving the runbooks stale.
+
+    RED when: a runbook names a project the compose file does not declare, or the
+    compose file's `name:` changes without the runbooks following.
+    """
+    declared = _compose().get("name")
+    assert declared, "docker-compose.yml must declare a top-level `name:`"
+
+    wrong: dict[str, set[str]] = {}
+    for path in _RUNBOOKS:
+        used = set(re.findall(r"docker compose -p (\S+)", path.read_text(encoding="utf-8")))
+        if used - {declared}:
+            wrong[str(path)] = used - {declared}
+    assert not wrong, (
+        f"runbook(s) name a compose project the compose file does not declare: {wrong}. "
+        f"docker-compose.yml declares name: {declared!r}. A `-p` that matches nothing "
+        "selects no services, so the command reports success at having done nothing"
     )
 
 
