@@ -55,6 +55,7 @@ from ruamel.yaml import YAML
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DOCKERFILE = REPO_ROOT / "Dockerfile"
 COMPOSE_FILE = REPO_ROOT / "docker-compose.yml"
+PUBLISHED_COMPOSE = REPO_ROOT / "deploy" / "published" / "docker-compose.yml"
 DOCKERIGNORE = REPO_ROOT / ".dockerignore"
 ALEMBIC_INI = REPO_ROOT / "alembic.ini"
 PYPROJECT = REPO_ROOT / "pyproject.toml"
@@ -130,6 +131,46 @@ class Stage:
             if i == instruction:
                 return a
         return None
+
+
+def _self_and_ancestors(path: str) -> list[str]:
+    """``/var/log/vero/prompt-log`` -> that path plus each parent above ``/``.
+
+    A ``chown -R`` on an ancestor covers the mount point, so an ancestor counts.
+    """
+    pure = PurePosixPath(path)
+    return [str(pure), *(str(parent) for parent in pure.parents if str(parent) != "/")]
+
+
+def _named_volume_mounts(compose_path: Path) -> dict[str, list[str]]:
+    """Writable NAMED-volume mount points, per service that builds this image.
+
+    Bind mounts are excluded: their ownership comes from the host, not from the
+    image. Read-only mounts are excluded: the process never writes there, so a
+    root-owned mount point is harmless.
+    """
+    yaml = YAML(typ="safe")
+    document = yaml.load(compose_path.read_text(encoding="utf-8")) or {}
+    services = document.get("services") or {}
+    declared_volumes = set(document.get("volumes") or {})
+
+    mounts: dict[str, list[str]] = {}
+    for name, spec in services.items():
+        if not isinstance(spec, dict) or spec.get("build") is None:
+            continue
+        destinations: list[str] = []
+        for entry in spec.get("volumes") or []:
+            if not isinstance(entry, str):
+                continue
+            parts = entry.split(":")
+            if len(parts) < 2 or parts[0] not in declared_volumes:
+                continue
+            if len(parts) > 2 and "ro" in parts[2].split(","):
+                continue
+            destinations.append(parts[1])
+        if destinations:
+            mounts[name] = destinations
+    return mounts
 
 
 def _logical_lines(text: str) -> list[str]:
@@ -542,6 +583,70 @@ def test_o5_runtime_does_not_run_as_root(runtime: Stage) -> None:
         "root",
         "0",
     }, f"the runtime stage runs as root (USER {user!r})"
+
+
+def test_o5_named_volume_mount_points_are_writable_by_the_runtime_user(
+    runtime: Stage,
+) -> None:
+    """DERIVED -- the mount points come from the compose files, never from a constant.
+
+    Docker creates a named volume's mount point as ``root:root`` when the image
+    does not already contain that path; only a path present in the image passes
+    its ownership to the volume. Since the runtime stage drops to a non-root
+    USER, any writable named-volume mount point absent from the image is
+    unwritable at runtime.
+
+    That failure is SILENT for the prompt log -- ``prompt_log.record`` swallows
+    OSError by design -- so it survived every offline test and was only found by
+    PLAN-0100 Step 11's live run, after 90+ published POST /query requests had
+    written nothing. This guard reads the real compose files and the real
+    Dockerfile so a NEW named volume inherits the check automatically.
+    """
+    runtime_user = (runtime.first("USER") or "").strip().split(":")[0]
+    assert runtime_user, "the runtime stage declares no USER"
+
+    # Everything the runtime stage does BEFORE dropping privileges. A chown after
+    # the USER switch cannot work -- the user it would need to run as is gone.
+    before_user: list[str] = []
+    for instruction, argument in runtime.directives:
+        if instruction == "USER":
+            break
+        if instruction == "RUN":
+            before_user.append(argument)
+    expected: list[tuple[str, str, str]] = []
+    for compose_path in (COMPOSE_FILE, PUBLISHED_COMPOSE):
+        if not compose_path.exists():
+            continue
+        label = compose_path.relative_to(REPO_ROOT).as_posix()
+        for service, dests in _named_volume_mounts(compose_path).items():
+            for dest in dests:
+                expected.append((label, service, dest))
+
+    assert expected, (
+        "no writable named-volume mount point was derived from any compose file -- "
+        "the guard would pass vacuously. Check _named_volume_mounts against the "
+        f"compose files ({COMPOSE_FILE.name}, {PUBLISHED_COMPOSE.name})."
+    )
+
+    unprepared = []
+    for compose_name, service, dest in expected:
+        candidates = _self_and_ancestors(dest)
+        # Checked per RUN directive, not against the concatenation: `mkdir` in one
+        # command and the path in an unrelated one must not read as coverage.
+        made = any("mkdir" in run and any(c in run for c in candidates) for run in before_user)
+        owned = any(
+            "chown" in run and runtime_user in run and any(c in run for c in candidates)
+            for run in before_user
+        )
+        if not (made and owned):
+            unprepared.append(f"{compose_name}:{service} -> {dest} (mkdir={made} chown={owned})")
+
+    assert not unprepared, (
+        "named-volume mount point(s) the image never creates and chowns to "
+        f"{runtime_user!r} before `USER {runtime_user}`: {unprepared}. Docker will "
+        "create each as root:root, and the non-root runtime cannot write there. "
+        f"RUN directives seen before the USER switch: {before_user!r}"
+    )
 
 
 def test_o5_healthcheck_targets_a_route_the_entry_module_serves(runtime: Stage) -> None:
