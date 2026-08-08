@@ -1,12 +1,12 @@
 ---
-last_updated: 2026-08-08T17:57:48+07:00
-session: 216
-current_batch: "s216 — four PRs (#1090–#1093), 0 open. PLAN-0100 COMPLETE 13/13 and ARCHIVED: AC-6(c) by arithmetic, AC-11 by measuring T_edge = 125 s, AC-12 by verifying work already done."
+last_updated: 2026-08-08T23:40:00+07:00
+session: 217
+current_batch: "s217 — two PRs (#1095, #1096), 0 open. PLAN-0102 COMPLETE 11/11 and ARCHIVED: L1 loop-detect RETIRED, executing Cray's typed s205 ruling. Also D-4's direction RULED (a), on a corrected premise."
 current_actor: code
-blocked_on: "Nothing is blocked. PLAN-0100 is closed and archived; its five residual items are non-gating."
-next_action: "IN EXECUTION (s217): PLAN-0102 — retire the L1 loop-detect guard. Non-gating residuals behind it: BUILD D-4 option (a) (direction ruled s217, nothing built); add an edge cache-purge / versioned-fonts step to the redeploy runbook; ratify ADR-0036 (+3 OQs — newly load-bearing: it gates the landing-layer shell, see the Active TODO); pin OLLAMA_KEEP_ALIVE in published.env (drift-guard only — the code default is already 30m and nothing overrides it)."
-head_commit: f987888
-recent_commits: [f987888, 6b095d2, 7b3b774, 3191309, 9dc39a1, 091a82b, c3c7b8c, 0d0d6fb, 1fbf6e4, d73606e]
+blocked_on: "Nothing is blocked. PLAN-0102 is closed and archived; the highest-leverage open item is ADR-0036 ratification, which is Cray's and which gates the landing-layer shell."
+next_action: "Cray's call first, because it unblocks the biggest item: ratify ADR-0036 (+3 OQs) — s217 found it is an ordering prerequisite of the landing/framing layer, which is the highest-VALUE open work and is otherwise G2-gated. Code-executable without any ruling: BUILD D-4 option (a) (direction ruled s217, ~4 seams in nl_query.py, nothing built); the public one-pager (stream 4, all four sources on disk); versioned font URLs + pin OLLAMA_KEEP_ALIVE (both XS, the latter a drift-guard only — the code default is already 30m and nothing overrides it). Edge cache-purge needs a Cloudflare API token = new secret + host-state."
+head_commit: 36e5735
+recent_commits: [36e5735, a10f70e, c0cb2ac, ac3972a, 02d77c5, 1a0f8ec, c2e3278, 5139dc1, 0275cf7, f987888]
 ---
 
 # vero-lite — Project Status
@@ -17,6 +17,51 @@ recent_commits: [f987888, 6b095d2, 7b3b774, 3191309, 9dc39a1, 091a82b, c3c7b8c, 
 ---
 
 ## Current Focus
+
+> **Session 217, 2026-08-08 (head_commit `f987888` → `36e5735`) — two PRs merged
+> (#1095, #1096), 0 open. Theme: PLAN-0102 is COMPLETE 11/11 and ARCHIVED — the
+> L1 loop-detect guard is RETIRED, and executing the PLAN found three defects in
+> the PLAN itself that share one root cause.**
+>
+> **Why L1 went.** It keyed on the same **file**; ADR-013 E.4 ratified "the same
+> **problem**", which is what L2/L3/L4 key on — so the retirement narrows the
+> implementation *toward* the Accepted ADR. Across L1's entire live history:
+> **zero true positives**, against **≥ 56 denies over 4,201 Write/Edit ops**
+> pre-AC-7 (~1.33 % of every edit hard-walled) and 0 denies / 0 organic warns
+> over 1,369 ops after. **No ADR amendment** — E.4 never named L1 and
+> `0013:333-336` delegated stateful loop-detection to PLANs, so L1 had zero ADR
+> backing and an amendment would have *created* the ratification it never had.
+> Also eliminated: the three harness registrations that existed only for L1 —
+> the PreToolUse `Write|Edit` one spawned a Python process on **every single
+> edit** to compute what is now a guaranteed no-op.
+>
+> **The evidence discipline is the transferable part.** L1 had not fired
+> organically since AC-7, so a test that merely observes silence passes
+> *identically* before and after the excision. Every absence is therefore paired
+> with a live control in the same run: L1 deny **YES→NO** beside L4 deny
+> **YES→YES**; L1 warn **YES→NO** beside the shell-hygiene advisory
+> **YES→YES**. Both AC-11 probes reintroduced their exact defect and went RED.
+>
+> 🔴 **Three PLAN defects, one root cause — worth carrying to the next excision
+> PLAN.** s206's R2 walked the call graph **backwards** from `LoopType.FILE_EDIT`
+> and found the name-less sites; **nobody walked it forwards** from the functions
+> being deleted, so every callee reachable only from an L1 entry point stayed
+> invisible. Step 4 said to KEEP two imports whose only callers it deletes (and
+> never mentioned a third); Step 3 named `_apply_commit_reset` but not the four
+> symbols it exclusively owned; Step 5 omitted three constants. ⚠️ **AC-9 would
+> not have caught the worst of them** — ruff flags a dead *import* but not a dead
+> *private function*, so `_state_path()` would have shipped dead past a green
+> gate. **Also a live-behaviour fix:** the deny message named three reset paths,
+> all of them L1 paths deleted by this PLAN, on a message only L4 now reaches.
+>
+> **Also (#1095): D-4's direction RULED (a) by Cray — on a corrected premise.**
+> Every prior record framed the fork as "teach the translator `group_by`", which
+> is not the problem: `group_by` already works for `max`/`min`/`avg`/`sum`. What
+> is unrepresentable is `count` **with** `group_by` — `_AGGREGATE_OPS` excludes
+> `count` — so option (a) is four seams in one file, not the scope-uncertain
+> prompt work the fork was priced against. ⚠️ **ADR-0036 is newly load-bearing:**
+> it designs a "pick which vertical" portal, which *is* a landing surface, so it
+> is an ordering prerequisite of the landing/framing layer. Nothing recorded that.
 
 > **Session 216, 2026-08-08 (head_commit `94fac66` → `f987888`) — four PRs merged
 > (#1090–#1093), 0 open. Theme: PLAN-0100 is COMPLETE 13/13 and ARCHIVED — the
@@ -179,53 +224,6 @@ recent_commits: [f987888, 6b095d2, 7b3b774, 3191309, 9dc39a1, 091a82b, c3c7b8c, 
 > --check` clean (614 files) · `mypy services/` clean (133) · **3977 passed /
 > 8 skipped / 0 failed**.
 
-> **Session 213, 2026-08-07 (head_commit `a22ff8e` → `07e9603`) — four PRs merged
-> (#1069, #1070, #1071, #1072), 0 open. Theme: the session that stood the published
-> demo up for real — and NOT ONE of the four defects came from a failing test.**
->
-> **The demo is LIVE** at the `oct-energy` subdomain behind Cloudflare Access
-> (one-time-PIN email allowlist), verified end-to-end in a browser by Cray. Every
-> defect was found by touching a layer of reality nobody had touched before —
-> docs → config → image → deploy host → edge.
->
-> 🔴 **#1071 — `python-multipart` is a RUNTIME dependency, and the shipped image
-> could not boot; it had not been able to since 2026-07-28.** It reached the dev
-> venv only via `mcp` (a **dev** extra); the image installs `--no-dev`. FastAPI
-> resolves multipart routes at *import* time, so `import services.api.main` raised.
-> **3943 tests were green over a container that could not start.** The fix ships
-> **a CI step that reproduces the image's dependency set and imports the entry
-> module** — it guards the *class*, not the instance.
->
-> **#1069 — `API_KEYS` had no way into the container.** `env_file` loads
-> `published.env` and nothing else, and compose does not forward the host
-> environment, so the secret the README told operators to provision was silently
-> dropped: the demo was unloginable no matter what the host exported. Bare
-> pass-through added, deliberately optional. **#1070** adds the bring-up runbook +
-> `verify_tunnel_credentials.py` and fixes **7** `docker compose -p vero-oct`
-> invocations in the operations runbook — the project is `vero-published`, so **all
-> three PDPA deletion paths were unexecutable**. **#1072** folds in 7 corrections
-> from executing the runbook for real, plus **13 tests for the verifier** (it
-> shipped with none).
->
-> **Step 11 is BLOCKED on a governance ruling nobody knew was needed — SURFACED,
-> NOT RULED.** PLAN-0100 Step 11's case list asserts exact statuses (`/health` →
-> 200, keyless `/whoami` → *exactly* 401 — which the PLAN calls the only thing that
-> catches `API_AUTH_ENABLED=false` in the running container); through the ratified
-> Access gate **every path returns 302** (measured on seven paths; the redirect
-> metadata carries `"service_token_status": false`). The remedy is a service token,
-> which Cloudflare requires be a **second Access policy** — and ADR-0035's
-> acceptance shape names "a second Access policy" as a drift trigger. **ADR-0035 D3
-> and the case list are each correct and were written at different times — a
-> composition problem, not a defect in either.** **PLAN-0100 stays 10 of 13; AC-6
-> unticked** ((c)'s "allowed → served" clause is still unproven).
->
-> Verification: the full offline gate at CI scope **four times**, once per PR; final
-> `ruff format --check` clean (612 files) · `mypy services/` clean (133) ·
-> **3956 passed / 8 skipped / 0 failed**, the count pre-committed before every run.
-> Non-vacuity demonstrated for all **9** guards added (mutations restored from
-> `/tmp` copies, never `git checkout`). The shipped image proven identical across
-> machines via `docker image inspect` after `save`/`scp`/`load`.
-
 ## Prior focus (archived)
 
 PLAN-003, PLAN-0005, PLAN-0006, PLAN-0007 and PLAN-0008 are all merged
@@ -243,6 +241,8 @@ than restated: the Active TODO owns that status.]_
 
 | Date | Decision | Reference |
 |------|----------|-----------|
+| 2026-08-08 | **s217 — PLAN-0102 COMPLETE 11/11 and ARCHIVED (#1096): the L1 loop-detect guard is RETIRED**, executing Cray's typed s205 ruling. L1 keyed on the same **file**; ADR-013 E.4 ratified the same **problem** (= L2/L3/L4), so the retirement narrows the implementation TOWARD the Accepted ADR. Evidence: **zero true positives across its whole live history**, against **≥ 56 denies / 4,201 ops** pre-AC-7 (~1.33 % of every edit hard-walled). **No ADR amendment** — L1 had zero ADR backing, so one would have CREATED the ratification it never had; PLAN-0102 is the governance record (PLAN-0092 shape). Three L1-only harness registrations ELIMINATED. 🔴 **Three PLAN defects found by executing it, one root cause**: s206's R2 walked the call graph BACKWARDS from `LoopType.FILE_EDIT` but nobody walked it FORWARDS from the functions being deleted — ⚠️ and **ruff flags a dead import but not a dead private function**, so AC-9 would have passed over `_state_path()`. Plus a live-behaviour fix: the deny message named three reset paths that this PLAN deleted | `36e5735` (head_commit) / [#1096](https://github.com/CrayJThiemsert/vero-lite/pull/1096) / `docs/plans/done/0102-retire-l1-loop-detect.md` |
+| 2026-08-08 | **s217 — D-4's direction RULED (Cray, typed): option (a), teach the engine (#1095)** — and the ruling changed price because the fork had been posed on a wrong premise (`was an error`). `group_by` already works for `max`/`min`/`avg`/`sum`; what is structurally unrepresentable is **`count` WITH `group_by`** (`_AGGREGATE_OPS` excludes `count`), so (a) is **four seams in one file**, not open-ended prompt work. **Nothing built.** ⚠️ Same PR records that **ADR-0036 is an ordering prerequisite of the landing/framing layer** — it designs a "pick which vertical" portal, which IS a landing surface; the marketing carrier gates that dispatch only on PLAN-0100 closing and does not know about the collision | `c2e3278` ([#1095](https://github.com/CrayJThiemsert/vero-lite/pull/1095)) / `services/engine/nl_query.py` / `docs/adr/0036-vertical-as-system-multi-vertical-demo-portal.md` |
 | 2026-08-08 | **s216 — PLAN-0100 COMPLETE 13/13 and ARCHIVED (#1090–#1093).** Its last three ACs fell to three DIFFERENT moves: **AC-6(c)** by re-scoring case 1 against the D-3 fix (arithmetic, no new run); **AC-11** by MEASURING **`T_edge` = 125 s (HTTP 524)** against a socket that `listen`s but never `accept`s — s215's `qwen3.6:35b` stall *answered* in 54 s, and **a slow upstream is not a stalled one**; ⚠️ **Cloudflare documents 100 s** (Tunnel ≠ proxied origin). **AC-12** by VERIFYING: the three "unrouted" ADR-0035 amendments had already landed in `06e2b84`. Cray typed that **a bound is not the number the clause asks for** — that ruling is what produced the 125 s. Also **D-5**, a *transient* Safe Browsing flag, cause **UNDETERMINED**, no security posture involved | `f987888` (head_commit) / [#1091](https://github.com/CrayJThiemsert/vero-lite/pull/1091) / [#1093](https://github.com/CrayJThiemsert/vero-lite/pull/1093) / `docs/plans/done/0100-exposure-published-demo-surface.md` |
 | 2026-08-08 | **s215 — PLAN-0100 Step 11 RAN live against the published demo (#1084–#1087): cases 0, 2, 3, 4, 6, 8 CLOSE; case 5 FAILED → fixed → re-verified PASS; case 1 19/21.** Four defects, none catchable offline — **90+ published `POST /query` wrote ZERO prompt-log rows** (mount point root-owned vs runtime uid 999; `record` swallows `OSError` **by design**, so ADR-0035 D6's whole regime described a file that did not exist), a prompt log naming a model that never ran, `.woff2` served as `text/plain`, and a `group_by` verified_query (**D-4, left open**). `T_edge` **UNMEASURED** (bound `≥ 54 s`). **The edge cache masked the redeploy** — `deploy.py` proves the container, not the visitor. **`Draft`, still 10 of 13** | `94fac66` (head_commit) / [#1086](https://github.com/CrayJThiemsert/vero-lite/pull/1086) / [#1087](https://github.com/CrayJThiemsert/vero-lite/pull/1087) / `docs/plans/done/0100-exposure-published-demo-surface.md` |
 | 2026-08-08 | **s214 — the published demo has a REPEATABLE deploy procedure, and it RAN under Cray's typed §8 go (#1073–#1078).** Script + runbook + **18 guard/scenario tests**; it asserts an **effect** (the container's `.Image` == the id just loaded), not a step count. Three defects, none catchable offline — **3977 green over a script whose first remote command failed on the host**: its ssh shell is **PowerShell**, so every `--format={{…}}` died at `unknown shorthand flag: 'e' in -encodedCommand`, **and the guard written one PR earlier went GREEN over it**. Demo now on `d0a2808`'s image; `:prev` holds the old, rollback live. **PLAN-0100 unchanged at 10 of 13** | `1384278` (head_commit) / [#1076](https://github.com/CrayJThiemsert/vero-lite/pull/1076) / `deploy/published/deploy.py` / `docs/runbooks/published-demo-redeploy.md` |
@@ -251,8 +251,6 @@ than restated: the Active TODO owns that status.]_
 | 2026-08-06 | **s209 cont. — PLAN-0100 Step 8 SHIPPED (#1063): AC-4/5/6(a)(b) CLOSED, 8 → 10 of 13.** Greenfield `deploy/published/` + `tests/deploy/` (**69 tests**); Tab G dropped on the published profile (`?v=c48`). **`OCT_VERTICAL` pinned `energy` (Cray typed)** — the DB posture was **not** the discriminator: `FastenalCsvAdapter.stream_events` is an **empty async iterator by design**, so procurement's `GET /recommendations` returns `[]` on both profiles and Tab A lands blank. AC-6 stays unticked on purpose ((c) = Step 9). A non-vacuity probe caught a **vacuous test inside the change itself** | `1557141` ([#1063](https://github.com/CrayJThiemsert/vero-lite/pull/1063)) / `deploy/published/` / `docs/plans/done/0100-exposure-published-demo-surface.md` |
 | 2026-08-06 | **s209 cont. — ADR-0036 DRAFTED `Proposed` (#1065): a deployed vertical instance IS a "system" under ADR-0035 L9/D4.** ADR-0035 defines "system" by what one owns (`0035:478-493`), and a vertical instance satisfies every clause with **zero engine change** ⇒ the multi-vertical demo is N systems + a `portal.` picker, and **D4's reopening trigger does not fire**; in-process multi-vertical serving is a recorded **non-goal** (`auth.py:82`). ⚠️ Ratifying `Proposed → Accepted` **must remove `0036` from `test_the_non_accepted_adrs_are_exactly_the_expected_set` in the same edit** | `8bd331d` (head_commit) / [#1065](https://github.com/CrayJThiemsert/vero-lite/pull/1065) / `docs/adr/0036-vertical-as-system-multi-vertical-demo-portal.md` |
 | 2026-08-06 | **#1062 + #1064 (session 210, a PARALLEL session — NOT s209's work).** #1062 adds the `.claude/skills/stream-status/` skill (a 4-work-stream progress readout); #1064 gives `next-work-analyst/SKILL.md` a 4-stream lens (stream tag, stream column, per-stream view, balance note). s210 closed without reconciling STATUS, so this row is its only record here. ⚠️ Its closing notice asserted the skill's registry table is **canonical** and must be updated in the same PR as a carrier change — **recorded as an OPEN QUESTION for Cray** (In-Flight Discussions), not as a decision | `05d672f` ([#1062](https://github.com/CrayJThiemsert/vero-lite/pull/1062)) / `efaaeb3` ([#1064](https://github.com/CrayJThiemsert/vero-lite/pull/1064)) / `.claude/skills/stream-status/SKILL.md` |
-| 2026-08-06 | **s209 — PLAN-0100 OI-1 RULED (Cray, typed): option (b), as a PRINCIPLE not a one-route patch (#1060).** On the `published` profile an LLM call the visitor did not initiate is **no longer made** — `arm_policy.py` (the principle + one predicate); `recommend(..., visitor_initiated=False)` is **keyword-only, fail-closed**. **฿ facet kept** (`build_economic_steps` is deterministic, never raises). New `_disclose_rule_by_design` — a **third** state, because the degrade wording would claim degraded while working as designed; trace step `arm-pin-disclosure` reuses the CI-pinned `rule_check` kind ⇒ **no UI label, no `?v=` bump**. Non-vacuity 3 of 5 RED. **No AC ticked — still 8 of 13**; Step 8 now fully unblocked | `0c067de` (head_commit) / [#1060](https://github.com/CrayJThiemsert/vero-lite/pull/1060) / `services/engine/llm/arm_policy.py` |
-| 2026-08-06 | **s208 — PLAN-0100 AC-7/8/9/10 CLOSED (#1058): 4 of 13 → 8 of 13.** The work shipped in s206; the table was never ticked (the s207 handoff said "10 of 13", the checkboxes read **4**). Independent refuting review returned **two of four NOT-CLOSEABLE**: AC-7 had two **unassertable** clauses (**amended on Cray's typed ruling**) plus a third genuinely unmet and now built — a prompt-log assertion under the cap, non-vacuity proven by a hardcoded `arm="llm"` mutation; **AC-9's ADR-0032 D5 wording review had never been run** (done, PASS). AC-10 fixed a purge glob (`prompts-*` vs `prompt-`) matching **0** files at **exit 0** | `c0f08b8` (head_commit) / [#1058](https://github.com/CrayJThiemsert/vero-lite/pull/1058) / `docs/plans/done/0100-exposure-published-demo-surface.md` |
 
 ## In-Flight Discussions
 
@@ -282,7 +280,7 @@ than restated: the Active TODO owns that status.]_
 - [ ] **Custom Postgres image with extensions (pgvector / AGE / pg_trgm) — needs a fresh ADR number + a PLAN; neither drafted.** *[Corrected s141: **PLAN-002 does not exist** ("NOT yet drafted", `docs/plans/done/0005-oct-engine-runtime-layer.md`), and the old "≥ ADR-014" floor is **moot** — ADRs now run to 0032 and `0014-WITHDRAWN.md` exists.]* Context: **`docs/adr/0013-autonomy-axis-relocation.md`** (the floor-bump note) + **`docs/plans/done/0005-*.md`** (trigger: semantic + graph features).
 - [ ] Set up self-hosted GitHub Actions runner on MS-S1 MAX
 - [ ] **CLAUDE.md follow-up extraction pass (s181 option b): new Cowork dispatch; target < 20 KB (~18 KB / ~225–235 line floor).** Candidates (Cowork fresh-eyes, s181 completion §6): §11 ¶3 restates the §6 E2 rule → one-line pointer; §10 skills-row annotation duplicates §4's Tier-2.6 row (in-file ADR-0017 D6 drift); §10 docs/logs row's PLAN-004 parenthetical; §9 halves; §3 folds into §1. Materials: `.claude/handoffs/session-181/` (gitignored). **PARKED s183 by Cray — the dispatch stays UNSENT until two things are settled, and s183 grounded both.** (1) **The unit of `< 20 KB` is load-bearing and unpinned:** `CLAUDE.md` measures **21,524 B / 261 lines**, so the target needs **1,044 B** cut against 20 KiB but **1,524 B** against decimal 20,000 — Cray was asked and declined to rule for now. (2) **The five named candidates cannot reach either target:** measured at **~930–1,000 B** combined, and the row's own "~225–235 line floor" needs **26–36 lines** removed where the five move **~7** (candidates 1–3 are in-line trims that shorten bytes without deleting lines). The genuinely large blocks — `CLAUDE.md:112` (~1,100 B), `:153` (~700 B), `:73` (~800 B) — are **not on the list**. Sending this dispatch as written would repeat the s181 failure of a target that is arithmetically unreachable in scope. ~~Batch the two standing CLAUDE.md defects into whatever dispatch eventually goes out~~ — **DISCHARGED s188**: both rows below are closed, batched into the s188 three-edit Cowork round-trip. _[s188 — **the arithmetic moved AGAINST the target and the row must not be read at its old numbers.** `CLAUDE.md` is now **22,424 B** (+900 B: the §8 scenario-test rule +569, the §6 gate-claim correction +261, the §7 link resolution +70), so the cut needed is **1,944 B** against 20 KiB or **2,424 B** against decimal 20,000 — roughly **double** what this row was written against, while the five named candidates still measure only ~930–1,000 B. Note also that `:112`, one of the three "genuinely large blocks" this row says are **not** on the candidate list, is now ~260 B larger. The growth is Cray-ratified binding-rule substance, not padding — which is the point: **the target and the constitution are pulling in opposite directions, and that is the decision this row is actually parked on**, not the unit question alone.]_
-- [ ] **PLAN-0102 — retire L1 loop-detect. OQ-4 ANSWERED s205 (NO; Cray typed RETIRE, 2026-08-04); the PLAN is DRAFTED and UNARCHIVED, so this row tracks execution only.** The measurement, the s180 "0 denies" correction (**≥ 56**, a floor), and the ADR-013-never-backed-L1 finding are all recorded elsewhere — read them, not a restatement: `docs/plans/0102-retire-l1-loop-detect.md` §Context + [`docs/lessons/0035-negative-measurement-needs-a-positive-control.md`](docs/lessons/0035-negative-measurement-needs-a-positive-control.md).
+- [x] **PLAN-0102 — retire L1 loop-detect. COMPLETE 11/11 and ARCHIVED (s217, #1096).** L1 is gone from all four hooks, the shared state layer, and the three harness registrations that existed only for it. L2/L3/L4 are intact and asserted so. **Read the archived PLAN, never a restatement:** `docs/plans/done/0102-retire-l1-loop-detect.md` (§Context for the measurement + the s180 "0 denies" correction to a **≥ 56** floor; §Governance for why no ADR amendment; §"Corrections found by executing this PLAN" for the three defects + the `observe()` scope decision). **Two residues outlive it, both non-gating and recorded ONLY here:** (1) **`observe()` is now callerless and was deliberately kept** — deleting it would turn `_record`'s `bump` into a constant and pull a refactor into the function every surviving L2/L3/L4 increment flows through; revisit only if that module is being reworked anyway. (2) The **forwards-call-graph gap** that produced all three PLAN defects is a *method* fix owed to the next excision PLAN, not a code fix — no artifact carries it yet.
 - [ ] Extract `docs/conventions/hardware.md` from CLAUDE.md (low priority)
 
 ## Next Steps

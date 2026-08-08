@@ -1,6 +1,6 @@
 # PLAN-0102: Retire the L1 loop-detect guard
 
-**Status:** Draft
+**Status:** Complete — 2026-08-08 (session 217). All 11 ACs closed; shipped in #1096.
 **Owner:** Claude Code
 **Created:** 2026-08-04
 **Related ADRs:** ADR-013 (E.4 context — explicitly **not** amended, see §Governance), ADR-009 (D1/D2 routing)
@@ -164,7 +164,7 @@ same-harness positive control that still produces output.** The pre-change RED
 baseline (Step 1) proves the drivers can make L1 fire at HEAD; the L4/L2
 controls prove the harness can still surface a firing after.
 
-- [ ] **AC-1 — the deny is extinct, not dormant.** Driving
+- [x] **AC-1 — the deny is extinct, not dormant.** Driving
   `pretooluse_loop_detect.py` with a Write payload whose target carries ≥ 20
   recorded hits in a pre-seeded state file (20 > every historical bar: 6/15
   warn, 9/18 deny) produces **no deny** — stdout carries no
@@ -175,7 +175,7 @@ controls prove the harness can still surface a firing after.
   L4 control stops denying (harness breakage is indistinguishable from success
   without it). **Pre-change probe (Step 1):** the identical L1 driver at HEAD
   emits the deny — recorded before the excision lands.
-- [ ] **AC-2 — the warn is extinct.** Driving
+- [x] **AC-2 — the warn is extinct.** Driving
   `posttooluse_progress_observer.py` with a sequence of Write payloads that
   re-apply the same `old_string` past every historical warn bar emits **no
   stdout output at all** (no `decision: block` advisory, no Telegram attempt —
@@ -184,14 +184,14 @@ controls prove the harness can still surface a firing after.
   warning through the same stdout channel in the same test. **RED when:** any
   Write/Edit handling path is reintroduced in the observer's `main()` dispatch.
   **Pre-change probe (Step 1):** the identical driver at HEAD emits the warn.
-- [ ] **AC-3 — the counter no longer tracks FILE_EDIT.** After driving N Write
+- [x] **AC-3 — the counter no longer tracks FILE_EDIT.** After driving N Write
   payloads through the observer, the saved state file contains **no
   `L1:`-prefixed counter key and no `turn_touched`/`subagent_touched` growth**.
   **Positive control, same run:** one failing-Bash payload creates an
   `L4:`-prefixed key in the same state file — proving the writer wrote.
   **RED when:** any L1 recording path survives, or the writer stops writing
   entirely (the L4 key catches that).
-- [ ] **AC-4 — the settings excision is pinned as data, both directions.** A
+- [x] **AC-4 — the settings excision is pinned as data, both directions.** A
   rewritten `tests/handoffs/test_settings_hook_wiring.py` asserts (a) the
   **absences**: no `pretooluse_loop_detect.py` under any PreToolUse
   `Write|Edit` matcher, no `posttooluse_progress_observer.py` under PostToolUse
@@ -205,7 +205,7 @@ controls prove the harness can still surface a firing after.
   PLAN-0094 pin at `test_settings_hook_wiring.py:88-98`, whose stated purpose
   was keeping the L1 subagent reset reachable — left as-is it would now fail,
   or worse, be deleted without a replacement guard.)
-- [ ] **AC-5 — legacy state cannot crash or resurrect the guard.** Loading a
+- [x] **AC-5 — legacy state cannot crash or resurrect the guard.** Loading a
   fixture state file containing pre-retirement content — `L1:`-prefixed
   entries, `turn_touched`, `subagent_touched`, `warned_at` stamps — neither
   raises nor produces any L1 behaviour (no deny, no warn, per the AC-1/AC-2
@@ -215,7 +215,7 @@ controls prove the harness can still surface a firing after.
   (`_loop_counter.py:173-187`, PLAN-0094 D4) must extend to the removed
   vocabulary. **RED when:** enum removal leaves any load path doing
   `LoopType("L1")` on stale keys, which raises `ValueError` at hook start.
-- [ ] **AC-6 — E.4 still holds (the continuity scenario).** One scenario test
+- [x] **AC-6 — E.4 still holds (the continuity scenario).** One scenario test
   drives the real observer + real gate over realistic simulated "same problem"
   sequences: (a) the same pytest nodeid failing 6 consecutive times in Bash
   output → L2 fires the Telegram payload `{loop_type, target, last_6_actions}`
@@ -229,12 +229,12 @@ controls prove the harness can still surface a firing after.
   realistic simulated data — no stubbing of either side of the seam under test
   (the Telegram transport stub sits beyond the asserted seam, which is the
   emitted payload).
-- [ ] **AC-7 — no wholesale deletion.** All four hook files still exist and
+- [x] **AC-7 — no wholesale deletion.** All four hook files still exist and
   the full `tests/handoffs/` suite is green post-excision. Guards two known
   hazards: the shared state layer serves L2/L3/L4, and deleting a snapshotted
   hook script breaks every later Edit in a live session. **RED when:** a file
   is deleted or an L2/L3/L4 behaviour regresses.
-- [ ] **AC-8 — the registry and live-claim docs are truthful.** In
+- [x] **AC-8 — the registry and live-claim docs are truthful.** In
   `.claude/autonomy-triggers.md`: row L1 removed from the trigger table, the
   `:119-128` path-class note and `:140-148` reset-paths note removed or
   rewritten to L2/L3/L4-only, the Phase-2 intro no longer describes an L1
@@ -246,7 +246,7 @@ controls prove the harness can still surface a firing after.
   **RED when:** a Tier-1/2/2.5/2.6 doc still tells a future agent the guard
   exists. (Note this AC keys on *liveness claims* in *current-truth documents*
   — not on the string "L1", which legitimately survives in history.)
-- [ ] **AC-9 — the excision left no dead code (hygiene, not the retirement
+- [x] **AC-9 — the excision left no dead code (hygiene, not the retirement
   proof).** The removed identifiers — `FILE_EDIT`, `L1_GRACE_BUDGET`,
   `l1_threshold_for`, `l1_deny_threshold_for`, `reset_untouched_l1`,
   `reset_l1_for_targets`, `record_turn_touched`, `record_subagent_touched`,
@@ -260,13 +260,13 @@ controls prove the harness can still surface a firing after.
   imports/symbols would flag). This AC is explicitly **subordinate**: ACs 1–3
   and 6 prove the retirement; this one only proves the diff is finished. It
   asserts on identifiers in code, never on prose.
-- [ ] **AC-10 — the offline gate matches CI scope, run from the main
+- [x] **AC-10 — the offline gate matches CI scope, run from the main
   checkout.** Full `tests/` suite + ruff + mypy at CI scope, executed from the
   main checkout — **not** a worktree, where 5 known `tests/handoffs/` hook
   tests false-RED (a 6th failure is real and must be chased). The Step-1
   pre-change RED probe outputs are preserved in the PR body as the
   before/after evidence pair.
-- [ ] **AC-11 — the survivors still run (the two collateral-damage guards).**
+- [x] **AC-11 — the survivors still run (the two collateral-damage guards).**
   Added at R2 in session 206 because the two scope gaps found there are both
   **green-while-broken**: neither changes an exit code, so ACs 1–10 as written
   would all have passed over a bricked harness. Two prongs, each with its own
@@ -488,6 +488,113 @@ exclusively, and every retained path was confirmed to serve L2/L3/L4 or an
 unrelated Stop-hook arm. Remaining choices (e.g. tombstone-vs-remove for the
 enum member, schema pruning) are implementation details pinned in the Steps
 with rationale, reviewable at R2/PR.
+
+## Corrections found by executing this PLAN (session 217)
+
+Recorded here rather than silently fixed, because **all three are one defect
+wearing three faces and the root cause will recur on the next excision PLAN.**
+
+Session 206's R2 pass fixed a scope miss by walking the call graph **backwards**
+from `LoopType.FILE_EDIT` — that is what found `awaiting_ack`,
+`clear_turn_scoped` and `_apply_commit_reset`, and the PLAN records the finding
+at its own §Code surface. Nobody walked the graph **forwards** from the
+functions being deleted. So every callee reachable *only* from an L1 entry point
+stayed invisible to both passes:
+
+1. **Step 4's import guidance is wrong.** It says to KEEP `load_counter` and
+   `main_session_id` because "the surviving code still calls them". It does
+   not — their only call sites were inside `_apply_turn_boundary_reset` and
+   `_apply_ack_clear`, the two functions Step 4 deletes. `save_counter` is in
+   the same position and the Step never mentions it at all. `_state_path()` and
+   `DEFAULT_COUNTER_PATH` are orphaned with them. ⚠️ **AC-9 would not have
+   caught the function:** ruff flags a dead *import* but not a dead *private
+   function*, so `_state_path()` would have shipped as dead code past a green
+   gate.
+2. **Step 3 under-names the commit-reset subsystem.** It lists
+   `_apply_commit_reset` and its call line, but not `_is_git_commit`,
+   `_committed_files`, `_GIT`, `_GIT_COMMIT_RE` or the `shutil` import — all of
+   which that function exclusively owned.
+3. **Step 5's removal list is incomplete.** `L1_DOC_THRESHOLD`, `is_doc_target`
+   and `MAX_CONTENT_HASHES` are each reachable only from a listed L1 helper.
+
+**A live-behaviour defect, not dead code.** The deny message in
+`_deny_decision` listed **three** reset paths — an untouched turn boundary, a
+`git commit` containing the target, a subagent's own `SubagentStop`. Every one
+was an L1 path deleted by this PLAN, and only L4 reaches that message now. Left
+verbatim it would have instructed the agent to do three things that cannot
+clear an L4 counter — precisely the defect PLAN-0094 P2's standing rule for
+this message exists to prevent ("it may name only reset paths that actually
+exist"), pointed the other way. Rewritten to name L4's real reset. Step 2's
+"behaviourally byte-equivalent" is preserved on its own stated terms: same
+threshold, same deny payload shape, same Telegram contract.
+
+### A scope decision taken at execution, recorded rather than assumed
+
+`observe()` loses its last caller and was **deliberately NOT removed.** Deleting
+it leaves `_record(..., bump=True)` as the sole call, which turns `bump` into a
+constant and invites a refactor of the one function every surviving L2/L3/L4
+increment flows through — real regression risk in the guards that remain, for a
+cosmetic win, against Step 5's own rule that "everything L2/L3/L4 calls survives
+unmodified". The orphans that *were* removed are L1-exclusive leaves;
+`observe()` sits on the shared counting spine. `normalize_file_path` is retained
+for a different reason: it has a live consumer in
+`pretooluse_classifier_dispatch.py`.
+
+### Three tests caught the executor's mistakes, not the code's
+
+Worth recording because each is a reusable shape:
+
+1. The AC-6 sameness control went RED **against a correct gate**. Six
+   "different" commands `cmd0 --flag` .. `cmd5 --flag` collapse to ONE:
+   `tokenize_bash_command` replaces a bare integer with `<arg>` by design, so
+   `pytest tests/foo.py` and `pytest tests/bar.py` share a counter. The premise
+   was wrong, not the code. The control now asserts the commands stay distinct
+   **after tokenization** before concluding anything.
+2. The AC-11 (a) structural guard went RED **against a correct file**. It
+   grepped the source for retired identifiers, and `stop_continuation.py`'s
+   docstring *explains the retirement* and therefore names them. A guard that
+   cannot tell a call from a comment punishes a file for documenting itself,
+   and gets redder the better the documentation is. Rewritten to walk the AST.
+3. Two pre-existing tests failed for behaviour that is now **correct**:
+   `test_state_file_is_valid_json_after_run` drove a `Write`, which now writes
+   nothing at all. Re-driven with a failing `Bash` call — a test of persistence
+   needs a producing call that still produces.
+
+## Closeout verdict — session 217, 2026-08-08. **PLAN-0102 IS COMPLETE 11/11.**
+
+Shipped in [#1096](https://github.com/CrayJThiemsert/vero-lite/pull/1096) as
+three commits (Steps 2-6 / Step 7 / Step 8), with the D-4 ruling banked
+separately in [#1095](https://github.com/CrayJThiemsert/vero-lite/pull/1095).
+
+**The before/after pair (AC-10).** The AC-1 and AC-2 drivers were run against
+the live hooks at HEAD `c2e3278` **before any edit**, and again after:
+
+| probe | before | after |
+|---|---|---|
+| L1 deny (gate) | **YES** | **NO** |
+| L4 deny (control) | YES | **YES** |
+| L1 warn (observer) | **YES** | **NO** |
+| shell-hygiene advisory (control) | YES | **YES** |
+
+The two controls are what make the two NOs mean "L1 is gone" rather than "the
+loop-detect layer died" — load-bearing here more than usual, because L1 had not
+fired organically since AC-7, so a test that merely observed silence would pass
+identically before and after. ⚠️ **Honest limitation:** the after-run overwrote
+the before-run's JSON report at a shared `/tmp` path; the summary table and the
+verbatim emitted strings were extracted first and are the preserved form (they
+are in #1096's body and in `tests/handoffs/test_plan0102_l1_retired.py`'s module
+docstring). The raw before-blob is not recoverable without re-running at HEAD.
+
+**Non-vacuity.** Both AC-11 probes reintroduced the exact defect their guard
+exists for and went **RED**; each confirmed the guard GREEN first, and each
+restored from a `/tmp` scratch copy rather than `git checkout`.
+
+**Offline gate at CI scope, from the main checkout (AC-10).** `ruff check`
+clean over all 611 tracked `.py` files · `ruff format --check` clean (614) ·
+`mypy --strict services/` **Success**, 133 source files · full `tests/`
+**3896 passed / 8 skipped / 0 failed** (9m46s). ⚠️ A bare `ruff check .` in a
+live tree reports one `S108` in `.claude/benchmark-results/` — that path holds
+**0 tracked files** and is absent from a CI checkout.
 
 ## Verification
 
