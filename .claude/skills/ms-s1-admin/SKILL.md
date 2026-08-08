@@ -110,7 +110,10 @@ ssh -o BatchMode=yes ms-s1 'powershell -NoProfile -Command -' < /path/to/script.
 ```
 
 The script never passes through a shell parser, so `$var`, `$(…)`, `[Type]::Member`
-and quotes all arrive intact. Verified end-to-end:
+and quotes all arrive intact **in the script itself** — ⚠️ but see the next section:
+that guarantee stops at the boundary where PowerShell hands an argument to a
+**native executable**, which is where `docker run … python -c $code` lives. Verified
+end-to-end:
 
 ```
 PSVersion=5.1.26100.8875
@@ -122,6 +125,66 @@ Elevated=True
 **Inline is acceptable only for commands containing no `$`, no backtick and no
 `$(…)`** — e.g. `ssh ms-s1 'Get-Service sshd'`. The moment a `$` appears, switch to
 the file+stdin form. Do not try to out-escape it.
+
+## 🔴 The stripped-`"` trap — PowerShell eats double quotes on the way to a native exe
+
+**The `.ps1`-over-stdin form does NOT save you here, which is why this needs its own
+section.** The section above is about getting a script to PowerShell intact. This one
+is about what PowerShell does *next*, when it passes one of those strings on as an
+argument to a **native executable** (`docker`, `git`, `python`): it **strips embedded
+double quotes**. The `.ps1` was parsed perfectly; the exe still receives mangled argv.
+
+**Measured 2026-08-08 (session 216)**, running a throwaway TCP server in a container:
+
+```powershell
+$py = 'import socket;srv=socket.socket();srv.bind(("0.0.0.0",11434));srv.listen(128)'
+docker run -d --name p4-stall --entrypoint python vero-published-app:latest -c $py
+```
+
+```
+docker logs p4-stall
+#  →  srv.bind((0.0.0.0,11434))
+#         ^^^^^   SyntaxError: invalid syntax. Perhaps you forgot a comma?
+```
+
+The `"` around `0.0.0.0` are simply gone. **The failure is silent one level up**:
+`docker run` prints a container ID and exits 0, and `docker ps` then shows nothing
+because the container already died. Only `docker logs` reveals it. A run that trusts
+the exit code will happily proceed against a container that never started.
+
+### ✅ Two forms that work
+
+**1. Write the payload quote-free.** Often easy once you look for it — `str()` is the
+empty host (`INADDR_ANY`), and any other string can come from `sys.argv`:
+
+```powershell
+$py = 'import socket,time;srv=socket.socket();srv.bind((str(),11434));srv.listen(128);time.sleep(86400)'
+docker run -d --name p4-stall --entrypoint python <image> -c $py     # works
+docker exec <container> python -c $probe p4-stall                    # argv[1] = the hostname
+```
+
+⚠️ Keep the payload **space-free** too when it rides a bare `ssh ms-s1 …`: `ssh` joins
+its argv with spaces before the remote shell re-parses the result.
+
+**2. Write the payload to a file on the host** (`Set-Content -Encoding utf8`, see the
+caveats below) and pass the *path*, not the code. Verbose, but immune.
+
+### The rule of thumb
+
+This is the **third** member of one family, and they are worth reading together
+because each has a different mechanism and each is silent:
+
+| # | What is lost | Where it is lost |
+|---|---|---|
+| `{…}` | braces become a script block | the **remote** shell parses them (§ above) |
+| `$` | variables vanish | **our** two bash layers expand them first (§ above) |
+| `"` | quotes are stripped | PowerShell → **native exe** argv (this section) |
+
+**Diagnostic, not preventive, but it catches all three:** never let a remote command's
+exit code stand as the evidence. Read the *result* back — `docker logs` for a
+container that should be running, `printenv` off the container for an env override —
+and refuse to let a measurement count until it matches. See
+[`docs/lessons/0007-harness-exit-code-artifact.md`](../../../docs/lessons/0007-harness-exit-code-artifact.md).
 
 ## PowerShell 5.1 caveats on the remote side
 
